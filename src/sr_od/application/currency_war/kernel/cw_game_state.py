@@ -3382,10 +3382,11 @@ def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
     # bench 写门(对齐上方 board_readable 先例):未读域≠真空域。v1 漏斗
     # (read_game_state)不读 bench 身份,其帧 bench 恒默认空表——无门合成
     # 会把容器内 prep 装配环 bench 观察块(cw_screen_prep heavy 块,唯一
-    # 实机漏斗写端)的真读覆盖成「9 槽全空」,与执行账 tracked 在商店段
-    # guard_expected_vs_tracked 播种对账处对撞(违 _feed_board_state 席位
-    # 通道声明的「禁拿 CwSimFrame 兜底默认值当观察」)。sim 真值帧恒
-    # 可读(缺省 True)不受影响;真真空写路径由 sim 帧承载。
+    # 实机漏斗写端)的真读覆盖成「9 槽全空」假真空(违 _feed_board_state
+    # 席位通道声明的「禁拿 CwSimFrame 兜底默认值当观察」;历史事故面 =
+    # 商店段入口双账对账对撞,该对账已随 T-268 守卫退役,本门的防覆盖
+    # 语义独立存续——真读被兜底默认值覆盖本身就是观察面破坏)。sim 真值
+    # 帧恒可读(缺省 True)不受影响;真真空写路径由 sim 帧承载。
     if getattr(st, 'bench_readable', True):
         bench_slots: list[BenchSlot] = []
         for i, bc in enumerate(st.bench):

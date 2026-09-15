@@ -229,17 +229,23 @@ class ExecState:
     # 生命周期:新 match 新执行态 = 缺省 False(正常新局恒 False,开局推断
     # 合法不受误伤)。
     cw_resumed_match: bool = False
-    # 接管后种子段两账再锚定待办(T-251 双形态出口)。True = 本局标记为
-    # 恢复对局后,商店种子段尚未用屏幕真值重建 tracked+容器 bench 两账
-    # ——接管场景两账与屏幕结构性不同源(tracked 未建/残缺、容器逻辑态
-    # 陈旧均可能,实机 04:39 形态 expected 8 件 vs tracked 9 件反向分叉),
-    # 首次商店访问种子段须以屏幕真值再锚定一次,重建成功即消费置 False;
-    # 失败(失读/槽号不健康)不消费,下一 visit 重试。写端 =
-    # cw_loop._mark_session_resumed(与 cw_resumed_match 同点同口);消费端 =
-    # cw_screen_buy_cards.rebuild_tracked_at_seed_if_vacant。session 级
-    # 生命周期:新 match 新执行态 = 缺省 False(正常新局首播种即同源,
-    # 不走本出口)。
-    cw_resume_seed_anchor: bool = False
+    # tracked 主账观察状态(T-268 用户裁定「字段增加观察状态」;原「接管
+    # 后种子段两账再锚定待办」旗标 cw_resume_seed_anchor 随店内读屏重建
+    # 出口一并退役,由本字段以观察态语义承接其唯一生产行为面)。
+    # True = tracked 主账已按屏幕真值锚定,商店决策可信任席面输入;
+    # False = 账与屏幕的对应关系未确证(接管/重置/账失效等事件后),策略
+    # 商店门(strategies/impl/flow.py decide_shop_action)据此返回恒可用
+    # 终结 CloseShop 交回外循环,由备战环 heavy 观察(observe_full →
+    # reconcile_tracking)完成锚定后再进店——店内不做任何原地重建。
+    # 写入端:False = cw_loop._mark_session_resumed(接管检测确认点;重置/
+    # 账失效类事件出现时同口置 False,本注释即语义登记);True =
+    # kernel/cw_reconcile.reconcile_tracking 的 bench 侧屏幕真值写回成功
+    # 点(唯一生产置位点;双空读守卫/槽号健康门拒绝/识别域未就绪均不
+    # 置位 = 保持未观察)。缺省 True = 缺省可信:正常新局 ExecState 随局
+    # 新建,空账即屏幕真空(0 件真值),且生产首店访问前必有备战环
+    # heavy 观察先锚定;仅显式失效事件才降级,避免 sim/离线入口未过
+    # 接管路径被误伤为全量关店。
+    tracked_observed: bool = True
 
 
 # ============================================================ op 逻辑效果推进

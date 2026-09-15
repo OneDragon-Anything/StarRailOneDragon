@@ -1425,11 +1425,11 @@ class CwLoop(SrOperation):
                 exec_state_of,
             )
             exec_state_of(session).cw_resumed_match = True
-            # T-251 双形态出口:接管场景两账与屏幕结构性不同源(tracked
-            # 未建/残缺、容器逻辑态陈旧均可能),标记种子段待再锚定——
-            # 消费端 = 商店种子段 rebuild_tracked_at_seed_if_vacant
-            #(重建成功才清;失败下 visit 重试)。
-            exec_state_of(session).cw_resume_seed_anchor = True
+            # T-268 观察态失效(接管):接管场景 tracked 主账与屏幕的对应
+            # 关系未确证 → 置未观察,商店策略门(flow.decide_shop_action)
+            # 据此关店交回外循环,备战环 heavy 观察(reconcile_tracking
+            # 写回成功)完成锚定后再进店;店内零原地重建。
+            exec_state_of(session).tracked_observed = False
         except Exception as e:  # noqa: BLE001  旗标写入不阻塞分派
             log.debug(f'[cw-loop] 恢复局旗标写入跳过: {e}')
 
@@ -2060,21 +2060,6 @@ class CwLoop(SrOperation):
                     _k = 'branch_shop_open_visit_ok' if ok \
                         else 'branch_shop_open_visit_fail'
                     _so_counters[_k] = _so_counters.get(_k, 0) + 1
-                if not ok:
-                    # T-230 恢复标记带消费端:种子分叉恢复预算耗尽后,
-                    # visit 失败不再默认 round_wait 重入(重入 → 段顶
-                    # 守卫仍红 → 再失败 = 粘性环),改 round_fail 交未知
-                    # 画面兜底链。标记写端/谓词单一源 = cw_screen_buy_cards
-                    # 恢复路由(seed_divergence_stopped)。
-                    from sr_od.application.currency_war.operations.cw_screen.cw_screen_buy_cards import (
-                        seed_divergence_stopped as _sd_stopped,
-                    )
-                    if _sd_stopped(_so_counters):
-                        log.error('[cw!] 种子分叉恢复已停机(预算耗尽标记'
-                                  '在场)→ visit 失败不再重入,round_fail '
-                                  '交兜底链')
-                        return self.round_fail(
-                            '种子分叉恢复停机后的商店访问(交兜底链)')
                 log.info('[cw-loop] 开商店态(备战子态族)→ 商店访问路径'
                          '(策略器决策+关店终结)(ok=%s detail=%s)',
                          ok, getattr(res, 'status', ''))

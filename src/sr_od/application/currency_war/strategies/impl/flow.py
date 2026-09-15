@@ -77,6 +77,7 @@ from sr_od.application.currency_war.kernel.cw_registry import (
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
+    CloseShop,
     CwSimFrame,
     PickEvent,
 )
@@ -724,6 +725,20 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 'decide_shop_action: 容器商店 payload 离屏(shop=None)'
                 '(黑板契约容器化:在屏前置 bs.shop.value is not None;'
                 'None=观察层失约,禁静默按空态决策)')
+        # 未观察门(T-268 用户裁定「字段增加观察状态」):tracked 主账未按
+        # 屏幕真值锚定(接管/重置/账失效事件后,备战环 heavy 观察尚未重建
+        # 成功)时商店决策的关键输入(席面)不可信——返回恒可用终结
+        # CloseShop 交编排壳收店,外循环全分支重判自然落回备战节点,heavy
+        # 观察完成锚定后再进店;店内不做任何原地重建(读屏重建出口随
+        # T-251 退役)。门只表达「无可决策」;跳过事件留痕与连续跳过熔断
+        # 在执行侧 run_buy_waves 的 CloseShop 出口(账本 T-268)。
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
+            exec_state_of,
+        )
+        if not exec_state_of(session).tracked_observed:
+            log.info('[cw][shop] tracked 未观察(待备战 heavy 观察锚定)'
+                     '→ CloseShop 交回外循环重判')
+            return CloseShop()
         # 入口刷新先于镜像/决策(方向视图 = 本帧语境;ADR-0583 内化锚)
         self._consume_shop_direction_frame(session)
         # v3_b_t 逐帧镜像写者(纯遥测,零行为面;口径与边界见

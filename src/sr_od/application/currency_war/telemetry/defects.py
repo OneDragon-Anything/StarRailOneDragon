@@ -116,13 +116,9 @@ DEFECT_KIND_BENCH_SLOT_LAYOUT_DRIFT: str = 'bench_slot_layout_drift'
 #: 无守卫数据)→ 拒绝重播种,维持旧布局防坏槽号进不可逆卖出链。
 DEFECT_KIND_BENCH_SLOT_UNHEALTHY: str = 'bench_slot_unhealthy'
 
-#: T-251 种子段 tracked 空账读屏重建分键:接管真空(接管局/新账首分发即
-#: 商店节点,tracked 主账从未被建)下,种子守卫前的读屏重建事件显影。
-#: 成功/失读/槽号不健康三态各留一行(成功行 auto_resolved=L2;失败行
-#: 随后由守卫断言响亮暴露,台账行供判读下钻读链状态)。判读「接管真空
-#: 是否复发/读链是否退化」直接查本键;红线 = 仅 tracked 空账触发,
-#: 有账分叉不落本键(那归守卫断言)。
-DEFECT_KIND_TRACKED_SEED_REBUILD: str = 'tracked_seed_rebuild'
+# (T-251 种子段读屏重建分键 tracked_seed_rebuild 已随 T-268 整批退役:
+#  店内读屏重建出口移除,未观察态改走「策略关店→备战 heavy 观察」链,
+#  跳过留痕分键 shop_skipped_unobserved 内联在 cw_screen_buy_cards。)
 
 #: 分歧逐次计数器驻留上限(模块级全局生命周期:常驻进程跨局累积无界;
 #: 超限后清空只保当前局——历史局计数无跨局消费面,清零无损)。

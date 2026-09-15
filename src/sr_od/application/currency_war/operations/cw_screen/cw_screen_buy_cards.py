@@ -5,8 +5,6 @@ from collections.abc import Callable
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
-from cv2.typing import MatLike
-
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.file_utils import get_project_root
@@ -17,7 +15,6 @@ from sr_od.application.currency_war.cw_game_ports import (
     observation_source,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
-    BENCH_CAPACITY,
     bench_occupied,
     exec_state_of,
     ledger_node_type,
@@ -32,7 +29,6 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     shop_card_click_points,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
-    StrategySession,
     strategy_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_telemetry_exit import journal_refs
@@ -355,17 +351,16 @@ def apply_action_outcome(_aop: 'ActionOp',
                          visit_actions: list) -> None:
     """执行结果落地门(调用环单一源;落地审补办清单 C1 调用环级锁的承载体。
 
-    C1 语义 = 旧 return True 使期望账逻辑态与 tracked 实账分叉、guard 当轮
-    炸;应修-2 语义 = 已买集无条件追加使检出帧名污染 prefer_names/churn
-    (落地审补办审,2026-09-05;原清单为会话产物不入库,语义以此为准)。
+    C1 语义 = 旧 return True 使期望账逻辑态与 tracked 实账分叉;应修-2 语义
+    = 已买集无条件追加使检出帧名污染 prefer_names/churn(落地审补办审,
+    2026-09-05;原清单为会话产物不入库,语义以此为准)。
 
     未落地(_ok=False,如执行侧检出购买未生效)⇒ **两侧都不动**:不写逻辑态、
-    不守卫、不入「已买」集(防检出帧名污染 prefer_names/churn/P60,
-    应修-2);落地且非终结 ⇒ 逻辑态直写(容器规则通道:直写口简单腿 + 合成升星
-    腿)+ guard_expected_vs_tracked
-    (满栏买入豁免照旧:豁免面 = 游戏接受而两模型都不收编的残余窗;
-    合成满栏买面已随 T-182 同构化——tracked mutate 带 shop 视图与
-    simulate 同走 `_apply_full_bench_merge_buy`,不再丢件漏记)。
+    不入「已买」集(防检出帧名污染 prefer_names/churn/P60,应修-2);
+    落地且非终结 ⇒ 逻辑态直写(容器规则通道:直写口简单腿 + 合成升星腿)。
+    原「+ guard_expected_vs_tracked 双账对拍(满栏买入豁免)」已随 T-268
+    退役(对账归属原则:双态比对唯一合法时点 = 观察边界 kernel
+    cw_reconcile)——逻辑态建模 bug 的检出归 reconcile 纠漂显影(观察赢)。
 
     ``_cur`` = 段顶入口观察回执(journal 行 plane/round 基准 + pre_frame
     输入;帧级逻辑态推算链已随 simulate 前瞻消费删除退役,T-163——期望态真值在
@@ -473,16 +468,6 @@ def apply_action_outcome(_aop: 'ActionOp',
         except Exception as e:   # noqa: BLE001  记录面失败不阻塞
             log.warning(f'[cw-buy] 效果账本 REFRESH 计数失败(不阻塞): {e}')
     if _ok and not _aop.terminal:
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            bench_slots_of as _sg_slots,
-        )
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of as _sg_bs,
-        )
-        _skip_guard = (isinstance(action, BuyCard)
-                       and bench_occupied(
-                           _sg_slots(_sg_bs(match.session)))
-                       >= BENCH_CAPACITY)
         # 商店动作逻辑态直写·容器通道(纯规则路线,T-163:simulate 前瞻推算
         # 消费已删除,期望态推进 = 逻辑态直写口 + 合成升星腿,与序列驱动器
         # 同形单一源;设计件《商店黑板容器化方案》§2.1-2/§4-M1)。
@@ -503,6 +488,9 @@ def apply_action_outcome(_aop: 'ActionOp',
         )
         from sr_od.application.currency_war.kernel.cw_game_state import (
             apply_shop_merge_leg as _apply_merge_leg,
+        )
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            bench_slots_of as _sg_slots,
         )
         from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of as _bs_of_proj,
@@ -550,16 +538,6 @@ def apply_action_outcome(_aop: 'ActionOp',
         _post_frame = None   # 帧级逻辑态推算随 simulate 前瞻消费删除退役(T-163):
         # journal 动作行不再带期望态 delta/金/占用字段(遥测面变化,
         # 判读输入 = 动作行本体 + 容器逻辑态直写证据)。
-        if not _skip_guard:
-            # 守卫输入 = 容器(W6 波 4 读者切换;期望态读值 = 逻辑态直写口
-            # 的容器 bench,payload 域集同源)
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of as _gt_bs,
-            )
-            from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
-                guard_expected_vs_tracked,
-            )
-            guard_expected_vs_tracked(_gt_bs(match.session), match.session)
         ledger.refresh_first_action = False
     # 遥测(T-113/ADR-0579):逐动作执行回执行(op_journal.jsonl)。
     # CloseShop 终结不入行(ADR-0518 行形态契约);未执行动作
@@ -668,352 +646,76 @@ def note_shop_action_receipt(match: 'CurrencyWarMatch', action: 'Action', *,
         log.warning('[cw][receipt] 商店动作回执写入失败(不阻塞): %s', e)
 
 
-def make_seed_screen_bench_read(
-        ctx: SrContext, session: StrategySession) -> Callable[
-        [MatLike], list | None]:
-    """种子段读屏重建的 SIFT 身份读链工厂(读函数与 heavy 观察同源)。
+# ===== 未观察商店访问:跳过留痕与连续跳过熔断(T-268 ④)=====
 
-    返回闭包 frame → list[BenchChar](None = 识别域未就绪;[] = 读成功且
-    屏幕席真空)。读链 = ``read_bench_chars_tiered``(三层漏斗生产主路径,
-    与备战环 heavy 观察 reconcile_tracking 的读侧同一单一源),模板经
-    ``ensure_portrait_templates``;未就绪返 None(宁缺勿造,调用方按失读
-    处置不写账)。测试经 ``rebuild_tracked_at_seed_if_vacant`` 的
-    ``read_bench_fn`` 注入替身,不经本工厂。
-    """
-    from sr_od.application.currency_war.obs.cw_observation import (
-        ensure_portrait_templates as _templates,
-    )
+#: 连续「未观察跳过」熔断上限(对局级,载体 = strategy_state.cw4_counters)。
+#: K=2 论证(改值前先驳):跳过链 = 策略关店 → 编排壳收店 → 外循环备战
+#: 分支 heavy 观察(reconcile 置 observed)→ 再进店。连续两次跳过 = 两轮
+#: 完整 heavy 观察均未锚定(识别域未就绪/读链退化类结构性形态),非单帧
+#: 瞬时;继续静默循环 = 无界重试,禁。
+SHOP_UNOBSERVED_SKIP_LIMIT: int = 2
 
-    def _read(frame: MatLike) -> list | None:
-        templates = _templates(ctx)
-        if templates is None:
-            return None
-        from sr_od.application.currency_war.obs.cw_identity_obs import (
-            read_bench_chars_tiered,
-        )
-        return read_bench_chars_tiered(session, ctx, frame, templates)
-
-    return _read
+#: 连续跳过计数的载体键(cw4_counters;执行控制键非纯观测:参与熔断
+#: 谓词,判读同表)。写点 = _note_shop_skip_unobserved 递增 / run_buy_waves
+#: 段顶复位;消费点 = 本函数熔断谓词。
+CW4_KEY_SHOP_SKIP_UNOBSERVED_STREAK = 'shop_skipped_unobserved_streak'
 
 
-def rebuild_tracked_at_seed_if_vacant(session: StrategySession,
-                                      entry_shot: MatLike,
-                                      ledger: 'ShopVisitLedger', *,
-                                      read_bench_fn: Callable[
-                                          [MatLike], list | None]) -> str:
-    """种子段 tracked 空账读屏重建(T-251 接管真空治本出口)。
+def _note_shop_skip_unobserved(op: SrOperation,
+                               match: Any) -> OperationRoundResult | None:
+    """未观察态商店访问跳过的留痕与熔断(T-268 ④;CloseShop 出口消费)。
 
-    背景与根因(T-227 定性亲核):商店 visit 入口观察
-    (``read_game_state`` phase=prep_shop_open)设计上不读 bench 身份,
-    店开 0n 分发路径(visit_open_shop→run_buy_waves)也不经过备战环
-    heavy 观察(reconcile_tracking 是 tracked 主账唯一生产重建写点)——
-    接管局/新账首分发即商店节点时 tracked 主账从未被建,守卫消息自注的
-    「下一入口 heavy 读屏重建可归零」在该路径结构性不可达,真分歧即粘性
-    崩溃循环(实机 2026-09-15 两次停局实证)。本函数 = 守卫唯一合法出路
-    的落点:tracked 未建(空账)时用屏幕真值重建,守卫本体零改动。
-
-    触发红线(设计边界,必须守):**非接管场景仅 tracked 空账/未建触发**。
-    tracked 有账但与屏幕分叉不走此出口——有账分叉 = 丢件/识别幻影/逻辑态
-    建模 bug,读屏重建会掩盖真 bug,必须交 ``guard_expected_vs_tracked``
-    断言响亮暴露(调用方在本函数返回后立即跑种子守卫,分叉照旧炸)。
-    **接管场景例外**(``cw_resume_seed_anchor`` 待办在场;编排者补证实锤
-    2026-09-15 04:39 形态:种子守卫 expected 8 件 vs tracked 9 件,tracked
-    多镜流/黄泉——与空账形态方向相反):接管后两账与屏幕**结构性不同源**
-    (tracked 未建/残缺、容器逻辑态陈旧均可能),任一账态都视为未锚定,
-    首个商店访问种子段以屏幕真值再锚定一次;「有账分叉仍断言」红线仅在
-    非接管场景保留。
-
-    两账同帧语义:重建写 tracked 主账(``bench_from_compact``,槽号即
-    布局,与 reconcile_tracking 写回同构)+ 容器 bench 观察
-    (``bench_view_from_obs`` 构造,family='obs' 渠道;纯 tracked 重建而
-    容器保持旧值时,空账真空形态会被守卫判成新分叉——重建只救一半反而
-    制造炸点)。两账同源后守卫对拍自然通过,策略器拿到真席面。
-
-    单向阀门(ledger.tracked_seed_rebuild_done):同 visit 至多尝试一次
-    读屏重建(刷新续段共用同一账本);重建后仍分叉 = 照旧断言停,禁反复
-    重建稀释防线。接管待办(execute 级 ``cw_resume_seed_anchor``)独立于
-    本阀门跨 visit 存续:**仅重建成功消费**,失败/特效窗不消费,下 visit
-    新帧重试。合成特效窗内读数物理不可信(星爆动画,与备战环观察写端
-    同判 ``is_merge_effect_window``)→ 本帧不读不关阀门,续段/下 visit
-    新帧重试。
-
-    Args:
-        session: 策略会话(tracked 主账与容器宿主)。
-        entry_shot: 段顶入口观察帧(与 read_game_state 同帧,店开态备战
-          栏可见,不新增截图)。
-        ledger: 访问账本(阀门载体)。
-        read_bench_fn: 读链注入缝(生产 = ``make_seed_screen_bench_read``
-          产物;测试注入替身)。frame → list[BenchChar];None = 识别域未
-          就绪,[] = 读成功且屏幕席真空。
+    触发形态:策略未观察门(strategies/impl/flow.py decide_shop_action)
+    返回恒可用终结 CloseShop → 本 visit 零动作收工。每次跳过 = 缺陷台账
+    分键 ``shop_skipped_unobserved`` 留一行(防静默)+ 连续计数 +1;计数达
+    ``SHOP_UNOBSERVED_SKIP_LIMIT`` = 锚定失败显式出口(round_fail 交兜底
+    链,禁无限静默重试)。载体缺席(非 mandate 生产形态)= 只留痕不计数
+    不熔断(无停机语义可落,保守端与缺省口径一致)。
 
     Returns:
-        'tracked_present' = 非接管场景 tracked 有账(红线,零读屏零写,
-        交守卫);'valve_closed' = 本 visit 已尝试过;'effect_window' =
-        特效窗帧不读(阀门未关);'read_failed' = 读链失读(不写账,台账
-        显影);'screen_vacant' = 屏幕席真空(合法态,零写;接管待办不
-        消费,交守卫);'slot_unhealthy' = 读回槽号不健康(拒绝写账,台账
-        显影,同 reconcile 健康门语义);'rebuilt' = 两账已同帧重建。
+        None = 留痕完成,调用方照常收工;OperationRoundResult = 熔断停机
+        支,调用方以 (round_fail, None) 收工。
     """
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        BENCH_CAPACITY,
-        bench_from_compact,
-        exec_state_of,
-    )
-    _es = exec_state_of(session)
-    # 接管待办(双形态出口):接管后任一账态(空账/有账残缺)都重建;
-    # 重建成功才消费,失败下 visit 重试。
-    _resume_anchor = bool(getattr(_es, 'cw_resume_seed_anchor', False))
-    _tracked_vacant = not any(bc is not None
-                              for bc in (_es.tracked_bench_chars or []))
-    if not _tracked_vacant and not _resume_anchor:
-        return 'tracked_present'   # 红线:非接管有账不重建,分叉交守卫断言
-    if ledger.tracked_seed_rebuild_done:
-        return 'valve_closed'
-    from sr_od.application.currency_war.kernel.cw_reconcile import (
-        is_merge_effect_window,
-    )
-    if is_merge_effect_window(entry_shot):
-        return 'effect_window'   # 特效窗读数不可信,不消耗阀门
-    ledger.tracked_seed_rebuild_done = True   # 阀门先关:尝试即一次
-    read = read_bench_fn(entry_shot)
-    if read is None:
-        with contextlib.suppress(Exception):
-            defects.record_defect(
-                'bench', defects.DEFECT_KIND_TRACKED_SEED_REBUILD,
-                expected='tracked 空账且识别域就绪,屏幕 bench 可读',
-                observed='读链返 None(模板未加载/识别域未就绪)',
-                verdict=('留证-种子段重建读链失读,两账未动(随后守卫照常'
-                         '对拍;频发→查 portrait 模板加载链)'),
-                reader_source='rebuild_tracked_at_seed_if_vacant',
-                gap_large=False,
-                note='接管真空重建出口(T-251)失读分支')
-        log.warning('[cw!][seed] 种子段读屏重建失读(模板未就绪,接管待办'
-                    '不消费)→ 两账未动,交种子守卫')
-        return 'read_failed'
-    if not read:
-        # 空读 = 屏幕席真空(合法态;与失读不可分是备战环 P2-1 既有判例,
-        # 本处读链 None/[] 已分型)。空账形态下零行为面;接管待办形态下
-        # 账面claims占用而屏幕真空 = 账屏真分歧,不写不消费待办,交守卫
-        # 断言(与 reconcile 双空读守卫「空读不是板真没了」同向保守)。
-        log.debug('[cw][seed] 屏幕席真空 → 无需重建(账面若有占用交守卫)')
-        return 'screen_vacant'
-    slots = [getattr(bc, 'slot', None) for bc in read]
-    healthy = (all(isinstance(s, int) and 1 <= s <= BENCH_CAPACITY
-                   for s in slots) and len(set(slots)) == len(slots))
-    if not healthy:
-        with contextlib.suppress(Exception):
-            defects.record_defect(
-                'bench', defects.DEFECT_KIND_BENCH_SLOT_UNHEALTHY,
-                expected='读回占用槽号唯一 ∧ 全在 1..BENCH_CAPACITY',
-                observed=f'slots={sorted(map(str, slots))}',
-                verdict=('留证-种子段重建读回槽号不健康,拒绝写账(坏槽号'
-                         '不进不可逆卖出链;与 reconcile 写回健康门同式;'
-                         '随后守卫照常对拍)'),
-                reader_source='rebuild_tracked_at_seed_if_vacant',
-                gap_large=False,
-                note='接管真空重建出口(T-251)槽号健康门(与 reconcile/'
-                     '_reseed 同式)')
-        log.warning('[cw!][seed] tracked 空账读屏重建但槽号不健康 %s '
-                    '→ 拒绝写账,交种子守卫', sorted(map(str, slots)))
-        return 'slot_unhealthy'
-    # 两账同帧重建:tracked 主账(bench_from_compact,槽号即布局,与
-    # reconcile_tracking 写回同构)+ 容器 bench 观察(family='obs',
-    # actor 在册;bench_view_from_obs 空集守卫上方已挡,此处恒非 None)。
-    _es.tracked_bench_chars = bench_from_compact(list(read))
-    # 接管待办消费(仅成功;失败分支保留待办,下 visit 重试)。
-    _es.cw_resume_seed_anchor = False
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        ChannelSig,
-        bench_view_from_obs,
-        board_state_of,
-    )
-    _bs = board_state_of(session)
-    _view = bench_view_from_obs(read)
-    if _view is not None:
-        _bs.observe(_bs.bench, _view,
-                    sig=ChannelSig(family='obs', actor='CwScreenBuyCards',
-                                   screen=SHOP_SCREEN_NAME, mode='read',
-                                   quality={'bench': 'real_read'}))
+    _ct = getattr(strategy_state_of(match.session), 'cw4_counters', None)
+    _streak = 0
+    if isinstance(_ct, dict):
+        _streak = _ct.get(CW4_KEY_SHOP_SKIP_UNOBSERVED_STREAK, 0) + 1
+        _ct[CW4_KEY_SHOP_SKIP_UNOBSERVED_STREAK] = _streak
     with contextlib.suppress(Exception):
         defects.record_defect(
-            'bench', defects.DEFECT_KIND_TRACKED_SEED_REBUILD,
-            expected=('tracked 主账在场且与屏幕同源' if not _tracked_vacant
-                      else 'tracked 主账在场(非接管真空态)'),
-            observed=(f'屏幕 bench 读回 {len(read)} 件 '
-                      f'{[(bc.char_id, bc.star) for bc in read]},'
-                      'tracked+容器两账已同帧重建'),
-            verdict=('留证-种子段两账读屏重建成功(T-251 双形态出口:'
-                     '空账真空 or 接管结构性不同源;有账分叉红线仅在非'
-                     '接管场景保留;单向阀门 = 同 visit 一次)'),
-            reader_source='rebuild_tracked_at_seed_if_vacant',
-            gap_large=True, auto_resolved=True,
-            note='接管重建单向阀门事件(判读接管真空/异向分叉复发直接查本键)')
-    log.warning('[cw!][seed] 种子段两账读屏重建(空账真空/接管不同源):%s'
-                '(同 visit 单次;重建后仍分叉 = 守卫断言)',
-                [(bc.char_id, bc.star) for bc in read])
-    return 'rebuilt'
-
-
-# ===== T-230 店开态种子分叉恢复路由(守卫**后**出口;状态机判据)=====
-
-#: 恢复预算上限:每对局至多一次「收店→备战环 heavy 重建→再入」。
-#: K=1 的语义论证(改值前先驳论证,禁拍值):恢复算子 R = 收店 + 备战环
-#: heavy 观察(reconcile_tracking 写回 tracked、备战环观察块写容器,同一次
-#: 读屏同帧)→ 再入重判。R 后种子守卫两账同源 ⟺ 分叉源 ∈ 观察滞后类;
-#: R 执行一次即完成分叉源归类——R 后仍分叉 ⇒ 分叉源 ∉ 观察滞后类(识别
-#: 幻影/逻辑态建模 bug)⇒ 重复同一算子不收敛(恢复循环 = 新型死循环),
-#: 禁止第二次。收店机械失败不需独立执行预算:点击已发未关店 → 下 visit
-#: 0n 重入 → 守卫仍红(两账未变)→ 预算已耗走停机支;重入幂等性由
-#: close_shop 与 0n 既有自愈语义承载。
-SEED_DIVERGENCE_RECOVER_LIMIT: int = 1
-
-#: 恢复路由状态机的载体键(strategy_state.cw4_counters;对局级跨 visit
-#: dict——exec_state 字段为本批授权面外,以 seed_divergence_ 前缀与观测
-#: 分键族区分;两键为**执行控制键**,非纯观测:计数参与预算谓词、标记
-#: 参与 cw_loop 0n 分支停机判据,判读时同表)。写点 = 恢复函数,消费点
-#: = 谓词与 cw_loop _on_shop_visit。
-CW4_KEY_SEED_DIVERGENCE_RECOVERIES = 'seed_divergence_recoveries'
-CW4_KEY_SEED_DIVERGENCE_STOPPED = 'seed_divergence_stopped'
-
-
-def seed_divergence_recovery_budget(counters: Any) -> bool:
-    """恢复预算谓词(状态机迁移 M1「守卫红→恢复」的判据单一源)。
-
-    允许恢复 ⟺ 载体在场(dict)∧ 已恢复次数 < SEED_DIVERGENCE_RECOVER_LIMIT。
-    载体缺席(裸 session/第三方策略面,生产 mandate 不发生)→ False:
-    调用方保持断言原样上抛的响亮路径(与本路由落地前行为一致,保守端
-    安全,不引入新停机形态)。禁在调用点内联计数比较——判据只走本谓词。
-    """
-    if not isinstance(counters, dict):
-        return False
-    return counters.get(CW4_KEY_SEED_DIVERGENCE_RECOVERIES, 0) \
-        < SEED_DIVERGENCE_RECOVER_LIMIT
-
-
-def seed_divergence_stopped(counters: Any) -> bool:
-    """停机标记谓词(M2 落标 → cw_loop 0n 分支消费;判据单一源)。
-
-    True = 本对局种子分叉恢复预算已耗尽且已停机交回——0n 分支对 visit
-    失败不再默认 round_wait 重入(防「重入→再守卫红→再失败」粘性),
-    改 round_fail 交未知画面兜底链。载体缺席 → False(无标记即无停机
-    语义,与谓词缺席契约一致)。
-    """
-    return isinstance(counters, dict) and bool(
-        counters.get(CW4_KEY_SEED_DIVERGENCE_STOPPED, 0))
-
-
-def recover_seed_divergence_by_close_shop(
-        op: SrOperation, match: Any, ledger: 'ShopVisitLedger',
-        err: AssertionError, *,
-        close_fn: Callable[[], Any] | None = None,
-) -> OperationRoundResult | None:
-    """店开态种子分叉恢复路由(T-230;T-251 重建出口的辖域外邻接件)。
-
-    【辖域切分声明】run_buy_waves 段顶两出口互斥、顺序固定:
-    - T-251 出口(rebuild_tracked_at_seed_if_vacant,守卫**前**):触发 =
-      tracked 空账 ∨ 接管待办(cw_resume_seed_anchor);动作 = 就地两账
-      同帧重建(零路由,同 visit 单向阀门);辖域 = 接管/真空的结构性
-      不同源在店内消化。
-    - 本函数(守卫**后**,AssertionError 已发生):触发 = 非接管有账真
-      分歧(bug 嫌疑);动作 = 响亮留证后收店交回外循环 → 备战分支
-      heavy 观察(reconcile_tracking + 观察块,既有生产写点)同帧重建
-      两账 → 再入重判;辖域 = 有账真分歧的一次自愈机会 + 不收敛即停
-      (预算论证见 SEED_DIVERGENCE_RECOVER_LIMIT)。
-    同帧互斥:T-251 出口成功 → 守卫绿,不会进入本函数;其失败分支
-    (失读/槽号不健康/屏真空)→ 守卫红 → 本函数接管(收店后备战环
-    heavy 观察是更强的重建机会,读屏画面不同)。
-
-    【不辖域】stage='project'(动作循环内)守卫分叉不经本路由:动作
-    已发射,收店恢复不安全且会掩盖逻辑态建模 bug——该守卫 = 建模 bug
-    的在环检测器,响亮断言即设计行为。
-
-    恢复的自愈机制:守卫红时两账均未写(守卫只断言);收店后外循环
-    下轮识别备战画面走备战分支,环入口 heavy 观察以屏幕真值重建两账,
-    分叉归零当且仅当分叉源 = 观察滞后类;此后再开店守卫自然绿。
-
-    Args:
-        op: 宿主 op(留证截图与 round_fail 构造;0n 路径 = CwScreenPrep
-          实例,显式开店路径 = 环实例,均具 round 上下文)。
-        match: 局容器(counters 载体宿主 = match.session.strategy_state
-          .cw4_counters)。
-        ledger: 访问账本(本函数只读不改;恢复后调用方以 (None, ledger)
-          收工,visit 收尾照常走 finalize 空账 best-effort)。
-        err: 守卫断言异常(载体缺席时原样重抛,保持改动前语义)。
-        close_fn: 收店动作注入缝(测试替身;缺省 None = 生产闭包
-          close_shop(op),幂等——收起不在即店已关,无失败形态)。
-
-    Returns:
-        None = 恢复动作已发(收店交回),调用方 return (None, ledger);
-        OperationRoundResult(round_fail)= 预算耗尽停机支,调用方
-        return (_rec, None),0n 分支经 ``seed_divergence_stopped`` 标记
-        round_fail 交兜底链(单次停,不再粘性重入)。
-    """
-    from sr_od.application.currency_war.kernel.cw_strategy_session import (
-        strategy_state_of,
-    )
-    _counters = getattr(strategy_state_of(match.session), 'cw4_counters',
-                        None)
-    if not seed_divergence_recovery_budget(_counters):
-        if not isinstance(_counters, dict):
-            # 载体缺席(非 mandate 生产形态)= 预算不可查:原样重抛,
-            # 交节点级重试链(与落地前行为逐位一致,无标记可落)。
-            raise err
-        # 停机支(M2):置标记 + 留证 + 单次停。标记 = 0n 分支判据,
-        # run_buy_waves 自身经 (round_fail, None) 退出(重入已被标记
-        # 在外循环截断,本函数不会再被触达第二次同形分叉)。
-        _counters[CW4_KEY_SEED_DIVERGENCE_STOPPED] = 1
+            'bench', 'shop_skipped_unobserved',
+            expected='商店访问时 tracked 主账已按屏幕真值锚定(observed)',
+            observed=('tracked 未观察(接管/失效后备战 heavy 观察未完成'
+                      '锚定)→ 本 visit 零动作跳过'),
+            verdict=('留证-未观察商店访问跳过(策略关店交回外循环,备战环'
+                     'heavy 观察锚定后再进店;连续跳过查 '
+                     'shop_skipped_unobserved_streak 计数,达上限熔断停)'),
+            reader_source='decide_shop_action_unobserved_gate',
+            gap_large=False,
+            note='分键登记 = 本写点注释(内联 kind,先例 = seed_divergence 族)')
+    log.warning('[cw!][shop] tracked 未观察 → 商店访问跳过(策略关店,'
+                '连续 %s/%s)', _streak, SHOP_UNOBSERVED_SKIP_LIMIT)
+    if isinstance(_ct, dict) and _streak >= SHOP_UNOBSERVED_SKIP_LIMIT:
         with contextlib.suppress(Exception):
-            op.save_screenshot(prefix='seed_divergence_stop')
+            op.save_screenshot(prefix='shop_skip_unobserved_stop')
         with contextlib.suppress(Exception):
             defects.record_defect(
-                'bench', 'seed_divergence_stop',
-                expected=('守卫 seed 双账同源(恢复算子后仍分叉 = 分叉源'
-                          '非观察滞后类,自愈出口不收敛)'),
-                observed=str(err),
-                verdict=(f'留证-种子分叉恢复预算耗尽停机(对局内已恢复 '
-                         f'{_counters.get(CW4_KEY_SEED_DIVERGENCE_RECOVERIES, 0)}'
-                         f'/{SEED_DIVERGENCE_RECOVER_LIMIT} 次;判读查 '
-                         f'recovered 分键行对照,分叉源下钻交给报告面)'),
-                reader_source='recover_seed_divergence_by_close_shop',
+                'bench', 'shop_skipped_unobserved_stop',
+                expected=(f'关店→备战 heavy 观察→再进店链在 '
+                          f'{SHOP_UNOBSERVED_SKIP_LIMIT} 次内完成锚定'),
+                observed=f'连续 {_streak} 次商店访问仍未观察(锚定失败)',
+                verdict=('停机-未观察连续跳过熔断(锚定失败显式出口;'
+                         '判读查 heavy 观察链:portrait 模板加载/'
+                         'observe_full bench 读数/reconcile 健康门)'),
+                reader_source='decide_shop_action_unobserved_gate',
                 gap_large=True,
-                note=('分键登记 = 本写点注释(恢复路由族两个 kind 字符串'
-                      '均内联,先例 = deployed invariant_break;常量化挂'
-                      ' defects.py 授权批)'))
-        log.error('[cw!] 种子分叉恢复预算耗尽(已恢复 %d/%d 次)→ 单次停,'
-                  '交兜底链;分叉凭据 = %s',
-                  _counters.get(CW4_KEY_SEED_DIVERGENCE_RECOVERIES, 0),
-                  SEED_DIVERGENCE_RECOVER_LIMIT, err)
+                note='分键登记 = 本写点注释(同跳过分键口径)')
+        log.error('[cw!] 未观察商店访问连续 %s 次(上限 %s)→ 锚定失败'
+                  '显式出口,round_fail 交兜底链', _streak,
+                  SHOP_UNOBSERVED_SKIP_LIMIT)
         return op.round_fail(
-            f'种子分叉恢复预算耗尽'
-            f'({_counters.get(CW4_KEY_SEED_DIVERGENCE_RECOVERIES, 0)}/'
-            f'{SEED_DIVERGENCE_RECOVER_LIMIT}),交兜底链')
-    # 恢复支(M1):计数 → 留证 → 收店。两账零写(守卫只断言),重建
-    # 交备战环 heavy 观察(借既有生产写点,本路由零读屏重建)。
-    _counters[CW4_KEY_SEED_DIVERGENCE_RECOVERIES] = \
-        _counters.get(CW4_KEY_SEED_DIVERGENCE_RECOVERIES, 0) + 1
-    with contextlib.suppress(Exception):
-        op.save_screenshot(prefix='seed_divergence_recover')
-    with contextlib.suppress(Exception):
-        defects.record_defect(
-            'bench', 'seed_divergence_recovered',
-            expected='守卫 seed 双账同源',
-            observed=str(err),
-            verdict=('留证-种子分叉断言红后收店恢复(交回外循环走备战环'
-                     'heavy 重建再入;再入仍分叉 = 预算耗尽停机,查 stop '
-                     '分键;重建零读屏本路由不代偿)'),
-            reader_source='recover_seed_divergence_by_close_shop',
-            gap_large=True,
-            note='分键登记 = 本写点注释(同 stop 分键口径)')
-    log.warning('[cw!] 种子分叉断言红 → 收店恢复(%d/%d):交回外循环'
-                '备战环 heavy 重建后重判;再入仍分叉 = 停机',
-                _counters.get(CW4_KEY_SEED_DIVERGENCE_RECOVERIES, 0),
-                SEED_DIVERGENCE_RECOVER_LIMIT)
-    if close_fn is None:
-        from sr_od.application.currency_war.operations.cw_op.cw_op_close_shop import (
-            close_shop as _close_shop,
-        )
-        close_fn = lambda: _close_shop(op)   # noqa: E731  生产闭包(幂等收店)
-    close_fn()
+            f'未观察商店访问连续跳过 {_streak}/{SHOP_UNOBSERVED_SKIP_LIMIT}'
+            f'(锚定失败,交兜底链)')
     return None
 
 
@@ -1038,10 +740,11 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
       返回 :class:`GameStateReadReceipt` 供逐帧读数消费;黑板槽已退役,
       journal 基准载体 = visit 局部 ``_cur`` 回执);
     - 决策循环(零读屏,决策 1/8):``decide_shop_action`` 每次恰返回一个
-      动作 → 守卫断言(proposal-vs-expected + expected-vs-tracked 双账,
-      ``cw_shop_action_ops``)→ 执行(动作 op ``execute``,观测通道候选 a
+      动作 → proposal 守卫(``guard_proposal_vs_expected``,防策略器算术
+      bug)→ 执行(动作 op ``execute``,观测通道候选 a
       遥测在内)→ 容器逻辑态直写推进期望态(``apply_shop_action_logic``
-      简单腿 + 合成升星腿;T-163 起零 simulate 前瞻消费);
+      简单腿 + 合成升星腿;T-163 起零 simulate 前瞻消费)。tracked 未观察
+      时策略门返回 CloseShop = 跳过访问,留痕与熔断见段顶/出口注(T-268)。
     - 终结 op(RefreshShop/CloseShop):执行即本段结束。刷新终结 = 交回
       外循环重进——物理载体 = 本函数段循环的下一次迭代(入口观察重建,
       读屏次数与波批持平,ADR-0517 §读屏成本·节奏对拍);关店终结 = 本
@@ -1363,40 +1066,18 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         #  _seg_pin_version 已随 decisions 流写入端退役删除——删除波 1;
         #  日志披露行(上方)保留。)
         # ---- 单动作决策循环(ADR-0517 决策 1/2;循环内零读屏)----
-        # 播种期对账(守卫两属消息分离的判定序):首动作前先对一次账,
-        # 分叉在此出现 = 归「播种/入口账分叉」;此后逻辑态直写后出现的分叉才归
-        # 「project/mutate 模型分叉」(2026-09-05 OpenShop 事故:播种层
-        # 双源分叉曾被逻辑态消息误标,误导排查方向)。
-        from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
-            guard_expected_vs_tracked as _guard_seed,
-        )
-        # T-251 接管真空重建出口(编排者补证后扩双形态):种子守卫前,
-        # tracked 空账(真空)或接管待办(cw_resume_seed_anchor,账屏
-        # 结构性不同源)时,用入口帧屏幕真值同帧重建 tracked+容器两账
-        #(店开 0n/接管首分发路径不经过 heavy 观察,守卫自注「下一入口
-        # heavy 重建」结构性不可达——本出口即该唯一合法出路的落点)。
-        # 触发红线 = 非接管场景有账分叉零读屏零写照旧断言;单向阀门 =
-        # 同 visit 一次,接管待办仅成功消费(语义详见
-        # rebuild_tracked_at_seed_if_vacant docstring)。
-        rebuild_tracked_at_seed_if_vacant(
-            match.session, _entry_shot, ledger,
-            read_bench_fn=make_seed_screen_bench_read(op.ctx, match.session))
-        # 对账守卫输入 = 容器(W6 波 4,设计件 §2.5-2:期望态读值改
-        # 容器;tracked 播种取消后分叉归因「播种/入口账 vs 模型」语义不变)
-        try:
-            _guard_seed(_bs_of_entry, match.session, stage='seed')
-        except AssertionError as _div:
-            # T-230 店开态种子分叉恢复路由:非接管有账真分歧在此从
-            # 「异常→节点重试→重入→再炸」的粘性改道「收店→备战环
-            # heavy 重建→再入」(对局预算一次,SEED_DIVERGENCE_RECOVER_
-            # LIMIT 论证);预算耗尽 = 单次停(round_fail,0n 分支经
-            # stopped 标记交兜底链)。辖域切分(与 T-251 出口/不辖
-            # project 守卫)与返回值契约见恢复函数 docstring。
-            _rec = recover_seed_divergence_by_close_shop(
-                op, match, ledger, _div)
-            if _rec is not None:
-                return (_rec, None)   # 预算耗尽:单次停(停机钩子先例形态)
-            return (None, ledger)   # 恢复动作已发:本 visit 收工交回外循环
+        # (播种期双账对账块已随 T-268 守卫退役删除;原 T-251 店内读屏重建
+        #  出口同批移除——未观察态的锚定改走「策略关店 → 备战环 heavy
+        #  观察」链,店内零重建,见 ExecState.tracked_observed 与下方
+        #  CloseShop 出口的跳过留痕/熔断。)
+        # 未观察跳过连续计数复位:本段入口观察态已锚定 = 正常访问,重开
+        # 熔断计数窗(载体 = strategy_state.cw4_counters,与 0n 分支计数
+        # 同宿主;载体缺席静默跳过 = 无计数面)。
+        if exec_state_of(match.session).tracked_observed:
+            _ct_obs = getattr(strategy_state_of(match.session),
+                              'cw4_counters', None)
+            if isinstance(_ct_obs, dict):
+                _ct_obs[CW4_KEY_SHOP_SKIP_UNOBSERVED_STREAK] = 0
         visit_actions: list = []
         _seg_frames = 0
         while True:
@@ -1474,6 +1155,12 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 # 安灯/判读输入面)。可执行终结(RefreshShop)
                 # 的统一退出在 execute 之后(下方 _aop.terminal 分支),两条路径
                 # 承载同一语义「终结 = 本段结束」,非双轨。
+                # T-268:未观察态的策略关店 = 跳过访问,留痕 + 连续跳过
+                # 熔断(锚定失败显式出口);观察态的正常关店零感知。
+                if not exec_state_of(match.session).tracked_observed:
+                    _stop = _note_shop_skip_unobserved(op, match)
+                    if _stop is not None:
+                        return (_stop, None)
                 break
             if isinstance(action, RefreshShop) and ledger.total_refresh >= MAX_REFRESH:
                 # 硬墙重定位(ADR-0517 §3.1 候选 (a)):visit 级刷新计数超墙
@@ -1786,8 +1473,9 @@ class CwScreenBuyCards(CwScreenOpBase):
         return None, None
 
     def lifecycle_reconcile(self, payload: Any) -> None:
-        """段2 reconcile:空申报(播种对账 ``guard_expected_vs_tracked``
-        stage='seed' 住委托体段循环内,无独立对账面)。"""
+        """段2 reconcile:空申报(旧体委托变体——观察/对账住委托体段循环内,
+        无独立对账面;双账对拍已随 T-268 守卫退役,对账唯一发生点 =
+        观察边界 kernel cw_reconcile)。"""
         return None
 
     def lifecycle_decision_cycle(self, payload: Any) -> OperationRoundResult:

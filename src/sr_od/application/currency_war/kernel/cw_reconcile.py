@@ -328,6 +328,12 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
             exec_state_of(session).tracked_bench_chars = bench_from_compact(
                 _merge_equips(exec_state_of(session).tracked_bench_chars, bench))
             _bench_written = True
+            # tracked 主账观察态置位(T-268):bench 侧按屏幕真值写回成功
+            # = 主账已锚定,商店策略门(flow.decide_shop_action)据此放行。
+            # 置位收窄在写回成功点而非函数入口:双空读守卫早退(False 返
+            # 回)/bench 读失败(本块不进)/槽号健康门拒绝(保旧)都不置位
+            # = 账未锚定,商店访问继续走「关店→备战 heavy 重观察」链。
+            exec_state_of(session).tracked_observed = True
         else:
             # 留证排序 str 化:健康门防御的对象正是非 int 槽号,拒绝分支若
             # 对混型列表(如 [None, 2])直接 sorted 会先 TypeError——防御
