@@ -795,13 +795,13 @@ class CwLoop(SrOperation):
     5. 「下一步」等前进按钮 → 点。
 
     ``CwEntryStart`` 负责,本 op 只跑对局内循环)。
-    ``CwEntryStart`` 负责,本 op 只跑对局内循环)。MAX_ITER 防失控。
+    ``CwEntryStart`` 负责,本 op 只跑对局内循环)。
     """
 
     # 未知画面常驻兜底钩子(方案 D):连续 N 轮未识别画面 → stop_running 保画面待 AI 建档。
     # 常驻安全网——兜一切未知态,不是点名某态的临时捕获;移除条件 = 该类未知态全部建档,
     # 实际不可达(实现见本类 _handle_unknown_fallback)。
-    # 15 轮 ≈ 30s 纯卡(过渡帧 1-2 轮内被上面分支接走,不累计);远 < MAX_ITER。
+    # 15 轮 ≈ 30s 纯卡(过渡帧 1-2 轮内被上面分支接走,不累计)。
     UNKNOWN_STOP_THRESHOLD: ClassVar[int] = 15
     #: 未知帧重试退避封顶(秒)。连续未识别帧的重试间隔按 2s 起步每连续一次翻倍,
     #: 封顶本值——旧实现恒 2s 立即重试,战斗特效长动画/未建档画面期每 2s 打一次
