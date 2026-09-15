@@ -139,8 +139,8 @@ if TYPE_CHECKING:
 M1P_SEAM_VERIFIED: bool = True
 
 # ===== M2 停摆续段缓存:非变异动作白名单·备战域(T-82 必花臂重试风暴;
-# 商店域对应集 = shop.M2_STALL_NONVARIANT_SHOP_ACTIONS,两域 φ 输入同构
-# 但动作词表不同,分集声明)=====
+# 商店域同构缓存随商店期腾席卖射退役删除,T-271——席满缺员形态在商店域
+# 表达为关店交回,无重复帧面,本集独存备战域)=====
 # 跳过条件 = 可判定谓词「帧间动作全在本集 ∧ 同段」,非任何计数阈值。
 # 白名单外动作一律视为变异 ⇒ 缓存失效 ⇒ 全量重推导(保守端 = 现行为)。
 # ⚠️ 守卫:加入新动作型前须验证其执行语义不动 bench/deployed/k/敌缀/
@@ -469,8 +469,10 @@ def stall_buys_prune_deployed(session, deployed_names) -> int:
 # 烧动作。载体与 kernel ExecState.cw4_swap_fresh_buys 同构键式
 # {'phase': (plane, round_num), 'names': set[str]},位面/轮次推进自动
 # 失效;方向 = 排除向(过度排除上界 ≤1 轮,轮界自动过期,有界可判读)。
-# 写端 = 各卖出发射位(prep 凑息/M4/wanted 腿2 + shop 域 _note_sell
-# 收口 + entry 球路径 M4);读端 = shop 档 2(M6)候选集。entry 域
+# 写端 = 各卖出发射位(prep 凑息/M4/wanted 腿2 + entry 球路径 M4;
+# 商店域 _note_sell 收口随商店期卖射退役删除,T-271——本载体现辖
+# 「备战同轮卖 → 商店买回」的换手排除面);读端 = shop 档 2(M6)候选集。
+# entry 域
 # funding 兜底/line_switch 卖出本批不登记:换线/筹资语境的买回另属
 # 线账语义(资金兜底卖持有件后买回 = P78-5 豁免面自身管辖;换线卖出
 # 后买回新线件 = 义务通道非压库),实证病灶(s108)无该域样本,扩域留
@@ -834,8 +836,9 @@ def route_tag_of(action: CwAction) -> str:
 def shop_wanted_defer(session: StrategySession, state: GameState,
                       missing: list[str],
                       in_shop_snapshot: tuple[tuple[str, int], ...]) -> None:
-    """S2 置位(唯一写点;调用位 = shop.decide_shop_action 两席满残差
-    计数点 m2_retry_exhausted / bench_full_buy_abandon 同点,T-159 迁移 A)。
+    """S2 置位(唯一写点;调用位 = shop.decide_shop_action 席满缺员
+    形态 bench_full_buy_abandon 同点,T-159 迁移 A;原 m2_retry_exhausted
+    并列位随商店期腾席卖射退役并入本单一形态,T-271)。
 
     残差语义 = 「店面有义务缺员买入但席满腾不出」的结构性流失记录
     (猎点 10:回备战后开店闩命中挡住重开,M2 重评发不出 OpenShop,
