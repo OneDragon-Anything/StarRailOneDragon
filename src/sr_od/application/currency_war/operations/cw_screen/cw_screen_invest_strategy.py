@@ -187,10 +187,9 @@ class CwScreenInvestStrategy(CwScreenOpBase):
     #: 首帧之间落在「备战 → 金币过场动画 → overlay 淡入」过渡段(screen_flow_timing.md
     #: #11),首帧采样可 miss「标识-请选择投资策略」;旧实现单探测 miss 即
     #: round_fail(round_fail 不吃 node_max_retry_times,直接炸出整 op),外层
-    #: 重试才自愈但每次触发哨兵报警+退出。修法与 cw_loop._invest_overlay_dispatch
-    #: 同族(复探=短窗+新截图):首探 miss → 短窗后新截图复探,窗口内命中即
-    #: 继续;超窗仍 miss 才 round_fail(防无限等真非目标屏)。决策记录 =
-    #: ADR-0529。执行层时序常量(沿 CwLoop.INVEST_REPROBE_WAIT 先例),非策略数值。
+    #: 重试才自愈但每次触发哨兵报警+退出。修法(复探=短窗+新截图):首探
+    #: miss → 短窗后新截图复探,窗口内命中即继续;超窗仍 miss 才 round_fail
+    #: (防无限等真非目标屏)。决策记录 = ADR-0529。执行层时序常量,非策略数值。
     ENTRY_REPROBE_TIMES: ClassVar[int] = 4
     ENTRY_REPROBE_WAIT_S: ClassVar[float] = 0.8
     # 逐卡刷新圆钮 = 「刷新次数N」文本中心 + 固定偏移(ADR-0600 §3.4 文本锚定;

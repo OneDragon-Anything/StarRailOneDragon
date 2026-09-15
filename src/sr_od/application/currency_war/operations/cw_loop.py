@@ -741,7 +741,7 @@ class _FnResult:
 class CwLoop(SrOperation):
     """货币战争 对局内主循环:反复「备战单轮 + 轮间过渡」直到对局结束 / 超时。
 
-    每轮分发(2026-09-15 顺序链退役后的两阶段形态,as-built =
+    每轮分发(两阶段形态,as-built =
     flow/outer_loop.md §2):
     阶段一 画面身份分发(get_match_screen_name 清单形态,判据 = 各画面
     建档 id_mark 组合)→ _dispatch_identity_screen 精确键派发;
@@ -808,7 +808,7 @@ class CwLoop(SrOperation):
     #: 运行时画面加载只读 _od_merged.yml;分文件改名后 merged 漏再生时,分支
     #: 阶段一身份分发画面清单(get_match_screen_name 过滤器;遍历序 = loader
     #: 序,非优先级——各画面身份经语料两向验证互不共命中,顺序不承重)。
-    #: 清单不含:备战(阶段二双锚默认,扩展锚语料误杀 dc435da4d)、补给锁定
+    #: 清单不含:备战(阶段二双锚默认,扩展锚语料误杀)、补给锁定
     #(按钮在普通节点 revisit 备战同样出现,#18 接线暂缓)、道具详情弹窗/
     #: 消耗品浮层/阿哈装备(无固定身份,阶段三特殊规则)。
     CW_DISPATCH_SCREENS: ClassVar[tuple[str, ...]] = (
@@ -1313,13 +1313,13 @@ class CwLoop(SrOperation):
     def _dispatch_identity_screen(self, name: str, screen) -> OperationRoundResult:
         """阶段一身份命中的画面处理器(键 = 建档屏名,判据 = 各画面 id_mark 组合)。
 
-        各臂 = 2026-09-15 前顺序链同名分支的原文迁移(派发参数/journal 名/
-        frame_tag/on_result 逐字保留);本方法只做「屏名 → 处理」的精确匹配,
+        各臂 = 对应画面的处理逻辑(派发参数/journal 名/frame_tag/on_result
+        与画面一一对应);本方法只做「屏名 → 处理」的精确匹配,
         臂间无顺序语义(键互斥)。新增画面 = 建档(语料两向验证)+ 本方法加臂
         + CW_DISPATCH_SCREENS 登记,三处缺一不可。
         """
         if name == '货币战争-选择装备':
-            # 0a0. 选择装备 overlay。历史序位理由(0a0 先于 0a)已随顺序链退役:
+            # 0a0. 选择装备 overlay。与列车同行由建档组合互斥(见 §1):
             #      partner 建档加整行副题锚后两画面身份互斥(装备帧不再命中列车同行)。
             from sr_od.application.currency_war.operations.cw_screen.cw_screen_equip_pick import (
                 CwScreenEquipPick,
@@ -1373,9 +1373,8 @@ class CwLoop(SrOperation):
 
         if name == '货币战争-投资策略':
             self._snap('invest_strategy')
-            # 横幅中间态(展开动画)帧身份天然 miss,不会进入本臂——OCR 全短语
-            # 腿与 N5 复探已随顺序链退役(screen_flow_timing #30 裁定:横幅态
-            # 不处理,帧落阶段二守卫等待)。
+            # 横幅中间态(展开动画)帧身份天然 miss,不会进入本臂——该态
+            # 不处理,由阶段二守卫等待(screen_flow_timing.md #30)。
             return self._dispatch_screen_op(
                 CwScreenInvestStrategy(self.ctx), journal_name='投资策略',
                 frame_tag='overlay_invest_strategy', wait=2)
@@ -1785,14 +1784,14 @@ class CwLoop(SrOperation):
         # **偶发**出现;建档完成后立即删除,别留到「下次遇到」(曾致每局必停
         # 被误判「外部会话拦截」排查一整晚)。
 
-        # ===== 阶段一:画面身份分发(2026-09-15 顺序链退役批) =====
+        # ===== 阶段一:画面身份分发 =====
         # 判据单一源 = 各画面建档 id_mark 组合(框架 get_match_screen_name 清单
         # 形态)。清单 = 过滤器非优先级:遍历序 = loader 序,各画面身份经语料
         # 两向验证(本画面 fixture 全 True + 堆叠底图/兄弟帧 False)后顺序不承重。
         # 横幅中间态/动画帧身份天然 miss → 落阶段二/兜底等待
         #(screen_flow_timing.md #30 裁定:展开动画不处理,等展开完成)。
         # 清单不含:备战(部署态/补给revisit按钮/攻略位移使右上角与棋盘标签锚
-        # 不可靠,语料 18/57 误杀,dc435da4d → 阶段二双锚默认)、补给锁定
+        # 不可靠,语料 18/57 误杀 → 阶段二双锚默认)、补给锁定
         #(其按钮在普通战斗节点 revisit 备战同样出现,#18 接线暂缓裁定的延续)、
         # 道具详情弹窗(道具名可变无固定身份)/消耗品浮层/阿哈装备(无独立
         # 画面档)→ 三者走阶段三特殊规则。
@@ -1897,7 +1896,7 @@ class CwLoop(SrOperation):
 
         # ===== 阶段二:备战表面默认分支(双锚 = 购买经验∧出战;57/57 语料稳定) =====
         # 备战不用身份判定:部署态/补给revisit按钮/攻略位移使扩展锚不可靠(语料
-        # 18/57 误杀,dc435da4d)。横幅中间态守卫(#30 裁定):横幅文案在场 =
+        # 18/57 误杀)。横幅中间态守卫(#30 裁定):横幅文案在场 =
         # 选卡页展开中,零可交互元素,不处理等展开(OCR 走全图缓存零额外成本)。
         if self.round_by_ocr(screen, '请选择投资策略', lcs_percent=0.8).is_success:
             return self.round_wait(wait=1.0)
