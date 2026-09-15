@@ -44,7 +44,7 @@
 
 ### 1.5 枚举范围与动作计数
 
-本篇枚举 = 商店域 6 个动作词条（§2）+ 备战域原子动作（§3：DeployMove/SellDeployed/LevelUp/OpenBox/OpenTome/ClickSpheres + §3A WearEquip 与工具原子类，规则见 §4）+ 转场类 2 个（§5）+ 词表完备性注 2 条（§2.7）。事件线选择（pick 族，含武装箱四选一画面 op）按 §6 声明为非逻辑态通道。动作词表本体与执行载体表 = [action_exec.md](action_exec.md) §1、[screens-actions-capability.md](screens-actions-capability.md) §2（能力面/策略面之分不在本篇重复）。
+本篇枚举 = 商店域 6 个动作词条（§2）+ 备战域原子动作（§3：DeployMove/SellDeployed/LevelUp/OpenBox/OpenTome/ClickSpheres/OpenBookcard + §3A WearEquip 与工具原子类，规则见 §4）+ 转场类 2 个（§5）+ 词表完备性注 2 条（§2.7）。事件线选择（pick 族，含武装箱四选一画面 op）按 §6 声明为非逻辑态通道。动作词表本体与执行载体表 = [action_exec.md](action_exec.md) §1、[screens-actions-capability.md](screens-actions-capability.md) §2（能力面/策略面之分不在本篇重复）。
 
 各动作条目统一形状：**词表/op → 确定面规则（逐腿）→ 随机面 → 拒绝边界（游戏拒/提案陈旧 = 零容器写）→ 依据**。
 
@@ -229,6 +229,18 @@ op = `operations/cw_op/cw_comp_transaction_action.py::CompTransactionOp`（**终
 **前置谓词（席满拦截）**：bench 空闲 >0 ∨ 球均不占席，才发射点球（fields.md §4.2 ClickSpheres；席满让路门 = 策略发射面席满探针）。席满点占席球 = 游戏侧点不动，球仍在 → 下一帧观察回补、下轮再派。
 
 **依据**：`kernel/cw_prep_actions.py::ClickSpheres`/`select_sphere_clicks`；`prep_actions.py::_click_spheres`；`../game_state/fields.md` §4.2 ClickSpheres；`research/screen_flow_timing.md` #16（飞行动画 ≤2s）。
+
+### 3.7 OpenBookcard（开书册卡）
+
+**词表**：`kernel/cw_vocab.py::OpenBookcard`（R10 开卡归位备战词表：书册卡 = 备战席占槽道具，与补给箱/秘密典籍并列第三件；与 OpenBox/OpenTome 同签名，`slot: int | None`，None = 首张）。
+
+**确定面**：书册卡道具占备战席 1 槽；点槽「开启」→ 书册卡离席腾槽 + 专家邀请函五选一弹窗弹出。书册卡无独立载荷列表字段（箱/典籍有 `boxes`/`tomes`，书册卡占席事实只在 `free_bench_slots` 现读口径）→ 逻辑态 = 腾席 +1（`_project_prep_obs`，与 heavy 现读 `slot_occupied` 扫描同式）；**容器 GameState 零写**（`apply_prep_action_logic` 集外动作型直接返回，同 §3.4/§3.5 视觉域推进）。
+
+**随机面 / 观察面**：五选一卡面内容归观察；选卡决策 = 弹窗画面 op `CwScreenExpertInvite`（默认策略单一源 = `choose_expert_index` 原位，chosen_expert 落地记录 §6 边界），本动作不选卡。动画等待 `_OVERLAY_ANIM_WAIT_S`，弹窗就位与否交下一帧观察。
+
+**发射形态**：本批发射位 = 备战环入口清场段（`cw_screen_prep._clear_prep_cards` 改产本动作经执行器发射 + 本访问交回，外循环 0k 按画面分发选卡；R7 OpenBox 终结化同构）。是否升 director 门控留策略侧定——升门控时需随 OpenBox 同构补备战 visit 终结分支（当前词表发射形态已备完整逻辑态分支，R9 全覆盖）。
+
+**依据**：`kernel/cw_vocab.py::OpenBookcard`；`prep_actions.py::PrepActionExecutor._open_bookcard`；design.md unified-action-factory §2.6 R10；`landing.md` §3.2c。
 
 ## 3A. 穿装备与工具消耗（R2/R8 原子类）
 

@@ -673,6 +673,21 @@ class OpenTome(CwAction):
 
 
 @dataclass
+class OpenBookcard(CwAction):
+    """开书册卡(点槽「开启」→ 弹专家邀请函五选一;开卡即腾席)。
+
+    书册卡 = 备战席占槽道具(与补给箱/秘密典籍并列第三件;R10 归位备战
+    词表,与 OpenBox/OpenTome 同签名,design.md §2.6 R10)。选卡决策不在
+    本执行链——点完开启本动作即交回,专家邀请函弹窗由外循环按画面分发
+    ``CwScreenExpertInvite`` 选卡(选卡决策单一源 =
+    ``cw_screen_expert_invite.choose_expert_index`` 原位);本批发射位 =
+    备战环入口清场段(``cw_screen_prep._clear_prep_cards``),是否升
+    director 门控留策略侧定。slot=None → 第一张书册卡。
+    """
+    slot: int | None = None
+
+
+@dataclass
 class WearEquip(CwAction):
     """穿装备(装备库 owned 件 → 目标角色物理槽位;R2 穿戴原子通路)。
 
@@ -795,7 +810,7 @@ class StartBattle(CwAction):
 CW_ACTION_TYPES: tuple = (
     BuyCard, SellBench, LevelUp, LevelUpShop, DeployMove, RefreshShop,
     CloseShop, SellDeployed,
-    ClickSpheres, OpenBox, OpenTome,
+    ClickSpheres, OpenBox, OpenTome, OpenBookcard,
     WearEquip,
     FurnaceUse, PrivilegeCardUse, WrenchUse, PrecisionWrenchUse,
     StaffProjectorUse, PerfectProjectorUse, LuckyTokenUse,

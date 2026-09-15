@@ -16,8 +16,9 @@ SellDeployed/DeployMove)携**容器槽位表下标**(0 基,词表单一源 =
 kernel/cw_vocab,坐标系裁定见其模块头);本执行器 = **执行坐标边**——
 容器下标 → screen_info 槽位中心的换算单点(bench 侧 = 备战栏-N area 序
 直取;deployed 侧 = kernel ``deployed_row_slot`` 单一函数)。坐标参数化
-机械动作(WearEquip/工具原子类/OpenBox/OpenTome)的 row/slot 字段 =
-画面物理排槽位 1 基(动作参数定义,拖点直取 area,不经换算)。
+机械动作(WearEquip/工具原子类/OpenBox/OpenTome/OpenBookcard)的
+row/slot 字段 = 画面物理排槽位 1 基(动作参数定义,拖点直取 area,
+不经换算)。
 组合动作形态已随统一词表删除(R2:RunDeploy/RunEquip/RunTools 退役,
 部署/穿戴/工具 = 决策核逐帧原子发射;CwScreenDeploy 画面 op 仍由
 cw_loop 0j 前台无角色恢复链直调,非词表成员)。
@@ -44,6 +45,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     FurnaceUse,
     LevelUp,
     LuckyTokenUse,
+    OpenBookcard,
     OpenBox,
     OpenTome,
     PerfectProjectorUse,
@@ -297,6 +299,9 @@ class PrepActionExecutor:
         elif isinstance(action, OpenTome):
             if action.slot is not None and not (1 <= action.slot <= len(self._bench_pts)):
                 return f'OpenTome slot={action.slot} 越界(1-{len(self._bench_pts)})'
+        elif isinstance(action, OpenBookcard):
+            if action.slot is not None and not (1 <= action.slot <= len(self._bench_pts)):
+                return f'OpenBookcard slot={action.slot} 越界(1-{len(self._bench_pts)})'
         elif isinstance(action, WearEquip):
             if action.row not in ('front', 'back'):
                 return f'WearEquip row={action.row!r} 非法(front/back)'
@@ -606,6 +611,8 @@ class PrepActionExecutor:
             return self._open_box(action)
         if isinstance(action, OpenTome):
             return self._open_tome(action)
+        if isinstance(action, OpenBookcard):
+            return self._open_bookcard(action)
         if isinstance(action, SellBench):
             return self._sell_bench(action)
         if isinstance(action, SellDeployed):
@@ -737,6 +744,43 @@ class PrepActionExecutor:
         time.sleep(_OVERLAY_ANIM_WAIT_S)
         log.info(f'[cw][tome] 开典籍槽{slot} → 点两次已发(选卡交 loop 0i)')
         return f'开典籍槽{slot}', True
+
+    def _open_bookcard(self, action: OpenBookcard) -> tuple[str, bool]:
+        """开书册卡:``find_bookcards`` 识别 → 点槽中心 → 固定动画等待
+        (纯机械执行;R10 开卡归位备战词表,体自现役
+        ``cw_screen_expert_invite.open_card`` 机械半迁入)。
+
+        点完开启本动作即交回——专家邀请函弹窗由外循环 0k 分发
+        ``CwScreenExpertInvite`` 选卡(选卡决策不在本执行链,与 OpenBox
+        终结化同构)。动画等待取家族常量 ``_OVERLAY_ANIM_WAIT_S``(原
+        open_card 固定 1.5s,统一至开箱/典籍同族单一源,值只增不减 =
+        弹窗弹出窗覆盖面不缩水);弹窗就位与否交下一帧观察。识别按
+        ``action.slot`` 对位(slot=None = 首张,与 OpenBox/OpenTome 同形);
+        书册卡识别含「青蓝卡+白色书册 icon+『开启』」模板语义,单一源 =
+        ``find_bookcards``。
+        """
+        from sr_od.application.currency_war.obs.cw_identity_obs import (
+            _ctx_slots,
+            find_bookcards,
+        )
+        screen = self._op.screenshot()
+        cards = find_bookcards(screen, _ctx_slots(self._ctx, '备战栏', 9))
+        if not cards:
+            return '无书册卡', False
+        picked = cards[0]
+        if action.slot is not None:
+            matched = next((c for c in cards if c[0] == action.slot), None)
+            if matched is None:
+                return f'槽{action.slot} 无书册卡(实读 {cards})', False
+            picked = matched
+        slot, center = picked
+        self._ctx.controller.mouse_move(center)   # bug#1 缓解(同开箱/点球口径)
+        self._ctx.controller.click(center)
+        # 固定动画等待(A3 纪律:等待归产生动画的操作;判效交下一帧观察)
+        time.sleep(_OVERLAY_ANIM_WAIT_S)
+        log.info(f'[cw][bookcard] 开书册卡槽{slot} → 点开启已发'
+                 '(交回外循环,专家邀请函分发选卡)')
+        return f'开书册卡槽{slot}', True
 
     # ===== 席位域 =====
 

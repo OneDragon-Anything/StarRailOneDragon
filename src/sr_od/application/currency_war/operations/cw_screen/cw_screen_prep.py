@@ -74,6 +74,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
     DeployMove,
     LevelUp,
+    OpenBookcard,
     OpenBox,
     OpenShop,
     SellBench,
@@ -976,6 +977,9 @@ class CwScreenPrep(CwScreenOpBase):
         逐动作分支(确定性 UI 消耗/腾席/容器域直写;随机面一律观察收口):
         - OpenTome:开一件即腾席,tomes 按 ``action.slot`` 摘对应槽的件
           (slot=None = 首件,与发射形态对齐);
+        - OpenBookcard:开卡即腾席(书册卡无独立载荷列表字段,占席事实只在
+          ``free_bench_slots`` 现读口径 → 摘件 = 腾席 +1,与 heavy 现读
+          ``slot_occupied`` 扫描同式;容器零写同箱/典籍,R10);
         - ClickSpheres:按载荷坐标**精确摘球**(R4 改形;原保守清空退役
           ——载荷即点击列,被点的球从 spheres 摘除,坐标匹配);
         - SellBench:该物理槽位件离席(bench_chars 摘除 +
@@ -1017,6 +1021,7 @@ class CwScreenPrep(CwScreenOpBase):
             FurnaceUse,
             LevelUp,
             LuckyTokenUse,
+            OpenBookcard,
             OpenTome,
             PerfectProjectorUse,
             PrecisionWrenchUse,
@@ -1032,6 +1037,12 @@ class CwScreenPrep(CwScreenOpBase):
                 _drop = action.slot if action.slot is not None else _tomes[0][0]
                 _tomes = [t for t in _tomes if t[0] != _drop]
             return dataclasses.replace(obs, tomes=_tomes)
+        if isinstance(action, OpenBookcard):
+            # 开卡即腾席(R10 视觉域;发射位 = 环入口清场段交回,本分支为
+            # 词表发射形态的完整逻辑态面,升 director 门控时与 OpenBox
+            # 终结化同构补 visit 终结分支)
+            return dataclasses.replace(
+                obs, free_bench_slots=(getattr(obs, 'free_bench_slots', 0) or 0) + 1)
         if isinstance(action, ClickSpheres):
             _pts = {(int(x), int(y)) for x, y in action.points}
             _spheres = [s for s in (getattr(obs, 'spheres', None) or [])
@@ -1932,7 +1943,12 @@ class CwScreenPrep(CwScreenOpBase):
 
         # —— ① 数据观察:清场 + 开商店合法态收起(读互斥:hp 关态可读)→ heavy 全量观察写 session
         self._clear_entry_overlays()
-        self._clear_prep_cards()
+        if self._clear_prep_cards():
+            # 书册卡开卡交回(批2c 链拆):弹窗已弹,heavy 观察禁读弹窗帧 →
+            # 交回外循环 0k 分发选卡;交回等待值来源写死 = OpenBookcard 动画
+            # 等待 _OVERLAY_ANIM_WAIT_S(R7 OpenBox 终结化同构,§3.2a 口径)。
+            return self.round_success('书册卡开卡(交回:专家邀请函弹窗分发)',
+                                      wait=_OVERLAY_ANIM_WAIT_S)
         self._try_collapse_open_shop()
         obs = self._observe(heavy=True)
         # 帧代次标注(ADR-0583 §3.4):入口 heavy 主观察帧 = full;消费归
@@ -2142,7 +2158,11 @@ class CwScreenPrep(CwScreenOpBase):
         self._cached_gold_trusted = False
         # —— 段1 观察:清场 + 开商店合法态收起(读互斥:hp 关态可读)→ heavy 全量观察写 session
         self._clear_entry_overlays()
-        self._clear_prep_cards()
+        if self._clear_prep_cards():
+            # 书册卡开卡交回(批2c 链拆;语义与旧路径分支同源,见 run 体)
+            return None, self.round_success(
+                '书册卡开卡(交回:专家邀请函弹窗分发)',
+                wait=_OVERLAY_ANIM_WAIT_S)
         self._try_collapse_open_shop()
         _adp = self._observation_port()
         obs = (_adp.observe(self) if _adp is not None
@@ -2479,29 +2499,33 @@ class CwScreenPrep(CwScreenOpBase):
                 return
             time.sleep(ENTRY_OVERLAY_SETTLE_S)
 
-    def _clear_prep_cards(self) -> None:
+    def _clear_prep_cards(self) -> bool:
         """备战栏物件清场(T-176 V-2 收编:原 cw_loop 备战分支派发前清场
         识别+点击逐位迁移至此——识别机制住画面 op 观察链,外循环只保留
         分派;统一观察架构设计 §3.4 过渡相位件收编挂账兑现,与环入口
-        一键关注册表 ``_clear_entry_overlays`` 同位串联)。两段:
+        一键关注册表 ``_clear_entry_overlays`` 同位串联)。
+
+        返回值(批2c 链拆):True = 本轮已发书册卡开卡,调用方必须**立即
+        交回外循环**(弹窗已弹,heavy 观察禁读弹窗帧);False = 无书册卡
+        或未发出,调用方照常续跑。两段:
 
         - 试用角色揭示卡(w595_trial_reveal_card):发光金卡点开即**免费**
           得 2★ 试用角色(原地变普通角色卡,后续 SIFT 自然识别)。无代价、
           无分支选择 → 非策略决策,不进 director 动作全集;环入口直接清掉
           (揭示后 heavy 观察读到的已是揭示后的真实板面,不毒化对账)。
           上界 3 轮防识别抖动死循环;揭示后卡片消失 → 自然防重入。
-        - 书册卡(2026-08-30 建档,与揭示卡同型预清场):开启后弹「专家邀请
-          函」五选一,经 journal 包装执行 CwScreenExpertInvite 全链(开卡→
-          默认策略选卡→收案;选中的专家入商店由正常商店逻辑接管)。包装保
-          op 行——与 0k 分支是同一 op,直调 .execute() 曾造成「分发处有行、
-          清场处无行」的双通道行缺口(复盘同 op 归属不一致,S11 族近亲,
-          ADR-0584 §5.3 收编件);位置键单一源 =
-          telemetry.op_journal._op_journal_pos_of。上界 2 轮防识别抖动
-          死循环。
+        - 书册卡(R10 链拆,design.md §2.6):识别到书册卡 → 改产备战词表
+          动作 ``OpenBookcard`` 经执行器发射(遥测动作行 OpenBookcard 在册,
+          单一发射口)→ **本访问交回**:专家邀请函弹窗由外循环 0k 分发
+          ``CwScreenExpertInvite`` 选卡(R7 OpenBox 终结化同构;原 journal
+          包装全链路径退役——该包装 = ADR-0584 §5.3 收编件,链拆后动作行
+          归执行器、op 行归 0k 分发,双通道行缺口不再存在)。每次访问至多
+          发一张,其余张由外循环下一轮自然续清;识别后不开(过渡帧/校验
+          拒绝)→ 照旧续跑交 heavy 观察(识别抖动由外循环轮间自愈)。
 
         fail-open(与 ``_clear_entry_overlays`` 同位先例同纪律):截图/识别
-        异常静默返回(=原外循环形态下异常交节点重试链,收编后交环内正常
-        观察/外循环重判兜底;离线 mock 契约不让测试在空帧上炸)。
+        异常静默返回 False(=原外循环形态下异常交节点重试链,收编后交环内
+        正常观察/外循环重判兜底;离线 mock 契约不让测试在空帧上炸)。
         """
         from sr_od.application.currency_war.kernel.cw_obs_core import (
             is_prep_like_frame,
@@ -2514,7 +2538,7 @@ class CwScreenPrep(CwScreenOpBase):
         try:
             screen = self.screenshot()
         except Exception:   # noqa: BLE001  离线契约
-            return
+            return False
         for _reveal_i in range(3):
             try:
                 _cards = find_trial_reveal_cards(
@@ -2526,42 +2550,36 @@ class CwScreenPrep(CwScreenOpBase):
                 self.ctx.controller.click(_center)
                 log.info('[cw][director] 试用角色揭示卡 slot%s → 点击揭示(免费 2★)', _slot)
             except Exception:   # noqa: BLE001  离线契约
-                return
+                return False
             time.sleep(1.2)   # 揭示动画窗(发光消散 + 角色卡落位)
             try:
                 screen = self.screenshot()
             except Exception:   # noqa: BLE001  离线契约
-                return
-        for _bc_i in range(2):
-            try:
-                _bc_cards = find_bookcards(
-                    screen, _ctx_slots(self.ctx, '备战栏', 9))
-                if not _bc_cards or not is_prep_like_frame(self.ctx, screen):
-                    break
-            except Exception:   # noqa: BLE001  离线契约
-                return
-            # journal 包装单一源(r2 必修①):enter/execute/exit 模板与 ok
-            # 判定全部走 telemetry.op_journal.journal_wrapped_execute
-            #(判定 = resolve_dispatch_ok,与 _dispatch_screen_op 同源)——
-            # 手写第二份判定曾让 round-result 型成功恒记 fail(r1 缺陷 1)。
-            # 语义要点保持:返回轮次对象在清场语境无消费方 → 丢弃;
-            # frame_tag=None 不落决策帧(等价原 _dispatch_screen_op 消费形态)。
-            from sr_od.application.currency_war.operations.cw_screen.cw_screen_expert_invite import (
-                CwScreenExpertInvite,
-            )
-            from sr_od.application.currency_war.telemetry.op_journal import (
-                _op_journal_pos_of,
-                journal_wrapped_execute,
-            )
-            journal_wrapped_execute(
-                CwScreenExpertInvite(self.ctx), '专家邀请函',
-                _op_journal_pos_of(self.ctx))
-            log.info('[cw][director] 书册卡 slot%s → 处理链经包装执行(op 行=专家邀请函)',
-                     _bc_cards[0][0])
-            try:
-                screen = self.screenshot()
-            except Exception:   # noqa: BLE001  离线契约
-                return
+                return False
+        try:
+            _bc_cards = find_bookcards(
+                screen, _ctx_slots(self.ctx, '备战栏', 9))
+            if not _bc_cards or not is_prep_like_frame(self.ctx, screen):
+                return False
+        except Exception:   # noqa: BLE001  离线契约
+            return False
+        # 过渡帧点击会落空(r133 同型教训)→ 上判不在过渡帧才发。
+        action = OpenBookcard(slot=_bc_cards[0][0])
+        err = self._executor.validate(action)
+        if err is not None:
+            log.warning(f'[cw!][director] 参数非法 {action_key(action)}: '
+                        f'{err} → 拒绝,交回外循环留证')
+            return False
+        try:
+            self._act_execute(action)
+        except StopBrakeShortCircuit as e:
+            # W209j 刹车短路(ADR-0388):停机标志已设,动作未发出 → 交回
+            # 外循环,下轮 loop 顶见 STOP 退出(与 visit 循环执行位同处置)。
+            log.info(f'[cw][director] 停机刹车({e}),动作未发出 → 交回外循环')
+            return True
+        log.info('[cw][director] 书册卡 slot%s → OpenBookcard 已发'
+                 '(交回外循环,0k 分发选卡)', _bc_cards[0][0])
+        return True
 
     def _try_collapse_open_shop(self) -> bool:
         """环入口遇开商店稳定态(战斗胜利后新回合游戏可能自动开)→
