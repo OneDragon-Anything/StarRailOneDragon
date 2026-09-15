@@ -16,7 +16,7 @@
 
 ## 3. 观察面
 
-入口单次 heavy;唯一决策读屏点 = 入口对账(统一规范 = [../flow/screen_op.md](../flow/screen_op.md) §4):
+入口单次 heavy;唯一决策读屏点 = 入口对账(统一规范 = [op-layer.md](op-layer.md) §1.3):
 
 - **环入口序列**:`_clear_entry_overlays`(残留模态一键关,清场注册表 `ENTRY_OVERLAY_CLOSE`)→ `_clear_prep_cards`(书册卡开卡即交回:0k 分发选卡,弹窗帧禁 heavy 读)→ `_try_collapse_open_shop`(开商店态收起探针;店开着则走 0n/商店访问路径)→ `_observe(heavy=True)` → 帧代次标注 `session.prep_frame_class='full'` → `obs.event_overlay` 非空即交回外循环重分发(不计数)→ 接管局补采 `_takeover_collect_if_needed`(`session.briefing_bosses` 空 ∧ 节点条可读 → 位面详情情报采集,2 次失败放弃)。
 - **heavy 观察消费 obs 解析工具箱**:SIFT 身份(bench/deployed)+ GameState 全量(读漏斗 `obs/cw_observation.py::read_game_state` 容器直写,观察渠道含 carry/prior/leave_screen/relay)+ cap 读取 + 装备域三路(`obs/cw_observe_full.py::observe_full` 组装单一源:owned 件名池全量/occupied 已穿明细/后排布局选档);光标 parking 先行(防 OCR/SIFT 污染)。观察 payload = `kernel/cw_prep_actions.py::PrepObservation`,写黑板 `session.prep_obs_frame`(写者白名单 = 入口观察段/循环逻辑态直写步;读者 = decide_prep_screen)。

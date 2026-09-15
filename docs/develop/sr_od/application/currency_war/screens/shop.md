@@ -31,7 +31,7 @@ read_game_state(phase=PHASE_PREP_SHOP_OPEN) 全量现读,漏斗容器直写(obs 
   逻辑态直写后分叉才归「逻辑态模型」)
 ```
 
-观察写入 = ①观察态上报进 GameState 的观察边界;段内不比对、不重建(统一规范 = [../flow/screen_op.md](../flow/screen_op.md) §4;关键信息未观察由字段态值前置拦截,见 §5 全 unknown 窗)。
+观察写入 = ①观察态上报进 GameState 的观察边界;段内不比对、不重建(统一规范 = [op-layer.md](op-layer.md) §1.3;关键信息未观察由字段态值前置拦截,见 §5 全 unknown 窗)。
 
 ## 4. 动作面
 

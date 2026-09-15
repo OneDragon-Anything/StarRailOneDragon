@@ -8,7 +8,7 @@
 
 ## 2. 画面形态声明
 
-**空决策形态**(纯推进;弹窗带选项面但选择被语义红线钉死为唯一出口——关 X,放弃/离开永不候选)。推进型变体(`_progression_base.py::CwProgressionScreenOp` 子类):入口观察 → 单次推进 → 重入观察裁决交回;节点预算 = 2(合同 = [../flow/screen_op.md](../flow/screen_op.md))。
+**空决策形态**(纯推进;弹窗带选项面但选择被语义红线钉死为唯一出口——关 X,放弃/离开永不候选)。推进型变体(`_progression_base.py::CwProgressionScreenOp` 子类):入口观察 → 单次推进 → 重入观察裁决交回;节点预算 = 2(合同 = [op-layer.md](op-layer.md) §1.5)。
 
 ## 3. 观察面
 

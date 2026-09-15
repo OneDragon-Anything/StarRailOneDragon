@@ -55,7 +55,7 @@ pick = decide_invest('env', names, board_state_of(session), ...)
 | 确认点击 | 机械交回 | 重入确认裁决:锚不在 = success 交回外循环(0s 链尾接 `CwScreenWaitOneOne`) |
 | 入口锚 miss | op FAIL | 交回外循环按当前画面重分发 |
 
-刷新 = 唯一引入新事实的动作,终结交回语义 = [../flow/screen_op.md](../flow/screen_op.md) §4;「确认离开 = 画面终结」= [README.md](README.md) §6。
+刷新 = 唯一引入新事实的动作,终结交回语义 = [op-layer.md](op-layer.md) §1.4;「确认离开 = 画面终结」= [README.md](README.md) §6。
 
 ## 6. 状态上报面
 
@@ -73,7 +73,7 @@ pick = decide_invest('env', names, board_state_of(session), ...)
 - 刷新零效果留证(缺陷台账 L2 记录,不停机不改道);偏移错 → 刷新未命中时重进后计数未扣、预算仍在 → 再次刷新,每圈耗 1 次节点重试预算,预算耗尽 FAIL bail(有界终止单)。
 - 读缺守卫:计数读缺 = 无授权(失败安全);无帧 = 刷新链跳过(旧调用形兼容)。
 - 台账变异窗(45s)防确认后节点行刷新窗口内的三票校验误报。
-- 验效废除与预算语义同 [../flow/screen_op.md](../flow/screen_op.md) §2;无本屏专属停机钩子([../flow/guards.md](../flow/guards.md))。
+- 验效废除与预算语义同 [op-layer.md](op-layer.md) §1.2;无本屏专属停机钩子([../flow/guards.md](../flow/guards.md))。
 
 ## 9. 遥测与锁面
 

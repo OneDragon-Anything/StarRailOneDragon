@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;不入决策规范,op 形态照常)。本屏为统一观察架构五相位屏:`CwScreenOpBase` 子类,handle 顶部**重入裁决先于装配点分流**(确认/刷新两 pending 裁决两路径共用),两端口完整在场走五段生命周期、缺省走旧路径(并存纪律 = [../flow/统一观察架构-画面op基类设计.md](../flow/统一观察架构-画面op基类设计.md))。决策入口 = 契约 `strategies/impl/cw_strategy.py::CwStrategy.decide_invest('strategy', ...)`(规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1;判据本体 = `kernel/cw_events.py::decide_event`)。重入裁决两件(handle 顶部):
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;不入决策规范,op 形态照常)。本屏为统一观察架构五相位屏:`CwScreenOpBase` 子类,handle 顶部**重入裁决先于装配点分流**(确认/刷新两 pending 裁决两路径共用),两端口完整在场走五段生命周期、缺省走旧路径(并存纪律 = [op-layer.md](op-layer.md))。决策入口 = 契约 `strategies/impl/cw_strategy.py::CwStrategy.decide_invest('strategy', ...)`(规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1;判据本体 = `kernel/cw_events.py::decide_event`)。重入裁决两件(handle 顶部):
 - 确认裁决:上轮已发确认 → 本轮入口锚不在 = overlay 已关(选卡落地)→ 补 append 持卡 + success 交回;锚仍在 = 确认未落地 → 清标志重走(计节点预算)。
 - 刷新裁决:上轮已发刷新 → 锚在 = 预期(逐卡重掷后 overlay 仍在)→ 穿透正常观察链重分类重决策;锚不在 = overlay 意外离开(刷新从不关 overlay)→ success 交回外循环重分派。
 
@@ -43,7 +43,7 @@ names = opts 卡名;pick = decide_invest('strategy', names, board_state_of(sessi
 │      (访问内零比对:刷后不重读不比对不重决策;新事实归重入访问)
 ├─ 点卡:卡名行 Y(「区域-卡名行」center,兜底常量)+ 该卡 center-x → safe_click → 0.7s
 └─ 确认:「按钮-确认」center(兜底常量)→ 置确认 pending → emit_overlay_confirm
-     (机械交回,验效废除 = [../flow/screen_op.md](../flow/screen_op.md) §2;
+     (机械交回,验效废除 = [op-layer.md](op-layer.md) §1.2;
       落地判定归 §2 确认裁决)
 ```
 
@@ -57,7 +57,7 @@ names = opts 卡名;pick = decide_invest('strategy', names, board_state_of(sessi
 | 确认点击 | 机械交回 | 重入确认裁决:锚不在 = append 持卡 + success 交回外循环重分发;锚在 = 重走(计预算) |
 | 入口锚复探超窗 | 有界重试 | round_retry 消耗 `node_max_retry_times=10` 预算,超限 op FAIL 交外循环 |
 
-单选族「确认离开 = 画面终结」语义 = [README.md](README.md) §6;本屏刷新同商店刷新的「唯一引入新事实动作」终结原则([../flow/screen_op.md](../flow/screen_op.md) §4),落点 = 重入访问重建观察。
+单选族「确认离开 = 画面终结」语义 = [README.md](README.md) §6;本屏刷新同商店刷新的「唯一引入新事实动作」终结原则([op-layer.md](op-layer.md) §1.4),落点 = 重入访问重建观察。
 
 ## 6. 状态上报面
 

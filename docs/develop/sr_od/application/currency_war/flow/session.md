@@ -87,9 +87,9 @@
 | `equip_drag_fail_counts` | 装备拖拽执行失败 | CwOpEquipAll 拉黑 | 局 | 同上 |
 | `launch_dead_streak` | 出战发射连败 | 停机钩子 cw_launch_dead | 跨环 | 执行侧发射器载体 |
 | `megastar_candidate_clicked` | 巨星 handler 点击执行 | handler 防重入 | handler 访问内 | **`ctx.cw_match` 级局容器(定案,不留实施批裁量)**——字段定义理由(session 文件:123-124)恰是「防 new CwScreenMegastar instance 重置 instance flag → 重选卡死」,落 op 实例 = 每次新建实例清零 = 原始事故按定义复发(对抗审查 B1 改判;初版落点作废) |
-| `_supply_refresh_used` / `_encounter_refresh_used` | 补给/遭遇刷新点击执行 | handler 防重入(screen_op.md §8.4 裁 carried/执行侧) | 节点 | 画面 op 实例/节点级执行载体 |
+| `_supply_refresh_used` / `_encounter_refresh_used` | 补给/遭遇刷新点击执行 | handler 防重入(screens/supply.md 开放设计注 裁 carried/执行侧) | 节点 | 画面 op 实例/节点级执行载体 |
 | `star_regression_count` | star 回退停机钩子计数 | 停机钩子判定 | 节点×2 | 执行侧停机钩子载体 |
-| `tracked_bench_chars` / `tracked_deployed` | 执行侧跟踪账(随动更新) | 双账断言(screen_op.md §2.3(ii)) | visit 内 | 执行侧 tracked 账(现状归 session 属历史宿主错位) |
+| `tracked_bench_chars` / `tracked_deployed` | 执行侧跟踪账(随动更新) | 双账断言(screens/op-layer.md §1.3) | visit 内 | 执行侧 tracked 账(现状归 session 属历史宿主错位) |
 | `v2_round_key` / `v2_round_sold` | 同轮买卖互斥事实账本(初版误判退役;对抗审查 A2 改判——**活写端** = `kernel/cw_round_ledger.py:30-34` 带轮键自校验登记,**live 调用方** = cw_shop_action_ops.py:487 卖出落地路径) | cw_round_ledger 仲裁守卫 + 执行侧幂等加固 | 轮(轮键自校验) | **执行侧轮账本**(随 cw_round_ledger 宿主迁出;kernel 对执行账的访问口见 §5.5) |
 | `pending_buy_expect` / `xp_expect_ledger` | 期望账构建(执行对账) | heavy 定型帧对账 | 单元/局 | 执行侧对账载体 |
 | `expected_state` | apply_op_effect 到账登记 | reconcile_expected 覆盖点 | visit 内 | 执行侧期望对账容器 |
@@ -214,7 +214,7 @@ StrategySession(104 项混装:              StrategySession(30 项:观察 28 + �
 ### 5.5 执行层消费点
 
 - `deploy_fail_counts`/`equip_drag_fail_counts`/`launch_dead_streak`:迁到执行器/动作 op 载体(CwScreenDeploy、CwOpEquipAll、prep_actions 发射器),生命周期语义逐字段保持(局级/跨环)——载体落点实施批裁,候选 = `ctx.cw_match` 级执行态容器或 op 实例字段;**禁**为它们新开 session 字段。
-- `tracked_bench_chars`/`pending_buy_expect`/`xp_expect_ledger`/`expected_state`:迁执行侧对账载体,双账断言语义不变(screen_op.md §2.3(ii))。**kernel 读写签名重构**(对抗审查 B2-5 补):`kernel/cw_reconcile.py:78`、`kernel/cw_expected_state.py:333` 对这组字段有读写签名——迁出后 kernel→执行侧载体的访问路径**必须定义**(候选 = 执行侧载体访问口注入 kernel,或对账入口收拢签名),禁让 kernel 直接 getattr session 猜新宿主——那是与 §1-2 同型的耦合换壳复活。
+- `tracked_bench_chars`/`pending_buy_expect`/`xp_expect_ledger`/`expected_state`:迁执行侧对账载体,双账断言语义不变(screens/op-layer.md §2.3(ii))。**kernel 读写签名重构**(对抗审查 B2-5 补):`kernel/cw_reconcile.py:78`、`kernel/cw_expected_state.py:333` 对这组字段有读写签名——迁出后 kernel→执行侧载体的访问路径**必须定义**(候选 = 执行侧载体访问口注入 kernel,或对账入口收拢签名),禁让 kernel 直接 getattr session 猜新宿主——那是与 §1-2 同型的耦合换壳复活。
 - `v2_round_key`/`v2_round_bought`/`v2_round_sold`(§2.4 新增):随 `cw_round_ledger` 宿主迁移——轮账本宿主从 session 改为执行侧容器,`register_round_sold` 的轮键自校验语义不变,live 调用方(cw_shop_action_ops.py:487)与仲裁消费点同步换宿主。
 - 执行层读策略状态的既有点换访问函数(对抗审查 B2-2/3 补):`cw_op_deploy.py:1014`(读 v3_intention 取 locked_fac)、`cw_shop_action_ops.py:362`(读 cw4_counters)、`:395`(读 v3_intention)——执行层读策略状态的合法通道 = 访问函数,逐点改。
 - `_supply_refresh_used`/`_encounter_refresh_used`/`star_regression_count`:按 §2.4 落点迁,防重入语义逐字段保持;`megastar_candidate_clicked` 按 §2.4 定案落 `ctx.cw_match` 级局容器。(defer_count/bail_reason_counts 已随 DeferSpheres/BailToOuter 词表退役整体删除,不迁移。)

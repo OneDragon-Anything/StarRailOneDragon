@@ -1,7 +1,7 @@
 # 战斗等待(battle_wait · 战斗/结算窗族)
 
 > 代码 = `operations/cw_screen/cw_screen_battle_wait.py::CwScreenBattleWait`(三段式 op)+ `::SettlementState`(战斗/结算链跨迭代状态机;`cw_loop.py::CwLoop.handle_init` 随 RunLoop 实例化注入,`__init__(ctx, st, config)`)。职责:出战交回后的战斗/结算窗驻留——等结算 → 结算处理(遥测读点 → 点「继续挑战」)→ 完成白名单/团灭终局分叉交回外循环。战斗自动进行(auto-battler),玩家无操作面。路径根 = `src/sr_od/application/currency_war/`。
-> 装配点分流([../flow/统一观察架构-画面op基类设计.md](../flow/统一观察架构-画面op基类设计.md) §9.1 并存纪律):`cw_game_ports` 两端口完整在场 → 五段生命周期新路径;缺省 None = 生产直连旧路径(`wait()` 原序列,生产行为零变化)。两路径共享分支链 `_dispatch_frame` 零转录,分支序禁重排。
+> 装配点分流([op-layer.md](op-layer.md) §4 并存期纪律):`cw_game_ports` 两端口完整在场 → 五段生命周期新路径;缺省 None = 生产直连旧路径(`wait()` 原序列,生产行为零变化)。两路径共享分支链 `_dispatch_frame` 零转录,分支序禁重排。
 
 ## 1. 分发判定
 
@@ -76,4 +76,4 @@
 
 ## 开放设计注
 
-① 五段 reconcile = 恒空申报:结算写点拆入 reconcile 必改「结算即写」执行时序,五段形状让位于零变更红线(候裁面挂架构详设)。② 结算锚 boundary 触发口(统一观察架构 §12.6-H6)本批不接线——结算登记 = 观察写端非动作发射登记,on_outcome 无登记件。③ 模块头「自动战斗检测本批不做/接口预留」的表述与代码体已实现的自愈链(点开关)不一致,以代码体为准(详见交付偏差清单)。
+① 五段 reconcile = 恒空申报:结算写点拆入 reconcile 必改「结算即写」执行时序,五段形状让位于零变更红线(候裁面挂架构详设)。② 结算锚 boundary 触发口(op-layer §5(转点锚 boundary 触发口候裁决))本批不接线——结算登记 = 观察写端非动作发射登记,on_outcome 无登记件。③ 模块头「自动战斗检测本批不做/接口预留」的表述与代码体已实现的自愈链(点开关)不一致,以代码体为准(详见交付偏差清单)。

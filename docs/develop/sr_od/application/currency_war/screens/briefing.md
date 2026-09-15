@@ -1,7 +1,7 @@
 # 位面简报(briefing · 货币战争-简报)
 
 > 代码 = `operations/cw_screen/cw_screen_briefing.py::CwScreenBriefing`。职责:开局序列第一步的简报观察收敛单 op——读词缀/三 boss/敌人难度直写 session + 词缀效果采集(best-effort)+ 点「下一步」。路径根 = `src/sr_od/application/currency_war/`。
-> 装配点分流([../flow/统一观察架构-画面op基类设计.md](../flow/统一观察架构-画面op基类设计.md) §9.1 并存纪律):`cw_game_ports` 两端口完整在场 → 五段生命周期新路径;缺省 None = 生产直连旧路径。重入裁决留守 handle 分流前共享段(总纲契约 6,先例锚 = `cw_screen_encounter.py` 重入裁决段)。
+> 装配点分流([op-layer.md](op-layer.md) §4 并存期纪律):`cw_game_ports` 两端口完整在场 → 五段生命周期新路径;缺省 None = 生产直连旧路径。重入裁决留守 handle 分流前共享段(总纲契约 6,先例锚 = `cw_screen_encounter.py` 重入裁决段)。
 
 ## 1. 分发判定
 
