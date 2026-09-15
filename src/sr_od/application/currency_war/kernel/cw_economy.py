@@ -30,13 +30,12 @@ from sr_od.application.currency_war.kernel.cw_registry import (
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_game_state import GameState
     from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
-    from sr_od.application.currency_war.kernel.cw_vocab import ShopCard
-    from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame
+    from sr_od.application.currency_war.kernel.cw_game_state import GameState
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
+    from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame, ShopCard
 
 # ============================================================
 # 候裁9 词汇迁入(原 kernel/cw_state.py 经济域):
@@ -169,14 +168,14 @@ def effective_hp_threshold(bs: GameState) -> int:
     变化:强板 ratio→1 不盲目抬阈值,弱板长程 ratio 升高更早保血)。P1 分母恒等 → 对 base
     精确零漂移(M57 验证行为保持)。
     """
+    from sr_od.application.currency_war.kernel.cw_first_passage import (
+        board_tier_of,
+        plane_hp_ratio,
+    )
     from sr_od.application.currency_war.kernel.cw_game_state import (
         level_of,
         plane_of,
         round_num_of,
-    )
-    from sr_od.application.currency_war.kernel.cw_first_passage import (
-        board_tier_of,
-        plane_hp_ratio,
     )
     from sr_od.application.currency_war.kernel.cw_plane_table import (
         NODES_PER_PLANE,
@@ -559,10 +558,10 @@ REWARD_BASE_GOLD_BY_ROUND: dict[int, int] = {1: 3, 2: 4}
 #: P3r1=5 是无直读样本下的近似、挂账维持——见 :func:`reward_base_gold`)。
 _REWARD_BASE_DEFAULT: int = BASE_INCOME
 
-#: sim 收入口径版本(独立披露,不占 cw_coarse_battle.COARSE_CALIB_VERSION——
-#: 那是粗模型战斗引擎校准的版本,收入口径在 cw_economy/cw_sim 收入段,另一子系统)。
-#: 跨批次对比先核 manifest.economy_calib_version(局终指纹核对锚,与
-#: 既有粗模型版本披露同机制)。
+#: sim 收入口径版本(独立披露;旧粗模型战斗引擎校准版本
+#: cw_coarse_battle.COARSE_CALIB_VERSION 已随 sim 重做删除面退役,
+#: 收入口径在 cw_economy/cw_sim 收入段,另一子系统,不再有对照版本)。
+#: 跨批次对比先核 manifest.economy_calib_version(局终指纹核对锚)。
 ECONOMY_CALIB_VERSION: int = 2
 #: v2(ADR-0447):事件金表按实机逐轮金轨迹反馈整定(状态分布校准总闸),
 #: 数值见 engine_p1.EVENT_GOLD_BY_ROUND 注释;v1 旧表(奖励球残差近似)
@@ -783,10 +782,10 @@ def blood_xp_gate_for(bs: GameState | None,
         return True
     if bs is None:
         return False
-    from sr_od.application.currency_war.kernel.cw_game_state import level_of
     from sr_od.application.currency_war.kernel.cw_discipline_rules import (
         hp_decision_trusted,
     )
+    from sr_od.application.currency_war.kernel.cw_game_state import level_of
     from sr_od.application.currency_war.kernel.cw_hp_policy import decision_hp
     return blood_xp_gate(decision_hp(bs, session), hp_decision_trusted(bs),
                          level_of(bs), mode[1])

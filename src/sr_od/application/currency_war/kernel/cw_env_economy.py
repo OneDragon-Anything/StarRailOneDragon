@@ -74,8 +74,9 @@ _REWARD_SLOTS: tuple[tuple[int, int], ...] = ((1, 1), (1, 2), (1, 8), (2, 6))
 # 取卡序→位面结构映射(k 1 基;策略大师通道 P(第 k 张策略可取) 的位面归属)。
 # 【推】结构:k1 = 开局取卡(entry 流程固定,局首)、k2 = P1 中段首取卡
 # (screen_flow_timing #11:1-3 节点完成后)、k3 = P2 前段(63 局
-# decisions.jsonl 观测拼版主位 (2,2);sim 注入日程 SIM_STRATEGY_PICK_SCHEDULE
-# 同源观察——注释引用不 import,kernel 禁依 sim)。
+# decisions.jsonl 观测拼版主位 (2,2);旧 sim 注入日程
+# SIM_STRATEGY_PICK_SCHEDULE 同源观察——该日程已随 sim 重做删除面退役,
+# 取卡时点定案 = sim-redesign design.md U07 固定轮次)。
 # 基线取卡基数 = 本表长度【推·效果原文序数】(details/env-value-models.md
 # §2.2.2:头彩点名「第一个投资策略」/尾彩点名「第三个投资策略」→ 固定取卡集
 # 基数 3;策略大师/联席的 3-5 节点「额外」取卡不计——策略域价值非经济通道,

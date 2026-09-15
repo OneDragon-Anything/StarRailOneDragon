@@ -4,10 +4,15 @@
 下沉闭包 = DESIGN §4.3「校准+聚合族」:回退层胜负面(node_win_p/
 battle_delta/boss_delta/boss_settle_delta/node_delta)、结算成型度键
 (_settle_rung/deployed_star_depth)、P2 参数化存活层(p2_* 族,注入
-P2CombatCalib)、节点序列采样(sample_node_sequence)、板面聚合族
-(_board_factions_of/_board_counts_of/_engines_count/_transition_formed/
-_first_*_round/_battles_before_engines/_deployable_depth/_roll_rotation)
-与方向观测判据(_direction_established/_target_comp_label)。
+P2CombatCalib)、板面聚合族(_board_factions_of/_board_counts_of/
+_engines_count/_transition_formed/_first_*_round/
+_battles_before_engines/_deployable_depth/_roll_rotation)。
+
+sim 重做删除面收口(sim-redesign design.md §2.4.1/§2.4.4):节点序列
+采样 sample_node_sequence(U19:42 局零反例,序列用地面真值表)与
+方向观测判据 _direction_established/_target_comp_label(判据本属
+策略器;删时 src/测试仓已零消费方)随裁定删除——kernel 只留特征
+函数;节点序列真值 = sim/cw_sim_plane_schedule.py。
 
 下沉理由:decision_v2(scoring/candidates/handoff/phase)与 cw_evolution/
 cw_line_switch 以函数消费本族,留 sim 桶成 decision→sim / kernel→sim
@@ -48,12 +53,9 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     level_of,
     round_num_of,
 )
-from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_strategy_session import (
-        StrategySession,
-    )
+    pass
 
 def deployed_star_depth(bs: GameState) -> int:
     """净星深 = 上场件 Σ(star−1)(全量口径,同 ADR-0399
@@ -75,7 +77,8 @@ def deployed_star_depth(bs: GameState) -> int:
 def _star_depth_from_rows(rows) -> int:
     """净星深(replay 行口径):decisions ``state.deployed`` 条目
     (dict 形态)Σ(star−1)——与 :func:`deployed_star_depth` 同式,
-    池语料侧(_pool_from_replay/cw_delta_pool_gen)共用,防双源。"""
+    池语料侧(_pool_from_replay;原 cw_delta_pool_gen 已随 sim 重做
+    删除面退役)共用,防双源。"""
     return sum(int(x.get('star') or 1) - 1
                for x in (rows or []) if isinstance(x, dict))
 
@@ -215,26 +218,6 @@ def boss_settle_delta(bs: GameState, dir_round: int,
     return boss_delta(dir_round, rng)
 
 
-def sample_node_sequence(rng: random.Random) -> list[str]:
-    """P1 节点序列(实机实证统计:25 开局帧众数表)。
-
-    典型表(每帧读全,用户指路):reward/reward/battle/battle/
-    supply/battle/encounter/reward/boss——slot1/2/4/7 全帧
-    一致(25/25);**slot3/5/6 是变异位**(24/25、23/25、24/25
-    主型,余为策略效果改节点:战斗→遭遇/补给)。
-    用户定调:位面节点基本固定,特殊策略才改;实机以实时
-    识别为权威,本表用于模拟骨架/策略预知(如 r7 遭遇→
-    r6 备战破息)。"""
-    seq = ['reward', 'reward', 'battle', 'battle', 'supply']
-    # slot5(r6):battle 主(23/25),策略效果位
-    seq.append(rng.choices(('battle', 'encounter'), (0.92, 0.08))[0])
-    # slot6(r7):encounter 主(24/25)
-    seq.append(rng.choices(('encounter', 'supply'), (0.96, 0.04))[0])
-    seq.append('reward')
-    seq.append('boss')
-    return seq
-
-
 def node_delta(node: str, round_num: int, dir_round: int,
                rng: random.Random, *, plane: int = 1) -> int:
     """按节点类型的 HP 变化(分层;ADR-0292 起 reward/supply 的
@@ -267,42 +250,6 @@ def node_delta(node: str, round_num: int, dir_round: int,
             return rng.choice(WIN_DELTAS)
         return -rng.randint(P2_LOSS_BAND[0], P2_LOSS_BAND[1])
     return battle_delta(round_num, dir_round, rng)
-
-
-def _direction_established(session: StrategySession) -> bool:
-    """方向判据 = 策略自身认领(意向锁定),与遥测 target 字段一致。
-
-    ADR-0309 载体批后唯一策略载体 = decision_v2,方向真值在
-    ``strategy_state_of(session).v3_intention`` 意向分层锁定(旧臂 line_v2 的
-    locked_line/bridge_id 读取随 line_strategy 退役删除)。
-    ADR-0357:P1 配方锁(p1_pair 体系对)同构认领方向——
-    终局 comp 锁与配方对锁任一成立即方向已立(纯遥测口径)。
-    """
-    ist = getattr(strategy_state_of(session), 'v3_intention', None)
-    if ist is None:
-        return False
-    if getattr(ist, 'phase', '') == 'locked' and getattr(ist, 'locked_comp', ''):
-        return True
-    return bool(getattr(ist, 'p1_pair', ()))
-
-
-def _target_comp_label(session: StrategySession) -> str:
-    """账本 ``target_comp`` 字段(leader 裁决):v3 意向。
-
-    decision_v2 栈不写 ``locked_line``/``bridge_id``,意向真值在
-    ``strategy_state_of(session).v3_intention.locked_comp``(COMP_LIBRARY 套名;旧 v1
-    字段回退随 line_strategy 退役删除)。ADR-0357:P1 配方锁局无 comp 锁,
-    标签=``过渡配方·A+B``(体系对;遥测可读性,不进任何决策)。
-    """
-    ist = getattr(strategy_state_of(session), 'v3_intention', None)
-    if ist is not None:
-        locked = getattr(ist, 'locked_comp', '') or ''
-        if locked:
-            return locked
-        pair = getattr(ist, 'p1_pair', ()) or ()
-        if pair:
-            return '过渡配方·' + '+'.join(pair)
-    return ''
 
 
 def _board_factions_of(deployed) -> dict[str, int]:
@@ -378,7 +325,8 @@ def _engines_count(board_factions: dict[str, int],
     本体 = cw_deploy_logic.engines_count(单一源);
     符号解耦后权威副本 = knowledge/cw_engine_facts.engines_count
     (cw_deploy_logic 迁移挂账,本薄委托改接新家);历史消费点
-    (decision_v2/cw_evolution/cw_delta_pool_gen 等的懒 import)不动。
+    (decision_v2/cw_evolution 等的懒 import)不动,原 cw_delta_pool_gen
+    消费点已随 sim 重做删除面退役。
     希儿系=希儿在场 AND(量子同频≥2 OR 贝洛伯格≥2)——
     与三羁绊同级可组合。
     """

@@ -11,12 +11,10 @@
 包文件),闸是纪律防线不是完备机制,「在飞批禁起局」人工纪律不因此解除。
 
 豁免:已知合法不一致走默认豁免名单(锚定完整相对路径匹配,防同尾缀路径
-静默漏扫)。唯一在册豁免 `src/sr_od/application/currency_war/data/
-cw_delta_pool_data.py`:该文件由局终自动再生管线写入(生成器唯一核心
-sim/cw_delta_pool_gen.py,实机局终钩子调用,ADR-0344),磁盘内容 ≠ HEAD 属
-设计内稳态而非编辑污染;残余风险申报——针对该文件的在飞编辑批闸无法区分,
-由该文件自身的快照指纹机制(sim/pool.py resolve_pool 指纹失配校验)另行看守。
-豁免名单可参数化扩展,新增豁免须逐条给理由,禁宽豁免。
+静默漏扫)。旧唯一在册豁免 `src/sr_od/application/currency_war/data/
+cw_delta_pool_data.py`(Δ池快照,由局终自动再生管线写入,ADR-0344)
+已随 sim 重做删除面(sim-redesign design.md §2.4.1:Δ池生成器与消费
+面整删)一并移除,名单现为空——新增豁免须逐条给理由,禁宽豁免。
 
 零行为副作用:闸只拦起局并输出结构化不一致清单,不改任何游戏逻辑;可经
 `CurrencyWarConfig.code_hash_gate` 配置关闭(缺省开)。git 自身不可用
@@ -39,12 +37,10 @@ from one_dragon.utils.file_utils import get_project_root
 MODULE_PREFIX: str = 'sr_od.application.currency_war'
 
 # 默认豁免名单(锚定完整相对路径,仓库根相对——非后缀匹配:endswith 会让辖域内
-# 未来任何同尾缀路径静默漏扫,ADR-0581 §2.3):Δ池快照由局终自动再生管线写入
-# (生成器唯一核心 sim/cw_delta_pool_gen.py,ADR-0344),磁盘 ≠ HEAD 属设计稳态。
-# 残余风险(该文件在飞编辑批闸不感知)由 sim/pool.py 快照指纹校验另行看守。
-DEFAULT_EXEMPTION_PATHS: tuple[str, ...] = (
-    'src/sr_od/application/currency_war/data/cw_delta_pool_data.py',
-)
+# 未来任何同尾缀路径静默漏扫,ADR-0581 §2.3)。旧唯一条目 Δ池快照
+# (cw_delta_pool_data.py)已随 sim 重做删除面移除(其生成器/消费面
+# 同批删除,文件不存在后豁免条目即死路径登记),名单现为空。
+DEFAULT_EXEMPTION_PATHS: tuple[str, ...] = ()
 
 # 不一致类别
 _KIND_MODIFIED = 'modified'  # 在 HEAD 中但工作树内容不同

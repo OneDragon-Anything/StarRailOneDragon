@@ -885,11 +885,11 @@ class DecisionV2Registry:
     #: boss 税 p75 位面锚(消费点按位面取值;键 = CwSimFrame.plane,1/2)。
     #: plane 1 = 现值原样(P1 语料标定,原 boss_tax_p75 标量同源值
     #:  34.0——该标量已随旧方案清退批删除,by_plane 为唯一取值口),零漂移锚;
-    #: plane 2 槽位已就位但默认仍取现值——sim 侧位面观测
-    #: (cw_coarse_battle 标定 manifest 的 hp_events_by_plane:P2 boss
-    #: n=90 均损 −21.63 vs P1 −19.54)已给 P2 真值方向,但 P2 槽位换
-    #: 数据的扰动未评估。激活挂账:待形态 A/B 开臂判据收口后,与 sim
-    #: 收入口径修正同批评估;重标定覆写只改本字段(单一源)。
+    #: plane 2 槽位已就位但默认仍取现值——P2 位面真值方向有语料标定
+    #: (git 历史:P2 boss n=90 均损 −21.63 vs P1 −19.54;原载于旧
+    #: cw_coarse_battle 标定 manifest,该模块已随 sim 重做删除面退役),
+    #: 但 P2 槽位换数据的扰动未评估。激活挂账:待形态 A/B 开臂判据收口
+    #: 后,与 sim 收入口径修正同批评估;重标定覆写只改本字段(单一源)。
     #: ADR-0441:FLIP 末窗投影臂(posture_release)与 C1 投影安全带
     #: (filters)两消费点均已按位面取数;评估结论=暂不激活(plane 2
     #: 维持 34),复核触发条件见该 ADR。
@@ -950,8 +950,9 @@ class DecisionV2Registry:
     #: 15.50,标定叙述见 p2_node_loss_table 段头与 ADR-0440):reward 零损档同上表(奖励/补给零损照走)。
     p2_cond_loss_table: dict[str, float] = field(default_factory=lambda: {
         'normal': 12.77, 'encounter': 13.33, 'boss': 15.50, 'reward': 0.0})
-    #: P2 损血标定家族版本披露锚(第三维,独立于 cw_coarse_battle.
-    #: COARSE_CALIB_VERSION 与 cw_economy 收入口径版本):任一 P2 损血
+    #: P2 损血标定家族版本披露锚(第三维,与 cw_economy 收入口径版本
+    #: 相互独立;旧粗模型版本锚 cw_coarse_battle.COARSE_CALIB_VERSION
+    #: 已随 sim 重做删除面退役):任一 P2 损血
     #: 标定值/消费口径变动(p2_node_loss_table / p2_cond_loss_table /
     #: p_win_p2_by_rung / 两态递推形态)必须递增并随批重锁。sim 台账
     #: manifest 不承载本版本(cw_sim 禁触批,披露面=registry+锁,边界
