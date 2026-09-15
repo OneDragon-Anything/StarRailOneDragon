@@ -569,7 +569,7 @@ class CwScreenDeploy(SrOperation):
         _swap_ctx = None
         if _sess is not None:
             _tracked_n = swap_arm_deployed_count(
-                _board, getattr(exec_state_of(_sess), 'tracked_deployed', None))
+                _board, _bso(_sess).tracked_books.deployed)
             _swap_ctx = _aswap(
                 _sess,
                 state=_bs,
@@ -988,9 +988,10 @@ class CwScreenDeploy(SrOperation):
             back_eq = None
         else:
             back_eq = read_row_equipped(self.ctx, scr, equip_grays, _bk_pfx, _bk_n)
-        tracked = _match.exec_state.tracked_deployed
-        if not isinstance(tracked, list):
-            tracked = []   # 未观察哨兵(T-268):装备分布回写零底座可循
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            board_state_of,
+        )
+        tracked = board_state_of(_match.session).tracked_books.deployed
         _n = 0
         for c in tracked:
             slot = getattr(c, 'slot', None)

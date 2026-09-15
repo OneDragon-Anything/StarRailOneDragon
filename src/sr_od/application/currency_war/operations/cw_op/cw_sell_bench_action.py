@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_exec_state import (
-    exec_state_of,
     pad_bench,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -49,9 +48,13 @@ class SellBenchOp(ActionOp):
         # 列表下标为准(与 mutate 入口 pad 同构),不再按 slot 重构(陈旧
         # slot 会把卡放错槽;错位卖出由下方 mutate 代际校验拦截 no-op,
         # 安全非等价——故 S2 先于 S1 生效)。
-        _tracked = exec_state_of(match.session).tracked_bench_chars
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            board_state_of,
+        )
+        _books = board_state_of(match.session).tracked_books
+        _tracked = _books.bench
         pad_bench(_tracked)
-        mutate_bench_deployed(_tracked, exec_state_of(match.session).tracked_deployed, action)
+        mutate_bench_deployed(_tracked, _books.deployed, action)
         # ADR-0328 执行域对齐:卖出件入同轮已卖集(执行成功是卖出事实的
         # 权威,register_round_sold 带轮键自校验)。
         # 换源 T-146(登记集消点):轮键源 = session 容器单例(node = 本

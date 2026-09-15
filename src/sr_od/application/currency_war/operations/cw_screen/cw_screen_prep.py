@@ -1596,7 +1596,7 @@ class CwScreenPrep(CwScreenOpBase):
             if session is None:
                 return
             computed = board_from_tracked(
-                list(getattr(exec_state_of(session), 'tracked_deployed', None) or []))
+                list(board_state_of(session).tracked_books.deployed or []))
             if computed is None:
                 return
             frame = getattr(self, 'last_screenshot', None)
@@ -3392,8 +3392,7 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
                 board_state_of,
             )
             _post_bench = list(
-                getattr(exec_state_of(match.session), 'tracked_bench_chars',
-                        None) or [])
+                board_state_of(match.session).tracked_books.bench or [])
             _inc_gold = None
             if not total_xp_buy:
                 # 单区金真读(执行边界压缩·买后验证增量):本单元动作

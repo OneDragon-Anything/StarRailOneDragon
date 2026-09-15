@@ -1425,16 +1425,22 @@ class CwLoop(SrOperation):
                 exec_state_of,
             )
             exec_state_of(session).cw_resumed_match = True
-            # T-268 观察态失效(接管):两账字段写入「未观察」哨兵——自本
-            # 事件起账值不可消费,商店策略门(flow.decide_shop_action)据此
-            # 关店交回外循环,备战环 heavy 观察(reconcile_tracking 屏幕真
-            # 值写回)替换哨兵完成锚定后再进店;店内零原地重建。重置/账失
-            # 效类事件出现时同口写哨兵(语义登记 = exec_state 字段注)。
-            from sr_od.application.currency_war.kernel.cw_exec_state import (
-                UNOBSERVED_TRACKED,
+            # T-268 观察态失效(接管):容器观察态字段写 False——tracked 主
+            # 账值自本事件起不可消费,商店策略门(flow.decide_shop_action,
+            # 判定单一源 = kernel tracked_unobserved)据此关店交回外循环,
+            # 备战环 heavy 观察(reconcile_tracking 屏幕真值写回)置 True
+            # 完成锚定后再进店;店内零原地重建。重置/账失效类事件出现时
+            # 同口写 False(语义登记 = game state 字段注)。
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                ChannelSig,
+                board_state_of,
             )
-            exec_state_of(session).tracked_bench_chars = UNOBSERVED_TRACKED
-            exec_state_of(session).tracked_deployed = UNOBSERVED_TRACKED
+            _bs_resumed = board_state_of(session)
+            _bs_resumed.write_logic(
+                _bs_resumed.tracked_account_observed, False,
+                produced_by='CwLoop', evidence='takeover_invalidation',
+                sig=ChannelSig(family='logic_action', actor='CwLoop',
+                               mode='compute'))
         except Exception as e:  # noqa: BLE001  旗标写入不阻塞分派
             log.debug(f'[cw-loop] 恢复局旗标写入跳过: {e}')
 

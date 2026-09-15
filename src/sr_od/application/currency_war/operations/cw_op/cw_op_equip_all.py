@@ -43,7 +43,6 @@ from sr_od.application.currency_war.kernel.cw_equip_wear_plan import (  # noqa: 
 from sr_od.application.currency_war.kernel.cw_equip_wear_plan import (
     FRONT_SLOT_COUNT as _FRONT_SLOT_COUNT,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
 from sr_od.application.currency_war.obs.currency_war_char_id import (
     AvatarTemplates,
@@ -92,13 +91,16 @@ def register_equip_worn(session, item_name: str, char_name: str,
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             DEPLOYED_FRONT_CAPACITY,
         )
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            board_state_of,
+        )
         owned = list(getattr(session, 'last_owned_equips', None) or [])
         if item_name in owned:
             owned.remove(item_name)
             session.last_owned_equips = owned
         idx = (slot - 1 if row == 'front'
                else DEPLOYED_FRONT_CAPACITY + slot - 1)
-        dep = list(getattr(exec_state_of(session), 'tracked_deployed', None) or [])
+        dep = list(board_state_of(session).tracked_books.deployed or [])
         if 0 <= idx < len(dep) and dep[idx] is not None:
             dep[idx].equips = list(getattr(dep[idx], 'equips', None) or []) \
                 + [item_name]

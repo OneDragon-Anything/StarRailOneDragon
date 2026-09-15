@@ -9,9 +9,10 @@ from __future__ import annotations
 from cv2.typing import MatLike
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_exec_state import (
-    exec_state_of,
-    tracked_list,
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
+    board_state_of,
 )
 
 # 下行守卫标定常量(值单一源 = 注册表;cw_reconcile 只消费)
@@ -187,13 +188,12 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     # (槽位表语义写入端)——本消费端若假设紧凑无 None 即双写冲突
     # (曾致验证局数百次 AttributeError 崩溃-重派循环)。
     # 守卫:跳过 None 槽(空槽在对账语义里=无信息,不是冲突)。
-    # 未观察哨兵(T-268)按「无旧账」读:哨兵值不可消费,等价空账参与
-    # 对账判定(不触发双空读守卫的「前值非空」半)。
-    old_b = [(bc.char_id, bc.star)
-             for bc in tracked_list(exec_state_of(session).tracked_bench_chars)
+    # 旧账基准 = game state 簿记(T-268 三次修正:宿主 = GameState.
+    # tracked_books,本函数 = game state 层内部实现,就地处置)。
+    _books = board_state_of(session).tracked_books
+    old_b = [(bc.char_id, bc.star) for bc in _books.bench
              if bc is not None]
-    old_d = [(bc.char_id, bc.star)
-             for bc in tracked_list(exec_state_of(session).tracked_deployed)
+    old_d = [(bc.char_id, bc.star) for bc in _books.deployed
              if bc is not None]
     if not bench and not deployed and (old_b or old_d):
         log.warning(f'[cw!][{source}] 对账跳过:SIFT 双空读(疑过渡帧)+前值非空 → 保旧 tracking')
@@ -217,8 +217,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     # ②超额证据采新:名级最高读星低于锚定星连续 STAR_DOWNGRADE_CONFIRM_
     #   FRAMES 帧一致(帧态门帧不计数)才确认真回退采新——N 推导见常量注。
     _pend = dict(getattr(session, 'star_pending_regression', {}) or {})
-    _tracked_bench_now = tracked_list(
-        exec_state_of(session).tracked_bench_chars)
+    _tracked_bench_now = board_state_of(session).tracked_books.bench
     # 名级锚比较:每名只取**最高读星**对**最高旧星(锚定星)**仲裁一次。
     # 旧实现按 (名,星) 对逐副本比较——同名 1/2/3★ 三副本并存时,2★/1★
     # 真实副本各被判一次「回退」并连环触发误抬(run_20260915_054718 §5
@@ -333,12 +332,22 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         _slots = bench_occupied_slot_nos(bench)
         _healthy = bench_slots_healthy(_slots)
         if _healthy:
-            # T-268 锚定写回 = 观察态退出点:屏幕真值整体替换字段值
-            # (未观察哨兵在此被实读值替换;写入即「已观察」)。
-            exec_state_of(session).tracked_bench_chars = bench_from_compact(
-                _merge_equips(tracked_list(
-                    exec_state_of(session).tracked_bench_chars), bench))
+            # T-268 锚定写回 = 观察态退出点:屏幕真值写回成功即「已观察」
+            # ——容器观察态字段置 True(策略商店门放行;bench 读失败/双空
+            # 读守卫/槽号健康门拒绝不走此处 = 保持未观察)。best-effort:
+            # 容器缺席/写失败不阻断对账主链(簿记已照常写回)。
+            board_state_of(session).tracked_books.bench = bench_from_compact(
+                _merge_equips(_books.bench, bench))
             _bench_written = True
+            try:
+                board_state_of(session).write_logic(
+                    board_state_of(session).tracked_account_observed, True,
+                    produced_by=f'reconcile_tracking:{source}',
+                    evidence='observation_anchor',
+                    sig=ChannelSig(family='logic_action',
+                                   actor='CwReconcile', mode='compute'))
+            except Exception as _e:  # noqa: BLE001  观察态置位不阻断对账
+                log.warning(f'[cw!][{source}] 观察态置位失败(不阻断): {_e}')
         else:
             # 留证排序 str 化:健康门防御的对象正是非 int 槽号,拒绝分支若
             # 对混型列表(如 [None, 2])直接 sorted 会先 TypeError——防御
@@ -361,9 +370,9 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             deployed_from_compact,
         )
-        exec_state_of(session).tracked_deployed = deployed_from_compact(
-            _merge_equips(tracked_list(
-                exec_state_of(session).tracked_deployed), deployed))
+        board_state_of(session).tracked_books.deployed = deployed_from_compact(
+            _merge_equips(board_state_of(session).tracked_books.deployed,
+                          deployed))
     if drifted:
         log.warning(f'[cw!][{source}] 对账纠漂(read≠tracking):bench {old_b}→{new_b} |'
                     f' deployed {old_d}→{new_d}')

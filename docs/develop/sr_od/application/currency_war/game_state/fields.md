@@ -454,6 +454,25 @@ active_env 核对源。开局写端见 §3.4.3(多屏写入,本条=备战屏侧�
   写端(溢出位 SIFT);SellBench 溢出腿落地后 logic 直写 `''`(入位消费;
   入位时星级缺读按 1 兜底,下帧 heavy 实读覆盖修正)。
 
+### 3.2.x tracked 主账观察状态 tracked_account_observed(bool;T-268)
+
+**语义**:tracked 主账(bench+deployed 两面,同帧锚定,单一状态)是否已按
+屏幕真值锚定。三态:`None`(从未写)= 缺省可信——正常新局 0 件即屏幕真值,
+不经失效事件的 sim/离线入口不受误伤;`False` = 显式失效(接管/重置/账失效)
+后未锚定,**账值不可消费**;`True` = 已锚定。事件驱动(非逐帧)。
+
+- **写端**:`False` = `cw_loop._mark_session_resumed`(接管检测确认点;重置/
+  账失效类事件同口);`True` = kernel `reconcile_tracking` bench 侧屏幕真值
+  写回成功点(唯一锚定写端;bench 读失败/双空读守卫/槽号健康门拒绝均不写 =
+  保持未观察)。
+- **消费端**:策略商店门(`flow.decide_shop_action`,判定单一源 = 本模块
+  `tracked_unobserved`)——未观察 → 返回恒可用终结 `CloseShop` 交回外循环,
+  备战环 heavy 观察锚定后再进店;执行侧跳过留痕/连续跳过熔断
+  (`cw_screen_buy_cards`,分键 `shop_skipped_unobserved`/`..._stop`)。
+- **配套裁定(同批)**:`ExecState.tracked_bench_chars/tracked_deployed` 降级
+  为执行侧簿记(reconcile 输入/输出 + 动作随动同步),不再有面向策略的读口;
+  `mandate_v1._tracking_view`(tracking 优先 + snapshot 静默回退)删除。
+
 ### 3.3 商店开态(覆盖在备战画面之上)
 
 > 商店面板弹在备战画面上:牌面区字段在本屏写入;下层备战画面被覆盖/压暗——**本屏

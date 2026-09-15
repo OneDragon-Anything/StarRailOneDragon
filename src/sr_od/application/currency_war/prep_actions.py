@@ -36,9 +36,8 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     _advance_gold,
     deployed_row_slot,
     exec_state_of,
-    tracked_list,
-    tracked_unobserved,
 )
+from sr_od.application.currency_war.kernel.cw_game_state import board_state_of
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CW_ACTION_TYPES,
     ClickSpheres,
@@ -534,15 +533,15 @@ class PrepActionExecutor:
             session = match.session if match is not None else None
             if session is None:
                 return None
-            es = exec_state_of(session)
             if isinstance(action, SellBench):
-                tracked = es.tracked_bench_chars or []
+                tracked = board_state_of(session).tracked_books.bench or []
                 return (tracked[action.bench_idx]
                         if 0 <= action.bench_idx < len(tracked) else None)
             from sr_od.application.currency_war.kernel.cw_exec_state import (
                 pad_deployed,
             )
-            tracked = pad_deployed(list(es.tracked_deployed or []))
+            tracked = pad_deployed(list(
+                board_state_of(session).tracked_books.deployed or []))
             idx = action.deployed_idx
             return tracked[idx] if 0 <= idx < len(tracked) else None
         except Exception:   # noqa: BLE001  观测容缺,不阻塞执行链
@@ -668,7 +667,7 @@ class PrepActionExecutor:
             match = self._ctx.cw_match
             if match is None or match.session is None:
                 return -1
-            tracked = exec_state_of(match.session).tracked_bench_chars
+            tracked = board_state_of(match.session).tracked_books.bench
             return sum(1 for bc in tracked if bc is not None)
         except Exception:   # noqa: BLE001  观测 best-effort
             return -1
@@ -833,8 +832,8 @@ class PrepActionExecutor:
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             pad_deployed,
         )
-        tracked = (pad_deployed(list(tracked_list(
-            exec_state_of(session).tracked_deployed)))
+        tracked = (pad_deployed(list(
+            board_state_of(session).tracked_books.deployed))
             if session is not None else [])
         front_empty, back_empty = empty_deploy_slots(
             tracked, front_total=len(self._front_pts),
@@ -1052,38 +1051,31 @@ class PrepActionExecutor:
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             pad_bench,
         )
-        _es = exec_state_of(match.session)
-        # 未观察账(T-268 哨兵)跳过动作随动同步:禁在未锚定底座上积累
-        # 动作事实,屏面真值由下一锚定(reconcile)整体重建。
-        if tracked_unobserved(match.session):
-            return
-        _pre = tracked_list(_es.tracked_bench_chars)
+        _books = board_state_of(match.session).tracked_books
+        _pre = list(_books.bench or [])
         _expose_unhealthy_tracked_slots(_pre)
         tracked = pad_bench(_pre)
         if 0 <= bench_idx < len(tracked):
             tracked[bench_idx] = None   # 置 None 不移位(pad 态保持)
-        _es.tracked_bench_chars = tracked
+        _books.bench = tracked
 
     def _track_remove_deployed(self, row: str, slot: int) -> None:
         match = self._ctx.cw_match
         if match is None or match.session is None:
             return
         # ADR-0392:tracked_deployed 槽位表(置 None 不移位);物理 (row,
-        # slot) → 槽位下标换算单一函数 = deployed_idx_of(执行坐标边)。
-        # 未观察账跳过随动同步(同 _track_remove_bench,禁积累动作事实)。
+        # slot) → 槽位下标换算单一函数 = deployed_idx_of(执行坐标边)
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             deployed_idx_of,
             pad_deployed,
         )
-        if tracked_unobserved(match.session):
-            return
-        tracked = pad_deployed(list(tracked_list(
-            exec_state_of(match.session).tracked_deployed)))
+        tracked = pad_deployed(list(
+            board_state_of(match.session).tracked_books.deployed))
         idx = deployed_idx_of(row, slot)
         if 0 <= idx < len(tracked) and tracked[idx] is not None \
                 and tracked[idx].position_pref == row:
             tracked[idx] = None
-        exec_state_of(match.session).tracked_deployed = tracked
+        board_state_of(match.session).tracked_books.deployed = tracked
 
     def _track_move_deployed(self, bench_idx: int, to_row: str, to_slot: int) -> None:
         """上阵后备势跟踪同步:bench 条目 → deployed 条目(位置/槽位改写)。
@@ -1098,24 +1090,21 @@ class PrepActionExecutor:
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             pad_bench,
         )
-        _es = exec_state_of(match.session)
-        # 未观察账跳过随动同步(同 _track_remove_bench,禁积累动作事实)。
-        if tracked_unobserved(match.session):
-            return
-        tracked = pad_bench(list(tracked_list(_es.tracked_bench_chars)))
+        _books = board_state_of(match.session).tracked_books
+        tracked = pad_bench(list(_books.bench or []))
         _expose_unhealthy_tracked_slots(tracked)
         moved = (tracked[bench_idx]
                  if 0 <= bench_idx < len(tracked) else None)
         if moved is not None:
             tracked[bench_idx] = None   # 置 None 不移位(pad 态保持)
-        _es.tracked_bench_chars = tracked
+        _books.bench = tracked
         # ADR-0392:tracked_deployed 槽位表——deployed_place 单一源落槽;
         # to_slot 是执行器物理槽位真值,落槽后覆写信息位。
         from sr_od.application.currency_war.kernel.cw_exec_state import deployed_place
         if moved is not None:
             moved.position_pref = to_row
-            deployed_place(tracked_list(
-                exec_state_of(match.session).tracked_deployed), moved)
+            deployed_place(board_state_of(match.session).tracked_books.deployed,
+                           moved)
             moved.slot = to_slot
 
     # ===== 商店域 =====

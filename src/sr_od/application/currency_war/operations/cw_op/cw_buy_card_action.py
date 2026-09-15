@@ -10,7 +10,6 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
     bench_occupied,
-    exec_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     shop_payload_content_cards,
@@ -133,8 +132,11 @@ class BuyCardOp(ActionOp):
         # 误炸;2026-09-09 05:52 运行局双响事故)。
         _payload_cards = (shop_payload_content_cards(state.shop.value)
                           if state.shop.value is not None else [])
-        mutate_bench_deployed(exec_state_of(match.session).tracked_bench_chars,
-                              exec_state_of(match.session).tracked_deployed,
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            board_state_of as _bso_buy,
+        )
+        _books = _bso_buy(match.session).tracked_books
+        mutate_bench_deployed(_books.bench, _books.deployed,
                               action, shop=_payload_cards)
         if action.card.name:
             _cnt = 1
@@ -145,7 +147,7 @@ class BuyCardOp(ActionOp):
                 _cnt = max(1, merge_buy_k(
                     action.card.name, action.card.star or 1,
                     bench_slots_of(state),
-                    exec_state_of(match.session).tracked_deployed,
+                    _books.deployed,
                     _payload_cards))
                 ledger.spend_executed += (action.card.cost or 0) * (_cnt - 1)
             from sr_od.application.currency_war.kernel.cw_prep_expect import (

@@ -34,22 +34,14 @@ reconcile 纠漂显影(观察赢),op 层不再做双态比对。
 """
 from __future__ import annotations
 
-import contextlib
-from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from one_dragon.base.geometry.point import Point
 from sr_od.application.currency_war.kernel.cw_exec_state import (
-    BENCH_CAPACITY,
-    BenchChar,
     exec_state_of,
-    pad_bench,
-    tracked_list,
-    tracked_unobserved,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
-    ChannelSig,
     GameState,
     shop_payload_content_cards,
 )
@@ -57,10 +49,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     BuyCard,
     SellBench,
 )
-
-# 刷新钮真值 reader 经模块属性路由消费(替身缝:测试 monkeypatch 模块属性,
-# 直接 from-import 会绑死旧引用绕开替身,同 _buy_cards_mod 约定)。
-from sr_od.application.currency_war.telemetry import defects
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_vocab import Action
@@ -220,84 +208,26 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
                 '(策略器 bug:跨代际提案,ADR-0517 决策 9)')
 
 
-def _reseed_bench_layout(state: GameState,
-                         tracked: list[BenchChar | None]) -> bool:
-    """逻辑态 bench 布局按执行侧 tracked 槽位表就地回写(布局单一源重播种:
-    churn 后 tracked/实况是重排侧真值,逻辑态副本跟随)。
-
-    槽号健康门:tracked 槽号来自 SIFT/对账 churn,属无守卫数据——占用
-    槽号须唯一 ∧ 全在 1..BENCH_CAPACITY,违者**拒绝重播种**维持旧布局
-    (防坏槽号污染逻辑态后进入 M4 卖出链:重播种后两账同源,
-    guard_proposal_vs_expected 对表位置-物理格错位结构性失明,错格拖拽
-    = 卖错人/卖空格),并落 ``bench_slot_unhealthy`` 台账分键留证。
-    返回是否实际重播种。
-    """
-    occupied = [b for b in (tracked or []) if b is not None]
-    slots = [b.slot for b in occupied]
-    healthy = all(isinstance(s, int) and 1 <= s <= BENCH_CAPACITY
-                  for s in slots) and len(set(slots)) == len(slots)
-    if not healthy:
-        with contextlib.suppress(Exception):
-            defects.record_defect(
-                'bench', defects.DEFECT_KIND_BENCH_SLOT_UNHEALTHY,
-                expected='tracked 占用槽号唯一 ∧ 全在 1..BENCH_CAPACITY',
-                observed=f'slots={sorted(slots)}',
-                verdict=('留证-tracked 槽号不健康,拒绝重播种(维持旧逻辑态'
-                         '布局,坏槽号不进不可逆卖出链;根因=对账 churn '
-                         '槽号无守卫,归观察层仲裁批)'),
-                reader_source='reseed_health_gate',
-                gap_large=True,
-                note='重播种槽号健康门(占用表槽号唯一性与值域校验)')
-        return False
-    # 写目标 = 容器 bench 域(W6 波 4,设计件 §2.3:重播种写点 =
-    # write_logic(bs.bench, tracked 重建 BenchView),逻辑态域集例外申报
-    # 面;原「逻辑态帧就地回写」(前身黑板槽载体)随黑板槽退役消亡)。
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        GameState,
-        bench_view_of_slots,
-    )
-    assert isinstance(state, GameState)   # 容器形态唯一(波 4 起)
-    state.write_logic(state.bench, bench_view_of_slots(list(tracked)),
-                      produced_by='reseed_bench_layout',
-                      sig=ChannelSig(
-                          family='logic_action', actor='CwScreenBuyCards',
-                          mode='compute',
-                          group_id=(f'act:CwScreenBuyCards@'
-                                    f'{state.write_seq + 1}')))
-    return True
-
-
-def reseed_bench_if_layout_stale(state: GameState, session,
-                                 seed_epoch: int) -> str:
-    """S3 布局代次检差三步的封装(ADR-0646;单动作循环每动作消费前调用)。
+def bench_layout_stale(session, seed_epoch: int) -> bool:
+    """S3 布局代次检差(T-271 fail-stop 形态;原 reseed 三步封装收缩)。
 
     检差:exec_state 布局代次 vs 播种期快照——命中 = visit 内布局已重排
     (reconcile 纠漂递增,唯一写点 kernel/cw_reconcile),已发射动作的
-    bench_idx 代际失效,不可只换 state.bench。三步语义:
-    ①截断在飞计划(序列决策契约截断语义,plan_truncated 记账由调用方承担——
-      本函数零 ledger 依赖,保持纯逻辑态面可单测);
-    ②按 tracked 重播种(下标直拷 pad 后经 ``_reseed_bench_layout``,
-      含槽号健康门——脏槽号拒绝重播种维持旧布局);
-    ③重入决策(调用方 continue,decide 消费重播种后黑板帧)。
+    bench_idx 代际失效。
+
+    处置 = fail-stop(与未观察机制同构,编排者裁定,T-268 卡 note):
+    命中即本段收工交回外循环,外循环落回备战 heavy 观察 → 入口
+    reconcile 锚定后再进店。禁店内按执行侧簿记重播种容器 bench——那是
+    op 层第二条容器 bench 写口,违写口归属硬规则(对账与仲裁唯一发生
+    在观察边界,flow/screen_op.md §4 + action-logic-state.md §1.3);
+    原 ``_reseed_bench_layout``/``reseed_bench_if_layout_stale`` 随该
+    裁定删除,其槽号健康门留证职责由 reconcile 前置槽号健康门承接。
 
     Returns:
-        'clean' = 代次未变(常态,当前架构 S2+S1 后恒此值——reconcile 均在
-        visit 外跑);'reseeded' = 检差命中且重播种成功(调用方重入决策);
-        'failed' = 检差命中但重播种被槽号健康门拒绝(布局不可信,调用方应
-        fail-stop 本段收工交回外循环重观察——禁在不可信布局上继续发射)。
+        True = 布局代次已漂移(调用方 fail-stop 本段收工);
+        False = 代次未变(常态)。
     """
-    if exec_state_of(session).bench_layout_epoch == seed_epoch:
-        return 'clean'
-    # 未观察账无布局可信,重播种无从谈起(布局代次只由 reconcile 纠漂
-    # 推进,未观察窗内不可达;防御位)→ 按 clean 放行,等观察链锚定。
-    if tracked_unobserved(session):
-        return 'clean'
-    tracked = pad_bench(deepcopy(
-        tracked_list(getattr(exec_state_of(session), 'tracked_bench_chars',
-                             None))))
-    if not _reseed_bench_layout(state, tracked):
-        return 'failed'
-    return 'reseeded'
+    return exec_state_of(session).bench_layout_epoch != seed_epoch
 
 
 # 商店单动作 op 族住动作文件:通用基类 ActionOp = cw_action_base.py

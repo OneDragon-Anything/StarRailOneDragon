@@ -294,6 +294,9 @@ REGISTERED_ACTORS: set[str] = {
     'SimEngineP1',             # sim P1 引擎(T-185 批B:外部事件 obs 族写点
                                # ——收入/结算/回合初始化/开局播种/装备发放/
                                # 部署代理;动作应用走 logic_action 族转移函数)
+    'CwReconcile',             # 对账模块(kernel/cw_reconcile;T-268 观察态
+                               # 锚定写点——屏幕真值写回成功置
+                               # tracked_account_observed=True)
 }
 
 
@@ -2143,17 +2146,12 @@ def apply_prep_action_logic(bs: GameState, action: Any, *,
             if session is not None:
                 from sr_od.application.currency_war.kernel.cw_exec_state import (
                     bench_from_compact,
-                    exec_state_of,
-                    tracked_unobserved,
                 )
-                # 未观察账(T-268 哨兵)跳过对称吸收:禁在未锚定底座上
-                # 积累动作事实,屏面真值由下一锚定(reconcile)整体重建。
-                if not tracked_unobserved(session):
-                    _es = exec_state_of(session)
-                    _tracked = [bc for bc in (_es.tracked_bench_chars or [])
-                                if bc is not None and bc.slot != idx + 1]
-                    _tracked.append(BenchChar(slot=idx + 1, char_id=_ov_id))
-                    _es.tracked_bench_chars = bench_from_compact(_tracked)
+                _books = bs.tracked_books
+                _tracked = [bc for bc in (_books.bench or [])
+                            if bc is not None and bc.slot != idx + 1]
+                _tracked.append(BenchChar(slot=idx + 1, char_id=_ov_id))
+                _books.bench = bench_from_compact(_tracked)
         _w(bs.bench, bench_view_of_slots(new_slots), 'proj_sell_bench')
         g = bs.gold.value
         if g is not None:
@@ -2387,7 +2385,33 @@ def board_state_of(session: object) -> GameState:
     return bs
 
 
+def tracked_unobserved(session: object) -> bool:
+    """tracked 主账是否处于未观察态(判定单一源;策略商店门与执行侧
+    跳过留痕/熔断消费,T-268)。
+
+    判据 = 容器字段 :attr:`GameState.tracked_account_observed` 显式 False
+    (接管/重置/账失效写);None(从未写,缺省可信)与 True(已锚定)均
+    为已观察。session 经容器读口解析,字段从未写(缺省)不视为未观察。
+    """
+    return board_state_of(session).tracked_account_observed.value is False
+
+
 # ============================================================ GameState 单例
+
+
+@dataclass
+class TrackedBooks:
+    """tracked 主账簿记(game state 层;T-268 三次修正宿主自 ExecState 迁入)。
+
+    bench/deployed = pad 态定长槽位表(list[BenchChar | None],ADR-0316/
+    0392)。**执行侧簿记容器**:写端 = kernel reconcile_tracking(观察边界
+    锚定写回)+ 动作随动同步(部署/卖出/溢出腿);**策略禁读**——观察
+    状态与策略消费口 = GameState.tracked_account_observed +
+    bench/front_row/back_row 席位视图。
+    """
+
+    bench: list = field(default_factory=list)
+    deployed: list = field(default_factory=list)
 
 
 @dataclass
@@ -2416,6 +2440,21 @@ class GameState:
     back_row: Field[list[Unit]] = field(default_factory=Field)   # 后排成员(§3.2.4)
     bench: Field[BenchView] = field(default_factory=Field)       # 备战席统一槽位视图(§3.2.5;capacity 随效果改写)
     back_layout: Field[int] = field(default_factory=Field)       # 后台格数(值域 6-9:平常 6,宝钻/召唤物扩展,上限 9;6/7/8/9 四档均已交互建档——9 档凭据=cw_back_layout._LAYOUT_PREFIX 与 screen_info 后排9槽-1..9;>9 域外按 8 格超集运行+evidence superset 标记,§3.2.7)
+    # [索引定义] tracked_account_observed = tracked 主账(bench+deployed 两
+    # 面,同帧锚定)的观察状态(T-268 用户裁定「观察状态落 game state 字段,
+    # 策略消费只走 game state」;三态语义:None = 从未写 = 缺省可信——正常
+    # 新局 0 件即屏幕真值,且不经失效事件的 sim/离线入口不受误伤;False =
+    # 显式失效(接管/重置/账失效)后未锚定,值不可消费;True = 备战环
+    # heavy 观察(observe_full → reconcile_tracking)屏幕真值写回成功 =
+    # 已锚定)。取值时机 = 事件驱动(非逐帧)。写入端:False = cw_loop
+    # ._mark_session_resumed(接管检测确认点;重置/账失效类事件同口写);
+    # True = kernel reconcile_tracking 的 bench 侧屏幕真值写回成功点
+    #(唯一锚定写端;bench 读失败/双空读守卫/槽号健康门拒绝均不写 = 保持
+    # 未观察)。消费面:策略商店门(flow.decide_shop_action,未观察 →
+    # CloseShop 交回外循环走备战重锚定;判定单一源 = 本模块
+    # tracked_unobserved)。ExecState.tracked_* 降级为执行侧簿记(reconcile
+    # 输入/输出与动作随动同步),不再有面向策略的读口。
+    tracked_account_observed: Field[bool] = field(default_factory=Field)
 
     # —— 经济与成长 ——
     gold: Field[int] = field(default_factory=Field)              # None=不可读(§3.2.9)
@@ -2505,6 +2544,18 @@ class GameState:
     # heavy 实读覆盖修正)。写入端单一源 = 同上观察写端;溢出腿落地后
     # logic 直写 ''(入位消费)。
     overflow_card: Field[str] = field(default_factory=Field)
+
+    # —— tracked 主账簿记宿主(T-268 三次修正:宿主自 ExecState 迁入)——
+    # [索引定义] tracked_books.bench/deployed = tracked 槽位表(list[BenchChar
+    # | None],pad 态定长 9/10 槽含 None,ADR-0316/0392)。**簿记容器,非
+    # Field 观察面**(先例 = settlement_ring/encounter_log:不经 observe/
+    # write_logic 通道,无观察赢仲裁,写端直改;元素 BenchChar 沿用既有
+    # 就地变异语义——shop mutate/部署装备回写)。**策略禁读**(消费口只有
+    # game state 的观察态字段 tracked_account_observed 与席位视图
+    # bench/front_row/back_row);合法写端 = kernel reconcile_tracking(观察
+    # 边界锚定写回)+ 动作随动同步(prep 执行器/溢出腿/部署装备回写/
+    # 商店 mutate)。观察状态(未观察/已观察)= 上方 tracked_account_observed。
+    tracked_books: TrackedBooks = field(default_factory=TrackedBooks)
 
     # —— 画面附加域(当前画面的 payload,非当前画面=None,§2.2 例外)——
     shop: Field[ShopPayload | None] = field(default_factory=Field)

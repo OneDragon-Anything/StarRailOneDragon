@@ -18,11 +18,11 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     bench_occupied,
     exec_state_of,
     ledger_node_type,
-    tracked_list,
-    tracked_unobserved,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    board_state_of,
     shop_payload_content_cards,
+    tracked_unobserved,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     SCREEN_NAME,
@@ -825,12 +825,11 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     #  = 编排壳在 visit 入口的容器 gold 现读暂存,单一捕获点同供安灯。)
     _buy_baseline = op.screenshot()
     # `w536_merge_expect/`:买牌期望态基座(pre 快照 = 单元执行前 tracked;
-    # 迁移批 3.2 起暂存账本随 ledger 外发,消费方 = finalize)。未观察哨兵
-    # coerce 成空表(下游遍历安全;未观察 visit 本就零动作,基座零消费)。
-    ledger.buy_pre_bench = deepcopy(tracked_list(
-        exec_state_of(match.session).tracked_bench_chars))
-    ledger.buy_pre_deployed = deepcopy(tracked_list(
-        exec_state_of(match.session).tracked_deployed))
+    # 迁移批 3.2 起暂存账本随 ledger 外发,消费方 = finalize)。
+    ledger.buy_pre_bench = deepcopy(
+        board_state_of(match.session).tracked_books.bench)
+    ledger.buy_pre_deployed = deepcopy(
+        board_state_of(match.session).tracked_books.deployed)
     # 执行边界压缩:首段入口观察已带全量语境(替代原开店后独立读);
     # _entry_frame_marked = visit 首段已标 full(续段标 none,连击续刷判定输入
     # 所在的段循环共用此分段);
@@ -994,11 +993,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # (tracked 播种已随 W6 波 4 黑板容器化取消——设计件 §2.1-5:容器
         #  bench = prep 帧观察值(观察漏斗写端)+ visit 内逻辑态直写;黑板帧
         #  播种的唯一消费者 = 旧帧决策链,读者切换后无行为面。)
-        _tracked_log = tracked_list(
-            exec_state_of(match.session).tracked_bench_chars)
-        if _tracked_log:
+        if board_state_of(match.session).tracked_books.bench:
             log.info(f'[cw] tracked_bench_chars='
-                     f'{[(c.char_id, c.star) for c in _tracked_log if c is not None]}'
+                     f'{[(c.char_id, c.star) for c in board_state_of(match.session).tracked_books.bench if c is not None]}'
                      f'(播种取消,仅日志显影)')
         # T-308 S3:播种期布局代次快照(单动作循环每动作消费前检差用;
         # 空播种段同样取值——检差面不依赖是否播种)。
@@ -1073,49 +1070,29 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # ---- 单动作决策循环(ADR-0517 决策 1/2;循环内零读屏)----
         # (播种期双账对账块已随 T-268 守卫退役删除;原 T-251 店内读屏重建
         #  出口同批移除——未观察态的锚定改走「策略关店 → 备战环 heavy
-        #  观察」链,店内零重建,见 ExecState tracked 字段「未观察」哨兵态
-        #  与下方 CloseShop 出口的跳过留痕/熔断。)
-        # 未观察跳过连续计数复位:本段入口观察态已锚定(两账均非哨兵,
-        # 含已观察空账)= 正常访问,重开熔断计数窗(载体 =
-        # strategy_state.cw4_counters;载体缺席静默跳过 = 无计数面)。
-        if not tracked_unobserved(match.session):
-            _ct_obs = getattr(strategy_state_of(match.session),
-                              'cw4_counters', None)
-            if isinstance(_ct_obs, dict):
-                _ct_obs[CW4_KEY_SHOP_SKIP_UNOBSERVED_STREAK] = 0
-            _ct_obs = getattr(strategy_state_of(match.session),
-                              'cw4_counters', None)
-            if isinstance(_ct_obs, dict):
-                _ct_obs[CW4_KEY_SHOP_SKIP_UNOBSERVED_STREAK] = 0
+        #  观察」链,店内零重建,观察态 = 容器字段
+        #  GameState.tracked_account_observed,与下方 CloseShop 出口的跳过
+        #  留痕/熔断。连续跳过计数复位不在段顶:见函数尾「完整收工且未跳
+        #  过」的完成点复位。)
         visit_actions: list = []
         _seg_frames = 0
         while True:
             _seg_frames += 1
-            # T-308/ADR-0646 S3 布局代次检差(每动作消费前):命中 = visit 内
-            # 布局已重排(reconcile 纠漂递增 epoch),已发射动作的 bench_idx
-            # 代际失效,不可只换 state.bench → 三步:①截断在飞计划(序列决策契约
-            # 截断语义,plan_truncated 记账)→ ②按 tracked 重播种(helper
-            # 内含槽号健康门)→ ③重入决策(decide 消费重播种后黑板帧)。
-            # 重播种被健康门拒绝 = 布局不可信 → fail-stop 本段收工交回外
-            # 循环重观察(序列决策契约 fail-stop 语义;禁在不可信布局上继续发射)。
+            # S3 布局代次检差(fail-stop 形态,T-271):命中 = visit 内
+            # 布局已重排(reconcile 纠漂递增 epoch),已发射动作的
+            # bench_idx 代际失效 → 本段收工交回外循环重观察(与未观察
+            # 机制同构:关店→备战 heavy 观察→reconcile 锚定后再进店)。
+            # 禁店内按执行侧簿记重播种容器 bench(原 reseed 三步封装
+            # 删除):那是 op 层第二条容器 bench 写口,违写口归属硬规则
+            #(对账/仲裁唯一发生在观察边界,screen_op §4 + action-logic-
+            # state §1.3)。
             from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
-                reseed_bench_if_layout_stale,
+                bench_layout_stale,
             )
-            # 重播种写目标 = 容器 bench 域(设计件 §2.3 reseed 写点;
-            # 输入改容器单例,逻辑态帧不再承载 bench)
-            _stale = reseed_bench_if_layout_stale(_bs_of_entry,
-                                                  match.session,
-                                                  _seed_epoch)
-            if _stale == 'reseeded':
-                _seed_epoch = exec_state_of(match.session).bench_layout_epoch
+            if bench_layout_stale(match.session, _seed_epoch):
                 ledger.plan_truncated = True
-                log.warning('[cw!][plan] 布局代次检差命中:在飞计划截断),'
-                            '已按 tracked 重播种逻辑态 bench,重入决策')
-                continue
-            if _stale == 'failed':
-                ledger.plan_truncated = True
-                log.warning('[cw!][plan] 布局代次检差命中但重播种被槽号健康门'
-                            '拒绝 → fail-stop 本段收工,交回外循环重观察')
+                log.warning('[cw!][plan] 布局代次检差命中 → fail-stop '
+                            '本段收工,交回外循环重观察')
                 break
             # 帧序推进(T-113/ADR-0579):段序号与 decisions 行同源,动作行
             # frame_seq 关联键读取端(op_journal.current_frame_seq)。
@@ -1420,6 +1397,15 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     #  外发;安灯动作序列/执行事实 = ledger.fact_rows 发射时增量追加行(切片5,无窗上界);gold
     #  基线 = 编排壳 visit 入口容器现读。消费方迁移见 cw_screen_prep
     #  .visit_open_shop/finalize_buy_phase 与 cw_loop 仲裁段。)
+    # 连续跳过计数复位(T-268 编排者核进):复位条件 = 「完成了一次未跳过
+    # 的正常访问」——本 visit 观察态已锚定且完整收工才重开熔断计数窗,
+    # K=2 数的是连续因未观察跳过,非任意间隔;跳过 visit(未观察)与中途
+    # 停机支都不复位。载体缺席静默跳过 = 无计数面。
+    if not tracked_unobserved(match.session):
+        _ct_fin = getattr(strategy_state_of(match.session),
+                          'cw4_counters', None)
+        if isinstance(_ct_fin, dict):
+            _ct_fin[CW4_KEY_SHOP_SKIP_UNOBSERVED_STREAK] = 0
     return None, ledger
 
 

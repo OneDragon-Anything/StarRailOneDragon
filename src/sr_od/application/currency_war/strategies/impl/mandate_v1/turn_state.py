@@ -46,10 +46,11 @@ class DirectionView:
     - ``committed``:R1 显式化(蓝图 §4.3)——P1 攒息语义(True=已定型/
       非双轨期)。装配点单一写端;唯一合法 session 读端 =
       ``prep_brain.committed_from``(grep 守卫锁其余读点归零)。
-    - ``bench_view``/``deployed_view``:R2 读口(蓝图 §2/§4.2)——
-      tracking 优先(session.tracked_*),fresh read 补缺;语义同老栈
-      方向计算输入(方向消费面;决策板面输入仍走 snap 新鲜读)。
-      元素 = BenchChar;bench 槽位 None=空槽,deployed 紧缩型(滤 None)。
+    - ``bench_view``/``deployed_view``:已随 T-268 三次修正退役(墓碑,
+      恒缺省空元组)——原 R2 读口(tracking 优先 + snapshot 补缺,生产 =
+      已删的 assembly._tracking_view)滞回职责被 T-261 kernel 锚定取代,
+      且全仓零消费面;观察态与策略消费口 = 容器字段
+      GameState.tracked_account_observed。字段保留 = 契约形状稳定。
 
     (P86 退役注:原 ``fallback_comp`` 投影字段(⑤无信号兜底线名)随
     FALLBACK_COMP_NAME 四面退役表④面整体删除——单一写端、grep 无读端的

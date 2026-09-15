@@ -20,7 +20,6 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar, exec_state_of
 from sr_od.application.currency_war.kernel.cw_intention import committed_from
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 from sr_od.application.currency_war.strategies.impl.mandate_v1.contracts import (
@@ -58,41 +57,12 @@ def hoard_consumer_domain(direction: DirectionView,
     return full_domain
 
 
-def _tracking_view(session: StrategySession, snapshot: Snapshot,
-                   ) -> tuple[tuple[BenchChar | None, ...],
-                              tuple[BenchChar, ...]]:
-    """R2 读口(蓝图 §2/§4.2):tracking 优先,fresh read 补缺。
-
-    exec_state_of(session).tracked_bench_chars / tracked_deployed = bot 执行记录计数器族
-    (session 保留清单,非派生值;识别噪声滞回锚)。语义同老栈方向计算
-    输入;决策板面输入仍走 snap 新鲜读(批 1 行为等价前提)。
-    元素经 ``cw_state.snapshot_copy`` 浅拷贝(W639 C 落码):TurnState 帧
-    与 session.tracked_* 断开对象别名——session 侧就地写端(shop 星级/
-    装备拼接、deploy_bench 装备覆盖)不再穿透视图,反向亦然。
-    """
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        snapshot_copy,
-        tracked_unobserved,
-    )
-    # T-268 二次修正:未观察 → 不回退不消费,短路。回退(snapshot 粗读
-    # 冒充席面)会掩盖「账不可信」状态——策略在粗读上决策 = T-251 空账
-    # 混同同族根因。产空视图走消费侧既有空席保守面,锚定交备战 heavy
-    # 观察(reconcile 屏幕真值写回替换哨兵);已观察(含空)照旧走回退。
-    if tracked_unobserved(session):
-        log.warning('[cw!][prep_brain] tracked 未观察 → _tracking_view 短路'
-                    '(不回退 snapshot,空视图;等 reconcile 锚定)')
-        return (), ()
-    tracked_bench = getattr(exec_state_of(session), 'tracked_bench_chars', None)
-    bench = (tuple(None if b is None else snapshot_copy(b)
-                   for b in tracked_bench)
-             if tracked_bench else tuple(snapshot.bench))
-    tracked_dep = getattr(exec_state_of(session), 'tracked_deployed', None)
-    if tracked_dep:
-        deployed = tuple(snapshot_copy(d) for d in tracked_dep
-                         if d is not None)
-    else:
-        deployed = tuple(d for d in snapshot.deployed if d is not None)
-    return bench, deployed
+# (_tracking_view 已随 T-268 三次修正删除:R2「tracking 优先,fresh read
+#  补缺」滞回读口的滞回职责已被 T-261 kernel 锚定取代,其「空则回退
+#  snapshot.bench」静默回退 = 观察态掩盖路径一并消灭;DirectionView 两视
+#  图字段零消费面,恒缺省空元组。策略消费只走 game state——观察态 =
+#  GameState.tracked_account_observed(kernel/cw_game_state.py 判定单一源
+#  tracked_unobserved),未观察 → 商店门关店回备战。)
 
 
 def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
@@ -122,7 +92,6 @@ def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
     # 旗标快照无生产面——``gates`` 字段保留=契约形状稳定,恒空映射
     # (W629-R2 镜像雷随旗标面一起退役)。
     gates = MappingProxyType({})
-    bench_view, deployed_view = _tracking_view(session, snapshot)
     return DirectionView(
         intent=(getattr(ist, 'locked_comp', '') or '') if ist is not None else '',
         locked=locked,
@@ -131,8 +100,6 @@ def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
         hoard_readable=hoard_readable,
         gates=gates,
         committed=committed_from(session, state),
-        bench_view=bench_view,
-        deployed_view=deployed_view,
     )
 
 

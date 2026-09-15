@@ -303,25 +303,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             deployed = [d for d in
                         (getattr(state, 'deployed', None) or [])
                         if d is not None]
-        if not deployed:
-            # 实机落位补缺(g_20260906_021859/034515 两局全帧 0.0 实证):
-            # 商店观察帧(state=shop_state_frame)只播种 bench
-            # (cw_op_buy_cards 入口 tracked_bench_chars 播种段),
-            # ``deployed`` 列表恒空 → B_t 恒 0。回退源 =
-            # exec_state_of(session).tracked_deployed(执行记录槽位表,单元素带 char_id,
-            # 与 assembly/cw_observation 同一消费源),空 = 板面真空的
-            # 事实态,照写 0 不虚构。
-            # exec_state_of(session).tracked_deployed(执行记录槽位表,单元素带 char_id,
-            # 与 assembly/cw_observation 同一消费源),空 = 板面真空的
-            # 事实态,照写 0 不虚构。(执行侧载体读点:kernel.cw_exec_state
-            # 访问口——session.md §5.5)
-            from sr_od.application.currency_war.kernel.cw_exec_state import (
-                exec_state_of,
-            )
-            deployed = [d for d in
-                        (getattr(exec_state_of(session), 'tracked_deployed',
-                                 None) or [])
-                        if d is not None]
+        # (原「容器 deployed 空 → exec_state.tracked_deployed 回退补缺」随
+        #  T-268 三次修正删除:策略层禁读执行侧簿记,消费口只剩 game
+        #  state——容器 deployed 空 = 板面真空的事实态,照写 0 不虚构。)
         # 件级计数:名字列表保留重复件(同名多件各计 1,禁 frozenset 去重)
         dep_names = [(getattr(d, 'char_id', '') or '') for d in deployed]
         from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
@@ -680,17 +664,20 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             else:
                 key_equips = list(comp.key_equips or ())
         spare = list(getattr(session, 'last_owned_equips', None) or [])
-        from sr_od.application.currency_war.kernel.cw_exec_state import (
-            exec_state_of,
-            tracked_list,
+        # 在身装备(game state 唯一消费口,T-268 三次修正:策略禁读执行侧
+        # 簿记;原 exec_state tracked_* 回退源删除)—— deployed 单成员带
+        # equips,bench 槽位视图成员 = Unit(含 equips 透传)。
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            bench_slots_of,
+            board_state_of,
+            deployed_slots_of,
         )
-        _es = exec_state_of(session)
+        _bs_wear = board_state_of(session)
         worn = [eq
-                for slot_list in (tracked_list(
-                    getattr(_es, 'tracked_deployed', None)),
-                    tracked_list(getattr(_es, 'tracked_bench_chars', None)))
-                for bc in slot_list if bc is not None
-                for eq in (getattr(bc, 'equips', None) or [])]
+                for _bc in (list(deployed_slots_of(_bs_wear))
+                            + list(bench_slots_of(_bs_wear)))
+                if _bc is not None
+                for eq in (getattr(_bc, 'equips', None) or [])]
         from sr_od.application.currency_war.kernel.cw_equip_value import (
             pick_equipment,
         )
@@ -727,16 +714,15 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 'decide_shop_action: 容器商店 payload 离屏(shop=None)'
                 '(黑板契约容器化:在屏前置 bs.shop.value is not None;'
                 'None=观察层失约,禁静默按空态决策)')
-        # 未观察门(T-268 二次修正:tracked 字段取值域含「未观察」哨兵态):
-        # tracked 主账未按屏幕真值锚定(接管/重置/账失效事件后,备战环
-        # heavy 观察尚未替换哨兵)时商店决策的关键输入(席面)不可信——
-        # 返回恒可用终结 CloseShop 交编排壳收店,外循环全分支重判自然落回
-        # 备战节点,heavy 观察完成锚定后再进店;店内不做任何原地重建
-        #(读屏重建出口随 T-251 退役),也不消费任何席面视图(_tracking_view
-        # 的 snapshot 回退在本门之后的核路径,门先短路即零消费)。判定单一
-        # 源 = kernel tracked_unobserved;跳过事件留痕与连续跳过熔断在执行
-        # 侧 run_buy_waves 的 CloseShop 出口。
-        from sr_od.application.currency_war.kernel.cw_exec_state import (
+        # 未观察门(T-268 三次修正:观察态落容器字段,策略消费只走
+        # game state):tracked 主账未按屏幕真值锚定(接管/重置/账失效
+        # 事件后,备战环 heavy 观察尚未置位)时商店决策的关键输入(席面)
+        # 不可信——返回恒可用终结 CloseShop 交编排壳收店,外循环全分支
+        # 重判自然落回备战节点,heavy 观察完成锚定后再进店;店内不做任何
+        # 原地重建(读屏重建出口随 T-251 退役)。判定单一源 =
+        # kernel cw_game_state.tracked_unobserved;跳过事件留痕与连续跳过
+        # 熔断在执行侧 run_buy_waves 的 CloseShop 出口。
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             tracked_unobserved,
         )
         if tracked_unobserved(session):
