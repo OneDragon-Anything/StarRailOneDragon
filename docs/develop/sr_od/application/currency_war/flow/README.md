@@ -110,7 +110,7 @@
 | [../screens/](../screens/README.md) | **画面 op 各篇（一画面一文档）**：备战（prep）/商店（shop）/单选族/弹窗族/推进族——能力矩阵与画面文档模板在其 README |
 | [action_exec.md](action_exec.md) | 动作执行：词表与注册表、执行契约（无成败回执）、落地登记、商店/备战/部署执行要点、重试语义 |
 | [projection_contract.md](projection_contract.md) | 备战逻辑态面交互契约：状态面板/TurnState 视图 ↔ 执行臂的字段消费、坐标系、快照 vs 现读时序、注释规范缺口登记 |
-| [guards.md](guards.md) | 守卫总册：误分发限额、未知兜底、执行安灯、未识别卡停机、降级链(停滞判读归哨兵脚本 tools/cw/cw_run_sentinel.py) |
+| [guards.md](guards.md) | 守卫总册：误分发限额、未知兜底、执行安灯、未识别卡停机、降级链(停滞判读归事件哨兵 cw_sentinel.py,住 skill scripts/) |
 
 ## 4. 守卫总览（细则 = guards.md）
 

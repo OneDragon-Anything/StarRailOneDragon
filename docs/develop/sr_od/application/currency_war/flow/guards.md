@@ -1,6 +1,6 @@
 # 守卫总册（guards）
 
-> 反向规格化来源 = `operations/cw_loop.py` + `operations/cw_screen/cw_screen_prep.py` + `operations/cw_screen/cw_screen_buy_cards.py` 的守卫/停机/降级段。职责：识别域与执行面的停机/留证防线。对局状态推进的监测不在框架——停滞判读 = 外部哨兵 `tools/cw/cw_run_sentinel.py`(判读 [cw-op] 主日志流,只留证不停机)。路径根 = `src/sr_od/application/currency_war/`。
+> 反向规格化来源 = `operations/cw_loop.py` + `operations/cw_screen/cw_screen_prep.py` + `operations/cw_screen/cw_screen_buy_cards.py` 的守卫/停机/降级段。职责：识别域与执行面的停机/留证防线。对局状态推进的监测不在框架——停滞判读 = 事件哨兵 `skills/sr-od-currency-war-dev/scripts/cw_sentinel.py`(v5.2:STALL 同特征零推进/LOOP 签名循环/NODE-DWELL 相位滞留/SILENCE 沉默,只留证不停机;注:框架 stall_watch.flag 写端已随守卫删除,哨兵该关键词静默保留)。路径根 = `src/sr_od/application/currency_war/`。
 > 分工判据（od-dev-stop-hooks）：**采集哨兵不停机**（bot 可能只是慢）；**停机钩子保画面**（stop_running + flag + 截图，处理完删 flag 重启）。本篇全部为流程防线，与策略判据无关。
 
 ## 1. 误分发与恢复链限额
