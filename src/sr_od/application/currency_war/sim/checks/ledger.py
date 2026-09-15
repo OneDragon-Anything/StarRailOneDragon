@@ -646,7 +646,7 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
                         f"p{row.get('plane')}r{row.get('round_num')} "
                         f"可疑项(种子身份失配): 卖 {_nm} 自报 engine_seed"
                         f' 收集语境(同轮 ≥2) 自算=非引擎件/购买时已持有'
-                        '——请裁决: 收集让位 / 改标振荡 (ADR-0593)')
+                        '——请裁决: 收集让位 / 改标振荡 (裁定见 sim/checks/suspects.py 模块头)')
                     out.append(_violation)
                     bought.remove(_nm)
                     continue

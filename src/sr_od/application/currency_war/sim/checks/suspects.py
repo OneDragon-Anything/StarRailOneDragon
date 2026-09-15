@@ -732,7 +732,7 @@ def d13_bench_full_deadlock(rows: list[dict]) -> list[dict]:
     (line_members 单一源,与拒因生产端 P1 口径同源;P2 锁定帧的
     locked_buy_membership 收窄面只致漏检方向,不造假阳)。锚点 =
     判据首次同时成立的轮(连击 ≥2 ∧ 对在场;对迟现则锚点后移),
-    连击延伸轮加交叉引用行(D9 同款归属,ADR-0593 §4.1)。
+    连击延伸轮加交叉引用行(D9 同款归属,归属规则)。
     """
     out: list[dict] = []
     streak = 0
