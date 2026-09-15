@@ -35,9 +35,9 @@
 
 `kernel/cw_vocab.py::StartBattle`;`prep_actions.py::PrepActionExecutor._start_battle` / `_launch_attempt` / `_launch_dead_escalate`;`kernel/cw_launch_admission.py::readiness_launch_decision`;`operations/cw_loop.py::readiness_battle_launch`;`kernel/cw_effect_inventory.py::ActiveEffectInventory.consume_use` / `EffectSpec.duration_uses`;`kernel/cw_exec_state.py::apply_op_effect`(显式不建模清单);`kernel/cw_game_state.py::apply_settlement_cover`(战后真值接管)。
 
-## 7. 与 sim simulate 的等价关系(M1 锁)
+## 7. 语义验证
 
-StartBattle 不在 `cw_vocab.py::Action` 联合内,`simulate` 无该分支——节点推进归 sim 引擎日程面,非词表动作转移。「逻辑态 = 空」的容器声明与 sim 的「零词表推进」同义:两侧都不由本动作改写局内资源,真值都由节点边界/结算覆盖承载。无 M1 等价锁对象。
+StartBattle 不在 `cw_vocab.py::Action` 联合内——节点推进归 sim 引擎日程面,非词表动作转移。「逻辑态 = 空」的容器声明:本动作不改写局内资源,真值由节点边界/结算覆盖承载。无 M1 直锁对象;原 sim 整帧副本载体(simulate)已退役,考古归 git。
 
 ## 8. 判例注记(发射期)
 

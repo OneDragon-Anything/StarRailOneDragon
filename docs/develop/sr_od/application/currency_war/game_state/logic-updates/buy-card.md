@@ -8,7 +8,7 @@
 
 ## 2. 逻辑态域集
 
-容器写口单一源 = `kernel/cw_game_state.py::apply_shop_action_logic` BuyCard 腿 + 合成升星腿 `apply_shop_merge_leg`(先简单腿后整表覆盖,两写合计对 simulate 输出等价,锁 M1)。域集封闭 = `SHOP_PROJECTION_DOMAINS`,本动作涉及的写域:
+容器写口单一源 = `kernel/cw_game_state.py::apply_shop_action_logic` BuyCard 腿 + 合成升星腿 `apply_shop_merge_leg`(先简单腿后整表覆盖,两写合计为买牌投影语义单一源,直锁 M1 = `test_cw_shop_projection_logic`)。域集封闭 = `SHOP_PROJECTION_DOMAINS`,本动作涉及的写域:
 
 | 域 | 写 / 跳写 | 说明 |
 |---|---|---|
@@ -51,9 +51,9 @@
 
 `kernel/cw_game_state.py::apply_shop_action_logic`(BuyCard 腿)/ `apply_shop_merge_leg` / `detect_merge_upgrade`;`kernel/cw_merge_simulate.py::merge_buy_k` / `merge_buy_completes` / `_merge_bench` / `_apply_full_bench_merge_buy` / `same_star_count`;`kernel/cw_economy.py::card_cost`;`kernel/cw_exec_state.py::bench_place`;生产落地门 = `operations/cw_screen/cw_screen_buy_cards.py::apply_action_outcome`。
 
-## 7. 与 sim simulate 的等价关系(M1 锁)
+## 7. 语义验证(M1 直锁)
 
-`kernel/cw_vocab.py::simulate` BuyCard 分支 = 同一规则的第二载体:常态腿 gold 扣减 + `_merge_bench` + 按 x 槽位移除店牌;满栏腿 `_apply_full_bench_merge_buy` + 按 (name, star) 多集移除 k 张。容器写口的 (name, star) 计数置换与 sim 的 x 槽位删除是同义多集(k=1 恒同;sim 商店为紧凑列表,容器为三态定长 5 槽模型)。两写合计对 simulate 输出等价由锁 M1 钉住(测试 `test_cw_shop_projection_logic`);金样锁 `test_cw_transfer_golden` 对拍金账。
+买牌动作转移语义单一源 = 容器写口两写合计(`apply_shop_action_logic` BuyCard 腿 + `apply_shop_merge_leg` 整表覆盖):常态腿 gold 扣减 + 首空落位 + (name, star) 计数置换下架店牌(三态定长 5 槽模型);满栏腿 `_apply_full_bench_merge_buy` + 按 (name, star) 多集移除 k 张。原 `kernel/cw_vocab.py::simulate` BuyCard 分支(整帧副本第二载体)已随零生产消费退役,考古归 git。语义验证 = 投影直锁 M1(测试 `test_cw_shop_projection_logic`:常态落位/满栏多买 −k×单价/升档结转/满栏拒买逐域直断言)。
 
 ## 8. 判例注记(发射期)
 

@@ -43,9 +43,9 @@
 
 `kernel/cw_game_state.py::apply_shop_action_logic`(LevelUpShop 腿)/ `apply_prep_action_logic`(LevelUp 分支);`kernel/cw_economy.py::xp_apply_clicks` / `xp_click_cost` / `clicks_to_next_level` / `XP_PER_BUY` / `XP_TO_NEXT_LEVEL` / `XP_CLICK_COST_FALLBACK` / `MAX_PLAYER_LEVEL` / `blood_xp_gate` / `blood_xp_gate_for`;`prep_actions.py::PrepActionExecutor._level_up`;发射面 cost 装载 = `strategies/impl/mandate_v1/shop.py`(xp_click_cost 现算 → LevelUpShop)与 `strategies/impl/mandate_v1/entry.py`。
 
-## 7. 与 sim simulate 的等价关系(M1 锁)
+## 7. 语义验证(M1 直锁)
 
-`kernel/cw_vocab.py::simulate` LevelUp 分支 = 第二载体:满级门同源(`MAX_PLAYER_LEVEL`)、`s.gold -= action.cost`、xp 单击步长 + while 门槛结转——与容器转移函数逐位等价(锁 M1;满级拒绝语义两载体同形)。`LevelUpShop ≡ LevelUp`(同字段类型归一后全等,对拍口径)。备战域为语义源平移关系(单击步长同算子 `xp_apply_clicks`)。
+买经验动作转移语义单一源 = 容器写口(商店域 `apply_shop_action_logic` LevelUpShop 腿 + 备战域 `apply_prep_action_logic` LevelUp 分支,推进算子共用 `xp_apply_clicks`)。原 `kernel/cw_vocab.py::simulate` LevelUp 分支(整帧副本第二载体)已随零生产消费退役,考古归 git。语义验证 = 投影直锁 M1(`test_cw_shop_projection_logic`:击数×单击价扣金/xp 跨档结转/满级零金零经验零写,均在锁内)。`LevelUpShop ≡ LevelUp`(is-a 同字段全等,词表同一语义)。
 
 ## 8. 判例注记(发射期)
 

@@ -36,16 +36,16 @@
 ## 5. 拒绝语义
 
 - 槽位越界 / 槽空:`LogicOutcome(applied=False, reason='bench_idx_out_of_range:<idx>')`,零容器写(备战域写口 = 静默零写守卫,等观察覆盖);
-- **期望失配 stale_proposal**:expect 非空且与槽内 `char_id` 不符 = `applied=False, reason='stale_proposal:<expect>!=<实际>'`,零写(语义源 = simulate SellBench 分支 ADR-0317;live 提案 expect 恒空不校验,校验面辖非空 expect 提案);
+- **期望失配 stale_proposal**:expect 非空且与槽内 `char_id` 不符 = `applied=False, reason='stale_proposal:<expect>!=<实际>'`,零写(ADR-0317;live 提案 expect 恒空不校验,校验面辖非空 expect 提案);
 - 执行器零判效:拖拽发出即职责完成,落地事实归观察侧 reconcile;「拒买语义」在本动作不存在(卖出恒可用)。
 
 ## 6. kernel 符号锚
 
 `kernel/cw_game_state.py::apply_shop_action_logic`(SellBench 腿)/ `apply_prep_action_logic`(SellBench 腿 + 溢出腿);`kernel/cw_economy.py::sell_refund` / `bench_char_cost` / `_SELL_MULT`;`kernel/cw_exec_state.py::apply_op_effect`(SellBench 分支)/ `_advance_gold`;`kernel/cw_vocab.py::mutate_bench_deployed`(SellBench 分支,tracked 同步);`prep_actions.py::PrepActionExecutor._sell_bench` / `_track_remove_bench` / `drag_bench_to_sell`;`operations/cw_screen/cw_screen_prep.py::_project_prep_obs`(溢出镜像)。
 
-## 7. 与 sim simulate 的等价关系(M1 锁)
+## 7. 语义验证(M1 直锁)
 
-`kernel/cw_vocab.py::simulate` SellBench 分支 = 同一规则第二载体:expect 陈旧提案 → 账本记 rejected 零推进;`bench_clear` 置 None + `sell_refund` 回金 + `s.equips.extend` 装备回收。容器写口逐腿平移同分支(拒因形态同键);sim 侧 C6 装备守恒对账(`EquipsLedger`)对卖出动作前后跑快照比对。商店域两载体等价归锁 M1(`test_cw_shop_projection_logic`);备战域为语义源平移关系(`PREP_PROJECTION_DOMAINS` 登记面申报)。
+卖出动作转移语义单一源 = 容器写口(商店域 `apply_shop_action_logic` SellBench 腿:expect 陈旧提案拒零写 + 置 None 不移位 + `sell_refund` 回金 + 装备回收;备战域 `apply_prep_action_logic` SellBench 腿,域集 = `PREP_PROJECTION_DOMAINS` 的 gold/bench 子集)。原 `kernel/cw_vocab.py::simulate` SellBench 分支(整帧副本第二载体)已随零生产消费退役,考古归 git。商店域投影语义由直锁 M1(`test_cw_shop_projection_logic`)钉住。C6 装备守恒核对的活机制 = 观察边界 reconcile(下一入口装备区读数覆盖;原 sim 侧 `EquipsLedger` 快照比对对账入口挂在已删函数内,随 simulate 退役)。
 
 ## 8. 判例注记(发射期)
 

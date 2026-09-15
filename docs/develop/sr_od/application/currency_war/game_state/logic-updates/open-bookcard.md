@@ -34,9 +34,9 @@
 
 `kernel/cw_vocab.py::OpenBookcard`;`prep_actions.py::PrepActionExecutor._open_bookcard` / `validate`;`kernel/cw_prep_actions.py::PrepObservation`;`operations/cw_screen/cw_screen_prep.py::_project_prep_obs`(OpenBookcard 分支)/ `_clear_prep_cards`(发射位);`operations/cw_screen/cw_screen_expert_invite.py::choose_expert_index`(选卡决策单一源);`kernel/cw_game_state.py::apply_prep_action_logic`(集外零写申报)。
 
-## 7. 与 sim simulate 的等价关系(M1 锁)
+## 7. 语义验证
 
-OpenBookcard 不在 `cw_vocab.py::Action` 联合内,`simulate` 无该分支(零局内资源推进,与容器零写同义——本动作只动画面态与备战观察帧,局内账本真值不变)。无 M1 等价锁对象;等价性由「视觉域动作容器零写」契约承载。
+OpenBookcard 不在 `cw_vocab.py::Action` 联合内(零局内资源推进,与容器零写同义——本动作只动画面态与备战观察帧,局内账本真值不变)。等价性由「视觉域动作容器零写」契约承载;原 sim 整帧副本载体(simulate)已退役,考古归 git。
 
 ## 8. 判例注记(发射期)
 

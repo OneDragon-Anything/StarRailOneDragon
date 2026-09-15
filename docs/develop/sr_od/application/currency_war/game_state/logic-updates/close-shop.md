@@ -31,11 +31,11 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_game_state.py::apply_shop_action_logic`(CloseShop 腿 = `leave_screen`)/ `note_action_receipt`;`kernel/cw_vocab.py::simulate`(CloseShop 不入 `Action` 联合——词表终结动作无 sim 分支,期望态随终结作废);`operations/cw_op/cw_op_close_shop.py::close_shop` / `CwOpCloseShop`;终结语义总表 = [screens/README](../../screens/README.md) §4。
+`kernel/cw_game_state.py::apply_shop_action_logic`(CloseShop 腿 = `leave_screen`)/ `note_action_receipt`;`operations/cw_op/cw_op_close_shop.py::close_shop` / `CwOpCloseShop`;终结语义总表 = [screens/README](../../screens/README.md) §4。
 
-## 7. 与 sim simulate 的等价关系(M1 锁)
+## 7. 语义验证(终结作废契约)
 
-CloseShop 不在 `cw_vocab.py::Action` 联合内,`simulate` 无该分支(动作 no-op,期望态随终结作废、由下一次入口观察重建)——「逻辑态 = shop 结构离屏」的转移函数腿与 sim 的「零推进 + 整帧重建」在容器语义上同义:离屏域值失效,等价于下帧观察全量覆盖。锁 M1 辖非终结动作;本动作等价性由「终结作废」契约承载。
+动作转移语义单一源 = 容器写口(`apply_shop_action_logic` CloseShop 腿 = `leave_screen` 结构离屏)。CloseShop 不在 `cw_vocab.py::Action` 联合内,原单步动作应用器 `simulate` 无该分支,已退役(考古归 git)。投影直锁 M1(`test_cw_shop_projection_logic`)含 CloseShop 离屏腿;本动作期望态语义由「终结作废」契约承载——期望态随终结作废,由下一次入口观察重建,离屏域值失效等价于下帧观察全量覆盖。
 
 ## 8. 判例注记(发射期)
 

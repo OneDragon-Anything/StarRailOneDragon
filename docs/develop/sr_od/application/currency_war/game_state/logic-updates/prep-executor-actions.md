@@ -24,9 +24,9 @@
 
 **拒绝语义**:同名同星已在场 = 游戏拒(恒成立约束「场上同名同星 ≤1」,`research/merge_mechanics.md` §3;kernel 守卫 `duplicate_on_board`)→ 零容器写;`to_row` 非法/源槽空/两排全满 = 静默零写守卫(陈旧提案,等观察覆盖);执行器两排全满 = 未发出(False,观察重派);目标槽拖拽未落地 = 零变化,归下一帧观察。
 
-**kernel 锚**:`kernel/cw_game_state.py::apply_prep_action_logic`(DeployMove 腿);`kernel/cw_vocab.py::simulate`(DeployMove 分支)/`mutate_bench_deployed`;`kernel/cw_exec_state.py::deployed_place`/`deployed_row_slot`/`_apply_row_to_char`;`kernel/cw_bond_equips.py::unit_bond_tags`/`_recount_board`;`kernel/cw_deploy_logic.py::empty_deploy_slots`;`prep_actions.py::PrepActionExecutor._deploy_move`/`_track_move_deployed`;`operations/cw_screen/cw_screen_prep.py::_project_prep_obs`(DeployMove 分支)。
+**kernel 锚**:`kernel/cw_game_state.py::apply_prep_action_logic`(DeployMove 腿);`kernel/cw_vocab.py::mutate_bench_deployed`;`kernel/cw_exec_state.py::deployed_place`/`deployed_row_slot`/`_apply_row_to_char`;`kernel/cw_bond_equips.py::unit_bond_tags`/`_recount_board`;`kernel/cw_deploy_logic.py::empty_deploy_slots`;`prep_actions.py::PrepActionExecutor._deploy_move`/`_track_move_deployed`;`operations/cw_screen/cw_screen_prep.py::_project_prep_obs`(DeployMove 分支)。
 
-**sim 等价**:`simulate` DeployMove 分支逐腿平移(同名守卫/摘槽/落槽/board 增量同式)。细粒度申报:无标签回退分支 sim 排除 `'?'` 阵营(`_f != '?'`),容器写口按非空 faction 直计(含 `'?'`)——双实现微差,以容器写口为最终事实;合法帧 faction 缺省 `'?'` 时增量差一档,由 heavy 重读校准兜底。
+**语义验证(容器口径)**:DeployMove 转移语义单一源 = 容器写口(`apply_prep_action_logic` DeployMove 腿:同名守卫/摘槽/落槽/board 增量;原 `simulate` DeployMove 分支载体已退役,考古归 git)。board 增量口径 = 无标签回退按非空 faction 直计(含缺省 `'?'`;退役 sim 载体曾排除 `'?'`,该对照差异随其退役失效)。合法帧 faction 缺省 `'?'` 时增量差一档,由 heavy 重读校准兜底。
 
 **判例注记**:备战期(22/24 号篇);部署属逻辑态已建模面(批 2a 落码),执行后不再强制保守回退交回(R9 全覆盖后由帧内逻辑态推进承接;overlay 检出仍环中止交外环 handler)。
 
@@ -50,13 +50,13 @@
 
 **kernel 锚**:`kernel/cw_vocab.py::WearEquip`;`kernel/cw_exec_state.py::apply_op_effect`(WearEquip 分支)/`deployed_idx_of`;`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`;`prep_actions.py::PrepActionExecutor._wear_equip`/`_owned_grid_locate`/`_equip_slot_drag_point`;`operations/cw_screen/cw_screen_prep.py::_project_prep_obs`(WearEquip 分支)。
 
-**sim 等价**:WearEquip 不在 `cw_vocab.py::Action` 联合内,`simulate` 无该分支(零局内资源推进语义,同「视觉域动作容器零写」契约);tracked/观察帧两账随动作同步,等价性归观察边界 reconcile。
+**语义边界**:WearEquip 不在 `cw_vocab.py::Action` 联合内,零局内资源推进语义,同「视觉域动作容器零写」契约;tracked/观察帧两账随动作同步,落地真值归观察边界 reconcile。
 
 **判例注记**:备战期(穿戴 = 备战期发射面,发射位 = mandate M7 装备计划;商店期无穿戴动作)。
 
 ## 5. 词表完备性注:SwapDeploy(上阵↔备战对调)
 
-词表 + 容器逻辑态直写 + sim 消费在役,**生产执行器未接线**(备战域部署换位经部署机拖拽承载)。逻辑态规则(规则在册,供接线/sim 消费):deployed 槽 `d_idx` 与 bench 槽 `b_idx` **原槽对调**(置空不移位坐标系);上场者继承下场者的排(含开拓者形态归一),槽号信息位重写;board 重算(`_recount_board`);拒绝 = 同名同星已在场其余位(`duplicate_on_board`)/ expect 双侧失配(陈旧提案)/槽空越界。装备随人走(对象迁移)。kernel 锚 = `kernel/cw_game_state.py::apply_shop_action_logic`(SwapDeploy 腿)、`kernel/cw_vocab.py::simulate`/`mutate_bench_deployed` SwapDeploy 分支(W43 裁决 1/2 代际校验 + 同名唯一性)。
+词表 + 容器逻辑态直写 + sim 消费在役,**生产执行器未接线**(备战域部署换位经部署机拖拽承载)。逻辑态规则(规则在册,供接线/sim 消费):deployed 槽 `d_idx` 与 bench 槽 `b_idx` **原槽对调**(置空不移位坐标系);上场者继承下场者的排(含开拓者形态归一),槽号信息位重写;board 重算(`_recount_board`);拒绝 = 同名同星已在场其余位(`duplicate_on_board`)/ expect 双侧失配(陈旧提案)/槽空越界。装备随人走(对象迁移)。kernel 锚 = `kernel/cw_game_state.py::apply_shop_action_logic`(SwapDeploy 腿)、`kernel/cw_vocab.py::mutate_bench_deployed` SwapDeploy 分支(W43 裁决 1/2 代际校验 + 同名唯一性)。
 
 ## 6. 边界(不在本篇的动作)
 

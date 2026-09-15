@@ -8,7 +8,7 @@
 
 ## 2. 逻辑态域集
 
-**商店域写口** = `kernel/cw_game_state.py::apply_shop_action_logic` SellDeployed 腿(v2 族,语义源 = simulate 分支逐腿平移):
+**商店域写口** = `kernel/cw_game_state.py::apply_shop_action_logic` SellDeployed 腿(v2 族):
 
 | 域 | 写 / 跳写 | 说明 |
 |---|---|---|
@@ -37,16 +37,16 @@
 ## 5. 拒绝语义
 
 - 槽位越界 / 槽空:`applied=False, reason='deployed_idx_out_of_range:<idx>'`(商店域腿);备战域腿 = 静默零写守卫;
-- **期望失配 stale_proposal**:expect 非空且与槽内 `char_id` 不符 = `applied=False`(语义源 = simulate SellDeployed 分支;expect 经 ADR-0392 降级为遥测观测字段,名不符仍是跨代际提案的拒绝信号);
+- **期望失配 stale_proposal**:expect 非空且与槽内 `char_id` 不符 = `applied=False`(ADR-0317;expect 经 ADR-0392 降级为遥测观测字段,名不符仍是跨代际提案的拒绝信号);
 - 执行器零判效:拖拽发出即职责完成,落地归观察 reconcile。
 
 ## 6. kernel 符号锚
 
 `kernel/cw_game_state.py::apply_shop_action_logic`(SellDeployed 腿)/ `apply_prep_action_logic`(SellDeployed 腿);`kernel/cw_vocab.py::_recount_board`;`kernel/cw_economy.py::sell_refund` / `bench_char_cost`;`kernel/cw_exec_state.py::apply_op_effect`(SellDeployed 分支)/ `deployed_row_slot` / `deployed_idx_of`;`prep_actions.py::PrepActionExecutor._sell_deployed` / `_track_remove_deployed`;`operations/cw_screen/cw_screen_deploy.py::_sell_offtarget_deployed`(部署面换血卖出,资格单一源 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`)。
 
-## 7. 与 sim simulate 的等价关系(M1 锁)
+## 7. 语义验证(M1 直锁)
 
-`kernel/cw_vocab.py::simulate` SellDeployed 分支 = 第二载体:空槽/越界 → 账本 rejected;expect 失配 → rejected 零推进;`deployed_clear` + `sell_refund` 回金 + `s.equips.extend` 回收 + `s.board = _recount_board(...)`。容器写口逐腿平移同分支(sim 整帧紧凑 deployed,容器为槽表中间形态 → 前后排整表平移);C6 装备守恒对账(`EquipsLedger`)同辖。商店域载体等价归锁 M1;备战域为语义源平移关系。
+卖上阵动作转移语义单一源 = 容器写口(商店域 `apply_shop_action_logic` SellDeployed 腿:空槽/越界拒 + expect 失配拒零推进 + 摘槽 + `sell_refund` 回金 + 装备回收 + `_recount_board`,deployed 槽表中间形态 → 前后排整表平移;备战域 `apply_prep_action_logic` SellDeployed 腿同规则)。原 `kernel/cw_vocab.py::simulate` SellDeployed 分支(整帧副本第二载体)已随零生产消费退役,考古归 git。商店域投影语义由直锁 M1(`test_cw_shop_projection_logic`)钉住,v2 族金样直锁 = `test_cw_transfer_golden`(初态本地构造)。C6 装备守恒核对的活机制 = 观察边界 reconcile(原 sim 侧 `EquipsLedger` 快照比对对账入口随 simulate 退役)。
 
 ## 8. 判例注记(发射期)
 

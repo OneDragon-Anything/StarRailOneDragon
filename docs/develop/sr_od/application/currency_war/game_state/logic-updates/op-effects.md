@@ -50,9 +50,9 @@
 - 免战牌次数:`consume_use`(跳过执行落地递减,归零移除,见 [start-battle.md](start-battle.md));
 - 升级事件:`effects.on_level_up`(挂点 = `PrepActionExecutor._level_up` 发出后,best-effort 观测)。
 
-## 7. 与 sim simulate 的等价关系(M1 锁)
+## 7. 语义验证(观察边界 reconcile)
 
-效果账不在 `cw_vocab.py::simulate` 动作分支辖域(sim 只推进经济/席位/装备守恒面);等价关系 = **装备守恒对账**:`simulate` 对 BuyCard/SellBench/SellDeployed/SwapDeploy 动作前后跑 `EquipsLedger` 快照比对(mismatch 记账本禁静默)——效果账的装备类写端(卖出回收/穿戴/特权化)与 sim 装备多集账在观察边界 reconcile 对齐。桥/组合写的等价性 = 窗口独占契约(完全预测,失配等价推算 bug 走缺陷台账,不静默不改道)。
+效果账的装备类写端(卖出回收/穿戴/特权化)与装备多集真值的守恒核对,活机制 = **观察边界 reconcile**(下一入口装备区读数覆盖)。原 sim 侧对账入口(`cw_vocab.py::simulate` 对 BuyCard/SellBench/SellDeployed/SwapDeploy 动作前后跑 `EquipsLedger` 快照比对)**随 simulate 退役**,考古归 git。桥/组合写的等价性 = 窗口独占契约(完全预测,失配等价推算 bug 走缺陷台账,不静默不改道)。
 
 ## 8. 判例注记(发射期)
 
