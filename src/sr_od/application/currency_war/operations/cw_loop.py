@@ -890,6 +890,29 @@ def _invest_overlay_dispatch(op, screen):
     return False, screen
 
 
+def op_fail_redispatch_tick(prev_key: str | None, prev_n: int,
+                            key: str, ok: bool) -> tuple[str | None, int]:
+    """外环 op 连续 fail 计数纯函数(T-266;镜像 prep_no_progress_tick
+    先例:计数语义纯函数化供锁测,包装内只做状态落位)。
+
+    计数键 = 分发 op 行名(journal_name,分发身份单一源);计数窗口 =
+    「连续 fail 运行」:
+    - **任一** op 的 ok = 屏幕证实推进(本轮分发链把画面往前推了一步,
+      同一粘滞画面的前提已破)→ 整窗归零——fail 间歇重置语义,同时消
+      「上情节残留计数毒化新情节」的假阳性面(跨情节必有其他 op 的 ok
+      穿插,如 overlay 自愈后经备战/战斗环再回,计数不带病累加);
+    - 同键 fail 累加;异键 fail = 粘滞对象已换,新情节从 1 起算
+      (0q 专用计数器「仅本分支语义」的推广)。
+
+    已知边界(如实申报):同一迭代内双 op 链交替 fail(0s 投资环境→
+    等待1-1)两键各自计 1 不达限——该形态不属「同一 op 连续 fail」
+    辖域,由两 op 内部预算 + 系统级哨兵(stall_watch/NODE-DWELL)承管。
+    """
+    if ok:
+        return None, 0
+    return key, (prev_n + 1 if key == prev_key else 1)
+
+
 class _FnResult:
     """零参可调用步骤的结果轻壳(ADR-0584 §2.3 的 0n 适配形,二选一之「轻壳」)。
 
@@ -941,6 +964,18 @@ class CwLoop(SrOperation):
     #: 超限 round_fail 交未知画面兜底链——第五局实锤:boss 简报帧误分发
     #: CwScreenPlaneTransition(「提示未出现」fail)每 2s 无限循环。
     PLANE_MISDISPATCH_LIMIT: ClassVar[int] = 3
+    #: 外环 op 连续 fail 重派上限(T-266):同一分发 op 连续 fail 达本值
+    #: → round_fail 显式停交上层,取代「fail → round_wait 零预算重派」
+    #: 的无界空转(实锤形态 = 选择伙伴 15 连败,由 NODE-DWELL 900s 系统
+    #: 哨兵兜住才停,2026-09-15 事故)。取值 = prep 环既有
+    #: ``_director_fail_streak`` 阈值 5(本文件既有最严分支连续 fail
+    #: 预算,零新拍定值):既有专用守卫上限全部 ≤ 本值(0j=2/0q=3/
+    #: 达标臂=3/耗尽臂=3/prep=5)且在各自 on_result/链形透传内短路返回,
+    #: 而本防线的计数位次在 hook 早退之后 → 专用守卫同值平手时先返回,
+    #: 通用网结构性不抢占任何专用守卫,只辖无专用预算的分支(overlay/
+    #: 事件族 + on_fail_retry 族——后者原退路是消耗 400 节点重试池
+    #: ≈ 13min 同 op 空转)。
+    OP_FAIL_REDISPATCH_LIMIT: ClassVar[int] = 5
     # r119 停滞 watchdog 参数:每 5 iter 采一次指纹(≈5-10s),连续 6 次相同
     # (≈1-2min 同屏)→ 哨兵。合法静止态(结算族)按固定短语豁免,见
     # STALL_EXEMPT_PHRASES;战斗进行期由 BATTLE_WATCH_GRACE_S 宽限窗承管。
@@ -1405,6 +1440,13 @@ class CwLoop(SrOperation):
             round_fail)。调用点 = execute 之后、record_op_exit 之前。
         :return: 分支的轮次结果
 
+        环级 fail 重派防线(T-266):任一 op 的 ok → 连续 fail 计数窗归零
+        (``op_fail_redispatch_tick``);无专用预算分支的 fail 连续达
+        ``OP_FAIL_REDISPATCH_LIMIT`` → round_fail 显式停交上层,取代
+        「fail → round_wait 零预算重派」的无界空转。计数/判定位于
+        hook 早退之后 → 专用守卫(0j/0q/prep streak)结构性先于本网;
+        链形透传分支(0j/3c)不经本网(各有自身预算)。
+
         异常安全(ADR-0584 §5.2):``op`` 体或 ``on_result`` 抛异常时,补发
         outcome='error' 的 exit 行后原样上抛——异常语义归节点级重试链不变,
         孤儿 enter 语义回归「进程中断专属」;结果映射(round_wait/retry)
@@ -1425,6 +1467,14 @@ class CwLoop(SrOperation):
             # 型返回只有 is_success 属性,手写第二份判定会成功恒记 fail
             #(r1 验收缺陷 1 实证)。
             ok = resolve_dispatch_ok(res)
+            if ok:
+                # T-266:任一分发 ok = 屏幕证实推进 → 连续 fail 窗归零
+                #(fail 间歇重置;含 hook 覆盖返回的 ok 路径)
+                (self._op_fail_streak_key,
+                 self._op_fail_streak_n) = op_fail_redispatch_tick(
+                    getattr(self, '_op_fail_streak_key', None),
+                    getattr(self, '_op_fail_streak_n', 0),
+                    journal_name, True)
             hook_ret = on_result(ok, res) if on_result is not None else None
             record_op_exit(token, outcome='ok' if ok else 'fail')
         except Exception as e:   # noqa: BLE001  出口行补发后原样上抛(异常
@@ -1435,6 +1485,26 @@ class CwLoop(SrOperation):
             return res if hook_ret is None else hook_ret
         if hook_ret is not None:
             return hook_ret
+        # T-266 外环 op-fail 重派防线(位次契约:hook 早退/链形透传之后
+        # → 专用守卫结构性先于本网,见 OP_FAIL_REDISPATCH_LIMIT 注):
+        # 无判读 fail 的空转在环级转显式停,fail 语义判读仍归 op 层。
+        if not ok:
+            (self._op_fail_streak_key,
+             self._op_fail_streak_n) = op_fail_redispatch_tick(
+                getattr(self, '_op_fail_streak_key', None),
+                getattr(self, '_op_fail_streak_n', 0),
+                journal_name, False)
+            if self._op_fail_streak_n >= self.OP_FAIL_REDISPATCH_LIMIT:
+                try:
+                    _cap_shot = self.save_screenshot(prefix='op_fail_cap')
+                except Exception:   # noqa: BLE001  留证失败不阻塞停机
+                    _cap_shot = ''
+                log.error('[cw!][loop] %s 连续 %d 次 fail(末次 status=%s)'
+                          '→ round_fail 交上层处置(外环无界重派防线,'
+                          'shot=%s)', journal_name, self._op_fail_streak_n,
+                          getattr(res, 'status', ''), _cap_shot)
+                return self.round_fail(
+                    status=f'{journal_name} 连续 fail 超上限(交上层处置)')
         if on_fail_retry and not ok:
             return self.round_retry(wait=wait)
         return self.round_wait(wait=wait)
