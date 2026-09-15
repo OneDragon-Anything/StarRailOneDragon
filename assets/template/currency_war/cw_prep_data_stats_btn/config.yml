@@ -1,8 +1,0 @@
-sub_dir: currency_war
-template_id: cw_prep_data_stats_btn
-template_name: 备战右上角数据统计按钮(锁定态被返回按钮覆盖的排他锚)
-template_shape: rectangle
-auto_mask: true
-point_list:
-- 0, 0
-- 0, 0
