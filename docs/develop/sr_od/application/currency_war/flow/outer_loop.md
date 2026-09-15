@@ -43,7 +43,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 | 0c | 遭遇节点 | id_mark | CwScreenEncounter（经包装） |
 | 0d | 未达上限警告 | id_mark | CwScreenDeployNotFull（经包装） |
 | 0e | 投资策略三选一 | **双信号+复探**(N5 分发判别稳定化):id_mark ∨ OCR 全短语「请选择投资策略」(lcs 0.8);miss 且备战双锚命中(穿透形态)→ 短窗复探一次 | CwScreenInvestStrategy（经包装;双信号+复探判定留外循环）。OCR 全短语腿为「优先 area 化」（§2.1）的**显式豁免**：浮层淡入期 id_mark 单探测不稳定（第十五局 15:14 空挥 37s 实证），复探窗口 = 执行层时序常量；常规帧（双锚未命中）零 OCR 零复探 |
-| 0e1 | 补给阶段 | id_mark | CwScreenSupplyNode（经包装;成功 → `_record_supply_outcome` 合成 outcome 行留外循环回调:补给是唯一无结算屏节点,source='synthetic_supply'） |
+| 0e1 | 补给阶段 | id_mark | CwScreenSupplyNode（经包装;成功 → 交回重判(补给是唯一无结算屏节点;合成 outcome 行已随 outcomes 流写入端退役） |
 | 0f | 武装箱弹窗 | id_mark | CwScreenArmoryBox（经包装） |
 | 0e2 | 商店刷新概率表弹窗 | id_mark | **CwScreenRefreshOddsPopup（新·推进）**;× 已 area 化(按钮-关闭概率表,中心=原 (1501,263)),mouse_move bug#1 缓解在 op 内 |
 | 0e3 | 道具详情弹窗（聘用书类） | OCR'聘用书' ∧ 非祈愿屏 | **CwScreenItemDetailPopup（新·推进）**;祈愿排他留外循环;× 已 area 化(中心=原 (1862,65)) |
@@ -74,17 +74,16 @@ overlay 分支必须在备战(1)前检测：overlay 叠备战时"购买经验"�
 双锚命中后按序：
 
 1. `_battle_ts = None`（战斗窗口关，watch 恢复）；
-2. **环级无进展守卫**计数（guards.md §1；`cw_loop.py::CwLoop.loop` 备战分支 G3 计数段）；
-3. "返回投资策略选择"按钮在 → 点去选策略（上游策略屏处理失败 symptom，计数报警）；
-4. **策略失活早停**检查（查上一轮心跳；guards.md §5）；
-5. **恢复局（locked-resume）检测**：候选 = 新 match ∧ 首个备战相位 round>1；商店探针（点商店→验收起）区分锁定/未锁；锁定态跳过全部备战交互直接出战，出战成功即解除（`cw_loop.py::locked_resume_sync_and_battle`）；
-6. 可控轮数：`max_rounds` 已跑满 → round_success 停备战屏（单/多轮验证）；
-7. 补给节点分流：nodeseq current=supply → 点"返回补给阶段"进补给屏（用节点类型判，非按钮——battle 节点也有该按钮）；
-8. 预清场：试用角色揭示卡（≤3 轮，免费 2★，非策略决策不进 director）+ 书册卡（≤2 轮，CwScreenExpertInvite 全链）；
-9. **达标即出战臂**（判据核 + armed 质量合取 + 发射帧仲裁）：armed 判定通过（kernel `readiness_launch_decision` 单一源；判据 = 配方完备 fp≥1.0 ∧〔板面承重满额 ∨ 部署计划不可得 fail-open〕——质量维 = B_t 通道承重结构零自由参数式；推迟帧 `quality.defer_by_quality` 观测位显影，推迟上界 = 换血翻真 ∨ 计划耗尽 ∨ 金尽收益耗尽臂）→ 浮层在场闸（锚表扫描 + 遭遇 OCR 兜底；命中 ⇒ 本轮交浮层接管面）→ **发射帧受限消费仲裁**（`_prep_anchors_hit` 预检通过才执行；溢出段 g>g* 开一次受限商店访问——open_shop → `run_buy_waves(spend_gate=预算闸)` → close_shop，闸拒因 = 花后金位跌破息线 g*；带内段 fail-closed 不开店；访问失败路径 abort 保画面交停机接管；该访问落第三载体 `[cw-op]` 日志行 op='发射帧仲裁商店访问'）→ 发射核 `readiness_battle_launch`（内部屏态复验 = 纵深防线；仲裁切屏后复验未过 ⇒ stale 弃射落守卫链，弃射帧带 `launch_arbitrage_abandoned_launch` defect 分键）。发射成功复位失败计数并 round_wait；
-10. `CwScreenPrep(self.ctx).execute()`——**备战单轮**（prep_visit.md；达标臂发射失败连续 3 次放弃短路回落本链，防线 C1）；
-11. 失败 streak ≥5 → round_fail 交兜底链；成功 → `_battle_ts` 置位 + `_battle_wait_active=True`；
-12. **环让位重入契约**：director 返回（含 overlay bail）后必经 return → 下轮 loop 顶全分支重判，不在同一迭代内直接回备战分支（`cw_loop.py::CwLoop.loop` 备战分支尾环让位段）。
+2. GameState 心跳观察者采样 + 效果账本节点 tick（观察断流诊断/尾款触发面留证,均零行为面）；
+3. **达标即出战臂**（判据核 + armed 质量合取 + 发射帧仲裁）：armed 判定通过（kernel `readiness_launch_decision` 单一源；判据 = 配方完备 fp≥1.0 ∧〔板面承重满额 ∨ 部署计划不可得 fail-open〕——质量维 = B_t 通道承重结构零自由参数式；推迟帧 `quality.defer_by_quality` 观测位显影，推迟上界 = 换血翻真 ∨ 计划耗尽 ∨ 金尽收益耗尽臂）→ 浮层在场闸（锚表扫描 + 遭遇 OCR 兜底；命中 ⇒ 本轮交浮层接管面）→ **发射帧受限消费仲裁**（`_prep_anchors_hit` 预检通过才执行；溢出段 g>g* 开一次受限商店访问——open_shop → `run_buy_waves(spend_gate=预算闸)` → close_shop，闸拒因 = 花后金位跌破息线 g*；带内段 fail-closed 不开店；访问失败路径 abort 保画面交停机接管；该访问落第三载体 `[cw-op]` 日志行 op='发射帧仲裁商店访问'）→ 发射核 `readiness_battle_launch`（内部屏态复验 = 纵深防线；仲裁切屏后复验未过 ⇒ stale 弃射落守卫链，弃射帧带 `launch_arbitrage_abandoned_launch` defect 分键）。发射成功复位失败计数并 round_wait；
+4. **环级无进展守卫**计数（guards.md §1；`cw_loop.py::CwLoop.loop` 备战分支 G3 计数段）+ 备战收益耗尽出战臂（恒指纹窗动作批并集 ⊆ {OpenShop} ∧ 上环 success → 改发射出战,不停机）；
+5. "返回投资策略选择"按钮在 → 点去选策略（上游策略屏处理失败 symptom，计数报警）；
+6. **恢复局（locked-resume）检测**：候选 = 新 match ∧ 首个备战相位 round>1；商店探针（点商店→验收起）区分锁定/未锁；锁定态跳过全部备战交互直接出战，出战成功即解除（`cw_loop.py::locked_resume_sync_and_battle`）；
+7. 可控轮数：`max_rounds` 已跑满 → round_success 停备战屏（单/多轮验证）；
+8. 补给节点分流：nodeseq current=supply → 点"返回补给阶段"进补给屏（用节点类型判，非按钮——battle 节点也有该按钮）；
+9. `CwScreenPrep(self.ctx).execute()`——**备战单轮**（[../screens/prep.md](../screens/prep.md)；环入口清场(揭示卡/书册卡/残留模态)收编于该 op 观察段;达标臂发射失败连续 3 次放弃短路回落本链，防线 C1）；
+10. 失败 streak ≥5 → round_fail 交兜底链；成功 → `_battle_ts` 置位 + `_battle_wait_active=True`；
+11. **环让位重入契约**：director 返回（含 overlay bail）后必经 return → 下轮 loop 顶全分支重判，不在同一迭代内直接回备战分支（`cw_loop.py::CwLoop.loop` 备战分支尾环让位段）。
 
 ## 4. 轮次推进
 
@@ -98,14 +97,8 @@ overlay 分支必须在备战(1)前检测：overlay 叠备战时"购买经验"�
 
 | 钩子 | 内容 | 载体 |
 |---|---|---|
-| runs summary 收口 | `after_operation_done` 全路径必达；未写 summary 的对局补写 stopped/abandoned（真假局判定 = "从未观察到对局态"才算假局） | `cw_loop.py::CwLoop.after_operation_done` |
+| run 收口 | `after_operation_done` 全路径必达;`close_run` 零落盘,置跨局 run_id 重铸位;局终元数据归宿 = GameState 局终域 match_final 行 | `cw_loop.py::CwLoop.after_operation_done` |
 | op 调用流 | **全分支 dispatch 包装统一落**：`_dispatch_screen_op` 每次分发在出口落一行主日志 `[cw-op]` 行（`op=<名> plane=<位面> round=<轮次> dur=<秒>s outcome=<ok|fail|error>`，0n='商店访问'/1='备战'/3c='回大厅收口'…；只落出口行，dur = 单调钟差）+ 决策帧留证（frame_tag）；异常路径补落 outcome='error' 的行后上抛；仲裁触发商店访问为包装外唯一补行点（op='发射帧仲裁商店访问'，三载体口径见 session.md 载体表）；op_journal 流已随 2026-09-15 用户裁定退役，存量档案双键切片只读 | server 主日志（`.log/mcp_server.log` / `.debug/sr_od_mcp/main_server.log`）+ `decision_frames/` |
-| 局终正常收口（3c） | 假局守卫 + 假 win 守卫（plane==3 精确 ∧ 非死局）+ record_run_summary（final_hp 走 `_last_true_hp` 防 100 兜底毒化）+ 对局存档装配 + match 清空（生命周期钩子 on_match_end 已删除,原实现 no-op 零行为） | `cw_loop.py::对局循环分支 3c（局终正常收口）` |
+| 局终正常收口（3c） | 假局守卫 + 假 win 守卫（plane==3 精确 ∧ 非死局）+ 局终域 match_final 行 + `close_run` + 对局存档装配 + match 清空 | `cw_loop.py::对局循环分支 3c（局终正常收口）` |
 | 跨局分配器 | ThompsonAllocator 进程级单例，plaza 份额先验；终局 update（臂 = comp→plaza_carry 归一；影子期只记后验） | `cw_loop.py::ThompsonAllocator 单例与终局 update` |
-| 补给合成 outcome | 见 §2.2 分支 0e1 | `cw_loop.py::补给节点完成合成 outcome 段（分支 0e1，见 §2.2）` |
 | 关键点快照 `_snap` | 选人/事件屏 debug 截图 + 全量 OCR 日志（验证后去掉；非关键路径 best-effort） | `cw_loop.py::CwLoop._snap` |
-
-## 6. ⚠️ 现状违宪待改标记（本篇辖内）
-
-- ⚠️ **恢复局判定无位面字面问题**——本篇辖内无位面字面门。boss 简报/位面过渡两画面排他（0p/0q）为画面识别纪律，非机制辖域。
-- ⚠️ **MAX_ITER=2000 计入战斗 round_wait**（`cw_loop.py::CwLoop.MAX_ITER` 类常量待优化注）：迭代预算被战斗时长消耗是已知待办（"MAX_ITER 应只计动作迭代"），非判据违例，登记为流程债。
