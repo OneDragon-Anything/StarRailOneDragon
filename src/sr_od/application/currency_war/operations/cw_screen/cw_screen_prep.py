@@ -805,8 +805,7 @@ class CwScreenPrep(CwScreenOpBase):
                     # 值源;穿戴/选卡/卖返等 logic 增量写点不变,本重写 =
                     # 每次入口观察的真值刷新(频次高于旧派发位一次/期)。
                     session.last_owned_equips = list(obs.owned_equips)
-                # 溢出告警观察写端(T-226/R11,2026-09-15 实机建档 prep.md
-                # 告警/溢出节):横幅 = 游戏侧权威信号(出战被游戏忽略的
+                # 溢出告警观察写端(2026-09-15 实机建档 prep.md 告警/溢出节):横幅 = 游戏侧权威信号(出战被游戏忽略的
                 # 处理门,策略消费 = mandate 溢出门强收窄);溢出位 SIFT =
                 # 入位对象身份旁路(SellBench 溢出腿;缺读 '' = 未识别,
                 # 腿降级槽留空等下帧)。两读独立;横幅在场 = 唯一门语义,
@@ -984,7 +983,8 @@ class CwScreenPrep(CwScreenOpBase):
           ——载荷即点击列,被点的球从 spheres 摘除,坐标匹配);
         - SellBench:该物理槽位件离席(bench_chars 摘除 +
           free_bench_slots+1;溢出腿落地时改为入位卡回占该槽、free 不变
-          ——黑板帧镜像,与容器腿/执行账吸收同帧同源,T-227)+
+          ——黑板帧镜像,与容器腿/执行账吸收同帧同源;规则正本 =
+          flow/action-logic-state.md §2.4 溢出条件行)+
           容器域逻辑态直写(gold 回金 + bench 摘槽,
           kernel 写口 ``apply_prep_action_logic`` 单一源);
         - DeployMove(批 2a 补齐,§3.1):bench 摘件 + deployed 落件
@@ -1062,7 +1062,7 @@ class CwScreenPrep(CwScreenOpBase):
             # 写口经模块顶 import 单一源,函数内禁局部再 import——局部
             # import 会把名字标记为函数局部变量,令同函数其余分支的
             # 裸引用在未走该分支时 UnboundLocalError)。
-            # session 透传(T-227):溢出腿落地时写口内同步吸收执行侧
+            # session 透传(溢出腿):溢出腿落地时写口内同步吸收执行侧
             # tracked 主账(容器腿/执行账同帧同源,商店播种守卫对拍
             # 不因本腿分叉)。
             apply_prep_action_logic(
@@ -1079,7 +1079,7 @@ class CwScreenPrep(CwScreenOpBase):
             _free = (getattr(obs, 'free_bench_slots', 0) or 0)
             if _ov_warn_pre and _ov_id_pre \
                     and _bs_sell.overflow_warning.value is False:
-                # 黑板帧镜像(T-227):溢出卡当帧入位,腾出槽即刻回占——
+                # 黑板帧镜像(溢出腿):溢出卡当帧入位,腾出槽即刻回占——
                 # 入位卡补进黑板 bench,free 不 +1(与容器腿/tracked 吸收
                 # 同帧同源;缺镜像 = 决策面假空席,席满拒落类门被假象绕过)。
                 _bench = list(_bench) + [
