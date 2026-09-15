@@ -29,7 +29,6 @@ observe 段 = 轻观察帧引用,盛会之星同式);本屏无 on_outcome 落地
 strategy_wiring + test_cw_infra_locks + 本批锁
 test_cw_obs_arch_event_screens_step3)。
 """
-import time
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
@@ -40,7 +39,6 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
-from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
     CwScreenOpBase,
 )
@@ -219,33 +217,19 @@ class CwScreenPlanner(CwScreenOpBase):
                  pick.reason, '左' if pick.idx == 0 else '右',
                  options[pick.idx].text[:24])
         # (planner 左右卡存证行已随 exogenous 流写入端退役删除——删除波 1。)
-        # 3. 点卡选中(⚠️ 避开卡内「详情」按钮区 x~880-950/y~420-450——局29 手动点
-        # (755,400) 触发详情面板的实证;点卡身上部 y=310)
-        self.ctx.controller.mouse_move(target)
-        self.ctx.controller.click(target, press_time=self.CLICK_PRESS_TIME)
-        time.sleep(1.2)   # 等选中动画
-        # 点卡 = 机械单发(用户裁定 2026-09-14:详情面板检测拆;用户定性
-        # = 详情弹出 = 点错所致,该面归选中点几何治理,面板检测是症状侧
-        # 补丁)。原「判『属性详情』面板 → 点 × 关闭 + retry」分支已删;
-        # 面板若真弹出,后果归下一帧重入:本屏分发即门,外循环按当前画面
-        # 重分派(详情 overlay 族分支/本 op 重走链)自愈。
-        # 4. 点确认+机械交回(r326/P1⑦ 防线语义由重入裁决+预算耗尽 bail
-        # 承接,验关半拆除——用户裁定 2026-09-10:动作 op 禁验证)。
-        # r327(终审 E):裁决词用全词「我来当策划」(入场锚同词,
-        # cw_hacker_planner.yml:26 live-verified)——短词「策划」
-        # 在艺术字漏读时可能假通过。
-        from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-            emit_overlay_confirm,
+        # 点卡选中 → 确认链经工厂(统一动作工厂批4:体迁
+        # ``cw_overlay_pick_action.PlannerPickOp``,方法级替身缝保留);
+        # 决策半(重入裁决/OCR/策略选卡/存证)留守上方,派发实例 =
+        # 策略 pick 本体,机械参数 target 经 env 传递。
+        from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
+            action_op_for,
         )
-        self._confirm_pending = True
-        # 确认点主源 = 建档「按钮-骇入确认」中心(坐标单一真相源);area 缺失回退
-        # 兜底常量(megastar/invest_env 同款派生 + 缺损兜底模式)。
-        _confirm = (area_center(self.ctx, '按钮-骇入确认', CwScreenPlanner.CARD_AREA_SCREEN)
-                    or CwScreenPlanner.CONFIRM)
-        return emit_overlay_confirm(
-            self, confirm_point=_confirm,
-            entry_keyword='我来当策划', tag='cw-planner',
-            press_time=self.CLICK_PRESS_TIME)
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+            OverlayPickExecEnv,
+        )
+        _env = OverlayPickExecEnv(op=self, target=target)
+        action_op_for(pick).execute(_env)
+        return _env.round_result
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----
 

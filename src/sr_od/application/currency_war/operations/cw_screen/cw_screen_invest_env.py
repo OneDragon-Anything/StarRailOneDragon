@@ -140,6 +140,12 @@ class CwScreenInvestEnv(CwScreenOpBase):
         self._confirm_pending: bool = False
         # 刷新已发待重入裁决标志(终结动作交回形态):重入裁决见 handle 顶部。
         self._refresh_pending: bool = False
+        # 刷新零效果留证证据(批4 比对收口:刷新臂只读不比,读数原样
+        # 携带——元组 = (刷前计数, 刷前名集, 刷后计数, 刷后名集);
+        # 消费端 = 重入裁决点 ``_reconcile_refresh_no_effect``,消费即清;
+        # None = 无待评证据)。
+        self._refresh_evidence: tuple[int, list[str],
+                                      list, list[tuple[str, int]]] | None = None
 
     def _read_options(self, screen) -> list[tuple[str, int]]:
         """OCR 3 张卡的 ``(名字, 名字 center-x)``,按卡名行 y 过滤 + 左→右排序。"""
@@ -188,6 +194,38 @@ class CwScreenInvestEnv(CwScreenOpBase):
         _env_counts = read_invest_refresh_counts(self.ctx, screen, 'env')
         log.info(f'[cw-env] 刷新剩余计数读数={_env_counts}(观察通道,V5/V6)')
 
+    def _reconcile_refresh_no_effect(self) -> None:
+        """刷新零效果留证对账(观察侧宿主 = 重入裁决点;裁决3 比对收口,
+        统一动作工厂批4 自刷新执行臂迁入):携带证据(刷前计数/名集 +
+        刷后帧机械重读)在此评「计数未扣 ∧ 名集未变」→ 落缺陷台账
+        (零决策零改道);任一侧读缺 = 过渡帧不可判,不猜。判定条件与
+        缺陷行内容与迁出前执行臂内联式逐字等价(接收者/局部名归一),
+        消费即清(每次刷新恰评一次)。"""
+        _ev = self._refresh_evidence
+        if _ev is None:
+            return
+        self._refresh_evidence = None
+        _c, _pre_names, _counts2, _opts2 = _ev
+        if not (bool(_counts2) and _counts2[0][0] >= _c
+                and [n for n, _ in _opts2] == _pre_names):
+            return
+        try:
+            from sr_od.application.currency_war.telemetry import (
+                defects as cw_defects,
+            )
+            cw_defects.record_defect(
+                'invest_env', 'refresh_no_effect',
+                expected=f'计数<{_c} 或名集变化',
+                observed=f'计数={_counts2[0][0]},名集未变',
+                verdict='留证-刷新零效果(零决策)',
+                reader_source='cw_screen_invest_env',
+                note='执行侧判效已拆(判效归一),仅机械留证;'
+                     '比对宿主 = 重入观察侧对账点(批4 比对收口)',
+                gap_large=False,
+                severity=cw_defects.SEVERITY_L2_RECORD)
+        except Exception:   # noqa: BLE001  留证不阻塞交回
+            pass
+
     @operation_node(name='投资环境', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
         # 重入裁决(观察驱动,验证废除形态):上轮已发确认 → 本轮入口锚不在
@@ -208,6 +246,11 @@ class CwScreenInvestEnv(CwScreenOpBase):
         # 当前画面重分派(success/retry = 轮次流转语义,非动作成败回执,
         # _overlay_confirm 出口同口径)。两路径共用(分流前挂)。
         if self._refresh_pending:
+            # 零效果留证对账(观察侧宿主,批4 比对收口):先于锚分支评,
+            # 「锚在(预期穿透)」与「锚不在(意外离开)」两臂同覆盖——与
+            # 迁出前「刷新点击当轮即评」的留证覆盖面等价(缺陷的实际触发
+            # 形态 = 刷新未生效而 overlay 残留,该形态必经本重入点)。
+            self._reconcile_refresh_no_effect()
             self._refresh_pending = False
             if not self.round_by_find_area(
                     self.last_screenshot, '货币战争-投资环境',
@@ -308,30 +351,16 @@ class CwScreenInvestEnv(CwScreenOpBase):
                            tag='cw-env')
                 # 动画窗固定等待(整组重掷动画覆盖;机械执行时序,非判效)。
                 time.sleep(CwScreenInvestEnv.REFRESH_ANIM_WAIT_S)
-                # 刷后帧机械重读,只作零效果留证输入:计数未扣 ∧ 名集未变 =
-                # 点偏/文本锚漂移强信号 → 落缺陷台账(零决策零改道);任一侧
-                # 读缺 = 过渡帧不可判,不猜。读数不进决策——重读重分类归
-                # 重入访问。
+                # 刷后帧机械重读(裁决3 比对收口,统一动作工厂批4:零比对
+                # 零判效——读数原样携带进留证证据,「计数未扣 ∧ 名集未变」
+                # 的零效果判定迁重入观察侧对账点
+                # (``_reconcile_refresh_no_effect``,缺陷台账承接);判效权
+                # 归观察侧 reconcile)。
                 _after = self.screenshot()
                 _counts2 = read_invest_refresh_counts(self.ctx, _after, 'env')
                 _opts2 = self._read_options(_after)
-                if (bool(_counts2) and _counts2[0][0] >= _c
-                        and [n for n, _ in _opts2] == [n for n, _ in opts]):
-                    try:
-                        from sr_od.application.currency_war.telemetry import (
-                            defects as cw_defects,
-                        )
-                        cw_defects.record_defect(
-                            'invest_env', 'refresh_no_effect',
-                            expected=f'计数<{_c} 或名集变化',
-                            observed=f'计数={_counts2[0][0]},名集未变',
-                            verdict='留证-刷新零效果(零决策)',
-                            reader_source='cw_screen_invest_env',
-                            note='执行侧判效已拆(判效归一),仅机械留证',
-                            gap_large=False,
-                            severity=cw_defects.SEVERITY_L2_RECORD)
-                    except Exception:   # noqa: BLE001  留证不阻塞交回
-                        pass
+                self._refresh_evidence = (
+                    _c, [n for n, _ in opts], _counts2, _opts2)
                 log.info(f'[cw-env] 环境刷新终结交回:计数 {_c}→'
                          f'{_counts2[0][0] if _counts2 else "读缺"},'
                          f'重入后重观察重分类')

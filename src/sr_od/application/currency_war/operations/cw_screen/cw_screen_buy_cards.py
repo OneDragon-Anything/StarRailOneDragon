@@ -51,6 +51,9 @@ from sr_od.application.currency_war.obs.cw_observation import (
     read_gold_opt,  # noqa: F401  模块属性路由:cw_shop_action_ops 经本模块名取读函数(替身缝)
     read_shop_cards,
 )
+from sr_od.application.currency_war.obs.cw_shop_refresh_obs import (
+    refresh_board_changed_of,
+)
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
     CwScreenOpBase,
 )
@@ -124,8 +127,9 @@ def expected_gold_after_actions(state_gold: int, spend: int,
 
 
 # (refresh_effective 判刷新未生效函数已随 T-192 阶段三判效拆除删除:
-#  判效权归观察侧 reconcile;牌名集三值对比的留证半(安灯 free_refresh_proc
-#  豁免判定输入)内联保留在 RefreshShopOp.execute。)
+#  判效权归观察侧 reconcile;牌名集三值对比的留证半已随统一动作工厂批4
+#  比对收口迁观察侧单一源 cw_shop_refresh_obs.refresh_board_changed_of,
+#  消费点 = 刷新回执 extra 与本文件入口观察对账点。)
 
 
 def _shop_entry_names(shop: list) -> list[str]:
@@ -180,6 +184,57 @@ def _record_free_refresh_proc(op: SrOperation, ledger: 'ShopVisitLedger', *,
         '[cw!][shop] 免费刷新 proc:牌面已变 金未扣(前=%s 后=%s)'
         '→ 留证不停 flag=cw_free_refresh_proc.flag',
         pre_gold, gold_after)
+
+
+def _reconcile_refresh_pending(op: SrOperation, ledger: 'ShopVisitLedger',
+                               entry: GameStateReadReceipt) -> None:
+    """免费刷新对账点(对账类判定收口,宿主 = 入口观察;T-219 裁定 +
+    统一动作工厂批4 比对收口扩展)。上段刷新已发
+    (ledger.refresh_pending_reconcile,写入端 = RefreshShopOp.execute)
+    → 两腿零决策判定:
+
+    - 免费腿:金未扣(入口金 = 刷前金)∧ 牌面已变——三值对比单一源 =
+      ``cw_shop_refresh_obs.refresh_board_changed_of``(刷前/刷后名集由
+      RefreshShopOp 落账,批4 自动作 op 迁出)→ 存证(截图+flag+log);
+    - 期望腿(refresh_expect_mismatch,批4 自 RefreshShopOp 迁入):刷前
+      构建的期望随账本外发(ledger.refresh_expect),与入口观察金/具名
+      牌数对票,失配落缺陷台账——零决策留证语义由缺陷台账承接。
+
+    任一腿失读/不满足 = 静默放行(宁缺勿造);标记消费即清(清点在调用
+    方),生命周期 = 一次刷新恰一段(刷新为终结 op,段间无其他动作覆盖
+    字段)。判定值源同帧化申报:免费腿牌面判定与存证 post_names 同取
+    入口观察帧(迁出前 = 点击后现读与入口读两窗口;刷新为终结 op,段间
+    无写面,两读恒同板面)。
+    """
+    _entry_names = _shop_entry_names(entry.shop)
+    if (refresh_board_changed_of(ledger.refresh_pre_names, _entry_names) is True
+            and ledger.refresh_pre_gold is not None
+            and entry.gold == ledger.refresh_pre_gold):
+        with contextlib.suppress(Exception):
+            _record_free_refresh_proc(
+                op, ledger,
+                pre_gold=ledger.refresh_pre_gold,
+                gold_after=entry.gold,
+                pre_names=ledger.refresh_pre_names,
+                post_names=_entry_names,
+                plane=entry.plane, round_num=entry.round_num)
+    if ledger.refresh_expect is not None:
+        from sr_od.application.currency_war.operations.cw_screen.cw_screen_prep import (
+            refresh_reconcile_mismatches,
+        )
+        for _m in refresh_reconcile_mismatches(ledger.refresh_expect[0],
+                                               entry.gold, len(_entry_names)):
+            defects.record_defect(
+                'shop', 'refresh_expect_mismatch',
+                expected=(f'{_m["domain"]}/{_m["slot"]}: '
+                          f'{_m["expected"]}'),
+                observed=_m['observed'],
+                plane=ledger.refresh_expect[1],
+                round_num=ledger.refresh_expect[2],
+                verdict='留证-刷新期望不符(零决策)',
+                reader_source='refresh_expect_reconcile',
+                note='期望三输入波前现读,None 跳过;'
+                     '判据真值表已锁')
 
 
 # 买牌动画(卡牌飞行)收敛等待:首采无新槽后重采前的延迟秒数。
@@ -868,24 +923,13 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                                          phase=PHASE_PREP_SHOP_OPEN)
         save_decision_frame(op, 'shop_entry', _entry_shot)   # 识别完成点原始帧留证(牌面仲裁基准;每段一帧,刷新重观察同点覆盖)
         # 免费刷新对账点(T-219 裁定:对账类判定收口在观察态写入的对账
-        # 点,动作 op 内不做):上段刷新已发(ledger.refresh_pending_reconcile,
-        # 写入端 = RefreshShopOp.execute)∧ 刷前金在场 ∧ 入口观察金 =
-        # 刷前金(金未扣)∧ 牌面已变(ledger.refresh_board_changed,
-        # execute 刷后现读)→ 存证(截图+flag+log),零决策零改道。
-        # 任一腿失读/不满足 = 静默放行(宁缺勿造);标记消费即清,
-        # 生命周期 = 一次刷新恰一段(刷新为终结 op,段间无其他动作覆盖)。
+        # 点,动作 op 内不做;批4 比对收口扩展 = 两腿判定迁宿主
+        # ``_reconcile_refresh_pending``——免费腿三值单一源在观察侧模块,
+        # 期望腿缺陷台账承接,零决策零改道)。任一腿失读/不满足 = 静默
+        # 放行(宁缺勿造);标记消费即清,生命周期 = 一次刷新恰一段
+        #(刷新为终结 op,段间无其他动作覆盖)。
         if ledger.refresh_pending_reconcile:
-            if (ledger.refresh_board_changed is True
-                    and ledger.refresh_pre_gold is not None
-                    and _entry.gold == ledger.refresh_pre_gold):
-                with contextlib.suppress(Exception):
-                    _record_free_refresh_proc(
-                        op, ledger,
-                        pre_gold=ledger.refresh_pre_gold,
-                        gold_after=_entry.gold,
-                        pre_names=ledger.refresh_pre_names,
-                        post_names=_shop_entry_names(_entry.shop),
-                        plane=_entry.plane, round_num=_entry.round_num)
+            _reconcile_refresh_pending(op, ledger, _entry)
             ledger.refresh_pending_reconcile = False
         # (hp 三件组覆盖随黑板帧退役删除——迁移批 3.2,波 4 步 4 同款结论:
         #  容器 hp 由备战帧观察/结算既有写端承接,消费统一经 decision_hp,
@@ -1187,10 +1231,15 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             # 发出即簿记非验证——本行零新增读屏零成败判定。
             # (迁移批 3.2 安灯换轨:发射行附 serialize_action 同 schema
             #  动作载荷 = 安灯动作序列源;刷新行附 refresh 留证半边的
-            #  牌面变化位——free_refresh_proc 豁免判定输入。)
-            _rcpt_extra = ({'refresh_board_changed':
-                            ledger.refresh_board_changed}
-                           if isinstance(action, RefreshShop) else None)
+            #  牌面变化位——free_refresh_proc 豁免判定输入。批4 比对收口:
+            #  三值对比单一源 = cw_shop_refresh_obs.refresh_board_changed_
+            #  of,刷前/刷后名集由 RefreshShopOp 落账,此处按单一源现算,
+            #  行值与迁出前 execute 预算式逐位同值。)
+            _rcpt_extra = (
+                {'refresh_board_changed':
+                 refresh_board_changed_of(ledger.refresh_pre_names,
+                                          ledger.refresh_post_names)}
+                if isinstance(action, RefreshShop) else None)
             note_shop_action_receipt(
                 match, action, applied=bool(_ok),
                 reason='' if _ok else f'执行未落地({type(_aop).__name__})',

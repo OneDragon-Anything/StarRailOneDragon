@@ -28,7 +28,6 @@ on_outcome 落地登记件(§6.4 收编面无事件屏 chosen 行;chosen_partner
 主承重 = 实机行为锁(test_cw_obs_arch_event_screens_step3 迁移结构锁 +
 test_cw_partner_select_confirm_flow 选选流序/确认被拒有界重试锁)。
 """
-import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar
@@ -312,29 +311,22 @@ class CwScreenPartner(CwScreenOpBase):
                 # 显式失败(坐标单一真相源,禁裸坐标兜底;补档走 MCP 工具)。
                 return self.round_fail('伙伴屏建档缺失:候选-卡区(禁裸坐标兜底)')
             self._pick_point = point
-        if unselected or self._confirm_pulses == 0:
-            # 未选中实证(或首轮强制)→ 点候选卡选中。y 由建档「候选-卡区」
-            # 带中心锚定:旧 offset「label cy-60」实点落在立绘底边下方卡体
-            # 死区(几何根源见 ``_pick_point_for`` 注)。
-            self.ctx.controller.mouse_move(self._pick_point)
-            self.ctx.controller.click(self._pick_point)
-            time.sleep(0.7)
-            log.info('[cw-partner] 点选候选 %s(未选中提示在场=%s)',
-                     self._pick_point, unselected)
-        # bug#1 吞(before_screenshot 移光标)→ overlay 不关 flat-loop(2026-08-06 r6 stall;手动 click 即关)。
-        confirm = self._find_text_center(self.screenshot(), '确认选择')
-        if confirm is None:
-            log.info('[cw-partner] 未找到 确认选择 → round_retry')
-            return self.round_retry(wait=1)
-        self.ctx.controller.mouse_move(confirm)
-        self.ctx.controller.click(confirm)
-        time.sleep(1.0)
-        self._confirm_pulses += 1
-        # 确认 = 单屏单选的一次确认(用户澄清+建档证据更正 2026-09-14):
-        # 本屏无第二画面、无「选强化目标」步——点选→确认 → 重入裁决即完。
-        # retry 轮重复确认零副作用(置灰态被游戏拒绝,无确认穿透风险)。
-        self._confirm_pending = True
-        return self.round_retry(wait=1)
+        # 「点选候选 → 确认」脉冲链经工厂(统一动作工厂批4:体迁
+        # ``cw_overlay_pick_action.PartnerPickOp``,方法级替身缝保留)。
+        # 决策半(候选 OCR/SIFT/decide/chosen 写端/确认被拒守卫/点位解析)
+        # 留守上方;选中态标记与脉冲计数宿主仍是本 op,经 env.op 消费。
+        # 派发实例仅作注册表解析键(机械输入 = unselected 实证 + 本 op
+        # 状态,经 env 传递)。
+        from sr_od.application.currency_war.kernel.cw_events import PartnerPick
+        from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
+            action_op_for,
+        )
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+            OverlayPickExecEnv,
+        )
+        _env = OverlayPickExecEnv(op=self, unselected=unselected)
+        action_op_for(PartnerPick(idx=0)).execute(_env)
+        return _env.round_result
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----
 

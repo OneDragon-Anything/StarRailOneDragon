@@ -77,7 +77,10 @@ class ShopVisitLedger:
     spend_executed: int = 0
     plan_truncated: bool = False
     refresh_attempted: bool = False
-    refresh_board_changed: bool | None = None
+    # (refresh_board_changed 字段已随批4 比对收口退役:三值对比单一源 =
+    #  cw_shop_refresh_obs.refresh_board_changed_of,刷前/刷后名集原样
+    #  落账(refresh_pre_names/refresh_post_names),消费点现算,禁再
+    #  在动作 op 内预计算比对结果。)
     bought_names: list[str] = field(default_factory=list)
     refresh_first_action: bool = True
     did_refresh: bool = False
@@ -117,6 +120,20 @@ class ShopVisitLedger:
     refresh_pre_gold: int | None = None
     refresh_pre_names: list[str] = field(default_factory=list)
     refresh_pending_reconcile: bool = False
+    # 刷后牌名集原样落账(批4 比对收口:动作 op 只读不比;三值对比单一
+    # 源 = cw_shop_refresh_obs.refresh_board_changed_of,消费方 = 刷新回执
+    # extra(安灯 free_refresh_proc 豁免判定输入)与入口观察对账点免费腿)。
+    # 坐标系:同帧商店 content 具名牌名列表(1080p 商店五槽读牌口径,与
+    # refresh_pre_names 同帧语义对侧);空表 = 刷后帧失读/全空位(对比
+    # 函数按 None 不可判处理,宁缺勿造)。生命周期 = 一次刷新恰一段。
+    refresh_post_names: list[str] = field(default_factory=list)
+    # 刷新期望三件组(批4 比对收口随账本外发;原 RefreshShopOp.execute
+    # 内联消费迁入口观察对账点):值 = build_refresh_expect 产物
+    # ((期望金/卡判据, 位面, 轮次)元组)或 None(失读跳过对账,宁缺
+    # 勿造)。写入端 = RefreshShopOp.execute(刷新点击前现读构建,期望
+    # 基于波前状态);消费端 = run_buy_waves 段顶入口观察对账点
+    # (refresh_expect_mismatch 腿,缺陷台账承接,消费即清 pending)。
+    refresh_expect: tuple | None = None
     # `w536_merge_expect/` 买牌期望态基座(单元尾计算消费):
     buy_purchases: list = field(default_factory=list)
     buy_has_sell: bool = False

@@ -308,22 +308,22 @@ class CwScreenSupplyNode(CwScreenOpBase):
             # → 决策建立在残缺选项上)。等满 2s 再返回。
             time.sleep(2.0)
             return
-        self.ctx.controller.mouse_move(target)
-        self.ctx.controller.click(target)
-        time.sleep(0.6)
-        # 确认(supply 按钮-确认 area;T#103 area 化)
-        self.round_by_find_and_click_area(self.screenshot(), '货币战争-补给', '按钮-确认', success_wait=1.5)
-        # 到账登记(§3.3 #18 ConfirmSupply):owned += 选中装备名(粗粒度
-        # expected,单轮即回备战覆盖点实读清账;equip 未读到 = 无 item 不登记)。
-        if match is not None and picked is not None and picked.get('equip'):
-            from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-                register_confirm_arrival,
-            )
-            register_confirm_arrival(match.session, 'ConfirmSupply',
-                                     picked['equip'],
-                                     produced_by='CwScreenSupplyNode')
-        # (选卡确认后合成 decisions 快照行已随 decisions 流写入端退役删除
-        #  ——删除波 1;选定事实现役归宿 = journal chosen 域 + 到账登记。)
+        # 点卡选中 → 确认机械半经工厂(统一动作工厂批4:体迁
+        # ``cw_overlay_pick_action.SupplyPickOp``,方法级替身缝保留;刷新圆钮
+        # 机械点击留守上方——刷新链 = SupplyPick.refresh 决策的执行半,与
+        # 遭遇屏 _try_refresh 同类,§2.5 pick execute 语义 = 点卡选中 → 确认)。
+        # 派发实例仅作注册表解析键(机械参数 target/picked 经 env 传递;
+        # 无 match 兜底路径同形派发)。
+        from sr_od.application.currency_war.kernel.cw_events import SupplyPick
+        from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
+            action_op_for,
+        )
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+            OverlayPickExecEnv,
+        )
+        _env = OverlayPickExecEnv(op=self, match=match, target=target,
+                                  picked=picked)
+        action_op_for(SupplyPick(idx=0)).execute(_env)
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----
 

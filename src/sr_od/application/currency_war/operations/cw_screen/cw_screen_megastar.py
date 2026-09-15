@@ -190,22 +190,21 @@ class CwScreenMegastar(CwScreenOpBase):
                                        actor='CwScreenMegastar',
                                        mode='compute'))
             time.sleep(0.6)
-        # confirm(候选已选一次 → confirm 跳过 step2(可选)→ overlay 关;retry 重 confirm 防 bug#1 落空)。
-        # 确认钮中心从 screen_info 读(task#103 化债,W265);缺失兜底常量。
-        confirm = area_center(self.ctx, '按钮-确认选择', '货币战争-盛会之星') or CwScreenMegastar.CONFIRM
-        self.ctx.controller.mouse_move(confirm)
-        self.ctx.controller.click(confirm)
-        time.sleep(0.9)
-        # 确认 = 纯机械单发(用户裁定 2026-09-14:step2 安全网拆除)。原
-        # 「判『请选择强化角色』还在 → 再 confirm」检测分支已删:该文本 =
-        # 确认钮旁伴随文案(建档证据更正 2026-09-14,巨星调研已证同款误读,
-        # 非第二画面步骤),旧检测系对它的误读。确认未落地 overlay 残留 =
-        # 下一帧重入裁决自愈:节点循环读「仍在巨星 overlay?」(标识锚仍
-        # 命中)→ 重走本方法 → 候选已选 → 机械单发确认再推进
-        #(计 node_max_retry_times 预算)。
-        # (原「到账登记」ConfirmMegastar 块已随 ADR-0651 两态制废除:
-        #  chosen_megastar 写端 = 候选选中时点的 session 写 + write_logic
-        #  直写(上方分支),无挂账登记环节。)
+        # 确认半经工厂(统一动作工厂批4:体迁 ``cw_overlay_pick_action
+        # .MegastarPickOp``,方法级替身缝保留)。候选选中点击留守上方:
+        # 候选选中半与 chosen_megastar 写端在原体内交错(§3.4.5 单次逻辑
+        # 写入豁免面),逐字连续搬迁不可得——确认机械半先收拢,候选半随
+        # 写端迁移批再收拢(裁定申报见 T-216 交付报告)。派发实例仅作
+        # 注册表解析键(机械参数 = 确认钮定位,op 类体内自读 screen_info)。
+        from sr_od.application.currency_war.kernel.cw_events import MegastarPick
+        from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
+            action_op_for,
+        )
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+            OverlayPickExecEnv,
+        )
+        action_op_for(MegastarPick(idx=0)).execute(
+            OverlayPickExecEnv(op=self))
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 2,先例 = CwScreenPrep)----
 

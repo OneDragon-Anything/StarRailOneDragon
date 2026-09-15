@@ -23,7 +23,6 @@ from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
     _plane_of,
     _round_of,
 )
-from sr_od.application.currency_war.telemetry import defects
 
 # 刷新点击后固定等待(重掷动画收敛):两帧指纹等稳门废弃后的
 # 等待语义——固定时长即收,与买牌点击后固定 sleep 同风格的时长常量;
@@ -33,12 +32,16 @@ REFRESH_CLICK_SETTLE_WAIT_S: float = 1.0
 
 class RefreshShopOp(ActionOp):
     """刷新 = 终结 op(决策 7:唯一引入新事实的动作,期望态必须在新事实
-    处重建——终结后外循环入口重观察)。判效半拆除:牌名集三值
-    对比仅作安灯豁免判定输入 + 遥测字段(候选 a 留证遥测半合法保留)。
-    免费刷新判定 = 对账类:execute 内不比对,只落对账三件
-    (刷前金/刷前牌名/待对账标记)进 ledger,由下一段入口观察对账;
-    刷新期望对账(refresh_expect_mismatch)= 执行实现层遥测(与决策
-    读屏解耦),「刷新是否生效」的判效权归观察侧 reconcile。"""
+    处重建——终结后外循环入口重观察)。
+
+    比对收口(裁决3,统一动作工厂批4 兑现):execute 内**零比对**——
+    ①免费刷新判定 = 对账类,只落对账件(刷前金/刷前牌名/待对账标记)
+    进 ledger,由下一段入口观察对账;②牌名集三值对比(原内联
+    refresh_board_changed 计算式)迁观察侧单一源
+    ``cw_shop_refresh_obs.refresh_board_changed_of``,本 op 刷后只读不比、
+    名集原样落账;③刷新期望对账(refresh_expect_mismatch)迁入口观察
+    对账点,刷前构建的期望随账本外发(ledger.refresh_expect),缺陷台账
+    承接留证语义。「刷新是否生效」的判效权归观察侧 reconcile。"""
 
     terminal = True
 
@@ -50,7 +53,6 @@ class RefreshShopOp(ActionOp):
         )
         from sr_od.application.currency_war.operations.cw_screen.cw_screen_prep import (
             build_refresh_expect,
-            refresh_reconcile_mismatches,
         )
         op, _match, ledger, state = (env.op, env.match, env.ledger,
                                      env.state)
@@ -62,7 +64,6 @@ class RefreshShopOp(ActionOp):
         _pre_shop_names: list[str] | None = None
         _pre_gold: int | None = None
         _refresh_expect = None
-        _reconcile = None
         try:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 gold_of,
@@ -83,16 +84,16 @@ class RefreshShopOp(ActionOp):
                 _pre_gold, REFRESH_COST_BASE,
                 [(c.name, c.star) for c in _container_cards(state)],
                 _plane_of(state), _round_of(state))
-            _reconcile = refresh_reconcile_mismatches
         except Exception:   # noqa: BLE001  best-effort 不阻塞买牌
             _refresh_expect = None
-            _reconcile = None
-        # 免费刷新对账三件落账(判定收口到观察侧对账点,本 op
-        # 零比对;字段坐标系与写入端声明见 ShopVisitLedger)。失读字段
-        # 照实落 None/空,对账点按腿判空放行(宁缺勿造)。
+        # 免费刷新对账件落账(判定收口到观察侧对账点,本 op 零比对;
+        # 字段坐标系与写入端声明见 ShopVisitLedger)。失读字段照实落
+        # None/空,对账点按腿判空放行(宁缺勿造)。期望 = 批4 起随账本
+        # 外发(消费点 = 入口观察对账点 refresh_expect_mismatch 腿)。
         ledger.refresh_pre_gold = _pre_gold
         ledger.refresh_pre_names = list(_pre_shop_names or [])
         ledger.refresh_pending_reconcile = True
+        ledger.refresh_expect = _refresh_expect
         # 刷前刷新钮真值读(读链接入):按钮三态 + 免费态剩余次数。
         # 经模块属性路由 = 测试替身缝(同 _buy_cards_mod 约定)。best-effort:
         # 识别层故障不阻塞执行链,ledger 字段保持 None = 免费闸回退逻辑账。
@@ -124,35 +125,13 @@ class RefreshShopOp(ActionOp):
             _new_shop = _buy_cards_mod.read_shop_cards(op.ctx, op.screenshot())
             # (refresh 牌面快照行已随 shop_snapshots 流写入端退役删除
             #  ——删除波 1;牌面现役归宿 = journal 快照行自带 shop 域。)
-            # 留证遥测半(判效半拆除后的保留面):刷前/刷后
-            # 牌名集三值对比只作安灯 free_refresh_proc 豁免判定输入
-            # (classify_spend_unit 判定序③)+ 遥测字段
-            # (schema.refresh_board_changed),不再产「刷新未生效嫌疑」
-            # 判效结论——判效权归观察侧 reconcile。任一侧空(整帧失读/
-            # 买光全空位)= None 不可判,不猜。
-            _post_shop_names = [s.card.name for s in (_new_shop or [])
-                                if s.kind == 'content' and s.card
-                                and s.card.name]
-            ledger.refresh_board_changed = (
-                None if not _pre_shop_names or not _post_shop_names
-                else set(_pre_shop_names) != set(_post_shop_names))
-            # 刷新期望 vs 实读对账(零决策记账):金腿 + 牌腿。
-            if _refresh_expect is not None and _reconcile is not None:
-                _gold_after = _buy_cards_mod.read_gold_opt(
-                    op.ctx, op.screenshot())
-                _cards_named = sum(1 for c in _new_shop if c.name)
-                for _m in _reconcile(_refresh_expect[0], _gold_after,
-                                     _cards_named):
-                    defects.record_defect(
-                        'shop', 'refresh_expect_mismatch',
-                        expected=(f'{_m["domain"]}/{_m["slot"]}: '
-                                  f'{_m["expected"]}'),
-                        observed=_m['observed'],
-                        plane=_plane_of(state), round_num=_round_of(state),
-                        verdict='留证-刷新期望不符(零决策)',
-                        reader_source='refresh_expect_reconcile',
-                        note='期望三输入波前现读,None 跳过;'
-                             '判据真值表已锁')
+            # 刷后牌名集原样落账(裁决3 比对收口批4:零比对——三值对比
+            # 单一源 = cw_shop_refresh_obs.refresh_board_changed_of,消费方
+            # = 刷新回执 extra(安灯豁免判定输入)与入口观察对账点免费腿;
+            # 本 op 只读不比)。
+            ledger.refresh_post_names = [
+                s.card.name for s in (_new_shop or [])
+                if s.kind == 'content' and s.card and s.card.name]
         except Exception:   # noqa: BLE001  快照 best-effort 不阻塞买牌
             pass
         return True

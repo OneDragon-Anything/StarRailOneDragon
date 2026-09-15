@@ -900,3 +900,18 @@ def decide_planner(options: list[PlannerOption], bs: GameState,
         if score > best_score:
             best_idx, best_score, best_reason = opt.idx, score, reason
     return PlannerPick(idx=best_idx, reason=best_reason or '全部未识别,兜底左卡')
+
+
+# ===== 事件线 pick 族运行时元组(统一动作工厂批4;注册完备锁遍历单一源
+# ===== 之一,先例 = cw_vocab.CW_ACTION_TYPES 白名单元组形态)=====
+
+#: 事件线意图词表全类(decide_* 决策返回载体;overlay act 段经注册表
+#: 工厂 ``action_op_for`` 分派,design.md §2.5)。退役 = 删类(R1):
+#: 元组中不存在即天然不可复活,无退役行无墓碑;新 pick 类型入词表 =
+#: 先改契约再落码(词表纪律,统一观察架构 §6.1),漏登记 = 注册完备锁红。
+PICK_ACTION_TYPES: tuple = (
+    EncounterPick, SupplyPick, MegastarPick, PartnerPick, PlannerPick,
+)
+
+#: pick 族类型联合(注册表动作参数注解用;运行时零消费)。
+EventPick = EncounterPick | SupplyPick | MegastarPick | PartnerPick | PlannerPick

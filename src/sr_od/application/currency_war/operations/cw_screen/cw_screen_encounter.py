@@ -55,14 +55,9 @@ from sr_od.application.currency_war.kernel.cw_events import (
     EncounterPick,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
-from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.obs.cw_node_obs import (
     read_encounter_options,
     read_encounter_refresh_count,
-)
-from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-    emit_overlay_confirm,
-    safe_click,
 )
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
     ActionOutcome,
@@ -375,22 +370,23 @@ class CwScreenEncounter(CwScreenOpBase):
         return self._confirm_default(idx)
 
     def _confirm_default(self, idx: int) -> OperationRoundResult:
-        """现役确认链缺省执行体(实机适配器②的封口内容;旧路径与五段循环
-        同调,自身**不触发**注册表——触发统一归 :meth:`_act_execute` 分派
-        面,防双计)。点卡选中(screen_info 坐标缺失走历史实测兜底常量)→
-        确认机械交回(验证废除:不读屏判「overlay 关没关」,落地由 handle
-        顶部重入裁决承载;docstring「插空白点击取消选中→死循环」风险的
-        防线由重入裁决 + 预算耗尽 bail 承接)。"""
-        card_left = area_center(self.ctx, '遭遇卡-其一', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.CARD_LEFT
-        card_right = area_center(self.ctx, '遭遇卡-其二', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.CARD_RIGHT
-        select_btn = area_center(self.ctx, '按钮-选择', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.SELECT_BTN
-        card = card_left if idx == 0 else card_right
-        safe_click(self, card, tag='cw-encounter')
-        time.sleep(0.8)
-        # 选择确认机械交回(裁决词 = 标题「遭遇节点」,4 字 vs 备战「遭遇」
-        # 标签 2 字,LCS 0.5<0.8 不误匹配;live 2026-08-15)。
-        return emit_overlay_confirm(self, confirm_point=select_btn,
-                                    entry_keyword='遭遇节点', lcs_percent=0.8, tag='cw-encounter')
+        """现役确认链缺省执行体 → 薄委托(统一动作工厂批4:体迁
+        ``cw_overlay_pick_action.EncounterPickOp``,经工厂 ``action_op_for``
+        分派,替身缝保留;机械语义 docstring 随体:点卡选中(screen_info
+        坐标缺失走历史实测兜底常量)→ 确认机械交回,验证废除——落地由
+        handle 顶部重入裁决承载)。自身**不触发**注册表触发点(刷新发射
+        归 ``_emit_refresh_click``,防双计)。"""
+        from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
+            action_op_for,
+        )
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+            OverlayPickExecEnv,
+        )
+        env = OverlayPickExecEnv(op=self)
+        # 派发实例 = 生效选中下标的规范实例(决策半钳位后的 idx;策略 pick
+        # 缺席/越界时本实例即唯一载体——工厂按类型解析,机械参数随实例)。
+        action_op_for(EncounterPick(idx=idx)).execute(env)
+        return env.round_result
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 2,先例 = CwScreenPrep)----
 
