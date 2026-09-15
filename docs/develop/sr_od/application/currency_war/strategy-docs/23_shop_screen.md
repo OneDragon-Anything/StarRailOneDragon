@@ -1,6 +1,6 @@
 # 23 商店开画面策略面(shop screen)
 
-> 画面 = 货币战争-备战-开商店(建档 `assets/game_data/screen_info/currency_war_battle_prep_shop_open.yml`);**能力面** = [../flow/screens-actions-capability.md](../flow/screens-actions-capability.md) §3.5。本篇 = 该画面的**策略面**:策略思路概述 + 会执行的动作清单(按用户裁定 2026-09-14 策略收缩后的目标形态)+ 形式判据指针 + 在案判例。
+> 画面 = 货币战争-备战-开商店(建档 `assets/game_data/screen_info/currency_war_battle_prep_shop_open.yml`);**能力面** = [../screens/README.md](../screens/README.md) §5.4。本篇 = 该画面的**策略面**:策略思路概述 + 会执行的动作清单(按用户裁定 2026-09-14 策略收缩后的目标形态)+ 形式判据指针 + 在案判例。
 > 判据本体的唯一现行家 = [11_shop_decisions.md](11_shop_decisions.md)(六序/买面/卖出/刷新/升级),**引用不重复**;数值单一源在代码(常量名形态)。流程编排 = `../screens/shop.md`;决策本体 = `strategies/impl/mandate_v1/shop.py::decide_shop_action`(全函数:f(期望态)→恰一个动作),单动作循环 = `operations/cw_screen/cw_screen_buy_cards.py::run_buy_waves`。
 
 ## 1. 策略思路/算法概述

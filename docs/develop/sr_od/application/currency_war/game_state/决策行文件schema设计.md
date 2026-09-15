@@ -4,7 +4,7 @@
 > 货币战争模块设计区 design/ 子目录(`docs/develop/sr_od/application/currency_war/design/`,
 > 正本树迁移后新址)。本设计纯设计零代码;落码归「决策行文件落地批」(挂波已定谳
 > = W6 后,见 §8-1)。编排者排期正本 =
-> `docs/develop/sr_od/application/currency_war/game_state/r5-migration-plan.md` §2(单源直迁八波 W1-W8);
+> `docs/develop/sr_od/application/currency_war/game_state/r5-migration-plan(已删,git 可溯)` §2(单源直迁八波 W1-W8);
 > 本文引用波号均锚定该文件,下文简写 W4/W6 即该表波次。
 >
 > **定谳依据(头部回填)**:C1-C8 与候裁 2/4 十个候裁位已经对抗定谳批逐条两段式
@@ -438,7 +438,7 @@ W4 审计输入清单①「决策行收编须保局终级全键聚合可见性�
   加和呈现随定谳落文本稿)
 - retirement.md §3(定谳落码形态)/ §4(两文件模型与四要素)/ §2(cw4_counters 处置行;
   原锚已删档,内容现态锚即此)/ §6-5(寿命契约)/ §7(消费面清册)
-- r5-migration-plan.md §2 W4/W6/W7 列、§7 候裁清单(候裁 2/4/6 语境)
+- r5-migration-plan(已删,git 可溯) §2 W4/W6/W7 列、§7 候裁清单(候裁 2/4/6 语境)
 - W4 审计交付报告 v3(键账 336+9、四查、豁免七名、弱消费名单、七类写模式;键全集登记
   的持久单一源 = 测试仓 test_cw4_key_closure)
 - reviews/W4-键收编-落地审.md §一(正本缺位裁定与路由建议)

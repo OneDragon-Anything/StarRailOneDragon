@@ -1,6 +1,6 @@
 # 22 备战画面策略面(prep screen)
 
-> 画面 = 货币战争-备战(建档 `assets/game_data/screen_info/currency_war_battle_prep.yml`);**能力面**(游戏可用动作全集/op 映射/终结语义)= [../flow/screens-actions-capability.md](../flow/screens-actions-capability.md) §3.3。本篇 = 该画面的**策略面**:策略思路概述 + 会执行的动作清单(按用户裁定 2026-09-14 策略收缩后的目标形态)+ 形式判据指针。
+> 画面 = 货币战争-备战(建档 `assets/game_data/screen_info/currency_war_battle_prep.yml`);**能力面**(游戏可用动作全集/op 映射/终结语义)= [../screens/README.md](../screens/README.md) §5.3。本篇 = 该画面的**策略面**:策略思路概述 + 会执行的动作清单(按用户裁定 2026-09-14 策略收缩后的目标形态)+ 形式判据指针。
 > 判据本体的唯一现行家 = 既有编号篇,**引用不重复**:部署/装备/腾席判据 = [10_prep_decisions.md](10_prep_decisions.md);骨架义务 M1-M7 = [02_mandate_layer.md](02_mandate_layer.md);血预算 = [04_survival_budget.md](04_survival_budget.md);装备穿戴语义 = [18_equip_wear_semantics.md](18_equip_wear_semantics.md);换线 = [12_line_and_intention.md](12_line_and_intention.md)。数值单一源在代码(常量名形态)。流程编排 = `../flow/prep_visit.md`。
 
 ## 1. 策略思路/算法概述
@@ -31,4 +31,4 @@
 
 ## 3. 能力 vs 策略
 
-备战期动作集与能力面同集(策略收缩只发生在商店期,对照 [../flow/screens-actions-capability.md](../flow/screens-actions-capability.md) §3.3 与 [23_shop_screen.md](23_shop_screen.md) §3);原则定义 = 能力矩阵篇 §1。
+备战期动作集与能力面同集(策略收缩只发生在商店期,对照 [../screens/README.md](../screens/README.md) §5.3 与 [23_shop_screen.md](23_shop_screen.md) §3);原则定义 = [../screens/README.md](../screens/README.md) §1。

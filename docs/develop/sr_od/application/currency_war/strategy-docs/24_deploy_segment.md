@@ -1,6 +1,6 @@
 # 24 部署执行段策略面(deploy segment)
 
-> 定位 = **备战画面内部署执行段**(无独立 screen_info 建档画面):部署机以拖拽在货币战争-备战上执行(op 名「货币战争-部署角色」),未达上限确认弹窗(货币战争-未达上限警告)由流程层推进;**能力面** = [../flow/screens-actions-capability.md](../flow/screens-actions-capability.md) §3.4。本篇 = 该段的**策略面**:思路概述 + 动作清单 + 形式判据指针。
+> 定位 = **备战画面内部署执行段**(无独立 screen_info 建档画面):部署机以拖拽在货币战争-备战上执行(op 名「货币战争-部署角色」),未达上限确认弹窗(货币战争-未达上限警告)由流程层推进;**能力面** = [../screens/README.md](../screens/README.md) §5.4。本篇 = 该段的**策略面**:思路概述 + 动作清单 + 形式判据指针。
 > 判据本体引用不重复:部署与站位判据 = [10_prep_decisions.md](10_prep_decisions.md) §1;换血卖出的骨架侧语义 = [02_mandate_layer.md](02_mandate_layer.md) §7(sell 行,M4 姊妹出口)。数值单一源在代码。
 
 ## 1. 策略思路/算法概述

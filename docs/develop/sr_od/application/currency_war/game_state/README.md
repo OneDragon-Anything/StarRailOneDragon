@@ -12,9 +12,10 @@
 效果族归属、生命周期与治理面)的正本 = [fields.md](fields.md)(沿用原详设节号体系,
 代码注释所引节号以该篇为解析归宿);本目录自足,不依赖任何迭代过程件。
 
-上位裁定与 why(原以 ADR 档案承载;ADR 档案体系已按用户令整体退役,裁定 why 的解析归宿 = 本目录正本 + git 历史):**统一 state 状态流水** = BoardState 收编升级+三渠道写入口(observe/carry/write_prior)+
-自足快照变更账。迁移批后续修订为当前有效裁定——守卫族终版、单字段双值结构、
-字段层次终极版(观察层=原始读数/逻辑层=计算值)三条为当前有效裁定。
+上位裁定与 why(ADR 档案体系已按用户令整体退役,裁定 why 的归宿 = 本目录正本动机段 + git 历史)。
+**现行有效上位裁定三条**:①守卫族终版;②单字段双值结构;③字段层次终极版
+(观察层=原始读数/逻辑层=计算值)。承载这三条的正文 = **统一 state 状态流水**
+(BoardState 收编升级+三渠道写入口(observe/carry/write_prior)+ 自足快照变更账)。
 
 ## 2. 设计理念(六条)
 
@@ -118,11 +119,11 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
   写入契约与逐字段映射对账 = [fields.md](fields.md) §9。
 - **字段级规格**=[fields.md](fields.md)(本目录分篇,正本)——字段清单/决策 op
   写入面/效果族归属/生命周期/治理面;与其冲突时以代码现状为准,正文随代码同步修订。
-- **派生规则单一源**=场景一判定方案([node-derivation.md](node-derivation.md);2026-09-11 自 `.debug/temp/currency_war/流程hook场景一-节点推进-判定方案.md` 晋升入库,持久裁定锚=关联行与文档拆分裁定记档)——本目录引用不复写。
+- **派生规则单一源**=场景一判定方案([node-derivation.md](node-derivation.md))——本目录引用不复写。
 - **旧流退役处置**=[retirement.md](retirement.md)(本目录分篇;退役排期过程件归 git 历史)。
 - **链观察**=[chain-observation.md](chain-observation.md)(本目录分篇,链观察对接面正本);链观察设计原始件已随过程区清理退役,考古走 git 历史。
 - **效果域内容语义**(计数器模型/生命周期/逐效果规格)=
-  [effect-domain.md](effect-domain.md)(2026-09-11 成文入库);本目录只记捕获面
+  [effect-domain.md](effect-domain.md);本目录只记捕获面
   (效果变化随快照行自带)与逐效果 state 影响登记。
 - **策略侧遥测(决策行文件)**= 两文件模型的另一文件,schema 正本 =
   [决策行文件schema设计.md](决策行文件schema设计.md)(本目录分篇);state 引用

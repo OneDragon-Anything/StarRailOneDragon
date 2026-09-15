@@ -825,7 +825,7 @@ OCR 唯一,§3.3.4)。**每节点自动刷新不进计数组**(§3.3.9 单列基
 败战后奖励/补给轮的补发归宿=吞掉还是递延,待实机实证挂观测期核对项。**kernel 单一
 源函数族已就位**:`cw_economy.round_start_income`(+`reward_base_gold`/
 `loss_compensation_base`/`RoundStartIncome`)承载本行公式,两域禁第二份;live 写端
-载体指派与 sim 接入归迁移尾批(排期单一源=[r5-migration-plan.md](r5-migration-plan.md));
+载体指派与 sim 接入归迁移尾批(排期单一源=r5-migration-plan(已删过程件,git 可溯));
 接线前轮首增量走观察覆盖兜底。
 
 - **战斗败轮补发**:战斗失败时结算屏不发收入,这笔金改到**下一轮轮首**补发。写入:
@@ -1262,8 +1262,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
 
 ### 8.7 迁移与排期
 
-迁移波次/批次范围/消费切换排期的单一源 =
-[r5-migration-plan.md](r5-migration-plan.md),本篇不复制不另立。
+迁移波次/批次范围/消费切换排期归退役过程件(原单一源 r5-migration-plan,已删,考古走 git 历史),本篇不复制不另立。
 
 ### 8.8 治理面
 

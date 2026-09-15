@@ -1,6 +1,6 @@
 # 26 战斗与结算期策略面(battle & settlement)
 
-> 画面 = 货币战争-战斗 / 货币战争-战斗结算 / 货币战争-结算 / 货币战争-结算-战报;**能力面** = [../flow/screens-actions-capability.md](../flow/screens-actions-capability.md) §3.7。本篇 = 该阶段的**策略面**:出战标准 + 结算读数供数 + 「战斗期无独立决策」的边界申报。
+> 画面 = 货币战争-战斗 / 货币战争-战斗结算 / 货币战争-结算 / 货币战争-结算-战报;**能力面** = [../screens/README.md](../screens/README.md) §5.6。本篇 = 该阶段的**策略面**:出战标准 + 结算读数供数 + 「战斗期无独立决策」的边界申报。
 > 数值单一源在代码;hp 消费唯一登记处 = [04_survival_budget.md](04_survival_budget.md) §7 授权对账表。流程编排 = `../flow/outer_loop.md` §3/§4。
 
 ## 1. 策略思路/算法概述
