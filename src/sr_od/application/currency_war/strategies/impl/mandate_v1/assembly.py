@@ -20,10 +20,9 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
+from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar, exec_state_of
 from sr_od.application.currency_war.kernel.cw_intention import committed_from
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
-from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 from sr_od.application.currency_war.strategies.impl.mandate_v1.contracts import (
     Snapshot,
 )
@@ -71,7 +70,18 @@ def _tracking_view(session: StrategySession, snapshot: Snapshot,
     与 session.tracked_* 断开对象别名——session 侧就地写端(shop 星级/
     装备拼接、deploy_bench 装备覆盖)不再穿透视图,反向亦然。
     """
-    from sr_od.application.currency_war.kernel.cw_exec_state import snapshot_copy
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        snapshot_copy,
+        tracked_unobserved,
+    )
+    # T-268 二次修正:未观察 → 不回退不消费,短路。回退(snapshot 粗读
+    # 冒充席面)会掩盖「账不可信」状态——策略在粗读上决策 = T-251 空账
+    # 混同同族根因。产空视图走消费侧既有空席保守面,锚定交备战 heavy
+    # 观察(reconcile 屏幕真值写回替换哨兵);已观察(含空)照旧走回退。
+    if tracked_unobserved(session):
+        log.warning('[cw!][prep_brain] tracked 未观察 → _tracking_view 短路'
+                    '(不回退 snapshot,空视图;等 reconcile 锚定)')
+        return (), ()
     tracked_bench = getattr(exec_state_of(session), 'tracked_bench_chars', None)
     bench = (tuple(None if b is None else snapshot_copy(b)
                    for b in tracked_bench)

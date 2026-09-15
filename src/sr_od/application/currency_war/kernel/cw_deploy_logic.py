@@ -744,7 +744,8 @@ def swap_arm_deployed_count(board: dict | None,
     (一人多阵营贡献多次,4 人可贡献 11 阵营次)——把羁绊计数当部署数
     喂「板满」门 = 建模对象错,板未满即开臂、熔断自线成型起事实失效。
     """
-    return deployed_occupied(tracked_deployed or [])
+    return deployed_occupied(
+        tracked_deployed if isinstance(tracked_deployed, list) else [])
 
 
 def fenced_swap_arm_of(fp: float, deployed_n: int, cap: int | None) -> bool:

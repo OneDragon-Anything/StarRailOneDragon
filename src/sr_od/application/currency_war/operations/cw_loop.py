@@ -1425,11 +1425,16 @@ class CwLoop(SrOperation):
                 exec_state_of,
             )
             exec_state_of(session).cw_resumed_match = True
-            # T-268 观察态失效(接管):接管场景 tracked 主账与屏幕的对应
-            # 关系未确证 → 置未观察,商店策略门(flow.decide_shop_action)
-            # 据此关店交回外循环,备战环 heavy 观察(reconcile_tracking
-            # 写回成功)完成锚定后再进店;店内零原地重建。
-            exec_state_of(session).tracked_observed = False
+            # T-268 观察态失效(接管):两账字段写入「未观察」哨兵——自本
+            # 事件起账值不可消费,商店策略门(flow.decide_shop_action)据此
+            # 关店交回外循环,备战环 heavy 观察(reconcile_tracking 屏幕真
+            # 值写回)替换哨兵完成锚定后再进店;店内零原地重建。重置/账失
+            # 效类事件出现时同口写哨兵(语义登记 = exec_state 字段注)。
+            from sr_od.application.currency_war.kernel.cw_exec_state import (
+                UNOBSERVED_TRACKED,
+            )
+            exec_state_of(session).tracked_bench_chars = UNOBSERVED_TRACKED
+            exec_state_of(session).tracked_deployed = UNOBSERVED_TRACKED
         except Exception as e:  # noqa: BLE001  旗标写入不阻塞分派
             log.debug(f'[cw-loop] 恢复局旗标写入跳过: {e}')
 

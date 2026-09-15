@@ -45,6 +45,8 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     BenchChar,
     exec_state_of,
     pad_bench,
+    tracked_list,
+    tracked_unobserved,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
@@ -286,8 +288,13 @@ def reseed_bench_if_layout_stale(state: GameState, session,
     """
     if exec_state_of(session).bench_layout_epoch == seed_epoch:
         return 'clean'
+    # 未观察账无布局可信,重播种无从谈起(布局代次只由 reconcile 纠漂
+    # 推进,未观察窗内不可达;防御位)→ 按 clean 放行,等观察链锚定。
+    if tracked_unobserved(session):
+        return 'clean'
     tracked = pad_bench(deepcopy(
-        getattr(exec_state_of(session), 'tracked_bench_chars', None) or []))
+        tracked_list(getattr(exec_state_of(session), 'tracked_bench_chars',
+                             None))))
     if not _reseed_bench_layout(state, tracked):
         return 'failed'
     return 'reseeded'

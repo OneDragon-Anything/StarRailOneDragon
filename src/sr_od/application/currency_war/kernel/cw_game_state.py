@@ -2144,12 +2144,16 @@ def apply_prep_action_logic(bs: GameState, action: Any, *,
                 from sr_od.application.currency_war.kernel.cw_exec_state import (
                     bench_from_compact,
                     exec_state_of,
+                    tracked_unobserved,
                 )
-                _es = exec_state_of(session)
-                _tracked = [bc for bc in (_es.tracked_bench_chars or [])
-                            if bc is not None and bc.slot != idx + 1]
-                _tracked.append(BenchChar(slot=idx + 1, char_id=_ov_id))
-                _es.tracked_bench_chars = bench_from_compact(_tracked)
+                # 未观察账(T-268 哨兵)跳过对称吸收:禁在未锚定底座上
+                # 积累动作事实,屏面真值由下一锚定(reconcile)整体重建。
+                if not tracked_unobserved(session):
+                    _es = exec_state_of(session)
+                    _tracked = [bc for bc in (_es.tracked_bench_chars or [])
+                                if bc is not None and bc.slot != idx + 1]
+                    _tracked.append(BenchChar(slot=idx + 1, char_id=_ov_id))
+                    _es.tracked_bench_chars = bench_from_compact(_tracked)
         _w(bs.bench, bench_view_of_slots(new_slots), 'proj_sell_bench')
         g = bs.gold.value
         if g is not None:

@@ -989,6 +989,8 @@ class CwScreenDeploy(SrOperation):
         else:
             back_eq = read_row_equipped(self.ctx, scr, equip_grays, _bk_pfx, _bk_n)
         tracked = _match.exec_state.tracked_deployed
+        if not isinstance(tracked, list):
+            tracked = []   # 未观察哨兵(T-268):装备分布回写零底座可循
         _n = 0
         for c in tracked:
             slot = getattr(c, 'slot', None)

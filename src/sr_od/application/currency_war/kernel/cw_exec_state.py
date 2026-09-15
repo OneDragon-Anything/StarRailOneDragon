@@ -95,6 +95,44 @@ def exec_state_of(session: object) -> ExecState:
     return ex
 
 
+@dataclass(frozen=True)
+class UnobservedTracked:
+    """tracked 账「未观察」态值(T-268 二次修正:取值域态值,非外加旗标)。
+
+    语义 = 自接管/重置/账失效以来没有任何观察锚定过该字段,值不可消费;
+    与「已观察下的空」(``[]``)类型可分——T-251 用空账推断未观察翻车的
+    根因即两者混同。进入 = 显式失效事件写点(cw_loop._mark_session_resumed
+    接管;重置/账失效类事件同口写);退出 = reconcile_tracking 屏幕真值
+    写回成功(实读值整体替换哨兵)。
+    """
+
+    reason: str = 'unobserved'
+
+
+#: 「未观察」哨兵单例(不可变,跨 session 共享安全;判定一律走类型而非
+#: 身份,消费面禁直接引用本单例做写回)。
+UNOBSERVED_TRACKED = UnobservedTracked()
+
+
+def tracked_unobserved(session: object) -> bool:
+    """tracked 主账是否处于未观察态(判定单一源;任一面未锚定即保守为真)。
+
+    消费方 = 策略商店门(strategies/impl/flow.py decide_shop_action)、
+    执行侧跳过留痕/熔断(cw_screen_buy_cards)与测试。两账同帧锚定
+    (单一状态语义),混形态(一面真值一面哨兵)= 锚定未完成,保守为真。
+    """
+    ex = exec_state_of(session)
+    return (isinstance(ex.tracked_bench_chars, UnobservedTracked)
+            or isinstance(ex.tracked_deployed, UnobservedTracked))
+
+
+def tracked_list(value) -> list[BenchChar | None]:
+    """tracked 字段读面 coerce 单一源:未观察哨兵 → 空表(消费面禁拿
+    哨兵当账用);list 原样返回。只读消费面(遥测/视图/防御读)用;
+    动作随动写面对哨兵应跳过整笔写(保态),不走本 coerce 制造伪观察。"""
+    return value if isinstance(value, list) else []
+
+
 @dataclass
 class ExecState:
     """一局的执行层状态(27 具名(含 _pending_chosen_supply)
@@ -136,13 +174,25 @@ class ExecState:
     # star 回退停机钩子计数(char → 连续回退次数;连续 2 节点回退 = 真识别
     # 问题 → 停机保画面排查;读回恢复即清零)。执行侧停机钩子载体。
     star_regression_count: dict[str, int] = field(default_factory=dict)
-    # 执行侧跟踪账(随动更新;双账断言 screen_op.md §2.3(ii))。两账形状
-    # 契约 = pad 态定长槽表**含 None**(ADR-0316/0392;tracked_bench_chars
-    # T-308 后=reconcile 写回经 bench_from_compact 重建的槽位表,恒 pad 态;
-    # tracked_deployed = deployed_from_compact 写回/mutate 入口 pad_deployed
-    # 的定长 10 槽表)——注解按契约含 None(T-308 落地审义务,G2 全闭环)。
-    tracked_bench_chars: list[BenchChar | None] = field(default_factory=list)
-    tracked_deployed: list[BenchChar | None] = field(default_factory=list)
+    # tracked 主账(执行侧跟踪账,随动更新;双账断言 screen_op.md §2.3(ii)
+    # 已随 T-268 守卫退役)。两账形状契约 = pad 态定长槽表**含 None**
+    #(ADR-0316/0392;tracked_bench_chars T-308 后=reconcile 写回经
+    # bench_from_compact 重建的槽位表,恒 pad 态;tracked_deployed =
+    # deployed_from_compact 写回/mutate 入口 pad_deployed 的定长 10 槽表)
+    # ——注解按契约含 None(T-308 落地审义务,G2 全闭环)。
+    # [取值域含「未观察」态](T-268 二次修正):值域 = 槽位表(list,已
+    # 观察;**空表 = 已观察下的合法值**,备战席真空真值)| :class:
+    # `UnobservedTracked` 哨兵(未观察,值不可消费)。缺省 = 空表(正常
+    # 新局 0 件即屏幕真值,缺省可信——sim/离线入口不经失效事件不被误伤);
+    # 哨兵进入 = 显式失效事件(接管 _mark_session_resumed;重置/账失效
+    # 同口写),退出 = reconcile_tracking 屏幕真值写回(整体替换)。
+    # 消费纪律:只读面经 :func:`tracked_list` coerce;动作随动写面对哨兵
+    # 跳过整笔(保态,禁在未锚定底座上积累动作事实);判定走
+    # :func:`tracked_unobserved` 单一源。
+    tracked_bench_chars: (list[BenchChar | None] | UnobservedTracked
+                          ) = field(default_factory=list)
+    tracked_deployed: (list[BenchChar | None] | UnobservedTracked
+                       ) = field(default_factory=list)
     # bench 布局代次(T-308 S3 churn 事件通道,最小面)。[索引定义] 坐标系
     # = 单调递增计数器(非槽位号、非下标);取值时机 = reconcile 纠漂写回期
     # 递增(kernel/cw_reconcile,唯一写点)/ 逻辑态播种期快照(每段入口观察)+
@@ -229,23 +279,9 @@ class ExecState:
     # 生命周期:新 match 新执行态 = 缺省 False(正常新局恒 False,开局推断
     # 合法不受误伤)。
     cw_resumed_match: bool = False
-    # tracked 主账观察状态(T-268 用户裁定「字段增加观察状态」;原「接管
-    # 后种子段两账再锚定待办」旗标 cw_resume_seed_anchor 随店内读屏重建
-    # 出口一并退役,由本字段以观察态语义承接其唯一生产行为面)。
-    # True = tracked 主账已按屏幕真值锚定,商店决策可信任席面输入;
-    # False = 账与屏幕的对应关系未确证(接管/重置/账失效等事件后),策略
-    # 商店门(strategies/impl/flow.py decide_shop_action)据此返回恒可用
-    # 终结 CloseShop 交回外循环,由备战环 heavy 观察(observe_full →
-    # reconcile_tracking)完成锚定后再进店——店内不做任何原地重建。
-    # 写入端:False = cw_loop._mark_session_resumed(接管检测确认点;重置/
-    # 账失效类事件出现时同口置 False,本注释即语义登记);True =
-    # kernel/cw_reconcile.reconcile_tracking 的 bench 侧屏幕真值写回成功
-    # 点(唯一生产置位点;双空读守卫/槽号健康门拒绝/识别域未就绪均不
-    # 置位 = 保持未观察)。缺省 True = 缺省可信:正常新局 ExecState 随局
-    # 新建,空账即屏幕真空(0 件真值),且生产首店访问前必有备战环
-    # heavy 观察先锚定;仅显式失效事件才降级,避免 sim/离线入口未过
-    # 接管路径被误伤为全量关店。
-    tracked_observed: bool = True
+    # (r1 批曾落「外加布尔旗标 tracked_observed」形态,随 T-268 二次修正
+    # 退役:观察态并入上面两字段的取值域(哨兵态值),禁外挂旗标——外挂
+    # 旗标下字段自身不带状态,消费者不查旗标即复现 T-251 空账混同根因。)
 
 
 # ============================================================ op 逻辑效果推进
@@ -267,8 +303,9 @@ def _char_fee(name: str) -> int | None:
 
 
 def _session_tracked(session) -> tuple[list[BenchChar], list[BenchChar | None]]:
-    m = getattr(exec_state_of(session), 'tracked_bench_chars', None) or []
-    d = getattr(exec_state_of(session), 'tracked_deployed', None) or []
+    m = tracked_list(getattr(exec_state_of(session), 'tracked_bench_chars',
+                             None))
+    d = tracked_list(getattr(exec_state_of(session), 'tracked_deployed', None))
     return list(m), list(d)
 
 

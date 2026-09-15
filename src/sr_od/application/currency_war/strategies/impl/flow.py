@@ -682,11 +682,13 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         spare = list(getattr(session, 'last_owned_equips', None) or [])
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             exec_state_of,
+            tracked_list,
         )
         _es = exec_state_of(session)
         worn = [eq
-                for slot_list in (getattr(_es, 'tracked_deployed', None) or [],
-                                  getattr(_es, 'tracked_bench_chars', None) or [])
+                for slot_list in (tracked_list(
+                    getattr(_es, 'tracked_deployed', None)),
+                    tracked_list(getattr(_es, 'tracked_bench_chars', None)))
                 for bc in slot_list if bc is not None
                 for eq in (getattr(bc, 'equips', None) or [])]
         from sr_od.application.currency_war.kernel.cw_equip_value import (
@@ -725,17 +727,19 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 'decide_shop_action: 容器商店 payload 离屏(shop=None)'
                 '(黑板契约容器化:在屏前置 bs.shop.value is not None;'
                 'None=观察层失约,禁静默按空态决策)')
-        # 未观察门(T-268 用户裁定「字段增加观察状态」):tracked 主账未按
-        # 屏幕真值锚定(接管/重置/账失效事件后,备战环 heavy 观察尚未重建
-        # 成功)时商店决策的关键输入(席面)不可信——返回恒可用终结
-        # CloseShop 交编排壳收店,外循环全分支重判自然落回备战节点,heavy
-        # 观察完成锚定后再进店;店内不做任何原地重建(读屏重建出口随
-        # T-251 退役)。门只表达「无可决策」;跳过事件留痕与连续跳过熔断
-        # 在执行侧 run_buy_waves 的 CloseShop 出口(账本 T-268)。
+        # 未观察门(T-268 二次修正:tracked 字段取值域含「未观察」哨兵态):
+        # tracked 主账未按屏幕真值锚定(接管/重置/账失效事件后,备战环
+        # heavy 观察尚未替换哨兵)时商店决策的关键输入(席面)不可信——
+        # 返回恒可用终结 CloseShop 交编排壳收店,外循环全分支重判自然落回
+        # 备战节点,heavy 观察完成锚定后再进店;店内不做任何原地重建
+        #(读屏重建出口随 T-251 退役),也不消费任何席面视图(_tracking_view
+        # 的 snapshot 回退在本门之后的核路径,门先短路即零消费)。判定单一
+        # 源 = kernel tracked_unobserved;跳过事件留痕与连续跳过熔断在执行
+        # 侧 run_buy_waves 的 CloseShop 出口。
         from sr_od.application.currency_war.kernel.cw_exec_state import (
-            exec_state_of,
+            tracked_unobserved,
         )
-        if not exec_state_of(session).tracked_observed:
+        if tracked_unobserved(session):
             log.info('[cw][shop] tracked 未观察(待备战 heavy 观察锚定)'
                      '→ CloseShop 交回外循环重判')
             return CloseShop()

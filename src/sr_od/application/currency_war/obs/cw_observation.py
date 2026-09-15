@@ -2350,6 +2350,10 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # - tracked 空/含未知 → None → OCR 兜底(现状;混合态半算比漏算更毒)。
     _exec = getattr(_match, 'exec_state', None) if _match is not None else None
     _tracked_dep = (_exec.tracked_deployed if _exec is not None else None)
+    # 未观察哨兵(T-268)coerce 成空 → board 算不出 None → 走下方既有
+    # OCR 兜底(与「tracked 空」同语义;禁拿未锚定账当真值底座)。
+    if _tracked_dep is not None and not isinstance(_tracked_dep, list):
+        _tracked_dep = []
     _computed = board_from_tracked(_tracked_dep)
     # spec 无 board 的阶段(battle_or_transit)跳过面板 OCR:空 OCR 侧 + honest=False
     # → 有 tracked 时保 computed 底座、无 tracked 时空板(与「OCR 全 miss」同语义)。
