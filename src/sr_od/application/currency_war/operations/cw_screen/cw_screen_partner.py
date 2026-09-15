@@ -1,7 +1,10 @@
-# live-verified 2026-08-13:CwScreenPartner 端到端跑通(候选 click 早前实测;确认 →
-# overlay 关,live 验)。更正(2026-09-14 建档证据):本屏 = 单屏单选 + 一次确认,
-# 无第二画面——旧「step2 选强化目标(点中心立绘 960,300→确认)」为确认钮旁
-# 伴随文案「请选择强化角色」的误读(巨星档同款误读),在场检测与二次确认序列已删。
+# 机制更正(2026-09-15 实机事故,详见 docs/game/screens/currency_war_choose_partner.md):
+# 旧「选中态 gate」= 全屏 OCR 找「已选择」(LCS 阈值按关键词归一,3 字词与
+# 本屏常驻的指令长句/「请选择强化角色」共享子序列「选择」即达 0.5)→ 本屏
+# 恒误命中,op 恒跳过点选、对置灰确认钮原样重试 → P1-r1 十八连 fail 卡死
+# (确认钮置灰被游戏拒绝)。本版废除选中态读数,改「点选候选 → 确认」脉冲 +
+# overlay 关闭完成门(推进信号 = 标识消失,不依赖任何未实锤的选中态呈现);
+# 未选中态正判定 = 建档「提示-请选择强化角色」区域命中(置灰伴随文案)。
 
 # r104(2026-08-20):SIFT 立绘识别接入(portrait_plaza 库)——候选真身喂 decide_partner,
 # core_chars 匹配真正生效(此前 label 流派名恒不命中 → 恒 idx=0 最左盲点)。
@@ -9,7 +12,8 @@
 """货币战争 选择伙伴 overlay 处理 op(从主循环拆出)。
 
 「选择伙伴」overlay 会挡住出战 → stall。OCR 候选阵营标签定位候选 → SIFT 立绘识别
-真身 → decide_partner 按策略选 → 点候选立绘选中 → 确认选择。
+真身 → decide_partner 按策略选 → 「点选候选 → 确认」脉冲(同轮先点选后确认,
+确认被拒形态有界重试,见 ``_handle_overlay``)→ overlay 关 = 完成门(标识消失)。
 
 统一观察架构逐屏迁移(试点步骤 3;架构设计 §9.2 迁移步骤 4 + 开放问题清单
 B3 三段走第二段「补给 + 余事件屏按族批量」):本类是 CwScreenOpBase 子类,
@@ -19,11 +23,11 @@ handle 顶部装配点分流(cw_game_ports 两端口完整在场 → 五段生�
 §五.5 统一形态注意项 = lifecycle_observe 消费 ``_observation_port()`` 位):
 门后选卡+确认链纯移入 ``_handle_overlay``(两路径共享零转录);本屏无
 on_outcome 落地登记件(§6.4 收编面无事件屏 chosen 行;chosen_partner =
-选择 handler 单次逻辑写入豁免 §2.2/§6.5-6,留守共享体);单轮内完成
-选卡→确认→验关,轮次结果自共享体直返(段迹到 act)。本屏 sim 腿 =
+选择 handler 单次逻辑写入豁免 §2.2/§6.5-6,留守共享体);轮次结果自共享体
+直返(段迹到 act)。本屏 sim 腿 =
 不适用(F11 例外清单:sim 无对应画面段,事件浮层族即时落定),等价判据
-主承重 = 实机在册行为锁(test_cw_partner_overlay_dispatch + 本批锁
-test_cw_obs_arch_event_screens_step3)。
+主承重 = 实机行为锁(test_cw_obs_arch_event_screens_step3 迁移结构锁 +
+test_cw_partner_select_confirm_flow 选选流序/确认被拒有界重试锁)。
 """
 import time
 from dataclasses import dataclass
@@ -67,7 +71,7 @@ class PartnerLiveObservationAdapter:
 
 
 class CwScreenPartner(CwScreenOpBase):
-    """选择伙伴 overlay:OCR 候选 → 点候选立绘选中 → 确认选择。"""
+    """选择伙伴 overlay:OCR 候选 → decide_partner 选 → 「点选候选→确认」脉冲 → 标识消失 = 完成。"""
 
     # 候选阵营标签行 y 过滤带(候选 label 在 y~362;排除标题 64 / 指令 130 / 详情 445 / 确认 582)。
     # 实测(2026-08-06 1-7 节点):候选 label 护盾/能量 在 y≈362;放宽 [340,400] 容变。
@@ -77,8 +81,13 @@ class CwScreenPartner(CwScreenOpBase):
     # (列车同行/能量/仙舟/213... 在 x~106)也落在候选 y 行 → 不滤 x 会把 board label 当候选 → 点错(2026-08-06
     LABEL_CX_LO: ClassVar[int] = 450
     LABEL_CX_HI: ClassVar[int] = 1550
-    # 候选立绘在 label 上方约 60px(label 362 → 立绘 302;实测点 (1127,300) 命中选中)。
-    PORTRAIT_DY_ABOVE_LABEL: ClassVar[int] = 60
+    # 确认被拒脉冲上限:未选中提示持续在场时,「点选→确认」脉冲达到该次数即
+    # 显式 round_fail 交外环重判(禁原样无限重试;2026-09-15 实机卡死形态的
+    # 针对性防线。取值 < 节点预算 10,先于预算耗尽给出精确失败原因)。
+    CONFIRM_REJECT_MAX: ClassVar[int] = 4
+    # screen_info area 名(currency_war_partner.yml;坐标单一真相源)。
+    A_CANDIDATE_STRIP: ClassVar[str] = '候选-卡区'
+    A_UNSELECTED_HINT: ClassVar[str] = '提示-请选择强化角色'
     _EXCLUDE: ClassVar[set[str]] = {'选择伙伴', '攻略', '确认选择', '详情', '角色', '装备'}
 
     def __init__(self, ctx: SrContext):
@@ -92,6 +101,11 @@ class CwScreenPartner(CwScreenOpBase):
         # 确认已发待重入裁决标志(验证废除形态):重入裁决见 handle 顶部
         #(两步链的最终确认也置位,标识不在 = overlay 关 = 链完结)。
         self._confirm_pending: bool = False
+        # 选定点位(本执行内一次决策缓存):重入轮复用同点位重点选,不重跑
+        # SIFT/决策/session 写(单执行内点位稳定,防跨轮决策抖动换候选)。
+        self._pick_point: Point | None = None
+        # 「点选→确认」脉冲计数(确认被拒防线的有界重试预算,见 CONFIRM_REJECT_MAX)。
+        self._confirm_pulses: int = 0
 
     def _observe_frame(self) -> PartnerObservation:
         """轻观察帧装配(实机适配器①封口内容):入口门在 observe 段,
@@ -178,6 +192,36 @@ class CwScreenPartner(CwScreenOpBase):
             return mrl.max.center
         return None
 
+    def _unselected_hint_present(self, screen) -> bool:
+        """未选中态正判定:建档「提示-请选择强化角色」区域命中。
+
+        该提示 = 确认钮置灰态的伴随文案(区域约束 OCR,rect 内无他词,无
+        全屏 LCS 误匹配面)。选中态呈现在档材料零实拍(旧档「已选择文字 +
+        高亮边框」记载经像素比对证伪,见 screen doc)→ 只把提示在场作
+        「确定未选中」的正判定,选中与否不作读数判定 —— 推进语义由
+        「点选→确认」脉冲 + overlay 关闭完成门承载。
+        """
+        return self.round_by_find_area(
+            screen, '货币战争-列车同行', CwScreenPartner.A_UNSELECTED_HINT,
+        ).is_success
+
+    def _pick_point_for(self, cand: tuple[str, int, int]) -> Point | None:
+        """候选点击点位:x = 候选 label 中心(运行时动态,随候选数分布),
+        y = 建档「候选-卡区」带中心(坐标单一真相源)。区域缺失 = None,
+        调用方显式失败(禁裸坐标兜底)。
+
+        两帧实测(2026-09-15 事故帧 1-1 与 1-9 档 fixture)卡带 y≈165-440,
+        带中心 y≈302 落立绘区内;旧 offset「label cy-60」实点 y≈315,恰在
+        立绘底边(~307)下方卡体死区 —— 点击几何不可靠的根源之一,故 y
+        改由建档带锚定,布局漂移可经 analyze_screen 对账暴露。
+        """
+        area = self.ctx.screen_loader.get_area(
+            '货币战争-列车同行', CwScreenPartner.A_CANDIDATE_STRIP)
+        if area is None or area.pc_rect is None:
+            return None
+        _name, cx, _cy = cand
+        return Point(cx, (area.pc_rect.y1 + area.pc_rect.y2) // 2)
+
     @operation_node(name='选择伙伴', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
         # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run):
@@ -201,12 +245,27 @@ class CwScreenPartner(CwScreenOpBase):
         return self._handle_overlay(screen)
 
     def _handle_overlay(self, screen) -> OperationRoundResult:
-        """门后选卡+确认链(旧 handle 门后体纯移入,两路径共享零转录;
-        试点步骤 3,先例 = 盛会之星 ``_do_action`` 共享式)。chosen_partner
-        写端 = 选择 handler 单次逻辑写入豁免留守(§2.2);验关半拆除
-        (用户裁定 2026-09-10:动作 op 禁验证)——落地由 handle 顶部重入
-        裁决承载,本方法内轮次结果恒 retry/守卫语义。"""
-        if not self.round_by_ocr(screen, '已选择').is_success:
+        """门后「点选候选 → 确认」脉冲链(两路径共享零转录;先例 = 巨星
+        ``_do_action`` 选卡一次 + 重确认形态)。chosen_partner 写端 = 选择
+        handler 单次逻辑写入豁免留守(§2.2);落地判定由 handle 顶部重入
+        裁决承载(标识不在 = overlay 关 = 完成),本方法内轮次结果恒
+        retry/守卫语义。
+
+        每轮脉冲(机制出处 = 模块头更正注):
+        1. 未选中提示在场(置灰实锤)∧ 脉冲已达上限 → 显式 fail(确认被拒
+           形态有界重试,禁原样无限重试烧预算/烧外环);
+        2. 首轮决策一次(候选 OCR/SIFT/decide/session 写)定同一点位;
+        3. 提示在场(含重入轮)= 未选中实证 → 点候选卡(单选语义重点
+           已选卡无反选面;提示不在 = 不重点选,防未知选中呈现被扰动);
+        4. 点确认(bug#1 缓解 = mouse_move + click);确认是否落地由下一轮
+           重入裁决,不原地判选中态。"""
+        unselected = self._unselected_hint_present(screen)
+        if unselected and self._confirm_pulses >= CwScreenPartner.CONFIRM_REJECT_MAX:
+            log.info('[cw-partner] 确认被拒形态:未选中提示持续在场 %s 轮 → 显式失败交外环',
+                     self._confirm_pulses)
+            return self.round_fail(
+                '伙伴确认被拒(未选中提示持续在场,确认钮置灰;候选选中未生效)')
+        if self._pick_point is None:
             cands = self._read_candidates(screen)
             # r104:SIFT 立绘识别真身 → decide_partner 的 core_chars 匹配真正生效
             # (此前 label 流派名恒不命中 → 恒 idx=0;立绘库/identify_character 基建已有)。
@@ -228,7 +287,6 @@ class CwScreenPartner(CwScreenOpBase):
                 idx = pick.idx if 0 <= pick.idx < len(cands) else 0
                 reason = pick.reason
             log.info('[cw-partner] candidates=%s pick=idx%s %s', [o.char_id for o in options], idx, reason)
-            # (伙伴候选面存证行已随 exogenous 流写入端退役删除——删除波 1。)
             # r358d(遥测接线):伙伴选择落 session(复盘维度;选中确认后写)。
             if match is not None and options and 0 <= idx < len(options):
                 match.session.chosen_partner = options[idx].char_id or ''
@@ -249,17 +307,21 @@ class CwScreenPartner(CwScreenOpBase):
                 # 显式失败交外环重判,禁兜底盲点中央坐标(该点可能落在候选
                 # 间隙点空,静默重入空转;坐标单一真相源)。
                 return self.round_fail('伙伴屏无候选(OCR 未命中候选标签),禁兜底盲点')
-            _name, cx, cy = cands[idx]
-            portrait = Point(cx, cy - CwScreenPartner.PORTRAIT_DY_ABOVE_LABEL)
-            self.ctx.controller.mouse_move(portrait)
-            self.ctx.controller.click(portrait)
+            point = self._pick_point_for(cands[idx])
+            if point is None:
+                # 建档缺失(候选-卡区 area 不在)= 无建档依据的选中点 →
+                # 显式失败(坐标单一真相源,禁裸坐标兜底;补档走 MCP 工具)。
+                return self.round_fail('伙伴屏建档缺失:候选-卡区(禁裸坐标兜底)')
+            self._pick_point = point
+        if unselected or self._confirm_pulses == 0:
+            # 未选中实证(或首轮强制)→ 点候选卡选中。y 由建档「候选-卡区」
+            # 带中心锚定:旧 offset「label cy-60」实点落在立绘底边下方卡体
+            # 死区(几何根源见 ``_pick_point_for`` 注)。
+            self.ctx.controller.mouse_move(self._pick_point)
+            self.ctx.controller.click(self._pick_point)
             time.sleep(0.7)
-            # 选中态验拆除(验证废除):点立绘后不重读「已选择」判「选中
-            # 与否」——下一轮重入由顶部「已选择」观察裁决(未选中 = 重入
-            # 重点,计节点预算;观察在动作前 = 合法重判)。
-            return self.round_retry('候选立绘点击已发,重入观察裁决', wait=1)
-        else:
-            log.info('[cw-partner] 已选择态 → 跳 candidate click')
+            log.info('[cw-partner] 点选候选 %s(未选中提示在场=%s)',
+                     self._pick_point, unselected)
         # bug#1 吞(before_screenshot 移光标)→ overlay 不关 flat-loop(2026-08-06 r6 stall;手动 click 即关)。
         confirm = self._find_text_center(self.screenshot(), '确认选择')
         if confirm is None:
@@ -268,18 +330,10 @@ class CwScreenPartner(CwScreenOpBase):
         self.ctx.controller.mouse_move(confirm)
         self.ctx.controller.click(confirm)
         time.sleep(1.0)
-        # (原「到账登记」ConfirmPartner 块已随 ADR-0651 两态制废除:
-        #  chosen_partner 写端 = 候选选中时点的 session 写 + write_logic
-        #  直写(本 handler),无挂账登记环节。retry 轮重复确认零副作用。)
+        self._confirm_pulses += 1
         # 确认 = 单屏单选的一次确认(用户澄清+建档证据更正 2026-09-14):
-        # 本屏无第二画面、无「选强化目标」步——选伙伴 → 点确认 → 重入裁决
-        # 即完。原「判『请选择强化角色』在场 → 点中心立绘+二次确认」整段
-        # 已删(先拆检测、后删序列):该文本 = 确认钮旁伴随文案,旧检测拿
-        # 巨星档 area 跨屏读伙伴帧致误判(巨星调研已证同款误读;建档 =
-        # currency_war_partner.yml 仅 标识-选择伙伴/按钮-确认选择,见
-        # docs/game/screens/currency_war_choose_partner.md)。
-        # 机械交回(验证废除):确认是否落地由下一轮重入裁决
-        #(handle 顶部 pending 分支);未落地轮重走已选择态分支(计预算)。
+        # 本屏无第二画面、无「选强化目标」步——点选→确认 → 重入裁决即完。
+        # retry 轮重复确认零副作用(置灰态被游戏拒绝,无确认穿透风险)。
         self._confirm_pending = True
         return self.round_retry(wait=1)
 
@@ -302,9 +356,8 @@ class CwScreenPartner(CwScreenOpBase):
     def lifecycle_decision_cycle(self, payload: PartnerObservation
                                  ) -> OperationRoundResult:
         """段3-5(单动作内聚):decide+act 内聚于 ``_handle_overlay`` 共享体
-        (候选 OCR/SIFT/决策/遥测/session 写端/到账登记/确认链全部原位,
-        两路径共享零转录;单屏单选一次确认,step2 序列已删——用户澄清
-        2026-09-14 建档证据更正)。段5 on_outcome = 本屏无落地登记件(注册
+        (候选 OCR/SIFT/决策/遥测/session 写端/「点选→确认」脉冲链全部原位,
+        两路径共享零转录)。段5 on_outcome = 本屏无落地登记件(注册
         表缺席 = 零动作,见 __init__ 申报);出口验真/轮次结果语义在共享体
         内逐位保留(段迹到 act)。"""
         self._lifecycle_mark('decide')
