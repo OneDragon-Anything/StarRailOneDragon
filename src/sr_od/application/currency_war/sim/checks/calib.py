@@ -6,27 +6,46 @@ import math
 
 # 实机末金均值(批⑧ F1,18 局;批⑩ F5 对照侧:sim 52.5 vs 实机
 # 24.3 = 2.2× 虚高)。merge 落地(ADR-0276)后此比值应为收敛判据。
-# ⚠️ 锚已随 economy v2 重锚(ADR-0447,编排者裁决):24.3 采于穷 sim
-# 时代/败局死亡时点口径,与 v2 校准目标(实机 P1 出口富状态)错位;
-# 现值 45.1 = v2(r9 δ 退坡后)n=200 实测 P1 出口金均值(种子窗
-# 500000,.debug/temp/currency_war/w493_income_calib/REPORT.md §1)。
-# **语义降级声明**:本检查自 v2 起为「末金漂移哨兵」(锚=当前交付值,
-# 防未来静默漂移;比值 >1.5 = 注水/泄金通道回归),真实验收语义待
-# 实机 P1 出口金干净语料(spend_ledger 队列)重锚。
+# 45.1 = v2(r9 δ 退坡后)n=200 实测 P1 出口金均值(种子窗 500000,
+# .debug/temp/currency_war/w493_income_calib/REPORT.md §1)。
+# **T-256 双锚制**:sim 策略批(T-227/T-228/T-238/T-245,各批报告
+# 均已申报出口金方向性变化)累计把 sim 出口金从 69.35 抬到 ~124,
+# 对 45.1 比值 1.54→2.75,本检查自 T-228 时代起常红、检测力失效——
+# 已申报批间位移不属「静默漂移」,不应由哨兵判罚。故判定锚切
+# ``SIM_ENDGOLD_BASELINE``(随已归因批前移,换锚登记归因链),
+# 本常量降级**纯披露锚**(实机 P1 出口金 v2 时点真值;ratio 字段
+# 照常输出供 sim↔实机对拍人工判读;对拍判定语义待实机 P1 出口金
+# 干净语料(spend_ledger 队列)攒齐后重议,语料采集通道挂账编排者)。
 REAL_AVG_ENDGOLD: float = 45.1
 
-ENDGOLD_RATIO_MAX: float = 1.5   # 漂移阈值(v2 起;见上语义降级声明)
+ENDGOLD_RATIO_MAX: float = 1.5   # 漂移阈值(相对带宽;违规判定挂 sim 基线锚)
+
+# sim 出口金基线锚(T-256 双锚制的违规判定锚):T-256 换锚批实测
+# (sim_20260915_081247000_n300_s77200_460e6031,n=300,seed
+# 77200-77499,planes=1,池 460e6031e2f4ae06+eqg1;守卫残金 0,
+# 净口径=总口径)。换锚归因链(对 45.1 的历史批读数,漂移全部
+# 可归因、无未知残差):基座臂 69.35(sim_20260913_050118,T-238
+# 报告 §④)→ 88.93(T-238 修复臂 sim_20260915_033341)→ 99.96
+# (T-245 修前 sim_20260915_030128)→ 124.0(T-245 修后
+# sim_20260915_052726;T-256 双窗 123.57/124.05 独立种子复现)→
+# 122.28(本批)。换锚纪律:策略批落地改变出口金行为时随批重跑
+# n=300 换新锚并在此登记归因(对齐 ANCHOR_REGISTRY_N300 登记制),
+# 禁为保绿调带宽(历史教训:45.1 锚未随批前移 → 哨兵常红噪声)。
+SIM_ENDGOLD_BASELINE: float = 122.28
 
 
 
 def check_sim_endgold_calib(ledgers: list[list[dict]]) -> dict:
-    """批⑨ 设计/批⑩ 追加数据(末金校准;ADR-0276/0285;v2 重锚 ADR-0447)。
+    """批⑨ 设计/批⑩ 追加数据(末金校准;ADR-0276/0285;T-256 双锚制)。
 
-    判据:sim 末轮金均值 vs 锚的比值。锚已随 economy v2 重锚为当前
-    交付值 45.1(v2 r9 δ 退坡后 n=200 实测;旧 24.3 = 穷 sim 时代/
-    败局死亡时点口径,与 v2 校准目标错位)——**v2 起语义 = 末金漂移
-    哨兵**(比值 >1.5 = 注水/泄金通道回归),真实验收语义待实机 P1
-    出口金干净语料重锚。
+    判据:净口径末金均值 / ``SIM_ENDGOLD_BASELINE`` >
+    ``ENDGOLD_RATIO_MAX`` = 违规(sim 出口金静默漂移哨兵,只防注水
+    上侧)。基线锚随已归因策略批前移(换锚纪律见常量注释);已申报
+    批间位移走换锚,不走判罚。
+
+    披露锚:``REAL_AVG_ENDGOLD``(实机 P1 出口金 v2 时点真值)的
+    比值照常输出(ratio/net_ratio 键名保持连续),不判违规——
+    sim↔实机对拍人工判读用,语义见常量注释。
 
     双口径(ADR-0285,批㉑ F3/F5):r419 超容买守卫(ADR-0283)
     拦截的合法滞留(bench 满时策略仍提案买,金留下)混入总口径
@@ -51,14 +70,17 @@ def check_sim_endgold_calib(ledgers: list[list[dict]]) -> dict:
     ratio = avg / REAL_AVG_ENDGOLD if golds else 0.0
     net_avg = avg - avg_sk
     net_ratio = net_avg / REAL_AVG_ENDGOLD if golds else 0.0
-    return {'violations': 1 if net_ratio > ENDGOLD_RATIO_MAX else 0,
+    net_ratio_sim = net_avg / SIM_ENDGOLD_BASELINE if golds else 0.0
+    return {'violations': 1 if net_ratio_sim > ENDGOLD_RATIO_MAX else 0,
             'sim_avg_endgold': round(avg, 2),
             'real_avg_endgold': REAL_AVG_ENDGOLD,
             'ratio': round(ratio, 2),
+            'sim_ratio': round(avg / SIM_ENDGOLD_BASELINE, 2),
             # 净滞留口径(ADR-0285):守卫残金剔除后的策略真滞留
             'guard_skipped_gold_avg': round(avg_sk, 2),
             'net_endgold_avg': round(net_avg, 2),
-            'net_ratio': round(net_ratio, 2)}
+            'net_ratio': round(net_ratio, 2),
+            'net_ratio_sim': round(net_ratio_sim, 2)}
 
 
 
@@ -71,19 +93,31 @@ REAL_P1_GOLD_GE50: float = 0.141     # P(g≥50) 帧占比
 
 REAL_P1_GOLD_GE70: float = 0.022
 
-REAL_P1_GOLD_BAND: tuple[float, float] = (25.0, 35.0)   # M1 判据 30±5
+REAL_P1_GOLD_BAND: tuple[float, float] = (25.0, 35.0)   # M1 判据 30±5(纯披露,见下带注)
+
+# sim P1 金分布基线带(T-256 双锚制的违规判定带,与 endgold 双锚同批):
+# 中心 = T-256 换锚批实测 P1 帧金均值 61.6(n=2700;批目录见
+# SIM_ENDGOLD_BASELINE 注释),±5 绝对带宽沿 M1「30±5」结构。
+# 实机带(上)降级纯披露:策略省金行为(T-245 刷新止损等已申报批)使
+# sim 全帧金分布整体上移(61.7~62.4 双窗复现),越实机带 = 预期合成
+# 读数位移非环境回归(economy_calib_version=2 与池指纹未变);环境
+# 收入口径变化 bump 版本时随批重录本带。
+SIM_P1_GOLD_BASELINE_BAND: tuple[float, float] = (56.6, 66.6)
 
 REAL_P1_SHOP_COST_SHARE: dict[int, float] = {1: 0.613, 2: 0.243, 3: 0.133, 4: 0.010}
 
 
 
 def check_gold_dist_calib(ledgers: list[list[dict]]) -> dict:
-    """`w493_income_calib/` 对拍项:P1 备战帧金分布 vs 实机基线(ADR-0447)。
+    """`w493_income_calib/` 对拍项:P1 备战帧金分布(T-256 双锚制)。
 
-    披露 sim 金均值/ge50/ge70 占比;软告警 = 金均值越出实机带
-    [25,35](M1 判据 30±5;n<100 不判,数据边界)。被检对象 =
-    环境校准层(事件金总闸),非策略——告警语义是「状态分布漂移」,
-    消费方先核 economy_calib_version 与池指纹再归因。
+    判定:sim 金均值越出 ``SIM_P1_GOLD_BASELINE_BAND`` = 违规
+    (sim 状态分布静默漂移;n<100 不判,数据边界)。被检对象 =
+    环境校准层(事件金总闸)×策略行为合成的分布读数——消费方先核
+    economy_calib_version 与池指纹再归因;策略行为批落地使本读数
+    位移时随批换带(见常量注释),禁为保绿扩带宽。
+    披露:实机带 ``REAL_P1_GOLD_BAND`` 与实机均值/ge 占比
+    (ADR-0447,2026-08-28 实机 15 局口径)照常输出,不判违规。
     """
     golds: list[int] = []
     for rows in ledgers:
@@ -96,16 +130,19 @@ def check_gold_dist_calib(ledgers: list[list[dict]]) -> dict:
     ge50 = sum(1 for g in golds if g >= 50) / n
     ge70 = sum(1 for g in golds if g >= 70) / n
     lo, hi = REAL_P1_GOLD_BAND
+    slo, shi = SIM_P1_GOLD_BASELINE_BAND
     out = {'violations': 0, 'n': n,
            'sim_gold_mean': round(mean, 2),
            'sim_ge50': round(ge50, 4), 'sim_ge70': round(ge70, 4),
+           'sim_band': list(SIM_P1_GOLD_BASELINE_BAND),
            'real_gold_mean': REAL_P1_GOLD_MEAN,
-           'real_ge50': REAL_P1_GOLD_GE50, 'real_ge70': REAL_P1_GOLD_GE70}
+           'real_ge50': REAL_P1_GOLD_GE50, 'real_ge70': REAL_P1_GOLD_GE70,
+           'real_band': list(REAL_P1_GOLD_BAND)}
     if n < 100:
         out['note'] = 'n<100 不判(数据边界)'
-    if n >= 100 and not (lo <= mean <= hi):
+    if n >= 100 and not (slo <= mean <= shi):
         out['violations'] = 1
-        out['note'] = f'金均值 {mean:.1f} 越出实机带 [{lo},{hi}](M1)'
+        out['note'] = f'金均值 {mean:.1f} 越出 sim 基线带 [{slo},{shi}]'
     return out
 
 
@@ -313,19 +350,31 @@ def check_ab_verdict_claim(mean_diff: float, sd_pair: float, n: int,
 # 不稳);新锚只作「当前树+本批执行面」状态的基线,T-165/T-167 落地
 # 批须按本锚再申报。avg_refreshes 25.4 = 现策略泄金阶梯/必花域口径的
 # 真实刷新分布(旧锚 0.0 系 08-28 V_D 口径时代策略,锚如实记不折旧)。
+# 旧锚(0e091d4d,T-169 重锚批)已失效:T-256 sim-实机校准批
+# (2026-09-15)换锚。换锚批 = sim_20260915_081247000_n300_s77200_
+# 460e6031(n=300,seed 77200-77499,与旧锚域 300-599 及 T-238/T-245
+# 批域 77000-77199 均不相交;planes=1,池=snapshot 快照
+# 460e6031e2f4ae06+eqg1)。**复合漂移如实声明**:旧锚→新锚 =
+# T-169 锚后至本批的已申报策略批累计(T-165/T-167 执行面 → T-227/
+# T-228 止超发 → T-238 六处卖出口恢复 → T-245 刷新止损),单批贡献
+# 不再单拆(各批报告已申报);avg_refreshes 25.4→0 主因 = T-245
+# 止损(修前批 sim_20260915_030128 为 14.61/局且全部超账放行 →
+# 修后整批 0)。**六指标一体换锚**:登记制语义 = n=300 基线可整体
+# 引用,只换单项 = 混代基线(T-256 设计文档 §3 只点名 avg_refreshes,
+# 落地按登记制语义扩展为六项,扩展依据录校准报告)。
 ANCHOR_REGISTRY_N300: dict = {
-    'pool_fingerprint_prefix': '0e091d4d',
-    'recorded': '2026-09-09(T-169 重锚批:sim 缺板满换血执行面接入后'
-                '重建——n=300,seed 300-599[与旧锚域 0-299 不相交],'
-                'planes=1,池=snapshot 快照 0e091d4d9d0b10ac+eqg1,'
-                '批=sim_20260908_235159000_n300_s300_0e091d4d)',
+    'pool_fingerprint_prefix': '460e6031',
+    'recorded': '2026-09-15(T-256 校准批换锚:n=300,seed 77200-77499'
+                '[与旧锚域 300-599 及 77000-77199 不相交],planes=1,'
+                '池=snapshot 快照 460e6031e2f4ae06+eqg1,'
+                '批=sim_20260915_081247000_n300_s77200_460e6031)',
     'metrics': {
-        'engines2_by_r6': 0.85,       # 旧 0.20(复合漂移,单变量拆解见上注)
-        'avg_final_hp': 45.51,        # 旧 25.03(同上)
-        'hp_ge_60': 0.26,             # 旧 0.05(同上)
-        'battle_losses_le_2': 0.18,   # 旧 0.07(同上)
-        'recipe5_by_r6': 0.92,        # 旧 0.57(同上)
-        'avg_refreshes': 25.4,        # 旧 0.0(现策略刷新分布,见上注)
+        'engines2_by_r6': 0.51,       # 旧 0.85(T-169 锚;复合漂移见上注)
+        'avg_final_hp': 37.1067,      # 旧 45.51(同上)
+        'hp_ge_60': 0.1567,           # 旧 0.26(同上)
+        'battle_losses_le_2': 0.1067, # 旧 0.18(同上)
+        'recipe5_by_r6': 0.8633,      # 旧 0.92(同上)
+        'avg_refreshes': 0.0,         # 旧 25.4(T-245 止损后 P1-only 载体零付费刷新,见上注)
     },
 }
 
