@@ -2,8 +2,8 @@
 
 > 本文档所属 = game_state 设计目录(本目录总纲)。
 > **命名对应注**:本文档所称 **GameState**(统一 state),即代码类名
-> (`src/sr_od/application/currency_war/kernel/cw_game_state.py`;正名已兑现——
-> 原暂名 BoardState/原模块 cw_board_state.py,随 W8 本体切割批更名,两者指同一容器)。
+> (`src/sr_od/application/currency_war/kernel/cw_game_state.py`;
+> 旧名 BoardState/旧模块名 cw_board_state.py,两者指同一容器)。
 
 ## 1. 本目录是什么
 
@@ -117,7 +117,7 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
   帧的「环境真值工作态」身份随引擎切容器收敛为推演/离线面;表示分界、
   写入契约与逐字段映射对账 = [fields.md](fields.md) §9。
 - **字段级规格**=[fields.md](fields.md)(本目录分篇,正本)——字段清单/决策 op
-  写入面/效果族归属/生命周期/治理面;与其冲突时以迁移批修订为准。
+  写入面/效果族归属/生命周期/治理面;与其冲突时以代码现状为准,正文随代码同步修订。
 - **派生规则单一源**=场景一判定方案([node-derivation.md](node-derivation.md);2026-09-11 自 `.debug/temp/currency_war/流程hook场景一-节点推进-判定方案.md` 晋升入库,持久裁定锚=关联行与文档拆分裁定记档)——本目录引用不复写。
 - **旧流退役处置**=[retirement.md](retirement.md)(本目录分篇;退役排期过程件归 git 历史)。
 - **链观察**=[chain-observation.md](chain-observation.md)(本目录分篇,链观察对接面正本);链观察设计原始件已随过程区清理退役,考古走 git 历史。

@@ -36,7 +36,7 @@ DEFAULT_CHARACTER_PRIORITY: list[str] = [
 # 单一源在 cw_comps.MECHANIC_COUNTERS(经 AFFIX_MECHANIC_MAP 归一),cw_events decide_event 消费。
 # 原 dot_punish_envs 配置字段已删(与注册表双源,且属版本一致的客观数据非用户偏好)。
 # 保血阈值/难度阶梯(hp_safe_threshold/difficulty_hp_override)亦删:策略校准参数
-# 归代码常量 cw_state.HP_SAFE_THRESHOLD / DIFFICULTY_HP_TABLE;economy_mode(死配置)/
+# 归代码常量 kernel/cw_economy.py 的 HP_SAFE_THRESHOLD / DIFFICULTY_HP_TABLE;economy_mode(死配置)/
 # event_whitelist(引擎调参非用户偏好,priority/forbid 已覆盖)同批删。配置面单一源:
 # docs/develop/sr_od/application/currency_war/config.md。
 

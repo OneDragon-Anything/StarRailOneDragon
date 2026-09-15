@@ -119,12 +119,12 @@
 | 未知画面兜底 | 连续 15 轮全分支不命中（指数退避封顶 10s） | 停机保画面待建档 | `cw_loop.py::CwLoop._handle_unknown_fallback` |
 | 执行失败安灯 | 购买单元"计划花费>0 金差≈0"（分类器三态） | 停机留现场 flag | `cw_screen_prep.py::CwScreenPrep._exec_fail_hook_check` |
 | 商店未识别卡停机 | 收工段牌面仍有 unknown 槽（kind 判据）；判据化自愈重读 2 帧自愈面 | 停机保画面待建档 | `cw_screen_buy_cards.py::run_buy_waves` 未识别卡停机钩子段 |
-| 误分发/恢复链限额 | 位面过渡连败 3 / director 连败 5 / 任意分发 op 连败 5 | round_fail 交兜底链(出战域弹窗确认归出战 op,零框架恢复链) | `cw_loop.py::CwLoop` 限额类常量（PLANE_MISDISPATCH_LIMIT/OP_FAIL_REDISPATCH_LIMIT）与 loop 内 director streak 判定 |\n
+| 误分发/恢复链限额 | 位面过渡连败 3 / director 连败 5 / 任意分发 op 连败 5 | round_fail 交兜底链(出战域弹窗确认归出战 op,零框架恢复链) | `cw_loop.py::CwLoop` 限额类常量（PLANE_MISDISPATCH_LIMIT/OP_FAIL_REDISPATCH_LIMIT）与 loop 内 director streak 判定 |
 ## 5. 入口链（enter/start）与弹窗守卫族
 
 > 反向规格化来源 = `currency_war_app.py` + `operations/cw_entry/`（app/enter/start 三层）。对局内循环见 outer_loop.md，本节管「大世界 → 大厅 → 备战」入口链。守卫族决策依据 = 「守卫引入」→「注册表化+领取目标修正」两次演进（细节归 git 历史）。
 
-### 6.1 链路结构
+### 5.1 链路结构
 
 ```
 CurrencyWarApp（app 三节点）
@@ -136,7 +136,7 @@ CwEntryStart.click_start（node_max_retry_times 装饰器缺省 3；`operation_n
   前进按钮分支序（难度确认/模式选择/简报/继续进度/投资环境/投资策略/教程叠层/积分奖励页）→ 兜底 retry
 ```
 
-### 6.2 弹窗守卫族（注册表 `ENTRY_POPUP_GUARDS` + 统一入口 `try_handle_entry_popups`，`cw_entry_start.py`）
+### 5.2 弹窗守卫族（注册表 `ENTRY_POPUP_GUARDS` + 统一入口 `try_handle_entry_popups`，`cw_entry_start.py`）
 
 四挂点各一行调用 `try_handle_entry_popups(op, screen)`；识别→动作→具名 retry 的参数住在注册表数据行（`EntryPopupGuardSpec`），元组顺序 = 挂点执行序（supply 在 detail 族前，领取优先；序位机械防线 = 测试仓守卫序位锁，元组重排即红）：
 

@@ -454,7 +454,7 @@ active_env 核对源。开局写端见 §3.4.3(多屏写入,本条=备战屏侧�
   写端(溢出位 SIFT);SellBench 溢出腿落地后 logic 直写 `''`(入位消费;
   入位时星级缺读按 1 兜底,下帧 heavy 实读覆盖修正)。
 
-### 3.2.x tracked 主账观察状态 tracked_account_observed(bool;)
+### 3.2.22 tracked 主账观察状态 tracked_account_observed(bool)
 
 **语义**:tracked 主账(bench+deployed 两面,同帧锚定,单一状态)是否已按
 屏幕真值锚定。三态:`None`(从未写)= 缺省可信——正常新局 0 件即屏幕真值,

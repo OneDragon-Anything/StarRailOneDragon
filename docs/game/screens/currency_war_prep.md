@@ -7,7 +7,7 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 
 # 货币战争-备战(策略主战场)
 
-每个位面每轮的备战:买牌 / 升等级 / D 牌 / 部署 / 出战。bot 策略(`cw_decisions.plan`)在此运行,是自动化核心画面,也是货币战争出现最多的画面。screen_info:`assets/game_data/screen_info/currency_war_battle_prep.yml`(screen_id `currency_war_battle_prep`)。
+每个位面每轮的备战:买牌 / 升等级 / D 牌 / 部署 / 出战。bot 备战决策(`CwScreenPrep` 单动作决策循环,判据设计见 develop 侧 strategy-docs/)在此运行,是自动化核心画面,也是货币战争出现最多的画面。screen_info:`assets/game_data/screen_info/currency_war_battle_prep.yml`(screen_id `currency_war_battle_prep`)。
 
 ## 何时出现 + 状态流转
 
@@ -34,7 +34,7 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 **自动化契约(settle-then-dispatch)**:在刚切换的帧上分发 = 在**未定型的画面状态**上行动。必须等子态稳定(**连续 ≥3 秒同一子态**)再分发:
 - 实锤失败类①(误动作):M47 22:34:46/50 ClickSpheres 在结算→备战半开帧连点(overlay 即将弹出);
 - 实锤失败类②(误采集):bench_unidentified 采集钩子在投资策略 overlay 帧触发「占用槽认不出」(overlay 卡盖住备战栏,slot_occupied 看到卡、SIFT 认不出角色);
-- 实现(2026-08-18):battle_loop 备战分支子态稳定门 `PREP_SETTLE_S=3.0`——备战分支**连续**命中 ≥3s 才派 PrepDirector,期间只观察;overlay 弹出后由先于备战分支检查的 0e 系分支接管,消化完回备战时门重新计时(链式 overlay 逐个走);mid-phase 再入(如 Director bail 后重进)不重付。
+- 实现(现行):备战分发的子态稳定等待与 overlay 接管序 = develop 侧 flow/outer_loop.md §3;旧稳定门 `PREP_SETTLE_S`/`PrepDirector`/battle_loop 备战分支已退役(替身 = 逐动作回流程层确认画面/触发计算式追加等待/环入口清场)。
 
 ## 识别特征(稳定锚点)
 
@@ -59,7 +59,7 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 - **「装备推荐」按钮**(2026-08-09 VLM 跨 2 样本 + **live 实测确认**:在详情面板底部,~x1509,y816)。
   - **live 实测机制(r1-1 藿藿,2026-08-09)**:click「装备推荐」→ **弹出「推荐装备」+「次选装备」列表面板**(OCR 实锤:推荐装备@(969,575)/追踪@(1278,576)/次选装备@(968,762)),**不是一键自动穿** —— 我"一键穿最佳"假设证伪。装备仍需从列表选(点推荐装备→穿?)或拖拽。
   - **点推荐装备 = 弹该装备信息详情**(live 验:点"生命之环"弹详情,显 进阶装备/stats/适配角色/合成公式,**不穿戴、无穿戴按钮**)→ list-click 是**信息浏览非穿戴**。
-  - **→ 装备机制 = 拖拽**(research 攻略 + 排除法:click-flow 全是浏览、无穿戴动作);**CwOpEquipAll = 修 drag 回归**(`cw_op_equip_all.py` "前台区域无角色" git `e9747690`),非 list-click 流程。详见 [strategy/03 战术执行](../../../develop/currency_war/strategy/03_tactics.md)。
+  - **→ 装备机制 = 拖拽**(research 攻略 + 排除法:click-flow 全是浏览、无穿戴动作);**CwOpEquipAll = 修 drag 回归**(`cw_op_equip_all.py` "前台区域无角色" git `e9747690`),非 list-click 流程。装备穿戴策略语义详 [strategy-docs/18_equip_wear_semantics.md](../../develop/sr_od/application/currency_war/strategy-docs/18_equip_wear_semantics.md)。
 - **装备区(区域-道具装备 x1252-1918)= 右侧 owned 装备 icon 列 + 选中驱动详情面板**(D-27/D-37 纠正旧「装饰球体」误判):
   - **owned 装备 = 多列规则网格**(用户:不止一列,默认 5 列从右往左;col1 x1800-1918 + col2 x1660-1800 + ...,列满溢左)。**无空槽**(D-38:「+」=星徽 icon)。read_equips(thr7)名准+无假阳(D-39),`equip_rect` 默认 **x1620-1918 覆盖 col1-3**(D-40,排除立绘 x1252-1450 + 面板 x1450-1620),thr7 单次扫 **8/8 全命中两列**(col1 7 + col2 冶金炉 1,click 实锤)。col4-5 若溢到面板区需关面板扫。固定 cell 模型(装备格-cIrJ)未来硬化,当前 zone 扫够用。**装备类别(穿戴 vs 工具)识别需可靠**(drag 工具如拆装扳手/冶金炉会拆/转化装备 D-32)。
   - **详情面板 = 选中驱动常驻信息面板(非开/关弹窗,D-37)**:右侧面板总显示当前选中实体。点装备 icon → 装备详情(详情-装备名/详情-装备类型,x1450-1620);再点/展开 →「可合成列表」overlay(该装备可合成的高阶装备);点已部署角色 → 角色详情(名/属性/天赋 + 详情/出售 按钮)。
@@ -86,12 +86,12 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 - 进度/节点:`read_phase_round`(区域-阶段「X-Y」)、`read_node_type`(顶部节点标签 首领→boss / 战斗→battle 等;**仅 battle/boss 稳**,见备注)。
 - 经济:`read_gold`(文本-金币数;备战/商店帧均可读——玩家确认 2026-09-09;恢复局备战帧待实机一帧定谳〔:113 孤例〕,复核前按可读尝试+失读容忍)、`read_level`(文本-等级「LV.N」)、`read_xp_progress`(文本-升级所需经验「X/Y」)。
 - 棋盘:`read_board` + `read_board_next_tier`(区域-羁绊面板「X/Y」→ 阵营 count + 下个 tier 阈值)、`read_deployed_count`(区域-部署数「X/Y」,如 5/5)。
-- 商店:`read_shop_cards`(商店牌区 5 牌:阵营/名/cost,name 经 CHARACTER_ROSTER 匹配得规范名 + cost)、`read_bench_full`(「备战席已满」警告)——**read_bench_full 已退役不做识别**(警告太短暂无法可靠采样,玩家裁定 2026-09-09;满栏判定=bench 槽位派生,见 BoardState 设计 §3.2.5)。**⚠️ 2026-09-15 修订(用户指令,复活动画)**:launch_dead 现场实证横幅在溢出未处理时**常驻**(三帧跨 50 分钟同态),旧「太短暂」前提不成立;告警 area 已建档(`告警-备战席已满`),识别复活语义 = **溢出角色在场的处理门**(先卖腾席再出战),game_state 标记 + 观察写端接线挂账前置批2a——非退回旧 read_bench_full 形态,挂账卡面定新形态。
+- 商店:`read_shop_cards`(商店牌区 5 牌:阵营/名/cost,name 经 CHARACTER_ROSTER 匹配得规范名 + cost)、`read_bench_full`(「备战席已满」警告)——**read_bench_full 已退役不做识别**(警告太短暂无法可靠采样,玩家裁定 2026-09-09;满栏判定=bench 槽位派生,见 `game_state/fields.md` §3.2.5)。**⚠️ 2026-09-15 修订(用户指令,复活动画)**:launch_dead 现场实证横幅在溢出未处理时**常驻**(三帧跨 50 分钟同态),旧「太短暂」前提不成立;告警 area 已建档(`告警-备战席已满`),识别复活语义 = **溢出角色在场的处理门**(先卖腾席再出战),game_state 标记 + 观察写端接线挂账前置批2a——非退回旧 read_bench_full 形态,挂账卡面定新形态。
 - 生命:`read_hp`(文本-剩余血量,**仅 shop 关闭态可读**;shop 开启态该区空 → 返 100)。
 
 **需放大管线(原生分辨率 det 漏检)**:
 - `read_level_up_cost`:费用是按钮底部的**小 + stylized 彩色印刷数字**(购买经验「4」),原生直读基本检不到(小字 det 漏检,与等级/XP 小字同根)。**两级管线可读**:3x 放大 → 仍空再 OTSU 二值化重试;58 张备战帧仓离线对拍 3x=55/58、加二值化=57/58(唯一残留帧数字在场但两级均未检出,走 None → plan 用 `LEVEL_UP_COST_TABLE` 兜底)。实帧锁见测试 `test_read_level_up_cost_real_fixture`。
-- `read_shop_refresh_cost`(刷新「2」):同根小字失读 → 已接两级放大管线(3x → OTSU 二值化);rect 内金币图标会被 OCR 并入前缀('GO'/'G0'=0,归一后取数字)。**读不到返 None**(消费方 `or 2` 兜底),「真 0(免费刷/减免)」与「失读」不再混写(决策)。实帧锁见测试 `test_read_refresh_cost_and_streak_real_fixture`。**(2026-09-09)**:刷新费字段写端权威改=商店开态刷新钮旁标价现场识别(reader `cw_shop_refresh_obs.read_shop_refresh_price`,区域「文本-刷新价格」已建档);本条通道转旁证退役,主条目=设计文档 BoardState §3.3.4。
+- `read_shop_refresh_cost`(刷新「2」):同根小字失读 → 已接两级放大管线(3x → OTSU 二值化);rect 内金币图标会被 OCR 并入前缀('GO'/'G0'=0,归一后取数字)。**读不到返 None**(消费方 `or 2` 兜底),「真 0(免费刷/减免)」与「失读」不再混写(决策)。实帧锁见测试 `test_read_refresh_cost_and_streak_real_fixture`。**(2026-09-09)**:刷新费字段写端权威改=商店开态刷新钮旁标价现场识别(reader `cw_shop_refresh_obs.read_shop_refresh_price`,区域「文本-刷新价格」已建档);本条通道转旁证退役,主条目=`game_state/fields.md` §3.3.4。
 
 **弱**:
 - `read_enemy_difficulty`(文本-难度 左上角):stylized 数字,OCR 常空。
@@ -157,4 +157,4 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 - **node_type band 不稳**:顶部标签 band 偶把非当前节点(如 reward)或 shop 开启态漏读;仅 battle/boss 稳,其余节点类型待多子态实机核全。
 - **费用字段 OCR 不可行**:见上「不可行」;静态估是对的,别建/修 area、别接线 cost reader。
 - **streak / enemy_difficulty**:实图读不到(streak 全 None;difficulty stylized 常空);待核实显示条件 / 改 digit-CV。
-- 策略接法详 `docs/develop/sr_od/application/currency_war/strategy/`;reader 详 `cw_observation.py`;identity 详 `cw_identity_obs.py`。
+- 策略接法详 `docs/develop/sr_od/application/currency_war/strategy-docs/`;reader 详 `cw_observation.py`;identity 详 `cw_identity_obs.py`。

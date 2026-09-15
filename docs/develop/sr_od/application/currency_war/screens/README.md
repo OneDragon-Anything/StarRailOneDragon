@@ -139,7 +139,7 @@
 - **SwapDeploy**:词表/容器逻辑态直写/sim 消费在役,生产执行器未接线——能力面按词表完备性保留。
 - **刷新不换牌面的场景**:节点内关店→重开不刷新(牌面持久);跨节点自动刷新全店(不继承)。判「是否刷新」以节点推进事件为锚(`research/economy.md` §2.1)。
 
-## 8. 文档索引(33 篇)
+## 8. 文档索引(35 篇)
 
 主链:[prep.md](prep.md)(备战)/ [shop.md](shop.md)(商店开画面)/ [battle_wait.md](battle_wait.md)(战斗等待·结算)。
 单选族:[invest_strategy.md](invest_strategy.md) / [invest_env.md](invest_env.md) / [encounter.md](encounter.md) / [supply.md](supply.md) / [megastar.md](megastar.md) / [partner.md](partner.md) / [equip_pick.md](equip_pick.md) / [fortune.md](fortune.md) / [planner.md](planner.md) / [wish_trial.md](wish_trial.md) / [bookcard.md](bookcard.md) / [expert_invite.md](expert_invite.md) / [box_pick.md](box_pick.md)。

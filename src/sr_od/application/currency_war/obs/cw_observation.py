@@ -898,7 +898,7 @@ def read_selected_difficulty(ctx: SrContext, screen: MatLike) -> str:
     """难度确认屏 → 本局职级(``标识-当前难度职级`` area OCR → parse)。
 
     AX label 在画面左上(x~87,y~305,紧邻「财富造物主」)。A8 高难 → ``effective_hp_threshold``
-    保血阈值调高(D-32;单一源 = cw_state.DIFFICULTY_HP_TABLE 代码常量)。读不到 → ""(回退默认)。
+    保血阈值调高(D-32;单一源 = kernel/cw_economy.py 的 DIFFICULTY_HP_TABLE 代码常量)。读不到 → ""(回退默认)。
     接线已通(3.5.1,d841d1a1):CwEntryStart 难度确认段调本函数 → ctx.cw_selected_difficulty
     → cw_loop copy session → 策略层填 state → effective_hp_threshold D-32 激活。
     """
