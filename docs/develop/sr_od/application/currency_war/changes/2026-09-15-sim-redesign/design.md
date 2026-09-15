@@ -7,7 +7,7 @@
 ## 0. 元信息
 
 - **迭代目标**:T-276 —— 整个 sim 重新设计:①随机元素按游戏真实概率/效果建模(预置剧本注入作废);②每个涉及实机模块写清 sim 如何模拟其逻辑;③未知机制列清单并收敛为裁决清单(§2.3);④已裁边界照裁执行。产出 = 本设计稿,不实现。
-- **状态**:设计定稿,候对抗审。§2.3 已收敛为裁决清单(六条已裁决 + 余条第一期定稿口径);**唯一遗留开放点 = 投资环境出现率 49% 的归因**(游戏侧非必弹 vs 录入侧缺失,候实机数据定谳;定谳前环境在场维持显式参数,§2.2 M02)。
+- **状态**:r2 修订稿——对抗审 r1 结论「修改后通过」(`reviews/T-276-r1-review.md`),其全部发现(R1-R6 重要 + 次要 10)已折入,逐条处置对照见 §3;§2.3 已收敛为裁决清单(六条已裁决 + 余条第一期定稿口径);**唯一遗留开放点 = 投资环境出现率 49% 的归因**(游戏侧非必弹 vs 录入侧缺失,候实机数据定谳;定谳前环境在场维持显式参数,§2.2 M02)。
 - **文档清单**:无详设(单文档方案,本篇 §2 即完整设计;对抗审后若逐模块规格超载再拆 `details/`)。
 - **已裁边界(写入设计,不再开放)**:
   1. sim 的职责 = **提供模拟的实机环境(当「游戏」)**:策略器给动作,sim 按游戏规则给回应;
@@ -24,13 +24,13 @@
 
 ## 1. 问题与动机
 
-- **现状症状**:现行 sim(engine_p1 3606 行单文件)是「策略 A/B 评估器」(`sim/sim-design.md` §1.1 自述「sim 只做一件事:在 shop 决策面上评估策略 A/B」),不是「游戏」。三个结构性偏离:
+- **现状症状**:现行 sim(engine_p1 3606 行单文件)是「策略 A/B 评估器」(`docs/develop/sr_od/application/currency_war/sim/sim-design.md` §1.1 自述「sim 只做一件事:在 shop 决策面上评估策略 A/B」),不是「游戏」。三个结构性偏离:
   1. **随机面靠预置注入**:投资策略/环境按 plaza 帖频次表注入(`sim/cw_sim_invest.py` 的 `SIM_STRATEGY_PICK_SCHEDULE` = 63 局 replay 统计频次,不是游戏机制)、开局 bench 按遥测校准分布抽(`START_BENCH_COUNT=4`/费用权重 65/35,engine_p1 `START_BENCH_COST_WEIGHTS`)、战斗结算按实机经验分布 Δ池采样 + 胜率阶梯查表(`kernel/cw_battle_calib.py`、`sim/pool.py` Δ池)——都是「用统计镜像代替机制」。
-  2. **评判机器混进游戏本体**:`sim/checks/` 子树 11 模块(约 435KB:calib/corpus/ledger/pool/runner/runtime/segments/selfcalc/suspects/t190_c/launch)与 runner 的批量/A-B/账本落盘,使「游戏」与「裁判」无法分开替换。
+  2. **评判机器混进游戏本体**:`sim/checks/` 子树 11 模块(约 399KB:calib/corpus/ledger/pool/runner/runtime/segments/selfcalc/suspects/t190_c/launch)与 runner 的批量/A-B/账本落盘,使「游戏」与「裁判」无法分开替换。
   3. **策略逻辑长进引擎**:引擎内含 sim 视图注册表、M1P 部署计划面、围栏/残余部署代理、投资双臂(基线臂/频次臂)授权标签等策略侵入点(明细见 §2.4),策略器与游戏不可独立演化。
 - **根因归层(语义层)**:sim 的职责定义错了——被定义为「策略评估器」(评判语义),而已裁定的职责(§0 已裁边界①)是「模拟实机环境」(游戏语义)。职责错位派生出注入式随机面(评估器只需分布像,不需机制对)与评判机器混入。
 - **解决到哪**:按「游戏」语义重写 sim 的模块边界、随机面建模口径、策略器接口;逐模块规格化;未知机制收集成议程。
-- **明确不解决**:策略效果评估体系(A-B/批量/检查器)不在本迭代重建,只删不建;实机操作链(operations/obs)零改动;kernel 单一源注册表零改动;P3 节点序列等无观测机制不发明回退(照 `research/plane_schedule_observed.md` 裁定,以实机补采为准)。
+- **明确不解决**:策略效果评估体系(A-B/批量/检查器)不在本迭代重建,只删不建;实机操作链(operations/obs)零改动;kernel 单一源注册表零改动(唯一例外:`kernel/cw_coarse_battle.py` 随旧战斗路径删除,§2.4.1——其全部 src 消费方都在本批删除/重做面内,重做后即孤儿);P3 节点序列等无观测机制不发明回退(照 `research/plane_schedule_observed.md` 裁定,以实机补采为准)。
 
 ## 2. 方案
 
@@ -73,7 +73,7 @@
 
 #### 2.0.4 随机种子语义(全局)
 
-- 单局 = 一个 `seed: int`。**全部随机量按流键派生子流**:`random.Random(f'{seed}#{stream_key}')`,流键 = 模块号 + 局内坐标(如 `M06/p1/r3` 发牌、`M02/env-offer`、`M13/p1/r7` 战斗、`M17/ball-1`)。
+- 单局 = 一个 `seed: int`。**全部随机量按流键派生子流**:`random.Random(f'{seed}#{stream_key}')`,流键 = 模块号 + 局内坐标(如 `M05/p1/r3` 发牌、`M02/env-offer`、`M13/p1/r7` 战斗、`M17/ball-1`)。
 - 动机:现行引擎单 rng 实例按消耗序耦合,任何模块加/删一次采样就扰动全流(回归门被迫写「rng 消耗序不变」);流键化后各模块随机序独立,模块规格可独立演化。
 - 可复现承诺 = `(seed, 开局参数, 注册表指纹)`。开局参数(职级/敌人难度档/词缀/对局类型)是**局级输入**,由调用方给定(§2.5),不是 sim 的随机量——sim 内不猜开局条件分布(现行 `START_BENCH_COST_WEIGHTS` 即违反本条;开局手牌现按定案规则生成,§2.2 M01/U28,不属「猜开局」)。
 - 禁令:模块间共享 rng 实例;策略器读 sim 流;用未裁定的经验分布替代机制概率。
@@ -96,7 +96,7 @@
 | M10 | 装备系统 | 基础件/穿着即合成/装备栏/前后台限定/唯一件/工具 7 件/星徽卡带/自带装备/转移 | `research/equipment_mechanics.md` 全篇 |
 | M11 | 投资策略系统 | 局中策略 offer 时点/三选一/品质三档/效果建模口径 | `research/invest_effects.md` §0-§5 |
 | M12 | 节点结算框架 | 节点类型语义(奖励=战斗型)/结算屏/挑战进度 | `research/plane_schedule_observed.md`「节点类型语义」节 |
-| M13 | 战斗结算模型 | 第一期 = 随机胜负 + 随机扣血(简化档,已裁决);机制化建模移「后续演进」 | `research/combat.md` §1/§3、`sim/sim-power-model.md` |
+| M13 | 战斗结算模型 | 第一期 = 随机胜负 + 随机扣血(简化档,已裁决);机制化建模移「后续演进」 | `research/combat.md` §1/§3、`docs/develop/sr_od/application/currency_war/sim/sim-power-model.md` |
 | M14 | 扣血与保底规则 | 基础伤害+未完成进度伤害/70 血 3 星/0hp 保底 1/HP 跨位面继承 | gameplay「核心伤害与数值机制」节、`research/economy.md` §10.2 |
 | M15 | 连胜连败经济 | 连胜表/跨位面继承/奖励轮不计/补给轮语义/败轮底金矛盾 | `research/combat.md` §4、`research/economy.md` §11 |
 | M16 | 遭遇节点 | 多档选档/进度达标制/遭遇奖励 | `research/combat.md` §3、`kernel/cw_encounter_selection.py` |
@@ -115,9 +115,16 @@
 #### M01 对局开局参数
 
 - **实机逻辑**:开对局确认屏选职级(`selected_difficulty`,黑铁→…→财富造物主 A8,含 A8-1~50 子档),决定起始敌人难度与词缀;开局 HP 初值随职级/数值难度/词缀变——实证档 A8+难度108→82、「开局不利」恒 −20→62(`kernel/cw_opening_hp.py`,133 局普查);无「开局恒 100」(旧兜底已废,`research/economy.md` §10.2)。
-- **sim 模拟**:局级输入结构 `RunConfig{职级, 数值难度档, 词缀列表, 对局类型, 优势布局(预留)}`(调用方给定);开局状态 = HP 按 `cw_opening_hp` 表查(无实证档 = 报错索样本,不外推)/金=3/等级=3(U28 已裁决,依据 u07u28 报告 §③;旧「金=5」为开局帧读数偏差已废);开局备战席 = sim 按定案规则生成 4 张全 1★ 手牌(形状采样见 U28)。
+- **sim 模拟**:局级输入结构 = `RunConfig`(调用方给定;**正典字段清单汇总如下,全稿各节一律引用此处,M02/M20/U21/U27 不再各自往里加字段**):
+  - `职级` / `数值难度档` / `词缀列表` / `对局类型`(M01 查表与 M19 难度账输入);
+  - `环境在场`(U07④ 已裁决的必填输入;**缺省 = 空/None → 无环境支路**,entry 跳过环境屏,环境身份由 M02 offer 引擎采样);
+  - `boss 名单覆盖`(缺省 = None → 用 sim 内置逐位面 boss 表,M20);
+  - `位面强化词`(预留,首版不建模,U21);`优势布局` / `昔涟诗篇`(预留,U27);
+  - seed 与开局手牌**不**入 `RunConfig`(seed 是 reset 的独立参数,§2.5;手牌由 sim 按 U28 生成)。
+
+  开局状态 = HP 按 `cw_opening_hp` 表查(无实证档 = 报错索样本,不外推)/金=3/等级=3(U28 已裁决,依据 u07u28 报告 §③;旧「金=5」为开局帧读数偏差已废);开局备战席 = sim 按定案规则生成 4 张全 1★ 手牌(形状采样见 U28);**卡名(身份)采样规则(首版占位口径,显式声明)**:形状定档后,4 张按各自费用档从 M06 固定牌库该费档名集内均匀抽名(开局时 held 为空,等价于全池均匀);抽中即计入 M06 持有账(1★ = 每 1 副本),**开局手牌是 M06 派生池不变量(剩余 = 固定 − held)的首个写端,先于任何商店发牌**;开局补给通道的真实名单分布未采,候实机数据回填后替换均匀占位(U28 候实机数据行挂账)。
 - **复用面**:`kernel/cw_opening_hp.py`。
-- **随机量与流键**:`M01/opening_hand`(开局手牌形状采样;开局参数本身是输入,不采样)。
+- **随机量与流键**:`M01/opening_hand`(开局手牌形状采样 + 卡名抽名;开局参数本身是输入,不采样)。
 - **未知**:U15(定稿口径:HP 余档候实机数据)、U28(已裁决)、U27(定稿口径)。
 
 #### M02 投资环境系统
@@ -125,7 +132,7 @@
 - **实机逻辑**:开局 entry 流程 = 位面简报→投资环境(如环境在场)→备战(`cw_screen_invest_env` 语义;旧「投资策略」步废止——开局 (1,1) 无策略选卡,该屏实为投资环境屏,U07 已裁决);环境效果全局限(83 张:轮岗=每备战阶段重掷翻倍档[cw_invest_data id=114 原文]、经济过热/严重过热=全部奖励节点替换为(超级)次元扑满、变宝为废=每位面首次进阶合成 50% 垃圾袋、联席决策=2-6 节点额外策略选卡、策略大师=每获策略 +2×已持有数金等)。
 - **sim 模拟**:环境在场性 = `RunConfig` 显式参数(空 = 无环境支路,entry 跳过环境屏;出现率归因为全局唯一遗留开放点,§2.3/U08);状态 = `session.active_env` + 容器 `bs.active_env`;效果引擎 = 按 `kernel/cw_investments.py` 效果模型分派(已结构化子集直接生效;文本效果按 §2.2 M11 同一建模口径);环境改变的机制面逐条挂钩:轮岗→M05 概率表重掷、过热→M17 节点替换、变宝为废→M10 合成污染位、联席决策→M11 offer 日程。
 - **复用面**:`kernel/cw_investments.py`、`kernel/cw_env_economy.py`(估值面留给策略器)、`kernel/cw_reward_node.py PIGGY_ENV_NAMES`。
-- **随机量与流键**:变宝为废垃圾化掷点 `M02/变宝为废/p{plane}`(50%,游戏明文);联席决策的额外 offer 槽位走 M11 流。
+- **随机量与流键**:开局环境 offer 的品质掷点与池内取卡 `M02/env-offer`(U08 同构规则;一次性,环境在场参数为真时);变宝为废垃圾化掷点 `M02/变宝为废/p{plane}`(50%,游戏明文);联席决策的额外 offer 槽位走 M11 流。
 - **未知**:U08(定稿口径:offer 结构与 U07 同构,分布参数候实机数据;49% 出现率归因为全局唯一遗留开放点)、U09(定稿口径)。
 
 #### M03 位面结构与节点序列
@@ -146,7 +153,7 @@
 
 #### M05 商店系统
 
-- **实机逻辑**:备战商店 5 槽(`SHOP_SLOTS=5`,昔涟诗篇改槽数未证实→U29 归 U27 附注);发牌概率 = `REFRESH_PROB` Lv1-10 × 1-5费 完整表(游戏内概率弹窗 OCR+VLM 双源,`data/cw_shop_odds.py`);手动刷新 2 金/次恒定(`REFRESH_COST_BASE`,多局对账定谳);买后槽位留空不紧缩(实机帧对拍 🟢);刷新重置整店 5 槽;节点切换自动全刷零继承;升级不触发刷新;整店锁(锁定后跨节点不自动刷);轮岗环境每备战阶段重掷翻倍档(机制=100% 重掷,翻倍档分布 1/5 均匀系建模假设待核)。(依据:`research/economy.md` §2/§2.1、`kernel/cw_battle_calib.roll_rotation_per_stage`)
+- **实机逻辑**:备战商店 5 槽(`SHOP_SLOTS=5`,昔涟诗篇改槽数未证实,U27 附注);发牌概率 = `REFRESH_PROB` Lv1-10 × 1-5费 完整表(游戏内概率弹窗 OCR+VLM 双源,`data/cw_shop_odds.py`);手动刷新 2 金/次恒定(`REFRESH_COST_BASE`,多局对账定谳);买后槽位留空不紧缩(实机帧对拍 🟢);刷新重置整店 5 槽;节点切换自动全刷零继承;升级不触发刷新;整店锁(锁定后跨节点不自动刷);轮岗环境每备战阶段重掷翻倍档(机制=100% 重掷,翻倍档分布 1/5 均匀系建模假设待核)。(依据:`research/economy.md` §2/§2.1、`kernel/cw_battle_calib.roll_rotation_per_stage`)
 - **sim 模拟**:状态 = 容器 shop payload(5 槽 ShopCard,定长、买后置 empty);转移 = 发牌(逐槽独立:先按概率表定费用档→池内均匀抽名,`sim/pool.py _Pool.draw_shop` 骨架保留)/买(槽置 empty)/刷(整店重发、扣 2 金、免费刷额度先行)/节点推进(全刷)/锁(跳过自动刷)。轮岗时概率表 = `roll_rotation_per_stage`(假设档已标注)。
 - **复用面**:`data/cw_shop_odds.py`(REFRESH_PROB/rotation_probs/expected_refreshes 留给策略器)、`kernel/cw_economy.py` 刷价。
 - **随机量与流键**:`M05/deal/{plane}/{round}`(发牌 5 槽)、`M05/rotation/{plane}/{round}`(轮岗档)。
@@ -179,10 +186,10 @@
 #### M09 备战席/板面/部署与卖出
 
 - **实机逻辑**:备战栏恒 9 槽(物品与角色同占槽;补给箱不可卖实测定谳);板面 = 前台 4 格 + 后台 6 格恒定,等级只定上阵人数 cap(level=cap);后台格数 = `6 + (cap − level)`(宝钻/召唤物扩排,封顶 9);宝钻:cap+1 可叠加、无论是否穿戴;奖励溢出角色悬挂席上不丢;deploy=drag、deployed 可卖;任何「上场」路径必须过同名守卫。(依据:`research/board_structure.md` 全篇、gameplay「备战棋盘槽位/backup 溢出/deploy-sell 交互」节)
-- **sim 模拟**:状态 = 容器槽位表(bench 9 槽 pad 语义/front_row/back_row/deployed);转移 = DeployMove/SellBench/SellDeployed 动作腿 + 同名守卫单一守卫函数;后排格数按公式派生(`cw_back_layout` 公式通道语义在 sim 直接算,无 CV 通道);宝钻 = 局内计数器(获取通道见 U24/U17 附注)。
+- **sim 模拟**:状态 = 容器槽位表(bench 9 槽 pad 语义/front_row/back_row/deployed);转移 = DeployMove/SellBench/SellDeployed 动作腿 + 同名守卫单一守卫函数;后排格数按公式派生(`cw_back_layout` 公式通道语义在 sim 直接算,无 CV 通道);宝钻 = 局内计数器(获取通道 = M18 带钻选项,发放分布挂 U24)。
 - **复用面**:`kernel/cw_exec_state.py`、`kernel/cw_deploy_logic.py`(deploy 选人纯逻辑)、`kernel/cw_vocab.py` 动作类。
 - **随机量与流键**:无。
-- **未知**:无新增(召唡物加格算术 U15 附注挂战力上下文,不影响槽位表——格数公式已定谳封顶 9)。
+- **未知**:无新增(召唤物加格算术 U15 附注挂战力上下文,不影响槽位表——格数公式已定谳封顶 9)。
 
 #### M10 装备系统
 
@@ -195,7 +202,7 @@
 #### M11 投资策略系统
 
 - **实机逻辑**:局中投资策略屏出现时给三选一(不可刷新情形:远见改彩);品质三档白银/黄金/棱彩;335 张策略效果分七类(`research/invest_effects.md` §0):经济流/机制突变/难度交互/形态约束/战力类/发放类/契约链。**offer 出现时机已定案:固定节点完成触发**——打完 1-2 / 2-1 / 3-1 各弹一次,生效于下一轮备战窗口(到达率 99%/96%/100%,n=135,u07u28 报告 §②;op 行序列独立印证);开局 (1,1) 无策略选卡。现行 `SIM_STRATEGY_PICK_SCHEDULE` 频次日程系统计镜像,重做废除。
-- **sim 模拟**:状态 = `session.active_strategies` + 容器镜像;**offer 引擎(已裁决,U07)**:日程 = P1r3/P2r2/P3r2 各一次(触发 = 1-2/2-1/3-1 结算完成;P3r2 受 M03 补采辖域约束,补采后生效;罕见离群触发点 ~1-2% 不建模,作 sim 披露);候选生成 = 每候选独立掷品质→从该品质池均匀取 1 张,offer 内去重,**全程不重复**(已出选项不再进入本局任何后续 offer,刷新重掷同规则排除);品质分布 = 显式常量参数(候实机数据回填);策略器经 `decide_event.decide_invest` 三选一;联席决策环境的额外选卡按机制文档口径挂 2-6 节点(u07u28 报告样本未命中,候实机对账)。效果建模口径 = 结构化字段(`STRATEGY_EFFECTS`)+desc 明文数值可解析者建模;desc 无数值者按 API 裁定不猜,进「已知不可建模」披露清单(U09)。
+- **sim 模拟**:状态 = `session.active_strategies` + 容器镜像;**offer 引擎(已裁决,U07)**:日程 = P1r3/P2r2/P3r2 各一次(触发 = 1-2/2-1/3-1 结算完成;P3r2 受 M03 补采辖域约束,补采后生效;罕见离群触发点 ~1-2% 不建模,作 sim 披露);候选生成 = 每候选独立掷品质→从该品质池均匀取 1 张,offer 内去重,**全程不重复**(已出选项不再进入本局任何后续 offer,刷新重掷同规则排除);品质分布 = 显式常量参数(候实机数据回填);策略器经策略侧接口 `decide_invest`(`strategies/impl/cw_strategy.py`;kernel 判定核 = `decide_event`,见复用面)三选一;联席决策环境的额外选卡按机制文档口径挂 2-6 节点(u07u28 报告样本未命中,候实机对账)。效果建模口径 = 结构化字段(`STRATEGY_EFFECTS`)+desc 明文数值可解析者建模;desc 无数值者按 API 裁定不猜,进「已知不可建模」披露清单(U09)。
 - **复用面**:`kernel/cw_investments.py`(STRATEGY_EFFECTS/aggregate_economy/economy_effect_of)、`kernel/cw_events.decide_event`(策略器判据)。
 - **随机量与流键**:`M11/offer/{plane}/{round}`(品质掷点 + 池内取卡)。
 - **未知**:U07(已裁决)、U09(定稿口径)。
@@ -203,7 +210,7 @@
 #### M12 节点结算框架
 
 - **实机逻辑**:节点类型语义:普通奖励节点 = 战斗型(有结算屏真值,148 局对账定谳);战斗类节点(战斗/遭遇/首领)均有战力要求(限时 AV 内击杀,输出不足扣血);结算屏记录「挑战进度 ±N + 基础伤害 -X + 未完成进度伤害 -Y」三轮真值;超时仅扣血、结算仍显示通过、无节点级失败态;HP 耗尽才整局结束。(依据:`research/plane_schedule_observed.md`「节点类型语义」节、gameplay「AV 限时/结算屏」节)
-- **sim 模拟**:每战斗类节点结算产生结构化结果 `{won: bool, progress: float, base_damage: int, progress_damage: int, hp_delta: int}`(M13 输出),经 M14 折算扣血、M15 更新连胜、M08 加经验、M17/M18 触发奖励面;结算行写 state 流水(容器侧)。
+- **sim 模拟**:每战斗类节点结算产生结构化结果 `{won: bool, progress: float, base_damage: int, progress_damage: int, hp_delta: int}`(M13 输出;**「base_damage/progress_damage」分项第一期随 M13 直扣不拆,置 None 占位并随局披露不可分**,U03),经 M14 折算扣血、M15 更新连胜、M08 加经验、M17/M18 触发奖励面;结算行写 state 流水(容器侧)。
 - **复用面**:`kernel/cw_economy.round_start_income` 的节点类型分支。
 - **随机量与流键**:无(框架面;随机在 M13)。
 - **未知**:U03(定稿口径:第一期随 U01 直扣不拆分项;数值表归 §2.6 后续演进)。
@@ -213,10 +220,10 @@
 - **实机逻辑**:伤害 = 既有公式 × 三乘区(前后台强度/伤害征服/幸运一击征服,`research/combat.md` §1);AV 限时,未清场扣血非判负;星级提技能倍率与拐力;敌血量随难度指数增长 ×1.052(挂靠对象未实证,§6)。**游戏战斗引擎不可复刻**——sim 无 HSR 战斗内核。
 - **sim 模拟(第一期已裁决,U01)**:战斗输出 = 纯随机面,不消费任何板面/战力/敌人特征:
   - 胜负 = 均匀伯努利(P(win) = 0.5);
-  - 败局扣血 = 整数均匀采样,区间为常量 `[SIM_HP_LOSS_MIN, SIM_HP_LOSS_MAX]`(初值按 M14 实证扣血观测域锚定,数值落实现批常量并随局披露采样值);
+  - 败局扣血 = 整数均匀采样,区间为常量 `[SIM_HP_LOSS_MIN, SIM_HP_LOSS_MAX]`,**初值 = [23, 70]**;锚定规则(写死,实现者不再设计)= 取实测「单次败局总扣血」样本域的 min/max,在案散点:P2r1 −23(M14 三分量合计)、遭遇 −28(局15 r7,`research/combat.md` §3)、P3 遭遇 −70(`research/combat.md` §3);**采样对象 = 总扣血**,不以分量域 {2,10,15,35} 定界(第一期直扣不分项,分量结构无消费);散点非完整域,新实测样本并入后按同规则重估常量(数值落实现批常量,随局披露采样值与当用区间);
   - 胜 → 挑战进度记达标;败 → 进度均匀采样(服务遭遇达标制等结构消费),扣血如上;
   - 输出结构沿用 M12 的 `{won, progress, hp_delta}`;「基础伤害/进度伤害」分项第一期不拆(M14 直扣,披露不可分);
-  - 该输出面为 **sim-only 简化档**:与实机战斗无机制对应,禁作任何实机行为外推(保真度 = 简化档,逐局披露);旧四路径(粗查表/Δ池/P2 参数层/兜底阶梯)全部删除(§2.4)。
+  - 该输出面为 **sim-only 简化档**:与实机战斗无机制对应,禁作任何实机行为外推(保真度 = 简化档,逐局披露);旧四路径(粗查表/Δ池/P2 参数层/兜底阶梯)全部删除(§2.4;粗查表正本 = `kernel/cw_coarse_battle.py`,删行见 §2.4.1)。
 - **复用面**:第一期战斗侧无复用;`kernel/cw_battle_calib.py` 特征函数保留(后续演进战力模型的特征源,不再进战斗路径);`sim/cw_delta_pool_gen.py` 随旧路径删除,能力登记 §2.6。
 - **随机量与流键**:`M13/{plane}/{round}`(胜负掷点 + 扣血/进度采样)。
 - **未知**:U01(已裁决)、U02(已裁决:第一期只建 boss 名单)、U26 附注(装备→战力映射归 §2.6)。
@@ -257,7 +264,7 @@
 
 - **实机逻辑**:补给 = 非战斗节点(xp +0);3 选 1 装备(基础件池)+ 免费刷新一次(「剩余次数:1」)+ 带钻选项(财富宝钻);自身金发放 = 基础奖励+息(U05 定稿口径;「实发零发放」n=3 证据未转正,候实机数据);不参与连胜。(依据:`kernel/cw_events.decide_supply`、`research/combat.md` §4 补给分支、`research/economy.md` §10.1)
 - **sim 模拟**:`supply_pick` 相位;3 选项采样(现行 `_sample_supply_opts` 骨架:8 基础件均匀——均匀为定稿占位口径,分布参数候实机数据,U24);免费刷新一次语义照生产两步 decide_supply;带钻选项给宝钻计数(M09)。
-- **复用面**:`kernel/cw_events.decide_supply`、`kernel/cw_equipment_data`。
+- **复用面**:`kernel/cw_events.decide_supply`、`data/cw_equipment_data.py`。
 - **随机量与流键**:`M18/opts/{plane}/{round}`。
 - **未知**:U05(定稿口径)、U24(定稿口径,分布参数候实机数据)。
 
@@ -272,7 +279,7 @@
 #### M20 敌人词缀与 boss
 
 - **实机逻辑**:词缀(~50 机制分类)效果原文已入注册表 `affix_effects_data`(HandleBriefing 运行时采集);机制克/利映射在 `cw_comps.MECHANIC_COUNTERS`;「开局不利」恒 −20 HP;boss 身份逐位面(plane_bosses),boss 克制启示在 `data/bosses.md`(机制 tag 已入 `cw_enemy_data.BOSS_MECHANICS`)。(依据:`docs/game/currency_war/data/competitors.md`、`bosses.md`)
-- **sim 模拟**:词缀列表 = 局级输入(RunConfig,M01);词缀效果中改变经济/规则面的(如开局不利 −20)在 sim 生效;改战斗数值面的归 M13 上下文特征(第一期随机输出面下无消费,挂披露);**boss 名单第一期建档(U02 已裁决)**:sim 内置逐位面 boss 表,数据源 = `data/bosses.md` + `data/cw_enemy_data.py`,`RunConfig` 可显式覆盖(局级输入优先);普通节点敌人逐只构成不建模(第一期战斗为随机输出面,无消费面)。
+- **sim 模拟**:词缀列表 = 局级输入(RunConfig,M01);词缀效果中改变经济/规则面的在 sim 生效,**唯 HP 类修正例外(单一承载方写死)**:「开局不利」恒 −20 由 M01 的 `cw_opening_hp.opening_hp_prior` 查表承载(`_AFFIX_HP_DELTA` 内嵌 −20,82→62;亲验 cw_opening_hp.py:32-34/:56-60;`kernel/cw_affix_effects.py` 的 SPEC 亦显式排除该词缀、声明禁第二份 −20 数值源)——M20 词缀引擎**禁再实现任何 HP 类词缀修正**,防与开局查表双重扣血;改战斗数值面的归 M13 上下文特征(第一期随机输出面下无消费,挂披露);**boss 名单第一期建档(U02 已裁决)**:sim 内置逐位面 boss 表,数据源 = `data/bosses.md` + `data/cw_enemy_data.py`,`RunConfig` 可显式覆盖(局级输入优先);普通节点敌人逐只构成不建模(第一期战斗为随机输出面,无消费面)。
 - **复用面**:`data/affix_effects_data.py`、`data/cw_enemy_data.py`、`kernel/cw_affix_effects.py`。
 - **随机量与流键**:词缀抽取若需 sim 内生成(如模拟随机局),流键 `M20/affixes`——默认由调用方给定。
 - **未知**:U02(已裁决);词缀对战斗的数值影响随第一期随机面无消费,归 §2.6。
@@ -287,9 +294,9 @@
 
 #### M22 事件 overlay 族
 
-- **实机逻辑**:巨星强化(megastar)/伙伴(partner)/专家邀请函(expert invite)/Fate 圣杯任务链(2F-5F 各一次二选一接取、激活门槛、愿望圣杯等)/阿哈(欢愉召唤增益+装备最多者重复施放)/骇入策划(M21)/装备选择浮窗(aha_equip_pick)。kernel 已有选项类型建模(`cw_events.MegastarOption/PartnerOption/PlannerOption`),但**触发时机、选项内容生成、效果数值在机制文档零载**(Fate 有 §0.1 攻略补记单源)。(依据:`kernel/cw_events.py`、`research/invest_effects.md` §0.1、画面档 `currency_war_megastar/partner/expert_invite/wish_trial` 等)
-- **sim 模拟**:统一 overlay 事件队列(`kernel/cw_overlay_registry.py` 生命周期语义复用);每个 overlay = {触发条件, 选项生成, 效果应用} 三元组。**已裁决:事件弹窗族纳入建模范围(U14)**——有档照档(Fate 按 `research/invest_effects.md` §0.1 补记,画面档在案者照画面档);无档的触发条件/选项生成/效果数值以显式占位常量落地并随局结果披露 `overlay_param_pending` 清单,候实机补档回填,不猜;已由 M21/M02 显式建模的骇入/变宝为废照旧。
-- **复用面**:`kernel/cw_events.py` 选项类型、`kernel/cw_overlay_registry.py`。
+- **实机逻辑**:巨星强化(megastar)/伙伴(partner)/专家邀请函(expert invite)/Fate 圣杯任务链(2F-5F 各一次二选一接取、激活门槛、愿望圣杯等)/阿哈(欢愉召唤增益+装备最多者重复施放)/骇入策划(M21)/装备选择浮窗(aha_equip_pick)。kernel 已有选项类型建模(`cw_events.MegastarOption/PartnerOption/PlannerOption`),但**触发时机、选项内容生成、效果数值在机制文档零载**(Fate 有 §0.1 攻略补记单源)。(依据:`kernel/cw_events.py`、`research/invest_effects.md` §0.1、画面档 `currency_war_megastar/choose_partner/expert_invitation/wish_trial` 等)
+- **sim 模拟**:统一 overlay 事件队列(借用 `kernel/cw_overlay_registry.py` 的「单一声明 + 派生消费」**结构纪律**;该文件本体 = 实机画面 overlay 交互注册表——识别锚/退场动作/派发序,不迁入 sim);每个 overlay = {触发条件, 选项生成, 效果应用} 三元组。**已裁决:事件弹窗族纳入建模范围(U14)**——有档照档(Fate 按 `research/invest_effects.md` §0.1 补记,画面档在案者照画面档);无档的触发条件/选项生成/效果数值以显式占位常量落地并随局结果披露 `overlay_param_pending` 清单,候实机补档回填,不猜;已由 M21/M02 显式建模的骇入/变宝为废照旧。
+- **复用面**:`kernel/cw_events.py` 选项类型;`kernel/cw_overlay_registry.py` 仅借结构纪律(本体为实机画面注册表,见 sim 模拟行)。
 - **随机量与流键**:逐 overlay 独立子键 `M22/{name}/...`。
 - **未知**:U14(已裁决);Fate 链边界候实机数据(附 U23)。
 
@@ -305,7 +312,7 @@
 
 - **定案**:第一期战斗输出 = 随机胜负 + 随机扣血;分布取均匀/简单口径(胜负 P=0.5 均匀伯努利,扣血 = 常量区间整数均匀),**禁复杂模型**;「板面×上下文→结果分布」的战力代理与 Δ池采样方案移「后续演进」(§2.6),本迭代不建。
 - **依据**:§0 已裁边界⑥;定位前提(游戏战斗引擎不可复刻、现行四路径皆统计镜像)= `research/combat.md` §1/§3;战力模型需求定义存档 = `sim/sim-power-model.md`(供后续演进批取用)。
-- **候实机数据**:无(扣血区间常量落实现批并随局披露;机制化建模另立批)。
+- **候实机数据**:无(区间初值 [23,70] 与锚定规则已写入 M13,随局披露,新样本并入重估;机制化建模另立批)。
 
 #### U02 敌人上下文建模(M13/M19/M20)——已裁决
 
@@ -322,7 +329,7 @@
 #### U04 ★败轮金口径(M15/M04)——已裁决
 
 - **定案**:败轮实发 = 该节点基础奖励 + 利息(平面感知查表);按节点类型 2/4/4 的类型表口径(`LOSS_GOLD_BY_NODE`)废弃,分支删除。
-- **依据**:`research/economy.md` §11 定谳口径(类型表口径已从文档面撤除)。
+- **依据**:`research/economy.md` §11 定谳口径(2026-09-15 玩家裁定);`research/combat.md` §4 旧「败轮底金 2/4/4」行已废,已补 supersession 标注、保留作史(原申报「类型表口径已从文档面撤除」与当时文档现状不符,更正)。
 
 #### U05 补给节点发放(M18)——第一期定稿口径
 
@@ -380,7 +387,7 @@
 #### U14 事件 overlay 规则(M22)——已裁决
 
 - **定案**:事件弹窗族(巨星强化/伙伴/专家邀请函/Fate 试炼,含阿哈/骇入)**纳入建模范围**,不做「不自发触发」的搁置处置;建模规格 = §2.2 M22 既有内容保留(统一 overlay 队列 + {触发条件, 选项生成, 效果应用} 三元组);无档参数以显式占位常量落地并随局披露,不猜。
-- **依据**:§0 已裁边界⑪;选项类型建模 = `kernel/cw_events.py`(MegastarOption/PartnerOption/PlannerOption);画面档(`currency_war_megastar/partner/expert_invite/wish_trial` 等)在案;Fate = `research/invest_effects.md` §0.1 补记(单源)。
+- **依据**:§0 已裁边界⑪;选项类型建模 = `kernel/cw_events.py`(MegastarOption/PartnerOption/PlannerOption);画面档(`currency_war_megastar/choose_partner/expert_invitation/wish_trial` 等)在案;Fate = `research/invest_effects.md` §0.1 补记(单源)。
 - **候实机数据**:各 overlay 的触发时点、选项生成池、效果数值(候实机补档逐个回填)。
 
 #### U15 开局参数档(M01)——第一期定稿口径
@@ -465,7 +472,7 @@
 
 - **定案**:开局备战席 = 4 张、全 1★;费用形状二选一采样:**(1,1,1,3) 概率 2/3、(1,1,2,2) 概率 1/3**;同帧经济 gold=3、level=3、deploy_cap=3;由 sim 按此规则生成(流键 `M01/opening_hand`),不再由调用方注入;现行 `START_BENCH_COST_WEIGHTS`(1/2 费 65/35,永抽不到 3费、2费占比高估一倍)替换删除。
 - **依据**:u07u28 报告 §③——state journal 首帧(6 局)与档案 (1,1) 行自验证子集(9 局)两独立源分布一致(n=15 局/60 单位);开局手牌来自「开局补给」独立发牌通道,不走商店概率表(`REFRESH_PROB` 矛盾排除)。
-- **候实机数据**:形状比置信区间随样本回填;两形状总费用恒 6 属样本内巧合候选,不建模。
+- **候实机数据**:形状比置信区间随样本回填;两形状总费用恒 6 属样本内巧合候选,不建模;开局补给通道的卡名(身份)分布(首版按 M01 均匀抽名占位)。
 
 ### 2.4 与现行 sim 的差异清单
 
@@ -475,21 +482,25 @@
 
 | 对象 | 现状 | 删除理由(裁定指针) |
 |---|---|---|
-| `sim/checks/` 整子树(calib/corpus/launch/ledger/pool/runner/runtime/segments/selfcalc/suspects/t190_c,约 435KB) | sim 账本检查器族(D1-D13 检测器/锚/语料/段检查) | §0 已裁边界②:sim 不含评判机器(删除面已确认) |
+| `sim/checks/` 整子树(calib/corpus/launch/ledger/pool/runner/runtime/segments/selfcalc/suspects/t190_c,约 399KB) | sim 账本检查器族(D1-D13 检测器/锚/语料/段检查) | §0 已裁边界②:sim 不含评判机器(删除面已确认) |
 | `sim/runner.py`(simulate_p1_batch/A-B 对照/write_batch_ledger/SIM_RUNS_DIR/CLI) | 批量跑批+对照+账本落盘 | §0 已裁边界②③:批量 harness 删、只支持单局;记录归容器(删除面已确认) |
 | `sim/ab_core_swap.py` | 换核 A/B 双臂工厂+门组 | 同上(A-B 对照器,删除面已确认) |
 | `sim/cw_sim_piggy.py` | 扑满环境注入对照采集面(T-143) | 注入对照面,整删(删除面已确认);扑满机制建模归 M02/M17 正规路径 |
 | `sim/cw_sim_invest.py` 的预置面(`SimInvestProfile` 固定剧本/`SIM_STRATEGY_PICK_SCHEDULE` 频次日程/`SinkInvestSampler` plaza 频次候选) | 投资注入(开局塞清单) | 预置注入删除面已确认(统计镜像非机制);**注入核保留**——显式指定投资选择的通道保留作定向测试,日程改接 U07 已裁决固定轮次;默认路径 = offer 引擎 + 策略器裁决 |
-| 开局 bench 校准注入(`START_BENCH_COUNT`/`START_BENCH_COST_WEIGHTS`,engine_p1/pool/engine_p2 三处副本) | 遥测校准开局手牌 | U28 已裁决:替换为「4 张全 1★ + 双形状 2:1 采样」定案规则 |
+| 开局 bench 校准注入(`START_BENCH_COUNT`/`START_BENCH_COST_WEIGHTS`,四文件五处副本:engine_p1 两处 + pool/engine_p2/runner) | 遥测校准开局手牌 | U28 已裁决:替换为「4 张全 1★ + 双形状 2:1 采样」定案规则 |
 | `_event_gold` 事件金(engine_p1) | 逐轮 ±2 校准金 | U06:实机无对应机制,收入面归 M04/M17 |
 | `sample_node_sequence` 变异掷点(`kernel/cw_battle_calib.py`) | P1 序列 0.92/0.96 随机变异 | U19:42 局零反例强证据优先,序列用地面真值表 |
 | 引擎账本行内的检查器消费键(`checks.*` 镜像/披露族) | 检查器数据面 | 随 checks 子树删除;保留行为披露键(纯观测)由容器流水承载 |
+| `kernel/cw_coarse_battle.py`(战斗结果粗参数两态模型) | 旧战斗四路径之「粗查表」的模块单一源;src 内消费方 = engine_p1/runner/checks.pool 三处,全在本批删除/重做面内 | 旧战斗路径全删(U01 已裁决)→ 模块随删、不留层;能力登记 §2.6(战力模型批如需作特征源/基线,git 历史取用);§1「kernel 零改动」的唯一例外 |
+| `sim/ledger_hooks.py`(已退役桩,33 行) | 退役后的空壳桩文件 | 按「整体删除不留层」纪律点名整删(原删表漏列) |
+
+> **kernel 侧残留申报(随 U04)**:`cw_economy.LOSS_GOLD_BY_NODE` 类型表常量与 `net_income` 的败补规划分支(该参数支 docstring 自证当前零消费)**不随本迭代删除**——sim 路径引用(engine_p1/engine_p2/pool/runner/checks)随本删除面消亡,重做后 kernel 侧零 sim 消费;常量本体保留,理由 = 决策侧活消费方 mandate_v1(`statefn/vopt.py` 以 `LOSS_GOLD_BY_NODE['battle']` 作决策默认值)仍在,随策略侧对齐 U04 口径的批次另行清理(不属本稿删除面)。kernel 记账正本口径 = `loss_compensation_base`(节点基础奖励,与 U04 同款)。
 
 #### 2.4.2 改(引擎重做面)
 
 | 面 | 现状 | 改为 |
 |---|---|---|
-| 引擎形态 | engine_p1 单文件 3606 行,P1 段+P2 段同循环,决策/结算/账本/检查混杂 | 按模块拆分:§2.2 每模块一个引擎子系统(状态/转移/概率源独立),主循环只做「相位状态机 + 模块调度」;P2 段不再特殊拼版(`P2_NODE_SEQUENCE` 并入 M03 真值表) |
+| 引擎形态 | engine_p1 单文件 3606 行(P1 段)+ `sim/engine_p2.py`(P2 段引擎:拼版循环 + `build_state` 进场态构造),决策/结算/账本/检查混杂 | 按模块拆分:§2.2 每模块一个引擎子系统(状态/转移/概率源独立),主循环只做「相位状态机 + 模块调度」;**`engine_p2.py` 随重做整体替代**(P2 段拼版并入 M03 真值表,`build_state` 进场态构造归 M01/M03 模块) |
 | 随机流 | 单 rng 实例消耗序耦合 | 流键子流(§2.0.4) |
 | 牌池 | `_Pool` 可变计数(take/ret) | 不变量派生池(M06;定谳在案,依据 `research/economy.md` §1) |
 | 投资注入 | 频次/剧本注入 | offer 引擎(U07 已裁决:固定轮次 + 品质→池取样全程去重);环境 offer 同构、在场显式参数 |
@@ -533,12 +544,33 @@
 
 ### 2.6 后续演进(本迭代不建,登记 deferred 面)
 
-- **战斗结算机制化**:战力代理统计模型(`sim/sim-power-model.md` 需求定义在案:实机语料训练、sim 纯消费端、HP 出局铁律)与 Δ池条件化采样过渡底座——第一期随机输出面(M13)就位后,按策略评估需要另立批重建;机制推演粗模型(原方案 B)因参数缺口不推进。
+- **战斗结算机制化**:战力代理统计模型(`sim/sim-power-model.md` 需求定义在案:实机语料训练、sim 纯消费端、HP 出局铁律)与 Δ池条件化采样过渡底座——第一期随机输出面(M13)就位后,按策略评估需要另立批重建;机制推演粗模型(原方案 B)因参数缺口不推进(与 §2.4.1 的 `kernel/cw_coarse_battle.py` 删行互指:该路线现存正本已随旧战斗路径删除,战力模型批按 `sim/sim-power-model.md` 重建时从 git 历史取用,不在本迭代保留)。
 - **扣血数值表**:基础伤害逐节点表与「基础+进度」分项拆解(M12/M14 结构已留位,随实机结算帧采集回填)。
 - **装备/试用→战力映射**:特征工程归战力模型批(U26 附注)。
 - **普通节点敌人名单**:随战力模型批需要再建(U02)。
 - **批量运行外层**:批量/评估在 sim 外再包一层(§0 已裁边界③)。
 
+## 3. 修订对照(r2)
+
+> 输入 = 对抗审 r1 全部发现(`.debug/progress/2026-09-11-cw-clear-run/reviews/T-276-r1-review.md`,钉桩 425fcaa60);逐条处置一行一条。模块划分、六条裁决定案(U01/U02/U04/U07/U14/U28)、删除面框架均未动;凡处置与报告建议不一致处,以亲验代码为准并在行内申报。
+
+- R1 → 折入:§2.4.1 补 `kernel/cw_coarse_battle.py` 删行(粗查表正本;亲验 src 消费方 = engine_p1:2825 / runner:885 / checks/pool:118,全在删除/重做面内,能力登记 §2.6);§2.4.2 引擎形态行点名 `engine_p2.py` 随重做整体替代;§1「kernel 单一源注册表零改动」加唯一例外括注,三处张力消解;M13 删句与 §2.4.1 互指。
+- R2 → 折入:M01 补开局手牌卡名(身份)采样规则段(形状定档后各费用档从 M06 固定牌库均匀抽名;开局写端先于商店发牌、计入 held——M06 派生池不变量自此有定义;真实名单分布候实机数据);U28 候实机数据行挂账;U28 定案四要素未动。
+- R3 → 折入:M13 写死区间初值 [23, 70] 与锚定规则(实测「单次败局总扣血」样本域 min/max:在案散点 −23/−28/−70 定界;采样对象 = 总扣血,明确不以分量域 {2,10,15,35} 定界);U01 候实机数据行同步。
+- R4 → 折入:M01 汇总 RunConfig 正典字段清单(职级/数值难度档/词缀列表/对局类型/环境在场[必填,缺省空 = 无环境支路]/boss 名单覆盖[缺省 = 内置表]/位面强化词预留/优势布局·昔涟诗篇预留),声明 seed 与开局手牌不入 RunConfig;M02/M20/U21/U27 一律引用此处,不再各自加字段。
+- R5 → 折入:M20 写死单一承载方 = M01 的 `cw_opening_hp.opening_hp_prior`(`_AFFIX_HP_DELTA` 内嵌 −20,亲验 cw_opening_hp.py:32-34/:56-60;`cw_affix_effects.py` SPEC 本就排除该词缀——补丁与现码同向),词缀引擎禁再实现 HP 类修正,双重扣血路径消除。
+- R6 → 折入三处:①`research/combat.md` §4 败轮底金行补 supersession 标注(权威 = economy.md §11,原表废留作史,该文件单独 commit);②U04 依据行更正(原「类型表口径已从文档面撤除」申报不实);③§2.4.1 下补 kernel 侧残留申报(LOSS_GOLD_BY_NODE 常量与 `net_income` 败补规划分支不随本迭代删:sim 引用随删除面消亡;**与报告的选项差异申报**——报告给「随 U04 删或决策侧残留另批清」两选项,亲验 mandate_v1 `vopt.py:196` 有活消费,取后者)。
+- 次1 → 折入:M12 注明 base_damage/progress_damage 第一期置 None 占位、随局披露不可分。
+- 次2 → 折入:§2.0.4 流键示例 `M06/p1/r3` → `M05/p1/r3`;M02 随机量节补 `M02/env-offer` 登记。
+- 次3 → 折入:M11 符号更正:`decide_invest` = 策略侧接口(`strategies/impl/cw_strategy.py:159`,亲验),kernel 判定核 = `decide_event`。
+- 次4 → 折入:M18 复用面实名 `data/cw_equipment_data.py`。
+- 次5 → 折入:M22 复用面改述「单一声明 + 派生消费结构纪律」并注明该文件本体为实机画面 overlay 注册表;报告所列 M02(L127)经核无该引用(报告定位笔误),M02 不动。
+- 次6 → 折入:M09 宝钻获取通道断链更正 → M18 带钻选项(发放分布挂 U24)。
+- 次7 → 折入:M05 悬空 U29 更正为 U27 附注;M09「召唡物」→「召唤物」。
+- 次8 → 折入:START_BENCH 副本数更正「四文件五处」(engine_p1 两处 + pool/engine_p2/runner,亲验);checks 体量两处 435KB → 约 399KB(实测 .py 398,986 字节);§2.4.1 补 `sim/ledger_hooks.py` 删行。
+- 次9 → 折入:`sim/sim-design.md`/`sim/sim-power-model.md` 首引处写全路径;M22/U14 画面档实名 `choose_partner`/`expert_invitation`(实档名亲验)。
+- 次10 → 折入:并入 R1(§2.4.1 删行与 §2.6「机制推演粗模型不推进」互相指涉)。
+
 ---
 
-> 附:本文零代码改动;§2.3 已收敛为裁决清单(U01-U28:六条已裁决,余条第一期定稿口径);唯一遗留开放点 = 投资环境出现率 49% 的归因(候实机数据);本稿状态 = 设计定稿候对抗审。
+> 附:本文零代码改动;§2.3 已收敛为裁决清单(U01-U28:六条已裁决,余条第一期定稿口径);唯一遗留开放点 = 投资环境出现率 49% 的归因(候实机数据);本稿状态 = r2 修订稿(r1 对抗审「修改后通过」,发现全数折入,对照见 §3)。
