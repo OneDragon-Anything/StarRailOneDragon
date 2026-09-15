@@ -75,11 +75,9 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     DeployMove,
     LevelUp,
     OpenBookcard,
-    OpenBox,
     OpenShop,
     SellBench,
     SellDeployed,
-    StartBattle,
     action_key,
 )
 from sr_od.application.currency_war.obs.currency_war_cv import slot_occupied
@@ -109,6 +107,21 @@ from sr_od.application.currency_war.obs.cw_shop_obs import (
     check_shop_pool,
     compare_merge_preview,
     refresh_expect,
+)
+from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
+    ActionOp,
+)
+from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
+    action_op_class_for,
+)
+from sr_od.application.currency_war.operations.cw_op.cw_open_box_action import (
+    OpenBoxOp,
+)
+from sr_od.application.currency_war.operations.cw_op.cw_open_shop_action import (
+    OpenShopOp,
+)
+from sr_od.application.currency_war.operations.cw_op.cw_start_battle_action import (
+    StartBattleOp,
 )
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
     CwScreenOpBase,
@@ -2096,22 +2109,13 @@ class CwScreenPrep(CwScreenOpBase):
                 exec_state_of(session).cw_prep_pending_accts = []
             exec_state_of(session).cw_prep_pending_accts.append(acct)
             # —— 结束判定 → 交回外循环(动画等待已由执行器/编排内建)
-            if isinstance(action, StartBattle):
-                # 出战提前终结(批3a:发出即终结——机械发射完成即交回外循环
-                # 战斗分支;发射位内部事实经执行器 last_launch_ok/exec_state
-                # 旁路供 cw_loop J2/J3/J4,批4 同退役)。
-                return self.round_success('出战(交回外循环战斗分支)', wait=3)
-            if isinstance(action, OpenShop):
-                # 开店切商店画面(非帧稳定)→ 终结,交回外循环重识别
-                return self.round_success(f'{key} ✓,交回外循环重识别', wait=1.0)
-            if isinstance(action, OpenBox):
-                # OpenBox 终结化(R7,批2a):开箱即引入新事实(武装箱选择
-                # 画面出现,与刷新终结结构语义 R5 同构)→ 本访问交回,外循环
-                # 按武装箱选择画面分发新画面 op 选卡。``_project_prep_obs``
-                # OpenBox 分支随终结化作废删除;交回等待值来源写死 = 现役
-                # ``_open_box`` 动画等待 ``_OVERLAY_ANIM_WAIT_S``。
-                return self.round_success(f'{key} ✓(交回:武装箱选择画面分发)',
-                                          wait=_OVERLAY_ANIM_WAIT_S)
+            #      批3 终结判定对齐(design.md unified-action-factory §2.4):
+            #      终结集与等待时长改读注册表 op 类 terminal/terminal_wait
+            #      类属性(消费点经注册表读类属性,禁消费点私表;本处与
+            #      生命周期孪生环两处共用 _terminal_exit)。
+            _op_cls = action_op_class_for(action)
+            if _op_cls.terminal:
+                return self._terminal_exit(action, key, _op_cls)
             # —— 逻辑态直写(ADR-0517 决策 7/10:逐动作零读屏,期望态纯计算
             #      推进;发出即直写。假黑板风险由下一入口 heavy reconcile 以
             #      实读纠逻辑态承担(期望态对账族即纠偏通道)。R9:词表逐
@@ -2314,17 +2318,11 @@ class CwScreenPrep(CwScreenOpBase):
                 exec_state_of(session).cw_prep_pending_accts = []
             exec_state_of(session).cw_prep_pending_accts.append(acct)
             # —— 结束判定 → 交回外循环(动画等待已由执行器/编排内建)
-            if isinstance(action, StartBattle):
-                # 出战提前终结(批3a:发出即终结;发射位内部事实经执行器
-                # last_launch_ok/exec_state 旁路供 cw_loop J2/J3/J4,批4 同退役)
-                return self.round_success('出战(交回外循环战斗分支)', wait=3)
-            if isinstance(action, OpenShop):
-                # 开店切商店画面(非帧稳定)→ 终结,交回外循环重识别
-                return self.round_success(f'{key} ✓,交回外循环重识别', wait=1.0)
-            if isinstance(action, OpenBox):
-                # OpenBox 终结化(R7,批2a;语义与旧路径分支同源,见 run 体)
-                return self.round_success(f'{key} ✓(交回:武装箱选择画面分发)',
-                                          wait=_OVERLAY_ANIM_WAIT_S)
+            #      批3 终结判定对齐(同 run 体;终结集与等待时长经注册表
+            #      op 类 terminal/terminal_wait,两处孪生环共用 _terminal_exit)
+            _op_cls = action_op_class_for(action)
+            if _op_cls.terminal:
+                return self._terminal_exit(action, key, _op_cls)
             # —— 逻辑态直写(ADR-0517 决策 7/10;R9:词表逐动作有逻辑态
             #      分支,保守回退分支已删,词表外 = 响亮暴露)
             payload = self._project_prep_obs(action, payload)
@@ -2335,6 +2333,39 @@ class CwScreenPrep(CwScreenOpBase):
         # 由 stall 防线接管——不静默续跑)
         return self.round_success(
             f'访问动作数达上限({self.VISIT_ACTION_CAP}),交回外循环重观察', wait=1.0)
+
+    def _terminal_exit(self, action: CwAction, key: str,
+                       op_cls: type[ActionOp]) -> OperationRoundResult:
+        """终结动作交回(批3 终结判定对齐,design.md unified-action-factory
+        §2.4):终结判定与等待时长改读注册表 op 类 ``terminal``/
+        ``terminal_wait`` 类属性(消费点经注册表读类属性,禁消费点私表;
+        决策循环与生命周期孪生环两处共用本口)。交回 detail 文案逐动作
+        保持原样(零行为)。
+
+        调用契约 = 仅 ``op_cls.terminal`` 为真时进入(两处调用点同守卫);
+        非终结动作到达 = 终结集与消费面失配,响亮暴露。
+        """
+        if op_cls is StartBattleOp:
+            # 出战提前终结(批3a:发出即终结——机械发射完成即交回外循环
+            # 战斗分支;发射位内部事实经执行器 last_launch_ok/exec_state
+            # 旁路供 cw_loop J2/J3/J4,批4 同退役)。
+            return self.round_success('出战(交回外循环战斗分支)',
+                                      wait=op_cls.terminal_wait)
+        if op_cls is OpenShopOp:
+            # 开店切商店画面(非帧稳定)→ 终结,交回外循环重识别
+            return self.round_success(f'{key} ✓,交回外循环重识别',
+                                      wait=op_cls.terminal_wait)
+        if op_cls is OpenBoxOp:
+            # OpenBox 终结化(R7,批2a):开箱即引入新事实(武装箱选择画面
+            # 出现,与刷新终结结构语义 R5 同构)→ 本访问交回,外循环按
+            # 武装箱选择画面分发新画面 op 选卡。交回等待 =
+            # OpenBoxOp.terminal_wait(与 ``_open_box`` 动画等待
+            # ``_OVERLAY_ANIM_WAIT_S`` 等价,等价测试锁 = test_cw_unified_action_3)。
+            return self.round_success(f'{key} ✓(交回:武装箱选择画面分发)',
+                                      wait=op_cls.terminal_wait)
+        raise AssertionError(
+            f'[cw][director] 非终结动作进入终结出口:{type(action).__name__}'
+            '(终结集与消费面失配,响亮暴露)')
 
     def _act_execute(self, action: CwAction,
                      obs: PrepObservation | None = None) -> None:

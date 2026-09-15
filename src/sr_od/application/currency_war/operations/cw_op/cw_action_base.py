@@ -3,16 +3,17 @@
 更名)。词表→op 工厂单一注册在 ``cw_action_registry.py``(批1 自
 cw_shop_actions 迁入;消费面 ``shop_action_op_for`` 薄委托口径不变)。
 
-六个具体商店动作 op 在各自 ``cw_<action>_action.py`` 文件。本文件只放
-跨动作共享件(terminal 类属性语义、execute 单方法契约、env 协议),
-**禁 import 具体动作文件**(反向循环);账本/域执行环境留
-cw_shop_action_ops(ShopExecEnv 单一源不迁;其以公共字段 op/match/config
-结构化满足 ActionExecEnv 协议,批2 增 PrepExecEnv 同构满足)。
+具体动作 op 在各自 ``cw_<action>_action.py`` 文件(商店域 + 备战域批3
+收编件)。本文件只放跨动作共享件(terminal/terminal_wait 类属性语义、
+execute 单方法契约、env 协议),**禁 import 具体动作文件**(反向循环);
+账本/域执行环境留各域模块(ShopExecEnv = cw_shop_action_ops 单一源不迁;
+PrepExecEnv = prep_actions,批3;各自以公共字段 op/match/config 结构化
+满足 ActionExecEnv 协议)。
 """
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, ClassVar, Protocol
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_vocab import Action
@@ -24,9 +25,9 @@ class ActionExecEnv(Protocol):
     ——协议仅静态契约面,运行时不检查)。
 
     商店域 ``ShopExecEnv``(cw_shop_action_ops,公共字段 op/match/config
-    + 域私有字段)现役即满足;批2 备战域 ``PrepExecEnv`` 同构满足。动作
-    op 子类覆写 ``execute`` 可窄化声明为本域 env 类型(运行时不检查参数
-    类型,项目既有风格)。
+    + 域私有字段)现役即满足;备战域 ``PrepExecEnv``(prep_actions,批3)
+    同构满足。动作 op 子类覆写 ``execute`` 可窄化为本域 env 类型(运行时
+    不检查参数类型,项目既有风格)。
     """
 
     op: SrOperation
@@ -42,12 +43,20 @@ class ActionOp(ABC):
     基类契约:``execute`` 返回恒 True(终裁:发出即职责完成,零
     判效——落地事实归下一帧入口观察 reconcile 对账,不据执行侧判定
     改道)。**例外登记口**:在册例外 = StartBattleOp(返回值 = 发射位
-    内部事实非恒 True,design.md §2.4,批3 落款收编;批1 仅占位登记,
-    零行为)。
+    内部事实非恒 True,消费面 = runner 包络 last_launch_ok 旁路与执行态
+    写点;design.md §2.4,批3 落款生效)。prep 域 ``(detail, emitted)``
+    语义经 PrepExecEnv 旁路字段承载,不进返回值。
     """
 
     #: 终结动作(执行即本画面访问结束,交回外循环;决策 4)
     terminal: bool = False
+
+    #: 终结交回等待秒数(动作转移语义时长,随 op 类承载;仅 terminal=True
+    #: 的 op 有语义。消费点经注册表读类属性,禁消费点私表——design.md
+    #: §2.4 终结判定对齐。现役值:StartBattleOp=3 / OpenShopOp=1.0 /
+    #: OpenBoxOp 与 prep_actions._OVERLAY_ANIM_WAIT_S 等价;等价测试锁 =
+    #: sr-od-test test_cw_unified_action_3)。
+    terminal_wait: ClassVar[float] = 0.0
 
     def __init__(self, action: Action):
         self.action = action
@@ -56,4 +65,4 @@ class ActionOp(ABC):
     def execute(self, env: ActionExecEnv) -> bool:
         """机械执行;返回恒 True(终裁:发出即职责完成,零判效——
         落地事实归下一帧入口观察 reconcile 对账,不据执行侧判定改道;
-        在册例外见类 docstring 例外登记口)。"""
+        在册例外与旁路语义见类 docstring 例外登记口)。"""
