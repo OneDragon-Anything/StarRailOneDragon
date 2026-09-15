@@ -172,10 +172,6 @@ class ExecState:
     # (期望态条目表容器 expected_state 已随 ADR-0651 两态制废除——
     #  ExpectedEntry 登记/覆盖点 diff 对账整套拆除;op 逻辑效果 =
     #  cw_expected_state.apply_op_effect 直接写 session 字段。)
-    # 备战单轮最后动作签名(账外收编:备战单轮 op 写,外循环无进展守卫
-    # 读;None = 无在途动作签名)。
-    last_prep_action_sig: tuple | None = None
-    # —— 账外补充·第二波(实施批收尾扫描按 §6.1 收编的执行侧动态属性,
     # 写端 = 画面 op/发射位,原挂 session 属历史宿主错位)——
     # 补给绕行已完成(节点内一次性)。
     _supply_detour_done: bool = False
