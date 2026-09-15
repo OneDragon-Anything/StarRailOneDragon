@@ -52,50 +52,73 @@ from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass, field
 
-
 # ===== 候裁9 词汇迁移·旧路径转发(过渡 shim)=====
 # 本批按定谳记录把共享词汇迁入语义宿主;下列 import 同时是
 # 本模块自身运行时的供给面。旧路径消费仅剩并行在飞批文件,待其落库
 # 后由收尾段 sweep 改指新居并删除本转发声明;禁新增旧路径消费。
-from sr_od.application.currency_war.kernel.cw_exec_state import (  # noqa: E402
-    BENCH_CAPACITY,  # noqa: F401
-    DEPLOYED_BACK_CAPACITY,  # noqa: F401
-    DEPLOYED_CAPACITY,  # noqa: F401
-    DEPLOYED_FRONT_CAPACITY,  # noqa: F401
-    PlaneNodeLedger,  # noqa: F401
-    BenchChar,  # noqa: F401
-    _apply_row_to_char, bench_from_compact,  # noqa: F401
-    bench_occupied, bench_place, deployed_from_compact,  # noqa: F401
-    deployed_occupied, deployed_place, deployed_slot_no,  # noqa: F401
-    fill_boss_by_position, get_node_ledger, iter_occupied,  # noqa: F401
-    iter_deployed_slots, iter_occupied_deployed, ledger_node_type,  # noqa: F401
-    ledger_update_plane,  # noqa: F401
-    pad_bench, pad_deployed, rebuild_deployed_from_board,  # noqa: F401
-    snapshot_copy,  # noqa: F401
-)
-from sr_od.application.currency_war.kernel.cw_merge_simulate import (  # noqa: E402
-    _apply_full_bench_merge_buy, _merge_bench,  # noqa: F401
-    count_merge_material_blocked, merge_buy_completes, merge_buy_k,  # noqa: F401
-    merge_material_reject_reason, merge_material_stale_names,  # noqa: F401
-    same_star_count, star_base_copies, will_merge_on_buy,  # noqa: F401
-)
-from sr_od.application.currency_war.kernel.cw_economy import (  # noqa: E402
-    DIFFICULTY_HP_TABLE, HP_SAFE_THRESHOLD, MAX_PLAYER_LEVEL,  # noqa: F401
-    REFRESH_COST_BASE,  # noqa: F401
-    XP_CLICK_COST_FALLBACK, XP_PER_BUY, XP_TO_NEXT_LEVEL,  # noqa: F401
-    bench_char_cost, card_cost, effective_hp_threshold,  # noqa: F401
-    sell_refund, xp_apply_clicks, xp_clicks_to_level,  # noqa: F401
-)
 from sr_od.application.currency_war.kernel.cw_bond_equips import (  # noqa: E402
     _recount_board,  # noqa: F401
 )
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (  # noqa: E402
     board_unique_key,  # noqa: F401
 )
+from sr_od.application.currency_war.kernel.cw_economy import (  # noqa: E402
+    DIFFICULTY_HP_TABLE,  # noqa: F401
+    HP_SAFE_THRESHOLD,  # noqa: F401
+    MAX_PLAYER_LEVEL,
+    REFRESH_COST_BASE,  # noqa: F401
+    XP_CLICK_COST_FALLBACK,  # noqa: F401
+    XP_PER_BUY,
+    XP_TO_NEXT_LEVEL,
+    bench_char_cost,  # noqa: F401
+    card_cost,
+    effective_hp_threshold,  # noqa: F401
+    sell_refund,  # noqa: F401
+    xp_apply_clicks,  # noqa: F401
+    xp_clicks_to_level,  # noqa: F401
+)
+from sr_od.application.currency_war.kernel.cw_exec_state import (  # noqa: E402
+    BENCH_CAPACITY,  # noqa: F401
+    DEPLOYED_BACK_CAPACITY,  # noqa: F401
+    DEPLOYED_CAPACITY,  # noqa: F401
+    DEPLOYED_FRONT_CAPACITY,  # noqa: F401
+    BenchChar,  # noqa: F401
+    PlaneNodeLedger,  # noqa: F401
+    _apply_row_to_char,  # noqa: F401
+    bench_from_compact,  # noqa: F401
+    bench_occupied,  # noqa: F401
+    bench_place,
+    deployed_from_compact,  # noqa: F401
+    deployed_occupied,  # noqa: F401
+    deployed_place,
+    deployed_slot_no,
+    fill_boss_by_position,  # noqa: F401
+    get_node_ledger,  # noqa: F401
+    iter_deployed_slots,  # noqa: F401
+    iter_occupied,  # noqa: F401
+    iter_occupied_deployed,
+    ledger_node_type,  # noqa: F401
+    ledger_update_plane,  # noqa: F401
+    pad_bench,  # noqa: F401
+    pad_deployed,
+    rebuild_deployed_from_board,  # noqa: F401
+    snapshot_copy,  # noqa: F401
+)
+from sr_od.application.currency_war.kernel.cw_merge_simulate import (  # noqa: E402
+    _apply_full_bench_merge_buy,  # noqa: F401
+    _merge_bench,
+    count_merge_material_blocked,  # noqa: F401
+    merge_buy_completes,  # noqa: F401
+    merge_buy_k,  # noqa: F401
+    merge_material_reject_reason,  # noqa: F401
+    merge_material_stale_names,  # noqa: F401
+    same_star_count,  # noqa: F401
+    star_base_copies,  # noqa: F401
+    will_merge_on_buy,  # noqa: F401
+)
 from sr_od.application.currency_war.kernel.cw_run_allocator import (  # noqa: E402
     MatchOutcome,  # noqa: F401
 )
-
 
 
 @dataclass
