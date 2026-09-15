@@ -139,8 +139,11 @@
 - **SwapDeploy**:词表/容器逻辑态直写/sim 消费在役,生产执行器未接线——能力面按词表完备性保留。
 - **刷新不换牌面的场景**:节点内关店→重开不刷新(牌面持久);跨节点自动刷新全店(不继承)。判「是否刷新」以节点推进事件为锚(`research/economy.md` §2.1)。
 
-## 8. 文档索引与开放设计注
+## 8. 文档索引(33 篇)
 
-已成文:[prep.md](prep.md)(备战)/ [shop.md](shop.md)(商店开画面)。其余画面照 §2 模板按族补齐:单选族(投资策略/投资环境/遭遇/补给/盛会之星/选择伙伴/选择装备/命运卜者/骇入策划/祈愿试炼/星徽秘典/专家邀请函)、战斗等待、简报与过场族、部署与弹窗族。
+主链:[prep.md](prep.md)(备战)/ [shop.md](shop.md)(商店开画面)/ [battle_wait.md](battle_wait.md)(战斗等待·结算)。
+单选族:[invest_strategy.md](invest_strategy.md) / [invest_env.md](invest_env.md) / [encounter.md](encounter.md) / [supply.md](supply.md) / [megastar.md](megastar.md) / [partner.md](partner.md) / [equip_pick.md](equip_pick.md) / [fortune.md](fortune.md) / [planner.md](planner.md) / [wish_trial.md](wish_trial.md) / [bookcard.md](bookcard.md) / [expert_invite.md](expert_invite.md) / [box_pick.md](box_pick.md)。
+简报与过场:[briefing.md](briefing.md) / [boss_briefing.md](boss_briefing.md) / [plane_transition.md](plane_transition.md) / [plane_detail.md](plane_detail.md) / [plane_intel.md](plane_intel.md) / [wait_one_one.md](wait_one_one.md) / [next_button.md](next_button.md)。
+弹窗与部署:[armory_box.md](armory_box.md) / [consumable_overlay.md](consumable_overlay.md) / [aha_equip_pick.md](aha_equip_pick.md) / [emblem_detail_popup.md](emblem_detail_popup.md) / [item_detail_popup.md](item_detail_popup.md) / [role_detail_overlay.md](role_detail_overlay.md) / [shop_card_detail.md](shop_card_detail.md) / [refresh_odds_popup.md](refresh_odds_popup.md) / [prep_locked_return.md](prep_locked_return.md) / [interrupt_dialog.md](interrupt_dialog.md) / [deploy.md](deploy.md) / [deploy_not_full.md](deploy_not_full.md)。
 
-开放设计注:补给刷新的终结语义(「刷新 = 唯一引入新事实的动作」原则下应为终结 op;现行实现 = 节点内刷新循环 + `_supply_refresh_used` session 态)候裁,裁决落 `supply.md`。
+开放设计注:补给刷新的终结语义候裁已落 [supply.md](supply.md);boss 简报去向已裁([boss_briefing.md](boss_briefing.md),README 已按 as-built 修正);各族其余申报面(m1p 接缝/建档缺口/测试锁断档等)见各篇文末。

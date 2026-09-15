@@ -102,5 +102,5 @@ while True(零读屏):
 ## 9. 遥测与锁面
 
 - journal op 名 = 「商店访问」(0n 转交与显式开店同口);计数键 shop_visit_idle_gold / branch_shop_open_*;刷新遥测字段 refresh_board_changed + free_refresh_proc flag;投放分键 plan_visit_action_cap / shop_ev_bench_wait。
-- 测试锁:商店投影逻辑锁(test_cw_shop_projection_logic)、R2 预算门对拍、P56 买面锁等,锁面 = `sr-od-test/test/sr_od/app/currency_war/`。
+- 测试锁:商店投影逻辑锁(test_cw_shop_projection_logic)、R2 预算门对拍、P56 买面锁等,锁面 = `sr-od-test/test/sr_od/application/currency_war/`。
 - game 侧知识:经济机制(刷新/息/锁商店) = [../../../../game/currency_war/research/economy.md](../../../../game/currency_war/research/economy.md);合成机制 = [../../../../game/currency_war/research/merge_mechanics.md](../../../../game/currency_war/research/merge_mechanics.md)。

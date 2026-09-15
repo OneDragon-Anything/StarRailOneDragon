@@ -45,11 +45,12 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 | 0e | 投资策略三选一 | **双信号+复探**(N5 分发判别稳定化):id_mark ∨ OCR 全短语「请选择投资策略」(lcs 0.8);miss 且备战双锚命中(穿透形态)→ 短窗复探一次 | CwScreenInvestStrategy（经包装;双信号+复探判定留外循环）。OCR 全短语腿为「优先 area 化」（§2.1）的**显式豁免**：浮层淡入期 id_mark 单探测不稳定（第十五局 15:14 空挥 37s 实证），复探窗口 = 执行层时序常量；常规帧（双锚未命中）零 OCR 零复探 |
 | 0e1 | 补给阶段 | id_mark | CwScreenSupplyNode（经包装;成功 → 交回重判(补给是唯一无结算屏节点;合成 outcome 行已随 outcomes 流写入端退役） |
 | 0f | 武装箱弹窗 | id_mark | CwScreenArmoryBox（经包装） |
+| 0f2 | 武装箱选择(选卡画面) | id_mark | CwScreenBoxPick(经包装;分发锚未入 DISPATCH_AREA_ANCHORS 预检表,box_pick.md 开放设计注申报) |
 | 0e2 | 商店刷新概率表弹窗 | id_mark | **CwScreenRefreshOddsPopup（新·推进）**;× 已 area 化(按钮-关闭概率表,中心=原 (1501,263)),mouse_move bug#1 缓解在 op 内 |
 | 0e3 | 道具详情弹窗（聘用书类） | OCR'聘用书' ∧ 非祈愿屏 | **CwScreenItemDetailPopup（新·推进）**;祈愿排他留外循环;× 已 area 化(中心=原 (1862,65)) |
 | 0f' | 消耗品详情浮层 | OCR'消耗品'∧'拖动到' 双条件 | **CwScreenConsumableOverlay（新·推进）**;ESC 关 |
 | 0g | 阿哈装备选择 | 备战屏'标识-简易装备' | **CwScreenAhaEquipPick（新·推进,固定策略=点第 1 件,申报）**;首件已 area 化(中心=原 (626,250)) |
-| 0h | 祈愿试炼 | id_mark | CwScreenWishTrial（经包装;点卡选中→确认→验关） |
+| 0h | 祈愿试炼 | id_mark | CwScreenWishTrial（经包装;确认 pending+重入裁决承载 chosen_wish(screens/wish_trial.md)） |
 | 0i | 星徽秘典四选一 | id_mark（命中即接管，不放行备战分支） | CwScreenBookcard（经包装） |
 | 0k | 专家邀请函 | id_mark（同上） | CwScreenExpertInvite（经包装） |
 | 0t | 商店卡牌详情弹窗（实机事故建档:奖励节点点球误触开的角色 offer 购买页） | 双 id_mark 门:'按钮-购买' ∧ '按钮-角色详情'（弹窗前景独有锚,双锚全中才接管;判据单一源 `_shop_card_detail_anchor_hit`） | **CwScreenShopCardDetailPopup（新·推进）**:点 X(按钮-关闭,cw_lobby_close 同族模板)→ 验 X 消失 → 交回重判（店开 → 0n 商店访问接管购买;备战 → 备战环）;**绝不点购买**（买不买归商店域,关闭动作不代替购买决策）;on_fail_retry 消费 retry 池。序位 0 系——弹窗暗色衬底遮蔽底层全部锚（实证:开商店三锚/备战双锚 OCR 全灭）,不先分流 = 事故形态 |

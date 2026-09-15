@@ -73,5 +73,5 @@ action = strategy.decide_prep_screen(session, config) 取首项(空批合法 →
 ## 9. 遥测与锁面
 
 - journal op 名 = 「备战」(dispatch 包装统一落 `[cw-op]` 主日志行);0n 分键 branch_shop_open_hit / branch_shop_open_visit_ok / branch_shop_open_visit_fail;发射域分键 deploy_emit_* / deploy_exec_*。
-- 测试锁:黑板帧代次写点集契约锁、生命周期段迹锁等,锁面 = `sr-od-test/test/sr_od/app/currency_war/`(test_cw_blackboard.py 等)。
+- 测试锁:黑板帧代次写点集契约锁、生命周期段迹锁等,锁面 = `sr-od-test/test/sr_od/application/currency_war/`(test_cw_blackboard.py 等)。
 - game 侧知识:过渡体系/战斗机制 = [../../../../game/currency_war/research/README.md](../../../../game/currency_war/research/README.md);画面建档 = `assets/game_data/screen_info/currency_war_battle_prep.yml`。

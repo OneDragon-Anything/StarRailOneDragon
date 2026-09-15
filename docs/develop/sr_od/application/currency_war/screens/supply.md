@@ -69,7 +69,7 @@ pick = decide_supply([o for o,_ in opts], board_state_of(session), ..., refresh_
 
 - 刷新单次硬限制:`_supply_refresh_used` 发出点击即置位(防「点偏未生效重入屏反复尝试」);锚读缺零点击 + 照常置位(防「建议刷新→锚读缺→零动作」每轮空转烧尽节点预算的活锁)。
 - 出口验真:节点完成 = 标识消失(位置 area,非全屏 LCS);未落地轮重走计预算,预算耗尽 FAIL bail(不无限烧)。
-- 兜底点卡 CARD_BODY 仅在无选项/无 match 时使用(有选项而决策越界 = 照契约退默认)。
+- 兜底点卡 CARD_BODY 仅在无选项/无 match 时使用;有选项而决策越界 = target 保持兜底点(有界重试兜底,非盲选禁令屏)。
 - 无本屏专属停机钩子;守卫总册 = [../flow/guards.md](../flow/guards.md)。
 
 ## 9. 遥测与锁面
