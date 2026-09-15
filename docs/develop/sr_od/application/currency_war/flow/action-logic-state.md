@@ -1,5 +1,6 @@
 # 动作逻辑态（action-logic-state）
 
+> **逐动作计算规则分篇见 [logic-updates/](logic-updates/README.md)**（每动作 op 一篇：域集/转移规则/随机面/拒绝语义/符号锚/M1 等价/判例）；本篇保留总则与原则。
 > 定位：货币战争主链**每个动作 op 的逻辑态计算规则全集**（地基文档）。动作 op 机械发出后，不经任何画面观察，按游戏规则从动作前状态推算出预期状态并直写容器——这份推算规则的确定性全集就是本篇。真值永远以下一帧画面观察为准。
 > 用户裁定：不许以「逻辑态未建模」为由把动作交回外循环——在役动作全集逐个有逻辑态；除 §5 两类转移动作显式声明「逻辑态=空」、§6 声明的事件选择边界外，本篇不存在「无逻辑态」的动作。
 > 机制事实依据 = `docs/game/currency_war/research/`（merge_mechanics / xp-rules / economy / equipment_mechanics / screen_flow_timing）+ `docs/game/currency_war/data/gameplay.md`（官方原文）+ `../proofs/`（数学证明）。kernel 现位依据 = 符号锚 `文件::符号名`（路径根 = `src/sr_od/application/currency_war/`，行号不写，随代码漂移）。
@@ -22,6 +23,12 @@
 - **确定面** = 规则上唯一可推算的部分：扣多少金、哪个槽位清空、谁升星、退多少金。逻辑态只写确定面。
 - **随机面** = 游戏内部掷随机数的部分：刷新后的新牌面、冶金炉的变异产物、奖励球的掉落内容、掉落的金币数额。**随机面不进逻辑态，归下一帧观察。**
 
+### 1.3 写口归属：op 上报动作，game state 独占写逻辑态（硬规则）
+
+- **动作 op 的职责边界** = 执行画面动作（点击/拖拽）+ **向 game state 上报自己的动作事实**。逻辑态的更新写入由 game state 独占完成：商店域经 `apply_shop_action_logic`/`apply_shop_merge_leg`，备战域经 `apply_prep_action_logic`，效果账经 `apply_op_effect`（§1.4 表）。
+- **禁令**：op 层/策略层不得自带逻辑态记账函数或并行登记路径——同一动作存在两条写逻辑态的通道是账实分离类缺陷的温床。执行遥测计数（次数/金额/证据留档）不属逻辑态,不受本条辖,但不得反向写容器。
+- **逐动作计算规则的梳理文档** = [logic-updates/](logic-updates/README.md)（总-分结构：总览 + 每动作 op 一篇,说明该动作的逻辑态应如何计算）;本篇保留总则与原则,分篇逐节指向子目录。
+
 这是**原则，不是缺口**：随机面上不存在任何可写的真值，替它编一个预期值只会制造假缺陷票。随机面对应的容器域在该动作轮按**域级跳写**纪律跳过（该域值留观察覆盖，与容器写口的输入域 None 语义同型，`kernel/cw_game_state.py::apply_shop_action_logic` 注）。
 
 ### 1.3 kernel 单一源指针纪律
@@ -37,7 +44,7 @@
 | 落点 | 宿主 | 写口（符号锚） | 消费方 |
 |---|---|---|---|
 | 容器逻辑态直写 | `GameState` 字段（渠道 family='logic_action'） | `apply_shop_action_logic`（商店域转移函数）/ `apply_shop_merge_leg`（合成升星腿，既有口）/ `apply_prep_action_logic`（备战域，域集 = gold/bench/xp/level/front_row/back_row/board）/ `apply_op_effect`（备战金账与库存腿） | 单动作循环逐动作逻辑态直写；观察赢修正 |
-| 执行态跟踪账 | `ExecState.tracked_bench_chars` / `tracked_deployed` 槽位表 | `mutate_bench_deployed` + 执行器 tracked 同步分支（`prep_actions.py::PrepActionExecutor._track_remove_bench` / `_track_remove_deployed` / `_track_move_deployed`） | 执行侧双账守卫对账（expected-vs-tracked） |
+| 执行态跟踪账 | `ExecState.tracked_bench_chars` / `tracked_deployed` 槽位表 | `mutate_bench_deployed` + 执行器 tracked 同步分支（`prep_actions.py::PrepActionExecutor._track_remove_bench` / `_track_remove_deployed` / `_track_move_deployed`） | 执行侧随动账;双账比对已退役（2026-09-15,对账唯一发生点 = 观察边界,见 screen_op §2.3/§4） |
 | 推演帧 | sim 引擎 `CwSimFrame` 整帧副本 | `simulate`（纯函数，返回新帧） | sim 引擎 / 回放 / 规则等价性验证（等价锁 M1） |
 
 另有一个非容器落点：**备战观察帧**（`kernel/cw_prep_actions.py::PrepObservation`，宿主 `session.prep_obs_frame`）——球/箱/典籍/装备/工具等视觉域动作的逻辑态推进落在它上面（`operations/cw_screen/cw_screen_prep.py::_project_prep_obs`），容器零写（`apply_prep_action_logic` 对这些动作显式返回）。
