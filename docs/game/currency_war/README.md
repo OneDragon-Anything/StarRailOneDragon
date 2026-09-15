@@ -10,7 +10,7 @@
 **已删(代码注册表即单一源,版本更新改注册表+测试,doc 不再维护)**:
 - ~~characters.md + characters/ 74 文件~~ → `cw_chars.CHARACTERS`(72)
 - ~~traits.json + traits/ 34 文件 + factions.md~~ → `cw_factions.FACTIONS`(32)
-- ~~equipment.md~~ → `cw_equipment.EQUIPMENTS`(158)
+- ~~equipment.md~~ → `cw_equipment_data.EQUIPMENTS`(158)
 - ~~invest_cards.md~~ → `cw_invest_data`(plaza API 生成器直灌注册表)
 - ~~comp_library.md~~ → `cw_comps.COMP_LIBRARY`(20 套,含 V4.4 评级)
 
@@ -33,5 +33,5 @@
 画面(screen doc,游戏提供的 UI)算游戏玩法,仍在 [docs/game/screens/](../screens/)(`currency_war_*.md`)。
 
 ## 版本维护
-货币战争赛季制,数据随版本变。更新流程:① 投资/环境:重跑 `tools/cw/gen_plaza_invest.py`(plaza API,内建 diff 报告,直灌注册表)→ 按 diff 修 overlay 孤儿键;② 角色:重跑 `tools/cw/gen_plaza_chars.py`;③ 其余:重抓米游社图鉴 → **同步代码注册表**(`cw_chars.CHARACTERS` / `cw_factions.FACTIONS` / `cw_equipment.EQUIPMENTS` 等,注册表是唯一数据源)→ 回归测试。data/ 仅 bosses/competitors 等未建模 doc 需手工同步。
+货币战争赛季制,数据随版本变。更新流程:① 投资/环境:重跑 `tools/cw/gen_plaza_invest.py`(plaza API,内建 diff 报告,直灌注册表)→ 按 diff 修 overlay 孤儿键;② 角色:重跑 `tools/cw/gen_plaza_chars.py`;③ 其余:重抓米游社图鉴 → **同步代码注册表**(`cw_chars.CHARACTERS` / `cw_factions.FACTIONS` / `cw_equipment_data.EQUIPMENTS` 等,注册表是唯一数据源)→ 回归测试。data/ 仅 bosses/competitors 等未建模 doc 需手工同步。
 数据源优先级:plaza 官方 API / 游戏内(权威)>>> 米游社百科 >>> bwiki / NGA / 攻略(参考)。标 🟢 官方原文 / 🟡 攻略一致 / 🔴 未找到。

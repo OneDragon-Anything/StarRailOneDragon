@@ -3,6 +3,8 @@
 > 本目录 = 画面 op 层设计正本:**每个画面 op 一篇**,写「这个画面做什么观察、能发哪些动作 op、哪些动作终结交回外循环」。代码根 = `src/sr_od/application/currency_war/operations/cw_screen/`(一画面一文件)+ `obs/`(观察解析工具箱);符号锚 = `文件::符号名`(行号随代码漂移,不作定位依据)。
 > 分工分界:分发判定(两阶段身份分发)的单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2(本目录各篇只写画面特有的排他/穿透形态与身份锚说明);画面 op 统一规范(单动作决策循环/终结 op/期望态生命周期/对账边界)= [op-layer.md](op-layer.md);基类五段结构与观察解析工具箱 = [op-layer.md](op-layer.md);动作执行契约 = [../flow/action_exec.md](../flow/action_exec.md)。
 > 术语:逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态;真值以下一帧观察为准(观察赢)。
+> 路径缩写约定:本文反引号短路径 `research/X.md`/`data/X.md` 等 = `docs/game/currency_war/` 下对应文件(非 src 树);game 侧文档同理指向本仓 docs/。
+
 
 ## 1. 能力面与策略面(区分原则)
 

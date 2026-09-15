@@ -22,7 +22,7 @@
 
 ## 文件说明
 
-**已入代码注册表的数据 doc 已删,别再造**(单一源在代码;查值直接看注册表):羁绊(`cw_factions.FACTIONS`,32)/角色(`cw_chars.CHARACTERS`,72)/投资策略(`cw_invest_data.py`,plaza API 334)/投资环境(`cw_investments`,~82)/装备(`cw_equipment.EQUIPMENTS`,158)。**注册表模块全景与各模块职责 → `docs/develop/currency_war/strategy/06_input_model.md`**(信息模型 as-built,含注册表清单);⚠️ 改注册表前先查 `tools/cw/` 有没有该文件的生成器(`*_data.py` 数据层勿手编,判断层反向标注)。本目录仅存**未建模的唯一源**:
+**已入代码注册表的数据 doc 已删,别再造**(单一源在代码;查值直接看注册表):羁绊(`cw_factions.FACTIONS`,32)/角色(`cw_chars.CHARACTERS`,72)/投资策略(`cw_invest_data.py`,plaza API 334)/投资环境(`cw_investments`,~82)/装备(`cw_equipment_data.EQUIPMENTS`,158)。**注册表模块全景 = 代码 `data/` 目录各 `cw_*.py`**(模块 docstring 自述职责);⚠️ 改注册表前先查 `tools/cw/` 有没有该文件的生成器(`*_data.py` 数据层勿手编,判断层反向标注)。本目录仅存**未建模的唯一源**:
 
 | 文件 | 内容 | 条目数 | 完整度 |
 |---|---|---|---|

@@ -197,5 +197,5 @@ sim 设计正本三篇见 `sim/`（体系总纲 sim-design、GameState↔引擎�
 | `knowledge/`、`data/` | 知识数据与静态数据 |
 | `tools/cw/`(仓根 tools) | 复盘骨架生成器、哨兵、证明与采样工具(评审/运维面,不在 app 运行路径上) |
 | `docs/game/currency_war/` | 游戏机制知识(sources 原文/research 提炼;sim 与判据的机制依据) |
-| 本目录各正本 | flow/(屏幕 op/动作逻辑态/逻辑态更新/商店访问)、game_state/(字段/观察链/节点域)、strategy-docs/(数学框架与决策命题)、sim/(模拟设计)、proofs/(证明) |
+| 本目录各正本 | flow/(外循环路由/动作执行契约/守卫/session/退出链/策略↔流程契约)、screens/(画面 op 一画面一文档)、game_state/(字段规格/逐动作逻辑态更新 logic-updates/)、strategy-docs/(策略决策设计)、sim/(模拟设计)、proofs/(证明) |
 

@@ -4,6 +4,8 @@
 > **命名对应注**:本文档所称 **GameState**(统一 state),即代码类名
 > (`src/sr_od/application/currency_war/kernel/cw_game_state.py`;
 > 旧名 BoardState/旧模块名 cw_board_state.py,两者指同一容器)。
+> 路径缩写约定:本文反引号短路径 `research/X.md`/`data/X.md` 等 = `docs/game/currency_war/` 下对应文件(非 src 树);game 侧文档同理指向本仓 docs/。
+
 
 ## 1. 本目录是什么
 

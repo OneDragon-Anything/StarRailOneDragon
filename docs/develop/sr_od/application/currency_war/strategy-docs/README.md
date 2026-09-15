@@ -60,7 +60,7 @@
 | `../flow/`（flow/ 七篇） | **流程控制设计** | 画面识别路由/访问相位/动作发射契约/守卫的唯一现行家；策略↔流程契约（四身份分离、契约成员 13、单动作循环；序列语义为历史注）在其 README §2 |
 | `docs/develop/sr_od/application/currency_war/proofs/`（math_proofs.md 索引 + P 系列单篇） | **定价权威** | 一切"多少算够"的数学证明。本链只消费命题结论与状态，不重推、不改写；命题以索引状态列为准 |
 | `docs/game/currency_war/research/` | **游戏真值** | 与实现无关的游戏机制事实。游戏版本变了它变，本链引用不复制数值 |
-| 代码注册表（`cw_chars`/`cw_shop_odds`/`cw_state` 等） | **机制数值单一源** | 文档只写常量名与语义，值一律在代码 |
+| 代码注册表（`cw_chars`/`cw_shop_odds`/`cw_equipment_data` 等） | **机制数值单一源** | 文档只写常量名与语义，值一律在代码 |
 | `src/sr_od/.../currency_war/` 代码 | **实现** | 本链是设计，代码是实现；行为变更走三同步 = as-built 正文语义更新 + 代码注释 + 测试（见 sr-od-currency-war-dev skill「文档同步」）；决策 why 进设计文档动机段与代码注释（ADR 档案已退役，仅经用户命令创建） |
 | `archive/design/`、`archive/redesign/`、`strategy/` 旧树 | **素材·已删除（4e32b2e4 吸收后删除）·git 历史可溯** | 塌缩素材来源仅存于 git 历史，不再承载现行语义；其中的 R 标链/勘误史不搬入本链 |
 | `.debug/progress/` 当前迭代 | 进度与决策 why 挂账 | 进度不进共享文档;决策 why 收敛于设计文档动机段与代码注释(ADR 档案已退役) |

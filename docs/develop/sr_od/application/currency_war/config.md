@@ -63,7 +63,7 @@
 | 字段 | 定位 | 语义 |
 |---|---|---|
 | `strategy_id` | **用户面** | 选策略插件;**当前唯一合法值 = `mandate_v1`**(不配置即此值;注册面封闭集口径见 [flow/README §2.4](flow/README.md);decision_v2 等旧栈已删,存量 yml 写其他值配置加载即报错并提示改值) |
-| `strategy_seed` | 开发/实验(yml-only,不进 GUI) | A/B 复现调试;只种子化策略内部随机(游戏侧种子化不到,对用户是虚承诺,07 §4) |
+| `strategy_seed` | 开发/实验(yml-only,不进 GUI) | A/B 复现调试;只种子化策略内部随机,游戏侧随机量不在辖内(sim/sim-design.md §2),对用户是虚承诺 |
 | `max_rounds` | 开发/实验(同上) | 多轮采样验证;一次 app 运行本就是一整局 |
 | `code_hash_gate` | 开发/运维(yml-only,不进 GUI) | 起局前置码哈希结构闸开关:起局前比对 server 已加载码面 vs git HEAD,不一致拒起;缺省开 = 安全闸宁拦勿放。**server 进程 PATH 无 git = 起局被拒**(fail-closed),git 是起局硬依赖 |
 

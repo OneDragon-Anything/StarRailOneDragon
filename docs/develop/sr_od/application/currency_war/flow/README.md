@@ -5,6 +5,8 @@
 > 读者 = 无会话历史的工程师/智能体。术语首次出现给定义。代码定位一律用符号锚 `文件::符号名`（loop 内语义段用 `文件::CwLoop.loop(段名)` 形态）——行号随代码增长漂移，不作定位依据；路径根 = `src/sr_od/application/currency_war/`。
 > **单动作循环架构 = 已迁移（设计定案并实施,2026-09-06 落码）**：商店决策波批形态（一次观察算整波动作、截断器、波级契约）已被单动作循环（入口观察→逐动作决策循环→终结 op）替换;备战 per-action heavy 重读契约已灭（入口单次 + 逐动作逻辑态直写 + 未建模面保守回退）;旧备战骨架死码（flow.py 10 方法 + kernel/cw_deploy_seat + prep_phase 族 session 字段）已物理删除。目标态规格 = [../screens/op-layer.md](../screens/op-layer.md);各篇 as-built 描述即为现行实现。波批时代的 §2.2 序列契约保留为历史注（见该节）。
 > 术语注(首次出现):逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态;真值以下一帧观察为准(观察赢)。
+> 路径缩写约定:本文反引号短路径 `research/X.md`/`data/X.md` 等 = `docs/game/currency_war/` 下对应文件(非 src 树);game 侧文档同理指向本仓 docs/。
+
 
 ## 1. 四层结构总图
 
@@ -87,13 +89,13 @@
 
 - **依赖方向**：实现包 → 知识层/数学层/执行层单向；分包依赖矩阵禁 decision→obs 直依（obs 读口经 app 桶装配点 `install_obs_ports()` 注入）；决策本体 = 纯函数（bridge.decide_from_turn），装配链由注册桥壳覆写注入（app 桶）。
 - **装配点**：obs→Snapshot 装配半部在 app 桶（decision_assembly）；黑板单一写端纪律保持；`_RESET_PHASE_ROUND_CACHE` 注入槽（缺省关）+ `discard_stale_match_container`（异常路径残留容器弃置——session 全量重建 by construction）。
-- **gated_hp**（结算 HP 新鲜度门，r68/r69 单源 helper）：结算真值仅在可信窗口内覆盖现读——观测质量门，非决策输入（`../strategy-docs/04_survival_budget.md` §7 表 #6）。
+- **gated_hp**（结算 HP 新鲜度门，单一实现的 helper，符号锚见代码）：结算真值仅在可信窗口内覆盖现读——观测质量门，非决策输入（`../strategy-docs/04_survival_budget.md` §7 表 #6）。
 - **sim 消费面注记**:sim 消费 decide_shop_screen 驱动器(方向重估经驱动器内单动作入口消费 full 帧触发)——sim A/B 的证明面 = 商店波经济决策;prep 屏编排域在 sim 无实体真值源,其正确性防线 = 契约锁 + 适配器零漂移门 + 实机,不在 sim A/B 辖内。
 
 ### 2.4 换核与 A/B(现状口径)
 
 - **注册面封闭集 = {mandate_v1}**(decision_v2 基线臂已随旧决策包删除终结);换核机制 = config 切 `strategy_id`(最小面),不改流程侧分发。
-- 旧三臂 A/B 结构已终结;跨策略 A/B 的判据框架(判前锁/强制披露/遥测分栈)随 sim 重设计批重立(见 `changes/2026-09-15-sim-redesign/`)。
+- 旧三臂 A/B 结构已终结;跨策略 A/B 的判据框架(判前锁/强制披露/遥测分栈)随 sim 重设计批重立(git 可溯)。
 - **归因域限定**:sim 引擎唯一决策入口 = 商店决策面(prep 面 sim 不可达),结论不得外推为全决策面处理效应。
 
 ### 2.5 无状态策略与 session / 策略器状态
@@ -142,7 +144,7 @@ CwEntryStart.click_start（node_max_retry_times 装饰器缺省 3；`operation_n
 
 | 注册表项 | 识别（AND 全锚同帧） | 动作 | 返回 |
 |---|---|---|---|
-| `_TRAIN_SUPPLY_GUARD` | 单锚 `标识-列车补给`@0.75 | 点 `文本-领取提示`（领取语义，无 X 钮；S2 实证领取点， rect 以「区域-中央徽章危险区」留档仅供测试负向断言，生产永不点击） | `round_retry('列车补给领取中', wait=3)` |
+| `_TRAIN_SUPPLY_GUARD` | 单锚 `标识-列车补给`@0.75 | 点 `文本-领取提示`（领取语义，无 X 钮；实测确认领取点， rect 以「区域-中央徽章危险区」留档仅供测试负向断言，生产永不点击） | `round_retry('列车补给领取中', wait=3)` |
 | `_JADE_DETAIL_GUARD` | 双锚：`标识-星琼标题`@0.5 + `标识-稀有货币`@0.75 | 点 `按钮-关闭X` | `round_retry('星琼详情弹窗关闭中', wait=1.5)` |
 | `_STAR_BADGE_GUARD` | 双锚：`标识-流派星徽`@0.9 + `标识-套组标题`@0.9 | 点 `按钮-关闭` | `round_retry('星徽详情弹窗关闭中', wait=1.5)` |
 

@@ -10,7 +10,7 @@
 
 ## 1. 阅读门与公理栈
 
-- 已读:`math_proofs.md` P19 索引行、`proofs/p19` 全文、`equipment_mechanics.md` §6(口述语义权威+出处声明)、`docs/develop/currency_war/strategy/06_input_model.md` §3(注册表地图:装备全量=`cw_equipment.EQUIPMENTS`,plaza API 溯源)、`sim-wiring.md`「羁绊口径分层」(三侧单一源声明)、w50 测试锁(`test_cw_early_kernel.py:1351-1527`)、实现 `kernel/cw_bond_equips.py` 全文。
+- 已读:`math_proofs.md` P19 索引行、`proofs/p19` 全文、`equipment_mechanics.md` §6(口述语义权威+出处声明)、`docs/develop/currency_war/strategy/06_input_model.md` §3(注册表地图:装备全量=`cw_equipment_data.EQUIPMENTS`,plaza API 溯源)、`sim-wiring.md`「羁绊口径分层」(三侧单一源声明)、w50 测试锁(`test_cw_early_kernel.py:1351-1527`)、实现 `kernel/cw_bond_equips.py` 全文。
 - 无交集跳过声明:P19 为**计数语义命题**,不含金流/EV/收益比较——economy/final_comps/transitions/plaza_methodology 等纯攻略与经济账文档与本命题辖域无交集,跳过;公理栈中「超额收益隔离」「纯金流」两条对非金流命题不可适用,同理跳过;「零调参」「参数溯源」两条适用,见门⑤。
 
 ## 2. 五门逐门判定
