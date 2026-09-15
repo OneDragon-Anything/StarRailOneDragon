@@ -386,6 +386,17 @@ def state_journal_instance() -> StateJournal | None:
     return _ACTIVE_JOURNAL
 
 
+def default_journal_path() -> Path:
+    """生产缺省落盘路径(``<live 根>/state/journal.jsonl``;§3.0 与旧流同根)。
+
+    单独成函数 = 测试隔离缝:conftest autouse 把本口重定向到 tmp 根,
+    兜底装配(见 :func:`ensure_journal_assembly`)在测试进程里永远落 tmp,
+    零真实账面写入(kernel 自身禁依测试设施,重定向只能由测试侧注入)。
+    """
+    from sr_od.application.currency_war.kernel.cw_observe import LIVE_DIR
+    return LIVE_DIR / 'state' / 'journal.jsonl'
+
+
 def install_state_telemetry(path: Path | str | None = None, *,
                             flush_every: int = DEFAULT_FLUSH_EVERY,
                             run_id_provider: Callable[[], str] | None = None) -> StateJournal:
@@ -405,8 +416,7 @@ def install_state_telemetry(path: Path | str | None = None, *,
     global _ACTIVE_JOURNAL
     reset_state_telemetry()
     if path is None:
-        from sr_od.application.currency_war.kernel.cw_observe import LIVE_DIR
-        path = LIVE_DIR / 'state' / 'journal.jsonl'
+        path = default_journal_path()
     # 寿命契约清理(R5 W3 装配端):写端未启动的零并发窗,每进程装配触发
     # 一次段粒度滚动清理(见 enforce_journal_retention 注);失败不阻塞装配。
     try:
@@ -438,6 +448,44 @@ def install_state_telemetry(path: Path | str | None = None, *,
     log.info('[cw][state-journal] journal 装配(常开):path=%s flush_every=%d',
              journal.path, journal._flush_every)
     return journal
+
+
+def ensure_journal_assembly(
+        run_id_provider: Callable[[], str] | None) -> None:
+    """流水装配兜底(op 直跑路径;幂等,已装配 = 零成本直过)。
+
+    为什么存在(W3 欠账,T-258 实测修):W1 的装配契约 = 「app 装配段
+    单点显式接通」,但 T-257 九流写入端退役后,绕过 app 直跑 op 的生产
+    入口(MCP ``run_operation`` 直调 CwLoop——接管/残局续跑的标准姿势,
+    哨兵以「指令[ 货币战争-对局循环 ]」日志行为活动签名)失去旧 lazy
+    recorder 单例的隐式覆盖 → sink 缺席,整局行按「诚实缺失」静默不落
+    (实证:2026-09-14 18:56 起 8 连局零 state 行零档案,深检
+    run_20260915_054718.md §0「journal state 流断流」)。本口把装配兜在
+    run 领取单点(生产调用方 = telemetry.state.ensure_run_started,遥测
+    → kernel 依赖方向合法),仍走 :func:`install_state_telemetry` 同一
+    显式装配口(幂等),非 lazy 写面复活。
+
+    测试纪律:本口「未装配即自动装真实现」只允许发生在生产进程——测试
+    侧由 conftest autouse 把 :func:`default_journal_path` 重定向到 tmp 根,
+    兜底装配永远落 tmp;测试自己显式装配的自管实例走「已装配直过」分支
+    不被本口顶掉。
+    """
+    if _ACTIVE_JOURNAL is not None:
+        return
+    install_state_telemetry(run_id_provider=run_id_provider)
+
+
+def flush_pending() -> int:
+    """现役流水缓冲批量落盘(返回本次落盘行数;无实例 = 0)。
+
+    消费方 = run 收口单点(telemetry.state.close_run):批量 flush 阈值
+    (64 行)之间收口时,局终行与段尾行还在内存缓冲,收口后紧随的档案
+    装配读盘会漏行(实证:g_20260915_070645 档案缺 endgame.match_final,
+    行随进程终止永失)。收口时点落盘把崩溃丢失窗上界收敛到收口后残段,
+    与 :meth:`StateJournal.close` 的「局终收口 flush」设计意图对齐。
+    """
+    journal = _ACTIVE_JOURNAL
+    return journal.flush() if journal is not None else 0
 
 
 def reset_state_telemetry() -> None:

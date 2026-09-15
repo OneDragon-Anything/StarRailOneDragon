@@ -84,7 +84,11 @@ ts 与 `buffered` 行注记)/历史段补写窗(专用装配通道,不经运行�
 
 - **落盘形态**:内存追加+规范化序列化;磁盘批量 flush(阈值常量
   DEFAULT_FLUSH_EVERY,单一源 = kernel/cw_state_journal),同步关键
-  路径零 open/write。体积=单行全量快照所致显著大于旧单流,体积实测挂验收;
+  路径零 open/write。**收口 flush**:run 收口单点(telemetry close_run)
+  先把缓冲批量落盘再返回——批量阈值之间局终时,局终行与段尾行若留缓冲,
+  紧随的档案装配读盘漏行(g_20260915_070645 档案缺 endgame.match_final
+  实证),丢失窗上界收敛到收口时点(单一源 = kernel flush_pending)。
+  体积=单行全量快照所致显著大于旧单流,体积实测挂验收;
   压缩候选须保行自足。
 - **宽容消费契约**:批量 flush 的半行/坏行=逐行跳过+坏行计数留痕;消费方(判读
   CLI/装配器/哨兵)统一按此消费,禁把半行当合法行解析。
@@ -147,9 +151,13 @@ note=recovered 显影;辖域 = 段内补写与在线收口,启动扫描**历史�
 [retirement.md](retirement.md)(单一源,本文不复写);排期与裁决口径的现行
 正本 = [r5-migration-plan.md](r5-migration-plan.md)(单源直迁八波)。
 **常开语义(影子双写裁定已推翻)**:journal 无条件常开——无开关、
-无装配条件分支;生产装配单点 = app 装配段显式接通,收口单点 reset;写路径
-不因账本存在与否分支,行落盘另以 sink 在场与 run_id 在场为准(缺实例 =
-行不落,诚实缺失)。
+无装配条件分支;生产装配 = app 装配段显式接通 + **run 领取单点兜底**
+(telemetry ensure_run_started → kernel `ensure_journal_assembly`,幂等;
+辖 op 直跑入口——run_operation 直调 CwLoop 的接管/续跑不经 app 装配段,
+T-257 九流退役后该路径失旧 lazy recorder 隐式覆盖,2026-09-14 18:56 起
+8 连局零行零档案实证,深检 run_20260915_054718.md §0),收口单点 reset;
+写路径不因账本存在与否分支,行落盘另以 sink 在场与 run_id 在场为准
+(缺实例 = 行不落,诚实缺失)。
 
 ## 8. 两文件模型与策略侧
 

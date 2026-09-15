@@ -138,6 +138,19 @@ def ensure_run_started(match: object, difficulty: str) -> str:
     支 + cw_loop __init__ 认领)。返回 open run_id。
     """
     global _RUN_MATCH
+    # 流水装配兜底(op 直跑路径,W3 欠账):W1 装配契约「app 装配段单点」
+    # 不覆盖 run_operation 直跑 CwLoop 的接管/续跑入口——旧九流时代靠 lazy
+    # recorder 单例隐式覆盖,退役后该路径整局行静默不落(2026-09-14 18:56
+    # 起 8 连局暗局实证,深检 run_20260915_054718.md §0)。run 领取单点在
+    # 此补挂同一显式装配口(幂等;已装配零成本直过;kernel 禁依 telemetry,
+    # 依赖倒置由兜底口参数注入)。best-effort:装配失败不阻塞开局。
+    try:
+        from sr_od.application.currency_war.kernel.cw_state_journal import (
+            ensure_journal_assembly,
+        )
+        ensure_journal_assembly(current_run_id)
+    except Exception as e:  # noqa: BLE001  观测件,失败不阻塞开局
+        log.warning('[cw][telemetry] 流水装配兜底失败(不阻塞): %s', e)
     if (not _CURRENT_RUN_ID) or _RUN_CLOSED or (_RUN_MATCH is not match):
         run_id = start_run(difficulty)
         _RUN_MATCH = match
@@ -200,11 +213,24 @@ def close_run(result: str = "", plane_reached: int = 0,
     start_run 前 ensure_run_started 铸新段(journal 行归属新 run_id)。
     旧局终 summary 写行已随旧流写入端退役(删除波 1);形参保留
     (调用点传值面不变),值只进日志不进任何流。局终元数据的 journal
-    归宿 = 局终域 match_final 行(写点接线归后续批,retirement.md runs 行)。
+    归宿 = 局终域 match_final 行(W3 在线接线,写点 = kernel
+    write_match_final,收口点 = cw_loop 3c 回大厅 / W75 停机兜底)。
+    收口时点先落盘流水缓冲(:func:`kernel.cw_state_journal.flush_pending`):
+    批量 flush 阈值之间收口时局终行与段尾行还在内存,紧随的档案装配
+    读盘会漏行(g_20260915_070645 档案缺 endgame.match_final 实证)——
+    与 StateJournal.close「局终收口 flush」设计意图对齐,丢失窗上界
+    收敛到本时点。
     """
     global _RUN_CLOSED
     if not _CURRENT_RUN_ID:
         return
+    try:
+        from sr_od.application.currency_war.kernel.cw_state_journal import (
+            flush_pending,
+        )
+        flush_pending()
+    except Exception as e:  # noqa: BLE001  观测件,失败不阻塞收口
+        log.warning('[cw][telemetry] 收口流水落盘失败(不阻塞): %s', e)
     _RUN_CLOSED = True
     log.info('[cw][telemetry] run 收口:%s p%s-r%s hp=%s (%s)',
              result or '-', plane_reached, rounds_survived, final_hp,
