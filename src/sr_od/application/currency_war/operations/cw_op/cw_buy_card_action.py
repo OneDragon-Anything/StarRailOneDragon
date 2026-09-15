@@ -53,7 +53,7 @@ class BuyCardOp(ActionOp):
         # ——匹配下标仅作槽号缺失时的兜底锚,见下方点击解析。
         # 槽号主源 = payload 定长槽阵列位置(三态模型:数组下标+1 =
         # 物理槽;身份同一性优先,退化 (name, star));card.slot 兼容
-        # 字段降为最后兜底(退役面审计:T-190 批2)。
+        # 字段降为最后兜底(退役面审计)。
         _slot_no_matched = None
         _payload = state.shop.value
         _slots = (_payload.cards if _payload is not None else [])
@@ -86,7 +86,7 @@ class BuyCardOp(ActionOp):
             pt = (_Pt(0, 288) if not env.click_pts else env.click_pts[0])
         # 买前裁该片矩形拷贝(`w536_merge_expect/`:「买了什么」的像素级
         # 证据,随期望态带到对账点;一帧原则,必须 copy 防帧缓存覆写)。
-        # 纯留证零判效(T-192):crop 只进 buy_purchases 遥测;落地事实
+        # 纯留证零判效:crop 只进 buy_purchases 遥测;落地事实
         # 归下一帧入口观察 reconcile,不据执行侧像素判定改道。
         _card_crop = None
         with contextlib.suppress(Exception):
@@ -126,7 +126,7 @@ class BuyCardOp(ActionOp):
                             record_drought_buy_no_reset(
                                 member=action.card.name,
                                 system=_sys, drought=_d)
-        # tracking 同步:满栏合成买与逻辑态直写同分支单一源(T-182:shop 视图
+        # tracking 同步:满栏合成买与逻辑态直写同分支单一源(shop 视图
         # 进 tracked mutate,满栏完成合成的买入在 tracked 侧同样合成腾槽
         # ——旧丢件行为使 tracked 漏记合成,同 visit 下一动作守卫对拍
         # 误炸;2026-09-09 05:52 运行局双响事故)。

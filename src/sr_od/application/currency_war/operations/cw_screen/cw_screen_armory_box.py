@@ -13,12 +13,12 @@
 四选一选卡职责在独立画面 op(cw_screen_box_pick,CwScreenBoxPick;R7 批 2a 起替代
 原 PickBoxCard 备战动作形态),本 op 只关弹窗。
 
-统一观察架构逐屏迁移(账本 T-48 收尾五屏;架构设计 §9.1 并存纪律):本类是
+统一观察架构逐屏迁移(收尾五屏;架构设计 §9.1 并存纪律):本类是
 CwScreenOpBase 子类,handle 顶部装配点分流(重入裁决**之后**,先例锚 =
 cw_screen_encounter.py :241-251 重入裁决 / :252-258 装配点分流;总纲契约 6):
 cw_game_ports 两端口完整在场 → 五段生命周期新路径;缺省 None = 生产直连
 旧路径(原序列,生产行为零变化)。五段形态:observe = 标识门(miss 未发 →
-fail 交编排壳)+ 帧引用(实机适配器① = 轻观察封口,T-8 简报同式;重入
+fail 交编排壳)+ 帧引用(实机适配器① = 轻观察封口,简报屏同式;重入
 裁决不在本段,总纲契约 6:留守 handle 分流前共享段);reconcile = 空申报;
 decide+act 内聚 ``_close_dialog``(读「按钮-关闭」center → mouse_move+click
 +1s → 置位,两路径共享零转录);on_outcome = 无登记件(注册表缺席 = 零
@@ -44,7 +44,7 @@ from sr_od.context.sr_context import SrContext
 
 @dataclass
 class ArmoryBoxObservation:
-    """武装箱弹窗观察 payload(五段之段1产物;T-48 实机转录形态)。
+    """武装箱弹窗观察 payload(五段之段1产物;实机转录形态)。
 
     中断弹窗族轻观察(收尾屏详设 §2):标识门判定在段内(门失败 →
     round_fail 早退交编排壳按步分流);payload 仅携带稳定帧引用(实机
@@ -56,9 +56,9 @@ class ArmoryBoxObservation:
 
 
 class ArmoryBoxLiveObservationAdapter:
-    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,T-48)。
+    """实机适配器①(观察端口;架构设计 §2.3 识别链封口)。
 
-    轻观察封口(先例 = T-8 简报轻观察适配器):标识门须在段内产出早退
+    轻观察封口(先例 = 简报屏轻观察适配器):标识门须在段内产出早退
     轮次,归 ``lifecycle_observe``;适配器仅装配稳定帧引用。sim 实现 =
     不适用(F11 例外清单),本批不建。
     """
@@ -74,7 +74,7 @@ class CwScreenArmoryBox(CwScreenOpBase):
 
     def __init__(self, ctx: SrContext):
         CwScreenOpBase.__init__(self, ctx, op_name='货币战争-武装箱弹窗')
-        # 适配器位缺省装配(先例 = T-8 五相位屏):观察口 = 实机适配器
+        # 适配器位缺省装配(先例 = 五相位屏):观察口 = 实机适配器
         #(轻观察封口);动作口 = None = 直连现役动作体(基类「None = 子类
         # 缺省实现自担」)。on_outcome 注册表:本屏无登记件(注册表缺席 =
         # 零动作)。
@@ -123,7 +123,7 @@ class CwScreenArmoryBox(CwScreenOpBase):
         self._click_pending = True
         return self.round_retry('点 × 已发,重入观察裁决', wait=1)
 
-    # ---- 五段生命周期(统一观察架构 §5.1;T-48,先例 = T-8 简报)----
+    # ---- 五段生命周期(统一观察架构 §5.1;先例 = 简报屏)----
 
     def lifecycle_observe(self
                           ) -> tuple[ArmoryBoxObservation,

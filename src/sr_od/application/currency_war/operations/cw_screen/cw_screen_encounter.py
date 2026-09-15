@@ -30,7 +30,7 @@
 问题清单 B3「遭遇 = 带刷新链最复杂代表屏」):本类是 CwScreenOpBase 子类,
 handle 顶部装配点分流(cw_game_ports 两端口完整在场 → 五段生命周期新路径;
 缺省 None = 生产直连旧路径,handle 原序列,生产行为零变化 §9.1)。迁移
-手法单一源 = CwScreenPrep 先例(reviews/T-189-r1.md 验收):encounter_
+手法单一源 = CwScreenPrep 先例(验收评审):encounter_
 refresh_used 写端收编 on_outcome 注册表(触发时点轴·发射型,§6.4-R-E
 在册成员①;触发点 = ``_emit_refresh_click`` 两路径共用分派面,唯一性同
 ``_act_execute`` 先例);chosen_encounter 写端 = 选择 handler 单次逻辑写入
@@ -82,7 +82,7 @@ class EncounterObservation:
 
     - ``options``:候选卡读取(现役读链 ``read_encounter_options`` 产物);
     - ``refresh_left``:「剩余次数:N」入口稳定帧读数(分支刷新前置闸的
-      语义事实;T-176 V-3 收编:原决策分支内现读识别函数上收入口观察,
+      语义事实;收编:原决策分支内现读识别函数上收入口观察,
       一次读,决策循环只消费本域;None = 读缺/未授予——失败安全按无刷新
       处理,读带注见 obs/cw_node_obs._REMAIN_RECT)。
     - ``screen``:稳定帧引用(刷新链执行半部的文本锚定位同帧同源读)——
@@ -131,7 +131,7 @@ class CwScreenEncounter(CwScreenOpBase):
         # = 构造后直接赋值(测试桩),sim 适配器 = T5 后辖域本批不建。
         self._observation_adapter = EncounterLiveObservationAdapter()
         # on_outcome 落地登记注册表(架构设计 §6.4;单一发射口,发射即触发
-        # ——T-223 最严读法:两 fire 口合并,落地回执门退役):登记件
+        # ——最严读法:两 fire 口合并,落地回执门退役):登记件
         # encounter_refresh_used(逐件申报面 EMIT_TRIGGERED_DECLARED)写端
         # 自 handle 内联位收编为注册表钩子(位置迁移语义不变,§6.5-4/
         # §6.5-6);触发点 = _emit_refresh_click(两路径共用分派面,恰触发
@@ -182,7 +182,7 @@ class CwScreenEncounter(CwScreenOpBase):
 
     def _observe_frame(self) -> EncounterObservation:
         """稳定帧观察链(实机适配器①封口内容):入口 2s 稳定期 → 重截 →
-        选项读取 + 刷新剩余次数读(T-176 V-3:同一稳定帧一次读,payload
+        选项读取 + 刷新剩余次数读(同一稳定帧一次读,payload
         携带语义事实;决策分支不再现读识别函数)。时序口径逐位保留(用户
         口述口径 #23,screen_flow_timing:入口帧可能在稳定期内,立即读
         难度卡有读缺风险)。"""
@@ -290,7 +290,7 @@ class CwScreenEncounter(CwScreenOpBase):
         screen = self.screenshot()
         # (difficulty + comp 成型度:formed→高难度拿好奖励,未成型→低难度保生存)→ 选 idx。替代硬编码「选左」。
         options = read_encounter_options(self.ctx, screen)
-        # 入口观察一次读(T-176 V-3 收编:刷新剩余次数归入口观察,决策分支
+        # 入口观察一次读(收编:刷新剩余次数归入口观察,决策分支
         # 只消费局部值——决策循环内不读屏,screen_op §1;旧路径与五段路径
         # 的 payload.refresh_left 同语义同帧)。
         _rd = read_encounter_refresh_count(self.ctx, screen)
@@ -355,11 +355,11 @@ class CwScreenEncounter(CwScreenOpBase):
                      options: list[EncounterOption], idx: int
                      ) -> OperationRoundResult:
         """动作执行分派面(五段之 act 端口分派;两路径共用)。注入动作
-        适配器在场 → 经适配器机械执行(§6.2 端口,T-223:执行无返回);
+        适配器在场 → 经适配器机械执行(§6.2 端口,执行无返回);
         缺省 = 现役确认链直连(:meth:`_confirm_default`)。选择动作无落地
         登记件(chosen_encounter = 重入裁决承载的 write_logic 豁免),发射
         型 encounter_refresh_used 触发归 ``_emit_refresh_click``——本口
-        不再收落地回执(原 progressed 门调用位随 T-223 门退役删除,防
+        不再收落地回执(原 progressed 门调用位已退役删除,防
         单一发射口下与刷新件混触双计)。
 
         pending 置位 = 本面共享段头部(用户裁定 2026-09-14 五段路径断链

@@ -100,7 +100,7 @@ class CurrencyWarConfig(YamlConfig):
         # 不一致进 defect 台账;零决策行为)。默认开 = 验证期积累「简报 vs 真值」
         # 配对证据;稳态后可 yml 关掉。消费端 = cw_loop 实采块 + takeover 写回。
         self.briefing_reconcile: bool = self.get('briefing_reconcile', True)
-        # 起局前置码哈希结构闸(ADR-0581,T-106 run6 混合码事故防线):工作树≠HEAD 拒绝
+        # 起局前置码哈希结构闸(ADR-0581;混合码事故防线):工作树≠HEAD 拒绝
         # 起局。默认开 = 安全闸宁拦勿放;闸本体见 kernel/cw_code_hash_gate
         # (豁免名单/口径申报单一源 = ADR-0581 与闸模块 docstring)。
         self.code_hash_gate: bool = self.get('code_hash_gate', True)

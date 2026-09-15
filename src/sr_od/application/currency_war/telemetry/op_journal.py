@@ -1,13 +1,13 @@
-"""货币战争 op_journal.jsonl 薄流(T-113/ADR-0579:深度复盘遥测缺口②③)。
+"""货币战争 op_journal.jsonl 薄流(ADR-0579:深度复盘遥测缺口②③)。
 
 两个行型(独立于 decisions.jsonl 的薄流;体积红线 = 永不并入 decisions 行,
 3.5KB 行基数上叠逐动作/逐 op 快照是体积爆炸路径):
 
 - kind='action':单动作执行回执(商店域唯一写点 = apply_action_outcome
-  回执位;备战域写点 = PrepActionExecutor._note_action_journal,T-16
+  回执位;备战域写点 = PrepActionExecutor._note_action_journal
   执行缝账务包络扩围——备战帧金动作自此逐行在账,op 分键
   「货币战争-备战动作」,行携执行点 ``gold_delta``)。期望态 delta 列
-  (expected_delta/gold/bench_used)已随 T-163 前瞻推算消费退役不入行:
+  (expected_delta/gold/bench_used)已随前瞻推算消费退役不入行:
   逻辑态真值在容器 receipts 直写流水(state/journal.jsonl 行行自足),
   判读输入 = 动作行本体 + 该流水 join,行内不再复制第二份逻辑态;
 - kind='op':非决策 op(战斗等待/入口链/位面切换)enter/exit 成对行。轮询
@@ -19,7 +19,7 @@
 行数**不设上限**(原「每局 500 行软上限超限停写」已由用户裁定 2026-09-07
 整条删除):病态决策循环的停线防护已由哨兵层 STALL/LOOP 检测承接,
 journal 侧静默触顶停写会让长局尾段 op 行无感丢失——复盘盲区的代价
-远大于流体积风险(T-121 深局实测单 run 690 行即已越旧顶)。禁入决策
+远大于流体积风险(深局实测单 run 690 行即已越旧顶)。禁入决策
 输入(守卫 = 键族命中锁,ADR-0571 §2.3 范式;决策输入一律走 TurnState
 幂等装配)。
 """
@@ -41,7 +41,7 @@ from sr_od.application.currency_war.telemetry.state import current_run_id
 #: 的根常量块;独立流,永不并入 decisions 行)
 _JOURNAL = LIVE_DIR / 'op_journal.jsonl'
 
-# ===== journal 根装配槽(T-120 批 1;T-129/T-130「sim 与 live 共写同一
+# ===== journal 根装配槽(「sim 与 live 共写同一
 # ===== journal 文件」混流设计注记的落地点)=====
 # 机制裁决 = **写端根隔离**而非读端 run_id 过滤:假局(经根槽接指假局
 # 档案根)的 action/op 行从写入时点就不进 live 流,读端无需维护
@@ -141,7 +141,7 @@ def record_action_journal(match: Any, action: Any, seq: int, exec_ok: bool,
                           extra: dict[str, Any] | None = None) -> None:
     """缺口②写点:单动作执行回执行(商店域唯一写点 =
     apply_action_outcome 回执位;备战域写点 = PrepActionExecutor
-    ._note_action_journal,T-16 执行缝账务包络扩围)。
+    ._note_action_journal,执行缝账务包络扩围)。
 
     :param match: 对局对象(session 载体;run_id 读取经 telemetry.state)
     :param action: 已执行的动作对象(商店 BuyCard/RefreshShop/LevelUpShop/
@@ -154,13 +154,13 @@ def record_action_journal(match: Any, action: Any, seq: int, exec_ok: bool,
       ``GameStateReadReceipt``,备战域 = 容器读口现读的命名空间桩。
       位置键真值由调用方在动作时点捕获,本函数不回读容器防时点漂移)
     :param post_receipt: 退役位,恒 None(形参保留只为调用点位兼容——
-      期望态 delta/gold/bench_used 列已随 T-163 前瞻推算消费退役不入行,
+      期望态 delta/gold/bench_used 列已随前瞻推算消费退役不入行,
       两域同口径;逻辑态真值单一源 = 容器 receipts 直写流水,判读 join
       该流水,本行不复制第二份。传非 None = 调用方契约违约)
     :param op_name: 行 op 键(复盘「分发了谁/金动归属」直读域分键):缺省
       = 商店「货币战争-买牌」;备战域 = 「货币战争-备战动作」
     :param extra: 行级结构化扩展(备战域携 ``gold_delta`` = 执行点金差,
-      T-16;商店域不用)
+      备战执行缝账务包络;商店域不用)
     """
     try:
         rid = current_run_id()
@@ -185,7 +185,7 @@ def _op_journal_pos_of(ctx: Any) -> tuple[int, int]:
     备战 op 后跨 op 复用,迁此消「画面 op → 外循环模块」的依赖倒挂)。
     模块级形态供仲裁段第三载体行复用——仲裁宿主在测试缝里可为非 CwLoop
     桩,位置键只依赖 ctx 的 getattr 链,不依赖宿主方法。
-    (换源 T-146:plane/round = 容器 node;未观察 = 旧缺帧形态 (0, 0)。)
+    (换源:plane/round = 容器 node;未观察 = 旧缺帧形态 (0, 0)。)
     """
     _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
     from sr_od.application.currency_war.kernel.cw_game_state import (

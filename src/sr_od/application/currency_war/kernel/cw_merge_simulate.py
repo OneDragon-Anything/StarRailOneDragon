@@ -215,7 +215,7 @@ def same_star_count_public(name: str, star: int,
 
 
 # ============================================================
-# 候裁9 词汇迁入(原 kernel/cw_state.py;T-7 W8 定谳记录第 2 归宿):
+# 候裁9 词汇迁入(原 kernel/cw_state.py 合成域):
 # 升星合成规则族与本引擎双源收敛(单一语义源同文件定居;原 :35 的
 # 本模块->cw_state 反向 import 同批消除)。
 # ============================================================
@@ -443,7 +443,7 @@ def merge_buy_completes(name: str, star: int,
     merge_mechanics §2.5);等价于 k == 3 − 已有数 mod 3。不满足 → 满栏
     照旧拒买(ADR-0283 守卫语义保留为兜底)。
 
-    own≥1 门(T-184,ADR-0619):own=0(全场 bench∪deployed
+    own≥1 门(ADR-0619):own=0(全场 bench∪deployed
     无同名同星)时合成买不成立,按满栏非合成买拒收——merge_mechanics
     §2.5 的满栏例外以「已有素材/载体在场、买入可完成合成」为前提,
     own=0 时首张买入既无空槽落位、也无进行中的合成可完成,游戏侧该
@@ -465,7 +465,7 @@ def _apply_full_bench_merge_buy(bench: list[BenchChar | None],
                                 card: ShopCard,
                                 shop: list[ShopCard] | None) -> int | None:
     """满栏合成买分支应用(``simulate`` 与 ``mutate_bench_deployed`` 共用
-    单一源,T-182)。
+    单一源)。
 
     调用语境 = ``bench_place`` 失败(bench 无空槽)后的满栏买入;前置 =
     该买完成一次合成(``merge_buy_completes``,不满足 = 满栏拒买,
@@ -474,10 +474,10 @@ def _apply_full_bench_merge_buy(bench: list[BenchChar | None],
     尾挂张),截回定长 9。载体落点语义依赖 own≥1:own=1/2 时合成组
     含场内张,载体落在 idx<9 或场上,截断不伤;own=0 域(全尾挂、
     载体落 idx9 必被截删)由 ``merge_buy_completes`` 的 own≥1 门排除
-    (T-184,ADR-0619)。返回应用张数 k;前置不满足返回 None(调用方
+    (ADR-0619)。返回应用张数 k;前置不满足返回 None(调用方
     据此 no-op)。
 
-    双账同构依据(T-182,2026-09-09 05:52 运行局双响事故):满栏时游戏
+    双账同构依据(2026-09-09 05:52 运行局双响事故):满栏时游戏
     对完成合成的买入**接受并合成**(金照扣、bench 素材被消费腾槽、场上
     载体升星)——逻辑态与 tracked 两本账必须同走本分支;旧 tracked 侧
     丢件不合成使两账结构性分叉,守卫在同 visit 下一动作(逻辑态侧已腾槽、

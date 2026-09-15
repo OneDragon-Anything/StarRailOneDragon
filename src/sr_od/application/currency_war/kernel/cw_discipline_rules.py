@@ -384,7 +384,6 @@ def p2_crisis_band(bs: GameState, session: StrategySession | None,
             and hp <= p2_crisis_stop_hp(registry))
 
 
-# BloodAlarmTracker(掉血三臂跨步记忆)已随 T-64 退役批删除(2026-09-04
-# 用户裁定退役,04_survival_budget §7 #8:三臂零决策消费端 = write-only
-# 死链;ADR-0638)。若未来需要掉血趋势信号,按 #8 裁决走 λ_death 概率侧
-# 新立项,禁原地复活本类。
+# BloodAlarmTracker(掉血三臂跨步记忆)已删除(退役裁定 04_survival_budget
+# §7 #8:三臂零决策消费端 = write-only 死链;ADR-0638)。若未来需要掉血
+# 趋势信号,按 #8 裁决走 λ_death 概率侧新立项,禁原地复活本类。

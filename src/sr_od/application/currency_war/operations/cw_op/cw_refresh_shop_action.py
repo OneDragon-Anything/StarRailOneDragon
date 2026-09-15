@@ -25,7 +25,7 @@ from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
 )
 from sr_od.application.currency_war.telemetry import defects
 
-# 刷新点击后固定等待(重掷动画收敛):两帧指纹等稳门废弃(T-219)后的
+# 刷新点击后固定等待(重掷动画收敛):两帧指纹等稳门废弃后的
 # 等待语义——固定时长即收,与买牌点击后固定 sleep 同风格的时长常量;
 # 牌面/金真值判读不在动作内自证,交下一段入口观察(对账点)。
 REFRESH_CLICK_SETTLE_WAIT_S: float = 1.0
@@ -33,9 +33,9 @@ REFRESH_CLICK_SETTLE_WAIT_S: float = 1.0
 
 class RefreshShopOp(ActionOp):
     """刷新 = 终结 op(决策 7:唯一引入新事实的动作,期望态必须在新事实
-    处重建——终结后外循环入口重观察)。T-192 判效半拆除:牌名集三值
+    处重建——终结后外循环入口重观察)。判效半拆除:牌名集三值
     对比仅作安灯豁免判定输入 + 遥测字段(候选 a 留证遥测半合法保留)。
-    免费刷新判定 = 对账类(T-219):execute 内不比对,只落对账三件
+    免费刷新判定 = 对账类:execute 内不比对,只落对账三件
     (刷前金/刷前牌名/待对账标记)进 ledger,由下一段入口观察对账;
     刷新期望对账(refresh_expect_mismatch)= 执行实现层遥测(与决策
     读屏解耦),「刷新是否生效」的判效权归观察侧 reconcile。"""
@@ -87,13 +87,13 @@ class RefreshShopOp(ActionOp):
         except Exception:   # noqa: BLE001  best-effort 不阻塞买牌
             _refresh_expect = None
             _reconcile = None
-        # 免费刷新对账三件落账(T-219:判定收口到观察侧对账点,本 op
+        # 免费刷新对账三件落账(判定收口到观察侧对账点,本 op
         # 零比对;字段坐标系与写入端声明见 ShopVisitLedger)。失读字段
         # 照实落 None/空,对账点按腿判空放行(宁缺勿造)。
         ledger.refresh_pre_gold = _pre_gold
         ledger.refresh_pre_names = list(_pre_shop_names or [])
         ledger.refresh_pending_reconcile = True
-        # 刷前刷新钮真值读(T-13 读链接入):按钮三态 + 免费态剩余次数。
+        # 刷前刷新钮真值读(读链接入):按钮三态 + 免费态剩余次数。
         # 经模块属性路由 = 测试替身缝(同 _buy_cards_mod 约定)。best-effort:
         # 识别层故障不阻塞执行链,ledger 字段保持 None = 免费闸回退逻辑账。
         _btn = None
@@ -124,7 +124,7 @@ class RefreshShopOp(ActionOp):
             _new_shop = _buy_cards_mod.read_shop_cards(op.ctx, op.screenshot())
             # (refresh 牌面快照行已随 shop_snapshots 流写入端退役删除
             #  ——删除波 1;牌面现役归宿 = journal 快照行自带 shop 域。)
-            # 留证遥测半(T-192 判效半拆除后的保留面,候选 a):刷前/刷后
+            # 留证遥测半(判效半拆除后的保留面):刷前/刷后
             # 牌名集三值对比只作安灯 free_refresh_proc 豁免判定输入
             # (classify_spend_unit 判定序③)+ 遥测字段
             # (schema.refresh_board_changed),不再产「刷新未生效嫌疑」

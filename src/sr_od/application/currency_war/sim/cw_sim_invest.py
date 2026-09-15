@@ -25,14 +25,14 @@ P1 永不锁 comp → V_D 目标恒空 → sim 一切含 D 的 P1 结论零外�
 ``instant_gold``(选卡时点)/ ``gold_per_node`` / ``interest_cap_override`` /
 ``free_refresh_per_node``。
 
-===== 双臂(T-155 前置批,ADR-0519 审查线方案)=====
+===== 投资选卡双臂(ADR-0519 审查线方案)=====
 
 sim 投资选卡有两个可选决策臂(engine ``invest_arm`` 开关,缺省 = 基线臂):
 
 - **基线臂(真实判据,'sink')**:选卡槽位只提供 3 个候选
   (``SinkInvestSampler`` 加权采样),选哪张 = 真实决策链
   ``strategy.decide_invest``(flow 委托 kernel ``cw_events.decide_event``)
-  的裁决——sim 从此消费真实判据,T-155 新判据对照臂在此基线上
+  的裁决——sim 从此消费真实判据,新判据对照臂在此基线上
   同 seed 配对 A/B。旧频次注入臂(plaza 名直注入,decide_event 零消费)
   是判据改动在 sim 里不可验证的根因。
 - **对照臂(频次注入,'freq')**:ADR-0364 原形态——每槽按 plaza 频次
@@ -191,7 +191,7 @@ class InvestInjectionState:
                    picks_by_key={(p, r): n for p, r, n in profile.picks})
 
 
-# ===== T-155 下沉臂:3 候选采样(选卡"何时出现/候选从哪来"与注入臂同口径,
+# ===== 下沉臂:3 候选采样(选卡"何时出现/候选从哪来"与注入臂同口径,
 # "选哪张"交给真实判据 decide_invest——本模块只供候选,不做裁决) =====
 
 # 候选槽数(实机选卡屏恒 3 张;3 = 画面语义,非常量调参面)
@@ -229,8 +229,8 @@ class SinkInvestSampler:
       退化成 2 选 1,与画面语义不符;
     - **流隔离**:rng 命名空间 ``'t155-invest-sink-{seed}'``,与 freq 臂
       (``'w162-invest-{seed}'``)及引擎主 rng 互不交集——invest=False
-      主路径逐位零漂移;同 seed 同臂的候选序列可复现,这是 T-155
-      基线臂/新判据臂同 seed 配对 A/B 的随机面契约(两臂跑同一采样器,
+      主路径逐位零漂移;同 seed 同臂的候选序列可复现,这是双臂
+      同 seed 配对 A/B 的随机面契约(两臂跑同一采样器,
       只有 decide_event 内部判据不同)。
     """
 

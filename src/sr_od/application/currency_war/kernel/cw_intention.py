@@ -134,8 +134,8 @@ FAMILY_BOND_MIN_COUNT: int = 2
 羁绊首档均为 2 人(cw_factions 注册表 counts[0]),阈值 = 信号族最小
 激活档,非经验拟合)。"""
 
-# ⑤无信号兜底线常量 FALLBACK_COMP_NAME('绯英欢愉')已退役(P86 落码批,
-# T-177;四面退役表 = p86-no-target-period-fund-allocation.md §4.2)。
+# ⑤无信号兜底线常量 FALLBACK_COMP_NAME('绯英欢愉')已退役
+# (四面退役表 = p86-no-target-period-fund-allocation.md §4.2)。
 # 墓碑注(strategy-work §1「未证即退役」通则③):原值 = 单线硬编码囤货方向,
 # 知识出处 = comp_definitions_v2「门槛全游戏最低,6 级搜绯英三星,无信号时
 # 的默认落点」(经验拍定,绯英自身 G=0.0000——囤货方向落在候选机器自己
@@ -274,7 +274,7 @@ class IntentionState:
       本快照);grep 守卫锁钉住唯一写入端与本函数族唯一读端。"""
 
     p1_pair_frozen: bool = False
-    """命题 1b 冻结闩 F(ADR-0616 §2.2;T-171 批序 3 落码):True=方向
+    """命题 1b 冻结闩 F(ADR-0616 §2.2):True=方向
     冻结,重派生被抑制(冻结的是方向不是板面,买入/部署继续服务
     ``p1_pair_frozen_pair``)。置位 = 事件闩:F=False ∧ 重派生对非空 ∧
     ``form_progress(pair_target_comp(pair))>=1.0``(board-only 口径单一源,
@@ -535,7 +535,7 @@ SEELE_SYSTEM: str = '希儿系'
 _P1_PAIR_PREF: tuple[str, ...] = tuple(
     b for b, _t in TRANSITION_TRAITS) + (SEELE_SYSTEM,)
 
-# ===== 希儿系形态端口(OR 腿 + carry;T-171 批序 1,ADR-0613)=====
+# ===== 希儿系形态端口(OR 腿 + carry,ADR-0613)=====
 # 辖域切分(与批序 2 支持度端口 ``_seele_system_support`` 机械可检验,
 # 禁互相渗透成双源):形态端口读**板面羁绊计数**(bs.board,经
 # form_progress),支持度端口读**owned 去重成员计数**(bench∪deployed);
@@ -557,10 +557,9 @@ P1_PAIR_LOCK_MIN_SUPPORT: float = 1.0
 单卡 = 0.5(开线候选,不再即锁——文档「希儿到手 ≠ 希儿线成型」,
 docs/game/currency_war/research/combo_methodology.md:138)。旧 0.5
 门槛与希儿系 0.6+0.2+0.2 放大器权重的退役裁定不变;
-被 T-171 支持度降档取代的仅是其 post-state「希儿系 = 在手二元
+被支持度降档取代的仅是其 post-state「希儿系 = 在手二元
 1.0/0.0」条款——分级公式属重新推导(每一项来自文档档位结构
-transition_combos.md:27 与注册表计数),非旧手定权重复活(重推定性
-记录 = T-171 设计方案 §5.1,账本任务 T-171)。保守方向:锁线门槛
+transition_combos.md:27 与注册表计数),非旧手定权重复活。保守方向:锁线门槛
 更严 → P1 空窗期(囤跨线骨架件)更长,方向承诺不提前。"""
 
 
@@ -584,8 +583,7 @@ def _seele_system_support(owned: set[str]) -> float:
         support = 0                               若 希儿 ∉ 手上
                 = min(1, max(c_量/2, c_贝/2))     若 希儿 ∈ 手上
 
-    【注】每一项均为文档/注册表定义量,零拟合常数(重推出处 = T-171
-    设计方案 §5.1,F5 裁决=去重成员计数;账本任务 T-171):
+    【注】每一项均为文档/注册表定义量,零拟合常数(F5 裁决=去重成员计数):
     - c_量 / c_贝 = ``owned``(bench∪deployed 成员名去重集)中带
       量子同频 / 贝洛伯格标签的成员数——**去重成员计数**(同名多副本
       计 1)= 羁绊激活语义,与 form 腿(羁绊按去重成员激活)同语义,
@@ -599,7 +597,7 @@ def _seele_system_support(owned: set[str]) -> float:
       ``SEELE_OR_LEGS``(形态端口单一源,ADR-0613)并同步回改本式分母,
       禁两端口各自为政;
     - 挂账指针(C1,P86 攻击 r1 中低1 并入):去重计数的未覆盖形态 =
-      同名同 1★ 副本对(T-59 证据:绯英×2/花火×2 同场合法态,合成进度
+      同名同 1★ 副本对(实证:绯英×2/花火×2 同场合法态,合成进度
       2/3)——去重前后成员数不变,支持度读数零扰动,但「副本进度是否
       应计支持度」属口径确认项,并入 ADR-0613 放大器计数口径挂账
       (玩家确认同门),确认前维持去重口径(零行为变更);
@@ -610,9 +608,9 @@ def _seele_system_support(owned: set[str]) -> float:
       data/cw_chars.py「希儿」行),她同时计入两池各 1,在文档档位结构
       下直接导出 max(1/2,1/2)=0.5——单卡 0.5 是推导后果。
 
-    坐标系声明(同文件两套计数口径并存,禁默默统一;T-171 设计方案
-    §4.4/F5 显式登记,分歧裁决权在 T-166 R2 对表):本公式用**去重成员
-    计数**(羁绊激活证据);同文件 ``_asset_thickness`` 及 T-166 配修甲
+    坐标系声明(同文件两套计数口径并存,禁默默统一;F5 显式登记,
+    分歧裁决权在对表裁定):本公式用**去重成员
+    计数**(羁绊激活证据);同文件 ``_asset_thickness`` 及配修甲
     后续同族落点用**星级当量**原语(每副本按 star 计,Σ3^(star−1) 族,
     治「合成被记为倒退」的通用排序面)。两者辖域不同——支持度回答
     「羁绊激活了几成」,星级当量回答「投入叠了多少」;任一侧禁私自换用
@@ -643,7 +641,7 @@ def _p1_system_support(bs: GameState) -> dict[str, float]:
     ``_seele_system_support``);希儿系 = 分级公式
     (``_seele_system_support`` 单一源,去重成员计数:希儿单卡 0.5
     开线候选、希儿+任 1 去重放大器满支持,推导链见其 docstring)。
-    旧「希儿在手二元 1.0」post-state 条款被 T-171 支持度降档取代
+    旧「希儿在手二元 1.0」post-state 条款被支持度降档取代
     (0.6+0.2+0.2 手定权重已退役,本式为文档口径
     重推非旧值复活)。
     """
@@ -775,7 +773,7 @@ def _p1_pair_eased(bs: GameState,
 
     - Q = 门槛维 ≥ ``P1_PAIR_LOCK_MIN_SUPPORT`` 的合格集(gate_first;
       ``gate_first=False`` = 无门槛合格集 = 四体系全集,仅供
-      ``p1_early_pair`` 无门槛物化面并批消费——编排者裁决①,T-166 批1);
+      ``p1_early_pair`` 无门槛物化面并批消费——编排者裁决①);
     - |I∩Q|=0 空窗进入:按 (−ord, PREF) 取前 min(2,|Q|) 席;
     - |I∩Q|=1:留任席无条件保持,最佳挑战者填空席(空席填充不触动
       已占用席 = §2.3(iv) 申报帧类,不辖可行性门);
@@ -883,8 +881,7 @@ def _p1_pair_overwindow(pair: tuple[str, ...],
                         session: StrategySession | None = None,
                         registry: DecisionV2Registry | None = None,
                         ) -> tuple[bool, float, int]:
-    """命题 1b 解冻闭集出口①「面③超窗出口」判定(ADR-0616 §2.2/§2.4;
-    T-171 批序 3)。E(frozen_pair) > R_rem ⟹ 超窗。
+    """命题 1b 解冻闭集出口①「面③超窗出口」判定(ADR-0616 §2.2/§2.4)。E(frozen_pair) > R_rem ⟹ 超窗。
 
     - E = kernel ``e_rounds`` **逐字直调**(零第二估计器,三姊妹门共享
       测量单一源;消费对象 = ``pair_target_comp`` 现行物化产物,与本门
@@ -966,7 +963,7 @@ def p1_early_pair(bs: GameState,
                   ist: IntentionState | None) -> tuple[str, ...]:
     """P1 早期新件买入门的配方对读口(ADR-0372;只读,不落字段)。
 
-    **在任纪律并批(ADR-0616 §3.3 裁决①,T-166 批1 编排者裁)**:未锁
+    **在任纪律并批(ADR-0616 §3.3 裁决①)**:未锁
     形态期的方向派生从「无门槛 top-2 逐帧纯重派生」并入本批在任纪律——
     同一夺席算子作用于**无门槛合格集**(``_p1_pair_eased(gate_first=
     False)``,排序维/燃料剔除同款),不再是无记忆重派生。
@@ -980,7 +977,7 @@ def p1_early_pair(bs: GameState,
       旧方向件不再是目标)+ 跟线投资重置,与锁后换席的切换成本**同一
       实体**;平手 = 零优势证据时不换向弱支配换向,支配性论证不因
       门槛未达而失效。
-    - 病灶同根:T-166 诊断(ADR-0616 §1)实证的「无记忆重派生 + 排序
+    - 病灶同根:ADR-0616 §1 诊断实证的「无记忆重派生 + 排序
       证据被合成/燃料污染」摇摆链,26 事件中 2 例经本面(sub-gate 帧
       物化)发生——买侧跟方向反复横跳与锁域 relapse 是同一根在买侧
       截面;只治锁域不治买侧 = 症状搬家。
@@ -1854,7 +1851,7 @@ def update_intention(bs: GameState, ist: IntentionState,
         if plane_of(bs) == 1:
             sigs = [s for s in sigs
                     if _direct_line_qualified(bs, s.comp_name)]
-            # ── 命题 1b form_ok 冻结状态机(ADR-0616 §2.2;T-171 批序 3)──
+            # ── 命题 1b form_ok 冻结状态机(ADR-0616 §2.2)──
             # 帧序:①超窗出口(F=True 时先判,解冻后本帧重派生照走)
             # → ②重派生(F=True 抑制,方向= frozen_pair;F=False 帧走
             # 在任优先算子+命题 3 可行性门 §2.1/§2.4)→ ③置位评估
@@ -2503,13 +2500,13 @@ def locked_buy_membership(ist: IntentionState | None,
     故本函数不复用 ``locked_buy_scope`` 直取。需要完整约束基准(对件
     免 demote/fence 面)的消费方仍用 ``locked_buy_scope``。
 
-    **容量可行截断(T-307/R1,ADR-0647)**:``cap_hold`` 非 None 且
+    **容量可行截断(ADR-0647)**:``cap_hold`` 非 None 且
     |B| > cap_hold 时返回截断义务集 B'——序 = core∪shared ≻ (p1_pair ∪
     其余 hoard) 同级,级内 cost 升序、注册表声明序 tie-break
     (``_obligation_rank``)。结构依据 = 义务完成金流成本:低费义务先
     闭合(P41②/P76 甲 1★ 全额退净金 0 的可逆性不变量,低费成员往返
     动作成本最低),零自由参数。缺员面 missing(B') 可清空 ⇒ M2 终止
-    条件恢复(T-295-P1 停摆不动点解除);被截成员退出 M2 义务基座,
+    条件恢复(停摆不动点解除);被截成员退出 M2 义务基座,
     其 M4/部署面保护必要性随之消失(义务基座 = M2 会重买的集合)。
     ``cap_hold=None`` = 宽集(兼容缺省,零漂移;容量不可得帧的
     fail-closed 方向 = 保宽,截断是收紧面不盲收)。
@@ -2538,7 +2535,7 @@ def locked_buy_membership(ist: IntentionState | None,
 
 
 def _obligation_rank(names: set[str] | frozenset[str]) -> list[str]:
-    """截断级内序(T-307/R1,ADR-0647):cost 升序,注册表声明序
+    """截断级内序(ADR-0647):cost 升序,注册表声明序
     tie-break。确定性关键:候选序从注册表声明序出发(迭代 CHARACTERS
     过滤),稳定排序保声明序——从 set 迭代会因哈希序使同费 tie-break
     跨进程不确定(禁)。注册表外残名(识别占位类)排末尾(名序稳定),
@@ -2551,7 +2548,7 @@ def _obligation_rank(names: set[str] | frozenset[str]) -> list[str]:
 
 def _obligation_truncate(scope: set[str], core_shared: set[str],
                          cap_hold: int) -> list[str]:
-    """容量可行截断(T-307/R1,ADR-0647):core∪shared 优先全保
+    """容量可行截断(ADR-0647):core∪shared 优先全保
     (级内超容时按级内序自截),余量按级内序补 (p1_pair ∪ 其余 hoard)。
 
     前提:core_shared ⊆ scope(``_line_hoard`` chars 含 core∪shared 构造
@@ -2566,7 +2563,7 @@ def _obligation_truncate(scope: set[str], core_shared: set[str],
 
 
 def locked_buy_cap_hold(state: GameState | None) -> int | None:
-    """容量可行截断的容量上界单源(T-307/R1,ADR-0647)。
+    """容量可行截断的容量上界单源(ADR-0647)。
 
     = ``BENCH_CAPACITY + max_units(level)``(现读;lv8 = 17 实用持有
     容量,旧固定分母 BENCH_CAPACITY+DEPLOYED_CAPACITY=19 高估,|B|=18

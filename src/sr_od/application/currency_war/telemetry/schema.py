@@ -484,13 +484,13 @@ class DecisionTrace:
     sess_release_budget: int | None = None
     # 义务来源(''/'flip'/'crisis'/'third_path'/'reserve_admission'/
     # 'must_spend';'crisis'=危机金出口臂 ADR-0503,判读兑换率分域勿漏
-    # 此值;'must_spend'=必花域帧写点,T-88 批新增值域——shop 必花域段
+    # 此值;'must_spend'=必花域帧写点新增值域——shop 必花域段
     # 帧内 last-wins,轮界清零在装配键戳,ADR-0571。现役 mandate_v1
     # 只产 ''/'must_spend',其余值为历史来源,存量数据按旧口径读)。
     sess_release_reason: str | None = None
     # 当轮 release 帧实际消费(金;strategy_state_of(session).v3_release_spent 透传,每轮
     # 入口清零,清零承载 = 策略状态 v3_disclosure_key 键戳)。
-    # 口径(T-88 收窄申报,ADR-0571):首版只计**刷新实花**(记账位 =
+    # 口径(收窄申报,ADR-0571):首版只计**刷新实花**(记账位 =
     # cw_op_buy_cards 执行回执位;决策帧值 = 轮内截至采样时点累计)——
     # 买牌/升级是否计入「全渠道义务实花」在 mandate_v1 语义下未经证明,
     # 裁决前收窄防虚高(宁窄勿虚;旧 authorize_release_refresh/
@@ -599,7 +599,7 @@ class OutcomeRecord:
     damage_base: int | None = None
     damage_unfinished_progress: int | None = None
     damage_breakdown_visible: bool = False
-    # —— T-83 补链(ADR-0609):tooltip 第三行「长线作战」战斗回血分量(恒 ≥0,
+    # —— 补链(ADR-0609):tooltip 第三行「长线作战」战斗回血分量(恒 ≥0,
     # 实机常量 +2/场,ADR-0241 口述+连胜轨迹实证)。此前解析器已读但本 schema
     # 缺字段 → 静默丢弃,L_node 判读「tooltip 幅度 = hp 链差 + 2」偏移只能靠
     # 猜。补齐后偏移可直接从行内验证:链差(净变化)= 掉血两分量 + heal_longline。
@@ -645,7 +645,7 @@ class OutcomeRecord:
     # (动态探测,通常 4/augment 3-5,逐列内容不假定结构;漏读审计与对拍源)。
     # dict 键缺失容忍(兜底点卡路径无 options → 只有 gold);None=非补给行/旧记录。
     supply_pick: dict[str, Any] | None = None
-    # —— T-185 收口终局行标记(实机末轮 outcome 采集补全):''=普通结算行
+    # —— 收口终局行标记(实机末轮 outcome 采集补全):''=普通结算行
     # (屏面真值/'recovered'/'synthetic_supply');'stopped'/'abandoned'=
     # 对局收口终局行(对局循环中止收口时补写,写点 = cw_loop._write_terminal_
     # outcome_row)。终局行 killed 语义切换为**对局级**:False = 对局终了时
@@ -721,7 +721,7 @@ class ExogenousEvent:
     # sell_income(迁移审计 w323(git 历史),遥测审计 G2)= 卖牌执行点实收回金(shop.py SellBench
     # 执行分支,执行前后 gold 差——decisions 行的 actions 是执行前快照,
     # 实际回金只有执行点可知)。event_choice/sell_income 的结构化载荷在 choice
-    # (detail 只放一行人读摘要);hp_pay(ADR-0577,T-100 批1)= 血购执行回执
+    # (detail 只放一行人读摘要);hp_pay(ADR-0577)= 血购执行回执
     # (prep_actions.record_hp_pay_event 两通道共用写点,粒度=击数),载荷在
     # choice:{plane/round_num/currency/hp_delta/mode/clicks/basis='modeled'};
     # **遥测禁入决策输入**(隔离申报同 ADR)。

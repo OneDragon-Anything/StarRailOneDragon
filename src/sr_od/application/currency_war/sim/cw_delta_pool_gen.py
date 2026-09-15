@@ -40,7 +40,7 @@ SNAPSHOT {节点: {位面: {桶键: [Δ]}}} + META(构成/过滤/指纹)。
 2026-09-08 假游戏局 run_id=fake_20260908 落进 live 生产流实证,
 目录守卫对此失明);③塌缩守卫(源行数账较现提交快照塌缩即拒绝
 覆写、保留现快照——同日微型语料三次静默覆盖提交快照,对账
-正本 = ADR-0595 与编排者台账 T-126 note, 2026-09-08)。
+正本 = ADR-0595 与 2026-09-08 对账记录)。
 
 半写行容错:生产 append 进行中尾行可能撕裂(JSONDecodeError)——
 跳过+计数告警,不中断、不静默(计数进 META)。
@@ -116,7 +116,7 @@ def _assert_guards(src_dir: Path) -> None:
 # 不成类的一次性事故局。为什么必须落到 run 粒度:目录守卫
 # (_assert_guards)只辖源目录,拦不住写进生产 live 流的非真实
 # run——2026-09-08 假游戏局 fake_20260908 混在 live 源里触发局终
-# 自动再生(ADR-0595/编排者台账 T-126 note),是本机制的直接实证。
+# 自动再生(ADR-0595),是本机制的直接实证。
 # 关联:ADR-0582(池生成器数据防线一脉);新增类别在
 # QUARANTINED_RUN_PREFIXES 登记(带一句来源语义)。
 
@@ -167,7 +167,7 @@ def _run_quarantine_reason(run_id: object) -> str | None:
 # 快照。实证:2026-09-08 池再生源迁 telemetry/live 后仅 3 run
 # 144 行,假游戏局触发局终再生把 16391 行全量语料的提交快照
 # 覆写成微语料快照(行数账 144/18637≈0.8%,当日 11:54-12:05 三次;
-# 对账正本 = ADR-0595 与编排者台账 T-126 note, 2026-09-08)——
+# 对账正本 = ADR-0595 与 2026-09-08 对账记录)——
 # 既有目录守卫与 run 隔离都
 # 不辖「量」,必须有独立的量级守卫。
 #: 阈值 = 源行数账 < 现快照行数账 × 此比例 → 拒绝再生覆写。
@@ -496,7 +496,7 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None = None,
                 '判定为结算瞬时伪读数(伪影拆出 -84/+71 型毒对;对局'
                 '档案真值语料 P1 未删失最大单轮损 36)——配对前剔除,'
                 '计数 hp0_transient_dropped;池内容变(指纹重算);'
-                'v13(ADR-0582,T-118 Δ池生成器治理)合成行'
+                'v13(ADR-0582,Δ池生成器治理)合成行'
                 "(source='synthetic_supply')与低可信行(hp_confidence"
                 '<0.9,判据=telemetry.query._outcome_hp_trusted)不作'
                 ' hp 差分端点——移行桥接重配对(v12 hp0 瞬态同法),'
@@ -584,7 +584,7 @@ def build_pool_from_journal(src_dir: Path | None = None,
         deployed_names=deployed_names)
     battle_killed: dict = stats['battle_killed']
     meta = {
-        'source': 'journal(state/journal.jsonl;T-98 波 5 语料源切 journal)',
+        'source': 'journal(state/journal.jsonl;波 5 语料源切 journal)',
         'source_dir': str(src),
         'runs': stats['runs'],
         'runs_filter': (sorted(runs_filter) if runs_filter else 'all'),
@@ -607,7 +607,7 @@ def build_pool_from_journal(src_dir: Path | None = None,
                 ((pool.get('battle') or {}).get(1) or {}).items())},
         'source_rows': {'journal_rounds': len(snaps)},
         'bucket_poverty': _poverty_list(pool, battle_killed),
-        'note': 'journal 源构建器(T-98);快照停更冻结期间仅作语料审计'
+        'note': 'journal 源构建器;快照停更冻结期间仅作语料审计'
                 '与抽样对拍,快照覆写仍走 regenerate_snapshot 冻结门。',
     }
     return pool, meta

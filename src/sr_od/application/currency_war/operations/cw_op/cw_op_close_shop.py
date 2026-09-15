@@ -43,7 +43,7 @@ def _note_receipt(op: SrOperation, applied: bool, reason: str) -> None:
 def _close_shop_already_closed(op: SrOperation) -> OperationRoundResult:
     """幂等已关出口构造(单一构造点)。
 
-    旧路径 miss 臂与变体 observe 早退(收编批 T-45)共享同一构造:
+    旧路径 miss 臂与变体 observe 早退(收编批)共享同一构造:
     applied=false 回执(无动作可发)+ success;禁第二份(两路径共享
     零转录,总纲契约 1)。
     """
@@ -86,7 +86,7 @@ class CwOpCloseShop(CwScreenOpBase):
     生产路径由 BuyShopCards 编排壳直调 :func:`close_shop`(宿主 op 复用);
     本类为独立可跑壳(W970 批 C 流程层接管后成为编排单元)。
 
-    统一观察架构收编(B4 挂账批,账本 T-45;变体形态先例 =
+    统一观察架构收编(B4 挂账批;变体形态先例 =
     ``CwProgressionScreenOp``):改挂 ``CwScreenOpBase`` 作只读/导航变体
     ——幂等原子动作零策略消费,decide 空申报 = 本屏无策略消费的合同
     声明(B4 选项②)。``close`` 节点顶部装配点分流(架构设计 §9.1 并存

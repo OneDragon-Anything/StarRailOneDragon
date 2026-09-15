@@ -25,7 +25,7 @@ board 不可读 → 传空 board stub(dot_punish 为次要细化,白名单主策
 + ``按钮-确认``(给 center),task#20 已完成;本 op 经 ``cw_obs_core.area_center`` 读,
 缺失才用兜底常量。
 
-统一观察架构逐屏迁移(账本 T-8 五相位屏;架构设计 §9.1 并存纪律):本类是
+统一观察架构逐屏迁移(五相位屏;架构设计 §9.1 并存纪律):本类是
 CwScreenOpBase 子类,handle 顶部装配点分流(重入裁决**之后**,先例锚 =
 cw_screen_encounter.py :241-251 重入裁决 / :252-258 装配点分流,注释原文
 「两路径共用(分流前挂,先于五段 lifecycle 的 observe 门)」;总纲契约 6):
@@ -68,7 +68,7 @@ from sr_od.context.sr_context import SrContext
 
 @dataclass
 class InvestEnvObservation:
-    """投资环境观察 payload(五段之段1产物;T-8 实机转录形态)。
+    """投资环境观察 payload(五段之段1产物;实机转录形态)。
 
     - ``hit``:入口锚「标识-投资环境」命中(误分发防线;miss → observe 段
       round_fail 交回);
@@ -83,7 +83,7 @@ class InvestEnvObservation:
 
 
 class InvestEnvLiveObservationAdapter:
-    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,T-8)。
+    """实机适配器①(观察端口;架构设计 §2.3 识别链封口)。
 
     内部复用现役读链(``CwScreenInvestEnv._observe_frame``:入口门 + 1s
     稳定帧 + 候选读取)——识别机制(OCR/截图)不出端口(§2.1 契约三则);
@@ -186,7 +186,7 @@ class CwScreenInvestEnv(CwScreenOpBase):
         本读数,``_decide_and_act`` 刷新闸独立现读同源 reader)。两路径共用
         (旧 handle 内联位平移)。"""
         _env_counts = read_invest_refresh_counts(self.ctx, screen, 'env')
-        log.info(f'[cw-env] 刷新剩余计数读数={_env_counts}(T-162 观察通道,V5/V6)')
+        log.info(f'[cw-env] 刷新剩余计数读数={_env_counts}(观察通道,V5/V6)')
 
     @operation_node(name='投资环境', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
@@ -287,7 +287,7 @@ class CwScreenInvestEnv(CwScreenOpBase):
         # 关),无需 exec_state 防重入载体;点偏未生效(计数不扣)时重进后
         # 预算仍在 → 再次刷新,每圈耗 1 次节点重试预算,预算耗尽 FAIL bail
         #(有界终止单,emit_overlay_confirm 同款收口)。
-        # 零判效(T-223 判效归一,统一观察架构画面 op 基类设计 §6.2,环境屏
+        # 零判效(判效归一,统一观察架构画面 op 基类设计 §6.2,环境屏
         # 与策略屏同判):动作只机械执行,「刷没刷成」不判不重试;「点了零
         # 效果」异常面只落缺陷台账留证(零决策零改道,判效权归观察侧
         # reconcile),刷后帧机械重读仅作留证输入,不进决策。
@@ -327,7 +327,7 @@ class CwScreenInvestEnv(CwScreenOpBase):
                             observed=f'计数={_counts2[0][0]},名集未变',
                             verdict='留证-刷新零效果(零决策)',
                             reader_source='cw_screen_invest_env',
-                            note='执行侧判效已拆(T-223 判效归一),仅机械留证',
+                            note='执行侧判效已拆(判效归一),仅机械留证',
                             gap_large=False,
                             severity=cw_defects.SEVERITY_L2_RECORD)
                     except Exception:   # noqa: BLE001  留证不阻塞交回
@@ -454,7 +454,7 @@ class CwScreenInvestEnv(CwScreenOpBase):
             return
         log.info('[cw-env] 台账重读 miss(非 clean 帧),变异窗保留等下个写入端')
 
-    # ---- 五段生命周期(统一观察架构 §5.1;T-8,先例 = CwScreenEncounter)----
+    # ---- 五段生命周期(统一观察架构 §5.1,先例 = CwScreenEncounter)----
 
     def lifecycle_observe(self
                           ) -> tuple[InvestEnvObservation,

@@ -30,7 +30,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 
 ### 2.2 分支序（浮层先于备战双锚；序位漏项 = 实机事故源，锁测试钉死）
 
-> **处理列自 T-121 起全部为画面 op 调用**——外循环只管识别分派，推进处理（含弹窗关闭）一律在 op 内；每次分发经统一包装 `_dispatch_screen_op` 落 op_journal 行（telemetry/op_journal.py，op 调用流）与决策帧留证。分发判定/排他/序位/守卫域归属不变（§2.1 判定原语、guards.md；守卫钩子经 on_result 调用点邻接闭包留在分支体）。标「新·推进」= 空决策形态 op（`screen_op.md` §8.3），标「经包装」= 既有 op 本次接包装。
+> **处理列自 此后全部为画面 op 调用**——外循环只管识别分派，推进处理（含弹窗关闭）一律在 op 内；每次分发经统一包装 `_dispatch_screen_op` 落 op_journal 行（telemetry/op_journal.py，op 调用流）与决策帧留证。分发判定/排他/序位/守卫域归属不变（§2.1 判定原语、guards.md；守卫钩子经 on_result 调用点邻接闭包留在分支体）。标「新·推进」= 空决策形态 op（`screen_op.md` §8.3），标「经包装」= 既有 op 本次接包装。
 
 | 序 | 分支 | 判定 | 处理 |
 |---|---|---|---|
@@ -52,7 +52,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 | 0h | 祈愿试炼 | id_mark | CwScreenWishTrial（经包装;点卡选中→确认→验关） |
 | 0i | 星徽秘典四选一 | id_mark（命中即接管，不放行备战分支） | CwScreenBookcard（经包装） |
 | 0k | 专家邀请函 | id_mark（同上） | CwScreenExpertInvite（经包装） |
-| 0t | 商店卡牌详情弹窗（T-163 实机事故建档:奖励节点点球误触开的角色 offer 购买页） | 双 id_mark 门:'按钮-购买' ∧ '按钮-角色详情'（弹窗前景独有锚,双锚全中才接管;判据单一源 `_shop_card_detail_anchor_hit`） | **CwScreenShopCardDetailPopup（新·推进,T-163）**:点 X(按钮-关闭,cw_lobby_close 同族模板)→ 验 X 消失 → 交回重判（店开 → 0n 商店访问接管购买;备战 → 备战环）;**绝不点购买**（买不买归商店域,关闭动作不代替购买决策）;on_fail_retry 消费 retry 池。序位 0 系——弹窗暗色衬底遮蔽底层全部锚（T-163 实证:开商店三锚/备战双锚 OCR 全灭）,不先分流 = 事故形态 |
+| 0t | 商店卡牌详情弹窗（实机事故建档:奖励节点点球误触开的角色 offer 购买页） | 双 id_mark 门:'按钮-购买' ∧ '按钮-角色详情'（弹窗前景独有锚,双锚全中才接管;判据单一源 `_shop_card_detail_anchor_hit`） | **CwScreenShopCardDetailPopup（新·推进）**:点 X(按钮-关闭,cw_lobby_close 同族模板)→ 验 X 消失 → 交回重判（店开 → 0n 商店访问接管购买;备战 → 备战环）;**绝不点购买**（买不买归商店域,关闭动作不代替购买决策）;on_fail_retry 消费 retry 池。序位 0 系——弹窗暗色衬底遮蔽底层全部锚（实证:开商店三锚/备战双锚 OCR 全灭）,不先分流 = 事故形态 |
 | 0m | 备战暗色锁定子态族 | 右上"返回XX选择"按钮锚 | **CwScreenPrepLockedReturn（新·推进）**;两画面档参数化(策略锁定/遭遇锁定,分发处传命中的那对) |
 | 0n | 备战-开商店(商店浮层态) | 开商店画面档三 id_mark(购买经验+按钮-收起+标识-备战阶段;与干净备战的按钮-出战天然互斥,idmark 审计批定稿) | 转交商店访问路径:CwScreenPrep.visit_open_shop **经包装(元组适配形),op='商店访问' 行补齐 = S11 对齐**——入口观察→策略器逐动作决策→CloseShop 终结收店;路由层禁硬编码收起。分键 branch_shop_open_hit + visit_ok/_fail |
 | 0j | 前台无角色提示 | id_mark | 直管恢复链保留(边界申报:发射核/战斗窗口状态耦合,op 化挂后续批);**经包装链形补 op='前台无角色恢复' 行**;确认 → 重部署(CwScreenDeploy 机械执行,执行侧守卫面保留)→ 本迭代内直接再出战(StartBattle until 转移验证;失败信号 = 出战链 POST_LAUNCH_BLOCKERS 弹窗守卫);重试上限 FRONTLESS_REDEPLOY_LIMIT=2 |
@@ -61,7 +61,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 | 0r | 位面简报 | id_mark | CwScreenBriefing（经包装补行） |
 | 0s | 投资环境（开场/接管局） | id_mark | CwScreenInvestEnv → CwScreenWaitOneOne（经包装补行×2;链序=等备战锚就绪,用户裁定特殊等待） |
 | **1** | **备战** | **双锚**：'备战标识-购买经验' ∧ '按钮-出战' 同帧命中 | CwScreenPrep（**经包装**,journal='备战'）;进入序/达标臂/守卫域见 §3(臂族/守卫留外循环) |
-| 1b/1d/1g | 详情弹窗族 | **1b 锚化（T-163）**:archive 双锚其一 '按钮-装备推荐' ∨ '装备详情-合成公式'（判据单一源 `_role_detail_anchor_hit`;原全屏 OCR'可合成列表'∨'角色详情'退役——「角色详情」与 0t 弹窗底部按钮全等共享 LCS 1.0,收紧无济于事 = 事故判据根,§2.1 存量欠账清偿）/ 星徽双锚 / 中断挑战锚 | **CwScreenRoleDetailOverlay / CwScreenEmblemDetailPopup / CwScreenInterruptDialog（新·推进）**;1b 点空白经 find_and_click(success_wait=1.5)+验「装备推荐」消失,on_fail_retry 消费 retry 池;1d「不用 ESC」理由随迁 op;1g 外生 popup 行随迁、「绝不点放弃并结算」红线随迁 |
+| 1b/1d/1g | 详情弹窗族 | **1b 锚化**:archive 双锚其一 '按钮-装备推荐' ∨ '装备详情-合成公式'（判据单一源 `_role_detail_anchor_hit`;原全屏 OCR'可合成列表'∨'角色详情'退役——「角色详情」与 0t 弹窗底部按钮全等共享 LCS 1.0,收紧无济于事 = 事故判据根,§2.1 存量欠账清偿）/ 星徽双锚 / 中断挑战锚 | **CwScreenRoleDetailOverlay / CwScreenEmblemDetailPopup / CwScreenInterruptDialog（新·推进）**;1b 点空白经 find_and_click(success_wait=1.5)+验「装备推荐」消失,on_fail_retry 消费 retry 池;1d「不用 ESC」理由随迁 op;1g 外生 popup 行随迁、「绝不点放弃并结算」红线随迁 |
 | 战斗窗 | `_battle_wait_active`（出战驻留闩）∨ 帧锚 `_frame_in_battle_window` | CwScreenBattleWait（经包装;三段式：等结算→结算处理→白名单完成,团灭终局分叉交回 3c;settle 注入/窗口关/闩清留外循环回调=守卫域） |
 | 3c | 回大厅（'标识-创业指南'） | area | 直管收口保留（遥测红线:runs summary/分配器/存档写端不迁移）;**经包装链形补 op='回大厅收口' 行**（§5） |
 | 5 | 前进按钮 | OCR'下一步' | **CwScreenNextButton（新·推进）** |
@@ -99,7 +99,7 @@ overlay 分支必须在备战(1)前检测：overlay 叠备战时"购买经验"�
 | 钩子 | 内容 | 载体 |
 |---|---|---|
 | runs summary 收口 | `after_operation_done` 全路径必达；未写 summary 的对局补写 stopped/abandoned（真假局判定 = "从未观察到对局态"才算假局） | `cw_loop.py::CwLoop.after_operation_done` |
-| op 调用流 | **全分支 dispatch 包装统一落**（T-121）：`_dispatch_screen_op` 每次分发写 op_journal enter/exit 成对行（0n='商店访问'/1='备战'/3c='回大厅收口'…）+ 决策帧留证（frame_tag）；异常路径补发 outcome='error' 的 exit 行后上抛（孤儿 enter 回归=进程中断专属）；仲裁触发商店访问为包装外唯一补行点（op='发射帧仲裁商店访问'，三载体口径见 session.md 载体表） | `telemetry/op_journal.jsonl` + `decision_frames/` |
+| op 调用流 | **全分支 dispatch 包装统一落**：`_dispatch_screen_op` 每次分发写 op_journal enter/exit 成对行（0n='商店访问'/1='备战'/3c='回大厅收口'…）+ 决策帧留证（frame_tag）；异常路径补发 outcome='error' 的 exit 行后上抛（孤儿 enter 回归=进程中断专属）；仲裁触发商店访问为包装外唯一补行点（op='发射帧仲裁商店访问'，三载体口径见 session.md 载体表） | `telemetry/op_journal.jsonl` + `decision_frames/` |
 | 局终正常收口（3c） | 假局守卫 + 假 win 守卫（plane==3 精确 ∧ 非死局）+ record_run_summary（final_hp 走 `_last_true_hp` 防 100 兜底毒化）+ 对局存档装配 + match 清空（生命周期钩子 on_match_end 已删除,原实现 no-op 零行为） | `cw_loop.py::对局循环分支 3c（局终正常收口）` |
 | 跨局分配器 | ThompsonAllocator 进程级单例，plaza 份额先验；终局 update（臂 = comp→plaza_carry 归一；影子期只记后验） | `cw_loop.py::ThompsonAllocator 单例与终局 update` |
 | 补给合成 outcome | 见 §2.2 分支 0e1 | `cw_loop.py::补给节点完成合成 outcome 段（分支 0e1，见 §2.2）` |

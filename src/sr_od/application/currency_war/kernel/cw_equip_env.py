@@ -77,7 +77,7 @@ class EquipEnvSignals:
 def build_equip_env_signals(state) -> EquipEnvSignals:
     """state → 信号包(唯一读取点;state 缺失/字段未观察 = 安全默认,不抛错)。
 
-    ``state`` = session 容器单例(board_state_of;T-146 装配源换源,旧
+    ``state`` = session 容器单例(board_state_of;装配源换源,旧
     ``session.last_state`` 帧链退役);容器/None 两态宽容读(鸭子 getattr
     + Field .value 取值),词缀未观察/节点未观察 = 空集 / None。
     """

@@ -155,7 +155,7 @@ def check_hoard_gold_no_engine(ledgers: list[list[dict]]) -> dict:
 
 
 
-# --- T-179 件① 期限 miss 原因分键常量(观测面口径) -------------------
+# --- 期限 miss 原因分键常量(观测面口径) -------------------
 # 金滞留阈值:与 hoard_gold_no_engine 的设计表原值 40 同阈值族
 # (「金 ≥40 = 囤」既有观测口径,禁第二套阈值)。
 _DEADLINE_HOARD_GOLD: int = 40
@@ -203,7 +203,7 @@ def check_second_engine_deadline(ledgers: list[list[dict]]) -> dict:
     披露 gap 分布(engines 口径=_rung_of_row;「引擎」=四体系
     数≥1/≥2 的首达轮)。
 
-    T-179 件① miss 原因分键:期限窗(首引擎轮 F 后 ≤3 轮)内按
+    miss 原因分键:期限窗(首引擎轮 F 后 ≤3 轮)内按
     账本既有字段给每个 miss 局分**互斥主因**(优先级序):
     - ``supply_break`` 供给断:窗内 shop_waves 零次引擎原料(三体系
       阵营卡或希儿本卡;量子同频/贝洛伯格不计——无希儿不构成第四
@@ -241,7 +241,7 @@ def check_second_engine_deadline(ledgers: list[list[dict]]) -> dict:
     ``full_ledgers`` 入参,runner.simulate_p1_batch 直传 results
     原账本)——「至局终仍未凑出次引擎」的局终 = 模拟局真实末轮。
     P2 转型期正是二引擎形成窗,P1 段截断口径会把 P2 内形成的二
-    引擎记成 never(T-211 归因实锤:s8550 批 P1 截断 21 vs 全局面
+    引擎记成 never(归因实锤:s8550 批 P1 截断 21 vs 全局面
     15,「never 21 超带」假警报的直接成因)。planes=1 批全量账本
     ≡ P1 段账本,输出与历史批逐位零漂移;跨段 gap/期限窗一律经
     _game_round_of_row 统一轮轴(P2 round_num 段内重计,禁直接做
@@ -540,7 +540,7 @@ def check_streak_combat_only_income(ledgers: list[list[dict]]) -> dict:
       ``supply_issued_extra`` 披露面挂账,待直读样本转正后修正);
     - 奖励轮 streak 分量照发 ``streak_gold(进轮连胜) × win_reward_mult``
       (含 counter0=1;ADR-0351「奖励轮不发金」半句被全量数据推翻;
-      倍率施于连胜分量含奖励轮 = fields.md §4.1「收入修饰」,T-64 接线),
+      倍率施于连胜分量含奖励轮 = fields.md §4.1「收入修饰」,已接线),
       base 须与 REWARD_BASE_GOLD_BY_ROUND 成对(cw_sim 收入段已成对,
       本检查锁 streak 侧);
     - 战斗轮 streak==0 且上一轮为败掉的战斗类节点 → 须发
@@ -549,7 +549,7 @@ def check_streak_combat_only_income(ledgers: list[list[dict]]) -> dict:
       ``streak_gold(进轮连胜) × win_reward_mult``。
 
     ``win_reward_mult`` 行键消费:账本行 ``sim.win_reward_mult`` = 写账
-    当轮的有效倍率(T-64 起 engine_p1 每行披露;聚合单一源 =
+    当轮的有效倍率(engine_p1 每行披露;聚合单一源 =
     aggregate_economy 取最大,ADR-0623)。**缺键 = 接线前旧批次**,按
     1.0 折算(与旧口径逐位等价——重放兼容,非缺键守卫辖域;node/
     income 缺键仍按下方守卫计违规)。

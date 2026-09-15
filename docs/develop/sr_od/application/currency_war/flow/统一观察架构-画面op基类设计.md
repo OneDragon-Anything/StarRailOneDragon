@@ -24,18 +24,18 @@
 > 「注册表有值引擎零消费」字段裁决清单(衔接 T1a);v9 = 无前提攻击第 1 轮
 > 9 项修复落文(申报:§7.1 回填同步——T1a 批增补未记修订版本,随 v9 补记
 > + §7 行 5 翻正 + F-1..F-9 + A1 段身份申报机制裁决落文〔引擎内段身份
-> 申报〕);v10 = T-217 流程 hook 观测点设计并入——新增 §12 流程转点
+> 申报〕);v10 = 流程 hook 观测点设计并入——新增 §12 流程转点
 > 观测锚章(锚点事件集/数据面 schema/准确性判据/机制关系声明),
 > §6.4 触发时点轴扩第三型「边界型」申报,§11 增 R11;§12 经对抗审
 > (高 3/中 6/低 7)就地修订:sim 侧锚行落盘面如实申报(「两域」改
 > 实机先行)、指标 1 闭合公式重构(尝试口径四项)、levelup_landed 改
 > 收编现役 'level_up' 行禁双行、boundary 触发口与公式可测性立 H6/H7。
-> v10 对照说明见 docs/develop/sr_od/application/currency_war/design/T-217-流程hook设计v1.md
+> v10 对照说明见 design/ 归档件「流程hook设计v1」(档名保留原批号)
 > (R2);对照说明(v5-v9)见
 > docs/develop/sr_od/application/currency_war/design/统一观察架构-修订对照说明.md;
 > v11 = 验证段废除(用户裁定 2026-09-10:动作 op 只管机械执行,禁止做
 > 任何验证)——§5.1 六段→五段(验证段删除及规范理由落文),§5.2 联动
-> (备战原型行/事件屏迁移行);v12 = T-223 用户终裁(2026-09-10)落地
+> (备战原型行/事件屏迁移行);v12 = 用户终裁(2026-09-10)落地
 > 回执门最严读法落文——§6.2 验真锚退役(实机适配器只机械执行,落地
 > 判定完全归观察侧 reconcile)、§6.4 单一发射口(两 fire 口合并;落地
 > 回执门〔OUTCOME_TRIGGER_LANDED 型〕退役;在册发射型两件口径续行)、
@@ -43,9 +43,9 @@
 > §6.5-1 触发前提改观察侧对账承接、§6.3 applied 两域分轨申报(F11)、
 > §1.1/§1.3/§4.3/§5.1/§5.2/§6.6/§9.2/§10.3/§11-R8 引用面联动;§12 流程
 > hook 章本版不动(其旧轴/fire 口引用面联动候锚实现批①,清单见
-> docs/develop/sr_od/application/currency_war/design/T-225-交付报告.md,禁静默改);代码零
+> design/ 归档件「交付报告」(档名保留原批号),禁静默改);代码零
 > 触碰——协议变更与执行器验证链拆除同窗落码(批3+批3a)防真空。
-> v13 = 余项收口正本对齐(统一观察架构迭代末阶段,T-8/T-47/T-48/T-45
+> v13 = 余项收口正本对齐(统一观察架构迭代末阶段,五相位屏批/收编件批/收尾五屏批/cw_op 收编批
 > 交付后):§5.2/§3.4 迁移面清零(全量已迁现状 + 推进型变体收编行 +
 > 过渡相位件已迁口径)、§6.4 在册两件②策略屏写端已接线、§9.2 余项
 > 收口完成态(相位 1 深度统一仍待独立批)、§2.5/§9.1 并存面刷新;
@@ -101,7 +101,7 @@
    ┌──────────────── on_outcome 落地登记钩子(共用)──────┐
    │ 任何动作发射,实机/sim 两路径经单一发射口触发同一套  │
    │ 登记(刷新计数/合成升星预期/免战牌递减/账本推进,    │
-   │ §6.4;落地判定归观察侧 reconcile,T-223)             │
+   │ §6.4;落地判定归观察侧 reconcile)             │
    └─────────────────────────────────────────────────────┘
 ```
 
@@ -150,11 +150,7 @@
    系统性少计至多 ×3。根因 = 修饰值躺在注册表里,sim 收入与决策两条链
    都没有活的消费接它——这正是「注册表有值引擎零消费」字段族
    (§8.3)的第一个实例。
-2. **败补旧表**(口径漂移分叉)。战斗败轮的补发金:记录模型按玩家裁定 =
-   该节点的基础奖励(平面感知键,记录模型设计 §4.2 轮首收入行);sim 引擎
-   用旧类型表 `LOSS_GOLD_BY_NODE {battle:2, encounter:4, boss:4}`
-   (engine_p1 败补分支)。两套口径并存,尾批挂了「sim 常量修正随之」——
-   挂账本身就是分叉税:每次口径演进都要记得改第二处,漏改即静默分叉。
+2. **败补旧表**(口径漂移分叉,已定谳)。战斗败轮的补发金:定谳口径(玩家裁定)= **节点基础奖励 + 利息**;旧类型表 `LOSS_GOLD_BY_NODE {battle:2, encounter:4, boss:4}` 废除(分桶重放仲裁因数据不足取消,复核不再需要),sim 引擎按定谳口径实现。教训保留:每次口径演进都要记得改第二处,漏改即静默分叉。
 3. **帧新鲜度差域**(消费时序分叉)。BoardState.node 在 battle 帧也会更新,
    而执行侧装配源 `last_state` 只在备战/结算点推进——同一个「当前节点」
    在两条链上的新鲜程度不同域。这正是迁移尾批(装配源切换)不能
@@ -194,7 +190,7 @@
    (逐项清单见 §7,每项一条搬迁任务)。
 3. 执行落地登记统一:批次二/三散落的「执行落地门」inline 钩子收编为基类
    生命周期钩子 on_outcome——任何动作发射,两路径经单一发射口触发同一套
-   登记(§6.4;落地回执门随 T-223 最严读法退役,触发前提 = 发射)。
+   登记(§6.4;落地回执门随 最严读法裁定退役,触发前提 = 发射)。
 4. 证据链闭合:sim 里验证过的决策行为与实机跑的是同一份中段代码——
    「实机验流程、sim 验算法」的分工(strategy-work「验证」)不再被
    「两边各一份实现」侵蚀。
@@ -306,7 +302,7 @@ synthesize_from_game_state(kernel/cw_game_state)是该映射的第一版,本架�
 
 ### 2.5 与 cw_game_ports 的关系
 
-`cw_game_ports.py`(T-120 批 0,惰性纯协议)已定义这对端口的契约:
+`cw_game_ports.py`(批 0,惰性纯协议)已定义这对端口的契约:
 CwObservationSource(screen_identity / observe_prep(phase) /
 observe_shop_cards / overlay_options)+ CwActionSink(execute_action →
 ExecResult),模块级安装槽,缺省 None = 生产直连现役路径(装配点分流面
@@ -396,11 +392,11 @@ sim 侧唯一需要「翻译」的地方:**引擎没有画面,只有开局与轮
 
 | 过渡相位 | 现役对应件 | 收编后 |
 |---|---|---|
-| 简报/BOSS 简报 | CwScreenBriefing 双登记点共驱(cw_loop 0r 位面简报分支 + 入口流简报屏段 cw_entry_start——观察直写 session,HandleBriefing 已退役)+ 职级 ctx 中转吸收(`_absorb_selected_difficulty`,cw_loop.py:1071,调用点 :1068) | 已迁(T-8):两登记点共同驱动同一基类驱动过渡 op;职级/boss/词缀写端 = 简报观察 payload(§2.2 简报行;切换 = 相位 1 深度统一批辖) |
+| 简报/BOSS 简报 | CwScreenBriefing 双登记点共驱(cw_loop 0r 位面简报分支 + 入口流简报屏段 cw_entry_start——观察直写 session,HandleBriefing 已退役)+ 职级 ctx 中转吸收(`_absorb_selected_difficulty`,cw_loop.py:1071,调用点 :1068) | 已迁:两登记点共同驱动同一基类驱动过渡 op;职级/boss/词缀写端 = 简报观察 payload(§2.2 简报行;切换 = 相位 1 深度统一批辖) |
 | 难度确认 | CwEntryStart 难度确认段(入口流,§4.2) | 启动序列末尾 = 相位 1 入口;selected_difficulty 写端顺势归位(§4.4) |
-| 位面详情 | CwScreenPlaneDetail(cw_loop 0a4 主循环兜底) | 已迁(T-47 随推进型变体收编:CwProgressionScreenOp 子类零改动,骨架即变体五段) |
-| 敌人情报(位面情报采集) | CwScreenPlaneIntel(采集子 op;接管补采挂点在备战屏 = cw_screen_prep `_takeover_collect_if_needed`;入口流补采 = cw_entry_plane_intel) | 已迁(T-48 直迁,薄转录:采集体抽 `_collect_cycle` 两路径方法级共享,双节点图边保留;两处调用挂点不变;采集 = 轻观察 + skip 决策的一次性过渡生命周期) |
-| 中断弹窗 | CwScreenInterruptDialog(cw_loop 分发;真 modal 红线 = 绝不点「放弃并结算」)+ cw_screen_prep 环入口清场(`_clear_entry_overlays`,关闭注册表 = ENTRY_OVERLAY_CLOSE:cw_screen_prep.py:143,派生映射 = cw_overlay_registry) | 已迁(T-47 随推进型变体收编:子类零改动,真 modal 红线承载于 `progress_once` 覆写原位);清场注册表留守原位,「可一键关闭」子集收编候相位 1 深度统一批 |
+| 位面详情 | CwScreenPlaneDetail(cw_loop 0a4 主循环兜底) | 已迁(随推进型变体收编:CwProgressionScreenOp 子类零改动,骨架即变体五段) |
+| 敌人情报(位面情报采集) | CwScreenPlaneIntel(采集子 op;接管补采挂点在备战屏 = cw_screen_prep `_takeover_collect_if_needed`;入口流补采 = cw_entry_plane_intel) | 已迁(直迁,薄转录:采集体抽 `_collect_cycle` 两路径方法级共享,双节点图边保留;两处调用挂点不变;采集 = 轻观察 + skip 决策的一次性过渡生命周期) |
+| 中断弹窗 | CwScreenInterruptDialog(cw_loop 分发;真 modal 红线 = 绝不点「放弃并结算」)+ cw_screen_prep 环入口清场(`_clear_entry_overlays`,关闭注册表 = ENTRY_OVERLAY_CLOSE:cw_screen_prep.py:143,派生映射 = cw_overlay_registry) | 已迁(随推进型变体收编:子类零改动,真 modal 红线承载于 `progress_once` 覆写原位);清场注册表留守原位,「可一键关闭」子集收编候相位 1 深度统一批 |
 
 **sim 侧**:过渡相位 = 引擎段边界申报的一种——进位面段申报简报相位
 (申报值 = 引擎段身份,开放问题 A1 已裁决 = 引擎内段身份申报;§3.3
@@ -452,7 +448,7 @@ reconcile → decide → act → on_outcome),不是循环外的特殊代码。�
 
 - 实机适配器只含**实机世界才能有的答案**:识别像素(OCR/CV/SIFT)、点击
   坐标、画面等待——这些是对「本帧画面上有什么/怎么落一击」的
-  物理回答,sim 世界不存在这个问题(落地判定不属适配器:T-223 后验真锚
+  物理回答,sim 世界不存在这个问题(落地判定不属适配器:最严读法后验真锚
   退役,§6.2)。
 - sim 适配器只含 **sim 世界的答案**:读变量、引擎步进、真值合成——这些是
   对同一问题的另一种物理回答。
@@ -528,7 +524,7 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
     缺陷留证),与被废段无关;
   - sim 的 applied 回执与规则性拒绝(如满栏非合成拒买)= 动作应用语义
     (§6.3),在 act 段的适配器回执内产生,不是生命周期段;
-  - 「点击是否落地」的判定自 T-223 终裁(2026-09-10 最严读法)起**不属
+  - 「点击是否落地」的判定自终裁裁定(2026-09-10 最严读法)起**不属
     动作适配器**:适配器只机械执行(发出即职责完成,成败回执退役——
     端口回执 (progressed, detail) 与 ActionOutcome.progressed 均退役),
     落地判定完全归观察侧 reconcile 对账(逻辑直写值 vs 下一帧实读,
@@ -554,7 +550,7 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
   字段(策略器立即可读),下一轮 reconcile 段观察实读覆盖(观察赢,
   失配 = 推算/动作 bug 缺陷留证);原「expect 记预期 → confirm 转正 +
   reconcile_pending_observation 核对口」两步机制已废除。
-- on_outcome 的触发契约(T-223 最严读法,v12):输入 = 意图 + 发射时点
+- on_outcome 的触发契约(最严读法,v12):输入 = 意图 + 发射时点
   证据;**单一发射口,发射即触发(发出即职责完成,成败回执退役)**——
   原「未落地不触发」默认语义随落地回执门(OUTCOME_TRIGGER_LANDED 型)
   退役,原「落地回执(progressed/applied)为触发前提」表述废止;登记
@@ -573,14 +569,14 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
 | CwScreenPrep.run 五段(①观察→②对账→③决策→④期望态→⑤执行) | **本生命周期的原型**:备战 op 已按五段组织,基类化 = 把②对账抽到基类共用,①观察/⑤执行换成端口调用,落地登记收编为 on_outcome(§6.4);第六段「验证」经用户裁定 2026-09-10 废除(§5.1),备战现役「验证失败→恢复原语」编排属违规面,处置归备战修复批(本架构批只排查申报)。备战 op 为第一个试点(§9.2) |
 | cw_loop.loop() 外循环画面分派 | **保留**:继续承担画面识别与 op 分发(它是 screen_identity 的现役实现);基类化不动外循环,只改被分发 op 的内部结构。简报/难度确认补入分派面 = 相位 1 行(§3.2);0 系 overlay 分支与环内清场表格化为过渡相位表(§3.4) |
 | CwEntryStart 入口流(大厅导航→难度确认) | **保留在统一循环外**(§4.2):菜单导航仅实机存在;其职级读数经 ctx 中转交接,到达难度确认屏即触发对局侧接管 |
-| 各事件屏 op(CwScreenEncounter 等:读→决策→点击→验关内联于 handle()) | 逐屏迁移到基类生命周期(§9 分屏渐进;粒度 = B3 三段走:先「遭遇 = 带刷新链最复杂、盛会之星 = 纯选卡最简」两代表屏立验证断言集模板,其余按族批量)。已按该式迁移的屏(遭遇 CwScreenEncounter/盛会之星 CwScreenMegastar + 第二批量八屏:补给 CwScreenSupplyNode/伙伴 CwScreenPartner/骇入策划 CwScreenPlanner/祈愿试炼 CwScreenWishTrial/命运卜者 CwScreenFortune/星徽秘典 CwScreenBookcard/装备三选一 CwScreenEquipPick/专家邀请函 CwScreenExpertInvite)= 基类子类 + 决策承载节点顶部装配点分流(两端口完整在场 → 五段;缺省 None = 旧路径,先例同备战 op 行)+ 实机适配器封口:遭遇屏的 encounter_refresh_used 写端收编 on_outcome 注册表(发射型,触发点两路径共用分派面),chosen_* 写端豁免留守;余屏均无落地登记件(§6.4 收编面对事件选卡屏零行;supply_refresh_used BoardState 字段位先申报禁写端),结构 = 共享动作体型——盛会之星 decide+act 内聚 ``_do_action``;第二批量七选卡屏门后体纯移入 ``_handle_overlay`` 两路径共享零转录(无门屏 planner/fortune/equip_pick 入口判定归主循环分发,observe 段 = 轻观察帧引用);补给内聚 ``_do_action`` 且节点完成判定 = 下一轮 observe 门 ``_in_node`` 复检;专家邀请函分流在选卡节点(开卡节点 = 纯导航留旧路径,申报面 = 迁移锁源面锁)。sim 腿不适用例外清单(B3-F11)随迁移批落测试 docstring。余下相位屏已全量迁毕:五相位屏(T-8:投资环境/投资策略/战斗等待——分流在 `wait()` 首行/简报——cw_loop 0r 位面简报分支与入口流简报屏段双登记点共驱/BOSS 简报)+ 收尾五屏(T-48:位面过渡/武装箱弹窗/未达上限弹窗/等待1-1/位面情报采集——分流在 `collect()` 节点首行,双节点图边保留),cw_screen/ 目录收口锁在册(AST 全目录断言:凡 op 祖链达 SrOperation 者必为 CwScreenOpBase 后代;锁 = test_cw_obs_arch_closing_screens.py::test_closure_all_cw_screen_ops_inherit_base);cw_op/ 商店系三件亦经 B4 挂账批收编(T-45,见 §9.2) |
-| CwProgressionScreenOp(第二画面 op 基类:只读/导航变体,空决策合同) | 收编为 CwScreenOpBase 变体(T-47):改挂基类 + `handle` 顶部装配点分流(两端口完整在场 → `run_lifecycle()` 变体五段;缺省 None = 现役骨架逐位执行);变体五段 = observe 入口/重入观察裁决(锚 miss 未推进 → fail 交回;miss 已推进 → 清旗标 success 出口)/reconcile + decide 空申报(空决策合同,零策略器问询)/act = `progress_once()` 推进半(免锚臂发出即 success)/on_outcome 无登记件;合同逐字保留(预算 2 归装饰器/重入裁决/免锚形态),11 子类零改动随之收敛(仅覆写 `entry_ok`/`progress_once`/类常量) |
-| 过渡相位现役件(简报/位面详情/敌人情报/中断弹窗/清场注册表) | 已按 §3.4 收编映射表迁毕:简报/BOSS 简报(T-8)与位面过渡/武装箱/未达上限/等待1-1/位面情报采集(T-48)= 基类直迁过渡 op,位面详情/中断弹窗 = 推进型变体件随 T-47 收编(子类零改动);清场注册表(ENTRY_OVERLAY_CLOSE)留守 cw_screen_prep 环入口清场原位,「可一键关闭」子集收编候相位 1 深度统一批 |
+| 各事件屏 op(CwScreenEncounter 等:读→决策→点击→验关内联于 handle()) | 逐屏迁移到基类生命周期(§9 分屏渐进;粒度 = B3 三段走:先「遭遇 = 带刷新链最复杂、盛会之星 = 纯选卡最简」两代表屏立验证断言集模板,其余按族批量)。已按该式迁移的屏(遭遇 CwScreenEncounter/盛会之星 CwScreenMegastar + 第二批量八屏:补给 CwScreenSupplyNode/伙伴 CwScreenPartner/骇入策划 CwScreenPlanner/祈愿试炼 CwScreenWishTrial/命运卜者 CwScreenFortune/星徽秘典 CwScreenBookcard/装备三选一 CwScreenEquipPick/专家邀请函 CwScreenExpertInvite)= 基类子类 + 决策承载节点顶部装配点分流(两端口完整在场 → 五段;缺省 None = 旧路径,先例同备战 op 行)+ 实机适配器封口:遭遇屏的 encounter_refresh_used 写端收编 on_outcome 注册表(发射型,触发点两路径共用分派面),chosen_* 写端豁免留守;余屏均无落地登记件(§6.4 收编面对事件选卡屏零行;supply_refresh_used BoardState 字段位先申报禁写端),结构 = 共享动作体型——盛会之星 decide+act 内聚 ``_do_action``;第二批量七选卡屏门后体纯移入 ``_handle_overlay`` 两路径共享零转录(无门屏 planner/fortune/equip_pick 入口判定归主循环分发,observe 段 = 轻观察帧引用);补给内聚 ``_do_action`` 且节点完成判定 = 下一轮 observe 门 ``_in_node`` 复检;专家邀请函分流在选卡节点(开卡节点 = 纯导航留旧路径,申报面 = 迁移锁源面锁)。sim 腿不适用例外清单(B3-F11)随迁移批落测试 docstring。余下相位屏已全量迁毕:五相位屏(投资环境/投资策略/战斗等待——分流在 `wait()` 首行/简报——cw_loop 0r 位面简报分支与入口流简报屏段双登记点共驱/BOSS 简报)+ 收尾五屏(位面过渡/武装箱弹窗/未达上限弹窗/等待1-1/位面情报采集——分流在 `collect()` 节点首行,双节点图边保留),cw_screen/ 目录收口锁在册(AST 全目录断言:凡 op 祖链达 SrOperation 者必为 CwScreenOpBase 后代;锁 = test_cw_obs_arch_closing_screens.py::test_closure_all_cw_screen_ops_inherit_base);cw_op/ 商店系三件亦经 B4 挂账批收编(见 §9.2) |
+| CwProgressionScreenOp(第二画面 op 基类:只读/导航变体,空决策合同) | 收编为 CwScreenOpBase 变体:改挂基类 + `handle` 顶部装配点分流(两端口完整在场 → `run_lifecycle()` 变体五段;缺省 None = 现役骨架逐位执行);变体五段 = observe 入口/重入观察裁决(锚 miss 未推进 → fail 交回;miss 已推进 → 清旗标 success 出口)/reconcile + decide 空申报(空决策合同,零策略器问询)/act = `progress_once()` 推进半(免锚臂发出即 success)/on_outcome 无登记件;合同逐字保留(预算 2 归装饰器/重入裁决/免锚形态),11 子类零改动随之收敛(仅覆写 `entry_ok`/`progress_once`/类常量) |
+| 过渡相位现役件(简报/位面详情/敌人情报/中断弹窗/清场注册表) | 已按 §3.4 收编映射表迁毕:简报/BOSS 简报与位面过渡/武装箱/未达上限/等待1-1/位面情报采集= 基类直迁过渡 op,位面详情/中断弹窗 = 推进型变体件随收编批收编(子类零改动);清场注册表(ENTRY_OVERLAY_CLOSE)留守 cw_screen_prep 环入口清场原位,「可一键关闭」子集收编候相位 1 深度统一批 |
 | decision_assembly.snapshot_from_obs | **保留**(装配缝):PrepObservation → Snapshot 的映射半部;其回退锚已切 strategy_input_state(迁移批次三),继续作备战装配点 |
 | strategies/impl/flow.py(CwFlowStrategy 分画面决策入口) | **不替代**:decide() 段的下游就是这些入口;策略器契约面不动 |
 | sim 引擎决策段(decide_shop_screen 循环 + 合成口;部署/装备内嵌块) | 商店段收编为 sim 适配器②「引擎动作应用」+ 基类生命周期驱动;部署/装备内嵌块 = decide 段 sim 替代形态的待收敛面(§5.1 申报,§7-T5 扩域);synthesize_from_game_state 升格为 sim 适配器①(§2.4) |
-| cw_game_ports(T-120 批 0 协议) | 两端口的装配机制(§2.5;CwActionSink 即动作端口协议位,§6.3) |
-| 执行落地门 inline 钩子(批次二/三散点:record_refresh_execution 接线点 / bump_key / 合成升星逻辑态直写 / 免战牌 consume_use) | **收编为基类 on_outcome 钩子**(§6.4)——位置迁移,登记件语义不变;触发前提自 v12 起改发射语义(T-223:落地门退役,§6.4/§6.5-1) |
+| cw_game_ports(批 0 协议) | 两端口的装配机制(§2.5;CwActionSink 即动作端口协议位,§6.3) |
+| 执行落地门 inline 钩子(批次二/三散点:record_refresh_execution 接线点 / bump_key / 合成升星逻辑态直写 / 免战牌 consume_use) | **收编为基类 on_outcome 钩子**(§6.4)——位置迁移,登记件语义不变;触发前提自 v12 起改发射语义(最严读法:落地门退役,§6.4/§6.5-1) |
 
 ### 5.3 框架归属与依赖方向
 
@@ -640,7 +636,7 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
 - **统一性证据(已成立,非新建)**:sim 引擎消费的就是同一批类型
   (engine_p1 对 decide_shop_screen 出口的 BuyCard/LevelUp/RefreshShop
   逐动作执行;decide_shop_screen 驱动器经逻辑态推算推进
-  同一批类型——前身 = cw_state.simulate 前瞻消费,已随 T-163 删除)——「意图类型两域同一」今天已真,缺的只是把它升格为
+  同一批类型——前身 = cw_state.simulate 前瞻消费,已删除)——「意图类型两域同一」今天已真,缺的只是把它升格为
   端口契约并接口化执行面(§6.3)。
 - **词表纪律**:新动作类型入词表 = 先改契约(两适配器同批给映射)再落码;
   禁止适配器私有动作类型(实机造一个 sim 不认识的意图 = 分叉复发)。
@@ -651,7 +647,7 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
 
 实机适配器② = 现役点击/等待/画面流转链的封口。每个意图类型申报一张
 「动作映射」:**点击链**(怎么落)。**验真锚(怎么确认落地)自 v12 起
-退役**(T-223 用户终裁 2026-09-10 最严读法):适配器只管机械执行,不做
+退役**(用户终裁 2026-09-10 最严读法):适配器只管机械执行,不做
 落地判定——「是否落地」不是适配器的输出,落地判定完全归观察侧 reconcile
 对账(逻辑直写值 vs 下一帧实读,观察赢——两态制)。逐动作映射细则见
 §6.6 清单表:
@@ -682,7 +678,7 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
   §6.5-1);判效面已落码拆除,本节保留为拆除前语义出处锚(判读旧遥测行时用)。
 - **改造要点**:映射表声明式(意图类型 → 点击链函数),散在 op/handler
   内的过程代码逐步收拢;适配器输出 = 机械执行完成(发出即职责完成,
-  调用方不问成败——执行签名成败回执 (progressed, detail) 随 T-223 退役,
+  调用方不问成败——执行签名成败回执 (progressed, detail) 随批退役,
   on_outcome 触发 = 单一发射口发射即触发,§6.4);未生效重试/拉黑/安灯
   类结构不归适配器(验证违规面拆除归批 3;安灯删/拉黑删 = 批 0 三裁定
   M4/M5),缺陷面归观察侧对账缺陷台账留证。
@@ -690,15 +686,15 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
 ### 6.3 sim 动作适配器(引擎动作应用)
 
 sim 适配器② = 引擎动作应用的接口化包装。**核心件已存在**:动作语义逻辑态推算
-`cw_state.simulate`(前身契约,已随 T-163 删除;现行单一转移函数 = `apply_shop_action_logic`,decide_shop_screen 驱动器消费)+
+`cw_state.simulate`(前身契约,已删除;现行单一转移函数 = `apply_shop_action_logic`,decide_shop_screen 驱动器消费)+
 引擎对动作的真值应用(扣金/落席/合成/重抽牌/部署/装备/出战/coarse 战斗)。
 缺的只是接口化——包装成与实机版同一接口:
 
 - **协议位现成**:cw_game_ports.CwActionSink.execute_action(ctx, action,
   env) → ExecResult(applied / income / verification / observed)——sim
-  实现 = 引擎 apply + 动作语义逻辑态直写;实机实现 = 现役执行链封装(T-120
+  实现 = 引擎 apply + 动作语义逻辑态直写;实机实现 = 现役执行链封装(假环境注入批
   批 0 已立该二分,本架构给消费规格)。
-- **applied 语义两域分轨(T-223/F11 修订,v12;原「两域对齐」申报
+- **applied 语义两域分轨(最严读法/F11 修订,v12;原「两域对齐」申报
   退役)**:sim 侧 applied 真值保留——规则性拒绝(如满栏非合成拒买,
   门)是动作应用语义,引擎拒买分支照旧;实机侧发射型恒真,
   不携带落地判定——规则性拒绝的实机承接 = 策略层 发射前置谓词
@@ -724,7 +720,7 @@ sim 适配器② = 引擎动作应用的接口化包装。**核心件已存在**
 
 ### 6.4 执行落地登记统一(on_outcome 钩子)
 
-**任何动作发射,实机/sim 两路径经单一发射口触发同一套登记**(T-223
+**任何动作发射,实机/sim 两路径经单一发射口触发同一套登记**(最严读法
 用户终裁 2026-09-10 最严读法,v12:两 fire 口 fire_outcome_hooks/
 fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDED
 型〕退役——发出即职责完成,登记在发射时点触发;「动作是否落地」的
@@ -739,9 +735,9 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
 | 合成升星逻辑态直写 detect_merge_upgrade → write_logic(bs.bench, 逻辑态推算 BenchView) 直写(两态制) | BuyCard 执行落地门逻辑态直写点(批次二扩单①) | on_outcome(BuyCard 发射)触发直写;实读覆盖归下一 reconcile 观察赢(不变) |
 | 免战牌递减 consume_use(归零移除) | prep_actions `_launch_attempt`「按钮-跳过」发射落地回执(批次三件⑥) | on_outcome(跳过发射)触发 |
 | 节点屏刷新计数组·遭遇(encounter_refresh_used write_logic,随点击置位不等验效) | 已收编本面(试点步骤 2 接线,注册表在册):触发点 = 刷新链两路径共用分派面,原 inline 位(handle 置位 :177-179/写端 :190-194,批次三件⑦接)随迁,登记语义不变(§6.5) | on_outcome(遭遇刷新点击)触发 |
-| 节点屏刷新计数组·策略屏(strategy_refresh_used 逐卡 dict[str,int] write_logic,随点击置位不等验效) | 已收编本面接线(T-8 策略屏迁移批):刷新链点击处经 `_emit_refresh_click` 单一分派面发射(触发点唯一,两路径共用),写端逐位随迁钩子体——原 inline 位(handle 发射即记 :265/逐槽 :281-287,批次三件⑦接)随迁,登记语义不变(§6.5) | on_outcome(策略屏刷新点击,逐卡键入账)触发 |
+| 节点屏刷新计数组·策略屏(strategy_refresh_used 逐卡 dict[str,int] write_logic,随点击置位不等验效) | 已收编本面接线(策略屏迁移批):刷新链点击处经 `_emit_refresh_click` 单一分派面发射(触发点唯一,两路径共用),写端逐位随迁钩子体——原 inline 位(handle 发射即记 :265/逐槽 :281-287,批次三件⑦接)随迁,登记语义不变(§6.5) | on_outcome(策略屏刷新点击,逐卡键入账)触发 |
 
-- **钩子契约(T-223 修订,v12)**:on_outcome(action, outcome, evidence)
+- **钩子契约(修订,v12)**:on_outcome(action, outcome, evidence)
   ——成败回执面退役(ActionOutcome.progressed 与端口回执 (progressed,
   detail) 均退役,调用方不问成败);outcome 携带面 = sim 动作应用语义
   (applied 真值/income/verification,§6.3 分轨申报),实机侧发射型不
@@ -749,7 +745,7 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
   bump_key;BuyCard → 合成升星逻辑态直写(write_logic)+ BUY bump;跳过 → consume_use;
   ……);基类在 act() 发射后统一调用,**实机/sim 两条路径走同一份钩子
   代码**。
-- **触发时点轴(R-E;T-223 最严读法重写,v12)**:原两型制(落地回执门
+- **触发时点轴(R-E;最严读法裁定重写,v12)**:原两型制(落地回执门
   〔默认〕+ 发射型〔例外〕)收敛为**单一发射型**——发射即触发,发出即
   登记。**落地回执门(OUTCOME_TRIGGER_LANDED 型)退役**:原默认型在册
   成员(刷新执行事实组/bump_key/合成升星逻辑态直写/免战牌 consume_use)随
@@ -763,7 +759,7 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
   点击即置位,防点偏未生效重入屏反复尝试」、BoardState 写端 :190-194,
   验效失败帧仍 +1);②策略屏逐卡刷新计数 strategy_refresh_used(逐卡
   dict[str,int],随策略屏刷新点击置位、不等验效;写端已按本面接线
-  (T-8 策略屏迁移批)= `register_outcome_hook` 注册件 +
+  (策略屏迁移批)= `register_outcome_hook` 注册件 +
   `_emit_refresh_click` 单一分派面发射,原 inline 写端(handle 发射
   即记 :265/逐槽 write_logic :281-287)逐位随迁钩子体,值/evidence/
   produced_by 逐位对拍锁在册;记录模型设计 §3.4.4,测试锁
@@ -773,7 +769,7 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
   流程边界事件触发的观测锚(进节点/进位面/结算),非动作发射辖域,触发
   点 = 流程边界(画面分派完成/过渡相位处理/结算观察写端);定义、登记
   纪律与在册成员见 §12(动作类锚自 v12 起沿用发射单型)。
-  **§12 联动申报(T-225 边界:禁静默改 §12)**:§12.2/§12.3 对「§6.4 轴
+  **§12 联动申报(边界:禁静默改 §12)**:§12.2/§12.3 对「§6.4 轴
   landed 型」及两 fire 口的引用面(buy_landed/sell_landed/refresh_landed/
   levelup_landed/box_opened/battle_start 等动作锚的触发时点型列、
   §12.5-1 触发口表述、§12.6-H6 两 fire 口前提)候锚实现批①联动修订——
@@ -790,7 +786,7 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
   注册;免费闸(record_refresh_execution)/免战牌 consume_use 等**执行链
   共链登记件**(新旧路径共用同一执行体,迁移即生产行为变化)挂账至
   等价门通过后的执行器批——零行为变更前不迁移,后续批(含步骤 2 sim
-  接线)不得按本表字面提前迁移。**协议变更同窗申报(T-223)**:基类协议面变更(两 fire 口合并单一发射口/落地门退役/回执退役)与执行器验证链拆除同窗落码(批3+批3a)——防「登记门已拆、发射口未并」的语义空窗;登记件迁移时序仍按本挂账执行,不因协议变更提前。B5-② 的断言面据此限定为「登记调用点
+  接线)不得按本表字面提前迁移。**协议变更同窗申报**:基类协议面变更(两 fire 口合并单一发射口/落地门退役/回执退役)与执行器验证链拆除同窗落码(批3+批3a)——防「登记门已拆、发射口未并」的语义空窗;登记件迁移时序仍按本挂账执行,不因协议变更提前。B5-② 的断言面据此限定为「登记调用点
   零残留」(不主张执行器职责清零)。
 - **sim 侧从「无登记」变「同登记」**:现役这些钩子只在实机链触发;统一后
   sim 引擎动作发射同样触发——sim 的 BoardState 刷新计数/升星预期/免战
@@ -803,10 +799,10 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
 ### 6.5 与批次二/三 as-built 的衔接(登记语义不变承诺)
 
 落地门钩子收编**不得改变登记件语义**——以下已锁语义照旧,收编只是位置
-从散落 inline 变为基类钩子(触发前提自 v12 起按 T-223 改发射语义,见
+从散落 inline 变为基类钩子(触发前提自 v12 起按 按最严读法改发射语义,见
 第 1 条):
 
-1. **未落地不计数 → 发射即登记 + 对账纠偏(T-223 改写,v12)**:原承诺
+1. **未落地不计数 → 发射即登记 + 对账纠偏(改写,v12)**:原承诺
    「执行落地判定先行,progressed/applied 是 on_outcome 的触发前提」随
    落地回执门退役废止;替代防线 = 发射即登记 + 观察侧 reconcile 对账
    (逻辑直写值 vs 下一帧实读,失配 → 冲销/纠偏/缺陷台账留证,观察赢
@@ -820,7 +816,7 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
 3. **同节点去重**:效果账本 tick_node 的去重与「登记当节点不推进」守卫
    原样保留(cw_loop 备战分支挂点不动,不属 on_outcome 辖——节点级事件
    非动作级)。
-4. **随点击置位不等验效(发射型两件口径续行;T-223 后发射型 = 唯一型,
+4. **随点击置位不等验效(发射型两件口径续行;最严读法后发射型 = 唯一型,
    本条从「例外」转为常态口径,§6.4 触发时点轴在册成员两件,F3)**:
    遭遇刷新计数(encounter_refresh_used)与策略屏逐卡刷新计数
    (strategy_refresh_used,同型同口径)都在**点击时点**置位、选择落地不
@@ -843,7 +839,7 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
 > **引擎私有需收敛**(sim 侧私有实现或绕接口)/ **实机私有=合法保留**
 > (点击链/识别机制,非数学推导)/ **sim 未建模**(校准层边界,如实申报)。
 > 「登记钩子」列 = on_outcome 触发的登记件(空 = 该动作无落地登记;
-> 触发时点自 v12 起统一为发射,§6.4/T-223)。
+> 触发时点自 v12 起统一为发射,§6.4 最严读法)。
 > 「验真=」标注(v12 申报)= 拆除前判效面照录——验真锚已退役
 > (§6.2),各动作的落地确认语义承接归观察侧 reconcile 对账;执行侧原地
 > 判效已随 2026-09-13 状态收敛迭代落码拆除,本列禁按字面新写判效面。
@@ -885,7 +881,7 @@ AST/全文检索,枚举全部定义与消费点)——「两份/三份/已就位
 |---|---|---|---|---|
 | 1 | board 下档阈值 | kernel board_next_tier_of;obs computed 支(cw_observation)与 sim `_board_next_tier_of`(engine_p1)均薄委托 | 已就位(先例) | 无(保持委托结构,禁第三份) |
 | 2 | 席空数/席满判定 | kernel bench_free_slots / bench_is_full;sim 席满观测键经合成口后供给(engine_p1) | 已就位 | 无 |
-| 3 | 升星推算(买牌 3 合 1 逻辑态直写) | kernel detect_merge_upgrade + 容器规则通道逻辑态直写(simulate 前瞻推算链为前身,已随 T-163 删除);sim 引擎消费同一逻辑态直写 | 已就位 | 对账项:sim 合成路径与 detect_merge_upgrade 的同名最高星签名口径一致性,随迁移批次二扩单①回归覆盖 |
+| 3 | 升星推算(买牌 3 合 1 逻辑态直写) | kernel detect_merge_upgrade + 容器规则通道逻辑态直写(simulate 前瞻推算链为前身,已删除);sim 引擎消费同一逻辑态直写 | 已就位 | 对账项:sim 合成路径与 detect_merge_upgrade 的同名最高星签名口径一致性,随迁移批次二扩单①回归覆盖 |
 | 4 | 退款公式 | kernel cw_state.sell_refund(1★=cost / 2★×3 / 3★×9 / 4★×27;star≥2∧cost≥2 再 −1 手续费) | 已就位(公式面) | 对账项:sim 卖牌退款调用点核对——禁引擎内联倍数表,违者按本表收敛 |
 | 5 | **轮首收入三支**(base / interest / streak + 修饰) | **kernel 收入函数族已落(T1a)**:reward_base_gold / loss_compensation_base / round_start_income / RoundStartIncome(符号名锚 kernel/cw_economy);引擎收入段改调 + live 写端指派 = **T1b 未接**;败补口径 = **数据不足定谳**(决策3,待玩家确认 + 补采口径在案);口径申报与 T1 拆分见 §7.1 | 部分就位(kernel 载体已落 / 引擎接线未接) | **T1b(接线批)**:sim 引擎收入段改调 kernel 函数族;实机 live 写端指派接同一函数(与 §10.1 尾批件合并执行);**假环境收入重述同批切源**——sr-od-test `fixtures/cw_fake_game/rules.py` 的 `income_for_round` 奖励轮 base 现按 round_num 单键直查 `REWARD_BASE_GOLD_BY_ROUND`(`reward_base_gold` docstring 明文的 hazard 形态:P2r1 误返 3,真值 5;FakeMatch 已支持 P2 段,hazard 域可达),切 `kernel.round_start_income`(event=0 语义保留,败补口径按在册「数据不足定谳、待玩家确认」申报)——切换致 P2 奖励轮 base 3→5 = 假局经济分布变更,随批升 env_version 申报;T1a 辖域排除三分量(gold_per_node 族 / gold_per_boss_node 族 / 战斗表现条件类)随 T1b 定承载(分量扩参 or 调用方聚合单列,§7.1 申报)。**net_income 决策消费点(F2 翻正,6 处,符号名+行号双锚)**:mandate_v1/shop.py ×4(1016/:1364/:1987/:2148)+ mandate_v1/encounter.py:240(决策消费)+ cw_economy.py:1047-1048(_upgrade_ul_threshold_ok 内 loss_exact 前置,P47 递推 c_int=loss_exact 调用处)——处置已按 决策2 委托改造收口(决策近似口径申报 = §7.1 决策近似口径行) |
 | 6 | 利息(gold, cap)+ flat 修饰 | kernel cw_economy.interest;sim 收入段内联 `min(cap, gold//10)+flat` | 引擎私有需搬迁 | T2:sim 收入段利息分量改调 kernel 函数(并入 T1 函数体) |
@@ -1014,7 +1010,7 @@ sample_node_sequence / P2_NODE_SEQUENCE 与替换函数的关系(替换前后序
 - 一次迁一个画面 op;旧路径保留到该画面的等价门通过;两路径并存期由
   cw_game_ports 装配点分流(「缺省 None = 生产直连」模式,不新建开关机制,
   符合 strategy-work「开关生命周期」对开关形态的收敛要求)。
-- **并存面现状(末阶段正本对齐,T-8/T-47/T-48/T-45 交付后)**:装配点
+- **并存面现状(末阶段正本对齐,五相位屏批/收编件批/收尾五屏批/cw_op 收编批交付后)**:装配点
   分流面已覆盖 cw_screen/ 全目录画面 op + cw_op/ 商店系三件(迁移面
   清零);生产仍恒走旧路径(装配点缺省 None,各迁移批生产行为零变化)
   ——并存期旧路径退役候批面 = 上述全量,退役归等价门(实机腿)通过后
@@ -1048,18 +1044,18 @@ sample_node_sequence / P2_NODE_SEQUENCE 与替换函数的关系(替换前后序
    改调观察端口(实机实现 = read_game_state + observe_full 封口;sim 实现 =
    synthesize_from_game_state 扩展 + 帧供给双落,§2.4);⑤执行段改调动作
    端口(意图→适配器,§6.2/§6.3),落地登记收编为 on_outcome(§6.4,
-   登记件语义不变承诺 §6.5;触发前提 = 发射,T-223)。
+   登记件语义不变承诺 §6.5;触发前提 = 发射)。
 2. sim 侧接线:引擎备战动作链改经基类生命周期驱动;段边界按 §3.2 翻译
    相位;申报面 = rng 消耗序不变(§11-R1)。
 3. 等价门:主门 = 行为锁经 execute() 走新基类全绿 + 写入流分域夹具对拍
    (§9.1);次门 = 策略面回归哨兵(商店子相位)跑通;通过后跑 sim A/B
    一批(辖域申报见 §9.1)。
-4. **余项收口完成态(T-8/T-47/T-48 交付,cw_op 挂账批 T-45 补齐)**:
-   事件屏族/投资两屏/结算(战斗等待)/简报/BOSS 简报(T-8)、推进型变体
-   11 屏(T-47)、收尾五屏(T-48)均已迁毕,cw_screen/ 全目录收口锁在册
+4. **余项收口完成态(五相位屏批/收编件批/收尾五屏批交付,cw_op 挂账批补齐)**:
+   事件屏族/投资两屏/结算(战斗等待)/简报/BOSS 简报、推进型变体
+   11 屏、收尾五屏均已迁毕,cw_screen/ 全目录收口锁在册
    (AST 断言:凡 op 祖链达 SrOperation 者必为 CwScreenOpBase 后代);
    cw_op/ 商店系三件(CwScreenBuyCards/CwOpOpenShop/CwOpCloseShop)经 B4
-   挂账批收编(T-45:open/close = 只读/导航变体,buy_cards = 旧体委托
+   挂账批收编(open/close = 只读/导航变体,buy_cards = 旧体委托
    变体,五段映射申报住类 docstring),B4 判据第 1 条点名清单全量达成。
    **相位 1 深度统一仍待独立批**:kernel 选职级缺省函数落地 + 简报/
    难度确认屏写端切观察 + selected_difficulty 两吸收点注销(A10 已裁决
@@ -1106,7 +1102,7 @@ sim 侧倒计时实现(归入 §7-T4 收敛纪律)。
 
 批次二/三已落地的 inline 钩子(record_refresh_execution 接线点、遭遇刷新
 计数 write_logic 点等)收编为 on_outcome 后:**登记件语义不变**(§6.5 六
-条承诺;触发前提自 v12 起按 T-223 改发射语义,§6.4/§6.5-1),记录模型
+条承诺;触发前提自 v12 起按 按最严读法改发射语义,§6.4/§6.5-1),记录模型
 设计 §8.7 的批次范围正本地位不重写;「钩子在哪个接线点」
 的表述自此归本文 §6.4 单一源,范围归属仍归记录模型设计 §8.7——两正本
 分工:范围(做什么)归 §8.7,接线位置(在哪里调)归本文。
@@ -1179,7 +1175,7 @@ sim 侧倒计时实现(归入 §7-T4 收敛纪律)。
 - **R11 流程转点锚的双计与口径混用风险**(§12):流程转点锚是新增登记
   件族——生命周期重入/重试路径可造成同事件双行,对账键幂等性 + 触发
   时点型显式申报是防线(§12.4 验收锁③④);锚行 scope 字段是防「P1
-  截断 vs 全局面」型口径混用的对偶面(T-211 归因批实证的锚侧预防,
+  截断 vs 全局面」型口径混用的对偶面(归因批实证的锚侧预防,
   进度账本 dag.jsonl 在册),消费侧跨批对读锚计数前必核 scope。sim 侧
   锚适用性逐锚申报(§12.2 适用域列),禁把「sim 无锚」误读成「事件未
   发生」。
@@ -1325,7 +1321,7 @@ produced_by      # 锚宿主 op 类名(沿登记件 produced_by 口径)
 false,判定事实型(H3:star≥2 判定帧位)定谳后改 true 并申报判定依据;
 **boundary 型锚的实机触发口与注册表触达机制未定**(现役两 fire 口都绑
 op 实例生命周期,分派点不在其中),见 §12.6-H6,禁实现批静默选型。
-**as-built(锚实现批① T-221,2026-09-10)**:代码承载已落
+**as-built(锚实现批①,2026-09-10)**:代码承载已落
 `kernel/cw_anchor.py`(符号名锚 = ANCHOR_REGISTRY/AnchorSpec/AnchorEvent/
 emit_anchor);闭集内 = §12.2 实机先行 8 锚(实机-only/缓立/出辖行随其
 归属批登记);当前零生产调用点 = 惰性纯机制面(触发口接线随其归属批:
@@ -1365,7 +1361,7 @@ DECLARED、不改既有 EMIT 表——本节末段已定锚登记行必带触发
   施加批消费该槽时须先过用户裁决并同步改造守卫,禁静默启用。
 - **C 判读纪律一条**(候选落 telemetry-reading 已知缺口/判读纪律节):
   跨批对比锚计数前先核锚行 scope 字段——P1 截断 vs 全局面口径混用的
-  锚侧预防(T-211 归因批实证)。
+  锚侧预防(归因批实证)。
 
 ### 12.5 机制关系声明(防双源防三源)
 
@@ -1391,14 +1387,14 @@ DECLARED、不改既有 EMIT 表——本节末段已定锚登记行必带触发
    落地后为三分:停机(停 run 留现场)/ 采集(采样留证,临时)/
    锚(常驻观测登记)。分流判据不变:要不要停 = 停机钩子辖;
    要不要采样 = 采集钩子辖;要不要把既成事实记准 = 锚辖。
-4. **T-170 判据轴 = 消费,不复制**。支出出口总图的统一判据轴(当轮
+4. **刷新成本判据轴 = 消费,不复制**。支出出口总图的统一判据轴(当轮
    转化 d 轴)辖「出口合法性」(决策前),锚辖「出口事实登记」(决策
    后)——两轴正交,合成一句话:**判据轴管「可以花在哪」,锚管「实际
    花了哪」**。防两套接口的硬约束:锚行词表消费总图闭集——卖牌锚
    channel = SELL_CHANNELS 闭集值域 + 发射侧 reason→channel 归一映射
    单一源(宿主与封闭性守卫随 H2)、买牌锚买因 = LAUNCH_CAUSES 闭集值
    + 同式归一映射(两闭集的定义点:SELL_CHANNELS/LAUNCH_CAUSES 皆在
-   sell_gate,符号名锚)、换血锚(出辖待接线)候 T-168 契约三的通道
+   sell_gate,符号名锚)、换血锚(出辖待接线)候契约三的通道
    登记,禁第二套渠道/买因枚举,归一映射本身 = 唯一允许的转换件;
    花金义务强制力(总图义务对偶轴,β 件候裁)的「盯防 = 观测批」
    消费锚行作盯防数据源,单一源不转移。d 类别不进锚行 payload
@@ -1444,7 +1440,7 @@ DECLARED、不改既有 EMIT 表——本节末段已定锚登记行必带触发
 
 - **H1 boundary 型申报面的命名与承载**:BOUNDARY_TRIGGERED_DECLARED
   独立申报表 vs 既有 EMIT 表加型列——实现批钉死并落测试锁,禁静默选型
-  (R-E 纪律延伸)。**已裁决(锚实现批① T-221):两候选皆不取,申报面
+  (R-E 纪律延伸)。**已裁决(锚实现批①):两候选皆不取,申报面
   = ANCHOR_REGISTRY 行的触发时点型列**(§12.3 末段已定锚登记行必带该
   字段,第二申报面即双源;EMIT 表加型列还须动基类在飞面)——锁面 =
   test_cw_anchor_registry(H1 裁决锁:定义面扫描零回潮 + 三 boundary 锚

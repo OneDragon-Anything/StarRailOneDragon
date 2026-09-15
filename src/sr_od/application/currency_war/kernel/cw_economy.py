@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     )
 
 # ============================================================
-# 候裁9 词汇迁入(原 kernel/cw_state.py;T-7 W8 定谳记录第 3 归宿):
+# 候裁9 词汇迁入(原 kernel/cw_state.py 经济域):
 # 金/经验/刷新/卖出回金/血线族(经济骨架同域)。
 # ============================================================
 
@@ -603,7 +603,7 @@ LEVEL_WEIGHT: float = 6.0             # 每级(相对期望)的分。2026-08-04 
 
 
 # —— 购买经验决策 helper(ADR-0129;机制常量 XP_TO_NEXT_LEVEL/XP_PER_BUY 在 cw_state 单一源)——
-# ⚠️ 本接缝族签名已切 GameState(W6 波 4,T-97;波 2 落码申报的
+# ⚠️ 本接缝族签名已切 GameState(W6 波 4;波 2 落码申报的
 # 「本接缝族签名切换随 mandate_v1 装配面切换批同波贯通」兑现——见
 # refresh_ev_budget docstring 过渡注)。字段读统一经容器读口单一源
 # (kernel/cw_game_state 决策面公共读口),禁各消费点自写兜底。
@@ -792,13 +792,6 @@ def blood_xp_gate_for(bs: GameState | None,
                          level_of(bs), mode[1])
 
 
-# _want_level_up/_xp_gold_floor(旧栈「该买经验」判据对)已随 T-64+T-183
-# 退役批删除(T-183 语义判定:消费链 = v1/decision_v2 旧栈遗留,调用面
-# 已随旧栈消亡;接线归宿 = mandate_v1 契约域新立 comp 节奏锚命题件,
-# 候方案审后立项。方案正本 = .debug/temp/currency_war/T-64-交付报告.md
-# §2.2;ADR-0638)。
-
-
 
 #: 刷新基价【注】= 赋值别名,非第二源:正本 = ``cw_state.REFRESH_COST_BASE``
 #: (游戏定义真值:实付恒 2 金,不随金位/次数/等级变,ADR-0456 三流对账
@@ -810,8 +803,7 @@ SHOP_REFRESH_COST: int = REFRESH_COST_BASE
 # (通用升级曲线 _DEFAULT_LEVEL_GOAL 已退役 2026-09-04,「未证即退役」裁定:
 # 旧值 = auto-chess meta 社区先验(前期 roll 找低费核心→中期 5-7 level_up→
 # lv8 roll 找 5 费→lv9 stable),无游戏定义或证明出处。保守缺省:comp 未填
-# level_plan 时不退回通用曲线(该回退路径的载体 _resolve_level_goal 已随
-# T-64+T-183 退役批删除),升级压力仅由
+# level_plan 时不退回通用曲线(该回退路径载体已删),升级压力仅由
 # 节点地板(get_node_goal,预算收权核)+ 淘金客姿态等已证判据辖。)
 
 
@@ -895,8 +887,7 @@ def get_node_goal(plane: int, round_num: int, *,
         # 标量投影容器:直接按入参构造最小决策容器(供给核只读经济/板面
         # 字段;无 session、无现成容器)。字段契约单一源 =
         # kernel cw_game_state.scalar_projection_state(对旧「惰性构造
-        # CwSimFrame + 过渡桥装箱」投影的逐字段镜像;旧载体随
-        # T-145 766 投影缝退役删除,过渡期投影等价测试已随之定谳不续)。
+        # CwSimFrame + 过渡桥装箱」投影的逐字段镜像;旧载体已删)。
         # session=None:nodes_of_plane 走缺表回退先验 9(一次性告警即记档)
         # → h=9−r 常 >0,R* 窗口分量在投影容器**照常储蓄**(预算收权攻击
         # 审读 F6b 纠偏:原注释「投影帧不储蓄」与实现不符;方向保守无害)。
@@ -966,16 +957,10 @@ def economy_score(state: CwSimFrame, economy_mode: str) -> float:
     return interest_val + level_val + streak_val
 
 
-# P2_REBUILD_GOLD_FLOOR(P2+ 穷金重建门限,ADR-0148 孤儿常量)已随 T-64+T-183
-# 退役批删除——src+测试仓全零消费(设计消费方 rush_level 降档逻辑已不存在;
-# 同族 roll_affordable 门 ADR-0147 亦退役,见下墓碑注)。
-
-
 def effective_refresh_prob(bs: GameState, level: int, cost: int) -> float:
     """轮岗感知的有效刷新概率单一源。
 
-    消费点 = mandate_v1 出口③ A 支对账(shop.py;原同文件消费方
-    roll 可负担性门已随 T-64+T-183 退役批删除),禁第二套对账语义——
+    消费点 = mandate_v1 出口③ A 支对账(shop.py),禁第二套对账语义——
     「bar=0 ∧ 表值>0」形态两消费点
     曾相反(出口③判确证零/economy 判表值非零),已按本优先级统一。
     优先级:
@@ -1002,10 +987,6 @@ def effective_refresh_prob(bs: GameState, level: int, cost: int) -> float:
         return refresh_prob(level, cost)
     return bar
 
-
-# roll_affordable(roll 可负担性门,ADR-0147)已随 T-64+T-183 退役批删除
-# (src 零调用;其判据语义「停 roll 要有配套的何时 roll 放行」的接线归宿 =
-# mandate_v1 契约域 comp 节奏锚命题件,候方案审后立项,ADR-0638)。
 
 
 def _char_synergies(name: str) -> set[str]:

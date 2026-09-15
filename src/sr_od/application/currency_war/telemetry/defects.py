@@ -116,7 +116,7 @@ DEFECT_KIND_BENCH_SLOT_LAYOUT_DRIFT: str = 'bench_slot_layout_drift'
 #: 无守卫数据)→ 拒绝重播种,维持旧布局防坏槽号进不可逆卖出链。
 DEFECT_KIND_BENCH_SLOT_UNHEALTHY: str = 'bench_slot_unhealthy'
 
-# (T-251 种子段读屏重建分键 tracked_seed_rebuild 已随 T-268 整批退役:
+# (种子段读屏重建分键 tracked_seed_rebuild 已整批退役:
 #  店内读屏重建出口移除,未观察态改走「策略关店→备战 heavy 观察」链,
 #  跳过留痕分键 shop_skipped_unobserved 内联在 cw_screen_buy_cards。)
 
@@ -288,7 +288,7 @@ def install_exit_hooks() -> None:
     kernel/cw_telemetry_exit 的钩子槽,使 kernel/obs/decision 三桶的
     telemetry 上行出口(落账/安灯/run_id 归属键)零直依本模块。
 
-    同点扩装(T-91):journal 段淘汰的 defect_ledger 联动跟随清理
+    同点扩装:journal 段淘汰的 defect_ledger 联动跟随清理
     (kernel/cw_state_journal.set_retirement_follower 槽)——台账段随
     journal run 段生命周期同窗清理/同显影,禁另起独立清理周期(双源漂移
     禁令);缺省关,本函数即生产武装点(装配序在本 app 内先于
@@ -435,7 +435,7 @@ def bypass_obs_conflict_to_defect(rec: dict) -> None:
 
 
 
-# ===== 布局档分键(15 号稿批 C;T-6 互不混流)=====
+# ===== 布局档分键(15 号稿批 C;互不混流)=====
 # 字符串单一源 = kernel.cw_telemetry_exit(obs 布局面经出口上行,双侧同引)。
 
 

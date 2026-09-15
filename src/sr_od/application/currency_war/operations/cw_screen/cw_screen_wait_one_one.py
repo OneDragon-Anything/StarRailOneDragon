@@ -6,13 +6,13 @@
 固定 ~10s(ONE_ONE_MAX_WAIT_S,待校准)仅作超时兜底:锚一直不现 = 异常,
 留证(存图)交循环。不给备战循环加「现在是 1-1」特殊状态参数。
 
-统一观察架构逐屏迁移(账本 T-48 收尾五屏;架构设计 §9.1 并存纪律):本类是
+统一观察架构逐屏迁移(收尾五屏;架构设计 §9.1 并存纪律):本类是
 CwScreenOpBase 子类,handle 首行装配点分流(本屏**无重入裁决旗标** → 分流
-在首行,先例 = T-8 战斗等待 wait();收尾屏详设 §4):cw_game_ports 两端口
+在首行,先例 = 战斗等待屏 wait();收尾屏详设 §4):cw_game_ports 两端口
 完整在场 → 五段生命周期新路径;缺省 None = 生产直连旧路径(原序列,生产行
 为零变化)。五段形态:observe = 锚命中早退 success(1-1 备战就绪)+ 超时
 早退 fail 留证(``_first_seen_ts`` 起 ≥ ``ONE_ONE_MAX_WAIT_S``,存图)+ 否则
-帧引用 payload(实机适配器① = 轻观察封口,T-8 战斗等待同式);reconcile =
+帧引用 payload(实机适配器① = 轻观察封口,战斗等待屏同式);reconcile =
 空申报;decide/act = 空申报(decision cycle = round_wait
 (``ONE_ONE_POLL_INTERVAL_S``)轮询等下一帧,act 段零动作如实申报);on_outcome
 = 无登记件(注册表缺席 = 零动作,__init__ 申报)。本屏 sim 腿 = 不适用
@@ -44,7 +44,7 @@ def _monotonic() -> float:
 
 @dataclass
 class WaitOneOneObservation:
-    """等待 1-1 观察 payload(五段之段1产物;T-48 实机转录形态)。
+    """等待 1-1 观察 payload(五段之段1产物;实机转录形态)。
 
     纯等待型轻观察(收尾屏详设 §4):锚命中/超时两早退判定在段内;payload
     仅携带稳定帧引用(实机识别域载体,不出端口——sim 适配器落位时该域 =
@@ -55,9 +55,9 @@ class WaitOneOneObservation:
 
 
 class WaitOneOneLiveObservationAdapter:
-    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,T-48)。
+    """实机适配器①(观察端口;架构设计 §2.3 识别链封口)。
 
-    轻观察封口(先例 = T-8 战斗等待轻观察适配器):早退判定(锚命中/
+    轻观察封口(先例 = 战斗等待屏轻观察适配器):早退判定(锚命中/
     超时)须在段内产出轮次,归 ``lifecycle_observe``;适配器仅装配稳定帧
     引用。sim 实现 = 不适用(F11 例外清单),本批不建。
     """
@@ -74,7 +74,7 @@ class CwScreenWaitOneOne(CwScreenOpBase):
 
     def __init__(self, ctx: SrContext):
         CwScreenOpBase.__init__(self, ctx, op_name='货币战争-等待1-1备战')
-        # 适配器位缺省装配(先例 = T-8 五相位屏):观察口 = 实机适配器
+        # 适配器位缺省装配(先例 = 五相位屏):观察口 = 实机适配器
         #(轻观察封口);动作口 = None = 直连现役动作体(基类「None = 子类
         # 缺省实现自担」)。on_outcome 注册表:本屏无登记件(注册表缺席 =
         # 零动作)。
@@ -83,7 +83,7 @@ class CwScreenWaitOneOne(CwScreenOpBase):
 
     @operation_node(name='等待1-1', is_start_node=True)
     def handle(self) -> OperationRoundResult:
-        # 装配点分流(统一观察架构 §9.1 并存期;先例 = T-8 战斗等待 wait():
+        # 装配点分流(统一观察架构 §9.1 并存期;先例 = 战斗等待屏 wait():
         # 两端口完整在场(= 测试 harness 显式装配)→ 五段生命周期新路径;
         # 缺省 None = 生产直连旧路径(下方原序列,生产行为零变化)。本屏无
         # 重入裁决旗标 → 分流在首行、锚判定之前(收尾屏详设 §4)。
@@ -105,7 +105,7 @@ class CwScreenWaitOneOne(CwScreenOpBase):
         # round_wait 重跑本节点且不耗 retry:轮询由固定超时兜底,不吃框架预算。
         return self.round_wait(wait=ONE_ONE_POLL_INTERVAL_S)
 
-    # ---- 五段生命周期(统一观察架构 §5.1;T-48,先例 = T-8 战斗等待驻留型)----
+    # ---- 五段生命周期(统一观察架构 §5.1,先例 = 战斗等待屏驻留型)----
 
     def lifecycle_observe(self
                           ) -> tuple[WaitOneOneObservation,

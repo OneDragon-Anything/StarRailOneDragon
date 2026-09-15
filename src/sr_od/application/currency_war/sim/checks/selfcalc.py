@@ -1,11 +1,11 @@
-"""自算复核共享判定核(T-153 自证循环迁移;ADR-0593)。
+"""自算复核共享判定核(自证循环迁移裁定;正本 = sim/checks/suspects.py 模块头)。
 
-循环面(C1-C7,ADR-0593 §1)的豁免边从「静默采信策略自述」降级为
+循环面(C1-C7)的豁免边从「静默采信策略自述」降级为
 「自算复核通过才豁免」。本模块 = 各检查器迁移面与检测器面(检测器
 集以 ``sim.checks.suspects.detector_ids()`` 公开口实数为准)共用
 的自算判定核(单一源;同判定核两处消费,禁第二实现——先例 = launch 判据
 核 kernel/cw_launch_admission 消费纪律)。输入形状 = 账本行 dict:sim 检查
-器与生产 ``tools/cw/review_skeleton.merge_round_rows`` 合并行同构(ADR-0593
+器与生产 ``tools/cw/review_skeleton.merge_round_rows`` 合并行同构(裁定
 §4.1);正面先例 = ADR-0564 §G4 roster-diff 差分自算、ADR-0589 执行点
 披露(dec_board_full/dec_bench_2star)。
 
@@ -65,7 +65,7 @@ def buy_identity(row: dict, action: dict) -> str:
 
 
 def is_engine_piece(name: str) -> bool:
-    """引擎件身份(kernel 单一源委托;T-126 批 5 收拢第二实现,P78-7)。
+    """引擎件身份(kernel 单一源委托;收拢第二实现,P78-7)。
 
     判定核单一源 = ``kernel.cw_card_identity.is_engine_piece``(本函数
     原为同判据第二实现;ADR-0625 候裁 5 申报的「生产决策位无可直调
@@ -141,7 +141,7 @@ def levelup_prereq_review(row: dict, action: dict, prev_level: int) -> str:
     ``dec_bench_wait_member`` = 本批新增披露)→ 行末快照近似(cap 按
     轮内升级量回退,同 check_levelup_budget_gate 回退式)。
 
-    **板满腿与名册可解析性解耦**(ADR-0593 后果.1(L6)):板满是授权前缀的
+    **板满腿与名册可解析性解耦**(板满授权前缀裁定):板满是授权前缀的
     必要条件。名册不可解析时,待上场腿不可得;板满腿可作名册无关
     反证的**只限引擎执行点披露**(``dec_board_full`` 键在场且 False
     ——执行点真值,封死「不锁线/写坏标签即豁免谎报」后门);行末
@@ -182,7 +182,7 @@ def seed_identity_review(rows: list[dict], row_idx: int,
     种子语义 = P1 未持有引擎件放行通道(语义锚 = ADR-0633 种子获取判据):
     复核 = 引擎件(注册表现算)∧ 购买时未持有(前轮末快照 + 同轮更早
     买入)。任一不成立 → mismatch(自报 engine_seed 但机械身份失配,
-    即 T-153 C7 的「改标脱离检查网」攻击面显形)。
+    即 C7 的「改标脱离检查网」攻击面显形)。
     """
     name = (action.get('card') or {}).get('name') or ''
     if not is_engine_piece(name):
@@ -207,7 +207,7 @@ def copy_collection_review(held_before: set[str],
     或 **购买时点净持有**同名(第 2/3 份副本路径)。两证据皆无的单张
     凭空 copy → mismatch(自报素材语境但无素材形态)。
 
-    净持有语义(ADR-0593 后果.5(L2)):调用方传入的 ``held_before`` 必须
+    净持有语义(净持有销账裁定):调用方传入的 ``held_before`` 必须
     是「买入-卖出台账销账」后的净集——曾持有但中途已卖出的名不在此
     (「终身持有通行证」形态封死,探针 = r1 买→r2 卖→r3 copy 买同轮
     卖必产失配)。
@@ -226,7 +226,7 @@ def sell_line_membership_review(row: dict, action: dict) -> str:
     真值 = 卖出执行点披露 ``dec_sell_in_line``(本批新增;引擎现算被卖件
     是否当前线名册成员)。**名册不可解析(行 target 空标签/查无)=
     unverifiable**——未锁线期的合法线账闭合(seed18 p1r1 孤儿清算
-    实证:T-141)不携可解析标签,彼时披露键恒 False 是语境缺失,
+    实证)不携可解析标签,彼时披露键恒 False 是语境缺失,
     非「非线成员」证据,禁据此定罪。键在场且名册可解析而 False
     (卖的不是线成员却自报转化/清算分键)→ mismatch。
     """

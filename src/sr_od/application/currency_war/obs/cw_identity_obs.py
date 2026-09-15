@@ -414,7 +414,7 @@ def identify_slots(
                 else:
                     avatar_id = avatar_id.split('#')[0]
         if avatar_id is None:
-            # 三态判定面增态(T-191 §7.2,裁定①):亮度≥50 的 miss =
+            # 三态判定面增态(裁定①):亮度≥50 的 miss =
             # 应有内容但识别失败 → unknown 显态落缺陷台账(§7.2 豁免
             # 延后:写端仍沿用不写,本记录只解除「失读与真空」沉默二义);
             # <50 = 确证空位,良性 miss 不留痕(与 shop 亮度判定表同源)。
@@ -570,7 +570,7 @@ def _session_level(ctx: SrContext) -> int | None:
 
     布局选档的 level 源(ADR-0281:后排槽数由 level 驱动;``_resolve_level`` 维护的
     单调链已防毒化)。离线/无 session 场景返 None(调用方退 6 槽基线)。
-    **T-8 单一源可信门**(15 号稿 §2.3/§6):启发式兜底帧的 level 值**不参与
+    **单一源可信门**(15 号稿 §2.3/§6):启发式兜底帧的 level 值**不参与
     取大**——「兜底 4」与「真读 4」可分后,兜底值不得混进单调链。容器侧该
     门由喂入结构性满足(``_feed_board_state`` 仅 authoritative 帧观察写
     level,兜底帧走 carry 沿用),故取容器值直取即可信域(last_state 链
@@ -626,7 +626,7 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
     布局选档 **cap 差公式 + CV 双通道**(ADR-0385,旧 level 驱动已废——run 26
     lv8 无召唤物局按 8 格读板失真实证):select_back_layout 现读 read_deploy_cap
     (未传 level 时 session 等级链);读不到 → 6 槽基线。
-    **布局未知态**(15 号稿 §3.2④/T-7):单帧未知 → 只返前排(跳过后排读);
+    **布局未知态**(15 号稿 §3.2④):单帧未知 → 只返前排(跳过后排读);
     冻结帧(连续 3 未知)→ 读类退 6 档基线继续读;每帧 JSONL 留证在
     resolve 侧。level_trusted 接线:未显式传 level 时取容器 level
     authoritative 位(``_level_trusted``,derived 帧公式通道弃权)。
@@ -642,7 +642,7 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
     _lt = None if level is not None else _level_trusted(ctx)
     _lay = resolve_back_slots(ctx, screen, level=level, level_trusted=_lt)
     if _lay.get('unknown') and not _lay.get('frozen'):
-        # 单帧未知(T-7,§3.2④):跳过后排身份读(宁缺勿造,同 paddle None
+        # 单帧未知(§3.2④):跳过后排身份读(宁缺勿造,同 paddle None
         # 对齐跳过先例);JSONL 留证(resolve 侧每帧落证)。
         front = identify_slots(screen, templates, _ctx_slots(ctx, '前排', 4),
                                'front',
@@ -978,7 +978,7 @@ def _merge_item_occupied_slots(ctx: SrContext, screen: MatLike,
 # 状态读取与写回均挂 session(``cw_idfunnel_last``/``cw_idfunnel_seen``),
 # 不引入模块级全局;无 session(离线/测试)→ 直接 L3 全库,行为等价。
 # 实现手法 = **传缩小后的 templates 子字典**;裁决代码零改动。
-# ⚠️ 子集仲裁的固有缺陷(T-218 实机实证,2026-09-14 run_20260914_210200
+# ⚠️ 子集仲裁的固有缺陷(实机实证,2026-09-14 run_20260914_210200
 # 停机钩子 exec_fail_mismatch):歧义比在子集里失真——真身不在子集时,
 # 基准线上的跨身份弱命中即可称王(黄泉卡全库 27 内点为冠军,子集里被
 # 10~18 内点的忘归人/不死途弱命中顶替),毒化 last/seen 后整槽丢读 →
@@ -1101,7 +1101,7 @@ def read_deployed_chars_tiered(session, ctx: SrContext, screen: MatLike,
                                level: int | None = None) -> list[BenchChar]:
     """:func:`read_deployed_chars` 的漏斗版(签名多 session;布局解析/
     留证钩子/系统单位自检全部复用旧实现,仅 front/back 识别走三层漏斗)。
-    布局未知态语义与旧实现同款(§3.2④/T-7):单帧未知只返前排;冻结帧
+    布局未知态语义与旧实现同款(§3.2④):单帧未知只返前排;冻结帧
     读类退 6 档基线。"""
     from sr_od.application.currency_war.obs.cw_back_layout import (
         back_row_slot_rects_ctx,
@@ -1120,7 +1120,7 @@ def read_deployed_chars_tiered(session, ctx: SrContext, screen: MatLike,
                                   live_only=_DEPLOYED_LIVE_ONLY,
                                   center_gate=_DEPLOYED_CENTER_GATE)
     if _lay.get('unknown') and not _lay.get('frozen'):
-        return front   # 单帧未知:跳过后排读(T-7)
+        return front   # 单帧未知:跳过后排读
     back = identify_slots_tiered(session, screen, templates, back_slots, 'back',
                                  min_inliers=_DEPLOYED_MIN_INLIERS,
                                  live_only=_DEPLOYED_LIVE_ONLY,

@@ -38,11 +38,11 @@ class SellBenchOp(ActionOp):
         from sr_od.application.currency_war.prep_actions import (
             drag_bench_to_sell,
         )
-        # T-192 机械执行:拖拽零判效(源槽像素验重试已拆),发出即记账
+        # 机械执行:拖拽零判效(源槽像素验重试已拆),发出即记账
         # 并推进 tracked 双账;落地事实归下一帧入口观察 reconcile 对账。
         # (槽位越界 = 调用方 bug,drag_bench_to_sell 守卫响亮上抛。)
         drag_bench_to_sell(op, op.ctx, action.bench_idx)
-        # tracking 同步:置 None 不紧缩(ADR-0316)。T-308/ADR-0646 S1:
+        # tracking 同步:置 None 不紧缩(ADR-0316)。ADR-0646 S1:
         # 下标直拷(pad 补 None)替代 bench_from_compact 槽号重构——S2 写回
         # 端保证 tracked 恒槽位表后本归一恒等;历史 bug 态(紧凑)下布局以
         # 列表下标为准(与 mutate 入口 pad 同构),不再按 slot 重构(陈旧
@@ -57,7 +57,7 @@ class SellBenchOp(ActionOp):
         mutate_bench_deployed(_tracked, _books.deployed, action)
         # ADR-0328 执行域对齐:卖出件入同轮已卖集(执行成功是卖出事实的
         # 权威,register_round_sold 带轮键自校验)。
-        # 换源 T-146(登记集消点):轮键源 = session 容器单例(node = 本
+        # 换源(登记集消点):轮键源 = session 容器单例(node = 本
         # 节点备战帧写端,与波内帧 plane/round 同节点同值);旧过渡桥装箱
         # 退役。register_round_sold 消费面 = plane/round 轮键(轮键不匹配
         # 自拒 = 原防御语义不变)。

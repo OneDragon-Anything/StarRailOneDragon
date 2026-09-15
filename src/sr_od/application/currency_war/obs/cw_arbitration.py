@@ -7,7 +7,7 @@
 ——原始证据行仍走 ``kernel.cw_observe.obs_conflict``,不一致率分键仍走
 ``telemetry.defects``,注册面只统一「谁在什么键下调用它们」。
 
-**批 A 严格零行为变更**:迁移语义不变性由测试锁 T-1(注册面语义)/T-2(迁移
+**批 A 严格零行为变更**:迁移语义不变性由对拍测试锁(注册面语义/迁移
 对拍:deployed 全格对拍 + board 分歧帧×帧态矩阵)钉死;裁决值/schema/分键
 锁死,obs_conflict 的 verdict 提示文本允许随迁移改写(A13 声明,对拍不锁)。
 
@@ -40,7 +40,7 @@ VERDICT_UNKNOWN: str = 'unknown'        # 全源弃权(布局未知态等;批 B 
 
 @dataclass(frozen=True)
 class ArbitrationRule:
-    """单量仲裁声明(§2.4 注册面 schema;T-2 锁 schema 面)。
+    """单量仲裁声明(§2.4 注册面 schema;对拍锁 schema 面)。
 
     - ``combine``:类内泛化规则的量实例(纯函数,``**readings`` 按源名传参),
       返回 ``(采信值, 是否真分歧)``;
@@ -76,11 +76,11 @@ def get_rule(key: str) -> ArbitrationRule | None:
 
 
 def registered_keys() -> list[str]:
-    """已注册量键(分键互不混流锁 T-6 的清点面)。"""
+    """已注册量键(分键互不混流锁的清点面)。"""
     return sorted(_RULES)
 
 
-# ===== 裁决内核(迁移自私写法;批 A 前后逐字节等价,T-2 对拍钉死)=====
+# ===== 裁决内核(迁移自私写法;批 A 前后逐字节等价,对拍钉死)=====
 
 def combine_deployed_count(paddle_x: int | None,
                            cv_occupied: int | None) -> tuple[int | None, bool]:

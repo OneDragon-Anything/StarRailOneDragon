@@ -30,7 +30,7 @@ journal 行与冻结档案承载。
 本 op ①段(等结算画面)轮询中消费「自动战斗未开启」信号(画面右下角
 「我方行动中」文本,待建档)→ 自愈/报警;接通前战斗段依赖自动战斗已开。
 
-统一观察架构逐屏迁移(账本 T-8 五相位屏;架构设计 §9.1 并存纪律):本类
+统一观察架构逐屏迁移(五相位屏;架构设计 §9.1 并存纪律):本类
 是 CwScreenOpBase 子类,wait() 首行装配点分流(本屏**无重入裁决旗标** →
 分流在出口判定之前,详设关键取舍 4):两端口完整在场 → 五段生命周期新
 路径;缺省 None = 生产直连旧路径(原序列,生产行为零变化)。五段形态:
@@ -93,7 +93,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class BattleWaitObservation:
-    """战斗等待观察 payload(五段之段1产物;T-8 实机转录形态)。
+    """战斗等待观察 payload(五段之段1产物;实机转录形态)。
 
     驻留型轻观察(详设 §3):出口判定(终局锚/完成白名单)含早退轮次语义,
     归 ``lifecycle_observe`` 段;payload 仅携带稳定帧引用(分支链读屏的
@@ -105,7 +105,7 @@ class BattleWaitObservation:
 
 
 class BattleWaitLiveObservationAdapter:
-    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,T-8)。
+    """实机适配器①(观察端口;架构设计 §2.3 识别链封口)。
 
     驻留型轻观察封口(先例 = 盛会之星轻观察适配器):出口判定须在段内产出
     早退轮次,归 ``lifecycle_observe``;适配器仅装配稳定帧引用。sim 实现 =
@@ -466,7 +466,7 @@ class CwScreenBattleWait(CwScreenOpBase):
                                  '赢' if _obs.killed else '输')
                 _st.last_outcome_t = _now_t
             # 结算三项遥测页1 暂存合并(同 progress 合并法;暂存值优先于页2 同帧读数)
-            # heal_longline 同并入(T-83/ADR-0609:回血分量,页1 瞬窗才可见)
+            # heal_longline 同并入(ADR-0609:回血分量,页1 瞬窗才可见)
             _st1 = _st.settle_page1_settle
             if _st1 and _st.settle_p1_battle_ts != _st.battle_ts:
                 _st1 = {}   # 异窗滞留即弃(跨场污染排除)
@@ -556,9 +556,9 @@ class CwScreenBattleWait(CwScreenOpBase):
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] effect inventory 结算挂点失败'
                                 '(不阻塞): %s', e)
-                # 装备写端·拷贝仪参与计数结算(T-70 生产接线;载体 =
+                # 装备写端·拷贝仪参与计数结算(生产接线;载体 =
                 # settle_copy_machine_participation,指定挂点 = 战斗结算
-                # 覆盖带 on_battle_end 同分支同时序,T-63 交付申报):现值
+                # 覆盖带 on_battle_end 同分支同时序):现值
                 # 观察面(前台+后台在册单位)逐件推进参与计数,整除阈值
                 # 成熟经入席桥落 1★ 复制;对局无拷贝仪穿戴 = 零扫描命中
                 # 零行为差。独立 best-effort try(同 on_battle_end 纪律,
@@ -948,7 +948,7 @@ class CwScreenBattleWait(CwScreenOpBase):
             return self.round_fail('战斗等待连续未识别,bail 交主循环兜底')
         return self.round_wait(wait=1.5)
 
-    # ---- 五段生命周期(统一观察架构 §5.1;T-8,驻留型)----
+    # ---- 五段生命周期(统一观察架构 §5.1,驻留型)----
 
     def lifecycle_observe(self
                           ) -> tuple[BattleWaitObservation,

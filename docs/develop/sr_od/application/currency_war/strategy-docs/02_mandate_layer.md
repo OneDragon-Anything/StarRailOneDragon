@@ -86,7 +86,7 @@
 | 机器 | 处置 |
 |---|---|
 | buy | 升格骨架（EV 剥离）：序 1/序 2 走 M2 义务通道；序 3-5 留 EV；息律域只对 EV 买生效 |
-| sell | 升格骨架（单向）：M4 腾席方向义务化；线内件禁卖护栏保留（只保留「卖杂件」一个义务出口 + 其余 fail-closed）。**姊妹出口（[14_p1_consume_arms.md](14_p1_consume_arms.md) §9.3 三-3 ⑧(c) 登记的入册批补句，T-127 R2 执行）**：部署面换血（M1″ 锁线段）借用卖出作为实现手段，构成 M4 之外的第二卖出义务出口 = **「M4 姊妹出口·部署腾席卖出」**——victim 资格单一判定 = `kernel/cw_deploy_logic.swap_sell_exclusion_reason`（义务集∪新鲜度排除∪资格族，发射⇔执行同函数；非 M4 燃料判据本体），触发面 = T-127 装配级键集收窄 + 执行条件发射门；出口自部署面换血落码起先于本补句在产，为登记滞后如实申报 |
+| sell | 升格骨架（单向）：M4 腾席方向义务化；线内件禁卖护栏保留（只保留「卖杂件」一个义务出口 + 其余 fail-closed）。**姊妹出口（[14_p1_consume_arms.md](14_p1_consume_arms.md) §9.3 三-3 ⑧(c) 登记的入册批补句，部署评估批 R2 执行）**：部署面换血（M1″ 锁线段）借用卖出作为实现手段，构成 M4 之外的第二卖出义务出口 = **「M4 姊妹出口·部署腾席卖出」**——victim 资格单一判定 = `kernel/cw_deploy_logic.swap_sell_exclusion_reason`（义务集∪新鲜度排除∪资格族，发射⇔执行同函数；非 M4 燃料判据本体），触发面 = 装配级键集收窄 + 执行条件发射门；出口自部署面换血落码起先于本补句在产，为登记滞后如实申报 |
 | levelup | 升格骨架：M3 arm1 去 board_vacancy 依赖；cap 感知；arm2 降为调度门 |
 | opening / deploy | 升格骨架：M5 / M1（deploy 为核心修复位） |
 | refresh / streak_money | 保持 EV |
@@ -105,4 +105,4 @@
 
 - 升档器（血线硬地板 + λ 顾问）规格 = 00 §4；其与 M3 的解锁接缝见本篇 §3 M3 行与 [04_survival_budget.md](04_survival_budget.md)。
 - M2 序 1/序 2 的「序」定义 = [11_shop_decisions.md](11_shop_decisions.md) §1；证据门 = [12_line_and_intention.md](12_line_and_intention.md) §1。
-- 骨架动作的发射载体（单动作选择序、动作词表、终结 op 集）= [../flow/README.md](../flow/README.md) §2 与 [../flow/action_exec.md](../flow/action_exec.md)；装配形态 = 单动作画面 op 架构（已落码,as-built：整波发射与截断器已退役，截断点语义由终结 op 吸收；执行载体 = `cw_shop_action_ops.py` 动作基类 execute 单方法 + `run_buy_waves` 单动作循环；期望态推进 = 容器规则通道（`apply_shop_action_logic` 逻辑态直写口 + `apply_shop_merge_leg` 合成升星腿,基点 = 买前快照三件组;execute+project 逻辑态推算契约(前身)已随 T-163 删除,策略域零 simulate 前瞻消费——用户裁定 2026-09-12 纯规则路线））。
+- 骨架动作的发射载体（单动作选择序、动作词表、终结 op 集）= [../flow/README.md](../flow/README.md) §2 与 [../flow/action_exec.md](../flow/action_exec.md)；装配形态 = 单动作画面 op 架构（已落码,as-built：整波发射与截断器已退役，截断点语义由终结 op 吸收；执行载体 = `cw_shop_action_ops.py` 动作基类 execute 单方法 + `run_buy_waves` 单动作循环；期望态推进 = 容器规则通道（`apply_shop_action_logic` 逻辑态直写口 + `apply_shop_merge_leg` 合成升星腿,基点 = 买前快照三件组;execute+project 逻辑态推算契约(前身)已删除,策略域零 simulate 前瞻消费——用户裁定 2026-09-12 纯规则路线））。

@@ -1,4 +1,4 @@
-"""货币战争 详情弹窗(可合成列表/角色详情)op(空决策形态;T-121/ADR-0584,A7)。
+"""货币战争 详情弹窗(可合成列表/角色详情)op(空决策形态;ADR-0584,A7)。
 
 点卡/点角色触发的详情弹窗(1b)的处理:点面板外空白关,验「装备推荐」消失。
 关闭机制建档先例:装备详情浮窗 2026-08-14 live 验「点画面空白处→关闭回备战,
@@ -6,12 +6,12 @@
 替代 ESC 的理由:ESC 在浮窗已自关时落备战会误弹「中断挑战」(bug#2 三次
 实锤),空白点在 overlay 未开时是无害空点。
 
-入口判据(T-163 锚化,原全屏 OCR「可合成列表」∨「角色详情」退役):迁移
+入口判据(双锚锚化,原全屏 OCR「可合成列表」∨「角色详情」退役):迁移
 archive 双锚——「按钮-装备推荐」(角色详情变体,4 张归档 fixture 全命中)
 ∨「装备详情-合成公式」(可合成列表变体,该变体 fixture 命中)。退役理由
 (outer_loop.md §2.1「优先 area 化」的存量欠账清偿):全屏「角色详情」与
 商店卡牌详情弹窗底部的「角色详情」按钮(x560-930)全等共享(LCS 1.0,
-收紧 lcs 无济于事)→ T-163 事故中该弹窗被 1b 垄断 26 分钟。位置约束的
+收紧 lcs 无济于事)→ 实机事故中该弹窗被 1b 垄断 26 分钟。位置约束的
 area 锚天然区分两变体(本弹窗底部按钮不在右侧面板锚区内)。
 
 验效退役(验证废除批,用户裁定 2026-09-10:动作 op 禁验证):原 VERIFY_AREA
@@ -40,7 +40,7 @@ class CwScreenRoleDetailOverlay(CwProgressionScreenOp):
         CwProgressionScreenOp.__init__(self, ctx, op_name='货币战争-详情弹窗')
 
     def entry_ok(self, screen: MatLike | None) -> bool:
-        # 与外循环 1b 分发判定同源同参(T-163 锚化):装备推荐 ∨ 合成公式
+        # 与外循环 1b 分发判定同源同参(双锚锚化):装备推荐 ∨ 合成公式
         return (self.round_by_find_area(screen, self.SCREEN_NAME,
                                         '按钮-装备推荐',
                                         crop_first=False).is_success

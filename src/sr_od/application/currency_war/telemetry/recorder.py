@@ -110,9 +110,9 @@ class TelemetryRecorder:
         self._append(DEFECT_LEDGER_NAME, _to_jsonable(rec))
 
 
-# ===== 寿命联动:defect_ledger run 段清理(journal 段裁决的跟随者;T-91)=====
-# 联动契约(底稿 = T-6-r1 §⑤-1「寿命联动随 run 段同批淘汰」;框架 =
-# kernel.cw_state_journal 三道闸,T-77):defect_ledger 段随 journal run 段
+# ===== 寿命联动:defect_ledger run 段清理(journal 段裁决的跟随者)=====
+# 联动契约(寿命联动随 run 段同批淘汰;框架 =
+# kernel.cw_state_journal 三道闸):defect_ledger 段随 journal run 段
 # 生命周期同窗清理、同 manifest 显影,禁另起独立清理周期(双源漂移禁令)
 # ——触发点唯一 = journal 装配趟(kernel install_state_telemetry),本侧
 # 只做跟随,不自设周期。段裁决两分:
@@ -249,7 +249,7 @@ def enforce_defect_ledger_retention(
                     f.write(json.dumps(row, ensure_ascii=False) + '\n')
         # 原子改名退避重试:Windows 上读端以共享读短持句柄打开目标时
         # MoveFileEx 报 WinError 5——读端读完即关,0.5s 退避即可过
-        # (kernel.cw_state_journal 同因同治本口径,T-77 实证)。
+        # (kernel.cw_state_journal 同因同治本口径,实测)。
         last_err: Exception | None = None
         for _ in range(3):
             try:

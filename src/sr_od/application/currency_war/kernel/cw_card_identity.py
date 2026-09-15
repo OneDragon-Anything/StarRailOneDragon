@@ -1,4 +1,4 @@
-"""卡牌身份分层单一源(T-115 规则③④共用判据;ADR-0580)。
+"""卡牌身份分层单一源(规则③④共用判据;ADR-0580)。
 
 同一「买入资格 × 卡牌身份」面上此前散布多套并列前件(M2 线内 /
 dominance 零重叠 / C1 锁线核心 / ③ registry 核心 / ④ 转线件)——本模块
@@ -9,7 +9,7 @@ dominance 零重叠 / C1 锁线核心 / ③ registry 核心 / ④ 转线件)—�
 - registry_core 层 = ``kernel.cw_comps.CORE_SINGLE_CARD_REGISTRY``
   (谓词式唯一入选规则,出处指针随值);
 - transition_component 层 = ``knowledge.cw_line_facts.TRANSITION_PACK``
-  档 ∈ {carry, partial}(T-115 规则④放行集;drop 档 = P1 末弃应急件
+  档 ∈ {carry, partial}(规则④放行集;drop 档 = P1 末弃应急件
   不放行,cw_line_facts.py 档位值注释语义)。禁消费 kernel/cw_transition
   的同名迁移副本(该文件内明令「勿新增消费」,本模块是唯一新消费点)。
 
@@ -55,7 +55,7 @@ def transition_release_names() -> frozenset[str]:
 
 
 def sell_hold_exclusion_names() -> frozenset[str]:
-    """凑息卖出资格集的静态持有类排除集(T-115 Z1 修法;ADR-0580)。
+    """凑息卖出资格集的静态持有类排除集(ADR-0580)。
 
     集合 = CORE_SINGLE_CARD_REGISTRY ∪ transition_release_names()——
     ③④语义 = 持有,整类从凑息/筹资燃料资格排除,覆盖「已买待持有」
@@ -70,7 +70,7 @@ def sell_hold_exclusion_names() -> frozenset[str]:
 
 
 def is_engine_piece(name: str) -> bool:
-    """引擎件身份(注册表现算单一源;T-126 批 5 种子排除,P78-7)。
+    """引擎件身份(注册表现算单一源;种子排除,P78-7)。
 
     判据 = 角色注册表 factions∪flows 与引擎三阵营(ENGINE_FACTIONS,
     桥池 engine_bonds 派生)交集非空——与 ``cw_line_defs.classify_buy``

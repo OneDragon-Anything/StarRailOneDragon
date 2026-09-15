@@ -49,7 +49,7 @@
 id_mark/两个节点条);boss 节点圆由 ``read_plane_detail_nodes`` 动态定位
 (节点数随位面/投资策略变:位面1=9,位面2/3=7,不硬编码)。
 
-统一观察架构逐屏迁移(账本 T-48 收尾五屏;架构设计 §9.1 并存纪律):本类是
+统一观察架构逐屏迁移(收尾五屏;架构设计 §9.1 并存纪律):本类是
 CwScreenOpBase 子类,``collect()`` 节点首行装配点分流(先例锚 =
 cw_screen_encounter.py :241-251/:252-258):cw_game_ports 两端口完整在场 →
 五段生命周期新路径;缺省 None = 生产直连旧路径(原序列,生产行为零变化)。
@@ -208,7 +208,7 @@ def decide_plane_skip(plane_no: int,
 
 @dataclass
 class PlaneIntelObservation:
-    """位面情报采集观察 payload(五段之段1产物;T-48 实机转录形态)。
+    """位面情报采集观察 payload(五段之段1产物;实机转录形态)。
 
     薄转录直通形态(收尾屏详设 §5):observe 无门无早退(场景门[在位面
     详情/备战/其它]本就在现役采集体内),payload 仅携带稳定帧引用(实机
@@ -220,9 +220,9 @@ class PlaneIntelObservation:
 
 
 class PlaneIntelLiveObservationAdapter:
-    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,T-48)。
+    """实机适配器①(观察端口;架构设计 §2.3 识别链封口)。
 
-    直通封口(先例 = T-8 轻观察适配器族;本屏薄转录,场景门不前移):适配
+    直通封口(先例 = 轻观察适配器族;本屏薄转录,场景门不前移):适配
     器仅装配稳定帧引用。sim 实现 = 不适用(F11 例外清单),本批不建。
     """
 
@@ -244,7 +244,7 @@ class CwScreenPlaneIntel(CwScreenOpBase):
         本 op 在备战入口自行现读,仍无则全量采集(保底)。
         """
         CwScreenOpBase.__init__(self, ctx, op_name='货币战争-位面情报采集')
-        # 适配器位缺省装配(先例 = T-8 五相位屏):观察口 = 实机适配器
+        # 适配器位缺省装配(先例 = 五相位屏):观察口 = 实机适配器
         #(直通封口);动作口 = None = 直连现役采集体(基类「None = 子类
         # 缺省实现自担」)。on_outcome 注册表:本屏无登记件(注册表缺席 =
         # 零动作)。
@@ -690,7 +690,7 @@ class CwScreenPlaneIntel(CwScreenOpBase):
         _log.info('[cw-plane-intel] 节点序列互证不一致(位面%d)位次%s → 台账留证',
                   self._prep_plane, mism)
 
-    # ---- 五段生命周期(统一观察架构 §5.1;T-48,薄转录形态)--------------
+    # ---- 五段生命周期(统一观察架构 §5.1,薄转录形态)--------------
 
     def lifecycle_observe(self
                           ) -> tuple[PlaneIntelObservation,

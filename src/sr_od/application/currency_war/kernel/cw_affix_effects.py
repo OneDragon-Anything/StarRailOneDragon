@@ -430,7 +430,7 @@ def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
     return [spec.name for spec in hits]
 
 
-# ===== 工具执行批·执行写端分派(T-63 载体:工具类效果的执行写端组合口)=====
+# ===== 工具执行批·执行写端分派(工具类效果的执行写端组合口)=====
 # 官方工具族七件(category='工具')拖拽/使用回执的统一执行写端入口:按
 # EQUIP_WRITE_SIDES 登记形分派——写端桥形逐腿执行(入席/入区/库存特权化/
 # 穿域特权化),op 形与负写端(observation)零写留证,贡献算术形零写并指回

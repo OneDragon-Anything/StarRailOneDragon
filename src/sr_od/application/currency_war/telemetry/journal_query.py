@@ -228,7 +228,7 @@ def round_state_snapshots(
         rows: list[dict[str, Any]], run_id: str = '') -> dict[
         tuple[str, int, int], dict[str, Any]]:
     """按 (run_id, plane, round_num) 取每轮**最后一次写入**的行内 state
-    快照(T-98 波 5 journal 切源读面:Δ池语料源与回放轮真值共用,轮归组
+    快照(波 5 journal 切源读面:Δ池语料源与回放轮真值共用,轮归组
     单一源禁第三份)。
 
     轮键取自快照 values['node'](NodeKey 序列化形态;node 未建模帧 =

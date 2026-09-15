@@ -25,7 +25,7 @@ pre/post owned 现读对拍(``classify_tool_consume`` 纯函数):
 对账基准 = 登记后由 prep_obs heavy 覆盖点与现读对拍(与穿戴登记同型)。
 
 前置(与 CwOpEquipAll 同):入口预期屏执行断言「货币战争-备战」,非预期屏
-round_fail 交回外循环(T-163 D5 降级,旧 success-skip 假成功形态已废)。
+round_fail 交回外循环(降级裁定,旧 success-skip 假成功形态已废)。
 发射位 = mandate_v1 M7.5(逐备战帧评估,admitted 非空才发
 RunTools;执行位闩 = mandate.mark_tools_pass_executed)。
 """
@@ -205,7 +205,7 @@ def run_tool_queue(queue: list[ToolDragPlan], exec_fn,
 class CwOpTools(SrOperation):
     """备战:G1 准入 admitted 工具动作 → 逐件 drag → 消耗确认通道对拍登记。
 
-    入口预期屏执行断言(非干净备战如实 fail 交回外循环,T-163 D5;判断
+    入口预期屏执行断言(非干净备战如实 fail 交回外循环;判断
     上提 _run_composite 派发前置);出口验真转移(确认通道 consumed 才算
     成,partial/cancel 计入观测披露——发射位闩在执行位成功返回时置位,
     单 pass 语义与 M7 穿戴闩同型)。
@@ -246,9 +246,9 @@ class CwOpTools(SrOperation):
                  'removed=%s added=%s', tool, target, outcome, removed, added)
 
     def _apply_tool_effect_write(self, session, plan: ToolDragPlan) -> None:
-        """装备写端·工具执行写端分派(T-70 生产接线;载体 =
+        """装备写端·工具执行写端分派(生产接线;载体 =
         cw_affix_effects.apply_tool_execution_write,指定挂点 = 工具拖拽
-        回执点,T-63 交付申报):消费确认(consumed)回执 → 按申报表
+        回执点):消费确认(consumed)回执 → 按申报表
         EQUIP_WRITE_SIDES 执行效果写端。现役可准入两件的落点:冶金炉 =
         负写端观察收口(本口零写留证)/特权赋予卡 = 库存腿(target = 被
         变换的进阶成品)确定性变换直写;投影仪/令牌判据面 fail-closed 永
@@ -308,7 +308,7 @@ class CwOpTools(SrOperation):
     @operation_node(name='工具消耗', is_start_node=True, node_max_retry_times=3)
     def tools_consume(self) -> OperationRoundResult:
         cur = self.screenshot()
-        # 入口预期屏执行断言(T-163 D5,与 CwOpEquipAll 同形同批):非预期屏
+        # 入口预期屏执行断言(与 CwOpEquipAll 同形同批):非预期屏
         # 如实 round_fail 交回外循环,禁假成功吞分发;判断上提见
         # PrepActionExecutor._run_composite 派发前置。
         current = self.check_and_update_current_screen(
@@ -350,7 +350,7 @@ class CwOpTools(SrOperation):
             if outcome == 'consumed':
                 log.info('[cw-tools] %s→%s 消费成功 removed=%s added=%s',
                          plan.tool, plan.target, removed, added)
-                # 消费回执 = 工具效果写端分派挂点(T-70 接线,回执事实 =
+                # 消费回执 = 工具效果写端分派挂点(接线,回执事实 =
                 # consumed;效果写端与 op 基础行为两面对照,见方法注释)。
                 self._apply_tool_effect_write(_sess, plan)
             elif outcome == 'partial':

@@ -66,7 +66,7 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
       op 可传则用 op.screenshot(),不可传(离线)跳过重读);
     - substate:dict 标注各模块可读性(node_seq/shop_cards);
     - owned_equips/occupied_equips/back_layout_slots:装备域三路
-      采集(P4 观察接线,T-171;None = 识别域资源未就绪,语义见
+      采集(P4 观察接线;None = 识别域资源未就绪,语义见
       kernel/cw_prep_actions.PrepObservation 装备域字段块)。
 
     本函数纯组装:session 写/缓存回填由 director 做(单写者
@@ -129,7 +129,7 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
             'node_seq': read_node_sequence(ctx, frame) is not None,
             'shop_cards': read_shop_cards(ctx, frame) is not None,
         }
-        # ===== 装备域 owned/occupied 采集(P4 观察接线,T-171)=====
+        # ===== 装备域 owned/occupied 采集(P4 观察接线)=====
         # 归位备战画面 op 入口观察链(heavy = 唯一读屏点):原分发段
         # prep_actions._build_equip_wear_plan 现读三路退役,识别函数本体
         # (read_equips/read_row_equipped)复用,迁移的是调用位置;deployed

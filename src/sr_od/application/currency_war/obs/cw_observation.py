@@ -1344,7 +1344,7 @@ def arbitrate_deployed_count(paddle_n: int | None,
     **注册面迁移(15 号稿批 A)**:裁决内核已迁
     ``cw_arbitration.combine_deployed_count``(注册键 ``deployed_count``,
     计数类);本函数保留签名与 docstring 作既有消费面单一入口,内核转调,
-    前后行为逐字节等价(T-2 对拍锁)。
+    前后行为逐字节等价(对拍锁)。
     """
     from sr_od.application.currency_war.obs.cw_arbitration import (
         combine_deployed_count,
@@ -2186,7 +2186,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 金读走稳定门(read_gold_settled):开店帧收入计数器可能在跳,单帧读拿
     # 入账前旧值 = `w489_sim_real_gap/` 感知面「开局金系统性偏低」根因环;
     # gold_readable 语义不变(None=读不到)。gold 值 = raw 读数——失读兜底 0
-    #(T-167 gold 值勘误口径;需要可信金判读的消费方走 gold_readable 位或
+    #(gold 值勘误口径;需要可信金判读的消费方走 gold_readable 位或
     # 备战观察链的 ``prep_obs_frame.state_gold_trusted``)。
     _gold_opt = read_gold_settled(ctx, screen) if _w('gold') else None
     gold_val = 0 if _gold_opt is None else _gold_opt
@@ -2368,7 +2368,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         _prep_like = is_prep_like_frame(ctx, screen) if _needs_arbitration else True
         # 裁决迁仲裁注册面(15 号稿批 A;注册键 board_faction_count,标称类
         # 帧态门):内核只产决策,留证行仍在此处按决策发射——行数/field/
-        # 新旧值/verdict 文本逐字节不变(零行为验收,T-2 对拍)。
+        # 新旧值/verdict 文本逐字节不变(零行为验收对拍)。
         from sr_od.application.currency_war.obs.cw_arbitration import (
             combine_board_frame_gated,
         )
@@ -2606,10 +2606,10 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                                 sig=_sig_read)   # 离开商店画面 = 结构事实(§2.2 例外)
             if phase in (PHASE_PREP_SHOP_OPEN,):
                 # 刷新费现场识别通道(ADR-0622;§3.3.4 识别失败=None 禁兜底)。
-                # 写入口经按钮态 composite(T-13 读链接入):免费态按钮渲染的
+                # 写入口经按钮态 composite(读链接入):免费态按钮渲染的
                 # 剩余次数与标价**同 rect**——免费帧次数数字会被标价解析误读,
                 # 「免费帧不写」的免费判定输入 = 按钮态锚命中(结构性满足),
-                # 不再依赖「免费帧渲染无数字」旧假设(T-15 实机取证推翻:
+                # 不再依赖「免费帧渲染无数字」旧假设(实机取证推翻:
                 # 免费帧 = 「免费刷新」+次数)。非免费帧 price 语义与旧直读
                 # 逐位一致(锚失读/未中分支 composite 内部同源 read_shop_
                 # refresh_price);免费帧 → carry 沿旧值(§3.3.4 None≠0 同门)。
@@ -2648,7 +2648,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             bs.relay(bs.enemy_affixes, list(enemy_affixes_val), sig=_relay_sig)
             # equips 装备库存(W5 申报面,方案 §2.2):观察写端 = 备战入口
             # 观察链装备区采集(采集点 = observe_full heavy,写点 =
-            # cw_screen_prep._observe heavy 装配点;P4 观察接线 T-171 前 =
+            # cw_screen_prep._observe heavy 装配点;P4 观察接线前 =
             # prep_actions._build_equip_wear_plan 派发位现读,已随该批退役)。
             # 本口只做载体中继兜底(session 镜像 last_owned_equips,从未写过
             # 才补)。**接线滞后窗值冻结申报**:开箱/穿戴/卖出等动作时点的
@@ -2871,7 +2871,7 @@ def detect_match_final(*, run_id: str,
     1. ``journal_final``(新账局终行在档)→ None(本段已收口,幂等跳过);
     2. ``runs_summary``(现役收口行,收编对象)→ result 经
        :func:`runs_result_to_final_type` 映射,plane/round/hp 取行值;
-    3. terminal_closure 结算行(source='terminal_closure',T-185 收口行;
+    3. terminal_closure 结算行(source='terminal_closure',收口行;
        match_result 值 = 收口时点的对局级结果)→ 同映射;
     4. 无收口证据(断流/进程死亡)→ abnormal(补写形态判据,G8:启动
        扫描按本判定补写,note=recovered 显影)。

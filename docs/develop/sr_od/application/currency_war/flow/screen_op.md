@@ -29,7 +29,7 @@
 
 ## 2. 动作基类与动作粒度（决策 3、10、9）
 
-### 2.1 动作基类单方法（决策 10 契约收缩,T-163 落码）
+### 2.1 动作基类单方法（决策 10 契约收缩,落码）
 
 动作 op 基类 = 单方法：
 
@@ -37,7 +37,7 @@
 |---|---|---|
 | `execute(ctx)` | 机械执行（点击/拖拽，op 框架既有的重试/等待语义在此层） | 执行，无判断 |
 
-决策 10 原定的 `project(expected_state)` 逻辑态推算方法（前身契约）**已删除**（T-163:其 simulate 实现即删除对象本身;用户裁定 2026-09-12 纯规则路线,策略域零 simulate 前瞻消费）——§1 决策循环伪代码中的 `期望态 = action.project(期望态)` 行随之退役。
+决策 10 原定的 `project(expected_state)` 逻辑态推算方法（前身契约）**已删除**（其 simulate 实现即删除对象本身;用户裁定 2026-09-12 纯规则路线,策略域零 simulate 前瞻消费）——§1 决策循环伪代码中的 `期望态 = action.project(期望态)` 行随之退役。
 
 > 术语注(首次出现):逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态;真值以下一帧观察为准(观察赢)。
 
@@ -79,8 +79,8 @@
 
 「刷新 = 终结 → 外循环重进」消灭了 op 内连续刷新的载体，也连带消灭了两件商店侧既有机制在 op 内的存身处——迁移时须重定位，禁静默蒸发：
 
-1. **visit 级刷新硬墙**：现行 `MAX_REFRESH=4`（`cw_op_buy_cards.py:365`）挂在 `run_buy_waves` 波循环界（`:415` 起）内，靠「刷新留在循环内继续下一波」生效。刷新改终结后 op 内无循环可挂——**重定位候选**：(a) 外循环级计数器（跨画面 op 生命周期追踪本 visit 已刷次数，超墙后终结集降级为仅关店）；(b) 刷新预算并入期望态（入口重建时从 carried 态读余量，project 的 Refresh 终结 op 扣减——project 已于 T-163 删除,若取此候选,扣减载体按容器规则通道直写,§2.1）。二者防的都是同一结构风险：策略器反复选刷新（每次终结→外循环重进→再刷新），外循环轮次无进展。落点留 flow 实施批裁。
-2. **refresh_used / 免费刷新余量**：第 `refresh_used+1` 次刷价判定（`cw_economy.py:229` `_refresh_cost`：`refresh_used < free_refresh_per_node` 则免费）依赖的两个字段**均非屏幕可观察**——入口观察读不到，只能从 carried 态继承。**归属声明：非观察字段归属 = carried 融合**——入口重建期望态时，观察字段来自读屏、`refresh_used` 等非观察字段与 carried 态融合（见 §4 映射）。**as-built 事实注（2026-09-04 对抗审查裁决改真;同批后续裁决完成载体修正与枚举补全）**：此机制现属 **sim-only**——`_refresh_cost`（def 在 `cw_economy.py:227`）与 `refresh_cost_effective` 在 src 内均零调用点（后者仅定义+`cw_registry.py:1250` 注释）,live 定价实走内联 `state.shop_refresh_cost or 基价`（枚举辖 `or` 兜底形态;另有直接常量消费点 mandate.py:509/buy_cards:831,均用新单一源常量无双源风险）,**三形态**（同批后续裁决补第三形态）:常量名形态 `or REFRESH_COST_BASE`（`shop.py:884/933/937`）/ 旧常量名形态 `or SHOP_REFRESH_COST`（`cw_economy.py:685`——旧常量,与 `REFRESH_COST_BASE` 双源同值 2,立 REFRESH_COST_BASE 时未收编旧常量,**双源收敛挂实施批**;旧常量直接消费点另有 `cw_economy.py:571/573/575`(roll_affordable 体内,该函数 src 零调用=同族死代码,收敛批一并清[**已清:T-64+T-183 退役批删除 roll_affordable,该三处旧常量消费点随之消失**];sim 侧 `engine_p1.py:1006` 字面形态+`telemetry/query.py:835` docstring 提及=枚举边界,不入 live 定价面）/ 字面 `or 2`（`cw_economy.py:952`、`cw_line_switch.py:135`、`cw_op_buy_cards.py:875`、`economy_cycle.py:168`）;`cw_economy.py:244` 在 refresh_cost_effective 体内=死代码不入枚举;同批后续裁决亲验修正——初稿曾把 cw_economy 行号误记到 economy_cycle 名下、执行侧记账注释自述「实付恒基价」（`cw_op_buy_cards.py:872-875`），live 的免费刷新是**事后**观测异常留证（`free_refresh_proc` flag，`:929-969`）非事前判价；ex ante 免费刷价仅在 sim 实现（`engine_p1.py:762`，独立实现）。故本条的迁移义务**不是重定位既有 live 机制**，而是实施批先裁「要不要把 sim-only 的 refresh_used 计数接进 live」——接进则按本节 carried 融合归属，不接则 live 侧无此字段可融合（禁按本条去找不存在的现行 live 载体）。
+1. **visit 级刷新硬墙**：现行 `MAX_REFRESH=4`（`cw_op_buy_cards.py:365`）挂在 `run_buy_waves` 波循环界（`:415` 起）内，靠「刷新留在循环内继续下一波」生效。刷新改终结后 op 内无循环可挂——**重定位候选**：(a) 外循环级计数器（跨画面 op 生命周期追踪本 visit 已刷次数，超墙后终结集降级为仅关店）；(b) 刷新预算并入期望态（入口重建时从 carried 态读余量，project 的 Refresh 终结 op 扣减——project 已删除,若取此候选,扣减载体按容器规则通道直写,§2.1）。二者防的都是同一结构风险：策略器反复选刷新（每次终结→外循环重进→再刷新），外循环轮次无进展。落点留 flow 实施批裁。
+2. **refresh_used / 免费刷新余量**：第 `refresh_used+1` 次刷价判定（`cw_economy.py:229` `_refresh_cost`：`refresh_used < free_refresh_per_node` 则免费）依赖的两个字段**均非屏幕可观察**——入口观察读不到，只能从 carried 态继承。**归属声明：非观察字段归属 = carried 融合**——入口重建期望态时，观察字段来自读屏、`refresh_used` 等非观察字段与 carried 态融合（见 §4 映射）。**as-built 事实注（2026-09-04 对抗审查裁决改真;同批后续裁决完成载体修正与枚举补全）**：此机制现属 **sim-only**——`_refresh_cost`（def 在 `cw_economy.py:227`）与 `refresh_cost_effective` 在 src 内均零调用点（后者仅定义+`cw_registry.py:1250` 注释）,live 定价实走内联 `state.shop_refresh_cost or 基价`（枚举辖 `or` 兜底形态;另有直接常量消费点 mandate.py:509/buy_cards:831,均用新单一源常量无双源风险）,**三形态**（同批后续裁决补第三形态）:常量名形态 `or REFRESH_COST_BASE`（`shop.py:884/933/937`）/ 旧常量名形态 `or SHOP_REFRESH_COST`（`cw_economy.py:685`——旧常量,与 `REFRESH_COST_BASE` 双源同值 2,立 REFRESH_COST_BASE 时未收编旧常量,**双源收敛挂实施批**;旧常量直接消费点另有 `cw_economy.py:571/573/575`(roll_affordable 体内,该函数 src 零调用=同族死代码,收敛批一并清[**已清:旧栈退役批删除 roll_affordable,该三处旧常量消费点随之消失**];sim 侧 `engine_p1.py:1006` 字面形态+`telemetry/query.py:835` docstring 提及=枚举边界,不入 live 定价面）/ 字面 `or 2`（`cw_economy.py:952`、`cw_line_switch.py:135`、`cw_op_buy_cards.py:875`、`economy_cycle.py:168`）;`cw_economy.py:244` 在 refresh_cost_effective 体内=死代码不入枚举;同批后续裁决亲验修正——初稿曾把 cw_economy 行号误记到 economy_cycle 名下、执行侧记账注释自述「实付恒基价」（`cw_op_buy_cards.py:872-875`），live 的免费刷新是**事后**观测异常留证（`free_refresh_proc` flag，`:929-969`）非事前判价；ex ante 免费刷价仅在 sim 实现（`engine_p1.py:762`，独立实现）。故本条的迁移义务**不是重定位既有 live 机制**，而是实施批先裁「要不要把 sim-only 的 refresh_used 计数接进 live」——接进则按本节 carried 融合归属，不接则 live 侧无此字段可融合（禁按本条去找不存在的现行 live 载体）。
 3. **与 §8.4 对称化**：补给侧的「刷新硬墙 + 预算并入期望态」论证（§8.4）与商店侧本节互为镜像——两画面的刷新终结语义、硬墙必要性推导、预算归属判据同构，实施批裁其中一侧时须交叉引用另一侧，禁单侧定案。
 
 ## 4. 期望态生命周期（决策 7、8）
@@ -139,10 +139,10 @@
 | 补给（supply/supply_node） | 选装备（动态 N 选 1）/**刷新（节点内至多 1 次,游戏规则；终结性同商店款,待 §8.4 终裁）** | 确认离开（overlay 消失=节点完成） | **入规范**（轮 6 按代码体回炉:N 选 1+刷新→刷后循环可 ≥2 步=有逻辑态账;代码事实 `cw_screen_supply_node.py:60-61` REFRESH_BTN/`:176` `_supply_refresh_used` session 实态/`:188-195` decide_supply 消费+实点;**docstring 第 14 行「无刷新按钮」系陈旧残句,轮 5 误信已纠**——代码侧该行修正挂实施批）;§8.4 开放问题恢复 live 地位 |
 | 遭遇（encounter） | （dormant：普通战斗无选项 UI） | 推进 | **推进型 op 独立存在（空决策形态）**：普通战斗无选项 UI = 空决策；选项态 = 单选族（`decide_encounter`），两形态同画面的两段 |
 | 战斗等待（battle_wait） | 无（纯等待+探针） | 推进 | **空决策形态原生件**：`CwScreenBattleWait` 三段式 = 入口观察（闩∨帧锚,外循环判定）+推进（等结算/点继续）+交回；无策略器问询即合规，不再列「暂不适合」 |
-| 位面切换/情报 | 推进/确认 | 推进 | **空决策形态**：位面过渡 `CwScreenPlaneTransition` / 位面简报 `CwScreenBriefing` / 位面详情 `CwScreenPlaneDetail`（T-121 新立）/ 等待1-1 `CwScreenWaitOneOne`——推进为流程义务，独立 op + 交回外循环 |
+| 位面切换/情报 | 推进/确认 | 推进 | **空决策形态**：位面过渡 `CwScreenPlaneTransition` / 位面简报 `CwScreenBriefing` / 位面详情 `CwScreenPlaneDetail`（新立）/ 等待1-1 `CwScreenWaitOneOne`——推进为流程义务，独立 op + 交回外循环 |
 | 选装备三选一（equip_pick，`cw_screen_equip_pick.py`，r129） | 选卡（点卡即选） | 离开由主流程出战驱动（画面内无独立确认按钮,`cw_screen_equip_pick.py:4-5`） | 单选族例外（零逻辑态账） |
 | 武装箱弹窗（armory_box，`cw_screen_armory_box.py`） | 点 × 关闭（道具获得说明弹窗,`:36-41`） | 关闭即离开 | 无选择面（说明弹窗）→ 不入规范;「四选一选卡」实为备战箱槽开箱链（`prep_actions.py` 执行器 `_pick_box_card`:OCR 卡名→`decide_box_card` 薄壳→共享机器 `cw_equip_value.pick_equipment` 序数分档）,不属本画面 |
-| **推进弹窗族（0a4/0e2/0e3/0f'/0g/0m/1b/1d/1g/5,T-121 新立 10 op;+0t 商店卡牌详情,T-163 补立:双 id_mark 门→点 X 验消失→交回,点球误触弹窗族消费分支）** | 无（推进为流程义务;0g 固定选首件=现行为申报） | 关闭/返回/点首件即终结 | 空决策形态（合同 = `screen_op.md` §8.3 判据总表 + T-121 方案 §2.1:新 op 单尝试/重试预算归外循环）;原 `cw_loop.py` 直管内联处理迁入 op（清单 = T-121 方案 §1.1）,分发判定留外循环 |
+| **推进弹窗族（0a4/0e2/0e3/0f'/0g/0m/1b/1d/1g/5, 10 op;+0t 商店卡牌详情,补立:双 id_mark 门→点 X 验消失→交回,点球误触弹窗族消费分支）** | 无（推进为流程义务;0g 固定选首件=现行为申报） | 关闭/返回/点首件即终结 | 空决策形态（合同 = `screen_op.md` §8.3 判据总表:新 op 单尝试/重试预算归外循环）;原 `cw_loop.py` 直管内联处理迁入 op（清单 = 方案 §1.1）,分发判定留外循环 |
 
 ## 8. 开放问题五条（本节 = flow 侧展开 + 裁决建议，留 flow 实施批定）
 
@@ -166,7 +166,7 @@
 
 **空决策形态的合同强度（方案审 N10,两处定义统一）**：合同 = 入口观察 + 推进 + 交回；**新 op 一律单尝试,op 内零重试,重试预算归外循环;既有 op 的 as-built 重试语义保留不在辖内**——如 `CwScreenPlaneTransition` 自带 8 次内部重试（`cw_screen_plane_transition.py:81`）,是既有 as-built 而非合同反例。规范各处以本句为术语定义的强度基准,不再各自简写。
 
-迁移清单与逐分支设计 = T-121 方案（`t121_progression_ops/方案.md` §1/§2,原始件已灭失(2026-09-12 清理);实施落点 = 单动作实现批）；遥测对齐（四流归属/S11 消灭/心跳论证）语义已收编进 game_state/ 正本区。原「实施批义务（轮 4 登记）:按本判据对 §7 盘点表逐行重扫」由本裁定收口:重扫结论 = §7 修订（遭遇/战斗等待/位面切换三行改空决策形态 + 表尾推进弹窗族行）。
+迁移清单与逐分支设计 = 方案（`t121_progression_ops/方案.md` §1/§2,原始件已灭失(2026-09-12 清理);实施落点 = 单动作实现批）；遥测对齐（四流归属/S11 消灭/心跳论证）语义已收编进 game_state/ 正本区。原「实施批义务（轮 4 登记）:按本判据对 §7 盘点表逐行重扫」由本裁定收口:重扫结论 = §7 修订（遭遇/战斗等待/位面切换三行改空决策形态 + 表尾推进弹窗族行）。
 
 ### 8.4 补给刷新的终结语义（ADR 开放问题 3）
 

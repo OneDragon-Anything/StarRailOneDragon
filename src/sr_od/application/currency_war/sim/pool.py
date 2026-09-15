@@ -167,7 +167,7 @@ class SimResult:
     # ===== 投资注入观测(`w162_inject/`/ADR-0364;invest 注入时填,默认空/0)=====
     invest_env: str = ''            # 本局注入的投资环境名(空 = 无)
     invest_strategies: tuple[str, ...] = ()   # 本局实际注入持有的策略名序
-    # T-155 前置批:基线臂(真实判据)选卡归因——每条 = {'kind','plane','round',
+    # 双臂:基线臂(真实判据)选卡归因——每条 = {'kind','plane','round',
     # 'options','picked','reason'},reason 为 kernel decide_event 的判据归因串
     # 透传(可观测要求:后续统计可按归因分桶)。仅 invest_arm='sink' 填;
     # freq 注入臂/固定剧本 = 注入无判据,恒 ()。

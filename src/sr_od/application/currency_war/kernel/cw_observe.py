@@ -26,7 +26,7 @@ _log = log_utils.log
 # 仓库根经 one_dragon.utils.file_utils.get_project_root 统一定位(包内禁文件相对层级硬锚)
 _SHOT_DIR = get_project_root() / '.debug' / 'temp' / 'currency_war' / 'shots'
 
-# ===== CW 遥测/深评固定落盘根(单一源;2026-09-07 用户裁定,T-125)=====
+# ===== CW 遥测/深评固定落盘根(单一源;2026-09-07 用户裁定)=====
 # 结构:telemetry/{live,matches,sim} 三层——live = 实时追加流(decisions/
 # op_journal 等 jsonl,跨局追加行内带 run_id,不按局拆文件);matches =
 # 按局装配档案(局终旁路装配器写,见 telemetry/match_archive);sim =
@@ -50,7 +50,7 @@ DEEP_REVIEW_ROOT: Path = (get_project_root() / '.debug' / 'currency_war'
 #: 更名是独立重构不属本批——路径才是用户裁定面,符号名不是)。
 DEFAULT_REPLAY_DIR: Path = LIVE_DIR
 
-# ===== 退役旧根(T-125 布局裁定前的落点;写端守卫拒写面)=====
+# ===== 退役旧根(布局裁定前的落点;写端守卫拒写面)=====
 # 为什么升为常量:2026-09-07 22:20:52 实证——write_batch_ledger 的禁写
 # 守卫只锚当前生产根时,以旧根为 out_dir 的空批把历史三流整份截断
 # (事故对账与守卫裁决 = ADR-0586「单一源与守卫」节

@@ -94,7 +94,7 @@ arbitrate(key, readings, ctx) -> (value, verdict, divergent)
   # 裁决事件层 = 既有 telemetry.defects 分键记录(7026c5db 先例)
 ```
 
-**不新建证据通道**:obs_conflict(原始证据行)与 defects 分键(不一致率统计)都是活体且已验证,注册面只统一「谁在什么键下调用它们」。迁移语义不变性 = 每迁移一个量,先用单测对拍「注册面裁决结果 == 原私写法裁决结果」(§6 锁 T-2),零行为变更迁完再谈规则修订。**A13 声明(迁移的「行为」边界)**:裁决值/schema/分键=行为,对拍锁死;obs_conflict 的 verdict 提示文本=判读面证据内容,允许随键迁移改写,T-2 对拍**不锁 verdict 文本**(否则文案润色即红,锁惩罚非行为变更)。
+**不新建证据通道**:obs_conflict(原始证据行)与 defects 分键(不一致率统计)都是活体且已验证,注册面只统一「谁在什么键下调用它们」。迁移语义不变性 = 每迁移一个量,先用单测对拍「注册面裁决结果 == 原私写法裁决结果」(§6 锁),零行为变更迁完再谈规则修订。**A13 声明(迁移的「行为」边界)**:裁决值/schema/分键=行为,对拍锁死;obs_conflict 的 verdict 提示文本=判读面证据内容,允许随键迁移改写,迁移对拍锁**不锁 verdict 文本**(否则文案润色即红,锁惩罚非行为变更)。
 
 ## 3. 布局档错位子问题:「7 格实画选 6 档」的公式缺陷定位与修法
 
@@ -116,7 +116,7 @@ arbitrate(key, readings, ctx) -> (value, verdict, divergent)
 1. **公式输入净化(§2.3 落地)**:`resolve_back_slots` 内,diff 只在 `level_trusted ∧ cap 可用` 时计算——level 传参改带 authoritative 位(经 §2.3 合一后的单一 `_session_level` 透传);derived/unknown level → 公式源**弃权**(不是退 6 档!现行 `diff=0 → 6` 把「不知道」当成了「无扩展」,这是把兜底值当裁决依据的直接表现)。
 2. **右探针下界否决(帧有效性前置 + 防抖门,A1/B1)**:cv_back_slots 重构为**可部分返回**——`cv_n=None`(整体不可判)时附带 `right_probe_has_slot: bool | None`。**有效性前置(B1)**:`right_probe_has_slot` 只在**两锚位 std 均过 `_CV_SLOT_STD_MIN`**(帧本身有效)时才产出真值;锚位失败帧(overlay 遮挡/非备战态/非 1080p,cw_back_layout.py:178-180)整帧不可信,右探针一律返 None → 直接进未知态④,**不得触发否决**(垃圾值在整帧不可信画面上完成错向档切换=B1 发作场景 1)。仲裁序新增:公式裁决=6 而 right_probe=True(有效帧)→ 公式候选被质疑;**否决成立须过防抖重读门:隔 ~1s 重读 2 次,三次一致才否决(采 7 档);任一不一致=瞬态,保公式+留证**。N=3 的依据(非拍定):①W209h house 先例即「重读 2 次三次一致」(cw_back_layout.py:264-292),复用既有节奏不立新参数;②右探针判据阈值 6.0 两侧的实拍分布=背景 ≤2.9 / 空槽 ≥10.5 / **瞬态假阳实拍 6.5**(run 27,W209h 注)——假阳与真信号间隔仅 1.6×,单帧判据余量不足是**已被事故证明的事实**,多帧一致是不引入新阈值的**瞬态隔离手段**;③右探针否决触发频度低(仅 CV None+公式 6+右高的合取帧),重读 ~2s 成本可接受。**残余风险如实声明(B1)**:防抖只隔离单帧瞬态,**持续性幻影**(特效循环/召唤物模型驻留 >2s,三读全幻影)防不住——该残余不靠阈值消除(加阈值=新拍值),防线=`back_layout_divergence` 分键频度监控,复现即按留证对拍画面修读链(与未知态④同款监控面);本残余申报进批 B 验收锚点(§7 批 B 实机局盯 `back_layout_*` 频次)。反向同理:公式=7/8 而 right_probe=False(有效帧+三次一致)→ 下界矛盾,公式弃权(进④未知态)+留证。防抖期间消费方语义=未知态(④),不按过渡值行动。〔as-built 2026-09-06:本节防抖的**前置触发面**在 C1 门(擦线带 [6,12)+对称比 2.5)下按「证据裁决式」裁决=**结构性吸收,不落三读防抖**:合成噪声实测,单端强不对称噪声(半窗纯平+半窗强噪声)判假 slice,但与另端 none 组合成未覆盖形态 → cv_back_slots 返 None 退公式——假 7 需两端同时 slice(两端共有的强结构证据),合成噪声单端形态不构成;锁=test_cw_data_registry `test_probe_residual_asymmetric_noise_absorbed`〕
 3. **左重叠带消解与 CV 直采防抖(A8 处置)**:左带区分特征候选(暗框均匀度/双子窗 std 差/占位亮度)按「未证即退役」纪律先立采集命题(§8⑨),标定完成前不采信。批 B 同步闭合两条**先存的无防抖直采通路**:①左探针可判时 cv=7/8 ∈`_LAYOUT_PREFIX` 直采无防抖(:340);②cv_n 与公式不一致但已建档时同样直采——统一改为「**CV 与公式不一致的所有已建档档读数,过同一三读一致门再采**(一致才采 CV,不一致退公式+留证);CV 与公式一致(常态)零额外成本」。此条将现行「已建档直采」的暴露面收进防抖门,先存通路不再扩权。
-4. **布局未知态(读写分级 + 冻结止损,A2/B2)**:三信号全弃权(公式弃权 ∧ 右探针 None/矛盾 ∧ CV None),或否决/防抖未决期间——**不固定选任何档**。缺省语义按**读/写分级**:〔as-built 2026-09-06:①④/T-7/T-8 已落码——`resolve_back_slots(level_trusted=)` 三态形参(False=公式弃权/None=零行为变更/True=observed),可信位单一源=`cw_identity_obs._level_trusted`(session.last_state.level_readable,T-8 同批闭合:`_session_level` 对 level_readable=False 帧的 state 值不参与取大);双弃权 → `n=None/prefix=''` + unknown/frozen/unknown_streak 三键,模块级连续计数(N=3=B3),已知帧清零;消费面=读侧 read_deployed_chars(_tiered) 单帧未知只返前排、冻结退 6 档基线,写侧 cw_op_deploy 后排部署返空/tracked 后排 equips 写入停/整表 reconcile 冻结跳过;每帧 JSONL 留证=`back_layout_unknown` 分键(obs_conflict+defects 出口双落,不节流)。supply 失活治本(§8 外,批 C 件③)同批落库:flow.on_round_end 空 node_type 回落位面节点台账同轮类型(档案装配局后不可得,台账=局内同轮行序单一源),查不到=照旧空串+`blood_alarm_node_type_fallback` 分键〕
+4. **布局未知态(读写分级 + 冻结止损,A2/B2)**:三信号全弃权(公式弃权 ∧ 右探针 None/矛盾 ∧ CV None),或否决/防抖未决期间——**不固定选任何档**。缺省语义按**读/写分级**:〔as-built 2026-09-06:①④/单帧未知锁/level 单一源锁已落码——`resolve_back_slots(level_trusted=)` 三态形参(False=公式弃权/None=零行为变更/True=observed),可信位单一源=`cw_identity_obs._level_trusted`(session.last_state.level_readable,level 单一源锁同批闭合:`_session_level` 对 level_readable=False 帧的 state 值不参与取大);双弃权 → `n=None/prefix=''` + unknown/frozen/unknown_streak 三键,模块级连续计数(N=3=B3),已知帧清零;消费面=读侧 read_deployed_chars(_tiered) 单帧未知只返前排、冻结退 6 档基线,写侧 cw_op_deploy 后排部署返空/tracked 后排 equips 写入停/整表 reconcile 冻结跳过;每帧 JSONL 留证=`back_layout_unknown` 分键(obs_conflict+defects 出口双落,不节流)。supply 失活治本(§8 外,批 C 件③)同批落库:flow.on_round_end 空 node_type 回落位面节点台账同轮类型(档案装配局后不可得,台账=局内同轮行序单一源),查不到=照旧空串+`blood_alarm_node_type_fallback` 分键〕
    - **单帧未知** → 返回 `n=None`(显式第四态,注册面 verdict=unknown),消费方该帧**跳过后排依赖操作**(后排部署/后排身份读取,「宁缺勿造」同 paddle None 对齐跳过先例);前排/备战栏坐标与前排部署不受影响。
    - **连续未知(B2 修订:冻结止损,不退档行动)** → **读类**(后排身份读取)可按 6 档基线继续读+每帧留证(读面可重读可纠正,读错下一帧即被覆盖);**写类**(后排部署拖拽、任何向 tracked 写入后排身份/坐标的路径)**继续跳过并冻结**——冻结 tracked 后排写入止损,防错向档读数毒化 tracked 底座(§3.2.0 毒化链的向前传播面);真值 7/8 时在 6 档坐标上执行后排写操作正是「7 实画选 6 档」病灶本体的缺省化复发,禁。**恢复信号 = 防抖门任一方向出干净裁决**(三读一致的 CV 档/公式恢复 authoritative)即解冻,正常按裁决档行动。
    - **依据链(B2,如实声明)**:①v2 的「6 是 diff=0 常态先验」是**游戏总体分布**先验,不构成「未知帧 ⇒ 真值 6」的条件分布依据——未知态三种成因(level 非 authoritative/cap 失读/CV None)没有一种与 diff=0 相关,反倒是 level 毒化帧的 diff 分布未知,该论证作废;②与单帧语义反向的「信心越低行动越激进」矛盾由读写分级消解:写面不可逆(毒化入 tracked 底座向前传播,贵)、读面可重读(下一帧覆盖,廉价)——代价不对称天然成立,不依赖分布假设。**fail_closed_side 注册声明(布局类必填,§2.4)**:方向=**写面冻结、读面保守低档**;依据=上述读写代价不对称(重读廉价/毒化传播贵),非「真值=6」分布先验。
@@ -143,7 +143,7 @@ arbitrate(key, readings, ctx) -> (value, verdict, divergent)
 | `obs/cw_observation.py` | `arbitrate_deployed_count` 迁注册面(签名/语义不变,内核转调);board 帧态门仲裁迁注册面;hp/level 通道仲裁**暂不迁**(先例最复杂,迁移收益最低,§8⑥) | 批 A |
 | `obs/cw_back_layout.py` | §3.2 三信号仲裁:公式输入净化+右探针下界(带三读防抖)+cv_back_slots 部分返回+未知态+已建档 CV 读数防抖门 | 批 B |
 | `obs/cw_identity_obs.py` | ①`_session_level` 改造为 authoritative 位透传的**单一源**(A7;`cw_op_deploy._session_level` 同逻辑双拷贝合一于此);②read_deployed_chars 布局钩子消费新返回结构(right_probe/unknown 字段) | 批 B |
-| `operations/cw_screen/cw_screen_deploy.py` | 板满门(已接仲裁,不动);`_session_level` 改为转调 identity 单一源(A7);cap 失读兜底链(:638-645)**显式豁免合一**(B7,依据=T-8 行登记的 r60/r64 不对称);swap 收口位按 §4 约束(与 14 落码批合流) | 批 B/C |
+| `operations/cw_screen/cw_screen_deploy.py` | 板满门(已接仲裁,不动);`_session_level` 改为转调 identity 单一源(A7);cap 失读兜底链(:638-645)**显式豁免合一**(B7,依据=level 单一源锁行登记的 r60/r64 不对称);swap 收口位按 §4 约束(与 14 落码批合流) | 批 B/C |
 | `operations/cw_screen/cw_screen_prep.py` | ①heavy 段 deployed_count_2src 对拍迁注册面(批 A);②**heavy vacancy 计算改仲裁值+divergent 位入 snapshot(A5,§4.1 真实落点,批 C)**——与本批 A 改动同文件不同段,需串行不并行 | 批 A(对拍)+ 批 C(vacancy) |
 | mandate/adapter/contracts(14 落码批) | §4 三约束:发射门读仲裁 vacancy + divergent 字段传播 + 分歧帧延迟 | 批 C |
 | `kernel/cw_observe.py` | 无接口变化(obs_conflict 复用);如需 set_obs_phase 语义对齐则微调 | 批 A |
@@ -155,23 +155,23 @@ arbitrate(key, readings, ctx) -> (value, verdict, divergent)
 
 | 编号 | 锁 | 语义(引设计出处) |
 |---|---|---|
-| T-1 | 仲裁注册面语义锁 | 各量纲类的裁决规则对拍:计数取声明方向或弃权/标称优先级+否决/标量显式通道优先序/布局实测>推导+未知态(§2.2);带内分歧返 noise 不留证 |
-| T-2 | 迁移不变性锁(A6 扩) | **两个迁移量都对拍**:①deployed:min/divergent 前后全同;②board:「分歧帧 × 帧态」矩阵夹具(备战帧徽标≠computed/OCR 有 computed 无/非备战帧同两形态)前后裁决与留证分键全同。对拍锁 schema+裁决值+分键,**不锁 verdict 文本**(§2.4 A13 声明) |
-| T-3 | 布局下界否决锁 | 公式=6 ∧ right_probe=True **且三读一致** → 采 7 档+留证带 level_authoritative;三读不一致(单帧瞬态 6.5 型)→ 保公式+留证;**锚位失败帧 right_probe 必须 None、不触发否决**(B1);公式=6 ∧ 右探针三次一致 False(有效帧)→ 公式弃权进未知态;level 非 authoritative → 公式弃权非退 6(§3.2①②,「佩佩丢@7」回归锚) |
-| T-4 | 板满门回归锁(存量) | 7026c5db 既有锁保持:CV 幻影 5 vs paddle 3 → 仲裁 3,不判板满 |
-| T-5 | swap 分歧帧 fail-closed 锁 | divergent 位经 heavy→snapshot→mandate frame 传播;divergent 帧 swap 不发射+分键零静默;**缓存兜底(stale)帧同延迟语义**(B5)(§4;与 14 §7.2 deploy_swap_plan_empty 锁族合流) |
-| T-6 | 分键存在性锁 | `back_layout_divergence`/`back_layout_unknown`/`deployed_count_2src_divergence` 分键互不混流(§2.4) |
-| T-7 | 未知态消费语义锁(B6/B2 修订) | 单帧未知 → 后排依赖操作跳过+前排不受影响+**JSONL 证据行写入断言**;连续 3 未知帧 → **写类冻结(tracked 后排写入停+后排部署跳过)/读类退 6 档基线读**,每帧 JSONL 留证,恢复信号出干净裁决即解冻(§3.2④)。留证口径=锁 JSONL 证据行(不节流);截图按 obs_conflict 既有 300s 节流,不进锁 |
-| T-8 | level 单一源锁(B7/B8 修订) | `cw_op_deploy` 与 `cw_identity_obs` 的 level 链合一后,authoritative 位透传一致、无双拷贝语义分叉;夹具=**level_readable=False 时 last_state.level 不参与取大**(锁合一后输出语义,非锁现状缺陷形态)。**显式豁免面**:cap 失读兜底链(cw_op_deploy.py:638-645 max(last_level_obs, last_state.level))豁免合一——其 fail 方向=高读(白拖便宜,r60/r64 代价不对称已声明),与布局公式用途不同;豁免依据本行即登记,T-8 不对其断言 |
+| 判读账 | 仲裁注册面语义锁 | 各量纲类的裁决规则对拍:计数取声明方向或弃权/标称优先级+否决/标量显式通道优先序/布局实测>推导+未知态(§2.2);带内分歧返 noise 不留证 |
+| 判读账 | 迁移不变性锁(A6 扩) | **两个迁移量都对拍**:①deployed:min/divergent 前后全同;②board:「分歧帧 × 帧态」矩阵夹具(备战帧徽标≠computed/OCR 有 computed 无/非备战帧同两形态)前后裁决与留证分键全同。对拍锁 schema+裁决值+分键,**不锁 verdict 文本**(§2.4 A13 声明) |
+| 判读账 | 布局下界否决锁 | 公式=6 ∧ right_probe=True **且三读一致** → 采 7 档+留证带 level_authoritative;三读不一致(单帧瞬态 6.5 型)→ 保公式+留证;**锚位失败帧 right_probe 必须 None、不触发否决**(B1);公式=6 ∧ 右探针三次一致 False(有效帧)→ 公式弃权进未知态;level 非 authoritative → 公式弃权非退 6(§3.2①②,「佩佩丢@7」回归锚) |
+| 判读账 | 板满门回归锁(存量) | 7026c5db 既有锁保持:CV 幻影 5 vs paddle 3 → 仲裁 3,不判板满 |
+| 判读账 | swap 分歧帧 fail-closed 锁 | divergent 位经 heavy→snapshot→mandate frame 传播;divergent 帧 swap 不发射+分键零静默;**缓存兜底(stale)帧同延迟语义**(B5)(§4;与 14 §7.2 deploy_swap_plan_empty 锁族合流) |
+| 判读账 | 分键存在性锁 | `back_layout_divergence`/`back_layout_unknown`/`deployed_count_2src_divergence` 分键互不混流(§2.4) |
+| 判读账 | 未知态消费语义锁(B6/B2 修订) | 单帧未知 → 后排依赖操作跳过+前排不受影响+**JSONL 证据行写入断言**;连续 3 未知帧 → **写类冻结(tracked 后排写入停+后排部署跳过)/读类退 6 档基线读**,每帧 JSONL 留证,恢复信号出干净裁决即解冻(§3.2④)。留证口径=锁 JSONL 证据行(不节流);截图按 obs_conflict 既有 300s 节流,不进锁 |
+| 判读账 | level 单一源锁(B7/B8 修订) | `cw_op_deploy` 与 `cw_identity_obs` 的 level 链合一后,authoritative 位透传一致、无双拷贝语义分叉;夹具=**level_readable=False 时 last_state.level 不参与取大**(锁合一后输出语义,非锁现状缺陷形态)。**显式豁免面**:cap 失读兜底链(cw_op_deploy.py:638-645 max(last_level_obs, last_state.level))豁免合一——其 fail 方向=高读(白拖便宜,r60/r64 代价不对称已声明),与布局公式用途不同;豁免依据本行即登记,level 单一源锁不对其断言 |
 
-锁纪律:每锁 docstring 引本稿章节;行为变更锁=T-3/T-5/T-7/T-8(其余零变更迁移),红/绿判据 = §3.1 失效形态复现帧与 §4 消费链契约。
+锁纪律:每锁 docstring 引本稿章节;行为变更锁=防抖帧断言锁/幻影补断言锁/单帧未知锁/level 单一源锁(其余零变更迁移),红/绿判据 = §3.1 失效形态复现帧与 §4 消费链契约。
 
 ## 7. 落码分批建议
 
-- **批 A(仲裁注册面+零变更迁移)**:cw_arbitration.py + deployed/board 两量迁移 + cw_screen_prep 对拍调用点替换 + T-1/T-2/T-6。验收=L1 快速集绿+迁移对拍锁;风险最低,先立地基。
-- **批 B(布局三信号,行为变更批)**:§3.2 全部 + T-3/T-7/T-8 + defects 分键 + cw_identity_obs(level 单一源+钩子适配)。验收=失效形态复现帧单测+CW 快速集+一次实机局锚点(到 P1-r7+ 盯 `deployed_count_2src` 与新增 `back_layout_*` 留证行频次,report §3 复用同款判读锚)。
+- **批 A(仲裁注册面+零变更迁移)**:cw_arbitration.py + deployed/board 两量迁移 + cw_screen_prep 对拍调用点替换 + 注册面语义锁/迁移对拍锁/分键互不混流锁。验收=L1 快速集绿+迁移对拍锁;风险最低,先立地基。
+- **批 B(布局三信号,行为变更批)**:§3.2 全部 + 防抖帧断言锁/单帧未知锁/level 单一源锁 + defects 分键 + cw_identity_obs(level 单一源+钩子适配)。验收=失效形态复现帧单测+CW 快速集+一次实机局锚点(到 P1-r7+ 盯 `deployed_count_2src` 与新增 `back_layout_*` 留证行频次,report §3 复用同款判读锚)。
 - **批 C(与 14 号稿 swap 落码合流)**:§4 三约束——cw_screen_prep vacancy 改造+divergent 传播+发射门语义,随 swap 发射门一并落;依赖 14 号稿玩家过目门。
-- **批序与文件面(A5 修订,替代 v1「三批互斥」)**:批 A 与批 C **同触 cw_screen_prep.py**(不同段:批 A=对拍调用点,批 C=vacancy 计算段),批 B 与批 A/C 同触 cw_op_deploy.py(批 B=单一源转调,批 C=swap 收口)——**三批是先后串行关系,不是文件面互斥**;批间靠接口锁衔接:批 A 交付注册面 API(T-1 锁死)→ 批 B 消费;批 A 交付对拍迁移语义(T-2)→ 批 C 的 vacancy 改造复用同一仲裁值路径。执行序 A→B→C,A 完成前 B/C 不开工。
+- **批序与文件面(A5 修订,替代 v1「三批互斥」)**:批 A 与批 C **同触 cw_screen_prep.py**(不同段:批 A=对拍调用点,批 C=vacancy 计算段),批 B 与批 A/C 同触 cw_op_deploy.py(批 B=单一源转调,批 C=swap 收口)——**三批是先后串行关系,不是文件面互斥**;批间靠接口锁衔接:批 A 交付注册面 API(锁死)→ 批 B 消费;批 A 交付对拍迁移语义→ 批 C 的 vacancy 改造复用同一仲裁值路径。执行序 A→B→C,A 完成前 B/C 不开工。
 
 ## 8. 开放问题
 
@@ -192,19 +192,19 @@ arbitrate(key, readings, ctx) -> (value, verdict, divergent)
 
 | 条目 | 级别 | 处置 | 落点 |
 |---|---|---|---|
-| A1 右探针否决无防抖+数值论证被 W209h 事故记录证伪+「6→7 错向廉价」不成立 | 阻断 | 采纳:否决(双向)加三读一致防抖门,N=3 依据=W209h house 先例+瞬态实拍 6.5 与阈值 6.0 间隔仅 1.6×(单帧余量不足是事故已证事实)+触发频度低成本可接受;「超集廉价」论证撤回,§3.2.0 错向代价重写(居中重排列位互不重合→读取错位毒化链);T-3 补防抖帧断言 | §3.2.0/§3.2②/T-3 |
-| A2 「7/8 无信号态」与「全弃权态」缺省未定义 | 应修 | 采纳:立显式「布局未知态」(n=None/verdict=unknown)——单帧未知=跳过后排依赖操作(宁缺勿造先例);连续 3 帧未知=退 6 档基线+每帧留证+`back_layout_unknown` 分键;撤 v1「采 7」拍定值 | §3.2④/T-7 |
+| A1 右探针否决无防抖+数值论证被 W209h 事故记录证伪+「6→7 错向廉价」不成立 | 阻断 | 采纳:否决(双向)加三读一致防抖门,N=3 依据=W209h house 先例+瞬态实拍 6.5 与阈值 6.0 间隔仅 1.6×(单帧余量不足是事故已证事实)+触发频度低成本可接受;「超集廉价」论证撤回,§3.2.0 错向代价重写(居中重排列位互不重合→读取错位毒化链);补防抖帧断言锁 | §3.2.0/§3.2②/防抖帧断言锁 |
+| A2 「7/8 无信号态」与「全弃权态」缺省未定义 | 应修 | 采纳:立显式「布局未知态」(n=None/verdict=unknown)——单帧未知=跳过后排依赖操作(宁缺勿造先例);连续 3 帧未知=退 6 档基线+每帧留证+`back_layout_unknown` 分键;撤 v1「采 7」拍定值 | §3.2④/单帧未知锁 |
 | A3 错向几何论证重写 | 应修 | 采纳:并入 §3.2.0(列位互不重合事实+「超集廉价」仅限未建档新档位语境);§3.2③ 措辞随改 | §3.2.0/§3.2⑥ |
 | A4 node_type 票B 与权威同源,独立性先例不成立 | 应修 | 采纳:票B 重定义为「进度一致性对账」不作独立票(承认真独立票=票A+票C 两张);§1 行 10 勘误注;§2.2 标称类③实证支撑如实收缩(仓内尚无纯行为位先例),首接线=批 B;§2.2 边界②补「同源关系一律不算独立票」 | §1 行10/§2.2/§8③ |
 | A5 vacancy 约束真实落点=cw_screen_prep heavy 链,「三批文件面互斥」不成立 | 应修 | 采纳:§4 前置落点勘误(heavy→snapshot→mandate frame 传播链+contracts divergent 字段);§5 cw_screen_prep 拆双行(批 A 对拍/批 C vacancy,同文件需串行);§7 改「三批先后串行+批间接口锁」 | §4/§5/§7 |
-| A6 T-2 只覆盖 deployed,board 迁移不可验证 | 应修 | 采纳:T-2 扩双量对拍,board 用「分歧帧×帧态」矩阵夹具 | T-2 |
-| A7 `cw_identity_obs._session_level` 漏改造+双拷贝未合一 | 应修 | 采纳:§2.3 补传导缺口两条(authoritative 位传导+双拷贝合一为单一源);§5 cw_identity_obs/cw_op_deploy 行扩;新 T-8 锁 | §2.3/§5/T-8 |
+| A6 迁移对拍锁只覆盖 deployed,board 迁移不可验证 | 应修 | 采纳:迁移对拍锁扩双量对拍,board 用「分歧帧×帧态」矩阵夹具 | 判读账 |
+| A7 `cw_identity_obs._session_level` 漏改造+双拷贝未合一 | 应修 | 采纳:§2.3 补传导缺口两条(authoritative 位传导+双拷贝合一为单一源);§5 cw_identity_obs/cw_op_deploy 行扩;新 level 单一源锁 | §2.3/§5/level 单一源锁 |
 | A8 「diff==1 帧 CV 恒不可判」过强,7 误判 8 通路未覆盖 | 存疑 | 采纳:§3.1 补第 4 条反向通路(左半片上界未证+已建档直采无防抖先存暴露);§3.2③ 批 B 收口所有已建档 CV 直采进三读门;标定命题扩双向(§8⑨) | §3.1④/§3.2③/§8⑨ |
 | A9 标量「优」无度量定义 | 存疑 | 采纳:「优」降格为显式声明字段(通道优先序+依据引用),不从汇总指标推导;标定翻转=改声明+ADR | §2.2 标量行 |
 | A10 清点三边角漏项 | 存疑 | 采纳:补行 19(bench 满判定三面)/行 20(node_sequence 双源)/行 21(deploy_vacancy 双生产,A5 根);行 19 后续裁决挂 §8⑧、行 20 挂 §8⑩ | §1/§8⑧⑩ |
 | A11 空间归属校验与独立票机制混排 | 存疑 | 采纳:标称类④拆出为独立第⑤条「归属约束(几何先验)」,与独立票脱钩 | §2.2 第⑤条/§8① |
 | A12 「五处仲裁」vs 正文 6 项 | 低 | 采纳:标题改「六处」 | §2.1 |
-| A13 「零行为变更」与「留证文案迁移」口径冲突 | 低 | 采纳:§2.4 显式声明=裁决值/schema/分键锁死,verdict 文本允许迁移且对拍不锁 | §2.4/T-2 |
+| A13 「零行为变更」与「留证文案迁移」口径冲突 | 低 | 采纳:§2.4 显式声明=裁决值/schema/分键锁死,verdict 文本允许迁移且对拍不锁 | §2.4/迁移对拍锁 |
 | A14 「cap 失读取 max」措辞与代码不符 | 低 | 采纳:更正为「拒信 None→不设板满门(门失效)」;注册面 fail_closed_side 声明随之用弃权语义 | §2.2 计数行/§1 行4 |
 
 ## 9.1 对抗轮 2 返工记录(v2 → v3)
@@ -213,11 +213,11 @@ arbitrate(key, readings, ctx) -> (value, verdict, divergent)
 
 | 条目 | 级别 | 处置 | 落点 |
 |---|---|---|---|
-| B1 右探针否决缺帧有效性门+防抖残余风险未声明 | 应修 | 采纳:`right_probe_has_slot` 有效性前置=两锚位 std 均过门,锚失效帧一律 None 进未知态不触发否决;「唯一隔离手段」降格为「瞬态隔离手段」+持续性幻影(>2s 特效/召唤物驻留,三读全幻影)残余如实声明,防线=`back_layout_divergence` 分键频度监控+批 B 验收锚点;T-3 补锚失效断言 | §3.2②/T-3/§7 批 B |
+| B1 右探针否决缺帧有效性门+防抖残余风险未声明 | 应修 | 采纳:`right_probe_has_slot` 有效性前置=两锚位 std 均过门,锚失效帧一律 None 进未知态不触发否决;「唯一隔离手段」降格为「瞬态隔离手段」+持续性幻影(>2s 特效/召唤物驻留,三读全幻影)残余如实声明,防线=`back_layout_divergence` 分键频度监控+批 B 验收锚点;补锚失效断言锁 | §3.2②/防抖帧断言锁/§7 批 B |
 | B2 「连续未知退 6 档行动」与 §3.2.0 自相矛盾+依据链不闭合 | 应修 | 采纳(裁定=②③组合):未知态执行面改读写分级+冻结止损——单帧未知跳过后排操作(维持);连续未知=读类退 6 档继续读+写类(后排部署/tracked 后排写入)冻结止损;恢复信号=防抖门出干净裁决即解冻;「diff=0 总体先验不作未知帧条件分布依据」论证如实入文(作废 v2 该论证);fail_closed_side 补全=写面冻结/读面保守低档,依据=读写代价不对称非分布先验 | §3.2④ |
 | B3 「连续 3 帧」无依据+计数接口未定义 | 应修 | 采纳:连续阈值与防抖同 N=3(复用 W209h 先例,显式声明不立第二旋钮);换算=一次防抖轮(首读+2 重读)全不可判计 1 个未知帧;任一已知帧清零复位 | §3.2④ |
 | B4 「同源一律不算票」混淆错误相关性与出身 | 存疑 | 采纳(给结论):排除判据=**共享错误源**非代码出身;台账重索引排除(与权威同表);跨画面/跨时机采集链(台账 vs live 行检测)不在排除列,证据力按具体共享面逐量评估 | §2.2 边界② |
-| B5 `_cached_vacancy` 陈旧值过 swap 门 | 存疑 | 采纳(给收口):缓存兜底帧 vacancy 带 stale 标记进 mandate frame(与 divergent 同槽),发射门按 §4.2 同语义延迟;T-5 补断言 | §4.1/T-5 |
-| B6 单帧未知留证无锁+截图节流口径 | 低 | 采纳:T-7 补单帧未知 JSONL 证据行写入断言;留证口径=锁 JSONL(不节流),截图按既有 300s 节流不进锁 | T-7 |
-| B7 第三处内联 level 链不在收编面 | 低 | 采纳:cap 失读兜底链(cw_op_deploy.py:638-645)**显式豁免**合一(依据=r60/r64 代价不对称已声明,fail 方向=高读便宜);豁免登记于 T-8 与 §5 | T-8/§5 |
-| B8 T-8 夹具措辞有锁错语义风险 | 低 | 采纳:夹具改「level_readable=False 时 last_state.level 不参与取大」(锁合一后输出语义,非锁现状缺陷形态) | T-8 |
+| B5 `_cached_vacancy` 陈旧值过 swap 门 | 存疑 | 采纳(给收口):缓存兜底帧 vacancy 带 stale 标记进 mandate frame(与 divergent 同槽),发射门按 §4.2 同语义延迟;幻影残余补断言锁 | §4.1/幻影补断言锁 |
+| B6 单帧未知留证无锁+截图节流口径 | 低 | 采纳:单帧未知锁补单帧未知 JSONL 证据行写入断言;留证口径=锁 JSONL(不节流),截图按既有 300s 节流不进锁 | 判读账 |
+| B7 第三处内联 level 链不在收编面 | 低 | 采纳:cap 失读兜底链(cw_op_deploy.py:638-645)**显式豁免**合一(依据=r60/r64 代价不对称已声明,fail 方向=高读便宜);豁免登记于 level 单一源锁与 §5 | level 单一源锁/§5 |
+| B8 level 单一源锁夹具措辞有锁错语义风险 | 低 | 采纳:夹具改「level_readable=False 时 last_state.level 不参与取大」(锁合一后输出语义,非锁现状缺陷形态) | 判读账 |

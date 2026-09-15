@@ -28,16 +28,16 @@ def check_engine_seed_not_resold(rows: list[dict]) -> list[str]:
     语义不变,0 容忍恢复成立(seed16 姬子·启行 r4 买 r6 卖 r7 再
     买的涌现形态随兜底移除消失)。
 
-    T-153 迁移(C7/ADR-0593):自报辖域保留(兼容面),叠加种子身份
+    自证循环迁移 C7(裁定正本 = sim/checks/suspects.py 模块头):自报辖域保留(兼容面),叠加种子身份
     自算复核(selfcalc.seed_identity_review:引擎件∧购买时未持有)
-    ——回卖命中且身份失配 = 改标攻击面(ADR-0593 §C7)
+    ——回卖命中且身份失配 = 改标攻击面(C7 面)
     显形为可疑项条目;复核不改变 0 容忍判违面本身。
     """
     from sr_od.application.currency_war.sim.checks import selfcalc as _sl
     out: list[str] = []
     seed_buys: dict[str, tuple[int, int]] = {}   # name → (轮号, 同轮份数)
-    _seed_buy_acts: dict[str, dict] = {}   # T-153(C7):身份复核用动作行
-    _seed_buy_rows: dict[str, int] = {}    # T-153(C7):买入行下标
+    _seed_buy_acts: dict[str, dict] = {}   # 自证循环迁移 C7:身份复核用动作行
+    _seed_buy_rows: dict[str, int] = {}    # 自证循环迁移 C7:买入行下标
     for _row_idx, row in enumerate(rows):
         rn = row.get('round_num') or 0
         for a in row.get('actions') or []:
@@ -57,7 +57,7 @@ def check_engine_seed_not_resold(rows: list[dict]) -> list[str]:
             elif t == 'SellBench' and a.get('name') in seed_buys:
                 bought_rn, cnt = seed_buys[a['name']]
                 if 1 <= rn - bought_rn <= 2 and cnt < 2:
-                    # T-153 迁移(C7/ADR-0593):种子身份自算复核,失配
+                    # 自证循环迁移 C7:种子身份自算复核,失配
                     # = 自报辖域外的改标形态,可疑项先行显形。
                     if _sl.seed_identity_review(
                             rows, _seed_buy_rows[a['name']],
@@ -67,7 +67,7 @@ def check_engine_seed_not_resold(rows: list[dict]) -> list[str]:
                             f"p{row.get('plane')}r{rn} 可疑项(种子身份失配): "
                             f"{a.get('name')} 自报 engine_seed(r{bought_rn}"
                             '买入) 自算=非引擎件/购买时已持有——请裁决: '
-                            '辖域内回卖 / 改标逃避种子检查 (ADR-0593)')
+                            '辖域内回卖 / 改标逃避种子检查 (裁定见 sim/checks/suspects.py 模块头)')
                     out.append(
                         f"p{row.get('plane')}r{rn}: engine_seed 买入 "
                         f"{a.get('name')}(r{bought_rn})≤2 轮内回卖"
@@ -474,7 +474,7 @@ def check_engine_seed_sell_exemption(rows: list[dict]) -> list[str]:
     check_no_same_round_buy_sell 的豁免边界单一源一致(实现各自
     独立,判据漂移时双向锁会红)。
 
-    T-153 迁移(C7/ADR-0593):叠加种子身份自算复核(selfcalc.
+    自证循环迁移 C7:叠加种子身份自算复核(selfcalc.
     seed_identity_review)——同轮卖回命中且买入身份失配 = 改标
     攻击面显形为可疑项条目;豁免边/判违面本身不变。
     """
@@ -495,7 +495,7 @@ def check_engine_seed_sell_exemption(rows: list[dict]) -> list[str]:
                 _n = a.get('name')
                 if _n in _seed_buys and _seed_buys[_n] < 2 \
                         and _n not in _sold:
-                    # T-153 迁移(C7/ADR-0593):身份自算复核先行显形。
+                    # 自证循环迁移 C7:身份自算复核先行显形。
                     if _sl.seed_identity_review(rows, _row_idx,
                                                 _seed_acts[_n]) \
                             == _sl.REVIEW_MISMATCH:
@@ -503,7 +503,7 @@ def check_engine_seed_sell_exemption(rows: list[dict]) -> list[str]:
                             f"p{row.get('plane')}r{row.get('round_num')} "
                             f"可疑项(种子身份失配): {_n} 自报 engine_seed "
                             '自算=非引擎件/购买时已持有——请裁决: 振荡 / '
-                            '改标逃避种子检查 (ADR-0593)')
+                            '改标逃避种子检查 (裁定见 sim/checks/suspects.py 模块头)')
                     out.append(
                         f"p{row.get('plane')}r{row.get('round_num')} "
                         f"engine_seed 单张买入即同轮卖回: {_n}"

@@ -113,9 +113,9 @@ def seg_check_overflow_idle_spend(rows: list[dict]) -> list[dict]:
     豁免:bench 满守卫拦截轮(想买买不了,``bench_full_skipped_buys``>0
     披露在场)、息线邻近容忍带(g0 ≤ interest_floor+
     ``_OVERFLOW_TOLERANCE``,ADR-0478)。
-    **T-153 迁移(C5/ADR-0593)**:formed_stop 自述豁免降级为「自算成型
+    **自证循环迁移 C5(裁定正本 = sim/checks/suspects.py 模块头)**:formed_stop 自述豁免降级为「自算成型
     复核通过才豁免」——自算(engines≥2)先行,自报停手∧自算未成型 =
-    「成型谎报」形态(ADR-0593 §C5:旧序自报短路在自算之前,
+    「成型谎报」形态(C5 面:旧序自报短路在自算之前,
     谎报恰好不可见)→ 违规事件带 ``suspect`` 标记产出,不豁免;自洽
     停手(自算已成型)不产条目、豁免照旧。
     """
@@ -134,7 +134,7 @@ def seg_check_overflow_idle_spend(rows: list[dict]) -> list[dict]:
             continue
         if g0 <= DEFAULT_REGISTRY.interest_floor() + _OVERFLOW_TOLERANCE:
             continue
-        # T-153 迁移(C5/ADR-0593):自算成型度先行(旧序 formed_stop
+        # 自证循环迁移 C5:自算成型度先行(旧序 formed_stop
         # 短路在自算之前,谎报形态不可见——迁移后失配显形)。
         engines = _seg_engines(row)
         if engines >= 2:
@@ -151,7 +151,7 @@ def seg_check_overflow_idle_spend(rows: list[dict]) -> list[dict]:
             # 交复盘裁决(复核三态语义见 selfcalc 模块 docstring)。
             ev['suspect'] = ('成型谎报: 自报停手=真 自算成型度='
                              f'{engines}(<2)——请裁决: 合法守息 / '
-                             '谎报停手 (ADR-0593)')
+                             '谎报停手 (裁定见 sim/checks/suspects.py 模块头)')
         out.append(ev)
     return out
 
@@ -201,7 +201,7 @@ def _seg_buys(row: dict) -> list[dict]:
 
 
 
-#: 例外⑦ 判定集(T-207):sell_gate.LAUNCH_CAUSE_BY_ARM 的 obligation
+#: 例外⑦ 判定集:sell_gate.LAUNCH_CAUSE_BY_ARM 的 obligation
 #: 静态值域镜像(现值四键)。镜像纪律(checks 层纯函数、零生产 import;
 #: 先例 = ledger._CORE_EXIT_KEYS / 本文件 _LEVELUP_AUTH_WHITELIST):
 #: 新义务臂入生产映射表即自动被⑦覆盖,生产表 obligation 行扩集而本集
@@ -236,7 +236,7 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
     ≥2(``_combat_streak_by_round`` 单一源;连胜只有战斗类节点累积,
     重算口径与该 helper 相同);
     ③ ~~奖励/补给节点买经验~~(**已收编退役**:[16]② 原条目已删除,
-    节点限定口径随「息律节点无关」定调由④收编——ADR-0471;T-115 起
+    节点限定口径随「息律节点无关」定调由④收编——ADR-0471;规则①起
     奖励节点 = 升级抑制对象(ADR-0580 规则①),不再构成独立豁免依据,
     奖励帧 LevelUp 支出仍由④通道口径覆盖);
     ④ **追级经验通道**(spend.levelup>0):升级授权单一源 =
@@ -253,7 +253,7 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
     合法跌破息基、下探至 boss_floor 属设计内行为(ADR-0426 同一语义);
     花后金仍 ≥ boss_floor → 豁免;跌破 boss_floor → 不豁免照报
     (越权信号,ADR-0426 边界原文)。
-    ⑦ **obligation 因果类笔在场**(T-207):本轮任一 BuyCard 笔
+    ⑦ **obligation 因果类笔在场**:本轮任一 BuyCard 笔
     ``reason`` 落 obligation 因果类(镜像集 ``_OBLIGATION_CAUSE_ARMS``,
     单一源 = sell_gate.LAUNCH_CAUSE_BY_ARM 的 obligation 静态值域)→
     整轮豁免。授权正本:02_mandate_layer.md §3 M2 行「店面出现即买,
@@ -270,7 +270,7 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
     会漏宽集义务笔、且会毒化例外①的「无 off」构成判读。轮级豁免
     粒度与④⑤一致;同轮非 obligation 笔的显影让渡由
     ``seg_check_obligation_exempt_mixed_visibility`` 披露分键
-    (T-207 §5.3),hold 类(候裁面)不命中本条。
+    (例外⑦规格),hold 类(候裁面)不命中本条。
     ④⑤同时把升级/刷新/买件花费分解(spend_breakdown)写进事件,
     归因不需人工分账(`w649_mutation/` B2)。
     仍不满足 = 买件引发的凭空破息(真破息候选,行为判读输入)。
@@ -301,7 +301,7 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
             exceptions.append('store_all_wanted')
         if streaks.get(row.get('round_num'), 0) >= 2:
             exceptions.append('streak_hold')
-        # T-115 对齐(ADR-0580):原③奖励/补给节点豁免已退役——奖励节点
+        # 对齐 ADR-0580:原③奖励/补给节点豁免已退役——奖励节点
         # = 升级抑制对象,不再构成节点型独立豁免;LevelUp 支出由④
         # levelup_spend 通道口径覆盖(ADR-0471 收编口径)。
         if spend_lv > 0:
@@ -312,7 +312,7 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
             if gold_end >= DEFAULT_REGISTRY.boss_floor:
                 exceptions.append('boss_floor_authorized')
             # else: boss 窗越权跌破地板(ADR-0426 边界),不豁免照报
-        # 例外⑦ obligation 因果类(T-207):轮内任一 BuyCard 笔 reason
+        # 例外⑦ obligation 因果类:轮内任一 BuyCard 笔 reason
         # 落义务值域 → 整轮豁免(判定集 = _OBLIGATION_CAUSE_ARMS 镜像,
         # 漂移由测试仓镜像一致性锁辖;授权正本与轴选择见 docstring⑦)。
         if any(b.get('reason') in _OBLIGATION_CAUSE_ARMS for b in bought):
@@ -341,7 +341,7 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
 
 
 
-# --- 例外⑦ mixed 让渡披露面(T-207 §5.3;纯观察面)--------------------
+# --- 例外⑦ mixed 让渡披露面(纯观察面)--------------------
 
 #: 披露分组桶(hold/press/other 三桶):**披露可读性分组,非判定集**——
 #: ⑦判定集只有 _OBLIGATION_CAUSE_ARMS(镜像一致性锁辖漂移);本两桶
@@ -369,7 +369,7 @@ def _obligation_disclosure_group(reason: object) -> str:
 
 def seg_check_obligation_exempt_mixed_visibility(
         rows: list[dict]) -> list[dict]:
-    """例外⑦豁免破息轮的 mixed 构成披露(T-207 §5.3;非违规检查)。
+    """例外⑦豁免破息轮的 mixed 构成披露(非违规检查)。
 
     辖域 = 与 seg_check_break_interest_exception 同口径的破息轮
     (plane=1,g0 ≥ 50 ∧ 末金 < 50 ∧ 有花费)中「⑦成立(轮内存在
@@ -414,7 +414,7 @@ def seg_check_obligation_exempt_mixed_visibility(
                       f'笔 {len(mixed)} 笔(hold={len(groups["hold"])} '
                       f'press={len(groups["press"])} '
                       f'other={len(groups["other"])})'
-                      '——mixed 让渡披露(T-207 §5.3)',
+                      '——mixed 让渡披露',
             'gold_before': g0, 'gold_after': gold_end,
             'obligation_buys': oblig, 'mixed_groups': groups,
         })
@@ -463,11 +463,11 @@ def seg_check_formed_still_buying_transition(rows: list[dict]) -> list[dict]:
       账本位先例)。定型后 ④ 臂收窄由发射侧辖域闸与 shop 锁
       (test_cw_shop_line TestTransitionReleaseArm)辖,本检查不重复。
 
-    T-153 迁移(C6/ADR-0593):豁免面本身不变(时序歧义理由成立,机械
+    自证循环迁移 C6:豁免面本身不变(时序歧义理由成立,机械
     不复算定型位)——但 ④ 臂放行的买入不再静默:语境条目(④臂买入+
     邻近轮 v3_intention+committed 时点打包)由检测器 D6(sim/checks/
     suspects.py)产出、嵌入复盘对应节点小节交复盘者裁决定型位
-    (ADR-0593 §4.1-D6「机械判不了→复盘者判」的归宿)。
+    (「机械判不了→复盘者判」的归宿,裁定见 sim/checks/suspects.py 模块头)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.kernel.cw_card_identity import (
@@ -563,18 +563,18 @@ def seg_check_unjustified_levelup(rows: list[dict]) -> list[dict]:
     static_ev(EV 平台账)外 = 凭空追级。[12] 主条(连 50 金都没凑到
     不急升级)落在授权门的金维:与 batch 表 check_levelup_interest_
     engine_gate 同谓词,差异只在输出粒度(那里=违规局数,这里=逐事件
-    带 state 关键值供段级归因)。T-115 对齐(ADR-0580):原「豁免奖励/
+    带 state 关键值供段级归因)。对齐 ADR-0580:原「豁免奖励/
     补给节点([16]② 买经验合法)」节点型 skip 已退役——奖励节点 = 升级
-    抑制对象(T-115 规则①),授权判定按 ADR-0471 收编口径回归节点无关
+    抑制对象(规则①),授权判定按 ADR-0471 收编口径回归节点无关
     的通道分类(auth 白名单);奖励帧无授权升级 = 违规可见,白名单内
     授权(如扑满环境帧经 M3 闸链的 m3_batch:*)照常放行。
     近似声明同 batch 版:升级前等级用上一行 level;时点金=首波 gold。
-    T-153 迁移(C2/ADR-0593):白名单降级为「自算复核通过才豁免」——
+    自证循环迁移 C2:白名单降级为「自算复核通过才豁免」——
     pop_slot/m3_batch(含分键)可核前置(板满∧等待上场名册件)经
     selfcalc.levelup_prereq_review 现算(执行点披露键优先,行末近似
     回退),失配 = 可疑项事件(``suspect`` 标记)+ 不豁免;dp/static_ev
     腿不可机械复算 = unverifiable 豁免照旧(语境交检测器 D3)。
-    复核辖域与批版同门(ADR-0593 后果.5 L4):lv≥5 ∧ 时点金 < 追级金门
+    复核辖域与批版同门(金门辖域裁定):lv≥5 ∧ 时点金 < 追级金门
     (interest_floor 单一源)才复核——金门外白名单臂不产可疑项;
     条目文案不硬编码阈数字,由金门现值渲染。
     """
@@ -597,9 +597,9 @@ def seg_check_unjustified_levelup(rows: list[dict]) -> list[dict]:
             if prev_level < 5:
                 continue   # 与 batch 版同界:lv≥5 才算追级段
             if basis in _LEVELUP_AUTH_WHITELIST or basis.startswith('m3_batch:'):
-                # T-153 迁移(C2/ADR-0593):自算可核前置,失配显形
+                # 自证循环迁移 C2:自算可核前置,失配显形
                 # (dp/static_ev 不可复算 = unverifiable,照旧豁免)。
-                # ADR-0593 后果.5(L4):金门 = 批版同款 <interest_floor 辖域,
+                # 金门辖域裁定:金门 = 批版同款 <interest_floor 辖域,
                 # 阈值从注册表现读(禁硬编码假文案)。
                 if (g0 is not None and g0 < _gold_gate
                         and (basis == 'pop_slot' or basis == 'm3_batch'
@@ -617,7 +617,7 @@ def seg_check_unjustified_levelup(rows: list[dict]) -> list[dict]:
                                   f'{a.get("dec_bench_wait_member")}'
                                   f'(cap={st.get("cap")})'
                                   '——请裁决: 授权成立 / 谎报臂名 '
-                                  '(ADR-0593)',
+                                  '(裁定见 sim/checks/suspects.py 模块头)',
                         'gold_before': g0, 'auth_basis': basis,
                         'level_before': prev_level, 'cap': st.get('cap'),
                         'dec_board_full': a.get('dec_board_full'),

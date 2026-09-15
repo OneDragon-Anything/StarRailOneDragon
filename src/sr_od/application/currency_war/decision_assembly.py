@@ -62,7 +62,7 @@ def install_obs_ports() -> None:
     )
     set_obs_reset_hook(reset_phase_round_cache)
     set_merge_effect_gate(is_merge_effect_frame)
-    # star 回退截图留证 saver(T-176 G-13 收编:实现住本装配模块,kernel
+    # star 回退截图留证 saver(实现住本装配模块,kernel
     # 零像素触达;缺省关 = 不落截图,flag 文本留证照写)。
     set_star_evidence_saver(_star_evidence_saver())
 
@@ -85,7 +85,7 @@ def _reconcile_dir() -> Path:
 
 
 def _star_evidence_saver():
-    """star 回退截图留证 saver 工厂(T-176 G-13 收编:cv2 落盘从
+    """star 回退截图留证 saver 工厂(cv2 落盘从
     kernel/cw_reconcile._star_stop_hook 迁出,实现住本装配模块——共用中段
     禁摸像素,装配缝先例 = 同文件 ``_bs_defect_sink_for_test``)。
 

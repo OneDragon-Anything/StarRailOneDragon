@@ -116,7 +116,7 @@ _BATCH_CHECKS = {
     # --- 动作 v2(契约包 C1,步2):显式动作一致性/围栏配对 ---
     'comp_tx_atomicity': check_comp_tx_atomicity,
     'skip_fence_pairing': check_skip_fence_pairing,
-    # --- T-115 恒买腾席判红检测器(写端位出口键完备性;ADR-0580)---
+    # --- 恒买腾席判红检测器(写端位出口键完备性;ADR-0580)---
     # seen 帧零出口键 = 席满静默违复活(计数式轮级回退红则,残注①)
     'core_ruling_seat_violation': check_core_ruling_seat_violation,
     # --- 刷新预算帽族(刷帽检查;两口径各自的常量单一源见各 docstring) ---
@@ -162,7 +162,7 @@ def run_batch_level_checks(ledgers: list[list[dict]],
         缺省回退 ledgers(纯 P1 批两者恒同,零漂移)。「局终」语义
         的检查必须喂全量账本——``second_engine_deadline`` 的 never
         判据辖 P2 转型期二引擎形成窗,P1 段截断口径会把 P2 内形成
-        的二引擎记成 never(T-211 归因「never 21 超带」假警报根因;
+        的二引擎记成 never(归因「never 21 超带」假警报根因;
         ADR-0629)。其余批级检查的判据轮域是 P1 段锚定(r≥6/r≥7/
         rn==6 等),P2 行 round_num 段内重计(1..7)会别名撞进同
         数值 P1 轮域——禁喂全量账本,维持 ledgers 辖域(ADR-0362)。
@@ -217,14 +217,14 @@ def run_batch_level_checks(ledgers: list[list[dict]],
         # ——发射帧决策照常/金照花 = 金出口族 A/B 假阴性形态回归)
         'sim_launch_short_circuit':
             _launch_sentinel(ledgers),
-        # T-115 恒买腾席支出口键分布披露(数据面;非违规——seen 开火性
+        # 恒买腾席支出口键分布披露(数据面;非违规——seen 开火性
         # × buy_hit/seat_swap 转化 × no_fuel/双 unaffordable 桶分布,
         # 方案 v2 §11.2 种子批验收线)
         'core_ruling_seat_buckets':
             core_ruling_seat_bucket_disclosure(ledgers),
         # (v2 四层/press/供给标签六检查项已随 decision_v2 退役链删除——统一迁移批 ② MAP B 类/A9。)
     }
-    # T-190 批 C 检查项(C-A1..A4;设计 v2 §六批 C,ADR-0627 链):
+    # 批 C 检查项(C-A1..A4;ADR-0627 链):
     # P2 买入→上板转化链诊断四件,只审计不修行为。辖 P2 域判据,
     # 消费 full_ledgers 全行(P1 段截断口径会把 P2 行别名截掉,同
     # second_engine_deadline 的 ADR-0629 full_ledgers 先例)。

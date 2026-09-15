@@ -37,7 +37,7 @@
 
 - 槽位越界 / 槽空:`LogicOutcome(applied=False, reason='bench_idx_out_of_range:<idx>')`,零容器写(备战域写口 = 静默零写守卫,等观察覆盖);
 - **期望失配 stale_proposal**:expect 非空且与槽内 `char_id` 不符 = `applied=False, reason='stale_proposal:<expect>!=<实际>'`,零写(语义源 = simulate SellBench 分支 ADR-0317;live 提案 expect 恒空不校验,校验面辖非空 expect 提案);
-- 执行器零判效(T-223):拖拽发出即职责完成,落地事实归观察侧 reconcile;「拒买语义」在本动作不存在(卖出恒可用)。
+- 执行器零判效:拖拽发出即职责完成,落地事实归观察侧 reconcile;「拒买语义」在本动作不存在(卖出恒可用)。
 
 ## 6. kernel 符号锚
 

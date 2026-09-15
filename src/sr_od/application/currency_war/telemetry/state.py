@@ -48,7 +48,7 @@ _CURRENT_DIFFICULTY: str = ""
 _RUN_MATCH: object | None = None
 
 
-# ===== 落盘根装配槽(T-120 批 1,F4)=====
+# ===== 落盘根装配槽 =====
 # 为什么是槽:get_recorder() 单例构造不传 replay_dir(缺省 DEFAULT_REPLAY_DIR,
 # kernel/cw_observe 根常量块),假局档案要改指档案根原本只能私 poke
 # ``_RECORDER``——与 install_obs_ports「模块级槽 + 缺省关 + 装配点显式接通」
@@ -137,7 +137,7 @@ def ensure_run_started(match: object, difficulty: str) -> str:
     生产铸造唯一调用点 = 本函数(cw_entry_start 简报/投资环境/投资策略三分
     支 + cw_loop __init__ 认领)。返回 open run_id。
 
-    职责边界(T-274 用户裁定 2026-09-15):本函数只辖 run 领取(铸造/认领);
+    职责边界(用户裁定 2026-09-15):本函数只辖 run 领取(铸造/认领);
     遥测数据的保存 = game state 职责,state 流水装配入口 =
     kernel/cw_game_state :func:`board_state_of` 局容器单例建立路径(触发只钉
     该建立点;生产注入漏斗 =

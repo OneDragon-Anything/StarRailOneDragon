@@ -1,9 +1,6 @@
-"""T-190 批 C 检查项(C-A1..A4;只审计,修法按归属路由)。
+"""批 C 检查项(C-A1..A4;只审计,修法按归属路由)。
 
-设计正本 = T-190 设计 v2 §六批 C(进度账本
-``.debug/progress/2026-09-06-currency-war-redesign/dag.jsonl`` T-190 卡
-2026-09-10T02:31:05 注交付;正文在 ``.debug/temp/currency_war/T-190-
-设计v2.md`` 属易失临时档,批 C 定义结论同录 ADR-0627 与账本)。实现
+设计正本 = 批 C 定义结论(同录 ADR-0627)。实现
 基线 = 批 B commit 84a484e97(收窄谓词三落点 + ``press_narrowed_
 transition_domain`` 族分键)。四项全部为批级检查,消费 full_ledgers
 (P1+P2 全行;判据辖 P2 转化链域,P1 段截断口径会把 P2 行别名截掉——
@@ -11,7 +8,7 @@ transition_domain`` 族分键)。四项全部为批级检查,消费 full_ledgers
 
 - C-A1 :func:`check_t190_c1_bench_clog_attribution` 腾席链失效形态
   枚举 + 死库存卡容分类账(core 拒帧逐帧归因;验收锚 = 零未归因);
-- C-A2 :func:`check_t190_c2_new_buy_swap_coverage` T-16 覆盖复查
+- C-A2 :func:`check_t190_c2_new_buy_swap_coverage` 新购件覆盖复查
   (新购档关键件「买入帧→计划点」swap 计划候选覆盖;验收锚 = 结论
   可裁回账本:强信号缺口归零裁 done,有缺口进修复面);
 - C-A3 :func:`check_t190_c3_exemption_fire` 豁免集开火性(m2_*/C1
@@ -22,8 +19,7 @@ transition_domain`` 族分键)。四项全部为批级检查,消费 full_ledgers
   账本逐位配平)。
 
 **P89 一致性边界(批 C 实施纪律)**:P89 换血预算预注册线 0.75 次/轮
-已正式判定 FAIL(复测批 s8550,账本 T-190 卡 2026-09-10T08:23:37 注
-定谳),属申报内现状(设计机制载体本就不含第二套换血机器)——本模块
+已正式判定 FAIL(复测批 s8550 定谳),属申报内现状(设计机制载体本就不含第二套换血机器)——本模块
 四项不读、不判、不引该线,不复活已定谳关闭的换血预算线。
 
 **数据面近似声明(四项共通)**:生产资格排除集(sell_gate 统一装配 A:
@@ -79,7 +75,7 @@ _FRESH_WINDOW_ROUNDS = 1
 _DISPUTE_NOTE = (
     '候选级发现非定谳:生产排除集含账本不可见面(T3 垫保活跃名/锁定'
     '采购集全量),逐帧判读先查垫保登记面再定修法路由'
-    '(P78/P41 卖面 → T-126 线;可上性 → T-127 线)')
+    '(P78/P41 卖面 → 卖出资格仲裁线;可上性 → 锁线转型域线)')
 
 
 def _bench_used(state: dict) -> int:
@@ -318,7 +314,7 @@ def check_t190_c1_bench_clog_attribution(
 
 
 # ====================================================================
-# --- C-A2 T-16 覆盖复查(新购档关键件 → swap 计划候选) ---------------
+# --- C-A2 新购件覆盖复查(新购档关键件 → swap 计划候选) ---------------
 # ====================================================================
 
 def _c2_plan_point(rows: list[dict], i: int) -> tuple[dict | None, str, str]:
@@ -341,9 +337,9 @@ def _c2_plan_point(rows: list[dict], i: int) -> tuple[dict | None, str, str]:
 
 def check_t190_c2_new_buy_swap_coverage(
         full_ledgers: list[list[dict]]) -> dict:
-    """C-A2 T-16 覆盖复查(批级;T-190 设计 v2 §3.3 收纳;账本 T-16 卡)。
+    """C-A2 新购件覆盖复查(批级收纳)。
 
-    T-16 病灶 = 「部署计划未纳入本轮新购件」(复盘 195720 C)。断言:
+    病灶 = 「部署计划未纳入本轮新购件」(复盘 195720 C)。断言:
     每笔新购档关键件(义务买入臂 m2_line_member/m2_locked_member;
     C1/④ 为囤入通道不上板,不入分母)从买入行到**计划点**应被 swap
     计划覆盖。覆盖形态闭集:deployed(已上板)/ left_bench(已离席:
@@ -352,7 +348,7 @@ def check_t190_c2_new_buy_swap_coverage(
     活性细分:
 
     - ``gap_plan_active``:计划非空(有 victim 被卖/有件上板)而本件
-      零记录 = 强信号(他件被处置、本件不可见——T-16 病灶候选);
+      零记录 = 强信号(他件被处置、本件不可见——病灶候选);
     - ``gap_plan_idle``:计划空(板满无合格 victim)——本件等待属
       形态内,弱信号;
     - ``gap_board_open``:板未满——本件应走常规部署而非 swap 计划,
@@ -368,7 +364,7 @@ def check_t190_c2_new_buy_swap_coverage(
     记录扩面 or 逐帧重放」路由,本检查只显影不预判修法(设计:批 C
     只审计)。
 
-    验收锚 = 结论可裁回账本:``gaps_plan_active == 0`` → T-16 裁
+    验收锚 = 结论可裁:``gaps_plan_active == 0`` → 裁
     done(覆盖闭环);>0 → ``gap_samples`` 进修复面。violations =
     有强信号缺口的局数(弱信号只披露)。
     """
@@ -391,7 +387,7 @@ def check_t190_c2_new_buy_swap_coverage(
                 buys_tracked += 1
                 pt, tag, _skip = _c2_plan_point(rows, i)
                 if pt is None:
-                    # R3-a(T-307/ADR-0647)桶内分键:盲窗显影键在场 =
+                    # R3-a(ADR-0647)桶内分键:盲窗显影键在场 =
                     # 无载体成因 = 发射帧短路(申报桶非缺口语义不变);
                     # 旧档案无键仍归 no_plan_carrier,判读零漂移。
                     shape['no_plan_carrier_launch_short_circuit'
@@ -437,7 +433,7 @@ def check_t190_c2_new_buy_swap_coverage(
         'shapes': dict(shape),
         'gaps_plan_active': active_gaps,
         'gap_samples': gap_samples,
-        'verdict': ('coverage_closed:T-16 可裁 done' if active_gaps == 0
+        'verdict': ('coverage_closed:可裁 done' if active_gaps == 0
                     else 'repair_face:强信号缺口在案,进修复面'),
         'note': _DISPUTE_NOTE,
     }

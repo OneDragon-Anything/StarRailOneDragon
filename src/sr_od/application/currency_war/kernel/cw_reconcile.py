@@ -37,7 +37,7 @@ def set_merge_effect_gate(fn) -> None:
     _IS_MERGE_EFFECT_FRAME = fn
 
 
-# star 回退截图留证注入槽(T-176 G-13 收编:共用中段禁摸像素——kernel 不
+# star 回退截图留证注入槽(共用中段禁摸像素——kernel 不
 # import cv2,截图落盘实现住 app 装配模块,经 decision_assembly.install_obs_
 # ports 注入;先例 = 上方 ``set_merge_effect_gate`` 同款装配缝)。缺省关
 # (None)= 不落截图,flag 文本留证照写(best-effort 语义同向,不引入新故障面)。
@@ -67,8 +67,8 @@ def is_merge_effect_window(screen: MatLike | None) -> bool:
 
 
 #: star 降级采新确认门(连续降级读帧数)。推导:确认门 N 必须 > 实测最长
-#: 「同名多星星读抖动」episode 长度——深检档 .debug/currency_war/deep_review/
-#: run_20260915_054718.md §5 实锤 bench 同名 1/2/3★ 三副本并存时星读在帧间
+#: 「同名多星星读抖动」episode 长度——2026-09-15 局深检实锤 bench 同名
+#: 1/2/3★ 三副本并存时星读在帧间
 #: 翻转,本局 3 次 episode 全部「连续 2 次」(05:48:54/05:56:12/06:04:44),
 #: 旧 N=2 恰在 episode 末帧采新 → 锚被洗 → 全程抖动(3★ 合成线报废实证);
 #: 动画窗族(排查结论存档 cw_dev/live_round11_diagnosis.md,274 张存证重放)
@@ -188,7 +188,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     # (槽位表语义写入端)——本消费端若假设紧凑无 None 即双写冲突
     # (曾致验证局数百次 AttributeError 崩溃-重派循环)。
     # 守卫:跳过 None 槽(空槽在对账语义里=无信息,不是冲突)。
-    # 旧账基准 = game state 簿记(T-268 三次修正:宿主 = GameState.
+    # 旧账基准 = game state 簿记(宿主 = GameState.
     # tracked_books,本函数 = game state 层内部实现,就地处置)。
     _books = board_state_of(session).tracked_books
     old_b = [(bc.char_id, bc.star) for bc in _books.bench
@@ -302,13 +302,13 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     new_b = [(bc.char_id, bc.star) for bc in (bench or []) if bc is not None]
     new_d = [(bc.char_id, bc.star) for bc in (deployed or []) if bc is not None]
     drifted = (old_b != new_b) or (old_d != new_d)
-    # 布局代次写回事实位(T-308 S3):bench 侧是否实际写回(健康门通过)。
+    # 布局代次写回事实位:bench 侧是否实际写回(健康门通过)。
     # drifted 分支据此决定是否递增 bench_layout_epoch——deployed 驱动的
     # 纠漂不递增(bench 布局未变);误递增无害(重播种幂等)、漏递增有害
     #(布局变化无人知晓),故取「bench 写回 ∧ drifted」。
     _bench_written = False
     if bench is not None:
-        # T-308/ADR-0646 S2 主修:写回经 bench_from_compact 重建槽位表——
+        # ADR-0646 S2 主修:写回经 bench_from_compact 重建槽位表——
         # 与下方 deployed 侧 deployed_from_compact 同构(ADR-0392 单一源
         # 适配先例,bench 侧为同构修法补齐,非发明新机制)。SIFT 读的
         # slot = 画面物理槽号(read_bench_chars→identify_slots 逐槽赋值,
@@ -332,7 +332,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         _slots = bench_occupied_slot_nos(bench)
         _healthy = bench_slots_healthy(_slots)
         if _healthy:
-            # T-268 锚定写回 = 观察态退出点:屏幕真值写回成功即「已观察」
+            # 锚定写回 = 观察态退出点:屏幕真值写回成功即「已观察」
             # ——容器观察态字段置 True(策略商店门放行;bench 读失败/双空
             # 读守卫/槽号健康门拒绝不走此处 = 保持未观察)。best-effort:
             # 容器缺席/写失败不阻断对账主链(簿记已照常写回)。
@@ -351,7 +351,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         else:
             # 留证排序 str 化:健康门防御的对象正是非 int 槽号,拒绝分支若
             # 对混型列表(如 [None, 2])直接 sorted 会先 TypeError——防御
-            # 分支自伤,拒绝留证与保旧都未完成(T-308 落地审 P3 问题 2;
+            # 分支自伤,拒绝留证与保旧都未完成(落地审遗留问题;
             # 对照组 _reseed_bench_layout 同式留证包在 suppress 内,此处
             # 取 str 化保排序可读且混型安全)。
             _slots_disp = sorted(map(str, _slots))
@@ -361,7 +361,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
             _conflict('bench', '占用槽号唯一∧全在1..9',
                       f'slots={_slots_disp}', screen,
                       verdict=('保旧-写回槽号健康门拒绝(SIFT 读 slot 重复/'
-                               '越界,拒写防脏布局固化为槽位表;T-308/'
+                               '越界,拒写防脏布局固化为槽位表;'
                                'ADR-0646;处理:频发→查 SIFT 槽位识别)'),
                       source=source)
     if deployed is not None:
@@ -378,7 +378,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
                     f' deployed {old_d}→{new_d}')
         _conflict('tracking', f'{old_b}|{old_d}', f'{new_b}|{new_d}', screen,
                   verdict='采新-对账纠漂(SIFT 实读)', source=source)
-        # T-308/ADR-0646 S3:布局代次递增(churn 事件通道最小面)。对账纠漂
+        # ADR-0646 S3:布局代次递增(churn 事件通道最小面)。对账纠漂
         # = 布局可能重排,visit 内未来消费者(单动作循环每动作消费前检差)
         # 据此截断在飞计划并按 tracked 重播种。当前架构 reconcile 均在
         # visit 外跑,恒无消费者(S2+S1 后 epoch 只递增不消费,纯未来防御:
@@ -668,7 +668,7 @@ def _star_stop_hook(ctx, session, char: str, old_star: int, new_star: int,
             f'画面态:备战(角色在板上,星区可见);来源:{source}',
             encoding='utf-8')
         try:
-            # 截图留证经注入槽(T-176 G-13 收编:cv2 落盘实现迁 app 装配
+            # 截图留证经注入槽(cv2 落盘实现迁 app 装配
             # 模块,kernel 保持纯逻辑;缺省关 = 不落截图只写 flag)。
             _saver = _STAR_EVIDENCE_SAVER
             if _saver is not None and screen is not None and screen.size:

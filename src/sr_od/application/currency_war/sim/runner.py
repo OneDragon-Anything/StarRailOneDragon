@@ -143,7 +143,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
     :param invest: 透传 ``simulate_p1``(`w162_inject/`/ADR-0364;注入批报告增
         invest headline 三联:环境注入率/持卡均值/P1 锁定轮——含 D 的
         P1 侧结论自此批起以注入口径为基准)。
-    :param invest_arm: 透传 ``simulate_p1``(T-155 前置批;'sink'=基线臂
+    :param invest_arm: 透传 ``simulate_p1``(投资选卡双臂批;'sink'=基线臂
         真实判据(缺省)| 'freq'=旧频次注入对照臂);批报告以
         ``invest_arm`` 键披露(双臂报告同形,缺臂标 = 无法对账)。
 
@@ -250,7 +250,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # ===== invest headline 三联(`w162_inject/`/ADR-0364;invest 注入时有意义)=====
         # 环境注入率/P1 持卡均值/P1 锁定轮分布(①资格通道激活直证:
         # 无注入语料下 invest_p1_lock_rate 恒 0——`w161_refresh/` 缺口闭合对照键)
-        # T-155 前置批:invest_arm 键 = 批的臂标(双臂报告同形,缺臂标 = 无法对账)
+        # 双臂批:invest_arm 键 = 批的臂标(双臂报告同形,缺臂标 = 无法对账)
         'invest_arm': (invest_arm if invest else None),
         'invest_env_rate': (sum(1 for r in results if r.invest_env) / n
                             if invest else None),
@@ -451,7 +451,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         )
         # ADR-0629:second_engine_deadline 是「局终」语义检查,经
         # full_ledgers 吃 results 原账本(P1+P2 全行)——_ledgers 的
-        # P1 段截断口径会把 P2 内形成的二引擎记成 never(T-211 归因
+        # P1 段截断口径会把 P2 内形成的二引擎记成 never(归因
         # 「never 21 超带」假警报根因);planes=1 批两者恒同零漂移。
         # 其余批级检查判据轮域 P1 段锚定,维持 _ledgers 辖域(ADR-0362)。
         rep_checks.update(run_batch_level_checks(
@@ -929,7 +929,7 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
                         (row['state'] or {}).get('board') or {}),
                     'bench_count':
                         len(row['state']['bench']),
-                    # T-179 件②:boss 身份槽位与生产 OutcomeRecord 同键
+                    # 件②:boss 身份槽位与生产 OutcomeRecord 同键
                     # 同构。sim 未建模简报面 → 恒 None(「未建模」显式
                     # 缺省,区别于旧数据的键缺失,消费端 .get 可辨);
                     # boss 伤害双峰按敌型混合重标定的实采数据源 = 生产

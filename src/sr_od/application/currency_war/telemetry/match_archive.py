@@ -31,7 +31,7 @@ hp=100 备帧假值、grep 跨 run 帧流、多源现算拼视图。本模块把
   归属收敛守卫(``_converge_cross_archive_ownership``):档案段集中「当前
   分组归他局」的段全部摘除(源流在 = 整体重装配自愈;源流失 = 定向剪枝 +
   ``pruned_segments`` 显影),保证同一 journal 段只归属一个档案——旧口径
-  时代写入的存量档案错误持有续段时(跨档双计,T-242 实证),靠水位线/
+  时代写入的存量档案错误持有续段时(跨档双计实证),靠水位线/
   读端重装配都够不到,守卫是唯一收敛路径。
 - **写盘原子性**:档案与 index 均 tmp 写入 + ``os.replace`` 原子改名,
   并发/中断读者不会读到半截 JSON。
@@ -133,7 +133,7 @@ log = log_utils.log
 #: (仍单槽净额)。旧档案经 load_archive 版本检查自动重装配(loss_nodes
 #: 净额→战斗腿原地修复);旧不变量「loss_nodes 条目集 ≡
 #: {rounds.hp_delta<0 的轮}」自 v8 解除,分歧形态见 _build_rounds。
-#: v9(T-100 遥测数据病统一件,ADR-0577):hp 真值链的「事件模型」落地,
+#: v9(遥测数据病统一件,ADR-0577):hp 真值链的「事件模型」落地,
 #: 四机制一次到位——①事件步进链:结算步进链扩为 hp 变化步进链,可信结算
 #: 行 ∪ hp_pay 事件行按 ts 全局交织走行,事件只推进游标不出条目;②段界
 #: 重锚:换段取该段恢复帧 hp 重锚两链游标,续段首槽 hp_delta 从「跨段净额」
@@ -144,7 +144,7 @@ log = log_utils.log
 #: 步进游标未到 0 → runs.final_hp=0 结构真值兜底出 hp_source='endgame_
 #: final' 条目。顶层新增加法列 hp_events(事件行显影)/hp_pay_defects
 #: (modeled 期望账 vs 结算真值偏差)。旧档案经版本检查自动重装配。
-#: v10(T-109①场上件离场逐件落账批,ADR-0605):+顶层 ``departures``(离场
+#: v10(场上件离场逐件落账批,ADR-0605):+顶层 ``departures``(离场
 #: 事件派生列,装配端纯读派生、零新运行时写入)。缺口实锤(g_20260907_075840
 #: p1r1,Saber):执行期 deploy 换血卖出(CwScreenDeploy._sell_offtarget_deployed)
 #: 的逐件身份只在 log 行与匿名计数键(sell_offtarget_*),无遥测行——场上件
@@ -200,7 +200,7 @@ _DERIVED_INPUT_FILES: tuple[str, ...] = (
 #: journal 段归局的 run_id 实机形态(段过滤单一判据;与哨兵脚本组
 #: cw_sentinel/cw_runs_gap/cw_early_stop 的 RUN_ID_RE 同口径——journal
 #: 单文件多写者,sim/测试段 fake_/sim_ 前缀与 harness 短 id 段不采信,
-#: T-257 实证 live journal 混有 sim fake 段)。
+#: 实证 live journal 混有 sim fake 段)。
 _JOURNAL_RUN_ID_RE = re.compile(r'^run_[0-9]{8}_[0-9]{6}$')
 
 #: 终局结果的完结值域;非此值(如 'stopped')= abandoned(ADR-0235 口径:
@@ -249,10 +249,10 @@ def _settlement_gap(dec_rows: list[dict[str, Any]],
     - 边界:仅决策帧为 0 的空段(如被代码闸拦下、一行未写)不标注
       (无判读价值);有任一 outcome 行(含 synthetic_supply/recovered/
       loss_page 来源)即视为「有结算记录」,不标注。收口终局行
-      (T-185,source='terminal_closure')**不入**该判定——它不是战斗
+      (source='terminal_closure' 收口行)**不入**该判定——它不是战斗
       结算行,恰是「本段零场战斗走到结算屏」的证据行(ADR-0615 的
       零结算语义):计它入「有结算记录」会让零结算停机段的终局行
-      静默关闭本自标识(T-185 落地审建议-2),判读者按协议读到的是
+      静默关闭本自标识(落地审建议采纳),判读者按协议读到的是
       「有 outcome 行的普通段」,零结算事实从此不可见。
     """
     has_decisions = any(r.get('run_id') == run_id for r in dec_rows)
@@ -519,7 +519,7 @@ def _load_derived_inputs(rd: Path, segments: set[str],
       旧流键——不回源流,任何重装配(load_archive 版本迁移 /
       assemble_pending 段集增长 / 跨档守卫整体重装配)都会把
       rounds/loss_nodes/departures 等派生列全量清空(v7 注申报的
-      「重装配无益有损」;T-242 真实双档重放实证)。
+      「重装配无益有损」;真实双档重放实证)。
     - 供给语义:切片在档且非空的键原样透传(切片优先);缺键回源流文件
       按段集过滤读取——源流在 = 无损重装配;源流已清 = 空列表(与
       ``_load_slice`` 旧流「文件缺 = 空切片」同契约,诚实退化不猜测)。
@@ -749,7 +749,7 @@ def _hp_pay_events(exo_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-# ===== 离场事件派生列(v10,T-109①,ADR-0605;装配端纯读) =====
+# ===== 离场事件派生列(v10,ADR-0605;装配端纯读) =====
 
 #: 离场通道闭集(单一源;键语义见 _derive_departures docstring)
 DEPARTURE_CHANNELS: tuple[str, ...] = (
@@ -1620,7 +1620,7 @@ def find_cross_archive_segment_dups(
     """跨档案段归属核验(纯读):同段 run_id 出现在多个档案的段集即违例。
 
     违例形态即「跨档段重复入账」:同一 journal 行集被两个档案各自内嵌
-    切片,跨档对照同时段会双计(T-232 验收实证:run_20260908_210431 曾
+    切片,跨档对照同时段会双计(验收实证:run_20260908_210431 曾
     同时在 g_20260908_165445 与 g_20260909_084216 的切片里)。核验单位 =
     段级(档案 segments 的 run_id):档案切片由 build_archive 严格按段集
     过滤(单一写端契约),「同段跨档案」⇒「同段行跨档案」,段级判据即
@@ -1699,7 +1699,7 @@ def _converge_cross_archive_ownership(
         rd: Path, games: list[dict[str, Any]]) -> list[str]:
     """跨档案归属收敛守卫:档案段集中「当前分组归他局」的段全部摘除。
 
-    根因(T-242):旧装配口径时代的存量档案可能错误持有后续才归前局的
+    根因:旧装配口径时代的存量档案可能错误持有后续才归前局的
     续段(如 g_20260909_084216 持有 run_20260908_210431),而该档案常落
     水位线以下(end_ts <= wm 被 assemble_pending 永久跳过)、判读又直读
     JSON 不经 load_archive 的读端重装配——错误归属永续,跨档双计。本
@@ -1890,7 +1890,7 @@ def assemble_pending(replay_dir: Path | str) -> list[str]:
     if done:
         rebuild_index(rd)
         _write_watermark(rd, _latest_end_ts(games))
-    # 跨档归属收敛 + 核验(T-242):水位线上方新装配的局可能收编存量档案
+    # 跨档归属收敛 + 核验:水位线上方新装配的局可能收编存量档案
     # 错误持有的续段(该档案常落水位线以下,只随本守卫收敛,双计才可消)
     _converge_cross_archive_ownership(rd, games)
     _warn_cross_archive_dups(rd)

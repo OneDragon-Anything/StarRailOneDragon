@@ -185,7 +185,7 @@ class CurrencyWarApp(SrApplication):
     @node_from(from_name='进入货币战争大厅')
     @operation_node(name='开始对局到备战阶段')
     def _start_match(self) -> OperationRoundResult:
-        # 起局前置码哈希结构闸(ADR-0581,T-106 run6 混合码事故防线):工作树≠HEAD 的
+        # 起局前置码哈希结构闸(ADR-0581;混合码事故防线):工作树≠HEAD 的
         # 码面不允许起局——run 记录会以本失败状态收尾,不一致清单进日志。
         # 闸关(config.code_hash_gate=False)时整段跳过。
         _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)

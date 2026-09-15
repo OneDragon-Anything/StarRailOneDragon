@@ -51,7 +51,7 @@ _KEEP_PER_TAG = 40
 # decision_frames/),假环境只靠 harness monkeypatch 私函数 _out_dir 改道
 # ——不经 harness 的假局驱动方(易失离线 runner/未来 sim 批真 op 驱动)
 # 会把 kind=observation_evidence 的观察证据静默写进生产树,正是写端根
-# 隔离(T-129/T-130 裁决,机制见 op_journal.set_journal_dir 注)要防的
+# 隔离(裁定机制见 op_journal.set_journal_dir 注)要防的
 # 静默混流形态换流复发(出处:.debug/temp/currency_war/attacks/
 # three_review_20260908/三审报告-第二波.md F2,**易失产物**待 ADR 回填)。
 # 与既有两槽(telemetry/state.set_recorder_replay_dir /
@@ -110,7 +110,7 @@ def save_decision_frame(op: Operation, tag: str,
     :param screen: 当前游戏截图(RGB);None 时 op.screenshot() 现截
     :return: 落盘文件名(与旧流决策行行 ts 秒级同源,ts 面语义不变);None=跳过/失败
 
-    假环境改形(T-120 方案 §2.3 契约三则「留证面改形」):观察源端口
+    假环境改形(契约三则「留证面改形」):观察源端口
     在场(假环境)时,「识别完成点原始帧」不存在语义(无读图)——留证
     改落**结构化观察 JSON**(观察内容快照,消费端按来源分型),不再落
     PNG(stub 帧落图 = 假证据)。观察载荷经 duck-typed
@@ -125,7 +125,7 @@ def save_decision_frame(op: Operation, tag: str,
         run_id = current_run_id() or 'norun'
         src = observation_source()
         if src is not None and _DIR_OVERRIDE is None:
-            # 拒写守卫(写端根隔离,T-129 同裁决):假环境观察证据 +
+            # 拒写守卫(写端根隔离,同上裁决):假环境观察证据 +
             # 未接根槽 = 三审二波 F2 的静默混流形态(证据落生产
             # decision_frames 树)。宁缺勿混——证据缺失在消费端表现为
             # 文件不存在(可发现),混流是静默污染(不可发现);生产

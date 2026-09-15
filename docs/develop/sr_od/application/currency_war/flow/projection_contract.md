@@ -23,7 +23,7 @@
 
 执行侧载体（消费方读写的落地对象）：
 
-- `kernel/cw_exec_state.py::ExecState`：局容器级执行状态。`tracked_bench_chars`/`tracked_deployed` 双账（形状契约 =  槽位表、pad 后含 None；T-308 起 tracked_bench_chars 恒 pad 态由 reconcile 写回端经 `bench_from_compact` 重建保证，消费端下标即布局）、`deploy_fail_counts` 失败记忆、`expected_state` 期望态容器等。
+- `kernel/cw_exec_state.py::ExecState`：局容器级执行状态。`tracked_bench_chars`/`tracked_deployed` 双账（形状契约 =  槽位表、pad 后含 None；tracked_bench_chars 恒 pad 态由 reconcile 写回端经 `bench_from_compact` 重建保证，消费端下标即布局）、`deploy_fail_counts` 失败记忆、`expected_state` 期望态容器等。
 - 期望态路径寻址：`kernel/cw_expected_state.py::ExpectedEntry.path`，身份寻址字符串（§2.4）。
 - 帧级透传槽：`MandateState.cw4_m1p_arm_pending`（换血臂发射⇔执行归因透传，§4.3）。
 
@@ -135,8 +135,8 @@
 
 已核对合规（抽样，供后续审计对照，不再逐一列出）：族 A 全部 `[索引定义]` 字段（`SellBench.bench_idx`/`DeployMove.bench_idx`/`SellDeployed.deployed_idx`/`SwapDeploy.deployed_idx+bench_idx`/`FillSpec.idx`/`PickEvent.option_idx+refresh_slots`）、`GameState.bench/deployed` 容器注释、`BenchChar.is_item_slot`、`ShopCard.merge_preview`、`cw_identity_obs.py::bench_item_slots`、`prep_actions.py::drag_bench_to_sell`、`cw_op_equip_all.py::register_equip_worn`、`cw_exec_state.py::_invest_refresh_used_slots`、`cw_state.py::xp_apply_clicks`。
 
-## 7. T-13 / T-18 接口注（被挡下游的消费面依据）
+## 7. 接口注（被挡下游的消费面依据）
 
-- **T-13（装备穿着主病灶策略语义再评估：opening 窗口与非 key_equips 释放条件）**与 **T-18（词缀条件装备分配优先级）**的策略语义评估，其执行侧事实依据 = 本契约 §3.7（装备 owned 搬运链与穿戴销账）+ §4.3 末段（穿戴的执行期时序：稳帧/CV-diff 验穿/补救链/owned 授予快照每次执行只记一遍）+ §5 装备臂行。两任务判读执行侧「穿上/没穿上」证据时，以 `register_equip_worn` 销账链与 `equip_zero_wear` 哨兵的契约语义为准，不以画面单帧直觉为准。
+- **装备穿着主病灶策略语义再评估（opening 窗口与非 key_equips 释放条件）与装备释放条件批的策略语义评估**，其执行侧事实依据 = 本契约 §3.7（装备 owned 搬运链与穿戴销账）+ §4.3 末段（穿戴的执行期时序：稳帧/CV-diff 验穿/补救链/owned 授予快照每次执行只记一遍）+ §5 装备臂行。两任务判读执行侧「穿上/没穿上」证据时，以 `register_equip_worn` 销账链与 `equip_zero_wear` 哨兵的契约语义为准，不以画面单帧直觉为准。
 - 两任务涉及卖出/释放条件评估时，其动作面坐标系 = §2.2 双族对照（族 A `bench_idx`/`deployed_idx` + expect 代际校验；族 B 物理槽位无 expect）；评估「卖没卖对人」必须先分族再读数。
 - 本契约的验证阶梯状态：L0（读面基线）/L1（单件验穿）已过（报告 = `.debug/temp/currency_war/_archive_20260908/projection_ladder/阶梯执行报告_L0_L1.md`）；L2（已穿非空样本）/L3（落空补救链量化）需实机窗采样，**不在本批**，其结论落地前，涉及「批量穿戴不覆盖已穿」「落空率数字」的策略假设按未证对待（口径）。

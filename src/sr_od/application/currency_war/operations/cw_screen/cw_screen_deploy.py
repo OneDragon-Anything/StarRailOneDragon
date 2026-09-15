@@ -7,7 +7,7 @@
 有角色的备战槽按**角色前后台属性**(``Character.position_pref()``,cw_chars 注册表)拖到对应排的空槽(target
 阵营先)。**角色拖拽统一走 ``DragCwChar.drag_char``**(中心拖 + hold_time=0,2026-08-13
 实测推翻旧 avatar 假设(统一口径见 ADR-0120);avatar 偏移 / 长按全是旧错诊),机械执行零判效
-(T-192 阶段三判效拆除:拖拽发出即计入,落地事实归备战环入口观察 reconcile 对账)。
+(阶段三判效拆除:拖拽发出即计入,落地事实归备战环入口观察 reconcile 对账)。
 off-target deployed 挡 target 上场时,先 ``_sell_offtarget_deployed`` 卖 off-target 腾位(卖拖拽同样走 drag_char)。
 
 **槽位坐标**:screen_info「货币战争-备战」(备战栏 9 / 前排 4 / 后排 N),经 ``_row_centers`` 读全部已建模
@@ -368,7 +368,7 @@ class CwScreenDeploy(SrOperation):
         '幻影满板矛盾帧(CV 采样无空槽 ∧ 仲裁值未达 cap)'
     STATUS_LANDED_NONE: ClassVar[str] = \
         '部署未落地(计划非空但 placed=0,失败帧已存证)'
-    # T-192 重定义(原 STATUS_LANDING_VERDICT_UNKNOWN,T-277/T-268):拖拽
+    # 重定义(原 STATUS_LANDING_VERDICT_UNKNOWN):拖拽
     # 循环内检出 decision overlay 的**发射前拦截**出口——遮蔽在场不发起本槽
     # 及后续拖拽(剩余单位留 bench),经 gate_fail 通道 round_fail 交框架
     # 失败链——下一轮 cw_loop 0 系 overlay 分支接管(CwScreenPartner 处置)
@@ -376,12 +376,12 @@ class CwScreenDeploy(SrOperation):
     # 已发出件如实保留故 placed 可 >0。收敛责任 = 既有守卫指纹制
     # (prep_no_progress_state_fingerprint,cw_loop):该轮正常计数,恒指纹
     # 3 环停机兜底。原「落地判定 UNKNOWN」的执行侧像素判效半
-    # (_landing_verdict/_wait_slot_occupied)已随 T-192 拆除,落地事实归
+    # (_landing_verdict/_wait_slot_occupied)已拆除,落地事实归
     # 备战环入口观察 reconcile;本出口只保留发射前遮蔽拦截语义(执行前
     # 输入契约拒绝,非效果判定)。
     STATUS_OVERLAY_PREEMPTED: ClassVar[str] = \
         '部署轮内检出decision overlay(拦截未发拖拽,剩余留bench,0a/overlay分支接管)'
-    # T-174 新增(ADR-0610,发射契约:出口状态可区分,判读侧分键):
+    # 新增(ADR-0610,发射契约:出口状态可区分,判读侧分键):
     # 出口不变量断言失败具名状态(成功出口 DEPLOYED/NOOP 收尾复验 +
     # NO_BENCH 早退点复验「上阵 ≥1 ⇒ 前排≥1」,不过时的 fail 形态;
     # 三出口辖域见 ADR-0610 §2.1)+ 板满失配窄豁免成功具名状态
@@ -420,7 +420,7 @@ class CwScreenDeploy(SrOperation):
         """session 等级链 → None(无 session)。
 
         布局选档的 level 源(ADR-0281:后排槽数 level 驱动,cap 与布局无关)。
-        **单一源转调**(15 号稿批 C/T-8:与 ``cw_identity_obs._session_level``
+        **单一源转调**(15 号稿批 C:与 ``cw_identity_obs._session_level``
         原为同逻辑双拷贝,合一后语义无分叉;authoritative 位传导见
         ``cw_back_layout.resolve_back_slots`` 的 level_trusted 形参)。
         """
@@ -430,7 +430,7 @@ class CwScreenDeploy(SrOperation):
         return _single_source(self.ctx)
 
     def _level_trusted(self) -> bool | None:
-        """level authoritative 位(15 号稿 §3.2①/T-8):单一源 =
+        """level authoritative 位(15 号稿 §3.2①):单一源 =
         ``cw_identity_obs._level_trusted``(容器 level Field.source);
         None = 未声明(布局公式通道维持现行为)。"""
         from sr_od.application.currency_war.obs.cw_identity_obs import (
@@ -445,7 +445,7 @@ class CwScreenDeploy(SrOperation):
         等级链);已建档 6/7/8/9 直读,未建档新档位(>9 域外)保守 8 格超集 + 留证。旧 level≥7→8 格模型
         (ADR-0281)归因错误已废——run 26(lv8 无召唤物局)按 8 格坐标拖
         不存在的 7/8 号格 + 幻影空位把部署卡死在 bench = 崩坏根因①。
-        **布局未知态写面**(15 号稿 §3.2④/T-7)→ ``[]``:后排部署跳过
+        **布局未知态写面**(15 号稿 §3.2④)→ ``[]``:后排部署跳过
         (单帧与冻结帧同语义——冻结=写类止损,单帧=宁缺勿造;JSONL 留证
         在 resolve 侧)。
         """
@@ -475,7 +475,7 @@ class CwScreenDeploy(SrOperation):
         # 第一道);本检查降级为窗口期第二道执行断言,不升 guard_screen
         #(deploy 派发不带回环守卫,test_cw_popup_dispatch 边界申报锁
         # 语义不变)。
-        # T-277(T-268 治本 G3):检查集从硬编码三屏扩为 registry
+        # 治本:检查集从硬编码三屏扩为 registry
         # ``derive_decision()`` 全集(单一源,删第二份清单;9 条 ⊇ 旧三屏,
         # 纯收紧)——旧三屏漏检 registry 内其余 decision overlay(实机
         # 09-08 16:58 变体:「请选择投资策略」在场时 deploy 三次拖拽全空耗,
@@ -502,7 +502,7 @@ class CwScreenDeploy(SrOperation):
         # 幻影空位(393/1529 段恒无人)假「板未满」→ 白拖重试把部署卡死在 bench。
         back = self._back_row_centers()
         if len(bench) == 0:
-            # F1.5 出口不变量第三出口复验(T-174 收口,ADR-0610 §2.1):
+            # F1.5 出口不变量第三出口复验(ADR-0610 §2.1):
             # 「success ⇒ 前排≥1」承诺辖 NO_BENCH 早退——bench 槽未建模
             # (识别退化)而板上有角色、前排空时,旧代码在此以合法稳态
             # 蒙混 success,发射链拿到 success 即出战 → 游戏拒「前台区域
@@ -521,11 +521,11 @@ class CwScreenDeploy(SrOperation):
         _match = self.ctx.cw_match
         _sess0 = (_match.session
                   if (_match is not None and _match.session is not None) else None)
-        # 装配源契约换源(ADR-0530 决策2「装配源契约钉死」的尾批兑现,T-146):
+        # 装配源契约换源(ADR-0530 决策2「装配源契约钉死」兑现):
         # 执行侧装配源 = session 容器单例(board_state_of;备战帧观察写端与
         # 本 op 同一观察链刷新)。旧 last_state 滞后帧链退役——原「滞后帧+
-        # SIFT 分轨」十四字段对齐证据已按容器源逐字段重验(对齐表 =
-        # T-146-r1 报告 §4;state 依赖字段 board/fp/board_full/cap_hold 的
+        # SIFT 分轨」十四字段对齐证据已按容器源逐字段重验;
+        # state 依赖字段 board/fp/board_full/cap_hold 的
         # 容器读口 = 波1 公共读口单一源,与本函数禁第二份)。
         # 未观察帧语义镜像:旧链 last_state 缺 = state None = 装配不可得
         # (fail-closed 臂关);容器等价形态 = node 未观察(container 全域
@@ -548,7 +548,7 @@ class CwScreenDeploy(SrOperation):
         # 侧此前是缺口)。
         # swap 面输入装配单一源(kernel.assemble_swap_plan_inputs):发射面
         # (mandate M1″)与执行面(本函数)同函数同参——本侧装配源 =
-        # 容器单例(上方 _bs,ADR-0530 装配源契约的容器换源,T-146)+
+        # 容器单例(上方 _bs,ADR-0530 装配源契约的容器换源)+
         # SIFT 读面;target 视图(双轨口径)/fenced 臂/保护域派生全在装配
         # 函数内,禁自写第二份。装配不可得(None)= 按未装配处理(臂关/
         # 空保护,原语义保守侧)。
@@ -556,7 +556,7 @@ class CwScreenDeploy(SrOperation):
             assemble_swap_plan_inputs as _aswap,
         )
         _sess = _match.session if _match is not None else None
-        # T-279 R1(ADR-0640):m1p 计划载荷早消费(读后即清,与
+        # ADR-0640:m1p 计划载荷早消费(读后即清,与
         # cw4_m1p_arm_pending 同帧级同宿)——读位前移到卖出臂门之外:
         # 部署段 R1-a/R1-b 在**任何**卖出臂分支形态下都要知道本 execute
         # 是否 m1p 轮(载荷只作部署段核对/钉定,不改卖出仲裁权)。
@@ -578,11 +578,11 @@ class CwScreenDeploy(SrOperation):
                 cap=None,         # 执行侧不消费谓词 cap 门,只取视图/臂态
                 deployed_n=_tracked_n,
                 front_slots=len(front), back_slots=len(back))
-        # —— 换阵卖出臂前提(F1 执行面消费;T-167 发射-执行接缝合拢)——
+        # —— 换阵卖出臂前提(F1 执行面消费;发射-执行接缝合拢)——
         # 判定单一源 = kernel cw_deploy_logic 合取支函数族(与发射面 M1″
         # 同一谓词,禁第二份口径;fw_carry 口径收口=含,依据见
         # target_view_char_is)。旧「装配不可得退型第二份目标视图派生」
-        # 随之拆除(硬约束,登记 = ADR-0534「修订(T-167)」节:只消费装配 ctx 字段——ctx None ⟺
+        # 随之拆除(硬约束,登记 = ADR-0534 修订节:只消费装配 ctx 字段——ctx None ⟺
         # last_state None ⟹ _board None,旧退型派生在此形态本就消费不到)。
         # 快路负判(与旧 _has_offtarget 同式同读数,行为逐位同旧):
         # 板面阵营计数全在视图内 ⇒ 任一注册件羁绊∩视图≠∅ ⇒ 全部被
@@ -634,7 +634,7 @@ class CwScreenDeploy(SrOperation):
                     # sold 0/2 → RunDeploy 单签名三环守卫停机)。臂态来源
                     # = 装配 ctx.fenced_on(fp 单一源 form_progress,与发射
                     # 面 M1″ 同装配同值)。三合取谓词全真才进本臂——发射⇔
-                    # 执行分轨态被结构性关闭(T-167 F1;无方向幻影部署
+                    # 执行分轨态被结构性关闭(F1;无方向幻影部署
                     # run_20260908_210431 的执行侧根除位)。新线 core∪shared
                     # 经 protect_names 继续保护(P41② 禁卖护栏不因换阵解除)。
                     _fenced_arm = bool(_swap_ctx.fenced_on)
@@ -674,7 +674,7 @@ class CwScreenDeploy(SrOperation):
             bench, front, back, templates,   # D-7:CV 确定性部署(CV 占用 + position_pref 选排)
             m1p_plan=_m1p_plan, m1p_sold_names=_m1p_sold_names)
         if _gate_fail is not None:
-            # F2 板满失配窄豁免(T-174,ADR-0610):「仲裁真满板 ∧ 前排 4 槽
+            # F2 板满失配窄豁免(ADR-0610):「仲裁真满板 ∧ 前排 4 槽
             # 全空 ∧ 后排有人(非系统单位)」= 合法的场内换排工作形态——
             # 双源仲裁取低值(paddle=游戏计数器权威)已使「板满」为可信真值,
             # 失配实质 = 发射位谓词违约(0j 无条件派发重部署),不是帧不可信
@@ -702,7 +702,7 @@ class CwScreenDeploy(SrOperation):
                 log.warning('[cw!] [deploy] 板满失配豁免:换排修复后前排仍空 '
                             '→ round_fail 交回(修复不可达,守卫兜底)')
                 return self.round_fail(_gate_fail)
-            # 失配闸命中帧立即 return(ADR-0601 §5;T-174 修订辖域:速报
+            # 失配闸命中帧立即 return(ADR-0601 §5;修订辖域:速报
             # 语义对幻影满板与「满板∧前排有人」形态不变——此帧上的换排纠正
             # = 对坏帧做真实状态变更拖拽放大失配;「板满∧前排空∧后排有人」
             # 的恢复形态已由上方窄豁免承接,ADR-0610)。如实速报 round_fail
@@ -726,7 +726,7 @@ class CwScreenDeploy(SrOperation):
         time.sleep(2.0)
         log.info('[cw-deploy] 拖完')
 
-        # F1.5 出口不变量断言(T-174,ADR-0610):op 成功出口的承诺 =
+        # F1.5 出口不变量断言(ADR-0610):op 成功出口的承诺 =
         # 「上阵 ≥1 ⇒ 前排 ≥1」,现读时点 = 本 2.0s 整队等待之后(r241/
         # r250 拖后各有 1.2s 特效等待,特效/overlay 中读占用 = 假阴假阳
         # 双向风险)。覆盖全部成功出口:STATUS_DEPLOYED 与 STATUS_NOOP
@@ -754,14 +754,14 @@ class CwScreenDeploy(SrOperation):
         # ④ 入口失配闸命中(ADR-0601 §3)= 具名失配状态 round_fail,且在闸
         #    返回点**立即 return**(见 _deploy_deterministic 调用后分支)——
         #    先于①②③判定,失配闸形态 placed=0,不会被 NOOP 分支吞掉。
-        # ⑤ 拖拽循环遮蔽拦截(T-192 重定义,原 T-277 落地判定 UNKNOWN 出口)
+        # ⑤ 拖拽循环遮蔽拦截(重定义,原落地判定 UNKNOWN 出口)
         #    = STATUS_OVERLAY_PREEMPTED round_fail,同 gate_fail 通道
         #    立即 return——**可带 placed>0**(批内已机械发出件如实保留:槽位不
-        #    回收/计数不回滚)。落地像素验证半已随 T-192 判效拆除,落地事实
+        #    回收/计数不回滚)。落地像素验证半已随判效拆除,落地事实
         #    归备战环入口观察 reconcile。
         if _placed == 0:
             if _plan_empty:
-                # 文案口径(T-167 连带修正):「发射方同源谓词抑制」
+                # 文案口径(连带修正):「发射方同源谓词抑制」
                 # 指 F1 换阵可兑现谓词——不可兑现形态(无方向/无 bench
                 # 目标件/无可卖 off-target)发射面已弃权,RunDispatch 只会
                 # 由真实部署意图(M1′/达标臂)派发,本 no-op 是其合法稳态。
@@ -773,22 +773,22 @@ class CwScreenDeploy(SrOperation):
 
     def _fix_misplaced_rows(self, front: list, back: list,
                             templates: AvatarTemplates | None) -> None:
-        """r241 场内换排纠正 + r250 场内前排保证(T-174 后置,ADR-0610)。
+        """场内换排纠正 + 场内前排保证(后置,ADR-0610)。
 
         r241:pref=back 却在前排(或反之)→ 拖回正排(兜底强推遗留的永久
         错排)。**禁清空前排守卫**:front→back 纠正若会把前排拖空则跳过
-        ——出战硬要求前排非空。守卫计数 = **调用内动态维护**(T-174 F1.1):
+        ——出战硬要求前排非空。守卫计数 = **调用内动态维护**(F1.1):
         初值 = 下方 ``_scr_fix`` 单帧采样的前排占用数,此后每次 front→back
         纠正拖拽发出 −1、back→front 发出 +1,守卫判定一律读该动态计数;
         **禁循环内对静态帧重采样判定**——「前排 2 个 pref=back」形态(真实
         可达:前排保证强转 1 个 + 后排满 fallback 落 1 个,或 comp 覆盖改变
         pref)下静态读法两次移动各自看到计数 2 → 双双放行 → 前排清空 =
-        复发 T-174 停机根因且逃过单前角色帧的锁(方案审 F-1,配套锁 L1b)。
+        复发停机根因且逃过单前角色帧的锁(方案审 F-1,配套锁 L1b)。
         收敛性:守卫只禁清空移动,后排 pref=front 角色先入前排(动态计数
         上升)后,被跳角色下次调用即可归位——两种处理序均 ≤2 次调用收敛;
         全部署集合无 pref=front 角色时 pref=back 角色留前排 = 游戏硬要求。
         r250(用户局实锤「前台区域无角色,无法出战」卡 12min):全部角色在
-        后排+前排完全空 → 游戏拒出战。**后置**(T-174 F1.2,ADR-0610):
+        后排+前排完全空 → 游戏拒出战。**后置**(F1.2,ADR-0610):
         r241 循环纠正完所有错排后再补,前排仍空 ∧ 后排有人 → 挪一个后排
         (真 pref=front 优先,否则第一个,系统单位剔除照旧)到前排 1——无论
         空前排来自哪个路径(纠正产生/拖拽失败遗留/卖出臂清前排/外部状态),
@@ -815,13 +815,13 @@ class CwScreenDeploy(SrOperation):
                       if not slot_occupied(_scr_fix, int(c.x), int(c.y))]
         moved = 0
         _skip_invariant = 0
-        # 禁清空前排守卫计数(T-174 F1.1,ADR-0610):调用内动态维护,见 docstring。
+        # 禁清空前排守卫计数(F1.1,ADR-0610):调用内动态维护,见 docstring。
         _front_occ = len(front) - len(front_empty)
         for d in deployed:
             ch = get_char(d.char_id) if d.char_id else None
             if ch is None:
                 continue   # 系统单位(cost==0)已在函数头统一剔除(ADR-0281 件4)
-            # 登记挂账(T-174,ADR-0610):want = 注册表 position_pref,
+            # 登记挂账(ADR-0610):want = 注册表 position_pref,
             # 不消费 comp char_positions 覆盖(部署主循环
             # _bench_pos 吃覆盖)——覆盖与注册表冲突的 comp 存在「部署按
             # 覆盖上前排 → 本循环按注册表拖回后排」的口径双源,本批守卫
@@ -860,7 +860,7 @@ class CwScreenDeploy(SrOperation):
             if not (1 <= d.slot <= len(src_row)):
                 continue
             src = src_row[d.slot - 1]
-            # T-192 机械执行:发出即计数,落地归入口观察 reconcile。
+            # 机械执行:发出即计数,落地归入口观察 reconcile。
             DragCwChar.drag_char(self, src, dst)
             moved += 1
             _front_occ += 1 if want == 'front' else -1
@@ -868,9 +868,9 @@ class CwScreenDeploy(SrOperation):
                      f' → {_row_cn}排{ti + 1}(pref={want}) ✓')
             time.sleep(1.2)    # 特效等待(同 drag 后约定)
         if _skip_invariant:
-            # 守卫拦截分键零静默(T-174,ADR-0610;best-effort,无载体静默跳过)
+            # 守卫拦截分键零静默(ADR-0610;best-effort,无载体静默跳过)
             self._bump_cw4_counter('rowfix_skip_front_invariant', _skip_invariant)
-        # r250 前排保证(场内版,后置;T-174 F1.2,ADR-0610):前排仍空 +
+        # 前排保证(场内版,后置;F1.2,ADR-0610):前排仍空 +
         # 后排有人 → 挪一(出战硬要求 > 站位偏好)。候选/占用读数 =
         # 函数头 deployed 读数(结构不变量见 docstring)。
         if _front_occ == 0 and back and front:
@@ -887,7 +887,7 @@ class CwScreenDeploy(SrOperation):
                 if ch is not None and 1 <= cand.slot <= len(back):
                     src = back[cand.slot - 1]
                     dst = front[0]
-                    # T-192 机械执行:发出即计数,落地归入口观察 reconcile。
+                    # 机械执行:发出即计数,落地归入口观察 reconcile。
                     DragCwChar.drag_char(self, src, dst)
                     moved += 1
                     log.info(f'[cw-deploy] 前排保证(场内 r250,后置):'
@@ -899,7 +899,7 @@ class CwScreenDeploy(SrOperation):
             self._reconcile_tracking(templates)   # 换排后 tracking 再纠一次
 
     def _bump_cw4_counter(self, key: str, n: int = 1) -> None:
-        """cw4_counters 分键 best-effort 计数(T-174,ADR-0610)。
+        """cw4_counters 分键 best-effort 计数(ADR-0610)。
 
         与 _bump_r288_skip_counter 同形态:无 session/无 dict 载体时静默
         跳过(观测面不阻塞执行);键写入 strategy_state.cw4_counters,经
@@ -917,7 +917,7 @@ class CwScreenDeploy(SrOperation):
             pass
 
     def _front_ok_now(self, front: list, back: list) -> bool:
-        """出口不变量现读(T-174 F1.5,ADR-0610):上阵 ≥1 时前排占用 ≥1。
+        """出口不变量现读(F1.5,ADR-0610):上阵 ≥1 时前排占用 ≥1。
 
         CV 占用现读(front+back 全槽扫描,fresh 帧);与 0j 恢复链
         ``_front_ok`` 同源(currency_war_cv.slot_occupied)。返回 False =
@@ -936,7 +936,7 @@ class CwScreenDeploy(SrOperation):
 
     def _rowfix_front_empty_recoverable(self, front: list, back: list,
                                         templates: AvatarTemplates | None) -> bool:
-        """F2 窄豁免条件现读(T-174,ADR-0610):前排 4 槽全空 ∧ 后排至少
+        """F2 窄豁免条件现读(ADR-0610):前排 4 槽全空 ∧ 后排至少
         1 个非系统单位(拖拽修复可行)。
 
         三条件合取的另外一支在调用点:门值 = STATUS_BOARD_FULL_MISMATCH
@@ -982,7 +982,7 @@ class CwScreenDeploy(SrOperation):
         _bk_n, _bk_pfx = _sel_bl(self.ctx, scr, level=self._session_level(),
                                  level_trusted=self._level_trusted())
         if _bk_n is None:
-            # 布局未知态写类冻结(§3.2④/T-7):tracked 后排 equips 写入停
+            # 布局未知态写类冻结(§3.2④):tracked 后排 equips 写入停
             # (前排快照不受影响;错向档读数写入 = 毒化 tracked 底座)。
             log.info('[cw-deploy] 布局未知态 → tracked 后排 equips 写入冻结')
             back_eq = None
@@ -1019,10 +1019,10 @@ class CwScreenDeploy(SrOperation):
                               m1p_sold_names: list[str] | None = None
                               ) -> tuple[int, bool, str | None]:
         """D-7 确定性部署:CV 知占用 → 每个有角色的备战槽按**角色前后台属性**(position_pref)拖到对应排的
-        空槽(target 阵营先);拖拽机械发出即计入(T-192 零判效),落地事实
+        空槽(target 阵营先);拖拽机械发出即计入(零判效),落地事实
         归备战环入口观察 reconcile 对账。
 
-        :param m1p_plan: M1″ 计划载荷(mandate 发射位透传,T-279 R1/
+        :param m1p_plan: M1″ 计划载荷(mandate 发射位透传,
             ADR-0640;None = 非 m1p 轮)。在场时部署段消费计划单一源:
             R1-a 直投 = 卖出臂实际卖出名序 == 计划卖序(单 victim、名字
             级,F2 三点式①)∧ up 名单全部仍在 bench(SIFT 名集,②)∧
@@ -1036,10 +1036,10 @@ class CwScreenDeploy(SrOperation):
             独立装配。辖域(对抗审 F4)= m1_swap_redeploy 轮,非 m1p 轮
             维持 deploy_target_sets 口径。
         :param m1p_sold_names: 卖出臂本 execute 实际卖出名序(SIFT 拖拽
-            发出序,T-192 前为拖拽成功序;R1-a 前提①的数据源)。
+            发出序;R1-a 前提①的数据源)。
 
         返回 ``(placed, plan_empty, gate_fail)``(发射契约 + ADR-0601 §4 扩展):
-        placed = 机械发出拖拽数(T-192:发出即计入,零落地验证);plan_empty =
+        placed = 机械发出拖拽数(发出即计入,零落地验证);plan_empty =
         主计划为空(kernel 选人无上场候选)——调用方据此区分 no-op(合法稳态)
         与「计划非空却 0 发出」(真失败),两者返回状态可区分;gate_fail =
         入口失配闸/遮蔽拦截具名状态(D2:板满失配/幻影满板/decision overlay
@@ -1058,7 +1058,7 @@ class CwScreenDeploy(SrOperation):
         scr = self.screenshot()
         _match = self.ctx.cw_match
         _sess = (_match.session if (_match is not None and _match.session is not None) else None)
-        # 装配源换源(T-146,同 deploy() 主装配块口径):容器单例 + node
+        # 装配源换源(同 deploy() 主装配块口径):容器单例 + node
         # 未观察 = None(旧 last_state 缺帧语义镜像)。
         from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of as _bso_dd,
@@ -1104,7 +1104,7 @@ class CwScreenDeploy(SrOperation):
         if _cap is None:
             _lv_chain = (getattr(_sess, 'last_level_obs', 0)
                          if _sess is not None else 0) or 0
-            # 兜底候选二(容器源,T-146 换源):容器 level 仅真读入记录
+            # 兜底候选二(容器源换源):容器 level 仅真读入记录
             # (启发式兜底值禁入容器,字段注)——真读帧与旧 last_state.level
             # 同值;纯启发式帧候选退出,失读走「不设板满门」便宜端(拖到
             # 游戏拒自纠,低读阻塞的贵方向不引入)。
@@ -1250,10 +1250,10 @@ class CwScreenDeploy(SrOperation):
         # ✓「已部署角色」→ 同签名零推进环(G3 守卫停机)。收敛后本 op 只做
         # 输入装配(SIFT 现读身份)+ 拖拽执行;拖拽循环内的动态守卫(fresh
         # 复查/动态 cap/逐件 r288 仲裁/遮蔽拦截)保留作运行时防线
-        #(T-192:落点像素验证已随判效拆除,落地归入口观察 reconcile)。
+        #(落点像素验证已随判效拆除,落地归入口观察 reconcile)。
         _cores = (strategy_state_of(_sess).target_comp.core_chars
                   if (_sess is not None and strategy_state_of(_sess).target_comp is not None) else None) or []
-        # T-279 R1(ADR-0640):m1p 轮部署段消费计划单一源。R1-a 直投
+        # ADR-0640:m1p 轮部署段消费计划单一源。R1-a 直投
         # 候选核对 = F2 名字级单通道三点式(单通道 = 名字域,禁跨通道
         # board 字典全等——OCR 欠计先例会打穿校验):①victim 身份 =
         # 卖出臂实际卖出名序 == 计划卖序(单 victim;多卖帧/卖出失败帧
@@ -1356,7 +1356,7 @@ class CwScreenDeploy(SrOperation):
         _bench_list: list = assemble_bench_list(
             bench_occ, _bench_cid, _bench_pos, _item_slots_exact)
         if _m1p_direct_slots is not None:
-            # T-279 R1-a 直投:order = 计划 up 槽位序(计划序),不经
+            # R1-a 直投:order = 计划 up 槽位序(计划序),不经
             # kernel 重选(卖出后板面 ≡ 计划假想态,计划已对该假想态算好
             # up 集,ADR-0640)。held 簿记空 = 本帧未走 kernel 仲裁,禁伪
             # 拒因遥测(fuel-filler/分键两块空转无害,_up_rel 仍投影本帧
@@ -1473,13 +1473,13 @@ class CwScreenDeploy(SrOperation):
                 _skipped += 1
                 _bump_r288_skip_counter(_sess, _rf_lock_conflict)
                 continue
-            # T-277 遮蔽哨(T-268 治本决策点 2;位次 = 迭代体内一切像素读
+            # 遮蔽哨(治本决策点 2;位次 = 迭代体内一切像素读
             # 之前——上方 cap 复查/同名去重/底线门均不读像素,下方 fresh
             # 复查是首个像素读):探测命中 decision overlay → 拦截本轮
             #(剩余单位留 bench),不再发起本槽及后续 drag——哨兵应在
             # 一切像素读之前(全覆盖型遮蔽源下像素复查先行有误跳过面)。
             # 哨与 fresh 复查共享同一 fresh 帧,零新增截图成本。
-            # T-192:发射前输入契约拦截(非效果判定),像素判效族已拆。
+            # 发射前输入契约拦截(非效果判定),像素判效族已拆。
             _scr_slot = self.screenshot()
             if self._decision_overlay_screen(_scr_slot) is not None:
                 log.warning(f'[cw!][deploy] 拖拽循环遮蔽哨:decision overlay '
@@ -1538,7 +1538,7 @@ class CwScreenDeploy(SrOperation):
             # 5.1.9 重诊(2026-08-13 实测推翻旧 avatar 假设):整张卡可拖 —— 从**卡中心**拖 + 按下即移(hold_time=0)
             # 即拾取上阵(实测:中心 drag 飞霄 → 上阵 ✓)。avatar/左上星标/hold1s 全是旧错诊(详情=click 触发非
             # mouseDown;drag=按下+移动;左上小圆是星标非头像)。**拖拽统一走 ``DragCwChar.drag_char``**(中心拖
-            # + hold0,机械执行零判效),本处不再内联 drag_to。T-192:发出即计入
+            # + hold0,机械执行零判效),本处不再内联 drag_to。发出即计入
             # placed,落地事实归备战环入口观察 reconcile(原 _landing_verdict
             # 三态像素判效 + 拖后 fresh 源槽复查判负均随拆除退役)。
             DragCwChar.drag_char(self, src, dst)
@@ -1581,7 +1581,7 @@ class CwScreenDeploy(SrOperation):
             # 留 bench 的留置件反复往满员板拖,游戏以人口上限不足拒收;根因
             # = fill 拿到的容量输入是入口快照而非主循环后真值):
             # - 计数:_deployed 是入口仲裁快照(此后不刷新),主循环增量只有
-            #   placed(只数机械发出件,T-192 零落地验证)→ 传 _deployed+placed,
+            #   placed(只数机械发出件,零落地验证)→ 传 _deployed+placed,
             #   与上方动态板满门同式,自然排尽/cap-stop break 两条退出路径同式覆盖;
             #   cap 计数禁改走 CV 占用(幻影占用面)。
             # - 槽位:主循环的 front_empty/back_empty 虽是别名活值(chosen
@@ -1615,11 +1615,11 @@ class CwScreenDeploy(SrOperation):
                 _fpts = front if _frow == 'front' else back
                 if _fslot >= len(_fpts):
                     continue   # 计划越界防御(布局档中途变化)
-                # T-277 P24 遮蔽哨(F-5②,R2 残扫低项):主循环末槽后、
+                # P24 遮蔽哨(F-5②,R2 残扫低项):主循环末槽后、
                 # fill 段前的窄时序窗弹 overlay 时,上方计划重采样可能读到
                 # overlay 像素产出幻影槽计划——哨置于循环体一切像素读之前
                 # (fresh 复查共享同一帧),拖拽发起前接住,拦截截断
-                # (T-192:发射前输入契约拦截,非效果判定),
+                # (发射前输入契约拦截,非效果判定),
                 # 残余盲拖面归零。
                 _scr_fill_slot = self.screenshot()
                 if self._decision_overlay_screen(_scr_fill_slot) is not None:
@@ -1631,7 +1631,7 @@ class CwScreenDeploy(SrOperation):
                 if not slot_occupied(_scr_fill_slot, int(bench[_fi].x), int(bench[_fi].y)):
                     _skipped += 1
                     continue   # fresh 复查空(已上阵/假阳),同主循环语义
-                # T-192 机械发出(与主循环同款零判效):落地归入口观察 reconcile。
+                # 机械发出(与主循环同款零判效):落地归入口观察 reconcile。
                 DragCwChar.drag_char(self, bench[_fi], _fpts[_fslot])
                 placed += 1
                 _fcid = _bench_cid.get(_fi)
@@ -1659,21 +1659,21 @@ class CwScreenDeploy(SrOperation):
         # 非空 → 节点 STATUS_LANDED_NONE round_fail 如实上报。
         return placed, not order, None
 
-    # (T-192:落地判定三态 machinery(_VERDICT_* 常量 + _landing_verdict +
+    # (落地判定三态 machinery(_VERDICT_* 常量 + _landing_verdict +
     #  _wait_slot_occupied 像素判效族)已随阶段三判效拆除整体删除——落地
     #  事实归备战环入口观察 reconcile;遮蔽探测仅存发射前拦截语义,
     #  见 _decision_overlay_screen 与 STATUS_OVERLAY_PREEMPTED。)
 
     def _decision_overlay_screen(self, scr: MatLike) -> str | None:
-        """registry decision 集 presence 探测(T-277 遮蔽拦截判定源)。
+        """registry decision 集 presence 探测(遮蔽拦截判定源)。
 
         返回命中的 screen_name(None = 无 decision overlay 在场)。锚 =
         registry 声明主锚(五消费面统一锚,ADR-0269 单一锚纪律;decision
-        9 条全部单锚声明)。**presence 近似**(T-268 命题 §1):锚在场即
+        9 条全部单锚声明)。**presence 近似**:锚在场即
         判遮蔽,不求交 overlay 实际覆盖面——方向保守(把发射前拦截扩到
         「overlay 在场但未盖该槽」的帧)。消费面 = 拖拽循环/补部署段
         发射前哨(拦截未发拖拽,交 0 系 overlay 分支接管);原「遮蔽域
-        落地裁决」消费面已随 T-192 判效拆除退役。
+        落地裁决」消费面已随判效拆除退役。
         """
         for _spec in derive_decision():
             if self.round_by_find_area(scr, _spec.screen_name,
@@ -1727,7 +1727,7 @@ class CwScreenDeploy(SrOperation):
         """D-10:卖 deployed 中的 **off-target** 单位(留 target),给 bench target 腾位。
 
         :returns: ``(sold, sold_names)``——卖出数 + 实际卖出名序(SIFT
-            名,拖拽发出序,T-192 前为拖拽成功序;T-279 R1 起部署段 R1-a
+            名,拖拽发出序;部署段 R1-a
             直投核对消费实际卖出名 = 计划卖序,F2 名字级 victim 身份判据
             的数据源)。
 
@@ -1773,7 +1773,7 @@ class CwScreenDeploy(SrOperation):
         # test_cw_action_op_compliance 出售落点单一源锁)。
         _sell = sell_point(self.ctx)
         sold = 0
-        sold_names: list[str] = []   # 拖拽成功序(T-279 R1 部署段核对源)
+        sold_names: list[str] = []   # 拖拽发出序(部署段核对源)
         _excluded_n = 0
         _sess = (self.ctx.cw_match.session
                  if (self.ctx.cw_match is not None
@@ -1856,7 +1856,7 @@ class CwScreenDeploy(SrOperation):
                             '流失,卖出决策该查装备价值)',
                             d.char_id, sorted(_eq))
             src = row[d.slot - 1]
-            # T-192 机械发出(零判效):落地归入口观察 reconcile。
+            # 机械发出(零判效):落地归入口观察 reconcile。
             DragCwChar.drag_char(self, src, _sell)
             sold += 1
             if d.char_id:
@@ -1899,7 +1899,7 @@ class CwScreenDeploy(SrOperation):
         _match = self.ctx.cw_match
         if _match is None or _match.session is None:
             return
-        # 布局未知态写类冻结(15 号稿 §3.2④/T-7):reconcile 是整表采新覆写,
+        # 布局未知态写类冻结(15 号稿 §3.2④):reconcile 是整表采新覆写,
         # 后排身份缺读帧(未知态 read_deployed_chars 只返前排)会把 back 缺读
         # 当「板空」写进 tracked = 错向毒化底座 → 未知史在案(任一未知帧,
         # 单帧/冻结同停)整表对账跳过,已知帧(计数清零)自动恢复。

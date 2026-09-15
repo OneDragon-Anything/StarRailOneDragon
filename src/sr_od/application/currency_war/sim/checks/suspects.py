@@ -1,17 +1,17 @@
-"""可疑项检测器集 D1-D13(T-153 自证循环迁移的复盘面;ADR-0593)。
+"""可疑项检测器集 D1-D13(自证循环迁移裁定的复盘面;本模块头 = 裁定现役载体)。
 
-**架构定位**(ADR-0593 §4,用户裁定 2026-09-08):检测的归宿 =
+**架构定位**(用户裁定 2026-09-08):检测的归宿 =
 复盘模板生成器(tools/cw/review_skeleton.py)——逐局复盘文档生成时,
 生成器对本局决策数据跑本检测器集,把可疑项作为预填条目嵌入对应
 决策节点小节(判定三槽之前);**禁独立附录清单**。机械事实类检查留
 检查器(批量统计哨兵职能不变),结构合法性留生成侧,需语境裁决的
 豁免边 = 本检测器面——三类各归其位。
 
-**条目三要素**(ADR-0593 §4.2):①模式名+定位(轮/op/节点);②自算值 vs
+**条目三要素**:①模式名+定位(轮/op/节点);②自算值 vs
 自报值对照(自述失配类条目的核心;无自报的机械条目只给自算值);
 ③裁决问句(具体二选一,不是泛泛「请检查」)。
 
-**与检查器的关系**(ADR-0593 §4.2):同一判定核两处消费,避免第二实现
+**与检查器的关系**:同一判定核两处消费,避免第二实现
 (判据函数单一源纪律,同 launch 判据核先例)——D1/D3/D4/D5 的身份/
 前置/种子复核核 = sim/checks/selfcalc(检查器迁移面同吃);D2/D7/D8/
 D9 = 段级检查器函数直接复用(现函数逻辑即检测器);D6 语境条目 =
@@ -78,7 +78,7 @@ def _entry(mode: str, row: dict, detail: str, *,
 def _cross_ref(mode: str, row: dict, anchor_round: int) -> dict:
     """跨轮连击的交叉引用行(锚轮小节持全条目;本行插被跨越轮)。
 
-    ADR-0593 §4.1 通用归属规则:跨轮模式锚 = 达成阈值的触发轮,被跨越的
+    通用归属规则:跨轮模式锚 = 达成阈值的触发轮,被跨越的
     前几轮小节各加一行「↗ 本轮参与 {检测名} 连击(锚 r{n})」——节点内
     交叉引用,不另立清单(禁独立附录的同一条裁定)。
     """
@@ -92,7 +92,7 @@ def _cross_ref(mode: str, row: dict, anchor_round: int) -> dict:
 
 
 # =====================================================================
-# --- D1 同轮买卖振荡 + 自报分键复核(ADR-0593 §4.1;C4 检测器面) --------
+# --- D1 同轮买卖振荡 + 自报分键复核(C4 检测器面) --------
 # =====================================================================
 
 def d1_same_round_pair_review(rows: list[dict]) -> list[dict]:
@@ -102,7 +102,7 @@ def d1_same_round_pair_review(rows: list[dict]) -> list[dict]:
     ——与 check_no_same_round_buy_sell / check_oscillation_xp_cap 的
     迁移面同吃(selfcalc 单一源);本检测器是**复盘面**:豁免对失配
     产「振荡候选」条目交复盘者裁决,机械判违面留在检查器。
-    持有语境 = 净持有(买入入集/卖出台账销账;ADR-0593 后果.5(L2),「终身持有
+    持有语境 = 净持有(买入入集/卖出台账销账;净持有销账裁定,「终身持有
     通行证」形态封死)。
     """
     from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -126,7 +126,7 @@ def d1_same_round_pair_review(rows: list[dict]) -> list[dict]:
                     held_net.add(n)   # 净持有:买入入集
             elif a.get('__type__') == 'SellBench':
                 n = a.get('name')
-                held_net.discard(n)   # 净持有销账(跨轮;ADR-0593 后果.5(L2))
+                held_net.discard(n)   # 净持有销账(跨轮;净持有销账裁定)
                 buys = round_buys.get(n) or []
                 if not buys:
                     continue
@@ -139,7 +139,7 @@ def d1_same_round_pair_review(rows: list[dict]) -> list[dict]:
                 # reason;披露面加法增益)
                 claimed.append(a.get('convert_reason') or '')
                 claimed = [c for c in claimed if c]
-                # 自算身份(ADR-0593 §D1:线外散牌/孤儿/垫件/收集语境);
+                # 自算身份(D1 面:线外散牌/孤儿/垫件/收集语境);
                 # 持有证据 = 本轮前净持有快照(本轮 copy 买不算持有)
                 if copy_round_buys.get(n, 0) >= 2 \
                         or n in held_before_round:
@@ -156,9 +156,9 @@ def d1_same_round_pair_review(rows: list[dict]) -> list[dict]:
                     else:
                         identity = '线外散牌/垫件'
                 # 失配判定(与检查器复核同判据;任一自报分键被自算反驳;
-                # T-165 按键分工:转化类读 convert_reason,孤儿读
+                # 按键分工:转化类读 convert_reason,孤儿读
                 # sell_reason ∈ cw_vocab.SELL_BENCH_ORPHAN_REASONS
-                # (T-180 起与发射位登记门分离的独立闭集),与
+                # (与发射位登记门分离的独立闭集),与
                 # check_no_same_round_buy_sell 零双源同构)
                 _conv_key = a.get('convert_reason') or ''
                 _orph_key = a.get('sell_reason') or ''
@@ -198,7 +198,7 @@ def d1_same_round_pair_review(rows: list[dict]) -> list[dict]:
 
 
 # =====================================================================
-# --- D2 溢金未泄 + 停手失配(ADR-0593 §4.1;C5 检测器面,包装 seg 事件) --
+# --- D2 溢金未泄 + 停手失配(C5 检测器面,包装 seg 事件) --
 # =====================================================================
 
 def d2_overflow_stop_mismatch(rows: list[dict]) -> list[dict]:
@@ -227,14 +227,14 @@ def d2_overflow_stop_mismatch(rows: list[dict]) -> list[dict]:
 
 
 # =====================================================================
-# --- D3 追级授权前置失配(ADR-0593 §4.1;C2 复核面 + C3 辖域缺口补位) ---
+# --- D3 追级授权前置失配(C2 复核面 + C3 辖域缺口补位) ---
 # =====================================================================
 
 def d3_levelup_prereq(rows: list[dict]) -> list[dict]:
     """lv≥5∧时点金<50 的升级逐条语境条目(交复盘者裁决授权)。
 
     辖域 = 追级段全部升级(含白名单臂)——C3 的预算闸辖域缺口
-    (非 m3_batch 自报完全不经闸,ADR-0593 §C3)由本检测器
+    (非 m3_batch 自报完全不经闸,C3 辖域缺口面)由本检测器
     补位:可自算前置(板满/待上场)现场给出,static_ev/dp 腿标注
     「EV 总账需回放」。判定核 = selfcalc.levelup_prereq_review
     (与 C2 检查器迁移面同吃)。
@@ -282,7 +282,7 @@ def d3_levelup_prereq(rows: list[dict]) -> list[dict]:
 
 
 # =====================================================================
-# --- D4 冷启动方向件身份失配(ADR-0593 §4.1;C1 检测器面) ----------------
+# --- D4 冷启动方向件身份失配(C1 检测器面) ----------------
 # =====================================================================
 
 def d4_coldstart_identity(rows: list[dict]) -> list[dict]:
@@ -318,17 +318,17 @@ def d4_coldstart_identity(rows: list[dict]) -> list[dict]:
 
 
 # =====================================================================
-# --- D5 种子回卖辖域自算(ADR-0593 §4.1;C7 检测器面,自算圈辖域) -------
+# --- D5 种子回卖辖域自算(C7 检测器面,自算圈辖域) -------
 # =====================================================================
 
 def d5_seed_resell_scope(rows: list[dict]) -> list[dict]:
     """机械种子身份(引擎件∧购买时未持有)≤2 轮内被卖 → 条目。
 
     辖域不依赖自报 engine_seed(C7 的「改标脱离检查网」攻击面的
-    检测器补位);买入轮小节加交叉引用行(ADR-0593 §4.1 归属规则)。
+    检测器补位);买入轮小节加交叉引用行(归属规则)。
     种子身份判定核 = selfcalc(与 C7 检查器迁移面同吃)。
 
-    「≤2 轮」窗口轴 = **行序单调轴**(ADR-0593 后果.5(L3)):round_num 是
+    「≤2 轮」窗口轴 = **行序单调轴**(裁定):round_num 是
     位面内编号跨位面重启(cw_state 注),行输入本就按 ts 单调排序
     (sim 轮装配 ts 递增/生产账本行按 (plane,round,ts) 排序),
     行下标差即全局轮距——位面间紧邻(如 p1 末轮买→p2 r1 卖)不漏报,
@@ -372,7 +372,7 @@ def d5_seed_resell_scope(rows: list[dict]) -> list[dict]:
 
 
 # =====================================================================
-# --- D6 成型后过渡件④臂语境条目(ADR-0593 §4.1;C6 检测器面) ------------
+# --- D6 成型后过渡件④臂语境条目(C6 检测器面) ------------
 # =====================================================================
 
 def d6_transition_arm_context(rows: list[dict]) -> list[dict]:
@@ -407,7 +407,7 @@ def d6_transition_arm_context(rows: list[dict]) -> list[dict]:
                 continue
             name = (a.get('card') or {}).get('name') or ''
             # 通道身份:channel 披露优先(sim),生产 BuyCard 行无该键
-            # → classify_buy 同源重算(ADR-0593 后果.5 附加①,生产面不再恒哑)
+            # → classify_buy 同源重算(生产面不再恒哑)
             identity_ch = _sl.buy_identity(row, a)
             if identity_ch not in ('engine', 'pair'):
                 continue
@@ -443,7 +443,7 @@ def d6_transition_arm_context(rows: list[dict]) -> list[dict]:
 
 
 # =====================================================================
-# --- D7/D8/D9 机械段检查的条目化包装(ADR-0593 §4.1:现函数逻辑即检测器)
+# --- D7/D8/D9 机械段检查的条目化包装(现函数逻辑即检测器)
 # =====================================================================
 
 def _wrap_seg(mode: str, fn: Callable[[list[dict]], list[dict]],
@@ -467,7 +467,7 @@ def _wrap_seg(mode: str, fn: Callable[[list[dict]], list[dict]],
 
 def d7_break_interest(rows: list[dict]) -> list[dict]:
     """破息无例外条目(判定核 = seg_check_break_interest_exception;
-    例外①吃引擎自算 channel、②连胜自算重放——非自报,ADR-0593 §4.1)。"""
+    例外①吃引擎自算 channel、②连胜自算重放——非自报)。"""
     return _wrap_seg('D7', seg_check_break_interest_exception, rows,
                      '破息无例外', '例外成立 / 无授权破息')
 
@@ -488,7 +488,7 @@ def d8_blood_budget(rows: list[dict]) -> list[dict]:
 
 def d9_p2_bleed_gold_stack(rows: list[dict]) -> list[dict]:
     """P2 血降金堆条目(判定核 = seg_check_p2_bleed_gold_stack;
-    锚 = 连击阈值达成轮,被跨越轮加交叉引用行——ADR-0593 §4.1-D9)。"""
+    锚 = 连击阈值达成轮,被跨越轮加交叉引用行——归属规则 D9)。"""
     out: list[dict] = []
     events = seg_check_p2_bleed_gold_stack(rows) or []
     anchor_rn: int | None = None
@@ -524,7 +524,7 @@ def d9_p2_bleed_gold_stack(rows: list[dict]) -> list[dict]:
 
 def d10_deploy_lag(rows: list[dict]) -> list[dict]:
     """部署欠载条目:``sim.deploy_lag_units``>0(引擎执行点自算披露;
-    ADR-0593 §4.1-D10。数据源单一 = 该披露键,检查器同吃,无第二实现)。"""
+    归属规则 D10。数据源单一 = 该披露键,检查器同吃,无第二实现)。"""
     out: list[dict] = []
     for row in rows:
         n = (row.get('sim') or {}).get('deploy_lag_units') or 0
@@ -564,7 +564,7 @@ def d11_phantom_and_slot(rows: list[dict]) -> list[dict]:
                     'phantom_names': phantom,
                 }))
         # 槽超买(波内同名买入 > 供给槽位;与 check_shop_slot_consumption
-        # 同判据的镜像消费——ADR-0593 §4.3:机械事实留检查器,本条目化面
+        # 同判据的镜像消费——裁定:机械事实留检查器,本条目化面
         # 供复盘定位;两处漂移由测试仓双向锁辖)
         waves = (row.get('sim') or {}).get('shop_waves') or []
         if waves:
@@ -604,7 +604,7 @@ def d11_phantom_and_slot(rows: list[dict]) -> list[dict]:
 
 
 # =====================================================================
-# --- D12 位面末轮升级超发对账(T-228;对账型零新参数) ------------------
+# --- D12 位面末轮升级超发对账(对账型零新参数) ------------------
 # =====================================================================
 
 def d12_plane_last_xp_overspend(rows: list[dict]) -> list[dict]:
@@ -667,7 +667,7 @@ def d12_plane_last_xp_overspend(rows: list[dict]) -> list[dict]:
 
 
 # =====================================================================
-# --- D13 席满死锁收敛缺陷线(T-229 沉淀;合取判据零新参数) -------------
+# --- D13 席满死锁收敛缺陷线(合取判据零新参数) -------------
 # =====================================================================
 
 def _d13_line_bench_full_names(
@@ -718,7 +718,7 @@ def _d13_dead_star1_pairs(row: dict,
 
 def d13_bench_full_deadlock(rows: list[dict]) -> list[dict]:
     """席满死锁收敛缺陷线条目:连续 ≥2 轮线内件被 missing_bench_full
-    拒 ∧ bench 含同名 1★ 非线内对(T-229 报告 s77091 下钻的最小充分
+    拒 ∧ bench 含同名 1★ 非线内对(实机局 s77091 下钻的最小充分
     组合,全字段在帧内,零新参数)。
 
     形态语义:缺口件持续在售却被席满闸拦,而席位被合成素材守卫锁死

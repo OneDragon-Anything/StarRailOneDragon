@@ -20,7 +20,7 @@ session 同建同灭;``megastar_candidate_clicked`` 按 session.md §2.4 B1
 桩面存储(不可弱引用对象,SimpleNamespace 测试桩族):把 ExecState
 **作为属性挂在 session 对象自身**——生命周期随对象同灭,无旁表条目
 可泄漏;属性不可写的对象(__slots__ 类族)退回 id() 键普通 dict 兜底
-(量极小,进程内驻留)。id 兜底不承载可弱引用对象:T-25 定谳的
+(量极小,进程内驻留)。id 兜底不承载可弱引用对象:
 「桩 GC 后 id 复用 → 新 session 拿旧 ExecState 串号假红」根因即
 id 键条目永不清理,挂对象属性后该串号通道不复存在。
 """
@@ -137,15 +137,15 @@ class ExecState:
     # 问题 → 停机保画面排查;读回恢复即清零)。执行侧停机钩子载体。
     star_regression_count: dict[str, int] = field(default_factory=dict)
     # tracked 主账(执行侧跟踪账,随动更新)。两账形状契约 = pad 态定长
-    # 槽表**含 None**(ADR-0316/0392;tracked_bench_chars T-308 后=
+    # 槽表**含 None**(ADR-0316/0392;tracked_bench_chars 现状 =
     # reconcile 写回经 bench_from_compact 重建的槽位表,恒 pad 态;
     # tracked_deployed = deployed_from_compact 写回/mutate 入口
     # pad_deployed 的定长 10 槽表)——注解按契约含 None。
-    # (tracked 主账簿记宿主已随 T-268 三次修正迁往容器:
+    # (tracked 主账簿记宿主迁往容器:
     #  GameState.tracked_books(kernel/cw_game_state.py;非 Field 簿记容器,
     #  先例 = settlement_ring)——ExecState 不再承载 tracked 槽位表,亦无
     #  面向策略的读口;观察状态 = 同容器 tracked_account_observed。)
-    # bench 布局代次(T-308 S3 churn 事件通道,最小面)。[索引定义] 坐标系
+    # bench 布局代次(churn 事件通道,最小面)。[索引定义] 坐标系
     # = 单调递增计数器(非槽位号、非下标);取值时机 = reconcile 纠漂写回期
     # 递增(kernel/cw_reconcile,唯一写点)/ 逻辑态播种期快照(每段入口观察)+
     # 单动作循环每动作消费前现读检差(cw_op_buy_cards,唯一消费点)。命中 =
@@ -194,7 +194,7 @@ class ExecState:
     cw_takeover_tries: int = 0
     # fenced 臂上一帧状态(deploy 写读)。
     cw4_swap_arm_on: object = None
-    # 备战环 StartBattle 发射结果(F3/T-174,ADR-0610)。True = 本环发射
+    # 备战环 StartBattle 发射结果(F3,ADR-0610)。True = 本环发射
     # 且验证成功;False = 发射但验证失败(「备战环返回 success=True
     # status=…验证失败…」形态——1-1 冻结局实证该形态曾使 0j 恢复链预算
     # 每环被误复位,预算形同虚设);None = 本环未发射(缺省)。写入端 =
@@ -232,7 +232,7 @@ class ExecState:
     # 合法不受误伤)。
     cw_resumed_match: bool = False
     # (r1 批「外加布尔旗标 tracked_observed」与 r2 批「字段取值域哨兵
-    # UnobservedTracked」两形态均随 T-268 三次修正退役:观察态正本 =
+    # UnobservedTracked」两形态均已退役:观察态正本 =
     # 容器字段 GameState.tracked_account_observed,见 tracked_* 字段注。)
 
 
@@ -425,7 +425,7 @@ def _apply_buy_card(session, action: dict, _eff) -> None:
 
 
 # ============================================================
-# 候裁9 词汇迁入(原 kernel/cw_state.py;T-7 W8 定谳记录第 1 归宿):
+# 候裁9 词汇迁入(原 kernel/cw_state.py 席位/台账域):
 # 席位/槽位跟踪域 + 节点台账 + 布局转发。宿主依据 = ExecState 自申报
 # tracked_bench_chars/tracked_deployed 定长槽表契约与 plane_node_ledger。
 # ============================================================
@@ -546,7 +546,7 @@ def bench_occupied_slot_nos(bench: list[BenchChar | None]) -> list[int]:
 def bench_slots_healthy(slot_nos: list[int]) -> bool:
     """槽号健康不变量单一源:占用槽号唯一 ∧ 全在 1..BENCH_CAPACITY。
 
-    背景:SIFT 读/对账 churn 产生的槽号属无守卫数据(T-308/ADR-0646),
+    背景:SIFT 读/对账 churn 产生的槽号属无守卫数据(ADR-0646),
     违者不得固化为槽位表。消费方 = 对账写回门(kernel/cw_reconcile)、
     tracked 写点显影(prep_actions);reseed 健康门(cw_shop_action_ops)
     暂持同式内联实现(该文件批间只读,收口时并本单一源)。"""

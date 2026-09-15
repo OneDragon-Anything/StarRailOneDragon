@@ -53,7 +53,7 @@ def establish_new_match(ctx: SrContext, config) -> bool:
 
     - 已有容器(续跑/已建立)→ False 幂等直过(不覆盖,保手动逐轮延续语义);
     - 容器建立即初始化局容器单例 GameState 并注入 run 归属读取函数
-      (T-274 用户裁定 2026-09-15:遥测装配 = game state 初始化职责;
+      (用户裁定 2026-09-15:遥测装配 = game state 初始化职责;
       本函数 = CwEntryStart 前移点与 CwLoop handle_init 兜底两生产调用方
       的公共注入漏斗);
     - 职级(ctx.cw_selected_difficulty,难度确认屏先读)就地拷入 session
@@ -77,7 +77,7 @@ def establish_new_match(ctx: SrContext, config) -> bool:
     if config.strategy_seed is not None:
         _session.rng = random.Random(config.strategy_seed)
     ctx.cw_match = CurrencyWarMatch(_strategy, _session)
-    # GameState 初始化即遥测装配(T-274 用户裁定 2026-09-15:遥测数据的保存
+    # GameState 初始化即遥测装配(用户裁定 2026-09-15:遥测数据的保存
     # = game state 职责;精化令:触发只钉正主单例建立路径 = kernel
     # board_state_of 局容器建立点,GameState 构造器零装配逻辑)。容器建立即
     # 惰性新建局容器单例并注入 run 归属读取函数(kernel 禁依 telemetry,

@@ -15,7 +15,7 @@
 B3 三段走第二段「补给 + 余事件屏按族批量」):本类是 CwScreenOpBase 子类,
 handle 顶部装配点分流(两端口完整在场 → 五段生命周期新路径;缺省 None =
 生产直连旧路径,生产行为零变化 §9.1)。迁移手法单一源 = 盛会之星先例
-(reviews/T-215-r1.md 验收;T-215-r1 §五.5 统一形态注意项 = lifecycle_observe
+(验收评审统一形态注意项 = lifecycle_observe
 消费 ``_observation_port()`` 位):门后选卡+确认链纯移入 ``_handle_overlay``
 (两路径共享零转录);本屏无 on_outcome 落地登记件(§6.4 收编面无事件屏
 chosen 行;chosen_wish = 重入裁决点单次逻辑写入豁免 §2.2/§6.5-6,留守

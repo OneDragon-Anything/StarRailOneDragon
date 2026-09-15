@@ -17,8 +17,8 @@ ADR-0630 裁定 1)。
 常开语义(ADR-0634):本模块无开关,生产装配 = ``currency_war_app``
 装配段无条件调 :func:`install_state_telemetry` + 局容器单例建立点兜底
 (:func:`ensure_journal_assembly`;生产调用方 = kernel/cw_game_state
-:func:`board_state_of` 建立路径——遥测装配 = game state 职责,T-274
-用户裁定 2026-09-15 精化令,同桶直调,注入漏斗 = establish_new_match
+:func:`board_state_of` 建立路径——遥测装配 = game state 职责(用户
+裁定 2026-09-15 精化令,同桶直调,注入漏斗 = establish_new_match
 容器建立点);写路径(字段写入/版本分配)
 不因本模块存在与否分支,行落盘另以 sink 在场与 run_id 在场为准——缺实例
 (单元测试/工具环境)= 行不落,诚实缺失。单文件 + 行内 run_id 列(per-run
@@ -75,7 +75,7 @@ REAL_RUN_ID_RE: re.Pattern[str] = re.compile(r'^run_[0-9]{8}_[0-9]{6}$')
 JOURNAL_RETENTION_DAYS: int = 30
 
 #: 非实机段保留窗(天;sim 批 fake_/sim_ 段与 harness 段)。依据 = 常开化后
-#: 真实积累实测(2026-09-12,T-77):现役账面 251.6MB 全部 12 段均为非实机段
+#: 真实积累实测(2026-09-12):现役账面 251.6MB 全部 12 段均为非实机段
 #: (零实机段)且段龄 <2 天——30 天窗对其永无效力,账面体积随 sim 批积累
 #: 无上界,是哨兵武装/装配整账读成本线性上涨的体积根源。全消费面(Δ池隔离
 #: QUARANTINED_RUN_PREFIXES/判读过滤/档案装配过滤/哨兵正选)均不采信非实机
@@ -85,7 +85,7 @@ JOURNAL_NONLIVE_RETENTION_DAYS: int = 3
 #: 现役账面体积兜底上界(字节;三道闸的容量约束):分型天窗清完后仍超,
 #: 从最老段继续淘汰(不分型,实机段也在淘汰序内),直到 ≤ 上限或只剩不可清
 #: 段(活跃段/无 ts 段),超出部分如实保留(段整体单元禁切半段)。取值依据
-#: (T-77 实测):非实机段正常积累 ~60MB/日,3 天窗 ≈ 180MB 留余量;压测日
+#: (实测):非实机段正常积累 ~60MB/日,3 天窗 ≈ 180MB 留余量;压测日
 #: 单段可达 ~145MB(fake_20260908),192MB = 约一个压测段 + 正常积累余量;
 #: 落码时点现役账面 251.6MB 恰超此窗,首次装配即触发首次真实回收。容量失控
 #: 可击穿实机段 30 天承诺窗——被清段经 manifest 逐段显影保考古
@@ -328,7 +328,7 @@ def enforce_journal_retention(journal_path: Path | str, *,
         # 原子改名带退避重试:Windows 上读端(哨兵尾读/判读 CLI)以共享读
         # 短持句柄打开目标时 MoveFileEx 报 WinError 5(共享冲突)——读端
         # 读完即关,0.5s 退避重试即可过;耗尽则顺延下一轮装配。实测
-        # (T-77):常驻哨兵在岗时单次 replace 可连败,manifest 逐轮重复
+        # (实测):常驻哨兵在岗时单次 replace 可连败,manifest 逐轮重复
         # 记账(判别面语义一致但清理永不落地)——重试是共享冲突的治本面。
         last_err: Exception | None = None
         for _ in range(3):
@@ -428,7 +428,7 @@ def install_state_telemetry(path: Path | str | None = None, *,
     except Exception as e:  # noqa: BLE001  装配主路径不受清理面故障波及
         log.warning('[cw!][state-journal] 段清理失败(不阻塞装配): %s', e)
     else:
-        # 段淘汰联动跟随(T-91):defect_ledger 等同生命周期伴生流随本趟
+        # 段淘汰联动跟随:defect_ledger 等同生命周期伴生流随本趟
         # 段裁决清理(同窗同显影,禁另起独立清理周期——双源漂移禁令);
         # telemetry_root = journal state 目录父目录(生产 = telemetry live
         # 根),测试 tmp 装配即派生 tmp 根、缺文件零成本 no-op。槽缺席 =
@@ -458,15 +458,15 @@ def ensure_journal_assembly(
         run_id_provider: Callable[[], str] | None) -> None:
     """流水装配兜底(幂等,已装配 = 零成本直过)。
 
-    为什么存在(W3 欠账,T-258 实测修):W1 的装配契约 = 「app 装配段
-    单点显式接通」,但 T-257 九流写入端退役后,绕过 app 直跑 op 的生产
+    为什么存在(W3 欠账,实测修复):W1 的装配契约 = 「app 装配段
+    单点显式接通」,但九流写入端退役(删除波)后,绕过 app 直跑 op 的生产
     入口(MCP ``run_operation`` 直调 CwLoop——接管/残局续跑的标准姿势,
     哨兵以「指令[ 货币战争-对局循环 ]」日志行为活动签名)失去旧 lazy
     recorder 单例的隐式覆盖 → sink 缺席,整局行按「诚实缺失」静默不落
     (实证:2026-09-14 18:56 起 8 连局零 state 行零档案,深检
     run_20260915_054718.md §0「journal state 流断流」)。
 
-    落位点(T-274 用户裁定 2026-09-15,精化令同日):遥测数据的保存 = game
+    落位点(用户裁定 2026-09-15,精化令同日):遥测数据的保存 = game
     state 职责——生产调用方 = kernel/cw_game_state :func:`board_state_of`
     局容器单例建立路径(触发只钉该建立点,GameState 构造器零装配逻辑——
     画面解析草稿容器直构路径结构性不可能触发;构造/建立参数显式注入 run

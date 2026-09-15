@@ -89,7 +89,7 @@ class PrepObservation:
     event_overlay: str | None = None
     overlay_options: list | None = None # P5
     shop_cards: list | None = None      # P1 恒 None(仅买牌阶段刷新)
-    # ===== 装备域三路事实 P4 观察接线(ADR-0601 §3-C1 演进方向,T-171)=====
+    # ===== 装备域三路事实 P4 观察接线(ADR-0601 §3-C1 演进方向)=====
     # 采集点 = observe_full heavy 装配层(obs 域统一采集单一源);deployed
     # 名单已由上方 deployed_chars 覆盖,此三字段补 owned/occupied 两路。
     # None = 识别域资源未就绪(模板库/区域/TM grays 缺,原因在采集层

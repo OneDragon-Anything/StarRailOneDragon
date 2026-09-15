@@ -107,7 +107,7 @@ class EquipWearStep:
     """单件穿戴计划步(计划随指令下发的契约载体;ADR-0601 §3-C1)。
 
     产出位 = 分发段 ``_build_equip_wear_plan``(读备战入口观察产物
-    PrepObservation,P4 观察接线 T-171 后零读屏,由 kernel 判据单一源
+    PrepObservation,P4 观察接线后零读屏,由 kernel 判据单一源
     求值),随 ``CwOpEquipAll.__init__(ctx, plan)`` 构造下发;op 对计划
     只做机械执行(定位/拖拽/报告),禁二次求值。2a 原子通路:本步同时
     是 ``WearEquip`` 动作的构造源(发射位逐步产原子动作)。
@@ -154,7 +154,7 @@ def _build_equip_wear_plan(session: Any, exec_state: Any,
                             registry: Any = None) -> EquipPlanBuild:
     """装备穿戴计划产出位(分发段;ADR-0601 §3-C1 计划随指令下发)。
 
-    P4 观察接线(T-171):三路事实源 = **入口观察产物**
+    P4 观察接线:三路事实源 = **入口观察产物**
     ``session.prep_obs_frame``(PrepObservation;写者白名单 = cw_screen_prep
     观察装配点/循环逻辑态直写步,装备域采集单一源 = ``obs.cw_observe_full
     .observe_full`` heavy)。本函数**零读屏**:原对执行帧现读三路
@@ -222,7 +222,7 @@ def _build_equip_wear_plan(session: Any, exec_state: Any,
     # ⚖️ 过渡期持有语义修正(r70 审计刀②):过渡期**穿给当前上场的 5 人**
     # ——key_equips 命中件照穿,非 key 散件穿给当前板面高战力者(carry 优先);
     # 「攒给成型核心」只在**已定型**(非双轨)且 form 低时保留。
-    # 装配源换源(T-146 尾批,ADR-0530 决策2 核销):执行侧装配源 =
+    # 装配源换源(ADR-0530 决策2 核销):执行侧装配源 =
     # session 容器单例(备战帧观察写端同链刷新);容器与帧同帧同源
     # (同一备战观察),读口 = 容器公共读口单一源。
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -247,7 +247,7 @@ def _build_equip_wear_plan(session: Any, exec_state: Any,
     # r388(用户 live 质问「1-2 就乱装备」):开局轮(r≤2,奖励节点无战斗)
     # 穿装备零战斗变现;key_equips 命中件照穿,gen 散件攒到 r3 战斗轮再穿。
     # R3 修正(ADR-0257):开局 hold 不再依赖 target 存在。
-    # hold 块换源(T-146):node 未观察镜像回 None。
+    # hold 块换源:node 未观察镜像回 None。
     _hold_node = (_bs_c.node.value if _bs_c is not None else None)
     _round_now = (_hold_node.round_num
                   if (_hold_node is not None
@@ -327,7 +327,7 @@ def _build_equip_wear_plan(session: Any, exec_state: Any,
         # ADR-0391 λ 标定埋点(P14 假设表 λ 行「待遥测标定」的数据源):
         # 每次派发记 owned 全量快照(含工具;每 pass 恰一次 = 每次派发至多
         # 调本函数一次)——离线 diff 相邻轮快照 = 各节点发放件数。
-        # (换源 T-146:plane/round 取容器 node;未观察显 '?' 同旧缺帧形态)
+        # (换源:plane/round 取容器 node;未观察显 '?' 同旧缺帧形态)
         _ref_node = (_bs_c.node.value
                      if _bs_c is not None else None)
         _own_ct: dict[str, int] = {}

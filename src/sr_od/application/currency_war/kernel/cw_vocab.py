@@ -53,7 +53,7 @@ from dataclasses import dataclass, field
 
 
 # ===== 候裁9 词汇迁移·旧路径转发(过渡 shim)=====
-# 本批(T-7 W8)按定谳记录把共享词汇迁入语义宿主;下列 import 同时是
+# 本批按定谳记录把共享词汇迁入语义宿主;下列 import 同时是
 # 本模块自身运行时的供给面。旧路径消费仅剩并行在飞批文件,待其落库
 # 后由收尾段 sweep 改指新居并删除本转发声明;禁新增旧路径消费。
 from sr_od.application.currency_war.kernel.cw_exec_state import (  # noqa: E402
@@ -229,7 +229,7 @@ class CwSimFrame:
     refresh_probs: dict[int, float] | None = None
     # 节点序列由 cw_node_reader.NodeSlot 承载(read_node_sequence 直连消费方)。
     # (dual_track_phase/focus_factions 两字段已随 last_state 链退役批删除
-    #  (T-166 对账表 E 类行 30/31 兑现,不迁容器):双轨判定真家 =
+    #  (对账表 E 类行 30/31 兑现,不迁容器):双轨判定真家 =
     #  cw_intention.committed_from(session) 权威派生;flex 白名单真家 =
     #  StrategyState.focus_factions(方向刷新写入),决策读端走策略态。
     #  帧回填点(原 cw_op_buy_cards 装配位)同批删除。)
@@ -337,12 +337,12 @@ class CwAction:
     """货币战争动作标记基类(策略 → 框架的单步意图载体;统一词表全类
     公共祖先,sim 侧运行时 isinstance 检查统一用本基类)。
 
-    ``route_tag`` = 发射臂路线标签(T-159 备战旗标状态机 §3.3;桥
+    ``route_tag`` = 发射臂路线标签(备战旗标状态机 §3.3;桥
     ``bridge.decide_from_turn`` 从 ``Emitted.reason`` 透传,动作自带、
     无时序错位面)。定位 = 策略内部路由键(发射分支的构造事实,不随
     时间漂移、不维护状态),只回答「该次落地该不该清 S1 开店闩」的
     环路控制路由问题,**非**卖出资格面(资格单一源 = sell_gate 装配 A)
-    、非放行证据(T-153 治理立场对表:禁检查器采信)。值域:现役发射位
+    、非放行证据(治理立场对表:禁检查器采信)。值域:现役发射位
     = m4_fuel_sell / interest_prep(单帧锁
     ``test_route_tag_whitelist`` 锁映射表)。kw_only 缺省 '' ⇒ 构造调用
     全向后兼容(归一前族A 类无本字段,sim 构造面零改动)。
@@ -398,7 +398,7 @@ class SellBench(CwAction):
     #                            sell_reason 键转录本字段,检查器孤儿豁免
     #                            分支据此判定(豁免键集 =
     #                            SELL_BENCH_ORPHAN_REASONS,与发射登记门
-    #                            分离的独立闭集,T-180)。
+    #                            分离的独立闭集)。
     convert_reason: str = ''   # 转化类豁免分键(结构化证明键,ADR-0611):
     #                            值域收窄为本批两类放行键 ⊂
     #                            SELL_BENCH_CONVERT_REASONS 闭集——
@@ -426,16 +426,16 @@ class SellBench(CwAction):
 # - line_switch_collapse: 线账闭合孤儿清算(P78-2a 账闭合事件「线账
 #   闭合」:K 支持度重排致义务成员出基座,登记账就地销账,其后通道按
 #   P78 INV 清算,1★ 往返净损 0 非自旋,r408 振荡意图不触犯)。键 =
-#   通道名(entry 换线塌缩出口)兼孤儿证明标记(T-141 方案审乙′:
+#   通道名(entry 换线塌缩出口)兼孤儿证明标记(方案审乙′:
 #   商店发射位仅在「本轮义务登记 ∧ 已出基座」证明在场时打标,授予
 #   必须伴随登记簿线账闭合事件,防窗口段回归洗白——证明载体与边界
 #   申报见 ADR-0591 §4)。
 # 四键只辖「卖出排除面/被保留集登记件」的帧;缺省 '' 恒不豁免
 # ——豁免面按分键收敛,禁全开(T3 同轮保留修复批设计约束;三键形态
 # = ADR-0585 批 3,N7 豁免面与分键同批消除误报窗口;三→四键 =
-# T-141 方案审零阻断放行的语义演进,出处 = 2026-09-08 同轮交互
+# 方案审零阻断放行的语义演进,出处 = 2026-09-08 同轮交互
 # 方案审 + ADR-0591)。
-# 发射侧填充现状(T-165 起两通道分键):两类放行键(T3 末位牺牲/
+# 发射侧填充现状(两通道分键起):两类放行键(T3 末位牺牲/
 # funding 两键)经 SellBench.convert_reason 结构化字段填充(值域收窄,
 # 见字段注);line_switch_collapse 仍在役于 reason(孤儿证明打标制 +
 # entry 换线塌缩通道位)。检查器按键分工判定,禁单键并读双源;
@@ -459,12 +459,12 @@ SELL_BENCH_CONVERT_REASONS: frozenset[str] = frozenset({
 # (unified-action-factory 批2b 自 kernel/cw_prep_actions 迁居,与
 # SELL_BENCH_CONVERT_REASONS 同居;来源语义与登记门不变。)
 SELL_BENCH_REASONS: frozenset[str] = frozenset({
-    'line_switch_collapse',     # 线账闭合孤儿清算(T-141/ADR-0591 证明打标制)
+    'line_switch_collapse',     # 线账闭合孤儿清算(ADR-0591 证明打标制)
 })
 
 
 # 检查器孤儿豁免键集(同轮买后卖检查的孤儿清算豁免边;**与上方发射位
-# 值域登记门 SELL_BENCH_REASONS 分离的独立闭集**,T-180):两集当前同值
+# 值域登记门 SELL_BENCH_REASONS 分离的独立闭集**):两集当前同值
 # 但语义不同源——发射登记门的新增值不得静默放大豁免面(豁免面若随
 # 登记门生长即成振荡防空洞;同轮买卖振荡零容忍 = ADR-0267/0593 治理
 # 立场)。当前值 = line_switch_collapse(线账闭合孤儿清算证明标记,
@@ -560,7 +560,7 @@ class CloseShop(CwAction):
 class PickEvent(CwAction):
     """选事件选项(投资环境/策略/遭遇/补给)。
 
-    refresh(T-162 重立,ADR-0600;旧「阈值建议」判据已退役,
+    refresh(重立判据,ADR-0600;旧「阈值建议」判据已退役,
     现判据 = 零阈值结构存在性,推导与优势论证见 ADR-0600 §3.2 +
     math_proofs P81,env kind 不启用见 ADR-0600 §2/§4):「建议刷新」布尔 =
     ``refresh_slots`` 非空。**纯建议**——是否真刷由 handler 决定(逐槽计数
@@ -824,7 +824,7 @@ def action_key(action: CwAction) -> str:
 
     带 ``action_key_exclude`` metadata 的字段不入键(现役 =
     SellBench.reason 卖出归因 + CwAction.route_tag 发射臂路线标签
-    [T-159 §3.3]):幂等粒度 = 行为参数,归因/路由标签不改变动作实例
+    [旗标状态机 §3.3]):幂等粒度 = 行为参数,归因/路由标签不改变动作实例
     身份——同槽位不同归因是同一动作,禁拆成两个幂等键。
     """
     import dataclasses
@@ -859,7 +859,7 @@ def _log_action(s: CwSimFrame, action_name: str, result: str,
 def simulate(state: CwSimFrame, action: Action) -> CwSimFrame:
     """单步动作应用(纯函数):返回应用 action 后的**新** CwSimFrame
     (不改原 state)。消费位 = sim 引擎整局逐步推进 / 假游戏环境动作转移 /
-    规则实现等价性验证(锁 M1 等);策略决策零消费(T-163 纯规则路线)。
+    规则实现等价性验证(锁 M1 等);策略决策零消费(纯规则路线)。
 
     买入落 bench(3 合 1 自动升星);上阵(DeployMove)把角色从 bench 移到 deployed +
     board[faction]+=1(保留身份/站位供 char_quality 与站位分流用)。
@@ -893,7 +893,7 @@ def simulate(state: CwSimFrame, action: Action) -> CwSimFrame:
         if not placed:
             _name = action.card.name
             _star = action.card.star or 1
-            # 分支应用单一源 = _apply_full_bench_merge_buy(T-182:与运行时
+            # 分支应用单一源 = _apply_full_bench_merge_buy(与运行时
             # tracked mutate 共用,双账同构;判据面不变 = merge_buy_completes
             # 不满足仍拒,ADR-0283 兜底)。
             _k = _apply_full_bench_merge_buy(s.bench, s.deployed,
@@ -1078,7 +1078,7 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
     LevelUp/RefreshShop/PickEvent 不影响 bench/deployed → no-op。
 
     ``shop``(缺省 None = 零漂移兼容):调用方的当前店面视图。提供时,
-    满栏合成买(T-182)与 simulate 同分支单一源——满栏时游戏对完成合成
+    满栏合成买与 simulate 同分支单一源——满栏时游戏对完成合成
     的买入接受并合成(bench 素材被消费腾槽),tracked 侧同走
     ``_apply_full_bench_merge_buy``,不再丢件漏记;未提供或未识别牌
     (name 空,无法判合成对象)时维持旧丢件行为。
@@ -1151,8 +1151,6 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
 # ===== 布局未知态的策略侧支撑(15 号稿批 C 落地审修订)=====
 # 布局未知态计数复位的槽式转发供 strategies 面消费(strategies 合法桶 =
 # data/kernel/app,不得直依 obs:obs 侧在 resolve 时注册真实现)。
-# (原②半段「台账 token → 生产词汇表」NODE_TOKEN_TO_WORD 已随 T-64 退役批
-# 删除——唯一消费方掉血三臂喂入链退役,04_survival_budget §7 #8,ADR-0638。)
 
 _layout_unknown_reset: Callable[[], None] | None = None
 

@@ -36,10 +36,10 @@ class ActionExecEnv(Protocol):
 
 class ActionOp(ABC):
     """通用动作 op 基类(execute 单方法;原 project 逻辑态推算半已删
-    (前身契约),T-163 纯规则路线——期望态推进 = 容器逻辑态直写,模块头
+    (前身契约),纯规则路线——期望态推进 = 容器逻辑态直写,模块头
     申报)。
 
-    基类契约:``execute`` 返回恒 True(T-223 终裁:发出即职责完成,零
+    基类契约:``execute`` 返回恒 True(终裁:发出即职责完成,零
     判效——落地事实归下一帧入口观察 reconcile 对账,不据执行侧判定
     改道)。**例外登记口**:在册例外 = StartBattleOp(返回值 = 发射位
     内部事实非恒 True,design.md §2.4,批3 落款收编;批1 仅占位登记,
@@ -54,6 +54,6 @@ class ActionOp(ABC):
 
     @abstractmethod
     def execute(self, env: ActionExecEnv) -> bool:
-        """机械执行;返回恒 True(T-223 终裁:发出即职责完成,零判效——
+        """机械执行;返回恒 True(终裁:发出即职责完成,零判效——
         落地事实归下一帧入口观察 reconcile 对账,不据执行侧判定改道;
         在册例外见类 docstring 例外登记口)。"""

@@ -4,7 +4,7 @@
 
 ## 1. 动作族与执行器
 
-备战域原子动作经统一执行器 `prep_actions.py::PrepActionExecutor` 机械执行(持 ctx + 宿主 op 复用截图/拖拽原语):**发出即职责完成,零验证零判效**(T-223:点击/拖拽后不读屏判「是否生效」,落地判定完全归观察侧 reconcile)。词表单一源 = `kernel/cw_vocab.py`(`CwAction` 基类 + 全动作类 + 白名单 `CW_ACTION_TYPES`;执行器 `validate` 两层 = 白名单 + 静态参数)。
+备战域原子动作经统一执行器 `prep_actions.py::PrepActionExecutor` 机械执行(持 ctx + 宿主 op 复用截图/拖拽原语):**发出即职责完成,零验证零判效**(最严读法:点击/拖拽后不读屏判「是否生效」,落地判定完全归观察侧 reconcile)。词表单一源 = `kernel/cw_vocab.py`(`CwAction` 基类 + 全动作类 + 白名单 `CW_ACTION_TYPES`;执行器 `validate` 两层 = 白名单 + 静态参数)。
 
 **文档-实现偏差(词表白名单载体)**:action-logic-state.md §3 头原文「备战域动作词表 = kernel/cw_prep_actions.py::PREP_ACTION_TYPES 白名单」;实况 = 统一词表归一(unified-action-factory 批2b)后 `PREP_ACTION_TYPES` 退役,单一源 = `kernel/cw_vocab.py::CW_ACTION_TYPES`(漏登记 = 执行面拒「未知动作类型」,动作从未真正执行)。本篇按实现写入。
 
@@ -32,7 +32,7 @@
 
 ## 3. SellBench / SellDeployed(卖)
 
-逐动作全文见 [sell-bench.md](sell-bench.md) / [sell-deployed.md](sell-deployed.md);族共通面:执行器拖槽中心 → 出售区(`sell_point` 单一源,area 缺失 RuntimeError 禁兜底坐标);卖出动画 1s 等待(`screen_flow_timing.md` #21 口径);tracked 摘除 = 按下标置 None(信息位/下标脱节不再按 slot 重构,T-261 实证治本);执行点金差 = dispatch 前 tracked 快照的 `sell_refund`(身份不可辨 = None 诚实缺失)→ `_advance_gold` 直推容器金账;`apply_op_effect` 分支:SellBench = 金腿,SellDeployed = 金腿 + owned 恢复腿(不对称申报,见 sell-deployed.md §2)。备战域容器写口域集 = gold/bench(SellBench)与 front_row/back_row/board/gold(SellDeployed);equips 域留观察覆盖(域集封闭申报)。
+逐动作全文见 [sell-bench.md](sell-bench.md) / [sell-deployed.md](sell-deployed.md);族共通面:执行器拖槽中心 → 出售区(`sell_point` 单一源,area 缺失 RuntimeError 禁兜底坐标);卖出动画 1s 等待(`screen_flow_timing.md` #21 口径);tracked 摘除 = 按下标置 None(信息位/下标脱节不再按 slot 重构,实证治本);执行点金差 = dispatch 前 tracked 快照的 `sell_refund`(身份不可辨 = None 诚实缺失)→ `_advance_gold` 直推容器金账;`apply_op_effect` 分支:SellBench = 金腿,SellDeployed = 金腿 + owned 恢复腿(不对称申报,见 sell-deployed.md §2)。备战域容器写口域集 = gold/bench(SellBench)与 front_row/back_row/board/gold(SellDeployed);equips 域留观察覆盖(域集封闭申报)。
 
 **判例注记**:备战期(判例 = screens-actions-capability §5:卖备战/卖上阵收缩至备战期;商店域 op 能力面在役不删)。
 

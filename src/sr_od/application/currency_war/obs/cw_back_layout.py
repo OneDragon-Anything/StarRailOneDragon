@@ -133,7 +133,7 @@ _BACK_Y1, _BACK_Y2 = 600, 739
 _channel_conflict_ts: dict[str, float] = {}
 _last_sel_log: tuple | None = None
 
-# ===== 布局未知态与冻结(15 号稿 §3.2④/T-7/B2/B3)=====
+# ===== 布局未知态与冻结(15 号稿 §3.2④)=====
 # 依据:三信号双弃权(公式弃权 ∧ CV None)时「不固定选任何档」——diff=0 退 6
 # 档是把「不知道」当「无扩展」(15 号稿 §3.2① 对现行行为的定性)。缺省语义
 # 读写分级:单帧未知=跳过后排依赖操作;连续未知=读类退 6 档基线继续读、
@@ -603,14 +603,13 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
     - ``n``/``prefix``:运行值(未建档档 → 8 格超集,已建档档直读;未知态
       帧 → ``None``/``''``,消费方按读写分级处置,§3.2④);
     - ``cap``/``level``/``diff``:读数快照(判读/留证);
-    - ``unknown``/``frozen``/``unknown_streak``:布局未知态三键(§3.2④/
-      T-7)——unknown=本帧双弃权;frozen=连续未知达 ``UNKNOWN_FREEZE_FRAMES``
+    - ``unknown``/``frozen``/``unknown_streak``:布局未知态三键(§3.2④)——unknown=本帧双弃权;frozen=连续未知达 ``UNKNOWN_FREEZE_FRAMES``
       (写类冻结止损);unknown_streak=当前连续计数(任一已知帧清零);
     - **容器接线(back_max 语义裁决·闸门二)**:已知帧裁决值随写
       ``GameState.back_layout``(值/superset 标记判据与跳过条件见
       :func:`_observe_back_layout_to_container`;零新增读,best-effort)。
 
-    **公式输入净化(§3.2①,T-8 消费端)**:``level_trusted`` 三态——
+    **公式输入净化(§3.2①消费端)**:``level_trusted`` 三态——
     ``False`` = level 为 derived/启发式(未过可信门)→ 公式通道**弃权**
     (n_raw 依 CV/仲裁;CV 也不可判 → 双弃权进未知态);``None`` = 调用方
     未声明 → 维持现行为(diff=0 退 6 档基线,零行为变更);``True`` =
@@ -656,7 +655,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
     cv_readings: list[int | None] | None = None
     _arb_n: int | None = None   # 冲突最终裁决档(None=无冲突/保 CV 旧规)
     if formula_n is None and cv_n is None:
-        # 布局未知态(§3.2④/T-7):双弃权 → 不固定选任何档。连续计数按
+        # 布局未知态(§3.2④):双弃权 → 不固定选任何档。连续计数按
         # 「一次判定全不可判计 1」(B3 换算规则),每帧 JSONL 留证不节流。
         _unknown_streak += 1
         _frozen = _unknown_streak >= UNKNOWN_FREEZE_FRAMES
@@ -738,7 +737,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
         # 对账不一致:CV 实测优先(画面事实>推导,ADR-0385)+ 留证两值
         note_channel_conflict(screen, formula_n, cv_n, cap, level,
                               'select_back_layout')
-        # 分键(15 号稿批 C,T-6):记录函数单一源 = kernel.cw_telemetry_exit
+        # 分键(15 号稿批 C):记录函数单一源 = kernel.cw_telemetry_exit
         #(落地审 C3:telemetry.defects 副本已删,reader_source 对齐)
         try:
             from sr_od.application.currency_war.kernel.cw_telemetry_exit import (

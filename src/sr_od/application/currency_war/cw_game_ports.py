@@ -1,29 +1,24 @@
-"""cw_game_ports —— 货币战争假环境注入口协议(T-120 sim 重设计 批 0)。
+"""cw_game_ports —— 货币战争假环境注入口协议。
 
 **交付性质(「生产零行为改动」的判据)**:本文件 = 观察源端口/执行器端口
 两个 Protocol 契约 + 模块级安装槽,是**惰性纯协议新文件**——当前零消费点、
 不被任何生产模块 import,确定性测试直接对其编程;批 1 起才由观察改道
-调用点消费。因此它的落地对生产缺省路径零影响(T-120 方案 §6.2 批 0 行
-「唯一生产树新增 = 惰性纯协议文件」;原计划的零生产消费守卫测试锁随
-09-13 清理删除,经 T-252 分诊为源码扫描形态不恢复,零消费事实归
-review 守卫)。
+调用点消费。因此它的落地对生产缺省路径零影响(批 0 唯一生产树新增 =
+惰性纯协议文件;原计划的零生产消费守卫测试属源码扫描形态,已删且裁定
+不恢复,零消费事实归 review 守卫)。
 
-**方案出处**:T-120 方案 v2(`.debug/temp/currency_war/t120_sim_redesign/
-方案.md`,**易失产物**)§2.3 观察注入接口 / §2.4 动作落点接口 / §3.2
-端口协议形状 / §3.3 装配纪律。ADR 落点 = T-120 退役批(docs/develop/
-currency_war/decisions/,编号待分配:INDEX 尾现役 ADR-0582,T-119 契约批
-已预留 0583)——本文注释引用方案路径属暂记指针,后续批须回填 ADR 编号
-(测试纪律「批报告类出处」同判)。
+**方案出处**:假环境注入迭代方案(易失产物,不长期引用;端口协议形状
+与装配纪律以本文为正本)。
 
 **缺省 None = 生产路径**:模块槽缺省 ``(None, None)``,生产全程不安装;
 ``observation_source()``/``action_sink()`` 返回 None 时调用点走现行真实
 读屏/真实执行链,行为逐位不变。安装只发生在测试 harness 显式接通(批 1),
-装配纪律:进程内单装配、卸载复位 None(方案 §3.3)。
+装配纪律:进程内单装配、卸载复位 None。
 
 **依赖边界**:运行时只引用 kernel 纯类型(GameState/ShopCard/Action/
 PrepObservation),ctx 仅 TYPE_CHECKING——零 obs/operations/sim 依赖。
 生产实现(批 1,LiveCwObserver 住 obs 桶)与假实现(测试仓)实现本协议,
-依赖方向单向无环(方案 §3.1 层级裁决:协议住 CW 根,零依赖纯抽象)。
+依赖方向单向无环(层级裁决:协议住 CW 根,零依赖纯抽象)。
 
 (迁移批 3.2:端口契约改容器形态——``ObservationBundle.state``/
 ``ExecResult.observed`` 切 GameState,假环境直产容器真值;实现方契约 =
@@ -139,13 +134,13 @@ class CwActionSink(Protocol):
                        env: Any | None = None) -> ExecResult:
         """执行一个动作并回执。
 
-        ``env`` = 动作执行步的宿主语境(T-120 方案 §3.3「商店动作执行步」
+        ``env`` = 动作执行步的宿主语境(「商店动作执行步」
         改道点承载;批 1 起传入):生产形状 = operations 桶
         ``cw_shop_action_ops.ShopExecEnv``(协议住 CW 根、不 import
         operations 类型,故只以 Any 申报形状——依赖方向 = operations→CW 根单向)。
         live 实现(批 2 LiveActionSink)消费它驱动点击/验证读;fake 实现
         (测试仓 FakeActionSink)消费它落「账本位随动」——动作账(ledger)
-        与 tracked 账是 visit 级宿主状态,不随动作传递就无处落(方案 §2.4
+        与 tracked 账是 visit 级宿主状态,不随动作传递就无处落(
         「规则外效应(池 ret/take、账本位)一次落定」的执行器半边)。
 
         假环境不建模命中/浮层竞态/点击落空——**执行失败面结构性为零**,

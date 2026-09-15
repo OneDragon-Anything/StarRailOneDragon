@@ -1,4 +1,4 @@
-"""流程转点观测锚·登记机制(kernel;统一观察架构 §12,实现批 T-221)。
+"""流程转点观测锚·登记机制(kernel;统一观察架构 §12)。
 
 设计正本 = ``docs/develop/sr_od/application/currency_war/design/统一观察架构-画面op基类设计.md``
 §12:在流程确定性转点上触发的一次结构化观测(锚),三要素 = 确定性触发
@@ -55,8 +55,7 @@ TRIGGER_AXIS: frozenset[str] = frozenset({
     ANCHOR_TRIGGER_LANDED, ANCHOR_TRIGGER_EMITTED, ANCHOR_TRIGGER_BOUNDARY,
 })
 
-#: 口径域封闭值域(§12.3 scope:消费侧跨批对读计数前必核,防口径混用,
-#: T-211 归因批实证的锚侧预防)。
+#: 口径域封闭值域(§12.3 scope:消费侧跨批对读计数前必核,防口径混用的锚侧预防)。
 ANCHOR_SCOPES: frozenset[str] = frozenset({'global', 'plane', 'unit'})
 
 
@@ -149,7 +148,7 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
         prerequisite='触发口 on_outcome(BuyCard) 随 §6.4 执行器收编批成立'
                      '(R-J 挂账在案),禁绕收编私接触发;payload 类型化槽位'
                      '(含买因槽候裁)随 H2',
-        source='统一观察架构 §12.2 buy_landed 行(T-221 落码)'),
+        source='统一观察架构 §12.2 buy_landed 行'),
     'sell_landed': AnchorSpec(
         anchor_id='sell_landed',
         trigger_type=ANCHOR_TRIGGER_LANDED,
@@ -160,7 +159,7 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
         evidence_required=False,
         prerequisite='channel 字段补登 + reason→channel 归一映射宿主与封闭'
                      '性守卫随 H2 钉死(发射侧 reason 自由串非闭集本身)',
-        source='统一观察架构 §12.2 sell_landed 行(T-221 落码)'),
+        source='统一观察架构 §12.2 sell_landed 行'),
     'refresh_landed': AnchorSpec(
         anchor_id='refresh_landed',
         trigger_type=ANCHOR_TRIGGER_LANDED,
@@ -172,7 +171,7 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
         evidence_required=False,
         prerequisite='触发口随 §6.4 执行器收编批成立(R-J);试验边界键显影'
                      '挂 H2;非单一 kind 载体的锚行落盘面候 H2 申报',
-        source='统一观察架构 §12.2 refresh_landed 行(T-221 落码)'),
+        source='统一观察架构 §12.2 refresh_landed 行'),
     'levelup_landed': AnchorSpec(
         anchor_id='levelup_landed',
         trigger_type=ANCHOR_TRIGGER_LANDED,
@@ -183,7 +182,7 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
         evidence_required=False,
         prerequisite='击数/扣金扩字段随 H2;禁双行(另立 kind=levelup_landed'
                      ' 与现役行构成同事件两行 = 违指标 3,申报否决)',
-        source='统一观察架构 §12.2 levelup_landed 行(T-221 落码)'),
+        source='统一观察架构 §12.2 levelup_landed 行'),
     'battle_start': AnchorSpec(
         anchor_id='battle_start',
         trigger_type=ANCHOR_TRIGGER_LANDED,
@@ -194,7 +193,7 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
         prerequisite='deployed 摘要复用既有观测漏斗(§12.5-5,零新读屏);'
                      '羁绊档位不入锚行(判读离线派生);kind 生产者 = 锚钩子'
                      '体候触发批',
-        source='统一观察架构 §12.2 battle_start 行(T-221 落码)'),
+        source='统一观察架构 §12.2 battle_start 行'),
     'node_enter': AnchorSpec(
         anchor_id='node_enter',
         trigger_type=ANCHOR_TRIGGER_BOUNDARY,
@@ -206,7 +205,7 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
         prerequisite='boundary 触发口与注册表触达机制候 H6 终裁(禁静默选型;'
                      '申报面 = 本表触发时点型列,H1 已裁决);choice 载荷扩 '
                      'tick 回执随 H2',
-        source='统一观察架构 §12.2 node_enter 行(T-221 落码)'),
+        source='统一观察架构 §12.2 node_enter 行'),
     'plane_enter': AnchorSpec(
         anchor_id='plane_enter',
         trigger_type=ANCHOR_TRIGGER_BOUNDARY,
@@ -216,7 +215,7 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
         evidence_required=False,
         prerequisite='boundary 触发口候 H6;过渡相位表收编(§3.4)为宿主'
                      '接线前提',
-        source='统一观察架构 §12.2 plane_enter 行(T-221 落码)'),
+        source='统一观察架构 §12.2 plane_enter 行'),
     'settlement': AnchorSpec(
         anchor_id='settlement',
         trigger_type=ANCHOR_TRIGGER_BOUNDARY,
@@ -228,7 +227,7 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
         prerequisite='boundary 触发口候 H6(H6 候选①的例外样本);候选值随 '
                      'H2;效果账本结算挂点(on_battle_end)接线 = 本锚组成'
                      '部分(记录模型设计 §5.1 挂账收敛)',
-        source='统一观察架构 §12.2 settlement 行(T-221 落码)'),
+        source='统一观察架构 §12.2 settlement 行'),
 }
 
 # ===== payload 值域申报面(§12.5-4 闭集消费;kernel 零上层依赖)=====

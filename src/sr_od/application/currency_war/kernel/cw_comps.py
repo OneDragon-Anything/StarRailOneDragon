@@ -173,7 +173,7 @@ class Comp:
     部署例外规则**尚未实现**——消费点应为 decision_v2/candidates._deploy_candidates
     / scoring._deploy_pipeline,实现归后续策略批;本字段目前仅数据标注,零行为改动。"""
 
-    # ===== T-171 批序 1 形态端口(ADR-0613):OR 腿 + carry 在场条件 =====
+    # ===== 形态端口(ADR-0613):OR 腿 + carry 在场条件 =====
     # 两字段缺省空 = 行为不变。生产写入方 = cw_intention.pair_target_comp
     # 希儿系对分支(P1 配方锁伪 comp)+ COMP_LIBRARY 静态套「希儿量子」
     # (P2+ 锁线路径经 get_comp 消费静态条目,ADR-0621;档位单一源 =
@@ -1361,7 +1361,7 @@ def form_progress(comp: Comp, bs: GameState) -> float:
     入参 = 容器视图(W6 决策面切统一容器;假想面板轻量桩只需提供
     ``board.value`` 属性,见调用点 _deploy_advances_form 鸭型位)。
 
-    OR 腿与 carry 条件折法(T-171 批序 1,ADR-0613;OR 组承接键,ADR-0621;
+    OR 腿与 carry 条件折法(ADR-0613;OR 组承接键,ADR-0621;
     本函数 = 成型判据唯一折法,fp=1.0 ⟺ 成型谓词「form_tiers 未被承接档
     全档 ∧ or_legs 组任一满 ∧ required_deployed 全在板」的单一源契约):
     - ``or_legs`` 非空 → 折为**一条**虚拟腿,腿值 = 组内各腿进度的 max
@@ -2390,7 +2390,7 @@ def maybe_pivot(bs: GameState, ctx: ScoreContext, config, target: Comp | None,
         """committed(非双轨期)派生读(单一源 = cw_intention
         .committed_authority;原 ``bs.dual_track_phase`` 字段直读随容器
         化退役——容器无此字段,getattr 恒 False = 方向层判定静默漂移
-        实位,T-96 验收承接②。函数级懒 import 防环:本模块与
+        实位。函数级懒 import 防环:本模块与
         cw_intention 互相消费)。"""
         from sr_od.application.currency_war.kernel.cw_intention import (
             committed_authority,

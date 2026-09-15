@@ -104,7 +104,7 @@ class P2ReplayEntry:
 
     def build_state(self, bs: GameState) -> GameState:
         """进场态 → 播种进容器 GameState(plane=2;bench 保 9 槽 pad 语义;
-        T-185 批B:工作帧退役,引擎容器 = board_state_of(sess) 单例,
+        工作帧退役,引擎容器 = board_state_of(sess) 单例,
         开局播种 = obs 族(裁定 A 渠道表);返回 bs 便于链式调用)。"""
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,

@@ -215,7 +215,7 @@ class ActiveEffectInventory:
         # 随清单实例走(session 级生命周期,新局天然清零)。
         self._last_tick_node: int | None = None
         # 装备效果进度侧栏(拷贝仪参与计数载体首用):键 = (装备名, 装备者
-        # char_id),值 = 单调计数器。装备源效果无 EffectSpec 实例(T-51
+        # char_id),值 = 单调计数器。装备源效果无 EffectSpec 实例(
         # 申报面纪律:装备写端 = 桥/贡献算术直读 GameState),其进展量
         # 无实例可挂,落本册侧栏——session 级生命周期与实例清单同源,
         # 计数语义同 §3 单调计数器模型(从 0 起、事件 +1、永不重置)。
@@ -1042,10 +1042,10 @@ def transform_equip_to_privilege(bs: GameState, source_name: str, *,
 
 
 # ============================================================ 节点边界金结算载体
-# (T-51 装备申报面三贡献算术的组合写收口,归属判据 = effect-domain.md §6.3
+# (装备申报面三贡献算术的组合写收口,归属判据 = effect-domain.md §6.3
 # 确定性分支:轮首收入三支与装备贡献全部确定性可算 → 逻辑写,且同窗变更
 # 源必须合并为**单次**金面写入(窗口独占性分形段头注:节点边界窗曾与未接
-# 写端的轮首收入共享,本载体即该窗的 live 写端收口——T-21 已把收入公式收口
+# 写端的轮首收入共享,本载体即该窗的 live 写端收口——收入公式已收口
 # cw_economy.round_start_income,本载体消费之,禁第二份收入算术;生产挂点
 # = 备战分支进节点边界,接线归辖批,接线前金面维持观察覆盖兜底)。
 #
@@ -1085,13 +1085,13 @@ def settle_node_boundary_gold(
     write_logic),实机 live 写端收口。
 
     - **收入面**:值分量与分支派发全部经 :func:`cw_economy.round_start_income`
-      (T-21 收口单一源,禁第二份);息基 = **结算前**金现值(本函数读
+      (收入收口单一源,禁第二份);息基 = **结算前**金现值(本函数读
       ``bs.gold`` 后传入,调用方无须自取——单一金基座防息算双读);
       ``lost_node``/倍率/息修饰由调用方按其辖域契约传入(败态消费、
       aggregate_economy 聚合归接线批)。
     - **装备贡献面**:财富 = :func:`equip_node_gold_grant` 现读现算;宝钻 =
       ``diamond_gold``(穿戴起逐件进度折算的**本拍增量**,由调用侧进度
-      载体供给——进度载体缺位属 T-51 缺口申报面,本载体禁内发明第二份,
+      载体供给——进度载体缺位属缺口申报面,本载体禁内发明第二份,
       缺省 0 = 保守零授予,与现状观察覆盖零行为差)。
     - **单次写入**:全部同窗增量合并为一次 write_logic(窗口独占完全预测,
       失配等价推算 bug,§2.3);金未读(None)= 无累加基座,整拍跳过零
@@ -1100,7 +1100,7 @@ def settle_node_boundary_gold(
     - **辖域排除**:到期尾款金(effect-domain.md §7.3 禁 logic 直写防双计)、
       事件金、STRATEGY_ECONOMY 的 gold_per_node 族(ADR-0623 决策1
       「'invest' 键单列」)不在本载体——各自接线面另批;sim 收入路径
-      不经本载体(sim 真值合成,T-21 申报)。
+      不经本载体(sim 真值合成)。
     """
     gold = bs.gold.value
     if gold is None:
@@ -1224,7 +1224,7 @@ def transform_worn_equip_to_privilege(bs: GameState, target: Unit,
 
 # ============================================================ 拷贝仪参与计数载体
 # (数据拷贝仪族「装备者每参与 N 场战斗,获得自身的一个 1 星复制」的进度
-# 载体(T-51 缺口申报面「拷贝仪参与计数进度载体」的落码位):参与计数 =
+# 载体(「拷贝仪参与计数进度载体」的落码位):参与计数 =
 # 装备效果进度侧栏(:meth:`ActiveEffectInventory.bump_equip_progress`,
 # 单调计数器模型 §3);成熟判定 = 计数 ÷ 阈值整除(每 N 场一次,§3 规则 3
 # 计算侧);成熟写端 = 入席桥 :func:`spawn_equip_bench_unit`(申报行

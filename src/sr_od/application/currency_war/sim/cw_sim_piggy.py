@@ -1,11 +1,11 @@
-"""货币战争 sim 扑满环境注入批(受控对照采集面;T-143)。
+"""货币战争 sim 扑满环境注入批(受控对照采集面)。
 
 背景:ENV_ECONOMY C 类环境(经济过热/经济严重过热)的估值参数
 ``reward_node_bonus_{variant}``(kernel/cw_env_economy.ENV_ECONOMY_ESTIMATES)
-零样本不落在册(禁拍值,T-129 数据批)。本模块是识别面样本的批入口:
+零样本不落在册(禁拍值)。本模块是识别面样本的批入口:
 同 seed 同池多臂注入 ``SimInvestProfile``(W162/ADR-0364 注入口),产出
 ``piggy_reward`` 扑满帧样本面(写点 = mandate_v1 两栈刷新,判据单一源
-kernel/cw_reward_node.is_piggy_reward_frame;识别面修复 = T-143,shop 栈
+kernel/cw_reward_node.is_piggy_reward_frame;shop 栈
 写点曾因旧 ``CwSimFrame.node_type`` 属性失联)。
 
 **辖域边界(读前必知)**:sim 不建模扑满战利品金流——注入臂的奖励轮

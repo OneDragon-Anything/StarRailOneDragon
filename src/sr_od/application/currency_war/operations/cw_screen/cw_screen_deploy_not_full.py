@@ -6,12 +6,12 @@
 勾选/确认坐标进 screen_info(``currency_war_deploy_not_full``):``勾选-本局不再提示`` +
 ``按钮-确认``,task#20 已完成;本 op 经 ``cw_obs_core.area_center`` 读,缺失才用兜底常量。
 
-统一观察架构逐屏迁移(账本 T-48 收尾五屏;架构设计 §9.1 并存纪律):本类是
+统一观察架构逐屏迁移(收尾五屏;架构设计 §9.1 并存纪律):本类是
 CwScreenOpBase 子类,handle 顶部装配点分流(重入裁决**之后**,先例锚 =
 cw_screen_encounter.py :241-251 重入裁决 / :252-258 装配点分流;总纲契约 6):
 cw_game_ports 两端口完整在场 → 五段生命周期新路径;缺省 None = 生产直连
 旧路径(原序列,生产行为零变化)。五段形态:observe = 标识门(miss 未发 →
-fail;命中 → 清旗标)+ 帧引用(实机适配器① = 轻观察封口,T-8 简报同式;
+fail;命中 → 清旗标)+ 帧引用(实机适配器① = 轻观察封口,简报屏同式;
 重入裁决不在本段,总纲契约 6:留守 handle 分流前共享段);reconcile = 空申
 报;decide+act 内聚 ``_confirm_and_dismiss``(勾「勾选-本局不再提示」
 safe_click+0.3s → 确认 emit_overlay_confirm → 置位,两路径共享零转录);
@@ -43,7 +43,7 @@ from sr_od.context.sr_context import SrContext
 
 @dataclass
 class DeployNotFullObservation:
-    """未达上限弹窗观察 payload(五段之段1产物;T-48 实机转录形态)。
+    """未达上限弹窗观察 payload(五段之段1产物;实机转录形态)。
 
     中断弹窗族轻观察(收尾屏详设 §3):标识门判定在段内(门失败 →
     round_fail 早退交编排壳按步分流);payload 仅携带稳定帧引用(实机
@@ -55,9 +55,9 @@ class DeployNotFullObservation:
 
 
 class DeployNotFullLiveObservationAdapter:
-    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,T-48)。
+    """实机适配器①(观察端口;架构设计 §2.3 识别链封口)。
 
-    轻观察封口(先例 = T-8 简报轻观察适配器):标识门须在段内产出早退
+    轻观察封口(先例 = 简报屏轻观察适配器):标识门须在段内产出早退
     轮次,归 ``lifecycle_observe``;适配器仅装配稳定帧引用。sim 实现 =
     不适用(F11 例外清单),本批不建。
     """
@@ -76,7 +76,7 @@ class CwScreenDeployNotFull(CwScreenOpBase):
 
     def __init__(self, ctx: SrContext):
         CwScreenOpBase.__init__(self, ctx, op_name='货币战争-未达上限确认')
-        # 适配器位缺省装配(先例 = T-8 五相位屏):观察口 = 实机适配器
+        # 适配器位缺省装配(先例 = 五相位屏):观察口 = 实机适配器
         #(轻观察封口);动作口 = None = 直连现役确认链(基类「None = 子类
         # 缺省实现自担」)。on_outcome 注册表:本屏无登记件(注册表缺席 =
         # 零动作)。
@@ -129,7 +129,7 @@ class CwScreenDeployNotFull(CwScreenOpBase):
         return emit_overlay_confirm(self, confirm_point=_confirm, entry_keyword='未达上限',
                                     lcs_percent=0.8, success_wait=3.0, tag='cw-deploywarn')
 
-    # ---- 五段生命周期(统一观察架构 §5.1;T-48,先例 = T-8 简报)----
+    # ---- 五段生命周期(统一观察架构 §5.1;先例 = 简报屏)----
 
     def lifecycle_observe(self
                           ) -> tuple[DeployNotFullObservation,

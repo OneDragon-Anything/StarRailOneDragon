@@ -1,8 +1,6 @@
-"""起局前置码哈希结构闸(ADR-0581):T-106 混合码事故(run6 部署失败×7)的结构防线。
+"""起局前置码哈希结构闸(ADR-0581):混合码事故(部署失败×7)的结构防线。
 
-设计口径/覆盖边界/豁免申报的持久单一源 = ADR-0581
-(docs/develop/sr_od/application/currency_war/decisions/0581-start-match-code-hash-gate.md);
-实施批账本行(T-107,.debug/progress/ 易失)仅为辅助出处。
+设计口径/覆盖边界/豁免申报的持久单一源 = ADR-0581。
 
 语义(如实申报):闸比对「当前工作树文件内容」与「git HEAD 内容」,工作树 ≠ HEAD
 即拒绝起局——含义是「你即将运行的码 ≠ 已提交的码」。server 为常驻进程,其模块

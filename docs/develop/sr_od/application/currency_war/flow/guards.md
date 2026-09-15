@@ -5,9 +5,9 @@
 
 ## 1. G3 环级无进展守卫（架构反思三卡死批防线①；`cw_loop.py::prep_no_progress_tick` + `CwLoop.loop` 备战分支 G3 计数段）
 
-- **判据**（T-167 修订后口径）：状态指纹恒定窗口累计 `PREP_NO_PROGRESS_ROUNDS=3`【注·框架常量，三起实机卡死 8-34min 在 3 环(≈1min)内停机校准】环即触发停机留证；收益耗尽臂另设放宽判据=「指纹恒定窗口内动作批并集 ⊆ {OpenShop, RunDeploy} ∧ 末批 = RunDeploy ∧ 上一备战环 success」→ 不停机改发射出战（备战等待边际收益恒 0 的支配性论证）。指纹恒定本身即窗口内全部动作的定义性零变换证明（真实买入/卖出/升级必变 gold 或身份串）。
+- **判据**（修订后口径）：状态指纹恒定窗口累计 `PREP_NO_PROGRESS_ROUNDS=3`【注·框架常量，三起实机卡死 8-34min 在 3 环(≈1min)内停机校准】环即触发停机留证；收益耗尽臂另设放宽判据=「指纹恒定窗口内动作批并集 ⊆ {OpenShop, RunDeploy} ∧ 末批 = RunDeploy ∧ 上一备战环 success」→ 不停机改发射出战（备战等待边际收益恒 0 的支配性论证）。指纹恒定本身即窗口内全部动作的定义性零变换证明（真实买入/卖出/升级必变 gold 或身份串）。
 - **动作批签名** = `session.last_prep_action_sig`（备战单轮 op 决策出口写动作类型元组；破墙段同写；overlay 交回/策略异常/破墙派生帧前保持 None；写点 = `cw_screen_prep.py::CwScreenPrep.run`（前置清零 + 决策出口）与 `CwScreenPrep._bench_full_break_round`（破墙段同写））。修订后动作批降级为窗口留证与收益耗尽臂判别输入（窗口动作批并集累积器），不再是计数键。
-- **状态指纹** = `cw_loop.py::prep_no_progress_state_fingerprint`（修订节）：(plane, round_num, last_node_type, gold, bench 身份串, deployed 身份串)，为守卫**唯一计数键**（T-167 单键化：签名振荡+恒指纹=最纯「忙而无功」，旧双键 (动作批,指纹) 在振荡下每帧归零穿透两出口，实证 run_20260908_210431 15 分钟软卡死）。任一分量变化 = 有推进（战斗等待不进备战分支且回备战时 round 必变；正常多帧部署改变身份或 gold；闩跳过帧动作批不同）。gold 分量仅开态可信帧更新（`prep_obs_frame.state_gold_trusted` 单一写点，关店帧 raw 读数不再归零计数，真买入/升级/刷新必经开店帧）；球/箱/vacancy 刻意不进指纹（识别抖动误计数，由动作签名留证腿覆盖）。
+- **状态指纹** = `cw_loop.py::prep_no_progress_state_fingerprint`（修订节）：(plane, round_num, last_node_type, gold, bench 身份串, deployed 身份串)，为守卫**唯一计数键**（单键化：签名振荡+恒指纹=最纯「忙而无功」，旧双键 (动作批,指纹) 在振荡下每帧归零穿透两出口，实证 run_20260908_210431 15 分钟软卡死）。任一分量变化 = 有推进（战斗等待不进备战分支且回备战时 round 必变；正常多帧部署改变身份或 gold；闩跳过帧动作批不同）。gold 分量仅开态可信帧更新（`prep_obs_frame.state_gold_trusted` 单一写点，关店帧 raw 读数不再归零计数，真买入/升级/刷新必经开店帧）；球/箱/vacancy 刻意不进指纹（识别抖动误计数，由动作签名留证腿覆盖）。
 - **计数纯函数** `prep_no_progress_tick`：同指纹累加、指纹变化归零；sig=None 批归零（overlay 垄断/策略异常形态维持哨兵档语义，修订第 3 条）。
 - **触发动作**：截图 + `write_no_progress_flag`（签名序列+计数+处理指引）→ 附 `prep_stall_pending_expected` 留证（EXPECTED_STATE prep_obs 覆盖点滞留条目）→ `stop_running(reason='hook:prep_no_progress')`。取代旧备战 stall 留证线（单一计数单一签名，不留两套）。
 - flag 处理指引要点：同批动作反复发射而状态不动 = 执行面变换失败（遮罩挡拖拽/点击落空/闩漏网活锁）→ 按截图判画面：未建档 overlay → 建档 + 0x 分支；已建档 → 查该动作执行链。
@@ -26,7 +26,7 @@
 | `PLANE_MISDISPATCH_LIMIT=3` | 连续计（接管/过渡成功清零） | 位面过渡误分发型 fail 超限 round_fail（boss 简报帧误分发每 2s 无限循环实证） |
 | director fail streak 5 | 连续计 | CwScreenPrep 连续 5 次失败 → round_fail 交未知画面兜底链（消除静默 ping-pong；round_fail 在 node_max_retry 400 下不停机——刻意：消除"静默"，warning 进日志即哨兵，停机决策留给观察者） |
 
-> 补注（T-121）:分支守卫钩子（0n visit_ok/_fail 计数、0q streak 复位、A1 bail 清除、B5 窗口关+闩清）自 dispatch 包装落地起经 `_dispatch_screen_op` 的 **on_result 调用点邻接闭包**执行——限额值与清零/超限语义不变，仅执行落点随包装迁移，钩子明细。
+> 补注:分支守卫钩子（0n visit_ok/_fail 计数、0q streak 复位、A1 bail 清除、B5 窗口关+闩清）自 dispatch 包装落地起经 `_dispatch_screen_op` 的 **on_result 调用点邻接闭包**执行——限额值与清零/超限语义不变，仅执行落点随包装迁移，钩子明细。
 
 ## 4. 未知画面兜底（常驻安全网；`cw_loop.py::CwLoop._handle_unknown_fallback`）
 

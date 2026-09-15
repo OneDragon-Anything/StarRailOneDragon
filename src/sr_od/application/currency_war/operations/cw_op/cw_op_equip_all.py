@@ -226,7 +226,7 @@ def record_zero_wear_defect(ctx: SrContext, equipped: int,
         return
     from sr_od.application.currency_war.telemetry import defects as cw_telemetry
     _match = getattr(ctx, 'cw_match', None)
-    # 换源 T-146(装配源迁移):plane/round = 容器单例 node(同备战观察
+    # 换源(装配源迁移):plane/round = 容器单例 node(同备战观察
     # 写端刷新);node 未观察沿用旧缺帧静默跳过语义。
     _node_zw = None
     _sess_zw = getattr(_match, 'session', None) if _match is not None else None
@@ -410,10 +410,10 @@ class CwOpEquipAll(SrOperation):
     @operation_node(name='全员装备', is_start_node=True, node_max_retry_times=5)
     def equip_all(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        # 入口预期屏执行断言(T-163 D5/2026-09-08 用户架构裁定):动作 op
+        # 入口预期屏执行断言(2026-09-08 用户架构裁定):动作 op
         # 不作路由决策——非预期屏如实 round_fail 交回外循环重判,禁旧
         # round_success('跳过') 假成功吞分发(外层把 RunEquip ✓ 当完成入账,
-        # 装备实际没装;T-163 事故里还掩盖了「环的批前提已变」)。「该不该
+        # 装备实际没装;事故里还掩盖了「环的批前提已变」)。「该不该
         # 执行」的判断上提 = PrepActionExecutor._run_composite 派发前置
         # (实例化前判干净备战,不干净不派、环重观察),本检查降级为第二道
         # 执行断言(派发到落地间隙的画面漂移防线)。
@@ -478,7 +478,7 @@ class CwOpEquipAll(SrOperation):
             # 写端**全量 hits**(工具进快照,采集层无权丢数据);每次现读
             # 都覆写(穿戴后 owned 减少,末次读=最新持有面)。主写端 =
             # 备战入口观察装配点(cw_screen_prep._observe heavy,P4 观察
-            # 接线 T-171);本执行位步内重写 = 穿戴推进后的最新持有面
+            # 接线);本执行位步内重写 = 穿戴推进后的最新持有面
             # (定位读的合法执行层锚),两写端值同构后写覆盖先写。
             if _match is not None and _match.session is not None:
                 _match.session.last_owned_equips = list(_owned_last)

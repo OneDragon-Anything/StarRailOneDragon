@@ -3,7 +3,7 @@
 框架层:本模块**不含玩法判断**(何时收球/卖谁/何时出战 = 策略层 CwStrategy.decide_prep_screen),
 只负责「机械执行一个动作」(用户裁定 2026-09-10:动作 op 只管机械执行,
 禁止做任何验证——点击/拖拽后不读屏判「是否生效」,落地判定完全归观察侧
-reconcile 对账;T-223 终裁:执行回执 ``(progressed, detail)`` 退役,
+reconcile 对账;终裁:执行回执 ``(progressed, detail)`` 退役,
 ``execute`` 无返回,发出即职责完成)。失败路径(§13.2 修订):
 - 参数非法 → validate 返回错误串(Director 拒绝执行 + 交回留证);
 - 执行前输入契约拒绝(球/箱/按钮等目标不在,执行前观察,M6 边界面)→
@@ -99,7 +99,7 @@ class StopBrakeShortCircuit(RuntimeError):
     语义 = 运行中被停 → 拒绝执行任何动作(run 27 实证:director 环在
     Deploy 钩子 stop_running 后仍发 StartBattle 点出战——环顶检查(第一层)
     之外,本入口兜底覆盖绕环路径)。原表达通道 = 执行回执 ``(False, '已
-    停止[W209j刹车]')``,随 T-223 回执退役改为停机短路异常:执行器抛出,
+    停止[W209j刹车]')``,随端口回执退役改为停机短路异常:执行器抛出,
     调用方(cw_screen_prep 决策环 / cw_loop 发射核)捕获后交回外循环,
     下轮 loop 顶见 STOP 退出。判据 = last_run_result 非空(start 清
     None/stop 写入;run_state STOP 是 idle 初始态不能直接用)。
@@ -148,7 +148,7 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> None:
     """拖备战槽(槽位下标 0-8)→ 出售区(共享卖原语,W62 件2/设计章2.10)。
 
     d2 卖通道生产接线(shop.py prefix 循环 SellBench 分支)与 prep_actions
-    ``_sell_bench`` 共用本 helper:「拖→出售区」机械一段(T-192 拆源槽
+    ``_sell_bench`` 共用本 helper:「拖→出售区」机械一段(拆源槽
     像素验重试:发出即职责完成,落地事实归观察侧 reconcile 对账);
     tracking 同步由调用方各自做。失焦守卫同 ``PrepActionExecutor._drag``
     语义(窗口后台化时拖拽输入静默丢,r9 实证)。
@@ -241,13 +241,13 @@ class PrepActionExecutor:
         self._op = op
         self._ctx = ctx
         # 机械执行摘要(最近一次 execute 的 detail;登记件解析输入,非成败
-        # 回执——T-223 端口无返回,摘经由本属性旁路供 on_outcome detail)。
+        # 回执——端口无返回,摘经由本属性旁路供 on_outcome detail)。
         self.last_detail: str = ''
         # 批4 挂账:StartBattle 发射位内部事实(A6 出战链判效面,批4 随
         # J3/J4 消费端同退役)。消费方 = cw_loop 发射核(J2/J3 达标臂/锁定
         # 重试)。getattr 容缺(__new__ 桩形态)。
         self.last_launch_ok: bool | None = None
-        # 执行点金差显影(备战执行缝账务包络,T-16;写点 = execute 每次
+        # 执行点金差显影(备战执行缝账务包络;写点 = execute 每次
         # 入口复位)。取值时机 = dispatch 后由 _executed_gold_delta 现算
         # 写入,None = 该动作执行点金差不可推算(诚实缺失,非 0);消费方
         # = 回执 extra 金差键与观察侧备战帧金对账。getattr 容缺
@@ -338,7 +338,7 @@ class PrepActionExecutor:
     # ===== 执行入口(机械执行,无返回;执行前拒绝见 _execute_dispatch)=====
 
     def execute(self, action: CwAction) -> None:
-        """机械执行一个动作(无返回;T-223:发出即职责完成,落地判定归
+        """机械执行一个动作(无返回;发出即职责完成,落地判定归
         观察侧 reconcile)。
 
         ⚠️ W209j 刹车(ADR-0388,纵深防御第二层):运行中被停 → 拒绝
@@ -355,7 +355,7 @@ class PrepActionExecutor:
             log.info('[cw][battle] 停机标志已设 → 拒绝执行 %s'
                      '(W209j 刹车,ADR-0388)', type(action).__name__)
             raise StopBrakeShortCircuit('已停止[W209j刹车]')
-        # 执行点金差显影账(T-16)每动作复位:上动作余量禁跨动作残留。
+        # 执行点金差显影账每动作复位:上动作余量禁跨动作残留。
         # 落地门前捕获备战席占用(tracked 账现读):S1 路径 (ii) 翻正判读
         # 需要 pre/post 两点,post 点必须在 dispatch 之后读(dispatch 内
         # 卖出/部署 handler 会同步销账)。
@@ -368,11 +368,11 @@ class PrepActionExecutor:
         gold_delta = self._executed_gold_delta(action, emitted, _pre_sell_bc)
         self.last_gold_delta = gold_delta
         if emitted and gold_delta:
-            # 执行缝金账直推(T-16 备战帧金动作入账;写通道单一源 =
+            # 执行缝金账直推(备战帧金动作入账;写通道单一源 =
             # cw_exec_state._advance_gold 容器金账,logic_action 渠道,
             # 观察赢覆盖修正不变)。备战帧 LevelUp 花金/卖出回金自此
             # 入状态账,不再只存在于遥测文本(根因 = 执行缝三套账只辖
-            # 商店单元,定谳 = 2026-09-06 迭代 reviews/T-234-落地审.md)。
+            # 商店单元,定谳 = 2026-09-06 迭代落地审)。
             _m_gd = self._ctx.cw_match
             _sess_gd = _m_gd.session if _m_gd is not None else None
             if _sess_gd is not None:
@@ -386,18 +386,18 @@ class PrepActionExecutor:
             # J2/J3/J4 消费端同退役)。真执行链 = _execute_dispatch 发射位
             # 内部 ok(找不到按钮/未落地 = False);执行缝(假环境)不经
             # 真分派 = applied 真值(F11 双轨申报)。同步写执行态(消费端
-            # = cw_loop 备战环出口 0j 预算复位判定 F3/T-174,读后即清)。
+            # = cw_loop 备战环出口 0j 预算复位判定 F3,读后即清)。
             self.last_launch_ok = emitted
             _m_sb = getattr(self._ctx, 'cw_match', None)
             _sess_sb = getattr(_m_sb, 'session', None) if _m_sb is not None else None
             if _sess_sb is not None:
                 exec_state_of(_sess_sb).last_prep_battle_launch_ok = emitted
         if emitted:
-            # T-159 迁移 D:S1 清键门(唯一写点 = mandate.mark_s1_route_
+            # S1 清键门(唯一写点 = mandate.mark_s1_route_
             # check,三路径封闭枚举)。批3a 跨批对齐写死:``landed`` 供给
             # 改观察侧 reconcile 落地事实(接口本批定、批5 E1 落地供给),
             # 过渡期恒传 False = fail-closed(宁「该清不清」不「乱清」,
-            # 后者可无限重复——T-167 交替活锁;「该清不清」侧 wanted 滞留
+            # 后者可无限重复——交替活锁形态;「该清不清」侧 wanted 滞留
             # 一拍自愈,非正确性损害,mandate docstring 在案)。部署类
             # (DeployMove)(i)-deploy_launch 路径过渡期不清,防线语义
             # (no-op 不清)完整存活。发射位只读不写的同型纪律在此不适用
@@ -448,10 +448,10 @@ class PrepActionExecutor:
         - **发出即簿记,不是验证**(M1③):applied = 分派面「是否发出」
           事实透传(执行前输入契约拒绝 = 未发出,回执 reason 带机械摘要);
           本写点零成败判定——不读屏、不做落地推断(「拖3次源槽未变」类
-          像素验回执已随 T-192 判效拆除),落地判定归观察侧 reconcile;
+          像素验回执已随判效拆除),落地判定归观察侧 reconcile;
         - 每动作 op 恰一条 logic_action 行(动作全集逐 op 覆盖;W209j 停机
           短路在本口之前抛出 = 执行被拒不产行——停机非动作);
-        - ``extra`` = 执行面结构化字段透传(§3.2.1 质量词表执行面;T-16 起
+        - ``extra`` = 执行面结构化字段透传(§3.2.1 质量词表执行面;
           含金动作的 ``gold_delta`` 执行点金差,见 _executed_gold_delta);
         - journal 常开(R5 W1 影子闸折叠,ADR-0634)回执写入无条件;无局
           (session 缺)跳过;best-effort 不阻塞动作链。
@@ -473,16 +473,16 @@ class PrepActionExecutor:
 
     def _note_action_journal(self, action: CwAction, emitted: bool,
                              extra: dict | None) -> None:
-        """备战动作 journal 行(op_journal.jsonl kind='action';T-113/
-        ADR-0579 薄流的备战域扩围,T-16 执行缝账务包络):执行缝三套账的
-        journal 回执腿——备战帧金动作逐行在账(定谳缺口 = T-234 复盘
+        """备战动作 journal 行(op_journal.jsonl kind='action';ADR-0579
+        薄流的备战域扩围,执行缝账务包络):执行缝三套账的
+        journal 回执腿——备战帧金动作逐行在账(定谳缺口 = 复盘
         「备战帧 5 击零 journal 行」),op 分键「货币战争-备战动作」与商店
         「货币战争-买牌」域分键,行携 ``gold_delta`` 执行点金差(LevelUp
         行自批2b 起无本键——金腿切 action.cost 逻辑态直写,见
         _executed_gold_delta)。
 
         - seq 恒 0 = 备战域无段序账(行序即时序;商店 seq 语义不适用);
-          post_frame 恒 None = 行不带期望态 delta(T-163 起两域同口径);
+          post_frame 恒 None = 行不带期望态 delta(两域同口径);
         - 仅发出动作产行(与商店域「未执行动作零行」同语义,调用点保证);
         - 局外(run_id 空)零行;journal best-effort,失败不阻塞动作链。
         """
@@ -513,7 +513,7 @@ class PrepActionExecutor:
             log.warning('[cw][journal] 备战动作行写入失败(不阻塞): %s', e)
 
     def _pre_sell_tracked_bc(self, action: CwAction) -> BenchChar | None:
-        """卖出对象 dispatch 前 tracked 快照(T-16 执行点金差供给;卖出外
+        """卖出对象 dispatch 前 tracked 快照(执行点金差供给;卖出外
         动作 = None)。
 
         [索引定义] SellBench.bench_idx / SellDeployed.deployed_idx =
@@ -549,7 +549,7 @@ class PrepActionExecutor:
 
     def _executed_gold_delta(self, action: CwAction, emitted: bool,
                              pre_sell_bc: BenchChar | None) -> int | None:
-        """执行点金差显影(备战执行缝账务包络,T-16):gold 域备战动作在
+        """执行点金差显影(备战执行缝账务包络):gold 域备战动作在
         机械半边发出时点的金变化量。
 
         公式单一源与边界:
@@ -591,7 +591,7 @@ class PrepActionExecutor:
         (非落地判定、非成败回执):False 只用于「执行前输入契约拒绝/
         环境无对象」(球/箱/按钮等目标不在,M6 边界面——动作没发出,期望
         态/闩不登记);True = 点击/拖拽已发出。原 ``(ok, detail, landed)``
-        三元组随 T-223 退役(成败与落地均不再是执行器输出;部署落地结构
+        三元组已退役(成败与落地均不再是执行器输出;部署落地结构
         化判定迁观察侧对账,S1 门过渡期 landed=False 见 execute)。
         组合动作分支(RunDeploy/RunEquip/RunTools)已随统一词表删除退役
         (R2;部署/穿戴/工具 = 决策核逐帧原子发射)。
@@ -656,7 +656,7 @@ class PrepActionExecutor:
         return detail, True
 
     def _bench_tracked_count(self) -> int:
-        """备战席占用数(tracked 账现读;T-159 路径 (ii) 席翻正判读输入)。
+        """备战席占用数(tracked 账现读;席翻正判读输入)。
 
         tracked 账由本执行器卖出/部署 handler 同步销账,pre/post 两点
         夹一次 dispatch 即「本帧落地是否使席 free 由 0 翻正」的观测读数
@@ -787,7 +787,7 @@ class PrepActionExecutor:
 
     def _sell_bench(self, action: SellBench) -> tuple[str, bool]:
         """卖备战槽角色:drag 槽中心 → 出售区(``drag_bench_to_sell`` 单一源;
-        机械执行,T-192 源槽像素验重试拆除)。返回 (摘要, 是否发出)。
+        机械执行,源槽像素验重试拆除)。返回 (摘要, 是否发出)。
 
         emitted = 动作已机械发出(拖拽原语零判效,落地事实归观察侧
         reconcile 对账)。bench_idx = 容器槽位表下标,拖点直取(执行坐标
@@ -1016,7 +1016,7 @@ class PrepActionExecutor:
 
     def _drag(self, src: Point, dst: Point) -> None:
         """统一拖拽原语(DragCwChar.drag_char:中心拖+hold0;机械执行,
-        T-192 源槽像素验重试拆除)。
+        源槽像素验重试已拆除)。
 
         r10 review#2:失焦守卫下沉到本原语(所有拖拽路径共享)——窗口后台化时
         拖拽输入静默丢(r9 实证同机制:截图正常/输入丢/连环「源槽未变」假失败),
@@ -1042,7 +1042,7 @@ class PrepActionExecutor:
 
         [索引定义] bench_idx = bench 槽位表下标 0-8(与动作字段同系);
         摘除 = 按下标置 None(权威槽位 = 下标,pad 态契约 ADR-0316 不破坏;
-        T-261 前按信息位过滤产出紧凑列表,信息位/下标脱节经后续买入
+        信息位/下标脱节会让后续买入
         bench_place 追加累积成重复槽号——实机缺陷台账 slots=[1,3,4,5,6,7,8,9,9]
         等 4 局实证,reseed 健康门 L0/L1 显影后归观察层仲裁批治本)。"""
         match = self._ctx.cw_match

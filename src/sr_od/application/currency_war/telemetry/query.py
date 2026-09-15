@@ -69,7 +69,7 @@ def plan_gold_flow(plan_actions: list[dict[str, Any]],
                    refresh_cost: int = 2) -> dict[str, Any]:
     """plan 序列化动作清单 → 逐项期望金流(纯函数,可单测)。
 
-    输入 = serialize_action 产物(``__type__`` 判型;W3/T-255 起运行时
+    输入 = serialize_action 产物(``__type__`` 判型;W3 起运行时
     安灯侧同样喂真实动作对象的 serialize_action 产物,与旧 decisions
     plan 行同 schema,分类单一源不建第二套)。计费口径与 shop.py
     spend_audit 对齐:BuyCard 取原始 ``card.cost``(不做 card_cost 3 兜底
@@ -148,7 +148,7 @@ def classify_spend_unit(plan_actions: list[dict[str, Any]],
     中断单元)不判——执行链不完整,任何判定都是猜。
 
     executed(`w577_refresh_fee_and_andon/`,可选)= 执行侧可见化事实
-    (W3/T-255 起运行时源 = 安灯钩子的访问事实暂存,切片5 = ledger
+    (W3 起运行时源 = 安灯钩子的访问事实暂存,切片5 = ledger
     .fact_rows 发射时增量追加行,经
     ``unit_exec_facts_from_receipts`` 派生;迁移批 3.2 前历史源 =
     BuyCardsOutcome 执行事实字段;None = 旧数据/未挂钩,判定退回

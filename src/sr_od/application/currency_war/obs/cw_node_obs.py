@@ -105,7 +105,7 @@ def read_encounter_refresh_count(ctx: SrContext, screen: MatLike) -> tuple[int, 
     return None
 
 
-# ===== 投资策略/投资环境 刷新计数 reader(ADR-0600 §3.4,T-162 观察通道)=====
+# ===== 投资策略/投资环境 刷新计数 reader(ADR-0600 §3.4 观察通道)=====
 # 两屏交互模型不同构(归档帧实证,ADR-0600 §1 三张):策略屏逐卡刷新(每卡一组
 # 「刷新圆钮 icon + 刷新次数N」,N 独立扣减)/ 环境屏整组重掷(单个全局钮 +
 # 剩余次数:N)。正则族两支 = 两屏冒号/无冒号形态(策略屏「刷新次数1」无冒号、

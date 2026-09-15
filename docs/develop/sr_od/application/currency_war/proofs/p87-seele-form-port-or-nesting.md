@@ -1,12 +1,12 @@
 # P87:希儿系成型判据文档口径放宽的完成率嵌套命题(形态端口 OR 语义)
 
 > 状态:**已证(嵌套包含【推】级零数值依赖 + 表值=P38 闭式声明域;2026-09-09 正式化)**
-> 素材出处:T-171 批序 1 命题(`.debug/temp/currency_war/attacks/
+> 素材出处:希儿系形态批命题(`.debug/temp/currency_war/attacks/
 > t171_xierie_criteria/命题_批序1_形态端口OR.md`,方案审放行附 5 低项
-> F1-F5 全折入批序 1 命题)+ (T-171 批序 1 落码决策,commit
+> F1-F5 全折入批序 1 命题)+ (批序 1 落码决策,commit
 > 98078c0a);正式化动机 = 策略审查 20260909 项 1(批序 1 命题只住临时
 > 目录,math_proofs 无索引行,P24/P61「内容已齐后补正式化」先例同法;
-> 不补则 T-166 §12.13 联审只能引易失路径)。
+> 不补则配方对/意向重评批 §12.13 联审只能引易失路径)。
 > 代码锚:`pair_target_comp`(kernel/cw_intention.py,伪 comp 物化单一
 > 写端;希儿系对 form_tiers 只含他体系档 + `SEELE_OR_LEGS` or_legs +
 > `required_deployed=('希儿',)`)/ `form_progress`(kernel/cw_comps.py,

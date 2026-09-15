@@ -14,7 +14,7 @@
 
 ## 2. 动作词表:七动作族与执行载体
 
-七动作族 = 商店/备战两域共用的动作词汇核,词表载体 = `kernel/cw_vocab.py`(策略动作 `Action` 族)与 `kernel/cw_prep_actions.py`(备战域 `PrepAction` 族)。动作 op 执行载体两套:商店域 op 按「一 op 一文件」住 `operations/cw_op/cw_<action>_action.py`(聚合注册与分发 = `cw_shop_actions.py::shop_action_op_for`,T-201 拆分);备战域执行载体 = `prep_actions.py::PrepActionExecutor`:
+七动作族 = 商店/备战两域共用的动作词汇核,词表载体 = `kernel/cw_vocab.py`(策略动作 `Action` 族)与 `kernel/cw_prep_actions.py`(备战域 `PrepAction` 族)。动作 op 执行载体两套:商店域 op 按「一 op 一文件」住 `operations/cw_op/cw_<action>_action.py`(聚合注册与分发 = `cw_shop_actions.py::shop_action_op_for`,拆分);备战域执行载体 = `prep_actions.py::PrepActionExecutor`:
 
 | 动作族 | 词表载体 | 商店域 op(执行器) | 备战域执行载体 | 终结性 |
 |---|---|---|---|---|
@@ -99,7 +99,7 @@
 |---|---|---|---|
 | 选卡(N 选 1) | 投资策略整局增益+难度加成(`data/gameplay.md`/`research/economy.md` §9) | 各画面 op(`operations/cw_screen/cw_screen_invest_strategy.py` 等;分支序 0c/0e/0e1/0a 族/0h/0i/0k/0f) | 确认离开(overlay 消失)= 画面终结 |
 | 逐卡/整屏刷新重掷 | 投资策略逐卡刷新、遭遇/补给屏刷新(时序 #13/#19/#23:刷新后 ~2s 稳定) | 投资策略逐槽(`cw_screen_invest_strategy.py::_emit_refresh_click`)/ 遭遇(`cw_screen_encounter.py::_try_refresh`)/ 补给(「剩余次数」文本锚定点刷新,`cw_screen_supply_node.py`);建议刷新 = `PickEvent.refresh`(`kernel/cw_events.py::decide_event`,P81;策略屏逐槽 = `PickEvent.refresh_slots`) | 投资策略逐卡刷新 = **本访问终结**(点一槽刷新圆钮即 pending+round_retry 交回,次轮重入重观察重决策;零比对,逐卡计数现读闸保留)——与投资环境整组重掷同款(§3.2);遭遇/补给刷新不终结(留在本画面访问内重读重选);确认离开才画面终结 |
-| 补给备战状态采集 detour(回备战界面→快照采集→返回补给阶段) | 补给轮不驻留备战画面,采集先行不丢选择进度(2026-08-27 实机冻结画面时序实测) | **已拆除**(T-222:效果注册表已完整不再采集,detour 分支与独用 helper 整段删除;选装备/确认/刷新主流程零改动) | 已拆(补给访问直接进选装备/确认/刷新流程,不经备战绕路) |
+| 补给备战状态采集 detour(回备战界面→快照采集→返回补给阶段) | 补给轮不驻留备战画面,采集先行不丢选择进度(2026-08-27 实机冻结画面时序实测) | **已拆除**(效果注册表已完整不再采集,detour 分支与独用 helper 整段删除;选装备/确认/刷新主流程零改动) | 已拆(补给访问直接进选装备/确认/刷新流程,不经备战绕路) |
 | 关「属性详情」面板(点 ×) | 点卡身上部误触发的详情面板(局29 事件实证) | 未建模独立处理:点卡后详情面板检测已拆(点卡 = 机械单发,用户裁定 2026-09-14);面板残留归下一帧重入自愈(`cw_screen_planner.py` 重分发重走链/详情 overlay 族分支) | 面板关闭即随重入收敛(无独立终结点) |
 | 盛会之星「请选择强化角色」(确认钮旁伴随文案) | 曾误读为可选第二画面「step2」;建档证据更正 2026-09-14:该 area 与「按钮-确认选择」rect 重叠,系伴随文案非步骤 | 未建模独立处理:巨星 op 的 step2 在场检测已拆(确认 = 纯机械单发,用户裁定 2026-09-14);确认未落地残留归巨星节点循环重入自愈(`cw_screen_megastar.py`:标识锚仍命中 → 再单发确认推进) | 确认推进即画面终结 |
 | 开书册卡(点备战席槽位「开启」→ 弹专家邀请函) | 书册卡 = 备战席占槽道具(2026-08-30 实机人工处理实录) | `cw_screen_expert_invite.py::open_card`(0k 处理链首节点;找书册卡/点开启/过渡帧等待,纯导航零决策) | 弹窗开成即链内转选卡(不终结外层访问) |

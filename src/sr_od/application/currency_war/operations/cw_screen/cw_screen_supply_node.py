@@ -33,7 +33,7 @@ _run_node 循环内联进 handle,零行为变更)。
 B3 三段走第二段「补给 + 余事件屏按族批量」):本类是 CwScreenOpBase 子类,
 handle 顶部装配点分流(cw_game_ports 两端口完整在场 → 五段生命周期新路径;
 缺省 None = 生产直连旧路径,handle 原序列,生产行为零变化 §9.1)。迁移手法
-单一源 = 盛会之星先例(CwScreenMegastar,reviews/T-215-r1.md 验收):decide+act
+单一源 = 盛会之星先例(CwScreenMegastar,验收评审):decide+act
 内聚于现役动作体 ``_do_action``(刷新/选卡确认两形态,两路径共享零转录);
 本屏无 on_outcome 落地登记件(§6.4 收编面无补给行;``supply_refresh_used``
 GameState 字段位 = 先申报禁静默、无写端,cw_game_state.py 字段行自注

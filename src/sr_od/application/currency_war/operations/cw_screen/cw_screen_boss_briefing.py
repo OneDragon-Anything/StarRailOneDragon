@@ -10,7 +10,7 @@ boss 节点前弹「强敌来袭」简报横幅:识别「标识-强敌来袭」/
 (横幅遮挡观察,SIFT 双空读)误落备战分支反复空转 598s(SENTINEL-STALL)
 ——分支必须**先于备战双锚**。
 
-统一观察架构逐屏迁移(账本 T-8 五相位屏;架构设计 §9.1 并存纪律):本类是
+统一观察架构逐屏迁移(五相位屏;架构设计 §9.1 并存纪律):本类是
 CwScreenOpBase 子类,handle 首行装配点分流(本屏无重入裁决旗标):两端口
 完整在场 → 五段生命周期新路径;缺省 None = 生产直连旧路径(原序列,生产
 行为零变化)。五段形态:observe = 横幅判定(area 锚 miss → 「强敌」片段
@@ -66,7 +66,7 @@ def read_ocr_texts(ctx, screen) -> list[str]:
 
 @dataclass
 class BossBriefingObservation:
-    """BOSS 简报观察 payload(五段之段1产物;T-8 实机转录形态)。
+    """BOSS 简报观察 payload(五段之段1产物;实机转录形态)。
 
     轻观察(详设 §5 最简):横幅判定在段内(不在 = 已推进 → 早退 success
     交回外循环重判);payload 仅携带稳定帧引用(实机识别域载体,不出端口
@@ -77,7 +77,7 @@ class BossBriefingObservation:
 
 
 class BossBriefingLiveObservationAdapter:
-    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,T-8)。
+    """实机适配器①(观察端口;架构设计 §2.3 识别链封口)。
 
     轻观察封口(先例 = 盛会之星轻观察适配器):横幅判定须在段内产出早退
     轮次,归 ``lifecycle_observe``;适配器仅装配稳定帧引用。sim 实现 = 不
@@ -141,7 +141,7 @@ class CwScreenBossBriefing(CwScreenOpBase):
         time.sleep(1.0)   # click 异步落地 + 横幅退场动画
         return self.round_success('点空白已发,交回外循环重判')
 
-    # ---- 五段生命周期(统一观察架构 §5.1;T-8,先例 = CwScreenEncounter)----
+    # ---- 五段生命周期(统一观察架构 §5.1,先例 = CwScreenEncounter)----
 
     def lifecycle_observe(self
                           ) -> tuple[BossBriefingObservation,

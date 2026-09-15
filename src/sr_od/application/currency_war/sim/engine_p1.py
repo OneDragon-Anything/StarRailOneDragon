@@ -131,7 +131,7 @@ def _overlay_xp_per_refresh(strategy_names: list[str]) -> int:
     return total
 
 # 收入模型(r305 真值接入:sim 与决策共用 cw_economy 单一源;
-# T-21 校准:值分量经 round_start_income 单一源,常量仅存 re-export)
+# 校准:值分量经 round_start_income 单一源,常量仅存 re-export)
 from sr_od.application.currency_war.kernel.cw_economy import (  # noqa: E402,F401
     BASE_INCOME,
     ECONOMY_CALIB_VERSION,
@@ -152,7 +152,7 @@ if TYPE_CHECKING:
     # 模块级反向 import 会与 engine_p2→engine_p1 构成环,故挂 TYPE_CHECKING。
     # SwapPlan 仅作注解引用(kernel 与 sim 无环,但函数内已惰性导入,
     # 注解面统一挂 TYPE_CHECKING 保持「运行期零依赖」同款纪律)。
-    # SwapPlanContext 同上(T-279 R1 计划 ctx 注解面;运行期消费位均
+    # SwapPlanContext 同上(计划 ctx 注解面;运行期消费位均
     # 函数内惰性导入)。
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         SwapPlan,
@@ -218,7 +218,7 @@ HP_UPPER_BOUND: int = 100
 LEVEL_CAP: int = 9
 
 
-# ===== T-185 批B:引擎写面(裁定 A 渠道表,修订版详设 §1)=====
+# ===== 引擎写面(裁定 A 渠道表,修订版详设 §1)=====
 # 动作应用 = 转移函数 apply_shop_action_logic(logic_action 族,与 live
 # 同函数同渠道);外部事件(收入/结算/回合初始化/开局播种/装备发放穿戴/
 # 部署代理)= obs 族(下方 helper);驱动器 decide 期逻辑态直写维持现状
@@ -487,9 +487,9 @@ def _fill_lag_replay(bs: GameState,
                      last_held_slots: set[int] | None = None) -> int:
     """统一 lag 口径:对补部署后的 bench 残余重放围栏,「围栏认可未上」
     件数即 deploy_lag_units(W678:围栏 hold 不计漏上,豁免集 =
-    ``last_held_slots``)。原为 ``_residual_fill_deploy`` 内嵌段,T-279
+    ``last_held_slots``)。原为 ``_residual_fill_deploy`` 内嵌段,
     R1-a 计划直投路径需同一 lag 口径,提取共用(行为逐位同旧)。
-    T-185 批B:读源切容器席位读口(部署代理写回后容器 = 权威态)。"""
+    读源切容器席位读口(部署代理写回后容器 = 权威态)。"""
     from sr_od.application.currency_war.kernel import cw_deploy_logic as _dl
     _bench_slots = bench_slots_of(bs)
     _dep_slots = deployed_slots_of(bs)
@@ -564,7 +564,7 @@ def _residual_fill_deploy(
     """
     from sr_od.application.currency_war.kernel import cw_deploy_logic as _dl
 
-    # T-185 批B:槽表中间形态工作(容器读口取表 → 本地表部署 → 整表
+    # 槽表中间形态工作(容器读口取表 → 本地表部署 → 整表
     # obs 写回);部署代理 = 结算期代理,obs 通道申报对齐(详设 §3 A3)。
     _bench_slots = bench_slots_of(bs)
     _dep_slots = deployed_slots_of(bs)
@@ -622,7 +622,7 @@ def _residual_fill_deploy(
         _sim_write_board(bs, _dep_slots, 'deploy-fill-board',
                          'residual-fill')
     # 统一 lag:补部署后残余(围栏认可未上件;重放单一实现 =
-    # _fill_lag_replay,T-279 R1-a 直投路径共用)
+    # _fill_lag_replay,R1-a 直投路径共用)
     _lag = _fill_lag_replay(bs, target_factions, target_cores, fw_carry,
                             locked_factions, recipe_floor_lock_exempt,
                             _last_held_slots)
@@ -632,7 +632,7 @@ def _residual_fill_deploy(
 def _m1p_plan_fill_deploy(bs: GameState, plan: SwapPlan,
                           ctx: SwapPlanContext | None, sess) \
         -> tuple[int, int, int]:
-    """M1″ 换血轮轮末补部署——计划单一源消费(T-279 R1;ADR-0640)。
+    """M1″ 换血轮轮末补部署——计划单一源消费(ADR-0640)。
 
     病灶(C-A2 强信号缺口 2/263,局 18 P2r4 黄泉/局 58 P2r5 佩拉):
     计划面(select_swap_plan,all_factions/锁线域收窄键集)与执行面
@@ -669,7 +669,7 @@ def _m1p_plan_fill_deploy(bs: GameState, plan: SwapPlan,
         assemble_swap_plan_inputs,
         swap_plan_up_names,
     )
-    # T-185 批B:读源 = 容器席位读口(容器 = 转移函数权威态,喂入口
+    # 读源 = 容器席位读口(容器 = 转移函数权威态,喂入口
     # 随工作帧退役删除);部署 = 本地槽表 + 整表 obs 写回。
     _bench_slots = bench_slots_of(bs)
     _dep_slots = deployed_slots_of(bs)
@@ -708,7 +708,7 @@ def _m1p_plan_fill_deploy(bs: GameState, plan: SwapPlan,
         # (已放置件在板,重 derive 从现读出发,不回滚)
     # R1-b:卖出后现读重 derive(域辖域钉计划时点事实);装配不可得
     # (sim 供给齐备不可达,防御缺省)退计划 ctx 视图——最近真值源。
-    # T-185 批B:喂入口随工作帧退役删除(容器 = 权威态,直读)。
+    # 喂入口随工作帧退役删除(容器 = 权威态,直读)。
     _ctx2 = None
     try:
         _ctx2 = assemble_swap_plan_inputs(
@@ -745,8 +745,8 @@ def project_sell_buyback(acts: list[dict]) -> list[dict]:
     _acts 的商店回环主通道);deployed 侧卖出通道不入投影——其回环
     若成病灶属后续扩展,不与本键混桶。合并买 count=k 时买价 = 单价×k
     (金真实流出,与 _acts 花费口径同式)。
-    【勘误(T-169 落地审 F5)】本注旧文「SellDeployed/SwapDeploy 转录行
-    不含卖返/名字同形状」已失真:m1_swap_redeploy 转录行(T-169 执行面)
+    【勘误(落地审 F5)】本注旧文「SellDeployed/SwapDeploy 转录行
+    不含卖返/名字同形状」已失真:m1_swap_redeploy 转录行(执行面)
     带 name+income 键;本投影的辖域裁定不变(仍只消费 SellBench/BuyCard,
     deployed 侧卖出不成「买回」回环形态),行形状申报以此勘误为准。
     """
@@ -777,13 +777,13 @@ def _m1p_plan_and_record(bs: GameState, sess) \
     """M1″ 计划计算 + 发射意图记录(sim 决策面共用同一份计划对象)。
 
     语义出处:ADR-0530(board-full swap redeploy);执行面接入与本
-    函数拆分 = 进度账本 T-169(sim 缺板满换血执行面,总图设计 R2 §2
-    sim 边界行)。原 ``m1p_intent_record`` 只记意图零行为面(ADR-0530
+    函数拆分源于 sim 缺板满换血执行面(总图设计 R2 §2 sim 边界行)。
+    原 ``m1p_intent_record`` 只记意图零行为面(ADR-0530
     自述「sim 不建模执行侧 swap 卖出语义」)——实测该边界让换血行为
-    在 sim 结构性不可见(板满帧计划非空、零卖出动作,模拟批#5 最大
-    发现;账本 T-169 污染声明),本批按最小执行面接通:计划对象同时
+    在 sim 结构性不可见(板满帧计划非空、零卖出动作,模拟批最大
+    发现),按最小执行面接通:计划对象同时
     供引擎执行转录消费(见 ``m1p_swap_execute``),记录 dict 形状 =
-    nonempty/abstain/sell/up/**up_names**/reasons(T-279 R2 追加
+    nonempty/abstain/sell/up/**up_names**/reasons(R2 追加
     up_names = 上序名单名字级,``swap_plan_up_names`` 单一换算;追加键
     下游零迁移)。第三个返回值 = 装配 ctx(计划时点快照;引擎执行转录
     与轮末补部署 ``_m1p_plan_fill_deploy`` 消费,发射⇔补上同吃同一
@@ -793,7 +793,7 @@ def _m1p_plan_and_record(bs: GameState, sess) \
     plan``(bs = 买/升级后黑板,deployed/bench = 占用件现读,cap =
     max_units 派生链)——与生产发射/执行两面同函数、同一装配契约,禁
     第二装配。零 rng 消耗、纯读(状态写入只发生在引擎执行转录块)。
-    T-185 批B:签名 st→bs,喂入口随工作帧退役删除(容器 = 权威态)。
+    签名 st→bs,喂入口随工作帧退役删除(容器 = 权威态)。
     """
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         assemble_swap_plan_inputs,
@@ -822,7 +822,7 @@ def m1p_intent_record(bs: GameState, sess) -> dict:
     """M1″ 发射意图记录(兼容入口;计划本体经 ``_m1p_plan_and_record``)。
 
     返回记录 dict 形状 = nonempty/abstain/sell/up/up_names/reasons
-    (up_names 随 T-279 R2 追加);引擎现走 ``_m1p_plan_and_record``
+    (up_names 随 R2 追加);引擎现走 ``_m1p_plan_and_record``
     取计划执行,本包装仅供锁测试与只读探针消费(test_cw_swap_plan
     意图面双向断言)。
     """
@@ -833,18 +833,18 @@ def m1p_swap_execute(bs: GameState, plan: SwapPlan, *, acts: list[dict],
                      spend: dict, pool: _Pool) -> bool:
     """M1″ 执行面 sim 转录:计划非空 → 逐件卖 victim(卖出臂)。
 
-    T-169 最小执行面(总图设计 R2 §2 sim 边界行):生产链 = mandate 发射
+    最小执行面(总图设计 R2 §2 sim 边界行):生产链 = mandate 发射
     RunDeploy(m1_swap_redeploy)+ CwScreenDeploy 卖出臂现读逐件卖 +
     部署 op 补上;sim 对应物 = 本函数卖 victim + 引擎轮末部署块残余
     补部署补上(调用方据返回值置显式动作旗 → skip_fence+residual_
     fill,与显式动作轮同语义)。卖出执行走 **容器单一转移函数**
-    (T-185 批B:apply_shop_action_logic,金回充/装备回收/板面重算
+    (apply_shop_action_logic,金回充/装备回收/板面重算
     全在源内;income/applied 读 LogicOutcome,禁自判),账本转录行带
     name+reason='m1_swap_redeploy'(换血可见性的判读锚;既有显式动作行
     无名,本行加键不破消费)。victim 槽位 = 按 char_id 现读(占用件同名
     唯一,W43 板面约束);单一源拒绝 = 零行为转录如实跳过。
 
-    同构边界申报(T-169 落地审 F2):生产发射位门**未镜像**——生产
+    同构边界申报(落地审 F2):生产发射位门**未镜像**——生产
     plan.nonempty 后还有 m1p_defer_levelup(同帧 LevelUp 抑制,mandate
     发射位)与 P79-3 转型门(_redeploy_emission_allowed)两道 defer,
     sim 只看 plan.nonempty 即执行 ⇒ sim 换血活跃度结构上 ≥ 生产
@@ -853,7 +853,7 @@ def m1p_swap_execute(bs: GameState, plan: SwapPlan, *, acts: list[dict],
     后续策略批抬升 defer 触发率,换血读数会系统性偏置——显影键
     (arm/defer)归后续批。
 
-    拒绝路径显影申报(T-169 落地审 F6):单一源拒绝帧**无账本痕迹**
+    拒绝路径显影申报(落地审 F6):单一源拒绝帧**无账本痕迹**
     (不追加 rejected 行、不进 explicit_action_rejects;显式动作路径
     对 rejected 有逐行+reject_reason 纪律,本路径防御分支未对齐)——
     消费面只能按 m1p 记录 nonempty=1 而 executed 缺失反推。本锚批
@@ -894,7 +894,7 @@ def m1p_swap_execute(bs: GameState, plan: SwapPlan, *, acts: list[dict],
 
 
 def _line_member_names(sess) -> frozenset[str]:
-    """当前线名册集合(T-153 生成侧自算披露的计算 helper;ADR-0593)。
+    """当前线名册集合(生成侧自算披露的计算 helper;裁定 = sim/checks/suspects.py 模块头)。
 
     名册单一源 = predicates.line_members;过渡配方标签解析与
     check_levelup_budget_gate._k_members 同式(生产/sim 同解析)。
@@ -928,7 +928,7 @@ def sim_round_income(plane: int, round_num: int, node: str, gold: int,
                      win_reward_mult: float = 1.0,
                      interest_flat: int = 0,
                      interest_cap_override: int | None = None) -> dict[str, int]:
-    """sim 轮首收入行的注册表值分量(base/interest/streak;T-21 校准落点)。
+    """sim 轮首收入行的注册表值分量(base/interest/streak;校准落点)。
 
     三支值整体改调 kernel 单一源 :func:`round_start_income`(GameState
     设计 §4.2 轮首收入行「两域禁第二份」;对拍锁 = sr-od-test
@@ -940,7 +940,7 @@ def sim_round_income(plane: int, round_num: int, node: str, gold: int,
       奖励轮查表同款;P2r1/P3r1 单键误返 3 hazard 随单一源结构性消灭);
       息帽归一 interest_cap_resolved 链(替换本模块裸 INTEREST_CAP=5
       第二值源,缺省帽派生自 cw_plane_table.GOLD_CAP_INTEREST//10)。
-    - **已接线(T-64,GameState「sim 修正随之」桶闭合)**:win_reward_mult
+    - **已接线(GameState「sim 修正随之」桶闭合)**:win_reward_mult
       施于连胜分量含奖励轮(fields.md §4.1「收入修饰」),值 = 唯一调用点
       按持卡聚合 ``aggregate_economy`` 传入(取最大不叠乘,ADR-0623;
       缺省局恒 1.0 逐位零漂移),账本行 sim.win_reward_mult 披露当轮
@@ -1007,7 +1007,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         (economy_effect_of 链的已建模子集)在 sim 收入/刷价层生效,
         意向层①资格通道(ADR-0338)因此可点火。
     :param invest_arm: 投资选卡决策臂(``invest`` 真值时才有意义;
-        T-155 前置批,见 cw_sim_invest 模块 docstring 双臂节):
+        投资选卡双臂批,见 cw_sim_invest 模块 docstring 双臂节):
         'sink'(缺省)= **基线臂**——选卡槽采样 3 候选,选哪张由真实
         判据 ``strategy.decide_invest``(flow 委托 kernel decide_event)
         裁决,归因透传 ``SimResult.invest_picks``;'freq' = 旧频次注入
@@ -1071,7 +1071,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             raise ValueError('案 b 臂(_p2_entry)不支持 invest 注入')
         sess = session or StrategySession(
             rng=random.Random(f'sim-p1-entry-{seed}'))
-        # T-185 批B:工作帧退役——进场态直接播种进会话容器(开局播种 =
+        # 工作帧退役——进场态直接播种进会话容器(开局播种 =
         # obs 族,裁定 A 渠道表;build_state 改容器播种签名)。
         bs = board_state_of(sess)
         _p2_entry.build_state(bs)
@@ -1109,7 +1109,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # 的 OS 熵默认——未来决策层接入 rng 消费时,同 seed 局天然可复现。
         sess = session or StrategySession(
             rng=random.Random(f'sim-p1-{seed}'))
-        # T-185 批B:工作帧退役——引擎状态容器 = board_state_of(sess)
+        # 工作帧退役——引擎状态容器 = board_state_of(sess)
         # 单例(引擎内部模型切容器,详设 §1 反转形态)。
         bs = board_state_of(sess)
         # 初始相位经统一 sim 构建口注入(session.md §3.4-2;同上案 b 臂)。
@@ -1135,7 +1135,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     # `w162_inject/`/ADR-0364:投资注入剧本解析(独立 rng 流,默认 False 零开销)。
     # 语义位 = session(持久宿主,handler 写点单一源参照)+ state(生产
     # 由 cw_observation 每帧同步,此处注入点直写两处 = 等价语义)。
-    # T-155 前置批双臂(见 cw_sim_invest 模块 docstring):'sink' 基线臂 =
+    # 投资选卡双臂(见 cw_sim_invest 模块 docstring):'sink' 基线臂 =
     # 采样器供 3 候选、真实判据裁决;'freq' 对照臂 = plaza 名直注入(原形态)。
     _inv: InvestInjectionState | None = None
     _sink: SinkInvestSampler | None = None
@@ -1168,7 +1168,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     elif _sink is not None:
         # 基线臂·开局环境选卡:3 候选 → decide_invest('env') 裁决。
         # 时点对齐生产 entry 流程(简报→投资环境屏);comp 未定(None)与
-        # 生产开局环境屏同态。T-185 批B:容器 = 权威态,喂入口随工作帧
+        # 生产开局环境屏同态。容器 = 权威态,喂入口随工作帧
         # 退役删除,决策直读容器。
         _env_opts = _sink.sample_env_options()
         if _env_opts:
@@ -1193,7 +1193,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     # 同语义),买牌/买经验累 XP_PER_BUY,升级按 XP_TO_NEXT_LEVEL 清零结转;
     # line_v2 的 clicks_to_next_level 消费点从此读到真值(旧恒 None → 恒按
     # 0 进度向上取整,追级类 EV 在 sim 系统性偏)。案 b 臂=进场真值直带。
-    # T-185 批B:xp = 引擎本地账本(申报差异 #4 载体面),容器 xp = 回声写。
+    # xp = 引擎本地账本(申报差异 #4 载体面),容器 xp = 回声写。
     _xp_progress_0 = (_p2_entry.xp_progress if _p2_entry is not None
                       else (0, XP_TO_NEXT_LEVEL.get(level_of(bs), 4)))
     _sim_observe(bs, bs.xp, _xp_progress_0, 'opening', 'opening')
@@ -1236,7 +1236,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # equips 跨位面无重置证据,按全继承+标注假设(迁移审计 w156(git 历史) 表
             # #4)。决策代码 plane-aware:p1_pair 进 P2 由意向层
             # 自动清(cw_intention,ADR-0357),策略层零改动。
-            # T-185 批B:plane 由节点键承载(回合初始化 NodeKey 写,
+            # plane 由节点键承载(回合初始化 NodeKey 写,
             # 容器 = 权威态),无独立帧写点。
             res.p2_entered = True
             # 生产语义对齐:开局帧槽序表写 session(cw_screen_prep
@@ -1257,7 +1257,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _seen.append(_NPP)
             _seen.append(len(nodes))
         else:
-            # T-263 对齐写点(P1 段):生产语义 = cw_screen_prep 每位面首帧
+            # 对齐写点(P1 段):生产语义 = cw_screen_prep 每位面首帧
             # 写 plane_node_table + plane_lengths_seen(store_plane_table),
             # 此前 sim P1 段不写表 → 前窗查表谓词(front_window_frame,
             # ADR-0635)在 sim 结构性盲(P2 进场写点只辖 _seg_plane>=2)。
@@ -1272,7 +1272,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 sess.plane_lengths_seen.append(len(nodes))
         for rn in range(1, _seg_rounds + 1):
             _ts += 1
-            # T-185 批B:节点键(回合初始化 obs;round_num/node_type 合一)
+            # 节点键(回合初始化 obs;round_num/node_type 合一)
             _sim_observe(
                 bs, bs.node,
                 NodeKey(plane=_seg_plane, round_num=rn,
@@ -1303,15 +1303,15 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _act_strats = list(bs.active_strategies.value or [])
             _agg_inv = (aggregate_economy(_act_strats)
                         if _act_strats else None)
-            # T-64:win_reward_mult 接线(fields.md §4.1 施于连胜分量
+            # win_reward_mult 接线(fields.md §4.1 施于连胜分量
             # 含奖励轮;聚合取最大不叠乘 = ADR-0623)——无持卡恒 1.0
             # (缺省局零漂移);值随账本行披露供 checks.runtime 镜像消费
             _win_mult = (_agg_inv.win_reward_mult
                          if _agg_inv is not None else 1.0)
             _node = nodes[rn - 1]
             # 轮首收入三支值分量 = 注册表单一源消费口(sim_round_income;
-            # T-21 校准:base 平面感知键 + 息帽 interest_cap_resolved 归一;
-            # 败轮金 ADR-0439 路径与 T-64 倍率接线见该 docstring)
+            # 校准:base 平面感知键 + 息帽 interest_cap_resolved 归一;
+            # 败轮金 ADR-0439 路径与倍率接线见该 docstring)
             _inc = sim_round_income(
                 _seg_plane, rn, _node, _gold_before, streak,
                 prev_node=_prev_node, prev_combat_lost=_prev_combat_lost,
@@ -1330,7 +1330,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 结算后、决策前;实机写点 = cw_screen_invest_strategy 的 session
             # append+去重)。instant_gold 在选卡时点入账(生产游戏引擎同点)。
             # 免费刷额度在选卡后按当前持卡聚合重算(当轮选的卡当轮生效)。
-            # T-155 前置批:freq 臂 = 日程直采名;基线臂('sink')= 采样器供
+            # 双臂:freq 臂 = 日程直采名;基线臂('sink')= 采样器供
             # 3 候选 → 真实判据 decide_invest 裁决(flow 委托 decide_event,
             # 含 CommitSignals 喂入 = 生产 handler 同路径),归因透传
             # _pick_rec → res.invest_picks / 账本行。采纳语义(append+去重+
@@ -1340,7 +1340,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             if _inv is not None:
                 _pk = _inv.picks_by_key.get((_seg_plane, rn))
             elif _sink is not None and (_seg_plane, rn) in _sink.pick_slots:
-                # T-185 批B:容器 = 权威态,喂入口随工作帧退役删除。
+                # 容器 = 权威态,喂入口随工作帧退役删除。
                 _opts = _sink.sample_strategy_options(sess.active_strategies)
                 if _opts:
                     _pe = strat.decide_invest(
@@ -1398,10 +1398,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             if _diamonds:
                 _sim_observe(bs, bs.deploy_cap, level_of(bs) + _diamonds,
                              'round-init', 'round-init')
-            # 宝钻联动后排格数真值(规格 = T-23-r1 §⑤.1,批首清单②):
+            # 宝钻联动后排格数真值(规格 = board_structure.md 量化公式节):
             # 实机后台格数 = 6 + (deploy_cap − level) = 6 + 宝钻数,值域
-            # 6-9 封顶 9(board_structure.md 量化公式节;与 T-322 公式封顶
-            # 修正 _CAP_DIFF_MAX=3 同值域)。默认 diamond_cap_prob=0 →
+            # 6-9 封顶 9(board_structure.md 量化公式节;与 _CAP_DIFF_MAX=3
+            # 公式封顶同值域)。默认 diamond_cap_prob=0 →
             # 值恒 6(与帧缺省逐位同)。
             _sim_observe(bs, bs.back_layout, min(6 + _diamonds, 9),
                          'round-init', 'round-init')
@@ -1458,7 +1458,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _round_bench_full = False
             # - board_next_tier:各阵营下档阈值(观测披露面;兑现链开关族
             #   已随旧方案清退批删除,键保留作判读面)。
-            # T-185 批B:决策入口快照 = 容器直读(容器 = 权威态,喂入口
+            # 决策入口快照 = 容器直读(容器 = 权威态,喂入口
             # 随工作帧退役删除)。
             _round_board_next_tier = _board_next_tier_of(
                 _board_factions_of(deployed_slots_of(bs)))
@@ -1595,7 +1595,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
                     line_members,
                 )
-                # T-185 批B:容器 = 权威态,喂入口随工作帧退役删除,
+                # 容器 = 权威态,喂入口随工作帧退役删除,
                 # 放行判定直读容器(消费时点不变)。
                 _core = readiness_launch_decision(
                     bs, _tc_launch,
@@ -1742,7 +1742,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 保留(消费读点 = flow._consume_shop_direction_frame,
                 # 帧本体 = 容器)。
                 sess.shop_frame_class = 'full'
-                # T-185 批B:工作帧退役——喂入口删除,决策直读容器
+                # 工作帧退役——喂入口删除,决策直读容器
                 # (容器 = 转移函数权威态,裁定 A/裁定 3)。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     bench_is_full as _bs_bench_is_full,
@@ -1756,7 +1756,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _round_bench_full = _round_bench_full or bool(
                     _bs_bench_is_full(bs))
                 # 空牌面判据(买空店 payload cards=[] 与离屏 None 同判,
-                # T-181 语义:决策无候选面,段到止)。
+                # 实机定谳语义:决策无候选面,段到止)。
                 _seg_payload = bs.shop.value
                 if _seg_payload is None or all(
                         s.kind != 'content' for s in _seg_payload.cards):
@@ -1800,7 +1800,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 同语境;纯读,零行为面)。义务面口径与策略侧
                 # buy_members 同式:锁定帧 = locked_buy_membership,未锁
                 # 帧 = line_members(target_comp)(单一源直调,禁第二实现;
-                # T-307/R1 零参调 = 宽集,观测面监控宽集超容,与 P60 门
+                # R1 零参调 = 宽集,观测面监控宽集超容,与 P60 门
                 # 同对象——截断集上检查恒假 = 死观测面,ADR-0647)。
                 # 位次申报(ADR-0583):旧序 = 战略层直调先于本块;
                 # 内化后刷新发生在驱动器首帧消费,本块后移到决策调用之后
@@ -1827,7 +1827,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _obs_locked_b = max(_obs_locked_b, len(_obs_bm))
                         if len(_obs_bm) > BENCH_CAPACITY + DEPLOYED_CAPACITY:
                             _obs_overcap_frames += 1
-                    # 席位/牌面/刷新费/金读数消费段入口态快照(T-185 批B:
+                    # 席位/牌面/刷新费/金读数消费段入口态快照(
                     # 帧退役;快照取自决策前,读数语义 = 段入口态,与帧
                     # 时代逐位同——见上方快照块注释)。
                     _obs_owned = _seg_owned0
@@ -1851,7 +1851,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 from sr_od.application.currency_war.kernel.cw_economy import (
                     in_must_spend_zone as _msz_pred,
                 )
-                # 金读数消费段入口态快照(T-185 批B,理由同上块)。
+                # 金读数消费段入口态快照(理由同上块)。
                 if _msz_pred(_seg_gold0, sess):
                     _ms_zone += 1
                     # 层命中按动作类 isinstance 判定:
@@ -1910,7 +1910,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
 
                     # 波 5b 桥退役消点:k 空窗回退/三臂判据已切容器签名,
                     # sim 工作帧真值经喂入口直写容器后读容器(原桥装箱退役)。
-                    # T-185 批B:喂入口随工作帧退役删除,读容器权威态。
+                    # 喂入口随工作帧退役删除,读容器权威态。
                     _rej_fb, _rej_tok = (
                         _rej_intention.k_empty_window_fallback(
                             bs, _obs_ist, session=sess,
@@ -1948,7 +1948,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 标「本轮已写」:旧核每决策段自写、键戳恒盖 →
                     # 守卫不触发(旧核路径零漂移);缺写且策略带该钩子时
                     # 在此补写(新核路径,判据同源无第二实现)。
-                    # T-185 批B:轮键读数 = 容器读口;镜像写者传容器
+                    # 轮键读数 = 容器读口;镜像写者传容器
                     # (flow.write_shop_mirrors 双型签名容器支)。
                     if getattr(strategy_state_of(sess), 'v3_mirror_key', None) \
                             != (plane_of(bs), round_num_of(bs)):
@@ -1996,7 +1996,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     from sr_od.application.currency_war.sim.checks.segments import (
                         terminal_release_bit as _tr_bit,
                     )
-                    # T-185 批B:检查器形参为帧 duck 读(plane/round_num/hp;
+                    # 检查器形参为帧 duck 读(plane/round_num/hp;
                     # sim/checks 文件面外)——容器读口装配的只读视图 shim。
                     _tr_view = _NS(plane=plane_of(bs),
                                    round_num=round_num_of(bs),
@@ -2060,7 +2060,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             _free_used += 1
                         # 金转移进单一转移函数(裁定 A;实付金由引擎传入 =
                         # 免费刷注入差异 #2 参数通道,详设 §3)。
-                        # T-185 批B 合并形态:应用面 = 回放容器(段尾全量
+                        # 合并形态:应用面 = 回放容器(段尾全量
                         # 再锚定发布到真容器)。
                         apply_shop_action_logic(
                             _seg_replay, a,
@@ -2109,7 +2109,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         progressed = True
                         break          # 刷后立即 re-decide(见新店)
                     if isinstance(a, BuyCard):
-                        # 商店买入执行(T-185 批B 合并形态):非终结动作的
+                        # 商店买入执行(合并形态):非终结动作的
                         # 真值应用 = 驱动器 decide 期逻辑态直写(裁定 3+1,同函数
                         # 同渠道收敛);引擎侧在段入口回放容器上跑转移函数
                         # 取 outcome 驱动转录(帧时代 simulate 逐位等价)。
@@ -2170,7 +2170,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             plane=plane_of(_sc),
                             board=dict(_sc.board.value or {}),
                             bench=bench_slots_of(_sc)))
-                        # T-153 生成侧自算披露(ADR-0593):成型度执行点
+                        # 生成侧自算披露(裁定 = sim/checks/suspects.py 模块头):成型度执行点
                         # 现读(单一源 = cw_deploy_logic.engines_count;
                         # 买前帧口径,零 rng/零状态写入纯观测)。消费 =
                         # C5 成型停手自报复核 / D2 停手失配检测在生成点
@@ -2224,7 +2224,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                                    a.card, 'cost', 0) or 0)},
                                       'reason': _ch,
                                       'channel': _channel,
-                                      # T-153 披露键(纯观测;ADR-0593)
+                                      # 披露键(纯观测)
                                       'dec_engines_count': _dec_engines,
                                       **({'count': _k} if _was_full else {})})
                         # ADR-0129 购买经验单击模型:一次点击 +XP_PER_BUY
@@ -2263,7 +2263,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # 在 lv9 拒付与实机方向相反;LEVEL_CAP=9 冻结有在案
                         # 前置(见本文件 LEVEL_CAP 注释:追级虚高治理+池指纹
                         # 重锚,归行为变更批)。
-                        # T-185 批B(详设 §3 平移边界):金/XP 真值应用 =
+                        # 详设 §3 平移边界:金/XP 真值应用 =
                         # 驱动器逻辑态直写(裁定 3);引擎在回放容器上取 outcome
                         # 驱动转录;LEVEL_CAP 守卫与拒付行留引擎(前置检查
                         # 不写状态字段,lv9 差异保持申报)。
@@ -2300,7 +2300,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # levelup_interest_engine_gate 判据消费;记录非指令。
                         _lv_auth = getattr(a, 'auth_basis', '')
                         _lv_mu = max_units_of(_sc)
-                        # T-153 生成侧自算披露(ADR-0593):升级授权存在性
+                        # 生成侧自算披露(裁定 = sim/checks/suspects.py 模块头):升级授权存在性
                         # 腿执行点现读——板满腿 = 下方 dec_board_full
                         # (ADR-0589 同披露载体);待上场腿 = bench 持有
                         # 当前线名册成员(名册 = _line_member_names,消费
@@ -2320,7 +2320,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                           (getattr(b, 'star', 1) or 1) >= 2
                                           for b in iter_occupied(
                                               bench_slots_of(_sc))),
-                                      # T-153 披露键(纯观测;ADR-0593)
+                                      # 披露键(纯观测)
                                       'dec_bench_wait_member': _dec_wait})
                         xp += XP_PER_BUY   # 与买牌同源(ADR-0286 xp 真值化;值=4)
                         _sim_observe(_seg_replay, _seg_replay.xp,
@@ -2329,7 +2329,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                      'xp-echo', 'xp-echo')
                         progressed = True
                     elif isinstance(a, SellBench):
-                        # 卖出执行(T-185 批B 合并形态):真值应用 = 驱动器
+                        # 卖出执行(合并形态):真值应用 = 驱动器
                         # decide 期逻辑态直写(金回充/装备回收随逻辑态生效);引擎在
                         # 回放容器上取 outcome 驱动转录禁自判。陈旧提案
                         # (expect 失配)/空槽 = 函数拒 → 引擎静默跳过(与帧
@@ -2354,7 +2354,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             # (口径随单一源 = sell_refund + bench_char_cost,
                             # 识别名查注册表,未知名 3 中费保守估;merge 后
                             # bench 可有 star≥2,按星退防合成件价值低估)。
-                            # T-153 生成侧自算披露(ADR-0593):孤儿性机械
+                            # 生成侧自算披露(裁定 = sim/checks/suspects.py 模块头):孤儿性机械
                             # 腿执行点现读 = 被卖件是否当前线名册成员
                             # (线账闭合语境判据;义务登记簿引擎层不可见,
                             # 本键只携线成员机械腿,复核面 = C4 转化分键
@@ -2389,7 +2389,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                           # 仍在 sell_reason,按键分工零双源)
                                           'convert_reason': getattr(
                                               a, 'convert_reason', '') or '',
-                                          # T-153 披露键(纯观测;ADR-0593)
+                                          # 披露键(纯观测)
                                           'dec_sell_in_line': _dec_in_line})
                             # T3 同轮保留集「卖出即销」(生命周期出口②,
                             # sim 侧与生产 sell 通道同语义闭环)
@@ -2401,7 +2401,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             progressed = True
                     elif isinstance(a, (SellDeployed, SwapDeploy)):
                         # 动作 v2(契约包 C1,步2):显式部署通道执行。
-                        # T-185 批B 合并形态:SellDeployed/SwapDeploy 若由
+                        # 合并形态:SellDeployed/SwapDeploy 若由
                         # 商店决策循环发射 = 驱动器已直写逻辑态(裁定 3,非终结
                         # 动作),引擎在回放容器上取 outcome 转录;此处转录账本
                         # + 池守恒/经济记账同步。(原 CompTransaction 终结腿
@@ -2412,7 +2412,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # 动作才占显式通道**;被拒不消耗围栏(围栏跳过语义
                         # 修正,同轮围栏照跑,板面欠载不再被事务风暴封死)。
                         # 预状态引用快照(池 ret / 经济记账用;读口新建对象,
-                        # 预读值不跨界)。T-185 批B 合并形态:两类动作统一
+                        # 预读值不跨界)。合并形态:两类动作统一
                         # 在回放容器上应用(段尾全量再锚定发布到真容器)。
                         _apply_bs = _seg_replay
                         _dep_pre = deployed_slots_of(_apply_bs)
@@ -2522,9 +2522,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 前,与生产 M1″ 决策帧同语境;判定单一源直调,见函数注)。
             # 零 rng 消耗;计划非空帧由下方执行转录产生状态写入(其余帧
             # 纯读)——不挤占行为投影 digest 判别域的声明自此收窄为
-            # 「计划空帧纯读」(T-169 执行面接入后的如实申报)。
+            # 「计划空帧纯读」(执行面接入后的如实申报)。
             # 两小批②短路帧:生产无 M1″ 决策帧(备战动作链被发射短路)
-            # ⇒ 恒 None(非观测异常,如实无帧)。T-307/R3-a(ADR-0647)
+            # ⇒ 恒 None(非观测异常,如实无帧)。R3-a(ADR-0647)
             # 起短路形态由独立行内键 ``m1p_obs_skipped`` 显影(None 双义
             # 拆解:观测异常 vs 发射短路无帧),见行组装邻位透传。
             _m1p_obs: dict | None = None
@@ -2534,7 +2534,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # _c2_plan_point、dig 工具、锁测试双向断言均消费 m1p dict
             # 形状)。
             _m1p_obs_skipped: str | None = None
-            # T-279 R1:计划对象/装配 ctx/卖出旗带出本块,轮末部署块
+            # 计划对象/装配 ctx/卖出旗带出本块,轮末部署块
             # R1-a 直投消费(变量先置缺省——达标臂发射帧整块跳过时,
             # 部署块分支仍需可读)。
             _m1p_plan: SwapPlan | None = None
@@ -2546,12 +2546,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _m1p_plan_and_record(bs, sess)
                 except Exception:   # noqa: BLE001  观测 best-effort(launch 同款)
                     _m1p_plan, _m1p_obs, _m1p_ctx = None, None, None
-                # M1″ 执行面 sim 转录(T-169;总图设计 R2 §2 sim 边界行,
+                # M1″ 执行面 sim 转录(总图设计 R2 §2 sim 边界行,
                 # 修订 ADR-0530「sim 不建模执行侧」申报):计划非空 = 生产
                 # 发射 RunDeploy(m1_swap_redeploy) 帧 → sim 逐件卖 victim
                 # (卖出臂单一源执行,见 m1p_swap_execute),腾出的 vacancy
                 # 由轮末部署块补上——显式动作旗置位走 skip_fence+残余补
-                # 部署路径(裁决1「显式>围栏」同语义;T-279 R1/ADR-0640
+                # 部署路径(裁决1「显式>围栏」同语义;ADR-0640
                 # 起 m1p 卖出成功帧的补上 = 计划单一源消费
                 # _m1p_plan_fill_deploy:R1-a 计划 up 直投/防御退 R1-b
                 # 卖出后现读重 derive,与生产 CwScreenDeploy 卖出臂+部署 op
@@ -2565,7 +2565,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _m1p_obs['executed'] = True
                         _explicit_deploy_seen = True
             else:
-                # R3-a(T-307/ADR-0647)发射帧盲窗置键:发射帧备战动作
+                # R3-a(ADR-0647)发射帧盲窗置键:发射帧备战动作
                 # 链被发射短路,生产无 M1″ 决策帧——m1p=None 的成因在此
                 # 显影,判读面不再与观测异常帧混桶。
                 _m1p_obs_skipped = 'launch_short_circuit'
@@ -2624,7 +2624,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # deployed_cids/deployed_fac/cap 语义;board = deployed 主阵营
             # 聚合(生产 board 口径)。ADR-0287:此处 cap 在轮末升级后读 →
             # LevelUp 当轮腾出的 cap 立即生效(批㉘ F5「升级→上阵」链断
-            # 一轮的修复)。T-185 批B:部署代理 obs 通道(结算期代理,
+            # 一轮的修复)。部署代理 obs 通道(结算期代理,
             # 详设 §3 A3 申报对齐)——槽表中间形态 + 整表 obs 写回。
             _dep_cids = {d.char_id for d in iter_occupied_deployed(
                 deployed_slots_of(bs))
@@ -2643,7 +2643,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _res_up = 0
             _res_held = 0
             if _explicit_deploy_seen:
-                # T-279 R1(ADR-0640):m1p 换血卖出成功帧 → 补部署消费
+                # ADR-0640:m1p 换血卖出成功帧 → 补部署消费
                 # 计划单一源(R1-a 计划 up 直投,前提破退 R1-b 卖出后
                 # 现读重 derive,域辖域钉计划时点事实);非 m1p 显式动作
                 # 轮维持现状围栏 fill(F4 辖域;原事务终结形态已随批2b R3 删除)
@@ -2773,8 +2773,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _dep_power_rounds_p1 += 1
                 # (生锈暴露峰值已移到轮账本行键写入点采样——原此处取值
                 # 与行键 `rust_units` 是两个观测时点,轮中段卖出回充装备
-                # [T-169 执行面:victim 带装回收进 owned 池]会让分配器穿戴
-                # 前后的两读数分叉,峰值 ≠ 行值最大值;T-169 锁红重推后
+                # [执行面:victim 带装回收进 owned 池]会让分配器穿戴
+                # 前后的两读数分叉,峰值 ≠ 行值最大值;锁红重推后
                 # 收口为「峰值 = 逐轮账本行口径最大值」,恒等式由构造保证。)
             if res.dir_round == 99 and _direction_established(sess):
                 res.dir_round = rn
@@ -2797,7 +2797,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # vs 实机 32% 裂口的最大已定量化分量;encounter 亦 rung 键
             # (v11/ADR-0407,depth 键下期望伤害真平故迁 rung);
             # boss 键=净星深(迁移审计 w240(git 历史)/ADR-0404,修升星方向冲突)。
-            # T-185 批B:判据输入 = 容器权威态(喂入口随工作帧退役删除,
+            # 判据输入 = 容器权威态(喂入口随工作帧退役删除,
             # 段首直读;判据核容器签名不变)。
             _bs_cal = bs
             _dep = _deployable_depth(_bs_cal)
@@ -2954,7 +2954,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 桥池 fixed+core/三人组单一口径(旧 v1 线库 core_cards
             # 随 ADR-0336 删除),旧 core_trio_count 绑死仙舟非仙舟
             # 线局恒 0,审查二轮#8)
-            # 波 5b 桥退役消点:账本 depth 单一源——T-185 批B:容器权威态
+            # 波 5b 桥退役消点:账本 depth 单一源——容器权威态
             # 直读(喂入口随工作帧退役删除;结算后 depth = 结算写后现值)。
             _depth = _deployable_depth(bs)
             res.depth_trail.append(_depth)
@@ -2974,7 +2974,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 时点画像:~3.8 个发放轮/局,sim 供给节点仅 ~1 个/局——单靠
             # 它永远凑不出实机件数;奖励节点同为零战力节点,承载通道
             # 语义等价)。结构与常量见 EQUIP_GRANT_CALIB_VERSION 注。
-            # T-185 批B:装备链 = 本地 owned 池/槽表工作 + 一次性 obs 写回
+            # 装备链 = 本地 owned 池/槽表工作 + 一次性 obs 写回
             # (发放/穿戴/合成 = 外部事件,裁定 A 渠道表);槽表/池为读口
             # 新建对象,本地变异不共享;喂入口随工作帧退役删除,decide_
             # supply 直读容器权威态。
@@ -3310,17 +3310,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'launch': _round_launch,
                 # M1″ 计划+执行面(_m1p_plan_and_record;None = 观测异常帧。
                 # nonempty = 谓词判计划非空 ⇒ M1″ 发射;executed = 本帧
-                # 计划已经执行转录(卖出臂真卖,T-169 执行面接入;键缺省
+                # 计划已经执行转录(卖出臂真卖,执行面接入;键缺省
                 # = 计划空/执行异常,锁测试双向断言与换血可见性判读锚)。
                 # abstain = 弃权键(cap_unreadable/membership_unreadable/
                 # input_missing);sell = 卖序;up = 上序件数;up_names =
-                # 上序名单(T-279 R2 名字级,义务件处置四态直读的判读锚);
+                # 上序名单(R2 名字级,义务件处置四态直读的判读锚);
                 # reasons = 逐件拒因。卖出动作明细 = actions 流 SellDeployed
                 # 行(reason='m1_swap_redeploy'),补上 = 同轮 skip_fence 行
                 # residual_deployed 计数(执行语义见 m1p_swap_execute;
-                # T-279 R1 起补上消费计划单一源,skip_fence reason 分键
+                # 补上消费计划单一源,skip_fence reason 分键
                 # m1p_plan_up,语义见 _m1p_plan_fill_deploy/ADR-0640)。
-                # R3-a(T-307/ADR-0647)发射帧盲窗显影键(独立行内键,
+                # R3-a(ADR-0647)发射帧盲窗显影键(独立行内键,
                 # 邻位透传):'launch_short_circuit' = 本轮为发射帧、生产
                 # 无 M1″ 决策帧(备战动作链被发射短路,m1p 恒 None 的
                 # 成因);None = 非发射帧(m1p 应在场)或观测异常帧。
@@ -3376,7 +3376,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     'p2_win_p': _p2_wp,
                     'gold_before': _gold_before,
                     'income': _inc, 'spend': _spend,
-                    # 当轮有效连胜倍率(T-64 接线披露位;缺省局恒 1.0)。
+                    # 当轮有效连胜倍率(接线披露位;缺省局恒 1.0)。
                     # 消费 = checks.runtime 精确重算锁镜像;缺键 = 接线前
                     # 旧批次,镜像按 1.0 折算(重放兼容)
                     'win_reward_mult': _win_mult,
@@ -3485,7 +3485,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # strategy_state_of(session).v3_alloc_frame);None = 本轮无决策段。
                     'alloc_frame': _round_alloc_frame,
                     'alloc_active_any': _round_alloc_active_any,
-                    # T-155 基线臂:本轮选卡判据归因(kind/options/picked/
+                    # 基线臂:本轮选卡判据归因(kind/options/picked/
                     # reason;env 条挂 P1 r1 行)。None = 本轮无基线臂选卡
                     # (freq 臂/固定剧本/未开注入恒 None——注入无判据归因)
                     'invest_picks': (_round_pick_recs
@@ -3495,8 +3495,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # P1 段生锈暴露峰值(采样点 = 账本行 rust_units 键同点:峰值 ≡
             # 逐轮行值最大值,由构造保证)。原采样点在轮中部 power 块
             # (部署后/结算+分配器前),与行键是两个观测时点——轮中段
-            # 卖出回充装备(T-169 执行面:victim 带装回收)再被分配器
-            # 穿戴时,两读数分叉(峰值≠行值最大);T-169 锁红重推后移点
+            # 卖出回充装备(执行面:victim 带装回收)再被分配器
+            # 穿戴时,两读数分叉(峰值≠行值最大);锁红重推后移点
             # 收口,勘误说明留在 power 块注释。
             if _seg_plane == 1:
                 _rust_peak = max(_rust_peak, min(10, len(bs.equips.value or [])))
@@ -3592,7 +3592,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         res.invest_env = str(getattr(sess, 'active_env', '') or '')
         res.invest_strategies = tuple(sess.active_strategies)
     if _sink is not None:
-        # T-155 基线臂:选卡判据归因全集(env + 逐策略槽;reason =
+        # 基线臂:选卡判据归因全集(env + 逐策略槽;reason =
         # decide_event 归因串透传,判读/统计入口)
         res.invest_picks = tuple(_inv_picks)
     return res

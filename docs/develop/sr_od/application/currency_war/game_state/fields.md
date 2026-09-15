@@ -380,7 +380,7 @@ evidence 区分。旗牌通道=**弱**(stylized 数字 OCR 常空,两级放大�
 定谳)。接线面:①前后排已穿装备已有逐帧读取器(read_row_equipped,覆盖前后排、
 不含备战席);②**星级=read_star 在役**(立绘底部金星计数,经 identify_slots 注入
 read_deployed_chars/read_bench_chars 两链)经观察喂入口写 bs.bench;③**备战席装备
-图标=无源定谳**(T-15 实机三态采证,2026-09-12:满/混合/空三态备战帧负探针——
+图标=无源定谳**(实机三态采证,2026-09-12:满/混合/空三态备战帧负探针——
 备战栏 below 带全模板×全缩放原始匹配峰值低于 MISS 阈,连假 MISS 噪声都不产;正
 对照同帧在场排装备正常命中,排除读取器失效/取区漂移;离线探针与运行时识别日志双
 源同构)→ 装备识别线不接入(机制恒空,无观察源可建);星级面不受影响。
@@ -454,7 +454,7 @@ active_env 核对源。开局写端见 §3.4.3(多屏写入,本条=备战屏侧�
   写端(溢出位 SIFT);SellBench 溢出腿落地后 logic 直写 `''`(入位消费;
   入位时星级缺读按 1 兜底,下帧 heavy 实读覆盖修正)。
 
-### 3.2.x tracked 主账观察状态 tracked_account_observed(bool;T-268)
+### 3.2.x tracked 主账观察状态 tracked_account_observed(bool;)
 
 **语义**:tracked 主账(bench+deployed 两面,同帧锚定,单一状态)是否已按
 屏幕真值锚定。三态:`None`(从未写)= 缺省可信——正常新局 0 件即屏幕真值,
@@ -1334,7 +1334,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
   账本转录。
 - 容器域 `receipts` = **实机执行回执**:记录「实机执行层发出了什么」
   (发出即簿记,非验证;滚动窗,唯一写点 = `note_action_receipt`)。
-  T-16 起金动作行携结构化 `gold_delta`(extra 机制,执行点金差;备战帧
+  此后金动作行携结构化 `gold_delta`(extra 机制,执行点金差;备战帧
   LevelUp 花金/卖出回金的逐动作归属键),金账本体直推走
   `cw_exec_state._advance_gold` 容器通道(logic_action 渠道)。
 - 两本是不同语义世界的两本账,**禁互写**:sim 侧不写 receipts(模拟动作

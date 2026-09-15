@@ -72,7 +72,7 @@ class RoundOutcome:
     # heal_longline = tooltip 第三行「长线作战」(战斗回血,恒 ≥0;实机实证
     # 常量 +2/场,ADR-0241 口述+80→82→84 连胜轨迹)——链差(净变化)含它、
     # 两掉血分量不含,是「tooltip 幅度 = 链差 + 2」系统偏移的机制项
-    # (T-83 定谳,ADR-0609);此前解析器已读但 schema 缺字段被静默丢弃。
+    # (ADR-0609);此前解析器已读但 schema 缺字段被静默丢弃。
     progress_fill_ratio: float | None = None
     damage_base: int | None = None
     damage_unfinished_progress: int | None = None
@@ -84,7 +84,7 @@ class RoundOutcome:
     # (经验档层其五/六正证据的行内通道;普通战斗行恒 None)。
     difficulty_node: float | None = None
     encounter_tier: int | None = None
-    # —— T-185 收口终局行标记:仅对局收口终局行携带('stopped'/'abandoned'),
+    # —— 收口终局行标记:仅对局收口终局行携带('stopped'/'abandoned'),
     # 普通结算行恒 ''(字段语义与读端消费边界 =
     # telemetry.schema.OutcomeRecord.match_result 注)。
     match_result: str = ""
