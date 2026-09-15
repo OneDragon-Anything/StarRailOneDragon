@@ -21,7 +21,11 @@
   跳过——裁定②:锁 = 引擎自有状态,动作词表无锁通道,首版恒解锁
   +披露)→ offer 日程检查(M11/U07:打完 1-2/2-1/3-1 生效于下一轮
   备战窗口,联席决策挂 2-6)→ PREP;
-- PREP:玩家动作经单一转移函数(M07/M08/M09);OpenBox → 箱候选 →
+- PREP:装备/工具四路(WearEquip/WrenchUse/PrecisionWrenchUse/
+  FurnaceUse,M10)= sim 侧游戏规则腿(cw_sim_equips 分派;炉走
+  ``M10/炉/{uses}`` 流);其余玩家动作经单一转移函数(M07/M08/M09),
+  动作后消费银狼升 2 星触发判据(M21,planner_overlay_due + 全域
+  星级快照);OpenBox → 箱候选 →
   BOX_PICK(M17);StartBattle = 备战终结动作(补给 → 选卡面/
   遭遇 → 选档面/其余 → M13 结算);
 - 结算(M12→M14→M15→M08 序):随机输出面(M13;扑满不掉血豁免,
@@ -60,9 +64,13 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
+    FurnaceUse,
     OpenBox,
     PickEvent,
+    PrecisionWrenchUse,
     StartBattle,
+    WearEquip,
+    WrenchUse,
 )
 from sr_od.application.currency_war.sim.cw_sim_actions import (
     apply_node_xp,
@@ -79,6 +87,15 @@ from sr_od.application.currency_war.sim.cw_sim_enemy import (
     DIFFICULTY_BASE_PENDING_U25,
     HOLY_GRAIL_PENDING,
     resolve_plane_bosses,
+)
+from sr_od.application.currency_war.sim.cw_sim_equips import (
+    FURNACE_CHAR_MODE_PENDING,
+    TOOL_EFFECTS_PENDING,
+    UNMODELED_GRANTS,
+    apply_furnace_equip_mode,
+    apply_precision_wrench,
+    apply_wear_equip,
+    apply_wrench,
 )
 from sr_od.application.currency_war.sim.cw_sim_income import (
     apply_round_start_income,
@@ -130,6 +147,10 @@ from sr_od.application.currency_war.sim.cw_sim_shop import (
     deal_shop,
     effective_deal_probs,
 )
+from sr_od.application.currency_war.sim.cw_sim_special import (
+    SILVER_WOLF_ID,
+    planner_overlay_due,
+)
 from sr_od.application.currency_war.sim.cw_sim_streams import stream_rng
 
 #: 轮岗环境在册名(M02 挂钩:每备战阶段重掷翻倍档;M05 流)。
@@ -161,7 +182,32 @@ _BASE_DISCLOSURES: dict[str, object] = {
     DISCLOSURE_LV10_XP: 'cap10_zero_accumulate_u18',
     DISCLOSURE_ENV_CHANNELS: 'structured_two_of_env_economy',
     DISCLOSURE_BOX_TRIGGER: 'no_spontaneous_box_first_phase',
+    # M10 装备三键并表(r2 验收 §7-1③:U24「发放空表随局披露」的交付
+    # 面——键定义于 cw_sim_equips,恒在册声明,与采样值无关)
+    UNMODELED_GRANTS: 'u24_grant_table_empty_first_phase',
+    TOOL_EFFECTS_PENDING: 'privilege_projector_token_unmodeled',
+    FURNACE_CHAR_MODE_PENDING: 'furnace_drag_char_mode_unmodeled',
 }
+
+
+def _silver_wolf_max_star(bs: GameState) -> int:
+    """全板面银狼最高星级(备战席+前台+后台;M21 触发判据的动作前
+    快照输入;无银狼 → 0 = 判据「跨越 2★」的合法起点)。
+
+    kernel 合成产物落点 = 场上同名位(M07),备战席与前后排都是合成
+    载体域,扫描必须全域;域未写(None)= 该域无单位。
+    """
+    stars: list[int] = []
+    bench_view = bs.bench.value
+    if bench_view is not None:
+        stars += [int(s.unit.star) for s in bench_view.slots
+                  if s is not None and s.kind == 'unit'
+                  and s.unit is not None
+                  and s.unit.char_id == SILVER_WOLF_ID]
+    for row in (bs.front_row.value, bs.back_row.value):
+        stars += [int(u.star) for u in (row or [])
+                  if u is not None and u.char_id == SILVER_WOLF_ID]
+    return max(stars, default=0)
 
 
 @dataclass(frozen=True)
@@ -301,24 +347,76 @@ class CwSimEngine:
             eng.box_cands = box_options()
             eng.phase = CwSimPhase.BOX_PICK
             return None
+        equip_outcome = self._apply_equip_action(eng, action)
+        if equip_outcome is not None:
+            return equip_outcome
+        star_before = _silver_wolf_max_star(eng.bs)
         outcome = apply_player_action(
             eng.bs, action, node_tag=f'p{eng.plane}r{eng.round_num}')
-        self._check_planner_trigger(eng)
+        self._check_planner_trigger(eng, star_before)
         return outcome
 
-    def _check_planner_trigger(self, eng: _Eng) -> None:
-        """银狼首次升 2 星 → planner overlay 入队(M21 有档触发;
-        星级快照对比在动作应用后统一检查)。"""
+    def _apply_equip_action(self, eng: _Eng,
+                            action: CwAction) -> LogicOutcome | None:
+        """装备/工具动作四路分派(M10;设计 §2.2 M10「装备动作腿 = sim
+        侧游戏规则建模」——kernel 商店转移口对装备族恒
+        ``unsupported_action_type`` 零写拒,必须在此分派;非装备动作返
+        None 落回主转移函数)。
+
+        腿语义单一源 = ``cw_sim_equips``(穿着即合成/扳手回区/炉同类型
+        重掷),本方法只做分派与 ``LogicOutcome`` 回声包装,禁重写腿
+        语义;拒因 = 腿布尔契约的统一回声(细则在腿 docstring)。
+        """
+        if isinstance(action, WearEquip):
+            ok = apply_wear_equip(eng.bs, action)
+            return LogicOutcome(applied=ok,
+                                reason='' if ok else 'wear_equip_rejected')
+        if isinstance(action, WrenchUse):
+            ok = apply_wrench(eng.bs, action)
+            return LogicOutcome(applied=ok,
+                                reason='' if ok else 'wrench_rejected')
+        if isinstance(action, PrecisionWrenchUse):
+            ok = apply_precision_wrench(eng.bs, action)
+            return LogicOutcome(
+                applied=ok,
+                reason='' if ok else 'precision_wrench_rejected')
+        if isinstance(action, FurnaceUse):
+            return self._apply_furnace(eng, action)
+        return None
+
+    def _apply_furnace(self, eng: _Eng, action: FurnaceUse) -> LogicOutcome:
+        """冶金炉分派(M10 双模式):equip 模式 = 同类型随机重掷腿,流键
+        ``M10/炉/{uses}`` 按实际重掷序装配;char 模式(拖角色全拆+逐件
+        变异)首版不建模,显式拒(披露键恒在册 = _BASE_DISCLOSURES)。"""
+        if action.target_kind == 'char':
+            return LogicOutcome(applied=False,
+                                reason='furnace_char_mode_unmodeled')
+        uses = eng.furnace_uses + 1
+        new_name = apply_furnace_equip_mode(
+            eng.bs, action.item_name,
+            rng=stream_rng(eng.seed, f'M10/炉/{uses}'))
+        if new_name is None:
+            return LogicOutcome(applied=False,
+                                reason='furnace_target_not_owned')
+        eng.furnace_uses = uses
+        return LogicOutcome(applied=True)
+
+    def _check_planner_trigger(self, eng: _Eng, star_before: int) -> None:
+        """银狼首次升达 2 星 → planner overlay 入队(M21 有档触发)。
+
+        判据单一源 = ``cw_sim_special.planner_overlay_due``(1→2 星
+        合成事件);star_before/after = 全板面(备战席+部署位)银狼最高
+        星级动作前后快照——kernel 合成产物落点 = 场上同名位(M07),
+        仅扫备战席会漏部署位合成(旧近似判据的缺陷)。聚合口径 = 最高
+        星(触发判据只关心「是否跨越 2★」,与载体位置无关)。「首次」
+        语义 = 引擎一次性标志去重。
+        """
         if eng.planner_fired:
             return
-        for slot in (eng.bs.bench.value.slots if eng.bs.bench.value else []):
-            if (slot is not None and slot.kind == 'unit'
-                    and slot.unit is not None
-                    and slot.unit.char_id == '银狼LV.999'
-                    and slot.unit.star >= 2):
-                eng.planner_fired = True
-                eng.overlay_queue.push_planner()
-                return
+        star_after = _silver_wolf_max_star(eng.bs)
+        if planner_overlay_due(SILVER_WOLF_ID, star_before, star_after):
+            eng.planner_fired = True
+            eng.overlay_queue.push_planner()
 
     # ---------------------------------------------------------- 节点推进
 
