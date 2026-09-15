@@ -9,10 +9,11 @@ engines_count 是机制事实判据(transition_combos.md 2026-08-23 定稿口径
 四体系两两组合=过渡成型),输入 board 计数输出体系达成数,无 ctx/无拍值,
 归知识层合法;cw_deploy_logic 内的决策半部(部署围栏)不随迁。
 
-零漂移契约:与 kernel/cw_deploy_logic 同名符号逐字同体(派生式同源:
-同一 SYSTEM_CARDS/FACTIONS 注册表派生,不存在字面双源);旧位置副本仅为
-sim(engine_p1 alias import)等未迁消费点保留(sim import 本批禁动),
-随批 3 删除。**新增消费一律 import 本模块。**
+零漂移契约:与 kernel/cw_deploy_logic 同名符号派生式同源(同一
+SYSTEM_CARDS/FACTIONS 注册表派生,不存在字面双源;本模块 = 知识层
+权威副本,kernel 侧同名副本的迁移挂账见该文件注释,历史过渡叙述中
+的 sim 旧引擎消费点已随 sim 重做删除面退役)。**新增消费一律
+import 本模块。**
 
 依赖方向:仅 import 数据注册表与 cw_system_cards(体系卡注册,保留件);
 不 import 任何决策符号。
