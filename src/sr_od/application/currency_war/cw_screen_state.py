@@ -37,6 +37,17 @@ LOBBY_STATE_SCREENS: frozenset[str] = frozenset({
 })
 
 
+#: 可直接点门形图标发起退局的备战态屏名(A 类,语义 = 可交还退出 op 的
+#: 备战态,含免战变体)。屏名白名单而非备战档全锚判定:免战画面「出战」
+#: 锚被「跳过」替换,全锚判定对免战恒 False(依据 = 归档帧 货币战争-备战-
+#: 免战/跳过态.webp 实拍:布局同备战,仅右下按钮不同,左上门形退出图标
+#: 照常在)。退出链路由③与对局循环 stop_at_prep 停机位共用本常量
+#: (cw-exit-dispatch 迭代),禁两处各写一份——两侧判定分叉会互踢死循环。
+PREP_DIRECT_EXIT_SCREENS: frozenset[str] = frozenset({
+    '货币战争-备战', '货币战争-备战-免战',
+})
+
+
 def in_match_screen_names(screen_info_list: list) -> list[str]:
     """对局中态屏名(screen_info 全集过滤:货币战争- 前缀 − 大厅态白名单)。
 

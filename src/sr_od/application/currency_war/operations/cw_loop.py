@@ -11,6 +11,10 @@ from one_dragon.base.operation.operation_round_result import (
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.cw_screen_state import (
+    PREP_DIRECT_EXIT_SCREENS,
+    get_in_match_screen_name,
+)
 
 # 迁移审计 w75(git 历史)(ADR-0335):after_operation_done 的 result 注解在类定义期求值,OperationResult
 # 必须**运行期可导入**(TYPE_CHECKING 块对此场景不够——本模块无
@@ -1170,10 +1174,11 @@ class CwLoop(SrOperation):
         # 轮锚点 = 分支3「挑战成功」结算(每打赢 1 轮 +1);停点 = 分支1 备战 gate(rounds_done≥max → 停)。
         # None = 现行跑到对局结束/超时(向后兼容)。app 从 config.max_rounds 透传;run_operation 可直传。
         self._max_rounds: int | None = max_rounds
-        # 退出调度专用(2026-09-13,CwEntryExit 节点1 复用本 loop 的画面处理
-        # 能力):True = 识别到干净备战(备战双锚,判定单一源 = _prep_anchors_hit)
-        # 即 round_success 返回,不执行备战策略。退出侧「干净备战」判定引用
-        # 同一函数——两侧判定同源是防「loop 停↔退出重派」互踢死循环的硬前提。
+        # 退出调度专用(2026-09-13,CwEntryExit 路由⑤复用本 loop 的画面
+        # 处理能力):True = 识别屏名 ∈ A 类名单(cw_screen_state.
+        # PREP_DIRECT_EXIT_SCREENS,判定单一源)即 round_success 返回,
+        # 不执行备战策略。退出侧「可交还备战态」判定引用同一常量——两侧
+        # 判定同源是防「loop 停↔退出重派」互踢死循环的硬前提。
         self._stop_at_prep: bool = stop_at_prep
         # (轮计数 _rounds_done 已随结算链收编 CwScreenBattleWait → SettlementState
         #  .rounds_done(W971 05-battle §1);本类经 self._settle.rounds_done 读。)
@@ -1721,15 +1726,21 @@ class CwLoop(SrOperation):
         # 收口钩子对成功/失败/停止全路径必达(operation.py:492),见类注。
         screen = self.last_screenshot
 
-        # 退出调度停机位(stop_at_prep,2026-09-13):CwEntryExit 节点1 把
-        # 「loop 能处理的画面」整段委托给本 loop,处理到干净备战即交还。
-        # 置顶于全部分支 = 「处理到回备战」语义不受分发序影响;判定单一源
-        # = _prep_anchors_hit(备战双锚)。已知边界:开商店浮层等不遮双锚的
-        # 备战子态会命中本停机位——委托侧(退出 op)对同款帧同样判干净备战
-        # 并直接走退局发起,两侧判定同源故无互踢;子态浮层不遮左上门形
-        # 退出图标,退局发起可达(实机验证项)。
-        if self._stop_at_prep and _prep_anchors_hit(self, screen):
-            return self.round_success('已到干净备战(退出调度停机)')
+        # 退出调度停机位(stop_at_prep,2026-09-13;判据 2026-09-15
+        # cw-exit-dispatch 统一):CwEntryExit 路由⑤把「非退出流程的对局中
+        # 画面」整段委托给本 loop,处理到可交还退出 op 的备战态即返回。
+        # 判定 = 识别屏名 ∈ cw_screen_state.PREP_DIRECT_EXIT_SCREENS(A 类
+        # 名单,框架建档判定非手写锚),与退出路由③同一常量——两侧判定
+        # 同源是防「loop 停↔退出重派」互踢死循环的硬前提。语义 = 可点门形
+        # 退出的备战态(含免战)。已知边界:B 类浮层(选择伙伴等)在场时
+        # 全集识别返回其专属屏名 ∉ A 类 → 本停机位判否,交下方 0 系分支
+        # 处理浮层,处理完屏名回 A 类才交还(互踢推演成立);开商店等已
+        # 独立建档的备战子态同理由屏名区分。穿透双锚 _prep_anchors_hit
+        # 已不用于本停机位(穿透语义会把「选择伙伴」帧误判干净备战立即
+        # 交还,与路由③互踢)——其本体与另外三处「底图判定」调用点不动。
+        if self._stop_at_prep and get_in_match_screen_name(
+                self.ctx, screen) in PREP_DIRECT_EXIT_SCREENS:
+            return self.round_success('已到可交还退出调度的备战态(含免战)')
 
         # iter1 分发锚可解析预检:配置缺失第一轮炸到日志面,
         # 不等卡死 8 分钟后再排障。
