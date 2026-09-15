@@ -32,7 +32,7 @@
 > 收编现役 'level_up' 行禁双行、boundary 触发口与公式可测性立 H6/H7。
 > v10 对照说明见 design/ 归档件「流程hook设计v1」(档名保留原批号)
 > (R2);对照说明(v5-v9)见
-> docs/develop/sr_od/application/currency_war/design/统一观察架构-修订对照说明.md;
+> 统一观察架构-修订对照说明(过程件,git 历史可溯);
 > v11 = 验证段废除(用户裁定 2026-09-10:动作 op 只管机械执行,禁止做
 > 任何验证)——§5.1 六段→五段(验证段删除及规范理由落文),§5.2 联动
 > (备战原型行/事件屏迁移行);v12 = 用户终裁(2026-09-10)落地
@@ -114,7 +114,7 @@
    端口;中间的写记录、对账、决策消费、落地登记在两域是同一份代码。
    **辖域申报**:本原则辖「画面 op 内」——op 外现存的真实读屏调用点
    (既有豁免三点 = 发射帧仲裁段 cw_loop._launch_frame_arbitration:657 /
-   开局最小读 cw_loop.loop:1708 / 买牌波入口 cw_op_buy_cards.run_buy_waves
+   开局最小读 cw_loop.loop:1708 / 买牌波入口 cw_screen_buy_cards.run_buy_waves
    :691)不属画面 op 辖域,以**调用点白名单制**逐点申报管理(白名单纪律见
    开放问题 B4/F6),不在本原则的「只分叉在适配器」承诺内。
    **read_game_state 调用点全量扫描基线(F1,2026-09-10 实测,grep 全仓)**:
@@ -295,7 +295,7 @@ synthesize_from_game_state(kernel/cw_game_state)是该映射的第一版,本架�
   概率静默退基线表且不报错。**dual_track_phase 显式申报不入「双落必带」**:
   其起值源 = 装配边界回填(cw_state.py:254 字段注;写端 = `= not
   committed_from(session)`,mandate_v1/adapter.py:152 / cw_screen_prep.py
-  :1626/:1858 / cw_op_buy_cards.py:713),非环境帧事实——合成帧缺省
+  :1626/:1858 / cw_screen_buy_cards.py:713),非环境帧事实——合成帧缺省
   False 不产生行为差。sim 现役**零 last_state 写点**,不双落则 sim 路径
   的透传域全部塌到 GameState 缺省。双落 = 记录面(写入 session 属性,
   零 rng 影响);席位域直供的表述随之挂到本帧供给申报差上(开放问题 A4)。
@@ -616,7 +616,7 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
 
 - **词表载体现役已统一,本架构只做契约化申报**:
   - 备战线意图 = `PrepAction` 词表(kernel/cw_prep_actions.py:
-    ClickSpheres / OpenBox / OpenTome / PickBoxCard /
+    ClickSpheres / OpenBox / OpenTome /
     SellBench / SellDeployed / DeployMove / LevelUp /
     OpenShop / StartBattle / RunDeploy /
     RunEquip / RunTools);
@@ -653,7 +653,7 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
 §6.6 清单表:
 
 - **点击链载体**:PrepActionExecutor(备战单动作执行器,CwScreenPrep 持有)、
-  cw_op_buy_cards(买/刷执行链;其 inline 执行落地门登记件收编归 §6.4)、
+  cw_screen_buy_cards(买/刷执行链;其 inline 执行落地门登记件收编归 §6.4)、
   cw_op_deploy / cw_op_equip_all(拖拽族)、_open_shop_phase(商店单动作
   循环 + 逻辑态直写)、confirm_and_verify / safe_click(_overlay_confirm,浮层
   确认;其「验关重读」判效面拆除归批 1 同窗,C 族)、run_supply_node
@@ -730,8 +730,8 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
 
 | 登记件 | 现役接线点(散落处) | 收编后 |
 |---|---|---|
-| 刷新执行事实组 record_refresh_execution(total/paid/免费余额,免费闸) | cw_op_buy_cards 执行落地门(批次二) | on_outcome(RefreshShop 发射)统一触发 |
-| 效果账本计数 bump_key(CounterKey.REFRESH@刷新回执 + BUY@购买回执) | cw_op_buy_cards 执行落地门(批次三件④) | 同上,与 record_refresh_execution 同点成组 |
+| 刷新执行事实组 record_refresh_execution(total/paid/免费余额,免费闸) | cw_screen_buy_cards 执行落地门(批次二) | on_outcome(RefreshShop 发射)统一触发 |
+| 效果账本计数 bump_key(CounterKey.REFRESH@刷新回执 + BUY@购买回执) | cw_screen_buy_cards 执行落地门(批次三件④) | 同上,与 record_refresh_execution 同点成组 |
 | 合成升星逻辑态直写 detect_merge_upgrade → write_logic(bs.bench, 逻辑态推算 BenchView) 直写(两态制) | BuyCard 执行落地门逻辑态直写点(批次二扩单①) | on_outcome(BuyCard 发射)触发直写;实读覆盖归下一 reconcile 观察赢(不变) |
 | 免战牌递减 consume_use(归零移除) | prep_actions `_launch_attempt`「按钮-跳过」发射落地回执(批次三件⑥) | on_outcome(跳过发射)触发 |
 | 节点屏刷新计数组·遭遇(encounter_refresh_used write_logic,随点击置位不等验效) | 已收编本面(试点步骤 2 接线,注册表在册):触发点 = 刷新链两路径共用分派面,原 inline 位(handle 置位 :177-179/写端 :190-194,批次三件⑦接)随迁,登记语义不变(§6.5) | on_outcome(遭遇刷新点击)触发 |
@@ -846,7 +846,7 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
 
 | 意图类型(词表符号) | 实机适配器映射(点击链) | sim 适配器映射(引擎调用) | 落地登记钩子(on_outcome) | 现状归属 |
 |---|---|---|---|---|
-| BuyCard 买牌 | cw_op_buy_cards:点卡身→确认;验真=金账对拍 + compare_buy_expect 期望态对账 + 落槽 pixel-diff(new_bench_slots);满栏自动多买上限 = 3−(已有 mod 3) | 动作语义逻辑态直写(BuyCard;前身 = cw_state.simulate,已删) + 引擎 apply(扣金/落席/合成) | 合成升星逻辑态直写(detect_merge_upgrade→write_logic)+ BUY bump_key + pending_buy_expect 暂存 | 逻辑态直写=kernel 单一源已就位;满栏上限口径=merge_mechanics(对账项,同 §7 行 3) |
+| BuyCard 买牌 | cw_screen_buy_cards:点卡身→确认;验真=金账对拍 + compare_buy_expect 期望态对账 + 落槽 pixel-diff(new_bench_slots);满栏自动多买上限 = 3−(已有 mod 3) | 动作语义逻辑态直写(BuyCard;前身 = cw_state.simulate,已删) + 引擎 apply(扣金/落席/合成) | 合成升星逻辑态直写(detect_merge_upgrade→write_logic)+ BUY bump_key + pending_buy_expect 暂存 | 逻辑态直写=kernel 单一源已就位;满栏上限口径=merge_mechanics(对账项,同 §7 行 3) |
 | RefreshShop 刷新 | 点刷新钮;验真=牌名集变化 ∨ 金币扣减(点击核对,不存快照字段) | simulate(RefreshShop) + 引擎重抽五张(draw_shop,rng) | record_refresh_execution(免费闸照旧)+ REFRESH bump_key | 计数登记=kernel 已就位(接线点收编中);重抽=引擎校准层合法 |
 | LevelUp / LevelUpShop 升级 | 循环点「购买经验」至 level+1(prep_actions);验真=等级 +1 ∨ 金扣减 | simulate(LevelUp) + 引擎等级/XP 推进 | 升级标记挂点(prep_actions 既有,经属性归一接账本);XP 簿记=执行侧保留 | 单击价/击数推导=kernel 已就位(xp_click_cost/clicks_to_next_level,FALLBACK 遗留随批次二) |
 | SellBench 卖备战席 | 拖拽至卖出区;验真=备战席少该牌 + 退款金入账(期望态对账) | simulate(SellBench) + 引擎退款(cw_state.sell_refund 口径) | 拖拽期望态对账(compute_drag_expect,执行侧保留) | 退款公式=kernel 已就位;sim 卖牌退款调用点对账=§7 行 4 |
@@ -1251,7 +1251,7 @@ sim 侧倒计时实现(归入 §7-T4 收敛纪律)。
 
 | 锚(登记名) | 触发时点型 | 权威数据(锚定什么) | 为什么此处锚最准 | 载体(复用/扩展) | 现状归属 | sim 适用 |
 |---|---|---|---|---|---|---|
-| buy_landed 买牌落地 | landed | 卡名/费用/星级(决策帧识别产物)+扣金(金账对拍)+落槽(pixel-diff,new_bench_slots)+合成判定(detect_merge_upgrade 返回 bool)+买因(LAUNCH_CAUSES 闭集值,经发射侧 reason 归一映射,同 §12.5-4 载体申报) | 落地回执时点是「买哪张/花多少/是否触发合成」三事实同点唯一可得处;事后 bench 重读只能推断到达且合成后身份已变(直出频率批 j=Σ3^(star−1) 持有量重建即事后推断成本实证) | BoardState 合成升星逻辑态直写(write_logic)+ BUY bump(复用)+ ExogenousEvent kind='buy_landed'(扩展) | 新增(**前置依赖申报:触发口 on_outcome(BuyCard) 随 §6.4 执行器收编批成立——现役登记件还在 cw_op_buy_cards 执行落地门,R-J 挂账在案,禁绕收编私接触发**) | 实机先行 |
+| buy_landed 买牌落地 | landed | 卡名/费用/星级(决策帧识别产物)+扣金(金账对拍)+落槽(pixel-diff,new_bench_slots)+合成判定(detect_merge_upgrade 返回 bool)+买因(LAUNCH_CAUSES 闭集值,经发射侧 reason 归一映射,同 §12.5-4 载体申报) | 落地回执时点是「买哪张/花多少/是否触发合成」三事实同点唯一可得处;事后 bench 重读只能推断到达且合成后身份已变(直出频率批 j=Σ3^(star−1) 持有量重建即事后推断成本实证) | BoardState 合成升星逻辑态直写(write_logic)+ BUY bump(复用)+ ExogenousEvent kind='buy_landed'(扩展) | 新增(**前置依赖申报:触发口 on_outcome(BuyCard) 随 §6.4 执行器收编批成立——现役登记件还在 cw_screen_buy_cards 执行落地门,R-J 挂账在案,禁绕收编私接触发**) | 实机先行 |
 | sell_landed 卖牌落地 | landed | 卖出对象(slot/char/star)+退款金(sell_refund 口径 + 售价修饰)+渠道(**闭集值域 SELL_CHANNELS + 发射侧 reason→channel 归一映射单一源**——发射侧 reason 为自由字符串('line_switch_collapse'/'m4_fuel_sell' 等)非闭集本身,归一映射的宿主与封闭性守卫随 H2 钉死,禁散点手搓映射) | 退款在执行点与其它金变动分离(decisions 行 actions = 执行前快照,现役 sell_income 行已立「实收回金只有执行点可知」口径);渠道身份只在发射侧可知,事后不可重建 | ExogenousEvent kind='sell_income'(复用,channel 字段补登)+ 装配 A 闭集消费(复用) | 收编 + 扩展 | 实机先行(渠道是决策层发射语义,sim 引擎卖牌无渠道概念——sim 侧锚行落盘面候批,渠道字段在 sim 无来源,如实申报) |
 | refresh_landed 刷新落地 | landed | 付费判定(免费闸)+刷价+前帧牌名集哈希(试验边界)+record_refresh_execution 计数组(total/paid/免费余额) | 「物理试验 = 每次付费刷新一帧牌面」的边界只有发射/落地时点可知(直出频率批靠组键近似重建:同名双卡按 1 计 + 跨段恢复局首帧多计 ≤1 试验;其报告的「分母高估 ≤3%」出自边界存疑带 2 局,非组键近似,归因如实分列);免费余额判定是执行侧事实,事后无从判 | spend_ledger 刷新字段(复用)+ shop_snapshots refresh 行(复用)+ record_refresh_execution/REFRESH bump(复用) | 收编(三写点即锚面;试验边界键显影挂 H2;**前置依赖申报:触发口随 §6.4 执行器收编批成立,R-J 挂账在案**) | 实机先行(恒 paid 不对称沿 §6.3 申报;锚行落盘面候批) |
 | levelup_landed 升级落地 | landed | 击数/扣金/XP 增量/等级意图值 | 击数是框架连点链的事实,屏上只有结果等级;血购已立「行数 = 击数」粒度先例(ExogenousEvent kind='hp_pay'),金本位升级同粒度的扩字段需求 | ExogenousEvent kind='level_up'(**复用现役行**,扩击数/扣金字段申报随 H2)+ 效果账本升级标记挂点(复用,同点在产:现役升级成功路径写外生事件行同点调 on_level_up,prep_actions 升级链 W612 挂点在案) | 收编 + 扩展(**禁双行:另立 kind='levelup_landed' 与现役 'level_up' 行构成同事件两行,违指标 3,申报否决**) | 实机先行(锚行落盘面候批;现役行本身即实机写点) |

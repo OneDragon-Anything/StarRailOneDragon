@@ -49,8 +49,8 @@
 
 ## 8. 判例注记(发射期)
 
-**能力面在役、策略面收缩至备战期**(判例 = [../screens-actions-capability.md](../screens-actions-capability.md) §5,2026-09-14):商店开画面的 LevelUpOp 机制上可用,但默认策略**不在商店期买经验**——升等级收缩至备战期决策(strategy-docs/22 号篇)。备战域逐帧单击形态 = 升级唯一生产发射面。
+**能力面在役、策略面收缩至备战期**(判例 = [screens/README](../../screens/README.md) §5,2026-09-14):商店开画面的 LevelUpOp 机制上可用,但默认策略**不在商店期买经验**——升等级收缩至备战期决策(strategy-docs/22 号篇)。备战域逐帧单击形态 = 升级唯一生产发射面。
 
 ## 9. 依据
 
-`research/xp-rules.md` §2(购买经验单价/门槛表/折扣只降价不减经验);`kernel/cw_economy.py::xp_click_cost` docstring(两支语义与出域声明);[../game_state/fields.md](../../game_state/fields.md) §3.2.10/§3.2.11(level/xp/level_up_cost)/§4.2 LevelUp 行;design.md unified-action-factory §2.6 LevelUp 粒度定案④。
+`research/xp-rules.md` §2(购买经验单价/门槛表/折扣只降价不减经验);`kernel/cw_economy.py::xp_click_cost` docstring(两支语义与出域声明);[fields.md](../fields.md) §3.2.10/§3.2.11(level/xp/level_up_cost)/§4.2 LevelUp 行;design.md unified-action-factory §2.6 LevelUp 粒度定案④。

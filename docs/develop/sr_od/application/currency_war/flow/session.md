@@ -76,7 +76,7 @@
 | `v3_handoff` / `v3_handoff_plane` | P2 承接快照(策略计算) | decide_prep | 位面 | MandateState |
 | `v3_posture_unfulfilled` | 仲裁帧级重算(策略) | 对账门遥测 | 帧 | MandateState |
 | `cw4_counters`(动态属性,非 dataclass 字段) | 策略行为观测分键(mandate_v1/encounter/shop/entry 多点写) | decisions 行、cw4_counters.jsonl 局终快照、sim 轮差分账本、A/B 披露 | 局 | MandateState;**遥测消费线必须随迁保持可读**(§5.4) |
-| `v2_state` / `locked_line` / `bridge_id` | 决策层相位元组/锁线/桥线(初版误判退役;对抗审查 A2 改判——**活读端** = cw_op_buy_cards.py:658-662 直接属性访问入 decisions 行,**活写端** = sim/engine_p1.py:672/701,见 §5.6) | decisions 行遥测 | 局 | MandateState.相位面(sim 初始相位改经状态构造,§5.6) |
+| `v2_state` / `locked_line` / `bridge_id` | 决策层相位元组/锁线/桥线(初版误判退役;对抗审查 A2 改判——**活读端** = cw_screen_buy_cards.py:658-662 直接属性访问入 decisions 行,**活写端** = sim/engine_p1.py:672/701,见 §5.6) | decisions 行遥测 | 局 | MandateState.相位面(sim 初始相位改经状态构造,§5.6) |
 | `memory`(dict) | 策略 scratch | 策略临时变量 | 局 | **随切换直接消解**(§6.3,用户裁定) |
 
 ### 2.4 执行层状态——迁出至执行侧载体(16 项;as-built 实际落点 22 具名 = 16 清册 + 账外第二波 6:`last_prep_action_sig`/`_supply_detour_done`/`cw_prep_pending_accts`/`cw_takeover_collect_done`/`cw_takeover_tries`/`cw4_swap_arm_on`,见 「落位裁量」节)
@@ -113,9 +113,9 @@
 | 组 | 属性(逐个) | 产生者/消费面备注 |
 |---|---|---|
 | 相位与镜像(每轮重算) | `v3_phase` / `v3_form_ok` / `v3_b_t` / `v3_dp_posture` / `v3_mirror_key` | write_shop_mirrors 每轮写;`v3_form_ok` 有 sim 直写点(engine_p1.py:1098,§5.6) |
-| 成型停手 | `v3_formed_stop` | ;**行为面消费** = cw_screen_prep.py:2173 决策豁免联动 + cw_op_buy_cards.py:639 入 decisions 行(非纯遥测) |
+| 成型停手 | `v3_formed_stop` | ;**行为面消费** = cw_screen_prep.py:2173 决策豁免联动 + cw_screen_buy_cards.py:639 入 decisions 行(非纯遥测) |
 | 补偿/稳态簿记 | `v2_remedy_used` / `v2_steady_lv_used` / `v3_steady_lv_abandoned` / `v3_remedy_abandoned` |  跨局清零计数 |
-| 轮笔数披露 | `v2_round_refreshes` / `v2_round_p1_early` / `v2_round_p2_core` / `v2_round_press_exempt` / `v2_round_press_copy` | decisions/遥测判读面 |
+| 轮笔数披露 | `v2_round_refreshes` / `v2_round_p1_early` / `v2_round_p2_core` / `v2_round_press_exempt` / `v2_round_press_copy` | 遥测判读面(journal/局档案) |
 | 泄息指令与承接门 | `v3_release` / `v3_release_round` / `v3_release_spent` / `v3_handoff_gap` / `v3_handoff_hp_proj` | W332b/w227;`v3_release_spent`/`v3_reserve_cap` 是遥测透传源(telemetry/schema.py:424/433、recorder.py:241/250) |
 | 消费侧惰性建 | `v3_registry`(A/B 注册表注入通道,cw_economy.py:662 消费)/ `v3_dir_refresh_used`(刷新消耗计数,cw_registry.py:836)/ `v3_alloc_frame`(DP 姿态轮帧缓存,engine_p1.py:961/1267)/ `v3_reserve_cap`(储备线披露,engine_p1.py:1300) | 惰性建模式迁 MandateState 具名字段(缺省值即现惰性初值) |
 
@@ -205,7 +205,7 @@ StrategySession(104 项混装:              StrategySession(30 项:观察 28 + �
 
 ### 5.4 序列化与遥测(decisions 行 / cw4_counters.jsonl / shop_snapshots / match_archive)
 
-- decisions 行的 `v3_intention`/`sess_commit_scores` 字段(cw_op_buy_cards.py:623-666、cw_serialize.serialize_intention):**schema 零改**,数据源从 session 字段改为经访问函数抽自 MandateState——遥测跨版本可比性保住。
+- decisions 行的 `v3_intention`/`sess_commit_scores` 字段(cw_screen_buy_cards.py:623-666、cw_serialize.serialize_intention):**schema 零改**,数据源从 session 字段改为经访问函数抽自 MandateState——遥测跨版本可比性保住。
 - `cw4_counters` 局终快照链(cw_loop:384/879/1356 → match_archive.record_cw4_counters_* → cw4_counters.jsonl → ab_core_swap 披露抽取):读点全改经访问函数;**sim 轮差分账本(engine_p1.py:1038-2358)同步换读点**。这是切换批最容易漏的断流点(动态属性 grep 不易枚举全),实施批须以「session 上除观察/设施外的 getattr 兜底全部清零」为完成判据。
 - **shop_snapshots 流**(对抗审查 B2-1 补):`telemetry/recorder.py:820` 读 `session.v3_intention`(best-effort suppress,漏改 = 静默缺失)——换访问函数,并**纳入 6.2-2 对照面**(shop_snapshots 的 rho_obs 与 decisions 同 seed 对照)。
 - **动态属性透传源**(对抗审查 A1 联动):`v3_reserve_cap`/`v3_release_spent`(telemetry/schema.py:424/433、recorder.py:241/250 `_w611_int` 读 session 动态属性)——换读自 MandateState,schema 字段零改。
@@ -245,7 +245,7 @@ sim 决策逻辑与判据本体零改动(改的是状态通道,不改决策语�
 
 1. 快速集测试全量通过(`uv run pytest sr-od-test/ -m "not slow"`)+ 直接受影响面慢桶一次全量。
 2. 决策帧截图留证对照:同 seed sim 跑切换前后各 N 局,decisions 行/`cw4_counters`/**shop_snapshots**/`v3_intention` 序列化输出逐帧对照并**截图留证**(逐字节一致;不一致 = 读点漏改或语义漂移,逐处归因;留证物归对局档案,供对抗审查与用户二次确认调阅)。
-3. grep 完成判据(对抗审查 C2 采纳,范围扩到全集):对**清册全集 104 项逐一**做 session 形态访问归零 grep——含 §2.3/§2.6 迁出字段(`session.v3_*`/`session.v2_*`/`session.commit_*`/`session.cw4_counters`/`session.memory` 及 `getattr(session|sess, '<键>')` 动态属性形态)、§2.4 执行层字段(`deploy_fail_counts` 等)、§2.5 退役字段名(直接属性访问形态,防 cw_op_buy_cards.py:658-660 类 AttributeError)——任何一项在 session 形态上有残留访问即不收口。
+3. grep 完成判据(对抗审查 C2 采纳,范围扩到全集):对**清册全集 104 项逐一**做 session 形态访问归零 grep——含 §2.3/§2.6 迁出字段(`session.v3_*`/`session.v2_*`/`session.commit_*`/`session.cw4_counters`/`session.memory` 及 `getattr(session|sess, '<键>')` 动态属性形态)、§2.4 执行层字段(`deploy_fail_counts` 等)、§2.5 退役字段名(直接属性访问形态,防 cw_screen_buy_cards.py:658-660 类 AttributeError)——任何一项在 session 形态上有残留访问即不收口。
 4. 实机局 ≥1 局跑通 + 恢复局形态一次手工验证(重启 server 接管残局,核对 §3.2 冷启动语义与恢复局遥测标记),**并加两项行为面判读**(对抗审查 B3 采纳):①恢复轮血预算披露(掉血三臂哑火面——拒付计数/停手动作判读,确认「少保血」风险窗口实际影响);②恢复轮同轮买卖序列判读(防永动机守卫缺位窗口内无卖后买回缩幅循环)。
 
 ### 6.3 `memory` 的消解(不设过渡)
@@ -263,6 +263,6 @@ sim 决策逻辑与判据本体零改动(改的是状态通道,不改决策语�
 1. **恢复局语义变化**(§3.2):现状恢复局丢 session 与切换后丢 MandateState 行为面等价(都是保守冷启动),但意向重锁路径从「session 空 v3_intention 惰性建」变为「工厂显式冷建」——语义应逐字节一致,风险在读点漏改导致恢复局行为分叉。**恢复轮两个已评级「中」的行为面**(掉血三臂哑火/同轮已卖守卫缺位)有专项判读义务(6.2-4),非仅「跑通」。
 2. **遥测断流**:`cw4_counters`/`v3_intention`/`v3_reserve_cap`/`v3_release_spent` 等序列化读点散布 sim/telemetry/operations 三域(§5.4),漏一处 = 该域数据静默缺失(非炸错)。缓解 = grep 完成判据(6.2-3)+ 决策帧与 shop_snapshots 逐字节对照(6.2-2)。
 3. **执行层迁出改变了防重入/失败计数的宿主生命周期**:落点若选错(如挂 op 实例而 op 每访问重建),计数提前清零,防线失效——§2.4 每字段标注了原生命周期,实施批逐字段核对落点生命周期 ≥ 原生命周期(`megastar_candidate_clicked` 已按 B1 定案局容器,不留裁量空间)。
-4. **退役字段的静默/炸错双形态**(对抗审查 A2 升级):直接属性访问的残余读点(cw_op_buy_cards.py:658-660 类)删除即首商店帧 AttributeError;`cw_replay.py:152` 对 `dual_track_phase` 的 setattr 删字段后**不炸但静默丢恢复语义**——两类都在 §2.5 前置动作 + 6.2-3 全字段 grep 判据辖内,无「已核」标签兜底。
+4. **退役字段的静默/炸错双形态**(对抗审查 A2 升级):直接属性访问的残余读点(cw_screen_buy_cards.py:658-660 类)删除即首商店帧 AttributeError;`cw_replay.py:152` 对 `dual_track_phase` 的 setattr 删字段后**不炸但静默丢恢复语义**——两类都在 §2.5 前置动作 + 6.2-3 全字段 grep 判据辖内,无「已核」标签兜底。
 5. **sim 改造面失真**(对抗审查 A3 撤回「零改动」后显式化):三构造点/三写点/五类只读点任一漏改 = sim 起跑即崩(构造)或状态通道口径分叉(读写),后者会被 6.2-2 同 seed 对照抓;构造类崩溃首局即暴露,风险在排查成本非隐蔽性。
 6. **kernel 判据层换访问函数引入 import 方向问题**:访问函数落点须不造 kernel→impl 断环边(候选 = kernel 内薄读口 `strategy_state_of(session)` + TYPE_CHECKING 收窄,实施批裁);kernel 对执行层字段的读写签名重构(§5.5 cw_reconcile/cw_expected_state)同此判。

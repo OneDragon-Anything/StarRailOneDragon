@@ -8,7 +8,7 @@
 
 **文档-实现偏差(词表白名单载体)**:action-logic-state.md §3 头原文「备战域动作词表 = kernel/cw_prep_actions.py::PREP_ACTION_TYPES 白名单」;实况 = 统一词表归一(unified-action-factory 批2b)后 `PREP_ACTION_TYPES` 退役,单一源 = `kernel/cw_vocab.py::CW_ACTION_TYPES`(漏登记 = 执行面拒「未知动作类型」,动作从未真正执行)。本篇按实现写入。
 
-**文档-实现偏差(双族坐标系)**:action-logic-state.md §2.4 头与 [../screens-actions-capability.md](../screens-actions-capability.md) §2 原文「族 A(cw_vocab)= 槽位下标,族 B(cw_prep_actions)= 物理槽位 1-9,换算 = 族 B = 族 A + 1」;实况 = 族 B 动作类已随统一词表退役,现役坐标系二分:**席位域动作**(SellBench/SellDeployed/DeployMove)携**容器槽位表下标 0 基**(bench 0-8 / deployed 0-9,读口 `bench_slots_of`/`deployed_slots_of` 同基直取零换算);**画面物理槽位 1 基**仅存于坐标参数化机械动作(WearEquip/工具七类/OpenBox/OpenTome/OpenBookcard)的 `row`/`slot` 字段。执行坐标边换算单点 = `kernel/cw_exec_state.py::deployed_row_slot`(下标→物理排槽)/ `deployed_idx_of`(物理→下标)。本篇按实现写入。
+**文档-实现偏差(双族坐标系)**:action-logic-state.md §2.4 头与 [screens/README](../../screens/README.md) §2 原文「族 A(cw_vocab)= 槽位下标,族 B(cw_prep_actions)= 物理槽位 1-9,换算 = 族 B = 族 A + 1」;实况 = 族 B 动作类已随统一词表退役,现役坐标系二分:**席位域动作**(SellBench/SellDeployed/DeployMove)携**容器槽位表下标 0 基**(bench 0-8 / deployed 0-9,读口 `bench_slots_of`/`deployed_slots_of` 同基直取零换算);**画面物理槽位 1 基**仅存于坐标参数化机械动作(WearEquip/工具七类/OpenBox/OpenTome/OpenBookcard)的 `row`/`slot` 字段。执行坐标边换算单点 = `kernel/cw_exec_state.py::deployed_row_slot`(下标→物理排槽)/ `deployed_idx_of`(物理→下标)。本篇按实现写入。
 
 **发射形态(R2 原子通路)**:决策核逐帧发原子动作(部署 = DeployMove 序/穿戴 = WearEquip 序/卖出 = SellBench/SellDeployed),备战环逐帧取决策输出首项执行;组合壳(RunDeploy/RunEquip/RunTools)已退役。发射位计划构造单一源 = `kernel/cw_deploy_logic.py::select_deployments`+`assign_deploy_slots`(部署)、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`(穿戴)。
 
@@ -34,7 +34,7 @@
 
 逐动作全文见 [sell-bench.md](sell-bench.md) / [sell-deployed.md](sell-deployed.md);族共通面:执行器拖槽中心 → 出售区(`sell_point` 单一源,area 缺失 RuntimeError 禁兜底坐标);卖出动画 1s 等待(`screen_flow_timing.md` #21 口径);tracked 摘除 = 按下标置 None(信息位/下标脱节不再按 slot 重构,实证治本);执行点金差 = dispatch 前 tracked 快照的 `sell_refund`(身份不可辨 = None 诚实缺失)→ `_advance_gold` 直推容器金账;`apply_op_effect` 分支:SellBench = 金腿,SellDeployed = 金腿 + owned 恢复腿(不对称申报,见 sell-deployed.md §2)。备战域容器写口域集 = gold/bench(SellBench)与 front_row/back_row/board/gold(SellDeployed);equips 域留观察覆盖(域集封闭申报)。
 
-**判例注记**:备战期(判例 = screens-actions-capability §5:卖备战/卖上阵收缩至备战期;商店域 op 能力面在役不删)。
+**判例注记**:备战期(判例 = screens/README §5:卖备战/卖上阵收缩至备战期;商店域 op 能力面在役不删)。
 
 ## 4. WearEquip(穿装备)
 
@@ -64,4 +64,4 @@ LevelUp(备战单击形态)→ [level-up.md](level-up.md);OpenBox/OpenTome/OpenB
 
 ## 7. 依据
 
-[../action-logic-state.md](../action-logic-state.md) §3/§3A/§1.4(执行态跟踪账落点);`prep_actions.py` 模块头(执行器坐标系与「发出即职责完成」契约);`kernel/cw_game_state.py::apply_prep_action_logic` docstring 与 `PREP_PROJECTION_DOMAINS` 登记面;`kernel/cw_exec_state.py` ADR-0316/ADR-0392 槽位语义注;[../game_state/fields.md](../../game_state/fields.md) §4.2 RunDeploy/RunEquip 行(基础行为面);`research/merge_mechanics.md` §3(同名唯一恒成立);`research/equipment_mechanics.md` §1(穿着即合成/装备上限 3 件)。
+[../action-logic-state.md](../action-logic-state.md) §3/§3A/§1.4(执行态跟踪账落点);`prep_actions.py` 模块头(执行器坐标系与「发出即职责完成」契约);`kernel/cw_game_state.py::apply_prep_action_logic` docstring 与 `PREP_PROJECTION_DOMAINS` 登记面;`kernel/cw_exec_state.py` ADR-0316/ADR-0392 槽位语义注;[fields.md](../fields.md) §4.2 RunDeploy/RunEquip 行(基础行为面);`research/merge_mechanics.md` §3(同名唯一恒成立);`research/equipment_mechanics.md` §1(穿着即合成/装备上限 3 件)。

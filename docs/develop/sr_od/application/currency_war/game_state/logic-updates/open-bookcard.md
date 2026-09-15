@@ -44,4 +44,4 @@ OpenBookcard 不在 `cw_vocab.py::Action` 联合内,`simulate` 无该分支(零�
 
 ## 9. 依据
 
-[../action-logic-state.md](../action-logic-state.md) §3.7(OpenBookcard 节);[../screens-actions-capability.md](../screens-actions-capability.md) §3.6(开书册卡行);`operations/cw_screen/cw_screen_prep.py::_clear_prep_cards` docstring(两段清场与交回契约);`prep_actions.py::PrepActionExecutor._open_bookcard` docstring(识别语义与 `_OVERLAY_ANIM_WAIT_S` 统一);[../game_state/fields.md](../../game_state/fields.md) §4.2 事件选择行(选择落地不记预期值)。
+[../action-logic-state.md](../action-logic-state.md) §3.7(OpenBookcard 节);[screens/README](../../screens/README.md) §3.6(开书册卡行);`operations/cw_screen/cw_screen_prep.py::_clear_prep_cards` docstring(两段清场与交回契约);`prep_actions.py::PrepActionExecutor._open_bookcard` docstring(识别语义与 `_OVERLAY_ANIM_WAIT_S` 统一);[fields.md](../fields.md) §4.2 事件选择行(选择落地不记预期值)。

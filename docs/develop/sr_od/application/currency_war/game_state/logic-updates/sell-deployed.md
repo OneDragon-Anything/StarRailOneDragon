@@ -50,8 +50,8 @@
 
 ## 8. 判例注记(发射期)
 
-生产策略面归**备战期**(部署期换血/腾位卖,策略判据 = strategy-docs/24 号篇):商店域七动作族能力面保留(SellDeployed 腿在 `apply_shop_action_logic` 在役),但商店 op 表(`cw_action_registry.py`)未收录本动作——商店期默认面 = 买/刷/关(判例 = [../screens-actions-capability.md](../screens-actions-capability.md) §5)。
+生产策略面归**备战期**(部署期换血/腾位卖,策略判据 = strategy-docs/24 号篇):商店域七动作族能力面保留(SellDeployed 腿在 `apply_shop_action_logic` 在役),但商店 op 表(`cw_action_registry.py`)未收录本动作——商店期默认面 = 买/刷/关(判例 = [screens/README](../../screens/README.md) §5)。
 
 ## 9. 依据
 
-`research/economy.md` §3;`research/equipment_mechanics.md` §1 与「装备转移机制」节(卖角色 = 装备回区主力通道);`kernel/cw_game_state.py::apply_shop_action_logic` v2 族 docstring;[../game_state/fields.md](../../game_state/fields.md) §3.2.3/§3.2.4(前后台角色)/§4.2 SellBench 行(「卖场上角色 → 前台/后台 −该牌」)。
+`research/economy.md` §3;`research/equipment_mechanics.md` §1 与「装备转移机制」节(卖角色 = 装备回区主力通道);`kernel/cw_game_state.py::apply_shop_action_logic` v2 族 docstring;[fields.md](../fields.md) §3.2.3/§3.2.4(前后台角色)/§4.2 SellBench 行(「卖场上角色 → 前台/后台 −该牌」)。

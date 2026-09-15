@@ -4,7 +4,7 @@
 > 定位：货币战争主链**每个动作 op 的逻辑态计算规则全集**（地基文档）。动作 op 机械发出后，不经任何画面观察，按游戏规则从动作前状态推算出预期状态并直写容器——这份推算规则的确定性全集就是本篇。真值永远以下一帧画面观察为准。
 > 用户裁定：不许以「逻辑态未建模」为由把动作交回外循环——在役动作全集逐个有逻辑态；除 §5 两类转移动作显式声明「逻辑态=空」、§6 声明的事件选择边界外，本篇不存在「无逻辑态」的动作。
 > 机制事实依据 = `docs/game/currency_war/research/`（merge_mechanics / xp-rules / economy / equipment_mechanics / screen_flow_timing）+ `docs/game/currency_war/data/gameplay.md`（官方原文）+ `../proofs/`（数学证明）。kernel 现位依据 = 符号锚 `文件::符号名`（路径根 = `src/sr_od/application/currency_war/`，行号不写，随代码漂移）。
-> 读者 = 无会话历史的工程师/智能体。职责分界：「一次访问内怎么编排动作」= [action_exec.md](action_exec.md) / [prep_visit.md](prep_visit.md) / [shop_visit.md](shop_visit.md)；「每个字段怎么记」= [../game_state/fields.md](../game_state/fields.md)。与 fields.md 的分工：fields.md 按**字段**记写入面，本篇按**动作**记计算规则，同源互指。
+> 读者 = 无会话历史的工程师/智能体。职责分界：「一次访问内怎么编排动作」= [action_exec.md](action_exec.md) / [prep.md](../screens/prep.md) / [shop.md](../screens/shop.md)；「每个字段怎么记」= [fields.md](fields.md)。与 fields.md 的分工：fields.md 按**字段**记写入面，本篇按**动作**记计算规则，同源互指。
 
 ## 1. 总则
 
@@ -12,7 +12,7 @@
 
 **逻辑态**（本篇主题）= 一个动作 op 机械发出后，**不经观察**、只按已核实的游戏规则、从动作前容器状态**推算并直写**的预期状态。
 
-**两态制** = 容器——局内状态唯一快照 `kernel/cw_game_state.py::GameState`（下称「容器」）——的每个字段只保留两种值来源：**观察态**（画面读数，`observe()` 写入）与**逻辑态**（动作后推算，`write_logic()` 写入）；同帧冲突时**观察赢**（观察值覆盖逻辑推算值）。依据：`../game_state/fields.md` §2.3/§2.5；架构裁定锚 = ADR-0651。
+**两态制** = 容器——局内状态唯一快照 `kernel/cw_game_state.py::GameState`（下称「容器」）——的每个字段只保留两种值来源：**观察态**（画面读数，`observe()` 写入）与**逻辑态**（动作后推算，`write_logic()` 写入）；同帧冲突时**观察赢**（观察值覆盖逻辑推算值）。依据：`fields.md` §2.3/§2.5；架构裁定锚 = ADR-0651。
 
 一句话读法：逻辑态回答「这一下点完，容器**应该**变成什么样」；下一帧观察回答「实际变成了什么样」；两者不等 = 逻辑态模型缺陷，走缺陷台账（不静默、不改道）。
 
@@ -51,7 +51,7 @@
 
 ### 1.5 枚举范围与动作计数
 
-本篇枚举 = 商店域 6 个动作词条（§2）+ 备战域原子动作（§3：DeployMove/SellDeployed/LevelUp/OpenBox/OpenTome/ClickSpheres/OpenBookcard + §3A WearEquip 与工具原子类，规则见 §4）+ 转场类 2 个（§5）+ 词表完备性注 2 条（§2.7）。事件线选择（pick 族，含武装箱四选一画面 op）按 §6 声明为非逻辑态通道。动作词表本体与执行载体表 = [action_exec.md](action_exec.md) §1、[screens-actions-capability.md](screens-actions-capability.md) §2（能力面/策略面之分不在本篇重复）。
+本篇枚举 = 商店域 6 个动作词条（§2）+ 备战域原子动作（§3：DeployMove/SellDeployed/LevelUp/OpenBox/OpenTome/ClickSpheres/OpenBookcard + §3A WearEquip 与工具原子类，规则见 §4）+ 转场类 2 个（§5）+ 词表完备性注 2 条（§2.7）。事件线选择（pick 族，含武装箱四选一画面 op）按 §6 声明为非逻辑态通道。动作词表本体与执行载体表 = [action_exec.md](action_exec.md) §1、[screens/README](../screens/README.md) §4（能力面/策略面之分不在本篇重复）。
 
 各动作条目统一形状：**词表/op → 确定面规则（逐腿）→ 随机面 → 拒绝边界（游戏拒/提案陈旧 = 零容器写）→ 依据**。
 
@@ -79,7 +79,7 @@ op = `operations/cw_op/cw_buy_card_action.py::BuyCardOp`（非终结）。词表
 
 **知识缺口（fallback 申报）**：非满栏时一次点击恒买 1 张是**框架推论**，未实测（fields.md §4.2 BuyCard 行同款标注，详 §7 G1）。缺口闭合前按 k=1 记账；若买后观察发现多张，对账纠偏 + 缺陷台账暴露。
 
-**依据**：`research/merge_mechanics.md` §1/§2/§2.5/§2.6/§3；`kernel/cw_game_state.py::apply_shop_action_logic` BuyCard 腿 + `apply_shop_merge_leg`；`kernel/cw_merge_simulate.py` 合成规则族；`kernel/cw_vocab.py::simulate`/`mutate_bench_deployed` BuyCard 分支；`operations/cw_op/cw_buy_card_action.py::BuyCardOp`；`../game_state/fields.md` §4.2 BuyCard。
+**依据**：`research/merge_mechanics.md` §1/§2/§2.5/§2.6/§3；`kernel/cw_game_state.py::apply_shop_action_logic` BuyCard 腿 + `apply_shop_merge_leg`；`kernel/cw_merge_simulate.py` 合成规则族；`kernel/cw_vocab.py::simulate`/`mutate_bench_deployed` BuyCard 分支；`operations/cw_op/cw_buy_card_action.py::BuyCardOp`；`fields.md` §4.2 BuyCard。
 
 ### 2.2 RefreshShop（刷新商店）
 
@@ -93,7 +93,7 @@ op = `operations/cw_op/cw_refresh_shop_action.py::RefreshShopOp`（**段终结**
 
 **随机面**：刷新后的牌面 = 整店 5 槽全换（非逐槽补空，实机实锤 `research/economy.md` §2.1）→ **店载荷失效，新牌面归下一段入口观察**；容器 shop payload 本动作不写（模拟器同口径声明：`simulate` RefreshShop 分支「shop 内容变化未知（随机），不模拟具体牌；仅扣金」）。UI 陷阱在册：面板右下「刷新金币数」区域实际印的是利息徽标不是刷价（三流对拍定谳，`REFRESH_COST_BASE` 注）。
 
-**依据**：`research/economy.md` §2/§2.1；`kernel/cw_economy.py::REFRESH_COST_BASE`/`refresh_cost_effective`；`../game_state/fields.md` §4.2 RefreshShop；[shop_visit.md](shop_visit.md)（visit 级刷新硬墙）。
+**依据**：`research/economy.md` §2/§2.1；`kernel/cw_economy.py::REFRESH_COST_BASE`/`refresh_cost_effective`；`fields.md` §4.2 RefreshShop；[shop.md](../screens/shop.md) §5（visit 级刷新硬墙）。
 
 ### 2.3 CloseShop（关商店）
 
@@ -103,11 +103,11 @@ op = `operations/cw_op/cw_close_shop_action.py::CloseShopOp`（动作 op 内 no-
 
 **随机面**：无。
 
-**依据**：`kernel/cw_game_state.py::apply_shop_action_logic` CloseShop 腿；`research/economy.md` §2.1；`research/screen_flow_timing.md` #15（收起 ~1s 过场）；[screens-actions-capability.md](screens-actions-capability.md) §4（终结语义总表）。
+**依据**：`kernel/cw_game_state.py::apply_shop_action_logic` CloseShop 腿；`research/economy.md` §2.1；`research/screen_flow_timing.md` #15（收起 ~1s 过场）；[screens/README](../screens/README.md) §6（终结语义总表）。
 
 ### 2.4 SellBench（卖备战席角色）
 
-商店域 op = `operations/cw_op/cw_sell_bench_action.py::SellBenchOp`（能力面在役、策略面收缩至备战期，判例见 [screens-actions-capability.md](screens-actions-capability.md) §5）；备战域执行器 = `prep_actions.py::PrepActionExecutor._sell_bench`。双族坐标系：族 A（`cw_vocab`）= 槽位下标，族 B（`cw_prep_actions`）= 物理槽位 1-9，换算 = 族 B = 族 A + 1（screens-actions-capability §2 双族坐标系注）。
+商店域 op = `operations/cw_op/cw_sell_bench_action.py::SellBenchOp`（能力面在役、策略面收缩至备战期，判例见 [screens/README](../screens/README.md) §5）；备战域执行器 = `prep_actions.py::PrepActionExecutor._sell_bench`。双族坐标系：族 A（`cw_vocab`）= 槽位下标，族 B（`cw_prep_actions`）= 物理槽位 1-9，换算 = 族 B = 族 A + 1（screens/README §4 动作坐标系二分注）。
 
 **确定面**：
 
@@ -137,7 +137,7 @@ op = `operations/cw_op/cw_level_up_action.py::LevelUpOp`（单击「购买经验
 
 **随机面**：无。**修饰效果副作用**（商业间谍「升级时刷新商店并偷最贵 3 张」、晋升名额「随机一槽变高费」）= 未建模，后果归观察（§7 G7/G8）。
 
-**依据**：`research/xp-rules.md` §2；`kernel/cw_economy.py::xp_apply_clicks`/`xp_click_cost`/`XP_PER_BUY`/`XP_TO_NEXT_LEVEL`；`kernel/cw_game_state.py::apply_shop_action_logic` LevelUp 腿；`../game_state/fields.md` §4.2 LevelUp。
+**依据**：`research/xp-rules.md` §2；`kernel/cw_economy.py::xp_apply_clicks`/`xp_click_cost`/`XP_PER_BUY`/`XP_TO_NEXT_LEVEL`；`kernel/cw_game_state.py::apply_shop_action_logic` LevelUp 腿；`fields.md` §4.2 LevelUp。
 
 ### 2.6 CompTransaction（整档替换事务）
 
@@ -215,7 +215,7 @@ op = `operations/cw_op/cw_comp_transaction_action.py::CompTransactionOp`（**终
 
 **拒绝边界**：画面无箱（观察-执行竞态）= 未发出，交回重观察重派。
 
-**依据**：`kernel/cw_prep_actions.py::OpenBox`；`prep_actions.py::_open_box`；`../game_state/fields.md` §4.2 OpenBox。
+**依据**：`kernel/cw_prep_actions.py::OpenBox`；`prep_actions.py::_open_box`；`fields.md` §4.2 OpenBox。
 
 ### 3.5 OpenTome（开秘密典籍）
 
@@ -235,7 +235,7 @@ op = `operations/cw_op/cw_comp_transaction_action.py::CompTransactionOp`（**终
 
 **前置谓词（席满拦截）**：bench 空闲 >0 ∨ 球均不占席，才发射点球（fields.md §4.2 ClickSpheres；席满让路门 = 策略发射面席满探针）。席满点占席球 = 游戏侧点不动，球仍在 → 下一帧观察回补、下轮再派。
 
-**依据**：`kernel/cw_prep_actions.py::ClickSpheres`/`select_sphere_clicks`；`prep_actions.py::_click_spheres`；`../game_state/fields.md` §4.2 ClickSpheres；`research/screen_flow_timing.md` #16（飞行动画 ≤2s）。
+**依据**：`kernel/cw_prep_actions.py::ClickSpheres`/`select_sphere_clicks`；`prep_actions.py::_click_spheres`；`fields.md` §4.2 ClickSpheres；`research/screen_flow_timing.md` #16（飞行动画 ≤2s）。
 
 ### 3.7 OpenBookcard（开书册卡）
 
@@ -323,11 +323,11 @@ op = `operations/cw_op/cw_comp_transaction_action.py::CompTransactionOp`（**终
 - **OpenShop**：容器逻辑态 = 空（显式声明）。开店不触发刷新（基础刷新触发只有「节点切换」+「手动」，`research/economy.md` §2.1）；开店后牌面/gold = 入口观察重建（read_only 形态的读数目标 = gold 真值，观察面）。
 - **StartBattle**：容器逻辑态 = 空（显式声明）。进战斗后 hp/gold/streak 全部由结算屏真值覆盖接管（`apply_op_effect` StartBattle 显式不推进清单；败轮金按轮首补发口径，fields.md §4.2 轮首收入）。**免战牌子态**：出战按钮变「跳过」；跳过执行落地后效果账本次数递减（`consume_use`，归零移除——效果账本侧确定性维护，非 GameState 字段逻辑态）；「跳过后 hp/streak/收入不动」= 待实机实证的暂定表述（§7 G9）。发射重发/连败停机 = 流程防线（[action_exec.md](action_exec.md) §7），不属逻辑态。
 
-依据：`kernel/cw_prep_actions.py::OpenShop`/`StartBattle`；`kernel/cw_exec_state.py::apply_op_effect` 显式不推进清单；`../game_state/fields.md` §4.2 出战。
+依据：`kernel/cw_prep_actions.py::OpenShop`/`StartBattle`；`kernel/cw_exec_state.py::apply_op_effect` 显式不推进清单；`fields.md` §4.2 出战。
 
 ## 6. 事件线选择（pick 族）：非逻辑态通道边界
 
-事件单选族（投资环境/投资策略/补给/遭遇/盛会之星/伙伴/祈愿试炼/命运卜者/骇入策划/专家邀请函/星徽秘典/装备三选一/**武装箱四选一**）的**选择落地不进本篇动作逻辑态枚举**：选择结果由各画面 handler 单次记录到 chosen_* 字段（观察写端记录，`kernel/cw_game_state.py::GameState` chosen_* 域组），选择**后果**默认不记预期值——选择瞬间画面即切、无定型帧可核对，后果走观察覆盖 + 缺陷台账；有显式到账登记的照登记（在册先例 = 专家邀请函「现金为王」gold+4）。武装箱四选一（R7 批 2a 正位）= 独立建档画面「货币战争-备战-武装箱选择」的画面 op（`operations/cw_screen/cw_screen_box_pick.py`，选卡即终结的单选族例外；决策面 = 策略契约 `decide_box_card` / 局外 kernel `pick_equipment` 机器单一源）——它**不是备战动作词表成员**（原 `PickBoxCard` 动作形态已删）。依据：`../game_state/fields.md` §4.2 事件选择/投资选择节；决策规格 = `../strategy-docs/13_pick_family.md`。
+事件单选族（投资环境/投资策略/补给/遭遇/盛会之星/伙伴/祈愿试炼/命运卜者/骇入策划/专家邀请函/星徽秘典/装备三选一/**武装箱四选一**）的**选择落地不进本篇动作逻辑态枚举**：选择结果由各画面 handler 单次记录到 chosen_* 字段（观察写端记录，`kernel/cw_game_state.py::GameState` chosen_* 域组），选择**后果**默认不记预期值——选择瞬间画面即切、无定型帧可核对，后果走观察覆盖 + 缺陷台账；有显式到账登记的照登记（在册先例 = 专家邀请函「现金为王」gold+4）。武装箱四选一（R7 批 2a 正位）= 独立建档画面「货币战争-备战-武装箱选择」的画面 op（`operations/cw_screen/cw_screen_box_pick.py`，选卡即终结的单选族例外；决策面 = 策略契约 `decide_box_card` / 局外 kernel `pick_equipment` 机器单一源）——它**不是备战动作词表成员**（原 `PickBoxCard` 动作形态已删）。依据：`fields.md` §4.2 事件选择/投资选择节；决策规格 = `../strategy-docs/13_pick_family.md`。
 
 ## 7. 知识缺口与补档清单
 

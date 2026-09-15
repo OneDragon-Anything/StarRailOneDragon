@@ -32,7 +32,7 @@
 ## 5. 拒绝语义
 
 - 转移函数无 executed 回执(`refresh_paid=None`)= `applied=False, reason='refresh_paid_not_fed'` 跳写(实付金含免费刷注入等引擎差异不可自算;sim 引擎显式传 `refresh_paid` = 申报差异参数通道);
-- 生产侧无 applied=False 拒绝形态(刷新恒可发);visit 级刷新硬墙 = `MAX_REFRESH`(`cw_screen_buy_cards.py`,超墙终结集降级仅关店,`shop_visit.md` §3)是发射面预算闸,非转移函数拒绝。
+- 生产侧无 applied=False 拒绝形态(刷新恒可发);visit 级刷新硬墙 = `MAX_REFRESH`(`cw_screen_buy_cards.py`,超墙终结集降级仅关店,`../../screens/shop.md` §5)是发射面预算闸,非转移函数拒绝。
 
 ## 6. kernel 符号锚
 
@@ -44,8 +44,8 @@
 
 ## 8. 判例注记(发射期)
 
-商店期默认动作面 = 买牌/刷新/关店(判例 = [../screens-actions-capability.md](../screens-actions-capability.md) §5);刷新在列,发射判据 = strategy-docs/23_shop_screen.md(息线门 R1 等)。备战域无刷新动作(刷新属商店画面)。
+商店期默认动作面 = 买牌/刷新/关店(判例 = [screens/README](../../screens/README.md) §5);刷新在列,发射判据 = strategy-docs/23_shop_screen.md(息线门 R1 等)。备战域无刷新动作(刷新属商店画面)。
 
 ## 9. 依据
 
-`research/economy.md` §2(刷价 2 金恒定与 UI 陷阱)/§2.1(整店全换/节点切换自动刷新);[../game_state/fields.md](../../game_state/fields.md) §3.3.4–§3.3.9(刷价与免费刷新族)/§4.2 RefreshShop 行(计数组行为口径与免费帧闸);[shop_visit.md](../shop_visit.md)(visit 级刷新硬墙)。
+`research/economy.md` §2(刷价 2 金恒定与 UI 陷阱)/§2.1(整店全换/节点切换自动刷新);[fields.md](../fields.md) §3.3.4–§3.3.9(刷价与免费刷新族)/§4.2 RefreshShop 行(计数组行为口径与免费帧闸);[shop.md](../../screens/shop.md)(visit 级刷新硬墙)。

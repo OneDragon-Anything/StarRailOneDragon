@@ -31,7 +31,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_game_state.py::apply_shop_action_logic`(CloseShop 腿 = `leave_screen`)/ `note_action_receipt`;`kernel/cw_vocab.py::simulate`(CloseShop 不入 `Action` 联合——词表终结动作无 sim 分支,期望态随终结作废);`operations/cw_op/cw_op_close_shop.py::close_shop` / `CwOpCloseShop`;终结语义总表 = [../screens-actions-capability.md](../screens-actions-capability.md) §4。
+`kernel/cw_game_state.py::apply_shop_action_logic`(CloseShop 腿 = `leave_screen`)/ `note_action_receipt`;`kernel/cw_vocab.py::simulate`(CloseShop 不入 `Action` 联合——词表终结动作无 sim 分支,期望态随终结作废);`operations/cw_op/cw_op_close_shop.py::close_shop` / `CwOpCloseShop`;终结语义总表 = [screens/README](../../screens/README.md) §4。
 
 ## 7. 与 sim simulate 的等价关系(M1 锁)
 
@@ -39,8 +39,8 @@ CloseShop 不在 `cw_vocab.py::Action` 联合内,`simulate` 无该分支(动作 
 
 ## 8. 判例注记(发射期)
 
-商店期收工动作(判例 = [../screens-actions-capability.md](../screens-actions-capability.md) §5:商店期默认面 = 买/刷/**关**);席满腾位链(关店 → 备战卖 → 重开,牌面持久)以本动作为链首。备战/商店切换的唯一终结通道(备战域 OpenShop 的对侧)。
+商店期收工动作(判例 = [screens/README](../../screens/README.md) §5:商店期默认面 = 买/刷/**关**);席满腾位链(关店 → 备战卖 → 重开,牌面持久)以本动作为链首。备战/商店切换的唯一终结通道(备战域 OpenShop 的对侧)。
 
 ## 9. 依据
 
-`research/economy.md` §2.1(节点内关店重开不刷新);`research/screen_flow_timing.md` #15;`kernel/cw_game_state.py::apply_shop_action_logic` CloseShop 腿 docstring 与 `ShopActionExecuted.refresh_paid` 注(终结跳写申报);[../screens-actions-capability.md](../screens-actions-capability.md) §3.5/§4(访问终结语义)。
+`research/economy.md` §2.1(节点内关店重开不刷新);`research/screen_flow_timing.md` #15;`kernel/cw_game_state.py::apply_shop_action_logic` CloseShop 腿 docstring 与 `ShopActionExecuted.refresh_paid` 注(终结跳写申报);[screens/README](../../screens/README.md) §3.5/§4(访问终结语义)。

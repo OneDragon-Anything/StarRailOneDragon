@@ -60,4 +60,4 @@
 
 ## 9. 依据
 
-`kernel/cw_exec_state.py::apply_op_effect` docstring(显式不建模清单);`kernel/cw_affix_effects.py` 模块头(辖域/边界/防漂移锁)与 `EQUIP_WRITE_SIDES` 四形判据;`kernel/cw_effect_inventory.py` 写端桥段(窗口独占性分形判据);[../game_state/fields.md](../../game_state/fields.md) §4.2 RunTools 行/§5.1(效果激活账本)/§5.3(效果族归属四选一);`docs/develop/sr_od/application/currency_war/game_state/effect-domain.md` §6.3(效果写入归属判据正本);`research/equipment_mechanics.md` §5(工具 7 件全量)/「装备转移机制」节。
+`kernel/cw_exec_state.py::apply_op_effect` docstring(显式不建模清单);`kernel/cw_affix_effects.py` 模块头(辖域/边界/防漂移锁)与 `EQUIP_WRITE_SIDES` 四形判据;`kernel/cw_effect_inventory.py` 写端桥段(窗口独占性分形判据);[fields.md](../fields.md) §4.2 RunTools 行/§5.1(效果激活账本)/§5.3(效果族归属四选一);`docs/develop/sr_od/application/currency_war/game_state/effect-domain.md` §6.3(效果写入归属判据正本);`research/equipment_mechanics.md` §5(工具 7 件全量)/「装备转移机制」节。

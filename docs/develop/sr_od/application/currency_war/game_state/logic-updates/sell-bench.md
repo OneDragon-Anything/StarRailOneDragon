@@ -49,8 +49,8 @@
 
 ## 8. 判例注记(发射期)
 
-**能力面在役、策略面收缩至备战期**(判例 = [../screens-actions-capability.md](../screens-actions-capability.md) §5,2026-09-14):商店开画面的 SellBenchOp 机制上可用,但默认策略**不在商店期卖**——席满腾位/凑息/筹资/换线塌缩卖收缩至备战期决策;席满腾位链 = 关店 → 备战期卖 → 重开(节点内关店/重开不刷新牌面,牌面持久)。商店域 `mandate_v1/shop.py::_note_sell` 策略侧卖出自记 = 在册违例(README 违例表),待判例修正波移除。
+**能力面在役、策略面收缩至备战期**(判例 = [screens/README](../../screens/README.md) §5,2026-09-14):商店开画面的 SellBenchOp 机制上可用,但默认策略**不在商店期卖**——席满腾位/凑息/筹资/换线塌缩卖收缩至备战期决策;席满腾位链 = 关店 → 备战期卖 → 重开(节点内关店/重开不刷新牌面,牌面持久)。商店域 `mandate_v1/shop.py::_note_sell` 策略侧卖出自记 = 在册违例(README 违例表),待判例修正波移除。
 
 ## 9. 依据
 
-`research/economy.md` §3(卖出退金与手续费;3★ 定谳);`research/equipment_mechanics.md` §1(卖出 = 装备全量回区,缺口 G5 = 帧级证据未采按守恒建模);`kernel/cw_game_state.py::apply_prep_action_logic` docstring(溢出腿/session 吸收申报);[../game_state/fields.md](../../game_state/fields.md) §3.2.21(备战席溢出)/§4.2 SellBench 行。
+`research/economy.md` §3(卖出退金与手续费;3★ 定谳);`research/equipment_mechanics.md` §1(卖出 = 装备全量回区,缺口 G5 = 帧级证据未采按守恒建模);`kernel/cw_game_state.py::apply_prep_action_logic` docstring(溢出腿/session 吸收申报);[fields.md](../fields.md) §3.2.21(备战席溢出)/§4.2 SellBench 行。

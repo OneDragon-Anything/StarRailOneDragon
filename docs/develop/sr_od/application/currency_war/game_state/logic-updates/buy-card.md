@@ -57,8 +57,8 @@
 
 ## 8. 判例注记(发射期)
 
-商店期默认策略动作面 = 买牌/刷新/关店(判例 = [../screens-actions-capability.md](../screens-actions-capability.md) §5,2026-09-14);买牌是商店期主力动作(策略判据 = strategy-docs/23_shop_screen.md)。备战域无买牌(牌只在商店买)。
+商店期默认策略动作面 = 买牌/刷新/关店(判例 = [screens/README](../../screens/README.md) §5,2026-09-14);买牌是商店期主力动作(策略判据 = strategy-docs/23_shop_screen.md)。备战域无买牌(牌只在商店买)。
 
 ## 9. 依据
 
-`research/merge_mechanics.md` §1/§2/§2.5/§2.6/§3;`research/economy.md` §2.1(槽位留空/整店全换);`research/xp-rules.md` §2(买牌不产经验);`kernel/cw_game_state.py::apply_shop_action_logic`/`apply_shop_merge_leg` docstring;[../game_state/fields.md](../../game_state/fields.md) §3.3.1(商店牌行)/§4.2 BuyCard 行。
+`research/merge_mechanics.md` §1/§2/§2.5/§2.6/§3;`research/economy.md` §2.1(槽位留空/整店全换);`research/xp-rules.md` §2(买牌不产经验);`kernel/cw_game_state.py::apply_shop_action_logic`/`apply_shop_merge_leg` docstring;[fields.md](../fields.md) §3.3.1(商店牌行)/§4.2 BuyCard 行。

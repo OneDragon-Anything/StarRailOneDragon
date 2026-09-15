@@ -7,8 +7,8 @@
 
 ## 1. 本目录是什么
 
-统一 state(GameState)的设计文档正式目录,总-分结构:本文件=总纲,九个分篇各管一面。
-总纲即正本入口——只写设计理念与核心规范;字段级完整规格(字段清单、决策 op 写入面、
+统一 state(GameState)的设计文档正式目录,总-分结构:本文件=总纲,分篇各管一面;
+另有动作逻辑态总则与逐动作更新规格子目录(§4)。字段级完整规格(字段清单、决策 op 写入面、
 效果族归属、生命周期与治理面)的正本 = [fields.md](fields.md)(沿用原详设节号体系,
 代码注释所引节号以该篇为解析归宿);本目录自足,不依赖任何迭代过程件。
 
@@ -104,8 +104,9 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | [node-derivation.md](node-derivation.md) | 节点推进判定方案(派生规则单一源持久家):四规则组本体/画面流转全景图/场景走查/实现位与载荷锚 |
 | [strategy-env-impacts.md](strategy-env-impacts.md) | 投资策略/环境逐效果在 state 里的影响(已确认条目+候逐条确定占位清单) |
 | [chain-observation.md](chain-observation.md) | 链观察对接:基线链/现行链双源、diff 证据、与遥测账本的挂接 |
-| [retirement.md](retirement.md) | 旧 12 流退役逐流处置与消费方迁移清单(只写排期与清单结构) |
-| [r5-migration-plan.md](r5-migration-plan.md) | R5 迁移规划(单源直迁八波):旧 12 流删除+GameState 本体退役+正名排期,重构 retirement.md 影子框架的裁决口径 |
+| [retirement.md](retirement.md) | 旧 12 流退役逐流处置与消费方迁移清单 |
+| [action-logic-state.md](action-logic-state.md) | 动作逻辑态总则:两态制纪律、写口归属硬规则(动作 op 只上报动作,逻辑态更新由 game state 独占)、确定面/随机面、拒绝语义 |
+| [logic-updates/](logic-updates/README.md) | 逐动作逻辑态更新规格(每动作 op 一篇:域集/转移规则/随机面/拒绝语义/kernel 符号锚) |
 
 ## 5. 边界与姊妹文档
 
@@ -118,13 +119,13 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 - **字段级规格**=[fields.md](fields.md)(本目录分篇,正本)——字段清单/决策 op
   写入面/效果族归属/生命周期/治理面;与其冲突时以迁移批修订为准。
 - **派生规则单一源**=场景一判定方案([node-derivation.md](node-derivation.md);2026-09-11 自 `.debug/temp/currency_war/流程hook场景一-节点推进-判定方案.md` 晋升入库,持久裁定锚=关联行与文档拆分裁定记档)——本目录引用不复写。
-- **旧流退役排期**=R5 迁移规划([r5-migration-plan.md](r5-migration-plan.md);单源直迁八波,重构 retirement.md 影子框架的裁决口径)。
-- **链观察设计件**=件 B(docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/recovered/节点链观察-设计v1.md;2026-09-11 自 `.debug/temp` 找回入库,落位清单=recovered/_INDEX.md)——
-  [chain-observation.md](chain-observation.md) 是其对接面精炼,不是第二正本。
+- **旧流退役处置**=[retirement.md](retirement.md)(本目录分篇;退役排期过程件归 git 历史)。
+- **链观察**=[chain-observation.md](chain-observation.md)(本目录分篇,链观察对接面正本);链观察设计原始件已随过程区清理退役,考古走 git 历史。
 - **效果域内容语义**(计数器模型/生命周期/逐效果规格)=
   [effect-domain.md](effect-domain.md)(2026-09-11 成文入库);本目录只记捕获面
   (效果变化随快照行自带)与逐效果 state 影响登记。
-- **策略侧遥测**(决策行)= 两文件模型的另一文件,归策略侧设计正文;state 引用
+- **策略侧遥测(决策行文件)**= 两文件模型的另一文件,schema 正本 =
+  [决策行文件schema设计.md](决策行文件schema设计.md)(本目录分篇);state 引用
   只经版本钉 state_ref=`(run_id, v)`,且决策输入禁读状态流水。
 - 玩法语义(各效果游戏机制原文/节点流转时序)挂靠
   [docs/game/currency_war/](../../../game/currency_war/)(game 子树)。

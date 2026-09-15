@@ -16,7 +16,7 @@
 
 1. **节点转移事实**(非容器域):出战落地 → 外循环置战斗窗口(备战 → 战斗 → 结算 → 回备战轮推进,[../outer_loop.md](../outer_loop.md) §4);备战标识消失 + 无拦截弹窗 = 转移成功的机械判据(`POST_LAUNCH_BLOCKERS` 白名单防「前台无角色」弹窗假成功);
 2. **常规发射**(执行器):找钮(「按钮-出战」,免战子态查「按钮-跳过」,正交态查找不锁死单一屏——免战与商店开可叠加)→ mouse_move + click + 失焦守卫(重点一次)→ 未达上限警告弹窗勾选 + 确认(勾「本局不再提示」,对齐 CwScreenDeployNotFull)→ 轮询转移;
-3. **未落地重发/停机**:首次失败原样重发(press_time 加长)→ 仍「未落地」计 `launch_dead_streak`,达 `LAUNCH_DEAD_LIMIT` → 停机留证三要素(截图 + flag + stop_running)。发射重发/连败停机 = 流程防线([../action_exec.md](../action_exec.md) §7),不属逻辑态;
+3. **未落地重发/停机**:首次失败原样重发(press_time 加长)→ 仍「未落地」计 `launch_dead_streak`,达 `LAUNCH_DEAD_LIMIT` → 停机留证三要素(截图 + flag + stop_running)。发射重发/连败停机 = 流程防线([flow/action_exec.md](../../flow/action_exec.md) §7),不属逻辑态;
 4. **免战牌子态**(策略卡「免战牌」激活):出战按钮变「跳过(N/N)」= 本节点直跳战斗(免 2 次战);跳过**执行落地**(备战标识消失验证通过)→ 效果账本次数递减(`kernel/cw_effect_inventory.py::ActiveEffectInventory.consume_use`:remaining_uses −1,归零移除;余量种子 = `EffectSpec.duration_uses`)。递减挂点与登记挂点解耦(登记面缺位的局 consume_use 返 None 零动作,不炸发射回执);「用尽后按钮恢复出战」待实机验(观察工作清单)。
 
 ## 4. 随机面
@@ -41,8 +41,8 @@ StartBattle 不在 `cw_vocab.py::Action` 联合内,`simulate` 无该分支——
 
 ## 8. 判例注记(发射期)
 
-**备战期出口(唯一完成态)**(判例 = [../screens-actions-capability.md](../screens-actions-capability.md) §4 终结总表):出战落地 = 备战访问终结,交回外循环战斗分支。免战子态下「跳过」同语义点它(推进节点)。发射准入判据(达标臂/锁定重试)= cw_launch_admission 判据族,不属本篇。
+**备战期出口(唯一完成态)**(判例 = [screens/README](../../screens/README.md) §4 终结总表):出战落地 = 备战访问终结,交回外循环战斗分支。免战子态下「跳过」同语义点它(推进节点)。发射准入判据(达标臂/锁定重试)= cw_launch_admission 判据族,不属本篇。
 
 ## 9. 依据
 
-[../action-logic-state.md](../action-logic-state.md) §5(转场类动作逻辑态 = 空 + 免战牌态);[../game_state/fields.md](../../game_state/fields.md) §3.2.19(免战牌激活态与剩余跳过次数)/§4.2 出战行(免战分支与 G9 暂定表述)/§4.2 结算覆盖行;`prep_actions.py::PrepActionExecutor._start_battle` docstring(恢复语义 = 禁 active_window 激活,重发 = 同通道原样重试);[../action_exec.md](../action_exec.md) §7(发射重发/连败停机流程防线)。
+[../action-logic-state.md](../action-logic-state.md) §5(转场类动作逻辑态 = 空 + 免战牌态);[fields.md](../fields.md) §3.2.19(免战牌激活态与剩余跳过次数)/§4.2 出战行(免战分支与 G9 暂定表述)/§4.2 结算覆盖行;`prep_actions.py::PrepActionExecutor._start_battle` docstring(恢复语义 = 禁 active_window 激活,重发 = 同通道原样重试);[flow/action_exec.md](../../flow/action_exec.md) §7(发射重发/连败停机流程防线)。
