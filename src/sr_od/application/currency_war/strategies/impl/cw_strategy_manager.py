@@ -78,9 +78,10 @@ def establish_new_match(ctx: SrContext, config) -> bool:
         _session.rng = random.Random(config.strategy_seed)
     ctx.cw_match = CurrencyWarMatch(_strategy, _session)
     # GameState 初始化即遥测装配(T-274 用户裁定 2026-09-15:遥测数据的保存
-    # = game state 职责,装配入口落容器初始化路径,不在 app/loop)。容器建立
-    # 即惰性新建局容器单例并注入 run 归属读取函数(kernel 禁依 telemetry,
-    # 依赖倒置 = 构造参数;幂等已装配零成本直过)——「未初始化容器首写前
+    # = game state 职责;精化令:触发只钉正主单例建立路径 = kernel
+    # board_state_of 局容器建立点,GameState 构造器零装配逻辑)。容器建立即
+    # 惰性新建局容器单例并注入 run 归属读取函数(kernel 禁依 telemetry,
+    # 依赖倒置 = 建立点参数;幂等已装配零成本直过)——「未初始化容器首写前
     # 装配已发生」,辖本函数两个生产调用方(CwEntryStart 进对局前移点 /
     # CwLoop handle_init 兜底);注入收拢本生产专用漏斗 = CwLoop 调用面在
     # 迭代在飞冻结期不可改注入,且 sim/测试不经本函数(直建 session),

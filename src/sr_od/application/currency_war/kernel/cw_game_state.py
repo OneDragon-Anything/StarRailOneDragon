@@ -49,11 +49,11 @@ R5 迁移规划 W1/ADR-0634,集内无空 actor 行);:attr:`GameState.write_seq`
 读口);每次写入落一行**自足状态流水**(行 = 改了什么 + 渠道签名 + 版本 id +
 写入后完整 state 快照,行行自足查询直接读——无快照锚/无对账自检/无前溯推导,
 禁回归)。落盘由 :mod:`sr_od.application.currency_war.kernel.cw_state_journal`
-承载,**无条件常开**(生产装配 = currency_war_app 装配段 + GameState 初始化
-兜底——遥测装配 = game state 初始化职责,T-274 用户裁定 2026-09-15,见
-:meth:`GameState.__post_init__`;无开关;行落盘
-另以 sink 在场与 run_id 在场为准,sink 缺席 = 行不落而写路径照常——记录被动,
-不改写路径语义)。新增**逻辑态
+承载,**无条件常开**(生产装配 = currency_war_app 装配段 + 局容器单例建立点
+兜底——遥测装配 = game state 职责,T-274 用户裁定 2026-09-15 精化令:触发
+只钉 :func:`board_state_of` 建立路径,GameState 构造器零装配逻辑;无开关;
+行落盘另以 sink 在场与 run_id 在场为准,sink 缺席 = 行不落而写路径照常——
+记录被动,不改写路径语义)。新增**逻辑态
 派生域与画面上下文域**(ADR-0630 决策 1+修订节 2;字段面 as-built =
 ``docs/develop/sr_od/application/currency_war/game_state/node-domain.md`` §2):``prev_screen``/``current_screen``
 (①观察汇聚写)+ ``top_bar_raw``(顶栏原文,**观察层**,observe() 只落原始
@@ -80,7 +80,7 @@ import subprocess
 import time
 import weakref
 from collections.abc import Callable
-from dataclasses import InitVar, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar
@@ -806,8 +806,8 @@ def _emit_defect(*, field_name: str, expected: Any, actual: Any,
 # ============================================================ 状态流水 sink(R1 §3.2.3)
 
 #: 状态流水外送钩子(进程内单槽;行落盘的在场门——journal 本体无条件常开
-#:(R5 W1/ADR-0634:无开关,生产装配 = currency_war_app 装配段 + GameState
-#: 初始化兜底,见 :meth:`GameState.__post_init__`),本槽
+#:(R5 W1/ADR-0634:无开关,生产装配 = currency_war_app 装配段 + 局容器
+#: 单例建立点兜底,见 :func:`board_state_of`),本槽
 #: 缺省 None 只表示「无落盘实例」(单元测试/工具环境),此时**写路径照常
 #:(Field 写入与版本分配不受影响),仅行不外送**——记录被动,不分支行为。
 #: 落盘实现与装配口 =
@@ -2369,6 +2369,27 @@ _BS_BY_SESSION_ID: dict[int, GameState] = {}
 _BS_ATTR = '_cw_game_state'
 
 
+def _establish_singleton_journal(
+        run_id_provider: Callable[[], str] | None) -> None:
+    """局容器单例建立点的遥测装配触发(正主单例建立路径专属)。
+
+    T-274 用户裁定 2026-09-15(精化令):装配触发只钉本建立点——GameState
+    构造器零装配逻辑,画面解析草稿容器的直构路径(planner/invest_strategy
+    防御视图/env_economy 导入期探针)结构性不可能触发遥测。provider =
+    建立调用方(生产注入漏斗 = establish_new_match 容器建立点)显式注入
+    的 run 归属读取函数(kernel 禁依 telemetry,依赖倒置);None = 不装配
+    (sim/测试/一次性视图口径)。幂等已装配零成本直过——「未初始化容器
+    首写前装配已发生」的行为等价锚;装配失败不阻塞容器建立,与行落盘同
+    best-effort 纪律。
+    """
+    if run_id_provider is None:
+        return
+    try:
+        ensure_journal_assembly(run_id_provider)
+    except Exception as e:  # noqa: BLE001  装配失败不阻塞容器建立
+        log.warning('[cw!][bs] journal 装配失败(不阻塞): %s', e)
+
+
 def board_state_of(session: object, *,
                    run_id_provider: Callable[[], str] | None = None) -> GameState:
     """GameState 单例访问口(session 旁表;弱引用表 + 桩面兜底,与
@@ -2377,12 +2398,13 @@ def board_state_of(session: object, *,
     - session = 局身份:新 session 对象 = 新局 = 新 GameState(§1 每局新建);
     - None → 一次性空载体(不缓存——None 的 id 恒定,缓存即跨调用串染);
     - 裸 session(测试/sim 桩)→ 惰性建并挂对象自身属性(生命周期随对象);
-    - run_id_provider = 惰性新建时的遥测装配注入(T-274 用户裁定 2026-09-15:
-      装配 = game state 初始化职责;构造参数显式注入,kernel 禁依 telemetry),
-      仅辖**局容器单例新建**时点(已存在直读不触装配——幂等兜底对已装配
-      进程本就零成本);session=None 一次性空载体(局外,不缓存)不装配
-      ——装配是进程级副作用,不属一次性视图。缺省 None = 不装配(sim/
-      测试/局外防御视图构造口径;生产注入漏斗 = establish_new_match)。
+    - run_id_provider = 局容器单例建立时点的遥测装配注入(T-274 用户裁定
+      2026-09-15:装配 = game state 职责,触发只钉本建立点;经
+      :func:`_establish_singleton_journal`,GameState 构造器零装配逻辑),
+      仅辖**新建**时点(已存在直读不触装配——幂等兜底对已装配进程本就
+      零成本);session=None 一次性空载体(局外,不缓存)不装配——装配是
+      进程级副作用,不属一次性视图。缺省 None = 不装配(sim/测试/局外
+      防御视图构造口径;生产注入漏斗 = establish_new_match)。
     """
     if session is None:
         return GameState(schema_version=BS_SCHEMA_VERSION)   # 局外一次性:不装配
@@ -2391,16 +2413,16 @@ def board_state_of(session: object, *,
     except TypeError:   # 不可弱引用对象(测试桩)
         bs = getattr(session, _BS_ATTR, None)
         if bs is None:
-            bs = GameState(schema_version=BS_SCHEMA_VERSION,
-                           run_id_provider=run_id_provider)
+            _establish_singleton_journal(run_id_provider)
+            bs = GameState(schema_version=BS_SCHEMA_VERSION)
             try:
                 setattr(session, _BS_ATTR, bs)
             except (AttributeError, TypeError):
                 _BS_BY_SESSION_ID[id(session)] = bs
         return bs
     if bs is None:
-        bs = GameState(schema_version=BS_SCHEMA_VERSION,
-                       run_id_provider=run_id_provider)
+        _establish_singleton_journal(run_id_provider)
+        bs = GameState(schema_version=BS_SCHEMA_VERSION)
         _BS_BY_SESSION[session] = bs
     return bs
 
@@ -2663,21 +2685,13 @@ class GameState:
     # 段级时长锚(局终域 duration_s 自算源):容器创建时刻的 monotonic 读数
     #(每局新建 = 天然段起点;恢复局跨段 = 各段各锚,聚合归判读侧)。
     created_monotonic: float = 0.0
-    # 遥测装配注入(InitVar 构造参数,非存储字段——不入 fields()/快照/等值
-    # 面):容器初始化即触发 state 流水装配(T-274 用户裁定 2026-09-15:遥测
-    # 数据的保存 = game state 职责,装配入口落本初始化路径)。kernel 禁依
-    # telemetry,依赖倒置 = 构造点显式注入 run 归属读取函数(生产注入漏斗
-    # = establish_new_match 容器建立点,经 board_state_of 形参下传);缺省
-    # None = 不装配(sim/测试/一次性视图构造口径,仅生产路径注入)。
-    run_id_provider: InitVar[Callable[[], str] | None] = None
-
-    def __post_init__(self, run_id_provider: Callable[[], str] | None) -> None:
+    def __post_init__(self) -> None:
         """构造守卫(任务书件 5/§8.6-5):schema_version 正整数 + Field
-        冻结不变式断言(帧替换语义的结构前提,破即构造炸错不静默);
-        + 遥测装配触发(run_id_provider 非 None 时经 kernel
-        :func:`ensure_journal_assembly` 同桶直调,幂等已装配零成本直过
-        ——「未初始化容器首写前装配已发生」的行为等价锚;装配失败不阻塞
-        容器构造,与行落盘同 best-effort 纪律)。"""
+        冻结不变式断言(帧替换语义的结构前提,破即构造炸错不静默)。
+        零装配逻辑(T-274 精化令 2026-09-15:装配触发只钉正主单例建立路径
+        = :func:`board_state_of` 局容器建立点;画面解析草稿容器的直构路径
+        ——planner/invest_strategy 防御视图/env_economy 导入期探针——结构性
+        不可能触发遥测)。"""
         if not isinstance(self.schema_version, int) or self.schema_version <= 0:
             raise ValueError('schema_version 必须为正整数(§3.7.1)')
         if not self.created_monotonic:
@@ -2689,11 +2703,6 @@ class GameState:
             pass
         else:
             raise RuntimeError('Field 必须保持 frozen(§2.4 帧替换语义被破坏)')
-        if run_id_provider is not None:
-            try:
-                ensure_journal_assembly(run_id_provider)
-            except Exception as e:  # noqa: BLE001  装配失败不阻塞容器构造
-                log.warning('[cw!][bs] journal 装配失败(不阻塞): %s', e)
 
     # —— 写入 API(op 层经此写,不直接摸字段;§8.4)——
 

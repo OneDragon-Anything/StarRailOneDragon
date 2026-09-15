@@ -152,9 +152,11 @@ note=recovered 显影;辖域 = 段内补写与在线收口,启动扫描**历史�
 [retirement.md](retirement.md)(单一源,本文不复写);排期与裁决口径的现行
 正本 = [r5-migration-plan.md](r5-migration-plan.md)(单源直迁八波)。
 **常开语义(影子双写裁定已推翻)**:journal 无条件常开——无开关、
-无装配条件分支;生产装配 = app 装配段显式接通 + **GameState 初始化兜底**
-(GameState 构造注入 run 归属读取函数并触发 kernel `ensure_journal_assembly`,
-幂等;生产注入漏斗 = `establish_new_match` 容器建立点——CwEntryStart 进对局
+无装配条件分支;生产装配 = app 装配段显式接通 + **局容器单例建立点兜底**
+(`board_state_of` 建立路径注入 run 归属读取函数并触发 kernel
+`ensure_journal_assembly`,幂等;GameState 构造器零装配逻辑——画面解析草稿
+容器直构路径结构性不可能触发遥测;生产注入漏斗 = `establish_new_match`
+容器建立点——CwEntryStart 进对局
 前移点与 CwLoop handle_init 兜底两生产调用方的公共漏斗;装配归属裁定 = 遥测
 数据的保存是 game state 职责,run 领取层 telemetry `ensure_run_started` 不辖
 装配〔T-274 用户裁定 2026-09-15〕;
