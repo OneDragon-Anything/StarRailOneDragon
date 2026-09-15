@@ -155,10 +155,19 @@ _SHOP_ACTION_TYPES: frozenset[str] = frozenset(
 #: 补给帧的行级 phase 前缀(决策帧 phase=supply_detour/supply_pick)
 _SUPPLY_PHASE_PREFIX = 'supply'
 
-#: 逻辑态未建模动作(prep_visit.md §1:未建模面 → 本访问终结交回外循环重观察;
-#: 出战另列)——帧动作含其一则该帧是备战 op 的终结帧
-_PREP_TERM_ACTIONS: frozenset[str] = frozenset(
-    {'RunDeploy', 'RunEquip', 'LevelUp', 'DeployMove', 'SellDeployed'})
+#: 备战截断类动作(unified-action-factory 批2b 后口径;语义单一源 =
+#: entry.classify_frame_stability 的截断/终点两类——截断点 = OpenBox/
+#: OpenTome/OpenShop/装备原子/工具原子,终点 = StartBattle 另列于
+#: _BATTLE_ACTION):帧动作含其一则该帧是备战 op 的终结帧。集合含
+#: 'RunDeploy'/'RunEquip' 旧档兼容键(组合壳已删,仅历史档案行出现,
+#: 新档案零构造;读旧档案判终结帧保真)。
+_PREP_TERM_ACTIONS: frozenset[str] = frozenset({
+    'OpenBox', 'OpenTome', 'OpenShop', 'StartBattle',
+    'WearEquip', 'FurnaceUse', 'PrivilegeCardUse', 'WrenchUse',
+    'PrecisionWrenchUse', 'StaffProjectorUse', 'PerfectProjectorUse',
+    'LuckyTokenUse',
+    'RunDeploy', 'RunEquip',   # 旧档兼容(见上注)
+})
 
 #: 出战动作(prep_visit.md §3:唯一完成态,交回外循环战斗分支)
 _BATTLE_ACTION = 'StartBattle'
