@@ -146,7 +146,7 @@
 | 战斗 | `cw_battle_calib`(战斗校准)、`cw_deploy_logic`(deploy 选人纯逻辑,sim 与 op 共用)、`cw_launch_admission`/`cw_launch_arbitrage`(发射准入/仲裁)、`cw_hp_policy`(hp 门)、`cw_first_passage`(首达生存概率) | 战斗结果的模拟与发射决策 |
 | 观测支撑 | `cw_obs_core`(OCR 公共设施)、`cw_observe`(统一日志/截图)、`cw_anchor`(流程转点观测锚)、`cw_overlay_registry`(overlay 生命周期注册) | 观测基础设施 |
 | 合成与推演 | `cw_merge_simulate`(合成引擎)、`cw_vocab`(统一动作词表+推演内核机制面)、`cw_prep_expect`/`cw_prep_actions`(备战期望态对账与备战决策环 kernel 件) | 期望态推演与备战域公共件 |
-| 其他 | `cw_performance`(观测反馈/死局检测)、`cw_run_allocator`(跨局分配)、`cw_decision_trace`(决策行发射)、`cw_round_ledger`(轮内买卖记账)、`cw_discipline_rules`(卖侧下界判据)、`cw_plane_table`(节点日程标定)、`cw_investments`(投资领域模型)、`cw_effect_inventory`(在场效果清单)、`cw_plugins`(插件注册)、`cw_code_hash_gate`(起局码哈希结构闸)、`cw_telemetry_exit`(遥测上行出口钩子位)、`cw_survey19_hooks`(二轮扫描落地件)、`cw_opening_hp`(开局血量先验) | 各自专项的单一源 |
+| 其他 | `cw_performance`(观测反馈/死局检测)、`cw_run_allocator`(跨局分配)、`cw_decision_trace`(决策行发射)、`cw_round_ledger`(轮内买卖记账)、`cw_discipline_rules`(卖侧下界判据)、`cw_plane_table`(节点日程标定)、`cw_investments`(投资领域模型)、`cw_effect_inventory`(在场效果清单)、`cw_plugins`(插件注册)、`cw_code_hash_gate`(起局码哈希结构闸)、`cw_telemetry_exit`(遥测上行出口钩子位)、`cw_survey19_hooks`(二轮扫描落地件)、`cw_opening_hp`(开局血量先验) | 各行括注即一句话职责;细节见 kernel/ 各模块 docstring(全量以 kernel/ 目录为准) |
 
 
 ## 七、遥测与档案层(telemetry/)

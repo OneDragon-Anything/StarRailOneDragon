@@ -1,20 +1,14 @@
-# 货币战争 · 基础资料索引(⚠️ 2026-08-18 大收敛:注册表已建模的数据 doc 已删,本目录仅存未建模唯一源)
+# 货币战争 · 基础资料索引(注册表已建模的数据 doc 已删;本目录存未建模唯一源 + 生成器快照 characters/)
 
 > **用途**:策略配置地基 + 理解攻略术语。**只存原始数据**,不含策略代码。
-> **数据基准**:V4.4 赛季(数据抓取日 2026-08-03)。
+> **数据基准**:V4.4 赛季(数据抓取日 2026-08-03);characters/ 档案 version 4.5(`gen_plaza_chars.py` 生成)。
 > **主来源**:米游社百科「货币战争图鉴」`channel/map/209`(权威)。全部标 🟢 米游社原文 / 🟡 攻略一致 / 🔴 未找到。
 
 ---
 
-## 访问限制(必读)
+## 抓取通道与复现方法
 
-本环境抓取通道的可达性(决定数据来源):
-
-| 通道 | 结果 | 说明 |
-|---|---|---|
-| **chrome-devtools MCP → headless Edge(远程调试 19999)** | ✅ 可用 | 本次主通道。驱动已登录的 Edge 抓米游社百科全文。 |
-| 米游社百科 API `act-api-takumi-static.mihoyo.com/.../sr_wiki/v1/content/info?content_id=<id>` | ✅ 可用 | 通过 Edge 内 `fetch()` 顺序抓取(同一 origin,CORS 放行)。`content/info` 取详情,`home/content/list?channel_id=209` 取全树(含子频道+条目列表)。 |
-| `web_reader` / `WebFetch` / `Bash curl` | ❌ 不可用 | web_reader 拒中文 URL;WebFetch 拦 CN 域名;Bash 沙箱无网。 |
+> 可用通道以当下环境实测为准(历史可达性判断归 git 历史);当年主通道 = chrome-devtools MCP 驱动已登录 Edge。
 
 **复现方法**:用 chrome-devtools 连 Edge → navigate 到 `miyoushe.com/sr/wiki/channel/map/209` → evaluate_script 内 `fetch('home/content/list?channel_id=209')` 取全树(5 子频道:员工210/装备211/投资策略212/投资环境213/羁绊214,各含 content_id 列表) → 对每个 content_id 调 `fetch('content/info?content_id=X')` → 解析 `contents[0].text` 里 URL 编码的 `data-data` JSON(含 rate/type/desc/material/分级效果)。
 
@@ -22,7 +16,7 @@
 
 ## 文件说明
 
-**已入代码注册表的数据 doc 已删,别再造**(单一源在代码;查值直接看注册表):羁绊(`cw_factions.FACTIONS`,32)/角色(`cw_chars.CHARACTERS`,72)/投资策略(`cw_invest_data.py`,plaza API 334)/投资环境(`cw_investments`,~82)/装备(`cw_equipment_data.EQUIPMENTS`,158)。**注册表模块全景 = 代码 `data/` 目录各 `cw_*.py`**(模块 docstring 自述职责);⚠️ 改注册表前先查 `tools/cw/` 有没有该文件的生成器(`*_data.py` 数据层勿手编,判断层反向标注)。本目录仅存**未建模的唯一源**:
+**已入代码注册表的数据 doc 已删,别再造**(单一源在代码;查值直接看注册表):羁绊(`cw_factions.FACTIONS`,32)/角色(`cw_chars.CHARACTERS`,72)/投资策略(`cw_invest_data.py`,plaza API 334)/投资环境(`cw_investments`,~82)/装备(`cw_equipment_data.EQUIPMENTS`,158)。**注册表模块全景 = 代码 `data/` 目录各 `cw_*.py`**(模块 docstring 自述职责);⚠️ 改注册表前先查 `tools/cw/` 有没有该文件的生成器(`*_data.py` 数据层勿手编,判断层反向标注)。本目录另有生成器快照 `characters/`(72 档,`tools/cw/gen_plaza_chars.py` 生成,值以 `cw_chars.CHARACTERS` 为准,勿手编);其余仅存**未建模的唯一源**:
 
 | 文件 | 内容 | 条目数 | 完整度 |
 |---|---|---|---|

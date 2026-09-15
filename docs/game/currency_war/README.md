@@ -8,7 +8,7 @@
 ## `data/` —— 游戏数据(⚠️ 2026-08-18 大收敛:注册表全量建模的 doc 已删,数据单一源铁律)
 
 **已删(代码注册表即单一源,版本更新改注册表+测试,doc 不再维护)**:
-- ~~characters.md + characters/ 74 文件~~ → `cw_chars.CHARACTERS`(72)
+- ~~characters.md + characters/ 74 文件~~ 曾删;后按生成器重建 characters/ 72 档(`tools/cw/gen_plaza_chars.py`,version 4.5;值以 `cw_chars.CHARACTERS` 为准,档案 = 人读快照勿手编)
 - ~~traits.json + traits/ 34 文件 + factions.md~~ → `cw_factions.FACTIONS`(32)
 - ~~equipment.md~~ → `cw_equipment_data.EQUIPMENTS`(158)
 - ~~invest_cards.md~~ → `cw_invest_data`(plaza API 生成器直灌注册表)

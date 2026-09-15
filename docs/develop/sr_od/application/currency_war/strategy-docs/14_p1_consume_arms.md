@@ -161,7 +161,7 @@ need(帧) = |deployed| + |{ b ∈ bench | b ∈ k_members(core∪shared,
 
 pop_slot「bench_candidates > 0」改为「bench 有候选 ∨ 买入面有可即时买入的线内候选(affordable ∧ bench_free ≥ 1)」——从「已持有候补」放宽到「买得起候补」(批5 候选修复方向)。臂①落地后 bench 空帧大幅减少,本修正兜剩余帧(满编+空 bench+富金末段)。
 
-## 5. 臂③:危局释放臂 v2(A2/A3/B4/B5 采纳:推倒重设计)
+## 5. 臂③:危局释放臂 v2(对抗审查后推倒重设计;发现项 A2/A3/B4/B5 定义见 §11 表)
 
 ### 5.1 v1 作废声明
 
