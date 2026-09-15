@@ -371,8 +371,7 @@ def _lambda_quantile_armed(bs: GameState, hp: int | None,
     经 ``plane_of`` 读口(缺省 1 镜像)。旧「state is None → 不评估」
     前置分支退役——生产不可达(heavy 观察恒产出视图帧,light 兼容
     形态现生产无调用方),分支退役与引导窗缺省镜像逐位一致 = 设计件
-    changes/2026-09-12-prep-chain-containerization/design/
-    prep链容器化方案.md §2.2② 行为差申报面。
+    prep-chain-containerization 迭代 prep链容器化方案 §2.2② 行为差申报面(git 历史可溯)。
     求值 = 当前帧 PL 键的 λ 点估计(CI 上端,排序键同 ``lambda_u_order``
     的全序口径)在 C 集合可消费格 λ_U 降序全序中的分位序 ≤ p ⇒ 触发。
     键观测量缺失/域外/不可消费格 → None(不评估;域外同判 R52-4a)。

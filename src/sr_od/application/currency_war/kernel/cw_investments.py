@@ -1624,7 +1624,7 @@ _validate_env_gifts()
 # 当前态恒 fail-closed——受限通道 μ_E 不随品质单调(银 3.31 > 金 2.42 实测),
 # 直接入域带会产出「白银时代>黄金时代」噪声序;层 E 转正准入门(全通道重算
 # + 序一致性检验,详设 §2.2.2)经数据批判定未过,维持 fail-closed(判定依据
-# = changes/2026-09-12-invest-env/details/layer-e-promotion-batch.md);层 Q
+# = invest-env 迭代 layer-e-promotion-batch 详设,git 历史可溯);层 Q
 # (定序残域,池内挑卡
 # 与功能价值)= 环境裸分维持(ENV_PICK_VALUE 七条零改动,ADR-0144 知识评估
 # 已对两半作过知识性净评),两层从不相加——max() 结构天然承载

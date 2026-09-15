@@ -50,7 +50,7 @@ _PLANE_ARRIVAL_KEY = 'plane_arrival_p{}'
 # total = 累计全部刷新(total_refresh_count,二手市场「商店刷新20次后」)、
 # paid = 累计付费刷新(paid_refresh_count,长线利好「花费金币进行30次刷新」)。
 # 数据批口径 = 逐局 RefreshShop 动作计数,cost>0 记付费
-# (细则 = changes/2026-09-12-invest-env/details/data-batch-estimates.md)。
+# (细则 = invest-env 迭代 data-batch-estimates 详设,git 历史可溯)。
 _REFRESH_P_KEY = 'refresh_{}_ge{}_p'
 # 刷新条件后继期望 = refresh_{scope}_after{阈值}_e = E[(N−阈值)+ | N≥阈值]
 # (design §2.2.4 需估参数②的 E(达 30 后继刷新次数);长线利好刷价节省项用)。
@@ -67,7 +67,7 @@ _REWARD_BONUS_VARIANTS: dict[str, str] = {
 }
 
 # 奖励节点槽位结构先验(【拟】对局档案众数结构,数据批 2026-09-12;样本量与
-# 槽位变异性申报 = changes/2026-09-12-invest-env/details/data-batch-estimates.md)。
+# 槽位变异性申报 = invest-env 迭代 data-batch-estimates 详设,git 历史可溯)。
 # (位面, 轮次) 1 基;P3 结构零样本不计 = 视界保守低估(模板在册后补)。
 _REWARD_SLOTS: tuple[tuple[int, int], ...] = ((1, 1), (1, 2), (1, 8), (2, 6))
 
@@ -405,8 +405,7 @@ _validate_estimates_governance()
 # 转正准入门 = ①全通道重算(排除集补参)+ ②序一致性检验,两条件缺一不入
 # (详设 §2.2.2)。数据批已执行判定:第 1 条完成,第 2 条未过(全通道 μ_E
 # 点估计 银≥金 残差未翻转)→ 两参数表维持哨兵不落,本段行为零变化;判定
-# 依据、读数与回炉候选 = changes/2026-09-12-invest-env/details/
-# layer-e-promotion-batch.md,重采入口 = tools/cw/env_pool_rewrite_estimates.py。
+# 依据、读数与回炉候选 = invest-env 迭代 layer-e-promotion-batch 详设(git 历史可溯),重采入口 = tools/cw/env_pool_rewrite_estimates.py。
 # 消费端(design §2.3 门 3 的 resolved ∧ expected_gold > 0)自动承载准入门
 # 第 2 条方向自洽。
 
@@ -418,8 +417,7 @@ _validate_estimates_governance()
 #: 样本 n=3 低于注册门 20 → 哨兵不落,时代/尾彩通道因 H_3 缺参 fail-closed。
 #: 样本面 = 净帧普通口径(扑满过热局整局剔除,对齐「148 总/140 普通」采样
 #: 面裁定)。重采入口 = tools/cw/env_pool_rewrite_estimates.py(实采定位
-#: 演化只改本表;口径与样本量 = changes/2026-09-12-invest-env/details/
-#: layer-e-promotion-batch.md)。v1 在册值 24 系日程回退口径(9+9+9)下的
+#: 演化只改本表;口径与样本量 = invest-env 迭代 layer-e-promotion-batch 详设(git 历史可溯))。v1 在册值 24 系日程回退口径(9+9+9)下的
 #: 参照值,被本实采取代。
 _STRAT_PICK_HORIZONS: dict[int, int] = {1: 23, 2: 15}
 
@@ -428,8 +426,7 @@ _STRAT_PICK_HORIZONS: dict[int, int] = {1: 23, 2: 15}
 #: 视界入参化的直接承载)。品质键 = 注册表品质名('棱彩'/'金'/'银')。
 #: **不落参数申报(转正数据批判定:准入门未过)**:全通道重算与序一致性
 #: 检验已执行(重采入口 = tools/cw/env_pool_rewrite_estimates.py;口径/
-#: 样本量/读数 = changes/2026-09-12-invest-env/details/
-#: layer-e-promotion-batch.md)——第 1 条(全通道补参)完成,第 2 条未过:
+#: 样本量/读数 = invest-env 迭代 layer-e-promotion-batch 详设(git 历史可溯))——第 1 条(全通道补参)完成,第 2 条未过:
 #: 全通道 μ_E 点估计 银≥金 残差(H=23 +0.015 / H=15 +0.100,净帧口径,深居
 #: 卡池抽样噪声,成对差值 CI 全含 0),按详设 §2.2.2 裁决维持 fail-closed,
 #: 本表继续哨兵不落;序一致性复过且取卡序 3 视界/π 缺位补齐后随批落参。

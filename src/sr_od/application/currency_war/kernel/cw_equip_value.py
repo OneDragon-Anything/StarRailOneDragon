@@ -1,6 +1,4 @@
-"""货币战争 装备价值共享机器(选装入口单一源;design 出处 =
-changes/2026-09-12-armory-box-value/design.md §2.1-§2.3,承 supply-selection
-迭代裁定 5/6「装备价值做成通用机器,禁第二套」)。
+"""货币战争 装备价值共享机器(选装入口单一源;design 出处 = armory-box-value 迭代 design §2.1-§2.3,承 supply-selection 迭代裁定 5/6(git 历史可溯)「装备价值做成通用机器,禁第二套」)。
 
 四件套:
 - ``EQUIP_GENERIC_VALUE`` / ``equip_generic_value``:通用输出先验表
