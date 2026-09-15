@@ -1940,11 +1940,6 @@ class CwScreenPrep(CwScreenOpBase):
         if observation_source() is not None and action_sink() is not None:
             return self.run_lifecycle()
         session = match.session
-        # 环级无进展守卫的动作批签名(消费方 = cw_loop 备战分支):先清 None
-        # (本轮尚未决策),决策出口(主段/破墙段)写入动作类型序列。early
-        # return(overlay 交回/接管补采/策略异常)保持 None → cw_loop 不计数,
-        # 防跨环误延。写在 session(单轮 op 每环重建,实例属性不跨环存活)。
-        exec_state_of(session).last_prep_action_sig = None
         self._executor = PrepActionExecutor(self, self.ctx)
         self._cached_shop_cards = []
         self._cached_bench = []
@@ -2046,10 +2041,6 @@ class CwScreenPrep(CwScreenOpBase):
                 return self.round_success('空批(本帧无动作),交回外循环重观察', wait=1.0)
             # 单动作选择序:取决策核输出首项(词表逐帧取首项)
             action = actions[0]
-            # 动作批签名(环级无进展守卫的动作腿,消费方 = cw_loop 备战分支):
-            # 累计本访问已执行动作类型 + 当前提案。
-            exec_state_of(session).last_prep_action_sig = tuple(
-                _visit_acts + [type(action).__name__])
             # F3 校验(契约 §2:参数非法交回留证;M6 边界面——执行前输入
             # 契约检查,非动作后判效)
             err = self._executor.validate(action)
@@ -2156,7 +2147,6 @@ class CwScreenPrep(CwScreenOpBase):
         """
         match = self._match()
         session = match.session
-        exec_state_of(session).last_prep_action_sig = None
         self._executor = PrepActionExecutor(self, self.ctx)
         self._cached_shop_cards = []
         self._cached_bench = []
@@ -2256,10 +2246,6 @@ class CwScreenPrep(CwScreenOpBase):
                 return self.round_success('空批(本帧无动作),交回外循环重观察', wait=1.0)
             # 单动作选择序:取决策核输出首项(词表逐帧取首项)
             action = actions[0]
-            # 动作批签名(环级无进展守卫的动作腿,消费方 = cw_loop 备战分支):
-            # 累计本访问已执行动作类型 + 当前提案。
-            exec_state_of(session).last_prep_action_sig = tuple(
-                _visit_acts + [type(action).__name__])
             # F3 校验(契约 §2:参数非法交回留证;M6 边界面——执行前输入
             # 契约检查,非动作后判效)
             err = self._executor.validate(action)

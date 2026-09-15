@@ -66,9 +66,7 @@ action = strategy.decide_prep_screen(session, config) 取首项(空批合法 →
 
 ## 8. 守卫与防线
 
-- 环级无进展守卫(G3):连续 3 个备战环状态指纹零推进 → 收证(截图 + `prep_no_progress.flag`)→ 收益耗尽臂或停机留证;备战收益耗尽出战臂/达标即出战臂在外循环备战分支(细则 = [../flow/guards.md](../flow/guards.md) §1)。
-- 执行失败安灯:购买单元收尾分类器(`_spend_unit_close` + `_exec_fail_hook_check`,分类器 = `run_state.py::exec_fail_should_stop`),每局最多停一次(guards.md §5)。
-- 动作批签名:`exec_state_of(session).last_prep_action_sig` 决策出口写(early return 保持 None 防跨环误延),消费方 = 外循环 G3 守卫动作腿。
+- 执行失败安灯:购买单元收尾分类器(`_spend_unit_close` + `_exec_fail_hook_check`,分类器 = `run_state.py::exec_fail_should_stop`),每局最多停一次(guards.md §4)。
 
 ## 9. 遥测与锁面
 

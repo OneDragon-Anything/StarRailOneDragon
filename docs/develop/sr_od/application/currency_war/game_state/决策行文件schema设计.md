@@ -207,7 +207,6 @@ audit/provisional 槽位)。封闭锁豁免清单的反向锁语义沿用,发射
 | B 发射仲裁(8) | 8 字面名 | 事件计数 |
 | C 发射质量闸(2) | 2 字面名 | 事件计数 |
 | D cw_loop 发射执行面(9) | 9 字面名;launch_frame_idle_gold 为金量累计器 | 事件计数 + 累计器 1 |
-| E 收益耗尽臂(5) | 5 字面名 | 事件计数 |
 | F 部署执行面(21+1) | 7 字面 + `deploy_exec_held_{reason}`(8 闭集)/ `deploy_swap_sell_excluded_{3}` / `sell_offtarget_arm_{3}` + 开放族 `deploy_swap_sell_rejected_{资格拒因}` | 事件计数 |
 | G 执行侧杂项(3) | 3 字面名(s1_reset_mischannel 为防御显影位) | 事件计数 |
 | H mandate 骨架(70+1) | 52 字面(含 deploy_emit_floor_ctx_open、deploy_emit_floor_exempt_open 两常量键,与 held 族三件整组同窗)+ 4 闭族 18 实例(`shop_latch_skip_{3}` / `s1_reset_by_{route}`(4)/ levelup 预算门拒因(3)/ `deploy_emit_held_{reason}`(8))+ 开放族 `redeploy_transition_victim_{name}` | 事件计数;exempt_open 计豁免开火帧数 |

@@ -110,13 +110,12 @@
 | [../screens/](../screens/README.md) | **画面 op 各篇（一画面一文档）**：备战（prep）/商店（shop）/单选族/弹窗族/推进族——能力矩阵与画面文档模板在其 README |
 | [action_exec.md](action_exec.md) | 动作执行：词表与注册表、执行契约（无成败回执）、落地登记、商店/备战/部署执行要点、重试语义 |
 | [projection_contract.md](projection_contract.md) | 备战逻辑态面交互契约：状态面板/TurnState 视图 ↔ 执行臂的字段消费、坐标系、快照 vs 现读时序、注释规范缺口登记 |
-| [guards.md](guards.md) | 守卫总册：G3 环级无进展守卫、停滞/未知防线、降级链、fail-closed 行为 |
+| [guards.md](guards.md) | 守卫总册：停滞 watchdog、误分发限额、未知兜底、执行安灯、未识别卡停机、降级链 |
 
 ## 4. 守卫总览（细则 = guards.md）
 
 | 守卫 | 触发 | 动作 | 载体 |
 |---|---|---|---|
-| 环级无进展守卫（G3） | 连续 3 个备战环"同签名动作批 ∧ 状态零推进" | 截图+flag 存证 → stop_running | `cw_loop.py::CwLoop.loop` 备战分支 G3 计数段 |
 | 停滞 watchdog | 同屏 OCR 指纹连续 6 次采样相同（非战斗态） | 哨兵 flag+日志，**不停机** | `cw_loop.py::CwLoop._stall_watch_tick` |
 | 未知画面兜底 | 连续 15 轮全分支不命中（指数退避封顶 10s） | 停机保画面待建档 | `cw_loop.py::CwLoop._handle_unknown_fallback` |
 | 执行失败安灯 | 购买单元"计划花费>0 金差≈0"（分类器三态） | 停机留现场 flag | `cw_screen_prep.py::CwScreenPrep._exec_fail_hook_check` |
