@@ -61,10 +61,10 @@ def xp_ledger_stop(xp_progress: tuple[int, int] | None,
     按级严格递增)⇒ ``need >= XP_TO_NEXT_LEVEL[level_max]`` ⟺ 账本真
     等级 ≥ level_max,即已到/越过升级目标,拒发。
 
-    跨域同构:sim/live 消费同一函数。live 注册表 level_max = 10,门槛表
-    键域 3-9 无表项 ⇒ 判据不辖恒 False,live 停止语义完全由 lv9_stop
-    承载(行为零变更);sim 注入视图 level_max = 9(sim_decision_
-    registry,LEVEL_CAP 冻结)有表项 ⇒ 账本越过 9 即停。
+    跨域同构:sim/live 消费同一函数,注入视图 level_max 同源 = 10
+    (``kernel/cw_economy.py::MAX_PLAYER_LEVEL`` 单一尺,sim 重做反转后
+    不存在第二把尺);门槛表键域 3-9 无表项 ⇒ 判据两域恒不辖,停止语义
+    两域同由 lv9_stop 承载。
 
     ``xp_progress`` = 容器 ``bs.xp.value`` 原样透传(缺读 None 不辖,
     与 clicks_to_next_level 的缺省兜底方向一致——停判据缺读宁可放行
