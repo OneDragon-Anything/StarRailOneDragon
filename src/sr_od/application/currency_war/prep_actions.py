@@ -20,8 +20,8 @@ kernel/cw_vocab,坐标系裁定见其模块头);本执行器 = **执行坐标边
 row/slot 字段 = 画面物理排槽位 1 基(动作参数定义,拖点直取 area,
 不经换算)。
 组合动作形态已随统一词表删除(R2:RunDeploy/RunEquip/RunTools 退役,
-部署/穿戴/工具 = 决策核逐帧原子发射;CwScreenDeploy 画面 op 仍由
-cw_loop 0j 前台无角色恢复链直调,非词表成员)。
+部署/穿戴/工具 = 决策核逐帧原子发射;CwScreenDeploy 为独立部署画面 op,
+非词表成员——其 0j 前台无角色恢复链直调消费面已随出战域重设计退役)。
 统一动作工厂批3 收编(design.md unified-action-factory §2.4):动作级
 机械执行体已逐字迁入 ``operations/cw_op/`` 备战 op 类(一 op 一文件),
 分派改查单一注册表 ``action_op_for``(_dispatch_action);本模块保留
@@ -32,14 +32,13 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     DEPLOYED_CAPACITY,
     _advance_gold,
-    exec_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import board_state_of
 from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -241,6 +240,9 @@ class PrepExecEnv:
     executor: PrepActionExecutor | None = None
     detail: str = ''
     emitted: bool = False
+    # 免战跳过子态标记(StartBattleOp 上报通道;op 写、runner 包络
+    # _dispatch_action 读一次转发 game state 上报路径。False = 常规出战)
+    skip_substate: bool = False
 
 
 class PrepActionExecutor:
@@ -251,26 +253,22 @@ class PrepActionExecutor:
     DragCwChar.drag_char(中心拖 + hold0,2026-08-13 实测验证)。
     """
 
-    LAUNCH_DEAD_LIMIT: ClassVar[int] = 3   # 出战未落地连败停机阈值(session 级计数;两局实证环重入 ~2min/次)
-    #: P4R:出战后「转移成功」的拦截弹窗白名单(锚 = 已建档 id_mark)。
-    #: 出战按钮点击后备战标识消失但下列弹窗在场 = 出战被游戏拒(1-1 事故
-    #: 「前台区域无角色」确认弹窗盖标识 = 旧判据假成功)。新弹窗建档后追加。
-    #: (批3 体迁后单一源仍在本 runner:消费 = StartBattleOp 发射家族,
-    #: cw_exec_state/cw_loop 注释指针同源。)
-    POST_LAUNCH_BLOCKERS: ClassVar[tuple[tuple[str, str], ...]] = (
-        ('货币战争-提示-前台无角色', '标识-无角色提示'),
-    )
-
     def __init__(self, op: SrOperation, ctx: SrContext) -> None:
         self._op = op
         self._ctx = ctx
         # 机械执行摘要(最近一次 execute 的 detail;登记件解析输入,非成败
         # 回执——端口无返回,摘经由本属性旁路供 on_outcome detail)。
         self.last_detail: str = ''
-        # 批4 挂账:StartBattle 发射位内部事实(A6 出战链判效面,批4 随
-        # J3/J4 消费端同退役)。消费方 = cw_loop 发射核(J2/J3 达标臂/锁定
-        # 重试)。getattr 容缺(__new__ 桩形态)。
+        # 出战点击事实(出战域重设计收缩语义,T-286):True = StartBattleOp
+        # 点击序列已执行(含弹窗确认);False = 找不到按钮/area 缺失等
+        # 未执行形态。消费方 = cw_loop 发射核(launch_prepared_battle 返回
+        # 值旁路)。getattr 容缺(__new__ 桩形态)。
         self.last_launch_ok: bool | None = None
+        # StartBattleOp 上报的免战跳过子态标记(op 写 env.skip_substate,
+        # dispatch 后由本 runner 读取一次转发 game state 上报路径
+        # apply_op_effect——op 零 game state 直写)。getattr 容缺
+        # (__new__ 桩形态)。
+        self._last_skip_substate: bool = False
         # 执行点金差显影(备战执行缝账务包络;写点 = execute 每次
         # 入口复位)。取值时机 = dispatch 后由 _executed_gold_delta 现算
         # 写入,None = 该动作执行点金差不可推算(诚实缺失,非 0);消费方
@@ -387,6 +385,9 @@ class PrepActionExecutor:
         # 卖出对象 dispatch 前快照(执行点金差供给;dispatch 内 tracked
         # 已同步移除,事后复查恒落空)。
         _pre_sell_bc = self._pre_sell_tracked_bc(action)
+        # 免战跳过子态标记每动作复位(上动作残留禁跨动作流入;op 上报经
+        # _dispatch_action 写入,apply_op_effect 消费)。
+        self._last_skip_substate = False
         detail, emitted = self._dispatch_action(action)
         self.last_detail = detail
         gold_delta = self._executed_gold_delta(action, emitted, _pre_sell_bc)
@@ -403,19 +404,19 @@ class PrepActionExecutor:
                 _advance_gold(_sess_gd, int(gold_delta))
         _gold_extra = ({'gold_delta': int(gold_delta)}
                        if gold_delta not in (None, 0) else None)
+        if isinstance(action, StartBattle) and self._last_skip_substate:
+            # 跳过子态标记进回执 extra(上报动作事实的遥测面;递减本体 =
+            # apply_op_effect,回执只留证)。
+            _gold_extra = {**(_gold_extra or {}), 'skip_substate': True}
         self._note_action_receipt(action, emitted, detail, extra=_gold_extra)
         if isinstance(action, StartBattle):
-            # 批4 挂账:StartBattle 发射位内部事实(A6 判效面,批4 随
-            # J2/J3/J4 消费端同退役)。真执行链 = 注册表分派 StartBattleOp
-            # 发射位内部 ok(找不到按钮/未落地 = False,在册例外返回契约,
-            # design.md unified-action-factory §2.4);执行缝(假环境)不经
-            # 真分派 = applied 真值(F11 双轨申报)。同步写执行态(消费端
-            # = cw_loop 备战环出口 0j 预算复位判定 F3,读后即清)。
+            # 出战点击事实(出战域重设计,T-286):真执行链 = 注册表分派
+            # StartBattleOp 点击序列 ok(False = 找不到按钮/area 缺失,
+            # 在册例外返回契约,design.md unified-action-factory §2.4);
+            # 执行缝(假环境)不经真分派 = applied 真值(F11 双轨申报)。
+            # (旧执行态写点 exec_state.last_prep_battle_launch_ok 随 0j
+            # 恢复链整删退役,消费面已无。)
             self.last_launch_ok = emitted
-            _m_sb = getattr(self._ctx, 'cw_match', None)
-            _sess_sb = getattr(_m_sb, 'session', None) if _m_sb is not None else None
-            if _sess_sb is not None:
-                exec_state_of(_sess_sb).last_prep_battle_launch_ok = emitted
         if emitted:
             # S1 清键门(唯一写点 = mandate.mark_s1_route_
             # check,三路径封闭枚举)。批3a 跨批对齐写死:``landed`` 供给
@@ -457,7 +458,8 @@ class PrepActionExecutor:
                 session = match.session if match is not None else None
                 if session is not None:
                     apply_op_effect(session, action, detail=detail,
-                                    produced_by=type(self).__name__)
+                                    produced_by=type(self).__name__,
+                                    skip_substate=self._last_skip_substate)
             except Exception as e:  # noqa: BLE001  推进失败不阻塞执行
                 log.warning('[cw][expect] apply_op_effect 失败(不阻塞): %s', e)
         log.info('[cw][exec] %s → %s', type(action).__name__,
@@ -576,8 +578,8 @@ class PrepActionExecutor:
         返回 ``(机械执行摘要, 是否实际发出)``。prep 域 ``(detail,
         emitted)`` 语义经 :class:`PrepExecEnv` 旁路字段承载(动作 op 的
         ``execute`` 返回契约恒 True,基类 cw_action_base);在册例外 =
-        StartBattleOp——返回值 = 发射位**内部事实**(非恒 True;找不到
-        按钮/未落地 = False),即发出事实。词表外类型 = 注册表
+        StartBattleOp——返回值 = **点击序列已执行**(非恒 True;找不到
+        按钮/area 缺失 = False),即发出事实。词表外类型 = 注册表
         AssertionError 响亮暴露(生产不可达:F3 validate 先拒)。
         """
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
@@ -587,6 +589,10 @@ class PrepActionExecutor:
                           executor=self)
         ret = action_op_for(action).execute(env)
         if isinstance(action, StartBattle):
+            # 免战跳过子态标记转发(op 上报 → game state 上报路径消费;
+            # getattr 容缺 = 桩 env 形态)
+            self._last_skip_substate = bool(getattr(env, 'skip_substate',
+                                                    False))
             return env.detail, bool(ret)
         return env.detail, env.emitted
 
@@ -747,8 +753,7 @@ class PrepActionExecutor:
 
         r10 review#2:失焦守卫下沉到本原语(所有拖拽路径共享)——窗口后台化时
         拖拽输入静默丢(r9 实证同机制:截图正常/输入丢/连环「源槽未变」假失败),
-        拖前验焦点,失焦先激活。StartBattle 的 click 守卫同款语义(在它自己的
-        路径上,click 不走本原语)。
+        拖前验焦点,失焦先激活。
         """
         from sr_od.application.currency_war.operations.dev.drag_cw_char import (
             DragCwChar,
@@ -846,10 +851,10 @@ class PrepActionExecutor:
             action if action is not None else LevelUp(cost=0))
 
     # ===== 战斗域 =====
-    # (批3 体迁:_start_battle/_launch_attempt/_launch_dead_reset/
-    #  _launch_dead_escalate 已迁 cw_start_battle_action.StartBattleOp,
-    #  基类契约在册例外——execute 返回值 = 发射位内部事实;本入口保留
-    #  薄委托替身缝,返回序保持原 (ok, detail)。)
+    # (批3 体迁后出战域重设计 T-286 重写:StartBattleOp 现体 = 点击出战
+    # 和弹窗(零判效,点击序列已执行语义);原发射家族
+    # (_launch_attempt/_launch_dead_reset/_launch_dead_escalate)随重写
+    # 整删。本入口保留薄委托替身缝,返回序保持原 (ok, detail)。)
 
     def _start_battle(self) -> tuple[bool, str]:
         """薄委托(体已迁 ``cw_start_battle_action.StartBattleOp``;批3

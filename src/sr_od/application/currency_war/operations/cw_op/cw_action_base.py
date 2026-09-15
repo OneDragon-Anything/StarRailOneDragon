@@ -42,9 +42,10 @@ class ActionOp(ABC):
 
     基类契约:``execute`` 返回恒 True(终裁:发出即职责完成,零
     判效——落地事实归下一帧入口观察 reconcile 对账,不据执行侧判定
-    改道)。**例外登记口**:在册例外 = StartBattleOp(返回值 = 发射位
-    内部事实非恒 True,消费面 = runner 包络 last_launch_ok 旁路与执行态
-    写点;design.md §2.4,批3 落款生效)。prep 域 ``(detail, emitted)``
+    改道)。**例外登记口**:在册例外 = StartBattleOp(返回值 = 点击序列
+    已执行,非恒 True——找不到按钮/area 缺失 = False;消费面 = runner
+    包络 last_launch_ok 旁路;design.md §2.4,批3 落款生效;语义收缩 =
+    T-286 出战域重设计)。prep 域 ``(detail, emitted)``
     语义经 PrepExecEnv 旁路字段承载,不进返回值。
     """
 

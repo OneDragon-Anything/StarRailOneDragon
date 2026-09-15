@@ -142,7 +142,7 @@ _REGISTRY: dict[type, type[ActionOp]] = {
     PerfectProjectorUse: ToolUseOp,
     LuckyTokenUse: ToolUseOp,
     # 转场族(批3)
-    StartBattle: StartBattleOp,   # 基类契约在册例外(返回值 = 发射位内部事实)
+    StartBattle: StartBattleOp,   # 基类契约在册例外(返回值 = 点击序列已执行)
     OpenShop: OpenShopOp,         # terminal 承载行(execute 抛,正常路径不可达)
     # 事件线 pick 族(批4;design.md §2.5——overlay act 段经工厂,机械体
     # = 各 overlay 画面 op act 确认链逐字迁移,域 env = OverlayPickExecEnv)

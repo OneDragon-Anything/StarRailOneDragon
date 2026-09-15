@@ -112,10 +112,6 @@ class ExecState:
     # 装备拖拽失败记忆((装备名, 角色名) → 失败计数)。连续失败
     # ≥2 次 = 该落点对拉黑。局级。
     equip_drag_fail_counts: dict = field(default_factory=dict)
-    # 出战发射连败计数(prep_actions._start_battle 写;跨环重入存活——
-    # 环级计数随 Director 重建清零,挡不住 round_fail → 外环重入)。
-    # 达 PrepActionExecutor.LAUNCH_DEAD_LIMIT → 停机留证(cw_launch_dead)。
-    launch_dead_streak: int = 0
     # 巨星 handler 点击执行防重入。**必须局容器级**(防 new CwScreenMegastar
     # instance 重置 instance flag → re-click toggle 反选 → 卡死;落 op
     # 实例 = 每次新建实例清零 = 原始事故复发,session.md §2.4 B1 定案)。
@@ -190,14 +186,6 @@ class ExecState:
     cw_takeover_tries: int = 0
     # fenced 臂上一帧状态(deploy 写读)。
     cw4_swap_arm_on: object = None
-    # 备战环 StartBattle 发射结果(F3,ADR-0610)。True = 本环发射
-    # 且验证成功;False = 发射但验证失败(「备战环返回 success=True
-    # status=…验证失败…」形态——1-1 冻结局实证该形态曾使 0j 恢复链预算
-    # 每环被误复位,预算形同虚设);None = 本环未发射(缺省)。写入端 =
-    # cw_screen_prep 备战单轮执行记账处(StartBattle 是终结动作,每环至多
-    # 一写);消费端 = cw_loop 备战环出口 on_result 的 0j 预算复位判定,
-    # 读后即清防跨环残留。环级生命周期。
-    last_prep_battle_launch_ok: bool | None = None
     # —— 账外补充·第三波(session 动态属性锚点收编,逐波清单 =
     # ADR-0563「落位裁量」节第三波)——
     # 轮内新鲜度排除载体(ADR-0530 立项;ADR-0611 §3-1 定谳为 L1 卖侧闩
@@ -295,7 +283,8 @@ def _owned_add(session, item: str) -> None:
 
 def apply_op_effect(session, action: CwAction | dict, *,
                     produced_by: str = 'PrepActionExecutor',
-                    detail: str = '') -> list[dict]:
+                    detail: str = '',
+                    skip_substate: bool = False) -> list[dict]:
     """原子 op 的逻辑效果推进(两态制标准语义,ADR-0651;两执行面同源入口)。
 
     按游戏规则把 op 的可推算效果**直接写 session 字段**(gold delta/
@@ -303,6 +292,11 @@ def apply_op_effect(session, action: CwAction | dict, *,
     效果上抛形态,只含本函数实际写过的字段)。回金不可算(角色费未知/
     无 tracked 身份)→ 不推字段、不挂账,观察帧覆盖兜底(ADR-0651:
     推算不了不是挂账理由)。
+
+    ``skip_substate`` = 出战动作的免战跳过子态标记(StartBattleOp 经
+    runner 包络上报;op 零 game state 直写)。True = 本次出战走「跳过」
+    按钮(免战牌生效)→ 次数递减挂本口(上报时递减,非「验证落地后」
+    ——出战 op 已零验证,T-286 出战域重设计)。
 
     显式不建模盲区(EXPECTED_STATE §6 原申报语义存续):``_handle_bench_full``
     席满急救(买经验×10 + 卖前几槽)不经执行器 → 不在推进面,该形态由
@@ -314,6 +308,7 @@ def apply_op_effect(session, action: CwAction | dict, *,
     from sr_od.application.currency_war.kernel.cw_vocab import (
         SellBench,
         SellDeployed,
+        StartBattle,
         WearEquip,
         sell_refund,
     )
@@ -361,6 +356,26 @@ def apply_op_effect(session, action: CwAction | dict, *,
                 + [action.item_name]
             _eff(f'deployed[{idx}].equips', f'+{action.item_name}(穿戴)',
                  'tracked')
+    elif isinstance(action, StartBattle):
+        # 进战斗:hp/gold/streak 由结算屏观察覆盖接管(原显式不推进理由
+        # 升格为分支);唯一逻辑推进 = 免战牌跳过递减(上报时递减;标记
+        # 由 StartBattleOp 经 runner 包络上报,op 零 game state 直写)。
+        # 递减 best-effort 记录面:未登记(登记面缺位的局)→ consume_use
+        # 返 None 零动作,与升级挂点同纪律(cw_effect_inventory.consume_use)。
+        if skip_substate:
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                board_state_of,
+            )
+            from sr_od.application.currency_war.kernel.cw_investments import (
+                STRATEGY_EFFECTS,
+            )
+            _spec = STRATEGY_EFFECTS.get('免战牌')
+            if _spec is not None:
+                _left = board_state_of(session).effects.consume_use(_spec.id)
+                if _left is not None:
+                    _eff('effects[免战牌]', f'remaining_uses→{_left}(跳过上报递减)',
+                         'effects')
+                    log.info('[cw][battle] 免战牌跳过上报 → 次数递减(余 %s)', _left)
     elif isinstance(action, dict):
         # 确认类到账(dict 形态;{'op','item'}):owned 本体推进。
         # ConfirmStrategy 不在此推(active_strategies 本体追加 = handler
@@ -385,7 +400,6 @@ def apply_op_effect(session, action: CwAction | dict, *,
         # - OpenBox/OpenTome:箱/典籍不消失(仅画面态,消耗在选卡确认;
         #   OpenBox 2a 终结化后选卡 = 武装箱选择画面 op,零容器账);
         # - OpenShop(含 read_only):画面态周转,零局状态变更;
-        # - StartBattle:进战斗,hp/gold/streak 由结算屏观察覆盖接管;
         # - LevelUp:经验/等级/金 = 容器逻辑态(apply_prep_action_logic
         #   LevelUp 分支,xp_apply_clicks + action.cost 直写单一源,
         #   批2b 翻转后金腿不经执行缝);

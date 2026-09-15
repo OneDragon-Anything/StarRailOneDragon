@@ -198,8 +198,10 @@ class ActiveEffectInventory:
     GameState.effects,session.effect_inventory 为其兼容读口——载体归一
     防双账本):选卡登记 = CwScreenInvestStrategy 确认落地(免战牌同点
     自动登记);节点 tick = cw_loop 备战分支(进节点边界);计数 bump =
-    cw_op_buy_cards 执行落地门(刷新/购买);跳过递减 = prep_actions
-    _launch_attempt(免战牌 §3.2.19);升级标记 = prep_actions._level_up
+    cw_op_buy_cards 执行落地门(刷新/购买);跳过递减 = kernel
+    cw_exec_state.apply_op_effect 上报路径(StartBattleOp 跳过子态经
+    runner 包络上报,上报时递减——出战域重设计 T-286);升级标记 =
+    prep_actions._level_up
     (既有);结算挂点 = CwScreenBattleWait 结算观察写端(_record_round_outcome
     非 telemetry_only 分支,apply_settlement_cover 同分支同时序;现役注册表
     零 BATTLE_END 条目 = 零效果条目推进,零条目 = 零驱动,effect-domain
