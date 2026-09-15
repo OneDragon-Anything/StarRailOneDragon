@@ -1549,8 +1549,8 @@ def apply_settlement_cover(bs: GameState, *, hp_after: int | None,
 #: **扩面申报表**(扩面须逐批显式登记于本表,
 #: 原「禁扩静默」条款由本表承接):
 #: - 支持动作集扩:v2 动作族 SellDeployed / SwapDeploy
-#:   (语义源 = simulate 对应分支逐腿平移,金样锁 test_cw_transfer_golden
-#:   对拍;CompTransaction 腿已随 unified-action-factory 批2b R3 删除);
+#:   (语义源 = simulate 对应分支逐腿平移,直锁 test_cw_transfer_golden
+#:   钉住;CompTransaction 腿已随 unified-action-factory 批2b R3 删除);
 #:   DeployMove 不入(围栏部署 = 结算期代理,obs 通道申报对齐);
 #: - 域集扩:front_row / back_row(v2 腿与合成连锁全场域写回,deployed
 #:   域语义)、board(v2 腿重算派生)、equips(卖出回收腿);
@@ -1623,8 +1623,8 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
                             produced_by: str, sig: ChannelSig) -> LogicOutcome:
     """动作状态应用的单一转移函数(转移函数单源化;裁定 A:引擎动作
     后状态应用 = 本函数,logic_action 族,与 live 同函数同渠道;语义源 =
-    fields.md §4.2 各 op 写入行 + simulate 对应分支逐腿平移,金样锁
-    test_cw_transfer_golden 对拍)。
+    fields.md §4.2 各 op 写入行 + simulate 对应分支逐腿平移,直锁
+    test_cw_transfer_golden 钉住)。
 
     逐域 write_logic(域集 = :data:`SHOP_PROJECTION_DOMAINS`,扩面随本迭代
     申报表):动作字段转移全集在函数内应用(含合成连锁/满栏合成买——
