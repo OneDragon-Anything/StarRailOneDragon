@@ -1,5 +1,3 @@
-import time
-from typing import Optional
 
 from cv2.typing import MatLike
 
@@ -12,8 +10,12 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
 from sr_od.application.sim_universe import sim_uni_screen_state
-from sr_od.application.sim_universe.operations.auto_run.sim_uni_wait_level_start import SimUniWaitLevelStart
-from sr_od.application.sim_universe.operations.sim_uni_enter_fight import SimUniEnterFight
+from sr_od.application.sim_universe.operations.auto_run.sim_uni_wait_level_start import (
+    SimUniWaitLevelStart,
+)
+from sr_od.application.sim_universe.operations.sim_uni_enter_fight import (
+    SimUniEnterFight,
+)
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
 from sr_od.operations.sr_operation import SrOperation
@@ -118,20 +120,20 @@ class EnterGame(SrOperation):
 
         screen = self.last_screenshot
         self.round_by_click_area('进入游戏', '国服-账号输入区域')
-        time.sleep(0.5)
+        self._interruptible_sleep(0.5)
         if self.use_clipboard:
             PcClipboard.copy_and_paste(self.ctx.game_account_config.account)
         else:
             self.ctx.controller.keyboard_controller.keyboard.type(self.ctx.game_account_config.account)
-        time.sleep(1.5)
+        self._interruptible_sleep(1.5)
 
         self.round_by_click_area('进入游戏', '国服-密码输入区域')
-        time.sleep(0.5)
+        self._interruptible_sleep(0.5)
         if self.use_clipboard:
             PcClipboard.copy_and_paste(self.ctx.game_account_config.password)
         else:
             self.ctx.controller.keyboard_controller.keyboard.type(self.ctx.game_account_config.password)
-        time.sleep(1.5)
+        self._interruptible_sleep(1.5)
 
         result = self.round_by_find_area(screen, '进入游戏', '文本-同意-旧')
         if result.is_success:
@@ -140,7 +142,7 @@ class EnterGame(SrOperation):
         result = self.round_by_find_area(screen, '进入游戏', '文本-同意-新')
         if result.is_success:
             self.round_by_click_area('进入游戏', '国服-同意按钮')
-        time.sleep(0.5)
+        self._interruptible_sleep(0.5)
 
         screen = self.screenshot()
         self.already_login = True
@@ -162,7 +164,7 @@ class EnterGame(SrOperation):
         return self.round_by_find_and_click_area(screen, '进入游戏-选择账号', '按钮-登陆其他账号',
                                                  success_wait=1, retry_wait=1)
 
-    def check_screen_to_interact(self, screen: MatLike) -> Optional[OperationRoundResult]:
+    def check_screen_to_interact(self, screen: MatLike) -> OperationRoundResult | None:
         """
         判断画面 处理可能出现的需要交互的情况
         :param screen: 游戏画面
@@ -194,12 +196,12 @@ class EnterGame(SrOperation):
         if match_word is not None and match_word_mrl is not None and match_word_mrl.max is not None:
             for mr in match_word_mrl:
                 self.ctx.controller.click(mr.center)
-                time.sleep(1)
+                self._interruptible_sleep(1)
             return self.round_wait(status=match_word)
 
         return None
 
-    def check_sim_uni(self, screen: MatLike) -> Optional[OperationRoundResult]:
+    def check_sim_uni(self, screen: MatLike) -> OperationRoundResult | None:
         """
         判断是否有模拟宇宙相关的画面
 
