@@ -71,17 +71,19 @@
 
 ### 剖析方法(四步)
 
-1. **样本域门**:可分解的数据源 = 对局档案内的 op journal(档案 JSON `slices` 下的 `op_journal.jsonl` 键;档案固定根 `.debug/currency_war/telemetry/matches/`)。schema<9 的档案结构性无 op journal,不可分解(禁拿近似口径凑数);schema≥9 也要实查键在不在(早期局缺)——判据 = 键在场,缺就在报告声明「本局不可分解」。
-2. **enter/exit 配对差分**:op journal 每行 = 一次画面 op 调用——enter 行带入口观察(`obs`),exit 行自带 `duration_s`(单次时长)与 `outcome`;按调用序配对,逐 op 聚合次数与总时长,行内 `plane`/`round_num` 定位轮次。速查命令(直读档案;更复杂的聚合按 telemetry-reading「新复盘需求=新视图」纪律立项,不落盘一次性脚本):
+1. **样本域门**:可分解的数据源 = server 主日志的 `[cw-op]` 行(dispatch 包装/仲裁段在每次画面 op **出口**落一行,格式 `[cw-op] op=<名> plane=<位面> round=<轮次> dur=<秒>s outcome=<ok|fail|error>[ detail=<摘要>]`;主日志 = `.log/mcp_server.log`,MCP 直跑场景 = `.debug/sr_od_mcp/main_server.log`)。**日志轮转窗辖权**:证据在主日志,受轮转窗辖——剖析须在轮转前做(深检派单 = 局终即派,远早于轮转窗);窗口外声明「本局不可分解」。存量形态:2026-09-15(op_journal 流退役)前装配的旧档案 v12 切片仍内嵌 `op_journal.jsonl` 键(冻结只读考古,enter/exit 配对差分口径);新局档案切片单键无 op 行,一律走日志行口径——两类证据都可分解,报告引用注明证据面(日志行原文/档案 JSON)。
+2. **exit 行直读聚合**:`[cw-op]` 行 = 一次画面 op 调用的出口快照——`dur` 即单次时长(enter→exit 差分已在写端做完,无需配对),逐 op 聚合次数与总时长,行内 `plane`/`round` 定位轮次,`outcome` 分型 ok/fail/error。速查命令(直读日志;更复杂的聚合按 telemetry-reading「新复盘需求=新视图」纪律立项,不落盘一次性脚本):
 
    ```powershell
-   $j = Get-Content .debug/currency_war/telemetry/matches/match_<game_id>.json -Raw | ConvertFrom-Json
-   $j.slices.'op_journal.jsonl' | Where-Object event -eq 'exit' | Group-Object op |
-     ForEach-Object { [pscustomobject]@{ op = $_.Name; n = $_.Count; total_s = ($_.Group | Measure-Object duration_s -Sum).Sum } } |
+   Select-String -Path .log\mcp_server.log -Pattern '\[cw-op\]' |
+     ForEach-Object { if ($_.Line -match '\[cw-op\] op=(.+?) plane=(-?\d+) round=(-?\d+) dur=([\d.]+)s outcome=(\w+)') {
+       [pscustomobject]@{ op = $Matches[1]; dur = [double]$Matches[4]; outcome = $Matches[5] } } } |
+     Group-Object op |
+     ForEach-Object { [pscustomobject]@{ op = $_.Name; n = $_.Count; total_s = ($_.Group | Measure-Object dur -Sum).Sum } } |
      Sort-Object total_s -Descending
    ```
 
-3. **op 间隙单独记一笔**:相邻 op 调用之间(exit 行→下一条 enter 行)的墙钟差是独立时长来源(结算屏/位面过渡/过场动画)。**段间停机排除**:跨 run 段(run_id 变化)与超长间隙一律不计入活跃时长——判据优先用 run_id/段界硬信号;同段超长间隙按停机嫌疑排除,并在报告声明排除量。
+3. **op 间隙单独记一笔**:相邻 `[cw-op]` 行之间的日志时间戳墙钟差是独立时长来源(结算屏/位面过渡/过场动画)。**段间停机排除**:跨局段与超长间隙一律不计入活跃时长——判据优先用局界/段界硬信号(局终收口、server 重启);同段超长间隙按停机嫌疑排除,并在报告声明排除量。
 4. **bot 开销 / 游戏原生二分归类**:每个 op 与每笔间隙归两类之一——**游戏原生**(bot 只等待演出/结算,代码面无压缩杠杆,杠杆在游戏内速度设置)vs **bot 开销**(决策+点击+固定等待,bot 侧可压缩面);归不了的单列「混合」并写明混合机制。归类依据(该 op 在流程里做什么)写进报告接受复核;证据边界如实声明(如:等待类时长内含出口判定开销——判读战斗是否结束的截图轮询——未单独拆分)。
 
 ### 热点归因最小证据标准(缺一件 = 线索,不是热点)
@@ -95,7 +97,7 @@
 
 1. **产出门**:报告给巡检阈值只能作**建议**,每条带依据列(健康分布形态+相对倍数的误报余量逻辑+样本局 id);健康基线不足时,显式声明是外推值及基线构成。
 2. **落点分流**:阈值数值的唯一合法落点 = ①定时任务书(实机监控模板的巡检步,见 [autonomous-loop.md](autonomous-loop.md)「实机监控」——临时/试用期判读参考住这里)→ ②哨兵脚本常量位(健康基线攒够后固化;常量带环境变量覆盖便于运行时调参,如 `cw_sentinel.py` 的 `DWELL_SEC`/`CW_SENTINEL_DWELL_SEC`);固化时把依据摘要(健康基线构成+定标日,纯语义描述)写进常量注释。
-3. **覆盖声明**:每条回填阈值在消费端(任务书条目/常量注释)声明三件:巡检项与判读口径(读 op journal 实时行还是日志相位)、依据样本构成、定标日;定时任务书定期换血时阈值语义随条目迁移,禁只换措辞丢判据。
+3. **覆盖声明**:每条回填阈值在消费端(任务书条目/常量注释)声明三件:巡检项与判读口径(主日志 `[cw-op]` 行相位)、依据样本构成、定标日;定时任务书定期换血时阈值语义随条目迁移,禁只换措辞丢判据。
 4. **复核门**:固化后遇误报/漏报,先回剖析方法重跑构成表核对分布、改常量与依据注释,再同步任务书措辞——禁先改文档措辞(会造出与常量漂移的第二源)。
 
 ## 判读与建档的运维侧纪律
