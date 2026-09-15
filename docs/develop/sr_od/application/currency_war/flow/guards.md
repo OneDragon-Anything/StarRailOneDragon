@@ -7,7 +7,6 @@
 
 | 限额 | 值 | 语义 |
 |---|---|---|
-| `FRONTLESS_REDEPLOY_LIMIT=2` | 本 run 累计（复位条件收紧：环 success ∧（本环未发射 StartBattle ∨ 发射验证成功）才复位——StartBattle 验证失败的环在外循环仍记 round_success，该形态部署链不健康不复位；发射结果载体 = `ExecState.last_prep_battle_launch_ok` 三态，消费后清 None 防跨环残留；1-1 冻结局实证旧无条件复位使预算形同虚设） | 前台无角色恢复链（确认→验证重部署→验前排≥1→再出战）超限 round_fail 交兜底链，不再无限 round_wait（1-1 事故 5h 死循环返工） |
 | `PLANE_MISDISPATCH_LIMIT=3` | 连续计（接管/过渡成功清零） | 位面过渡误分发型 fail 超限 round_fail（boss 简报帧误分发每 2s 无限循环实证） |
 | director fail streak 5 | 连续计 | CwScreenPrep 连续 5 次失败 → round_fail 交未知画面兜底链（消除静默 ping-pong；round_fail 在 node_max_retry 400 下不停机——刻意：消除"静默"，warning 进日志即哨兵，停机决策留给观察者） |
 

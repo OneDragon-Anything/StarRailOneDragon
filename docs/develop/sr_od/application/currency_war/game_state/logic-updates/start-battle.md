@@ -10,14 +10,14 @@
 
 **容器 GameState 全域零写(显式声明「逻辑态 = 空」)**:进战斗后 hp/gold/streak 全部由结算屏真值覆盖接管(`apply_settlement_cover` 结算覆盖写端;败轮金按轮首补发口径)。`kernel/cw_exec_state.py::apply_op_effect` 的显式不建模清单点名 StartBattle:进战斗,hp/gold/streak 由结算屏观察覆盖接管,零推进。
 
-效果账本域(非 GameState 字段):**免战牌子态**的跳过执行落地后次数递减(§3 第 4 条)。
+效果账本域(非 GameState 字段):**免战牌子态**的跳过在上报动作时次数递减(§3 第 1 条)。
 
 ## 3. 确定面转移规则(逐条)
 
-1. **节点转移事实**(非容器域):出战落地 → 外循环置战斗窗口(备战 → 战斗 → 结算 → 回备战轮推进,[../outer_loop.md](../outer_loop.md) §4);备战标识消失 + 无拦截弹窗 = 转移成功的机械判据(`POST_LAUNCH_BLOCKERS` 白名单防「前台无角色」弹窗假成功);
+1. **上报动作**(非容器域):op 完成步(点击出战/跳过 + 弹窗确认后)上报动作事实;免战牌子态经 apply_op_effect 分支执行效果账本 consume_use(上报时递减,未登记零动作);战斗窗口置位归外循环(出战点击落地由游戏承载,op 零判效)。
 2. **常规发射**(执行器):找钮(「按钮-出战」,免战子态查「按钮-跳过」,正交态查找不锁死单一屏——免战与商店开可叠加)→ mouse_move + click + 失焦守卫(重点一次)→ 未达上限警告弹窗勾选 + 确认(勾「本局不再提示」,对齐 CwScreenDeployNotFull)→ 轮询转移;
-3. **未落地重发/停机**:首次失败原样重发(press_time 加长)→ 仍「未落地」计 `launch_dead_streak`,达 `LAUNCH_DEAD_LIMIT` → 停机留证三要素(截图 + flag + stop_running)。发射重发/连败停机 = 流程防线([flow/action_exec.md](../../flow/action_exec.md) §7),不属逻辑态;
-4. **免战牌子态**(策略卡「免战牌」激活):出战按钮变「跳过(N/N)」= 本节点直跳战斗(免 2 次战);跳过**执行落地**(备战标识消失验证通过)→ 效果账本次数递减(`kernel/cw_effect_inventory.py::ActiveEffectInventory.consume_use`:remaining_uses −1,归零移除;余量种子 = `EffectSpec.duration_uses`)。递减挂点与登记挂点解耦(登记面缺位的局 consume_use 返 None 零动作,不炸发射回执);「用尽后按钮恢复出战」待实机验(观察工作清单)。
+3. **零重试零判效**:点击未落地/被拒不重发不计数——交回外循环重判,下一周期策略自然重提案;点击丢失的停顿监测归哨兵(框架不裁策略卡死)。
+4. **免战牌子态**(策略卡「免战牌」激活):出战按钮变「跳过(N/N)」= 本节点直跳战斗(免 2 次战);跳过点击并完成上报 → 效果账本次数递减(上报时递减,§3 第 1 条)(`kernel/cw_effect_inventory.py::ActiveEffectInventory.consume_use`:remaining_uses −1,归零移除;余量种子 = `EffectSpec.duration_uses`)。递减挂点与登记挂点解耦(登记面缺位的局 consume_use 返 None 零动作,不炸发射回执);「用尽后按钮恢复出战」待实机验(观察工作清单)。
 
 ## 4. 随机面
 
@@ -26,14 +26,14 @@
 ## 5. 拒绝语义
 
 - 找不到出战/跳过按钮 = `emitted=False`(「找不到出战按钮」),交上层处置;
-- area 缺失 = 确定性失败禁兜底坐标(重发无意义,立即判败上交);
-- 出战被拒弹窗(`POST_LAUNCH_BLOCKERS` 在册)= 失败(标识消失为弹窗污染非转移),交「带验证的重部署 → 再出战」链;
+- area 缺失 = 确定性失败禁兜底坐标(如实上报「未执行」交回);
+- 出战被拒弹窗(未达上限警告/前台无角色)= op 内点确认后完成交回;重部署归策略部署义务(下一备战帧自然提案),框架零恢复链。
 - W209j 刹车(ADR-0388):运行中被停 → `StopBrakeShortCircuit` 异常拒绝执行任何动作(停机非动作,不五回执行);
 - 容器零写语义下无 applied=False 拒绝形态(`apply_op_effect` else 分支零推进)。
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::StartBattle`;`prep_actions.py::PrepActionExecutor._start_battle` / `_launch_attempt` / `_launch_dead_escalate`;`kernel/cw_launch_admission.py::readiness_launch_decision`;`operations/cw_loop.py::readiness_battle_launch`;`kernel/cw_effect_inventory.py::ActiveEffectInventory.consume_use` / `EffectSpec.duration_uses`;`kernel/cw_exec_state.py::apply_op_effect`(显式不建模清单);`kernel/cw_game_state.py::apply_settlement_cover`(战后真值接管)。
+`kernel/cw_vocab.py::StartBattle`;`operations/cw_op/cw_start_battle_action.py::StartBattleOp`(点击+弹窗确认零判效);
 
 ## 7. 语义验证
 
