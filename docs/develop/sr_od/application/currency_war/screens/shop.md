@@ -1,7 +1,7 @@
 # 商店开画面(shop · 货币战争-备战-开商店)
 
 > 代码 = `operations/cw_screen/cw_screen_prep.py::_open_shop_phase`(流程层商店编排)+ `operations/cw_screen/cw_screen_buy_cards.py::run_buy_waves`(商店单动作循环)+ `finalize_buy_phase`(单元收尾)。职责:商店打开态的一次访问编排——单动作决策循环驱动 `decide_shop_action`、终结动作离店、收尾。路径根 = `src/sr_od/application/currency_war/`。
-> **决策判据(买什么/卖什么/刷不刷/升不升)一律不在本篇**——本篇只管「循环怎么转、期望态怎么推进、何时离店」;判据见 [../../strategy-docs/11_shop_decisions.md](../../strategy-docs/11_shop_decisions.md)。
+> **决策判据(买什么/卖什么/刷不刷/升不升)一律不在本篇**——本篇只管「循环怎么转、期望态怎么推进、何时离店」;判据见 [../../strategy-docs/11_shop_decisions.md](../strategy-docs/11_shop_decisions.md)。
 
 ## 1. 分发判定
 
@@ -103,4 +103,4 @@ while True(零读屏):
 
 - journal op 名 = 「商店访问」(0n 转交与显式开店同口);计数键 shop_visit_idle_gold / branch_shop_open_*;刷新遥测字段 refresh_board_changed + free_refresh_proc flag;投放分键 plan_visit_action_cap / shop_ev_bench_wait。
 - 测试锁:商店投影逻辑锁(test_cw_shop_projection_logic)、R2 预算门对拍、P56 买面锁等,锁面 = `sr-od-test/test/sr_od/application/currency_war/`。
-- game 侧知识:经济机制(刷新/息/锁商店) = [../../../../game/currency_war/research/economy.md](../../../../game/currency_war/research/economy.md);合成机制 = [../../../../game/currency_war/research/merge_mechanics.md](../../../../game/currency_war/research/merge_mechanics.md)。
+- game 侧知识:经济机制(刷新/息/锁商店) = [../../../../game/currency_war/research/economy.md](../../../../../game/currency_war/research/economy.md);合成机制 = [../../../../game/currency_war/research/merge_mechanics.md](../../../../../game/currency_war/research/merge_mechanics.md)。

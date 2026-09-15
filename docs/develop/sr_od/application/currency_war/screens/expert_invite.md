@@ -71,4 +71,4 @@ area = 「卡-现金为王」(idx<0)∨「卡-1..4」→ area_center 缺失 = ro
 
 - journal op 名 =「专家邀请函」;op 内日志 tag = `[cw-bookcard]`(board/卡羁绊/选卡描述)。
 - 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens_step3.py`(生命周期段迹锁)、test_cw_game_state_consume.py(chosen_expert 接线锁);`choose_expert_index` 纯函数行为锁同仓。代码注引的接线锁(test_cw_node_screens)已不在册(开放设计注)。
-- game 侧知识:画面与书册卡机制 = [../../../../game/screens/currency_war_expert_invitation.md](../../../../game/screens/currency_war_expert_invitation.md)。
+- game 侧知识:画面与书册卡机制 = [../../../../game/screens/currency_war_expert_invitation.md](../../../../../game/screens/currency_war_expert_invitation.md)。

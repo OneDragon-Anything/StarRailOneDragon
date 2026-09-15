@@ -168,7 +168,7 @@
   `test_fill_only_never_removes_worn`。
 - **单帧锁**:`sr-od-test/.../test_cw_equip_wear_semantics_18.py`(判据表
   五行+合并/二分四域+兜底行/求序/分配器零漂移与重排/对拍锁+检测面零显警)
-  + `test_cw_r388_opening_hold.py`(r388/r70 矩阵改锁 `resolve_wear_release`
+  + `test_cw_r388_opening_hold.py` `resolve_wear_release`
   新入口,语义逐条对应)。
 - **row5 开关裁定**:行为无条件化(Considered Options;行为输入
   已就绪,悬置默认关违反开关生命周期门)。
@@ -212,4 +212,4 @@ row2- row5 语义原文照旧):
 - **锁面变化**:r388 锁(§6 引)三断言改锁 ``opening_hold`` 域标记、
   18 锁 §2.1 row5 opening 断言改写——语义被 21 号稿取代非机械跟绿,
   出处已注各 docstring;21 号稿新锁 =
-  ``test_cw_equip_wear_semantics_21.py``。fill-only 锁不动。
+  ``test_cw_equip_wear_semantics_21.py``

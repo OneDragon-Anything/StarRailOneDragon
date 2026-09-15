@@ -76,7 +76,7 @@ pick = decide_supply([o for o,_ in opts], board_state_of(session), ..., refresh_
 
 - journal op 名 =「补给节点」;op 内日志 tag = `[cw-supply]`(options/pick/click、锚读缺告警、chosen 记录失败告警)。
 - 测试锁:`sr-od-test/test/sr_od/application/currency_war/` 下 test_cw_runnode_retire.py(旧节点基类退役等价)、test_cw_game_state_consume.py(chosen_supply 接线)、test_cw_obs_arch_event_screens_step3.py(生命周期结构)。
-- game 侧知识:画面与机制(动态列数/钻) = [../../../../game/screens/currency_war_supply.md](../../../../game/screens/currency_war_supply.md);装备价值 = [../../../../game/currency_war/research/equipment_mechanics.md](../../../../game/currency_war/research/equipment_mechanics.md)。
+- game 侧知识:画面与机制(动态列数/钻) = [../../../../game/screens/currency_war_supply.md](../../../../../game/screens/currency_war_supply.md);装备价值 = [../../../../game/currency_war/research/equipment_mechanics.md](../../../../../game/currency_war/research/equipment_mechanics.md)。
 
 ## 开放设计注
 

@@ -13,7 +13,7 @@
 
 ## 3. 观察面
 
-入口单次观察(observe 段)——`_observe_frame` 序:入口锚探测(miss = `hit=False`,observe 段 round_fail 早退,无复探窗)→ 命中后 1s 稳定等待 → 重截稳定帧(标题出现后三卡才渲染稳定,时序口径 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../game/currency_war/research/screen_flow_timing.md) #3)→ 候选读取 `_read_options`(全图 OCR,卡名行 y 带 360-410 + 2-8 字 + 排除表过滤,左→右排序)。刷新计数另有 log 观察通道(`read_invest_refresh_counts(ctx, screen, 'env')`,遥测面供 GameState 写入端;执行闸不消费本读数,`_decide_and_act` 独立现读同源 reader)。观察 payload = `InvestEnvObservation`(`hit`/`options`/`screen`);本屏不上报 GameState 容器观察(决策输入 = `board_state_of(session)` 视图)。
+入口单次观察(observe 段)——`_observe_frame` 序:入口锚探测(miss = `hit=False`,observe 段 round_fail 早退,无复探窗)→ 命中后 1s 稳定等待 → 重截稳定帧(标题出现后三卡才渲染稳定,时序口径 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #3)→ 候选读取 `_read_options`(全图 OCR,卡名行 y 带 360-410 + 2-8 字 + 排除表过滤,左→右排序)。刷新计数另有 log 观察通道(`read_invest_refresh_counts(ctx, screen, 'env')`,遥测面供 GameState 写入端;执行闸不消费本读数,`_decide_and_act` 独立现读同源 reader)。观察 payload = `InvestEnvObservation`(`hit`/`options`/`screen`);本屏不上报 GameState 容器观察(决策输入 = `board_state_of(session)` 视图)。
 
 ## 4. 动作面
 
@@ -80,4 +80,4 @@ pick = decide_invest('env', names, board_state_of(session), ...)
 - journal op 名 =「投资环境」(0s 链另有「等待 1-1」独立行);分支屏记号 `_note_branch_screen` 两写点;op 内日志 tag = `[cw-env]`(计数读数/options/chose/reason、刷新终结交回)。
 - 缺陷分键 = `invest_env.refresh_no_effect`(record_defect L2 留证)。
 - 测试锁:实机在册行为锁 + 写入流对拍 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`。
-- game 侧知识:画面与机制(环境 = 整局增益) = [../../../../game/screens/currency_war_invest_env.md](../../../../game/screens/currency_war_invest_env.md);环境刷新判据 = `kernel/cw_events.py` 环境帧分支 + [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1。
+- game 侧知识:画面与机制(环境 = 整局增益) = [../../../../game/screens/currency_war_invest_env.md](../../../../../game/screens/currency_war_invest_env.md);环境刷新判据 = `kernel/cw_events.py` 环境帧分支 + [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1。

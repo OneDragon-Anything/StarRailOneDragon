@@ -4,7 +4,7 @@
 > 定位：货币战争主链**每个动作 op 的逻辑态计算规则全集**（地基文档）。动作 op 机械发出后，不经任何画面观察，按游戏规则从动作前状态推算出预期状态并直写容器——这份推算规则的确定性全集就是本篇。真值永远以下一帧画面观察为准。
 > 用户裁定：不许以「逻辑态未建模」为由把动作交回外循环——在役动作全集逐个有逻辑态；除 §5 两类转移动作显式声明「逻辑态=空」、§6 声明的事件选择边界外，本篇不存在「无逻辑态」的动作。
 > 机制事实依据 = `docs/game/currency_war/research/`（merge_mechanics / xp-rules / economy / equipment_mechanics / screen_flow_timing）+ `docs/game/currency_war/data/gameplay.md`（官方原文）+ `../proofs/`（数学证明）。kernel 现位依据 = 符号锚 `文件::符号名`（路径根 = `src/sr_od/application/currency_war/`，行号不写，随代码漂移）。
-> 读者 = 无会话历史的工程师/智能体。职责分界：「一次访问内怎么编排动作」= [action_exec.md](action_exec.md) / [prep.md](../screens/prep.md) / [shop.md](../screens/shop.md)；「每个字段怎么记」= [fields.md](fields.md)。与 fields.md 的分工：fields.md 按**字段**记写入面，本篇按**动作**记计算规则，同源互指。
+> 读者 = 无会话历史的工程师/智能体。职责分界：「一次访问内怎么编排动作」= [action_exec.md](../flow/action_exec.md) / [prep.md](../screens/prep.md) / [shop.md](../screens/shop.md)；「每个字段怎么记」= [fields.md](fields.md)。与 fields.md 的分工：fields.md 按**字段**记写入面，本篇按**动作**记计算规则，同源互指。
 
 ## 1. 总则
 
@@ -51,7 +51,7 @@
 
 ### 1.5 枚举范围与动作计数
 
-本篇枚举 = 商店域 6 个动作词条（§2）+ 备战域原子动作（§3：DeployMove/SellDeployed/LevelUp/OpenBox/OpenTome/ClickSpheres/OpenBookcard + §3A WearEquip 与工具原子类，规则见 §4）+ 转场类 2 个（§5）+ 词表完备性注 2 条（§2.7）。事件线选择（pick 族，含武装箱四选一画面 op）按 §6 声明为非逻辑态通道。动作词表本体与执行载体表 = [action_exec.md](action_exec.md) §1、[screens/README](../screens/README.md) §4（能力面/策略面之分不在本篇重复）。
+本篇枚举 = 商店域 6 个动作词条（§2）+ 备战域原子动作（§3：DeployMove/SellDeployed/LevelUp/OpenBox/OpenTome/ClickSpheres/OpenBookcard + §3A WearEquip 与工具原子类，规则见 §4）+ 转场类 2 个（§5）+ 词表完备性注 2 条（§2.7）。事件线选择（pick 族，含武装箱四选一画面 op）按 §6 声明为非逻辑态通道。动作词表本体与执行载体表 = [action_exec.md](../flow/action_exec.md) §1、[screens/README](../screens/README.md) §4（能力面/策略面之分不在本篇重复）。
 
 各动作条目统一形状：**词表/op → 确定面规则（逐腿）→ 随机面 → 拒绝边界（游戏拒/提案陈旧 = 零容器写）→ 依据**。
 
@@ -321,7 +321,7 @@ op = `operations/cw_op/cw_comp_transaction_action.py::CompTransactionOp`（**终
 **OpenShop**（开店意图，`kernel/cw_prep_actions.py::OpenShop`，备战环终结）与 **StartBattle**（出战，备战访问终结·唯一完成态）是**转移动作**：它们只把画面从 A 转移到 B，不按游戏规则改写任何局内资源。
 
 - **OpenShop**：容器逻辑态 = 空（显式声明）。开店不触发刷新（基础刷新触发只有「节点切换」+「手动」，`research/economy.md` §2.1）；开店后牌面/gold = 入口观察重建（read_only 形态的读数目标 = gold 真值，观察面）。
-- **StartBattle**：容器逻辑态 = 空（显式声明）。进战斗后 hp/gold/streak 全部由结算屏真值覆盖接管（`apply_op_effect` StartBattle 显式不推进清单；败轮金按轮首补发口径，fields.md §4.2 轮首收入）。**免战牌子态**：出战按钮变「跳过」；跳过执行落地后效果账本次数递减（`consume_use`，归零移除——效果账本侧确定性维护，非 GameState 字段逻辑态）；「跳过后 hp/streak/收入不动」= 待实机实证的暂定表述（§7 G9）。发射重发/连败停机 = 流程防线（[action_exec.md](action_exec.md) §7），不属逻辑态。
+- **StartBattle**：容器逻辑态 = 空（显式声明）。进战斗后 hp/gold/streak 全部由结算屏真值覆盖接管（`apply_op_effect` StartBattle 显式不推进清单；败轮金按轮首补发口径，fields.md §4.2 轮首收入）。**免战牌子态**：出战按钮变「跳过」；跳过执行落地后效果账本次数递减（`consume_use`，归零移除——效果账本侧确定性维护，非 GameState 字段逻辑态）；「跳过后 hp/streak/收入不动」= 待实机实证的暂定表述（§7 G9）。发射重发/连败停机 = 流程防线（[action_exec.md](../flow/action_exec.md) §7），不属逻辑态。
 
 依据：`kernel/cw_prep_actions.py::OpenShop`/`StartBattle`；`kernel/cw_exec_state.py::apply_op_effect` 显式不推进清单；`fields.md` §4.2 出战。
 

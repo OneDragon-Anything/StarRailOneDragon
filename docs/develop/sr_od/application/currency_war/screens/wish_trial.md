@@ -61,4 +61,4 @@ target = (槽 x 常量[idx], 卡身 y 常量 340)→ mouse_move + click(点卡�
 
 - journal op 名 =「祈愿试炼」;op 内日志 tag = `[cw-wish]`(决策描述/点击点)。
 - 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens_step3.py`(迁移结构锁)、test_cw_game_state_consume.py(chosen_wish 接线锁)。
-- game 侧知识:画面与机制(节点级 quest、奖励形态) = [../../../../game/screens/currency_war_wish_trial.md](../../../../game/screens/currency_war_wish_trial.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E5。
+- game 侧知识:画面与机制(节点级 quest、奖励形态) = [../../../../game/screens/currency_war_wish_trial.md](../../../../../game/screens/currency_war_wish_trial.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E5。

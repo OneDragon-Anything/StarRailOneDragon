@@ -13,7 +13,7 @@
 
 ## 3. 观察面
 
-入口单次观察(observe 段;决策循环内零读屏)——`_observe_frame`:入口 2s 稳定期(右上「返回备战界面」出现后画面才稳定,时序口径 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../game/currency_war/research/screen_flow_timing.md) #23)→ 重截 → 同一稳定帧一次读:
+入口单次观察(observe 段;决策循环内零读屏)——`_observe_frame`:入口 2s 稳定期(右上「返回备战界面」出现后画面才稳定,时序口径 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #23)→ 重截 → 同一稳定帧一次读:
 
 - 选项读取 `obs/cw_node_obs.py::read_encounter_options`:卡标题「遭遇其X」正则 → 难度档(「一」笔画细常漏读,无数字 = 难度 1);奖励带(y 600-695,排「奖励预览」标签)文本按 x 就近归卡;`affixes` 恒空(选项 UI 不显词缀,词缀在未建档的敌方信息覆盖层)——全克刷新判定因此当前恒不触发,执行链就绪待词缀读数通道建立。
 - 刷新剩余 `read_encounter_refresh_count`:OCR「剩余次数:N」(矩形带常量,全/半角冒号都认)→ `(剩余次数, 文本中心)`;读缺 = None(失败安全按无刷新)。
@@ -78,4 +78,4 @@ pick = decide_encounter(options, board_state_of(session), session, config)
 - journal op 名 =「遭遇节点」;op 内日志 tag = `[cw-encounter]`(options/pick/refreshed/reason、刷新圆钮坐标)。
 - 登记件证据 = `refresh_click`;chosen 记录面失败不阻塞(告警行)。
 - 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens.py`(迁移结构锁 + 写入流对拍)。
-- game 侧知识:画面与交互模型 = [../../../../game/screens/currency_war_encounter.md](../../../../game/screens/currency_war_encounter.md);分支刷新机制(优势布局授予,每局 1 次)= [../../../../game/currency_war/data/advantage_layouts.md](../../../../game/currency_war/data/advantage_layouts.md);难度/节点表 = [../../../../game/currency_war/data/competitors.md](../../../../game/currency_war/data/competitors.md)。
+- game 侧知识:画面与交互模型 = [../../../../game/screens/currency_war_encounter.md](../../../../../game/screens/currency_war_encounter.md);分支刷新机制(优势布局授予,每局 1 次)= [../../../../game/currency_war/data/advantage_layouts.md](../../../../../game/currency_war/data/advantage_layouts.md);难度/节点表 = [../../../../game/currency_war/data/competitors.md](../../../../../game/currency_war/data/competitors.md)。

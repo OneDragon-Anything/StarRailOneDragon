@@ -54,4 +54,4 @@ session 直写(非 GameState 转移函数腿;写端保持「session 写 + relay 
 
 - journal op 名 = 「位面简报」;日志前缀 `[cw-flow-briefing]`。
 - 测试锁:五段路径行为锁 + 写入流对拍 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`(`_collect_affix_effects` 以 monkeypatch 摘除点采)。
-- game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../game/currency_war/research/screen_flow_timing.md) #1;画面档 = `assets/game_data/screen_info/currency_war_briefing.yml`。
+- game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #1;画面档 = `assets/game_data/screen_info/currency_war_briefing.yml`。

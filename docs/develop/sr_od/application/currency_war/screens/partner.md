@@ -74,4 +74,4 @@ observe 段 = 入口门(「标识-选择伙伴」)+ 轻观察帧引用;候选与
 
 - journal op 名 =「选择伙伴」;op 内日志 tag = `[cw-partner]`(candidates/pick/点选点/确认被拒)。
 - 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens_step3.py`(迁移结构锁)、test_cw_partner_select_confirm_flow.py(选选流序 + 确认被拒有界重试锁)。
-- game 侧知识:画面与交互更正 = [../../../../game/screens/currency_war_choose_partner.md](../../../../game/screens/currency_war_choose_partner.md)。
+- game 侧知识:画面与交互更正 = [../../../../game/screens/currency_war_choose_partner.md](../../../../../game/screens/currency_war_choose_partner.md)。

@@ -1,6 +1,6 @@
 # 货币战争(currency_war)自动化设计
 
-> 玩法本身(机制 / 数据 / 画面 / 攻略)见 [docs/game/currency_war/](../../game/currency_war/)(游戏知识,游戏版本改才变;经我们提炼核实的知识在其 `research/`)。
+> 玩法本身(机制 / 数据 / 画面 / 攻略)见 [docs/game/currency_war/](../../../../game/currency_war/)(游戏知识,游戏版本改才变;经我们提炼核实的知识在其 `research/`)。
 > **本目录 = 自动化实现设计**(bot 流程 / 策略 / 决策 / why,代码改才变)。
 > 文档纪律:**as-built 无状态**(结构/语义/数据流/边界;值在代码、why 在设计文档动机段与代码注释、进度在本地进度账本);数字一律带三形态标注(【注】游戏定义/【推】已证推导/【拟】观测估计,章程 = strategy-docs/01 §6)。
 
@@ -30,7 +30,7 @@
 - 画面 op = `operations/cw_screen/`(一画面一文件)+ `obs/`(观察解析工具箱);动作 op = `operations/cw_op/`(一动作一文件,单一注册表 `cw_action_registry.py`)
 - GameState = `kernel/cw_game_state.py`(容器+单一转移函数族);编排 = `operations/cw_loop.py`
 - sim/回放基建(`cw_sim`/`cw_replay`/`cw_match_recorder` 等)→ [sim/](sim/sim-design.md) + `sr-od-currency-war-dev` skill 的 sim-testing
-- 注册表 = 游戏数据单一源(`data/cw_*`;生成器重跑流程见 [game 侧 README](../../game/currency_war/README.md))
+- 注册表 = 游戏数据单一源(`data/cw_*`;生成器重跑流程见 [game 侧 README](../../../../game/currency_war/README.md))
 
 ## 关联 skill
 

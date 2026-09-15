@@ -118,7 +118,7 @@ R5 规划为准)。
 | 7 | 校准/证明脚本(`tools/cw/proofs/*`、`win_model_*`) | 存量语料归档只读不迁移;新语料走新视图;跨期语料窗受寿命契约辖 | 候 | M4 后按需 |
 | 8 | 哨兵脚本组(`sr-od-currency-war-dev` skill scripts/:cw_sentinel/cw_runs_gap/cw_early_stop) | 尾读改 journal.jsonl(runs 断流探测→局终域行断流探测);过渡期盯旧流至停写批 | 候 | M4 |
 | 9 | 运行时内部(cw_loop 心跳/summary 兜底/Δ池再生触发/终局防重读门) | 心跳改读版本 id;兜底回填与 Δ 池再生的触发改挂局终域行落盘事件;终局防重改挂 match_final 写前查重(运行时控制面豁免类) | 候 | M2/M4 |
-| 10 | 策略侧决策行(现役 DecisionTrace) | 瘦身演进落文+接线;行面钉字段 = state_ref 单字段(过渡钉面标记 pin_scope 已退役删除——候裁 10 终裁 C 案,历史档案判读知识见 [决策行文件schema设计.md](../design/决策行文件schema设计.md) §8-2) | 候 | 接线 = W6 后另批(决策行文件落地批,验收绿后立卡,定谳 C6) |
+| 10 | 策略侧决策行(现役 DecisionTrace) | 瘦身演进落文+接线;行面钉字段 = state_ref 单字段(过渡钉面标记 pin_scope 已退役删除——候裁 10 终裁 C 案,历史档案判读知识见 [决策行文件schema设计.md](决策行文件schema设计.md) §8-2) | 候 | 接线 = W6 后另批(决策行文件落地批,验收绿后立卡,定谳 C6) |
 | 11 | action_log 成败消费面(cw_evolution applied-gate/sim 引擎两处/cw_bench_equips 申报面) | 改观察侧驱动(reconcile 对比口径:发射行+后续快照);零成败 receipts 落地前旧数据源不得抽空 | 候 | M4(与决策行同批) |
 
 「不适用」档预留:清单内消费面经评估确认与新面无交集时标不适用并附一句理由,禁静默

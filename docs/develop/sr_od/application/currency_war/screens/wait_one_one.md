@@ -39,4 +39,4 @@
 
 - journal op 名 = 「等待1-1」;日志前缀 `[cw-flow-wait11]`。
 - 测试锁:五段路径 + 假时钟超时锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(代码注另引 `test_cw_flow_ops.py`,现状不在测试仓,同 [plane_transition.md](plane_transition.md) 开放设计注)。
-- game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../game/currency_war/research/screen_flow_timing.md) #5/#29。
+- game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #5/#29。

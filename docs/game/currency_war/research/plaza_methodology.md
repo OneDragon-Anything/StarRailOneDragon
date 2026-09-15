@@ -1,6 +1,6 @@
 # 玩法方法论(plaza 实战提炼,V4.4)
 
-> **性质**:从 784 篇高难玩家帖(结构化三阶段构筑)+ 648 篇亲写攻略文本 + 用户 A8 实战口述([user_playstyle](user_playstyle.md))交叉提炼的**玩法方法论**——策略层设计的证据地基。数据/脚本:`.debug/temp/currency_war/plaza/{research_report.md,agg/*}`、`methodology_stats.py`。
+> **性质**:从 784 篇高难玩家帖(结构化三阶段构筑)+ 648 篇亲写攻略文本 + 用户 A8 实战口述([user_playstyle](user_playstyle.md))交叉提炼的**玩法方法论**——策略层设计的证据地基。数据/脚本:抓取通道 = `tools/cw/plaza_fetch.py` + `plaza_harvest.js`(复现步骤见 data/README「抓取通道与复现方法」节);原始研究件与统计脚本(`methodology_stats.py`)未入库已佚——本篇结论由正文频次/原话引用自足承载,复算需按 data/README 通道重抓。
 > **M1-M16 编号为稳定 ID**(ADR/代码注释引用);每条标证据(数据频次/代表性原话)。
 > 版本基准:V4.4。
 

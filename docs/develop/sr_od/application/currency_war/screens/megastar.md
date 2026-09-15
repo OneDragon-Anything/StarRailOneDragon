@@ -52,4 +52,4 @@ decide+act 内聚 `_do_action`(两路径共享),两步:
 
 - journal op 名 =「巨星强化」;op 内日志 tag = `[cw-megastar]`(candidates/pick/reason)。
 - 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens.py`(迁移结构锁)、test_cw_runnode_retire.py(旧节点基类退役等价)。
-- game 侧知识:机制(巨星 = 阵营羁绊选 1 角色给全队 buff) = [../../../../game/screens/currency_war_megastar.md](../../../../game/screens/currency_war_megastar.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1。
+- game 侧知识:机制(巨星 = 阵营羁绊选 1 角色给全队 buff) = [../../../../game/screens/currency_war_megastar.md](../../../../../game/screens/currency_war_megastar.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1。

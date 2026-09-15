@@ -72,7 +72,7 @@
 
 - journal op 名 = 「战斗等待」(dispatch 包装统一落 `[cw-op]` 行);缺陷分键 = `phase_round`/`perception_conflict`(reader_source=`settlement_vs_prep_round`);结算观测日志前缀 `[cw-bwait]`,bail 留证 `[cw!]` 行;结算屏时序帧采集 = `operations/settle_collect_hooks.py::settle_frame_collect`(临时采集件,文件自声明清单完成后整段可删)。
 - 测试锁:五段新路径行为锁 + bail 预算锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`(锁面目录 = 同目录;战斗等待专属行为锁的重建归属见模块头申报)。
-- game 侧知识:结算时序 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../game/currency_war/research/screen_flow_timing.md) #6/#25;画面档 = `assets/game_data/screen_info/currency_war_battle.yml`/`currency_war_settlement.yml`/`currency_war_settlement_fail.yml`/`currency_war_lobby.yml`。
+- game 侧知识:结算时序 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #6/#25;画面档 = `assets/game_data/screen_info/currency_war_battle.yml`/`currency_war_settlement.yml`/`currency_war_settlement_fail.yml`/`currency_war_lobby.yml`。
 
 ## 开放设计注
 

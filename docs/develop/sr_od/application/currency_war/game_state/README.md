@@ -131,4 +131,4 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
   [决策行文件schema设计.md](决策行文件schema设计.md)(本目录分篇);state 引用
   只经版本钉 state_ref=`(run_id, v)`,且决策输入禁读状态流水。
 - 玩法语义(各效果游戏机制原文/节点流转时序)挂靠
-  [docs/game/currency_war/](../../../game/currency_war/)(game 子树)。
+  [docs/game/currency_war/](../../../../../game/currency_war/)(game 子树)。

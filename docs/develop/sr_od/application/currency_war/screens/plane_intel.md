@@ -61,7 +61,7 @@
 
 - journal op 名 = 「货币战争-位面情报采集」(子 op execute,不经 dispatch 包装,随宿主备战访问的 `[cw-op]` 行承载);日志前缀 `[cw-plane-intel]`。
 - 测试锁:五段新路径行为锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`;纯函数三件锁 = 代码注声称在册、测试仓现状无对应文件(开放设计注②)。
-- game 侧知识:位面结构/节点链 = [../../../../game/currency_war/research/README.md](../../../../game/currency_war/research/README.md)(台账容器侧对接 = [../game_state/chain-observation.md](../game_state/chain-observation.md));画面档 = `assets/game_data/screen_info/currency_war_plane_detail.yml`(+ 备战档节点条 area)。
+- game 侧知识:位面结构/节点链 = [../../../../game/currency_war/research/README.md](../../../../../game/currency_war/research/README.md)(台账容器侧对接 = [../game_state/chain-observation.md](../game_state/chain-observation.md));画面档 = `assets/game_data/screen_info/currency_war_plane_detail.yml`(+ 备战档节点条 area)。
 
 ## 开放设计注
 

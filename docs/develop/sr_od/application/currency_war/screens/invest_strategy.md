@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**横幅中间态**(2026-09-15 决策帧实证 + 用户裁定,过渡记录 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../game/currency_war/research/screen_flow_timing.md) #30):入口展开为两段——备战画面先完整可见,选卡页展开过程中存在「备战完整可见 + 中部横幅『请选择投资策略』(y≈510,选卡未渲染)」的中间态。横幅态**零可交互元素,裁定不派发不处理**(等展开完成;横幅态标题不在 id_mark 位 [855,78,1065,118],锚判定天然 miss)。分发判据向裁定的收敛(0e OCR 全短语腿退役 + 备战派发判据升级建档完整组合)待代码批落地;落地前 §1 双信号+复探为现行行为。
+**横幅中间态**(2026-09-15 决策帧实证 + 用户裁定,过渡记录 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #30):入口展开为两段——备战画面先完整可见,选卡页展开过程中存在「备战完整可见 + 中部横幅『请选择投资策略』(y≈510,选卡未渲染)」的中间态。横幅态**零可交互元素,裁定不派发不处理**(等展开完成;横幅态标题不在 id_mark 位 [855,78,1065,118],锚判定天然 miss)。分发判据向裁定的收敛(0e OCR 全短语腿退役 + 备战派发判据升级建档完整组合)待代码批落地;落地前 §1 双信号+复探为现行行为。
 
 **单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;不入决策规范,op 形态照常)。本屏为统一观察架构五相位屏:`CwScreenOpBase` 子类,handle 顶部**重入裁决先于装配点分流**(确认/刷新两 pending 裁决两路径共用),两端口完整在场走五段生命周期、缺省走旧路径(并存纪律 = [op-layer.md](op-layer.md))。决策入口 = 契约 `strategies/impl/cw_strategy.py::CwStrategy.decide_invest('strategy', ...)`(规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1;判据本体 = `kernel/cw_events.py::decide_event`)。重入裁决两件(handle 顶部):
 - 确认裁决:上轮已发确认 → 本轮入口锚不在 = overlay 已关(选卡落地)→ 补 append 持卡 + success 交回;锚仍在 = 确认未落地 → 清标志重走(计节点预算)。
@@ -21,7 +21,7 @@
 
 1. 入口锚复探窗(ADR-0529 语义):首帧探测「标识-请选择投资策略」,miss → 可中断睡眠 0.8s × 4 次复探;超窗仍 miss = `entry_ok=False` → observe 段 round_retry 有界自愈(节点预算内,不炸 op);
 2. visit 起点单点复位:实例首帧(锚验通过后)清 `exec_state_of(session)._invest_refresh_used_slots`(同 visit 重入不清,跨 visit 新实例必清;防重入与计数现读双保险不同源);
-3. 1s 稳定等待后重截(标题出现后三卡才渲染稳定,时序口径 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../game/currency_war/research/screen_flow_timing.md) #11);
+3. 1s 稳定等待后重截(标题出现后三卡才渲染稳定,时序口径 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #11);
 4. 候选读取 `_read_options`:全图 OCR,按卡名行 y 带(465-505)+ 文本长 2-8 字 + 排除表过滤出 3 张卡名,按 center-x 左→右排序;首帧全图 OCR 存底随 payload。
 
 观察 payload = `InvestStrategyObservation`(`entry_ok`/`options`/`first_ocr_map`/`screen`)。**本屏不上报 GameState 容器观察**(无 `read_game_state` 消费;决策输入 = 容器视图 `board_state_of(session)`,overlay 下 board 不可读由视图侧承载)。
@@ -85,4 +85,4 @@ names = opts 卡名;pick = decide_invest('strategy', names, board_state_of(sessi
 - journal op 名 =「投资策略」(dispatch 包装统一落 `[cw-op]` 主日志行);op 内日志 tag = `[cw-strat]`(options/chose/reason、槽位刷新终结交回)。
 - 登记件证据 = `refresh_click@slot{i}`;缺陷面 = 无(零效果留证通道仅投资环境屏)。
 - 测试锁:实机行为锁 + 写入流对拍 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`。
-- game 侧知识:画面建档与交互 = [../../../../game/screens/currency_war_invest_strategy.md](../../../../game/screens/currency_war_invest_strategy.md);刷新判据数学 = [../proofs/p81-invest-refresh-dominance.md](../proofs/p81-invest-refresh-dominance.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md)。
+- game 侧知识:画面建档与交互 = [../../../../game/screens/currency_war_invest_strategy.md](../../../../../game/screens/currency_war_invest_strategy.md);刷新判据数学 = [../proofs/p81-invest-refresh-dominance.md](../proofs/p81-invest-refresh-dominance.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md)。

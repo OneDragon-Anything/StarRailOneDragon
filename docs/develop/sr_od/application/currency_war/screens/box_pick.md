@@ -62,7 +62,7 @@ card_point = (选中卡 x 中心, 卡身 y 常量 290)(点卡名带下方一点,
 
 - journal op 名 =「武装箱选择」(0f2 分发);op 内日志 tag = `[cw][boxpick]`(选中卡名/交回)。
 - 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_unified_action_2a.py::test_pick_box_decision_fail_closed`(fail-closed 决策契约行为锁 + 画面常量)。
-- game 侧知识:画面与机制 = [../../../../game/screens/currency_war_battle_prep_supply_box.md](../../../../game/screens/currency_war_battle_prep_supply_box.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18。
+- game 侧知识:画面与机制 = [../../../../game/screens/currency_war_battle_prep_supply_box.md](../../../../../game/screens/currency_war_battle_prep_supply_box.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18。
 
 ## 开放设计注
 

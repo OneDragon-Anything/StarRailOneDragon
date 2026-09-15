@@ -60,4 +60,4 @@ target = _card_point(idx, faction_x):「星徽卡-1..4」area 中心;
 
 - journal op 名 =「星徽秘典」;op 内日志 tag = `[cw-flow-bookcard]`(候选/选中/点击点)。
 - 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens_step3.py`(迁移结构锁)、test_cw_game_state_consume.py(chosen_tome 接线锁)。代码注引的典籍通道锁(test_cw_fake_channels_outerloop)已不在册(开放设计注)。
-- game 侧知识:画面与机制(星徽 = 阵营徽记装备) = [../../../../game/screens/currency_war_star_tome_popup.md](../../../../game/screens/currency_war_star_tome_popup.md)。
+- game 侧知识:画面与机制(星徽 = 阵营徽记装备) = [../../../../game/screens/currency_war_star_tome_popup.md](../../../../../game/screens/currency_war_star_tome_popup.md)。

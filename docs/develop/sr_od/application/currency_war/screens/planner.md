@@ -5,7 +5,7 @@
 ## 1. 分发判定
 
 - 外循环分支 0a2:id_mark 锚「货币战争-骇入策划.标识-我来当策划」;dispatch 带 on_fail_retry。分发 = 阶段一身份行,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
-- 触发 = 银狼首次升 2 星(及 5 费升 2 星),非随机事件;机制 = [../../../../game/gameplay/currency_war.md](../../../../game/gameplay/currency_war.md)「银狼我来当策划事件」节。
+- 触发 = 银狼首次升 2 星(及 5 费升 2 星),非随机事件;机制 = [../../../../game/gameplay/currency_war.md](../../../../../game/gameplay/currency_war.md)「银狼我来当策划事件」节。
 
 ## 2. 画面形态声明
 
@@ -63,7 +63,7 @@ target = _card_point(idx):卡 area(「骇入选项-左卡/右卡」)rect 相对�
 
 - journal op 名 =「策划事件」;op 内日志 tag = `[cw-planner]`(决策 reason/左右卡)。
 - 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens_step3.py`(迁移结构锁)。代码注引的 planner 策略接线锁/基建锁(test_cw_planner_strategy_wiring / test_cw_infra_locks)已不在册(开放设计注)。
-- game 侧知识:事件机制 = [../../../../game/gameplay/currency_war.md](../../../../game/gameplay/currency_war.md) 银狼策划事件节;建档与字段面 = `assets/game_data/screen_info/cw_hacker_planner.yml` + [../game_state/fields.md](../game_state/fields.md) §3.4.5。
+- game 侧知识:事件机制 = [../../../../game/gameplay/currency_war.md](../../../../../game/gameplay/currency_war.md) 银狼策划事件节;建档与字段面 = `assets/game_data/screen_info/cw_hacker_planner.yml` + [../game_state/fields.md](../game_state/fields.md) §3.4.5。
 
 ## 开放设计注
 

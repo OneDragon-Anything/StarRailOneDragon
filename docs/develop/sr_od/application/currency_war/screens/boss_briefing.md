@@ -41,7 +41,7 @@
 
 - journal op 名 = 「BOSS简报」;日志前缀 `[cw-flow-boss]`。
 - 测试锁:五段路径行为锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`;锚排他锁 = 代码注引用 `test_cw_anchor_exclusion.py`,该文件现状不在测试仓(开放设计注②)。
-- game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../game/currency_war/research/screen_flow_timing.md) #26(「点击空白处继续」出现即可点);画面档 = `assets/game_data/screen_info/currency_war_boss_briefing.yml`。
+- game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #26(「点击空白处继续」出现即可点);画面档 = `assets/game_data/screen_info/currency_war_boss_briefing.yml`。
 
 ## 开放设计注
 
