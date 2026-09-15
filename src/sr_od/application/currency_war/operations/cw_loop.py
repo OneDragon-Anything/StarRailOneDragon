@@ -1909,7 +1909,6 @@ class CwLoop(SrOperation):
         # 半开帧可从底层透出命中,prep.md §时序)。双锚同帧命中才认备战。
         if (self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success
                 and self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success):
-            self._battle_ts = None   # ADR-0250:回备战 → 战斗窗口关(watch 恢复)
             # GameState 心跳观察者采样(迁移批次一;正本 = GameState-数据
             # 结构设计.md §2.4 关键结构 2):备战环入口读单调写点序号,连续
             # ≥2 环零推进 = 观察断流诊断(log.warning 不停机,处置交既有
