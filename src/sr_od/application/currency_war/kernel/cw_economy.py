@@ -54,9 +54,10 @@ _SELL_MULT: dict[int, int] = {1: 1, 2: 3, 3: 9, 4: 27}   # 星级 → cost 倍�
 XP_PER_BUY: int = 4
 XP_TO_NEXT_LEVEL: dict[int, int] = {3: 4, 4: 6, 5: 20, 6: 40, 7: 52, 8: 72, 9: 84}
 XP_CLICK_COST_FALLBACK: int = 4   # 单击经验花金兜底(level_up_cost OCR 缺失时;telemetry lv5 实测 4 金/击)
-#: 玩家等级封顶(live 语义:10 级后购买经验无效;xp_apply_clicks/xp_clicks_to_level/
-#: simulate LevelUp 分支/cw_game_state 逻辑态直写满级门同此单一源。sim 侧 LEVEL_CAP=9
-#: 是已知建模分歧,勿混用——本常量只辖 live 侧)。
+#: 玩家等级封顶(live 与 sim 同此单一源:10 级后购买经验无效;消费方 =
+#: xp_apply_clicks/xp_clicks_to_level/cw_game_state 逻辑态直写满级门/
+#: sim 动作面 cw_sim_actions.xp_apply_amount——旧「sim 侧 LEVEL_CAP=9」
+#: 建模分歧已随 sim 重做反转,不存在第二把尺)。
 MAX_PLAYER_LEVEL: int = 10
 
 
@@ -66,8 +67,8 @@ def xp_apply_clicks(level: int, xp_cur: int, clicks: int,
 
     语义 = ADR-0129 单一源:每击 +xp_per_buy 经验;攒满当前级门槛即升级、
     溢出结转(与 cw_state LevelUp 动作应用 / sim 轮末升级清零结转同规则)。
-    封顶 MAX_PLAYER_LEVEL(10)级 = 生产 live 语义(满级后购买经验无效;
-    sim 侧 LEVEL_CAP=9 是已知建模分歧,勿混用)。
+    封顶 MAX_PLAYER_LEVEL(10)级(live 与 sim 同语义:满级后购买经验
+    无效,sim 动作面同消费本常量)。
 
     [字段定义] level = 游戏玩家等级 1-10(整局单调,坐标系 = 游戏 XP 条);
     xp_cur = 当前级已攒经验;取值时机 = 意图应用时纯推算(非执行期现读);
