@@ -5,7 +5,7 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0n(店已开态):开商店画面档**三 id_mark** 同帧——「备战标识-购买经验」∧「按钮-收起」∧「标识-备战阶段」(`_shop_open_anchors_hit`;与干净备战的「按钮-出战」天然互斥)。序位:**先于备战双锚**(商店浮层不遮双锚,穿透命中会把部署/出战点击打在浮层上)。
+- 外循环分支 0n(店已开态):开商店画面档**三 id_mark** 同帧——「备战标识-购买经验」∧「按钮-收起」∧「标识-备战阶段」(`_shop_open_anchors_hit`;与干净备战的「按钮-出战」天然互斥)。分发 = 阶段一身份行(三 id_mark;历史穿透命中曾把部署/出战点击打在浮层上,§2.2)。
 - 显式开店:备战访问内 `OpenShop`(read_only=False)动作 → `visit_open_shop`(本篇 §2 编排单一源);read_only=True 读数性开店 → 开店+heavy 观察+关店,不进买牌循环。
 - 发射帧仲裁受限访问:外循环达标臂溢出段开一次受限商店访问(spend_gate 仲裁;带内段 fail-closed 不开店)。
 - 建档 = `assets/game_data/screen_info/currency_war_battle_prep_shop_open.yml`(商店牌-1..5 / 按钮-刷新 / 备战标识-购买经验 / 按钮-收起 等 area)。

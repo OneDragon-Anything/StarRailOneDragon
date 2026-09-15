@@ -5,7 +5,7 @@
 ## 1. 分发判定
 
 - 外循环分支 1:**双锚同帧命中**——「货币战争-备战.备战标识-购买经验」∧「货币战争-备战.按钮-出战」(`operations/cw_loop.py::CwLoop.loop` 备战分支)。overlay 半开帧下单锚可从底层透出命中,双锚同帧是防误派判据。
-- 序位:全部 0 系 overlay/子态分支(0a0-0s)先于本分支(浮层叠备战时「购买经验」会透出命中,先查备战会误派——序位表 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。
+- 位置 = 阶段二默认分支(浮层帧由阶段一各画面身份先行接管——历史「先查备战会误派」事故见 [../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。
 - 本画面的浮层子态另立分支:「备战-开商店」= 0n(转交商店访问,[shop.md](shop.md));暗色锁定族 = 0m(`CwScreenPrepLockedReturn`)。
 
 ## 2. 画面形态声明

@@ -5,7 +5,7 @@
 ## 1. 分发判定
 
 - 外循环分支 0s:id_mark 锚「货币战争-投资环境.标识-投资环境」。开场 1-1 前弹一次(后局中只弹投资策略,两画面不同 handler);接管局重入此屏同分支兜底分流。
-- 链序:分发成功后外循环先跑本 op,再链 `CwScreenWaitOneOne`(等 1-1 备战锚就绪,两 op 两对 journal 行)——链序 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2 0s 行。序位先于备战双锚,序位单一源同 §2.2。
+- 链序:分发成功后外循环先跑本 op,再链 `CwScreenWaitOneOne`(等 1-1 备战锚就绪,两 op 两对 journal 行)——链序 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2 投资环境行。分发 = 阶段一身份行,单一源同 §2.2。
 
 ## 2. 画面形态声明
 

@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0g:锚 = `货币战争-备战.标识-简易装备`(overlay 叠备战,锚挂备战画面档;[../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。不选 → overlay 持续卡备战,推进是流程义务。
+- 外循环阶段三特殊规则(无独立画面档):锚 = `货币战争-备战.标识-简易装备`(overlay 叠备战,锚挂备战画面档;[../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。不选 → overlay 持续卡备战,推进是流程义务。
 
 ## 2. 画面形态声明
 

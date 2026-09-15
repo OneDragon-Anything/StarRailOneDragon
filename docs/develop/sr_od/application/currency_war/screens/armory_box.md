@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0f:锚 = `货币战争-武装箱弹窗.标识-简易武装箱`(id_mark;建档 = `currency_war_armory_box_dialog.yml`)。序位 0 系,序位表 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。弹窗叠在 3 选 1 屏或备战上,不关闭会挡死底层屏交互。
+- 外循环分支 0f:锚 = `货币战争-武装箱弹窗.标识-简易武装箱`(id_mark;建档 = `currency_war_armory_box_dialog.yml`)。分发 = 阶段一身份行,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。弹窗叠在 3 选 1 屏或备战上,不关闭会挡死底层屏交互。
 
 ## 2. 画面形态声明
 

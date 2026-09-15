@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 外循环分支 1g:锚 = `货币战争-中断挑战弹窗.标识-中断挑战`(id_mark;序位在备战分支后,序位表 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。真模态:点遮罩无效,关闭只有 X 一条路;建档 = `currency_war_interrupt_dialog.yml`(「按钮-放弃并结算」「按钮-暂时离开」为在册定位区,op 零消费)。
+- 外循环分支 1g:锚 = `货币战争-中断挑战弹窗.标识-中断挑战`(id_mark;分发 = 阶段一身份行,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。真模态:点遮罩无效,关闭只有 X 一条路;建档 = `currency_war_interrupt_dialog.yml`(「按钮-放弃并结算」「按钮-暂时离开」为在册定位区,op 零消费)。
 
 ## 2. 画面形态声明
 

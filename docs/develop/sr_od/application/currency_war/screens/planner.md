@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0a2:id_mark 锚「货币战争-骇入策划.标识-我来当策划」;dispatch 带 on_fail_retry。序位:0a(选择伙伴)之后、备战双锚之前;单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 外循环分支 0a2:id_mark 锚「货币战争-骇入策划.标识-我来当策划」;dispatch 带 on_fail_retry。分发 = 阶段一身份行,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
 - 触发 = 银狼首次升 2 星(及 5 费升 2 星),非随机事件;机制 = [../../../../game/gameplay/currency_war.md](../../../../game/gameplay/currency_war.md)「银狼我来当策划事件」节。
 
 ## 2. 画面形态声明

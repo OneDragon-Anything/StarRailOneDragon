@@ -104,7 +104,7 @@
 
 | 篇 | 一句话 |
 |---|---|
-| [outer_loop.md](outer_loop.md) | 外层循环：画面识别分支序、路由、轮次推进、停机/遥测钩子 |
+| [outer_loop.md](outer_loop.md) | 外层循环：两阶段身份分发、路由、轮次推进、停机/遥测钩子 |
 | [exit_chain.md](exit_chain.md) | 退出链：返回大世界 × 对局退出三层结构、退出路由分发序、A 类名单与停机位同源契约、逐屏归档、穿透/干净判据语义分工 |
 | [../screens/op-layer.md](../screens/op-layer.md) | **画面 op 层设计**（行为规范+基类机制+obs 工具箱+并存期纪律）——单动作决策循环、execute 单方法、对账边界、终结动作集、五段生命周期 |
 | [../screens/](../screens/README.md) | **画面 op 各篇（一画面一文档）**：备战（prep）/商店（shop）/单选族/弹窗族/推进族——能力矩阵与画面文档模板在其 README |

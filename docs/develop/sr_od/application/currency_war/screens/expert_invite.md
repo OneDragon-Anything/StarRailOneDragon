@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0k:id_mark 锚「货币战争-备战-专家邀请函.标识-专家邀请函」;命中即接管(同 0i)。序位先于备战双锚,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 外循环分支 0k:id_mark 锚「货币战争-备战-专家邀请函.标识-专家邀请函」;命中即接管(同 0i)。分发 = 阶段一身份行,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
 - 处理链分工:开卡半 = 备战词表 `OpenBookcard`(`kernel/cw_vocab.py` 在册;执行器 = `cw_open_bookcard_action.py::OpenBookcardOp`,发射位 = 备战环入口清场段 `cw_screen_prep.py::CwScreenPrep._clear_prep_cards`,开卡即交回)→ 弹窗由 0k 按画面分发本 op——**本 op 只辖弹窗已开后的选卡**,入口态单一 = 弹窗已开。
 
 ## 2. 画面形态声明

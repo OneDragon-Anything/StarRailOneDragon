@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0c:id_mark 锚「货币战争-遭遇节点.标识-遭遇节点」(位置约束 area;全屏 LCS 判据已退役——卡标题 OCR 截断帧会 miss)。序位先于备战双锚,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 外循环分支 0c:id_mark 锚「货币战争-遭遇节点.标识-遭遇节点」(位置约束 area;全屏 LCS 判据已退役——卡标题 OCR 截断帧会 miss)。分发 = 阶段一身份行,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
 - 本屏的暗色锁定子态(遭遇锁定)另立 0m 分支(`CwScreenPrepLockedReturn`,见 §7)。
 
 ## 2. 画面形态声明

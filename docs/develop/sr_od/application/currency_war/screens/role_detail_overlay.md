@@ -5,7 +5,7 @@
 ## 1. 分发判定
 
 - 外循环分支 1b:双锚其一——`货币战争-备战-角色详情.按钮-装备推荐`(角色详情变体)∨ `货币战争-备战-角色详情.装备详情-合成公式`(可合成列表变体);判据单一源 = `cw_loop.py::_role_detail_anchor_hit`,`entry_ok` 与之同源同参。
-- 位置约束锚形态:两锚均在右侧面板锚区,与 0t 商店卡牌详情弹窗天然互斥(该弹窗底部按钮不在右侧锚区内)——全屏文本判据在本族不可用(与 0t 底部按钮文本全等共享)。序位:备战分支(1)之后;序位表 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。建档 = `currency_war_battle_prep_equip_detail.yml`。
+- 位置约束锚形态:两锚均在右侧面板锚区,与 0t 商店卡牌详情弹窗天然互斥(该弹窗底部按钮不在右侧锚区内)——全屏文本判据在本族不可用(与 0t 底部按钮文本全等共享)。分发 = 阶段一身份行,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。建档 = `currency_war_battle_prep_equip_detail.yml`。
 
 ## 2. 画面形态声明
 

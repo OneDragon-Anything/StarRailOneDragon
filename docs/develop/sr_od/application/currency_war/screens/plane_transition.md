@@ -5,7 +5,7 @@
 ## 1. 分发判定
 
 - 外循环分支 0q:OCR「点击空白处继续」(lcs 收紧,判定参数单一源 = 分支体)∧ **非 boss 帧**(两画面排他:boss 简报画面含同一共享文案;排他判定 = `is_boss_briefing_texts`,判别单一源 = `cw_screen_boss_briefing.py`,两画面排他形态详见 [boss_briefing.md](boss_briefing.md) §1)。
-- 序位 = 0p 之后、0r 之前([../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。误分发型 fail streak / 超限 round_fail 留外循环回调(`PLANE_MISDISPATCH_LIMIT`,[../flow/guards.md](../flow/guards.md) §3)——外循环 0q 计数只认 fail,完成路径必须 success(重入裁决出口语义与误分发计数的守卫耦合)。
+- 分发 = 阶段一身份行(节点锚)+ 误读兜底([../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。误分发型 fail streak / 超限 round_fail 留外循环回调(`PLANE_MISDISPATCH_LIMIT`,[../flow/guards.md](../flow/guards.md) §3)——外循环计数只认 fail,完成路径必须 success(重入裁决出口语义与误分发计数的守卫耦合)。
 
 ## 2. 画面形态声明
 
