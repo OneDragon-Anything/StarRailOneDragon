@@ -689,8 +689,8 @@ def _resolve_registry_fingerprint() -> str:
 #: 由 :meth:`write_match_final` 落账时填充)。模块级常量 = 进程导入时点
 #: 解析一次,同进程跑的局戳一致;取值单一源语义 = telemetry/version_stamp,
 #: 桶依赖矩阵禁 kernel→telemetry(分层纪律,归 review 与代码规范守卫),
-#: 故同口径就地落常量,与单一源的等值性由
-#: test_cw_match_final::test_match_final_version_stamps 对拍钉住。
+#: 故同口径就地落常量,取值与 telemetry/version_stamp 单一源同源同值;
+#: 落账面由 match_final 载荷版本戳断言承压。
 _CODE_COMMIT: str = _resolve_code_commit()
 _REGISTRY_FINGERPRINT: str = _resolve_registry_fingerprint()
 
