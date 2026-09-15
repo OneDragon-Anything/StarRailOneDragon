@@ -794,14 +794,10 @@ class CwLoop(SrOperation):
     4. 「投资环境」3 选 1 → 点左牌 + 「确认」;
     5. 「下一步」等前进按钮 → 点。
 
-    naive 策略(买全部 + 填位 deploy);对局从已进入的备战开始跑(开对局由
+    ``CwEntryStart`` 负责,本 op 只跑对局内循环)。
     ``CwEntryStart`` 负责,本 op 只跑对局内循环)。MAX_ITER 防失控。
     """
 
-    MAX_ITER: ClassVar[int] = 2000  # 整局 3 位面多轮(备战+战斗+多类事件);战斗 round_wait 占大量迭代。
-    # 2026-08-04 实跑:500 不够 —— reactive 弱阵战斗慢,plane2 r5 打「蚕食者之影」时 iter 撞 500
-    # →「对局循环超时」失败(bot 一直在推进,非逻辑 bug,是迭代预算耗尽)。bump 到 2000(≈66min 预算)。
-    # 待优化:MAX_ITER 应只计「动作迭代」(备战/事件/结算),不计战斗 round_wait(战斗长短不该吃预算)。
     # 未知画面常驻兜底钩子(方案 D):连续 N 轮未识别画面 → stop_running 保画面待 AI 建档。
     # 常驻安全网——兜一切未知态,不是点名某态的临时捕获;移除条件 = 该类未知态全部建档,
     # 实际不可达(实现见本类 _handle_unknown_fallback)。
@@ -1395,8 +1391,6 @@ class CwLoop(SrOperation):
     @operation_node(name='对局循环', is_start_node=True, node_max_retry_times=400)
     def loop(self) -> OperationRoundResult:
         self._iter += 1
-        if self._iter > CwLoop.MAX_ITER:
-            return self.round_fail(status='对局循环超时')
         # 迁移审计 w75(git 历史)(ADR-0335):stop 路径 runs summary 收口已从 loop 顶迁到
         # ``after_operation_done`` —— r363 在 loop() 顶检查 is_context_stop,
         # 但 operation.execute() 每轮前(operation.py:408)先查 stop,stop 到达后
