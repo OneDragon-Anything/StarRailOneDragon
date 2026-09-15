@@ -18,7 +18,7 @@
 | [flow/](flow/README.md) | 流程控制:外循环路由(outer_loop)/ 动作执行契约(action_exec)/ 守卫总册(guards)/ 策略↔流程契约与入口链(README)/ session 三态分离(session)/ 逻辑态面交互契约(projection_contract) |
 | [game_state/](game_state/README.md) | GameState 设计:容器理念与权威序(README)/ 字段级规格(fields)/ 记录机制(journal)/ 效果域/节点域/链观察/动作逻辑态总则与逐动作更新规格(logic-updates)/ 两本账(决策行文件 schema) |
 | [proofs/](proofs/math_proofs.md) | 证明体系:命题状态索引(P 系列单篇在 `proofs/`,验证件在 `validations/`)——一切「多少算够」的定价权威 |
-| [sim/](sim/sim-design.md) | sim 设计(重设计中,设计与裁决见 `changes/2026-09-15-sim-redesign/`) |
+| [sim/](sim/sim-design.md) | sim 设计:体系总纲(sim-design)/ GameState↔引擎接线底账(sim-wiring)/ 战力模型需求定义(sim-power-model,deferred) |
 | [config.md](config.md) | 用户配置设计(配置语义单一源;用户偏好才进配置) |
 | `changes/` | 增量迭代设计(过程区,会不定期删减;代码与正本禁引其内容) |
 

@@ -158,13 +158,34 @@
 
 ## 八、sim(模拟实机环境)
 
-| 模块 | 负责 |
-|---|---|
-| `engine_p1.py` / `engine_p2.py` | 按游戏规则模拟一局(位面 1/位面 2 引擎):给定策略动作,产出状态回应 |
-| `pool.py` | 牌池等游戏数据 |
-| `checks/`、`runner.py`、`ab_core_swap.py`、`cw_sim_piggy.py` | **已裁退役**(策略评判机器与实验工具不属于 sim;策略效果评估将来另行重做) |
+sim = 单局模拟器：给定局级输入配置与策略动作，按游戏规则推演一局的容器状态演化，用于离线评估策略（决策回放、批量 A/B 的前置件）。与 live 共用同一容器类型（`GameState`）与 kernel 单一转移函数，动作拒绝语义在 kernel 腿内，引擎不自判拒绝。
 
-sim 重做的设计原则与逐模块规格见 `changes/2026-09-15-sim-redesign/`(随机元素按游戏真实概率与效果建模;每个涉及实机模块写明模拟逻辑;未知机制与用户讨论)。
+入口与驱动协议（`cw_sim_engine.py`）：`reset(seed, run_config) → 观测帧`、`step(action) → {LogicOutcome, 新观测帧 | 局结果}`——相位在观测帧里，策略器是外层驱动者；另有单函数薄包装 `simulate_run`。观测帧 = 容器快照 + 相位枚举，相位与实机画面对应，策略器据此路由决策（与 flow 层同构）。
+
+按域分模块（均以 `cw_sim_` 前缀命名）：
+
+| 域 | 模块 | 负责 |
+|---|---|---|
+| 基座 | `cw_sim_base.py` | 容器写入签名/登记/证据标签（`sim:engine:` 前缀），不含游戏规则 |
+| 基座 | `cw_sim_phase.py` | 相位枚举与观测帧（相位 ↔ 实机画面建档一一对应） |
+| 基座 | `cw_sim_streams.py` | 随机种子流键子流（按模块号+局内坐标派生独立子流，模块间不共享 rng） |
+| 基座 | `cw_sim_run_config.py` | 单局运行配置（开局参数是局级输入，全稿唯一字段清单汇总面） |
+| 游戏系统 | `cw_sim_opening.py` | 对局开局（开局 HP 查表先验/经济初值） |
+| 游戏系统 | `cw_sim_plane_schedule.py` | 位面结构与节点序列（P1/P2 节点日程地面真值表） |
+| 游戏系统 | `cw_sim_shop.py` | 商店（5 槽发牌/费用档概率/手动刷新） |
+| 游戏系统 | `cw_sim_pool.py` | 牌池（每卡副本数不变量，池量按持有派生） |
+| 游戏系统 | `cw_sim_income.py` | 轮首收入与连胜经济（经 kernel 收入单一源） |
+| 游戏系统 | `cw_sim_battle.py` | 战斗结算模型（第一期随机胜负+随机扣血，战力模型另行迭代） |
+| 游戏系统 | `cw_sim_actions.py` | 玩家动作应用面（买/卖/刷/升级/换位经 kernel 单一转移函数）与经验账本 |
+| 游戏系统 | `cw_sim_equips.py` | 装备系统（穿着即合成等游戏规则模拟） |
+| 游戏系统 | `cw_sim_nodes.py` | 节点事件面（遭遇选档/奖励球·扑满·补给箱/补给） |
+| 游戏系统 | `cw_sim_offer.py` | 投资策略/环境 offer 引擎（固定轮次日程）与注入核 |
+| 游戏系统 | `cw_sim_overlay.py` | 事件 overlay 族（统一队列 + 触发/选项/效果三元组） |
+| 游戏系统 | `cw_sim_enemy.py` | 敌人难度派生与 boss 名单 |
+| 游戏系统 | `cw_sim_special.py` | 特殊角色规则（如银狼 LV.999 升费口径） |
+| 回放 | `cw_replay.py` | 决策回放 harness：对历史局容器真值帧重放商店决策，秒级验证策略改动影响 |
+
+sim 设计正本三篇见 `sim/`（体系总纲 sim-design、GameState↔引擎接线底账 sim-wiring、战力模型 sim-power-model）。
 
 ## 九、支撑面
 

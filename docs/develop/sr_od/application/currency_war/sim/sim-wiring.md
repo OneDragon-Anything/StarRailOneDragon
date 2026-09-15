@@ -1,7 +1,7 @@
 # sim 接线对照表(容器 GameState ↔ sim 引擎)
 
 > as-built 底账(引擎直写容器形态;接线变更同步更新本表):
-> sim 引擎(P1 = `sim/engine_p1.simulate_p1`,P2 段 = `sim/engine_p2`)
+> sim 引擎（`sim/cw_sim_engine.py`，reset/step 步进协议，入口与驱动见 sim-design §1.2）
 > 不持本地工作帧,局状态 = 容器 `GameState` 单例
 > (`kernel/cw_game_state.board_state_of(session)`)。引擎写容器一律走
 > 带渠道签名的写入口(渠道族封闭集 obs/logic_action/logic_hook,写入口
@@ -11,8 +11,14 @@
 > 改 sim 接线时更新对应行。
 >
 > 域全集与字段级规格正本 = `game_state/fields.md`;体系纪律(单一转移
-> 函数/引擎白名单/行为锁)= [sim-design.md](sim-design.md) §2。
+> 函数/引擎白名单/行为锁)= [sim-design.md](sim-design.md) §3。
+>
+> ⚠️ **逐域产生面待重核（在途）**：sim 重做后各域写容器的模块与事件有变，
+> 本表按旧引擎记录的产生面细节未逐域重核；重核完成前，产生面以
+> `sim/cw_sim_*.py` 各模块 docstring 与代码为准，重核后更新对应行。
 
+
+> ⚠️ **sim 暂时不可用**:整体重做设计中(设计稿 = changes/2026-09-15-sim-redesign/design.md,随机元素按游戏概率建模/无评判机器/仅单局运行)。本文描述的现行实现仅供重做参考,勿基于它做新开发。
 ## 一、写入渠道(封闭集三通道)
 
 | 通道 | 辖面 | 载体 |
@@ -146,3 +152,4 @@ JSON 快照重放)。
   时胜率 = ``node_win_p``(n=192,~0.05),不再随成型度 rung 变化;
   「大胜 boss」幅度未建模——hp 类 A/B 方向可信、点值 ±30% 浮动。
   主路径(Δ池)boss 深度桶采样不变。
+
