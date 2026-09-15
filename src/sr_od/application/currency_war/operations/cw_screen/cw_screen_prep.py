@@ -1125,8 +1125,11 @@ class CwScreenPrep(CwScreenOpBase):
                 _deployed.append(moved)
             _front = set(getattr(obs, 'front_occupied', None) or set())
             _back = set(getattr(obs, 'back_occupied', None) or set())
-            (_front if action.to_row == 'front' else _back).add(
-                moved.slot if moved is not None else 0)
+            # 占用集按 fallback 解析排(_row)记行——按 to_row 记会把换排
+            # 落位记成假前排占位/漏记后排;满板分支(slot=0 信息位)不入集
+            #(0 非物理槽号,真值归 heavy 现读;改动三审 代-1)。
+            if moved is not None and moved.slot:
+                (_front if _row == 'front' else _back).add(moved.slot)
             return dataclasses.replace(
                 obs, bench_chars=_bench, deployed_chars=_deployed,
                 front_occupied=_front, back_occupied=_back,
