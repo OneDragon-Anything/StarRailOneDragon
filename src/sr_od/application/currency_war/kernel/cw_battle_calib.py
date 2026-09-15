@@ -18,7 +18,7 @@ sim 重做删除面收口(sim-redesign design.md §2.4.1/§2.4.4):节点序列
 cw_line_switch 以函数消费本族,留 sim 桶成 decision→sim / kernel→sim
 违规边。本模块(kernel 桶)零 sim 依赖:纯值来自 data/cw_battle_tables,
 计数底座在 cw_state/cw_deploy_logic/cw_line_defs(kernel);
-SimResult 等类型仅鸭子读取,经 TYPE_CHECKING 注解。
+SimResult 等类型仅鸭子读取。
 
 桩点契约:消费方函数内懒 import 本模块符号(属性动态解析),
 monkeypatch 钉本模块符号(锁改判裁决=N7,禁 shim)。
@@ -26,7 +26,6 @@ monkeypatch 钉本模块符号(锁改判裁决=N7,禁 shim)。
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_battle_tables import (
     BOSS_BY_DIR_ROUND,
@@ -54,8 +53,6 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     round_num_of,
 )
 
-if TYPE_CHECKING:
-    pass
 
 def deployed_star_depth(bs: GameState) -> int:
     """净星深 = 上场件 Σ(star−1)(全量口径,同 ADR-0399
