@@ -33,10 +33,10 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vopt impo
 )
 
 if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
     from sr_od.application.currency_war.kernel.cw_game_state import (
         GameState,
     )
-    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 
 
 def line_switch_sell(old_line_members: tuple[str, ...],
@@ -45,6 +45,7 @@ def line_switch_sell(old_line_members: tuple[str, ...],
                      bs: GameState, *, k_switched: bool,
                      counters: dict | None = None,
                      dedup_names: set[str] | None = None,
+                     merge_guard_release: frozenset[str] | set[str] = frozenset(),
                      ) -> tuple[list[int], str]:
     """换线塌缩出口(§2.2 主比较式的发射位;k_switched=K 已按 K′ 更新)。
 
@@ -80,6 +81,11 @@ def line_switch_sell(old_line_members: tuple[str, ...],
     T3 同轮保留结构无关声明:本通道候选集 ⊂ 旧线成员,同轮保留集
     (垫件)零重叠永不在旧线 ⇒ 无交互,本函数不设 defer 参数——
     形式化声明防后人误加;若未来候选域扩到线外件,须先补 defer 接线。
+
+    ``merge_guard_release``(T-253;缺省空集 = 零漂移端):死库存素材对
+    释放集,G-S1 判据处的条件旁路(命中 ⇒ 跳过拒入、不计数;单一源 =
+    sell_gate.dead_pair_exit_release,消费位禁自算)。旁路只撕 G-S1 一
+    道子谓词,资格谓词族其余各门照旧。
     """
     if not k_switched:
         return [], 'no_event'
@@ -101,7 +107,8 @@ def line_switch_sell(old_line_members: tuple[str, ...],
             # 注入态保守子集:仅燃料类(1★ 全额可退)放行,其余保留
             if not refund_full_star_ok(b.star, bench_char_cost(b)):
                 continue
-            if merge_material_reject_reason(name, b.star, bench, deployed):
+            if merge_material_reject_reason(name, b.star, bench, deployed) \
+                    and name not in merge_guard_release:
                 if counters is not None:
                     count_merge_material_blocked(counters, name, dedup_names)
                 continue
@@ -118,6 +125,7 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
                       counters: dict | None = None,
                       exclude_names: frozenset[str] | set[str] = frozenset(),
                       defer_names: frozenset[str] | set[str] = frozenset(),
+                      merge_guard_release: frozenset[str] | set[str] = frozenset(),
                       dedup_names: set[str] | None = None,
                       ) -> tuple[list[int], str]:
     """凑息卖·回拉发射位(T1 语义重写;设计 13_buy_face_design §2.2)。
@@ -174,6 +182,12 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
     真实持有,非自旋,经 t1_interest_gap/sellback 差值可判读)。与
     G-S1 不冲突:被保件同时是素材时双守卫各拒各的(保护只影响排序/跳过,
     不影响资格闭集)。
+
+    ``merge_guard_release``(T-253;缺省空集 = 零漂移端):死库存素材对
+    释放集,G-S1 判据处的条件旁路(命中 ⇒ 跳过拒入、不计数;单一源 =
+    sell_gate.dead_pair_exit_release,消费位禁自算)。凑息通道消费释放
+    成员 = 卖掉意图已死的近零值资产,正是燃料类语义(P78-5′ 对价豁免
+    条款照常辖,无新增豁免需求)。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         p1_blood_floor,
@@ -223,7 +237,8 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
         if name in defer_names:
             _count('t3_protect_deferred')   # T3 同轮保留:回拉通道绝对跳过
             continue
-        if merge_material_reject_reason(name, b.star, bench, _deployed):
+        if merge_material_reject_reason(name, b.star, bench, _deployed) \
+                and name not in merge_guard_release:
             if counters is not None:
                 count_merge_material_blocked(counters, name, dedup_names)
             continue
@@ -261,6 +276,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
                          *,
                          exclude_names: frozenset[str] | set[str] = frozenset(),
                          defer_names: frozenset[str] | set[str] = frozenset(),
+                         merge_guard_release: frozenset[str] | set[str] = frozenset(),
                          counters: dict | None = None,
                          dedup_names: set[str] | None = None,
                          ) -> tuple[list[int], str]:
@@ -291,6 +307,11 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
     时同键计数 ``merge_material_guard_blocked``(事件口径 C1:同帧同
     名只计 1,去重载体 = ``dedup_names``,单一源 =
     ``cw_state.count_merge_material_blocked``)。
+
+    ``merge_guard_release``(T-253;缺省空集 = 零漂移端):死库存素材对
+    释放集,G-S1 判据处的条件旁路(命中 ⇒ 跳过拒入、不计数;单一源 =
+    sell_gate.dead_pair_exit_release,消费位禁自算)。支付变现消费释放
+    成员的对价豁免条款(P78-5/5′ 两腿)照常辖,无新增豁免需求。
     """
     if gold >= need_gold:
         return [], 'not_needed'
@@ -323,7 +344,8 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
             continue
         if name in exclude_names:
             continue   # P60:买面义务集成员禁入卖出资格集
-        if merge_material_reject_reason(name, b.star, bench, _deployed):
+        if merge_material_reject_reason(name, b.star, bench, _deployed) \
+                and name not in merge_guard_release:
             if counters is not None:
                 count_merge_material_blocked(counters, name, dedup_names)
             continue

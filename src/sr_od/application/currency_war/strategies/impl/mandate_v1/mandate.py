@@ -31,6 +31,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.kernel.cw_card_identity import (
+    transition_release_names,
+)
 from sr_od.application.currency_war.kernel.cw_comps import form_progress
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     SWAP_TRANSITION_ARM_ENABLED,
@@ -43,7 +46,11 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     in_must_spend_zone,
     xp_click_cost,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
+from sr_od.application.currency_war.kernel.cw_exec_state import (
+    BENCH_CAPACITY,
+    bench_occupied_slot_nos,
+    bench_slots_healthy,
+)
 from sr_od.application.currency_war.kernel.cw_intention import (
     locked_buy_cap_hold,
 )
@@ -90,6 +97,7 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state imp
 # (窗口段 API)。冗余别名 = 刻意再出口(PEP 484 re-export 形态)。
 from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import (
     consume_on_sell,
+    dead_pair_exit_release,
     empty_board_sell_blocked,
     prune_on_deploy,
     register_launch,
@@ -325,6 +333,7 @@ def fuel_sell_candidates(bench: list[BenchChar],
                          *,
                          exclude_names: frozenset[str] | set[str] = frozenset(),
                          defer_names: frozenset[str] | set[str] = frozenset(),
+                         merge_guard_release: frozenset[str] | set[str] = frozenset(),
                          counters: dict | None = None,
                          dedup_names: set[str] | None = None,
                          ) -> list[BenchChar]:
@@ -389,6 +398,13 @@ def fuel_sell_candidates(bench: list[BenchChar],
     空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
     板空帧腾席卖出腿同弱劣拒帧 → 本函数返空,消费位走各自既有「无
     候选」诚实停摆路径(m2_retry_exhausted/bench_full/{prefix}_no_fuel)。
+
+    ``merge_guard_release``(T-253;缺省空集 = 零漂移端):死库存素材对
+    释放集——G-S1 判据处的**条件旁路**(先旁路后装配,序由行为锁③钉
+    死):拒因命中 ∧ 名在释放集 ⇒ 跳过拒入、不计数(资格子谓词旁路,
+    非新通道;单一源 = sell_gate.dead_pair_exit_release,消费位禁自算
+    第二份)。旁路只撕 G-S1 一道子谓词,下游装配 A 排除(exclude_names)
+    照旧全额生效。
     """
     _deployed = _deployed_of(state)
     if empty_board_sell_blocked(_deployed, counters=counters):
@@ -405,7 +421,8 @@ def fuel_sell_candidates(bench: list[BenchChar],
             continue
         if b.star != 1:
             continue
-        if merge_material_reject_reason(name, b.star, bench, _deployed):
+        if merge_material_reject_reason(name, b.star, bench, _deployed) \
+                and name not in merge_guard_release:
             if counters is not None:
                 count_merge_material_blocked(counters, name, dedup_names)
             continue
@@ -1003,11 +1020,17 @@ def wanted_closure_emit(session: StrategySession, state: GameState,
     # 腿 2(M4 卖角色):候选与排除同源(M4 腾席臂同参 fuel_sell_candidates
     # + 统一装配 A channel='m4_fuel');路线类 = m4_fuel_sell(§5.2 腿 2:
     # 同源候选即同路线类,不复刻第三枚举值——§3.3 封闭集无 wanted_close)。
+    # 释放集同参同源(N3:cap_hold 与本位装配同一现读;单点 = sell_gate)。
     _m4_excl = sell_exclusions(session, k_members, channel='m4_fuel',
                                cap_hold=locked_buy_cap_hold(state),
                                current_round=round_num)
+    _dp_release = dead_pair_exit_release(
+        session, k_members, bench, deployed, round_num,
+        cap_hold=locked_buy_cap_hold(state), counters=counters)
     cands = fuel_sell_candidates(bench, k_members, state=state,
-                                 exclude_names=_m4_excl, counters=counters,
+                                 exclude_names=_m4_excl,
+                                 merge_guard_release=_dp_release,
+                                 counters=counters,
                                  dedup_names=set())
     if cands:
         if not _wanted_reopen_budget(st, phase, counters):
@@ -1015,6 +1038,8 @@ def wanted_closure_emit(session: StrategySession, state: GameState,
         _count('wanted_leg_fuel_sell')
         # 轮内卖出登记(档 2 新鲜度排除写端,与 M4 腾席臂同口径)。
         record_round_sold(session, state, cands[0].char_id or '')
+        if (cands[0].char_id or '') in _dp_release:
+            _count('dead_pair_exit_sold_m4_fuel')
         _vidx = _bench_container_idx(state, cands[0])
         if _vidx is None:
             _count('wanted_leg_fuel_sell_stale_idx')
@@ -1126,7 +1151,12 @@ def run_mandate(frame: MandateFrame,
     键 m2_stall_repeat_frame 同批新增,语义与商店域一致)/
     shop_latch_skip_dominance_buy / shop_latch_skip_m2_buy /
     shop_latch_skip_m6_stock(备战期开店闩跳过计数,分站记)/
-    equip_latch_skip_m7(装备期闩跳过计数,装备穿戴放行判定门②)。
+    equip_latch_skip_m7(装备期闩跳过计数,装备穿戴放行判定门②)/
+    deadlock_only_transition_victim(方向④纯计数,零行为;design
+    §2.2.3 触发谓词:m2_retry_exhausted 事件帧 ∧ 释放集并入候选后燃料
+    资格面仍空 ∧ bench 存在 ④ 件)+ dead_pair_exit_sold_m4_fuel /
+    dead_pair_exit_sold_interest(释放成员实际卖出笔数,键族单一源 =
+    sell_gate 键族清单)。
 
     备战期开店闩(``session.cw4_shopped_phase``):同一备战期内开店意图
     只消费一次。为什么是决策的推论而非限制:①商店域决策发生在店内一次
@@ -1223,13 +1253,20 @@ def run_mandate(frame: MandateFrame,
         _ov_excl = sell_exclusions(session, k, channel='m4_fuel',
                                    cap_hold=locked_buy_cap_hold(state),
                                    current_round=frame.round_num)
+        # 释放集同参同源(N3;与腾席臂/溢出门同一装配单点)。
+        _ov_release = dead_pair_exit_release(
+            session, k, frame.bench, frame.deployed, frame.round_num,
+            cap_hold=locked_buy_cap_hold(state), counters=counters)
         _ov_cands = fuel_sell_candidates(frame.bench, k, state=state,
                                          exclude_names=_ov_excl,
                                          defer_names=_t3_protect,
+                                         merge_guard_release=_ov_release,
                                          counters=counters)
         if _ov_cands:
             # 轮内卖出登记(档 2 新鲜度排除写端,与 M4/凑息臂同口径)。
             record_round_sold(session, state, _ov_cands[0].char_id or '')
+            if (_ov_cands[0].char_id or '') in _ov_release:
+                _count('dead_pair_exit_sold_m4_fuel')
             _vidx = _bench_container_idx(state, _ov_cands[0])
             if _vidx is None:
                 _count('overflow_clear_sell_stale_idx')
@@ -1278,10 +1315,17 @@ def run_mandate(frame: MandateFrame,
     #(②(a) 凑息资格评估 / M4 腾席环)共享,与 shop 侧 _mm_dedup 同款
     #——凑息臂先触达首计后,腾席环对同一素材不再重复计数。
     _mm_dedup: set[str] = set()
+    _dp_release: frozenset[str] = frozenset()
     if frame.gold < saturation_line(_cap_resolved):
         if contracts.ensure_contract(
                 ('sell', 'sell_for_interest'),
                 contracts.ContractCtx(gold=frame.gold), counters):
+            # 释放集同参同源(N3:cap_hold 与本位装配同一现读;凑息通道
+            # 消费释放成员 = P78-5′ 对价豁免条款照常辖,无新增豁免需求,
+            # design §2.1.7-4)。
+            _dp_release = dead_pair_exit_release(
+                session, k, frame.bench, frame.deployed, frame.round_num,
+                cap_hold=locked_buy_cap_hold(state), counters=counters)
             _t1_slots, _t1_key = crit_sell.sell_for_interest(
                 frame.gold, list(frame.bench), _cap_resolved, k,
                 state=state,
@@ -1291,6 +1335,7 @@ def run_mandate(frame: MandateFrame,
                                                   state),
                                               current_round=frame.round_num),
                 defer_names=_t3_protect,
+                merge_guard_release=_dp_release,
                 counters=counters,
                 dedup_names=_mm_dedup)
         else:
@@ -1316,6 +1361,8 @@ def run_mandate(frame: MandateFrame,
                 # 轮内卖出登记(档 2 新鲜度排除写端;凑息卖出抬高金位后
                 # 同轮压库买回 = s108 净零自旋,写端防抖见 helper 注)。
                 record_round_sold(session, state, _t1_name_of.get(_s, ''))
+                if _t1_name_of.get(_s, '') in _dp_release:
+                    _count('dead_pair_exit_sold_interest')
                 out.append(Emitted(SellBench(bench_idx=_vidx), True,
                                    'interest_prep'))
             _count('t1_interest_prep_emit')
@@ -1389,6 +1436,11 @@ def run_mandate(frame: MandateFrame,
                                            cap_hold=locked_buy_cap_hold(
                                                state),
                                            current_round=frame.round_num)
+                # 释放集同参同源(N3;腾席环内逐次评估共享本帧释放集,
+                # 名×轮去重面在单点函数内)。
+                _m4_release = dead_pair_exit_release(
+                    session, k, frame.bench, frame.deployed, frame.round_num,
+                    cap_hold=locked_buy_cap_hold(state), counters=counters)
                 retries = 0
                 freed = False
                 no_fuel = False    # 闩写条件承载:环以「候选空集」退出(
@@ -1399,7 +1451,8 @@ def run_mandate(frame: MandateFrame,
                                                  exclude_names=_m4_excl,
                                                  counters=counters,
                                                  defer_names=_t3_protect,
-                                                 dedup_names=_mm_dedup)
+                                                 dedup_names=_mm_dedup,
+                                                 merge_guard_release=_m4_release)
                     if not cands:
                         no_fuel = True
                         break       # 0 发射 ⇒ 立即放弃(状态未变,重放必再失败)
@@ -1419,6 +1472,8 @@ def run_mandate(frame: MandateFrame,
                     # 轮内卖出登记(档 2 新鲜度排除写端;腾席卖出后同轮
                     # 压库买回 = 净零席面自旋,写端防抖见 helper 注)。
                     record_round_sold(session, state, _vname)
+                    if _vname in _m4_release:
+                        _count('dead_pair_exit_sold_m4_fuel')
                     _vidx = _bench_container_idx(state, victim)
                     if _vidx is None:
                         # 容器下标失配(陈旧/carry 帧)= 换手循环输入失真,
@@ -1439,6 +1494,14 @@ def run_mandate(frame: MandateFrame,
                     if no_fuel:
                         _count('m2_stall_cache_rederive')
                         _st.cw4_m2_stall_latch = (True, _seg)
+                    # 方向④ 纯计数键(零行为;design §2.2.3 触发谓词钉死):
+                    # 死锁帧 = 本事件帧;唯一可动 victim 反事实 = 释放集
+                    # 并入候选后燃料资格面仍空(no_fuel 时末次候选评估已
+                    # 含释放集,空集即谓词真)∧ bench 存在 ④ 件。
+                    if no_fuel and any(
+                            (b.char_id or '') in transition_release_names()
+                            for b in frame.bench):
+                        _count('deadlock_only_transition_victim')
                 else:
                     _emit_open_shop('m2_buy')
         else:
@@ -2127,8 +2190,14 @@ def _emit_deploy_moves(out: list, frame: MandateFrame,
                    or getattr(state, 'back_max', None) or 6)
     front_empty, back_empty = empty_deploy_slots(
         dep_slots, front_total=4, back_total=int(_back_total))
-    _cidx_of = {b.slot: i for i, b in enumerate(bench_slots_of(state))
-                if b is not None}
+    # 容器槽位表 → 容器下标对位:重复槽号帧 dict 对位静默遮蔽(后者覆盖
+    # 前者 = 陈旧位指到错下标的换手面),先过槽号健康不变量再建表——
+    # 不健康(重复/越界)帧整表弃用,逐 move fail-closed 跳过。单一源 =
+    # kernel bench_slots_healthy(与对账写回门/tracked 写点显影同源)。
+    _cidx_of: dict[int, int] = {}
+    if bench_slots_healthy(bench_occupied_slot_nos(bench_slots_of(state))):
+        _cidx_of = {b.slot: i for i, b in enumerate(bench_slots_of(state))
+                    if b is not None}
     for bi, row, _slot in assign_deploy_slots(frame.bench, up,
                                               front_empty, back_empty):
         # 容器下标解析(换算收口,同帧 slot 信息位 ↔ 容器槽位表枚举下标;

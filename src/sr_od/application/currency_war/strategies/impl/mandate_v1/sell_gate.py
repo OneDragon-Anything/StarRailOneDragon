@@ -78,6 +78,10 @@ from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 from sr_od.application.currency_war.kernel.cw_intention import (
     locked_buy_membership,
 )
+from sr_od.application.currency_war.kernel.cw_merge_simulate import (
+    merge_material_stale_names,
+    same_star_count,
+)
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
 )
@@ -606,6 +610,198 @@ def seed_exclusions(session: StrategySession,
             del reg[n]
     # loop 后剩余账 = 位面匹配(或位面不可得保守保留)∧ 窗内 ∧ 名在席。
     return frozenset(reg)
+
+
+# ===== 持久获取账与死库存对退出判据(T-253;G-S1 退出通道设计
+# docs/develop/sr_od/application/currency_war/changes/2026-09-15-gs1-exit-channel/
+# design.md §2.0/§2.1.5,数学论证 = proofs P96)=====
+
+
+#: 持久获取账的 StrategyState 载体属性名({名: (位面, 最新获取轮)})。
+#: duck-typed 属性契约(与 SEED_ACQUISITIONS_ATTR 同纪律):改名 = 静默
+#: 断供给。与统一发射登记簿(易失账,四出口销账)生命周期解耦——本账
+#: 是素材对退出判据 (c) 的唯一轮读源,判据按发射登记簿读会恒 no-op
+#: (press 对 R2 首个窗口即被轮界销,病灶对永不满足年龄条件)。
+ACQUISITION_LEDGER_ATTR: str = 'cw4_acquisition_ledger'
+
+#: 退出判据时域下界 N(proofs P96;design §2.1.4 载体闭集最大寿命推导,
+#: 零新自由参数):意图载体闭集中瞬态窗的最大寿命 = 种子年龄窗在册窗长
+#: (``SEED_WINDOW_ROUNDS``)+1——N<3 会卖掉种子窗仍开的对(撕 P78-7
+#: 保护面),N>3 保护无任何载体的意图(病灶本体);时钟起点 = 较晚成员
+#: 的获取账登记轮(重基声明见 P96,非种子簿原义的种子获取轮)。
+DEAD_PAIR_EXIT_MIN_AGE: int = SEED_WINDOW_ROUNDS + 1
+
+#: 死库存对退出遥测键族(design §2.1.5;事件口径 C1 = 名×轮去重,见
+#: ``dead_pair_exit_release``;键登记单一源 = 本清单与写点,禁消费位裸写):
+#: - ``dead_pair_exit_released``:进入释放集的名数(释放评估量);
+#: - ``dead_pair_exit_guard_kept_*``:素材对在位但未释放,按保留原因
+#:   分子键 _k(义务基座成员)/_no_entry((c) 账覆盖缺口:缺登记/位面
+#:   失配/轮号缺读——N2 拆分,窗内保留与账缺口显影分键)/_young((c)
+#:   真窗内 age<N)/_identity(已释放遭身份段剔除——③④/枢纽对体量
+#:   观察位,喂方向④后续门)/_chain(3★ 链 1★ 腿保留);
+#: - ``dead_pair_exit_sold_<channel>``:释放成员经各通道实际卖出笔数
+#:   (按通道分键,写点 = 各通道 SellBench 发射位)。
+DEAD_PAIR_EXIT_RELEASED_KEY: str = 'dead_pair_exit_released'
+DEAD_PAIR_EXIT_KEPT_PREFIX: str = 'dead_pair_exit_guard_kept'
+DEAD_PAIR_EXIT_SOLD_PREFIX: str = 'dead_pair_exit_sold'
+
+
+def _acq_ledger_of(session: StrategySession) -> dict:
+    """持久获取账读口(dict 载体缺省就地建;与种子簿同载体纪律)。"""
+    st = state_of(session)
+    reg = getattr(st, ACQUISITION_LEDGER_ATTR, None)
+    if not isinstance(reg, dict):
+        reg = {}
+        setattr(st, ACQUISITION_LEDGER_ATTR, reg)
+    return reg
+
+
+def register_acquisition(session: StrategySession, name: str, *,
+                         plane: int | None, round_num: int,
+                         star: int | None = None) -> bool:
+    """获取账登记(写端单一源 = shop._emit_buy 发射位,与种子登记同位)。
+
+    簿形态 = {名: (位面, 最新获取轮)},同名重获取覆盖为最新轮——对时
+    钟起点语义:素材对自「较晚成员获取」那刻才成立,覆盖写即天然取
+    max(两获取轮)。全因类无条件写(A4 硬闸之后的活决策逐笔落账,不分
+    买因),**星级辖 1★**(star≠1 拒登记:2★/3★ 成件非素材对成员,覆盖
+    写会刷新在场 1★ 对的轮戳致晚释放——覆盖写辖定钉死,N1 规格)。
+    空名/位面缺读拒登记(fail-closed,与种子簿同纪律)。位面本地轮号,
+    账内条目恒同位面(跨位面条目由读端位面闭合清除)。
+
+    闭合 = 读端惰性清扫(``dead_pair_exit_release`` 内):位面闭合 +
+    全场域活性闭合,与发射登记簿四出口(轮界/换线/部署/合成销)解耦
+    ——合成销语义注:合成补齐买入在发射位提前 return 不落本账,该名
+    旧账由活性闭合(2★ 化后 1★ 对离场)就地销。
+    """
+    if not name or plane is None:
+        return False
+    if star is not None and int(star) != 1:
+        return False
+    _acq_ledger_of(session)[name] = (int(plane), int(round_num))
+    return True
+
+
+def dead_pair_exit_release(session: StrategySession,
+                           k_members: tuple[str, ...],
+                           bench: object, deployed: object,
+                           current_round: int | None, *,
+                           cap_hold: int | None = None,
+                           counters: dict | None = None,
+                           ) -> frozenset[str]:
+    """死库存素材对释放集单点函数(T-253;判据 (a)(b)(c) 三合取,
+    proofs P96)。四卖出通道消费位统一经本函数计算后传
+    ``merge_guard_release`` 形参——判据本体单点,通道禁自算第二份。
+
+    判据(name 入集 ⟺ 全部合取):
+    (a) 素材对在位:``same_star_count(name, 1, bench, deployed) ≥ 2``
+        (计数单一源 = kernel;宇宙 = ``merge_material_stale_names`` 同源);
+    (b) name ∉ base——base = ``_resolve_base`` 输出(义务重买集真值:
+        锁线态 = 截断集 B′,未锁态 = k_members);``cap_hold`` 必须 与同位
+        ``sell_exclusions`` 的 cap_hold 同一帧现读传入(与装配 A 身份段
+        第 1 构件同参同源,N3 钉死;None = 保宽 fail-closed 端,kept_k
+        虚增方向保守可判读);
+    (c) 账位面 == 当前位面 ∧ 当前轮 − 获取账登记轮 ≥
+        ``DEAD_PAIR_EXIT_MIN_AGE``。账形态 = {名: 最新获取轮},同名覆盖
+        写使「两成员均有登记 ∧ max(两登记轮)」折叠为单条目读(覆盖写
+        辖 1★,全因类买入逐笔落账时条目即较晚成员轮);缺登记/位面失配/
+        轮号缺读 → 不入集(fail-closed 保守向)。已知边界(如实申报):
+        混合获取对(一张买一张赠得)条目仅承买得张,轮戳早于成对轮,
+        至多提前 N−1 轮释放(赠得为事件条件流低频,design §2.1.7-3 同族)。
+
+    附带保守保留(不释放,按原因计数):3★ 链 1★ 腿——同名 2★ 在场
+    (bench∪deployed 全场域,N4 钉死,漏保留 = 漏保护向)→ _chain。
+    kept_identity = 释放集 ∩ 装配 A 身份段(与四通道消费同一身份段,
+    本函数内现算;identity_exclusions 读点幂等,双计无面)——释放后遭
+    身份段剔除的 ③④/枢纽对观察位,留在返回集内(旁路只撕 G-S1 子
+    谓词,装配 A 照旧在下游排除)。
+
+    ``bench``/``deployed`` = 当前帧全场域(与同位通道评估同一帧数据);
+    兼容 None。活性闭合域 = bench∪deployed 全场域(单腿上板的对账须
+    活);观察缺读(双侧名集全空)不闭合(fail-closed,与种子簿同向)。
+    ``current_round`` 优先消费形参(与 sell_exclusions 同槽同源);
+    位面 = 黑板帧 node 自治读。
+
+    遥测 = 事件口径 C1:**名×轮去重**(去重载体 = session 相位簿
+    ``cw4_dead_pair_exit_frame``,同轮多通道重复评估/腾席环重试不重复
+    计数;轮推进自动失效)——同轮商店/备战两域重复评估同名视为同一
+    释放事件,判读按「名×轮」频次读。``counters`` None = 读会话容器。
+    """
+    st = state_of(session)
+    ct = counters if counters is not None else _counters_of(session)
+    _bench = [b for b in (bench or ()) if b is not None]
+    _deployed = [d for d in (deployed or ()) if d is not None]
+    bench_names = {getattr(b, 'char_id', '') or '' for b in _bench}
+    deployed_names = {getattr(d, 'char_id', '') or '' for d in _deployed}
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        board_state_of,
+    )
+    node = board_state_of(session).node.value
+    cur_plane = int(node.plane) if node is not None else None
+    cur_round = int(current_round) if current_round is not None else None
+
+    # C1 相位去重簿(名×轮;跨轮/跨位面推进自动失效)
+    phase = (cur_plane, cur_round)
+    seen = getattr(st, 'cw4_dead_pair_exit_frame', None)
+    if not isinstance(seen, dict) or seen.get('phase') != phase:
+        seen = {'phase': phase, 'names': set()}
+        st.cw4_dead_pair_exit_frame = seen
+    counted: set[str] = seen['names']
+
+    # 持久获取账惰性闭合(位面 + 全场域活性;与发射登记簿四出口解耦)
+    reg = getattr(st, ACQUISITION_LEDGER_ATTR, None)
+    if isinstance(reg, dict) and reg:
+        held = bench_names | deployed_names
+        for n, value in list(reg.items()):
+            seen_plane, _seen_round = value if isinstance(value, tuple) \
+                else (None, value)
+            if cur_plane is not None and seen_plane is not None \
+                    and seen_plane != cur_plane:
+                del reg[n]      # 位面闭合:账随位面终结
+                continue
+            if held and n not in held:
+                del reg[n]      # 活性闭合:卖出/部署/合成件离场机械判
+    entries = reg if isinstance(reg, dict) else {}
+
+    def _kept(key: str, name: str) -> None:
+        """保留原因计数(C1:名×轮去重;计数与计算分离——每次调用
+        都完整复算释放集,去重只辖计数面,多通道重复评估拿到同一集)。"""
+        if name in counted:
+            return
+        counted.add(name)
+        _bump(ct, f'{DEAD_PAIR_EXIT_KEPT_PREFIX}_{key}')
+
+    _locked, base = _resolve_base(session, k_members, cap_hold=cap_hold)
+    identity = identity_exclusions(session, k_members, cap_hold=cap_hold)
+    out: set[str] = set()
+    for name in merge_material_stale_names(_bench, _deployed):
+        if not name:
+            continue
+        if name in base:
+            _kept('k', name)        # 义务基座成员:买家空集论证不成立面
+            continue
+        entry = entries.get(name)
+        seen_plane, seen_round = entry if isinstance(entry, tuple) \
+            else (None, None)
+        if (cur_plane is None or cur_round is None
+                or seen_plane is None or seen_round is None
+                or seen_plane != cur_plane):
+            _kept('no_entry', name)     # 账覆盖缺口(含缺读 fail-closed)
+            continue
+        if cur_round - int(seen_round) < DEAD_PAIR_EXIT_MIN_AGE:
+            _kept('young', name)        # 真窗内:N 下界保护(锁②)
+            continue
+        if same_star_count(name, 2, _bench, _deployed) >= 1:
+            _kept('chain', name)        # 3★ 链 1★ 腿保守保留(N4 全场域)
+            continue
+        # 释放评估量 + 身份段剔除观察位(名字留集,装配在下游排除)
+        out.add(name)
+        if name not in counted:
+            counted.add(name)
+            _bump(ct, DEAD_PAIR_EXIT_RELEASED_KEY)
+            if name in identity:
+                _bump(ct, f'{DEAD_PAIR_EXIT_KEPT_PREFIX}_identity')
+    return frozenset(out)
 
 
 # ===== 装配 A(身份段 + 窗口段 + 通道对价段)=====

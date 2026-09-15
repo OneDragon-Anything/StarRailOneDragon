@@ -536,9 +536,16 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                 session, _sf_k, channel='m4_fuel',
                 cap_hold=locked_buy_cap_hold(bs),
                 current_round=_round_num)
+            # 释放集同参同源(N3:cap_hold 与本位装配同一现读)。
+            _sf_release = sell_gate.dead_pair_exit_release(
+                session, _sf_k, list(obs.bench_chars),
+                list(obs.deployed_chars), _round_num,
+                cap_hold=locked_buy_cap_hold(bs),
+                counters=state_of(session).cw4_counters)
             _sf_cands = mandate.fuel_sell_candidates(
                 list(obs.bench_chars), _sf_k, state=bs,
                 exclude_names=_sf_excl,
+                merge_guard_release=_sf_release,
                 counters=state_of(session).cw4_counters,
                 dedup_names=set())
             if _sf_cands:
@@ -547,6 +554,11 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                 # 压库买回 X 的净零自旋在该路径残余可达)。
                 mandate.record_round_sold(session, bs,
                                           _sf_cands[0].char_id or '')
+                if (_sf_cands[0].char_id or '') in _sf_release:
+                    _ct_sf0 = state_of(session).cw4_counters
+                    if isinstance(_ct_sf0, dict):
+                        _ct_sf0['dead_pair_exit_sold_m4_fuel'] = \
+                            _ct_sf0.get('dead_pair_exit_sold_m4_fuel', 0) + 1
                 _vidx = mandate._bench_container_idx(bs, _sf_cands[0])
                 if _vidx is not None:
                     return [Emitted(SellBench(bench_idx=_vidx), True,
@@ -836,11 +848,16 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                                                 cap_hold=locked_buy_cap_hold(
                                                     bs),
                                                 current_round=_f_round)
+            # 释放集同参同源(N3:cap_hold 与本位装配同一现读)。
+            _f_release = sell_gate.dead_pair_exit_release(
+                session, k_members, bench, deployed, _f_round,
+                cap_hold=locked_buy_cap_hold(bs), counters=_ct)
             _f_need = mandate.cheapest_member_cost(frame)
             slots, _why = crit_sell.funding_support_sell(
                 gold_of(bs), _f_need, bench,
                 k_members, state=bs,
                 exclude_names=_f_excl,
+                merge_guard_release=_f_release,
                 counters=_ct,
                 dedup_names=set())   # C1 事件口径:单帧去重(单调用语境)
             # 兜底豁免(P78-5:主路径空 ∧ 仍需筹资;池定义单一源 =
@@ -861,6 +878,10 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                         _ct['ev_conflict_dropped'] = \
                             _ct.get('ev_conflict_dropped', 0) + 1
                     continue
+                if next((b.char_id or '' for b in bench if b.slot == s),
+                        '') in _f_release:
+                    _ct['dead_pair_exit_sold_funding'] = \
+                        _ct.get('dead_pair_exit_sold_funding', 0) + 1
                 # 纯归因载体填充/plain 分键计数已随 2026-09-08 用户归因
                 # 遥测删除指令拆除:reason/标记缺省 '' 未标,发射行为零面。
                 ev_out.append(Emitted(
@@ -876,6 +897,9 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                 # 卖出销账(出口①;单笔即止,need 即止)。兜底分键计数/
                 # 载体填充已随 2026-09-08 用户归因遥测删除指令拆除
                 #(reason/标记缺省 '' 未标)。
+                if (bc.char_id or '') in _f_release:
+                    _ct['dead_pair_exit_sold_funding'] = \
+                        _ct.get('dead_pair_exit_sold_funding', 0) + 1
                 sell_gate.consume_on_sell(session, bc.char_id or '')
                 ev_out.append(Emitted(
                     SellBench(bench_idx=_vidx), False, funding_support=True))
@@ -1173,6 +1197,12 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
     # 拦截事件去重集(C1 口径:同一备战帧内同一素材名只计 1;跨通道共享,
     # 单一源 = cw_state.count_merge_material_blocked)
     _mm_dedup: set[str] = set()
+    # 死库存对释放集(帧级单算;四通道共享单点 = sell_gate.
+    # dead_pair_exit_release,cap_hold 与本位装配同一现读 = N3 同参同源)。
+    _dp_release = sell_gate.dead_pair_exit_release(
+        session, k_members, frame.bench, frame.deployed, round_num_of(bs),
+        cap_hold=locked_buy_cap_hold(bs), counters=counters)
+    _slot_name_of = {(b.slot): (b.char_id or '') for b in frame.bench}
     out: list[Emitted] = []
     # line_switch_sell(换线塌缩出口:k_switched 时对旧线件重评;
     # 契约核验(单一源=criteria/contracts.py),前提不成立 ⇒ 本帧弃权+计数;
@@ -1183,7 +1213,8 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
         slots, _key = crit_sell.line_switch_sell(
             old_line_members, k_members, frame.bench, frame.deployed, bs,
             k_switched=k_switched, counters=counters,
-            dedup_names=_mm_dedup)
+            dedup_names=_mm_dedup,
+            merge_guard_release=_dp_release)
     else:
         slots = []
     for s in slots:
@@ -1194,6 +1225,9 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
                 counters['ev_conflict_dropped'] = \
                     counters.get('ev_conflict_dropped', 0) + 1
             continue
+        if _slot_name_of.get(s, '') in _dp_release:
+            counters['dead_pair_exit_sold_line_switch'] = \
+                counters.get('dead_pair_exit_sold_line_switch', 0) + 1
         out.append(Emitted(
             SellBench(bench_idx=_vidx, reason='line_switch_collapse'),
             False, 'line_switch_collapse'))
@@ -1224,6 +1258,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
             gold_of(bs), mandate.cheapest_member_cost(frame), frame.bench,
             k_members, state=bs,
             exclude_names=_f_excl,
+            merge_guard_release=_dp_release,
             counters=counters,
             defer_names=_t3_protect,
             dedup_names=_mm_dedup)
@@ -1250,6 +1285,9 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
             # reason/标记缺省 '' 未标,销账行为面保留。
             _fbc = next((b for b in frame.bench if b.slot == s), None)
             _fname = (_fbc.char_id or '') if _fbc is not None else ''
+            if _fname in _dp_release:
+                counters['dead_pair_exit_sold_funding'] = \
+                    counters.get('dead_pair_exit_sold_funding', 0) + 1
             if _fname in _t3_protect:
                 mandate.stall_buys_consume(session, _fname)
             out.append(Emitted(SellBench(bench_idx=_vidx), False,
@@ -1265,6 +1303,9 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
                 continue
             # 卖出销账(出口①;单笔即止,need 即止)。兜底分键计数/载体
             # 填充已随 2026-09-08 用户归因遥测删除指令拆除(缺省 '' 未标)。
+            if (bc.char_id or '') in _dp_release:
+                counters['dead_pair_exit_sold_funding'] = \
+                    counters.get('dead_pair_exit_sold_funding', 0) + 1
             sell_gate.consume_on_sell(session, bc.char_id or '')
             out.append(Emitted(
                 SellBench(bench_idx=_vidx), False, funding_support=True))

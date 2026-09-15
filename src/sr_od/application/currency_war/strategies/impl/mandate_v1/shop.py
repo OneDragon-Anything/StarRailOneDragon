@@ -121,6 +121,14 @@ p91_m6_same_axis_hit / p91_m6_off_axis_hit(M6 压库同轴/异轴选择帧
 p92_no_buy_refresh_blocked(P92 全通道可实现买入集空帧拦刷 = 面②
 审计①桶计数)/ must_spend_r1_no_buy_blocked(必花域内 P92 拦刷的
 域内 liveness 显影,与 must_spend_r1_budget_fail 混桶禁)。
+
+T-253 G-S1 退出通道批增补(键族单一源 = sell_gate 键族清单):
+transition_hold_locked_frame(方向④纯计数:配方锁帧 bench 上 ④ 件
+名数,触发谓词见 design §2.2.3)/ dead_pair_exit_released 与
+dead_pair_exit_guard_kept_{k,no_entry,young,identity,chain}(退出
+判据释放/保留事件,名×轮去重,写点 = dead_pair_exit_release 单点)/
+dead_pair_exit_sold_{m4_fuel,interest,funding,line_switch}(释放成员
+实际卖出笔数,按通道分键,写点 = 各通道 SellBench 发射位)。
 """
 from __future__ import annotations
 
@@ -141,6 +149,7 @@ from sr_od.application.currency_war.kernel.cw_card_identity import (
     TIER_TRANSITION,
     TIER_UNRELATED,
     line_identity_tier,
+    transition_release_names,
 )
 from sr_od.application.currency_war.kernel.cw_comps import (
     CORE_SINGLE_CARD_REGISTRY,
@@ -396,11 +405,18 @@ def p92_seat_recoverable(session: StrategySession,
     excl = sell_gate.sell_exclusions(session, k_members, channel='m4_fuel',
                                      cap_hold=cap_hold,
                                      current_round=current_round)
+    # 释放集与腾席发射位同参同源(判定尺同源约束覆盖释放旁路面:
+    # 漏算则 P92 在释放可达帧误判席不可落 → 误拦刷新)。
+    release = sell_gate.dead_pair_exit_release(
+        session, k_members, bench,
+        [d for d in deployed_slots_of(bs) if d is not None],
+        current_round, cap_hold=cap_hold, counters=counters)
     cands = mandate.fuel_sell_candidates(bench, k_members, state=bs,
                                          exclude_names=excl,
                                          defer_names=defer_names,
                                          counters=counters,
-                                         dedup_names=dedup_names)
+                                         dedup_names=dedup_names,
+                                         merge_guard_release=release)
     return bool(cands)
 
 
@@ -841,6 +857,10 @@ def decide_shop_action(bs: GameState, session: StrategySession,
         种子获取登记(P78-7,T-126 批 5,ADR-0633):见函数尾段——
         种子账作废形态与上述 sim 边界同型(作废买入的种子账由活性
         闭合在名不在 bench 的下一读点就地销,自愈有界)。
+
+        持久获取账登记(T-253,素材对退出判据 (c) 读源):见函数尾段
+        ——全因类(经 A4 硬闸)星级辖 1★,与发射登记簿四出口生命周期
+        解耦;sim 作废买入的获取账同种子账由活性闭合自愈。
         """
         _buy_name = getattr(card, 'name', '') or ''
         # W6 波3 贯通:record_fresh_buy 已切容器签名,帧经桥装箱。
@@ -915,6 +935,18 @@ def decide_shop_action(bs: GameState, session: StrategySession,
                 session, _buy_name,
                 plane=(bs.node.value.plane if bs.node.value is not None else None),
                 round_num=int(round_num_of(bs) or 1))
+        # 持久获取账登记(素材对退出判据 (c) 唯一轮读源;写端单一源 =
+        # sell_gate.register_acquisition)。全因类无条件写 = 经 A4 硬闸的
+        # 活决策逐笔落账,星级辖 1★(N1:2★/3★ 成件覆盖写会刷新在场 1★
+        # 对轮戳致晚释放);合成补齐分支已提前 return(1★ 即刻离场无账,
+        # 「全因类写」与早退分支的字面冲突由辖定收窄消解);空名/位面缺
+        # 读拒登记 fail-closed 在谓词内。
+        if _buy_name:
+            sell_gate.register_acquisition(
+                session, _buy_name,
+                plane=(bs.node.value.plane if bs.node.value is not None else None),
+                round_num=int(round_num_of(bs) or 1),
+                star=getattr(card, 'star', 1) or 1)
         return BuyCard(card=card, reason=reason)
 
     ev_arm = getattr(config, 'ev_arm', 'full')
@@ -1030,6 +1062,20 @@ def decide_shop_action(bs: GameState, session: StrategySession,
     # 滞留素材显影(分键,本体 = ``count_material_stale`` 单一源)。
     count_material_stale(counters, session, bench, deployed,
                          int(round_num_of(bs) or 1))
+    # 方向④ 纯计数键(零行为;design §2.2.3 触发谓词钉死,裁决 =
+    # 维持静态持有保护不收窄):``transition_hold_locked_frame`` =
+    # 配方锁帧 := P1 配方对物化帧(pair_target_comp 非空;载体位 =
+    # ist.p1_pair,与 T-246 代理键同帧族同源——物化失败仅注册表脏态,
+    # 对抗审 r2 攻击面 4 亲核),键值 = 该帧 bench 上 ④ 件名数
+    # (增量累计;判读按触发谓词「约束帧非零」读)。辖域 = 商店决策帧
+    # (与 count_material_stale 家族同域)。
+    if getattr(_ist, 'p1_pair', None):
+        _trans_names = transition_release_names()
+        _trans_n = sum(1 for b in bench
+                       if (b.char_id or '') in _trans_names)
+        if _trans_n:
+            counters['transition_hold_locked_frame'] = \
+                counters.get('transition_hold_locked_frame', 0) + _trans_n
     owned = set(bench_names) | set(deployed_names)
     # 契约核验:stop_buy 消费位(前提恒真 None 登记,违例路径仅剩未登记键)
     stop_flag = proof.stop_buy(k, bench_names, deployed_names) \
@@ -1067,11 +1113,20 @@ def decide_shop_action(bs: GameState, session: StrategySession,
                                           cap_hold=_cap_hold_now,
                                           current_round=int(
                                               round_num_of(bs) or 1))
+    # 死库存对释放集(帧级单算;四通道共享单点 = sell_gate.
+    # dead_pair_exit_release,cap_hold 与本位装配同一现读 = N3 同参同源)。
+    # 投影读与 p92/_core_victim 探测同消费——P56 投影 = 凑息实际资格面的
+    # 读端(P78-6 读端同源),漏释放集则 liquid_refund 低估 → s_reserve
+    # 高估(过度保守 + 投影脱节旧病形态,随批同源)。
+    _dp_release = sell_gate.dead_pair_exit_release(
+        session, k_members, bench, deployed, int(round_num_of(bs) or 1),
+        cap_hold=_cap_hold_now, counters=counters)
     liquid_refund = sum(sell_refund(1, bench_char_cost(b))
                         for b in mandate.fuel_sell_candidates(
                             bench, k_members, state=bs,
                             exclude_names=_p56_excl, counters=counters,
-                            dedup_names=_mm_dedup))
+                            dedup_names=_mm_dedup,
+                            merge_guard_release=_dp_release))
     # 口径注(P56 投影位):上面这步是为 s_reserve 投影而「读」资格集
     # (非卖出发射),``counters`` 照传时经 _mm_dedup 与本帧真卖评估位
     # 去重——``merge_material_guard_blocked`` = 拦截事件数(每帧每素材
@@ -1601,12 +1656,19 @@ def decide_shop_action(bs: GameState, session: StrategySession,
                                              cap_hold=_cap_hold_now,
                                              current_round=int(
                                                  round_num_of(bs) or 1))
+        # 释放集同参同源(帧内惰性缓存共享一次装配;探测面 = 真实腾席
+        # 资格面,漏释放集则金闸双桶把 fundable 误判 strict)。
+        _dp_release = sell_gate.dead_pair_exit_release(
+            session, k_members, bench, deployed,
+            int(round_num_of(bs) or 1),
+            cap_hold=_cap_hold_now, counters=counters)
         cands = mandate.fuel_sell_candidates(bench, k_members,
                                              state=bs,
                                              exclude_names=_m4_excl,
                                              defer_names=_t3_protect,
                                              counters=counters,
-                                             dedup_names=_mm_dedup)
+                                             dedup_names=_mm_dedup,
+                                             merge_guard_release=_dp_release)
         victim = cands[0] if cands else None
         ok4 = False
         if victim is not None:

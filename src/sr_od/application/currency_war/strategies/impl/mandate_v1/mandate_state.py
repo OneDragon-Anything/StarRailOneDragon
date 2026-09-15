@@ -103,8 +103,8 @@ class StrategyState:
     focus_factions: set[str] = field(default_factory=set)
 
     # ===== 遥测披露缓存(选线轮评分;轮;T-113/ADR-0579:_telemetry_ 前缀 =
-    # 披露面自带隔离,禁决策消费——守卫 = 全仓命中点计数锁,恰 2 处声明 +1 写点
-    # +1 读点)=====
+    # 披露面自带隔离,禁决策消费——现势:src 侧无写点/读点,字段 =
+    # 披露面残余载体,恢复消费须先重建披露写端)=====
     _telemetry_last_candidate_scores: dict[str, float] = field(default_factory=dict)
     _telemetry_last_candidate_scores_round: int = -1   # 分数轮次戳
 

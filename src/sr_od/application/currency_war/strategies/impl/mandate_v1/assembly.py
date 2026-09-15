@@ -197,8 +197,8 @@ def disclose_budget_at_shop_frame(state: Any, session: StrategySession,
     过 F2 门为真值)走同一 BudgetView 计算链重算并覆写三预算字段:
     overflow/budget 变帧现值;键戳同轮 ⇒ 不清 spent(轮界清零由键戳
     承载,本写点只比较不盖戳)。豁免面与「禁决策消费」禁令同
-    ``_disclose_budget``;调用方 = cw_op_buy_cards 段顶(best-effort,
-    失败降级保留 prep 值)。
+    ``_disclose_budget``;调用方 = operations/cw_screen/cw_screen_buy_
+    cards 段顶(best-effort,失败降级保留 prep 值)。
     """
     _budget(state, session, registry or DEFAULT_REGISTRY)
 
