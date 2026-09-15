@@ -134,9 +134,8 @@ EV_ARM_VALUES: tuple[str, ...] = ('skeleton_only', 'full')
 #: 球内容占席颜色集(迁移 B 球谓词第二腿的判定输入;ADR-0596 §4.9③)。
 #: CV 颜色域 = {'gold','blue','gray'}(cw_identity_obs 圆心 HSV 分类),
 #: 但「颜色 → 内容是否占席」的玩法机制面待实机实证——现役缺省 = 空集
-#(球均按不占席,宁多收球不误卖:点击失败可自愈、SellBench 不可逆,
-#: 与 adapter.snapshot_to_obs 对 free_bench_slots None→BENCH_CAPACITY
-#: 的在库裁决同向;占席球面的损失面由 2026-09-02 席满球裁定
+#(球均按不占席,宁多收球不误卖:点击失败可自愈、SellBench 不可逆;
+#: 占席球面的损失面由 2026-09-02 席满球裁定
 #: screen_flow_timing #16「部分没点开自然回补」容忍语义承载)。实证
 #: 落地后在此登记占席颜色,谓词第二腿自动收紧(腾席先于点球)。
 SPHERE_OCCUPYING_COLORS: frozenset[str] = frozenset()

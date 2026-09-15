@@ -1,11 +1,12 @@
 """货币战争 v2 决策纯映射层(decision 桶;原 w606 阶段2批③ adapter 的映射半部)。
 
-分包期 5 起原 adapter.py 拆两半:本模块只留**纯映射**——Snapshot →
-PrepObservation(视觉/占用观察视图)、CwAction → AtomOp
-(动作 → 原子记账键)。装配半部(DecideAdapter/影子比对/observe 端口
+分包期 5 起原 adapter.py 拆两半:本模块只留**纯映射**——CwAction →
+AtomOp(动作 → 原子记账键)。装配半部(DecideAdapter/影子比对/observe 端口
 snapshot_from_obs/影子开关)落 app 桶 ``decision_assembly.py``:那些代码
 import prep_actions/cw_screen_prep 执行面词汇,留 decision 会构成
 decision→app 反向边(分包依赖矩阵:decision 只可依 kernel/data)。
+(原 Snapshot → PrepObservation 映射半部随 unified-action-factory 批2b
+删除,见下方墓碑注;Snapshot 纯数据契约仍住 contracts。)
 
 映射语义单一源 = ``.debug/temp/currency_war/w606_stage2_batch3/
 DIRECTOR_ADAPTER_DESIGN.md``。``decision_state`` CwSimFrame 骨架输出
@@ -24,22 +25,15 @@ import dataclasses
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
-from sr_od.application.currency_war.kernel.cw_prep_actions import (
-    PrepObservation,
-)
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.contracts import (
     AtomOp,
-    Snapshot,
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.strategies.impl.cw_strategy import (
-        StrategySession,
-    )
+    pass
 
 #: 决策子态名(适配器只服务备战决策环;分类可信度由框架门在环顶拦截,
 #: 进本模块的快照恒 confident——``DecideAdapter.decide`` 断言此前提)。
@@ -48,40 +42,10 @@ PREP_SUBSTATE_NAME: str = 'prep_shop'
 
 # ------------------------------------------------- Snapshot → 决策输入(§3)
 
-def snapshot_to_obs(snapshot: Snapshot, session: StrategySession) -> PrepObservation:
-    """Snapshot → 备战观察视图(视觉/占用域;设计 §3.1 逐字段表的段 2
-    形态:state 装配随 ``PrepObservation.state`` 槽退役删除——局内事实由
-    决策面直读 session 容器单例,黑板帧 = 纯视觉/占用观察载体)。
-
-    保守方向裁决(设计钉死,fixture 锁):free_bench_slots None →
-    ``BENCH_CAPACITY``(宁多收球——点击失败可自愈、defer 门兜住;不误卖,
-    SellBench 不可逆);deploy_vacancy None → 0(不假装有空位)。
-    """
-    if not snapshot.classification.confident:
-        raise ValueError(
-            'snapshot_to_obs:非 confident 快照不可进 decide(框架门职责,'
-            f'name={snapshot.classification.name})')
-
-    return PrepObservation(
-        state_gold_trusted=bool(snapshot.gold_trusted),
-        bench_chars=[b for b in snapshot.bench if b is not None],
-        deployed_chars=[d for d in snapshot.deployed if d is not None],
-        spheres=[(s.color, _point(s.x, s.y), s.radius)
-                 for s in snapshot.spheres],
-        boxes=[(None, _point(b.x, b.y)) for b in snapshot.boxes],
-        tomes=[(None, _point(t.x, t.y)) for t in snapshot.tomes],
-        free_bench_slots=(snapshot.free_bench_slots
-                          if snapshot.free_bench_slots is not None
-                          else BENCH_CAPACITY),
-        deploy_vacancy=(snapshot.deploy_vacancy
-                        if snapshot.deploy_vacancy is not None else 0),
-        shop_open=snapshot.shop_open,
-        box_overlay_open=snapshot.box_overlay_open,
-        front_occupied=set(snapshot.front_occupied),
-        back_occupied=set(snapshot.back_occupied),
-        front_size=snapshot.front_size,
-        event_overlay=snapshot.event_overlay,
-    )
+# (snapshot_to_obs 随 unified-action-factory 批2b 删除:R7 终结化后全仓
+#  零调用点的死映射,且其函数体仍引用批2b 已删的 Snapshot.box_overlay_open
+#  字段 = 一经调用必炸的雷;Snapshot → PrepObservation 影子比对面若批4
+#  复活,按彼时 Snapshot 形态重写,禁原样复活本函数。)
 
 
 def _point(x: int, y: int):
