@@ -41,8 +41,8 @@ action = strategy.decide_prep_screen(session, config) 取首项(空批合法 →
    (直写帧代次 = 'none':同 visit 内续动作不重复触发方向刷新)
 ```
 
-- **动作全集**(备战域):OpenBox/OpenTome/ClickSpheres/DeployMove/SellBench/SellDeployed/WearEquip/LevelUp/OpenShop/StartBattle + 组合壳 RunDeploy/RunEquip/RunTools。词表单一源 = `kernel/cw_vocab.py::CW_ACTION_TYPES`;注册表 = `operations/cw_op/cw_action_registry.py`(SellBench/LevelUp 注册行 = 备战域 op)。
-- **逻辑态直写覆盖**:已建模面按 [../game_state/logic-updates/](../game_state/logic-updates/README.md) 各篇;未建模面(DeployMove/SellDeployed/LevelUp/RunDeploy/RunEquip)直写返回 None = 保守回退:本访问终结交回外循环重观察(重观察语境禁猜)。
+- **动作全集**(备战域):OpenBox/OpenTome/ClickSpheres/DeployMove/SellBench/SellDeployed/WearEquip/LevelUp/OpenShop/StartBattle(组合壳 RunDeploy/RunEquip/RunTools 已随统一词表退役,批2b R2:部署 = DeployMove 原子序发射位逐帧现算,穿戴 = WearEquip 原子,工具 = 工具原子类经 ToolUseOp)。词表单一源 = `kernel/cw_vocab.py::CW_ACTION_TYPES`;注册表 = `operations/cw_op/cw_action_registry.py`(SellBench/LevelUp 注册行 = 备战域 op)。
+- **逻辑态直写覆盖(R9 全覆盖)**:词表逐动作有逻辑态分支(规则全集正本 = [../game_state/action-logic-state.md](../game_state/action-logic-state.md) + [../game_state/logic-updates/](../game_state/logic-updates/README.md));「未建模 → 返回 None 保守回退」分支已删除,词表外类型 = AssertionError 响亮暴露(注册表同款纪律)。
 - 段序号置位:访问入口 `strategy_state.cw4_segment_serial += 1`(访问 = 腾席拒绝结论的输入不变性段;上一访问/上一域残留的续段 token/结论闩按序号不等自动失效)。
 - 执行要点(交互陷阱):拖拽类 = 统一拖拽原语机械单发(确认 settle → hold 短拖 → 光标 parking,零判效零重试);ClickSpheres 批式一次全点 → 等 2s → 统一验证;LevelUp 备战连点至升一级(单击价现读,缺读兜底 `kernel/cw_economy.py::XP_CLICK_COST_FALLBACK`)。细则 = [../flow/action_exec.md](../flow/action_exec.md)。
 
