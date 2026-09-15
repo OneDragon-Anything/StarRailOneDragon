@@ -318,7 +318,7 @@ def apply_action_reason(item: dict[str, Any]) -> dict[str, Any]:
     """给序列化动作项归一附 ``reason`` 键(只加键不改既有键;原地返回)。
 
     接线点 = ``TelemetryRecorder.record_decision``(decisions 行写路径
-    单一点);op_journal 等其他流的 serialize_action 产物不经本函数,
+    单一点);其余消费面(state 流 receipts 行发射载荷等)不经本函数,
     变更面严格限于决策行。
     """
     item['reason'] = action_reason_of(item)

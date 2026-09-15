@@ -15,8 +15,8 @@
 
 事实参照形 = ``CwScreenPlaneTransition``(入口锚校验 → 点空白 → 重入观察
 裁决 → 交回)。本基类只统一「入口观察→推进→重入裁决」骨架与日志;**不承担
-op_journal 与决策帧留证**——那两样是 dispatch 包装(``cw_loop.CwLoop
-._dispatch_screen_op``)的职责,journal 记的是「分发了谁」,属外循环视角
+[cw-op] 主日志行与决策帧留证**——那两样是 dispatch 包装(``cw_loop.CwLoop
+._dispatch_screen_op``)的职责,日志行记的是「分发了谁」,属外循环视角
 (ADR-0584 §2.2/§2.3)。
 
 **只读/导航变体收编**(统一观察架构·画面op基类收编;ADR-0584 空决策

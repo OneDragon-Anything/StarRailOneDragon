@@ -46,29 +46,27 @@ if TYPE_CHECKING:
 _KEEP_PER_TAG = 40
 
 
-# ===== 决策帧落盘根装配槽(三遥测写根的第三槽;三审二波 F2)=====
+# ===== 决策帧落盘根装配槽(两遥测写根之一;三审二波 F2)=====
 # 为什么是槽:决策帧写根原恒锚生产树(.debug/temp/currency_war/
 # decision_frames/),假环境只靠 harness monkeypatch 私函数 _out_dir 改道
 # ——不经 harness 的假局驱动方(易失离线 runner/未来 sim 批真 op 驱动)
 # 会把 kind=observation_evidence 的观察证据静默写进生产树,正是写端根
-# 隔离(裁定机制见 op_journal.set_journal_dir 注)要防的
-# 静默混流形态换流复发(出处:.debug/temp/currency_war/attacks/
-# three_review_20260908/三审报告-第二波.md F2,**易失产物**待 ADR 回填)。
-# 与既有两槽(telemetry/state.set_recorder_replay_dir /
-# op_journal.set_journal_dir)同构:缺省 None = 生产路径逐位不变;驱动方
-# 显式接指假局档案根,teardown 复位(进程全局槽,残留会把后续帧带去
-# 假局根)。零生产行为变更:生产全程无设槽点,生产公式逐位保留(守卫
-# = test_cw_telemetry_root_slot 的缺省路径锁 + 生产树零设槽点扫描
-# TestZeroProductionWiring)。
+# 隔离要防的静默混流形态换流复发(出处:.debug/temp/currency_war/attacks/
+# three_review_20260908/三审报告-第二波.md F2,**易失产物**待 ADR 回填;
+# 原第三槽 op_journal.set_journal_dir 已随该流 2026-09-15 退役拆除)。
+# 与既有另一槽(telemetry.state.set_recorder_replay_dir)同构:
+# 缺省 None = 生产路径逐位不变;驱动方显式接指假局档案根,teardown 复位
+# (进程全局槽,残留会把后续帧带去假局根)。零生产行为变更:生产全程
+# 无设槽点,生产公式逐位保留(守卫 = test_cw_telemetry_root_slot 的缺省
+# 路径锁 + 生产树零设槽点扫描 TestZeroProductionWiring)。
 _DIR_OVERRIDE: Path | None = None
 
 
 def set_decision_frame_dir(path: Path | None) -> None:
     """接通/复位决策帧落盘根(缺省 None = 生产路径)。
 
-    与 :func:`telemetry.state.set_recorder_replay_dir`、
-    :func:`telemetry.op_journal.set_journal_dir` 同装配纪律:缺省关、
-    驱动方显式接通、teardown 复位。三槽同点接指同一假局档案根
+    与 :func:`telemetry.state.set_recorder_replay_dir` 同装配纪律:
+    缺省关、驱动方显式接通、teardown 复位。两槽同点接指同一假局档案根
     (harness 先例 = fixtures/cw_harness.fake_p1_run)——漏接一件即
     部分隔离,该驱动方的遥测流仍触生产树。
     """
@@ -78,14 +76,13 @@ def set_decision_frame_dir(path: Path | None) -> None:
 
 def _out_dir(run_id: str) -> Path:
     """决策帧目录现算(根槽优先;槽是函数内读取,测试可 monkeypatch
-    槽变量后立即生效,不经模块 import 绑定快照——journal 槽
-    ``_journal_path`` 同纪律)。
+    槽变量后立即生效,不经模块 import 绑定快照——
+    telemetry/state 落盘根槽同纪律)。
 
     槽缺省回落生产公式**活读** ``get_project_root``:既有测试以
     monkeypatch ``get_project_root`` 作落盘重定向缝
     (test_cw_decision_frame_hooks 同款),缝保持活读=不失效;根槽是
-    追加缝,不改写既有缝语义(journal 槽缺省回落 ``_JOURNAL`` 常量
-    同款先例)。"""
+    追加缝,不改写既有缝语义。"""
     if _DIR_OVERRIDE is not None:
         return _DIR_OVERRIDE / 'decision_frames' / run_id
     return (get_project_root() / '.debug' / 'temp' / 'currency_war'

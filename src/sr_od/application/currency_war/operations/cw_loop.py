@@ -6,6 +6,7 @@ from one_dragon.base.operation.operation_base import OperationResult as _Operati
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import (
     OperationRoundResult,
+    OperationRoundResultEnum,
 )
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
@@ -128,12 +129,6 @@ from sr_od.application.currency_war.operations.decision_frame_hooks import (
 )
 from sr_od.application.currency_war.strategies.impl.cw_strategy import StrategySession
 from sr_od.application.currency_war.telemetry import state
-from sr_od.application.currency_war.telemetry.op_journal import (
-    _op_journal_pos_of,
-    record_op_enter,
-    record_op_exit,
-    resolve_dispatch_ok,
-)
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -700,17 +695,13 @@ def _launch_frame_arbitration(op) -> dict:
     ``zone``('overflow'/'inband')、``executed``(本帧消费动作数)、
     ``gate_blocks``(闸拦截数)。
 
-    遥测载体:溢出段访问落 op='发射帧仲裁商店访问' enter/exit 行(第三
-    载体,ADR-0584 §5.1;预检/带内路径零行)。
+    遥测载体:溢出段访问落主日志 `[cw-op]` 行(op='发射帧仲裁商店访问',
+    第三载体,ADR-0584 §5.1;预检/带内路径零行)。
     """
     report: dict = {'entered': False, 'zone': 'inband', 'executed': 0,
                     'gate_blocks': 0, 'abort': False}
-    # 第三载体 op 行 token(ADR-0584 §5.1):None = 访问窗口未开(预检/带
-    # 内路径零行);非 None 期间任何出口(含异常)必须配对 exit,孤儿 enter
-    # 语义回归「进程中断专属」。
-    _arb_token: dict | None = None
-    # [cw-op] 主日志行窗口(第三载体的日志替代行;None = 访问窗口未开,
-    # 预检/带内路径零行)。任何出口(含异常)必须恰落一行。
+    # [cw-op] 日志行窗口(ADR-0584 §5.1):None = 访问窗口未开(预检/带
+    # 内路径零行);任何出口(含异常)必须恰落一行。
     _arb_t0: float | None = None
     _arb_pos: tuple[int, int] = (0, 0)
     from sr_od.application.currency_war.kernel import cw_launch_arbitrage
@@ -759,12 +750,10 @@ def _launch_frame_arbitration(op) -> dict:
             _launch_arb_counter(op, cw_launch_arbitrage.KEY_INBAND_CLOSED)
             return report
         _launch_arb_counter(op, cw_launch_arbitrage.KEY_ZONE_FRAMES)
-        # 第三载体 op 行(ADR-0584 §5.1):仲裁触发的商店访问此前零边界
-        # 载体——不经 dispatch 包装、无 OpenShop 决策行,档案只剩无头商店
-        # 段决策行,复盘按行重建会误归 0n。enter 挂 open_shop 前(行窗口 =
-        # 访问尝试边界),exit 覆盖全部出口(open 失败/abort/正常/异常)。
-        _arb_token = record_op_enter('发射帧仲裁商店访问',
-                                     *_op_journal_pos_of(op.ctx))
+        # 第三载体 [cw-op] 行(ADR-0584 §5.1):仲裁触发的商店访问此前零
+        # 边界载体——不经 dispatch 包装、无 OpenShop 决策行,复盘按行重建
+        # 会误归 0n。行窗口 = 访问尝试边界(open_shop 前),覆盖全部出口
+        #(open 失败/abort/正常/异常),只落出口行。
         _arb_pos = _dispatch_pos(op.ctx)
         _arb_t0 = time.monotonic()
         # B3 拆除(验证废除,用户裁定 2026-09-10;M1③ 调用方不问成败):
@@ -775,8 +764,6 @@ def _launch_frame_arbitration(op) -> dict:
         _r_open = open_shop(op)
         if not _r_open.is_success:
             _launch_arb_counter(op, cw_launch_arbitrage.KEY_OPEN_FAILED)
-            record_op_exit(_arb_token, outcome='fail', detail='open_failed')
-            _arb_token = None
             _log_cw_op('发射帧仲裁商店访问', _arb_pos,
                        time.monotonic() - _arb_t0, 'fail', 'open_failed')
             _arb_t0 = None
@@ -811,8 +798,6 @@ def _launch_frame_arbitration(op) -> dict:
             # 停机钩子已置 stop_running——保画面待建档,禁关店/禁发射摧毁
             # 现场):abort 旗交调用点跳过本轮发射,交回外环由停机接管。
             report['abort'] = True
-            record_op_exit(_arb_token, outcome='fail', detail='abort')
-            _arb_token = None
             _log_cw_op('发射帧仲裁商店访问', _arb_pos,
                        time.monotonic() - _arb_t0, 'fail', 'abort')
             _arb_t0 = None
@@ -843,21 +828,15 @@ def _launch_frame_arbitration(op) -> dict:
         # close 的 is_success=False 来路已不存在(点击已发 = 机械 retry 语义,
         # 幂等观察 success / 点击已发 retry;关没关由下一帧观察侧对账 0n
         # 三锚/备战双锚自然闭环),出口行恒 ok。
-        record_op_exit(_arb_token, outcome='ok', detail='')
-        _arb_token = None
         _log_cw_op('发射帧仲裁商店访问', _arb_pos,
                    time.monotonic() - _arb_t0, 'ok')
         _arb_t0 = None
         return report
     except Exception as e:   # noqa: BLE001  仲裁异常不阻塞发射(出战优先,
         # 14号稿 §9.6 出战优先语义;异常帧=零消费帧,digest 锚辖域内)
-        if _arb_token is not None:
-            # 异常路径也必须闭合 op 行(ADR-0584 §5.2 同一口径):补行后
-            # 仲裁段自身不得新增孤儿 enter。
-            record_op_exit(_arb_token, outcome='error', detail=str(e)[:120])
-            _arb_token = None
         if _arb_t0 is not None:
-            # [cw-op] 行同口径闭合:异常出口落 error 行,不留悬挂窗口。
+            # 异常出口也必须闭合 [cw-op] 行(ADR-0584 §5.2 同一口径):
+            # 落 error 行,窗口归零不留悬挂。
             _log_cw_op('发射帧仲裁商店访问', _arb_pos,
                        time.monotonic() - _arb_t0, 'error', str(e)[:120])
             _arb_t0 = None
@@ -1426,10 +1405,6 @@ class CwLoop(SrOperation):
     #  结算真值现役归宿 = GameState settlement 域 apply_settlement_cover,
     #  局终收口形态归宿 = 局终域 match_final 行,写点接线归后续批。)
 
-    def _op_journal_pos(self) -> tuple[int, int]:
-        """op 行位置键(ADR-0579):最后已知 (plane, round),缺省 (0, 0)。"""
-        return _op_journal_pos_of(self.ctx)
-
     def _note_branch_screen(self, screen_name: str) -> None:
         """开局链分支标识 → 画面上下域(R2 开局链写点;弹窗腿守卫集
         prev_branch 供给,设计 v3.1 §3.4.1)。
@@ -1511,7 +1486,7 @@ class CwLoop(SrOperation):
     ) -> OperationRoundResult:
         """画面分支统一 dispatch 包装(ADR-0584 §2.3,外循环唯一新增结构)。
 
-        统一面 = 留证帧 + op_journal enter/exit + 结果映射;分支特有守卫钩子
+        统一面 = 留证帧 + [cw-op] 主日志行 + 结果映射;分支特有守卫钩子
         走 ``on_result`` 调用点邻接闭包,**禁塞进本包装本体**(包装知晓分支
         语义 = 分工倒退)。判定锚/排他/序位/守卫域仍全部在外循环分支体。
 
@@ -1519,14 +1494,14 @@ class CwLoop(SrOperation):
             ``(ok, detail)`` 元组时经 ``_FnResult`` 适配(0n 的 visit_open_shop
             形),返回 OperationRoundResult 时链形透传(0j/3c 恢复链/收口链,
             轮次结果即分支出口,outcome = 非 FAIL/RETRY 即 ok)。
-        :param journal_name: op_journal 行的 op 名(复盘「分发了谁」直读键)
+        :param journal_name: [cw-op] 日志行的 op 名(复盘「分发了谁」直读键)
         :param frame_tag: 决策帧 tag;None = 跳过落帧(留证面零扩的可退选项)
         :param wait: 默认映射的 round_wait 等待秒数
         :param on_fail_retry: True = op 失败映射 loop 级 round_retry(与既有
             分支内联 round_retry 消费同一 retry 池);False = 失败也 round_wait
         :param on_result: 守卫钩子回调 ``(ok, res) -> round | None``;返回
             None = 走默认映射,返回 round 对象 = 覆盖默认返回(如 0q 超限
-            round_fail)。调用点 = execute 之后、record_op_exit 之前。
+            round_fail)。调用点 = execute 之后、[cw-op] 行落点之前。
         :return: 分支的轮次结果
 
         环级 fail 重派防线(T-266):任一 op 的 ok → 连续 fail 计数窗归零
@@ -1536,14 +1511,13 @@ class CwLoop(SrOperation):
         hook 早退之后 → 专用守卫(0j/0q/prep streak)结构性先于本网;
         链形透传分支(0j/3c)不经本网(各有自身预算)。
 
-        异常安全(ADR-0584 §5.2):``op`` 体或 ``on_result`` 抛异常时,补发
-        outcome='error' 的 exit 行后原样上抛——异常语义归节点级重试链不变,
-        孤儿 enter 语义回归「进程中断专属」;结果映射(round_wait/retry)
-        在 exit 之后,映射段异常不产生双 exit。
+        异常安全(ADR-0584 §5.2):``op`` 体或 ``on_result`` 抛异常时,补落
+        outcome='error' 的 [cw-op] 行后原样上抛——异常语义归节点级重试链
+        不变;结果映射(round_wait/retry)在日志行之后,映射段异常不产生
+        双行。
         """
         if frame_tag is not None:
             save_decision_frame(self, frame_tag, self.last_screenshot)
-        token = record_op_enter(journal_name, *self._op_journal_pos())
         _op_t0 = time.monotonic()
         _op_pos = _dispatch_pos(getattr(self, 'ctx', None))
         try:
@@ -1553,11 +1527,16 @@ class CwLoop(SrOperation):
                 raw = op()
                 res = (_FnResult(bool(raw[0]), str(raw[1] if len(raw) > 1 else ''))
                        if isinstance(raw, tuple) else raw)
-            # ok 判定单一源(r2 必修①):判定体迁 telemetry.op_journal
-            # .resolve_dispatch_ok,与清场 journal 包装同源——round-result
-            # 型返回只有 is_success 属性,手写第二份判定会成功恒记 fail
-            #(r1 验收缺陷 1 实证)。
-            ok = resolve_dispatch_ok(res)
+            # ok 判定(原 telemetry.op_journal.resolve_dispatch_ok 判定体
+            # 随其模块退役就地内联回迁,判定逐位不变)——round-result 型
+            # 返回只有 result 枚举,非 round-result 型走 OperationResult
+            # .success;禁塌缩成单一 getattr(res, 'success') 形态,那会让
+            # 成功恒记 fail(r1 验收缺陷 1 实证)。
+            if isinstance(res, OperationRoundResult):
+                ok = res.result not in (OperationRoundResultEnum.FAIL,
+                                        OperationRoundResultEnum.RETRY)
+            else:
+                ok = res is not None and getattr(res, 'success', False)
             if ok:
                 # T-266:任一分发 ok = 屏幕证实推进 → 连续 fail 窗归零
                 #(fail 间歇重置;含 hook 覆盖返回的 ok 路径)
@@ -1567,12 +1546,10 @@ class CwLoop(SrOperation):
                     getattr(self, '_op_fail_streak_n', 0),
                     journal_name, True)
             hook_ret = on_result(ok, res) if on_result is not None else None
-            record_op_exit(token, outcome='ok' if ok else 'fail')
             _log_cw_op(journal_name, _op_pos, time.monotonic() - _op_t0,
                        'ok' if ok else 'fail')
         except Exception as e:   # noqa: BLE001  出口行补发后原样上抛(异常
-        # 处理归节点级重试链,包装只保 journal 配对;ADR-0584 §5.2)。
-            record_op_exit(token, outcome='error', detail=str(e)[:120])
+        # 处理归节点级重试链,包装保 [cw-op] 行闭合;ADR-0584 §5.2)。
             _log_cw_op(journal_name, _op_pos, time.monotonic() - _op_t0,
                        'error', str(e)[:120])
             raise

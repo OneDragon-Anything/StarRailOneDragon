@@ -35,7 +35,7 @@ obs_conflicts/runs`,recorder 写入面/match_archive 切片/全仓落盘调用�
 | shop_snapshots | 字段收编候选+流退役 | 牌面=state 的 shop payload 域,offer/refresh 各为一行观察写入行,独立快照流冗余;rho_obs 不收编→判读侧离线派生 |
 | cw4_counters | 流退役(R5 W4 落码;键收编审计定谳:效果域 0 键/策略行为键 256 字面+16 闭族 80 实例+9 开放族全保留=策略侧决策行 strategy-state 载体,无消费删 0 键) | 键=策略 state 容器(MandateState.cw4_counters),sim 红则/轮差分/预注册不经流照旧;局终级全键聚合=局终域行载荷 ``MatchFinal.cw4_counters``;键全集登记单一源=封闭锁(test_cw4_key_closure) |
 | defect_ledger | **保留专用(候裁)** | 案 A=收编 obs_event;案 B(倾向)=保留专用流——severity 判级/复现计数/verdict 词表/安灯联动(安灯=借自产线的停线告警词,此处指缺陷触发的告警通知联动)是「质量索引」不是「证据内容」;裁保留时 refs 改指 journal `(run_id,v)` 键+寿命联动 |
-| op_journal | **保留专用(候裁)** | op 耗时画像/孤儿 enter 行=工程诊断面(非 state 辖域);与 defect_ledger 同批同法裁决 |
+| op_journal | **退役(2026-09-15 用户裁定,写端删除批落码)** | op 耗时画像/op 序列归 server 主日志 `[cw-op]` 行(dispatch/仲裁出口行);进程中断证据 = 实机段无 match_final 收口 + 行流 ts 戛止(中断时点活动签名 = 尾行 sig.actor);动作回执/金差账在 state 流 receipts/gold 行已在案 |
 | exec_events | 字段收编+流退役 | 发射事实→receipts 发射行(**零成败字段**);失败可见性=消费方对比语义(发射行后预期变化未出现=未落地,判定归观察侧 reconcile) |
 | invest_cards | 字段收编候选+流退役 | 候选卡面+效果原文→画面 payload 域 `strategy_offer`(离屏即 None);注册表 ground truth 回流用途不变;逐局原文语料断供已定谳 = 接受断供(写入端已随删除波 1 退役),定谳与恢复路径 = |
 | obs_conflicts | 收编(obs_event)+流退役 | 拒读/仲裁拒绝=零写入观察证据,与写入同源同流;行结构/截图节流/告警门语义原样收编 |
@@ -135,3 +135,4 @@ R5 规划为准)。
 | 2026-09-11 | 直迁重构:影子期/M1-M5 排期框架与前置六条影子口径作废——§5 排期改指 R5 八波正本(附旧编号对照注)、§6 前置条件改直迁形态、逐批落点对照叙述链收敛为本表;§2 board_state_archive 行「影子期继续在产」改「停写前继续在产」 | (直迁裁定)/ (删除波 1 落档+本重构兑现);排期正本 = r5-migration-plan.md |
 | 2026-09-11 | §2 invest_cards 行「停写前须定谳」兑现落档:定谳 = 接受断供,恢复路径 = strategy_offer 域建模(挂 W5 评估);同批落 obs 缺陷 refs 指冻结档案的判读指针处置(后果 2/3 两件收口) | (定谳)/ (删除波 1——写入端先于定谳退役的波序事实如实申报) |
 | 2026-09-12 | §7 #10 行修订:迁移动作列「消费切换子集落地前 state_ref 带 pin_scope 标记」随字段退役删除作废——行面钉字段 = state_ref 单字段,历史档案判读知识指 schema 正本 §8-2;批次列改「接线 = W6 后另批(定谳 C6)」 | 候裁 10 终裁 C 案(定谳记录 = changes/2026-09-11-unified-state/定谳记录-候裁7910.md);字段退役执行(commit b0775d8b) |
+| 2026-09-15 | §2 op_journal 行改判退役(原「保留专用(候裁)」):op 调用流归宿 = 主日志 `[cw-op]` 行;停滞检测/活跃局判定/监控轮询经核实零依赖该流(退役对哨兵组零迁移零降级);存量档案双键切片(op_journal + state/journal)冻结只读,SCHEMA_VERSION 冻结 12 防重装配摘除 | 用户裁定 2026-09-15;消费盘点与迁移映射 = 进度账本 T-273 设计件 |

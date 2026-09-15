@@ -380,7 +380,6 @@ class PrepActionExecutor:
         _gold_extra = ({'gold_delta': int(gold_delta)}
                        if gold_delta not in (None, 0) else None)
         self._note_action_receipt(action, emitted, detail, extra=_gold_extra)
-        self._note_action_journal(action, emitted, _gold_extra)
         if isinstance(action, StartBattle):
             # 批4 挂账:StartBattle 发射位内部事实(A6 判效面,批4 随
             # J2/J3/J4 消费端同退役)。真执行链 = _execute_dispatch 发射位
@@ -470,47 +469,6 @@ class PrepActionExecutor:
                 screen=SCREEN_NAME, actor=type(self).__name__, extra=extra)
         except Exception as e:  # noqa: BLE001  回执失败不阻塞执行
             log.warning('[cw][receipt] 动作回执写入失败(不阻塞): %s', e)
-
-    def _note_action_journal(self, action: CwAction, emitted: bool,
-                             extra: dict | None) -> None:
-        """备战动作 journal 行(op_journal.jsonl kind='action';ADR-0579
-        薄流的备战域扩围,执行缝账务包络):执行缝三套账的
-        journal 回执腿——备战帧金动作逐行在账(定谳缺口 = 复盘
-        「备战帧 5 击零 journal 行」),op 分键「货币战争-备战动作」与商店
-        「货币战争-买牌」域分键,行携 ``gold_delta`` 执行点金差(LevelUp
-        行自批2b 起无本键——金腿切 action.cost 逻辑态直写,见
-        _executed_gold_delta)。
-
-        - seq 恒 0 = 备战域无段序账(行序即时序;商店 seq 语义不适用);
-          post_frame 恒 None = 行不带期望态 delta(两域同口径);
-        - 仅发出动作产行(与商店域「未执行动作零行」同语义,调用点保证);
-        - 局外(run_id 空)零行;journal best-effort,失败不阻塞动作链。
-        """
-        if not emitted:
-            return
-        try:
-            from types import SimpleNamespace
-
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of,
-                plane_of,
-                round_num_of,
-            )
-            from sr_od.application.currency_war.telemetry.op_journal import (
-                record_action_journal,
-            )
-            match = self._ctx.cw_match
-            session = match.session if match is not None else None
-            if session is None:
-                return
-            _bs = board_state_of(session)
-            _pre = SimpleNamespace(plane=int(plane_of(_bs) or 0),
-                                   round_num=int(round_num_of(_bs) or 0))
-            record_action_journal(
-                match, action, 0, bool(emitted), _pre, None,
-                op_name='货币战争-备战动作', extra=extra)
-        except Exception as e:   # noqa: BLE001  journal best-effort
-            log.warning('[cw][journal] 备战动作行写入失败(不阻塞): %s', e)
 
     def _pre_sell_tracked_bc(self, action: CwAction) -> BenchChar | None:
         """卖出对象 dispatch 前 tracked 快照(执行点金差供给;卖出外

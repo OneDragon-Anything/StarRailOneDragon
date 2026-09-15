@@ -132,7 +132,7 @@
 
 | 画面(op) | 动作（单动作粒度） | 终结动作 | 适配判注 |
 |---|---|---|---|
-| 商店（`operations/cw_screen/cw_screen_buy_cards.py` 波循环） | 买一张/卖一张/升一级（clicks 拆逐 op）/刷新 | 刷新、关店 | **规范原生画面**，迁移首选；商店访问入口遥测分三载体（显式开店/0n 直入/仲裁触发；op 行与决策行归属见 flow/session.md 表） |
+| 商店（`operations/cw_screen/cw_screen_buy_cards.py` 波循环） | 买一张/卖一张/升一级（clicks 拆逐 op）/刷新 | 刷新、关店 | **规范原生画面**，迁移首选；商店访问入口遥测分三载体（显式开店/0n 直入/仲裁触发；0n/仲裁计数载体 = 主日志 `[cw-op]` 行，显式开店通道另落决策行段） |
 | 备战（`cw_screen_prep`，决策 = live 链 `cw_screen_prep.py:1278/1477` → `mandate_v1/bridge.py:80 decide_prep_screen` → `bridge.py:146 decide_from_turn` → `entry.py:325 emit`（三遍编排，自有动作词表 OpenBox/OpenTome/ClickSpheres/RunDeploy/RunEquip/StartBattle）；`flow.py` 旧备战骨架死码簇已物理删除（`prep_visit.md` §2.1）;方向重估由 decide_prep_screen 入口经黑板帧代次标注内化触发） | 开典籍/开箱/收球/部署拖拽/升级/卖件/开店/装备 | 开店、开战 | 适配；prep_phase 相位机已随 mandate_v1 接线退出 live（见 §8.2），不再是迁移阻碍 |
 | 备战·整档替换（CompTransaction，`kernel/cw_state.py:696-714`） | 整档替换事务 = 一个宏动作 op（§5） | 无固有终结（归属备战终结集） | 复合动作类 |
 | 事件单选族（invest_strategy/invest_env/planner/megastar/partner/wish_trial/bookcard/expert_invite/boss_briefing/**fortune**） | 选卡（每候选一个动作） | 确认离开 | 形式兼容，按屏分列：投资策略/投资环境刷新 = **终结动作**——点刷新圆钮后本访问即交回（pending+round_retry，次轮重入重观察重决策；决策 7/§8.4「刷新 = 唯一引入新事实的动作」同款，环境屏 2026-09-14、策略屏逐卡刷新同日裁定落码），无访问内「选→刷新→重读→再选」循环；其余单选族循环退化为一步：选即终结。两群同判：**零逻辑态账**（选卡/刷新均不写期望态/容器账）→ §8.3 单选族例外不入规范不变；fortune=`cw_screen_fortune.py` live-verified(r115),点卡+确认同族 |

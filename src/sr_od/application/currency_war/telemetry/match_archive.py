@@ -15,10 +15,11 @@ hp=100 备帧假值、grep 跨 run 帧流、多源现算拼视图。本模块把
 - **game_id 跨段继承**:段首帧非 (p1,r1) 起 = 续局,继承上一段所在局;
   game_id = 首段 run_id 时间戳派生(``g_YYYYMMDD_HHMMSS``)——纯数据派生,
   跨重启稳定,不依赖生成时进程状态。
-- **自包含切片**:档案内嵌该局全部关联 jsonl 行切片(W3 起为 op_journal +
-  统一 state 新账两项;旧 12 流切片键已随删除波 1 写入端退役拆除——存量
-  档案 v12 及以前内嵌的旧流切片照常可读,裸数据归档只读),``--match``
-  视图把切片物化到临时目录后走 journal_query 视图族读新账。
+- **自包含切片**:档案内嵌该局全部关联 jsonl 行切片(现契约单键 = 统一
+  state 新账一项;旧 12 流切片键已随删除波 1 写入端退役拆除,op_journal
+  切片键随其流退役定格于 v12 存量档——存量档案内嵌切片照常可读,裸数据
+  归档只读),``--match`` 视图把切片物化到临时目录后走 journal_query 视图
+  族读新账。
   obs_conflicts.jsonl 例外:跨局 journal 无 run_id 键且体积大,不入切片。
 - **派生输入回源流(重装配保真)**:派生列(rounds/loss_nodes/departures/
   opening/resume_reconciliation 等)的输入吃旧流键,不在 v12 切片契约内
@@ -169,6 +170,12 @@ log = log_utils.log
 #: 新账在产物目录才入切片,缺席 = 空切片,判读可区分「无对局产物」与
 #: 「无行」)。加法切片,旧档案经 load_archive 版本检查自动重装配补齐;
 #: 设计清单的第二文件(策略侧决策行)候其落地批再加切片,防空引用。
+#: v12 定格(2026-09-15 用户裁定:op_journal 流退役,写端删除批落码):
+#: op_journal 切片键随其流退役停增,切片契约 = 单键 ``state/journal.jsonl``。
+#: SCHEMA_VERSION **冻结在 12**——存量 v12 档案内嵌的 op_journal 切片是
+#: 全库唯一的 op 行存档,而升版会触发 load_archive 版本检查全档重装配、
+#: 把该切片整批摘除(= 数据丢失):任何升版前必须先把存量档案的
+#: op_journal 切片导出归档。
 SCHEMA_VERSION: int = 12
 
 #: 档案目录名(telemetry/matches;生产布局见 matches_dir)
@@ -179,12 +186,12 @@ _WATERMARK_NAME: str = '.watermark.json'
 
 # 结算屏真值链可信门槛 = HP_CONF_TRUSTED(query.py,单一源;语义与边界见其注释)
 
-#: 入切片的 jsonl 流(按 run_id 过滤)。W3(R5 直迁第三波):旧 12 流切片
-#: 键随删除波 1 写入端退役拆除——保留 op_journal(工程诊断保留流)与统一
-#: state 新账两项;旧流文件缺 = 空切片(存量档案内嵌切片不受影响,裸数据
-#: 归档只读可考古)。
+#: 入切片的 jsonl 流(按 run_id 过滤)。单键 = 统一 state 新账(W3 曾为
+#: op_journal + state/journal 两键,op_journal 键随其流写入端退役拆除,
+#: 2026-09-15 用户裁定)。旧流文件缺 = 空切片(存量档案内嵌切片不受影响,
+#: 裸数据归档只读可考古)。
 _SLICE_FILES: tuple[str, ...] = (
-    'op_journal.jsonl', 'state/journal.jsonl',
+    'state/journal.jsonl',
 )
 
 #: 派生列输入消费的旧流文件(rounds/loss_nodes/departures/opening/
@@ -467,8 +474,9 @@ def _load_slice(replay_dir: Path, segments: set[str]) -> dict[str, list[dict[str
     两读法两契约曾致装配端在截断尾上崩,R3.1 落地审 F1):半行/坏行 =
     逐行跳过 + 计数 log 申报(设计 §3.3 撕裂行消费契约;申报语义先例 =
     cw_loop ``_run_has_outcome_at``),非零计数才告警(常态零噪音)。
-    旧 12 流仍走严格 ``read_jsonl``:框架自写行,坏行 = 事故,静默跳过
-    会藏事故;字节层宽容只属新账(其物理截断可劈开多字节字符)。
+    其余键(现契约已无;未来新增切片文件,如策略侧决策行)走严格
+    ``read_jsonl``:框架自写行,坏行 = 事故,静默跳过会藏事故;
+    字节层宽容只属新账(其物理截断可劈开多字节字符)。
     """
     out: dict[str, list[dict[str, Any]]] = {}
     for name in _SLICE_FILES:
@@ -485,28 +493,7 @@ def _load_slice(replay_dir: Path, segments: set[str]) -> dict[str, list[dict[str
         else:
             rows = read_jsonl(replay_dir / name)
         out[name] = [r for r in rows if r.get('run_id') in segments]
-    _annotate_orphan_op_rows(out.get('op_journal.jsonl'))
     return out
-
-
-def _annotate_orphan_op_rows(rows: list[dict[str, Any]] | None) -> None:
-    """op journal 孤儿 enter 行标注(方案 C4):行序内无同 op exit 配对的
-    enter 行标注 ``outcome='orphan'`` = 进程中断证据,容缺非缺陷。exit 行
-    与已配对 enter 不动。"""
-    if not rows:
-        return
-    open_stack: dict[str, list[dict[str, Any]]] = {}
-    for r in rows:
-        if r.get('kind') != 'op':
-            continue
-        op = str(r.get('op') or '')
-        if r.get('event') == 'enter':
-            open_stack.setdefault(op, []).append(r)
-        elif r.get('event') == 'exit':
-            open_stack.get(op, []).clear()
-    for pending in open_stack.values():
-        for r in pending:
-            r['outcome'] = 'orphan'
 
 
 def _load_derived_inputs(rd: Path, segments: set[str],
@@ -514,17 +501,17 @@ def _load_derived_inputs(rd: Path, segments: set[str],
                          ) -> dict[str, list[dict[str, Any]]]:
     """派生列输入行集(重装配保真的输入供给,装配主路径在册函数)。
 
-    - 为什么存在:v12 切片契约只含两文件(op_journal + state/journal),
-      而 ``_build_rounds`` / ``_derive_departures`` 等派生函数的输入吃
-      旧流键——不回源流,任何重装配(load_archive 版本迁移 /
+    - 为什么存在:v12+ 切片契约只含 state 新账单键(op_journal 键已随其流
+      退役拆除),而 ``_build_rounds`` / ``_derive_departures`` 等派生函数
+      的输入吃旧流键——不回源流,任何重装配(load_archive 版本迁移 /
       assemble_pending 段集增长 / 跨档守卫整体重装配)都会把
       rounds/loss_nodes/departures 等派生列全量清空(v7 注申报的
       「重装配无益有损」;真实双档重放实证)。
     - 供给语义:切片在档且非空的键原样透传(切片优先);缺键回源流文件
       按段集过滤读取——源流在 = 无损重装配;源流已清 = 空列表(与
       ``_load_slice`` 旧流「文件缺 = 空切片」同契约,诚实退化不猜测)。
-    - 边界:产物只作装配端派生输入,不进档案 ``slices`` 载荷(v12 两
-      文件契约不回填旧流键,裸数据考古归源流归档)。
+    - 边界:产物只作装配端派生输入,不进档案 ``slices`` 载荷(切片契约
+      不回填旧流键,裸数据考古归源流归档)。
     """
     out = dict(slice_rows)
     refilled: list[str] = []

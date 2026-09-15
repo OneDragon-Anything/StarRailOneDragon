@@ -61,10 +61,10 @@ class TelemetryRecorder:
 
     生产单例经 telemetry.state.get_recorder()(enabled=True,写
     .debug/currency_war/telemetry/live/);唯一现役流 = 缺陷台账
-    (record_defect;op_journal 保留面有独立写入模块(telemetry/op_journal.py)
-    不经本类,board_state_archive 写入点已退役、存量档案只读;cw4 计数流
-    已随 R5 W4 流删退役,聚合归宿 = 局终域行载荷 MatchFinal.cw4_counters,
-    r5-migration-plan.md §2 W4)。
+    (record_defect;op_journal 工程诊断流已随 2026-09-15 用户裁定退役,
+    op 调用流归宿 = server 主日志 [cw-op] 行;board_state_archive 写入点
+    已退役、存量档案只读;cw4 计数流已随 R5 W4 流删退役,聚合归宿 =
+    局终域行载荷 MatchFinal.cw4_counters,r5-migration-plan.md §2 W4)。
     """
 
     def __init__(self, replay_dir: Path | str = DEFAULT_REPLAY_DIR, enabled: bool = False) -> None:

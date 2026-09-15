@@ -27,10 +27,11 @@ _log = log_utils.log
 _SHOT_DIR = get_project_root() / '.debug' / 'temp' / 'currency_war' / 'shots'
 
 # ===== CW 遥测/深评固定落盘根(单一源;2026-09-07 用户裁定)=====
-# 结构:telemetry/{live,matches,sim} 三层——live = 实时追加流(decisions/
-# op_journal 等 jsonl,跨局追加行内带 run_id,不按局拆文件);matches =
-# 按局装配档案(局终旁路装配器写,见 telemetry/match_archive);sim =
-# sim 批账本(每批一目录)。深评报告根独立于 telemetry(消费面是人读的
+# 结构:telemetry/{live,matches,sim} 三层——live = 实时追加流(统一
+# state journal 等 jsonl,跨局追加行内带 run_id,不按局拆文件;op_journal
+# 已随 2026-09-15 用户裁定退役,op 调用流归宿 = server 主日志 [cw-op] 行);
+# matches = 按局装配档案(局终旁路装配器写,见 telemetry/match_archive);
+# sim = sim 批账本(每批一目录)。深评报告根独立于 telemetry(消费面是人读的
 # 复盘 md):.debug/currency_war/deep_review/。
 # 旧根 .debug/temp/currency_war/{replay,sim_runs} 同期退役:该处历史
 # 材料已迁新树,旧路径不再有任何活跃写点(存量数据一次性迁移见

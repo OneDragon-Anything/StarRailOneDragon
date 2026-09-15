@@ -364,13 +364,12 @@ def apply_action_outcome(_aop: 'ActionOp',
     退役(对账归属原则:双态比对唯一合法时点 = 观察边界 kernel
     cw_reconcile)——逻辑态建模 bug 的检出归 reconcile 纠漂显影(观察赢)。
 
-    ``_cur`` = 段顶入口观察回执(journal 行 plane/round 基准 + pre_frame
-    输入;帧级逻辑态推算链已随 simulate 前瞻消费删除退役,T-163——期望态真值在
+    ``_cur`` = 段顶入口观察回执(defects 留证行 plane/round 基准 + 逻辑
+    直写帧标识;帧级逻辑态推算链已随 simulate 前瞻消费删除退役,T-163——期望态真值在
     容器,函数无返回值,调用方不再推进任何帧链载体;迁移批 3.2 起载体 =
     :class:`GameStateReadReceipt`,visit 内 plane/round 恒定不变)。
     """
     visit_actions.append(action)
-    _post_frame = None   # 动作后逻辑态帧(前身载体已删,恒 None;终结/未落地 = None → journal delta 省略)
     if _ok and isinstance(action, SellBench):
         # T-159 §3.3 误标检出位(s1_reset_mischannel 交叉对账的运行时半):
         # 商店域落地门不辖 S1 清键(落域澄清:店内段 S1 语义正在成立中,
@@ -537,22 +536,7 @@ def apply_action_outcome(_aop: 'ActionOp',
             _apply_merge_leg(_bs_proj, action, sig=_proj_sig,
                              pre_bench=_pre_bench, pre_deployed=_pre_dep,
                              pre_shop=_pre_shop)
-        _post_frame = None   # 帧级逻辑态推算随 simulate 前瞻消费删除退役(T-163):
-        # journal 动作行不再带期望态 delta/金/占用字段(遥测面变化,
-        # 判读输入 = 动作行本体 + 容器逻辑态直写证据)。
         ledger.refresh_first_action = False
-    # 遥测(T-113/ADR-0579):逐动作执行回执行(op_journal.jsonl)。
-    # CloseShop 终结不入行(ADR-0518 行形态契约);未执行动作
-    # 零行的语义由调用点保证(闸拒/硬墙 break 在本函数之前)。
-    if not getattr(_aop, 'terminal', False):
-        try:
-            from sr_od.application.currency_war.telemetry.op_journal import (
-                record_action_journal,
-            )
-            record_action_journal(match, action, len(visit_actions), _ok,
-                                  _cur, _post_frame)
-        except Exception:   # noqa: BLE001  journal best-effort
-            pass
 
 
 def accrue_release_spent(match: 'CurrencyWarMatch',
@@ -740,7 +724,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     - 入口观察(段顶,唯一读屏点):真实读屏 → 漏斗容器直写(obs 族 sig,
       决策读单源 = 容器单例;迁移批 3.2 起 read_game_state 不再构造帧,
       返回 :class:`GameStateReadReceipt` 供逐帧读数消费;黑板槽已退役,
-      journal 基准载体 = visit 局部 ``_cur`` 回执);
+      visit 基准载体 = 局部 ``_cur`` 回执);
     - 决策循环(零读屏,决策 1/8):``decide_shop_action`` 每次恰返回一个
       动作 → proposal 守卫(``guard_proposal_vs_expected``,防策略器算术
       bug)→ 执行(动作 op ``execute``,观测通道候选 a
@@ -1002,9 +986,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         _seed_epoch = exec_state_of(match.session).bench_layout_epoch
         # (session.last_state 写点已随链退役批删除:段顶入口观察的局内
         #  事实宿主 = 容器单例,写入 = 观察漏斗直写。)
-        # journal 基准载体(黑板槽退役收口,ADR-0651 容器单源):段顶入口
+        # visit 基准载体(黑板槽退役收口,ADR-0651 容器单源):段顶入口
         # 观察回执,T-163 起恒定不随动作推进(帧级逻辑态推算链已随 simulate 前瞻
-        # 消费删除退役);仅供动作行 plane/round 基准,决策/守卫/env 读点
+        # 消费删除退役);仅供落地门 defects 留证行 plane/round 基准,决策/守卫/env 读点
         # = 容器(波 4 读者切换已承接;迁移批 3.2 起载体 = 轻量回执)。
         _cur = _entry
         from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -1094,13 +1078,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 log.warning('[cw!][plan] 布局代次检差命中 → fail-stop '
                             '本段收工,交回外循环重观察')
                 break
-            # 帧序推进(T-113/ADR-0579):段序号与 decisions 行同源,动作行
-            # frame_seq 关联键读取端(op_journal.current_frame_seq)。
-            from sr_od.application.currency_war.telemetry.op_journal import (
-                advance_frame_seq as _adv_seq,
-            )
-            with contextlib.suppress(Exception):
-                _adv_seq()
+            # (frame_seq 段序推进已随 op_journal 流退役删除;段界序号
+            #  _seg_frames 只服务帧帽防线。)
             if _seg_frames > SHOP_SEGMENT_ACTION_CAP:
                 # 防御帧帽(对抗发现:决策循环不收敛的响亮暴露——禁静默续跑/
                 # 禁吞异常续跑。收敛根因修复在决策侧席位门,本帽 = 执行
