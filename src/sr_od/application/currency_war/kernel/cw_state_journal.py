@@ -14,8 +14,12 @@ ADR-0630 裁定 1)。
 阈值落盘)——同步关键路径零逐行 open/write;崩溃丢失窗 = 未 flush 尾部,该窗
 内时点无行 = 诚实缺失,无补建机制。
 
-常开语义(ADR-0634):本模块无开关,生产装配单点 = ``currency_war_app``
-装配段无条件调 :func:`install_state_telemetry`;写路径(字段写入/版本分配)
+常开语义(ADR-0634):本模块无开关,生产装配 = ``currency_war_app``
+装配段无条件调 :func:`install_state_telemetry` + GameState 初始化兜底
+(:func:`ensure_journal_assembly`;生产调用方 = kernel/cw_game_state
+``GameState.__post_init__``——遥测装配 = game state 初始化职责,T-274
+用户裁定 2026-09-15,同桶直调,注入漏斗 = establish_new_match 容器建立点);
+写路径(字段写入/版本分配)
 不因本模块存在与否分支,行落盘另以 sink 在场与 run_id 在场为准——缺实例
 (单元测试/工具环境)= 行不落,诚实缺失。单文件 + 行内 run_id 列(per-run
 分文件候选已否决,journal.md §1);局外写入拒绝(run_id 空 = 不写假行,
@@ -452,7 +456,7 @@ def install_state_telemetry(path: Path | str | None = None, *,
 
 def ensure_journal_assembly(
         run_id_provider: Callable[[], str] | None) -> None:
-    """流水装配兜底(op 直跑路径;幂等,已装配 = 零成本直过)。
+    """流水装配兜底(幂等,已装配 = 零成本直过)。
 
     为什么存在(W3 欠账,T-258 实测修):W1 的装配契约 = 「app 装配段
     单点显式接通」,但 T-257 九流写入端退役后,绕过 app 直跑 op 的生产
@@ -460,10 +464,15 @@ def ensure_journal_assembly(
     哨兵以「指令[ 货币战争-对局循环 ]」日志行为活动签名)失去旧 lazy
     recorder 单例的隐式覆盖 → sink 缺席,整局行按「诚实缺失」静默不落
     (实证:2026-09-14 18:56 起 8 连局零 state 行零档案,深检
-    run_20260915_054718.md §0「journal state 流断流」)。本口把装配兜在
-    run 领取单点(生产调用方 = telemetry.state.ensure_run_started,遥测
-    → kernel 依赖方向合法),仍走 :func:`install_state_telemetry` 同一
-    显式装配口(幂等),非 lazy 写面复活。
+    run_20260915_054718.md §0「journal state 流断流」)。
+
+    落位点(T-274 用户裁定 2026-09-15):遥测数据的保存 = game state 职责
+    ——生产调用方 = kernel/cw_game_state ``GameState.__post_init__``(容器
+    初始化触发,构造参数显式注入 run 归属读取函数;同桶直调,旧「kernel
+    禁依 telemetry」约定的依赖倒置包袱随记录器本在 kernel 消解;注入漏斗
+    = ``establish_new_match`` 容器建立点)。仍走
+    :func:`install_state_telemetry` 同一显式装配口(幂等),非 lazy 写面
+    复活。
 
     测试纪律:本口「未装配即自动装真实现」只允许发生在生产进程——测试
     侧由 conftest autouse 把 :func:`default_journal_path` 重定向到 tmp 根,

@@ -98,7 +98,8 @@ ts 与 `buffered` 行注记)/历史段补写窗(专用装配通道,不经运行�
   派生,不设系统机制。
 - **读向隔离**:决策输入禁读状态流水;运行时控制面读口=显式豁免类
   (封闭枚举:局终扫描/终局防重查重/Δ 池再生触发/落地判定 reconcile 对比读口)。
-- **寿命(滚动清理)策略**:触发时点=装配前置(生产装配单点调
+- **寿命(滚动清理)策略**:触发时点=装配前置(生产装配趟
+  `install_state_telemetry` 调
   `enforce_journal_retention`,单一源=kernel/cw_state_journal;该时点写端未启动,
   零并发窗;每次进程装配触发一次,频率对天级窗足够)。清理单元=**run 段整体**
   (禁切半段——段内版本序完整是 state_ref 版本钉解析的前提);淘汰分三道闸,
@@ -151,8 +152,12 @@ note=recovered 显影;辖域 = 段内补写与在线收口,启动扫描**历史�
 [retirement.md](retirement.md)(单一源,本文不复写);排期与裁决口径的现行
 正本 = [r5-migration-plan.md](r5-migration-plan.md)(单源直迁八波)。
 **常开语义(影子双写裁定已推翻)**:journal 无条件常开——无开关、
-无装配条件分支;生产装配 = app 装配段显式接通 + **run 领取单点兜底**
-(telemetry ensure_run_started → kernel `ensure_journal_assembly`,幂等;
+无装配条件分支;生产装配 = app 装配段显式接通 + **GameState 初始化兜底**
+(GameState 构造注入 run 归属读取函数并触发 kernel `ensure_journal_assembly`,
+幂等;生产注入漏斗 = `establish_new_match` 容器建立点——CwEntryStart 进对局
+前移点与 CwLoop handle_init 兜底两生产调用方的公共漏斗;装配归属裁定 = 遥测
+数据的保存是 game state 职责,run 领取层 telemetry `ensure_run_started` 不辖
+装配〔T-274 用户裁定 2026-09-15〕;
 辖 op 直跑入口——run_operation 直调 CwLoop 的接管/续跑不经 app 装配段,
 T-257 九流退役后该路径失旧 lazy recorder 隐式覆盖,2026-09-14 18:56 起
 8 连局零行零档案实证,深检 run_20260915_054718.md §0),收口单点 reset;

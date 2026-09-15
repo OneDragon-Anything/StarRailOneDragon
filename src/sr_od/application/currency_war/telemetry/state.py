@@ -136,21 +136,13 @@ def ensure_run_started(match: object, difficulty: str) -> str:
 
     生产铸造唯一调用点 = 本函数(cw_entry_start 简报/投资环境/投资策略三分
     支 + cw_loop __init__ 认领)。返回 open run_id。
+
+    职责边界(T-274 用户裁定 2026-09-15):本函数只辖 run 领取(铸造/认领);
+    遥测数据的保存 = game state 职责,state 流水装配入口 =
+    kernel/cw_game_state ``GameState.__post_init__``(生产注入漏斗 =
+    ``establish_new_match`` 容器建立点),run 领取层不辖装配。
     """
     global _RUN_MATCH
-    # 流水装配兜底(op 直跑路径,W3 欠账):W1 装配契约「app 装配段单点」
-    # 不覆盖 run_operation 直跑 CwLoop 的接管/续跑入口——旧九流时代靠 lazy
-    # recorder 单例隐式覆盖,退役后该路径整局行静默不落(2026-09-14 18:56
-    # 起 8 连局暗局实证,深检 run_20260915_054718.md §0)。run 领取单点在
-    # 此补挂同一显式装配口(幂等;已装配零成本直过;kernel 禁依 telemetry,
-    # 依赖倒置由兜底口参数注入)。best-effort:装配失败不阻塞开局。
-    try:
-        from sr_od.application.currency_war.kernel.cw_state_journal import (
-            ensure_journal_assembly,
-        )
-        ensure_journal_assembly(current_run_id)
-    except Exception as e:  # noqa: BLE001  观测件,失败不阻塞开局
-        log.warning('[cw][telemetry] 流水装配兜底失败(不阻塞): %s', e)
     if (not _CURRENT_RUN_ID) or _RUN_CLOSED or (_RUN_MATCH is not match):
         run_id = start_run(difficulty)
         _RUN_MATCH = match
