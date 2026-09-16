@@ -2671,9 +2671,6 @@ class GameState:
     frame_obs: FrameObsLevel = 'none'
     # 心跳载体:写点序号,只增不减(§2.4 停更检测哨兵)。
     write_seq: int = 0
-    # 心跳观察者上次采样值(None=未采样);stall 计数 = 连续零推进次数。
-    hb_prev_seq: int | None = None
-    hb_stall_count: int = 0
     # [索引定义] node_hist_ord = 本 run 已见最大有效节点序 effective_ord
     # (effective_ord = :func:`effective_node_ord` 生效序读口现值,坐标系 =
     # (plane-1)*9+round 基 1,与效果账本 advance_node 同键);派生规则推进
@@ -3336,38 +3333,6 @@ def chain_node_type(bs: GameState, plane: int, round_num: int) -> ChainQuery:
         return ChainQuery(token=None)
     token = str(chain[idx]) if chain[idx] is not None else None
     return ChainQuery(token=token)
-
-
-# ============================================================ 心跳观察者
-
-
-def note_board_state_heartbeat(ctx_or_session: object) -> None:
-    """心跳观察者采样(§2.4;生产接线点 = cw_loop 备战分支)。
-
-    读单调推进量现值并与上次采样比对:连续 ≥2 次零推进 = 观察断流。
-    本函数是传感器,log.warning 留痕且不停机——每轮同特征警告行由事件
-    哨兵 STALL 面消费(同签名 WARNING 堆积 + 零实质推进 → 报警退出,
-    cw_sentinel.py),删除本采样会断「观察断流」故障的检测链。首个备战
-    环只建基线不计数。宿主可传 ctx(取 ctx.cw_match.session)或 session
-    本体(测试/sim)。
-    """
-    match = getattr(ctx_or_session, 'cw_match', None)
-    session = (getattr(match, 'session', None) if match is not None
-               else ctx_or_session)
-    if session is None:
-        return
-    bs = board_state_of(session)
-    if bs.hb_prev_seq is None:
-        pass    # 首采:只建基线
-    elif bs.write_seq == bs.hb_prev_seq:
-        bs.hb_stall_count += 1
-        if bs.hb_stall_count >= 2:
-            log.warning('[cw!][bs-heartbeat] GameState 观察断流:连续 %d 次'
-                        '采样零推进(写点序号 %d)——检查 read_game_state '
-                        '观察链是否被跳过', bs.hb_stall_count, bs.write_seq)
-    else:
-        bs.hb_stall_count = 0
-    bs.hb_prev_seq = bs.write_seq
 
 
 # ============================================================ sim 合成口

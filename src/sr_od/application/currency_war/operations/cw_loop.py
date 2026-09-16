@@ -1879,16 +1879,9 @@ class CwLoop(SrOperation):
         # 半开帧可从底层透出命中,prep.md §时序)。双锚同帧命中才认备战。
         if (self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success
                 and self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success):
-            # GameState 心跳观察者采样(正本 = GameState-数据结构设计.md
-            # §2.4 关键结构 2):备战环入口读单调写点序号,连续 ≥2 环零推进
-            # = 观察断流。本采样是传感器,不做处置:每轮同特征警告行由事件
-            # 哨兵 STALL 面消费(同签名 WARNING 堆积 + 零实质推进 → 报警,
-            # cw_sentinel.py)——删本采样 = 断「观察断流」故障的检测链。
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_of,
-                note_board_state_heartbeat,
             )
-            note_board_state_heartbeat(self.ctx)
             # 效果账本节点 tick 挂点(迁移批次三,设计 §5.1「节点推进=倒计时
             # 递减」/§8.4 用法块「进节点边界(备战帧观察后调用)」)。同节点
             # 去重与登记当节点不推进的守卫都在 tick_node 内(键 = 节点序
