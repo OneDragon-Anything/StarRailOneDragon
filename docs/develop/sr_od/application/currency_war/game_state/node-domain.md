@@ -85,10 +85,11 @@ parse 对拍。节点域的**专用纠偏写点**已随「无 observe 写序键�
 ## 7. 类型派生与链查询接口
 
 节点类型权威链=①专属画面直定(0p→BOSS 随规则③;遭遇/补给/策略=弹窗屏直定;商店
-面板未定型零写)+②商店查现行链+③冲突留证(obs_event arbitrate,最新直定赢)。商店
+面板未定型查链)+②商店查现行链+③冲突留证(obs_event arbitrate,最新直定赢)。商店
 查链接口=`chain_node_type`(零内建回落,None=现行链不知道)——接口契约与链字段见
-[chain-observation.md](chain-observation.md);链写端落地前恒 None=诚实缺位,零内建
-回落。
+[chain-observation.md](chain-observation.md);链写端已在役(链观察落地批:过渡屏
+transition_row/transition_snapshot + 备战帧 prep_row 整帧覆盖),链缺位仍 None=诚实
+缺位、零内建回落。
 
 观察写入覆盖 logic 来源值且失配 → `observe_vs_logic_mismatch` 缺陷行(§2.3 观察赢;
 留证外送缺省关+装配点显式接通)。

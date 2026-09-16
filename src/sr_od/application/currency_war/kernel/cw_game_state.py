@@ -62,7 +62,9 @@ R5 迁移规划 W1/ADR-0634,集内无空 actor 行);:attr:`GameState.write_seq`
 write_logic,无 observe 写序键的例外)。
 四规则组:①备战腿顶栏权威/②位面过渡腿 0q→(plane+1,1)/③BOSS简报腿
 0p→当前+1+boss 类型/④弹窗腿守卫族;推进去重键 =(run_id, effective_ord),
-类型派生 = 专属画面直定+未定型查链预留)。本段持久正本 =
+类型派生 = 专属画面直定+商店面板查现行链(已接线,链观察落地批
+2026-09-16:载体 TokenCell/NodeChain,写端 = 过渡屏 transition_row/
+transition_snapshot + 备战帧 prep_row,字段 node_path/node_path_baseline)。本段持久正本 =
 ``docs/develop/sr_od/application/currency_war/decisions/0630-unified-state-journal.md``
 (ADR-0630,含修订节:守卫族终版/单字段双值结构/字段层次终极版;设计
 工作稿存 .debug/temp 为易失档,禁作正本指针)。派生规则判定本体单一源 =

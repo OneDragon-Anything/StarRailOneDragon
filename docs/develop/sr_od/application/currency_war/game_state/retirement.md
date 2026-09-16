@@ -80,6 +80,11 @@ test_cw4_key_closure:字面全集对齐+参数化族登记+豁免清单三层,�
 | M5 旧流停写批 | 写面删除 = 删除波批次(删除波 1 已执行 9 流写入端,余量随 W7)+GameState 本体删除 = W8;归档只读保留,「观察窗」流程消解 |
 
 链观察实施批(B-1..B-4)独立切分,见 [chain-observation.md](chain-observation.md)。
+**落地状态(链观察落地批 2026-09-16)**:链写端/查链接线/diff 证据已交付
+(载体 NodeChain/TokenCell + 过渡屏与备战帧写端 + `chain_diff` 行 +
+类型派生四②商店查链);台账退役(含 `ledger_node_type` 残余消费点
+read_game_state 查表优先/装备 O1 门/三票 重接与 session 表冻结面盘点)
+仍归本表 M3-M5 辖域,承接范围见统一观察对账与链观察两迭代的不解决清单。
 
 ## 6. 退役前置条件(直迁形态)
 

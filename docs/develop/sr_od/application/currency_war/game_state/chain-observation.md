@@ -46,13 +46,11 @@ state 字段(节点域):
 | 源 | 写端 | 语义 |
 |---|---|---|
 | 基线链(入口值) | 开局过渡屏(P1 基线唯一权威源,quality=`transition_row`;投资环境选择**前**的改型前真值);回退序 `transition_row > plane_detail > prep_row_first` 以最先落档者为准 | P1=全窗观察;P2/P3 过渡屏不给入口值(1→2 显示 P1、2→3 显示 P2)→基线=首帧回填,diff 观察窗较 P1 收窄,如实申报 |
-| 现行链(最新真相) | 备战帧链读(quality=`prep_row`;轮位对齐门∧非变异窗才写)+ 位面过渡离场快照(quality=`transition_snapshot`,跨位面形态=刚离开位面的链终值) | 已通过段不由本帧负责,由流水历史补齐(journal 行行自足,任一行可读「位面 p 第 i 轮当时的链」) |
+| 现行链(最新真相) | 备战帧链读(quality=`prep_row`;轮位对齐门才写——变异窗不对链写设门:整帧覆盖自愈+diff 两帧门拦截误报,落地批取舍)+ 位面过渡离场快照(quality=`transition_snapshot`,跨位面形态=刚离开位面的链终值) | 已通过段不由本帧负责,由流水历史补齐(journal 行行自足,任一行可读「位面 p 第 i 轮当时的链」) |
 
-quality 源标两义注:本文现行链写端标 `prep_row`;件 B 内部对 `node_path` 的 quality
-值存两义(件 B §3.1.2 写端与 §3.3-F6 值域登记义务写 `row_read`,件 B §3.2 字段注与
-载荷示例写 `prep_row`),两义待件 B 收口并轨。本文固化取 `prep_row` 义;B-3 接线批
-做 quality 值域登记时以件 B 收口定谳为准,并与本文源标对齐核对(防判读按源标过滤
-漏行)。
+quality 源标定谳:现行链写端 quality 固化 = `prep_row`(链观察落地批实现取值;
+历史两义注——件 B §3.1.2/§3.3-F6 的 `row_read` 与 §3.2 载荷示例的 `prep_row`——
+随实现并轨收口,判读按源标过滤以本值为准)。
 
 失读放行纪律:链读失败不阻塞流程,对应字段保持未写(基线缺→diff 关闭;离场快照缺→
 该位面终笔不产),诚实缺失,不伪造。
@@ -110,8 +108,11 @@ chain_rewritten(view, plane) -> set[int]                # 已证伪改写位集:
   该形态证据通道=基线与改写源登记对照,挂效果账本消费批。
 - **sim 域**:引擎无中途改写建模→合成口基线恒等于现行,`chain_diff` 结构性恒空、
   sim 档案零 chain_diff 行——如实申报的边界,非缺陷;替换建模落地后经同一纯函数
-  自动产行。合成单元 TokenCell 填 `channel='none'`、`hu_dist=None`,evidence 恒带
-  `sim:synthesized`。
+  自动产行。**落地批修订(链观察落地批 2026-09-16)**:合成口写链裁剪为不写——
+  sim 决策的 node.kind 消费不经链,写与不写零行为差,省合成口改造面;
+  node_path/baseline 在 sim 恒空 = 诚实缺位;引擎中途改写建模落地时按本节恢复
+  合成写链(合成单元 TokenCell 届时填 `channel='none'`、`hu_dist=None`,
+  evidence 恒带 `sim:synthesized`)。
 - 识别面(Hough/Hu/SIFT/标签交叉核对/扩参/暗格处置)与实施批切分(B-1 采证/B-2
   过渡 op/B-3 接线 diff/B-4 消费)以件 B 为准,本文不复写。
 

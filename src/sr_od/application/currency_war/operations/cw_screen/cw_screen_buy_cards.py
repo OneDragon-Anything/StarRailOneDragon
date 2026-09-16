@@ -937,10 +937,10 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         #  覆盖回写 = 绕行;传参链同批移除。)
         # 节点类型来源 = 派生管线四②「商店查现行链」(kernel 派生步在店开
         # 上下文写入时自查链直定 node.kind,链观察落地批接线)。本处的台账
-        # 回填写端(node_ledger_backfill)已随之退役——它以 logic 通道覆盖
-        # 会吞掉派生层的观察对账,且属流程层散写。ADR-0587 滞后拷贝禁令
-        #(禁退回 last_node_type)继续有效,由查链零内建回落语义承接:
-        # 链缺位 = kind None → ②(b) 不发射,同 None fail-open 语义。
+        # 回填写端已随之退役——它以 logic 通道覆盖会吞掉派生层的观察对账,
+        # 且属流程层散写。ADR-0587 滞后拷贝禁令(禁退回 last_node_type)
+        # 继续有效,由查链零内建回落语义承接:链缺位 = kind None → ②(b)
+        # 不发射,同 None fail-open 语义。
         # (frame.dual_track_phase/focus_factions 回填点已随 last_state 链
         #  退役批删除(T-166 对账表 E 类行 30/31 兑现):决策读端 =
         #  committed_from(session) 派生与 StrategyState 真家,帧字段无
