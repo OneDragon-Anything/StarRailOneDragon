@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generic, Literal, TypeVar
 
 from sr_od.application.currency_war.kernel.cw_events import (
@@ -36,10 +36,6 @@ from sr_od.application.currency_war.kernel.cw_events import (
     PlannerPick,
     SupplyOption,
     SupplyPick,
-)
-from sr_od.application.currency_war.kernel.cw_exec_state import (
-    ExecState,
-    bind_exec_state,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 from sr_od.application.currency_war.kernel.cw_vocab import Action, PickEvent
@@ -200,15 +196,8 @@ class CurrencyWarMatch:
     """
     strategy: CwStrategy
     session: StrategySession
-    # 执行层状态载体(session.md §2.4/§5.5;22 具名,生命周期 = 一局;
-    # 账外收编账本 = ADR-0563「落位裁量」节)。
-    # 访问口与旁表绑定单一源见 kernel/cw_exec_state.py。
-    exec_state: ExecState = field(default_factory=lambda: ExecState())
 
     def __post_init__(self) -> None:
-        # session→执行侧载体旁表绑定(单一源;kernel/策略器/sim 无 ctx
-        # 面经 exec_state_of(session) 解析到同一实例)。
-        bind_exec_state(self.session, self.exec_state)
         # 策略器状态兜底附着:策略未覆写 create_session(直用裸 session)
         # 而状态工厂已注册(mandate_v1 在场)→ 附着当局状态对象。恢复局
         # 冷启动契约(session.md §3.2)不变——附着的是**新建**状态对象;

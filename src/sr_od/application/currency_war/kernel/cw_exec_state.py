@@ -1,31 +1,19 @@
-"""货币战争 执行层状态载体(ExecState;session.md as-designed §2.4/§5.5)。
+"""货币战争 执行域领域模型与纯函数宿主(cw_exec_state;无状态面)。
 
-职责来源裁定(用户 2026-09-06):session 只承载观察数据;**动作执行与
-画面 op 运行产生的状态**(拖拽失败计数/发射连败/防重入标志/对账期望账/
-同轮买卖互斥事实账)归执行侧——产生者 = op/执行侧代码,不是读屏采集。
-落点 = 局容器 ``CurrencyWarMatch.exec_state``(生命周期 = 一局,与
-session 同建同灭)。
+本模块不承载跨调用状态——原执行层状态载体已整体退役,局内事实宿主 =
+GameState(kernel/cw_game_state.py)。现辖三类领域函数:
 
-访问口(设计 §5.5「执行侧载体访问口注入 kernel」候选的实现面):
-- 框架/ops 直通口 = ``ctx.cw_match.exec_state``(局容器 dataclass 字段,
-  构造即存在);
-- 无 ctx 面(kernel 判据层 / 策略器 / sim / 遥测只读) =
-  :func:`exec_state_of`(session 旁表解析——kernel 不 getattr session
-  猜宿主,一律经本定义口)。旁表绑定单一源 =
-  ``CurrencyWarMatch.__post_init__``(局容器构造即把自身 exec_state
-  绑到 session);裸构造 session(测试/sim 注入)首访时惰性建
-  (生命周期随 session 对象,见下「桩面存储」)。
-
-桩面存储(不可弱引用对象,SimpleNamespace 测试桩族):把 ExecState
-**作为属性挂在 session 对象自身**——生命周期随对象同灭,无旁表条目
-可泄漏;属性不可写的对象(__slots__ 类族)退回 id() 键普通 dict 兜底
-(量极小,进程内驻留)。id 兜底不承载可弱引用对象:
-「桩 GC 后 id 复用 → 新 session 拿旧 ExecState 串号假红」根因即
-id 键条目永不清理,挂对象属性后该串号通道不复存在。
+- op 逻辑效果推进:``apply_op_effect``(两态制标准语义,ADR-0651);
+- 槽位表领域模型:``BenchChar`` + bench/deployed 槽位语义 helpers 与
+  物理(排,槽号)↔ 表下标换算(deployed_row_slot / deployed_idx_of
+  互逆对);
+- 位面节点序列台账访问:get_node_ledger / ledger_node_type /
+  ledger_update_plane 与 fill_boss_by_position(台账值载体
+  ``PlaneNodeLedger`` 住 kernel/cw_game_state.py,本模块运行时转发,
+  保持既有 import 路径不断链)。
 """
 from __future__ import annotations
 
-import weakref
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -45,77 +33,6 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_vocab import (
         CwAction,
     )
-
-_EXEC_BY_SESSION: weakref.WeakKeyDictionary[object, ExecState] = \
-    weakref.WeakKeyDictionary()
-#: 桩面兜底第二级:属性不可写对象(__slots__ 族)的 id() 键普通 dict。
-#: 挂对象属性(第一级)不可行时才落此表;条目量极小,进程内驻留。
-#: 不用于可弱引用对象(走弱引用表),也不用于属性可写的桩(挂对象自身)。
-_EXEC_BY_SESSION_ID: dict[int, ExecState] = {}
-#: 桩面第一级:ExecState 挂 session 对象自身的属性名(生命周期随对象;
-#: 前缀命名空间化防撞宿主属性)。
-_EXEC_STATE_ATTR = '_cw_exec_state'
-
-
-def _bind_stub(session: object, exec_state: ExecState) -> None:
-    """不可弱引用对象的绑定:挂对象自身属性;属性不可写才退 id 兜底。"""
-    try:
-        setattr(session, _EXEC_STATE_ATTR, exec_state)
-    except (AttributeError, TypeError):   # __slots__ 等属性只读对象
-        _EXEC_BY_SESSION_ID[id(session)] = exec_state
-
-
-def bind_exec_state(session: object, exec_state: ExecState) -> ExecState:
-    """局首绑定(session → 当局执行侧载体;幂等覆写)。单一调用点 =
-    ``CurrencyWarMatch.__post_init__``;测试/sim 特殊装配可显式调。
-
-    session 注解 object(非 StrategySession)是如实声明:桩面走
-    SimpleNamespace 族(见模块头「桩面存储」),本口按弱引用/属性双路径
-    鸭子类型解析,不要求宿主具体类型。"""
-    try:
-        _EXEC_BY_SESSION[session] = exec_state
-    except TypeError:   # 不可弱引用对象(测试桩)→ 挂对象自身
-        _bind_stub(session, exec_state)
-    return exec_state
-
-
-def exec_state_of(session: object) -> ExecState:
-    """执行层状态访问口(无 ctx 面唯一合法通道;禁 getattr session 猜宿主)。
-
-    session 为 None → 无宿主,返回**一次性**空载体(不缓存不共享——
-    None 的 id 恒定,缓存即「全局共享哑载体」跨调用串染;正常调用方
-    上游守卫,本口不抛以保 best-effort 观测面不炸)。裸 session(未绑
-    局容器)→ 惰性建独立载体(生命周期随 session 对象,见模块头
-    「桩面存储」;sim/测试语义 = 会话级执行态)。
-    """
-    if session is None:
-        return ExecState()
-    try:
-        ex = _EXEC_BY_SESSION.get(session)
-    except TypeError:   # 不可弱引用对象(测试桩)
-        ex = getattr(session, _EXEC_STATE_ATTR, None)
-        if ex is None:
-            ex = ExecState()
-            _bind_stub(session, ex)
-        return ex
-    if ex is None:
-        ex = ExecState()
-        _EXEC_BY_SESSION[session] = ex
-    return ex
-
-
-@dataclass
-class ExecState:
-    """一局的执行层状态载体(现无字段;待删壳)。
-
-    全部具名字段已按 execstate-dissolution 迭代
-    (docs/develop/sr_od/application/currency_war/changes/
-    2026-09-16-execstate-dissolution/design.md §2.1)迁出:接管/恢复三字段
-    → GameState match_facts 域 Field(#12-#14);纠漂/留证簿记 →
-    GameState.exec_books(#15/#16);节点台账 → GameState.
-    plane_node_sequences(#20)。载体类与访问口(exec_state_of/
-    bind_exec_state)随同迭代载体拆除批(#21)删除。
-    """
 
 
 # ============================================================ op 逻辑效果推进
