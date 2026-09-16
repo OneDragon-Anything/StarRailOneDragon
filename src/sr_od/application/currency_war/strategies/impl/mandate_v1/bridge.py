@@ -1,17 +1,16 @@
 """cw4 桥:mandate_v1 决策本体(decision 桶纯函数面)。
 
-新核形态 = 新 ``CwStrategy`` 子类,STRATEGY_ID='mandate_v1'(§4.1 新
-strategy_id 双被测体;config 切 strategy_id 即换核)。实现体分两层:
+新核形态 = 新 ``CwStrategy`` 子类,STRATEGY_ID='mandate_v1'
+(config 切 strategy_id 即换核)。实现体分两层:
 
 - 本模块(decision 桶,纯函数):``decide_from_turn`` = 三遍编排 + 帧
   稳定截断(依赖矩阵:decision 只可依 data/kernel——obs→Snapshot 的
-  装配半部 import 执行面词汇,归 app 桶 ``decision_assembly.py``,
-  decision_v2/adapter.py 头注同款分拆先例);
+  装配半部 import 执行面词汇,归 app 桶 ``decision_assembly.py``);
 - 注册桥壳 ``strategies/mandate_v1_strategy.py``(app 桶):持有
   obs→snapshot→assemble 装配链(步3 内部装配缝:``prep_brain.assemble``
   读同一黑板 ``session.prep_obs_frame``,④-5 单一源;幂等/单一写端/
-  快照纪律保持;生产路径保持「cw_screen_prep 只写黑板+调一个 decide」,
-  契约 §5 职责分界,**不加生产接线步**,R191 裁决)。
+  快照纪律保持;生产路径职责分界 = 画面 op 只写黑板 + 调一个决策入口,
+  **不加生产接线步**,R191 裁决)。
 
 商店线口径(步4b,STEP34_REPORT 裁量 #1 的接线兑现;ADR-0517 迁移批
 后形态):
@@ -33,15 +32,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    shop_payload_content_cards,
-)
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
     EncounterPick,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
+    shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
@@ -74,11 +71,11 @@ CurrencyWarConfig = 'CurrencyWarConfig'
 
 
 class MandateV1Strategy(CwFlowStrategy):
-    """新核(mandate_v1):三遍化决策序(证明→骨架→EV)+ 序列发射。
+    """新核(mandate_v1):三遍化决策序(证明→骨架→EV)+ 单动作循环发射。
 
     继承 ``CwFlowStrategy``(主流程驱动核,impl/flow.py)复用生命周期
-    冷建口、方向节拍内化刷新(ADR-0583)与 pick 族缺省实现(基线本体
-    零改动,§4.1);备战线决策与商店线驱动器被本类覆写为 cw4 形态
+    冷建口、方向节拍内化刷新(ADR-0583)与 pick 族缺省实现(基线
+    零改动);备战线决策与商店线驱动器被本类覆写为 cw4 形态
     (entry 三遍编排 / shop 商店波记账)。
     """
 
@@ -89,7 +86,8 @@ class MandateV1Strategy(CwFlowStrategy):
     VERSION: str = '0.1'
     DESCRIPTION: str = ('cw4 新核:证明 pass(线选择/停手线)→升档器'
                         '求值位→骨架 pass(M1-M7 义务)→EV pass(criteria'
-                        ' 七面);序列契约 v2 帧稳定截断发射')
+                        ' 七面);单动作循环发射(帧稳定截断为决策核内'
+                        '发射组织,非流程侧契约)')
 
     def __init__(self, registry: DecisionV2Registry | None = None) -> None:
         """核构造 + 标定注入(标定批 T-278/ADR-0639)。
@@ -105,17 +103,13 @@ class MandateV1Strategy(CwFlowStrategy):
         calibration.apply()
 
     def decide_prep_screen(self, session: StrategySession,
-                           config: CurrencyWarConfig) -> list[CwAction]:
-        """备战画面黑板决策(契约 v1/v2 接口;序列决策契约正本 = flow/action_exec.md §1)。
+                           config: CurrencyWarConfig) -> CwAction | None:
+        """备战画面黑板决策(单动作契约接口,返回 ``CwAction | None``)。
 
-        输入 = ``session.prep_obs_frame``(黑板唯一写者=画面 op);内部
-        装配缝(步3)经 ``_assemble_turn``(注册桥壳覆写注入装配链;
-        本类缺省 = 未注入即抛错的可观测兜底)。输出 =
-        ``list[CwAction]``(执行序=列表序),经帧稳定截断
-        (契约 §3.2 逐类判 + §3.3 fail-closed)。观察帧缺失 = 观察
-        层失约,抛错(禁静默按空观察决策)。
-        入口内务 = 结算惰性 drain + 备战帧代次消费(方向刷新先于三遍
-        编排,ADR-0583 内化锚;原 ops 侧直调重估点的等价复现位)。
+        输入 = ``session.prep_obs_frame``(缺失即抛错)。输出 = 决策核
+        发射序列的**首个动作**;空序列(含截断截空)→ ``None`` = 本帧
+        无动作。帧稳定截断为决策核内发射组织,非流程侧契约。入口内务 =
+        备战帧代次消费(方向刷新先于三遍编排)。
         """
         obs = session.prep_obs_frame
         if obs is None:
@@ -126,8 +120,9 @@ class MandateV1Strategy(CwFlowStrategy):
         # 方向重估先于决策(触发 = 帧代次标注;ADR-0583 §3.3-①)
         self._consume_prep_direction_frame(session)
         turn = self._assemble_turn(obs, session)
-        return decide_from_turn(obs, turn, session, config,
-                                registry=self.registry)
+        actions = decide_from_turn(obs, turn, session, config,
+                                   registry=self.registry)
+        return actions[0] if actions else None
 
     def _assemble_turn(self, obs: PrepObservation,
                        session: StrategySession) -> TurnState:

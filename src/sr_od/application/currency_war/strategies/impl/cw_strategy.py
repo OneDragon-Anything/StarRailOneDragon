@@ -1,8 +1,8 @@
 """货币战争 策略插件机制(CwStrategy ABC + StrategySession + CurrencyWarMatch)。
 
 把货币战争的「决策大脑」抽象成**可替换的 ``CwStrategy`` 对象**(对标 app 插件):
-换对象 = 换打法,不动框架。唯一内置具现 = ``DecisionV2Strategy``(注册桥在
-``strategies/decision_v2_strategy.py``;default 栈已退役,ADR-0466)。
+换对象 = 换打法,不动框架。唯一注册核 = mandate_v1(注册壳 =
+``strategies/mandate_v1_strategy.py``;注册面封闭集依据 = ``flow/README.md`` §2.1)。
 
 设计见 ``docs/develop/currency_war/strategy/07_plugin.md``;决策见
 ``docs/develop/sr_od/application/currency_war/decisions/INDEX.md`` 。本模块**纯逻辑**:所有钩子只吃
@@ -119,28 +119,15 @@ class CwStrategy(ABC, Generic[_TState]):
 
     @abstractmethod
     def decide_prep_screen(self, session: StrategySession,
-                           config: CurrencyWarConfig) -> list[CwAction]:
-        """备战画面黑板决策接口(返回形状 = 波批序列契约遗留的 list;
-        现行消费 = 单动作循环逐帧取首项)。
-
-        - 输入:``session`` 唯一数据总线——备战观察结果由观察层写入
-          ``session.prep_obs_frame``;跨步状态(defer 计数/意向状态机等)同 session。
-        - 返回:``list[CwAction]``。形状遗留注:单动作循环迁移后(设计
-          正本 = ``screens/op-layer.md`` §1.1)生产执行侧逐帧调用、只消费
-          首项(单动作选择序,``cw_screen_prep`` 决策循环两处同构);列表
-          = 决策核三遍编排的发射组织结构,相对序决定首项选择,尾部动作
-          生产不消费。空序列合法 = 「本帧无动作可发」,交回外循环重观察
-          (stall 兜底归外循环防线);策略器禁用空批表达控制流——画面
-          转移一律走终结动作(开箱/开店/出战等)。
-        - 已退役语义(勿按此实现):流程侧逐动作序列发射承诺/fail-stop
-          恢复原语/逐动作执行验证——现行控制流 = 终结动作 + 动作机械
-          执行零判效,落地判定归观察侧对账(单一源 = ``flow/action_exec.md``
-          §2/§3)。帧稳定分类在决策核内仍活(mandate_v1 entry),辖发射
-          组织,非流程侧契约。
-        - 生命周期机制(幂等键 ``action_key``/执行失败记忆/stall 门/强制
-          出战)归框架流程侧,策略器不自实现。
-        - 「观察帧缺失即抛错」——黑板模式下决策读到 None 帧 = 观察层失约,
-          禁静默按空观察决策。
+                           config: CurrencyWarConfig) -> CwAction | None:
+        """备战画面黑板决策接口(单动作契约,返回 ``CwAction | None``)。
+        输入 = ``session.prep_obs_frame``(备战观察结果由观察层写入)。
+        返回**恰一个动作** = 本帧要执行的那个;``None`` = 本帧无动作可发,
+        交回外循环重观察(连续 None 的 stall 兜底归外循环防线);禁用
+        None 表达控制流——画面转移一律走终结动作(开箱/开店/出战等)。
+        「观察帧缺失即抛错」——黑板模式下决策读到 None 帧 = 观察层失约。
+        生命周期机制(幂等键 ``action_key``/执行失败记忆/stall 门/强制
+        出战)归框架流程侧,策略器不自实现。
         """
 
     @abstractmethod

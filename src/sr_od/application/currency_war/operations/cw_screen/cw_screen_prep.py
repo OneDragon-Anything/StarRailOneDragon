@@ -661,9 +661,9 @@ class CwScreenPrep(CwScreenOpBase):
         obs.tomes = cw_identity_obs_read_tomes(self.ctx, screen)
         obs.shop_open = self.round_by_find_area(
             screen, SHOP_SCREEN_NAME, '按钮-收起', crop_first=False).is_success
-        # (box_overlay_open 采集已随 unified-action-factory 批2b 退役删除:
-        #  唯一决策消费面(entry 武装箱臂)随 R7 终结化删除,武装箱选择
-        #  = cw_loop 画面分发(0f2 行)辖,观察字段零消费即删,R1 退役=删。)
+        # (box_overlay_open 采集已退役删除:唯一决策消费面(entry 武装箱臂)
+        #  随 R7 终结化删除,武装箱选择 = cw_loop 画面分发(0f2 行)辖,
+        #  观察字段零消费即删,R1 退役=删。)
         # 事件 overlay(挡操作:deploy/equip 全灭根因,live 2026-08-15):检测到即由环 bail 交外环。
         # 扫描集单一源 = kernel/cw_overlay_registry 的 decision 派生段(B 面切换,
         # 零成员变化):锚 = spec.anchor_area,tag = spec.bail_tag,消费方拼
@@ -981,8 +981,8 @@ class CwScreenPrep(CwScreenOpBase):
                           obs: PrepObservation) -> PrepObservation:
         """执行后期望态逻辑态直写(ADR-0517 决策 7/10;纯计算零读屏)。
 
-        R9 逻辑态全覆盖(design.md unified-action-factory §2.6;规则全集
-        正本 = ``flow/action-logic-state.md``):词表逐动作有逻辑态计算,
+        R9 逻辑态全覆盖(规则全集正本 = ``game_state/action-logic-state.md``):
+        词表逐动作有逻辑态计算,
         「未建模 → 返回 None 保守回退交回外循环」分支**删除**;词表外
         类型 = 分派漏斗被绕过,AssertionError 响亮暴露(注册表同款纪律)。
 
@@ -997,7 +997,7 @@ class CwScreenPrep(CwScreenOpBase):
         - SellBench:该物理槽位件离席(bench_chars 摘除 +
           free_bench_slots+1;溢出腿落地时改为入位卡回占该槽、free 不变
           ——黑板帧镜像,与容器腿/执行账吸收同帧同源;规则正本 =
-          flow/action-logic-state.md §2.4 溢出条件行)+
+          game_state/action-logic-state.md §2.4 溢出条件行)+
           容器域逻辑态直写(gold 回金 + bench 摘槽,
           kernel 写口 ``apply_prep_action_logic`` 单一源);
         - DeployMove(批 2a 补齐,§3.1):bench 摘件 + deployed 落件
@@ -1184,7 +1184,7 @@ class CwScreenPrep(CwScreenOpBase):
 
     def _project_tool_obs(self, action: CwAction,
                           obs: PrepObservation) -> PrepObservation:
-        """工具原子逻辑态(R8 七类逐件;规则正本 = ``flow/action-logic-state.md``
+        """工具原子逻辑态(R8 七类逐件;规则正本 = ``game_state/action-logic-state.md``
         §4,写端登记单一源 = ``EQUIP_WRITE_SIDES``)。逐类:
 
         - 冶金炉:装备腿 = 工具 −1 + 目标件消失(变异产物随机 → 观察);
@@ -2003,17 +2003,14 @@ class CwScreenPrep(CwScreenOpBase):
         #      hp 消费统一经 decision_hp 门前真值+施门)。
         #      —— ③④⑤ 单动作决策循环(ADR-0517 迁移批;前身份 = 序列消费 +
         #      每动作落地后 heavy 重观察的保守口径)。新形态:入口 heavy 一次
-        #      建期望态 → 逐动作「决策(黑板=逻辑态)→ F3 校验 → 期望态计算 →
-        #      执行 → 逻辑态直写」循环,循环内零读屏;三遍编排序保持(决策核输出
-        #      逐帧取首项 = 单动作选择序,输出等价系条件命题——帧级锁按锁
-        #      纪律重推)。已知画面出口(OpenShop/StartBattle)= 终结 op,
-        #      执行即本访问结束交回外循环(下次入口重观察)。逻辑态未建模的
-        #      动作同判保守回退。
+        #      建期望态 → 逐动作『决策(黑板=逻辑态)→ F3 校验 → 期望态计算 →
+        #      执行 → 逻辑态直写』循环,循环内零读屏。已知画面出口
+        #      (OpenShop/StartBattle/OpenBox)= 终结 op,执行即本访问结束
+        #      交回外循环(下次入口重观察)。
         #      B1 拆除(用户裁定 2026-09-10):验证段+恢复原语分支退役——
         #      动作机械执行(端口无成败回执),无进展治理归外循环 stall
         #      防线(F2),落地判定归观察侧 reconcile。
         _visit_acts: list[str] = []
-        actions: list = []
         # 段序号置位(备战期开始;唯一置位点 = 本 prep 访问循环入口):
         # 访问 = 腾席拒绝结论的输入不变性段,入口 +1 使上一访问/上一域
         #(商店 visit/破墙段)残留的续段 token/结论闩按序号不等自动失效。
@@ -2026,23 +2023,20 @@ class CwScreenPrep(CwScreenOpBase):
             # —— ③ 决策(黑板:读 session.prep_obs_frame,写者 = 入口观察/
             #      循环逻辑态直写步;首帧 = 入口 heavy,后续 = 逻辑态)
             try:
-                actions = match.strategy.decide_prep_screen(session, config)
+                result = match.strategy.decide_prep_screen(session, config)
             except Exception as e:  # noqa: BLE001  策略异常 = 本轮 fail(外循环 retry 链兜)
                 log.warning(f'[cw!][director] decide_prep_screen 异常: {e}')
                 return self.round_fail(status=f'策略决策异常: {e}')
-            if (not isinstance(actions, list)
-                    or not all(isinstance(a, CwAction) for a in actions)):
-                log.warning(f'[cw!][director] 策略输出非 list[CwAction]: '
-                            f'{type(actions).__name__}')
-                return self.round_fail(status='策略输出非 list[CwAction](F3)')
-            if not actions:
-                # 空批合法(契约 §4:本帧无动作可发,策略器禁用空批表达控制流)
-                # → 交回外循环重观察;连续空批的 stall 兜底归外循环防线。
-                return self.round_success('空批(本帧无动作),交回外循环重观察', wait=1.0)
-            # 单动作选择序:取决策核输出首项(词表逐帧取首项)
-            action = actions[0]
-            # F3 校验(契约 §2:参数非法交回留证;M6 边界面——执行前输入
-            # 契约检查,非动作后判效)
+            if result is not None and not isinstance(result, CwAction):
+                log.warning(f'[cw!][director] 策略输出非 CwAction|None: '
+                            f'{type(result).__name__}')
+                return self.round_fail(status='策略输出非 CwAction|None(F3)')
+            if result is None:
+                # None = 本帧无动作可发,交回外循环重观察;
+                # 连续 None 的 stall 兜底归外循环防线。
+                return self.round_success('本帧无动作,交回外循环重观察', wait=1.0)
+            action = result
+            # F3 校验:参数非法交回留证;执行前输入契约检查,非动作后判效
             err = self._executor.validate(action)
             key = action_key(action)
             if err is not None:
@@ -2100,10 +2094,9 @@ class CwScreenPrep(CwScreenOpBase):
                 exec_state_of(session).cw_prep_pending_accts = []
             exec_state_of(session).cw_prep_pending_accts.append(acct)
             # —— 结束判定 → 交回外循环(动画等待已由执行器/编排内建)
-            #      批3 终结判定对齐(design.md unified-action-factory §2.4):
-            #      终结集与等待时长改读注册表 op 类 terminal/terminal_wait
-            #      类属性(消费点经注册表读类属性,禁消费点私表;本处与
-            #      生命周期孪生环两处共用 _terminal_exit)。
+            #      批3 终结判定对齐:终结集与等待时长改读注册表 op 类
+            #      terminal/terminal_wait 类属性(消费点经注册表读类属性,
+            #      禁消费点私表;本处与生命周期孪生环两处共用 _terminal_exit)。
             _op_cls = action_op_class_for(action)
             if _op_cls.terminal:
                 return self._terminal_exit(action, key, _op_cls)
@@ -2202,14 +2195,14 @@ class CwScreenPrep(CwScreenOpBase):
                                                  'unit_open': False}, session)
 
     def lifecycle_decision_cycle(self, payload: PrepObservation) -> OperationRoundResult:
-        """段3-5 单动作决策循环(架构设计 §5.1 后三段逐动作迭代)。
+        """段3-5 单动作决策循环。
 
         decide(黑板 = session.prep_obs_frame,策略消费,F3 形状校验)→
         act(适配器②:意图机械执行,无成败回执)→ on_outcome(落地登记
         注册表在 _act_execute 发射点统一触发,单一发射口发射即触发)。
         生命周期无验证段(用户裁定 2026-09-10:动作未生效归动作层修可靠
-        性,落地判定归观察侧 reconcile)。终结出口语义 = 空批/控制流/参数
-        非法/出战(发出即终结)/开店切换/逻辑态未建模/访问上限。"""
+        性,落地判定归观察侧 reconcile)。终结出口语义 = 无动作(None)/
+        参数非法/出战(发出即终结)/开店切换/访问上限。"""
         match = self._match()
         session = match.session
         from sr_od.application.currency_war.currency_war_config import (
@@ -2217,7 +2210,6 @@ class CwScreenPrep(CwScreenOpBase):
         )
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         _visit_acts: list[str] = []
-        actions: list = []
         # 段序号置位(备战期开始;唯一置位点 = 本 prep 访问循环入口):
         # 访问 = 腾席拒绝结论的输入不变性段,入口 +1 使上一访问/上一域
         #(商店 visit/破墙段)残留的续段 token/结论闩按序号不等自动失效。
@@ -2231,23 +2223,20 @@ class CwScreenPrep(CwScreenOpBase):
             #      观察/循环逻辑态直写步;首帧 = 入口 heavy,后续 = 逻辑态)
             self._lifecycle_mark('decide')
             try:
-                actions = match.strategy.decide_prep_screen(session, config)
+                result = match.strategy.decide_prep_screen(session, config)
             except Exception as e:  # noqa: BLE001  策略异常 = 本轮 fail(外循环 retry 链兜)
                 log.warning(f'[cw!][director] decide_prep_screen 异常: {e}')
                 return self.round_fail(status=f'策略决策异常: {e}')
-            if (not isinstance(actions, list)
-                    or not all(isinstance(a, CwAction) for a in actions)):
-                log.warning(f'[cw!][director] 策略输出非 list[CwAction]: '
-                            f'{type(actions).__name__}')
-                return self.round_fail(status='策略输出非 list[CwAction](F3)')
-            if not actions:
-                # 空批合法(契约 §4:本帧无动作可发,策略器禁用空批表达控制流)
-                # → 交回外循环重观察;连续空批的 stall 兜底归外循环防线。
-                return self.round_success('空批(本帧无动作),交回外循环重观察', wait=1.0)
-            # 单动作选择序:取决策核输出首项(词表逐帧取首项)
-            action = actions[0]
-            # F3 校验(契约 §2:参数非法交回留证;M6 边界面——执行前输入
-            # 契约检查,非动作后判效)
+            if result is not None and not isinstance(result, CwAction):
+                log.warning(f'[cw!][director] 策略输出非 CwAction|None: '
+                            f'{type(result).__name__}')
+                return self.round_fail(status='策略输出非 CwAction|None(F3)')
+            if result is None:
+                # None = 本帧无动作可发,交回外循环重观察;
+                # 连续 None 的 stall 兜底归外循环防线。
+                return self.round_success('本帧无动作,交回外循环重观察', wait=1.0)
+            action = result
+            # F3 校验:参数非法交回留证;执行前输入契约检查,非动作后判效
             err = self._executor.validate(action)
             key = action_key(action)
             if err is not None:
@@ -2322,8 +2311,8 @@ class CwScreenPrep(CwScreenOpBase):
 
     def _terminal_exit(self, action: CwAction, key: str,
                        op_cls: type[ActionOp]) -> OperationRoundResult:
-        """终结动作交回(批3 终结判定对齐,design.md unified-action-factory
-        §2.4):终结判定与等待时长改读注册表 op 类 ``terminal``/
+        """终结动作交回(批3 终结判定对齐):终结判定与等待时长改读
+        注册表 op 类 ``terminal``/
         ``terminal_wait`` 类属性(消费点经注册表读类属性,禁消费点私表;
         决策循环与生命周期孪生环两处共用本口)。交回 detail 文案逐动作
         保持原样(零行为)。
@@ -2534,7 +2523,7 @@ class CwScreenPrep(CwScreenOpBase):
           无分支选择 → 非策略决策,不进 director 动作全集;环入口直接清掉
           (揭示后 heavy 观察读到的已是揭示后的真实板面,不毒化对账)。
           上界 3 轮防识别抖动死循环;揭示后卡片消失 → 自然防重入。
-        - 书册卡(R10 链拆,design.md §2.6):识别到书册卡 → 改产备战词表
+        - 书册卡(R10 链拆):识别到书册卡 → 改产备战词表
           动作 ``OpenBookcard`` 经执行器发射(遥测动作行 OpenBookcard 在册,
           单一发射口)→ **本访问交回**:专家邀请函弹窗由外循环 0k 分发
           ``CwScreenExpertInvite`` 选卡(R7 OpenBox 终结化同构;原 journal

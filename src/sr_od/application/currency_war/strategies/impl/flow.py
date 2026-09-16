@@ -102,14 +102,13 @@ if TYPE_CHECKING:
 CurrencyWarConfig = 'CurrencyWarConfig'
 
 # ===== 面③出辖观察件(锁生成可行性;纯观测零行为)=====
-# 设计出处 = p2_blood_band_unified_design/DESIGN.md §2.3-5(a)
 # lock_gen_feasibility_obs_* 族(低血带新开 lock 开启率/切阵后 N 轮内亡率/
 # 死区面计数)。落位申报:消费位在本文件(strategies 侧)而非
 # kernel.cw_intention——分键带判定需消费 p1/p2_blood_floor 域谓词与
 # λ 血带锚(strategies 层判据单一源),kernel 观察位禁反向 import
 # strategies(布局依赖矩阵);本观察件随 update_intention 生产驱动面
 # (CwFlowStrategy._refresh_direction 贵段)同频触发。
-#: 分键前缀(键族与 241/245 键族零交集,统一设计稿 §4-8;键写入
+#: 分键前缀(键族与 241/245 键族零交集;键写入
 #: strategy_state.cw4_counters,经局终快照链/sim 轮差分入账本)。
 LOCK_GEN_FEASIBILITY_OBS_PREFIX: str = 'lock_gen_feasibility_obs_'
 
@@ -130,19 +129,18 @@ def bump_lock_gen_feasibility_obs(session: StrategySession | None,
       由 last_event 转移入 ``_LOCK_EVENT_PREFIXES`` 判定);
     - ``..._lock_open_lowband``:分子——锁开帧在 λ 低血带(带判定 =
       ``hp_decision_trusted`` ∧ ``HP_BAND_NEAR_DEATH`` 血带结构锚单一源,
-      禁字面量第二份;引血带键 = 合法概率路由,统一设计稿 §5-F4 自检:
-      观察分键的带判定不做任何行为分支)。「低血带新开 lock 开启率」
+      禁字面量第二份;引血带键 = 合法概率路由——自检:观察分键的带
+      判定不做任何行为分支)。「低血带新开 lock 开启率」
       由读端按两键比值派生,禁把率写进计数(只记不判);
     - ``..._boss_neardeath_p1|p2``:boss 节点濒死帧死区面计数(R1 存疑-1
       兑付:λ 表濒死 boss 格全禁/空 ⇒ lock 生成可行性门在 boss 窗濒死帧
-      行为化即恒闭,死区人口分授权域申报不留白;P1/P2 授权域不同禁混键,
-      §4-8;boss token 词表与 discipline.plane_last_battle 同款)。
+      行为化即恒闭,死区人口分授权域申报不留白;P1/P2 授权域不同禁混键;
+      boss token 词表与 discipline.plane_last_battle 同款)。
 
     辖域:随状态机贵段同频(每 game-round 恰一次);降格终局吸收态帧
     (状态机短路)不计。第三测量「切阵后 N 轮内亡率」(771014 型 =
     p2 濒死带 ∧ 新开 lock ∧ ≤2 轮内 hp0)不在本载体:策略层结构性不可见
-    hp0(结算 drain 跳过 hp_after=0 帧,flow._process_settlement_strategy_
-    half 的 ``hp_after`` 真值门;hp0 即局终无后续决策帧),归档案层
+    hp0(hp0 即局终无后续决策帧),归档案层
     离线派生(decisions 锁事件 × rounds hp 轨迹 join),申报义务在案。
     """
     if ist.demoted_endgame:
@@ -199,8 +197,8 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
     (基类 ``create_state`` 返回类型随之收窄)——框架基类仍只以泛型参数
     携带,零感知字段;kernel/one_dragon 零 import 本类型(布局锁辖)。
 
-    方法体逐字平移自 ``decision_v2/strategy.py`` DecisionV2Strategy
-    同名方法(出处见各方法 docstring;行为零变更由 sim 契约锁承载)。
+    方法体平移自已退役的 decision_v2 决策包,行为锚见各方法 docstring
+    与 sim 契约锁。
     """
 
     STRATEGY_ID: str = ''            # 中间辅助 ABC,不注册(_abstract=True)
@@ -692,11 +690,11 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         输入 = session 容器(board_state_of;黑板槽退役,设计件《商店黑板容器化方案》§2.2-1:入口观察/单动作逻辑态直写/
         sim 引擎写);输出 = **恰一个动作**,全函数永不 None——「无动作
         可做」由 ``CloseShop`` 恒可用终结表达(决策 5/6)。决策本体 =
-        ``mandate_v1/shop.decide_shop_action``(选择序 = 既有波批优先级
-        逐帧取首项)。执行侧单动作循环逐帧调用本接口;sim/兼容路径走
-        :meth:`decide_shop_screen` 驱动器(同核循环化)。观察帧缺失 =
-        观察层失约,抛错(禁静默按空态决策)。
-        入口内务 = 结算惰性 drain + 帧代次消费(:meth:`_consume_shop_direction_frame`;
+        ``mandate_v1/shop.decide_shop_action``(选择序 = 决策本体候选
+        扫描序,逐帧恰取一个动作)。执行侧单动作循环逐帧调用本接口;
+        sim/兼容路径走 :meth:`decide_shop_screen` 驱动器(同核循环化)。
+        观察帧缺失 = 观察层失约,抛错(禁静默按空态决策)。
+        入口内务 = 帧代次消费(:meth:`_consume_shop_direction_frame`;
         方向刷新在决策读视图之前完成,ADR-0583 内化锚)。
         """
         from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
