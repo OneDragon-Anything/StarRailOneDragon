@@ -1,6 +1,7 @@
 # 已 live 验(整局跑通多场 D-74~D-79 + 2026-08-12:EnterCW→StartMatch→RunLoop→结算→lobby 全 lifecycle 自主;_in_match resume 多锚含战斗/挑战成功/挑战结束,中间态接手不卡 entry)
 
 import contextlib
+from collections.abc import Callable
 from pathlib import Path
 from typing import ClassVar
 
@@ -86,7 +87,7 @@ def write_reconcile_andon_flag(flag_path: Path, *, run_id: str,
 
 
 def _build_reconcile_andon(ctx: SrContext, latch: dict[str, bool],
-                           flag_path: Path):
+                           flag_path: Path) -> Callable[[dict], None]:
     """构造统一观察对账安灯闭包(装配段专用;模块级函数便于离线单测)。
 
     触发契约(kernel 侧逐行同步调用):真失配缺陷行 → 截图留证(失败不
@@ -99,9 +100,13 @@ def _build_reconcile_andon(ctx: SrContext, latch: dict[str, bool],
         run_id = current_run_id_safe()
         field = str(row.get('field') or 'unknown')
         with contextlib.suppress(Exception):
-            frame = ctx.controller.screenshot()
+            # 契约解包(screenshot 返回 (ts, MatLike|None) 元组;independent
+            # =独立抓帧,防安灯触发刷新共享截图态,先例 = cw_observe.
+            # _save_andon_frame)。
+            _ts, frame = ctx.controller.screenshot(independent=True)
             if frame is not None:
-                save_debug_image(frame, prefix=f'reconcile_andon_{run_id}_{field}')
+                save_debug_image(frame,
+                                 prefix=f'reconcile_andon_{run_id}_{field}')
         if not run_id:
             return   # 局外:只落证不停机(不写假局 flag)
         if latch.get(run_id):
