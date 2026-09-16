@@ -1,4 +1,4 @@
-"""r229c 事件哨兵 v5.2(HIT 分级驻留 + 游标恒锚尾;活跃局判定切 journal;v4 循环/静默 + v5 STALL 语义 + 节点滞留)。
+"""r229c 事件哨兵 v5.3(HIT 分级驻留 + 游标恒锚尾;活跃局判定切 journal;v4 循环/静默 + v5 STALL 语义 + 节点滞留 + v5.3 备战环空转)。
 
 ## 检测面(当前语义)
 
@@ -30,6 +30,12 @@
   2026-09-03 实证:1-1 节点(reward)卡死 22:30-23:11+,state 行每 ~25s 一条、
   plane=1 round=1 恒定 40min+,跨度判据在 ~22:45(阈值 900s)即可独立报警。
   nodeseq 行(`[cw-director][nodeseq]`)只带位面不带轮次,不作相位源。
+  - [SENTINEL-PREP-SPIN](v5.3 新增):备战分发行持续到达 ∧ 零实质推进 ≥
+    SPIN_SEC(默认 600s,env CW_SENTINEL_SPIN_SEC)→ 报警。节奏锚 =
+    `[cw-op] op=备战 plane=` 分发行(每备战轮必落);窗自上一实质推进后的首个
+    备战行起算,任一实质推进即重置。补观察断流盲区:认知冻结形态无 state 行
+    (NODE-DWELL 失明)、备战行让日志不沉默(SILENCE 失明)、无警告(STALL
+    失明)、零动作(LOOP 失明)。心跳采样退役(2026-09-15)后的承接面。
 
 ## 实质推进(STALL/LOOP 两分支单一判据,2026-09-03 语义修复)
 
@@ -57,6 +63,7 @@
 | v4.1 | 活跃局判定第 4 条(decisions 新鲜度) | 2026-09-03 1-1 卡死 26min 零报警:runs/outcomes 双陈旧误判「已终局」,LOOP 整局被 suppress |
 | v5 | STALL 推进语义修复(无操作成功≠推进)+ 节点滞留 NODE-DWELL + 词汇审计(见下) | 2026-09-03 1-1 卡死段实机日志回放标定 |
 | v5.1 | HIT 分级(关键即退/一般驻留续侦+纪元内同因去重+证据文件)+ 游标恒锚尾不变量(武装/轮转/漂移一律从当前尾起扫,水位文件退役为纯活性心跳) | 2026-09-09 01:13-01:14 脏纪元三连自退实证(死亡实例留新鲜小值水位被信任=重放向量,哨兵逐格啃完脏纪元期间全盲)+ 2026-09-08 70min 补位空窗实证(HIT 即退纯损) |
+| v5.3 | 备战环空转 PREP-SPIN(备战行持续 ∧ 零实质推进 ≥ 600s → 报警;心跳采样退役后的观察断流检测承接) | 心跳采样删除裁定(2026-09-15);效果账本自推进迁移迭代设计 3.3 哨兵交接;采样窗精化挂效果域批 M3 |
 | v5.2 | 活跃局判定数据源切 journal(_run_ended 重写:尾实机段 match_final 收口+行 ts 新鲜;runs/outcomes/decisions 三流写入端已随删除波 1 停写,旧判定链武装即误判「已终局」);实机段形态过滤(run_%Y%m%d_%H%M%S,fake_/sim_/harness 段不采信——journal 多写者单文件新形态) | T-257(删除波 1 落地审新立项);journal 行结构=kernel/cw_board_state._swap/write_match_final,段隔离约定=sim/cw_delta_pool_gen.QUARANTINED_RUN_PREFIXES |
 
 ## 词汇审计(v5,对照流程侧代码与 .log/mcp_server.log 全文 grep)
@@ -98,7 +105,7 @@ v5 语义修复的根)。
   CW_SENTINEL_HIT_EXIT_ALL=1 恢复 v5 全即退(缺省分级)。
   python cw_sentinel.py --selftest: 内置回归(15 用例:局后空窗→IDLE /
   局中静默→SILENCE / 信道漂移[含漂移后 CONT 去重清零轻断言] / 活跃循环→LOOP /
-  无操作成功循环→STALL 不被假推进掩盖 / 节点滞留→NODE-DWELL / 正常推进→不误报 /
+  无操作成功循环→STALL 不被假推进掩盖 / 节点滞留→NODE-DWELL / 备战空转→PREP-SPIN / 正常推进→不误报 /
   v5.1 七锁:轮转锚尾 L1 / 武装锚尾脏纪元 L2 / 新行双路命中 L3 /
   同因去重+运行边界清零 L4 / 异因仍报 L5 / 升级通道 L6 / 终局标记 L7)。
   python cw_sentinel.py --replay <日志文件>: 历史日志回放——全文件喂行处理逻辑,
@@ -277,6 +284,12 @@ NODE_DWELL_EVIDENCE = Path(os.environ.get(
 
 # 试用期纪律(runtime-ops):TRIAL=1(默认)= 只报警落证据不处置;观察期标定
 # 零误报后由编排者显式改 0 武装自动 stop。AUTOSTOP=1 且 TRIAL=0 时才真停。
+# ── v5.3 备战环空转(PREP-SPIN;认知冻结形态专用,补其余四面的共同盲区)──
+SPIN_SEC = int(os.environ.get('CW_SENTINEL_SPIN_SEC', 600))
+SPIN_EVIDENCE = Path(os.environ.get(
+    'CW_SENTINEL_SPIN_EVIDENCE',
+    r'D:\code\workspace\StarRailOneDragon\.debug\temp\currency_war\cw_sentinel_spin_ev.md'))
+SPIN_ANCHOR = '[cw-op] op=备战 plane='   # 节奏锚:备战分发行(每备战轮必落;含 plane= 防误配「备战暗色锁定」)
 LOOP_TRIAL = os.environ.get('CW_SENTINEL_TRIAL', '1') != '0'
 LOOP_AUTOSTOP = os.environ.get('CW_SENTINEL_AUTOSTOP', '0') == '1'
 LOOP_HTTP = os.environ.get('CW_SENTINEL_HTTP', 'http://127.0.0.1:24001')
@@ -390,6 +403,15 @@ dwell_phase: tuple[int, int] | None = None
 dwell_first: int | None = None
 dwell_last: int | None = None
 dwell_last_line: str = ''                         # 相位内最近一条 state 行(证据)
+# v5.3 备战环空转:自上一实质推进以来的首个备战分发行时刻(None=窗未武装)
+spin_first: int | None = None
+spin_last_line: str = ''                          # 窗内最近一条备战行(证据)
+
+
+def _spin_reset() -> None:
+    global spin_first, spin_last_line
+    spin_first = None
+    spin_last_line = ''
 
 
 def _loop_prune(now_tod: int) -> None:
@@ -547,6 +569,44 @@ def _dwell_alarm(payload: str, line_end: int | None) -> str:
             f'(节点滞留): {payload} | 证据={NODE_DWELL_EVIDENCE}')
 
 
+def _spin_feed(line: str, tod: int) -> tuple[str, str] | None:
+    """备战环空转喂行(v5.3):锚 = 备战分发行,窗 = 自上一实质推进的首个锚行起算。
+
+    任一实质推进由 process_line 调 _spin_reset 重置;锚行持续到达而推进持续
+    缺席 ≥ SPIN_SEC → ('spin', 证据摘录)。返回 None = 未武装/未到期。
+    """
+    global spin_first, spin_last_line
+    if SPIN_ANCHOR not in line:
+        return None
+    if spin_first is None:
+        spin_first = tod
+    spin_last_line = line.strip()[:200]
+    if _delta(spin_first, tod) >= SPIN_SEC:
+        return ('spin', f'备战行自 {spin_first} 持续≥{SPIN_SEC}s;最近: {spin_last_line}')
+    return None
+
+
+def _spin_alarm(payload: str, line_end: int | None) -> str:
+    """备战环空转报警出口(v5.3):落证据文件;返回打印文本。"""
+    now = time.strftime('%Y-%m-%d %H:%M:%S')
+    ev = [
+        f'- 触发时刻: {now}(空转阈值 {SPIN_SEC}s,判据=备战行持续 ∧ 零实质推进)',
+        '- 窗内最近一条备战行:',
+        f'- {spin_last_line}',
+        '',
+        '## 判读与建议动作',
+        '1. 形态 = 备战环在转、零实质推进(state/on_round_end/动作行全哑)——认知冻结类'
+        '(观察断流/决策坏/动作全败),症状抓取不依赖成因',
+        '2. 确认 → stop_run;留证/残局清理/重武流程同 NODE-DWELL 证据文件',
+    ]
+    _write_evidence(SPIN_EVIDENCE, '[SENTINEL-PREP-SPIN] 备战环空转报警证据', ev)
+    if line_end is not None:
+        with contextlib.suppress(OSError):
+            MARKER.write_text(str(line_end))
+    return (f'[SENTINEL-PREP-SPIN] 备战行持续∧零实质推进≥{SPIN_SEC}s'
+            f'(备战环空转): {payload} | 证据={SPIN_EVIDENCE}')
+
+
 # ── v5.1 D3 HIT 分级驻留状态 ────────────────────────────────────────
 # 已报 CONT 签名 → (首见行摘录, 首见时刻)。去重键复用 _sig(与 STALL 同源,
 # 不引入第二套归一化);不做 occurrence 计数(升级归 STALL,证据文件只答
@@ -654,11 +714,14 @@ def process_line(line: str, line_end: int | None) -> tuple[str, bool] | None:
     if 'terminal=RunState' in line or '已停止[' in line:
         _dwell_reset()
         _hit_reset()   # v5.1:运行边界=纪元边界,新局重新获得 CONT 首见报警权
+        _spin_reset()   # v5.3:运行边界重置空转窗
     # v4.0/v5 循环+滞留检测(所有日志级别之外独立计数;同时产出实质推进)
     progressed, kind, payload = _loop_feed(line, _tod_v)
     if progressed:
         progress_tods.append(_tod_v)
         _prune(_tod_v)
+        _spin_reset()   # v5.3:任一实质推进重置备战空转窗
+    _spin_hit = _spin_feed(line, _tod_v)   # v5.3:备战分发行武装/判窗
     if '[WARNING]' in line or '[ERROR]' in line:
         recent.append((_tod_v, _sig(line)))
         _prune(_tod_v)
@@ -682,6 +745,11 @@ def process_line(line: str, line_end: int | None) -> tuple[str, bool] | None:
             return (_loop_alarm(payload, line_end), True)
     elif kind == 'dwell':
         return (_dwell_alarm(payload, line_end), True)
+    elif _spin_hit is not None:
+        if not REPLAY_MODE and _run_ended():
+            _spin_reset()   # 残留窗口(局已终局),清窗继续
+        else:
+            return (_spin_alarm(_spin_hit[1], line_end), True)
     if _cont_msg is not None:
         return (_cont_msg, False)   # 驻留续侦:只打印不退,主循环继续喂行
     return None
@@ -747,7 +815,7 @@ def _replay(path: str) -> int:
 
 
 def _selftest() -> int:
-    """v5.1 内置回归(15 用例):空窗/静默/漂移[含漂移清零轻断言]/循环/
+    """v5.1 内置回归(17 用例):空窗/静默/漂移[含漂移清零轻断言]/循环/
     无操作成功 STALL/节点滞留/正常推进 + 七锁(轮转锚尾/武装锚尾/新行双路/
     同因去重+运行边界清零/异因仍报/升级通道/终局标记)。"""
     import subprocess
@@ -980,17 +1048,32 @@ def _selftest() -> int:
         for i in range(20):
             t = ts(i * 60)
             lines5.append(f'{t} [cw_op_buy_cards.py 614] [INFO]: [cw] state gold=4 hp=60 lv=4 plane=1 round={i + 1} node=battle next=? board={{}}\n')
+        # 案6(v5.3)备战环空转:备战分发行每 60s 一条 ×12(跨度 660s ≥ 600)且零实质
+        # 推进 → PREP-SPIN;state 行缺席(NODE-DWELL 盲区形态)
+        lines6 = []
+        for i in range(12):
+            t = ts(i * 60)
+            lines6.append(f'{t} [cw_loop.py 2271] [INFO]: [cw-op] op=备战 plane=1 round=3 outcome=ok\n')
+        # 案7(v5.3)备战环健康:备战行 + state 行 round 递增(实质推进重置)→ 零报警
+        lines7 = []
+        for i in range(12):
+            t = ts(i * 60)
+            lines7.append(f'{t} [cw_loop.py 2271] [INFO]: [cw-op] op=备战 plane=1 round={i + 1} outcome=ok\n')
+            lines7.append(f'{t} [cw_op_buy_cards.py 614] [INFO]: [cw] state gold=4 hp=60 lv=4 plane=1 round={i + 1} node=battle next=? board={{}}\n')
         for name, text, expect_tag in (
             ('loop_stuck_run24', ''.join(lines), '[SENTINEL-LOOP]'),
             ('normal_progress_nofp', ''.join(lines2), None),
             ('noop_stall_v5', ''.join(lines3), '[SENTINEL-STALL]'),
             ('node_dwell_v5', ''.join(lines4), '[SENTINEL-NODE-DWELL]'),
             ('dwell_healthy_v5', ''.join(lines5), None),
+            ('prep_spin_v53', ''.join(lines6), '[SENTINEL-PREP-SPIN]'),
+            ('prep_spin_healthy_v53', ''.join(lines7), None),
         ):
             log = d / f'{name}.txt'
             log.write_text(text, encoding='utf-8')
             env = dict(os.environ, CW_SENTINEL_LOOP_EVIDENCE=str(d / f'{name}_ev.md'),
-                       CW_SENTINEL_DWELL_EVIDENCE=str(d / f'{name}_dwell_ev.md'))
+                       CW_SENTINEL_DWELL_EVIDENCE=str(d / f'{name}_dwell_ev.md'),
+                       CW_SENTINEL_SPIN_EVIDENCE=str(d / f'{name}_spin_ev.md'))
             r = subprocess.run([sys.executable, str(script), '--replay', str(log)],
                                env=env, capture_output=True, text=True, timeout=60,
                                encoding='utf-8', errors='replace')
@@ -1001,6 +1084,7 @@ def _selftest() -> int:
             no_other = (expect_tag is not None
                         or ('[SENTINEL-LOOP]' not in out
                             and '[SENTINEL-NODE-DWELL]' not in out
+                            and '[SENTINEL-PREP-SPIN]' not in out
                             and '[SENTINEL-STALL]' not in out))
             ok = has and no_other
             last = out.strip().splitlines()[-1] if out.strip() else ''
@@ -1207,7 +1291,7 @@ def _selftest() -> int:
 
 
 if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--selftest':
-    print('[selftest] v5.2 十五用例回归:空窗/静默[journal 判定]/漂移/循环/STALL/滞留/推进'
+    print('[selftest] v5.3 十七用例回归:空窗/静默[journal 判定]/漂移/循环/STALL/滞留/推进'
           ' + 七锁(轮转锚尾/武装锚尾/新行双路/同因去重/异因仍报/升级通道/终局标记)')
     sys.exit(_selftest())
 
@@ -1245,7 +1329,7 @@ except OSError:
 _pos_show = '待日志首见锚尾' if pos is None else str(pos)
 print(f'[sentinel] armed v5.1 @ {time.strftime("%H:%M:%S")}, pos={_pos_show}(武装恒锚尾), '
       f'log={LOG}, loop(N={LOOP_N},win={LOOP_WIN}s,trial={LOOP_TRIAL}), '
-      f'dwell(>{DWELL_SEC}s), hit(分级,exit_all={HIT_EXIT_ALL})', flush=True)
+      f'dwell(>{DWELL_SEC}s), spin(>{SPIN_SEC}s), hit(分级,exit_all={HIT_EXIT_ALL})', flush=True)
 
 last_line_wall = time.time()
 
