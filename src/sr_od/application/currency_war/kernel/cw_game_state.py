@@ -3122,6 +3122,10 @@ class GameState:
                 self, _direct_kind, target_ord=self.node_hist_ord,
                 actor='derive_node_type',
                 trigger_screen=screen_name, seq=seq)
+        # —— 效果推进段(迁移迭代 design §2.1;管线尾段同临界区)。prep_frame 闸
+        # = 备战帧:金结算仅备战帧触发,0q/0p/弹窗推进帧递延(攻击 F1 错窗防护;
+        # 补给节点无备战帧,其轮首收入由下一备战帧观察直接捕获,用户裁定)。
+        tick_effect_boundary(self, prep_frame=(screen_name == SCREEN_PREP_FRAME))
 
     # —— 心跳观察者(§2.4 关键结构 2)——
 
