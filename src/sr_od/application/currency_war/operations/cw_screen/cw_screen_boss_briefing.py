@@ -18,8 +18,9 @@ CwScreenOpBase 子类,handle 首行装配点分流(本屏无重入裁决旗标):
 ``_click_blank``(读「区域-空白点击」center → 点空白 → success 交回,两
 路径共享零转录;横幅退场由下一轮 observe 判定);reconcile/on_outcome =
 空申报(本屏无登记件)。**判别单一源红线(详设 §5)**:迁移只改宿主类,
-禁改 ``BOSS_BRIEFING_TOKENS``/``is_boss_briefing_texts`` 判别面——三处消费
-同源(0p 锚加固/0q 排他/``CwScreenBattleWait._hit_completion_anchor``)不变。
+禁改 ``BOSS_BRIEFING_TOKENS``/``is_boss_briefing_texts`` 判别面——四处消费
+同源(0p 锚加固/0q 排他/``CwScreenBattleWait._hit_completion_anchor``
+/loop 阶段一位面过渡身份分支排他)不变。
 本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应画面段),等价判据主承重 =
 实机在册行为锁(锁面 = sr-od-test test_cw_obs_arch_phase_screens.py +
 test_cw_anchor_exclusion.py)。
@@ -45,7 +46,8 @@ from sr_od.context.sr_context import SrContext
 # 「标识-强敌来袭」(OCR+LCS)被误读形态击穿——一局全帧 OCR 把「强敌来袭」
 # 读成「强敌米」(来袭→米)→ 0p 不接管 → 0q 位面过渡误分发 → fail 循环。
 # 判别单一源 = 「强敌」二字高区分片段,0p 锚加固 / 0q 排他 /
-# CwScreenBattleWait 完成白名单三处消费同源。
+# CwScreenBattleWait 完成白名单 / loop 阶段一位面过渡身份分支排他
+# 四处消费同源。
 
 #: 「强敌」判别片段(误读鲁棒;勿改回全词「强敌来袭」——来袭二字可误读)。
 #: 双形态:简体「强敌」 + 繁首「強敌」——同一横幅标题的 OCR 输出随渲染波动

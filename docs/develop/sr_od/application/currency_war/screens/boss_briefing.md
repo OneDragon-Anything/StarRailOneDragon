@@ -1,13 +1,14 @@
 # BOSS 简报(boss_briefing · 货币战争-BOSS简报)
 
 > 代码 = `operations/cw_screen/cw_screen_boss_briefing.py::CwScreenBossBriefing`。职责:boss 节点前的「强敌来袭」全屏横幅——识别 → 点空白推进 → 直接交回外循环重判(点掉后去向由外循环全分支自然处理)。
-> **判别单一源红线**:两画面判别器 `BOSS_BRIEFING_TOKENS`/`is_boss_briefing_texts` 禁在改码/迁移中分叉——三处消费同源(0p 分发锚加固 / 0q 位面过渡排他 / `CwScreenBattleWait._hit_completion_anchor` 完成白名单)。路径根 = `src/sr_od/application/currency_war/`。
+> **判别单一源红线**:两画面判别器 `BOSS_BRIEFING_TOKENS`/`is_boss_briefing_texts` 禁在改码/迁移中分叉——四处消费同源(0p 分发锚加固 / 0q 位面过渡排他 / `CwScreenBattleWait._hit_completion_anchor` 完成白名单 / 外循环阶段一位面过渡身份臂排他接管)。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 分发判定
 
 - 外循环分支 0p:**area 锚「货币战争-BOSS简报.标识-强敌来袭」∨ 共享判别** `is_boss_briefing_texts`(全帧 OCR 含「强敌」片段;判别词双形态 = 简体「强敌」+ 繁首「強敌」,OCR 渲染波动在册)。area 锚(LCS)可被 OCR 误读击穿(「强敌来袭」→「强敌米」),片段判别是锚加固兜底,不是第二判据。
 - 阶段一身份行:横幅遮挡下备战双锚仍透出命中(穿透形态)——备战不在分发清单,历史「帧误落备战分支空转 598s」事故见 [../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。
-- **与 0q 位面过渡的两画面排他**:两画面共享交互文案「点击空白处继续」,共享文案不作跨画面判据——0q 分支 OCR 命中后先查 boss 帧判别,命中 = 排他留 0p(排他判定在 0q 分支体内,单一源 = outer_loop §2.2 两行,本篇不复写判定式)。0p 分发成功回调清 0q 误分发计数(`_plane_mis_streak = 0`,外循环 on_result 闭包 = guards.md §3 补注的守卫域归属)。
+- **与 0q 位面过渡的两画面排他**:两画面共享交互文案「点击空白处继续」但**位置不同**(本屏 y≈770 波段 / 位面过渡 y≈930 波段,各在自身画面档 area)——共享文案不作跨画面判据,位置即判据:0q 兜底入口按位面过渡**本屏 rect** 判定(本屏帧的共享文案不会落进位面过渡的提示区),0q 分支体内另保留 boss 判别排他(纵深)。第五局 1-9 实锤的旧全帧裸文本判定路径(被 boss 帧共享文案击穿 → 误派过渡 op 空 fail 循环)已由位置判定根治。
+- **阶段一位面过渡身份臂排他(第四消费点)**:boss 帧标题被误读击穿阶段一本屏身份、而底图位面节点锚可读时,阶段一会命中位面过渡——该臂先查 boss 判别片段,命中即接管派发本屏 op 正面推进(不发过渡 op)。
 
 ## 2. 画面形态声明
 
@@ -35,7 +36,7 @@
 
 ## 8. 守卫与防线
 
-节点预算 8;误分发防线在分发侧(0q 排他 + 误分发型 fail streak/超限 round_fail 留外循环,`PLANE_MISDISPATCH_LIMIT` = [../flow/guards.md](../flow/guards.md) §3)。
+节点预算 8;误分发防线在分发侧(0p 锚加固 + 阶段一位面过渡身份臂排他接管 + 0q 本屏 rect 判定/排他,见 §1)。原 0q 误分发型 fail streak 守卫(`PLANE_MISDISPATCH_LIMIT`)已退役,连续 fail 预算统一归外环通用网([../flow/guards.md](../flow/guards.md) §1)。
 
 ## 9. 遥测与锁面
 

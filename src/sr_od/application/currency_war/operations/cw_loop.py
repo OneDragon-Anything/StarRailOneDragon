@@ -1549,6 +1549,29 @@ class CwLoop(SrOperation):
 
         if name == '货币战争-位面过渡':
             self._note_branch_screen('货币战争-位面过渡')   # R2 开局链写点
+            # boss 排他(判别单一源消费;第五局 1-9 形态的纵深):boss 帧标题
+            # 「强敌来袭」被 OCR 误读击穿时,其底图位面节点锚若可读,阶段一
+            # 身份会命中本分支 → 误派过渡 op 空 fail。命中 boss 判别片段即
+            # 接管派发 boss op 正面推进(两屏共享的「点击空白处继续」位置
+            # 不同,不作判据)。
+            from sr_od.application.currency_war.operations.cw_screen.cw_screen_boss_briefing import (
+                is_boss_briefing_texts as _boss_frame,
+            )
+            from sr_od.application.currency_war.operations.cw_screen.cw_screen_boss_briefing import (
+                read_ocr_texts as _frame_texts,
+            )
+            if _boss_frame(_frame_texts(self.ctx, screen)):
+                log.info('[cw-loop] 位面过渡身份帧含 boss 判别片段 → 接管派发'
+                          ' BOSS 简报(标题误读/位面锚可读的 boss 帧)')
+
+                def _on_boss_takeover(ok: bool, res: Any) -> None:
+                    log.info('[cw-loop] BOSS 简报(位面过渡身份排他接管) → %s',
+                             getattr(res, 'status', ''))
+
+                return self._dispatch_screen_op(
+                    CwScreenBossBriefing(self.ctx), journal_name='BOSS简报',
+                    frame_tag='flow_boss_briefing', wait=1.0,
+                    on_result=_on_boss_takeover)
 
             def _on_plane_transition_identity(ok: bool, res: Any) -> None:
                 log.info('[cw-loop] 位面过渡 → CwScreenPlaneTransition → %s',
@@ -1850,9 +1873,13 @@ class CwLoop(SrOperation):
                 frame_tag='flow_boss_briefing', wait=1.0,
                 on_result=_on_boss_briefing)
 
-        # 0q-backstop. 位面过渡误读兜底:节点锚 miss 时 OCR 共享文案接住;boss
-        #     排他保留(0p-backstop 已先接 boss 帧,此处为纵深)。
-        if self.round_by_ocr(screen, '点击空白处继续', lcs_percent=0.8).is_success:
+        # 0q-backstop. 位面过渡误读兜底:节点锚 miss 时按**本屏 rect** 判定
+        #     共享文案接住(「点击空白处继续」两屏位置不同:本屏 y≈930 波段,
+        #     boss 简报 y≈770 波段——旧全帧裸文本判定会被 boss 帧击穿误派
+        #     过渡 op,第五局 1-9 实锤路径,根修);boss 排他保留(纵深)。
+        if self.round_by_find_area(screen, '货币战争-位面过渡',
+                                   '提示-点击空白继续',
+                                   crop_first=False).is_success:
             if _is_boss_frame(_frame_texts(self.ctx, screen)):
                 log.info('[cw-loop] boss 简报帧含共享文案「点击空白处继续」→ '
                          '排他(纵深,正常已被 0p-backstop 接住)')

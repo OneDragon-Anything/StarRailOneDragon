@@ -4,8 +4,8 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0q:OCR「点击空白处继续」(lcs 收紧,判定参数单一源 = 分支体)∧ **非 boss 帧**(两画面排他:boss 简报画面含同一共享文案;排他判定 = `is_boss_briefing_texts`,判别单一源 = `cw_screen_boss_briefing.py`,两画面排他形态详见 [boss_briefing.md](boss_briefing.md) §1)。
-- 分发 = 阶段一身份行(节点锚)+ 误读兜底([../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。误分发型 fail streak / 超限 round_fail 留外循环回调(`PLANE_MISDISPATCH_LIMIT`,[../flow/guards.md](../flow/guards.md) §3)——外循环计数只认 fail,完成路径必须 success(重入裁决出口语义与误分发计数的守卫耦合)。
+- 外循环分支 0q:本档提示区「货币战争-位面过渡.提示-点击空白继续」**rect 判定命中**(旧全帧裸文本 OCR 判定被 boss 帧共享文案击穿——boss 帧同一文案在 y≈770 波段,本屏 y≈930,位置即判据;第五局 1-9 实锤路径已根治)∧ **非 boss 帧**(排他判定 = `is_boss_briefing_texts`,判别单一源 = `cw_screen_boss_briefing.py`,两画面排他形态详见 [boss_briefing.md](boss_briefing.md) §1)。
+- 分发 = 阶段一身份行(节点锚)+ 误读兜底([../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。阶段一身份臂含 boss 判别排他:身份命中帧含「强敌」片段 → 接管派发 BOSS 简报,不派本屏 op(防 boss 帧位面锚可读时误派空 fail)。连续 fail 预算归外环通用网(`OP_FAIL_REDISPATCH_LIMIT`,[../flow/guards.md](../flow/guards.md) §1)——原 0q 专用误分发 streak 守卫(`PLANE_MISDISPATCH_LIMIT`)已退役并入。
 
 ## 2. 画面形态声明
 
@@ -33,7 +33,7 @@
 
 ## 8. 守卫与防线
 
-节点预算 8;误分发 fail streak 消费留外循环([../flow/guards.md](../flow/guards.md) §3)。
+节点预算 8;连续 fail 预算归外环通用网([../flow/guards.md](../flow/guards.md) §1);误派防线 = 阶段一身份臂 boss 排他 + 0q 本屏 rect 判定/排他(§1)。
 
 ## 9. 遥测与锁面
 
