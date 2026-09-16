@@ -200,7 +200,7 @@ W4 键级三分(游戏效果键→效果域/策略行为键→决策行/无消�
 
 | 事件类 | 事件源(实码挂点) | 辖触发面 | 计数语义 |
 |---|---|---|---|
-| 节点推进 | 备战分支 `advance_node`(operations/cw_loop.py:2131);同节点去重与「登记当节点不推进」守卫在 inventory 内(kernel/cw_effect_inventory.py:240-254) | PLANE_START / NODE_ENTER / CONDITIONAL-N_NODES 型 | 节点类 counter +1,每节点恰一次(推进有效位为闸门) |
+| 节点推进 | 派生管线效果推进段 `tick_effect_boundary`(kernel/cw_game_state.py;接线 = observe_screen_context 尾段,备战帧闸=金结算/推进即时);同节点去重守卫在 inventory 内(kernel/cw_effect_inventory.py advance_node) | PLANE_START / NODE_ENTER / CONDITIONAL-N_NODES 型 | 节点类 counter +1,每节点恰一次(推进有效位为闸门) |
 | 动作执行落地 | 刷新 `bump_key(CounterKey.REFRESH)`(operations/cw_screen/cw_screen_buy_cards.py:508)/ 购买 `bump_key(CounterKey.BUY)`(:481);均挂执行落地门,未落地不计数 | ON_REFRESH;BUY 计数键(返利系门槛的驱动源) | 动作类 counter +1 |
 | 跳过消耗 | `consume_use`(prep_actions.py:1512,跳过执行成功回执) | 次数类余量(免战牌) | uses 计数 +1(目标模型)/ 递减镜像(现表示法,§4) |
 | 升级标记 | `on_level_up`(prep_actions.py:1350) | LEVEL_UP | 事件标记(`_EVENT_LEVEL_UP`,下划线前缀与策略计数器键空间隔离,:124) |
