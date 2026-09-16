@@ -343,23 +343,13 @@ def readiness_admission_report(state, comp) -> dict:
                                    line_members=line_members)
 
 
-def readiness_battle_launch(op, ctx):
-    """达标即出战臂调用面(14号稿 §9.6):线成型(fp≥1.00,备战环锚帧)
-    ∧ 战斗就绪 ⇒ 立即部署原子序 + StartBattle,不过
-    ``_cw_locked_sync_done`` 闩(C1:闩只辖恢复局面,达标臂每达标帧发射)
-    ——发射核与恢复局面共用 ``launch_prepared_battle``,禁第二套
-    StartBattle 发射位。
+def _launch_screen_recheck(op, ctx) -> tuple[bool, Any]:
+    """发射前屏态复验(fresh 截图 + 备战双锚;原达标臂内联段原样迁入)。
 
-    **执行时刻新鲜屏态复验**(切屏竞态实测病例·遭遇屏形态:loop 早前读的备战双锚到
-    执行时已过期——切屏瞬间误真,9 拖全空挥 placed=0):发射前重截图
-    复验备战屏锚(复用既有锚,零新参数);非备战屏 → 放弃本次发射,
-    ``readiness_stale_screen`` 分键零静默,屏态过期**非发射失败**(返回
-    (False, 'readiness_stale_screen'),调用方不消耗 C1 失败计数)。
-
-    发射前过 **G1 准入预估**(§9.2 三元+victim 收口,
-    ``readiness_admission_report``):板满∧bench core∧victim 缺失形态
-    记 ``deploy_swap_no_victim`` 分键(零静默,§9.2);准入只显影不拦截
-    (出战优先)。位次 = 备战环动作链之前、守卫计数之前(§10)。"""
+    stale(非备战屏) → ``readiness_stale_screen`` 分键零静默并返回
+    ``(False, 该帧截图)``;复验链异常 → 保守放行(留证 defect,放行/放弃
+    之辩归编排者裁)。复验帧同帧返回供浮层安全检查消费(禁二次截图)。
+    """
     _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
     try:
         _fresh = op.screenshot()
@@ -390,7 +380,105 @@ def readiness_battle_launch(op, ctx):
                 counters.get('readiness_stale_screen', 0) + 1
         log.info('[cw-loop] 达标臂放弃发射:执行时刻非备战屏'
                  '(屏态过期,readiness_stale_screen)')
+    return _still_prep, _fresh
+
+
+def _launch_overlay_gate(op, ctx, screen) -> str | None:
+    """浮层安全检查(原达标臂浮层闸的判据单一源化形态):阶段一身份分发
+    判据复用——分发表内非备战画面命中 = 浮层在场(第十五局实雷:投资策略
+    浮层盖备战,双锚模板穿透命中);遭遇选择面板 = 备战屏上面板(身份分发
+    仍返备战),OCR「遭遇其」前缀兜底(currency_war_encounter.md 出处)。
+    命中返回画面名/面板标识并落 ``readiness_overlay_hold`` 分键零静默;
+    ``None`` = 无浮层。"""
+    _overlay_screens = [s for s in CwLoop.CW_DISPATCH_SCREENS
+                        if s != '货币战争-备战']
+    _match = get_match_screen_name(ctx, screen,
+                                   screen_name_list=_overlay_screens)
+    _ov_hit = _match if isinstance(_match, str) and _match else None
+    if _ov_hit is None and op.round_by_ocr(
+            screen, '遭遇其', lcs_percent=0.9).is_success:
+        # 遭遇选择面板 = 备战屏上的面板(非独立屏):双锚仍可见但槽区被
+        # 覆盖,锚表探不到,OCR 词「遭遇其」前缀兜底(docs/game/screens/
+        # currency_war_encounter.md 出处)。
+        _ov_hit = '遭遇选择面板(OCR:遭遇其*)'
+    if _ov_hit is not None:
+        counters = getattr(strategy_state_of(
+            getattr(ctx, 'cw_match', None).session if getattr(
+                ctx, 'cw_match', None) is not None else None),
+            'cw4_counters', None)
+        if isinstance(counters, dict):
+            counters['readiness_overlay_hold'] = \
+                counters.get('readiness_overlay_hold', 0) + 1
+        log.info('[cw-loop] 达标臂浮层在场(%s)→ 本轮不发射,交由浮层接管面',
+                 _ov_hit)
+    return _ov_hit
+
+
+def launch_battle_unified(op, ctx, *, face: str) -> tuple[bool, str]:
+    """出战统一执行器(迭代 changes/2026-09-16-prep-visit-op design §2.2;
+    landing 3.1 交付,未接线——调用点切换与旧路径退役归 3.3 原子提交,
+    现役三路径语义盘点 = 同目录 audit-executor.md §1)。
+
+    内部序 = 屏态复验 → 浮层安全检查 → face 分轨(部署原子序)→
+    StartBattle 执行。失败语义按调用面分轨:本函数只返回事实
+    ``(launch_ok, detail)``,计数与复位归调用方(禁调用面私有记账入本函数)。
+
+    :param face: ``'armed'``(达标臂面:G1 准入预估显影 + 部署原子序每帧
+        现算不过闩)| ``'resume'``(恢复局面面:闩辖部署原子序一次)。两
+        face 同保屏态复验与浮层安全检查(design 申报:恢复局面面防误触补齐)。
+    """
+    if face not in ('armed', 'resume'):
+        raise ValueError(f'未知调用面: {face!r}(合法 = armed/resume)')
+    _still_prep, _fresh = _launch_screen_recheck(op, ctx)
+    if not _still_prep:
         return False, 'readiness_stale_screen'
+    _ov_hit = _launch_overlay_gate(op, ctx, _fresh)
+    if _ov_hit is not None:
+        return False, f'readiness_overlay_hold:{_ov_hit}'
+    if face == 'armed':
+        _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
+        try:
+            _tc_adm = getattr(strategy_state_of(_sess), 'target_comp', None)
+            if _sess is not None and _tc_adm is not None:
+                _adm = readiness_admission_report(_sess, _tc_adm)
+                if (_adm['board_full'] and _adm['bench_core_waiting']
+                        and _adm['victim_missing']):
+                    counters = getattr(strategy_state_of(_sess),
+                                       'cw4_counters', None)
+                    if isinstance(counters, dict):
+                        counters['deploy_swap_no_victim'] = \
+                            counters.get('deploy_swap_no_victim', 0) + 1
+                    log.warning('[cw!][loop] 达标臂 G1:板满 ∧ bench core '
+                                '待上 ∧ 无合格 victim → 本帧出战无腾位'
+                                '(显影,deploy_swap_no_victim)')
+        except Exception as e:  # noqa: BLE001  准入预估 best-effort
+            log.debug('[cw-loop] G1 准入预估失败(不阻塞): %s', e)
+        return launch_prepared_battle(op, ctx, sync_once=False)
+    return launch_prepared_battle(op, ctx, sync_once=True)
+
+
+def readiness_battle_launch(op, ctx):
+    """达标即出战臂调用面(14号稿 §9.6):线成型(fp≥1.00,备战环锚帧)
+    ∧ 战斗就绪 ⇒ 立即部署原子序 + StartBattle,不过
+    ``_cw_locked_sync_done`` 闩(C1:闩只辖恢复局面,达标臂每达标帧发射)
+    ——发射核与恢复局面共用 ``launch_prepared_battle``,禁第二套
+    StartBattle 发射位。
+
+    **执行时刻新鲜屏态复验**(切屏竞态实测病例·遭遇屏形态):发射前重截图
+    复验备战屏锚;非备战屏 → 放弃本次发射,``readiness_stale_screen``
+    分键零静默,屏态过期**非发射失败**(调用方不消耗 C1 失败计数)。
+    发射前过 **G1 准入预估**(§9.2):板满∧bench core∧victim 缺失形态记
+    ``deploy_swap_no_victim`` 分键(显影不拦截,出战优先)。
+    位次 = 备战环动作链之前、守卫计数之前(§10)。
+
+    (复验半段已抽 ``_launch_screen_recheck`` 与统一执行器
+    ``launch_battle_unified`` 共用;浮层安全检查仍在分支体内,3.3 随
+    达标臂迁移改走 ``_launch_overlay_gate``——本函数行为与抽取前逐值
+    等价,机械迁移。)"""
+    _still_prep, _fresh = _launch_screen_recheck(op, ctx)
+    if not _still_prep:
+        return False, 'readiness_stale_screen'
+    _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
     try:
         _tc_adm = getattr(strategy_state_of(_sess), 'target_comp', None)
         if _sess is not None and _tc_adm is not None:
@@ -1927,40 +2015,17 @@ class CwLoop(SrOperation):
                         counters.get(LAUNCH_QUALITY_DEFER_FRAMES_KEY, 0) + 1
             if _arm_armed:
                 # 浮层在场排除(第十五局实机雷:投资策略浮层盖备战后弹出,
-                # 双锚模板穿透命中 → RunDeploy 拖拽落空 placed=0)。探测复用
-                # 0 系分发锚表(零新参数):备战自身锚以外任一锚命中 = 浮层
-                # 在场 → 本轮不发射,交由浮层接管面(0 系分支)处理;分键
-                # 零静默。深度防御注:本扫描 = 单点兜底,商店浮层穿透的
-                # 主防线已前移至 0n 开商店分支(路由级,先于备战分支整链)。
-                _ov_hit = None
-                for _ov_branch, _ov_screen, _ov_area in \
-                        CwLoop.DISPATCH_AREA_ANCHORS:
-                    if _ov_screen == '货币战争-备战':
-                        continue   # 备战自身锚(双锚),非浮层
-                    if self.round_by_find_area(
-                            screen, _ov_screen, _ov_area,
-                            crop_first=False).is_success:
-                        _ov_hit = f'{_ov_screen}.{_ov_area}'
-                        break
-                if _ov_hit is None and self.round_by_ocr(
-                        screen, '遭遇其', lcs_percent=0.9).is_success:
-                    # 遭遇选择面板 = 备战屏上的面板(非独立屏;切屏竞态实测
-                    # 病例):双锚仍可见但板面槽区被面板覆盖 → 拖拽落进面板
-                    # 覆盖的中部槽区。锚表探不到,补 OCR 词「遭遇其」前缀
-                    #(其X 卡题视遭遇池而定,前缀更稳——出处 =
-                    # docs/game/screens/currency_war_encounter.md:22;
-                    # cw_entry_exit 同款复用,零新参数)。面板在场同不发射,
-                    # 交遭遇接管面。
-                    _ov_hit = '遭遇选择面板(OCR:遭遇其*)'
+                # 双锚模板穿透命中 → RunDeploy 拖拽落空 placed=0;遭遇面板
+                # 9 拖空挥同闸辖)。探测 = _launch_overlay_gate(身份分发
+                # 判据单一源 + 遭遇 OCR 兜底;分键在 helper 内)。深度防御
+                # 注:本扫描 = 单点兜底,商店浮层穿透的主防线已前移至 0n
+                # 开商店分支(路由级,先于备战分支整链)。
+                # (3.1 最小修复:原内联扫描引用两阶段分发重构后已不存在的
+                # CwLoop.DISPATCH_AREA_ANCHORS,armed 帧 AttributeError 潜伏
+                # 炸点——改调统一 helper 消解。)
+                _ov_hit = _launch_overlay_gate(self, self.ctx, screen)
                 if _ov_hit is not None:
                     _arm_armed = False
-                    counters = getattr(strategy_state_of(
-                        self.ctx.cw_match.session), 'cw4_counters', None)
-                    if isinstance(counters, dict):
-                        counters['readiness_overlay_hold'] = \
-                            counters.get('readiness_overlay_hold', 0) + 1
-                    log.info('[cw-loop] 达标臂浮层在场(%s)→ 本轮不发射,'
-                             '交由浮层接管面', _ov_hit)
             if _arm_armed:
                 # 发射帧受限消费仲裁(出口 B;ADR-0566):位次契约 = armed
                 # 判定通过 ∧ 浮层在场闸通过 ∧ 预检通过(helper 内)∧ 发射核
