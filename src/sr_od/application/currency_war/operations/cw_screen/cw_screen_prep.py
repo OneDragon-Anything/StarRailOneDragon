@@ -1,8 +1,9 @@
 """备战执行器 CwScreenPrep:画面执行 / 对账接线 / 商店 obs 依赖面
 (refresh 期望态依赖 obs.cw_shop_obs,留 app 合法向)。
 
-期望态计算与对账纯函数在 kernel/cw_prep_expect(共享给 decision);
-exec_fail 停机旗标族在 run_state。
+对账职责 = 纯观察审计族(羁绊显示/商店池/合成预览/刷新,heavy 定型帧
+消费);动作上报的对账归一走 apply_prep_action_logic 逻辑态直写 +
+观察边界 cw_reconcile 兜底。
 """
 
 from __future__ import annotations
@@ -14,7 +15,6 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cv2.typing import MatLike
 
-from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
@@ -22,11 +22,6 @@ from sr_od.application.currency_war.cw_game_ports import (
     CwObservationSource,
     action_sink,
     observation_source,
-)
-from sr_od.application.currency_war.kernel.cw_economy import (
-    XP_TO_NEXT_LEVEL,
-    xp_apply_clicks,
-    xp_clicks_to_level,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BenchChar,
@@ -47,27 +42,6 @@ from sr_od.application.currency_war.kernel.cw_overlay_registry import (
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     PrepObservation,
-)
-from sr_od.application.currency_war.kernel.cw_prep_expect import (
-    _BUY_DEFECT_KIND,
-    _DRAG_DEFECT_KIND,
-    _DRAG_DEFECT_SURFACE,
-    _EQUIP_DEFECT_KIND,
-    _EQUIP_DEFECT_SURFACE,
-    _XP_DEFECT_KIND,
-    _XP_DEFECT_SURFACE,
-    BuyExpect,
-    DragExpect,
-    EquipDragIntent,
-    EquipExpect,
-    XpLedger,
-    _xp_compare,
-    _xp_parse_buy_clicks,
-    compare_buy_expect,
-    compare_drag_expect,
-    compare_equip_expect,
-    compute_drag_expect,
-    compute_equip_drag_expect,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -266,48 +240,6 @@ def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
 #: 可能自动开商店(时序竞争),单轮入口收起后需等收起动画落地再观察
 #(读互斥:hp/gold 关态可读;原「预收重试窗」随内环 gate 拆除)。
 PRECOLLAPSE_RETRY_S: float = 1.0
-
-
-
-def _save_buy_evidence(evidence_dir: str, file_tag: str, expect: BuyExpect,
-                       mism: list[dict[str, str]], frame: MatLike | None,
-                       bench_slots: list[tuple[int, Rect]]) -> list[str]:
-    """对账不一致时的现场留证(钩子素材;平时零磁盘写入)。
-
-    落盘两类裁片:①买前商店帧的被买牌裁片(expect.crops——像素级「买了
-    什么」证据,比意图对象硬);②定型帧中不一致备战槽的对应裁片(实读
-    现场证据)。文件名带 file_tag(位面-轮次)与身份,便于与台账行互查。
-    返回落盘路径列表(best-effort:单张失败跳过,不阻塞对账记账)。
-    调用方在对账完成后置 ``expect.crops = None`` 释放内存(裁片是拷贝,
-    不留整帧,~125KB/张)。
-    """
-    from one_dragon.utils import cv2_utils
-    paths: list[str] = []
-    try:
-        base = Path(evidence_dir)
-        base.mkdir(parents=True, exist_ok=True)
-        for name, crop in (expect.crops or []):
-            if crop is None:
-                continue
-            p = base / f'buy_expect_{file_tag}_buy_{name}_{len(paths)}.webp'
-            cv2_utils.save_image(crop, str(p))
-            paths.append(str(p))
-        if frame is not None:
-            for m in mism:
-                if m['domain'] != 'bench':
-                    continue
-                slot = int(m['slot'])
-                rect = next((r for s, r in bench_slots if s == slot), None)
-                if rect is None:
-                    continue
-                crop = frame[rect.y1:rect.y2, rect.x1:rect.x2]
-                p = base / (f'buy_expect_{file_tag}_settle_bench'
-                            f'{slot}_{len(paths)}.webp')
-                cv2_utils.save_image(crop, str(p))
-                paths.append(str(p))
-    except Exception:   # noqa: BLE001  留证 best-effort,不阻塞对账记账
-        pass
-    return paths
 
 
 
@@ -555,21 +487,16 @@ class CwScreenPrep(CwScreenOpBase):
         self._action_adapter = PrepLiveActionAdapter()
         # on_outcome 落地登记注册表(架构设计 §6.4;单一发射口,发射即触发
         # ——最严读法:两 fire 口合并,落地回执门退役):本 op 级
-        # 登记件两件 = 经验期望账本推进(LevelUp 直击通道/OpenShop 买波
-        # 通道),发射时点逐位迁移(位置迁移;「未落地不计数」防线由观察
-        # 侧 reconcile 对账承接 = _reconcile_xp_expect,§6.5-1)。执行器内
+        # 登记件原两件 = 经验期望账本推进(LevelUp/OpenShop 两通道),随
+        # 期望账拆除(execstate-dissolution)退役——「未落地不计数」防线
+        # 由逻辑态直写(apply_prep_action_logic LevelUp 分支)与观察覆盖
+        # 承接。执行器内
         # 登记件(刷新计数组免费闸 record_refresh_execution、免战牌
         # consume_use,现役接线点 = cw_op_buy_cards 执行落地门/kernel
         # apply_op_effect 上报路径)**不随本批收编**:该执行链为双路径共链,迁移即
         # 生产行为变化——收编挂账至试点等价门通过后的执行器批(§6.4-R-J
         # 非登记职责留守执行器;免费闸/随点击置位等 §6.5 六条语义以现役
         # 位置逐字保绿)。
-        self.register_outcome_hook(
-            LevelUp, lambda _o: self._xp_apply_levelup(),
-            name='xp_ledger_levelup')
-        self.register_outcome_hook(
-            OpenShop, lambda _o: self._xp_apply_buy_clicks(_o.detail),
-            name='xp_ledger_buy_clicks')
 
     # ===== 观察(F2:只由现成 reader 产出)=====
 
@@ -1041,16 +968,13 @@ class CwScreenPrep(CwScreenOpBase):
         )
         from sr_od.application.currency_war.kernel.cw_vocab import (
             ClickSpheres,
-            DeployMove,
             FurnaceUse,
-            LevelUp,
             LuckyTokenUse,
             OpenBookcard,
             OpenTome,
             PerfectProjectorUse,
             PrecisionWrenchUse,
             PrivilegeCardUse,
-            SellDeployed,
             StaffProjectorUse,
             WearEquip,
             WrenchUse,
@@ -1095,8 +1019,7 @@ class CwScreenPrep(CwScreenOpBase):
                 sig=ChannelSig(family='logic_action', actor='CwScreenPrep'),
                 session=_sess)
             # 黑板帧键 = SIFT 槽位信息位(物理槽号);动作携容器下标,读键
-            # 映射 = 下标+1(构造不变量 slot=idx+1,与 cw_prep_expect 入口
-            # 同一处换算声明)。
+            # 映射 = 下标+1(构造不变量 slot=idx+1,容器槽位表换算惯例)。
             _slot_key = action.bench_idx + 1
             _bench = [bc for bc in (getattr(obs, 'bench_chars', None) or [])
                       if bc is None or getattr(bc, 'slot', None) != _slot_key]
@@ -1336,273 +1259,6 @@ class CwScreenPrep(CwScreenOpBase):
         )
         reconcile_tracking(session, bench, deployed, screen, source='director', ctx=self.ctx)
 
-    def _reconcile_drag_expect(self, expect: DragExpect) -> None:
-        """拖动期望态对账(零决策行为变更:不一致仅落台账)。
-
-        读法:复用**下一入口 heavy 定型帧**(ADR-0517 迁移后对账归入口时点,
-        ``_v2_post_frame_accounting`` 消费暂存 acct 时 ``self.last_screenshot``
-        即入口帧,零新增截屏);身份读走 identify_slots 纯读组合(**不经
-        read_bench_chars**——后者内置召唤物/书册卡停机钩子,动画帧误触停机
-        即违背本对账零行为约束;先例=观测自检框架 §2.2 身份回读)。deployed
-        排复用 read_deployed_chars(其挂点均为留证级非停机,且后排布局选档
-        单一源)。全部 best-effort:任一环节失败静默跳过(宁缺勿造)。
-        """
-        try:
-            frame = getattr(self, 'last_screenshot', None)
-            if frame is None:
-                return
-            templates = ensure_portrait_templates(self.ctx)
-            if templates is None:
-                return
-            from sr_od.application.currency_war.obs.cw_identity_obs import (
-                _ctx_slots,
-                identify_slots,
-                read_deployed_chars,
-            )
-            bench_read = identify_slots(
-                frame, templates, _ctx_slots(self.ctx, '备战栏', 9), '')
-            deployed_read = read_deployed_chars(self.ctx, frame, templates)
-            mism = compare_drag_expect(expect, bench_read, deployed_read)
-            if not mism:
-                return
-            # 缺陷行 plane/round 记账面读数 = 容器读口(容器化段 2:
-            # _cached_state 槽退役;读口缺省镜像 1 取代旧 getattr 0 兜底,
-            # 留证行数值口径变化已申报)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                plane_of as _p_of,
-            )
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                round_num_of as _r_of,
-            )
-            _gs_def = game_state_of(self._session())
-            exp_txt = (f'{expect.kind} identity={expect.identity} '
-                       f'from_bench_idx={expect.from_bench_idx}'
-                       + (f' target_row={expect.target_row}'
-                          if expect.kind == 'deploy_move' else ''))
-            obs_txt = ';'.join(f"{m['domain']}槽{m['slot']} 期望[{m['expected']}] "
-                               f"实读[{m['observed']}]" for m in mism)
-            defects.record_defect(
-                _DRAG_DEFECT_SURFACE, _DRAG_DEFECT_KIND,
-                expected=exp_txt, observed=obs_txt,
-                plane=int(_p_of(_gs_def)),
-                round_num=int(_r_of(_gs_def)),
-                gap_large=True,
-                verdict=('留证-拖动后期望态与定型帧实读不一致(身份未识别槽不评;'
-                         '单次 L1,复现自动升 L0,停线由分级安灯承接;本对账'
-                         '零决策行为,不 return/不重拖)'),
-                refs=[{'field': k, 'value': v} for k, v in (
-                    ('kind', expect.kind), ('identity', expect.identity),
-                    ('from_bench_idx', str(expect.from_bench_idx)),
-                    ('target_row', expect.target_row))],
-                reader_source='drag_expect_reconcile',
-                note='期望态层:期望=动作意图纯函数,与 W512 paddle 动作级对拍分立(身份级 vs 计数级)')
-        except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
-            log.debug(f'[cw-director] drag_expect reconcile skip: {e}')
-
-    def _reconcile_buy_expect(self, expect: BuyExpect) -> None:
-        """买牌期望态对账(购买单元完成后调用;零决策行为变更:不一致仅落台账)。
-
-        读法与 _reconcile_drag_expect 同款:复用 heavy 定型帧(last_screenshot,
-        零新增截屏)+ identify_slots/read_deployed_chars 纯读组合(不经
-        read_bench_chars 停机钩子)。全部 best-effort:任一环节失败静默跳过
-        (宁缺勿造)。低置信子案(满栏自动多买)不一致照常落账——对账不一致
-        =证据,如实落台账不改语义(merge_mechanics §2.5 声明由对账实证修正)。
-        """
-        try:
-            frame = getattr(self, 'last_screenshot', None)
-            if frame is None:
-                return
-            templates = ensure_portrait_templates(self.ctx)
-            if templates is None:
-                return
-            from sr_od.application.currency_war.obs.cw_identity_obs import (
-                _ctx_slots,
-                identify_slots,
-                read_deployed_chars,
-            )
-            bench_read = identify_slots(
-                frame, templates, _ctx_slots(self.ctx, '备战栏', 9), '')
-            deployed_read = read_deployed_chars(self.ctx, frame, templates)
-            mism = compare_buy_expect(expect, bench_read, deployed_read)
-            if not mism:
-                return
-            # 缺陷行 plane/round 记账面读数 = 容器读口(容器化段 2,同拖动通道)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                plane_of as _p_of,
-            )
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                round_num_of as _r_of,
-            )
-            _gs_def = game_state_of(self._session())
-            exp_txt = (f'buy {expect.summary} 总价{expect.total_cost}'
-                       + ('(低置信:满栏自动多买)' if expect.low_confidence else ''))
-            obs_txt = ';'.join(f"{m['domain']}槽{m['slot']} 期望[{m['expected']}] "
-                               f"实读[{m['observed']}]" for m in mism)
-            # 现场留证(仅不一致时落盘,平时零磁盘写入):买前商店牌裁片
-            # (像素级「买了什么」证据)+ 定型帧不一致备战槽裁片;落在台账
-            # 回放目录(与 defect_ledger 同域)。file_tag=位面-轮次 便于互查。
-            evidence: list[str] = []
-            try:
-                _rec = state.get_recorder()
-                _dir = getattr(_rec, 'replay_dir', None) if _rec else None
-                if _dir:
-                    _tag = (f"p{int(_p_of(_gs_def))}"
-                            f"-r{int(_r_of(_gs_def))}")
-                    evidence = _save_buy_evidence(
-                        str(_dir), _tag, expect, mism, frame,
-                        _ctx_slots(self.ctx, '备战栏', 9))
-            except Exception:   # noqa: BLE001  留证 best-effort
-                evidence = []
-            defects.record_defect(
-                _DRAG_DEFECT_SURFACE, _BUY_DEFECT_KIND,
-                expected=exp_txt, observed=obs_txt,
-                plane=int(_p_of(_gs_def)),
-                round_num=int(_r_of(_gs_def)),
-                gap_large=True,
-                verdict=('留证-买牌后期望态与定型帧实读不一致(仅评增量槽;'
-                         '身份未识别槽不评;单次 L1,复现自动升 L0,停线由'
-                         '分级安灯承接;本对账零决策行为,不 return/不重买)'),
-                refs=[{'field': k, 'value': v} for k, v in (
-                    ('summary', expect.summary),
-                    ('total_cost', str(expect.total_cost)),
-                    ('low_confidence', str(expect.low_confidence)),
-                    ('changed_bench', ','.join(map(str, expect.changed_bench))),
-                    ('changed_deployed', ','.join(map(str, expect.changed_deployed))),
-                    ('evidence', ';'.join(evidence)))],
-                shot=evidence[0] if evidence else None,
-                reader_source='buy_expect_reconcile',
-                note='期望态层·买牌:期望=购买意图纯函数(落点规则单一源 '
-                     'cw_state._merge_bench),与拖动通道 intent_state_mismatch 分立')
-        except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
-            log.debug(f'[cw-director] buy_expect reconcile skip: {e}')
-        finally:
-            expect.crops = None   # 对账完成即释放裁片拷贝(内存,~125KB/张)
-
-# ===== 经验期望态账本(纯记账+对账,零决策行为变更)=====
-
-    def _xp_ledger(self) -> XpLedger | None:
-        """会话级账本取存(动态属性挂 StrategySession——pending_buy_expect
-        同款先例;session 每局新建 → 账本天然局级生命周期,跨局零残留)。"""
-        session = self._session()
-        if session is None:
-            return None
-        led = getattr(exec_state_of(session), 'xp_expect_ledger', None)
-        if led is None:
-            led = XpLedger()
-            exec_state_of(session).xp_expect_ledger = led
-        return led
-
-    def _xp_apply_levelup(self) -> None:
-        """直接 LevelUp 动作通道推进账本(腾席链/备战买经验;发射时点触发,
-        批3a:原落地回执门已退役——发射即推算推进,级真值由下一帧
-        观察 reconcile 对账吸收,失配落缺陷台账)。批 2a R6 逐帧单击形态:
-        每次发射 = 单击(+XP_PER_BUY 经验),推进步长恒 1 击——升 N 击 =
-        N 次发射(N 帧),不再按「至下一级击数」整级推进(整级推进会让
-        账本超前进度,对账误报)。未锚定 → 丢弃(对局首帧锚定前的意图
-        不推算,由锚点吸收)。"""
-        led = self._xp_ledger()
-        if led is None or not led.anchored:
-            return
-        if xp_clicks_to_level(led.level, led.xp_cur) <= 0:
-            return   # 满级/已达门槛:购买无效,零推进
-        led.level, led.xp_cur = xp_apply_clicks(led.level, led.xp_cur, 1)
-        led.xp_next = XP_TO_NEXT_LEVEL.get(led.level, led.xp_cur)
-        led.pending_clicks += 1
-        led.events_txt += '+LevelUp×1(击)'
-
-    def _xp_apply_buy_clicks(self, detail: str) -> None:
-        """购买单元通道推进账本:执行 detail 解析升级次数(执行侧实况
-        计数,shop.py total_xp_buy 口径(买经验击数;非升级次数——单击=+4XP 非整级);发射时点触发,批3a:原 progressed
-        门已退役——商店编排机械完成后携摘要 detail,解析不出击数
-        (单元中断等)自然零推进,差值由下一帧观察 reconcile 对账吸收)。
-        已知盲区:shop._handle_bench_full 席满急救的盲击购买经验不经单元
-        摘要 → 不在账,该形态的不一致是本对账的预期留证对象(verdict
-        注明,不改语义)。未锚定 → 丢弃(同上)。"""
-        led = self._xp_ledger()
-        if led is None or not led.anchored:
-            return
-        clicks = _xp_parse_buy_clicks(detail)
-        if clicks <= 0:
-            return
-        led.level, led.xp_cur = xp_apply_clicks(led.level, led.xp_cur, clicks)
-        led.xp_next = XP_TO_NEXT_LEVEL.get(led.level, led.xp_cur)
-        led.pending_clicks += clicks
-        led.events_txt += f'+buy×{clicks}击'
-
-    def _reconcile_xp_expect(self, obs: PrepObservation) -> None:
-        """备战稳定帧经验对账(heavy 帧消费;零决策:不一致仅落缺陷台账,
-        不 return/不重买)。段语义见 XpLedger:轮界重锚(外生经验吸收并
-        披露)/锚定前不对账/同段有未对账购买意图才评;display 或 level
-        失读 → 保 pending 不评下帧重试(宁缺勿造)。全程 best-effort。"""
-        try:
-            led = self._xp_ledger()
-            session = self._session()
-            if led is None or session is None:
-                return
-            # 容器化段 2:锚定/比对读数 = 容器读口(xp/level/plane/round;
-            # obs.state 视图槽退役,容器记录值为同一供数源)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                level_of,
-                plane_of,
-                round_num_of,
-            )
-            _gs = game_state_of(session)
-            display = _gs.xp.value
-            level_obs = int(level_of(_gs))
-            key = (int(plane_of(_gs)), int(round_num_of(_gs)))
-            if not led.anchored:
-                if display is not None and level_obs > 0:
-                    led.level, led.xp_cur = level_obs, display[0]
-                    led.xp_next = display[1]
-                    led.anchored = True
-                    led.round_key = key
-                    led.pending_clicks = 0
-                    led.events_txt = ''
-                return
-            if led.round_key != key:
-                # 轮界重锚:外生经验流(轮奖励/位面过渡,未建模)吸收进锚点;
-                # 同级同门槛帧才把差值记入 exogenous_xp(异级差值不可分,不记)。
-                if display is not None and level_obs > 0:
-                    if led.level == level_obs and display[1] == led.xp_next:
-                        led.exogenous_xp += max(0, display[0] - led.xp_cur)
-                    led.level, led.xp_cur = level_obs, display[0]
-                    led.xp_next = display[1]
-                    led.round_key = key
-                    led.pending_clicks = 0
-                    led.events_txt = ''
-                return
-            if led.pending_clicks <= 0:
-                return
-            mism = _xp_compare(led, display, level_obs)
-            clicks = led.pending_clicks
-            events = led.events_txt
-            led.pending_clicks = 0
-            led.events_txt = ''
-            if not mism:
-                return
-            obs_txt = ';'.join(f"{m['domain']}/{m['slot']} "
-                               f"期望[{m['expected']}] 实读[{m['observed']}]"
-                               for m in mism)
-            defects.record_defect(
-                _XP_DEFECT_SURFACE, _XP_DEFECT_KIND,
-                expected=(f'lv{led.level} xp {led.xp_cur}/{led.xp_next}'
-                          f'(账本;events={events or "本段"})'),
-                observed=(f'lv{level_obs} xp '
-                          + (f'{display[0]}/{display[1]}' if display else '失读')
-                          + (f';{obs_txt}' if obs_txt else '')),
-                plane=key[0], round_num=key[1],
-                gap_large=True,
-                verdict=('留证-买经验后期望账本与显示读数不一致(零决策记账;'
-                         '已知盲区=shop 席满急救盲击购买经验不经账,该形态为'
-                         '预期留证;单次 L1,复现升 L0 由分级安灯承接)'),
-                refs=[{'field': k, 'value': v} for k, v in (
-                    ('pending_clicks', str(clicks)), ('events', events))],
-                reader_source='xp_expect_reconcile',
-                note='期望态层·经验:期望=锚点读数+购买意图纯函数推进'
-                     '(XP_TO_NEXT_LEVEL 结转),与买牌/拖动通道分立')
-        except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
-            log.debug(f'[cw-director] xp_expect reconcile skip: {e}')
-
     def _reconcile_faction_display(self, obs: PrepObservation) -> None:
         """备战稳定帧羁绊显示对账(cw_faction_obs 接线;零决策:不一致仅落
         缺陷台账,不纠漂不重读——羁绊状态以计算侧为主源,显示只作对账票)。
@@ -1612,8 +1268,8 @@ class CwScreenPrep(CwScreenOpBase):
         OCR(cw_faction_obs.read_displayed_factions,只读可视条目)。截断/
         OCR 失读/残名按 cw_faction_obs 口径不评不判错,仅计数随 refs 披露;
         ``computed_missing`` 形态(compare 第四态)同为留证不判错,
-        report_faction_reconcile 只转发 mismatch 行。节奏 = 与
-        _reconcile_xp_expect 同款 heavy 定型帧消费,全程 best-effort。
+        report_faction_reconcile 只转发 mismatch 行。节奏 = heavy 定型帧
+        消费,全程 best-effort。
         """
         try:
             session = self._session()
@@ -1681,8 +1337,8 @@ class CwScreenPrep(CwScreenOpBase):
         (cw_state 只有我方 tracked 持有,池内剩余无人建账)→ 传 None =
         只查 tier 门,池守恒查如实降级(无池账口径),refs 披露。
         tier_locked = 该费用档在当前等级概率为 0(REFRESH_PROB 单一源)
-        = 牌识别错或等级读错的强证据。节奏 = 与 _reconcile_xp_expect
-        同款 heavy 定型帧消费,全程 best-effort。
+        = 牌识别错或等级读错的强证据。节奏 = heavy 定型帧消费,全程
+        best-effort。
         """
         try:
             session = self._session()
@@ -1797,129 +1453,6 @@ class CwScreenPrep(CwScreenOpBase):
         except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
             log.debug(f'[cw-director] merge_preview reconcile skip: {e}')
 
-    # ===== 装备期望态对账(纯记账+对账,零决策行为变更)=====
-    # 语义单一源 = docs/game/currency_war/research/equipment_mechanics.md §1.1
-    # (两件简易必合成无共存 28/28 配方实证 / 角色装备上限 3 件 / 合成落点 =
-    # 角色最左简易槽 / 装备不堆叠每格一件 / 卖角色=装备全量回装备区;
-    # 唯一件=待确认项,本批不建模)。合成规则单一源 = cw_synthesis
-    # (synthesize_target/self_advance,图谱派生自注册表,勿自造第二套)。
-    # 架构与买牌/拖动/经验通道同构:动作意图 →
-    # 期望增量(纯函数)→ heavy 定型帧实读(read_equip_grid 逐格三态)比对
-    # → 不一致落缺陷台账;一致/不可评不打扰。遮挡格按三态如实跳过
-    # (不评不算错);穿戴侧(read_equipped_below)精度未验证,按不评口径
-    # (失读/空读一律不建期望,宁缺勿造)。
-
-    def _equip_expect_for_sell(self, action: SellDeployed) -> EquipExpect | None:
-        """卖上阵角色 → 「装备全量回装备区」期望(equipment_mechanics §1.1)。
-
-        已穿装备读 = read_equipped_below(below-avatar TM;精度未验证——
-        按不评口径:空读/失读/坐标缺失一律 None 不评,不发明期望);
-        装备区 before 快照 = 同帧 read_equip_grid 非遮挡占用计数(遮挡格
-        进快照会污染 after 对账基准 → 有遮挡即不评)。全程 best-effort。
-        """
-        try:
-            frame = getattr(self, 'last_screenshot', None)
-            if frame is None:
-                return None
-            from sr_od.application.currency_war.obs.cw_back_layout import (
-                select_back_layout,
-            )
-            from sr_od.application.currency_war.obs.cw_equipment import (
-                ensure_equip_sift_templates,
-                ensure_equip_tm_templates,
-                read_equip_grid,
-                read_equipped_below,
-            )
-            grays = ensure_equip_tm_templates(self.ctx)
-            templates = ensure_equip_sift_templates(self.ctx)
-            if grays is None or templates is None:
-                return None
-            # 容器下标 → (排, 槽号) 读键映射 = kernel deployed_row_slot
-            # 单一函数(执行坐标边换算收口)。
-            row, slot_no = deployed_row_slot(action.deployed_idx)
-            if row == 'front':
-                prefix, n = '前排', 4
-            else:
-                n, prefix = select_back_layout(self.ctx, frame)
-            from sr_od.application.currency_war.obs.cw_identity_obs import (
-                _ctx_slots,
-                avatar_to_below,
-            )
-            rect = next((r for i, r in _ctx_slots(self.ctx, prefix, n)
-                         if i == slot_no), None)
-            if rect is None:
-                return None
-            equipped = read_equipped_below(
-                frame, grays, [(slot_no, avatar_to_below(rect))]
-            ).get(slot_no, [])
-            if not equipped:
-                return None   # 未穿/穿戴读失读:无可评增量,不评
-            # 前置契约:帧 = 决策环定型截图(gate stable 已判「货币战争-备战」)。
-            # 干净备战判定在外层画面识别层,read_equip_grid 不再自带遮挡守卫。
-            cells = read_equip_grid(frame, templates)
-            before: dict[str, int] = {}
-            for c in cells:
-                if c.name is not None:
-                    before[c.name] = before.get(c.name, 0) + 1
-            return compute_equip_drag_expect(
-                EquipDragIntent(kind='sell_char', source_name='',
-                                equipped_names=tuple(sorted(equipped))), before)
-        except Exception:   # noqa: BLE001  期望构建 best-effort,不阻塞环
-            return None
-
-    def _reconcile_equip_expect(self, expect: EquipExpect) -> None:
-        """装备期望态对账(heavy 定型帧消费;零决策:不一致仅落缺陷台账,
-        不 return/不重拖)。读法 = read_equip_grid 纯读逐格分类(占用/空两态),
-        复用本轮 heavy 定型帧(last_screenshot,零新增截屏)。全程 best-effort。
-        前置契约:定型帧经 gate stable 判「货币战争-备战」;干净判定在外层画面
-        识别层,read_equip_grid 不再自带遮挡守卫。
-        """
-        try:
-            frame = getattr(self, 'last_screenshot', None)
-            if frame is None:
-                return
-            from sr_od.application.currency_war.obs.cw_equipment import (
-                ensure_equip_sift_templates,
-                read_equip_grid,
-            )
-            templates = ensure_equip_sift_templates(self.ctx)
-            if templates is None:
-                return
-            cells = read_equip_grid(frame, templates)
-            mism = compare_equip_expect(expect, cells)
-            if not mism:
-                return
-            # 缺陷行 plane/round 记账面读数 = 容器读口(容器化段 2,同拖动通道)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                plane_of as _p_of,
-            )
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                round_num_of as _r_of,
-            )
-            _gs_def = game_state_of(self._session())
-            obs_txt = ';'.join(f"{m['slot']} 期望[{m['expected']}] "
-                               f"实读[{m['observed']}]" for m in mism)
-            defects.record_defect(
-                _EQUIP_DEFECT_SURFACE, _EQUIP_DEFECT_KIND,
-                expected=f'equip {expect.summary}',
-                observed=obs_txt,
-                plane=int(_p_of(_gs_def)),
-                round_num=int(_r_of(_gs_def)),
-                gap_large=True,
-                verdict=('留证-装备拖拽期望态与装备区实读不一致(穿戴读精度未验证'
-                         '按不评口径;equip=中决策相关面,'
-                         '单次 L2 初判,复现升 L1;本对账零决策行为,'
-                         '不 return/不重拖)'),
-                refs=[{'field': k, 'value': v} for k, v in (
-                    ('kind', expect.kind), ('summary', expect.summary),
-                    ('product', expect.product),
-                    ('deltas', ';'.join(f'{k}:{v:+d}'
-                                        for k, v in expect.deltas.items())))],
-                reader_source='equip_expect_reconcile',
-                note='期望态层·装备:期望=拖拽意图纯函数(equipment_mechanics '
-                     '§1.1;合成单一源 cw_synthesis),与买牌/拖动/经验通道分立')
-        except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
-            log.debug(f'[cw-director] equip_expect reconcile skip: {e}')
 
     def _session(self) -> StrategySession | None:
         match = getattr(self.ctx, 'cw_match', None)
@@ -1984,20 +1517,14 @@ class CwScreenPrep(CwScreenOpBase):
         _tk = self._takeover_collect_if_needed(match, session)
         if _tk is not None:
             return _tk
-        # —— ② 对账段:本轮入口 heavy 观察 vs session 历史/上轮期望(acct 空 = 无新执行动作,
-        #      仅消费 pending_buy_expect + 经验/羁绊/商店池/合成预览留证族)。
-        #      ADR-0517 迁移批:上一访问逐动作暂存的期望态记账(acct 族)在此
-        #      时点统一消费——入口观察即对账(决策 8),per-action heavy 重读
-        #      契约已灭(逐动作零读屏,期望态由逻辑态直写承载;逻辑态建模分叉由本对账
-        #      在下一入口暴露,错卖类不可逆损害窗口的收窄手段 = 执行侧
-        #      tracked 账随动,同商店线双账口径)。
-        for _pend in list(getattr(exec_state_of(session), 'cw_prep_pending_accts', None) or []):
-            self._v2_post_frame_accounting(obs, _pend, session)
-        exec_state_of(session).cw_prep_pending_accts = []
-        self._v2_post_frame_accounting(obs, {'key': None,
-                                             'drag_expect': None, 'equip_expect': None,
-                                             'dep_delta': 0, 'dep_pre': None,
-                                             'unit_open': False}, session)
+        # —— ② 对账段:本轮入口 heavy 观察 = 纯观察审计族消费点
+        #      (羁绊显示/商店池/合成预览/刷新留证;零决策)。
+        #      ADR-0517 决策 8 的「入口观察即对账」时点存续,per-action
+        #      heavy 重读契约已灭。动作上报的对账归一 = 逻辑态直写
+        #      (apply_prep_action_logic)+ 观察边界 cw_reconcile 兜底;
+        #      错卖类不可逆损害窗口的收窄手段 = 执行侧
+        #      tracked 账随动,同商店线双账口径。
+        self._v2_post_frame_accounting(obs, session)
         # —— 决策前置:~~席满破墙(M16)~~ 已随 read_bench_full 通道退役
         #      (迁移批次二,设计 §3.2.5:警告出现太短暂无法可靠采样,玩家
         #      裁定 2026-09-09;「双证据互督」随字段裁撤一并取消)。模态
@@ -2014,7 +1541,7 @@ class CwScreenPrep(CwScreenOpBase):
         #      hp 消费统一经 decision_hp 门前真值+施门)。
         #      —— ③④⑤ 单动作决策循环(ADR-0517 迁移批;前身份 = 序列消费 +
         #      每动作落地后 heavy 重观察的保守口径)。新形态:入口 heavy 一次
-        #      建期望态 → 逐动作『决策(黑板=逻辑态)→ F3 校验 → 期望态计算 →
+        #      建黑板 → 逐动作『决策(黑板=逻辑态)→ F3 校验 →
         #      执行 → 逻辑态直写』循环,循环内零读屏。已知画面出口
         #      (OpenShop/StartBattle/OpenBox)= 终结 op,执行即本访问结束
         #      交回外循环(下次入口重观察)。
@@ -2053,31 +1580,10 @@ class CwScreenPrep(CwScreenOpBase):
             if err is not None:
                 log.warning(f'[cw!][director] 参数非法 {key}: {err} → 拒绝,交回外循环留证')
                 return self.round_success(f'参数非法 {key}:{err},交回外循环留证', wait=1.0)
-            # —— ④ 期望态计算(动作发出点;None=无法建真值不评)+ 执行前置记账
-            _drag_expect = None
-            if isinstance(action, (SellBench, DeployMove)):
-                _drag_expect = compute_drag_expect(
-                    action, obs.bench_chars, obs.deployed_chars)
-            _equip_expect = None
-            if isinstance(action, SellDeployed):
-                _equip_expect = self._equip_expect_for_sell(action)
-            _dep_delta = 0
-            _dep_pre: int | None = None
-            if isinstance(action, (DeployMove, SellDeployed)):
-                _dep_delta = 1 if isinstance(action, DeployMove) else -1
-                _dep_frame = getattr(self, 'last_screenshot', None)
-                if _dep_frame is not None:
-                    try:
-                        _dep_pre = read_deployed_count(self.ctx, _dep_frame)
-                    except Exception:   # noqa: BLE001  观测 best-effort
-                        _dep_pre = None
-            acct: dict = {'last_obs': obs, 'key': key,
-                          'drag_expect': _drag_expect, 'equip_expect': _equip_expect,
-                          'dep_delta': _dep_delta, 'dep_pre': _dep_pre, 'unit_open': False}
-            # —— ⑤ 执行(机械执行,无成败回执;发出即职责完成)+ 结束判定
+            # —— ⑤ 执行(机械执行,无成败回执;发出即职责完成)
             #      执行体 = _act_execute(两路径共用抽提体):落地登记注册表
             #      (§6.4 on_outcome)在其发射点统一触发(单一发射口,发射即
-            #      触发),经验账本两件经钩子推进(原内联位逐位迁移)。
+            #      触发)。
             try:
                 self._act_execute(action, obs)
             except StopBrakeShortCircuit as e:
@@ -2097,13 +1603,6 @@ class CwScreenPrep(CwScreenOpBase):
                 _st_tok.cw4_frame_action_record = (
                     type(action).__name__, _st_tok.cw4_segment_serial)
             _visit_acts.append(type(action).__name__)
-            # 期望态记账暂存(ADR-0517:对账归下一入口时点;per-action heavy
-            # 重观察契约退役,对账族消费帧 = 下次入口 heavy。批3a:发出即
-            # 登记 + 对账纠偏——原 acct['progressed'] 字段随回执退役,期望态
-            # 对账族消费观察侧 reconcile 落地判定,失配 = 纠偏/缺陷台账)
-            if exec_state_of(session).cw_prep_pending_accts is None:
-                exec_state_of(session).cw_prep_pending_accts = []
-            exec_state_of(session).cw_prep_pending_accts.append(acct)
             # —— 结束判定 → 交回外循环(动画等待已由执行器/编排内建)
             #      批3 终结判定对齐:终结集与等待时长改读注册表 op 类
             #      terminal/terminal_wait 类属性(消费点经注册表读类属性,
@@ -2191,19 +1690,14 @@ class CwScreenPrep(CwScreenOpBase):
           + _observe 的备战席观察写端[P2-1 空集失读守卫/P3-10 特效窗
           观察顺延门])——识别质量机制归实机实现内部,对端口契约不可见
           (§2.3;obs.state 消费视图随黑板槽退役消亡,容器化段 2);
-        - 本段 = op 级对账:上一访问逐动作暂存的期望态记账(acct 族)在
-          本帧定型帧统一消费(ADR-0517 决策 8:入口观察即对账)。原观察
+        - 本段 = op 级对账:纯观察审计族在本帧定型帧统一消费(ADR-0517
+          决策 8:入口观察即对账)。动作上报的对账归一 = 逻辑态直写
+          (apply_prep_action_logic)+ 观察边界 cw_reconcile 兜底。原观察
           终饰(dual 态拷回/gated_hp 单写者门)已随黑板槽退役消亡——
           dual_track_phase 不入容器(消费读 committed_from 派生),hp
           消费统一经 decision_hp(容器化段 2,设计件 §2.4-2)。"""
         session = self._match().session
-        for _pend in list(getattr(exec_state_of(session), 'cw_prep_pending_accts', None) or []):
-            self._v2_post_frame_accounting(payload, _pend, session)
-        exec_state_of(session).cw_prep_pending_accts = []
-        self._v2_post_frame_accounting(payload, {'key': None,
-                                                 'drag_expect': None, 'equip_expect': None,
-                                                 'dep_delta': 0, 'dep_pre': None,
-                                                 'unit_open': False}, session)
+        self._v2_post_frame_accounting(payload, session)
 
     def lifecycle_decision_cycle(self, payload: PrepObservation) -> OperationRoundResult:
         """段3-5 单动作决策循环。
@@ -2253,27 +1747,6 @@ class CwScreenPrep(CwScreenOpBase):
             if err is not None:
                 log.warning(f'[cw!][director] 参数非法 {key}: {err} → 拒绝,交回外循环留证')
                 return self.round_success(f'参数非法 {key}:{err},交回外循环留证', wait=1.0)
-            # —— 期望态计算(动作发出点;None=无法建真值不评)+ 执行前置记账
-            _drag_expect = None
-            if isinstance(action, (SellBench, DeployMove)):
-                _drag_expect = compute_drag_expect(
-                    action, payload.bench_chars, payload.deployed_chars)
-            _equip_expect = None
-            if isinstance(action, SellDeployed):
-                _equip_expect = self._equip_expect_for_sell(action)
-            _dep_delta = 0
-            _dep_pre: int | None = None
-            if isinstance(action, (DeployMove, SellDeployed)):
-                _dep_delta = 1 if isinstance(action, DeployMove) else -1
-                _dep_frame = getattr(self, 'last_screenshot', None)
-                if _dep_frame is not None:
-                    try:
-                        _dep_pre = read_deployed_count(self.ctx, _dep_frame)
-                    except Exception:   # noqa: BLE001  观测 best-effort
-                        _dep_pre = None
-            acct: dict = {'last_obs': payload, 'key': key,
-                          'drag_expect': _drag_expect, 'equip_expect': _equip_expect,
-                          'dep_delta': _dep_delta, 'dep_pre': _dep_pre, 'unit_open': False}
             # —— 段4 act(适配器②:意图机械执行)+ 段5 on_outcome(落地
             #      登记注册表在 _act_execute 发射点统一触发;单一发射口,
             #      发射即触发,发出即职责完成)
@@ -2297,12 +1770,6 @@ class CwScreenPrep(CwScreenOpBase):
                 _st_tok.cw4_frame_action_record = (
                     type(action).__name__, _st_tok.cw4_segment_serial)
             _visit_acts.append(type(action).__name__)
-            # 期望态记账暂存(ADR-0517:对账归下一入口时点;per-action heavy
-            # 重观察契约退役,对账族消费帧 = 下次入口 heavy。批3a:发出即
-            # 登记 + 对账纠偏——原 acct['progressed'] 字段随回执退役)
-            if exec_state_of(session).cw_prep_pending_accts is None:
-                exec_state_of(session).cw_prep_pending_accts = []
-            exec_state_of(session).cw_prep_pending_accts.append(acct)
             # —— 结束判定 → 交回外循环(动画等待已由执行器/编排内建)
             #      批3 终结判定对齐(同 run 体;终结集与等待时长经注册表
             #      op 类 terminal/terminal_wait,两处孪生环共用 _terminal_exit)
@@ -3082,72 +2549,24 @@ class CwScreenPrep(CwScreenOpBase):
         self._probe_node_type()
         return True, f'买牌 {_summary}'
 
-    def _v2_post_frame_accounting(self, obs: PrepObservation, acct: dict,
+    def _v2_post_frame_accounting(self, obs: PrepObservation,
                                   session: StrategySession) -> None:
-        """新环 heavy 定型帧上的动作级对账族(旧环同帧消费逐位对齐;零决策)。
+        """新环 heavy 定型帧上的纯观察审计族(零决策)。
 
-        输入 = 本帧 obs + acct(最近一步动作记账状态);每通道内部
-        best-effort,异常不阻塞环。覆盖:paddle 审计 / 拖动期望 / 买牌
-        期望(买牌期望上报通道,蓝图 §7)/ 经验 / 羁绊显示 /
-        商店池 / 合成预览 / 卖角色装备期望。
+        输入 = 本帧 obs;每通道内部 best-effort,异常不阻塞环。覆盖:
+        羁绊显示 / 商店池 / 合成预览。动作期望账通道(paddle 审计/
+        drag_expect/买牌期望/经验/装备期望)不属本口——动作上报的对账
+        归一 = 逻辑态直写(apply_prep_action_logic)+ 观察边界
+        cw_reconcile 兜底。
         """
         import contextlib
 
-        from sr_od.application.currency_war.obs.cw_observation import (
-            read_deployed_count,
-        )
-
-        key = acct.get('key')
-        # 动作级板面对拍(后读;期望不等 = 未生效证据,纯留证)
-        if acct.get('dep_pre') is not None:
-            with contextlib.suppress(Exception):
-                # 缺陷行 plane/round = 容器读口(容器化段 2,同对账族)。
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    plane_of as _p_of,
-                )
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    round_num_of as _r_of,
-                )
-                _gs_def = game_state_of(session)
-                _dep_post = read_deployed_count(self.ctx, self.last_screenshot)
-                if _dep_post is not None and _dep_post - acct['dep_pre'] != acct['dep_delta']:
-                    _gap = _dep_post - acct['dep_pre']
-                    defects.record_defect(
-                        'deployed', 'invariant_break',
-                        expected=f'{key} 执行后 paddle={acct["dep_pre"] + acct["dep_delta"]}',
-                        observed=f'paddle={_dep_post}',
-                        plane=int(_p_of(_gs_def)),
-                        round_num=int(_r_of(_gs_def)),
-                        gap=float(_gap), gap_large=True,
-                        reader_source='paddle_action_audit',
-                        note='部署/卖出动作级即时对拍(§2.3;与 deployed_align 自动纠漂分立)')
-        # 期望态对账(批3a:无条件消费——原 progressed 门随回执退役,
-        # 对账族改消费观察侧 reconcile 落地判定;动作未发出的帧期望态与
-        # 实读天然一致 = 零失配零动作,失配帧 = 纠偏/缺陷台账留证)
-        with contextlib.suppress(Exception):
-            if acct.get('drag_expect') is not None:
-                self._reconcile_drag_expect(acct['drag_expect'])
-        # 期望态层·买牌:购买单元期望由
-        # shop.py 买入点写入 exec_state_of(session).pending_buy_expect;本帧消费对账。
-        with contextlib.suppress(Exception):
-            _pending_buy = exec_state_of(session).pending_buy_expect
-            if _pending_buy is not None:
-                exec_state_of(session).pending_buy_expect = None
-                self._reconcile_buy_expect(_pending_buy)
-        with contextlib.suppress(Exception):
-            self._reconcile_xp_expect(obs)
         with contextlib.suppress(Exception):
             self._reconcile_faction_display(obs)
         with contextlib.suppress(Exception):
             self._reconcile_shop_pool(obs)
         with contextlib.suppress(Exception):
             self._reconcile_merge_preview(obs)
-        with contextlib.suppress(Exception):
-            if acct.get('equip_expect') is not None:
-                self._reconcile_equip_expect(acct['equip_expect'])
-        acct.update(key=None, drag_expect=None,
-                    equip_expect=None, dep_delta=0, dep_pre=None,
-                    unit_open=False)
 
     def _probe_node_type(self, screen: MatLike | None = None) -> None:
         """[观测] 备战入场读节点行序列(read_node_sequence)→ log。
@@ -3471,8 +2890,8 @@ def _write_prep_node_chain(session: object, slots: list | None,
 def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) -> str:
     """买牌单元收尾(W970 批 C 抽出:整段买牌解体后由流程层
     ``CwScreenPrep._open_shop_phase`` 与 sim 兼容壳 BuyShopCards.buy 共用;
-    单一源防双份漂移)。买后重估 / 买牌期望暂存 / gold 对拍 / 执行事实
-    gold_close 回填,返回单元摘要字符串(消费方包装成 round status/detail)。
+    单一源防双份漂移)。gold 对拍 / 执行事实 gold_close 回填,返回单元
+    摘要字符串(消费方包装成 round status/detail)。
 
     (迁移批 3.2:outcome 形参随 BuyCardsOutcome 退役改账本 ledger 本体;
      gold 基线 = 编排壳 visit 入口容器 gold 现读(调用方传入);摘要与
@@ -3490,33 +2909,13 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
     total_sell = ledger.total_sell
     total_sell_income = ledger.total_sell_income
     _spend_executed = ledger.spend_executed
-    _buy_purchases = ledger.buy_purchases
-    _buy_has_sell = ledger.buy_has_sell
-    _buy_unidentified = ledger.buy_unidentified
-    _buy_pre_bench = ledger.buy_pre_bench
-    _buy_pre_deployed = ledger.buy_pre_deployed
     # (「买后重估容器喂入」残段已退役,2026-09-16 归因批确认流程:OpenShop
     #  = 终结动作,执行完交回外循环,下一次备战访问的入口 heavy 观察必然
     #  先于任何决策发生——它以真读覆盖容器并把帧类标 'full',本段喂入的
     #  gold 真读写 / bench tracked 重播 / 'view' 标记三样全被覆盖,从不被
     #  消费;且流程层散读屏幕违反 ADR-0517 唯一读屏点纪律。买后方向刷新
     #  由入口观察链自然承载(r251 当年病灶的现役结构性替代)。金差值对拍
-    #  与期望态暂存两独立职责保留。)
-    # `w536_merge_expect/`:单元购买意图 → 期望态,暂存 session 供 CwScreenPrep 主环在
-    # 购买单元后的 heavy 定型帧上消费对账(surface='bench',
-    # kind='buy_expect_mismatch';零决策记账)。含卖出/未识别牌不建
-    # (见单元头注释);计算失败静默跳过(best-effort,不阻塞买牌)。
-    if match is not None and _buy_purchases \
-            and not _buy_has_sell and not _buy_unidentified:
-        with contextlib.suppress(Exception):
-
-            from sr_od.application.currency_war.kernel.cw_prep_expect import (
-                compute_buy_expect,
-            )
-            _buy_expect = compute_buy_expect(
-                _buy_purchases, _buy_pre_bench, _buy_pre_deployed)
-            if _buy_expect is not None:
-                exec_state_of(match.session).pending_buy_expect = _buy_expect
+    #  职责保留。)
     # gold 差值双源对拍(观察冲突审计 #6 P2,2026-08-17):动作账(逐动作执行时
     # 累计的 _spend_executed:买价+升级费+当次刷价)vs 关店后实际读数 ——
     # expected = 开店首读金 − 全程执行花金 + 全程卖入。基线必须取首读快照

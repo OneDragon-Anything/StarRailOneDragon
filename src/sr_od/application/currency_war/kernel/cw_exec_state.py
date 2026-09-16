@@ -97,13 +97,13 @@ def exec_state_of(session: object) -> ExecState:
 
 @dataclass
 class ExecState:
-    """一局的执行层状态(27 具名(含 _pending_chosen_supply)
-    2;生命周期/防重入语义逐字段自原宿主平移,值域与缺省一致——载体每局
-    新建即天然清零)。账外收编账本 = ADR-0563「落位裁量」节。
+    """一局的执行层状态(字段数见下方定义;生命周期/防重入语义逐字段
+    自原宿主平移,值域与缺省一致——载体每局新建即天然清零)。账外收编
+    账本 = ADR-0563「落位裁量」节。
 
     生命周期分级(迁移核对判据:落点生命周期 ≥ 原生命周期,session.md
-    §7.2-3):局级(失败记忆/互斥账/tracked 账/期望账)、跨环
-    (发射连败)、节点/visit(防重入/期望覆盖)。
+    §7.2-3):局级(失败记忆/互斥账/tracked 账)、跨环(发射连败)、
+    节点/visit(防重入)。
     """
 
     # 巨星 handler 点击执行防重入。**必须局容器级**(防 new CwScreenMegastar
@@ -151,27 +151,10 @@ class ExecState:
     # 永动机)。恢复局空集 = 守卫缺位窗口(单轮轮键,下轮自愈;session.md
     # §3.2 评级「中」,恢复轮判读义务 6.2-4)。
     v2_round_sold: set[str] = field(default_factory=set)
-    # 买牌单元期望态(cw_screen_prep.BuyExpect)。坐标系 = 哪次购买:一次
-    # 购买单元意图的「单元执行后应然态」。取值时机 = 购买意图
-    # 落账——shop.py 单元收尾写入;消费 = 主环下一轮 heavy 定型帧对账后清
-    # None,跨单元不残留。None = 无挂起期望。
-    pending_buy_expect: object = None
-    # 经验期望账本(cw_screen_prep.XpLedger;纯记账+对账,零决策)。
-    # None = 本局未锚定(账本未建)。
-    xp_expect_ledger: object = None
     # (期望态条目表容器 expected_state 已随 ADR-0651 两态制废除——
     #  ExpectedEntry 登记/覆盖点 diff 对账整套拆除;op 逻辑效果 =
     #  cw_expected_state.apply_op_effect 直接写 session 字段。)
     # 写端 = 画面 op/发射位,原挂 session 属历史宿主错位)——
-    # 补给选定暂存(§3.4.5 chosen_supply 出口验真后写端的中转载体)。
-    # 写点 = CwScreenSupplyNode._do_action 选定列确认时(真选分支;兜底
-    # 点卡/刷新轮不写 = 真选守卫);清点 = 出口验真(标识-补给阶段消失)
-    # 写入 GameState 后取走,及重入轮入口(上轮确认未落地即弃,防陈旧
-    # 选跨轮/跨节点误写)。节点级生命周期——下一补给节点选定即覆盖,不
-    # 跨节点消费;None = 无挂起选定。
-    _pending_chosen_supply: tuple[str, str, bool] | None = None
-    # 备战挂起对账单元队列(单元收尾逐个清)。
-    cw_prep_pending_accts: list = field(default_factory=list)
     # 接管采集已完成(节点内一次性)。
     cw_takeover_collect_done: bool = False
     # 接管采集重试计数。
@@ -385,8 +368,8 @@ def apply_op_effect(session, action: CwAction | dict, *,
         #   (_project_prep_obs 按 EQUIP_WRITE_SIDES 申报)+ 下一帧装备区
         #   读数覆盖;last_owned_equips 挂账面随对拍拆除不入本口;
         # - ClickSpheres:pending_reward 无 session 字段载体,零推进;
-        # - 买牌单元:BuyExpect 载体走 exec_state.pending_buy_expect
-        #   独立通道(shop.py 买组收尾写,heavy 定型帧消费)。
+        # - 买牌单元:tracked 本体推进 = 执行器/调用方辖(容器
+        #   tracked_books 随动同步,mutate_bench_deployed 单口)。
         pass
     return effects
 

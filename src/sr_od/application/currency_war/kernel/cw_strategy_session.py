@@ -7,15 +7,15 @@
 + 框架设施(rng 种子契约锚 / performance 观测反馈)+ ``strategy_state``
 黑盒引用。策略器推导产生的中间状态归实现包私有的状态对象
 (mandate_v1 = ``StrategyState``,经 ``create_state`` 工厂按局冷建);
-执行层状态(op/流程侧产生:失败计数/防重入/对账期望账)归执行侧
+执行层状态(op/流程侧产生:失败计数/防重入)归执行侧
 载体(``kernel/cw_exec_state.py`` 的 ``ExecState``,挂局容器
 ``CurrencyWarMatch.exec_state``)。
 
 驻 kernel 理由:kernel 判据层以本类为观察数据载体消费(经
 ``strategy_state_of`` 访问函数取策略状态、``exec_state_of`` 取执行侧
 载体——kernel 不持有策略内部结构的字段注解,运行时零 impl 包 import,
-TYPE_CHECKING 承载)。类体逐字段无 app 引用;``prep_obs_frame``/
-``pending_buy_expect`` 相关注解字符串化(app 桶
+TYPE_CHECKING 承载)。类体逐字段无 app 引用;``prep_obs_frame``
+注解字符串化(app 桶
 类型仅注解引用)。
 """
 from __future__ import annotations

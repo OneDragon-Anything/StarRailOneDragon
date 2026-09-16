@@ -93,8 +93,8 @@ AFFIX_EFFECT_SPECS: dict[str, EffectSpec] = {
     # 变宝为废:官方「每个位面开始时，首次合成的进阶装备会有50%的概率变成垃圾袋。」
     # 改写面 = 装备库存:随机 50% → 不建逻辑写端,观察收口(归属判据:含概率/随机
     # 结果不可预知)。trigger=ON_MERGE(装备合成事件,与武力刷新同触发面;每位面
-    # 首次性由 payload 字段语义承载)。duties.predict = 装备合成期望对账
-    # (compare_equip_expect)须预知垃圾袋分支,防合法随机态刷缺陷台账。
+    # 首次性由 payload 字段语义承载)。duties.predict = 随机改写面在案
+    # (装备合成对账类消费方须预知垃圾袋分支,防合法随机态刷缺陷台账)。
     '变宝为废': EffectSpec(
         id='变宝为废', name='变宝为废', trigger=TriggerKind.ON_MERGE,
         duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,

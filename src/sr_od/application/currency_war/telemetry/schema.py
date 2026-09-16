@@ -470,9 +470,6 @@ class DecisionTrace:
     # 注入臂行不带此语义保证,判读按 strategy_id 分栈)。None=现算失败/
     # 依赖缺失。
     p1_downgrade_active: bool | None = None
-    # 经验期望账本快照(exec_state_of(session).xp_expect_ledger=cw_screen_prep.XpLedger 正式
-    # 字段,此处平铺 dict 便于判读;None=未锚定/无账本)。
-    xp_expect_ledger: dict[str, Any] | None = None
     # —— `w611_econ_cycle/` 储备/义务披露(经济循环总模型;ADR-0445 实机验证队列
     # 「死时带金/闲置金」判读的帧级数据源;接出点同 `w603_telemetry_wiring/` 汇点)——
     # None/缺省 = 无 match 注册或 decide_prep 未跑(离线/测试/default 栈)。

@@ -89,8 +89,7 @@ class ShopVisitLedger:
     buy_has_sell: bool = False
     buy_unidentified: bool = False
     # 买牌期望态基座(单元执行前 tracked 快照;迁移批 3.2 起随账本外发,
-    # 消费方 = finalize 的 compute_buy_expect——事后取 tracked 已被本单元
-    # 动作推进,必须取入口时点快照)。
+    # 必须取入口时点快照——事后取 tracked 已被本单元动作推进)。
     buy_pre_bench: list = field(default_factory=list)
     buy_pre_deployed: list = field(default_factory=list)
     # [索引定义] 访问事实行(安灯暂存载体;迁移批 3.2 切片5):list 下标 =

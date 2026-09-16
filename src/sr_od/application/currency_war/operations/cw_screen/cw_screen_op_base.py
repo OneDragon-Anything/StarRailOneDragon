@@ -50,11 +50,7 @@ from sr_od.operations.sr_operation import SrOperation
 #: 纪律的载体(新成员先改本面再登记,禁静默新增;原「选型闸」语义随两型
 #: 制退役)。在册成员:
 #: - 遭遇刷新计数 + 策略屏逐卡刷新计数(原 F-3 裁决两件,口径续行):
-#:   随点击置位不等验效,选择落地不置位(防点偏未生效重入屏反复尝试);
-#: - 经验期望账本两通道(CwScreenPrep 在册):升级直击通道(LevelUp 发射
-#:   即推算最小击数)/ 买波通道(OpenShop 编排机械完成后携买波摘要 detail
-#:   推算)——「未落地不计数」防线由观察侧 reconcile 对账承接
-#:   (``_reconcile_xp_expect``,heavy 帧消费)。
+#:   随点击置位不等验效,选择落地不置位(防点偏未生效重入屏反复尝试)。
 EMIT_TRIGGERED_DECLARED: dict[str, str] = {
     'encounter_refresh_used': (
         'CwScreenEncounter 刷新链(架构设计 §6.4-R-E 在册两件①;现役语义'
@@ -64,14 +60,6 @@ EMIT_TRIGGERED_DECLARED: dict[str, str] = {
         'CwScreenInvestStrategy 刷新链(架构设计 §6.4-R-E 在册两件②;'
         '逐卡 dict[str,int],策略屏迁移批其写端入本面接线,随点击置位'
         '不等验效)'),
-    'xp_ledger_levelup': (
-        'CwScreenPrep 经验期望账本·LevelUp 直击通道(on_outcome 注册件;'
-        '发射即按账本现值推算最小击数推进,级真值由下一帧观察 reconcile'
-        ' 纠偏;原落地回执门已改发射时点触发)'),
-    'xp_ledger_buy_clicks': (
-        'CwScreenPrep 经验期望账本·OpenShop 买波通道(on_outcome 注册件;'
-        '商店编排机械完成后携买波摘要 detail 解析击数推进,对账纠偏同上;'
-        '原落地回执门已改发射时点触发)'),
 }
 
 
