@@ -815,21 +815,14 @@ class CwLoop(SrOperation):
     #: 换取停机钩子触发前画面有充分自愈窗口(若真是过渡帧,长动画期 2s 恒重试
     #: 只烧预算不推进)。
     UNKNOWN_RETRY_BACKOFF_CAP_S: ClassVar[float] = 10.0
-    #: P4R3:0q 位面过渡误分发型 fail 上限(连续计;0p 接管/过渡成功清零)。
-    #: 超限 round_fail 交未知画面兜底链——第五局实锤:boss 简报帧误分发
-    #: CwScreenPlaneTransition(「提示未出现」fail)每 2s 无限循环。
-    PLANE_MISDISPATCH_LIMIT: ClassVar[int] = 3
     #: 外环 op 连续 fail 重派上限(T-266):同一分发 op 连续 fail 达本值
     #: → round_fail 显式停交上层,取代「fail → round_wait 零预算重派」
     #: 的无界空转(实锤形态 = 选择伙伴 15 连败,由 NODE-DWELL 900s 系统
-    #: 哨兵兜住才停,2026-09-15 事故)。取值 = prep 环既有
-    #: ``_director_fail_streak`` 阈值 5(本文件既有最严分支连续 fail
-    #: 预算,零新拍定值):既有专用守卫上限全部 ≤ 本值(0q=3/
-    #: 达标臂=3/耗尽臂=3/prep=5)且在各自 on_result/链形透传内短路返回,
-    #: 而本防线的计数位次在 hook 早退之后 → 专用守卫同值平手时先返回,
-    #: 通用网结构性不抢占任何专用守卫,只辖无专用预算的分支(overlay/
-    #: 事件族 + on_fail_retry 族——后者原退路是消耗 400 节点重试池
-    #: ≈ 13min 同 op 空转)。
+    #: 哨兵兜住才停,2026-09-15 事故)。本网是全部分发分支(overlay/
+    #: 事件族/on_fail_retry 族)的唯一连续 fail 预算——原 0q 位面过渡
+    #: 误分发守卫(=3)与 prep streak 守卫(=5)已退役并入本网(阈值
+    #: 同值平手,行为无差);链形透传分支(3c)不经本网(各有自身预算)。
+    #: on_fail_retry 族原退路是消耗 400 节点重试池 ≈ 13min 同 op 空转。
     OP_FAIL_REDISPATCH_LIMIT: ClassVar[int] = 5
     #: 战斗窗口 watch 宽限(ADR-0250):出战后合法静止上限。实测战斗 4-5.5min
     #: (P1r9 boss 4min20s/P2r1 遭遇 5min20s),600s 覆盖余量后仍可哨兵真挂死。
@@ -1154,11 +1147,11 @@ class CwLoop(SrOperation):
         :return: 分支的轮次结果
 
         环级 fail 重派防线(T-266):任一 op 的 ok → 连续 fail 计数窗归零
-        (``op_fail_redispatch_tick``);无专用预算分支的 fail 连续达
-        ``OP_FAIL_REDISPATCH_LIMIT`` → round_fail 显式停交上层,取代
-        「fail → round_wait 零预算重派」的无界空转。计数/判定位于
-        hook 早退之后 → 专用守卫(0q/prep streak)结构性先于本网;
-        链形透传分支(3c)不经本网(各有自身预算)。
+        (``op_fail_redispatch_tick``);fail 连续达 ``OP_FAIL_REDISPATCH_
+        LIMIT`` → round_fail 显式停交上层,取代「fail → round_wait 零
+        预算重派」的无界空转。计数/判定位于 hook 早退之后 → hook 仍可
+        以自身轮次结果短路(结构性先于本网);链形透传分支(3c)不经
+        本网(各有自身预算)。
 
         异常安全(ADR-0584 §5.2):``op`` 体或 ``on_result`` 抛异常时,补落
         outcome='error' 的 [cw-op] 行后原样上抛——异常语义归节点级重试链
@@ -1546,8 +1539,6 @@ class CwLoop(SrOperation):
             self._note_branch_screen('货币战争-BOSS简报')   # R2 开局链写点
 
             def _on_boss_briefing(ok: bool, res: Any) -> None:
-                # 误分发流恢复 → 计数清零(p4r3 字面复位挂点①)
-                self._plane_mis_streak = 0
                 log.info('[cw-loop] BOSS 简报 → CwScreenBossBriefing → %s',
                          getattr(res, 'status', ''))
 
@@ -1559,27 +1550,9 @@ class CwLoop(SrOperation):
         if name == '货币战争-位面过渡':
             self._note_branch_screen('货币战争-位面过渡')   # R2 开局链写点
 
-            def _on_plane_transition_identity(ok: bool, res: Any) -> OperationRoundResult | None:
-                # 误分发型 fail streak 计数(p4r3 守卫域;与阶段三误读兜底共用
-                # _plane_mis_streak,字面复位挂点②保留在 loop 源)
-                if ok:
-                    self._plane_mis_streak = 0
-                    log.info('[cw-loop] 位面过渡 → CwScreenPlaneTransition → %s',
-                             getattr(res, 'status', ''))
-                    return None   # 默认映射 round_wait(1.0)
-                self._plane_mis_streak = getattr(self, '_plane_mis_streak', 0) + 1
-                if self._plane_mis_streak >= CwLoop.PLANE_MISDISPATCH_LIMIT:
-                    try:
-                        _shot = self.save_screenshot(prefix='plane_misdispatch')
-                    except Exception:  # noqa: BLE001  留证失败不阻塞
-                        _shot = ''
-                    log.error('[cw!] [loop] 位面过渡连续 %d 次 fail(疑误分发/'
-                              '误读)→ round_fail 交兜底链(shot=%s)',
-                              self._plane_mis_streak, _shot)
-                    return self.round_fail('位面过渡连续 fail 超上限(交兜底链)')
+            def _on_plane_transition_identity(ok: bool, res: Any) -> None:
                 log.info('[cw-loop] 位面过渡 → CwScreenPlaneTransition → %s',
                          getattr(res, 'status', ''))
-                return None
 
             return self._dispatch_screen_op(
                 CwScreenPlaneTransition(self.ctx), journal_name='位面过渡',
@@ -1869,8 +1842,6 @@ class CwLoop(SrOperation):
             self._note_branch_screen('货币战争-BOSS简报')   # R2 开局链写点
 
             def _on_boss_briefing(ok: bool, res: Any) -> None:
-                # 误分发流恢复 → 计数清零(p4r3 字面复位挂点①)
-                self._plane_mis_streak = 0
                 log.info('[cw-loop] BOSS 简报 → CwScreenBossBriefing → %s',
                          getattr(res, 'status', ''))
 
@@ -1880,8 +1851,7 @@ class CwLoop(SrOperation):
                 on_result=_on_boss_briefing)
 
         # 0q-backstop. 位面过渡误读兜底:节点锚 miss 时 OCR 共享文案接住;boss
-        #     排他保留(0p-backstop 已先接 boss 帧,此处为纵深)。误分发型 fail
-        #     连续达上限 → round_fail 交未知兜底链。
+        #     排他保留(0p-backstop 已先接 boss 帧,此处为纵深)。
         if self.round_by_ocr(screen, '点击空白处继续', lcs_percent=0.8).is_success:
             if _is_boss_frame(_frame_texts(self.ctx, screen)):
                 log.info('[cw-loop] boss 简报帧含共享文案「点击空白处继续」→ '
@@ -1889,27 +1859,9 @@ class CwLoop(SrOperation):
                 return self.round_wait(wait=1.0)
             self._note_branch_screen('货币战争-位面过渡')   # R2 开局链写点
 
-            def _on_plane_transition(ok: bool, res: Any) -> OperationRoundResult | None:
-                # 误分发型 fail streak 计数 + 超限 round_fail(p4r3 守卫域;
-                # 字面复位挂点②保留在 loop 源,test_cw_p4r3 锁面随批更新)
-                if ok:
-                    self._plane_mis_streak = 0
-                    log.info('[cw-loop] 位面过渡 → CwScreenPlaneTransition → %s',
-                             getattr(res, 'status', ''))
-                    return None   # 默认映射 round_wait(1.0)
-                self._plane_mis_streak = getattr(self, '_plane_mis_streak', 0) + 1
-                if self._plane_mis_streak >= CwLoop.PLANE_MISDISPATCH_LIMIT:
-                    try:
-                        _shot = self.save_screenshot(prefix='plane_misdispatch')
-                    except Exception:  # noqa: BLE001  留证失败不阻塞
-                        _shot = ''
-                    log.error('[cw!] [loop] 位面过渡连续 %d 次 fail(疑误分发/'
-                              '误读)→ round_fail 交兜底链(shot=%s)',
-                              self._plane_mis_streak, _shot)
-                    return self.round_fail('位面过渡连续 fail 超上限(交兜底链)')
-                log.info('[cw-loop] 位面过渡 → CwScreenPlaneTransition → %s',
+            def _on_plane_transition(ok: bool, res: Any) -> None:
+                log.info('[cw-loop] 位面过渡(兜底) → CwScreenPlaneTransition → %s',
                          getattr(res, 'status', ''))
-                return None
 
             return self._dispatch_screen_op(
                 CwScreenPlaneTransition(self.ctx), journal_name='位面过渡',
@@ -2018,35 +1970,14 @@ class CwLoop(SrOperation):
                 self.round_by_find_and_click_area(screen, '货币战争-备战', '按钮-返回补给阶段', success_wait=2)
                 log.info('[cw-loop] 补给节点(nodeseq current=supply)→ 点返回补给阶段 进补给屏(下轮 CwScreenSupplyNode)')
                 return self.round_wait(wait=2)
-            # r332(批次3/终审①③:cw_loop 消费返回值——
-            # 旧版忽略 execute() 结果 → director 失败后下轮
-            # 无条件重派新实例(实例计数清零)= 无限 ping-pong
-            # (Y-1c/D-2.3 七轮 review 实证)。修:连续 N 次失败
-            # →告警+视为停滞(交 stall 哨兵/unknown 兜底链),
-            # 不再无限静默重派。
-            # ⚠ 语义澄清(review 第9条):round_fail 在本节点
-            # node_max_retry_times=400 下**不停机**——刻意:
-            # 消除的是「静默」(无日志)而非「重试」;warning 进
-            # 日志 = 哨兵(SENTINEL-HIT 检 [cw!])与人都能看到,
-            # 停机决策留给观察者(对拍期不想因 gate bug 硬停局)。
             # T-176 V-2 收编:备战分支派发前的试用揭示卡/书册卡清场识别+点击
             # 已迁 CwScreenPrep 环入口清场段(``_clear_prep_cards``,与
             # ENTRY_OVERLAY_CLOSE 一键关注册表同位)——外循环只保留画面识别
             # 分派,识别机制不出分发层(设计 §3.4 过渡相位件收编挂账兑现;
             # 书册卡处理链经 journal 包装保 op 行,先例 = 本文件 0k 分支)。
-            def _on_prep_round(ok: bool, res: Any) -> OperationRoundResult | None:
-                if not ok:   # 迁移审计 w68(git 历史):OperationResult 无 __bool__,
-                    # bool(FAIL)=True——裸 not _ok 恒 False,r332 停滞守卫成死码
-                    # (验证局 206 次崩溃-重派无限循环实录);success 才是判据。
-                    self._director_fail_streak = getattr(
-                        self, '_director_fail_streak', 0) + 1
-                    if self._director_fail_streak >= 5:
-                        log.warning('[cw!][loop] CwScreenPrep 连续 %d 次失败'
-                                    '(gate/环异常?)→ 本轮按未知画面处理'
-                                    '(哨兵/兜底链接管)', self._director_fail_streak)
-                        return self.round_fail('CwScreenPrep 连续失败(停滞)')
-                else:
-                    self._director_fail_streak = 0
+            def _on_prep_round(ok: bool, res: Any) -> None:
+                if ok:   # success 才是判据(OperationResult 无 __bool__,
+                    # 裸 bool(fail) 为 True——git 历史迁移审计实证过的坑)
                     # (0j 恢复链重试预算复位段已随 0j 链整删退役——出战域
                     # 重设计 T-286:出战后画面状态交外循环下一帧重判,无
                     # op 内恢复预算可复位。)

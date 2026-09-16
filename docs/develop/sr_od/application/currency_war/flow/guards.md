@@ -3,14 +3,15 @@
 > 反向规格化来源 = `operations/cw_loop.py` + `operations/cw_screen/cw_screen_prep.py` + `operations/cw_screen/cw_screen_buy_cards.py` 的守卫/停机/降级段。职责：识别域与执行面的停机/留证防线。对局状态推进的监测不在框架——停滞判读 = 事件哨兵 `skills/sr-od-currency-war-dev/scripts/cw_sentinel.py`(v5.2:STALL 同特征零推进/LOOP 签名循环/NODE-DWELL 相位滞留/SILENCE 沉默,只留证不停机;注:框架 stall_watch.flag 写端已随守卫删除,哨兵该关键词静默保留)。路径根 = `src/sr_od/application/currency_war/`。
 > 分工判据（od-dev-stop-hooks）：**采集哨兵不停机**（bot 可能只是慢）；**停机钩子保画面**（stop_running + flag + 截图，处理完删 flag 重启）。本篇全部为流程防线，与策略判据无关。
 
-## 1. 误分发与恢复链限额
+## 1. 外环连续 fail 重派网（通用网）
 
 | 限额 | 值 | 语义 |
 |---|---|---|
-| `PLANE_MISDISPATCH_LIMIT=3` | 连续计（接管/过渡成功清零） | 位面过渡误分发型 fail 超限 round_fail（boss 简报帧误分发每 2s 无限循环实证） |
-| director fail streak 5 | 连续计 | CwScreenPrep 连续 5 次失败 → round_fail 交未知画面兜底链（消除静默 ping-pong；round_fail 在 node_max_retry 400 下不停机——刻意：消除"静默"，warning 进日志即哨兵，停机决策留给观察者） |
+| `OP_FAIL_REDISPATCH_LIMIT=5` | 连续计（任一分发 op ok 清零；异键 ok 同闭窗） | 同一分发 op 连续 fail 达本值 → 留证截图 + round_fail 显式停交上层，取代「fail → round_wait 零预算重派」的无界空转（T-266；实锤 = 选择伙伴 15 连败靠 NODE-DWELL 900s 哨兵兜住才停，2026-09-15 事故）。round_fail 在 node_max_retry 400 下**不停机**——刻意：消除「静默」而非「重试」，ERROR 行进日志 = 哨兵 STALL 通道与人都能看到，停机决策留给观察者 |
 
-> 补注:分支守卫钩子（0n visit_ok/_fail 计数、0q streak 复位、A1 bail 清除、B5 窗口关+闩清）自 dispatch 包装落地起经 `_dispatch_screen_op` 的 **on_result 调用点邻接闭包**执行——限额值与清零/超限语义不变，仅执行落点随包装迁移，钩子明细。
+> 原 §1 的两条专用 streak 守卫（0q 位面过渡误分发 =3、prep 连续失败 =5）已退役并入本网：阈值同值平手无行为差，计数/判定统一在 `_dispatch_screen_op`（hook 早退位次之后，hook 仍可短路）。链形透传分支（3c）不经本网（各有自身预算）。
+> 补注:分支守卫钩子（0n visit_ok/_fail 计数、A1 bail 清除、B5 窗口关+闩清）自 dispatch 包装落地起经 `_dispatch_screen_op` 的 **on_result 调用点邻接闭包**执行，仅执行落点随包装迁移，钩子明细。
+> 位面过渡的误分发根修在识别层：boss 简报帧可经阶段一身份分支与 0q 兜底误派过渡 op，两处分别挂 boss 判别排他（接管派发 boss op）与共享文案本屏 rect 判定，见 [screens/op-layer.md](screens/op-layer.md) 位面过渡节。
 
 ## 2. 未知画面兜底（常驻安全网；`cw_loop.py::CwLoop._handle_unknown_fallback`）
 
