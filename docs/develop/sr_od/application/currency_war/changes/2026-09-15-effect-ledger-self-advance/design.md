@@ -29,7 +29,7 @@
          - `_nk = _node_key_for_ord(effective)`；`plane, round_num = _nk.plane, _nk.round_num`（helper 返回 NodeKey 整键，禁二元解包；同模块私有读口，`cw_game_state.py` `_node_key_for_ord`）；
          - `node_type = self.node.value.kind`（镜像现值，含漏斗继承合成；**不设 kind 闸**：`round_start_income` 对未知/空 kind 落 else→combat 落袋是现值语义，`cw_economy.py:528-531`，加闸 = 收入语义变化）；
          - `streak = int(max(0, self.streak.value))`（符号归一保留现值）；
-         - 倍率/息修饰 = 经济提供方（见 2）；`diamond_gold = 0`、`lost_node = None`（现值）。
+         - 倍率/息修饰 = 容器直读（见 2）；`diamond_gold = 0`、`lost_node = None`（现值）。
        - **守卫与水位落点（失败路径规格）**：
          - 前置守卫（四条，与现码闸一一对应，`cw_loop.py:1947-1950`）：`self.node.value is None ∨ self.streak.value is None ∨ self.settlement.value is None ∨ self.settlement.value.killed is not True（败局闸）` → 金结算**静默跳过**（不告警，与现码同窗同语义），其余段照常；
          - `settle` 后水位落点对齐 `NodeBoundarySettlement` 载体（`cw_effect_inventory.py:1067-1077`）：`written=True` → 落水位；`written=False ∧ total<=0`（无欠账）→ 落水位；`written=False ∧ 金未读`（gold None）→ **水位不动**（下个入口帧重试，防永久漏结）。
@@ -37,7 +37,7 @@
        - 结算成功 → `log.info('[cw][effect] 节点边界金结算 logic 写入(branch=… total=…)')`。
      e. `project_effect_capacity(self)`（每 pass 重锚，不限 advanced）。
      f. 整段 `try/except Exception → log.warning('[cw][effect] 效果推进段失败(不阻塞): …')` 不上抛（best-effort，同 journal sink「不毒化写入链」纪律；**显式选择 warning 级**——效果段失败非纯记录层事件，留巡检可见痕）。
-  2. **经济提供方注册口**：`register_boundary_economy_provider(fn)`，模块级单槽汇点，照 `_STATE_JOURNAL_SINK` 注册模式（`cw_game_state.py:816-831`）。`fn() -> tuple[float, int, int | None] | None`（win_reward_mult, interest_flat_per_node, interest_cap_override，聚合口径单一源 = `cw_investments.aggregate_economy`）；未注册或返回 None = 金结算跳过（推进/发放/重锚照常）。**生产注册点唯一 = ctx 级一次性注册**（应用装配完成后；provider 闭包动态读 `ctx.cw_match`——恢复局 `cw_match` 在场即正常供参，无静默窗口；局外返回 None）。**禁止挂开局链初始化**（恢复接管局不走开局链，挂那里 = 恢复局整局金结算静默缺失）。sim/测试直注。
+  2. **经济参数源 = 容器直读（无注册口）**：效果段直读 `self.active_strategies.value`（容器自持字段，§3.4.4；观察同步写端现值 = `cw_game_state.py:3574`，策略选卡后先于首个节点边界落账）→ `aggregate_economy(list(...))` → 倍率/息修饰。空列表 → 聚合缺省（mult 1.0 / flat 0 / cap None），金结算照常以缺省参数执行。无注册口、无生命周期、无外部依赖——game state 内部自含（用户裁定 2026-09-15）。聚合口径单一源 = `cw_investments.aggregate_economy`（禁第二份）。
   3. **cw_loop tick 块删除**：备战分支效果段全删（含金结算成功 `log.info('[cw-loop] 节点边界金结算…')` 与段失败 warning——日志形状变化见行为变化申报）；随块失用的 import 同删（`board_state_of` 以达标臂自有 import 为准，`cw_loop.py:1992`）。
 - 行为变化申报：
   - 推进时点：从「备战分支入口（上一轮镜像现值）」改为「观察派生时（本帧四腿派生序，`effective_node_ord`）」；
@@ -48,9 +48,10 @@
   - 「未观察不当真进节点」守卫**随迁保留**（非废除）。
 - 接口契约（本迭代两个新增面，唯一必须定死的深度内容）：
   - 管线段序：上下文对 → 顶栏观察层 → 节点域四腿 → 类型派生 → **效果推进段（新增，末尾）**；
-  - 提供方：见 2 条 2；聚合口径单一源 = `cw_investments.aggregate_economy`（禁第二份）。
+  - 经济参数 = 容器直读（`self.active_strategies` → `aggregate_economy`），无新增接口面；聚合口径单一源 = `cw_investments.aggregate_economy`（禁第二份）。
 - 关键取舍：
   - 备选「提升为 kernel 单函数、由调用方显式调」：放弃——调用方仍须记得调用，编排只是换层；与派生管线「随事件自治」方向相逆（R5 §①「纯 _swap 内管线无 hook 框架」的自治语义）。
   - 备选「维持 loop 现状、归效果域批」：放弃——用户裁定编排不住 loop；效果域批落地时本块删除与本迭代重复。
   - 备选「金结算挂在账本 advanced 位、与推进同点」：放弃——弹窗腿/0q 腿推进帧上节点镜像未刷新，当帧结算取错窗参数（攻击 F1 实证场景）；递延到备战帧 = 节点入口定义本尊、镜像新鲜，且以结算水位保每节点恰一次。
   - 备选「以 state/journal.jsonl 写静默做哨兵面替代心跳」：独立小批（哨兵侧），不入本迭代。
+  - 备选「注册式经济提供方（一轮修正稿方案 2）」：放弃——`active_strategies` 本就是容器自持字段（§3.4.4），外部注册是把 session 域数据绕道喂回 kernel 的多余间接层，且引入注册点/生命周期二义（攻击 F6）；容器直读零接口面（用户裁定：game state 内部自含）。
