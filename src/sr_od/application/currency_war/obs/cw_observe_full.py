@@ -131,8 +131,12 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
                     out['gold_reread'] = True
                     break
         out['read_receipt'] = _st
+        _node_slots = read_node_sequence(ctx, frame)
+        # 链观察落地批:slots 回传 director 写现行链(原读完即弃;组装层
+        # 单写者原则,写容器归 director 侧)。
+        out['node_slots'] = _node_slots
         out['substate'] = {
-            'node_seq': read_node_sequence(ctx, frame) is not None,
+            'node_seq': _node_slots is not None,
             'shop_cards': read_shop_cards(ctx, frame) is not None,
         }
         # ===== 装备域 owned/occupied 采集(P4 观察接线)=====

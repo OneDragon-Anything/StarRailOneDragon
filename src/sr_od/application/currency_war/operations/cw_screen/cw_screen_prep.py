@@ -803,6 +803,11 @@ class CwScreenPrep(CwScreenOpBase):
                     _bs_obs.carry(_bs_obs.back_row,
                                   frame=_dep_frame,
                                   sig=_dep_carried_sig)
+                # 备战帧现行链写端(链观察落地批):slots 由 observe_full
+                # heavy 回传(原弃槽点改造),写容器在 director 侧(单写者
+                # 原则);逐格映射/写门/基线回填语义见函数 docstring。
+                _write_prep_node_chain(session, _of.get('node_slots'),
+                                       _prep_sig)
                 # 装备库存观察写端(P4 观察接线;W5 §2.2):owned
                 # 采集已归位本入口观察链(observe_full heavy),写端随迁本
                 # 装配点——原写点 = prep_actions._build_equip_wear_plan 两
@@ -3341,6 +3346,84 @@ def unit_exec_facts_from_receipts(receipt_rows: list[dict],
         },
         'gold_open': gold_open,
     }
+
+
+def _write_prep_node_chain(session: object, slots: list | None,
+                           sig: ChannelSig) -> None:
+    """备战帧现行链写端(链观察落地批;语义正本 =
+    game_state/chain-observation.md §3,quality=prep_row)。
+
+    挂点 = 备战入口 heavy 观察的节点行读(director 侧写容器,组装层
+    单写者原则只回传 slots)。逐格映射:past→dim/None;current→左移携带
+    (上一帧该位 upcoming 的 Hu 读数,载体 = 链自身上一帧——自锚定免新增
+    anchor 状态;首帧无携带 = none/None,与现役台账 fail-open 等价);
+    upcoming→hu/超阈 none;boss 末槽→sift,SIFT miss→none/None 禁回落
+    Hu(槽 Hu 距离系统性不可靠,cw_node_reader 在案)。
+
+    写门 = 轮位对齐门(current 槽 idx == round-1,错位帧拒写);变异窗
+    **不对链写设门**(整帧覆盖自愈 + diff 两帧门,见迭代 design §2.3-7);
+    对齐 clean 读成功即关 env_grace_until(投资环境写点②退役后短窗重读
+    职责由本读承接)。基线回填:本位面基线为空时同帧写 prep_row_first
+    (P2/P3 基线承接,链正本 §3 回退序末位)。纯观测写点:异常不阻塞
+    观察链。
+    """
+    if session is None or not slots:
+        return
+    try:
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
+            get_node_ledger,
+        )
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            NodeChain,
+            TokenCell,
+        )
+        from sr_od.application.currency_war.obs.cw_node_reader import (
+            HU_DIST_UNRECOGNIZED,
+        )
+        bs = board_state_of(session)
+        nd = bs.node.value
+        if nd is None or not nd.round_num:
+            return
+        ordered = sorted(slots, key=lambda s: s.idx)
+        cur = next((s for s in ordered if s.state == 'current'), None)
+        if cur is None or cur.idx != int(nd.round_num) - 1:
+            return   # 轮位对齐门:Hough 漏检左移的错位帧拒写
+        prev = bs.node_path.value
+        carry = None
+        if isinstance(prev, NodeChain) and prev.plane == nd.plane \
+                and 0 <= cur.idx < len(prev.seq):
+            pc = prev.seq[cur.idx]
+            if pc is not None and pc.channel == 'hu' and pc.token:
+                carry = pc
+        last_idx = ordered[-1].idx
+        cells: list[TokenCell] = []
+        for s in ordered:
+            if s.state == 'past':
+                cells.append(TokenCell(None, 'dim'))
+            elif s.state == 'current':
+                if carry is not None:
+                    cells.append(
+                        TokenCell(carry.token, 'hu', carry.hu_dist))
+                else:
+                    cells.append(TokenCell(None, 'none'))
+            elif s.idx == last_idx:
+                cells.append(TokenCell('boss', 'sift', s.hu_dist)
+                             if s.boss else TokenCell(None, 'none'))
+            elif s.node_type and s.hu_dist is not None \
+                    and s.hu_dist <= HU_DIST_UNRECOGNIZED:
+                cells.append(TokenCell(s.node_type, 'hu', s.hu_dist))
+            else:
+                cells.append(TokenCell(None, 'none'))
+        chain = NodeChain(plane=int(nd.plane), seq=cells)
+        bs.observe(bs.node_path, chain, evidence='prep_row', sig=sig)
+        if bs.node_path_baseline.value is None:
+            bs.observe(bs.node_path_baseline, chain,
+                       evidence='prep_row_first', sig=sig)
+        ledger = get_node_ledger(session)
+        if ledger is not None:
+            ledger.env_grace_until = 0.0
+    except Exception:   # noqa: BLE001  观测写点 best-effort,不阻塞观察链
+        pass
 
 
 def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) -> str:
