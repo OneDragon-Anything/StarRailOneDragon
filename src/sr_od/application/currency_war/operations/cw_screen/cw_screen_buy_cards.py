@@ -15,7 +15,6 @@ from sr_od.application.currency_war.cw_game_ports import (
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     bench_occupied,
-    exec_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     game_state_of,
@@ -991,8 +990,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                      f'{[(c.char_id, c.star) for c in game_state_of(match.session).tracked_books.bench if c is not None]}'
                      f'(播种取消,仅日志显影)')
         # T-308 S3:播种期布局代次快照(单动作循环每动作消费前检差用;
-        # 空播种段同样取值——检差面不依赖是否播种)。
-        _seed_epoch = exec_state_of(match.session).bench_layout_epoch
+        # 空播种段同样取值——检差面不依赖是否播种)。宿主 = 容器簿记组
+        # ExecBooks(载体解散迭代迁入;写点 = kernel/cw_reconcile 纠漂期)。
+        _seed_epoch = game_state_of(match.session).exec_books.bench_layout_epoch
         # (session.last_state 写点已随链退役批删除:段顶入口观察的局内
         #  事实宿主 = 容器单例,写入 = 观察漏斗直写。)
         # visit 基准载体(黑板槽退役收口,ADR-0651 容器单源):段顶入口

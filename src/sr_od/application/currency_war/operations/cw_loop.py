@@ -1079,12 +1079,13 @@ class CwLoop(SrOperation):
             log.debug(f'[cw-loop] 分支标识写入跳过: {e}')
 
     def _mark_session_resumed(self) -> None:
-        """恢复局旗标 → session 执行态(D2 live 接线;R1 缺口承接,R3 判定
-        方案规则六弹窗腿禁用供给面)。
+        """恢复局旗标 → 容器 match_facts 域 Field(D2 live 接线;R1 缺口承接,
+        R3 判定方案规则六弹窗腿禁用供给面)。
 
         写点 = 恢复检测两确认点(战斗帧恢复检测/备战帧 resume_candidate
         确认);读端 = 观察汇聚漏斗(经 observe_screen_context(resumed=…)
-        进派生规则,恢复局弹窗腿 hist 空时禁用不猜)。best-effort 不阻塞
+        进派生规则,恢复局弹窗腿 hist 空时禁用不猜)。渠道③接管协议
+        (logic_hook,actor = ResumeAttach 登记名)。best-effort 不阻塞
         分派;session 缺(局外/桩)静默跳过。
         """
         try:
@@ -1093,21 +1094,22 @@ class CwLoop(SrOperation):
                 else None
             if session is None:
                 return
-            from sr_od.application.currency_war.kernel.cw_exec_state import (
-                exec_state_of,
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                ChannelSig,
+                game_state_of,
             )
-            exec_state_of(session).cw_resumed_match = True
+            _gs_resumed = game_state_of(session)
+            _gs_resumed.write_logic(
+                _gs_resumed.resumed_match, True,
+                produced_by='ResumeAttach', evidence='takeover_resumed',
+                sig=ChannelSig(family='logic_hook', actor='ResumeAttach',
+                               mode='compute'))
             # T-268 观察态失效(接管):容器观察态字段写 False——tracked 主
             # 账值自本事件起不可消费,商店策略门(flow.decide_shop_action,
             # 判定单一源 = kernel tracked_unobserved)据此关店交回外循环,
             # 备战环 heavy 观察(reconcile_tracking 屏幕真值写回)置 True
             # 完成锚定后再进店;店内零原地重建。重置/账失效类事件出现时
             # 同口写 False(语义登记 = game state 字段注)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                ChannelSig,
-                game_state_of,
-            )
-            _gs_resumed = game_state_of(session)
             _gs_resumed.write_logic(
                 _gs_resumed.tracked_account_observed, False,
                 produced_by='CwLoop', evidence='takeover_invalidation',

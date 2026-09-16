@@ -2685,13 +2685,11 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             _ctx_name, _ctx_top = _phase_screen_context(
                 phase, plane, round_num)
             if _ctx_name is not None:
-                # D2 live 接线(R1 缺口承接):恢复局旗标(session 执行态,
-                # 写端 = cw_loop 恢复检测两确认点)透传进派生规则——恢复局
-                # 弹窗腿在 hist 空时禁用不猜(判定方案规则六)。
-                from sr_od.application.currency_war.kernel.cw_exec_state import (
-                    exec_state_of as _exec_state_of,
-                )
-                _resumed = bool(_exec_state_of(session).cw_resumed_match)
+                # D2 live 接线(R1 缺口承接):恢复局旗标(容器 match_facts
+                # 域 Field resumed_match,写端 = cw_loop 恢复检测两确认点,
+                # 渠道③接管协议)透传进派生规则——恢复局弹窗腿在 hist 空时
+                # 禁用不猜(判定方案规则六)。
+                _resumed = bool(gs.resumed_match.value)
                 gs.observe_screen_context(
                     _ctx_name, phase_round=_ctx_top, resumed=_resumed,
                     sig=_ChannelSig(family='obs', actor='cw_observation',

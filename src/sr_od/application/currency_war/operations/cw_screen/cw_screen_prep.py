@@ -26,7 +26,6 @@ from sr_od.application.currency_war.cw_game_ports import (
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BenchChar,
     deployed_row_slot,
-    exec_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
@@ -1910,10 +1909,15 @@ class CwScreenPrep(CwScreenOpBase):
         """接管局补采(W971 §2.1/01-opening §2.1;单轮化后挂点 = 单轮 op 观察段)。
 
         触发 = session.briefing_bosses 空(本局尚无位面序真值);可交互门 = 节点条
-        可读;会开/关位面详情画面 → 执行后交回外循环重识别。计数挂 session
-        (单轮 op 每外循环轮次重建,实例属性不存活);成功或 2 次失败后停。
+        可读;会开/关位面详情画面 → 执行后交回外循环重识别。计数挂容器
+        match_facts 域 Field(单轮 op 每外循环轮次重建,实例属性不存活);
+        成功或 2 次失败后停。旗标渠道 = 渠道③接管协议(logic_hook,actor =
+        ResumeAttach 登记名)。
         """
-        if (getattr(exec_state_of(session), 'cw_takeover_collect_done', False)
+        _gs = game_state_of(session)
+        _sig_takeover = ChannelSig(family='logic_hook', actor='ResumeAttach',
+                                   mode='compute')
+        if (_gs.takeover_collect_done.value
                 or getattr(session, 'briefing_bosses', None)):
             return None
         _tk_slots = None
@@ -1921,10 +1925,16 @@ class CwScreenPrep(CwScreenOpBase):
             _tk_slots = read_node_sequence(self.ctx, self.last_screenshot)
         if _tk_slots is None:
             return None   # 节点条不可读(过场/overlay 半开帧)→ 等下轮,不消耗预算
-        _tries = getattr(exec_state_of(session), 'cw_takeover_tries', 0) + 1
-        exec_state_of(session).cw_takeover_tries = _tries
+        _tries = int(_gs.takeover_tries.value or 0) + 1
+        _gs.write_logic(_gs.takeover_tries, _tries,
+                        produced_by='ResumeAttach',
+                        evidence='takeover_collect_tries',
+                        sig=_sig_takeover)
         if _tries > 2:
-            exec_state_of(session).cw_takeover_collect_done = True
+            _gs.write_logic(_gs.takeover_collect_done, True,
+                            produced_by='ResumeAttach',
+                            evidence='takeover_collect_done',
+                            sig=_sig_takeover)
             log.info('[cw][director] 接管补采两次未成,放弃(boss 缺省中性)')
             # 放弃也清空两池:残留值会被下局判空误消费(跨局泄漏)
             self.ctx.cw_plane_bosses = None
@@ -1950,7 +1960,10 @@ class CwScreenPrep(CwScreenOpBase):
         self.ctx.cw_plane_bosses = None
         self.ctx.cw_plane_affixes = None
         if _pb_res is not None and getattr(_pb_res, 'success', False) and _names:
-            exec_state_of(session).cw_takeover_collect_done = True
+            _gs.write_logic(_gs.takeover_collect_done, True,
+                            produced_by='ResumeAttach',
+                            evidence='takeover_collect_done',
+                            sig=_sig_takeover)
             # 保位写(ADR-0398):徽章态位面采得 None 原样占 3 槽,
             # 丢弃会让后续位面名字左移错位(位面序真值变假)。
             session.briefing_bosses = _names

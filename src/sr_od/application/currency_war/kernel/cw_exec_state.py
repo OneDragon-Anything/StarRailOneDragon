@@ -31,7 +31,17 @@ from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
 
+# 台账值载体(运行时转发,非仅注解):类本体住 kernel/cw_game_state.py
+# (宿主 = 容器非 Field 簿记 GameState.plane_node_sequences 所在模块),本模块
+# 转发保持 cw_vocab 转出口与既有 import 路径不断链(载体解散迭代 #20:
+# 消费面零改动申报的成立前提)。cw_game_state 模块级依赖不反向触达本模块
+# (惰性 import 面),此模块级引入不成环。
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    PlaneNodeLedger,
+)
+
 if TYPE_CHECKING:
+    # 仅类型注解引用(项目规范;运行时按需惰性 import,守同仓懒加载惯例)。
     from sr_od.application.currency_war.kernel.cw_vocab import (
         CwAction,
     )
@@ -96,66 +106,16 @@ def exec_state_of(session: object) -> ExecState:
 
 @dataclass
 class ExecState:
-    """一局的执行层状态(字段数见下方定义;生命周期/防重入语义逐字段
-    自原宿主平移,值域与缺省一致——载体每局新建即天然清零)。账外收编
-    账本 = ADR-0563「落位裁量」节。
+    """一局的执行层状态载体(现无字段;待删壳)。
 
-    生命周期分级(迁移核对判据:落点生命周期 ≥ 原生命周期,session.md
-    §7.2-3):局级(失败记忆/互斥账/tracked 账)、跨环(发射连败)、
-    节点/visit(防重入)。
+    全部具名字段已按 execstate-dissolution 迭代
+    (docs/develop/sr_od/application/currency_war/changes/
+    2026-09-16-execstate-dissolution/design.md §2.1)迁出:接管/恢复三字段
+    → GameState match_facts 域 Field(#12-#14);纠漂/留证簿记 →
+    GameState.exec_books(#15/#16);节点台账 → GameState.
+    plane_node_sequences(#20)。载体类与访问口(exec_state_of/
+    bind_exec_state)随同迭代载体拆除批(#21)删除。
     """
-
-    # star 回退停机钩子计数(char → 连续回退次数;连续 2 节点回退 = 真识别
-    # 问题 → 停机保画面排查;读回恢复即清零)。执行侧停机钩子载体。
-    star_regression_count: dict[str, int] = field(default_factory=dict)
-    # tracked 主账(执行侧跟踪账,随动更新)。两账形状契约 = pad 态定长
-    # 槽表**含 None**(ADR-0316/0392;tracked_bench_chars 现状 =
-    # reconcile 写回经 bench_from_compact 重建的槽位表,恒 pad 态;
-    # tracked_deployed = deployed_from_compact 写回/mutate 入口
-    # pad_deployed 的定长 10 槽表)——注解按契约含 None。
-    # (tracked 主账簿记宿主迁往容器:
-    #  GameState.tracked_books(kernel/cw_game_state.py;非 Field 簿记容器,
-    #  先例 = settlement_ring)——ExecState 不再承载 tracked 槽位表,亦无
-    #  面向策略的读口;观察状态 = 同容器 tracked_account_observed。)
-    # bench 布局代次(churn 事件通道,最小面)。[索引定义] 坐标系
-    # = 单调递增计数器(非槽位号、非下标);取值时机 = reconcile 纠漂写回期
-    # 递增(kernel/cw_reconcile,唯一写点)/ 逻辑态播种期快照(每段入口观察)+
-    # 单动作循环每动作消费前现读检差(cw_op_buy_cards,唯一消费点)。命中 =
-    # 布局已重排,在飞动作的 bench_idx 代际失效 → 序列决策契约截断+按 tracked
-    # 重播种+重入决策。当前架构 reconcile 均在 visit 外跑,visit 内恒不变
-    #(S2+S1 后纯未来防御:防 visit 中段未来引入读屏/对账点时布局变化
-    # 无人知晓)。局级生命周期(载体每局新建即天然清零)。
-    bench_layout_epoch: int = 0
-    # (期望态条目表容器 expected_state 已随 ADR-0651 两态制废除——
-    #  ExpectedEntry 登记/覆盖点 diff 对账整套拆除;op 逻辑效果 =
-    #  cw_expected_state.apply_op_effect 直接写 session 字段。)
-    # 写端 = 画面 op/发射位,原挂 session 属历史宿主错位)——
-    # 接管采集已完成(节点内一次性)。
-    cw_takeover_collect_done: bool = False
-    # 接管采集重试计数。
-    cw_takeover_tries: int = 0
-    # 位面节点序列台账(cw_state.PlaneNodeLedger;备战帧查表与逐帧校验的
-    # 去重/豁免状态,[索引定义] 坐标系 = seq_by_plane 键为 1-based 位面号,
-    # 序列下标 0-based = 该位面第 i+1 轮,取值时机 = 写入端整行重读快照,
-    # 定义详注在载体类头)。写入端 = 画面 op 三处(CwScreenPlaneIntel
-    # 位面详情 / CwScreenInvestEnv 环境重读 / CwScreenPrep 备战节点行),
-    # 经 cw_state.get_node_ledger / ledger_update_plane 单口;读端 =
-    # cw_state.ledger_node_type(kernel 判据 + 遥测 recorder)。
-    # None = 本局未建(读口惰性建)。
-    plane_node_ledger: PlaneNodeLedger | None = None
-    # 恢复局旗标(D2 live 接线;R1 缺口承接,判定方案 R3 规则六)。True =
-    # 本局为恢复对局(新 match 但游戏在中局续跑)——弹窗腿在派生 hist 空时
-    # 禁用不猜(防把恢复局首弹窗误推断成开局节点 1),消化后备战帧腿 A 权威
-    # 接管。写端 = cw_loop 恢复检测两确认点(_iter==1 战斗帧恢复检测 /
-    # 备战帧 resume_candidate 确认,``_mark_session_resumed`` 单口);读端 =
-    # cw_observation.read_game_state(经 observe_screen_context(resumed=…)
-    # 进派生规则,读值不落旗标——一次性会话语义,非消费即清)。session 级
-    # 生命周期:新 match 新执行态 = 缺省 False(正常新局恒 False,开局推断
-    # 合法不受误伤)。
-    cw_resumed_match: bool = False
-    # (r1 批「外加布尔旗标 tracked_observed」与 r2 批「字段取值域哨兵
-    # UnobservedTracked」两形态均已退役:观察态正本 =
-    # 容器字段 GameState.tracked_account_observed,见 tracked_* 字段注。)
 
 
 # ============================================================ op 逻辑效果推进
@@ -358,8 +318,10 @@ def _apply_buy_card(session, action: dict, _eff) -> None:
 
 # ============================================================
 # 候裁9 词汇迁入(原 kernel/cw_state.py 席位/台账域):
-# 席位/槽位跟踪域 + 节点台账 + 布局转发。宿主依据 = ExecState 自申报
-# tracked_bench_chars/tracked_deployed 定长槽表契约与 plane_node_ledger。
+# 席位/槽位跟踪域 + 节点台账访问函数 + 布局转发。宿主依据 = ExecState 自申报
+# tracked_bench_chars/tracked_deployed 定长槽表契约与局级节点序列台账
+# (两宿主现均已迁容器:GameState.tracked_books / plane_node_sequences;
+# 台账值载体随迁 cw_game_state.py,本模块保留三访问函数,见模块尾)。
 # ============================================================
 
 BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级变)
@@ -624,59 +586,29 @@ def _apply_row_to_char(bc: BenchChar, to_row: str) -> None:
 # 选完后重读刷新」,此后每帧备战画面**查表**得当前节点类型,逐帧识别降级为校验。
 # 旧逐帧识别的三类噪声(标签出现在即将到来节点下方 / 高亮态 Hu 不匹配 / 商店
 # 遮挡坏帧)因此只影响校验票,不再直接污染决策输入。
-
-
-@dataclass
-class PlaneNodeLedger:
-    """本局 per-plane 节点序列台账 + 逐帧校验的去重/豁免状态。
-
-    宿主:``ExecState.plane_node_ledger``(kernel/cw_exec_state.py;经
-    :func:`get_node_ledger` 惰性建。载体生命周期 = 一局,无跨局污染)。
-    """
-
-    #: 键 = 位面号(1-based);值 = 节点类型序列,**下标 i(0-based)= 该位面第 i+1 轮**
-    #: 的类型 token(battle/supply/encounter/reward/boss,与
-    #: ``cw_node_reader.NodeSlot.node_type`` / ``CwSimFrame.node_type`` 同词汇表;
-    #: None = 该位次未识别占位,合并时被后续非 None 读数覆盖)。
-    #: 取值时机:写入端每次整行重读时快照(见各写入端);读端 = 备战帧查
-    #: ``seq[round_num - 1]``。
-    #: 写入端:①位面详情采集(CwScreenPlaneIntel,进位面时的两源互证产物);
-    #: ②投资环境选择完成后重读备战节点行(CwScreenInvestEnv,变异窗后的权威刷新)。
-    seq_by_plane: dict[int, list[str | None]] = field(default_factory=dict)
-
-    #: 每序列的写入来源('plane_detail' = 位面详情采集 / 'prep_row' = 备战节点行),
-    #: 判读侧区分表值的采集通道用(位面详情=彩色渲染态全量,备战行=含 past 遮挡)。
-    seq_source: dict[int, str] = field(default_factory=dict)
-
-    #: 位面 → 位面详情底部明文「敌人难度 N」参考值。**只存参考**——生产难度
-    #: 主源 = 备战旗牌两级管线(ADR-0449),本字段供离线对拍/缺口排查。
-    difficulty_ref: dict[int, int] = field(default_factory=dict)
-
-    #: 投资环境变异窗豁免截止(time.monotonic 时刻;0.0 = 无窗)。窗内查表与
-    #: 逐帧校验的不一致**不落**缺陷台账——环境选择到节点行重读之间节点行
-    #: 正在合法变异(用户口述:投资环境是唯一变异源),不一致是预期而非识别错误。
-    #: 写入端:CwScreenInvestEnv 确认前开窗、重读刷新台账后关窗(置 0)。
-    env_grace_until: float = 0.0
-
-    #: 已落过缺陷的 (plane, round) 键集(逐帧校验每帧都会跑,同一不一致只落一行)。
-    defect_seen: set[str] = field(default_factory=set)
+#
+# 台账值载体 :class:`PlaneNodeLedger` 住 kernel/cw_game_state.py(宿主 =
+# 容器非 Field 簿记 ``GameState.plane_node_sequences``,载体解散迭代迁入);
+# 本模块保留三访问函数(get_node_ledger / ledger_node_type /
+# ledger_update_plane)与 fill_boss_by_position——签名不变,消费面
+# (cw_vocab 转出口 / cw_equip_wear_plan 直 import / obs 与各画面 op)
+# 零改动。
 
 
 def get_node_ledger(session: object) -> PlaneNodeLedger | None:
-    """取执行侧载体上的台账,无则惰性建(None session → None,调用方跳过)。
+    """取容器节点台账(session None → None,调用方跳过)。
 
-    宿主 = ``ExecState.plane_node_ledger``(产生者 = 画面 op 采集/重读
-    写入端,归执行侧载体;读写全经本函数与 :func:`ledger_node_type`,
-    消费点禁直摸载体字段)。
+    宿主 = ``GameState.plane_node_sequences``(kernel/cw_game_state.py;
+    非 Field 簿记,产生者 = 画面 op 采集/重读写入端)。容器每局新建 =
+    台账天然清零,无惰性建面(缺省即空账)。读写全经本函数与
+    :func:`ledger_node_type`,消费点禁直摸载体字段。
     """
     if session is None:
         return None
-    ex = exec_state_of(session)
-    ledger = ex.plane_node_ledger
-    if ledger is None:
-        ledger = PlaneNodeLedger()
-        ex.plane_node_ledger = ledger
-    return ledger
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        game_state_of,
+    )
+    return game_state_of(session).plane_node_sequences
 
 
 def ledger_node_type(session: object, plane: int | None,
@@ -687,8 +619,7 @@ def ledger_node_type(session: object, plane: int | None,
     **不猜**)。boss 位在序列里存 'boss' token(写入端按「首领=位面最后节点」
     位置先验回填,与既有 boss 语义门同源)。
     """
-    ledger = (None if session is None
-              else exec_state_of(session).plane_node_ledger)
+    ledger = get_node_ledger(session)
     if ledger is None or not plane or not round_num:
         return None
     seq = ledger.seq_by_plane.get(int(plane))

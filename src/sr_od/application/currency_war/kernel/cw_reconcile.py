@@ -9,7 +9,6 @@ from __future__ import annotations
 from cv2.typing import MatLike
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     game_state_of,
@@ -206,7 +205,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     # 漏金星 或 卖后重买边缘场景;不保旧(审计:保旧不安全)只留证统计毒化率。
     _old_stars = {(n, s) for n, s in old_b + old_d if n}
     _new_stars = {(n, s) for n, s in new_b + new_d if n}
-    _reg = dict(getattr(exec_state_of(session), 'star_regression_count', {}) or {})
+    _reg = dict(game_state_of(session).exec_books.star_regression or {})
     # ⚖️ star 回退防抖 + 锚定(274 张存证全量重放实证:回退角色 40/40 在场
     # 且 36/40 **同图重读为 2★**(live 读 1★)→ 真根因 = 3合1 合成动画窗
     # 识别(read_star 在特效期读 1,存证帧在动画后半段星已显),非 SIFT
@@ -295,7 +294,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         for n in _gone:
             del _pend[n]
     session.star_pending_regression = _pend
-    exec_state_of(session).star_regression_count = _reg
+    game_state_of(session).exec_books.star_regression = _reg
     # 防抖可能原地改 bench/deployed 副本 star → 纠漂判定与日志必须
     # 取**防抖后**快照(改前快照会误导排障)。bench/deployed 入参
     # 是 SIFT 紧凑列表(无 None),但入参若被上游 pad 过则守卫之(同形状契约)。
@@ -384,7 +383,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         # visit 外跑,恒无消费者(S2+S1 后 epoch 只递增不消费,纯未来防御:
         # 防 visit 中段未来引入读屏/对账点时布局变化无人知晓)。
         if _bench_written:
-            exec_state_of(session).bench_layout_epoch += 1
+            game_state_of(session).exec_books.bench_layout_epoch += 1
     # 钩子归位——「对账&hook」位统一消费留证
     # 队列(原 reconcile 深处散调;计数节流每 5 次留一张不变,
     # _star_stop_hook 内帧态门保留=双层保护)。

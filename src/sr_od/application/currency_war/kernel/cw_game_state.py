@@ -139,7 +139,9 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                             # + 新增基线链字段 node_path_baseline,链观察落地批 2026-09-16)
     'units': 1,             # front_row/back_row/bench/back_layout(§3.2.3-§3.2.7)
     'economy': 1,           # gold/level/xp/streak/hp/level_up_cost(§3.2.9-§3.2.13)
-    'match_facts': 1,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/board(§3.1/§3.2.6/§3.2.14/§3.2.20)
+    'match_facts': 2,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/board/接管恢复旗标(§3.1/§3.2.6/§3.2.14/§3.2.20;域版本 2 =
+                            # 接管/恢复三字段(resumed_match/takeover_collect_done/
+                            # takeover_tries)迁入,渠道③接管协议 logic_hook)
     'refresh_counters': 1,  # 商店刷新计数组(§3.3.6-§3.3.9,写入=仅逻辑)
     'node_screen_refresh': 1,  # 节点屏刷新计数组(§3.4.1-§3.4.4;遭遇/补给/环境/策略逐卡)
     'inventory': 1,         # equips/consumables/免战牌(§3.2.15/§3.2.16/§3.2.19〔勘误:免战牌正本=effect_inventory.remaining_uses,§8.6-3——本域不含其字段〕)
@@ -2542,14 +2544,18 @@ class ExecBooks:
     """
 
     # star 回退留证采样计数([索引定义] 键 = 角色名,值 = 连续回退次数;
-    # 唯一写读者 = kernel/cw_reconcile)。**槽位先建,宿主迁移随接管/
-    # 纠漂簿记迁移批落地**(现役宿主暂 = ExecState.star_regression_count,
-    # 迁毕后本行 = 唯一宿主)。
+    # 唯一写读者 = kernel/cw_reconcile;宿主 = 本组,读写点直接解析
+    # ``game_state_of(session).exec_books.star_regression``)。
     star_regression: dict[str, int] = field(default_factory=dict)
-    # bench 布局代次([索引定义] 坐标系 = 单调递增计数器,非槽位号非下标;
-    # 唯一写点 = kernel/cw_reconcile 纠漂写回期,消费点 = cw_screen_buy_cards
-    # /cw_shop_action_ops 检差)。**槽位先建,宿主迁移随接管/纠漂簿记迁移批
-    # 落地**(现役宿主暂 = ExecState.bench_layout_epoch,迁毕后本行 = 唯一宿主)。
+    # bench 布局代次(churn 事件通道,最小面)。[索引定义] 坐标系
+    # = 单调递增计数器(非槽位号、非下标);取值时机 = reconcile 纠漂写回期
+    # 递增(kernel/cw_reconcile,唯一写点)/ 逻辑态播种期快照(每段入口观察)
+    # + 单动作循环每动作消费前现读检差(cw_screen_buy_cards 播种快照 /
+    # cw_shop_action_ops.bench_layout_stale,消费点)。命中 = 布局已重排,
+    # 在飞动作的 bench_idx 代际失效 → 序列决策契约截断+按 tracked 重播种+
+    # 重入决策。当前架构 reconcile 均在 visit 外跑,visit 内恒不变
+    #(S2+S1 后纯未来防御:防 visit 中段未来引入读屏/对账点时布局变化
+    # 无人知晓)。局级生命周期(新局新容器 = 天然清零)。
     bench_layout_epoch: int = 0
     # fenced 臂上一帧状态(换阵卖出义务臂开合的帧间闩;语义产生者 = 执行面
     # 逐环重评,非策略推导)。唯一消费 = 开合变更日志(cw_screen_deploy
@@ -2589,6 +2595,44 @@ class NodeChain:
 
     plane: int
     seq: list[TokenCell] = field(default_factory=list)
+
+
+@dataclass
+class PlaneNodeLedger:
+    """本局 per-plane 节点序列台账 + 逐帧校验的去重/豁免状态。
+
+    宿主:``GameState.plane_node_sequences``(本模块;非 Field 簿记——
+    整行快照语义、逐位合并写、低频重写,Field 化收益低;经
+    :func:`sr_od.application.currency_war.kernel.cw_exec_state.get_node_ledger`
+    惰性解析。容器每局新建 = 天然清零,无跨局污染)。
+    """
+
+    #: 键 = 位面号(1-based);值 = 节点类型序列,**下标 i(0-based)= 该位面第 i+1 轮**
+    #: 的类型 token(battle/supply/encounter/reward/boss,与
+    #: ``cw_node_reader.NodeSlot.node_type`` / ``CwSimFrame.node_type`` 同词汇表;
+    #: None = 该位次未识别占位,合并时被后续非 None 读数覆盖)。
+    #: 取值时机:写入端每次整行重读时快照(见各写入端);读端 = 备战帧查
+    #: ``seq[round_num - 1]``。
+    #: 写入端:①位面详情采集(CwScreenPlaneIntel,进位面时的两源互证产物);
+    #: ②投资环境选择完成后重读备战节点行(CwScreenInvestEnv,变异窗后的权威刷新)。
+    seq_by_plane: dict[int, list[str | None]] = field(default_factory=dict)
+
+    #: 每序列的写入来源('plane_detail' = 位面详情采集 / 'prep_row' = 备战节点行),
+    #: 判读侧区分表值的采集通道用(位面详情=彩色渲染态全量,备战行=含 past 遮挡)。
+    seq_source: dict[int, str] = field(default_factory=dict)
+
+    #: 位面 → 位面详情底部明文「敌人难度 N」参考值。**只存参考**——生产难度
+    #: 主源 = 备战旗牌两级管线(ADR-0449),本字段供离线对拍/缺口排查。
+    difficulty_ref: dict[int, int] = field(default_factory=dict)
+
+    #: 投资环境变异窗豁免截止(time.monotonic 时刻;0.0 = 无窗)。窗内查表与
+    #: 逐帧校验的不一致**不落**缺陷台账——环境选择到节点行重读之间节点行
+    #: 正在合法变异(用户口述:投资环境是唯一变异源),不一致是预期而非识别错误。
+    #: 写入端:CwScreenInvestEnv 确认前开窗、重读刷新台账后关窗(置 0)。
+    env_grace_until: float = 0.0
+
+    #: 已落过缺陷的 (plane, round) 键集(逐帧校验每帧都会跑,同一不一致只落一行)。
+    defect_seen: set[str] = field(default_factory=set)
 
 
 @dataclass
@@ -2662,6 +2706,27 @@ class GameState:
     selected_difficulty: Field[str] = field(default_factory=Field)   # 职级,开局写定恒稳(§3.1.1)
     game_mode: Field[str] = field(default_factory=Field)             # 对局类型:标准/超频博弈(§3.1.2;两屏无建档,接线前补档)
     enemy_difficulty: Field[int] = field(default_factory=Field)      # 非单调(§3.2.14)
+
+    # —— 接管/恢复局旗标组(渠道③接管协议 logic_hook,relay 契约同族先例;
+    # match_facts 域扩展,域版本 2)——宿主自 ExecState 迁入(载体解散迭代
+    # design.md §2.1 #12-#14;局级生命周期,新局新容器 = 天然缺省 None 恒假)。
+    # [索引定义] resumed_match: True = 本局为恢复对局(新 match 但游戏在中局
+    # 续跑)——弹窗腿在派生 hist 空时禁用不猜(防把恢复局首弹窗误推断成开局
+    # 节点 1),消化后备战帧腿 A 权威接管。写入端单一源 = cw_loop 恢复检测两
+    # 确认点(_iter==1 战斗帧恢复检测 / 备战帧 resume_candidate 确认,
+    # ``_mark_session_resumed`` 单口);读端 = cw_observation.read_game_state
+    # (经 observe_screen_context(resumed=…) 进派生规则,读值不落旗标——
+    # 一次性会话语义,非消费即清)。None = 未写(正常新局恒假语义,开局推断
+    # 合法不受误伤)。
+    resumed_match: Field[bool] = field(default_factory=Field)
+    # [索引定义] takeover_collect_done: 接管采集已完成(节点内一次性)。
+    # 写入端 = cw_screen_prep 接管补采段三点(门读/放弃置位/成功置位),
+    # actor = ResumeAttach(接管协议登记名);None = 未写(恒假语义)。
+    takeover_collect_done: Field[bool] = field(default_factory=Field)
+    # [索引定义] takeover_tries: 接管采集重试计数(单调递增,单口累加;
+    # 值 None 按 0 基线读——计数器是局内累计,0 基线是构造事实非观察兜底)。
+    # 唯一写读点 = cw_screen_prep 接管补采段(每轮次 +1,>2 放弃)。
+    takeover_tries: Field[int] = field(default_factory=Field)
 
     # —— 遭遇选档观测面(E-2 平级新结构;非 Settlement 域字段,准入注释见该域)——
     # 结算观测环:产结算屏节点的 RoundOutcome 消费子集,深度 10,同场去重合并,
@@ -2757,8 +2822,21 @@ class GameState:
     # 纪律见 :class:`ExecBooks` 类注)——
     # [索引定义] swap_arm_on = 换阵卖出义务臂上一帧开合态(帧间闩;写读点
     # = cw_screen_deploy 卖出臂门,开合变更日志消费)。star_regression/
-    # bench_layout_epoch 槽位已建,宿主迁移随接管/纠漂簿记迁移批落地。
+    # bench_layout_epoch = 留证采样/纠漂簿记(接管/纠漂簿记迁移批已落位)。
     exec_books: ExecBooks = field(default_factory=ExecBooks)
+
+    # —— 局级节点序列台账(宿主自执行侧载体迁入;
+    # 非 Field 簿记,非域字段,工程结构组单列申报)——
+    # [索引定义] 值 = :class:`PlaneNodeLedger`(本模块;seq_by_plane 键为
+    # 1-based 位面号,序列下标 0-based = 该位面第 i+1 轮,取值时机 = 写入端
+    # 整行重读快照,定义详注在类头)。非 Field 理由 = 整行快照语义、逐位
+    # 合并写、低频重写,Field 化收益低(载体解散迭代 design.md §2.2-1c);
+    # 容器每局新建 = 天然清零。**访问单一源 = cw_exec_state 三访问函数**
+    # (get_node_ledger / ledger_node_type / ledger_update_plane),读写禁
+    # 直摸本字段——消费面(画面 op 三写入端 + kernel 判据/遥测读端)零改动
+    # 由此闭合。
+    plane_node_sequences: PlaneNodeLedger = field(
+        default_factory=PlaneNodeLedger)
 
     # —— 画面附加域(当前画面的 payload,非当前画面=None,§2.2 例外)——
     shop: Field[ShopPayload | None] = field(default_factory=Field)

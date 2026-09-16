@@ -38,11 +38,9 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from one_dragon.base.geometry.point import Point
-from sr_od.application.currency_war.kernel.cw_exec_state import (
-    exec_state_of,
-)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
+    game_state_of,
     shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -217,9 +215,9 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
 def bench_layout_stale(session, seed_epoch: int) -> bool:
     """S3 布局代次检差(T-271 fail-stop 形态;原 reseed 三步封装收缩)。
 
-    检差:exec_state 布局代次 vs 播种期快照——命中 = visit 内布局已重排
-    (reconcile 纠漂递增,唯一写点 kernel/cw_reconcile),已发射动作的
-    bench_idx 代际失效。
+    检差:容器簿记布局代次(GameState.exec_books.bench_layout_epoch,唯一
+    写点 kernel/cw_reconcile)vs 播种期快照——命中 = visit 内布局已重排,
+    已发射动作的 bench_idx 代际失效。
 
     处置 = fail-stop(与未观察机制同构,编排者裁定,T-268 卡 note):
     命中即本段收工交回外循环,外循环落回备战 heavy 观察 → 入口
@@ -233,7 +231,7 @@ def bench_layout_stale(session, seed_epoch: int) -> bool:
         True = 布局代次已漂移(调用方 fail-stop 本段收工);
         False = 代次未变(常态)。
     """
-    return exec_state_of(session).bench_layout_epoch != seed_epoch
+    return game_state_of(session).exec_books.bench_layout_epoch != seed_epoch
 
 
 # 商店单动作 op 族住动作文件:通用基类 ActionOp = cw_action_base.py
