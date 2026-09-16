@@ -1,5 +1,7 @@
 # 已 live 验(整局跑通多场 D-74~D-79 + 2026-08-12:EnterCW→StartMatch→RunLoop→结算→lobby 全 lifecycle 自主;_in_match resume 多锚含战斗/挑战成功/挑战结束,中间态接手不卡 entry)
 
+import contextlib
+from pathlib import Path
 from typing import ClassVar
 
 from cv2.typing import MatLike
@@ -7,11 +9,17 @@ from cv2.typing import MatLike
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.debug_utils import save_debug_image
+from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import currency_war_const, cw_screen_state
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.currency_war_run_record import CurrencyWarRunRecord
+from sr_od.application.currency_war.kernel.cw_game_state import current_run_id_safe
+from sr_od.application.currency_war.kernel.cw_mismatch_policy import (
+    set_reconcile_andon_hook,
+)
 from sr_od.application.currency_war.operations.cw_entry.cw_entry_enter import (
     CwEntryEnter,
 )
@@ -26,6 +34,87 @@ from sr_od.application.currency_war.operations.cw_loop import CwLoop
 from sr_od.application.currency_war.telemetry import defects, state
 from sr_od.application.sr_application import SrApplication
 from sr_od.context.sr_context import SrContext
+
+# [停机钩子·常驻兜底,统一观察对账迭代 2026-09-16 §2.4]
+# 触发:GameState.observe() 观察覆盖 logic 值失配(逻辑态被实读证伪),
+# 未命中豁免注册表 → 截图留证 + 停机 flag + 协作式停机。
+
+#: 哨兵 flag 路径(仓根锚定绝对路径:daemon spawn 的非 CWD 进程里相对路径
+#: 会落错,教训先例 = run_state._EXEC_FAIL_FLAG_RELPATH 注释)。
+_RECONCILE_ANDON_FLAG_RELPATH = Path('.debug') / 'temp' / 'cw_reconcile_andon.flag'
+
+
+def reconcile_andon_flag_path() -> Path:
+    """哨兵 flag 绝对路径(锚仓根,经 get_project_root 定位;测试经
+    闭包工厂参数注入 tmp_path)。"""
+    return get_project_root() / _RECONCILE_ANDON_FLAG_RELPATH
+
+
+def write_reconcile_andon_flag(flag_path: Path, *, run_id: str,
+                               row: dict) -> str:
+    """写停机 flag(纯 IO,可单测;内容锁 od-dev-stop-hooks 三要素)。
+
+    三要素:触发定位([HOOK-STOP] + 失配行全维度)/ 可执行处理步骤(两
+    原因排查,归因一手数据 = journal 行)/ 移除条件(常驻兜底——单次
+    触发只删 flag;机制性差异走豁免申报,不留开关)。返回写入内容(测试
+    断言用)。
+    """
+    content = (
+        '[HOOK-STOP] 观察对账安灯(真失配停机;统一观察对账迭代 2026-09-16)\n'
+        '触发:GameState.observe() 观察覆盖 logic 值失配 = 逻辑态被实读证伪 = bug'
+        '(此前观察态错 / 逻辑推算代码错),未命中豁免注册表。\n'
+        f'定位:run_id={run_id} ts={row.get("ts")} 字段={row.get("field")} '
+        f'画面={row.get("screen")} actor={row.get("actor")} '
+        f'动作组={row.get("group_id")} 逻辑写端={row.get("logic_evidence")} '
+        f'observed_evidence={row.get("observed_evidence")}\n'
+        f'逻辑值(expected)={row.get("expected")} 实读(actual)={row.get("actual")}\n'
+        f'截图:.debug/images/reconcile_andon_{run_id}_{row.get("field")}_*\n'
+        '处理步骤:两原因排查——\n'
+        ' 1. 此前的观察态错了:查 state/journal.jsonl 该字段前序写入行'
+        '(行行自足,含渠道签名与质量元数据);\n'
+        ' 2. 逻辑态推算代码错了:按 actor / 动作组 / 逻辑写端 evidence 定位'
+        '写入点修推算。\n'
+        ' 归因一手数据 = journal 行(expected/actual/evidence + 写入后完整'
+        'state 快照)。\n'
+        '移除条件:常驻兜底钩子——单次触发只删本 flag;差异长期确证属游戏'
+        '机制性结构 → 走豁免申报进 kernel/cw_mismatch_policy.EXEMPT_REGISTRY'
+        '(带 reason),不留开关。\n'
+    )
+    flag_path.parent.mkdir(parents=True, exist_ok=True)
+    flag_path.write_text(content, encoding='utf-8')
+    return content
+
+
+def _build_reconcile_andon(ctx: SrContext, latch: dict[str, bool],
+                           flag_path: Path):
+    """构造统一观察对账安灯闭包(装配段专用;模块级函数便于离线单测)。
+
+    触发契约(kernel 侧逐行同步调用):真失配缺陷行 → 截图留证(失败不
+    拦 flag/停机;flag 是主哨兵)→ 每局一闩(键 run_id,同局第二失配跳过)
+    → 写三要素 flag → ``run_context.stop_running`` 协作式停机(当前节点
+    收尾后外循环退出,被证伪的逻辑态不再喂下一个决策)。run_id 空(局外)
+    = 只落证不停机,不写假局 flag(与 journal 局外拒写假行同向);
+    ``flag_path`` 参数供测试注入 tmp_path。"""
+    def _andon(row: dict) -> None:
+        run_id = current_run_id_safe()
+        field = str(row.get('field') or 'unknown')
+        with contextlib.suppress(Exception):
+            frame = ctx.controller.screenshot()
+            if frame is not None:
+                save_debug_image(frame, prefix=f'reconcile_andon_{run_id}_{field}')
+        if not run_id:
+            return   # 局外:只落证不停机(不写假局 flag)
+        if latch.get(run_id):
+            return
+        latch[run_id] = True
+        write_reconcile_andon_flag(flag_path, run_id=run_id, row=row)
+        log.warning('[cw!][andon] 观察对账真失配停机: 字段=%s 逻辑=%s 实读=%s '
+                    '(现场 flag=cw_reconcile_andon.flag)',
+                    row.get('field'), row.get('expected'), row.get('actual'))
+        rc = getattr(ctx, 'run_context', None)
+        if rc is not None:
+            rc.stop_running(reason='hook:reconcile_mismatch')
+    return _andon
 
 
 class CurrencyWarApp(SrApplication):
@@ -101,6 +190,11 @@ class CurrencyWarApp(SrApplication):
             install_state_telemetry,
         )
         install_state_telemetry(run_id_provider=state.current_run_id)
+        # 统一观察对账安灯武装(幂等;迭代 2026-09-16-unified-obs-reconcile
+        # §2.4):真失配缺陷行 → 截图留证 + 停机 flag + 协作式停机,每局
+        # 一闩;kernel 槽缺省关,生产在此与 L0 安灯/出口钩子同点接通。
+        set_reconcile_andon_hook(
+            _build_reconcile_andon(ctx, {}, reconcile_andon_flag_path()))
         # obs_event 收编制 GameState 供给(kernel 禁自寻会话;观察冲突证据
         # 行型 2 的宿主供给,与 run_id provider 同点注入)。
         from sr_od.application.currency_war.kernel import cw_telemetry_exit
