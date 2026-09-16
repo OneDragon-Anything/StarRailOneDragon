@@ -169,7 +169,7 @@ def locked_resume_sync_and_battle(op, ctx):
     **不过本闩**(W1:旧「须经本函数单一发射位,禁旁路」话术与 C1 矛盾,
     按规格改写)。
     """
-    return launch_prepared_battle(op, ctx, sync_once=True)
+    return launch_battle_unified(op, ctx, face='resume')
 
 
 def _battle_chain_deploy_moves(session) -> list:
@@ -456,47 +456,6 @@ def launch_battle_unified(op, ctx, *, face: str) -> tuple[bool, str]:
         return launch_prepared_battle(op, ctx, sync_once=False)
     return launch_prepared_battle(op, ctx, sync_once=True)
 
-
-def readiness_battle_launch(op, ctx):
-    """达标即出战臂调用面(14号稿 §9.6):线成型(fp≥1.00,备战环锚帧)
-    ∧ 战斗就绪 ⇒ 立即部署原子序 + StartBattle,不过
-    ``_cw_locked_sync_done`` 闩(C1:闩只辖恢复局面,达标臂每达标帧发射)
-    ——发射核与恢复局面共用 ``launch_prepared_battle``,禁第二套
-    StartBattle 发射位。
-
-    **执行时刻新鲜屏态复验**(切屏竞态实测病例·遭遇屏形态):发射前重截图
-    复验备战屏锚;非备战屏 → 放弃本次发射,``readiness_stale_screen``
-    分键零静默,屏态过期**非发射失败**(调用方不消耗 C1 失败计数)。
-    发射前过 **G1 准入预估**(§9.2):板满∧bench core∧victim 缺失形态记
-    ``deploy_swap_no_victim`` 分键(显影不拦截,出战优先)。
-    位次 = 备战环动作链之前、守卫计数之前(§10)。
-
-    (复验半段已抽 ``_launch_screen_recheck`` 与统一执行器
-    ``launch_battle_unified`` 共用;浮层安全检查仍在分支体内,3.3 随
-    达标臂迁移改走 ``_launch_overlay_gate``——本函数行为与抽取前逐值
-    等价,机械迁移。)"""
-    _still_prep, _fresh = _launch_screen_recheck(op, ctx)
-    if not _still_prep:
-        return False, 'readiness_stale_screen'
-    _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
-    try:
-        _tc_adm = getattr(strategy_state_of(_sess), 'target_comp', None)
-        if _sess is not None and _tc_adm is not None:
-            # 换源 T-146:预估源 = 容器单例(读 side 改传 session,见
-            # readiness_admission_report docstring)
-            _adm = readiness_admission_report(_sess, _tc_adm)
-            if (_adm['board_full'] and _adm['bench_core_waiting']
-                    and _adm['victim_missing']):
-                counters = getattr(strategy_state_of(_sess), 'cw4_counters', None)
-                if isinstance(counters, dict):
-                    counters['deploy_swap_no_victim'] = \
-                        counters.get('deploy_swap_no_victim', 0) + 1
-                log.warning('[cw!][loop] 达标臂 G1:板满 ∧ bench core 待上 '
-                            '∧ 无合格 victim → 本帧出战无腾位(显影,'
-                            'deploy_swap_no_victim)')
-    except Exception as e:  # noqa: BLE001  准入预估 best-effort,不阻塞出战
-        log.debug('[cw-loop] G1 准入预估失败(不阻塞): %s', e)
-    return launch_prepared_battle(op, ctx, sync_once=False)
 
 
 def _prep_anchors_hit(op, screen) -> bool:
@@ -1972,142 +1931,6 @@ class CwLoop(SrOperation):
         # 半开帧可从底层透出命中,prep.md §时序)。双锚同帧命中才认备战。
         if (self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success
                 and self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success):
-            # 达标即出战臂(14号稿 §9.6,第七局复盘病灶:达标后 3 轮
-            # RunDeploy 合法 no-op 靠守卫停机才重置):判据核 = kernel
-            # ``readiness_launch_decision`` 单一源(sim 决策下沉两小批①
-            # 上收;线成型 fp≥1.00 与 P59/ADR-0522 触发门同源,禁本面
-            # 内联第二实现)∧ 战斗就绪(备战双锚已命中 = 战斗入口可用;
-            # overlay 在 0 系分支先行清场)⇒ 立即经底层发射核出战,短路
-            # 备战动作链。位次 = 动作链之前、守卫计数之前(§10;守卫规格
-            # 零改动,达标帧守卫分键零命中——§7.3 锚③);不过
-            # _cw_locked_sync_done 闩(C1:闩只辖恢复局面)。非达标帧现行
-            # 序零变化,不重排。
-            from sr_od.application.currency_war.kernel.cw_launch_admission import (
-                LAUNCH_QUALITY_DEFER_FRAMES_KEY,
-                LAUNCH_QUALITY_EVAL_ERROR_KEY,
-                readiness_launch_decision,
-            )
-            from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
-                line_members as _line_members,
-            )
-            _tc = getattr(strategy_state_of(self.ctx.cw_match.session), 'target_comp', None)
-            # 换源 T-146:达标臂判据源 = 容器单例(旧 last_state 滞后帧 +
-            # 过渡桥装箱退役;同备战观察写端刷新,判据面逐字段重验在册)
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                game_state_of,
-            )
-            _arm_core = readiness_launch_decision(
-                game_state_of(self.ctx.cw_match.session), _tc,
-                line_members=_line_members)
-            _arm_armed = _arm_core['armed']
-            # 质量闸观测分键(ADR-0570 待标定①实机观测 sink:推迟帧/评估
-            # 异常帧;best-effort,容器缺席静默跳过,与 readiness_overlay_
-            # hold 同写入族;键名单一源 = kernel 常量,三审07轮 C2)。
-            counters = getattr(strategy_state_of(
-                self.ctx.cw_match.session), 'cw4_counters', None)
-            if isinstance(counters, dict):
-                if _arm_core.get('quality_eval_error'):
-                    counters[LAUNCH_QUALITY_EVAL_ERROR_KEY] = \
-                        counters.get(LAUNCH_QUALITY_EVAL_ERROR_KEY, 0) + 1
-                _q_armed = _arm_core.get('quality')
-                if _q_armed is not None and _q_armed.get('defer_by_quality'):
-                    counters[LAUNCH_QUALITY_DEFER_FRAMES_KEY] = \
-                        counters.get(LAUNCH_QUALITY_DEFER_FRAMES_KEY, 0) + 1
-            if _arm_armed:
-                # 浮层在场排除(第十五局实机雷:投资策略浮层盖备战后弹出,
-                # 双锚模板穿透命中 → RunDeploy 拖拽落空 placed=0;遭遇面板
-                # 9 拖空挥同闸辖)。探测 = _launch_overlay_gate(身份分发
-                # 判据单一源 + 遭遇 OCR 兜底;分键在 helper 内)。深度防御
-                # 注:本扫描 = 单点兜底,商店浮层穿透的主防线已前移至 0n
-                # 开商店分支(路由级,先于备战分支整链)。
-                # (3.1 最小修复:原内联扫描引用两阶段分发重构后已不存在的
-                # CwLoop.DISPATCH_AREA_ANCHORS,armed 帧 AttributeError 潜伏
-                # 炸点——改调统一 helper 消解。)
-                _ov_hit = _launch_overlay_gate(self, self.ctx, screen)
-                if _ov_hit is not None:
-                    _arm_armed = False
-            if _arm_armed:
-                # 发射帧受限消费仲裁(出口 B;ADR-0566):位次契约 = armed
-                # 判定通过 ∧ 浮层在场闸通过 ∧ 预检通过(helper 内)∧ 发射核
-                # 调用之前(I-2 钉死「确将发射」路径独占)。溢出段先消费后
-                # 出战;带内/预检未过帧零动作直落发射,行为与非发射帧同构。
-                _arb = _launch_frame_arbitration(self)
-                if _arb.get('abort'):
-                    # 仲裁访问失败路径(未识别卡停机钩子等):保画面交回
-                    # 外环,停机接管;禁在本帧发射摧毁现场。
-                    log.info('[cw-loop] 发射帧仲裁访问中止(失败路径保画面)'
-                             ',本轮不发射')
-                    return self.round_wait(wait=1)
-                _ok_r, _detail_r = readiness_battle_launch(self, self.ctx)
-                if _detail_r == 'readiness_stale_screen':
-                    if _arb.get('entered'):
-                        # 仲裁消费后弃射(可辨识残量,DESIGN v1.1 §3.2):
-                        # 仲裁段已切屏而发射核屏态复验未过,该帧从「非发射
-                        # 帧 digest 零变化」锚辖域显式豁免,defect 分键禁静默。
-                        from sr_od.application.currency_war.kernel import (
-                            cw_launch_arbitrage as _kla,
-                        )
-                        _launch_arb_counter(self, _kla.KEY_ABANDONED_LAUNCH)
-                        try:
-                            from sr_od.application.currency_war.kernel.cw_game_state import (
-                                game_state_of as _gso_arb,
-                            )
-                            from sr_od.application.currency_war.telemetry.defects import (
-                                record_defect as _rd_arb,
-                            )
-                            _sess_arb = getattr(self.ctx.cw_match, 'session', None)
-                            _nd_arb = (_gso_arb(_sess_arb).node.value
-                                       if _sess_arb is not None else None)
-                            _rd_arb(
-                                'launch', _kla.KEY_ABANDONED_LAUNCH,
-                                expected='仲裁关店后备战屏态恢复,发射核复验通过',
-                                observed='屏态复验 stale,本轮弃射落守卫链',
-                                plane=int(_nd_arb.plane) if _nd_arb is not None else 0,
-                                round_num=int(_nd_arb.round_num)
-                                if _nd_arb is not None else 0,
-                                verdict=('可辨识残量申报:仲裁切屏与发射核'
-                                         '复验竞态的单列计数,禁静默'),
-                                reader_source='launch_arbitrage',
-                                gap_large=False, auto_resolved=True,
-                                note='豁免与计数语义 = ADR-0566/DESIGN §3.2')
-                        except Exception:   # noqa: BLE001  遥测 best-effort
-                            pass
-                    # 屏态过期非发射失败:不消耗 C1 计数、不短路,落到守卫
-                    # 链继续(下一环新截图重判真实屏)
-                    log.info('[cw-loop] 达标臂屏态过期放弃发射,本轮交既有链')
-                else:
-                    log.info('[cw-loop] 达标即出战(fp≥1.00,ok=%s): %s',
-                             _ok_r, _detail_r)
-                    if _ok_r:
-                        # 成功复位失败计数(窗口 = 连续失败,非累计)
-                        self._cw_readiness_fail_n = 0
-                        return self.round_wait(wait=3)
-                    # 点击未执行连续计数(防线 C1,出处 = 14 号稿 §7.1 as-built
-                    # 开战放行判定三元语义;语义随出战域重设计收缩:False =
-                    # 找不到按钮/area 缺失等未执行形态,op 已零判效——
-                    # 交回后画面由下一帧重判,此处只防「判定键在但按钮恒
-                    # 找不到」的确定性卡死自旋)。连续 3 次失败放弃短路,
-                    # 回落守卫链(守卫照常计数,卡死仍可停机),分键零静默;
-                    # 成功即复位。
-                    _rf = getattr(self, '_cw_readiness_fail_n', 0) + 1
-                    self._cw_readiness_fail_n = _rf
-                    counters = getattr(strategy_state_of(
-                        self.ctx.cw_match.session), 'cw4_counters', None)
-                    if isinstance(counters, dict):
-                        counters['readiness_launch_fail'] = \
-                            counters.get('readiness_launch_fail', 0) + 1
-                    if _rf >= 3:
-                        self._cw_readiness_fail_n = 0
-                        if isinstance(counters, dict):
-                            counters['readiness_launch_giveup'] = \
-                                counters.get('readiness_launch_giveup', 0) + 1
-                        log.error('[cw!][loop] 达标臂连续 %d 次出战未执行(最后一次:'
-                                  ' %s)→ 放弃短路,回落守卫链(防线 C1)', _rf,
-                                  _detail_r)
-                    else:
-                        log.warning('[cw!][loop] 达标臂出战未执行(第 %d/3 次,%s)'
-                                    '→ 下环重试', _rf, _detail_r)
-                        return self.round_wait(wait=3)
             # (原 PREP_SETTLE_S 子态稳定门 + _post_settle_auto_shop 自动开店判稳
             # 标志位已退役,W971 §2.6/§2.11:半开帧防护替身 = 单轮 op 清场 +
             # 自动开店收起探针;稳定性由外循环每轮重识别保证。)

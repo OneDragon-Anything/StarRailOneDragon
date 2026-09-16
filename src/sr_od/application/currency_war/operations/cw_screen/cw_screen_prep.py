@@ -78,6 +78,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     OpenShop,
     SellBench,
     SellDeployed,
+    StartBattle,
     action_key,
 )
 from sr_od.application.currency_war.obs.currency_war_cv import slot_occupied
@@ -511,6 +512,11 @@ class CwScreenPrep(CwScreenOpBase):
 
     def __init__(self, ctx: SrContext):
         CwScreenOpBase.__init__(self, ctx, op_name='货币战争-备战决策环')
+        # 交回契约事实(迭代 changes/2026-09-16-prep-visit-op design §2.1):
+        # 出战意图经统一执行器发射成功即置位;战斗窗置位策略归外循环
+        # 既有口径(ADR-0250),本事实为通道载体与观测面。单轮 op 每轮次
+        # 重建,实例属性天然无跨轮残留。
+        self.launch_fired: bool = False
         self._executor: PrepActionExecutor | None = None
         self._steps: int = 0
         self._stall: int = 0
@@ -2377,7 +2383,35 @@ class CwScreenPrep(CwScreenOpBase):
         ``obs`` = 当前黑板帧(调用方传入;缺省 = session.prep_obs_frame
         黑板现值——黑板两写点[入口观察/循环逻辑态直写步]与决策循环局部帧恒
         同步,契约 W971 §2,故黑板现值即合法供给源)。"""
+        if isinstance(action, StartBattle):
+            # 出战意图执行 = 统一执行器(face=armed:屏态复验→浮层安全检查
+            # →部署原子序→出战点击链;迭代 design §2.2/方案 4——策略前置
+            # 发射位的意图在此落执行)。launch_fired = 交回契约事实。
+            from sr_od.application.currency_war.operations.cw_loop import (
+                launch_battle_unified,
+            )
+            _ok_lbu, _detail_lbu = launch_battle_unified(self, self.ctx,
+                                                         face='armed')
+            self.launch_fired = bool(_ok_lbu)
+            self._last_mech_detail = _detail_lbu
+            log.info(f'[cw][director] {action_key(action)} → {_detail_lbu}')
+            return
         if isinstance(action, OpenShop):
+            if getattr(action, 'restricted_spend', False):
+                # 受限访问(发射帧仲裁意图执行;金出口族出口 B):仲裁单元
+                # 自含预检/域判/预算闸/第三载体行,语义单一源 = cw_loop
+                # _launch_frame_arbitration(意图化仅换宿主,函数原样复用)。
+                from sr_od.application.currency_war.operations.cw_loop import (
+                    _launch_frame_arbitration,
+                )
+                _arb = _launch_frame_arbitration(self)
+                self._last_mech_detail = (
+                    f"仲裁访问(zone={_arb.get('zone')} "
+                    f"executed={_arb.get('executed')} "
+                    f"gate_blocks={_arb.get('gate_blocks')})")
+                log.info(f'[cw][director] {action_key(action)} → '
+                         f'{self._last_mech_detail}')
+                return
             if obs is None:
                 _sess = self._session()
                 obs = (getattr(_sess, 'prep_obs_frame', None)
