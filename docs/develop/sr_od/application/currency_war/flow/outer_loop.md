@@ -20,7 +20,7 @@ loop()（@operation_node，node_max_retry_times=400；cw_loop.py::CwLoop.loop）
   ├─ 阶段二 备战表面默认分支（双锚 + 横幅守卫;进入序见 §3）
   ├─ 战斗窗（闩 ∨ 帧锚）→ CwScreenBattleWait
   ├─ 「下一步」→ CwScreenNextButton
-  └─ 全不命中 → _handle_unknown_fallback()（guards.md §4）
+  └─ 全不命中 → _handle_unknown_fallback()（guards.md §2）
 ```
 
 run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loop.py::CwLoop.handle_init`）：plane/round 缓存清零、`_is_new_match = ctx.cw_match is None`（续跑支持：cw_match 已存在则延用，手动逐轮验证靠此跨 run 延续 match）、职级难度 ctx 中转吸收（取走清空防跨局复用）、SettlementState/CwScreenBattleWait 实例化、新局兜底 `establish_new_match`。
@@ -55,7 +55,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 战斗窗（闩 _battle_wait_active ∨ 帧锚 _frame_in_battle_window）→ CwScreenBattleWait
 3c 大厅（身份行'标识-创业指南'）→ 对局收口（§5;遥测红线写端保留本 loop）
 5   下一步（OCR）→ CwScreenNextButton
-兜底 全不命中 → _handle_unknown_fallback（guards.md §4）
+兜底 全不命中 → _handle_unknown_fallback（guards.md §2）
 ```
 
 - **清单排除项与理由**：备战（部署态/补给 revisit 按钮/攻略位移使右上角与棋盘标签锚不可靠,语料 18/57 误杀 → 双锚默认分支）、补给锁定（其「返回补给阶段」按钮在普通战斗节点 revisit 备战同样出现,#18 接线暂缓裁定的延续）、道具详情弹窗（道具名可变无固定身份）/消耗品浮层/阿哈装备（无独立画面档,阶段三特殊规则）。

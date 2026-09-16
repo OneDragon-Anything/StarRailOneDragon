@@ -19,19 +19,11 @@
 - `UNKNOWN_STOP_THRESHOLD=15` 轮 ≈ 2min（旧 30s 放宽，换取停机钩子触发前充分自愈窗口）；重试退避 = 2s 起步每连续一次翻倍，封顶 `UNKNOWN_RETRY_BACKOFF_CAP_S=10`（画面被任何分支接走 → streak 归 1 退避自动复位）。
 - 触发动作：截图 + `unknown_state.flag`（处理流程：analyze_screen 离线判已建档命中 → 未命中按元素语义建档 + 0x 分支加 handler → 删 flag + 重启 server）→ `stop_running`。
 
-## 3. 执行失败安灯（`cw_screen_prep.py` `_spend_unit_close`（判定与记账同点：购买单元收尾）+ `_exec_fail_hook_check`（安灯判定+触发）；分类器在 `run_state.py`）
-
-> 安灯分类器输入面 = 内存直读的一手执行事实:购买单元的 `BuyCardsOutcome` 暂存 + finalize 关店金现读回填的 gold_close。`plan_truncated` 豁免通道语义 = 「刷新硬墙跳过」(单动作下不存在截断丢弃尾)。
-
-- 判定与记账同点：购买单元收尾时跑分类器 `exec_fail_should_stop`——数据源 = 内存直读一手执行事实（单元暂存 `BuyCardsOutcome` 的 visit_actions/gold_open + finalize 关店金现读回填的 gold_close；facts 缺席或金读缺失 → unknown 不停，不猜）。旧数据源三流（decisions.jsonl plan 行 / spend_ledger.jsonl 单元行 / obs_conflicts join 兼容路径）已随删除波 1 停写，只辖存量语料——现行下钻 = journal（`state/journal.jsonl`：receipts 回执窗 + state.values.gold 行行快照）与本钩子 flag 的 plan/gold 三件组（同 `run_state.py` flag 文本口径）。
-- "计划≠尝试"分流：plan_truncated（硬墙跳过/截断丢弃）豁免防误停；refresh_attempted/board_changed 进三态判定。
-- 触发：每局最多停一次（`_exec_fail_hook_fired`）→ 截图 + `cw_exec_fail_hook.flag`（plan 明细 + gold 开/关）→ `stop_running(reason='hook:exec_fail_mismatch')`。
-
-## 4. 商店未识别卡停机
+## 3. 商店未识别卡停机
 
 防抖重读 2 帧（判据化自愈：牌行两帧指纹一致门 + ≥1.0s 观察窗）后仍有未识别槽 → 停机保画面（shop_unk.flag）待建档。**不能降级带病跑**（未识别卡按非 target 跳过 = 决策在残缺牌面上做 + 错过新内容建档窗口；用户 2026-08-24 裁决接受阻断代价）。
 
-## 5. 降级链汇总（fail-closed 行为）
+## 4. 降级链汇总（fail-closed 行为）
 
 | 场景 | 降级行为 | 为什么 fail-closed |
 |---|---|---|

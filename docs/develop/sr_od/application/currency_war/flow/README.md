@@ -81,9 +81,9 @@
 **序列语义(历史注——波批时代的冻结条款,反向自旧 `cw_strategy.py` 与旧 `cw_screen_prep.py` 序列消费段)**【本节为**历史契约**:整波返回/帧稳定截断/空批终止语义已由终结动作与单动作循环取代([../screens/op-layer.md](../screens/op-layer.md) §1),本节仅作旧序列锁与历史 ADR 的解读钥匙;其中 fail-stop/恢复原语条款已随验证段废除批退役,现行控制流 = 终结动作 + 机械执行零判效】:
 - **帧稳定域**(历史):序列内第 i+1 个动作不得依赖第 i 个动作执行后的新观察;发射时逐动作判"执行后画面状态能否静态推出",推不出即截断——截断器已退役,截断点语义由终结动作吸收;流程侧保守口径(每动作落地后 heavy 重观察)已由「入口单次 heavy + 逐动作逻辑态直写」取代。OpenShop/StartBattle 现为终结动作。
 - **fail-stop**(已退役):原「任一动作未落地 → 恢复原语(关已知弹层)→ 交回外循环 heavy 重观察重调接口」随验证段废除批删除;现行 = 动作机械发出零判效,落地判定归观察侧对账(../screens/op-layer.md §1)。参数非法(F3 拒绝)仍为执行前契约检查。
-- **期望态对账保留**(现行有效):对账时点 = 下一入口,经 `cw_prep_pending_accts` 暂存;执行侧验证已废(零判效)。
+- **对账唯一发生点 = 观察边界**(现行有效,两态制归一):动作 op 上报经 `apply_prep_action_logic`/`apply_shop_action_logic` 直写容器逻辑态,落地判定归观察边界对账(`cw_reconcile` + observe 失配台账兜底);执行侧验证已废(零判效),期望态暂存对账通道已随执行层状态类目退役(git 历史可溯)。
 - **控制流类动作已整体退役出词表**(DeferSpheres 族随词汇清理批删除;overlay 让位由环入口直接交回外循环承载);策略器禁用空批表达控制流(商店侧空批通道已由 CloseShop 终结取代)。
-- **生命周期机制归流程侧**(现行有效):幂等键 `action_key`、执行失败记忆(deploy_fail_counts 族)、stall 门、强制出战。
+- **生命周期机制归流程侧**(现行有效):幂等键 `action_key`、stall 门、强制出战;执行失败记忆机制已随执行层状态类目退役(git 历史可溯)。
 
 共 冷建 2 + 决策入口 11(抽象 12 + 工厂 1 = 13)。新事件面优先归并进既有 pick 接口或走契约改版,禁旁路自造接口。
 
@@ -102,7 +102,7 @@
 
 ### 2.5 无状态策略与 session / 策略器状态
 
-策略实例不持有可变每局状态;状态三类分离(设计单一源 = `flow/session.md` as-designed):**观察数据**走 `StrategySession`(框架每局新建、局终销毁,只承载读屏采集);**策略器状态** = 实现包私有 `MandateState`,经 `CwStrategy.create_state` 工厂(非 abstract,基类缺省 None)每局冷建、挂 `session.strategy_state` 黑盒引用,框架只搬运引用,消费经访问函数(`strategy_state_of`/impl 侧 `state_of`);**执行层状态** = `ExecState`,宿主 = `CurrencyWarMatch.exec_state`,无 ctx 面经 `exec_state_of(session)` 旁表访问口。异常路径残留容器由 `discard_stale_match_container` 在"确凿新局"信号点丢弃(`cw_strategy.py`)。obs 读口注入槽 `_RESET_PHASE_ROUND_CACHE` 缺省关(`cw_strategy.py`)。
+策略实例不持有可变每局状态;状态两类分离(设计单一源 = `flow/session.md` as-designed):**观察数据**走 `StrategySession`(框架每局新建、局终销毁,只承载读屏采集);**策略器状态** = 实现包私有 `StrategyState`,经 `CwStrategy.create_state` 工厂(非 abstract,基类缺省 None)每局冷建、挂 `session.strategy_state` 黑盒引用,框架只搬运引用,策略器侧消费经访问函数(`strategy_state_of`/impl 侧 `state_of`)。**执行层状态类目已退役**(git 历史可溯):局内事实由 GameState 容器独占承载,防重入由决策面读容器计数自行裁决,执行层不再设旁表状态载体。执行层需要读写策略器状态时(如画面 op 读写防重入宿主 `StrategyState.megastar_clicked`),一律经 kernel `strategy_state_of`(None-safe,状态缺席不冷建)——禁 impl 侧 `state_of` 从执行层调用(其 None 冷建覆写副作用属策略器装配语义,执行层不得触发)。异常路径残留容器由 `discard_stale_match_container` 在"确凿新局"信号点丢弃(`cw_strategy.py`)。obs 读口注入槽 `_RESET_PHASE_ROUND_CACHE` 缺省关(`cw_strategy.py`)。
 
 ## 3. 各篇导读
 
@@ -114,16 +114,17 @@
 | [../screens/](../screens/README.md) | **画面 op 各篇（一画面一文档）**：备战（prep）/商店（shop）/单选族/弹窗族/推进族——能力矩阵与画面文档模板在其 README |
 | [action_exec.md](action_exec.md) | 动作执行：词表与注册表、执行契约（无成败回执）、落地登记、商店/备战/部署执行要点、重试语义 |
 | [projection_contract.md](projection_contract.md) | 备战逻辑态面交互契约：状态面板/TurnState 视图 ↔ 执行臂的字段消费、坐标系、快照 vs 现读时序、注释规范缺口登记 |
-| [guards.md](guards.md) | 守卫总册：误分发限额、未知兜底、执行安灯、未识别卡停机、降级链(停滞判读归事件哨兵 cw_sentinel.py,住 skill scripts/) |
+| [guards.md](guards.md) | 守卫总册：外环通用网、未知兜底、未识别卡停机、降级链(停滞判读归事件哨兵 cw_sentinel.py,住 skill scripts/) |
 
 ## 4. 守卫总览（细则 = guards.md）
 
 | 守卫 | 触发 | 动作 | 载体 |
 |---|---|---|---|
 | 未知画面兜底 | 连续 15 轮全分支不命中（指数退避封顶 10s） | 停机保画面待建档 | `cw_loop.py::CwLoop._handle_unknown_fallback` |
-| 执行失败安灯 | 购买单元"计划花费>0 金差≈0"（分类器三态） | 停机留现场 flag | `cw_screen_prep.py::CwScreenPrep._exec_fail_hook_check` |
 | 商店未识别卡停机 | 收工段牌面仍有 unknown 槽（kind 判据）；判据化自愈重读 2 帧自愈面 | 停机保画面待建档 | `cw_screen_buy_cards.py::run_buy_waves` 未识别卡停机钩子段 |
-| 误分发/恢复链限额 | 位面过渡连败 3 / director 连败 5 / 任意分发 op 连败 5 | round_fail 交兜底链(出战域弹窗确认归出战 op,零框架恢复链) | `cw_loop.py::CwLoop` 限额类常量（PLANE_MISDISPATCH_LIMIT/OP_FAIL_REDISPATCH_LIMIT）与 loop 内 director streak 判定 |
+| 外环连续 fail 重派网 | 同一分发 op 连续 fail 5（ok 清零） | round_fail 显式停交上层 | `cw_loop.py::CwLoop.OP_FAIL_REDISPATCH_LIMIT`（`_dispatch_screen_op`） |
+
+> 执行失败安灯（购买单元"计划≠金动"停机）已随「未建档实证的故障形态不作兜底理由」裁定退役（2026-09-16，动作 op 机械执行后无成败判定输入），细节归 git 历史。
 ## 5. 入口链（enter/start）与弹窗守卫族
 
 > 反向规格化来源 = `currency_war_app.py` + `operations/cw_entry/`（app/enter/start 三层）。对局内循环见 outer_loop.md，本节管「大世界 → 大厅 → 备战」入口链。守卫族决策依据 = 「守卫引入」→「注册表化+领取目标修正」两次演进（细节归 git 历史）。

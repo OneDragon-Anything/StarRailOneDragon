@@ -20,7 +20,7 @@
 
 - **环入口序列**:`_clear_entry_overlays`(残留模态一键关,清场注册表 `ENTRY_OVERLAY_CLOSE`)→ `_clear_prep_cards`(书册卡开卡即交回:0k 分发选卡,弹窗帧禁 heavy 读)→ `_try_collapse_open_shop`(开商店态收起探针;店开着则走 0n/商店访问路径)→ `_observe(heavy=True)` → 帧代次标注 `session.prep_frame_class='full'` → `obs.event_overlay` 非空即交回外循环重分发(不计数)→ 接管局补采 `_takeover_collect_if_needed`(`session.briefing_bosses` 空 ∧ 节点条可读 → 位面详情情报采集,2 次失败放弃)。
 - **heavy 观察消费 obs 解析工具箱**:SIFT 身份(bench/deployed)+ GameState 全量(读漏斗 `obs/cw_observation.py::read_game_state` 容器直写,观察渠道含 carry/prior/leave_screen/relay)+ cap 读取 + 装备域三路(`obs/cw_observe_full.py::observe_full` 组装单一源:owned 件名池全量/occupied 已穿明细/后排布局选档);光标 parking 先行(防 OCR/SIFT 污染)。观察 payload = `kernel/cw_prep_actions.py::PrepObservation`,写黑板 `session.prep_obs_frame`(写者白名单 = 入口观察段/循环逻辑态直写步;读者 = decide_prep_screen)。
-- **对账边界**:本屏观察写入 = ①观察态上报进 GameState 的观察边界,对账在此发生——上一访问逐动作暂存的期望态记账(`exec_state_of(session).cw_prep_pending_accts`)在本帧定型时统一 `_v2_post_frame_accounting` 消费后清空;容器侧比对与仲裁 = `kernel/cw_reconcile.py`(锚定/槽号健康不变量/bench 写回)。
+- **对账边界**:本屏观察写入 = ①观察态上报进 GameState 的观察边界,对账唯一发生点在此——动作落地判定 = 容器逻辑态直写 + 本帧观察覆盖(观察赢),观察侧失配记缺陷台账;容器侧比对与仲裁 = `kernel/cw_reconcile.py`(锚定/槽号健康不变量/bench 写回);本帧定型时另跑纯观察审计族 `_v2_post_frame_accounting`(羁绊显示/商店池/合成预览,零决策)。
 - 可信门:gold 仅 shop 开态可信(`obs.state_gold_trusted = obs.shop_open`,关态读空);hp 决策消费统一经 `kernel/cw_hp_policy.py::decision_hp` 门(`cw_strategy.py::gated_hp` = 策略实现层既有调用点的薄委托)。
 - light 形态(轻字段每步现读)为兼容形态,生产无调用方。
 
@@ -31,11 +31,8 @@
 ```
 action = strategy.decide_prep_screen(session, config)(None = 本帧无动作 → 交回外循环重观察)
 → F3 validate(参数非法 = 拒绝执行 + 交回留证;执行前输入契约检查,非动作后判效)
-→ 期望态记账构造(SellBench/DeployMove → drag_expect;SellDeployed → equip_expect;
-   DeployMove/SellDeployed → deployed 计数前后拍)
 → 执行 _act_execute(机械执行,无成败回执,发出即职责完成;
    落地登记注册表在发射点统一触发——单一发射口,发射即触发)
-→ acct 暂存 exec_state.cw_prep_pending_accts(对账归下一入口时点)
 → 终结判定读注册表 action_op_class_for(action).terminal(终结 → _terminal_exit 交回)
 → 逻辑态直写 _project_prep_obs(纯计算零读屏)→ 黑板推进,下一动作决策读逻辑态
    (直写帧代次 = 'none':同 visit 内续动作不重复触发方向刷新)
@@ -56,7 +53,7 @@ action = strategy.decide_prep_screen(session, config)(None = 本帧无动作 →
 ## 6. 状态上报面
 
 - 动作 → 转移函数腿:逐动作规格见 [../game_state/logic-updates/](../game_state/logic-updates/README.md)(备战域 = `kernel/cw_game_state.py::apply_prep_action_logic`;效果账 = `kernel/cw_exec_state.py::apply_op_effect`)。
-- 执行侧 tracked 账随动(执行簿记,与对账无关,无策略读口);期望态记账(acct 族)在下一入口 heavy 帧消费对账,失配 = 纠偏/缺陷台账,零决策不重执行。
+- tracked 主账随动(容器簿记 `GameState.tracked_books`,与对账无关,无策略读口);动作落地判定归观察边界对账(两态制:逻辑态直写 + 观察覆盖,失配 = 纠偏/缺陷台账,零决策不重执行);期望态暂存记账机制已随执行层状态类目退役(git 历史可溯)。
 
 ## 7. 子态与 overlay
 
@@ -66,7 +63,7 @@ action = strategy.decide_prep_screen(session, config)(None = 本帧无动作 →
 
 ## 8. 守卫与防线
 
-- 执行失败安灯:购买单元收尾分类器(`_spend_unit_close` + `_exec_fail_hook_check`,分类器 = `run_state.py::exec_fail_should_stop`),每局最多停一次(guards.md §4)。
+- 无停机钩子/安灯面(原执行失败安灯已退役,2026-09-16 裁定:动作 op 机械执行后无成败判定输入,未建档实证的故障形态不作兜底理由;细则 = [../flow/guards.md](../flow/guards.md))。
 
 ## 9. 遥测与锁面
 

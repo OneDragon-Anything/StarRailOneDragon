@@ -106,15 +106,8 @@ from sr_od.application.currency_war.prep_actions import (
     StopBrakeShortCircuit,
     row_area_centers,
 )
-from sr_od.application.currency_war.run_state import (
-    exec_fail_flag_path,
-    exec_fail_should_stop,
-    write_exec_fail_flag,
-)
 from sr_od.application.currency_war.telemetry import (
     defects,
-    query,
-    state,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -468,16 +461,6 @@ class CwScreenPrep(CwScreenOpBase):
         self._cached_owned_equips: list | None = None
         self._cached_occupied_equips: dict | None = None
         self._cached_back_layout_slots: int | None = None
-        # 购买单元记账态(纯观测;unit_seq 轮内序,
-        # 按 _spend_unit_key=(plane, round) 重计,见 _spend_unit_open)
-        self._spend_unit_seq: int = 0
-        self._spend_unit_key: tuple[int, int] | None = None
-        self._unit_meta: dict | None = None
-        # 安灯执行事实(W3;迁移批 3.2 换轨 = 访问事实暂存,切片5 起 = ledger.fact_rows 增量追加):visit_open_shop 暂存 _unit_facts +
-        # finalize 回填 gold_close;_spend_unit_open 开新单元时清位(禁跨
-        # 单元陈旧事实错判)。
-        self._unit_facts: dict | None = None
-        self._exec_fail_hook_fired: bool = False   # 安灯:每局最多停一次
         # 适配器位缺省装配(统一观察架构 §9.2 步骤 1):实机适配器 = 现役
         # 识别链/点击链封口(不新建读屏/点击实现);注入替位 = 构造参数/
         # 直接赋值(sim 适配器 = 步骤 2)。__new__ 绕道构造的测试桩无此
@@ -487,7 +470,7 @@ class CwScreenPrep(CwScreenOpBase):
         # on_outcome 落地登记注册表(架构设计 §6.4;单一发射口,发射即触发
         # ——最严读法:两 fire 口合并,落地回执门退役):本 op 级
         # 登记件原两件 = 经验期望账本推进(LevelUp/OpenShop 两通道),随
-        # 期望账拆除(execstate-dissolution)退役——「未落地不计数」防线
+        # 期望账拆除退役——「未落地不计数」防线
         # 由逻辑态直写(apply_prep_action_logic LevelUp 分支)与观察覆盖
         # 承接。执行器内
         # 登记件(刷新计数组免费闸 record_refresh_execution、免战牌
@@ -1489,7 +1472,6 @@ class CwScreenPrep(CwScreenOpBase):
         self._cached_deployed = []
         self._cached_vacancy = 0
         self._cached_gold_trusted = False
-        # 购买单元序按 (plane, round) 键在 _spend_unit_open 内重计(ADR-0514);
         from sr_od.application.currency_war.currency_war_config import (
             CurrencyWarConfig,
         )
@@ -1882,20 +1864,11 @@ class CwScreenPrep(CwScreenOpBase):
                 _sess = self._session()
                 obs = (getattr(_sess, 'prep_obs_frame', None)
                        if _sess is not None else None)
-            _unit = not action.read_only
-            if _unit:
-                self._spend_unit_open(obs)
             try:
                 progressed, detail = self._open_shop_phase(action, obs)
             except Exception as e:
                 self._last_mech_detail = f'执行异常:{e}'
-                if _unit:
-                    self._spend_unit_close(progressed=False, detail=f'执行异常:{e}',
-                                           boundary='aborted')
                 raise
-            if _unit:
-                self._spend_unit_close(progressed=progressed, detail=detail,
-                                       boundary='closed' if progressed else 'failed')
             self._last_mech_detail = detail
             log.info(f'[cw][director] {action_key(action)} → {detail}')
             return
@@ -2140,120 +2113,6 @@ class CwScreenPrep(CwScreenOpBase):
             return True
         except Exception:   # noqa: BLE001  离线契约
             return False
-
-    # ===== 购买单元记账(spend_ledger;纯观测,零行为变更)=====
-
-    def _spend_unit_open(self, obs: PrepObservation) -> None:
-        """开购买单元(单元执行前):记单元身份与序号。
-
-        W3:执行事实(计划≠尝试/gold 基线)改由
-        访问执行事实(visit_open_shop 一手暂存,切片5 起 = fact_rows 增量追加)在单元收口侧
-        直供,本方法不再预记 gold 观测(旧 _unit_meta gold/t0 键随
-        spend_ledger 读面迁移退役)。plane/round 取容器节点读口
-        (last_state 链退役换源,与 receipts 同 join 口径)。纯内存写,
-        失败不影响环。
-        """
-        sess = self._session()
-        _nd = (game_state_of(sess).node.value
-               if sess is not None else None)
-        plane = int(_nd.plane) if _nd is not None else 0
-        rnd = int(_nd.round_num) if _nd is not None else 0
-        # 同轮多单元序号恒递增:序只在 (plane, round) 变化(或新局清键)时
-        # 重置为 1——run() 环节点重入不清序,消除同轮双单元撞 unit_seq=1
-        #(ADR-0514:任何按 (round, unit_seq)
-        # 对拍的消费方都会撞键)。
-        key = (plane, rnd)
-        if key != self._spend_unit_key:
-            self._spend_unit_key = key
-            self._spend_unit_seq = 1
-        else:
-            self._spend_unit_seq += 1
-        # 上一单元的执行事实在此失效:异常中断路径(无 outcome 产出)下
-        # 安灯读到的是陈旧事实——宁可缺事实不判(unknown 不停),禁跨单元
-        # 错判(旧读面 plan 行按 (plane,round) join 的 ADR-0514 误停教训)。
-        self._unit_facts = None
-        self._unit_meta = {
-            'seq': self._spend_unit_seq,
-            'plane': plane,
-            'round': rnd,
-        }
-
-    def _spend_unit_close(self, progressed: bool, detail: str = '',
-                          boundary: str = 'closed') -> None:
-        """关购买单元:执行失败安灯钩子判定挂点(W3 后本方法唯一
-        现役职责;购买单元框架行已随 spend_ledger 流写入端退役删除——
-        删除波 1;执行事实载体 = _unit_facts(迁移批 3.2 起,切片5 = fact_rows 增量追加)。"""
-        meta = self._unit_meta
-        self._unit_meta = None
-        if meta is None:
-            return
-        if detail or boundary != 'closed':
-            log.debug(f'[cw-director] spend unit closed: {boundary} {detail}')
-        # [停机钩子·常驻兜底(od-dev-stop-hooks §2.1 分类),安灯式] 触发条件兜
-        # 「购买单元执行失败(计划花费>0 金差≈0)」整类持续可能复发的失败 =
-        # 安全网,非单次采证——原「临时采证,采完删」标注系误分类,改标防未来
-        # 按「临时」误删安全网。移除条件 = 该失败类根因修复并长期验证后才可
-        # 评估移除;平时触发只删 flag 不删钩子(钩子不留开关的纪律不变)。
-        # 判定与记账同点:
-        # 命中 mismatch → 哨兵(截图+flag)→ stop_running → 不再点击保画面。
-        # 每局最多停一次;判定复用分类器,数据源与离线读端同一套
-        #(shop 关店对拍的冲突行在本单元返回前已同步落盘 journal)。
-        if not self._exec_fail_hook_fired:
-            try:
-                self._exec_fail_hook_check(meta, boundary)
-            except Exception as e:  # noqa: BLE001  钩子 best-effort,不阻塞环收口
-                log.debug(f'[cw-director] exec_fail hook skip: {e}')
-
-    def _exec_fail_hook_check(self, meta: dict, boundary: str) -> None:
-        """安灯判定+触发(内部方法;谓词与 flag 写入是模块级纯函数,离线可测)。
-
-        数据源(W3 内存直读;迁移批 3.2 换轨 = 精简访问事实暂存,
-        容器+渠道三源,BuyCardsOutcome 随其退役删除):
-        - ``self._unit_facts`` = visit_open_shop 构建的
-          :func:`unit_exec_facts_from_receipts` 产物 + finalize 关店金现读
-          回填的 gold_close——动作序列 = ledger.fact_rows 发射时增量追加行(切片5,无窗上界)
-          (serialize_action 同 schema)、plan_truncated = receipts extra、
-          refresh_* = refresh 留证遥测半边、gold_open = visit 入口容器
-          gold 现读暂存;单元身份键天然完整,无文件 join 陈旧风险(实机
-          误停例见 ADR-0514);
-        - 分类单一源不变 = ``telemetry.query.classify_spend_unit``(纯函数,
-          判定链逐态保留),非第二套分类;
-        - facts 缺席(异常中断/读侧未接)或金读缺失 → unknown 不停(不猜),
-          与旧读面 plan_row 缺行早退同向(安全方向 = 漏停不误停)。
-        """
-        run_id = state.current_run_id()
-        if not run_id:
-            return
-        facts = self._unit_facts
-        if facts is None:
-            return
-        plan_actions = facts.get('plan_actions') or []
-        executed = facts.get('executed') or {}
-        gold_open = facts.get('gold_open')
-        gold_close = facts.get('gold_close')
-        if not exec_fail_should_stop(plan_actions, gold_open, gold_close,
-                                     boundary=boundary, executed=executed):
-            return
-        self._exec_fail_hook_fired = True
-        items = query.plan_gold_flow(plan_actions)['items']
-        plan_summary = ';'.join(
-            f"{i['type']}:{i['target']}:{i['cost']}" for i in items) or '(空plan)'
-        shot_prefix = (f'exec_fail_{run_id}_p{meta["plane"]}'
-                       f'r{meta["round"]}u{meta["seq"]}')
-        import contextlib
-        with contextlib.suppress(Exception):   # 截图失败不拦停机(flag 是主哨兵)
-            self.save_screenshot(prefix=shot_prefix)
-        write_exec_fail_flag(exec_fail_flag_path(),
-                             run_id=run_id, plane=meta['plane'],
-                             round_num=meta['round'], unit_seq=meta['seq'],
-                             plan_summary=plan_summary,
-                             gold_open=gold_open, gold_close=gold_close)
-        log.warning('[cw!][director] 安灯:购买单元执行失败(计划花费>0 金差≈0)'
-                    ' p%sr%s u%s → 停机留现场 flag=cw_exec_fail_hook.flag',
-                    meta['plane'], meta['round'], meta['seq'])
-        rc = getattr(self.ctx, 'run_context', None)
-        if rc is not None:
-            rc.stop_running(reason='hook:exec_fail_mismatch')
 
     # ===== W970 批 C:流程层商店编排(整段买牌解体的承接,§4.3.2/§4.3.6)=====
 
@@ -2527,8 +2386,8 @@ class CwScreenPrep(CwScreenOpBase):
         match = self._match()
         if match is None:
             return False, '无 cw_match(对局未初始化)'
-        # 安灯 gold_open 编排壳显式捕获(迁移批 3.2 换轨;对抗 F2-3:Field
-        # 单最新帧无历史,禁事后从容器回取历史帧——visit 入口现读暂存)。
+        # gold_open = visit 入口现读快照(finalize 金差值对拍基线;对抗
+        # F2-3:Field 单最新帧无历史,禁事后从容器回取历史帧)。
         from sr_od.application.currency_war.kernel.cw_game_state import (
             game_state_of as _gs_of_open,
         )
@@ -2546,14 +2405,6 @@ class CwScreenPrep(CwScreenOpBase):
         if _rr is not None or ledger is None:
             return (False, f'买牌循环未完成'
                     f'({_rr.status if _rr is not None else "无产出"})')
-        # 安灯执行事实暂存(W3;迁移批 3.2 换轨 = 精简访问事实暂存
-        #(容器+渠道三源);切片5:动作序列/执行事实 = ledger.fact_rows
-        # 发射时增量追加行——自积累无容量上界,不回读 receipts 滚动窗
-        #(容量 8 截断繁忙访问段 = 该停不停);gold_open = 入口显式捕获,
-        # gold_close 由 finalize 现有金读点回填(零新增读屏))。
-        self._unit_facts = dict(
-            unit_exec_facts_from_receipts(ledger.fact_rows, _gold_open))
-        self._unit_facts['gold_close'] = None
         # B3 拆除(同上,M1③ 调用方不问成败):关店发出即过,不再验
         # 「收起消失」——店关没关由下一帧观察侧对账(0n 三锚/备战双锚)
         # 自然闭环,误入口时外循环 0n 重入商店访问幂等收起自愈。
@@ -2769,51 +2620,6 @@ class CwScreenPrep(CwScreenOpBase):
         return
 
 
-def unit_exec_facts_from_receipts(receipt_rows: list[dict],
-                                  gold_open: int | None) -> dict:
-    """访问事实行 → 安灯执行事实暂存(迁移批 3.2 换轨,纯函数)。
-
-    数据源三件(对抗 F2 定谳;详设 details/sim-state-switch.md §5;
-    切片5 起输入 = ledger.fact_rows 发射时增量追加行——自积累无容量
-    上界,繁忙访问段(多买+刷新+升级 >8 发射行)不截断;历史形态 =
-    receipts 滚动窗切片,容量 8 截断计划侧 = 该停不停,已废):
-    - 动作序列 = 发射行 ``action`` 键(serialize_action 同 schema;受阻行
-      硬墙/闸拒不带载荷,plan 口径与旧 visit_actions 成员资格同界);
-    - plan_truncated = 发射行 extra(现役写点 = 刷新硬墙回执);
-    - refresh_attempted / refresh_board_changed = refresh 留证遥测半边
-      (刷新发射行的 extra 位;3.8 只拆判效半,留证半存续)。
-    gold_open/gold_close = 编排壳显式捕获(finalize 关店现读回填)。
-
-    返回 ``{'plan_actions': list[dict], 'executed': dict, 'gold_open': …}``
-    (直接并入 ``_unit_facts`` 暂存;gold_close 由 finalize 回填)。
-    """
-    plan_actions: list[dict] = []
-    plan_truncated = False
-    refresh_attempted = False
-    refresh_board_changed = None
-    for row in receipt_rows or []:
-        if not isinstance(row, dict):
-            continue
-        act = row.get('action')
-        if isinstance(act, dict) and act.get('__type__'):
-            plan_actions.append(act)
-            if act.get('__type__') == 'RefreshShop':
-                refresh_attempted = True
-                if 'refresh_board_changed' in row:
-                    refresh_board_changed = row.get('refresh_board_changed')
-        if row.get('plan_truncated'):
-            plan_truncated = True
-    return {
-        'plan_actions': plan_actions,
-        'executed': {
-            'plan_truncated': bool(plan_truncated),
-            'refresh_attempted': bool(refresh_attempted),
-            'refresh_board_changed': refresh_board_changed,
-        },
-        'gold_open': gold_open,
-    }
-
-
 def _write_prep_node_chain(session: object, slots: list | None,
                            sig: ChannelSig) -> None:
     """备战帧现行链写端(链观察落地批;语义正本 =
@@ -2940,11 +2746,6 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
     if total_buy or total_xp_buy or total_refresh or total_sell:
         _spend = _spend_executed
         _final_gold = read_gold(op.ctx, op.screenshot())
-        # 安灯 gold_close 回填(W3):关店实读金直供单元执行事实,
-        # 替代已停写的 spend_ledger gold_close 暂存槽;零值单元(无读金
-        # 门)不回填 → 安灯 gold_close=None → unknown 不停(不猜,同向)。
-        if getattr(op, '_unit_facts', None) is not None:
-            op._unit_facts['gold_close'] = _final_gold
     # (关店实读金暂存 set_unit_gold_close 已随 spend_ledger 流写入端
     #  退役删除——删除波 1;金对拍冲突留证(下方 obs_conflict,收编
     #  journal obs_event)照常。)

@@ -34,7 +34,7 @@
 
 - **BuyCardOp**(`cw_buy_card_action.py`):点击定位 = 期望态 payload 定长槽阵列(数组下标+1 = 物理槽;身份同一性优先,退化按 (name, star);坐标 = screen_info「商店牌-N」现取,area 缺失显式失败)→ 买前裁片**纯留证**(零判效)→ 点击 → 动画窗 → **发出即记账**(total_buy / spend_executed / bought_names)→ tracking 同步(mutate 与逻辑态直写同分支单一源:满栏合成买 tracked 侧同样合成腾槽)→ 满栏自动多买补差(k = `merge_buy_k` 单一源)。**execute 无返回**(发出即职责完成,零判效)。期望态推进 = 容器规则通道(`apply_shop_action_logic` 简单腿 + `apply_shop_merge_leg` 合成升星腿,基点 = 买前快照三件组)。
 - **LevelUpOp**(`cw_level_up_action.py`):点购买经验单击 → 动画等待(光标遮挡由段顶 park 防)→ 记账(clicks 序列 = 动作内部步骤,决策循环逐帧重组——外部买面在 clicks 之间不可插花)。
-- **RefreshShopOp**(`cw_refresh_shop_action.py`,段终结):硬墙(`../screens/shop.md` §5,visit 级);刷前现读两口径 → 刷前刷新钮真值读(三态+免费剩余次数,best-effort)→ 点击 → 两帧指纹一致门等牌行稳定(非 blind sleep)→ **发出即记账**(刷价 = 基价常量;total_refresh/did_refresh)。牌名集对比仅作安灯 free_refresh_proc 豁免判定输入 + 遥测(refresh_board_changed);「刷新是否生效」判定归观察侧 reconcile,执行侧零重试。
+- **RefreshShopOp**(`cw_refresh_shop_action.py`,段终结):硬墙(`../screens/shop.md` §5,visit 级);刷前现读两口径 → 刷前刷新钮真值读(三态+免费剩余次数,best-effort)→ 点击 → 两帧指纹一致门等牌行稳定(非 blind sleep)→ **发出即记账**(刷价 = 基价常量;total_refresh/did_refresh)。牌名集对比仅作遥测留证(refresh_board_changed;原安灯 free_refresh_proc 豁免消费已随安灯退役);「刷新是否生效」判定归观察侧 reconcile,执行侧零重试。
 - **SellBenchOp**(`cw_sell_bench_action.py`,商店域能力面;注册行已更替备战域):拖拽卖出(统一拖拽原语机械单发,零判效零重试)→ 发出即记账 → tracking 同步(置 None 不紧缩)+ `register_round_sold`(同轮不回买)。
 - **CloseShopOp**(`cw_close_shop_action.py`,访问终结恒可用):动作 op 内 no-op,关店点击由编排壳 `cw_op_close_shop.py::CwOpCloseShop` 承担。
 
