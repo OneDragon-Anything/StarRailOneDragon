@@ -132,7 +132,9 @@ BS_SCHEMA_VERSION: int = 1
 #: 域粒度版本映射的当前全集(缺域键 = 该域未建模,禁建「None=未建模」占位
 #: 字段,§2.2/§8.8)。域增删或字段语义破坏性变更时 bump 对应域版本。
 DEFAULT_BS_SCHEMA: dict[str, int] = {
-    'node': 1,              # node/node_path(§3.2.1/§3.2.2)
+    'node': 2,              # node/node_path/node_path_baseline(§3.2.1/§3.2.2;域版本 2 =
+                            # node_path 值形 list[str] → NodeChain 载体(逐格 TokenCell 元数据)
+                            # + 新增基线链字段 node_path_baseline,链观察落地批 2026-09-16)
     'units': 1,             # front_row/back_row/bench/back_layout(§3.2.3-§3.2.7)
     'economy': 1,           # gold/level/xp/streak/hp/level_up_cost(§3.2.9-§3.2.13)
     'match_facts': 1,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/board(§3.1/§3.2.6/§3.2.14/§3.2.20)
@@ -2510,6 +2512,39 @@ class TrackedBooks:
     deployed: list = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class TokenCell:
+    """链观察单格读数(链正本 = game_state/chain-observation.md §2;逐格
+    元数据随读数落载体)。
+
+    token = 类型 token(封闭集 battle/supply/encounter/reward/boss + 仅标签
+    通道 elite/megastar/invest;None = 本帧未辨)。channel = 产出通道封闭集
+    {hu, label, sift, none, dim}:hu = 模板形状匹配 / label = OCR 标签 /
+    sift = boss 命中 / none = 未辨 / dim = 已过暗格(不认类型)。
+    hu_dist = Hu 残差/置信(SIFT 命中格记好匹配数;标签格照记)。
+    """
+
+    token: str | None
+    channel: str
+    hu_dist: float | None = None
+
+
+@dataclass(frozen=True)
+class NodeChain:
+    """链值载体(链正本 §2):本位面节点类型链,值自带位面防切换窗读陈旧链。
+
+    [索引定义] ``seq`` 下标 i(0-based)= 该位面第 i+1 轮的读数单元,与
+    判读侧台账 ``PlaneNodeLedger.seq_by_plane`` 同下标语义;取值时机 =
+    生成期帧快照(现行链 = 最新权威读数**整帧覆盖**,不按位合并;基线链 =
+    位面入口写定,本位面内不被链读覆盖);写入端 = 备战帧入口 heavy 链读
+    (prep_row)/ 过渡屏观察段(transition_row / transition_snapshot),
+    链观察落地批 2026-09-16 起。
+    """
+
+    plane: int
+    seq: list[TokenCell] = field(default_factory=list)
+
+
 @dataclass
 class GameState:
     """局内记录:当前局内状态的唯一一份快照(单例,只描述此刻,§8.4)。
@@ -2529,7 +2564,12 @@ class GameState:
 
     # —— 节点 ——
     node: Field[NodeKey] = field(default_factory=Field)          # 当前节点(§3.2.1)
-    node_path: Field[list[str]] = field(default_factory=Field)   # 节点类型序台账(§3.2.2;备战帧 node_path 现读=权威写端)
+    # [索引定义] node_path.seq 下标 = 该位面第 i+1 轮(0-based,与
+    # PlaneNodeLedger.seq_by_plane 同下标语义);取值时机 = 生成期帧快照
+    # (整帧覆盖,不按位合并);写入端 = 备战帧入口 heavy 链读(prep_row)/
+    # 过渡屏观察段(transition_snapshot),见 NodeChain 注(链正本 §2/§3)。
+    node_path: Field[NodeChain | None] = field(default_factory=Field)          # 现行链(§3.2.2)
+    node_path_baseline: Field[NodeChain | None] = field(default_factory=Field)  # 基线链(链正本 §2/§3:位面入口写定,本位面内不被链读覆盖)
 
     # —— 单位域(含星级与装备)——
     front_row: Field[list[Unit]] = field(default_factory=Field)  # 前排成员(§3.2.3)
@@ -3456,25 +3496,28 @@ class ChainQuery:
 
 
 def chain_node_type(bs: GameState, plane: int, round_num: int) -> ChainQuery:
-    """现行链节点类型查询(件 B 设计 v1.1 §3.4 接口预留;只读,零读屏零
-    OCR,查询面 = ``node_path`` 现行链帧事实字段)。
+    """现行链节点类型查询(链正本 = game_state/chain-observation.md §6;
+    只读,零读屏零 OCR,查询面 = ``node_path`` 现行链帧事实字段)。
 
-    - 本批态:链写端(备战帧链识别升格)归件 B 实施批,生产零写端 → 恒
-      token=None(诚实缺位;**零内建回落**禁把基线/台账当兜底,件 B F2
-      回落废除裁定);
-    - 链在位时位寻址 = seq[i] 第 i+1 轮(round 基 1,与本位面跨度语义一致,
-      件 B F9);位越界/链跨位面错配 = None。NodeChain 精化与基线/改写位
-      两接口(chain_baseline/chain_rewritten)归件 B 实施批,本口不预纳;
-    - 商店面板块类型「未定型」查现行链的接线候件 B 实施批(本批不接——
-      未定型 = 零写,禁猜)。
+    - 载体 = :class:`NodeChain`(链观察落地批 2026-09-16 起;list[str] 旧形
+      为 journal 只读历史档,读面不认)——链未写/位面不匹配/位越界/该格
+      token None → None(诚实缺位;**零内建回落**禁把基线/台账当兜底);
+    - 链在位时位寻址 = seq[i] 第 i+1 轮(round 基 1);位越界/链跨位面错配
+      = None。基线/改写位两接口(chain_baseline/chain_rewritten)仍归后续
+      批,本口不预纳;
+    - 消费方 = 节点域类型派生规则四②「商店查现行链」(商店面板块未定型
+      时的类型来源;消费侧执行兜底序与改写位禁令)。
     """
     chain = bs.node_path.value
-    if not chain:
+    if not isinstance(chain, NodeChain):
+        return ChainQuery(token=None)
+    if int(chain.plane) != int(plane):
         return ChainQuery(token=None)
     idx = int(round_num) - 1
-    if idx < 0 or idx >= len(chain):
+    if idx < 0 or idx >= len(chain.seq):
         return ChainQuery(token=None)
-    token = str(chain[idx]) if chain[idx] is not None else None
+    cell = chain.seq[idx]
+    token = str(cell.token) if cell is not None and cell.token else None
     return ChainQuery(token=token)
 
 
