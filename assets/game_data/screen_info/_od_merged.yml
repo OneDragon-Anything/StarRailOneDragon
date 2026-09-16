@@ -6506,7 +6506,7 @@
     - 1905
     - 85
     text: 返回投资策略选择
-    lcs_percent: 0.5
+    lcs_percent: 0.75
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
