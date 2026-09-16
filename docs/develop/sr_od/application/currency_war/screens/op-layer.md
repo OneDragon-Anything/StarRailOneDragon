@@ -99,6 +99,7 @@ observe()   适配器①分派:取观察 payload(实机=识别链 / sim=引擎�
 reconcile   对账:payload 写入 GameState + 观察赢(一致静默;失配→缺陷台账)
    ↓
 decide()    策略消费:strategy_input_state 决策视图 → 策略入口 → 意图
+            (含发射决策:mandate_v1 前置发射位,armed 帧产受限访问/StartBattle 意图)
    ↓
 act()       适配器②分派:意图 → 机械执行(实机=点击/拖拽;sim=引擎应用)
    ↓

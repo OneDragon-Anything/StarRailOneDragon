@@ -25,7 +25,7 @@
 | 开商店(显式/读数两形态) | `OpenShop` | 骨架/EV 需要店面时;读数开商店 = 腾席链取金真值等(词表载体 = `kernel/cw_vocab.py::OpenShop`) |
 | 开补给箱/开典籍/点奖励球 | `OpenBox`/`OpenTome`/`ClickSpheres` | 实体面优先(`entry.py::emit` ①;箱选卡判据 = 13 号篇;席满让路门 = entry 席满探针段) |
 | 穿装备/消耗工具 | `WearEquip`/工具原子类(经 `ToolUseOp`) | M7 + 18 号篇 + `cw_equip_env` 求值 |
-| 出战 | `StartBattle` | 达标臂(`kernel/cw_launch_admission.py::readiness_launch_decision`);备战环正常出口(唯一完成态,详见 [26_battle_settlement.md](26_battle_settlement.md)) |
+| 出战 | `StartBattle` | 前置发射位(`kernel/cw_launch_admission.py::readiness_launch_decision`,宿主 = mandate_v1 decide 入口);备战环正常出口(唯一完成态,详见 [26_battle_settlement.md](26_battle_settlement.md)) |
 
 备战期不做的:闭店态无商店域动作;卖上阵件仅经部署面换血通道([24_deploy_segment.md](24_deploy_segment.md)),无独立备战卖出上阵的义务出口。
 

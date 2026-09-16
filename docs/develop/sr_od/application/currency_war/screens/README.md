@@ -89,7 +89,7 @@
 | 卖上阵(拖上阵位→出售区) | 同上 | `SellDeployedOp` + 部署面换血(`cw_screen_deploy.py::_sell_offtarget_deployed`) | 备战期/部署期换血(24 号篇) | 非终结 |
 | 买经验(点「备战标识-购买经验」) | 4 金/击=+4 经验,升级=过门槛表(`research/xp-rules.md` §2;表值 = `kernel/cw_economy.py::XP_TO_NEXT_LEVEL`) | `PrepLevelUpOp` 备战连点 | 备战期(22 号篇;商店期收缩后的唯一买经验期) | 非终结 |
 | 开商店(点「按钮-商店」) | 商店每节点自动刷新 1 次(`data/gameplay.md`) | `OpenShop`(read_only 两形态);编排 = `cw_screen_prep.py` 商店访问段(文档 = [shop.md](shop.md)) | 备战期(进商店访问的唯一入口动作) | **备战环终结**:开店/读数开店后交商店访问编排或回外循环重识别 |
-| 出战(点「按钮-出战」) | 未在行动值内取胜扣血(`data/gameplay.md`) | `StartBattleOp`;发射核 = `kernel/cw_launch_admission.py::readiness_launch_decision` + `operations/cw_loop.py::readiness_battle_launch`(达标臂) | 备战期出口(唯一完成态) | **备战访问终结**:交回外循环战斗分支 |
+| 出战(点「按钮-出战」) | 未在行动值内取胜扣血(`data/gameplay.md`) | `StartBattleOp`;发射意图 = mandate_v1 前置发射位(判据 = `kernel/cw_launch_admission.py::readiness_launch_decision`);执行 = 统一执行器 `operations/cw_loop.py::launch_battle_unified` | 备战期出口(唯一完成态) | **备战访问终结**:交回外循环战斗分支 |
 | 点奖励球(区域-奖励) | 奖励球飞行动画 ≤2s(`research/screen_flow_timing.md` #16) | `ClickSpheres`(批式:一次全点→等 2s→统一验证;席满让路门 = `strategies/impl/mandate_v1/entry.py` 席满探针段) | 备战期 | 非终结 |
 | 开补给箱(点备战栏箱位) | 开箱即腾席(武装箱 overlay) | `OpenBox`(点「开启」即交回;选卡弹窗由画面 op `CwScreenBoxPick` 闭环,非动作) | 备战期(实体面优先,`entry.py::emit` ①) | **访问终结** |
 | 开秘密典籍 | 典籍占备战席 1 槽 | `OpenTome`(选卡弹窗由画面 op `CwScreenBoxPick` 闭环,非动作) | 备战期(实体面优先,`entry.py::emit` ①) | 非终结 |

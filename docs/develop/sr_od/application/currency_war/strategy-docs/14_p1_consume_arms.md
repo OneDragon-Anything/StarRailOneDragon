@@ -397,6 +397,8 @@ P59(线成型门辖帧买入集与 off-line 围栏件不相交——**证伪**,�
 
 **armed 判据语义增注(2026-09-07)**:本节触发式第一行「form_progress ≥ 1.00」之上已叠加**成型质量合取**——armed = 配方完备 ∧〔板面承重满额 ∨ 部署计划不可得 fail-open〕(B_t 通道承重结构维,零自由参数;判据资格与待标定项 = §11.10 as-built 补录)。本节代码块保留发射位/位次/硬约束规格历史,armed 判据当前语义权威 = §11.10 as-built。
 
+**宿主迁移注(2026-09-16,备战访问 op 化落地)**:本节发射位的 cw_loop 达标臂宿主形态退役——发射决策迁 mandate_v1 前置发射位(`bridge._launch_front_check`,armed 判据消费本核;质量推迟/评估异常分键随消费迁策略前置位);受限访问 = 意图执行(`OpenShop(restricted_spend)` → 仲裁单元 `_launch_frame_arbitration` 原样复用);发射执行 = 统一执行器 `launch_battle_unified`(屏态复验/浮层闸内嵌,face = armed/resume 两调用面,C1 单一函数保持)。遥测退役申报:随分支与预检消亡的键 = `readiness_launch_fail`/`readiness_launch_giveup`/`KEY_PRECHECK_SKIP`;留执行器的键 = `readiness_stale_screen`/`readiness_overlay_hold`/`deploy_swap_no_victim`/`KEY_ABANDONED_LAUNCH`。判定语义与 as-built 权威(§11.10)不变。
+
 
 ### 9.7 恢复局备战同步步(伴生件;补段复盘 #7 实证)
 

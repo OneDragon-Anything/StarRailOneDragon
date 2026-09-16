@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-点击「按钮-出战」推进节点进入战斗——**转移动作**(备战访问终结·唯一完成态):只把画面从备战转移到战斗,不按游戏规则改写任何局内资源。词表 = `kernel/cw_vocab.py::StartBattle`(无字段 dataclass);执行器 = `prep_actions.py::PrepActionExecutor._start_battle`(发射 → 未落地原样重发长按下 → 仍败计连败停机留证);发射准入核 = `kernel/cw_launch_admission.py::readiness_launch_decision` + `operations/cw_loop.py::readiness_battle_launch`(达标臂)。
+点击「按钮-出战」推进节点进入战斗——**转移动作**(备战访问终结·唯一完成态):只把画面从备战转移到战斗,不按游戏规则改写任何局内资源。词表 = `kernel/cw_vocab.py::StartBattle`(无字段 dataclass);执行 = 三路径(备战环/统一执行器/恢复局)经同一注册表分派到达 `operations/cw_op/cw_start_battle_action.py::StartBattleOp`(点击+弹窗确认,零判效零重发);**发射统一执行器** = `operations/cw_loop.py::launch_battle_unified`(屏态复验→浮层安全检查→部署原子序→出战点击链;face = armed/resume 两调用面);发射准入判据 = mandate_v1 前置发射位消费 kernel `readiness_launch_decision`(策略层宿主,2026-09-16 迁移)。战斗窗置位 = 外循环既有口径(ADR-0250 驻留闩),事实通道 = CwScreenPrep.launch_fired(交回契约)。
 
 ## 2. 逻辑态域集
 
