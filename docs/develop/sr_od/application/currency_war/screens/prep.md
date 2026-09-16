@@ -12,7 +12,7 @@
 
 **决策循环形态**。决策入口 = 契约 `strategies/impl/cw_strategy.py::CwStrategy.decide_prep_screen`(黑板 = `session.prep_obs_frame`,缺失即抛错,禁静默按空观察决策);实现链 = `strategies/impl/mandate_v1/bridge.py::decide_prep_screen` → `bridge.py::decide_from_turn`(纯函数)→ `entry.py::emit`。
 
-`entry.emit` 编排序(与代码体一致):①prep 实体面(boxes→OpenBox / tomes→OpenTome / spheres→席满让路门:席自由(free>0)照常 ClickSpheres,席满(free==0)按 `entry.SPHERE_DEFER_PROBE_K` 单探针后让路 fall-through 落后续步骤序)→ ②证明 pass(信号臂/K/stop_flag/线级状态机/换线)→ ③升档器求值位 → ④骨架 pass(M1-M7,`mandate.py`)→ ⑤EV pass(criteria,臂①旁路)→ ⑥无动作 ⇒ StartBattle(备战环正常出口)。动作词表 = emit/adapter 自有映射(`adapter.py::_OP_SPECS`),输出 `list[PrepAction]`——单动作循环取**首项**消费(逐帧取首项 = 单动作选择序)。
+`entry.emit` 编排序(与代码体一致):①prep 实体面(boxes→OpenBox / tomes→OpenTome / spheres→席满让路门:席自由(free>0)照常 ClickSpheres,席满(free==0)按 `entry.SPHERE_DEFER_PROBE_K` 单探针后让路 fall-through 落后续步骤序)→ ②证明 pass(信号臂/K/stop_flag/线级状态机/换线)→ ③升档器求值位 → ④骨架 pass(M1-M7,`mandate.py`)→ ⑤EV pass(criteria,臂①旁路)→ ⑥无动作 ⇒ StartBattle(备战环正常出口)。动作词表 = emit/adapter 自有映射(`adapter.py::_OP_SPECS`),输出恰一个动作(`CwAction | None`;`None` = 本帧无动作交回外循环重观察)。
 
 ## 3. 观察面
 
@@ -29,7 +29,7 @@
 单动作决策循环(`for _vi in range(VISIT_ACTION_CAP)`,循环内零读屏):
 
 ```
-action = strategy.decide_prep_screen(session, config) 取首项(空批合法 → 交回外循环重观察)
+action = strategy.decide_prep_screen(session, config)(None = 本帧无动作 → 交回外循环重观察)
 → F3 validate(参数非法 = 拒绝执行 + 交回留证;执行前输入契约检查,非动作后判效)
 → 期望态记账构造(SellBench/DeployMove → drag_expect;SellDeployed → equip_expect;
    DeployMove/SellDeployed → deployed 计数前后拍)
@@ -50,7 +50,7 @@ action = strategy.decide_prep_screen(session, config) 取首项(空批合法 →
 
 - **StartBattle = 唯一完成态**:发射即终结交回外循环,外循环置战斗窗口(`_battle_ts` 置位 + `_battle_wait_active`,下轮战斗等待分支接管;`outer_loop.md` §4)。
 - **OpenShop = 备战环终结**:显式开店(read_only=False)交商店访问编排;read_only 读数开店后交回重识别。
-- 空批 / overlay 交回 / 访问动作数达上限(VISIT_ACTION_CAP;防御:决策循环不收敛 = 逻辑态或策略 bug,交回外循环由 stall 防线接管,不静默续跑)均合法交回;每轮外循环重识别保证稳定性。
+- 无动作(None)/ overlay 交回 / 访问动作数达上限(VISIT_ACTION_CAP;防御:决策循环不收敛 = 逻辑态或策略 bug,交回外循环由 stall 防线接管,不静默续跑)均合法交回;每轮外循环重识别保证稳定性。
 - 环让位重入契约:本 op 返回后外循环必经 return → 下轮 loop 顶全分支重判,不在同一迭代内直接回备战分支。
 
 ## 6. 状态上报面

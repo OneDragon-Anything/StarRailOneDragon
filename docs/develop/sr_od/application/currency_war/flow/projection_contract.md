@@ -86,8 +86,8 @@
 备战节点入口 heavy 观察(obs.cw_observe_full::observe_full，唯一读屏点)
   → 写黑板 session.prep_obs_frame（写者白名单）
   → assemble（TurnState 幂等装配）
-  → 决策（entry.emit 三遍编排；动作产出 = 族 B PrepAction 列表）
-  → 帧稳定截断（entry.py::truncate_frame_stable；单动作循环逐帧取首项）
+  → 决策（entry.emit 三遍编排；动作产出 = 恰一个动作（CwAction | None））
+  → 帧稳定截断（entry.py::truncate_frame_stable；单动作循环逐帧恰取一个动作，None = 本帧无动作交回重观察）
   → 执行（PrepActionExecutor / 组合 op）
   → 期望态登记 + tracked 随动 → 逐动作逻辑态直写（纯计算零读屏）→ 下一动作或终结 op
 ```

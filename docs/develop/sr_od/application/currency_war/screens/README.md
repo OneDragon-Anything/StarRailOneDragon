@@ -51,7 +51,8 @@
 | SellDeployed(卖上阵) | `SellDeployed` | `cw_sell_deployed_action.py::SellDeployedOp` + 部署面换血(`cw_screen_deploy.py::_sell_offtarget_deployed`) | 非终结 |
 | SwapDeploy(上阵↔备战对调) | `SwapDeploy` | 未接线(词表+容器逻辑态直写/sim 消费在役;词表完备性保留) | 非终结 |
 | DeployMove(部署) | `DeployMove` | `cw_deploy_move_action.py::DeployMoveOp`(bench→上阵单步拖拽,发射位逐帧现算) | 非终结 |
-| 领取类 | `ClickSpheres`/`OpenBox`/`OpenTome`/`OpenBookcard` | 同名 `_action.py` op(`cw_open_box_action.py` 等) | 非终结 |
+| 领取类(开箱) | `OpenBox` | `cw_open_box_action.py::OpenBoxOp` | **访问终结**(§6) |
+| 领取类 | `ClickSpheres`/`OpenTome`/`OpenBookcard` | 同名 `_action.py` op(`cw_open_tome_action.py` 等) | 非终结 |
 | 穿戴/工具 | `WearEquip`/`FurnaceUse`/`PrivilegeCardUse`/`WrenchUse`/`PrecisionWrenchUse`/`StaffProjectorUse`/`PerfectProjectorUse`/`LuckyTokenUse` | `cw_wear_equip_action.py::WearEquipOp`/`cw_tool_use_action.py::ToolUseOp` | 非终结 |
 | 转场 | `OpenShop`/`StartBattle` | `cw_open_shop_action.py::OpenShopOp`(terminal 承载行,execute 抛,正常路径不可达)/`cw_start_battle_action.py::StartBattleOp`(基类契约在册例外) | 备战环终结/备战访问终结 |
 
@@ -90,7 +91,8 @@
 | 开商店(点「按钮-商店」) | 商店每节点自动刷新 1 次(`data/gameplay.md`) | `OpenShop`(read_only 两形态);编排 = `cw_screen_prep.py` 商店访问段(文档 = [shop.md](shop.md)) | 备战期(进商店访问的唯一入口动作) | **备战环终结**:开店/读数开店后交商店访问编排或回外循环重识别 |
 | 出战(点「按钮-出战」) | 未在行动值内取胜扣血(`data/gameplay.md`) | `StartBattleOp`;发射核 = `kernel/cw_launch_admission.py::readiness_launch_decision` + `operations/cw_loop.py::readiness_battle_launch`(达标臂) | 备战期出口(唯一完成态) | **备战访问终结**:交回外循环战斗分支 |
 | 点奖励球(区域-奖励) | 奖励球飞行动画 ≤2s(`research/screen_flow_timing.md` #16) | `ClickSpheres`(批式:一次全点→等 2s→统一验证;席满让路门 = `strategies/impl/mandate_v1/entry.py` 席满探针段) | 备战期 | 非终结 |
-| 开补给箱(点备战栏箱位)/开秘密典籍 | 开箱即腾席(武装箱 overlay);典籍占备战席 1 槽 | `OpenBox`/`OpenTome`(选卡弹窗由画面 op `CwScreenBoxPick` 闭环,非动作) | 备战期(实体面优先,`entry.py::emit` ①) | 非终结 |
+| 开补给箱(点备战栏箱位) | 开箱即腾席(武装箱 overlay) | `OpenBox`(点「开启」即交回;选卡弹窗由画面 op `CwScreenBoxPick` 闭环,非动作) | 备战期(实体面优先,`entry.py::emit` ①) | **访问终结** |
+| 开秘密典籍 | 典籍占备战席 1 槽 | `OpenTome`(选卡弹窗由画面 op `CwScreenBoxPick` 闭环,非动作) | 备战期(实体面优先,`entry.py::emit` ①) | 非终结 |
 | 查看详情(角色/装备详情浮层) | 游戏辅助功能(`data/gameplay.md`) | 推进弹窗族 `CwScreenRoleDetailOverlay` 等(1b/1d/1g 分支,空决策形态) | 无策略归属(推进为流程义务) | 关闭/点空白即终结 |
 | 锁商店(跨节点保牌) | `research/economy.md` §2.1(整店级锁;官方机制) | **生产链路未建模**(建档已有「按钮-商店锁定」坐标备作将来) | 无 | — |
 
@@ -128,8 +130,9 @@
 | 商店全 unknown 失读窗 | 收工终结 | 牌面含 unknown 槽 → 花钱动作禁发射,仅 CloseShop 收工;未识别卡停机钩子留证(`shop.md` §3) |
 | 备战 StartBattle | **访问终结(唯一完成态)** | 出战 → 外循环置战斗窗口(备战→战斗→结算→回备战轮推进,`outer_loop.md` §4) |
 | 备战 OpenShop | 备战环终结 | 交商店访问编排(显式开店)或回外循环重识别(读数开店) |
+| 备战 OpenBox | **访问终结** | 点「开启」即交回外循环重观察;武装箱选择画面由外循环按画面分发独立画面 op 选卡([box_pick.md](box_pick.md)),选卡动作不经备战决策循环 |
 | 备战 overlay 检出 | 环中止 | 弹层/事件在场 → 交回外循环分支 handler |
-| 备战空批(无动作) | 合法交回 | 空序列合法 = 本帧无动作,交回外循环重观察(商店域无此通道,已被 CloseShop 终结取代) |
+| 备战无动作(None) | 合法交回 | None = 本帧无动作,交回外循环重观察(商店域无此通道,该通道已由 CloseShop 终结取代) |
 | 单选族确认离开 | 画面终结 | overlay 消失即节点完成(补给节点无结算屏) |
 | 推进型画面(简报/过渡/详情/弹窗族) | 画面终结 | 点推进/关闭即终结(空决策形态) |
 | 恢复局锁定态 | 例外约束 | 进过战斗后异常重启的恢复局,商店交互被游戏禁用(只能出战;`research/economy.md` §2.1 恢复态限制),外循环锁定态直通出战(`operations/cw_loop.py::locked_resume_sync_and_battle`) |

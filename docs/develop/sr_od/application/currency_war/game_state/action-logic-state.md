@@ -158,9 +158,9 @@ op = `operations/cw_op/cw_comp_transaction_action.py::CompTransactionOp`（**终
 
 ## 3. 备战域动作（原子词表）
 
-备战域动作词表 = `kernel/cw_prep_actions.py::PREP_ACTION_TYPES` 白名单；执行器 = `prep_actions.py::PrepActionExecutor`（机械执行，发出即职责完成，落地判定归观察对账）。容器写口 = `kernel/cw_game_state.py::apply_prep_action_logic`（域集封闭 = gold / bench / xp / level / front_row / back_row / board，集外动作零写，批 2a 扩域申报）+ `kernel/cw_exec_state.py::apply_op_effect`（金账/库存腿，显式不建模盲区在册）。slot 语义全局统一 = 画面物理槽位（备战栏 1-9 / 前排 1-4 / 后排 1-N），与族 A 的换算见 §2.4。
+备战域动作词表 = `kernel/cw_vocab.py::CW_ACTION_TYPES` 备战域子集；执行器 = `prep_actions.py::PrepActionExecutor`（机械执行，发出即职责完成，落地判定归观察对账）。容器写口 = `kernel/cw_game_state.py::apply_prep_action_logic`（域集封闭 = gold / bench / xp / level / front_row / back_row / board，集外动作零写，批 2a 扩域申报）+ `kernel/cw_exec_state.py::apply_op_effect`（金账/库存腿，显式不建模盲区在册）。slot 语义全局统一 = 画面物理槽位（备战栏 1-9 / 前排 1-4 / 后排 1-N），与族 A 的换算见 §2.4。
 
-**发射形态（R2 原子通路，批 2a 起）**：决策核逐帧发原子动作（部署 = DeployMove 序 / 穿戴 = WearEquip 序 / 工具 = 各消耗品原子类 / 卖出 = SellBench/SellDeployed），备战环逐帧取决策输出首项执行；组合壳（RunDeploy/RunEquip/RunTools）不再是生产发射形态（类与登记行删除归批 2b 归一删除面）。发射位计划构造单一源 = `kernel/cw_deploy_logic.py::select_deployments`+`assign_deploy_slots`（部署）、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`（穿戴）、`kernel/cw_equip_env.py::evaluate_tool_actions`+`admitted_tool_actions`（工具 G1 准入）、`kernel/cw_prep_actions.py::select_sphere_clicks`（点球载荷）。
+**发射形态（R2 原子通路，批 2a 起）**：决策核逐帧发原子动作（部署 = DeployMove 序 / 穿戴 = WearEquip 序 / 工具 = 各消耗品原子类 / 卖出 = SellBench/SellDeployed），备战环逐帧执行决策输出的恰一个动作（None = 本帧无动作，交回外循环重观察）；组合壳（RunDeploy/RunEquip/RunTools）不再是生产发射形态（类与登记行删除归批 2b 归一删除面）。发射位计划构造单一源 = `kernel/cw_deploy_logic.py::select_deployments`+`assign_deploy_slots`（部署）、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`（穿戴）、`kernel/cw_equip_env.py::evaluate_tool_actions`+`admitted_tool_actions`（工具 G1 准入）、`kernel/cw_prep_actions.py::select_sphere_clicks`（点球载荷）。
 
 ### 3.1 DeployMove（备战席 → 上阵单步拖拽）
 

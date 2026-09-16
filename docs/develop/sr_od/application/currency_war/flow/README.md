@@ -16,14 +16,16 @@
 │ 轮次推进（备战环 → 出战 → 战斗等待 → 结算 → 回备战）            │
 │ 停机/遥测钩子（守卫、runs summary、分配器、对局存档）           │
 ├─ 画面指挥（cw_screen_prep.py = 备战单轮：入口 heavy 观察+对账+单动作决策循环）─────────────────┤
-│ ①入口观察(heavy) ②对账(暂存记账入口消费) ③-⑤单动作循环:决策取 │
- │ 首项→期望态计算→执行→逻辑态直写(零读屏);终结 op 交回外循环            │
+│ ①入口观察(heavy) ②对账(暂存记账入口消费) ③-⑤单动作循环:   │
+│ 逐帧恰取一个动作(接口返回 CwAction | None,None = 本帧无动作) │
+│ →期望态计算→执行→逻辑态直写(零读屏);终结 op 交回外循环      │
 │ 商店编排（_open_shop_phase：开店→单动作循环→关店→finalize→节点探针）│
 ├─ 策略步进（mandate_v1：bridge.py 决策入口 + entry.py 三遍编排）┤
 │ 备战决策 live 链 = bridge.decide_prep_screen → decide_from_turn   │
 │   → entry.emit（①prep实体面→②证明→③升档器→④骨架M1-M7→⑤EV→       │
-│   ⑥无动作⇒StartBattle，自有动作词表,单动作循环逐帧取首项）;商店决策│
-│   = decide_shop_action 单动作接口;flow.py 旧备战骨架 │
+│   ⑥无动作⇒StartBattle，自有动作词表,单动作循环逐帧恰取    │
+│   一个动作(接口返回 CwAction | None,None = 本帧无动作);商店  │
+│   决策 = decide_shop_action 单动作接口;flow.py 旧备战骨架    │
 │   （相位机/腾席链等 10 方法+session 字段）已删（考古走 git 历史）│
 │   pick 族 9 接口与冷建/结算收编仍由 flow.py 中间 ABC 承载│
 ├─ 动作执行（kernel/cw_vocab.py 词表 + prep_actions.py 执行器│
@@ -63,7 +65,7 @@
 
 | 接口 | 输入(黑板) | 返回 | 语义 |
 |---|---|---|---|
-| `decide_prep_screen(session, config)` | `session.prep_obs_frame`(备战观察帧;写者 = CwScreenPrep 入口观察段/破墙派生帧/循环逻辑态直写步) | `list[PrepAction]`,单动作循环取**首项**消费(逐帧取首项 = 单动作选择序) | 空序列合法 = 本帧无动作(交回外循环重观察);**观察帧缺失即抛错**(禁静默按空观察决策) |
+| `decide_prep_screen(session, config)` | `session.prep_obs_frame`(备战观察帧;写者 = CwScreenPrep 入口观察段/破墙派生帧/循环逻辑态直写步) | **恰一个动作**(`CwAction`),`None` = 本帧无动作(交回外循环重观察) | `None` 合法 = 本帧无动作可发,交回外循环重观察(连续 `None` 的 stall 兜底归外循环防线);**观察帧缺失即抛错**(禁静默按空观察决策) |
 | `decide_shop_action(session, config)` [本批升格入 ABC] | `session.shop_state_frame`(期望态;写者 = 入口观察段/单动作逻辑态直写步/sim 引擎) | **恰一个动作**,「无动作可做」= `CloseShop` 恒可用终结;生产执行侧单动作循环逐帧调用(`run_buy_waves`),契约核验挂本入口 | 决策本体 = `mandate_v1/shop.py`;观察帧缺失即抛错 |
 | `decide_invest/supply/encounter/megastar/partner/planner/star_tome/wish_trial/box_card`(pick 族 9) | overlay 观察实参 + session | PickEvent 系载体/索引 | 选项决策;动作编排归画面 op,不进序列契约辖内。决策规格 = `../strategy-docs/13_pick_family.md` |
 

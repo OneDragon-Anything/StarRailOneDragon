@@ -6,11 +6,9 @@
 
 备战域原子动作经统一执行器 `prep_actions.py::PrepActionExecutor` 机械执行(持 ctx + 宿主 op 复用截图/拖拽原语):**发出即职责完成,零验证零判效**(最严读法:点击/拖拽后不读屏判「是否生效」,落地判定完全归观察侧 reconcile)。词表单一源 = `kernel/cw_vocab.py`(`CwAction` 基类 + 全动作类 + 白名单 `CW_ACTION_TYPES`;执行器 `validate` 两层 = 白名单 + 静态参数)。
 
-**文档-实现偏差(词表白名单载体)**:action-logic-state.md §3 头原文「备战域动作词表 = kernel/cw_prep_actions.py::PREP_ACTION_TYPES 白名单」;实况 = 统一词表归一(unified-action-factory 批2b)后 `PREP_ACTION_TYPES` 退役,单一源 = `kernel/cw_vocab.py::CW_ACTION_TYPES`(漏登记 = 执行面拒「未知动作类型」,动作从未真正执行)。本篇按实现写入。
-
 **文档-实现偏差(双族坐标系)**:action-logic-state.md §2.4 头与 [screens/README](../../screens/README.md) §2 原文「族 A(cw_vocab)= 槽位下标,族 B(cw_prep_actions)= 物理槽位 1-9,换算 = 族 B = 族 A + 1」;实况 = 族 B 动作类已随统一词表退役,现役坐标系二分:**席位域动作**(SellBench/SellDeployed/DeployMove)携**容器槽位表下标 0 基**(bench 0-8 / deployed 0-9,读口 `bench_slots_of`/`deployed_slots_of` 同基直取零换算);**画面物理槽位 1 基**仅存于坐标参数化机械动作(WearEquip/工具七类/OpenBox/OpenTome/OpenBookcard)的 `row`/`slot` 字段。执行坐标边换算单点 = `kernel/cw_exec_state.py::deployed_row_slot`(下标→物理排槽)/ `deployed_idx_of`(物理→下标)。本篇按实现写入。
 
-**发射形态(R2 原子通路)**:决策核逐帧发原子动作(部署 = DeployMove 序/穿戴 = WearEquip 序/卖出 = SellBench/SellDeployed),备战环逐帧取决策输出首项执行;组合壳(RunDeploy/RunEquip/RunTools)已退役。发射位计划构造单一源 = `kernel/cw_deploy_logic.py::select_deployments`+`assign_deploy_slots`(部署)、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`(穿戴)。
+**发射形态(R2 原子通路)**:决策核逐帧发原子动作(部署 = DeployMove 序/穿戴 = WearEquip 序/卖出 = SellBench/SellDeployed),备战环逐帧执行决策输出的恰一个动作(None = 本帧无动作,交回外循环重观察);组合壳(RunDeploy/RunEquip/RunTools)已退役。发射位计划构造单一源 = `kernel/cw_deploy_logic.py::select_deployments`+`assign_deploy_slots`(部署)、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`(穿戴)。
 
 **执行器三件套(每动作同构)**:①机械执行(`_execute_dispatch` 分派,`emitted` = 发出事实,False 只用于执行前输入契约拒绝);②tracked 主账同步(`_track_remove_bench`/`_track_remove_deployed`/`_track_move_deployed`,置 None 不移位,摘除腿照常执行只显影不拒写);③逻辑效果推进(`apply_op_effect` 两执行面同源挂点)+ 执行点金差(`_executed_gold_delta`:卖 = +`sell_refund` → `_advance_gold`;LevelUp = 0 金腿已切直写;其余 0/None)+ 回执域(`note_action_receipt`)与 journal 行。
 
