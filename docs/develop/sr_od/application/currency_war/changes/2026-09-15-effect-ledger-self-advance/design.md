@@ -26,12 +26,12 @@
        - 结算水位：新工程字段 `boundary_settled_ord`（非 Field，同 `node_hist_ord` 形态）。
        - **触发条件（三 conjunction，完整）**：`effective` 非 None ∧ `effective > (boundary_settled_ord or 0)` ∧ **本帧为该节点的入口可结算帧**。入口可结算帧 = 备战帧 ∨ 补给选择画面——依据 = 节点边界定义基准（`node-derivation.md` §3.3：节点推进 = 进入该节点的备战画面；**补给特例 = 补给选择画面即节点入口，补给节点无备战画面**）。0q/0p/弹窗族其余推进帧 = 过渡标记，**不触发结算**（当帧节点镜像未刷新，取错窗参数——攻击 F1 实证），递延至该节点入口帧：普通战斗/遭遇/策略节点 = 备战帧；补给节点 = 补给选择画面（段序在类型派生之后，当帧已直定 kind=supply，可知）。
        - 参数源（**序与位置禁读节点镜像；kind 为唯一镜像读取**，与现码同源）：
-         - `plane, round_num = _node_key_for_ord(effective)` 反解（同模块私有读口，`cw_game_state.py:3183-3189`）；
+         - `_nk = _node_key_for_ord(effective)`；`plane, round_num = _nk.plane, _nk.round_num`（helper 返回 NodeKey 整键，禁二元解包；同模块私有读口，`cw_game_state.py` `_node_key_for_ord`）；
          - `node_type = self.node.value.kind`（镜像现值，含漏斗继承合成；**不设 kind 闸**：`round_start_income` 对未知/空 kind 落 else→combat 落袋是现值语义，`cw_economy.py:528-531`，加闸 = 收入语义变化）；
          - `streak = int(max(0, self.streak.value))`（符号归一保留现值）；
          - 倍率/息修饰 = 经济提供方（见 2）；`diamond_gold = 0`、`lost_node = None`（现值）。
        - **守卫与水位落点（失败路径规格）**：
-         - 前置守卫：`self.node.value is None ∨ self.streak.value is None ∨ self.settlement.value is None` → 金结算**静默跳过**（不告警，与现码同窗同语义——现码同条件静默跳过），其余段照常；
+         - 前置守卫（四条，与现码闸一一对应，`cw_loop.py:1947-1950`）：`self.node.value is None ∨ self.streak.value is None ∨ self.settlement.value is None ∨ self.settlement.value.killed is not True（败局闸）` → 金结算**静默跳过**（不告警，与现码同窗同语义），其余段照常；
          - `settle` 后水位落点对齐 `NodeBoundarySettlement` 载体（`cw_effect_inventory.py:1067-1077`）：`written=True` → 落水位；`written=False ∧ total<=0`（无欠账）→ 落水位；`written=False ∧ 金未读`（gold None）→ **水位不动**（下个入口帧重试，防永久漏结）。
        - 结算成功 → `log.info('[cw][effect] 节点边界金结算 logic 写入(branch=… total=…)')`。
      e. `project_effect_capacity(self)`（每 pass 重锚，不限 advanced）。
