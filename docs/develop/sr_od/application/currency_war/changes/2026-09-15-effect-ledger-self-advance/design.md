@@ -21,13 +21,19 @@
   1. **kernel 新增效果推进段**：`observe_screen_context` 管线尾段（类型派生之后、方法返回前，同临界区）。段逻辑：
      a. **推进闸（双条件）**：`effective = effective_node_ord(self)`；`effective is None` → 整段跳过（**「未观察不当真进节点」守卫随迁**，语义 = 现码 `cw_loop.py:1895-1899` 禁令：禁把未观察当真进节点无条件推进虚耗余期/虚累余额）。非 None → `advanced, expired = self.effects.advance_node(effective)`（账本内置去重继续兜底同序幂等）。
      b. `expired` 逐条 `log.warning('[cw!][effect] 效果到期移除:…')`（留证语义与现值一致）。
-     c. `advanced` 为真 → `grant_effect_node_refresh_balance(self, frame=frame_label(effective))`。
-     d. **节点边界金结算（推进与结算分离，双水位）**：触发条件 = `effective > (self.boundary_settled_ord or 0)`（新工程字段，非 Field，同 `node_hist_ord` 形态）——**不挂在 `advanced` 上**。理由：弹窗腿/0q 腿推进帧上节点镜像未刷新（弹窗帧进度读 = 缓存上一节点，`cw_observation.py` 弹窗腿缓存语义），当帧结算会取错窗参数；金结算递延到该节点的**首个备战帧**（节点入口定义本尊，`node-derivation.md` §3.3 定义基准；备战帧上镜像已随本帧进度读数刷新）。参数源**全部派生层，禁读节点镜像**：
-       - `plane, round_num = _node_key_for_ord(effective)` 反解（同模块私有读口，`cw_game_state.py:3183-3189`）；
-       - `node_type = self.node.value.kind`（镜像现值，含漏斗继承合成——与现码同源同语义，`cw_observation.py` kind 继承；**不设 kind 闸**：`round_start_income` 对未知/空 kind 萰 else→combat 落袋是现值语义，`cw_economy.py:528-531`，加闸 = 收入语义变化）；
-       - `streak = int(max(0, self.streak.value))`（符号归一保留现值）；
-       - 倍率/息修饰 = 经济提供方（见 2）；`diamond_gold = 0`、`lost_node = None`（现值）。
-       结算成功 → 落 `boundary_settled_ord = effective`。
+     c. `advanced` 为真 → `grant_effect_node_refresh_balance(self, frame=f'p{(effective - 1) // 9 + 1}-r{(effective - 1) % 9 + 1}')`（frame = 派生序反解，与现值同形）。
+     d. **节点边界金结算（推进与结算分离，双水位）**：
+       - 结算水位：新工程字段 `boundary_settled_ord`（非 Field，同 `node_hist_ord` 形态）。
+       - **触发条件（三 conjunction，完整）**：`effective` 非 None ∧ `effective > (boundary_settled_ord or 0)` ∧ **本帧为该节点的入口可结算帧**。入口可结算帧 = 备战帧 ∨ 补给选择画面——依据 = 节点边界定义基准（`node-derivation.md` §3.3：节点推进 = 进入该节点的备战画面；**补给特例 = 补给选择画面即节点入口，补给节点无备战画面**）。0q/0p/弹窗族其余推进帧 = 过渡标记，**不触发结算**（当帧节点镜像未刷新，取错窗参数——攻击 F1 实证），递延至该节点入口帧：普通战斗/遭遇/策略节点 = 备战帧；补给节点 = 补给选择画面（段序在类型派生之后，当帧已直定 kind=supply，可知）。
+       - 参数源（**序与位置禁读节点镜像；kind 为唯一镜像读取**，与现码同源）：
+         - `plane, round_num = _node_key_for_ord(effective)` 反解（同模块私有读口，`cw_game_state.py:3183-3189`）；
+         - `node_type = self.node.value.kind`（镜像现值，含漏斗继承合成；**不设 kind 闸**：`round_start_income` 对未知/空 kind 落 else→combat 落袋是现值语义，`cw_economy.py:528-531`，加闸 = 收入语义变化）；
+         - `streak = int(max(0, self.streak.value))`（符号归一保留现值）；
+         - 倍率/息修饰 = 经济提供方（见 2）；`diamond_gold = 0`、`lost_node = None`（现值）。
+       - **守卫与水位落点（失败路径规格）**：
+         - 前置守卫：`self.node.value is None ∨ self.streak.value is None ∨ self.settlement.value is None` → 金结算**静默跳过**（不告警，与现码同窗同语义——现码同条件静默跳过），其余段照常；
+         - `settle` 后水位落点对齐 `NodeBoundarySettlement` 载体（`cw_effect_inventory.py:1067-1077`）：`written=True` → 落水位；`written=False ∧ total<=0`（无欠账）→ 落水位；`written=False ∧ 金未读`（gold None）→ **水位不动**（下个入口帧重试，防永久漏结）。
+       - 结算成功 → `log.info('[cw][effect] 节点边界金结算 logic 写入(branch=… total=…)')`。
      e. `project_effect_capacity(self)`（每 pass 重锚，不限 advanced）。
      f. 整段 `try/except Exception → log.warning('[cw][effect] 效果推进段失败(不阻塞): …')` 不上抛（best-effort，同 journal sink「不毒化写入链」纪律；**显式选择 warning 级**——效果段失败非纯记录层事件，留巡检可见痕）。
   2. **经济提供方注册口**：`register_boundary_economy_provider(fn)`，模块级单槽汇点，照 `_STATE_JOURNAL_SINK` 注册模式（`cw_game_state.py:816-831`）。`fn() -> tuple[float, int, int | None] | None`（win_reward_mult, interest_flat_per_node, interest_cap_override，聚合口径单一源 = `cw_investments.aggregate_economy`）；未注册或返回 None = 金结算跳过（推进/发放/重锚照常）。**生产注册点唯一 = ctx 级一次性注册**（应用装配完成后；provider 闭包动态读 `ctx.cw_match`——恢复局 `cw_match` 在场即正常供参，无静默窗口；局外返回 None）。**禁止挂开局链初始化**（恢复接管局不走开局链，挂那里 = 恢复局整局金结算静默缺失）。sim/测试直注。
@@ -35,8 +41,9 @@
 - 行为变化申报：
   - 推进时点：从「备战分支入口（上一轮镜像现值）」改为「观察派生时（本帧四腿派生序，`effective_node_ord`）」；
   - 覆盖面：弹窗腿/0q/0p 的节点进入**也开始触发账本推进**（对齐节点边界正式定义，R5 §3.3 定义基准）；现状仅备战帧触发属覆盖缺口；
-  - **金结算时点与参数源**：结算从「分支入口」改为「节点首个备战帧的管线尾段」，参数源从「节点镜像键」改为「派生序反解 + 镜像 kind」——正常流与现值等价（备战帧上镜像已刷新），弹窗腿先推进形态由递延水位防错窗（攻击 F1/F7 的修正）；
+  - **金结算时点与参数源**：结算从「分支入口」改为「节点入口帧（备战帧；补给特例 = 补给选择画面）的管线尾段」，参数源从「节点镜像键」改为「派生序反解 + 镜像 kind」——正常流与现值等价，弹窗腿先推进形态由递延水位防错窗（攻击 F1/F7 修正）；
   - **日志形状**：金结算成功行 `[cw-loop] 节点边界金结算 logic 写入(…)` → `[cw][effect] 节点边界金结算 logic 写入(…)`；段失败行 `[cw-loop] 效果账本 tick 失败(不阻塞)` → `[cw][effect] 效果推进段失败(不阻塞)`（旧标签随 tick 块消失；`[cw][effect]` 不在哨兵 LOOP 白名单前缀内，无哨兵语义影响）；
+  - **补给节点入口收入**：从「永续观察覆盖兜底（现码不在补给入口做 logic 结算）」变为「入口帧管线 logic 结算」（对齐节点边界定义特例——补给选择画面即节点入口；supply 分支首次进 logic 面）；
   - 「未观察不当真进节点」守卫**随迁保留**（非废除）。
 - 接口契约（本迭代两个新增面，唯一必须定死的深度内容）：
   - 管线段序：上下文对 → 顶栏观察层 → 节点域四腿 → 类型派生 → **效果推进段（新增，末尾）**；

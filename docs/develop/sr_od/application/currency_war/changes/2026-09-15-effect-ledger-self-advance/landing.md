@@ -10,6 +10,9 @@
 **优先级建议**：5
 **完成判据**：
 - 直调段函数单测：①`effective=None` → 整段跳过（账本零推进、零发放——「未观察不当真进节点」守卫）；②备战帧派生序推进 → 账本 advanced + 刷新余额到账；③金结算：提供方在场 + killed + streak 可知 → `NodeBoundarySettlement.written=True` 且 `branch`/`income_total` 与 `_node_key_for_ord(effective)` 反解键一致（错窗防护判据）；④同序重复调用幂等（无二次发放/结算）；⑤`killed=False` → 金结算跳过、其余段照常；⑥未注册提供方 → 金结算跳过、其余段照常；⑦`node.value.kind` 为空串 → 照传（else→combat 现值语义，非跳过）。
+- 补给节点入口：补给选择画面帧触发金结算，`node_type=supply`、水位落定（定义特例 `node-derivation.md` §3.3）。
+- `gold=None` 帧：金结算跳过且**水位不动**（下个入口帧重试）；`total<=0`：水位照落（无欠账）。
+- `node.value` / `streak.value` / `settlement.value` 为 None：金结算静默跳过（无告警刷屏）、其余段照常。
 - 现有 kernel 直调测试（advance/grant/settle）全绿不改动语义。
 - §12 通用工程门（引用，不复述）。
 **验收凭据形式**：上述测试名 + ruff。
