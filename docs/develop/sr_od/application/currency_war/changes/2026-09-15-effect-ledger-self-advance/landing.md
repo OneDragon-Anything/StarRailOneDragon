@@ -2,14 +2,14 @@
 
 > 阶段 3.1/3.2 的拆分原则：kernel 段先以**未接线**形态落地（直调单测），接线与 loop 块删除**同一提交原子切换**——两驱动共存窗口不落盘（攻击 F7）。
 
-## 3.1 kernel 效果推进段 + 经济提供方（未接线）
-**范围**：`cw_game_state.py` 新增 `register_boundary_economy_provider` 注册口、`boundary_settled_ord` 工程字段、效果推进段函数（独立可调、未接入 `observe_screen_context`）。边界：不动四腿本体、不动 `cw_effect_inventory` 现有函数签名、不动 `observe_screen_context`、不删 cw_loop 块。
+## 3.1 kernel 效果推进段（未接线）
+**范围**：`cw_game_state.py` 新增 `boundary_settled_ord` 工程字段与效果推进段函数（经济参数 = 容器直读 `self.active_strategies`，无注册口；独立可调、未接入 `observe_screen_context`）。边界：不动四腿本体、不动 `cw_effect_inventory` 现有函数签名、不动 `observe_screen_context`、不删 cw_loop 块。
 **设计依据**：design.md §2 方案 1（a-f 全项，含 None 守卫随迁、双水位、参数源派生层反解、best-effort 边界）。
 **文件面**：`src/sr_od/application/currency_war/kernel/cw_game_state.py`；`sr-od-test/test/sr_od/application/currency_war/test_cw_game_state.py`（或新增同域测试文件）。
 **依赖**：无。
 **优先级建议**：5
 **完成判据**：
-- 直调段函数单测：①`effective=None` → 整段跳过（账本零推进、零发放——「未观察不当真进节点」守卫）；②备战帧派生序推进 → 账本 advanced + 刷新余额到账；③金结算：提供方在场 + killed + streak 可知 → `NodeBoundarySettlement.written=True` 且 `branch`/`income_total` 与 `_node_key_for_ord(effective)` 反解键一致（错窗防护判据）；④同序重复调用幂等（无二次发放/结算）；⑤`killed=False` → 金结算跳过、其余段照常；⑥未注册提供方 → 金结算跳过、其余段照常；⑦`node.value.kind` 为空串 → 照传（else→combat 现值语义，非跳过）。
+- 直调段函数单测：①`effective=None` → 整段跳过（账本零推进、零发放——「未观察不当真进节点」守卫）；②备战帧派生序推进 → 账本 advanced + 刷新余额到账；③金结算：active_strategies 在册 + killed + streak 可知 → `NodeBoundarySettlement.written=True` 且 `branch`/`income_total` 与 `_node_key_for_ord(effective)` 反解键一致（错窗防护判据）；④同序重复调用幂等（无二次发放/结算）；⑤`killed=False` → 金结算跳过、其余段照常；⑥容器 active_strategies 空 → 聚合缺省（1.0/0/None）参数下金结算照常；⑦`node.value.kind` 为空串 → 照传（else→combat 现值语义，非跳过）。
 - 补给节点：补给选择画面帧**不触发**金结算（水位不动，用户裁定 = 收入由下一备战帧观察直接捕获，无 logic 记账）；其后首个备战帧按新节点派生序正常结算。
 - `gold=None` 帧：金结算跳过且**水位不动**（下个入口帧重试）；`total<=0`：水位照落（无欠账）。
 - `node.value` / `streak.value` / `settlement.value` 为 None：金结算静默跳过（无告警刷屏）、其余段照常。
@@ -18,9 +18,9 @@
 **验收凭据形式**：上述测试名 + ruff。
 
 ## 3.2 原子切换：管线接线 + cw_loop tick 块删除（同一提交）
-**范围**：`observe_screen_context` 尾段接入效果推进段；cw_loop 备战分支效果账本 tick 块删除（含金结算成功 log.info 与段失败 warning 旧行）；生产注册点落地（ctx 级一次性注册，provider 动态读 `ctx.cw_match`）；随块失用 import 清理；sim/测试中依赖 loop tick 时序的经济断言改为直注提供方或直调 kernel。
+**范围**：`observe_screen_context` 尾段接入效果推进段；cw_loop 备战分支效果账本 tick 块删除（含金结算成功 log.info 与段失败 warning 旧行）；随块失用 import 清理；sim/测试中依赖 loop tick 时序的经济断言改为直调 kernel。
 **设计依据**：design.md §2 方案 2/3、行为变化申报（四条全项）、接口契约。
-**文件面**：`src/sr_od/application/currency_war/operations/cw_loop.py`；`src/sr_od/application/currency_war/kernel/cw_game_state.py`（接线 diff）；生产注册点所在文件（应用装配）；受影响测试文件。
+**文件面**：`src/sr_od/application/currency_war/operations/cw_loop.py`；`src/sr_od/application/currency_war/kernel/cw_game_state.py`（接线 diff）；受影响测试文件。
 **依赖**：3.1
 **优先级建议**：5
 **完成判据**：
