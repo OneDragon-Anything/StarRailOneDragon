@@ -19,6 +19,7 @@ __init__ 申报)。本屏裁决位序 = pending 先行、miss fail 后置(与未
 不适用(F11 例外清单:sim 无对应画面段),等价判据主承重 = 实机在册行为锁
 (test_cw_flow_ops.py)+ 新路径行为锁(test_cw_obs_arch_closing_screens.py)。
 """
+import contextlib
 import time
 from dataclasses import dataclass
 from typing import Any, ClassVar
@@ -27,11 +28,70 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
+from sr_od.application.currency_war.kernel.cw_game_state import ChannelSig
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
+from sr_od.application.currency_war.obs.cw_observation import read_node_sequence
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
     CwScreenOpBase,
 )
 from sr_od.context.sr_context import SrContext
+
+
+def _write_transition_node_chain(session: object, slots: list | None) -> None:
+    """过渡屏链观察(链观察落地批;语义正本 =
+    game_state/chain-observation.md §3:基线链 transition_row + 现行链
+    离场快照 transition_snapshot)。
+
+    过渡屏底部行 = **刚离开位面**的全亮完整节点行(无暗格无 current 态,
+    fixture plane_1to2 实证),逐格:upcoming→hu/超阈 none;boss 末槽→
+    sift,SIFT miss→none/None 禁回落 Hu(槽 Hu 距离系统性不可靠,
+    cw_node_reader 在案)。行归属位面:开局判别 = 容器节点镜像与 hist 双缺
+    (复用 kernel 过渡腿三源全缺先例语义,cw_game_state
+    ``_derive_node_plane_transition``)= P1 入口基线(transition_row,仅
+    基线空时写);非开局 = 节点镜像 plane,镜像缺失跳写(诚实缺位);
+    镜像在位面切换窗的滞后语义恰与「刚离开位面」同向。接管局残余风险
+    (镜像全缺且行已变异的极端恢复形态)已在迭代 design §2.1-3 申报。
+    纯观测写点:异常不阻塞点击推进。
+    """
+    if session is None or not slots:
+        return
+    try:
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            NodeChain,
+            TokenCell,
+            board_state_of,
+        )
+        from sr_od.application.currency_war.obs.cw_node_reader import (
+            HU_DIST_UNRECOGNIZED,
+        )
+        bs = board_state_of(session)
+        mirror = bs.node.value
+        opening = mirror is None and bs.node_hist_ord is None
+        if not opening and mirror is None:
+            return   # 非开局且镜像缺:行归属位面不可知,禁猜跳写
+        plane = 1 if opening else int(mirror.plane)
+        ordered = sorted(slots, key=lambda s: s.idx)
+        last_idx = ordered[-1].idx
+        cells: list[TokenCell] = []
+        for s in ordered:
+            if s.idx == last_idx:
+                cells.append(TokenCell('boss', 'sift', s.hu_dist)
+                             if s.boss else TokenCell(None, 'none'))
+            elif s.node_type and s.hu_dist is not None \
+                    and s.hu_dist <= HU_DIST_UNRECOGNIZED:
+                cells.append(TokenCell(s.node_type, 'hu', s.hu_dist))
+            else:
+                cells.append(TokenCell(None, 'none'))
+        chain = NodeChain(plane=plane, seq=cells)
+        sig = ChannelSig(family='obs', actor='CwScreenPlaneTransition',
+                         screen='货币战争-位面过渡', mode='read')
+        bs.observe(bs.node_path, chain, evidence='transition_snapshot',
+                   sig=sig)
+        if opening and bs.node_path_baseline.value is None:
+            bs.observe(bs.node_path_baseline, chain,
+                       evidence='transition_row', sig=sig)
+    except Exception:   # noqa: BLE001  观测写点 best-effort,不阻塞点击推进
+        pass
 
 
 @dataclass
@@ -111,6 +171,13 @@ class CwScreenPlaneTransition(CwScreenOpBase):
         blank = area_center(self.ctx, self.BLANK_AREA, self.SCREEN_NAME)
         if blank is None:
             return self.round_fail('位面过渡缺「区域-空白点击」建档')
+        # 链观察(链观察落地批):过渡屏全亮行 = 刚离开位面的完整序列,
+        # 点击前读行写链(基线/离场快照,见 _write_transition_node_chain);
+        # best-effort 不阻塞点击推进(读+写整体抑制,离线/桩帧同免)。
+        with contextlib.suppress(Exception):
+            _write_transition_node_chain(
+                getattr(getattr(self.ctx, 'cw_match', None), 'session', None),
+                read_node_sequence(self.ctx, self.last_screenshot))
         log.info('[cw-flow-plane] 过渡提示命中 → 点空白 (%s,%s)', blank.x, blank.y)
         # bug#1 缓解(mouse_move 先,overlay 族同款)
         self.ctx.controller.mouse_move(blank)

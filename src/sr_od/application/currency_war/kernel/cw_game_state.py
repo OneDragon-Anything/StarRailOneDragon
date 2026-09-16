@@ -276,6 +276,9 @@ REGISTERED_ACTORS: set[str] = {
                                # 裁决值经 resolve_back_slots 收尾落容器)
     'obs_conflict',            # 观察冲突仲裁汇点(obs_conflict 证据行型 2)
     'CwScreenPrep',            # 备战画面 op(reconcile 核对口观察写入)
+    'CwScreenPlaneTransition',  # 位面过渡 op(过渡屏链观察写点:基线链
+                               # transition_row/离场快照 transition_snapshot,
+                               # 链观察落地批 2026-09-16)
     'CwScreenBattleWait',      # 战斗/结算画面 op(结算覆盖写端,§3.5.1)
     'CwScreenBookcard',        # 星徽秘典弹窗(chosen_tome 选择写点)
     'CwScreenEncounter',       # 遭遇弹窗(chosen_encounter/刷新计数写点)
