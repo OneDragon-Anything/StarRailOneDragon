@@ -557,7 +557,7 @@ class DecisionTrace:
     # —— 统一state R4 策略侧遥测演进(ADR-0630 策略侧 state_ref 版本钉;
     # 返工方案 A 钉读点 = 决策读取完成时点)——
     # 决策行关联流程侧账本版本钉:``state_ref = '{run_id}#{v}'``,v =
-    # 「决策读取完成时点」的 ``kernel.cw_game_state.board_state_of(session)
+    # 「决策读取完成时点」的 ``kernel.cw_game_state.game_state_of(session)
     # .current_version()``(读口:读不写、不占版本)。捕获时点 = 段入口观察
     # 完成处(决策开始依据该 state 版本计算),由调用方捕获经
     # ``record_decision(state_ref_version=)`` 传入落钉——观察完成与行落盘

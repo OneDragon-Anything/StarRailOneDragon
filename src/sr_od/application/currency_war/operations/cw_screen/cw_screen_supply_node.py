@@ -186,10 +186,10 @@ class CwScreenSupplyNode(CwScreenOpBase):
         try:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
-                board_state_of,
+                game_state_of,
             )
-            _bs = board_state_of(_match.session)
-            _bs.write_logic(_bs.chosen_supply, _picked,
+            _gs = game_state_of(_match.session)
+            _gs.write_logic(_gs.chosen_supply, _picked,
                             produced_by='CwScreenSupplyNode',
                             sig=ChannelSig(family='logic_action',
                                            actor='CwScreenSupplyNode',
@@ -254,11 +254,11 @@ class CwScreenSupplyNode(CwScreenOpBase):
         picked: dict | None = None
         if match is not None and opts:
             # 决策输入消费切换(迁移批次二):GameState 视图
-            # (kernel/cw_bs_view.strategy_input_state)替 last_state 直读。
+            # (kernel/cw_game_state.game_state_of)替 last_state 直读。
             from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of,
+                game_state_of,
             )
-            _state = board_state_of(match.session)
+            _state = game_state_of(match.session)
             _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
             pick = match.strategy.decide_supply(
                 [o for o, _ in opts], _state, match.session, _cfg,

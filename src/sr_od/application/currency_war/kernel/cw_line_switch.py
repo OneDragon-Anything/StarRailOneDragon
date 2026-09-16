@@ -34,17 +34,15 @@ from __future__ import annotations
 
 import math
 
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    shop_payload_content_cards,
-)
+from sr_od.application.currency_war.kernel.cw_comps import Comp
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     bench_slots_of,
     gold_of,
     level_of,
     round_num_of,
+    shop_payload_content_cards,
 )
-from sr_od.application.currency_war.kernel.cw_comps import Comp
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
     DecisionV2Registry,
@@ -103,7 +101,7 @@ def p_bar_faction(tag: str, level: int) -> float:
     return min(1.0, p_hit_once)
 
 
-def tier_progress(comp: Comp, bs: GameState) -> dict[str, tuple[int, int, int]]:
+def tier_progress(comp: Comp, gs: GameState) -> dict[str, tuple[int, int, int]]:
     """逐档进度 {档: (需求, 已持, 货架)}——线距离口径的分解单一源。
 
     消费端:``line_distance``(标量和)与 strategies 侧线缺口分解
@@ -113,13 +111,13 @@ def tier_progress(comp: Comp, bs: GameState) -> dict[str, tuple[int, int, int]]:
     仍低于需求时计(买走即 held,不计入刷出期望)。
     """
     tiers = getattr(comp, 'form_tiers', None) or {}
-    board = bs.board.value or {}
+    board = gs.board.value or {}
     out: dict[str, tuple[int, int, int]] = {}
     for f, t in tiers.items():
         held_t = min(t, board.get(f, 0))
         shelf_t = 0
         if held_t < t:
-            _payload = bs.shop.value
+            _payload = gs.shop.value
             for c in shop_payload_content_cards(_payload):
                 if (getattr(c, 'faction', '') or '') == f:
                     shelf_t += 1
@@ -127,7 +125,7 @@ def tier_progress(comp: Comp, bs: GameState) -> dict[str, tuple[int, int, int]]:
     return out
 
 
-def line_distance(comp: Comp, bs: GameState) -> int:
+def line_distance(comp: Comp, gs: GameState) -> int:
     """distance(c) = need − held − shelf(需求张数 − 持有 − 货架可见可买)。
 
     held 取 board(场上)对阵营档位的占有(超档不计);shelf=本回合 shop
@@ -136,7 +134,7 @@ def line_distance(comp: Comp, bs: GameState) -> int:
     距离)的既有意口径——超持仓可跨档抵扣,与逐档 clamp 的缺口分解
     (proof.py)服务不同消费端,两形态并存已申报。
     """
-    prog = tier_progress(comp, bs)
+    prog = tier_progress(comp, gs)
     if not prog:
         return 0
     need = sum(p[0] for p in prog.values())
@@ -145,7 +143,7 @@ def line_distance(comp: Comp, bs: GameState) -> int:
     return max(0, need - held - shelf)
 
 
-def e_rounds(comp: Comp, bs: GameState,
+def e_rounds(comp: Comp, gs: GameState,
              registry: DecisionV2Registry | None = None,
              session: StrategySession | None = None) -> float:
     """E_rounds(c) ≈ distance / per_round(per_round 见模块注释)。
@@ -161,7 +159,7 @@ def e_rounds(comp: Comp, bs: GameState,
     与既有调用形状零漂移。
     """
     reg = registry or DEFAULT_REGISTRY
-    dist = line_distance(comp, bs)
+    dist = line_distance(comp, gs)
     if dist <= 0:
         return 0.0
     from sr_od.application.currency_war.kernel.cw_exec_state import (
@@ -171,7 +169,7 @@ def e_rounds(comp: Comp, bs: GameState,
     p = 0.0
     for f in (getattr(comp, 'form_tiers', None) or {}):
         # 标签独立并集:1−∏(1−p_f)(联合概率高估为设计内承认近似,见模块注释)
-        p_f = p_bar_faction(f, level_of(bs))
+        p_f = p_bar_faction(f, level_of(gs))
         p = p_f if p <= 0 else 1 - (1 - p) * (1 - p_f)
     if p <= 0:
         return math.inf
@@ -183,19 +181,19 @@ def e_rounds(comp: Comp, bs: GameState,
     # 刷价单一源消费 = refresh_cost_effective(现值→None 退建模基价;
     # economy 接缝注「字段读统一经容器读口单一源,禁各消费点自写兜底」
     # ——禁在本判据内联第二份读式/裸魔数兜底)。
-    cost = refresh_cost_effective(None, 0, bs=bs)
+    cost = refresh_cost_effective(None, 0, gs=gs)
     if session is not None:
         floor = saturation_line(cap_resolved_of_session(session))
     else:
         floor = reg.interest_floor()
-    affordable = max(0, (gold_of(bs) - floor) // cost)
-    bench_free = max(0, BENCH_CAPACITY - bench_occupied(bench_slots_of(bs)))
+    affordable = max(0, (gold_of(gs) - floor) // cost)
+    bench_free = max(0, BENCH_CAPACITY - bench_occupied(bench_slots_of(gs)))
     rolls = min(affordable, bench_free)    # 买刷截断到 bench 空位
     per_round = (1 + rolls) * p
     return dist / per_round
 
 
-def switch_allowed(bs: GameState, session: StrategySession) -> bool:
+def switch_allowed(gs: GameState, session: StrategySession) -> bool:
     """辖域门:位面前中段可换;末窗禁换(设计内辖域声明,DESIGN §③)。
 
     末窗=本位面末 3 轮(9 轮位面即 r≥7;7 轮位面 P2 即 r≥5)——末窗换线
@@ -203,7 +201,7 @@ def switch_allowed(bs: GameState, session: StrategySession) -> bool:
     禁换;真值源=``cw_plane_table.nodes_of_plane``(位面轮数,ADR-0366)。
     """
     from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
-    return round_num_of(bs) <= nodes_of_plane(session) - 3
+    return round_num_of(gs) <= nodes_of_plane(session) - 3
 
 
 def should_switch_e(e_cur: float, e_alt: float, dwell_rounds: int,
@@ -266,7 +264,7 @@ def node_loss_kind(node_type: str) -> str:
 #  保留——cw_plane_table.p_win_p2 阈值层映射仍消费。)
 
 
-def best_alt_line(bs: GameState, session: StrategySession, config,
+def best_alt_line(gs: GameState, session: StrategySession, config,
                   score_ctx, registry: DecisionV2Registry | None = None
                   ) -> tuple[object, float]:
     """候选集中 E_rounds 最小且有限的备选线((comp, e) ;无候选 → (None, inf))。
@@ -286,12 +284,12 @@ def best_alt_line(bs: GameState, session: StrategySession, config,
     cur_name = _tc.name if _tc is not None else ''
     excluded = set(getattr(strategy_state_of(session), 'drought_excluded', None) or ())
     best: tuple[object, float] = (None, math.inf)
-    for _s, c in select_comp_scored(bs, score_ctx, config, top_n=8):
+    for _s, c in select_comp_scored(gs, score_ctx, config, top_n=8):
         if c.name == cur_name or c.name in excluded:
             continue
-        if shop_supply(c, bs) <= 0:
+        if shop_supply(c, gs) <= 0:
             continue
-        e = e_rounds(c, bs, reg, session=session)
+        e = e_rounds(c, gs, reg, session=session)
         if e < best[1]:
             best = (c, e)
     return best

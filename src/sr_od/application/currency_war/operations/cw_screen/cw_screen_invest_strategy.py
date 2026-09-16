@@ -347,17 +347,17 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         try:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
-                board_state_of,
+                game_state_of,
             )
             from sr_od.application.currency_war.kernel.cw_investments import (
                 normalize_invest_name,
             )
-            _bs_rc = board_state_of(match.session)
-            _used = dict(_bs_rc.strategy_refresh_used.value or {})
+            _gs_rc = game_state_of(match.session)
+            _used = dict(_gs_rc.strategy_refresh_used.value or {})
             _k = normalize_invest_name(_click.name)
             _used[_k] = int(_used.get(_k, 0)) + 1
-            _bs_rc.write_logic(
-                _bs_rc.strategy_refresh_used, _used,
+            _gs_rc.write_logic(
+                _gs_rc.strategy_refresh_used, _used,
                 produced_by='CwScreenInvestStrategy',
                 evidence=outcome.evidence,
                 sig=ChannelSig(family='logic_action',
@@ -423,11 +423,11 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         if names:
             if match is not None:
                 # ADR-0144:真状态替空 stub。决策输入消费切换(迁移批次二):
-                # 值源 = GameState 视图(cw_bs_view.strategy_input_state)。
+                # 值源 = GameState 视图(cw_game_state.game_state_of)。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of,
+                    game_state_of,
                 )
-                pick = match.strategy.decide_invest('strategy', names, board_state_of(match.session), match.session, config)
+                pick = match.strategy.decide_invest('strategy', names, game_state_of(match.session), match.session, config)
             else:
                 # 防御:无 match(局外独立跑)。经验分退役后 decide_event 不读
                 # hp/品质惩罚(唯一局面消费 = board.value or {},未观察等价
@@ -437,11 +437,11 @@ class CwScreenInvestStrategy(CwScreenOpBase):
                 # 换源(登记集消点):防御视图 = 裸容器(全域未观察空
                 # 视图);旧合成 CwSimFrame + 过渡桥装箱退役。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
-                    BS_SCHEMA_VERSION,
+                    GAME_STATE_SCHEMA_VERSION,
                     GameState,
                 )
                 pick = decide_event(names, config,
-                                    GameState(schema_version=BS_SCHEMA_VERSION))
+                                    GameState(schema_version=GAME_STATE_SCHEMA_VERSION))
         else:
             pick = None
 
@@ -549,10 +549,10 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         # (§3.4 申报豁免)。品质锚挂建模批(设计 §3.4.4)。
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
-            board_state_of,
+            game_state_of,
         )
-        board_state_of(match.session).write_logic(
-            board_state_of(match.session).active_strategies,
+        game_state_of(match.session).write_logic(
+            game_state_of(match.session).active_strategies,
             list(match.session.active_strategies),
             produced_by='CwScreenInvestStrategy',
             sig=ChannelSig(family='logic_action',
@@ -573,11 +573,11 @@ class CwScreenInvestStrategy(CwScreenOpBase):
             )
             _spec = STRATEGY_EFFECTS.get(normalize_invest_name(chosen))
             if _spec is not None:
-                _bs_reg = board_state_of(match.session)
-                _nd = _bs_reg.node.value
+                _gs_reg = game_state_of(match.session)
+                _nd = _gs_reg.node.value
                 _t = ((_nd.plane - 1) * 9 + _nd.round_num
                       if _nd is not None else None)
-                _bs_reg.effects.register_strategy(_spec, _t)
+                _gs_reg.effects.register_strategy(_spec, _t)
                 # 桥·burst 形态(迁移批次三 B1,设计 §3.3.5/§5.1):登记
                 # 时点把免费刷新 burst 额度一次性累加进余额(固定理财
                 # 即时段 2 等;载体 = payload.free_refresh_burst,零额度
@@ -586,7 +586,7 @@ class CwScreenInvestStrategy(CwScreenOpBase):
                     apply_effect_burst_grant,
                 )
                 apply_effect_burst_grant(
-                    _bs_reg, _spec,
+                    _gs_reg, _spec,
                     frame=f'p{_nd.plane}-r{_nd.round_num}'
                     if _nd is not None else '')
                 # 桥·板面重写形态(设计 §5 全员晋升/人力重组两行;生产接线 =
@@ -598,7 +598,7 @@ class CwScreenInvestStrategy(CwScreenOpBase):
                     apply_board_rewrite,
                 )
                 _rw = apply_board_rewrite(
-                    _bs_reg, _spec,
+                    _gs_reg, _spec,
                     frame=f'p{_nd.plane}-r{_nd.round_num}'
                     if _nd is not None else '')
                 if _rw is not None:

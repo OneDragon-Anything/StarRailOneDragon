@@ -196,7 +196,7 @@ class ActiveEffectInventory:
 
     写端(挂点)生产接线(迁移批次三,设计 §5.1/§8.7 批次三;单一实例 =
     GameState.effects,session 无独立字段——历史兼容读口 property 已撤,
-    写读直经 board_state_of(session).effects,载体归一防双账本):选卡登记 = CwScreenInvestStrategy 确认落地(免战牌同点
+    写读直经 game_state_of(session).effects,载体归一防双账本):选卡登记 = CwScreenInvestStrategy 确认落地(免战牌同点
     自动登记);节点 tick = cw_loop 备战分支(进节点边界);计数 bump =
     cw_op_buy_cards 执行落地门(刷新/购买);跳过递减 = kernel
     cw_exec_state.apply_op_effect 上报路径(StartBattleOp 跳过子态经
@@ -608,7 +608,7 @@ def register_portal_from_env(session: object, env_name: str) -> EffectSpec | Non
       退役批删除);
     - 返回本次登记的 spec(幂等跳过/未知名返回 None,调用侧日志留证)。
 
-    board_state_of 运行期函数内 import:GameState 容器模块头反向 import
+    game_state_of 运行期函数内 import:GameState 容器模块头反向 import
     本模块(effects 字段载体),保持本函数可离线单测(惰性纪律同文末诸桥)。
     """
     from sr_od.application.currency_war.kernel.cw_investments import (
@@ -620,25 +620,25 @@ def register_portal_from_env(session: object, env_name: str) -> EffectSpec | Non
     if _name not in INVESTMENT_ENVS:
         return None
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of,
+        game_state_of,
     )
-    bs = board_state_of(session)
-    effects = bs.effects
+    gs = game_state_of(session)
+    effects = gs.effects
     if any(e.spec.name == _name for e in effects.by_source(SOURCE_PORTAL)):
         return None
     _spec = env_portal_effects().get(_name)
     if _spec is None:
         _spec = _portal_placeholder_spec(_name)
-    effects.register_portal(_spec, _portal_acquired_t(bs, session))
+    effects.register_portal(_spec, _portal_acquired_t(gs, session))
     return _spec
 
 
-def _portal_acquired_t(bs: object, session: object) -> int | None:
+def _portal_acquired_t(gs: object, session: object) -> int | None:
     """登记时点节点序快照((plane-1)*9+round,基 1;register_affixes_from_names
     同式):GameState 节点单例;节点未观察(引导窗)= None(登记期快照缺位
     不炸登记面;last_state 帧回退已随链退役批删除,session 参数保留签名
     兼容,不再消费)。"""
-    _nd = getattr(bs, 'node', None)
+    _nd = getattr(gs, 'node', None)
     _nd_val = _nd.value if _nd is not None else None
     if _nd_val is not None:
         return (_nd_val.plane - 1) * 9 + _nd_val.round_num
@@ -673,7 +673,7 @@ class BoardRewriteReport:
                                    # upgrade_all 恒 False(无出售面)
 
 
-def apply_board_rewrite(bs: GameState, spec: EffectSpec, *,
+def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
                         frame: str = '') -> BoardRewriteReport | None:
     """桥·板面重写形态(选卡时点一次性):按设计 §5 写入归属两行落
     EffectSpec.board_rewrite 的语义。返回执行报告;非板面重写条目(payload
@@ -743,9 +743,9 @@ def apply_board_rewrite(bs: GameState, spec: EffectSpec, *,
         ChannelSig,
     )
 
-    front = bs.front_row.value
-    back = bs.back_row.value
-    view = bs.bench.value
+    front = gs.front_row.value
+    back = gs.back_row.value
+    view = gs.bench.value
     bench_units = [s.unit for s in view.slots
                    if s.kind == 'unit' and s.unit is not None] \
         if view is not None else []
@@ -762,20 +762,20 @@ def apply_board_rewrite(bs: GameState, spec: EffectSpec, *,
     # 语义);actor 复用同族登记名 EffectLedgerBridge(REGISTERED_ACTORS 在册)。
     sig = ChannelSig(family='logic_hook', actor='EffectLedgerBridge',
                      mode='compute',
-                     group_id=f'hook:EffectLedgerBridge@{bs.write_seq + 1}')
+                     group_id=f'hook:EffectLedgerBridge@{gs.write_seq + 1}')
 
     cleared: list[str] = []
     if front is not None:
-        bs.write_logic(bs.front_row, [], produced_by='EffectLedgerBridge',
+        gs.write_logic(gs.front_row, [], produced_by='EffectLedgerBridge',
                        evidence=ev, sig=sig)
         cleared.append('front_row')
     if back is not None:
-        bs.write_logic(bs.back_row, [], produced_by='EffectLedgerBridge',
+        gs.write_logic(gs.back_row, [], produced_by='EffectLedgerBridge',
                        evidence=ev, sig=sig)
         cleared.append('back_row')
     if view is not None:
-        bs.write_logic(
-            bs.bench,
+        gs.write_logic(
+            gs.bench,
             # 槽位表原位清空:槽数保持观察现值,全槽置空;容量保留现值
             #(容量改写辖域 = 容量逻辑态直写桥 project_effect_capacity,互不越界)。
             BenchView(slots=[BenchSlot(kind='empty')] * len(view.slots),
@@ -792,8 +792,8 @@ def apply_board_rewrite(bs: GameState, spec: EffectSpec, *,
             '[cw!][effect-bridge] 板面重写出售域部分读(front=%s/back=%s'
             '/bench=%s)→ 退款 %d 零写入等观察收口(§6.3 输入不完整)',
             front is not None, back is not None, view is not None, refund)
-    if bs.gold.value is not None and refund > 0 and not partial_read:
-        bs.write_logic(bs.gold, int(bs.gold.value) + refund,
+    if gs.gold.value is not None and refund > 0 and not partial_read:
+        gs.write_logic(gs.gold, int(gs.gold.value) + refund,
                        produced_by='EffectLedgerBridge', evidence=ev, sig=sig)
     return BoardRewriteReport(rewrite=rewrite, refund_gold=refund,
                               sold_units=len(sold),
@@ -823,7 +823,7 @@ def apply_board_rewrite(bs: GameState, spec: EffectSpec, *,
 #   的结算屏真值已含该效果,独立直写=双计)零直写,逐件申报见登记面。
 
 
-def _equip_bridge_sig(bs: GameState) -> ChannelSig:
+def _equip_bridge_sig(gs: GameState) -> ChannelSig:
     """装备改写桥写入的渠道③签名(单一构造点;组 id 格式与板面重写桥一致
     = hook:<登记名>@<seq>;actor 复用同族登记名 EffectLedgerBridge,
     REGISTERED_ACTORS 在册)。ChannelSig 运行期惰性取(TYPE_CHECKING 面
@@ -831,7 +831,7 @@ def _equip_bridge_sig(bs: GameState) -> ChannelSig:
     from sr_od.application.currency_war.kernel.cw_game_state import ChannelSig
     return ChannelSig(family='logic_hook', actor='EffectLedgerBridge',
                       mode='compute',
-                      group_id=f'hook:EffectLedgerBridge@{bs.write_seq + 1}')
+                      group_id=f'hook:EffectLedgerBridge@{gs.write_seq + 1}')
 
 
 #: 极·阿瓦隆获得时点小队生命增益(官方文「获得该宝具时，获得50点小队生命值」,
@@ -851,7 +851,7 @@ STAFF_PROJECTOR_COST_GATE: int = 3
 EQUIP_PRIVILEGE_SUFFIX: str = '·特权'
 
 
-def held_equip_count(bs: GameState, name: str) -> int:
+def held_equip_count(gs: GameState, name: str) -> int:
     """装备持有件数单一源(贡献算术/组合写的计数底座):前排已穿 + 后排已穿
     + 备战席已穿(记录内)+ 装备库存,四源求和。
 
@@ -862,34 +862,34 @@ def held_equip_count(bs: GameState, name: str) -> int:
     - 纯读零写入(write_seq 不动)。
     """
     total = 0
-    for units in (bs.front_row.value, bs.back_row.value):
+    for units in (gs.front_row.value, gs.back_row.value):
         for u in units or []:
             total += sum(1 for e in (u.equips or []) if e == name)
-    view = bs.bench.value
+    view = gs.bench.value
     if view is not None:
         for s in view.slots:
             if s.kind == 'unit' and s.unit is not None:
                 total += sum(1 for e in (s.unit.equips or []) if e == name)
-    inv = bs.equips.value
+    inv = gs.equips.value
     if inv is not None:
         total += sum(1 for e in inv if e == name)
     return total
 
 
-def worn_equip_count(bs: GameState, name: str) -> int:
+def worn_equip_count(gs: GameState, name: str) -> int:
     """装备已穿件数(「装备者」口径计数底座):前排 + 后排已穿。
 
     备战席已穿不计——负探针盲区同 :func:`held_equip_count` 边界;装备库存
     (未穿)不计——「装备者」语义 = 穿戴者。纯读零写入。
     """
     total = 0
-    for units in (bs.front_row.value, bs.back_row.value):
+    for units in (gs.front_row.value, gs.back_row.value):
         for u in units or []:
             total += sum(1 for e in (u.equips or []) if e == name)
     return total
 
 
-def equip_node_gold_grant(bs: GameState) -> int:
+def equip_node_gold_grant(gs: GameState) -> int:
     """贡献算术·财富金面(进新节点 +4×持有件数):节点边界金结算载体的
     合计项之一,纯算术零直写。
 
@@ -900,10 +900,10 @@ def equip_node_gold_grant(bs: GameState) -> int:
     金面明写),未穿戴是否生效待实采;宽口径(持有即计)使多计进对账可见,
     优于漏计静默。
     """
-    return held_equip_count(bs, '财富') * WEALTH_GOLD_PER_NODE
+    return held_equip_count(gs, '财富') * WEALTH_GOLD_PER_NODE
 
 
-def equip_diamond_phase_gold(bs: GameState, *, phases_elapsed: int) -> int:
+def equip_diamond_phase_gold(gs: GameState, *, phases_elapsed: int) -> int:
     """贡献算术·财富宝钻金面(装备者每 3 备战阶段 +1 金×已穿件数):
     节点边界金结算载体的合计项,纯算术零直写(依据同 :func:`equip_node_gold_grant`)。
 
@@ -920,21 +920,21 @@ def equip_diamond_phase_gold(bs: GameState, *, phases_elapsed: int) -> int:
     if phases_elapsed < 0:
         raise ValueError('phases_elapsed 为穿戴起累计备战阶段数(自然数),'
                          '负值=调用错')
-    return (worn_equip_count(bs, '财富宝钻')
+    return (worn_equip_count(gs, '财富宝钻')
             * (phases_elapsed // DIAMOND_PHASE_STEP))
 
 
-def equip_wrench_duplicate_gold(bs: GameState) -> int:
+def equip_wrench_duplicate_gold(gs: GameState) -> int:
     """贡献算术·精密拆装扳手金面(持有精密后再获得拆装扳手改 +1 金):
     获得结算载体的合计项,纯算术零直写——获得时点窗口与到账战利品共享
     (球/补给内容即时入账等观察覆盖,§4 ClickSpheres),单独直写=部分预测
     刷缺陷台账。调用时机 = 拆装扳手获得回执(每次一件);返回本笔应得金
     (0 = 精密不在场,扳手照常入栏不发金)。定额与持有件数无关(官方文
     「改为获得1金币」)。"""
-    return 1 if held_equip_count(bs, '精密拆装扳手') >= 1 else 0
+    return 1 if held_equip_count(gs, '精密拆装扳手') >= 1 else 0
 
 
-def apply_equip_acquire_hp(bs: GameState, *, frame: str = '') -> int:
+def apply_equip_acquire_hp(gs: GameState, *, frame: str = '') -> int:
     """桥·获得时点小队生命增益(极·阿瓦隆 +50):获得回执时点 write_logic
     直写 hp + :data:`TREASURE_ACQUIRE_HP`。
 
@@ -944,16 +944,16 @@ def apply_equip_acquire_hp(bs: GameState, *, frame: str = '') -> int:
       不写,禁造假基座;同族先例 = 板面重写桥金面跳过);
     - 生产挂点 = 获得回执(接线批);接线前观察覆盖兜底,与现状零行为差。
     """
-    if bs.hp.value is None:
+    if gs.hp.value is None:
         return 0
     ev = f'equip_acquire_hp@{frame}' if frame else 'equip_acquire_hp'
-    bs.write_logic(bs.hp, int(bs.hp.value) + TREASURE_ACQUIRE_HP,
+    gs.write_logic(gs.hp, int(gs.hp.value) + TREASURE_ACQUIRE_HP,
                    produced_by='EffectLedgerBridge', evidence=ev,
-                   sig=_equip_bridge_sig(bs))
+                   sig=_equip_bridge_sig(gs))
     return TREASURE_ACQUIRE_HP
 
 
-def spawn_equip_bench_unit(bs: GameState, char_id: str, star: int,
+def spawn_equip_bench_unit(gs: GameState, char_id: str, star: int,
                            cost: int, *, cost_gate: int = 0,
                            frame: str = '') -> bool:
     """桥·装备族单位入席腿(共享):把复制/发放单位落进备战席第一个空槽,
@@ -978,7 +978,7 @@ def spawn_equip_bench_unit(bs: GameState, char_id: str, star: int,
                          '(星级未采证的单位禁走本桥,走观察收口)')
     if cost_gate > 0 and cost > cost_gate:
         return False
-    view = bs.bench.value
+    view = gs.bench.value
     if view is None:
         return False
     # 真类运行期惰性取(模块头零包内 import 契约,板面重写桥同纪律)。
@@ -994,25 +994,25 @@ def spawn_equip_bench_unit(bs: GameState, char_id: str, star: int,
     slots[idx] = BenchSlot(kind='unit', unit=Unit(char_id=char_id, star=star,
                                                   equips=[], slot=idx + 1))
     ev = f'equip_spawn@{frame}' if frame else 'equip_spawn'
-    bs.write_logic(bs.bench,
+    gs.write_logic(gs.bench,
                    BenchView(slots=slots, capacity=view.capacity),
                    produced_by='EffectLedgerBridge', evidence=ev,
-                   sig=_equip_bridge_sig(bs))
+                   sig=_equip_bridge_sig(gs))
     return True
 
 
-def grant_equip_item(bs: GameState, name: str, *, frame: str = '') -> bool:
+def grant_equip_item(gs: GameState, name: str, *, frame: str = '') -> bool:
     """桥·装备单件入区(好运令牌选定回执等「选定后确定」面):装备库存
     追加一件,write_logic 直写。库存从未观察(None)= 无容器,跳过返回
     False。名单合法性归调用侧(机制层零数据注册表依赖;选件事实由回执
     承载,本桥不做注册表校验)。窗口独占 = 选定回执 → 下一次装备区读数。"""
-    inv = bs.equips.value
+    inv = gs.equips.value
     if inv is None:
         return False
     ev = f'equip_grant@{frame}' if frame else 'equip_grant'
-    bs.write_logic(bs.equips, list(inv) + [name],
+    gs.write_logic(gs.equips, list(inv) + [name],
                    produced_by='EffectLedgerBridge', evidence=ev,
-                   sig=_equip_bridge_sig(bs))
+                   sig=_equip_bridge_sig(gs))
     return True
 
 
@@ -1023,7 +1023,7 @@ def privilege_counterpart(name: str) -> str:
     return name + EQUIP_PRIVILEGE_SUFFIX
 
 
-def transform_equip_to_privilege(bs: GameState, source_name: str, *,
+def transform_equip_to_privilege(gs: GameState, source_name: str, *,
                                  frame: str = '') -> str | None:
     """桥·进阶装备特权化(特权赋予卡,拖装备回执 = 库存腿):装备库存中
     名为 ``source_name`` 的件替换为对应·特权名,write_logic 直写(确定性
@@ -1032,14 +1032,14 @@ def transform_equip_to_privilege(bs: GameState, source_name: str, *,
     拖角色腿(已穿进阶随机一件变特权)= 穿域改写,归工具执行批——现役
     执行侧对工具零操作(equipment_mechanics.md §经济账框架),双腿接线前
     观察覆盖兜底。"""
-    inv = bs.equips.value
+    inv = gs.equips.value
     if inv is None or source_name not in inv:
         return None
     target = privilege_counterpart(source_name)
     ev = f'equip_transform@{frame}' if frame else 'equip_transform'
-    bs.write_logic(bs.equips, [target if n == source_name else n for n in inv],
+    gs.write_logic(gs.equips, [target if n == source_name else n for n in inv],
                    produced_by='EffectLedgerBridge', evidence=ev,
-                   sig=_equip_bridge_sig(bs))
+                   sig=_equip_bridge_sig(gs))
     return target
 
 
@@ -1078,7 +1078,7 @@ class NodeBoundarySettlement:
 
 
 def settle_node_boundary_gold(
-        bs: GameState, *, plane: int, round_num: int, node_type: str,
+        gs: GameState, *, plane: int, round_num: int, node_type: str,
         streak: int, lost_node: LostNodeRef | None = None,
         win_reward_mult: float = 1.0, interest_flat: int = 0,
         interest_cap: int | None = None, diamond_gold: int = 0,
@@ -1088,7 +1088,7 @@ def settle_node_boundary_gold(
 
     - **收入面**:值分量与分支派发全部经 :func:`cw_economy.round_start_income`
       (收入收口单一源,禁第二份);息基 = **结算前**金现值(本函数读
-      ``bs.gold`` 后传入,调用方无须自取——单一金基座防息算双读);
+      ``gs.gold`` 后传入,调用方无须自取——单一金基座防息算双读);
       ``lost_node``/倍率/息修饰由调用方按其辖域契约传入(败态消费、
       aggregate_economy 聚合归接线批)。
     - **装备贡献面**:财富 = :func:`equip_node_gold_grant` 现读现算;宝钻 =
@@ -1104,7 +1104,7 @@ def settle_node_boundary_gold(
       「'invest' 键单列」)不在本载体——各自接线面另批;sim 收入路径
       不经本载体(sim 真值合成)。
     """
-    gold = bs.gold.value
+    gold = gs.gold.value
     if gold is None:
         return NodeBoundarySettlement(branch='', income_total=0, wealth_gold=0,
                                       diamond_gold=0, total=0, written=False)
@@ -1117,7 +1117,7 @@ def settle_node_boundary_gold(
                                 win_reward_mult=win_reward_mult,
                                 interest_flat=interest_flat,
                                 interest_cap=interest_cap)
-    wealth = equip_node_gold_grant(bs)
+    wealth = equip_node_gold_grant(gs)
     total = income.total + wealth + diamond_gold
     if total <= 0:
         return NodeBoundarySettlement(branch=income.branch,
@@ -1126,15 +1126,15 @@ def settle_node_boundary_gold(
                                       diamond_gold=diamond_gold,
                                       total=total, written=False)
     ev = f'node_boundary_gold@{frame}' if frame else 'node_boundary_gold'
-    bs.write_logic(bs.gold, int(gold) + total, produced_by='EffectLedgerBridge',
-                   evidence=ev, sig=_equip_bridge_sig(bs))
+    gs.write_logic(gs.gold, int(gold) + total, produced_by='EffectLedgerBridge',
+                   evidence=ev, sig=_equip_bridge_sig(gs))
     return NodeBoundarySettlement(branch=income.branch,
                                   income_total=income.total, wealth_gold=wealth,
                                   diamond_gold=diamond_gold, total=total,
                                   written=True)
 
 
-def settle_wrench_duplicate_gold(bs: GameState, *, frame: str = '') -> int:
+def settle_wrench_duplicate_gold(gs: GameState, *, frame: str = '') -> int:
     """获得回执窗金结算:精密扳手在场的拆装扳手获得改 +1 金(贡献算术
     :func:`equip_wrench_duplicate_gold` 的组合写收口)。
 
@@ -1145,13 +1145,13 @@ def settle_wrench_duplicate_gold(bs: GameState, *, frame: str = '') -> int:
     - 窗口独占(获得回执 → 下一次金读数之间无其他金 logic 写;到账战利品
       金面走观察覆盖,不与本写冲突),完全预测,失配等价推算 bug(§2.3)。
     """
-    amount = equip_wrench_duplicate_gold(bs)
-    if amount <= 0 or bs.gold.value is None:
+    amount = equip_wrench_duplicate_gold(gs)
+    if amount <= 0 or gs.gold.value is None:
         return 0
     ev = f'equip_wrench_gold@{frame}' if frame else 'equip_wrench_gold'
-    bs.write_logic(bs.gold, int(bs.gold.value) + amount,
+    gs.write_logic(gs.gold, int(gs.gold.value) + amount,
                    produced_by='EffectLedgerBridge', evidence=ev,
-                   sig=_equip_bridge_sig(bs))
+                   sig=_equip_bridge_sig(gs))
     return amount
 
 
@@ -1163,7 +1163,7 @@ def settle_wrench_duplicate_gold(bs: GameState, *, frame: str = '') -> int:
 # cw_affix_effects.apply_tool_execution_write(申报表驱动,免环落申报侧)。)
 
 
-def transform_worn_equip_to_privilege(bs: GameState, target: Unit,
+def transform_worn_equip_to_privilege(gs: GameState, target: Unit,
                                       worn_name: str, *,
                                       frame: str = '') -> str | None:
     """桥·穿域特权化(特权赋予卡拖角色腿):已穿进阶装备单件原位变换为
@@ -1198,7 +1198,7 @@ def transform_worn_equip_to_privilege(bs: GameState, target: Unit,
                     slot=unit.slot)
 
     ev = f'equip_worn_transform@{frame}' if frame else 'equip_worn_transform'
-    for row_field in (bs.front_row, bs.back_row):
+    for row_field in (gs.front_row, gs.back_row):
         units = row_field.value
         if units is None:
             continue
@@ -1206,20 +1206,20 @@ def transform_worn_equip_to_privilege(bs: GameState, target: Unit,
             if u == target:
                 new_units = list(units)
                 new_units[i] = _replaced(u)
-                bs.write_logic(row_field, new_units,
+                gs.write_logic(row_field, new_units,
                                produced_by='EffectLedgerBridge', evidence=ev,
-                               sig=_equip_bridge_sig(bs))
+                               sig=_equip_bridge_sig(gs))
                 return counterpart
-    view = bs.bench.value
+    view = gs.bench.value
     if view is not None:
         for i, s in enumerate(view.slots):
             if s.kind == 'unit' and s.unit is not None and s.unit == target:
                 slots = list(view.slots)
                 slots[i] = BenchSlot(kind='unit', unit=_replaced(s.unit))
-                bs.write_logic(bs.bench,
+                gs.write_logic(gs.bench,
                                BenchView(slots=slots, capacity=view.capacity),
                                produced_by='EffectLedgerBridge', evidence=ev,
-                               sig=_equip_bridge_sig(bs))
+                               sig=_equip_bridge_sig(gs))
                 return counterpart
     return None
 
@@ -1257,7 +1257,7 @@ class CopyMachineSpawn:
                      # 参与计数是事实推进,不因落位失败回退,单调不重置)
 
 
-def settle_copy_machine_participation(bs: GameState, *,
+def settle_copy_machine_participation(gs: GameState, *,
                                       frame: str = '') -> list[CopyMachineSpawn]:
     """拷贝仪参与计数载体·战斗参与结算:扫描**现值观察面**(前台+后台
     在册单位)上的拷贝仪穿戴者,逐件推进参与计数;计数整除阈值 = 成熟,
@@ -1277,15 +1277,15 @@ def settle_copy_machine_participation(bs: GameState, *,
     matured: list[CopyMachineSpawn] = []
     for equip_name, threshold in COPY_MACHINE_MATURE_BATTLES.items():
         wearers: list[str] = []
-        for units in (bs.front_row.value, bs.back_row.value):
+        for units in (gs.front_row.value, gs.back_row.value):
             for u in units or []:
                 if equip_name in (u.equips or []) and u.char_id not in wearers:
                     wearers.append(u.char_id)
         for wearer in wearers:
-            count = bs.effects.bump_equip_progress(equip_name, wearer)
+            count = gs.effects.bump_equip_progress(equip_name, wearer)
             if count % threshold != 0:
                 continue
-            placed = spawn_equip_bench_unit(bs, wearer, 1, 0, frame=frame)
+            placed = spawn_equip_bench_unit(gs, wearer, 1, 0, frame=frame)
             matured.append(CopyMachineSpawn(equip=equip_name, wearer=wearer,
                                             count=count, placed=placed))
             if not placed:

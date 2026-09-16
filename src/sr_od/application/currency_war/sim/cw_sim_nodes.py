@@ -87,7 +87,7 @@ def encounter_options() -> tuple[EncounterOption, ...]:
         for i in range(ENCOUNTER_TIER_COUNT))
 
 
-def apply_encounter_pick(bs: GameState, option_idx: int) -> tuple[int, str]:
+def apply_encounter_pick(gs: GameState, option_idx: int) -> tuple[int, str]:
     """遭遇选档入账(写容器 ``chosen_encounter``)。
 
     Returns:
@@ -97,7 +97,7 @@ def apply_encounter_pick(bs: GameState, option_idx: int) -> tuple[int, str]:
     options = encounter_options()
     opt = options[option_idx]
     reward_text = opt.rewards[0] if opt.rewards else ''
-    bs.observe(bs.chosen_encounter, (opt.difficulty, reward_text),
+    gs.observe(gs.chosen_encounter, (opt.difficulty, reward_text),
                evidence=sim_evidence('encounter:pick'),
                sig=obs_sig(group_id='sim:encounter'))
     return opt.difficulty, reward_text
@@ -133,11 +133,11 @@ BOX_CANDIDATES: int = 4
 BOX_POOL_PENDING_U24: str = 'box_pool_pending_u24'
 
 
-def is_piggy_node(bs: GameState) -> bool:
+def is_piggy_node(gs: GameState) -> bool:
     """当前奖励节点是否被扑满环境替换(单一源 = ``PIGGY_ENV_NAMES`` ×
     容器 ``active_env``;非奖励节点恒 False)。"""
-    return (str(node_kind_of(bs) or '') == 'reward'
-            and str(bs.active_env.value or '') in PIGGY_ENV_NAMES)
+    return (str(node_kind_of(gs) or '') == 'reward'
+            and str(gs.active_env.value or '') in PIGGY_ENV_NAMES)
 
 
 def reward_ball_panel() -> tuple[RewardBall, ...]:
@@ -154,7 +154,7 @@ def reward_ball_panel() -> tuple[RewardBall, ...]:
     return tuple(balls)
 
 
-def apply_ball_pick(bs: GameState, ball_index: int, *,
+def apply_ball_pick(gs: GameState, ball_index: int, *,
                     rng: random.Random) -> tuple[str, int]:
     """逐球入账(点球即时语义:金币直加金账,装备直入装备栏;角色/
     箱类内容落备战席占 1 槽——首版占位内容不含角色/箱,席满闸为
@@ -171,12 +171,12 @@ def apply_ball_pick(bs: GameState, ball_index: int, *,
         color, ('gold', 0))
     sig = obs_sig(group_id='sim:ball')
     if kind == 'gold':
-        gold_after = int(bs.gold.value or 0) + amount
-        bs.observe(bs.gold, gold_after, evidence=sim_evidence('ball:gold'),
+        gold_after = int(gs.gold.value or 0) + amount
+        gs.observe(gs.gold, gold_after, evidence=sim_evidence('ball:gold'),
                    sig=sig)
     elif kind == 'equip':
         equip = sorted(SYNTHESIS_BASES)[rng.randrange(len(SYNTHESIS_BASES))]
-        bs.observe(bs.equips, list(bs.equips.value or []) + [equip],
+        gs.observe(gs.equips, list(gs.equips.value or []) + [equip],
                    evidence=sim_evidence('ball:equip'), sig=sig)
         return 'equip', 1
     return kind, amount
@@ -190,11 +190,11 @@ def box_options() -> tuple[str, ...]:
     return tuple(sorted(SYNTHESIS_BASES)[:BOX_CANDIDATES])
 
 
-def apply_box_pick(bs: GameState, equip_name: str) -> None:
+def apply_box_pick(gs: GameState, equip_name: str) -> None:
     """开箱入账:选中装备直入装备栏(箱不可卖 = M09 物品槽语义,装备
     一经入账即 owned;箱体本身不入备战席——开箱即腾席,cw_vocab
     OpenBox 执行语义)。"""
-    bs.observe(bs.equips, list(bs.equips.value or []) + [equip_name],
+    gs.observe(gs.equips, list(gs.equips.value or []) + [equip_name],
                evidence=sim_evidence('box:equip'),
                sig=obs_sig(group_id='sim:box'))
 
@@ -226,7 +226,7 @@ def supply_options(rng: random.Random) -> tuple[SupplyOption, ...]:
         for i, name in enumerate(equips))
 
 
-def apply_supply_pick(bs: GameState, option: SupplyOption) -> bool:
+def apply_supply_pick(gs: GameState, option: SupplyOption) -> bool:
     """补给选卡入账:装备入装备栏;带钻选项给宝钻。
 
     Returns:
@@ -234,22 +234,22 @@ def apply_supply_pick(bs: GameState, option: SupplyOption) -> bool:
         容器无承载字段,M09/U24 同款披露形态)。
     """
     if option.equip:
-        bs.observe(bs.equips, list(bs.equips.value or []) + [option.equip],
+        gs.observe(gs.equips, list(gs.equips.value or []) + [option.equip],
                    evidence=sim_evidence('supply:equip'),
                    sig=obs_sig(group_id='sim:supply'))
     return option.has_diamond
 
 
-def bench_has_space(bs: GameState) -> bool:
+def bench_has_space(gs: GameState) -> bool:
     """备战席是否有空槽(球角色内容落席/箱落席的席满闸;pad 视图派生,
     None 视图 = 未写席,按有空槽处理——开局写端保证非 None,防御面)。"""
-    view = bs.bench.value
+    view = gs.bench.value
     if view is None:
         return True
-    return (bench_free_slots(bs) or 0) > 0
+    return (bench_free_slots(gs) or 0) > 0
 
 
-def place_bench_unit_placeholder(bs: GameState, char_id: str, faction: str,
+def place_bench_unit_placeholder(gs: GameState, char_id: str, faction: str,
                                  ) -> bool:
     """角色类奖励落备战席(占 1 槽;席满拒 = 球点不动语义,先开箱腾席)。
 
@@ -265,8 +265,8 @@ def place_bench_unit_placeholder(bs: GameState, char_id: str, faction: str,
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_view_of_slots,
     )
-    view = bs.bench.value
-    if view is None or not bench_has_space(bs):
+    view = gs.bench.value
+    if view is None or not bench_has_space(gs):
         return False
     ordered: list[BenchChar | None] = [None] * len(view.slots)
     for i, s in enumerate(view.slots):
@@ -278,7 +278,7 @@ def place_bench_unit_placeholder(bs: GameState, char_id: str, faction: str,
                                                faction=faction, star=1))
     if placed_at is None:
         return False
-    bs.observe(bs.bench, bench_view_of_slots(ordered),
+    gs.observe(gs.bench, bench_view_of_slots(ordered),
                evidence=sim_evidence('ball:bench'),
                sig=obs_sig(group_id='sim:ball'))
     return True

@@ -259,10 +259,10 @@ class CwScreenExpertInvite(CwScreenOpBase):
         try:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
-                board_state_of,
+                game_state_of,
             )
-            _bs = board_state_of(_sess)
-            _bs.write_logic(_bs.chosen_expert, _bond,
+            _gs = game_state_of(_sess)
+            _gs.write_logic(_gs.chosen_expert, _bond,
                             produced_by='CwScreenExpertInvite',
                             sig=ChannelSig(family='logic_action',
                                            actor='CwScreenExpertInvite',

@@ -139,7 +139,7 @@ def ensure_run_started(match: object, difficulty: str) -> str:
 
     职责边界(用户裁定 2026-09-15):本函数只辖 run 领取(铸造/认领);
     遥测数据的保存 = game state 职责,state 流水装配入口 =
-    kernel/cw_game_state :func:`board_state_of` 局容器单例建立路径(触发只钉
+    kernel/cw_game_state :func:`game_state_of` 局容器单例建立路径(触发只钉
     该建立点;生产注入漏斗 =
     ``establish_new_match`` 容器建立点),run 领取层不辖装配。
     """

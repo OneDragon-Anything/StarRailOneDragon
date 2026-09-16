@@ -153,7 +153,7 @@ def _sell_floor_decrement(name: str, bonds: set, counts: dict) -> None:
 # nodes_of_plane(plane_last_battle 轮维)/hp 可信位与门后值读口(统一 state
 # 迁移波 2 起经 kernel 政策层 cw_hp_policy 单一读口:决策 hp 消费 =
 # decision_hp 门后值,可信位 = hp_decision_trusted 委托
-# hp_decision_trusted_of——kernel 决策分支禁旁路直读 bs.hp/state.hp,
+# hp_decision_trusted_of——kernel 决策分支禁旁路直读 gs.hp/state.hp,
 # 消费同门纪律承接 ADR-0583 §2.4)。
 
 from sr_od.application.currency_war.kernel.cw_hp_policy import (  # noqa: E402
@@ -169,7 +169,7 @@ def hp_decision_trusted(frame: GameState) -> bool:
     """hp 决策可信位(单一源;容器一等形态,W6 波 2 起):
 
     - 委托 ``cw_hp_policy.hp_decision_trusted_of``(定谳二单一源:
-      ``bs.hp.source in ('observation', 'carried')``,语义见该函数
+      ``gs.hp.source in ('observation', 'carried')``,语义见该函数
       docstring);
     - (CwSimFrame 帧兼容支已随 last_state 链退役批删除——申报面 =
       kernel/cw_intention.py ``committed_authority`` 形态注,指针兑现;
@@ -189,7 +189,7 @@ def hp_decision_trusted(frame: GameState) -> bool:
 # 危局面合规件仅血线硬地板 ≤15 族,消费在 mandate_v1 criteria 层
 # (levelup.level_spend_blocked 停付让位 / sell_for_interest 凑息禁令),
 # 判据单一源 = statefn/predicates.p1_blood_floor,不在本模块设第二份。
-def plane_last_battle(bs: GameState,
+def plane_last_battle(gs: GameState,
                       session: StrategySession | None) -> bool:
     """位面末最后一战([18]):当前节点=boss 且轮=位面节点数(真值源
     ``nodes_of_plane``——P2 boss@r7 判正;旧按 9 计 P2 永不触发,
@@ -200,11 +200,11 @@ def plane_last_battle(bs: GameState,
         node_kind_of,
         round_num_of,
     )
-    node = getattr(session, 'node_type_current', None) or node_kind_of(bs) or ''
-    return node in ('boss',) and round_num_of(bs) >= nodes_of_plane(session)
+    node = getattr(session, 'node_type_current', None) or node_kind_of(gs) or ''
+    return node in ('boss',) and round_num_of(gs) >= nodes_of_plane(session)
 
 
-def all_in_xp_domain_hit(bs: GameState, session: StrategySession | None,
+def all_in_xp_domain_hit(gs: GameState, session: StrategySession | None,
                          registry: DecisionV2Registry) -> bool:
     """ALL IN 窗 XP 类别过滤的辖域判据(ADR-0604 §4-F5;P21 域钉死)。
 
@@ -237,14 +237,14 @@ def all_in_xp_domain_hit(bs: GameState, session: StrategySession | None,
     from sr_od.application.currency_war.kernel.cw_game_state import (
         plane_of,
     )
-    if not plane_last_battle(bs, session):
+    if not plane_last_battle(gs, session):
         return False
-    if not hp_decision_trusted(bs):
+    if not hp_decision_trusted(gs):
         return False
-    hp = decision_hp(bs, session)
+    hp = decision_hp(gs, session)
     if hp is None:
         return False
-    plane = plane_of(bs)
+    plane = plane_of(gs)
     if plane == 2:
         return hp <= p2_levelup_stop_hp(registry)
     if plane == 1:
@@ -275,7 +275,7 @@ def p1_levelup_stop_hp(registry: DecisionV2Registry) -> int:
     return math.ceil(registry.blood_budget_stop_d * l_c)
 
 
-def blood_budget_levelup_blocked(bs: GameState,
+def blood_budget_levelup_blocked(gs: GameState,
                                  session: StrategySession | None,
                                  registry: DecisionV2Registry) -> bool:
     """血预算停手·停升级门(设计件 12 §3.1 P2 / §2.3-P1-b;ADR-0448)。
@@ -311,11 +311,11 @@ def blood_budget_levelup_blocked(bs: GameState,
     """
     if not registry.blood_budget_stop_enabled:
         return False
-    if plane_last_battle(bs, session):
+    if plane_last_battle(gs, session):
         return False    # ALL IN 窗:停手让位([18] 唯一清零地板路径)
-    if not hp_decision_trusted(bs):
+    if not hp_decision_trusted(gs):
         return True     # 不可信 hp 帧:fail-closed 按血线内处理(拒升级)
-    hp = decision_hp(bs, session)
+    hp = decision_hp(gs, session)
     if hp is None:
         # hp 无真值帧 fail-closed(ADR-0495 消费点对 None 一律保守):
         # 容器未写帧(值 None)会以缺省来源骗过上面的可信位门,但 hp=None
@@ -325,7 +325,7 @@ def blood_budget_levelup_blocked(bs: GameState,
     from sr_od.application.currency_war.kernel.cw_game_state import (
         plane_of,
     )
-    plane = plane_of(bs)
+    plane = plane_of(gs)
     if plane == 2:
         return hp <= p2_levelup_stop_hp(registry)
     if plane == 1:
@@ -356,7 +356,7 @@ def p2_crisis_stop_hp(registry: DecisionV2Registry) -> int:
     return math.ceil(2 * registry.vd_p2_loss)
 
 
-def p2_crisis_band(bs: GameState, session: StrategySession | None,
+def p2_crisis_band(gs: GameState, session: StrategySession | None,
                    registry: DecisionV2Registry) -> bool:
     """P2 危机带谓词(plane≥2 ∧ 门后 hp 真值 ∧ hp ≤ 危机带线)。
 
@@ -378,8 +378,8 @@ def p2_crisis_band(bs: GameState, session: StrategySession | None,
     from sr_od.application.currency_war.kernel.cw_game_state import (
         plane_of,
     )
-    hp = decision_hp(bs, session)
-    return (plane_of(bs) >= 2
+    hp = decision_hp(gs, session)
+    return (plane_of(gs) >= 2
             and hp is not None
             and hp <= p2_crisis_stop_hp(registry))
 

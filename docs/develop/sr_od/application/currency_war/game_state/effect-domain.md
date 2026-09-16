@@ -36,10 +36,10 @@
 
 ### 2.1 载体
 
-- 效果域载体 = `BoardState.effects`,类型 `ActiveEffectInventory`(kernel/cw_game_state.py
+- 效果域载体 = `GameState.effects`,类型 `ActiveEffectInventory`(kernel/cw_game_state.py
   `effects` 字段 :1651;kernel/cw_effect_inventory.py `ActiveEffectInventory` 类 :142)。
   session 无独立字段——历史兼容读口 property 已撤,写读直经
-  `board_state_of(session).effects`(同一实例,防双账本)。
+  `game_state_of(session).effects`(同一实例,防双账本)。
 - 写端(挂点)五处在产,全部经 inventory 方法(§7.3 映射表),零旁路直改;机器面 =
   效果域直摸锁(journal.md §6 硬约束①族)。
 - 读端 = 查表方法(`by_category`/`by_trigger`/`by_source`/`first`/`counter`/
@@ -214,7 +214,7 @@ W4 键级三分(游戏效果键→效果域/策略行为键→决策行/无消�
   None 保守零授予)/`project_effect_capacity`(容量逻辑态直写;逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,真值以下一帧观察为准(观察赢))/`apply_board_rewrite`
   (板面重写:出售面逻辑写、替换面零逻辑写,归属单一源 = fields.md §5.3 两行)。
 - **条件族采样金窗**(节点边界发放时点迁移的申报面):`grant_effect_node_refresh_balance`
-  的条件判定族(本金充裕系)按效果推进段执行时点的 `bs.gold` 现值评估——位面过渡/BOSS
+  的条件判定族(本金充裕系)按效果推进段执行时点的 `gs.gold` 现值评估——位面过渡/BOSS
   简报/弹窗族推进帧的观察不读金,采样金 = 上一读数沿用值(缺本战斗胜金,漂移 ±1~3 档,
   申报接受:免费刷新次数与实际不符时实机可感知,采样窗精化挂效果域批 M3,差异清单在
   node-derivation.md §3.7.2-M3);静态每节点族(加油站/搜打撤/双手狸等固定授予族)不受

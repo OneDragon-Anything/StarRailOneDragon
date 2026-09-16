@@ -79,8 +79,8 @@
 
 - **契约三则**:①保真位语义不取消(payload 携带可读/可信位;实机失读走 carry 通道,sim 恒真读是环境参数不是造假);②观察 = 类型化 payload,识别机制不出端口(共用中段禁摸像素、禁直摸引擎对象);③点击坐标不入 payload(存储面),坐标单一真相源 = screen_info。
 - **观察输出结构**:载体 = 容器已定形类型(NodeKey/ShopCard/ShopPayload/EncounterPayload/SupplyPayload/Settlement/Unit/BenchView/SphereSight)+ 备战席位身份域 PrepObservation(执行域透传申报)。逐画面「观察输出 → 写入容器域」映射 = 各画面文档观察面节 + [../game_state/fields.md](../game_state/fields.md)。
-- **实机实现 = 识别链封口**:备战族观察漏斗单一入口 = `obs/cw_observation.py::read_game_state`(含 `_feed_board_state` 观察流,逐字段门 = PHASE_FIELD_SPEC 三档);简报/结算/节点屏各归 owner 模块(§3 工具箱)。映射表是声明式清单,失读分支在基类共用代码,读取器只回答「读到什么/可不可信」。
-- **sim 实现 = 引擎真值映射**(`kernel/cw_game_state.py::synthesize_from_game_state` 升格为适配器①):逐字段直取,真值缺席 = 结构离屏(payload 域非当前画面一律 leave_screen 语义,**当前画面由相位声明、不从数据反推**);派生量调 kernel 单一源;evidence 恒带 `sim:synthesized`;**帧供给双落**——合成写入 BoardState 之外同帧写 `session.last_state`(保真位恒真读形态;决策视图透传域从 last_state 取值,其中 refresh_probs 双落必带,漏带 = 商店刷新概率静默退基线表)。
+- **实机实现 = 识别链封口**:备战族观察漏斗单一入口 = `obs/cw_observation.py::read_game_state`(观察流,逐字段门 = PHASE_FIELD_SPEC 三档);简报/结算/节点屏各归 owner 模块(§3 工具箱)。映射表是声明式清单,失读分支在基类共用代码,读取器只回答「读到什么/可不可信」。
+- **sim 实现 = 引擎真值映射**(`kernel/cw_game_state.py::synthesize_from_game_state` 升格为适配器①):逐字段直取,真值缺席 = 结构离屏(payload 域非当前画面一律 leave_screen 语义,**当前画面由相位声明、不从数据反推**);派生量调 kernel 单一源;evidence 恒带 `sim:synthesized`;**帧供给双落**——合成写入 GameState 之外同帧写 `session.last_state`(保真位恒真读形态;决策视图透传域从 last_state 取值,其中 refresh_probs 双落必带,漏带 = 商店刷新概率静默退基线表)。
 - **装配机制** = `cw_game_ports.py`(CwObservationSource/CwActionSink 协议 + 模块级安装槽):缺省 None = 生产直连现役路径;安装只发生在显式装配点,进程内单装配,卸载复位(测试 harness 显式装配,生产不装)。
 
 ### 2.3 相位与启动边界
@@ -96,7 +96,7 @@
 ```
 observe()   适配器①分派:取观察 payload(实机=识别链 / sim=引擎真值)
    ↓
-reconcile   对账:payload 写入 BoardState + 观察赢(一致静默;失配→缺陷台账)
+reconcile   对账:payload 写入 GameState + 观察赢(一致静默;失配→缺陷台账)
    ↓
 decide()    策略消费:strategy_input_state 决策视图 → 策略入口 → 意图
    ↓
@@ -106,7 +106,7 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
 ```
 
 - 对账、决策消费、落地登记在基类一份代码;observe/act 是两个抽象口,实机/sim 各一实现。
-- decide 的输入 = `strategy_input_state`(kernel/cw_bs_view)产出的 GameState 视图——策略器读 GameState 形状不变,值源已切容器。
+- decide 的输入 = `strategy_input_state`(kernel/cw_gs_view)产出的 GameState 视图——策略器读 GameState 形状不变,值源已切容器。
 - **on_outcome 触发契约**:输入 = 意图 + 发射时点证据;**单一发射口,发射即触发**(发出即职责完成,成败回执退役)。「未落地不计数」防线由观察侧 reconcile 对账承接;sim 路径同样触发(记录面,零 rng 影响)。
 - 现役件对应:备战 op(CwScreenPrep)五段是生命周期原型;外循环分发保留;`CwProgressionScreenOp` = 空决策变体(observe/重入裁决/reconcile + 空申报/act = progress_once/无登记件);全部 cw_screen/ op 均为基类后代(收口锁在册)。
 
@@ -129,7 +129,7 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
 
 | 模块 | 管什么 |
 |---|---|
-| `cw_observation.py` | 备战屏观测主漏斗:`read_game_state` 容器直写 + 轻量回执(含 `_feed_board_state` 观察流/PHASE_FIELD_SPEC 逐字段门) |
+| `cw_observation.py` | 备战屏观测主漏斗:`read_game_state` 容器直写 + 轻量回执(观察流/PHASE_FIELD_SPEC 逐字段门) |
 | `cw_observe_full.py` | heavy 全面识别组装层(备战入口单次;装备域三路) |
 | `cw_identity_obs.py` | 备战屏视觉身份观测(SIFT,非 OCR;bench/deployed 槽位身份) |
 | `currency_war_char_id.py` | 角色识别 SIFT 模板匹配(生产用立绘模板库) |
@@ -150,7 +150,7 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
 ## §4 并存期纪律
 
 - **现状**:cw_screen/ 全目录画面 op + cw_op/ 商店系三件均已基类化(收口锁 = AST 断言:凡 op 祖链达 SrOperation 者必为 CwScreenOpBase 后代);**生产恒走旧路径**(装配点缺省 None),各迁移批生产行为零变化。sim 适配器接线随 sim 重做批(`changes/2026-09-15-sim-redesign/`)。
-- **等价门(主门)**:①在册行为锁经 op `execute()` 走新基类全绿;②BoardState 写入流分域夹具对拍(实机 = 固定截图夹具 → payload → bs 全帧对拍;sim = 引擎真值 → 合成帧 → bs 对拍)。次门 = 商店策略面回归哨兵(cw_replay --diff 只重放商店决策面),不作为等价主证——禁把哨兵通过读成「等价已证」。每个迁移画面定义等价断言集,禁退化为「跑通了 = 等价」。
+- **等价门(主门)**:①在册行为锁经 op `execute()` 走新基类全绿;②GameState 写入流分域夹具对拍(实机 = 固定截图夹具 → payload → gs 全帧对拍;sim = 引擎真值 → 合成帧 → gs 对拍)。次门 = 商店策略面回归哨兵(cw_replay --diff 只重放商店决策面),不作为等价主证——禁把哨兵通过读成「等价已证」。每个迁移画面定义等价断言集,禁退化为「跑通了 = 等价」。
 - **旧路径退役**候等价门通过后的后续批;回退 = 装配点卸载端口(恢复 None = 直连现役路径),git revert 单操作。
 - **相位 1 深度统一待独立批**(见 2.3);op 外读屏调用点白名单重扫随批。
 
@@ -158,5 +158,5 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
 
 - **锚** = 在流程确定性转点上触发的一次结构化观测,三要素 = 确定性触发时点 × 该时点权威事实集 × 落载体登记;是 on_outcome 登记件族的观测扩员,不是新机制。目的 = 让框架提供更准确的游戏观察数据(事件事实零读屏即确定;事后从散点帧推断是多次实证的缺陷类)。**观测-only 边界**:只做记录面,状态改写/效果施加出栈(payload 预留 effect_ref 槽位恒空,非空 = 红)。
 - **触发三型**:landed(动作落地事实,如买牌落地 = 卡名/扣金/合成判定三事实同点唯一可得处)/ emitted(发射即登记,如遭遇·策略刷新计数)/ boundary(流程边界:进节点/进位面/结算)。锚点事件集 = 登记式封闭集(`kernel/cw_anchor.py::ANCHOR_REGISTRY`,现役闭集 8 锚;新锚先登记再接线,集外 = 红);**现役零生产调用点**(惰性纯机制面),动作锚接线随执行器收编批、boundary 触发口候裁决,禁实现批静默选型。
-- **锚行封装**:anchor_id/trigger_type/时点键/payload/scope(口径域:global|plane|unit,防跨批口径混用)/evidence_refs(判定事实型必填)/produced_by。载体三面全部复用既有设施:事件行 = ExogenousEvent kind 词表扩展(schema 修订归一个批次,防逐锚散改)、状态锚 = BoardState 既有写入 API(source 标注 `anchor:<id>`)、计数 = 效果账本既有挂点。
+- **锚行封装**:anchor_id/trigger_type/时点键/payload/scope(口径域:global|plane|unit,防跨批口径混用)/evidence_refs(判定事实型必填)/produced_by。载体三面全部复用既有设施:事件行 = ExogenousEvent kind 词表扩展(schema 修订归一个批次,防逐锚散改)、状态锚 = GameState 既有写入 API(source 标注 `anchor:<id>`)、计数 = 效果账本既有挂点。
 - **防双源声明**:锚是 on_outcome 注册表的登记清单面非平行触发机制;与采集钩子(临时采样)辖域互补禁混同;与停机钩子无交(锚永不触碰 run 状态);帧观察 → 锚 → 遥测落盘是一条管道的三段,锚不产生独立数据域。节点推进权威 = 统一 state 派生规则,锚行禁携带第二份节点序计数。

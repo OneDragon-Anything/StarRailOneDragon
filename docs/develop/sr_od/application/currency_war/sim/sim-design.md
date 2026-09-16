@@ -12,9 +12,9 @@
 | **live** | 实机运行的 bot（operations 逐动作执行 + 遥测落盘） |
 | **sim** | 单局模拟器：给定局级输入与策略动作，按游戏规则推演一局的容器状态演化，产出观测帧序列与局结果 |
 | **策略器** | 纯决策函数族（mandate_v1）：全函数 f(期望态)→动作，永不返回 None；「无动作」= 选终结动作 |
-| **容器** | `kernel/cw_game_state.py` 的 `GameState`：局内已知事实的唯一状态类型，live 与 sim 同一类型；单例宿主 = session 旁表（`board_state_of(session)`），写入走带渠道签名的写入口（渠道族封闭集 obs/logic_action/logic_hook），frozen 帧替换（持旧引用的读者不被污染） |
+| **容器** | `kernel/cw_game_state.py` 的 `GameState`：局内已知事实的唯一状态类型，live 与 sim 同一类型；单例宿主 = session 旁表（`game_state_of(session)`），写入走带渠道签名的写入口（渠道族封闭集 obs/logic_action/logic_hook），frozen 帧替换（持旧引用的读者不被污染） |
 | **逻辑态** | 动作执行后不经观察、按游戏规则推算并直写容器的预期状态；真值以下一帧观察为准（观察赢）。经单一转移函数推进该状态 |
-| **单一转移函数** | `kernel/cw_game_state.py` 的 `apply_shop_action_logic(bs, action)`：把商店动作的字段转移就地应用到容器（logic_action 渠道），返回 `LogicOutcome` 结果出参，拒绝语义在动作族腿内。live 执行侧与 sim 引擎共用的状态转移函数 |
+| **单一转移函数** | `kernel/cw_game_state.py` 的 `apply_shop_action_logic(gs, action)`：把商店动作的字段转移就地应用到容器（logic_action 渠道），返回 `LogicOutcome` 结果出参，拒绝语义在动作族腿内。live 执行侧与 sim 引擎共用的状态转移函数 |
 | **观测帧** | 容器 `GameState` 快照 + 相位；帧只读呈现 sim 真值，不含评判面。帧携带的选项载荷按相位填充（加相位 = 加观测帧字段，策略接口稳定） |
 | **相位** | 与实机画面对应的交互状态机状态（枚举见 §1.3），策略器据此路由决策，与实机 flow 层同构 |
 | **流键** | 随机子流的键 = 模块号 + 局内坐标（如 `M05/p1/r3` 发牌）；全部随机量按流键派生独立子流（§2） |

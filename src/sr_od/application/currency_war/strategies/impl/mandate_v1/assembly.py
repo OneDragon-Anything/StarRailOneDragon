@@ -169,19 +169,19 @@ def _budget(state: Any, session: StrategySession,
     # 接缝族已切容器签名(W6 波 4):预算投影读容器单例(店开帧 gold
     # 救援经喂入口写容器,披露面随之取真值);_disclose 的帧轴读同源。
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of,
+        game_state_of,
     )
-    _bs = board_state_of(session)
+    _gs = game_state_of(session)
     budget = BudgetView(
         # P6 注入单源(W636 A):BudgetView 各字段消费同一 registry 实例,
         # 禁混用 state_of(session).v3_registry 死通道 / DEFAULT 缺省表。
         interest_floor=floor,
-        reserve_cap=reserve_cap(_bs, session),
-        obligation=obligation(_bs, session, registry),
-        schedule=schedule_upgrade(_bs, session, registry),
-        ev_auth=refresh_ev_budget(_bs, session, registry),
+        reserve_cap=reserve_cap(_gs, session),
+        obligation=obligation(_gs, session, registry),
+        schedule=schedule_upgrade(_gs, session, registry),
+        ev_auth=refresh_ev_budget(_gs, session, registry),
     )
-    _disclose_budget(_bs, session, budget)
+    _disclose_budget(_gs, session, budget)
     return budget
 
 
@@ -214,13 +214,13 @@ def assemble(snapshot: Snapshot, session: StrategySession,
     (方向/预算投影直读容器,同帧同视图,一次置顶禁二次取容器)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of,
+        game_state_of,
     )
 
     reg = registry or DEFAULT_REGISTRY
-    bs = board_state_of(session)
+    gs = game_state_of(session)
     return TurnState(
         snap=snapshot,
-        direction=_direction(bs, session, snapshot, reg),
-        budget=_budget(bs, session, reg),
+        direction=_direction(gs, session, snapshot, reg),
+        budget=_budget(gs, session, reg),
     )

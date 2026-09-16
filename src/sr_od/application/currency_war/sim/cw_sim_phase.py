@@ -76,7 +76,7 @@ class CwSimObservation:
 
     phase: CwSimPhase
     #: 容器单例(sim 真值已写 obs 渠道;策略读口与 live 同构)
-    bs: GameState
+    gs: GameState
     #: 当前节点键(prep 族相位的局内坐标;GAME_OVER 帧保留末节点)
     node: NodeKey
     #: 选卡族候选卡名(invest_offer/opening_env;三选一语义,U08 首版 3 张)

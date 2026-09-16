@@ -53,7 +53,7 @@ from sr_od.application.currency_war.kernel.cw_events import (
     SupplyOption,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
-    BS_SCHEMA_VERSION,
+    GAME_STATE_SCHEMA_VERSION,
     GameState,
     LogicOutcome,
     NodeKey,
@@ -190,7 +190,7 @@ _BASE_DISCLOSURES: dict[str, object] = {
 }
 
 
-def _silver_wolf_max_star(bs: GameState) -> int:
+def _silver_wolf_max_star(gs: GameState) -> int:
     """全板面银狼最高星级(备战席+前台+后台;M21 触发判据的动作前
     快照输入;无银狼 → 0 = 判据「跨越 2★」的合法起点)。
 
@@ -198,13 +198,13 @@ def _silver_wolf_max_star(bs: GameState) -> int:
     载体域,扫描必须全域;域未写(None)= 该域无单位。
     """
     stars: list[int] = []
-    bench_view = bs.bench.value
+    bench_view = gs.bench.value
     if bench_view is not None:
         stars += [int(s.unit.star) for s in bench_view.slots
                   if s is not None and s.kind == 'unit'
                   and s.unit is not None
                   and s.unit.char_id == SILVER_WOLF_ID]
-    for row in (bs.front_row.value, bs.back_row.value):
+    for row in (gs.front_row.value, gs.back_row.value):
         stars += [int(u.star) for u in (row or [])
                   if u is not None and u.char_id == SILVER_WOLF_ID]
     return max(stars, default=0)
@@ -237,7 +237,7 @@ class _Eng:
 
     seed: int
     cfg: RunConfig
-    bs: GameState
+    gs: GameState
     phase: CwSimPhase = CwSimPhase.GAME_OVER
     plane: int = 1
     round_num: int = 1
@@ -283,15 +283,15 @@ class CwSimEngine:
             raise ValueError(
                 f'对局类型 {run_config.game_mode!r} 不在首版辖域'
                 '(U27:sim 首版 = 标准博弈;非标准值显式拒,不猜差异)')
-        bs = GameState(schema_version=BS_SCHEMA_VERSION)
-        eng = _Eng(seed=int(seed), cfg=run_config, bs=bs)
+        gs = GameState(schema_version=GAME_STATE_SCHEMA_VERSION)
+        eng = _Eng(seed=int(seed), cfg=run_config, gs=gs)
         eng.disclosures.update(_BASE_DISCLOSURES)
         self._eng = eng
-        apply_opening(bs, run_config,
+        apply_opening(gs, run_config,
                       stream_rng(seed, 'M01/opening_hand'))
         bosses = resolve_plane_bosses(run_config.boss_roster_override,
                                       stream_rng(seed, 'M20/boss'))
-        bs.observe(bs.plane_bosses, list(bosses),
+        gs.observe(gs.plane_bosses, list(bosses),
                    evidence=sim_evidence('boss:roster'),
                    sig=obs_sig(group_id='sim:boss'))
         self._hp_trail_append(eng)
@@ -350,9 +350,9 @@ class CwSimEngine:
         equip_outcome = self._apply_equip_action(eng, action)
         if equip_outcome is not None:
             return equip_outcome
-        star_before = _silver_wolf_max_star(eng.bs)
+        star_before = _silver_wolf_max_star(eng.gs)
         outcome = apply_player_action(
-            eng.bs, action, node_tag=f'p{eng.plane}r{eng.round_num}')
+            eng.gs, action, node_tag=f'p{eng.plane}r{eng.round_num}')
         self._check_planner_trigger(eng, star_before)
         return outcome
 
@@ -368,15 +368,15 @@ class CwSimEngine:
         语义;拒因 = 腿布尔契约的统一回声(细则在腿 docstring)。
         """
         if isinstance(action, WearEquip):
-            ok = apply_wear_equip(eng.bs, action)
+            ok = apply_wear_equip(eng.gs, action)
             return LogicOutcome(applied=ok,
                                 reason='' if ok else 'wear_equip_rejected')
         if isinstance(action, WrenchUse):
-            ok = apply_wrench(eng.bs, action)
+            ok = apply_wrench(eng.gs, action)
             return LogicOutcome(applied=ok,
                                 reason='' if ok else 'wrench_rejected')
         if isinstance(action, PrecisionWrenchUse):
-            ok = apply_precision_wrench(eng.bs, action)
+            ok = apply_precision_wrench(eng.gs, action)
             return LogicOutcome(
                 applied=ok,
                 reason='' if ok else 'precision_wrench_rejected')
@@ -393,7 +393,7 @@ class CwSimEngine:
                                 reason='furnace_char_mode_unmodeled')
         uses = eng.furnace_uses + 1
         new_name = apply_furnace_equip_mode(
-            eng.bs, action.item_name,
+            eng.gs, action.item_name,
             rng=stream_rng(eng.seed, f'M10/炉/{uses}'))
         if new_name is None:
             return LogicOutcome(applied=False,
@@ -413,7 +413,7 @@ class CwSimEngine:
         """
         if eng.planner_fired:
             return
-        star_after = _silver_wolf_max_star(eng.bs)
+        star_after = _silver_wolf_max_star(eng.gs)
         if planner_overlay_due(SILVER_WOLF_ID, star_before, star_after):
             eng.planner_fired = True
             eng.overlay_queue.push_planner()
@@ -433,7 +433,7 @@ class CwSimEngine:
             self._to_plane(eng, plane + 1)
             return
         eng.plane, eng.round_num = plane, round_num
-        eng.bs.observe(eng.bs.node,
+        eng.gs.observe(eng.gs.node,
                        NodeKey(plane=plane, round_num=round_num,
                                kind=seq[round_num - 1]),
                        evidence=sim_evidence(f'node:p{plane}r{round_num}'),
@@ -452,7 +452,7 @@ class CwSimEngine:
         kind = node_sequence_of(plane)[r - 1]
         # 轮首收入(M04;败补挂账按 kernel 分支序消费——supply/reward
         # 轮不消费,败态跨轮保留至下一战斗轮)
-        apply_round_start_income(eng.bs, plane=plane, round_num=r,
+        apply_round_start_income(eng.gs, plane=plane, round_num=r,
                                  node_type=kind,
                                  streak=eng.streak_unsigned,
                                  pending_loss=eng.pending_loss)
@@ -462,17 +462,17 @@ class CwSimEngine:
         self._apply_env_plane_gold(eng, plane)
         # 商店全刷(M05:节点切换自动全刷;整店锁跳过——裁定②)
         if not eng.shop_locked:
-            rotation_on = (str(eng.bs.active_env.value or '')
+            rotation_on = (str(eng.gs.active_env.value or '')
                            == _ROTATION_ENV_NAME)
             rng = stream_rng(eng.seed, f'M05/deal/p{plane}/r{r}')
             probs = effective_deal_probs(
-                int(eng.bs.level.value or 3),
+                int(eng.gs.level.value or 3),
                 stream_rng(eng.seed, f'M05/rotation/p{plane}/r{r}'),
                 rotation_on=rotation_on)
-            deal_shop(eng.bs, rng, level=int(eng.bs.level.value or 3),
+            deal_shop(eng.gs, rng, level=int(eng.gs.level.value or 3),
                       probs=probs, tag=f'shop:deal:p{plane}r{r}')
         # offer 日程(M11/U07:固定轮次生效于本节点备战窗口前)
-        active_env = eng.bs.active_env.value
+        active_env = eng.gs.active_env.value
         if offer_slots(plane, r, active_env):
             if quality_rewrite_hit(str(active_env or '')):
                 eng.disclosures[QUALITY_REWRITE_ENVS_PENDING] = \
@@ -486,7 +486,7 @@ class CwSimEngine:
     def _apply_env_plane_gold(self, eng: _Eng, plane: int) -> None:
         """环境结构化经济通道(M02:已结构化子集直接生效——位面开局
         金通道;其余通道挂披露,效果批建模)。"""
-        env_name = normalize_invest_name(str(eng.bs.active_env.value or ''))
+        env_name = normalize_invest_name(str(eng.gs.active_env.value or ''))
         env = INVESTMENT_ENVS.get(env_name)
         eff = env.economy if env is not None else None
         if eff is None:
@@ -494,8 +494,8 @@ class CwSimEngine:
         golds = eff.gold_per_plane_start
         if plane_entry_gold := (golds[plane - 1] if 0 < plane <= len(golds)
                                 else 0):
-            after = int(eng.bs.gold.value or 0) + plane_entry_gold
-            eng.bs.observe(eng.bs.gold, after,
+            after = int(eng.gs.gold.value or 0) + plane_entry_gold
+            eng.gs.observe(eng.gs.gold, after,
                            evidence=sim_evidence(f'env:plane_gold:p{plane}'),
                            sig=obs_sig(group_id='sim:env'))
 
@@ -521,7 +521,7 @@ class CwSimEngine:
     def _step_encounter(self, eng: _Eng, action: CwAction) -> None:
         if not isinstance(action, PickEvent):
             return
-        tier, _reward = apply_encounter_pick(eng.bs, action.option_idx)
+        tier, _reward = apply_encounter_pick(eng.gs, action.option_idx)
         eng.encounter_tier = tier
         self._settle_combat(eng, encounter_tier=tier)
 
@@ -532,23 +532,23 @@ class CwSimEngine:
         kind = node_sequence_of(plane)[r - 1]
         rng = stream_rng(eng.seed, f'M13/{plane}/{r}')
         outcome = settle_battle(rng, plane=plane, round_num=r)
-        piggy = is_piggy_node(eng.bs)
+        piggy = is_piggy_node(eng.gs)
         if piggy and outcome.hp_delta < 0:
             # 扑满不掉血豁免(M17:扑满关有战力要求、不掉血)
             from dataclasses import replace
             outcome = replace(outcome, hp_delta=0)
-        floor_now, dead = apply_hp_outcome(eng.bs, outcome)
+        floor_now, dead = apply_hp_outcome(eng.gs, outcome)
         self._hp_trail_append(eng)
         if dead:
             self._game_over(eng)
             return
-        apply_node_xp(eng.bs, node_type=kind)
+        apply_node_xp(eng.gs, node_type=kind)
         eng.streak_unsigned = streak_income_after(
             eng.streak_unsigned, node_type=kind, won=outcome.won)
         signed = streak_signed_after(
-            int(eng.bs.streak.value or 0), node_type=kind,
+            int(eng.gs.streak.value or 0), node_type=kind,
             won=outcome.won)
-        eng.bs.observe(eng.bs.streak, signed,
+        eng.gs.observe(eng.gs.streak, signed,
                        evidence=sim_evidence(f'streak:p{plane}r{r}'),
                        sig=obs_sig(group_id='sim:streak'))
         if not outcome.won and kind in ('battle', 'encounter', 'boss'):
@@ -566,9 +566,9 @@ class CwSimEngine:
             return
         if action.refresh:
             # 免费刷新一次(实机两步 decide_supply 语义;一次性)
-            used = int(eng.bs.supply_refresh_used.value or 0)
+            used = int(eng.gs.supply_refresh_used.value or 0)
             if used < 1:
-                eng.bs.observe(eng.bs.supply_refresh_used, used + 1,
+                eng.gs.observe(eng.gs.supply_refresh_used, used + 1,
                                evidence=sim_evidence('supply:refresh'),
                                sig=obs_sig(group_id='sim:supply'))
                 rng = stream_rng(eng.seed,
@@ -579,7 +579,7 @@ class CwSimEngine:
         if action.option_idx < 0 or action.option_idx >= len(eng.supply_opts):
             return
         opt = eng.supply_opts[action.option_idx]
-        if apply_supply_pick(eng.bs, opt):
+        if apply_supply_pick(eng.gs, opt):
             eng.diamond_count += 1
         eng.disclosures.setdefault(
             'supply_diamond_slot_pending_u24', 'uniform_slot')
@@ -597,7 +597,7 @@ class CwSimEngine:
         rng = stream_rng(eng.seed,
                          f'M17/balls/p{eng.plane}/r{eng.round_num}')
         panel_idx = eng.balls_left.pop(action.option_idx)
-        apply_ball_pick(eng.bs, panel_idx, rng=rng)
+        apply_ball_pick(eng.gs, panel_idx, rng=rng)
         if not eng.balls_left:
             self._after_settlement(eng)
 
@@ -606,7 +606,7 @@ class CwSimEngine:
             return
         if 0 <= action.option_idx < len(eng.box_cands):
             eng.disclosures.setdefault('box_pool_pending_u24', 'bases4')
-            apply_box_pick(eng.bs, eng.box_cands[action.option_idx])
+            apply_box_pick(eng.gs, eng.box_cands[action.option_idx])
         eng.phase = CwSimPhase.PREP
 
     def _step_overlay(self, eng: _Eng, action: CwAction) -> None:
@@ -620,7 +620,7 @@ class CwSimEngine:
         if kind == 'planner':
             eng.disclosures[DISCLOSURE_PLANNER_EFFECT] = f'picked:{pick}'
         else:
-            apply_disclosed_pick(eng.bs, kind, pick)
+            apply_disclosed_pick(eng.gs, kind, pick)
         self._after_settlement(eng)
 
     # ---------------------------------------------------------- 收尾
@@ -651,18 +651,18 @@ class CwSimEngine:
             return
         name = eng.options[idx]
         if eng.phase is CwSimPhase.OPENING_ENV:
-            apply_env_pick(eng.bs, name)
+            apply_env_pick(eng.gs, name)
             eng.excluded_env.update(eng.options)
             env = INVESTMENT_ENVS.get(normalize_invest_name(name))
             eff = env.economy if env is not None else None
             if eff is not None and eff.gold_instant:
-                after = int(eng.bs.gold.value or 0) + eff.gold_instant
-                eng.bs.observe(eng.bs.gold, after,
+                after = int(eng.gs.gold.value or 0) + eff.gold_instant
+                eng.gs.observe(eng.gs.gold, after,
                                evidence=sim_evidence('env:instant_gold'),
                                sig=obs_sig(group_id='sim:env'))
             self._enter_node(eng, 1, 1)
         else:
-            apply_strategy_pick(eng.bs, name)
+            apply_strategy_pick(eng.gs, name)
             eng.excluded_invest.update(eng.options)
             # 商店/收入已在 _begin_prep 前段完成,选卡后直接进备战
             eng.phase = CwSimPhase.PREP
@@ -674,13 +674,13 @@ class CwSimEngine:
         eng.phase = CwSimPhase.GAME_OVER
 
     def _hp_trail_append(self, eng: _Eng) -> None:
-        hp = eng.bs.hp.value
+        hp = eng.gs.hp.value
         if hp is not None:
             eng.hp_trail.append(int(hp))
 
     def _result(self, eng: _Eng) -> RunResult:
         return RunResult(
-            final_hp=int(eng.bs.hp.value or 0),
+            final_hp=int(eng.gs.hp.value or 0),
             plane_reached=eng.plane,
             rounds=(eng.plane, eng.round_num),
             hp_trail=tuple(eng.hp_trail),
@@ -689,7 +689,7 @@ class CwSimEngine:
     def _observe(self, eng: _Eng) -> CwSimObservation:
         return CwSimObservation(
             phase=eng.phase,
-            bs=eng.bs,
+            gs=eng.gs,
             node=NodeKey(plane=eng.plane, round_num=eng.round_num,
                          kind=node_sequence_of(eng.plane)[eng.round_num - 1]
                          if not eng.done and eng.round_num >= 1 else 'prep'),

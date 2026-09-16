@@ -9,17 +9,17 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。**节点循环**形态:每轮 = observe 门(`_in_node`:「标识-盛会之星」还在?→ miss = 复位 `ExecState.megastar_candidate_clicked` + 节点完成)→ 仍在 = 一个动作(`_do_action`)→ round_retry(计 `node_max_retry_times=8` 预算,超 → FAIL bail)。五相位屏:装配点分流;decide+act 内聚于 `_do_action`(两路径共享零转录);无 on_outcome 落地登记件。决策入口 = 契约 `decide_megastar(options, bs, session, config)`(默认实现委托 `kernel/cw_comps.py::select_megastar`,未命中/OCR 空 → idx=0;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E7)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。**节点循环**形态:每轮 = observe 门(`_in_node`:「标识-盛会之星」还在?→ miss = 复位 `ExecState.megastar_candidate_clicked` + 节点完成)→ 仍在 = 一个动作(`_do_action`)→ round_retry(计 `node_max_retry_times=8` 预算,超 → FAIL bail)。五相位屏:装配点分流;decide+act 内聚于 `_do_action`(两路径共享零转录);无 on_outcome 落地登记件。决策入口 = 契约 `decide_megastar(options, gs, session, config)`(默认实现委托 `kernel/cw_comps.py::select_megastar`,未命中/OCR 空 → idx=0;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E7)。
 
 ## 3. 观察面
 
-observe 段 = 节点完成门(含选中标记复位副作用,须在门内)+ 轻观察帧引用;候选读取归 decide 段(`obs/cw_node_obs.py::read_megastar_options`:候选标题「盛会之星一X先生/女士!」正则解析角色名,先生/女士与全/半角叹号容错,按 center-x 左→右排序)。观察 payload = `MegastarObservation`(仅帧引用);本屏不上报 GameState 容器观察(决策输入 = `board_state_of(match.session)` 视图)。
+observe 段 = 节点完成门(含选中标记复位副作用,须在门内)+ 轻观察帧引用;候选读取归 decide 段(`obs/cw_node_obs.py::read_megastar_options`:候选标题「盛会之星一X先生/女士!」正则解析角色名,先生/女士与全/半角叹号容错,按 center-x 左→右排序)。观察 payload = `MegastarObservation`(仅帧引用);本屏不上报 GameState 容器观察(决策输入 = `game_state_of(match.session)` 视图)。
 
 ## 4. 动作面
 
 decide+act 内聚 `_do_action`(两路径共享),两步:
 
-1. **点候选**(仅当 `ExecState.megastar_candidate_clicked` 为 False):`decide_megastar` 选 idx → 点候选位(「候选-左」/「候选-右」area center,兜底常量 (822,333)/(1061,333);名位置 = 卡身选中区)→ mouse_move + click → 置位选中标记(局容器级,跨 re-dispatch 持久)→ `chosen_megastar` 写(session + `board_state_of(session).write_logic`,候选选中时点)→ 0.6s。
+1. **点候选**(仅当 `ExecState.megastar_candidate_clicked` 为 False):`decide_megastar` 选 idx → 点候选位(「候选-左」/「候选-右」area center,兜底常量 (822,333)/(1061,333);名位置 = 卡身选中区)→ mouse_move + click → 置位选中标记(局容器级,跨 re-dispatch 持久)→ `chosen_megastar` 写(session + `game_state_of(session).write_logic`,候选选中时点)→ 0.6s。
 2. **点确认**:`「按钮-确认选择」area center`(兜底 (1490,560))→ mouse_move + click → 0.9s。确认 = 纯机械单发(验证废除;「请选择强化角色」文本 = 确认钮旁伴随文案非第二画面步骤,未建模独立处理);确认未落地 overlay 残留 = 下一帧重入自愈(observe 门仍在 → 候选已选 → 机械单发确认再推进,计节点预算)。
 
 动作词表:画面 op 直驱(无 `CW_ACTION_TYPES` 成员)。

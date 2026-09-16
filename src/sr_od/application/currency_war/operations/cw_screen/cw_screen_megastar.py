@@ -153,9 +153,9 @@ class CwScreenMegastar(CwScreenOpBase):
                 # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读;
                 # overlay 时用上次备战快照(语义同旧,值源切 GameState)。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of,
+                    game_state_of,
                 )
-                _state = board_state_of(match.session)
+                _state = game_state_of(match.session)
                 _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
                 pick = match.strategy.decide_megastar(options, _state, match.session, _cfg)
                 if 0 <= pick.idx < len(options):
@@ -180,10 +180,10 @@ class CwScreenMegastar(CwScreenOpBase):
                     # chosen_*;单次逻辑写入,§3.4 申报豁免)。
                     from sr_od.application.currency_war.kernel.cw_game_state import (
                         ChannelSig,
-                        board_state_of,
+                        game_state_of,
                     )
-                    board_state_of(_match.session).write_logic(
-                        board_state_of(_match.session).chosen_megastar,
+                    game_state_of(_match.session).write_logic(
+                        game_state_of(_match.session).chosen_megastar,
                         _match.session.chosen_megastar,
                         produced_by='CwScreenMegastar',
                         sig=ChannelSig(family='logic_action',

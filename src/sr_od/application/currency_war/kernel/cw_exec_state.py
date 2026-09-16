@@ -210,7 +210,7 @@ class ExecState:
     # 禁用不猜(防把恢复局首弹窗误推断成开局节点 1),消化后备战帧腿 A 权威
     # 接管。写端 = cw_loop 恢复检测两确认点(_iter==1 战斗帧恢复检测 /
     # 备战帧 resume_candidate 确认,``_mark_session_resumed`` 单口);读端 =
-    # cw_observation._feed_board_state(经 observe_screen_context(resumed=…)
+    # cw_observation.read_game_state(经 observe_screen_context(resumed=…)
     # 进派生规则,读值不落旗标——一次性会话语义,非消费即清)。session 级
     # 生命周期:新 match 新执行态 = 缺省 False(正常新局恒 False,开局推断
     # 合法不受误伤)。
@@ -231,16 +231,16 @@ def _session_tracked(session) -> tuple[list[BenchChar], list[BenchChar | None]]:
     # tracked 主账宿主自 r3(三次修正)起 = 容器簿记 GameState.tracked_books
     #(kernel/cw_game_state.py;lazy import 防模块环,同 _advance_gold 惯例)。
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of,
+        game_state_of,
     )
-    books = board_state_of(session).tracked_books
+    books = game_state_of(session).tracked_books
     return list(books.bench or []), list(books.deployed or [])
 
 
 def _advance_gold(session, delta: int, *,
                   produced_by: str = 'PrepActionExecutor') -> None:
     """op 逻辑效果的金账直推(last_state 链退役后宿主 = 容器单例):
-    ``board_state_of(session).gold`` 经 logic_action 通道 write_logic
+    ``game_state_of(session).gold`` 经 logic_action 通道 write_logic
     (可为负;现值 None 视 0 基线——金账由商店波顶/结算屏可信读覆盖
     修正,观察赢)。渠道面 = family='logic_action' + actor
     'PrepActionExecutor'(在册;登记类属 = 动作 op 逻辑效果推进宿主,
@@ -249,11 +249,11 @@ def _advance_gold(session, delta: int, *,
     try:
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
-            board_state_of,
+            game_state_of,
         )
-        bs = board_state_of(session)
-        base = bs.gold.value
-        bs.write_logic(bs.gold, int(base or 0) + int(delta),
+        gs = game_state_of(session)
+        base = gs.gold.value
+        gs.write_logic(gs.gold, int(base or 0) + int(delta),
                        produced_by=produced_by,
                        evidence='op_effect_gold_delta',
                        sig=ChannelSig(family='logic_action',
@@ -345,14 +345,14 @@ def apply_op_effect(session, action: CwAction | dict, *,
         # 返 None 零动作,与升级挂点同纪律(cw_effect_inventory.consume_use)。
         if skip_substate:
             from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of,
+                game_state_of,
             )
             from sr_od.application.currency_war.kernel.cw_investments import (
                 STRATEGY_EFFECTS,
             )
             _spec = STRATEGY_EFFECTS.get('免战牌')
             if _spec is not None:
-                _left = board_state_of(session).effects.consume_use(_spec.id)
+                _left = game_state_of(session).effects.consume_use(_spec.id)
                 if _left is not None:
                     _eff('effects[免战牌]', f'remaining_uses→{_left}(跳过上报递减)',
                          'effects')

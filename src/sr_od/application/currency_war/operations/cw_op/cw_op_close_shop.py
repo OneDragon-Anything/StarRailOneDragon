@@ -26,13 +26,13 @@ def _note_receipt(op: SrOperation, applied: bool, reason: str) -> None:
     """
     try:
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_from_ctx,
+            game_state_from_ctx,
             note_action_receipt,
         )
-        bs = board_state_from_ctx(getattr(op, 'ctx', None))
-        if bs is None:
+        gs = game_state_from_ctx(getattr(op, 'ctx', None))
+        if gs is None:
             return
-        note_action_receipt(bs, op='CwOpCloseShop', applied=applied,
+        note_action_receipt(gs, op='CwOpCloseShop', applied=applied,
                             reason=reason, screen=SHOP_SCREEN_NAME,
                             actor='CwOpCloseShop')
     except Exception as e:  # noqa: BLE001  回执失败不阻塞动作链

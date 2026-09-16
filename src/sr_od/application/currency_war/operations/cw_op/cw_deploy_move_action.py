@@ -11,7 +11,7 @@ import time
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_game_state import board_state_of
+from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
 from sr_od.application.currency_war.kernel.cw_vocab import DeployMove
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
     ActionOp,
@@ -45,7 +45,7 @@ class DeployMoveOp(ActionOp):
             pad_deployed,
         )
         tracked = (pad_deployed(list(
-            board_state_of(session).tracked_books.deployed))
+            game_state_of(session).tracked_books.deployed))
             if session is not None else [])
         front_empty, back_empty = empty_deploy_slots(
             tracked, front_total=len(ex._front_pts),

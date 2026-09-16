@@ -21,7 +21,7 @@ docs/develop/sr_od/application/currency_war/game_state/fields.md §9。
 **两个关键结构**(设计 §2.4;预期条目表已随两态制废除):
 1. 帧观察完整度标注 + 心跳——标注(full/view/none)消费即清;停更检测
    哨兵用只增不减的写点序号 :attr:`GameState.write_seq`,不用标注现值。
-2. bs_schema——域粒度版本映射(缺域键 = 该域未建模,§3.7.1)。
+2. gs_schema——域粒度版本映射(缺域键 = 该域未建模,§3.7.1)。
 
 **两态直写**(ADR-0651,2026-09-11 用户裁定):字段来源只保留 observation
 与 logic 两种——逻辑推算值经 :meth:`GameState.write_logic` 直接写字段
@@ -30,7 +30,7 @@ PendingEntry/confirm 转正/discard_expected)全套废除;逻辑态错误 =
 代码 bug(修推算代码,不靠运行时挂账对账兜底)。观察赢原则不变(§2.3):
 下一帧实读覆盖 logic,失配缺陷台账留证。
 
-**单例宿主** = session 旁表(:func:`board_state_of`;同 ``cw_exec_state``
+**单例宿主** = session 旁表(:func:`game_state_of`;同 ``cw_exec_state``
 旁表模式,弱引用表 + 桩面兜底)——session 对象 = 局身份,新局新 session
 即天然新建,符合「单例,每局新建」(§1/§6.2)。
 
@@ -51,7 +51,7 @@ R5 迁移规划 W1/ADR-0634,集内无空 actor 行);:attr:`GameState.write_seq`
 禁回归)。落盘由 :mod:`sr_od.application.currency_war.kernel.cw_state_journal`
 承载,**无条件常开**(生产装配 = currency_war_app 装配段 + 局容器单例建立点
 兜底——遥测装配 = game state 职责(用户裁定 2026-09-15 精化令):触发
-只钉 :func:`board_state_of` 建立路径,GameState 构造器零装配逻辑;无开关;
+只钉 :func:`game_state_of` 建立路径,GameState 构造器零装配逻辑;无开关;
 行落盘另以 sink 在场与 run_id 在场为准,sink 缺席 = 行不落而写路径照常——
 记录被动,不改写路径语义)。新增**逻辑态
 派生域与画面上下文域**(ADR-0630 决策 1+修订节 2;字段面 as-built =
@@ -128,12 +128,12 @@ if TYPE_CHECKING:
 #: 3 节点后自动回 9,经效果账本 §5.1 逻辑写入)。
 BENCH_CAPACITY_DEFAULT: int = 9
 
-#: 行级 schema 版本(§3.7.1)。域版本映射见 ``DEFAULT_BS_SCHEMA``。
-BS_SCHEMA_VERSION: int = 1
+#: 行级 schema 版本(§3.7.1)。域版本映射见 ``DEFAULT_GS_SCHEMA``。
+GAME_STATE_SCHEMA_VERSION: int = 1
 
 #: 域粒度版本映射的当前全集(缺域键 = 该域未建模,禁建「None=未建模」占位
 #: 字段,§2.2/§8.8)。域增删或字段语义破坏性变更时 bump 对应域版本。
-DEFAULT_BS_SCHEMA: dict[str, int] = {
+DEFAULT_GS_SCHEMA: dict[str, int] = {
     'node': 2,              # node/node_path/node_path_baseline(§3.2.1/§3.2.2;域版本 2 =
                             # node_path 值形 list[str] → NodeChain 载体(逐格 TokenCell 元数据)
                             # + 新增基线链字段 node_path_baseline,链观察落地批 2026-09-16)
@@ -348,7 +348,7 @@ def _journal_emit(row: dict) -> None:
             return   # 局外写入拒绝(§3.2.3):不写假行,诚实缺失
         sink(row)
     except Exception as e:  # noqa: BLE001  记录层 best-effort,不毒化写入链
-        log.debug(f'[cw-bs] journal row skip: {e}')
+        log.debug(f'[cw-gs] journal row skip: {e}')
 
 
 def _validate_sig(sig: ChannelSig, allowed_families: tuple[str, ...]) -> None:
@@ -862,10 +862,10 @@ def _emit_defect(*, field_name: str, expected: Any, actual: Any,
         try:
             _DEFECT_SINK(dict(row))
         except Exception as e:  # noqa: BLE001  留证 best-effort
-            log.debug(f'[cw-bs] defect sink skip: {e}')
+            log.debug(f'[cw-gs] defect sink skip: {e}')
     if kind != 'observe_vs_logic_mismatch':
         return   # 豁免等非真失配行:留证即止,无告警无停机
-    log.warning(f'[cw!][bs] 观察覆盖 logic 失配:{field_name} '
+    log.warning(f'[cw!][gs] 观察覆盖 logic 失配:{field_name} '
                 f'预期[{expected}] 实读[{actual}](§2.3 观察赢)')
     fire_reconcile_andon(dict(row))
 
@@ -874,7 +874,7 @@ def _emit_defect(*, field_name: str, expected: Any, actual: Any,
 
 #: 状态流水外送钩子(进程内单槽;行落盘的在场门——journal 本体无条件常开
 #:(R5 W1/ADR-0634:无开关,生产装配 = currency_war_app 装配段 + 局容器
-#: 单例建立点兜底,见 :func:`board_state_of`),本槽
+#: 单例建立点兜底,见 :func:`game_state_of`),本槽
 #: 缺省 None 只表示「无落盘实例」(单元测试/工具环境),此时**写路径照常
 #:(Field 写入与版本分配不受影响),仅行不外送**——记录被动,不分支行为。
 #: 落盘实现与装配口 =
@@ -932,21 +932,21 @@ def slot_occupies(kind: str) -> bool:
     return kind != 'empty'
 
 
-def bench_free_slots(bs: GameState) -> int | None:
+def bench_free_slots(gs: GameState) -> int | None:
     """席空数(§3.2.5 派生计算,不入 schema)。bench 从未观察 → None
     (= 不确定,**禁猜 0**);已观察 → max(capacity − 占席槽数, 0)。"""
-    view = bs.bench.value
+    view = gs.bench.value
     if view is None:
         return None
     used = sum(1 for s in view.slots if slot_occupies(s.kind))
     return max(view.capacity - used, 0)
 
 
-def bench_is_full(bs: GameState) -> bool | None:
+def bench_is_full(gs: GameState) -> bool | None:
     """席满判定 = 同源派生(席空数==0,§3.2.5;含商店开态满栏买牌判定)。
     bench 未观察 → None(不确定);「备战席已满」警告 OCR 不做识别
     (玩家裁定 2026-09-09,现役 read_bench_full 通道退役挂批次二)。"""
-    free = bench_free_slots(bs)
+    free = bench_free_slots(gs)
     return None if free is None else free == 0
 
 
@@ -1063,7 +1063,7 @@ def shop_cards_to_legacy(cards: list[ShopCard],
 
 # ============================================================ 刷新执行事实组(§3.3.5-§3.3.9)
 
-def record_refresh_execution(bs: GameState, *, free: bool,
+def record_refresh_execution(gs: GameState, *, free: bool,
                              frame: str = '') -> None:
     """RefreshShop op 执行回执 → 刷新计数组逻辑写入(§3.3.6-§3.3.8,
     写入=仅逻辑;接线点 = cw_op_buy_cards 执行落地门,迁移批次二)。
@@ -1086,17 +1086,17 @@ def record_refresh_execution(bs: GameState, *, free: bool,
     # 执行的三笔计数写共享 act 组;R5 W1 起签名必填,ADR-0634)。
     _sig = ChannelSig(family='logic_action', actor='CwScreenBuyCards',
                       mode='compute',
-                      group_id=f'act:CwScreenBuyCards@{bs.write_seq + 1}')
-    total = bs.total_refresh_count.value or 0
-    bs.write_logic(bs.total_refresh_count, int(total) + 1,
+                      group_id=f'act:CwScreenBuyCards@{gs.write_seq + 1}')
+    total = gs.total_refresh_count.value or 0
+    gs.write_logic(gs.total_refresh_count, int(total) + 1,
                    produced_by='RefreshShop', evidence=_ev, sig=_sig)
     if free:
-        balance = bs.free_refresh_balance.value or 0
-        bs.write_logic(bs.free_refresh_balance, max(int(balance) - 1, 0),
+        balance = gs.free_refresh_balance.value or 0
+        gs.write_logic(gs.free_refresh_balance, max(int(balance) - 1, 0),
                        produced_by='RefreshShop', evidence=_ev, sig=_sig)
     else:
-        paid = bs.paid_refresh_count.value or 0
-        bs.write_logic(bs.paid_refresh_count, int(paid) + 1,
+        paid = gs.paid_refresh_count.value or 0
+        gs.write_logic(gs.paid_refresh_count, int(paid) + 1,
                        produced_by='RefreshShop', evidence=_ev, sig=_sig)
 
 
@@ -1107,7 +1107,7 @@ def record_refresh_execution(bs: GameState, *, free: bool,
 RECEIPTS_WINDOW_CAP: int = 8
 
 
-def board_state_from_ctx(ctx: object) -> GameState | None:
+def game_state_from_ctx(ctx: object) -> GameState | None:
     """ctx → 局 GameState(cw_match.session 旁表现读;无局/解析失败 = None)。
 
     动作 op 写入点的统一供给口(R2):调用方零判空负担——无局(独立跑/
@@ -1117,12 +1117,12 @@ def board_state_from_ctx(ctx: object) -> GameState | None:
         session = getattr(match, 'session', None) if match is not None else None
         if session is None:
             return None
-        return board_state_of(session)
+        return game_state_of(session)
     except Exception:   # noqa: BLE001  供给口不炸调用链
         return None
 
 
-def note_action_receipt(bs: GameState, *, op: str, applied: bool,
+def note_action_receipt(gs: GameState, *, op: str, applied: bool,
                         reason: str = '', detail: str = '',
                         screen: str = '',
                         actor: str, extra: dict | None = None) -> None:
@@ -1158,27 +1158,27 @@ def note_action_receipt(bs: GameState, *, op: str, applied: bool,
             receipt['screen'] = str(screen)
         if extra:
             receipt.update(dict(extra))
-        old = bs.receipts.value or []
+        old = gs.receipts.value or []
         window = (list(old) + [receipt])[-RECEIPTS_WINDOW_CAP:]
-        seq = bs.write_seq + 1
+        seq = gs.write_seq + 1
         sig = ChannelSig(family='logic_action', actor=actor, mode='compute',
                          group_id=f'act:{actor}@{seq}')
-        bs.write_logic(bs.receipts, window, produced_by=actor, sig=sig)
+        gs.write_logic(gs.receipts, window, produced_by=actor, sig=sig)
     except Exception as e:  # noqa: BLE001  记录层 best-effort,不毒化动作链
-        log.debug(f'[cw-bs] action receipt skip: {e}')
+        log.debug(f'[cw-gs] action receipt skip: {e}')
 
 
 # ============================================================ 账本→字段桥(§5.1/§3.2.5/§3.3.5-6,迁移批次三 B1)
 
-def _bridge_sig(bs: GameState) -> ChannelSig:
+def _bridge_sig(gs: GameState) -> ChannelSig:
     """效果桥写入的渠道③签名(单一构造点;§3.2.1 ③组 id =
     hook:<登记名>@<seq>;R5 W1 起签名必填,ADR-0634)。"""
     return ChannelSig(family='logic_hook', actor='EffectLedgerBridge',
                       mode='compute',
-                      group_id=f'hook:EffectLedgerBridge@{bs.write_seq + 1}')
+                      group_id=f'hook:EffectLedgerBridge@{gs.write_seq + 1}')
 
 
-def apply_effect_burst_grant(bs: GameState, spec: Any, *,
+def apply_effect_burst_grant(gs: GameState, spec: Any, *,
                              frame: str = '') -> None:
     """桥·burst 形态(选卡一次性):登记时点把效果声明的免费刷新额度一次
     性累加进余额(§3.3.5 burst 族:免费午餐 11/及时雨 4/固定理财即时段 2
@@ -1193,13 +1193,13 @@ def apply_effect_burst_grant(bs: GameState, spec: Any, *,
     if n <= 0:
         return
     _ev = f'effect_burst@{frame}' if frame else 'effect_burst'
-    balance = bs.free_refresh_balance.value or 0
-    bs.write_logic(bs.free_refresh_balance, int(balance) + n,
+    balance = gs.free_refresh_balance.value or 0
+    gs.write_logic(gs.free_refresh_balance, int(balance) + n,
                    produced_by='EffectLedgerBridge', evidence=_ev,
-                   sig=_bridge_sig(bs))
+                   sig=_bridge_sig(gs))
 
 
-def grant_effect_node_refresh_balance(bs: GameState, *,
+def grant_effect_node_refresh_balance(gs: GameState, *,
                                       frame: str = '') -> None:
     """桥·per_node + 条件判定形态(每节点发放):节点边界一次,把全部在场
     条目声明的每节点免费刷新额度累加进余额(§3.3.5-§3.3.6)。载体两族:
@@ -1208,7 +1208,7 @@ def grant_effect_node_refresh_balance(bs: GameState, *,
       + BattlefieldEffect.free_refresh_on_node_enter(双手狸开键盘!=2),
       payload 按鸭子属性读、缺省 0(两族并存条目求和);
     - **条件判定**(本金充裕/+,EconomyEffect 条件三元组,§3.3.6「结构化后
-      经同一桥自动生效」):按 bs.gold 现值评估——金 > free_refresh_cond_gold_above
+      经同一桥自动生效」):按 gs.gold 现值评估——金 > free_refresh_cond_gold_above
       时每额外 free_refresh_cond_gold_step 金 +1 次、至多 free_refresh_cond_cap;
       三字段齐备(>0)才激活,半配对保守 no-op。金未读(None)= 条件不可
       评估 → 该条目本拍零授予(禁猜;下一节点金可读时恢复评估,授予量
@@ -1222,8 +1222,8 @@ def grant_effect_node_refresh_balance(bs: GameState, *,
     未建模挂账不改本桥。
     """
     per_node = 0
-    gold = bs.gold.value
-    for e in bs.effects.entries:
+    gold = gs.gold.value
+    for e in gs.effects.entries:
         payload = e.spec.payload
         per_node += int(getattr(payload, 'free_refresh_per_node', 0) or 0)
         per_node += int(getattr(payload, 'free_refresh_on_node_enter', 0) or 0)
@@ -1237,13 +1237,13 @@ def grant_effect_node_refresh_balance(bs: GameState, *,
     if per_node <= 0:
         return
     _ev = f'effect_per_node@{frame}' if frame else 'effect_per_node'
-    balance = bs.free_refresh_balance.value or 0
-    bs.write_logic(bs.free_refresh_balance, int(balance) + per_node,
+    balance = gs.free_refresh_balance.value or 0
+    gs.write_logic(gs.free_refresh_balance, int(balance) + per_node,
                    produced_by='EffectLedgerBridge', evidence=_ev,
-                   sig=_bridge_sig(bs))
+                   sig=_bridge_sig(gs))
 
 
-def project_effect_capacity(bs: GameState) -> None:
+def project_effect_capacity(gs: GameState) -> None:
     """桥·容量逻辑态直写(§3.2.5):按账本在册容量时限声明回写备战席容量——
     激活期 capacity=N、条目到期移除后自动回默认 9。
 
@@ -1260,16 +1260,16 @@ def project_effect_capacity(bs: GameState) -> None:
     覆盖 logic 值刷缺陷台账(本桥 docstring 即该义务的挂点)。
     """
     limits = [int(getattr(e.spec.payload, 'capacity_limit', 0) or 0)
-              for e in bs.effects.entries]
+              for e in gs.effects.entries]
     limits = [n for n in limits if n > 0]
     target = min(limits) if limits else BENCH_CAPACITY_DEFAULT
-    view = bs.bench.value
+    view = gs.bench.value
     if view is None or view.capacity == target:
         return
-    bs.write_logic(bs.bench,
+    gs.write_logic(gs.bench,
                    BenchView(slots=list(view.slots), capacity=target),
                    produced_by='EffectLedgerBridge',
-                   evidence='capacity_project', sig=_bridge_sig(bs))
+                   evidence='capacity_project', sig=_bridge_sig(gs))
 
 
 # ============================================================ 备战席观察写端(§3.2.5)
@@ -1307,7 +1307,7 @@ def bench_view_from_obs(bench_chars: list) -> BenchView | None:
                 equips=list(getattr(bc, 'equips', None) or []),
                 slot=s))
         else:
-            log.warning('[cw!][bs-bench] 备战席读链槽位越界丢弃:'
+            log.warning('[cw!][gs-bench] 备战席读链槽位越界丢弃:'
                         'slot=%s char=%s(SIFT/星级读链漂移信号)',
                         s, getattr(bc, 'char_id', '?'))
     return BenchView(slots=slots, capacity=BENCH_CAPACITY_DEFAULT)
@@ -1433,7 +1433,7 @@ def deployed_slots_to_rows(slots: list) -> tuple[list[Unit], list[Unit]]:
 
     Unit.slot = 行内 1 基槽号(信息位,与 :func:`deployed_rows_from_obs`
     同系);空槽与未识别(char_id 空)不入行(宁缺勿造,容器席位域语义,
-    与喂入口 :func:`board_state_from_ctx` 系同口径);往返 =
+    与喂入口 :func:`game_state_from_ctx` 系同口径);往返 =
     :func:`unit_rows_to_deployed`(front, back) 逐槽还原( slot-1 定位,
     无歧义)。阵营不入行(§3.2.3),装备随 Unit 透传。
     """
@@ -1452,24 +1452,24 @@ def deployed_slots_to_rows(slots: list) -> tuple[list[Unit], list[Unit]]:
 
 # ============================================================ 局终归档快照(§6.2/§8.8)
 
-def archive_snapshot(bs: GameState) -> dict:
+def archive_snapshot(gs: GameState) -> dict:
     """局终 GameState 归档快照(§6.2 局终归档喂遥测,先于连刷重建;
-    §8.8 遥测行形状正本的两键:bs_prov/bs_extra)。
+    §8.8 遥测行形状正本的两键:gs_prov/gs_extra)。
 
-    - bs_prov = 非默认来源注记(稀疏化,不逐字段灌满):source 非
+    - gs_prov = 非默认来源注记(稀疏化,不逐字段灌满):source 非
       observation、或 observation 带 evidence 的字段才入——默认 observation
       无注记的字段 = 「本帧真读」语义,键面留白;
-    - bs_extra = 工程结构(schema 版本/域版本/心跳/效果账本规模)+
+    - gs_extra = 工程结构(schema 版本/域版本/心跳/效果账本规模)+
       全部非 None 字段值(JSON 安全形态,供离线判读)。
-      (bs_pending 挂起预期摘要已随两态制废除退役——ADR-0651。)
+      (gs_pending 挂起预期摘要已随两态制废除退役——ADR-0651。)
 
     返回 dict 直接入档(由局终装配器并档);序列化失败逐字段跳过
     (归档 best-effort,不阻塞局终流转)。
     """
     prov: dict[str, dict] = {}
     extra_values: dict[str, object] = {}
-    for f in dataclasses.fields(bs):
-        val = getattr(bs, f.name, None)
+    for f in dataclasses.fields(gs):
+        val = getattr(gs, f.name, None)
         if not isinstance(val, Field):
             continue
         if val.value is not None:
@@ -1478,14 +1478,14 @@ def archive_snapshot(bs: GameState) -> dict:
         if val.source != 'observation' or val.evidence is not None:
             prov[f.name] = {'source': val.source, 'evidence': val.evidence}
     return {
-        'schema_version': bs.schema_version,
-        'bs_prov': prov,
-        'bs_extra': {
+        'schema_version': gs.schema_version,
+        'gs_prov': prov,
+        'gs_extra': {
             'values': extra_values,
-            'bs_schema': dict(bs.bs_schema),
-            'write_seq': bs.write_seq,
-            'frame_obs': bs.frame_obs,
-            'effects_count': len(getattr(bs.effects, 'effects', []) or []),
+            'gs_schema': dict(gs.gs_schema),
+            'write_seq': gs.write_seq,
+            'frame_obs': gs.frame_obs,
+            'effects_count': len(getattr(gs.effects, 'effects', []) or []),
         },
     }
 
@@ -1556,7 +1556,7 @@ def detect_merge_upgrade(cur: Any, proj: Any) -> bool:
 
 # ============================================================ 结算覆盖写端(§3.5.1)
 
-def apply_settlement_cover(bs: GameState, *, hp_after: int | None,
+def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
                            streak_after: int | None,
                            killed: bool | None = None,
                            progress_delta: int | None = None,
@@ -1581,16 +1581,16 @@ def apply_settlement_cover(bs: GameState, *, hp_after: int | None,
     """
     _sig = ChannelSig(family='obs', actor='CwScreenBattleWait', mode='read')
     if hp_after is not None:
-        bs.observe(bs.hp, int(hp_after), sig=_sig)
+        gs.observe(gs.hp, int(hp_after), sig=_sig)
     if streak_after is not None:
-        bs.observe(bs.streak, int(streak_after), sig=_sig)
+        gs.observe(gs.streak, int(streak_after), sig=_sig)
     if gold is not None:
-        bs.observe(bs.gold, int(gold), sig=_sig)
+        gs.observe(gs.gold, int(gold), sig=_sig)
     if level is not None:
-        bs.observe(bs.level, int(level), sig=_sig)
+        gs.observe(gs.level, int(level), sig=_sig)
     if xp is not None:
-        bs.observe(bs.xp, (int(xp[0]), int(xp[1])), sig=_sig)
-    bs.observe(bs.settlement, Settlement(
+        gs.observe(gs.xp, (int(xp[0]), int(xp[1])), sig=_sig)
+    gs.observe(gs.settlement, Settlement(
         hp_after=hp_after, streak_after=streak_after, killed=killed,
         progress_delta=progress_delta, gold=gold, level=level,
         xp=(int(xp[0]), int(xp[1])) if xp is not None else None),
@@ -1685,7 +1685,7 @@ class ShopActionExecuted:
     refresh_paid: int | None = None
 
 
-def apply_shop_action_logic(bs: GameState, action: Any, *,
+def apply_shop_action_logic(gs: GameState, action: Any, *,
                             executed: ShopActionExecuted | None = None,
                             produced_by: str, sig: ChannelSig) -> LogicOutcome:
     """动作状态应用的单一转移函数(转移函数单源化;裁定 A:引擎动作
@@ -1721,7 +1721,7 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
     - **RefreshShop** = gold −刷新费(paid=0 免费帧 −0/不写)。executed
       None = 跳写(实付金含免费刷注入等引擎差异,不可自算——sim 引擎
       显式传 refresh_paid,申报差异 #2 参数通道)。
-    - **CloseShop** = ``leave_screen(bs.shop)``(结构离屏;离屏写渠道
+    - **CloseShop** = ``leave_screen(gs.shop)``(结构离屏;离屏写渠道
       = obs 族,内部按 sig.actor 转造 obs 签名)。
 
     输入域 None 语义(域级独立跳写,禁缺省值参与计算):gold/xp/刷新费
@@ -1768,7 +1768,7 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
     )
 
     def _w(target: Field, value: Any, evidence: str) -> None:
-        bs.write_logic(target, value, produced_by=produced_by,
+        gs.write_logic(target, value, produced_by=produced_by,
                        evidence=evidence, sig=sig)
 
     def _legacy_card(c: Any) -> _LegacyShopCard:
@@ -1785,21 +1785,21 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
     def _write_deployed(scratch: list) -> None:
         """deployed 槽表中间形态 → front/back rows 整表写(平移契约)。"""
         front, back = deployed_slots_to_rows(scratch)
-        _w(bs.front_row, front, 'proj_deployed_front')
-        _w(bs.back_row, back, 'proj_deployed_back')
+        _w(gs.front_row, front, 'proj_deployed_front')
+        _w(gs.back_row, back, 'proj_deployed_back')
 
     def _write_board(scratch_deployed: list) -> None:
         """board 重算写(v2 腿/合成全场域后派生单一源 = _recount_board)。"""
-        _w(bs.board, _recount_board(scratch_deployed), 'proj_board_recount')
+        _w(gs.board, _recount_board(scratch_deployed), 'proj_board_recount')
 
     # —— BuyCard ——
     if isinstance(action, BuyCard):
         card = action.card
         name = str(getattr(card, 'name', '') or '')
         star = int(getattr(card, 'star', 1) or 1)
-        bench_slots = bench_slots_of(bs)
-        dep_slots = deployed_slots_of(bs)
-        payload = bs.shop.value
+        bench_slots = bench_slots_of(gs)
+        dep_slots = deployed_slots_of(gs)
+        payload = gs.shop.value
         shop_view = (shop_cards_to_legacy(
             shop_payload_content_cards(payload)))
         # k 来源(详设 §3 修订):executed 给定 = 回执 k(live);None =
@@ -1837,9 +1837,9 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
                 return LogicOutcome(applied=False, reason='bench_full')
             k = k_exec if k_exec is not None else max(1, int(k_apply))
         # gold −单价×k(None 域跳写)
-        g = bs.gold.value
+        g = gs.gold.value
         if g is not None:
-            _w(bs.gold, int(g) - card_cost(card) * k, 'proj_buy_gold')
+            _w(gs.gold, int(g) - card_cost(card) * k, 'proj_buy_gold')
         # shop payload −k 张((name, star) 计数;离屏 None 跳写)。
         # 三态定长模型(用户三态裁定 2026-09-13):被买槽 kind 置 empty
         # (物理槽位保留,数组下标即槽位);同 (name,star) k 张按 canonical
@@ -1857,11 +1857,11 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
                         and int(s.card.star or 1) == star:
                     slots[_i] = ShopSlot(kind='empty')
                     _left -= 1
-            _w(bs.shop, ShopPayload(cards=slots,
+            _w(gs.shop, ShopPayload(cards=slots,
                                     refresh_probs=(dict(payload.refresh_probs) if payload.refresh_probs is not None else None)),
                'proj_buy_payload')
         # bench 整表写(落位+合成应用后终态;live 简单腿写语义保持)
-        _w(bs.bench, bench_view_of_slots(scratch_b), 'proj_buy_place')
+        _w(gs.bench, bench_view_of_slots(scratch_b), 'proj_buy_place')
         # 合成连锁全场域:deployed 被合成消费/升星时 rows + board 随写
         # (域扩面申报表;值签名比较——见上方浅拷贝别名注)
         _dep_post_sig = [(str(getattr(d, 'char_id', '') or ''),
@@ -1876,7 +1876,7 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
     # —— SellBench ——
     if isinstance(action, SellBench):
         idx = int(getattr(action, 'bench_idx', -1))
-        bench_slots = bench_slots_of(bs)
+        bench_slots = bench_slots_of(gs)
         if not (0 <= idx < len(bench_slots)) or bench_slots[idx] is None:
             return LogicOutcome(
                 applied=False, reason=f'bench_idx_out_of_range:{idx}')
@@ -1893,20 +1893,20 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
         new_slots[idx] = None
         refund = sell_refund(int(getattr(sold, 'star', 1) or 1),
                              bench_char_cost(sold))
-        _w(bs.bench, bench_view_of_slots(new_slots), 'proj_sell_bench')
-        g = bs.gold.value
+        _w(gs.bench, bench_view_of_slots(new_slots), 'proj_sell_bench')
+        g = gs.gold.value
         if g is not None:
-            _w(bs.gold, int(g) + int(refund), 'proj_sell_refund')
+            _w(gs.gold, int(g) + int(refund), 'proj_sell_refund')
         # 装备回收进 owned 池(C6 装备守恒;simulate 同源,域扩面申报)
         if sold.equips:
-            _w(bs.equips, list(bs.equips.value or []) + list(sold.equips),
+            _w(gs.equips, list(gs.equips.value or []) + list(sold.equips),
                'proj_sell_equips_recover')
         return LogicOutcome(applied=True,
                             reason=str(getattr(action, 'reason', '') or ''),
                             income=int(refund))
     # —— SellDeployed(v2 族;语义源 = simulate SellDeployed 分支逐腿平移)——
     if isinstance(action, SellDeployed):
-        dep_slots = deployed_slots_of(bs)
+        dep_slots = deployed_slots_of(gs)
         idx = int(getattr(action, 'deployed_idx', -1))
         if not (0 <= idx < len(dep_slots)) or dep_slots[idx] is None:
             return LogicOutcome(
@@ -1926,11 +1926,11 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
                              bench_char_cost(sold))
         _write_deployed(scratch)
         _write_board(scratch)
-        g = bs.gold.value
+        g = gs.gold.value
         if g is not None:
-            _w(bs.gold, int(g) + int(refund), 'proj_sell_deployed_gold')
+            _w(gs.gold, int(g) + int(refund), 'proj_sell_deployed_gold')
         if sold.equips:
-            _w(bs.equips, list(bs.equips.value or []) + list(sold.equips),
+            _w(gs.equips, list(gs.equips.value or []) + list(sold.equips),
                'proj_sell_deployed_equips')
         return LogicOutcome(applied=True,
                             reason=str(getattr(action, 'reason', '') or ''),
@@ -1939,8 +1939,8 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
     if isinstance(action, SwapDeploy):
         d_idx = int(getattr(action, 'deployed_idx', -1))
         b_idx = int(getattr(action, 'bench_idx', -1))
-        dep_slots = deployed_slots_of(bs)
-        bench_slots = bench_slots_of(bs)
+        dep_slots = deployed_slots_of(gs)
+        bench_slots = bench_slots_of(gs)
         if not (0 <= d_idx < len(dep_slots)) or dep_slots[d_idx] is None \
                 or not (0 <= b_idx < len(bench_slots)) \
                 or bench_slots[b_idx] is None:
@@ -1974,7 +1974,7 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
         # 上场者继承下场者排(含开拓者形态归一);槽号信息位重写
         _apply_row_to_char(in_char, out_char.position_pref)
         in_char.slot = deployed_slot_no(d_idx)
-        _w(bs.bench, bench_view_of_slots(scratch_b), 'proj_swap_bench')
+        _w(gs.bench, bench_view_of_slots(scratch_b), 'proj_swap_bench')
         _write_deployed(scratch_d)
         _write_board(scratch_d)
         return LogicOutcome(applied=True,
@@ -1989,17 +1989,17 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
         # 满级购买无效(fields.md §4.2 LevelUp 行:满级零金零经验)。
         # 投影期望态由直锁钉住(锁 M1,test_cw_shop_projection_logic)。
         # 封顶单一源 = MAX_PLAYER_LEVEL(10)。
-        if level_of(bs) >= MAX_PLAYER_LEVEL:
+        if level_of(gs) >= MAX_PLAYER_LEVEL:
             return LogicOutcome(applied=False, reason='level_cap')
-        g = bs.gold.value
+        g = gs.gold.value
         if g is not None:
-            _w(bs.gold, int(g) - int(getattr(action, 'cost', 0) or 0) * clicks,
+            _w(gs.gold, int(g) - int(getattr(action, 'cost', 0) or 0) * clicks,
                'proj_levelup_gold')
-        xp_v = bs.xp.value
+        xp_v = gs.xp.value
         if xp_v is not None:
-            _lvl = level_of(bs)
+            _lvl = level_of(gs)
             _new_lvl, _cur = xp_apply_clicks(_lvl, int(xp_v[0]), clicks)
-            _w(bs.xp, (_cur, XP_TO_NEXT_LEVEL.get(_new_lvl, _cur)),
+            _w(gs.xp, (_cur, XP_TO_NEXT_LEVEL.get(_new_lvl, _cur)),
                'proj_levelup_xp')
         return LogicOutcome(applied=True)
     # —— RefreshShop ——
@@ -2012,23 +2012,23 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
                                 reason='refresh_paid_not_fed')
         paid = max(0, int(paid))
         if paid > 0:
-            g = bs.gold.value
+            g = gs.gold.value
             if g is not None:
-                _w(bs.gold, int(g) - paid, 'proj_refresh_gold')
+                _w(gs.gold, int(g) - paid, 'proj_refresh_gold')
         # 刷后牌面 = 续段重观察(payload 不写;免费帧 gold 同不写)
         return LogicOutcome(applied=True)
     # —— CloseShop(结构离屏;离屏渠道 = obs 族,actor 沿逻辑态直写 sig)——
     if isinstance(action, CloseShop):
-        if bs.shop.value is not None:
+        if gs.shop.value is not None:
             _off_sig = ChannelSig(family='obs', actor=sig.actor,
                                   mode='read', group_id=sig.group_id)
-            bs.leave_screen(bs.shop, sig=_off_sig)
+            gs.leave_screen(gs.shop, sig=_off_sig)
         return LogicOutcome(applied=True)
     # 集外动作型:零写(登记面申报;DeployMove 不入本口——围栏部署 =
     # 结算期代理,obs 通道申报对齐)。
     return LogicOutcome(applied=False, reason='unsupported_action_type')
 
-def apply_shop_merge_leg(bs: GameState, action: Any, *,
+def apply_shop_merge_leg(gs: GameState, action: Any, *,
                          sig: ChannelSig,
                          pre_bench: list[BenchChar | None],
                          pre_deployed: list[BenchChar | None],
@@ -2067,14 +2067,14 @@ def apply_shop_merge_leg(bs: GameState, action: Any, *,
                                 shop=pre_shop)
     if detect_merge_upgrade(_NS(bench=pre_bench, deployed=pre_deployed),
                             _NS(bench=scratch_bench, deployed=scratch_dep)):
-        bs.write_logic(bs.bench, bench_view_of_slots(scratch_bench),
+        gs.write_logic(gs.bench, bench_view_of_slots(scratch_bench),
                        produced_by='BuyCard',
                        evidence='proj_merge_upgrade',
                        sig=ChannelSig(
                            family='logic_action', actor=sig.actor,
                            mode='compute',
                            group_id=(f'act:{sig.actor}@'
-                                     f'{bs.write_seq + 1}')))
+                                     f'{gs.write_seq + 1}')))
 
 
 def mutate_bench_deployed_local(bench, deployed, action,
@@ -2111,7 +2111,7 @@ PREP_PROJECTION_DOMAINS: tuple[str, ...] = (
 )
 
 
-def apply_prep_action_logic(bs: GameState, action: Any, *,
+def apply_prep_action_logic(gs: GameState, action: Any, *,
                             produced_by: str, sig: ChannelSig,
                             session: object = None) -> None:
     """备战动作逻辑态直写(逐动作零读屏的期望态纯计算推进的容器半;
@@ -2183,14 +2183,14 @@ def apply_prep_action_logic(bs: GameState, action: Any, *,
         # 集外动作型:零写(登记面申报,等观察覆盖;禁扩静默)。
         return
     _grp_sig = (sig if sig.group_id is not None else _dc_replace(
-        sig, group_id=f'act:{sig.actor}@{bs.write_seq + 1}'))
+        sig, group_id=f'act:{sig.actor}@{gs.write_seq + 1}'))
 
     def _w(target: Field, value: Any, evidence: str) -> None:
-        bs.write_logic(target, value, produced_by=produced_by,
+        gs.write_logic(target, value, produced_by=produced_by,
                        evidence=evidence, sig=_grp_sig)
 
     if isinstance(action, SellBench):
-        bench_slots = bench_slots_of(bs)
+        bench_slots = bench_slots_of(gs)
         idx = int(action.bench_idx)   # 槽位表下标直取(统一坐标系,零换算)
         if not (0 <= idx < len(bench_slots)) or bench_slots[idx] is None:
             return   # 陈旧提案(守卫),本口零写
@@ -2205,15 +2205,15 @@ def apply_prep_action_logic(bs: GameState, action: Any, *,
         # heavy 实读覆盖修正);身份缺读('')= 跳过入位(槽留空等观察覆
         # 盖),卖出语义本体不受阻。落地后旗标/身份 logic 消亡(下帧实读
         # 覆盖,两态制观察赢)。
-        _ov_warn = bs.overflow_warning.value
-        _ov_id = bs.overflow_card.value
+        _ov_warn = gs.overflow_warning.value
+        _ov_id = gs.overflow_card.value
         if _ov_warn and _ov_id:
             from sr_od.application.currency_war.kernel.cw_exec_state import (
                 BenchChar,
             )
             new_slots[idx] = BenchChar(slot=idx + 1, char_id=_ov_id)
-            _w(bs.overflow_card, '', 'proj_overflow_absorbed')
-            _w(bs.overflow_warning, False, 'proj_overflow_cleared')
+            _w(gs.overflow_card, '', 'proj_overflow_absorbed')
+            _w(gs.overflow_warning, False, 'proj_overflow_cleared')
             # 执行侧 tracked 对称吸收:入位卡同帧记进执行主账,
             # 摘该槽(执行器摘除腿可能先行,幂等)+ 追加入位卡后按槽号
             # 重建槽位表——bench_from_compact 重建 = S2 写回同构(形状
@@ -2224,24 +2224,24 @@ def apply_prep_action_logic(bs: GameState, action: Any, *,
                 from sr_od.application.currency_war.kernel.cw_exec_state import (
                     bench_from_compact,
                 )
-                _books = bs.tracked_books
+                _books = gs.tracked_books
                 _tracked = [bc for bc in (_books.bench or [])
                             if bc is not None and bc.slot != idx + 1]
                 _tracked.append(BenchChar(slot=idx + 1, char_id=_ov_id))
                 _books.bench = bench_from_compact(_tracked)
-        _w(bs.bench, bench_view_of_slots(new_slots), 'proj_sell_bench')
-        g = bs.gold.value
+        _w(gs.bench, bench_view_of_slots(new_slots), 'proj_sell_bench')
+        g = gs.gold.value
         if g is not None:
             refund = sell_refund(int(getattr(sold, 'star', 1) or 1),
                                  bench_char_cost(sold))
-            _w(bs.gold, int(g) + int(refund), 'proj_sell_refund')
+            _w(gs.gold, int(g) + int(refund), 'proj_sell_refund')
         return
 
     if isinstance(action, SellDeployed):
         from sr_od.application.currency_war.kernel.cw_bond_equips import (
             _recount_board,
         )
-        dep_slots = deployed_slots_of(bs)
+        dep_slots = deployed_slots_of(gs)
         idx = int(action.deployed_idx)   # 槽位表下标直取(统一坐标系,零换算)
         if not (0 <= idx < len(dep_slots)) or dep_slots[idx] is None:
             return   # 陈旧提案(守卫),本口零写
@@ -2249,14 +2249,14 @@ def apply_prep_action_logic(bs: GameState, action: Any, *,
         scratch = list(dep_slots)
         scratch[idx] = None
         front, back = deployed_slots_to_rows(scratch)
-        _w(bs.front_row, front, 'proj_sell_deployed_front')
-        _w(bs.back_row, back, 'proj_sell_deployed_back')
-        _w(bs.board, _recount_board(scratch), 'proj_board_recount')
-        g = bs.gold.value
+        _w(gs.front_row, front, 'proj_sell_deployed_front')
+        _w(gs.back_row, back, 'proj_sell_deployed_back')
+        _w(gs.board, _recount_board(scratch), 'proj_board_recount')
+        g = gs.gold.value
         if g is not None:
             refund = sell_refund(int(getattr(sold, 'star', 1) or 1),
                                  bench_char_cost(sold))
-            _w(bs.gold, int(g) + int(refund), 'proj_sell_deployed_gold')
+            _w(gs.gold, int(g) + int(refund), 'proj_sell_deployed_gold')
         return
 
     if isinstance(action, DeployMove):
@@ -2266,8 +2266,8 @@ def apply_prep_action_logic(bs: GameState, action: Any, *,
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             deployed_place,
         )
-        bench_slots = bench_slots_of(bs)
-        dep_slots = deployed_slots_of(bs)
+        bench_slots = bench_slots_of(gs)
+        dep_slots = deployed_slots_of(gs)
         from_idx = int(action.bench_idx)   # 槽位表下标直取(统一坐标系)
         to_row = getattr(action, 'to_row', '')
         if to_row not in ('front', 'back'):
@@ -2286,24 +2286,24 @@ def apply_prep_action_logic(bs: GameState, action: Any, *,
             return   # 陈旧提案(守卫:两排全满),本口零写
         new_bench = list(bench_slots)
         new_bench[from_idx] = None
-        _w(bs.bench, bench_view_of_slots(new_bench), 'proj_deploy_src_clear')
+        _w(gs.bench, bench_view_of_slots(new_bench), 'proj_deploy_src_clear')
         front, back = deployed_slots_to_rows(scratch)
-        _w(bs.front_row, front, 'proj_deploy_front')
-        _w(bs.back_row, back, 'proj_deploy_back')
+        _w(gs.front_row, front, 'proj_deploy_front')
+        _w(gs.back_row, back, 'proj_deploy_back')
         # board 羁绊计数增量(ADR-0312 增量全集;无标签回退阵营)
-        board = dict(bs.board.value or {})
+        board = dict(gs.board.value or {})
         _tags = (unit_bond_tags(moved) if moved.char_id else ())
         if not _tags:
             _tags = (moved.faction,) if getattr(moved, 'faction', '') else ()
         for t in _tags:
             board[t] = board.get(t, 0) + 1
-        if board != dict(bs.board.value or {}):
-            _w(bs.board, board, 'proj_deploy_board_incr')
+        if board != dict(gs.board.value or {}):
+            _w(gs.board, board, 'proj_deploy_board_incr')
         return
 
     # LevelUp(单击;xp/level 推进 + gold −action.cost 直写,批2b 翻转)
-    _lv = bs.level.value
-    _xp = bs.xp.value
+    _lv = gs.level.value
+    _xp = gs.xp.value
     if _lv is None or _xp is None:
         return   # 域级跳写(等级/经验进度未读,值留观察覆盖)
     from sr_od.application.currency_war.kernel.cw_economy import (
@@ -2311,16 +2311,16 @@ def apply_prep_action_logic(bs: GameState, action: Any, *,
         xp_apply_clicks,
     )
     new_level, new_cur = xp_apply_clicks(int(_lv), int(_xp[0]), 1)
-    _w(bs.xp, (new_cur, XP_TO_NEXT_LEVEL.get(new_level,
+    _w(gs.xp, (new_cur, XP_TO_NEXT_LEVEL.get(new_level,
                                               int(_xp[1]) if _xp else 4)),
        'proj_levelup_xp')
-    _w(bs.level, new_level, 'proj_levelup_level')
-    g = bs.gold.value
+    _w(gs.level, new_level, 'proj_levelup_level')
+    g = gs.gold.value
     if g is not None:
         # 金腿直写(批2b 翻转;执行缝金差退役,本口唯一写点)。cost =
         # 发射面 kernel xp_click_cost 现算装载,必填字段(getattr 容缺 =
         # 旧构造兜底 0,扣减语义诚实缺失)。
-        _w(bs.gold, int(g) - int(getattr(action, 'cost', 0) or 0),
+        _w(gs.gold, int(g) - int(getattr(action, 'cost', 0) or 0),
            'proj_levelup_gold')
     return
 
@@ -2344,7 +2344,7 @@ def set_match_final_listener(fn: Callable[[dict], None] | None) -> None:
     _MATCH_FINAL_LISTENER = fn
 
 
-def write_match_final(bs: GameState, *, final_type: str,
+def write_match_final(gs: GameState, *, final_type: str,
                       plane: int | None = None,
                       round_num: int | None = None,
                       node_kind: str | None = None,
@@ -2391,25 +2391,25 @@ def write_match_final(bs: GameState, *, final_type: str,
         raise ValueError(
             f'终局类型 {final_type!r} 集外(封闭集 = {MATCH_FINAL_TYPES};'
             f'局终域行载荷词表)')
-    if bs.match_final.value is not None:
+    if gs.match_final.value is not None:
         return False   # 段内幂等(G12 写前查重):同段恰一行
     if duration_s is None:
-        duration_s = max(time.monotonic() - bs.created_monotonic, 0.0)
+        duration_s = max(time.monotonic() - gs.created_monotonic, 0.0)
     if not note and backfilled:
         note = 'recovered'   # G8 补写行显影(判读按注记分型,防混计)
     payload = MatchFinal(
         final_type=final_type,
-        at_version=bs.write_seq + 1,   # 本行自身版本 id(与行头 v 恒等)
+        at_version=gs.write_seq + 1,   # 本行自身版本 id(与行头 v 恒等)
         code_commit=_CODE_COMMIT,
         registry_fingerprint=_REGISTRY_FINGERPRINT,
         plane=plane, round_num=round_num, node_kind=node_kind,
         level=level, hp=hp, gold=gold, streak=streak,
         duration_s=duration_s, backfilled=bool(backfilled),
         cw4_counters=(dict(cw4_counters) if cw4_counters is not None else None))
-    seq = bs.write_seq + 1
+    seq = gs.write_seq + 1
     sig = ChannelSig(family='logic_hook', actor='MatchClose', screen=None,
                      mode='compute', group_id=f'hook:MatchClose@{seq}')
-    bs.write_logic(bs.match_final, payload, produced_by='MatchClose',
+    gs.write_logic(gs.match_final, payload, produced_by='MatchClose',
                    sig=sig, note=note)
     fn = _MATCH_FINAL_LISTENER
     if fn is not None:
@@ -2420,19 +2420,19 @@ def write_match_final(bs: GameState, *, final_type: str,
                 'version': payload.at_version,
                 'backfilled': bool(backfilled)})
         except Exception as e:  # noqa: BLE001  挂点 best-effort
-            log.debug(f'[cw-bs] match_final listener skip: {e}')
+            log.debug(f'[cw-gs] match_final listener skip: {e}')
     return True
 
 
 # ============================================================ 单例宿主
 
 
-_BS_BY_SESSION: weakref.WeakKeyDictionary[object, GameState] = \
+_GS_BY_SESSION: weakref.WeakKeyDictionary[object, GameState] = \
     weakref.WeakKeyDictionary()
 #: 桩面兜底第二级:属性不可写对象(__slots__ 族)的 id() 键 dict
 #: (同 cw_exec_state 桩面存储两级结构;挂对象属性优先)。
-_BS_BY_SESSION_ID: dict[int, GameState] = {}
-_BS_ATTR = '_cw_game_state'
+_GS_BY_SESSION_ID: dict[int, GameState] = {}
+_GS_ATTR = '_cw_game_state'
 
 
 def _establish_singleton_journal(
@@ -2453,11 +2453,11 @@ def _establish_singleton_journal(
     try:
         ensure_journal_assembly(run_id_provider)
     except Exception as e:  # noqa: BLE001  装配失败不阻塞容器建立
-        log.warning('[cw!][bs] journal 装配失败(不阻塞): %s', e)
+        log.warning('[cw!][gs] journal 装配失败(不阻塞): %s', e)
 
 
-def board_state_of(session: object, *,
-                   run_id_provider: Callable[[], str] | None = None) -> GameState:
+def game_state_of(session: object, *,
+                  run_id_provider: Callable[[], str] | None = None) -> GameState:
     """GameState 单例访问口(session 旁表;弱引用表 + 桩面兜底,与
     ``cw_exec_state.exec_state_of`` 同构)。
 
@@ -2473,24 +2473,24 @@ def board_state_of(session: object, *,
       防御视图构造口径;生产注入漏斗 = establish_new_match)。
     """
     if session is None:
-        return GameState(schema_version=BS_SCHEMA_VERSION)   # 局外一次性:不装配
+        return GameState(schema_version=GAME_STATE_SCHEMA_VERSION)   # 局外一次性:不装配
     try:
-        bs = _BS_BY_SESSION.get(session)
+        gs = _GS_BY_SESSION.get(session)
     except TypeError:   # 不可弱引用对象(测试桩)
-        bs = getattr(session, _BS_ATTR, None)
-        if bs is None:
+        gs = getattr(session, _GS_ATTR, None)
+        if gs is None:
             _establish_singleton_journal(run_id_provider)
-            bs = GameState(schema_version=BS_SCHEMA_VERSION)
+            gs = GameState(schema_version=GAME_STATE_SCHEMA_VERSION)
             try:
-                setattr(session, _BS_ATTR, bs)
+                setattr(session, _GS_ATTR, gs)
             except (AttributeError, TypeError):
-                _BS_BY_SESSION_ID[id(session)] = bs
-        return bs
-    if bs is None:
+                _GS_BY_SESSION_ID[id(session)] = gs
+        return gs
+    if gs is None:
         _establish_singleton_journal(run_id_provider)
-        bs = GameState(schema_version=BS_SCHEMA_VERSION)
-        _BS_BY_SESSION[session] = bs
-    return bs
+        gs = GameState(schema_version=GAME_STATE_SCHEMA_VERSION)
+        _GS_BY_SESSION[session] = gs
+    return gs
 
 
 def tracked_unobserved(session: object) -> bool:
@@ -2501,7 +2501,7 @@ def tracked_unobserved(session: object) -> bool:
     (接管/重置/账失效写);None(从未写,缺省可信)与 True(已锚定)均
     为已观察。session 经容器读口解析,字段从未写(缺省)不视为未观察。
     """
-    return board_state_of(session).tracked_account_observed.value is False
+    return game_state_of(session).tracked_account_observed.value is False
 
 
 # ============================================================ GameState 单例
@@ -2611,7 +2611,7 @@ class GameState:
     level_up_cost: Field[int] = field(default_factory=Field)     # 单击买经验价(§3.2.11;None=未读到禁兜底)
     # [索引定义] deploy_cap = 部署容量识别真值(= level + 财富宝钻数,可叠加)。
     # 坐标系 = 「X/Y」指示的 Y 人数口径;取值时机 = 备战帧观察期快照(ADR-0420
-    # 双帧一致采信门输出,写端 = cw_observation._feed_board_state spec 门
+    # 双帧一致采信门输出,写端 = cw_observation.read_game_state spec 门
     # 'deploy_cap' 键,防抖核 = cw_observation._debounce_cap 单一源)。
     # W5 定谳入容器(W5-透传域建模方案 §2.3;推翻设计正本 §3.2.7「现场实时
     # 读值豁免」在册前提,正本更新义务见方案稿 §2.3):与 back_layout 双存
@@ -2662,7 +2662,7 @@ class GameState:
     # 正本 = effect_inventory.remaining_uses(§5.1,ActiveEffect.remaining_
     # uses「次数类余量(免战牌×2 等)」,同型躺平/节省工位;批次一骨架的
     # skip_battle_active/remaining 两 Field 已按正本归一移除,消费走
-    # bs.effects 查询)。
+    # gs.effects 查询)。
     equips: Field[list[str]] = field(default_factory=Field)          # 装备库存(§3.2.15)
     consumables: Field[list[str]] = field(default_factory=Field)     # 消耗品库存(§3.2.16)
 
@@ -2724,7 +2724,7 @@ class GameState:
     settlement: Field[Settlement | None] = field(default_factory=Field)
     hp_floor_triggered: Field[bool] = field(default_factory=Field)   # hp 保底触发事件位(§3.5.3;纯观察登记,无判据载体)
 
-    # —— 逻辑态派生域与画面上下文域(R1 §3.1.4;bs_schema 域 'derivation')——
+    # —— 逻辑态派生域与画面上下文域(R1 §3.1.4;gs_schema 域 'derivation')——
     # 写点准入:上下文对与顶栏原文唯一写点 = ①观察汇聚
     # (observe_screen_context,观察层);node_ord 唯一写点 = 派生规则
     # (四腿全部 write_logic 逻辑层——备战腿=解析顶栏文本成序键,同样是
@@ -2747,7 +2747,7 @@ class GameState:
     # None = 未定。取值时机 = 派生写入期快照;写端 = 派生规则。
     node_ord: Field[int] = field(default_factory=Field)
 
-    # —— 动作回执域(R2 §3.1.1-4/§3.2.5;bs_schema 域 'receipts')——
+    # —— 动作回执域(R2 §3.1.1-4/§3.2.5;gs_schema 域 'receipts')——
     # [索引定义] receipts 值 = 动作执行回执的滚动窗:list 下标 i = 第 i 条
     # 存活回执(窗序 = 写入序,先进先出,容量 = :data:`RECEIPTS_WINDOW_CAP`);
     # 取值时机 = 写入期快照(帧替换,禁就地改窗内条目)。唯一写点 =
@@ -2755,7 +2755,7 @@ class GameState:
     # (applied=false + reason)——exec_events「失败可见性」收编载体。
     receipts: Field[list[dict]] = field(default_factory=Field)
 
-    # —— 局终域(R5 W2;§3.6.1 runs 收编载体;bs_schema 域 'match_final')——
+    # —— 局终域(R5 W2;§3.6.1 runs 收编载体;gs_schema 域 'match_final')——
     # [索引定义] match_final 值 = :class:`MatchFinal` 终局行载荷(一段一行,
     # 恢复局跨段 = 多行;game 级聚合取段序末行)。取值时机 = 局终判定成立
     # 的当前 swap(单版本原子);None = 本段未收口。唯一写点 =
@@ -2770,8 +2770,8 @@ class GameState:
 
     # ---- 工程结构(非 Field,§2.4 关键结构 + 心跳观察者)----
     # 域粒度版本映射(§3.7.1;缺域键 = 该域未建模)。
-    bs_schema: dict[str, int] = field(
-        default_factory=lambda: dict(DEFAULT_BS_SCHEMA))
+    gs_schema: dict[str, int] = field(
+        default_factory=lambda: dict(DEFAULT_GS_SCHEMA))
     # 帧观察完整度标注(full/view/none)——消费即清,不当停更哨兵(§2.4)。
     frame_obs: FrameObsLevel = 'none'
     # 心跳载体:写点序号,只增不减(§2.4 停更检测哨兵)。
@@ -2803,7 +2803,7 @@ class GameState:
         """构造守卫(任务书件 5/§8.6-5):schema_version 正整数 + Field
         冻结不变式断言(帧替换语义的结构前提,破即构造炸错不静默)。
         零装配逻辑(精化令 2026-09-15:装配触发只钉正主单例建立路径
-        = :func:`board_state_of` 局容器建立点;画面解析草稿容器的直构路径
+        = :func:`game_state_of` 局容器建立点;画面解析草稿容器的直构路径
         ——planner/invest_strategy 防御视图/env_economy 导入期探针——结构性
         不可能触发遥测)。"""
         if not isinstance(self.schema_version, int) or self.schema_version <= 0:
@@ -2827,7 +2827,7 @@ class GameState:
             if getattr(self, f.name) is target:
                 return f.name
         raise KeyError('target 不是本 GameState 的字段现引用'
-                       '(须传 bs.xxx;跨单例引用 = 写丢事故)')
+                       '(须传 gs.xxx;跨单例引用 = 写丢事故)')
 
     def _swap(self, name: str, new_field: Field, *,
               sig: ChannelSig,
@@ -2864,7 +2864,7 @@ class GameState:
                 'evidence_refs': [],
             })
         except Exception as e:  # noqa: BLE001  记录层 best-effort,不毒化写入链
-            log.debug(f'[cw-bs] journal row skip: {e}')
+            log.debug(f'[cw-gs] journal row skip: {e}')
 
     def note_obs_event(self, event: str, field_name: str, observed: Any, *,
                        sig: ChannelSig,
@@ -2910,7 +2910,7 @@ class GameState:
                 'evidence_refs': list(evidence_refs or []),
             })
         except Exception as e:  # noqa: BLE001  记录层 best-effort,不毒化写入链
-            log.debug(f'[cw-bs] obs_event row skip: {e}')
+            log.debug(f'[cw-gs] obs_event row skip: {e}')
 
     def current_version(self) -> int:
         """策略侧版本读口(§3.2.2 规则 5:读不写、不占版本)= 已分配的最大
@@ -2959,7 +2959,7 @@ class GameState:
             'write_seq': self.write_seq,
             'node_hist_ord': self.node_hist_ord,
             'boundary_settled_ord': self.boundary_settled_ord,
-            'bs_schema': dict(self.bs_schema),
+            'gs_schema': dict(self.gs_schema),
         }
 
     def observe(self, target: Field, value: Any, *,
@@ -3097,7 +3097,7 @@ class GameState:
                                top_raw: str | None = None,
                                sig: ChannelSig | None = None) -> None:
         """画面上下域写入 + 节点推进派生(R1 §3.1.4/§3.4;观察汇聚模块唯一
-        写点,生产接线 = read_game_state 漏斗 ``_feed_board_state``,随分派
+        写点,生产接线 = read_game_state 漏斗,随分派
         观察调用 + cw_loop 开局链分支写点)。
 
         - 上下文对(渠道①):旧 ``current_screen`` 转 ``prev_screen`` 后写
@@ -3221,7 +3221,7 @@ class GameState:
 
 # ============================================================ 节点推进派生规则(R1 §3.4;渠道③)
 
-def _derive_write(bs: GameState, target: Field, value: int | NodeKey, *,
+def _derive_write(gs: GameState, target: Field, value: int | NodeKey, *,
                   actor: str, trigger_screen: str, seq: int,
                   note: str = '') -> None:
     """派生规则写入(逻辑层统一形态):签名 family=logic_hook、
@@ -3230,24 +3230,24 @@ def _derive_write(bs: GameState, target: Field, value: int | NodeKey, *,
     类型派生经节点域写 node.kind,§3.1.3 节点域③格)。"""
     sig = ChannelSig(family='logic_hook', actor=actor, screen=trigger_screen,
                      mode='compute', group_id=f'hook:{actor}@{seq}')
-    bs.write_logic(target, value, produced_by=actor, sig=sig, note=note)
+    gs.write_logic(target, value, produced_by=actor, sig=sig, note=note)
 
 
-def effective_node_ord(bs: GameState) -> int | None:
+def effective_node_ord(gs: GameState) -> int | None:
     """生效序读口(派生计算,非存储字段;判定基准读口,非决策消费切换目标
-    ——「node 逻辑态改读派生域」M4 工作项已作废:cw_bs_view 现读 bs.node 镜像
+    ——「node 逻辑态改读派生域」M4 工作项已作废:决策面现读容器 gs.node 镜像
     合规,无切换义务,ADR-0630 修订节 2/正本消费面申报)
     = max(node_ord 字段现值, node_hist_ord)——单字段双值结构(ADR-0630 修订
     节 2):字段现值 = 最近一次派生写入(四腿全逻辑层 write_logic),hist =
     run 内已见最大值(跃迁去重键 ``(run_id, effective_ord)`` 载体);两者之
     差仅存在于纠偏写序中间态,取 max 即生效语义,None 安全(双空 = 未定);
     消费面恒逻辑层,观察层(top_bar_raw)不参与序比较。"""
-    vals = [v for v in (bs.node_ord.value, bs.node_hist_ord)
+    vals = [v for v in (gs.node_ord.value, gs.node_hist_ord)
             if v is not None]
     return max(vals) if vals else None
 
 
-def _derive_node_observed(bs: GameState, candidate: int, *,
+def _derive_node_observed(gs: GameState, candidate: int, *,
                           trigger_screen: str, seq: int) -> None:
     """备战腿·逻辑层(§3.4.1 规则二,本体照搬判定方案 R3 规则二/三):
     干净备战帧 ∧ 顶栏可读 → 解析顶栏文本成序键 → ``write_logic(node_ord)``
@@ -3264,10 +3264,10 @@ def _derive_node_observed(bs: GameState, candidate: int, *,
       事件词表 'arbitrate',actor 保留触发规则登记名归因,family 走 obs 族
       留证契约,同类型直定冲突先例)。
     """
-    hist = bs.node_hist_ord
+    hist = gs.node_hist_ord
     if hist is not None and candidate < hist:
         # v3.2-G10 倒退留证:零状态变更,占版本(obs_event 行型 2)
-        bs.note_obs_event(
+        gs.note_obs_event(
             'arbitrate', 'node_ord',
             {'candidate': candidate, 'hist': hist},
             verdict='倒退读数丢弃留证(R3 规则三倒退免疫;候选 < hist 不写字段)',
@@ -3275,14 +3275,14 @@ def _derive_node_observed(bs: GameState, candidate: int, *,
                            screen=trigger_screen, mode='read',
                            group_id=f'hook:derive_node_observed@{seq}'))
         return   # 倒退读数:不写字段(R3 规则三倒退免疫)
-    _derive_write(bs, bs.node_ord, candidate,
+    _derive_write(gs, gs.node_ord, candidate,
                   actor='derive_node_observed',
                   trigger_screen=trigger_screen, seq=seq)
     if hist is None or candidate > hist:
-        bs.node_hist_ord = candidate   # 去重键占位:同序恰一次推进(v3.1-N2)
+        gs.node_hist_ord = candidate   # 去重键占位:同序恰一次推进(v3.1-N2)
 
 
-def _derive_node_inferred(bs: GameState, *, prev_screen: str,
+def _derive_node_inferred(gs: GameState, *, prev_screen: str,
                           trigger_screen: str,
                           phase_round: tuple[int, int] | None,
                           resumed: bool, seq: int) -> None:
@@ -3300,8 +3300,8 @@ def _derive_node_inferred(bs: GameState, *, prev_screen: str,
     - 推进去重(v3.1-N2):候选 ≤ hist 不写不锚(重入拒绝;去重键 =
       (run_id, effective_ord) 已占,同序恰一次推进)。
     """
-    hist = bs.node_hist_ord
-    effective = effective_node_ord(bs)
+    hist = gs.node_hist_ord
+    effective = effective_node_ord(gs)
     if hist is None:
         if resumed:
             return   # 恢复局腿 B 禁用不猜(R3 规则六),消化后备战帧腿 A 接管
@@ -3314,11 +3314,11 @@ def _derive_node_inferred(bs: GameState, *, prev_screen: str,
         candidate = (effective + 1) if effective is not None else 1
         if candidate <= hist:
             return   # 推进去重(v3.1-N2:候选 ≤ hist 不写不锚,去重键已占)
-    _derive_write(bs, bs.node_ord, candidate,
+    _derive_write(gs, gs.node_ord, candidate,
                   actor='derive_node_inferred',
                   trigger_screen=trigger_screen, seq=seq)
     if hist is None or candidate > hist:
-        bs.node_hist_ord = candidate   # 去重键占位(同序恰一次推进)
+        gs.node_hist_ord = candidate   # 去重键占位(同序恰一次推进)
 
 
 def _node_key_for_ord(ordinal: int, kind: str) -> NodeKey:
@@ -3330,7 +3330,7 @@ def _node_key_for_ord(ordinal: int, kind: str) -> NodeKey:
                    kind=kind)
 
 
-def tick_effect_boundary(bs: GameState, *, prep_frame: bool) -> None:
+def tick_effect_boundary(gs: GameState, *, prep_frame: bool) -> None:
     """效果推进段(迁移迭代 changes/2026-09-15-effect-ledger-self-advance
     design §2.1 a-f;接线位 = :meth:`observe_screen_context` 尾段,本函数
     独立可调供直测/sim)。
@@ -3345,28 +3345,28 @@ def tick_effect_boundary(bs: GameState, *, prep_frame: bool) -> None:
     - 异常边界:吞 Exception 记 warning 不上抛(不毒化派生链)。
     """
     try:
-        _tick_effect_boundary_impl(bs, prep_frame=prep_frame)
+        _tick_effect_boundary_impl(gs, prep_frame=prep_frame)
     except Exception as e:   # noqa: BLE001  best-effort 不毒化派生链
         log.warning(f'[cw][effect] 效果推进段失败(不阻塞): {e}')
 
 
-def _tick_effect_boundary_impl(bs: GameState, *, prep_frame: bool) -> None:
-    effective = effective_node_ord(bs)
+def _tick_effect_boundary_impl(gs: GameState, *, prep_frame: bool) -> None:
+    effective = effective_node_ord(gs)
     if effective is None:
         return
     frame = f'p{(effective - 1) // 9 + 1}-r{(effective - 1) % 9 + 1}'
-    advanced, expired = bs.effects.advance_node(effective)
+    advanced, expired = gs.effects.advance_node(effective)
     for _eff in expired:
         log.warning('[cw!][effect] 效果到期移除:%s(尾款触发面;金面走观察覆盖兜底)',
                     _eff.spec.name)
     if advanced:
-        grant_effect_node_refresh_balance(bs, frame=frame)
-    if prep_frame and effective > (bs.boundary_settled_ord or 0):
-        _nd = bs.node.value
-        _st = bs.streak.value
-        _stl = bs.settlement.value
+        grant_effect_node_refresh_balance(gs, frame=frame)
+    if prep_frame and effective > (gs.boundary_settled_ord or 0):
+        _nd = gs.node.value
+        _st = gs.streak.value
+        _stl = gs.settlement.value
         if (_nd is None or _st is None or _stl is None
-                or _stl.killed is not True or bs.gold.value is None):
+                or _stl.killed is not True or gs.gold.value is None):
             # 守卫族(五条):前四条与现码闸一一对应(任一不可知 = 静默跳过);
             # 金未读单独列出 = 水位必不动(settle 对金未读返回 written=False
             # 且 total=0,与「无欠账」形态同形,不预判则误落水位 → 永久漏结)。
@@ -3381,9 +3381,9 @@ def _tick_effect_boundary_impl(bs: GameState, *, prep_frame: bool) -> None:
                 aggregate_economy,
             )
             _nk = _node_key_for_ord(effective, _nd.kind)
-            _agg = aggregate_economy(list(bs.active_strategies.value or []))
+            _agg = aggregate_economy(list(gs.active_strategies.value or []))
             _nb = settle_node_boundary_gold(
-                bs,
+                gs,
                 plane=_nk.plane,
                 round_num=_nk.round_num,
                 node_type=_nd.kind,
@@ -3395,18 +3395,18 @@ def _tick_effect_boundary_impl(bs: GameState, *, prep_frame: bool) -> None:
                 frame=frame,
             )
             if _nb.written or _nb.total <= 0:
-                bs.boundary_settled_ord = effective   # 金未读形态不落(重试)
+                gs.boundary_settled_ord = effective   # 金未读形态不落(重试)
             if _nb.written:
                 log.info('[cw][effect] 节点边界金结算 logic 写入'
                          '(branch=%s total=%s=收入%s+财富%s+宝钻%s)',
                          _nb.branch, _nb.total, _nb.income_total,
                          _nb.wealth_gold, _nb.diamond_gold)
-    project_effect_capacity(bs)
+    project_effect_capacity(gs)
 
 
-def _write_derived_node_type(bs: GameState, kind: str, *, target_ord: int,
+def _write_derived_node_type(gs: GameState, kind: str, *, target_ord: int,
                              actor: str, trigger_screen: str, seq: int) -> None:
-    """类型派生写入(§3.4.1 类型派生;经节点域③格写 bs.node,§3.1.3):
+    """类型派生写入(§3.4.1 类型派生;经节点域③格写 gs.node,§3.1.3):
     专属画面直定该节点类型,(plane, round) 由目标序公式反解。
 
     - 冲突纪律(G10 同簇):镜像现值已在目标节点且类型不一致 → obs_event
@@ -3421,21 +3421,21 @@ def _write_derived_node_type(bs: GameState, kind: str, *, target_ord: int,
       类型「未定型」零写;查现行链接口 = :func:`chain_node_type`。
     """
     key = _node_key_for_ord(target_ord, kind)
-    cur = bs.node.value
+    cur = gs.node.value
     if cur is not None and cur.plane == key.plane \
             and cur.round_num == key.round_num and cur.kind != kind:
-        bs.note_obs_event(
+        gs.note_obs_event(
             'arbitrate', 'node',
             {'old_kind': cur.kind, 'new_kind': kind, 'node_ord': target_ord},
             verdict='类型直定冲突留证(同节点两直定值不一致,最新直定赢)',
             sig=ChannelSig(family='obs', actor=actor, screen=trigger_screen,
                            mode='read',
                            group_id=f'hook:{actor}@{seq}'))
-    _derive_write(bs, bs.node, key, actor=actor,
+    _derive_write(gs, gs.node, key, actor=actor,
                   trigger_screen=trigger_screen, seq=seq)
 
 
-def _derive_node_plane_transition(bs: GameState, *,
+def _derive_node_plane_transition(gs: GameState, *,
                                   phase_round: tuple[int, int] | None,
                                   seq: int) -> None:
     """位面过渡腿(§3.4.1 规则二·R1.2;actor=derive_node_plane_transition):
@@ -3443,7 +3443,7 @@ def _derive_node_plane_transition(bs: GameState, *,
     写入 ``node_ord``(逻辑层)。
 
     - 「当前位面」来源优先级:①调用方顶栏读数 phase_round(测试/未来漏斗
-      直读形态;生产 cw_loop 分支写点不带)②bs.node 观察镜像 plane(顶栏
+      直读形态;生产 cw_loop 分支写点不带)②gs.node 观察镜像 plane(顶栏
       权威链遗产)③hist 反解((hist-1)//9+1)——三源全缺 = 「当前位面」
       不可知(开局过渡屏形态),禁猜不写,交规则①④计数;
     - 共同语义:候选 ≤ hist 不写不锚(重复 0q loop pass 重入拒绝,去重键
@@ -3451,12 +3451,12 @@ def _derive_node_plane_transition(bs: GameState, *,
     - 零类型写:过渡屏链 = 离开位面链(件 B v1.1 §3.1.1 F1 定谳),下位面
       节点类型不可自定——新节点类型由后继专属屏/备战帧链读链承接。
     """
-    hist = bs.node_hist_ord
+    hist = gs.node_hist_ord
     plane: int | None = None
     if phase_round is not None:
         plane = int(phase_round[0])
-    elif bs.node.value is not None:
-        plane = int(bs.node.value.plane)
+    elif gs.node.value is not None:
+        plane = int(gs.node.value.plane)
     elif hist is not None:
         plane = (hist - 1) // 9 + 1
     if plane is None or plane < 1:
@@ -3464,13 +3464,13 @@ def _derive_node_plane_transition(bs: GameState, *,
     candidate = plane * 9 + 1        # (plane+1, 1) = (plane+1-1)*9+1
     if hist is not None and candidate <= hist:
         return   # 重入拒绝(v3.1-N2:候选 ≤ hist 不写不锚,去重键已占)
-    _derive_write(bs, bs.node_ord, candidate,
+    _derive_write(gs, gs.node_ord, candidate,
                   actor='derive_node_plane_transition',
                   trigger_screen=SCREEN_PLANE_TRANSITION, seq=seq)
-    bs.node_hist_ord = candidate     # 去重键占位(同序恰一次推进)
+    gs.node_hist_ord = candidate     # 去重键占位(同序恰一次推进)
 
 
-def _derive_node_boss_brief(bs: GameState, *, seq: int) -> int | None:
+def _derive_node_boss_brief(gs: GameState, *, seq: int) -> int | None:
     """BOSS 简报腿(§3.4.1 规则三·R1.2;actor=derive_node_boss_brief):
     0p 被采到 → 逻辑节点 = 当前节点 + 1,类型 = BOSS 随简报证据自带
     (禁写死 round=9——boss 序位随位面格数/环境加节点漂移,序位只由
@@ -3489,22 +3489,22 @@ def _derive_node_boss_brief(bs: GameState, *, seq: int) -> int | None:
     - 返回值 = 类型目标节点序(observe_screen_context 固定次序的预留读
       位),不可推进时返回 None。
     """
-    hist = bs.node_hist_ord
-    effective = effective_node_ord(bs)
+    hist = gs.node_hist_ord
+    effective = effective_node_ord(gs)
     if effective is None:
         return None   # 当前节点未知:禁猜
-    cur = bs.node.value
+    cur = gs.node.value
     if cur is not None and cur.kind == 'boss' \
             and node_ordinal_of(cur.plane, cur.round_num) == hist:
         return hist   # 幂等锚命中:本简报节点已计数,零写(防重推)
     candidate = effective + 1
     if hist is not None and candidate <= hist:
         return hist   # 去重键已占(先行腿已推进):boss 节点 = hist
-    _derive_write(bs, bs.node_ord, candidate,
+    _derive_write(gs, gs.node_ord, candidate,
                   actor='derive_node_boss_brief',
                   trigger_screen=SCREEN_BOSS_BRIEFING, seq=seq)
-    bs.node_hist_ord = candidate     # 去重键占位(同序恰一次推进)
-    _write_derived_node_type(bs, 'boss', target_ord=candidate,
+    gs.node_hist_ord = candidate     # 去重键占位(同序恰一次推进)
+    _write_derived_node_type(gs, 'boss', target_ord=candidate,
                              actor='derive_node_boss_brief',
                              trigger_screen=SCREEN_BOSS_BRIEFING, seq=seq)
     return candidate
@@ -3527,7 +3527,7 @@ class ChainQuery:
     hu_dist: float | None = None
 
 
-def chain_node_type(bs: GameState, plane: int, round_num: int) -> ChainQuery:
+def chain_node_type(gs: GameState, plane: int, round_num: int) -> ChainQuery:
     """现行链节点类型查询(链正本 = game_state/chain-observation.md §6;
     只读,零读屏零 OCR,查询面 = ``node_path`` 现行链帧事实字段)。
 
@@ -3540,7 +3540,7 @@ def chain_node_type(bs: GameState, plane: int, round_num: int) -> ChainQuery:
     - 消费方 = 节点域类型派生规则四②「商店查现行链」(商店面板块未定型
       时的类型来源;消费侧执行兜底序与改写位禁令)。
     """
-    chain = bs.node_path.value
+    chain = gs.node_path.value
     if not isinstance(chain, NodeChain):
         return ChainQuery(token=None)
     if int(chain.plane) != int(plane):
@@ -3612,7 +3612,7 @@ def _chain_cells_payload(chain: NodeChain) -> list[dict]:
             for c in chain.seq]
 
 
-def maybe_emit_chain_diff(bs: GameState, *, snapshot: bool,
+def maybe_emit_chain_diff(gs: GameState, *, snapshot: bool,
                           in_mutation_window: bool,
                           sig: ChannelSig) -> bool:
     """链 diff 触发面(链正本 §4/§5):基线在场 ∧ 差异非空才评估。
@@ -3624,22 +3624,22 @@ def maybe_emit_chain_diff(bs: GameState, *, snapshot: bool,
     active_env/active_strategies 同帧快照,链正本 §5,观察层不猜);
     journal sink 缺省关 = 零副作用。返回是否落行。
     """
-    baseline = bs.node_path_baseline.value
-    current = bs.node_path.value
+    baseline = gs.node_path_baseline.value
+    current = gs.node_path.value
     if baseline is None or current is None:
         return False
     diff = chain_diff(baseline, current)
     if not (diff.rewrites or diff.channel_limited or diff.length_changed):
-        bs.node_path_diff_pending = None
+        gs.node_path_diff_pending = None
         return False
     if in_mutation_window:
-        bs.node_path_diff_pending = None
+        gs.node_path_diff_pending = None
         return False
     if not snapshot:
-        if bs.node_path_diff_pending != current:
-            bs.node_path_diff_pending = current   # 首见候选,等下帧确认
+        if gs.node_path_diff_pending != current:
+            gs.node_path_diff_pending = current   # 首见候选,等下帧确认
             return False
-        bs.node_path_diff_pending = None   # 连续两帧一致 → 落行
+        gs.node_path_diff_pending = None   # 连续两帧一致 → 落行
 
     payload = {
         'baseline': {'plane': baseline.plane,
@@ -3653,7 +3653,7 @@ def maybe_emit_chain_diff(bs: GameState, *, snapshot: bool,
         'baseline_coverage': list(diff.baseline_coverage),
         'snapshot': snapshot,
     }
-    bs.note_obs_event('chain_diff', 'node_path', payload, verdict='',
+    gs.note_obs_event('chain_diff', 'node_path', payload, verdict='',
                       sig=sig)
     return True
 
@@ -3661,7 +3661,7 @@ def maybe_emit_chain_diff(bs: GameState, *, snapshot: bool,
 # ============================================================ sim 合成口
 
 
-def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
+def synthesize_from_game_state(gs: GameState, st: CwSimFrame, *,
                                at_round: str = '',
                                shop_empty_off_screen: bool = True,
                                shop_open: bool = False) -> None:
@@ -3704,33 +3704,33 @@ def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
     # 假值(P1-1 同型泛化;engine 路径 node_type 恒引擎真值不受影响)
     _node_type = getattr(st, 'node_type', None)
     if _node_type is not None:
-        bs.observe(bs.node,
+        gs.observe(gs.node,
                    NodeKey(plane=int(getattr(st, 'plane', 1) or 1),
                            round_num=int(getattr(st, 'round_num', 1) or 1),
                            kind=str(_node_type)),
                    evidence=_ev, sig=_synth_sig)
     else:
-        _prev_node = bs.node.value
+        _prev_node = gs.node.value
         if _prev_node is not None:
-            bs.observe(bs.node,
+            gs.observe(gs.node,
                        NodeKey(plane=int(getattr(st, 'plane', 1) or 1),
                                round_num=int(getattr(st, 'round_num', 1) or 1),
                                kind=_prev_node.kind),
                        evidence='kind_inherited', sig=_synth_sig)
         # 无现值且未读:node 不写,保持 None(诚实缺位)
     if getattr(st, 'gold_readable', True) and st.gold is not None:
-        bs.observe(bs.gold, int(st.gold), evidence=_ev, sig=_synth_sig)
+        gs.observe(gs.gold, int(st.gold), evidence=_ev, sig=_synth_sig)
     if getattr(st, 'level_readable', True):
-        bs.observe(bs.level, int(st.level), evidence=_ev, sig=_synth_sig)
+        gs.observe(gs.level, int(st.level), evidence=_ev, sig=_synth_sig)
     if st.xp_progress is not None:
-        bs.observe(bs.xp, tuple(st.xp_progress), evidence=_ev, sig=_synth_sig)
+        gs.observe(gs.xp, tuple(st.xp_progress), evidence=_ev, sig=_synth_sig)
     if st.streak is not None:
-        bs.observe(bs.streak, int(st.streak), evidence=_ev, sig=_synth_sig)
+        gs.observe(gs.streak, int(st.streak), evidence=_ev, sig=_synth_sig)
     if st.hp is not None:
-        bs.observe(bs.hp, int(st.hp), evidence=_ev, sig=_synth_sig)
+        gs.observe(gs.hp, int(st.hp), evidence=_ev, sig=_synth_sig)
     # deploy_cap(§2.3 W5 入容器):sim 真值直写;None(未建模帧)不写。
     if st.deploy_cap is not None:
-        bs.observe(bs.deploy_cap, int(st.deploy_cap), evidence=_ev,
+        gs.observe(gs.deploy_cap, int(st.deploy_cap), evidence=_ev,
                    sig=_synth_sig)
     # back_layout(back_max 语义裁决·闸门二,sim 合成口扩员——W5 §2.6
     # 清单增补第八域,与实机喂入口域覆盖集对齐):sim 真值直写(动态真值
@@ -3738,21 +3738,21 @@ def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
     # 同域不同源,sim 无识别过程故恒真值);缺席不写(禁合成假值,同
     # 七域纪律)。
     if st.back_max is not None:
-        bs.observe(bs.back_layout, int(st.back_max), evidence=_ev,
+        gs.observe(gs.back_layout, int(st.back_max), evidence=_ev,
                    sig=_synth_sig)
     # 开局域/席位/装备(W5 合成口与实机喂入口域覆盖集对齐;§2.6):
     # sim 无识别过程,真值域恒 observation + evidence=sim:synthesized。
     if st.plane_bosses:
-        bs.observe(bs.plane_bosses, list(st.plane_bosses), evidence=_ev,
+        gs.observe(gs.plane_bosses, list(st.plane_bosses), evidence=_ev,
                    sig=_synth_sig)
     if st.enemy_affixes:
-        bs.observe(bs.enemy_affixes, list(st.enemy_affixes), evidence=_ev,
+        gs.observe(gs.enemy_affixes, list(st.enemy_affixes), evidence=_ev,
                    sig=_synth_sig)
     if st.active_env:
-        bs.observe(bs.active_env, str(st.active_env), evidence=_ev,
+        gs.observe(gs.active_env, str(st.active_env), evidence=_ev,
                    sig=_synth_sig)
     if st.equips:
-        bs.observe(bs.equips, list(st.equips), evidence=_ev, sig=_synth_sig)
+        gs.observe(gs.equips, list(st.equips), evidence=_ev, sig=_synth_sig)
     # front_row/back_row:sim 槽位表(0 基 0-3 前/4-9 后)→ 行内 Unit
     # (行内 1 基 slot 信息位;阵营不入容器,装备随 BenchChar 透传)。
     _front_u: list[Unit] = []
@@ -3766,12 +3766,12 @@ def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
                   slot=(_i + 1) if _i < 4 else (_i - 3))
         (_front_u if _i < 4 else _back_u).append(_u)
     if _front_u or _back_u:
-        bs.observe(bs.front_row, _front_u, evidence=_ev, sig=_synth_sig)
-        bs.observe(bs.back_row, _back_u, evidence=_ev, sig=_synth_sig)
+        gs.observe(gs.front_row, _front_u, evidence=_ev, sig=_synth_sig)
+        gs.observe(gs.back_row, _back_u, evidence=_ev, sig=_synth_sig)
     # bench 写门(对齐上方 board_readable 先例):未读域≠真空域。v1 漏斗
     # (read_game_state)不读 bench 身份,其帧 bench 恒默认空表——无门合成
     # 会把容器内 prep 装配环 bench 观察块(cw_screen_prep heavy 块,唯一
-    # 实机漏斗写端)的真读覆盖成「9 槽全空」假真空(违 _feed_board_state
+    # 实机漏斗写端)的真读覆盖成「9 槽全空」假真空(违 read_game_state
     # 席位通道声明的「禁拿 CwSimFrame 兜底默认值当观察」;历史事故面 =
     # 商店段入口双账对账对撞,该对账已退役,本门的防覆盖
     # 语义独立存续——真读被兜底默认值覆盖本身就是观察面破坏)。sim 真值
@@ -3796,11 +3796,11 @@ def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
         # 兼容旧紧缩构造(前缀顺延占用)不丢槽位语义。
         while len(bench_slots) < BENCH_CAPACITY_DEFAULT:
             bench_slots.append(BenchSlot(kind='empty'))
-        bs.observe(bs.bench,
+        gs.observe(gs.bench,
                    BenchView(slots=bench_slots, capacity=BENCH_CAPACITY_DEFAULT),
                    evidence=_ev, sig=_synth_sig)
     if getattr(st, 'board_readable', True) and st.board:
-        bs.observe(bs.board, dict(st.board), evidence=_ev, sig=_synth_sig)
+        gs.observe(gs.board, dict(st.board), evidence=_ev, sig=_synth_sig)
     if st.shop:
         # 牌转换 = 映射单一源(W5 双 ShopCard 归一;cost_source 原值透传
         # 不折叠,roster_fallback 的「徽章失读」证据分级禁丢)。
@@ -3814,13 +3814,13 @@ def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
                                      card=shop_card_to_container(c))
         probs = ({int(k): float(v) for k, v in st.refresh_probs.items()}
                  if st.refresh_probs else {})
-        bs.observe(bs.shop, ShopPayload(cards=slots, refresh_probs=probs),
+        gs.observe(gs.shop, ShopPayload(cards=slots, refresh_probs=probs),
                    evidence=_ev, sig=_synth_sig)
     elif shop_open and shop_empty_off_screen:
         # 店开显式位(sim 真值域调用方声明;帧模型空表无法区分离屏/买空
         # ——正是三态定长根治的塌缩病灶,用户三态裁定 2026-09-13):
         # 买光 = [empty×5] 合法真值,店开即写,None 仅离屏。
-        bs.observe(bs.shop,
+        gs.observe(gs.shop,
                    ShopPayload(cards=[ShopSlot(kind='empty')
                                       for _ in range(5)], refresh_probs={}),
                    evidence=_ev, sig=_synth_sig)
@@ -3830,25 +3830,25 @@ def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
         # left_screen),禁沿用旧 payload 连旧 evidence(残留会把离屏帧误读
         # 成「商店仍开着」)。识别域(shop_empty_off_screen=False)不走此支:
         # 空表 = 买空/OCR 失读窗,保现值(分支语义见函数 docstring)。
-        bs.leave_screen(bs.shop, sig=_synth_sig)
+        gs.leave_screen(gs.shop, sig=_synth_sig)
     # encounter/supply 两 payload 域:sim 的 CwSimFrame 不建模这两域(attr
     # 缺席 = sim 模型里结构离屏)——同口径置 left_screen,保持「三 payload
     # 域在合成帧恒反映当前画面事实」的域语义;观察真值不进合成(sim 无
     # 识别过程),禁合成假值。
-    bs.leave_screen(bs.encounter, sig=_synth_sig)
-    bs.leave_screen(bs.supply, sig=_synth_sig)
+    gs.leave_screen(gs.encounter, sig=_synth_sig)
+    gs.leave_screen(gs.supply, sig=_synth_sig)
     if st.active_strategies:
-        bs.observe(bs.active_strategies, list(st.active_strategies),
+        gs.observe(gs.active_strategies, list(st.active_strategies),
                    evidence=_ev, sig=_synth_sig)
-    bs.mark_frame_obs('full')
+    gs.mark_frame_obs('full')
 
 
-def feed_sim_truth(bs: GameState, st: CwSimFrame, *,
+def feed_sim_truth(gs: GameState, st: CwSimFrame, *,
                    at_round: str = '', shop_open: bool = False) -> None:
     """sim 真值直写喂入口(帧→容器合成口的正式入口包装)。
 
     生产写入 = **引擎直写**(sim 引擎内部工作态即 session 容器,经渠道签名
-    写入口落字,消费端一律经 ``board_state_of(session)`` 直读容器——禁再造
+    写入口落字,消费端一律经 ``game_state_of(session)`` 直读容器——禁再造
     桥装箱一次性视图);本口的现役消费面 = 离线/测试构造(生产引擎零调用,
     喂入反转的旧生产路径已随引擎切容器收敛)。
     写入实现 = :func:`synthesize_from_game_state`(域覆盖/evidence/
@@ -3857,18 +3857,18 @@ def feed_sim_truth(bs: GameState, st: CwSimFrame, *,
     - best-effort:记录层故障不毒化 sim(与 note_action_receipt 同纪律),
       异常 log 留痕后返回,容器保持上一拍帧;
     - 全仓零一次性帧装箱视图(过渡桥已随登记集清零物理删除):
-      sim 真值入容器唯一写端 = 本口,消费端一律 :func:`board_state_of`
+      sim 真值入容器唯一写端 = 本口,消费端一律 :func:`game_state_of`
       直读——墓碑门 = test_cw_w5_sim_retirement 桥零字样扫描。
     """
     try:
-        synthesize_from_game_state(bs, st, at_round=at_round,
+        synthesize_from_game_state(gs, st, at_round=at_round,
                             shop_open=shop_open)
     except Exception as e:   # noqa: BLE001  记录层 best-effort,不毒化 sim
-        log.warning('[cw-bs][feed] sim 真值直写跳过(at_round=%s): %r',
+        log.warning('[cw-gs][feed] sim 真值直写跳过(at_round=%s): %r',
                     at_round, e)
 
 
-def restore_state_snapshot(bs: GameState, snap: dict) -> None:
+def restore_state_snapshot(gs: GameState, snap: dict) -> None:
     """行内 state 快照 → 容器域恢复(波 5 回放/Δ池 journal 切源的
     离线判读面;序列化 = :meth:`GameState.full_state_snapshot`)。
 
@@ -3950,7 +3950,7 @@ def restore_state_snapshot(bs: GameState, snap: dict) -> None:
         'shop': _shop_payload,
     }
     for name, raw in values.items():
-        target = getattr(bs, name, None)
+        target = getattr(gs, name, None)
         if not isinstance(target, Field):
             continue
         fn = rebuild.get(name)
@@ -3959,7 +3959,7 @@ def restore_state_snapshot(bs: GameState, snap: dict) -> None:
         except (TypeError, ValueError, KeyError, AttributeError):
             continue   # 畸形域诚实跳过(宽容读契约同向)
         p = prov.get(name) if isinstance(prov.get(name), dict) else {}
-        setattr(bs, name, Field(value=value,
+        setattr(gs, name, Field(value=value,
                                 source=str(p.get('source') or 'observation'),
                                 evidence=p.get('evidence')))
 
@@ -3970,46 +3970,46 @@ def restore_state_snapshot(bs: GameState, snap: dict) -> None:
 #  None(未观察),读口负责镜像旧缺省,禁各消费点自写兜底造成第二源。)
 
 
-def plane_of(bs: GameState) -> int:
+def plane_of(gs: GameState) -> int:
     """位面读口(旧 ``CwSimFrame.plane`` 缺省 1 的镜像;未观察帧 = 引导窗)。"""
-    node = bs.node.value
+    node = gs.node.value
     return int(node.plane) if node is not None else 1
 
 
-def round_num_of(bs: GameState) -> int:
+def round_num_of(gs: GameState) -> int:
     """轮次读口(旧 ``CwSimFrame.round_num`` 缺省 1 的镜像)。"""
-    node = bs.node.value
+    node = gs.node.value
     return int(node.round_num) if node is not None else 1
 
 
-def node_kind_of(bs: GameState) -> str | None:
+def node_kind_of(gs: GameState) -> str | None:
     """节点类型读口(旧 ``CwSimFrame.node_type``:None=未识别)。"""
-    node = bs.node.value
+    node = gs.node.value
     return str(node.kind) if node is not None else None
 
 
-def gold_of(bs: GameState) -> int:
+def gold_of(gs: GameState) -> int:
     """金读口(旧 ``CwSimFrame.gold`` 非 Optional 缺省 0 的镜像;可读保真位
     另经 :attr:`Field.source` 判,读口只供值)。"""
-    v = bs.gold.value
+    v = gs.gold.value
     return int(v) if v is not None else 0
 
 
-def level_of(bs: GameState) -> int:
+def level_of(gs: GameState) -> int:
     """等级读口(旧 ``CwSimFrame.level`` 非 Optional 缺省 1 的镜像)。"""
-    v = bs.level.value
+    v = gs.level.value
     return int(v) if v is not None else 1
 
 
-def deployed_slots_of(bs: GameState) -> list:
+def deployed_slots_of(gs: GameState) -> list:
     """上阵席位读口(波1 公共读口单一源):front_row/back_row(容器席位)
     → ADR-0392 定长 10 槽表(0-3 前/4-9 后,元素 BenchChar|None)。
 
     换算单一源 = :func:`unit_rows_to_deployed`;两行全未观察 = 旧
     ``CwSimFrame.deployed`` 缺省形态([None]×10)。
     """
-    front = bs.front_row.value
-    back = bs.back_row.value
+    front = gs.front_row.value
+    back = gs.back_row.value
     if front is None and back is None:
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             DEPLOYED_CAPACITY,
@@ -4018,19 +4018,19 @@ def deployed_slots_of(bs: GameState) -> list:
     return unit_rows_to_deployed(list(front or []), list(back or []))
 
 
-def bench_slots_of(bs: GameState) -> list:
+def bench_slots_of(gs: GameState) -> list:
     """备战席读口(波1 公共读口单一源):BenchView → 定长 9 槽表
     (元素 BenchChar|None,下标 i = 物理槽 i+1)。换算单一源 =
     :func:`bench_slots_to_legacy`;未观察 = 旧 ``CwSimFrame.bench`` 缺省
     形态([None]×9)。"""
-    view = bs.bench.value
+    view = gs.bench.value
     if view is None:
         from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
         return [None] * BENCH_CAPACITY
     return bench_slots_to_legacy(view)
 
 
-def back_capacity_of(bs: GameState) -> int:
+def back_capacity_of(gs: GameState) -> int:
     """后排格数读口(旧 ``CwSimFrame.back_max`` 容器版,波3 立口):
     back_layout 真值(值域 6-9,平常 6/宝钻扩展 7/8/9,>9 域外 8 格超集);
     未观察帧退机制基线 6(与旧字段缺省同源)。
@@ -4040,34 +4040,34 @@ def back_capacity_of(bs: GameState) -> int:
     后排容量门输出随之修正,行为差由 cap 域锁(test_cw_cap_domain/
     test_cw_cap_override_link)重推语义辖。单一源:``max_units_of`` 封顶
     域与本读口同式,禁消费面内联第二份。"""
-    back = bs.back_layout.value
+    back = gs.back_layout.value
     return int(back) if back is not None else 6
 
 
-def deployed_count_of(bs: GameState) -> int:
+def deployed_count_of(gs: GameState) -> int:
     """上阵占用数读口(旧 ``CwSimFrame.deployed_count`` 逐式镜像,波3 立口;
     换算单一源 = :func:`deployed_slots_of` + ``cw_state.deployed_occupied``,
     ADR-0392 占用数口径非 len)。"""
     from sr_od.application.currency_war.kernel.cw_exec_state import deployed_occupied
-    return deployed_occupied(deployed_slots_of(bs))
+    return deployed_occupied(deployed_slots_of(gs))
 
 
-def front_count_of(bs: GameState) -> int:
+def front_count_of(gs: GameState) -> int:
     """前排人数读口(旧 ``CwSimFrame.front_count`` 逐式镜像,波3 立口):
     按 ``BenchChar.position_pref == 'front'`` 计(与旧法同式,非按槽段
     计——BenchChar 站位偏好与所在排可短暂不一致,镜像以旧口径为准)。"""
-    return sum(1 for c in deployed_slots_of(bs)
+    return sum(1 for c in deployed_slots_of(gs)
                if c is not None and c.position_pref == 'front')
 
 
-def back_count_of(bs: GameState) -> int:
+def back_count_of(gs: GameState) -> int:
     """后排人数读口(旧 ``CwSimFrame.back_count`` 逐式镜像,波3 立口;
     口径同 :func:`front_count_of`)。"""
-    return sum(1 for c in deployed_slots_of(bs)
+    return sum(1 for c in deployed_slots_of(gs)
                if c is not None and c.position_pref == 'back')
 
 
-def max_units_of(bs: GameState) -> int:
+def max_units_of(gs: GameState) -> int:
     """可上阵数容器版派生(波1 公共读口单一源;旧 ``CwSimFrame.max_units``
     逐式镜像):deploy_cap 真值(≥level 才采信,ADR-0286 防抖漏网兜底
     level)封顶 = 前排恒 4 + back_layout 动态真值(缺省 6 = 机制基线,
@@ -4076,10 +4076,10 @@ def max_units_of(bs: GameState) -> int:
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         DEPLOYED_FRONT_CAPACITY,
     )
-    level = level_of(bs)
-    cap = bs.deploy_cap.value
+    level = level_of(gs)
+    cap = gs.deploy_cap.value
     base = cap if (cap is not None and cap >= level) else level
-    return min(base, DEPLOYED_FRONT_CAPACITY + back_capacity_of(bs))
+    return min(base, DEPLOYED_FRONT_CAPACITY + back_capacity_of(gs))
 
 
 def scalar_projection_state(gold: int, level: int, hp: int, plane: int,
@@ -4107,7 +4107,7 @@ def scalar_projection_state(gold: int, level: int, hp: int, plane: int,
     - actor 复用 sim 合成签名登记名(已在 REGISTERED_ACTORS 在册,投影
       行为语义与合成口同族,零新登记面)。
     """
-    bs = GameState(schema_version=BS_SCHEMA_VERSION)
+    gs = GameState(schema_version=GAME_STATE_SCHEMA_VERSION)
     global _STATE_JOURNAL_SINK
     _saved_sink = _STATE_JOURNAL_SINK
     _STATE_JOURNAL_SINK = None
@@ -4115,33 +4115,33 @@ def scalar_projection_state(gold: int, level: int, hp: int, plane: int,
         _ev = SIM_SYNTHESIZED
         _sig = ChannelSig(family='obs', actor='synthesize_from_game_state',
                           mode='synthesized')
-        bs.observe(bs.node,
+        gs.observe(gs.node,
                    NodeKey(plane=int(plane), round_num=int(round_num),
                            kind=''),
                    evidence=_ev, sig=_sig)
-        bs.observe(bs.gold, int(gold), evidence=_ev, sig=_sig)
-        bs.observe(bs.level, int(level), evidence=_ev, sig=_sig)
-        bs.observe(bs.hp, int(hp), evidence=_ev, sig=_sig)
-        bs.observe(bs.back_layout, 6, evidence=_ev, sig=_sig)
-        bs.observe(bs.bench,
+        gs.observe(gs.gold, int(gold), evidence=_ev, sig=_sig)
+        gs.observe(gs.level, int(level), evidence=_ev, sig=_sig)
+        gs.observe(gs.hp, int(hp), evidence=_ev, sig=_sig)
+        gs.observe(gs.back_layout, 6, evidence=_ev, sig=_sig)
+        gs.observe(gs.bench,
                    BenchView(slots=[BenchSlot(kind='empty')]
                              * BENCH_CAPACITY_DEFAULT,
                              capacity=BENCH_CAPACITY_DEFAULT),
                    evidence=_ev, sig=_sig)
-        bs.leave_screen(bs.shop, sig=_sig)
-        bs.leave_screen(bs.encounter, sig=_sig)
-        bs.leave_screen(bs.supply, sig=_sig)
+        gs.leave_screen(gs.shop, sig=_sig)
+        gs.leave_screen(gs.encounter, sig=_sig)
+        gs.leave_screen(gs.supply, sig=_sig)
         if strategies:
-            bs.observe(bs.active_strategies, list(strategies),
+            gs.observe(gs.active_strategies, list(strategies),
                        evidence=_ev, sig=_sig)
         from sr_od.application.currency_war.kernel.cw_economy import (
             REFRESH_COST_BASE,
         )
-        bs.observe(bs.shop_refresh_cost, int(REFRESH_COST_BASE),
+        gs.observe(gs.shop_refresh_cost, int(REFRESH_COST_BASE),
                    evidence=_ev, sig=_sig)
-        bs.mark_frame_obs('full')
+        gs.mark_frame_obs('full')
     finally:
         _STATE_JOURNAL_SINK = _saved_sink
-    return bs
+    return gs
 
 

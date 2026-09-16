@@ -9,11 +9,11 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;选卡即终结,单步无确认)。op 形态 = 单节点 `handle` 单尝试:入口锚复验 → 观察四卡 → 选卡决策 → 点卡 → 固定动画等待 → round_success 交回;op 内零重试轮(重试预算归外循环重分发)。决策入口 = 契约 `decide_box_card(names, bs, session, config)`(局内;薄壳:locked_comp 两态锚 + 三本库存账 → 共享机器 `kernel/cw_equip_value.py::pick_equipment` 序数分档,key 直击 > 近兑现 > 材料 > 通用,base = 通用输出先验;局外防御 = kernel 机器空键纯通用排序;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;选卡即终结,单步无确认)。op 形态 = 单节点 `handle` 单尝试:入口锚复验 → 观察四卡 → 选卡决策 → 点卡 → 固定动画等待 → round_success 交回;op 内零重试轮(重试预算归外循环重分发)。决策入口 = 契约 `decide_box_card(names, gs, session, config)`(局内;薄壳:locked_comp 两态锚 + 三本库存账 → 共享机器 `kernel/cw_equip_value.py::pick_equipment` 序数分档,key 直击 > 近兑现 > 材料 > 通用,base = 通用输出先验;局外防御 = kernel 机器空键纯通用排序;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18)。
 
 ## 3. 观察面
 
-单次观察(handle 内):入口锚复验(分发即门,op 内机械复验防误派;「标识-请选择」miss = 非本画面 → fail 交回外循环重分发)→ 卡名读取 `_read_card_names`:「区域-卡名行」建档 rect 约束 OCR,2-8 字过滤,按 x 升序 → [(卡名, 卡 x 中心)]。本屏不上报 GameState 容器观察(决策输入 = `board_state_of(match.session)` 容器单例,与全 pick 族同款)。
+单次观察(handle 内):入口锚复验(分发即门,op 内机械复验防误派;「标识-请选择」miss = 非本画面 → fail 交回外循环重分发)→ 卡名读取 `_read_card_names`:「区域-卡名行」建档 rect 约束 OCR,2-8 字过滤,按 x 升序 → [(卡名, 卡 x 中心)]。本屏不上报 GameState 容器观察(决策输入 = `game_state_of(match.session)` 容器单例,与全 pick 族同款)。
 
 ## 4. 动作面
 

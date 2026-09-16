@@ -24,14 +24,14 @@
 3. 1s 稳定等待后重截(标题出现后三卡才渲染稳定,时序口径 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #11);
 4. 候选读取 `_read_options`:全图 OCR,按卡名行 y 带(465-505)+ 文本长 2-8 字 + 排除表过滤出 3 张卡名,按 center-x 左→右排序;首帧全图 OCR 存底随 payload。
 
-观察 payload = `InvestStrategyObservation`(`entry_ok`/`options`/`first_ocr_map`/`screen`)。**本屏不上报 GameState 容器观察**(无 `read_game_state` 消费;决策输入 = 容器视图 `board_state_of(session)`,overlay 下 board 不可读由视图侧承载)。
+观察 payload = `InvestStrategyObservation`(`entry_ok`/`options`/`first_ocr_map`/`screen`)。**本屏不上报 GameState 容器观察**(无 `read_game_state` 消费;决策输入 = 容器视图 `game_state_of(session)`,overlay 下 board 不可读由视图侧承载)。
 
 ## 4. 动作面
 
 decide+act 内聚 `_decide_and_act`(两路径共享):
 
 ```
-names = opts 卡名;pick = decide_invest('strategy', names, board_state_of(session), ...)
+names = opts 卡名;pick = decide_invest('strategy', names, game_state_of(session), ...)
   (无 match 局外防御 = 裸空容器 decide_event,且显式跳过刷新链)
 ├─ 逐卡刷新 = 终结动作(pick.refresh_slots 非空 ∧ opts 非空):
 │    逐槽计数现读 read_invest_refresh_counts(ctx, screen, 'strategy')
@@ -64,7 +64,7 @@ names = opts 卡名;pick = decide_invest('strategy', names, board_state_of(sessi
 ## 6. 状态上报面
 
 - **持卡登记**(`_append_confirmed_strategy`,确认裁决出口):`session.active_strategies` 去重追加 + GameState `active_strategies` write_logic(局级累计);效果账本挂点 best-effort:`STRATEGY_EFFECTS` 命中 → `effects.register_strategy`(acquired_t = 节点序快照)+ burst 桥 `apply_effect_burst_grant` + 板面重写桥 `apply_board_rewrite`(出售面逻辑写/替换面零写留证)。
-- **刷新计数登记件**:on_outcome 注册表发射型 `strategy_refresh_used`(`EMIT_TRIGGERED_DECLARED` 在册,`cw_screen_op_base.py`),触发点 = `_emit_refresh_click` 共用分派面;写端 = `board_state_of(session).write_logic(strategy_refresh_used, ...)` 逐卡 dict,键 = `kernel/cw_investments.py::normalize_invest_name` 归一,随点击置位不等验效。
+- **刷新计数登记件**:on_outcome 注册表发射型 `strategy_refresh_used`(`EMIT_TRIGGERED_DECLARED` 在册,`cw_screen_op_base.py`),触发点 = `_emit_refresh_click` 共用分派面;写端 = `game_state_of(session).write_logic(strategy_refresh_used, ...)` 逐卡 dict,键 = `kernel/cw_investments.py::normalize_invest_name` 归一,随点击置位不等验效。
 - 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.4 / §4「投资选择」;效果账挂点 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §8(事件线选择非逻辑态通道)。
 
 ## 7. 子态与 overlay

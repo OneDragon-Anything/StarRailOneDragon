@@ -145,30 +145,30 @@ def sample_env_offer(rng: random.Random, excluded: Iterable[str],
     return tuple(rng.sample(pool, k))
 
 
-def apply_env_pick(bs: GameState, name: str) -> None:
+def apply_env_pick(gs: GameState, name: str) -> None:
     """环境选卡入账(obs 渠道写容器 ``active_env``;实机写点语义 =
     cw_screen_invest_env 选 1 张定局)。"""
-    bs.observe(bs.active_env, name, evidence=sim_evidence('env:pick'),
+    gs.observe(gs.active_env, name, evidence=sim_evidence('env:pick'),
                sig=obs_sig(group_id='sim:env'))
 
 
-def apply_strategy_pick(bs: GameState, name: str) -> None:
+def apply_strategy_pick(gs: GameState, name: str) -> None:
     """策略选卡入账(obs 渠道 append 容器 ``active_strategies``)。
 
     去重防重选与实机 handler 对齐(cw_screen_invest_strategy 同名不
     重复入列);已持名的重发属引擎侧生成规则问题(U07③ 全程去重),
     此处兜底不重复入列。
     """
-    held = list(bs.active_strategies.value or [])
+    held = list(gs.active_strategies.value or [])
     if name in held:
         return
     held.append(name)
-    bs.observe(bs.active_strategies, held,
+    gs.observe(gs.active_strategies, held,
                evidence=sim_evidence('invest:pick'),
                sig=obs_sig(group_id='sim:invest'))
 
 
-def inject_choices(bs: GameState, *, env_name: str | None = None,
+def inject_choices(gs: GameState, *, env_name: str | None = None,
                    strategy_names: Iterable[str] = (),
                    ) -> None:
     """注入核:显式点名投资选择直写容器(定向测试通道,§2.4.1 保留面)。
@@ -180,9 +180,9 @@ def inject_choices(bs: GameState, *, env_name: str | None = None,
     经济聚合/品质查询侧显式 miss,不在注入层静默改写)。
     """
     if env_name is not None:
-        apply_env_pick(bs, env_name)
+        apply_env_pick(gs, env_name)
     for name in strategy_names:
-        apply_strategy_pick(bs, name)
+        apply_strategy_pick(gs, name)
 
 
 def quality_rewrite_hit(active_env: str | None) -> bool:

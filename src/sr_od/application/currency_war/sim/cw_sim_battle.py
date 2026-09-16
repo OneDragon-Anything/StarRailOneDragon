@@ -77,7 +77,7 @@ def settle_battle(rng: random.Random, *, plane: int, round_num: int) -> BattleOu
                          face=SIM_BATTLE_FACE)
 
 
-def apply_hp_outcome(bs: GameState, outcome: BattleOutcome) -> tuple[bool, bool]:
+def apply_hp_outcome(gs: GameState, outcome: BattleOutcome) -> tuple[bool, bool]:
     """M14 折算:败局扣血写容器 + 0hp 保底/局终判定。
 
     Returns:
@@ -87,21 +87,21 @@ def apply_hp_outcome(bs: GameState, outcome: BattleOutcome) -> tuple[bool, bool]
     """
     if outcome.won or outcome.hp_delta == 0:
         return False, False
-    hp_after = int(bs.hp.value or 0) + outcome.hp_delta
+    hp_after = int(gs.hp.value or 0) + outcome.hp_delta
     tag = 'battle:hp'
     if hp_after > 0:
-        bs.observe(bs.hp, hp_after, evidence=sim_evidence(tag),
+        gs.observe(gs.hp, hp_after, evidence=sim_evidence(tag),
                    sig=obs_sig(group_id='sim:battle'))
         return False, False
-    floor_used = bool(bs.hp_floor_triggered.value)
+    floor_used = bool(gs.hp_floor_triggered.value)
     if not floor_used:
         # 首次 0hp 保底剩 1(全局机制;事件位翻真 = 保底已消费)
-        bs.observe(bs.hp_floor_triggered, True,
+        gs.observe(gs.hp_floor_triggered, True,
                    evidence=sim_evidence('battle:hp_floor'),
                    sig=obs_sig(group_id='sim:battle'))
-        bs.observe(bs.hp, 1, evidence=sim_evidence(tag),
+        gs.observe(gs.hp, 1, evidence=sim_evidence(tag),
                    sig=obs_sig(group_id='sim:battle'))
         return True, False
-    bs.observe(bs.hp, 0, evidence=sim_evidence(tag),
+    gs.observe(gs.hp, 0, evidence=sim_evidence(tag),
                sig=obs_sig(group_id='sim:battle'))
     return False, True

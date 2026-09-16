@@ -402,16 +402,16 @@ def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
       duration 语义自动辖及词缀条目,挂点代码零来源特判)。
     - 返回本次实际登记的词缀名列表(调用方留证日志;零命中返回空表)。
 
-    board_state_of 运行期函数内 import:board_state 所在模块头 import 本模块
+    game_state_of 运行期函数内 import:board_state 所在模块头 import 本模块
     的兄弟模块(cw_effect_inventory),保持本模块零运行期容器依赖、可离线
     单测(与 cw_effect_inventory 的惰性 import 纪律同型)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of,
+        game_state_of,
     )
 
-    bs = board_state_of(session)
-    effects = bs.effects
+    gs = game_state_of(session)
+    effects = gs.effects
     registered_ids = {e.spec.id for e in effects.by_source(SOURCE_AFFIX)}
     hits: list[EffectSpec] = []
     for name in dict.fromkeys(names):   # 名集内去重保序(读链不应产重名,防御)
@@ -422,7 +422,7 @@ def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
             hits.append(spec)
     if not hits:
         return []
-    _nd = bs.node.value
+    _nd = gs.node.value
     acquired_t: int | None = (
         (_nd.plane - 1) * 9 + _nd.round_num) if _nd is not None else None
     for spec in hits:
@@ -459,7 +459,7 @@ class ToolExecutionReport:
 
 
 def apply_tool_execution_write(
-        bs: GameState, tool: str, *,
+        gs: GameState, tool: str, *,
         target_char_id: str | None = None, target_cost: int | None = None,
         chosen_equip: str | None = None, target_equip_name: str | None = None,
         target_unit: Unit | None = None, chosen_worn_equip: str | None = None,
@@ -494,7 +494,7 @@ def apply_tool_execution_write(
                 f'{tool} 入席腿需 target_char_id + target_cost(费用缺失会假过'
                 f'费用门,禁缺省);得 {target_char_id!r}/{target_cost!r}')
         gate = _TOOL_SPAWN_COST_GATE.get(tool, 0)
-        ok = spawn_equip_bench_unit(bs, target_char_id, 1, target_cost,
+        ok = spawn_equip_bench_unit(gs, target_char_id, 1, target_cost,
                                     cost_gate=gate, frame=frame)
         return ToolExecutionReport(
             tool=tool, side=side, leg='spawn', performed=ok,
@@ -506,13 +506,13 @@ def apply_tool_execution_write(
         if EQUIPMENTS[chosen_equip].category != '进阶':
             raise ValueError(
                 f'chosen_equip 须为进阶类别(推荐四件域),得 {chosen_equip!r}')
-        ok = grant_equip_item(bs, chosen_equip, frame=frame)
+        ok = grant_equip_item(gs, chosen_equip, frame=frame)
         return ToolExecutionReport(tool=tool, side=side, leg='grant',
                                    performed=ok,
                                    detail=chosen_equip if ok else '库存未观察')
     if side == 'bridge:transform_equip_to_privilege':
         if target_equip_name is not None:
-            target = transform_equip_to_privilege(bs, target_equip_name,
+            target = transform_equip_to_privilege(gs, target_equip_name,
                                                   frame=frame)
             return ToolExecutionReport(
                 tool=tool, side=side, leg='inventory',
@@ -524,7 +524,7 @@ def apply_tool_execution_write(
                     f'chosen_worn_equip 须为进阶类别(已穿进阶域),'
                     f'得 {chosen_worn_equip!r}')
             target = transform_worn_equip_to_privilege(
-                bs, target_unit, chosen_worn_equip, frame=frame)
+                gs, target_unit, chosen_worn_equip, frame=frame)
             return ToolExecutionReport(
                 tool=tool, side=side, leg='worn', performed=target is not None,
                 detail=target or '目标单位未定位(状态漂移,零写)')

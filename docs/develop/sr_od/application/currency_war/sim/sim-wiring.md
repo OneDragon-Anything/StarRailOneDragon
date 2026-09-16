@@ -3,7 +3,7 @@
 > as-built 底账(引擎直写容器形态;接线变更同步更新本表):
 > sim 引擎（`sim/cw_sim_engine.py`，reset/step 步进协议，入口与驱动见 sim-design §1.2）
 > 不持本地工作帧,局状态 = 容器 `GameState` 单例
-> (`kernel/cw_game_state.board_state_of(session)`)。引擎写容器一律走
+> (`kernel/cw_game_state.game_state_of(session)`)。引擎写容器一律走
 > 带渠道签名的写入口(渠道族封闭集 obs/logic_action/logic_hook,写入口
 > 校验渠道族与 actor 在册);读容器走决策面公共读口族与 Field 直读。
 > 本表逐域记录 sim 的产生面(哪个渠道、什么事件写)与读取面;用途:
@@ -22,7 +22,7 @@
 | 通道 | 辖面 | 载体 |
 |---|---|---|
 | logic_action(动作应用) | 动作的字段转移全集,域集 = `SHOP_PROJECTION_DOMAINS`(gold/bench/shop/xp/front_row/back_row/board/equips) | 单一转移函数 `apply_shop_action_logic`(全动作族;DeployMove 不入本口——围栏部署走 obs,登记面申报) |
-| obs(外部事件) | 非动作语义的状态事实 = sim 的真值写入面 | `bs.observe(...)`,签名 = actor `SimEngineP1` + mode `synthesized` + evidence 前缀 `sim:engine:` |
+| obs(外部事件) | 非动作语义的状态事实 = sim 的真值写入面 | `gs.observe(...)`,签名 = actor `SimEngineP1` + mode `synthesized` + evidence 前缀 `sim:engine:` |
 | 引擎白名单(不写容器) | XP 权威账本(买牌累加/轮末结转)、牌池登记(ret/take)、金出入转录、装备分配记账、观测披露键(auth/dec_* 族)、免费刷额度注入 | 引擎本地账本与批账本(waves/actions/checks) |
 
 obs 通道的事件面(evidence tag 括注):开局播种(opening:level/gold/hp/
@@ -64,7 +64,7 @@ kernel 决策面公共读口 12 口(kernel/cw_game_state.py):`plane_of` /
 `deployed_count_of` / `front_count_of` / `back_count_of` / `max_units_of`。
 读口负责镜像旧缺省形态(如 gold 未读 = 0、deployed 双排全未观察 =
 `[None]×10`、back_layout 未读 = 机制基线 6),禁消费点自写兜底造成
-第二源;引擎在此之上另有 Field 直读(bs.shop.value/bs.equips.value 等)。
+第二源;引擎在此之上另有 Field 直读(gs.shop.value/gs.equips.value 等)。
 
 表示申报:阵营不入容器——Unit 只存 char_id,阵营经角色注册表派生
 (game_state/fields.md §3.2.3);引擎围栏记账用的阵营计数在引擎本地由
@@ -111,7 +111,7 @@ JSON 快照重放)。
 
 ## P2 段接线(`simulate_p1(planes=2)`)
 
-- 进场继承:P1 末态容器经 `engine_p2.build_state(bs)` 以 obs 族
+- 进场继承:P1 末态容器经 `engine_p2.build_state(gs)` 以 obs 族
   p2-entry 事件整量播种(plane=2 节点键锚/hp 跨位面继承=用户纠错
   真值/bench 保 9 槽 pad 语义/deployed 紧缩序按 position_pref 路由
   落槽);决策代码 plane-aware 分支按容器 plane 值自动激活,策略层

@@ -464,13 +464,13 @@ def _autonomous_round(session: StrategySession) -> int | None:
     同源,设计件《商店黑板容器化方案》§2.4-2)。NodeKey 未定 = None
     (调用方按 fail-closed 方向处置:硬面不 carve)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of,
+        game_state_of,
         round_num_of,
     )
-    node = board_state_of(session).node.value
+    node = game_state_of(session).node.value
     if node is None:
         return None
-    return int(round_num_of(board_state_of(session)))
+    return int(round_num_of(game_state_of(session)))
 
 
 # ===== 种子年龄豁免登记簿(T-126 批 5;P78-7,ADR-0633)=====
@@ -544,9 +544,9 @@ def _seed_frame_axes(session: StrategySession) -> tuple[
     """种子读端轴 (位面, 轮号, bench 名集)。
 
     轴源 = session 容器(W6 波 4 黑板容器化改道,设计件 §2.4-2):
-    - **plane/round 轴 = bs.node**(NodeKey;权威写端 = 派生规则四腿,
+    - **plane/round 轴 = gs.node**(NodeKey;权威写端 = 派生规则四腿,
       段入口粒度对轮/位面恒安全);
-    - **bench 轴 = bs.bench**(prep 帧观察值 + visit 内逻辑态直写)。原
+    - **bench 轴 = gs.bench**(prep 帧观察值 + visit 内逻辑态直写)。原
       「双帧并集」的活性闭合语义由容器活值天然承载:逐动作逻辑态直写
       (apply_shop_action_logic bench 域)使店内新鲜买入即时在席,
       last_state 段入口滞后窗与逻辑态帧 prep 语境滞留窗一并消亡——
@@ -556,14 +556,14 @@ def _seed_frame_axes(session: StrategySession) -> tuple[
     fail-closed。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_slots_of,
-        board_state_of,
+        game_state_of,
     )
-    _bs = board_state_of(session)
-    node = _bs.node.value
+    _gs = game_state_of(session)
+    node = _gs.node.value
     cur_plane = int(node.plane) if node is not None else None
     cur_round = int(node.round_num) if node is not None else None
     bench_names = {getattr(b, 'char_id', '') or ''
-                   for b in bench_slots_of(_bs) if b is not None}
+                   for b in bench_slots_of(_gs) if b is not None}
     return (cur_plane, cur_round, frozenset(bench_names))
 
 
@@ -734,9 +734,9 @@ def dead_pair_exit_release(session: StrategySession,
     bench_names = {getattr(b, 'char_id', '') or '' for b in _bench}
     deployed_names = {getattr(d, 'char_id', '') or '' for d in _deployed}
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of,
+        game_state_of,
     )
-    node = board_state_of(session).node.value
+    node = game_state_of(session).node.value
     cur_plane = int(node.plane) if node is not None else None
     cur_round = int(current_round) if current_round is not None else None
 

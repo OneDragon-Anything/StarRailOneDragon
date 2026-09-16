@@ -76,7 +76,7 @@ class EconomyEffect:
     - free_refresh_burst: 一次性海量免费刷新(如高效决策 9999 次);限时窗口策略层不编排时机(执行层待办)
     - free_refresh_cond_gold_above/step/cap: 条件判定族三元组(本金充裕系=50/10/3)——每次进入
       新节点时,金 > above 每额外 step 金 +1 次免费刷新、至多 cap 次;发放经
-      grant_effect_node_refresh_balance 桥(节点 tick 采样,金=bs.gold 现值评估)
+      grant_effect_node_refresh_balance 桥(节点 tick 采样,金=gs.gold 现值评估)
     - refresh_surprise_every: 每 N 次刷新刷出 5 张同费卡(采购专员;稳定器,提高刷新期望)
     - gold_per_three_5cost: 每购买 3 个 5 费角色给金
     - interest_cap_override: 利息档上限覆写(开源节流 9 档/利息上调 10 档/买断制 0)
@@ -494,7 +494,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # id 301001/301002)。条件判定族(GameState 设计 §3.3.6 免费刷新余额的
     # 条件性来源):触发=节点进入、条件=金>50、梯度=每 10 金 1 次、封顶=3;
     # 发放经 grant_effect_node_refresh_balance 桥自动生效(§3.3.6「结构化后
-    # 经同一桥」):桥按 bs.gold 现值逐条目评估,金未读(None)保守零授予。
+    # 经同一桥」):桥按 gs.gold 现值逐条目评估,金未读(None)保守零授予。
     # counter 不建(无剩余/门槛累计量,授予量由当拍金现值决定,§3 计数器
     # 模型无动态需求为空);duties 全空(无计数器/无预知/无姿态消费面)。
     # payload 引 STRATEGY_ECONOMY 同一实例(单一源);棱彩加强值口径 =

@@ -51,15 +51,15 @@ def fixed_pool(*, extra_experts: dict[str, int] | None = None) -> dict[str, int]
     return pool
 
 
-def held_copies(bs: GameState) -> dict[str, int]:
+def held_copies(gs: GameState) -> dict[str, int]:
     """持有副本账(名 → Σ 3^(star−1);容器 bench/deployed 星级派生)。
 
     单一派生口:开局手牌写入 bench 后本函数即有定义(M06「首个写端」
     语义 = 派生自此不再需要可变账本);试用与自有同池同计数(U11)。
     """
     held: dict[str, int] = {}
-    units = [b for b in bench_slots_of(bs) if b is not None]
-    units += [d for d in deployed_slots_of(bs) if d is not None]
+    units = [b for b in bench_slots_of(gs) if b is not None]
+    units += [d for d in deployed_slots_of(gs) if d is not None]
     for u in units:
         name = str(getattr(u, 'char_id', '') or '')
         if not name:
@@ -69,12 +69,12 @@ def held_copies(bs: GameState) -> dict[str, int]:
     return held
 
 
-def _remaining_and_held(bs: GameState, *,
+def _remaining_and_held(gs: GameState, *,
                         extra_experts: dict[str, int] | None = None,
                         ) -> tuple[dict[str, int], dict[str, int]]:
     """(剩余池, held) 一次派生(剩余 = 固定 − held;守恒破显式炸错)。"""
     fixed = fixed_pool(extra_experts=extra_experts)
-    held = held_copies(bs)
+    held = held_copies(gs)
     remaining: dict[str, int] = {}
     for name, copies in fixed.items():
         value = copies - held.get(name, 0)
@@ -86,22 +86,22 @@ def _remaining_and_held(bs: GameState, *,
     return remaining, held
 
 
-def remaining_pool(bs: GameState, *,
+def remaining_pool(gs: GameState, *,
                    extra_experts: dict[str, int] | None = None) -> dict[str, int]:
     """剩余池 = 固定牌库 − held(不变量派生;负值 = 池守恒破,显式炸错)。
 
     负值不可能由合法动作产生(买上限受池约束);出现即 sim 内部 bug,
     静默夹零会掩盖病灶,按显式暴露处置。
     """
-    return _remaining_and_held(bs, extra_experts=extra_experts)[0]
+    return _remaining_and_held(gs, extra_experts=extra_experts)[0]
 
 
-def drawable_names(bs: GameState, cost: int, *,
+def drawable_names(gs: GameState, cost: int, *,
                    extra_experts: dict[str, int] | None = None) -> list[str]:
     """某费用档当前可进店名集(剩余 > 0 且 held < 9;≥9 清空 = 发牌
     过滤,U11 定稿口径——1/2 费 27 副本下 held ≥9 时仍有剩余,两条件
     不可互替)。"""
-    remaining, held = _remaining_and_held(bs, extra_experts=extra_experts)
+    remaining, held = _remaining_and_held(gs, extra_experts=extra_experts)
     return sorted(
         name for name, left in remaining.items()
         if left > 0 and held.get(name, 0) < 9

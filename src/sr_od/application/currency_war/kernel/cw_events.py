@@ -134,7 +134,7 @@ def is_economy_engine(economy: EconomyEffect | None) -> bool:
     return False
 
 
-def _invest_d_star(bs: GameState, locked_comp: str,
+def _invest_d_star(gs: GameState, locked_comp: str,
                    demoted_endgame: bool,
                    evicted: frozenset[str] | set[str]) -> tuple[set[str], set[str], str]:
     """投资选卡的「预期终局方向」D* 解析(ADR-0597;级联单规则零阶段特判)。
@@ -161,10 +161,10 @@ def _invest_d_star(bs: GameState, locked_comp: str,
         comp = get_comp(locked_comp)
         if comp is not None:
             return set(comp.factions), set(comp.core_chars), 'locked'
-    sigs = [s for s in detect_signals(bs)
+    sigs = [s for s in detect_signals(gs)
             if s.layer != 1
             and s.comp_name not in evicted
-            and plane_of(bs) not in (getattr(get_comp(s.comp_name),
+            and plane_of(gs) not in (getattr(get_comp(s.comp_name),
                                             'weak_planes', ()) or ())]
     if not sigs:
         return set(), set(), ''
@@ -201,7 +201,7 @@ def _opt_counters_dot(opt: str) -> bool:
 # - 旧 P2 装备流 EQUIP_FLOW_PICKS plane≥2 +25(11 局实锤)→ 0(经验
 #   拟合,辖域+幅度双未证;若重立须按观测参数化)。)
 
-def decide_event(options: list[str], config, bs: GameState,
+def decide_event(options: list[str], config, gs: GameState,
                  locked_comp: str = '', demoted_endgame: bool = False,
                  evicted: frozenset[str] | set[str] = frozenset()) -> PickEvent:
     """事件选项打分(投资策略/环境 3 选 1;判据重构,ADR-0597)。
@@ -269,7 +269,7 @@ def decide_event(options: list[str], config, bs: GameState,
     strategy_forbid = list(getattr(config, 'strategy_forbid', []) or [])
     env_priority = list(getattr(config, 'env_priority', []) or [])
     env_forbid = list(getattr(config, 'env_forbid', []) or [])
-    on_dot = sum((bs.board.value or {}).get(f, 0) for f in ('持续伤害', '减益')) >= 2
+    on_dot = sum((gs.board.value or {}).get(f, 0) for f in ('持续伤害', '减益')) >= 2
     penalty = 100
     # 品质回落字典序的序数编码(ADR-0524):品质序=游戏定义(棱彩>金>银),
     # 主键 rank(0/1/2)+ 次键 econ(0/1);×2 保证次键永不翻转主键——
@@ -279,7 +279,7 @@ def decide_event(options: list[str], config, bs: GameState,
     # D* 单帧单读(ADR-0597):每决策帧现算一次快照,帧内不重读——
     # 「K 活读数轮内重排」病灶在消费面结构性不可发生。
     _d_facs, _d_chars, _d_src = _invest_d_star(
-        bs, locked_comp, demoted_endgame, evicted)
+        gs, locked_comp, demoted_endgame, evicted)
     # 候选全集单帧单读(与 D* 快照同款纪律):env 分支全集门的派生输入,
     # 循环外一次派生,帧内禁重读。
     _universe = candidate_faction_universe(evicted)
@@ -426,7 +426,7 @@ def decide_event(options: list[str], config, bs: GameState,
                 # 实现常数,禁读基数)。经济入模环境全部 faction 空(design
                 # §2.2.1 注),与本分支上方全集门结构性无交集。
                 if _env.economy is not None:
-                    _econ_gold, _econ_ok = env_economy_value(_env.name, bs)
+                    _econ_gold, _econ_ok = env_economy_value(_env.name, gs)
                     if _econ_ok and _econ_gold > 0:
                         _band = ECON_ENGINE_BAND_BASE + ECON_ENGINE_BAND_SPAN * (
                             min(_econ_gold, ECON_VALUE_NORM) / ECON_VALUE_NORM)
@@ -644,7 +644,7 @@ def _reward_value(rewards: list[str]) -> float:
 
 
 
-def decide_encounter(options: list[EncounterOption], bs: GameState,
+def decide_encounter(options: list[EncounterOption], gs: GameState,
                      target_comp: Comp | None, config, refresh_used: bool = False) -> EncounterPick:
     """遭遇节点选难度档 + 是否刷新(纯逻辑,design 08)。✅ 已接:``CwScreenEncounter`` 调本函数 +
     ``read_encounter_options``(cw_node_obs,OCR 卡标题「遭遇其X」→ difficulty)。affix 分支 N/A
@@ -662,9 +662,9 @@ def decide_encounter(options: list[EncounterOption], bs: GameState,
     if not options:
         return EncounterPick(idx=0, reason="no-options")
     mechs = [_option_mechanics(o, target_comp) for o in options]
-    form = (form_progress(target_comp, bs)
+    form = (form_progress(target_comp, gs)
             if target_comp is not None else 0.5)
-    formed = form >= 0.4 and deployed_count_of(bs) >= max(2, max_units_of(bs) // 2)
+    formed = form >= 0.4 and deployed_count_of(gs) >= max(2, max_units_of(gs) // 2)
 
     # 全分支词缀都克 comp(mechanics_fit < 0.4)+ 刷新未用 → 刷新换批(避开高危)
     if not refresh_used and target_comp is not None and all(m < 0.4 for m in mechs):
@@ -682,7 +682,7 @@ def decide_encounter(options: list[EncounterOption], bs: GameState,
         # 奖励价值(用户指路;OCR 奖励带已读)——与难度联动:
         # 只有「敢难」时奖励差才兑现,不敢难时好奖励也白搭(不独立加分)
         rv = _reward_value(o.rewards)
-        if plane_of(bs) == 3:
+        if plane_of(gs) == 3:
             # ADR-0130:P3 永避高难遭遇(一次 -70 血无回报,成型也不赌)。
             s -= 0.5 * diff_norm
             s -= 0.1 * (1.0 - rv)   # P3 不为奖励冒险,仅轻微 tiebreak
@@ -691,7 +691,7 @@ def decide_encounter(options: list[EncounterOption], bs: GameState,
             # 碾压(form≥0.9,gap≤−36,bell→0)敢难白拿;其余保守保血。
             gap = (0.4 - form) * 60
             press_v = encounter_tier_score(d_now=100.0, tier_delta=-2,
-                                           gap=gap, plane=plane_of(bs))
+                                           gap=gap, plane=plane_of(gs))
             dare = press_v < 0.05
             s += (0.3 + 0.2 * (rv - 0.5)) * diff_norm if dare else -0.3 * diff_norm
         return s
@@ -737,7 +737,7 @@ def _equip_value(equip: str) -> int:
 
 
 
-def decide_supply(options: list[SupplyOption], bs: GameState,
+def decide_supply(options: list[SupplyOption], gs: GameState,
                   target_comp: Comp | None, config, refresh_used: bool = False) -> SupplyPick:
     """补给节点选装备 + 是否刷新(纯逻辑,design 07/08)。✅ 已接:``run_supply_node`` 调本函数 +
     ``read_supply_options``(cw_node_obs,OCR 每列角色+装备)。
@@ -841,7 +841,7 @@ class PlannerPick:
     reason: str = ''
 
 
-def decide_planner(options: list[PlannerOption], bs: GameState,
+def decide_planner(options: list[PlannerOption], gs: GameState,
                    target_comp: Comp | None = None) -> PlannerPick:
     """银狼「我来当策划」二选一策略。
 
@@ -867,8 +867,8 @@ def decide_planner(options: list[PlannerOption], bs: GameState,
     has_wolf_line = bool(_tgt_chars & {'银狼LV.999'}) or bool(
         _tgt_factions & {'欢愉', '量子同频'})
     # 在场判定:bench+deployed 的 char_id(信息缺失=空列表→不降权,保守)
-    _pool = [d for d in deployed_slots_of(bs) if d is not None] + \
-        [b for b in bench_slots_of(bs) if b is not None]
+    _pool = [d for d in deployed_slots_of(gs) if d is not None] + \
+        [b for b in bench_slots_of(gs) if b is not None]
     _owned = {getattr(bc, 'char_id', '') for bc in _pool
               if getattr(bc, 'char_id', '')}
     wolf_owned = ('银狼LV.999' in _owned) if _owned else True

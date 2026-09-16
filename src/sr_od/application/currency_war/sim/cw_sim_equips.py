@@ -85,7 +85,7 @@ def _wear_synthesis(equips: list[str]) -> list[str]:
     return items
 
 
-def _find_and_mutate_unit(bs: GameState, char_name: str,
+def _find_and_mutate_unit(gs: GameState, char_name: str,
                           mutate: Callable[[Unit], Unit | None]) -> bool:
     """按注册名定位单位(bench → deployed)并整体重建其所在容器域。
 
@@ -105,7 +105,7 @@ def _find_and_mutate_unit(bs: GameState, char_name: str,
         return u
 
     # bench 域:BenchSlot.unit 摘换 → BenchView 重建
-    bench_view = bs.bench.value
+    bench_view = gs.bench.value
     if bench_view is not None:
         slots = list(bench_view.slots)
         hit = any(s is not None and s.kind == 'unit' and s.unit is not None
@@ -125,13 +125,13 @@ def _find_and_mutate_unit(bs: GameState, char_name: str,
                 if m is None:
                     return False
                 new_slots.append(replace(s, unit=m))
-            bs.observe(bs.bench, bench_view_of_slots(
+            gs.observe(gs.bench, bench_view_of_slots(
                 _slots_to_chars(new_slots)),
                 evidence=sim_evidence('equip:worn'),
                 sig=obs_sig(group_id='sim:equip'))
             return True
     # deployed 域:front_row/back_row 摘换 → 整行重建(空槽 None 保持)
-    for field in (bs.front_row, bs.back_row):
+    for field in (gs.front_row, gs.back_row):
         rows = list(field.value or [])
         hit = any(u is not None and u.char_id == char_name for u in rows)
         if hit:
@@ -144,7 +144,7 @@ def _find_and_mutate_unit(bs: GameState, char_name: str,
                 if m is None:
                     return False
                 new_rows.append(m)
-            bs.observe(field, new_rows, evidence=sim_evidence('equip:worn'),
+            gs.observe(field, new_rows, evidence=sim_evidence('equip:worn'),
                        sig=obs_sig(group_id='sim:equip'))
             return True
     return False
@@ -163,25 +163,25 @@ def _slots_to_chars(slots: list) -> list:
     return out
 
 
-def apply_wear_equip(bs: GameState, action: WearEquip) -> bool:
+def apply_wear_equip(gs: GameState, action: WearEquip) -> bool:
     """穿装备腿(游戏规则建模:摘件 → 穿戴 → 穿着即合成)。
 
     拒绝形态(静默拒 = False,调用方按动作未生效处理):owned 无该
     件 / 目标角色不在册 / 合成后仍超上限。目标域未写(bench/deployed
     均 None)→ False。
     """
-    owned = list(bs.equips.value or [])
+    owned = list(gs.equips.value or [])
     if action.item_name not in owned:
         return False
 
     def _mutate(u: Unit) -> Unit | None:
         return _wear_to(u, action.item_name)
 
-    ok = _find_and_mutate_unit(bs, action.char_name, _mutate)
+    ok = _find_and_mutate_unit(gs, action.char_name, _mutate)
     if not ok:
         return False
     owned.remove(action.item_name)
-    bs.observe(bs.equips, owned, evidence=sim_evidence('equip:own'),
+    gs.observe(gs.equips, owned, evidence=sim_evidence('equip:own'),
                sig=obs_sig(group_id='sim:equip'))
     return True
 
@@ -198,7 +198,7 @@ def _wear_to(u: Unit, item_name: str) -> Unit | None:
     return replace(u, equips=worn)
 
 
-def _unequip_all(bs: GameState, row: str, slot: int) -> list[str] | None:
+def _unequip_all(gs: GameState, row: str, slot: int) -> list[str] | None:
     """取下目标角色全部穿戴 → owned(扳手族共用;装备归属面回区)。
 
     Returns:
@@ -212,17 +212,17 @@ def _unequip_all(bs: GameState, row: str, slot: int) -> list[str] | None:
         from dataclasses import replace
         return replace(u, equips=[])
 
-    found = _find_and_mutate_by_slot(bs, row, slot, _grab)
+    found = _find_and_mutate_by_slot(gs, row, slot, _grab)
     if not found or taken is None:
         return None
     if taken:
-        bs.observe(bs.equips, list(bs.equips.value or []) + taken,
+        gs.observe(gs.equips, list(gs.equips.value or []) + taken,
                    evidence=sim_evidence('equip:unequip'),
                    sig=obs_sig(group_id='sim:equip'))
     return taken
 
 
-def _find_and_mutate_by_slot(bs: GameState, row: str, slot: int,
+def _find_and_mutate_by_slot(gs: GameState, row: str, slot: int,
                              mutate: Callable[[Unit], Unit]) -> bool:
     """按画面物理槽位(row/slot)定位单位并重建域(扳手族坐标系 =
     cw_vocab 通用声明:row ∈ 'front'|'back',slot 画面 1 基)。"""
@@ -232,29 +232,29 @@ def _find_and_mutate_by_slot(bs: GameState, row: str, slot: int,
         bench_view_of_slots,
     )
     if row == 'front':
-        rows = list(bs.front_row.value or [])
+        rows = list(gs.front_row.value or [])
         idx = slot - 1
         if not (0 <= idx < len(rows)) or rows[idx] is None:
             return False
         new_rows = [mutate(u) if i == idx else u
                     for i, u in enumerate(rows)]
-        bs.observe(bs.front_row, new_rows,
+        gs.observe(gs.front_row, new_rows,
                    evidence=sim_evidence('equip:worn'),
                    sig=obs_sig(group_id='sim:equip'))
         return True
     if row == 'back':
-        rows = list(bs.back_row.value or [])
+        rows = list(gs.back_row.value or [])
         idx = slot - 1
         if not (0 <= idx < len(rows)) or rows[idx] is None:
             return False
         new_rows = [mutate(u) if i == idx else u
                     for i, u in enumerate(rows)]
-        bs.observe(bs.back_row, new_rows,
+        gs.observe(gs.back_row, new_rows,
                    evidence=sim_evidence('equip:worn'),
                    sig=obs_sig(group_id='sim:equip'))
         return True
     # 非排坐标 → bench 槽序画面位(视图槽 i ↔ 画面槽位 i+1)
-    bench_view = bs.bench.value
+    bench_view = gs.bench.value
     if bench_view is None:
         return False
     idx = slot - 1
@@ -265,29 +265,29 @@ def _find_and_mutate_by_slot(bs: GameState, row: str, slot: int,
     if s is None or s.kind != 'unit' or s.unit is None:
         return False
     slots[idx] = replace(s, unit=mutate(s.unit))
-    bs.observe(bs.bench, bench_view_of_slots(_slots_to_chars(slots)),
+    gs.observe(gs.bench, bench_view_of_slots(_slots_to_chars(slots)),
                evidence=sim_evidence('equip:worn'),
                sig=obs_sig(group_id='sim:equip'))
     return True
 
 
-def apply_wrench(bs: GameState, action: WrenchUse) -> bool:
+def apply_wrench(gs: GameState, action: WrenchUse) -> bool:
     """拆装扳手腿:取下全部穿戴回装备区,工具消耗(用后消失)。"""
-    taken = _unequip_all(bs, action.row, action.slot)
+    taken = _unequip_all(gs, action.row, action.slot)
     if taken is None:
         return False
-    owned = list(bs.equips.value or [])
+    owned = list(gs.equips.value or [])
     if '拆装扳手' in owned:
         owned.remove('拆装扳手')
-        bs.observe(bs.equips, owned, evidence=sim_evidence('tool:consume'),
+        gs.observe(gs.equips, owned, evidence=sim_evidence('tool:consume'),
                    sig=obs_sig(group_id='sim:equip'))
     return True
 
 
-def apply_precision_wrench(bs: GameState,
+def apply_precision_wrench(gs: GameState,
                            action: PrecisionWrenchUse) -> bool:
     """精密拆装扳手腿:同拆装扳手但库存不递减(无限次用)。"""
-    return _unequip_all(bs, action.row, action.slot) is not None
+    return _unequip_all(gs, action.row, action.slot) is not None
 
 
 def furnace_reroll(rng: random.Random, item_name: str) -> str:
@@ -301,19 +301,19 @@ def furnace_reroll(rng: random.Random, item_name: str) -> str:
     return pool[rng.randrange(len(pool))]
 
 
-def apply_furnace_equip_mode(bs: GameState, item_name: str, *,
+def apply_furnace_equip_mode(gs: GameState, item_name: str, *,
                              rng: random.Random) -> str | None:
     """冶金炉 equip 模式腿:库存摘旧件 → 同类型随机新件入账。
 
     Returns:
         新件名(库存无该件 → None 拒)。
     """
-    owned = list(bs.equips.value or [])
+    owned = list(gs.equips.value or [])
     if item_name not in owned:
         return None
     new_name = furnace_reroll(rng, item_name)
     owned.remove(item_name)
     owned.append(new_name)
-    bs.observe(bs.equips, owned, evidence=sim_evidence('furnace:reroll'),
+    gs.observe(gs.equips, owned, evidence=sim_evidence('furnace:reroll'),
                sig=obs_sig(group_id='sim:furnace'))
     return new_name

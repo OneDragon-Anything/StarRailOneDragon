@@ -36,7 +36,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     apply_prep_action_logic,
-    board_state_of,
+    game_state_of,
     shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_merge_simulate import same_star_count
@@ -323,7 +323,7 @@ _SHOP_MERGE_DEFECT_KIND = 'merge_preview_mismatch'
 
 
 
-def _shop_pool_inputs(bs) -> tuple[list[tuple[str, int]], int]:
+def _shop_pool_inputs(gs) -> tuple[list[tuple[str, int]], int]:
     """商店容器 payload → (参评牌列表, 未识别张数)(纯函数)。
 
     参评 = 有身份牌 ``(name, cost)``;未识别牌(name 空,SIFT miss 占位,
@@ -335,7 +335,7 @@ def _shop_pool_inputs(bs) -> tuple[list[tuple[str, int]], int]:
     from sr_od.application.currency_war.kernel.cw_game_state import (
         shop_cards_to_legacy,
     )
-    payload = bs.shop.value
+    payload = gs.shop.value
     shop = shop_cards_to_legacy(shop_payload_content_cards(payload)) \
         if payload is not None else []
     cards = [(c.name, c.cost) for c in shop if getattr(c, 'name', '')]
@@ -343,7 +343,7 @@ def _shop_pool_inputs(bs) -> tuple[list[tuple[str, int]], int]:
 
 
 
-def _merge_preview_inputs(bs, frame_cards: list | None = None
+def _merge_preview_inputs(gs, frame_cards: list | None = None
                           ) -> tuple[dict[int, bool], dict[int, bool], int]:
     """商店容器 payload → (我方合成旗, 识别读数旗, 未识别张数)(纯函数;
     compare_merge_preview 接线的入参折算单一源)。
@@ -369,9 +369,9 @@ def _merge_preview_inputs(bs, frame_cards: list | None = None
     our: dict[int, bool] = {}
     det: dict[int, bool] = {}
     unnamed = 0
-    bench = list(bench_slots_of(bs))
-    deployed = list(deployed_slots_of(bs))
-    payload = bs.shop.value
+    bench = list(bench_slots_of(gs))
+    deployed = list(deployed_slots_of(gs))
+    payload = gs.shop.value
     shop = shop_cards_to_legacy(shop_payload_content_cards(payload), frame_cards) \
         if payload is not None else []
     for i, c in enumerate(shop):
@@ -585,7 +585,7 @@ class CwScreenPrep(CwScreenOpBase):
         session = self._session()
         if session is not None:
             from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of as _pobs_bs_of,
+                game_state_of as _pobs_gs_of,
             )
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 node_kind_of as _pobs_kind,
@@ -593,8 +593,8 @@ class CwScreenPrep(CwScreenOpBase):
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 shop_cards_to_legacy as _pobs_cards_legacy,
             )
-            _pobs_bs = _pobs_bs_of(session)
-            _node_kind = _pobs_kind(_pobs_bs)
+            _pobs_gs = _pobs_gs_of(session)
+            _node_kind = _pobs_kind(_pobs_gs)
             if _node_kind:
                 session.last_node_type = _node_kind
             # (last_state 写点已随链退役批删除:遗留读者与执行侧装配源
@@ -604,7 +604,7 @@ class CwScreenPrep(CwScreenOpBase):
             # light 沿用缓存更新(视觉域载荷;MED-1 同读屏路径)。raw 牌
             # 缓存域:容器 payload 经 kernel 映射单一源转 legacy 读面
             #(假环境 merge_preview 读取器域结构性为零,§4-6 同申报)。
-            _pobs_payload = _pobs_bs.shop.value
+            _pobs_payload = _pobs_gs.shop.value
             self._cached_shop_cards = (
                 _pobs_cards_legacy(shop_payload_content_cards(_pobs_payload))
                 if _pobs_payload is not None else [])
@@ -732,12 +732,12 @@ class CwScreenPrep(CwScreenOpBase):
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     ChannelSig,
                     bench_view_from_obs,
-                    board_state_of,
+                    game_state_of,
                 )
                 from sr_od.application.currency_war.kernel.cw_reconcile import (
                     is_merge_effect_window,
                 )
-                _bs_obs = board_state_of(session)
+                _gs_obs = game_state_of(session)
                 # R1 渠道签名(§3.2.1):备战帧观察写入 = 渠道①,actor=本 op、
                 # screen=备战建档名、quality=真读标记(承接现役真读/兜底可分
                 # 语义)。
@@ -761,12 +761,12 @@ class CwScreenPrep(CwScreenOpBase):
                     # 逻辑态 bug 留证。原「挂起预期顺延核对」的防噪声语义由此
                     # 承接(原核对半随 expected 机制废除)。
                     if is_merge_effect_window(screen):
-                        log.info('[cw][bs] 合成特效窗内读数不可信 → 本帧观察'
+                        log.info('[cw][gs] 合成特效窗内读数不可信 → 本帧观察'
                                  '不写(保 logic 逻辑态值,下帧干净帧覆盖)')
                     else:
-                        _bs_obs.observe(_bs_obs.bench, _bench_obs, sig=_prep_sig)
+                        _gs_obs.observe(_gs_obs.bench, _bench_obs, sig=_prep_sig)
                 else:
-                    _bs_obs.carry(_bs_obs.bench,
+                    _gs_obs.carry(_gs_obs.bench,
                                   frame=(f'p{_st.plane}-r{_st.round_num}'
                                          if _st is not None else ''),
                                   sig=ChannelSig(
@@ -790,17 +790,17 @@ class CwScreenPrep(CwScreenOpBase):
                         # 下帧干净帧实读覆盖),不落 carried 假新鲜度。
                         pass
                     else:
-                        _bs_obs.observe(_bs_obs.front_row, _dep_rows[0],
+                        _gs_obs.observe(_gs_obs.front_row, _dep_rows[0],
                                         sig=_prep_sig)
-                        _bs_obs.observe(_bs_obs.back_row, _dep_rows[1],
+                        _gs_obs.observe(_gs_obs.back_row, _dep_rows[1],
                                         sig=_prep_sig)
                 else:
                     _dep_frame = (f'p{_st.plane}-r{_st.round_num}'
                                   if _st is not None else '')
-                    _bs_obs.carry(_bs_obs.front_row,
+                    _gs_obs.carry(_gs_obs.front_row,
                                   frame=_dep_frame,
                                   sig=_dep_carried_sig)
-                    _bs_obs.carry(_bs_obs.back_row,
+                    _gs_obs.carry(_gs_obs.back_row,
                                   frame=_dep_frame,
                                   sig=_dep_carried_sig)
                 # 备战帧现行链写端(链观察落地批):slots 由 observe_full
@@ -816,7 +816,7 @@ class CwScreenPrep(CwScreenOpBase):
                 # 不写保现值(宁缺勿造,同 bench 空集守卫族;装备区读不受
                 # 合成特效窗影响,无需 is_merge_effect_window 门)。
                 if obs.owned_equips is not None:
-                    _bs_obs.observe(_bs_obs.equips, list(obs.owned_equips),
+                    _gs_obs.observe(_gs_obs.equips, list(obs.owned_equips),
                                     sig=_prep_sig)
                     # session 镜像全量重写(ADR-0358 搬运链写端随迁):
                     # 商店线权重(state.equips 拷贝)与载体中继兜底的跨访问
@@ -849,9 +849,9 @@ class CwScreenPrep(CwScreenOpBase):
                                                    [(1, _ov_rect)], '')
                         if _ov_chars:
                             _ov_id = _ov_chars[0].char_id or ''
-                _bs_obs.observe(_bs_obs.overflow_warning, _ov_hit,
+                _gs_obs.observe(_gs_obs.overflow_warning, _ov_hit,
                                 sig=_prep_sig)
-                _bs_obs.observe(_bs_obs.overflow_card, _ov_id,
+                _gs_obs.observe(_gs_obs.overflow_card, _ov_id,
                                 sig=_prep_sig)
             # (obs.state 视图合成随黑板槽退役消亡——容器化段 2 消点:
             #  game_state_view 全仓最后活调用清零,决策读自容器单例;
@@ -1068,12 +1068,12 @@ class CwScreenPrep(CwScreenOpBase):
             return dataclasses.replace(obs, spheres=_spheres)
         if isinstance(action, SellBench):
             _sess = self._session()
-            _bs_sell = board_state_of(_sess)
+            _gs_sell = game_state_of(_sess)
             # 溢出腿镜像读数(先读后写):溢出卡身份/旗标在本写口内被消费
             # 清空,镜像判定须取写前值;落地判定 = 写后旗标已清(本调用内
             # 唯一清空者 = 溢出腿,陈旧提案零写分支不清 → 镜像不误发)。
-            _ov_id_pre = str(_bs_sell.overflow_card.value or '')
-            _ov_warn_pre = bool(_bs_sell.overflow_warning.value)
+            _ov_id_pre = str(_gs_sell.overflow_card.value or '')
+            _ov_warn_pre = bool(_gs_sell.overflow_warning.value)
             # 容器域逻辑态直写(容器化段 2:黑板帧 state 复制腿消亡;
             # gold 回金公式单一源 = cw_state.sell_refund,bench 摘槽 =
             # BenchView 重建 write_logic——写口内自持陈旧提案守卫;
@@ -1084,7 +1084,7 @@ class CwScreenPrep(CwScreenOpBase):
             # tracked 主账(容器腿/执行账同帧同源,商店播种守卫对拍
             # 不因本腿分叉)。
             apply_prep_action_logic(
-                _bs_sell, action,
+                _gs_sell, action,
                 produced_by='CwScreenPrep',
                 sig=ChannelSig(family='logic_action', actor='CwScreenPrep'),
                 session=_sess)
@@ -1096,7 +1096,7 @@ class CwScreenPrep(CwScreenOpBase):
                       if bc is None or getattr(bc, 'slot', None) != _slot_key]
             _free = (getattr(obs, 'free_bench_slots', 0) or 0)
             if _ov_warn_pre and _ov_id_pre \
-                    and _bs_sell.overflow_warning.value is False:
+                    and _gs_sell.overflow_warning.value is False:
                 # 黑板帧镜像(溢出腿):溢出卡当帧入位,腾出槽即刻回占——
                 # 入位卡补进黑板 bench,free 不 +1(与容器腿/tracked 吸收
                 # 同帧同源;缺镜像 = 决策面假空席,席满拒落类门被假象绕过)。
@@ -1108,9 +1108,9 @@ class CwScreenPrep(CwScreenOpBase):
                 obs, bench_chars=_bench,
                 free_bench_slots=_free + 1)
         if isinstance(action, DeployMove):
-            _bs = board_state_of(self._session())
+            _gs = game_state_of(self._session())
             apply_prep_action_logic(
-                _bs, action, produced_by='CwScreenPrep',
+                _gs, action, produced_by='CwScreenPrep',
                 sig=ChannelSig(family='logic_action', actor='CwScreenPrep'))
             # 黑板帧键 = SIFT 槽位信息位(同上);落位槽 = 本帧 deployed
             # 视图首空(kernel empty_deploy_slots 单一源,与发射位
@@ -1153,9 +1153,9 @@ class CwScreenPrep(CwScreenOpBase):
                 front_occupied=_front, back_occupied=_back,
                 free_bench_slots=(getattr(obs, 'free_bench_slots', 0) or 0) + 1)
         if isinstance(action, SellDeployed):
-            _bs = board_state_of(self._session())
+            _gs = game_state_of(self._session())
             apply_prep_action_logic(
-                _bs, action, produced_by='CwScreenPrep',
+                _gs, action, produced_by='CwScreenPrep',
                 sig=ChannelSig(family='logic_action', actor='CwScreenPrep'))
             # 容器下标 → (排, 槽号) 读键映射 = kernel deployed_row_slot
             # 单一函数(执行坐标边换算收口);黑板帧 deployed 是 SIFT 物理
@@ -1168,9 +1168,9 @@ class CwScreenPrep(CwScreenOpBase):
             return dataclasses.replace(obs, deployed_chars=_deployed)
         if isinstance(action, LevelUp):
             # 视觉帧零变;容器域 xp/level/gold(action.cost 直写)推进
-            _bs = board_state_of(self._session())
+            _gs = game_state_of(self._session())
             apply_prep_action_logic(
-                _bs, action, produced_by='CwScreenPrep',
+                _gs, action, produced_by='CwScreenPrep',
                 sig=ChannelSig(family='logic_action', actor='CwScreenPrep'))
             return obs
         if isinstance(action, WearEquip):
@@ -1257,8 +1257,8 @@ class CwScreenPrep(CwScreenOpBase):
                 return _no_write   # 库存未观察/目标已消失 → 零写留观察
             if isinstance(action, PrivilegeCardUse):
                 # 库存腿确定变换(桥;容器写端 + 帧面镜像)
-                bs = board_state_of(self._session())
-                apply_tool_execution_write(bs, tool_name,
+                gs = game_state_of(self._session())
+                apply_tool_execution_write(gs, tool_name,
                                            target_equip_name=tgt,
                                            frame=f'tool_{tool_name}')
                 new_name = privilege_counterpart(tgt)
@@ -1368,7 +1368,7 @@ class CwScreenPrep(CwScreenOpBase):
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 round_num_of as _r_of,
             )
-            _bs_def = board_state_of(self._session())
+            _gs_def = game_state_of(self._session())
             exp_txt = (f'{expect.kind} identity={expect.identity} '
                        f'from_bench_idx={expect.from_bench_idx}'
                        + (f' target_row={expect.target_row}'
@@ -1378,8 +1378,8 @@ class CwScreenPrep(CwScreenOpBase):
             defects.record_defect(
                 _DRAG_DEFECT_SURFACE, _DRAG_DEFECT_KIND,
                 expected=exp_txt, observed=obs_txt,
-                plane=int(_p_of(_bs_def)),
-                round_num=int(_r_of(_bs_def)),
+                plane=int(_p_of(_gs_def)),
+                round_num=int(_r_of(_gs_def)),
                 gap_large=True,
                 verdict=('留证-拖动后期望态与定型帧实读不一致(身份未识别槽不评;'
                          '单次 L1,复现自动升 L0,停线由分级安灯承接;本对账'
@@ -1427,7 +1427,7 @@ class CwScreenPrep(CwScreenOpBase):
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 round_num_of as _r_of,
             )
-            _bs_def = board_state_of(self._session())
+            _gs_def = game_state_of(self._session())
             exp_txt = (f'buy {expect.summary} 总价{expect.total_cost}'
                        + ('(低置信:满栏自动多买)' if expect.low_confidence else ''))
             obs_txt = ';'.join(f"{m['domain']}槽{m['slot']} 期望[{m['expected']}] "
@@ -1440,8 +1440,8 @@ class CwScreenPrep(CwScreenOpBase):
                 _rec = state.get_recorder()
                 _dir = getattr(_rec, 'replay_dir', None) if _rec else None
                 if _dir:
-                    _tag = (f"p{int(_p_of(_bs_def))}"
-                            f"-r{int(_r_of(_bs_def))}")
+                    _tag = (f"p{int(_p_of(_gs_def))}"
+                            f"-r{int(_r_of(_gs_def))}")
                     evidence = _save_buy_evidence(
                         str(_dir), _tag, expect, mism, frame,
                         _ctx_slots(self.ctx, '备战栏', 9))
@@ -1450,8 +1450,8 @@ class CwScreenPrep(CwScreenOpBase):
             defects.record_defect(
                 _DRAG_DEFECT_SURFACE, _BUY_DEFECT_KIND,
                 expected=exp_txt, observed=obs_txt,
-                plane=int(_p_of(_bs_def)),
-                round_num=int(_r_of(_bs_def)),
+                plane=int(_p_of(_gs_def)),
+                round_num=int(_r_of(_gs_def)),
                 gap_large=True,
                 verdict=('留证-买牌后期望态与定型帧实读不一致(仅评增量槽;'
                          '身份未识别槽不评;单次 L1,复现自动升 L0,停线由'
@@ -1540,10 +1540,10 @@ class CwScreenPrep(CwScreenOpBase):
                 plane_of,
                 round_num_of,
             )
-            _bs = board_state_of(session)
-            display = _bs.xp.value
-            level_obs = int(level_of(_bs))
-            key = (int(plane_of(_bs)), int(round_num_of(_bs)))
+            _gs = game_state_of(session)
+            display = _gs.xp.value
+            level_obs = int(level_of(_gs))
+            key = (int(plane_of(_gs)), int(round_num_of(_gs)))
             if not led.anchored:
                 if display is not None and level_obs > 0:
                     led.level, led.xp_cur = level_obs, display[0]
@@ -1614,7 +1614,7 @@ class CwScreenPrep(CwScreenOpBase):
             if session is None:
                 return
             computed = board_from_tracked(
-                list(board_state_of(session).tracked_books.deployed or []))
+                list(game_state_of(session).tracked_books.deployed or []))
             if computed is None:
                 return
             frame = getattr(self, 'last_screenshot', None)
@@ -1628,9 +1628,9 @@ class CwScreenPrep(CwScreenOpBase):
                 plane_of,
                 round_num_of,
             )
-            _bs = board_state_of(session)
-            plane = int(plane_of(_bs))
-            round_num = int(round_num_of(_bs))
+            _gs = game_state_of(session)
+            plane = int(plane_of(_gs))
+            round_num = int(round_num_of(_gs))
             if result.mismatch_count <= 0:
                 # 不一致为零也留一条 debug(含不评口径计数),频率统计靠台账
                 # 数据说话,不在此落账;行名并入见 faction_display_ok_debug_line
@@ -1689,11 +1689,11 @@ class CwScreenPrep(CwScreenOpBase):
                 plane_of,
                 round_num_of,
             )
-            _bs = board_state_of(session)
-            cards, unnamed = _shop_pool_inputs(_bs)
+            _gs = game_state_of(session)
+            cards, unnamed = _shop_pool_inputs(_gs)
             if not cards:
                 return
-            violations = check_shop_pool(cards, int(level_of(_bs)), None)
+            violations = check_shop_pool(cards, int(level_of(_gs)), None)
             if not violations:
                 return
             obs_txt = ';'.join(f'{v.name}/{v.cost}:{v.kind}({v.detail})'
@@ -1702,8 +1702,8 @@ class CwScreenPrep(CwScreenOpBase):
                 _SHOP_DEFECT_SURFACE, _SHOP_POOL_DEFECT_KIND,
                 expected='0 违例(五牌两查)',
                 observed=obs_txt,
-                plane=int(plane_of(_bs)),
-                round_num=int(round_num_of(_bs)),
+                plane=int(plane_of(_gs)),
+                round_num=int(round_num_of(_gs)),
                 gap_large=True,
                 verdict=('留证-商店牌卡池一致性违例(tier_locked=该费用档本'
                          '等级概率为0,牌识别错或等级读错;invalid_cost=费用'
@@ -1711,7 +1711,7 @@ class CwScreenPrep(CwScreenOpBase):
                          '降级未做;零决策记账,单次 L1,复现升 L0 由分级'
                          '安灯承接)'),
                 refs=[{'field': k, 'value': v} for k, v in (
-                    ('level', str(int(level_of(_bs)))),
+                    ('level', str(int(level_of(_gs)))),
                     ('cards', str(len(cards))),
                     ('unnamed', str(unnamed)),
                     ('pool_state', 'None(池查降级)'))],
@@ -1751,9 +1751,9 @@ class CwScreenPrep(CwScreenOpBase):
                 plane_of,
                 round_num_of,
             )
-            _bs = board_state_of(session)
+            _gs = game_state_of(session)
             our, det, unnamed = _merge_preview_inputs(
-                _bs, frame_cards=(self._cached_shop_cards or None))
+                _gs, frame_cards=(self._cached_shop_cards or None))
             if not our:
                 return
             result = compare_merge_preview(our, det)
@@ -1767,8 +1767,8 @@ class CwScreenPrep(CwScreenOpBase):
                 _SHOP_DEFECT_SURFACE, _SHOP_MERGE_DEFECT_KIND,
                 expected='0 mismatch(合成预览=我方同名同星持有>0 vs 识别✦>0)',
                 observed=obs_txt,
-                plane=int(plane_of(_bs)),
-                round_num=int(round_num_of(_bs)),
+                plane=int(plane_of(_gs)),
+                round_num=int(round_num_of(_gs)),
                 gap_large=True,
                 verdict=('留证-商店牌合成预览对账不一致(our_suspect=我方算'
                          '有副本而识别无✦=合成计算嫌疑或识别暗相漏检,双义'
@@ -1890,15 +1890,15 @@ class CwScreenPrep(CwScreenOpBase):
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 round_num_of as _r_of,
             )
-            _bs_def = board_state_of(self._session())
+            _gs_def = game_state_of(self._session())
             obs_txt = ';'.join(f"{m['slot']} 期望[{m['expected']}] "
                                f"实读[{m['observed']}]" for m in mism)
             defects.record_defect(
                 _EQUIP_DEFECT_SURFACE, _EQUIP_DEFECT_KIND,
                 expected=f'equip {expect.summary}',
                 observed=obs_txt,
-                plane=int(_p_of(_bs_def)),
-                round_num=int(_r_of(_bs_def)),
+                plane=int(_p_of(_gs_def)),
+                round_num=int(_r_of(_gs_def)),
                 gap_large=True,
                 verdict=('留证-装备拖拽期望态与装备区实读不一致(穿戴读精度未验证'
                          '按不评口径;equip=中决策相关面,'
@@ -2181,7 +2181,7 @@ class CwScreenPrep(CwScreenOpBase):
         """段2 reconcile(架构设计 §5.1):对账。
 
         - GameState 帧写入半已在适配器①识别链内完成(read_game_state
-          ._feed_board_state 观察流[observe/carry/prior/leave_screen/relay]
+          观察流[observe/carry/prior/leave_screen/relay]
           + _observe 的备战席观察写端[P2-1 空集失读守卫/P3-10 特效窗
           观察顺延门])——识别质量机制归实机实现内部,对端口契约不可见
           (§2.3;obs.state 消费视图随黑板槽退役消亡,容器化段 2);
@@ -2640,7 +2640,7 @@ class CwScreenPrep(CwScreenOpBase):
         失败不影响环。
         """
         sess = self._session()
-        _nd = (board_state_of(sess).node.value
+        _nd = (game_state_of(sess).node.value
                if sess is not None else None)
         plane = int(_nd.plane) if _nd is not None else 0
         rnd = int(_nd.round_num) if _nd is not None else 0
@@ -2843,10 +2843,10 @@ class CwScreenPrep(CwScreenOpBase):
         if session is None:
             return None
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of,
+            game_state_of,
         )
-        bs = board_state_of(session)
-        entries = bs.effects.entries
+        gs = game_state_of(session)
+        entries = gs.effects.entries
         hit = sorted({e.spec.name for e in entries
                       if e.spec.name in self._SPEC_INVEST_WATCH_NAMES})
         if not hit:
@@ -2906,7 +2906,7 @@ class CwScreenPrep(CwScreenOpBase):
         except Exception:  # noqa: BLE001
             _jp = '读失败'
         try:
-            _ver: int | None = bs.current_version()
+            _ver: int | None = gs.current_version()
         except Exception:  # noqa: BLE001
             _ver = None
         try:
@@ -2916,7 +2916,7 @@ class CwScreenPrep(CwScreenOpBase):
             _run_id = current_run_id() or '(无)'
         except Exception:  # noqa: BLE001
             _run_id = '(读失败)'
-        _nd = board_state_of(session).node.value
+        _nd = game_state_of(session).node.value
         _pos = (f"p{_nd.plane}r{_nd.round_num}"
                 if _nd is not None else '(节点未观察)')
         # sentinel flag(三要素:触发定位 / 可执行处理步骤 / 删除条件;临时
@@ -3016,7 +3016,7 @@ class CwScreenPrep(CwScreenOpBase):
         # 安灯 gold_open 编排壳显式捕获(迁移批 3.2 换轨;对抗 F2-3:Field
         # 单最新帧无历史,禁事后从容器回取历史帧——visit 入口现读暂存)。
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of as _bs_of_open,
+            game_state_of as _gs_of_open,
         )
         from sr_od.application.currency_war.kernel.cw_game_state import (
             gold_of as _gold_of_open,
@@ -3027,7 +3027,7 @@ class CwScreenPrep(CwScreenOpBase):
         from sr_od.application.currency_war.operations.cw_screen.cw_screen_buy_cards import (
             run_buy_waves,
         )
-        _gold_open = _gold_of_open(_bs_of_open(match.session))
+        _gold_open = _gold_of_open(_gs_of_open(match.session))
         _rr, ledger = run_buy_waves(self, match)
         if _rr is not None or ledger is None:
             return (False, f'买牌循环未完成'
@@ -3074,7 +3074,7 @@ class CwScreenPrep(CwScreenOpBase):
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     round_num_of as _r_of,
                 )
-                _bs_def = board_state_of(session)
+                _gs_def = game_state_of(session)
                 _dep_post = read_deployed_count(self.ctx, self.last_screenshot)
                 if _dep_post is not None and _dep_post - acct['dep_pre'] != acct['dep_delta']:
                     _gap = _dep_post - acct['dep_pre']
@@ -3082,8 +3082,8 @@ class CwScreenPrep(CwScreenOpBase):
                         'deployed', 'invariant_break',
                         expected=f'{key} 执行后 paddle={acct["dep_pre"] + acct["dep_delta"]}',
                         observed=f'paddle={_dep_post}',
-                        plane=int(_p_of(_bs_def)),
-                        round_num=int(_r_of(_bs_def)),
+                        plane=int(_p_of(_gs_def)),
+                        round_num=int(_r_of(_gs_def)),
                         gap=float(_gap), gap_large=True,
                         reader_source='paddle_action_audit',
                         note='部署/卖出动作级即时对拍(§2.3;与 deployed_align 自动纠漂分立)')
@@ -3164,7 +3164,7 @@ class CwScreenPrep(CwScreenOpBase):
                     _seq = [s.node_type for s in _all if s.node_type]
                     # 位面锚 = 容器节点读口(last_state 链退役换源;节点
                     # 未观察 = None,槽序表首帧写入退开局语义不变)。
-                    _nd_now = (board_state_of(self.ctx.cw_match.session)
+                    _nd_now = (game_state_of(self.ctx.cw_match.session)
                                .node.value
                                if self.ctx.cw_match is not None else None)
                     _plane_now = (_nd_now.plane if _nd_now is not None
@@ -3370,6 +3370,8 @@ def _write_prep_node_chain(session: object, slots: list | None,
     if session is None or not slots:
         return
     try:
+        import time as _diff_time
+
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             get_node_ledger,
         )
@@ -3381,16 +3383,15 @@ def _write_prep_node_chain(session: object, slots: list | None,
         from sr_od.application.currency_war.obs.cw_node_reader import (
             HU_DIST_UNRECOGNIZED,
         )
-        import time as _diff_time
-        bs = board_state_of(session)
-        nd = bs.node.value
+        gs = game_state_of(session)
+        nd = gs.node.value
         if nd is None or not nd.round_num:
             return
         ordered = sorted(slots, key=lambda s: s.idx)
         cur = next((s for s in ordered if s.state == 'current'), None)
         if cur is None or cur.idx != int(nd.round_num) - 1:
             return   # 轮位对齐门:Hough 漏检左移的错位帧拒写
-        prev = bs.node_path.value
+        prev = gs.node_path.value
         carry = None
         if isinstance(prev, NodeChain) and prev.plane == nd.plane \
                 and 0 <= cur.idx < len(prev.seq):
@@ -3417,9 +3418,9 @@ def _write_prep_node_chain(session: object, slots: list | None,
             else:
                 cells.append(TokenCell(None, 'none'))
         chain = NodeChain(plane=int(nd.plane), seq=cells)
-        bs.observe(bs.node_path, chain, evidence='prep_row', sig=sig)
-        if bs.node_path_baseline.value is None:
-            bs.observe(bs.node_path_baseline, chain,
+        gs.observe(gs.node_path, chain, evidence='prep_row', sig=sig)
+        if gs.node_path_baseline.value is None:
+            gs.observe(gs.node_path_baseline, chain,
                        evidence='prep_row_first', sig=sig)
         ledger = get_node_ledger(session)
         was_open = (ledger is not None
@@ -3427,7 +3428,7 @@ def _write_prep_node_chain(session: object, slots: list | None,
         if ledger is not None:
             ledger.env_grace_until = 0.0
         # 链 diff 触发(窗内豁免清候选,窗关后按两帧确认补比对)
-        maybe_emit_chain_diff(bs, snapshot=False,
+        maybe_emit_chain_diff(gs, snapshot=False,
                               in_mutation_window=was_open, sig=sig)
     except Exception:   # noqa: BLE001  观测写点 best-effort,不阻塞观察链
         pass
@@ -3502,7 +3503,7 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
     #  退役删除——删除波 1;金对拍冲突留证(下方 obs_conflict,收编
     #  journal obs_event)照常。)
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of as _fb_bs_of,
+        game_state_of as _fb_gs_of,
     )
     from sr_od.application.currency_war.kernel.cw_game_state import (
         gold_of as _fb_gold_of,
@@ -3516,13 +3517,13 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
     from sr_od.application.currency_war.kernel.cw_game_state import (
         round_num_of as _fb_round_of,
     )
-    _fb_bs = _fb_bs_of(match.session)
+    _fb_gs = _fb_gs_of(match.session)
     # ADR-0329 件2:gold 差值对拍纳入卖入——卖出接线后,卖轮实际金 =
     # 开店金 − 花出 + 卖入(游戏侧卖出入账);旧口径不含卖入与实读金恒差
     # income → 每卖轮误报 gold_delta 冲突留证(design 章2.7 必改项)。
     # 基线缺读兜底 = 容器现读(旧 outcome.state.gold 回退同型)。
     _expected = expected_gold_after_actions(
-        gold_open if gold_open is not None else _fb_gold_of(_fb_bs),
+        gold_open if gold_open is not None else _fb_gold_of(_fb_gs),
         _spend, total_sell_income)
     if _final_gold is not None and abs(_final_gold - _expected) > 2:
         from sr_od.application.currency_war.kernel.cw_observe import (
@@ -3531,7 +3532,7 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
         _oc('gold_delta', _expected, _final_gold, None,
             verdict='留证-动作账vs读数不等(stylized漏读/cost错/未观收入)',
             source='shop_spend_audit',
-            plane=_fb_plane_of(_fb_bs), round_num=_fb_round_of(_fb_bs),
+            plane=_fb_plane_of(_fb_gs), round_num=_fb_round_of(_fb_gs),
             spend=_spend)
     # (`w577_refresh_fee_and_andon/` 执行事实暂存 set_unit_exec_facts 已随
     #  spend_ledger 流写入端退役删除——删除波 1;计划≠尝试可见化的现役
@@ -3541,6 +3542,6 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
         f'plan 买{total_buy}张 经验{total_xp_buy}击 刷{total_refresh}次 '
         f'卖{total_sell}张(+{total_sell_income}金,'
         f'守卫拦{ledger.total_sell_skip}) '
-        f'(gold={_fb_gold_of(_fb_bs)} lv={_fb_level_of(_fb_bs)} '
-        f'plane={_fb_plane_of(_fb_bs)})'
+        f'(gold={_fb_gold_of(_fb_gs)} lv={_fb_level_of(_fb_gs)} '
+        f'plane={_fb_plane_of(_fb_gs)})'
     )

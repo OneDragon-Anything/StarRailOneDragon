@@ -12,7 +12,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
-    board_state_of,
+    game_state_of,
 )
 
 # 下行守卫标定常量(值单一源 = 注册表;cw_reconcile 只消费)
@@ -190,7 +190,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     # 守卫:跳过 None 槽(空槽在对账语义里=无信息,不是冲突)。
     # 旧账基准 = game state 簿记(宿主 = GameState.
     # tracked_books,本函数 = game state 层内部实现,就地处置)。
-    _books = board_state_of(session).tracked_books
+    _books = game_state_of(session).tracked_books
     old_b = [(bc.char_id, bc.star) for bc in _books.bench
              if bc is not None]
     old_d = [(bc.char_id, bc.star) for bc in _books.deployed
@@ -217,7 +217,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     # ②超额证据采新:名级最高读星低于锚定星连续 STAR_DOWNGRADE_CONFIRM_
     #   FRAMES 帧一致(帧态门帧不计数)才确认真回退采新——N 推导见常量注。
     _pend = dict(getattr(session, 'star_pending_regression', {}) or {})
-    _tracked_bench_now = board_state_of(session).tracked_books.bench
+    _tracked_bench_now = game_state_of(session).tracked_books.bench
     # 名级锚比较:每名只取**最高读星**对**最高旧星(锚定星)**仲裁一次。
     # 旧实现按 (名,星) 对逐副本比较——同名 1/2/3★ 三副本并存时,2★/1★
     # 真实副本各被判一次「回退」并连环触发误抬(run_20260915_054718 §5
@@ -336,12 +336,12 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
             # ——容器观察态字段置 True(策略商店门放行;bench 读失败/双空
             # 读守卫/槽号健康门拒绝不走此处 = 保持未观察)。best-effort:
             # 容器缺席/写失败不阻断对账主链(簿记已照常写回)。
-            board_state_of(session).tracked_books.bench = bench_from_compact(
+            game_state_of(session).tracked_books.bench = bench_from_compact(
                 _merge_equips(_books.bench, bench))
             _bench_written = True
             try:
-                board_state_of(session).write_logic(
-                    board_state_of(session).tracked_account_observed, True,
+                game_state_of(session).write_logic(
+                    game_state_of(session).tracked_account_observed, True,
                     produced_by=f'reconcile_tracking:{source}',
                     evidence='observation_anchor',
                     sig=ChannelSig(family='logic_action',
@@ -370,8 +370,8 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             deployed_from_compact,
         )
-        board_state_of(session).tracked_books.deployed = deployed_from_compact(
-            _merge_equips(board_state_of(session).tracked_books.deployed,
+        game_state_of(session).tracked_books.deployed = deployed_from_compact(
+            _merge_equips(game_state_of(session).tracked_books.deployed,
                           deployed))
     if drifted:
         log.warning(f'[cw!][{source}] 对账纠漂(read≠tracking):bench {old_b}→{new_b} |'

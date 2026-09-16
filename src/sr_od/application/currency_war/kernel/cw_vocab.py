@@ -21,8 +21,8 @@ docs/develop/sr_od/application/currency_war/game_state/fields.md §9。
 
 **终态消费面声明**(过渡期双职责已收口):实机执行链的观察工作载体
 职责随 last_state 链退役批终结——session.last_state 槽已删除,三写点
-与 OCR 填帧链的局内事实宿主 = 容器单例(喂入 = read_game_state 漏斗
-``_feed_board_state`` / sim 合成口 ``synthesize_from_game_state``)。
+与 OCR 填帧链的局内事实宿主 = 容器单例(喂入 = read_game_state 漏斗 /
+sim 合成口 ``synthesize_from_game_state``)。
 本类现役消费面 = 推演内核(sim 引擎/engine runner/机制等价性验证锁 M1
 /假环境动作语义逻辑态推算),实机操作链零持有;退役指针(申报面 =
 kernel/cw_intention.py ``committed_authority`` 形态注)已兑现。
@@ -224,7 +224,7 @@ class CwSimFrame:
     # bench 是否真读到(对齐 board_readable 门模式;消费口 = 合成口
     # cw_game_state.synthesize_from_game_state 的 bench 写门)。空表双义与
     # board 同形:「真真空(全部署)」≠「漏斗未读」——v1 漏斗不读 bench
-    # 身份(read_game_state,席位通道声明见 cw_observation._feed_board_state),
+    # 身份(read_game_state,席位通道声明见 cw_observation.read_game_state),
     # 其帧恒带默认空表,合成若不设门会把容器内 prep 装配环的真读观察
     # 覆盖成「9 槽全空」(未读域≠真空域;禁拿 CwSimFrame 兜底默认值当
     # 观察)。sim 真值帧恒可读(缺省 True),行为不变。
@@ -239,7 +239,7 @@ class CwSimFrame:
     equips: list[str] = field(default_factory=list)
     front_max: int = 4    # 前排槽位上限(恒 4,非观察事实;板容量封顶 = 4 + back_max,见下)
     # [供数收口] 本字段 = 全部容量消费的供数收口(max_units 封顶/back_overflow
-    # 阈值/back_left 空位/排路由),动态真值 = BoardState.back_layout(三信号
+    # 阈值/back_left 空位/排路由),动态真值 = GameState.back_layout(三信号
     # 裁决,值域 6-9:平常 6,宝钻/召唤物扩展上限 9,机制正本 =
     # board_structure.md;6/7/8/9 四档均已交互建档,>9 域外按 8 格超集 + superset 标记
     # 运行)。默认 6 = 机制基线,仅作容器空壳引导窗兜底,勿当真值源。
@@ -282,7 +282,7 @@ class CwSimFrame:
     def max_units(self) -> int:
         """可上阵数:deploy_cap 真值(= level + 宝钻,ADR-0286)优先,level 兜底;
         封顶 = front_max + back_max = 4 + back_max(back_max 动态真值 =
-        BoardState.back_layout,值域 6-9 → 封顶值域 10-13;基线局 4+6=10)。
+        GameState.back_layout,值域 6-9 → 封顶值域 10-13;基线局 4+6=10)。
 
         全部消费点(decision_v2/kernel/operations)经本单点收口——cap 接线只改此处即全接。
         deploy_cap < level(防抖漏网噪声)视为不可信,兜底 level。
@@ -306,7 +306,7 @@ class CwSimFrame:
     def bench_is_full(self) -> bool:
         """备战席是否满 = 占用派生(bench_occupied >= BENCH_CAPACITY,§3.2.5)。
 
-        席满判定正本 = BoardState 派生(kernel/cw_game_state.bench_is_full,
+        席满判定正本 = GameState 派生(kernel/cw_game_state.bench_is_full,
         同式同源);本类无警告位字段(「备战席已满」警告太短暂不可靠采样,
         通道退役有测试墓碑,§3.2.5)。
         """

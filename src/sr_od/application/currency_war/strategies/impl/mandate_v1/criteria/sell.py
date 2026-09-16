@@ -42,14 +42,14 @@ if TYPE_CHECKING:
 def line_switch_sell(old_line_members: tuple[str, ...],
                      new_line_members: tuple[str, ...],
                      bench: list[BenchChar], deployed: list[BenchChar],
-                     bs: GameState, *, k_switched: bool,
+                     gs: GameState, *, k_switched: bool,
                      counters: dict | None = None,
                      dedup_names: set[str] | None = None,
                      merge_guard_release: frozenset[str] | set[str] = frozenset(),
                      ) -> tuple[list[int], str]:
     """换线塌缩出口(§2.2 主比较式的发射位;k_switched=K 已按 K′ 更新)。
 
-    载体 = 容器 bs(prep 链容器化段 2 起 bs 单形态;CwSimFrame 过渡支
+    载体 = 容器 gs(prep 链容器化段 2 起 gs 单形态;CwSimFrame 过渡支
     随段 2 帧兼容支删除消亡)。
 
     返回 (拟卖 bench slot 列表, 归因键)。发射前置:
@@ -97,7 +97,7 @@ def line_switch_sell(old_line_members: tuple[str, ...],
     from sr_od.application.currency_war.kernel.cw_game_state import (
         deployed_slots_of,
     )
-    _deployed = deployed_slots_of(bs)
+    _deployed = deployed_slots_of(gs)
     if empty_board_sell_blocked(_deployed, counters=counters):
         return [], EMPTY_BOARD_SELL_GUARD_KEY
     out: list[int] = []
@@ -282,8 +282,8 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
                          ) -> tuple[list[int], str]:
     """「支付能力变现」子域(R13-5/R14-4:支付支撑通道,两臂同开)。
 
-    载体 = 容器 bs 单形态(prep 链容器化段 2;prep 位/商店线消费恒直传
-    bs,CwSimFrame 过渡支随段 2 帧兼容支删除消亡)。
+    载体 = 容器 gs 单形态(prep 链容器化段 2;prep 位/商店线消费恒直传
+    gs,CwSimFrame 过渡支随段 2 帧兼容支删除消亡)。
 
     触发 = 骨架义务动作金不足(gold < need_gold,硬约束①不满足侧的
     筹资面);变现对象 = 凑息档序同资格(占位件物理门 ∧ 1★ ∧ 无后台

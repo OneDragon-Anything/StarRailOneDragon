@@ -157,8 +157,8 @@ def journal_refs(*extra: dict[str, str] | None) -> list[dict[str, str]]:
     过滤。本函数在 kernel 出口模块 = 四域(obs/kernel/operations/telemetry)
     调用点共一形态,禁散写第二套键格式。
     """
-    bs = obs_event_board()
-    version = int(bs.current_version()) if bs is not None else 0
+    gs = obs_event_board()
+    version = int(gs.current_version()) if gs is not None else 0
     rid = current_run_id()
     out: list[dict[str, str]] = []
     if rid and version > 0:

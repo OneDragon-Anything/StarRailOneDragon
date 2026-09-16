@@ -204,13 +204,13 @@ class CurrencyWarApp(SrApplication):
         # 行型 2 的宿主供给,与 run_id provider 同点注入)。
         from sr_od.application.currency_war.kernel import cw_telemetry_exit
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of,
+            game_state_of,
         )
 
         def _obs_event_board():
             _sess = getattr(getattr(self.ctx, 'cw_match', None),
                             'session', None)
-            return board_state_of(_sess) if _sess is not None else None
+            return game_state_of(_sess) if _sess is not None else None
 
         cw_telemetry_exit.set_obs_event_board_provider(_obs_event_board)
         SrApplication.__init__(

@@ -70,10 +70,10 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 ### 3.3 域清单
 
 统一 state 按域组织(域=字段分组,读不分域;写入域准入白名单=迁移批裁定硬
-约束,逐格以实码写点全集为准;域键=bs_schema 键,字段全集逐字段规格 =
+约束,逐格以实码写点全集为准;域键=gs_schema 键,字段全集逐字段规格 =
 [fields.md](fields.md)):
 
-| 域(bs_schema 键) | 字段全集 | 主写渠道 |
+| 域(gs_schema 键) | 字段全集 | 主写渠道 |
 |---|---|---|
 | 节点域(node) | node(NodeKey)/ node_path | ①观察+③派生(见 node-domain.md) |
 | 派生域(derivation) | top_bar_raw(观察层)/ node_ord(逻辑层)/ prev_screen / current_screen / node_hist_ord(哨兵) | ①观察+③派生(见 node-domain.md §2-§3) |
@@ -91,7 +91,7 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | 效果账本域(effects) | effects(ActiveEffectInventory 实例清单;非 Field 载体) | inventory 方法域(随快照行自带) |
 | 动作回执域(receipts) | receipts(滚动窗,容量常量 RECEIPTS_WINDOW_CAP) | ②动作 |
 | 局终域(match_final) | match_final(一段终态一行;恢复局跨段多行) | ③局终收口 |
-| 工程结构(非 Field) | schema_version / bs_schema / frame_obs / write_seq / hb_prev_seq / hb_stall_count / created_monotonic | 构造/迁移写 |
+| 工程结构(非 Field) | schema_version / gs_schema / frame_obs / write_seq / hb_prev_seq / hb_stall_count / created_monotonic | 构造/迁移写 |
 
 渠道族封闭集 = obs(画面 op 观察)/ logic_action(动作 op 逻辑计算)/ logic_hook
 (state 内部派生逻辑计算);carried/prior/synthesized 是 obs 族内子模,非第四源。

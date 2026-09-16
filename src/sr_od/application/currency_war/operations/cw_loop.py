@@ -186,8 +186,8 @@ def _battle_chain_deploy_moves(session) -> list:
     )
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_slots_of,
-        board_state_of,
         deployed_slots_of,
+        game_state_of,
         gold_of,
         level_of,
         max_units_of,
@@ -199,21 +199,21 @@ def _battle_chain_deploy_moves(session) -> list:
         MandateFrame,
         _deploy_plan_inputs,
     )
-    bs = board_state_of(session)
-    bench_slots = bench_slots_of(bs)
+    gs = game_state_of(session)
+    bench_slots = bench_slots_of(gs)
     bench = [b for b in bench_slots if b is not None]
-    deployed = [d for d in deployed_slots_of(bs) if d is not None]
-    _node = bs.node.value
+    deployed = [d for d in deployed_slots_of(gs) if d is not None]
+    _node = gs.node.value
     frame = MandateFrame(
-        gold=gold_of(bs), level=level_of(bs),
-        bench=bench, deployed=deployed, deploy_cap=max_units_of(bs),
+        gold=gold_of(gs), level=level_of(gs),
+        bench=bench, deployed=deployed, deploy_cap=max_units_of(gs),
         node_type=None, stop_flag=False, k_members=(),
         round_num=int(_node.round_num) if _node is not None else 1)
-    _inputs = _deploy_plan_inputs(frame, session, bs)
+    _inputs = _deploy_plan_inputs(frame, session, gs)
     up, _held, _reasons = select_deployments_reasoned(**_inputs)
     if not up:
         return []
-    _back_total = int(bs.back_layout.value or 6)
+    _back_total = int(gs.back_layout.value or 6)
     front_empty, back_empty = empty_deploy_slots(
         deployed, front_total=4, back_total=_back_total)
     # 容器下标解析(换算收口,unified-action-factory 批2b):bench 源取
@@ -325,13 +325,13 @@ def readiness_admission_report(state, comp) -> dict:
     (发射面观测批迁出:sim 桶不可依 app 桶——包依赖矩阵 LEGAL_EDGES,
     纯判据入 kernel 后 sim 引擎/cw_loop/测试三方共用;线成员谓词由本
     调用面注入同一单一源,禁各面自写第二实现)。判据语义、三元口径与
-    **帧对齐说明**(预估源 = 容器单例 board_state_of,T-146 装配源迁移
+    **帧对齐说明**(预估源 = 容器单例 game_state_of,T-146 装配源迁移
     ——旧 last_state 滞后帧+过渡桥装箱退役;单例与滞后帧同为备战观察
     写端刷新,预估显影非拦截,一轮滞后语义本就可接受)见彼处 docstring。
     ``state`` = session(容器单例取源)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of,
+        game_state_of,
     )
     from sr_od.application.currency_war.kernel.cw_launch_admission import (
         launch_admission_report,
@@ -339,7 +339,7 @@ def readiness_admission_report(state, comp) -> dict:
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         line_members,
     )
-    return launch_admission_report(board_state_of(state), comp,
+    return launch_admission_report(game_state_of(state), comp,
                                    line_members=line_members)
 
 
@@ -430,12 +430,12 @@ def _dispatch_pos(ctx: Any) -> tuple[int, int]:
     if sess is None:
         return (0, 0)
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of,
+        game_state_of,
         plane_of,
         round_num_of,
     )
-    _bs = board_state_of(sess)
-    return (int(plane_of(_bs) or 0), int(round_num_of(_bs) or 0))
+    _gs = game_state_of(sess)
+    return (int(plane_of(_gs) or 0), int(round_num_of(_gs) or 0))
 
 
 def _log_cw_op(op_name: str, pos: tuple[int, int], dur_s: float,
@@ -488,7 +488,7 @@ def _launch_frame_arbitration(op) -> dict:
     L1' 独立命题 fail-closed 不开店(证不出不花;带内帧计
     ``launch_arbitrage_inband_closed`` 分键,与「溢出帧零消费」可辨)。
 
-    **预算闸闭包读金口径** = 期望态容器现读(``board_state_of(session)``,
+    **预算闸闭包读金口径** = 期望态容器现读(``game_state_of(session)``,
     run_buy_waves 逐动作逻辑态直写)= 决策与闸同帧同值。后验跌破 g* 检测
     (合并多买等逻辑态外成本)计 ``launch_arbitrage_cross_line``,正常恒 0。
 
@@ -542,7 +542,7 @@ def _launch_frame_arbitration(op) -> dict:
         # 读金口径 = 容器读口 gold_of(缺省 0 镜像,与原 ``int(... or 0)``
         # 兜底同型零行为差)。
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of as _arb_bs_of,
+            game_state_of as _arb_gs_of,
         )
         from sr_od.application.currency_war.kernel.cw_game_state import (
             gold_of as _arb_gold_of,
@@ -551,7 +551,7 @@ def _launch_frame_arbitration(op) -> dict:
         _ = read_game_state(op.ctx, _fresh, phase=PHASE_PREP_CLEAN,
                             screen_name=SCREEN_NAME)
         _sess_hp = session
-        if not in_launch_spend_zone(_arb_gold_of(_arb_bs_of(session)), _sess_hp):
+        if not in_launch_spend_zone(_arb_gold_of(_arb_gs_of(session)), _sess_hp):
             # 带内段 fail-closed(DESIGN v1.1 §3.2;L1' 挂账):不开店不花。
             _launch_arb_counter(op, cw_launch_arbitrage.KEY_INBAND_CLOSED)
             return report
@@ -579,14 +579,14 @@ def _launch_frame_arbitration(op) -> dict:
         def _gate(action) -> tuple[bool, str]:
             # 读金口径(W6 波 4 黑板容器化,设计件 §2.4-2):容器读口
             # ``gold_of``(缺省 0 镜像,与原 ``int(... or 0)`` 兜底同型
-            # 零行为差;禁裸 bs.gold.value 引入 None 形态行为差)——黑板
+            # 零行为差;禁裸 gs.gold.value 引入 None 形态行为差)——黑板
             # 槽退役后闸与决策同读容器,逐动作逻辑态回写经
             # apply_shop_action_logic 承接,同帧同值语义不变。
             from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of,
+                game_state_of,
                 gold_of,
             )
-            gold_now = gold_of(board_state_of(session))
+            gold_now = gold_of(game_state_of(session))
             ok, why = cw_launch_arbitrage.launch_arbitration_gate(
                 action, gold_now, _sess_hp)
             if not ok:
@@ -621,13 +621,13 @@ def _launch_frame_arbitration(op) -> dict:
             # (正常恒 0;>0 = 残量显影,判读归 ADR-0566)。金读 = 容器读口
             # (outcome.state 帧金随 outcome 退役,容器 gold 同源)。
             from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of as _xa_bs_of,
+                game_state_of as _xa_gs_of,
             )
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 gold_of as _xa_gold_of,
             )
             g_star = saturation_line(cap_resolved_of_session(_sess_hp))
-            _final_gold = _xa_gold_of(_xa_bs_of(session))
+            _final_gold = _xa_gold_of(_xa_gs_of(session))
             if report['executed'] > 0 and _final_gold < g_star:
                 _launch_arb_counter(op, cw_launch_arbitrage.KEY_CROSS_LINE)
         # B3 拆除(同上,M1③):close_shop 的验关型失败回执退役——直调场景
@@ -1026,12 +1026,12 @@ class CwLoop(SrOperation):
         try:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
-                board_state_from_ctx,
+                game_state_from_ctx,
             )
-            bs = board_state_from_ctx(self.ctx)
-            if bs is None:
+            gs = game_state_from_ctx(self.ctx)
+            if gs is None:
                 return
-            bs.observe_screen_context(
+            gs.observe_screen_context(
                 screen_name,
                 sig=ChannelSig(family='obs', actor='CwLoop',
                                screen=screen_name, mode='read'))
@@ -1065,11 +1065,11 @@ class CwLoop(SrOperation):
             # 同口写 False(语义登记 = game state 字段注)。
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
-                board_state_of,
+                game_state_of,
             )
-            _bs_resumed = board_state_of(session)
-            _bs_resumed.write_logic(
-                _bs_resumed.tracked_account_observed, False,
+            _gs_resumed = game_state_of(session)
+            _gs_resumed.write_logic(
+                _gs_resumed.tracked_account_observed, False,
                 produced_by='CwLoop', evidence='takeover_invalidation',
                 sig=ChannelSig(family='logic_action', actor='CwLoop',
                                mode='compute'))
@@ -1211,7 +1211,7 @@ class CwLoop(SrOperation):
 
     # (GameState 局终归档写点 _archive_board_state 已随 R5 W7 退役删除
     #  ——补遗流 board_state_archive 写面下线,能力归宿 W2 已落位
-    #  (bs_prov=快照来源注记/局终速查=match_final 行,retirement.md §2);
+    #  (gs_prov=快照来源注记/局终速查=match_final 行,retirement.md §2);
     #  存量数据文件归档只读(不删不写,裸读考古,r5-migration-plan §4-6)。)
 
     def _write_terminal_summary_if_needed(self) -> None:
@@ -1224,7 +1224,7 @@ class CwLoop(SrOperation):
         观察全程活动,却因无战斗/补给结算行被当成开局失败)。
         新判定:**「从未观察到对局态」才算假局**(容器节点未观察 ∧ 零
         outcome = 开局即失败,镜像 3c 守卫;last_state 缺失判定随链退役
-        换源 = ``bs.node.value is None``,观察漏斗每帧刷新节点);只要
+        换源 = ``gs.node.value is None``,观察漏斗每帧刷新节点);只要
         观察过对局态或有过任一结算行,就是真局,必走收口。
 
         删除波 1:runs summary 写行与 outcomes 收口终局行(T-185)随旧流
@@ -1240,21 +1240,21 @@ class CwLoop(SrOperation):
         _m = self.ctx.cw_match
         _sess = getattr(_m, 'session', None) if _m is not None else None
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of,
+            game_state_of,
             plane_of,
             round_num_of,
             write_match_final,
         )
-        _bs = board_state_of(_sess) if _sess is not None else None
-        _observed = _bs is not None and _bs.node.value is not None
+        _gs = game_state_of(_sess) if _sess is not None else None
+        _observed = _gs is not None and _gs.node.value is not None
         _has_outcome = not (self._settle.last_outcome_hp is None
                             and self._settle.rounds_done == 0)
         if not _observed and not _has_outcome:
             return   # 真假局:从未观察到对局态也无结算痕迹(开局即失败)
         try:
             _stopped = bool(getattr(self.ctx.run_context, 'is_context_stop', False))
-            _bs_hp = (_bs.hp.value if _bs is not None else None)
-            _final_hp = self._last_true_hp(_bs_hp if _bs_hp is not None else 0)
+            _gs_hp = (_gs.hp.value if _gs is not None else None)
+            _final_hp = self._last_true_hp(_gs_hp if _gs_hp is not None else 0)
             # match_final 局终收口行(W3 在线接线,非正常终局形态;判定序
             # 停止>败局>plane==3>abnormal 与 close_run result 同源;写口
             # 段内幂等 G12,best-effort;先于 close_run 落局时间窗)。
@@ -1265,16 +1265,16 @@ class CwLoop(SrOperation):
                 _mf_type = resolve_final_type(
                     stop_requested=_stopped,
                     saw_defeat=self._settle.saw_defeat_settlement,
-                    plane_reached=(plane_of(_bs) if _observed else 1),
+                    plane_reached=(plane_of(_gs) if _observed else 1),
                     rounds_played=_has_outcome)
-                if _bs is not None and _mf_type is not None:
+                if _gs is not None and _mf_type is not None:
                     write_match_final(
-                        _bs, final_type=_mf_type,
-                        plane=(plane_of(_bs) if _observed else 1),
-                        round_num=(round_num_of(_bs) if _observed else 1),
+                        _gs, final_type=_mf_type,
+                        plane=(plane_of(_gs) if _observed else 1),
+                        round_num=(round_num_of(_gs) if _observed else 1),
                         hp=(int(_final_hp) if _final_hp else None),
-                        gold=(_bs.gold.value if _observed else None),
-                        streak=(_bs.streak.value if _observed else None),
+                        gold=(_gs.gold.value if _observed else None),
+                        streak=(_gs.streak.value if _observed else None),
                         backfilled=(_mf_type == 'abnormal'),
                         # 策略行为观测计数局终聚合(R5 W4 键收编载体;
                         # 收口时点现读快照,先于 close_run,聚合随时点真值)。
@@ -1285,16 +1285,16 @@ class CwLoop(SrOperation):
                 log.warning('[cw][loop] match_final 收口行写入失败(不阻塞): %s', e)
             state.close_run(
                 result='stopped' if _stopped else 'abandoned',
-                plane_reached=plane_of(_bs) if _observed else 1,
-                rounds_survived=round_num_of(_bs) if _observed else 1,
+                plane_reached=plane_of(_gs) if _observed else 1,
+                rounds_survived=round_num_of(_gs) if _observed else 1,
                 final_hp=int(_final_hp or 0),
                 notes=('stopped:operation 收口(W75)' if _stopped
                        else 'abandoned:operation 异常收口(W75)'))
             self._summary_written = True
             log.info('[cw][loop] 局终 summary 收口:%s p%s-r%s hp=%s',
                      'stopped' if _stopped else 'abandoned',
-                     plane_of(_bs) if _observed else 1,
-                     round_num_of(_bs) if _observed else 1, _final_hp)
+                     plane_of(_gs) if _observed else 1,
+                     round_num_of(_gs) if _observed else 1, _final_hp)
             # 按局存档装配随补写收口(P4R4:非正常终局此前只在 3c 装配,
             # 补写的 runs 行没有装配机会 → 对局档案缺该局;失败不阻塞)。
             try:
@@ -1613,24 +1613,24 @@ class CwLoop(SrOperation):
                 return self.round_success('开局失败/中断(未产生对局数据,不记 summary)')
             if self.ctx.cw_match is not None:
                 from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of,
+                    game_state_of,
                     plane_of,
                     round_num_of,
                     write_match_final,
                 )
-                _bs = board_state_of(self.ctx.cw_match.session)
-                _observed = _bs.node.value is not None
+                _gs = game_state_of(self.ctx.cw_match.session)
+                _observed = _gs.node.value is not None
                 # ⚠️ 假 win 守卫(2026-08-17 M70 事故):要求 plane==3 精确值
                 # (值域守卫已在上游拒 8,此处双保险);死局不判 win。
                 _died_this_run = self._settle.saw_defeat_settlement
-                _final_plane = plane_of(_bs) if _observed else 1
-                _final_round = round_num_of(_bs) if _observed else 1
-                _bs_hp = _bs.hp.value
+                _final_plane = plane_of(_gs) if _observed else 1
+                _final_round = round_num_of(_gs) if _observed else 1
+                _gs_hp = _gs.hp.value
                 _outcome = MatchOutcome(
                     won=(_final_plane == 3 and not _died_this_run),
                     final_plane=_final_plane,
                     final_round=_final_round,
-                    final_hp=(_bs_hp if _bs_hp is not None else 0),
+                    final_hp=(_gs_hp if _gs_hp is not None else 0),
                 )
                 self._allocator_update(_outcome)
                 try:
@@ -1646,13 +1646,13 @@ class CwLoop(SrOperation):
                         rounds_played=True)
                     if _mf_type is not None:
                         write_match_final(
-                            _bs, final_type=_mf_type,
+                            _gs, final_type=_mf_type,
                             plane=_outcome.final_plane,
                             round_num=_outcome.final_round,
                             hp=(_outcome.final_hp
                                 if _outcome.final_hp else None),
-                            gold=(_bs.gold.value if _observed else None),
-                            streak=(_bs.streak.value if _observed else None),
+                            gold=(_gs.gold.value if _observed else None),
+                            streak=(_gs.streak.value if _observed else None),
                             cw4_counters=self._cw4_counters_snapshot(
                                 self.ctx.cw_match.session),
                             note='online:lobby_return')
@@ -1906,10 +1906,10 @@ class CwLoop(SrOperation):
             # 换源 T-146:达标臂判据源 = 容器单例(旧 last_state 滞后帧 +
             # 过渡桥装箱退役;同备战观察写端刷新,判据面逐字段重验在册)
             from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of,
+                game_state_of,
             )
             _arm_core = readiness_launch_decision(
-                board_state_of(self.ctx.cw_match.session), _tc,
+                game_state_of(self.ctx.cw_match.session), _tc,
                 line_members=_line_members)
             _arm_armed = _arm_core['armed']
             # 质量闸观测分键(ADR-0570 待标定①实机观测 sink:推迟帧/评估
@@ -1985,13 +1985,13 @@ class CwLoop(SrOperation):
                         _launch_arb_counter(self, _kla.KEY_ABANDONED_LAUNCH)
                         try:
                             from sr_od.application.currency_war.kernel.cw_game_state import (
-                                board_state_of as _bso_arb,
+                                game_state_of as _gso_arb,
                             )
                             from sr_od.application.currency_war.telemetry.defects import (
                                 record_defect as _rd_arb,
                             )
                             _sess_arb = getattr(self.ctx.cw_match, 'session', None)
-                            _nd_arb = (_bso_arb(_sess_arb).node.value
+                            _nd_arb = (_gso_arb(_sess_arb).node.value
                                        if _sess_arb is not None else None)
                             _rd_arb(
                                 'launch', _kla.KEY_ABANDONED_LAUNCH,

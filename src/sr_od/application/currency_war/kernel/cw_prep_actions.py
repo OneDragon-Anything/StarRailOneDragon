@@ -57,7 +57,7 @@ class PrepObservation:
     每步现读。
     局内事实不在帧上(容器化段 2:state 槽退役,黑板帧 = 纯视觉/占用
     观察载体,帧保留域封闭清单见设计件 §2.1-2;决策读 = session 容器
-    单例 board_state_of,同帧同视图纪律)。
+    单例 game_state_of,同帧同视图纪律)。
     state_gold_trusted = gold 仅 shop 开态可信(F2 门,heavy 刷新)。
     """
     state_gold_trusted: bool = False      # gold 是否可信(= heavy 时 shop 开)

@@ -15,7 +15,7 @@
 
 ## 3. 观察面
 
-输入装配全现读(action_exec.md §5 的画面侧数据源):占用 = `obs/currency_war_cv.py::slot_occupied`(CV 像素);身份 = `obs/cw_identity_obs.py::read_bench_chars` / `read_deployed_chars`(SIFT,plaza 立绘模板 `cw_screen_deploy.py::CwScreenDeploy._get_templates` 缓存 ctx);cap = `obs/cw_observation.py::read_deploy_cap_debounced`(paddle 域防抖权威,失读才单调链 max 兜底);deployed 计数双源仲裁 = `cw_observation.py::arbitrate_deployed_count`(取低值 fail-closed,分歧/失读留证 = `cw_screen_deploy.py::_note_deployed_count_divergence`);后排布局选档 = `obs/cw_back_layout.py::select_back_layout`(cap 差公式单一入口,未知态写类冻结 → 后排部署跳过)。装配源 = 容器单例(`kernel/cw_game_state.py::board_state_of`;node 未观察 = None = 计划弃权保守侧)。
+输入装配全现读(action_exec.md §5 的画面侧数据源):占用 = `obs/currency_war_cv.py::slot_occupied`(CV 像素);身份 = `obs/cw_identity_obs.py::read_bench_chars` / `read_deployed_chars`(SIFT,plaza 立绘模板 `cw_screen_deploy.py::CwScreenDeploy._get_templates` 缓存 ctx);cap = `obs/cw_observation.py::read_deploy_cap_debounced`(paddle 域防抖权威,失读才单调链 max 兜底);deployed 计数双源仲裁 = `cw_observation.py::arbitrate_deployed_count`(取低值 fail-closed,分歧/失读留证 = `cw_screen_deploy.py::_note_deployed_count_divergence`);后排布局选档 = `obs/cw_back_layout.py::select_back_layout`(cap 差公式单一入口,未知态写类冻结 → 后排部署跳过)。装配源 = 容器单例(`kernel/cw_game_state.py::game_state_of`;node 未观察 = None = 计划弃权保守侧)。
 
 **部署落地零像素判效**:拖拽机械发出即计入 placed,落地事实归备战环入口观察对账;收尾观测回路 = SIFT 真值纠 tracking(`cw_screen_deploy.py::CwScreenDeploy._reconcile_tracking`)+ 装备快照回写 `tracked_deployed[].equips`(`_snapshot_equips_into_tracking`,执行簿记非策略读口)。
 

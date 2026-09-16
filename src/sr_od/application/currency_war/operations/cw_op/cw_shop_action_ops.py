@@ -152,7 +152,7 @@ class ShopExecEnv:
     refresh_btn: Point
     ledger: ShopVisitLedger
     # 当前期望态(W6 波 4 容器化,设计件 §2.4-2:执行侧读点改容器单例
-    # board_state_of(match.session);满栏 k 计等消费经席位/payload 读口)
+    # game_state_of(match.session);满栏 k 计等消费经席位/payload 读口)
     state: GameState
 
 

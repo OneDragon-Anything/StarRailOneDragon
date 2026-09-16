@@ -1,10 +1,10 @@
 # Session 职责分离(session 三类状态分离,as-designed)
 
-> **状态声明**:本篇是**设计件(as-designed)**,非现状描述。目标态与现状在正文内显式区分(双态标注先例 = `sim/sim-design.md`);现状描述反向规格化自 `kernel/cw_strategy_session.py`(路径根 = `src/sr_od/application/currency_war/`,下称 session 文件)与各消费点(grep 直调行号见清册)。迁移方案按用户 2026-09-06 裁定为**一次性原子切换**(流水-20260906.jsonl 18:47 行)——原任务书的「分期迁移+双轨并存」框架被该裁定取代,§6 如实记录被取代的框架以保留推理链。
-> **与 GameState 的分工边界**:本篇管 **StrategySession**(局身份 + 观察数据 + `strategy_state` 策略状态黑盒 + 框架设施);局内已知事实快照容器 = **GameState**(`kernel/cw_game_state.py`,单例宿主 = session 旁表 `board_state_of`——session 对象即局身份,两者共存非替代)。GameState 设计正本 = `game_state/README.md`(总纲)+ `fields.md`(字段级规格)。
-> **来源裁定**(用户 2026-09-06):session 的本义 = 只承载「从游戏画面观察到的数据」(框架采集与更新的职责);策略需要的中间状态、临时变量、推导状态(目标意向/纪律计数/回退集/计划/防重入标志/推导缓存)都是**策略器的内容**——策略器一局内存活、自己持有;执行层状态(拖拽失败计数/发射连败/事件防重入)归画面 op/执行层。本设计件把「策略实例无状态、状态全放 session」的历史妥协纠正回职责本位。
+> **状态声明**:本篇是 **设计件 (as-designed)**,非现状描述。目标态与现状在正文内显式区分 (双态标注先例 = `sim/sim-design.md`);现状描述反向规格化自 `kernel/cw_strategy_session.py`(路径根 = `src/sr_od/application/currency_war/`,下称 session 文件)与各消费点 (grep 直调行号见清册)。迁移方案按用户 2026-09-06 裁定为 **一次性原子切换**(流水-20260906.jsonl 18:47 行)——原任务书的「分期迁移+双轨并存」框架被该裁定取代,§6 如实记录被取代的框架以保留推理链。
+> **与 GameState 的分工边界**:本篇管 **StrategySession**(局身份 + 观察数据 + `strategy_state` 策略状态黑盒 + 框架设施);局内已知事实快照容器 = **GameState**(`kernel/cw_game_state.py`,单例宿主 = session 旁表 `game_state_of`——session 对象即局身份,两者共存非替代)。GameState 设计正本 = `game_state/README.md`(总纲)+ `fields.md`(字段级规格)。
+> **来源裁定**(用户 2026-09-06):session 的本义 = 只承载「从游戏画面观察到的数据」 (框架采集与更新的职责);策略需要的中间状态、临时变量、推导状态 (目标意向/纪律计数/回退集/计划/防重入标志/推导缓存)都是 **策略器的内容**——策略器一局内存活、自己持有;执行层状态 (拖拽失败计数/发射连败/事件防重入)归画面 op/执行层。本设计件把「策略实例无状态、状态全放 session」的历史妥协纠正回职责本位。
 > **读者** = 无会话历史的工程师/智能体。术语首次出现给定义。
-> **修订记录**:r1 对抗回炉(审查 2b362e40,发现清单 = `session_design_attack/发现清单.md`(原始件已灭失,2026-09-12 清理))——A1 补动态属性清册段(§2.6,24 项)并消解遥测承诺矛盾;A2 五字段退役改判迁出(v2_state/locked_line/bridge_id→§2.3,v2_round_*→§2.4),退役降为 4 项全部带前置动作;A3 sim 前提修正(§3.4/§5.6,撤回「零改动」);B1 megastar 落点定案局容器;B2 六处漏消费点补入 §5;B3 恢复局两行评级升「中」+6.2-4 判读义务;B4 create_state 非 abstract 兼容条款;建议 C1/C2/C3 全部采纳,已就地标注。
+> **修订记录**:r1 对抗回炉 (审查 2b362e40,发现清单 = `session_design_attack/发现清单.md`(原始件已灭失,2026-09-12 清理))——A1 补动态属性清册段 (§2.6,24 项)并消解遥测承诺矛盾;A2 五字段退役改判迁出 (v2_state/locked_line/bridge_id→§2.3,v2_round_*→§2.4),退役降为 4 项全部带前置动作;A3 sim 前提修正 (§3.4/§5.6,撤回「零改动」);B1 megastar 落点定案局容器;B2 六处漏消费点补入 §5;B3 恢复局两行评级升「中」+6.2-4 判读义务;B4 create_state 非 abstract 兼容条款;建议 C1/C2/C3 全部采纳,已就地标注。
 
 ## 0. 术语(首现定义)
 
@@ -51,12 +51,12 @@
 | `chosen_megastar` / `chosen_partner` | 选择 handler | 遥测回写 state | 局 | 复盘维度 |
 | `star_pending_regression` | 识别防抖(合成动画窗确认) | star 真值采信 | 节点内 | 框架识别守卫 |
 | `briefing_affixes` / `briefing_bosses` / `selected_difficulty` / `enemy_difficulty` / `active_env` | 简报/入口屏/情报屏采集 | mechanics_fit/boss_fit/保血阈值 | 局 |  保位勿滤 |
-| `prep_obs_frame` | 入口观察段(唯一读屏点) | decide_prep_screen | 帧覆写 | 备战黑板帧 = 纯视觉/占用观察载体(PrepObservation;帧保留域封闭清单见其 dataclass 定义,局内事实不在帧上);备战决策读 = session 容器单例 `board_state_of`(容器域)+ 帧视觉域并读;黑板写读契约与 None 帧失约保留(W971) |
+| `prep_obs_frame` | 入口观察段(唯一读屏点) | decide_prep_screen | 帧覆写 | 备战黑板帧 = 纯视觉/占用观察载体(PrepObservation;帧保留域封闭清单见其 dataclass 定义,局内事实不在帧上);备战决策读 = session 容器单例 `game_state_of`(容器域)+ 帧视觉域并读;黑板写读契约与 None 帧失约保留(W971) |
 | `pending_round_outcomes` | 结算观察(结算点追加 RoundOutcome) | 遥测留档累积面 | 局 | ADR-0583 后批新增;消费半已随 ADR-0638 删,现为只写累积槽,候遥测清理批评估 |
 
 > 帧代次标注槽 `prep_frame_class`/`shop_frame_class` 留 session(帧语义注记,非游戏事实):`shop_frame_class` 标注对象 = **最近一次商店域容器观察写点**(入口观察段喂入/续段重观察)——商店黑板槽 `shop_state_frame` 已随两态制收口退役删除,容器 = 商店决策读单源;`prep_frame_class` 标注对象 = 同名黑板帧最近一次写入。
 
-> **GameState 归一批后的现态修正**(本篇清册 = 迁移时点账,上两行随本批移出表外):`last_state` 备战快照已随 last_state 链退役批删除,现役宿主 = GameState 容器(观察喂入 = `read_game_state` 漏斗 `_feed_board_state`);`effect_inventory` 正本已归一 `GameState.effects`(载体归一防双账本),session 兼容读口 property 已撤,消费点直读 `board_state_of(session).effects`。本表现态列 26 项,另 `prep_frame_class`/`shop_frame_class` 两帧代次标注槽留 session(注如上)——全字段集以 `cw_strategy_session.py` 类体为准(统计行与 §4 结构图为清册时点数)。
+> **GameState 归一批后的现态修正**(本篇清册 = 迁移时点账,上两行随本批移出表外):`last_state` 备战快照已随 last_state 链退役批删除,现役宿主 = GameState 容器(观察喂入 = `read_game_state` 漏斗);`effect_inventory` 正本已归一 `GameState.effects`(载体归一防双账本),session 兼容读口 property 已撤,消费点直读 `game_state_of(session).effects`。本表现态列 26 项,另 `prep_frame_class`/`shop_frame_class` 两帧代次标注槽留 session(注如上)——全字段集以 `cw_strategy_session.py` 类体为准(统计行与 §4 结构图为清册时点数)。
 
 ### 2.2 框架设施——留 session(2 项)
 

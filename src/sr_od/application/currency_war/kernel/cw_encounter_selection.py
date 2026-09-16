@@ -191,18 +191,18 @@ class EncounterLog:
                    for r in self._rows)
 
 
-def selection_state_of(bs: GameState) -> tuple[SettlementRing, EncounterLog]:
+def selection_state_of(gs: GameState) -> tuple[SettlementRing, EncounterLog]:
     """读取局的观测环与经验表(GameState 平级字段;dataclass 字段自带实例)。"""
-    return bs.settlement_ring, bs.encounter_log
+    return gs.settlement_ring, gs.encounter_log
 
 
-def game_start_reset(bs: GameState) -> None:
+def game_start_reset(gs: GameState) -> None:
     """开局清空(生命周期 = 局;RunLoop handle_init 或首结算时调)。"""
-    bs.settlement_ring.reset()
-    bs.encounter_log.reset()
+    gs.settlement_ring.reset()
+    gs.encounter_log.reset()
 
 
-def record_settlement_row(bs: GameState, outcome: RoundOutcome, *,
+def record_settlement_row(gs: GameState, outcome: RoundOutcome, *,
                           plane: int, round_num: int, node_type: str,
                           difficulty_node: float | None,
                           encounter_tier: int | None,
@@ -229,8 +229,8 @@ def record_settlement_row(bs: GameState, outcome: RoundOutcome, *,
                    progress_fill_ratio=outcome.progress_fill_ratio,
                    difficulty_node=difficulty_node,
                    encounter_tier=encounter_tier)
-    verdict = bs.settlement_ring.offer(row)
-    bs.encounter_log.append(row)
+    verdict = gs.settlement_ring.offer(row)
+    gs.encounter_log.append(row)
     return verdict
 
 
@@ -316,14 +316,14 @@ def _kappa_state(w1: bool | None, w2: bool | None,
     return '不足'   # 两场全败(wins == 0 且非全删失)
 
 
-def _d_enc_snapshot(bs: GameState) -> tuple[float | None, str | None]:
+def _d_enc_snapshot(gs: GameState) -> tuple[float | None, str | None]:
     """决策读点:D_enc 口读值 + live 判别子结果(读点 = GameState 现存值)。
 
     判别子(未定谳前置形态)= source=='observation' ∧ 值非空;判 (ii) 后
     切换 carry 自证形态(observation/carried 自证链均过——简报值无容器
     入口,毒化四通道封闭)。门不过 → (None, source)。
     """
-    f = bs.enemy_difficulty
+    f = gs.enemy_difficulty
     v = f.value
     if v is None:
         return None, f.source
@@ -334,7 +334,7 @@ def _d_enc_snapshot(bs: GameState) -> tuple[float | None, str | None]:
     return None, f.source
 
 
-def decide_encounter(options: list[EncounterOption], bs: GameState,
+def decide_encounter(options: list[EncounterOption], gs: GameState,
                      *, refresh_used: bool = False,
                      tiebreak: Callable[[str], int] = reward_tier,
                      ) -> EncounterPick:
@@ -355,7 +355,7 @@ def decide_encounter(options: list[EncounterOption], bs: GameState,
         EncounterPick,
     )
     diag = _Diagnostics()
-    diag.d_enc_value, diag.d_enc_source = _d_enc_snapshot(bs)
+    diag.d_enc_value, diag.d_enc_source = _d_enc_snapshot(gs)
 
     def _dark(why: str) -> EncounterPick:
         diag.dark_reason = why
@@ -379,7 +379,7 @@ def decide_encounter(options: list[EncounterOption], bs: GameState,
     diag.live_gate = ('pass-observation' if diag.d_enc_value is not None
                       else f'rejected({diag.d_enc_source})')
 
-    ring, log = selection_state_of(bs)
+    ring, log = selection_state_of(gs)
     window = ring.last_normal_battles(2)
     if len(window) < 2:
         # 窗口不足(含跨位面叠加形态):不足态 = 可及集空,刷新阀仍可用

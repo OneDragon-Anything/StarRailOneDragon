@@ -29,11 +29,11 @@
 见本文件「P1 锁线资格门」节注释)。
 
 模块构成:
-- ``detect_signals(bs)``:信号分层判定(①策略驱动/②类专属羁绊/③核心卡/
+- ``detect_signals(gs)``:信号分层判定(①策略驱动/②类专属羁绊/③核心卡/
   ④资源/⑤由解析侧兜底,本函数不发⑤信号);
 - ``IntentionState``:锁线/撤销状态机(未锁/锁定/弱意向 + 降格终局标记),
-  ``update_intention(bs, ist)`` 每回合驱动;
-- ``hoard_target_set(bs, ist)``:锁后效果接口——输出囤货目标集合(角色件 +
+  ``update_intention(gs, ist)`` 每回合驱动;
+- ``hoard_target_set(gs, ist)``:锁后效果接口——输出囤货目标集合(角色件 +
   装备件),买侧唯一消费面;无目标期帧(P2+ 无信号)囤货方向 = 三臂判据
   (P86;甲臂候选机器强锁门逐字/乙臂枢纽期权资格核/丙臂守息缺省,
   见「P86 无目标期三臂判据」节)。
@@ -49,9 +49,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    shop_payload_content_cards,
-)
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_shop_odds import (
     DISTINCT_CARDS_PER_COST,
@@ -93,6 +90,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     max_units_of,
     plane_of,
     round_num_of,
+    shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_line_switch import (
     e_rounds,
@@ -344,28 +342,28 @@ def intention_core(comp: Comp) -> str:
     return comp.core_chars[0] if comp.core_chars else ''
 
 
-def _visible_chars(bs: GameState) -> set[str]:
+def _visible_chars(gs: GameState) -> set[str]:
     """当前可见角色规范名:shop 在店 + bench/deployed 到手(识别层已归一)。"""
     names: set[str] = set()
-    _shop = bs.shop.value   # payload 域:非当前画面 None(W6 波3 切换)
+    _shop = gs.shop.value   # payload 域:非当前画面 None(W6 波3 切换)
     for card in shop_payload_content_cards(_shop):
         if card.name:
             names.add(card.name)
-    for bc in [*bench_slots_of(bs), *deployed_slots_of(bs)]:
+    for bc in [*bench_slots_of(gs), *deployed_slots_of(gs)]:
         if bc is not None and bc.char_id:
             names.add(bc.char_id)
     return names
 
-def _bond_counts(bs: GameState) -> dict[str, int]:
+def _bond_counts(gs: GameState) -> dict[str, int]:
     """板上 + bench 的羁绊计数(board 已含 deployed 聚合;bench 逐件加)。"""
-    counts: dict[str, int] = dict(bs.board.value or {})
-    for bc in bench_slots_of(bs):
+    counts: dict[str, int] = dict(gs.board.value or {})
+    for bc in bench_slots_of(gs):
         if bc is not None and bc.faction and bc.faction != '?':
             counts[bc.faction] = counts.get(bc.faction, 0) + 1
     return counts
 
 
-def plane_remaining_nodes(bs: GameState, session=None) -> int:
+def plane_remaining_nodes(gs: GameState, session=None) -> int:
     """位面内剩余节点数(含当前轮;冻结超限的对照量)。
 
     ADR-0366:位面轮数按 ``nodes_of_plane(session)`` 本位面真值(P2=7;
@@ -374,14 +372,14 @@ def plane_remaining_nodes(bs: GameState, session=None) -> int:
     """
     from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
     n = nodes_of_plane(session) if session is not None else NODES_PER_PLANE
-    r = min(max(1, round_num_of(bs)), n)
+    r = min(max(1, round_num_of(gs)), n)
     return n - r + 1
 
 
-def total_remaining_nodes(bs: GameState) -> int:
+def total_remaining_nodes(gs: GameState) -> int:
     """全局剩余节点数(可达性对照量;封顶 3 位面)。"""
-    p = min(max(1, plane_of(bs)), 3)
-    r = min(max(1, round_num_of(bs)), NODES_PER_PLANE)
+    p = min(max(1, plane_of(gs)), 3)
+    r = min(max(1, round_num_of(gs)), NODES_PER_PLANE)
     t = (p - 1) * NODES_PER_PLANE + r - 1
     return max(0, TOTAL_NODES - t)
 
@@ -406,7 +404,7 @@ def encounter_window_rounds(char_name: str, level: int) -> float:
     return 1.0 / q if q > 0 else float('inf')
 
 
-def _core_reachable(comp: Comp, bs: GameState,
+def _core_reachable(comp: Comp, gs: GameState,
                      visible: set[str]) -> bool:
     """强制锁线对象限定:核心已在手 或 再遇窗口期望 ≤ 剩余节点数(点0〔修N4〕)。"""
     core = intention_core(comp)
@@ -414,28 +412,28 @@ def _core_reachable(comp: Comp, bs: GameState,
         return False
     if core in visible:
         return True
-    return encounter_window_rounds(core, level_of(bs)) <= total_remaining_nodes(bs)
+    return encounter_window_rounds(core, level_of(gs)) <= total_remaining_nodes(gs)
 
 
-def _direct_line_qualified(bs: GameState, comp_name: str) -> bool:
+def _direct_line_qualified(gs: GameState, comp_name: str) -> bool:
     """直通终局线资格判定(ADR-0338)。
 
     资格单一源 = 亲和表反查(**派生,不手写名单**):
-    - 策略侧:任一持有策略 ``s ∈ bs.active_strategies`` 在
+    - 策略侧:任一持有策略 ``s ∈ gs.active_strategies`` 在
       ``AUGMENT_COMP_AFFINITY`` 中指向该 comp(如 黑塔纪元→大黑塔银河学者);
-    - 环境侧:``bs.active_env`` 在 ``ENV_COMP_AFFINITY`` 中指向该 comp
+    - 环境侧:``gs.active_env`` 在 ``ENV_COMP_AFFINITY`` 中指向该 comp
       (如 银河学者概念股→大黑塔银河学者)。
 
     无任何表项的 comp(万敌单C/DOT队/黄泉线等)恒无资格 —— 它们的终局线
     只能由③核心卡(贯穿件到手,[23] 合法)或后续注册的资格项锁线。
     """
-    for s in (bs.active_strategies.value or []):
+    for s in (gs.active_strategies.value or []):
         if comp_name in augment_affinity(s):
             return True
-    return comp_name in augment_env_affinity(bs.active_env.value or '')
+    return comp_name in augment_env_affinity(gs.active_env.value or '')
 
 
-def _line_env_qualified(bs: GameState, comp_name: str) -> bool | None:
+def _line_env_qualified(gs: GameState, comp_name: str) -> bool | None:
     """累积型线强环境判据(ADR-0461)。
 
     语义出处:「全局累积型角色越早越好,但需特定环境才强,**无环境不选**」
@@ -444,7 +442,7 @@ def _line_env_qualified(bs: GameState, comp_name: str) -> bool | None:
 
     返回三态:
     - ``None`` = 判据不辖或信息缺失(comp 无 hp_charge_stack 累积成员 /
-      强环境集未建模 / ``bs.enemy_affixes`` 空=词缀可信位缺失)——调用方
+      强环境集未建模 / ``gs.enemy_affixes`` 空=词缀可信位缺失)——调用方
       必须放行(动态权重剔除同款:缺信息不造硬结论,不猜);
     - ``True`` = 词缀机制 tag 与强环境集命中;
     - ``False`` = 累积型线但环境不命中(「无环境不选」的事实面)。
@@ -464,10 +462,10 @@ def _line_env_qualified(bs: GameState, comp_name: str) -> bool | None:
     need = STRONG_ENV_MECHS.get('hp_charge_stack')
     if not need:
         return None
-    if not (bs.enemy_affixes.value or []):
+    if not (gs.enemy_affixes.value or []):
         return None
     affix_map, _, _ = merged_mechanic_tables()
-    mech = {affix_map.get(a, a) for a in (bs.enemy_affixes.value or [])}
+    mech = {affix_map.get(a, a) for a in (gs.enemy_affixes.value or [])}
     return bool(mech & need)
 
 
@@ -507,7 +505,7 @@ def _p1_transition_eligible(comp: Comp) -> bool:
     return bool(tier_keys & _ENGINE_BOND_KEYS)
 
 
-def _p1_gate_blocks(bs: GameState, comp: Comp) -> bool:
+def _p1_gate_blocks(gs: GameState, comp: Comp) -> bool:
     """P1 终局专属线锁线证据门是否拦下该线(ADR-0341)。
 
     拦截 = 门开 ∧ plane==1 ∧ 非过渡线 ∧ 无①类资格(策略/环境亲和,
@@ -515,11 +513,11 @@ def _p1_gate_blocks(bs: GameState, comp: Comp) -> bool:
     [21] 上场窗口(姬子=7级/万敌=1-9 变阵点)与 1-8 换血点都在 P1 之后,
     终局线在 P2 起锁是 [23] 全文语义。
     """
-    if plane_of(bs) != 1:
+    if plane_of(gs) != 1:
         return False
     if _p1_transition_eligible(comp):
         return False
-    return not _direct_line_qualified(bs, comp.name)
+    return not _direct_line_qualified(gs, comp.name)
 
 
 #: 希儿系体系键(单卡二元判定,不占羁绊键;与 cw_battle_calib._engines_count
@@ -537,7 +535,7 @@ _P1_PAIR_PREF: tuple[str, ...] = tuple(
 
 # ===== 希儿系形态端口(OR 腿 + carry,ADR-0613)=====
 # 辖域切分(与批序 2 支持度端口 ``_seele_system_support`` 机械可检验,
-# 禁互相渗透成双源):形态端口读**板面羁绊计数**(bs.board,经
+# 禁互相渗透成双源):形态端口读**板面羁绊计数**(gs.board,经
 # form_progress),支持度端口读**owned 去重成员计数**(bench∪deployed);
 # 本文件 form 链禁出现 _seele_system_support 消费。
 # 常量真源 = cw_comps.SEELE_OR_LEGS/SEELE_CARRY_CHAR(ADR-0621
@@ -570,10 +568,10 @@ transition_combos.md:27 与注册表计数),非旧手定权重复活。保守方
 # 拆过渡体系(S2 挤出 19/20 mal 局)=ADR-0357 主灶在①通道的残留。
 
 
-def _owned_chars(bs: GameState) -> set[str]:
+def _owned_chars(gs: GameState) -> set[str]:
     """已到手角色名(bench+deployed;不含 shop 可见——[23] 锁定由
     贯穿件=到手,店里出现过不构成方向承诺)。"""
-    return {bc.char_id for bc in [*bench_slots_of(bs), *deployed_slots_of(bs)]
+    return {bc.char_id for bc in [*bench_slots_of(gs), *deployed_slots_of(gs)]
             if bc is not None and bc.char_id}
 
 
@@ -632,7 +630,7 @@ def _seele_system_support(owned: set[str]) -> float:
     return min(1.0, max(c_quantum / 2, c_belobog / 2))
 
 
-def _p1_system_support(bs: GameState) -> dict[str, float]:
+def _p1_system_support(gs: GameState) -> dict[str, float]:
     """四过渡体系的手上资产支持度(bench+deployed;注册表阵营∪流派口径,
     与 ``cw_battle_calib._engines_count`` 同式——多阵营件(桑博=贝+DOT)各系并计)。
 
@@ -646,7 +644,7 @@ def _p1_system_support(bs: GameState) -> dict[str, float]:
     重推非旧值复活)。
     """
     counts: dict[str, int] = {}
-    for bc in [*bench_slots_of(bs), *deployed_slots_of(bs)]:
+    for bc in [*bench_slots_of(gs), *deployed_slots_of(gs)]:
         if bc is None or not bc.char_id:
             if bc is not None and bc.faction and bc.faction != '?':
                 counts[bc.faction] = counts.get(bc.faction, 0) + 1
@@ -659,11 +657,11 @@ def _p1_system_support(bs: GameState) -> dict[str, float]:
     sup = {b: counts.get(b, 0) / t for b, t in TRANSITION_TRAITS}
     # 去重成员集(_owned_chars 已是名字集)直喂分级公式;禁在此换回
     # 逐副本计数(坐标系声明见 _seele_system_support docstring)。
-    sup[SEELE_SYSTEM] = _seele_system_support(_owned_chars(bs))
+    sup[SEELE_SYSTEM] = _seele_system_support(_owned_chars(gs))
     return sup
 
 
-def p1_gap_window(bs: GameState) -> bool:
+def p1_gap_window(gs: GameState) -> bool:
     """P1 空窗期判定(只读):bench∪deployed 四体系最高支持度 <
     ``P1_PAIR_LOCK_MIN_SUPPORT``。
 
@@ -674,7 +672,7 @@ def p1_gap_window(bs: GameState) -> bool:
     ``_p1_system_support`` + 同一门槛常数,禁另造支持度算式)。
     边界:空板面恒 True(0<0.5);P2+ 调用面约定不辖(空窗系 P1 概念)。
     """
-    sup = _p1_system_support(bs)
+    sup = _p1_system_support(gs)
     return max(sup.values(), default=0.0) < P1_PAIR_LOCK_MIN_SUPPORT
 
 
@@ -707,7 +705,7 @@ def _p1_fuel_excluded(bc: object, incumbent_members: frozenset[str]) -> bool:
     return cid not in incumbent_members
 
 
-def _p1_system_ordering(bs: GameState,
+def _p1_system_ordering(gs: GameState,
                         incumbent: tuple[str, ...],
                         ) -> dict[str, float]:
     """四过渡体系的排序维支持度(ADR-0616 §2.3 命题 2 新定义;合成中性
@@ -733,7 +731,7 @@ def _p1_system_ordering(bs: GameState,
         else frozenset()
     per: dict[str, float] = {}
     dedup_star: dict[str, int] = {}
-    for bc in [*bench_slots_of(bs), *deployed_slots_of(bs)]:
+    for bc in [*bench_slots_of(gs), *deployed_slots_of(gs)]:
         if bc is None:
             continue
         cid = getattr(bc, 'char_id', '') or ''
@@ -762,7 +760,7 @@ def _p1_system_ordering(bs: GameState,
     return out
 
 
-def _p1_pair_eased(bs: GameState,
+def _p1_pair_eased(gs: GameState,
                    incumbent: tuple[str, ...] = (),
                    gate_first: bool = True,
                    ) -> tuple[tuple[str, ...], tuple[str, ...] | None]:
@@ -786,7 +784,7 @@ def _p1_pair_eased(bs: GameState,
       构造性不可达;恒自洽式 pair≠() ⟺ Q≠∅(gate_first 时 ⟺
       ``p1_gap_window``=False)由 |Q|=0 返回 () 保持。
     """
-    sup = _p1_system_support(bs)
+    sup = _p1_system_support(gs)
     if gate_first:
         q = [f for f in _P1_PAIR_PREF
              if sup.get(f, 0.0) >= P1_PAIR_LOCK_MIN_SUPPORT]
@@ -794,7 +792,7 @@ def _p1_pair_eased(bs: GameState,
         q = list(_P1_PAIR_PREF)
     if not q:
         return (), None
-    su = _p1_system_ordering(bs, incumbent)
+    su = _p1_system_ordering(gs, incumbent)
 
     def ordv(f: str) -> float:
         return su.get(f, 0.0)
@@ -822,7 +820,7 @@ def _p1_pair_eased(bs: GameState,
 
 
 def _p1_pair_gate(candidate: tuple[str, ...],
-                  bs: GameState,
+                  gs: GameState,
                   registry: DecisionV2Registry | None = None,
                   session: StrategySession | None = None,
                   ) -> tuple[bool, float, int]:
@@ -836,11 +834,11 @@ def _p1_pair_gate(candidate: tuple[str, ...],
     (不可评估方向不换席,fail-closed 保守向,与出口读法一致)。
     零新常量:比较即判据。"""
     over, e_alt, r_rem = _p1_pair_overwindow(
-        candidate, bs, session, registry)
+        candidate, gs, session, registry)
     return (not over), e_alt, r_rem
 
 
-def _derive_p1_pair(bs: GameState,
+def _derive_p1_pair(gs: GameState,
                     incumbent: tuple[str, ...] = (),
                     registry: DecisionV2Registry | None = None,
                     session: StrategySession | None = None,
@@ -868,16 +866,16 @@ def _derive_p1_pair(bs: GameState,
     进入**(抑制在调用方 update_intention P1 段;调用时机/闩/出口归
     状态机,本函数保持纯派生)。
     """
-    pair, cand = _p1_pair_eased(bs, incumbent)
+    pair, cand = _p1_pair_eased(gs, incumbent)
     if cand is not None:
-        ok, _e_alt, _r_rem = _p1_pair_gate(cand, bs, registry, session)
+        ok, _e_alt, _r_rem = _p1_pair_gate(cand, gs, registry, session)
         if ok:
             return cand
     return pair
 
 
 def _p1_pair_overwindow(pair: tuple[str, ...],
-                        bs: GameState,
+                        gs: GameState,
                         session: StrategySession | None = None,
                         registry: DecisionV2Registry | None = None,
                         ) -> tuple[bool, float, int]:
@@ -899,9 +897,9 @@ def _p1_pair_overwindow(pair: tuple[str, ...],
     """
     reg = registry or DEFAULT_REGISTRY
     target = pair_target_comp(pair)
-    e_f = (e_rounds(target, bs, reg, session=session)
+    e_f = (e_rounds(target, gs, reg, session=session)
            if target is not None else math.inf)
-    r_rem = r_remaining(session, plane_of(bs), round_num_of(bs))
+    r_rem = r_remaining(session, plane_of(gs), round_num_of(gs))
     return (not (math.isfinite(e_f) and e_f <= r_rem)), e_f, r_rem
 
 
@@ -920,7 +918,7 @@ def _p1_pair_overwindow(pair: tuple[str, ...],
 PAIR_SUPPLY_CONFIRM_ROUNDS: int = 2
 
 
-def _update_pair_drought(bs: GameState, ist: IntentionState,
+def _update_pair_drought(gs: GameState, ist: IntentionState,
                          visible: set[str]) -> None:
     """R3 断供供给计数器(每 game-round 恰一次,由 update_intention 驱动)。
 
@@ -929,9 +927,9 @@ def _update_pair_drought(bs: GameState, ist: IntentionState,
     供遥测与撤销证据链消费;写 ``pair_evicted`` 的驱逐分支已随未证阈值
     退役(见上方常量注)。
     """
-    if plane_of(bs) != 1:
+    if plane_of(gs) != 1:
         return
-    _shop = bs.shop.value   # payload 域:非当前画面 None(W6 波3 切换)
+    _shop = gs.shop.value   # payload 域:非当前画面 None(W6 波3 切换)
     shop_names = {getattr(c, 'name', '') or ''
                   for c in shop_payload_content_cards(_shop)}
     all_systems = set(_ENGINE_BOND_KEYS) | {SEELE_SYSTEM}
@@ -959,7 +957,7 @@ def members_in_shop(sys: str, shop_names: set[str]) -> bool:
     return bool(_pair_members((sys,)) & shop_names)
 
 
-def p1_early_pair(bs: GameState,
+def p1_early_pair(gs: GameState,
                   ist: IntentionState | None) -> tuple[str, ...]:
     """P1 早期新件买入门的配方对读口(ADR-0372;只读,不落字段)。
 
@@ -995,7 +993,7 @@ def p1_early_pair(bs: GameState,
       不构成锁定承诺),辖门/闩会把锁域状态机语义漏进只读派生
       (ADR-0616 §2.4 门辖「配方对席位翻转」= 锁域)。
     """
-    if plane_of(bs) != 1:
+    if plane_of(gs) != 1:
         return ()
     if ist is not None:
         tp = tuple(getattr(ist, 'transition_pair', ()) or ())
@@ -1004,11 +1002,11 @@ def p1_early_pair(bs: GameState,
         pp = tuple(getattr(ist, 'p1_pair', ()) or ())
         if pp:
             return pp
-    pair, _cand = _p1_pair_eased(bs, (), gate_first=False)
+    pair, _cand = _p1_pair_eased(gs, (), gate_first=False)
     return pair
 
 
-def p1_early_pair_members(bs: GameState,
+def p1_early_pair_members(gs: GameState,
                           ist: IntentionState | None) -> frozenset[str]:
     """P1 锁线过渡带的囤货成员集(只读;FIX_REVIEW_20260903 R3① 单一源)。
 
@@ -1021,7 +1019,7 @@ def p1_early_pair_members(bs: GameState,
     (P1 外)⇒ 空集,消费位自行链 hoard_target_set
     空窗全集兜底。P1 外恒空集(``p1_early_pair`` 同辖域)。
     """
-    pair = p1_early_pair(bs, ist)
+    pair = p1_early_pair(gs, ist)
     return frozenset(_pair_members(pair)) if pair else frozenset()
 
 
@@ -1146,7 +1144,7 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
     )
 
 
-def detect_signals(bs: GameState) -> list[IntentionSignal]:
+def detect_signals(gs: GameState) -> list[IntentionSignal]:
     """信号分层判定(①策略驱动 > ②类专属羁绊 > ③核心卡 > ④资源)。
 
     返回分层信号列表(未排序;消费方按 layer 升序 / weight 降序取最优);
@@ -1157,15 +1155,15 @@ def detect_signals(bs: GameState) -> list[IntentionSignal]:
     comps = _v2_comps()
     # 注:evicted 过滤由 IntentionState 携带,detect_signals 是纯函数不读状态机;
     # 调用方(update_intention)负责过滤。直接消费方请走 update_intention。
-    visible = _visible_chars(bs)
+    visible = _visible_chars(gs)
 
     # ① 策略驱动:投资环境 / 投资策略字段出现 → 对应线(近硬绑亲和表)
-    if bs.active_env.value:
-        for comp_name, w in augment_env_affinity(bs.active_env.value).items():
+    if gs.active_env.value:
+        for comp_name, w in augment_env_affinity(gs.active_env.value).items():
             if get_comp(comp_name) is not None:
                 out.append(IntentionSignal(1, 'env', comp_name,
-                                           f'环境[{bs.active_env.value}]×{w}', w))
-    for s in (bs.active_strategies.value or []):
+                                           f'环境[{gs.active_env.value}]×{w}', w))
+    for s in (gs.active_strategies.value or []):
         for comp_name, w in augment_affinity(s).items():
             if get_comp(comp_name) is not None:
                 out.append(IntentionSignal(1, 'strategy', comp_name,
@@ -1177,11 +1175,11 @@ def detect_signals(bs: GameState) -> list[IntentionSignal]:
     # 无资格不发②信号(意向保持 unlocked,P1 板面归四体系过渡逻辑,
     # P2+ 无目标期囤货方向由三臂判据承接[P86];贯穿件到手走③,
     # [23] 合法路径不变)。
-    counts = _bond_counts(bs)
+    counts = _bond_counts(gs)
     for fam, bond in FAMILY_BOND_SIGNALS.items():
         if counts.get(bond, 0) >= FAMILY_BOND_MIN_COUNT:
             for c in comps:
-                if c.family == fam and _direct_line_qualified(bs, c.name):
+                if c.family == fam and _direct_line_qualified(gs, c.name):
                     out.append(IntentionSignal(
                         2, 'family_bond', c.name,
                         f'{bond}×{counts[bond]}(≥{FAMILY_BOND_MIN_COUNT})', 0.5))
@@ -1193,7 +1191,7 @@ def detect_signals(bs: GameState) -> list[IntentionSignal]:
     for c in comps:
         core = intention_core(c)
         if core and core in visible:
-            if _p1_gate_blocks(bs, c):
+            if _p1_gate_blocks(gs, c):
                 continue
             out.append(IntentionSignal(3, 'core_card', c.name,
                                        f'核心[{core}]可见', 1.0))
@@ -1202,27 +1200,27 @@ def detect_signals(bs: GameState) -> list[IntentionSignal]:
     # 数据缺口声明:升费资源(道具)暂无容器字段——以升费链角色到手
     # (cost_escalation['角色'] 在 bench/deployed)作「资源到位」代理;字段接入后扩。
     # ADR-0341:④与③同为「卡/资源到手」证据类,P1 终局专属线同门。
-    owned = {bc.char_id for bc in [*bench_slots_of(bs), *deployed_slots_of(bs)]
+    owned = {bc.char_id for bc in [*bench_slots_of(gs), *deployed_slots_of(gs)]
              if bc is not None and bc.char_id}
     for c in comps:
         ce = c.special_systems.get('cost_escalation')
         if ce and ce.get('角色') in owned:
-            if _p1_gate_blocks(bs, c):
+            if _p1_gate_blocks(gs, c):
                 continue
             out.append(IntentionSignal(4, 'resource', c.name,
                                        f'升费链[{ce.get("角色")}]已到手', 0.5))
     return out
 
 
-def _asset_thickness(comp: Comp, bs: GameState) -> float:
+def _asset_thickness(comp: Comp, gs: GameState) -> float:
     """候选线资产厚度(骨架件退役后口径):
 
     板上+bench 中该线终局件数(副本计星级当量:每副本按其 star 计)。
     终件 = core_chars。骨架件折算项已退役(旧 SKELETON_ASSET_WEIGHT=0.5
     设计推断无标定,「未证即退役」→ 保守缺省不计;跨线骨架件仍是囤货
     对象,只是不再抬高本线厚度——撤销出口③的替代证据因此更严)。"""
-    pool = list(iter_occupied_deployed(deployed_slots_of(bs))) \
-        + [b for b in bench_slots_of(bs) if b is not None]
+    pool = list(iter_occupied_deployed(deployed_slots_of(gs))) \
+        + [b for b in bench_slots_of(gs) if b is not None]
     star_of = {bc.char_id: bc.star for bc in pool
                if bc is not None and bc.char_id}
     return float(sum(star_of.get(name, 0) for name in comp.core_chars))
@@ -1264,7 +1262,7 @@ def core_miss_n_required(core: str, level: int, eps: float) -> int:
     return max(1, math.ceil(math.log(eps) / math.log(1.0 - q)))
 
 
-def p2_supply_horizon(bs: GameState,
+def p2_supply_horizon(gs: GameState,
                       session: StrategySession | None = None,
                       registry: DecisionV2Registry | None = None) -> int:
     """P2 有效供给视界 H = min(位面剩余节点, ⌈hp / vd_p2_loss⌉)。
@@ -1282,19 +1280,19 @@ def p2_supply_horizon(bs: GameState,
     hp≤0(濒死帧)→ 0(视界为零,任何线都不可达)。
     """
     reg = registry or DEFAULT_REGISTRY
-    plane_left = plane_remaining_nodes(bs, session)
+    plane_left = plane_remaining_nodes(gs, session)
     # hp 决策消费点统一经政策层读口(挂账兑现:原「上游门后值传递」
     # 过渡支随 W6 波 4 改经 decision_hp,hp施门下沉kernel政策层设计
     # §2.4/§2.3;容器 hp = 门前真值,门在此消费点显式施)。
     from sr_od.application.currency_war.kernel.cw_hp_policy import (
         decision_hp,
     )
-    hp = int(decision_hp(bs, session) or 0)
+    hp = int(decision_hp(gs, session) or 0)
     blood_rounds = math.ceil(hp / float(reg.vd_p2_loss)) if hp > 0 else 0
     return min(plane_left, blood_rounds)
 
 
-def line_completion_feasibility(bs: GameState,
+def line_completion_feasibility(gs: GameState,
                                 comp: Comp | None,
                                 session: StrategySession | None = None,
                                 registry: DecisionV2Registry | None = None,
@@ -1330,16 +1328,16 @@ def line_completion_feasibility(bs: GameState,
     """
     if comp is None:
         return 0.0
-    h_eff = p2_supply_horizon(bs, session, registry)
+    h_eff = p2_supply_horizon(gs, session, registry)
     if h_eff <= 0:
         return 0.0
-    vis = _visible_chars(bs) if visible is None else visible
-    owned = _owned_chars(bs)
+    vis = _visible_chars(gs) if visible is None else visible
+    owned = _owned_chars(gs)
     g = 1.0
     for m in comp.core_chars:
         if m in owned or m in vis:
             continue
-        q = _core_miss_q(m, level_of(bs))
+        q = _core_miss_q(m, level_of(gs))
         if q <= 0.0:
             return 0.0
         g *= 1.0 - (1.0 - q) ** h_eff
@@ -1348,7 +1346,7 @@ def line_completion_feasibility(bs: GameState,
     return g
 
 
-def _best_supply_feasible_alt(bs: GameState,
+def _best_supply_feasible_alt(gs: GameState,
                               ist: IntentionState,
                               session: StrategySession | None,
                               reg: DecisionV2Registry,
@@ -1368,19 +1366,19 @@ def _best_supply_feasible_alt(bs: GameState,
     for c in _v2_comps():
         if c.name == exclude or c.name in ist.evicted:
             continue
-        if plane_of(bs) in (c.weak_planes or ()):
+        if plane_of(gs) in (c.weak_planes or ()):
             continue
         core = intention_core(c)
         if not core or core not in visible:
             continue
-        g = line_completion_feasibility(bs, c, session, reg, visible)
+        g = line_completion_feasibility(gs, c, session, reg, visible)
         if g > reg.revoke_miss_tolerance_eps \
                 and (best is None or g > best[1]):
             best = (c.name, g)
     return best
 
 
-def _p2_signal_supply_ok(bs: GameState,
+def _p2_signal_supply_ok(gs: GameState,
                          sig: IntentionSignal,
                          session: StrategySession | None,
                          reg: DecisionV2Registry,
@@ -1394,10 +1392,10 @@ def _p2_signal_supply_ok(bs: GameState,
     if core and core in visible:
         return True
     return line_completion_feasibility(
-        bs, comp, session, reg, visible) > reg.revoke_miss_tolerance_eps
+        gs, comp, session, reg, visible) > reg.revoke_miss_tolerance_eps
 
 
-def _revoke_alt_evidence(bs: GameState, visible: set[str],
+def _revoke_alt_evidence(gs: GameState, visible: set[str],
                          locked_comp: str, evicted: set[str],
                          a_min: float) -> tuple[str, float] | None:
     """证据组 B:I_evidence = ∃ 异线 comp:``_core_reachable`` ∧
@@ -1414,9 +1412,9 @@ def _revoke_alt_evidence(bs: GameState, visible: set[str],
     for c in _v2_comps():
         if c.name == locked_comp or c.name in evicted:
             continue
-        if not _core_reachable(c, bs, visible):
+        if not _core_reachable(c, gs, visible):
             continue
-        thk = _asset_thickness(c, bs)
+        thk = _asset_thickness(c, gs)
         if thk >= a_min and (best is None or thk > best[1]):
             best = (c.name, thk)
     return best
@@ -1456,7 +1454,7 @@ LOCK_PATH_OBS_KEY_PREFIXES: tuple[str, ...] = (
 )
 
 
-def _near_death_band(bs: GameState,
+def _near_death_band(gs: GameState,
                      registry: DecisionV2Registry | None = None,
                      session: StrategySession | None = None) -> bool:
     """濒死带观测判定(零新参数):0 < hp ≤ ``vd_p2_loss``,即血预算
@@ -1466,7 +1464,7 @@ def _near_death_band(bs: GameState,
     from sr_od.application.currency_war.kernel.cw_hp_policy import (
         decision_hp,
     )
-    hp = int(decision_hp(bs, session) or 0)
+    hp = int(decision_hp(gs, session) or 0)
     if hp <= 0:
         return False
     return math.ceil(hp / float((registry or DEFAULT_REGISTRY).vd_p2_loss)) == 1
@@ -1486,7 +1484,7 @@ def _bump_obs(session: StrategySession | None, key: str) -> None:
     st.cw4_counters[key] = st.cw4_counters.get(key, 0) + 1
 
 
-def promote_candidates(bs: GameState,
+def promote_candidates(gs: GameState,
                        ist: IntentionState,
                        session: StrategySession | None = None,
                        registry: DecisionV2Registry | None = None,
@@ -1507,7 +1505,7 @@ def promote_candidates(bs: GameState,
     if not pair:
         return []
     reg = registry or DEFAULT_REGISTRY
-    vis = _visible_chars(bs) if visible is None else visible
+    vis = _visible_chars(gs) if visible is None else visible
     bonds = _pair_bond_keys(pair)
     out: list[Comp] = []
     for c in _v2_comps():
@@ -1515,18 +1513,18 @@ def promote_candidates(bs: GameState,
             continue
         if not (set(c.form_tiers) | set(c.sub_tiers)) & bonds:
             continue
-        if plane_of(bs) in (c.weak_planes or ()):
+        if plane_of(gs) in (c.weak_planes or ()):
             continue
-        if not _core_reachable(c, bs, vis):
+        if not _core_reachable(c, gs, vis):
             continue
-        if plane_of(bs) == 2 and line_completion_feasibility(
-                bs, c, session, reg, vis) <= reg.revoke_miss_tolerance_eps:
+        if plane_of(gs) == 2 and line_completion_feasibility(
+                gs, c, session, reg, vis) <= reg.revoke_miss_tolerance_eps:
             continue
         out.append(c)
     return out
 
 
-def _lock(ist: IntentionState, bs: GameState, sig: IntentionSignal,
+def _lock(ist: IntentionState, gs: GameState, sig: IntentionSignal,
           forced: bool = False) -> None:
     ist.phase = 'locked'
     ist.locked_comp = sig.comp_name
@@ -1542,20 +1540,20 @@ def _lock(ist: IntentionState, bs: GameState, sig: IntentionSignal,
     # incumbent=():comp 锁定 = 域切换,合法换向不继承旧在任
     # (ADR-0616 §2.2「域切换不继承」同款语义)。
     ist.transition_pair = (
-        _derive_p1_pair(bs)
-        if plane_of(bs) == 1
+        _derive_p1_pair(gs)
+        if plane_of(gs) == 1
         else ()
     )
     ist.lock_layer = sig.layer if not forced else 1   # 强制锁线视作最高层(不可被出口②撤)
-    ist.lock_plane = plane_of(bs)
-    ist.lock_round = round_num_of(bs)
+    ist.lock_plane = plane_of(gs)
+    ist.lock_round = round_num_of(gs)
     ist.forced = forced
     ist.weak_comp = ''
     ist.revoke_evidence = {}   # 重锁=证据消费完毕(字段契约见 IntentionState)
     ist.last_event = ('forced_lock:' if forced else 'lock:') + sig.comp_name
 
 
-def update_intention(bs: GameState, ist: IntentionState,
+def update_intention(gs: GameState, ist: IntentionState,
                      session: StrategySession | None = None,
                      registry: DecisionV2Registry | None = None
                      ) -> IntentionState:
@@ -1570,20 +1568,20 @@ def update_intention(bs: GameState, ist: IntentionState,
     if ist.demoted_endgame:
         # 吸收态短路也计入锁定率分母(帧末恒 unlocked,分子自然不计;
         # 漏计会虚高锁定率——分键口径声明见函数尾计数块)。
-        _plane_key = f'p{min(max(1, plane_of(bs)), 3)}'
+        _plane_key = f'p{min(max(1, plane_of(gs)), 3)}'
         _bump_obs(session, f'intention_frame_{_plane_key}')
         return ist   # 降格终局是 absorbing 态(点7 止损序同构,不回弹)
-    if plane_of(bs) != 1 and ist.transition_pair:
+    if plane_of(gs) != 1 and ist.transition_pair:
         # 出 P1:过渡对副方向退场(ADR-0367;P2+ 锁定目标=locked_comp 唯一)
         ist.transition_pair = ()
-    visible = _visible_chars(bs)
+    visible = _visible_chars(gs)
     # (原「门闩位面切换清零」分支只在闩置位后生效;门闩删除后默认行为
     # =位面切换不清 miss_count——维持删除前生产默认,零漂移。)
     # R3 断供驱逐(ADR-0465):每 game-round 恰一次的体系级断供计数
     # (pair 方向在场时辖;断供计数写 pair_drought,驱逐分支已随未证阈值
     # 退役,pair_evicted 恒空集——派生 exclude 参数留兼容)。
-    _update_pair_drought(bs, ist, visible)
-    sigs = [s for s in detect_signals(bs) if s.comp_name not in ist.evicted]
+    _update_pair_drought(gs, ist, visible)
+    sigs = [s for s in detect_signals(gs) if s.comp_name not in ist.evicted]
     # 弱面位面过滤(经济冻结批,病灶③):注册表自注 weak_planes 含当前
     # 位面的线不产锁线信号——单一源=Comp.weak_planes 注册项自注(如
     # DOT队 weak_planes=(2,)「P2 被抽陀螺,保命 pivot 不选」)。旧形态
@@ -1592,11 +1590,11 @@ def update_intention(bs: GameState, ist: IntentionState,
     _pre_wp = len(sigs)
     _pre_sigs = sigs
     sigs = [s for s in sigs
-            if plane_of(bs) not in (getattr(get_comp(s.comp_name),
+            if plane_of(gs) not in (getattr(get_comp(s.comp_name),
                                             'weak_planes', ()) or ())]
     if len(sigs) != _pre_wp:
         log.info('[cw][intention] 弱面过滤 %d→%d 信号(plane=%s)',
-                 _pre_wp, len(sigs), plane_of(bs))
+                 _pre_wp, len(sigs), plane_of(gs))
         # G5 观测分键(设计稿 §6):信号曾生成但被弱面剔——逐被剔信号
         # 计 eval,并按豁免判据(设计稿 §2.2:厚度 ≥ A_min ∧ 意向核心
         # 在店/在手)预演分支(fail-closed 期只计数,豁免行为不落)。
@@ -1609,7 +1607,7 @@ def update_intention(bs: GameState, ist: IntentionState,
             if comp_wp is None:
                 continue
             _bump_obs(session, 'weakplane_exempt_eval')
-            thk = _asset_thickness(comp_wp, bs)
+            thk = _asset_thickness(comp_wp, gs)
             core = intention_core(comp_wp)
             core_vis = bool(core) and core in visible
             if thk >= _a_min and core_vis:
@@ -1627,13 +1625,13 @@ def update_intention(bs: GameState, ist: IntentionState,
         core = intention_core(comp) if comp else ''
         track = _track(ist, ist.locked_comp)
         ch = CHARACTERS.get(core) if core else None
-        window_open = bool(ch) and refresh_prob(level_of(bs), ch.cost) > 0
+        window_open = bool(ch) and refresh_prob(level_of(gs), ch.cost) > 0
         if not window_open:
             # 窗口冻结:未开窗不计 miss;冻结超位面剩余节点 → 移出候选集,
             # 意向回⑤无信号态——**不触发③**(该轮③信号被排除)
             track.frozen_rounds += 1
             # ADR-0366:冻结超限对照量按本位面真值(session 透传,P2=7)。
-            if track.frozen_rounds > plane_remaining_nodes(bs, session):
+            if track.frozen_rounds > plane_remaining_nodes(gs, session):
                 ist.evicted.add(ist.locked_comp)
                 ist.phase = 'unlocked'
                 ist.locked_comp = ''
@@ -1646,7 +1644,7 @@ def update_intention(bs: GameState, ist: IntentionState,
             track.frozen_rounds = 0
             # 线级在店供给断供计数(出口③证据组):有店轮无任何线内
             # 成员(core∪shared)在店 +1,有成员清零,无店轮冻结。
-            _shop = bs.shop.value   # payload 域:非当前画面 None(W6 波3 切换)
+            _shop = gs.shop.value   # payload 域:非当前画面 None(W6 波3 切换)
             shop_names = {getattr(c, 'name', '') or ''
                           for c in shop_payload_content_cards(_shop)}
             if shop_names:
@@ -1678,18 +1676,18 @@ def update_intention(bs: GameState, ist: IntentionState,
                 #      出口在 sim 牌池概念无效,如实记「结构件」,不硬开臂。
                 reg = registry or DEFAULT_REGISTRY
                 n_req = core_miss_n_required(
-                    core, level_of(bs), reg.revoke_miss_tolerance_eps)
+                    core, level_of(gs), reg.revoke_miss_tolerance_eps)
                 if track.miss_count >= max(CORE_MISS_N, n_req):
                     ev = _revoke_alt_evidence(
-                        bs, visible, ist.locked_comp, ist.evicted,
+                        gs, visible, ist.locked_comp, ist.evicted,
                         reg.revoke_evidence_min_thickness)
                     if ev is not None:
                         # 撤销出口①:断供证据 + 替代资产证据齐备 → 降级弱意向
                         alt_name, thk = ev
-                        q = _core_miss_q(core, level_of(bs))
+                        q = _core_miss_q(core, level_of(gs))
                         alt_comp = get_comp(alt_name)
                         e_alt = (e_rounds(alt_comp,
-                                          bs, reg,
+                                          gs, reg,
                                           session=session)
                                  if alt_comp is not None else math.inf)
                         ist.phase = 'weak'
@@ -1731,22 +1729,22 @@ def update_intention(bs: GameState, ist: IntentionState,
             # (un-evict 同款,经济冻结批语义)。核心在店帧不辖(当轮
             # 可买,缺件集即缩,G 会被低估)。全线不可行(无 G>ε 替代)
             # 不降级:任何换线都是 ε 级噪声,P25 锁线价值保留。
-            if (not revoked and plane_of(bs) == 2 and core
+            if (not revoked and plane_of(gs) == 2 and core
                     and core not in visible
                     and track.member_drought >= PAIR_SUPPLY_CONFIRM_ROUNDS):
                 _reg_f = registry or DEFAULT_REGISTRY
                 g_locked = line_completion_feasibility(
-                    bs, comp, session, _reg_f, visible)
+                    gs, comp, session, _reg_f, visible)
                 if g_locked <= _reg_f.revoke_miss_tolerance_eps:
                     alt = _best_supply_feasible_alt(
-                        bs, ist, session, _reg_f, visible,
+                        gs, ist, session, _reg_f, visible,
                         exclude=ist.locked_comp)
                     if alt is not None:
                         from sr_od.application.currency_war.kernel.cw_hp_policy import (
                             decision_hp as _decision_hp_disc,
                         )
                         alt_name, g_alt = alt
-                        _h = p2_supply_horizon(bs, session, _reg_f)
+                        _h = p2_supply_horizon(gs, session, _reg_f)
                         ist.phase = 'unlocked'
                         ist.weak_comp = ist.locked_comp
                         ist.locked_comp = ''
@@ -1759,7 +1757,7 @@ def update_intention(bs: GameState, ist: IntentionState,
                             'g_alt': round(g_alt, 4),
                             'eps': _reg_f.revoke_miss_tolerance_eps,
                             'h_eff': _h,
-                            'hp': int(_decision_hp_disc(bs, session) or 0),  # 读法声明同 p2_supply_horizon(政策层读口)
+                            'hp': int(_decision_hp_disc(gs, session) or 0),  # 读法声明同 p2_supply_horizon(政策层读口)
                             'member_drought': track.member_drought,
                         }
                         ist.last_event = (
@@ -1773,7 +1771,7 @@ def update_intention(bs: GameState, ist: IntentionState,
                 if s.comp_name == ist.locked_comp or s.layer >= ist.lock_layer:
                     continue
                 new_comp = get_comp(s.comp_name)
-                if new_comp and _core_reachable(new_comp, bs, visible):
+                if new_comp and _core_reachable(new_comp, gs, visible):
                     ist.phase = 'weak'
                     ist.weak_comp = ist.locked_comp
                     ist.locked_comp = ''
@@ -1785,7 +1783,7 @@ def update_intention(bs: GameState, ist: IntentionState,
                     break   # 「直至新信号」——本轮撤,下轮新信号再锁
 
 
-    if ist.phase == 'locked' and plane_of(bs) == 1:
+    if ist.phase == 'locked' and plane_of(gs) == 1:
         # ADR-0367:①锁局过渡对随资产重派生(同 p1_pair 语义——
         # 「变体按来牌选」[20],非 pivot)。方向稳定性由 ADR-0616 四层
         # 谓词结构承载(门槛先行+在任优先单席易手+合成中性排序维+
@@ -1793,7 +1791,7 @@ def update_intention(bs: GameState, ist: IntentionState,
         # sim 实证证伪(卖出/合成降计数,ADR-0616 §3,ADR-0357 修订)。
         # [23] 冻结语义辖终局线,不辖过渡副方向;在任 I = 现值
         # transition_pair(域内重评,先于本次计票)。
-        pair = _derive_p1_pair(bs, incumbent=ist.transition_pair,
+        pair = _derive_p1_pair(gs, incumbent=ist.transition_pair,
                                registry=registry, session=session)
         if pair != ist.transition_pair:
             ist.transition_pair = pair
@@ -1810,7 +1808,7 @@ def update_intention(bs: GameState, ist: IntentionState,
         # 立即重锁死循环与 ①②亲和信号把方向锁进供给空缺线(R5 死亡
         # 局 5 条不同锁线全部低供给:任何线都可能供给不济,锁前先验
         # 可达性)。
-        if plane_of(bs) == 2:
+        if plane_of(gs) == 2:
             _reg_f2 = registry or DEFAULT_REGISTRY
             _n0 = len(sigs)
             # G6 观测分键(设计稿 §6):信号存活至缓锁门但被 G≤ε 剔除。
@@ -1819,11 +1817,11 @@ def update_intention(bs: GameState, ist: IntentionState,
             # 预算支同式;G 数值分布不入计数容器,走既有 revoke_evidence
             # 遥测面)。授权设计(濒死换向豁免)出辖设计稿 §12-7 并案批,
             # fail-closed 前行为零变更。
-            _nd = _near_death_band(bs, _reg_f2, session)
+            _nd = _near_death_band(gs, _reg_f2, session)
             if _nd:
                 _bump_obs(session, 'neardeath_direction_obs_frame')
             sigs = [s for s in sigs
-                    if _p2_signal_supply_ok(bs, s, session, _reg_f2,
+                    if _p2_signal_supply_ok(gs, s, session, _reg_f2,
                                             visible)]
             if len(sigs) != _n0:
                 log.info('[cw][intention] P2 供给可行性缓锁 %d→%d 信号',
@@ -1837,20 +1835,20 @@ def update_intention(bs: GameState, ist: IntentionState,
         # 已锁分支(上方 locked)有意不过此滤:环境缺失不没收已锁线
         # (accumulator_family §3 同义)。
         _reg_env = registry or DEFAULT_REGISTRY
-        if round_num_of(bs) >= _reg_env.line_env_lock_min_round:
+        if round_num_of(gs) >= _reg_env.line_env_lock_min_round:
             _n0 = len(sigs)
             sigs = [s for s in sigs
-                    if _line_env_qualified(bs, s.comp_name) is not False]
+                    if _line_env_qualified(gs, s.comp_name) is not False]
             if len(sigs) != _n0:
                 log.info('[cw][intention] 环境判据缓锁 %d→%d 信号(affixes=%s)',
-                         _n0, len(sigs), bs.enemy_affixes.value)
+                         _n0, len(sigs), gs.enemy_affixes.value)
         # P1 过渡配方锁(ADR-0357):P1 的锁定产物=体系对;
         # ②③④信号不再锁终局 comp(终局 comp 锁定移至 P2+)——
         # 只保留①类资格通道(直通终局线资格,ADR-0338/0341 语义零改动)。
         # 方向产物=按手上资产派生的体系对(transition_combos 两两组合)。
-        if plane_of(bs) == 1:
+        if plane_of(gs) == 1:
             sigs = [s for s in sigs
-                    if _direct_line_qualified(bs, s.comp_name)]
+                    if _direct_line_qualified(gs, s.comp_name)]
             # ── 命题 1b form_ok 冻结状态机(ADR-0616 §2.2)──
             # 帧序:①超窗出口(F=True 时先判,解冻后本帧重派生照走)
             # → ②重派生(F=True 抑制,方向= frozen_pair;F=False 帧走
@@ -1860,7 +1858,7 @@ def update_intention(bs: GameState, ist: IntentionState,
             _unfroze_this_frame = False
             if ist.p1_pair_frozen and ist.p1_pair_frozen_pair:
                 over, e_f, r_rem = _p1_pair_overwindow(
-                    ist.p1_pair_frozen_pair, bs, session, registry)
+                    ist.p1_pair_frozen_pair, gs, session, registry)
                 if over:
                     # 出口①触发:解冻 + 封印该对(防「出口→解冻→保持→
                     # 复位→再触发」逐帧空转环);本帧重派生按派生语义执行,
@@ -1883,13 +1881,13 @@ def update_intention(bs: GameState, ist: IntentionState,
                 # 在任优先单席易手(ADR-0616 §2.1,I=现值 p1_pair 先于
                 # 本次计票)+ 命题 3 可行性门后置合取(§2.4:仅辖换席
                 # 候选;空窗首进/空席填充/在任保持不辖门)。
-                pair, cand = _p1_pair_eased(bs, ist.p1_pair)
+                pair, cand = _p1_pair_eased(gs, ist.p1_pair)
                 gate_e: float = 0.0
                 gate_r: int = 0
                 gate_denied = False
                 if cand is not None:
                     ok, gate_e, gate_r = _p1_pair_gate(
-                        cand, bs, registry, session)
+                        cand, gs, registry, session)
                     if ok:
                         pair = cand
                     else:
@@ -1901,7 +1899,7 @@ def update_intention(bs: GameState, ist: IntentionState,
                     else:
                         _t = pair_target_comp(pair)
                         fp_v = (form_progress(_t,
-                                              bs)
+                                              gs)
                                 if _t is not None else 0.0)
                         if fp_v < 1.0:
                             # fp 回落 = 方向丢失;此后再达成才是新
@@ -1934,7 +1932,7 @@ def update_intention(bs: GameState, ist: IntentionState,
                     if fp_v is None:
                         _t = pair_target_comp(pair)
                         fp_v = (form_progress(_t,
-                                              bs)
+                                              gs)
                                 if _t is not None else 0.0)
                     if fp_v >= 1.0:
                         ist.p1_pair_frozen = True
@@ -1954,7 +1952,7 @@ def update_intention(bs: GameState, ist: IntentionState,
             ist.last_event = 'p1_pair:exit_p1'
         best = _best_signal(sigs)
         if best is not None:
-            _lock(ist, bs, best)
+            _lock(ist, gs, best)
         elif ist.phase == 'weak':
             ist.last_event = ist.last_event or 'weak:hold'
         # 无信号:保持 unlocked——囤货方向落三臂判据(hoard_target_set 处理)
@@ -1974,21 +1972,21 @@ def update_intention(bs: GameState, ist: IntentionState,
     # P2 移交守卫:撤销当轮(出口①/②/③)不接同一轮的移交重锁——
     # 「状态机一回合最多一次转移」纪律(revoked 注);下一轮由移交通道
     # 正常重锁(P3 强锁辖域不受本守卫影响,维持既有语义)。
-    _p2_handoff = (plane_of(bs) == 2 and ist.phase == 'unlocked'
+    _p2_handoff = (plane_of(gs) == 2 and ist.phase == 'unlocked'
                    and not revoked)
-    if (plane_of(bs) >= 3 or _p2_handoff) and ist.phase != 'locked':
+    if (plane_of(gs) >= 3 or _p2_handoff) and ist.phase != 'locked':
         # G7/G8 观测分键(设计稿 §6):移交帧分母;候选空帧(handoff_lock
         # 零发射的直接断点);濒死带出口去向;晋升候选集纯派生非空率
         # (G8,输入 = p1_pair_frozen_obs,零行为)。与 G5/G6 分键交叉
         # = 「整局零锁定」摆动局可逐门分解断点(禁合并单键)。
         if _p2_handoff:
             _bump_obs(session, 'p2_handoff_frame')
-            if _near_death_band(bs, registry, session):
+            if _near_death_band(gs, registry, session):
                 _bump_obs(session, 'neardeath_direction_obs_handoff_frame')
         _reg_h = registry or DEFAULT_REGISTRY
         if _p2_handoff and ist.p1_pair_frozen_obs:
             _bump_obs(session, 'promote_candidate_frame')
-            if promote_candidates(bs, ist, session, _reg_h, visible):
+            if promote_candidates(gs, ist, session, _reg_h, visible):
                 _bump_obs(session, 'promote_candidate_nonempty')
         # P2 移交候选补「锁线可行性」门(锁线可行性批):G > ε 才可锁
         # ——锁线前先验证可达性(供给概率×剩余轮×血预算,注册表派生
@@ -1997,25 +1995,25 @@ def update_intention(bs: GameState, ist: IntentionState,
         # P3 分支不动(强锁/降格终局辖域原语义,本批只辖 P2)。
         cands = [c for c in _v2_comps()
                  if c.name not in ist.evicted
-                 and plane_of(bs) not in (c.weak_planes or ())
-                 and _core_reachable(c, bs, visible)
-                 and (plane_of(bs) != 2
+                 and plane_of(gs) not in (c.weak_planes or ())
+                 and _core_reachable(c, gs, visible)
+                 and (plane_of(gs) != 2
                       or line_completion_feasibility(
-                          bs, c, session, _reg_h, visible)
+                          gs, c, session, _reg_h, visible)
                       > _reg_h.revoke_miss_tolerance_eps)]
         if cands:
             best = sorted(
                 cands,
-                key=lambda c: (-_asset_thickness(c, bs),
-                               encounter_window_rounds(intention_core(c), level_of(bs))),
+                key=lambda c: (-_asset_thickness(c, gs),
+                               encounter_window_rounds(intention_core(c), level_of(gs))),
             )[0]
-            _lock(ist, bs, IntentionSignal(1, 'forced', best.name,
+            _lock(ist, gs, IntentionSignal(1, 'forced', best.name,
                                               '资产最厚', 1.0), forced=True)
             if _p2_handoff:
                 # 移交锁与 P3 强制锁分事件标签(判读可辨「P2 开局移交」与
                 # 「P3 入口强制」;标签风格同 last_event 'p1_pair:' 族)。
                 ist.last_event = 'handoff_lock:' + best.name
-        elif plane_of(bs) >= 3:
+        elif plane_of(gs) >= 3:
             # 全部不可达 → 降格终局:四体系过渡板深档强化+通用骨架满配
             ist.demoted_endgame = True
             ist.phase = 'unlocked'
@@ -2026,7 +2024,7 @@ def update_intention(bs: GameState, ist: IntentionState,
             # G7 观测分键:候选空帧——unlocked 帧零候选 ⇒ handoff_lock
             # 零发射(「整局零锁定」摆动的最直接断点;设计稿 §6)。
             _bump_obs(session, 'p2_handoff_cand_empty')
-            if _near_death_band(bs, _reg_h, session):
+            if _near_death_band(gs, _reg_h, session):
                 _bump_obs(session, 'neardeath_direction_obs_handoff_empty')
 
     # 锁定率帧计数(设计稿 §6「锁定率入批统计披露」;分母 = 意向驱动帧,
@@ -2035,7 +2033,7 @@ def update_intention(bs: GameState, ist: IntentionState,
     # 禁作优化目标。生产驱动面 = flow.CwFlowStrategy._refresh_direction
     #(ADR-0583 内化;本模块 drive_intention 生产调用点已清零,保留作
     # 纵深防御),共用 strategy_state_of(session).v3_intention_key 段级重入守卫 ⇒ 每 game-round 恰一次)。
-    _plane_key = f'p{min(max(1, plane_of(bs)), 3)}'
+    _plane_key = f'p{min(max(1, plane_of(gs)), 3)}'
     _bump_obs(session, f'intention_frame_{_plane_key}')
     if ist.phase == 'locked' and ist.locked_comp:
         _bump_obs(session, f'intention_locked_frame_{_plane_key}')
@@ -2095,7 +2093,7 @@ _NO_TARGET_HUB_MIN_COVER: int = 2
 随命题文本声明,禁按经验常数理解或调整。"""
 
 
-def structural_candidate_lines(bs: GameState,
+def structural_candidate_lines(gs: GameState,
                                ist: IntentionState) -> frozenset[str]:
     """𝕃(f) 结构候选线集(证明批 §3.2 定义):
 
@@ -2108,15 +2106,15 @@ def structural_candidate_lines(bs: GameState,
     return frozenset(
         c.name for c in COMP_LIBRARY
         if c.name not in ist.evicted
-        and plane_of(bs) not in (c.weak_planes or ()))
+        and plane_of(gs) not in (c.weak_planes or ()))
 
 
-def hub_covered_lines(bs: GameState, ist: IntentionState,
+def hub_covered_lines(gs: GameState, ist: IntentionState,
                       char_name: str) -> frozenset[str]:
     """枢纽 h 的覆盖集 C_h(f)(char_routes 复用网络口径,core∪shared 计入)
     与结构候选线集的交集;乙臂资格核与同帧仲裁第一层的共享输入。"""
     routes = char_routes().get(char_name, set())
-    return frozenset(routes & set(structural_candidate_lines(bs, ist)))
+    return frozenset(routes & set(structural_candidate_lines(gs, ist)))
 
 
 def _build_char_declaration_index() -> dict[str, int]:
@@ -2142,7 +2140,7 @@ def char_declaration_index(name: str) -> int:
     return _CHAR_DECL_INDEX.get(name, len(_CHAR_DECL_INDEX))
 
 
-def hub_option_names(bs: GameState, ist: IntentionState) -> tuple[str, ...]:
+def hub_option_names(gs: GameState, ist: IntentionState) -> tuple[str, ...]:
     """乙臂资格核(P86 证明批 §3.2 终裁形态;定理 B5):
 
     HUB(h) ⟺ cov(h) ≥ 2 ∧ h ∉ CORE_SINGLE_CARD_REGISTRY——覆盖数按
@@ -2151,14 +2149,14 @@ def hub_option_names(bs: GameState, ist: IntentionState) -> tuple[str, ...]:
     B5 三层:语义/通道[防与规则③双通道注册]/判例),禁档间谓词复用
     (正本 §6.2-3:line_identity_tier 三分档是身份单一源)。
 
-    输入面 = (COMP_LIBRARY, ist.evicted, plane_of(bs), weak_planes,
+    输入面 = (COMP_LIBRARY, ist.evicted, plane_of(gs), weak_planes,
     CORE_SINGLE_CARD_REGISTRY)——G/``_core_reachable`` 禁入(定理 B2
     解耦独立性的实现守卫,静态锁 = test_cw_no_target_three_arms.py 锁 2)。
     返回序 = 注册表声明序(逐套 core∪shared 首现序;同帧仲裁第三层的
     确定性序,证明批 §4.4)。
     """
     routes = char_routes()
-    lines = structural_candidate_lines(bs, ist)
+    lines = structural_candidate_lines(gs, ist)
     out: list[str] = []
     seen: set[str] = set()
     for comp in COMP_LIBRARY:
@@ -2173,7 +2171,7 @@ def hub_option_names(bs: GameState, ist: IntentionState) -> tuple[str, ...]:
     return tuple(out)
 
 
-def arm_a_live_direction(bs: GameState, ist: IntentionState,
+def arm_a_live_direction(gs: GameState, ist: IntentionState,
                          session: StrategySession | None = None,
                          registry: DecisionV2Registry | None = None,
                          visible: set[str] | None = None) -> str:
@@ -2191,24 +2189,24 @@ def arm_a_live_direction(bs: GameState, ist: IntentionState,
     **promote_candidates 禁入本调用链**(G8 观测载体,码内明文禁入任何
     行为消费点,cw_intention.py 消费位注;正本 §2.2 F11)。"""
     reg = registry or DEFAULT_REGISTRY
-    vis = _visible_chars(bs) if visible is None else visible
+    vis = _visible_chars(gs) if visible is None else visible
     cands = [c for c in _v2_comps()
              if c.name not in ist.evicted
-             and plane_of(bs) not in (c.weak_planes or ())
-             and _core_reachable(c, bs, vis)
-             and (plane_of(bs) != 2
-                  or line_completion_feasibility(bs, c, session, reg, vis)
+             and plane_of(gs) not in (c.weak_planes or ())
+             and _core_reachable(c, gs, vis)
+             and (plane_of(gs) != 2
+                  or line_completion_feasibility(gs, c, session, reg, vis)
                   > reg.revoke_miss_tolerance_eps)]
     if not cands:
         return ''
     return sorted(
         cands,
-        key=lambda c: (-_asset_thickness(c, bs),
-                       encounter_window_rounds(intention_core(c), level_of(bs))),
+        key=lambda c: (-_asset_thickness(c, gs),
+                       encounter_window_rounds(intention_core(c), level_of(gs))),
     )[0].name
 
 
-def arm_a_corner_names(bs: GameState, ist: IntentionState,
+def arm_a_corner_names(gs: GameState, ist: IntentionState,
                        session: StrategySession | None = None,
                        registry: DecisionV2Registry | None = None,
                        visible: set[str] | None = None) -> tuple[str, ...]:
@@ -2219,18 +2217,18 @@ def arm_a_corner_names(bs: GameState, ist: IntentionState,
     G)构造可达,甲臂按强锁门逐字不授权。与无信号判死是两个可辨状态,
     独立分键,禁混桶。"""
     reg = registry or DEFAULT_REGISTRY
-    vis = _visible_chars(bs) if visible is None else visible
+    vis = _visible_chars(gs) if visible is None else visible
     out: list[str] = []
-    if plane_of(bs) != 2:
+    if plane_of(gs) != 2:
         return tuple(out)
     for c in _v2_comps():
-        if c.name in ist.evicted or plane_of(bs) in (c.weak_planes or ()):
+        if c.name in ist.evicted or plane_of(gs) in (c.weak_planes or ()):
             continue
-        if not _core_reachable(c, bs, vis):
+        if not _core_reachable(c, gs, vis):
             continue
         core = intention_core(c)
         if core and core in vis \
-                and line_completion_feasibility(bs, c, session, reg, vis) \
+                and line_completion_feasibility(gs, c, session, reg, vis) \
                 <= reg.revoke_miss_tolerance_eps:
             out.append(c.name)
     return tuple(out)
@@ -2254,17 +2252,17 @@ class NoTargetArms:
     corner_names: tuple[str, ...] = ()
 
 
-def no_target_arms(bs: GameState, ist: IntentionState,
+def no_target_arms(gs: GameState, ist: IntentionState,
                    session: StrategySession | None = None,
                    registry: DecisionV2Registry | None = None,
                    visible: set[str] | None = None) -> NoTargetArms:
     """三臂帧判定入口(无目标期帧域守卫内聚:phase=='unlocked' ∧ 未降格
     ∧ 位面 ≥ 2;p1 两带与 weak/demoted 分带显式出辖,出域帧返回空甲乙)。"""
     if (ist.demoted_endgame or ist.phase != 'unlocked'
-            or plane_of(bs) < 2):
+            or plane_of(gs) < 2):
         return NoTargetArms('', frozenset())
-    direction = arm_a_live_direction(bs, ist, session, registry, visible)
-    hubs = hub_option_names(bs, ist)
+    direction = arm_a_live_direction(gs, ist, session, registry, visible)
+    hubs = hub_option_names(gs, ist)
     if direction:
         comp = get_comp(direction)
         if comp is not None:
@@ -2272,11 +2270,11 @@ def no_target_arms(bs: GameState, ist: IntentionState,
             return NoTargetArms(direction, frozenset(chars), hubs)
         return NoTargetArms('', frozenset(), hubs)
     return NoTargetArms('', frozenset(), hubs,
-                        arm_a_corner_names(bs, ist, session, registry,
+                        arm_a_corner_names(gs, ist, session, registry,
                                            visible))
 
 
-def hoard_target_set(bs: GameState, ist: IntentionState,
+def hoard_target_set(gs: GameState, ist: IntentionState,
                      session: StrategySession | None = None,
                      registry: DecisionV2Registry | None = None,
                      visible: set[str] | None = None) -> HoardTarget:
@@ -2302,7 +2300,7 @@ def hoard_target_set(bs: GameState, ist: IntentionState,
             chars, equips = _line_hoard(comp)
             return HoardTarget(frozenset(chars), frozenset(equips),
                                'forced' if ist.forced else 'locked')
-    if plane_of(bs) == 1:
+    if plane_of(gs) == 1:
         # P1 配方方向(ADR-0357):体系对成员集;空窗=四体系全集。
         # 过渡装备随意([20] 装备语义:简易装备随便给,合成件归 final
         # key_equips 判定)——equip_targets 恒空。
@@ -2313,7 +2311,7 @@ def hoard_target_set(bs: GameState, ist: IntentionState,
     if ist.phase == 'weak':
         return HoardTarget(frozenset(CROSS_LINE_SKELETON), frozenset(), 'weak')
     # P86 三臂(p2plus 无目标带;①面退役处置 = 替换为三臂判据,正本 §4.2):
-    arms = no_target_arms(bs, ist, session, registry, visible)
+    arms = no_target_arms(gs, ist, session, registry, visible)
     if arms.direction:
         comp = get_comp(arms.direction)
         if comp is not None:
@@ -2323,7 +2321,7 @@ def hoard_target_set(bs: GameState, ist: IntentionState,
     return HoardTarget(frozenset(), frozenset(), 'fallback_hold')
 
 
-def k_empty_window_fallback(bs: GameState,
+def k_empty_window_fallback(gs: GameState,
                             ist: IntentionState,
                             session: StrategySession | None = None,
                             registry: DecisionV2Registry | None = None,
@@ -2344,12 +2342,12 @@ def k_empty_window_fallback(bs: GameState,
       (丙臂守息,空集带 k_fallback_source 证据)]/weak=跨线骨架/
       demoted=骨架满配)。session/registry/visible 透传甲臂 G 门
       (缺省回退先验,与 hoard_target_set 同款)。"""
-    if plane_of(bs) == 1:
-        if p1_gap_window(bs):
-            return hoard_target_set(bs, ist).char_targets, 'p1_gap'
-        return (p1_early_pair_members(bs, ist)
-                or hoard_target_set(bs, ist).char_targets), 'p1_lock_band'
-    return (hoard_target_set(bs, ist, session, registry, visible)
+    if plane_of(gs) == 1:
+        if p1_gap_window(gs):
+            return hoard_target_set(gs, ist).char_targets, 'p1_gap'
+        return (p1_early_pair_members(gs, ist)
+                or hoard_target_set(gs, ist).char_targets), 'p1_lock_band'
+    return (hoard_target_set(gs, ist, session, registry, visible)
             .char_targets, 'p2plus')
 
 
@@ -2392,7 +2390,7 @@ def committed_from(session: StrategySession,
     本模块 ``committed_authority``,kernel 内自洽)。
 
     - 有现读 state(容器单例)→ 直取权威派生;
-    - 无现读 state 的调用面:plane 取 session 容器单例(board_state_of;
+    - 无现读 state 的调用面:plane 取 session 容器单例(game_state_of;
       旧 session.last_state 槽直读已随链退役批删除,槽本体不复存在);
       也不可得时仅凭 ist 判定(缺供给 = 保守 False,同 D2)。
 
@@ -2405,12 +2403,12 @@ def committed_from(session: StrategySession,
     if state is not None:
         return committed_authority(state, session)
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of,
+        game_state_of,
     )
-    return committed_authority(board_state_of(session), session)
+    return committed_authority(game_state_of(session), session)
 
 
-def drive_intention(bs: GameState, session: StrategySession,
+def drive_intention(gs: GameState, session: StrategySession,
                     registry: DecisionV2Registry | None = None) -> None:
     """意向状态机驱动点(P7 契约):每 game-round 恰一次。
 
@@ -2436,11 +2434,11 @@ def drive_intention(bs: GameState, session: StrategySession,
         if st is None:
             return   # 工厂未注册(第三方策略面):kernel 不代建,跳过驱动
         ist = st.v3_intention = IntentionState()
-    key = (plane_of(bs), round_num_of(bs))
+    key = (plane_of(gs), round_num_of(gs))
     if st.v3_intention_key == key:
         return   # 同轮已驱动:幂等出口(重入只保派生视图刷新,不计数)
     st.v3_intention_key = key
-    update_intention(bs, ist, session, registry=registry)
+    update_intention(gs, ist, session, registry=registry)
 
 
 def locked_buy_scope(ist: IntentionState | None) -> frozenset[str] | None:

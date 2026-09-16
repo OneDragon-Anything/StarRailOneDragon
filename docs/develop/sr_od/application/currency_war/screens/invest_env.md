@@ -13,7 +13,7 @@
 
 ## 3. 观察面
 
-入口单次观察(observe 段)——`_observe_frame` 序:入口锚探测(miss = `hit=False`,observe 段 round_fail 早退,无复探窗)→ 命中后 1s 稳定等待 → 重截稳定帧(标题出现后三卡才渲染稳定,时序口径 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #3)→ 候选读取 `_read_options`(全图 OCR,卡名行 y 带 360-410 + 2-8 字 + 排除表过滤,左→右排序)。刷新计数另有 log 观察通道(`read_invest_refresh_counts(ctx, screen, 'env')`,遥测面供 GameState 写入端;执行闸不消费本读数,`_decide_and_act` 独立现读同源 reader)。观察 payload = `InvestEnvObservation`(`hit`/`options`/`screen`);本屏不上报 GameState 容器观察(决策输入 = `board_state_of(session)` 视图)。
+入口单次观察(observe 段)——`_observe_frame` 序:入口锚探测(miss = `hit=False`,observe 段 round_fail 早退,无复探窗)→ 命中后 1s 稳定等待 → 重截稳定帧(标题出现后三卡才渲染稳定,时序口径 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #3)→ 候选读取 `_read_options`(全图 OCR,卡名行 y 带 360-410 + 2-8 字 + 排除表过滤,左→右排序)。刷新计数另有 log 观察通道(`read_invest_refresh_counts(ctx, screen, 'env')`,遥测面供 GameState 写入端;执行闸不消费本读数,`_decide_and_act` 独立现读同源 reader)。观察 payload = `InvestEnvObservation`(`hit`/`options`/`screen`);本屏不上报 GameState 容器观察(决策输入 = `game_state_of(session)` 视图)。
 
 ## 4. 动作面
 
@@ -21,7 +21,7 @@ decide+act 内聚 `_decide_and_act`(两路径共享):
 
 ```
 names = opts 卡名;未注册环境名逐个告警(该项 env_fit 走中性 fallback)
-pick = decide_invest('env', names, board_state_of(session), ...)
+pick = decide_invest('env', names, game_state_of(session), ...)
   (无 match 局外防御 = 裸空容器 decide_event)
 ├─ 整组重掷刷新 = 终结动作(与策略屏不同构:单全局钮 + 单全局计数):
 │    计数现读 read_invest_refresh_counts(..., 'env') → 全局计数 >0 才有授权

@@ -575,11 +575,11 @@ def _observe_back_layout_to_container(ctx, n: int | None,
             return
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
-            board_state_of,
+            game_state_of,
         )
         superset = n_raw is not None and n_raw not in _LAYOUT_PREFIX
-        bs = board_state_of(session)
-        bs.observe(bs.back_layout, int(n),
+        gs = game_state_of(session)
+        gs.observe(gs.back_layout, int(n),
                    evidence='superset' if superset else None,
                    sig=ChannelSig(family='obs', actor='cw_back_layout',
                                   mode='read'))

@@ -135,4 +135,4 @@ def fire_reconcile_andon(row: dict) -> None:
     try:
         hook(row)
     except Exception as e:  # noqa: BLE001  安灯 best-effort,不毒化写入链
-        log.debug(f'[cw-bs] reconcile andon skip: {e}')
+        log.debug(f'[cw-gs] reconcile andon skip: {e}')

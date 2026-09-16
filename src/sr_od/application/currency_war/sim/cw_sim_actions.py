@@ -56,7 +56,7 @@ NODE_XP_BY_TYPE: dict[str, int] = {
 NODE_XP_PENDING_U17: str = 'node_xp_pending_u17'
 
 
-def apply_player_action(bs: GameState, action: CwAction, *,
+def apply_player_action(gs: GameState, action: CwAction, *,
                         node_tag: str = 'prep') -> LogicOutcome | None:
     """玩家动作 → 单一转移函数应用(sim 引擎唯一动作入口)。
 
@@ -70,20 +70,20 @@ def apply_player_action(bs: GameState, action: CwAction, *,
     - 应用成功且为刷新 → 刷新执行事实组记账(§3.3.6-8:免费帧闸)。
     """
     if isinstance(action, DeployMove):
-        apply_prep_action_logic(bs, action, produced_by='SimEngineV2',
+        apply_prep_action_logic(gs, action, produced_by='SimEngineV2',
                                 sig=logic_sig(group_id=f'act:sim@{node_tag}'))
         return None
     paid: int | None = None
     from sr_od.application.currency_war.kernel.cw_vocab import RefreshShop
     if isinstance(action, RefreshShop):
-        paid = refresh_cost_for(bs)
+        paid = refresh_cost_for(gs)
     outcome = apply_shop_action_logic(
-        bs, action, produced_by='SimEngineV2',
+        gs, action, produced_by='SimEngineV2',
         sig=logic_sig(group_id=f'act:sim@{node_tag}'),
         executed=(ShopActionExecuted(refresh_paid=paid, levelup_clicks=1)
                   if paid is not None else ShopActionExecuted(levelup_clicks=1)))
     if outcome.applied and paid is not None:
-        record_refresh_execution(bs, free=(paid == 0), frame=node_tag)
+        record_refresh_execution(gs, free=(paid == 0), frame=node_tag)
     return outcome
 
 
@@ -107,7 +107,7 @@ def xp_apply_amount(level: int, xp_cur: int, amount: int) -> tuple[int, int]:
     return level, cur
 
 
-def apply_node_xp(bs: GameState, *, node_type: str) -> int:
+def apply_node_xp(gs: GameState, *, node_type: str) -> int:
     """节点结算基础经验入账(M08;补给 +0 = 表内显式档)。
 
     写容器 xp = (当前级已攒, 升下一级所需);集外节点型 = 0 经验不入账
@@ -116,13 +116,13 @@ def apply_node_xp(bs: GameState, *, node_type: str) -> int:
     amount = NODE_XP_BY_TYPE.get(node_type, 0)
     if amount <= 0:
         return 0
-    xp_field = bs.xp.value
-    level_field = bs.level.value
+    xp_field = gs.xp.value
+    level_field = gs.level.value
     if xp_field is None or level_field is None:
         return 0
     level, cur = xp_apply_amount(int(level_field), int(xp_field[0]), amount)
     need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
     sig = obs_sig(group_id='sim:xp')
-    bs.observe(bs.level, level, evidence=sim_evidence('xp:node'), sig=sig)
-    bs.observe(bs.xp, (cur, need), evidence=sim_evidence('xp:node'), sig=sig)
+    gs.observe(gs.level, level, evidence=sim_evidence('xp:node'), sig=sig)
+    gs.observe(gs.xp, (cur, need), evidence=sim_evidence('xp:node'), sig=sig)
     return amount

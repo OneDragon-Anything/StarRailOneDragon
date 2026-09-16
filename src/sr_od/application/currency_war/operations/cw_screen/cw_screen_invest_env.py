@@ -295,19 +295,19 @@ class CwScreenInvestEnv(CwScreenOpBase):
             if match is not None:
                 # ADR-0144:真状态替空 stub ——环境屏 overlay 下 board 不可读,
                 # 但 HP 分档/持有策略该用真值。决策输入消费切换(迁移批次二):
-                # 值源 = GameState 视图(kernel/cw_bs_view
-                # .strategy_input_state),原 last_state 直读退役。
+                # 值源 = GameState 视图(kernel/cw_game_state
+                # .game_state_of),原 last_state 直读退役。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of,
+                    game_state_of,
                 )
-                pick = match.strategy.decide_invest('env', names, board_state_of(match.session), match.session, config)
+                pick = match.strategy.decide_invest('env', names, game_state_of(match.session), match.session, config)
             else:
                 # 防御:无 match(局外独立跑)——防御空容器直喂(容器签名;
                 # 经验分退役后 decide_event 不读 hp/品质惩罚,空容器安全)。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
-                    GameState as _BS_Empty,
+                    GameState as _GS_Empty,
                 )
-                pick = decide_event(names, config, _BS_Empty(schema_version=1))
+                pick = decide_event(names, config, _GS_Empty(schema_version=1))
         else:
             pick = None
         # ===== 环境刷新 = 终结动作(用户裁定 2026-09-14:刷新 = 唯一引入
@@ -384,10 +384,10 @@ class CwScreenInvestEnv(CwScreenOpBase):
             # 选择落地无定型帧可核对,后果走观察覆盖)。
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
-                board_state_of,
+                game_state_of,
             )
-            board_state_of(match.session).write_logic(
-                board_state_of(match.session).active_env, chosen,
+            game_state_of(match.session).write_logic(
+                game_state_of(match.session).active_env, chosen,
                 produced_by='CwScreenInvestEnv',
                 sig=ChannelSig(family='logic_action',
                                actor='CwScreenInvestEnv', mode='compute'))

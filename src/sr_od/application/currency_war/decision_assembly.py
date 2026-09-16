@@ -14,10 +14,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from sr_od.application.currency_war.kernel.cw_exec_state import snapshot_copy
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     PrepObservation,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import snapshot_copy
 from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 from sr_od.application.currency_war.strategies.impl.mandate_v1.adapter import (
     PREP_SUBSTATE_NAME,
@@ -68,16 +68,16 @@ def install_obs_ports() -> None:
 
     # 缺陷台账生产武装点(迁移批次二,任务书件 7):GameState 观察覆盖
     # logic 值失配行(kernel/cw_game_state._emit_defect,批次一为缺省关)
-    # 经 sink 落 bs_defect.jsonl(与 expected_reconcile.jsonl 同目录同追加
+    # 经 sink 落 gs_defect.jsonl(与 expected_reconcile.jsonl 同目录同追加
     # 形态);缺省关 = 只缓冲不落盘,测试零真实 IO。
     from sr_od.application.currency_war.kernel.cw_game_state import (
         set_defect_sink,
     )
-    set_defect_sink(_bs_defect_sink_for_test(_reconcile_dir()))
+    set_defect_sink(_gs_defect_sink_for_test(_reconcile_dir()))
 
 
 def _reconcile_dir() -> Path:
-    """bs_defect.jsonl 目录(项目根锚定绝对路径;P4R4 缺陷②:
+    """gs_defect.jsonl 目录(项目根锚定绝对路径;P4R4 缺陷②:
     旧相对路径依赖 server cwd,cwd 漂移进程把追加写去别处 = 主文件
     「零新增」假截断)。"""
     from one_dragon.utils.file_utils import get_project_root
@@ -87,7 +87,7 @@ def _reconcile_dir() -> Path:
 def _star_evidence_saver():
     """star 回退截图留证 saver 工厂(cv2 落盘从
     kernel/cw_reconcile._star_stop_hook 迁出,实现住本装配模块——共用中段
-    禁摸像素,装配缝先例 = 同文件 ``_bs_defect_sink_for_test``)。
+    禁摸像素,装配缝先例 = 同文件 ``_gs_defect_sink_for_test``)。
 
     落盘路径与旧实现逐位一致(``.debug/temp/currency_war/shots``,相对
     CWD,不建目录——shots/ 缺席时 tofile 失败由调用方 best-effort 吞,
@@ -107,14 +107,14 @@ def _star_evidence_saver():
     return _save
 
 
-def _bs_defect_sink_for_test(base_dir: Path):
+def _gs_defect_sink_for_test(base_dir: Path):
     """GameState 缺陷台账 sink 工厂(形态同 expected_reconcile sink;
-    单一文件 = bs_defect.jsonl,逐行 JSON,失败静默)。"""
+    单一文件 = gs_defect.jsonl,逐行 JSON,失败静默)。"""
     import json
 
     def _sink(row: dict) -> None:
         try:
-            p = Path(base_dir) / 'bs_defect.jsonl'
+            p = Path(base_dir) / 'gs_defect.jsonl'
             p.parent.mkdir(parents=True, exist_ok=True)
             with p.open('a', encoding='utf-8') as f:
                 f.write(json.dumps(row, ensure_ascii=False, default=str) + '\n')
@@ -143,13 +143,13 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
     from types import MappingProxyType
 
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of,
+        game_state_of,
         level_of,
         node_kind_of,
         plane_of,
         round_num_of,
     )
-    last = board_state_of(session)
+    last = game_state_of(session)
     _gold_val = last.gold.value
     _gold_readable = last.gold.source != 'prior'
     _hp_readable = last.hp.source == 'observation'

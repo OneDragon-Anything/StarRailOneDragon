@@ -36,6 +36,8 @@ from typing import TYPE_CHECKING
 from sr_od.application.currency_war.kernel.cw_economy import (
     SHOP_REFRESH_COST,
     STREAK_GOLD_TABLE,
+    XP_PER_BUY,
+    XP_TO_NEXT_LEVEL,
     cap_resolved_of_session,
     interest,
     round_base_income,
@@ -44,10 +46,6 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     xp_click_cost,
 )
 from sr_od.application.currency_war.kernel.cw_plane_table import r_remaining
-from sr_od.application.currency_war.kernel.cw_economy import (
-    XP_PER_BUY,
-    XP_TO_NEXT_LEVEL,
-)
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -80,7 +78,7 @@ class BudgetPlan:
     exhausted: bool
 
 
-def next_level_xp_cost(bs: GameState, missing_copies: int) -> int:
+def next_level_xp_cost(gs: GameState, missing_copies: int) -> int:
     """升级金 v1(单步口径;P38 levelup_cost 式 ⌈max(0,need−4·Σn_k)/4⌉×单价)。
 
     等级日程条件(P38「升级金按日程所在轮扣」——日程不升则不扣):
@@ -97,16 +95,16 @@ def next_level_xp_cost(bs: GameState, missing_copies: int) -> int:
         plane_of,
         round_num_of,
     )
-    level = level_of(bs)
+    level = level_of(gs)
     if level >= 10:
         return 0
     from sr_od.application.currency_war.kernel.cw_economy import (
         get_node_goal,
     )
-    goal = get_node_goal(plane_of(bs), round_num_of(bs))
+    goal = get_node_goal(plane_of(gs), round_num_of(gs))
     if goal.target_level <= level:
         return 0
-    prog = bs.xp.value
+    prog = gs.xp.value
     if isinstance(prog, tuple) and len(prog) == 2:
         cur, need = int(prog[0]), int(prog[1])
     else:
@@ -114,10 +112,10 @@ def next_level_xp_cost(bs: GameState, missing_copies: int) -> int:
     remain = max(0, need - cur - XP_PER_BUY * max(0, int(missing_copies)))
     clicks = -(-remain // XP_PER_BUY)
     # 单击价 = 显示价优先/兜底折扣族单一源(xp_click_cost)。
-    return clicks * xp_click_cost(bs)
+    return clicks * xp_click_cost(gs)
 
 
-def p38_budget_recursion(bs: GameState, session: object,
+def p38_budget_recursion(gs: GameState, session: object,
                          purchase_cost: float,
                          missing_copies: int) -> BudgetPlan:
     """P38 ⑤层金位递推单一源(见模块 docstring 正本式与逐项声明)。
@@ -133,16 +131,16 @@ def p38_budget_recursion(bs: GameState, session: object,
         plane_of,
         round_num_of,
     )
-    plane = plane_of(bs)
-    round_num = round_num_of(bs)
-    gold = gold_of(bs)
+    plane = plane_of(gs)
+    round_num = round_num_of(gs)
+    gold = gold_of(gs)
     cap = cap_resolved_of_session(session)
     floor = saturation_line(cap)
-    refresh_cost = (int(bs.shop_refresh_cost.value or 0)
+    refresh_cost = (int(gs.shop_refresh_cost.value or 0)
                     or SHOP_REFRESH_COST)
     t_horizon = max(0, int(r_remaining(session, plane, round_num)))
-    lvl_cost = next_level_xp_cost(bs, missing_copies)
-    streak = bs.streak.value
+    lvl_cost = next_level_xp_cost(gs, missing_copies)
+    streak = gs.streak.value
     streak_term = (streak_gold(int(streak))
                    if isinstance(streak, int) and streak > 0
                    else STREAK_PLAN_MEDIAN)

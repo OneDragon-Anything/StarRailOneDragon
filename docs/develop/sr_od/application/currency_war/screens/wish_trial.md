@@ -9,11 +9,11 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。五相位屏:重入裁决先于装配点分流(确认 pending = 上轮已发确认的 `(objectives, pick_idx)` 快照;标识不在 = overlay 已关 → 此刻才写 `chosen_wish` + success;标识在 = 未落地 → 清标志重走计预算);门后选卡+确认链纯移入 `_handle_overlay`(两路径共享零转录);无 on_outcome 落地登记件。决策入口 = 契约 `decide_wish_trial(objectives, bs, session, config)`(打分:金币类/阵营词命中/刷新购买操作向 + 效果偏置基分,权重常量单一源 = `strategies/impl/pick_bias.py::PICK_BIAS`;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E5)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。五相位屏:重入裁决先于装配点分流(确认 pending = 上轮已发确认的 `(objectives, pick_idx)` 快照;标识不在 = overlay 已关 → 此刻才写 `chosen_wish` + success;标识在 = 未落地 → 清标志重走计预算);门后选卡+确认链纯移入 `_handle_overlay`(两路径共享零转录);无 on_outcome 落地登记件。决策入口 = 契约 `decide_wish_trial(objectives, gs, session, config)`(打分:金币类/阵营词命中/刷新购买操作向 + 效果偏置基分,权重常量单一源 = `strategies/impl/pick_bias.py::PICK_BIAS`;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E5)。
 
 ## 3. 观察面
 
-observe 段 = 入口门(「标识-祈愿试炼」)+ 轻观察帧引用;objective 读取归共享动作体 `_read_objectives`:OCR 文本带 y 250-400,按 x 近邻分流到卡槽(槽 x 常量数组,容差 160),同桶 join 为各卡 objective 文本(候选卡数随节点变,槽常量覆盖 3 卡位)。观察 payload = `WishTrialObservation`(仅帧引用);本屏不上报 GameState 容器观察(决策输入 = `board_state_of(match.session)` 视图)。
+observe 段 = 入口门(「标识-祈愿试炼」)+ 轻观察帧引用;objective 读取归共享动作体 `_read_objectives`:OCR 文本带 y 250-400,按 x 近邻分流到卡槽(槽 x 常量数组,容差 160),同桶 join 为各卡 objective 文本(候选卡数随节点变,槽常量覆盖 3 卡位)。观察 payload = `WishTrialObservation`(仅帧引用);本屏不上报 GameState 容器观察(决策输入 = `game_state_of(match.session)` 视图)。
 
 ## 4. 动作面
 

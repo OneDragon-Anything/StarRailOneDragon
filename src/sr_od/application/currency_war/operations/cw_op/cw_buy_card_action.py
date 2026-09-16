@@ -133,9 +133,9 @@ class BuyCardOp(ActionOp):
         _payload_cards = (shop_payload_content_cards(state.shop.value)
                           if state.shop.value is not None else [])
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of as _bso_buy,
+            game_state_of as _gso_buy,
         )
-        _books = _bso_buy(match.session).tracked_books
+        _books = _gso_buy(match.session).tracked_books
         mutate_bench_deployed(_books.bench, _books.deployed,
                               action, shop=_payload_cards)
         if action.card.name:

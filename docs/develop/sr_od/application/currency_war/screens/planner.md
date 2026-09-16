@@ -9,11 +9,11 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。五相位屏:**分发即门**(无 op 内入口守卫;重入出口门补位);无 on_outcome 落地登记件;无 chosen_\* 写端。决策入口 = 契约 `decide_planner(options, bs, session, config)`(唯一入口 = 策略对象,handler 禁 kernel 直调;委托 `kernel/cw_events.py::decide_planner` 升费卡打分含银狼线/在场判定,target_comp 决定银狼线加成;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E16。「何时升费非最优」由策略模块表达,handler 不写死优先级)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。五相位屏:**分发即门**(无 op 内入口守卫;重入出口门补位);无 on_outcome 落地登记件;无 chosen_\* 写端。决策入口 = 契约 `decide_planner(options, gs, session, config)`(唯一入口 = 策略对象,handler 禁 kernel 直调;委托 `kernel/cw_events.py::decide_planner` 升费卡打分含银狼线/在场判定,target_comp 决定银狼线加成;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E16。「何时升费非最优」由策略模块表达,handler 不写死优先级)。
 
 ## 3. 观察面
 
-observe 段 = 轻观察帧引用(卡面读取归共享动作体现役内聚)。卡面读取 = 全图 OCR,文本带 y 300-420(卡描述带),按 x 二分归左右卡(x<960 左 / ≥960 右)join 为 `PlannerOption(idx, text)`。观察 payload = `PlannerObservation`(仅帧引用);本屏不上报 GameState 容器观察(决策输入 = `board_state_of(match.session)` 视图;无 match 局外防御 = 裸空容器 kernel 直调)。
+observe 段 = 轻观察帧引用(卡面读取归共享动作体现役内聚)。卡面读取 = 全图 OCR,文本带 y 300-420(卡描述带),按 x 二分归左右卡(x<960 左 / ≥960 右)join 为 `PlannerOption(idx, text)`。观察 payload = `PlannerObservation`(仅帧引用);本屏不上报 GameState 容器观察(决策输入 = `game_state_of(match.session)` 视图;无 match 局外防御 = 裸空容器 kernel 直调)。
 
 ## 4. 动作面
 

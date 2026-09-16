@@ -33,11 +33,11 @@ def bench_effect_context(state: GameState, unit: BenchChar,
     装配函数(IMPL_ADV_R200 症3:语境从容器现读,禁各通道自拼)。
 
     可观测来源(逐项):
-    - ``rust_affix_present``:``bs.enemy_affixes`` 含
+    - ``rust_affix_present``:``gs.enemy_affixes`` 含
       ``RUST_AFFIX_NAME``(与 kernel/cw_registry H2② 同一判据源);
     - ``equipped``:被评估单位自身 ``unit.equips`` 非空(单位级现读,
       恒可得);
-    - ``herta_star_supply``:黑塔纪元 augment 局(``bs.
+    - ``herta_star_supply``:黑塔纪元 augment 局(``gs.
       active_strategies`` 含 ``proof.DIRECT_LINE_SIGNAL_STRATEGIES``
       成员,单一源)∨ 板面(``deployed_slots_of``)存在星级供强承载对象
       「大黑塔」(名册锚=cw_chars CHARACTERS['大黑塔'],银河学者星级

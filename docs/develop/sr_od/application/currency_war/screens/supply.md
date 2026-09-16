@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。**committed-but-verifying 节点循环**形态:每轮 = observe 门(`_in_node`:标识锚还在?)→ 已离开 = 节点完成 round_success;仍在 = 做一个动作(`_do_action`)→ round_retry 重跑本节点(计 `node_max_retry_times=8` 预算,超 → FAIL bail)。五相位屏:装配点分流;decide+act 内聚于 `_do_action`(两路径共享零转录);本屏无 on_outcome 落地登记件。决策入口 = 契约 `decide_supply(options, bs, session, config, refresh_used)`(委托 `kernel/cw_events.py::decide_supply`;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E4)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。**committed-but-verifying 节点循环**形态:每轮 = observe 门(`_in_node`:标识锚还在?)→ 已离开 = 节点完成 round_success;仍在 = 做一个动作(`_do_action`)→ round_retry 重跑本节点(计 `node_max_retry_times=8` 预算,超 → FAIL bail)。五相位屏:装配点分流;decide+act 内聚于 `_do_action`(两路径共享零转录);本屏无 on_outcome 落地登记件。决策入口 = 契约 `decide_supply(options, gs, session, config, refresh_used)`(委托 `kernel/cw_events.py::decide_supply`;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E4)。
 
 ## 3. 观察面
 
@@ -19,7 +19,7 @@ observe 段 = 节点完成门(`_in_node`)+ 轻观察帧引用(选项读取归 de
 - 钻识别双通道:主 = SIFT(装备 icon 带扫三钻模板,`cw_equipment` 模板库)、兜底 = 装备名精确匹配三钻集合(非子串,防带钻字误判);
 - 每列产出 `(SupplyOption(idx, char, equip, has_diamond), 卡身点击点)`。
 
-观察 payload = `SupplyObservation`(仅帧引用)。本屏不上报 GameState 容器观察(决策输入 = `board_state_of(match.session)` 视图)。
+观察 payload = `SupplyObservation`(仅帧引用)。本屏不上报 GameState 容器观察(决策输入 = `game_state_of(match.session)` 视图)。
 
 ## 4. 动作面
 
@@ -28,7 +28,7 @@ decide+act 内聚 `_do_action`(两路径共享):
 ```
 opts = read_supply_options(ctx, screen);refresh_used = ExecState._supply_refresh_used
   (无 match 退实例旗标,测试/离线路径)
-pick = decide_supply([o for o,_ in opts], board_state_of(session), ..., refresh_used)
+pick = decide_supply([o for o,_ in opts], game_state_of(session), ..., refresh_used)
 ├─ 刷新形态(节点循环内终结语义):pick.refresh ∧ 未用 →
 │    文本锚:「文本-剩余次数」建档 rect 外扩 OCR 带 +「剩余次数:N」正则
 │    → 置位 _supply_refresh_used(实例 + ExecState 双写,不等验效;

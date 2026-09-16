@@ -6,7 +6,7 @@
 ``resolved ∧ expected_gold > 0`` 才进经济域带;fail-closed 恒返 (0.0, False),
 半值禁出,防消费端误读)。
 
-**剩余价值口径**(design §2.2.3):从 bs 当前位面/轮次起算到局终——开局选卡
+**剩余价值口径**(design §2.2.3):从 gs 当前位面/轮次起算到局终——开局选卡
 = 全局期望,局内重发环境 = 剩余期望,同一函数自然覆盖。当前位面已确定到达
 (权恒 1.0,零参数),严格未来位面权 = 估算注册表 P(位面可达)(全局无条件
 到达率;条件化 P(可达|已至当前) 更准,样本切片归数据批,v1 取无条件值 =
@@ -161,14 +161,14 @@ ENV_ECONOMY_PENDING_VERIFICATION: dict[str, str] = {
 }
 
 
-def _current_plane_round(bs: GameState) -> tuple[int, int]:
+def _current_plane_round(gs: GameState) -> tuple[int, int]:
     """当前(位面, 轮次)。
 
-    开局环境帧的 bs = 裸 GameState 桩(cw_screen_invest_env 直构),node
+    开局环境帧的 gs = 裸 GameState 桩(cw_screen_invest_env 直构),node
     未写 → 按局首 (1, 1) 语义评估:env 3 选 1 消费帧中 node 缺读只发生在
     开局桩形(design §2.3 门 3 消费位),剩余口径的局首退化 = 全局期望。
     """
-    node = bs.node.value
+    node = gs.node.value
     if node is None:
         return (1, 1)
     return (int(node.plane), int(node.round_num))
@@ -212,7 +212,7 @@ def _remaining_reward_nodes(cur_plane: int, cur_round: int) -> float | None:
     return total
 
 
-def env_economy_value(name: str, bs: GameState) -> tuple[float, bool]:
+def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     """环境经济通道金等价期望(单一入口;design.md §2.2.3)。
 
     返回 ``(expected_gold, resolved)``;resolved=False = fail-closed
@@ -239,8 +239,8 @@ def env_economy_value(name: str, bs: GameState) -> tuple[float, bool]:
       (_STRATEGY_PICK_PLANES 结构表);
     - gold_after_refreshes(B 类):P(累计刷新达阈值)× 返金。付费/总分型 =
       refresh_cost_after 在场判(在场 = 长线利好「花费金币进行30次刷新」付费
-      阈值,读 bs.paid_refresh_count;否则 = 二手市场总阈值,读
-      bs.total_refresh_count)。计数 ≥ 阈值 → P=1(选中即触发按立即结算
+      阈值,读 gs.paid_refresh_count;否则 = 二手市场总阈值,读
+      gs.total_refresh_count)。计数 ≥ 阈值 → P=1(选中即触发按立即结算
       建模,未实采;开局桩形计数恒 0 不达);计数 None(未读)按 0(起始
       计数)。v1 用整局分布参数不按当前计数条件化——局内重发帧系统性高估,
       申报为近似(主要消费帧 = 开局三选一,整局参数即精确口径),条件化
@@ -259,12 +259,12 @@ def env_economy_value(name: str, bs: GameState) -> tuple[float, bool]:
     期望都参数依赖」的帧(策略大师 held=2 后唯一剩余取卡在位面 2)。
     """
     if name in ENV_POOL_REWRITE:
-        return _pool_rewrite_value(name, bs)
+        return _pool_rewrite_value(name, gs)
     env = get_env(name)
     if env is None or env.economy is None:
         return (0.0, False)
     eff = env.economy
-    cur_plane, cur_round = _current_plane_round(bs)
+    cur_plane, cur_round = _current_plane_round(gs)
     acc = [0.0, 0.0, 0.0]   # (点值, CI低, CI高)
     params_missing = False
 
@@ -295,7 +295,7 @@ def env_economy_value(name: str, bs: GameState) -> tuple[float, bool]:
         _acc((_xg, _xg, _xg))
     # 通道 4:策略大师(Σ_k coef×(k−1)×P(k);k = 剩余取卡序,1 基)
     if eff.gold_per_strategy_coef:
-        _held = len(bs.active_strategies.value or [])
+        _held = len(gs.active_strategies.value or [])
         for _k in range(_held + 1, len(_STRATEGY_PICK_PLANES) + 1):
             _w = _arrival_weight(_STRATEGY_PICK_PLANES[_k - 1], cur_plane)
             if _w is None:
@@ -307,8 +307,8 @@ def env_economy_value(name: str, bs: GameState) -> tuple[float, bool]:
     if eff.gold_after_refreshes is not None:
         _th, _refund = eff.gold_after_refreshes
         _scope = 'paid' if eff.refresh_cost_after is not None else 'total'
-        _count = (bs.paid_refresh_count if _scope == 'paid'
-                  else bs.total_refresh_count).value
+        _count = (gs.paid_refresh_count if _scope == 'paid'
+                  else gs.total_refresh_count).value
         _cur = int(_count or 0)
         if _cur >= _th:
             _pw: tuple[float, float, float] | None = (1.0, 1.0, 1.0)
@@ -384,9 +384,9 @@ def _validate_estimates_governance() -> None:
             raise ValueError(f"待建模在册孤儿键(注册表无此环境):{_name!r}")
         if _name in ENV_ECONOMY:
             raise ValueError(f"待建模环境与 ENV_ECONOMY 双登记:{_name!r}")
-    _bs = GameState(schema_version=1)
+    _gs = GameState(schema_version=1)
     for _env_name in ENV_ECONOMY:
-        _v, _ok = env_economy_value(_env_name, _bs)
+        _v, _ok = env_economy_value(_env_name, _gs)
         if _ok and _v > ECON_VALUE_NORM:
             raise ValueError(
                 f"经济环境开局期望越 ECON_VALUE_NORM 上界({ECON_VALUE_NORM}):"
@@ -444,7 +444,7 @@ STRAT_POOL_ECON_MEANS: dict[tuple[str, int], EconomyEstimate] = {}
 OFFER_QUALITY_DIST: dict[int, dict[str, EconomyEstimate]] = {}
 
 
-def _pool_rewrite_value(name: str, bs: GameState) -> tuple[float, bool]:
+def _pool_rewrite_value(name: str, gs: GameState) -> tuple[float, bool]:
     """品质改写型层 E 增量期望(ΔV;入口 = env_economy_value 分派,§2.2.5)。
 
     ΔV(R) = Σ_{k ∈ picks(R)} [ μ_E(q_R; H_k) − Σ_q π_offer,k(q) · μ_E(q; H_k) ]
@@ -462,8 +462,8 @@ def _pool_rewrite_value(name: str, bs: GameState) -> tuple[float, bool]:
       design §2.3 门 3 再加 expected_gold > 0——白银时代即使转正也因
       ΔV ≤ 0 落回裸分,方向自洽)。
 
-    bs 参数:层 E v1 用全局先验视界(_STRAT_PICK_HORIZONS),不做剩余口径
-    条件化(H_k 随当前帧修正 = 转正数据批的参数化面);bs 保留于签名 =
+    gs 参数:层 E v1 用全局先验视界(_STRAT_PICK_HORIZONS),不做剩余口径
+    条件化(H_k 随当前帧修正 = 转正数据批的参数化面);gs 保留于签名 =
     单一入口契约形态一致,当前帧信息供转正批条件化使用。
     """
     rw = ENV_POOL_REWRITE[name]

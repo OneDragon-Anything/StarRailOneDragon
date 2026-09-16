@@ -66,7 +66,7 @@ def xp_ledger_stop(xp_progress: tuple[int, int] | None,
     不存在第二把尺);门槛表键域 3-9 无表项 ⇒ 判据两域恒不辖,停止语义
     两域同由 lv9_stop 承载。
 
-    ``xp_progress`` = 容器 ``bs.xp.value`` 原样透传(缺读 None 不辖,
+    ``xp_progress`` = 容器 ``gs.xp.value`` 原样透传(缺读 None 不辖,
     与 clicks_to_next_level 的缺省兜底方向一致——停判据缺读宁可放行
     交 lv9_stop/量闸管辖,不制造静默拒)。单一源 = kernel
     ``cw_economy.XP_TO_NEXT_LEVEL``,禁第二份表。
@@ -117,7 +117,7 @@ def spend_unified(clicks_to_next: int, gold: int, click_cost: int) -> bool:
 
 def _plane_round_of(state: GameState) -> tuple[int, int]:
     """(plane, round_num) 容器读(读口单一源,prep 链容器化段 2 起
-    bs 单形态)。"""
+    gs 单形态)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
         plane_of,
         round_num_of,
@@ -133,7 +133,7 @@ def _max_units_of(state: GameState) -> int:
     return max_units_of(state)
 
 
-def levelup_budget_gate(bs: GameState,
+def levelup_budget_gate(gs: GameState,
                         session: StrategySession | None,
                         gold: int, cap_resolved: int,
                         k_members: tuple[str, ...], bench: list,
@@ -141,8 +141,8 @@ def levelup_budget_gate(bs: GameState,
                         click_cost: int) -> tuple[bool, str]:
     """P72 (3) 全段预算闸(ADR-0576):升级支出 s 的量闸(全段辖域)。
 
-    载体 = 容器 bs 单形态(prep 链容器化段 2;entry 姿态镜像/商店线
-    两位/mandate 面消费恒直传 bs,CwSimFrame 过渡支随段 2 帧兼容支删除
+    载体 = 容器 gs 单形态(prep 链容器化段 2;entry 姿态镜像/商店线
+    两位/mandate 面消费恒直传 gs,CwSimFrame 过渡支随段 2 帧兼容支删除
     消亡)。内部字段读经读口(``_plane_round_of``/``_max_units_of``)。
 
     判据式(证明 = docs/develop/sr_od/application/currency_war/proofs/
@@ -265,7 +265,7 @@ def levelup_budget_gate(bs: GameState,
     """
     if clicks * click_cost <= 0:
         return True, ''
-    if _plane_last_battle(bs, session):
+    if _plane_last_battle(gs, session):
         # ALL IN 豁免支收窄(ADR-0604 §4-F5;辖域与支A 判据见 docstring):
         # P21 域内 ∧ 非支A 帧拒 XP;域外帧/支A 形态维持全豁免放行。
         # 位次申报:本支先于 ADR-0603 保底金门——P21 域内 XP 类即便
@@ -276,17 +276,17 @@ def levelup_budget_gate(bs: GameState,
         from sr_od.application.currency_war.kernel.cw_registry import (
             DEFAULT_REGISTRY,
         )
-        if not _realize_chain_ready(bs, bench, deployed) \
+        if not _realize_chain_ready(gs, bench, deployed) \
                 and all_in_xp_domain_hit(
-                    bs, session,
+                    gs, session,
                     DEFAULT_REGISTRY):
             return False, 'all_in_xp_category_filtered'
-        if _guarantee_floor_holds(bs, session, gold, clicks, click_cost,
+        if _guarantee_floor_holds(gs, session, gold, clicks, click_cost,
                                   cap_resolved):
             return True, ''      # ALL IN 豁免(P72 §2.5;花后下界见上,ADR-0603)
         return False, 'guarantee_floor_defer'
-    if _realize_chain_ready(bs, bench, deployed):
-        if _guarantee_floor_holds(bs, session, gold, clicks, click_cost,
+    if _realize_chain_ready(gs, bench, deployed):
+        if _guarantee_floor_holds(gs, session, gold, clicks, click_cost,
                                   cap_resolved):
             return True, ''      # 支A:兑现链当帧可兑现(P39 ①臂姿态)
         return False, 'guarantee_floor_defer'
@@ -294,15 +294,15 @@ def levelup_budget_gate(bs: GameState,
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.refresh import (
         r2_card_reserve,
     )
-    rho = r2_card_reserve(k_members, bench, deployed, bs)
-    window_reserve = r2_card_reserve(k_members, bench, deployed, bs)
+    rho = r2_card_reserve(k_members, bench, deployed, gs)
+    window_reserve = r2_card_reserve(k_members, bench, deployed, gs)
     tau = interest(gold, cap_resolved)
     if gold - clicks * click_cost >= tau * 10 + rho + window_reserve:
         return True, ''
     return False, 'levelup_budget_gate_blocked'
 
 
-def _guarantee_floor_holds(bs: GameState,
+def _guarantee_floor_holds(gs: GameState,
                            session: StrategySession | None,
                            gold: int, clicks: int, click_cost: int,
                            cap_resolved: int) -> bool:
@@ -333,19 +333,19 @@ def _guarantee_floor_holds(bs: GameState,
     模块私有:非判据面公开函数,不入契约/旁路枚举表(契约由
     levelup_budget_gate 键承载)。
     """
-    if _plane_last_battle(bs, session):
+    if _plane_last_battle(gs, session):
         from sr_od.application.currency_war.kernel.cw_plane_table import (
             r_remaining,
         )
-        if r_remaining(session, *_plane_round_of(bs)) <= 1:
+        if r_remaining(session, *_plane_round_of(gs)) <= 1:
             return True          # 终局域:末位面末战,域③前提失效
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         p1_blood_floor,
         p2_blood_floor_unlock,
     )
-    if p1_blood_floor(bs):
+    if p1_blood_floor(gs):
         return True              # 生存域:死亡带转化优先,本门让位
-    if p2_blood_floor_unlock(bs):
+    if p2_blood_floor_unlock(gs):
         # P2 濒死带生存域同构让位(解锁包件① P2 半边的保底金面;设计出处 =
         # p2_blood_band_unified_design/DESIGN.md §2.1 同构移植,授权闩合成
         # 经 p2_blood_floor_unlock)。死亡吸收态截断「未来效用」前提的论证
@@ -359,7 +359,7 @@ def _guarantee_floor_holds(bs: GameState,
     return gold - clicks * click_cost >= DEFAULT_REGISTRY.boss_floor
 
 
-def _realize_chain_ready(bs: GameState, bench: list,
+def _realize_chain_ready(gs: GameState, bench: list,
                          deployed: list) -> bool:
     """P72 支A 谓词:C_realize=1 判定(升级收益的兑现链当帧可兑现)。
 
@@ -377,7 +377,7 @@ def _realize_chain_ready(bs: GameState, bench: list,
     pop_slot 放宽支系「融资腿」非合格判据(P72 §2.3 勘误锚承继)。
     """
     from sr_od.application.currency_war.kernel.cw_exec_state import deployed_occupied
-    cap = _max_units_of(bs)
+    cap = _max_units_of(gs)
     if deployed_occupied(list(deployed or [])) < cap:
         return False
     return any(b is not None and (getattr(b, 'star', 1) or 1) >= 2
@@ -389,16 +389,16 @@ def batch_form(level: int, target_level: int) -> bool:
     return level < target_level
 
 
-def level_spend_blocked(bs: GameState, session: StrategySession,
+def level_spend_blocked(gs: GameState, session: StrategySession,
                         registry: DecisionV2Registry | None = None) -> bool:
     """危机带内整批经验授权让位保命面(实机复盘 g_20260904_054904
     p2r1 候选③:hp=1 败即死帧 9×LevelUpShop 36g,m3_batch 批授权把
     67% 金转为本帧零收益经验)。M3 发射位(mandate/shop 两域)消费。
 
-    载体 = 容器 bs 单形态(prep 链容器化段 2;entry 姿态镜像与商店线/
-    mandate 消费恒直传 bs,CwSimFrame 过渡支随段 2 帧兼容支删除消亡)。
+    载体 = 容器 gs 单形态(prep 链容器化段 2;entry 姿态镜像与商店线/
+    mandate 消费恒直传 gs,CwSimFrame 过渡支随段 2 帧兼容支删除消亡)。
     内部血线谓词(kernel ``blood_budget_levelup_blocked``/``p2_crisis_band``)
-    已切容器签名,容器 bs 直读。
+    已切容器签名,容器 gs 直读。
 
     ``registry`` = 上下文注册表(停付线字段 vd_p2_loss 族的单一源口径);
     三生产消费位(entry posture 镜像/shop M3/mandate 备战 M3)恒注入
@@ -432,9 +432,9 @@ def level_spend_blocked(bs: GameState, session: StrategySession,
         p1_blood_floor,
         p2_blood_floor_unlock,
     )
-    if p1_blood_floor(bs):
+    if p1_blood_floor(gs):
         return False    # 死亡线:转化优先,停付线让位(解锁包件①)
-    if p2_blood_floor_unlock(bs):
+    if p2_blood_floor_unlock(gs):
         # P2 濒死带同构让位(解锁包件① P2 半边;设计出处 =
         # p2_blood_band_unified_design/DESIGN.md §2.1「解锁包三件同构移植」,
         # 裁定条目 = 241 §15.2 覆①消费让位)。授权闩 False 期间恒不触发
@@ -449,24 +449,24 @@ def level_spend_blocked(bs: GameState, session: StrategySession,
         DEFAULT_REGISTRY,
     )
     reg = registry if registry is not None else DEFAULT_REGISTRY
-    # kernel 血线门波 2 已切容器签名(hp 经政策层读口),容器 bs 直读。
-    if blood_budget_levelup_blocked(bs, session, reg):
+    # kernel 血线门波 2 已切容器签名(hp 经政策层读口),容器 gs 直读。
+    if blood_budget_levelup_blocked(gs, session, reg):
         return True
-    if _plane_last_battle(bs, session):
+    if _plane_last_battle(gs, session):
         return False    # ALL IN 窗:停手让位(与血预算支同一豁免序)
-    return p2_crisis_band(bs, session, reg)
+    return p2_crisis_band(gs, session, reg)
 
 
-def _plane_last_battle(bs: GameState,
+def _plane_last_battle(gs: GameState,
                        session: StrategySession) -> bool:
     """位面末最后一战判定(cw4 消费面;单一源 =
     decision_v2.discipline.plane_last_battle 的重导出委托,禁第二实现;
     模块私有——非判据面函数,不入契约/旁路枚举表)。kernel 侧波 2 已切
-    容器签名,容器 bs 直读。"""
+    容器签名,容器 gs 直读。"""
     from sr_od.application.currency_war.kernel.cw_discipline_rules import (
         plane_last_battle as _plb,
     )
-    return _plb(bs, session)
+    return _plb(gs, session)
 
 
 def pop_slot(deployed_count: int, deploy_cap: int, gold: int,

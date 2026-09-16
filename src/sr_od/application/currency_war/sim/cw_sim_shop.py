@@ -57,19 +57,19 @@ def effective_deal_probs(level: int, rng: random.Random, *,
         else dict(REFRESH_PROB.get(level, {}))
 
 
-def refresh_cost_for(bs: GameState) -> int:
+def refresh_cost_for(gs: GameState) -> int:
     """本次刷新实付金(免费刷额度先行 → 0;否则基价 2 恒定)。
 
     免费余额域 = 容器 §3.3.6(未消耗免费刷新次数);None = 未写(无
     免费来源常态)按 0 额度处理。
     """
-    balance = bs.free_refresh_balance.value
+    balance = gs.free_refresh_balance.value
     if balance is not None and balance > 0:
         return 0
     return REFRESH_COST_BASE
 
 
-def deal_shop(bs: GameState, rng: random.Random, *, level: int,
+def deal_shop(gs: GameState, rng: random.Random, *, level: int,
               probs: dict[int, float] | None = None,
               extra_experts: dict[str, int] | None = None,
               tag: str = 'shop:deal') -> None:
@@ -87,7 +87,7 @@ def deal_shop(bs: GameState, rng: random.Random, *, level: int,
         if costs:
             cost = rng.choices(costs, weights=[dist[c] for c in costs],
                                k=1)[0]
-            names = drawable_names(bs, cost, extra_experts=extra_experts)
+            names = drawable_names(gs, cost, extra_experts=extra_experts)
             if names:
                 name = rng.choice(names)
                 ch = CHARACTERS[name]
@@ -96,7 +96,7 @@ def deal_shop(bs: GameState, rng: random.Random, *, level: int,
                     cost=cost, star=1, cost_source='roster', slot=i + 1)
         slots.append(ShopSlot(kind='content' if card is not None
                               else 'empty', card=card))
-    bs.observe(bs.shop,
+    gs.observe(gs.shop,
                ShopPayload(cards=slots,
                            refresh_probs={int(k): float(v)
                                           for k, v in (probs or dist).items()
@@ -104,13 +104,13 @@ def deal_shop(bs: GameState, rng: random.Random, *, level: int,
                evidence=sim_evidence(tag), sig=obs_sig(group_id=f'sim:{tag}'))
 
 
-def empty_shop_slots(bs: GameState) -> int:
+def empty_shop_slots(gs: GameState) -> int:
     """当前商店空槽数(诊断/判读披露用;买后留空不紧缩的派生读数)。
 
     payload 离屏(None)= 0(无店非空店,双义防混:消费方按 shop.value
     is None 另行判定,本函数只在开态语义下调用)。
     """
-    payload = bs.shop.value
+    payload = gs.shop.value
     if payload is None:
         return 0
     return sum(1 for s in payload.cards if s.kind == 'empty')

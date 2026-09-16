@@ -49,9 +49,9 @@ class SellBenchOp(ActionOp):
         # slot 会把卡放错槽;错位卖出由下方 mutate 代际校验拦截 no-op,
         # 安全非等价——故 S2 先于 S1 生效)。
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of,
+            game_state_of,
         )
-        _books = board_state_of(match.session).tracked_books
+        _books = game_state_of(match.session).tracked_books
         _tracked = _books.bench
         pad_bench(_tracked)
         mutate_bench_deployed(_tracked, _books.deployed, action)
@@ -62,13 +62,13 @@ class SellBenchOp(ActionOp):
         # 退役。register_round_sold 消费面 = plane/round 轮键(轮键不匹配
         # 自拒 = 原防御语义不变)。
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of,
+            game_state_of,
         )
         from sr_od.application.currency_war.kernel.cw_round_ledger import (
             register_round_sold,
         )
         register_round_sold([_expected_name],
-                            board_state_of(match.session),
+                            game_state_of(match.session),
                             match.session)
         ledger.total_sell += 1
         ledger.buy_has_sell = True   # 含卖出 → 本单元期望态不建(`w536`)

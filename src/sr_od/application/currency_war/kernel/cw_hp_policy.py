@@ -9,7 +9,7 @@
 2. :func:`decision_hp` —— 决策读口(装配层:容器真值 + 结算锚 + 时基派生
    装配后调门本体);
 3. :func:`hp_decision_trusted_of` —— hp 决策可信位容器版单一实现(定谳二:
-   ``bs.hp.source in ('observation', 'carried')``)。
+   ``gs.hp.source in ('observation', 'carried')``)。
 
 **依赖方向**:本模块只 import kernel 内类型(类型注解经 TYPE_CHECKING),
 禁反向依赖策略实现层(策略层 ``strategies/impl/cw_strategy.gated_hp`` 改
@@ -22,7 +22,7 @@
 逻辑写端(效果账本 hp 支付)。
 kernel 决策簇挂账读点(``cw_comps.maybe_pivot`` 保命分位 /
 ``cw_performance.is_run_dead`` 死局门,生产调用面现空、测试仓经桥调用)
-重挂生产消费时必经本层读口,禁按旧注释直读 ``bs.hp.value``。
+重挂生产消费时必经本层读口,禁按旧注释直读 ``gs.hp.value``。
 
 门幂等(同 gap 窗内重复施门值不变):读口可在装配层与消费层叠加施门而不
 判分叉——过渡期(统一 state 迁移,详见 r5-migration-plan.md)CwSimFrame 帧
@@ -90,24 +90,24 @@ def apply_hp_freshness_gate(current_hp: int | None, last_hp: int | None,
     return current_hp
 
 
-def _node_t_of(bs: GameState, session: StrategySession) -> int | None:
+def _node_t_of(gs: GameState, session: StrategySession) -> int | None:
     """决策时基读口(单一源 = ``cw_plane_table.node_t_of``,schedule 派生,
     与结算锚写点同式禁单侧改式,见 :func:`apply_hp_freshness_gate` 时基
     契约);NodeKey 缺席 = None = 门恒等支。"""
-    node = bs.node.value
+    node = gs.node.value
     if node is None:
         return None
     from sr_od.application.currency_war.kernel.cw_plane_table import node_t_of
     return node_t_of(session, node.plane, node.round_num)
 
 
-def decision_hp(bs: GameState, session: StrategySession) -> int | None:
+def decision_hp(gs: GameState, session: StrategySession) -> int | None:
     """决策面 hp 读口(门后消费值;hp 决策消费点统一经本口,禁旁路直读
-    ``bs.hp.value`` 手写第二门)。
+    ``gs.hp.value`` 手写第二门)。
 
-    装配序:门前真值 = ``bs.hp.value``;``current_readable`` =
-    ``bs.hp.source == 'observation'``(定谳二·本帧真读位,「最近观察」
-    语义);``now_t`` 自 ``bs.node`` 派生(NodeKey 缺席 → None);
+    装配序:门前真值 = ``gs.hp.value``;``current_readable`` =
+    ``gs.hp.source == 'observation'``(定谳二·本帧真读位,「最近观察」
+    语义);``now_t`` 自 ``gs.node`` 派生(NodeKey 缺席 → None);
     ``last_hp``/``last_t`` = session 结算锚(鸭子属性读,缺席 = None →
     门恒等支)。可信位判定另经 :func:`hp_decision_trusted_of`,禁与本口
     混写双位判定。
@@ -115,13 +115,13 @@ def decision_hp(bs: GameState, session: StrategySession) -> int | None:
     last_hp = getattr(session, 'last_hp', None)
     last_t = getattr(session, 'last_hp_t', None)
     return apply_hp_freshness_gate(
-        bs.hp.value, last_hp, last_t, _node_t_of(bs, session),
-        bs.hp.source == 'observation')
+        gs.hp.value, last_hp, last_t, _node_t_of(gs, session),
+        gs.hp.source == 'observation')
 
 
-def hp_decision_trusted_of(bs: GameState) -> bool:
+def hp_decision_trusted_of(gs: GameState) -> bool:
     """hp 决策可信位容器版单一实现(定谳二):
-    ``(bs.hp.source in ('observation', 'carried'))``。
+    ``(gs.hp.source in ('observation', 'carried'))``。
 
     映射保序(旧口径 ``hp_readable or hp_trusted`` 在容器来源二分下恒等):
     observation ⊆ 两支并集;carried 支 = 沿用真值帧放行语义(ADR-0428,
@@ -135,4 +135,4 @@ def hp_decision_trusted_of(bs: GameState) -> bool:
     ``cw_discipline_rules.hp_decision_trusted``,禁手写双位判定
     (W393 A1.1 单一源纪律)。
     """
-    return bs.hp.source in ('observation', 'carried')
+    return gs.hp.source in ('observation', 'carried')

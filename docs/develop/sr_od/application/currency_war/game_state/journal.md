@@ -70,7 +70,7 @@ ts 与 `buffered` 行注记)/历史段补写窗(专用装配通道,不经运行�
 ## 4. 自足快照行
 
 - **state 快照**:行内嵌写入后完整统一 state(JSON 安全化),含逐字段来源注记面
-  `bs_prov`(source 非 observation 或带 evidence 的字段入注记——单行可判「gold 真读
+  `gs_prov`(source 非 observation 或带 evidence 的字段入注记——单行可判「gold 真读
   还是沿用、hp 是否结算新鲜」)、effects 规范化序列、挂起预期摘要 `pending_expected`。
 - **序列化规范化**:effects 按 spec id 排序、receipts 按窗序——同态同形,离线 diff 可比。
 - **派生原子生效**:派生规则在单版本事务内完成(节点判定→类型→效果推进固定次序),
@@ -126,7 +126,7 @@ ts 与 `buffered` 行注记)/历史段补写窗(专用装配通道,不经运行�
 
 ## 6. 写入口 API 面与硬约束
 
-API 面(宿主=BoardState 写入 API,符号=kernel/cw_game_state.py):
+API 面(宿主=GameState 写入 API,符号=kernel/cw_game_state.py):
 
 ```text
 渠道①:observe / carry / write_prior / leave_screen     (均带 sig)
@@ -153,7 +153,7 @@ note=recovered 显影;辖域 = 段内补写与在线收口,启动扫描**历史�
 原正本 r5-migration-plan(单源直迁八波)已随过程件清理删除,考古走 git 历史。
 **常开语义(影子双写裁定已推翻)**:journal 无条件常开——无开关、
 无装配条件分支;生产装配 = app 装配段显式接通 + **局容器单例建立点兜底**
-(`board_state_of` 建立路径注入 run 归属读取函数并触发 kernel
+(`game_state_of` 建立路径注入 run 归属读取函数并触发 kernel
 `ensure_journal_assembly`,幂等;GameState 构造器零装配逻辑——画面解析草稿
 容器直构路径结构性不可能触发遥测;生产注入漏斗 = `establish_new_match`
 容器建立点——CwEntryStart 进对局

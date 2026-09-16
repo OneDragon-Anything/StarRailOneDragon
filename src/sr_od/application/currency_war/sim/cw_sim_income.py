@@ -54,18 +54,18 @@ class IncomeApplied:
     gold_after: int
 
 
-def income_modifiers_of(bs: GameState) -> tuple[float, int, int | None]:
+def income_modifiers_of(gs: GameState) -> tuple[float, int, int | None]:
     """持卡聚合的收入修饰 ``(win_reward_mult, interest_flat, cap_override)``。
 
     单一源 = ``aggregate_economy``(倍率取最大不叠乘/flat 求和/cap 取宽;
     cap None = 无覆写,由 ``interest_cap_resolved`` 归一链回默认)。
     """
-    eff = aggregate_economy(list(bs.active_strategies.value or []))
+    eff = aggregate_economy(list(gs.active_strategies.value or []))
     return eff.win_reward_mult, eff.interest_flat_per_node, \
         eff.interest_cap_override
 
 
-def apply_round_start_income(bs: GameState, *, plane: int, round_num: int,
+def apply_round_start_income(gs: GameState, *, plane: int, round_num: int,
                              node_type: str, streak: int,
                              pending_loss: LostNodeRef | None = None,
                              ) -> IncomeApplied:
@@ -79,8 +79,8 @@ def apply_round_start_income(bs: GameState, *, plane: int, round_num: int,
       分支序一致,归宿语义见模块 docstring);
     - 消费后败态清理由引擎负责(本函数不持有引擎态)。
     """
-    mult, flat, cap = income_modifiers_of(bs)
-    gold_before = int(bs.gold.value or 0)
+    mult, flat, cap = income_modifiers_of(gs)
+    gold_before = int(gs.gold.value or 0)
     effective_loss = (pending_loss
                       if node_type not in INCOME_BRANCH_NODE_TYPES else None)
     row = round_start_income(
@@ -89,7 +89,7 @@ def apply_round_start_income(bs: GameState, *, plane: int, round_num: int,
         interest_flat=flat, interest_cap=cap)
     gold_after = gold_before + row.total
     tag = f'income:p{plane}r{round_num}'
-    bs.observe(bs.gold, gold_after, evidence=sim_evidence(tag),
+    gs.observe(gs.gold, gold_after, evidence=sim_evidence(tag),
                sig=obs_sig(group_id=f'sim:{tag}'))
     return IncomeApplied(row=row, gold_before=gold_before,
                          gold_after=gold_after)

@@ -15,7 +15,7 @@ details/data-batch-estimates.md):
   区间 = Wilson 95% 比例区间(小样本比例的标准选择,下界不塌 0/1)。
 - 刷新计数:逐局 ``rounds[].actions`` 中 ``RefreshShop`` 动作计数;
   **付费口径 = action.cost > 0**(长线利好「花费金币进行30次刷新」= 付费
-  阈值,BoardState §3.3.7 paid_refresh_count 载体);**总口径 = 全部
+  阈值,GameState §3.3.7 paid_refresh_count 载体);**总口径 = 全部
   RefreshShop**(二手市场「商店刷新20次后」= 总阈值,§3.3.8
   total_refresh_count 载体)。cost 为 None 的旧 schema 行按未知剔除该动作。
   已知风险:免费刷新若以陈旧 cost(>0)落账会并入付费计数——当前语料

@@ -153,12 +153,12 @@ class CwScreenEncounter(CwScreenOpBase):
         try:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
-                board_state_of,
+                game_state_of,
             )
-            _bs = board_state_of(_match.session)
-            _bs.write_logic(
-                _bs.encounter_refresh_used,
-                int(_bs.encounter_refresh_used.value or 0) + 1,
+            _gs = game_state_of(_match.session)
+            _gs.write_logic(
+                _gs.encounter_refresh_used,
+                int(_gs.encounter_refresh_used.value or 0) + 1,
                 produced_by='CwScreenEncounter',
                 evidence='refresh_click',
                 sig=ChannelSig(family='logic_action',
@@ -233,11 +233,11 @@ class CwScreenEncounter(CwScreenOpBase):
         try:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
-                board_state_of,
+                game_state_of,
             )
             _opt = options[idx]
-            _bs = board_state_of(session)
-            _bs.write_logic(_bs.chosen_encounter,
+            _gs = game_state_of(session)
+            _gs.write_logic(_gs.chosen_encounter,
                             (_opt.difficulty, '/'.join(_opt.rewards)),
                             produced_by='CwScreenEncounter',
                             sig=ChannelSig(family='logic_action',
@@ -298,9 +298,9 @@ class CwScreenEncounter(CwScreenOpBase):
             # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读;
             # overlay 时 board 不可读 → 用上次备战快照(语义同旧,值源切 GameState)。
             from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of,
+                game_state_of,
             )
-            _state = board_state_of(match.session)
+            _state = game_state_of(match.session)
             _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
             pick = match.strategy.decide_encounter(options, _state, match.session, _cfg)
             if 0 <= pick.idx < len(options):
@@ -427,9 +427,9 @@ class CwScreenEncounter(CwScreenOpBase):
             # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读;
             # overlay 时 board 不可读 → 用上次备战快照(语义同旧,值源切 GameState)。
             from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of,
+                game_state_of,
             )
-            _state = board_state_of(match.session)
+            _state = game_state_of(match.session)
             _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
             pick = match.strategy.decide_encounter(options, _state, match.session, _cfg)
             if 0 <= pick.idx < len(options):

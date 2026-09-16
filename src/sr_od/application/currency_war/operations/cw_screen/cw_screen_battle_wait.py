@@ -299,10 +299,10 @@ class CwScreenBattleWait(CwScreenOpBase):
             record_settlement_row,
         )
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of,
+            game_state_of,
         )
-        bs = board_state_of(session)
-        _f = bs.enemy_difficulty
+        gs = game_state_of(session)
+        _f = gs.enemy_difficulty
         _val, _src = _f.value, _f.source
         diff = None
         tier = None
@@ -315,13 +315,13 @@ class CwScreenBattleWait(CwScreenOpBase):
             elif D_ENC_VARIANT == "ii":
                 diff = (float(_val) if _src in ("observation", "carried")
                         else None)
-            _chosen = bs.chosen_encounter.value
+            _chosen = gs.chosen_encounter.value
             if isinstance(_chosen, tuple) and _chosen:
                 try:
                     tier = int(_chosen[0])
                 except (TypeError, ValueError):
                     tier = None
-        return record_settlement_row(bs, obs, plane=plane,
+        return record_settlement_row(gs, obs, plane=plane,
                                      round_num=round_num, node_type=node_type,
                                      difficulty_node=diff,
                                      encounter_tier=tier, residual=residual)
@@ -520,13 +520,13 @@ class CwScreenBattleWait(CwScreenOpBase):
                     # ADR-0634;同时点同载荷,行行自足快照更强)。
                     from sr_od.application.currency_war.kernel.cw_game_state import (
                         apply_settlement_cover,
-                        board_state_of,
+                        game_state_of,
                     )
                     from sr_od.application.currency_war.kernel.cw_performance import (
                         HP_CONFIDENCE_THRESHOLD,
                     )
                     apply_settlement_cover(
-                        board_state_of(_session),
+                        game_state_of(_session),
                         hp_after=(getattr(_obs, 'hp_after', None)
                                   if getattr(_obs, 'hp_confidence', 1.0)
                                   >= HP_CONFIDENCE_THRESHOLD
@@ -553,9 +553,9 @@ class CwScreenBattleWait(CwScreenOpBase):
                 # 先例:观测失败不阻塞结算链)。
                 try:
                     from sr_od.application.currency_war.kernel.cw_game_state import (
-                        board_state_of,
+                        game_state_of,
                     )
-                    board_state_of(_session).effects.on_battle_end()
+                    game_state_of(_session).effects.on_battle_end()
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] effect inventory 结算挂点失败'
                                 '(不阻塞): %s', e)
@@ -571,10 +571,10 @@ class CwScreenBattleWait(CwScreenOpBase):
                         settle_copy_machine_participation,
                     )
                     from sr_od.application.currency_war.kernel.cw_game_state import (
-                        board_state_of,
+                        game_state_of,
                     )
                     for _cm in settle_copy_machine_participation(
-                            board_state_of(_session),
+                            game_state_of(_session),
                             frame=f'p{_plane}-r{_round}'):
                         log.info('[cw-bwait] 拷贝仪成熟入席(equip=%s wearer='
                                  '%s count=%s placed=%s)', _cm.equip,
@@ -620,9 +620,9 @@ class CwScreenBattleWait(CwScreenOpBase):
         # 不足不置闩,与旧「last_state 缺失」分支同 fail-closed 方向)。
         if _sess is not None:
             from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of,
+                game_state_of,
             )
-            _nd = board_state_of(_sess).node.value
+            _nd = game_state_of(_sess).node.value
             if _nd is not None:
                 _t = (_nd.plane - 1) * 9 + _nd.round_num
         _min_t = CwScreenBattleWait.SETTLE_DEFEAT_LATCH_MIN_T

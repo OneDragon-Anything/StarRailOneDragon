@@ -45,18 +45,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    shop_payload_content_cards,
+from sr_od.application.currency_war.kernel.cw_economy import (
+    refresh_cost_effective,
+    reserve_cap,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     bench_slots_of,
     deployed_slots_of,
     gold_of,
-)
-from sr_od.application.currency_war.kernel.cw_economy import (
-    refresh_cost_effective,
-    reserve_cap,
+    shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
@@ -68,7 +66,7 @@ if TYPE_CHECKING:
     )
 
 
-def _crosses_engine_tier(bs: GameState, name: str) -> bool:
+def _crosses_engine_tier(gs: GameState, name: str) -> bool:
     """店内件「当帧跨档」判定(结构性:买入后四体系达成数 +1)。
 
     判据单一源=cw_deploy_logic.engines_count(与 deploy/形态维同一把
@@ -85,10 +83,10 @@ def _crosses_engine_tier(bs: GameState, name: str) -> bool:
     if ch is None:
         return False
     bonds = set(ch.factions or ()) | set(ch.flows or ())
-    fac = dict(bs.board.value or {})
+    fac = dict(gs.board.value or {})
     if not (bonds & {b for b, _t in TRANSITION_TRAITS}):
         return False
-    dep_names = {d.char_id for d in deployed_slots_of(bs) if d is not None}
+    dep_names = {d.char_id for d in deployed_slots_of(gs) if d is not None}
     before = engines_count(fac, dep_names)
     for b in bonds:
         fac[b] = fac.get(b, 0) + 1
@@ -96,7 +94,7 @@ def _crosses_engine_tier(bs: GameState, name: str) -> bool:
     return after > before
 
 
-def _scan_shop_buy_accounts(bs: GameState,
+def _scan_shop_buy_accounts(gs: GameState,
                             registry: DecisionV2Registry,
                             ) -> tuple[list[int], list[int]]:
     """店内件两路账单单次扫描(防双计;调用方按需取路)。
@@ -114,21 +112,21 @@ def _scan_shop_buy_accounts(bs: GameState,
     from sr_od.application.currency_war.kernel.cw_merge_simulate import (
         will_merge_on_buy,
     )
-    _slots = bench_slots_of(bs)
-    _payload_cards = shop_payload_content_cards(bs.shop.value)
+    _slots = bench_slots_of(gs)
+    _payload_cards = shop_payload_content_cards(gs.shop.value)
     bench_free = max(0, registry.bench_capacity - bench_occupied(_slots))
     for sc in _payload_cards:
         name = getattr(sc, 'name', '') or ''
         if not name:
             continue
-        merge = will_merge_on_buy(sc, _slots, deployed_slots_of(bs))
+        merge = will_merge_on_buy(sc, _slots, deployed_slots_of(gs))
         if merge:
             costs.append(card_cost(sc))   # 合成件不占槽
             continue
         if bench_free <= 0:
             continue    # A-1/A-2:未跨档期权件与满槽帧均不扩账
         bench_free -= 1
-        if _crosses_engine_tier(bs, name):
+        if _crosses_engine_tier(gs, name):
             costs.append(card_cost(sc))
         else:
             fill.append(card_cost(sc))
@@ -136,7 +134,7 @@ def _scan_shop_buy_accounts(bs: GameState,
     return costs, fill
 
 
-def _countable_buy_costs(bs: GameState, session: StrategySession | None,
+def _countable_buy_costs(gs: GameState, session: StrategySession | None,
                          registry: DecisionV2Registry) -> list[int]:
     """店内「非期权」正账件费用表(A-1 刀法)。
 
@@ -145,10 +143,10 @@ def _countable_buy_costs(bs: GameState, session: StrategySession | None,
     (ADR-0446)退回后,跨档判定改本结构性口径——语义与 S1/S2 的
     「当帧跨档」同一集合(信号判定的核心即此跨档事实)。
     """
-    return _scan_shop_buy_accounts(bs, registry)[0]
+    return _scan_shop_buy_accounts(gs, registry)[0]
 
 
-def bench_fill_account(bs: GameState, registry: DecisionV2Registry) -> int:
+def bench_fill_account(gs: GameState, registry: DecisionV2Registry) -> int:
     """O1 备战空位填补通道的容量分量(`w611_econ_cycle/` 设计 §1.2/§1.3)。
 
     溢余帧备战有空位时,店内其余件(非跨档非合成)按费用升序取「剩余
@@ -159,10 +157,10 @@ def bench_fill_account(bs: GameState, registry: DecisionV2Registry) -> int:
     买入放行面([31] 限域质量序)在 candidates/scoring,随 `w607_affix_consumption/` 二波
     后接线;本分量先接通 flip/义务预算的容量判定与存息准入门。
     """
-    return sum(_scan_shop_buy_accounts(bs, registry)[1])
+    return sum(_scan_shop_buy_accounts(gs, registry)[1])
 
 
-def channel_capacity(bs: GameState, session: StrategySession,
+def channel_capacity(gs: GameState, session: StrategySession,
                      registry: DecisionV2Registry) -> int:
     """C_t = 升级计划费 + 非期权可买账 + 刷价×刷新预算。
 
@@ -173,31 +171,31 @@ def channel_capacity(bs: GameState, session: StrategySession,
     """
     from sr_od.application.currency_war.kernel import cw_economy as _ke
     total = 0
-    if _ke.schedule_upgrade(bs, session):
-        total += _ke.upgrade_plan_fee(bs)
-    total += sum(_countable_buy_costs(bs, session, registry))
-    total += bench_fill_account(bs, registry)
-    rolls = _ke.refresh_ev_budget(bs, session)
-    total += refresh_cost_effective(None, 0, bs=bs) * rolls
+    if _ke.schedule_upgrade(gs, session):
+        total += _ke.upgrade_plan_fee(gs)
+    total += sum(_countable_buy_costs(gs, session, registry))
+    total += bench_fill_account(gs, registry)
+    rolls = _ke.refresh_ev_budget(gs, session)
+    total += refresh_cost_effective(None, 0, gs=gs) * rolls
     return total
 
 
-def overflow(bs: GameState, session: StrategySession) -> int:
+def overflow(gs: GameState, session: StrategySession) -> int:
     """溢余段 (g − R*)+(义务压力的原料;≤0 = 无义务帧)。
 
     R* 单一源 = kernel cw_economy.reserve_cap(模块级 import:纯查表
     函数,无桩点契约;守息线分量已归一 session resolved 链,registry
     旋钮不再辖本缝——ADR-0598)。"""
-    return max(0, gold_of(bs) - reserve_cap(bs, session))
+    return max(0, gold_of(gs) - reserve_cap(gs, session))
 
 
-def obligation(bs: GameState, session: StrategySession,
+def obligation(gs: GameState, session: StrategySession,
                registry: DecisionV2Registry) -> int:
     """义务花销 f = min((g − R*)+, C_t)(设计 §1.4;0=无义务)。"""
-    r = overflow(bs, session)
+    r = overflow(gs, session)
     if r <= 0:
         return 0
-    return min(r, channel_capacity(bs, session, registry))
+    return min(r, channel_capacity(gs, session, registry))
 
 
 def tier_truncated_spend(gold: int, want: int, essential: bool) -> int:

@@ -271,7 +271,7 @@ def check_irreversible(name: str, k_members: tuple[str, ...]) -> tuple[bool, str
 
 def _phase_key(state: GameState) -> tuple:
     """(plane, round_num) 相位键容器读(读口单一源;载体 = prep 链容器化
-    段 2 起 bs 单形态)。"""
+    段 2 起 gs 单形态)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
         plane_of,
         round_num_of,
@@ -910,7 +910,7 @@ def wanted_closure_emit(session: StrategySession, state: GameState,
                         ) -> list[Emitted]:
     """S2 wanted 闭环消费臂(T-159 迁移 A;调用位 = entry.emit ①实体面后、
     ②证明 pass 前——wanted 是未完成义务,闭环优先级高于常规步骤序)。
-    载体 = 容器 bs(prep 链容器化段 2;域读经读口族)。
+    载体 = 容器 gs(prep 链容器化段 2;域读经读口族)。
 
     门序(方案 §5.2;门 0′ 为 T-161 F2 增设):放弃态短路 → 门 0 残差
     有效性镜像(missing ∧ not stop_flag 现读复核,审 B1)→ 门 0′ 前件
@@ -1129,7 +1129,7 @@ def run_mandate(frame: MandateFrame,
                 ) -> list[Emitted]:
     """骨架 pass(§3.1 执行序;返回发射列表,执行序=列表序)。
 
-    ``state`` = 决策容器 bs(prep 链容器化段 2;R4/FIX_REVIEW R1:arm1
+    ``state`` = 决策容器 gs(prep 链容器化段 2;R4/FIX_REVIEW R1:arm1
     消费位的 cap 真值在消费点现读 ``max_units_of`` 派生链——单一真值源,
     与 shop 侧同链)。域读经读口族与字段对照表。
 
@@ -1595,7 +1595,7 @@ def run_mandate(frame: MandateFrame,
     # (§0.2「抑制先行」;同帧双闸分键不混桶:reward_node_defer ≠
     # blood_xp_gate_defer ≠ crisis_level_spend_defer)。扑满环境帧守卫
     # 解除抑制(守卫单一源同 kernel),写点同时复活 v3_piggy_reward
-    # 遥测真值(ADR-0348 ↺,ADR-0580)。载体 = 置顶 bs 直传(段 2 消桥)。
+    # 遥测真值(ADR-0348 ↺,ADR-0580)。载体 = 置顶 gs 直传(段 2 消桥)。
     _reward_defer = reward_node_suppressed(state)
     if _reward_defer:
         _count('reward_node_defer')
@@ -1648,7 +1648,7 @@ def run_mandate(frame: MandateFrame,
         # 必花域/血线地板豁免(裁定字面「否则停」是支付能力非血线判断;血模式
         # 「破息批」无金可破,解锁包件①的转化语义本就不适用,方案审 N5/R2
         # 收窄申报)。拒因独立分键;金本位 gate 恒 True 直通。
-        # kernel 闸波 2 已切容器签名(hp 经政策层读口),置顶 bs 直传
+        # kernel 闸波 2 已切容器签名(hp 经政策层读口),置顶 gs 直传
         #(段 2 消桥:过渡桥装箱面消亡)。
         _blood_gate_blocked = not blood_xp_gate_for(state, session)
         if _blood_gate_blocked:
@@ -1678,7 +1678,7 @@ def run_mandate(frame: MandateFrame,
                     # 成本计算 = 容器(W6 波 4 接缝族切容器帧;
                     # xp 现读透传修复(g_20260906_034515)由容器读天然承载
                     # ——漏斗 level_up_cost/xp 观察写端与视图同源)。
-                    # 载体 = 置顶 bs 复用(段 2:容器单例即形参)。
+                    # 载体 = 置顶 gs 复用(段 2:容器单例即形参)。
                     clicks = clicks_to_next_level(state)
                     cost = xp_click_cost(state)
                     if contracts.ensure_contract(
@@ -1781,7 +1781,7 @@ def run_mandate(frame: MandateFrame,
         _m1p_reasons: dict[str, str] = {}
         # 装配产物持引用(放行判定消费 membership/bench 的替补席成员集合,
         # 同一快照,禁放行判定二次装配出第二份输入)。
-        # W6 波3 贯通 + prep 链容器化段 2:装配已切容器签名,置顶 bs 直传
+        # W6 波3 贯通 + prep 链容器化段 2:装配已切容器签名,置顶 gs 直传
         #(过渡桥装箱面消亡)。
         _m1p_ctx = assemble_swap_plan_inputs(
             session, state=state,

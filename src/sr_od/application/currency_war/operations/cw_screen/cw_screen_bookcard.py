@@ -157,9 +157,9 @@ class CwScreenBookcard(CwScreenOpBase):
             if _match is not None:
                 # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of,
+                    game_state_of,
                 )
-                _st = board_state_of(_match.session)
+                _st = game_state_of(_match.session)
                 _decided = _match.strategy.decide_star_tome(
                     [c[0] for c in cards], _st, _match.session,
                     getattr(_match, 'config', None))
@@ -199,11 +199,11 @@ class CwScreenBookcard(CwScreenOpBase):
         if _sess is not None:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
-                board_state_of,
+                game_state_of,
             )
             # 渠道②签名(§3.2.1 ②类属 = op 类名;R5 W1 起必填,ADR-0634)
-            board_state_of(_sess).write_logic(
-                board_state_of(_sess).chosen_tome,
+            game_state_of(_sess).write_logic(
+                game_state_of(_sess).chosen_tome,
                 pick_name,
                 produced_by='CwScreenBookcard',
                 sig=ChannelSig(family='logic_action',

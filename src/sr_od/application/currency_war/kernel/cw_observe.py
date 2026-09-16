@@ -201,13 +201,13 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
         # 缺省关(未装配/无会话)= 行不落——与账本自身「无 sink 拒写」语义
         # 一致;旁路缺陷台账行不受此门照常供给。渠道签名(§3.2.1 ①类属):
         # actor = 本仲裁汇点,行内身份可对账(签名必填纪律 R5 W1,ADR-0634)。
-        _bs = cw_telemetry_exit.obs_event_board()
-        if _bs is not None:
+        _gs = cw_telemetry_exit.obs_event_board()
+        if _gs is not None:
             with contextlib.suppress(Exception):
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     ChannelSig,
                 )
-                _bs.note_obs_event(
+                _gs.note_obs_event(
                     'arbitrate', str(field),
                     {'old': old, 'new': new, **ctx},
                     verdict=str(verdict or ''),

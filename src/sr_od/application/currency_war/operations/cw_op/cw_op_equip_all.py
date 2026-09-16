@@ -92,7 +92,7 @@ def register_equip_worn(session, item_name: str, char_name: str,
             DEPLOYED_FRONT_CAPACITY,
         )
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of,
+            game_state_of,
         )
         owned = list(getattr(session, 'last_owned_equips', None) or [])
         if item_name in owned:
@@ -100,7 +100,7 @@ def register_equip_worn(session, item_name: str, char_name: str,
             session.last_owned_equips = owned
         idx = (slot - 1 if row == 'front'
                else DEPLOYED_FRONT_CAPACITY + slot - 1)
-        dep = list(board_state_of(session).tracked_books.deployed or [])
+        dep = list(game_state_of(session).tracked_books.deployed or [])
         if 0 <= idx < len(dep) and dep[idx] is not None:
             dep[idx].equips = list(getattr(dep[idx], 'equips', None) or []) \
                 + [item_name]
@@ -232,9 +232,9 @@ def record_zero_wear_defect(ctx: SrContext, equipped: int,
     _sess_zw = getattr(_match, 'session', None) if _match is not None else None
     if _sess_zw is not None:
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of,
+            game_state_of,
         )
-        _node_zw = board_state_of(_sess_zw).node.value
+        _node_zw = game_state_of(_sess_zw).node.value
     if _node_zw is None or int(_node_zw.round_num) < 3:
         return
     _reason = stop_reason or '循环自然结束(stall)'

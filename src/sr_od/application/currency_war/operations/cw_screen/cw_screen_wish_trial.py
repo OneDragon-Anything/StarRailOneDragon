@@ -155,9 +155,9 @@ class CwScreenWishTrial(CwScreenOpBase):
                 objs = self._read_objectives(screen)
                 # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of,
+                    game_state_of,
                 )
-                _st = board_state_of(_match.session)
+                _st = game_state_of(_match.session)
                 idx = _match.strategy.decide_wish_trial(
                     objs, _st, _match.session, getattr(_match, 'config', None))
                 if 0 <= idx < len(self.CARD_XS):
@@ -199,10 +199,10 @@ class CwScreenWishTrial(CwScreenOpBase):
         try:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
-                board_state_of,
+                game_state_of,
             )
-            _bs = board_state_of(_sess)
-            _bs.write_logic(_bs.chosen_wish, _text,
+            _gs = game_state_of(_sess)
+            _gs.write_logic(_gs.chosen_wish, _text,
                             produced_by='CwScreenWishTrial',
                             sig=ChannelSig(family='logic_action',
                                            actor='CwScreenWishTrial',

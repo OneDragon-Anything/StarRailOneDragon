@@ -962,7 +962,7 @@ def _fresh_phase(state: GameState | None) -> tuple:
     return (plane_of(state), round_num_of(state))
 
 
-def record_fresh_buy(session: object, bs: GameState | None,
+def record_fresh_buy(session: object, gs: GameState | None,
                      name: str) -> None:
     """轮内新鲜度排除登记(买入意图逐名写入;发射位调用)。
 
@@ -974,7 +974,7 @@ def record_fresh_buy(session: object, bs: GameState | None,
         return
     ex = exec_state_of(session)
     reg = ex.cw4_swap_fresh_buys
-    phase = _fresh_phase(bs)
+    phase = _fresh_phase(gs)
     if not isinstance(reg, dict) or reg.get('phase') != phase:
         reg = {'phase': phase, 'names': set()}
         ex.cw4_swap_fresh_buys = reg
@@ -982,12 +982,12 @@ def record_fresh_buy(session: object, bs: GameState | None,
 
 
 def fresh_buys_of(session: object,
-                  bs: GameState | None) -> frozenset[str]:
+                  gs: GameState | None) -> frozenset[str]:
     """读当前位面轮内有效的新鲜买入名集(跨轮 = 空集,自动失效)。"""
     reg = exec_state_of(session).cw4_swap_fresh_buys
     if not isinstance(reg, dict):
         return frozenset()
-    phase = _fresh_phase(bs)
+    phase = _fresh_phase(gs)
     if reg.get('phase') != phase:
         return frozenset()
     names = reg.get('names')
@@ -1022,14 +1022,14 @@ def fresh_buys_sell_face(session: object) -> frozenset[str]:
     if not isinstance(names, set):
         return frozenset()
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of,
+        game_state_of,
         plane_of,
         round_num_of,
     )
-    _bs = board_state_of(session)
-    node = _bs.node.value
+    _gs = game_state_of(session)
+    node = _gs.node.value
     if node is not None:
-        phase = (plane_of(_bs), round_num_of(_bs))
+        phase = (plane_of(_gs), round_num_of(_gs))
         if reg.get('phase') != phase:
             return frozenset()   # 相位失配 = 跨轮,整体作废(零销账)
         return frozenset(names)
@@ -1466,7 +1466,7 @@ def assemble_swap_plan_inputs(
     装配源契约(ADR-0530;对抗收口方案钉死原话,last_state 链退役批
     措辞更新)= 执行侧卖出决策实际消费的快照链,不用 PrepObservation
     另起一路:board/fp 消费调用方传入的 ``state``(执行侧/发射侧/sim
-    引擎三方均传容器单例 board_state_of——装配源换源把执行侧从
+    引擎三方均传容器单例 game_state_of——装配源换源把执行侧从
     旧滞后帧链切容器;sim 侧经 feed_sim_truth 喂后读容器);deployed/
     bench 消费调用方现读(执行侧 = SIFT 读面,发射侧 = PrepObservation
     帧)。派生逻辑(target 视图双轨口径/fenced 臂/义务排除集/保护域)全在

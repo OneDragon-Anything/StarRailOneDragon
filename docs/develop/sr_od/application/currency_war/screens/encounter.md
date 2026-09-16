@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。五相位屏(统一观察架构试点首屏,带刷新链的最复杂代表屏):重入裁决先于装配点分流;两端口在场走五段生命周期、缺省走旧路径;决策入口 = 契约 `decide_encounter(options, bs, session, config, refresh_used)`(双轨:基线核 = `kernel/cw_events.py::decide_encounter`「未成型→低难保生存 / 成型+词缀利→高难拿奖励 / 全克→刷新」;mandate_v1 核 = EV 判据 `strategies/impl/mandate_v1/encounter.py`,语义单一源 = 代码本体;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)。重入裁决一件(handle 顶部):确认 pending = 上轮已发确认的选卡快照 `(options, idx)` → 本轮入口锚不在 = overlay 已关(选卡落地)→ 补写 `chosen_encounter` + success;锚在 = 未落地 → 清标志重走(计节点预算)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。五相位屏(统一观察架构试点首屏,带刷新链的最复杂代表屏):重入裁决先于装配点分流;两端口在场走五段生命周期、缺省走旧路径;决策入口 = 契约 `decide_encounter(options, gs, session, config, refresh_used)`(双轨:基线核 = `kernel/cw_events.py::decide_encounter`「未成型→低难保生存 / 成型+词缀利→高难拿奖励 / 全克→刷新」;mandate_v1 核 = EV 判据 `strategies/impl/mandate_v1/encounter.py`,语义单一源 = 代码本体;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)。重入裁决一件(handle 顶部):确认 pending = 上轮已发确认的选卡快照 `(options, idx)` → 本轮入口锚不在 = overlay 已关(选卡落地)→ 补写 `chosen_encounter` + success;锚在 = 未落地 → 清标志重走(计节点预算)。
 
 ## 3. 观察面
 
@@ -18,14 +18,14 @@
 - 选项读取 `obs/cw_node_obs.py::read_encounter_options`:卡标题「遭遇其X」正则 → 难度档(「一」笔画细常漏读,无数字 = 难度 1);奖励带(y 600-695,排「奖励预览」标签)文本按 x 就近归卡;`affixes` 恒空(选项 UI 不显词缀,词缀在未建档的敌方信息覆盖层)——全克刷新判定因此当前恒不触发,执行链就绪待词缀读数通道建立。
 - 刷新剩余 `read_encounter_refresh_count`:OCR「剩余次数:N」(矩形带常量,全/半角冒号都认)→ `(剩余次数, 文本中心)`;读缺 = None(失败安全按无刷新)。
 
-观察 payload = `EncounterObservation`(`options`/`refresh_left`/`screen`)。本屏不上报 GameState 容器观察(决策输入 = `board_state_of(match.session)` 视图,overlay 下用上次备战快照语义)。
+观察 payload = `EncounterObservation`(`options`/`refresh_left`/`screen`)。本屏不上报 GameState 容器观察(决策输入 = `game_state_of(match.session)` 视图,overlay 下用上次备战快照语义)。
 
 ## 4. 动作面
 
 decide → 分支刷新链 → act,`lifecycle_decision_cycle` 与旧 handle 两路径共享:
 
 ```
-pick = decide_encounter(options, board_state_of(session), session, config)
+pick = decide_encounter(options, game_state_of(session), session, config)
   → idx 取 pick.idx(按 pick.idx 选卡,非默认选左)
 ├─ 分支刷新执行链(不终结;能力源 = 优势布局「分支刷新」,每局 1 次):
 │    pick.refresh ∧ 本局未用(ExecState._encounter_refresh_used)
@@ -58,7 +58,7 @@ pick = decide_encounter(options, board_state_of(session), session, config)
 ## 6. 状态上报面
 
 - `chosen_encounter` write_logic(出口验真通过分支单次逻辑写入豁免;值 = (难度档, 奖励文本),值取决策所用候选同帧同源;候选未读到/越界 = 盲选 fallback 不写,None 保持「无记录」)。写点 = 重入裁决(标识不在 = 选卡落地)。
-- on_outcome 注册表发射型登记件 `encounter_refresh_used`(`EMIT_TRIGGERED_DECLARED` 在册):随刷新点击置位不等验效,`board_state_of(session).write_logic(encounter_refresh_used, +1)`(evidence = `refresh_click`)。
+- on_outcome 注册表发射型登记件 `encounter_refresh_used`(`EMIT_TRIGGERED_DECLARED` 在册):随刷新点击置位不等验效,`game_state_of(session).write_logic(encounter_refresh_used, +1)`(evidence = `refresh_click`)。
 - 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.1 / §4「事件选择」;选择落地语义 = fields.md §4(默认不记预期值,后果走观察覆盖)。
 
 ## 7. 子态与 overlay

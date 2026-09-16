@@ -263,10 +263,10 @@ class CwOpTools(SrOperation):
                 apply_tool_execution_write,
             )
             from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of,
+                game_state_of,
             )
             report = apply_tool_execution_write(
-                board_state_of(session), plan.tool,
+                game_state_of(session), plan.tool,
                 target_equip_name=plan.target,
                 frame=f'tool_{plan.tool}')
             log.info('[cw-tools][effect-write] tool=%s side=%s leg=%s '

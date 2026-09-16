@@ -226,29 +226,29 @@ def _build_equip_wear_plan(session: Any, exec_state: Any,
     # session 容器单例(备战帧观察写端同链刷新);容器与帧同帧同源
     # (同一备战观察),读口 = 容器公共读口单一源。
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of,
+        game_state_of,
     )
-    _bs_c = board_state_of(session)
+    _gs_c = game_state_of(session)
     _form = 0.0
-    if _tgt_comp is not None and deployed and _bs_c is not None:
+    if _tgt_comp is not None and deployed and _gs_c is not None:
         from sr_od.application.currency_war.kernel.cw_comps import (
             form_progress,
         )
-        _form = form_progress(_tgt_comp, _bs_c)
+        _form = form_progress(_tgt_comp, _gs_c)
     # W629-R1 扩口(批 2):state/last_state 通道读点点名迁移——
     # committed 读端唯一化(decision_v2.prep_brain.committed_from,
     # 内部 = cw_intention 权威派生)。
     from sr_od.application.currency_war.kernel.cw_intention import (
         committed_from as _committed_from,
     )
-    _committed = (_committed_from(session, _bs_c)
-                  if (_bs_c is not None
-                      and _bs_c.node.value is not None) else False)   # 缺供给 = 双轨保守侧(D2)
+    _committed = (_committed_from(session, _gs_c)
+                  if (_gs_c is not None
+                      and _gs_c.node.value is not None) else False)   # 缺供给 = 双轨保守侧(D2)
     # r388(用户 live 质问「1-2 就乱装备」):开局轮(r≤2,奖励节点无战斗)
     # 穿装备零战斗变现;key_equips 命中件照穿,gen 散件攒到 r3 战斗轮再穿。
     # R3 修正(ADR-0257):开局 hold 不再依赖 target 存在。
     # hold 块换源:node 未观察镜像回 None。
-    _hold_node = (_bs_c.node.value if _bs_c is not None else None)
+    _hold_node = (_gs_c.node.value if _gs_c is not None else None)
     _round_now = (_hold_node.round_num
                   if (_hold_node is not None
                       and _hold_node.plane == 1) else None)
@@ -281,7 +281,7 @@ def _build_equip_wear_plan(session: Any, exec_state: Any,
     from sr_od.application.currency_war.kernel.cw_equip_env import (
         build_equip_env_signals,
     )
-    _equip_signals = build_equip_env_signals(_bs_c)
+    _equip_signals = build_equip_env_signals(_gs_c)
     # 释放判据表(ADR-0526)+ 收窄(ADR-0531):row1(opening) 域扣留收窄为
     # 逐件判定(classify_item_hold),帧级 ``.hold`` 只辖 row2 域。
     _release = resolve_wear_release(
@@ -328,8 +328,8 @@ def _build_equip_wear_plan(session: Any, exec_state: Any,
         # 每次派发记 owned 全量快照(含工具;每 pass 恰一次 = 每次派发至多
         # 调本函数一次)——离线 diff 相邻轮快照 = 各节点发放件数。
         # (换源:plane/round 取容器 node;未观察显 '?' 同旧缺帧形态)
-        _ref_node = (_bs_c.node.value
-                     if _bs_c is not None else None)
+        _ref_node = (_gs_c.node.value
+                     if _gs_c is not None else None)
         _own_ct: dict[str, int] = {}
         for n in owned_names:
             _own_ct[n] = _own_ct.get(n, 0) + 1

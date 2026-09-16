@@ -112,9 +112,8 @@ class StrategySession:
     对象(局容器/执行侧旁表按键引用),值相等语义无消费面。
     """
     # (last_state 槽已随 last_state 链退役批删除:三写点(备战观察×2/
-    #  买牌融合段)与全部遗留读者已切容器单例(board_state_of);备战
-    #  快照的现役宿主 = 容器,观察喂入 = read_game_state 漏斗
-    #  _feed_board_state。)
+    #  买牌融合段)与全部遗留读者已切容器单例(game_state_of);备战
+    #  快照的现役宿主 = 容器,观察喂入 = read_game_state 漏斗。)
     # 改用结算 HP(结算屏「小队生命值NN」可靠)给下回合 prep state.hp。
     last_hp: int | None = None
     # last_hp 的全局节点号((plane-1)*9+round):结算 hp 只在「紧邻上一节点」

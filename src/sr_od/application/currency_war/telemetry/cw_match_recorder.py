@@ -89,18 +89,18 @@ def extract_frame(ctx, img, templates) -> dict:
             # 值此前结构性恒 False,现取真值,判读按新语义。)
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 bench_is_full,
-                board_state_of,
+                game_state_of,
             )
             _match = getattr(ctx, 'cw_match', None)
             _sess = getattr(_match, 'session', None) if _match is not None else None
-            _bs = board_state_of(_sess) if _sess is not None else None
+            _gs = game_state_of(_sess) if _sess is not None else None
             rec.update(gold=st.gold, hp=st.hp, hp_readable=bool(st.hp_readable),
                        gold_readable=bool(getattr(st, 'gold_readable', True)),
                        level=st.level,
                        # level 保真位透传(False=纯 _expected_level 启发式兜底,非真读)
                        level_readable=bool(getattr(st, 'level_readable', True)),
                        board=dict(st.board),
-                       bench_full=bool(bench_is_full(_bs)) if _bs is not None else False)
+                       bench_full=bool(bench_is_full(_gs)) if _gs is not None else False)
     except Exception as e:   # noqa: BLE001
         log.debug(f'[recorder] state 提取失败: {e}')
     try:

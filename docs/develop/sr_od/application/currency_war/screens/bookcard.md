@@ -8,11 +8,11 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。五相位屏:重入裁决先于装配点分流(选卡 pending = 上轮已发选卡的星徽名;弹窗不在 = 选卡落地 → 此刻才写 chosen_tome + 到账登记 + success;弹窗在 = 点击未落地 → 重走计预算,不留幻影登记);门后读卡+选卡+机械交回链纯移入 `_handle_overlay`(两路径共享零转录);无 on_outcome 落地登记件。决策入口 = 契约 `decide_star_tome(factions, bs, session, config)`(返回 options 索引;打分:target 阵营命中 / board 已有阵营 / 配方框架阵营命中,权重 = `strategies/impl/pick_bias.py::PICK_BIAS` tome_* 常量;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E17)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。五相位屏:重入裁决先于装配点分流(选卡 pending = 上轮已发选卡的星徽名;弹窗不在 = 选卡落地 → 此刻才写 chosen_tome + 到账登记 + success;弹窗在 = 点击未落地 → 重走计预算,不留幻影登记);门后读卡+选卡+机械交回链纯移入 `_handle_overlay`(两路径共享零转录);无 on_outcome 落地登记件。决策入口 = 契约 `decide_star_tome(factions, gs, session, config)`(返回 options 索引;打分:target 阵营命中 / board 已有阵营 / 配方框架阵营命中,权重 = `strategies/impl/pick_bias.py::PICK_BIAS` tome_* 常量;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E17)。
 
 ## 3. 观察面
 
-observe 段 = 入口门 + 轻观察帧引用;卡名读取归共享动作体 `_read_card_factions`:全屏 OCR,取「XX星徽」后缀文本(长度 > 2)→ [(阵营名, x 中心)] 左→右排序。观察 payload = `BookcardObservation`(仅帧引用);本屏不上报 GameState 容器观察(决策输入 = `board_state_of(match.session)` 视图)。
+observe 段 = 入口门 + 轻观察帧引用;卡名读取归共享动作体 `_read_card_factions`:全屏 OCR,取「XX星徽」后缀文本(长度 > 2)→ [(阵营名, x 中心)] 左→右排序。观察 payload = `BookcardObservation`(仅帧引用);本屏不上报 GameState 容器观察(决策输入 = `game_state_of(match.session)` 视图)。
 
 ## 4. 动作面
 

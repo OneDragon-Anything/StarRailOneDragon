@@ -572,7 +572,7 @@ def _session_level(ctx: SrContext) -> int | None:
     单调链已防毒化)。离线/无 session 场景返 None(调用方退 6 槽基线)。
     **单一源可信门**(15 号稿 §2.3/§6):启发式兜底帧的 level 值**不参与
     取大**——「兜底 4」与「真读 4」可分后,兜底值不得混进单调链。容器侧该
-    门由喂入结构性满足(``_feed_board_state`` 仅 authoritative 帧观察写
+    门由喂入结构性满足(``read_game_state`` 仅 authoritative 帧观察写
     level,兜底帧走 carry 沿用),故取容器值直取即可信域(last_state 链
     退役换源;level_readable 显式位不入容器,quality 语义由 Field.source
     承载)。
@@ -583,9 +583,9 @@ def _session_level(ctx: SrContext) -> int | None:
             return None
         lv = getattr(m.session, 'last_level_obs', 0) or 0
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of,
+            game_state_of,
         )
-        st_lv = board_state_of(m.session).level.value
+        st_lv = game_state_of(m.session).level.value
         if st_lv:
             lv = max(lv, int(st_lv))
         return lv or None
@@ -601,16 +601,16 @@ def _level_trusted(ctx: SrContext) -> bool | None:
     新证);无 session / level 从未观察 → ``None`` = 未声明(布局公式通道
     维持现行为,零行为变更)。last_state 链退役换源:旧帧显式位
     ``level_readable`` 的 observed/兜底两态由容器 source 镜像(喂入口
-    ``_feed_board_state`` 观察写=真读/carry=兜底帧),布局公式与 14 号稿
+    ``read_game_state`` 观察写=真读/carry=兜底帧),布局公式与 14 号稿
     level 消费门共用本定义,不得各写一份「什么算可信 level」。"""
     try:
         m = ctx.cw_match
         if m is None or m.session is None:
             return None
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of,
+            game_state_of,
         )
-        _lv = board_state_of(m.session).level
+        _lv = game_state_of(m.session).level
         if _lv.value is None:
             return None
         return _lv.source == 'observation'
@@ -1465,18 +1465,18 @@ def bench_item_slots(ctx: SrContext, screen: MatLike, *, fuzzy: bool) -> set[int
                 if _i in out:
                     continue
                 _c = _gray_full[_rect.y1:_rect.y2, _rect.x1:_rect.x2]
-                _bs = 0.0
+                _gs = 0.0
                 for _it in _item_tms:
                     if _c.shape[0] < _it.shape[0] or _c.shape[1] < _it.shape[1]:
                         continue
-                    _bs = max(_bs, cv2.minMaxLoc(
+                    _gs = max(_gs, cv2.minMaxLoc(
                         cv2.matchTemplate(_c, _it, cv2.TM_CCOEFF_NORMED))[1])
-                if _bs <= 0.45:
+                if _gs <= 0.45:
                     continue
                 _ts = (cv2.minMaxLoc(cv2.matchTemplate(_c, _tm_g, cv2.TM_CCOEFF_NORMED))[1]
                        if (_tm_g is not None and _c.shape[0] >= _tm_g.shape[0]
                            and _c.shape[1] >= _tm_g.shape[1]) else 0.0)
-                if _bs >= _ts:
+                if _gs >= _ts:
                     out.add(_i)   # 箱/卡包/武装箱类物件(低分渲染),排除
     return out
 
@@ -1597,7 +1597,7 @@ def note_phantom_sphere(ctx: SrContext, pt: Point) -> None:
         # telemetry 上行走出口钩子位(kernel;分包桶依赖矩阵 obs 禁直依
         # telemetry,与 obs_conflict 同款出口形态)
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of,
+            game_state_of,
         )
         from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
             SEVERITY_L2_RECORD,
@@ -1605,7 +1605,7 @@ def note_phantom_sphere(ctx: SrContext, pt: Point) -> None:
         )
         # 分键坐标 = 容器节点读口(last_state 链退役换源;未观察 = 0 缺省,
         # best-effort 留证面不炸)。
-        _nd = board_state_of(s).node.value
+        _nd = game_state_of(s).node.value
         record_defect(
             'reward_sphere', 'reward_sphere_phantom',
             expected='点击后球消失(真球)',

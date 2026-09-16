@@ -58,9 +58,9 @@ class PrepLevelUpOp(ActionOp):
         _price = XP_CLICK_COST_FALLBACK
         if session is not None:
             from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of,
+                game_state_of,
             )
-            _price = xp_click_cost(board_state_of(session))
+            _price = xp_click_cost(game_state_of(session))
         ex._ctx.controller.mouse_move(btn)   # bug#1 缓解(review M-5)
         ex._ctx.controller.click(btn)
         # 光标 parking(审计 P0,2026-08-16 = M38 level 毒化注入点):按钮距等级显示区 18px,
@@ -70,9 +70,9 @@ class PrepLevelUpOp(ActionOp):
         try:
             if session is not None:
                 from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of,
+                    game_state_of,
                 )
-                board_state_of(session).effects.on_level_up()
+                game_state_of(session).effects.on_level_up()
         except Exception as e:   # noqa: BLE001  观测失败不阻塞对局
             log.warning('[cw][levelup] effect inventory 挂点失败(不阻塞): %s', e)
         detail = (f'买经验单击 1 击花金{_price}'

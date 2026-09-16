@@ -109,7 +109,7 @@ def opening_bench_chars(rng: random.Random) -> list[BenchChar]:
     return chars
 
 
-def apply_opening(bs: GameState, cfg: RunConfig,
+def apply_opening(gs: GameState, cfg: RunConfig,
                   rng: random.Random) -> None:
     """开局态写入容器(obs 渠道;引擎在 reset 时调用一次)。
 
@@ -126,17 +126,17 @@ def apply_opening(bs: GameState, cfg: RunConfig,
         bench_place(slots, bc)
 
     def _obs(field, value, tag: str) -> None:
-        bs.observe(field, value, evidence=sim_evidence(tag), sig=sig)
+        gs.observe(field, value, evidence=sim_evidence(tag), sig=sig)
 
-    _obs(bs.selected_difficulty, cfg.selected_difficulty, 'opening')
+    _obs(gs.selected_difficulty, cfg.selected_difficulty, 'opening')
     if cfg.enemy_difficulty is not None:
-        _obs(bs.enemy_difficulty, cfg.enemy_difficulty, 'opening')
-    _obs(bs.enemy_affixes, list(cfg.enemy_affixes), 'opening')
-    _obs(bs.game_mode, cfg.game_mode, 'opening')
-    _obs(bs.hp, hp, 'opening')
-    _obs(bs.gold, OPENING_GOLD, 'opening')
-    _obs(bs.level, OPENING_LEVEL, 'opening')
-    _obs(bs.deploy_cap, OPENING_DEPLOY_CAP, 'opening')
-    _obs(bs.xp, (0, XP_TO_NEXT_LEVEL.get(OPENING_LEVEL, 4)), 'opening')
-    _obs(bs.streak, 0, 'opening')
-    _obs(bs.bench, bench_view_of_slots(slots), 'opening')
+        _obs(gs.enemy_difficulty, cfg.enemy_difficulty, 'opening')
+    _obs(gs.enemy_affixes, list(cfg.enemy_affixes), 'opening')
+    _obs(gs.game_mode, cfg.game_mode, 'opening')
+    _obs(gs.hp, hp, 'opening')
+    _obs(gs.gold, OPENING_GOLD, 'opening')
+    _obs(gs.level, OPENING_LEVEL, 'opening')
+    _obs(gs.deploy_cap, OPENING_DEPLOY_CAP, 'opening')
+    _obs(gs.xp, (0, XP_TO_NEXT_LEVEL.get(OPENING_LEVEL, 4)), 'opening')
+    _obs(gs.streak, 0, 'opening')
+    _obs(gs.bench, bench_view_of_slots(slots), 'opening')

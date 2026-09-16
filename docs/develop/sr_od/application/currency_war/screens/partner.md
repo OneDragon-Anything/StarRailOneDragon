@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。五相位屏:重入裁决先于装配点分流(确认 pending:标识不在 = overlay 关 = 链完结 → success;标识在 = 重走计预算);门后「点选候选 → 确认」脉冲链纯移入 `_handle_overlay`(两路径共享零转录);无 on_outcome 落地登记件。决策入口 = 契约 `decide_partner(options, bs, session, config)`(优先 `config.character_build_around`/`target.core_chars` 命中,否则 idx=0;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E6)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。五相位屏:重入裁决先于装配点分流(确认 pending:标识不在 = overlay 关 = 链完结 → success;标识在 = 重走计预算);门后「点选候选 → 确认」脉冲链纯移入 `_handle_overlay`(两路径共享零转录);无 on_outcome 落地登记件。决策入口 = 契约 `decide_partner(options, gs, session, config)`(优先 `config.character_build_around`/`target.core_chars` 命中,否则 idx=0;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E6)。
 
 ## 3. 观察面
 
@@ -19,7 +19,7 @@ observe 段 = 入口门(「标识-选择伙伴」)+ 轻观察帧引用;候选与
 - 立绘真身 `_identify_portraits`:SIFT 立绘识别(label 上方立绘区 vs `portrait_plaza` 模板库,`obs/currency_war_char_id.py::identify_character`)→ 每候选 char_id(识别失败回落 label 流派名)——真身识别让 `decide_partner` 的 core_chars 匹配真正生效;
 - 未选中态正判定 `_unselected_hint_present`:建档「提示-请选择强化角色」区域命中(确认钮置灰态伴随文案,区域约束 OCR 无全屏 LCS 误匹配面)。选中态呈现零实拍,**选中与否不作读数判定**(推进语义由脉冲 + 完成门承载)。
 
-观察 payload = `PartnerObservation`(仅帧引用);本屏不上报 GameState 容器观察(决策输入 = `board_state_of(match.session)` 视图)。
+观察 payload = `PartnerObservation`(仅帧引用);本屏不上报 GameState 容器观察(决策输入 = `game_state_of(match.session)` 视图)。
 
 ## 4. 动作面
 

@@ -59,14 +59,14 @@ def _write_transition_node_chain(session: object, slots: list | None) -> None:
         from sr_od.application.currency_war.kernel.cw_game_state import (
             NodeChain,
             TokenCell,
-            board_state_of,
+            game_state_of,
         )
         from sr_od.application.currency_war.obs.cw_node_reader import (
             HU_DIST_UNRECOGNIZED,
         )
-        bs = board_state_of(session)
-        mirror = bs.node.value
-        opening = mirror is None and bs.node_hist_ord is None
+        gs = game_state_of(session)
+        mirror = gs.node.value
+        opening = mirror is None and gs.node_hist_ord is None
         if not opening and mirror is None:
             return   # 非开局且镜像缺:行归属位面不可知,禁猜跳写
         plane = 1 if opening else int(mirror.plane)
@@ -85,16 +85,16 @@ def _write_transition_node_chain(session: object, slots: list | None) -> None:
         chain = NodeChain(plane=plane, seq=cells)
         sig = ChannelSig(family='obs', actor='CwScreenPlaneTransition',
                          screen='货币战争-位面过渡', mode='read')
-        bs.observe(bs.node_path, chain, evidence='transition_snapshot',
+        gs.observe(gs.node_path, chain, evidence='transition_snapshot',
                    sig=sig)
-        if opening and bs.node_path_baseline.value is None:
-            bs.observe(bs.node_path_baseline, chain,
+        if opening and gs.node_path_baseline.value is None:
+            gs.observe(gs.node_path_baseline, chain,
                        evidence='transition_row', sig=sig)
         # 链 diff 触发:离场快照豁免两帧门(单帧即终审,链正本 §4)
         from sr_od.application.currency_war.kernel.cw_game_state import (
             maybe_emit_chain_diff,
         )
-        maybe_emit_chain_diff(bs, snapshot=True, in_mutation_window=False,
+        maybe_emit_chain_diff(gs, snapshot=True, in_mutation_window=False,
                               sig=sig)
     except Exception:   # noqa: BLE001  观测写点 best-effort,不阻塞点击推进
         pass

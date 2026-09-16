@@ -17,7 +17,7 @@ ADR-0630 裁定 1)。
 常开语义(ADR-0634):本模块无开关,生产装配 = ``currency_war_app``
 装配段无条件调 :func:`install_state_telemetry` + 局容器单例建立点兜底
 (:func:`ensure_journal_assembly`;生产调用方 = kernel/cw_game_state
-:func:`board_state_of` 建立路径——遥测装配 = game state 职责(用户
+:func:`game_state_of` 建立路径——遥测装配 = game state 职责(用户
 裁定 2026-09-15 精化令,同桶直调,注入漏斗 = establish_new_match
 容器建立点);写路径(字段写入/版本分配)
 不因本模块存在与否分支,行落盘另以 sink 在场与 run_id 在场为准——缺实例
@@ -467,7 +467,7 @@ def ensure_journal_assembly(
     run_20260915_054718.md §0「journal state 流断流」)。
 
     落位点(用户裁定 2026-09-15,精化令同日):遥测数据的保存 = game
-    state 职责——生产调用方 = kernel/cw_game_state :func:`board_state_of`
+    state 职责——生产调用方 = kernel/cw_game_state :func:`game_state_of`
     局容器单例建立路径(触发只钉该建立点,GameState 构造器零装配逻辑——
     画面解析草稿容器直构路径结构性不可能触发;构造/建立参数显式注入 run
     归属读取函数;同桶直调,旧「kernel

@@ -129,7 +129,7 @@ def sample_options(rng: random.Random, kind: str,
     return tuple(rng.sample(pool, min(count, len(pool))))
 
 
-def apply_expert_pick(bs: GameState, char_id: str, faction: str, *,
+def apply_expert_pick(gs: GameState, char_id: str, faction: str, *,
                       place_unit) -> bool:
     """专家邀请函选卡效果(画面档语义:五选一得该角色,落备战席占
     1 槽;席满拒)。落席通道 = 调用方注入的 M17 落席口(注入理由:
@@ -140,13 +140,13 @@ def apply_expert_pick(bs: GameState, char_id: str, faction: str, *,
     """
     ok = bool(place_unit(char_id, faction))
     if ok:
-        bs.observe(bs.chosen_expert, char_id,
+        gs.observe(gs.chosen_expert, char_id,
                    evidence=sim_evidence('overlay:expert'),
                    sig=obs_sig(group_id='sim:overlay'))
     return ok
 
 
-def apply_disclosed_pick(bs: GameState, kind: str, option: str) -> None:
+def apply_disclosed_pick(gs: GameState, kind: str, option: str) -> None:
     """占位效果应用(效果数值零载族:选中值写容器 chosen_* 对应位
     (在册位才写)+ 披露面消费;无战力消费面,数值候实机补档)。
 
@@ -154,10 +154,10 @@ def apply_disclosed_pick(bs: GameState, kind: str, option: str) -> None:
     chosen_partner / hack→chosen_hack;fate/aha 无独立 chosen 位,
     只披露(防容器词表外写入)。
     """
-    field_map = {'megastar': bs.chosen_megastar, 'partner': bs.chosen_partner,
-                 'hack': bs.chosen_hack}
+    field_map = {'megastar': gs.chosen_megastar, 'partner': gs.chosen_partner,
+                 'hack': gs.chosen_hack}
     sig = obs_sig(group_id='sim:overlay')
     field = field_map.get(kind)
     if field is not None:
-        bs.observe(field, option, evidence=sim_evidence(f'overlay:{kind}'),
+        gs.observe(field, option, evidence=sim_evidence(f'overlay:{kind}'),
                    sig=sig)

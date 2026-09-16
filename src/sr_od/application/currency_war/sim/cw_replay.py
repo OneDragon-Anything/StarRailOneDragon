@@ -30,7 +30,7 @@ import sys
 
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
-    board_state_of,
+    game_state_of,
     gold_of,
     node_kind_of,
     restore_state_snapshot,
@@ -106,16 +106,16 @@ def main() -> None:
         # 每轮冷建 session(策略态不入流水;判读边界见模块 docstring),
         # 快照恢复进该 session 的容器后走生产同路决策。
         sess = strat.create_session(_Cfg())
-        bs: GameState = board_state_of(sess)
-        restore_state_snapshot(bs, snaps[key])
+        gs: GameState = game_state_of(sess)
+        restore_state_snapshot(gs, snaps[key])
         try:
             actions = strat.decide_shop_screen(sess, _Cfg())
             plan = _fmt(actions)
         except Exception as e:
             plan = f'⚠ plan 异常: {type(e).__name__}: {e}'
-        hp = bs.hp.value
-        kind = node_kind_of(bs) or ''
-        print(f'  p{plane}r{rnd} g={gold_of(bs)} hp={hp} node={kind}'
+        hp = gs.hp.value
+        kind = node_kind_of(gs) or ''
+        print(f'  p{plane}r{rnd} g={gold_of(gs)} hp={hp} node={kind}'
               f' [{rid}]: {plan}')
 
 

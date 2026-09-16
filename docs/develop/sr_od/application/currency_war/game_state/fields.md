@@ -37,7 +37,7 @@
 - **prior(先验,子模)**:来自历史遥测调查的先验写入(如开局 hp 先验,§3.1.6),
   evidence 必带 `prior:<来源>`;仅限显式申报的条目,禁扩散。
 - **载体中继(session_carrier 约定)**:接管/初始化时把会话已知事实补写进从未写过
-  的字段——不设第五来源类:中继经 `BoardState.relay`,source=logic
+  的字段——不设第五来源类:中继经 `GameState.relay`,source=logic
   (evidence=session_carrier),已有正式值的字段一律跳过。**空值=未知态禁中继**:
   会话默认空值('''/[])不是已知事实;**五镜像字段封闭集** = `active_strategies`/
   `active_env`/`plane_bosses`/`enemy_affixes`/`selected_difficulty`(锁锚 =
@@ -50,7 +50,7 @@ evidence 为可选来源注记,记录证据分级(帧标签稳定范围、当场
 
 读不到/不可信就不写,保留上次好值;容器里只有「当前最好的已知值」。无质量位:
 `None` 只表示**这一帧没读到**,不表示「未建模」——未建模的字段根本不进 schema,
-缺域由 bs_schema 的域版本键表达(§3.7.1)。「机制性 None」(该画面机制上读不到)
+缺域由 gs_schema 的域版本键表达(§3.7.1)。「机制性 None」(该画面机制上读不到)
 按字段显式申报(§6.3 同源申报面)。**失读帧的字段处置二选一(统一口径)**:
 ①字段已有正式值 → 写 carried(沿用+来源帧标注);②字段从未读过(机制性不可读态
 +新局)→ 字段保持 None。硬边界:字段一旦有过正式值,任何失读都不得把它清成 None。
@@ -71,7 +71,7 @@ carried、不受本硬边界辖;在屏失读不写、沿用旧值,在屏与否�
 
 1. **帧观察完整度标注**(full/view/none)——消费即清;停更检测哨兵用只增不减的
    写点序号 `write_seq`,不用该标注现值。
-2. **bs_schema**——域粒度版本映射(域全集 = `DEFAULT_BS_SCHEMA`,§3.7.1)。
+2. **gs_schema**——域粒度版本映射(域全集 = `DEFAULT_GS_SCHEMA`,§3.7.1)。
 
 ### 2.5 逻辑写入:直接写字段(两态制)
 
@@ -197,10 +197,10 @@ Character 条目——识别库与「deploy 剔除 cost==0」按注册表运行�
 **占位真值只有这一份**。
 **写端**(完整清单):
 - 观察写端:本屏观察覆盖(含星级观察消费:备战屏 read_star 链经观察喂入口写
-  bs.bench,零新增 OCR,§3.2.18)。
+  gs.bench,零新增 OCR,§3.2.18)。
 - 逻辑写端(op,§4.2):OpenBox 开箱(箱槽→空/新内容);BuyCard 买牌(落位)与
   **合成升星逻辑态直写**(BuyCard 执行落地门 `detect_merge_upgrade` 检测同名最高星
-  抬升 → `write_logic(bs.bench, 逻辑态推算 BenchView)`,两态制,下一备战帧实读覆盖);
+  抬升 → `write_logic(gs.bench, 逻辑态推算 BenchView)`,两态制,下一备战帧实读覆盖);
   RunDeploy 部署(备战席 −该牌);SellBench 卖备战席角色(−该牌)。
 - 效果写端:板面重写桥 `apply_board_rewrite` 全场出售面(人力重组/卖全场族,清空
   备战席+退款,§5.3;生产挂点=选卡登记点);效果改写源在册:乱成一锅粥/+(最左 6 槽
@@ -270,7 +270,7 @@ CV 不可判/未建档→各自兜底(公式/防抖+8 格超集留证)。冲突�
 **语义**:int——部署容量识别真值(= level + 财富宝钻数,可叠加),「X/Y」指示的
 Y 人数口径。
 **写端**:备战帧观察(双帧一致采信门输出;喂入口 =
-`cw_observation._feed_board_state` spec 门 `deploy_cap` 键,防抖核 =
+`cw_observation.read_game_state` spec 门 `deploy_cap` 键,防抖核 =
 `_debounce_cap` 单一源;拒信/失读帧 carry 沿用——宝钻只增不减,沿用方向安全)。
 sim 合成口同域直写。
 **为什么与 back_layout 双存**:部署/换线决策直接消费(max_units 封顶),且不可从
@@ -333,7 +333,7 @@ None(None 跳过沿用),'连胜×0' 真 0 与失读 None 分写。
 按分类子态拒绝垃圾输入,hp 仅真读才 observe);结算覆盖见 §3.5.1。其他可见面:
 战斗结算页、挑战失败页、中断对话框(暂停面板未建档血量区域)。
 **边界**:不可信帧不写。容器存**门前真值**、消费视图施门在消费侧(hp_readable/
-hp_trusted 语义 = §8.7 W5 收编口径,单一源 = cw_bs_view);「备战帧仅 shop 关闭态」
+hp_trusted 语义 = §8.7 W5 收编口径,单一源 = cw_gs_view);「备战帧仅 shop 关闭态」
 的字面全局禁写与结算覆盖不冲突——结算是独立写端。
 
 #### 3.2.14 敌人难度 enemy_difficulty(主条目)
@@ -385,7 +385,7 @@ evidence 区分。旗牌通道=**弱**(stylized 数字 OCR 常空,两级放大�
 角标与装备图标都在备战屏画面里;装备图标仅在场单位渲染,备战席单位不渲染(见③
 定谳)。接线面:①前后排已穿装备已有逐帧读取器(read_row_equipped,覆盖前后排、
 不含备战席);②**星级=read_star 在役**(立绘底部金星计数,经 identify_slots 注入
-read_deployed_chars/read_bench_chars 两链)经观察喂入口写 bs.bench;③**备战席装备
+read_deployed_chars/read_bench_chars 两链)经观察喂入口写 gs.bench;③**备战席装备
 图标=无源定谳**(实机三态采证,2026-09-12:满/混合/空三态备战帧负探针——
 备战栏 below 带全模板×全缩放原始匹配峰值低于 MISS 阈,连假 MISS 噪声都不产;正
 对照同帧在场排装备正常命中,排除读取器失效/取区漂移;离线探针与运行时识别日志双
@@ -552,7 +552,7 @@ effective_refresh_prob:键在且 >0 直用、≤0/缺键退基线表——**契�
 当前未消耗免费刷新次数。**写入=仅逻辑**(结构化族按效果激活经账本累加——**桥接
 载体**,kernel/cw_game_state.py):`apply_effect_burst_grant`(burst=选卡一次性,
 活载体=固定理财即时段)/`grant_effect_node_refresh_balance`(per_node=每节点 +N,
-活载体=双手狸 2/节点;**条件判定族已同桥 wire**——按 bs.gold 现值逐条目评估,金未读
+活载体=双手狸 2/节点;**条件判定族已同桥 wire**——按 gs.gold 现值逐条目评估,金未读
 None 保守零授予;闸门=advance_node 的 advanced 位每节点恰一次)。**无 UI 观察通道**
 ——画面档与游戏 UI 均无计数控件(对拍申报);间接核对信号=免费帧刷价显示 0/「免费」
 (挂实机采证义务)。付费帧/免费帧判定输入。
@@ -692,10 +692,10 @@ streak 带方向真值(§3.2.12)/ 金币仅胜局覆盖(§3.2.9)——写入规�
 
 > 以下不由任何画面帧观察写入:工程字段由构造/迁移写。
 
-#### 3.7.1 schema 版本 schema_version / bs_schema
+#### 3.7.1 schema 版本 schema_version / gs_schema
 
-行级版本(常量 `BS_SCHEMA_VERSION`;新局必显式申报)+ 域粒度版本映射
-(`DEFAULT_BS_SCHEMA`,域全集与各域版本见代码;缺域键=该域未建模)。治理判据
+行级版本(常量 `GAME_STATE_SCHEMA_VERSION`;新局必显式申报)+ 域粒度版本映射
+(`DEFAULT_GS_SCHEMA`,域全集与各域版本见代码;缺域键=该域未建模)。治理判据
 (字段准入四问/申报单/「0」的双重含义检查)见 §8.8。
 
 ## 4. 决策 op 各自改哪些字段
@@ -759,7 +759,7 @@ sim-记录分叉,修正随 sim 建模批)。布局修饰未建模:玩家裁定�
 
 **合成落点**:3 合 1 合成落点=场上吸收(装备/站位继承)或备战最左、可连锁多级——
 合成链不记预期值(§4.1 的豁免),落位真值等观察覆盖;**合成升星逻辑态直写**(执行
-落地门 `detect_merge_upgrade` → write_logic(bs.bench),§3.2.5/§3.2.18)。
+落地门 `detect_merge_upgrade` → write_logic(gs.bench),§3.2.5/§3.2.18)。
 
 #### SellBench 卖牌
 
@@ -1232,8 +1232,8 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
 - 结构类型:`Unit`(阵营不存,查表派生)/`BenchView`(slots+capacity)/`SphereSight`/
   `NodeKey`/`ShopCard`(cost_source 三值)/`ShopPayload`/`EncounterPayload`/
   `SupplyPayload`/`Settlement`/`MatchFinal`(局终行载荷)。
-- 容器字段全集与域注释 = `BoardState` dataclass 定义(§3.7.1 域版本映射 =
-  `DEFAULT_BS_SCHEMA`);写入 API 正本面:`observe`(拒 None)/`carry`/`write_prior`
+- 容器字段全集与域注释 = `GameState` dataclass 定义(§3.7.1 域版本映射 =
+  `DEFAULT_GS_SCHEMA`);写入 API 正本面:`observe`(拒 None)/`carry`/`write_prior`
   (强制 evidence=prior:)/`leave_screen`(附加域结构离屏)/`write_logic`(两态制
   标准通道)/`relay`(载体中继,空值闸)/`logic_written_fields`(对账巡检用)/
   `note_action_receipt`(receipts 唯一写点)/`write_match_final`(局终域唯一写点)。
@@ -1260,7 +1260,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
 - **骨架与规格分叉对账(在册例外)**:bench 载体=**BenchView**(slots+capacity)非
   Field[list[BenchSlot]];xp=**tuple[int,int]**(「X/Y」现读)——容量随效果改写需
   一等承载;「X/Y」升级进度按画面现读形状。
-- **透传残差申报**(决策视图适配器 cw_bs_view 的「不入容器」域,显式理由在册):
+- **透传残差申报**(决策视图适配器 cw_gs_view 的「不入容器」域,显式理由在册):
   front_max=常量供数不入容器;back_max 不收编(值源切换语义裁决另立批);
   dual_track_phase/focus_factions=策略侧派生/回填不入容器。已建模域的收编口径 =
   §3.2.7.1(deploy_cap 双存)/§3.2.13(hp 门前真值+消费侧施门)/§3.3.1(双 ShopCard
@@ -1284,8 +1284,8 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
     自算)。
   - **「0」的双重含义检查**(刷新费免费帧——None≠标价 0,§3.3.4;升星预览已改派生
     计算不入存储)。
-  - **遥测行形状规格**:state=GameState 兼容形状 + bs_prov/bs_extra 新顶层键;
-    bs_prov 只记非默认来源(稀疏化,不逐字段灌满)。
+  - **遥测行形状规格**:state=GameState 兼容形状 + gs_prov/gs_extra 新顶层键;
+    gs_prov 只记非默认来源(稀疏化,不逐字段灌满)。
 
 ## 9. 与推演内核帧(CwSimFrame)的映射对账
 
@@ -1356,26 +1356,26 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
 
 | # | CwSimFrame 字段 | 容器表示 | 判定 | 备注 |
 |---|---|---|---|---|
-| 1 | gold | `bs.gold` | A | 观察直写 |
+| 1 | gold | `gs.gold` | A | 观察直写 |
 | 2 | round_num | `node.round_num`(NodeKey) | A | |
 | 3 | plane | `node.plane`(NodeKey) | A | |
 | 4 | node_type | `node.kind` | A | 帧值为 None 且容器无现值时不写 node(禁假值占位);容器已有现值时写 kind_inherited 继承帧(plane/round 取帧值) |
-| 5 | level | `bs.level` | A | |
-| 6 | xp_progress | `bs.xp` | A | 元组直写 |
-| 7 | streak | `bs.streak` | A | |
-| 8 | hp | `bs.hp` | A | |
-| 9 | deploy_cap | `bs.deploy_cap` | A | |
-| 10 | back_max | `bs.back_layout` | A | 动态真值(三信号裁决,值域 6-9,§3.2.7) |
-| 11 | board | `bs.board` | A | |
-| 12 | plane_bosses | `bs.plane_bosses` | A | |
-| 13 | enemy_affixes | `bs.enemy_affixes` | A | |
-| 14 | active_env | `bs.active_env` | A | |
-| 15 | equips | `bs.equips` | A | |
-| 16 | active_strategies | `bs.active_strategies` | A | |
-| 17 | refresh_probs | `bs.shop.refresh_probs`(ShopPayload) | A | 已入商店 payload(§3.3) |
+| 5 | level | `gs.level` | A | |
+| 6 | xp_progress | `gs.xp` | A | 元组直写 |
+| 7 | streak | `gs.streak` | A | |
+| 8 | hp | `gs.hp` | A | |
+| 9 | deploy_cap | `gs.deploy_cap` | A | |
+| 10 | back_max | `gs.back_layout` | A | 动态真值(三信号裁决,值域 6-9,§3.2.7) |
+| 11 | board | `gs.board` | A | |
+| 12 | plane_bosses | `gs.plane_bosses` | A | |
+| 13 | enemy_affixes | `gs.enemy_affixes` | A | |
+| 14 | active_env | `gs.active_env` | A | |
+| 15 | equips | `gs.equips` | A | |
+| 16 | active_strategies | `gs.active_strategies` | A | |
+| 17 | refresh_probs | `gs.shop.refresh_probs`(ShopPayload) | A | 已入商店 payload(§3.3) |
 | 18 | deployed | `front_row`+`back_row`(Unit 行) | B | 槽位/星级/装备无损;回程 `unit_rows_to_deployed` 按排还原排位偏好;阵营原值不保(容器刻意不入,经注册表派生替换,§8.6);排位偏好与实际排短暂不一致的形态被归一(`front_count_of` 口径注,边缘语义损耗申报) |
-| 19 | bench | `bs.bench`(BenchView) | B | **排位偏好 position_pref 丢**(Unit 无域,重建走缺省 'back')——机制必需表示留内核的核心实例;阵营同上派生;is_item_slot 经 `BenchSlot.kind='supply_box'` 保真(喂入写/恢复读同链) |
-| 20 | shop | `bs.shop`(ShopPayload.cards) | B | 五记录字段(name/faction/cost/star/cost_source)透传无损;**x/merge_preview 容器不入**(§3.3.1)——sim 买牌下架按 x,该表示留内核 |
+| 19 | bench | `gs.bench`(BenchView) | B | **排位偏好 position_pref 丢**(Unit 无域,重建走缺省 'back')——机制必需表示留内核的核心实例;阵营同上派生;is_item_slot 经 `BenchSlot.kind='supply_box'` 保真(喂入写/恢复读同链) |
+| 20 | shop | `gs.shop`(ShopPayload.cards) | B | 五记录字段(name/faction/cost/star/cost_source)透传无损;**x/merge_preview 容器不入**(§3.3.1)——sim 买牌下架按 x,该表示留内核 |
 | 21 | action_log | 无容器域 | B | 动作账宿主 = 帧自身(§9.3) |
 | 22 | front_max | 无域(常量镜像) | C | 恒 4,非观察事实;容器常量 `DEPLOYED_FRONT_CAPACITY` 同值 |
 | 23 | level_readable | 无域(`Field.source` 近似,不映射) | C | 实机观测保真位;sim 恒 True |
@@ -1387,10 +1387,10 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
 | 29 | board_next_tier | 无容器域 | C | 实机 OCR 域(左面板 X/Y 的 Y),sim 不建模,引擎直写通道不写 |
 | 30 | dual_track_phase | 无域 | E | 双轨期标记;消费已随统一 state 决策面切换退役,字段随 last_state 链退役波消亡,不迁容器 |
 | 31 | focus_factions | 无域(真家 = StrategyState) | E | 同上 |
-| 32 | enemy_difficulty | `bs.enemy_difficulty` | D | 容器有域;引擎直写通道现不写(现状申报);sim 决策消费需该域时按渠道签名在直写面增补 |
-| 33 | level_up_cost | `bs.level_up_cost` | D | 同上 |
-| 34 | shop_refresh_cost | `bs.shop_refresh_cost` | D | 同上;sim 帧恒基价常量 `REFRESH_COST_BASE` |
-| 35 | selected_difficulty | `bs.selected_difficulty` | D | 同上 |
+| 32 | enemy_difficulty | `gs.enemy_difficulty` | D | 容器有域;引擎直写通道现不写(现状申报);sim 决策消费需该域时按渠道签名在直写面增补 |
+| 33 | level_up_cost | `gs.level_up_cost` | D | 同上 |
+| 34 | shop_refresh_cost | `gs.shop_refresh_cost` | D | 同上;sim 帧恒基价常量 `REFRESH_COST_BASE` |
+| 35 | selected_difficulty | `gs.selected_difficulty` | D | 同上 |
 
 **容器独有域(反向汇总)**:node_path / game_mode / refresh_counters(3)/
 node_screen_refresh(4)/ consumables / spheres / substate / event_overlay /

@@ -11,12 +11,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     plane_of,
     round_num_of,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
@@ -24,14 +24,14 @@ if TYPE_CHECKING:
     )
 
 
-def register_round_sold(names, bs: GameState,
+def register_round_sold(names, gs: GameState,
                         session: StrategySession) -> None:
     """卖出件入同轮已卖集(r408 对称臂;带轮键自校验,防跨轮误写)。
 
     四卖件通道统一走本 helper(设计 §4):carry_gate ④/两补偿器/
     arbiter 主循环(采纳处,ADR-0328)/执行侧卖出落地加固。
     """
-    key = (plane_of(bs), round_num_of(bs))
+    key = (plane_of(gs), round_num_of(gs))
     if getattr(exec_state_of(session), 'v2_round_key', None) != key:
         return    # 轮键不匹配(跨轮误写防御;set 下轮重置)
     sold = getattr(exec_state_of(session), 'v2_round_sold', None)

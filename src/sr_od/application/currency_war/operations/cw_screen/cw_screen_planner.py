@@ -186,9 +186,9 @@ class CwScreenPlanner(CwScreenOpBase):
             (left_text if cx < 960 else right_text).append(text)
         from sr_od.application.currency_war.kernel.cw_events import PlannerOption
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            BS_SCHEMA_VERSION,
+            GAME_STATE_SCHEMA_VERSION,
             GameState,
-            board_state_of,
+            game_state_of,
         )
         options = [PlannerOption(idx=0, text=' '.join(left_text)),
                    PlannerOption(idx=1, text=' '.join(right_text))]
@@ -200,7 +200,7 @@ class CwScreenPlanner(CwScreenOpBase):
         _match = getattr(self.ctx, 'cw_match', None)
         if _match is not None:
             # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读。
-            _st = board_state_of(_match.session)
+            _st = game_state_of(_match.session)
             _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
             pick = _match.strategy.decide_planner(
                 options, _st, _match.session, _cfg)
@@ -210,7 +210,7 @@ class CwScreenPlanner(CwScreenOpBase):
             # decide_planner 局面消费面未观察态等价旧空帧);旧合成
             # CwSimFrame + 过渡桥装箱退役。
             pick = decide_planner(options,
-                                  GameState(schema_version=BS_SCHEMA_VERSION),
+                                  GameState(schema_version=GAME_STATE_SCHEMA_VERSION),
                                   None)
         target = self._card_point(pick.idx)
         log.info('[cw][planner] 策划决策:%s → %s卡(%s)',

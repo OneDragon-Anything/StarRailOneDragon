@@ -58,7 +58,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     ShopActionExecuted,
     apply_shop_action_logic,
     bench_slots_of,
-    board_state_of,
+    game_state_of,
     gold_of,
     plane_of,
     round_num_of,
@@ -168,9 +168,9 @@ def bump_lock_gen_feasibility_obs(session: StrategySession | None,
         # hp 决策可信位读口(统一 state 迁移波 2,hp施门下沉kernel政策层
         # 设计 §2.3)。商店线容器直喂时该位按容器真实 source 判
         #(原桥视图恒 True 失真窗随直喂消亡);本件纯观测零行为。
-        _bs = state
-        hp = _bs.hp.value
-        if hp is not None and hp_decision_trusted(_bs) \
+        _gs = state
+        hp = _gs.hp.value
+        if hp is not None and hp_decision_trusted(_gs) \
                 and hp <= HP_BAND_NEAR_DEATH:
             _k_low = LOCK_GEN_FEASIBILITY_OBS_PREFIX + 'lock_open_lowband'
             counters[_k_low] = counters.get(_k_low, 0) + 1
@@ -436,7 +436,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # 换源:帧源 = session 容器单例(与商店线同款;旧
         # PrepObservation.state 槽已随容器化段 2 退役,槽读取恒 None =
         # 备战线方向刷新吃空视图的活性断裂,本行即其修复)。
-        state = board_state_of(session)
+        state = game_state_of(session)
         try:
             if cls == 'full':
                 self._refresh_direction(state, session)
@@ -458,7 +458,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         session.shop_frame_class = 'none'
         # 帧源 = session 容器(W6 波 4 黑板容器化:标注槽消费不变,
         # 帧本体改容器直读——设计件《商店黑板容器化方案》§2.1-3/§2.4-2)。
-        state = board_state_of(session)
+        state = game_state_of(session)
         if cls == 'full':
             self._refresh_direction(state, session)
         else:
@@ -467,7 +467,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
     # ===== pick 族(事件/选卡决策;判据单源 = kernel cw_events/cw_comps)=====
 
     def decide_invest(self, kind: Literal["strategy", "env"], options: list[str],
-                      bs: GameState, session: StrategySession, config) -> PickEvent:
+                      gs: GameState, session: StrategySession, config) -> PickEvent:
         """投资策略/投资环境 3 选 1。P1 两 kind 同一实现(委托 ``decide_event``);分表现 P2+ 议题。
         ``state.board`` 由调用方传空 stub(overlay 叠备战时 board 不可读,§11.7)。
         ADR-0597(用户裁定 2026-09-08「投资选卡优先经济、然后是终局阵容,
@@ -488,7 +488,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         )
         _ist = self._ensure_intention(state_of(session))
         pick = cw_events.decide_event(
-            options, config, bs,
+            options, config, gs,
             locked_comp=_ist.locked_comp,
             demoted_endgame=_ist.demoted_endgame,
             evicted=frozenset(_ist.evicted),
@@ -514,19 +514,19 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             pass
         return pick
 
-    def decide_supply(self, options: list[SupplyOption], bs: GameState,
+    def decide_supply(self, options: list[SupplyOption], gs: GameState,
                       session: StrategySession, config, refresh_used: bool = False) -> SupplyPick:
         """补给选装备/出钻。⚠️ OCR 未就绪(P1 契约成员 + 默认委托,handler 不 rewire,随阶段5)。"""
         self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
-        return cw_events.decide_supply(options, bs, state_of(session).target_comp, config, refresh_used)
+        return cw_events.decide_supply(options, gs, state_of(session).target_comp, config, refresh_used)
 
-    def decide_encounter(self, options: list[EncounterOption], bs: GameState,
+    def decide_encounter(self, options: list[EncounterOption], gs: GameState,
                          session: StrategySession, config, refresh_used: bool = False) -> EncounterPick:
         """遭遇难度/词缀避开。⚠️ 后 dormant(遭遇=普通战斗无选项 UI);纯逻辑+测试暂留。"""
         self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
-        return cw_events.decide_encounter(options, bs, state_of(session).target_comp, config, refresh_used)
+        return cw_events.decide_encounter(options, gs, state_of(session).target_comp, config, refresh_used)
 
-    def decide_megastar(self, options: list[MegastarOption], bs: GameState,
+    def decide_megastar(self, options: list[MegastarOption], gs: GameState,
                         session: StrategySession, config) -> MegastarPick:
         """巨星选候选:委托 ``cw_comps.select_megastar`` 拿角色名 → 名在 options 命中该 idx;否则 idx=0。
         ⚠️ OCR 未就绪(char_id 全空 → 匹配恒失败 → idx=0 = 今天盲点左候选,随阶段5)。
@@ -535,7 +535,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         字段保留恒 None,兼容既有遥测/执行面读取。)"""
         self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
         available = [o.char_id for o in options if o.char_id]
-        chosen_name = cw_comps.select_megastar(bs, state_of(session).target_comp, available)
+        chosen_name = cw_comps.select_megastar(gs, state_of(session).target_comp, available)
         if chosen_name:
             for o in options:
                 if o.char_id == chosen_name:
@@ -544,7 +544,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                         reason=f"select_megastar 命中 {chosen_name}")
         return MegastarPick(idx=0, reason="fallback 左候选(OCR 未就绪,char_id 空)")
 
-    def decide_partner(self, options: list[PartnerOption], bs: GameState,
+    def decide_partner(self, options: list[PartnerOption], gs: GameState,
                        session: StrategySession, config) -> PartnerPick:
         """选择伙伴:优先 ``config.character_build_around`` / ``target.core_chars`` 命中;否则 idx=0。
         ⚠️ OCR 未就绪(char_id 全空 → 命中恒失败 → idx=0 = 今天盲点 stage 立绘,随阶段5)。"""
@@ -557,16 +557,16 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 return PartnerPick(idx=o.idx, reason=f"命中偏好/核心 {o.char_id}")
         return PartnerPick(idx=0, reason="fallback(OCR 未就绪,char_id 空)")
 
-    def decide_planner(self, options: list[PlannerOption], bs: GameState,
+    def decide_planner(self, options: list[PlannerOption], gs: GameState,
                        session: StrategySession, config) -> PlannerPick:
         """银狼策划事件(r104 用户定调:接入策略模块由它定;委托 cw_events.decide_planner)。
 
         升费卡打分含银狼线/在场判定(state.bench+deployed 的 char_id),
         state_of(session).target_comp 决定银狼线加成。"""
         self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
-        return cw_events.decide_planner(options, bs, state_of(session).target_comp)
+        return cw_events.decide_planner(options, gs, state_of(session).target_comp)
 
-    def decide_star_tome(self, options: list[str], bs: GameState,
+    def decide_star_tome(self, options: list[str], gs: GameState,
                          session: StrategySession, config) -> int:
         """星徽秘典四选一(r104 接入策略模块;原 loop 内联 board 匹配迁此)。
 
@@ -593,7 +593,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             from one_dragon.utils import str_utils
             if name in _tgt_facs:
                 s += PICK_BIAS.tome_target_faction
-            _board = (bs.board.value or {})
+            _board = (gs.board.value or {})
             hit = next((b for b, n in _board.items()
                         if n > 0 and str_utils.find_by_lcs(b, name, percent=0.8)), None)
             if hit is not None:
@@ -604,7 +604,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 best_i, best_s = i, s
         return best_i
 
-    def decide_wish_trial(self, options: list[str], bs: GameState,
+    def decide_wish_trial(self, options: list[str], gs: GameState,
                           session: StrategySession, config) -> int:
         """祈愿试炼选卡(r104 接入策略模块;原固定第1张)。
 
@@ -637,7 +637,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 best_i, best_s = i, s
         return best_i
 
-    def decide_box_card(self, names: list[str], bs: GameState,
+    def decide_box_card(self, names: list[str], gs: GameState,
                         session: StrategySession, config) -> int:
         """武装箱/节点弹窗装备卡 4 选 1(薄壳;armory-box-value 定稿设计
         §2.2-§2.5)。锚 = 意向状态 locked_comp 两态(get_comp 失败落未锁 +
@@ -667,13 +667,13 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # equips,bench 槽位视图成员 = Unit(含 equips 透传)。
         from sr_od.application.currency_war.kernel.cw_game_state import (
             bench_slots_of,
-            board_state_of,
             deployed_slots_of,
+            game_state_of,
         )
-        _bs_wear = board_state_of(session)
+        _gs_wear = game_state_of(session)
         worn = [eq
-                for _bc in (list(deployed_slots_of(_bs_wear))
-                            + list(bench_slots_of(_bs_wear)))
+                for _bc in (list(deployed_slots_of(_gs_wear))
+                            + list(bench_slots_of(_gs_wear)))
                 if _bc is not None
                 for eq in (getattr(_bc, 'equips', None) or [])]
         from sr_od.application.currency_war.kernel.cw_equip_value import (
@@ -687,7 +687,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                            config: CurrencyWarConfig) -> Action:
         """商店单动作决策接口(ADR-0517 决策 1/2/5;ADR-0583 升格入契约面)。
 
-        输入 = session 容器(board_state_of;黑板槽退役,设计件《商店黑板容器化方案》§2.2-1:入口观察/单动作逻辑态直写/
+        输入 = session 容器(game_state_of;黑板槽退役,设计件《商店黑板容器化方案》§2.2-1:入口观察/单动作逻辑态直写/
         sim 引擎写);输出 = **恰一个动作**,全函数永不 None——「无动作
         可做」由 ``CloseShop`` 恒可用终结表达(决策 5/6)。决策本体 =
         ``mandate_v1/shop.decide_shop_action``(选择序 = 决策本体候选
@@ -701,16 +701,16 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             shop,
         )
         # 决策入口容器契约(W6 波 4,设计件《商店黑板容器化方案》§2.2-1):
-        # 输入 = session 容器单例(board_state_of 同一实例,无二次快照);
-        # 在屏前置 = ``bs.shop.value is not None`` 才可决策——离屏帧进
+        # 输入 = session 容器单例(game_state_of 同一实例,无二次快照);
+        # 在屏前置 = ``gs.shop.value is not None`` 才可决策——离屏帧进
         # 决策 = 观察层失约同型抛错(黑板契约 None 检查的容器等价物,
         # 「禁静默按空牌面决策」语义不变)。开店态 OCR 失读窗 = 容器沿用
         # 上一开店牌面(喂入口失读不写),照旧决策、执行侧核对兜底。
-        bs = board_state_of(session)
-        if bs.shop.value is None:
+        gs = game_state_of(session)
+        if gs.shop.value is None:
             raise ValueError(
                 'decide_shop_action: 容器商店 payload 离屏(shop=None)'
-                '(黑板契约容器化:在屏前置 bs.shop.value is not None;'
+                '(黑板契约容器化:在屏前置 gs.shop.value is not None;'
                 'None=观察层失约,禁静默按空态决策)')
         # 未观察门(观察态落容器字段,策略消费只走
         # game state):tracked 主账未按屏幕真值锚定(接管/重置/账失效
@@ -733,8 +733,8 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # write_shop_mirrors docstring。旧 v3_form_score 已随口径
         # 替换退役,历史账本只读)。写位 = 决策核入口 = 生产单
         # 动作循环与 sim decide_shop_screen 驱动器共同必经点。
-        self.write_shop_mirrors(bs, session)
-        return shop.decide_shop_action(bs, session, config,
+        self.write_shop_mirrors(gs, session)
+        return shop.decide_shop_action(gs, session, config,
                                        registry=self.registry)
 
     def decide_shop_screen(self, session: StrategySession,
@@ -758,21 +758,21 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # = apply_shop_action_logic(执行回执经 kernel 单一源派生);逐域
         # 期望态由投影直锁钉住(test_cw_shop_projection_logic,锁 M1)。
         # 帧缺失 = 容器离屏 = 观察层失约同型抛错(在屏前置)。
-        bs = board_state_of(session)
-        if bs.shop.value is None:
+        gs = game_state_of(session)
+        if gs.shop.value is None:
             raise ValueError(
                 'decide_shop_screen 驱动器: 容器商店 payload 离屏'
                 '(shop=None;黑板契约:观察段是唯一写者;None=观察层失约,'
                 '禁静默按空态决策)')
         _sig = ChannelSig(family='logic_action', actor='CwFlowStrategy',
                           mode='compute',
-                          group_id=f'act:CwFlowStrategy@{bs.write_seq + 1}')
+                          group_id=f'act:CwFlowStrategy@{gs.write_seq + 1}')
 
         def _executed_of(a) -> ShopActionExecuted:
             # 驱动器执行回执(离线驱动无落地门,kernel 判据派生;与生产
             # 执行侧 merge_buy_k 同源,禁按动作对象预估的第二实现)。
             if isinstance(a, cw_state.BuyCard):
-                _slots = bench_slots_of(bs)
+                _slots = bench_slots_of(gs)
                 _k = 1
                 if all(b is not None for b in _slots):
                     from sr_od.application.currency_war.kernel.cw_merge_simulate import (
@@ -780,9 +780,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                     )
                     _k = max(1, merge_buy_k(
                         a.card.name, a.card.star or 1, _slots,
-                        deployed_slots_of(bs),
-                        shop_payload_content_cards(bs.shop.value)
-                        if bs.shop.value is not None else []))
+                        deployed_slots_of(gs),
+                        shop_payload_content_cards(gs.shop.value)
+                        if gs.shop.value is not None else []))
                 return ShopActionExecuted(bought_count=_k)
             if isinstance(a, cw_state.LevelUp):
                 return ShopActionExecuted(levelup_clicks=1)
@@ -805,23 +805,23 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             if isinstance(a, cw_state.BuyCard):
                 # 买前快照三件组(升星腿 scratch 基点;必须在直写口写之前
                 # 取,失准形态申报见 apply_shop_merge_leg docstring)。
-                _pre_bench = list(bench_slots_of(bs))
-                _pre_dep = list(deployed_slots_of(bs))
-                _payload_now = bs.shop.value
+                _pre_bench = list(bench_slots_of(gs))
+                _pre_dep = list(deployed_slots_of(gs))
+                _payload_now = gs.shop.value
                 _pre_shop = (shop_payload_content_cards(_payload_now)
                              if _payload_now is not None else [])
-            apply_shop_action_logic(bs, a, executed=_executed_of(a),
+            apply_shop_action_logic(gs, a, executed=_executed_of(a),
                                     produced_by=type(a).__name__, sig=_sig)
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 apply_shop_merge_leg,
             )
             # 升星腿对非 BuyCard 自 no-op,pre_* 透传即可。
-            apply_shop_merge_leg(bs, a, sig=_sig, pre_bench=_pre_bench,
+            apply_shop_merge_leg(gs, a, sig=_sig, pre_bench=_pre_bench,
                                  pre_deployed=_pre_dep, pre_shop=_pre_shop)
         from sr_od.application.currency_war.kernel.cw_game_state import (
             bench_is_full,
         )
         raise RuntimeError(
             'decide_shop_screen 驱动器 512 帧未收敛(策略器 bug:'
-            f'末态 gold={gold_of(bs)} '
-            f'bench={bench_is_full(bs)})')
+            f'末态 gold={gold_of(gs)} '
+            f'bench={bench_is_full(gs)})')

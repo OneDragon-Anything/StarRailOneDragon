@@ -104,10 +104,10 @@ class CwScreenBoxPick(SrOperation):
                 # 决策输入 = session 容器单例(与全 pick 族同款;decide_box_card
                 # 契约面已切 GameState)。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of,
+                    game_state_of,
                 )
                 idx = match.strategy.decide_box_card(
-                    names, board_state_of(match.session),
+                    names, game_state_of(match.session),
                     match.session, getattr(match, 'config', None))
             except Exception:   # noqa: BLE001  留证后显式上抛,禁无声回落
                 import traceback

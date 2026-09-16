@@ -75,8 +75,8 @@ from typing import Any
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_game_state import (
-    board_state_of,
     current_run_id_safe,
+    game_state_of,
     plane_of,
     round_num_of,
 )
@@ -94,7 +94,7 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import (
 
 #: 行头 schema 版本(定谳 C7):**新文件自带独立版本常量**,初值 1 独立
 #: 谱系,命名对齐 ``*_SCHEMA_VERSION`` 仓内先例(kernel/cw_game_state
-#: ``BS_SCHEMA_VERSION`` / mandate_v1 contracts ``SNAPSHOT_SCHEMA_VERSION``)。
+#: ``GAME_STATE_SCHEMA_VERSION`` / mandate_v1 contracts ``SNAPSHOT_SCHEMA_VERSION``)。
 #: 禁动 telemetry/schema.py 模块级共用 ``SCHEMA_VERSION``——该常量被
 #: DecisionTrace/OutcomeRecord 等共用,模块级抬号会把未退役旧流行版本号
 #: 连带抬升(C7 定谳排除项)。
@@ -194,7 +194,7 @@ def decision_trace_instance() -> StateJournal | None:
 
 # ============================================================ 锚(窗口差分状态)
 
-#: 锚旁表(session 旁表模式,同 ``board_state_of`` 弱引用表 + 裸对象属性 +
+#: 锚旁表(session 旁表模式,同 ``game_state_of`` 弱引用表 + 裸对象属性 +
 #: id 表三级兜底先例):键 = 局身份 session,新 session = 新局段 = 锚冷建
 #: (§5.1 局段边界:锚、行序、前缀和全部以局段为界;恢复局跨段 = 多行多段
 #: 各自自洽,容器每局冷建天然保证,无跨段账务耦合)。
@@ -277,7 +277,7 @@ def record_decision_frame(session: object, *,
     - ``state_ref_version`` = 钉版本(调用方在「决策读取完成时点」捕获后
       显式传入;R4 语义沿用:显式 int 直用零回读,观察完成与落盘之间有
       交错写入的调用点必须显式传参防钉值漂移);None 缺省 = 入口现读
-      ``board_state_of(session).current_version()``(读口读不写、不占
+      ``game_state_of(session).current_version()``(读口读不写、不占
       版本);读取失败/无 GameState = state_ref 诚实缺省 ''(不猜);
     - ``strategy_id``/``ev_arm`` = 行头身份键,调用方传入(策略状态对象
       对 kernel 黑盒,无具名字段可现读;'' = 未采诚实缺省)。
@@ -305,13 +305,13 @@ def record_decision_frame(session: object, *,
         cw4_payload = _window_diff(counters, anchor)
         _anchor_set(session, dict(counters))   # 浅拷贝快照,后写不串
     # 钉(§2.1 state_ref = '{run_id}#{v}')
-    bs = board_state_of(session)   # 单例旁表现读;行头读口统一走四读口
+    gs = game_state_of(session)   # 单例旁表现读;行头读口统一走四读口
     pin_v: int | None
     if state_ref_version is not None:
         pin_v = int(state_ref_version)
     else:
         try:
-            pin_v = int(bs.current_version())
+            pin_v = int(gs.current_version())
         except Exception:   # noqa: BLE001  钉读取失败 = 诚实缺省,不猜
             pin_v = None
     row: dict[str, Any] = {
@@ -319,8 +319,8 @@ def record_decision_frame(session: object, *,
         'ts': datetime.now().isoformat(timespec='seconds'),
         'run_id': run_id,
         'difficulty': str(getattr(session, 'selected_difficulty', '') or ''),
-        'plane': plane_of(bs),
-        'round_num': round_num_of(bs),
+        'plane': plane_of(gs),
+        'round_num': round_num_of(gs),
         'strategy_id': str(strategy_id or ''),
         'ev_arm': str(ev_arm or ''),
         'state_ref': f'{run_id}#{pin_v}' if pin_v is not None else '',
