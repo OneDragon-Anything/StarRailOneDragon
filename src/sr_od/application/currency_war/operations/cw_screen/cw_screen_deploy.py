@@ -26,7 +26,6 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import get_char
-from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_launch_admission import (
     DEPLOY_FENCE as _DEPLOY_FENCE,
 )
@@ -639,12 +638,19 @@ class CwScreenDeploy(SrOperation):
                     # 经 protect_names 继续保护(P41② 禁卖护栏不因换阵解除)。
                     _fenced_arm = bool(_swap_ctx.fenced_on)
                     _protect: frozenset[str] = _swap_ctx.protect_names
-                    _arm_prev = getattr(exec_state_of(_match.session), 'cw4_swap_arm_on', None)
+                    # 臂态位帧间闩(宿主 = 容器簿记组 ExecBooks.swap_arm_on,
+                    # game_state_of 直读——非 Field 无渠道面):唯一消费 =
+                    # 本处开合变更日志(projection_contract §4.3 在册判读面)。
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
+                        game_state_of as _gso_arm,
+                    )
+                    _exec_books = _gso_arm(_match.session).exec_books
+                    _arm_prev = _exec_books.swap_arm_on
                     if _arm_prev is not None and _arm_prev != _fenced_arm:
                         log.info('[cw-deploy] 换阵卖出义务臂状态变化: %s → %s'
                                  '(fp/部署数逐环重评,开合抖动可观测)',
                                  _arm_prev, _fenced_arm)
-                    exec_state_of(_match.session).cw4_swap_arm_on = _fenced_arm
+                    _exec_books.swap_arm_on = _fenced_arm
                     if _fenced_arm:
                         log.info('[cw-deploy] 换阵卖出义务臂开启:线成型 fp=1.00 ∧ 板满 '
                                  f'∧ bench target={_bench_tgt_n} → off-line 引擎/配方件'

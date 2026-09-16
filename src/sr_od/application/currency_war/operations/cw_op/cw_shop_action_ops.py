@@ -86,12 +86,6 @@ class ShopVisitLedger:
     did_refresh: bool = False
     # `w536_merge_expect/` 买牌期望态基座(单元尾计算消费):
     buy_purchases: list = field(default_factory=list)
-    buy_has_sell: bool = False
-    buy_unidentified: bool = False
-    # 买牌期望态基座(单元执行前 tracked 快照;迁移批 3.2 起随账本外发,
-    # 必须取入口时点快照——事后取 tracked 已被本单元动作推进)。
-    buy_pre_bench: list = field(default_factory=list)
-    buy_pre_deployed: list = field(default_factory=list)
     # [索引定义] 访问事实行(安灯暂存载体;迁移批 3.2 切片5):list 下标 =
     # 发射序(先进先出;元素 = 发射/受阻时点构造的回执行 dict——发射行带
     # serialize_action 同 schema 动作载荷,受阻行仅结构化 extra);取值时机
@@ -133,10 +127,6 @@ class ShopVisitLedger:
     # 基于波前状态);消费端 = run_buy_waves 段顶入口观察对账点
     # (refresh_expect_mismatch 腿,缺陷台账承接,消费即清 pending)。
     refresh_expect: tuple | None = None
-    # `w536_merge_expect/` 买牌期望态基座(单元尾计算消费):
-    buy_purchases: list = field(default_factory=list)
-    buy_has_sell: bool = False
-    buy_unidentified: bool = False
 
 
 @dataclass

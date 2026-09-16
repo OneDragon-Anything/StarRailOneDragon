@@ -483,7 +483,7 @@ def stall_buys_prune_deployed(session, deployed_names) -> int:
 # ===== 轮内卖出登记(泄金阶梯档 2 候选集新鲜度排除;ADR-0604 §3)=====
 # 场景 = 同轮「卖X→买回X→再卖X」净零自旋(模拟批#5 s108 实证):凑息
 # 卖出抬高金位过 g* 后,同轮压库臂把刚卖的件买回,金位与席面净零循环
-# 烧动作。载体与 kernel ExecState.cw4_swap_fresh_buys 同构键式
+# 烧动作。载体与 kernel GameState.round_fresh_buys 同构键式
 # {'phase': (plane, round_num), 'names': set[str]},位面/轮次推进自动
 # 失效;方向 = 排除向(过度排除上界 ≤1 轮,轮界自动过期,有界可判读)。
 # 写端 = 各卖出发射位(prep 凑息/M4/wanted 腿2 + entry 球路径 M4;
@@ -496,7 +496,7 @@ def stall_buys_prune_deployed(session, deployed_names) -> int:
 # 观测键(m6_round_sold_excluded)判读后裁决(ADR-0604 §3 覆盖面申报)。
 
 #: 轮内卖出登记载体属性(session 级字段名;StrategyState 具名字段族外的
-#: 键式 dict 载体,形态与 kernel ExecState.cw4_swap_fresh_buys 同构)。
+#: 键式 dict 载体,形态与 kernel GameState.round_fresh_buys 同构)。
 ROUND_SOLD_ATTR: str = 'cw4_round_sold_names'
 
 

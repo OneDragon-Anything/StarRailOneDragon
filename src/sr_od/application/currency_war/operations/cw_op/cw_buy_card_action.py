@@ -157,6 +157,4 @@ class BuyCardOp(ActionOp):
                 name=action.card.name, star=action.card.star,
                 count=_cnt, unit_cost=action.card.cost or 0,
                 crop=_card_crop))
-        else:
-            ledger.buy_unidentified = True
         return True

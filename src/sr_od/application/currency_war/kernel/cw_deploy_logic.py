@@ -31,10 +31,11 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     DEPLOYED_FRONT_CAPACITY,
     BenchChar,
     deployed_occupied,
-    exec_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
     GameState,
+    game_state_of,
     max_units_of,
     plane_of,
     round_num_of,
@@ -944,9 +945,10 @@ def swap_yield_contribution(target_factions: frozenset[str] | set[str],
 # (弃权三键,计划空)+ 逐件拒因 fenced_arm_closed / target_keep /
 # protected / buy_membership / fresh_buy / post_sell_held。
 
-# 轮内新鲜度排除载体(宿主 = ``ExecState.cw4_swap_fresh_buys``,字段
-# 定义注 = kernel/cw_exec_state.py):发射位买入时逐名写入的名集,键式 =
-# {'phase': (plane, round_num), 'names': set[str]}——位面/轮次推进自动
+# 轮内新鲜度排除载体(宿主 = ``GameState.round_fresh_buys``,字段
+# 定义注 = kernel/cw_game_state.py;渠道②动作上报,经本模块
+# record_fresh_buy 单口):发射位买入时逐名写入的名集,键式 =
+# {'phase': (plane, round_num), 'names': list[str]}——位面/轮次推进自动
 # 失效(M7 闩键式同构)。写点 = 生产 shop.py 全部 BuyCard 发射位
 # 经 ``_emit_buy`` 收口调用(5edcf324)+ sim/engine_p1 决策帧。
 # 取舍声明:沿用发射位写入(与 ``cw4_fuel_filler_stall_buys`` 先例同位),
@@ -967,31 +969,42 @@ def record_fresh_buy(session: object, gs: GameState | None,
     """轮内新鲜度排除登记(买入意图逐名写入;发射位调用)。
 
     同一发射批的多个买入意图**逐名**入集(防批量买入漏记——漏记 =
-    卖出环切不断,防抖失效静默)。键式见 ``ExecState.cw4_swap_fresh_buys``
-    (kernel/cw_exec_state.py 字段注)。
+    卖出环切不断,防抖失效静默)。键式见 ``GameState.round_fresh_buys``
+    (kernel/cw_game_state.py 字段注)。宿主解析与旧载体同构:gs 在场 =
+    写 gs 字段(调用方契约 = 容器单例);gs 缺席 = session 容器读口兜底
+    (None session 一次性空载体,与旧载体「一次性宿主」形态一致)。
     """
     if not name:
         return
-    ex = exec_state_of(session)
-    reg = ex.cw4_swap_fresh_buys
+    host = gs if gs is not None else game_state_of(session)
+    reg = host.round_fresh_buys.value
     phase = _fresh_phase(gs)
     if not isinstance(reg, dict) or reg.get('phase') != phase:
-        reg = {'phase': phase, 'names': set()}
-        ex.cw4_swap_fresh_buys = reg
-    reg['names'].add(name)
+        names: list[str] = []   # 新相位(或首次):整体换记录(set→list 转形)
+    else:
+        _cur = reg.get('names')
+        names = list(_cur) if isinstance(_cur, list) else []
+    if name not in names:
+        names.append(name)
+    host.write_logic(host.round_fresh_buys, {'phase': phase, 'names': names},
+                     produced_by='record_fresh_buy',
+                     evidence='fresh_buy_emit',
+                     sig=ChannelSig(family='logic_action',
+                                    actor='CwDeployLogic', mode='compute'))
 
 
 def fresh_buys_of(session: object,
                   gs: GameState | None) -> frozenset[str]:
     """读当前位面轮内有效的新鲜买入名集(跨轮 = 空集,自动失效)。"""
-    reg = exec_state_of(session).cw4_swap_fresh_buys
+    host = gs if gs is not None else game_state_of(session)
+    reg = host.round_fresh_buys.value
     if not isinstance(reg, dict):
         return frozenset()
     phase = _fresh_phase(gs)
     if reg.get('phase') != phase:
         return frozenset()
     names = reg.get('names')
-    return frozenset(names) if isinstance(names, set) else frozenset()
+    return frozenset(names) if isinstance(names, list) else frozenset()
 
 
 def fresh_buys_sell_face(session: object) -> frozenset[str]:
@@ -1015,17 +1028,12 @@ def fresh_buys_sell_face(session: object) -> frozenset[str]:
     - 读取零销账(过期由相位失配整体作废,与档 2 载体
       mandate.ROUND_SOLD_ATTR 同形态,读端无逐名生命周期面)。
     """
-    reg = exec_state_of(session).cw4_swap_fresh_buys
+    reg = game_state_of(session).round_fresh_buys.value
     if not isinstance(reg, dict):
         return frozenset()
     names = reg.get('names')
-    if not isinstance(names, set):
+    if not isinstance(names, list):
         return frozenset()
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        game_state_of,
-        plane_of,
-        round_num_of,
-    )
     _gs = game_state_of(session)
     node = _gs.node.value
     if node is not None:

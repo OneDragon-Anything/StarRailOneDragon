@@ -159,6 +159,9 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'match_final': 1,       # 局终域(R5 W2;§3.6.1 runs 收编载体:一段一行,
                             # 恢复局跨段 = 多行,game 级聚合取段序末行;唯一
                             # 写点 = write_match_final,actor=MatchClose)
+    'round_ledger': 1,      # 轮内新鲜度账(round_fresh_buys;渠道②动作上报,
+                            # 值形状 {'phase': (plane, round_num)|None,
+                            # 'names': list[str]},经 record_fresh_buy 单口)
 }
 
 #: 画面附加域(§2.2 显式例外):语义 = 「当前画面的 payload,非当前画面
@@ -325,6 +328,9 @@ REGISTERED_ACTORS: set[str] = {
     'CwReconcile',             # 对账模块(kernel/cw_reconcile;观察态
                                # 锚定写点——屏幕真值写回成功置
                                # tracked_account_observed=True)
+    'CwDeployLogic',           # 轮内新鲜度账单口(kernel/cw_deploy_logic.
+                               # record_fresh_buy 的 round_fresh_buys
+                               # 容器 Field 写点,渠道②动作上报)
 }
 
 
@@ -2522,6 +2528,36 @@ class TrackedBooks:
     deployed: list = field(default_factory=list)
 
 
+@dataclass
+class ExecBooks:
+    """执行侧过程簿记组(容器内独立宿主组;非 Field,不进快照流水)。
+
+    成员准入 = 历史累积计数/单调事件号/帧间闩类**过程簿记与判读面**——
+    不符「只描述此刻」的 Field 准入(模块头 §8.8 治理),但需局级存续与
+    确定性清零(新局新容器 = 天然清零)。独立宿主组,**不塞 tracked_books**
+    (后者契约 = tracked 主账槽位簿记,语义不容混装)。
+
+    访问纪律:经 ``game_state_of(session).exec_books`` 直读(非 Field 无
+    渠道面,与 tracked_books/settlement_ring 同型;禁 getattr session 猜宿主)。
+    """
+
+    # star 回退留证采样计数([索引定义] 键 = 角色名,值 = 连续回退次数;
+    # 唯一写读者 = kernel/cw_reconcile)。**槽位先建,宿主迁移随接管/
+    # 纠漂簿记迁移批落地**(现役宿主暂 = ExecState.star_regression_count,
+    # 迁毕后本行 = 唯一宿主)。
+    star_regression: dict[str, int] = field(default_factory=dict)
+    # bench 布局代次([索引定义] 坐标系 = 单调递增计数器,非槽位号非下标;
+    # 唯一写点 = kernel/cw_reconcile 纠漂写回期,消费点 = cw_screen_buy_cards
+    # /cw_shop_action_ops 检差)。**槽位先建,宿主迁移随接管/纠漂簿记迁移批
+    # 落地**(现役宿主暂 = ExecState.bench_layout_epoch,迁毕后本行 = 唯一宿主)。
+    bench_layout_epoch: int = 0
+    # fenced 臂上一帧状态(换阵卖出义务臂开合的帧间闩;语义产生者 = 执行面
+    # 逐环重评,非策略推导)。唯一消费 = 开合变更日志(cw_screen_deploy
+    # 臂态位,projection_contract §4.3 在册判读面——删 = 丢判读通道,故
+    # 保留簿记)。None = 尚无臂态记录。
+    swap_arm_on: object = None
+
+
 @dataclass(frozen=True)
 class TokenCell:
     """链观察单格读数(链正本 = game_state/chain-observation.md §2;逐格
@@ -2658,6 +2694,20 @@ class GameState:
     env_refresh_used: Field[int] = field(default_factory=Field)          # 环境刷新已用(§3.4.3;观察通道在册 cw_node_obs「剩余次数」)
     strategy_refresh_used: Field[dict[str, int]] = field(default_factory=Field)  # 投资策略逐卡刷新已用(§3.4.4;写端 = CwScreenInvestStrategy on_outcome 发射型钩子)。**键口径显式申报(迁移批次二)**:键 = 注册表规范卡名(normalize_invest_name 归一后;选名不选 spec.id 的理由 = 效果注册表 STRATEGY_EFFECTS 即以规范名为键,写端 OCR 名经同一归一函数入键,免双坐标系换算)。值域纪律:基线每卡 1 次、例外三族(银金彩环境+2/投资卡族=3/期货族=0/远见=0)以注册表官方全文为唯一口径,禁按基线做核对预期
 
+    # —— 轮内新鲜度账(「本轮已买」半边;渠道② logic_action,写入=仅逻辑)——
+    # [索引定义] 值形状 = {'phase': (plane, round_num) | None,
+    # 'names': list[str]}:names = 发射位买入时逐名写入的轮内新鲜买入名集
+    # (dict 内集合已按容器 JSON 序列化安全形存 list,record_fresh_buy 内部
+    # 转形,读端成员判断在个位数量级无性能面);phase 失配 = 跨轮整体作废
+    #(读取零销账,无逐名生命周期面);None = 本局未登记。写端 = shop.
+    # _emit_buy 全部 BuyCard 发射位 + sim/engine_p1 决策帧,经
+    # cw_deploy_logic.record_fresh_buy 单口(渠道②动作上报,actor =
+    # 'CwDeployLogic' 登记面在册),sim/live 同口由单口保证;读端 =
+    # cw_deploy_logic.fresh_buys_of(换出守卫)+ fresh_buys_sell_face
+    #(L1 卖侧闩,fail-closed,ADR-0611 §3-1)。宿主自执行侧载体迁入
+    #(载体解散迭代;写读单口不变)。
+    round_fresh_buys: Field[dict | None] = field(default_factory=Field)
+
     # —— 持久账本组(跨画面保留)——
     # ⚠️ 免战牌不在本组(§8.6-3 载体归一,迁移批次二):激活态+剩余次数
     # 正本 = effect_inventory.remaining_uses(§5.1,ActiveEffect.remaining_
@@ -2703,6 +2753,12 @@ class GameState:
     # 边界锚定写回)+ 动作随动同步(prep 执行器/溢出腿/部署装备回写/
     # 商店 mutate)。观察状态(未观察/已观察)= 上方 tracked_account_observed。
     tracked_books: TrackedBooks = field(default_factory=TrackedBooks)
+    # —— 执行侧过程簿记组(宿主自 ExecState 迁入;非 Field,准入与访问
+    # 纪律见 :class:`ExecBooks` 类注)——
+    # [索引定义] swap_arm_on = 换阵卖出义务臂上一帧开合态(帧间闩;写读点
+    # = cw_screen_deploy 卖出臂门,开合变更日志消费)。star_regression/
+    # bench_layout_epoch 槽位已建,宿主迁移随接管/纠漂簿记迁移批落地。
+    exec_books: ExecBooks = field(default_factory=ExecBooks)
 
     # —— 画面附加域(当前画面的 payload,非当前画面=None,§2.2 例外)——
     shop: Field[ShopPayload | None] = field(default_factory=Field)

@@ -55,23 +55,7 @@ class SellBenchOp(ActionOp):
         _tracked = _books.bench
         pad_bench(_tracked)
         mutate_bench_deployed(_tracked, _books.deployed, action)
-        # ADR-0328 执行域对齐:卖出件入同轮已卖集(执行成功是卖出事实的
-        # 权威,register_round_sold 带轮键自校验)。
-        # 换源(登记集消点):轮键源 = session 容器单例(node = 本
-        # 节点备战帧写端,与波内帧 plane/round 同节点同值);旧过渡桥装箱
-        # 退役。register_round_sold 消费面 = plane/round 轮键(轮键不匹配
-        # 自拒 = 原防御语义不变)。
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            game_state_of,
-        )
-        from sr_od.application.currency_war.kernel.cw_round_ledger import (
-            register_round_sold,
-        )
-        register_round_sold([_expected_name],
-                            game_state_of(match.session),
-                            match.session)
         ledger.total_sell += 1
-        ledger.buy_has_sell = True   # 含卖出 → 本单元期望态不建(`w536`)
         ledger.total_sell_income += action.income or 0
         log.info('[cw-shop] Sell bench%d %s(+%s) ✓',
                  action.bench_idx, _expected_name, action.income or '?')

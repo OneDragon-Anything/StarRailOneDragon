@@ -2,7 +2,6 @@
 import contextlib
 import time
 from collections.abc import Callable
-from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.base.operation.operation_node import operation_node
@@ -862,12 +861,6 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     # (对拍基线 gold_open 随 outcome 退役移出本函数——迁移批 3.2:基线
     #  = 编排壳在 visit 入口的容器 gold 现读暂存,单一捕获点同供安灯。)
     _buy_baseline = op.screenshot()
-    # `w536_merge_expect/`:买牌期望态基座(pre 快照 = 单元执行前 tracked;
-    # 迁移批 3.2 起暂存账本随 ledger 外发,消费方 = finalize)。
-    ledger.buy_pre_bench = deepcopy(
-        game_state_of(match.session).tracked_books.bench)
-    ledger.buy_pre_deployed = deepcopy(
-        game_state_of(match.session).tracked_books.deployed)
     # 执行边界压缩:首段入口观察已带全量语境(替代原开店后独立读);
     # _entry_frame_marked = visit 首段已标 full(续段标 none,连击续刷判定输入
     # 所在的段循环共用此分段);

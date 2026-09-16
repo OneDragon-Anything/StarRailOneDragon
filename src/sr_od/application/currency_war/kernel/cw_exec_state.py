@@ -126,13 +126,6 @@ class ExecState:
     #(S2+S1 后纯未来防御:防 visit 中段未来引入读屏/对账点时布局变化
     # 无人知晓)。局级生命周期(载体每局新建即天然清零)。
     bench_layout_epoch: int = 0
-    # —— 同轮买卖互斥事实账本(r408;随 cw_round_ledger 宿主迁出)——
-    # 同轮轮键(决策层轮键重置段维护);register_round_sold 带轮键自校验。
-    v2_round_key: tuple | None = None
-    # 同轮已卖集(engine_seed 对集内卡名禁买,防「卖→见未持有→买回」缩幅
-    # 永动机)。恢复局空集 = 守卫缺位窗口(单轮轮键,下轮自愈;session.md
-    # §3.2 评级「中」,恢复轮判读义务 6.2-4)。
-    v2_round_sold: set[str] = field(default_factory=set)
     # (期望态条目表容器 expected_state 已随 ADR-0651 两态制废除——
     #  ExpectedEntry 登记/覆盖点 diff 对账整套拆除;op 逻辑效果 =
     #  cw_expected_state.apply_op_effect 直接写 session 字段。)
@@ -141,18 +134,6 @@ class ExecState:
     cw_takeover_collect_done: bool = False
     # 接管采集重试计数。
     cw_takeover_tries: int = 0
-    # fenced 臂上一帧状态(deploy 写读)。
-    cw4_swap_arm_on: object = None
-    # —— 账外补充·第三波(session 动态属性锚点收编,逐波清单 =
-    # ADR-0563「落位裁量」节第三波)——
-    # 轮内新鲜度排除载体(ADR-0530 立项;ADR-0611 §3-1 定谳为 L1 卖侧闩
-    # 「本轮已买」半边,与 v2_round_sold「已卖」半边同族互斥账)。
-    # 键式 = {'phase': (plane, round_num), 'names': set[str]},相位失配 =
-    # 跨轮整体作废(读取零销账,无逐名生命周期面);None = 本局未登记。
-    # 写点 = shop._emit_buy 全部 BuyCard 发射位 + sim/engine_p1 决策帧,
-    # 经 cw_deploy_logic.record_fresh_buy 单口;读端 = fresh_buys_of
-    # (换出守卫)+ fresh_buys_sell_face(L1 卖侧闩,fail-closed)。
-    cw4_swap_fresh_buys: dict | None = None
     # 位面节点序列台账(cw_state.PlaneNodeLedger;备战帧查表与逐帧校验的
     # 去重/豁免状态,[索引定义] 坐标系 = seq_by_plane 键为 1-based 位面号,
     # 序列下标 0-based = 该位面第 i+1 轮,取值时机 = 写入端整行重读快照,
