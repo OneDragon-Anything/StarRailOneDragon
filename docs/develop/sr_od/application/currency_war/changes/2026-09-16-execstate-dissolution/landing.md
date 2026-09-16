@@ -12,13 +12,13 @@
 
 ## 3.2 期望账拆除
 
-**范围**：design #7/#8/#9/#11——删 `pending_buy_expect`/`xp_expect_ledger`/`cw_prep_pending_accts` 三字段及全部消费段（`_reconcile_buy_expect`/`_xp_ledger`/`_v2_post_frame_accounting` 期望账三通道：paddle 审计/drag_expect/equip_expect）；`_v2_post_frame_accounting` 的**纯观察审计通道保留不动**（faction_display/shop_pool/merge_preview，签名去 acct 参）；`cw_prep_expect.py` 随之无消费的 `BuyExpect`/`XpLedger`/`DragExpect` 族拆除（存活函数逐一注明）；`_pending_chosen_supply` 暂存拆除，选定确认时点直写容器 `chosen_supply`（**口径分叉按 design #11 显式申报注释**）；telemetry **仅删 `xp_expect_ledger` schema 字段**——supply 确认行 `refreshed` 值不属本阶段（归 3.3，attack [9]）。边界：不含 cw_reconcile/observe 失配路径；不含防重入族。
+**范围**：design #7/#8/#9/#11——删 `pending_buy_expect`/`xp_expect_ledger`/`cw_prep_pending_accts` 三字段及全部消费段（`_reconcile_buy_expect`/`_xp_ledger`/`_v2_post_frame_accounting` 期望账三通道：paddle 审计/drag_expect/equip_expect）；`_v2_post_frame_accounting` 的**纯观察审计通道保留不动**（faction_display/shop_pool/merge_preview，签名去 acct 参）；`cw_prep_expect.py` 随之无消费的 `BuyExpect`/`XpLedger`/`DragExpect`/`EquipExpect` 族拆除（存活函数逐一注明；r2-B）；`_pending_chosen_supply` 暂存拆除，选定确认时点直写容器 `chosen_supply`（**口径分叉按 design #11 显式申报注释**）；telemetry **仅删 `xp_expect_ledger` schema 字段**——supply 确认行 `refreshed` 值不属本阶段（归 3.3，attack [9]）。边界：不含 cw_reconcile/observe 失配路径；不含防重入族。
 **设计依据**：design §2.1 #7/#8/#9/#11；§2.3 取舍二。
 **文件面**：`kernel/cw_exec_state.py`、`kernel/cw_prep_expect.py`、`operations/cw_screen/cw_screen_prep.py`、`operations/cw_screen/cw_screen_supply_node.py`、`kernel/cw_game_state.py`（chosen_supply 写端注释口径）、`telemetry/schema.py`（仅 xp 字段）、`kernel/cw_strategy_session.py`（头注清锚）、`sr-od-test/`。
 **依赖**：3.1。
 **优先级建议**：5
 **完成判据**：
-- 四字段名 + `BuyExpect`/`XpLedger`/`DragExpect` 符号在 src 全仓归零（存活函数除外，逐一注明）；
+- 四字段名 + `BuyExpect`/`XpLedger`/`DragExpect`/`EquipExpect` 符号在 src 全仓归零（存活函数除外，逐一注明）（r2-B）；
 - 补给选定路径行为对照：确认即容器 `chosen_supply` 有值（测试断言）；
 - CW 快速集全绿 + ruff 过。
 **验收凭据形式**：grep 输出 + 新增/改写测试名 + 测试命令输出。
@@ -39,7 +39,7 @@
 
 ## 3.4 轮内账改判删除与新鲜度账迁移
 
-**范围**：design #17/#18/#19——**#17 删**：`v2_round_key`/`v2_round_sold` 字段 + `kernel/cw_round_ledger.py::register_round_sold`（恒 no-op 僵尸）+ 唯一调用桩 `operations/cw_op/cw_sell_bench_action.py:67-72`（attack [1] 改判，原迁容器作废）；**#18 迁**：`round_fresh_buys` Field（**新域 `round_ledger`** + gs_schema 域版本项；值形状 `{'phase': tuple|None, 'names': list[str]}`，record_fresh_buy 内部 set→list 转形，读端签名不变）；**#19 迁**：`cw4_swap_arm_on` → `ExecBooks.swap_arm_on`。边界：mandate `cw4_round_sold_names` 现役载体不动；`record_fresh_buy` 对外语义不变。
+**范围**：design #17/#18/#19——**#17 删**：`v2_round_key`/`v2_round_sold` 字段 + `kernel/cw_round_ledger.py::register_round_sold`（恒 no-op 僵尸）+ 唯一调用桩 `operations/cw_op/cw_sell_bench_action.py:67-72`（attack [1] 改判，原迁容器作废）；**`cw_round_ledger.py` 模块随唯一函数删除一并移除**（空壳 docstring 不留，r2-C）；**#18 迁**：`round_fresh_buys` Field（**新域 `round_ledger`** + gs_schema 域版本项；值形状 `{'phase': tuple|None, 'names': list[str]}`，record_fresh_buy 内部 set→list 转形，读端签名不变）；**#19 迁**：`cw4_swap_arm_on` → `ExecBooks.swap_arm_on`。边界：mandate `cw4_round_sold_names` 现役载体不动；`record_fresh_buy` 对外语义不变。
 **设计依据**：design §2.1 #17/#18/#19；§2.2-1a/-1b/-2；§2.3 取舍三/四。
 **文件面**：`kernel/cw_exec_state.py`、`kernel/cw_game_state.py`（新域 + ExecBooks 组 + Field）、`kernel/cw_round_ledger.py`、`operations/cw_op/cw_sell_bench_action.py`、`kernel/cw_deploy_logic.py`、`operations/cw_screen/cw_screen_deploy.py`、`sr-od-test/`（**新增**：round_fresh_buys 宿主切换同口测试——attack [2] 修正：既有测试不存在，本阶段补）。
 **依赖**：3.1。
@@ -91,9 +91,9 @@
 
 - `flow/README.md` §2.5：三类状态分离 → 两类（观察/策略器）+ StrategyState 正名（attack [8]）+ 执行层读写策略器状态通道一句（`strategy_state_of` None-safe，design §2.2-4）+ 执行层状态类目退役声明 ← 3.6
 - `flow/README.md` §2.2：「期望态对账保留(现行有效)」句随 #9 失真，改两态制归一口径（attack [15]）← 3.2
-- `flow/session.md`：§2.4 表（执行层落点列改注退役去向）、§2 统计行 as-built 注、§4 as-built 注 ← 3.6
+- `flow/session.md`：§2.4 表（执行层落点列改注退役去向）、§2 统计行 as-built 注、§4 as-built 注；**§2.4 v2_round_* 行（「活写端 = register_round_sold / live 调用方 = cw_shop_action_ops」两断言已死）、§3.2 风险表同轮已卖集行、§6.2-4 恢复轮判读义务、§6.1 迁移指令对应句——随 #17 删除一并修正**（r2-A，← 3.4）← 3.4/3.6
 - `architecture.md`：§一 分层图「cw_exec_state 执行态簿记」行、§六 表 cw_exec_state 行（改域函数职责描述）← 3.6
-- `game_state/README.md` §3.3 域清单：node_screen_refresh 写端申报更新（三写端在产/supply live 接通）、match_facts 域增三字段（域版本 bump）、新增域 round_ledger、节点域 plane_node_sequences ← 3.3/3.4/3.5
+- `game_state/README.md` §3.3 域清单：node_screen_refresh 写端申报更新（三写端在产/supply live 接通）、match_facts 域增三字段（域版本 bump）、新增域 round_ledger、非 Field 簿记组 ExecBooks 与局级台账 plane_node_sequences（非域字段，单列工程结构组）← 3.3/3.4/3.5
 - `game_state/fields.md`：§3.4.1-3.4.4 写端现状与逐字段规格（渠道/坐标系）、#12-#14/#18 字段规格、ExecBooks 簿记组与 plane_node_sequences 申报（gs_schema 域版本面）← 3.3/3.4/3.5
 - `screens/megastar.md`：选中标记宿主改 StrategyState（经 strategy_state_of 通道）← 3.3
 - `screens/supply.md`：刷新已用双写段消除 + 「先申报无写端」段终结 + `_pending_chosen_supply` 暂存节改确认即写口径 ← 3.2/3.3
