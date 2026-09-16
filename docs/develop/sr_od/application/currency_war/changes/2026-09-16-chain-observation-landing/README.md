@@ -5,8 +5,8 @@
 - 落地:[landing.md](landing.md)
 
 ## 进度
-- 迭代设计:草案
-- 设计对抗:未开始 · 报告=[attack.md](attack.md)（对抗后出现）
+- 迭代设计:对抗审中
+- 设计对抗:进行中 · 报告=[attack.md](attack.md)（首审 1 blocker/6 major/5 minor,修订完毕候定向复查）
 - 落地:未开始
 - 正本更新:未开始
 
