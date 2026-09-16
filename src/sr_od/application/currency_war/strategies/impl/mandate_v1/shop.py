@@ -2122,9 +2122,9 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 单点计算,禁第二份。)
     if _zone_hit:
         # 必花域帧义务来源披露(T-88 写点;遥测键 sess_release_reason 透传
-        # 源):帧内 last-wins、域外帧不覆写,轮界清零在装配键戳
-        # (assembly._disclose_budget)。披露面字段禁决策判据消费
-        #(决策输入一律走 TurnState 幂等装配;ADR-0571)。
+        # 源):帧内 last-wins、域外帧不覆写,轮界清零在披露键戳
+        # (economy_cycle.disclose_budget)。披露面字段禁决策判据消费
+        #(决策输入 = obs(黑板)+ session 容器直读;ADR-0571)。
         state_of(session).v3_release_reason = 'must_spend'
     # D 支锁线布尔单一源 = ``_ist.locked_comp````(17 号稿 §1.1 应修-8 B-1
     # 定谳;flow.py 物化段证明 P1 未锁线帧早对物化伪 comp →

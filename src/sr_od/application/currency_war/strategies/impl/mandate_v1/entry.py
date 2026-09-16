@@ -2,9 +2,9 @@
 
 换核批 1 结构签名(R189-4;迁移序原文已删档,取回口径=ADR-0644):
 
-    def _emit(turn) -> list[CwAction]:
-        actions += self._mandate_pass(turn)    # 骨架动作流,逐条 mandate=True
-        actions += self._criteria_pass(turn)   # EV 追加动作流,mandate=False
+    def _emit(obs, session) -> list[CwAction]:
+        actions += self._mandate_pass(obs, session)    # 骨架动作流,逐条 mandate=True
+        actions += self._criteria_pass(obs, session)   # EV 追加动作流,mandate=False
         return truncate_frame_stable(actions)  # 帧稳定截断(契约 v2 §3.2)
 
 三遍编排(02_mandate_layer §3 骨架执行序):证明 pass → 升档器求值位 → 骨架 pass → EV pass。
@@ -123,9 +123,6 @@ if TYPE_CHECKING:
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
         Emitted,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.turn_state import (
-        TurnState,
     )
 
 #: ev_arm 值域(R1-1:skeleton_only=臂① EV 发射面旁路;full=臂② 全开)
@@ -429,11 +426,12 @@ def _upgrader_evaluate(session: StrategySession, gs: GameState,
     return sig
 
 
-def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
+def emit(obs: PrepObservation, session: StrategySession,
          config: object, *, ev_arm: str = 'full',
          registry: DecisionV2Registry | None = None) -> list[Emitted]:
     """决策入口三遍编排(R189-4 结构签名;返回 Emitted 列表交桥截断发射)。
 
+    决策输入 = obs(黑板)+ session 容器直读。
     编排:① prep 实体面(箱选卡/球/箱/典籍——控制流与 overlay 切换
     优先于三遍)→ ①′ wanted 闭环消费臂(迁移 A;义务优先)→ ② 证明
     pass(信号臂/K/stop_flag/线级状态机/换线)→ ②′ 工具消费发射位

@@ -998,10 +998,11 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         match.session.shop_frame_class = (
             'full' if not _entry_frame_marked else 'none')
         _entry_frame_marked = True
-        # 店开观察帧披露覆写(T-88 双写第二写点;ADR-0571 §2.2):prep
-        # 装配帧关店态 gold 过 F2 门不可得 ⇒ overflow/budget 在 prep 快照
-        # 恒 0(金未采语义);此处店开帧 gold 为真值,同一 BudgetView 链
-        # 覆写三预算字段(overflow/budget=帧现值;键戳同轮不清 spent,
+        # 店开观察帧披露覆写(T-88 双写第二写点;ADR-0571 §2.2):备战
+        # 决策入口披露帧关店态 gold 过 F2 门不可得 ⇒ overflow/budget 在
+        # prep 帧恒 0(金未采语义);此处店开帧 gold 为真值,经同一现算链
+        # (economy_cycle.disclose_budget)覆写三预算字段
+        # (overflow/budget=帧现值;键戳同轮不清 spent,
         # 轮界清零由键戳承载)。遥测 best-effort:失败降级保留 prep 帧值
         # 不阻塞动作循环,warning 留痕(防无声退化 no-op,锚⑤缺陷无声
         # 复发)。

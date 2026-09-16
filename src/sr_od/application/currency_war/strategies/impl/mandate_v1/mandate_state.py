@@ -172,8 +172,9 @@ class StrategyState:
     # 义务实花披露(遥测键 sess_release_spent 透传源):写端=商店执行
     # 回执位(cw_op_buy_cards.accrue_release_spent,首版只计刷新实花,
     # 「宁窄勿虚」口径申报归 ADR-0571),轮界清零承载=v3_disclosure_key
-    # 键戳(assembly 装配点);读端=recorder/engine_p1 轮快照。披露面
-    # 字段,禁决策判据消费(ADR-0571)。
+    # 键戳(economy_cycle.disclose_budget 写端);读端=recorder sess_*
+    # 透传 + cw_decision_trace 披露族。披露面字段,禁决策判据消费
+    # (ADR-0571)。
     v3_release_spent: int = 0
     v3_handoff_gap: int = 0
     v3_handoff_hp_proj: int | None = None
@@ -185,28 +186,29 @@ class StrategyState:
     v3_dir_refresh_used: int = 0
     # DP 姿态轮帧缓存(每段 decide_prep 覆写;None=本轮无决策段)。
     v3_alloc_frame: dict | None = None
-    # 储备线披露(遥测键 sess_reserve_cap 透传源;写端=assembly.
-    # _disclose_budget 每 prep 装配帧幂等覆写;读端=recorder/engine_p1
-    # 轮快照。披露面字段,禁决策判据消费,ADR-0571)。
+    # 储备线披露(遥测键 sess_reserve_cap 透传源;写端=economy_cycle.
+    # disclose_budget 每备战决策帧幂等覆写;读端=recorder sess_* 透传
+    # + cw_decision_trace 披露族。披露面字段,禁决策判据消费,
+    # ADR-0571)。
     v3_reserve_cap: int = 0
 
     # ===== 账外补充(实施批按 §6.1 收编的策略侧动态属性;产生者/消费
     # 面注释见原写入/读出点)=====
-    # 储备溢余披露(遥测键 sess_reserve_overflow 透传源;写端=assembly.
-    # _disclose_budget,读端=recorder/engine_p1 轮快照。披露面字段,
-    # 禁决策判据消费,ADR-0571)。
+    # 储备溢余披露(遥测键 sess_reserve_overflow 透传源;写端=economy_
+    # cycle.disclose_budget,读端=recorder sess_* 透传 + cw_decision_
+    # trace 披露族。披露面字段,禁决策判据消费,ADR-0571)。
     v3_reserve_overflow: int = 0
     # 义务预算披露(遥测键 sess_release_budget 透传源;写端/读端同上)。
     v3_release_budget: int = 0
     # 义务来源披露(遥测键 sess_release_reason 透传源;写端=shop 必花域
-    # 段「must_spend」帧内 last-wins + 装配键戳轮界清零,读端同上)。
+    # 段「must_spend」帧内 last-wins + 披露键戳轮界清零,读端同上)。
     v3_release_reason: str = ''
     # 披露面轮键戳(T-88 轮界清零承载):坐标系=(plane, round) 二元组
-    #(位面号/位面内轮次,均 1 基);取值时机=装配帧现读
-    # (decision_state 的 plane/round_num);写入端=assembly._disclose_budget
-    # 单一写点(商店执行回执位只比较不写)。键戳 ≠ 当前 (plane, round)
-    # ⇒ v3_release_spent/v3_release_reason 清零并盖新戳。不复用
-    # v3_release_round(W332b 泄息指令旧轮语义)。
+    #(位面号/位面内轮次,均 1 基);取值时机=披露帧现读
+    #(容器读口 plane_of/round_num_of);写入端=economy_cycle.
+    # disclose_budget 单一写点(商店执行回执位只比较不写)。键戳 ≠
+    # 当前 (plane, round) ⇒ v3_release_spent/v3_release_reason 清零并
+    # 盖新戳。不复用 v3_release_round(W332b 泄息指令旧轮语义)。
     v3_disclosure_key: tuple[int, int] | None = None
     # ADR-0348 ↺ 扑满节点识别标记(T-115 复活为真写点,ADR-0580):写者
     # = mandate_v1 奖励帧判定位(shop/mandate 两栈同值幂等写,值源 =

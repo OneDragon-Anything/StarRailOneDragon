@@ -1,35 +1,17 @@
-"""货币战争 决策装配边界·观察端口半部(app 桶;统一迁移批 ② 后形态)。
+"""货币战争 决策装配边界·生产武装点(app 桶;统一迁移批 ② 后形态)。
 
-实机观察 → Snapshot 的 observe 端口 ``snapshot_from_obs``(生产消费方 =
-strategies 注册壳 MandateV1Live 的装配缝;与 sim 合成器共享字段映射语义)。
-离线装配链 ``DecideAdapter``→prep_brain.decide 已随 v2 退役链删除(底稿
-MAP ⓪ A10);纯映射半部
-单一源 = strategies/impl/mandate_v1/adapter.py。
+生产武装点 = ``install_obs_ports``(CurrencyWarApp.__init__ 接通):
+decision 桶 obs 读口注入、kernel 侧合成特效帧态门注入,以及 star 回退
+截图留证 saver 与 GameState 缺陷台账 sink 的落盘实现(实现住本模块,
+kernel 零像素触达;缺省关 = 不落盘不落截图)。
 
-为何在 app:本模块 import prep_actions/cw_screen_prep/obs 执行面词汇,且被
+为何在 app:本模块 import prep_actions/obs 执行面词汇,且被
 cw_screen_prep(备战环)消费——两侧都在 app 桶,装配边界归 app 是分包矩阵
 (DESIGN 分包 §3.2,app 依一切)的自然落位。
 """
 from __future__ import annotations
 
 from pathlib import Path
-
-from sr_od.application.currency_war.kernel.cw_exec_state import snapshot_copy
-from sr_od.application.currency_war.kernel.cw_prep_actions import (
-    PrepObservation,
-)
-from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
-from sr_od.application.currency_war.strategies.impl.mandate_v1.adapter import (
-    PREP_SUBSTATE_NAME,
-)
-from sr_od.application.currency_war.strategies.impl.mandate_v1.contracts import (
-    SNAPSHOT_SCHEMA_VERSION,
-    RewardSphere,
-    Snapshot,
-    SubstateClassification,
-    SupplyBox,
-    Tome,
-)
 
 # ------------------------------------------------------- obs 读口注入(期5 ⑦)
 
@@ -123,73 +105,3 @@ def _gs_defect_sink_for_test(base_dir: Path):
 
     return _sink
 
-
-# ------------------------------------------------- obs → Snapshot(观察端口)
-
-def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
-                      substate_name: str = PREP_SUBSTATE_NAME) -> Snapshot:
-    """实机观察视图 → Snapshot(observe 端口;None 语义 = 契约「读不到≠真值」)。
-
-    与 sim 合成器(runner.synthesize_snapshot)共享字段映射语义但**不合并
-    实现**:sim 侧恒真位(confident/gold_trusted/shop_open/board…)在本函数
-    全部按实机观测原样携带(None 合法)。bench 取紧缩型(仅已识别件,元素
-    BenchChar.slot 1-based 保持)。
-    数值域锚 = **容器单源**(prep 链容器化段 2:旧「obs.state 帧值优先 +
-    容器兜底」两段优先级随黑板帧 state 槽退役收敛为纯容器读——帧值与
-    容器值常态帧逐位同源(视图即容器主值),引导窗差异 = 读口缺省镜像,
-    行为差申报见设计件 §2.3;gold 可读位 = 来源位非 prior,hp 可读位 =
-    来源位 observation)。
-    """
-    from types import MappingProxyType
-
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        game_state_of,
-        level_of,
-        node_kind_of,
-        plane_of,
-        round_num_of,
-    )
-    last = game_state_of(session)
-    _gold_val = last.gold.value
-    _gold_readable = last.gold.source != 'prior'
-    _hp_readable = last.hp.source == 'observation'
-    return Snapshot(
-        schema_version=SNAPSHOT_SCHEMA_VERSION,
-        classification=SubstateClassification(
-            name=substate_name, evidence=('cw_screen_prep:observe',),
-            confident=True),
-        plane=plane_of(last),
-        round_num=round_num_of(last),
-        node_type=(getattr(session, 'node_type_current', None)
-                   or node_kind_of(last)),
-        selected_difficulty=(last.selected_difficulty.value or ''),
-        gold=(_gold_val if (_gold_readable and _gold_val is not None)
-              else None),
-        gold_trusted=bool(obs.state_gold_trusted),
-        streak=last.streak.value,
-        level=level_of(last),
-        xp_progress=last.xp.value,
-        level_up_cost=last.level_up_cost.value,
-        bench=tuple(None if b is None else snapshot_copy(b)
-                    for b in obs.bench_chars),
-        deployed=tuple(None if d is None else snapshot_copy(d)
-                       for d in obs.deployed_chars),
-        board=(MappingProxyType(dict(last.board.value))
-               if last.board.value is not None else None),
-        deploy_cap=last.deploy_cap.value,
-        deploy_vacancy=obs.deploy_vacancy,
-        free_bench_slots=obs.free_bench_slots,
-        front_occupied=frozenset(obs.front_occupied),
-        back_occupied=frozenset(obs.back_occupied),
-        front_size=obs.front_size,
-        shop_open=obs.shop_open,
-        shop_cards=None,   # P1 恒 None(PrepObservation 同款)
-        spheres=tuple(RewardSphere(color=c, x=p.x, y=p.y, radius=r)
-                      for c, p, r in obs.spheres),
-        boxes=tuple(SupplyBox(x=p.x, y=p.y) for _s, p in obs.boxes),
-        tomes=tuple(Tome(x=p.x, y=p.y) for _s, p in obs.tomes),
-        event_overlay=obs.event_overlay,
-        hp=(last.hp.value if (_hp_readable and last.hp.value is not None)
-            else None),
-        hp_readable=bool(_hp_readable),
-    )

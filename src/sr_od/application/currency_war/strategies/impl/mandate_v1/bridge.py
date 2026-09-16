@@ -3,14 +3,12 @@
 新核形态 = 新 ``CwStrategy`` 子类,STRATEGY_ID='mandate_v1'
 (config 切 strategy_id 即换核)。实现体分两层:
 
-- 本模块(decision 桶,纯函数):``decide_from_turn`` = 三遍编排 + 帧
-  稳定截断(依赖矩阵:decision 只可依 data/kernel——obs→Snapshot 的
-  装配半部 import 执行面词汇,归 app 桶 ``decision_assembly.py``);
-- 注册桥壳 ``strategies/mandate_v1_strategy.py``(app 桶):持有
-  obs→snapshot→assemble 装配链(步3 内部装配缝:``prep_brain.assemble``
-  读同一黑板 ``session.prep_obs_frame``,④-5 单一源;幂等/单一写端/
-  快照纪律保持;生产路径职责分界 = 画面 op 只写黑板 + 调一个决策入口,
-  **不加生产接线步**,R191 裁决)。
+- 本模块(decision 桶,纯函数):``decide_prep_frame`` = 三遍编排 + 帧
+  稳定截断(决策输入 = obs(黑板)+ session 容器直读;依赖矩阵:
+  decision 只可依 data/kernel);
+- 注册桥壳 ``strategies/mandate_v1_strategy.py``(app 桶):零逻辑复制的
+  纯注册壳(``__module__`` 守卫要求壳类定义于本模块;生产路径职责分界 =
+  画面 op 只写黑板 + 调一个决策入口,**不加生产接线步**,R191 裁决)。
 
 商店线口径(步4b,STEP34_REPORT 裁量 #1 的接线兑现;ADR-0517 迁移批
 后形态):
@@ -60,9 +58,6 @@ if TYPE_CHECKING:
     )
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         StrategySession,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.turn_state import (
-        TurnState,
     )
 
 # config 属 app 桶,decision 桶禁 import(cw_strategy.py 字符串注解先例);
@@ -190,19 +185,20 @@ class MandateV1Strategy(CwFlowStrategy):
         _launch_action = _launch_front_check(session)
         if _launch_action is not None:
             return _launch_action
-        turn = self._assemble_turn(obs, session)
-        actions = decide_from_turn(obs, turn, session, config,
-                                   registry=self.registry)
+        # 预算遥测披露(唯一写点 = economy_cycle.disclose_budget;落点 =
+        # 原装配缝调用位——前置发射位判定之后,非 armed 帧才到达,armed
+        # 短路帧维持不披露,零行为变化)。披露面禁决策消费(语义锚 =
+        # mandate_state.py 披露字段注释与守卫锁 test_cw_budget_disclosure)。
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            game_state_of,
+        )
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.economy_cycle import (
+            disclose_budget,
+        )
+        disclose_budget(game_state_of(session), session, self.registry)
+        actions = decide_prep_frame(obs, session, config,
+                                    registry=self.registry)
         return actions[0] if actions else None
-
-    def _assemble_turn(self, obs: PrepObservation,
-                       session: StrategySession) -> TurnState:
-        """装配缝缺省:decision 桶无 obs→Snapshot 装配半部(app 桶
-        ``decision_assembly.snapshot_from_obs``),由注册桥壳
-        ``MandateV1Live`` 覆写注入(adapter 分拆头注同款先例)。"""
-        raise NotImplementedError(
-            'mandate_v1 装配缝未注入(注册桥壳 MandateV1Live 覆写'
-            ' _assemble_turn;直接实例化本类须走注册面)')
 
     def decide_encounter(self, options: list[EncounterOption],
                          gs: GameState, session: StrategySession,
@@ -322,11 +318,12 @@ class MandateV1Strategy(CwFlowStrategy):
             f'bench={bench_is_full(gs)})')
 
 
-def decide_from_turn(obs: PrepObservation, turn: TurnState,
-                     session: StrategySession, config: object,
-                     *, registry: DecisionV2Registry | None = None,
-                     ) -> list[CwAction]:
-    """三遍编排 + 帧稳定截断(纯函数;R189-4 结构签名)。
+def decide_prep_frame(obs: PrepObservation,
+                      session: StrategySession, config: object,
+                      *, registry: DecisionV2Registry | None = None,
+                      ) -> list[CwAction]:
+    """三遍编排 + 帧稳定截断(纯函数;R189-4 结构签名;决策输入 =
+    obs(黑板)+ session 容器直读)。
 
     ev_arm 模式参数取 ``config.ev_arm``(缺省 full;非法值回落 full)。
     截断语境供给(R196 症5):conditional 类名-槽一致性复检消费的
@@ -335,7 +332,7 @@ def decide_from_turn(obs: PrepObservation, turn: TurnState,
     ev_arm = getattr(config, 'ev_arm', 'full')
     if ev_arm not in entry.EV_ARM_VALUES:
         ev_arm = 'full'
-    emitted = entry.emit(obs, turn, session, config,
+    emitted = entry.emit(obs, session, config,
                          ev_arm=ev_arm, registry=registry)
     # route_tag 伴带透传(方案 v2.1 §3.3 通道载体主案,ADR-0596 收编):
     # 发射臂身份自 Emitted.reason 写入动作自带字段,消旧「actions 列表

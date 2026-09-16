@@ -843,7 +843,7 @@ def route_tag_of(action: CwAction) -> str:
     deploy_launch 类 = 部署臂动作本体(批 2a 前载体 = RunDeploy 组合壳,
     R2 原子通路后 = DeployMove;细分归因保留在 Emitted.reason,不维护
     第二份状态);卖出类 = route_tag 字段原值(桥自 Emitted.reason 透传,
-    见 bridge.decide_from_turn)。未标 = ''。
+    见 bridge.decide_prep_frame)。未标 = ''。
     """
     if isinstance(action, DeployMove):
         return 'deploy_launch'

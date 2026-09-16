@@ -358,7 +358,7 @@ class CwAction:
     公共祖先,sim 侧运行时 isinstance 检查统一用本基类)。
 
     ``route_tag`` = 发射臂路线标签(备战旗标状态机 §3.3;桥
-    ``bridge.decide_from_turn`` 从 ``Emitted.reason`` 透传,动作自带、
+    ``bridge.decide_prep_frame`` 从 ``Emitted.reason`` 透传,动作自带、
     无时序错位面)。定位 = 策略内部路由键(发射分支的构造事实,不随
     时间漂移、不维护状态),只回答「该次落地该不该清 S1 开店闩」的
     环路控制路由问题,**非**卖出资格面(资格单一源 = sell_gate 装配 A)

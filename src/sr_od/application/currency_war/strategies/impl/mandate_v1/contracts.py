@@ -20,7 +20,8 @@
 字段级语义/None 语义/来源/消费钩子的权威表 =
 w583_stage2_contracts/SCHEMA_DRAFT.md §四(编排者审定版;原始件已灭失
 (2026-09-12 清理),权威表迁移挂账 = flow/projection_contract.md G8);
-sim 合成器(CwSimFrame→Snapshot)是无损门的第一个消费者。
+如实申报:sim 全目录对 Snapshot 零消费(旧「sim 合成器 = 无损门第一个
+消费者」叙事已失效),本模块 src 级生产消费方 = 零(仅测试与自引用)。
 """
 from __future__ import annotations
 

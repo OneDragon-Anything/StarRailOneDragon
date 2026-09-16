@@ -298,7 +298,7 @@ ACTION_REASON_SOURCE_KEYS: tuple[str, ...] = (
   (理由事实是决策时点记录,代码演进后重跑不可靠;留事实,不重算过程值)。
 - 键序依据:动作自带归因字段优先(reason = 买入臂/卖出通道/刷新触发源/
   控制流原因),发射臂标签次之(route_tag = mandate_v1 Emitted.reason 经
-  bridge.decide_from_turn 透传),授权/豁免记录兜底(LevelUp.auth_basis /
+  bridge.decide_prep_frame 透传),授权/豁免记录兜底(LevelUp.auth_basis /
   SellBench.convert_reason,「记录非指令」形态)。
 - 键集扩条只改本元组;各键的值域闭集归其定义模块(sell_gate/
   cw_vocab.SELL_BENCH_REASONS 等),本元组不做第二登记。
@@ -482,7 +482,8 @@ class DecisionTrace:
     # 义务来源(''/'flip'/'crisis'/'third_path'/'reserve_admission'/
     # 'must_spend';'crisis'=危机金出口臂 ADR-0503,判读兑换率分域勿漏
     # 此值;'must_spend'=必花域帧写点新增值域——shop 必花域段
-    # 帧内 last-wins,轮界清零在装配键戳,ADR-0571。现役 mandate_v1
+    # 帧内 last-wins,轮界清零在披露键戳(写端 = economy_cycle.
+    # disclose_budget),ADR-0571。现役 mandate_v1
     # 只产 ''/'must_spend',其余值为历史来源,存量数据按旧口径读)。
     sess_release_reason: str | None = None
     # 当轮 release 帧实际消费(金;strategy_state_of(session).v3_release_spent 透传,每轮

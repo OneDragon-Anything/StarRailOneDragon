@@ -264,8 +264,8 @@ def cap_resolved_of_session(session: StrategySession | None) -> int:
 
     消费位 = 商店线 R1/R2 的 g* 装配(mandate._cap_of 重定向至此)、
     schedule_upgrade ② 前置息线、U_L 阈值检验的 loss_exact cap 参数、
-    必花域/发射帧溢余段、registry 预算面守息线分量(reserve_cap/
-    BudgetView.interest_floor/换线可负担窗,ADR-0598 随批接线)——
+    必花域/发射帧溢余段、registry 预算面守息线分量(reserve_cap 守息
+    线/换线可负担窗,ADR-0598 随批接线)——
     共用本式,禁再内联 ``interest_cap×10`` 或 loss_exact 裸缺省 cap
     (息律投资 cap=10 局,裸缺省 5 会低估 C_int)。
 
@@ -1145,7 +1145,8 @@ def schedule_upgrade(gs: GameState, session: StrategySession,
     """排程升级判据(确定性费用查表核;蓝图 §3.4 R4 接缝,ADR-0465)。
 
     ``registry``:显式注入优先(A/B 注入面,P6 契约:同一调用链全部接缝
-    必须传**同一个** registry 实例——prep_brain._budget 单源装配);
+    必须传**同一个** registry 实例——economy_cycle.disclose_budget 单源
+    现算披露);
     缺省落 _registry_of(session) → DEFAULT_REGISTRY。**cap 归一注**:
     本函数的 ② 前置息线与 U_L 检验息损 cap 已归一到
     ``cap_resolved_of_session``(session resolved 链)单一源,registry

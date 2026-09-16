@@ -1264,8 +1264,9 @@ def _resume_reconciliation(segments: list[str],
       readable 可信位)与 plane/round 接续点。
     - aligned 语义:两侧都有值 → 是否相等;任一侧缺值或不可信(readable
       明确 False)→ None = 不可判,不猜。readable 守卫只查 resume 侧:
-      prev 侧「不可信」依赖 decision_assembly 对 readable=False 帧写
-      hp=None 的远端约定(值缺失即 aligned=None),本处不再重复守卫。
+      prev 侧「不可信」依赖存档数据既有写入约定(readable=False 帧由
+      当时的决策备帧生产端写 hp=None,值缺失即 aligned=None),本处
+      不再重复守卫。
       装配器**不裁真值**:两侧都是诚实读数,不符只显影交判读定谳
       (2026-09-05 夜第八局实证:恢复帧 hp14/金68 vs 档案终值 hp29/金36,
       判读侧需此列才免手工翻流对账)。
