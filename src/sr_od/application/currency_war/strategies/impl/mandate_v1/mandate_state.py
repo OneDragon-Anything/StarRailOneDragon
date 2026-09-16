@@ -337,6 +337,11 @@ class StrategyState:
     # shop_reopen_discretionary_actions 计数(B4 内容面观测,[28] 息基腿
     # 风险源监控)。纯遥测面,禁决策判据消费。
     cw4_reopen_armed_phase: object = None
+    # 武装段受限访问旗(发射帧仲裁;前置发射位载体):True = 本武装段已产
+    # 出受限访问意图(段 = armed 连续期,失武装帧复位——复位后若再武装且
+    # 仍命中,允许新段再访,合法形态例 = 访问内升级抬息帽)。取值时机 =
+    # 前置发射位逐帧现读现写。写端单一源 = bridge._launch_front_check。
+    cw4_launch_spend_visited: bool = False
 
     # ===== scratch(原 session.memory 消解宿主;§6.3 纪律平移)=====
     # 策略实现层私有 scratch——临时变量不再逐个升字段。纪律:

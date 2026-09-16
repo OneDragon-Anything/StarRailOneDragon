@@ -70,6 +70,71 @@ if TYPE_CHECKING:
 CurrencyWarConfig = 'CurrencyWarConfig'
 
 
+def _launch_front_check(session: StrategySession) -> CwAction | None:
+    """前置发射位:armed 帧短路三遍编排,产出发射意图(发射决策的
+    策略层宿主;旧达标臂发射决策迁驻,design §2.3)。
+
+    - 判定核 = kernel ``readiness_launch_decision``(线成员谓词注入
+      单一源 = statefn.predicates.line_members,禁内联第二实现);
+    - 质量推迟帧(armed ∧ defer_by_quality)不发射,分键
+      ``launch_quality_defer_frames``;评估异常帧分键
+      ``launch_quality_eval_error`` 后照常发射(fail-open 防死锁,
+      ADR-0570 分界)——键单一源 = kernel cw_launch_admission 常量;
+    - armed ∧ 帧级金判定 ``in_launch_spend_zone`` 命中(禁内联金息线
+      比较)→ 受限商店访问意图 ``OpenShop(restricted_spend=True)``;
+      **每武装段至多一次**(段旗 cw4_launch_spend_visited,失武装复位;
+      复位后再武装仍命中允许新段再访);段内已访问 → 落无条件发射
+      (旧形态「访问后照发」跨帧等价,金不回落无死循环);
+      **不经 S1 开店闩与 OpenShop 节流**(旧仲裁直调 open_shop 同形态,
+      空转防护 = 段旗);
+    - armed ∧ 未命中 → StartBattle 终点意图(词表现成);
+    - 非 armed → 段旗复位,返回 None = 原三遍编排接管(非 armed 帧零变化)。
+    """
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        gold_of,
+        in_launch_spend_zone,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        game_state_of,
+    )
+    from sr_od.application.currency_war.kernel.cw_launch_admission import (
+        LAUNCH_QUALITY_DEFER_FRAMES_KEY,
+        LAUNCH_QUALITY_EVAL_ERROR_KEY,
+        readiness_launch_decision,
+    )
+    from sr_od.application.currency_war.kernel.cw_vocab import (
+        OpenShop,
+        StartBattle,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
+        line_members,
+    )
+    gs = game_state_of(session)
+    _st = state_of(session)
+    _decision = readiness_launch_decision(
+        gs, getattr(_st, 'target_comp', None), line_members=line_members)
+    if not _decision.get('armed'):
+        _st.cw4_launch_spend_visited = False   # 武装段结束,段旗复位
+        return None
+    _ct = _st.cw4_counters
+    _quality = _decision.get('quality')
+    if _decision.get('quality_eval_error'):
+        if isinstance(_ct, dict):
+            _ct[LAUNCH_QUALITY_EVAL_ERROR_KEY] = \
+                _ct.get(LAUNCH_QUALITY_EVAL_ERROR_KEY, 0) + 1
+    elif isinstance(_quality, dict) and _quality.get('defer_by_quality'):
+        if isinstance(_ct, dict):
+            _ct[LAUNCH_QUALITY_DEFER_FRAMES_KEY] = \
+                _ct.get(LAUNCH_QUALITY_DEFER_FRAMES_KEY, 0) + 1
+        return None   # 质量推迟帧:本帧不发射(防死锁语义 kernel 单一源)
+    if in_launch_spend_zone(gold_of(gs), session):
+        if not _st.cw4_launch_spend_visited:
+            _st.cw4_launch_spend_visited = True
+            return OpenShop(restricted_spend=True)
+        # 段内已访问:落无条件发射
+    return StartBattle()
+
+
 class MandateV1Strategy(CwFlowStrategy):
     """新核(mandate_v1):三遍化决策序(证明→骨架→EV)+ 单动作循环发射。
 
@@ -119,6 +184,12 @@ class MandateV1Strategy(CwFlowStrategy):
                 '禁静默按空观察决策)')
         # 方向重估先于决策(触发 = 帧代次标注;ADR-0583 §3.3-①)
         self._consume_prep_direction_frame(session)
+        # —— 前置发射位(迭代 changes/2026-09-16-prep-visit-op design
+        # §2.3;旧 cw_loop 达标臂的发射决策迁驻策略层)。armed 帧短路
+        # 三遍编排;非 armed 帧 None = 原编排零变化。
+        _launch_action = _launch_front_check(session)
+        if _launch_action is not None:
+            return _launch_action
         turn = self._assemble_turn(obs, session)
         actions = decide_from_turn(obs, turn, session, config,
                                    registry=self.registry)

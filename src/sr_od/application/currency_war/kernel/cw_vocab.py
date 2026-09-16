@@ -813,8 +813,16 @@ class OpenShop(CwAction):
     read_only=True:读数性开店(腾席链 b 取 gold 真值 / 开态清洁面板)→
     CwOpOpenShop(幂等:已开不点)→ 商店观察刷新 → **不调商店决策** →
     CwOpCloseShop → 回备战(M-6 门保持:free=0 不进买牌)。
+
+    restricted_spend=True:受限访问(发射帧仲裁意图,金出口族出口 B;
+    判定单一源 = 策略前置发射位经 kernel in_launch_spend_zone)→ 买波带
+    预算闸(花后金位跌破息线即拒)→ 关店,本帧不发射(次帧复判)。
+    sim 侧申报:restricted_spend 语义已由引擎发射帧仲裁段原生建模
+    (engine_p1),字段为生产执行参数,sim 适配器映射零感知(缺省 False
+    保持既有映射)——op-layer §2.5 两适配器同批义务以此申报兑现。
     """
     read_only: bool = False
+    restricted_spend: bool = False
 
 
 @dataclass
