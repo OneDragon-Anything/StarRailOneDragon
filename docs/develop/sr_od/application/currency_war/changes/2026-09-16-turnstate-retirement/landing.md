@@ -20,7 +20,7 @@
 ## 3.2 阶段2：TurnState 层物理删除
 **范围**：design.md §2.1 删除面全表（#1-#10）+ §2.2 阶段2 形态（`_budget`+`_disclose_budget` 合并为 `disclose_budget -> None`、bridge 调用点改挂原 `_assemble_turn` 调用位）+ §2.3 注释口径修正（含泛化反查收口）+ §2.5 测试重构面。
 **设计依据**：design.md §2.1/§2.2/§2.3/§2.4/§2.5
-**文件面**：src —— `turn_state.py`（删）、`assembly.py`（整模块删：删除面出清后无剩余符号）、`adapter.py`（删）、`economy_cycle.py`（§2.2 阶段2 合并落点：`_budget`+`_disclose_budget` 合并为 `disclose_budget -> None`）、`decision_assembly.py`（删 obs→Snapshot 半部，模块本体因 install_obs_ports 存活）、`bridge.py`、`entry.py`、`mandate_v1_strategy.py`、`mandate_state.py`（写端指针注释）、`shop.py`（注释）、`cw_economy.py`（注释）、`cw_screen_buy_cards.py`（注释）、`cw_exec_state.py`（仅快照拷贝注释两处）、`cw_vocab.py`（注释）、`telemetry/schema.py`（注释）、`mandate.py`（注释）、`contracts.py`（注释）、`telemetry/match_archive.py`（仅 §2.3 判别规则注释）；测试仓 —— §2.5 表列六文件
+**文件面**：src —— `turn_state.py`（删）、`assembly.py`（整模块删：删除面出清后无剩余符号）、`adapter.py`（删）、`economy_cycle.py`（§2.2 阶段2 合并落点：`_budget`+`_disclose_budget` 合并为 `disclose_budget -> None`）、`decision_assembly.py`（删 obs→Snapshot 半部，模块本体因 install_obs_ports 存活）、`bridge.py`、`entry.py`、`mandate_v1_strategy.py`、`mandate_state.py`（写端指针注释）、`shop.py`（注释）、`cw_economy.py`（注释）、`cw_screen_buy_cards.py`（注释）、`cw_exec_state.py`（仅快照拷贝注释两处）、`cw_vocab.py`（注释）、`telemetry/schema.py`（注释）、`mandate.py`（注释）、`contracts.py`（注释）、`telemetry/match_archive.py`（仅 §2.3 判别规则注释）；测试仓 —— §2.5 表列六文件 + `test_cw_p2_blood_band.py`（emit 丢参的调用点必然后果：改调新签名，断言零改；T-2 交付申报①，编排者补认）
 **依赖**：阶段1；execstate-dissolution 对应在飞阶段（同文件在飞面 = `cw_exec_state.py` + `telemetry/schema.py`，防冲突最小前置，两迭代账本对齐后开工）
 **优先级建议**：6
 **完成判据**：
