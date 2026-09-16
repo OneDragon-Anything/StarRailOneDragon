@@ -3,14 +3,15 @@
 > 阶段拆分原则：3.1 执行器合一先行（唯一执行路就位）；3.2 策略发射位（决策进策略层）；3.3 op 接管 + cw_loop 收敛（原子切换，同提交）；3.4 正本更新。3.2 先于 3.3——策略会发发射意图了，op 才接管执行。
 
 ## 3.1 出战执行器合一
-**范围**：审计 `readiness_battle_launch`（cw_loop，唯一调用点 = 达标臂）与 `_start_battle`（prep_actions）+ StartBattleOp 逐项差异 → 合一为单一出战执行器并收编既有执行路径；恢复局面/达标臂两调用点切换与 `readiness_battle_launch` 退役**归 3.3 原子提交**。边界：不动达标臂分支（其随 3.3 迁移）、不动 mandate_v1、本阶段执行器未接线（行为惰性）。
+**范围**：审计 `readiness_battle_launch`（cw_loop，唯一调用点 = 达标臂）与 `_start_battle`（prep_actions）+ StartBattleOp 逐项差异 → 合一为单一出战执行器 `launch_battle_unified` 并收编既有复验/浮层闸语义（宿主 = cw_loop.py 依赖原地，依据 = audit-executor.md §4;3.3 接线时评估最终宿主）；恢复局面/达标臂两调用点切换与 `readiness_battle_launch` 退役**归 3.3 原子提交**。边界：不动达标臂分支、不动 mandate_v1、本阶段执行器未接线（行为惰性）。
 **设计依据**：design.md §2 方案 2 与接口契约（执行器条款）。
-**文件面**：`src/sr_od/application/currency_war/prep_actions.py`（应用包顶层）；相关测试。
+**文件面**：`src/sr_od/application/currency_war/operations/cw_loop.py`（统一执行器 + 复验/浮层闸 helper 抽取）；`sr-od-test/test/sr_od/application/currency_war/`（首批直测）。
 **依赖**：无。
 **优先级建议**：5
 **完成判据**：
 - 审计清单交付：两执行路径逐项行为对照（**部署原子序**/屏态复验/浮层安全检查/失败语义/免战子态/重发形态），每项标注归属与合并语义；**含逐调用面行为差矩阵（op 策略面 vs loop 恢复局面面）、浮层安全检查内嵌位（锚表+遭遇 OCR 兜底原样，两调用面同保）、遥测逐键宿主映射表**；失败语义按调用面分轨（以实码为准，不静默统一）；
-- 统一执行器就位（直测；接线归 3.3）；既有出战行为锁全绿（现存锁名为准，锁名清单入审计交付）；
+- 审计清单交付 = [audit-executor.md](audit-executor.md)（三路径盘点/内部序规格/宿主路由/逐键映射表）；
+- 统一执行器就位（直测；接线归 3.3）；既有出战行为锁 = 空集（审计 §2.4 实证），首批直测随本阶段交付；
 - 日志标签审计输出（供 3.4 哨兵/正本对照）；
 - §12 通用工程门（引用，不复述）。
 **验收凭据形式**：审计清单 + 测试名 + ruff。
