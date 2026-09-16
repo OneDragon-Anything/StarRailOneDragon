@@ -3344,10 +3344,12 @@ def chain_node_type(bs: GameState, plane: int, round_num: int) -> ChainQuery:
 def note_board_state_heartbeat(ctx_or_session: object) -> None:
     """心跳观察者采样(§2.4;生产接线点 = cw_loop 备战分支)。
 
-    读单调推进量现值并与上次采样比对:连续 ≥2 次零推进 = 观察断流诊断
-    (log.warning 留痕,**不停机**——停更处置交既有守卫链;首个备战环只
-    建基线不计数)。宿主可传 ctx(取 ctx.cw_match.session)或 session 本体
-    (测试/sim)。
+    读单调推进量现值并与上次采样比对:连续 ≥2 次零推进 = 观察断流。
+    本函数是传感器,log.warning 留痕且不停机——每轮同特征警告行由事件
+    哨兵 STALL 面消费(同签名 WARNING 堆积 + 零实质推进 → 报警退出,
+    cw_sentinel.py),删除本采样会断「观察断流」故障的检测链。首个备战
+    环只建基线不计数。宿主可传 ctx(取 ctx.cw_match.session)或 session
+    本体(测试/sim)。
     """
     match = getattr(ctx_or_session, 'cw_match', None)
     session = (getattr(match, 'session', None) if match is not None
