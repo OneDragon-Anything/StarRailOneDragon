@@ -1006,7 +1006,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 不阻塞动作循环,warning 留痕(防无声退化 no-op,锚⑤缺陷无声
         # 复发)。
         try:
-            from sr_od.application.currency_war.strategies.impl.mandate_v1.assembly import (
+            from sr_od.application.currency_war.strategies.impl.mandate_v1.economy_cycle import (
                 disclose_budget_at_shop_frame,
             )
             disclose_budget_at_shop_frame(

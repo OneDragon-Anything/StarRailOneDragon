@@ -43,7 +43,7 @@ P2 刷新容量 12 < 收入 13-19 的扩容评估 = 披露面(判读层义务帧
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sr_od.application.currency_war.kernel.cw_economy import (
     refresh_cost_effective,
@@ -57,7 +57,14 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_registry import (
+    DEFAULT_REGISTRY,
     DecisionV2Registry,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+    state_of,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.turn_state import (
+    BudgetView,
 )
 
 if TYPE_CHECKING:
@@ -227,3 +234,103 @@ def tier_truncated_spend(gold: int, want: int, essential: bool) -> int:
     if essential:
         return want
     return min(want, gold % 10)
+
+
+def _disclose_budget(state: Any, session: StrategySession,
+                     budget: BudgetView) -> None:
+    """遥测披露面写点(T-88 决策环数据流断链修复;裁决 = ADR-0571)。
+
+    装配纪律(派生值不落 session)的立法目的 = 根治**决策输入**读跨帧
+    旧共享态的污染类缺陷;本写点四字段 + 键戳是**遥测披露面**,不入
+    决策输入——决策判据一律消费 TurnState 幂等装配,禁读这些字段
+    (禁令防线 = review 与代码规范:禁读约束已申报于本包模块
+    docstring)。写端只有本函数与商店执行回执位
+    (operations/cw_screen/cw_screen_buy_cards.accrue_release_spent,
+    只累计 spent);读端只有 recorder.py 透传与 sim engine_p1 轮快照
+    (遥测读链)。BudgetView 本身仍不落不回读,纪律本意零破坏。
+
+    - reserve_cap/obligation:BudgetView 现算值幂等覆写(同帧同值,
+      重复装配无副作用);
+    - overflow:``max(0, gold − reserve_cap)`` 纯派生直算——禁二次调
+      ``economy_cycle.overflow``(其内部再调 reserve_cap,双算分叉面);
+    - 键戳 (plane, round) 变更 ⇒ spent/reason 轮界清零后盖新戳:与
+      schema「sess_release_spent 每轮入口清零」「sess_release_reason
+      当轮义务来源」两契约对齐(F5 裁决二选一之①:reason 并入键戳
+      清零块,杜绝跨轮陈读);不复用 v3_release_round(W332b 旧轮语义)。
+    """
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        gold_of,
+        plane_of,
+        round_num_of,
+    )
+    st = state_of(session)
+    key = (plane_of(state), round_num_of(state))
+    if st.v3_disclosure_key != key:
+        st.v3_release_spent = 0
+        st.v3_release_reason = ''
+        st.v3_disclosure_key = key
+    st.v3_reserve_cap = int(budget.reserve_cap)
+    st.v3_reserve_overflow = max(
+        0, gold_of(state) - int(budget.reserve_cap))
+    st.v3_release_budget = int(budget.obligation)
+
+
+def _budget(state: Any, session: StrategySession,
+            registry: DecisionV2Registry) -> BudgetView:
+    """预算投影(批 3 预算收权):W611 义务模型为核 + 确定性费用查表两接缝。
+
+    预算权威 = economy_cycle(schedule_upgrade/refresh_ev_budget 确定性
+    核 + R*/义务链);DP 姿态供给已退役(原「帧内单一求解、四路共用」
+    的 W620 效率热点随核替换消失——确定性核为闭式直算,无 0.3s 求解面,
+    效率复核判据:decide 热点回落)。投影后附带遥测披露面写点
+    (``_disclose_budget``,T-88;不入决策输入)。
+    """
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        cap_resolved_of_session,
+        refresh_ev_budget,
+        reserve_cap,
+        saturation_line,
+        schedule_upgrade,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.economy_cycle import (
+        obligation,
+    )
+    # 守息线 = session resolved 链单一源(与 reserve_cap 内部分量同链;
+    # ADR-0598 息帽死链修复随批接线:旧 registry.interest_cap×10 不随
+    # 持卡语境动,买断制囤金经预算投影面部分存活)。
+    floor = saturation_line(cap_resolved_of_session(session))
+    # 接缝族已切容器签名(W6 波 4):预算投影读容器单例(店开帧 gold
+    # 救援经喂入口写容器,披露面随之取真值);_disclose 的帧轴读同源。
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        game_state_of,
+    )
+    _gs = game_state_of(session)
+    budget = BudgetView(
+        # P6 注入单源(W636 A):BudgetView 各字段消费同一 registry 实例,
+        # 禁混用 state_of(session).v3_registry 死通道 / DEFAULT 缺省表。
+        interest_floor=floor,
+        reserve_cap=reserve_cap(_gs, session),
+        obligation=obligation(_gs, session, registry),
+        schedule=schedule_upgrade(_gs, session, registry),
+        ev_auth=refresh_ev_budget(_gs, session, registry),
+    )
+    _disclose_budget(_gs, session, budget)
+    return budget
+
+
+def disclose_budget_at_shop_frame(state: Any, session: StrategySession,
+                                  registry: DecisionV2Registry | None = None,
+                                  ) -> None:
+    """店开观察帧披露覆写(T-88 双写语义第二写点;ADR-0571 §2.2)。
+
+    prep 装配帧处于关店态,F2 门(cw_screen_prep:gold 仅店开态可信,
+    关店读空)使装配态 gold 不可得(缺省 0)⇒ overflow/obligation 在
+    prep 快照恒 0——「金未采」已知语义,非真 0(实机首局
+    g_20260907_025608 锚⑤定谳)。本写点在商店入口观察帧(店开,gold
+    过 F2 门为真值)走同一 BudgetView 计算链重算并覆写三预算字段:
+    overflow/budget 变帧现值;键戳同轮 ⇒ 不清 spent(轮界清零由键戳
+    承载,本写点只比较不盖戳)。豁免面与「禁决策消费」禁令同
+    ``_disclose_budget``;调用方 = operations/cw_screen/cw_screen_buy_
+    cards 段顶(best-effort,失败降级保留 prep 值)。
+    """
+    _budget(state, session, registry or DEFAULT_REGISTRY)
