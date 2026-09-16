@@ -108,3 +108,40 @@
 - 亲读：修订后 design.md/landing.md/README.md 全文；对照 attack.md（r1）逐条回查。
 - 新增面复核：`strategies/impl/mandate_v1/__init__.py` 全文（adapter 转出排查）；`telemetry/match_archive.py:1248-1287`（判别对象实文）；test_cw_budget_disclosure.py 懒加载缝段（:92-168）与生产侧 cw_screen_buy_cards.py:1026-1043 复核；currency_war_app.py:185-188（decision_assembly 存活武装点）；assembly.py 结构清点（阶段2 后余量推演）。
 - 沿用 r1 已核实且未变的证据：mandate_v1_strategy.py:55-58、bridge.py:185-196、entry.py:432-946、decision_assembly.py:22-24/36-76/129-195、cw_economy.py:268/1147-1148、mandate_state.py:172-208、schema.py:301/479-500、cw_decision_trace.py:121-139、engine_p1 pyc 孤儿、sim 五组 grep 零命中、sr-od-test 六测试文件相关段。
+
+---
+
+# r3 轻量复核（2026-09-16，针对 R2-1…R2-9 修订稿；只验指定点，不重开全面攻击）
+
+## 一、R2 发现消解判定（9/9）
+
+| # | R2 发现 | 判定 | 依据（修订稿节名 + 要点） |
+|---|---|---|---|
+| R2-1 | 阶段1 判据"原样全绿"与缝必断矛盾 | **消解** | landing §3.1 判据改"test_cw_budget_disclosure 全绿——缝目标随迁后断言本体原样"；文件面改"（monkeypatch 缝目标随迁）"；design §2.5 行写明"懒加载 import 改指后原缝必断"。措辞与实况相容（先红后绿被预告）。 |
+| R2-2 | engine_p1 更正未随迁 + 反查样式缺样式 | **消解** | design §2.3 反查样式加 `engine_p1`；新增"过期读端叙事随迁面"条（economy_cycle 迁入 docstring 读端句 → 阶段2 更正）；mandate_state 条目扩"读端半句 → 新读端口径"；§2.2 现状行改"该过期句随逐字搬迁进入 economy_cycle，阶段2 按 §2.3 更正"——r2 指出的"消亡 vs 搬迁"自相矛盾已消除。 |
+| R2-3 | decision_assembly"随模块删除消亡"表述错误 | **消解** | §2.3 末条拆分：decision_assembly"模块本体因 install_obs_ports 存活，按反查样式改写"；adapter 随 #10 消亡。§2.1 #8 同步改"模块本体因 install_obs_ports 存活（仅删半部）"。 |
+| R2-4 | armed 不披露判据无验证载体 | **消解** | design §2.5 budget_disclosure 行补"armed 短路帧不披露单帧锁（armed 帧入口断言披露字段零写，承载 §2.2 落点规则的验证）"；landing §3.2 判据挂"载体 = §2.5 新增单帧锁"、验收凭据含"armed 单帧锁"。断言目标与出处明确，实现自由度（真 armed 判定 vs 桩前置发射位）不构成再设计项——两者证同一性质（短路先于披露）。 |
+| R2-5 | sim 分布对照缺基线且无鉴别力 | **消解** | design §2.5 验收总门降格"冒烟跑通（分布对照无鉴别力、不作判据，冒烟仅证流程不炸）"；landing §3.1/§3.2 判据与验收凭据同步改"冒烟跑通（记录）"，分布对照撤销。 |
+| R2-6 | design §0 与 README 状态失同步 | **消解** | README 进度改"迭代设计:对抗审中"，与 design §0 一致。 |
+| R2-7 | match_archive 规则改写分支缺目标 + 混合句无桶 | **消解** | §2.3 判别规则扩三支：纯历史口径 = 保留；纯现行声明 = 改写；混合句 = "保留语义、符号锚改纯语义描述（去符号名，语义自足）"——与 AGENTS 注释规范"持久索引或纯语义描述"对齐。 |
+| R2-8 | §3.2 文件面漏 economy_cycle.py | **消解** | landing §3.2 文件面补"`economy_cycle.py`（§2.2 阶段2 合并落点：…合并为 `disclose_budget -> None`）"。可关闭性：合并未做则 bridge 新 import 无源 → L1 必红，判据机械闭合。 |
+| R2-9 | assembly.py 整模块删未申报 | **消解** | design §2.1 #2 补"#2/#3/#4 删除 + §2.2 三函数迁出后…无剩余符号（余部 = 模块头 docstring 与墓碑注块）→ 整模块删"；landing §3.2 改"assembly.py（整模块删：删除面出清后无剩余符号）"。归宿申报成立（空壳 docstring+墓碑注 = 被废除的留码形态，整删与 #8/#10 口径一致）。 |
+
+## 二、r3 残留发现
+
+### R3-1 [中危] [核一] `engine_p1` 进 gate 使阶段2 判据按面不可关闭：约 16 个面外文件的既有陈旧命中无从处置
+
+- **发现**：本次修订把 `engine_p1` 同时加进了 §2.3 反查样式（正确）与 landing §3.2 完成判据的 grep 零活引用模式（过度）。gate 现为"…|decide_from_turn|engine_p1` 零活引用（历史 ADR 记录/decisions 遗留/changes/ 豁免；flow/ 正本留末阶段…）"——但仓内 engine_p1 陈旧指针是 **sim-redesign 前的既有债**，本批不新增失真，且命中遍布面外文件（r1 grep 实证约 25 处 / 16 文件：cw_battle_calib.py:412,425、cw_deploy_logic.py:951,1245、cw_economy.py:262,319,393,568、telemetry/query.py:31、cw_game_state.py:959、cw_intention.py:2698、cw_launch_admission.py:3,49,237、cw_launch_arbitrage.py:28、predicates.py:407、cw_strategy_session.py:194,210、cw_screen_supply_node.py:45、cw_vocab.py:434,821、cw_exec_state.py:187、schema.py:465、entry.py:181、shop.py:484 等）。豁免面（ADR/decisions/changes/flow 正本）一个都不覆盖它们；面内文件也多仅许可动特定注释行（如 cw_exec_state 仅两处、schema 仅 :301/:488）。worker 按判据执行 = 必须改约 16 个面外文件（越面）或判据永远红（不可验收）。§2.3 反查样式的"命中处逐点处置"措辞同病（worker 义务被写成全仓处置）。这正是 r2 R2-2 建议刻意避开的方向——当时建议的是"反查样式加 engine_p1 + **面内**随迁注释改写；面外既有残留申报归墓碑清点外溢批（§1.3 立项输入补笔）"，未建议进 gate。
+- **修正方向**（一行级）：①landing §3.2 判据的 grep 模式**去掉 `engine_p1`**（恢复 r2 版七符号）；②§2.3 反查样式保留 engine_p1 但加辖域限定："engine_p1 命中处置辖域 = 本批文件面与随迁注释；面外既有残留逐处清点申报，归 §1.3 墓碑清点外溢批立项输入"；③§1.3 外溢条补"仓内 engine_p1 陈旧指针（约 25 处/16 文件）"一笔。
+
+## 三、三阶段试读（r3 重跑）
+
+| 阶段 | 判定 | 说明 |
+|---|---|---|
+| 阶段1 | **过** | 搬迁形态、缝目标随迁、判据载体全部就位。 |
+| 阶段2 | **有条件过** | 删除面 #1-#10、文件面（含 economy_cycle/assembly 整删/decision_assembly 存活申报）、armed 单帧锁载体齐备；唯 R3-1 使 grep 判据按面不可关闭——一行修订后全过。 |
+| 末阶段 | **过** | 清单 9 行未动，仍与实现后一致。 |
+
+## 四、r3 收敛判定
+
+**未收敛（仅剩 R3-1 一项中危，一行级修订）。** 无阻断；R2-1…R2-9 九项全部消解；唯 gate 混入 engine_p1 使阶段2 判据按面不可关闭。按本节"修正方向"三点落盘后，无需再开全量复核轮——编排者对照 R3-1 修正方向三点逐字核对即可关闭收敛。

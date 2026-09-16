@@ -24,7 +24,7 @@
 **依赖**：阶段1；execstate-dissolution 对应在飞阶段（同文件在飞面 = `cw_exec_state.py` + `telemetry/schema.py`，防冲突最小前置，两迭代账本对齐后开工）
 **优先级建议**：6
 **完成判据**：
-- src + sr-od-test 全仓 grep `TurnState|DirectionView|BudgetView|_assemble_turn|snapshot_from_obs|hoard_consumer_domain|decide_from_turn|engine_p1` 零活引用（历史 ADR 记录/decisions 遗留/changes/ 豁免；flow/ 正本留末阶段；§2.3 反查样式同步清零）
+- src + sr-od-test 全仓 grep `TurnState|DirectionView|BudgetView|_assemble_turn|snapshot_from_obs|hoard_consumer_domain|decide_from_turn` 零活引用（历史 ADR 记录/decisions 遗留/changes/ 豁免；flow/ 正本留末阶段；§2.3 反查样式同步清零，其中 engine_p1 辖域限定见 design.md §2.3）
 - `snapshot_copy` 活消费方不受影响（cw_game_state.py 部署装配链照常）；armed 短路帧不披露语义逐位保持（载体 = §2.5 新增单帧锁）
 - L1 快速集绿 + L3 全量绿（commit 前）；触点文件 ruff 零告警
 - 通用工程门：本文件「通用工程门」节

@@ -28,7 +28,7 @@
 
 明确不解决（外溢，禁并入本迭代——iteration-design.md §1.1 边界判定）：
 - **contracts.py 的 Snapshot 契约族本体**（Snapshot/SubstateClassification/Decision/AtomOp/Defer/Bail + `require_schema_version`/`derive_snapshot`）：本迭代只删其 obs→Snapshot 生产端与 adapter.py 载体；数据契约本体的退役牵接口形态历史裁决（ADR 档案已退役）、G8 权威表迁移挂账（flow/projection_contract.md §6）与「新循环契约族是否整体废弃」裁决，自成外溢迭代。本迭代删除完成后，Snapshot 契约族的 src 级生产消费方 = 零（仅测试与自引用；曾有的模块级 import 方 adapter.py 随本批删除）——该现状即外溢批立项输入。
-- **全仓存量墓碑注清点**：新纪律（strategy-work §1 2026-09-16 改判）的首个全量执行批——statefn/vbar.py 墓碑模块、criteria/contracts.py 墓碑行、flow.py 墓碑注等（adapter.py 已随本批删除，不在其列），另批清点处置。
+- **全仓存量墓碑注清点**：新纪律（strategy-work §1 2026-09-16 改判）的首个全量执行批——statefn/vbar.py 墓碑模块、criteria/contracts.py 墓碑行、flow.py 墓碑注等（adapter.py 已随本批删除，不在其列），含仓内 engine_p1 陈旧指针（sim-redesign 前旧读端，约 25 处/16 文件；本批仅处置文件面内与随迁注释处），另批清点处置。
 
 ## 2. 方案
 
@@ -71,7 +71,7 @@
 
 ### 2.3 注释与指针口径修正（随阶段2；落地时以泛化反查收口，禁只改点名处）
 
-反查样式：`_disclose_budget|disclose_budget_at_shop_frame|snapshot_from_obs|prep_brain._budget|装配键戳|decide_from_turn|engine_p1` 于 src + sr-od-test 全仓 grep，命中处逐点处置。已知命中清单（符号定位，行号以落地时点为准）：
+反查样式：`_disclose_budget|disclose_budget_at_shop_frame|snapshot_from_obs|prep_brain._budget|装配键戳|decide_from_turn|engine_p1` 于 src + sr-od-test 全仓 grep，命中处逐点处置。engine_p1 处置辖域 = 本批文件面与随迁注释，面外陈旧指针归 §1.3 墓碑清点外溢批。已知命中清单（符号定位，行号以落地时点为准）：
 
 - 失真纪律句「决策判据一律消费 TurnState 幂等装配」：shop.py 注释处、test_cw_budget_disclosure.py 头注 → 统一改口径「决策输入 = obs（黑板）+ session 容器直读；披露面禁决策消费（语义锚 = mandate_state.py 披露字段注释与守卫锁）」。assembly.py 自身随批删除。
 - 写端指针类：mandate_state.py 披露四字段+键戳的字段定义注释（多处「写端 = assembly._disclose_budget」）→ 改新写端 `economy_cycle.disclose_budget`；同文件注释块「读端 = …engine_p1」半句 → 更正为新读端口径（recorder sess_\* 透传 + cw_decision_trace）；

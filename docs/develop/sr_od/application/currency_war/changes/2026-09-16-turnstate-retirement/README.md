@@ -5,7 +5,7 @@
 - 落地:[landing.md](landing.md)
 
 ## 进度
-- 迭代设计:对抗审中
-- 设计对抗:进行中(r1 报告=[attack.md](attack.md);r2 复核=[attack2.md](attack2.md))
+- 迭代设计:定稿
+- 设计对抗:收敛(r1=[attack.md](attack.md) 14 项;r2/r3=[attack2.md](attack2.md) R2-1..9+R3-1,全消解)
 - 落地:阶段 0/3 done(明细见 landing.md)
 - 正本更新:未开始
