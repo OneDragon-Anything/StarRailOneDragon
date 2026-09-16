@@ -3353,12 +3353,8 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
      gold 基线 = 编排壳 visit 入口容器 gold 现读(调用方传入);摘要与
      对拍的 gold/level/plane = 容器读口。)
     """
-    from sr_od.application.currency_war.kernel.cw_obs_core import SCREEN_NAME
     from sr_od.application.currency_war.obs.cw_observation import (
-        PHASE_PREP_CLEAN,
-        read_game_state,
         read_gold,
-        read_gold_settled,
     )
     from sr_od.application.currency_war.operations.cw_screen.cw_screen_buy_cards import (
         expected_gold_after_actions,
@@ -3374,73 +3370,13 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
     _buy_unidentified = ledger.buy_unidentified
     _buy_pre_bench = ledger.buy_pre_bench
     _buy_pre_deployed = ledger.buy_pre_deployed
-    # r251 修 A(买后同轮重估;ADR-0583 Z1 修法):方向重估原只在买前跑——
-    # 买桥件当轮桥不认领,deploy 当轮无方向(第六局 r4 买藿藿/爻光但
-    # target='' 仙舟件全坐板凳,散 pair 白挨打 -8/-12/-28)。买完需用最新
-    # bench 重估一次:桥/锁线当轮生效,紧随的消费面才有方向。幂等
-    # (键守卫段同轮短路,已锁线不漂移)。**内化形态**:流程侧不再直调
-    # 策略器——买后容器喂入增量(gold 真读 + bench tracked 重播)标
-    # view 帧代次,由下一决策入口(pick/备战)消费复现原重估语义
-    # (§3.3-③):pick 窗口 = 同一容器喂入逐位同源;备战入口 = heavy
-    # full 帧构造性覆盖(同一物理 bench)。
-    try:
-        if match is not None and (total_buy or total_xp_buy or total_refresh):
-            # 买后重估容器喂入(容器化段 2:CwSimFrame 增量构造随黑板槽
-            # 退役改容器直写——gold 关店真读 → write_logic(bs.gold);
-            # bench tracked 重播 → write_logic(bs.bench, BenchView 重建,
-            # 构造单一源 = bench_view_of_slots);fail-closed 双维回退
-            # (gold 失读/tracked 空)语义不变 = 全量 read_game_state 观察
-            # 喂入口(观察漏斗容器直写照常写容器)。hp 覆盖
-            # 写面随黑板槽退役取消(波 4 步 4 同款结论:容器 hp 由备战帧
-            # 观察/结算覆盖既有写端承接,消费统一经 decision_hp)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                ChannelSig,
-                bench_view_of_slots,
-                board_state_of,
-            )
-            _post_bench = list(
-                board_state_of(match.session).tracked_books.bench or [])
-            _inc_gold = None
-            if not total_xp_buy:
-                # 单区金真读(执行边界压缩·买后验证增量):本单元动作
-                # (无升级)只改 gold/bench。金读走稳定门(read_gold_settled)
-                # :关店帧入账计数器可能仍在跳,单帧会采到入账前旧值
-                #(误读维度造值;门=两帧一致才采信,不一致取末帧+留证)。
-                with contextlib.suppress(Exception):
-                    _inc_gold = read_gold_settled(op.ctx, op.screenshot())
-            if _inc_gold is not None and _post_bench:
-                _bs_post = board_state_of(match.session)
-                _sig_feed = ChannelSig(family='logic_action',
-                                       actor='CwScreenPrep',
-                                       group_id=(f'act:CwScreenPrep@'
-                                                 f'{_bs_post.write_seq + 1}'))
-                _bs_post.write_logic(_bs_post.gold, int(_inc_gold),
-                                     produced_by='CwScreenPrep',
-                                     evidence='post_buy_gold_close',
-                                     sig=_sig_feed)
-                _bs_post.write_logic(
-                    _bs_post.bench, bench_view_of_slots(_post_bench),
-                    produced_by='CwScreenPrep',
-                    evidence='post_buy_bench_tracked_replay',
-                    sig=_sig_feed)
-            else:
-                # fail-closed 回退:gold 失读 / tracked 空(真空与丢跟踪
-                # 不可区分,见构造点契约)= 全量干净备战基线读,容器喂入
-                # 由观察漏斗既有写端承接。
-                _ = read_game_state(op.ctx, op.screenshot(),
-                                    phase=PHASE_PREP_CLEAN,
-                                    screen_name=SCREEN_NAME)   # ADR-0462 关店后=干净备战基线
-            # finalize 同位暂存(ADR-0583 §3.3-③;写者 = 流程侧,§3.4 具名清单)。
-            # 帧代次标 `view` = 派生喂入(增量重播)重锚(容器化段 2:
-            # `state=_post` 帧替换随 state 槽退役消亡,标注写点保留)。
-            # 缺席守卫(方案审 L-b):外循环 0n 直入商店(接管/店已开路径,
-            # ADR-0562 入口)无 prep 黑板帧 → 显式跳过暂存,该窄窗 pick 退回
-            # 'none' 类(申报见 ADR-0583 §5.5-丁)。
-            _cur_frame = match.session.prep_obs_frame
-            if _cur_frame is not None:
-                match.session.prep_frame_class = 'view'
-    except Exception as e:   # noqa: BLE001  重估暂存失败不阻塞买牌
-        log.debug('[cw] 买后重估暂存失败(不阻塞): %s', e)
+    # (「买后重估容器喂入」残段已退役,2026-09-16 归因批确认流程:OpenShop
+    #  = 终结动作,执行完交回外循环,下一次备战访问的入口 heavy 观察必然
+    #  先于任何决策发生——它以真读覆盖容器并把帧类标 'full',本段喂入的
+    #  gold 真读写 / bench tracked 重播 / 'view' 标记三样全被覆盖,从不被
+    #  消费;且流程层散读屏幕违反 ADR-0517 唯一读屏点纪律。买后方向刷新
+    #  由入口观察链自然承载(r251 当年病灶的现役结构性替代)。金差值对拍
+    #  与期望态暂存两独立职责保留。)
     # `w536_merge_expect/`:单元购买意图 → 期望态,暂存 session 供 CwScreenPrep 主环在
     # 购买单元后的 heavy 定型帧上消费对账(surface='bench',
     # kind='buy_expect_mismatch';零决策记账)。含卖出/未识别牌不建
