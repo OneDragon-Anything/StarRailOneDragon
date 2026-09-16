@@ -102,4 +102,4 @@
 - `screens/prep.md`：对账边界节（挂起记账消费段拆除后的口径）← 3.2
 - `screens/plane_intel.md`：台账宿主注 ← 3.5
 - `screens/battle_wait.md`、`flow/projection_contract.md`：ExecState 符号锚清理 ← 3.6
-- 注释历史锚处置（attack [16] 清单）：mandate.py/shop.py/cw_screen_deploy.py/cw_screen_supply_node.py/cw_screen_encounter.py/cw_screen_invest_strategy.py/telemetry/schema.py 内 ExecState 字面注释锚 ← 3.6
+- 注释历史锚处置（attack [16] 清单 + T-3 移交）：mandate.py/shop.py/cw_screen_deploy.py/cw_screen_supply_node.py/cw_screen_encounter.py/cw_screen_invest_strategy.py/cw_screen_invest_env.py/telemetry/schema.py 内 ExecState 字面注释锚 ← 3.6
