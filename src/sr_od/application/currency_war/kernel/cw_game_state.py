@@ -2733,6 +2733,13 @@ class GameState:
     # 恰一次推进,先到腿越 hist 即推进,后到腿同序零推进。取值时机 = 派生
     # 写入期单调推进;None = 本 run 尚无派生推进。写端 = 派生规则。
     node_hist_ord: int | None = None
+    # [索引定义] boundary_settled_ord = 节点边界金结算水位:已完成 logic
+    # 结算的最大 effective_ord(坐标系同 node_hist_ord,(plane-1)*9+round
+    # 基 1)。取值时机 = 效果推进段 settle 返回后单调推进(written=True 或
+    # total<=0 落;金未读形态不落,下个入口帧重试);None = 本 run 尚无金
+    # 结算。写端 = 效果推进段(:func:`tick_effect_boundary`,接线位 =
+    # observe_screen_context 尾段)。
+    boundary_settled_ord: int | None = None
     # 段级时长锚(局终域 duration_s 自算源):容器创建时刻的 monotonic 读数
     #(每局新建 = 天然段起点;恢复局跨段 = 各段各锚,聚合归判读侧)。
     created_monotonic: float = 0.0
@@ -2895,6 +2902,7 @@ class GameState:
             'frame_obs': self.frame_obs,
             'write_seq': self.write_seq,
             'node_hist_ord': self.node_hist_ord,
+            'boundary_settled_ord': self.boundary_settled_ord,
             'bs_schema': dict(self.bs_schema),
         }
 
@@ -3244,6 +3252,80 @@ def _node_key_for_ord(ordinal: int, kind: str) -> NodeKey:
     return NodeKey(plane=(ordinal - 1) // 9 + 1,
                    round_num=(ordinal - 1) % 9 + 1,
                    kind=kind)
+
+
+def tick_effect_boundary(bs: GameState, *, prep_frame: bool) -> None:
+    """效果推进段(迁移迭代 changes/2026-09-15-effect-ledger-self-advance
+    design §2.1 a-f;接线位 = :meth:`observe_screen_context` 尾段,本函数
+    独立可调供直测/sim)。
+
+    - 推进闸:effective None → 整段跳过(「未观察不当真进节点」守卫,禁虚耗
+      余期/虚累余额);
+    - 账本推进(内置去重兜底同序幂等)→ 到期留证 → 刷新发放(advanced 位闸)
+      → 节点边界金结算(推进/结算双水位:仅 prep_frame ∧ effective > 水位;
+      参数源 = 派生序反解 + 镜像 kind;node/streak/settlement/killed 四守卫
+      任一不可知 = 静默跳过;金未读不落水位,下个入口帧重试)→ 容量重锚;
+    - 经济参数 = 容器直读 active_strategies(空/None → 聚合缺省);
+    - 异常边界:吞 Exception 记 warning 不上抛(不毒化派生链)。
+    """
+    try:
+        _tick_effect_boundary_impl(bs, prep_frame=prep_frame)
+    except Exception as e:   # noqa: BLE001  best-effort 不毒化派生链
+        log.warning(f'[cw][effect] 效果推进段失败(不阻塞): {e}')
+
+
+def _tick_effect_boundary_impl(bs: GameState, *, prep_frame: bool) -> None:
+    effective = effective_node_ord(bs)
+    if effective is None:
+        return
+    frame = f'p{(effective - 1) // 9 + 1}-r{(effective - 1) % 9 + 1}'
+    advanced, expired = bs.effects.advance_node(effective)
+    for _eff in expired:
+        log.warning('[cw!][effect] 效果到期移除:%s(尾款触发面;金面走观察覆盖兜底)',
+                    _eff.spec.name)
+    if advanced:
+        grant_effect_node_refresh_balance(bs, frame=frame)
+    if prep_frame and effective > (bs.boundary_settled_ord or 0):
+        _nd = bs.node.value
+        _st = bs.streak.value
+        _stl = bs.settlement.value
+        if (_nd is None or _st is None or _stl is None
+                or _stl.killed is not True or bs.gold.value is None):
+            # 守卫族(五条):前四条与现码闸一一对应(任一不可知 = 静默跳过);
+            # 金未读单独列出 = 水位必不动(settle 对金未读返回 written=False
+            # 且 total=0,与「无欠账」形态同形,不预判则误落水位 → 永久漏结)。
+            pass
+        else:
+            # 惰性取:cw_effect_inventory/cw_investments 反向依赖本模块,模块头
+            # 引入成环(段头注同纪律,settle 内部 round_start_income 同式)。
+            from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+                settle_node_boundary_gold,
+            )
+            from sr_od.application.currency_war.kernel.cw_investments import (
+                aggregate_economy,
+            )
+            _nk = _node_key_for_ord(effective, _nd.kind)
+            _agg = aggregate_economy(list(bs.active_strategies.value or []))
+            _nb = settle_node_boundary_gold(
+                bs,
+                plane=_nk.plane,
+                round_num=_nk.round_num,
+                node_type=_nd.kind,
+                streak=int(max(0, _st)),
+                win_reward_mult=_agg.win_reward_mult,
+                interest_flat=_agg.interest_flat_per_node,
+                interest_cap=_agg.interest_cap_override,
+                diamond_gold=0,
+                frame=frame,
+            )
+            if _nb.written or _nb.total <= 0:
+                bs.boundary_settled_ord = effective   # 金未读形态不落(重试)
+            if _nb.written:
+                log.info('[cw][effect] 节点边界金结算 logic 写入'
+                         '(branch=%s total=%s=收入%s+财富%s+宝钻%s)',
+                         _nb.branch, _nb.total, _nb.income_total,
+                         _nb.wealth_gold, _nb.diamond_gold)
+    project_effect_capacity(bs)
 
 
 def _write_derived_node_type(bs: GameState, kind: str, *, target_ord: int,
