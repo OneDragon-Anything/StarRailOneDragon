@@ -106,12 +106,6 @@ class ExecState:
     (发射连败)、节点/visit(防重入/期望覆盖)。
     """
 
-    # 腾席链 DeployMove 失败记忆(char_id → 失败计数)。拖拽被拒 → 跳过
-    # 重试同目标(拖失败不消费 bench,下轮还在)。局级。
-    deploy_fail_counts: dict = field(default_factory=dict)
-    # 装备拖拽失败记忆((装备名, 角色名) → 失败计数)。连续失败
-    # ≥2 次 = 该落点对拉黑。局级。
-    equip_drag_fail_counts: dict = field(default_factory=dict)
     # 巨星 handler 点击执行防重入。**必须局容器级**(防 new CwScreenMegastar
     # instance 重置 instance flag → re-click toggle 反选 → 卡死;落 op
     # 实例 = 每次新建实例清零 = 原始事故复发,session.md §2.4 B1 定案)。
@@ -169,8 +163,6 @@ class ExecState:
     #  ExpectedEntry 登记/覆盖点 diff 对账整套拆除;op 逻辑效果 =
     #  cw_expected_state.apply_op_effect 直接写 session 字段。)
     # 写端 = 画面 op/发射位,原挂 session 属历史宿主错位)——
-    # 补给绕行已完成(节点内一次性)。
-    _supply_detour_done: bool = False
     # 补给选定暂存(§3.4.5 chosen_supply 出口验真后写端的中转载体)。
     # 写点 = CwScreenSupplyNode._do_action 选定列确认时(真选分支;兜底
     # 点卡/刷新轮不写 = 真选守卫);清点 = 出口验真(标识-补给阶段消失)

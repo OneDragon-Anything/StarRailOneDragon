@@ -30,18 +30,14 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_equip_env import (
     classify_zero_wear_stop_reason,
 )
-from sr_od.application.currency_war.kernel.cw_equip_wear_plan import (  # noqa: F401
-    DRAG_FAIL_BLACKLIST_LIMIT,  # noqa: F401
+from sr_od.application.currency_war.kernel.cw_equip_wear_plan import (
+    FRONT_SLOT_COUNT as _FRONT_SLOT_COUNT,
+)
+from sr_od.application.currency_war.kernel.cw_equip_wear_plan import (
     EquipPlanBuild,  # noqa: F401
     EquipWearStep,
     _empty_slots,  # noqa: F401
     _prioritize_wearable,  # noqa: F401
-    equip_drag_key,
-    filter_alloc_blacklisted,  # noqa: F401
-    register_equip_drag_failure,  # noqa: F401
-)
-from sr_od.application.currency_war.kernel.cw_equip_wear_plan import (
-    FRONT_SLOT_COUNT as _FRONT_SLOT_COUNT,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
 from sr_od.application.currency_war.obs.currency_war_char_id import (

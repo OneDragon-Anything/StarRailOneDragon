@@ -1922,11 +1922,7 @@ def run_mandate(frame: MandateFrame,
         from sr_od.application.currency_war.kernel.cw_equip_wear_plan import (
             _build_equip_wear_plan,
         )
-        from sr_od.application.currency_war.kernel.cw_exec_state import (
-            exec_state_of as _exec_state_of,
-        )
-        _build = _build_equip_wear_plan(session, _exec_state_of(session),
-                                        registry)
+        _build = _build_equip_wear_plan(session, registry)
         if _build.fail_reason:
             # 资源前置缺失(黑板帧/装备观察域未就绪)= 未发出通道,闩不置,
             # 下帧重派(与组合壳时代 round_fail 同形)。

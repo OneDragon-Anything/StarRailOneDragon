@@ -8,10 +8,9 @@ unified-action-factory §2.6「穿装备:计划构造 = 现役 _build_equip_wear
 cw_op_equip_all.py``;``EquipWearStep`` 及拉黑/排序纯 helper 一并迁入
 (kernel 不得依 operations——依赖方向倒置是本次迁居的另一半动机)。
 
-**边界申报(批 2a)**:``_build_equip_wear_plan(session, exec_state,
-registry)`` 形参 = 决策链可达三件(黑板帧宿主 session / 拉黑计数宿主
-exec_state / 判据开关 registry),类型 Any(duck 型;kernel 零 app/
-context import)。
+**边界申报(批 2a)**:``_build_equip_wear_plan(session,
+registry)`` 形参 = 决策链可达两件(黑板帧宿主 session / 判据开关
+registry),类型 Any(duck 型;kernel 零 app/context import)。
 
 W880 装备环境信号「构造点唯一」契约维持:唯一构造点 = 本模块
 ``_build_equip_wear_plan``(求值块自 op 迁出后,一次打包传递)。
@@ -26,47 +25,9 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import (
     strategy_state_of,
 )
 
-# ===== 拖拽失败降级(复盘 g_20260902_181254 修复项 A;自 cw_op_equip_all 迁居)=====
-# 实证形态:同一(源件→目标)拖拽连败 4 轮,每轮整个装备步骤中止且无跨轮
-# 记忆。修法三件:失败计数登记(session 级,跨轮存活)→ 连败达限拉黑该
-# (件,角色)对;单件失败跳过继续穿下一件。
-DRAG_FAIL_BLACKLIST_LIMIT: int = 2   # 同一对连败达此次数 → 拉黑
-
 #: 前排槽位数(= screen_info 前排-1..4;deploy 侧同容量;原
 #: CwOpEquipAll.FRONT_SLOT_COUNT 迁居,计划面消费)。
 FRONT_SLOT_COUNT: int = 4
-
-
-def equip_drag_key(item_name: str, char_name: str) -> tuple[str, str]:
-    """装备拖拽失败记忆键(纯函数):(装备名, 角色名)。
-
-    粒度取「件×角色」而非「件×槽位」:角色在场槽位一轮内稳定,而
-    分配候选(alloc)只携带 角色+件名,槽位要到拖拽前才解析——键与
-    过滤面同构才能在 alloc 生成后立即过滤拉黑对。
-    """
-    return (item_name, char_name)
-
-
-def register_equip_drag_failure(counts: dict, key: tuple[str, str]) -> bool:
-    """登记一次拖拽失败 → 返回是否已达拉黑线(纯函数)。
-
-    ``counts`` = exec_state_of(session).equip_drag_fail_counts(局级持久,跨轮累积);
-    同一对达 ``DRAG_FAIL_BLACKLIST_LIMIT`` 后恒返回 True(幂等拉黑)。
-    """
-    counts[key] = counts.get(key, 0) + 1
-    return counts[key] >= DRAG_FAIL_BLACKLIST_LIMIT
-
-
-def filter_alloc_blacklisted(alloc: list, counts: dict) -> list:
-    """分配序列剔除已拉黑的(件→角色)对(纯函数)。
-
-    ``alloc`` 元素 = (角色名, 件名)(``equip_allocation`` 产出口径);
-    拉黑对按 ``equip_drag_key`` 命中且计数达 ``DRAG_FAIL_BLACKLIST_LIMIT``
-    才剔除——失败 1 次的对保留(补救链重试一次,再败才拉黑)。
-    """
-    return [pair for pair in alloc
-            if counts.get(equip_drag_key(pair[1], pair[0]), 0)
-            < DRAG_FAIL_BLACKLIST_LIMIT]
 
 
 def _empty_slots(occupied: dict[int, list[str]], count: int) -> list[int]:
@@ -150,8 +111,8 @@ class EquipPlanBuild:
     owned_wearable_names: list[str] = field(default_factory=list)
 
 
-def _build_equip_wear_plan(session: Any, exec_state: Any,
-                            registry: Any = None) -> EquipPlanBuild:
+def _build_equip_wear_plan(session: Any,
+                           registry: Any = None) -> EquipPlanBuild:
     """装备穿戴计划产出位(分发段;ADR-0601 §3-C1 计划随指令下发)。
 
     P4 观察接线:三路事实源 = **入口观察产物**
@@ -180,8 +141,8 @@ def _build_equip_wear_plan(session: Any, exec_state: Any,
     → fail_reason 通道(未发出,闩不置,下帧重派;资源缺失原因在采集层
     observe_full log 留证,此处 fail_reason 保留分键关键词)。
 
-    **签名边界(批 2a)**:形参 = (session, exec_state, registry)——原
-    ctx 鸭子形参收窄为决策链可达三件(session 黑板帧/exec_state 拉黑计数/
+    **签名边界(批 2a)**:形参 = (session, registry)——原
+    ctx 鸭子形参收窄为决策链可达两件(session 黑板帧/
     registry 判据开关),发射位(mandate M7)与执行位薄派发两调用面同参;
     形参类型 Any(duck 型,kernel 零 app import)。
     """
@@ -398,17 +359,6 @@ def _build_equip_wear_plan(session: Any, exec_state: Any,
             return EquipPlanBuild(
                 empty_reason=f'分配方案空:{_empty_reason}', branch='m7',
                 owned_wearable_names=wearable)
-        # 拖拽失败降级:剔除已拉黑(件→角色)对后再产计划步。过滤随产出位
-        # (读同一 exec_state.equip_drag_fail_counts;登记/键函数同模块)。
-        _fail_counts: dict = getattr(exec_state, 'equip_drag_fail_counts',
-                                     {}) or {}
-        alloc = filter_alloc_blacklisted(alloc, _fail_counts)
-        if not alloc:
-            log.info('[cw-equip] 分配对全部拉黑(拖拽连败)→ 计划空;'
-                     ' 拉黑集=%s', sorted(_fail_counts))
-            return EquipPlanBuild(
-                empty_reason='分配对全部拉黑(drag 连败)', branch='m7',
-                owned_wearable_names=[n for n, _ in wearable])
         # (row, slot) 戳记:alloc 对 → 计划步目标物理槽位。
         # 遍历序与执行位解析一致(deployed_by_name 首个静态可解析者);
         # 全部不可解析的对不入计划;计划 for 有界。
@@ -465,18 +415,6 @@ def _build_equip_wear_plan(session: Any, exec_state: Any,
     # comp 驱动穿戴(ADR-0101):优先穿 target_comp.key_equips 命脉件。
     _key_equips = (_tgt_comp.key_equips if _tgt_comp is not None else None)
     wearable = _prioritize_wearable(wearable, _key_equips)
-    # 拖拽失败降级:回退路径同主路径纪律——拉黑件不重试;回退路径无角色身份
-    # (拖点=空槽 avatar),拉黑键取 (件名, '')。
-    _fail_counts_fb: dict = getattr(exec_state, 'equip_drag_fail_counts',
-                                    {}) or {}
-    wearable = [(n, p) for n, p in wearable
-                if _fail_counts_fb.get(equip_drag_key(n, ''), 0)
-                < DRAG_FAIL_BLACKLIST_LIMIT]
-    if not wearable:
-        log.info('[cw-equip] 回退路径候选全拉黑 → 计划空')
-        return EquipPlanBuild(
-            empty_reason='分配对全部拉黑(drag 连败)',
-            branch='front_only', owned_wearable_names=[])
     # 排序后候选 × 空槽序 zip(产出期快照;中途合成耗件 → 计划步定位
     # miss → 计划失效 fail-fast,与 M7 主路径同一失效通道)。
     steps_fb: list = []
