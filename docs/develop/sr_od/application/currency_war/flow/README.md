@@ -21,13 +21,16 @@
 │ →期望态计算→执行→逻辑态直写(零读屏);终结 op 交回外循环      │
 │ 商店编排（_open_shop_phase：开店→单动作循环→关店→finalize→节点探针）│
 ├─ 策略步进（mandate_v1：bridge.py 决策入口 + entry.py 三遍编排）┤
-│ 备战决策 live 链 = bridge.decide_prep_screen → decide_from_turn   │
-│   → entry.emit（①prep实体面→②证明→③升档器→④骨架M1-M7→⑤EV→       │
-│   ⑥无动作⇒StartBattle，自有动作词表,单动作循环逐帧恰取    │
-│   一个动作(接口返回 CwAction | None,None = 本帧无动作);商店  │
-│   决策 = decide_shop_action 单动作接口;flow.py 旧备战骨架    │
-│   （相位机/腾席链等 10 方法+session 字段）已删（考古走 git 历史）│
-│   pick 族 9 接口与冷建/结算收编仍由 flow.py 中间 ABC 承载│
+│ 备战决策 live 链 = bridge.decide_prep_screen：方向代次消费 →      │
+│   前置发射位 _launch_front_check(armed 帧短路 return,短路帧不披   │
+│   露) → 披露 economy_cycle.disclose_budget(非 armed 帧才到达) →   │
+│   decide_prep_frame → entry.emit（①prep实体面→②证明→③升档器→     │
+│   ④骨架M1-M7→⑤EV→⑥无动作⇒StartBattle，自有动作词表,     │
+│   单动作循环逐帧恰取一个动作(接口返回 CwAction | None,    │
+│   None = 本帧无动作);商店决策 = decide_shop_action 单动作   │
+│   接口;flow.py 旧备战骨架（相位机/腾席链等 10 方法+session  │
+│   字段）已删（考古走 git 历史）;pick 族 9 接口与冷建/结算   │
+│   收编仍由 flow.py 中间 ABC 承载│
 ├─ 动作执行（kernel/cw_vocab.py 词表 + prep_actions.py 执行器│
 │ + cw_screen_buy_cards.py 循环壳 + cw_action_registry.py 单一注册表  │
  │ (cw_<action>_action.py 一 op 一文件;守卫 cw_shop_action_ops.py)  │
@@ -89,8 +92,8 @@
 
 ### 2.3 装配与依赖矩阵（吸收原 09 §4）
 
-- **依赖方向**：实现包 → 知识层/数学层/执行层单向；分包依赖矩阵禁 decision→obs 直依（obs 读口经 app 桶装配点 `install_obs_ports()` 注入）；决策本体 = 纯函数（bridge.decide_from_turn），装配链由注册桥壳覆写注入（app 桶）。
-- **装配点**：obs→Snapshot 装配半部在 app 桶（decision_assembly）；黑板单一写端纪律保持；`_RESET_PHASE_ROUND_CACHE` 注入槽（缺省关）+ `discard_stale_match_container`（异常路径残留容器弃置——session 全量重建 by construction）。
+- **依赖方向**：实现包 → 知识层/数学层/执行层单向；分包依赖矩阵禁 decision→obs 直依（obs 读口经 app 桶装配点 `install_obs_ports()` 注入）；决策本体 = 纯函数（bridge.decide_prep_frame，决策输入 = obs（黑板）+ session 容器直读）。
+- **装配点**：黑板单一写端纪律保持；`_RESET_PHASE_ROUND_CACHE` 注入槽（缺省关）+ `discard_stale_match_container`（异常路径残留容器弃置——session 全量重建 by construction）。
 - **gated_hp**（结算 HP 新鲜度门，单一实现的 helper，符号锚见代码）：结算真值仅在可信窗口内覆盖现读——观测质量门，非决策输入（`../strategy-docs/04_survival_budget.md` §7 表 #6）。
 - **sim 消费面注记**:sim 消费 decide_shop_screen 驱动器(方向重估经驱动器内单动作入口消费 full 帧触发)——sim A/B 的证明面 = 商店波经济决策;prep 屏编排域在 sim 无实体真值源,其正确性防线 = 契约锁 + 适配器零漂移门 + 实机,不在 sim A/B 辖内。
 
@@ -113,7 +116,7 @@
 | [../screens/op-layer.md](../screens/op-layer.md) | **画面 op 层设计**（行为规范+基类机制+obs 工具箱+并存期纪律）——单动作决策循环、execute 单方法、对账边界、终结动作集、五段生命周期 |
 | [../screens/](../screens/README.md) | **画面 op 各篇（一画面一文档）**：备战（prep）/商店（shop）/单选族/弹窗族/推进族——能力矩阵与画面文档模板在其 README |
 | [action_exec.md](action_exec.md) | 动作执行：词表与注册表、执行契约（无成败回执）、落地登记、商店/备战/部署执行要点、重试语义 |
-| [projection_contract.md](projection_contract.md) | 备战逻辑态面交互契约：状态面板/TurnState 视图 ↔ 执行臂的字段消费、坐标系、快照 vs 现读时序、注释规范缺口登记 |
+| [projection_contract.md](projection_contract.md) | 备战逻辑态面交互契约：状态面板/观察帧 ↔ 执行臂的字段消费、坐标系、快照 vs 现读时序、注释规范缺口登记 |
 | [guards.md](guards.md) | 守卫总册：外环通用网、未知兜底、未识别卡停机、降级链(停滞判读归事件哨兵 cw_sentinel.py,住 skill scripts/) |
 
 ## 4. 守卫总览（细则 = guards.md）
