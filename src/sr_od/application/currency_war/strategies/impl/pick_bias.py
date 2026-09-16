@@ -10,6 +10,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    board_state_of,
+)
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
     StrategySession,
 )
@@ -36,7 +39,8 @@ PICK_BIAS = PickBiasTable()
 def effect_pick_bias(session: StrategySession, option_name: str) -> float:
     """EffectSpec → 拍值偏置通道(方向层消费接入;R5 消费面)。
 
-    - 输入 = session.effect_inventory 在场效果条目;按条目 spec 的
+    - 输入 = GameState.effects 在场效果条目(board_state_of(session).effects,
+      单一实例正本);按条目 spec 的
       ``notes`` 声明偏置选项名(平表外挂,数值随实采/sim 标定批填,
       **缺省 0 = 无偏置**,不猜值——strategy-work「决策规则数学先行」门);
     - 战场族(BATTLEFIELD category)推迟:战场改写类偏置语义待执行预判批
@@ -45,9 +49,7 @@ def effect_pick_bias(session: StrategySession, option_name: str) -> float:
       inventory 契约)。
     """
     del option_name   # 通道预留:选项名级偏置随标定批启用(当前 spec 级=0)
-    inv = getattr(session, 'effect_inventory', None)
-    if inv is None:
-        return 0.0
+    inv = board_state_of(session).effects
     bias = 0.0
     for entry in getattr(inv, 'entries', ()):
         spec = getattr(entry, 'spec', None)

@@ -25,9 +25,6 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_effect_inventory import (
-    ActiveEffectInventory,
-)
 from sr_od.application.currency_war.kernel.cw_performance import (
     PerformanceTracker,
     RoundOutcome,
@@ -235,18 +232,3 @@ class StrategySession:
     # 不炸构造与 create_session」,不承诺框架行为面读点容忍 None 态——
     # None 契约与调用方前提见 strategy_state_of docstring/ADR-0563)。
     strategy_state: object = None
-
-    # ---- 在场效果账本兼容读口(迁移批次三载体归一,设计 §5.1/§8.4)----
-    # 正本 = ``GameState.effects``(§8.4 单例字段;session 旁表同局同实例)。
-    # 历史字段本体已从本类移除——原 ``session.effect_inventory`` 独立实例
-    # 与 GameState.effects 并存即双账本漂移面,归一后本属性只读透传,
-    # 既有写点(prep_actions 升级标记)与读点(pick_bias)经属性零改动
-    # 兼容。禁赋值(无 setter):账本写入一律经 inventory 方法
-    # (register/tick/bump/consume_use/on_*),直挂实例 = 绕过单一实例。
-    @property
-    def effect_inventory(self) -> ActiveEffectInventory:
-        """在场效果清单兼容读口(正本 = GameState.effects,§5.1/§8.4)。"""
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of,
-        )
-        return board_state_of(self).effects

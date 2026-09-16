@@ -69,7 +69,10 @@ class PrepLevelUpOp(ActionOp):
         # W612 挂点A(升级事件;发出即登记,观测 best-effort,零决策语义)。
         try:
             if session is not None:
-                session.effect_inventory.on_level_up()
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    board_state_of,
+                )
+                board_state_of(session).effects.on_level_up()
         except Exception as e:   # noqa: BLE001  观测失败不阻塞对局
             log.warning('[cw][levelup] effect inventory 挂点失败(不阻塞): %s', e)
         detail = (f'买经验单击 1 击花金{_price}'

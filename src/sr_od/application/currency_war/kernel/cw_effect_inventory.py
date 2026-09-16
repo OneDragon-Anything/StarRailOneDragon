@@ -192,11 +192,11 @@ class ActiveEffect:
 
 
 class ActiveEffectInventory:
-    """session 级在场效果清单。纯数据 + 读端/追踪端;零 import 包内模块(可离线单测)。
+    """在场效果清单(宿主 = GameState.effects)。纯数据 + 读端/追踪端;零 import 包内模块(可离线单测)。
 
     写端(挂点)生产接线(迁移批次三,设计 §5.1/§8.7 批次三;单一实例 =
-    GameState.effects,session.effect_inventory 为其兼容读口——载体归一
-    防双账本):选卡登记 = CwScreenInvestStrategy 确认落地(免战牌同点
+    GameState.effects,session 无独立字段——历史兼容读口 property 已撤,
+    写读直经 board_state_of(session).effects,载体归一防双账本):选卡登记 = CwScreenInvestStrategy 确认落地(免战牌同点
     自动登记);节点 tick = cw_loop 备战分支(进节点边界);计数 bump =
     cw_op_buy_cards 执行落地门(刷新/购买);跳过递减 = kernel
     cw_exec_state.apply_op_effect 上报路径(StartBattleOp 跳过子态经

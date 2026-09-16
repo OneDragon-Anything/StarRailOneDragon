@@ -552,7 +552,10 @@ class CwScreenBattleWait(CwScreenOpBase):
                 # 生效。best-effort 同升级标记挂点纪律(prep_actions 升级标记
                 # 先例:观测失败不阻塞结算链)。
                 try:
-                    _session.effect_inventory.on_battle_end()
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
+                        board_state_of,
+                    )
+                    board_state_of(_session).effects.on_battle_end()
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] effect inventory 结算挂点失败'
                                 '(不阻塞): %s', e)

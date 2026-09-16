@@ -54,7 +54,7 @@
 - **节点类型**:结算屏权威 > session 节点探针值 > 槽序表兜底(`_node_type_from_table`);词汇表统一 = `_normalize_node_type`。
 - **killed 兜底链**:进度符号(`progress_delta > 0`)优先;hp 对比兜底(置信 ≥0.9 ∧ 轮次邻接门,时基 = `kernel/cw_plane_table.py::node_t_of`)。
 - **遭遇选档观测面**(环写位):`_cw_selection_write` → `kernel/cw_encounter_selection.py::record_settlement_row`(残留行不入环;telemetry-only 面 `killed` 非显式败局行抑制不入环);对账落盘 hook `_cw_selection_capture`(缺省关,启用点 = 标定采集显式接通)。
-- **效果账本结算挂点**:`session.effect_inventory.on_battle_end()`(现役注册表零 BATTLE_END 条目 = 行为面仅事件计数)+ 拷贝仪参与计数 `kernel/cw_effect_inventory.py::settle_copy_machine_participation`(成熟入席落日志)。各独立 best-effort 异常域,失败不阻塞结算链。
+- **效果账本结算挂点**:`board_state_of(session).effects.on_battle_end()`(现役注册表零 BATTLE_END 条目 = 行为面仅事件计数)+ 拷贝仪参与计数 `kernel/cw_effect_inventory.py::settle_copy_machine_participation`(成熟入席落日志)。各独立 best-effort 异常域,失败不阻塞结算链。
 - **页1 暂存合并**:进度/三项遥测暂存在页2 记录时合并消费(暂存值优先于页2 同帧读数;跨窗滞留即弃,防上一场污染下一场)。
 
 ## 7. 子态与 overlay
