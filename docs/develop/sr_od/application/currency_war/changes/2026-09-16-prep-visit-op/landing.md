@@ -16,22 +16,22 @@
 **验收凭据形式**：审计清单 + 测试名 + ruff。
 
 ## 3.2 策略发射位（发射决策入 mandate_v1，简单实现）
-**范围**：mandate decide 入口新增前置发射位（骨架 pass 之前，直线判定）：消费 kernel `readiness_launch_decision` → armed ∧ 金 > 息线 → 产出受限商店访问意图序（OpenShop 携预算闸）；armed ∧ 金 ≤ 息线 → 产出 StartBattle 终点意图；非 armed → 原三遍编排零变化。边界：不重构三遍化结构；`cw_launch_admission` 不动。
+**范围**：mandate 决策入口三遍编排函数（entry.py）入口最前新增前置发射位（直线判定）：消费 kernel `readiness_launch_decision` → armed ∧ `in_launch_spend_zone` 命中 → 产出受限商店访问意图（OpenShop 扩展受限字段）；armed ∧ 未命中 → 产出 StartBattle 终点意图；非 armed → 原三遍编排零变化。边界：不重构三遍化结构；`cw_launch_admission` 不动。
 **设计依据**：design.md §2 方案 3。
 **文件面**：`src/sr_od/application/currency_war/strategies/impl/mandate_v1/`（entry/mandate 任一契合位）；`sr-od-test/test/sr_od/app/currency_war/`（单帧锁随迁）。
 **依赖**：无（与 3.1 并行可行）。
 **优先级建议**：5
 **完成判据**：
 - 单帧锁：armed 帧 → StartBattle 意图（14_p1 §7.2 达标臂锁组 W2-① 随迁新载体）；armed ∧ gate 命中帧 → 受限访问意图（非发射）；非 armed 帧 → 意图序与迁移前逐项一致（W2-① 非达标帧零变化锁随迁）；
-- 仲裁判定直调 kernel `launch_arbitration_gate`（grep 禁内联金息线比较）；受限访问每武装段恰一次、段内已访问次帧无条件发射；访问意图走既有 OpenShop 节流与 S1 闩；
-- 遥测分键族随迁写点就位（launch_arbitrage_*/readiness_*/质量闸 sink，键名语义不变）；
+- 帧级金判定直调 kernel `in_launch_spend_zone`（grep 禁内联息线比较与 launch_arbitration_gate 误用）；每武装段至多一次（段旗 = StrategySession 字段，失武装复位，复位后再武装允许新段再访）；访问意图不经 S1 闩与 OpenShop 节流；
+- 遥测：策略宿主键写点就位（执行器宿主键归 3.1；KEY_PRECHECK_SKIP/KEY_ABANDONED_LAUNCH 退役申报）；
 - 息线值源 = kernel 派生（断言经 cw_economy 读口，非手写常数——零调参纪律）；
 - 全量 CW 测试绿（含 mandate 既有锁组）；
 - §12 通用工程门（引用，不复述）。
 **验收凭据形式**：单帧锁名 + ruff。
 
 ## 3.3 op 接管 + cw_loop 备战分支收敛（原子切换，同一提交）
-**范围**：达标臂四段从 cw_loop 备战分支退役（判定消费随 3.2 入策略；浮层闸由 op 清场职责 + 零判效重判承载；仲裁由 3.2 意图序承载）；受限商店访问执行按意图预算闸接入；交回契约落地（`launch_fired` + loop 战斗窗置位改读契约）；`_prep_anchors_hit` 仲裁预检退役（双锚守卫由 op 入口承接）。边界：恢复局面直通形态不变（调统一执行器）、`cw_launch_admission` 不动。
+**范围**：达标臂四段从 cw_loop 备战分支退役（判定消费随 3.2 入策略；浮层闸整建制内嵌统一执行器（捕获面原样）；仲裁由 3.2 意图序承载）；受限商店访问执行按意图预算闸接入；交回契约落地（`launch_fired` + loop 战斗窗置位改读契约）；`_prep_anchors_hit` 仲裁预检退役（双锚守卫由 op 入口承接）。边界：恢复局面直通形态不变（调统一执行器）、`cw_launch_admission` 不动。
 **设计依据**：design.md §2 方案 1/4/5、行为变化申报四条、接口契约。
 **文件面**：`src/sr_od/application/currency_war/operations/cw_loop.py`；`src/sr_od/application/currency_war/operations/cw_screen/cw_screen_prep.py`；相关测试。
 **依赖**：3.1、3.2
@@ -58,7 +58,10 @@
 - `flow/outer_loop.md`：§3 进入序收敛（达标臂行删除，改「派发备战访问 op + 交回契约置战斗窗」短行；发射决策指针 → 策略层前置发射位）← 3.3
 - `strategy-docs/26_battle_settlement.md`：「发射帧受限消费仲裁归流程层」改写为「发射决策 = mandate_v1 前置发射位（仲裁意图序），受限访问执行 = 备战访问 op」← 3.3
 - `strategy-docs/14_p1_consume_arms.md`：§9.6 发射位宿主注记（cw_loop → mandate_v1 前置发射位 + 备战访问 op 执行；C1 执行器合一后单一执行路符号）← 3.3
-- `game_state/logic-updates/start-battle.md`：执行器行（合一后统一执行器符号）+ 战斗窗置位通道（交回契约）← 3.3
+- `game_state/logic-updates/start-battle.md`：执行器行（合一后统一执行器符号）+ §1 漂移文本修正（T-286 后失败语义实况）+ 战斗窗置位通道（交回契约）← 3.3
+- 遥测分键面：launch_arbitrage_*/readiness_* 写点宿主与退役键申报 ← 3.3
+- `screens/shop.md`：spend_gate 行（受限访问按意图预算闸执行）← 3.3
+- `flow/session.md` 载体表：op='发射帧仲裁商店访问' 第三载体行口径 ← 3.3
 - `screens/op-layer.md`：五段生命周期 decide 段补注（发射决策 = mandate_v1 前置发射位，CwScreenPrep 决策面收编）← 3.3
 - `flow/session.md` 载体表：op='发射帧仲裁商店访问' 第三载体行口径（出口改 op 内受限访问处）← 3.3
 - `screens/shop.md`：spend_gate 行（受限访问按意图预算闸执行）← 3.3
