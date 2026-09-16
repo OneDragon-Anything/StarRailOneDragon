@@ -14,7 +14,7 @@
 - **持卡局观察键口径注**:`_obs_refresh_avail`(账本 obs.refresh_avail_frames)与 checks/segments 检查器的息线仍按注册表基础息线 50——持息帽卡局(买断制/开源节流/利息上调)的决策口径按 resolved 链(g\*=0/90/100),这些键的读数与决策口径**分叉**;A/B 判读消费它们前先核当批持卡构成,禁直接当「刷新可用性」跨臂对读。
 - **coarse 战斗结算对板深/等级零敏感,A/B 禁消费该面(2026-09-09 在册裁定)**:coarse 两态模型(战斗类节点 battle/encounter/boss 的 sim 结算引擎,单一源 `cw_coarse_battle`)只按成型度 rung 查胜率表与伤害直方——板深/等级不进结算键。A/B 两臂若只在板深/等级维度不同,战斗结算面读数恒同:该面上的任何「有差异/无差异」都不是策略效应,禁据此下结论;涉板深/等级的命题以实机 A/B 为准。
 - **hp/掉血类指标校准前禁作 A/B 判据(2026-09-09 在册裁定,与金类指标同族——金类侧同款条目 = 「出口金校准前不作 A/B 判据」,载体 = docs/develop/sr_od/application/currency_war/proofs/p86-no-target-period-fund-allocation.md §5.1 键③,出处 T-169 纪律)**:sim 的 hp/掉血读数(出口 hp、hp≤20 低尾占比、单轮掉血等)依赖战斗结算校准,该维有已知失真(实证:出口 hp≤20 占比跨批同量级 12.7-14.7%,但 R9 单轮掉血中位 −34,且按板深四分位分组组间零敏感 = ±2 深度桶测不出)。校准补齐前这类指标只作报警线/观察面,禁当 A/B 判据;涉 hp 的结论以实机为准。
-- **重放 = seed + 池指纹(缺一不可)**:`$env:PYTHONPATH='src'; uv run python -m sr_od.application.currency_war.sim.runner replay --seed N --pool snapshot --expect-fingerprint <指纹>`(模块 CLI 的 prog 名显示为 cw_sim;仓内无独立 cw_sim 命令/模块);跨日对照必核 `pool_fingerprint` 一致(批 `manifest.json` 的 `pool_fingerprint` 键);校准数据缺源大声报错(静默回退=假信心);sim 批绝不写生产 replay 目录。
+- **重放/批跑通道已随 sim-redesign 删除（2026-09-15；`sim.runner` 无当期替代——现 sim 为库形态 `cw_sim_engine.simulate_run` 策略注入式，`cw_replay` 是历史局 journal 重放、非 sim seed 重放）**：批 `manifest.json` 的 `pool_fingerprint` 仍是对账键，跨日对照必核一致；校准数据缺源大声报错（静默回退=假信心）；sim 批绝不写生产 replay 目录；批跑/重放工具候补期间 A/B 挂起（strategy-work「验证」）。
 
 ## 种子段分配纪律(并行批派发)
 
@@ -33,4 +33,4 @@
 从第 1 步的指标里筛出表现不好的(怎么筛不规定:与设计预期对照、与历史批/同批分布比,哪种都行)。
 
 ### 3. 挑一局复盘——归因到决策
-对表现不好的指标,拿体现它最重的那一局做复盘(脚本按指标点名最差局):sim 局=批次目录里该局的记录,实机局=对局档案;按 match-review.md 复盘协议读,带上面边界——sim 边界造成的现象不立为策略病灶。sim 局直查 = 批目录(缺省 `.debug/currency_war/telemetry/sim/<批名>/`)内 `decisions.jsonl` 行行自足直读(联接键 run_id+round_num)——sim 批无判读 CLI 视图入口(`--sim-batch` 已随统一账迁移退役,仓内亦无 cw_telemetry/cw_sim 独立命令,别手搓脚本)。复盘骨架与可疑项预填生成器(前置 `$env:PYTHONPATH='src'`):`uv run python tools/cw/review_skeleton.py --decisions <批目录>/decisions.jsonl [--run-id <局id>]`(跑 sim/checks/suspects.py 检测器集全量,清单以该文件 `_SUSPECT_DETECTORS` 注册表为准;条目嵌对应节点小节判定三槽前)。要逐轮决策表还可用重放:`python -m sr_od.application.currency_war.sim.runner replay --seed <该局seed> --pool snapshot --expect-fingerprint <批指纹>`(形态见上「重放」条)。
+对表现不好的指标,拿体现它最重的那一局做复盘(脚本按指标点名最差局):sim 局=批次目录里该局的记录,实机局=对局档案;按 match-review.md 复盘协议读,带上面边界——sim 边界造成的现象不立为策略病灶。sim 局直查 = 批目录(缺省 `.debug/currency_war/telemetry/sim/<批名>/`)内 `decisions.jsonl` 行行自足直读(联接键 run_id+round_num)——sim 批无判读 CLI 视图入口(`--sim-batch` 已随统一账迁移退役,仓内亦无 cw_telemetry/cw_sim 独立命令,别手搓脚本)。复盘骨架与可疑项预填生成器(前置 `$env:PYTHONPATH='src'`):`uv run python tools/cw/review_skeleton.py --decisions <批目录>/decisions.jsonl [--run-id <局id>]`(跑 sim/checks/suspects.py 检测器集全量,清单以该文件 `_SUSPECT_DETECTORS` 注册表为准;条目嵌对应节点小节判定三槽前)。逐轮决策表直读批目录 `decisions.jsonl` 即可(重放/批跑通道已删,见「先知道边界」末条)。
