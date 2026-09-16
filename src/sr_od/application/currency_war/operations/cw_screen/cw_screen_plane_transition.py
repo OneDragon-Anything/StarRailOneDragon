@@ -90,6 +90,12 @@ def _write_transition_node_chain(session: object, slots: list | None) -> None:
         if opening and bs.node_path_baseline.value is None:
             bs.observe(bs.node_path_baseline, chain,
                        evidence='transition_row', sig=sig)
+        # 链 diff 触发:离场快照豁免两帧门(单帧即终审,链正本 §4)
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            maybe_emit_chain_diff,
+        )
+        maybe_emit_chain_diff(bs, snapshot=True, in_mutation_window=False,
+                              sig=sig)
     except Exception:   # noqa: BLE001  观测写点 best-effort,不阻塞点击推进
         pass
 

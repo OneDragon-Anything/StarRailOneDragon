@@ -3376,10 +3376,12 @@ def _write_prep_node_chain(session: object, slots: list | None,
         from sr_od.application.currency_war.kernel.cw_game_state import (
             NodeChain,
             TokenCell,
+            maybe_emit_chain_diff,
         )
         from sr_od.application.currency_war.obs.cw_node_reader import (
             HU_DIST_UNRECOGNIZED,
         )
+        import time as _diff_time
         bs = board_state_of(session)
         nd = bs.node.value
         if nd is None or not nd.round_num:
@@ -3420,8 +3422,13 @@ def _write_prep_node_chain(session: object, slots: list | None,
             bs.observe(bs.node_path_baseline, chain,
                        evidence='prep_row_first', sig=sig)
         ledger = get_node_ledger(session)
+        was_open = (ledger is not None
+                    and ledger.env_grace_until > _diff_time.monotonic())
         if ledger is not None:
             ledger.env_grace_until = 0.0
+        # 链 diff 触发(窗内豁免清候选,窗关后按两帧确认补比对)
+        maybe_emit_chain_diff(bs, snapshot=False,
+                              in_mutation_window=was_open, sig=sig)
     except Exception:   # noqa: BLE001  观测写点 best-effort,不阻塞观察链
         pass
 
