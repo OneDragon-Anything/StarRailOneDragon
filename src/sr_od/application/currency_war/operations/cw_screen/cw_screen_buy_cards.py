@@ -17,7 +17,6 @@ from sr_od.application.currency_war.cw_game_ports import (
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     bench_occupied,
     exec_state_of,
-    ledger_node_type,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     board_state_of,
@@ -936,41 +935,12 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # (hp 三件组覆盖随黑板帧退役删除——迁移批 3.2,波 4 步 4 同款结论:
         #  容器 hp 由备战帧观察/结算既有写端承接,消费统一经 decision_hp,
         #  覆盖回写 = 绕行;传参链同批移除。)
-        # 店开帧节点行被遮 node_type 恒 None → 查位面节点序列台账(键 =
-        # 本帧 phase_round 现读的 (plane, round),写入端=位面详情采集/投资
-        # 环境后重读,结构上不可能滞后)。ADR-0587:旧实现无条件拷
-        # session.last_node_type,该值唯一写点(备战环 heavy 观察)节拍天然
-        # 晚于本轮店开,拷到的恒为上一轮值——曾以滞后奖励值误开 ②(b) 并
-        # 误抑制 M3 升级。查不到(台账缺档/续局未随局建/位次越界)→ 保持
-        # None fail-open:②(b) 不发射(ADR-0580 None 语义),死金域义务由
-        # 节点无关的 ②(a) 备战凑息承载;禁再退回 last_node_type 滞后拷贝
-        # (连续硬节点段靠它侥幸开门的形态=有意变 None 关门,ADR-0587)。
-        # (迁移批 3.2:回填随黑板帧退役改容器直写 write_logic(logic 通道,
-        # evidence=node_ledger_backfill)——漏斗已按 kind 继承写 node,本写
-        # 以台账权威值覆盖;下一备战帧真读观察赢,§2.3。)
-        _ledger_node = ledger_node_type(match.session, _entry.plane,
-                                        _entry.round_num)
-        if _ledger_node is not None:
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                ChannelSig as _LedgerSig,
-            )
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                NodeKey as _LedgerKey,
-            )
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of as _bs_of_ledger,
-            )
-            _bs_lg = _bs_of_ledger(match.session)
-            _bs_lg.write_logic(
-                _bs_lg.node,
-                _LedgerKey(plane=int(_entry.plane),
-                           round_num=int(_entry.round_num),
-                           kind=str(_ledger_node)),
-                produced_by='CwScreenBuyCards', evidence='node_ledger_backfill',
-                sig=_LedgerSig(family='logic_action', actor='CwScreenBuyCards',
-                               mode='compute',
-                               group_id=(f'act:CwScreenBuyCards@'
-                                         f'{_bs_lg.write_seq + 1}')))
+        # 节点类型来源 = 派生管线四②「商店查现行链」(kernel 派生步在店开
+        # 上下文写入时自查链直定 node.kind,链观察落地批接线)。本处的台账
+        # 回填写端(node_ledger_backfill)已随之退役——它以 logic 通道覆盖
+        # 会吞掉派生层的观察对账,且属流程层散写。ADR-0587 滞后拷贝禁令
+        #(禁退回 last_node_type)继续有效,由查链零内建回落语义承接:
+        # 链缺位 = kind None → ②(b) 不发射,同 None fail-open 语义。
         # (frame.dual_track_phase/focus_factions 回填点已随 last_state 链
         #  退役批删除(T-166 对账表 E 类行 30/31 兑现):决策读端 =
         #  committed_from(session) 派生与 StrategyState 真家,帧字段无

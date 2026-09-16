@@ -169,6 +169,11 @@ _PAYLOAD_DOMAINS: frozenset[str] = frozenset({'shop', 'encounter', 'supply'})
 #: 干净备战帧画面标识(画面建档 screen_name;备战腿触发面)。
 SCREEN_PREP_FRAME: str = '货币战争-备战'
 
+#: 商店面板块画面标识(弹窗族成员;节点类型「未定型」零直定——商店对任意
+#: 节点类型都开,类型来源 = 类型派生四②「商店查现行链」,链观察落地批
+#: 2026-09-16 接线)。
+SCREEN_SHOP_PANEL: str = '货币战争-备战-开商店'
+
 #: 弹窗族清单(R1 §3.4.1 规则一;成员照搬判定方案 R3 §3.3 规则一四类:
 #: 遭遇/投资策略/补给/商店面板——「按下一节点类型自动弹」中有独立分发分支
 #: 的四类;巨星/祈愿非节点边界标记不入清单,R3 §5-③.1 残留申报)。
@@ -176,7 +181,7 @@ SCREEN_CONTEXT_POPUP_FAMILY: frozenset[str] = frozenset({
     '货币战争-遭遇节点',
     '货币战争-投资策略',
     '货币战争-补给',
-    '货币战争-备战-开商店',
+    SCREEN_SHOP_PANEL,
 })
 
 #: 弹窗腿守卫集(§3.4.1 规则四;语义 = 「本节点备战帧未被分派过」的画面侧
@@ -220,9 +225,9 @@ SCREEN_BOSS_BRIEFING: str = '货币战争-BOSS简报'
 #: 类型派生·专属画面直定映射(§3.4.1 类型派生;键 = 画面标识,值 = 节点
 #: 类型 token)。值词表与备战帧链读链(obs ``_NODE_TYPE_KEYWORDS``)及 sim
 #: 引擎类型池同源,禁新造 token。**商店面板块不入本映射**——商店对任意
-#: 节点类型都开(非专属)→ 类型「未定型」零直定写;查现行链按件 B 设计
-#: v1.1 §3.4 ``chain_node_type`` 语义预留(:func:`chain_node_type`),查链
-#: 接线归件 B 实施批。目标节点坐标系 = 专属屏所属节点(弹窗族屏 = 即将
+#: 节点类型都开(非专属)→ 类型「未定型」零直定写;其类型来源 = 规则四②
+#: 「商店查现行链」(:func:`chain_node_type`,链观察落地批接线,见派生步
+#: 商店分支)。目标节点坐标系 = 专属屏所属节点(弹窗族屏 = 即将
 #: 进入的节点,0p = 简报所报的下一节点)。
 SCREEN_NODE_TYPE_DIRECT: dict[str, str] = {
     SCREEN_BOSS_BRIEFING: 'boss',
@@ -3171,6 +3176,22 @@ class GameState:
                 self, _direct_kind, target_ord=self.node_hist_ord,
                 actor='derive_node_type',
                 trigger_screen=screen_name, seq=seq)
+        elif screen_name == SCREEN_SHOP_PANEL:
+            # 规则四②·商店查现行链(链观察落地批):商店对任意节点类型
+            # 都开(非专属,不入直定映射)→ 类型查现行链——链在位 = 直定写
+            # (actor 同族),链缺/位越界/未辨 = 零写(禁猜,链正本 §6 零
+            # 内建回落)。目标节点 = 刚推进的 hist 反解(弹窗屏属即将进入
+            # 的节点,仿 :func:`_derive_node_plane_transition` 位面反解式)。
+            if self.node_hist_ord is not None:
+                _hist = self.node_hist_ord
+                _shop_plane = (_hist - 1) // 9 + 1
+                _shop_round = (_hist - 1) % 9 + 1
+                _chain_q = chain_node_type(self, _shop_plane, _shop_round)
+                if _chain_q.token is not None:
+                    _write_derived_node_type(
+                        self, _chain_q.token, target_ord=_hist,
+                        actor='derive_node_type',
+                        trigger_screen=screen_name, seq=seq)
         # —— 效果推进段(迁移迭代 design §2.1;管线尾段同临界区)。prep_frame 闸
         # = 备战帧:金结算仅备战帧触发,0q/0p/弹窗推进帧递延(攻击 F1 错窗防护;
         # 补给节点无备战帧,其轮首收入由下一备战帧观察直接捕获,用户裁定)。

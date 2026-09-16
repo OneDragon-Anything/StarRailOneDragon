@@ -441,47 +441,10 @@ class CwScreenInvestEnv(CwScreenOpBase):
         self._confirm_pending = True
         _result = emit_overlay_confirm(self, confirm_point=_confirm, entry_keyword='投资环境',
                                        tag='cw-env')
-        # 台账写点②:环境确认点击已发(固定等待后)→ 重读备战节点行刷新权威表
-        # (环境可能增删/改节点,表必须反映变异后序列)。读不到不重试不阻塞——
-        # cw_screen_prep 每备战帧仍会逐帧识别,此处 miss 只延迟表刷新
-        #(验证废除:不再以「overlay 真关」为刷新前提,变异窗兜账实一致)。
-        self._refresh_node_ledger()
+        # (台账写点②「确认后自截屏重读节点行」已退役——链观察落地批:环境
+        #  改型由返回备战后的入口观察链读承接(diff 连续两帧一致才记行),
+        #  变异窗开窗保留、关窗迁至备战帧链写端;op 层不再自读屏幕。)
         return _result
-
-    def _refresh_node_ledger(self) -> None:
-        """台账写点②:重读备战节点行 → 按位合并进 session 权威表 + 关变异窗。
-
-        读不到 clean 帧(转场动画)→ 1.5s 后重试一次,仍 miss 则保留窗口
-        由下个写入端兜(不阻塞对局;合并语义 = None 位保旧,见 ledger_update_plane)。
-        """
-        from sr_od.application.currency_war.kernel.cw_exec_state import (
-            get_node_ledger,
-            ledger_update_plane,
-        )
-        from sr_od.application.currency_war.obs.cw_observation import (
-            read_node_sequence,
-            read_phase_round,
-        )
-        _sess = getattr(getattr(self.ctx, 'cw_match', None), 'session', None)
-        _ledger = get_node_ledger(_sess)
-        if _sess is None or _ledger is None:
-            return
-        for _attempt in (1, 2):
-            time.sleep(1.5 if _attempt == 1 else 0.0)
-            screen = self.screenshot()
-            slots = read_node_sequence(self.ctx, screen)
-            if slots is None:
-                continue
-            _plane, _round = read_phase_round(self.ctx, screen)
-            if not _plane:
-                break
-            _seq = [getattr(s, 'node_type', None) for s in slots]
-            _changed = ledger_update_plane(_sess, int(_plane), _seq, 'prep_row')
-            _ledger.env_grace_until = 0.0   # 表已刷新,关变异窗
-            log.info('[cw-env] 台账重读刷新 p%d(轮%s)%s:%s',
-                     _plane, _round, '(有变更)' if _changed else '(无变更)', _seq)
-            return
-        log.info('[cw-env] 台账重读 miss(非 clean 帧),变异窗保留等下个写入端')
 
     # ---- 五段生命周期(统一观察架构 §5.1,先例 = CwScreenEncounter)----
 
