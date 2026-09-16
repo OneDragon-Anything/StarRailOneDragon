@@ -2145,7 +2145,8 @@ class GameStateReadReceipt:
 
 
 def read_game_state(ctx: SrContext, screen: MatLike,
-                    phase: str | None = None) -> GameStateReadReceipt:
+                    phase: str | None = None,
+                    screen_name: str | None = None) -> GameStateReadReceipt:
     """备战屏截图 → 容器直写(obs 族 sig)+ 轻量回执(逐字段 gate 单一源
     = PHASE_FIELD_SPEC)。
 
@@ -2160,6 +2161,13 @@ def read_game_state(ctx: SrContext, screen: MatLike,
       =P2a 开店动作期(仅买牌决策所需);``battle_or_transit``=战斗/过渡帧(仅
       位面轮次)。**None = 全量路径 = 现行为逐行不变**(存量调用点/测试零波及);
       未注册阶段名 → warning + 全量(fail-open:未知态不猜,回退现行为)。
+    :param screen_name: 调用方已知的当前画面建档名(迭代
+      2026-09-16-unified-obs-reconcile:观察侧失配豁免键 = 画面×字段×写端,
+      sig.screen 在场是精确键可命中的前提)。画面 op 分派时自知当前画面
+      即传其建档名(如「货币战争-备战」/「货币战争-备战-开商店」);
+      不知道画面名的调用点传 None(缺省,现状测试形态不变)——sig.screen
+      为 None 时失配豁免仅 ``('*', field)`` 通配条目可命中。拒绝的备选:
+      漏斗内自跑画面匹配(读路径热,每次读附赠一次全画面匹配成本)。
 
     各字段 OCR 失败 → 安全默认(见各 reader)。level 不可 OCR → ``_expected_level`` 兜底;
     hp 读不到 → ``reconcile_hp`` 对账(ADR-0282:沿用 session.last_hp_real,开局无真值才
@@ -2499,11 +2507,13 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             bs = board_state_of(session)
             frame = f'p{plane}-r{round_num}'
             # 渠道①签名(R5 W1 显式签名铺满,ADR-0634;§3.2.1 ①类属 = 观察汇聚
-            # 模块):真读/沿用两 mode 各一;hp 等带质量维的专项 sig 在各自写点。
+            # 模块):真读/沿用两 mode 各一;screen = 调用方画面建档名
+            # (失配豁免精确键的观察侧维度,迭代 2026-09-16-unified-obs-
+            # reconcile 补齐);hp 等带质量维的专项 sig 在各自写点。
             _sig_read = ChannelSig(family='obs', actor='cw_observation',
-                                   mode='read')
+                                   screen=screen_name, mode='read')
             _sig_carry = ChannelSig(family='obs', actor='cw_observation',
-                                    mode='carried')
+                                    screen=screen_name, mode='carried')
 
             # 节点(phase_round 全阶段必读;node_type 仅 spec 门内为帧读值)。
             # P1-1(落地审):kind 未读帧(battle_or_transit spec 无 node_type /
@@ -2546,17 +2556,20 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                 # 词表 = real_read/same_node_carried/prior,§3.2.1 起步词表)。
                 if hp_readable:
                     bs.observe(bs.hp, int(hp_val), sig=ChannelSig(
-                        family='obs', actor='cw_observation', mode='read',
+                        family='obs', actor='cw_observation',
+                        screen=screen_name, mode='read',
                         quality={'hp': 'real_read'}))
                 elif hp_val is not None and not _had_real:
                     # 对账层开局先验形态(session 无真值,ADR-0559)
                     bs.write_prior(bs.hp, int(hp_val), evidence='prior:adr-0559',
                                    sig=ChannelSig(
                                        family='obs', actor='cw_observation',
-                                       mode='prior', quality={'hp': 'prior'}))
+                                       screen=screen_name, mode='prior',
+                                       quality={'hp': 'prior'}))
                 elif hp_val is not None:
                     bs.carry(bs.hp, frame=frame, sig=ChannelSig(
-                        family='obs', actor='cw_observation', mode='carried',
+                        family='obs', actor='cw_observation',
+                        screen=screen_name, mode='carried',
                         quality={'hp': 'same_node_carried'}))   # ADR-0431
             if _w('enemy_difficulty'):
                 if enemy_difficulty_live and enemy_difficulty is not None:

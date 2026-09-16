@@ -905,7 +905,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 _bs_of_port(match.session))
         else:
             _entry = read_game_state(op.ctx, _entry_shot,
-                                     phase=PHASE_PREP_SHOP_OPEN)   # ADR-0462 开店动作期
+                                     phase=PHASE_PREP_SHOP_OPEN,
+                                     screen_name=SHOP_SCREEN_NAME)   # ADR-0462 开店动作期
             # 店开入口防抖:开店转场/淡入帧可令收起锚 miss → shop payload
             # 未入容器(fresh 容器无上一牌面可沿用,decide 前置门即炸——
             # 实机买光店五败定谳;已渲染帧离线全链复现全绿,读数函数无恙)。
@@ -920,7 +921,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 time.sleep(0.8)
                 _entry_shot = op.screenshot()
                 _entry = read_game_state(op.ctx, _entry_shot,
-                                         phase=PHASE_PREP_SHOP_OPEN)
+                                         phase=PHASE_PREP_SHOP_OPEN,
+                                         screen_name=SHOP_SCREEN_NAME)
         save_decision_frame(op, 'shop_entry', _entry_shot)   # 识别完成点原始帧留证(牌面仲裁基准;每段一帧,刷新重观察同点覆盖)
         # 免费刷新对账点(T-219 裁定:对账类判定收口在观察态写入的对账
         # 点,动作 op 内不做;批4 比对收口扩展 = 两腿判定迁宿主

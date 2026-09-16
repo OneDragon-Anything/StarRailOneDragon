@@ -518,6 +518,9 @@ def _launch_frame_arbitration(op) -> dict:
             in_launch_spend_zone,
             saturation_line,
         )
+        from sr_od.application.currency_war.kernel.cw_obs_core import (
+            SCREEN_NAME,
+        )
         from sr_od.application.currency_war.obs.cw_observation import (
             PHASE_PREP_CLEAN,
             read_game_state,
@@ -544,7 +547,9 @@ def _launch_frame_arbitration(op) -> dict:
         from sr_od.application.currency_war.kernel.cw_game_state import (
             gold_of as _arb_gold_of,
         )
-        _ = read_game_state(op.ctx, _fresh, phase=PHASE_PREP_CLEAN)
+        # screen_name = 干净备战帧建档名(失配豁免精确键观察侧维度;下同)
+        _ = read_game_state(op.ctx, _fresh, phase=PHASE_PREP_CLEAN,
+                            screen_name=SCREEN_NAME)
         _sess_hp = session
         if not in_launch_spend_zone(_arb_gold_of(_arb_bs_of(session)), _sess_hp):
             # 带内段 fail-closed(DESIGN v1.1 §3.2;L1' 挂账):不开店不花。

@@ -93,6 +93,13 @@ from sr_od.application.currency_war.kernel.cw_encounter_selection import (
     EncounterLog,
     SettlementRing,
 )
+
+# 失配处置策略(豁免注册表 + 安灯钩子槽;kernel→kernel 单向依赖,
+# 对方零依赖本模块)。observe() 失配三分流路由消费(见 _route_logic_mismatch)。
+from sr_od.application.currency_war.kernel.cw_mismatch_policy import (
+    fire_reconcile_andon,
+    lookup_mismatch_exempt,
+)
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 
 # 同桶直调(kernel→kernel 合法;遥测装配 = game state 初始化职责,用户
@@ -770,27 +777,72 @@ def consume_defect_sink() -> list[dict]:
 
 #: 观察覆盖 logic 失配告警的抑制登记面(裁定 A/裁定 4 申报表
 #: 的代码化):evidence 命中前缀的失配缺陷**不落 buffer 不告警**。
-#: 语义:sim 引擎外部事件写(obs 族)覆盖动作逻辑态直写(logic 源)是 sim 建模
-#: 的结构形态——事件注入(收入/结算/回声)对逻辑态的推进不是「推算 bug」,
-#: 留证无判读价值;xp 即时结转(逻辑态直写)vs sim 轮末延迟结转(引擎账本)
-#: = 申报差异(裁定 4 明点)。生产实机链零 'sim:engine:' 前缀写点,
-#: 抑制面零触达(喂入口 evidence = 'sim:synthesized' 不同前缀,不受辖)。
-_MISMATCH_SUPPRESS_PREFIXES: tuple[str, ...] = ('sim:engine',)
+#: 语义:sim 链自身的对账差异归 sim 质量面,不进生产缺陷台账——
+#: 'sim:engine' = sim 引擎外部事件写(obs 族)覆盖动作逻辑态直写是 sim
+#: 建模的结构形态,事件注入(收入/结算/回声)对逻辑态的推进不是「推算
+#: bug」,留证无判读价值;xp 即时结转(逻辑态直写)vs sim 轮末延迟结转
+#: (引擎账本)= 申报差异(裁定 4 明点)。'sim:synthesized' = 合成口/
+#: 喂入口真值合成的同性质差异(生产台账曾混入约 18.6 万行,迭代
+#: 2026-09-16-unified-obs-reconcile 并列入表分流)。生产实机链零 sim
+#: 前缀写点,抑制面对实机失配零触达。
+_MISMATCH_SUPPRESS_PREFIXES: tuple[str, ...] = ('sim:engine', SIM_SYNTHESIZED)
+
+
+def _route_logic_mismatch(*, field_name: str, expected: Any, actual: Any,
+                          observed_evidence: str | None,
+                          logic_evidence: str | None,
+                          sig: ChannelSig) -> None:
+    """观察覆盖 logic 失配三分流路由(observe() 失配比对处接线;迭代
+    2026-09-16-unified-obs-reconcile)。按序判定命中即停:
+
+    1. 豁免命中(键 = 观察侧 sig.screen × 字段 × 逻辑写端 evidence 前缀,
+       注册表 = cw_mismatch_policy.EXEMPT_REGISTRY)→ 落 ``exempt_mismatch``
+       台账行(与真失配行同构仅 kind 不同),无告警无停机;
+    2. sim 证据命中(:data:`_MISMATCH_SUPPRESS_PREFIXES` 前缀)→ 不落生产
+       台账直接返回(现役抑制语义);
+    3. 真失配 → 缺陷行 + ``[cw!]`` 告警 + 安灯钩子(槽缺省关)。
+
+    覆盖照常(观察赢),本函数只管留证与处置;处置序设计取舍见迭代
+    design.md §2.3。"""
+    entry = lookup_mismatch_exempt(sig.screen, field_name, logic_evidence)
+    if entry is not None:
+        _emit_defect(field_name=field_name, expected=expected, actual=actual,
+                     evidence=observed_evidence, sig=sig,
+                     logic_evidence=logic_evidence, kind='exempt_mismatch')
+        return
+    if observed_evidence is not None and any(
+            observed_evidence.startswith(p)
+            for p in _MISMATCH_SUPPRESS_PREFIXES):
+        return
+    _emit_defect(field_name=field_name, expected=expected, actual=actual,
+                 evidence=observed_evidence, sig=sig,
+                 logic_evidence=logic_evidence)
 
 
 def _emit_defect(*, field_name: str, expected: Any, actual: Any,
                  evidence: str | None,
+                 sig: ChannelSig,
+                 logic_evidence: str | None = None,
                  kind: str = 'observe_vs_logic_mismatch') -> None:
     """缺陷台账留证(§2.3 观察赢):观察覆盖 logic 值失配 = 推算 bug,
     留证后修推算代码(ADR-0651;不做运行时挂账对账)。best-effort:
     外送钩子异常不阻塞观察主链。抑制登记面见
-    :data:`_MISMATCH_SUPPRESS_PREFIXES`(申报表代码化)。"""
-    if evidence is not None and any(
-            evidence.startswith(p) for p in _MISMATCH_SUPPRESS_PREFIXES):
-        return
+    :data:`_MISMATCH_SUPPRESS_PREFIXES`(路由层消费,见
+    :func:`_route_logic_mismatch`)。
+
+    行形状(ts/sig 维度为迭代 2026-09-16-unified-obs-reconcile 补齐):
+    ``kind / field / expected / actual / observed_evidence / ts /
+    screen / actor / group_id / logic_evidence``——ts = journal 行同款
+    秒级时刻;screen/actor/group_id = 观察侧渠道签名;logic_evidence =
+    逻辑侧写端注记(豁免注册表第三维,归因回溯用)。
+    真失配 kind 行落盘后同步触发安灯钩子(:func:`fire_reconcile_andon`,
+    行落盘先于钩子——证据在场不依赖钩子成败);豁免行无告警无停机。"""
     row: dict = {'kind': kind, 'field': field_name,
                  'expected': expected, 'actual': actual,
-                 'observed_evidence': evidence}
+                 'observed_evidence': evidence,
+                 'ts': datetime.now().isoformat(timespec='seconds'),
+                 'screen': sig.screen, 'actor': sig.actor,
+                 'group_id': sig.group_id, 'logic_evidence': logic_evidence}
     _DEFECT_BUFFER.append(row)
     if len(_DEFECT_BUFFER) > _DEFECT_BUFFER_CAP:
         del _DEFECT_BUFFER[:len(_DEFECT_BUFFER) - _DEFECT_BUFFER_CAP]
@@ -799,8 +851,11 @@ def _emit_defect(*, field_name: str, expected: Any, actual: Any,
             _DEFECT_SINK(dict(row))
         except Exception as e:  # noqa: BLE001  留证 best-effort
             log.debug(f'[cw-bs] defect sink skip: {e}')
+    if kind != 'observe_vs_logic_mismatch':
+        return   # 豁免等非真失配行:留证即止,无告警无停机
     log.warning(f'[cw!][bs] 观察覆盖 logic 失配:{field_name} '
                 f'预期[{expected}] 实读[{actual}](§2.3 观察赢)')
+    fire_reconcile_andon(dict(row))
 
 
 # ============================================================ 状态流水 sink(R1 §3.2.3)
@@ -2852,8 +2907,9 @@ class GameState:
         - value=None 拒绝(§2.2 硬边界:失读不是观察值,走 :meth:`carry`
           或画面附加域 :meth:`leave_screen`;字段一旦有过正式值任何失读
           不得清成 None);
-        - 覆盖 logic 来源值且失配 → 缺陷台账留证(§2.3 观察赢;失配 =
-          推算 bug,修推算代码——ADR-0651);
+        - 覆盖 logic 来源值且失配 → 三分流处置(§2.3 观察赢;失配 =
+          逻辑态被实读证伪 = bug,豁免/抑制/安灯三分流——
+          :func:`_route_logic_mismatch`;失配默认安灯停机,修推算代码);
         - sig = 渠道①签名(必填;R5 W1 起缺位合成路径已退役,ADR-0634);
         - note = 可选行注记(结算事实等语义,ADR-0634 battle_done 收编)。
         """
@@ -2864,8 +2920,9 @@ class GameState:
         name = self._field_name(target)
         if target.source == 'logic' and target.value is not None \
                 and target.value != value:
-            _emit_defect(field_name=name, expected=target.value,
-                         actual=value, evidence=evidence)
+            _route_logic_mismatch(field_name=name, expected=target.value,
+                                  actual=value, observed_evidence=evidence,
+                                  logic_evidence=target.evidence, sig=sig)
         self._swap(name, Field(value=value, source='observation',
                                evidence=evidence),
                    sig=sig, note=note)

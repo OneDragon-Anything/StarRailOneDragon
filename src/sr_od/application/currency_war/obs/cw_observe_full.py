@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     SCREEN_NAME,
+    SHOP_SCREEN_NAME,
     _area_rect,
 )
 from sr_od.application.currency_war.obs.cw_back_layout import (
@@ -102,7 +103,11 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
         else:
             out['bench_chars'] = None
             out['deployed_chars'] = None
-        _st = read_game_state(ctx, frame)
+        # screen_name = 备战画面建档名(heavy 段宿主 = 备战画面 op 入口;
+        # 店开子态帧传开商店建档名,失配豁免精确键观察侧维度)
+        _st = read_game_state(ctx, frame,
+                              screen_name=(SHOP_SCREEN_NAME if shop_open
+                                           else SCREEN_NAME))
         # MED-2 gold==0 重读(OCR 弱点;帧稳定≠OCR 稳定——
         # stylized 间歇漏与帧稳定正交,重读是第二道)。
         # ⚠ 重读=**重新截图**(同帧重读结果恒同);
@@ -117,7 +122,8 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
             for _ in range(3):
                 time.sleep(0.3)
                 try:
-                    _st2 = read_game_state(ctx, op.screenshot())
+                    _st2 = read_game_state(ctx, op.screenshot(),
+                                           screen_name=SHOP_SCREEN_NAME)
                 except Exception:   # noqa: BLE001  离线契约
                     break
                 if _st2.gold > 0:
@@ -179,6 +185,7 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
                  len(out['owned_equips'] or []),
                  len(out['occupied_equips'] or {}))
     else:
-        out['read_receipt'] = read_game_state(ctx, frame)   # 容器直写即产物
+        out['read_receipt'] = read_game_state(
+            ctx, frame, screen_name=SCREEN_NAME)   # 容器直写即产物
         out['substate'] = {}
     return out

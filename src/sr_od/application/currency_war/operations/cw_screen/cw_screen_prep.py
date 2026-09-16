@@ -3353,6 +3353,7 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
      gold 基线 = 编排壳 visit 入口容器 gold 现读(调用方传入);摘要与
      对拍的 gold/level/plane = 容器读口。)
     """
+    from sr_od.application.currency_war.kernel.cw_obs_core import SCREEN_NAME
     from sr_od.application.currency_war.obs.cw_observation import (
         PHASE_PREP_CLEAN,
         read_game_state,
@@ -3427,7 +3428,8 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
                 # 不可区分,见构造点契约)= 全量干净备战基线读,容器喂入
                 # 由观察漏斗既有写端承接。
                 _ = read_game_state(op.ctx, op.screenshot(),
-                                    phase=PHASE_PREP_CLEAN)   # ADR-0462 关店后=干净备战基线
+                                    phase=PHASE_PREP_CLEAN,
+                                    screen_name=SCREEN_NAME)   # ADR-0462 关店后=干净备战基线
             # finalize 同位暂存(ADR-0583 §3.3-③;写者 = 流程侧,§3.4 具名清单)。
             # 帧代次标 `view` = 派生喂入(增量重播)重锚(容器化段 2:
             # `state=_post` 帧替换随 state 槽退役消亡,标注写点保留)。
