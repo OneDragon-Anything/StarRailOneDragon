@@ -50,13 +50,13 @@
 | # | 删除对象 | 位置 | 唯一/残余消费方与处置 |
 |---|---|---|---|
 | 1 | `TurnState`/`DirectionView`/`BudgetView` | `turn_state.py`（整模块删） | 生产零消费（G7）；测试消费 = test_cw_migration_direction_layer（装配面测试删）、test_cw_budget_disclosure（载体改）、test_cw_economy 注入锁（载体改），处置见 §2.5 |
-| 2 | `assemble` | assembly.py | 唯一调用方 = mandate_v1_strategy.py 装配覆写（同批删） |
+| 2 | `assemble` | assembly.py | 唯一调用方 = mandate_v1_strategy.py 装配覆写（同批删）；#2/#3/#4 删除 + §2.2 三函数迁出后 assembly.py 无剩余符号（余部 = 模块头 docstring 与墓碑注块）→ **整模块删** |
 | 3 | `_direction` | assembly.py | 仅 assemble 内部调用 |
 | 4 | `hoard_consumer_domain` | assembly.py | src 零生产读点；测试消费随 test_cw_migration_direction_layer 处置 |
 | 5 | `_assemble_turn` 缝 | bridge.py 抽象 + mandate_v1_strategy.py 覆写 | 唯一调用点 = bridge.decide_prep_screen（改调披露，§2.2）；test_cw_prep_contract_shape 缝桩改（§2.5） |
 | 6 | `decide_from_turn` → 改名 `decide_prep_frame`（丢 turn 参） | bridge.py | 调用点 = bridge.decide_prep_screen 内单一处；模块桩 = test_cw_prep_contract_shape（同步改名）；指针注释 = telemetry/schema.py、cw_vocab.py、mandate.py、test_cw_unified_action_2b.py（改写，§2.3） |
 | 7 | `emit` 的 `turn` 形参 | entry.py | 函数体内零使用（G7）；唯一调用方 = bridge.decide_from_turn（同步改）；entry.py 顶部 TurnState import 同删 |
-| 8 | `snapshot_from_obs` + obs→Snapshot 半部 | decision_assembly.py | 唯一生产消费方 = #5 装配链；测试 test_cw_game_state.py「件3」随删；删后 decision_assembly.py 若无剩余符号则整模块删 |
+| 8 | `snapshot_from_obs` + obs→Snapshot 半部 | decision_assembly.py | 唯一生产消费方 = #5 装配链；测试 test_cw_game_state.py「件3」随删；模块本体因 `install_obs_ports` 存活（仅删半部），模块头失效叙事随 §2.3 反查改写 |
 | 9 | mandate_v1_strategy.py 瘦身 | 注册壳 | 装配覆写与 snapshot_from_obs/assemble/TurnState imports 删；壳类本体保留——`__module__` 守卫要求壳类定义于本模块、StrategyManager discover 收尾强制注册（mandate_v1_strategy.py 模块头声明） |
 | 10 | `adapter.py` 整模块 | strategies/impl/mandate_v1/adapter.py | 本批删除 #8 后成零消费孤儿：其 src 最后 import 方 = decision_assembly 对 `PREP_SUBSTATE_NAME`（唯一使用点 = snapshot_from_obs 缺省参数，随 #8 死亡）；`action_to_atomop` 全仓（src + sr-od-test）零调用点。留 = 本批自产新墓碑，故随批删 |
 
@@ -64,23 +64,24 @@
 
 ### 2.2 保留面：预算遥测披露面 1:1 迁移（先立后破 = 阶段1 原签名搬迁，阶段2 随 BudgetView 死亡合并）
 
-- 现状：披露链三函数住 assembly.py——`_budget`（预算现算，返回 BudgetView，内嵌披露写入）、`_disclose_budget`（写 MandateState 四字段 + 键戳）、`disclose_budget_at_shop_frame`（店开帧覆写写点）。现行活读端 = recorder sess_\* 透传（telemetry/schema.py sess_reserve_cap 族）+ cw_decision_trace 披露族封闭清单（kernel/cw_decision_trace.py）。assembly.py docstring 所载「sim engine_p1 轮快照」读端已亡：engine_p1.py 源文件不存在（仅存死 pyc），sim 全目录对披露字段 grep 零命中——该 docstring 系过期转述，随 assembly.py 删除消亡，本节按现行实况申报。禁令 = 禁决策消费（裁决语义锚 = mandate_state.py 披露字段注释 + 守卫锁 test_cw_budget_disclosure）。活通路，本迭代不删语义，只搬家与合并。
+- 现状：披露链三函数住 assembly.py——`_budget`（预算现算，返回 BudgetView，内嵌披露写入）、`_disclose_budget`（写 MandateState 四字段 + 键戳）、`disclose_budget_at_shop_frame`（店开帧覆写写点）。现行活读端 = recorder sess_\* 透传（telemetry/schema.py sess_reserve_cap 族）+ cw_decision_trace 披露族封闭清单（kernel/cw_decision_trace.py）。assembly.py docstring 所载「sim engine_p1 轮快照」读端已亡：engine_p1.py 源文件不存在（仅存死 pyc），sim 全目录对披露字段 grep 零命中——该过期句随逐字搬迁进入 economy_cycle，阶段2 按 §2.3 更正为新读端口径。禁令 = 禁决策消费（裁决语义锚 = mandate_state.py 披露字段注释 + 守卫锁 test_cw_budget_disclosure）。活通路，本迭代不删语义，只搬家与合并。
 - **阶段1 形态（原签名搬迁）**：三函数迁 `mandate_v1/economy_cycle.py`（预算权威同文件：`obligation` 已在该文件；`reserve_cap`/`saturation_line`/`schedule_upgrade`/`refresh_ev_budget` kernel 接缝 import 关系不变），**签名与函数体逐字不变**——`_budget` 仍返回 BudgetView、内嵌披露调用不变（存活至阶段2 的 `assemble` 依赖它供 `TurnState.budget` frozen 必填字段，供给链不得断）；`disclose_budget_at_shop_frame` 函数名不变。assembly.py 改为 import；cw_screen_buy_cards 调用点仅改 import 路径；测试对 `_budget` 的 import 随迁（test_cw_economy）。零行为变化。
 - **阶段2 形态（随 BudgetView 死亡合并）**：`_budget` 现算与 `_disclose_budget` 写入合并为单函数 `disclose_budget(state, session, registry) -> None`（算值直写披露字段，不保留中间结构）；`disclose_budget_at_shop_frame` 名称保留（内部改调新函数）。bridge.decide_prep_screen 删 `_assemble_turn` 调用行，改为在**原 `_assemble_turn` 调用位**调 `disclose_budget(...)`——即前置发射位判定之后，非 armed 帧才到达；armed 短路帧维持不披露，与现状逐位一致（若未来要 armed 帧也披露，属行为变化，另批立项）。
 - 逐字段语义不变清单（验收锚，出处 = assembly.py `_disclose_budget` docstring，随批迁注于新函数）：reserve_cap/obligation 现算幂等覆写；overflow = `max(0, gold − reserve_cap)` 纯派生直算（禁二次调 economy_cycle.overflow 双算）；键戳 (plane, round) 变更 ⇒ spent/reason 清零后盖新戳；同键重入不清 spent。
 
 ### 2.3 注释与指针口径修正（随阶段2；落地时以泛化反查收口，禁只改点名处）
 
-反查样式：`_disclose_budget|disclose_budget_at_shop_frame|snapshot_from_obs|prep_brain._budget|装配键戳|decide_from_turn` 于 src + sr-od-test 全仓 grep，命中处逐点处置。已知命中清单（符号定位，行号以落地时点为准）：
+反查样式：`_disclose_budget|disclose_budget_at_shop_frame|snapshot_from_obs|prep_brain._budget|装配键戳|decide_from_turn|engine_p1` 于 src + sr-od-test 全仓 grep，命中处逐点处置。已知命中清单（符号定位，行号以落地时点为准）：
 
 - 失真纪律句「决策判据一律消费 TurnState 幂等装配」：shop.py 注释处、test_cw_budget_disclosure.py 头注 → 统一改口径「决策输入 = obs（黑板）+ session 容器直读；披露面禁决策消费（语义锚 = mandate_state.py 披露字段注释与守卫锁）」。assembly.py 自身随批删除。
-- 写端指针类：mandate_state.py 披露四字段+键戳的字段定义注释（多处「写端 = assembly._disclose_budget」）→ 改新写端 `economy_cycle.disclose_budget`；
+- 写端指针类：mandate_state.py 披露四字段+键戳的字段定义注释（多处「写端 = assembly._disclose_budget」）→ 改新写端 `economy_cycle.disclose_budget`；同文件注释块「读端 = …engine_p1」半句 → 更正为新读端口径（recorder sess_\* 透传 + cw_decision_trace）；
+- 过期读端叙事随迁面：economy_cycle.py 迁入函数 docstring 的「sim engine_p1 轮快照」读端句（阶段1 逐字搬迁带入）→ 阶段2 更正为新读端口径；
 - 锚例失效：cw_economy.py BudgetView.interest_floor 注释、「同一调用链同 registry 实例」纪律句的 `prep_brain._budget` 锚例 → 锚例改 `disclose_budget`；cw_screen_buy_cards.py「同一 BudgetView 链」注释 → 改口径；telemetry/schema.py 轮界清零「装配键戳」锚 → 改新键戳写端；
 - decide_from_turn 改名指针：telemetry/schema.py、cw_vocab.py、mandate.py、test_cw_unified_action_2b.py 注释各一处 → 随 #6 改名；
 - 失效叙事：contracts.py 模块头「sim 合成器(CwSimFrame→Snapshot)是无损门的第一个消费者」→ 改如实申报（sim 全目录对 Snapshot 零消费）；
 - cw_exec_state.py 快照拷贝注释两处（`BenchChar.equips` 字段注释块 + `snapshot_copy` docstring）「TurnState 快照语义」表述 → 改「Snapshot 拷贝语义」并留保留理由（活消费方 = cw_game_state.py）。⚠️ 该文件是 execstate-dissolution 迭代在飞改面——本批只动这两处注释，协调载体见 landing 阶段2 依赖栏；
-- match_archive.py「依赖 decision_assembly 对 readable=False 帧写」注释 → 判别规则：若为历史档案判读口径描述 = 合法保留原样；若为现行时态声明 = 随批改写；worker 按此规则逐字判别并在交付报告申报判定；
-- adapter.py 模块头死指针、decision_assembly.py 失效叙事 → 随模块删除消亡（#8/#10），不单独改注。
+- match_archive.py「依赖 decision_assembly 对 readable=False 帧写」注释 → 判别规则：纯历史档案判读口径描述 = 合法保留原样；纯现行时态声明 = 随批改写；混合句（描述存档数据既有写入约定却锚定将删符号）= 保留语义、符号锚改纯语义描述（去符号名，语义自足）；worker 按此规则逐字判别并在交付报告申报判定；
+- decision_assembly.py 模块头失效叙事（引用 sim 已亡符号 synthesize_snapshot）→ 模块本体因 install_obs_ports 存活，按反查样式改写；adapter.py 模块头死指针 → 随模块删除消亡（#10），不单独改注。
 
 ### 2.4 关键取舍
 
@@ -95,11 +96,11 @@
 
 | 测试文件 | 处置 |
 |---|---|
-| test_cw_budget_disclosure.py | `assemble(snap, sess)` 调用改 `disclose_budget(state, sess, registry)` 直调；断言右端 `turn.budget.*` 改独立现算 oracle（文件内已有 kernel 独立重算先例可循）；四字段+键戳断言逐条保留；头注纪律句改口径（§2.3） |
+| test_cw_budget_disclosure.py | 阶段1：monkeypatch 缝目标随迁 economy_cycle（cw_screen_buy_cards 懒加载 import 改指后原缝必断），断言本体原样。阶段2：`assemble(...)` 调用改 `disclose_budget(...)` 直调；断言右端 `turn.budget.*` 改独立现算 oracle（文件内已有 kernel 独立重算先例可循）；四字段+键戳断言逐条保留；头注纪律句改口径（§2.3）；补 armed 短路帧不披露单帧锁（现状测试不辖该分支：armed 帧入口断言披露字段零写，承载 §2.2 落点规则的验证） |
 | test_cw_economy.py 注入一致性锁（W636 A） | 阶段1 仅 import 路径随迁；阶段2 载体改披露函数：注入 registry 后披露字段值 == 逐字段显式注入值（等价强度，不降锁） |
 | test_cw_migration_direction_layer.py | 凡消费 assemble/DirectionView/hoard_consumer_domain 的测试删除；保留测试同步清 assembly/contracts import 与失活助手（防 ImportError 连坐全文件），保留测试本体原样 |
 | test_cw_prep_contract_shape.py | `_assemble_turn` 实例桩删；`decide_from_turn` 模块桩改名 `decide_prep_frame` |
 | test_cw_game_state.py「件3」（snapshot_from_obs 回退锚测试） | 随 snapshot_from_obs 删除 |
 | test_cw_unified_action_2b.py | decide_from_turn 指针注释随 #6 改名（仅注释） |
 
-验收总门：L1 快速集绿（`uv run pytest sr-od-test/test/sr_od/app/currency_war -m "not slow and not legacy_baseline"`）+ 触点文件 ruff 零告警 + 一次 sim batch 冒烟（单一用途 = 决策分布无漂移确认；可观测性申报：本批改 assembly 策略层、sim 对披露面与删除面结构性不可见——披露产出验证归 test_cw_budget_disclosure 与实机 recorder 行，禁把 sim 盲区读数当零值证据）。本批设计上零行为变化，A/B 非裁决仅确认。
+验收总门：L1 快速集绿（`uv run pytest sr-od-test/test/sr_od/app/currency_war -m "not slow and not legacy_baseline"`）+ 触点文件 ruff 零告警 + 一次 sim batch 冒烟跑通（本批对 sim 结构性不可见——分布对照无鉴别力、不作判据，冒烟仅证流程不炸；披露产出验证归 test_cw_budget_disclosure 与实机 recorder 行，禁把 sim 盲区读数当零值证据）。本批设计上零行为变化，A/B 非裁决仅确认。

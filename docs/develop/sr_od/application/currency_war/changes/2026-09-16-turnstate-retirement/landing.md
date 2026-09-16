@@ -6,29 +6,29 @@
 ## 3.1 阶段1：预算披露面原签名搬迁（先立后破，行为等价批）
 **范围**：assembly.py 披露链三函数（`_budget`/`_disclose_budget`/`disclose_budget_at_shop_frame`）**原签名逐字迁** `economy_cycle.py`（`_budget` 仍返回 BudgetView、内嵌披露调用不变——存活至阶段2 的 `assemble` 依赖它供 `TurnState.budget` frozen 必填字段，供给链不得断）；assembly.py 改 import；cw_screen_buy_cards 调用点仅改 import 路径。不含：任何符号删除、任何签名/语义变更（合并形态归阶段2）。
 **设计依据**：design.md §2.2（阶段1 形态）
-**文件面**：`src/.../strategies/impl/mandate_v1/{assembly.py, economy_cycle.py}`、`src/.../operations/cw_screen/cw_screen_buy_cards.py`；测试仓 `test_cw_budget_disclosure.py`（如涉 import 路径）、`test_cw_economy.py`（import 随迁）
+**文件面**：`src/.../strategies/impl/mandate_v1/{assembly.py, economy_cycle.py}`、`src/.../operations/cw_screen/cw_screen_buy_cards.py`；测试仓 `test_cw_budget_disclosure.py`（monkeypatch 缝目标随迁）、`test_cw_economy.py`（import 随迁）
 **依赖**：无
 **优先级建议**：6
 **完成判据**：
-- 披露四字段+键戳语义逐字段不变（design.md §2.2 语义清单；载体 = test_cw_budget_disclosure 原样全绿——断言载体未改，直接验证搬迁等价）
+- 披露四字段+键戳语义逐字段不变（design.md §2.2 语义清单；载体 = test_cw_budget_disclosure 全绿——缝目标随迁后断言本体原样，直接验证搬迁等价）
 - `assemble` 供给链不断：test_cw_migration_direction_layer 原样绿
-- 行为等价：sim batch 冒烟决策分布无漂移确认（申报：披露面 sim 结构性不可见，披露产出验证归本判据第 1 条与实机 recorder 行）
+- 行为等价：sim batch 冒烟跑通（可观测性申报照 design.md §2.5：本批对 sim 结构性不可见）
 - L1 快速集绿；触点文件 ruff 零告警
 - 通用工程门：本文件「通用工程门」节
-**验收凭据形式**：test_cw_budget_disclosure 输出 + L1 快速集输出 + sim batch 批头分布对照
+**验收凭据形式**：test_cw_budget_disclosure 输出 + L1 快速集输出 + sim batch 冒烟跑通记录
 
 ## 3.2 阶段2：TurnState 层物理删除
 **范围**：design.md §2.1 删除面全表（#1-#10）+ §2.2 阶段2 形态（`_budget`+`_disclose_budget` 合并为 `disclose_budget -> None`、bridge 调用点改挂原 `_assemble_turn` 调用位）+ §2.3 注释口径修正（含泛化反查收口）+ §2.5 测试重构面。
 **设计依据**：design.md §2.1/§2.2/§2.3/§2.4/§2.5
-**文件面**：src —— `turn_state.py`（删）、`assembly.py`（删余部）、`adapter.py`（删）、`decision_assembly.py`（删 obs→Snapshot 半部，余量为空则整模块删）、`bridge.py`、`entry.py`、`mandate_v1_strategy.py`、`mandate_state.py`（写端指针注释）、`shop.py`（注释）、`cw_economy.py`（注释）、`cw_screen_buy_cards.py`（注释）、`cw_exec_state.py`（仅快照拷贝注释两处）、`cw_vocab.py`（注释）、`telemetry/schema.py`（注释）、`mandate.py`（注释）、`contracts.py`（注释）、`telemetry/match_archive.py`（仅 §2.3 判别规则注释）；测试仓 —— §2.5 表列六文件
+**文件面**：src —— `turn_state.py`（删）、`assembly.py`（整模块删：删除面出清后无剩余符号）、`adapter.py`（删）、`economy_cycle.py`（§2.2 阶段2 合并落点：`_budget`+`_disclose_budget` 合并为 `disclose_budget -> None`）、`decision_assembly.py`（删 obs→Snapshot 半部，模块本体因 install_obs_ports 存活）、`bridge.py`、`entry.py`、`mandate_v1_strategy.py`、`mandate_state.py`（写端指针注释）、`shop.py`（注释）、`cw_economy.py`（注释）、`cw_screen_buy_cards.py`（注释）、`cw_exec_state.py`（仅快照拷贝注释两处）、`cw_vocab.py`（注释）、`telemetry/schema.py`（注释）、`mandate.py`（注释）、`contracts.py`（注释）、`telemetry/match_archive.py`（仅 §2.3 判别规则注释）；测试仓 —— §2.5 表列六文件
 **依赖**：阶段1；execstate-dissolution 对应在飞阶段（同文件在飞面 = `cw_exec_state.py` + `telemetry/schema.py`，防冲突最小前置，两迭代账本对齐后开工）
 **优先级建议**：6
 **完成判据**：
-- src + sr-od-test 全仓 grep `TurnState|DirectionView|BudgetView|_assemble_turn|snapshot_from_obs|hoard_consumer_domain|decide_from_turn` 零活引用（历史 ADR 记录/decisions 遗留/changes/ 豁免；flow/ 正本留末阶段；§2.3 反查样式同步清零）
-- `snapshot_copy` 活消费方不受影响（cw_game_state.py 部署装配链照常）；armed 短路帧不披露语义逐位保持（design.md §2.2 落点规则）
+- src + sr-od-test 全仓 grep `TurnState|DirectionView|BudgetView|_assemble_turn|snapshot_from_obs|hoard_consumer_domain|decide_from_turn|engine_p1` 零活引用（历史 ADR 记录/decisions 遗留/changes/ 豁免；flow/ 正本留末阶段；§2.3 反查样式同步清零）
+- `snapshot_copy` 活消费方不受影响（cw_game_state.py 部署装配链照常）；armed 短路帧不披露语义逐位保持（载体 = §2.5 新增单帧锁）
 - L1 快速集绿 + L3 全量绿（commit 前）；触点文件 ruff 零告警
 - 通用工程门：本文件「通用工程门」节
-**验收凭据形式**：grep 输出清单 + L3 全量输出 + sim batch 批头分布对照
+**验收凭据形式**：grep 输出清单 + L3 全量输出 + armed 单帧锁 + sim batch 冒烟跑通记录
 
 ## 末阶段：正本更新
 **范围**：按「正本更新清单」逐条更新
