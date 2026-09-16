@@ -104,4 +104,4 @@
 | test_cw_game_state.py「件3」（snapshot_from_obs 回退锚测试） | 随 snapshot_from_obs 删除 |
 | test_cw_unified_action_2b.py | decide_from_turn 指针注释随 #6 改名（仅注释） |
 
-验收总门：L1 快速集绿（`uv run pytest sr-od-test/test/sr_od/app/currency_war -m "not slow and not legacy_baseline"`）+ 触点文件 ruff 零告警 + 一次 sim batch 冒烟跑通（本批对 sim 结构性不可见——分布对照无鉴别力、不作判据，冒烟仅证流程不炸；披露产出验证归 test_cw_budget_disclosure 与实机 recorder 行，禁把 sim 盲区读数当零值证据）。本批设计上零行为变化，A/B 非裁决仅确认。
+验收总门：L1 快速集绿（`uv run pytest sr-od-test/test/sr_od/app/currency_war -m "not slow and not legacy_baseline"`）+ 触点文件 ruff 零告警。sim 冒烟判据注销：当期 sim 无批跑 CLI（`sim.runner` 已随 sim-redesign 删除，commit e663515dd），且本批对 sim 结构性不可见——行为等价载体 = 直接受影响测试 + L1 全量（含 test_cw_sim_engine 局终锁）；披露产出验证归 test_cw_budget_disclosure 与实机 recorder 行，禁把 sim 盲区读数当零值证据。本批设计上零行为变化，A/B 非裁决仅确认。

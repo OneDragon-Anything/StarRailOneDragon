@@ -12,10 +12,10 @@
 **完成判据**：
 - 披露四字段+键戳语义逐字段不变（design.md §2.2 语义清单；载体 = test_cw_budget_disclosure 全绿——缝目标随迁后断言本体原样，直接验证搬迁等价）
 - `assemble` 供给链不断：test_cw_migration_direction_layer 原样绿
-- 行为等价：sim batch 冒烟跑通（可观测性申报照 design.md §2.5：本批对 sim 结构性不可见）
+- 行为等价补强：当期 sim 无批跑 CLI（`sim.runner` 已随 sim-redesign 删除，commit e663515dd），本批对 sim 结构性不可见——行为等价载体 = 直接受影响测试全绿 + L1 全量（含 test_cw_sim_engine 局终锁）；披露产出验证归 test_cw_budget_disclosure 与实机 recorder 行
 - L1 快速集绿；触点文件 ruff 零告警
 - 通用工程门：本文件「通用工程门」节
-**验收凭据形式**：test_cw_budget_disclosure 输出 + L1 快速集输出 + sim batch 冒烟跑通记录
+**验收凭据形式**：test_cw_budget_disclosure 输出 + L1 快速集输出
 
 ## 3.2 阶段2：TurnState 层物理删除
 **范围**：design.md §2.1 删除面全表（#1-#10）+ §2.2 阶段2 形态（`_budget`+`_disclose_budget` 合并为 `disclose_budget -> None`、bridge 调用点改挂原 `_assemble_turn` 调用位）+ §2.3 注释口径修正（含泛化反查收口）+ §2.5 测试重构面。
