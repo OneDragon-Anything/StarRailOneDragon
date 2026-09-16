@@ -79,7 +79,7 @@
 
 ## 正本更新清单
 - `game_state/fields.md`：§3.1.5（开局初值写端：过渡屏 transition_row 为先、位面详情降回退）与 §3.2.2（写端在役形态、载体 NodeChain、baseline 字段）← 3.1/3.2/3.3
-- `game_state/chain-observation.md`：§3 quality 值域两义注并轨定谳（prep_row/row_read 择一固化，B-3 接线批职责归本迭代 3.4）+ §5 遥测挂接表述核对 + **§7 sim 条款修订**（合成口写链裁剪为不写，取舍 = design.md §2.3-5）← 3.1/3.4
+- `game_state/chain-observation.md`：§3 写门条款修订（现行链写门由「轮位对齐门∧非变异窗」改为「轮位对齐门」,变异窗豁免语义由 design.md §2.3-7 承接）+ §3 quality 值域两义注并轨定谳（prep_row/row_read 择一固化,B-3 接线批职责归本迭代 3.4）+ §5 遥测挂接表述核对 + §7 sim 条款修订（合成口写链裁剪为不写,取舍 = design.md §2.3-5）← 3.1/3.2/3.4
 - `game_state/node-domain.md`：§5/§7 类型派生四②「商店查现行链」接线在册 ← 3.5
 - `game_state/node-derivation.md`：派生规则四②接线注记（若该文承载派生规则在册面，落地时核实）← 3.5
 - `game_state/retirement.md`：§5 遥测排期面与 chain_diff 词登记状态核对（对抗 F8 路径修正：实际路径在 game_state/ 下）← 3.4

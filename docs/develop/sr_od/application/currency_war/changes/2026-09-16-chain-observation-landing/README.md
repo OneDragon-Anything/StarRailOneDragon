@@ -5,8 +5,8 @@
 - 落地:[landing.md](landing.md)
 
 ## 进度
-- 迭代设计:对抗审中
-- 设计对抗:进行中 · 报告=[attack.md](attack.md)（首审 1 blocker/6 major/5 minor,修订完毕候定向复查）
+- 迭代设计:定稿(两轮对抗收敛;attack.md §3 复查裁决「定稿可」,F13/F14 随批补丁已落)
+- 设计对抗:收敛 · 报告=[attack.md](attack.md)
 - 落地:未开始
 - 正本更新:未开始
 
