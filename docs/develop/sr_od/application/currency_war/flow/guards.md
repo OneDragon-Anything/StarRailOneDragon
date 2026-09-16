@@ -11,7 +11,7 @@
 
 > 原 §1 的两条专用 streak 守卫（0q 位面过渡误分发 =3、prep 连续失败 =5）已退役并入本网：阈值同值平手无行为差，计数/判定统一在 `_dispatch_screen_op`（hook 早退位次之后，hook 仍可短路）。链形透传分支（3c）不经本网（各有自身预算）。
 > 补注:分支守卫钩子（0n visit_ok/_fail 计数、A1 bail 清除、B5 窗口关+闩清）自 dispatch 包装落地起经 `_dispatch_screen_op` 的 **on_result 调用点邻接闭包**执行，仅执行落点随包装迁移，钩子明细。
-> 位面过渡的误分发根修在识别层：boss 简报帧可经阶段一身份分支与 0q 兜底误派过渡 op，两处分别挂 boss 判别排他（接管派发 boss op）与共享文案本屏 rect 判定，见 [../screens/plane_transition.md](../screens/plane_transition.md) §1 与 [../screens/boss_briefing.md](../screens/boss_briefing.md) §1。
+> 位面过渡的误分发根修在识别层（2026-09-16）：BOSS简报锚换装徽记模板（OCR 误读免疫），阶段一位面过渡身份臂挂 boss 判别排他（接管派发 boss op）；原 0q 兜底随「未建档实证的故障形态不作兜底理由」裁定同批退役（见 outer_loop §2.3 退役记录）。
 
 ## 2. 未知画面兜底（常驻安全网；`cw_loop.py::CwLoop._handle_unknown_fallback`）
 

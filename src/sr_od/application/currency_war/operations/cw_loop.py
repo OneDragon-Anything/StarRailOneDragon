@@ -1854,48 +1854,9 @@ class CwLoop(SrOperation):
                 CwScreenAhaEquipPick(self.ctx), journal_name='阿哈装备选择',
                 frame_tag='overlay_aha_equip', wait=1.5)
 
-        # 0p-backstop. BOSS 简报误读兜底:阶段一标题锚被 OCR 误读击穿(「强敌
-        #     来袭」读成「强敌米」,第五局 1-9 实锤)时,共享判别单一源接住
-        #(正常 boss 帧走阶段一身份,不经过此处)。
-        from sr_od.application.currency_war.operations.cw_screen.cw_screen_boss_briefing import (
-            is_boss_briefing_texts as _is_boss_frame,
-        )
-        from sr_od.application.currency_war.operations.cw_screen.cw_screen_boss_briefing import (
-            read_ocr_texts as _frame_texts,
-        )
-        if _is_boss_frame(_frame_texts(self.ctx, screen)):
-            self._note_branch_screen('货币战争-BOSS简报')   # R2 开局链写点
-
-            def _on_boss_briefing(ok: bool, res: Any) -> None:
-                log.info('[cw-loop] BOSS 简报 → CwScreenBossBriefing → %s',
-                         getattr(res, 'status', ''))
-
-            return self._dispatch_screen_op(
-                CwScreenBossBriefing(self.ctx), journal_name='BOSS简报',
-                frame_tag='flow_boss_briefing', wait=1.0,
-                on_result=_on_boss_briefing)
-
-        # 0q-backstop. 位面过渡误读兜底:节点锚 miss 时按**本屏 rect** 判定
-        #     共享文案接住(「点击空白处继续」两屏位置不同:本屏 y≈930 波段,
-        #     boss 简报 y≈770 波段——旧全帧裸文本判定会被 boss 帧击穿误派
-        #     过渡 op,第五局 1-9 实锤路径,根修);boss 排他保留(纵深)。
-        if self.round_by_find_area(screen, '货币战争-位面过渡',
-                                   '提示-点击空白继续',
-                                   crop_first=False).is_success:
-            if _is_boss_frame(_frame_texts(self.ctx, screen)):
-                log.info('[cw-loop] boss 简报帧含共享文案「点击空白处继续」→ '
-                         '排他(纵深,正常已被 0p-backstop 接住)')
-                return self.round_wait(wait=1.0)
-            self._note_branch_screen('货币战争-位面过渡')   # R2 开局链写点
-
-            def _on_plane_transition(ok: bool, res: Any) -> None:
-                log.info('[cw-loop] 位面过渡(兜底) → CwScreenPlaneTransition → %s',
-                         getattr(res, 'status', ''))
-
-            return self._dispatch_screen_op(
-                CwScreenPlaneTransition(self.ctx), journal_name='位面过渡',
-                frame_tag='flow_plane_transition', wait=1.0,
-                on_result=_on_plane_transition)
+        # (原 0p/0q 误读兜底已退役,2026-09-16 裁定:未建档实证的故障形态
+        #  不作兜底理由——身份 miss 的真实帧走未知兜底停机留证,证据入库后
+        #  再议加固;boss 帧排他保留在阶段一位面过渡身份臂。)
 
         # ===== 阶段二:备战表面默认分支(双锚 = 购买经验∧出战;57/57 语料稳定) =====
         # 备战不用身份判定:部署态/补给revisit按钮/攻略位移使扩展锚不可靠(语料
