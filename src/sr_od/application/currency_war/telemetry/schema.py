@@ -636,7 +636,8 @@ class OutcomeRecord:
     # —— 迁移审计 w306(git 历史) 补给选择快照(仅 source='synthetic_supply' 行携带):补给节点选定+
     # 确认时的 {char, equip, has_diamond, refreshed, gold}——choices/效果归因数据源
     # (治疗/装备生效判读原无法挂回补给轮;rounds 视图 P1 r5 全缺的语义补齐)。
-    # refreshed=exec_state_of(session)._supply_refresh_used 时点值(该次确认前是否已刷新重掷);
+    # refreshed=该次确认前是否已刷新重掷(值源 = 容器 node_screen_refresh
+    # .supply_refresh_used 计数 >0 读点,CwScreenSupplyNode 选定快照随行);
     # gold=完成时点 last_state.gold(gold_readable=False 缺省不写,不冒认真值)。
     # W306c:options=[{char,equip,has_diamond}...] + n_options=实际识别列数
     # (动态探测,通常 4/augment 3-5,逐列内容不假定结构;漏读审计与对拍源)。

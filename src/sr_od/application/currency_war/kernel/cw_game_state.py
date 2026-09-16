@@ -2648,14 +2648,15 @@ class GameState:
     total_refresh_count: Field[int] = field(default_factory=Field)   # 累计全部刷新(§3.3.8;二手市场/采购专员计数载体)
     prev_node_spent: Field[bool] = field(default_factory=Field)      # 上节点是否花费(§3.3.9;存款回报条件输入,观察需求)
 
-    # —— 节点屏刷新计数组(P1-2 批次一落地审补;§3.4.1-§3.4.4;字段先入
-    # schema,**写端未接**——遭遇/补给刷新已用现役走 exec_state 侧标
-    # (cw_exec_state._encounter_refresh_used/_supply_refresh_used),四字段
-    # 零写端;接线挂批次三/建模批申报,零写端期间禁按字段值做决策)——
-    encounter_refresh_used: Field[int] = field(default_factory=Field)    # 遭遇刷新已用(§3.4.1;cw_screen_encounter 置位口径)
-    supply_refresh_used: Field[int] = field(default_factory=Field)       # 补给刷新已用(§3.4.2;「无布局局原生可刷」收窄待证,字段位先申报禁静默)
+    # —— 节点屏刷新计数组(§3.4.1-§3.4.4;渠道② logic_action,写入=仅逻辑)——
+    # 写端现状:encounter/strategy = on_outcome 发射型钩子(发射即 +1,唯一
+    # 写点);supply = live CwScreenSupplyNode 刷新分支单点 + sim observe
+    # 通道(两源同域);**env_refresh_used = 零写端申报不动**(观察通道在册
+    # cw_node_obs「剩余次数」,字段位先申报禁静默,禁按字段值做决策)。
+    encounter_refresh_used: Field[int] = field(default_factory=Field)    # 遭遇刷新已用(§3.4.1;写端 = CwScreenEncounter on_outcome 发射型钩子)
+    supply_refresh_used: Field[int] = field(default_factory=Field)       # 补给刷新已用(§3.4.2;live 写端 = CwScreenSupplyNode 刷新分支单点;「无布局局原生可刷」收窄待证)
     env_refresh_used: Field[int] = field(default_factory=Field)          # 环境刷新已用(§3.4.3;观察通道在册 cw_node_obs「剩余次数」)
-    strategy_refresh_used: Field[dict[str, int]] = field(default_factory=Field)  # 投资策略逐卡刷新已用(§3.4.4)。**键口径显式申报(迁移批次二)**:键 = 注册表规范卡名(normalize_invest_name 归一后;选名不选 spec.id 的理由 = 效果注册表 STRATEGY_EFFECTS 即以规范名为键,写端 OCR 名经同一归一函数入键,免双坐标系换算)。值域纪律:基线每卡 1 次、例外三族(银金彩环境+2/投资卡族=3/期货族=0/远见=0)以注册表官方全文为唯一口径,禁按基线做核对预期
+    strategy_refresh_used: Field[dict[str, int]] = field(default_factory=Field)  # 投资策略逐卡刷新已用(§3.4.4;写端 = CwScreenInvestStrategy on_outcome 发射型钩子)。**键口径显式申报(迁移批次二)**:键 = 注册表规范卡名(normalize_invest_name 归一后;选名不选 spec.id 的理由 = 效果注册表 STRATEGY_EFFECTS 即以规范名为键,写端 OCR 名经同一归一函数入键,免双坐标系换算)。值域纪律:基线每卡 1 次、例外三族(银金彩环境+2/投资卡族=3/期货族=0/远见=0)以注册表官方全文为唯一口径,禁按基线做核对预期
 
     # —— 持久账本组(跨画面保留)——
     # ⚠️ 免战牌不在本组(§8.6-3 载体归一,迁移批次二):激活态+剩余次数

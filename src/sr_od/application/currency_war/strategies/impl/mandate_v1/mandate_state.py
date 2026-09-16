@@ -343,6 +343,19 @@ class StrategyState:
     # 前置发射位逐帧现读现写。写端单一源 = bridge._launch_front_check。
     cw4_launch_spend_visited: bool = False
 
+    # ===== 巨星节点候选点击防重入(执行层经 kernel 通道读写的策略器字段)=====
+    # True = 本巨星节点内已点过候选(下一步 = 确认),防 re-dispatch 重入
+    # 再点候选 → toggle 反选 → 确认无候选卡死。必须跨 re-dispatch 持久:
+    # 落 op 实例 = 每次新建实例清零,即原始事故形态(session.md §2.4 B1
+    # 定案);本类局级冷建天然承载该生命周期。复位时机 = 节点完成即复位
+    # (observe 门 miss 巨星 overlay 时;巨星一局可多次触发,标记不跨节点
+    # 保持)。访问通道契约:框架执行层读写经 kernel
+    # ``cw_strategy_session.strategy_state_of``(None-safe 不冷建——状态
+    # 对象缺席时读退 False/写跳过);**禁 impl 侧 ``state_of`` 从执行层
+    # 调用**(其 None 冷建覆写属策略器装配语义,执行层不得触发)。写读点
+    # = operations/cw_screen/cw_screen_megastar.py(复位/读/置位三点)。
+    megastar_clicked: bool = False
+
     # ===== scratch(原 session.memory 消解宿主;§6.3 纪律平移)=====
     # 策略实现层私有 scratch——临时变量不再逐个升字段。纪律:
     # ①键名加模块前缀防冲突;②生命周期 = 局级(状态对象每局新建自然

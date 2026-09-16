@@ -20,8 +20,9 @@ target_comp.key_equips 契合 + 装备通用价值选最优列 → 点该列卡�
 现读)→ 单动作决策(``decide_supply`` 一选)→ 执行;**刷新 = 终结 op**(点击
 后本动作即返回,``round_retry`` 重进节点 = 入口重建,新装备面由重进后的
 选项现读承载——「节点内刷后重读再选」的循环形态与「终结→外循环重进→
-入口重建」语义连续)。节点内至多刷 1 次的硬限制由 ``_supply_refresh_used``
-session 实态承载(carried 融合:跨外环重建存活,§8.4 与商店 §3.1 对称)。
+入口重建」语义连续)。节点内至多刷 1 次的硬限制由容器
+``supply_refresh_used`` 计数承载(>0 = 已用;发射即记不等验效,跨外环
+重建存活——carried 融合语义,§8.4 与商店 §3.1 对称)。
 
 T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点击点由 read_supply_options 按列返回。
 
@@ -36,9 +37,9 @@ handle 顶部装配点分流(cw_game_ports 两端口完整在场 → 五段生�
 单一源 = 盛会之星先例(CwScreenMegastar,验收评审):decide+act
 内聚于现役动作体 ``_do_action``(刷新/选卡确认两形态,两路径共享零转录);
 本屏无 on_outcome 落地登记件(§6.4 收编面无补给行;``supply_refresh_used``
-GameState 字段位 = 先申报禁静默、无写端,cw_game_state.py 字段行自注
-「收窄待证」——执行侧防重入旗标 ``_supply_refresh_used`` 留守 _do_action,
-不入注册表);chosen_supply 写端 = 选定确认时点(真选分支)确认即写
+live 写端 = ``_do_action`` 刷新分支单点直写容器(渠道② logic_action,
+发射即记不等验效;注册表缺席 = 本点唯一,无双计面;sim 侧 observe 通道
+在写,两源同域));chosen_supply 写端 = 选定确认时点(真选分支)确认即写
 单次逻辑写入豁免(§2.2/§6.5-6)。节点完成判定 = 下一轮 observe 门 ``_in_node``
 复检(观察驱动节点循环,非生命周期验证段——用户裁定 2026-09-10 验证段废除,
 confirm 点击系统性不生效 = 动作链 bug 根修动作链)。本屏 sim 腿 = 引擎补给
@@ -58,7 +59,6 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
-from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.obs.cw_node_obs import read_supply_options
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
     CwScreenOpBase,
@@ -117,7 +117,7 @@ class CwScreenSupplyNode(CwScreenOpBase):
 
     def __init__(self, ctx: SrContext):
         CwScreenOpBase.__init__(self, ctx, op_name='货币战争-补给节点')
-        self._refresh_used = False   # r1 review#1:节点实例态(只刷一次;游戏规则补给可刷 1 次)
+        self._refresh_used = False   # 无 match 局外兜底实例态(生产读源 = 容器 supply_refresh_used 计数)
         # 适配器位缺省装配(试点步骤 3;先例 = CwScreenPrep/盛会之星):观察口 =
         # 实机适配器(现役节点完成门 + 帧引用封口);动作口 = None = 直连现役
         # 动作体 ``_do_action``(基类「None = 子类缺省实现自担」;注入替位 =
@@ -199,10 +199,18 @@ class CwScreenSupplyNode(CwScreenOpBase):
         # _REFRESH_BTN_DX 偏移点,无钻+未刷 → 点刷新重掷。
         match = self.ctx.cw_match
         opts = read_supply_options(self.ctx, screen)
-        # r2 review#2:实例态在外环每次新建 op 下失效 → 挂 match.session
-        # (正式字段,非 Optional)读;r10 review#3:getattr 兜底删(拼错字段名会静默
-        # False 掩盖接线错误)。无 match 退实例态(测试/离线路径)。
-        _refresh_used = exec_state_of(match.session)._supply_refresh_used if match is not None else self._refresh_used
+        # 刷新已用读源 = 容器 node_screen_refresh.supply_refresh_used 计数
+        #(>0 = 已用,旗标 bool 语义平移;live 写端 = 下方刷新分支单点,
+        # sim observe 通道同域)。无 match 退实例态(测试/离线路径;
+        # 实例态在外环每次新建 op 下失效 = 仅局外兜底,不承生产语义)。
+        if match is not None:
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                game_state_of,
+            )
+            _refresh_used = int(game_state_of(
+                match.session).supply_refresh_used.value or 0) > 0
+        else:
+            _refresh_used = self._refresh_used
         target = CwScreenSupplyNode.CARD_BODY
         reason = 'no-options(CARD_BODY 兜底)'
         refresh_target = None
@@ -222,10 +230,28 @@ class CwScreenSupplyNode(CwScreenOpBase):
             pick = match.strategy.decide_supply(
                 [o for o, _ in opts], _state, match.session, _cfg,
                 refresh_used=_refresh_used)
-            if pick.refresh and not _refresh_used:   # 只刷一次(r1#1+r2#2:session 级)
+            if pick.refresh and not _refresh_used:   # 只刷一次(容器计数 >0 = 已用)
                 _anchor = self._read_refresh_anchor(screen)
                 self._refresh_used = True
-                exec_state_of(match.session)._supply_refresh_used = True
+                # live 刷新发射即容器计数 +1(渠道② logic_action;发射即记
+                # 不等验效——含下方锚读缺零点击路径,同旧旗标置位时点;本屏
+                # 无 on_outcome 注册件,本点 = 唯一容器写点,无双计面)。
+                try:
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
+                        ChannelSig,
+                        game_state_of,
+                    )
+                    _gs_r = game_state_of(match.session)
+                    _gs_r.write_logic(
+                        _gs_r.supply_refresh_used,
+                        int(_gs_r.supply_refresh_used.value or 0) + 1,
+                        produced_by='CwScreenSupplyNode',
+                        evidence='refresh_click',
+                        sig=ChannelSig(family='logic_action',
+                                       actor='CwScreenSupplyNode',
+                                       mode='compute'))
+                except Exception as e:   # noqa: BLE001  记录面失败不阻塞节点动作
+                    log.warning(f'[cw-supply] 刷新计数记录失败(不阻塞): {e}')
                 reason = pick.reason
                 if _anchor is None:
                     # 文本锚读缺 → 零点击 + 照常置位已用(流程收敛语义与旧码一致:

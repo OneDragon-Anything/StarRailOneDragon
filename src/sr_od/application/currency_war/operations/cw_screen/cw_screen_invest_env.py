@@ -324,7 +324,7 @@ class CwScreenInvestEnv(CwScreenOpBase):
         # 刷新计数授权(计数现读):承载 = 画面「剩余次数」计数文本——屏幕
         # 可观察,每次访问入口重现在当帧,无跨访问承载需求,不引入 session
         # carried 融合载体(screen_op.md §3.1/§8.4 归属判据:非屏幕可观察
-        # 字段才归 carried,补给侧 _supply_refresh_used 对照);取值时机 =
+        # 字段才归 carried,补给侧 supply_refresh_used 容器计数对照);取值时机 =
         # 每访问执行闸从当访问稳定帧现读,读缺 = 无授权(失败安全)。重进后
         # 再次刷新由既有计数读数自然闸住(每刷一次计数扣一,已耗读 0 → 闸
         # 关),无需 exec_state 防重入载体;点偏未生效(计数不扣)时重进后

@@ -28,6 +28,9 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
+from sr_od.application.currency_war.kernel.cw_strategy_session import (
+    strategy_state_of,
+)
 from sr_od.application.currency_war.obs.cw_node_obs import read_megastar_options
 from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
     CW_OVERLAY_SETTLE_S,
@@ -113,10 +116,14 @@ class CwScreenMegastar(CwScreenOpBase):
         # AND NOT 选择伙伴」(lcs 0.7 防共享「选择」误匹配)—— 改用 megastar 独有标题「盛会之星」更直接。
         still_in = self.round_by_find_area(screen, '货币战争-盛会之星', '标识-盛会之星', crop_first=False).is_success
         # megastar 一局可能多次(每次持有盛会之星角色触发,见类 docstring),flag 不能跨节点保持 True。
+        # 节点完成即复位:经 kernel strategy_state_of None-safe 通道,状态
+        # 对象缺席跳过写(禁执行层触发 impl state_of 的 None 冷建装配语义)。
         if not still_in:
             _match = self.ctx.cw_match
             if _match is not None:
-                _match.exec_state.megastar_candidate_clicked = False
+                _st = strategy_state_of(_match.session)
+                if _st is not None:
+                    _st.megastar_clicked = False
         return still_in
 
     @operation_node(name='巨星处理', is_start_node=True, node_max_retry_times=8)
@@ -140,11 +147,15 @@ class CwScreenMegastar(CwScreenOpBase):
         return self.round_retry(wait=1.5)
 
     def _do_action(self, screen) -> None:
-        # 选中标记挂 match.exec_state(局容器执行态,跨 re-dispatch 持久;
+        # 选中标记挂策略器状态 StrategyState(局级,跨 re-dispatch 持久;
         # 原实例态在重派时重置 → re-click toggle 反选 → confirm 无候选
-        # → 卡死)。megastar 选中态视觉(金边)。
+        # → 卡死)。读侧防御 getattr:状态对象缺席(None)或异型缺字段
+        # 退 False(经 kernel strategy_state_of 通道,禁 getattr session
+        # 猜宿主/禁 impl state_of 冷建)。megastar 选中态视觉(金边)。
         _match = self.ctx.cw_match
-        _clicked = _match.exec_state.megastar_candidate_clicked if _match else False
+        _clicked = (getattr(strategy_state_of(_match.session),
+                            'megastar_clicked', False)
+                    if _match else False)
         if not _clicked:
             options = read_megastar_options(self.ctx, screen)
             match = self.ctx.cw_match
@@ -172,7 +183,12 @@ class CwScreenMegastar(CwScreenOpBase):
             self.ctx.controller.mouse_move(candidate)
             self.ctx.controller.click(candidate)
             if _match is not None:
-                _match.exec_state.megastar_candidate_clicked = True   # 局容器级:跨 re-dispatch 持久(session.md §2.4 B1 定案落点)
+                # 置位经 kernel strategy_state_of(None-safe 不冷建):状态
+                # 对象缺席跳过写(局级:跨 re-dispatch 持久,session.md
+                # §2.4 B1 定案的宿主级语义)。
+                _st = strategy_state_of(_match.session)
+                if _st is not None:
+                    _st.megastar_clicked = True
                 # r358d(遥测接线):巨星选择落 session(复盘「绑定与 comp 匹配」维度)。
                 if options and 0 <= idx < len(options):
                     _match.session.chosen_megastar = options[idx].char_id or ''

@@ -4,8 +4,7 @@
 画面 op 运行产生的状态**(拖拽失败计数/发射连败/防重入标志/对账期望账/
 同轮买卖互斥事实账)归执行侧——产生者 = op/执行侧代码,不是读屏采集。
 落点 = 局容器 ``CurrencyWarMatch.exec_state``(生命周期 = 一局,与
-session 同建同灭;``megastar_candidate_clicked`` 按 session.md §2.4 B1
-定案必须落局容器级,不留实施批裁量)。
+session 同建同灭)。
 
 访问口(设计 §5.5「执行侧载体访问口注入 kernel」候选的实现面):
 - 框架/ops 直通口 = ``ctx.cw_match.exec_state``(局容器 dataclass 字段,
@@ -106,23 +105,6 @@ class ExecState:
     节点/visit(防重入)。
     """
 
-    # 巨星 handler 点击执行防重入。**必须局容器级**(防 new CwScreenMegastar
-    # instance 重置 instance flag → re-click toggle 反选 → 卡死;落 op
-    # 实例 = 每次新建实例清零 = 原始事故复发,session.md §2.4 B1 定案)。
-    megastar_candidate_clicked: bool = False
-    # 补给刷新 1 次已用(跨 handler 实例持久;发出刷新点击即置位,不等
-    # 验效,防重入反复尝试)。节点级(screen_op.md §8.4 裁执行侧)。
-    _supply_refresh_used: bool = False
-    # 遭遇分支刷新 1 次已用(同款跨 handler 语义)。节点级。
-    _encounter_refresh_used: bool = False
-    # 投资策略逐卡刷新已发射槽集(ADR-0600 §3.3;发射即记不等验效,同款防重入;
-    # [索引定义] 坐标系: 策略屏画面槽位下标左→右 0-2,与 PickEvent.
-    #             refresh_slots 同源;取值时机: 执行期,发射点击即 add)。
-    # 复位 = visit 起点单点(CwScreenInvestStrategy 实例首帧入口锚验通过后
-    # clear——同 visit 重入不清保防重入,跨 visit 新实例必清防陈旧集泄入)。
-    # 「可否再刷」权威判定 = 逐卡计数现读(cw_node_obs reader),本集唯一
-    # 职责 = 同 visit 防重入(双保险不同源,观察赢规则照常辖)。
-    _invest_refresh_used_slots: set[int] = field(default_factory=set)
     # star 回退停机钩子计数(char → 连续回退次数;连续 2 节点回退 = 真识别
     # 问题 → 停机保画面排查;读回恢复即清零)。执行侧停机钩子载体。
     star_regression_count: dict[str, int] = field(default_factory=dict)

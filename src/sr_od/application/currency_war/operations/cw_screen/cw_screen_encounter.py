@@ -8,9 +8,10 @@
 ✅ 分支刷新执行链:``decide_encounter`` 建议刷新(pick.refresh,全分支词缀克
   comp 时)→ OCR「剩余次数:N」>0 且本局未用 → 文本锚定点刷新圆钮 → **重读选项 →
   refresh_used=True 重新决策 → 按新决策选**。分支刷新能力 = 优势布局「分支刷新」授予
-  (每局 1 次重置两卡难度/奖励;bwiki 优势布局表);session 级单次标志
-  (``exec_state_of(session)._encounter_refresh_used``,与补给 ``_supply_refresh_used`` 同款)——
-  发出刷新点击即置位,不等验效(点偏不重试,防重入反复尝试)。验效双通道
+  (每局 1 次重置两卡难度/奖励;bwiki 优势布局表);「本局未用」判定源 =
+  容器 ``node_screen_refresh.encounter_refresh_used`` 计数(>0 = 已用)——
+  发出刷新点击即写端 +1(on_outcome 发射型钩子,渠道②),不等验效
+  (点偏不重试,防重入反复尝试)。验效双通道
   已拆除(用户裁定 2026-09-10:动作 op 只管机械执行禁止验效,出处 = 验证
   违规清查报告 H1):点钮+固定等待后无条件重读,卡面未变时新观察=旧
   options,重决策结果天然等价,「刷没刷成」不判。
@@ -54,7 +55,6 @@ from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
     EncounterPick,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.obs.cw_node_obs import (
     read_encounter_options,
     read_encounter_refresh_count,
@@ -166,13 +166,12 @@ class CwScreenEncounter(CwScreenOpBase):
         except Exception as e:   # noqa: BLE001  记录面失败不阻塞
             log.warning(f'[cw-encounter] 刷新计数记录失败(不阻塞): {e}')
 
-    def _emit_refresh_click(self, session: 'StrategySession',
-                            pick: EncounterPick) -> None:
+    def _emit_refresh_click(self, pick: EncounterPick) -> None:
         """刷新点击发射时点(单一发射口,发射即触发;§6.5-4 随点击置位不等
-        验效)。防重入旗标 = 执行侧载体留守(非登记件);登记件写端经
-        on_outcome 注册表触发——本方法 = 两路径(旧 handle / 五段循环)
+        验效)。「已用」账 = 容器 encounter_refresh_used 计数,写端 = 本
+        发射经 on_outcome 注册表触发的登记件钩子(唯一容器写点,禁第二
+        写点——双计即计数毒化);本方法 = 两路径(旧 handle / 五段循环)
         共用分派面,触发唯一性先例 = CwScreenPrep._act_execute。"""
-        exec_state_of(session)._encounter_refresh_used = True
         self.fire_outcome_hooks(pick, evidence='refresh_click')
 
     def _observe_frame(self) -> EncounterObservation:
@@ -313,17 +312,23 @@ class CwScreenEncounter(CwScreenOpBase):
         # 结果天然等价;未生效治理归下一帧观察(防重入已拦,不重试)。
         refreshed = False
         if match is not None and pick is not None and pick.refresh:
-            sess_used = getattr(exec_state_of(match.session), '_encounter_refresh_used', False)
-            if sess_used:
+            # 已用判定 = 容器计数(>0 = 已用;写端 = on_outcome 发射型钩子,
+            # 渠道②——发射即 +1,本闸读同一笔账)。
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                game_state_of,
+            )
+            _used = int(game_state_of(
+                match.session).encounter_refresh_used.value or 0) > 0
+            if _used:
                 log.info('[cw-encounter] 建议刷新但本局已用(分支刷新每局1次)→ 按原评分选')
             elif refresh_left is None or refresh_left <= 0:
                 log.info(f'[cw-encounter] 建议刷新但无剩余次数(读数={refresh_left})→ 按原评分选')
             else:
-                # 发出点击即置位:优势布局每局只授 1 次,单次尝试语义与游戏
-                # 规则对齐(点偏不重试,防「重入屏再试」的反复尝试)。防重入
-                # 旗标留守 + 登记件经 on_outcome 注册表(发射型触发点,
-                # 试点步骤 2 收编;两路径共用)。
-                self._emit_refresh_click(match.session, pick)
+                # 发出点击即计数:优势布局每局只授 1 次,单次尝试语义与游戏
+                # 规则对齐(点偏不重试,防「重入屏再试」的反复尝试)。容器
+                # 写端 = 登记件经 on_outcome 注册表(发射型触发点,唯一;
+                # 两路径共用)。
+                self._emit_refresh_click(pick)
                 refreshed = True
                 new_opts = self._try_refresh(screen)
                 if new_opts:
@@ -440,15 +445,20 @@ class CwScreenEncounter(CwScreenOpBase):
         # 等待 → 无条件重读 → 带 refresh_used=True 自然重决策。
         refreshed = False
         if match is not None and pick is not None and pick.refresh:
-            sess_used = getattr(exec_state_of(match.session), '_encounter_refresh_used', False)
-            if sess_used:
+            # 已用判定 = 容器计数(同旧路径口径:>0 = 已用,写端 = 发射型钩子)。
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                game_state_of,
+            )
+            _used = int(game_state_of(
+                match.session).encounter_refresh_used.value or 0) > 0
+            if _used:
                 log.info('[cw-encounter] 建议刷新但本局已用(分支刷新每局1次)→ 按原评分选')
             elif payload.refresh_left is None or payload.refresh_left <= 0:
                 log.info(f'[cw-encounter] 建议刷新但无剩余次数(读数={payload.refresh_left})→ 按原评分选')
             else:
-                # 发出点击即置位:发射型触发点两路径共用(见
+                # 发出点击即计数:发射型触发点两路径共用(见
                 # _emit_refresh_click;语义口径同旧路径逐位)。
-                self._emit_refresh_click(match.session, pick)
+                self._emit_refresh_click(pick)
                 refreshed = True
                 new_opts = self._try_refresh(payload.screen)
                 if new_opts:
