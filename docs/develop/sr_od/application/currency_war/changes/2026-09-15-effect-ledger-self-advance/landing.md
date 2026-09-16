@@ -14,11 +14,12 @@
 - `gold=None` 帧：金结算跳过且**水位不动**（下个入口帧重试）；`total<=0`：水位照落（无欠账）。
 - `node.value` / `streak.value` / `settlement.value` 为 None：金结算静默跳过（无告警刷屏）、其余段照常。
 - 现有 kernel 直调测试（advance/grant/settle）全绿不改动语义。
+- `boundary_settled_ord` 进 `full_state_snapshot`（对照 node_hist_ord 先例，离线判读可见）。
 - §12 通用工程门（引用，不复述）。
 **验收凭据形式**：上述测试名 + ruff。
 
 ## 3.2 原子切换：管线接线 + cw_loop tick 块删除（同一提交）
-**范围**：`observe_screen_context` 尾段接入效果推进段；cw_loop 备战分支效果账本 tick 块删除（含金结算成功 log.info 与段失败 warning 旧行）；随块失用 import 清理；sim/测试中依赖 loop tick 时序的经济断言改为直调 kernel。
+**范围**：`observe_screen_context` 尾段接入效果推进段；条件族采样金窗漂移为已申报接受（±1~3 档，断言不锁漂移数值，锁发放发生且余额入账）；cw_loop 备战分支效果账本 tick 块删除（含金结算成功 log.info 与段失败 warning 旧行）；随块失用 import 清理；sim/测试中依赖 loop tick 时序的经济断言改为直调 kernel。
 **设计依据**：design.md §2 方案 2/3、行为变化申报（四条全项）、接口契约。
 **文件面**：`src/sr_od/application/currency_war/operations/cw_loop.py`；`src/sr_od/application/currency_war/kernel/cw_game_state.py`（接线 diff）；受影响测试文件。
 **依赖**：3.1
@@ -51,6 +52,6 @@
 
 ## 正本更新清单
 - `flow/outer_loop.md`：§3 进入序「GameState 心跳观察者采样 + 效果账本节点 tick」合并步**整步删除**——心跳采样半句已随先行提交（删除观察断流心跳采样）从代码移除，效果账本 tick 半句随本迭代 3.2 移除 ← 3.2
-- `game_state/effect-domain.md`：§节点推进族 现态挂点行（「备战分支 advance_node」→「observe_screen_context 派生管线效果推进段」）← 3.2
+- `game_state/effect-domain.md`：条件族（本金充裕系）采样金窗随发放时点前移的申报；§节点推进族 现态挂点行（「备战分支 advance_node」→「observe_screen_context 派生管线效果推进段」）← 3.2
 - `game_state/strategy-env-impacts.md`：效果桥条目「现态挂点=cw_loop 备战分支 tick…目标态=派生管线效果域段」合一为现状描述；迁移三面③（计数器退役）标注挂效果域批 M3 ← 3.2
 - `game_state/README.md`：若索引行描述效果推进挂点则同步（条件项）← 3.2
