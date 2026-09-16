@@ -261,7 +261,7 @@ OBS_MODES: tuple[str, ...] = ('read', 'carried', 'prior', 'synthesized')
 #: obs_event 事件词表封闭集(§3.2.3 行型 2:arbitrate=拒读/仲裁拒绝留证 /
 #: miss=失读留证 / popup=弹窗类流程异常留证)。集外值 = 红(硬约束 2 同纪律:
 #: 事件面漂移要在登记点暴露,禁自由串)。
-OBS_EVENT_EVENTS: tuple[str, ...] = ('arbitrate', 'miss', 'popup')
+OBS_EVENT_EVENTS: tuple[str, ...] = ('arbitrate', 'miss', 'popup', 'chain_diff')
 
 #: logic 两族子模:恒 compute(逻辑计算,无观察质量语义)。
 LOGIC_MODES: tuple[str, ...] = ('compute',)
@@ -2783,6 +2783,12 @@ class GameState:
     # 结算。写端 = 效果推进段(:func:`tick_effect_boundary`,接线位 =
     # observe_screen_context 尾段)。
     boundary_settled_ord: int | None = None
+    # [索引定义] node_path_diff_pending = 链 diff 两帧确认门的待确认候选
+    # (链观察落地批):上一 clean 备战帧相对基线的差异链快照,下一 clean
+    # 帧读数与其一致才落 chain_diff 行(单帧翻转不产行,链正本 §4);
+    # None = 无待确认候选。写端 = :func:`maybe_emit_chain_diff`(备战帧
+    # 链写端);离场快照与变异窗豁免路径会清候选。
+    node_path_diff_pending: NodeChain | None = None
     # 段级时长锚(局终域 duration_s 自算源):容器创建时刻的 monotonic 读数
     #(每局新建 = 天然段起点;恢复局跨段 = 各段各锚,聚合归判读侧)。
     created_monotonic: float = 0.0
@@ -2862,7 +2868,7 @@ class GameState:
         - 同流、**占版本**、内嵌当时 state(v3.1-N1:obs_event 与写入行同流
           同序,「run 段内行序 = 版本序」不变量覆盖全部行型);不触任何
           Field(行行自足,查询不分行型);
-        - event 词表 = :data:`OBS_EVENT_EVENTS` 封闭集(arbitrate|miss|popup),
+        - event 词表 = :data:`OBS_EVENT_EVENTS` 封闭集(arbitrate|miss|popup|chain_diff),
           集外显式炸错;
         - 产生面 = 登记清单(非全量;obs_conflict 汇点收编已接——R5 W1/
           ADR-0634);
@@ -3522,6 +3528,111 @@ def chain_node_type(bs: GameState, plane: int, round_num: int) -> ChainQuery:
     cell = chain.seq[idx]
     token = str(cell.token) if cell is not None and cell.token else None
     return ChainQuery(token=token)
+
+
+#: 仅标签通道 token 集(链正本 §4 通道受限差判定:基线通道 hu、现行通道
+#: label 且现行 token ∈ 本集 = 两写端识别能力集不同,非环境改写)。
+_LABEL_ONLY_TOKENS: frozenset[str] = frozenset({'elite', 'megastar', 'invest'})
+
+
+@dataclass(frozen=True)
+class ChainDiff:
+    """基线链 vs 现行链的结构差异(链正本 §4;数学单一源,实机与 sim 共用)。
+
+    rewrites = 改写位集(双 token 非 None 且不等,且差非通道受限);
+    channel_limited = 通道受限差位集(基线 hu、现行 label 且现行 token ∈
+    仅标签集——识别能力集差异,非改写);length_changed = 链长差(环境/
+    策略增删节点);first_diff_pos = 首个 token 差异位(0 基;无 = None);
+    baseline_coverage = 基线 None 洞位集(基线首写帧未辨位,保「基线 =
+    入口快照」时间语义)。
+    """
+
+    rewrites: tuple[int, ...]
+    channel_limited: tuple[int, ...]
+    length_changed: bool
+    first_diff_pos: int | None
+    baseline_coverage: tuple[int, ...]
+
+
+def chain_diff(baseline: NodeChain, current: NodeChain) -> ChainDiff:
+    """基线链 vs 现行链结构差异(纯函数,实机与 sim 共用;链正本 §4)。"""
+    rewrites: list[int] = []
+    limited: list[int] = []
+    coverage: list[int] = []
+    first: int | None = None
+    n = max(len(baseline.seq), len(current.seq))
+    for i in range(n):
+        in_b = i < len(baseline.seq)
+        b = baseline.seq[i] if in_b else None
+        c = current.seq[i] if i < len(current.seq) else None
+        bt = b.token if b is not None else None
+        ct = c.token if c is not None else None
+        if in_b and bt is None:
+            coverage.append(i)
+        if bt is not None and ct is not None and bt != ct:
+            if first is None:
+                first = i
+            if b.channel == 'hu' and c.channel == 'label' \
+                    and ct in _LABEL_ONLY_TOKENS:
+                limited.append(i)
+            else:
+                rewrites.append(i)
+    return ChainDiff(rewrites=tuple(rewrites), channel_limited=tuple(limited),
+                     length_changed=len(baseline.seq) != len(current.seq),
+                     first_diff_pos=first,
+                     baseline_coverage=tuple(coverage))
+
+
+def _chain_cells_payload(chain: NodeChain) -> list[dict]:
+    """链载荷序列化(逐格 token/channel/hu_dist;diff 行内嵌用)。"""
+    return [{'token': c.token, 'channel': c.channel, 'hu_dist': c.hu_dist}
+            for c in chain.seq]
+
+
+def maybe_emit_chain_diff(bs: GameState, *, snapshot: bool,
+                          in_mutation_window: bool,
+                          sig: ChannelSig) -> bool:
+    """链 diff 触发面(链正本 §4/§5):基线在场 ∧ 差异非空才评估。
+
+    触发纪律:备战帧触发须连续两个 clean 帧读数一致才落行(待确认候选 =
+    ``node_path_diff_pending``,单帧翻转不产行);离场快照豁免两帧门;
+    变异窗内豁免并清候选(窗关后按两帧确认补比对)。发射 = note_obs_event
+    'chain_diff'(verdict 留空——改写身份归因 = 消费侧 join
+    active_env/active_strategies 同帧快照,链正本 §5,观察层不猜);
+    journal sink 缺省关 = 零副作用。返回是否落行。
+    """
+    baseline = bs.node_path_baseline.value
+    current = bs.node_path.value
+    if baseline is None or current is None:
+        return False
+    diff = chain_diff(baseline, current)
+    if not (diff.rewrites or diff.channel_limited or diff.length_changed):
+        bs.node_path_diff_pending = None
+        return False
+    if in_mutation_window:
+        bs.node_path_diff_pending = None
+        return False
+    if not snapshot:
+        if bs.node_path_diff_pending != current:
+            bs.node_path_diff_pending = current   # 首见候选,等下帧确认
+            return False
+        bs.node_path_diff_pending = None   # 连续两帧一致 → 落行
+
+    payload = {
+        'baseline': {'plane': baseline.plane,
+                     'seq': _chain_cells_payload(baseline)},
+        'current': {'plane': current.plane,
+                    'seq': _chain_cells_payload(current)},
+        'rewrites': list(diff.rewrites),
+        'channel_limited': list(diff.channel_limited),
+        'length_changed': diff.length_changed,
+        'first_diff_pos': diff.first_diff_pos,
+        'baseline_coverage': list(diff.baseline_coverage),
+        'snapshot': snapshot,
+    }
+    bs.note_obs_event('chain_diff', 'node_path', payload, verdict='',
+                      sig=sig)
+    return True
 
 
 # ============================================================ sim 合成口
