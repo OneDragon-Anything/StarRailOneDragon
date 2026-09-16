@@ -63,6 +63,3 @@
 - `screens/shop.md`：spend_gate 行（受限访问按意图预算闸执行）← 3.3
 - `flow/session.md` 载体表：op='发射帧仲裁商店访问' 第三载体行口径 ← 3.3
 - `screens/op-layer.md`：五段生命周期 decide 段补注（发射决策 = mandate_v1 前置发射位，CwScreenPrep 决策面收编）← 3.3
-- `flow/session.md` 载体表：op='发射帧仲裁商店访问' 第三载体行口径（出口改 op 内受限访问处）← 3.3
-- `screens/shop.md`：spend_gate 行（受限访问按意图预算闸执行）← 3.3
-- 遥测分键面：launch_arbitrage_*/readiness_* 写点宿主注记 ← 3.3
