@@ -33,7 +33,7 @@ obs_conflicts/runs`,recorder 写入面/match_archive 切片/全仓落盘调用�
 | exogenous | 退役(无独立事件流) | kind 逐值收编(节点推进→派生写入行/popup→obs_event/briefing→开局事实域/event_choice→chosen 域/sell_income·hp_pay·level_up→②写入行/resumed→中继行族等);battle_done 旧写点停写与旧流停写同批;cw_anchor 四 carrier_kind 归宿随锚处置候裁 |
 | spend_ledger | 拆分:字段收编+部分退役 | 金真值→gold 域;计数→计数域+质量标记;plan_truncated/refresh_skipped→receipts 发射行字段;duration/boundary/progressed=纯工程面退役归日志 |
 | shop_snapshots | 字段收编候选+流退役 | 牌面=state 的 shop payload 域,offer/refresh 各为一行观察写入行,独立快照流冗余;rho_obs 不收编→判读侧离线派生 |
-| cw4_counters | 流退役(R5 W4 落码;键收编审计定谳:效果域 0 键/策略行为键 256 字面+16 闭族 80 实例+9 开放族全保留=策略侧决策行 strategy-state 载体,无消费删 0 键) | 键=策略 state 容器(MandateState.cw4_counters),sim 红则/轮差分/预注册不经流照旧;局终级全键聚合=局终域行载荷 ``MatchFinal.cw4_counters``;键全集登记单一源=封闭锁(test_cw4_key_closure) |
+| cw4_counters | 流退役(R5 W4 落码;键收编审计定谳:效果域 0 键/策略行为键 256 字面+16 闭族 80 实例+9 开放族全保留=策略侧决策行 strategy-state 载体,无消费删 0 键) | 键=策略 state 容器(StrategyState.cw4_counters),sim 红则/轮差分/预注册不经流照旧;局终级全键聚合=局终域行载荷 ``MatchFinal.cw4_counters``;键全集登记单一源=封闭锁(test_cw4_key_closure) |
 | defect_ledger | **保留专用(候裁)** | 案 A=收编 obs_event;案 B(倾向)=保留专用流——severity 判级/复现计数/verdict 词表/安灯联动(安灯=借自产线的停线告警词,此处指缺陷触发的告警通知联动)是「质量索引」不是「证据内容」;裁保留时 refs 改指 journal `(run_id,v)` 键+寿命联动 |
 | op_journal | **退役(2026-09-15 用户裁定,写端删除批落码)** | op 耗时画像/op 序列归 server 主日志 `[cw-op]` 行(dispatch/仲裁出口行);进程中断证据 = 实机段无 match_final 收口 + 行流 ts 戛止(中断时点活动签名 = 尾行 sig.actor);动作回执/金差账在 state 流 receipts/gold 行已在案 |
 | exec_events | 字段收编+流退役 | 发射事实→receipts 发射行(**零成败字段**);失败可见性=消费方对比语义(发射行后预期变化未出现=未落地,判定归观察侧 reconcile) |

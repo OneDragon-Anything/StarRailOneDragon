@@ -530,7 +530,7 @@ class DecisionTrace:
     # —— 决策时点挂起期望态快照(W971 期望态 infra 遥测批;**写入端已随
     # ADR-0651 两态制退役**:expected_state 条目表拆除,新数据恒 None——
     # 字段按历史数据只读口径保留,旧行读端分型不变)——
-    # 历史快照语义 = record 调用时点 exec_state_of(session).expected_state
+    # 历史快照语义 = record 调用时点执行侧期望态载体(已随两态制退役)的
     # 未确认条目摘要 [{path, value, produced_by, at_round, kind}]。读端三态:
     # 旧行无此键 = 迁移前数据(不修复);旧行 [] = 无挂起期望;旧行非空 =
     # 决策基于含期望推进值的画面。可选末尾追加字段,旧记录缺省 None 不破坏

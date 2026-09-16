@@ -6,14 +6,15 @@
 「从游戏画面观察到的数据」**(框架读屏与识别层守卫产生;策略器只读)
 + 框架设施(rng 种子契约锚 / performance 观测反馈)+ ``strategy_state``
 黑盒引用。策略器推导产生的中间状态归实现包私有的状态对象
-(mandate_v1 = ``StrategyState``,经 ``create_state`` 工厂按局冷建);
-执行层状态(op/流程侧产生:失败计数/防重入)归执行侧
-载体(``kernel/cw_exec_state.py`` 的 ``ExecState``,挂局容器
-``CurrencyWarMatch.exec_state``)。
+(mandate_v1 = ``StrategyState``,经 ``create_state`` 工厂按局冷建)。
+执行层不设独立状态载体(执行层状态类目已退役,git 历史可溯):
+op/流程侧产生的状态按其语义各自归位——局内事实写 GameState 容器
+(Field 组与非 Field 簿记组,宿主 ``kernel/cw_game_state.py``),
+防重入由决策面读容器计数自行裁决。
 
 驻 kernel 理由:kernel 判据层以本类为观察数据载体消费(经
-``strategy_state_of`` 访问函数取策略状态、``exec_state_of`` 取执行侧
-载体——kernel 不持有策略内部结构的字段注解,运行时零 impl 包 import,
+``strategy_state_of`` 访问函数取策略状态——None-safe 不冷建;kernel
+不持有策略内部结构的字段注解,运行时零 impl 包 import,
 TYPE_CHECKING 承载)。类体逐字段无 app 引用;``prep_obs_frame``
 注解字符串化(app 桶
 类型仅注解引用)。

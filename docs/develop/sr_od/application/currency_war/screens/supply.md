@@ -26,21 +26,21 @@ observe 段 = 节点完成门(`_in_node`)+ 轻观察帧引用(选项读取归 de
 decide+act 内聚 `_do_action`(两路径共享):
 
 ```
-opts = read_supply_options(ctx, screen);refresh_used = ExecState._supply_refresh_used
-  (无 match 退实例旗标,测试/离线路径)
+opts = read_supply_options(ctx, screen);refresh_used = 容器 supply_refresh_used
+  计数对照(>0 = 已用;无 match 退实例旗标,测试/离线路径)
 pick = decide_supply([o for o,_ in opts], game_state_of(session), ..., refresh_used)
 ├─ 刷新形态(节点循环内终结语义):pick.refresh ∧ 未用 →
 │    文本锚:「文本-剩余次数」建档 rect 外扩 OCR 带 +「剩余次数:N」正则
-│    → 置位 _supply_refresh_used(实例 + ExecState 双写,不等验效;
-│      锚读缺 = 零点击但照常置位——防「建议刷新→锚读缺→零动作」
-│      每轮空转烧尽节点预算的活锁)
+│    → 实例旗标置位 + 容器计数单点写(write_logic +1,不等验效;
+│      本屏无 on_outcome 注册件,无双计面;锚读缺 = 零点击但照常置位——
+│      防「建议刷新→锚读缺→零动作」每轮空转烧尽节点预算的活锁)
 │    → 锚命中:点锚 + 偏移 _REFRESH_BTN_DX(-100)→ 固定等待 2s
 │      (重掷动画覆盖)→ return
 │    (round_retry 重进节点 = 入口重建;新装备面由重进后选项现读承载)
 └─ 选卡形态:target = opts[pick.idx][1](卡身点击点,y≈550,点卡身不开对话直接选中)
      → 无选项/无 match 兜底 = CARD_BODY 屏中常量(900,550)
      → mouse_move + click → 0.6s → 点「按钮-确认」(round_by_find_and_click_area,
-       success_wait 1.5)→ 选定快照暂存 ExecState._pending_chosen_supply
+       success_wait 1.5)→ 选定确认时点直写容器 chosen_supply
        (char, equip, has_diamond)→ 到账登记 ConfirmSupply(owned += equip)
 ```
 
@@ -50,15 +50,15 @@ pick = decide_supply([o for o,_ in opts], game_state_of(session), ..., refresh_u
 
 | 条件 | 级别 | 交回落点 |
 |---|---|---|
-| observe 门复检 miss(标识消失) | **节点完成** | 出口验真 → 写 `chosen_supply` → round_success 交回外循环重判(补给无结算屏) |
-| 刷新点击 | 本轮动作即返回 | round_retry 重进节点 = 入口重建(节点内至多刷 1 次由 `_supply_refresh_used` 硬限制) |
+| observe 门复检 miss(标识消失) | **节点完成** | 出口验真(纯观察面;chosen_supply 已改确认即写,门处无写动作)→ round_success 交回外循环重判(补给无结算屏) |
+| 刷新点击 | 本轮动作即返回 | round_retry 重进节点 = 入口重建(节点内至多刷 1 次由容器 `supply_refresh_used` 计数对照硬限制) |
 | 确认未落地 | 节点循环重入 | 下一轮 observe 门仍在 → 重走(计预算,超 `node_max_retry_times=8` → FAIL bail) |
 
 ## 6. 状态上报面
 
-- `chosen_supply` write_logic(出口验真通过分支单次逻辑写入豁免;值 = 节点级选定暂存;暂存空 = 兜底点卡/刷新轮不写,None 保持「无记录」)。
+- `chosen_supply` write_logic(**确认即写**,选定确认时点单次逻辑写入豁免;值 = (角色, 装备, 有钻石);兜底点卡/刷新轮无选定不写,None 保持「无记录」)。口径申报:supply 确认即写,chosen_tome 维持「出口验真后写」家族口径——差异理由 = supply 的中转暂存宿主随执行层状态类目退役(git 历史可溯),直写是载体消亡后的唯一形态;确认未落地窗内容器短暂持未落地选定,现无决策读者,低危可接受,出口验真保留为观察面。
 - 到账登记 `ConfirmSupply`(`kernel/cw_exec_state.py::apply_op_effect` dict 分支,owned += 装备名;equip 未读到 = 不登记)。
-- 刷新已用:GameState 字段位 `supply_refresh_used` **先申报无写端**(cw_game_state.py 字段行自注收窄待证);执行侧防重入旗标 = `ExecState._supply_refresh_used`(节点级,写端留守本 op,不入 on_outcome 注册表)。
+- 刷新已用:容器 `supply_refresh_used` 计数在产——**live 写端 = 本 op 刷新分支单点 write_logic +1**(发射即记不等验效;本屏无 on_outcome 注册件,无双计面),sim 引擎经 observe 通道在写,两源同域;读点 = 刷新链容器计数对照(>0 = 已用)。
 - 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.2 / §4「事件选择」;到账登记 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §2(ConfirmSupply 行)。
 
 ## 7. 子态与 overlay
@@ -67,7 +67,7 @@ pick = decide_supply([o for o,_ in opts], game_state_of(session), ..., refresh_u
 
 ## 8. 守卫与防线
 
-- 刷新单次硬限制:`_supply_refresh_used` 发出点击即置位(防「点偏未生效重入屏反复尝试」);锚读缺零点击 + 照常置位(防「建议刷新→锚读缺→零动作」每轮空转烧尽节点预算的活锁)。
+- 刷新单次硬限制:容器 `supply_refresh_used` 计数对照(>0 = 已用),发出点击即 +1(不等验效,防「点偏未生效重入屏反复尝试」);锚读缺零点击 + 照常置位(防「建议刷新→锚读缺→零动作」每轮空转烧尽节点预算的活锁)。
 - 出口验真:节点完成 = 标识消失(位置 area,非全屏 LCS);未落地轮重走计预算,预算耗尽 FAIL bail(不无限烧)。
 - 兜底点卡 CARD_BODY 仅在无选项/无 match 时使用;有选项而决策越界 = target 保持兜底点(有界重试兜底,非盲选禁令屏)。
 - 无本屏专属停机钩子;守卫总册 = [../flow/guards.md](../flow/guards.md)。

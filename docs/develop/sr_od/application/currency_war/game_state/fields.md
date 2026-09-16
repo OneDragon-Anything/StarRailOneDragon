@@ -475,9 +475,9 @@ active_env 核对源。开局写端见 §3.4.3(多屏写入,本条=备战屏侧�
   `tracked_unobserved`)——未观察 → 返回恒可用终结 `CloseShop` 交回外循环,
   备战环 heavy 观察锚定后再进店;执行侧跳过留痕/连续跳过熔断
   (`cw_screen_buy_cards`,分键 `shop_skipped_unobserved`/`..._stop`)。
-- **配套裁定(同批)**:`ExecState.tracked_bench_chars/tracked_deployed` 降级
-  为执行侧簿记(reconcile 输入/输出 + 动作随动同步),不再有面向策略的读口;
-  `mandate_v1._tracking_view`(tracking 优先 + snapshot 静默回退)删除。
+- **配套裁定(同批)**:tracked 主账宿主 = `GameState.tracked_books`(容器非 Field
+  簿记组,`TrackedBooks`);执行侧不再另设 tracked 载体(执行层状态类目已退役,git
+  历史可溯),`mandate_v1._tracking_view`(tracking 优先 + snapshot 静默回退)删除。
 
 ### 3.3 商店开态(覆盖在备战画面之上)
 
@@ -596,8 +596,9 @@ None 保守零授予;闸门=advance_node 的 advanced 位每节点恰一次)。*
   优势布局授予 1 次 vs 官方+实机「遭遇节点可刷新 1 次」。收窄待证问题=无布局局
   遭遇屏是否原生出现剩余次数 UI。**现有代码缺口**:刷新链只看已用+剩余次数现读、
   不校验布局激活。**结论出来前,禁把「无此刷新」当回归测试断言或核对预期**。
-- 刷新已用**随刷新点击置位(不等验效)**,选择落地不置位(索引=cw_screen_encounter
-  刷新链)。
+- 刷新已用**随刷新点击置位(不等验效)**,选择落地不置位。**写端 = 刷新发射型
+  on_outcome 钩子单点**(`cw_screen_encounter` 注册申报 write_logic +1;双计即计数
+  毒化,禁新增第二容器写点),读点 = 刷新链容器计数对照(>0 = 已用)。
 
 #### 3.4.2 补给屏
 
@@ -605,15 +606,17 @@ None 保守零授予;闸门=advance_node 的 advanced 位每节点恰一次)。*
   「勿写死」**)。补给屏已建档「文本-剩余次数」区域(UI 元素存在是硬事实;其语义=
   是否剩余刷新次数,并入收窄待证问题)。
 - **补给刷新已用**(`supply_refresh_used`):两源方向不一——优势布局 vs 官方节点表
-  口径。**第三源=现役代码现状**(明文「无刷新按钮」,调用方跳过刷新链),支持
-  「不出现刷新钮」一侧;实机若出钮,此 reader 链=第一个接线改动点。登记待实机
-  实证(收窄问题=无布局局补给屏是否原生可刷 1 次+次数粘滞域)。
+  口径。**写端 = live 刷新发射单点**(`cw_screen_supply_node._do_action` 刷新分支
+  write_logic +1;本屏无 on_outcome 注册件,无双计面;sim 引擎经 observe 通道在写,
+  两源同域),读点 = 刷新链容器计数对照(>0 = 已用)。登记待实机实证(收窄问题=
+  无布局局补给屏是否原生可刷 1 次+次数粘滞域)。
 
 #### 3.4.3 投资环境屏
 
 - 候选三卡 / 刷新剩余。
 - **环境刷新已用**(`env_refresh_used`):环境刷新优势布局授予 1 次;观察通道在册
-  (本屏「剩余次数:N」)。置位口径与遭遇同式(随刷新点击置位不等验效)。
+  (本屏「剩余次数:N」)。**当前零写端在册**(字段位申报在,无任何写点;接通前置 =
+  实机证出刷新钮),接通时口径与遭遇同式(随刷新点击置位不等验效)。
 - **已选投资环境 active_env(本屏写入)**:局级整局增益,选完即关、之后整局保留。
   与刷新费联动(长线利好改刷新费,§5.2 缺口登记)。
 
@@ -629,8 +632,11 @@ None 保守零授予;闸门=advance_node 的 advanced 位每节点恰一次)。*
     没读到」处理);另有远见改写=0。
   - 口径裁决:逐卡刷新次数以**注册表官方全文为唯一口径**;基线仅作先验,**禁作核对
     预期源**(OCR 读真值)。
-- **策略屏刷新已用**:逐卡独立计数;**随刷新点击置位(不等验效)**(写端=
-  cw_screen_invest_strategy 逐槽 write_logic)。
+- **策略屏刷新已用**(`strategy_refresh_used`,键同上=注册表规范名):逐卡独立计数;
+  **随刷新点击置位(不等验效)**。**写端 = 刷新发射型 on_outcome 钩子逐槽
+  write_logic**(`cw_screen_invest_strategy` 注册申报;禁第二容器写点)。无 visit
+  级复位——容器计数局内累计,「可否再刷」权威判定 = 屏上余量现读 + 计数对照
+  双闸(每访问恰一次决策,无重入放大面)。
 - **持有投资策略 active_strategies(名单+品质)(本屏写入)**:局级累计——逐次选择
   追加、跨位面保留;难度按每拥有 1 个累加;品质=难度加成锚(白 0/金 3/彩 6;品质锚
   挂建模批)。选卡帧观察由遥测侧作选后复盘输入。
@@ -1193,6 +1199,28 @@ carried 沿用(从未读过→None);③None 仅当从未读过——不是机制
 - 中继纪律:恢复局新 session 的五镜像字段停在默认值,中继把未知固化为正式值的路径
   被 §2.1 空值闸拦断(空白串同判空白;列表元组字典集合非空才中继)。
 
+### 6.4 接管恢复三字段(resumed_match / takeover_collect_done / takeover_tries)
+
+局级事实域(match_facts)成员,gs_schema 域版本 2;渠道 = ③接管协议 `logic_hook`
+(relay 契约同族)。语义单一源 = 字段定义注释(kernel/cw_game_state.py match_facts
+域组,均带索引定义注):
+
+- `resumed_match`(bool):True = 本局为恢复对局(游戏在中局接管)。写端 =
+  `cw_loop._mark_session_resumed` 单口(接管检测确认点);读端 = `cw_observation`
+  派生规则弹窗腿(恢复局弹窗清理语义)。
+- `takeover_collect_done`(bool):接管采集已完成(节点内一次性闩)。写读点 =
+  `cw_screen_prep` 接管采集段(采集完成置位、入口判闩)。
+- `takeover_tries`(int):接管采集重试计数(单调递增,单口累加)。写读点同上。
+
+### 6.5 轮内新鲜度账 round_fresh_buys
+
+轮内账域(round_ledger,gs_schema 域版本 1)唯一字段;渠道 = ②动作 `logic_action`。
+**值形状 = `{'phase': (plane, round) | None, 'names': list[str]}`**(键式申报:phase
+= 账所属轮,None = 未定轮;names = 本轮已买卡名集,JSON 序列化安全形)。写读单口 =
+`cw_deploy_logic.record_fresh_buy` 写 / `fresh_buys_of`/`fresh_buys_sell_face` 读
+(写点内部做容器字段转形;sim/live 同口)。消费 = 部署换出守卫(`fresh_buys_of`
+相位键对读)+ 卖闸互斥面(`fresh_buys_sell_face`)。
+
 ## 7. 效果面完备性判据(冻结条件)
 
 效果面冻结条件=**「注册表→文档反向扫零无归属 ∧ 零部分覆盖」**:对
@@ -1250,6 +1278,23 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
   by_category/by_trigger/by_source/first/counter/predict_for);规格载体 =
   `EffectSpec` 四元组,声明式驱动单一源 = [effect-domain.md](effect-domain.md) §7。
 - StrategyState 结构单一源 = `strategies/impl/mandate_v1/mandate_state`(§6.1)。
+- **非 Field 簿记组与局级台账**(治理面 = `cw_game_state.py` 模块头 §8.8;准入 =
+  历史累积计数/单调事件号/帧间闩/整表台账等过程簿记与判读面,不符「只描述此刻」
+  的 Field 准入,但需局级存续与确定性清零——新局新容器 = 天然清零;访问纪律 =
+  经 `game_state_of(session)` 直读属性,非 Field 无渠道面,禁 getattr session 猜宿主):
+  - `ExecBooks`(GameState.exec_books;执行侧过程簿记组,独立宿主不塞 tracked_books
+    ——TrackedBooks 契约 = tracked 主账槽位簿记,语义不容混装):`star_regression`
+    (留证采样计数,唯一写读者 = `cw_reconcile`)/`bench_layout_epoch`(布局重排
+    单调代次,唯一写点 = `cw_reconcile`,消费 = `cw_screen_buy_cards`/
+    `cw_shop_action_ops`)/`swap_arm_on`(换血臂开合帧间闩,读写点 = `cw_screen_deploy`,
+    消费 = projection_contract §4.3 臂态位判读)。
+  - `TrackedBooks`(GameState.tracked_books):tracked 主账槽位簿记(bench/deployed
+    两面,§3.2.22 配套裁定)。
+  - `plane_node_sequences`(GameState 位面节点序列台账,`PlaneNodeLedger` 载体):
+    整行快照语义、逐位合并写、低频重写,Field 化无收益;访问口 = `cw_exec_state`
+    三访问函数(get_node_ledger/ledger_node_type/ledger_update_plane)与
+    `fill_boss_by_position`(类本体住 cw_game_state.py,函数转发保持既有 import
+    路径),消费面 = cw_vocab 转出口/cw_equip_wear_plan/obs 与各画面 op。
 
 ### 8.6 实现语义申报
 

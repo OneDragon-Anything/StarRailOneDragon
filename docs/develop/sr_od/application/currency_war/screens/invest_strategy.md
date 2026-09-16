@@ -20,9 +20,10 @@
 入口单次观察(observe 段;决策循环内零读屏)——`_observe_frame` 序:
 
 1. 入口锚复探窗(ADR-0529 语义):首帧探测「标识-请选择投资策略」,miss → 可中断睡眠 0.8s × 4 次复探;超窗仍 miss = `entry_ok=False` → observe 段 round_retry 有界自愈(节点预算内,不炸 op);
-2. visit 起点单点复位:实例首帧(锚验通过后)清 `exec_state_of(session)._invest_refresh_used_slots`(同 visit 重入不清,跨 visit 新实例必清;防重入与计数现读双保险不同源);
-3. 1s 稳定等待后重截(标题出现后三卡才渲染稳定,时序口径 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #11);
-4. 候选读取 `_read_options`:全图 OCR,按卡名行 y 带(465-505)+ 文本长 2-8 字 + 排除表过滤出 3 张卡名,按 center-x 左→右排序;首帧全图 OCR 存底随 payload。
+2. 1s 稳定等待后重截(标题出现后三卡才渲染稳定,时序口径 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #11);
+3. 候选读取 `_read_options`:全图 OCR,按卡名行 y 带(465-505)+ 文本长 2-8 字 + 排除表过滤出 3 张卡名,按 center-x 左→右排序;首帧全图 OCR 存底随 payload。
+
+(旧 visit 起点槽位集复位步已随防重入宿主退役删除——容器逐卡计数局内累计无 visit 级复位,闸 2 改容器计数对照,见 §4。)
 
 观察 payload = `InvestStrategyObservation`(`entry_ok`/`options`/`first_ocr_map`/`screen`)。**本屏不上报 GameState 容器观察**(无 `read_game_state` 消费;决策输入 = 容器视图 `game_state_of(session)`,overlay 下 board 不可读由视图侧承载)。
 
@@ -37,10 +38,11 @@ names = opts 卡名;pick = decide_invest('strategy', names, game_state_of(sessio
 │    逐槽计数现读 read_invest_refresh_counts(ctx, screen, 'strategy')
 │    + pair_refresh_counts_to_slots(x 就近配对到槽,超半槽距 = 读缺)
 │    → 三闸逐步守卫:闸1 计数现读 >0(权威闸,读缺 = 无授权失败安全);
-│      闸2 槽未发射过(_invest_refresh_used_slots 防重入);
+│      闸2 容器逐卡计数未用过(strategy_refresh_used 对照,>0 = 已用;
+│        局内累计,无 visit 级复位——闸1 现读 + 计数双闸,每访问恰一次决策);
 │      闸3 唯一 L1 槽守卫(_guard_classify 现算:恰一个非血∧非禁槽 → 该槽不可刷)
 │    → 点「刷新次数N」文本锚 + 固定偏移 _REFRESH_BTN_DX(-88,safe_click)
-│    → _emit_refresh_click(发射即置位 + on_outcome 注册表登记件,见 §6)
+│    → _emit_refresh_click(on_outcome 注册表登记件写容器计数,见 §6)
 │    → 动画窗固定等待 1.5s(机械时序)→ 刷新 pending + round_retry = 本访问终结交回
 │      (访问内零比对:刷后不重读不比对不重决策;新事实归重入访问)
 ├─ 点卡:卡名行 Y(「区域-卡名行」center,兜底常量)+ 该卡 center-x → safe_click → 0.7s

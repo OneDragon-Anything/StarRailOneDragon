@@ -56,7 +56,7 @@ W4 键级三分(游戏效果键→效果域/策略行为键→决策行/无消�
 |---|---|---|
 | 效果规格键 | `EffectSpec.id`(plaza 稳定 id,cw_invest_data 主键;构建层校验 id+name 双匹配,`_validate_strategy_effects`,cw_investments.py:396-420) | **效果域**(本文)——实例以 spec_key 登记 |
 | 效果计数键 | `CounterKey.REFRESH`/`CounterKey.BUY`(kernel/cw_effect_inventory.py `CounterKey` 类 :117-120),按 `(spec_id, key)` 定点隔离读(:192-195) | **效果域** |
-| 策略行为观测键 | `MandateState.cw4_counters` 容器各键(mandate_v1 决策/执行链自观测计数,strategies/impl/mandate_v1/mandate_state.py:144) | 决策行/局终聚合(策略侧载体),**禁入效果域** |
+| 策略行为观测键 | `StrategyState.cw4_counters` 容器各键(mandate_v1 决策/执行链自观测计数,strategies/impl/mandate_v1/mandate_state.py) | 决策行/局终聚合(策略侧载体),**禁入效果域** |
 
 - 策略行为观测键与效果域键**零交集**:W4 审计定谳「游戏效果键 0 键」(效果域键的
   载体独立 = `cw_effect_inventory.py`,CounterKey 写点经 `effects.bump_key`,与

@@ -21,8 +21,8 @@ from one_dragon.utils.log_utils import log
 
 # 台账值载体(运行时转发,非仅注解):类本体住 kernel/cw_game_state.py
 # (宿主 = 容器非 Field 簿记 GameState.plane_node_sequences 所在模块),本模块
-# 转发保持 cw_vocab 转出口与既有 import 路径不断链(载体解散迭代 #20:
-# 消费面零改动申报的成立前提)。cw_game_state 模块级依赖不反向触达本模块
+# 转发保持 cw_vocab 转出口与既有 import 路径不断链(消费面零改动的成立前提)。
+# cw_game_state 模块级依赖不反向触达本模块
 # (惰性 import 面),此模块级引入不成环。
 from sr_od.application.currency_war.kernel.cw_game_state import (
     PlaneNodeLedger,
@@ -39,11 +39,12 @@ if TYPE_CHECKING:
 # (波 5b 自 kernel/cw_expected_state 迁入:模块名随期望态条目表概念退役,
 # ADR-0651 两态制存续函数整体搬迁,零行为变化;消费点 = root prep_actions
 # 执行器两处 + _overlay_confirm.register_confirm_arrival。
-# ⚠️ 动作词表/合成引擎依赖一律函数内惰性 import:cw_state 模块级反向
-# import 本模块(exec_state_of),模块级引入会成环——沿用本仓懒加载惯例。)
+# ⚠️ 动作词表/合成引擎(cw_vocab/cw_merge_simulate)模块级 import 本模块
+# (转出口),本模块对其依赖一律函数内惰性 import,模块级引入会成环——
+# 沿用本仓懒加载惯例。)
 
 def _session_tracked(session) -> tuple[list[BenchChar], list[BenchChar | None]]:
-    # tracked 主账宿主自 r3(三次修正)起 = 容器簿记 GameState.tracked_books
+    # tracked 主账宿主 = 容器簿记 GameState.tracked_books
     #(kernel/cw_game_state.py;lazy import 防模块环,同 _advance_gold 惯例)。
     from sr_od.application.currency_war.kernel.cw_game_state import (
         game_state_of,
@@ -234,11 +235,10 @@ def _apply_buy_card(session, action: dict, _eff) -> None:
 
 
 # ============================================================
-# 候裁9 词汇迁入(原 kernel/cw_state.py 席位/台账域):
-# 席位/槽位跟踪域 + 节点台账访问函数 + 布局转发。宿主依据 = ExecState 自申报
-# tracked_bench_chars/tracked_deployed 定长槽表契约与局级节点序列台账
-# (两宿主现均已迁容器:GameState.tracked_books / plane_node_sequences;
-# 台账值载体随迁 cw_game_state.py,本模块保留三访问函数,见模块尾)。
+# 席位/槽位跟踪域 + 节点台账访问函数 + 布局转发(原 kernel/cw_state.py
+# 候裁9 词汇迁入):槽位表契约与节点序列台账的值宿主 =
+# GameState.tracked_books / plane_node_sequences(容器簿记,载体见
+# cw_game_state.py);本模块保留领域常量/类型与三访问函数,见模块尾。
 # ============================================================
 
 BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级变)
@@ -372,7 +372,7 @@ def bench_from_compact(chars: list[BenchChar]) -> list[BenchChar | None]:
     bench: list[BenchChar | None] = [None] * BENCH_CAPACITY
     for bc in chars:
         # 形状双源防御(ADR-0316 持久态契约):输入可能是 pad 态(定长 9 含
-        # None,如 mutate_bench_deployed 就地 pad 后的 exec_state_of(session).tracked_bench_chars)
+        # None,如 mutate_bench_deployed 就地 pad 后的 GameState.tracked_books.bench)
         # 或紧凑态(无 None)——两种形态都是本适配源的输入域,None 直接跳过。
         if bc is None:
             continue

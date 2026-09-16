@@ -275,13 +275,12 @@ class CwScreenSupplyNode(CwScreenOpBase):
                           'refreshed': _refresh_used}
                 # GameState 选定记录(chosen_supply,§3.4.5)——**确认即写**
                 #(单次逻辑写入豁免,渠道签名照 chosen_* 家族 logic_action)。
-                # 口径分叉显式申报(设计 execstate-dissolution #11):supply
-                # 直写,chosen_tome 维持「出口验真后写」家族口径不变——差异
-                # 理由 = supply 的中转暂存曾是 ExecState 载体(该迭代拆除
-                # 对象),直写是载体消亡后的唯一形态;chosen_tome 无 ExecState
-                # 载体、不在该迭代辖域。确认未落地窗内容器短暂持未落地值:
-                # 容器 chosen_supply 无决策读者(仅写点与字段定义),低危
-                # 可接受;兜底点卡/刷新轮不写 = 真选守卫(与本分支互斥)。
+                # 口径分叉显式申报:supply 直写,chosen_tome 维持「出口验真
+                # 后写」家族口径不变——差异理由 = supply 的中转暂存宿主已随
+                # 执行层状态类目退役(git 历史可溯),直写是暂存载体消亡后的
+                # 唯一形态;chosen_tome 无暂存载体。确认未落地窗内容器短暂持
+                # 未落地值:容器 chosen_supply 无决策读者(仅写点与字段定义),
+                # 低危可接受;兜底点卡/刷新轮不写 = 真选守卫(与本分支互斥)。
                 try:
                     from sr_od.application.currency_war.kernel.cw_game_state import (
                         ChannelSig,

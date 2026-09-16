@@ -2438,7 +2438,7 @@ def write_match_final(gs: GameState, *, final_type: str,
 _GS_BY_SESSION: weakref.WeakKeyDictionary[object, GameState] = \
     weakref.WeakKeyDictionary()
 #: 桩面兜底第二级:属性不可写对象(__slots__ 族)的 id() 键 dict
-#: (同 cw_exec_state 桩面存储两级结构;挂对象属性优先)。
+#: (旁表自身既有结构;挂对象属性优先)。
 _GS_BY_SESSION_ID: dict[int, GameState] = {}
 _GS_ATTR = '_cw_game_state'
 
@@ -2466,8 +2466,7 @@ def _establish_singleton_journal(
 
 def game_state_of(session: object, *,
                   run_id_provider: Callable[[], str] | None = None) -> GameState:
-    """GameState 单例访问口(session 旁表;弱引用表 + 桩面兜底,与
-    ``cw_exec_state.exec_state_of`` 同构)。
+    """GameState 单例访问口(session 旁表;弱引用表 + 桩面兜底)。
 
     - session = 局身份:新 session 对象 = 新局 = 新 GameState(§1 每局新建);
     - None → 一次性空载体(不缓存——None 的 id 恒定,缓存即跨调用串染);
@@ -2517,7 +2516,7 @@ def tracked_unobserved(session: object) -> bool:
 
 @dataclass
 class TrackedBooks:
-    """tracked 主账簿记(game state 层;宿主自 ExecState 迁入)。
+    """tracked 主账簿记(game state 层容器簿记组)。
 
     bench/deployed = pad 态定长槽位表(list[BenchChar | None],ADR-0316/
     0392)。**执行侧簿记容器**:写端 = kernel reconcile_tracking(观察边界
@@ -2678,8 +2677,8 @@ class GameState:
     #(唯一锚定写端;bench 读失败/双空读守卫/槽号健康门拒绝均不写 = 保持
     # 未观察)。消费面:策略商店门(flow.decide_shop_action,未观察 →
     # CloseShop 交回外循环走备战重锚定;判定单一源 = 本模块
-    # tracked_unobserved)。ExecState.tracked_* 降级为执行侧簿记(reconcile
-    # 输入/输出与动作随动同步),不再有面向策略的读口。
+    # tracked_unobserved)。tracked 主账宿主 = 容器簿记 tracked_books
+    #(reconcile 输入/输出与动作随动同步),无面向策略的读口。
     tracked_account_observed: Field[bool] = field(default_factory=Field)
 
     # —— 经济与成长 ——
@@ -2708,8 +2707,8 @@ class GameState:
     enemy_difficulty: Field[int] = field(default_factory=Field)      # 非单调(§3.2.14)
 
     # —— 接管/恢复局旗标组(渠道③接管协议 logic_hook,relay 契约同族先例;
-    # match_facts 域扩展,域版本 2)——宿主自 ExecState 迁入(载体解散迭代
-    # design.md §2.1 #12-#14;局级生命周期,新局新容器 = 天然缺省 None 恒假)。
+    # match_facts 域扩展,域版本 2)——局级生命周期,新局新容器 = 天然缺省
+    # None 恒假。
     # [索引定义] resumed_match: True = 本局为恢复对局(新 match 但游戏在中局
     # 续跑)——弹窗腿在派生 hist 空时禁用不猜(防把恢复局首弹窗误推断成开局
     # 节点 1),消化后备战帧腿 A 权威接管。写入端单一源 = cw_loop 恢复检测两
@@ -2769,8 +2768,7 @@ class GameState:
     # cw_deploy_logic.record_fresh_buy 单口(渠道②动作上报,actor =
     # 'CwDeployLogic' 登记面在册),sim/live 同口由单口保证;读端 =
     # cw_deploy_logic.fresh_buys_of(换出守卫)+ fresh_buys_sell_face
-    #(L1 卖侧闩,fail-closed,ADR-0611 §3-1)。宿主自执行侧载体迁入
-    #(载体解散迭代;写读单口不变)。
+    #(L1 卖侧闩,fail-closed,ADR-0611 §3-1;写读单口不变)。
     round_fresh_buys: Field[dict | None] = field(default_factory=Field)
 
     # —— 持久账本组(跨画面保留)——
@@ -2807,7 +2805,7 @@ class GameState:
     # logic 直写 ''(入位消费)。
     overflow_card: Field[str] = field(default_factory=Field)
 
-    # —— tracked 主账簿记宿主(宿主自 ExecState 迁入)——
+    # —— tracked 主账簿记宿主 ——
     # [索引定义] tracked_books.bench/deployed = tracked 槽位表(list[BenchChar
     # | None],pad 态定长 9/10 槽含 None,ADR-0316/0392)。**簿记容器,非
     # Field 观察面**(先例 = settlement_ring/encounter_log:不经 observe/
@@ -2818,19 +2816,18 @@ class GameState:
     # 边界锚定写回)+ 动作随动同步(prep 执行器/溢出腿/部署装备回写/
     # 商店 mutate)。观察状态(未观察/已观察)= 上方 tracked_account_observed。
     tracked_books: TrackedBooks = field(default_factory=TrackedBooks)
-    # —— 执行侧过程簿记组(宿主自 ExecState 迁入;非 Field,准入与访问
+    # —— 执行侧过程簿记组(非 Field,准入与访问
     # 纪律见 :class:`ExecBooks` 类注)——
     # [索引定义] swap_arm_on = 换阵卖出义务臂上一帧开合态(帧间闩;写读点
     # = cw_screen_deploy 卖出臂门,开合变更日志消费)。star_regression/
-    # bench_layout_epoch = 留证采样/纠漂簿记(接管/纠漂簿记迁移批已落位)。
+    # bench_layout_epoch = 留证采样/纠漂簿记。
     exec_books: ExecBooks = field(default_factory=ExecBooks)
 
-    # —— 局级节点序列台账(宿主自执行侧载体迁入;
-    # 非 Field 簿记,非域字段,工程结构组单列申报)——
+    # —— 局级节点序列台账(非 Field 簿记,非域字段,工程结构组单列申报)——
     # [索引定义] 值 = :class:`PlaneNodeLedger`(本模块;seq_by_plane 键为
     # 1-based 位面号,序列下标 0-based = 该位面第 i+1 轮,取值时机 = 写入端
     # 整行重读快照,定义详注在类头)。非 Field 理由 = 整行快照语义、逐位
-    # 合并写、低频重写,Field 化收益低(载体解散迭代 design.md §2.2-1c);
+    # 合并写、低频重写,Field 化收益低;
     # 容器每局新建 = 天然清零。**访问单一源 = cw_exec_state 三访问函数**
     # (get_node_ledger / ledger_node_type / ledger_update_plane),读写禁
     # 直摸本字段——消费面(画面 op 三写入端 + kernel 判据/遥测读端)零改动

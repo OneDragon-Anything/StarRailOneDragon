@@ -301,8 +301,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             deployed = [d for d in
                         (getattr(state, 'deployed', None) or [])
                         if d is not None]
-        # (原「容器 deployed 空 → exec_state.tracked_deployed 回退补缺」随
-        #  修正删除:策略层禁读执行侧簿记,消费口只剩 game
+        # (无回退补缺:策略层禁读执行侧簿记,消费口只剩 game
         #  state——容器 deployed 空 = 板面真空的事实态,照写 0 不虚构。)
         # 件级计数:名字列表保留重复件(同名多件各计 1,禁 frozenset 去重)
         dep_names = [(getattr(d, 'char_id', '') or '') for d in deployed]
@@ -663,7 +662,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 key_equips = list(comp.key_equips or ())
         spare = list(getattr(session, 'last_owned_equips', None) or [])
         # 在身装备(game state 唯一消费口:策略禁读执行侧
-        # 簿记;原 exec_state tracked_* 回退源删除)—— deployed 单成员带
+        # 簿记)—— deployed 单成员带
         # equips,bench 槽位视图成员 = Unit(含 equips 透传)。
         from sr_od.application.currency_war.kernel.cw_game_state import (
             bench_slots_of,

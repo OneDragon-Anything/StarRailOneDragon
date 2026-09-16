@@ -44,7 +44,7 @@
 | 落点 | 宿主 | 写口（符号锚） | 消费方 |
 |---|---|---|---|
 | 容器逻辑态直写 | `GameState` 字段（渠道 family='logic_action'） | `apply_shop_action_logic`（商店域转移函数）/ `apply_shop_merge_leg`（合成升星腿，既有口）/ `apply_prep_action_logic`（备战域，域集 = gold/bench/xp/level/front_row/back_row/board）/ `apply_op_effect`（备战金账与库存腿） | 单动作循环逐动作逻辑态直写；观察赢修正 |
-| 执行态跟踪账 | `ExecState.tracked_bench_chars` / `tracked_deployed` 槽位表 | `mutate_bench_deployed` + 执行器 tracked 同步分支（`prep_actions.py::PrepActionExecutor._track_remove_bench` / `_track_remove_deployed` / `_track_move_deployed`） | 执行侧随动账;双账比对已退役（2026-09-15,对账唯一发生点 = 观察边界,见 screen_op §2.3/§4） |
+| tracked 主账随动账 | `GameState.tracked_books`（`TrackedBooks` 容器簿记,bench/deployed 槽位表） | `mutate_bench_deployed` + 执行器 tracked 同步分支（`prep_actions.py::PrepActionExecutor._track_remove_bench` / `_track_remove_deployed` / `_track_move_deployed`） | 执行侧随动账;双账比对已退役（2026-09-15,对账唯一发生点 = 观察边界,见 screen_op §2.3/§4） |
 | 推演帧 | sim 引擎 `CwSimFrame` 整帧副本 | 原写口 `simulate`（整帧副本单步动作应用器）已退役（零生产消费，考古归 git） | 动作转移语义单一源 = 容器逻辑态直写（首行）；语义验证 = M1 直锁（`test_cw_shop_projection_logic`） |
 
 另有一个非容器落点：**备战观察帧**（`kernel/cw_prep_actions.py::PrepObservation`，宿主 `session.prep_obs_frame`）——球/箱/典籍/装备/工具等视觉域动作的逻辑态推进落在它上面（`operations/cw_screen/cw_screen_prep.py::_project_prep_obs`），容器零写（`apply_prep_action_logic` 对这些动作显式返回）。

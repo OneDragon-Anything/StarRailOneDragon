@@ -28,9 +28,9 @@ decide → 分支刷新链 → act,`lifecycle_decision_cycle` 与旧 handle 两�
 pick = decide_encounter(options, game_state_of(session), session, config)
   → idx 取 pick.idx(按 pick.idx 选卡,非默认选左)
 ├─ 分支刷新执行链(不终结;能力源 = 优势布局「分支刷新」,每局 1 次):
-│    pick.refresh ∧ 本局未用(ExecState._encounter_refresh_used)
+│    pick.refresh ∧ 本局未用(容器 encounter_refresh_used 计数对照,>0 = 已用)
 │    ∧ refresh_left 现读 >0(读缺 = 无授权)
-│    → _emit_refresh_click(发射即置位防重入 + on_outcome 注册表登记件,§6)
+│    → _emit_refresh_click(on_outcome 注册表登记件写容器计数,§6)
 │    → _try_refresh:同帧文本锚(「剩余次数:N」中心)+ 偏移 _REFRESH_BTN_DX(-100)
 │      → mouse_move + click → 固定等待 2s(重掷动画覆盖)
 │      → 重读选项(读缺 = 空表,保留原候选照常选)
@@ -68,7 +68,7 @@ pick = decide_encounter(options, game_state_of(session), session, config)
 
 ## 8. 守卫与防线
 
-- 刷新单次:发射即置位(`ExecState._encounter_refresh_used`,节点级)防「点偏未生效重入屏反复尝试」;未用/无剩余/已用三态日志可见化。
+- 刷新单次:容器计数对照(>0 = 已用)防「点偏未生效重入屏反复尝试」;计数写端 = 刷新发射型 on_outcome 钩子单点(发射即记不等验效;禁第二容器写点——双计即计数毒化);未用/无剩余/已用三态日志可见化。
 - 读缺失败安全:refresh_left 读缺 = 无授权;_try_refresh 传入帧读缺 = 空表照常选。
 - 验效废除:刷新后无条件重读、确认后零判效;未落地治理 = 重入裁决 + 节点预算耗尽 FAIL bail。
 - 无本屏专属停机钩子;守卫总册 = [../flow/guards.md](../flow/guards.md)。

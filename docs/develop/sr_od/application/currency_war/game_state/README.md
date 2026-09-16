@@ -80,18 +80,19 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | 单位域(units) | front_row / back_row / bench(BenchView)/ back_layout / deploy_cap | ①观察+②动作+③效果桥 |
 | 经济域(economy) | gold / hp / level / xp / streak / level_up_cost / shop_refresh_cost | ①观察+②动作 |
 | 商店刷新计数域(refresh_counters) | free_refresh_balance / paid_refresh_count / total_refresh_count / prev_node_spent | ②动作+③效果桥(写入=仅逻辑) |
-| 节点屏刷新计数域(node_screen_refresh) | encounter_refresh_used / supply_refresh_used / env_refresh_used / strategy_refresh_used(逐卡) | ②动作(遭遇/策略两写端在产;环境/补给零写端在册) |
+| 节点屏刷新计数域(node_screen_refresh) | encounter_refresh_used / supply_refresh_used / env_refresh_used / strategy_refresh_used(逐卡) | ②动作(遭遇/策略经 on_outcome 发射钩子写、补给为 live 刷新发射单点,三写端在产;环境零写端在册) |
 | 持久账本域(inventory) | equips / consumables(免战牌载体归一入效果账本,不在本域) | ①观察+②动作 |
 | 奖励球域(spheres) | spheres | ①观察 |
 | 交互状态域(substate) | prep_substate(分类子态四档)/ event_overlay | ①观察+③接管协议 |
 | 画面 payload 域(shop/encounter/supply) | shop / encounter / supply(非当前画面=None) | ①观察 |
 | 选择结果域(event_choices) | chosen_encounter / chosen_supply / chosen_megastar / chosen_partner / chosen_wish / chosen_fortune / chosen_hack / chosen_expert / chosen_tome / chosen_equip | ②选择 handler 单次逻辑写 |
 | 结算域(settlement) | settlement(hp/streak/gold/level 结算真值)/ hp_floor_triggered(纯观察登记) | ①观察 |
-| 局级事实域(match_facts) | selected_difficulty / game_mode / enemy_difficulty / plane_bosses / enemy_affixes / active_env / active_strategies / board | ①观察+②动作+③中继 |
+| 局级事实域(match_facts) | selected_difficulty / game_mode / enemy_difficulty / plane_bosses / enemy_affixes / active_env / active_strategies / board / resumed_match / takeover_collect_done / takeover_tries | ①观察+②动作+③中继+③接管协议(后三字段,渠道 logic_hook;域版本 2) |
+| 轮内账域(round_ledger) | round_fresh_buys(值形状 `{'phase': tuple|None, 'names': list[str]}`) | ②动作(record_fresh_buy 单口写,sim/live 同口) |
 | 效果账本域(effects) | effects(ActiveEffectInventory 实例清单;非 Field 载体) | inventory 方法域(随快照行自带) |
 | 动作回执域(receipts) | receipts(滚动窗,容量常量 RECEIPTS_WINDOW_CAP) | ②动作 |
 | 局终域(match_final) | match_final(一段终态一行;恢复局跨段多行) | ③局终收口 |
-| 工程结构(非 Field) | schema_version / gs_schema / frame_obs / write_seq / hb_prev_seq / hb_stall_count / created_monotonic | 构造/迁移写 |
+| 工程结构(非 Field) | schema_version / gs_schema / frame_obs / write_seq / hb_prev_seq / hb_stall_count / created_monotonic;非域簿记组与台账单列——`exec_books`(ExecBooks 执行侧过程簿记组:star_regression / bench_layout_epoch / swap_arm_on,直读 `game_state_of(session).exec_books`)/ `tracked_books`(TrackedBooks 主账槽位簿记)/ `plane_node_sequences`(位面节点序列台账,PlaneNodeLedger 载体;访问口 = cw_exec_state 三访问函数) | 构造/迁移写;簿记组/台账 = 直读属性(非 Field 无渠道面) |
 
 渠道族封闭集 = obs(画面 op 观察)/ logic_action(动作 op 逻辑计算)/ logic_hook
 (state 内部派生逻辑计算);carried/prior/synthesized 是 obs 族内子模,非第四源。

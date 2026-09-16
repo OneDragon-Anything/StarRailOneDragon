@@ -45,7 +45,7 @@
 ## 6. 状态上报面
 
 - **ctx 中转**:`ctx.cw_plane_bosses`(3 槽**保位**——徽章态 None 占位勿滤,滤掉让后续位面名左移错位)/ `ctx.cw_plane_affixes`;消费 = `_takeover_collect_if_needed` 取走写 `session.briefing_bosses`/`session.briefing_affixes`(与简报同字段,词缀仅简报未供时补)。
-- **节点类型台账**:`kernel/cw_exec_state.py::ledger_update_plane` 两源(prep_row 备战行按位合并 / plane_detail 详情条整面覆盖,合并语义 = None 位保旧;boss 位按「首领 = 位面最后节点」位置先验回填 `fill_boss_by_position`)。
+- **节点类型台账**:`kernel/cw_exec_state.py::ledger_update_plane` 两源(prep_row 备战行按位合并 / plane_detail 详情条整面覆盖,合并语义 = None 位保旧;boss 位按「首领 = 位面最后节点」位置先验回填 `fill_boss_by_position`)。台账值载体宿主 = `GameState.plane_node_sequences`(`PlaneNodeLedger`,容器非 Field 簿记;访问口 = cw_exec_state 三访问函数转发,消费面零改动)。
 - **词缀运行时登记**:`kernel/cw_affix_effects.py::register_affixes_from_names`(产出点登记;登记体按在册条目幂等,补采重跑不双登记;best-effort)。
 - **defect 留证**:节点序列互证不一致(`node_seq`/`perception_conflict`,reader_source=`prep_vs_plane_detail_seq`)。
 

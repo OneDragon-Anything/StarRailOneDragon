@@ -101,7 +101,7 @@ chain_rewritten(view, plane) -> set[int]                # 已证伪改写位集:
 
 ## 7. 边界
 
-- **防双源**:判读侧台账 `PlaneNodeLedger`(ExecState 合并视图)与 session 三载体
+- **防双源**:判读侧台账 `PlaneNodeLedger`(容器 `plane_node_sequences` 合并视图)与 session 三载体
   现状不动、不新增职责;链查询不读它们——node_path 存帧事实、台账存合并视图,
   语义分格,禁互相代读。
 - **入口前跨位面改写**(如战争边疆改第三位面)体现为「基线本身已改」,不产 diff;

@@ -407,8 +407,6 @@ class PrepActionExecutor:
             # StartBattleOp 点击序列 ok(False = 找不到按钮/area 缺失,
             # 在册例外返回契约,design.md unified-action-factory §2.4);
             # 执行缝(假环境)不经真分派 = applied 真值(F11 双轨申报)。
-            # (旧执行态写点 exec_state.last_prep_battle_launch_ok 随 0j
-            # 恢复链整删退役,消费面已无。)
             self.last_launch_ok = emitted
         if emitted:
             # S1 清键门(唯一写点 = mandate.mark_s1_route_

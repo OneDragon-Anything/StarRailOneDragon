@@ -746,7 +746,7 @@ class CwScreenDeploy(SrOperation):
         # r132 装备读时机(穿戴侧盲区修复;原以 decisions 行携带为目的,行写入
         # 已随删除波 1 退役,读时机保留——tracking 链是部署决策的活输入):
         # deploy 后此处是**全量读时机**(画面稳定/正对
-        # 备战)——读 equipped below icon 并写 exec_state_of(session).tracked_deployed[].equips,
+        # 备战)——读 equipped below icon 并写容器 tracked_books.deployed[].equips,
         # 后续决策快照自动携带。best-effort,失败不阻塞。
         try:
             self._snapshot_equips_into_tracking()
@@ -961,7 +961,7 @@ class CwScreenDeploy(SrOperation):
         return any((d.position_pref or 'back') == 'back' for d in deployed)
 
     def _snapshot_equips_into_tracking(self) -> None:
-        """读当前画面已上阵装备 → 回写 exec_state_of(session).tracked_deployed 的 equips 字段。"""
+        """读当前画面已上阵装备 → 回写容器 tracked_books.deployed 的 equips 字段。"""
         _match = self.ctx.cw_match
         if _match is None or _match.session is None:
             return

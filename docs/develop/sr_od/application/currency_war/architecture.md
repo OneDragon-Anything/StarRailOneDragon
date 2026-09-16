@@ -34,7 +34,7 @@
 │   cw_reconcile 观察边界对账·锚定 │         │
 │   领域模型族(经济/阵容/意向/     │         │
 │   事件/装备/合成/词表/注册表…)    │         │
-│   cw_exec_state 执行态簿记       │         │
+│   cw_exec_state 域函数/节点台账   │         │
 └──┬─────────────┬───────────────┘         │
    │ ②策略消费口  ▼                          │
    │ (唯一) ┌─────────────────────────────┐ │
@@ -129,10 +129,10 @@
 
 | 模块 | 负责 |
 |---|---|
-| `cw_game_state.py` | **GameState 局内容器**:每字段观察态/逻辑态/未观察三态;单一转移函数族 `apply_shop_action_logic`/`apply_prep_action_logic`/`apply_op_effect`(动作 op 上报动作后,由它独占写逻辑态);局容器建立时开启遥测装配 |
+| `cw_game_state.py` | **GameState 局内容器**:每字段观察态/逻辑态/未观察三态;单一转移函数族 `apply_shop_action_logic`/`apply_prep_action_logic`(动作 op 上报动作后,由它独占写逻辑态);局容器建立时开启遥测装配 |
 | `cw_state_journal.py` | state 状态流水落盘(StateJournal:内存缓冲+批量 flush;装配口 `install_state_telemetry`/`ensure_journal_assembly`) |
 | `cw_reconcile.py` | 观察边界对账:观察态 vs 逻辑态比对与仲裁、星级锚定、槽号健康不变量、bench 写回 |
-| `cw_exec_state.py` | 执行态簿记(ExecState:执行器随动记录;与对账无关,无策略读口) |
+| `cw_exec_state.py` | 战斗域领域模型与纯函数宿主(无状态面):`apply_op_effect`(op 逻辑效果推进)、槽位表(`BenchChar`/槽位语义 helpers/物理坐标↔表下标换算)、位面节点台账三访问函数(台账值载体住 `cw_game_state.py`,本模块转发保持 import 路径) |
 | `cw_strategy_session.py` | 策略会话载体(session:策略侧对象的身份与生命周期) |
 
 ### 领域模型族(纯逻辑,被策略与容器消费)
@@ -145,8 +145,8 @@
 | 装备 | `cw_bench_equips`/`cw_bond_equips`(装备跟踪/羁绊口径)、`cw_equip_env`(装备环境信号)、`cw_equip_value`(装备价值)、`cw_equip_wear_plan`(穿戴计划)、`cw_affix_effects`(词缀效果注册) | 装备域的跟踪、估值与计划 |
 | 战斗 | `cw_battle_calib`(战斗校准)、`cw_deploy_logic`(deploy 选人纯逻辑,sim 与 op 共用)、`cw_launch_admission`/`cw_launch_arbitrage`(发射准入/仲裁)、`cw_hp_policy`(hp 门)、`cw_first_passage`(首达生存概率) | 战斗结果的模拟与发射决策 |
 | 观测支撑 | `cw_obs_core`(OCR 公共设施)、`cw_observe`(统一日志/截图)、`cw_anchor`(流程转点观测锚)、`cw_overlay_registry`(overlay 生命周期注册) | 观测基础设施 |
-| 合成与推演 | `cw_merge_simulate`(合成引擎)、`cw_vocab`(统一动作词表+推演内核机制面)、`cw_prep_expect`/`cw_prep_actions`(备战期望态对账与备战决策环 kernel 件) | 期望态推演与备战域公共件 |
-| 其他 | `cw_performance`(观测反馈/死局检测)、`cw_run_allocator`(跨局分配)、`cw_decision_trace`(决策行发射)、`cw_round_ledger`(轮内买卖记账)、`cw_discipline_rules`(卖侧下界判据)、`cw_plane_table`(节点日程标定)、`cw_investments`(投资领域模型)、`cw_effect_inventory`(在场效果清单)、`cw_plugins`(插件注册)、`cw_code_hash_gate`(起局码哈希结构闸)、`cw_telemetry_exit`(遥测上行出口钩子位)、`cw_survey19_hooks`(二轮扫描落地件)、`cw_opening_hp`(开局血量先验) | 各行括注即一句话职责;细节见 kernel/ 各模块 docstring(全量以 kernel/ 目录为准) |
+| 合成与推演 | `cw_merge_simulate`(合成引擎)、`cw_vocab`(统一动作词表+推演内核机制面)、`cw_prep_expect`(备战购买意图载体)、`cw_prep_actions`(备战域 kernel 件) | 期望态推演与备战域公共件 |
+| 其他 | `cw_performance`(观测反馈/死局检测)、`cw_run_allocator`(跨局分配)、`cw_decision_trace`(决策行发射)、`cw_discipline_rules`(卖侧下界判据)、`cw_plane_table`(节点日程标定)、`cw_investments`(投资领域模型)、`cw_effect_inventory`(在场效果清单)、`cw_plugins`(插件注册)、`cw_code_hash_gate`(起局码哈希结构闸)、`cw_telemetry_exit`(遥测上行出口钩子位)、`cw_survey19_hooks`(二轮扫描落地件)、`cw_opening_hp`(开局血量先验) | 各行括注即一句话职责;细节见 kernel/ 各模块 docstring(全量以 kernel/ 目录为准) |
 
 
 ## 七、遥测与档案层(telemetry/)

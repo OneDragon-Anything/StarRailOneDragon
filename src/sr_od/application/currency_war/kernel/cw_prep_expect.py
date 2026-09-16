@@ -6,9 +6,8 @@ cw_screen_buy_cards 的满栏多买张数读取与执行事实面。
 
 历史注:本模块曾承载拖动/买牌/经验/装备四通道的期望态对账纯函数与
 材料通用性估值表;期望态对账随对账归一(动作上报经 apply_prep_action_logic
-写逻辑态,观察边界 cw_reconcile 兜底——execstate-dissolution 迭代裁定)
-整套拆除,材料估值表早已随 armory-box-value 迭代退役(选卡价值单一源 =
-kernel/cw_equip_value)。
+写逻辑态,观察边界 cw_reconcile 兜底)整套拆除,材料估值表早已随
+armory-box-value 迭代退役(选卡价值单一源 = kernel/cw_equip_value)。
 """
 
 from dataclasses import dataclass
