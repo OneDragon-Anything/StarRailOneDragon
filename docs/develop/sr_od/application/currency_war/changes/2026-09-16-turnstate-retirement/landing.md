@@ -6,7 +6,7 @@
 ## 3.1 阶段1：预算披露面原签名搬迁（先立后破，行为等价批）
 **范围**：assembly.py 披露链三函数（`_budget`/`_disclose_budget`/`disclose_budget_at_shop_frame`）**原签名逐字迁** `economy_cycle.py`（`_budget` 仍返回 BudgetView、内嵌披露调用不变——存活至阶段2 的 `assemble` 依赖它供 `TurnState.budget` frozen 必填字段，供给链不得断）；assembly.py 改 import；cw_screen_buy_cards 调用点仅改 import 路径。不含：任何符号删除、任何签名/语义变更（合并形态归阶段2）。
 **设计依据**：design.md §2.2（阶段1 形态）
-**文件面**：`src/.../strategies/impl/mandate_v1/{assembly.py, economy_cycle.py}`、`src/.../operations/cw_screen/cw_screen_buy_cards.py`；测试仓 `test_cw_budget_disclosure.py`（monkeypatch 缝目标随迁）、`test_cw_economy.py`（import 随迁）
+**文件面**：`src/.../strategies/impl/mandate_v1/{assembly.py, economy_cycle.py}`、`src/.../operations/cw_screen/cw_screen_buy_cards.py`；测试仓 `test_cw_budget_disclosure.py`（monkeypatch 缝目标随迁）、`test_cw_economy.py`（import 随迁）、`test_cw_shop_unobserved_gate.py`（monkeypatch 缝目标随迁，锁 5/6/7 断言零改）
 **依赖**：无
 **优先级建议**：6
 **完成判据**：

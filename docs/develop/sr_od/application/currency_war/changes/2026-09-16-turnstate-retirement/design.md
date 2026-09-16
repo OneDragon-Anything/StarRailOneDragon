@@ -98,6 +98,7 @@
 |---|---|
 | test_cw_budget_disclosure.py | 阶段1：monkeypatch 缝目标随迁 economy_cycle（cw_screen_buy_cards 懒加载 import 改指后原缝必断），断言本体原样。阶段2：`assemble(...)` 调用改 `disclose_budget(...)` 直调；断言右端 `turn.budget.*` 改独立现算 oracle（文件内已有 kernel 独立重算先例可循）；四字段+键戳断言逐条保留；头注纪律句改口径（§2.3）；补 armed 短路帧不披露单帧锁（现状测试不辖该分支：armed 帧入口断言披露字段零写，承载 §2.2 落点规则的验证） |
 | test_cw_economy.py 注入一致性锁（W636 A） | 阶段1 仅 import 路径随迁；阶段2 载体改披露函数：注入 registry 后披露字段值 == 逐字段显式注入值（等价强度，不降锁） |
+| test_cw_shop_unobserved_gate.py | 宿主 `_run_buy_waves_unobserved_host` 的 monkeypatch 缝目标随迁（assembly→economy_cycle，与 budget_disclosure 同款改形）；锁 5/6/7 断言本体零改 |
 | test_cw_migration_direction_layer.py | 凡消费 assemble/DirectionView/hoard_consumer_domain 的测试删除；保留测试同步清 assembly/contracts import 与失活助手（防 ImportError 连坐全文件），保留测试本体原样 |
 | test_cw_prep_contract_shape.py | `_assemble_turn` 实例桩删；`decide_from_turn` 模块桩改名 `decide_prep_frame` |
 | test_cw_game_state.py「件3」（snapshot_from_obs 回退锚测试） | 随 snapshot_from_obs 删除 |
