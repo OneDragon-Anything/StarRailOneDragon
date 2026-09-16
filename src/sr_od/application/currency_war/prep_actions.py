@@ -38,7 +38,6 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     DEPLOYED_CAPACITY,
-    _advance_gold,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import board_state_of
 from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -392,16 +391,10 @@ class PrepActionExecutor:
         self.last_detail = detail
         gold_delta = self._executed_gold_delta(action, emitted, _pre_sell_bc)
         self.last_gold_delta = gold_delta
-        if emitted and gold_delta:
-            # 执行缝金账直推(备战帧金动作入账;写通道单一源 =
-            # cw_exec_state._advance_gold 容器金账,logic_action 渠道,
-            # 观察赢覆盖修正不变)。备战帧 LevelUp 花金/卖出回金自此
-            # 入状态账,不再只存在于遥测文本(根因 = 执行缝三套账只辖
-            # 商店单元,定谳 = 2026-09-06 迭代落地审)。
-            _m_gd = self._ctx.cw_match
-            _sess_gd = _m_gd.session if _m_gd is not None else None
-            if _sess_gd is not None:
-                _advance_gold(_sess_gd, int(gold_delta))
+        # (执行缝金账直推已随统一观察对账迭代退役:卖出回金的容器唯一
+        #  写点 = apply_prep_action_logic 对应分支,防双记——2026-09-16
+        #  归因批实证执行缝+投影双腿各记一次 +refund,实读倒挂 −2。
+        #  本处 gold_delta 仅进回执 extra 留证。)
         _gold_extra = ({'gold_delta': int(gold_delta)}
                        if gold_delta not in (None, 0) else None)
         if isinstance(action, StartBattle) and self._last_skip_substate:
@@ -548,8 +541,11 @@ class PrepActionExecutor:
         - ``ClickSpheres`` = None(球金通道随机,执行点不可推算——声明
           盲区,观察覆盖兜底,禁拍值);
         - 其余动作 = 0(发出零金动);未发出 = None(无金动无账)。
-        ``None`` 与 0 的消费语义:仅非 None 非 0 进回执 extra 金差键与
-        容器金账直推;None = 该动作本拍金账留观察覆盖。
+        ``None`` 与 0 的消费语义:仅非 None 非 0 进回执 extra 金差键
+        (回执留证);**容器金账不经本值直推**——统一观察对账迭代
+        (2026-09-16 归因批)退役执行缝直推腿,卖出/花金容器唯一写点 =
+        ``apply_prep_action_logic`` 对应分支,防双腿双记(实机 −2 倒挂
+        实证)。None = 该动作本拍金账留观察覆盖。
         """
         if not emitted:
             return None

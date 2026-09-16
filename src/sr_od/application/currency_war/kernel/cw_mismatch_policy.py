@@ -59,9 +59,25 @@ class ExemptEntry:
 
 
 #: 失配豁免注册表(键 = (screen, field),值为条目元组——同画面同字段可
-#: 并存多条不同写端前缀的豁免)。初始为空;扩面 = 在此登记代码常量,
-#: 禁运行时动态增删(注册表写代码 = 治理可见,运行时改 = 后门)。
-EXEMPT_REGISTRY: dict[tuple[str, str], tuple[ExemptEntry, ...]] = {}
+#: 并存多条不同写端前缀的豁免)。扩面 = 在此登记代码常量,禁运行时
+#: 动态增删(注册表写代码 = 治理可见,运行时改 = 后门)。
+EXEMPT_REGISTRY: dict[tuple[str, str], tuple[ExemptEntry, ...]] = {
+    # 备战帧随机收入盲区:奖励节点点球金(奖励球内容随机,金额执行点
+    # 不可推算)不预入逻辑金账——声明盲区锚 = cw_exec_state.apply_op_effect
+    # 的 ClickSpheres 零推进申报与 prep_actions._executed_gold_delta
+    # docstring。下一备战帧实读把「卖牌退款投影」证伪时,差值恰为该随机
+    # 收入,属机制性差异非推算 bug;豁免行留证可审计,真投影错(退款
+    # 公式错)由 sim 单帧锁守,不经本条目兜。点球收入若证实可确定性
+    # 建模,本条目退役改建模补全。
+    ('货币战争-备战', 'gold'): (
+        ExemptEntry(
+            screen='货币战争-备战', field='gold',
+            logic_evidence='proj_sell_refund',
+            reason='备战帧随机收入(奖励节点点球金)不可预知,声明盲区'
+                   '(kernel/cw_exec_state apply_op_effect ClickSpheres '
+                   '零推进申报;2026-09-16 归因批 journal 实证 +4/+7 两起)'),
+    ),
+}
 
 
 def lookup_mismatch_exempt(screen: str | None, field_name: str,

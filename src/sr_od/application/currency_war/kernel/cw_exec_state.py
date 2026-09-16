@@ -227,17 +227,6 @@ class ExecState:
 # ⚠️ 动作词表/合成引擎依赖一律函数内惰性 import:cw_state 模块级反向
 # import 本模块(exec_state_of),模块级引入会成环——沿用本仓懒加载惯例。)
 
-def _char_fee(name: str) -> int | None:
-    """角色招募费(注册表单一源);未知 → None(回金不可算 → 不推字段,
-    观察帧覆盖兜底)。"""
-    try:
-        from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-        ch = CHARACTERS.get(name)
-        return int(getattr(ch, 'cost', 0) or 0) or None
-    except Exception:  # noqa: BLE001  注册表异常按未知处理
-        return None
-
-
 def _session_tracked(session) -> tuple[list[BenchChar], list[BenchChar | None]]:
     # tracked 主账宿主自 r3(三次修正)起 = 容器簿记 GameState.tracked_books
     #(kernel/cw_game_state.py;lazy import 防模块环,同 _advance_gold 惯例)。
@@ -287,11 +276,16 @@ def apply_op_effect(session, action: CwAction | dict, *,
                     skip_substate: bool = False) -> list[dict]:
     """原子 op 的逻辑效果推进(两态制标准语义,ADR-0651;两执行面同源入口)。
 
-    按游戏规则把 op 的可推算效果**直接写 session 字段**(gold delta/
-    owned 增减),返回推进清单 [{path, value, kind}](组合动作子动作
-    效果上抛形态,只含本函数实际写过的字段)。回金不可算(角色费未知/
-    无 tracked 身份)→ 不推字段、不挂账,观察帧覆盖兜底(ADR-0651:
-    推算不了不是挂账理由)。
+    按游戏规则把 op 的可推算效果**直接写 session 字段**(owned 增减/
+    专项金腿),返回推进清单 [{path, value, kind}](组合动作子动作
+    效果上抛形态,只含本函数实际写过的字段)。
+
+    **卖出回金不在本口**(统一观察对账迭代 2026-09-16 归因批退役双记
+    腿):SellBench/SellDeployed 的容器金账唯一写点 =
+    :func:`apply_prep_action_logic` 对应分支(实机执行缝+投影双腿各记
+    一次 +refund,实读倒挂 −2 实证);本口 SellDeployed 仅保留 owned
+    装备回收腿(执行账单一写者,无投影对应物)。专项金腿存续面 =
+    现金为王弃卡回金与 dict 形 BuyCard(无投影对应物,单写点)。
 
     ``skip_substate`` = 出战动作的免战跳过子态标记(StartBattleOp 经
     runner 包络上报;op 零 game state 直写)。True = 本次出战走「跳过」
@@ -306,36 +300,23 @@ def apply_op_effect(session, action: CwAction | dict, *,
     if session is None:
         return effects
     from sr_od.application.currency_war.kernel.cw_vocab import (
-        SellBench,
         SellDeployed,
         StartBattle,
         WearEquip,
-        sell_refund,
     )
 
     def _eff(path: str, value, kind: str) -> None:
         effects.append({'path': path, 'value': value, 'kind': kind})
 
-    if isinstance(action, SellBench):
-        bench, _dep = _session_tracked(session)
-        # 槽位表下标直取(词表统一坐标系;无 slot−1 换算)
-        bc = (bench[action.bench_idx]
-              if 0 <= action.bench_idx < len(bench) else None)
-        fee = _char_fee(bc.char_id) if bc is not None else None
-        if bc is not None and fee is not None:
-            refund = sell_refund(bc.star, fee)
-            _advance_gold(session, refund)
-            _eff('gold', f'+{refund}(sell_refund {bc.star}星×{fee}费)', 'gold')
-    elif isinstance(action, SellDeployed):
+    if isinstance(action, SellDeployed):
+        # (SellBench 分支已随统一观察对账迭代退役:卖出回金容器唯一写点
+        #  = apply_prep_action_logic 对应分支,本口双记腿删除——实机
+        #  −2 倒挂实证,2026-09-16 归因批。SellDeployed 同批删金腿,
+        #  owned 装备回收腿保留 = 执行账单一写者。)
         _bench, dep = _session_tracked(session)
-        # 槽位表下标直取(词表统一坐标系;无 row/slot 反推)
         bc = dep[action.deployed_idx] \
             if 0 <= action.deployed_idx < len(dep) else None
-        fee = _char_fee(bc.char_id) if bc is not None else None
-        if bc is not None and fee is not None:
-            refund = sell_refund(bc.star, fee)
-            _advance_gold(session, refund)
-            _eff('gold', f'+{refund}(sell_refund {bc.star}星×{fee}费)', 'gold')
+        if bc is not None:
             for eq in (getattr(bc, 'equips', None) or []):
                 _owned_add(session, eq)
                 _eff(f'owned[{eq}]', '+1(卖场上装备全额返还)', 'owned')
@@ -403,8 +384,11 @@ def apply_op_effect(session, action: CwAction | dict, *,
         # - LevelUp:经验/等级/金 = 容器逻辑态(apply_prep_action_logic
         #   LevelUp 分支,xp_apply_clicks + action.cost 直写单一源,
         #   批2b 翻转后金腿不经执行缝);
+        # - SellBench:容器金/bench 逻辑态全归 apply_prep_action_logic
+        #   (金腿双记退役,统一观察对账迭代 2026-09-16);
         # - DeployMove/SellDeployed:容器逻辑态 = apply_prep_action_logic
-        #   扩域分支;tracked 位移/摘除 = 执行器 _track_* 单一写者;
+        #   扩域分支(金腿同上批退役);tracked 位移/摘除 = 执行器
+        #   _track_* 单一写者;
         # - 工具原子(FurnaceUse 等):消耗/变换 = 视觉域逻辑态
         #   (_project_prep_obs 按 EQUIP_WRITE_SIDES 申报)+ 下一帧装备区
         #   读数覆盖;last_owned_equips 挂账面随对拍拆除不入本口;
