@@ -14,7 +14,7 @@
 - **持卡局观察键口径注**:`_obs_refresh_avail`(账本 obs.refresh_avail_frames)与 checks/segments 检查器的息线仍按注册表基础息线 50——持息帽卡局(买断制/开源节流/利息上调)的决策口径按 resolved 链(g\*=0/90/100),这些键的读数与决策口径**分叉**;A/B 判读消费它们前先核当批持卡构成,禁直接当「刷新可用性」跨臂对读。
 - **coarse 战斗结算对板深/等级零敏感,A/B 禁消费该面(2026-09-09 在册裁定)**:coarse 两态模型(战斗类节点 battle/encounter/boss 的 sim 结算引擎,单一源 `cw_coarse_battle`)只按成型度 rung 查胜率表与伤害直方——板深/等级不进结算键。A/B 两臂若只在板深/等级维度不同,战斗结算面读数恒同:该面上的任何「有差异/无差异」都不是策略效应,禁据此下结论;涉板深/等级的命题以实机 A/B 为准。
 - **hp/掉血类指标校准前禁作 A/B 判据(2026-09-09 在册裁定,与金类指标同族——金类侧同款条目 = 「出口金校准前不作 A/B 判据」,载体 = docs/develop/sr_od/application/currency_war/proofs/p86-no-target-period-fund-allocation.md §5.1 键③,出处 T-169 纪律)**:sim 的 hp/掉血读数(出口 hp、hp≤20 低尾占比、单轮掉血等)依赖战斗结算校准,该维有已知失真(实证:出口 hp≤20 占比跨批同量级 12.7-14.7%,但 R9 单轮掉血中位 −34,且按板深四分位分组组间零敏感 = ±2 深度桶测不出)。校准补齐前这类指标只作报警线/观察面,禁当 A/B 判据;涉 hp 的结论以实机为准。
-- **重放/批跑通道已随 sim-redesign 删除（2026-09-15；`sim.runner` 无当期替代——现 sim 为库形态 `cw_sim_engine.simulate_run` 策略注入式，`cw_replay` 是历史局 journal 重放、非 sim seed 重放）**：批 `manifest.json` 的 `pool_fingerprint` 仍是对账键，跨日对照必核一致；校准数据缺源大声报错（静默回退=假信心）；sim 批绝不写生产 replay 目录；批跑/重放工具候补期间 A/B 挂起（strategy-work「验证」）。
+- **重放/批跑通道已随 sim-redesign 删除（2026-09-15；无当期替代——现 sim 为库形态 `cw_sim_engine.simulate_run` 策略注入式，`cw_replay` 是历史局 journal 重放、非 sim seed 重放）**：批 `manifest.json` 的 `pool_fingerprint` 仍是对账键，跨日对照必核一致；校准数据缺源大声报错（静默回退=假信心）；sim 批绝不写生产 replay 目录；批跑/重放工具候补期间 A/B 挂起（strategy-work「验证」）。
 
 ## 种子段分配纪律(并行批派发)
 
