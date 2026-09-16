@@ -259,7 +259,8 @@ class CwScreenBattleWait(CwScreenOpBase):
         ('货币战争-补给', '标识-补给阶段'),
         ('货币战争-遭遇节点', '标识-遭遇节点'),
         ('货币战争-投资策略', '标识-请选择投资策略'),
-        ('货币战争-BOSS简报', '标识-强敌来袭'),
+        # BOSS简报锚 = 阵营徽记模板(2026-09-16 从标题 OCR 锚换装,误读免疫)
+        ('货币战争-BOSS简报', '标识-阵营徽记'),
     )
 
     def _hit_completion_anchor(self, screen) -> bool:

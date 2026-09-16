@@ -1,7 +1,8 @@
 """货币战争 BOSS 简报 op(W971 P3b 返工:06-overlays §3 设计落地)。
 
-boss 节点前弹「强敌来袭」简报横幅:识别「标识-强敌来袭」/「强敌」片段
-(#26 建档)→ 点空白推进 → **直接交回外循环重判**(新架构:点掉后去向
+boss 节点前弹「强敌来袭」简报横幅:识别阵营徽记模板锚「标识-阵营徽记」/
+「强敌」片段判别兜底(#26 建档;2026-09-16 锚从标题 OCR 换徽记模板,
+标题 OCR 会被误读击穿而徽记像素稳定)→ 点空白推进 → **直接交回外循环重判**(新架构:点掉后去向
 由 loop 全分支自然处理——boss 战自动开打/备战流转;旧「轮询备战商店开」
 完成承诺实证错误:boss 简报点掉后直接开 boss 战,商店永不开,等锚必超时,
 第七局/第八局接管实录)。
@@ -94,7 +95,10 @@ class CwScreenBossBriefing(CwScreenOpBase):
     """BOSS 简报:识别「强敌来袭」→ 点空白 → 交回外循环重判。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-BOSS简报'
-    MARK_AREA: ClassVar[str] = '标识-强敌来袭'
+    # 横幅锚 = 阵营徽记模板(二值化模板匹配,OCR 误读免疫;2026-09-16 从
+    # 标题 OCR 锚「标识-强敌来袭」换装——标题锚被「强敌米」/「強敌来袭」
+    # 实测帧击穿,徽记为固定资产,简报三家阵营卡与横幅旗标同资产实证)。
+    MARK_AREA: ClassVar[str] = '标识-阵营徽记'
     PROMPT_AREA: ClassVar[str] = '提示-点击空白处继续'
     BLANK_AREA: ClassVar[str] = '区域-空白点击'
 
@@ -118,8 +122,9 @@ class CwScreenBossBriefing(CwScreenOpBase):
             screen, self.SCREEN_NAME, self.MARK_AREA,
             crop_first=False).is_success
         if not banner_hit:
-            # P4R3 锚加固:area 锚(LCS)会被 OCR 误读击穿(「强敌来袭」→
-            # 「强敌米」/「強敌来袭」实测帧)→ 片段判别兜底(判别单一源)。
+            # 锚加固纵深:徽记模板锚已是 OCR 误读免疫(二值化模板匹配),
+            # 片段判别兜底仍保留(判别单一源;横幅动画相位致模板 miss 时,
+            # 片段判别按全帧 OCR 文本补一刀)。
             banner_hit = is_boss_briefing_texts(read_ocr_texts(self.ctx, screen))
         if not banner_hit:
             # 横幅已退 = 点空白已生效推进 → 直接交回外循环重判(新架构:
@@ -148,8 +153,8 @@ class CwScreenBossBriefing(CwScreenOpBase):
     def lifecycle_observe(self
                           ) -> tuple[BossBriefingObservation,
                                      OperationRoundResult | None]:
-        """段1 observe:横幅判定(旧 handle 首闸逐位转录)——area 锚
-        「标识-强敌来袭」miss → 「强敌」片段判别兜底(``is_boss_briefing_
+        """段1 observe:横幅判定(旧 handle 首闸逐位转录)——徽记模板锚
+        「标识-阵营徽记」miss → 「强敌」片段判别兜底(``is_boss_briefing_
         texts``,判别单一源,**禁顺手复制判别逻辑**);不在 = 已推进 → 早退
         success 交回外循环重判;在 → 稳定帧 payload 进决策循环。"""
         _adp = self._observation_port()
@@ -160,8 +165,9 @@ class CwScreenBossBriefing(CwScreenOpBase):
             screen, self.SCREEN_NAME, self.MARK_AREA,
             crop_first=False).is_success
         if not banner_hit:
-            # P4R3 锚加固:area 锚(LCS)会被 OCR 误读击穿(「强敌来袭」→
-            # 「强敌米」/「強敌来袭」实测帧)→ 片段判别兜底(判别单一源)。
+            # 锚加固纵深:徽记模板锚已是 OCR 误读免疫(二值化模板匹配),
+            # 片段判别兜底仍保留(判别单一源;横幅动画相位致模板 miss 时,
+            # 片段判别按全帧 OCR 文本补一刀)。
             banner_hit = is_boss_briefing_texts(read_ocr_texts(self.ctx, screen))
         if not banner_hit:
             # 横幅已退 = 点空白已生效推进 → 直接交回外循环重判(新架构:
