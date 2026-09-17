@@ -10,7 +10,7 @@
    (bot 动作后逻辑态随写,或从观察数据派生写入);
 2. ``absorb_rule``:存在**吸收规则**承接无写端的游戏侧变更(申报表
    ``EXTERNAL_BENCH_GRANTS``/``EXTERNAL_EQUIP_GRANTS``、待补结闩
-   ``boundary_gold_pending``、豁免注册表、行内纯重排采新
+   ``boundary_gold_mode``、豁免注册表、行内纯重排采新
    ``deploy_slot_reorder``);
 3. ``observation_only``:字段**有观察读端但零逻辑写端**——observe 覆盖
    逻辑态不存在,失配比对(``observe()`` 仅在 ``target.source == 'logic'``

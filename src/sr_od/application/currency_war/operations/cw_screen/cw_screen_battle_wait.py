@@ -561,6 +561,16 @@ class CwScreenBattleWait(CwScreenOpBase):
                         parse_settlement_assets,
                     )
                     _assets = parse_settlement_assets(_ocr_texts)
+                    if _assets.get('gold') is None \
+                            and getattr(_obs, 'killed', None) is True:
+                        # 读失败原因定位留证(T-42):胜局结算页必有金面板
+                        #(经济知识=economy.md「金币明细面板只在胜局结算屏
+                        # 出现」),读失败 = OCR token 形态漂移而非面板缺席
+                        # ——落全帧 token 供解析器加固对账(败局页无面板,
+                        # 读失败是预期形态,不刷屏)。
+                        log.warning('[cw-bwait] 结算屏金面板读失败(胜局,'
+                                    '将置 unknown 量域闩): ocr_tokens=%s',
+                                    _ocr_texts)
                     # GameState 结算覆盖写端(迁移批次二,任务书件 8/设计
                     # §3.5.1):结算真值组(hp/streak 带方向/gold·level·xp
                     # 仅胜局)覆盖进记录;金/等级/经验缺席(败局页无该面板)

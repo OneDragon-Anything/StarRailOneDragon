@@ -128,11 +128,19 @@ def parse_settlement_assets(ocr_texts: list[str]) -> dict[str, int | None]:
     """
     out: dict[str, int | None] = {'gold': None, 'level': None,
                                   'xp_cur': None, 'xp_next': None}
-    for t in ocr_texts:
+    for i, t in enumerate(ocr_texts):
         if out['gold'] is None:
             m = re.search(r'存量\s*[:：]?\s*(\d+)', t)
             if m:
                 out['gold'] = int(m.group(1))
+            elif '存量' in t and i + 1 < len(ocr_texts):
+                # OCR 分词形态:「存量」锚词与数值被拆成相邻两 token
+                #(全屏 OCR 小字号数字高频形态,同 parse_settlement_progress
+                # 的分离 token 先例)——仅接受下一 token 为纯数字的紧邻形,
+                # 锚词缺失不猜(宁缺勿造口径不变)。
+                m2 = re.fullmatch(r'[:：]?\s*(\d{1,4})', ocr_texts[i + 1].strip())
+                if m2:
+                    out['gold'] = int(m2.group(1))
         if out['level'] is None:
             m = re.search(r'Lv\.?\s*(\d{1,2})', t)
             if m:

@@ -1301,7 +1301,10 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
     幂等——同卡登记不叠加,登记 = `external_grant_latched_cards`;窗口上界 =
     等值观察达 `EXTERNAL_GRANT_EQUAL_OBS_LIMIT` 次销闩留证,消费 =
     `_absorb_external_grant` 纯超集精确吸收)/节点边界金补结闩
-    (`boundary_gold_pending`,消费 = observe 失配分支正向差补结)/部署 miss
+    (`boundary_gold_mode` 量域三态:known=结算屏金面板读成功精确额窗、
+    unknown=读失败未知额度窗(正向差按差额吸收,窗存续到店开帧金观察
+    收口,配 `boundary_gold_truth_seen` 公式腿双计防标记),消费 =
+    observe 失配分支正向差补结)/部署 miss
     申报闩(`deploy_miss_pending`,消费 = `consume_deploy_miss_mark` 投影跳写)
     与其连续计数(`deploy_miss_streak_key/n`,同键连续 miss 达
     `DEPLOY_MISS_REDISPATCH_LIMIT` 由备战决策循环 round_fail 交上层)。
