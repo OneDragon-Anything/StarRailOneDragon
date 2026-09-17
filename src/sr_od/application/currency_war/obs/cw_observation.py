@@ -2230,13 +2230,12 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         node_type = _ledger_t if _ledger_t is not None else _obs_t
         if _ledger_t is not None:
             verify_node_type_votes(ctx, screen, plane, round_num)
-    # session 上次观测等级提前取(XP '1' 拆分收紧的上下文先验 + 等级三源解析共用;
-    # 0=新局无历史)。毒化防线保证 last_level_obs 只在 authoritative 帧写入,
-    # 可作先验。
-    _match = getattr(ctx, 'cw_match', None)
+    # 终态契约 §A:last_level_obs 先验随等级单调守卫退役删除
+    # (_last_lv 恒 0 = 无历史先验;等级真值 = gs.level 结算/观察覆盖 +
+    # carried;误读窗行为变化登记 design §1.3)。_expected_level 结构先验
+    # (位面/轮次推算)保留。
+    _match = getattr(ctx, 'cw_match', None)   # enemy_difficulty 回退源仍用(§B 换源归 T-3)
     _last_lv = 0
-    if _match is not None and _match.session is not None:
-        _last_lv = getattr(_match.session, 'last_level_obs', 0)
     xp_progress = (read_xp_progress(ctx, screen, expected_level=(_last_lv or None))
                    if _w('xp') else None)
     level = 1
@@ -2266,10 +2265,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                 log.warning(f'[cw!] level {_kind}:{_old}->{_new}')
             obs_conflict('level', _old, _new, screen, verdict=_verdict, source=_src,
                          plane=plane, round_num=round_num)
-        # 毒化防线(2026-08-18):纯启发式兜底值(OCR 与 XP 双失读)不写回 last_level_obs
-        # —— live 实证:兜底 6 被写入后,XP 反推 5 被单调守卫打回(乒乓),且下一帧继续毒化。
-        if _match is not None and _match.session is not None and _lv_authoritative:
-            _match.session.last_level_obs = level
+        # (毒化防线与 last_level_obs 写回已随终态契约 §A 守卫退役删除——
+        #  等级真值归宿 = gs.level 覆盖/carried,误读窗不再有单调守卫打回。)
     # ADR-0286(迁移审计批 F1):cap 真值接线——防抖后采信(决策层 max_units
     # 优先读真值、level 兜底;读不到/域外拒信 → None 保持兜底语义,与旧恒
     # level 行为兼容)。生产 cap = level + 宝钻数(D-53)。

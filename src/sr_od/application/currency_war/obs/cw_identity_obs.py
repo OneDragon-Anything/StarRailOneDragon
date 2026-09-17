@@ -566,29 +566,24 @@ def _ctx_slots(ctx: SrContext, prefix: str, count: int) -> list[tuple[int, Rect]
 
 
 def _session_level(ctx: SrContext) -> int | None:
-    """session 等级链(``last_level_obs`` 单调链 vs 容器 level 取大)→ 无 session/无值 → None。
+    """容器 level 读口(终态契约 §A:last_level_obs 单调链退役,单一源 =
+    gs.level 覆盖/carried)→ 无 session/无值 → None。
 
-    布局选档的 level 源(ADR-0281:后排槽数由 level 驱动;``_resolve_level`` 维护的
-    单调链已防毒化)。离线/无 session 场景返 None(调用方退 6 槽基线)。
-    **单一源可信门**(15 号稿 §2.3/§6):启发式兜底帧的 level 值**不参与
-    取大**——「兜底 4」与「真读 4」可分后,兜底值不得混进单调链。容器侧该
-    门由喂入结构性满足(``read_game_state`` 仅 authoritative 帧观察写
-    level,兜底帧走 carry 沿用),故取容器值直取即可信域(last_state 链
-    退役换源;level_readable 显式位不入容器,quality 语义由 Field.source
-    承载)。
+    布局选档的 level 源(ADR-0281:后排槽数由 level 驱动)。离线/无
+    session 场景返 None(调用方退 6 槽基线)。**单一源可信门**(15 号稿
+    §2.3/§6):启发式兜底帧的 level 值不参与——容器侧该门由喂入结构性
+    满足(``read_game_state`` 仅 authoritative 帧观察写 level,兜底帧走
+    carry 沿用),取容器值直取即可信域。
     """
     try:
         m = ctx.cw_match
         if m is None or m.session is None:
             return None
-        lv = getattr(m.session, 'last_level_obs', 0) or 0
         from sr_od.application.currency_war.kernel.cw_game_state import (
             game_state_of,
         )
         st_lv = game_state_of(m.session).level.value
-        if st_lv:
-            lv = max(lv, int(st_lv))
-        return lv or None
+        return int(st_lv) if st_lv else None
     except Exception:   # noqa: BLE001
         return None
 

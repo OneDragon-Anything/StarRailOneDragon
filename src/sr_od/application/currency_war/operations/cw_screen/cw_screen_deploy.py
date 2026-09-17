@@ -1108,19 +1108,17 @@ class CwScreenDeploy(SrOperation):
         if _pfx2:
             back = self._row_centers(_pfx2)
         if _cap is None:
-            _lv_chain = (getattr(_sess, 'last_level_obs', 0)
-                         if _sess is not None else 0) or 0
-            # 兜底候选二(容器源换源):容器 level 仅真读入记录
-            # (启发式兜底值禁入容器,字段注)——真读帧与旧 last_state.level
-            # 同值;纯启发式帧候选退出,失读走「不设板满门」便宜端(拖到
+            # 兜底候选(容器单源,终态契约 §A:last_level_obs 单调链退役):
+            # 容器 level 仅真读入记录(启发式兜底值禁入容器,字段注)——
+            # 纯启发式帧候选退出,失读走「不设板满门」便宜端(拖到
             # 游戏拒自纠,低读阻塞的贵方向不引入)。
             _lv_state = (_gs.level.value
                          if (_gs is not None) else None)
-            _cap_candidates = [c for c in (_lv_chain, _lv_state) if c is not None and c > 0]
+            _cap_candidates = [c for c in (_lv_state,) if c is not None and c > 0]
             if _cap_candidates:
                 _cap = max(_cap_candidates)
-                log.info(f'[cw-deploy] cap paddle 失读 → 单调链={_lv_chain} state={_lv_state}'
-                         f' 取 max={_cap}(低读阻塞上阵 > 高读白拖,r60/r64)')
+                log.info(f'[cw-deploy] cap paddle 失读 → 容器 level={_lv_state}'
+                         f' 取值={_cap}(低读阻塞上阵 > 高读白拖,r60/r64)')
             else:
                 log.info('[cw-deploy] cap 全源失读 → None(不设板满门,拖到游戏拒即真值)')
         # 占槽物品识别(部署伪槽修复批 ①;B1 返工后为**标记形态**:物品槽
