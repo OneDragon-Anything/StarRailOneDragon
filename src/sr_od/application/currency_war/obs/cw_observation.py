@@ -371,11 +371,9 @@ def read_level(ctx: SrContext, screen: MatLike, plane: int, round_num: int) -> i
     v = read_level_raw_opt(ctx, screen)
     if v is not None:
         return v
-    # XP 反推的先验 = session 上次观测等级(与 read_game_state 同源;'1' 拆分
-    # 收紧防 lv 3↔4 乒乓,见 _parse_xp_pair)。无历史(0)→ None 旧行为。
-    _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
-    _prior = getattr(_sess, 'last_level_obs', 0) or None
-    xp = read_xp_progress(ctx, screen, expected_level=_prior)
+    # XP 反推先验(session 上次观测等级)已随终态契约 §A 等级守卫退役——
+    # 无结构先验可用,XP 不可解析 → None(调用方走 _expected_level 兜底)。
+    xp = read_xp_progress(ctx, screen, expected_level=None)
     if xp is not None:
         from sr_od.application.currency_war.kernel.cw_economy import XP_TO_NEXT_LEVEL
         for lv, need in XP_TO_NEXT_LEVEL.items():
@@ -2193,8 +2191,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # hp 跳过/真读的门 = PHASE_FIELD_SPEC('hp' 在集内才 OCR;ADR-0462,
     # 收编 6fc1fd4c 先例为规格单一源,不留两处门控):hp 区物理只在 shop 关态
     # 可见——spec 无 'hp' 的阶段(prep_shop_open 开店面板遮挡/battle_or_transit
-    # 非备战)OCR 必然 miss,是每帧必付的死读;_hp_opt=None 走 reconcile 沿用
-    #(session.last_hp_real 语义不变,帧龄门 _same_node_stale 照常)。
+    # 非备战)OCR 必然 miss,是每帧必付的死读;_hp_opt=None 走 reconcile
+    #(开局先验或 None,沿用交 carried 语义)。
     # prep_clean(关店备战帧)= 真读主路径,两级放大回退在该阶段才有意义。
     # phase=None = 全量路径,必须与 prep_clean 同读 hp:全量调用方(director
     # heavy 环入口 observe_full/对拍 recorder)的帧多为**关店**备战帧,hp 可见;
@@ -2205,15 +2203,12 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     _hp_opt = (read_hp_opt(ctx, screen)
                if (_spec is None or 'hp' in _spec) else None)
     _sess_hp = getattr(getattr(ctx, 'cw_match', None), 'session', None)
-    _had_real = getattr(_sess_hp, 'last_hp_real', None) is not None
+    # 终态契约 §A:reconcile_hp 守卫腿与 session.last_hp_real 帧龄门退役——
+    # 真值帧采新;读不到 = 开局先验(ADR-0559)或 None,沿用交 carried 语义;
+    # hp_trusted = 真读位(可信位判定单一源 = hp_decision_trusted_of)。
     hp_val, hp_readable = reconcile_hp(
-        _sess_hp, _hp_opt, screen, source='read_game_state', node_t=_node_t)
-    # ADR-0431 帧龄门:同节点内沿用才可信(shop 开态帧间无战斗,值必然
-    # 未变);跨节点沿用帧与被下行守卫拒信帧(SUSPECT)降 False;真读且
-    # 过守卫的帧可信;全无真值帧(hp=None)恒 False(ADR-0428/0491)。
-    _same_node_stale = (_had_real
-                        and getattr(_sess_hp, 'last_hp_real_node', None) == _node_t)
-    hp_trusted = (hp_readable and _hp_opt is not None) or _same_node_stale
+        _sess_hp, _hp_opt, screen, source='read_game_state')
+    hp_trusted = hp_readable
     # 节点类型台账制消费:查表优先(session 权威表,写入端 = 位面详情采集 +
     # 投资环境后重读;权威依据 = 用户口述「位面内节点类型与数量只有投资环境
     # 选择能改变」)。表缺/该位次未识别 → 退逐帧标签 OCR(旧链,boss 轮次门
@@ -2526,24 +2521,24 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             if _w('hp'):
                 # v3.2-G1:判读面质量标记照落 sig.quality(决策消费统一经
                 # 政策层读口 decision_hp;
-                # 词表 = real_read/same_node_carried/prior,§3.2.1 起步词表)。
+                # 词表 = real_read/prior,§3.2.1 起步词表;终态契约 §A:
+                # same_node_carried 帧龄门退,沿用统一 carried)。
                 if hp_readable:
                     gs.observe(gs.hp, int(hp_val), sig=ChannelSig(
                         family='obs', actor='cw_observation',
                         screen=screen_name, mode='read',
                         quality={'hp': 'real_read'}))
-                elif hp_val is not None and not _had_real:
-                    # 对账层开局先验形态(session 无真值,ADR-0559)
+                elif hp_val is not None:
+                    # 对账层开局先验形态(读不到,ADR-0559)
                     gs.write_prior(gs.hp, int(hp_val), evidence='prior:adr-0559',
                                    sig=ChannelSig(
                                        family='obs', actor='cw_observation',
                                        screen=screen_name, mode='prior',
                                        quality={'hp': 'prior'}))
-                elif hp_val is not None:
+                else:
                     gs.carry(gs.hp, frame=frame, sig=ChannelSig(
                         family='obs', actor='cw_observation',
-                        screen=screen_name, mode='carried',
-                        quality={'hp': 'same_node_carried'}))   # ADR-0431
+                        screen=screen_name, mode='carried'))
             if _w('enemy_difficulty'):
                 if enemy_difficulty_live and enemy_difficulty is not None:
                     gs.observe(gs.enemy_difficulty, int(enemy_difficulty),

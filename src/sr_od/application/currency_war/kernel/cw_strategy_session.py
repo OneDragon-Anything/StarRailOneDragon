@@ -115,32 +115,11 @@ class StrategySession:
     # (last_state 槽已随 last_state 链退役批删除:三写点(备战观察×2/
     #  买牌融合段)与全部遗留读者已切容器单例(game_state_of);备战
     #  快照的现役宿主 = 容器,观察喂入 = read_game_state 漏斗。)
-    # 改用结算 HP(结算屏「小队生命值NN」可靠)给下回合 prep state.hp。
-    last_hp: int | None = None
-    # last_hp 的全局节点号((plane-1)*9+round):结算 hp 只在「紧邻上一节点」
-    # 才可覆盖 prep 现读(低 conf 结算轮陈 hp 冻结毒化防线,P1 boss 赢→hp1
-    # 进 P2 秒死 ×3 的观测链根因)。
-    last_hp_t: int | None = None
-    # ADR-0282(hp 三层·对账层):备战屏血量**最后真值**(read_game_state
-    # 真值帧经 reconcile_hp 写;shop 开态读不到=保旧沿用,不是兜底 100)。
-    # 与 last_hp(结算屏真值,gated_hp 新鲜度门消费)分工:本字段是备战
-    # 现读域的对账锚。开局首真值帧前为 None。
-    last_hp_real: int | None = None
-    # last_hp_real 写入时的全局节点号(ADR-0431):hp_trusted 帧龄门的
-    # 坐标系锚——同节点内沿用可信;跨节点=期间可能未观测战斗 → 降不可信。
-    last_hp_real_node: int | None = None
-    # hp 下行拒信复现确认通道状态(ADR-0431):{'value','node','count'}。
-    # 识别质量通道,非策略输入。None=无活跃 suspect。
-    hp_suspect: dict | None = None
-    # 最近 node_type 真值:商店开态帧节点行被遮 → Director 在 shop 关态
-    # heavy 读到时写此;shop.py 喂决策前拷入(仿 last_hp 模式)。
-    last_node_type: str | None = None
-    # 节点行 current 槽识别类型(read_node_sequence,备战画面权威源)——
-    # cw_screen_prep 每次备战读节点行时写;结算观测回路(cw_screen_battle_wait)消费。
-    node_type_current: str | None = None
-    # 上帧 upcoming 槽类型序列(idx 升序)——current 高亮态 Hu 不匹配时
-    # 左移推断用:本轮 current = 上帧 upcoming[0]。
-    upcoming_types: list[str] | None = None
+    # (终态契约 §A 防御缓存已删:结算 hp 锚 last_hp/last_hp_t、对账锚
+    #  last_hp_real/last_hp_real_node、hp 下行拒信通道 hp_suspect、左移
+    #  推断族 last_node_type/upcoming_types/nodeseq_probe_anchor、node
+    #  识别值 node_type_current——真值职责归 gs(覆盖写端 + carried +
+    #  node_kind_of 推导),失准走识别优化批,design §1.3。)
     # 开局帧完整槽序——离线统计源(位面典型节点表)+ 左移兜底参照;
     # 写入端在 cw_screen_prep._probe_node_type 首帧。
     plane_node_table: list[str] | None = None
@@ -149,14 +128,9 @@ class StrategySession:
     # ADR-0368:本局已揭晓的位面轮数序列(每位面首帧 append)——
     # cw_plane_table.schedule_of 的真值源。
     plane_lengths_seen: list[int] | None = None
-    # 左移推断的轮次锚——同轮多次 probe 不重做左移。
-    nodeseq_probe_anchor: tuple | None = None
     # 上回合结算 streak(带符号 连胜+/连败-;结算观察半从结算「连胜×N」
     # 即时直写,ADR-0583)。给下回合 economy C 杠杆读(语义在前缀,备战 read_streak 无方向)。
     last_streak: int = 0
-    # level 单调守卫(read_level OCR 间歇误读;等级局内只升不降,读出<上次
-    # =误读用上次)。新局默认 0。识别层守卫状态。
-    last_level_obs: int = 0
     # 已持有投资策略(局中选,可多张;选卡 handler 采集,read_game_state
     # 拷贝到 state 供 _refresh_cap 等消费)。
     active_strategies: list[str] = field(default_factory=list)
@@ -171,12 +145,6 @@ class StrategySession:
     # state 同名字段(复盘维度:巨星绑定/伙伴选择与 comp 匹配)。
     chosen_megastar: str = ''
     chosen_partner: str = ''
-    # star 回退防抖(char → 连续降级读帧数;274 存证重读实证:合成动画窗
-    # live 读 1★;同名多星副本并存另有星读抖动形态,run_20260915_054718
-    # 深检 §5)——防抖窗内 star 保旧不写回,连续
-    # STAR_DOWNGRADE_CONFIRM_FRAMES(cw_reconcile,值单一源)帧一致才采新
-    # 确认;读回恢复/角色离场即清。框架识别守卫。
-    star_pending_regression: dict[str, int] = field(default_factory=dict)
     # 简报词缀(对局开始 debuff/boss 词缀;写入端 = CwScreenBriefing 内联
     # 直写(仅空时写);mechanics_fit 输入,ADR-0397/0398 保位勿滤)。
     briefing_affixes: list[str] = field(default_factory=list)
