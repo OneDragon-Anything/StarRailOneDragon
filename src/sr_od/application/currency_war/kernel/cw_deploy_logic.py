@@ -727,6 +727,62 @@ def can_deploy_single(
     return False, reasons.get(idx, 'unannotated')
 
 
+def residual_fill_plan(held: list, front_empty: list, back_empty: list,
+                       bench_pos: dict, bench_cid: dict,
+                       deployed_cids: set, cap: int | None,
+                       deployed_count: int) -> list[tuple[int, str, int]]:
+    """P24 残余补部署计划(纯函数,可离线直测;判据单一源 = 本函数,
+    CwScreenDeploy 侧同名函数仅转发适配器,仿彼处 r288_hold_now 先例)。
+
+    主排序循环结束后空槽仍存在(cap 未满)且散牌留置(``held``)非空时,
+    对留置散牌生成补部署计划。判据 = P24 残余补部署支配定理
+    (docs/develop/sr_od/application/currency_war/proofs/
+    p24-residual-fill-dominance.md):零支出域(C=I=0,补部署不触碰金账
+    任何记账点)下,空 cap 槽上任意**合法**单位上阵
+    ΔEV = Δp·ΣL_c·S ≥ 0 恒成立(u>0 且 Δp>0 时严格>0)——
+    「有羁绊的板 > 空槽」,故合法留置件逐件补上,不存在负 EV 退补路径;
+    非法件(同名 dup)与物理上限(cap 满/两排皆满)是守卫剔除面而非
+    EV 判负。ADR-0130 散牌留 bench 与配方围栏辖「选谁优先」语义,
+    不支配「空槽 vs 空板」。消费时机 = 部署执行帧主拖拽循环之后
+    (拖拽后 fresh 复查占用喂入),禁移发射面——fill 依赖拖拽后真值,
+    移发射位 = 时序行为变更。
+
+    返回 ``[(bench_idx, to_row, slot_idx)]``——``bench_idx`` =
+    ``held`` 元素原值(备战栏槽位下标,0 基,与 ``bench_pos``/
+    ``bench_cid`` 键域同域);``slot_idx`` = 对应排行点位列表的 0-based
+    下标(主循环 ``front_empty``/``back_empty`` 同域,执行侧
+    ``row_pts[slot_idx]`` 取拖点、``slot_idx+1`` 即物理槽号)。守卫照搬
+    主循环:
+    - 同名禁双(5.1.7):``bench_cid[i]`` 已在 ``deployed_cids`` → 跳过
+      (游戏拒收同名,局14 藿藿 5 连败实证——dup 是 3合1 素材不是可
+      上阵件);
+    - cap 动态:``deployed_count`` + 已计划数达 ``cap`` → 停(cap=None
+      不设门,拖到游戏拒即真值,同主循环 5.1.8 口径);
+    - 选排按 ``bench_pos``(position_pref),首选排无空槽 fallback 另一排,
+      两排皆满停。
+    """
+    plan: list[tuple[int, str, int]] = []
+    fe = list(front_empty)
+    be = list(back_empty)
+    for i in held:
+        cid = bench_cid.get(i)
+        if cid and cid in deployed_cids:
+            continue   # 同名禁双(dup 留 bench 待 3合1)
+        if cap is not None and cap > 0 and deployed_count + len(plan) >= cap:
+            break   # cap 满,动态停(同主循环)
+        pref = bench_pos.get(i, 'back')
+        row = pref
+        slot = next((s for s in (fe if pref == 'front' else be)), None)
+        if slot is None:
+            row = 'back' if pref == 'front' else 'front'
+            slot = next((s for s in (be if pref == 'front' else fe)), None)
+            if slot is None:
+                break   # 两排皆满
+        (fe if row == 'front' else be).remove(slot)
+        plan.append((i, row, slot))
+    return plan
+
+
 # ===== 换阵卖出义务臂(自 cw_op_deploy 迁 kernel;单一源收口)=====
 # 为什么迁 kernel:swap 发射面谓词(select_swap_plan,本文件尾)与执行侧
 # 卖出臂共吃同一 fenced 臂判据——判据驻 operations 桶时 kernel 谓词够不着

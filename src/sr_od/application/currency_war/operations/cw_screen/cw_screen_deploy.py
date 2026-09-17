@@ -167,44 +167,21 @@ def residual_fill_plan(held: list, front_empty: list, back_empty: list,
                        bench_pos: dict, bench_cid: dict,
                        deployed_cids: set, cap: int | None,
                        deployed_count: int) -> list[tuple[int, str, int]]:
-    """P24 残余补部署计划(纯函数,可离线测)。
+    """P24 残余补部署计划 op 适配器(判定单一源 =
+    kernel.cw_deploy_logic.residual_fill_plan,P24 残余补部署支配定理;
+    仿 r288_hold_now 先例:本适配器只做共享判定转发,禁在此重建
+    第二套守卫语义)。消费时机 = 主拖拽循环后拖拽 fresh 复查占用,
+    消费留在执行帧(移发射面 = 时序行为变更)。
 
-    主排序循环结束后空槽仍存在(cap 未满)且散牌留置(``_held``)非空时,
-    对留置散牌生成补部署计划——判据 = P24 残余补部署支配定理:空 cap 槽上
-    任意合法单位 ΔEV≥0(「有羁绊的板 > 空槽」;复盘 g_20260902_181254
-    修复项 E 的部署层落点)。ADR-0130 散牌留 bench 与配方围栏辖「选谁优先」
-    语义,不支配「空槽 vs 空板」。
-
-    返回 ``[(bench_idx, to_row, slot_idx)]``——``slot_idx`` = 对应排行点位列表
-    的 0-based 下标(主循环 ``front_empty``/``back_empty`` 同域,执行侧
-    ``row_pts[slot_idx]`` 取拖点、``slot_idx+1`` 即物理槽号)。守卫照搬主循环:
-    - 同名禁双(5.1.7):``bench_cid[i]`` 已在 ``deployed_cids`` → 跳过
-      (游戏拒收同名,局14 藿藿 5 连败实证——dup 是 3合1 素材不是可上阵件);
-    - cap 动态:``deployed_count`` + 已计划数达 ``cap`` → 停(cap=None 不设门,
-      拖到游戏拒即真值,同主循环 5.1.8 口径);
-    - 选排按 ``bench_pos``(position_pref),首选排无空槽 fallback 另一排,
-      两排皆满停。
+    返回 ``[(bench_idx, to_row, slot_idx)]``——``slot_idx`` = 对应排行
+    点位列表的 0-based 下标(执行侧 ``row_pts[slot_idx]`` 取拖点、
+    ``slot_idx+1`` 即物理槽号);参数域/守卫语义单一源见 kernel 函数。
     """
-    plan: list[tuple[int, str, int]] = []
-    fe = list(front_empty)
-    be = list(back_empty)
-    for i in held:
-        cid = bench_cid.get(i)
-        if cid and cid in deployed_cids:
-            continue   # 同名禁双(dup 留 bench 待 3合1)
-        if cap is not None and cap > 0 and deployed_count + len(plan) >= cap:
-            break   # cap 满,动态停(同主循环)
-        pref = bench_pos.get(i, 'back')
-        row = pref
-        slot = next((s for s in (fe if pref == 'front' else be)), None)
-        if slot is None:
-            row = 'back' if pref == 'front' else 'front'
-            slot = next((s for s in (be if pref == 'front' else fe)), None)
-            if slot is None:
-                break   # 两排皆满
-        (fe if row == 'front' else be).remove(slot)
-        plan.append((i, row, slot))
-    return plan
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        residual_fill_plan as _kernel_fill_plan,
+    )
+    return _kernel_fill_plan(held, front_empty, back_empty, bench_pos,
+                             bench_cid, deployed_cids, cap, deployed_count)
 
 
 def assemble_bench_list(bench_occ: list, bench_cid: dict, bench_pos: dict,
@@ -1573,8 +1550,9 @@ class CwScreenDeploy(SrOperation):
         # P24 残余补部署:主排序完成后空槽仍在(cap 未满)且散牌
         # 留置非空 → 按计划补上。判据 = P24 残余补部署支配定理(空 cap 槽上
         # 任意合法单位 ΔEV≥0;复盘 g_20260902_181254 修复项 E:r2-r4 板 3/4
-        # 空槽不上人)。计划 = 纯函数 residual_fill_plan(同名禁双/cap 门/
-        # 选排 fallback 守卫与其内注释同源);执行侧每拖前 fresh 复查占用
+        # 空槽不上人)。计划 = kernel 单一源(cw_deploy_logic.
+        # residual_fill_plan,op 侧同名片仅适配器转发;同名禁双/cap 门/
+        # 选排 fallback 守卫语义单一源在 kernel);执行侧每拖前 fresh 复查占用
         # (主循环同款,防起始帧假阳)。
         if _held:
             # B1 返工连带面:kernel 恒拒的物品槽不得经 P24 补部署绕回上板
@@ -1783,7 +1761,10 @@ class CwScreenDeploy(SrOperation):
                  if (self.ctx.cw_match is not None
                      and self.ctx.cw_match.session is not None) else None)
         _counters = getattr(strategy_state_of(_sess), 'cw4_counters', None) if _sess else None
-        _cands: list[tuple[tuple, object, set[str]]] = []
+        # 卖出候选按插入序逐件消费(刻意无排序):星级优先序残件已删——
+        # 恢复排序即成卖出打分的第二实现;卖出序将来若需要,届时在
+        # kernel/cw_deploy_logic 立卖出序纯函数。
+        _cands: list[tuple[object, set[str]]] = []
         for d in deployed:
             if sold >= max_sell:
                 break
@@ -1820,8 +1801,7 @@ class CwScreenDeploy(SrOperation):
                         if _rej == 'fenced_arm_closed' and bonds & _DEPLOY_FENCE:
                             self._record_fenced_preserve(d, bonds)
                     continue
-                _cands.append(((1, 0 if getattr(d, 'star', 1) <= 1 else 1),
-                               d, bonds))
+                _cands.append((d, bonds))
                 continue
             # 退型路径(swap_ctx 不可得):标量 fenced + 排除链静默(旧语义)
             if not offtarget_sell_allowed(d.char_id, bonds, target_factions,
@@ -1836,12 +1816,11 @@ class CwScreenDeploy(SrOperation):
                              f' → 保留(买/演进层目标源与终局 target 分歧时禁互踩)')
                     self._record_fenced_preserve(d, bonds)
                 continue
-            _rank: tuple = (1, 0 if getattr(d, 'star', 1) <= 1 else 1)
-            _cands.append((_rank, d, bonds))
+            _cands.append((d, bonds))
         if _excluded_n:
             log.info(f'[cw-deploy] deploy-swap 排除显影:{_excluded_n} 个候选'
                      '被义务集/新鲜度排除保留(分键 deploy_swap_sell_excluded_*)')
-        for _rank, d, bonds in _cands:
+        for d, bonds in _cands:
             if sold >= max_sell:
                 break
             row = front if d.position_pref == 'front' else back
