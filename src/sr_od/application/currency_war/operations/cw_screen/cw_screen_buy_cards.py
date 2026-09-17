@@ -28,6 +28,7 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     shop_card_click_points,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
+    StrategySession,
     strategy_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_telemetry_exit import journal_refs
@@ -805,12 +806,14 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         from sr_od.application.currency_war.strategies.impl.mandate_v1.bridge import (
             MandateV1Strategy,
         )
-        _def = MandateV1Strategy()
-        _session = _def.create_session(config)
+        # 终态契约 §2.1:构造注入 cls(gs, config),工厂退役。
+        _session = StrategySession()
+        _gs_def = game_state_of(_session)
+        _def = MandateV1Strategy(_gs_def, config)
         # 终态契约 Match 终形含 gs/performance(landing §3.1);防御路径
         # 同漏斗口径建容器(改道引导漏斗归终态切换批,本批先保构造合法)。
         match = CurrencyWarMatch(
-            _def, _session, game_state_of(_session),
+            _def, _session, _gs_def,
             performance=getattr(_session, 'performance', None))
         op.ctx.cw_match = match
 

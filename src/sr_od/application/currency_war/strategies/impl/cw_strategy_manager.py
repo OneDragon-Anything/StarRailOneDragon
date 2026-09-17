@@ -22,6 +22,7 @@
 """
 from __future__ import annotations
 
+import random
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,6 +36,7 @@ from one_dragon.utils.plugin_module_loader import (
     import_module_from_file,
     resolve_module_name,
 )
+from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 from sr_od.application.currency_war.strategies.impl.cw_strategy import CwStrategy
 
 if TYPE_CHECKING:
@@ -65,17 +67,23 @@ def establish_new_match(ctx: SrContext, config) -> bool:
     """
     if getattr(ctx, 'cw_match', None) is not None:
         return False
-    import random
 
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         CurrencyWarMatch,
     )
-    _strategy = StrategyManager(
-        ctx, ctx.currency_war_strategy_plugin_dirs).instantiate(
-        config.strategy_id)
-    _session = _strategy.create_session(config)
+    # 终态契约 §2.1:每局冷建 = session(旁表键位/兼容位)+ 容器单例 +
+    # 策略器构造注入 cls(gs, config)。布局未知态计数复位随 create_session
+    # 退役迁至漏斗(新局起点顺带复位,落地审 C4)。
+    _session = StrategySession()
     if config.strategy_seed is not None:
         _session.rng = random.Random(config.strategy_seed)
+    try:
+        from sr_od.application.currency_war.kernel.cw_vocab import (
+            reset_layout_unknown_state,
+        )
+        reset_layout_unknown_state()
+    except Exception:   # noqa: BLE001  复位 best-effort,不阻容器建立
+        pass
     # GameState 初始化即遥测装配(用户裁定 2026-09-15:遥测数据的保存
     # = game state 职责;精化令:触发只钉正主单例建立路径 = kernel
     # game_state_of 局容器建立点,GameState 构造器零装配逻辑)。容器建立即
@@ -88,8 +96,12 @@ def establish_new_match(ctx: SrContext, config) -> bool:
     from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
     from sr_od.application.currency_war.telemetry import state as _telemetry_state
     _gs = game_state_of(_session, run_id_provider=_telemetry_state.current_run_id)
-    # gs/performance 终态契约前置落位(landing §3.1):容器正身挂 Match,
-    # 本批 additive(现役读面仍走 session 旁口,消费接线归终态切换批)。
+    # 策略器构造注入(终态契约 §2.1):实例持 gs 只读引用,不跨局。
+    _strategy = StrategyManager(
+        ctx, ctx.currency_war_strategy_plugin_dirs).instantiate(
+        config.strategy_id, _gs, config)
+    # Match 终形(§2.1):{gs, strategy, performance} + session 兼容位
+    #(T-6 session 类退役时随删)。
     ctx.cw_match = CurrencyWarMatch(_strategy, _session, _gs,
                                     performance=getattr(_session, 'performance', None))
     # GameState 初始化即遥测装配(用户裁定 2026-09-15:遥测数据的保存
@@ -341,8 +353,9 @@ class StrategyManager:
         self._ensure_discovered()
         return self._classes.get(strategy_id)
 
-    def instantiate(self, strategy_id: str) -> CwStrategy:
-        """按 id 实例化策略(``cls()`` 无参)。未注册 id → 显式报错(禁静默回退)。
+    def instantiate(self, strategy_id: str, *args, **kwargs) -> CwStrategy:
+        """按 id 实例化策略(终态契约 §2.1:透传构造参 ``cls(gs, config)``)。
+        未注册 id → 显式报错(禁静默回退)。
 
         旧「回退 DefaultCwStrategy」分支已随 default 本体退役删除:静默回退会
         把配置拼错降级成「跑另一个栈」,值域错必须前置暴露(合法值域 =
@@ -356,4 +369,4 @@ class StrategyManager:
                 f"(合法值=mandate_v1;已注册:"
                 f"{sorted(self._classes)};存量 yml 里的 'default' 已随"
                 f"decision_v2 已随统一迁移批 ② 删除,请改为 mandate_v1)")
-        return cls()
+        return cls(*args, **kwargs)

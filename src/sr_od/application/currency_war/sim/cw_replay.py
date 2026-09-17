@@ -36,6 +36,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     restore_state_snapshot,
 )
 from sr_od.application.currency_war.kernel.cw_observe import DEFAULT_REPLAY_DIR
+from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 from sr_od.application.currency_war.telemetry.journal_query import (
     read_journal,
     round_state_snapshots,
@@ -85,8 +86,6 @@ def main() -> None:
     from sr_od.application.currency_war.strategies.impl.mandate_v1.bridge import (
         MandateV1Strategy,
     )
-    strat = MandateV1Strategy()
-
     rows = read_journal(DEFAULT_REPLAY_DIR)
     snaps = round_state_snapshots(rows, run_id)
     if not run_id:
@@ -105,11 +104,14 @@ def main() -> None:
         rid, plane, rnd = key
         # 每轮冷建 session(策略态不入流水;判读边界见模块 docstring),
         # 快照恢复进该 session 的容器后走生产同路决策。
-        sess = strat.create_session(_Cfg())
+        # 终态契约 §2.1:策略器构造注入 cls(gs, config),每轮冷建。
+        sess = StrategySession()
+        _cfg = _Cfg()
         gs: GameState = game_state_of(sess)
+        strat = MandateV1Strategy(gs, _cfg)
         restore_state_snapshot(gs, snaps[key])
         try:
-            actions = strat.decide_shop_screen(sess, _Cfg())
+            actions = strat.decide_shop_screen(sess, _cfg)
             plan = _fmt(actions)
         except Exception as e:
             plan = f'⚠ plan 异常: {type(e).__name__}: {e}'

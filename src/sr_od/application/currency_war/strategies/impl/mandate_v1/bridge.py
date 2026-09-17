@@ -150,14 +150,16 @@ class MandateV1Strategy(CwFlowStrategy):
                         ' 七面);单动作循环发射(帧稳定截断为决策核内'
                         '发射组织,非流程侧契约)')
 
-    def __init__(self, registry: DecisionV2Registry | None = None) -> None:
-        """核构造 + 标定注入(标定批 T-278/ADR-0639)。
+    def __init__(self, gs, config,
+                 registry: DecisionV2Registry | None = None) -> None:
+        """核构造 + 标定注入(标定批 T-278/ADR-0639;终态契约 §2.1:gs/config
+        透传基类构造注入)。
 
         ``calibration.apply()`` 幂等(只填 None 槽),把 Δ/ε₂ 标定值
         送入 provisional 槽位(生产注入单点;None 期证据门恒不可评
         fail-closed 语义不变)。测试隔离:证据门锁经 ``provisional.
         reset`` fixture 清场,与本注入位无关。"""
-        super().__init__(registry)
+        super().__init__(gs, config, registry)
         from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import (
             calibration,
         )

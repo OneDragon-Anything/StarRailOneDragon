@@ -194,52 +194,25 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
     STRATEGY_NAME: str = '主流程驱动核(内部基类)'
     _abstract: bool = True
 
-    def __init__(self, registry: DecisionV2Registry | None = None):
-        """registry 可注入(A/B:两套注册表各跑一臂);缺省=标定版。"""
-        super().__init__()
+    def __init__(self, gs, config, registry: DecisionV2Registry | None = None):
+        """终态契约 §2.1 构造注入(gs/config 归基类);registry 可注入
+        (A/B:两套注册表各跑一臂);缺省=标定版。"""
+        super().__init__(gs, config)
         self.registry = registry or DEFAULT_REGISTRY
 
-    # ===== 生命周期(ADR-0583 收编:唯一冷建口 + 策略器状态工厂)=====
+    # ===== 生命周期(终态契约 §2.1:状态 = 实例属性,构造即冷建)=====
 
-    def create_state(self, config: CurrencyWarConfig) -> StrategyState:
-        """策略器状态对象工厂(session.md §3.1/§5.1;ADR-0563 决策-2)。
+    def _create_state(self) -> StrategyState:
+        """策略器状态对象工厂钩子实现(session.md §3.1/§5.1;ADR-0563 决策-2)。
 
-        每局冷建 StrategyState(本核即 mandate_v1 流程核,create_session
-        唯一冷建口接线;sim 初始相位注入经 ensure_strategy_state 构造入口,
-        不经本工厂)。**live 初值 v3_phase='FORM' 归 create_session**
-        (ADR-0583:原 on_match_start 的唯一非零缺省随生命周期收编迁入
-        冷建口;工厂本体保持缺省 '',直调工厂的 sim 注入桩面语义不变)。
-        **config 契约:可忽略、可为 None**——sim 侧
-        ``ensure_strategy_state`` 注入桩面调 ``factory(None)``,工厂实现
-        禁依赖 config 取值;StrategyState 无 config 依赖,恒冷建即安全。
+        每局冷建 StrategyState(本核即 mandate_v1 流程核;sim 初始相位注入
+        经 ensure_strategy_state 构造入口,不经本钩子)。live 初值
+        v3_phase='FORM'(ADR-0583:原 on_match_start 的唯一非零缺省随
+        生命周期收编迁入冷建口)。
         """
-        return StrategyState()
-
-    def create_session(self, config) -> StrategySession:
-        """空白 session(rng 留默认,由 run loop 按 ``config.strategy_seed`` 覆盖)。
-
-        新局起点顺带复位布局未知态计数(落地审 C4:跨局残留会让新局开局
-        ——level 未 observed/CV 高发不可判期——提前吃冻结)。
-        **唯一冷建口(ADR-0583)**:策略器状态工厂接线 + live 初值
-        ``v3_phase='FORM'`` 一并在此落位(旧 on_match_start 冷建与初值
-        双写点收编;manager/sim/replay/direct 直调点全走本方法)。"""
-        try:
-            from sr_od.application.currency_war.kernel.cw_vocab import (
-                reset_layout_unknown_state,
-            )
-            reset_layout_unknown_state()
-        except Exception:   # noqa: BLE001  复位 best-effort,不阻 session 创建
-            pass
-        sess = StrategySession()
-        # 策略器状态工厂接线(session.md §3.1/§5.1):create_session 即冷建
-        # 当局 StrategyState——状态生命周期与 session 同源(§3.4-1 统一构建口)。
-        sess.strategy_state = self.create_state(config)
-        # live 相位观测初值(ADR-0583:原 on_match_start 的唯一非零缺省;
-        # 工厂产物保持缺省 ''——sim 直构 session 的旧读数保真,见 §2.3 拆分表)。
-        _ms = sess.strategy_state
-        if isinstance(_ms, StrategyState):
-            _ms.v3_phase = 'FORM'
-        return sess
+        st = StrategyState()
+        st.v3_phase = 'FORM'
+        return st
 
     # ===== 镜像族观察写者(mandate_v1 单臂)=====
 
@@ -442,6 +415,15 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             self._refresh_direction_views(state, session)
 
     # ===== pick 族(事件/选卡决策;判据单源 = kernel cw_events/cw_comps)=====
+
+    def decide_invest_strategy(self, options: list[str]) -> PickInvest:
+        """终态零参口(S2 申报桩:接线归终态切换 S5 词表批,当前无调用面;
+        会话态挂接归状态实例化批后随 invest 拆分落实现)。"""
+        raise NotImplementedError('decide_invest_strategy 接线归终态切换批')
+
+    def decide_invest_env(self, options: list[str]) -> PickInvest:
+        """终态零参口(S2 申报桩,同上)。"""
+        raise NotImplementedError('decide_invest_env 接线归终态切换批')
 
     def decide_invest(self, kind: Literal["strategy", "env"], options: list[str],
                       gs: GameState, session: StrategySession, config) -> PickEvent:
