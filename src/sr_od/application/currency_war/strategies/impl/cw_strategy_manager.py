@@ -100,6 +100,10 @@ def establish_new_match(ctx: SrContext, config) -> bool:
     _strategy = StrategyManager(
         ctx, ctx.currency_war_strategy_plugin_dirs).instantiate(
         config.strategy_id, _gs, config)
+    # 状态同源接线(终态契约 §2.6 过渡桥):session 键位状态 = 策略器
+    # 实例状态同一对象——旧读法 state_of(session) 与新读法 self.state
+    # 等价,实现/夹具可渐进迁移(T-6 session 退役时旧读法随之消亡)。
+    _session.strategy_state = _strategy.state
     # Match 终形(§2.1):{gs, strategy, performance} + session 兼容位
     #(T-6 session 类退役时随删)。
     ctx.cw_match = CurrencyWarMatch(_strategy, _session, _gs,

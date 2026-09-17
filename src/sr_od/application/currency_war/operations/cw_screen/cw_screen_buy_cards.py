@@ -810,6 +810,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         _session = StrategySession()
         _gs_def = game_state_of(_session)
         _def = MandateV1Strategy(_gs_def, config)
+        # 状态同源接线(§2.6 过渡桥):见漏斗同款注释。
+        _session.strategy_state = _def.state
         # 终态契约 Match 终形含 gs/performance(landing §3.1);防御路径
         # 同漏斗口径建容器(改道引导漏斗归终态切换批,本批先保构造合法)。
         match = CurrencyWarMatch(

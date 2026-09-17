@@ -109,6 +109,7 @@ def main() -> None:
         _cfg = _Cfg()
         gs: GameState = game_state_of(sess)
         strat = MandateV1Strategy(gs, _cfg)
+        sess.strategy_state = strat.state   # 状态同源接线(§2.6 过渡桥)
         restore_state_snapshot(gs, snaps[key])
         try:
             actions = strat.decide_shop_screen(sess, _cfg)
