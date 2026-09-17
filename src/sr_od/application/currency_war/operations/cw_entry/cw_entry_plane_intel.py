@@ -42,7 +42,6 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
-    game_state_of,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -94,9 +93,9 @@ class CwEntryPlaneIntel(SrOperation):
 
         # 真值已在(cw_loop 早前采过/上一轮本 op 成功)→ 零点击直接结论。
         # 放在屏幕门之后:错屏时先报错屏,别让跳过门吞掉真实状态信号。
-        if game_state_of(sess).plane_bosses.value:
+        if gs_of_ctx(self.ctx, sess).plane_bosses.value:
             _log.info('[cw-takeover] %s:%s', self.STATUS_SKIP,
-                      game_state_of(sess).plane_bosses.value)
+                      gs_of_ctx(self.ctx, sess).plane_bosses.value)
             return self.round_success(self.STATUS_SKIP)
 
         from sr_od.application.currency_war.operations.cw_screen.cw_screen_plane_intel import (
@@ -132,7 +131,7 @@ class CwEntryPlaneIntel(SrOperation):
         affixes = getattr(self.ctx, 'cw_plane_affixes', None)
         if not bosses:
             sess = self._session()
-            if sess is not None and game_state_of(sess).plane_bosses.value:
+            if sess is not None and gs_of_ctx(self.ctx, sess).plane_bosses.value:
                 return self.round_success(CwEntryPlaneIntel.STATUS_SKIP)
             return self.round_fail('实采成功但无产出(ctx.cw_plane_bosses 空),不落 session')
 
@@ -150,7 +149,7 @@ class CwEntryPlaneIntel(SrOperation):
         # 覆写 = 用陈旧池冲掉真值(cw_loop 内联实采块的「唯一写入端」约定
         # 退化成最后一写者赢)。
         # 终态契约 §B:空门/写端换容器源(单一源 = gs.plane_bosses/gs.enemy_affixes)。
-        if game_state_of(sess).plane_bosses.value:
+        if gs_of_ctx(self.ctx, sess).plane_bosses.value:
             self.ctx.cw_plane_bosses = None
             self.ctx.cw_plane_affixes = None
             _log.info('[cw-takeover] %s:已有真值不覆写,池已清',
@@ -160,14 +159,14 @@ class CwEntryPlaneIntel(SrOperation):
         # 保位写(None=徽章态位面原样占槽,滤掉=后续位面名字左移错序,
         # ADR-0398;与 cw_loop `_names = list(...)` 同口径)
         names = list(bosses)
-        game_state_of(sess).write_logic(
-            game_state_of(sess).plane_bosses, names,
+        gs_of_ctx(self.ctx, sess).write_logic(
+            gs_of_ctx(self.ctx, sess).plane_bosses, names,
             produced_by='CwEntryPlaneIntel',
             sig=ChannelSig(family='logic_action', actor='CwEntryPlaneIntel',
                            screen='', mode='compute'))
-        if affixes and not game_state_of(sess).enemy_affixes.value:
-            game_state_of(sess).write_logic(
-                game_state_of(sess).enemy_affixes, list(affixes),
+        if affixes and not gs_of_ctx(self.ctx, sess).enemy_affixes.value:
+            gs_of_ctx(self.ctx, sess).write_logic(
+                gs_of_ctx(self.ctx, sess).enemy_affixes, list(affixes),
                 produced_by='CwEntryPlaneIntel',
                 sig=ChannelSig(family='logic_action', actor='CwEntryPlaneIntel',
                                screen='', mode='compute'))
@@ -185,12 +184,12 @@ class CwEntryPlaneIntel(SrOperation):
             # 简报读数源 = gs(终态契约 §B:简报真值唯一写点 = CwScreenBriefing
             # 直写 gs.plane_bosses,session 中转退役)。
             reconcile_briefing_vs_plane_intel(
-                game_state_of(sess).plane_bosses.value, names, enabled=_gate)
+                gs_of_ctx(self.ctx, sess).plane_bosses.value, names, enabled=_gate)
 
         # 取走即清(防跨局残留被下局 `not getattr(ctx,...)` 判空误消费)
         self.ctx.cw_plane_bosses = None
         self.ctx.cw_plane_affixes = None
         _log.info('[cw-takeover] %s:bosses=%s affixes=%s',
                   CwEntryPlaneIntel.STATUS_DONE, names,
-                  game_state_of(sess).enemy_affixes.value)
+                  gs_of_ctx(self.ctx, sess).enemy_affixes.value)
         return self.round_success(f'{CwEntryPlaneIntel.STATUS_DONE}:bosses={names}')
