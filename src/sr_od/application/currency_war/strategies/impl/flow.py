@@ -40,7 +40,6 @@ from sr_od.application.currency_war.kernel.cw_events import (
     PlannerOption,
     PlannerPick,
     SupplyOption,
-    SupplyPick,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
@@ -69,6 +68,8 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CloseShop,
     CwSimFrame,
     PickEvent,
+    PickInvest,
+    PickSupply,
 )
 from sr_od.application.currency_war.strategies.impl.cw_strategy import (
     CwStrategy,
@@ -473,17 +474,16 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             pass
         return pick
 
-    def decide_supply(self, options: list[SupplyOption], gs: GameState,
-                      session: StrategySession, config, refresh_used: bool = False) -> SupplyPick:
-        """补给选装备/出钻。⚠️ OCR 未就绪(P1 契约成员 + 默认委托,handler 不 rewire,随阶段5)。"""
-        self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
-        return cw_events.decide_supply(options, gs, state_of(session).target_comp, config, refresh_used)
+    def decide_supply(self, options: list[SupplyOption]) -> PickSupply:
+        """补给选装备/出钻(终态零参口:gs/state/config 自取)。"""
+        refresh_used = int(self.gs.encounter_refresh_used.value or 0) > 0
+        self._consume_prep_direction_frame(self.gs)   # ADR-0583 入口内务(gs 桥形态)
+        return cw_events.decide_supply(options, self.gs, self.state.target_comp, self.config, refresh_used)
 
-    def decide_encounter(self, options: list[EncounterOption], gs: GameState,
-                         session: StrategySession, config, refresh_used: bool = False) -> EncounterPick:
-        """遭遇难度/词缀避开。⚠️ 后 dormant(遭遇=普通战斗无选项 UI);纯逻辑+测试暂留。"""
-        self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
-        return cw_events.decide_encounter(options, gs, state_of(session).target_comp, config, refresh_used)
+    def decide_encounter(self, options: list[EncounterOption]) -> EncounterPick:
+        """遭遇难度/词缀避开(终态零参口)。"""
+        self._consume_prep_direction_frame(self.gs)   # ADR-0583 入口内务(gs 桥形态)
+        return cw_events.decide_encounter(options, self.gs, self.state.target_comp, self.config)
 
     def decide_megastar(self, options: list[MegastarOption], gs: GameState,
                         session: StrategySession, config) -> MegastarPick:
