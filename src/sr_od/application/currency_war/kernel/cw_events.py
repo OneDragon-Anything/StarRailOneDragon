@@ -892,7 +892,9 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
 #: 工厂 ``action_op_for`` 分派,design.md §2.5)。退役 = 删类(R1):
 #: 元组中不存在即天然不可复活,无退役行无墓碑;新 pick 类型入词表 =
 #: 先改契约再落码(词表纪律,统一观察架构 §6.1),漏登记 = 注册完备锁红。
-PICK_ACTION_TYPES: tuple = (
+#: (终态契约 §2.2 正名:本表 = 事件线决策返回载体;动作子类型收敛单表
+#:  = cw_vocab.PICK_ACTION_TYPES,两者勿混。)
+EVENT_PICK_TYPES: tuple = (
     EncounterPick, SupplyPick, MegastarPick, PartnerPick, PlannerPick,
 )
 
