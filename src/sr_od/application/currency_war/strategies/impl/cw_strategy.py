@@ -261,45 +261,8 @@ def discard_stale_match_container(ctx: SrContext, reason: str) -> bool:
     return True
 
 
-def gated_hp(current_hp: int | None, session: StrategySession,
-             now_t: int | None,
-             current_readable: bool = True) -> int | None:
-    """结算 HP 新鲜度门(r68/r69;门本体已下沉 kernel 政策层,本函数 =
-    **薄委托**,签名与调用面不变、行为零变化)。
+# gated_hp(结算 HP 新鲜度门薄委托)已随终态契约 §A 防御锚退役删除
+# (2026-09-17):现役消费点 = kernel/cw_hp_policy.decision_hp(gs 直读);
+# prep 环入口/终饰写侧预施门已随前置迭代写点退役清零(该文件残留注释
+# 为历史锚,随 T-2 docstring 桶清偿)。
 
-    本体归宿 = ``kernel/cw_hp_policy.apply_hp_freshness_gate``(单一源;
-    窗口政策两常量 ``HP_FRESH_GAP_TRUSTED``/``HP_FRESH_GAP_UNTRUSTED_MAX``
-    随本体入政策层)。kernel 决策簇 hp 消费**禁经本函数**(kernel 禁反向
-    import 策略实现层)——kernel 侧统一走 ``kernel/cw_hp_policy
-    .decision_hp`` 决策读口;本函数只辖策略实现层既有调用点(写侧预施门
-    + 消费侧 2 点)。
-
-    语义(逐位等价,详见本体 docstring):锚缺任一 → 恒等返回现读;锚全时
-    ``gap=now_t-last_t``——现读可信仅 gap==1 结算值可覆盖,不可信放宽到
-    gap≤3,窗外保持现读;None 现读非恒等豁免(锚全时窗内同样被结算值
-    覆盖);门幂等。时基契约:now_t 与结算锚写点
-    (``cw_screen_battle_wait`` 的 last_hp_t)同经
-    ``cw_plane_table.node_t_of`` 派生(schedule 真值;回退态与旧字面量
-    ``(plane-1)*9+round_num`` 逐位相同),禁单侧改式;迁移期 prep 写侧
-    预施门两处暂留旧式,申报见 ``cw_hp_policy.apply_hp_freshness_gate``
-    时基契约节。
-
-    实调点申报纪律(全仓 grep 口径;新增调用点先对账「是否该直走政策层
-    读口」):cw_screen_prep 环入口×2(端口路径/读屏路径,写侧预施门,
-    W5 收编后保留至旧链删除)+ cw_screen_prep 终饰×2(观察终饰+lifecycle
-    payload 终饰,同写侧)+ mandate_v1 adapter decision_state×1(消费侧,
-    视图真值)+ mandate_v1 encounter λ 键读点×1(消费侧,经政策层读口
-    ``decision_hp`` 同门)。旧注「shop.py buy 前」系 ADR-0583 内化前代码形态
-    残留,商店线 buy 前吃门已由环入口终饰承载,shop.py 零调用。同门纪律:
-    先调方用假 hp 判 pivot、后调方真 hp 反向 pivot,同节点两次方向相反
-    换线(r68 实证)。方向重估(ADR-0583 内化进策略器决策入口)消费的是
-    **已被本门覆写后的帧 state**(cw_screen_prep 环入口终饰在决策入口
-    之前执行)→ 驱动输入恒为同门 hp,见 gated 门锁
-    (test_cw_blackboard.py::TestDirectionRhythmL1L2L3L7::test_l7)。
-    """
-    from sr_od.application.currency_war.kernel.cw_hp_policy import (
-        apply_hp_freshness_gate,
-    )
-    return apply_hp_freshness_gate(
-        current_hp, getattr(session, 'last_hp', None),
-        getattr(session, 'last_hp_t', None), now_t, current_readable)
