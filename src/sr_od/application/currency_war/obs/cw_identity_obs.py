@@ -910,27 +910,16 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
                     break
                 _shot = cw_shot_unique(screen, 'summon_unknown')
                 if _shot is not None and ctx.run_context is not None:
-                    from pathlib import Path as _P
-
                     from one_dragon.utils.log_utils import log as _log
-                    _cx = (_rect.x1 + _rect.x2) // 2
-                    _cy = (_rect.y1 + _rect.y2) // 2   # r256 修:原式 (y1+y2-y1)//2 = y2//2 是 bug
-                    _P('.debug/temp/currency_war/summon_stop_hook.flag').write_text(
-                        '召唤物/物品停机钩子:备战栏 slot'
-                        f'{_slot} 占用但 SIFT 未识别(非角色非已知箱/典籍)。\n'
-                        f'现场处理流程(必须当天做完,别降级绕过):\n'
-                        f'1. 点槽位 ({_cx},{_cy}) → 看内容(物品会直接开启/弹面板,角色出详情)\n'
-                        f'2. 若为物品变体:截图 → 补进 find_supply_boxes/find_tomes 模板或新增物品类目\n'
-                        f'   (r100j 教训:卡包变体 TM 0.54 漏检;物品占槽是常态,识别不全就停机等建档)\n'
-                        f'3. 若为真召唤物:portrait_plaza/<名>/raw.png 建模板(白框裁 '
-                        f'{(_rect.x1, _rect.y1, _rect.x2, _rect.y2)})→ roster 核条目\n'
-                        f'4. 建档完成 → 处理完删本 flag;钩子段在识别覆盖该物品变体前'
-                        f'保留(偏常驻兜底,hook审计 S3);别把钩子降级留证——'
-                        f'未建档物品被当空槽/普通占用乱操作比停机更贵(2026-08-20 用户纠偏)。\n'
-                        f'截图: {_shot}', encoding='utf-8')
-                    _log.warning('[cw!][summon] 备战 slot%s 占用未识别(物品变体或召唤物)'
-                                 '→ 停机现场建档(别降级;处理流程见 flag): %s', _slot, _shot)
-                    ctx.run_context.stop_running(reason='hook:summon_unknown')
+                    _log.warning('[cw!][summon] 备战 slot%s 占用未识别'
+                                 '(物品变体或召唤物)→ 停机留证待建档'
+                                 ' shot=%s(处理流程归 guards.md;用户'
+                                 ' 2026-08-20 裁决:未建档物品被当空槽/'
+                                 '普通占用乱操作比停机贵)', _slot, _shot)
+                    # 框架化(2026-09-16):截图归 stop_running 参数,
+                    # flag 文件退役——[stop] 日志行 + shot 即现场事实。
+                    ctx.run_context.stop_running(
+                        reason='hook:summon_unknown', save_screenshot=True)
                 break
     except Exception:   # noqa: BLE001  采集 best-effort,绝不阻塞身份读取
         pass

@@ -6,8 +6,6 @@ kernel/obs/decision 三桶对 telemetry 的全部上行出口收敛为本模块�
 - 落账出口:``record_defect`` / ``bypass_obs_conflict_to_defect``
   (缺陷台账 = 保留专用流;exogenous/exec_events 旧流写入口已随退役删除——
   ``record_exogenous`` 留 no-op 桩只护在飞挂起面调用方,见其注);
-- 安灯出口:``l0_andon_flag_path`` / ``write_l0_andon_flag``
-  (游戏侧执行器 ``kernel.cw_observe.stop_for_l0_andon`` 消费);
 - run_id 归属键:``current_run_id`` provider(冲突行/结算行/影子文件名的局归属);
 - obs_event 收编制 provider:``obs_event_board``(观察冲突证据归宿 = 统一
   state 账本行型 2;GameState 单例供给由装配段注入,kernel 禁自寻会话)。
@@ -15,8 +13,8 @@ kernel/obs/decision 三桶对 telemetry 的全部上行出口收敛为本模块�
 注入纪律(与框架「副作用缺省关 + 启动点显式接通」一致):
 
 - 生产武装点 = ``CurrencyWarApp.__init__`` 调 ``telemetry.install_exit_hooks()``
-  (与 ``set_l0_andon_handler`` 同点;幂等)——telemetry 侧把真实现写进本模块槽位;
-- 缺省(未注入)= run_id 返空串、落账 no-op、安灯不落 flag(停线三要素仍执行);
+  (幂等)——telemetry 侧把真实现写进本模块槽位;
+- 缺省(未注入)= run_id 返空串、落账 no-op;
   测试需要真实落账时显式调 ``install_exit_hooks``(或 monkeypatch 本模块槽位)。
 
 缺陷台账分级常量(SEVERITY_*)的单一源也在本模块:判级函数(telemetry.judge_severity)
@@ -25,12 +23,10 @@ kernel/obs/decision 三桶对 telemetry 的全部上行出口收敛为本模块�
 from __future__ import annotations
 
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
 
 # ===== 缺陷台账分级常量(单一源;值语义见 telemetry.judge_severity 判据链) =====
 
-SEVERITY_L0_ANDON: str = 'L0_andon'
 SEVERITY_L1_ALERT: str = 'L1_alert'
 SEVERITY_L2_RECORD: str = 'L2_record'
 
@@ -48,27 +44,20 @@ _run_id_provider: Callable[[], str] | None = None
 _record_defect: Callable[..., None] | None = None
 _bypass_obs_conflict_to_defect: Callable[[dict[str, Any]], None] | None = None
 _obs_event_board_provider: Callable[[], Any] | None = None
-_l0_andon_flag_path: Callable[[], Path] | None = None
-_write_l0_andon_flag: Callable[..., str] | None = None
 
 
 def install_exit_hooks(*, run_id_provider: Callable[[], str],
                        record_defect: Callable[..., None],
-                       bypass_obs_conflict_to_defect: Callable[[dict[str, Any]], None],
-                       l0_andon_flag_path: Callable[[], Path],
-                       write_l0_andon_flag: Callable[..., str]) -> None:
+                       bypass_obs_conflict_to_defect: Callable[[dict[str, Any]], None]) -> None:
     """注入全部出口实现(显式逐槽,幂等;生产调用方=telemetry.install_exit_hooks)。
 
     exogenous/exec_events 实现槽已随旧流写入端退役删除(删除波 1)——
     两流的出口访问器或为 no-op 桩、或已移除,不再接受注入。"""
     global _run_id_provider, _record_defect
     global _bypass_obs_conflict_to_defect
-    global _l0_andon_flag_path, _write_l0_andon_flag
     _run_id_provider = run_id_provider
     _record_defect = record_defect
     _bypass_obs_conflict_to_defect = bypass_obs_conflict_to_defect
-    _l0_andon_flag_path = l0_andon_flag_path
-    _write_l0_andon_flag = write_l0_andon_flag
 
 
 # ===== 出口访问器(签名与 telemetry 真实现逐参一致;缺省 no-op / 空串) =====
@@ -166,36 +155,6 @@ def journal_refs(*extra: dict[str, str] | None) -> list[dict[str, str]]:
                     'key': f'run_id={rid}|v={version}'})
     out.extend(e for e in extra if e)
     return out
-
-
-def andon_exit_installed() -> bool:
-    """安灯出口是否已注入(未注入=停线三要素不落 flag 仅停线;缺省关纪律)。"""
-    return _write_l0_andon_flag is not None
-
-
-def l0_andon_flag_path() -> Path:
-    """安灯哨兵 flag 路径出口(未注入时由调用方跳过 flag 落盘)。"""
-    fn = _l0_andon_flag_path
-    if fn is None:
-        raise RuntimeError('l0_andon_flag_path 未注入(出口缺省关;'
-                           '生产武装点=CurrencyWarApp.__init__)')
-    return fn()
-
-
-def write_l0_andon_flag(flag_path: Path, *, run_id: str, surface: str,
-                        kind: str, expected: str, observed: str,
-                        plane: int = 0, round_num: int = 0,
-                        refs: list[dict[str, str]] | None = None,
-                        defect_shot: str | None = None,
-                        stop_shot: str = '') -> str:
-    """安灯哨兵 flag 写入出口(HOOK-STOP 内容规范在 telemetry 真实现)。"""
-    fn = _write_l0_andon_flag
-    if fn is None:
-        return ''
-    return fn(flag_path, run_id=run_id, surface=surface, kind=kind,
-              expected=expected, observed=observed, plane=plane,
-              round_num=round_num, refs=refs, defect_shot=defect_shot,
-              stop_shot=stop_shot)
 
 
 # ===== 布局档分键记录函数(15 号稿批 C;落地审 C3 择一=记录单一源迁入

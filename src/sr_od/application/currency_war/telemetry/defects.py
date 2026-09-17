@@ -2,13 +2,7 @@
 
 from __future__ import annotations
 
-import contextlib
-from datetime import datetime
-from pathlib import Path
-from typing import Any
-
 from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-    SEVERITY_L0_ANDON,
     SEVERITY_L1_ALERT,
     SEVERITY_L2_RECORD,
     journal_refs,
@@ -207,17 +201,17 @@ def judge_severity(surface: str, *, gap_large: bool, reproduced: bool,
                    auto_resolved: bool = False) -> str:
     """分级初判(纯函数,可单测;离线重判即用本函数重放)。
 
-    判据链(三条按序,见 SEVERITY_* 注):裁决已自动 → L2(自动纠漂不算
-    缺陷升级对象);决策关键 ∧ 大 gap ∧ 复现 → L0(安灯;停机接线未启,
-    初判仅落账标记);决策关键 ∧ 大 gap(单次)→ L1;中相关面 ∧ 大 gap ∧
-    复现 → L1;其余 → L2。非数值面的「大 gap」由调用方按硬失败形态判定
-    (如「计划花费>0 金差≈0」「刷新两连全同」),经 gap_large 传入。
+    判据链(两条按序):裁决已自动 → L2(自动纠漂不算缺陷升级对象);
+    决策关键 ∧ 大 gap → L1(单次与复现同级——L0 安灯停线已随
+    「停机处置归框架 stop_running」批退役,复现信息由台账行自带);
+    中相关面 ∧ 大 gap ∧ 复现 → L1;其余 → L2。非数值面的「大 gap」由
+    调用方按硬失败形态判定,经 gap_large 传入。
     """
     if auto_resolved:
         return SEVERITY_L2_RECORD
     critical = surface in DECISION_CRITICAL_SURFACES
     if critical and gap_large:
-        return SEVERITY_L0_ANDON if reproduced else SEVERITY_L1_ALERT
+        return SEVERITY_L1_ALERT
     if surface in MEDIUM_CRITICAL_SURFACES and gap_large and reproduced:
         return SEVERITY_L1_ALERT
     return SEVERITY_L2_RECORD
@@ -248,37 +242,13 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
         plane=plane, round_num=round_num, unit_seq=unit_seq, gap=gap,
         severity=sev, verdict=verdict, shot=shot, refs=refs,
         reader_source=reader_source, note=note, confidence=confidence)
-    # `w515_l0_andon/` 分级安灯 L0 自动停线(用户裁决「确认缺陷即停实机」;先例=
-    # cw_screen_prep 执行失败安灯钩子)。只认显式判级 == L0_andon(零误停
-    # 偏置:judge_severity 已辖 auto_resolved→L2,不在此双保险改语义);
-    # 台账行已在上一行落盘,停线不改变缺陷记录的数据形状(旧消费者不破)。
-    if sev == SEVERITY_L0_ANDON:
-        with contextlib.suppress(Exception):   # 安灯失败不阻断业务流
-            _fire_l0_andon({
-                'run_id': _telstate._CURRENT_RUN_ID, 'surface': surface, 'kind': kind,
-                'expected': str(expected), 'observed': str(observed),
-                'gap': gap, 'plane': plane, 'round_num': round_num,
-                'verdict': verdict, 'shot': shot,
-                'refs': [dict(r) for r in (refs or [])],
-            })
-
-
-
-# ===== `w515_l0_andon/` 分级安灯 L0 自动停线(观测缺陷面;纯判定在本模块,游戏侧
-# 三要素执行在 cw_observe.stop_for_l0_andon——本模块「纯逻辑不碰游戏」
-# 的分层边界,与 cw_screen_prep 执行失败安灯「判定与执行同文件」不同)=====
-
-#: L0 安灯哨兵 flag 相对路径(锚仓根;.debug/ 不入 git;与 exec_fail
-#: 钩子 flag 分文件,值班者按文件名即知是观测面停线还是执行失败停线)。
-_L0_ANDON_FLAG_RELPATH: str = '.debug/temp/currency_war/l0_andon_hook.flag'
 
 
 
 def install_exit_hooks() -> None:
-    """分包期 4 出口钩子注入(生产武装点=CurrencyWarApp.__init__,与
-    ``set_l0_andon_handler`` 同点;幂等):把本模块真实现写进
-    kernel/cw_telemetry_exit 的钩子槽,使 kernel/obs/decision 三桶的
-    telemetry 上行出口(落账/安灯/run_id 归属键)零直依本模块。
+    """分包期 4 出口钩子注入(生产武装点=CurrencyWarApp.__init__;幂等):
+    把本模块真实现写进 kernel/cw_telemetry_exit 的钩子槽,使 kernel/obs/
+    decision 三桶的 telemetry 上行出口(落账/run_id 归属键)零直依本模块。
 
     同点扩装:journal 段淘汰的 defect_ledger 联动跟随清理
     (kernel/cw_state_journal.set_retirement_follower 槽)——台账段随
@@ -289,7 +259,8 @@ def install_exit_hooks() -> None:
 
     删除波 1:exogenous/exec_events 实现槽随旧流写入端退役移除——
     install_exit_hooks 不再注入两流实现(kernel 侧访问器一为 no-op 桩、
-    一已删除)。缺陷台账/obs 旁路/安灯/run_id 四槽照常。"""
+    一已删除)。L0 安灯停线面已随「停机处置归框架 stop_running」批
+    整体退役(判级/台账保留,停机不再由缺陷层发起)。"""
     from sr_od.application.currency_war.kernel import (
         cw_state_journal,
         cw_telemetry_exit,
@@ -301,75 +272,7 @@ def install_exit_hooks() -> None:
     cw_telemetry_exit.install_exit_hooks(
         run_id_provider=current_run_id,
         record_defect=record_defect,
-        bypass_obs_conflict_to_defect=bypass_obs_conflict_to_defect,
-        l0_andon_flag_path=l0_andon_flag_path,
-        write_l0_andon_flag=write_l0_andon_flag)
-
-
-
-def l0_andon_flag_path() -> Path:
-    """安灯哨兵 flag 绝对路径(锚仓根;分包期 0a 起走 get_project_root 真源)。"""
-    from one_dragon.utils.file_utils import get_project_root
-
-    return get_project_root() / _L0_ANDON_FLAG_RELPATH
-
-
-
-def write_l0_andon_flag(flag_path: Path, *, run_id: str, surface: str,
-                        kind: str, expected: str, observed: str,
-                        plane: int = 0, round_num: int = 0,
-                        refs: list[dict[str, str]] | None = None,
-                        defect_shot: str | None = None,
-                        stop_shot: str = '') -> str:
-    """写安灯哨兵 flag(纯 IO 可单测;三要素规范同 cw_screen_prep 执行失败
-    安灯 flag——HOOK-STOP 特征行 + 发生了什么 + 处理步骤 + 删除条件,
-    值班者不看代码即知发生了什么)。返回写入内容(测试断言用)。
-    """
-    refs_txt = ';'.join(f"{r.get('stream')}:{r.get('key')}" for r in (refs or [])) or '(无)'
-    shots_txt = ' | '.join(s for s in (defect_shot or '', stop_shot) if s) or '(截图失败,以台账为准)'
-    content = (
-        '[HOOK-STOP] L0 分级安灯停线(观测缺陷面;常驻,cw_telemetry.record_defect 判级点)\n'
-        '发生了什么:观测缺陷初判达 L0(决策关键面 ∧ 大 gap ∧ 复现 ∧ 裁决未自动)——\n'
-        '  同一缺陷特征本局已第二次以上再现,继续跑会把系统性误观测喂进买/升/部署决策,\n'
-        '  按用户裁决「确认缺陷即停实机」停机保现场。\n'
-        f'定位:run_id={run_id} surface={surface} kind={kind} '
-        f'p{plane}r{round_num} ts={datetime.now().isoformat(timespec="seconds")}\n'
-        f'期望:{expected}\n'
-        f'观测:{observed}\n'
-        f'缺陷台账:telemetry/live/defect_ledger.jsonl 同 run_id 行(refs={refs_txt})\n'
-        f'截图:{shots_txt}\n'
-        '处理步骤:1. 看现场截图确认画面与缺陷面;2. 按 refs 下钻证据行\n'
-        '  (journal (run_id,v) 锚 = obs_event/写入行;历史行为冻结档案只读\n'
-        '  考古)判 reader 误读还是观测真漂移;\n'
-        '  3. 修复后重启载入代码的进程,删除本 flag 再续跑。\n'
-        '删除条件:安灯钩子本体是常驻行为(用户裁决),不随单次处理删除;\n'
-        '  本 flag 处理完即删,防误判为未处理的新停线。\n'
-    )
-    flag_path.parent.mkdir(parents=True, exist_ok=True)
-    flag_path.write_text(content, encoding='utf-8')
-    return content
-
-
-
-def _fire_l0_andon(payload: dict[str, Any]) -> bool:
-    """安灯触发(局级闩锁;返回是否真的执行了停线)。
-
-    闩锁在调用执行器**之前**落位:执行器异常也保证每局至多尝试一次,
-    语义 = 「首见 L0 即停,后续 L0 只补台账」。
-    """
-    rid = str(payload.get('run_id') or '')
-    if not rid or rid in _telstate._L0_ANDON_FIRED_RUNS:
-        return False
-    _telstate._L0_ANDON_FIRED_RUNS.add(rid)
-    handler = _telstate._L0_ANDON_HANDLER
-    stopped = bool(handler(payload)) if handler is not None else False
-    log.warning('[cw!][andon] L0 缺陷安灯 surface=%s kind=%s p%sr%s run=%s → %s',
-                payload.get('surface'), payload.get('kind'),
-                payload.get('plane'), payload.get('round_num'), rid,
-                '已停线(flag=l0_andon_hook.flag)' if stopped
-                else ('停线未执行(游戏侧不可达,台账已留证)' if handler is not None
-                      else '停线通道未注册(缺省关,仅台账)——生产武装点=CurrencyWarApp.__init__'))
-    return stopped
+        bypass_obs_conflict_to_defect=bypass_obs_conflict_to_defect)
 
 
 

@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import contextlib
 import time
-from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from cv2.typing import MatLike
@@ -47,6 +46,7 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_s
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
     DeployMove,
+    HoldFrame,
     LevelUp,
     OpenBookcard,
     OpenShop,
@@ -1470,10 +1470,6 @@ class CwScreenPrep(CwScreenOpBase):
         self._cached_deployed = []
         self._cached_vacancy = 0
         self._cached_gold_trusted = False
-        from sr_od.application.currency_war.currency_war_config import (
-            CurrencyWarConfig,
-        )
-        config = CurrencyWarConfig(self.ctx.current_instance_idx)
 
         # —— ① 数据观察:清场 + 开商店合法态收起(读互斥:hp 关态可读)→ heavy 全量观察写 session
         self._clear_entry_overlays()
@@ -1543,16 +1539,18 @@ class CwScreenPrep(CwScreenOpBase):
             except Exception as e:  # noqa: BLE001  策略异常 = 本轮 fail(外循环 retry 链兜)
                 log.warning(f'[cw!][director] decide_prep_screen 异常: {e}')
                 return self.round_fail(status=f'策略决策异常: {e}')
-            if result is not None and not isinstance(result, CwAction):
-                log.warning(f'[cw!][director] 策略输出非 CwAction|None: '
+            if not isinstance(result, CwAction):
+                log.warning(f'[cw!][director] 策略输出非 CwAction: '
                             f'{type(result).__name__}')
-                return self.round_fail(status='策略输出非 CwAction|None(F3)')
-            if result is None:
-                # None = 本帧无动作可发,交回外循环重观察。
-                # (终态契约 §2.2 更正:系统并无「连续 None 计数器」——外循环
-                #  stall 防线哨兵只对无进展留证,不对 None 计数;HoldFrame
-                #  显式化后本分支由 isinstance(result, HoldFrame) 承载。)
-                return self.round_success('本帧无动作,交回外循环重观察', wait=1.0)
+                return self.round_fail(status='策略输出非 CwAction(F3)')
+            if isinstance(result, HoldFrame):
+                # HoldFrame = 本帧无动作可发,交回外循环重观察(终态契约
+                # §2.2:备战空发射帧显式信号,None 退役;等待帧非动作——
+                # 不进 validate/执行器/动作注册表/续段 token/动作记录,round
+                # 返回形态与等待时长逐字不变。系统级 stall_watch/NODE-DWELL
+                # 哨兵对其透明;系统并无「连续空发射计数器」,stall 防线
+                # 哨兵只对无进展留证)。
+                return self.round_success('本帧无动作(HoldFrame),交回外循环重观察', wait=1.0)
             action = result
             # F3 校验:参数非法交回留证;执行前输入契约检查,非动作后判效
             err = self._executor.validate(action)
@@ -1690,10 +1688,6 @@ class CwScreenPrep(CwScreenOpBase):
         参数非法/出战(发出即终结)/开店切换/访问上限。"""
         match = self._match()
         session = match.session
-        from sr_od.application.currency_war.currency_war_config import (
-            CurrencyWarConfig,
-        )
-        config = CurrencyWarConfig(self.ctx.current_instance_idx)
         _visit_acts: list[str] = []
         # 段序号置位(备战期开始;唯一置位点 = 本 prep 访问循环入口):
         # 访问 = 腾席拒绝结论的输入不变性段,入口 +1 使上一访问/上一域
@@ -1712,16 +1706,18 @@ class CwScreenPrep(CwScreenOpBase):
             except Exception as e:  # noqa: BLE001  策略异常 = 本轮 fail(外循环 retry 链兜)
                 log.warning(f'[cw!][director] decide_prep_screen 异常: {e}')
                 return self.round_fail(status=f'策略决策异常: {e}')
-            if result is not None and not isinstance(result, CwAction):
-                log.warning(f'[cw!][director] 策略输出非 CwAction|None: '
+            if not isinstance(result, CwAction):
+                log.warning(f'[cw!][director] 策略输出非 CwAction: '
                             f'{type(result).__name__}')
-                return self.round_fail(status='策略输出非 CwAction|None(F3)')
-            if result is None:
-                # None = 本帧无动作可发,交回外循环重观察。
-                # (终态契约 §2.2 更正:系统并无「连续 None 计数器」——外循环
-                #  stall 防线哨兵只对无进展留证,不对 None 计数;HoldFrame
-                #  显式化后本分支由 isinstance(result, HoldFrame) 承载。)
-                return self.round_success('本帧无动作,交回外循环重观察', wait=1.0)
+                return self.round_fail(status='策略输出非 CwAction(F3)')
+            if isinstance(result, HoldFrame):
+                # HoldFrame = 本帧无动作可发,交回外循环重观察(终态契约
+                # §2.2:备战空发射帧显式信号,None 退役;等待帧非动作——
+                # 不进 validate/执行器/动作注册表/续段 token/动作记录,round
+                # 返回形态与等待时长逐字不变。系统级 stall_watch/NODE-DWELL
+                # 哨兵对其透明;系统并无「连续空发射计数器」,stall 防线
+                # 哨兵只对无进展留证)。
+                return self.round_success('本帧无动作(HoldFrame),交回外循环重观察', wait=1.0)
             action = result
             # F3 校验:参数非法交回留证;执行前输入契约检查,非动作后判效
             err = self._executor.validate(action)
@@ -2157,11 +2153,11 @@ class CwScreenPrep(CwScreenOpBase):
         # decision_hp 政策读口,覆盖传参链是绕行。)
         return self.visit_open_shop()
 
-    # ===== [临时段·特殊投资策略商店采集停机钩子](od-dev-stop-hooks §2.1
+    # ===== [临时段·特殊投资策略商店停机钩子](od-dev-stop-hooks §2.1
     # 临时捕获类;用户 2026-09-10 指令:候逐条确定的特殊投资策略在场时,
-    # 进入商店画面处理即停机采证。删除面 = 本整段(两常量+目录函数+方法)
-    # + visit_open_shop 首部挂点两行 + 测试 test_cw_spec_invest_shop_hook.py,
-    # 不留开关/flag/配置)=====
+    # 进入商店画面处理即停机。2026-09-16 裁定:直接停机人工采集,不再
+    # 代码落截图/转储/flag。删除面 = 本整段(名单常量+防重集合+方法)
+    # + visit_open_shop 首部挂点两行,不留开关/flag/配置)=====
 
     #: 候逐条确定的特殊投资策略名单(硬编码,不建配置;名字 = 注册表规范名,
     #: 同 cw_investments.STRATEGY_EFFECTS 键空间。名单可先于注册表建模面——
@@ -2172,46 +2168,26 @@ class CwScreenPrep(CwScreenOpBase):
         '概率事件', '远见', '市场干预', '固定理财+', '返利', '返利+',
         '经验就是财富',
     })
-    #: 防重采集合(进程内存):键 = 当次在场∩名单的规范名 frozenset——同组合
-    #: 只停一次,组合变化(新名单效果入场)视为新组合再停;重启清零 = 允许重采。
-    _SPEC_INVEST_CAPTURED: ClassVar[set[frozenset[str]]] = set()
-    #: sentinel 相对路径(截图+flag+转储统一落此;目录函数锚项目根——
-    #: daemon spawn 的非 CWD 进程里相对路径会落错,同 launch_dead flag 教训)。
-    _SPEC_INVEST_SENTINEL_RELPATH: ClassVar[Path] = (
-        Path('.debug') / 'temp' / 'currency_war' / 'spec_invest')
-    #: 购买经验面板特写裁切依据 area(按钮 + XP 进度 X/Y + 单次费用数字;
-    #: 坐标单一真相源 = screen_info,备战/开商店双屏同名 area 并集兜底——
-    #: 位置在两屏一致,特写裁切双屏通用)。
-    _SPEC_INVEST_XP_AREAS: ClassVar[tuple[str, ...]] = (
-        '备战标识-购买经验',
-        '文本-升级所需经验',
-        '文本-购买经验金币数',
-    )
+    #: 防重停集合(进程内存):键 = 当次在场∩名单的规范名 frozenset——同组合
+    #: 只停一次,组合变化(新名单效果入场)视为新组合再停;重启清零 = 允许重停。
 
-    @staticmethod
-    def _spec_invest_sentinel_dir() -> Path:
-        """sentinel 约定目录(项目根锚定;测试经 monkeypatch 本函数隔离落盘)。"""
-        from one_dragon.utils.file_utils import get_project_root
-        return get_project_root() / CwScreenPrep._SPEC_INVEST_SENTINEL_RELPATH
+    _SPEC_INVEST_CAPTURED: ClassVar[set[frozenset[str]]] = set()
 
     def _spec_invest_shop_stop_hook(self) -> str | None:
-        """特殊投资策略商店采集停机钩子(临时捕获;触发 = 效果清单含名单效果)。
+        """特殊投资策略商店停机钩子(临时捕获;触发 = 效果清单含名单效果)。
 
-        动作(停机钩子方案 D):全帧截图双存(商店画面/备战席画面两用途,
-        挂点时店已开,同帧两用途)+ 购买经验面板特写(费用数字+XP 进度,
-        经验规则/改道核销双用)+ 效果实例清单转储 + state 账本引用入
-        flag → ``stop_running`` → 返回停机回执(调用方不再进买牌循环,
-        画面原样保持)。前置门 = 挂点本身:visit_open_shop 仅在店已开判定
-        (0n 三锚 / open_shop 已发)后进入,效果清单是 session 级账本读,
-        无空读伪信号面。stop_running 后外循环下一轮 loop 顶见 STOP 退出。
+        2026-09-16 用户裁定:直接停机,采集改手动——不代码落盘。
+        停机后画面原样保持(店开着):人工看画面 / MCP 截图补帧,对照
+        效果注册表逐条确定该组合下商店改写/计数/经验行为,结论回填效果
+        规格 verdict/notes;采够后删本整段(含 visit_open_shop 挂点两行),
+        不留开关。框架截图([stop] 行)即现场帧。
         """
         match = self._match()
         session = match.session if match is not None else None
         if session is None:
             return None
         gs = gs_of_ctx(getattr(self, 'ctx', None), session)
-        entries = gs.effects.entries
-        hit = sorted({e.spec.name for e in entries
+        hit = sorted({e.spec.name for e in gs.effects.entries
                       if e.spec.name in self._SPEC_INVEST_WATCH_NAMES})
         if not hit:
             return None
@@ -2219,136 +2195,13 @@ class CwScreenPrep(CwScreenOpBase):
         if combo in self._SPEC_INVEST_CAPTURED:
             return None
         self._SPEC_INVEST_CAPTURED.add(combo)   # 先占位:同组合恰停一次
-        sdir = self._spec_invest_sentinel_dir()
-        try:
-            sdir.mkdir(parents=True, exist_ok=True)
-        except Exception as e:  # noqa: BLE001  目录失败不拦停机(flag 主哨兵)
-            log.error('[cw!][spec-invest-hook] sentinel 目录创建失败: %s', e)
-        _ts = time.strftime('%m%d_%H%M%S')
-        # 全帧截图双存(商店画面/备战席画面两用途;框架截图 RGB,存图走
-        # save_image。失败 log.error 留痕不停机——同 launch_dead 取证纪律)
-        frame = None
-        try:
-            frame = self.screenshot()
-            if frame is not None:
-                from one_dragon.utils.cv2_utils import save_image
-                save_image(frame, str(sdir / f'shop_{_ts}.png'))
-                save_image(frame, str(sdir / f'bench_{_ts}.png'))
-            else:
-                log.error('[cw!][spec-invest-hook] 截图返回 None(证据缺失留痕)')
-        except Exception as e:  # noqa: BLE001
-            log.error('[cw!][spec-invest-hook] 取证截图失败: %s', e, exc_info=True)
-        # 购买经验面板特写(费用数字+XP 进度;经验规则/改道核销双用)
-        try:
-            self._spec_invest_save_xp_panel(frame, sdir, _ts)
-        except Exception as e:  # noqa: BLE001
-            log.error('[cw!][spec-invest-hook] 经验面板特写失败: %s', e)
-        # 效果实例清单转储(字段形状 = GameState.full_state_snapshot effects 整窗)
-        try:
-            import json
-            dump = [{
-                'spec_id': str(getattr(e.spec, 'id', '')),
-                'spec_name': str(getattr(e.spec, 'name', '')),
-                'source': getattr(e, 'source', ''),
-                'acquired_t': getattr(e, 'acquired_t', None),
-                'remaining_nodes': getattr(e, 'remaining_nodes', None),
-                'remaining_uses': getattr(e, 'remaining_uses', None),
-                'counters': dict(getattr(e, 'counters', None) or {}),
-            } for e in entries]
-            (sdir / 'effects_dump.json').write_text(
-                json.dumps(dump, ensure_ascii=False, indent=1), encoding='utf-8')
-        except Exception as e:  # noqa: BLE001
-            log.error('[cw!][spec-invest-hook] 效果清单转储失败: %s', e)
-        # state 账本最新行引用(best-effort;无流水实例时如实申报)
-        try:
-            from sr_od.application.currency_war.kernel.cw_state_journal import (
-                state_journal_instance,
-            )
-            _journal = state_journal_instance()
-            _jp = str(_journal.path) if _journal is not None \
-                else '未装配(无流水实例;journal 常开后生产恒装配)'
-        except Exception:  # noqa: BLE001
-            _jp = '读失败'
-        try:
-            _ver: int | None = gs.current_version()
-        except Exception:  # noqa: BLE001
-            _ver = None
-        try:
-            from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-                current_run_id,
-            )
-            _run_id = current_run_id() or '(无)'
-        except Exception:  # noqa: BLE001
-            _run_id = '(读失败)'
-        _nd = gs_of_ctx(getattr(self, 'ctx', None), session).node.value
-        _pos = (f"p{_nd.plane}r{_nd.round_num}"
-                if _nd is not None else '(节点未观察)')
-        # sentinel flag(三要素:触发定位 / 可执行处理步骤 / 删除条件;临时
-        # 捕获类按 §2.1:删整段钩子 + 删 sentinel,不留开关)
-        try:
-            (sdir / 'spec_invest_shop_hook.flag').write_text(
-                f'[HOOK-STOP] 特殊投资策略商店采集停机钩子'
-                f'(临时捕获,od-dev-stop-hooks §2.1)\n'
-                f'钩子位置: src/sr_od/application/currency_war/operations/cw_screen/'
-                f'cw_screen_prep.py CwScreenPrep._spec_invest_shop_stop_hook'
-                f'(挂点 = visit_open_shop 入口,商店画面处理最前)\n'
-                f'触发: 效果清单含名单效果 {hit}(组合键={sorted(combo)});'
-                f'时点 {_pos} run_id={_run_id} ts={_ts}\n'
-                f'采集物: 商店画面全帧 shop_{_ts}.png + 备战席全帧 bench_{_ts}.png'
-                f'(挂点时店已开,同帧两用途)+ 购买经验面板特写 xp_panel_{_ts}.png'
-                f'(费用数字+XP 进度,经验规则/改道核销双用)'
-                f'+ 效果清单转储 effects_dump.json\n'
-                f'state 账本引用: journal={_jp} 最新行版本(write_seq)={_ver}\n'
-                f'处理步骤: 1. 实机画面已原样保持(店开着),可直接看画面/补截一帧;\n'
-                f'   2. 读 sentinel 截图 + effects_dump.json,对照注册表逐条确定'
-                f'该组合下商店改写/计数/经验行为,结论回填效果规格 verdict/notes;\n'
-                f'   3. 该组合逐条确定采够后走删除流程。\n'
-                f'删除条件(临时捕获): 采够后删整段钩子(类内临时段 + visit_open_shop'
-                f'挂点两行 + 测试 test_cw_spec_invest_shop_hook.py)+ 删本 sentinel '
-                f'目录,不留开关/flag/配置。\n'
-                f'防重采: 同效果组合进程内只停一次(重启清零 = 允许重采)。\n',
-                encoding='utf-8')
-        except Exception as e:  # noqa: BLE001
-            log.error('[cw!][spec-invest-hook] flag 写入失败: %s', e)
+        log.warning('[cw!][spec-invest-hook] 特殊投资策略 %s 在场 → 停机,'
+                    '人工采集(画面原样保持,处理流程见本段注释)', hit)
         rc = getattr(self.ctx, 'run_context', None)
         if rc is not None:
-            rc.stop_running(reason='hook:spec_invest_shop')
-        log.warning('[cw!][spec-invest-hook] 特殊投资策略 %s 在场 → 停机采集'
-                    '留证 dir=%s(外循环下轮退出,画面原样保持)', hit, sdir)
-        return f'特殊投资策略采集停机:{",".join(hit)}(sentinel={sdir})'
-
-    def _spec_invest_save_xp_panel(self, frame, sdir: Path, ts: str) -> None:
-        """购买经验面板特写裁切落盘(编排者 2026-09-10 追加采集项)。
-
-        裁切窗 = 三 area(按钮/XP 进度 X/Y/单次费用)并集外扩 20px,坐标
-        单一真相源 = screen_info(备战/开商店双屏同名 area 并集兜底,缺失
-        的跳过;全缺失 = 放弃特写,双全帧仍含该区域)。帧缺失同步放弃。
-        """
-        from one_dragon.utils.cv2_utils import save_image
-        from sr_od.application.currency_war.kernel.cw_obs_core import (
-            SCREEN_NAME,
-            SHOP_SCREEN_NAME,
-            _area_rect,
-        )
-        if frame is None:
-            log.error('[cw!][spec-invest-hook] 特写跳过(帧缺失)')
-            return
-        x1 = y1 = 10 ** 9
-        x2 = y2 = -1
-        for _sc in (SCREEN_NAME, SHOP_SCREEN_NAME):
-            for _name in self._SPEC_INVEST_XP_AREAS:
-                r = _area_rect(self.ctx, _name, _sc)
-                if r is None:
-                    continue
-                x1, y1 = min(x1, r.x1), min(y1, r.y1)
-                x2, y2 = max(x2, r.x2), max(y2, r.y2)
-        if x2 <= x1 or y2 <= y1:
-            log.error('[cw!][spec-invest-hook] 特写放弃(三 area 全缺失,'
-                      '检查 screen_info 备战/开商店档)')
-            return
-        _pad = 20
-        crop = frame[max(y1 - _pad, 0):y2 + _pad, max(x1 - _pad, 0):x2 + _pad]
-        save_image(crop, str(sdir / f'xp_panel_{ts}.png'))
+            rc.stop_running(reason='hook:spec_invest_shop',
+                            save_screenshot=True)
+        return f'特殊投资策略停机:{",".join(hit)}(人工采集)'
 
     # ===== [临时段结束] =====
 

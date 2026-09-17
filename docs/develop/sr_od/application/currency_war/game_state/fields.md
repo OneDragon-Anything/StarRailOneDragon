@@ -1284,9 +1284,8 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
   的 Field 准入,但需局级存续与确定性清零——新局新容器 = 天然清零;访问纪律 =
   经 `game_state_of(session)` 直读属性,非 Field 无渠道面,禁 getattr session 猜宿主):
   - `ExecBooks`(GameState.exec_books;执行侧过程簿记组,独立宿主不塞 tracked_books
-    ——TrackedBooks 契约 = tracked 主账槽位簿记,语义不容混装):`star_regression`
-    (留证采样计数,唯一写读者 = `cw_reconcile`)/`bench_layout_epoch`(布局重排
-    单调代次,唯一写点 = `cw_reconcile`,消费 = `cw_screen_buy_cards`/
+    ——TrackedBooks 契约 = tracked 主账槽位簿记,语义不容混装):`bench_layout_epoch`
+    (布局重排单调代次,唯一写点 = `cw_reconcile`,消费 = `cw_screen_buy_cards`/
     `cw_shop_action_ops`)/`swap_arm_on`(换血臂开合帧间闩,读写点 = `cw_screen_deploy`,
     消费 = projection_contract §4.3 臂态位判读)。
   - `TrackedBooks`(GameState.tracked_books):tracked 主账槽位簿记(bench/deployed

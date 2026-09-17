@@ -2604,10 +2604,6 @@ class ExecBooks:
     访问纪律:经 ``game_state_of(session).exec_books`` 直读(非 Field 无
     渠道面,与 tracked_books/settlement_ring 同型;禁 getattr session 猜宿主)。
     """
-    # star 回退留证采样计数([索引定义] 键 = 角色名,值 = 连续回退次数;
-    # 唯一写读者 = kernel/cw_reconcile;宿主 = 本组,读写点直接解析
-    # ``game_state_of(session).exec_books.star_regression``)。
-    star_regression: dict[str, int] = field(default_factory=dict)
     # bench 布局代次(churn 事件通道,最小面)。[索引定义] 坐标系
     # = 单调递增计数器(非槽位号、非下标);取值时机 = reconcile 纠漂写回期
     # 递增(kernel/cw_reconcile,唯一写点)/ 逻辑态播种期快照(每段入口观察)
@@ -2899,8 +2895,8 @@ class GameState:
     # —— 执行侧过程簿记组(非 Field,准入与访问
     # 纪律见 :class:`ExecBooks` 类注)——
     # [索引定义] swap_arm_on = 换阵卖出义务臂上一帧开合态(帧间闩;写读点
-    # = cw_screen_deploy 卖出臂门,开合变更日志消费)。star_regression/
-    # bench_layout_epoch = 留证采样/纠漂簿记。
+    # = cw_screen_deploy 卖出臂门,开合变更日志消费)。bench_layout_epoch =
+    # 纠漂簿记。
     exec_books: ExecBooks = field(default_factory=ExecBooks)
     # —— 节点序列探针簿记宿主(非 Field;终态契约 §A′ 自 session 迁入,
     # 成员与访问纪律见 :class:`NodeBooks` 类注)——

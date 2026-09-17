@@ -32,20 +32,6 @@ def set_merge_effect_gate(fn) -> None:
     _IS_MERGE_EFFECT_FRAME = fn
 
 
-# star 回退截图留证注入槽(共用中段禁摸像素——kernel 不
-# import cv2,截图落盘实现住 app 装配模块,经 decision_assembly.install_obs_
-# ports 注入;先例 = 上方 ``set_merge_effect_gate`` 同款装配缝)。缺省关
-# (None)= 不落截图,flag 文本留证照写(best-effort 语义同向,不引入新故障面)。
-_STAR_EVIDENCE_SAVER = None
-
-
-def set_star_evidence_saver(fn) -> None:
-    """注入 star 回退截图留证实现(签名 ``(screen, char)``;生产武装点 =
-    decision_assembly.install_obs_ports)。"""
-    global _STAR_EVIDENCE_SAVER
-    _STAR_EVIDENCE_SAVER = fn
-
-
 def is_merge_effect_window(screen: MatLike | None) -> bool:
     """合成特效窗判定读口(P3-10 批次二复审):观察消费前的窗内统一判别口。
 
@@ -133,7 +119,6 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     """
     if session is None:
         return False
-    _pending_evidence: list[tuple] = []   # 留证队列(对账位统一消费)
     # 形状契约(ADR-0316):tracked_bench_chars 在买牌后被
     # mutate_bench_deployed→pad_bench 就地 pad 成定长 9 槽**含 None**
     # (槽位表语义写入端)——本消费端若假设紧凑无 None 即双写冲突
@@ -154,24 +139,10 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     new_b = [(bc.char_id, bc.star) for bc in (bench or [])]
     new_d = [(bc.char_id, bc.star) for bc in (deployed or [])]
     # star 回退留证(终态契约 §A:防抖/帧态门(ADR-0420)/银狼升费豁免退役
-    # ——用户裁定「失败可见」,回退即采新;实机失准走识别优化批,行为变化
-    # 登记 design §1.3:合成动画窗误读直进板面账/银狼升费不再豁免/停机钩子
-    # 改绑回退事件本身,留证链保持)。名级锚比较口径保留(名下最高读星对
-    # 最高旧星仲裁一次),防抖分支全删。
-    _old_stars = {(n, s) for n, s in old_b + old_d if n}
-    _new_stars = {(n, s) for n, s in new_b + new_d if n}
-    _reg = dict(game_state_of(session).exec_books.star_regression or {})
-    for _n in sorted({n for n, _ in _new_stars}):
-        _s = max(s for n, s in _new_stars if n == _n)
-        _old_s = max((_os for _on, _os in _old_stars if _on == _n), default=None)
-        if _old_s is not None and _s < _old_s:
-            _conflict('star', _old_s, _s, screen,
-                      verdict='留证-回退采新(防抖/帧态门/银狼豁免已退役,失败可见)',
-                      source=source, char=_n)
-            if _old_s >= 2:
-                _reg[_n] = _reg.get(_n, 0) + 1
-                _pending_evidence.append((_n, _old_s, _s, source))
-    game_state_of(session).exec_books.star_regression = _reg
+    # ——用户裁定「失败可见」,回退即采新;实机失准走识别优化批)。名级锚
+    # 比较口径保留(名下最高读星对最高旧星仲裁一次)。停机钩子/采样登记
+    # (star_regression)已随「观察对账覆盖」批退役(2026-09-16 用户裁定:
+    # 星回退的处置归 observe-vs-logic 对账,不再单设停机钩子)。
     # 防抖可能原地改 bench/deployed 副本 star → 纠漂判定与日志必须
     # 取**防抖后**快照(改前快照会误导排障)。bench/deployed 入参
     # 是 SIFT 紧凑列表(无 None),但入参若被上游 pad 过则守卫之(同形状契约)。
@@ -259,13 +230,6 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         # 防 visit 中段未来引入读屏/对账点时布局变化无人知晓)。
         if _bench_written:
             game_state_of(session).exec_books.bench_layout_epoch += 1
-    # 钩子归位——「对账&hook」位统一消费留证
-    # 队列(原 reconcile 深处散调;计数节流每 5 次留一张不变,
-    # _star_stop_hook 内帧态门保留=双层保护)。
-    for _n, _o_s, _s, _src in _pending_evidence:
-        if _reg.get(_n, 0) >= 2 and ctx is not None and _reg[_n] % 5 == 0:
-            _star_stop_hook(ctx, session, _n, _o_s, _s, screen, _src,
-                            stop_run=False)
     return True
 
 
@@ -327,62 +291,4 @@ def _conflict(field: str, old, new, screen, *, verdict: str, source: str,
         from sr_od.application.currency_war.kernel.cw_observe import obs_conflict
         obs_conflict(field, old, new, screen, verdict=verdict, source=source, **ctx)
     except Exception:  # noqa: BLE001  留证 best-effort
-        pass
-
-
-def _star_stop_hook(ctx, session, char: str, old_star: int, new_star: int,
-                    screen, source: str, stop_run: bool = True) -> None:
-    """star 回退留证钩子(用户指示;star≥2 回退触发)。
-
-    留证模式:排查已尽策略侧所能(结论存 cw_dev/live_round11_diagnosis.md:
-    根因在 SIFT 身份域,非读星)——stop_run=False 时只留证截图不停机(证流保留,
-    实跑可推进);SIFT 身份修复后本段整删。
-    停机保备战画面供排查星级识别(read_star 漏金星?星区被特效/光标遮挡?SIFT 身份错配?)。
-    sentinel 自描述(教训:内容含「这是自己的钩子停的+删除位置」,防误判孤儿/外部拦截)。
-    帧态门:留证/停机只在备战类精准帧(is_prep_like_frame)
-    ——动画帧上的星读回退本就常发(升星特效窗),不留证。
-    """
-    from datetime import datetime
-    from pathlib import Path
-
-    from one_dragon.utils import log_utils
-    try:
-        # 帧态门:非备战类精准帧直接跳过(动画帧星读回退
-        # 常发,留证只是噪声)。screen=None(测试/无帧上下文)
-        # 不拦——留证本身是离线安全操作。
-        if screen is not None:
-            from sr_od.application.currency_war.kernel.cw_obs_core import (
-                is_prep_like_frame,
-            )
-        if screen is not None and ctx is not None \
-                and not is_prep_like_frame(ctx, screen):
-            return
-        _p = Path('.debug/temp/currency_war/star_regression_hook.flag')
-        _p.parent.mkdir(parents=True, exist_ok=True)
-        _p.write_text(
-            f'[{datetime.now().isoformat(timespec="seconds")}] star 回退{"停机" if stop_run else "留证(r17 降级,不阻断)"}——'
-            f'{char} 预估 {old_star}★(买牌 3合1 merge)多次读回 '
-            f'{new_star}★,星级/身份识别可疑。\n'
-            f'处理流程(r100k 补):\n'
-            f'1. 对截图 shots/star_regress_{char}_*.png 肉眼核星级(金框/角标);\n'
-            f'2. ①星读对预估错(merge 逻辑)→ 修 cw_reconcile 预估;②星读错(read_star)\n'
-            f'   → 核星区遮挡/光标;③SIFT 身份错配 → 核 portrait 模板;\n'
-            f'3. 修好后删钩子:cw_reconcile.py 搜「_star_stop_hook」整段 + 删本 flag。\n'
-            f'画面态:备战(角色在板上,星区可见);来源:{source}',
-            encoding='utf-8')
-        try:
-            # 截图留证经注入槽(cv2 落盘实现迁 app 装配
-            # 模块,kernel 保持纯逻辑;缺省关 = 不落截图只写 flag)。
-            _saver = _STAR_EVIDENCE_SAVER
-            if _saver is not None and screen is not None and screen.size:
-                _saver(screen, char)
-        except Exception:  # noqa: BLE001  截图 best-effort
-            pass
-        log_utils.log.warning(
-            f'[cw-hook] star 回退{"停机" if stop_run else "留证(r17 降级,不阻断)"}:'
-            f'{char} 预估{old_star}★×多节点读回{new_star}★ → '
-            f'保画面排查星级识别(sentinel: star_regression_hook.flag;修好删 _star_stop_hook)')
-        if stop_run:
-            ctx.run_context.stop_running(reason='hook:star_regression')
-    except Exception:  # noqa: BLE001  停机失败不阻塞对账写回
         pass

@@ -1,9 +1,9 @@
 """货币战争 决策装配边界·生产武装点(app 桶;统一迁移批 ② 后形态)。
 
 生产武装点 = ``install_obs_ports``(CurrencyWarApp.__init__ 接通):
-decision 桶 obs 读口注入、kernel 侧合成特效帧态门注入,以及 star 回退
-截图留证 saver 与 GameState 缺陷台账 sink 的落盘实现(实现住本模块,
-kernel 零像素触达;缺省关 = 不落盘不落截图)。
+decision 桶 obs 读口注入、kernel 侧合成特效帧态门注入,以及 GameState
+缺陷台账 sink 的落盘实现(实现住本模块,
+kernel 零像素触达;缺省关 = 不落盘)。
 
 为何在 app:本模块 import prep_actions/obs 执行面词汇,且被
 cw_screen_prep(备战环)消费——两侧都在 app 桶,装配边界归 app 是分包矩阵
@@ -31,7 +31,6 @@ def install_obs_ports() -> None:
     """
     from sr_od.application.currency_war.kernel.cw_reconcile import (
         set_merge_effect_gate,
-        set_star_evidence_saver,
     )
     from sr_od.application.currency_war.obs.cw_identity_obs import (
         is_merge_effect_frame,
@@ -44,9 +43,6 @@ def install_obs_ports() -> None:
     )
     set_obs_reset_hook(reset_phase_round_cache)
     set_merge_effect_gate(is_merge_effect_frame)
-    # star 回退截图留证 saver(实现住本装配模块,kernel
-    # 零像素触达;缺省关 = 不落截图,flag 文本留证照写)。
-    set_star_evidence_saver(_star_evidence_saver())
 
     # 缺陷台账生产武装点(迁移批次二,任务书件 7):GameState 观察覆盖
     # logic 值失配行(kernel/cw_game_state._emit_defect,批次一为缺省关)
@@ -64,29 +60,6 @@ def _reconcile_dir() -> Path:
     「零新增」假截断)。"""
     from one_dragon.utils.file_utils import get_project_root
     return (get_project_root() / '.debug' / 'temp' / 'currency_war')
-
-
-def _star_evidence_saver():
-    """star 回退截图留证 saver 工厂(cv2 落盘从
-    kernel/cw_reconcile._star_stop_hook 迁出,实现住本装配模块——共用中段
-    禁摸像素,装配缝先例 = 同文件 ``_gs_defect_sink_for_test``)。
-
-    落盘路径与旧实现逐位一致(``.debug/temp/currency_war/shots``,相对
-    CWD,不建目录——shots/ 缺席时 tofile 失败由调用方 best-effort 吞,
-    行为等价迁移不顺手改)。
-    """
-
-    def _save(screen, char: str) -> None:
-        from datetime import datetime
-        from pathlib import Path
-
-        import cv2
-        _ok, _arr = cv2.imencode('.png', cv2.cvtColor(screen, cv2.COLOR_RGB2BGR))
-        if _ok:
-            _arr.tofile(str(Path('.debug/temp/currency_war/shots')
-                            / f'star_regress_{char}_{datetime.now():%H%M%S}.png'))
-
-    return _save
 
 
 def _gs_defect_sink_for_test(base_dir: Path):

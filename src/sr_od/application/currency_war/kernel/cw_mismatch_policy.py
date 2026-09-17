@@ -109,8 +109,8 @@ def lookup_mismatch_exempt(screen: str | None, field_name: str,
 
 
 #: 真失配安灯钩子槽(缺省 None = 测试/sim 零副作用,只留证不停机)。
-#: 注入槽模式先例 = ``set_defect_sink`` / ``set_star_evidence_saver``;
-#: 生产装配点 = currency_war_app 装配段(与 defect sink 同点注入)。
+#: 注入槽模式先例 = ``set_defect_sink``;生产装配点 = currency_war_app
+#: 装配段(与 defect sink 同点注入)。
 _ANDON_HOOK: Callable[[dict], None] | None = None
 
 

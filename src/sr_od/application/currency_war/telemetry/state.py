@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -250,25 +249,3 @@ def _mark_defect_reproduced(surface: str, kind: str, feature: str,
     n = _defect_seen.get(key, 0)
     _defect_seen[key] = n + 1
     return n >= 1
-
-
-#: 安灯执行器槽(注入式;签名 ``fn(payload: dict) -> bool``,True=已停)。
-#: None(缺省)= **不停线**,只记台账+日志——副作用缺省关、显式接通:
-#: 生产武装点 = ``CurrencyWarApp.__init__`` 调 ``set_l0_andon_handler``。
-#: 禁止改回「缺省惰性调 cw_observe.stop_for_l0_andon」:惰性路径会用 gc
-#: 扫描全进程定位 ctx,测试进程里命中 session 级 test_context → 写停机位
-#: +真实 flag,污染整个测试会话(全集假红实证;测试漏桩即漏副作用)。
-_L0_ANDON_HANDLER: Callable[[dict], bool] | None = None
-
-
-#: 局级闩锁(首见 L0 即停一次,后续 L0 只补台账不再停)。键=run_id:
-#: run_id 由模块级 start_run 每局重新生成(进程内「局」粒度的天然键),
-#: 与复现计数的 _defect_seen_run 同款切换语义——跨局自动重置,无需手动清。
-_L0_ANDON_FIRED_RUNS: set[str] = set()
-
-
-def set_l0_andon_handler(fn: Callable[[dict], bool] | None) -> None:
-    """注入/清除安灯执行器。生产武装点=CurrencyWarApp.__init__(幂等);
-    None=关闭停线通道(缺省;台账与判级不受影响)。"""
-    global _L0_ANDON_HANDLER
-    _L0_ANDON_HANDLER = fn
