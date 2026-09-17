@@ -12,7 +12,7 @@
 
 ## 阶段 2 · 逐轮复盘(按外层循环调用序;**2026-09-07 用户裁定:粒度 = 外层循环画面 op 调用**)
 
-复盘基本单元 = **一次画面 op 调用**(架构依据:`docs/develop/sr_od/application/currency_war/screens/op-layer.md`「单动作决策循环」节;分支序表 = `flow/outer_loop.md` §2.2)。每节点(P×R×)作分组标题,组内 op 按实际调用序(时间戳)排列,**每个画面 op 调用单独一条记录**:
+复盘基本单元 = **一次画面 op 调用**(架构依据:`docs/develop/sr_od/application/currency_war/screens/op-layer.md` §1.1「总则:一次画面 op 调用 = 一轮『入口观察 + 逐动作决策循环』」;分支序表 = `flow/outer_loop.md` §2.2)。每节点(P×R×)作分组标题,组内 op 按实际调用序(时间戳)排列,**每个画面 op 调用单独一条记录**:
 
 ```
 ### P1·R1（节点类型）
