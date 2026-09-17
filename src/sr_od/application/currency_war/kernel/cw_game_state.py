@@ -2513,6 +2513,18 @@ def _establish_singleton_journal(
         log.warning('[cw!][gs] journal 装配失败(不阻塞): %s', e)
 
 
+def gs_of_ctx(ctx: object, session: object) -> GameState:
+    """容器取口(终态契约 §2.6/T-4 ops 桶):优先 ``ctx.cw_match.gs`` 持有
+    引用;kernel fallback(:func:`game_state_of`,桶 3)**暂留至 3.5 注入化
+    时统一删除**。值同一实例(持有引用与旁表单例同对象),行为零变化。
+    ctx 无 match / match 无 gs(桩面)→ fallback 兜底,调用方零改。
+    """
+    _m = getattr(ctx, 'cw_match', None)
+    if _m is not None and getattr(_m, 'gs', None) is not None:
+        return _m.gs
+    return game_state_of(session)
+
+
 def game_state_of(session: object, *,
                   run_id_provider: Callable[[], str] | None = None) -> GameState:
     """GameState 单例访问口(session 旁表;弱引用表 + 桩面兜底)。

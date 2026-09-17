@@ -278,9 +278,9 @@ class CwScreenBattleWait(CwScreenOpBase):
             record_settlement_row,
         )
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            game_state_of,
+            gs_of_ctx,
         )
-        gs = game_state_of(session)
+        gs = gs_of_ctx(None, session)
         _f = gs.enemy_difficulty
         _val, _src = _f.value, _f.source
         diff = None
@@ -401,13 +401,13 @@ class CwScreenBattleWait(CwScreenOpBase):
             _is_boss = self.round_by_find_area(
                 screen, '货币战争-结算', '标识-首领').is_success
             from sr_od.application.currency_war.kernel.cw_game_state import (
-                game_state_of,
+                gs_of_ctx,
                 node_kind_of,
             )
             # node 优先序:首领识别锚(画面位) > gs 推导(终态契约 §A′,
             # session 识别源退役) > 探针表(§A′ 重锚面,宿主迁移另子件) > 缺省。
             _node = 'boss' if _is_boss else self._normalize_node_type(
-                node_kind_of(game_state_of(_session))
+                node_kind_of(gs_of_ctx(self.ctx, _session))
                 or self._node_type_from_table(_session, _plane, _round)
                 or '普通战斗')
             _obs = read_round_outcome(self.ctx, screen, plane=_plane, round_num=_round,
@@ -438,7 +438,7 @@ class CwScreenBattleWait(CwScreenOpBase):
             # 本兜底先行于本轮结算覆盖写,gs.hp 现值 = 上一结算真值,
             # 行为变化登记 design §1.3)。
             from sr_od.application.currency_war.kernel.cw_game_state import (
-                game_state_of,
+                gs_of_ctx,
             )
             from sr_od.application.currency_war.kernel.cw_plane_table import (
                 node_t_of,
@@ -446,7 +446,7 @@ class CwScreenBattleWait(CwScreenOpBase):
             _now_t = node_t_of(_session, _plane, _round)
             if not telemetry_only and _obs.hp_confidence >= 0.9 and _now_t is not None:
                 if _obs.killed is None:
-                    _prev_hp = game_state_of(_session).hp.value
+                    _prev_hp = gs_of_ctx(self.ctx, _session).hp.value
                     _prev_t = _st.last_outcome_t
                     if (_prev_hp is not None and _prev_t is not None
                             and _now_t - _prev_t == 1):
@@ -508,13 +508,13 @@ class CwScreenBattleWait(CwScreenOpBase):
                     # ADR-0634;同时点同载荷,行行自足快照更强)。
                     from sr_od.application.currency_war.kernel.cw_game_state import (
                         apply_settlement_cover,
-                        game_state_of,
+                        gs_of_ctx,
                     )
                     from sr_od.application.currency_war.kernel.cw_performance import (
                         HP_CONFIDENCE_THRESHOLD,
                     )
                     apply_settlement_cover(
-                        game_state_of(_session),
+                        gs_of_ctx(self.ctx, _session),
                         hp_after=(getattr(_obs, 'hp_after', None)
                                   if getattr(_obs, 'hp_confidence', 1.0)
                                   >= HP_CONFIDENCE_THRESHOLD
@@ -541,9 +541,9 @@ class CwScreenBattleWait(CwScreenOpBase):
                 # 先例:观测失败不阻塞结算链)。
                 try:
                     from sr_od.application.currency_war.kernel.cw_game_state import (
-                        game_state_of,
+                        gs_of_ctx,
                     )
-                    game_state_of(_session).effects.on_battle_end()
+                    gs_of_ctx(self.ctx, _session).effects.on_battle_end()
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] effect inventory 结算挂点失败'
                                 '(不阻塞): %s', e)
@@ -559,10 +559,10 @@ class CwScreenBattleWait(CwScreenOpBase):
                         settle_copy_machine_participation,
                     )
                     from sr_od.application.currency_war.kernel.cw_game_state import (
-                        game_state_of,
+                        gs_of_ctx,
                     )
                     for _cm in settle_copy_machine_participation(
-                            game_state_of(_session),
+                            gs_of_ctx(self.ctx, _session),
                             frame=f'p{_plane}-r{_round}'):
                         log.info('[cw-bwait] 拷贝仪成熟入席(equip=%s wearer='
                                  '%s count=%s placed=%s)', _cm.equip,
@@ -608,9 +608,9 @@ class CwScreenBattleWait(CwScreenOpBase):
         # 不足不置闩,与旧「last_state 缺失」分支同 fail-closed 方向)。
         if _sess is not None:
             from sr_od.application.currency_war.kernel.cw_game_state import (
-                game_state_of,
+                gs_of_ctx,
             )
-            _nd = game_state_of(_sess).node.value
+            _nd = gs_of_ctx(self.ctx, _sess).node.value
             if _nd is not None:
                 _t = (_nd.plane - 1) * 9 + _nd.round_num
         _min_t = CwScreenBattleWait.SETTLE_DEFEAT_LATCH_MIN_T
