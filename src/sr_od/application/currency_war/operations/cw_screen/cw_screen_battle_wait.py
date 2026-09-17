@@ -61,7 +61,10 @@ from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
-from sr_od.application.currency_war.kernel.cw_telemetry_exit import journal_refs
+from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
+    SEVERITY_L1_ALERT,
+    journal_refs,
+)
 from sr_od.application.currency_war.obs.cw_observation import read_phase_round
 from sr_od.application.currency_war.obs.cw_settlement_obs import (
     parse_progress_fill_ratio,
@@ -123,6 +126,59 @@ def _write_settlement_observation(session: StrategySession,
     session.performance.record(obs)
 
 
+#: 战斗窗覆盖度守卫的窗口单元出口集(bail 不计:帧锚可重入续同窗,计则
+#: 假阳——同一 battle_ts 的后续窗观测落地后锚即匹配;bail 形态自有
+#: battle_wait_bail.flag + 未知兜底链留证暴露,不依赖本守卫)。
+_COVERAGE_EXIT_STATUSES: frozenset[str] = frozenset(
+    {'back_to_loop', 'terminal_lobby'})
+
+
+def count_settlement_obs_coverage_miss(st: SettlementState,
+                                       exit_status: str) -> bool:
+    """战斗窗 exit 结算观测覆盖度守卫(战斗链收口守卫面)。
+
+    调用方 = cw_loop ``_on_battle_wait`` 出口归一点(旧路径/五段路径共用
+    同一收口);本函数只判不抛,异常面由 record_defect 自身 best-effort 承担。
+
+    背景:长战斗形态整窗零「结算观测」行实锤(2026-09-15 局深检
+    .debug/currency_war/deep_review/run_20260915_054718.md §8-1:488s
+    主战 hp 3→0 扣血链零观测,复盘断节不可知),需求 = 覆盖度可观测防
+    复发。形态 = 只计数留证(缺陷台账 L1 行),不新增停机(安灯停线已退役,
+    停机处置归框架 stop_running)。
+
+    判定:窗口单元 success 出口(白名单命中 back_to_loop / 团灭终局
+    terminal_lobby)+ 出战开窗在(battle_ts 非 None = RunLoop 出战开窗点
+    注入)+ 本窗零结算观测行(settled_battle_ts ≠ battle_ts,同源
+    monotonic 锚比较)→ 落一行 L1 台账行。
+
+    边界:接管局/残留屏经帧锚入窗无出战锚(battle_ts=None)不计——无窗
+    开锚不成窗,该形态由残留屏判据与未知兜底链自证;telemetry-only 败局
+    补录行同样刷新窗锚(结算观测行含败局链,覆盖率口径与判读一致)。
+
+    Returns:
+        是否落了覆盖度缺失行(测试断言面;生产消费 = 台账行本身)。
+    """
+    if exit_status not in _COVERAGE_EXIT_STATUSES:
+        return False
+    if st.battle_ts is None or st.settled_battle_ts == st.battle_ts:
+        return False
+    defects.record_defect(
+        'settlement', 'settle_obs_coverage_miss',
+        expected='战斗窗全程 ≥1 条「结算观测」行(胜负/扣血真值链在案)',
+        observed='战窗 exit 零结算观测行(胜负与扣血零观测,伤害链断节'
+                 '复盘不可知)',
+        verdict=('留证-结算观测覆盖度缺失(只计数不停机;处理:按窗锚'
+                 ' battle_ts 对 journal/op 行定位漏读窗,结算识别失准走'
+                 '识别优化批)'),
+        refs=journal_refs(),
+        reader_source='battle_wait_exit',
+        gap_large=True,
+        severity=SEVERITY_L1_ALERT,
+        note='覆盖度检测 = 战窗 exit 守卫面;正常结算/败局补录行恒刷新'
+             '窗锚,本行 = 真缺失(非识别噪声)')
+    return True
+
+
 @dataclass
 class SettlementState:
     """战斗/结算链跨迭代状态机(原 cw_loop 散挂属性收拢;随迁不改语义)。
@@ -149,7 +205,13 @@ class SettlementState:
       handle_init 注入);
     - battle_ts = 出战时刻(RunLoop ADR-0250 战斗窗口开窗点注入;op 据此
       判「战斗进行中合法静止」宽限);
-    - saw_settlement = 本窗口已见结算屏(RunLoop 据此关战斗 watch 宽限)。
+    - saw_settlement = 本窗口已见结算屏(RunLoop 据此关战斗 watch 宽限);
+    - settled_battle_ts = 结算观测窗锚:最近一次「结算观测」行落点时点的
+      battle_ts 快照(坐标系 = battle_ts 同源 monotonic 时钟;取值时机 =
+      _record_round_outcome 行写点写入,含 telemetry-only 败局补录行)。
+      战斗窗 exit 覆盖度守卫据此判「本窗(出战开窗)全程零结算观测行」:
+      ≠ 当前 battle_ts 即本窗未写过行(battle_ts None 时本字段无比较语义,
+      守卫不触发)。
     """
     last_outcome_hp: int | None = None
     saw_defeat_settlement: bool = False
@@ -170,6 +232,7 @@ class SettlementState:
     is_new_match: bool = True
     battle_ts: float | None = None
     saw_settlement: bool = False
+    settled_battle_ts: float | None = None
 
 
 class CwScreenBattleWait(CwScreenOpBase):
@@ -570,6 +633,10 @@ class CwScreenBattleWait(CwScreenOpBase):
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] 拷贝仪参与结算挂点失败'
                                 '(不阻塞): %s', e)
+            # 结算观测窗锚刷新(覆盖度守卫的「本窗已观测」凭据;含
+            # telemetry-only 败局补录行——行写点即锚,异常中断路径不刷新,
+            # exit 守卫按真缺失计):
+            _st.settled_battle_ts = _st.battle_ts
             log.info('[cw-bwait] 结算观测 plane=%s round=%s hp_after=%s conf=%s '
                      'comp=%s node=%s%s',
                      _plane, _round, _obs.hp_after, _obs.hp_confidence, _comp_tag,

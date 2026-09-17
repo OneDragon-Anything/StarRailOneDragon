@@ -2152,8 +2152,9 @@ def read_game_state(ctx: SrContext, screen: MatLike,
       漏斗内自跑画面匹配(读路径热,每次读附赠一次全画面匹配成本)。
 
     各字段 OCR 失败 → 安全默认(见各 reader)。level 不可 OCR → ``_expected_level`` 兜底;
-    hp 读不到 → ``reconcile_hp`` 对账(ADR-0282:沿用 session.last_hp_real,开局无真值才
-    兜底 100)。v1 不读 bench/deployed 身份(buy 决策靠 board+shop+gold;
+    hp 读不到 → ``reconcile_hp`` 对账(终态契约 §A:开局先验 ADR-0559 或
+    None 诚实未知;ADR-0282 的沿用 last_hp_real/兜底 100 两层均已退役,
+    结算覆盖 = hp 唯一真值入口)。v1 不读 bench/deployed 身份(buy 决策靠 board+shop+gold;
     deploy 走 CwScreenDeploy);席位域观察写端 = 备战装配环(通道声明见下
     容器直写块注),本漏斗不写。
     """

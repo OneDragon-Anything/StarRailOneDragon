@@ -242,8 +242,12 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
 
     旧三层(保旧不写沿用/下行守卫/复现确认/帧龄门)随 session 防御锚
     (last_hp_real/last_hp_real_node/hp_suspect)退役删除——「上一真值」
-    职责由 gs.hp 结算覆盖写端 + carried 语义承载(行为变化登记
-    design §1.3:失读窗不再有锚补,实机识别失准走识别优化批)。
+    职责由 gs.hp 结算覆盖写端 + carried 语义承载(该三层 = ADR-0282 hp
+    三层设计「读不到保旧沿用 last_hp_real」;ADR 档案目录已删,原文 =
+    git 历史 docs/develop/currency_war/decisions/0282-hp-three-layers.md。
+    定谳:结算观测 hp_after 与沿用锚的先后语义随退役消解——结算覆盖是
+    hp 唯一真值入口,本读侧无锚可遮蔽之;行为变化登记 design §1.3:
+    失读窗不再有锚补,实机识别失准走识别优化批)。
 
     保留两支:
     - 开局初值表先验(ADR-0559):读不到 → 实证档先验(readable=False,
