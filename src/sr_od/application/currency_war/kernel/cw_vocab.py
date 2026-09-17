@@ -823,6 +823,109 @@ class StartBattle(CwAction):
 # 动作全集白名单(统一词表运行时元组;注册完备锁的遍历单一源,批4
 # 消费 = 逐类断言注册表解析可命中。新动作加入全集时同步此处——漏登记
 # ⚠️ 教训(原 PREP_ACTION_TYPES 先例):**新增动作必须同步登记本白名单**
+# —— 选择族动作化(策略器终态契约;落地 landing §3.1 纯新增零消费,
+#       decide 接线归终态切换批)=====
+
+@dataclass
+class PickOption(CwAction):
+    """选择动作基类:策略在某画面选中了一个候选项。
+
+    [索引定义] idx = 该画面候选槽位序号,坐标系 = 对应 payload 槽
+    options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
+    取值时机 = 生成期快照(写槽→decide 同访问相邻,契约见
+    策略器终态契约 design §2.2)。``reason`` = 归因记录字段
+    (判读面 parity,继承 Pick 族 reason 语义;''=未标)。
+
+    per-screen 子类(本节九个)即执行注册表的分发键:注册行换键名、
+    注册表结构不变;handler 自管消费链(投资/星典/祈愿/武装箱)读
+    idx 直点,不经注册表。"""
+    idx: int
+    reason: str = ''
+
+
+@dataclass
+class PickEncounter(PickOption):
+    """遭遇节点选择(替代 EncounterPick;刷新建议另发 RefreshNodeOptions)。"""
+
+
+@dataclass
+class PickSupply(PickOption):
+    """补给节点选择(替代 SupplyPick;刷新建议另发 RefreshSupply)。"""
+
+
+@dataclass
+class PickInvest(PickOption):
+    """投资选择(投资策略/投资环境两入口共用,替代 PickEvent;逐卡刷新
+    建议另发 RefreshInvestCards)。"""
+
+
+@dataclass
+class PickMegastar(PickOption):
+    """盛会之星选择(替代 MegastarPick)。"""
+
+
+@dataclass
+class PickPartner(PickOption):
+    """列车同行伙伴选择(替代 PartnerPick)。"""
+
+
+@dataclass
+class PickPlanner(PickOption):
+    """骇入策划选择(替代 PlannerPick)。"""
+
+
+@dataclass
+class PickStarTome(PickOption):
+    """星徽秘典选择(替代裸 int 返回)。"""
+
+
+@dataclass
+class PickWishTrial(PickOption):
+    """祈愿试炼选择(替代裸 int 返回)。"""
+
+
+@dataclass
+class PickBoxCard(PickOption):
+    """武装箱选择(替代裸 int 返回)。"""
+
+
+@dataclass
+class RefreshNodeOptions(CwAction):
+    """遭遇节点刷新建议(替代 EncounterPick.refresh 旗标):策略建议点击
+    节点刷新钮。encounter 刷新链 = 同访问重决策——发射本动作前须以重读
+    产物覆盖写槽再决策(刷新链分屏形态申报,禁沿用旧槽内容)。"""
+    reason: str = ''
+
+
+@dataclass
+class RefreshSupply(CwAction):
+    """补给节点刷新建议(替代 SupplyPick.refresh 旗标):supply 刷新链 =
+    发射后交回重入型(重入访问走常规写槽→决策起点链)。"""
+    reason: str = ''
+
+
+@dataclass
+class RefreshInvestCards(CwAction):
+    """投资逐卡刷新建议(替代 PickEvent.refresh_slots):**纯建议**——
+    是否真刷由 handler 决定(逐槽计数现读 >0 才点,失败安全 = 现状)。
+
+    [索引定义] slots = 待刷新投资卡槽位序号集,坐标系 = 投资界面卡槽
+                物理排位(0 基);取值时机 = 生成期快照。三闸点击链
+                留在画面 handler。"""
+    slots: tuple[int, ...] = ()
+    reason: str = ''
+
+
+@dataclass
+class HoldFrame(CwAction):
+    """备战空发射帧显式信号:本帧无动作可发,交回外循环重新观察。
+
+    消费契约:不进执行器、不进动作注册表、不写续段 token/动作记录
+    (等待帧非动作);备战决策环分支判等对象由 None 换本类型,
+    round 返回形态与等待时长逐字不变。"""
+    reason: str = ''
+
+
 # ——漏登记时执行面 validate 拒「未知动作类型」,动作从未真正执行
 # (OpenTome 曾漏登记,数百次拒绝被误读为执行失败;登记是入口门)。
 CW_ACTION_TYPES: tuple = (
@@ -834,6 +937,11 @@ CW_ACTION_TYPES: tuple = (
     StaffProjectorUse, PerfectProjectorUse, LuckyTokenUse,
     StartBattle,
     OpenShop,
+    # 选择族动作化(终态契约;decide 接线归终态切换批,本批纯落型)
+    PickEncounter, PickSupply, PickInvest, PickMegastar, PickPartner,
+    PickPlanner, PickStarTome, PickWishTrial, PickBoxCard,
+    RefreshNodeOptions, RefreshSupply, RefreshInvestCards,
+    HoldFrame,
 )
 
 
