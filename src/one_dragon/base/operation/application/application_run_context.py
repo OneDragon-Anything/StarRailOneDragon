@@ -505,7 +505,7 @@ class ApplicationRunContext:
             self._release_window_mutex()
             raise
 
-    def stop_running(self, reason: str = '') -> ApplicationRunResult:
+    def stop_running(self, reason: str = '', save_screenshot: bool = False) -> ApplicationRunResult:
         """
         停止运行。
 
@@ -515,16 +515,52 @@ class ApplicationRunContext:
         Args:
             reason: 停止来源标识(开放文本,如 'mcp:stop_run' / 'hook:summon_unknown'
                 / 'gui:hotkey'),写入结果 ``stop_source`` 供归因;空串表示未声明来源。
+            save_screenshot: True = 停机现场截图留证并落一行 ``[stop]`` 日志
+                (reason + 截图文件名 = 停机事实载体,值班按日志定位现场)。
+                自动停机钩子传 True;用户主动停机不传(默认 False,行为不变)。
+                仅在「运行中/暂停 → 停止」的收口转态拍一张(幂等重入不重复拍);
+                截图或落盘失败不拦截停机本身。
         """
         # 「运行中/暂停中被停」才置停机中断闩(ADR-0396):idle 态的杂散 stop
         # 不应把守卫留给后续(如 MCP 手动操作)。先读状态再收口(收口后恒 STOP)。
         was_live = self.is_context_running or self.is_context_pause
         result = self._create_run_result(RunFinishReason.STOPPED)
         result.stop_source = reason
+        if save_screenshot and was_live:
+            # 证据先落盘再收口(stop 钩子既有时序);shot 空 = 截图/落盘失败,
+            # 日志照落(失败可见,不静默吞证据——教训见 save_debug_image 契约注)。
+            shot = self._save_stop_evidence(reason)
+            log.warning('[stop] reason=%s shot=%s', reason, shot or '(落盘失败)')
         run_result = self._finish_running(result, stop_reason=reason)
         if was_live:
             self._stop_interrupted = True
         return run_result
+
+    def _save_stop_evidence(self, reason: str) -> str:
+        """停机现场截图留证(:meth:`stop_running` ``save_screenshot=True`` 时调用)。
+
+        独立抓帧(不污染 op 循环帧缓存,先例 = cw_observe._save_andon_frame)
+        → ``.debug/images/stop_<reason>_<毫秒时间戳>.png``。best-effort:
+        窗口未就绪/截图/落盘任一失败返回空串,绝不抛出拦截停机。
+        reason 拼进文件名前替换文件系统非法字符(: 等,Windows 文件名禁忌)。
+        """
+        try:
+            # 函数级导入:debug_utils 顶层带 cv2/win32 依赖,本模块是全应用
+            # 导入根,基础层不为低频路径(停机才触发)扛平台级导入重量。
+            from one_dragon.utils.debug_utils import save_debug_image
+            controller = self.ctx.controller
+            if controller is None or not controller.is_game_window_ready:
+                return ''
+            _ts, img = controller.screenshot(independent=True)
+            if img is None:
+                return ''
+            safe_reason = str(reason)
+            for ch in ':/\\<>|"?*':
+                safe_reason = safe_reason.replace(ch, '_')
+            return save_debug_image(img, prefix=f'stop_{safe_reason}')
+        except Exception as e:  # noqa: BLE001  证据失败不拦截停机
+            log.warning('[stop] 停机截图失败(不拦截停机): %s', e)
+            return ''
 
     def finish_running(self) -> ApplicationRunResult:
         """正常收口(非停止中断):运行自然结束后的清理路径专用。
