@@ -1315,6 +1315,44 @@ class CwLoop(SrOperation):
 
     # 补给节点完成事实的现役归宿 = 快照行自带域(journal)。
 
+    def _route_clear_stale_payloads(self, match_name: str | None) -> None:
+        """路由点陈旧清点(策略器终态契约 landing §3.1):画面附加域离屏是
+        结构事实非失读(§2.2 显式例外),挂点钉在「识别产出后、身份分发前」,
+        复用当轮识别结果零二次识别。
+
+        语义三定义(design §2.3):命中映射内屏 = 只清属屏 ≠ 它的槽;
+        映射外建档屏 / 非身份臂 / 未识别 = 清全部十槽(该语境无任何 decide
+        消费,清点只影响审计面);`shop` route_clearable=False 挂点跳过
+        (清点源 = CloseShop 腿 + prep 相位 miss 分支两处显式口独占)。
+        已 None 跳过(不占 write_seq 不落 journal)。早退轮(stop_at_prep)
+        发生在识别前,本挂点不执行、顺延下次路由周期——陈旧窗口内无 decide
+        消费(早退屏非映射属屏)。
+
+        sig: family/mode 同既有 CloseShop 腿清点行常量源(family='obs',
+        mode='read'),actor 单列 'cw_loop_route_clear' 供 journal 行过滤
+        (三登记见 REGISTERED_ACTORS)。容器未建立(loop 兜底直跑早期)
+        静默跳过(best-effort;无容器 = 无可陈旧面)。
+        """
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            _PAYLOAD_DOMAINS,
+            ChannelSig,
+        )
+        _match = getattr(self.ctx, 'cw_match', None)
+        _gs = getattr(_match, 'gs', None)
+        if _gs is None:
+            return
+        for slot_name, (own_screen, route_clearable) in _PAYLOAD_DOMAINS.items():
+            if not route_clearable:
+                continue
+            if match_name is not None and own_screen == match_name:
+                continue   # 属屏在屏:本槽是当前画面 payload,保活
+            slot = getattr(_gs, slot_name)
+            if slot.value is None:
+                continue   # 已 None 跳过:不占 write_seq 不落 journal
+            _gs.leave_screen(slot, sig=ChannelSig(
+                family='obs', actor='cw_loop_route_clear',
+                screen=match_name or '', mode='read'))
+
     def _dispatch_identity_screen(self, name: str, screen) -> OperationRoundResult:
         """阶段一身份命中的画面处理器(键 = 建档屏名,判据 = 各画面 id_mark 组合)。
 
@@ -1774,6 +1812,9 @@ class CwLoop(SrOperation):
         # 画面档)→ 三者走阶段三特殊规则。
         _match_name = get_match_screen_name(
             self.ctx, screen, screen_name_list=self.CW_DISPATCH_SCREENS)
+        # 路由点陈旧清点(终态契约 landing §3.1):识别产出后、身份分发前,
+        # 复用当轮识别结果;语义三定义见 _route_clear_stale_payloads。
+        self._route_clear_stale_payloads(_match_name)
         if _match_name is not None:
             return self._dispatch_identity_screen(_match_name, screen)
 
