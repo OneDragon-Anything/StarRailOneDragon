@@ -31,7 +31,7 @@
 
 - **路由屏取值规则**：识别命中且在映射内 = 该屏名，只清属屏 ≠ 它的槽；映射外建档屏 / 非身份臂语境（阶段二备战双锚、阶段三特殊规则臂）/ 未识别 = 清全部十槽（这些语境无任何 decide 消费，清点只影响审计面）。
 - 属屏映射单一源 = `_PAYLOAD_DOMAINS` 扩展为 `槽 → (属屏, route_clearable)` 二元组。十行清点全集（分发键 = `_dispatch_identity_screen` 建档屏名，锚 `cw_loop.py` 分发臂）：`gs.encounter`→货币战争-遭遇节点；`gs.supply`→货币战争-补给；`gs.invest_strategy_opts`→货币战争-投资策略；`gs.invest_env_opts`→货币战争-投资环境；`gs.megastar_opts`→货币战争-盛会之星；`gs.partner_opts`→货币战争-列车同行；`gs.planner_opts`→货币战争-骇入策划；`gs.star_tome_opts`→货币战争-星徽秘典弹窗；`gs.wish_trial_opts`→货币战争-祈愿试炼；`gs.box_card_names`→货币战争-备战-武装箱选择（**分流注**：`货币战争-武装箱弹窗` 派发 CwScreenArmoryBox，无 decide 调用不产槽）。
-- 豁免：`prep_obs` 不入映射；`shop` 入映射 `route_clearable=False`（既有两处显式清点 = CloseShop 逻辑腿 + prep 相位观察商店锚 miss 分支，为 shop 域唯一清点源）。
+- 豁免：`prep_obs` 不入映射；`shop` 入映射 `route_clearable=False`（清点口全集三处 = CloseShop 逻辑腿 + prep 相位观察商店锚 miss 分支 + 机械关店口 `CwOpCloseShop._clear_shop_payload → leave_screen`，点击已发/幂等已关两出口同清（commit 554e3dea6 落地）；shop 清点单一源语义 = 关店出口统一经 CwOpCloseShop 清场，路由挂点不辖 shop）。
 - **「已 None 跳过」实现落点 = 路由挂点侧**（挂点读槽值判 None 跳过，不占 write_seq 不落 journal），`leave_screen` 本体不动；清点写入口经 `leave_screen(槽, sig=…)`，sig family/mode 引用既有 CloseShop 腿清点行同一常量源、`actor='cw_loop_route_clear'`。
 - 两路径语义：`stop_at_prep` 早退发生在挂点之前（早退轮不清点，清点顺延至 loop 下一次路由周期）；未知兜底在分发后循环尾（不绕行，未识别轮清全部十槽）。
 

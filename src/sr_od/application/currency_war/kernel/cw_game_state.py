@@ -971,8 +971,11 @@ def _emit_defect(*, field_name: str, expected: Any, actual: Any,
     """缺陷台账留证(§2.3 观察赢):观察覆盖 logic 值失配 = 推算 bug,
     留证后修推算代码(ADR-0651;不做运行时挂账对账)。best-effort:
     外送钩子异常不阻塞观察主链。抑制登记面见
-    :data:`_MISMATCH_SUPPRESS_PREFIXES`(路由层消费,见
-    :func:`_route_logic_mismatch`)。
+    :data:`_MISMATCH_SUPPRESS_PREFIXES`(路由层
+    :func:`_route_logic_mismatch` 与本发射口双重消费——吸收族
+    (board 派生/纯重排/外部授予/边界金/备战环收入)不经路由层,
+    发射口兜底保证 sim 证据行无论如何不入生产台账;豁免行除外,
+    其落行处置序归路由层(豁免→抑制→真失配,design §2.3)。
 
     行形状(ts/sig 维度为迭代 2026-09-16-unified-obs-reconcile 补齐):
     ``kind / field / expected / actual / observed_evidence / ts /
@@ -983,6 +986,17 @@ def _emit_defect(*, field_name: str, expected: Any, actual: Any,
     不落键,既有行形状零漂移)。
     真失配 kind 行落盘后同步触发安灯钩子(:func:`fire_reconcile_andon`,
     行落盘先于钩子——证据在场不依赖钩子成败);豁免行无告警无停机。"""
+    # 抑制登记面发射口兜底:吸收族落台账行不经 _route_logic_mismatch
+    # 路由层,observed_evidence 命中抑制前缀的行(sim 链自身对账差异)
+    # 归 sim 质量面,不落 buffer 不落 sink 不告警——生产实机链零 sim
+    # 前缀写点,生产台账曾混入约 18.6 万行 sim 行才立此面(语义见
+    # _MISMATCH_SUPPRESS_PREFIXES 注),发射口兜底防绕行。豁免行不辖:
+    # sim 证据+豁免条目同击时路由层已裁定豁免先行落行(处置序 =
+    # 豁免→抑制→真失配),发射口再抑制即翻转该裁定。
+    if kind != 'exempt_mismatch' and evidence is not None and any(
+            evidence.startswith(p)
+            for p in _MISMATCH_SUPPRESS_PREFIXES):
+        return
     row: dict = {'kind': kind, 'field': field_name,
                  'expected': expected, 'actual': actual,
                  'observed_evidence': evidence,

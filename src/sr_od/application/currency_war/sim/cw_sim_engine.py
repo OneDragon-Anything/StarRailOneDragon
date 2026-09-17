@@ -704,9 +704,12 @@ class CwSimEngine:
         (首步即立,后续行写走 kernel 增量派生)+ obs 通道行写
         (cw_sim_equips 装备腿等 sim 真值写,不经 write_logic 挂钩)后
         的漂移覆盖。实机等值语义 = 面板欠计/派生漂移由下一备战帧观察
-        覆盖收敛;sim 若出现真值与派生失配,走 sim 证据抑制面
-        (``sim:engine:`` 前缀在容器 ``_MISMATCH_SUPPRESS_PREFIXES``
-        在册)观察赢,不停机。
+        覆盖收敛;sim 真值与派生失配经容器 board 吸收面
+        (``_absorb_board_derived``,辖域 = ``proj_board_resync`` 派生写端)
+        观察赢采新,不停机;吸收落 ``board_derived_adopt`` 台账行时
+        observed_evidence 带 ``sim:engine:`` 前缀,命中容器
+        ``_MISMATCH_SUPPRESS_PREFIXES`` 抑制面(缺陷发射口兜底),不落
+        生产缺陷台账。
         """
         gs = eng.gs
         truth = _board_truth_of(gs)

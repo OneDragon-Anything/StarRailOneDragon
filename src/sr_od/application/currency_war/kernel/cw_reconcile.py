@@ -61,8 +61,12 @@ def is_merge_effect_window(screen: MatLike | None) -> bool:
 #    锚上身份变换(空槽落新单元/换人)= 单元更替事实,星级随身份直采。
 # 2. **两帧一致才采新**:锚上星读 ≠ tracked = 候选(保旧写账 + 抖动
 #    台账行 surface='star');连续两帧候选同值才采新(升/降同门,银狼
-#    升费形态无豁免)。合成特效窗内读数物理不可信:保旧且不登记候选、
-#    不确认(冻结非清零,帧态维 ADR-0420,与时间维两帧门正交)。
+#    升费形态无豁免)。「连续」以锚每帧在-read 为前提:候选锚在本帧
+#    读侧未出现(部分缺读)或整帧双空读(守卫早退)即清除其候选——
+#    缺读 = 证据中断,两帧重计;候选跨缺读帧存活会把门击穿成「隔缺读
+#    帧两读一致即采新」的同值单帧假确认。合成特效窗内读数物理不可信:
+#    保旧且不登记候选、不确认(冻结非清零,帧态维 ADR-0420,与时间维
+#    两帧门正交)。
 # 候选态宿主 = 按局身份 session 的旁表(WeakKeyDictionary 主路,同
 # game_state_of 模式;新局新 session = 天然清零,无跨局串染面。GameState
 # 本体是 eq-dataclass 不可哈希,故不以其为键;不可弱引用桩面回退 id 键
@@ -101,7 +105,9 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
 
     就地改写 ``bench``/``deployed`` 读对象的 ``star`` = 保旧写账;候选态
     按局身份旁表存(键 = (域, 槽号, 规范名))。锚上身份未锚定
-    (空槽/换人)与读失败侧(None)不辖,候选随锚作废防陈旧假确认。
+    (空槽/换人)与读失败侧(None)不辖,候选随锚作废防陈旧假确认;
+    读侧已取得但锚未出现(部分缺读)= 证据中断,该锚候选清除重计
+    (整帧双空读的候选清除在对账守卫分支,本函数不可达)。
     """
     gs = game_state_of(session)
     from sr_od.application.currency_war.kernel.cw_exec_state import (
@@ -122,6 +128,19 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
             # → (排, 排内槽号)),信息位(槽号字段)为派生不作锚。
             tracked_at[(domain, i + 1) if domain == 'bench'
                        else deployed_row_slot(i)] = t
+        # 缺读 = 证据中断:本帧读侧未出现的锚清除其星级候选(两帧重计)。
+        # 候选键首元分域(bench = 'bench';deployed = 排名 front/back),
+        # 只清本域候选——他域可能本帧整体读失败(None,照旧不辖)。
+        # 缺读帧不清会让候选原样存活,同值复现帧单帧假确认(击穿
+        # 「连续两帧一致」契约)。
+        _in_bench = domain == 'bench'
+        _seen = {((domain, bc.slot) if _in_bench
+                  else (bc.position_pref, bc.slot))
+                 for bc in reads if bc is not None}
+        for k in [k for k in pending
+                  if (k[0] == 'bench') == _in_bench
+                  and (k[0], k[1]) not in _seen]:
+            del pending[k]
         for bc in reads:
             if bc is None:
                 continue
@@ -243,6 +262,10 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         log.warning(f'[cw!][{source}] 对账跳过:SIFT 双空读(疑过渡帧)+前值非空 → 保旧 tracking')
         _conflict('tracking', f'{old_b}|{old_d}', '[]|[]', screen,
                   verdict='保旧-双空读守卫(疑SIFT过渡帧)', source=source)
+        # 双空读 = 全帧无读证据,星级候选一并清除(缺读 = 证据中断,两帧
+        # 重计):守卫早退绕过星级门,候选若原样存活,缺读后同值复现帧
+        # 会单帧假确认(击穿「连续两帧一致」契约)。
+        _star_gate_pending(session).clear()
         return False
     new_b = [(bc.char_id, bc.star) for bc in (bench or [])]
     new_d = [(bc.char_id, bc.star) for bc in (deployed or [])]
