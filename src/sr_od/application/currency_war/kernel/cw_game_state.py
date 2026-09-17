@@ -2905,6 +2905,9 @@ class GameState:
     # —— 节点序列探针簿记宿主(非 Field;终态契约 §A′ 自 session 迁入,
     # 成员与访问纪律见 :class:`NodeBooks` 类注)——
     node_books: NodeBooks = field(default_factory=NodeBooks)
+    # —— 备战黑板帧宿主(非 Field;终态契约 §2.6 自 session.prep_obs_frame
+    # 迁入;整帧快照语义,观察装配点整帧覆盖写,bridge 决策读。局级清零)——
+    prep_obs: object | None = None
 
     # —— 帧触发代次双槽(非 Field 簿记;终态契约 §B:session
     # prep_frame_class/shop_frame_class 退役迁此,两槽互不相干禁合并——

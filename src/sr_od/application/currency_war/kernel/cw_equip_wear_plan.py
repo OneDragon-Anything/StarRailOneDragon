@@ -160,7 +160,8 @@ def _build_equip_wear_plan(session: Any,
     )
 
     # ===== 事实源前置(读入口观察产物,零读屏;fail_reason 通道)=====
-    obs = getattr(session, 'prep_obs_frame', None)
+    from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
+    obs = game_state_of(session).prep_obs
     if obs is None:
         return EquipPlanBuild(
             fail_reason='备战观察帧缺失(黑板契约:入口观察先于派发)')

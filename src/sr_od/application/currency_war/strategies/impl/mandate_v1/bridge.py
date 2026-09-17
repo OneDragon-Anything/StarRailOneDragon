@@ -169,12 +169,15 @@ class MandateV1Strategy(CwFlowStrategy):
                            config: CurrencyWarConfig) -> CwAction | None:
         """备战画面黑板决策(单动作契约接口,返回 ``CwAction | None``)。
 
-        输入 = ``session.prep_obs_frame``(缺失即抛错)。输出 = 决策核
+        输入 = gs.prep_obs(终态契约 §2.6:宿主 = 容器;缺失即抛错)。输出 = 决策核
         发射序列的**首个动作**;空序列(含截断截空)→ ``None`` = 本帧
         无动作。帧稳定截断为决策核内发射组织,非流程侧契约。入口内务 =
         备战帧代次消费(方向刷新先于三遍编排)。
         """
-        obs = session.prep_obs_frame
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            game_state_of,
+        )
+        obs = game_state_of(session).prep_obs
         if obs is None:
             raise ValueError(
                 'mandate_v1.decide_prep_screen: session.prep_obs_frame 缺失'

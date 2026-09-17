@@ -533,7 +533,7 @@ class CwScreenPrep(CwScreenOpBase):
             self._cached_gold_trusted = obs.state_gold_trusted
         # 黑板写路径(W971 §2,P2):写者白名单 = 本装配点(与读屏路径同点)
         if session is not None:
-            session.prep_obs_frame = obs
+            game_state_of(session).prep_obs = obs
         return obs
 
     def _observe(self, heavy: bool, screen: MatLike | None = None) -> PrepObservation:
@@ -892,7 +892,7 @@ class CwScreenPrep(CwScreenOpBase):
         # 逐字段扇出归 P3,见 cw_strategy_session.prep_obs_frame 注)。
         _sess = self._session()
         if _sess is not None:
-            _sess.prep_obs_frame = obs
+            game_state_of(_sess).prep_obs = obs
         return obs
 
     def _project_prep_obs(self, action: CwAction,
@@ -1595,7 +1595,7 @@ class CwScreenPrep(CwScreenOpBase):
             #      实读纠逻辑态承担(期望态对账族即纠偏通道)。R9:词表逐
             #      动作有逻辑态分支,保守回退分支已删——词表外 = 响亮暴露)
             obs = self._project_prep_obs(action, obs)
-            session.prep_obs_frame = obs   # 黑板推进(下一动作决策读逻辑态)
+            game_state_of(session).prep_obs = obs   # 黑板推进(下一动作决策读逻辑态)
             # 直写帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
             _mark_frame_class(session, 'prep', 'none')
         # 访问动作数上限(防御:决策循环不收敛 = 逻辑态或策略 bug,交回外循环
@@ -1863,7 +1863,7 @@ class CwScreenPrep(CwScreenOpBase):
                 return
             if obs is None:
                 _sess = self._session()
-                obs = (getattr(_sess, 'prep_obs_frame', None)
+                obs = (game_state_of(_sess).prep_obs
                        if _sess is not None else None)
             try:
                 progressed, detail = self._open_shop_phase(action, obs)
