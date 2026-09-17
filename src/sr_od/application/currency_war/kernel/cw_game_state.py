@@ -2602,7 +2602,6 @@ class ExecBooks:
     访问纪律:经 ``game_state_of(session).exec_books`` 直读(非 Field 无
     渠道面,与 tracked_books/settlement_ring 同型;禁 getattr session 猜宿主)。
     """
-
     # star 回退留证采样计数([索引定义] 键 = 角色名,值 = 连续回退次数;
     # 唯一写读者 = kernel/cw_reconcile;宿主 = 本组,读写点直接解析
     # ``game_state_of(session).exec_books.star_regression``)。
@@ -2622,6 +2621,24 @@ class ExecBooks:
     # 臂态位,projection_contract §4.3 在册判读面——删 = 丢判读通道,故
     # 保留簿记)。None = 尚无臂态记录。
     swap_arm_on: object = None
+
+
+class NodeBooks:
+    """节点序列探针簿记组(容器内独立宿主组;非 Field,不进快照流水;
+    终态契约 §A′ 收编:自 session 宿主迁入——写读经本组单一源)。
+
+    [索引定义] plane_node_table = 开局帧实读槽序表(list[str],当前位面
+    槽序,位面内恒定);plane_node_table_plane = 表归属位面号(1-based,
+    每位面首帧重写时更新);plane_lengths_seen = 已揭晓位面长度序列
+    (下标 i = 第 i+1 位面,进表即自适应)。取值时机 = cw_screen_prep
+    每位面首帧采集写入(store_plane_table,唯一写端);读端 =
+    kernel/cw_plane_table(经 game_state_of 桥)。局级生命周期
+    (新局新容器 = 天然清零)。
+    """
+
+    plane_node_table: list[str] | None = None
+    plane_node_table_plane: int | None = None
+    plane_lengths_seen: list[int] | None = None
 
 
 @dataclass(frozen=True)
@@ -2883,6 +2900,9 @@ class GameState:
     # = cw_screen_deploy 卖出臂门,开合变更日志消费)。star_regression/
     # bench_layout_epoch = 留证采样/纠漂簿记。
     exec_books: ExecBooks = field(default_factory=ExecBooks)
+    # —— 节点序列探针簿记宿主(非 Field;终态契约 §A′ 自 session 迁入,
+    # 成员与访问纪律见 :class:`NodeBooks` 类注)——
+    node_books: NodeBooks = field(default_factory=NodeBooks)
 
     # —— 帧触发代次双槽(非 Field 簿记;终态契约 §B:session
     # prep_frame_class/shop_frame_class 退役迁此,两槽互不相干禁合并——

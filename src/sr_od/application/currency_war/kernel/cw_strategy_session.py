@@ -119,14 +119,9 @@ class StrategySession:
     #  推断族 last_node_type/upcoming_types/nodeseq_probe_anchor、node
     #  识别值 node_type_current——真值职责归 gs(覆盖写端 + carried +
     #  node_kind_of 推导),失准走识别优化批,design §1.3。)
-    # 开局帧完整槽序——离线统计源(位面典型节点表)+ 左移兜底参照;
-    # 写入端在 cw_screen_prep._probe_node_type 首帧。
-    plane_node_table: list[str] | None = None
-    # ADR-0368:plane_node_table 是哪位面的表(每位面首帧重写时更新)。
-    plane_node_table_plane: int | None = None
-    # ADR-0368:本局已揭晓的位面轮数序列(每位面首帧 append)——
-    # cw_plane_table.schedule_of 的真值源。
-    plane_lengths_seen: list[int] | None = None
+    # (终态契约 §A′ 探针族宿主迁移:plane_node_table/plane_node_table_plane/
+    #  plane_lengths_seen session 份退役——单一源 = gs.node_books
+    #  (NodeBooks,写端 = prep 采集,读端 = cw_plane_table 经桥)。)
     # (终态契约 §B:last_streak session 份退役——结算带符号真值由结算
     #  覆盖写端直入 gs.streak,economy/观察消费读容器。)
     # (终态契约 §B 重复账退役:active_strategies/active_env/last_owned_equips

@@ -218,17 +218,20 @@ def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
     重写(位面内恒定语义不变,同位面多次 probe 不覆写);同时 append
     ``plane_lengths_seen``(位面长度真值序列,P3 进表即自适应)。
 
-    返回是否写入(供调用方记日志)。纯 session 写入,无画面依赖,可单测。
+    返回是否写入(供调用方记日志)。纯簿记写入,无画面依赖,可单测。
+    (终态契约 §A′:宿主 = gs.node_books,session 中转退役。)
     """
     if not seq or plane is None:
         return False
-    if getattr(sess, 'plane_node_table_plane', None) == plane:
+    from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
+    _nb = game_state_of(sess).node_books
+    if _nb.plane_node_table_plane == plane:
         return False
-    sess.plane_node_table = list(seq)
-    sess.plane_node_table_plane = plane
-    if sess.plane_lengths_seen is None:
-        sess.plane_lengths_seen = []
-    sess.plane_lengths_seen.append(len(seq))
+    _nb.plane_node_table = list(seq)
+    _nb.plane_node_table_plane = plane
+    if _nb.plane_lengths_seen is None:
+        _nb.plane_lengths_seen = []
+    _nb.plane_lengths_seen.append(len(seq))
     return True
 
 

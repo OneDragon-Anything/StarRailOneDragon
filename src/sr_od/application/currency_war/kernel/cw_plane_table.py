@@ -24,6 +24,18 @@ ADR-0465 起,本模块是生产路径消费的**真值/标定面**
 from __future__ import annotations
 
 
+def _probe_books(session):
+    """探针簿记宿主解析(终态契约 §A′:gs.node_books 单一源;session 为
+    None/裸对象 → 一次性空载体,回退语义与旧 getattr 缺省同型)。"""
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        NodeBooks,
+        game_state_of,
+    )
+    if session is None:
+        return NodeBooks()
+    return game_state_of(session).node_books
+
+
 # ===== 日程/经济先验 =====
 NODES_PER_PLANE: int = 9
 TOTAL_NODES: int = NODES_PER_PLANE * 3
@@ -77,7 +89,7 @@ def schedule_of(session) -> tuple[int, int, int]:
     脏表守卫:每位面长度夹 [1, NODES_PER_PLANE]
     (同 ADR-0366 超长脏表封顶语义)。duck-typed 读 session。
     """
-    seen = getattr(session, 'plane_lengths_seen', None) or []
+    seen = _probe_books(session).plane_lengths_seen or []
     out = []
     for i in range(3):
         length = int(seen[i]) if i < len(seen) else PLANE_FALLBACK_PRIORS[i]
@@ -119,7 +131,7 @@ def nodes_of_plane(session) -> int:
     P1 等价性:生产 P1 表恒 9 槽;sim P1 段不写表(ADR-0362 只在 P2
     进场写)→ 两路 P1 取值 ≡ 先验常量。duck-typed 读 session。
     """
-    table = getattr(session, 'plane_node_table', None)
+    table = _probe_books(session).plane_node_table
     if table:
         return len(table)
     from one_dragon.utils.log_utils import log as _log

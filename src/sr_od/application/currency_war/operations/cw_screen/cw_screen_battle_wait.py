@@ -645,7 +645,11 @@ class CwScreenBattleWait(CwScreenOpBase):
                               round_num: int | None) -> str | None:
         """首节点冷启动兜底:r362 槽序表查节点类型(随迁,逻辑零变更)。"""
         try:
-            _table = getattr(_session, 'plane_node_table', None) or []
+            # 终态契约 §A′:宿主 = gs.node_books(内嵌函数无 self → 桥取)。
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                game_state_of as _gso_nt,
+            )
+            _table = _gso_nt(_session).node_books.plane_node_table or []
             _r = int(round_num or 0)
             if _table and 1 <= _r <= len(_table):
                 return str(_table[_r - 1])
