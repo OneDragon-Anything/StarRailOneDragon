@@ -28,6 +28,9 @@ class GuideChooseMission(SrOperation):
                                  gt(mission.mission_name)
                              ))
         self.mission: GuideMission = mission
+        # 滚到底检测的状态: 记录上一轮/本轮「副本列表」的 OCR 词集, 两轮一致 = 滚动无效(已到底)
+        self._prev_visible_words: frozenset[str] | None = None
+        self._last_visible_words: frozenset[str] | None = None
 
     @operation_node(name='等待画面加载', node_max_retry_times=5, is_start_node=True)
     def wait_screen(self) -> OperationRoundResult:
@@ -39,15 +42,23 @@ class GuideChooseMission(SrOperation):
             return self.round_retry('未在画面 %s' % self.mission.cate.tab.cn, wait=1)
 
     @node_from(from_name='等待画面加载')
-    @operation_node(name='选择', node_max_retry_times=10)
+    @operation_node(name='选择', node_max_retry_times=15)
     def choose(self) -> OperationRoundResult:
         screen = self.last_screenshot
 
         tp_point = self.find_transport_btn(screen)
         if tp_point is None:
+            # 滚到底检测: 本轮与上轮列表 OCR 词集一致 = 拖拽未产生滚动(已到底),
+            # 目标副本不在列表中, 立即失败, 别耗尽重试预算空滚(每轮 ~3s)
+            if self._prev_visible_words is not None and self._last_visible_words == self._prev_visible_words:
+                return self.round_fail('列表已滚到底 未找到 %s %s' % (
+                    self.mission.mission_name, self.mission.region_name))
+            self._prev_visible_words = self._last_visible_words
+
             area = self.ctx.screen_loader.get_area('星际和平指南', '副本列表')
             drag_from = area.center
-            drag_to = drag_from + Point(0, -200)
+            # 400px ≈ 3 个条目高: 比可视区高度(596px)小, 不会跳过条目; 旧值 200px 对 19 条列表滚动预算不够
+            drag_to = drag_from + Point(0, -400)
             self.ctx.controller.drag_to(drag_to, drag_from)
 
             return self.round_retry(wait=2)
@@ -71,6 +82,8 @@ class GuideChooseMission(SrOperation):
         part = cv2_utils.crop_image_only(screen, area.rect)
 
         ocr_result_map = self.ctx.ocr.run_ocr(part)
+        # 供滚到底检测: 记录本轮列表可见词集(choose 节点比较相邻两轮)
+        self._last_visible_words = frozenset(ocr_result_map.keys())
 
         word_list = []
         mrl_list: list[MatchResultList] = []
