@@ -123,8 +123,7 @@ class RefreshShopOp(ActionOp):
         ledger.did_refresh = True
         try:
             _new_shop = _buy_cards_mod.read_shop_cards(op.ctx, op.screenshot())
-            # (refresh 牌面快照行已随 shop_snapshots 流写入端退役删除
-            #  ——删除波 1;牌面现役归宿 = journal 快照行自带 shop 域。)
+            # 牌面现役归宿 = journal 快照行自带 shop 域。
             # 刷后牌名集原样落账(裁决3 比对收口批4:零比对——三值对比
             # 单一源 = cw_shop_refresh_obs.refresh_board_changed_of,消费方
             # = 刷新回执 extra(安灯豁免判定输入)与入口观察对账点免费腿;

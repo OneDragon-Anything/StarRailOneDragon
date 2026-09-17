@@ -315,13 +315,12 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         # slot=下标+1 天然一致,紧凑态从写入端消失,两域播种自动同源——
         # 消灭 tracked 下标布局 vs BenchChar.slot 脱节的持续制造点
         #(本函数旧写回直拷 SIFT 紧凑列表,违反 ADR-0316 形状契约)。
-        # 前置槽号健康门(与 cw_shop_action_ops._reseed_bench_layout 同式):
+        # 前置槽号健康门:
         # 占用槽号唯一 ∧ 全在 1..BENCH_CAPACITY——把 bench_from_compact 对
         # 无效槽号的静默 fallback(冲突走 bench_place 首空槽)在写回点升级
         # 为显式拒绝,防脏读数固化为形状自洽的槽位表(布局错而守卫恒过,
         # 比现状更难发现)。违者拒绝写回保旧+留证:经 _conflict 通道
-        #(obs_conflict 行经旁路进缺陷台账;kernel 层落账走出口约束,
-        # 与 _reseed 的 telemetry kind 行分属两层,语义等价留证)。
+        #(obs_conflict 行经旁路进缺陷台账;kernel 层落账走出口约束)。
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             BENCH_CAPACITY,
             bench_from_compact,
@@ -350,9 +349,8 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         else:
             # 留证排序 str 化:健康门防御的对象正是非 int 槽号,拒绝分支若
             # 对混型列表(如 [None, 2])直接 sorted 会先 TypeError——防御
-            # 分支自伤,拒绝留证与保旧都未完成(落地审遗留问题;
-            # 对照组 _reseed_bench_layout 同式留证包在 suppress 内,此处
-            # 取 str 化保排序可读且混型安全)。
+            # 分支自伤,拒绝留证与保旧都未完成;此处取 str 化保排序
+            # 可读且混型安全)。
             _slots_disp = sorted(map(str, _slots))
             log.warning(f'[cw!][{source}] 对账写回拒绝:bench 槽号不健康'
                         f'(唯一∧1..{BENCH_CAPACITY})slots={_slots_disp}'

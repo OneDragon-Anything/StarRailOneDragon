@@ -125,10 +125,9 @@ def apply_op_effect(session, action: CwAction | dict, *,
         effects.append({'path': path, 'value': value, 'kind': kind})
 
     if isinstance(action, SellDeployed):
-        # (SellBench 分支已随统一观察对账迭代退役:卖出回金容器唯一写点
-        #  = apply_prep_action_logic 对应分支,本口双记腿删除——实机
-        #  −2 倒挂实证,2026-09-16 归因批。SellDeployed 同批删金腿,
-        #  owned 装备回收腿保留 = 执行账单一写者。)
+        # (卖出回金容器唯一写点 = apply_prep_action_logic 对应分支,
+        #  本口不记金防双记——实机 −2 倒挂实证;owned 装备回收腿 =
+        #  执行账单一写者。)
         _bench, dep = _session_tracked(session)
         bc = dep[action.deployed_idx] \
             if 0 <= action.deployed_idx < len(dep) else None
@@ -360,8 +359,7 @@ def bench_slots_healthy(slot_nos: list[int]) -> bool:
 
     背景:SIFT 读/对账 churn 产生的槽号属无守卫数据(ADR-0646),
     违者不得固化为槽位表。消费方 = 对账写回门(kernel/cw_reconcile)、
-    tracked 写点显影(prep_actions);reseed 健康门(cw_shop_action_ops)
-    暂持同式内联实现(该文件批间只读,收口时并本单一源)。"""
+    tracked 写点显影(prep_actions)。"""
     return (all(isinstance(s, int) and 1 <= s <= BENCH_CAPACITY
                 for s in slot_nos)
             and len(set(slot_nos)) == len(slot_nos))

@@ -267,8 +267,7 @@ class CwScreenSupplyNode(CwScreenOpBase):
                 target = opts[pick.idx][1]
                 reason = pick.reason
                 # 选定快照(角色/装备/钻;refreshed=刷新是否已用;附实际识别
-                # 选项清单)——现役消费方 = 到账登记(equip)。(旧流暂存槽
-                # set_last_supply_pick 已随 outcomes 合成行退役删除——删除波 1。)
+                # 选项清单)——现役消费方 = 到账登记(equip)。
                 _opt = opts[pick.idx][0]
                 picked = {'char': _opt.char, 'equip': _opt.equip,
                           'has_diamond': _opt.has_diamond,

@@ -107,18 +107,10 @@ DEFECT_KIND_DEPLOYED_COUNT_2SRC_SUSTAINED: str = 'deployed_count_2src_sustained'
 #: 归因不单向指向 CV 占用源)。
 DEFECT_KIND_DEPLOYED_COUNT_2SRC_DEGRADED: str = 'deployed_count_2src_degraded'
 
-#: 双账槽位布局漂移分键(期望态 vs tracked 多集等价、仅槽序分歧):
-#: 守卫降级不炸环,但漂移事实落台账(判读工具可查频次/局分布);
-#: 处置 = 按 tracked 真值重播种逻辑态 bench(见 cw_shop_action_ops)。
-DEFECT_KIND_BENCH_SLOT_LAYOUT_DRIFT: str = 'bench_slot_layout_drift'
-
 #: tracked 槽号健康门拦截分键:占用槽号重复/越界(对账 churn 家族的
 #: 无守卫数据)→ 拒绝重播种,维持旧布局防坏槽号进不可逆卖出链。
 DEFECT_KIND_BENCH_SLOT_UNHEALTHY: str = 'bench_slot_unhealthy'
 
-# (种子段读屏重建分键 tracked_seed_rebuild 已整批退役:
-#  店内读屏重建出口移除,未观察态改走「策略关店→备战 heavy 观察」链,
-#  跳过留痕分键 shop_skipped_unobserved 内联在 cw_screen_buy_cards。)
 
 #: 分歧逐次计数器驻留上限(模块级全局生命周期:常驻进程跨局累积无界;
 #: 超限后清空只保当前局——历史局计数无跨局消费面,清零无损)。

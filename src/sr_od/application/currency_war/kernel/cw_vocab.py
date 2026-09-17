@@ -248,11 +248,9 @@ class CwSimFrame:
     # 翻倍一档,概率条直接印在商店上,OCR 即真值;None=未读/商店关 → _sample_cost 退基线表)
     refresh_probs: dict[int, float] | None = None
     # 节点序列由 cw_node_reader.NodeSlot 承载(read_node_sequence 直连消费方)。
-    # (dual_track_phase/focus_factions 两字段已随 last_state 链退役批删除
-    #  (对账表 E 类行 30/31 兑现,不迁容器):双轨判定真家 =
-    #  cw_intention.committed_from(session) 权威派生;flex 白名单真家 =
-    #  StrategyState.focus_factions(方向刷新写入),决策读端走策略态。
-    #  帧回填点(原 cw_op_buy_cards 装配位)同批删除。)
+    # 双轨判定真家 = cw_intention.committed_from(session) 权威派生;
+    # flex 白名单真家 = StrategyState.focus_factions(方向刷新写入),
+    # 决策读端走策略态。
     active_strategies: list[str] = field(default_factory=list)  # 已持有投资策略(局中选,可多张;影响经济/难度)
     # 动作v2 账本(契约包 C1,步2):显式动作(SellDeployed/SwapDeploy)
     # 的执行结果逐条记录(applied/rejected + reason)
@@ -412,11 +410,8 @@ class SellBench(CwAction):
     reason: str = ''           # 卖出通道记录字段(记录非指令,仿 LevelUp.auth_basis 形态;
     #                            ''=未标,缺省形态)。现役发射侧唯一承重值 =
     #                            line_switch_collapse(线账闭合孤儿证明标记,
-    #                            SELL_BENCH_REASONS;纯归因
-    #                            通道值填充已随 2026-09-08 用户归因遥测删除
-    #                            指令拆除);sim 账本 SellBench 行
-    #                            sell_reason 键转录本字段,检查器孤儿豁免
-    #                            分支据此判定(豁免键集 =
+    #                            SELL_BENCH_REASONS;纯归因);
+    #                            检查器孤儿豁免分支据此判定(豁免键集 =
     #                            SELL_BENCH_ORPHAN_REASONS,与发射登记门
     #                            分离的独立闭集)。
     convert_reason: str = ''   # 转化类豁免分键(结构化证明键,ADR-0611):
@@ -430,9 +425,7 @@ class SellBench(CwAction):
     #                            打标语义与豁免资格耦合留在 reason(ADR-0591
     #                            §4,防窗口段回归洗白),检查器按键分工判定
     #                            (转化类读本字段/孤儿读 reason),迁移期不
-    #                            并读零双源;sim 账本 SellBench 行
-    #                            convert_reason 键转录本字段(engine_p1
-    #                            转录块)后检查器方可读。
+    #                            并读零双源。
 
 
 # 转化类卖出豁免键集(同轮买后卖检查的豁免边;检查侧单一源):
@@ -817,9 +810,6 @@ class OpenShop(CwAction):
     restricted_spend=True:受限访问(发射帧仲裁意图,金出口族出口 B;
     判定单一源 = 策略前置发射位经 kernel in_launch_spend_zone)→ 买波带
     预算闸(花后金位跌破息线即拒)→ 关店,本帧不发射(次帧复判)。
-    sim 侧申报:restricted_spend 语义已由引擎发射帧仲裁段原生建模
-    (engine_p1),字段为生产执行参数,sim 适配器映射零感知(缺省 False
-    保持既有映射)——op-layer §2.5 两适配器同批义务以此申报兑现。
     """
     read_only: bool = False
     restricted_spend: bool = False

@@ -186,8 +186,7 @@ class CwScreenBriefing(CwScreenOpBase):
                 _session.enemy_difficulty = _diff
                 log.info('简报敌人难度读得(写 session): %s', _diff)
 
-        # (开局简报三读数 exogenous 存证行已随 exogenous 流写入端退役删除
-        #  ——删除波 1;三读数 session 直写照常,判读面经 journal 开局域。)
+        # 三读数 session 直写照常,判读面经 journal 开局域。
 
         # ③ 点「下一步」离开简报(下一画面由上层编排/入口链调度)。
         _click = self.round_by_find_and_click_area(

@@ -258,8 +258,7 @@ def cap_resolved_of_session(session: StrategySession | None) -> int:
     修复):已持投资策略聚合取 cap 覆写(并持取宽 = ADR-0131),未持
     息帽卡 → None → 回 DEFAULT_INTEREST_CAP;None/0 判别语义由
     :func:`interest_cap_resolved` 单点承载。两个写点 = 实机选卡 handler
-    (cw_screen_invest_strategy,确认成功后 append)与 sim 注入臂
-    (engine_p1,append+state 镜像)——本函数只读 session 级字段,
+    (cw_screen_invest_strategy,确认成功后 append)——本函数只读 session 级字段,
     禁读 state 镜像(非公共权威)。
 
     消费位 = 商店线 R1/R2 的 g* 装配(mandate._cap_of 重定向至此)、
@@ -316,8 +315,8 @@ def in_launch_spend_zone(gold: int, session: StrategySession | None) -> bool:
     §3 边界①同判):必花域辖「有动作决策点的 shop/备战帧」,本谓词辖
     「发射帧仲裁段」(仲裁段插入后发射帧成为决策点;两域互斥 = 调用点
     约定非结构保证,M-1 降级口径,新增消费点须回 DESIGN §5 对账表)。
-    消费点(本批接线):cw_loop 发射帧仲裁段预判 / engine_p1 发射帧
-    仲裁段区判,两面直调本函数,禁各自内联 ``gold > g*`` 字面量式。
+    消费点:cw_loop 发射帧仲裁段预判,直调本函数,禁内联 ``gold > g*``
+    字面量式。
     """
     cap = cap_resolved_of_session(session)
     if cap <= 0:
@@ -390,7 +389,7 @@ def net_income(round_num: int, streak_pre: int,
 
 # ===== T1a 轮首收入三支·kernel 单一源函数族(统一观察架构 §7-T1/T2 搬迁任务的 =====
 # ===== kernel 半部;正本语义=GameState 设计 §4.2 轮首收入行。引擎收入段与 =====
-# ===== 实机 live 写端改调本函数族=T1b,本批不动 sim/engine_p1.py)=====
+# ===== 实机 live 写端改调本函数族)=====
 
 
 def reward_base_gold(plane: int, round_num: int) -> int:
@@ -559,13 +558,12 @@ REWARD_BASE_GOLD_BY_ROUND: dict[int, int] = {1: 3, 2: 4}
 #: P3r1=5 是无直读样本下的近似、挂账维持——见 :func:`reward_base_gold`)。
 _REWARD_BASE_DEFAULT: int = BASE_INCOME
 
-#: sim 收入口径版本(独立披露;旧粗模型战斗引擎校准版本
-#: cw_coarse_battle.COARSE_CALIB_VERSION 已随 sim 重做删除面退役,
-#: 收入口径在 cw_economy/cw_sim 收入段,另一子系统,不再有对照版本)。
+#: sim 收入口径版本(独立披露;收入口径在 cw_economy/cw_sim 收入段,
+#: 另一子系统,无对照版本)。
 #: 跨批次对比先核 manifest.economy_calib_version(局终指纹核对锚)。
 ECONOMY_CALIB_VERSION: int = 2
-#: v2(ADR-0447):事件金表按实机逐轮金轨迹反馈整定(状态分布校准总闸),
-#: 数值见 engine_p1.EVENT_GOLD_BY_ROUND 注释;v1 旧表(奖励球残差近似)
+#: v2(ADR-0447):事件金表按实机逐轮金轨迹反馈整定(状态分布校准总闸);
+#: v1 旧表(奖励球残差近似)
 #: 批次与本版不可比,跨批对照须 economy_calib_version 一致。
 
 # 息权重算账(gold 0-15 < 升级 cost 36-48)→ 卡低 level → 弱 comp。息 delta(50vs0)=20

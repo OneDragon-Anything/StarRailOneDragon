@@ -179,8 +179,7 @@ def _opt_counters_dot(opt: str) -> bool:
     """选项(词缀/环境名)是否克制 DoT/减益主派 —— 机制注册表单一源。
 
     名 → ``AFFIX_MECHANIC_MAP`` 机制 tag → ``MECHANIC_COUNTERS`` 克制属性,与「净化身心」
-    同类的任意 anti-DoT 词缀/环境都覆盖(不止单点名);子串包含匹配保留旧 OCR 容错语义
-    (旧 config dot_punish_envs 名单已删 —— 游戏客观数据非用户偏好,版本全量一致)。
+    同类的任意 anti-DoT 词缀/环境都覆盖(不止单点名);子串包含匹配保留旧 OCR 容错语义。
     未知名(不在映射)→ False(不惩罚)。包词缀按开关并表(全关=基表零漂移)。
     """
     affix_map, counters, _ = merged_mechanic_tables()
@@ -189,17 +188,6 @@ def _opt_counters_dot(opt: str) -> bool:
             return True
     return False
 
-
-
-# (事件面经验加减分族已退役 2026-09-04,「未证即退役」裁定,保守缺省
-# 全部置 0/移除,墓碑注逐项:
-# - 旧 EVENT_REFRESH_SCORE_FLOOR=50(≈评估分中位估计)→ 阈值式刷新判据
-#   退役;刷新判据已重立——判据换了推导(结构存在性,非分值阈值),
-#   见 decide_event 内刷新判据段;退役史归 ADR 不留注释链。
-# - 旧低血生存钩子:策略 SURVIVAL_PICKS +15 / env ENV_SURVIVAL_BONUS
-#   {白银时代+15,敌后破坏+15,人身意外险+10} → 0(hp 语义可标不可定价);
-# - 旧 P2 装备流 EQUIP_FLOW_PICKS plane≥2 +25(11 局实锤)→ 0(经验
-#   拟合,辖域+幅度双未证;若重立须按观测参数化)。)
 
 def decide_event(options: list[str], config, gs: GameState,
                  locked_comp: str = '', demoted_endgame: bool = False,
@@ -245,9 +233,7 @@ def decide_event(options: list[str], config, gs: GameState,
     111-119——「静态结构证据 < 动态对齐 < 真金流」。
     叠加项(全部之后):机制克制惩罚(-100 档,MECHANIC_COUNTERS 单一源)/
     用户转向轴(策略/环境 priority +30 soft、forbid −10000 hard−,config.md §3)。
-    未注册非 env = 0 分。(原 config event_whitelist 已删;品质难度
-    惩罚/低血生存钩子/P2 装备流加分已退役,见模块墓碑注;
-    刷新建议阈值同退役,刷新判据已换推导重立,见函数尾刷新判据段。)
+    未注册非 env = 0 分。刷新判据见函数尾刷新判据段。
     刷新判据双轴:策略帧 = ADR-0600;环境帧 = invest-env 迭代 §2.8
     (3.5 接线,取代 ADR-0600「env 帧恒不刷」F9 规则——行为翻转在册申报)。
 
@@ -273,8 +259,8 @@ def decide_event(options: list[str], config, gs: GameState,
     penalty = 100
     # 品质回落字典序的序数编码(ADR-0524):品质序=游戏定义(棱彩>金>银),
     # 主键 rank(0/1/2)+ 次键 econ(0/1);×2 保证次键永不翻转主键——
-    # 两个常数都是纯位置编码,不是拍定的语义幅度(旧 50/30/10/+20 已删,
-    # 序到分的映射无推导,同「未证即退役」判)。
+    # 两个常数都是纯位置编码,不是拍定的语义幅度(序到分的映射无推导,
+    # 同「未证即退役」判)。
     _rarity_lex_rank: dict[str, int] = {'银': 0, '金': 1, '棱彩': 2}
     # D* 单帧单读(ADR-0597):每决策帧现算一次快照,帧内不重读——
     # 「K 活读数轮内重排」病灶在消费面结构性不可发生。
@@ -631,14 +617,11 @@ def _option_mechanics(option: EncounterOption, target_comp: Comp | None) -> floa
 
 
 def _reward_value(rewards: list[str]) -> float:
-    """奖励文本 → 价值分(经验加减分族退役后恒中性 0.5)。
+    """奖励文本 → 价值分(恒中性 0.5)。
 
-    旧先验阶梯(棱彩/特权 1.0 > 进阶 0.8 > 简易/银 0.65 > 经验/金币/装备
-    0.6 > 无文本 0.5,自注「实玩校准点」)属经验拟合,「未证即退役」——
-    奖励稀有度序(棱彩>金>银)是游戏定义,但序到分的映射无推导;保守
-    缺省 = 恒中性:遭遇选档不因奖励文本冒险(P3 tiebreak 项随之恒定)。
-    稀有度不再识别:关键词识别整段已删,reason 回显只会打 0.50,
-    无任何稀有度信号,判读勿据此归因。
+    奖励稀有度序(棱彩>金>银)是游戏定义,但序到分的映射无推导;
+    保守缺省 = 恒中性:遭遇选档不因奖励文本冒险(P3 tiebreak 项随之恒定)。
+    reason 回显只会打 0.50,无任何稀有度信号,判读勿据此归因。
     """
     return 0.5
 

@@ -174,8 +174,7 @@ class CwScreenMegastar(CwScreenOpBase):
                 log.info(f'[cw-megastar] candidates={[o.char_id for o in options]} pick=idx{idx} {pick.reason}')
             else:
                 log.info(f'[cw-megastar] options={len(options)} match={match is not None} → default idx0')
-            # (W312 巨星候选面存证行已随 exogenous 流写入端退役删除——删除波 1;
-            #  结果回写 session.chosen_megastar 照常。)
+            # 结果回写 session.chosen_megastar 照常。
             # 候选坐标从 screen_info 读(task#103 化债,W265);缺失走历史实测兜底常量。
             candidate = ((area_center(self.ctx, '候选-左', '货币战争-盛会之星') or CwScreenMegastar.CANDIDATE_LEFT)
                          if idx == 0 else

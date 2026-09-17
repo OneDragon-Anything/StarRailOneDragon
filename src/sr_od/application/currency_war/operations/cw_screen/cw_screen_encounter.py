@@ -342,7 +342,6 @@ class CwScreenEncounter(CwScreenOpBase):
             reason = f'{reason}+分支刷新'
         log.info(f'[cw-encounter] options={[(o.difficulty, o.rewards) for o in options]} '
                  f'pick=idx{idx} refreshed={refreshed} {reason}')
-        # (event_choice 存证行已随 exogenous 流写入端退役删除——删除波 1。)
         # 动作执行(点卡选中 → 确认机械交回)经分派面(试点步骤 2;先例 =
         # CwScreenPrep 旧路径同经 _act_execute:注册表触发点唯一 + 未来
         # 落地型登记件两路径同享)。chosen 写端 = 确认发出后置 pending
@@ -472,7 +471,6 @@ class CwScreenEncounter(CwScreenOpBase):
             reason = f'{reason}+分支刷新'
         log.info(f'[cw-encounter] options={[(o.difficulty, o.rewards) for o in options]} '
                  f'pick=idx{idx} refreshed={refreshed} {reason}')
-        # (event_choice 存证行已随 exogenous 流写入端退役删除——删除波 1。)
         # —— 段4 act(分派面;pending 置位 = 分派面共享段头部,两路径同承)
         #      + 段5 on_outcome(注册表回执点)
         self._lifecycle_mark('act')

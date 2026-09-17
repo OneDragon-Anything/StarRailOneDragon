@@ -1989,20 +1989,6 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
 
 
 
-def read_bench_full(ctx: SrContext, screen: MatLike) -> bool | None:
-    """~~已退役~~(迁移批次二,设计 §3.2.5):「备战席已满」警告 OCR 不做
-    识别——出现太短暂、无法可靠采样(玩家裁定 2026-09-09);席满判定 =
-    GameState 派生(:func:`kernel.cw_game_state.bench_is_full`,占位
-    真值一份)。
-
-    本函数保留为**墓碑**(发警告防复活):调用即断言失败。唯一在册
-    消费点(cw_screen_prep._bench_full_break_round)已同批改接派生判定。
-    """
-    raise RuntimeError(
-        'read_bench_full 已退役(设计 §3.2.5/迁移批次二):警告 OCR 通道'
-        '不复活;席满判定用 kernel.cw_game_state.bench_is_full 派生')
-
-
 # ===== 组合入口 =====
 def _level_from_xp(xp_progress: tuple[int, int] | None) -> int | None:
     """XP 条分母反推当前等级(ADR-0129):"cur/need" 的 need = 当前级→下一级门槛,反查
@@ -2098,8 +2084,6 @@ PHASE_BATTLE_OR_TRANSIT: str = 'battle_or_transit'
 #: 字段键与 read_game_state 内各识别段一一对应;hp 段特殊:在集内=真读
 #: (read_hp_opt),不在=对账沿用(reconcile,零 OCR)。
 PHASE_FIELD_SPEC: dict[str, frozenset[str]] = {
-    # ~~'bench_full' 键已删(迁移批次二 §3.2.5 通道退役):该键只辖
-    # read_bench_full OCR,通道退役后无辖域,键位删除防复活。
     PHASE_PREP_CLEAN: frozenset({
         'gold', 'phase_round', 'hp', 'node_type', 'xp', 'level',
         'deploy_cap', 'deployed_count', 'enemy_difficulty',
@@ -2429,9 +2413,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         # append session 再暂存),故本时点声明名应已在持卡列表;不在 = 写链
         # 断或选择落空 → 台账留证(中相关面,默认 L2;离线按复现分级)。
         # 消费即清,不串轮;无暂存(非投资轮)零开销。handler/策略决策零
-        # 改动(纯旁路)。(注:暂存生产端已随 invest_cards 流写入端退役
-        # 删除——删除波 1;槽与消费面保留,候 strategy_
-        # offer 收编批重接生产端。)
+        # 改动(纯旁路)。(注:暂存生产端候 strategy_offer 收编批重接;
+        # 槽与消费面保留。)
         try:
             # 分包期 4:策略暂存槽迁 kernel/cw_observe、落账经 kernel/cw_telemetry_exit
             # 出口钩子位(零直依 telemetry)
@@ -2477,18 +2460,11 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 消费方(_sample_cost)自动退基线表;成功时 D 牌蒙特卡洛用实际分布。
     # spec 无的阶段(prep_clean/battle:概率条只印在开店面板,读出恒 None)跳过。
     refresh_probs_val = read_refresh_probs(ctx, screen) if _w('refresh_probs') else None
-    # 席满判定 = GameState 派生(kernel/cw_game_state.bench_is_full,§3.2.5):
-    # 「备战席已满」警告出现太短暂无法可靠采样(玩家裁定 2026-09-09),本帧
-    # 不产席满警告读数;防复活墓碑 = 测试锁(调用 read_bench_full 通道即红)。
+    # 席满判定 = GameState 派生(kernel/cw_game_state.bench_is_full);
+    # 本帧不产席满警告读数。
     if phase is not None:
         from sr_od.application.currency_war.kernel.cw_observe import set_obs_phase
         set_obs_phase(None)   # 冲突行阶段标注随本次读取结束清位(best-effort)
-    # [停机钩子·已删(2026-08-17 M72 采全)] star≥3 停机采集:19 位 fixture 已采全
-    # (star3_slots/),read_star 全位置断言 3 测试过(test_star3_positions)。⚠️ 教训存档:
-    # ①「停 bot 保画面」在备战不成立——备战有倒计时,到期自动出战推进(bot 停游戏不停),
-    #   M72 停机后游戏自己打完了 P2-9;此类需当场交互的采集,现场窗口=倒计时前,分小批+
-    #   批间验证落位;②事件 overlay(选择伙伴)盖棋盘时拖拽全部静默失败,批次必须验证;
-    # ③VLM 看不清星数(开商店帧误报"银狼3星"),定位 3 星用 read_star 全帧扫描。
 
     # ===== 容器直写(迁移批 3.2:原 _feed_board_state 喂入口与本函数合并,
     # 写语义逐位同;GameState 观察流接线,字段级规格正本 =

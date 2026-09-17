@@ -245,7 +245,7 @@ MECHANIC_COUNTERS: dict[str, list[str]] = {
     # 机制 tag → 它克制的 comp 机械属性
     "反伤": ["高频低单次"],        # 正当防卫:克高频低单次(反甲白厄式)
     "冻结": ["慢速", "战技点依赖"],  # 极速制冷/坠入陷阱/冷冻冬眠:克慢速 + 战技点消耗队
-    "净化": ["DoT", "减益"],       # 净化身心:克 DoT/减益主派(cw_events decide_event 消费,机制注册表单一源;原 config dot_punish_envs 已删)
+    "净化": ["DoT", "减益"],       # 净化身心:克 DoT/减益主派(cw_events decide_event 消费,机制注册表单一源)
     "掉血削上限": ["燃血"],        # 永久创伤:克燃血(掉血→减上限双损)⚠️ 燃血的反例 counter
     "治疗削弱": ["治疗护盾"],      # 重症难题:克治疗/护盾主坦队
     "幸运削弱": ["幸运一击"],      # 丢失幸运:克幸运一击/群攻(知更鸟)
@@ -259,10 +259,7 @@ MECHANIC_COUNTERS: dict[str, list[str]] = {
 MECHANIC_SYNERGIES: dict[str, list[str]] = {
     # 机制 tag → 它受利的 comp 机械属性(用户:debuff=buff)
     "反伤": ["燃血"],             # 正当防卫:反伤让燃血掉血 → 角斗场记录 → 伤害更高(万敌例,debuff=buff 典型)
-    # 「爆发机会→爆发速杀」行已删(ADR-0500):紧急止血词缀经三问分诊判死——十类 comp 体系
-    # 无「战斗内速杀」原型(Q1 无对应物)、判据需战斗时长数据源而注册表无此维度(Q2 不可判),
-    # 零携带死映射恒 0.5 空转;若未来 sim 侧建立战斗时长建模,可从观测数据重立。
-    # 观测对(ADR-0500,行保留不建模):词缀方向真实(高费 +5%/低费 -5%,V4.4),但 mechanics_fit
+    # 观测对(ADR-0500):词缀方向真实(高费 +5%/低费 -5%,V4.4),但 mechanics_fit
     # 最细步进 0.20 ≈ 20% 级战力差,±5% 差异打成 0.2 步进=离散 tag 系统性过反应 ×4,会把本该
     # 近中性的选型扰动成硬 flip。挂重审条件:①出现费用差异化幅度 ≥15% 的词条;②comp_score
     # 引入连续费用分布通道使粒度错配消失。届时阈值推导按「决策规则数学先行」补出处。
@@ -289,8 +286,8 @@ AFFIX_MECHANIC_MAP: dict[str, str] = {
     "丢失幸运": "幸运削弱",
     "忽快忽慢": "速度抑制",
     "变宝为废": "装备依赖",
-    "紧急止血": "爆发机会",   # 已判死保留注记(ADR-0500):下游 synergy 行已删,tag「爆发速杀」
-    # 无任何 comp 携带,此行映射后求交恒空=零行为;保留透传使未知词缀语义不丢,重立时只需回补行。
+    "紧急止血": "爆发机会",   # 保留透传(ADR-0500):tag「爆发速杀」无 comp 携带,
+    # 此行映射后求交恒空=零行为;重立时只需回补行。
     "高费审美": "高费审美", "低费审美": "低费审美",
     "形单影只": "成型羁绊利好",   # 未成型侧(-70% 落未激活羁绊方)未建模,见 MECHANIC_SYNERGIES 同 tag 注记
     # 属性熄火(7):对应属性我方伤害 1 点(4 次后解除),克纯色队
@@ -304,32 +301,19 @@ AFFIX_MECHANIC_MAP: dict[str, str] = {
     # 均匀影响,无 comp flip),不入表;实机 OCR 按需补
 }
 
-# (W875 环境B类评分补全包已随 w875 双旗标开关族删除——旧方案清退批,
-#  清查报告 OLD_MIX_AUDIT §1.3:W875_AFFIX_MECHANIC_MAP/COUNTERS/
-#  SYNERGIES 增表、_W875_TAG_FLAG 与 w875_active_tags 门控删除,
-#  merged_mechanic_tables 退化为基表直通(与全关零漂移行为一致)。
-#  死映射防线核查记录见 w872/w875 目录;其余词缀(区别对待/霸凌弱者/
-#  以人为本/挫其锋芒等)的 comp 侧建模挂账随包退役,复活须重新立项。)
-
-
 def merged_mechanic_tables(registry: DecisionV2Registry | None = None,
                            ) -> tuple[dict[str, str], dict[str, list[str]], dict[str, list[str]]]:
     """生效机制三元组(词缀映射/克制/受利)= 基表直通。
 
-    (原 W875 开关放行的合并拷贝路径已随开关族删除——旧方案清退批,
-    清查报告 OLD_MIX_AUDIT §1.3;保留本函数签名,消费点
-    mechanics_fit / current_enemy_mechanics / cw_events / cw_intention
-    调用零改。``registry`` 参数保留占位,不再参与取值。)
+    (保留本函数签名,消费点 mechanics_fit / current_enemy_mechanics /
+    cw_events / cw_intention 调用零改。``registry`` 参数保留占位,
+    不再参与取值。)
     """
     return AFFIX_MECHANIC_MAP, MECHANIC_COUNTERS, MECHANIC_SYNERGIES
 
-# ===== (原 W878 死 tag 复活 4 批已随 w878 四旗标开关族删除——旧方案
-# ===== 清退批,清查报告 OLD_MIX_AUDIT §1.3)=====
-# 复活包的开关门控(w878_active_tags/动态载体判据 is_mono_attribute_
-# comp/ATTRIBUTE_TYPE_FACTIONS/MONO_ATTRIBUTE_MIN_TIER)删除;四个 tag
-# (单属性队/成型羁绊队/慢速/依赖合成装备)按删除前默认关口径**永久
-# 滤除**出评分求交——零漂移;comp 静态标注与基表行保留(结构锁口径:
-# 携带词汇表不动,只不参与评分)。
+# ===== W878 退役 tag 永久滤除(评分求交侧)=====
+# 四个 tag(单属性队/成型羁绊队/慢速/依赖合成装备)不入评分求交;
+# comp 静态标注与基表行保留(结构锁口径:携带词汇表不动,只不参与评分)。
 _W878_RETIRED_TAGS: frozenset[str] = frozenset({
     "单属性队", "成型羁绊队", "慢速", "依赖合成装备"})
 
@@ -338,8 +322,6 @@ def effective_mechanic_attributes(comp: Comp,
                                   registry: DecisionV2Registry | None = None) -> list[str]:
     """comp 生效机械属性 = 原属性 − 退役 W878 tag(单一滤除口;mechanics_fit 消费)。
 
-    (原开关门控滤除已改为无条件滤除——W878 复活包随旧方案清退批删除,
-    清查报告 OLD_MIX_AUDIT §1.3;与删除前默认关行为逐位一致。)
     返回值约定(w922 审计 P3):**调用方不可变**——快速路径零分配,直接透传 comp 内部
     list,仅触发滤除时才返回新 list;消费点一律只读,禁原地改写返回值。
     """
@@ -371,13 +353,6 @@ STRONG_ENV_MECHS: dict[str, frozenset[str]] = {
 # (docs/game/currency_war/data/competitors.md:45,2026-08-28 游戏内实采)。
 RUST_AFFIX_NAME: str = '库藏生锈'
 
-
-# ===== 中期护航三套——已删除(清退评估批,2026-09) =====
-# EscortComp/ESCORT_COMPS/escort_for(含「成长型不护航」GROWTH_MECHANICS,
-# 仅 escort_for 消费,同链死亡)整段移除:生产消费点早已清零,清查报告
-# OLD_MIX_AUDIT §7.2 裁定随先例(M6 费用档星目标)删除;测试词汇对照
-# (test_cw_affix_megastar serves 对照 / test_cw_decisions escort_for 单测)
-# 同批删除。本注释仅为防复活的墓碑指针。
 
 # ENV_FACTION_MAP 从投资环境注册表派生(单一真相源:概念股/邀请的 faction 字段;改注册表自动传导)
 ENV_FACTION_MAP: dict[str, list[str]] = {
@@ -2352,9 +2327,7 @@ def target_committed(target: Comp, gs: GameState) -> bool:
 # pivot 冷却(防过度换线):换线漂移会让 P1 后段板面永远半成型——
 # 每次 pivot 把已买核心推倒重买,板面强度清半程;A8 敌强度随轮涨 → 换线窗口=最弱时撞最强怪。
 # 转线后 cooldown 轮内信号 1/2 不再触发(信号 3 保命豁免——危机永远允许转)。
-# 冷却状态宿主 StrategySession.pivot_cooldown_until 已随 default 栈退役删除
-# (唯一写端=default 栈战略层,已随 ADR-0583 出基类);maybe_pivot 挂账层的冷却守卫随之惰性化
-# (session 冷却字段不再存在,守卫恒不触发)。
+# 冷却守卫现状:session 冷却字段不存在,maybe_pivot 挂账层的冷却守卫恒不触发。
 # 保命 pivot 也设冷却(1 轮/次,弱于信号1/2 的 3 轮,审计 cc119c14):危机允许转,
 # 但「信号3→转线→板面清零→更弱→又信号3」的连续翻转自激会被冷却掐断
 # (否则板面 14 阵营各×1 永不成型)。保命优先级仍最高(hp 危险时信号1/2 不参与),

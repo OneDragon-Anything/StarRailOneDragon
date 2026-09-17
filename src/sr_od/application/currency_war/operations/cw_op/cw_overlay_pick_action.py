@@ -123,8 +123,7 @@ class SupplyPickOp(ActionOp):
             register_confirm_arrival(match.session, 'ConfirmSupply',
                                      picked['equip'],
                                      produced_by='CwScreenSupplyNode')
-        # (选卡确认后合成 decisions 快照行已随 decisions 流写入端退役删除
-        #  ——删除波 1;选定事实现役归宿 = journal chosen 域 + 到账登记。)
+        # 选定事实现役归宿 = journal chosen 域 + 到账登记。
         return True
 
 
@@ -146,10 +145,10 @@ class MegastarPickOp(ActionOp):
         op.ctx.controller.mouse_move(confirm)
         op.ctx.controller.click(confirm)
         time.sleep(0.9)
-        # 确认 = 纯机械单发(用户裁定 2026-09-14:step2 安全网拆除)。原
-        # 「判『请选择强化角色』还在 → 再 confirm」检测分支已删:该文本 =
-        # 确认钮旁伴随文案(建档证据更正 2026-09-14,巨星调研已证同款误读,
-        # 非第二画面步骤),旧检测系对它的误读。确认未落地 overlay 残留 =
+        # 确认 = 纯机械单发(用户裁定 2026-09-14:step2 安全网拆除)。
+        # 「请选择强化角色」文本 = 确认钮旁伴随文案(建档证据更正
+        # 2026-09-14,巨星调研已证同款误读,非第二画面步骤),禁据它判步。
+        # 确认未落地 overlay 残留 =
         # 下一帧重入裁决自愈:节点循环读「仍在巨星 overlay?」(标识锚仍
         # 命中)→ 重走本方法 → 候选已选 → 机械单发确认再推进
         # (计 node_max_retry_times 预算)。
@@ -221,8 +220,7 @@ class PlannerPickOp(ActionOp):
         time.sleep(1.2)   # 等选中动画
         # 点卡 = 机械单发(用户裁定 2026-09-14:详情面板检测拆;用户定性
         # = 详情弹出 = 点错所致,该面归选中点几何治理,面板检测是症状侧
-        # 补丁)。原「判『属性详情』面板 → 点 × 关闭 + retry」分支已删;
-        # 面板若真弹出,后果归下一帧重入:本屏分发即门,外循环按当前画面
+        # 补丁)。面板若真弹出,后果归下一帧重入:本屏分发即门,外循环按当前画面
         # 重分派(详情 overlay 族分支/本 op 重走链)自愈。
         # 4. 点确认+机械交回(r326/P1⑦ 防线语义由重入裁决+预算耗尽 bail
         # 承接,验关半拆除——用户裁定 2026-09-10:动作 op 禁验证)。

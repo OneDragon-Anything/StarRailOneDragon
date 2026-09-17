@@ -408,9 +408,8 @@ class CwScreenInvestEnv(CwScreenOpBase):
                              f'({_portal.category.value})')
             except Exception as e:   # noqa: BLE001  登记面失败不阻塞
                 log.warning(f'[cw-env] portal 效果账本登记失败(不阻塞): {e}')
-        # (ADR-0132 候选卡面采集行已随 invest_cards 流写入端退役删除——
-        #  删除波 1;效果原文回流断供为裁定的接受后果,收编归宿 =
-        #  strategy_offer 画面 payload 域,候其落地批接线。)
+        # 效果原文回流断供为裁定的接受后果,收编归宿 =
+        # strategy_offer 画面 payload 域,候其落地批接线。
 
         # 点最优卡底(task#20:Y 从 screen_info「区域-卡牌描述行」center 读;缺失兜底 CARD_CLICK_Y)。
         # safe_click 带 bug#1 mouse_move 缓解(partner reset 根因同类)。

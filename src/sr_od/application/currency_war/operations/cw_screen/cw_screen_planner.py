@@ -216,7 +216,6 @@ class CwScreenPlanner(CwScreenOpBase):
         log.info('[cw][planner] 策划决策:%s → %s卡(%s)',
                  pick.reason, '左' if pick.idx == 0 else '右',
                  options[pick.idx].text[:24])
-        # (planner 左右卡存证行已随 exogenous 流写入端退役删除——删除波 1。)
         # 点卡选中 → 确认链经工厂(统一动作工厂批4:体迁
         # ``cw_overlay_pick_action.PlannerPickOp``,方法级替身缝保留);
         # 决策半(重入裁决/OCR/策略选卡/存证)留守上方,派发实例 =

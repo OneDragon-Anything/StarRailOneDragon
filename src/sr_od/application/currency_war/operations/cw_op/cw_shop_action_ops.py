@@ -205,7 +205,7 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
 
 
 def bench_layout_stale(session, seed_epoch: int) -> bool:
-    """S3 布局代次检差(T-271 fail-stop 形态;原 reseed 三步封装收缩)。
+    """S3 布局代次检差(T-271 fail-stop 形态)。
 
     检差:容器簿记布局代次(GameState.exec_books.bench_layout_epoch,唯一
     写点 kernel/cw_reconcile)vs 播种期快照——命中 = visit 内布局已重排,
@@ -216,8 +216,7 @@ def bench_layout_stale(session, seed_epoch: int) -> bool:
     reconcile 锚定后再进店。禁店内按执行侧簿记重播种容器 bench——那是
     op 层第二条容器 bench 写口,违写口归属硬规则(对账与仲裁唯一发生
     在观察边界,flow/screen_op.md §4 + action-logic-state.md §1.3);
-    原 ``_reseed_bench_layout``/``reseed_bench_if_layout_stale`` 随该
-    裁定删除,其槽号健康门留证职责由 reconcile 前置槽号健康门承接。
+    槽号健康门留证职责由 reconcile 前置槽号健康门承接。
 
     Returns:
         True = 布局代次已漂移(调用方 fail-stop 本段收工);

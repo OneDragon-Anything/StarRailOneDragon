@@ -113,9 +113,6 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.currency_war_config import (
-        CurrencyWarConfig,
-    )
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
@@ -1506,7 +1503,6 @@ class CwScreenPrep(CwScreenOpBase):
         #      错卖类不可逆损害窗口的收窄手段 = 执行侧
         #      tracked 账随动,同商店线双账口径。
         self._v2_post_frame_accounting(obs, session)
-        # —— 决策前置:~~席满破墙(M16)~~ 已随 read_bench_full 通道退役
         #      (迁移批次二,设计 §3.2.5:警告出现太短暂无法可靠采样,玩家
         #      裁定 2026-09-09;「双证据互督」随字段裁撤一并取消)。模态
         #      恢复路径改由三既有防线承接:①部署放行判定(ADR-0596 前置谓词:
@@ -1945,22 +1941,6 @@ class CwScreenPrep(CwScreenOpBase):
             session.briefing_affixes = _affixes
             log.info('[cw][director] 词缀补采(位面详情横条随采,简报未供时):%s', _affixes)
         return self.round_success('接管补采执行,交回外循环重识别', wait=1.0)
-
-    def _bench_full_break_round(self, match: CurrencyWarMatch,
-                                session: StrategySession,
-                                obs: PrepObservation,
-                                config: CurrencyWarConfig
-                                ) -> OperationRoundResult | None:
-        """~~已退役~~(迁移批次二,设计 §3.2.5):M16 席满破墙的触发通道
-        read_bench_full(警告 OCR)已裁撤——警告出现太短暂无法可靠采样
-        (玩家裁定 2026-09-09);派生席满≠模态在场(持 9 席是合法运营态,
-        按席满主动腾席会打穿策略持仓),本探测**不复活**。模态恢复路径 =
-        部署放行判定(ADR-0596 前置谓词)+ 环入口清场(_clear_entry_overlays)
-        + 外循环无进展守卫。方法体保留为墓碑:调用即断言失败。"""
-        raise RuntimeError(
-            '_bench_full_break_round 已退役(read_bench_full 通道裁撤,'
-            '设计 §3.2.5/迁移批次二);席满判定用 '
-            'kernel.cw_game_state.bench_is_full,破墙探测不复活')
 
     def _clear_entry_overlays(self) -> None:
         """P0 清场前置段(规范入口序列「先清场、再识别、后动作」;ADR-0462):

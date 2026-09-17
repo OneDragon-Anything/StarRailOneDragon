@@ -32,8 +32,7 @@ class LevelUpOp(ActionOp):
         # 单击「购买经验」= +XP_PER_BUY 经验(4金/击,游戏文档 xp-rules.md
         # §2),**非整级**——升级是 XP 累积过门槛表的结果,真实等级变化以
         # 读屏为准;本计数只数「买经验击数」。
-        # (血购执行回执行挂点已随 exogenous 流写入端退役删除——删除波 1;
-        #  血本位单点击扣血的机械事实面不变。)
+        # 血本位单点击扣血的机械事实面不变。
         ledger.total_xp_buy += 1
         ledger.spend_executed += action.cost
         return True

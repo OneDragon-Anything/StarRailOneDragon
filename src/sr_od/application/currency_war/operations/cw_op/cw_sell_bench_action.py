@@ -33,8 +33,7 @@ class SellBenchOp(ActionOp):
         _expected = (_slots[action.bench_idx]
                      if 0 <= action.bench_idx < len(_slots) else None)
         _expected_name = (_expected.char_id if _expected is not None else None)
-        # (卖出前 gold 基数读数 _gold_before 已随 sell_income 外生行退役删除
-        #  ——删除波 1;卖牌实收回金 = 收入账 total_sell_income(计划值)。)
+        # 卖牌实收回金 = 收入账 total_sell_income(计划值)。
         from sr_od.application.currency_war.prep_actions import (
             drag_bench_to_sell,
         )

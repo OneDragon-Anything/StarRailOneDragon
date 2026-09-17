@@ -167,7 +167,6 @@ class CwScreenWishTrial(CwScreenOpBase):
             except Exception as e:   # noqa: BLE001  策略失败 fallback 第1张
                 log.warning('[cw-wish] 策略决策异常(fallback 第1张): %s', e)
         log.info('[cw-wish] 祈愿决策: %s → 点 (%s,%s)', pick_desc, target.x, target.y)
-        # (wish_trial objective 存证行已随 exogenous 流写入端退役删除——删除波 1。)
         # 点卡选中(bug#1 缓解:mouse_move 先,零移动落 click,防 before_screenshot 移光标)。
         self.ctx.controller.mouse_move(target)
         self.ctx.controller.click(target)

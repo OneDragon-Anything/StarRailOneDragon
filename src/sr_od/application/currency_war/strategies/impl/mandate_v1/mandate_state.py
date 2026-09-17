@@ -22,7 +22,7 @@ one_dragon 零 import 本类。
   abandon_phase``/``cw4_wanted_reopens`` 同族裁决态);
 - **刷新推论** → ``v3_dir_refresh_used``/``v2_round_refreshes`` 等刷新
   计数与推论面;
-- **S3 升级检查不立变量**(ADR-0596 墓碑测试在册)——升级检查 = 期望态
+- **S3 升级检查不立变量**——升级检查 = 期望态
   新鲜度派生,非存储旗标,本类禁新增对应字段。
 
 职责来源裁定(用户 2026-09-06,session.md 头注):session 只承载「从游戏
@@ -32,20 +32,7 @@ one_dragon 零 import 本类。
 创建实例、写入 ``session.strategy_state``,此后**框架只搬运引用,不读
 不写其内部**(黑盒契约);类型定义、字段、更新语义全部在本实现包。
 
-迁移账本(session.md §2.3 28 项 + §2.6 24 项 = 52 具名字段;外加实施批
-实装时按 §6.1「账外字段一律视为范围遗漏」收编的两波策略侧动态属性
-共 20 个——第一波 9 个:cw4_shop_rejects/cw4_line_state/cw4_m1p_seam_
-verified/drought_excluded/cw4_cap_override(后经 ADR-0598 死链处置
-删字段,见类体墓碑注)/v3_reserve_overflow/
-v3_release_budget/v3_release_reason/v3_piggy_reward;第二波 11 个:
-cw4_fuel_filler_stall_buys/cw4_m1p_arm_pending/
-cw4_must_spend_phase/cw4_pop_slot_why/cw4_prev_line_name/
-cw4_recent_sold_names/cw4_shopped_phase/cw4_stale_seen_rounds/
-cw4_visit_bought_names。(cw4_m7_equipped_phase/cw4_tools_phase 已随组合壳删除退役,unified-action-factory 批2b),逐波归类理由见
-ADR-0563「落位裁量」节账外清单;批 3 并账申报(ADR-0585):第二波
-中的 cw4_dead_gold_bought_names(②(b) 压库登记集)已并入
-cw4_fuel_filler_stall_buys 统一发射登记簿,字段退役删除。原
-``session.memory`` scratch dict 按设计 §6.3 随切换直接消解:一次性键落
+原 ``session.memory`` scratch dict 按设计 §6.3 随切换直接消解:一次性键落
 本类的 ``scratch`` dict(纪律条款原样平移:键名加模块前缀、局级生命
 周期、不入 decisions 遥测;高频共用/需类型与守卫的状态升本类具名字段)。
 
@@ -102,21 +89,13 @@ class StrategyState:
     # flex 收敛白名单(已铺 flex top2)。
     focus_factions: set[str] = field(default_factory=set)
 
-    # ===== 遥测披露缓存(选线轮评分;轮;T-113/ADR-0579:_telemetry_ 前缀 =
-    # 披露面自带隔离,禁决策消费——现势:src 侧无写点/读点,字段 =
-    # 披露面残余载体,恢复消费须先重建披露写端)=====
-    _telemetry_last_candidate_scores: dict[str, float] = field(default_factory=dict)
-    _telemetry_last_candidate_scores_round: int = -1   # 分数轮次戳
-
     # ===== 相位面(v2 决策层相位元组;A2 改判迁出——活读端 =
     # cw_op_buy_cards decisions 行,活写端 = sim 初始相位注入)=====
     v2_state: tuple | None = None
     locked_line: str | None = None                     # 锁定线 id(None=未锁)
     bridge_id: str | None = None                       # 当前桥线 id(None=无)
 
-    # ===== 意向(v3 决策框架载体;局/轮;原演进/纪律字段族已随 T-64 退役批
-    # 删除——v3_evolution/v3_alarm/v3_pending_rollback/v3_prev_hp 均零行为
-    # 死链,04_survival_budget §7 #7/#8,ADR-0638)=====
+    # ===== 意向(v3 决策框架载体;局/轮)=====
     v3_intention: object = None      # cw_intention.IntentionState(锁线/撤销状态机)
     v3_core_names: set = field(default_factory=set)   # 意向核心名集
     v3_mode: str = 'economy'         # 本轮模式('economy'|'war';纪律族每轮写)
@@ -137,14 +116,13 @@ class StrategyState:
     # ===== 策略行为观测分键(单一容器;策略 state=决策行 strategy-state
     # 载体,retirement.md §3 键收编定谳:全部键=策略行为键零效果域键,
     # 键全集登记底稿 = 逐键审计 256 字面+16 闭族+9 开放族)=====
-    # 局终可见性:旧 jsonl 计数流已随 R5 W4 流删退役(r5-migration-plan.md §2 W4),
     # 局终级全键聚合 = 局终域行载荷 MatchFinal.cw4_counters(cw_loop 两
     # 收口点现读快照);sim 轮差分账本/A/B 披露照旧读本容器,不经流。
     cw4_counters: dict = field(default_factory=dict)
 
     # ===== 相位与镜像(每轮重算;write_shop_mirrors 写)=====
     # 相位观测缺省 = ''(absence 语义;live 初值 'FORM' 由 create_session
-    # 唯一冷建口写入——ADR-0583 生命周期收编,原 on_match_start 写点已删;
+    # 唯一冷建口写入——ADR-0583 生命周期收编;
     # sim 直构 session 不经冷建口 → 恒 '',两条路径的旧读数各自保真)。
     v3_phase: str = ''
     v3_form_ok: bool = False         # 镜像现读写端(write_shop_mirrors/sim 发射帧)
@@ -210,11 +188,10 @@ class StrategyState:
     # 当前 (plane, round) ⇒ v3_release_spent/v3_release_reason 清零并
     # 盖新戳。不复用 v3_release_round(W332b 泄息指令旧轮语义)。
     v3_disclosure_key: tuple[int, int] | None = None
-    # ADR-0348 ↺ 扑满节点识别标记(T-115 复活为真写点,ADR-0580):写者
+    # ADR-0348 ↺ 扑满节点识别标记(ADR-0580):写者
     # = mandate_v1 奖励帧判定位(shop/mandate 两栈同值幂等写,值源 =
     # kernel.cw_reward_node.is_piggy_reward_frame);读面 = engine 轮快照
-    # /telemetry schema piggy_reward(恢复真值)。历史:ADR-0348 本体已
-    # 随 decision_v2 删除,本字段曾为恒 False 死值(写者已死)。
+    # /telemetry schema piggy_reward。
     v3_piggy_reward: bool = False
     # 商店拒因遥测(shop.py 逐帧刷新;期望态即逻辑态后真值)。
     cw4_shop_rejects: dict = field(default_factory=dict)
@@ -224,11 +201,8 @@ class StrategyState:
     cw4_m1p_seam_verified: bool = False
     # 换线排除集(cw4 换线判据族读;proof/line_switch 消费)。
     drought_excluded: set = field(default_factory=set)
-    # (``cw4_cap_override`` 字段已删(ADR-0598 息帽死链处置):全仓零
-    #  生产写点的死链读点——覆写单一源 = session.active_strategies 经
-    #  aggregate_economy 聚合(kernel cw_economy.cap_resolved_of_session
-    #  消费)。保留字段 = 两源并存复发面,故删码;语义与决策史见
-    #  docs/develop/sr_od/application/currency_war/decisions/0598。)
+    # 息帽覆写单一源 = session.active_strategies 经 aggregate_economy
+    # 聚合(cw_economy.cap_resolved_of_session 消费;ADR-0598)。
 
     # ===== M2 停摆续段缓存(T-82 必花臂重试风暴;段标识/结论闩/帧动作
     # token 三载体;为什么需要 = 商店/备战帧循环对「输入不变 ⇒ 拒绝不变」
@@ -249,12 +223,10 @@ class StrategyState:
     cw4_m2_stall_latch: tuple[bool, int] | None = None
     # 帧动作记录 token(载体单一源):None=无记录。写入端=动作执行/逻辑态直写
     # 层确认已执行后写 (动作型名 type().__name__, 当前段序号),物理写入
-    # 位四处:①生产商店循环(cw_op_buy_cards.run_buy_waves 执行位);
+    # 位三处:①生产商店循环(cw_op_buy_cards.run_buy_waves 执行位);
     # ②sim-replay 驱动器(bridge.decide_shop_screen 逻辑态直写位);③生产 prep
-    # 循环主环(cw_screen_prep 决策循环 OpenShop/执行器分支合流执行位);
-    # ④同文件备战席满破墙段执行位(_bench_full_break_round;破墙动作多为
-    # SellBench/DeployMove ∉ 备战白名单恒不命中——登记防未来白名单扩集
-    # 后此处成无人知晓的命中输入面)。调用方申报:备战期开店循环
+    # 循环主环(cw_screen_prep 决策循环 OpenShop/执行器分支合流执行位)。
+    # 调用方申报:备战期开店循环
     #(cw_screen_prep 开店分支逐动作调 decide_shop_action)无 token 写入
     # 无段序号置位 ⇒ 域内缓存恒不命中(保守端=现行为,读清单点覆盖
     # 无伪命中),收益面窄化,不接线。读清协议 = decide_shop_action 入口

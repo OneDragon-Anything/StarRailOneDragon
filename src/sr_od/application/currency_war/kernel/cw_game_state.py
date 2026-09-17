@@ -43,8 +43,7 @@ bench 槽位保序映射——记录模型按实机真值箱占席(§3.2.5),不�
 
 **统一 state 遥测升级(R5 W1 常开化后形态)**:写入 API 全部带**必填**渠道签名
 (:class:`ChannelSig`,渠道族封闭集 obs/logic_action/logic_hook + 字段级
-质量元数据;R1 影子期的「缺位合成 legacy 签名」过渡路径已随直迁裁定退役——
-R5 迁移规划 W1/ADR-0634,集内无空 actor 行);:attr:`GameState.write_seq`
+质量元数据;R5 迁移规划 W1/ADR-0634,集内无空 actor 行);:attr:`GameState.write_seq`
 升格为**版本 id**(每次写入单调分配,不重不漏,:meth:`GameState.current_version`
 读口);每次写入落一行**自足状态流水**(行 = 改了什么 + 渠道签名 + 版本 id +
 写入后完整 state 快照,行行自足查询直接读——无快照锚/无对账自检/无前溯推导,
@@ -768,7 +767,7 @@ class MatchFinal:
     # 现读;写口落载荷时浅拷贝一份(本结构不持有容器引用,后写不串)。
     # None = 无策略载体/历史段补写无源(诚实缺省,判读按「无计数载体」
     # 分型);空 dict = 局内真实零计数——两型可辨,沿旧流装配语义
-    # (match_archive v7 顶层字段同一分型契约,该流面已随 W4 退役)。
+    # (match_archive v7 顶层字段同一分型契约)。
     # 旧档案局终行缺本键 = W4 前数据,按缺键读。
 
 
@@ -1469,7 +1468,6 @@ def archive_snapshot(gs: GameState) -> dict:
       无注记的字段 = 「本帧真读」语义,键面留白;
     - gs_extra = 工程结构(schema 版本/域版本/心跳/效果账本规模)+
       全部非 None 字段值(JSON 安全形态,供离线判读)。
-      (gs_pending 挂起预期摘要已随两态制废除退役——ADR-0651。)
 
     返回 dict 直接入档(由局终装配器并档);序列化失败逐字段跳过
     (归档 best-effort,不阻塞局终流转)。
@@ -1611,7 +1609,7 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #: 逻辑态公式语义源锁的登记面(设计件 §4-M5:直写域集/None 跳写清单/
 #: executed 回执字段集/支持动作集随本锁登记;未登记写点 = 缺陷,禁扩静默):
 #: - **域集封闭**(gold / bench / shop payload / xp 四域;CloseShop 的
-#:   leave_screen 与 reseed 的 bench write_logic 为同域通道形态);
+#:   leave_screen 为同域通道形态);
 #: - **支持动作集** = BuyCard / SellBench / LevelUpShop(is-a LevelUp) /
 #:   RefreshShop / CloseShop(商店单动作循环在产动作面;fields.md §4.2
 #:   逐 op 行;SellDeployed/DeployMove 不写逻辑态——等观察
@@ -1625,7 +1623,7 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #: 原「禁扩静默」条款由本表承接):
 #: - 支持动作集扩:v2 动作族 SellDeployed / SwapDeploy
 #:   (语义源 = simulate 对应分支逐腿平移,直锁 test_cw_transfer_golden
-#:   钉住;CompTransaction 腿已随 unified-action-factory 批2b R3 删除);
+#:   钉住);
 #:   DeployMove 不入(围栏部署 = 结算期代理,obs 通道申报对齐);
 #: - 域集扩:front_row / back_row(v2 腿与合成连锁全场域写回,deployed
 #:   域语义)、board(v2 腿重算派生)、equips(卖出回收腿);
@@ -1651,7 +1649,7 @@ class LogicOutcome:
     - bought_count = BuyCard 实际应用张数的权威回声(两路径恒填充:
       executed 回执给定 or 函数自算;k 与金账扣减、payload 移除同源)。
     - income = SellDeployed 卖出回金;fill_cost 字段保留为出参契约位
-      (原 CompTransaction 事务汇总来源已随 R3 删除,现役恒 None)。
+      (现役恒 None)。
     """
 
     applied: bool
@@ -3053,7 +3051,7 @@ class GameState:
         """写入后完整 state 快照(§3.2.3 自足行的行内 state;JSON 安全化 +
         序列化规范化——effects 按 spec id 排序,同态同形)。含 values(非 None
         字段值)/ prov(非默认来源注记)/ effects(就地可变域整窗)/ 工程结构。
-        (pending_expected 挂起预期摘要键已随两态制废除退役——ADR-0651。)"""
+"""
         values: dict[str, object] = {}
         prov: dict[str, dict] = {}
         for f in dataclasses.fields(self):
@@ -3981,16 +3979,14 @@ def feed_sim_truth(gs: GameState, st: CwSimFrame, *,
 
     生产写入 = **引擎直写**(sim 引擎内部工作态即 session 容器,经渠道签名
     写入口落字,消费端一律经 ``game_state_of(session)`` 直读容器——禁再造
-    桥装箱一次性视图);本口的现役消费面 = 离线/测试构造(生产引擎零调用,
-    喂入反转的旧生产路径已随引擎切容器收敛)。
+    桥装箱一次性视图);本口的现役消费面 = 离线/测试构造(生产引擎零调用)。
     写入实现 = :func:`synthesize_from_game_state`(域覆盖/evidence/
     payload 离屏口径单一源,本口零第二实现)。
 
     - best-effort:记录层故障不毒化 sim(与 note_action_receipt 同纪律),
       异常 log 留痕后返回,容器保持上一拍帧;
-    - 全仓零一次性帧装箱视图(过渡桥已随登记集清零物理删除):
-      sim 真值入容器唯一写端 = 本口,消费端一律 :func:`game_state_of`
-      直读——墓碑门 = test_cw_w5_sim_retirement 桥零字样扫描。
+    - sim 真值入容器唯一写端 = 本口,消费端一律 :func:`game_state_of`
+      直读。
     """
     try:
         synthesize_from_game_state(gs, st, at_round=at_round,
@@ -4217,7 +4213,7 @@ def max_units_of(gs: GameState) -> int:
 def scalar_projection_state(gold: int, level: int, hp: int, plane: int,
                             round_num: int,
                             strategies: list[str] | None = None) -> GameState:
-    """无 session 标量投影容器(一次性视图;766 标量投影缝的退役替代装配)。
+    """无 session 标量投影容器(一次性视图)。
 
     服务「只有标量、无 session/无现成容器」的调用面。现役唯一消费 =
     ``cw_economy.get_node_goal`` 全参支。语义契约:
@@ -4225,7 +4221,7 @@ def scalar_projection_state(gold: int, level: int, hp: int, plane: int,
     - **ADR-0598 结构性豁免不扩修**:投影判据链以 session=None 求值 →
       息帽 resolved 链恒 base 口径、节点日程走缺表回退先验——契约不变,
       扩修挂该调用面的 session 通道批;
-    - **字段契约自辖于本 docstring**(历史差分等价锁已随过渡桥删除退役):
+    - **字段契约自辖于本 docstring**:
       node = NodeKey(plane, round_num, kind='')(帧未
       识别的忠实镜像,禁写词表值冒充真值);gold/level/hp 观察直写;
       back_layout = 机制基线 6(旧帧 back_max 缺省);bench = 全空视图

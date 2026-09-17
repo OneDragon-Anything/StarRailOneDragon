@@ -27,14 +27,13 @@ def r0_stop(no_qualifying_set: bool, budget_exhausted: bool) -> bool:
 
 
 def r1_start(ev_positive: bool | None) -> tuple[bool, str]:
-    """付费刷新发射位(r1)。EV 正性判据输入 None(V̄ 封印/未标定)
+    """付费刷新发射位(r1)。EV 正性判据输入 None(未标定)
     ⇒ 不刷(fail-closed)。
 
-    墓碑纪律标注:生产消费者已随 V̄ 链退役——R1 启动门
-    现行判据 = ``r1_commitment_account`` 路径总账(装配在 shop.py),
-    本函数零调用面。保留 = 四函数位完备集(r0_stop/r1_start/r2_budget/
-    crisis_refresh_invariant,R10-3 缺行封死),禁按旧 EV 正性语义
-    复活接线(旧 V̄_net 比较项属已退役的胜率建模链)。
+    R1 启动门现行判据 = ``r1_commitment_account`` 路径总账
+    (装配在 shop.py),本函数零调用面。保留 = 四函数位完备集
+    (r0_stop/r1_start/r2_budget/crisis_refresh_invariant,R10-3
+    缺行封死),禁按旧 EV 正性语义复活接线。
     """
     if ev_positive is None:
         return False, 'ev_unavailable'
@@ -49,8 +48,7 @@ def r1_commitment_account(total_ledger: float, budget: int) -> tuple[bool, str]:
     = 10×cap_resolved)。装配侧(shop.py)算总账并选 L*(形式二等级
     选择输出:留级账 T_stay vs 升一级账 T_up 取小,升级账含 U_L 及其
     息损);本函数只做比较。输入全为游戏定义量(REFRESH_PROB 池参数/
-    XP 表/息律),零胜率建模(用户裁定 2026-09-04;旧 V̄_net 比较项
-    已随 V̄ 链退役,statefn/vbar 墓碑)。
+    XP 表/息律),零胜率建模(用户裁定 2026-09-04)。
 
     边界:``total_ledger`` 非有限(无可追成员:E=∅ 或该级不出此费)
     ⇒ 不启动——P40 R0-1「合格集空 ⇒ EV 恒负」的刷新侧特例;

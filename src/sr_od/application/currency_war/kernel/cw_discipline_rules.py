@@ -170,10 +170,7 @@ def hp_decision_trusted(frame: GameState) -> bool:
 
     - 委托 ``cw_hp_policy.hp_decision_trusted_of``(定谳二单一源:
       ``gs.hp.source in ('observation', 'carried')``,语义见该函数
-      docstring);
-    - (CwSimFrame 帧兼容支已随 last_state 链退役批删除——申报面 =
-      kernel/cw_intention.py ``committed_authority`` 形态注,指针兑现;
-      旧双位读法 ``hp_readable or hp_trusted`` 随旧链消亡,禁再喂旧帧。)
+      docstring)。
 
     同模块(及跨模块引用点)禁再手写双位判定(W393 A1.1 单一源纪律):
     语义=ADR-0282 对账层「沿用真值帧放行 vs 兜底假值帧拒」(ADR-0428
@@ -384,6 +381,3 @@ def p2_crisis_band(gs: GameState, session: StrategySession | None,
             and hp <= p2_crisis_stop_hp(registry))
 
 
-# BloodAlarmTracker(掉血三臂跨步记忆)已删除(退役裁定 04_survival_budget
-# §7 #8:三臂零决策消费端 = write-only 死链;ADR-0638)。若未来需要掉血
-# 趋势信号,按 #8 裁决走 λ_death 概率侧新立项,禁原地复活本类。

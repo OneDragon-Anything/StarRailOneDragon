@@ -83,10 +83,8 @@ def tier_search_window(level: int, omega: float | None = None) -> frozenset[int]
     ⟺ refresh_prob(level,c) ≥ ω×refresh_prob(峰值级(c),c)——等级现读
     REFRESH_PROB,峰值级 = cw_plane_table.peak_refresh_level 查表 argmax,
     ω 见 ``_collapse_window_threshold``。全游戏定义量(概率表 + 峰值查表
-    + 注册表 ω 字段),零胜率/零标定带数值。旧 V̄ 门式(p ≥ c_eff/V̄,
-    P57 双读法参数化)已随 V̄ 链退役(statefn/vbar 墓碑),
-    读法分歧问题随之消解;对拍锚(calib_v2_analysis.json 的 V̄=24.7 全表)
-    同批作废。空集语义 = 该级全部费档塌缩(真无窗口帧,非门控)。
+    + 注册表 ω 字段),零胜率/零标定带数值。
+    空集语义 = 该级全部费档塌缩(真无窗口帧,非门控)。
     """
     thr = _collapse_window_threshold(omega)
     out: set[int] = set()

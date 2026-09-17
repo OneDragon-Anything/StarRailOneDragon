@@ -9,7 +9,6 @@ reconcile 对账;终裁:执行回执 ``(progressed, detail)`` 退役,
 - 执行前输入契约拒绝(球/箱/按钮等目标不在,执行前观察,M6 边界面)→
   本动作未发出,机械交回外循环重观察重决策;
 - 执行异常 → 异常上抛(Director 上抛 = 本环 fail,外层 op retry 接管)。
-原第三路径「验证失败 → progressed=False」随验证拆除退役。
 
 slot 语义(unified-action-factory 批2b 归一后):席位域动作(SellBench/
 SellDeployed/DeployMove)携**容器槽位表下标**(0 基,词表单一源 =
@@ -19,9 +18,6 @@ kernel/cw_vocab,坐标系裁定见其模块头);本执行器 = **执行坐标边
 机械动作(WearEquip/工具原子类/OpenBox/OpenTome/OpenBookcard)的
 row/slot 字段 = 画面物理排槽位 1 基(动作参数定义,拖点直取 area,
 不经换算)。
-组合动作形态已随统一词表删除(R2:RunDeploy/RunEquip/RunTools 退役,
-部署/穿戴/工具 = 决策核逐帧原子发射;CwScreenDeploy 为独立部署画面 op,
-非词表成员——其 0j 前台无角色恢复链直调消费面已随出战域重设计退役)。
 统一动作工厂批3 收编(design.md unified-action-factory §2.4):动作级
 机械执行体已逐字迁入 ``operations/cw_op/`` 备战 op 类(一 op 一文件),
 分派改查单一注册表 ``action_op_for``(_dispatch_action);本模块保留
@@ -177,22 +173,15 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> None:
     DragCwChar.drag_char(op, pts[bench_idx], sell_point(ctx))
 
 
-# (血购回执行挂点已随 exogenous 流写入端退役删除——删除波 1;
-#  血本位消费事实的现役证据 = 注册表建模期望账(blood_xp_mode)与结算域
-#  观察链,装配端 hp_pay_defects 对账面随流冻结。)
-
-
-# (装备穿戴计划构造已迁 kernel/cw_equip_wear_plan(R2 原子通路);原
-# 「本模块 import 供执行位 _run_equip 薄派发消费」随组合壳 RunEquip 删除
-# 退役——发射位(mandate M7)直接消费同一构造函数,无第二源。)
+# (装备穿戴计划构造单一源 = kernel/cw_equip_wear_plan(R2 原子通路);
+#  发射位(mandate M7)直接消费同一构造函数,无第二源。)
 
 
 def _expose_unhealthy_tracked_slots(tracked: list[BenchChar | None]) -> None:
     """tracked 写点槽号健康显影(占用槽号重复/越界 → 缺陷台账;best-effort)。
 
-    判据单一源 = kernel ``bench_slots_healthy``;台账行型与 reseed 健康门
-    同 kind(cw_shop_action_ops._reseed_bench_layout),reader_source 分键
-    = 写点 fail-fast 显影,先于 reseed 门(其拒播种=晚发现)暴露既有污染。
+    判据单一源 = kernel ``bench_slots_healthy``;reader_source 分键
+    = 写点 fail-fast 显影(早于对账层暴露既有污染)。
     只显影不拒写:本 helper 的两个调用点均为「只减不增」摘除腿(置 None),
     拒绝摘除会让已卖/已上场件滞留 tracked,两账分叉比污染本身更糟;
     布局修复归 reconcile 写回(bench_from_compact 重建归一)。"""
@@ -391,9 +380,8 @@ class PrepActionExecutor:
         self.last_detail = detail
         gold_delta = self._executed_gold_delta(action, emitted, _pre_sell_bc)
         self.last_gold_delta = gold_delta
-        # (执行缝金账直推已随统一观察对账迭代退役:卖出回金的容器唯一
-        #  写点 = apply_prep_action_logic 对应分支,防双记——2026-09-16
-        #  归因批实证执行缝+投影双腿各记一次 +refund,实读倒挂 −2。
+        # (卖出回金的容器唯一写点 = apply_prep_action_logic 对应分支,
+        #  防双记——执行缝与投影双腿各记一次的实机倒挂实证归 git。
         #  本处 gold_delta 仅进回执 extra 留证。)
         _gold_extra = ({'gold_delta': int(gold_delta)}
                        if gold_delta not in (None, 0) else None)
@@ -564,10 +552,8 @@ class PrepActionExecutor:
         return 0
 
     def _dispatch_action(self, action: CwAction) -> tuple[str, bool]:
-        """动作分派(统一动作工厂批3 收编:原 ``_execute_dispatch``/
-        ``_dispatch_direct`` 两条 isinstance 链删除,入口改查单一注册表
-        ``action_op_for``;design.md unified-action-factory §2.4。原组合
-        动作分支(RunDeploy/RunEquip/RunTools)已随统一词表删除退役(R2))。
+        """动作分派(统一动作工厂批3 收编:入口查单一注册表
+        ``action_op_for``;design.md unified-action-factory §2.4)。
 
         返回 ``(机械执行摘要, 是否实际发出)``。prep 域 ``(detail,
         emitted)`` 语义经 :class:`PrepExecEnv` 旁路字段承载(动作 op 的
@@ -613,19 +599,6 @@ class PrepActionExecutor:
             return sum(1 for bc in tracked if bc is not None)
         except Exception:   # noqa: BLE001  观测 best-effort
             return -1
-
-    def _poll_transition(self, check, timeout_s: float,
-                         interval_s: float = 0.3) -> bool:
-        """[已退役 A3] 点击后过渡的事件驱动轮询判效原语。
-
-        用户裁定 2026-09-10(动作 op 只管机械执行禁止验证):轮询读屏判
-        「点击是否生效」= 判效,拆除;等待半改固定动画等待
-        (``_OVERLAY_ANIM_WAIT_S``,等待归产生动画的操作),弹窗就位与否
-        交下一帧观察。方法体保留墓碑占位防同名复活,零调用。
-        """
-        raise AssertionError(
-            '_poll_transition 已随验证拆除退役(A3,用户裁定 2026-09-10;'
-            '等待归 _OVERLAY_ANIM_WAIT_S 固定等待,判效交下一帧观察)')
 
     def _open_box(self, action: OpenBox) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_open_box_action.OpenBoxOp``;批3 体迁 +
@@ -845,10 +818,8 @@ class PrepActionExecutor:
             action if action is not None else LevelUp(cost=0))
 
     # ===== 战斗域 =====
-    # (批3 体迁后出战域重设计 T-286 重写:StartBattleOp 现体 = 点击出战
-    # 和弹窗(零判效,点击序列已执行语义);原发射家族
-    # (_launch_attempt/_launch_dead_reset/_launch_dead_escalate)随重写
-    # 整删。本入口保留薄委托替身缝,返回序保持原 (ok, detail)。)
+    # StartBattleOp 现体 = 点击出战和弹窗(零判效,点击序列已执行语义);
+    # 本入口保留薄委托替身缝,返回序 (ok, detail)。
 
     def _start_battle(self) -> tuple[bool, str]:
         """薄委托(体已迁 ``cw_start_battle_action.StartBattleOp``;批3
@@ -858,12 +829,3 @@ class PrepActionExecutor:
 
 
 
-
-# ===== 恢复原语退役墓碑(A9,用户裁定 2026-09-10)=====
-#
-# 原 ``try_recovery(op, ctx)``(已知弹层分型关闭恢复原语)随 B1 验证段
-# 一并删除:其唯一消费位 = 验证失败 → 恢复分支(cw_screen_prep 旧路径/
-# 生命周期路径),判效半拆除后该分支不复存在。已知弹层清场职责由环入口
-# 清场注册表 ENTRY_OVERLAY_CLOSE 承接(观察侧,cw_screen_prep.lifecycle_
-# observe/_clear_entry_overlays 在用);未知弹层交外循环 overlay 白名单
-# 分发。本墓碑防同名/同职责结构静默复活。

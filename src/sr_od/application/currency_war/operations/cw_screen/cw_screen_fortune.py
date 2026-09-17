@@ -153,7 +153,6 @@ class CwScreenFortune(CwScreenOpBase):
         target = Point(self.CARD_XS[best_i], self.CARD_Y)
         log.info('[cw][fortune] 命运卜者强化:卡=%s → 选卡%d(%s)',
                  [t[:12] for t in texts], best_i + 1, texts[best_i][:20] or 'OCR空')
-        # (event_choice 存证行已随 exogenous 流写入端退役删除——删除波 1。)
         # 选卡=safe_click(bug#1 缓解);确认=机械交回(点+固定等待,不验关;
         # 重入裁决见本方法顶部)。原 r315「确认落空→round_retry 计预算兜底」
         # 防线由重入裁决 + 预算耗尽 bail 承接。

@@ -461,8 +461,7 @@ class DecisionTrace:
     # 不同体(两键口径):本 schema 字段 = recorder 侧实机透传位,写入面已
     # 接回 terminal_release_bit 单一源(recorder.py;判据 =
     # sim/checks/segments.terminal_release_bit;设计 W659 v2 §5.1 R4;
-    # ADR-0469)。读实机豁免位读本字段;sim 账本行键 terminal_release 为
-    # sim 侧行键(engine_p1 轮入口),判读对账注意两键粒度。
+    # ADR-0469)。读实机豁免位读本字段。
     sess_terminal_release: bool | None = None
     # P1-a 末窗支出降格触发面:取值=本 record 调用时点按 state +
     # DEFAULT_REGISTRY + match session(闩位含位面内触发闩,ADR-0469)

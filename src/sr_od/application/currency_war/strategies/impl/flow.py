@@ -4,30 +4,19 @@
 辖域 = mandate_v1 未覆写的域实现:
 
 - 生命周期收编后的唯一冷建口 create_session(策略器状态工厂接线 + live
-  初值 v3_phase='FORM' 一并在此落位;旧 on_match_start/on_match_end 已随
-  ADR-0583 删除)与策略器状态工厂 create_state;
+  初值 v3_phase='FORM' 一并在此落位)与策略器状态工厂 create_state;
 - 方向节拍内化(:meth:`_refresh_direction`;ADR-0583:方向重估从流程侧
   ops 直调收进策略器,触发信号 = 黑板帧刷新代次标注,键守卫贵段每
   game-round 恰一次 + 便宜派生视图段);
-- **结算策略半已删(04_survival_budget §7 #7/#8)**:
-  ``_drain_pending_round_outcomes``/``_process_settlement_strategy_half``/
-  ``_alarm_node_type_fallback`` 三方法 = 零行为死链(掉血三臂喂入/
-  谷底回滚登记/``v3_prev_hp`` 更新,判据数据积累零决策消费端,ADR-0638);
-  ``session.pending_round_outcomes`` 槽保留为观察半累积面(消费侧已退);
+- ``session.pending_round_outcomes`` 槽 = 观察半累积面(决策消费侧已退);
 - pick 族(decide_invest/supply/encounter/megastar/partner/planner/
   star_tome/wish_trial/box_card);
 - 商店序列兼容驱动器 decide_shop_screen 缺省实现(降格出 ABC,
   ADR-0583;sim/回放/序列锁消费,mandate 记账在其覆写)与商店单动作
   接口 decide_shop_action(ADR-0517,委托 mandate_v1/shop)。
 
-**旧备战骨架已删(ADR-0517 迁移批,flow/screen_op.md §8.2 裁决)**:
-_decide_prep_action_impl/_main_flow_step 相位机/_free_bench_step 腾席链/
-_deploy_up_candidates/_bench_junk_idx/_pseudo_state/_fresh_state 及私有
-helper(_is_boss_round/_cap_shortfall/_levelup_engine_ok)= 零生产调用死码
-簇(测试直调不算;live 备战决策链 = cw_screen_prep → mandate_v1.bridge →
-entry.emit 三遍编排);传递性死码 kernel/cw_deploy_seat(_should_deploy
-族)与 session 暂存字段(prep_phase/prep_phase_retry/free_bench_gold_wait)
-同批清除。
+- live 备战决策链 = cw_screen_prep → mandate_v1.bridge → entry.emit
+  三遍编排。
 
 本类 ``_abstract=True``(中间辅助 ABC,StrategyManager 不注册;
 decide_prep_screen 保持 abstract——具现 =
@@ -197,8 +186,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
     (基类 ``create_state`` 返回类型随之收窄)——框架基类仍只以泛型参数
     携带,零感知字段;kernel/one_dragon 零 import 本类型(布局锁辖)。
 
-    方法体平移自已退役的 decision_v2 决策包,行为锚见各方法 docstring
-    与 sim 契约锁。
+    行为锚见各方法 docstring 与 sim 契约锁。
     """
 
     STRATEGY_ID: str = ''            # 中间辅助 ABC,不注册(_abstract=True)
@@ -210,8 +198,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         super().__init__()
         self.registry = registry or DEFAULT_REGISTRY
 
-    # ===== 生命周期(ADR-0583 收编:唯一冷建口 + 策略器状态工厂;结算策略半
-    # 惰性加工三方法已删除,见模块 docstring 墓碑注)=====
+    # ===== 生命周期(ADR-0583 收编:唯一冷建口 + 策略器状态工厂)=====
 
     def create_state(self, config: CurrencyWarConfig) -> StrategyState:
         """策略器状态对象工厂(session.md §3.1/§5.1;ADR-0563 决策-2)。
@@ -363,13 +350,6 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             # 见 bump_lock_gen_feasibility_obs docstring)——随状态机贵段
             # 同频,每 game-round 恰一次。
             bump_lock_gen_feasibility_obs(session, state, ist, _lg_pre_event)
-            # (候选线评分遥测供数写入块已随 decisions 流写入端退役删除——
-            #  删除波 1:唯一读点 = 店内决策行的
-            #  披露值构造,行停写后供数失去消费方;session 字段载体在
-            #  mandate_state(禁碰面)留待其归属批清理。)
-            # (P1→P2 接口机制·①锁线 v2 后处理已随五开关定谳清理删除,
-            # ADR-0487:W793 A/B 触发面全开火仍主判据双败。[23] 锚经
-            # update_intention 信号驱动锁线,不受影响。)
         self._refresh_direction_views(state, session)
 
     def _refresh_direction_views(self, state: GameState,
@@ -416,15 +396,14 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                      ist.phase, hoard.mode, ist.last_event)
         _ms.v3_last_intention_event = ist.last_event
 
-    # ===== 决策入口统一内务:黑板帧代次消费(ADR-0583 §3.2/§3.4;原前置的
-    # 结算惰性 drain 已删除)=====
+    # ===== 决策入口统一内务:黑板帧代次消费(ADR-0583 §3.2/§3.4)=====
 
     def _consume_prep_direction_frame(self, session: StrategySession) -> None:
         """备战黑板帧代次消费(备战入口与 pick 族入口共用;ADR-0583 §3.2 触发面)。
 
         帧 = full → :meth:`_refresh_direction` 全程(键新则状态机 + 评分遥测);
         帧 = view(破墙派生帧/finalize 买后暂存帧)→ 只刷派生视图;帧 = none
-        → 读后复位即返回(原前置的结算槽 drain 已删除)。
+        → 读后复位即返回。
         读后即复位 'none'(消费即清,防同帧重复刷新;
         复位 = 读协议半部,非新鲜度宣告——帧类写点收敛归流程观察段,§3.4/D6)。
         刷新失败不阻塞决策(沿用原 ops 侧守卫语义,日志哨兵 [cw!] 保持)。"""
@@ -432,9 +411,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         if cls not in ('full', 'view'):
             return
         session.prep_frame_class = 'none'
-        # 换源:帧源 = session 容器单例(与商店线同款;旧
-        # PrepObservation.state 槽已随容器化段 2 退役,槽读取恒 None =
-        # 备战线方向刷新吃空视图的活性断裂,本行即其修复)。
+        # 帧源 = session 容器单例(与商店线同款)。
         state = game_state_of(session)
         try:
             if cls == 'full':
@@ -744,7 +721,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         :meth:`decide_shop_action`(单动作核,帧代次消费在核入口)+ 容器
         逻辑态直写推进期望态(``apply_shop_action_logic`` 简单腿 + 合成升星
         腿;零 simulate 前瞻消费),终结动作(RefreshShop)截停、
-        ``CloseShop`` 收尾不入序列(原 CompTransaction 邻接终结已随批2b R3 删除)。本缺省 = 通用
+        ``CloseShop`` 收尾不入序列。本缺省 = 通用
         循环(不绑 mandate 判据);mandate 特有记账(已买件/段序号/续段
         token)在 ``MandateV1Strategy.decide_shop_screen`` 覆写。观察帧
         缺失 = 观察层失约,抛错。"""

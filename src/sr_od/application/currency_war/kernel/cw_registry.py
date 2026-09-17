@@ -13,11 +13,8 @@ kernel 与 decision_v2 必须共享**同一** registry 实例(A/B 注入契约:�
 持有基线四参已按 20 局诊断+30 局配对验证标定;其余仍为骨架初值,
 后续批次继续):
 - 档位期望:P3 已证边际(e0→e1 +1.4 / e1→e2 +1.6 金/轮)→ 累计档值;
-- 战力:星级阶梯已清退禁引(墓碑 :309-311,禁胜率建模裁定,P3 禁引);
+- 战力:星级阶梯已清退禁引(禁胜率建模裁定,P3 禁引);
 - 息律:[17][28](50 金息律 / P1 满息通关)进 interest_rule 约束;
-- 地板初值镜像旧 line_strategy 同名常量(_EMERGENCY_HP 等;
-  旧两臂 A/B 语义随 line_strategy 退役结束,注册表独立演进)。
-
 决策见 docs/develop/sr_od/application/currency_war/decisions/0291-decision-v2-skeleton.md。
 
 ⚠️ 收入口径修正挂账(ADR-0439,sim 侧已落码):sim 败轮金 + 奖励轮
@@ -42,9 +39,6 @@ class DecisionV2Registry:
         'engine_seed', 'plugin', 'pair', 'copy', 'copy_press',
         'bond_fallback', 'carry_gate',
     )
-    # ('crisis_fallback' 标签已随 W956 危机兜底集开关族整批删除——旧方案
-    #  清退批,清查报告 OLD_MIX_AUDIT §1.3;生成点 _crisis_fallback_candidates
-    #  已删,标签无生产者。)
     #: 3合1 合成候选:标记位(不占标签序——第三张副本买入即合成,
     #: Candidate.merge=True;覆盖全部目标类买入)
     #: 卖候选标签优先序(off_target 最先;free_bench=腾位让位 [32])
@@ -95,15 +89,11 @@ class DecisionV2Registry:
     bond_fallback_max_cost: int = 2
     #: [31] 降级触发回合门(P3 边界:r1-r2 无战斗买件纯付息损)
     bond_fallback_min_round: int = 3
-    # (W956 危机帧购买兜底集两字段(crisis_fallback_max_cost/
-    #  crisis_fallback_enabled)已随旧方案清退批删除:默认关+预注册判据
-    #  挂账未跑即整体出局,清查报告 OLD_MIX_AUDIT §1.3 裁定随基线退役
-    #  整批删除;生成点 candidates._crisis_fallback_candidates 同批删。)
     #: [32] carry_gate 腾位买的轮界(r≤7;r8-r9 终局段买入不影响结算)
     carry_gate_max_round: int = 7
 
     # ===== 层4 补偿趟(迁移审计 w52(git 历史) 回连机制;ADR-0326)=====
-    #: 补偿辖的买侧标签(= 旧 LIQUIDITY_BUY_TAGS 语义迁入,含
+    #: 补偿辖的买侧标签(含
     #: 'carry_gate'——ADR-0326 H1:该标签落「非核心目标件+bench 满+
     #: 早期轮」,与 v3_core_names 空窗下的目标件,金补偿路径对两种
     #: 标签都稳健;不为非目标件变现——只有更高优先级购买才配动用
@@ -138,9 +128,9 @@ class DecisionV2Registry:
     sell_key_weight_scale: float = 1.0
 
     # ===== 层2:硬过滤链(redesign §3 覆盖态严格优先序)=====
-    #: 过滤链层级序:应急 > 模式(追赶态已随 `w126_b_arm/`/ADR-0349 退场——人口落后
-    #: 由通道 2 人口位升级+通道 4 概率等级窗+EV 总账涌现,兜底局由 form_score
-    #: 承接「人口别落后」观察;位面绝对基线 {5,7,9} 是阵容无关的粗糙代理)
+    #: 过滤链层级序:应急 > 模式(人口落后由通道 2 人口位升级+通道 4 概率等级窗
+    #: +EV 总账涌现,兜底局由 form_score 承接「人口别落后」观察;位面绝对基线
+    #: {5,7,9} 是阵容无关的粗糙代理)
     filter_chain_order: tuple[str, ...] = ('emergency', 'mode')
     #: 各层放行标签集(候选标签仅作过滤域标记,不携带优先级——ADR-0290)
     #: 应急集内容修正(合流批 ADR-0303 并入):补 for_gold
@@ -152,8 +142,6 @@ class DecisionV2Registry:
         'engine_seed', 'plugin', 'carry_gate', 'off_target',
         'free_bench', 'deploy', 'for_gold', 'levelup',
     })
-    #: 追赶窗口约束与追赶标签集已随 `w126_b_arm/`/ADR-0349 删除(用户 2026-08-25
-    #: 裁决 F6/Q4:人口落后=阵容没上满的表现,由通道 2/4+EV 涌现承接)
     economy_tags: frozenset[str] = frozenset({
         'line_carry', 'line_opportunistic', 'bridge_core',
         'engine_seed', 'plugin', 'pair', 'copy', 'copy_press',
@@ -179,11 +167,6 @@ class DecisionV2Registry:
     #: 内取 5 网格点 25,与报警降档线 40(discipline.BLOOD_MARGIN_LOW_HP)
     #: 保持处置梯度:40=报警加速、25=应急覆盖态清仓。
     emergency_hp: int = 25
-    #: (crisis_hoard_gold 已随危机金出口族死链删除:零消费死旋钮,
-    #: 统一迁移批 commit b94e9cfb,2026-09-04 用户裁定清理;
-    #: 史料=ADR-0303。)
-    #: (catchup_min_level/pop_baseline 已随 `w126_b_arm/`/ADR-0349 删除:追赶态退场,
-    #: 通道 2 人口位([33])+通道 4 概率等级窗([3])+EV 总账涌现承接)
 
     # ===== 血预算停手·停升级线(设计件 12 §3.1/§2.3-P1-b;ADR-0448)=====
     #: 总开关:True=停升级门恒接线(P21 数学定谳:hp ≤ d·L_c 域内升级
@@ -261,22 +244,17 @@ class DecisionV2Registry:
     terminal_survival_eps: float = 0.03
 
     # ===== 成型停手纪律([13] 停手线;ADR-0343;迁移审计 w119(git 历史)/ADR-0347 收编)=====
-    #: (formed_stop_enabled 总开关已随零消费死旋钮清理删除——回退通道
-    #: 随 decision_v2 栈退役失效;统一迁移批 commit b94e9cfb,
-    #: 2026-09-04 用户裁定清理;史料=ADR-0343。停手语义恒接线。)
+    #: 停手语义恒接线。
     #: 停手辖轮**全局下界**(迁移审计 w97(git 历史)/迁移审计 w105(git 历史) 晚买证据窗=r7-r9);实际辖轮=
     #: max(锁定线 typical_form_round, 此值)——comp 派生(迁移审计 w115(git 历史)-B1,
     #: 固定 r≥7 会固化「早成型阵容多买两轮」偏差)
     formed_stop_min_round: int = 7
-    # (formed_stop_min_level 已随 迁移审计 w119(git 历史) 删除:等级不作为独立门槛——
-    #  2026-08-25 用户裁决 Q2,等级通过上场完整性进入 form_ok 判定)
+    # 等级不作为独立门槛——2026-08-25 用户裁决 Q2,等级通过上场完整性进入
+    # form_ok 判定
 
     # ===== 相位观测与授权(迁移审计 w114(git 历史)/ADR-0346 影子;迁移审计 w119(git 历史)/ADR-0347 切授权)=====
-    #: (phase_form_score_gate 已随 `w132_b_arm/`/ADR-0353 删除:兜底门从 form_score 连续量
-    #  改结构判据——`w118_baseline/` sim r2-r3 弱板误转真 + 实机 run15 r4 score 0.65 多线
-    #  散板(仙舟3 单体系+配方档小数)过门两证;用户判读原则 2026-08-26「任何
-    #  位面看阵容完成度」→ 判据 = 板面真收敛到 ≥2 过渡体系,非分数可达性。
-    #  form_score 降级纯遥测观测,不进判据)
+    # 兜底门判据 = 板面真收敛到 ≥2 过渡体系,非分数可达性(用户判读原则
+    # 2026-08-26「任何位面看阵容完成度」);form_score 降级纯遥测观测,不进判据
     #: 兜底局(意向未锁)form_ok 的轮数下限(迁移审计 w119(git 历史)/ADR-0347 校准判据,迁移审计 w113(git 历史) §8-11):
     #: `w118_baseline/` 实测 A 臂兜底局 form_score≥0.5 在 r2-r3 即转真——1 过渡体系≠战力
     #: OK。结构门下保留(合取):即使两体系早凑齐,r5 前板面人口/星级仍薄,
@@ -304,52 +282,16 @@ class DecisionV2Registry:
     piggy_refresh_round_cap: int = 1
 
     # ===== 层3:板面查表评分(初版=档位×P3 + 息律 EV + H3 插值)=====
-    #: 【退役 2026-09-04,增量 B/宪法第一条清退】rung_value 档位金/轮值
-    #: (P3 经验拟合)——收入三元分解中无任何 rung 确定函数(息律=存金
-    #: 函数边际 0;连胜流已由胜率流通道计账,再立档位流=双计)。
-    #: V̄_net 链后随禁胜率建模裁定整链退役(禁胜率建模,刷新决策改
-    #: 路径总账)。
-    # rung_value(已删;旧值 {0:0.0,1:1.4,2:3.0})
-    #: 【退役 2026-09-04,同上】h3_win_rate H3 胜率阶梯(P1 校准、无位面
-    #: 维、rung2 n=9)——被 win_rate_dp_by_plane(分位面实测)取代;
-    #: 旧值 {0:0.139,1:0.416,2:0.778} 的 rung0 比 P1 实测低 44%。
-    # h3_win_rate(已删)
-    #: 【退役 2026-09-04,同上】rounds_left_est(P1 中段估值,自注未标定)
-    #: ——消费端随 decision_v2 scoring 死亡,零活读者。
-    # rounds_left_est(已删;旧值 5.0)
-    #: 【退役 2026-09-04,禁胜率建模裁定】win_rate_dp_by_plane(分位面成型档条件
-    #: 胜率边际 Δp)与 vbar_hp_value_transitional(单战价值 hp 分量)
-    #: ——V̄_net 链整链退役:用户裁定禁胜率建模(两字段均统计拟合量,
-    #: 非游戏定义量),刷新决策改路径总账比较(形式二,R1 门 =
-    #: c_eff·E(D|L*)+Σ卡费+L ≤ g−g*,全游戏定义量;P57 搜索窗重锚
-    #: 塌缩带 ω)。墓碑=statefn/vbar;两批链退役史随裁定归档。
-    # win_rate_dp_by_plane(已删;旧值 {1:0.450, 2:0.0},P1 CI [0.274,0.612]
-    #   /P2 fail-closed 钳 0,p15 冻结语料 848dc1aa)
-    # vbar_hp_value_transitional(已删;旧值 9.59,P15v2 CI 下缘×P21 过渡口径)
     #: 剩余战斗节点估计(V_D P1 收益侧的**缺省兜底**:plane_node_table
     #: 槽序表缺失/裸 session 时退此值;有表时由 ev.battles_left_plane
     #: 逐轮推导,ADR-0425;层3 score_state 的 power 视界仍用本值)
     battles_left_est: float = 5.0
-    #: 【退役 2026-09-04,增量 B/宪法第一条清退】expected_battle_loss
-    #: (10.0,自注未标定)与 hp_to_gold(0.5,P3 溯源已废);其 V̄_net hp
-    #: 分量后继字段 vbar_hp_value_transitional 也已随 V̄_net 链退役。
-    #: V_D 收益侧此前已换 vd_p1_loss_*(ADR-0425),双源并存病就此清。
-    # expected_battle_loss(已删;旧值 10.0)
-    # hp_to_gold(已删;旧值 0.5)
     #: 利息封顶档([17]:50 金息律,5 金/轮)
     interest_cap: int = 5
-    #: 息 EV 折算轮数(历史口径注释:原与已退役 rounds_left_est 同源;消费面现状见 ev 层)
+    #: 息 EV 折算轮数(消费面现状见 ev 层)
     interest_rounds: float = 5.0
     #: 档位分数部分(recipe 档 → 小数 rung 的插值系数;未标定)
     rung_frac_per_recipe_tier: float = 0.3
-    #: 刷新常量 EV 族已随 `w126_b_arm/`/ADR-0349 删除(refresh_ev/refresh_max_round/
-    #: refresh_min_gold/refresh_starve_*/refresh_game_cap/levelup_reserve_
-    #: gold/form_refresh_*:refresh 附庸闸整体退场——D 候选评分改 V_D 批口径
-    #: (scoring.vd_refresh_score,P5 定理:expected_refreshes×刷价 vs 收益侧),
-    #: 预算前提=C_interest 在 50 档边界的输出(G2,不设常量金门))
-    #: (piggy_refresh_ev 已随零消费死旋钮清理删除:消费端(scoring
-    #: vd_refresh_score 扑满 P8 账)已随 decision/ 包退役,统一
-    #: 迁移批 commit b94e9cfb,2026-09-04 用户裁定清理;史料=ADR-0349。)
     #: 买侧 C_interest 的回档折中视界(`w131_a2n_arm/`/ADR-0352):买候选跨息档的
     #: C = 档数 × min(R跨位面, 此值)。依据:P6 回档账下界(破档后
     #: 1-2 轮回档,真实息损 1-3 金)与平面 R 上界(P5⑤,≈20-23)的
@@ -390,9 +332,7 @@ class DecisionV2Registry:
         })
     #: 连胜 EV 地板胜率表(节点类型×成型档;取**注入后**值 p_injected
     #: =语料实测+plaza 先验只进 rung≥2、share≤0.25,来源同上
-    #: 粗模型拟合产物的 win_rate_table_injected)。键域 0-2(消费侧
-    #: 成型档封顶 2,与已退役 h3_win_rate 同法);不并入分位面实测表
-    #: (h3=battle 骨架插值表辖层3,本表=实测注入表辖连胜地板)。
+    #: 粗模型拟合产物的 win_rate_table_injected)。键域 0-2(消费侧成型档封顶 2)。
     streak_floor_win_rate: dict[str, dict[int, float]] = field(
         default_factory=lambda: {
             'battle': {0: 0.009, 1: 0.356, 2: 0.315},
@@ -410,8 +350,7 @@ class DecisionV2Registry:
     #: 三源对照:语料条件 20.05 / 实机存活局事件均值 −15.3(59 事件,
     #: `w350_p2_survival/` REPORT §4)/ sim coarse 分 rung 条件伤 ~11——取语料上沿的
     #: 理由=删失剔除 hp≤1 死亡行 → 低估方向。
-    #: **benefit 项量级声明**:dwin 侧历史注:原 h3_win_rate(P1 校准骨架阶梯,已退役 2026-09-04 增量 B;其 P2 分 rung 胜率后继表 win_rate_dp_by_plane 亦已随禁胜率建模链退役,完整阶梯重derive 挂账),
-    #: P2 分 rung 胜率表未标定(挂账)——本项只作「P2 掉血更贵 → 找件
+    #: **benefit 项量级声明**:P2 分 rung 胜率表未标定(挂账)——本项只作「P2 掉血更贵 → 找件
     #: 账方向上调」的方向修正,量级未标定,不得引用「P2 胜率≈0」类
     #: 论证抬升(损失侧条件口径必须配同 regime 胜率,P15 精神)。
     #: encounter 16.67(n=3 样本极小不采)/boss 桶零样本(沿用 26.71)
@@ -444,31 +383,24 @@ class DecisionV2Registry:
     #: 正分,30 局 mean 31.37/团灭 0)
     target_hold_value: float = 3.0
     target_hold_base: int = 9
-    #: (bench_form_weight 已随零消费死旋钮清理删除:混合域形态计数
-    #: (deployed×1.0/bench×折减)消费端已随 decision/ 包退役,
-    #: 统一迁移批 commit b94e9cfb,2026-09-04 用户裁定清理;
-    #: 史料见上记 commit。)
     #: 目标件持有进度项天花板系数(持有进度保留显影但
     #: 封顶折减——顶格不再=满形态;targets=min(此系数, n/base)
     #: ×target_hold_value)。网格标定:1.0 无单独增益,维持 0.8
     target_hold_cap_frac: float = 0.8
     #: 引擎分数进度项单位值(成型攻坚,每满进度引擎)。
     #: 依据:P3 已证 e0→e1 +1.4/e1→e2 +1.6 金/轮——买进度件是
-    #: 正期望期权(历史注:rung_value 已退役 2026-09-04 增量 B,跨越语义随链改写)
-    #: 显影;deployed=cap 时进度件躺 bench(域折减已随 bench_form_weight
-    #: 死链删除),
+    #: 正期望期权显影;deployed=cap 时进度件躺 bench,
     #: 混合域阈值不跨越 → 评分恒 0 → 「评分没买」主因(20 局
     #: 诊断 135/171 段引擎买候选评 0.0 被非正分拒)。本项对进度
     #: 小数余量(Σmin(w/tier,1)−整数引擎数)显影,与 rung 整数档
-    #: 互补不双计(历史注:值转进目标随 rung_value 退役改判,现仅 0=关闭形态有效)。0=关闭。
+    #: 互补不双计。0=关闭。
     #: **双窗网格标定 1.0**(A 窗 hp_ge_60 0→0.167 / B 窗
     #: 0.2→0.233,唯一双窗一致臂;2.0/4.0 过冲在 B 窗翻车——
     #: 高单位下进度件挤掉目标件买入)
     engine_frac_unit: float = 1.0
     #: 核心升星价值项单位值(迁移审计 w88(git 历史),[13] 成型三件套第三件:
     #: 过渡核心 2★)。持有域内 star≥2 且∈目标集(意向目标∪引擎件)
-    #: 的件数 × 此值——deployed 全额、bench 折减(域折减权重已随
-    #: bench_form_weight 死链删除)。修的是第六局判读:star 此前只在阵营
+    #: 的件数 × 此值——deployed 全额、bench 折减。修的是第六局判读:star 此前只在阵营
     #: 计数(star×权重)与 targets 星级加权两条路径显影,engines 封顶
     #: 后 2★ 分差≈0 → 换阵卖 2★ 不罚分/凑合副本 ≈0 分(升星投资
     #: 系统性贬值)。0=关闭(A/B 基线臂)。
@@ -479,37 +411,17 @@ class DecisionV2Registry:
     #: 全维度零 delta → 「非正分」拒 → 金 59→90 溢出趴三轮
     #: (run_20260825_130151 r7-r9,[17] >50 每一分都该花)。每名
     #: 只计第 2 份(第 3 份 merge 后 core_star 承接,不双计);
-    #: deployed 域 ×1.0 / 纯 bench 域折减(域折减权重已随
-    #: bench_form_weight 死链删除)。初值=core_star_unit 同量级(同一 2★ 目的地的期权),
+    #: deployed 域 ×1.0 / 纯 bench 域折减。初值=core_star_unit 同量级(同一 2★ 目的地的期权),
     #: 未网格标定,sim A/B 方向见 deep_read/W96_报告.md;0=关闭。
     merge_progress_unit: float = 3.0
-    #: (filler_star_unit/pair_copy_direction_exempt 已随 ADR-0402 定谳
-    #: 清理删除:`w504_filler_star_adr0402/` 开臂 A/B 主判据双 wash,删除清单与证据链见该 ADR
-    #: 定谳节;副本评分/放行现由 merge_completion_exempt(ADR-0438)与
-    #: 末窗承接门 gap 豁免(ADR-0405)承载)
     off_target_sell_bias: float = 0.5
-    #: (crisis_buy_bias/crisis_buy_tags 已随危机战力买通道死链删除:
-    #: 零消费死旋钮,统一迁移批 commit b94e9cfb,2026-09-04
-    #: 用户裁定清理;史料=ADR-0303。)
-    #: (refresh_starve_discount/refresh_starve_gold/refresh_game_cap/
-    #: levelup_reserve_gold 已随 `w126_b_arm/`/ADR-0349 删除:刷新×追级并存仲裁
-    #: 的评分折扣与约束侧 A/B 通道整体退场——并存由 V_D(概率窗二分:
-    #: goal=level_up 时 D 让位)与升级总账自然裁决,不再需要外加折扣)
-    #: (goldrich_buy_bias/goldrich_min_gold/goldrich_buy_tags 已随
-    #: 补充清理批删除:三窗 A/B 无一致方向 + ADR-0408 同构
-    #: 复证「成型加速可见,hp 不跟」。与经济循环总模型(ADR-0445)的
-    #: 辖域边界随之失效——本偏置原辖金 28-50 储备段,总模型溢余义务
-    #: 只在 g>R* 激活,二者不重叠;删除依据=其自身 A/B 否决(开关
-    #: 生命周期第 4 态),非义务覆盖。复活条件:储备段出现「0 分成型
-    #: 件被结构性拒」的新病灶实证且修法经偏序/期望账论证,不复活
-    #: 加性偏置形态。)
     # ===== 成型补充偏置(d2 评分批;P1 boss 转化) =====
     #: 成型补充偏置:未成型(引擎<2)+ 引擎件候选在破息窗(r≥5 P1,非应急)
     #: 的 0/小负分买入顶成正分的偏置。依据=[13] 成型即停手(未成型=继续买
     #: 配方件)+[27] 每场质量战(引擎完成 win 跳升×剩余战斗≈4.5-5.4 金);
     #: 量级=完成期权的保守下限,只顶 val∈[-interest_rounds, +0.5](单档
     #: 真实息损内;emergency 的 -25 息崖([18])与深负分不被翻越)。
-    #: 0=关闭(A/B 通道,同 form_refresh_ev 模式)。
+    #: 0=关闭(A/B 通道)。
     forming_bias: float = 5.0
     #: 成型补充偏置的顶分上沿(原分 > 此值不加偏置——不叠加已正分买入,
     #: 防「高单位下进度件挤掉目标件」过冲)
@@ -727,12 +639,6 @@ class DecisionV2Registry:
     #: 停机护栏(V-A2 继承):press_channel_open 的开域上界(lv≤此值
     #: ∧ plane==1)与带自洽闸参照系 press_band(此值)={1,2}。
     press_channel_max_level: int = 6
-    #: (press_copy_unit/press_core_mirror_bonus 评分偏置两字段已随
-    #: ADR-0427 增补节定谳清理:copy_press 评分路由双层悬置(生产默认
-    #: 0.0 从未注入生产行为 ∧ 生成域被上游臂截流至近空),无观测支点。
-    #: 评分臂删除后 copy_press 候选评分只由通用板面维决定,与删除前
-    #: 默认态(press_copy_unit=0.0)逐位一致。通道价值主体(总闸/band/
-    #: 双 cap/[11] 豁免臂)保留,见 ADR-0427 增补节删除清单。)
     #: press 候选逐轮采纳笔数上限(V-B8.1,更严一级;量级=单轮至多
     #: 一笔压库副本,与 p1_early_round_cap=1 同式轮键计数)。
     press_copy_round_cap: int = 1
@@ -741,25 +647,15 @@ class DecisionV2Registry:
     #: 方向内候选+press 候选两股)。
     press_exempt_round_cap: int = 2
 
-    #: (form_refresh_ev/form_refresh_max_round/form_refresh_min_gold/
-    #: form_refresh_engines_target 已随 `w126_b_arm/`/ADR-0349 删除:成型找件刷新
-    #: A/B 残留通道退场——找件语义由 V_D 批口径承接(核心未齐+概率窗内
-    #: 的定向找件是 V_D 的本体场景,不再需要独立常量通道))
 
     # ===== `w227_handoff_gate/`/ADR-0400 P1 末窗承接门(设计件 08 §4.2 Phase 1)=====
-    #: (handoff_gate_min_round/handoff_gate_tier_target 已随承接门家族
-    #: 死链删除:零消费死旋钮(末窗语境随 decision_v2 栈退役消亡;
-    #: handoff_ev_gap_bonus 存留——读端在位),统一迁移批
-    #: commit b94e9cfb,2026-09-04 用户裁定清理;窗宽前移证据链与
-    #: 已知耦合挂账=ADR-0418;史料见上节头指针与 git 历史。)
     #: EV 承接缺口项单位值(缺口 1 档 = 买侧 V 加此值;量级=forming_bias
     #: 同阶的保守下限——只放宽末窗破息买的 EV 授权,不触地板族/升级账/
     #: 刷新口径(ADR-0352 D 平面 R 上界纪律不动))
     handoff_ev_gap_bonus: float = 5.0
 
     # ===== 迁移审计 w238(git 历史)/ADR-0403 承接门 hp 维 boss 投影(设计件 09 §3.1)=====
-    #: 投影无条件启用(历史 handoff_boss_project 布尔字段已删;转正裁决
-    #: 见 ADR-0411——量级问题非行为开关)。语义:
+    #: 投影无条件启用(转正裁决见 ADR-0411——量级问题非行为开关)。语义:
     #: handoff_gate_gap 末窗投影的 hp 维由「当前 hp(boss 前)」换
     #: 「boss 后投影 hp」:
     #: hp_proj = hp + 2(r8 奖励胜,设计件 09 §1.1 五局恒 +2) −
@@ -797,16 +693,14 @@ class DecisionV2Registry:
     #: 缺桶 fallback:同上 Q3 口径(单桶语料下与桶 0 同值)
     handoff_boss_e_damage_default: float = 34.0
     #: r8 奖励节点胜 +2(设计件 09 §1.1:五局全部 r8→r9 恒 +2;hp 不可
-    #: 回复下唯一正项)。触发语境(P1 末窗)原绑定 handoff_gate_min_round,
-    #: 该旋钮已随承接门家族死链删除(2026-09-04 用户裁定清理);
+    #: 回复下唯一正项)。触发语境 = P1 末窗;
     #: r6/r7 投影少算后续节点期望伤害(偏乐观)的解耦挂账=ADR-0418
     #: (改行为代码须重跑 AB)
     handoff_boss_reward_bonus: int = 2
 
     # ===== `w242_star_directed/`/ADR-0405 末窗星级定向授权(`w232_filler_star/` 挂账 C 项;设计件 08
     # §4.2 Phase 1b 星级投资方向)=====
-    #: 末窗星级定向授权无条件启用(历史 handoff_star_directed 布尔字段
-    #: 已删):依据 = star 是 `w231_star_diag/`「评分结构性拒副本」病灶的
+    #: 末窗星级定向授权无条件启用:依据 = star 是 `w231_star_diag/`「评分结构性拒副本」病灶的
     #: 正解且 sim 无挤出(量级不足属参数调优非行为开关,裁决见
     #: ADR-0411)。行为语义:
     #: P1 末窗承接缺口 gap>=1
@@ -818,8 +712,7 @@ class DecisionV2Registry:
     #: 防双计)**;地板族/copies_cap/r408 同轮守卫/bench 容量照常辖。
 
     # ===== `w252_ma_directed_refresh/`/ADR-0409 M-A 定向 D 牌授权窗(`w249_core2_reach/` 诊断修法)=====
-    #: M-A 定向刷新无条件启用(历史 handoff_refresh_directed 布尔字段
-    #: 已删):依据 = M-A 是 `w249_core2_reach/`「策略从不支付搜索成本」
+    #: M-A 定向刷新无条件启用:依据 = M-A 是 `w249_core2_reach/`「策略从不支付搜索成本」
     #: 病灶的对症修法且方向为正(量的解锁归 cap 提升独立批,裁决见
     #: ADR-0411)。行为语义:P1
     #: 末窗承接缺口 gap>0(handoff.handoff_gate_gap 单一源复用)**且**
@@ -837,34 +730,20 @@ class DecisionV2Registry:
     #: 不重置——局级累计)。金消耗披露面:预算放行的每次刷新照付刷价,
     #: 金账户由 simulate 真值扣减,P1 末窗利息损失随 A/B 守门指标判读。
     #: **本常量是非绑定约束(`w274_cap_batch/`/ADR-0413)**:合资格授权窗 = gap>0 ∧
-    #: P1 末窗(原 handoff_gate_min_round 旋钮已随承接门家族死链删除,
-    #: 2026-09-04 用户裁定清理;窗 {r6..r9},ADR-0418),
+    #: P1 末窗(窗 {r6..r9},ADR-0418),
     #: per_round 2 ⇒ 窗内可行上限 8 次曾在本值 6 之上;`w275_knob_ab/` gr6 臂
     #: (n=200 同 seed 配对)dir 授权 339 次、cap 开始参与钳制(窗容量
     #: 8 > cap6),行为面为正(core2≥1 +6.7pt)——cap 是否重新 bind 的
     #: 定标归后续实机/大批核对,非本批变更理由。历史候选档
     #: 留证:cap10/cap14 曾作为「第二跳吞吐量级」修复候选(迁移审计 w254(git 历史)-R 断点),
     #: 实验证明无效,勿重复试错。「加量」的有效旋钮是
-    #: directed_refresh_per_round 与授权窗宽度(gate_min_round 前移),
+    #: directed_refresh_per_round 与授权窗宽度,
     #: 非 game_cap(见 ADR-0413 Considered Options)。
     directed_refresh_game_cap: int = 6
 
-    # ===== (early_pace 五字段已随 ADR-0408 增补清理节删除:三窗 A/B
-    # ===== outcome 无一致正方向、机理核 rung 路径不动,见该 ADR。)=====
-
     # ===== W332b 未成型期姿态:泄息通道(release)与换线判据参数 =====
-    #: (危机金出口臂总开关 crisis_release_enabled 已随零消费死旋钮清理
-    #: 删除:decision/ 整包退役后无读端(版本界碑见 ADR-0503 头注);
-    #: 统一迁移批 commit b94e9cfb,2026-09-04 用户裁定清理。)
-    # (危机帧刷新通道不变式 crisis_refresh_invariant_enabled 字段已随
-    #  ADR-0506 升格裁决整开关删除:不变式无条件生效——依据=P36-a 单篇
-    #  结构证明(B>0⟹n≥1,零参数)+ prereg A/B 仅作确认;判据单一址=
-    #  posture_release.crisis_invariant_lane,行为面与实机确认门挂账见
-    #  该 ADR。删字段须同步移除面册锁条目=面册锁文法的反向操作。)
     #: 设计决策单一源=ADR-0426(谱系节含设计稿索引与两轮对抗修订记录)。**符号不稳参数一律默认值+标定接口,不拍死**:
     #: k(hp)/Δhp/boss 税由 sim 批网格标定后锁值(DESIGN §⑥ EV 参数门)。
-    #: (总开关 release_enabled 已随 ADR-0426 增补 D 第 4 态清理:被经济
-    #: 循环总模型 ADR-0445 的溢余义务吞并,行为恒接线。)
     #: 血量边际价值 k(hp) 报警带值(DESIGN §①:非标定设计参数;动机=语料 66 场
     #: P1 boss 战战后 hp≤3 占 43.9% → 末窗边际 hp 是生死价,线性折价 0.5 金/hp
     #: 系统性低估)。k=3 臂的符号结论对 k_hp_calibration_grid 不稳,只作敏感度臂。
@@ -876,18 +755,12 @@ class DecisionV2Registry:
     #: FLIP 持续兑现臂的低血上沿(非末窗 hp<此值命中;与 discipline
     #: BLOOD_MARGIN_LOW_HP=40 同值口径,registry 注入化)
     blood_margin_low_hp: int = 40
-    #: (boss 税 p75 单标量 boss_tax_p75 已随旧方案清退批删除:注释自认
-    #:  无运行时消费者(ADR-0441 起消费点改读 by_plane),sim 标定接口的
-    #:  P75 同源值由 boss_tax_anchor_group 承载,清查报告 OLD_MIX_AUDIT
-    #:  §1.3 准僵尸裁定。)
     #: boss 税分位锚组 {P50, P75, P90}(sim 标定接口,非运行时值)
     boss_tax_anchor_group: tuple[float, float, float] = (32.0, 34.0, 36.0)
     #: boss 税 p75 位面锚(消费点按位面取值;键 = CwSimFrame.plane,1/2)。
-    #: plane 1 = 现值原样(P1 语料标定,原 boss_tax_p75 标量同源值
-    #:  34.0——该标量已随旧方案清退批删除,by_plane 为唯一取值口),零漂移锚;
+    #: plane 1 = 现值原样(P1 语料标定),零漂移锚;
     #: plane 2 槽位已就位但默认仍取现值——P2 位面真值方向有语料标定
-    #: (git 历史:P2 boss n=90 均损 −21.63 vs P1 −19.54;原载于旧
-    #: cw_coarse_battle 标定 manifest,该模块已随 sim 重做删除面退役),
+    #: (git 历史:P2 boss n=90 均损 −21.63 vs P1 −19.54),
     #: 但 P2 槽位换数据的扰动未评估。激活挂账:待形态 A/B 开臂判据收口
     #: 后,与 sim 收入口径修正同批评估;重标定覆写只改本字段(单一源)。
     #: ADR-0441:FLIP 末窗投影臂(posture_release)与 C1 投影安全带
@@ -951,8 +824,7 @@ class DecisionV2Registry:
     p2_cond_loss_table: dict[str, float] = field(default_factory=lambda: {
         'normal': 12.77, 'encounter': 13.33, 'boss': 15.50, 'reward': 0.0})
     #: P2 损血标定家族版本披露锚(第三维,与 cw_economy 收入口径版本
-    #: 相互独立;旧粗模型版本锚 cw_coarse_battle.COARSE_CALIB_VERSION
-    #: 已随 sim 重做删除面退役):任一 P2 损血
+    #: 相互独立):任一 P2 损血
     #: 标定值/消费口径变动(p2_node_loss_table / p2_cond_loss_table /
     #: p_win_p2_by_rung / 两态递推形态)必须递增并随批重锁。sim 台账
     #: manifest 不承载本版本(cw_sim 禁触批,披露面=registry+锁,边界
@@ -1005,7 +877,7 @@ class DecisionV2Registry:
     #: 设计默认档。
     revoke_miss_tolerance_eps: float = 0.05
     #: 证据组 B:异线资产厚度下限 A_min(浮点;厚度口径=_asset_thickness:
-    #: 终局件星级当量——骨架件折算项已随「未证即退役」清退,口径变严)。
+    #: 终局件星级当量)。
     #: 测量协议(冻结池随机厚度基线曲线 f0(a) 的 5% 点,非拍值):池=
     #: w250_delta_pool/snapshot_v11,100 局 planes=2,分母=逐策略决策
     #: 帧(P2+ 段 1341 帧),统计量=「任一异线(除当轮锁定线)厚度 ≥ a」
@@ -1028,109 +900,9 @@ class DecisionV2Registry:
     #: 成型 ≥2/3),数据未出前本值按测量结果服役,不调参硬凑。
     revoke_evidence_min_thickness: float = 5.0
 
-    # (C1 溢余必花定向优先级开关 c1_directed_spend_enabled 已随旧方案
-    #  清退批删除:默认关+验证排期挂账未跑即整体出局,清查报告
-    #  OLD_MIX_AUDIT §1.3;filters 谓词与接线同批删。破息分支从未落码
-    # (概念定谳否决,证据链留档 ADR-0443)。)
-
-    # (位面 2 支出授权 p2_spend_auth 全机制已随定谳清理删除,ADR-0492:
-    # 四轮 A/B(W762/W772/W779/W785)M0b 四口径穷尽 0-4.1%,授权窗内
-    # 花费结构性死路;W801 判根因=授权/方向类杠杆与档位累积型目标变量
-    # 类型错配。窗前预转换思想由 W795/W803 P29/档位积分/D2 入口转化继承。
-
-
-
-    # (锁线后兑现链 v2 字段族(W802:伞 realization_chain_enabled + 六子
-    #  旗标 + 七占位参数)与 P1 档位推进目标函数字段族(W803:伞
-    #  p1_tier_push_enabled + 三子旗标 + 八参数)已随旧方案清退批删除:
-    #  两族均为默认关+预注册判据挂账未跑的悬置债,清查报告
-    #  OLD_MIX_AUDIT §1.3 裁定整批删除;decision_v2/realization.py 与
-    #  decision_v2/tier_push.py 模块、scoring/candidates/filters/
-    #  cw_intention 接线同批删。)
-
-    # (R-B 三信号商店件定价七字段(rb_signal_pricing_enabled/s3_enabled/
-    #  s1_unit/s2_threshold/s2_unit/s3_unit/rb_retention_q1)已随 W947
-    #  A/B 两轮判负整机制删码:合臂形态达标率 -3.00pp 显著负、拆臂
-    #  S1+S2 隔离复测 -0.33pp 噪声带内零疗效(两轮判前锁与判读=
-    #  docs/develop/currency_war/prereg/w947*_rb_*.md[已删·git 84370361 可溯])。
-    #  删码留档见 git 历史;复活须按开关生命周期重新立项评审。)
-
-    # (件价值模型 Phase 1 八字段(piece_value_enabled/buy/keep/merge/
-    #  w_activation/w_retention/bench_gate_enabled/bench_reserve_cap)已随
-    #  整机制定谳删除,删码留档 ADR-0496/0497;W902 终裁=活性但零疗效。
-    #  原「开臂判据挂账」随删码偿清,登记漂移不再存在。)
-
-    # ===== P1→P2 接口机制五开关——定谳清理,删码留档(ADR-0487)=====
-    #: 曾以 p1_iface_{lockline_v2,carry_equip,hardnode_prep,lossstreak_
-    #: flow,blood_bands}_enabled 五开关 + swing_degrade_n/swing_loss_n/
-    #: board_match_min 三阈值落码默认关(设计决策=ADR-0484;行为锁六件
-    #: 已随 09-13 清理删除,定谳退役件不恢复)。定谳依据(开关生命周期
-    #: 第 4 态,W793 重跑批):W790 首轮 A/B 因 sim 死输入触发面未开火
-    #: 判「数据不足」;补齐带符号 streak/hp_trusted/duty 观测桩后重跑
-    #: (同预注册协议零改动),触发面全面开火(①397 局锁定/②1169 义务
-    #: 帧/③40 授权帧/④112 授权帧/⑤80 血带帧,R 族出手率 77-94%)后
-    #: 主判据仍双败——M1 P2 存活轮中位差 0.0(p=0.23),M2 P1 失血
-    #: +0.81(方向反向),anchor 异族窗同形态 → 确认无效,删码。
-    #: **M3 质量维正信号单独记档**:锁定局锁错率 2.02%(397 局中 8 局
-    #: 交叠=0),交叠达标率 97.98% ≥90% 线——「锁前板面一致性验证、锁错
-    #: 不如不锁」的锁线语义在成规模样本上成立,该语义不随本批删除作废;
-    #: 若未来重立项接口判据面,锁线 FALLBACK 质量门按此证据复活。
-    #: 锁线主机制本身 = [23] 锚(cw_intention 信号驱动,ADR-0357 P1 配方
-    #: 锁),不在本批辖域。复活条件 = 机制/策略演进使「plane==1 接口
-    #: 预算/禁令判据」重新立项且带新标定,依据本 ADR 证据链重走生命周期。
-
-    # ===== C1 资产臂(跨位面资产通道 V_asset)——定谳清理,删码留档 =====
-    #: 曾以 c1_asset_channel_enabled(总开关)+c1_asset_m_min(0.5)/
-    #: p_slot(0.5,待标定)/delta_unit(0.03,待标定·主缺口)/l2_loss
-    #: (12.0,待标定)五字段落码默认关(设计决策与定谳链=ADR-0444;行为锁=test_cw_c1_directed_spend 资产臂节)。定谳依据
-    #: (ADR-0444,开关生命周期第 4 态):开臂前置「触发面非零」实测为零
-    #: ——sim 300 局 C1 辖域 445 帧上意向从不处于锁线态(session 无
-    #: v3_intention 或 phase≠locked),m 表结构性无定义,通道构造性恒不
-    #: 激活(三臂冒测逐位相同);p_slot/delta_unit/l2_loss 三个「待标定」
-    #: 量在触发面为零下永无标定数据源(标定数据源=A/B 兑现账回填,通道
-    #: 不点火即无账)。开关、四参与 filters 谓词(_c1_asset_tables/
-    #: _c1_asset_m_eff)一并删除,本注记留档。复活条件=机制/策略演进使
-    #: 「P1 末窗溢余段帧 ∧ 意向已锁线」交集复归非零且触发面测量复归
-    #: 非零,方可重新立项。
-
-
-
-    #: —— 同名牌集中度约束(已定谳清理,删码留档;决策 why=ADR-0437,
-    #: 复测与定谳链=ADR-0438 验证节)=====
-    #: 曾以 dup_concentration_enabled(默认关)落码:配方名(cw_line_defs
-    #: .recipe_char_names 名集单一源)在 board∪bench 已持 ≥2 张同名 1★
-    #: (差一张凑 3合1)且 survivors 存在该名买候选时,删除全部散件买
-    #: 候选(filters 层2 第三遍后置步,配方围栏之后)。定谳依据:开臂
-    #: 前置「散买挤掉第三张」已消失——非正分门 merge 完成豁免
-    #: (registry.merge_completion_exempt,ADR-0438)开臂后第三张副本
-    #: 由豁免通道直接买走(四臂 A/B:offer 买率 53.93%→92.67%),集中度
-    #: 约束双开复测专项指标与单豁免臂逐位同,零独立行为面;谓词与开关
-    #: 删除,ADR-0437 留完整证据链。
-
-    # (形态达标三方向三开关(recipe_fence_enabled/
-    #  form_break_sell_blocked_enabled/below_floor_spend_gate_enabled,
-    #  ADR-0432/0433/0434)与支出门三开关(spend_gate_enabled/
-    #  spend_gate_interest_enabled/spend_gate_bench_enabled,W829/ADR-0499)
-    #  已随旧方案清退批删除:全默认关+验证排期挂账未跑,清查报告
-    #  OLD_MIX_AUDIT §1.3 裁定整批删除;filters/discipline/ev/arbiter
-    #  接线、constraints 'spend_gate' 条目、audit_matrix 各格与
-    #  decision_v2/spend_gate.py 模块同批删。)
-
-
-
-    # ===== (spend_receipt_gate_enabled 已随除开关批删除:预算-回执契约
-    # ===== 无条件生效,决策 why = ADR-0504;行为面见
-    # ===== decision_v2.posture_release 三函数。)=====
-
-
-    # ===== DirectorV2 备战循环(`w606_stage2_batch3/` 阶段2批③落件;`w620_migration_b1/` 迁移批 1(守卫分区)升正)=====
-    #: `w620_migration_b1/` 迁移批 1(守卫分区)(蓝图 §7 迁移批 1(守卫分区) 行):DirectorV2 接线升正,新环 = 唯一生产
-    #: 路径——无开关 directive(蓝图 §8),``director_v2_prep_enabled`` 随
-    #: 接线完成删除(存在理由消失);回退 = git revert。
-    # (影子比对开关 director_v2_shadow_compare 已随旧方案清退批删除:
-    #  ADR-0465 迁移批 3 承诺旧环退役时删除生产分支,旧环已无生产者,
-    #  decision_assembly.shadow_compare_*/cw_screen_prep 接线同批删,
-    #  清查报告 OLD_MIX_AUDIT §1.3/§5。)
+    # ===== DirectorV2 备战循环(蓝图 §7/§8;迁移批 1(守卫分区) 升正)=====
+    #: DirectorV2 接线 = 唯一生产路径——无开关 directive(蓝图 §8);
+    #: 回退 = git revert。
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)
@@ -1145,15 +917,8 @@ class DecisionV2Registry:
         'boss_levelup_ban',    # 升级 EV 总账门(名字历史遗留;迁移审计 w255(git 历史)/ADR-0410
                                # 起 boss 禁令臂已删,[32] 节点无关)
         'deploy_cap',          # 上阵数 ≤ max_units
-        # ('p1_iface_gate' 已随五开关定谳清理删除,ADR-0487)
-        # ('spend_gate' 已随支出门开关族删除——旧方案清退批,清查报告
-        #  OLD_MIX_AUDIT §1.3;pv_bench_reserve 已随件价值整机制删除,
-        #  ADR-0497。)
     )
     #: 地板表(金≥地板;覆盖态分派——审计表 gold 行的消费值)
-    #: interest_floor 字段已删(D3 双源清偿,`w628_migration_b2/`):息线单一源 =
-    #: ``interest_floor()`` 派生(interest_cap × 10,ADR-0463 恒等式),
-    #: 纪律视图的 ALL IN 清零改走 ``interest_floor_override`` 注入通道。
     war_floor: int = 30           # 战力模式地板(计划内补强非 panic)
     rebirth_floor: int = 20       # [18] 应急保留重生基数
     boss_floor: int = 10          # r278 boss 破息地板
@@ -1161,13 +926,8 @@ class DecisionV2Registry:
     #: ALL IN 窗 = 0(唯一清零路径,discipline 裁决视图注入)。
     #: A/B 常量注入面只留 interest_cap 一个旋钮(D3 验收判据)。
     interest_floor_override: int | None = None
-    #: (levelup_interest_engine_gate 已随 迁移审计 w119(git 历史) 删除:[12] 门收编 EV 总账
-    #:  ——ev.levelup_ev_authorized 单一裁决,ADR-0347;A1/A2 镜像清)
-    #: (refresh_game_cap/levelup_reserve_gold 已随 `w126_b_arm/`/ADR-0349 删除:
-    #: refresh_budget 约束整体退场,D 的预算由 V_D 批口径评分+
-    #: gold_floor/interest_rule 辖)
     #: boss 轮判定(node_type='boss';P1 r9 兜底同辖)。迁移审计 w255(git 历史)/ADR-0410:
-    #: 消费面只剩 boss 窗地板/覆盖态语境(b 类保留),升级特殊禁令已删。
+    #: 消费面只剩 boss 窗地板/覆盖态语境(b 类保留)。
     boss_round_node_types: frozenset[str] = frozenset({'boss'})
     #: LevelUp 等级上限(封顶 10)
     level_max: int = 10
@@ -1176,12 +936,8 @@ class DecisionV2Registry:
 
     # ===== `w607_affix_consumption/` 词缀消费面三开关(`w628_migration_b2/` 清偿)=====
     # 设计单一源=设计件「词缀消费面」(.debug/temp/currency_war/w607_affix_consumption/DESIGN.md
-    # §3);词条语义出处见 cw_comps.STRONG_ENV_MECHS / RUST_AFFIX_NAME 注释。
-    # 清偿记录(H1 已物理删字段;H2②/H3 行为无条件化、字段物理删除随迁移批 3(ADR-0465)
-    # ——读端在 operations/cw_op/cw_op_equip_all.py,该文件迁移批 3(ADR-0465) 在飞故本批禁碰,
-    # 显式战术权衡,证据归 w628_migration_b2/STATUS):
-    #: (H1 line_env_gate_enabled 已删:行为无条件化,cw_intention 锁线信号
-    #: 过滤恒在;sim A/B 与单帧锁证据见 w607_affix_consumption/AB_REPORT.md)
+    # §3);词条语义出处见 cw_comps.STRONG_ENV_MECHS / RUST_AFFIX_NAME 注释;
+    # H2②/H3 读端在 operations/cw_op/cw_op_equip_all.py。
     #: H1 环境判据的最小生效轮(位面内轮次,1-based;防位面切换首帧词缀窗口
     #: 误判的观察期)。简报词缀在位面切换即读得(cw_loop 位面简报分支),
     #: 无窗口误判实证,默认 1=判据全程在辖;如实机判读发现位面首帧词缀滞后,
@@ -1218,12 +974,6 @@ class DecisionV2Registry:
     rust_hoard_damage_share: float = 0.03
     rust_hoard_penalty_cap: int = 10
 
-    # (变宝为废牺牲合成开关 junk_first_sacrifice_enabled、装备穿满族
-    #  fill-to-3 开关 equip_env_fill3_enabled 与穿满阈值 equip_fill_target
-    #  已随旧方案清退批删除:双钥匙开臂判据挂账未跑即整体出局,清查
-    #  报告 OLD_MIX_AUDIT §1.3;kernel/cw_junk_first.py、kernel/
-    #  cw_equip_env.py 排序器包装与 equip_all 接线同批删——机制真值
-    #(词缀原文)保留在 data/affix_effects_data。)
 
     # ===== 完备性审计表(ADR-0290 对抗修订④)=====
     #: 资源维 × 回合态维矩阵;每格 = constraints 内的约束名,或
@@ -1232,11 +982,7 @@ class DecisionV2Registry:
     audit_matrix: dict[tuple[str, str], tuple[str, ...] | tuple[str, str]] = field(
         default_factory=lambda: {
             # (资源维, 回合态维) → (约束名...) 或 ('none', 原因)
-            # ('catchup' 列已随 `w126_b_arm/`/ADR-0349 追赶态退场改为 'mode' 常态列)
             ('gold', 'boss'): ('gold_floor', 'interest_rule'),
-            # (gold/boss 与 bench/boss 格原不含 spend_gate;支出门已随
-            # 开关族删除——旧方案清退批,p1_iface_gate 已随定谳清理删除,
-            # ADR-0487;pv_bench_reserve 已随件价值整机制删除,ADR-0497)
             ('gold', 'emergency'): ('gold_floor',),
             ('gold', 'mode'): ('gold_floor', 'interest_rule'),
             ('bench', 'boss'): ('bench_capacity',),
@@ -1254,23 +1000,6 @@ class DecisionV2Registry:
     #: 审计表两维的显式枚举(新增动作类型/资源维时审计表强制过检)
     audit_resource_dims: tuple[str, ...] = ('gold', 'bench', 'slot', 'round_mutex')
     audit_round_state_dims: tuple[str, ...] = ('boss', 'emergency', 'mode')
-
-    # (W875 环境B类评分补全两旗标(w875_energy_leak/sync_action_enabled)、
-    #  W878 死 tag 复活四旗标(w878_mono_attribute/formed_bond/slow_burn/
-    #  synth_equip_dep_enabled)、长线利好刷价三字段
-    #  (longterm_refresh_discount_enabled/threshold/price)与巨星强化角色
-    #  开关 megastar_enhance_enabled 已随旧方案清退批删除:全部默认关+
-    #  开臂判据挂账未跑,清查报告 OLD_MIX_AUDIT §1.3 裁定整批删除;
-    #  cw_comps 的 tag→旗标门控查找、cw_economy.refresh_cost_effective
-    #  折价臂、strategy.decide_megastar 强化意向接线与
-    #  __post_init__ w878/junk_first 联动校验同批删。)
-
-    # (W948 转型臂字段族 intention_stagnation_arm_enabled /
-    #  p2_entry_weak_target_enabled / p2_promote_enabled / stagnate_windows /
-    #  stagnate_window_rounds / stagnate_core_min_copies /
-    #  salvage_deadline_nodes / salvage_window_rounds 已随 sim A/B 判负整机制
-    #  删码(开关生命周期第 4 态);决策 why、负结果数据与复活条件 = ADR-0509。)
-
 
     def interest_floor(self) -> int:
         """息线单一源(D3 双源清偿,`w628_migration_b2/`):派生 = interest_cap × 10。

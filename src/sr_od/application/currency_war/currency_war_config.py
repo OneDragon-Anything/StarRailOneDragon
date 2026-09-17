@@ -26,18 +26,15 @@ DEFAULT_CHARACTER_PRIORITY: list[str] = [
     "阿格莱雅", "藿藿", "桑博", "艾丝妲", "风堇", "卡芙卡",  # 藿藿=1费 / 卡芙卡=2费 / 风堇=2费
 ]
 
-# 枚举合法值(构造时校验,typo/大小写错静默落入默认)—— 现无枚举字段;economy_mode 及其
-# ALLOWED_ECONOMY 已删(node_plan spend_mode 全区间有主,config 档位是死配置)。
+# 枚举合法值(构造时校验,typo/大小写错静默落入默认)——现无枚举字段。
 
 # boss 克制 = comp-vs-boss 机制级(comp.countered_by_bosses + boss_fit + task#73 机制建模),
-# 非阵营级 —— 原 DEFAULT_BOSS_COUNTER(boss→降权阵营)错模型已删(decide_boss_priority 删时一并清)。
+# 非阵营级。
 
 # 注:「净化身心克 DoT/减益」类游戏客观数据不进配置(配置=用户偏好单一职责)——
 # 单一源在 cw_comps.MECHANIC_COUNTERS(经 AFFIX_MECHANIC_MAP 归一),cw_events decide_event 消费。
-# 原 dot_punish_envs 配置字段已删(与注册表双源,且属版本一致的客观数据非用户偏好)。
-# 保血阈值/难度阶梯(hp_safe_threshold/difficulty_hp_override)亦删:策略校准参数
-# 归代码常量 kernel/cw_economy.py 的 HP_SAFE_THRESHOLD / DIFFICULTY_HP_TABLE;economy_mode(死配置)/
-# event_whitelist(引擎调参非用户偏好,priority/forbid 已覆盖)同批删。配置面单一源:
+# 保血阈值/难度阶梯单一源 = 代码常量 kernel/cw_economy.py 的
+# HP_SAFE_THRESHOLD / DIFFICULTY_HP_TABLE。配置面单一源:
 # docs/develop/sr_od/application/currency_war/config.md。
 
 
@@ -104,12 +101,8 @@ class CurrencyWarConfig(YamlConfig):
         # 起局。默认开 = 安全闸宁拦勿放;闸本体见 kernel/cw_code_hash_gate
         # (豁免名单/口径申报单一源 = ADR-0581 与闸模块 docstring)。
         self.code_hash_gate: bool = self.get('code_hash_gate', True)
-        # (统一 state 影子开关已随删除波 1 销案——用户 2026-09-10 直迁
-        #  裁定「journal 无条件常开,无开关」:装配段无条件武装
-        #  install_state_telemetry,无影子期。yml 残留键无害,get 不再读。)
-        # r347(旧路径删除):gate_* 4 flag 已删(对拍验证过,观测
-        # gate 无条件化(对拍期已结束);yml 残留键无害,
-        # get() 不再读)。
+        # journal 无条件常开(用户裁定「无开关」),装配段无条件武装
+        # install_state_telemetry;yml 残留旧开关键无害,get() 不再读。
 
     def save(self) -> None:
         """持久化策略字段。"""

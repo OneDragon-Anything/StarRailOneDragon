@@ -23,8 +23,7 @@
 - 分支 6(战斗/过场屏总伤害/数据统计 → 点空白推进)。
 
 遥测连续性红线(W971 05-battle §1):观察半直写/结算链内存轨迹照旧维持;
-旧流(decisions/outcomes)写入调用已随删除波 1 退役,判读连续性由
-journal 行与冻结档案承载。
+判读连续性由 journal 行与冻结档案承载。
 
 自动战斗检测(W971 05-battle §2):**本批不做**(采集未完成)。接口预留 =
 本 op ①段(等结算画面)轮询中消费「自动战斗未开启」信号(画面右下角
@@ -44,8 +43,7 @@ reconcile = 空申报(结算写端拆 reconcile 必改执行时序,撞 D-94「�
 (``__init__(ctx, st, config)``,RunLoop 持有)不变;``node_max_retry_times=
 400`` 归节点不随路径变。本屏 sim 腿 = 不适用(F11 例外清单:sim 事实来源
 为 coarse 结算产出非画面段),等价判据主承重 = 实机在册行为锁经
-execute()/wait() 走新路径全绿(B2-③ 主门;锁面随测试仓清理批重建
-——旧 test_cw_battle_wait_op.py 已删,回归责任由 test_cw_encounter_selection.py 扩容承接,见遭遇选档迭代 landing 承接申报)。
+execute()/wait() 走新路径全绿(B2-③ 主门;锁面随测试仓清理批重建)。
 """
 from __future__ import annotations
 
@@ -494,9 +492,8 @@ class CwScreenBattleWait(CwScreenOpBase):
                 #(掉血三臂喂入/node_type 回落/谷底回滚登记 = flow 层
                 # _drain_pending_round_outcomes;处理即清)。
                 _session.pending_round_outcomes.append(_obs)
-                # (结算 outcomes 行与 battle_done 外生行已随旧流写入端退役
-                #  删除——删除波 1;结算真值现役归宿 = GameState settlement
-                #  域 apply_settlement_cover(观察半直写链)。)
+                # 结算真值现役归宿 = GameState settlement
+                # 域 apply_settlement_cover(观察半直写链)。
                 if _obs.hp_confidence >= 0.9:
                     _st.last_outcome_hp = _obs.hp_after
                 # 结算屏真值覆盖(EXPECTED_STATE §2 原口径的观察半,两态制

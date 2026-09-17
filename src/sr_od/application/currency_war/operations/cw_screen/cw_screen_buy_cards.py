@@ -123,10 +123,9 @@ def expected_gold_after_actions(state_gold: int, spend: int,
     return state_gold - spend + sell_income
 
 
-# (refresh_effective 判刷新未生效函数已随 T-192 阶段三判效拆除删除:
-#  判效权归观察侧 reconcile;牌名集三值对比的留证半已随统一动作工厂批4
-#  比对收口迁观察侧单一源 cw_shop_refresh_obs.refresh_board_changed_of,
-#  消费点 = 刷新回执 extra 与本文件入口观察对账点。)
+# 牌名集三值对比单一源 = cw_shop_refresh_obs.refresh_board_changed_of
+# (消费点 = 刷新回执 extra 与本文件入口观察对账点);判效权归观察侧
+# reconcile。
 
 
 def _shop_entry_names(shop: list) -> list[str]:
@@ -417,8 +416,7 @@ def apply_action_outcome(_aop: 'ActionOp',
     cw_reconcile)——逻辑态建模 bug 的检出归 reconcile 纠漂显影(观察赢)。
 
     ``_cur`` = 段顶入口观察回执(defects 留证行 plane/round 基准 + 逻辑
-    直写帧标识;帧级逻辑态推算链已随 simulate 前瞻消费删除退役,T-163——期望态真值在
-    容器,函数无返回值,调用方不再推进任何帧链载体;迁移批 3.2 起载体 =
+    直写帧标识;期望态真值在容器,函数无返回值,调用方不再推进任何帧链载体;迁移批 3.2 起载体 =
     :class:`GameStateReadReceipt`,visit 内 plane/round 恒定不变)。
     """
     visit_actions.append(action)
@@ -521,8 +519,8 @@ def apply_action_outcome(_aop: 'ActionOp',
         except Exception as e:   # noqa: BLE001  记录面失败不阻塞
             log.warning(f'[cw-buy] 效果账本 REFRESH 计数失败(不阻塞): {e}')
     if _ok and not _aop.terminal:
-        # 商店动作逻辑态直写·容器通道(纯规则路线,T-163:simulate 前瞻推算
-        # 消费已删除,期望态推进 = 逻辑态直写口 + 合成升星腿,与序列驱动器
+        # 商店动作逻辑态直写·容器通道(纯规则路线,T-163:期望态推进 =
+        # 逻辑态直写口 + 合成升星腿,与序列驱动器
         # 同形单一源;设计件《商店黑板容器化方案》§2.1-2/§4-M1)。
         # 写序申报:直写口先写(含 bench 简单落位),升星整表直写后写覆盖
         # (后写赢)——两写合计的期望态由投影直锁钉住(锁 M1,
@@ -774,8 +772,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
       重定位 = 执行侧 visit 级计数(``ledger.total_refresh``,§3.1 候选
       (a) 同款防线:防「终结→重进→再刷新」无进展环)。
 
-    (hp 三件组传参已随黑板帧退役删除——迁移批 3.2,波 4 步 4 同款结论:
-     访问内 hp 决策消费统一经容器政策读口 decision_hp,门前真值由备战帧
+    (访问内 hp 决策消费统一经容器政策读口 decision_hp,门前真值由备战帧
      观察/结算既有写端承接,段间无战斗值同源,覆盖回写是绕行。)
 
     match=None(独立 run_operation 调本 op)→ 临时 match,不挂 ctx
@@ -805,7 +802,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # shop=None。「局外不复用」语义由「每次 run_operation 新建」保持,
         # 挂 ctx 只是给漏斗写块一个可寻址的 session 容器。该路径经
         # create_session 冷建(ADR-0583:live 初值 v3_phase='FORM' 随唯一
-        # 冷建口在此落位,旧 on_match_start 写点已删;phase 列仅诊断用)。
+        # 冷建口在此落位;phase 列仅诊断用)。
         from sr_od.application.currency_war.strategies.impl.cw_strategy import (
             CurrencyWarMatch,
         )
@@ -911,7 +908,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         #  覆盖回写 = 绕行;传参链同批移除。)
         # 节点类型来源 = 派生管线四②「商店查现行链」(kernel 派生步在店开
         # 上下文写入时自查链直定 node.kind,链观察落地批接线)。本处的台账
-        # 回填写端已随之退役——它以 logic 通道覆盖会吞掉派生层的观察对账,
+        # 本处无台账回填写端——logic 通道覆盖会吞掉派生层的观察对账,
         # 且属流程层散写。ADR-0587 滞后拷贝禁令(禁退回 last_node_type)
         # 继续有效,由查链零内建回落语义承接:链缺位 = kind None → ②(b)
         # 不发射,同 None fail-open 语义。
@@ -975,8 +972,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 空播种段同样取值——检差面不依赖是否播种)。宿主 = 容器簿记组
         # ExecBooks(载体解散迭代迁入;写点 = kernel/cw_reconcile 纠漂期)。
         _seed_epoch = game_state_of(match.session).exec_books.bench_layout_epoch
-        # (session.last_state 写点已随链退役批删除:段顶入口观察的局内
-        #  事实宿主 = 容器单例,写入 = 观察漏斗直写。)
+        # 段顶入口观察的局内事实宿主 = 容器单例,写入 = 观察漏斗直写。
         # visit 基准载体(黑板槽退役收口,ADR-0651 容器单源):段顶入口
         # 观察回执,T-163 起恒定不随动作推进(帧级逻辑态推算链已随 simulate 前瞻
         # 消费删除退役);仅供落地门 defects 留证行 plane/round 基准,决策/守卫/env 读点
@@ -1022,8 +1018,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # (期望态覆盖点·商店段顶的对账块已随 ADR-0651 两态制废除:金账
         #  delta 为逻辑直推字段,本帧 state.gold 实读即观察覆盖真值,
         #  失配 = 推算 bug,缺陷台账留证——无挂账对账环节。)
-        # (r97 供给快照行已随 shop_snapshots 流写入端退役删除——删除波 1;
-        #  牌面真值现役归宿 = journal 快照行自带 shop 域。)
+        # 牌面真值现役归宿 = journal 快照行自带 shop 域。
         # A2:target 由策略器状态管理(方向刷新写,ADR-0583 内化)。
         _tc = getattr(strategy_state_of(match.session), 'target_comp', None)
         target_name = _tc.name if _tc is not None else ''
@@ -1040,16 +1035,12 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                  f'next={_next} board={_entry.board} '
                  f'target={target_name!r} fp={_fp_v:.2f} '
                  f'bench={bench_occupied(_blog_slots(_gs_of_entry))}')
-        # (决策行披露值构造块 _cand/_eb/_extra 与统一 state 段入口版本钉
-        #  _seg_pin_version 已随 decisions 流写入端退役删除——删除波 1;
-        #  日志披露行(上方)保留。)
+        # 决策行披露 = 日志披露行(上方)。
         # ---- 单动作决策循环(ADR-0517 决策 1/2;循环内零读屏)----
-        # (播种期双账对账块已随 T-268 守卫退役删除;原 T-251 店内读屏重建
-        #  出口同批移除——未观察态的锚定改走「策略关店 → 备战环 heavy
-        #  观察」链,店内零重建,观察态 = 容器字段
-        #  GameState.tracked_account_observed,与下方 CloseShop 出口的跳过
-        #  留痕/熔断。连续跳过计数复位不在段顶:见函数尾「完整收工且未跳
-        #  过」的完成点复位。)
+        # 未观察态的锚定 = 「策略关店 → 备战环 heavy 观察」链,店内零
+        # 重建,观察态 = 容器字段 GameState.tracked_account_observed,与
+        # 下方 CloseShop 出口的跳过留痕/熔断。连续跳过计数复位不在段顶:
+        # 见函数尾「完整收工且未跳过」的完成点复位。
         visit_actions: list = []
         _seg_frames = 0
         while True:
@@ -1070,8 +1061,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 log.warning('[cw!][plan] 布局代次检差命中 → fail-stop '
                             '本段收工,交回外循环重观察')
                 break
-            # (frame_seq 段序推进已随 op_journal 流退役删除;段界序号
-            #  _seg_frames 只服务帧帽防线。)
+            # 段界序号 _seg_frames 只服务帧帽防线。
             if _seg_frames > SHOP_SEGMENT_ACTION_CAP:
                 # 防御帧帽(对抗发现:决策循环不收敛的响亮暴露——禁静默续跑/
                 # 禁吞异常续跑。收敛根因修复在决策侧席位门,本帽 = 执行
@@ -1153,7 +1143,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                     break
             # 守卫/env 读点 = 容器(波 4 读者切换,设计件 §2.4-2:
             # guard_proposal_vs_expected 守卫输入 + ShopExecEnv.state
-            # 改容器单例);黑板槽读已随槽退役删除,_cur = visit 局部逻辑态链。
+            # 改容器单例);_cur = visit 局部逻辑态链。
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 game_state_of as _gs_of_cur,
             )
@@ -1224,10 +1214,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                    (s.card.name, s.card.faction, s.card.cost)
                    if s.card else None) for s in _entry.shop],
                  [_fmt_action(a) for a in visit_actions])
-        # (段尾 decisions 行已随 decisions 流写入端退役删除——删除波 1。)
-        # (段尾 state.equips 帧拷贝随黑板帧退役删除——迁移批 3.2:装备库存
-        # 容器写端 = 备战装配点 observe + 载体中继兜底(cw_observation),
-        # 帧拷贝的唯一消费(下段 synthesize 喂入)已随喂入删除消亡。)
+        # 装备库存容器写端 = 备战装配点 observe + 载体中继兜底
+        # (cw_observation)。
         # 连击续刷判定输入:本段是否「仅刷新且真点击」。
         _prev_refresh_only = bool(
             ledger.did_refresh and refresh_wave_is_refresh_only(visit_actions))
@@ -1305,8 +1293,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 与身份回读是留证级。失败路径无 return/retry/屏蔽,买牌照常收工。
         with contextlib.suppress(Exception):
             _occ = bench_buy_occupancy_ok(len(ledger.bought_names), len(_new_slots))
-            # refs 旧挂点清理(W7 refs 迁移):decisions 流已随删除波 1
-            # 退役,改指 journal (run_id,v) 锚(plane/round/bought 数已在
+            # refs 指 journal (run_id,v) 锚(plane/round/bought 数已在
             # 行参/expected/observed 内联)。
             _bench_refs = journal_refs()
             if _occ is False:
@@ -1366,9 +1353,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                         gap_large=False, refs=_bench_refs,
                         note='观测自检框架设计 §2.2:身份留证不算失败')
 
-    # (BuyCardsOutcome 已随迁移批 3.2 退役:动作账/期望态基座 = ledger 本体
-    #  外发。消费方迁移见 cw_screen_prep.visit_open_shop/finalize_buy_phase
-    #  与 cw_loop 仲裁段。)
+    # 动作账/期望态基座 = ledger 本体外发(消费方 = cw_screen_prep.
+    # visit_open_shop/finalize_buy_phase 与 cw_loop 仲裁段)。
     # 连续跳过计数复位(T-268 编排者核进):复位条件 = 「完成了一次未跳过
     # 的正常访问」——本 visit 观察态已锚定且完整收工才重开熔断计数窗,
     # K=2 数的是连续因未观察跳过,非任意间隔;跳过 visit(未观察)与中途
@@ -1441,8 +1427,7 @@ class CwScreenBuyCards(CwScreenOpBase):
 
     def lifecycle_reconcile(self, payload: Any) -> None:
         """段2 reconcile:空申报(旧体委托变体——观察/对账住委托体段循环内,
-        无独立对账面;双账对拍已随 T-268 守卫退役,对账唯一发生点 =
-        观察边界 kernel cw_reconcile)。"""
+        无独立对账面;对账唯一发生点 = 观察边界 kernel cw_reconcile)。"""
         return None
 
     def lifecycle_decision_cycle(self, payload: Any) -> OperationRoundResult:

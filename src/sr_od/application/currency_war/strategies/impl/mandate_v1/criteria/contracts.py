@@ -237,9 +237,6 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     ('buy', 'ev_buy_veto'): Contract(
         None, 'EV 买否决门(随候选流一体;R7-1 发射面后半)',
         'BYPASS_TABLE 对应行(criteria/__init__.py 单一源;buy.ev_buy_* 行)'),
-    # ('buy', 'p2_lock_buy') 契约键已随 P25 占位接管批删除(ADR-0569):
-    # 占位函数与 BYPASS_TABLE 行同批清,P25 数值语义唯一载体 = C1 通道
-    # 数值支(挂账不落码,设计 §4 P25 行),消双源。
     # —— criteria/sell ——
     ('sell', 'line_switch_sell'): Contract(
         None, '换线塌缩出口:前提=K 已切换(判据自带 k_switched 门)',
@@ -298,7 +295,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         None,
         'R1 启动门·形式二可负担性:总账 c_eff·E(D|L*) + Σ卡费 '
         '+ L ≤ g − g*,输入全为游戏定义量(REFRESH_PROB/XP 表/息律),'
-        '无标定槽位依赖(旧 V_GAP 槽位比较项已随 V̄ 链退役)',
+        '无标定槽位依赖',
         '用户裁定禁胜率建模(2026-09-04);形式二规格=P40/P47/P56 复用'),
     ('refresh', 'r1_horizon_closed'): Contract(
         None, 'R1 域内放行的末轮豁免谓词(计划视野关闭维;r_remaining '
@@ -333,29 +330,13 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         _s_reserve_line_formed,
         'M6 压库买入(S 预留消费位):辖 M6,前提=目标线成型',
         'ZERO_REFRESH_DIAG §3 第 3 条+02_mandate_layer §4 ③'),
-    # —— criteria/equipment ——
-    ('equipment', 'wear_release'): Contract(
-        None, 'D-B 零调用面墓碑:非 key 穿戴释放生产单一源 = kernel '
-        'cw_equip_env.resolve_wear_release 五行表(prep_actions 消费,'
-        '18 号稿/ADR-0526);本函数系占位残余自入库起零生产调用,已随 '
-        'equipment 三死判据面退役批物理删除(裁定档已删,git da3a7370ce 可溯),登记行'
-        '保留契约枚举完备性', '18_equip_wear_semantics(D-B 穿戴释放)'),
-    ('equipment', 'affix_allocation'): Contract(
-        None, 'D-F46 零调用面墓碑:词缀分配生产单一源 = '
-        'cw_equip_env.resolve_affix_priority_order(cw_op_equip_all 消费);'
-        '本函数系孤儿第二实现+死键,已随判据出处纠错批物理删除,'
-        '登记行保留契约枚举完备性', '18_equip_wear_semantics(D-F46 词缀分配)'),
-    ('equipment', 'keep_policy'): Contract(
-        None, 'P42 ③ 零调用面墓碑:命题在册已证(01_math_framework §3.6)'
-        '但生产落码载体缺位(kernel classify_item_hold 无兑现距离维度);'
-        '占位默认支与命题方向相反,禁作命题种子复用;已随 equipment '
-        '三死判据面退役批物理删除(裁定档已删,git da3a7370ce 可溯),登记行保留契约枚举'
-        '完备性', '01_math_framework §3.6(P42 ③)'),
+    # —— criteria/equipment(D-P3 挂账载体,勿删)——
+    # 修复池项 OPEN 挂账不变(定谳手段 = 实机 boss 掉血分布对拍,
+    # 从未执行),复活须先「对拍定谳→三形态标注→落码」全流程。
     ('equipment', 'endgame_context'): Contract(
-        None, 'D-P3 零调用面墓碑:修复池项 OPEN 挂账不变,本占位 '
-        'r_remaining<=3 系未证拍定值随之作废,复活须先对拍定谳;已随 '
-        'equipment 三死判据面退役批物理删除(裁定档已删,git da3a7370ce 可溯),登记行'
-        '保留契约枚举完备性', 'D-P3 修复池(原文=ADR-0644 取回)'),
+        None, 'D-P3 修复池项 OPEN 挂账不变(定谳手段 = 实机 boss 掉血'
+        '分布对拍,从未执行),复活须先「对拍定谳→三形态标注→落码」'
+        '全流程', 'D-P3 修复池(原文=ADR-0644 取回)'),
     # —— 第七面「换线」(proof 判据面函数位;影子面,前提核验随实装
     #    接线批落位——见模块 docstring 辖外声明)——
     ('proof', 'stop_buy'): Contract(

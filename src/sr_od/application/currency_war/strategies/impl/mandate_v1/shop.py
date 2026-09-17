@@ -251,12 +251,9 @@ if TYPE_CHECKING:
         StrategySession,
     )
 
-# ===== 截断分类退役声明(ADR-0517 迁移批)=====
-# 旧 _SHOP_CONTINUE/_SHOP_CONDITIONAL/_SHOP_TRUNCATION 三分类与
-# ``truncate_shop_frame_stable`` 截断器已随波批形态退役——截断点语义被
-# 终结 op 吸收(RefreshShop 即终结,CloseShop 恒可用;原 CompTransaction 邻接 fallback 已随批2b R3 删除),
-# 名-槽一致性复检降级为执行侧 proposal-vs-expected 守卫断言
-# (cw_shop_action_ops;ADR-0517 决策 9 和解注)。
+# ===== 商店截断语义(ADR-0517 迁移批)=====
+# RefreshShop 即终结,CloseShop 恒可用;名-槽一致性复检 = 执行侧
+# proposal-vs-expected 守卫断言(cw_shop_action_ops;ADR-0517 决策 9 和解注)。
 
 # ===== M2 停摆续段缓存退役(T-271)=====
 # 商店域 M2_STALL_NONVARIANT_SHOP_ACTIONS 白名单、cw4_m2_stall_latch
@@ -479,13 +476,9 @@ def shop_unbought_reasons(gs: GameState,
     拒因串是判读线索,非审计账(精确门序以 shop_ev_*/m2_* 各计数键为准)。
     comp 为 None(K 空窗回退带)时 transition 分类不可得,统一 ``non_line``。
 
-    双栈语境声明(sim 判读必读):本函数的拒因语义(「金席俱足仍未发射
+    语境声明:本函数的拒因语义(「金席俱足仍未发射
     =异常态」)以 cw4 M2 义务通道为参照系——M2 对线内缺件是义务买入,
-    唯一合法拦截集=金/席硬闸+发射截断。sim 引擎(engine_p1)每决策段用
-    本函数对 **decision_v2 栈**的原始决策打标:decision_v2 的愿买集由候选
-    评分/copies_cap/预算投影(s_reserve 等)决定,线内在售未买多为合法
-    评分裁决而非异常——sim 面的 missing_no_path 须先查 decision_v2 侧
-    拒因(评分/上限/预算),不能按 cw4 义务语义直接定谳「异常态」。
+    唯一合法拦截集=金/席硬闸+发射截断。
     """
     bench = [b for b in bench_slots_of(gs) if b is not None]
     deployed = [d for d in deployed_slots_of(gs) if d is not None]

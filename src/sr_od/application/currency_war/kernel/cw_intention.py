@@ -123,8 +123,6 @@ if TYPE_CHECKING:
 CORE_MISS_N: int = 6
 """撤销出口①阈值:意向核心 N 轮不可得 → 撤销(设计推断,sim 校准)。
 计数分母 = 该核心刷新窗已开的轮(窗口冻结语义,见 LineTrack)。"""
-# (SKELETON_ASSET_WEIGHT=0.5 已退役 2026-09-04:设计推断无标定链,
-# 「未证即退役」;保守缺省 0 = 资产厚度只数终局件星级当量,纯游戏定义计数。)
 FAMILY_BOND_MIN_COUNT: int = 2
 """②类专属羁绊信号阈值:板上+bench 该羁绊计数 ≥ 此值 → 家族信号。
 
@@ -132,14 +130,8 @@ FAMILY_BOND_MIN_COUNT: int = 2
 羁绊首档均为 2 人(cw_factions 注册表 counts[0]),阈值 = 信号族最小
 激活档,非经验拟合)。"""
 
-# ⑤无信号兜底线常量 FALLBACK_COMP_NAME('绯英欢愉')已退役
-# (四面退役表 = p86-no-target-period-fund-allocation.md §4.2)。
-# 墓碑注(strategy-work §1「未证即退役」通则③):原值 = 单线硬编码囤货方向,
-# 知识出处 = comp_definitions_v2「门槛全游戏最低,6 级搜绯英三星,无信号时
-# 的默认落点」(经验拍定,绯英自身 G=0.0000——囤货方向落在候选机器自己
-# 判死的线上,P35 复盘 §6-5 实证)。现行为:无目标期帧囤货方向由三臂判据
-# 输出(甲臂=候选机器强锁门逐字/乙臂=枢纽期权资格核/丙臂=守息缺省),
-# 见本模块「P86 无目标期三臂判据」节。
+# 无目标期帧囤货方向由三臂判据输出(甲臂=候选机器强锁门逐字/乙臂=
+# 枢纽期权资格核/丙臂=守息缺省),见本模块「P86 无目标期三臂判据」节。
 
 # 跨线骨架件(strategy_v4「目标件」定义节 class3)。弱意向态只囤这批
 # (点0:撤销后去向——只囤跨线骨架件)。
@@ -252,13 +244,11 @@ class IntentionState:
     随未证阈值退役,本字段仅留序列化兼容与派生 exclude 参数占位)。"""
     pair_drought: dict[str, int] = field(default_factory=dict)
     """体系级断供计数器(体系键 → 连续无新件在店轮数;成员在店即清零,
-    无商店语境轮冻结)。断供驱逐退役后仅遥测,不再触发驱逐。"""
+    无商店语境轮冻结)。仅遥测,不再触发驱逐。"""
     shop_supply_streak: dict[str, int] = field(default_factory=dict)
     """体系级在店供给计数器(体系键 → 连续在店轮数;不在店清零,无商店
-    语境轮冻结)。断供驱逐退役后仅遥测(旧「驱逐加速门」已随驱逐退役)。
+    语境轮冻结)。仅遥测。
     serialize_intention 全量序列化自动携带。"""
-    # (supply_drought 方向侧供给衰减计数器已随兑现链开关族删除——旧方案
-    #  清退批,清查报告 OLD_MIX_AUDIT §1.3。)
     p1_pair_frozen_obs: tuple[str, ...] = ()
     """P1 配方对观测快照(锁线断头 P2 定向通道设计稿 §2.1/§6,纯观测件):
     plane==1 且派生 pair 非空时随帧覆写为最新非空值——P2 退场后仍可读
@@ -491,13 +481,7 @@ def _p1_transition_eligible(comp: Comp) -> bool:
       升级层)。
     其余线=终局专属(万敌单C/黄泉减益/双王圣杯/命运圣杯红A/大黑塔银河学者/
     狼尊欢愉/反甲白厄):前期战力来自通用引擎池而非自身目标件
-    (transition_combos 直通终局线节),锁线会把囤货方向从过渡引擎上引开。
 
-    (P86 退役注:原首支「⑤兜底线恒 no-op」随 FALLBACK_COMP_NAME 四面
-    退役表③面删除——兜底方向退役后该支永不命中;删前死分支断言 =
-    「该支仅由 ⑤兜底囤货衔接语义承重,P1 信号路径上未资格信号被
-    update_intention 配方锁段 _direct_line_qualified 过滤,删除行为零差」,
-    测试锁 = test_cw_no_target_three_arms.py ③面。)
     """
     if '希儿' in comp.core_chars:
         return True
@@ -2282,12 +2266,11 @@ def hoard_target_set(gs: GameState, ist: IntentionState,
 
     - locked/forced:意向线采购集;
     - P1(ADR-0357):非 comp 锁定局 → 配方方向——体系对成员集
-      (p1_pair)/四体系引擎件全集(p1_transition,空窗);绯英⑤兜底
-      不再辖 P1(零引擎覆盖,sim 实证 e2 成率 5%);
+      (p1_pair)/四体系引擎件全集(p1_transition,空窗);
     - weak:只囤跨线骨架件(撤销后去向);
     - unlocked 无信号(P2+):P86 三臂判据——甲臂判活 = 机器强锁门逐字
       首方向采购集;甲臂空 = 空集(乙臂枢纽期权在商店域发射位获取,
-      丙臂守息缺省;FALLBACK_COMP_NAME 单线硬编码退役,墓碑注见常量区)。
+      丙臂守息缺省)。
       session/registry/visible 缺省时 G 视界回退先验(裸调用/旧签名兼容)。
     - demoted_endgame:降格终局 = 通用骨架满配(四体系板深强化归点4/点6,不在本模块)。
     """
@@ -2390,8 +2373,7 @@ def committed_from(session: StrategySession,
     本模块 ``committed_authority``,kernel 内自洽)。
 
     - 有现读 state(容器单例)→ 直取权威派生;
-    - 无现读 state 的调用面:plane 取 session 容器单例(game_state_of;
-      旧 session.last_state 槽直读已随链退役批删除,槽本体不复存在);
+    - 无现读 state 的调用面:plane 取 session 容器单例(game_state_of),
       也不可得时仅凭 ist 判定(缺供给 = 保守 False,同 D2)。
 
     grep 守卫锁「session 侧双轨字段直读点归零(本函数之外)」;

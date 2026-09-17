@@ -175,8 +175,7 @@ def _sphere_progress_sig(gs: GameState,
     ``round_num_of`` 读口——未观察帧缺省 1 镜像旧「state is None → 1」
     分支(波 1 读口等价契约,单一源 = 读口 docstring),分支退役零行为差。
     三分量全部 gs/obs 现成字段,零新识别;压缩进 int 保持 cw4_counters
-    数值账本面(sim 轮差分对逐值做 int() 算术,sim/engine_p1.py,禁存
-    tuple/str)。装箱域:席/球计数各 4 bit,>15 回绕 = 误判「有成效」
+    数值账本面(禁存 tuple/str)。装箱域:席/球计数各 4 bit,>15 回绕 = 误判「有成效」
     → 多一环探针点击,良性偏置。噪声口径:刻意不采 raw gold(OCR 噪声
     会误复位使门失效,ADR-0554 修订节 5 同源教训);球计数经 Hough 检出
     存在抖动,每次误变只多一环探针,无进展守卫(阈值 3)仍兜底。
@@ -888,9 +887,8 @@ def emit(obs: PrepObservation, session: StrategySession,
                         _ct['ev_conflict_dropped'] = \
                             _ct.get('ev_conflict_dropped', 0) + 1
                     continue
-                # 卖出销账(出口①;单笔即止,need 即止)。兜底分键计数/
-                # 载体填充已随 2026-09-08 用户归因遥测删除指令拆除
-                #(reason/标记缺省 '' 未标)。
+                # 卖出销账(出口①;单笔即止,need 即止)。
+                # reason/标记缺省 '' 未标(归因遥测面不落码)。
                 if (bc.char_id or '') in _f_release:
                     _ct['dead_pair_exit_sold_funding'] = \
                         _ct.get('dead_pair_exit_sold_funding', 0) + 1
