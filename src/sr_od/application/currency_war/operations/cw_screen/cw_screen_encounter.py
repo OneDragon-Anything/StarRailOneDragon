@@ -298,7 +298,7 @@ class CwScreenEncounter(CwScreenOpBase):
             # 终态契约 §B(T-4):持有引用直用(桩面挂载 match.gs)。
             _state = match.gs if getattr(match, 'gs', None) is not None else None
             _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
-            pick = match.strategy.decide_encounter(options, _state, match.session, _cfg)
+            pick = match.strategy.decide_encounter(options)
             if 0 <= pick.idx < len(options):
                 idx = pick.idx
             reason = pick.reason
@@ -327,8 +327,7 @@ class CwScreenEncounter(CwScreenOpBase):
                 new_opts = self._try_refresh(screen)
                 if new_opts:
                     options = new_opts
-                    pick = match.strategy.decide_encounter(
-                        new_opts, _state, match.session, _cfg, refresh_used=True)
+                    pick = match.strategy.decide_encounter(options)
                     if 0 <= pick.idx < len(new_opts):
                         idx = pick.idx
                     reason = pick.reason
@@ -427,7 +426,7 @@ class CwScreenEncounter(CwScreenOpBase):
             # 终态契约 §B(T-4):持有引用直用(桩面挂载 match.gs)。
             _state = match.gs if getattr(match, 'gs', None) is not None else None
             _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
-            pick = match.strategy.decide_encounter(options, _state, match.session, _cfg)
+            pick = match.strategy.decide_encounter(options)
             if 0 <= pick.idx < len(options):
                 idx = pick.idx
             reason = pick.reason
@@ -454,8 +453,7 @@ class CwScreenEncounter(CwScreenOpBase):
                 new_opts = self._try_refresh(payload.screen)
                 if new_opts:
                     options = new_opts
-                    pick = match.strategy.decide_encounter(
-                        new_opts, _state, match.session, _cfg, refresh_used=True)
+                    pick = match.strategy.decide_encounter(options)
                     if 0 <= pick.idx < len(new_opts):
                         idx = pick.idx
                     reason = pick.reason

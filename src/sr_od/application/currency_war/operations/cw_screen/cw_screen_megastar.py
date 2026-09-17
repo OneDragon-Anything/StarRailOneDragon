@@ -167,7 +167,7 @@ class CwScreenMegastar(CwScreenOpBase):
                 _state = match.gs if getattr(match, 'gs', None) is not None \
                     else None
                 _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
-                pick = match.strategy.decide_megastar(options, _state, match.session, _cfg)
+                pick = match.strategy.decide_megastar(options)
                 if 0 <= pick.idx < len(options):
                     idx = pick.idx
                 log.info(f'[cw-megastar] candidates={[o.char_id for o in options]} pick=idx{idx} {pick.reason}')

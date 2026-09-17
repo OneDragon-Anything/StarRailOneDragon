@@ -227,8 +227,7 @@ class CwScreenSupplyNode(CwScreenOpBase):
             _state = match.gs
             _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
             pick = match.strategy.decide_supply(
-                [o for o, _ in opts], _state, match.session, _cfg,
-                refresh_used=_refresh_used)
+                [o for o, _ in opts])
             if pick.refresh and not _refresh_used:   # 只刷一次(容器计数 >0 = 已用)
                 _anchor = self._read_refresh_anchor(screen)
                 self._refresh_used = True

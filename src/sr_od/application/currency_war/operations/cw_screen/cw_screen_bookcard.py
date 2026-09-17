@@ -158,8 +158,7 @@ class CwScreenBookcard(CwScreenOpBase):
                 # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读。
                 _st = _match.gs
                 _decided = _match.strategy.decide_star_tome(
-                    [c[0] for c in cards], _st, _match.session,
-                    getattr(_match, 'config', None))
+                    [c[0] for c in cards]).idx
                 if 0 <= _decided < len(cards):
                     idx, pick_name = _decided, cards[_decided][0]
         # 近邻匹配锚 = 选中卡的 OCR x(决策后取,防把候选首位当选中位)

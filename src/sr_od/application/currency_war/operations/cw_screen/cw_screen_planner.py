@@ -201,8 +201,7 @@ class CwScreenPlanner(CwScreenOpBase):
             # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读。
             _st = _match.gs
             _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
-            pick = _match.strategy.decide_planner(
-                options, _st, _match.session, _cfg)
+            pick = _match.strategy.decide_planner(options)
         else:
             from sr_od.application.currency_war.kernel.cw_events import decide_planner
             # 换源(登记集消点):防御视图 = 裸容器(全域未观察空视图;

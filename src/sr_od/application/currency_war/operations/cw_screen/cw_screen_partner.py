@@ -278,7 +278,7 @@ class CwScreenPartner(CwScreenOpBase):
                 # (kernel/cw_game_state.game_state_of)替 last_state 直读。
                 _state = match.gs
                 _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
-                pick = match.strategy.decide_partner(options, _state, match.session, _cfg)
+                pick = match.strategy.decide_partner(options)
                 idx = pick.idx if 0 <= pick.idx < len(cands) else 0
                 reason = pick.reason
             log.info('[cw-partner] candidates=%s pick=idx%s %s', [o.char_id for o in options], idx, reason)

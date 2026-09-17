@@ -155,8 +155,7 @@ class CwScreenWishTrial(CwScreenOpBase):
                 objs = self._read_objectives(screen)
                 # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读。
                 _st = _match.gs
-                idx = _match.strategy.decide_wish_trial(
-                    objs, _st, _match.session, getattr(_match, 'config', None))
+                idx = _match.strategy.decide_wish_trial(objs).idx
                 if 0 <= idx < len(self.CARD_XS):
                     target = Point(self.CARD_XS[idx], CwScreenWishTrial.CARD_Y)
                     pick_idx = idx
