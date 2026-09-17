@@ -672,7 +672,9 @@ def swap_transition_narrow_frame(state: GameState,
     (armed ∧ locked ∧ fp<1.00 ∧ 板满)——辖域判定单一源,本函数只做
     店侧输入装配,禁第二份合取(第二源 = 与部署域 M1″ 转型域分裂)。
     装配对齐 ``assemble_swap_plan_inputs`` 发射侧同字段链:locked 单源
-    = ``ist.locked_comp`` 非空;fp 单一源 = ``cw_comps.form_progress``,
+    = ``ist.locked_comp`` 非空——⚠️ 该对齐声明仅终局线锁帧成立:kernel
+    装配点 locked 已推广「∨ P1 配方对锁」(见下方辖域分界),配方对锁帧
+    两域刻意分歧,禁按本句推得两域同值。fp 单一源 = ``cw_comps.form_progress``,
     锁线帧 committed_from=True ⇒ 装配点 tgt 退 ``target_comp`` 同读法
     (flow._refresh_direction_views 锁线帧恒置 target_comp = locked
     comp 解析,两读法锁线帧同值);板满 = 占用数 ≥ ``max_units_of``
@@ -800,12 +802,15 @@ def _redeploy_emission_allowed(session: StrategySession,
     if ctx is None:
         return False
     _membership = getattr(ctx, 'membership', None)
+    if _membership is None:
+        return False   # 缺读弃权(字段契约 None = 谓词弃权 fail-closed;
+        #                 None 缺读 ≠ 空集缺省,禁坠对锁期回退放宽)
     if _membership:
         _waiting = [b for b in (getattr(ctx, 'bench', None) or [])
                     if (getattr(b, 'char_id', '') or '') in _membership]
     else:
-        # 对锁期读法(轴①辖域推广):membership 空集 = 锁线采购集
-        # 的未锁帧缺省(``locked_buy_membership`` 触发条件 = locked_comp
+        # 对锁期读法(轴①辖域推广;辖域 = membership **空集** = 锁线采购
+        # 集的未锁帧缺省,``locked_buy_membership`` 触发条件 = locked_comp
         # 非空),配方对锁帧若沿用「空集即无线内成员」会把转型域计划
         # 全数 defer(kernel 域开、发射门恒关的分轨态)。压席成员轴退
         # target 视图(kernel ``target_view_char_is`` 单一源;pair comp

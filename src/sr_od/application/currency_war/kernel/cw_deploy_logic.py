@@ -1480,7 +1480,11 @@ class SwapPlanContext:
     #: 成型度单一源快照(form_progress;None = 缺读 ⇒ 转型臂 fp_unreadable
     #: 弃权,两臂同 fail-closed)。发射⇔执行同函数装配 ⇒ 同帧同值(ADR-0534 §8 对齐增行 15)。
     fp: float | None = None
-    #: 锁线布尔(单一源 = ist.locked_comp 非空;单源定谳见 strategy-docs/17_stall_form_spend_authority.md §1.1,对齐增行 16)。
+    #: 换血域方向锁 = 终局线锁 ∨ P1 配方对锁(装配单一源 =
+    #: ``assemble_swap_plan_inputs``;配方对锁语义见 strategy-docs/
+    #: 24_deploy_segment.md 换血节)。终局线锁判定本身单源仍归
+    #: strategy-docs/17_stall_form_spend_authority.md §1.1(两词显式分名,
+    #: 禁按本字段反推终局线锁口径)。
     locked: bool = False
     #: 板满(占用数 ≥ cap,与 fenced 臂同一派生链;转型臂触发前提之一)。
     board_full: bool = False
@@ -1836,7 +1840,8 @@ def assemble_swap_plan_inputs(
     )
     ist = getattr(strategy_state_of(session), 'v3_intention', None)
     locked = bool(getattr(ist, 'locked_comp', None)) if ist is not None \
-        else False   # 锁线布尔单源 = ist.locked_comp 非空(ADR-0534 §1)
+        else False   # 方向锁第一腿 = 终局线锁(判定单源归 17_stall_form_
+    # spend_authority §1.1;字段终值见下方推广,不再等于本腿)。
     # 方向锁推广(双轨对锁期):P1 配方对锁(ist.p1_pair 非空,
     # ADR-0357 意向锁定产物;冻结闩 p1_pair_frozen 钉向)与终局线锁同为
     # 「方向锁在效」。换血域前提按辖域对齐:双轨期板面义务本体 = 过渡
