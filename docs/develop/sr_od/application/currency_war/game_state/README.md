@@ -64,7 +64,9 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
   (留证显影,不静默)。失配 = 推算代码 bug,修推算代码。失配比对前的**前置吸收
   面**(形状受控的机制性差异,命中即台账行采新、不进安灯):bench/equips 外部随机
   授予申报表(EXTERNAL_BENCH_GRANTS / EXTERNAL_EQUIP_GRANTS,「纯超集+差额≤申报数」
-  精确吸收)/ gold 节点边界金补结闩(boundary_gold_backfilled)/ front_row、back_row
+  精确吸收)/ gold 节点边界金补结闩(boundary_gold_backfilled)/ gold 备战环随机
+  收入(点球金)吸收窗(prep_sphere_income_absorbed,执行申报按载荷球数开窗、
+  正向差精确吸收、店开帧金观察收口)/ front_row、back_row
   行槽位纯重排(deploy_slot_reorder,同单位多重集仅排列差异 = 游戏侧行内重排无逻辑
   写端,采新入纠漂面)/ board 派生漂移观察覆盖采新(board_derived_adopt,辖
   `proj_board_resync` 写端)。

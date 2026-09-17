@@ -126,6 +126,7 @@ def apply_op_effect(session, action: CwAction | dict, *,
     if session is None:
         return effects
     from sr_od.application.currency_war.kernel.cw_vocab import (
+        ClickSpheres,
         SellDeployed,
         StartBattle,
         WearEquip,
@@ -192,6 +193,18 @@ def apply_op_effect(session, action: CwAction | dict, *,
                     _eff('effects[免战牌]', f'remaining_uses→{_left}(跳过上报递减)',
                          'effects')
                     log.info('[cw][battle] 免战牌跳过上报 → 次数递减(余 %s)', _left)
+    elif isinstance(action, ClickSpheres):
+        # 备战环随机收入申报窗(20260918-reconcile 第 9 例收口)。零推进
+        # 语义不变:球金金额执行点不可推算(声明盲区),金账照旧不写——
+        # 本分支只按载荷球数开「待吸收窗」,下一可信金读帧的正向差由
+        # ``GameState._absorb_prep_sphere_income`` 精确吸收,店开帧收口
+        #(机理与红线 = ``ExecBooks.prep_sphere_income_pending`` 字段注释;
+        # pending_reward 无 session 字段载体,零推进原申报存续)。
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            game_state_of,
+        )
+        game_state_of(session).exec_books.prep_sphere_income_pending += \
+            len(action.points)
     elif isinstance(action, dict):
         # 确认类到账(dict 形态;{'op','item'}):owned 本体推进。
         # ConfirmStrategy 不在此推(active_strategies 本体追加 = handler
@@ -227,7 +240,8 @@ def apply_op_effect(session, action: CwAction | dict, *,
         # - 工具原子(FurnaceUse 等):消耗/变换 = 视觉域逻辑态
         #   (_project_prep_obs 按 EQUIP_WRITE_SIDES 申报)+ 下一帧装备区
         #   读数覆盖;last_owned_equips 挂账面随对拍拆除不入本口;
-        # - ClickSpheres:pending_reward 无 session 字段载体,零推进;
+        # - ClickSpheres:零金账推进(球金不可推算)+ 按载荷球数开点球金
+        #   待吸收窗(本文件 ClickSpheres 分支申报);
         # - 买牌单元:tracked 本体推进 = 执行器/调用方辖(容器
         #   tracked_books 随动同步,mutate_bench_deployed 单口)。
         pass

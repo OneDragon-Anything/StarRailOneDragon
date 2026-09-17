@@ -101,7 +101,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'gold': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
         basis='buy/sell/levelup/refresh 投影 + 节点边界金补结闩'
-              '(boundary_gold_backfilled)+ 点球金豁免注册表条目'),
+              '(boundary_gold_backfilled)+ 备战环球金吸收窗'
+              '(prep_sphere_income_absorbed,店开帧收口)+ 点球金豁免'
+              '注册表条目'),
     'level': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='LevelUpShop 升档直写(f810f2454 投影补 level 域)+ prep 腿'
@@ -356,7 +358,7 @@ def audit_bad_status_keys() -> list[str]:
 _STOP_FAMILY_MECHANISMS: dict[str, tuple[str, ...]] = {
     'bench': ('EXTERNAL_BENCH_GRANTS', 'star_two_frame_gate'),
     'equips': ('EXTERNAL_EQUIP_GRANTS',),
-    'gold': ('boundary_gold_backfilled',),
+    'gold': ('boundary_gold_backfilled', 'prep_sphere_income_absorbed'),
     'front_row': ('deploy_slot_reorder', 'star_two_frame_gate'),
     'back_row': ('deploy_slot_reorder', 'star_two_frame_gate'),
     'board': ('_resync_board_delta', 'board_derived_adopt'),

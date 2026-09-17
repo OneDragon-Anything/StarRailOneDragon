@@ -311,8 +311,12 @@ EXTERNAL_EQUIP_GRANTS: dict[str, int] = {
 #: ``kernel/cw_investments`` STRATEGY_EFFECTS 的 EconomyEffect 逐条建模
 #: (选卡确认挂点发账),不属外部授予吸收面;卡文随机金/条件金类(爆晶矿
 #: 族战利品晶矿、黄晶矿工、节假日礼盒、招财狗佩佩供金、搜打撤首领价值
-#: 金、深井角斗场宝钻金)金额执行点不可推算,与备战帧点球金同族(豁免
-#: 注册表 ``('货币战争-备战', 'gold')`` 条目辖其盲区);节点边界战斗收入
+#: 金、深井角斗场宝钻金)金额执行点不可推算,与备战帧点球金同族;备战环
+#: ClickSpheres 点球金的主吸收面 = ``GameState._absorb_prep_sphere_
+#: income``(pending 闩 = ``ExecBooks.prep_sphere_income_pending``,置位端
+#: = apply_op_effect ClickSpheres 分支按载荷球数开窗,正向差精确吸收,
+#: 店开帧收口;20260918-reconcile 第 9 例收口——豁免条目 screen 维与金
+#: 真值读帧备战-开商店错位,转残量面零改保留);节点边界战斗收入
 #: (非投资卡)无结算写端 = 补结机制域,本模块不设申报位。
 
 
