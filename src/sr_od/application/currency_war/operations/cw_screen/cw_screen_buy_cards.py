@@ -799,9 +799,6 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 挂 ctx 只是给漏斗写块一个可寻址的 session 容器。该路径经
         # create_session 冷建(ADR-0583:live 初值 v3_phase='FORM' 随唯一
         # 冷建口在此落位;phase 列仅诊断用)。
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            game_state_of,
-        )
         from sr_od.application.currency_war.strategies.impl.cw_strategy import (
             CurrencyWarMatch,
         )

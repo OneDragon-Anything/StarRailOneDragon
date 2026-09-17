@@ -201,7 +201,9 @@ class CurrencyWarMatch:
     """
     strategy: CwStrategy
     session: StrategySession
-    gs: GameState
+    gs: GameState | None = None   # 终态契约:当局容器正身(3.1 additive 缺省
+                                  # None=迁移期测试/防御路径旧构造容忍;
+                                  # 3.5 终态切换收紧必填,生产漏斗已填充)
     performance: object | None = None
 
     def __post_init__(self) -> None:

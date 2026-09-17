@@ -83,6 +83,18 @@ import weakref
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    # 选项类宿主 = cw_events(其模块级 import 本模块,反向 import 即循环;
+    # 终态契约契约 g:TYPE_CHECKING 承载,运行时零依赖)
+    from sr_od.application.currency_war.kernel.cw_events import (
+        EncounterOption,
+        MegastarOption,
+        PartnerOption,
+        PlannerOption,
+        SupplyOption,
+    )
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar
 
@@ -142,13 +154,24 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                             # 接管/恢复三字段(resumed_match/takeover_collect_done/
                             # takeover_tries)迁入,渠道③接管协议 logic_hook)
     'refresh_counters': 1,  # 商店刷新计数组(§3.3.6-§3.3.9,写入=仅逻辑)
-    'node_screen_refresh': 1,  # 节点屏刷新计数组(§3.4.1-§3.4.4;遭遇/补给/环境/策略逐卡)
+    'node_screen_refresh': 2,  # 节点屏刷新计数组(§3.4.1-§3.4.4;遭遇/补给/环境/策略逐卡)
+                               # 域版本 2 = 新增顶层字段 encounter_refreshed_in_visit
+                               # (encounter 刷新建议 per-visit 位,终态契约)
+    'invest_opts': 1,          # 投资双画面候选槽(§3.4 终态契约八新槽;str 原文名)
+    'megastar_opts': 1,        # 盛会之星候选槽(list[MegastarOption],typed)
+    'partner_opts': 1,         # 列车同行候选槽(list[PartnerOption],typed)
+    'planner_opts': 1,         # 骇入策划候选槽(list[PlannerOption],typed)
+    'star_tome_opts': 1,       # 星徽秘典候选槽(str)
+    'wish_trial_opts': 1,      # 祈愿试炼候选槽(str)
+    'box_card_opts': 1,        # 武装箱候选槽(str)
     'inventory': 1,         # equips/consumables/免战牌(§3.2.15/§3.2.16/§3.2.19〔勘误:免战牌正本=effect_inventory.remaining_uses,§8.6-3——本域不含其字段〕)
     'spheres': 1,           # 奖励球(§3.2.8,不占席)
     'substate': 1,          # 分类子态/事件浮层(§3.2.17/§3.6.1)
     'shop': 1,              # 商店开态 payload(§3.3)
-    'encounter': 1,         # 遭遇屏 payload(§3.4.1)
-    'supply': 1,            # 补给屏 payload(§3.4.2)
+    'encounter': 2,         # 遭遇屏 payload(§3.4.1;域版本 2 = options 形状
+                            # 升级 typed EncounterOption,终态契约)
+    'supply': 2,            # 补给屏 payload(§3.4.2;域版本 2 = options 形状
+                            # 升级 typed SupplyOption,终态契约)
     'event_choices': 1,     # 十事件屏 chosen_*(§3.4/§4 事件选择)
     'settlement': 1,        # 结算真值组 + hp 保底事件位(§3.5)
     'effects': 1,           # 在场效果激活账本(§5.1,非 Field 载体)
@@ -167,7 +190,23 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
 
 #: 画面附加域(§2.2 显式例外):语义 = 「当前画面的 payload,非当前画面
 #: =None」——离开画面置 None 是结构事实非失读,不受 carried 硬边界辖。
-_PAYLOAD_DOMAINS: frozenset[str] = frozenset({'shop', 'encounter', 'supply'})
+#: 值 = (属屏, route_clearable) 二元组(终态契约路由清点:属屏 = 分发键
+#: 建档屏名;route_clearable=False = 挂点跳过,清点源独占)。`shop` 保留
+#: 映射内 False(leave_screen 域守卫依赖,清点由既有两处显式口独占);
+#: `prep_obs` 不入映射(语义豁免)。
+_PAYLOAD_DOMAINS: dict[str, tuple[str, bool]] = {
+    'shop': ('货币战争-备战-开商店', False),
+    'encounter': ('货币战争-遭遇节点', True),
+    'supply': ('货币战争-补给', True),
+    'invest_strategy_opts': ('货币战争-投资策略', True),
+    'invest_env_opts': ('货币战争-投资环境', True),
+    'megastar_opts': ('货币战争-盛会之星', True),
+    'partner_opts': ('货币战争-列车同行', True),
+    'planner_opts': ('货币战争-骇入策划', True),
+    'star_tome_opts': ('货币战争-星徽秘典弹窗', True),
+    'wish_trial_opts': ('货币战争-祈愿试炼', True),
+    'box_card_names': ('货币战争-备战-武装箱选择', True),
+}
 
 
 # ---- 画面上下文域常量(R1 §3.1.4/§3.4;派生规则输入面)----
@@ -613,18 +652,23 @@ def shop_payload_content_cards(payload: ShopPayload | None) -> list:
             if s.kind == 'content' and s.card is not None]
 
 
+# —— 选项类宿主 = cw_events(反向 import 循环禁,TYPE_CHECKING 承载见文件头)——
+
+
 @dataclass(frozen=True)
 class EncounterPayload:
-    """遭遇屏附加(§3.4.1):分支选项。options = (难度档 1..6, 奖励文本)。"""
+    """遭遇屏附加(§3.4.1):分支选项。options 元素 = EncounterOption
+    (终态契约形状升级:裸 tuple(int,str) → typed;写端接线归终态切换批,
+    迁移期 tuple 形态仍可赋值——dataclass 无运行时类型校验,零行为)。"""
 
-    options: list[tuple[int, str]] = field(default_factory=list)
+    options: list[EncounterOption] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
 class SupplyPayload:
-    """补给屏附加(§3.4.2):列数动态——通常4选1,效果改写3-5,勿写死(cw_node_obs.py:279-282)。options = (角色, 装备, 有钻石)。"""
+    """补给屏附加(§3.4.2):列数动态——通常4选1,效果改写3-5,勿写死(cw_node_obs.py:279-282)。options 元素 = SupplyOption(终态契约形状升级:裸 tuple(str,str,bool) → typed;迁移期同上零行为)。"""
 
-    options: list[tuple[str, str, bool]] = field(default_factory=list)
+    options: list[SupplyOption] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -2843,6 +2887,20 @@ class GameState:
     shop: Field[ShopPayload | None] = field(default_factory=Field)
     encounter: Field[EncounterPayload | None] = field(default_factory=Field)
     supply: Field[SupplyPayload | None] = field(default_factory=Field)
+    # —— 选择族动作化 payload 槽(终态契约 landing §3.1;八新槽,纯增量
+    #    零消费——写端接线归 3.4/3.5,现役无写无读)——
+    invest_strategy_opts: Field[list[str] | None] = field(default_factory=Field)
+    invest_env_opts: Field[list[str] | None] = field(default_factory=Field)
+    megastar_opts: Field[list[MegastarOption] | None] = field(default_factory=Field)
+    partner_opts: Field[list[PartnerOption] | None] = field(default_factory=Field)
+    planner_opts: Field[list[PlannerOption] | None] = field(default_factory=Field)
+    star_tome_opts: Field[list[str] | None] = field(default_factory=Field)
+    wish_trial_opts: Field[list[str] | None] = field(default_factory=Field)
+    box_card_names: Field[list[str] | None] = field(default_factory=Field)
+    # encounter 刷新建议 per-visit 位(契约:写 False = 各决策路径首调前置,
+    # 写 True = 刷新发射同步直写,均 fail-loud;读侧 None 缺省 False;
+    # journal 归属 = write_logic 常规规则,不适用刷新计数组豁免类)
+    encounter_refreshed_in_visit: Field[bool] = field(default_factory=Field)
 
     # —— 十事件屏选择结果(§3.4/§4 事件选择:chosen_* 由选择 handler 单次逻辑写入)——
     chosen_encounter: Field[tuple[int, str] | None] = field(default_factory=Field)   # (难度档, 奖励文本)
