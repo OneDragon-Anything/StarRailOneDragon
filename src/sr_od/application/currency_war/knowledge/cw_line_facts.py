@@ -1,16 +1,14 @@
-"""货币战争 线/过渡包注册事实(自 kernel 死刑判据文件迁入的权威副本)。
+"""货币战争 线/过渡包注册事实(知识层权威副本)。
 
-迁入出处:`docs/develop/currency_war/archive/redesign/03_legacy_cleanup_plan.md` 批 0
-第 1/3/5 项——telemetry 保留层(schema/cw_win_model/query)与 kernel 保留件
-(cw_system_cards/cw_battle_calib)消费的**数据半部**符号迁出死刑文件;
-这些符号是攻略/实盘数据锚(出处逐条随行注明),不是决策拍值,归知识层。
+出处 = 2026-08-31 comp 审计修正后的权威副本;旧 kernel/cw_transition 数据副本
+已随策略内容普查批删除,kernel 判据函数从本模块取数。这些符号是攻略/实盘
+数据锚(出处逐条随行注明),不是决策拍值,归知识层。
 
 依赖方向:本模块只 import 数据注册表(cw_chars/cw_factions),不 import
-任何 kernel 判据/决策符号(设计 01_strategy_layer.md §1 权限规则)。
+任何 kernel 判据/决策符号(知识层单向依赖,禁反向 import 判据/决策层)。
 
-零漂移契约:各符号与旧位置(kernel/cw_line_defs、kernel/cw_transition、
-kernel/cw_intention)逐字同体;旧位置副本仅为未迁消费点(sim/旧判据)
-保留,随各自处死批次(处死计划批 2/3)删除。**新增消费一律 import 本模块。**
+单一源纪律:**新增消费一律 import 本模块,禁重建数据副本**;cw_line_defs/
+cw_intention 的 sim/旧判据残留副本已标权威指向本模块,随各自消费点迁移处死。
 """
 from __future__ import annotations
 
@@ -78,7 +76,7 @@ TRANSITION_PACK: dict[str, tuple[str, str]] = {
 # 列车阵营+量子)」——前半句与注册表冲突(花火阵营=盛会之星,无列车),已按注册表归位量子框架;
 # 策略加分统一走 env/augment affinity,不走 pack(此口径不变)。
 
-# —— P1 过渡框架键面(自 kernel/cw_transition 迁入;策展知识归知识层)——
+# —— P1 过渡框架键面(策展知识归知识层)——
 # 框架 → 目标羁绊(Early 期 form 判定用)
 FRAMEWORK_FACTIONS: dict[str, tuple[str, ...]] = {
     '仙舟': ('仙舟', '持续伤害'),       # 3仙舟+2DOT(guide 口径)

@@ -4,7 +4,7 @@
 终局线 P1 内冻结换线(定义型 augment 除外)。**
 
 架构:双 slot 解耦——
-- ``strategy_state_of(session).transition_framework``(已有):过渡框架(仙舟/列车,pick_framework 滞后选择)
+- ``strategy_state_of(session).transition_framework``(已有):过渡框架(仙舟/量子/列车,pick_framework 滞后选择)
 - ``strategy_state_of(session).target_comp``:终局线(P1 内冻结;CommitSignals 定型/进 P2 解锁)
 - 决策中心(plan/deploy/骨架门)在双轨期拿到的 ``target_comp`` = **本模块的配方伪 comp**
   (RecipeComp:以框架羁绊为 form_tiers,TRANSITION_PACK carry/partial 为 core)——

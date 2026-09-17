@@ -1,7 +1,9 @@
 """P1 过渡包模型(用户指导 + plaza 784 篇 V4.4 数据实证)。
 
-**玩法理解单一源**:`docs/game/gameplay/currency_war.md` §「玩法策略模型」S2(双轨/
-过渡框架)与 S4(定型信号)——**改本模块前先读该文档并对表**,理解变更先改文档
+**玩法理解单一源**:双轨(过渡→终局)/ 过渡框架 / 定型判定的玩法知识归
+``docs/game/currency_war/research/`` 知识树(过渡体系 → transitions.md 与
+transition_combos.md;位面演化定量 → stage_transitions.md;打法纪律 →
+user_playstyle.md)——**改本模块前先读并对表**,理解变更先改文档
 (防实现漂移);数据锚与决策史见 ADR-0209。
 
 **问题**:select_comp 从最终 comp 选线 → P1 买「半成型最终线」(form 0.25-0.5)
@@ -30,11 +32,6 @@ from sr_od.application.currency_war.knowledge.cw_line_facts import (
     FRAMEWORKS,
     TRANSITION_PACK,
 )
-
-# P1 过渡双框架数据(TRANSITION_PACK/FRAMEWORK_FACTIONS/FRAMEWORKS)单一源 =
-# ``knowledge/cw_line_facts.py``(零漂移契约:策展数据归知识层,kernel 判据函数
-# 从 knowledge 取数;2026-09 策略内容回流普查裁决收敛,旧 kernel 副本已删)。
-# 本模块只留判据函数:_framework_counts / pick_framework / transition_score。
 
 
 def _framework_counts(bench, deployed,
