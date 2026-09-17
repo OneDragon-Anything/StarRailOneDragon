@@ -57,6 +57,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     LogicOutcome,
     NodeKey,
+    _row_unit_tags,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     INVESTMENT_ENVS,
@@ -210,6 +211,25 @@ def _silver_wolf_max_star(gs: GameState) -> int:
     return max(stars, default=0)
 
 
+def _board_truth_of(gs: GameState) -> dict[str, int]:
+    """板面羁绊计数引擎真值(容器行全量重算)。
+
+    标签单一源 = kernel ``_row_unit_tags``(:meth:`GameState._resync_board_delta`
+    派生增量消费的同一 shim:角色 factions+flows+independent 全集 +
+    星徽/卡带装备贡献,开拓者按排归一)——保证 sim 观察真值与 kernel
+    行写端派生值位位同源,等值观察零写、不与派生增量双计。
+    """
+    counts: dict[str, int] = {}
+    for row_field, row_name in ((gs.front_row, 'front_row'),
+                                (gs.back_row, 'back_row')):
+        for unit in (row_field.value or []):
+            if unit is None:
+                continue
+            for tag in _row_unit_tags(unit, row_name):
+                counts[tag] = counts.get(tag, 0) + 1
+    return counts
+
+
 @dataclass(frozen=True)
 class RunResult:
     """局结果(§2.5 定稿形态;纯结果无评判)。"""
@@ -329,6 +349,7 @@ class CwSimEngine:
             self._step_plane_confirm(eng, action)
         else:
             raise RuntimeError(f'相位 {eng.phase} 无动作通道')
+        self._refresh_board(eng)
         if eng.done:
             return StepResult(outcome=outcome, observation=None,
                               result=self._result(eng))
@@ -666,6 +687,35 @@ class CwSimEngine:
             eng.excluded_invest.update(eng.options)
             # 商店/收入已在 _begin_prep 前段完成,选卡后直接进备战
             eng.phase = CwSimPhase.PREP
+
+    # ---------------------------------------------------------- 板面观察基座
+
+    def _refresh_board(self, eng: _Eng) -> None:
+        """步末板面真值观察(与实机「每备战帧面板观察」同契约)。
+
+        为什么需要:sim 是板面真值唯一持有者,而 kernel 侧 board 为派生
+        量(2026-09-18 commit 2995d33e1),派生增量挂钩
+        ``_resync_board_delta`` 只活在 write_logic 行写,且基座未读
+        (board 为 None)时跳过等观察首读——sim 不补观察写入端则 board
+        恒 None,策略器成型度 fp/armed 发射门/部署收益判定的输入恒空
+        (实证 = 20260918_0618_findiss 问题 1,998 局 form_ok 全 0)。
+        本口每步末以 :func:`_board_truth_of` 全量重算真值观察 board
+        (等值零写):一次承担实机面板观察的两重职责——派生基座首读
+        (首步即立,后续行写走 kernel 增量派生)+ obs 通道行写
+        (cw_sim_equips 装备腿等 sim 真值写,不经 write_logic 挂钩)后
+        的漂移覆盖。实机等值语义 = 面板欠计/派生漂移由下一备战帧观察
+        覆盖收敛;sim 若出现真值与派生失配,走 sim 证据抑制面
+        (``sim:engine:`` 前缀在容器 ``_MISMATCH_SUPPRESS_PREFIXES``
+        在册)观察赢,不停机。
+        """
+        gs = eng.gs
+        truth = _board_truth_of(gs)
+        if gs.board.value is not None and gs.board.value == truth:
+            return
+        gs.observe(gs.board, truth,
+                   evidence=sim_evidence(
+                       f'board:p{eng.plane}r{eng.round_num}'),
+                   sig=obs_sig(group_id='sim:board'))
 
     # ---------------------------------------------------------- 终局
 
