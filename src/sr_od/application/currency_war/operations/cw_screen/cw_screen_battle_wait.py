@@ -115,24 +115,12 @@ def _write_settlement_observation(session: StrategySession,
                                   obs: RoundOutcome) -> None:
     """结算观察半直写(ADR-0583 §2.5:旧 on_round_end 观察段收编的单一写点)。
 
-    逐行 = 原 on_round_end 观察段原样搬运:performance.record /
-    last_streak。写点 = 结算屏观测回路(battle_wait)在结算点**即时直写**
-    ——备战帧 streak 对账锚依赖「结算即写」时序,禁惰性化(D-94 时序
-    语义,r68 实证承袭)。独立成模块级函数:被测面 = 纯写点(观察层产物),
-    单测直调即经生产链路(op 回路是唯一调用方)。
-
-    终态契约 §A:hp 结算锚(last_hp/last_hp_t,置信门 + 时间锚)已随
-    识别防御缓存退役删除——hp 真值链 = gs.hp 结算覆盖写端 + carried
-    语义承载(失读窗行为变化登记 design §1.3,用户裁定)。
+    现役 = performance.record(streak/hp/gold/level 真值链已由结算覆盖写端
+    直入容器 gs:streak_after 带符号;终态契约 §B:last_streak session 份
+    退役)。独立成模块级函数:被测面 = 纯写点(观察层产物),单测直调即经
+    生产链路(op 回路是唯一调用方)。
     """
     session.performance.record(obs)
-    # 结算「连胜×N」前缀=方向 → session.last_streak(备战帧 streak 权威/
-    # 对账与经济 streak 杠杆的即时写锚)。失读守卫(迁移批次二,§8.8):
-    # parse_streak 失读 None 化后,None = 未读到 → 跳过沿用上次真值——
-    # 旧行为失读写 0 会把连胜/连败假复位(0 冒认真值,read_hp 100 同型)。
-    # (last_streak 宿主迁移归 T-3 重复账退役,本批不动。)
-    if obs.streak is not None:
-        session.last_streak = obs.streak
 
 
 @dataclass

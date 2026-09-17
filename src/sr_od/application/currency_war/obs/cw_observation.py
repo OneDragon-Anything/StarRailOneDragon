@@ -2299,22 +2299,31 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         enemy_difficulty = _ed_session
     level_up_cost: int | None = (
         read_level_up_cost(ctx, screen) if _w('level_up_cost') else None)
-    # streak:优先 session.last_streak(结算「连胜×N」带符号,方向可靠;fixture 核实 2026-08-11);
-    # 无 session(离线/测试)→ read_streak 备战 magnitude fallback。
-    # 双源留证(观察冲突审计 #8 P2,2026-08-17):结算真值(带符号)与备战 magnitude 独立可对拍
-    # —— |结算|≠备战 且 非结算重置边缘(胜→连胜≥1/败→连败≤-1 或 0)→ 一方误读,留证统计毒化率
-    # (read_streak magnitude OCR 间歇误读的量化数据,此前无通道)。
-    _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
-    # spec 无 streak 的阶段(prep_shop_open:连胜整轮不变,session 结算真值为准,
-    # 省每帧 ~85ms 纯对拍读;battle 帧无消费)只取 session 值不做备战对拍读。
+    # streak:gs.streak(结算覆盖写端带符号直入容器,方向可靠;fixture 核实
+    # 2026-08-11;终态契约 §B:session.last_streak 退役)。
+    # 无值(离线/测试/开局未结算)→ read_streak 备战 magnitude fallback。
+    # 双源留证(观察冲突审计 #8 P2,2026-08-17):结算真值(带符号)与备战
+    # magnitude 独立可对拍——|结算|≠备战 且 非结算重置边缘(胜→连胜≥1/
+    # 败→连败≤-1 或 0)→ 一方误读,留证统计毒化率(口径不变)。
+    _m_st = getattr(ctx, 'cw_match', None)
+    _sess = getattr(_m_st, 'session', None) if _m_st is not None else None
+    _gs_st = getattr(_m_st, 'gs', None)
+    if _gs_st is None and _m_st is not None \
+            and getattr(_m_st, 'session', None) is not None:
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            game_state_of as _gso_st,
+        )
+        _gs_st = _gso_st(_m_st.session)
     streak_val: int | None
-    if _sess is not None:
-        streak_val = _sess.last_streak
+    _settled = int(_gs_st.streak.value) \
+        if (_gs_st is not None and _gs_st.streak.value is not None) else None
+    if _settled is not None:
+        streak_val = _settled
         if _w('streak'):
             _prep_streak = read_streak(ctx, screen)
-            if (_prep_streak is not None and _sess.last_streak != 0
-                    and abs(_sess.last_streak) != _prep_streak):
-                obs_conflict('streak', _sess.last_streak, _prep_streak, screen,
+            if (_prep_streak is not None and streak_val != 0
+                    and abs(streak_val) != _prep_streak):
+                obs_conflict('streak', streak_val, _prep_streak, screen,
                              verdict=('留证-双源不等(结算带符号 vs 备战magnitude,一方误读;'
                                       '处理:单次按噪声忽略,同局 JSONL 频发 >10 行/时'
                                       '→ 排查 read_streak 与结算 streak reader'),

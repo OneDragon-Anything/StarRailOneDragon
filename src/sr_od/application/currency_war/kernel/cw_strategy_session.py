@@ -128,9 +128,8 @@ class StrategySession:
     # ADR-0368:本局已揭晓的位面轮数序列(每位面首帧 append)——
     # cw_plane_table.schedule_of 的真值源。
     plane_lengths_seen: list[int] | None = None
-    # 上回合结算 streak(带符号 连胜+/连败-;结算观察半从结算「连胜×N」
-    # 即时直写,ADR-0583)。给下回合 economy C 杠杆读(语义在前缀,备战 read_streak 无方向)。
-    last_streak: int = 0
+    # (终态契约 §B:last_streak session 份退役——结算带符号真值由结算
+    #  覆盖写端直入 gs.streak,economy/观察消费读容器。)
     # 已持有投资策略(局中选,可多张;选卡 handler 采集,read_game_state
     # 拷贝到 state 供 _refresh_cap 等消费)。
     active_strategies: list[str] = field(default_factory=list)
