@@ -420,8 +420,14 @@ class CwScreenBattleWait(CwScreenOpBase):
             _comp_tag = _tc.name if _tc is not None else '?'
             _is_boss = self.round_by_find_area(
                 screen, '货币战争-结算', '标识-首领').is_success
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                game_state_of,
+                node_kind_of,
+            )
+            # node 优先序:首领识别锚(画面位) > gs 推导(终态契约 §A′,
+            # session 识别源退役) > 探针表(§A′ 重锚面,宿主迁移另子件) > 缺省。
             _node = 'boss' if _is_boss else self._normalize_node_type(
-                getattr(_session, 'node_type_current', None)
+                node_kind_of(game_state_of(_session))
                 or self._node_type_from_table(_session, _plane, _round)
                 or '普通战斗')
             _obs = read_round_outcome(self.ctx, screen, plane=_plane, round_num=_round,

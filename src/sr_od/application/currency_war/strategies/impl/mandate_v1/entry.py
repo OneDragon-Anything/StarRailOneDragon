@@ -784,7 +784,7 @@ def emit(obs: PrepObservation, session: StrategySession,
         level=level_of(gs),
         bench=bench, deployed=deployed,
         deploy_cap=max_units_of(gs),
-        node_type=getattr(session, 'node_type_current', None),
+        node_type=node_kind_of(gs),   # 终态契约 §A′:gs 推导单一源
         stop_flag=stop_flag, k_members=k_members,
         round_num=_round_num,
         # 装备域 owned 件名池直传(P4 观察接线,T-171):M7 装备穿戴放行

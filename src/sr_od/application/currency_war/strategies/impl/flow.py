@@ -166,8 +166,9 @@ def bump_lock_gen_feasibility_obs(session: StrategySession | None,
     from sr_od.application.currency_war.kernel.cw_game_state import (
         node_kind_of,
     )
-    node = (getattr(session, 'node_type_current', None)
-            or node_kind_of(state) or '')
+    # node 单一源 = gs 推导(终态契约 §A′:session 识别优先源退役,同
+    # cw_discipline_rules 重锚口径)。
+    node = node_kind_of(state) or ''
     if node == 'boss':
         if p1_blood_floor(state):
             _k_dz = LOCK_GEN_FEASIBILITY_OBS_PREFIX + 'boss_neardeath_p1'

@@ -197,7 +197,9 @@ def plane_last_battle(gs: GameState,
         node_kind_of,
         round_num_of,
     )
-    node = getattr(session, 'node_type_current', None) or node_kind_of(gs) or ''
+    # node 单一源 = gs 推导(终态契约 §A′:session.node_type_current 识别
+    # 优先源退役,与 flow/entry 等已直读消费点对齐;重锚非删除——值同源)。
+    node = node_kind_of(gs) or ''
     return node in ('boss',) and round_num_of(gs) >= nodes_of_plane(session)
 
 

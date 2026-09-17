@@ -1024,10 +1024,14 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         _tc = getattr(strategy_state_of(match.session), 'target_comp', None)
         target_name = _tc.name if _tc is not None else ''
         _fp_v = _form_progress(_tc, match.session) if _tc is not None else -1.0
-        # r295(判读必须看节点类型):state 行带 node(本节点类型)+next。
-        _node = getattr(match.session, 'node_type_current', None) or '?'
-        _upc = getattr(match.session, 'upcoming_types', None) or []
-        _next = _upc[0] if _upc else '?'
+        # r295(判读必须看节点类型):state 行带 node(本节点类型,gs 推导
+        # 单一源,终态契约 §A′)+next(upcoming 源退役,'?' 降级申报 §1.3)。
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            node_kind_of,
+        )
+        _gs_row = match.gs if match.gs is not None else game_state_of(match.session)
+        _node = node_kind_of(_gs_row) or '?'
+        _next = '?'
         from sr_od.application.currency_war.kernel.cw_game_state import (
             bench_slots_of as _blog_slots,
         )
