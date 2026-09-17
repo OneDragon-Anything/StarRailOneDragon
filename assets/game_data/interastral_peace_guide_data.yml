@@ -177,10 +177,10 @@
       remark_in_game: "行迹材料"
       show_in_power_plan: true
       mission_list:
-        - mission_name: "欢愉之蕾"
+        - mission_name: "毁灭之蕾"
           show_in_power_plan: true
-          display_name: "欢愉-「世界尽头」酒馆"
-          region_name: '「世界尽头」酒馆'
+          display_name: "毁灭-渡画泉隐"
+          region_name: '渡画泉隐'
           power: 10
 
         - mission_name: "毁灭之蕾"
@@ -239,14 +239,20 @@
 
         - mission_name: "智识之蕾"
           show_in_power_plan: true
+          display_name: "智识-海原电视塔"
+          region_name: '海原电视塔'
+          power: 10
+
+        - mission_name: "智识之蕾"
+          show_in_power_plan: true
           display_name: "智识-匹诺康尼大剧院"
           region_name: '匹诺康尼大剧院'
           power: 10
 
         - mission_name: "智识之蕾"
           show_in_power_plan: true
-          display_name: "智识-铆钉阵"
-          region_name: '铆钉阵'
+          display_name: "智识-铆钉镇"
+          region_name: '铆钉镇'
           power: 10
 
         - mission_name: "同谐之蕾"
@@ -259,6 +265,12 @@
           show_in_power_plan: true
           display_name: "同谐-机械聚落"
           region_name: '机械聚落'
+          power: 10
+
+        - mission_name: "虚无之蕾"
+          show_in_power_plan: true
+          display_name: "虚无-「辉痕圣林」神悟树庭"
+          region_name: '「辉痕圣林」神悟树庭'
           power: 10
 
         - mission_name: "虚无之蕾"
@@ -401,7 +413,7 @@
         - mission_name: "巽风之形"
           show_in_power_plan: true
           display_name: "风-巽风之形"
-          region_name: "铆钉阵"
+          region_name: "铆钉镇"
           power: 30
 
         - mission_name: "凛月之形"
