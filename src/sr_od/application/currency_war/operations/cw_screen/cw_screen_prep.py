@@ -1755,8 +1755,8 @@ class CwScreenPrep(CwScreenOpBase):
                 return self._terminal_exit(action, key, _op_cls)
             # —— 逻辑态直写(ADR-0517 决策 7/10;R9:词表逐动作有逻辑态
             #      分支,保守回退分支已删,词表外 = 响亮暴露)
-            payload = self._project_prep_obs(action, payload)
-            session.prep_obs_frame = payload   # 黑板推进(下一动作决策读逻辑态)
+            game_state_of(session).prep_obs = self._project_prep_obs(
+                action, payload)   # 黑板推进(下一动作决策读逻辑态;终态契约 §2.6 宿主 = gs.prep_obs)
             # 直写帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
             _mark_frame_class(session, 'prep', 'none')
         # 访问动作数上限(防御:决策循环不收敛 = 逻辑态或策略 bug,交回外循环
