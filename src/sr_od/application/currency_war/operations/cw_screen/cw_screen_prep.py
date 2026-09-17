@@ -1111,7 +1111,7 @@ class CwScreenPrep(CwScreenOpBase):
 
     def _deploy_miss_brake_round(self, session: object,
                                  action: CwAction) -> OperationRoundResult | None:
-        """部署 miss 刹车(三审应修补丁②;两条决策循环路径共式):
+        """部署 miss 刹车(出处=改动三审 2026-09-18;两条决策循环路径共式):
         DeployMove 投影步刚走完(命中闩 = 本次 miss 已计数)时查
         :func:`cw_game_state.deploy_miss_brake_status`,同单位同目标槽连续
         miss 达 ``DEPLOY_MISS_REDISPATCH_LIMIT`` → round_fail 显式停交上层

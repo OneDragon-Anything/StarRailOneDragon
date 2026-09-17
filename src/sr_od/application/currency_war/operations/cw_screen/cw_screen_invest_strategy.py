@@ -619,8 +619,8 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         # 待吸收数,下一干净备战帧 bench/equips 观察对逻辑态纯超集时精确
         # 吸收(external_grant_absorbed 行),形状不符照真失配停。置闩收敛
         # kernel 单一源(幂等 + 闩龄上界住 kernel,与 CwScreenInvestEnv
-        # 挂点同型同源,三审应修补丁①;本挂点零本地逻辑)。best-effort
-        # 同登记挂点纪律。
+        # 挂点同型同源,出处=改动三审 2026-09-18「置闩幂等化」;
+        # 本挂点零本地逻辑)。best-effort 同登记挂点纪律。
         try:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 latch_external_grants,

@@ -2495,7 +2495,10 @@ def latch_external_grants(gs: GameState, card_name: str, *,
     放宽 ``_absorb_external_grant`` 的「差额 ≤ 待吸收数」闸(虚额残留
     期内吞真投影 bug)。卡选完即消耗,一局至多一次授予,「每卡一次」
     即幂等;不同卡各自累加不受影响。命中时同时复位闩龄
-    (``external_grant_equal_obs`` = 新窗口起点)。
+    (``external_grant_equal_obs`` = 新窗口起点)。「一局至多一次授予」
+    前提带代码防线:第二张带授予卡置闩时落 ``external_grant_multi_card``
+    台账行 + 告警(窗口销联动清零按共享计数全局清零,前提破除必须响亮,
+    见实现内联注)。
 
     :param card_name: 已归一卡名(:func:`normalize_invest_name` 输出)。
     :param actor: 日志标注(挂点身份,审计面)。
@@ -2517,6 +2520,27 @@ def latch_external_grants(gs: GameState, card_name: str, *,
                  gs.exec_books.external_bench_grant_pending,
                  gs.exec_books.external_equip_grant_pending)
         return (0, 0)
+    if latched:
+        # 「一局至多一次授予」前提防线(出处=改动三审 2026-09-18「闩
+        # 窗口销联动前提补防」):窗口达限时两闩按共享计数全局清零
+        # (:meth:`GameState._tick_external_grant_window`,不区分来源卡),
+        # 先置卡超窗会把后置卡的真实 pending 一并清零——后卡授予迟到时
+        # 照真失配停 = 响亮但误停一轮。该前提原本仅存于注释、第二卡置闩
+        # 即静默发生;本防线不阻断置闩(挂点 best-effort 纪律,异常会被
+        # 确认链吞,raise 无效),只把前提破除改响亮:告警 + 台账行留证。
+        _emit_defect(
+            field_name='external_grant',
+            expected='一局至多一次授予(窗口销联动清零的前提)',
+            actual=(f'第二张带授予卡 {card_name} 置闩'
+                    f'(先置卡:{sorted(latched)})'),
+            evidence=None,
+            sig=ChannelSig(family='logic_action', actor=actor,
+                           mode='compute'),
+            kind='external_grant_multi_card')
+        log.warning('[cw!][gs] 外部授予第二卡置闩:「一局至多一次授予」'
+                    '前提已破(%s;先置卡 %s)——窗口超时销联动会清零全部'
+                    ' pending,后置卡授予迟到时将照真失配停,需人工核对'
+                    '该局卡授予形态', card_name, sorted(latched))
     latched.add(card_name)
     gs.exec_books.external_bench_grant_pending += n_bench
     gs.exec_books.external_equip_grant_pending += n_equip
@@ -2529,7 +2553,8 @@ def latch_external_grants(gs: GameState, card_name: str, *,
 
 
 def deploy_miss_brake_status(gs: GameState) -> str | None:
-    """部署 miss 刹车触顶判定(纯读;三审应修补丁②)。
+    """部署 miss 刹车触顶判定(纯读;出处=改动三审 2026-09-18
+    「部署 miss 刹车」)。
 
     :return: 触顶时的 round_fail 状态文案;未触顶 = None。判定消费点 =
     决策循环(cw_screen_prep 两路径共式),本函数只承载阈值与文案单一源。
@@ -2559,7 +2584,8 @@ def consume_deploy_miss_mark(gs: GameState, action: Any, *,
     - 命中落 ``deploy_miss_skip`` 台账行(无告警无停机,豁免 ≠ 消失同
       纪律)。安灯停机语义零改动:本口只阻止失真投影写入,不做任何
       observe 失配吸收;闩在时的观察失配照真停。
-    - miss 连续计数(三审应修补丁②):命中 = 同键 miss 计数 +1(同键
+    - miss 连续计数(出处=改动三审 2026-09-18「部署 miss 刹车」):
+      命中 = 同键 miss 计数 +1(同键
       累加/异键归 1,键 = (bench_idx, to_row));闩不在与陈旧闩 = 归零。
       触顶停交上层由决策循环经 :func:`deploy_miss_brake_status` 判定,
       本口返回契约(bool)零变化。
@@ -2583,7 +2609,8 @@ def consume_deploy_miss_mark(gs: GameState, action: Any, *,
         gs.exec_books.deploy_miss_streak_key = None
         gs.exec_books.deploy_miss_streak_n = 0
         return False
-    # miss 情节计数(三审应修补丁②):同键累加 / 异键归 1(语义先例 =
+    # miss 情节计数(出处=改动三审 2026-09-18「部署 miss 刹车」):
+    # 同键累加 / 异键归 1(语义先例 =
     # cw_loop.op_fail_redispatch_tick);触顶停由决策循环经
     # :func:`deploy_miss_brake_status` 判定(本口只计数,不改返回契约)。
     _key = (mark.bench_idx, mark.to_row)
@@ -2878,7 +2905,8 @@ class ExecBooks:
     # 唯一消费端)。局级生命周期(新局新容器 = 天然清零):恢复局新容器
     # pending 恒 0,残局差异照真失配停。
     external_equip_grant_pending: int = 0
-    # 幂等登记(外部授予置闩防重入;三审应修补丁):置闩原形 = 挂点
+    # 幂等登记(外部授予置闩防重入;出处=改动三审 2026-09-18
+    # 「置闩幂等化」):置闩原形 = 挂点
     # ``+=`` 累加,确认点击落空(overlay 未关)→ op 机械交回 → 下一轮
     # 重入重走决策再选同卡 → 同卡二次累加 → pending 虚高 →
     # ``_absorb_external_grant`` 的「差额 ≤ 待吸收数」闸放宽,虚额残留
@@ -2891,7 +2919,8 @@ class ExecBooks:
     # 不清(吸收扣减不动本集合——登记语义 = 「该卡的授予已被置闩过」,
     # 与 pending 余额正交),局级生命周期(新局新容器 = 天然清零)。
     external_grant_latched_cards: set[str] | None = None
-    # 闩龄(外部授予闩窗口上界;三审存疑③:等值观察不消费会让闩跨多
+    # 闩龄(外部授予闩窗口上界;出处=改动三审 2026-09-18「闩窗口上界」:
+    # 等值观察不消费会让闩跨多
     # 备战轮存续,虚额残留期内正向失配被误吸收吞真 bug)。[索引定义]
     # 计数坐标系 = 置闩后经历的**等值观察**连续次数(bench/equips 实读
     # == 逻辑态的 observe 次数;失配观察即窗口了结,计数归零);取值
@@ -2933,7 +2962,8 @@ class ExecBooks:
     # 阻止失真投影写入,不做任何 observe 失配吸收;闩在时的观察失配照真
     # 停(未被申报覆盖的变更不被吞)。
     deploy_miss_pending: DeployMissMark | None = None
-    # 部署 miss 连续计数(三审应修补丁②「部署 miss 刹车」):miss 申报闩
+    # 部署 miss 连续计数(出处=改动三审 2026-09-18「部署 miss 刹车」):
+    # miss 申报闩
     # 只防失真投影,重试 = 决策循环自然重派零预算——拖拽被**系统性**吞
     #(模拟器拖拽协议/坐标漂移)时黑板恒见单位在备战席,策略恒重发同
     # 动作,miss → 跳写 → 重发循环无界(fail 重派网不辖:op 恒返回成功,
@@ -3570,8 +3600,9 @@ class GameState:
             # 窗口已了结则禁再叠算(防真值+公式值双计)。
             self.exec_books.boundary_gold_pending = False
         if name in ('bench', 'equips'):
-            # 外部授予闩窗口上界(三审存疑③):闩在时的每次等值观察计数,
-            # 达限销闩留证——虚额残留不无限期吞正向失配。
+            # 外部授予闩窗口上界(出处=改动三审 2026-09-18):闩在时的
+            # 每次等值 observe 调用计数(字段级,同帧 bench/equips 双等值
+            # 贡献 2),达限销闩留证——虚额残留不无限期吞正向失配。
             self._tick_external_grant_window(target, value, sig)
         if target.source == 'logic' and target.value is not None \
                 and target.value != value:
@@ -3749,7 +3780,8 @@ class GameState:
 
     def _tick_external_grant_window(self, target: Field, value: Any,
                                     sig: ChannelSig) -> None:
-        """外部授予闩窗口上界(闩龄;三审存疑③,取值依据 =
+        """外部授予闩窗口上界(闩龄;出处=改动三审 2026-09-18
+        「闩窗口上界」,取值依据 =
         :data:`EXTERNAL_GRANT_EQUAL_OBS_LIMIT` 注)。
 
         闩的正式消费 = 失配分支「纯超集 + 差额 ∈ (0, 待吸收数]」精确

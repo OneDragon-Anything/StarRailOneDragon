@@ -433,8 +433,8 @@ class CwScreenInvestEnv(CwScreenOpBase):
             # 逻辑写端(effect-domain §6.3/§6.4),确认后置 pending,下一
             # 干净备战帧 bench/equips 实读对逻辑态纯超集时精确吸收
             #(external_grant_absorbed 行),形状不符照真失配停。置闩收敛
-            # kernel 单一源(幂等 + 闩龄上界住 kernel,三审应修补丁①;
-            # 本挂点零本地逻辑)。best-effort 同登记挂点纪律。
+            # kernel 单一源(幂等 + 闩龄上界住 kernel,出处=改动三审
+            # 2026-09-18「置闩幂等化」;本挂点零本地逻辑)。best-effort 同登记挂点纪律。
             try:
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     latch_external_grants,
