@@ -608,7 +608,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         self._consume_prep_direction_frame(self.gs)   # ADR-0583 入口内务(gs 桥形态)
         if not names:
             return 0
-        _ist = self._ensure_intention(state_of(session))
+        _ist = self._ensure_intention(self.state)
         locked = _ist.locked_comp
         key_equips: list[str] = []
         if locked:
