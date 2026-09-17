@@ -1545,8 +1545,10 @@ class CwScreenPrep(CwScreenOpBase):
                             f'{type(result).__name__}')
                 return self.round_fail(status='策略输出非 CwAction|None(F3)')
             if result is None:
-                # None = 本帧无动作可发,交回外循环重观察;
-                # 连续 None 的 stall 兜底归外循环防线。
+                # None = 本帧无动作可发,交回外循环重观察。
+                # (终态契约 §2.2 更正:系统并无「连续 None 计数器」——外循环
+                #  stall 防线哨兵只对无进展留证,不对 None 计数;HoldFrame
+                #  显式化后本分支由 isinstance(result, HoldFrame) 承载。)
                 return self.round_success('本帧无动作,交回外循环重观察', wait=1.0)
             action = result
             # F3 校验:参数非法交回留证;执行前输入契约检查,非动作后判效
@@ -1712,8 +1714,10 @@ class CwScreenPrep(CwScreenOpBase):
                             f'{type(result).__name__}')
                 return self.round_fail(status='策略输出非 CwAction|None(F3)')
             if result is None:
-                # None = 本帧无动作可发,交回外循环重观察;
-                # 连续 None 的 stall 兜底归外循环防线。
+                # None = 本帧无动作可发,交回外循环重观察。
+                # (终态契约 §2.2 更正:系统并无「连续 None 计数器」——外循环
+                #  stall 防线哨兵只对无进展留证,不对 None 计数;HoldFrame
+                #  显式化后本分支由 isinstance(result, HoldFrame) 承载。)
                 return self.round_success('本帧无动作,交回外循环重观察', wait=1.0)
             action = result
             # F3 校验:参数非法交回留证;执行前输入契约检查,非动作后判效
