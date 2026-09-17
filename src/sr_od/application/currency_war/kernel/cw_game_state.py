@@ -1671,7 +1671,17 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
       R5 W1 起承载旧 battle_done 外生行的「出节点」语义——接线点传
       ``battle_done:<node_type>``,ADR-0634;hp/gold 等逐字段行不带注记);
     - 渠道签名(§3.2.1 ①类属 = 画面 op 类名):写端 = CwScreenBattleWait,
-      R5 W1 起签名必填,ADR-0634。
+      R5 W1 起签名必填,ADR-0634;
+    - **hp_after 写入序定谳**(现场证据 = 本写端 + reconcile_hp 现役形态):
+      本口 = hp 的战局唯一结算真值入口,无条件观察覆盖(观察赢,仅调用方
+      置信度门)。旧 ADR-0282「读不到保旧沿用 last_hp_real」三层已随
+      终态契约 §A 整体退役(ADR 档案目录已删,原文 = git 历史
+      docs/develop/currency_war/decisions/0282-hp-three-layers.md),读侧
+      reconcile_hp 简化为「真值直传/开局先验(ADR-0559)/None 诚实未知」
+      ——不存在沿用锚遮蔽结算真值的先后序问题。唯一能与本覆盖失配的 =
+      逻辑态推算写端(宝物加血,write_logic(gs.hp)),该失配按两态制
+      §2.3 = 推算 bug 显影,非「保旧」。窗内消费(battle_wait killed
+      hp 对比兜底)先行于本写端,读到的是上一结算真值,即正确序。
     """
     _sig = ChannelSig(family='obs', actor='CwScreenBattleWait', mode='read')
     # 节点边界金待补结闩置位(唯一置位端;必须先于本函数的 gold 覆盖观察
@@ -2423,6 +2433,47 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
     return
 
 
+def consume_deploy_miss_mark(gs: GameState, action: Any, *,
+                             sig: ChannelSig) -> bool:
+    """部署拖拽未落地闩消费(投影写端唯一合法消费口;置位端 =
+    ``DeployMoveOp`` 拖后像素验证,闩 = ``exec_books.deploy_miss_pending``)。
+
+    消费契约(投影写端 DeployMove 分支在容器投影与黑板投影**之前**调用):
+    - 返回 True = 本次动作的拖拽已被判「静默未生效」(执行噪声非推算
+      bug),调用方**跳过投影**(容器零写 + 黑板保持事实)——逻辑态从未
+      写下失真值,下一帧 heavy 实读一致,安灯零接触;重试 = 决策循环自然
+      重派(黑板仍见该单位在备战席,策略重发同动作);
+    - 返回 False = 照常投影。两种形态:闩不在(正常部署)/ 陈旧闩(动作
+      不匹配——闩读即清但不跳写,任何路径的部署动作都不消费上一动作的
+      申报,防陈旧闩吞新动作投影);
+    - 命中落 ``deploy_miss_skip`` 台账行(无告警无停机,豁免 ≠ 消失同
+      纪律)。安灯停机语义零改动:本口只阻止失真投影写入,不做任何
+      observe 失配吸收;闩在时的观察失配照真停。
+    """
+    mark = gs.exec_books.deploy_miss_pending
+    gs.exec_books.deploy_miss_pending = None   # 读即清(单动作窗)
+    if mark is None:
+        return False
+    if not (mark.bench_idx == int(getattr(action, 'bench_idx', -1))
+            and mark.to_row == str(getattr(action, 'to_row', ''))):
+        log.info('[cw-gs] 部署未落地闩与本次动作不匹配(陈旧闩弃用):'
+                 '闩 bench_idx=%s→%s,动作 bench_idx=%s→%s',
+                 mark.bench_idx, mark.to_row,
+                 getattr(action, 'bench_idx', None),
+                 getattr(action, 'to_row', None))
+        return False
+    _emit_defect(
+        field_name='deploy',
+        expected=(f'DeployMove bench_idx={mark.bench_idx}→{mark.to_row}'
+                  f'(单位 {mark.char_id} 投影)'),
+        actual='拖拽未生效(目标槽像素零变化),投影跳写',
+        evidence=None, sig=sig, kind='deploy_miss_skip')
+    log.info('[cw][gs] 部署拖拽未生效,投影跳写:bench_idx=%s→%s(单位 %s);'
+             '逻辑态保持事实,决策循环重派', mark.bench_idx, mark.to_row,
+             mark.char_id)
+    return True
+
+
 # ============================================================ 局终行写口(§3.6.1 runs 收编;ADR-0630 修订节)
 
 #: 局终行落盘事件监听槽(复盘触发器挂点;缺省 None = 关,与缺陷/流水 sink
@@ -2633,6 +2684,26 @@ class TrackedBooks:
     deployed: list = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class DeployMissMark:
+    """部署拖拽未落地申报闩载荷(T-22;置位端 = ``DeployMoveOp`` 拖后像素
+    验证,唯一消费端 = :func:`consume_deploy_miss_mark`)。
+
+    [索引定义] ``bench_idx`` = 动作源槽 = bench 槽位表下标 0-8(与
+    :class:`~sr_od.application.currency_war.kernel.cw_vocab.DeployMove`
+    .bench_idx 同坐标系);``to_row`` = 目标排 front/back(消费端动作匹配
+    校验维,防陈旧闩吞不同动作的投影);取值时机 = 拖拽发出后 ~2s 目标槽
+    区域像素零变化判定期一次性写入;``char_id`` = 拖拽单位身份(置位时
+    tracked 现读,留证判读用,不参与消费校验)。frozen = 申报一经置位
+    不被就地改写(与 ExemptEntry 同纪律);消费即清(单动作窗,清除点 =
+    消费端读即清 + 执行器下次部署入口清位)。
+    """
+
+    bench_idx: int
+    to_row: str
+    char_id: str
+
+
 @dataclass
 class ExecBooks:
     """执行侧过程簿记组(容器内独立宿主组;非 Field,不进快照流水)。
@@ -2694,6 +2765,24 @@ class ExecBooks:
     # 局级生命周期(新局新容器 = 天然清零):恢复局首战前恒 False,
     # 开局前收入不吸收。
     boundary_gold_pending: bool = False
+    # 部署拖拽未落地申报闩(T-22;载荷 = :class:`DeployMissMark`)。机理:
+    # 部署投影契约 = 「发出即写」(动作机械执行无成败回执,B1 拆除裁定;
+    # 落地判定归观察侧 reconcile),但拖拽是 UI 动作,存在**静默不生效**
+    # 形态(拖拽输入被游戏吞,实机 run 20260918 02:40:20 实证:椒丘同路径
+    # 生效、艾丝妲静默未落场)——投影照写即逻辑态失真,下一备战帧 heavy
+    # 实读必然失配(board/bench/front_row 三行连发)→ 安灯当推算 bug 停机。
+    # 拖拽静默丢是执行环境噪声非推算 bug,不属安灯辖域:执行器拖后对目标
+    # 槽区域做像素验证,零变化 = 未生效 → 置本闩,投影写端
+    # (:func:`consume_deploy_miss_mark`,唯一消费端)按动作匹配消费后
+    # **跳过投影**(容器与黑板零写,逻辑态保持事实),重试 = 决策循环
+    # 自然重派(黑板仍见该单位在 bench,策略重发同动作)。
+    # [索引定义] 单动作窗闩:取值时机 = DeployMoveOp 拖后验证失败一次性
+    # 写入;清除 = 消费端读即清 + 执行器下次部署入口清位(任何路径的部署
+    # 动作都不消费上一动作的申报,陈旧闩由动作匹配校验双保险兜住)。
+    # 局级生命周期(新局新容器 = 天然清零)。安灯停机语义零改动:本闩只
+    # 阻止失真投影写入,不做任何 observe 失配吸收;闩在时的观察失配照真
+    # 停(未被申报覆盖的变更不被吞)。
+    deploy_miss_pending: DeployMissMark | None = None
 
 
 class NodeBooks:

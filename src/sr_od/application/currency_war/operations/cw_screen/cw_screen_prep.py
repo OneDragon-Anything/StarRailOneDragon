@@ -29,6 +29,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     apply_prep_action_logic,
+    consume_deploy_miss_mark,
     game_state_of,
     gs_of_ctx,
     shop_payload_content_cards,
@@ -1018,6 +1019,17 @@ class CwScreenPrep(CwScreenOpBase):
                 free_bench_slots=_free + 1)
         if isinstance(action, DeployMove):
             _gs = gs_of_ctx(getattr(self, 'ctx', None), self._session())
+            # 部署拖拽未落地闩消费(T-22;置位端 = DeployMoveOp 拖后像素
+            # 验证,消费口 = kernel consume_deploy_miss_mark 单一源):命中
+            # = 拖拽静默未生效(执行噪声非推算 bug)→ 容器零写 + 黑板保持
+            # 事实(逻辑态从未写下失真值,下一帧 heavy 实读一致,安灯零
+            # 接触;未申报变更照停语义零改动),重试 = 决策循环自然重派
+            #(黑板仍见该单位在备战席,策略重发同动作)。
+            if consume_deploy_miss_mark(
+                    _gs, action,
+                    sig=ChannelSig(family='logic_action',
+                                   actor='CwScreenPrep')):
+                return obs
             apply_prep_action_logic(
                 _gs, action, produced_by='CwScreenPrep',
                 sig=ChannelSig(family='logic_action', actor='CwScreenPrep'))
