@@ -101,10 +101,21 @@ class CwScreenBoxPick(SrOperation):
         match = self.ctx.cw_match
         if match is not None:
             try:
-                # 决策输入 = 容器(与全 pick 族同款;decide_box_card 契约面已切
-                # GameState)。终态契约 §B(T-4):持有引用;桩无 gs → None 态
-                # (fail-closed 判据照走:None 输入 = 决策异常支,留证上抛)。
-                idx = match.strategy.decide_box_card(names).idx
+                # 写槽 → 零参决策(终态契约 §2.7:写槽以本分支将调用 decide
+                # 为前提;同访问覆盖写,三分语义 details §2.3;桩无 gs → 跳过
+                # 写,fail-closed 判据照走)。
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    ChannelSig,
+                )
+                if getattr(match, 'gs', None) is not None:
+                    match.gs.write_logic(
+                        match.gs.box_card_names,
+                        list(names),
+                        produced_by='CwScreenBoxPick',
+                        sig=ChannelSig(family='logic_action',
+                                       actor='CwScreenBoxPick',
+                                       mode='compute'))
+                idx = match.strategy.decide_box_card().idx
             except Exception:   # noqa: BLE001  留证后显式上抛,禁无声回落
                 import traceback
 

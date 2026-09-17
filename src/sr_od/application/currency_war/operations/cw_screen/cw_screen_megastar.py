@@ -25,7 +25,6 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
@@ -161,13 +160,21 @@ class CwScreenMegastar(CwScreenOpBase):
             match = self.ctx.cw_match
             idx = 0
             if match is not None and options:
-                # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读;
-                # overlay 时用上次备战快照(语义同旧,值源切 GameState)。
-                # 终态契约 §B(T-4):持有引用直用(桩无 gs = None 态,决策缺省支)。
-                _state = match.gs if getattr(match, 'gs', None) is not None \
-                    else None
-                _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
-                pick = match.strategy.decide_megastar(options)
+                # 写槽 → 零参决策(终态契约 §2.7:写槽以本分支将调用 decide
+                # 为前提;同访问覆盖写,三分语义 details §2.3;桩无 gs = 跳过
+                # 写,决策缺省支)。
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    ChannelSig,
+                )
+                if getattr(match, 'gs', None) is not None:
+                    match.gs.write_logic(
+                        match.gs.megastar_opts,
+                        list(options),
+                        produced_by='CwScreenMegastar',
+                        sig=ChannelSig(family='logic_action',
+                                       actor='CwScreenMegastar',
+                                       mode='compute'))
+                pick = match.strategy.decide_megastar()
                 if 0 <= pick.idx < len(options):
                     idx = pick.idx
                 log.info(f'[cw-megastar] candidates={[o.char_id for o in options]} pick=idx{idx} {pick.reason}')
@@ -210,14 +217,14 @@ class CwScreenMegastar(CwScreenOpBase):
         # 写入豁免面),逐字连续搬迁不可得——确认机械半先收拢,候选半随
         # 写端迁移批再收拢(裁定申报见 T-216 交付报告)。派发实例仅作
         # 注册表解析键(机械参数 = 确认钮定位,op 类体内自读 screen_info)。
-        from sr_od.application.currency_war.kernel.cw_events import MegastarPick
+        from sr_od.application.currency_war.kernel.cw_vocab import PickMegastar
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
         from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
             OverlayPickExecEnv,
         )
-        action_op_for(MegastarPick(idx=0)).execute(
+        action_op_for(PickMegastar(idx=0)).execute(
             OverlayPickExecEnv(op=self))
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 2,先例 = CwScreenPrep)----

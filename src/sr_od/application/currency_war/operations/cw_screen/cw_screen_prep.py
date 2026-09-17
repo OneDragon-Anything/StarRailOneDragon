@@ -1298,7 +1298,7 @@ class CwScreenPrep(CwScreenOpBase):
                 verdict=('留证-羁绊面板显示计数与计算侧不一致(计算侧= tracked '
                          '全集主源,显示只作对账票;零决策记账不纠漂。已知不评:'
                          '面板底部截断/OCR 失读/残名/computed_missing 均只计数'
-                         '不判错;单次 L1,复现升 L0 由分级安灯承接)'),
+                         '不判错;单次与复现同级 L1,复现计数见台账行)'),
                 refs=refs,
                 reader_source='faction_display_reconcile',
             )
@@ -1350,8 +1350,7 @@ class CwScreenPrep(CwScreenOpBase):
                 verdict=('留证-商店牌卡池一致性违例(tier_locked=该费用档本'
                          '等级概率为0,牌识别错或等级读错;invalid_cost=费用'
                          'OCR误读。pool_state 无账本传 None,池守恒查如实'
-                         '降级未做;零决策记账,单次 L1,复现升 L0 由分级'
-                         '安灯承接)'),
+                         '降级未做;零决策记账,单次与复现同级 L1,复现计数见台账行)'),
                 refs=[{'field': k, 'value': v} for k, v in (
                     ('level', str(int(level_of(_gs)))),
                     ('cards', str(len(cards))),

@@ -36,7 +36,6 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
 from sr_od.application.currency_war.kernel.cw_events import PartnerOption
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
@@ -274,11 +273,18 @@ class CwScreenPartner(CwScreenOpBase):
             idx = 0
             reason = 'no-candidates(fallback)'
             if match is not None and options:
-                # 决策输入消费切换(迁移批次二):GameState 视图
-                # (kernel/cw_game_state.game_state_of)替 last_state 直读。
-                _state = match.gs
-                _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
-                pick = match.strategy.decide_partner(options)
+                # 写槽 → 零参决策(终态契约 §2.7:写槽以本分支将调用 decide
+                # 为前提;同访问覆盖写,三分语义 details §2.3)。
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    ChannelSig,
+                )
+                match.gs.write_logic(
+                    match.gs.partner_opts,
+                    list(options),
+                    produced_by='CwScreenPartner',
+                    sig=ChannelSig(family='logic_action',
+                                   actor='CwScreenPartner', mode='compute'))
+                pick = match.strategy.decide_partner()
                 idx = pick.idx if 0 <= pick.idx < len(cands) else 0
                 reason = pick.reason
             log.info('[cw-partner] candidates=%s pick=idx%s %s', [o.char_id for o in options], idx, reason)
@@ -313,7 +319,7 @@ class CwScreenPartner(CwScreenOpBase):
         # 留守上方;选中态标记与脉冲计数宿主仍是本 op,经 env.op 消费。
         # 派发实例仅作注册表解析键(机械输入 = unselected 实证 + 本 op
         # 状态,经 env 传递)。
-        from sr_od.application.currency_war.kernel.cw_events import PartnerPick
+        from sr_od.application.currency_war.kernel.cw_vocab import PickPartner
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
@@ -321,7 +327,7 @@ class CwScreenPartner(CwScreenOpBase):
             OverlayPickExecEnv,
         )
         _env = OverlayPickExecEnv(op=self, unselected=unselected)
-        action_op_for(PartnerPick(idx=0)).execute(_env)
+        action_op_for(PickPartner(idx=0)).execute(_env)
         return _env.round_result
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----

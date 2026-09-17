@@ -10,29 +10,22 @@
 是框架职责)→ 策略可离线 unit 测、可 replay。
 
 四个组件(本模块 3 个 + manager):
-- ``CwStrategy`` —— ABC,大脑接口(契约形状见 ADR-0583:每局冷建 2
-  + 分画面决策入口 11 = abstract 12,外加非 abstract 工厂 ``create_state``
-  1 = 保留总成员 13;零策略专属语义——方向重估节拍/意向 target 机器
-  是具体策略实现的私事,不在基类契约面上)。
+- ``CwStrategy`` —— ABC,大脑接口(终态契约:构造注入 + 零参入口
+  abstract 12,无工厂成员;零策略专属语义——方向重估节拍/意向 target
+  机器是具体策略实现的私事,不在基类契约面上)。
 - ``StrategySession`` —— 每局跨步状态(框架新建 / 局终销毁;策略读写)。
 - ``CurrencyWarMatch`` —— 运行时持有 strategy+session 的轻容器,挂 ``ctx.cw_match``。
 - ``StrategyManager``(``cw_strategy_manager.py``)—— 约定式文件扫描发现 + 去重 + 实例化。
 """
 from __future__ import annotations
 
+import contextlib
 import random
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generic, TypeVar
 
-from sr_od.application.currency_war.kernel.cw_events import (
-    EncounterOption,
-    MegastarOption,
-    PartnerOption,
-    PlannerOption,
-    SupplyOption,
-)
 from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
@@ -45,6 +38,9 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     PickStarTome,
     PickSupply,
     PickWishTrial,
+    RefreshInvestCards,
+    RefreshNodeOptions,
+    RefreshSupply,
 )
 
 if TYPE_CHECKING:
@@ -109,14 +105,32 @@ class CwStrategy(ABC, Generic[_TState]):
         """
         self.gs = gs
         self.config = config
-        self.state = self._create_state()
+        self.state = self._create_state()   # 经下方 setter 同源接线 gs 宿主
         seed = getattr(config, 'strategy_seed', None)
         self.rng = random.Random(seed if seed is not None else 0)
+
+    @property
+    def state(self) -> _TState | None:
+        """策略器私有状态(实例属性;终态契约 §2.4「strategy_state → 实例」)。
+
+        setter 同步 ``gs.strategy_state`` 宿主接线:零参 decide 管线
+        (mandate 三遍编排)以 self.gs 为宿主传递,``state_of(gs)`` 经本
+        接线解析到**同一**状态对象、``game_state_of(gs)`` 本体直通——
+        单一来源两处引用,禁第二状态对象(构造/事后重赋值两路径都过
+        setter,不变量恒成立)。
+        """
+        return self._state
+
+    @state.setter
+    def state(self, value: _TState | None) -> None:
+        self._state = value
+        with contextlib.suppress(AttributeError):
+            # 容器为桩面(不可附着)→ 跳过;legacy session 形态仍可用。
+            self.gs.strategy_state = value
 
     def _create_state(self) -> _TState | None:
         """策略器私有状态工厂钩子(缺省 None;子类覆写返回其私有状态类型,
         基类不感知具体字段)。生命周期 = 一局(实例不跨局 → 状态天然隔离)。"""
-        return None
         return None
 
     # ===== 分画面决策入口(ADR-0517 目标模型:op 的策略接触面 = 入口观察
@@ -132,44 +146,52 @@ class CwStrategy(ABC, Generic[_TState]):
         观察层失约,实现须抛错(禁静默按空态决策)。"""
 
     @abstractmethod
-    def decide_invest_strategy(self, options: list[str]) -> PickInvest:
-        """投资策略 3 选 1(options = OCR 卡名列表;原 decide_invest 双相拆分)。"""
+    def decide_invest_strategy(self) -> PickInvest | RefreshInvestCards:
+        """投资策略 3 选 1(原 decide_invest 双相拆分;候选读
+        ``gs.invest_strategy_opts`` 槽,离屏 None = 观察层失约抛错)。
+        刷新建议 = RefreshInvestCards 动作(候选卡逐卡槽位);选卡 =
+        PickInvest(两型互斥输出)。"""
 
     @abstractmethod
-    def decide_invest_env(self, options: list[str]) -> PickInvest:
-        """投资环境 3 选 1(与策略相共用 PickInvest;原 decide_invest 双相拆分)。"""
+    def decide_invest_env(self) -> PickInvest | RefreshInvestCards:
+        """投资环境 3 选 1(与策略相共用 PickInvest;候选读
+        ``gs.invest_env_opts`` 槽;刷新建议 = RefreshInvestCards 整组槽)。"""
 
     @abstractmethod
-    def decide_supply(self, options: list[SupplyOption]) -> PickSupply:
-        """补给选装备(带钻优先等语义在 kernel 纯函数,入口负责包装)。"""
+    def decide_supply(self) -> PickSupply | RefreshSupply:
+        """补给选装备(候选读 ``gs.supply`` payload 槽;刷新建议 =
+        RefreshSupply 动作,非布尔位)。"""
 
     @abstractmethod
-    def decide_encounter(self, options: list[EncounterOption]) -> PickEncounter:
-        """遭遇难度选(刷新建议 = RefreshNodeOptions 动作,非布尔位)。"""
+    def decide_encounter(self) -> PickEncounter | RefreshNodeOptions:
+        """遭遇难度选(候选读 ``gs.encounter`` payload 槽;刷新建议 =
+        RefreshNodeOptions 动作,非布尔位)。"""
 
     @abstractmethod
-    def decide_megastar(self, options: list[MegastarOption]) -> PickMegastar:
-        """巨星选候选。"""
+    def decide_megastar(self) -> PickMegastar:
+        """巨星选候选(候选读 ``gs.megastar_opts`` 槽)。"""
 
     @abstractmethod
-    def decide_partner(self, options: list[PartnerOption]) -> PickPartner:
-        """选择伙伴。"""
+    def decide_partner(self) -> PickPartner:
+        """选择伙伴(候选读 ``gs.partner_opts`` 槽)。"""
 
     @abstractmethod
-    def decide_planner(self, options: list[PlannerOption]) -> PickPlanner:
-        """银狼策划事件 3 选 1。"""
+    def decide_planner(self) -> PickPlanner:
+        """银狼策划事件 3 选 1(候选读 ``gs.planner_opts`` 槽)。"""
 
     @abstractmethod
-    def decide_star_tome(self, options: list[str]) -> PickStarTome:
-        """星徽典籍四选一(返回动作子类型,handler 翻译既有点击链)。"""
+    def decide_star_tome(self) -> PickStarTome:
+        """星徽秘典四选一(候选读 ``gs.star_tome_opts`` 槽;返回动作子类型,
+        handler 翻译既有点击链)。"""
 
     @abstractmethod
-    def decide_wish_trial(self, options: list[str]) -> PickWishTrial:
-        """祈愿试炼选卡(返回动作子类型)。"""
+    def decide_wish_trial(self) -> PickWishTrial:
+        """祈愿试炼选卡(候选读 ``gs.wish_trial_opts`` 槽;返回动作子类型)。"""
 
     @abstractmethod
-    def decide_box_card(self, names: list[str]) -> PickBoxCard:
-        """武装箱/节点弹窗装备卡 4 选 1(返回动作子类型)。"""
+    def decide_box_card(self) -> PickBoxCard:
+        """武装箱/节点弹窗装备卡 4 选 1(候选读 ``gs.box_card_names`` 槽;
+        返回动作子类型)。"""
 
 
 @dataclass

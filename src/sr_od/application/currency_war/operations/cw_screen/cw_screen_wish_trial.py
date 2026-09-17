@@ -153,9 +153,18 @@ class CwScreenWishTrial(CwScreenOpBase):
         if _match is not None:
             try:
                 objs = self._read_objectives(screen)
-                # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读。
-                _st = _match.gs
-                idx = _match.strategy.decide_wish_trial(objs).idx
+                # 写槽 → 零参决策(终态契约 §2.7:写槽以本分支将调用 decide
+                # 为前提;同访问覆盖写,三分语义 details §2.3)。
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    ChannelSig,
+                )
+                _match.gs.write_logic(
+                    _match.gs.wish_trial_opts,
+                    list(objs),
+                    produced_by='CwScreenWishTrial',
+                    sig=ChannelSig(family='logic_action',
+                                   actor='CwScreenWishTrial', mode='compute'))
+                idx = _match.strategy.decide_wish_trial().idx
                 if 0 <= idx < len(self.CARD_XS):
                     target = Point(self.CARD_XS[idx], CwScreenWishTrial.CARD_Y)
                     pick_idx = idx

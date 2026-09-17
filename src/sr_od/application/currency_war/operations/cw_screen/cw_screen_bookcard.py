@@ -155,10 +155,18 @@ class CwScreenBookcard(CwScreenOpBase):
         if cards:
             _match = getattr(self.ctx, 'cw_match', None)
             if _match is not None:
-                # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读。
-                _st = _match.gs
-                _decided = _match.strategy.decide_star_tome(
-                    [c[0] for c in cards]).idx
+                # 写槽 → 零参决策(终态契约 §2.7:写槽以本分支将调用 decide
+                # 为前提;同访问覆盖写,三分语义 details §2.3)。
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    ChannelSig,
+                )
+                _match.gs.write_logic(
+                    _match.gs.star_tome_opts,
+                    [c[0] for c in cards],
+                    produced_by='CwScreenBookcard',
+                    sig=ChannelSig(family='logic_action',
+                                   actor='CwScreenBookcard', mode='compute'))
+                _decided = _match.strategy.decide_star_tome().idx
                 if 0 <= _decided < len(cards):
                     idx, pick_name = _decided, cards[_decided][0]
         # 近邻匹配锚 = 选中卡的 OCR x(决策后取,防把候选首位当选中位)

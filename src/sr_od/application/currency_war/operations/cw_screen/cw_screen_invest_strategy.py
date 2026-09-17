@@ -75,6 +75,10 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     normalize_invest_name,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    PickInvest,
+    RefreshInvestCards,
+)
 from sr_od.application.currency_war.obs.cw_node_obs import (
     pair_refresh_counts_to_slots,
     read_invest_refresh_counts,
@@ -391,38 +395,46 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         刷新链零重读,本参保留观察 payload 契约,链内不再消费)。"""
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         names = [n for n, _x, _y in opts]
-        # 不可读 → 传空 CwSimFrame(decide_event 只用 board 判 DoT 克制,空 board = 不惩罚,安全)。
         match = self.ctx.cw_match
+        # 写槽 → 零参决策(终态契约 §2.7:写槽以本分支将调用 decide 为前提;
+        # 同访问覆盖写,三分语义 details §2.3)。输出 = 单一 CwAction:
+        # RefreshInvestCards(逐卡刷新建议)/ PickInvest(选卡)互斥单发。
+        act = None
+        refresh_slots: tuple[int, ...] = ()
         if names:
             if match is not None:
-                # ADR-0144:真状态替空 stub。决策输入消费切换(迁移批次二):
-                # 值源 = GameState 视图(cw_game_state.game_state_of)。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
-                    game_state_of,
+                    ChannelSig,
                 )
-                pick = match.strategy.decide_invest('strategy', names, match.gs, match.session, config)
+                _gs_inv = match.gs
+                _gs_inv.write_logic(
+                    _gs_inv.invest_strategy_opts,
+                    list(names),
+                    produced_by='CwScreenInvestStrategy',
+                    sig=ChannelSig(family='logic_action',
+                                   actor='CwScreenInvestStrategy',
+                                   mode='compute'))
+                act = match.strategy.decide_invest_strategy()
             else:
                 # 防御:无 match(局外独立跑)。经验分退役后 decide_event 不读
                 # hp/品质惩罚(唯一局面消费 = board.value or {},未观察等价
                 # 空表)。**显式跳过刷新链**(ADR-0600 §3.3 防御路径):刷新链
-                # 依赖容器读与 match 上下文,局外防御
-                # 帧零行为增量(refresh_slots 不消费)。
-                # 换源(登记集消点):防御视图 = 裸容器(全域未观察空
-                # 视图);旧合成 CwSimFrame + 过渡桥装箱退役。
+                # 依赖容器读与 match 上下文,局外防御帧零行为增量。
+                # 换源(登记集消点):防御视图 = 裸容器(全域未观察空视图)。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     GAME_STATE_SCHEMA_VERSION,
                     GameState,
                 )
-                pick = decide_event(names, config,
-                                    GameState(schema_version=GAME_STATE_SCHEMA_VERSION))
-        else:
-            pick = None
+                _kpick = decide_event(names, config,
+                                      GameState(schema_version=GAME_STATE_SCHEMA_VERSION))
+                act = PickInvest(idx=_kpick.option_idx, reason=_kpick.reason)
+        if isinstance(act, RefreshInvestCards):
+            refresh_slots = act.slots
 
         # ===== 逐卡刷新 = 终结动作(用户裁定 2026-09-14,照投资环境屏
         # 形态:点钮后本访问即交回,重入后重观察重决策;闸门语义 = ADR-0600
         # §3.3 逐卡预算)=====
-        if (match is not None and pick is not None and pick.refresh_slots
-                and opts):
+        if refresh_slots and opts:
             _counts = read_invest_refresh_counts(self.ctx, screen, 'strategy')
             _slot_hits = (pair_refresh_counts_to_slots(
                 _counts, [x for _n, x, _y in opts])
@@ -434,7 +446,8 @@ class CwScreenInvestStrategy(CwScreenOpBase):
             )
             _used_map = dict(game_state_of(
                 match.session).strategy_refresh_used.value or {})
-            for _i in pick.refresh_slots:
+            _clicked = False
+            for _i in refresh_slots:
                 if _i >= len(opts):
                     continue
                 # 闸 1:逐卡计数现读 >0(权威闸,无缓存无假设口径——读缺按
@@ -474,10 +487,16 @@ class CwScreenInvestStrategy(CwScreenOpBase):
                 log.info(f'[cw-strat] 槽{_i}刷新终结交回:重入后重观察重决策')
                 self._refresh_pending = True
                 return self.round_retry(wait=1)
+            # 三闸全败(建议帧但无可执行刷新)→ 同访问重调落选卡:策略侧
+            # 同帧去重(建议帧首调发建议、紧随重调落选卡)等价旧 PickEvent
+            # 「idx + refresh_slots 并载、闸败回退选卡」行为,零选卡漂移。
+            act = match.strategy.decide_invest_strategy()
+            if isinstance(act, RefreshInvestCards):   # 防御:策略未实现去重
+                act = None
 
-        if pick is not None and 0 <= pick.option_idx < len(opts):
-            chosen, choose_x, choose_y = opts[pick.option_idx]
-            reason = pick.reason
+        if isinstance(act, PickInvest) and 0 <= act.idx < len(opts):
+            chosen, choose_x, choose_y = opts[act.idx]
+            reason = act.reason
         elif opts:
             chosen, choose_x, choose_y, reason = opts[0][0], opts[0][1], opts[0][2], 'fallback(no-decision)'
         else:

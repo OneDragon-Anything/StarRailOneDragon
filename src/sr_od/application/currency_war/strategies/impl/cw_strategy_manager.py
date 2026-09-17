@@ -104,6 +104,7 @@ def establish_new_match(ctx: SrContext, config) -> bool:
     # 实例状态同一对象——旧读法 state_of(session) 与新读法 self.state
     # 等价,实现/夹具可渐进迁移(T-6 session 退役时旧读法随之消亡)。
     _session.strategy_state = _strategy.state
+    # (gs 宿主接线 = CwStrategy.state setter 内建,构造即挂 gs.strategy_state。)
     # Match 终形(§2.1):{gs, strategy, performance} + session 兼容位
     #(T-6 session 类退役时随删)。
     ctx.cw_match = CurrencyWarMatch(_strategy, _session, _gs,

@@ -30,14 +30,6 @@ decide_shop_action 仅产 BuyCard/RefreshShop/CloseShop),本注记 = 其
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.kernel.cw_events import (
-    EncounterPick,
-    EventPick,
-    MegastarPick,
-    PartnerPick,
-    PlannerPick,
-    SupplyPick,
-)
 from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
     BuyCard,
@@ -52,6 +44,11 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     OpenShop,
     OpenTome,
     PerfectProjectorUse,
+    PickEncounter,
+    PickMegastar,
+    PickPartner,
+    PickPlanner,
+    PickSupply,
     PrecisionWrenchUse,
     PrivilegeCardUse,
     RefreshShop,
@@ -145,12 +142,14 @@ _REGISTRY: dict[type, type[ActionOp]] = {
     StartBattle: StartBattleOp,   # 基类契约在册例外(返回值 = 点击序列已执行)
     OpenShop: OpenShopOp,         # terminal 承载行(execute 抛,正常路径不可达)
     # 事件线 pick 族(批4;design.md §2.5——overlay act 段经工厂,机械体
-    # = 各 overlay 画面 op act 确认链逐字迁移,域 env = OverlayPickExecEnv)
-    EncounterPick: EncounterPickOp,
-    SupplyPick: SupplyPickOp,
-    MegastarPick: MegastarPickOp,
-    PartnerPick: PartnerPickOp,
-    PlannerPick: PlannerPickOp,
+    # = 各 overlay 画面 op act 确认链逐字迁移,域 env = OverlayPickExecEnv。
+    # 终态契约 §2.2 注册行换键名:策略器产出 = 词表 Pick 子类型,kernel
+    # Pick 族 = 纯函数内部返回值,不再进注册表)。
+    PickEncounter: EncounterPickOp,
+    PickSupply: SupplyPickOp,
+    PickMegastar: MegastarPickOp,
+    PickPartner: PartnerPickOp,
+    PickPlanner: PlannerPickOp,
 }
 
 
@@ -170,7 +169,7 @@ def action_op_class_for_type(action_type: type) -> type[ActionOp]:
         '(ADR-0517 决策 9:非法返回 = 策略器 bug,禁静默跳过)')
 
 
-def action_op_class_for(action: Action | EventPick) -> type[ActionOp]:
+def action_op_class_for(action: Action) -> type[ActionOp]:
     """词表实例 → 动作 op **类**(类级查询,不构造 op 实例)。
 
     消费面 = 终结判定与 ``terminal``/``terminal_wait`` 类属性读取
@@ -186,7 +185,7 @@ def action_op_class_for(action: Action | EventPick) -> type[ActionOp]:
         '(ADR-0517 决策 9:非法返回 = 策略器 bug,禁静默跳过)')
 
 
-def action_op_for(action: Action | EventPick) -> ActionOp:
+def action_op_for(action: Action) -> ActionOp:
     """动作词表 → 动作 op(全动作唯一注册点;行序 isinstance 首中即返,
     类级解析单一源 = ``action_op_class_for``)。词表外类型 AssertionError
     响亮暴露(语义同上)。"""

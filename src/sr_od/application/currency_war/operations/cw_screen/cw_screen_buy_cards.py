@@ -1114,8 +1114,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 raise RuntimeError(_msg)
             # r95 审计必修②:决策异常留证(完整栈到 log,再向上抛,行为不变)。
             try:
-                action = match.strategy.decide_shop_action(match.session,
-                                                           config)
+                action = match.strategy.decide_shop_action()   # 终态零参口(§2.1)
             except Exception:
                 import traceback
 

@@ -37,7 +37,6 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
     CwScreenOpBase,
@@ -198,18 +197,35 @@ class CwScreenPlanner(CwScreenOpBase):
         # (局外独立跑;规约=沿用 cw_screen_invest_env 同款写法)。
         _match = getattr(self.ctx, 'cw_match', None)
         if _match is not None:
-            # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读。
-            _st = _match.gs
-            _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
-            pick = _match.strategy.decide_planner(options)
+            # 写槽 → 零参决策(终态契约 §2.7:写槽以本分支将调用 decide 为
+            # 前提;同访问覆盖写,三分语义 details §2.3)。
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                ChannelSig,
+            )
+            from sr_od.application.currency_war.kernel.cw_vocab import (
+                PickPlanner,
+            )
+            _match.gs.write_logic(
+                _match.gs.planner_opts,
+                list(options),
+                produced_by='CwScreenPlanner',
+                sig=ChannelSig(family='logic_action',
+                               actor='CwScreenPlanner', mode='compute'))
+            pick = _match.strategy.decide_planner()
         else:
             from sr_od.application.currency_war.kernel.cw_events import decide_planner
+
             # 换源(登记集消点):防御视图 = 裸容器(全域未观察空视图;
             # decide_planner 局面消费面未观察态等价旧空帧);旧合成
-            # CwSimFrame + 过渡桥装箱退役。
-            pick = decide_planner(options,
-                                  GameState(schema_version=GAME_STATE_SCHEMA_VERSION),
-                                  None)
+            # CwSimFrame + 过渡桥装箱退役。kernel 返回值包装动作子类型
+            # (终态契约 §2.2:kernel 纯函数零触碰,包装归入口/防御路径)。
+            from sr_od.application.currency_war.kernel.cw_vocab import (
+                PickPlanner,
+            )
+            _kpick = decide_planner(options,
+                                    GameState(schema_version=GAME_STATE_SCHEMA_VERSION),
+                                    None)
+            pick = PickPlanner(idx=_kpick.idx, reason=_kpick.reason)
         target = self._card_point(pick.idx)
         log.info('[cw][planner] 策划决策:%s → %s卡(%s)',
                  pick.reason, '左' if pick.idx == 0 else '右',

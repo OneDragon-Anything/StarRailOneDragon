@@ -55,6 +55,10 @@ from sr_od.application.currency_war.cw_game_ports import action_sink, observatio
 from sr_od.application.currency_war.kernel.cw_events import decide_event
 from sr_od.application.currency_war.kernel.cw_investments import is_known_env
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    PickInvest,
+    RefreshInvestCards,
+)
 from sr_od.application.currency_war.obs.cw_node_obs import read_invest_refresh_counts
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     emit_overlay_confirm,
@@ -289,24 +293,37 @@ class CwScreenInvestEnv(CwScreenOpBase):
         for _n in names:
             if not is_known_env(_n):
                 log.warning(f'[cw-env] 投资环境名不在注册表(数据缺口): {_n!r} → 该项 env_fit 走中性 fallback')
-        # board 不可读 → 传空 CwSimFrame(decide_event 只用 board 判 DoT 克制,空 board = 不惩罚,安全)。
         match = self.ctx.cw_match
+        # 写槽 → 零参决策(终态契约 §2.7:写槽以本分支将调用 decide 为前提;
+        # 同访问覆盖写,三分语义 details §2.3)。输出 = 单一 CwAction:
+        # RefreshInvestCards(整组刷新建议)/ PickInvest(选卡)互斥单发。
+        act = None
+        refresh_slots: tuple[int, ...] = ()
         if names:
             if match is not None:
-                # ADR-0144:真状态替空 stub ——环境屏 overlay 下 board 不可读,
-                # 但 HP 分档/持有策略该用真值。决策输入消费切换(迁移批次二):
-                # 值源 = GameState 视图(kernel/cw_game_state
-                # .game_state_of),原 last_state 直读退役。
-                pick = match.strategy.decide_invest('env', names, match.gs, match.session, config)
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    ChannelSig,
+                )
+                _gs_env = match.gs
+                _gs_env.write_logic(
+                    _gs_env.invest_env_opts,
+                    list(names),
+                    produced_by='CwScreenInvestEnv',
+                    sig=ChannelSig(family='logic_action',
+                                   actor='CwScreenInvestEnv',
+                                   mode='compute'))
+                act = match.strategy.decide_invest_env()
             else:
                 # 防御:无 match(局外独立跑)——防御空容器直喂(容器签名;
                 # 经验分退役后 decide_event 不读 hp/品质惩罚,空容器安全)。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     GameState as _GS_Empty,
                 )
-                pick = decide_event(names, config, _GS_Empty(schema_version=1))
-        else:
-            pick = None
+                _kpick = decide_event(names, config,
+                                      _GS_Empty(schema_version=1))
+                act = PickInvest(idx=_kpick.option_idx, reason=_kpick.reason)
+        if isinstance(act, RefreshInvestCards):
+            refresh_slots = act.slots
         # ===== 环境刷新 = 终结动作(用户裁定 2026-09-14:刷新 = 唯一引入
         # 新事实的动作,须交回外循环重观察;结构语义 = flow/screen_op.md
         # 决策 7 + §8.4 商店/补给刷新同款——期望态必须在新事实处重建,
@@ -334,9 +351,7 @@ class CwScreenInvestEnv(CwScreenOpBase):
         # 无 match 防御路径显式跳过(局外防御帧零行为增量,策略侧同款);
         # getattr 守卫 = 既有桩 pick(本链落地前的测试替身)无 refresh_slots
         # 字段时按不刷处理,失败安全。
-        if (match is not None and pick is not None
-                and getattr(pick, 'refresh_slots', ()) and opts
-                and screen is not None):
+        if refresh_slots and opts and screen is not None:
             _counts = read_invest_refresh_counts(self.ctx, screen, 'env')
             _budget = _counts[0][0] if _counts else 0   # 全局计数至多一条;读缺 = 无授权
             if _budget > 0:
@@ -365,9 +380,15 @@ class CwScreenInvestEnv(CwScreenOpBase):
                 # active_env 写均不在本访问。
                 self._refresh_pending = True
                 return self.round_retry(wait=1)
-        if pick is not None and 0 <= pick.option_idx < len(opts):
-            chosen, choose_x = opts[pick.option_idx]
-            reason = pick.reason
+            # 闸全败(建议帧但计数无授权)→ 同访问重调落选卡:策略侧同帧
+            # 去重(建议帧首调发建议、紧随重调落选卡)等价旧 PickEvent
+            # 「idx + refresh_slots 并载、闸败回退选卡」行为,零选卡漂移。
+            act = match.strategy.decide_invest_env()
+            if isinstance(act, RefreshInvestCards):   # 防御:策略未实现去重
+                act = None
+        if isinstance(act, PickInvest) and 0 <= act.idx < len(opts):
+            chosen, choose_x = opts[act.idx]
+            reason = act.reason
         elif opts:
             chosen, choose_x, reason = opts[0][0], opts[0][1], 'fallback(no-decision)'
         else:

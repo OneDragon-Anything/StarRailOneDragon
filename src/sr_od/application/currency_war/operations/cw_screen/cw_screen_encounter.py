@@ -49,11 +49,13 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
-    EncounterPick,
+)
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    PickEncounter,
+    RefreshNodeOptions,
 )
 from sr_od.application.currency_war.obs.cw_node_obs import (
     read_encounter_options,
@@ -133,7 +135,7 @@ class CwScreenEncounter(CwScreenOpBase):
         # 一次——双计即计数毒化)。chosen_encounter = 选择 handler 单次
         # 逻辑写入豁免,不在收编面(§2.2)。
         self.register_outcome_hook(
-            EncounterPick, self._on_refresh_emitted,
+            RefreshNodeOptions, self._on_refresh_emitted,
             name='encounter_refresh_used')
         # 确认已发待重入裁决的选卡(验证废除形态,用户裁定 2026-09-10):
         # (options, idx) 快照——确认点击发出后置位,下一轮重入由入口观察
@@ -165,13 +167,86 @@ class CwScreenEncounter(CwScreenOpBase):
         except Exception as e:   # noqa: BLE001  记录面失败不阻塞
             log.warning(f'[cw-encounter] 刷新计数记录失败(不阻塞): {e}')
 
-    def _emit_refresh_click(self, pick: EncounterPick) -> None:
+    def _emit_refresh_click(self, act: RefreshNodeOptions) -> None:
         """刷新点击发射时点(单一发射口,发射即触发;§6.5-4 随点击置位不等
         验效)。「已用」账 = 容器 encounter_refresh_used 计数,写端 = 本
         发射经 on_outcome 注册表触发的登记件钩子(唯一容器写点,禁第二
         写点——双计即计数毒化);本方法 = 两路径(旧 handle / 五段循环)
         共用分派面,触发唯一性先例 = CwScreenPrep._act_execute。"""
-        self.fire_outcome_hooks(pick, evidence='refresh_click')
+        self.fire_outcome_hooks(act, evidence='refresh_click')
+
+    def _decide_encounter_action(
+            self, options: list[EncounterOption], refresh_left: int | None,
+            screen: Any) -> tuple:
+        """写槽 → 零参 decide_encounter → 分支刷新链(终态契约 §2.7 调用点
+        形态;两路径共用,旧 handle 决策/刷新段逐位转录)。
+
+        刷新链分屏形态 = 同访问二次「读得=覆盖」(details §2.4):候选写槽
+        以「本分支将调用 decide」为前提(§2.3 三分语义)。per-visit 位
+        ``gs.encounter_refreshed_in_visit`` = 首调前置段写 False、建议处置
+        (刷新发射 / 闸拒绝)后重决策发起前同步直写 True——fail-loud
+        (details §2.3;写 True 扩展点 = 闸拒绝分支,语义 = 本访问刷新面已
+        处置禁再建议,等价旧 pick.refresh 布尔下「按原评分选」)。
+        Returns: (选卡动作|None, idx, reason, refreshed)。"""
+        match = self.ctx.cw_match
+        idx, reason = 0, 'default(no-options/match)'
+        act = None
+        refreshed = False
+        if match is None or not options \
+                or getattr(match, 'gs', None) is None:
+            return act, idx, reason, refreshed
+        gs = match.gs
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            ChannelSig,
+            EncounterPayload,
+        )
+
+        def _sig() -> ChannelSig:
+            return ChannelSig(family='logic_action',
+                              actor='CwScreenEncounter', mode='compute')
+        gs.write_logic(gs.encounter, EncounterPayload(options=list(options)),
+                       produced_by='CwScreenEncounter', sig=_sig())
+        gs.write_logic(gs.encounter_refreshed_in_visit, False,
+                       produced_by='CwScreenEncounter', sig=_sig())
+        act = match.strategy.decide_encounter()
+        if isinstance(act, RefreshNodeOptions):
+            # ===== 分支刷新执行链:建议刷新 → 有次数且未用 → 点钮 → 重读重决策 =====
+            # 验效双通道已拆(用户裁定 2026-09-10 动作 op 禁验效,清查报告 H1):
+            # 发射即置位 → 点钮+固定等待 → 无条件重读 → per-visit 位置 True
+            # 自然重决策。
+            _used = int(gs.encounter_refresh_used.value or 0) > 0
+            if _used:
+                log.info('[cw-encounter] 建议刷新但本局已用(分支刷新每局1次)→ 按原评分选')
+            elif refresh_left is None or refresh_left <= 0:
+                log.info(f'[cw-encounter] 建议刷新但无剩余次数(读数={refresh_left})→ 按原评分选')
+            else:
+                # 发出点击即计数:优势布局每局只授 1 次,单次尝试语义与游戏
+                # 规则对齐(点偏不重试,防「重入屏再试」的反复尝试)。容器
+                # 写端 = 登记件经 on_outcome 注册表(发射型触发点,唯一;
+                # 两路径共用)。
+                self._emit_refresh_click(act)
+                refreshed = True
+                new_opts = self._try_refresh(screen)
+                if new_opts:
+                    options = new_opts
+                    gs.write_logic(gs.encounter,
+                                   EncounterPayload(options=list(options)),
+                                   produced_by='CwScreenEncounter',
+                                   sig=_sig())
+            # 建议处置完毕(发射或拒绝)→ 置位抑制 + 重调取「按原评分选」
+            #(选卡判据与刷新建议互斥单发后的等价形态)。
+            gs.write_logic(gs.encounter_refreshed_in_visit, True,
+                           produced_by='CwScreenEncounter', sig=_sig())
+            act = match.strategy.decide_encounter()
+            if isinstance(act, RefreshNodeOptions):
+                # 防御:置位后重调仍返回建议(策略未消费 per-visit 位)→
+                # 不再循环,按无决策处理(失败安全)。
+                act = None
+        if isinstance(act, PickEncounter):
+            if 0 <= act.idx < len(options):
+                idx = act.idx
+            reason = act.reason
+        return act, idx, reason, refreshed
 
     def _observe_frame(self) -> EncounterObservation:
         """稳定帧观察链(实机适配器①封口内容):入口 2s 稳定期 → 重截 →
@@ -288,49 +363,9 @@ class CwScreenEncounter(CwScreenOpBase):
         # 的 payload.refresh_left 同语义同帧)。
         _rd = read_encounter_refresh_count(self.ctx, screen)
         refresh_left = _rd[0] if _rd is not None else None
-        match = self.ctx.cw_match
-        idx, reason = 0, 'default(no-options/match)'
-        pick = None
-        _state = None   # 缺省占位(match/options 缺席时不消费;现役值源 = 容器单例)
-        if match is not None and options:
-            # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读;
-            # overlay 时 board 不可读 → 用上次备战快照(语义同旧,值源切 GameState)。
-            # 终态契约 §B(T-4):持有引用直用(桩面挂载 match.gs)。
-            _state = match.gs if getattr(match, 'gs', None) is not None else None
-            _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
-            pick = match.strategy.decide_encounter(options)
-            if 0 <= pick.idx < len(options):
-                idx = pick.idx
-            reason = pick.reason
-        # ===== 分支刷新执行链:建议刷新 → 有次数且未用 → 点钮 → 重读重决策 =====
-        # 验效双通道已拆(用户裁定 2026-09-10 动作 op 禁验效,清查报告 H1):
-        # 发射即置位 → 点钮+固定等待 → 无条件重读 → 带 refresh_used=True
-        # 自然重决策。「刷没刷成」不判:卡面未变时新观察=旧 options,重决策
-        # 结果天然等价;未生效治理归下一帧观察(防重入已拦,不重试)。
-        refreshed = False
-        if match is not None and pick is not None and pick.refresh:
-            # 已用判定 = 容器计数(>0 = 已用;写端 = on_outcome 发射型钩子,
-            # 渠道②——发射即 +1,本闸读同一笔账)。终态契约 §B(T-4):持有引用。
-            _used = int(match.gs.encounter_refresh_used.value or 0) > 0 \
-                if getattr(match, 'gs', None) is not None else False
-            if _used:
-                log.info('[cw-encounter] 建议刷新但本局已用(分支刷新每局1次)→ 按原评分选')
-            elif refresh_left is None or refresh_left <= 0:
-                log.info(f'[cw-encounter] 建议刷新但无剩余次数(读数={refresh_left})→ 按原评分选')
-            else:
-                # 发出点击即计数:优势布局每局只授 1 次,单次尝试语义与游戏
-                # 规则对齐(点偏不重试,防「重入屏再试」的反复尝试)。容器
-                # 写端 = 登记件经 on_outcome 注册表(发射型触发点,唯一;
-                # 两路径共用)。
-                self._emit_refresh_click(pick)
-                refreshed = True
-                new_opts = self._try_refresh(screen)
-                if new_opts:
-                    options = new_opts
-                    pick = match.strategy.decide_encounter(options)
-                    if 0 <= pick.idx < len(new_opts):
-                        idx = pick.idx
-                    reason = pick.reason
+        # 写槽 → 零参决策 → 分支刷新链(共享体,终态契约 §2.7)
+        pick, idx, reason, refreshed = self._decide_encounter_action(
+            options, refresh_left, screen)
         if refreshed:
             reason = f'{reason}+分支刷新'
         log.info(f'[cw-encounter] options={[(o.difficulty, o.rewards) for o in options]} '
@@ -343,7 +378,7 @@ class CwScreenEncounter(CwScreenOpBase):
         # 出口验真语义时点后移)。
         return self._act_execute(pick, options, idx)
 
-    def _act_execute(self, pick: EncounterPick | None,
+    def _act_execute(self, pick: PickEncounter | None,
                      options: list[EncounterOption], idx: int
                      ) -> OperationRoundResult:
         """动作执行分派面(五段之 act 端口分派;两路径共用)。注入动作
@@ -382,7 +417,7 @@ class CwScreenEncounter(CwScreenOpBase):
         env = OverlayPickExecEnv(op=self)
         # 派发实例 = 生效选中下标的规范实例(决策半钳位后的 idx;策略 pick
         # 缺席/越界时本实例即唯一载体——工厂按类型解析,机械参数随实例)。
-        action_op_for(EncounterPick(idx=idx)).execute(env)
+        action_op_for(PickEncounter(idx=idx)).execute(env)
         return env.round_result
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 2,先例 = CwScreenPrep)----
@@ -415,48 +450,10 @@ class CwScreenEncounter(CwScreenOpBase):
         旧 handle 决策/刷新段逐位转录(试点步骤 2;chosen 豁免留守)。"""
         self._lifecycle_mark('decide')
         options = payload.options
-        # (difficulty + comp 成型度:formed→高难度拿好奖励,未成型→低难度保生存)→ 选 idx。替代硬编码「选左」。
-        match = self.ctx.cw_match
-        idx, reason = 0, 'default(no-options/match)'
-        pick = None
-        _state = None   # 缺省占位(match/options 缺席时不消费;现役值源 = 容器单例)
-        if match is not None and options:
-            # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读;
-            # overlay 时 board 不可读 → 用上次备战快照(语义同旧,值源切 GameState)。
-            # 终态契约 §B(T-4):持有引用直用(桩面挂载 match.gs)。
-            _state = match.gs if getattr(match, 'gs', None) is not None else None
-            _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
-            pick = match.strategy.decide_encounter(options)
-            if 0 <= pick.idx < len(options):
-                idx = pick.idx
-            reason = pick.reason
-        # ===== 分支刷新执行链:建议刷新 → 有次数且未用 → 点钮 → 重读重决策 =====
-        # 验效双通道已拆(同旧路径,清查报告 H1):发射即置位 → 点钮+固定
-        # 等待 → 无条件重读 → 带 refresh_used=True 自然重决策。
-        refreshed = False
-        if match is not None and pick is not None and pick.refresh:
-            # 已用判定 = 容器计数(同旧路径口径:>0 = 已用,写端 = 发射型钩子)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                game_state_of,
-            )
-            _used = int(game_state_of(
-                match.session).encounter_refresh_used.value or 0) > 0
-            if _used:
-                log.info('[cw-encounter] 建议刷新但本局已用(分支刷新每局1次)→ 按原评分选')
-            elif payload.refresh_left is None or payload.refresh_left <= 0:
-                log.info(f'[cw-encounter] 建议刷新但无剩余次数(读数={payload.refresh_left})→ 按原评分选')
-            else:
-                # 发出点击即计数:发射型触发点两路径共用(见
-                # _emit_refresh_click;语义口径同旧路径逐位)。
-                self._emit_refresh_click(pick)
-                refreshed = True
-                new_opts = self._try_refresh(payload.screen)
-                if new_opts:
-                    options = new_opts
-                    pick = match.strategy.decide_encounter(options)
-                    if 0 <= pick.idx < len(new_opts):
-                        idx = pick.idx
-                    reason = pick.reason
+        # 写槽 → 零参决策 → 分支刷新链(共享体,终态契约 §2.7;与旧 handle
+        # 决策/刷新段逐位转录)。refresh_left/screen = 入口观察 payload 同帧。
+        pick, idx, reason, refreshed = self._decide_encounter_action(
+            options, payload.refresh_left, payload.screen)
         if refreshed:
             reason = f'{reason}+分支刷新'
         log.info(f'[cw-encounter] options={[(o.difficulty, o.rewards) for o in options]} '

@@ -885,18 +885,16 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
     return PlannerPick(idx=best_idx, reason=best_reason or '全部未识别,兜底左卡')
 
 
-# ===== 事件线 pick 族运行时元组(统一动作工厂批4;注册完备锁遍历单一源
-# ===== 之一,先例 = cw_vocab.CW_ACTION_TYPES 白名单元组形态)=====
+# ===== 事件线 pick 族运行时元组(统一动作工厂批4;kernel 纯函数返回载体
+# ===== 元组。终态契约 §2.2:策略器产出 = cw_vocab 词表 Pick 子类型并
+# ===== 收敛单表 CW_ACTION_TYPES,本表 = kernel decide_* 返回载体的
+# ===== 运行时登记,注册完备锁遍历走词表单表)=====
 
-#: 事件线意图词表全类(decide_* 决策返回载体;overlay act 段经注册表
-#: 工厂 ``action_op_for`` 分派,design.md §2.5)。退役 = 删类(R1):
-#: 元组中不存在即天然不可复活,无退役行无墓碑;新 pick 类型入词表 =
-#: 先改契约再落码(词表纪律,统一观察架构 §6.1),漏登记 = 注册完备锁红。
-#: (终态契约 §2.2 正名:本表 = 事件线决策返回载体;动作子类型收敛单表
-#:  = cw_vocab.PICK_ACTION_TYPES,两者勿混。)
+#: 事件线 kernel pick 全类(kernel ``decide_*`` 纯函数返回载体;策略入口
+#: 负责包装成词表动作子类型——kernel 判据零触碰,§2.2)。
 EVENT_PICK_TYPES: tuple = (
     EncounterPick, SupplyPick, MegastarPick, PartnerPick, PlannerPick,
 )
 
-#: pick 族类型联合(注册表动作参数注解用;运行时零消费)。
+#: pick 族类型联合(kernel 侧注解用;运行时零消费)。
 EventPick = EncounterPick | SupplyPick | MegastarPick | PartnerPick | PlannerPick

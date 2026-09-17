@@ -578,6 +578,11 @@ class PickEvent(CwAction):
     math_proofs P81,env kind 不启用见 ADR-0600 §2/§4):「建议刷新」布尔 =
     ``refresh_slots`` 非空。**纯建议**——是否真刷由 handler 决定(逐槽计数
     现读 >0 才点;刷新失败/次数 0 → 照常选当前最优,失败安全 = 现状行为)。
+
+    终态契约 §2.2 策略词表退役:策略 12 入口产出 = per-screen Pick 子类
+    (选卡)+ 三刷新动作(刷新建议),本类**不再由策略器发射**;现役
+    居民 = kernel ``decide_event`` 纯函数返回载体 + sim 既有脚本动作
+    (引擎零策略构造,§2.7 申报)。
     """
     option_idx: int
     # [索引定义] 坐标系: 事件选项列表下标(画面选项序,左→右 0 起;
@@ -639,7 +644,7 @@ class SwapDeploy(CwAction):
 
 
 Action = (BuyCard | SellBench | LevelUp | DeployMove | RefreshShop | CloseShop
-          | PickEvent | SellDeployed | SwapDeploy)
+          | SellDeployed | SwapDeploy)
 
 
 # ===== 统一词表·备战域动作(unified-action-factory 批2b 自

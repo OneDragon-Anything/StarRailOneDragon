@@ -31,16 +31,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_events import (
-    EncounterOption,
     EncounterPick,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
-    gs_of_ctx,
     shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
+    HoldFrame,
+    PickEncounter,
+    RefreshNodeOptions,
 )
 from sr_od.application.currency_war.strategies.impl.flow import (
     CwFlowStrategy,
@@ -66,7 +67,7 @@ if TYPE_CHECKING:
 CurrencyWarConfig = 'CurrencyWarConfig'
 
 
-def _launch_front_check(session: StrategySession) -> CwAction | None:
+def _launch_front_check(gs: GameState) -> CwAction | None:
     """前置发射位:armed 帧短路三遍编排,产出发射意图(发射决策的
     策略层宿主;旧达标臂发射决策迁驻,design §2.3)。
 
@@ -85,13 +86,13 @@ def _launch_front_check(session: StrategySession) -> CwAction | None:
       空转防护 = 段旗);
     - armed ∧ 未命中 → StartBattle 终点意图(词表现成);
     - 非 armed → 段旗复位,返回 None = 原三遍编排接管(非 armed 帧零变化)。
+
+    终态契约 §2.1:gs/config 构造注入——入参即容器;策略器状态读口 =
+    ``state_of(gs)``(gs.strategy_state 同源接线,漏斗/构造点单一写入)。
     """
     from sr_od.application.currency_war.kernel.cw_economy import (
         gold_of,
         in_launch_spend_zone,
-    )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        game_state_of,
     )
     from sr_od.application.currency_war.kernel.cw_launch_admission import (
         LAUNCH_QUALITY_DEFER_FRAMES_KEY,
@@ -105,8 +106,7 @@ def _launch_front_check(session: StrategySession) -> CwAction | None:
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         line_members,
     )
-    gs = game_state_of(session)
-    _st = state_of(session)
+    _st = state_of(gs)
     _decision = readiness_launch_decision(
         gs, getattr(_st, 'target_comp', None), line_members=line_members)
     if not _decision.get('armed'):
@@ -123,7 +123,7 @@ def _launch_front_check(session: StrategySession) -> CwAction | None:
             _ct[LAUNCH_QUALITY_DEFER_FRAMES_KEY] = \
                 _ct.get(LAUNCH_QUALITY_DEFER_FRAMES_KEY, 0) + 1
         return None   # 质量推迟帧:本帧不发射(防死锁语义 kernel 单一源)
-    if in_launch_spend_zone(gold_of(gs), session):
+    if in_launch_spend_zone(gold_of(gs), gs):
         if not _st.cw4_launch_spend_visited:
             _st.cw4_launch_spend_visited = True
             return OpenShop(restricted_spend=True)
@@ -165,58 +165,29 @@ class MandateV1Strategy(CwFlowStrategy):
         )
         calibration.apply()
 
-    def decide_prep_screen(self, session: StrategySession | None = None,
-                           config: CurrencyWarConfig | None = None) -> CwAction | None:
-        """终态零参口(§2.1);可选 session/config 形参 = 过渡兼容宿主
-        (legacy 路径,3.5 收口删)。"""
-        if session is None:
-            return self._decide_prep_screen_terminal()
-        return self._decide_prep_screen_session(session, config)
+    def decide_prep_screen(self) -> CwAction:
+        """备战画面黑板决策(终态零参口 §2.1;单动作;空发射帧 = HoldFrame)。
 
-    def _decide_prep_screen_terminal(self) -> CwAction | None:
-        """终态体(零参;决策输入一律 self.gs/self.state/self.config)。"""
+        输入 = ``gs.prep_obs``(黑板契约:画面 op 是唯一写者;缺失即抛错 =
+        观察层失约,禁静默按空观察决策)。输出 = 决策核发射序列的**首个
+        动作**;空序列(含截断截空)→ ``HoldFrame`` = 本帧无动作交回外循环
+        重观察(None 退役,终态契约 §2.2)。帧稳定截断为决策核内发射组织,
+        非流程侧契约。入口内务 = 备战帧代次消费(方向刷新先于三遍编排)。
+        管线宿主 = self.gs(state_of(gs) 经同源接线解析策略器状态;
+        game_state_of(gs) 本体直通)。
+        """
         obs = self.gs.prep_obs
         if obs is None:
             raise ValueError(
                 'mandate_v1.decide_prep_screen: gs.prep_obs 缺失'
                 '(黑板契约:画面 op 是唯一写者;None=观察层失约,'
                 '禁静默按空观察决策)')
-        self._consume_prep_direction_frame(self.gs)
-        _launch_action = _launch_front_check(self.gs)
-        if _launch_action is not None:
-            return _launch_action
-        from sr_od.application.currency_war.strategies.impl.mandate_v1.economy_cycle import (
-            disclose_budget,
-        )
-        disclose_budget(self.gs, self.state, self.registry)
-        actions = decide_prep_frame(obs, self.state, self.config,
-                                    registry=self.registry)
-        return actions[0] if actions else None
-
-    def _decide_prep_screen_session(self, session: StrategySession,
-                                    config: CurrencyWarConfig) -> CwAction | None:
-        """备战画面黑板决策(单动作契约接口,返回 ``CwAction | None``)。
-
-        输入 = gs.prep_obs(终态契约 §2.6:宿主 = 容器;缺失即抛错)。输出 = 决策核
-        发射序列的**首个动作**;空序列(含截断截空)→ ``None`` = 本帧
-        无动作。帧稳定截断为决策核内发射组织,非流程侧契约。入口内务 =
-        备战帧代次消费(方向刷新先于三遍编排)。
-        """
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            game_state_of,
-        )
-        obs = game_state_of(session).prep_obs
-        if obs is None:
-            raise ValueError(
-                'mandate_v1.decide_prep_screen: session.prep_obs_frame 缺失'
-                '(黑板契约:画面 op 是唯一写者;None=观察层失约,'
-                '禁静默按空观察决策)')
         # 方向重估先于决策(触发 = 帧代次标注;ADR-0583 §3.3-①)
-        self._consume_prep_direction_frame(session)
+        self._consume_prep_direction_frame()
         # —— 前置发射位(迭代 changes/2026-09-16-prep-visit-op design
         # §2.3;旧 cw_loop 达标臂的发射决策迁驻策略层)。armed 帧短路
         # 三遍编排;非 armed 帧 None = 原编排零变化。
-        _launch_action = _launch_front_check(session)
+        _launch_action = _launch_front_check(self.gs)
         if _launch_action is not None:
             return _launch_action
         # 预算遥测披露(唯一写点 = economy_cycle.disclose_budget;落点 =
@@ -226,16 +197,16 @@ class MandateV1Strategy(CwFlowStrategy):
         from sr_od.application.currency_war.strategies.impl.mandate_v1.economy_cycle import (
             disclose_budget,
         )
-        disclose_budget(gs_of_ctx(getattr(self, "ctx", None), session), session, self.registry)
-        actions = decide_prep_frame(obs, session, config,
+        # 宿主双槽 = gs(state 槽给容器现值,session 槽给 state_of(gs) 同源
+        # 解析——经 self.state 传递会让下游 game_state_of 解析一次性空容器)。
+        disclose_budget(self.gs, self.gs, self.registry)
+        actions = decide_prep_frame(obs, self.gs, self.config,
                                     registry=self.registry)
-        return actions[0] if actions else None
+        return actions[0] if actions else HoldFrame()
 
-    def decide_encounter(self, options: list[EncounterOption],
-                         gs: GameState, session: StrategySession,
-                         config: CurrencyWarConfig,
-                         refresh_used: bool = False) -> EncounterPick:
-        """遭遇分支选卡:E-2 判据落码(kernel/cw_encounter_selection.py 单一源)。
+    def decide_encounter(self) -> PickEncounter | RefreshNodeOptions:
+        """遭遇分支选卡(终态零参口;候选 = ``gs.encounter`` payload):E-2
+        判据落码(kernel/cw_encounter_selection.py 单一源)。
 
         暗装优先(fail-closed):三常量/两组定谳未就绪 → 恒最低档 + 零刷新,
         reason 带门诊断(e3-simple 归因串,D_enc 口读值与 live 判别子随行
@@ -244,17 +215,33 @@ class MandateV1Strategy(CwFlowStrategy):
         历史 EV 候选核(mandate_v1/encounter.py)搁置让位、保留禁删;基线
         ``cw_events.decide_encounter`` 零触碰(其他策略核行为不变)。
         入口内务 = 备战帧代次消费(覆写不落基类实现,须自带)。
+        刷新旗标输入源 = ``gs.encounter_refreshed_in_visit`` per-visit 位
+        (details §2.3 读点声明,handler 写端;None 缺省 False)。
+        输出包装(终态契约 §2.2):刷新建议 = RefreshNodeOptions,选卡 =
+        PickEncounter(两型互斥单发)。
         """
-        self._consume_prep_direction_frame(session)
+        self._consume_prep_direction_frame()
+        payload = self.gs.encounter.value
+        if payload is None:
+            raise ValueError(
+                'decide_encounter: gs.encounter payload 槽离屏'
+                '(None = 观察层失约,禁静默按空态决策)')
+        options = payload.options
+        refresh_used = bool(self.gs.encounter_refreshed_in_visit.value
+                            or False)
         from sr_od.application.currency_war.kernel import (
             cw_encounter_selection,
         )
-        return cw_encounter_selection.decide_encounter(
-            options, gs, refresh_used=refresh_used)
+        pick: EncounterPick = cw_encounter_selection.decide_encounter(
+            options, self.gs, refresh_used=refresh_used)
+        if pick.refresh:
+            return RefreshNodeOptions(reason=pick.reason)
+        return PickEncounter(idx=pick.idx, reason=pick.reason)
 
-    def decide_shop_screen(self, session: StrategySession,
-                           config: CurrencyWarConfig) -> list:
-        """商店序列兼容驱动器(mandate 覆写;ADR-0517 迁移批 + ADR-0583 降格)。
+    def decide_shop_screen(self, session: StrategySession | None = None,
+                           config: CurrencyWarConfig | None = None) -> list:
+        """商店序列兼容驱动器(mandate 覆写;ADR-0517 迁移批 + ADR-0583 降格;
+        形参 = 兼容宿主(sim/回放/序列锁调用面照旧传),决策已零参化)。
 
         生产执行侧已改调 :meth:`decide_shop_action`(单动作循环,
         ``cw_op_buy_cards.run_buy_waves``);本驱动器保留给 sim 引擎/回放/既有序列锁——
@@ -278,7 +265,7 @@ class MandateV1Strategy(CwFlowStrategy):
         # 驱动器同路(W6 波 4,设计件 §2.2-3):决策读容器单例 + 逻辑态直写推进
         # 切 apply_shop_action_logic;在屏前置 = gs.shop.value is not None,
         # 离屏 = 观察层失约抛错(黑板契约容器化等价物)。
-        gs = gs_of_ctx(getattr(self, "ctx", None), session)
+        gs = self.gs
         if gs.shop.value is None:
             raise ValueError(
                 'mandate_v1.decide_shop_screen: 容器商店 payload 离屏'
@@ -288,23 +275,24 @@ class MandateV1Strategy(CwFlowStrategy):
                           mode='compute',
                           group_id=f'act:MandateV1Strategy@{gs.write_seq + 1}')
         # 本访问已买件(carried 融合:R2-N1 刚买件首卖偏好;驱动器在循环
-        # 内登记,与生产执行侧同一载体)。
-        state_of(session).cw4_visit_bought_names = []
+        # 内登记,与生产执行侧同一载体)。状态宿主 = self.state(终态契约
+        # §2.5 impl 桶;与旧 state_of(session) 同一对象,§2.6 过渡桥)。
+        self.state.cw4_visit_bought_names = []
         # T-82 段序号置位(sim/replay 商店 visit 入口;生产对应位 =
         # cw_op_buy_cards.run_buy_waves 入口,sim 引擎发射帧仲裁段的商店
         # 决策同样经本驱动器,一并推进):visit = 腾席拒绝结论的输入不
         # 变性段,入口 +1 使上一 visit/上一域残留 token/闩按序号不等失效。
-        state_of(session).cw4_segment_serial += 1
+        self.state.cw4_segment_serial += 1
         out: list = []
         _pre_bench: list = []
         _pre_dep: list = []
         _pre_shop: list | None = None
         for _ in range(512):   # 防御上界:决策循环不收敛 = 策略器 bug 响亮暴露
-            a = self._decide_shop_action_session(session, config)
+            a = self.decide_shop_action()   # 零参单动作核(终态契约 §2.1)
             if isinstance(a, cw_state.CloseShop):
                 return out
             if isinstance(a, (cw_state.BuyCard,)):
-                state_of(session).cw4_visit_bought_names.append(a.card.name or '')
+                self.state.cw4_visit_bought_names.append(a.card.name or '')
                 # 买前快照三件组(升星腿 scratch 基点;必须在直写口写之前
                 # 取,失准形态申报见 apply_shop_merge_leg docstring)。
                 _pre_bench = list(bench_slots_of(gs))
@@ -317,9 +305,8 @@ class MandateV1Strategy(CwFlowStrategy):
             # append = 动作确认执行(终结 op 由引擎执行后重观察,其执行
             # 不触停摆结论输入);策略器入口读后即清,下一帧据其判定 M2
             # 停摆续段缓存命中。
-            _st_rec = state_of(session)
-            _st_rec.cw4_frame_action_record = (
-                type(a).__name__, _st_rec.cw4_segment_serial)
+            self.state.cw4_frame_action_record = (
+                type(a).__name__, self.state.cw4_segment_serial)
             if isinstance(a, cw_state.RefreshShop):
                 return out      # 终结 op:序列到止(重观察语境;原
                 # CompTransaction 邻接终结已随批2b R3 删除)
