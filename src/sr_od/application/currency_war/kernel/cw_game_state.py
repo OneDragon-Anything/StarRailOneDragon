@@ -332,6 +332,14 @@ REGISTERED_ACTORS: set[str] = {
     'CwDeployLogic',           # 轮内新鲜度账单口(kernel/cw_deploy_logic.
                                # record_fresh_buy 的 round_fresh_buys
                                # 容器 Field 写点,渠道②动作上报)
+    # —— 策略器终态契约预登记(landing §3.1;纯增量零行为——写端接线
+    # 归终态切换批,先登记防 _validate_sig 在册校验炸)——
+    'CwScreenPlanner',         # 骇入策划(planner_opts 写点,现役唯一
+                               # 未登记的新写端之一)
+    'CwScreenBoxPick',         # 武装箱选择(box_card_names 写点,同上)
+    'cw_loop_route_clear',     # 外循环路由清点挂点(离屏置 None 写端,
+                               # sig family/mode 同 CloseShop 腿清点行,
+                               # actor 单列供 journal 行过滤)
 }
 
 

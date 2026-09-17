@@ -76,7 +76,6 @@ def establish_new_match(ctx: SrContext, config) -> bool:
     _session = _strategy.create_session(config)
     if config.strategy_seed is not None:
         _session.rng = random.Random(config.strategy_seed)
-    ctx.cw_match = CurrencyWarMatch(_strategy, _session)
     # GameState 初始化即遥测装配(用户裁定 2026-09-15:遥测数据的保存
     # = game state 职责;精化令:触发只钉正主单例建立路径 = kernel
     # game_state_of 局容器建立点,GameState 构造器零装配逻辑)。容器建立即
@@ -88,7 +87,20 @@ def establish_new_match(ctx: SrContext, config) -> bool:
     # game_state_of 缺省 None=不装配口径不受影响。
     from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
     from sr_od.application.currency_war.telemetry import state as _telemetry_state
-    game_state_of(_session, run_id_provider=_telemetry_state.current_run_id)
+    _gs = game_state_of(_session, run_id_provider=_telemetry_state.current_run_id)
+    # gs/performance 终态契约前置落位(landing §3.1):容器正身挂 Match,
+    # 本批 additive(现役读面仍走 session 旁口,消费接线归终态切换批)。
+    ctx.cw_match = CurrencyWarMatch(_strategy, _session, _gs,
+                                    performance=getattr(_session, 'performance', None))
+    # GameState 初始化即遥测装配(用户裁定 2026-09-15:遥测数据的保存
+    # = game state 职责;精化令:触发只钉正主单例建立路径 = kernel
+    # game_state_of 局容器建立点,GameState 构造器零装配逻辑)。容器建立即
+    # 惰性新建局容器单例并注入 run 归属读取函数(kernel 禁依 telemetry,
+    # 依赖倒置 = 建立点参数;幂等已装配零成本直过)——「未初始化容器首写前
+    # 装配已发生」,辖本函数两个生产调用方(CwEntryStart 进对局前移点 /
+    # CwLoop handle_init 兜底);注入收拢本生产专用漏斗 = CwLoop 调用面在
+    # 迭代在飞冻结期不可改注入,且 sim/测试不经本函数(直建 session),
+    # game_state_of 缺省 None=不装配口径不受影响。
     # 职级就地吸收(难度确认屏先于本调用读存 ctx;取走清空仍归 run loop
     # 信箱段——简报词缀/boss 读数在本调用之后才产生,由 run loop 统一吸收)。
     if getattr(ctx, 'cw_selected_difficulty', None):

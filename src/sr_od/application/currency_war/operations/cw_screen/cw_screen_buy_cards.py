@@ -365,9 +365,6 @@ def _form_progress(comp: 'Comp', session) -> float:
     本读改直取单例(board 同帧同源),桥消费随之清零。
     """
     from sr_od.application.currency_war.kernel.cw_comps import form_progress
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        game_state_of,
-    )
     return form_progress(comp, game_state_of(session))
 
 
@@ -611,7 +608,6 @@ def accrue_release_spent(match: 'CurrencyWarMatch',
     if not ok or not isinstance(action, RefreshShop):
         return
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        game_state_of,
         plane_of,
         round_num_of,
     )
@@ -803,6 +799,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 挂 ctx 只是给漏斗写块一个可寻址的 session 容器。该路径经
         # create_session 冷建(ADR-0583:live 初值 v3_phase='FORM' 随唯一
         # 冷建口在此落位;phase 列仅诊断用)。
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            game_state_of,
+        )
         from sr_od.application.currency_war.strategies.impl.cw_strategy import (
             CurrencyWarMatch,
         )
@@ -810,7 +809,12 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             MandateV1Strategy,
         )
         _def = MandateV1Strategy()
-        match = CurrencyWarMatch(_def, _def.create_session(config))
+        _session = _def.create_session(config)
+        # 终态契约 Match 终形含 gs/performance(landing §3.1);防御路径
+        # 同漏斗口径建容器(改道引导漏斗归终态切换批,本批先保构造合法)。
+        match = CurrencyWarMatch(
+            _def, _session, game_state_of(_session),
+            performance=getattr(_session, 'performance', None))
         op.ctx.cw_match = match
 
     # 牌位/升级/刷新中心从 screen_info 直取;area 缺失 = 建档漂移,显式

@@ -193,9 +193,16 @@ class CurrencyWarMatch:
 
     生命周期:``CwLoop.__init__`` 每局创建 → 挂 ctx → 每个契约调用点收到的 session 就是它 →
     局终置 ``ctx.cw_match = None``(防跨局污染)。
+
+    ``gs``/``performance`` = 终态契约前置落位(landing §3.1):容器正身挂
+    Match(策略器终态改持只读引用,ops 取容器 = 「取当局事实」语义)、
+    观测统计归框架侧。本批 additive 填充——消费接线归终态切换批,
+    现役读面仍走 session 旁口。
     """
     strategy: CwStrategy
     session: StrategySession
+    gs: GameState
+    performance: object | None = None
 
     def __post_init__(self) -> None:
         # 策略器状态兜底附着:策略未覆写 create_session(直用裸 session)
