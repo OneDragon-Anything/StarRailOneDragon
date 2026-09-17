@@ -451,7 +451,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
             state_of,
         )
-        _ist = self._ensure_intention(state_of(session))
+        _ist = self._ensure_intention(self.state)
         pick = cw_events.decide_event(
             options, config, gs,
             locked_comp=_ist.locked_comp,
@@ -620,7 +620,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             else:
                 key_equips = list(comp.key_equips or ())
         # 终态契约 §B:spare 库存打分源 = gs.equips(镜像退役)。
-        spare = list(gs_of_ctx(getattr(self, "ctx", None), session).equips.value or [])
+        spare = list(self.gs.equips.value or [])
         # 在身装备(game state 唯一消费口:策略禁读执行侧
         # 簿记)—— deployed 单成员带
         # equips,bench 槽位视图成员 = Unit(含 equips 透传)。
@@ -628,7 +628,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             bench_slots_of,
             deployed_slots_of,
         )
-        _gs_wear = gs_of_ctx(getattr(self, "ctx", None), session)
+        _gs_wear = self.gs
         worn = [eq
                 for _bc in (list(deployed_slots_of(_gs_wear))
                             + list(bench_slots_of(_gs_wear)))
