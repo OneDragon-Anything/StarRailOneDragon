@@ -944,6 +944,14 @@ CW_ACTION_TYPES: tuple = (
     HoldFrame,
 )
 
+#: 选择族收敛单表(终态契约 §2.7):九 pick 子类型单表,供 handler 分派/
+#: 注册完备锁遍历(三刷新动作走各自既有点击链不入本表;HoldFrame =
+#: 无操作语义,不属选择族)。
+PICK_ACTION_TYPES: tuple = (
+    PickEncounter, PickSupply, PickInvest, PickMegastar, PickPartner,
+    PickPlanner, PickStarTome, PickWishTrial, PickBoxCard,
+)
+
 
 def action_key(action: CwAction) -> str:
     """动作实例键(屏蔽计数粒度 = 动作类型 + 参数;SellBench(3) 与 SellBench(5) 各自计数)。
