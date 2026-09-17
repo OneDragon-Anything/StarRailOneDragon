@@ -2401,14 +2401,19 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         board_val = _merged
     else:
         board_val = _ocr_board
-    # active_strategies:session(持久宿主,cw_screen_invest_strategy 写)→ 容器中继
-    # (_refresh_cap 等消费;live 修复 2026-08-15,原接线只加帧字段无来源恒空)。
+    # active 双字段单一源 = gs(终态契约 §B:选择写点直写容器,session 份退役)。
     active_strategies_val: list[str] = []
     active_env_val = ''
     plane_bosses_val: list[str | None] = []
     enemy_affixes_val: list[str] = []
     if _match is not None and _match.session is not None:
-        active_strategies_val = list(_match.session.active_strategies)
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            game_state_of as _gso_mirror,
+        )
+        _gs_m = _match.gs if getattr(_match, 'gs', None) is not None \
+            else _gso_mirror(_match.session)
+        active_strategies_val = list(_gs_m.active_strategies.value or [])
+        active_env_val = str(_gs_m.active_env.value or '')
         # `w512_obs_surfaces/`(观测自检设计 §2.9/§5-B6,策略激活态事件级对拍,消费侧):
         # 「声明选中名」暂存槽在此消费——写链已先于暂存发生(handler 先
         # append session 再暂存),故本时点声明名应已在持卡列表;不在 = 写链
@@ -2442,8 +2447,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         # 词缀/巨星/伙伴/连胜)与决策(mechanics_fit/boss_fit/
         # 连胜门)同源。注入点单一(此处),策略器的
         # 方向刷新注入保留(两处都幂等:非空才覆)。
-        if getattr(_sess, 'active_env', ''):
-            active_env_val = str(_sess.active_env)
+        # (active 双字段已上移容器源;briefing 双字段归 T-3 briefing 切片。)
         if getattr(_sess, 'briefing_bosses', None):
             plane_bosses_val = list(_sess.briefing_bosses)
         if getattr(_sess, 'briefing_affixes', None):

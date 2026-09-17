@@ -130,9 +130,8 @@ class StrategySession:
     plane_lengths_seen: list[int] | None = None
     # (终态契约 §B:last_streak session 份退役——结算带符号真值由结算
     #  覆盖写端直入 gs.streak,economy/观察消费读容器。)
-    # 已持有投资策略(局中选,可多张;选卡 handler 采集,read_game_state
-    # 拷贝到 state 供 _refresh_cap 等消费)。
-    active_strategies: list[str] = field(default_factory=list)
+    # (终态契约 §B 重复账退役:active_strategies/active_env session 份
+    #  已删——单一源 = gs(write_logic 选择写点),kernel/obs 消费读容器。)
     # owned 穿戴池快照(ADR-0358;P4 观察接线后写端两处):
     # ①备战入口观察装配点全量重写(cw_screen_prep._observe heavy ←
     # observe_full 装备域采集,主写端);②穿戴 pass 执行位步内现读覆写
@@ -153,7 +152,7 @@ class StrategySession:
     # LCS 清洗读数 + CwScreenPlaneIntel 实采;元素可 None = 徽章态采不到
     # 身份——保位勿滤,滤掉会让后续位面名字左移错位)。
     briefing_bosses: list[str | None] = field(default_factory=list)
-    active_env: str = ""
+    # (active_env session 份已随终态契约 §B 退役——单一源 = gs.active_env。)
     # ⚠️ 显式种子化:default 禁止 OS 熵种子,default=
     # 固定种子 0 的独立实例;真实随机面由消费方显式注入——生产 run loop
     # 按 cw_config.strategy_seed 覆盖(operations/cw_loop.py)。

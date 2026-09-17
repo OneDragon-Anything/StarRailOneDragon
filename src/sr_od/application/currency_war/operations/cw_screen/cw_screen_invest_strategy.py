@@ -526,18 +526,21 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         match = self.ctx.cw_match
         if match is None or not chosen or chosen == '?':
             return
-        if chosen not in match.session.active_strategies:
-            match.session.active_strategies.append(chosen)
         # GameState 写端(迁移批次二,§3.4.4/§4 投资选择行):持有投资
         # 策略=本屏写入、局级累计(逐次选择追加);单次逻辑写入
-        # (§3.4 申报豁免)。品质锚挂建模批(设计 §3.4.4)。
+        # (§3.4 申报豁免)。终态契约 §B:session 份退役,直读直写容器。
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
             game_state_of,
         )
-        game_state_of(match.session).write_logic(
-            game_state_of(match.session).active_strategies,
-            list(match.session.active_strategies),
+        _gs_inv = (match.gs if getattr(match, 'gs', None) is not None
+                   else game_state_of(match.session))
+        _cur = list(_gs_inv.active_strategies.value or [])
+        if chosen not in _cur:
+            _cur.append(chosen)
+        _gs_inv.write_logic(
+            _gs_inv.active_strategies,
+            _cur,
             produced_by='CwScreenInvestStrategy',
             sig=ChannelSig(family='logic_action',
                            actor='CwScreenInvestStrategy', mode='compute'))

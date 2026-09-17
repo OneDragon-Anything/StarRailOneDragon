@@ -169,7 +169,10 @@ def signal_arm(session: StrategySession) -> str | None:
     信号谱其余成员(圣杯契约/万敌数量/昼神速度流)的 obs 层观测面
     未落,显式登记待接线(禁按名称硬编码逐件枚举线配方——注记 6)。
     """
-    actives = getattr(session, 'active_strategies', None) or []
+    from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
+    # 终态契约 §B:单一源 = gs.active_strategies(write_logic 选择写点)。
+    actives = (game_state_of(session).active_strategies.value
+               or []) if session is not None else []
     for sig in DIRECT_LINE_SIGNAL_STRATEGIES:
         if sig in actives:
             return sig

@@ -376,9 +376,9 @@ class CwScreenInvestEnv(CwScreenOpBase):
         else:
             chosen, choose_x, reason = '?', 960, 'fallback(no-ocr)'
         log.info(f'[cw-env] options={names} chose={chosen!r}@x={choose_x} reason={reason}')
-        # 原 bug:chosen 只点不存 → state.active_env 恒空 → env_fit 全 0.5 → T0 env 绑定静默失效。
+        # 原 bug:chosen 只点不存 → env_fit 全 0.5 → T0 env 绑定静默失效。
+        # 终态契约 §B:session 份退役,直写 gs.active_env。
         if match is not None and chosen != '?':
-            match.session.active_env = chosen
             # GameState 写端(迁移批次二,§3.4.3/§4 投资选择行):已选投资
             # 环境=本屏写入、选完即关整局保留;单次逻辑写入(§3.4 申报豁免:
             # 选择落地无定型帧可核对,后果走观察覆盖)。

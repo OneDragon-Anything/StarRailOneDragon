@@ -956,7 +956,10 @@ def blood_xp_mode(session) -> tuple[str, int] | None:
     (现版本游戏仅『奋斗协议』单卡在册;新血本位卡落地零改动)。
     入参先经 get_strategy 归一(session 存量 OCR 原始名不静默 miss)。
     """
-    for name in getattr(session, 'active_strategies', None) or []:
+    from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
+    # 终态契约 §B:单一源 = gs.active_strategies(write_logic 选择写点)。
+    for name in (game_state_of(session).active_strategies.value
+                 or []) if session is not None else []:
         s = get_strategy(name)
         if (s is not None and s.economy is not None
                 and s.economy.xp_buy_hp_cost):

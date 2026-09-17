@@ -273,7 +273,10 @@ def cap_resolved_of_session(session: StrategySession | None) -> int:
     无卖出/移除建模(handler 只 append),与 economy_score/S2 共享
     同一 append-only 假设,非本函数独立边界。
     """
-    strategies = getattr(session, 'active_strategies', None) or []
+    from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
+    # 终态契约 §B:active_strategies 单一源 = gs(write_logic 选择写点)。
+    strategies = (game_state_of(session).active_strategies.value
+                  or []) if session is not None else []
     override = (aggregate_economy(list(strategies)).interest_cap_override
                 if strategies else None)
     return interest_cap_resolved(override)
