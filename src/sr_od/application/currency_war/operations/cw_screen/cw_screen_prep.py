@@ -31,6 +31,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     apply_prep_action_logic,
     game_state_of,
+    gs_of_ctx,
     shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_merge_simulate import same_star_count
@@ -644,12 +645,11 @@ class CwScreenPrep(CwScreenOpBase):
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     ChannelSig,
                     bench_view_from_obs,
-                    game_state_of,
                 )
                 from sr_od.application.currency_war.kernel.cw_reconcile import (
                     is_merge_effect_window,
                 )
-                _gs_obs = game_state_of(session)
+                _gs_obs = gs_of_ctx(getattr(self, 'ctx', None), session)
                 # R1 渠道签名(§3.2.1):备战帧观察写入 = 渠道①,actor=本 op、
                 # screen=备战建档名、quality=真读标记(承接现役真读/兜底可分
                 # 语义)。
@@ -975,7 +975,7 @@ class CwScreenPrep(CwScreenOpBase):
             return dataclasses.replace(obs, spheres=_spheres)
         if isinstance(action, SellBench):
             _sess = self._session()
-            _gs_sell = game_state_of(_sess)
+            _gs_sell = gs_of_ctx(getattr(self, 'ctx', None), _sess)
             # 溢出腿镜像读数(先读后写):溢出卡身份/旗标在本写口内被消费
             # 清空,镜像判定须取写前值;落地判定 = 写后旗标已清(本调用内
             # 唯一清空者 = 溢出腿,陈旧提案零写分支不清 → 镜像不误发)。
@@ -1014,7 +1014,7 @@ class CwScreenPrep(CwScreenOpBase):
                 obs, bench_chars=_bench,
                 free_bench_slots=_free + 1)
         if isinstance(action, DeployMove):
-            _gs = game_state_of(self._session())
+            _gs = gs_of_ctx(getattr(self, 'ctx', None), self._session())
             apply_prep_action_logic(
                 _gs, action, produced_by='CwScreenPrep',
                 sig=ChannelSig(family='logic_action', actor='CwScreenPrep'))
@@ -1059,7 +1059,7 @@ class CwScreenPrep(CwScreenOpBase):
                 front_occupied=_front, back_occupied=_back,
                 free_bench_slots=(getattr(obs, 'free_bench_slots', 0) or 0) + 1)
         if isinstance(action, SellDeployed):
-            _gs = game_state_of(self._session())
+            _gs = gs_of_ctx(getattr(self, 'ctx', None), self._session())
             apply_prep_action_logic(
                 _gs, action, produced_by='CwScreenPrep',
                 sig=ChannelSig(family='logic_action', actor='CwScreenPrep'))
@@ -1074,7 +1074,7 @@ class CwScreenPrep(CwScreenOpBase):
             return dataclasses.replace(obs, deployed_chars=_deployed)
         if isinstance(action, LevelUp):
             # 视觉帧零变;容器域 xp/level/gold(action.cost 直写)推进
-            _gs = game_state_of(self._session())
+            _gs = gs_of_ctx(getattr(self, 'ctx', None), self._session())
             apply_prep_action_logic(
                 _gs, action, produced_by='CwScreenPrep',
                 sig=ChannelSig(family='logic_action', actor='CwScreenPrep'))
@@ -1253,7 +1253,7 @@ class CwScreenPrep(CwScreenOpBase):
             if session is None:
                 return
             computed = board_from_tracked(
-                list(game_state_of(session).tracked_books.deployed or []))
+                list(gs_of_ctx(getattr(self, 'ctx', None), session).tracked_books.deployed or []))
             if computed is None:
                 return
             frame = getattr(self, 'last_screenshot', None)
@@ -1267,7 +1267,7 @@ class CwScreenPrep(CwScreenOpBase):
                 plane_of,
                 round_num_of,
             )
-            _gs = game_state_of(session)
+            _gs = gs_of_ctx(getattr(self, 'ctx', None), session)
             plane = int(plane_of(_gs))
             round_num = int(round_num_of(_gs))
             if result.mismatch_count <= 0:
@@ -1328,7 +1328,7 @@ class CwScreenPrep(CwScreenOpBase):
                 plane_of,
                 round_num_of,
             )
-            _gs = game_state_of(session)
+            _gs = gs_of_ctx(getattr(self, 'ctx', None), session)
             cards, unnamed = _shop_pool_inputs(_gs)
             if not cards:
                 return
@@ -1390,7 +1390,7 @@ class CwScreenPrep(CwScreenOpBase):
                 plane_of,
                 round_num_of,
             )
-            _gs = game_state_of(session)
+            _gs = gs_of_ctx(getattr(self, 'ctx', None), session)
             our, det, unnamed = _merge_preview_inputs(
                 _gs, frame_cards=(self._cached_shop_cards or None))
             if not our:
@@ -1882,7 +1882,7 @@ class CwScreenPrep(CwScreenOpBase):
         成功或 2 次失败后停。旗标渠道 = 渠道③接管协议(logic_hook,actor =
         ResumeAttach 登记名)。
         """
-        _gs = game_state_of(session)
+        _gs = gs_of_ctx(getattr(self, 'ctx', None), session)
         _sig_takeover = ChannelSig(family='logic_hook', actor='ResumeAttach',
                                    mode='compute')
         if _gs.takeover_collect_done.value or _gs.plane_bosses.value:
@@ -2202,10 +2202,7 @@ class CwScreenPrep(CwScreenOpBase):
         session = match.session if match is not None else None
         if session is None:
             return None
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            game_state_of,
-        )
-        gs = game_state_of(session)
+        gs = gs_of_ctx(getattr(self, 'ctx', None), session)
         entries = gs.effects.entries
         hit = sorted({e.spec.name for e in entries
                       if e.spec.name in self._SPEC_INVEST_WATCH_NAMES})
@@ -2276,7 +2273,7 @@ class CwScreenPrep(CwScreenOpBase):
             _run_id = current_run_id() or '(无)'
         except Exception:  # noqa: BLE001
             _run_id = '(读失败)'
-        _nd = game_state_of(session).node.value
+        _nd = gs_of_ctx(getattr(self, 'ctx', None), session).node.value
         _pos = (f"p{_nd.plane}r{_nd.round_num}"
                 if _nd is not None else '(节点未观察)')
         # sentinel flag(三要素:触发定位 / 可执行处理步骤 / 删除条件;临时
@@ -2468,7 +2465,7 @@ class CwScreenPrep(CwScreenOpBase):
                     _seq = [s.node_type for s in _all if s.node_type]
                     # 位面锚 = 容器节点读口(last_state 链退役换源;节点
                     # 未观察 = None,槽序表首帧写入退开局语义不变)。
-                    _nd_now = (game_state_of(self.ctx.cw_match.session)
+                    _nd_now = (gs_of_ctx(getattr(self, 'ctx', None), self.ctx.cw_match.session)
                                .node.value
                                if self.ctx.cw_match is not None else None)
                     _plane_now = (_nd_now.plane if _nd_now is not None
