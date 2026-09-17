@@ -148,14 +148,13 @@ class CwScreenEncounter(CwScreenOpBase):
         单次逻辑写入(§3.4 申报豁免:自身动作事实),best-effort 记录面
         失败不阻塞。"""
         _match = self.ctx.cw_match
-        if _match is None:
+        if _match is None or getattr(_match, 'gs', None) is None:
             return
         try:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
-                game_state_of,
             )
-            _gs = game_state_of(_match.session)
+            _gs = _match.gs
             _gs.write_logic(
                 _gs.encounter_refresh_used,
                 int(_gs.encounter_refresh_used.value or 0) + 1,
@@ -296,10 +295,8 @@ class CwScreenEncounter(CwScreenOpBase):
         if match is not None and options:
             # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读;
             # overlay 时 board 不可读 → 用上次备战快照(语义同旧,值源切 GameState)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                game_state_of,
-            )
-            _state = game_state_of(match.session)
+            # 终态契约 §B(T-4):持有引用直用(桩面挂载 match.gs)。
+            _state = match.gs if getattr(match, 'gs', None) is not None else None
             _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
             pick = match.strategy.decide_encounter(options, _state, match.session, _cfg)
             if 0 <= pick.idx < len(options):
@@ -313,12 +310,9 @@ class CwScreenEncounter(CwScreenOpBase):
         refreshed = False
         if match is not None and pick is not None and pick.refresh:
             # 已用判定 = 容器计数(>0 = 已用;写端 = on_outcome 发射型钩子,
-            # 渠道②——发射即 +1,本闸读同一笔账)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                game_state_of,
-            )
-            _used = int(game_state_of(
-                match.session).encounter_refresh_used.value or 0) > 0
+            # 渠道②——发射即 +1,本闸读同一笔账)。终态契约 §B(T-4):持有引用。
+            _used = int(match.gs.encounter_refresh_used.value or 0) > 0 \
+                if getattr(match, 'gs', None) is not None else False
             if _used:
                 log.info('[cw-encounter] 建议刷新但本局已用(分支刷新每局1次)→ 按原评分选')
             elif refresh_left is None or refresh_left <= 0:
@@ -430,10 +424,8 @@ class CwScreenEncounter(CwScreenOpBase):
         if match is not None and options:
             # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读;
             # overlay 时 board 不可读 → 用上次备战快照(语义同旧,值源切 GameState)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                game_state_of,
-            )
-            _state = game_state_of(match.session)
+            # 终态契约 §B(T-4):持有引用直用(桩面挂载 match.gs)。
+            _state = match.gs if getattr(match, 'gs', None) is not None else None
             _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
             pick = match.strategy.decide_encounter(options, _state, match.session, _cfg)
             if 0 <= pick.idx < len(options):
