@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any
 
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import (
@@ -47,7 +46,7 @@ from sr_od.application.currency_war.obs.cw_observation import (
     read_game_state,
     read_gold,
     read_gold_opt,  # noqa: F401  模块属性路由:cw_shop_action_ops 经本模块名取读函数(替身缝)
-    read_shop_cards,
+    read_shop_cards,  # noqa: F401  替身缝:测试经本模块名桩读链(非本文件运行时消费)
 )
 from sr_od.application.currency_war.obs.cw_shop_refresh_obs import (
     refresh_board_changed_of,
@@ -812,6 +811,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         _def = MandateV1Strategy(_gs_def, config)
         # 状态同源接线(§2.6 过渡桥):见漏斗同款注释。
         _session.strategy_state = _def.state
+        # (gs 宿主接线 = CwStrategy.state setter 内建,构造即挂。)
         # 终态契约 Match 终形含 gs/performance(landing §3.1);防御路径
         # 同漏斗口径建容器(改道引导漏斗归终态切换批,本批先保构造合法)。
         match = CurrencyWarMatch(
@@ -899,6 +899,24 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 _entry = read_game_state(op.ctx, _entry_shot,
                                          phase=PHASE_PREP_SHOP_OPEN,
                                          screen_name=SHOP_SCREEN_NAME)
+        # 商店未识别卡停机(2026-09-16 迁移+框架化,用户裁定「识别不到就是
+        # bug」):入口观察一落地即判——决策/购买永不见残缺牌面(旧收工段
+        # 钩子在买波之后,防抖探针×2 随裁定退役)。判据 = 读链终判
+        # (read_shop_cards 内部易误判重观察之后)仍含 unknown 槽;历史触发
+        # (刷新动画/settle 瞬时帧)由该重观察与刷新 settle 等待前置收敛。
+        # 处置 = stop_running(框架截图留证 + [stop] 日志行)+ round_fail,
+        # 协作停机窗内不续波,交回外循环收口。处理流程知识归 guards.md §3。
+        _unk = [i + 1 for i, s in enumerate(_entry.shop)
+                if getattr(s, 'kind', '') == 'unknown']
+        if _unk:
+            log.warning('[cw!] [shop] 未识别卡槽%s(读链终判)→ 停机留证待建档',
+                        _unk)
+            _rc = getattr(op.ctx, 'run_context', None)
+            if _rc is not None:
+                _rc.stop_running(reason='hook:shop_unknown_card',
+                                 save_screenshot=True)
+            return op.round_fail(
+                status=f'shop 未识别卡槽{_unk},停机留证')
         save_decision_frame(op, 'shop_entry', _entry_shot)   # 识别完成点原始帧留证(牌面仲裁基准;每段一帧,刷新重观察同点覆盖)
         # 免费刷新对账点(T-219 裁定:对账类判定收口在观察态写入的对账
         # 点,动作 op 内不做;批4 比对收口扩展 = 两腿判定迁宿主
@@ -1231,57 +1249,6 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             ledger.did_refresh and refresh_wave_is_refresh_only(visit_actions))
         if not ledger.did_refresh:
             break   # 本段无刷新(或硬墙)→ 收工
-
-    # [停机钩子·常驻兜底(od-dev-stop-hooks §2.1 分类;原「临时,采完删(用户
-    # 2026-08-15 指示)」标注系误分类)]未购买(含刷新后仍未购买)且商店有
-    # 未识别卡(SIFT miss)→ 停机留画面给 AI 建档。触发条件兜「商店出现
-    # 未识别卡」整类(新版本新卡/非角色内容/立绘缺/瞬时帧)持续可能复发 =
-    # 安全网;移除条件 = 未识别卡类建模收敛(见下方 flag 文字),平时触发
-    # 只删 flag 不删钩子。
-    # 📋 调研档案(2026-08-17 阮·梅/白厄单帧 miss 归因闭环,下次触发先读这段):
-    # - 历史触发全部是刷新动画/settle 瞬时帧;本 hook 防抖重读两次均自愈。
-    # - 重读 = 立即再读(两帧指纹等稳门已废弃,T-219;动画/settle 类瞬态
-    #   由刷新分支的固定等待 REFRESH_CLICK_SETTLE_WAIT_S 前置收敛);
-    #   预算 2 次,耗尽才真停(模态弹窗压暗不因重读消失)。
-    # - f570a76e 审查#1 修:去 total_buy 门——残缺牌面上的买牌决策同样要留证。
-    # 硬必改(商店域审计 D 项):判据 any(not c.name) → kind=='unknown'
-    # (三态模型:empty=识别确证空位非未识别;content 恒有 name)。
-    if _entry is not None and any(
-            getattr(s, 'kind', '') == 'unknown' for s in _entry.shop):
-        _unk = [i + 1 for i, s in enumerate(_entry.shop)
-                if getattr(s, 'kind', '') == 'unknown']
-        for _ in range(2):
-            _reshop = read_shop_cards(op.ctx, op.screenshot())
-            _unk = [i + 1 for i, s in enumerate(_reshop or [])
-                    if s.kind == 'unknown']
-            if not _unk:
-                log.info('[cw-shop][hook] 重读后全识别(动画/settle 瞬时)→ 不停机')
-                break
-        if _unk:
-            # [停机钩子·恢复]r34 降级已被用户否决(2026-08-24:未识别不能
-            # 降级,带病跑错过建档窗口)。代价已知会(阻断实跑),用户明示接受。
-            _shot = op.save_screenshot(prefix=f'shop_unk_slot{_unk[0]}')
-            from datetime import datetime as _dt
-            _fp = get_project_root() / '.debug' / 'temp' \
-                / 'currency_war' / 'shop_unk.flag'
-            _fp.parent.mkdir(parents=True, exist_ok=True)
-            _fp.write_text(
-                f'[HOOK-STOP] shop 未识别卡停机钩子(常驻兜底,方案D恢复):'
-                f'operations/cw_screen/cw_screen_buy_cards.py run_buy_waves\n'
-                f'触发:未购买且商店槽{_unk}未识别(防抖重读 2 帧后仍 miss)——\n'
-                f'   新版本新卡/昔涟诗篇类非角色内容/立绘缺。\n'
-                f'处理步骤:1. 看 shot={_shot};对停机画面跑 analyze_screen\n'
-                f'   + 离线 SIFT 对拍(真实rect 商店牌-1..5)确认真未知;\n'
-                f'   2. 新卡 → 建档(screen_info/立绘库);瞬时帧类 → 调上方\n'
-                f'   RefreshShop 后等待;3. 删本 flag(钩子保留)+ 重启 MCP server 重跑。\n'
-                f'移除条件:常驻兜底——未识别卡类建模收敛(连续多局零触发)后按\n'
-                f'   od-dev-stop-hooks §2.1 评估移除整段;平时触发只删 flag 不删钩子。\n'
-                f'ts={_dt.now().strftime("%m-%d %H:%M:%S")}\n',
-                encoding='utf-8')
-            log.warning('[cw!] [shop] 未识别卡槽%s(重读后仍 miss)→ 停机留画面'
-                        '待建档 shot=%s(用户裁决恢复:未识别不能降级)', _unk, _shot)
-            op.ctx.run_context.stop_running(reason='hook:shop_unknown_card')
-            return op.round_fail(status=f'shop 未识别卡槽{_unk},停机留证'), None
 
     # → 新占槽 = bought 卡落点(pixel-diff;两帧同 shop-OPEN 状态)。
     if ledger.bought_names:
