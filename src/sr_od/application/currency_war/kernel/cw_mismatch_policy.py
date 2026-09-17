@@ -79,6 +79,29 @@ EXEMPT_REGISTRY: dict[tuple[str, str], tuple[ExemptEntry, ...]] = {
     ),
 }
 
+#: 外部随机备战席授予申报表(卡规范名 → 授予单位数;代码常量,变更走
+#: review 可见,同 :data:`EXEMPT_REGISTRY` 纪律)。辖域 = 效果注册表尚未
+#: 逐条确定的「获得随机角色」类投资卡:随机身份按效果域写入归属判据
+#: 不建逻辑写端(effect-domain §6.3 概率随机分支/§6.4 随机资产面观察
+#: 收口),确认后备战席实读必多出逻辑态没有的单位——不申报会被统一
+#: 观察对账安灯当推算 bug 停机。吸收语义(非豁免键,豁免注册表的三维
+#: 键表达不了「外部授予」形状):确认挂点按本表置
+#: ``GameState.exec_books.external_bench_grant_pending``,observe() 失配
+#: 分支对 bench 做「纯超集 + 差额 ≤ 待吸收数」精确校验,命中落
+#: ``external_grant_absorbed`` 台账行(无告警无停机);形状不符(缺员/
+#: 超额/纯槽位错位差额 0)交回三分流照真失配停——随机授予的身份不可
+#: 推算,但数量与「只多不少」形状确定,校验据此守住真投影 bug 不被吞。
+#: 逐条确定批给这些卡立规格(STRATEGY_EFFECTS)后,条目随批退役改规格
+#: 承载。
+EXTERNAL_BENCH_GRANTS: dict[str, int] = {
+    # 102501 武装支援(银):「获得1件随机简易装备和2个随机3费角色。」
+    # (data/cw_invest_data.py 官方卡文;2026-09-18 实机 reconcile 事故:
+    #  确认后实读 bench 多出 2 单位,安灯停局首例)
+    '武装支援': 2,
+    # 102502 武装支援+(银):「获得1件随机简易装备和1个随机4费角色,获得6金币。」
+    '武装支援+': 1,
+}
+
 
 def lookup_mismatch_exempt(screen: str | None, field_name: str,
                            logic_evidence: str | None) -> ExemptEntry | None:

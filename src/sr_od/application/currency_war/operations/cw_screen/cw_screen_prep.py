@@ -2551,12 +2551,6 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
     # 间歇漏,但差值对拍容忍 ±2:收入/连胜金不可观项混入)。不等 → 一方有
     # 毒(stylized 漏读 / cost 错 / 未观收入),留证统计毒化率;机制核对器
     # (r9)另有 REFRESH_COST 专项,此处只管 gold 总账。
-    if total_buy or total_xp_buy or total_refresh or total_sell:
-        _spend = _spend_executed
-        _final_gold = read_gold(op.ctx, op.screenshot())
-    # (关店实读金暂存 set_unit_gold_close 已随 spend_ledger 流写入端
-    #  退役删除——删除波 1;金对拍冲突留证(下方 obs_conflict,收编
-    #  journal obs_event)照常。)
     from sr_od.application.currency_war.kernel.cw_game_state import (
         game_state_of as _fb_gs_of,
     )
@@ -2573,22 +2567,33 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
         round_num_of as _fb_round_of,
     )
     _fb_gs = _fb_gs_of(match.session)
+    # 空账早退语义:全零 visit(无买/升/刷/卖)无动作账可对拍,整段审计
+    # (读金+对拍)随守卫跳过——对拍对象 = 本次动作账,外部金变更(点球
+    # 随机金/投资授予)不属其辖域。读金与消费必须同在守卫内:消费悬在
+    # 守卫外时空账访问 UnboundLocalError(实机 2026-09-18 reconcile 事故
+    # 首爆;T-186 账本迁移把消费块移出守卫引入,守卫 = 原意图)。
     # ADR-0329 件2:gold 差值对拍纳入卖入——卖出接线后,卖轮实际金 =
     # 开店金 − 花出 + 卖入(游戏侧卖出入账);旧口径不含卖入与实读金恒差
     # income → 每卖轮误报 gold_delta 冲突留证(design 章2.7 必改项)。
     # 基线缺读兜底 = 容器现读(旧 outcome.state.gold 回退同型)。
-    _expected = expected_gold_after_actions(
-        gold_open if gold_open is not None else _fb_gold_of(_fb_gs),
-        _spend, total_sell_income)
-    if _final_gold is not None and abs(_final_gold - _expected) > 2:
-        from sr_od.application.currency_war.kernel.cw_observe import (
-            obs_conflict as _oc,
-        )
-        _oc('gold_delta', _expected, _final_gold, None,
-            verdict='留证-动作账vs读数不等(stylized漏读/cost错/未观收入)',
-            source='shop_spend_audit',
-            plane=_fb_plane_of(_fb_gs), round_num=_fb_round_of(_fb_gs),
-            spend=_spend)
+    if total_buy or total_xp_buy or total_refresh or total_sell:
+        _spend = _spend_executed
+        _final_gold = read_gold(op.ctx, op.screenshot())
+        # (关店实读金暂存 set_unit_gold_close 已随 spend_ledger 流写入端
+        #  退役删除——删除波 1;金对拍冲突留证(下方 obs_conflict,收编
+        #  journal obs_event)照常。)
+        _expected = expected_gold_after_actions(
+            gold_open if gold_open is not None else _fb_gold_of(_fb_gs),
+            _spend, total_sell_income)
+        if _final_gold is not None and abs(_final_gold - _expected) > 2:
+            from sr_od.application.currency_war.kernel.cw_observe import (
+                obs_conflict as _oc,
+            )
+            _oc('gold_delta', _expected, _final_gold, None,
+                verdict='留证-动作账vs读数不等(stylized漏读/cost错/未观收入)',
+                source='shop_spend_audit',
+                plane=_fb_plane_of(_fb_gs), round_num=_fb_round_of(_fb_gs),
+                spend=_spend)
     # (`w577_refresh_fee_and_andon/` 执行事实暂存 set_unit_exec_facts 已随
     #  spend_ledger 流写入端退役删除——删除波 1;计划≠尝试可见化的现役
     #  面 = receipts 发射行 extra(plan_truncated/refresh_skipped 结构化

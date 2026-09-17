@@ -80,6 +80,7 @@ import json
 import subprocess
 import time
 import weakref
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -858,6 +859,20 @@ def consume_defect_sink() -> list[dict]:
 #: 2026-09-16-unified-obs-reconcile 并列入表分流)。生产实机链零 sim
 #: 前缀写点,抑制面对实机失配零触达。
 _MISMATCH_SUPPRESS_PREFIXES: tuple[str, ...] = ('sim:engine', SIM_SYNTHESIZED)
+
+
+def _bench_unit_multiset(view: Any) -> Counter:
+    """BenchView → (char_id, star) 多重集(纯超集校验的提取单一源;外部
+    随机授予吸收与真失配的形状分界只认「身份×星级」多重集,槽位号不在
+    校验域——授予单位落首空槽会平移既有单位槽号,槽号相等不成立)。
+    非 BenchView 形状(None/缺 slots)= 空集,由调用方形状校验兜住。"""
+    if view is None or not hasattr(view, 'slots'):
+        return Counter()
+    out: Counter = Counter()
+    for slot in view.slots:
+        if getattr(slot, 'kind', None) == 'unit' and slot.unit is not None:
+            out[(slot.unit.char_id, slot.unit.star)] += 1
+    return out
 
 
 def _route_logic_mismatch(*, field_name: str, expected: Any, actual: Any,
@@ -2619,6 +2634,15 @@ class ExecBooks:
     # 臂态位,projection_contract §4.3 在册判读面——删 = 丢判读通道,故
     # 保留簿记)。None = 尚无臂态记录。
     swap_arm_on: object = None
+    # 外部随机授予待吸收数(观察对账精确吸收闩;申报表 =
+    # cw_mismatch_policy.EXTERNAL_BENCH_GRANTS)。[索引定义] 计数坐标系 =
+    # 备战席单位个数(非槽位号);取值时机 = 选卡确认挂点写入
+    #(cw_screen_invest_strategy 确认登记点,唯一写端)、下一干净备战帧
+    # bench 观察失配分支「纯超集+差额≤计数」命中后扣减
+    #(:meth:`GameState._absorb_external_grant`,唯一消费端)。局级生命
+    # 周期(新局新容器 = 天然清零):恢复局新容器 pending 恒 0,残局
+    # 差异照真失配停。
+    external_bench_grant_pending: int = 0
 
 
 class NodeBooks:
@@ -3222,12 +3246,51 @@ class GameState:
         name = self._field_name(target)
         if target.source == 'logic' and target.value is not None \
                 and target.value != value:
-            _route_logic_mismatch(field_name=name, expected=target.value,
-                                  actual=value, observed_evidence=evidence,
-                                  logic_evidence=target.evidence, sig=sig)
+            if not self._absorb_external_grant(name, target, value,
+                                               evidence, sig):
+                _route_logic_mismatch(field_name=name, expected=target.value,
+                                      actual=value, observed_evidence=evidence,
+                                      logic_evidence=target.evidence, sig=sig)
         self._swap(name, Field(value=value, source='observation',
                                evidence=evidence),
                    sig=sig, note=note)
+
+    def _absorb_external_grant(self, field_name: str, target: Field,
+                               value: Any, observed_evidence: str | None,
+                               sig: ChannelSig) -> bool:
+        """外部随机授予精确吸收(§2.3 失配分支前置;申报表 =
+        ``cw_mismatch_policy.EXTERNAL_BENCH_GRANTS``):「获得随机角色」类
+        卡按效果域写入归属判据不建逻辑写端(effect-domain §6.3 概率随机
+        分支/§6.4 随机资产面观察收口),确认后备战席实读必多出逻辑态
+        没有的单位——本口按申报的待吸收数做形状校验后吸收,替代「真失配
+        停机」。命中条件全列(缺一不可):字段 = bench;待吸收计数 > 0;
+        实读 (char_id, star) 多重集 ⊇ 逻辑值多重集;差额总数 ∈ (0, 待吸收数]
+        (差额 0 = 纯槽位错位,差额超申报 = 异常增益,都交回三分流照停,
+        真投影 bug 不被吞)。命中 → ``external_grant_absorbed`` 台账行
+        (无告警无停机,豁免 ≠ 消失同纪律)+ 待吸收数扣减,覆盖照常
+        (观察赢)返回 True;否则返回 False。"""
+        if field_name != 'bench':
+            return False
+        pending = self.exec_books.external_bench_grant_pending
+        if pending <= 0:
+            return False
+        expected_units = _bench_unit_multiset(target.value)
+        actual_units = _bench_unit_multiset(value)
+        if any(actual_units[k] < expected_units[k] for k in expected_units):
+            return False
+        surplus_total = sum((actual_units - expected_units).values())
+        if surplus_total <= 0 or surplus_total > pending:
+            return False
+        self.exec_books.external_bench_grant_pending = pending - surplus_total
+        _emit_defect(field_name=field_name, expected=target.value,
+                     actual=value, evidence=observed_evidence, sig=sig,
+                     logic_evidence=target.evidence,
+                     kind='external_grant_absorbed')
+        log.info(f'[cw][gs] 外部随机授予吸收:bench 实读多 {surplus_total} '
+                 f'单位(待吸收 {pending}→'
+                 f'{self.exec_books.external_bench_grant_pending},'
+                 f'申报表 = cw_mismatch_policy.EXTERNAL_BENCH_GRANTS)')
+        return True
 
     def carry(self, target: Field, *, frame: str,
               sig: ChannelSig) -> None:
