@@ -104,9 +104,7 @@ class CwScreenBoxPick(SrOperation):
                 # 决策输入 = 容器(与全 pick 族同款;decide_box_card 契约面已切
                 # GameState)。终态契约 §B(T-4):持有引用;桩无 gs → None 态
                 # (fail-closed 判据照走:None 输入 = 决策异常支,留证上抛)。
-                idx = match.strategy.decide_box_card(
-                    names, getattr(match, 'gs', None),
-                    match.session, getattr(match, 'config', None))
+                idx = match.strategy.decide_box_card(names).idx
             except Exception:   # noqa: BLE001  留证后显式上抛,禁无声回落
                 import traceback
 
