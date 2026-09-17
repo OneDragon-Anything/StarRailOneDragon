@@ -13,7 +13,6 @@ from one_dragon.base.operation.operation_round_result import (
 # 必须**运行期可导入**(TYPE_CHECKING 块对此场景不够——本模块无
 # `from __future__ import annotations`;用 _ 别名避与参数名冲突)。
 from one_dragon.base.screen.screen_utils import get_match_screen_name
-from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_screen_state import (
@@ -802,17 +801,14 @@ class CwLoop(SrOperation):
     「下一步」→ 未知兜底。
     """
 
-    # 未知画面常驻兜底钩子(方案 D):连续 N 轮未识别画面 → stop_running 保画面待 AI 建档。
-    # 常驻安全网——兜一切未知态,不是点名某态的临时捕获;移除条件 = 该类未知态全部建档,
-    # 实际不可达(实现见本类 _handle_unknown_fallback)。
-    # 15 轮 ≈ 30s 纯卡(过渡帧 1-2 轮内被上面分支接走,不累计)。
-    UNKNOWN_STOP_THRESHOLD: ClassVar[int] = 15
-    #: 未知帧重试退避封顶(秒)。连续未识别帧的重试间隔按 2s 起步每连续一次翻倍,
-    #: 封顶本值——旧实现恒 2s 立即重试,战斗特效长动画/未建档画面期每 2s 打一次
-    #: 全量截图+OCR 空转(重试无退避缺陷)。阈值触达总时长由 ≈30s 放宽到 ≈2min,
-    #: 换取停机钩子触发前画面有充分自愈窗口(若真是过渡帧,长动画期 2s 恒重试
-    #: 只烧预算不推进)。
-    UNKNOWN_RETRY_BACKOFF_CAP_S: ClassVar[float] = 10.0
+    # 未知画面常驻兜底(2026-09-16 框架化,用户裁定):连续 N 轮未识别画面 →
+    # round_fail 交框架失败(运行 FAILED 收口)——不再 stop_running/flag/截图,
+    # 失败即诚实信号。常驻安全网——兜一切未知态,不是点名某态的临时捕获;
+    # 移除条件 = 该类未知态全部建档,实际不可达(实现见 _handle_unknown_fallback;
+    # 处置流程知识归 flow/guards.md §2)。过渡帧 1-2 轮内被上面分支接走,不累计。
+    UNKNOWN_FAIL_THRESHOLD: ClassVar[int] = 15
+    #: 未知帧重试等待(秒),恒定(旧 2s 翻倍退避随停机钩子一并退役)。
+    UNKNOWN_RETRY_WAIT_S: ClassVar[float] = 1.0
     #: 外环 op 连续 fail 重派上限(T-266):同一分发 op 连续 fail 达本值
     #: → round_fail 显式停交上层,取代「fail → round_wait 零预算重派」
     #: 的无界空转(实锤形态 = 选择伙伴 15 连败,由 NODE-DWELL 900s 系统
@@ -2084,53 +2080,24 @@ class CwLoop(SrOperation):
         触发条件=「loop 尾所有分支不命中」= 兜一切未知的常驻安全网,
         **不是临时随机态钩子**——按临时写有误删风险;移除条件=该类
         未知态全部建档,实际不可达,长期保留)。方案 D,M43-resume 修复
-        2026-08-16:战斗特效帧 OCR 乱码/新未建档画面 → streak 累计 →
-        保画面停机待建档。曾被 _allocator_update 插入位置错误卷进方法体
-        (从未执行)→ loop 隐式返 None(19:59 实锤)。
+        2026-08-16:战斗特效帧 OCR 乱码/新未建档画面 → streak 累计。
+        2026-09-16 框架化(用户裁定):不再 stop_running/flag/截图——
+        每轮 1s 重试,连续 ``UNKNOWN_FAIL_THRESHOLD`` 轮耗尽 → round_fail
+        交框架失败(运行 FAILED 收口)。
         """
         if getattr(self, '_unknown_last_iter', -1) == self._iter - 1:
             self._unknown_streak = getattr(self, '_unknown_streak', 0) + 1
         else:
             self._unknown_streak = 1
         self._unknown_last_iter = self._iter
-        if self._unknown_streak >= CwLoop.UNKNOWN_STOP_THRESHOLD:
-            try:
-                _shot = self.save_screenshot(prefix='cw_unknown')
-                _sentinel = (get_project_root() / '.debug' / 'temp'
-                             / 'currency_war' / 'unknown_state.flag')
-                _sentinel.parent.mkdir(parents=True, exist_ok=True)
-                _sentinel.write_text(
-                    f'[HOOK-STOP] 持久未识别画面停机钩子([常驻兜底] loop 尾安全网):'
-                    f'cw_loop._handle_unknown_fallback iter={self._iter} '
-                    f'streak={self._unknown_streak}\n'
-                    f'处理流程(r100k 补,别跳过):\n'
-                    f'1. 用截图离线分析:analyze_screen(screenshot=<shot 路径>) 看已建档命中;\n'
-                    f'2. 未命中 → 按元素语义判断:新画面/弹窗 → od-dev-screen-onboarding 建档\n'
-                    f'   + cw_loop 0x 分支加 handler;战斗特效帧(OCR 乱码)→ **先确认\n'
-                    f'   非新画面(analyze_screen 为准)才可**加大 UNKNOWN_STOP_THRESHOLD\n'
-                    f'   或加等待,不是新画面;\n'
-                    f'3. 建档完删本 flag + 重启 MCP server;若判断为瞬时帧误触发 → 删 flag\n'
-                    f'   直接重跑(阈值/防抖在 UNKNOWN_STOP_THRESHOLD)。\n'
-                    f'移除条件:该类未知态全部建档(实际不可达,长期保留)。\n'
-                    f'shot={_shot}', encoding='utf-8')
-                log.info('[cw!] [loop] 持久未识别画面 → stop_running 待 AI 建档 shot=%s streak=%s',
-                         _shot, self._unknown_streak)
-            except Exception as e:  # noqa: BLE001  钩子失败不阻塞
-                log.warning('[cw-loop] unknown stop 钩子失败(不阻塞): %s', e)
-            self.ctx.run_context.stop_running(reason='hook:battle_unknown_screen')
-            return self.round_fail(status='持久未识别画面,停机待建档')
-        # 连续未知帧退避(重试无退避缺陷修复):等待随 _unknown_streak 翻倍封顶;
-        # 画面被任何分支接走 → streak 归 1,退避自动复位(见 UNKNOWN_RETRY_BACKOFF_CAP_S 注)。
-        return self.round_retry(wait=self._unknown_backoff_wait(self._unknown_streak))
-
-    @staticmethod
-    def _unknown_backoff_wait(streak: int) -> float:
-        """连续未识别帧第 ``streak`` 次(≥1,连续计数,归零复位)重试的等待秒数。
-
-        2s 起步每连续一次翻倍、封顶 ``UNKNOWN_RETRY_BACKOFF_CAP_S``;纯函数便于锁测。
-        """
-        return min(2.0 * (2 ** (max(streak, 1) - 1)),
-                   CwLoop.UNKNOWN_RETRY_BACKOFF_CAP_S)
+        if self._unknown_streak >= CwLoop.UNKNOWN_FAIL_THRESHOLD:
+            log.warning('[cw!] [loop] 连续%d帧未识别画面(1s 重试耗尽)→ '
+                        'round_fail 交框架失败待建档 iter=%s',
+                        self._unknown_streak, self._iter)
+            return self.round_fail(
+                status=f'连续{self._unknown_streak}帧未识别画面,重试耗尽待建档')
+        # 画面被任何分支接走 → 本方法不再被调,streak 计数自然复位。
+        return self.round_retry(wait=CwLoop.UNKNOWN_RETRY_WAIT_S)
 
 
 # ===== B4(ADR-0170):跨局分配器进程级单例 + 终局 update =====
