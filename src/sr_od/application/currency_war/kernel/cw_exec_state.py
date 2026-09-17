@@ -260,7 +260,7 @@ class BenchChar:
     faction: str = "?"   # 阵营
     star: int = 1        # 星级
     position_pref: str = "back"  # 命途定位 front/back(来自 get_role_position)
-    # Sequence(快照拷贝语义落码(ADR-0465 §9):Snapshot 拷贝侧固化为 tuple;session/state
+    # Sequence(快照拷贝语义落码(ADR-0465 §9):拷贝侧固化为 tuple;session/state
     # 活对象仍 list)——读点(deploy_bench 装备校验/reconcile 配对)均为
     # Sequence 消费,写端仅 session/state 活对象(list 语义保留)。
     equips: list[str] | tuple[str, ...] = field(default_factory=list)
@@ -276,7 +276,7 @@ class BenchChar:
 
 
 def snapshot_copy(bc: BenchChar) -> BenchChar:
-    """Snapshot 拷贝语义的元素拷贝(落码判据见 ADR-0465 §9):浅拷贝 + equips 固化
+    """快照拷贝语义的元素拷贝(落码判据见 ADR-0465 §9):浅拷贝 + equips 固化
     为 tuple——快照帧与 session.tracked_*(就地写端=shop.py
     mutate_bench_deployed 星级/装备拼接、deploy_bench 装备覆盖)断开
     对象别名,「快照不在帧间存活」由机制保证而非消费纪律约定。

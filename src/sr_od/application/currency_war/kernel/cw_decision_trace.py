@@ -94,7 +94,7 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import (
 
 #: 行头 schema 版本(定谳 C7):**新文件自带独立版本常量**,初值 1 独立
 #: 谱系,命名对齐 ``*_SCHEMA_VERSION`` 仓内先例(kernel/cw_game_state
-#: ``GAME_STATE_SCHEMA_VERSION`` / mandate_v1 contracts ``SNAPSHOT_SCHEMA_VERSION``)。
+#: ``GAME_STATE_SCHEMA_VERSION``)。
 #: 禁动 telemetry/schema.py 模块级共用 ``SCHEMA_VERSION``——该常量被
 #: DecisionTrace/OutcomeRecord 等共用,模块级抬号会把未退役旧流行版本号
 #: 连带抬升(C7 定谳排除项)。

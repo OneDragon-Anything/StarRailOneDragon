@@ -2083,7 +2083,7 @@ _LV_LOG_FMT: dict[str, str] = {
 # ===== 规范入口序列:阶段键 + 每阶段字段规格(ADR-0462)=====
 # 「先清场、再识别、后动作」:P0 清场期零业务识别 → P1 干净备战期全量基线 →
 # P2 动作期(开店/overlay)只读该动作决策所需。字段规格 = read_game_state 的
-# 逐字段门单一源(键域与 Snapshot SubstateClassification.name 对齐)。
+# 逐字段门单一源。
 
 #: P1 干净备战期(关店备战帧):全量识别基线,含 hp 真读主路径(shop 关帧血量区
 #: 可见)。shop_cards/refresh_probs 属开店面板,必空不读。
