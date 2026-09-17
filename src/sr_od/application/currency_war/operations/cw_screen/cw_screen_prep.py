@@ -1539,7 +1539,7 @@ class CwScreenPrep(CwScreenOpBase):
             # —— ③ 决策(黑板:读 session.prep_obs_frame,写者 = 入口观察/
             #      循环逻辑态直写步;首帧 = 入口 heavy,后续 = 逻辑态)
             try:
-                result = match.strategy.decide_prep_screen(session, config)
+                result = match.strategy.decide_prep_screen()
             except Exception as e:  # noqa: BLE001  策略异常 = 本轮 fail(外循环 retry 链兜)
                 log.warning(f'[cw!][director] decide_prep_screen 异常: {e}')
                 return self.round_fail(status=f'策略决策异常: {e}')
@@ -1708,7 +1708,7 @@ class CwScreenPrep(CwScreenOpBase):
             #      观察/循环逻辑态直写步;首帧 = 入口 heavy,后续 = 逻辑态)
             self._lifecycle_mark('decide')
             try:
-                result = match.strategy.decide_prep_screen(session, config)
+                result = match.strategy.decide_prep_screen()
             except Exception as e:  # noqa: BLE001  策略异常 = 本轮 fail(外循环 retry 链兜)
                 log.warning(f'[cw!][director] decide_prep_screen 异常: {e}')
                 return self.round_fail(status=f'策略决策异常: {e}')

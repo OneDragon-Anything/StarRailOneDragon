@@ -165,8 +165,36 @@ class MandateV1Strategy(CwFlowStrategy):
         )
         calibration.apply()
 
-    def decide_prep_screen(self, session: StrategySession,
-                           config: CurrencyWarConfig) -> CwAction | None:
+    def decide_prep_screen(self, session: StrategySession | None = None,
+                           config: CurrencyWarConfig | None = None) -> CwAction | None:
+        """终态零参口(§2.1);可选 session/config 形参 = 过渡兼容宿主
+        (legacy 路径,3.5 收口删)。"""
+        if session is None:
+            return self._decide_prep_screen_terminal()
+        return self._decide_prep_screen_session(session, config)
+
+    def _decide_prep_screen_terminal(self) -> CwAction | None:
+        """终态体(零参;决策输入一律 self.gs/self.state/self.config)。"""
+        obs = self.gs.prep_obs
+        if obs is None:
+            raise ValueError(
+                'mandate_v1.decide_prep_screen: gs.prep_obs 缺失'
+                '(黑板契约:画面 op 是唯一写者;None=观察层失约,'
+                '禁静默按空观察决策)')
+        self._consume_prep_direction_frame(self.gs)
+        _launch_action = _launch_front_check(self.gs)
+        if _launch_action is not None:
+            return _launch_action
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.economy_cycle import (
+            disclose_budget,
+        )
+        disclose_budget(self.gs, self.state, self.registry)
+        actions = decide_prep_frame(obs, self.state, self.config,
+                                    registry=self.registry)
+        return actions[0] if actions else None
+
+    def _decide_prep_screen_session(self, session: StrategySession,
+                                    config: CurrencyWarConfig) -> CwAction | None:
         """备战画面黑板决策(单动作契约接口,返回 ``CwAction | None``)。
 
         输入 = gs.prep_obs(终态契约 §2.6:宿主 = 容器;缺失即抛错)。输出 = 决策核
