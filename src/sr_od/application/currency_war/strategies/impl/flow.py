@@ -38,7 +38,6 @@ from sr_od.application.currency_war.kernel.cw_events import (
     PartnerOption,
     PartnerPick,
     PlannerOption,
-    PlannerPick,
     SupplyOption,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -67,9 +66,15 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
     CloseShop,
     CwSimFrame,
+    PickBoxCard,
     PickEvent,
     PickInvest,
+    PickMegastar,
+    PickPartner,
+    PickPlanner,
+    PickStarTome,
     PickSupply,
+    PickWishTrial,
 )
 from sr_od.application.currency_war.strategies.impl.cw_strategy import (
     CwStrategy,
@@ -485,16 +490,15 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         self._consume_prep_direction_frame(self.gs)   # ADR-0583 入口内务(gs 桥形态)
         return cw_events.decide_encounter(options, self.gs, self.state.target_comp, self.config)
 
-    def decide_megastar(self, options: list[MegastarOption], gs: GameState,
-                        session: StrategySession, config) -> MegastarPick:
+    def decide_megastar(self, options: list[MegastarOption]) -> PickMegastar:
         """巨星选候选:委托 ``cw_comps.select_megastar`` 拿角色名 → 名在 options 命中该 idx;否则 idx=0。
         ⚠️ OCR 未就绪(char_id 全空 → 匹配恒失败 → idx=0 = 今天盲点左候选,随阶段5)。
         (强化角色维度已随 megastar_enhance_enabled 开关族删除——旧方案
         清退批,清查报告 OLD_MIX_AUDIT §1.3;MegastarPick.enhance_char_id
         字段保留恒 None,兼容既有遥测/执行面读取。)"""
-        self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
+        self._consume_prep_direction_frame(self.gs)   # ADR-0583 入口内务(gs 桥形态)
         available = [o.char_id for o in options if o.char_id]
-        chosen_name = cw_comps.select_megastar(gs, state_of(session).target_comp, available)
+        chosen_name = cw_comps.select_megastar(self.gs, self.state.target_comp, available)
         if chosen_name:
             for o in options:
                 if o.char_id == chosen_name:
@@ -503,40 +507,37 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                         reason=f"select_megastar 命中 {chosen_name}")
         return MegastarPick(idx=0, reason="fallback 左候选(OCR 未就绪,char_id 空)")
 
-    def decide_partner(self, options: list[PartnerOption], gs: GameState,
-                       session: StrategySession, config) -> PartnerPick:
+    def decide_partner(self, options: list[PartnerOption]) -> PickPartner:
         """选择伙伴:优先 ``config.character_build_around`` / ``target.core_chars`` 命中;否则 idx=0。
         ⚠️ OCR 未就绪(char_id 全空 → 命中恒失败 → idx=0 = 今天盲点 stage 立绘,随阶段5)。"""
-        self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
-        wants: list[str] = list(getattr(config, 'character_build_around', []) or [])
-        if state_of(session).target_comp is not None:
-            wants += list(state_of(session).target_comp.core_chars)
+        self._consume_prep_direction_frame(self.gs)   # ADR-0583 入口内务(gs 桥形态)
+        wants: list[str] = list(getattr(self.config, 'character_build_around', []) or [])
+        if self.state.target_comp is not None:
+            wants += list(self.state.target_comp.core_chars)
         for o in options:
             if o.char_id and o.char_id in wants:
                 return PartnerPick(idx=o.idx, reason=f"命中偏好/核心 {o.char_id}")
         return PartnerPick(idx=0, reason="fallback(OCR 未就绪,char_id 空)")
 
-    def decide_planner(self, options: list[PlannerOption], gs: GameState,
-                       session: StrategySession, config) -> PlannerPick:
+    def decide_planner(self, options: list[PlannerOption]) -> PickPlanner:
         """银狼策划事件(r104 用户定调:接入策略模块由它定;委托 cw_events.decide_planner)。
 
         升费卡打分含银狼线/在场判定(state.bench+deployed 的 char_id),
         state_of(session).target_comp 决定银狼线加成。"""
-        self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
-        return cw_events.decide_planner(options, gs, state_of(session).target_comp)
+        self._consume_prep_direction_frame(self.gs)   # ADR-0583 入口内务(gs 桥形态)
+        return cw_events.decide_planner(options, self.gs, self.state.target_comp)
 
-    def decide_star_tome(self, options: list[str], gs: GameState,
-                         session: StrategySession, config) -> int:
+    def decide_star_tome(self, options: list[str]) -> PickStarTome:
         """星徽秘典四选一(r104 接入策略模块;原 loop 内联 board 匹配迁此)。
 
         打分:①target_comp.all_factions 命中(终局线需要的阵营星徽 = +40);
         ②board 已有该阵营(板上已有=边际价值高,board 计数 ×8);
         ③当前配方框架阵营命中(双轨期过渡配方需要,+15)。无命中 fallback idx=0。
         返回 options 索引。"""
-        self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
+        self._consume_prep_direction_frame(self.gs)   # ADR-0583 入口内务(gs 桥形态)
         if not options:
             return 0
-        fw = getattr(state_of(session), 'transition_framework', '')
+        fw = getattr(self.state, 'transition_framework', '')
         _fw_facs: set[str] = set()
         if fw:
             from sr_od.application.currency_war.kernel.cw_transition import (
@@ -544,15 +545,15 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             )
             _fw_facs = set(FRAMEWORK_FACTIONS.get(fw, ()) or ())
         _tgt_facs: set[str] = set()
-        if state_of(session).target_comp is not None:
-            _tgt_facs = set(state_of(session).target_comp.all_factions or [])
+        if self.state.target_comp is not None:
+            _tgt_facs = set(self.state.target_comp.all_factions or [])
         best_i, best_s = 0, -1.0
         for i, name in enumerate(options):
             s = 0.0
             from one_dragon.utils import str_utils
             if name in _tgt_facs:
                 s += PICK_BIAS.tome_target_faction
-            _board = (gs.board.value or {})
+            _board = (self.gs.board.value or {})
             hit = next((b for b, n in _board.items()
                         if n > 0 and str_utils.find_by_lcs(b, name, percent=0.8)), None)
             if hit is not None:
@@ -563,20 +564,19 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 best_i, best_s = i, s
         return best_i
 
-    def decide_wish_trial(self, options: list[str], gs: GameState,
-                          session: StrategySession, config) -> int:
+    def decide_wish_trial(self, options: list[str]) -> PickWishTrial:
         """祈愿试炼选卡(r104 接入策略模块;原固定第1张)。
 
         options = 各卡 objective 文字(OCR)。打分:①金币类(直接经济,阵容无关
         稳妥)+25;②target/框架阵营相关词命中 +20;③「刷新/购买」类操作向
         (与 DP 攒息协同)+10;无信息 fallback idx=0。返回索引。"""
-        self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
+        self._consume_prep_direction_frame(self.gs)   # ADR-0583 入口内务(gs 桥形态)
         if not options:
             return 0
         _tgt_facs: set[str] = set()
-        if state_of(session).target_comp is not None:
-            _tgt_facs = set(state_of(session).target_comp.all_factions or [])
-        fw = getattr(state_of(session), 'transition_framework', '')
+        if self.state.target_comp is not None:
+            _tgt_facs = set(self.state.target_comp.all_factions or [])
+        fw = getattr(self.state, 'transition_framework', '')
         _fw_facs: set[str] = set()
         if fw:
             from sr_od.application.currency_war.kernel.cw_transition import (
@@ -585,7 +585,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             _fw_facs = set(FRAMEWORK_FACTIONS.get(fw, ()) or ())
         best_i, best_s = 0, -1.0
         for i, obj in enumerate(options):
-            s = effect_pick_bias(session, obj)
+            s = effect_pick_bias(self.gs, obj)
             if '金币' in obj:
                 s += PICK_BIAS.wish_gold
             if any(f in obj for f in (_tgt_facs | _fw_facs)):
@@ -596,8 +596,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 best_i, best_s = i, s
         return best_i
 
-    def decide_box_card(self, names: list[str], gs: GameState,
-                        session: StrategySession, config) -> int:
+    def decide_box_card(self, names: list[str]) -> PickBoxCard:
         """武装箱/节点弹窗装备卡 4 选 1(薄壳;armory-box-value 定稿设计
         §2.2-§2.5)。锚 = 意向状态 locked_comp 两态(get_comp 失败落未锁 +
         日志哨兵,保守向);打分唯一住共享机器 ``pick_equipment``(序数
@@ -606,7 +605,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         部署位/备战席穿戴账(合计进总持有,需求守卫)。effect_pick_bias
         通道随薄壳化移除(恒 0 无行为差,处置声明见 design §1.4)。
         无信息 fallback idx=0(机器 names 空契约);返回索引(调用方点卡)。"""
-        self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
+        self._consume_prep_direction_frame(self.gs)   # ADR-0583 入口内务(gs 桥形态)
         if not names:
             return 0
         _ist = self._ensure_intention(state_of(session))
