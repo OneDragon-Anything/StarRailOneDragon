@@ -117,7 +117,9 @@ def unit_bond_tags(bc) -> tuple[str, ...]:
       * **卡带(欢愉/星核猎手系)= 计数 +1**(无条件,可双计:成员佩戴者
         对该羁绊贡献 2 = 自身 1 + 卡 1);
     - 身份未知(char_id 空/'?'/不在注册表)→ **空元组**(调用方决定兜底:
-      board_from_tracked 整体 bail;_recount_board 回退 faction 字段)。
+      board_from_tracked 整体 bail;_recount_board 回退 faction 字段;
+      容器派生 ``cw_game_state._row_unit_tags`` 零兜底——Unit 无 faction
+      位,漂移由 board 观察覆盖采新收敛(board_derived_adopt))。
 
     duck-typed:凡带 char_id/position_pref/equips 属性(BenchChar 或
     SimpleNamespace shim)皆可——实机/sim/检查三侧同函数。

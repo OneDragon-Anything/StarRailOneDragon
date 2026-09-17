@@ -157,9 +157,11 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_WRITE_END,
         basis='选卡确认挂点登记 + 观察覆盖(持卡列表)'),
     'board': ProjectionAuditRow(
-        status=AUDIT_WRITE_END,
-        basis='派生量(本批):front_row/back_row 写端挂钩 _resync_board_delta'
-              ' 自动重算,禁独立手写;观察侧 badge OCR 双源仲裁(ADR-0417)'),
+        status=AUDIT_ABSORB_RULE,
+        basis='派生量:front_row/back_row 写端挂钩 _resync_board_delta'
+              ' 自动重算,禁独立手写 + 派生漂移观察覆盖采新'
+              '(board_derived_adopt,安灯不响);观察侧 badge OCR 双源仲裁'
+              '(ADR-0417)'),
     'shop_refresh_cost': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='刷新费现场 OCR(ADR-0622),零逻辑写端'),
@@ -357,7 +359,7 @@ _STOP_FAMILY_MECHANISMS: dict[str, tuple[str, ...]] = {
     'gold': ('boundary_gold_backfilled',),
     'front_row': ('deploy_slot_reorder', 'star_two_frame_gate'),
     'back_row': ('deploy_slot_reorder', 'star_two_frame_gate'),
-    'board': ('_resync_board_delta',),
+    'board': ('_resync_board_delta', 'board_derived_adopt'),
 }
 
 

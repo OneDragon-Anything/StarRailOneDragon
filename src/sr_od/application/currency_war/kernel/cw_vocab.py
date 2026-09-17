@@ -39,11 +39,19 @@ kernel/cw_intention.py ``committed_authority`` 形态注)已兑现。
 
 **board 模型**(ADR-0312 口径统一):
 - ``board`` = 已上阵羁绊计数(**全集口径**:factions+flows+independent+星徽装备
-  贡献,per-unit 单一源 = ``cw_bond_equips.unit_bond_tags``;对齐实机
-  ``board_from_tracked`` = 游戏左面板真值;口径 = 羁绊全集,非主阵营单标签)。
+  贡献,per-unit 单一源 = ``cw_bond_equips.unit_bond_tags``;观察真值 =
+  游戏左面板,观察侧双源仲裁 = ADR-0417;口径 = 羁绊全集,非主阵营单标签)。
+- 容器 GameState 中 board = **派生量**(禁独立手写):front_row/back_row
+  行写端挂钩 ``GameState._resync_board_delta`` 增量重算;派生漂移由观察
+  覆盖采新(board_derived_adopt,安灯不响——派生量以观察为真值源)。
+  未知身份单位(注册表外/OCR 误读)在容器派生路径**零贡献**(Unit 不存
+  阵营,禁 faction 双源),其面板羁绊经观察覆盖采新入账;
+  ``cw_bond_equips._recount_board`` 的 faction 兜底归 faction 字段所在
+  载体(sim/状态侧 BenchChar),非容器路径口径。
 - ``deployed`` = bot 自己跟踪的已上阵角色(含 char_id/star/站位),用于 char_quality 评估
-  已上阵的优先角色 + 站位分流。两者应一致(deployed 按羁绊全集聚合 == board)。
-- DeployMove 同时更新 deployed(槽位落位 deployed_place,ADR-0392)与 board(_recount_board 重算)。
+  已上阵的优先角色 + 站位分流。两者在已知身份域一致(deployed 按羁绊全集聚合 == board)。
+- DeployMove 更新 deployed(槽位落位 deployed_place,ADR-0392);board 不随
+  DeployMove 独立写(旧 ``_recount_board`` 写端已退役,容器侧随行写端挂钩重算)。
 - BuyCard 后做 3 合 1 升星(同名同星 ≥3 → 合并为 star+1)。
 """
 from __future__ import annotations

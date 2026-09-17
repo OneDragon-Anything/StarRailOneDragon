@@ -66,10 +66,14 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
   授予申报表(EXTERNAL_BENCH_GRANTS / EXTERNAL_EQUIP_GRANTS,「纯超集+差额≤申报数」
   精确吸收)/ gold 节点边界金补结闩(boundary_gold_backfilled)/ front_row、back_row
   行槽位纯重排(deploy_slot_reorder,同单位多重集仅排列差异 = 游戏侧行内重排无逻辑
-  写端,采新入纠漂面)。
+  写端,采新入纠漂面)/ board 派生漂移观察覆盖采新(board_derived_adopt,辖
+  `proj_board_resync` 写端)。
 - **board 派生量**(禁独立写):上阵羁绊计数 = front_row/back_row 单位集合的派生量,
   逻辑写端经 `write_logic` 行域挂钩 `_resync_board_delta` 单一源自动重算(观察基座 +
-  行变更增量);独立手写 board = 越格。观察侧仍按双源仲裁覆盖(观察赢辖)。
+  行变更增量);独立手写 board = 越格(非派生写端的 board 失配照真失配停)。派生量
+  以观察为真值源:派生漂移(环境卡星徽幽灵计数/未知身份零贡献/徽标 OCR 坏读)
+  经观察覆盖采新收敛,落 `board_derived_adopt` 台账行不进安灯——「上阵单位集合」
+  这一真不变量由行域自身失配面独立把守。观察侧仍按双源仲裁覆盖(观察赢辖)。
 - **节点生效序**:权威序字段的读口 = 生效序读口,语义=逻辑层现值与 run 内高水位
   取大(公式体单一源见 [node-domain.md](node-domain.md) §3);消费面恒取逻辑层。
 - **节点类型三源仲裁**:结算屏权威> 节点序列台账现读 > 帧标签 OCR

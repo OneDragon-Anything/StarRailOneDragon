@@ -911,7 +911,15 @@ def _row_unit_tags(u: Any, row: str) -> tuple[str, ...]:
     """行内单位的羁绊标签(board 派生重算单一源;标签函数单一源 =
     ``cw_bond_equips.unit_bond_tags``)。Unit 无 position_pref 位(排归属
     由所在行承载),本口按行名补 shim:前排=front/后排=back(开拓者形态
-    随排归一的坐标系输入)。"""
+    随排归一的坐标系输入)。
+
+    **未知身份零贡献(刻意,禁 faction 兜底)**:身份不在注册表(注册表
+    外单位如狸狸/姵姵,或 OCR 误读名)时标签为空,容器派生路径**不回退
+    faction**——Unit 不存阵营(防注册表双源),shim 复活 faction 位 =
+    双源复活。「未知身份回退 faction」口径的单一源 =
+    ``cw_bond_equips._recount_board``(faction 字段所在载体,装备授予表
+    BenchChar);容器侧的对应漂移由 board 观察覆盖采新收敛
+    (:meth:`GameState._absorb_board_derived`)。"""
     from types import SimpleNamespace
 
     from sr_od.application.currency_war.kernel.cw_bond_equips import (
@@ -3672,6 +3680,9 @@ class GameState:
             elif self._absorb_slot_reorder(name, target, value,
                                            evidence, sig):
                 pass   # 行内纯重排吸收已落台账行,覆盖照常 = 采新
+            elif self._absorb_board_derived(name, target, value,
+                                            evidence, sig):
+                pass   # board 派生漂移观察覆盖采新已落台账行,跳过三分流
             elif not self._absorb_external_grant(name, target, value,
                                                  evidence, sig):
                 _route_logic_mismatch(field_name=name, expected=target.value,
@@ -3811,6 +3822,47 @@ class GameState:
                  f'deploy_slot_reorder 留证)')
         return True
 
+    def _absorb_board_derived(self, field_name: str, target: Field,
+                              value: Any, observed_evidence: str | None,
+                              sig: ChannelSig) -> bool:
+        """board 派生漂移观察覆盖采新(observe() 失配分支前置,与纯重排/
+        外部授予吸收族同列):board 是上阵单位集合的**派生量**,其对账
+        语义区别于独立字段——独立字段失配 = 动作推算被实读证伪(修推算
+        代码),board 失配的三种已知形态全是「观察层读数噪声/建模结构
+        缺口」类,不是动作推算 bug:
+
+        - 环境卡星徽等装备羁绊贡献只显于面板、容器行未建模(增量口径
+          刻意保留的基座),佩戴者被移出后派生侧无从减除 → 幽灵计数
+          (20260918-reconcile 第 5 例停局族,run_20260918_045918);
+        - 注册表外/OCR 误读身份单位入行:Unit 不存阵营(禁注册表双源),
+          容器派生路径对其零贡献(:func:`_row_unit_tags`),面板照显其
+          羁绊;
+        - badge OCR 单帧误读(第 5 例定谳:坏读数在观察侧)。
+
+        「上阵单位集合」这一真不变量由 front_row/back_row 自身的失配/
+        纯重排吸收面独立把守,board 对动作推算 bug 无独立检出力 → 命中
+        即落 ``board_derived_adopt`` 台账行(无告警无停机,豁免 ≠ 消失
+        同纪律)后覆盖照常采新:派生量以观察为真值源,坏读数显影于台账
+        与观察侧 obs_conflict 留证链、由下一帧观察自愈(与 obs→obs 直采
+        语义同向)。辖域 = evidence 前缀 ``proj_board_resync``(派生挂钩
+        唯一合法写端,单一源 = :meth:`_resync_board_delta`):独立手写
+        board = 越格契约违反,照真失配安灯(本吸收面不得沦为 board 全面
+        赦免)。返回 True = 已吸收(调用方跳过三分流)。"""
+        if field_name != 'board':
+            return False
+        if target.evidence is None or \
+                not target.evidence.startswith('proj_board_resync'):
+            return False
+        _emit_defect(field_name=field_name, expected=target.value,
+                     actual=value, evidence=observed_evidence, sig=sig,
+                     logic_evidence=target.evidence,
+                     kind='board_derived_adopt')
+        log.info(f'[cw][gs] board 派生漂移观察覆盖采新:board '
+                 f'{target.value} → 实读 {value}(派生量以观察为真值源,'
+                 f'board_derived_adopt 留证;单位集合不变量由行域失配面'
+                 f'独立把守)')
+        return True
+
     def _resync_board_delta(self, field_name: str, old_value: Any, *,
                             produced_by: str, sig: ChannelSig) -> None:
         """board 派生重算单一源(front_row/back_row 逻辑写端挂钩;本方法
@@ -3825,8 +3877,11 @@ class GameState:
         (非全量重算)的依据:观察基座含左面板真值的装备羁绊贡献,而
         容器行单位未必携带穿戴建模(实机 2026-09-18 run_20260918_045918:
         环境卡授予的星徽穿戴只出现在面板,行单位 equips 为空)——全量
-        重算会把基座真值抹掉,增量只施加本次动作的差,基座贡献保留,
-        漂移由下一备战帧观察覆盖收敛。"""
+        重算会把基座真值抹掉,增量只施加本次动作的差,基座贡献保留。
+        派生漂移由下一备战帧观察覆盖收敛,注释与接线一致:失配经
+        :meth:`_absorb_board_derived` 采新留证(``board_derived_adopt``,
+        安灯不响)——派生量以观察为真值源,观察侧坏读数显影于台账与
+        obs_conflict 留证链、由下一帧观察自愈。"""
         board = self.board.value
         if board is None:
             return
