@@ -341,10 +341,14 @@ class StrategyState:
 def state_of(session: StrategySession) -> StrategyState:
     """策略器侧状态读口:取 ``session.strategy_state`` 并收窄类型。
 
-    None/异型(裸构造 session、第三方策略未覆写 create_state)→ 惰性
-    冷建并写回(与原 cw_intention 惰性建同构;设计 §5.1 B4 兼容条款
-    的实现面)。mandate_v1 链内统一经本函数消费状态对象。
+    终态契约 §2.6 过渡桥:入参即 StrategyState 本体 → 直返(零参 decide
+    以 self.state 作宿主参传 mandate 链的通道)。None/异型(裸构造
+    session、第三方策略未覆写 create_state)→ 惰性冷建并写回(与原
+    cw_intention 惰性建同构;设计 §5.1 B4 兼容条款的实现面)。
+    mandate_v1 链内统一经本函数消费状态对象。
     """
+    if isinstance(session, StrategyState):
+        return session   # 终态:状态本体直通
     st = getattr(session, 'strategy_state', None)
     if not isinstance(st, StrategyState):
         st = StrategyState()

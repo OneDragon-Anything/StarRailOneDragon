@@ -641,8 +641,61 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                               owned_spare=spare,
                               owned_total=spare + worn)
 
-    def decide_shop_action(self, session: StrategySession,
-                           config: CurrencyWarConfig) -> Action:
+    def decide_shop_action(self, session: StrategySession | None = None,
+                           config: CurrencyWarConfig | None = None) -> Action:
+        """终态零参口(§2.1);可选 session/config 形参 = 过渡兼容宿主
+        (测试直驱/旧调用面走 legacy 路径,3.5 收口删)。"""
+        if session is not None:
+            return self._decide_shop_action_session(session, config)
+        return self._decide_shop_action_terminal()
+
+    def _decide_shop_action_terminal(self) -> Action:
+        """终态体(零参;决策输入一律 self.gs/self.state/self.config)。"""
+        from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+            shop,
+        )
+        gs = self.gs
+        if gs.shop.value is None:
+            raise ValueError(
+                'decide_shop_action: 容器商店 payload 离屏(shop=None)'
+                '(黑板契约容器化:在屏前置 gs.shop.value is not None;'
+                'None=观察层失约,禁静默按空态决策)')
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            tracked_unobserved,
+        )
+        if tracked_unobserved(self.gs):
+            log.info('[cw][shop] tracked 未观察(待备战 heavy 观察锚定)'
+                     '→ CloseShop 交回外循环重判')
+            return CloseShop()
+        self._consume_shop_direction_frame(self.gs)
+        self.write_shop_mirrors(gs, self.state)
+        return shop.decide_shop_action(gs, self.state, self.config,
+                                       registry=self.registry)
+
+    def _decide_shop_action_session(self, session: StrategySession,
+                                    config: CurrencyWarConfig) -> Action:
+        """过渡兼容体(测试直驱/旧调用面;逐字=原 session 形参实现,
+        3.5 收口删)。"""
+        from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+            shop,
+        )
+        gs = gs_of_ctx(getattr(self, "ctx", None), session)
+        if gs.shop.value is None:
+            raise ValueError(
+                'decide_shop_action: 容器商店 payload 离屏(shop=None)'
+                '(黑板契约容器化:在屏前置 gs.shop.value is not None;'
+                'None=观察层失约,禁静默按空态决策)')
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            tracked_unobserved,
+        )
+        if tracked_unobserved(session):
+            log.info('[cw][shop] tracked 未观察(待备战 heavy 观察锚定)'
+                     '→ CloseShop 交回外循环重判')
+            return CloseShop()
+        self._consume_shop_direction_frame(session)
+        self.write_shop_mirrors(gs, session)
+        return shop.decide_shop_action(gs, session, config,
+                                       registry=self.registry)
         """商店单动作决策接口(ADR-0517 决策 1/2/5;ADR-0583 升格入契约面)。
 
         输入 = session 容器(game_state_of;黑板槽退役,设计件《商店黑板容器化方案》§2.2-1:入口观察/单动作逻辑态直写/
@@ -664,7 +717,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # 决策 = 观察层失约同型抛错(黑板契约 None 检查的容器等价物,
         # 「禁静默按空牌面决策」语义不变)。开店态 OCR 失读窗 = 容器沿用
         # 上一开店牌面(喂入口失读不写),照旧决策、执行侧核对兜底。
-        gs = gs_of_ctx(getattr(self, "ctx", None), session)
+        gs = self.gs
         if gs.shop.value is None:
             raise ValueError(
                 'decide_shop_action: 容器商店 payload 离屏(shop=None)'
@@ -681,18 +734,18 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         from sr_od.application.currency_war.kernel.cw_game_state import (
             tracked_unobserved,
         )
-        if tracked_unobserved(session):
+        if tracked_unobserved(self.gs):
             log.info('[cw][shop] tracked 未观察(待备战 heavy 观察锚定)'
                      '→ CloseShop 交回外循环重判')
             return CloseShop()
         # 入口刷新先于镜像/决策(方向视图 = 本帧语境;ADR-0583 内化锚)
-        self._consume_shop_direction_frame(session)
+        self._consume_shop_direction_frame(self.gs)
         # v3_b_t 逐帧镜像写者(纯遥测,零行为面;口径与边界见
         # write_shop_mirrors docstring。旧 v3_form_score 已随口径
         # 替换退役,历史账本只读)。写位 = 决策核入口 = 生产单
         # 动作循环与 sim decide_shop_screen 驱动器共同必经点。
-        self.write_shop_mirrors(gs, session)
-        return shop.decide_shop_action(gs, session, config,
+        self.write_shop_mirrors(gs, self.state)
+        return shop.decide_shop_action(gs, self.state, self.config,
                                        registry=self.registry)
 
     def decide_shop_screen(self, session: StrategySession,
@@ -754,7 +807,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         _pre_dep: list = []
         _pre_shop: list | None = None
         for _ in range(512):   # 防御上界:决策循环不收敛 = 策略器 bug 响亮暴露
-            a = self.decide_shop_action(session, config)
+            a = self._decide_shop_action_session(session, config)
             if isinstance(a, cw_state.CloseShop):
                 return out
             out.append(a)

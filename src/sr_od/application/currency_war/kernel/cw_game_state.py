@@ -2540,6 +2540,8 @@ def game_state_of(session: object, *,
       进程级副作用,不属一次性视图。缺省 None = 不装配(sim/测试/局外
       防御视图构造口径;生产注入漏斗 = establish_new_match)。
     """
+    if isinstance(session, GameState):
+        return session   # 终态契约 §2.6:本体直通(身份透传)
     if session is None:
         return GameState(schema_version=GAME_STATE_SCHEMA_VERSION)   # 局外一次性:不装配
     try:

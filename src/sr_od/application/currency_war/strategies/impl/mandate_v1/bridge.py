@@ -269,7 +269,7 @@ class MandateV1Strategy(CwFlowStrategy):
         _pre_dep: list = []
         _pre_shop: list | None = None
         for _ in range(512):   # 防御上界:决策循环不收敛 = 策略器 bug 响亮暴露
-            a = self.decide_shop_action(session, config)
+            a = self._decide_shop_action_session(session, config)
             if isinstance(a, cw_state.CloseShop):
                 return out
             if isinstance(a, (cw_state.BuyCard,)):
