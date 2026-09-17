@@ -481,7 +481,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
 
     def decide_supply(self, options: list[SupplyOption]) -> PickSupply:
         """补给选装备/出钻(终态零参口:gs/state/config 自取)。"""
-        refresh_used = int(self.gs.encounter_refresh_used.value or 0) > 0
+        refresh_used = int(self.gs.supply_refresh_used.value or 0) > 0
         self._consume_prep_direction_frame(self.gs)   # ADR-0583 入口内务(gs 桥形态)
         return cw_events.decide_supply(options, self.gs, self.state.target_comp, self.config, refresh_used)
 
