@@ -2449,6 +2449,86 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
     return
 
 
+#: 部署 miss 重派上限(三审应修补丁②;同键连续 miss 达本值 → 决策循环
+#: round_fail 显式停交上层,语义对齐 cw_loop.OP_FAIL_REDISPATCH_LIMIT 的
+#: 「连续同因重试预算」)。取 3 的依据:① 每次完整 miss 重试周期 = 一次
+#: 拖拽 + 2s 徽章动画等待 + 策略重决策 + 一轮 prep 单轮,单位成本远高于
+#: fail 网的单次分发重试(后者上限 5 已实锤 T-266 事故形态),预算更紧;
+#: ② 防误伤:像素验证假阳是单帧噪声,单次假阳后必有成功部署把计数归零,
+#: 永不满——连续 3 次同键 miss 需要同一目标槽被持续性噪声覆盖,已是系统
+#: 性形态应停;③ 键窄(同单位同目标槽)排除键轮换的合法反复,无需 fail
+#: 网 5 次的跨键容错。
+DEPLOY_MISS_REDISPATCH_LIMIT: int = 3
+
+#: 外部授予闩窗口上界(闩龄;三审存疑③修法 = 等值观察 K 次即销闩 +
+#: 台账行)。取 3 的依据:① 正常形态 = 确认后下一次备战帧 heavy 实读即
+#: 吸收(首例事故实证:确认后实读 bench 立即多出 2 单位),1 次观察内
+#: 了结,3 留 2 次余量覆盖「战斗后入账迟到入镜」类未证延迟形态;② 误销
+#: 后果 = 真实授予到达时照真失配停(响亮可发现),不销后果 = 虚额残留
+#: 吞真投影 bug(静默)——按「宁可响亮不可静默吞」取向取紧不取松。
+EXTERNAL_GRANT_EQUAL_OBS_LIMIT: int = 3
+
+
+def latch_external_grants(gs: GameState, card_name: str, *,
+                          actor: str) -> tuple[int, int]:
+    """外部随机授予置闩单一源(三审应修补丁①幂等化;置闩挂点 =
+    CwScreenInvestStrategy / CwScreenInvestEnv 两确认点,查表仍走
+    :func:`cw_mismatch_policy.external_grant_totals` 双表单一消费面)。
+
+    幂等契约:同卡(session 内,登记 = ``exec_books.external_grant_
+    latched_cards``)重入不叠加——确认点击落空时 op 机械交回、下一轮
+    重入重走决策再选同卡,置闩原形 ``+=`` 会二次累加使 pending 虚高,
+    放宽 ``_absorb_external_grant`` 的「差额 ≤ 待吸收数」闸(虚额残留
+    期内吞真投影 bug)。卡选完即消耗,一局至多一次授予,「每卡一次」
+    即幂等;不同卡各自累加不受影响。命中时同时复位闩龄
+    (``external_grant_equal_obs`` = 新窗口起点)。
+
+    :param card_name: 已归一卡名(:func:`normalize_invest_name` 输出)。
+    :param actor: 日志标注(挂点身份,审计面)。
+    :return: (本次实际置入的 bench 数, equips 数);未申报卡 / 重入 = (0, 0)。
+    """
+    from sr_od.application.currency_war.kernel.cw_mismatch_policy import (
+        external_grant_totals,
+    )
+    n_bench, n_equip = external_grant_totals(card_name)
+    if not (n_bench or n_equip):
+        return (0, 0)
+    latched = gs.exec_books.external_grant_latched_cards
+    if latched is None:
+        latched = set()
+        gs.exec_books.external_grant_latched_cards = latched
+    if card_name in latched:
+        log.info('[cw][gs] 外部授予置闩重入不叠加:%s 已登记'
+                 '(确认重入形态,pending 保持 %s/%s)', card_name,
+                 gs.exec_books.external_bench_grant_pending,
+                 gs.exec_books.external_equip_grant_pending)
+        return (0, 0)
+    latched.add(card_name)
+    gs.exec_books.external_bench_grant_pending += n_bench
+    gs.exec_books.external_equip_grant_pending += n_equip
+    gs.exec_books.external_grant_equal_obs = 0
+    log.info('[cw][gs] 外部随机授予置闩(%s):%s bench +%d equips +%d'
+             '(待吸收 %d/%d)', actor, card_name, n_bench, n_equip,
+             gs.exec_books.external_bench_grant_pending,
+             gs.exec_books.external_equip_grant_pending)
+    return (n_bench, n_equip)
+
+
+def deploy_miss_brake_status(gs: GameState) -> str | None:
+    """部署 miss 刹车触顶判定(纯读;三审应修补丁②)。
+
+    :return: 触顶时的 round_fail 状态文案;未触顶 = None。判定消费点 =
+    决策循环(cw_screen_prep 两路径共式),本函数只承载阈值与文案单一源。
+    """
+    n = gs.exec_books.deploy_miss_streak_n
+    if n < DEPLOY_MISS_REDISPATCH_LIMIT:
+        return None
+    key = gs.exec_books.deploy_miss_streak_key
+    return (f'DeployMove(源槽{0 if key is None else key[0] + 1}→'
+            f'{"前排" if key is None or key[1] == "front" else "后排"})'
+            f'连续 {n} 次拖拽未生效超上限(交上层处置)')
+
+
 def consume_deploy_miss_mark(gs: GameState, action: Any, *,
                              sig: ChannelSig) -> bool:
     """部署拖拽未落地闩消费(投影写端唯一合法消费口;置位端 =
@@ -2465,10 +2545,17 @@ def consume_deploy_miss_mark(gs: GameState, action: Any, *,
     - 命中落 ``deploy_miss_skip`` 台账行(无告警无停机,豁免 ≠ 消失同
       纪律)。安灯停机语义零改动:本口只阻止失真投影写入,不做任何
       observe 失配吸收;闩在时的观察失配照真停。
+    - miss 连续计数(三审应修补丁②):命中 = 同键 miss 计数 +1(同键
+      累加/异键归 1,键 = (bench_idx, to_row));闩不在与陈旧闩 = 归零。
+      触顶停交上层由决策循环经 :func:`deploy_miss_brake_status` 判定,
+      本口返回契约(bool)零变化。
     """
     mark = gs.exec_books.deploy_miss_pending
     gs.exec_books.deploy_miss_pending = None   # 读即清(单动作窗)
     if mark is None:
+        # 正常部署(本次拖拽无 miss 申报)= 同键情节有了结 → 计数归零。
+        gs.exec_books.deploy_miss_streak_key = None
+        gs.exec_books.deploy_miss_streak_n = 0
         return False
     if not (mark.bench_idx == int(getattr(action, 'bench_idx', -1))
             and mark.to_row == str(getattr(action, 'to_row', ''))):
@@ -2477,7 +2564,19 @@ def consume_deploy_miss_mark(gs: GameState, action: Any, *,
                  mark.bench_idx, mark.to_row,
                  getattr(action, 'bench_idx', None),
                  getattr(action, 'to_row', None))
+        # 情节已换(粘滞对象不再同一)→ 计数归零(异键 miss 由下次
+        # 消费从 1 起算,不继承旧情节)。
+        gs.exec_books.deploy_miss_streak_key = None
+        gs.exec_books.deploy_miss_streak_n = 0
         return False
+    # miss 情节计数(三审应修补丁②):同键累加 / 异键归 1(语义先例 =
+    # cw_loop.op_fail_redispatch_tick);触顶停由决策循环经
+    # :func:`deploy_miss_brake_status` 判定(本口只计数,不改返回契约)。
+    _key = (mark.bench_idx, mark.to_row)
+    gs.exec_books.deploy_miss_streak_n = (
+        gs.exec_books.deploy_miss_streak_n + 1
+        if gs.exec_books.deploy_miss_streak_key == _key else 1)
+    gs.exec_books.deploy_miss_streak_key = _key
     _emit_defect(
         field_name='deploy',
         expected=(f'DeployMove bench_idx={mark.bench_idx}→{mark.to_row}'
@@ -2765,6 +2864,27 @@ class ExecBooks:
     # 唯一消费端)。局级生命周期(新局新容器 = 天然清零):恢复局新容器
     # pending 恒 0,残局差异照真失配停。
     external_equip_grant_pending: int = 0
+    # 幂等登记(外部授予置闩防重入;三审应修补丁):置闩原形 = 挂点
+    # ``+=`` 累加,确认点击落空(overlay 未关)→ op 机械交回 → 下一轮
+    # 重入重走决策再选同卡 → 同卡二次累加 → pending 虚高 →
+    # ``_absorb_external_grant`` 的「差额 ≤ 待吸收数」闸放宽,虚额残留
+    # 期内任意正向 bench/equips 失配(含真推算 bug)被误吸收。修法 =
+    # 置闩收敛单一源 :func:`latch_external_grants`,本集合记录 session
+    # 内已置闩卡规范名,同卡重入不叠加(卡选完即消耗,一局至多一次
+    # 授予;不同卡各自累加不受影响)。
+    # [索引定义] 集合坐标系 = 卡规范名(:func:`normalize_invest_name`
+    # 输出形);取值时机 = 置闩单一源函数命中申报表时一次性写入,只增
+    # 不清(吸收扣减不动本集合——登记语义 = 「该卡的授予已被置闩过」,
+    # 与 pending 余额正交),局级生命周期(新局新容器 = 天然清零)。
+    external_grant_latched_cards: set[str] | None = None
+    # 闩龄(外部授予闩窗口上界;三审存疑③:等值观察不消费会让闩跨多
+    # 备战轮存续,虚额残留期内正向失配被误吸收吞真 bug)。[索引定义]
+    # 计数坐标系 = 置闩后经历的**等值观察**连续次数(bench/equips 实读
+    # == 逻辑态的 observe 次数;失配观察即窗口了结,计数归零);取值
+    # 时机 = observe() 闩在时递增(:meth:`GameState._tick_external_grant_
+    # window`,唯一写端)、达 :data:`EXTERNAL_GRANT_EQUAL_OBS_LIMIT` 销闩
+    # 并归零。局级生命周期(新局新容器 = 天然清零)。
+    external_grant_equal_obs: int = 0
     # 节点边界金待补结闩(失配精确吸收第二例,事故第 3 例修法 = 边界事件
     # 持久化;pending 模式同 external_bench_grant_pending)。战斗/节点边界
     # 收入族由游戏侧在结算屏前入账(实机 journal 实证:结算屏金面板读数
@@ -2799,6 +2919,24 @@ class ExecBooks:
     # 阻止失真投影写入,不做任何 observe 失配吸收;闩在时的观察失配照真
     # 停(未被申报覆盖的变更不被吞)。
     deploy_miss_pending: DeployMissMark | None = None
+    # 部署 miss 连续计数(三审应修补丁②「部署 miss 刹车」):miss 申报闩
+    # 只防失真投影,重试 = 决策循环自然重派零预算——拖拽被**系统性**吞
+    #(模拟器拖拽协议/坐标漂移)时黑板恒见单位在备战席,策略恒重发同
+    # 动作,miss → 跳写 → 重发循环无界(fail 重派网不辖:op 恒返回成功,
+    # 不进 ok=False 计数),仅 NODE-DWELL 900s 系统哨兵兜底(T-266 同族
+    # 第 2 件)。修法 = 消费点按动作键连续计数
+    #(:func:`consume_deploy_miss_mark`,唯一累加点),触
+    # :data:`DEPLOY_MISS_REDISPATCH_LIMIT` 由决策循环
+    #(:meth:`CwScreenPrep` 判定,round_fail)走既有 redispatch 上限路径
+    # 显式停交上层。
+    # [索引定义] ``deploy_miss_streak_key`` = (bench_idx, to_row) 动作键
+    #(与消费端动作匹配校验同维;char_id 不入键同校验口径),None = 无
+    # 在计情节;``deploy_miss_streak_n`` = 同键连续 miss 次数。计数语义
+    # = 同键累加 / 异键归 1(粘滞对象已换,新情节起算)/ 部署成功(闩
+    # 不在)或陈旧闩(情节已换)归零。局级生命周期(新局新容器 = 天然
+    # 清零)。
+    deploy_miss_streak_key: tuple[int, str] | None = None
+    deploy_miss_streak_n: int = 0
 
 
 class NodeBooks:
@@ -3417,6 +3555,10 @@ class GameState:
             # 补结腿(金读 carried 无观察)保留;公式结算载体同读此闩,
             # 窗口已了结则禁再叠算(防真值+公式值双计)。
             self.exec_books.boundary_gold_pending = False
+        if name in ('bench', 'equips'):
+            # 外部授予闩窗口上界(三审存疑③):闩在时的每次等值观察计数,
+            # 达限销闩留证——虚额残留不无限期吞正向失配。
+            self._tick_external_grant_window(target, value, sig)
         if target.source == 'logic' and target.value is not None \
                 and target.value != value:
             if boundary_pending and self._absorb_boundary_gold(
@@ -3505,6 +3647,47 @@ class GameState:
                  f'实读 {value}(+{int(value) - int(target.value)},'
                  f'待补结闩窗内正向差,boundary_gold_backfilled 留证)')
         return True
+
+    def _tick_external_grant_window(self, target: Field, value: Any,
+                                    sig: ChannelSig) -> None:
+        """外部授予闩窗口上界(闩龄;三审存疑③,取值依据 =
+        :data:`EXTERNAL_GRANT_EQUAL_OBS_LIMIT` 注)。
+
+        闩的正式消费 = 失配分支「纯超集 + 差额 ∈ (0, 待吸收数]」精确
+        吸收;等值观察(实读 == 逻辑态:授予未入账/已提前吸收完)零新
+        信息不消费,闩因此可跨多备战帧存续——虚额残留期内任意正向失配
+        被误吸收吞真 bug。本口在闩在时:等值 observe 调用计数 +1(粒度
+        = 字段级调用;同帧 bench/equips 双等值贡献 2,两闩同源同窗故
+        计数共享、销联动),达限 → 两闩销 + ``external_grant_expired``
+        台账行——响亮作废,真实授予迟到到达时照真失配停(可发现),
+        不设上界则静默吞(不可发现);非等值观察 = 窗口有了结进展
+        (吸收或失配处置),计数归零。
+        """
+        bench_pending = self.exec_books.external_bench_grant_pending
+        equip_pending = self.exec_books.external_equip_grant_pending
+        if bench_pending <= 0 and equip_pending <= 0:
+            return
+        if target.value != value:
+            self.exec_books.external_grant_equal_obs = 0
+            return
+        n = self.exec_books.external_grant_equal_obs + 1
+        if n < EXTERNAL_GRANT_EQUAL_OBS_LIMIT:
+            self.exec_books.external_grant_equal_obs = n
+            return
+        self.exec_books.external_bench_grant_pending = 0
+        self.exec_books.external_equip_grant_pending = 0
+        self.exec_books.external_grant_equal_obs = 0
+        _emit_defect(field_name='external_grant',
+                     expected=(f'待吸收 bench={bench_pending}/'
+                               f'equips={equip_pending}'),
+                     actual=(f'连续 {EXTERNAL_GRANT_EQUAL_OBS_LIMIT} 次'
+                             f'等值观察未消费,闩超窗作废'),
+                     evidence=None, sig=sig,
+                     kind='external_grant_expired')
+        log.info('[cw][gs] 外部授予闩超窗作废:连续 %d 次等值观察未消费,'
+                 '待吸收 %d/%d 清零(external_grant_expired 留证;真实授予'
+                 '迟到到达时照真失配停)',
+                 EXTERNAL_GRANT_EQUAL_OBS_LIMIT, bench_pending, equip_pending)
 
     def carry(self, target: Field, *, frame: str,
               sig: ChannelSig) -> None:

@@ -427,31 +427,23 @@ class CwScreenInvestEnv(CwScreenOpBase):
                 log.warning(f'[cw-env] portal 效果账本登记失败(不阻塞): {e}')
             # 外部随机授予置闩(观察对账精确吸收的申报消费;申报表 =
             # cw_mismatch_policy.EXTERNAL_BENCH_GRANTS / EXTERNAL_EQUIP_
-            # GRANTS;与 CwScreenInvestStrategy 确认挂点同型,查表统一走
-            # external_grant_totals):投资环境卡文含「开局时获得…角色/
-            # 初始简易装备」(概念股族)、「获得【X】」(契约/邀请/贵族族)
-            # 等授予效应,随机身份/随机装备不建逻辑写端(effect-domain
-            # §6.3/§6.4),确认后置 pending,下一干净备战帧 bench/equips
-            # 实读对逻辑态纯超集时精确吸收(external_grant_absorbed 行),
-            # 形状不符照真失配停。best-effort 同登记挂点纪律。
+            # GRANTS;与 CwScreenInvestStrategy 确认挂点同型):投资环境
+            # 卡文含「开局时获得…角色/初始简易装备」(概念股族)、「获得
+            # 【X】」(契约/邀请/贵族族)等授予效应,随机身份/随机装备不建
+            # 逻辑写端(effect-domain §6.3/§6.4),确认后置 pending,下一
+            # 干净备战帧 bench/equips 实读对逻辑态纯超集时精确吸收
+            #(external_grant_absorbed 行),形状不符照真失配停。置闩收敛
+            # kernel 单一源(幂等 + 闩龄上界住 kernel,三审应修补丁①;
+            # 本挂点零本地逻辑)。best-effort 同登记挂点纪律。
             try:
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    latch_external_grants,
+                )
                 from sr_od.application.currency_war.kernel.cw_investments import (
                     normalize_invest_name,
                 )
-                from sr_od.application.currency_war.kernel.cw_mismatch_policy import (
-                    external_grant_totals,
-                )
-                _n_bench, _n_equip = external_grant_totals(
-                    normalize_invest_name(chosen))
-                if _n_bench:
-                    match.gs.exec_books.external_bench_grant_pending += _n_bench
-                if _n_equip:
-                    match.gs.exec_books.external_equip_grant_pending += _n_equip
-                if _n_bench or _n_equip:
-                    log.info(f'[cw-env] 外部随机授予置闩:{chosen} '
-                             f'bench +{_n_bench} equips +{_n_equip}(待吸收 '
-                             f'{match.gs.exec_books.external_bench_grant_pending}'
-                             f'/{match.gs.exec_books.external_equip_grant_pending})')
+                latch_external_grants(match.gs, normalize_invest_name(chosen),
+                                      actor='CwScreenInvestEnv')
             except Exception as e:   # noqa: BLE001  置闩失败不阻塞确认链
                 log.warning(f'[cw-env] 外部授予置闩失败(不阻塞): {e}')
         # 效果原文回流断供为裁定的接受后果,收编归宿 =

@@ -1287,7 +1287,16 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
     ——TrackedBooks 契约 = tracked 主账槽位簿记,语义不容混装):`bench_layout_epoch`
     (布局重排单调代次,唯一写点 = `cw_reconcile`,消费 = `cw_screen_buy_cards`/
     `cw_shop_action_ops`)/`swap_arm_on`(换血臂开合帧间闩,读写点 = `cw_screen_deploy`,
-    消费 = projection_contract §4.3 臂态位判读)。
+    消费 = projection_contract §4.3 臂态位判读)。申报闩族(置位端/消费端/索引
+    定义逐字段住代码注释,此处只记语义与常量名):外部授予待吸收闩
+    (`external_bench/equip_grant_pending`,置闩单一源 = `latch_external_grants`
+    幂等——同卡登记不叠加,登记 = `external_grant_latched_cards`;窗口上界 =
+    等值观察达 `EXTERNAL_GRANT_EQUAL_OBS_LIMIT` 次销闩留证,消费 =
+    `_absorb_external_grant` 纯超集精确吸收)/节点边界金补结闩
+    (`boundary_gold_pending`,消费 = observe 失配分支正向差补结)/部署 miss
+    申报闩(`deploy_miss_pending`,消费 = `consume_deploy_miss_mark` 投影跳写)
+    与其连续计数(`deploy_miss_streak_key/n`,同键连续 miss 达
+    `DEPLOY_MISS_REDISPATCH_LIMIT` 由备战决策循环 round_fail 交上层)。
   - `TrackedBooks`(GameState.tracked_books):tracked 主账槽位簿记(bench/deployed
     两面,§3.2.22 配套裁定)。
   - `plane_node_sequences`(GameState 位面节点序列台账,`PlaneNodeLedger` 载体):

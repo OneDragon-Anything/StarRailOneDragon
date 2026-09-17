@@ -617,28 +617,19 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         # 卡文含「获得随机角色/随机装备」的投资卡(效果注册表未逐条确定;
         # 随机身份按 effect-domain §6.3 不建逻辑写端)确认后按申报表置入
         # 待吸收数,下一干净备战帧 bench/equips 观察对逻辑态纯超集时精确
-        # 吸收(external_grant_absorbed 行),形状不符照真失配停。查表统一
-        # 走 external_grant_totals(双表单一消费面,挂点不直读表)。独立于
-        # 效果注册表(在册与否都可能命中申报表)。best-effort 同登记挂点
-        # 纪律。
+        # 吸收(external_grant_absorbed 行),形状不符照真失配停。置闩收敛
+        # kernel 单一源(幂等 + 闩龄上界住 kernel,与 CwScreenInvestEnv
+        # 挂点同型同源,三审应修补丁①;本挂点零本地逻辑)。best-effort
+        # 同登记挂点纪律。
         try:
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                latch_external_grants,
+            )
             from sr_od.application.currency_war.kernel.cw_investments import (
                 normalize_invest_name,
             )
-            from sr_od.application.currency_war.kernel.cw_mismatch_policy import (
-                external_grant_totals,
-            )
-            _n_bench, _n_equip = external_grant_totals(
-                normalize_invest_name(chosen))
-            if _n_bench:
-                match.gs.exec_books.external_bench_grant_pending += _n_bench
-            if _n_equip:
-                match.gs.exec_books.external_equip_grant_pending += _n_equip
-            if _n_bench or _n_equip:
-                log.info(f'[cw-strat] 外部随机授予置闩:{chosen} '
-                         f'bench +{_n_bench} equips +{_n_equip}(待吸收 '
-                         f'{match.gs.exec_books.external_bench_grant_pending}'
-                         f'/{match.gs.exec_books.external_equip_grant_pending})')
+            latch_external_grants(match.gs, normalize_invest_name(chosen),
+                                  actor='CwScreenInvestStrategy')
         except Exception as e:   # noqa: BLE001  置闩失败不阻塞选卡主链
             log.warning(f'[cw-strat] 外部授予置闩失败(不阻塞): {e}')
         # (原 register_confirm_arrival('ConfirmStrategy') 已随 ADR-0651

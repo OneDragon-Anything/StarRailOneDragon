@@ -30,6 +30,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     apply_prep_action_logic,
     consume_deploy_miss_mark,
+    deploy_miss_brake_status,
     game_state_of,
     gs_of_ctx,
     shop_payload_content_cards,
@@ -1108,6 +1109,31 @@ class CwScreenPrep(CwScreenOpBase):
             f'_project_prep_obs:动作 {type(action).__name__} 无逻辑态分支'
             '(词表外/分派漏斗被绕过,响亮暴露)')
 
+    def _deploy_miss_brake_round(self, session: object,
+                                 action: CwAction) -> OperationRoundResult | None:
+        """部署 miss 刹车(三审应修补丁②;两条决策循环路径共式):
+        DeployMove 投影步刚走完(命中闩 = 本次 miss 已计数)时查
+        :func:`cw_game_state.deploy_miss_brake_status`,同单位同目标槽连续
+        miss 达 ``DEPLOY_MISS_REDISPATCH_LIMIT`` → round_fail 显式停交上层
+        ——miss 申报闩只防失真投影,重发无预算,拖拽被系统性吞时
+        「黑板仍见单位 → 策略重发 → miss」无限循环且不进外环 op-fail 计数
+        网(op 恒返回成功),旧态仅 NODE-DWELL 900s 系统哨兵兜底(T-266
+        同族第 2 件);触顶走既有 redispatch 上限路径语义(交上层,可被
+        外环 fail 网计数/恢复)。非 DeployMove 或未触顶 = None 零动作。
+
+        位置契约 = ``_project_prep_obs`` **之后**(miss 计数发生在投影步
+        的闩消费点,先计数后判定;跳写路径黑板保持事实,此处 fail 交回
+        不携带失真逻辑态)。
+        """
+        if not isinstance(action, DeployMove):
+            return None
+        _status = deploy_miss_brake_status(game_state_of(session))
+        if _status is None:
+            return None
+        log.warning('[cw!][director] %s → round_fail 交上层处置'
+                    '(部署 miss 重派预算耗尽)', _status)
+        return self.round_fail(status=_status)
+
     def _project_tool_obs(self, action: CwAction,
                           obs: PrepObservation) -> PrepObservation:
         """工具原子逻辑态(R8 七类逐件;规则正本 = ``game_state/action-logic-state.md``
@@ -1604,6 +1630,9 @@ class CwScreenPrep(CwScreenOpBase):
             #      实读纠逻辑态承担(期望态对账族即纠偏通道)。R9:词表逐
             #      动作有逻辑态分支,保守回退分支已删——词表外 = 响亮暴露)
             obs = self._project_prep_obs(action, obs)
+            _brake = self._deploy_miss_brake_round(session, action)
+            if _brake is not None:
+                return _brake
             game_state_of(session).prep_obs = obs   # 黑板推进(下一动作决策读逻辑态)
             # 直写帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
             _mark_frame_class(session, 'prep', 'none')
@@ -1769,6 +1798,9 @@ class CwScreenPrep(CwScreenOpBase):
             #      分支,保守回退分支已删,词表外 = 响亮暴露)
             game_state_of(session).prep_obs = self._project_prep_obs(
                 action, payload)   # 黑板推进(下一动作决策读逻辑态;终态契约 §2.6 宿主 = gs.prep_obs)
+            _brake = self._deploy_miss_brake_round(session, action)
+            if _brake is not None:
+                return _brake
             # 直写帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
             _mark_frame_class(session, 'prep', 'none')
         # 访问动作数上限(防御:决策循环不收敛 = 逻辑态或策略 bug,交回外循环
