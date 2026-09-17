@@ -179,12 +179,24 @@ class CwScreenBriefing(CwScreenOpBase):
         else:
             # 空读也要可见:「read_bosses 恒空」vs「幂等跳过」可区分(W222 先例)。
             log.info('简报首领未读到(read_bosses 空:区域-首领行 OCR 无 4-8 字中文名)')
-        # 敌人难度数值(简报「敌人难度N」→ session 直写 → state;3.5.2 接线)。
-        if _session is not None and _session.enemy_difficulty is None:
-            _diff = read_briefing_enemy_difficulty(self.ctx, screen)
-            if _diff is not None:
-                _session.enemy_difficulty = _diff
-                log.info('简报敌人难度读得(写 session): %s', _diff)
+        # 敌人难度数值(简报「敌人难度N」;终态契约 §B:直写 gs——恒稳开局
+        # 基线(logic 源),逐帧旗牌真读(observation)到达即覆盖。
+        if _session is not None:
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                ChannelSig,
+                game_state_of,
+            )
+            _gs_brief = game_state_of(_session)
+            if _gs_brief.enemy_difficulty.value is None:
+                _diff = read_briefing_enemy_difficulty(self.ctx, screen)
+                if _diff is not None:
+                    _gs_brief.write_logic(
+                        _gs_brief.enemy_difficulty, _diff,
+                        produced_by='CwScreenBriefing',
+                        sig=ChannelSig(family='logic_action',
+                                       actor='CwScreenBriefing',
+                                       screen='', mode='compute'))
+                    log.info('简报敌人难度读得(写容器): %s', _diff)
 
         # 三读数 session 直写照常,判读面经 journal 开局域。
 

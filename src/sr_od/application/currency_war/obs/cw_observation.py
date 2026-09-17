@@ -2284,8 +2284,11 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 判读纪律:live=False 帧的值是简报恒值,别当「难度 vs 轮次」曲线样本。
     # spec 无此字段的阶段(prep_shop_open 以 P1 基线为准;battle 帧无旗牌)跳过
     # 两级管线,直接 session 值 + live=False(与「真读 None 回退」同语义)。
-    _ed_session = getattr(getattr(_match, 'session', None), 'enemy_difficulty', None) \
-        if _match is not None else None
+    # (session 恒值回退已随终态契约 §B 退役:开局简报基线由 briefing 写端
+    #  直入 gs(logic 源),旗牌真读(observation)覆盖,失读帧走 carry 沿用。)
+    # 判读纪律:live=False 帧的值不落新证,别当「难度 vs 轮次」曲线样本。
+    # spec 无此字段的阶段(prep_shop_open 以 P1 基线为准;battle 帧无旗牌)
+    # 跳过逐帧读(与「真读 None 回退」同语义,沿用容器值)。
     enemy_difficulty: int | None
     enemy_difficulty_live = False
     if _w('enemy_difficulty'):
@@ -2294,9 +2297,9 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             enemy_difficulty = _ed_live
             enemy_difficulty_live = True
         else:
-            enemy_difficulty = _ed_session
+            enemy_difficulty = None
     else:
-        enemy_difficulty = _ed_session
+        enemy_difficulty = None
     level_up_cost: int | None = (
         read_level_up_cost(ctx, screen) if _w('level_up_cost') else None)
     # streak:gs.streak(结算覆盖写端带符号直入容器,方向可靠;fixture 核实

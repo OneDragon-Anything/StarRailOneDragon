@@ -331,6 +331,7 @@ REGISTERED_ACTORS: set[str] = {
                                # 链观察落地批 2026-09-16)
     'CwScreenBattleWait',      # 战斗/结算画面 op(结算覆盖写端,§3.5.1)
     'CwScreenBookcard',        # 星徽秘典弹窗(chosen_tome 选择写点)
+    'CwScreenBriefing',        # 简报(enemy_difficulty 恒稳基线写端,终态契约 §B)
     'CwScreenEncounter',       # 遭遇弹窗(chosen_encounter/刷新计数写点)
     'CwScreenExpertInvite',    # 专家邀约(chosen_expert 选择写点)
     'CwScreenInvestEnv',       # 投资环境(active_env 选择写点)
