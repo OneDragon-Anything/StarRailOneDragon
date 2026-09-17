@@ -638,7 +638,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                             locked)
             else:
                 key_equips = list(comp.key_equips or ())
-        spare = list(getattr(session, 'last_owned_equips', None) or [])
+        # 终态契约 §B:spare 库存打分源 = gs.equips(镜像退役)。
+        from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
+        spare = list(game_state_of(session).equips.value or [])
         # 在身装备(game state 唯一消费口:策略禁读执行侧
         # 簿记)—— deployed 单成员带
         # equips,bench 槽位视图成员 = Unit(含 equips 透传)。

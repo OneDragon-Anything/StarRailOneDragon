@@ -80,10 +80,20 @@ def _advance_gold(session, delta: int, *,
 
 
 def _owned_add(session, item: str) -> None:
-    """last_owned_equips 逻辑推进:+1 件(选卡/确认到账类)。"""
-    owned = list(getattr(session, 'last_owned_equips', None) or [])
+    """owned 库存逻辑推进:+1 件(选卡/确认到账类;终态契约 §B:单一源 =
+    gs.equips,现读-改写-回写)。"""
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        ChannelSig,
+        game_state_of,
+    )
+    _gs = game_state_of(session)
+    owned = list(_gs.equips.value or [])
     owned.append(item)
-    session.last_owned_equips = owned
+    _gs.write_logic(_gs.equips, owned, produced_by='PrepActionExecutor',
+                    evidence=f'owned[{item}] +1',
+                    sig=ChannelSig(family='logic_action',
+                                   actor='PrepActionExecutor',
+                                   screen='', mode='compute'))
 
 
 def apply_op_effect(session, action: CwAction | dict, *,
@@ -137,13 +147,23 @@ def apply_op_effect(session, action: CwAction | dict, *,
                 _eff(f'owned[{eq}]', '+1(卖场上装备全额返还)', 'owned')
     elif isinstance(action, WearEquip):
         # 穿戴原子(R2;发出即登记,零比对形态——原「落点已验后调」门
-        # 随 CV-diff 拆除):last_owned_equips −1 + tracked 目标角色 +1。
+        # 随 CV-diff 拆除):owned −1 + tracked 目标角色 +1。
         # WearEquip 是坐标参数化机械动作(row/slot = 画面物理槽位,词表
         # 定义);物理→下标换算单一函数 = deployed_idx_of(执行坐标边)。
-        owned = list(getattr(session, 'last_owned_equips', None) or [])
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            ChannelSig,
+            game_state_of,
+        )
+        _gs_we = game_state_of(session)
+        owned = list(_gs_we.equips.value or [])
         if action.item_name in owned:
             owned.remove(action.item_name)
-            session.last_owned_equips = owned
+            _gs_we.write_logic(_gs_we.equips, owned,
+                               produced_by='PrepActionExecutor',
+                               evidence=f'owned[{action.item_name}] -1(穿戴)',
+                               sig=ChannelSig(family='logic_action',
+                                              actor='PrepActionExecutor',
+                                              screen='', mode='compute'))
             _eff(f'owned[{action.item_name}]', '-1(穿戴)', 'owned')
         idx = deployed_idx_of(action.row, action.slot)
         _bench, dep = _session_tracked(session)

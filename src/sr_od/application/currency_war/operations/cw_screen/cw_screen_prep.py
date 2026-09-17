@@ -721,13 +721,11 @@ class CwScreenPrep(CwScreenOpBase):
                 # 不写保现值(宁缺勿造,同 bench 空集守卫族;装备区读不受
                 # 合成特效窗影响,无需 is_merge_effect_window 门)。
                 if obs.owned_equips is not None:
+                    # (终态契约 §B:session.last_owned_equips 镜像行随重复
+                    #  账退役删——gs.equips 观察写端即单一源,商店线权重/
+                    #  flow 打分/库存 ±1 腿全部读容器。)
                     _gs_obs.observe(_gs_obs.equips, list(obs.owned_equips),
                                     sig=_prep_sig)
-                    # session 镜像全量重写(ADR-0358 搬运链写端随迁):
-                    # 商店线权重(state.equips 拷贝)与载体中继兜底的跨访问
-                    # 值源;穿戴/选卡/卖返等 logic 增量写点不变,本重写 =
-                    # 每次入口观察的真值刷新(频次高于旧派发位一次/期)。
-                    session.last_owned_equips = list(obs.owned_equips)
                 # 溢出告警观察写端(2026-09-15 实机建档 prep.md 告警/溢出节):横幅 = 游戏侧权威信号(出战被游戏忽略的
                 # 处理门,策略消费 = mandate 溢出门强收窄);溢出位 SIFT =
                 # 入位对象身份旁路(SellBench 溢出腿;缺读 '' = 未识别,

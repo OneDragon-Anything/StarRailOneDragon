@@ -90,10 +90,13 @@ def register_equip_worn(session, item_name: str, char_name: str,
         from sr_od.application.currency_war.kernel.cw_game_state import (
             game_state_of,
         )
-        owned = list(getattr(session, 'last_owned_equips', None) or [])
+        owned = list(game_state_of(session).equips.value or [])
         if item_name in owned:
             owned.remove(item_name)
-            session.last_owned_equips = owned
+            game_state_of(session).write_logic(
+                game_state_of(session).equips, owned,
+                produced_by='CwOpEquipAll',
+                evidence=f'owned[{item_name}] -1(穿戴)')
         idx = (slot - 1 if row == 'front'
                else DEPLOYED_FRONT_CAPACITY + slot - 1)
         dep = list(game_state_of(session).tracked_books.deployed or [])
@@ -477,7 +480,18 @@ class CwOpEquipAll(SrOperation):
             # 接线);本执行位步内重写 = 穿戴推进后的最新持有面
             # (定位读的合法执行层锚),两写端值同构后写覆盖先写。
             if _match is not None and _match.session is not None:
-                _match.session.last_owned_equips = list(_owned_last)
+                # 终态契约 §B:直写 gs.equips(session 镜像退役)。
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    ChannelSig as _cs_ea,
+                )
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    game_state_of as _gso_ea,
+                )
+                _gso_ea(_match.session).write_logic(
+                    _gso_ea(_match.session).equips, list(_owned_last),
+                    produced_by='CwOpEquipAll',
+                    sig=_cs_ea(family='logic_action', actor='CwOpEquipAll',
+                               screen='', mode='compute'))
             # 拖点解析(front-only 步 = 前排空槽 avatar 序号;M7 步 =
             # (row, slot) 物理槽位现读)。解析失败只跳过本计划步——计划
             # for 有界(每对恰出现一次),其余计划步照常执行。

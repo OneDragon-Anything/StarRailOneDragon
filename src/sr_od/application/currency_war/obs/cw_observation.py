@@ -2645,16 +2645,10 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             # 观察链装备区采集(采集点 = observe_full heavy,写点 =
             # cw_screen_prep._observe heavy 装配点;P4 观察接线前 =
             # prep_actions._build_equip_wear_plan 派发位现读,已随该批退役)。
-            # 本口只做载体中继兜底(session 镜像 last_owned_equips,从未写过
-            # 才补)。**接线滞后窗值冻结申报**:开箱/穿戴/卖出等动作时点的
-            # 库存变化先落 session 镜像(logic 增量写点),gs 在下一次备战
-            # 入口观察时刷新——中继「已有正式值跳过」语义使滞后窗内视图拿到
-            # 的是上一次观察值(带 logic 源标记),比透传陈值可分。
-            # (selected_difficulty 中继行已随终态契约 §B 退役:漏斗/入口链
-            #  直接写 gs,session 中转源不复存在。)
-            _owned_equips: list = getattr(session, 'last_owned_equips', None) or []
-            gs.relay(gs.equips, [str(n) for n in _owned_equips],
-                     sig=_relay_sig)
+            # (终态契约 §B:last_owned_equips 中继兜底与 selected_difficulty
+            #  中继行均已退役——写端(备战观察全量重写 + 穿戴/选卡/卖返
+            #  logic 增量 + 入口链漏斗)直入容器,session 镜像面死亡;
+            #  商店线权重与 flow 打分读 gs.equips/gs.selected_difficulty。)
             # —— 画面上下文 + 节点推进派生(R1 §3.1.4/§3.4;R5 W1 常开)——
             # 本口 = read_game_state 唯一漏斗 = 观察汇聚模块(上下文域唯一写点):
             # 随分派观察写 prev/current 上下文对,同临界区跑四腿派生规则(备战腿

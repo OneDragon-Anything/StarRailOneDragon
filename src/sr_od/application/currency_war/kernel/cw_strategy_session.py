@@ -129,15 +129,8 @@ class StrategySession:
     plane_lengths_seen: list[int] | None = None
     # (终态契约 §B:last_streak session 份退役——结算带符号真值由结算
     #  覆盖写端直入 gs.streak,economy/观察消费读容器。)
-    # (终态契约 §B 重复账退役:active_strategies/active_env session 份
-    #  已删——单一源 = gs(write_logic 选择写点),kernel/obs 消费读容器。)
-    # owned 穿戴池快照(ADR-0358;P4 观察接线后写端两处):
-    # ①备战入口观察装配点全量重写(cw_screen_prep._observe heavy ←
-    # observe_full 装备域采集,主写端);②穿戴 pass 执行位步内现读覆写
-    # (cw_op_equip_all 计划件定位读,执行层合法锚)。消费 = 商店线权重
-    # (state.equips 拷贝)与载体中继兜底;决策输入(门①/工具评估/计划
-    # 产出位)已切黑板帧 owned_equips,勿回接本镜像(陈旧快照面)。
-    last_owned_equips: list[str] = field(default_factory=list)
+    # (终态契约 §B 重复账退役:active_strategies/active_env/last_owned_equips
+    #  session 份已删——单一源 = gs(write_logic 选择写点),kernel/obs 消费读容器。)
     # (chosen_megastar/chosen_partner session 份已随终态契约 §B 退役:
     #  单一源 = gs.chosen_*(write_logic 选择写点),session 份零读者。)
     # (briefing_affixes/briefing_bosses session 份已随终态契约 §B 退役:
