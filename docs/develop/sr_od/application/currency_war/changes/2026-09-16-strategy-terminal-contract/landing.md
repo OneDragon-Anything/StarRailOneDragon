@@ -1,6 +1,6 @@
 # 策略器终态契约 落地
 
-> 通用工程门（各阶段判据引用项，此处单一定义）：`uv run ruff check` 改动文件全过；直接受影响测试 + L1（`$env:PYTHONPATH='src'; uv run pytest sr-od-test/test/sr_od/app/currency_war -m "not slow and not legacy_baseline" -q`）一次通过；`git add` 逐文件点名；提交后 `git show --stat` 复核入库面 = 申报面。（源 = 项目 AGENTS.md「测试规范」「提交流程与协作边界」节 + skill 测试分层单一源）
+> 通用工程门（各阶段判据引用项，此处单一定义）：`uv run ruff check` 改动文件全过；直接受影响测试 + L1（`$env:PYTHONPATH='src'; uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow and not legacy_baseline" -q`）一次通过；`git add` 逐文件点名；提交后 `git show --stat` 复核入库面 = 申报面。（源 = 项目 AGENTS.md「测试规范」「提交流程与协作边界」节 + skill 测试分层单一源）
 >
 > 阶段原子性总原则：每阶段交付态生产链可运行、通用工程门可绿；session 解散按字段族分阶段、类本体删除收尾；所有锚/读者/符号迁移以**全仓 grep 普查对账表**兜底（**普查口径**：符号词按全符号匹配——子串污染逐词申报，如 `state_of` ⊂ `strategy_state_of`；调用形态含 getattr 防御形态与直调形态；两仓逐仓——rg 从仓库根因 .gitignore 跳过 sr-od-test；范围否定式 = 全正本与代码排除 `changes/`/`sources/`/`proofs/`）。分阶段前置 = design.md §2.10 与各阶段依赖行。
 
