@@ -61,11 +61,24 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 ### 3.2 权威序
 
 - **观察赢**:观察写入覆盖 logic 来源值;失配记 `observe_vs_logic_mismatch` 缺陷行
-  (留证显影,不静默)。失配 = 推算代码 bug,修推算代码。
+  (留证显影,不静默)。失配 = 推算代码 bug,修推算代码。失配比对前的**前置吸收
+  面**(形状受控的机制性差异,命中即台账行采新、不进安灯):bench/equips 外部随机
+  授予申报表(EXTERNAL_BENCH_GRANTS / EXTERNAL_EQUIP_GRANTS,「纯超集+差额≤申报数」
+  精确吸收)/ gold 节点边界金补结闩(boundary_gold_backfilled)/ front_row、back_row
+  行槽位纯重排(deploy_slot_reorder,同单位多重集仅排列差异 = 游戏侧行内重排无逻辑
+  写端,采新入纠漂面)。
+- **board 派生量**(禁独立写):上阵羁绊计数 = front_row/back_row 单位集合的派生量,
+  逻辑写端经 `write_logic` 行域挂钩 `_resync_board_delta` 单一源自动重算(观察基座 +
+  行变更增量);独立手写 board = 越格。观察侧仍按双源仲裁覆盖(观察赢辖)。
 - **节点生效序**:权威序字段的读口 = 生效序读口,语义=逻辑层现值与 run 内高水位
   取大(公式体单一源见 [node-domain.md](node-domain.md) §3);消费面恒取逻辑层。
 - **节点类型三源仲裁**:结算屏权威> 节点序列台账现读 > 帧标签 OCR
   ([fields.md](fields.md) §3.2.1;仲裁细则单一源 = node-domain.md)。
+
+**容器字段投影完备性审计**:全部 Field 字段对「游戏侧变更是否可造成 observe 失配」
+的三分类注册面 = `kernel/cw_projection_audit.py`(`PROJECTION_AUDIT`;「无写端无规则」
+缺口恒空,完备性锁在测试仓 test_cw_board_derived_and_reorder.py);字段级语义正本
+仍 = [fields.md](fields.md)。
 
 ### 3.3 域清单
 

@@ -897,6 +897,32 @@ def _bench_unit_multiset(view: Any) -> Counter:
     return out
 
 
+def _rows_unit_key(u: Any) -> tuple[str, int, tuple[str, ...]]:
+    """行写端单位多重集键(board 派生重算与纯重排吸收共用;键 =
+    (char_id, star, 装备集排序元组)。槽位号/行内顺序**不在键内**——
+    游戏侧行内重排只改 slot 信息位,键相等 = 同单位多重集;装备集入键 =
+    穿戴变化(星徽/卡带贡献面)不算纯重排,交回真失配分流。"""
+    return (str(getattr(u, 'char_id', '') or ''),
+            int(getattr(u, 'star', 1) or 1),
+            tuple(sorted(str(e) for e in (getattr(u, 'equips', None) or []))))
+
+
+def _row_unit_tags(u: Any, row: str) -> tuple[str, ...]:
+    """行内单位的羁绊标签(board 派生重算单一源;标签函数单一源 =
+    ``cw_bond_equips.unit_bond_tags``)。Unit 无 position_pref 位(排归属
+    由所在行承载),本口按行名补 shim:前排=front/后排=back(开拓者形态
+    随排归一的坐标系输入)。"""
+    from types import SimpleNamespace
+
+    from sr_od.application.currency_war.kernel.cw_bond_equips import (
+        unit_bond_tags,
+    )
+    return unit_bond_tags(SimpleNamespace(
+        char_id=str(getattr(u, 'char_id', '') or ''),
+        position_pref=('front' if row == 'front_row' else 'back'),
+        equips=list(getattr(u, 'equips', None) or [])))
+
+
 def _route_logic_mismatch(*, field_name: str, expected: Any, actual: Any,
                           observed_evidence: str | None,
                           logic_evidence: str | None,
@@ -1729,7 +1755,8 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #:   钉住);
 #:   DeployMove 不入(围栏部署 = 结算期代理,obs 通道申报对齐);
 #: - 域集扩:front_row / back_row(v2 腿与合成连锁全场域写回,deployed
-#:   域语义)、board(v2 腿重算派生)、equips(卖出回收腿);
+#:   域语义)、board(**派生量**:行写端挂钩 ``_resync_board_delta``
+#:   自动重算,禁独立手写;单一源见该方法注)、equips(卖出回收腿);
 #: - 域集扩(2026-09-18):level(LevelUpShop 升档直写;语义源 = prep 腿
 #:   apply_prep_action_logic LevelUp 分支同款,推进单一源 =
 #:   ``cw_economy.xp_apply_clicks`` 跨级连跳含内)。依据 = 等级滞留使
@@ -1878,7 +1905,6 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
         SellBench,
         SellDeployed,
         SwapDeploy,
-        _recount_board,
         board_unique_key,
     )
     from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -1901,14 +1927,12 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
             cost_source=str(getattr(c, 'cost_source', '') or 'roster'))
 
     def _write_deployed(scratch: list) -> None:
-        """deployed 槽表中间形态 → front/back rows 整表写(平移契约)。"""
+        """deployed 槽表中间形态 → front/back rows 整表写(平移契约)。
+        board 随行写自动派生(write_logic 挂钩 ``_resync_board_delta``
+        单一源),本族禁再手写 board。"""
         front, back = deployed_slots_to_rows(scratch)
         _w(gs.front_row, front, 'proj_deployed_front')
         _w(gs.back_row, back, 'proj_deployed_back')
-
-    def _write_board(scratch_deployed: list) -> None:
-        """board 重算写(v2 腿/合成全场域后派生单一源 = _recount_board)。"""
-        _w(gs.board, _recount_board(scratch_deployed), 'proj_board_recount')
 
     # —— BuyCard ——
     if isinstance(action, BuyCard):
@@ -1989,7 +2013,6 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
                          for d in scratch_d]
         if _dep_post_sig != _dep_pre_sig:
             _write_deployed(scratch_d)
-            _write_board(scratch_d)
         return LogicOutcome(applied=True, bought_count=k)
     # —— SellBench ——
     if isinstance(action, SellBench):
@@ -2043,7 +2066,6 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
         refund = sell_refund(int(getattr(sold, 'star', 1) or 1),
                              bench_char_cost(sold))
         _write_deployed(scratch)
-        _write_board(scratch)
         g = gs.gold.value
         if g is not None:
             _w(gs.gold, int(g) + int(refund), 'proj_sell_deployed_gold')
@@ -2094,7 +2116,6 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
         in_char.slot = deployed_slot_no(d_idx)
         _w(gs.bench, bench_view_of_slots(scratch_b), 'proj_swap_bench')
         _write_deployed(scratch_d)
-        _write_board(scratch_d)
         return LogicOutcome(applied=True,
                             reason=str(getattr(action, 'reason', '') or ''))
     # —— LevelUpShop(is-a LevelUp)——
@@ -2219,9 +2240,10 @@ def mutate_bench_deployed_local(bench, deployed, action,
 #: - xp/level(批 2a 扩:LevelUp 逐帧单击分支,推进算子单一源 =
 #:   ``cw_economy.xp_apply_clicks``;**金腿本批不写**——2a 中间态 =
 #:   执行缝金差承担,``action.cost`` 直写翻转归批 2b);
-#: - front_row/back_row/board(批 2a 扩:DeployMove 落槽 + board 羁绊
-#:   增量 / SellDeployed 摘槽 + board 重算,槽表中间形态 → 整表 write_logic
-#:   平移契约,与 :func:`deployed_slots_to_rows` 同源);
+#: - front_row/back_row/board(批 2a 扩:DeployMove 落槽 / SellDeployed
+#:   摘槽,槽表中间形态 → 整表 write_logic 平移契约,与
+#:   :func:`deployed_slots_to_rows` 同源;board = **派生量**,行写端挂钩
+#:   ``_resync_board_delta`` 自动重算,禁独立手写);
 #: - **OpenBox/OpenTome/ClickSpheres/WearEquip/工具原子直写只动视觉域**
 #:   (boxes/tomes/spheres/owned_equips 在黑板帧上推进,容器零写;
 #:   ClickSpheres 视觉域见 ``cw_screen_prep._project_prep_obs`` 精确摘球);
@@ -2261,15 +2283,14 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
       缺费 = ``bench_char_cost`` 注册表单一源兜底。
     - **SellDeployed**(批 2a 补齐,规则 = flow/action-logic-state.md §3.2)
       = deployed 槽表摘槽(``deployed_idx`` 槽表下标直取,ADR-0392)
-      + gold +退款 + board 全量重算(``_recount_board`` 单一源)。
+      + gold +退款(board 随行写派生,见 ``_resync_board_delta``)。
     - **DeployMove**(批 2a 补齐,规则 = flow/action-logic-state.md §3.1;
       批2b 起目标落位 = ``deployed_place`` 首空单一源,与 simulate
       DeployMove 分支同式)
       = bench 源槽摘槽 + deployed 目标排首空落位(对象整体迁移,身份/
-      星级/装备随人走,排/槽号信息位重写)+ board 羁绊计数**增量**(按
-      上场单位羁绊标签全集逐标签 +1,增量口径防全量重算抹掉 OCR 真值,
-      ADR-0312;标签单一源 = ``cw_bond_equips.unit_bond_tags``,无标签
-      回退阵营)+ 上阵计数(派生,零独立字段)。
+      星级/装备随人走,排/槽号信息位重写)+ board 羁绊计数派生重算
+      (行写端挂钩自动,增量口径防全量重算抹掉面板真值贡献,见
+      ``_resync_board_delta`` 方法注)+ 上阵计数(派生,零独立字段)。
     - **LevelUp**(规则 = design.md §2.6 LevelUp 粒度定案④;批2b 翻转)
       = xp/level 跨门槛推进(推进算子单一源 = ``cw_economy.
       xp_apply_clicks``,单击 +XP_PER_BUY)+ gold −``action.cost`` 直写
@@ -2362,9 +2383,6 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
         return
 
     if isinstance(action, SellDeployed):
-        from sr_od.application.currency_war.kernel.cw_bond_equips import (
-            _recount_board,
-        )
         dep_slots = deployed_slots_of(gs)
         idx = int(action.deployed_idx)   # 槽位表下标直取(统一坐标系,零换算)
         if not (0 <= idx < len(dep_slots)) or dep_slots[idx] is None:
@@ -2375,7 +2393,6 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
         front, back = deployed_slots_to_rows(scratch)
         _w(gs.front_row, front, 'proj_sell_deployed_front')
         _w(gs.back_row, back, 'proj_sell_deployed_back')
-        _w(gs.board, _recount_board(scratch), 'proj_board_recount')
         g = gs.gold.value
         if g is not None:
             refund = sell_refund(int(getattr(sold, 'star', 1) or 1),
@@ -2384,9 +2401,6 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
         return
 
     if isinstance(action, DeployMove):
-        from sr_od.application.currency_war.kernel.cw_bond_equips import (
-            unit_bond_tags,
-        )
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             deployed_place,
         )
@@ -2414,15 +2428,8 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
         front, back = deployed_slots_to_rows(scratch)
         _w(gs.front_row, front, 'proj_deploy_front')
         _w(gs.back_row, back, 'proj_deploy_back')
-        # board 羁绊计数增量(ADR-0312 增量全集;无标签回退阵营)
-        board = dict(gs.board.value or {})
-        _tags = (unit_bond_tags(moved) if moved.char_id else ())
-        if not _tags:
-            _tags = (moved.faction,) if getattr(moved, 'faction', '') else ()
-        for t in _tags:
-            board[t] = board.get(t, 0) + 1
-        if board != dict(gs.board.value or {}):
-            _w(gs.board, board, 'proj_deploy_board_incr')
+        # board 羁绊计数 = 派生量:行写端挂钩 _resync_board_delta 自动
+        # 重算(增量口径,基座贡献保留),本口禁再手写 board。
         return
 
     # LevelUp(单击;xp/level 推进 + gold −action.cost 直写,批2b 翻转)
@@ -2449,7 +2456,8 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
     return
 
 
-#: 部署 miss 重派上限(三审应修补丁②;同键连续 miss 达本值 → 决策循环
+#: 部署 miss 重派上限(出处=改动三审 2026-09-18「部署 miss 刹车」;
+#: 同键连续 miss 达本值 → 决策循环
 #: round_fail 显式停交上层,语义对齐 cw_loop.OP_FAIL_REDISPATCH_LIMIT 的
 #: 「连续同因重试预算」)。取 3 的依据:① 每次完整 miss 重试周期 = 一次
 #: 拖拽 + 2s 徽章动画等待 + 策略重决策 + 一轮 prep 单轮,单位成本远高于
@@ -2460,18 +2468,24 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
 #: 网 5 次的跨键容错。
 DEPLOY_MISS_REDISPATCH_LIMIT: int = 3
 
-#: 外部授予闩窗口上界(闩龄;三审存疑③修法 = 等值观察 K 次即销闩 +
-#: 台账行)。取 3 的依据:① 正常形态 = 确认后下一次备战帧 heavy 实读即
-#: 吸收(首例事故实证:确认后实读 bench 立即多出 2 单位),1 次观察内
-#: 了结,3 留 2 次余量覆盖「战斗后入账迟到入镜」类未证延迟形态;② 误销
-#: 后果 = 真实授予到达时照真失配停(响亮可发现),不销后果 = 虚额残留
-#: 吞真投影 bug(静默)——按「宁可响亮不可静默吞」取向取紧不取松。
+#: 外部授予闩窗口上界(闩龄;出处=改动三审 2026-09-18「闩窗口上界」,
+#: 修法 = 等值观察计数达限即销闩 + 台账行)。计数粒度 = 字段级 observe
+#: 调用(bench/equips 各计 1,同一备战帧双域等值贡献 2,同
+#: :meth:`GameState._tick_external_grant_window`)。取 3 的依据:
+#: ① 正常形态 = 确认后下一次备战帧 heavy 实读即吸收(首例事故实证:
+#: 确认后实读 bench 立即多出 2 单位),首个非等值调用(失配吸收)即
+#: 窗口了结;② 余量语义(按调用粒度):达限 3 = 首帧双域等值 2 次 +
+#: 次帧 1 次 ≈ 1.5 个备战帧,覆盖「战斗后入账迟到入镜」类未证延迟的
+#: 短延迟形态;③ 误销后果 = 真实授予到达时照真失配停(响亮可发现),
+#: 不销后果 = 虚额残留吞真投影 bug(静默)——按「宁可响亮不可静默吞」
+#: 取向取紧不取松。
 EXTERNAL_GRANT_EQUAL_OBS_LIMIT: int = 3
 
 
 def latch_external_grants(gs: GameState, card_name: str, *,
                           actor: str) -> tuple[int, int]:
-    """外部随机授予置闩单一源(三审应修补丁①幂等化;置闩挂点 =
+    """外部随机授予置闩单一源(出处=改动三审 2026-09-18「置闩幂等化」;
+    置闩挂点 =
     CwScreenInvestStrategy / CwScreenInvestEnv 两确认点,查表仍走
     :func:`cw_mismatch_policy.external_grant_totals` 双表单一消费面)。
 
@@ -3564,6 +3578,9 @@ class GameState:
             if boundary_pending and self._absorb_boundary_gold(
                     name, target, value, evidence, sig):
                 pass   # 边界金补结已落台账行,跳过三分流(覆盖照常 = 补结)
+            elif self._absorb_slot_reorder(name, target, value,
+                                           evidence, sig):
+                pass   # 行内纯重排吸收已落台账行,覆盖照常 = 采新
             elif not self._absorb_external_grant(name, target, value,
                                                  evidence, sig):
                 _route_logic_mismatch(field_name=name, expected=target.value,
@@ -3647,6 +3664,88 @@ class GameState:
                  f'实读 {value}(+{int(value) - int(target.value)},'
                  f'待补结闩窗内正向差,boundary_gold_backfilled 留证)')
         return True
+
+    def _absorb_slot_reorder(self, field_name: str, target: Field,
+                             value: Any, observed_evidence: str | None,
+                             sig: ChannelSig) -> bool:
+        """行槽位纯重排吸收(§2.3 失配分支前置;front_row/back_row 专属)。
+        游戏侧会在**行内自行重排**已上阵单位(排序规则游戏私有,非 bot
+        动作,无逻辑写端)——同单位多重集的排列差异是机制性结构差异,不是
+        推算 bug。命中条件全列(缺一不可):字段 ∈ {front_row, back_row};
+        新旧值均为非空 list 且长度相等;单位多重集相等(键 =
+        :func:`_rows_unit_key`,槽位号不在键内,装备集在键内——穿戴变化
+        不算重排)。命中 → ``deploy_slot_reorder`` 台账行(无告警无停机,
+        豁免 ≠ 消失同纪律)后覆盖照常 = 采新(游戏侧排序为画面事实),
+        与对账纠漂(tracked 主账采新)两面同向;形状不符(缺员/多员/
+        星级差/装备差)返回 False 交回三分流照真失配停,真投影 bug 不被
+        吞。返回 True = 已吸收(调用方跳过失配分流)。"""
+        if field_name not in ('front_row', 'back_row'):
+            return False
+        old, new = target.value, value
+        if not isinstance(old, list) or not isinstance(new, list) \
+                or not old or not new or len(old) != len(new):
+            return False
+        old_keys = list(map(_rows_unit_key, old))
+        new_keys = list(map(_rows_unit_key, new))
+        if Counter(old_keys) != Counter(new_keys):
+            return False
+        _emit_defect(field_name=field_name, expected=old, actual=new,
+                     evidence=observed_evidence, sig=sig,
+                     logic_evidence=target.evidence,
+                     kind='deploy_slot_reorder')
+        log.info(f'[cw][gs] 行内纯重排吸收:{field_name} 同单位多重集 '
+                 f'排列差异采新(游戏侧行内重排无逻辑写端,'
+                 f'deploy_slot_reorder 留证)')
+        return True
+
+    def _resync_board_delta(self, field_name: str, old_value: Any, *,
+                            produced_by: str, sig: ChannelSig) -> None:
+        """board 派生重算单一源(front_row/back_row 逻辑写端挂钩;本方法
+        是「羁绊/阵营计数 = 上阵单位集合的派生量」的落码位,写入口 =
+        :meth:`write_logic` 行域写后自动触发,禁绕过手写 board)。
+
+        语义 = **观察基座 + 行变更增量**:board 现值为 None(板未读过)
+        时无派生基座,跳过等观察首读;否则对本次行写做单位多重集差
+        (键 = :func:`_rows_unit_key`),新增单位逐个加其羁绊标签
+        (:func:`_row_unit_tags`,L1 全集+装备贡献),移除单位逐个减、
+        减至 0 摘键(面板语义:无成员不显行),差为零不写。增量口径
+        (非全量重算)的依据:观察基座含左面板真值的装备羁绊贡献,而
+        容器行单位未必携带穿戴建模(实机 2026-09-18 run_20260918_045918:
+        环境卡授予的星徽穿戴只出现在面板,行单位 equips 为空)——全量
+        重算会把基座真值抹掉,增量只施加本次动作的差,基座贡献保留,
+        漂移由下一备战帧观察覆盖收敛。"""
+        board = self.board.value
+        if board is None:
+            return
+        new_value = getattr(self, field_name).value
+        old_counter = Counter(map(_rows_unit_key, list(old_value or [])))
+        new_counter = Counter(map(_rows_unit_key, list(new_value or [])))
+        added = new_counter - old_counter
+        removed = old_counter - new_counter
+        if not added and not removed:
+            return
+        new_board = dict(board)
+        for u in list(new_value or []):
+            k = _rows_unit_key(u)
+            if added.get(k, 0) > 0:
+                added[k] -= 1
+                for t in _row_unit_tags(u, field_name):
+                    new_board[t] = new_board.get(t, 0) + 1
+        for u in list(old_value or []):
+            k = _rows_unit_key(u)
+            if removed.get(k, 0) > 0:
+                removed[k] -= 1
+                for t in _row_unit_tags(u, field_name):
+                    v = new_board.get(t, 0) - 1
+                    if v > 0:
+                        new_board[t] = v
+                    else:
+                        new_board.pop(t, None)
+        if new_board == dict(board):
+            return
+        self.write_logic(self.board, new_board, produced_by=produced_by,
+                         evidence='proj_board_resync', sig=sig)
+
 
     def _tick_external_grant_window(self, target: Field, value: Any,
                                     sig: ChannelSig) -> None:
@@ -3750,8 +3849,16 @@ class GameState:
         """
         _validate_sig(sig, ('logic_action', 'logic_hook'))
         name = self._field_name(target)
+        # board 派生重算输入:行域写的旧值快照必须在换帧前取(§2.4 禁就地改)。
+        old_row_value = target.value if name in ('front_row', 'back_row') \
+            else None
         self._swap(name, Field(value=value, source='logic', evidence=evidence),
                    sig=sig, note=note)
+        if name in ('front_row', 'back_row'):
+            # board 派生重算单一源(行域写后自动触发;羁绊/阵营计数 =
+            # 上阵单位集合的派生量,独立手写 board = 越格,见方法注)。
+            self._resync_board_delta(name, old_row_value,
+                                     produced_by=produced_by, sig=sig)
 
     def relay(self, target: Field, value: Any,
               sig: ChannelSig) -> bool:
