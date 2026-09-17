@@ -734,6 +734,89 @@ def _note_shop_skip_unobserved(op: SrOperation,
     return None
 
 
+# ===== 买牌落地验证 miss 刹车(T-44;点击≠成了补齐)=====
+
+#: 买牌 miss 刹车上限(出处 = run_20260918_055133 商店 5 连买 0 成交停局:
+#: 非部署动作无落地验证,点击未生效而投影照写 → shop+gold 双失配停局。
+#: 形态对齐 kernel DEPLOY_MISS_REDISPATCH_LIMIT 的「连续同因重试预算」;
+#: 独立计数器住本文件,载体 = cw4_counters,不碰 kernel/cw_loop——
+#: kernel 计数面被 T-42 金闩批占用,本件以文件内计数器实现同语义)。
+#: 取 3 的依据同 deploy:像素验证假阳是单帧噪声,单次假阳后必有成功购买
+#: 把计数归零,永不满;连续 3 次同槽 miss = 同一槽位被持续吞点击的
+#: 系统性形态(坐标落空/输入被吞),重试预算应停交上层。
+BUY_MISS_REDISPATCH_LIMIT: int = 3
+
+#: 连续 miss 计数的载体键(cw4_counters;执行控制键非纯观测:参与熔断
+#: 谓词,判读同表。先例 = shop_skipped_unobserved_streak 同载体)。
+#: ``buy_miss_streak_n`` = 同槽连续 miss 次数;``buy_miss_streak_slot``
+#: = 当前情节的槽号(异槽 miss 归 1 重计的键比对面)。
+CW4_KEY_BUY_MISS_STREAK_N = 'buy_miss_streak_n'
+CW4_KEY_BUY_MISS_STREAK_SLOT = 'buy_miss_streak_slot'
+
+
+def _buy_miss_counters(session: Any) -> dict | None:
+    """miss 计数载体访问(防御形态;缺席 = None 无计数面,与
+    _note_shop_skip_unobserved 缺席退缺省口径同)。"""
+    _st = strategy_state_of(session) if session is not None else None
+    _ct = getattr(_st, 'cw4_counters', None)
+    return _ct if isinstance(_ct, dict) else None
+
+
+def buy_miss_streak_tick(session: Any, slot_no: int) -> int:
+    """买牌 miss 连续计数 tick(消费点 = run_buy_waves 执行落地门;
+    计数语义对齐 kernel consume_deploy_miss_mark 的 streak 半):同槽
+    累加 / 异槽归 1(键 = 物理槽号;键换 = 情节换,不继承旧情节)。
+
+    台账留证由调用方落(buy_miss_skip 分键),本口只承载计数单一源。
+    载体缺席(第三方策略面)= 无计数面返回 0(帧帽
+    SHOP_SEGMENT_ACTION_CAP 仍兜底,不会无界)。
+
+    :param slot_no: 商店牌行物理槽号(1-5;BuyCardOp 经
+        ``env.last_buy_slot_no`` 旁路上报,写入端语义见该字段注)。
+    :return: tick 后的同槽连续 miss 次数。
+    """
+    _ct = _buy_miss_counters(session)
+    if _ct is None:
+        return 0
+    _n = _ct.get(CW4_KEY_BUY_MISS_STREAK_N, 0) + 1 \
+        if _ct.get(CW4_KEY_BUY_MISS_STREAK_SLOT, None) == slot_no else 1
+    _ct[CW4_KEY_BUY_MISS_STREAK_N] = _n
+    _ct[CW4_KEY_BUY_MISS_STREAK_SLOT] = slot_no
+    return _n
+
+
+def buy_miss_streak_reset(session: Any) -> None:
+    """买牌落地成功归零(消费点 = run_buy_waves 执行落地门 _ok 分支)。
+
+    单次假阳清零语义:像素验证假阳是单帧噪声,一次成功购买 = miss 情节
+    有了结,计数归零永不假满(deploy 消费口「闩不在 = 归零」同依据)。
+    载体缺席 = 零动作。"""
+    _ct = _buy_miss_counters(session)
+    if _ct is None:
+        return
+    _ct[CW4_KEY_BUY_MISS_STREAK_N] = 0
+    _ct[CW4_KEY_BUY_MISS_STREAK_SLOT] = None
+
+
+def buy_miss_brake_status(session: Any) -> str | None:
+    """买牌 miss 刹车触顶判定(纯读;文案单一源,对齐
+    kernel deploy_miss_brake_status 形态)。
+
+    :return: 触顶时的 round_fail 状态文案;未触顶 = None。判定消费点 =
+    run_buy_waves 决策循环(miss tick 后),触顶 = round_fail 显式停
+    交上层(同 deploy 刹车语义;消费面 cw_screen_prep/cw_loop 按
+    ``rr is not None`` 交失败收口,零改动)。
+    """
+    _ct = _buy_miss_counters(session)
+    if _ct is None:
+        return None
+    n = _ct.get(CW4_KEY_BUY_MISS_STREAK_N, 0)
+    if n < BUY_MISS_REDISPATCH_LIMIT:
+        return None
+    return (f'BuyCard(商店牌槽{_ct.get(CW4_KEY_BUY_MISS_STREAK_SLOT, "?")})'
+            f'连续 {n} 次点击未生效超上限(交上层处置)')
+
+
 def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                   *, spend_gate: Callable[[object], tuple[bool, str]] | None = None,
                   ) -> tuple[OperationRoundResult | None, 'ShopVisitLedger']:
@@ -1202,6 +1285,35 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 extra=_rcpt_extra)
             apply_action_outcome(_aop, action, _ok, _cur, match,
                                  ledger, visit_actions)
+            # 买牌落地验证 miss 计数与刹车(T-44;点击≠成了补齐,置位端
+            # = BuyCardOp 槽位像素验证经 env.last_buy_slot_no 旁路):
+            # miss → 同槽连续计数 +1 + 台账行留证(buy_miss_skip 分键,
+            # 零决策);触顶 → round_fail 显式停交上层(同 deploy 刹车
+            # 语义,消费面 cw_screen_prep/cw_loop 按 rr is not None 收口,
+            # 零改动)。落地成功 → 计数归零(单次假阳清零,永不假满)。
+            if not _ok and isinstance(action, BuyCard):
+                buy_miss_streak_tick(
+                    match.session,
+                    int(getattr(_env, 'last_buy_slot_no', 0) or 0))
+                with contextlib.suppress(Exception):
+                    defects.record_defect(
+                        'shop', 'buy_miss_skip',
+                        expected=(f'BuyCard slot='
+                                  f'{getattr(_env, "last_buy_slot_no", 0)}'
+                                  ' 点击后该槽位像素变化(卡片消失/替换)'),
+                        observed=('槽位像素零变化(settle 重采仍零变化),'
+                                  '账本/逻辑态两侧零落,交决策循环重派'),
+                        plane=getattr(_cur, 'plane', 0) or 0,
+                        round_num=getattr(_cur, 'round_num', 0) or 0,
+                        verdict='留证-买牌未生效(点击≠成了;投影跳写)',
+                        reader_source='buy_landing_pixel_check',
+                        note='分键登记 = buy_miss_streak 注释(连续 miss '
+                             '刹车载体 cw4_counters,上限 '
+                             'BUY_MISS_REDISPATCH_LIMIT)')
+                _brake = buy_miss_brake_status(match.session)
+                if _brake is not None:
+                    log.error('[cw!] [shop] %s', _brake)
+                    return (op.round_fail(_brake), ledger)
             # T-82 续段 token 写入(生产商店循环执行位):动作确认已执行
             # 后置位 (动作型名, 当前段序号);未执行路径(闸拒/硬墙/
             # CloseShop 提前退出)不写。策略器入口读后即清,下一帧据其
@@ -1211,6 +1323,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 if _st_tok is not None:
                     _st_tok.cw4_frame_action_record = (
                         type(action).__name__, _st_tok.cw4_segment_serial)
+                # 落地成功 = miss 情节有了结 → 计数归零(单次假阳清零;
+                # 载体缺席零动作,见 buy_miss_streak_reset)。
+                buy_miss_streak_reset(match.session)
             # 义务实花回执位记账(T-88;闸前不记——spend_gate 拒绝帧
             # 未执行,本位只在 execute 成功回执后累计,F4 栈守卫见函数注)。
             accrue_release_spent(match, action, _ok)

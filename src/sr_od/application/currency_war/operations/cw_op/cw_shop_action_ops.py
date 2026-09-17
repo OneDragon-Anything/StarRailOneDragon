@@ -133,6 +133,12 @@ class ShopExecEnv:
     # 当前期望态(W6 波 4 容器化,设计件 §2.4-2:执行侧读点改容器单例
     # game_state_of(match.session);满栏 k 计等消费经席位/payload 读口)
     state: GameState
+    # 买牌 miss 计数键旁路(T-44 买牌落地验证):发射牌的物理槽号。
+    # [索引定义] 商店牌行物理槽 1-5(screen_info「商店牌-N」area 序,
+    # 1 基);取值时机 = 执行期(点击解析后);写入端 = BuyCardOp 仅
+    # miss 时;0 = 未写(非买动作/落地路径)。消费端 = run_buy_waves
+    # miss 计数口(cw_screen_buy_cards.buy_miss_streak_tick 的键)。
+    last_buy_slot_no: int = 0
 
 
 def _container_cards(state: GameState) -> list:
