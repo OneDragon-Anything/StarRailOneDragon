@@ -27,7 +27,6 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     shop_card_click_points,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
-    StrategySession,
     strategy_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_telemetry_exit import journal_refs
@@ -771,8 +770,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     (访问内 hp 决策消费统一经容器政策读口 decision_hp,门前真值由备战帧
      观察/结算既有写端承接,段间无战斗值同源,覆盖回写是绕行。)
 
-    match=None(独立 run_operation 调本 op)→ 临时 match,不挂 ctx
-    (局外不复用)。config 本函数内构造(W970 §4.3.4)。
+    match=None(独立 run_operation 调本 op)→ 兜底建核:直调引导漏斗
+    establish_new_match 建容器挂 ctx(供漏斗写块寻址;局外不复用 =
+    先弃置残留容器,每次独立调用新建)。config 本函数内构造(W970 §4.3.4)。
 
     返回 (失败 round 结果, 访问账本)。正常收工 → (None, ledger);
     未识别卡停机钩子触发 → (round_fail 留证结果, None)。
@@ -792,32 +792,25 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
 
     config = CurrencyWarConfig(op.ctx.current_instance_idx)
     if match is None:
-        # 防御:无对局态(独立 run_operation 调本 op)→ 临时 match。
-        # (迁移批 3.2 起必须挂 ctx:read_game_state 容器直写按 ctx.cw_match
-        # 定位 session 容器,不挂 = 漏斗写块整体跳过 → decide 前置门
-        # shop=None。「局外不复用」语义由「每次 run_operation 新建」保持,
-        # 挂 ctx 只是给漏斗写块一个可寻址的 session 容器。该路径经
-        # create_session 冷建(ADR-0583:live 初值 v3_phase='FORM' 随唯一
-        # 冷建口在此落位;phase 列仅诊断用)。
+        # 防御:无对局态(独立 run_operation 调本 op)→ 兜底建核,直调
+        # 引导漏斗同款序(establish_new_match = 生产唯一容器建立漏斗)。
+        # 此前裸构造 CurrencyWarMatch 与漏斗实差三处行为——rng 种子(漏斗
+        # 按 config.strategy_seed 播 session.rng)/布局未知态计数复位
+        # (reset_layout_unknown_state 新局起点)/遥测 run_id_provider
+        # (局容器建立点注入 journal 装配)——终态切换批改道漏斗一并消除;
+        # 策略实例化同漏斗走 StrategyManager 按 config.strategy_id,不再
+        # 硬编 mandate_v1。「局外不复用」语义保持:先弃置残留容器再建
+        # (每次独立 run_operation 新建;与入口链 CwEntryStart 的
+        # discard+establish 同款衔接),漏斗幂等分支经前一步清场必走新建。
         from sr_od.application.currency_war.strategies.impl.cw_strategy import (
-            CurrencyWarMatch,
+            discard_stale_match_container,
         )
-        from sr_od.application.currency_war.strategies.impl.mandate_v1.bridge import (
-            MandateV1Strategy,
+        from sr_od.application.currency_war.strategies.impl.cw_strategy_manager import (
+            establish_new_match,
         )
-        # 终态契约 §2.1:构造注入 cls(gs, config),工厂退役。
-        _session = StrategySession()
-        _gs_def = game_state_of(_session)
-        _def = MandateV1Strategy(_gs_def, config)
-        # 状态同源接线(§2.6 过渡桥):见漏斗同款注释。
-        _session.strategy_state = _def.state
-        # (gs 宿主接线 = CwStrategy.state setter 内建,构造即挂。)
-        # 终态契约 Match 终形含 gs/performance(landing §3.1);防御路径
-        # 同漏斗口径建容器(改道引导漏斗归终态切换批,本批先保构造合法)。
-        match = CurrencyWarMatch(
-            _def, _session, _gs_def,
-            performance=getattr(_session, 'performance', None))
-        op.ctx.cw_match = match
+        discard_stale_match_container(op.ctx, 'buy_cards_defensive_rebuild')
+        establish_new_match(op.ctx, config)
+        match = op.ctx.cw_match
 
     # 牌位/升级/刷新中心从 screen_info 直取;area 缺失 = 建档漂移,显式
     # round_fail(信息带 area 名),禁兜底坐标静默点击(坐标单一真相源)。
