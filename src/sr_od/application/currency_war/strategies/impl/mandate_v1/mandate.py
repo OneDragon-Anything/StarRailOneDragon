@@ -1801,7 +1801,8 @@ def run_mandate(frame: MandateFrame,
         for _r in (set(_m1p_reasons.values())
                    & {'engines_guard', 'star_guard', 'merge_material_guard',
                       'post_sell_offline', 'fp_unreadable',
-                      'target_keep', 'buy_membership'}):
+                      'target_keep', 'buy_membership',
+                      'post_sell_req_missing'}):
             _count(_r)
         if _m1p.abstain == 'cap_unreadable':
             _count('m1p_cap_unreadable')
@@ -2158,6 +2159,10 @@ def _deploy_plan_inputs(frame: MandateFrame, session: StrategySession,
         'target_cores': set(getattr(_comp, 'core_chars', None) or ()),
         'fw_carry': _fw_carry,
         'locked_factions': (locked_faction_scope(_ist) or frozenset()),
+        # 判据必需件首桶(单一源 = 目标 comp required_deployed;发射⇔执行
+        # 同吃本装配,序语义见 kernel select_deployments 注)。
+        'required_names': frozenset(
+            getattr(_comp, 'required_deployed', ()) or ()),
     }
 
 
@@ -2215,7 +2220,6 @@ def _emit_deploy_moves(out: list, frame: MandateFrame,
                        to_row=row,
                        faction=(frame.bench[bi].faction or '')),
             True, tag))
-
 
 def _deployable(frame: MandateFrame, session: StrategySession,
                 state: GameState) -> bool:

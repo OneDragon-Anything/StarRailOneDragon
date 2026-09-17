@@ -317,6 +317,7 @@ def has_deployable(
     fw_carry: frozenset[str] | set[str] = frozenset(),
     locked_factions: frozenset[str] | set[str] = frozenset(),
     recipe_floor_lock_exempt: bool = False,
+    required_names: frozenset[str] | set[str] = frozenset(),
 ) -> bool:
     """「是否存在可部署件」的单一源谓词(发射×执行契约)。
 
@@ -331,13 +332,15 @@ def has_deployable(
     语义口径与 ``select_deployments`` 完全一致(含 SIFT 未识别 char_id=''
     「照旧上」的 fail-open:身份不可判时恒 True,不做激进留 bench)。
     ``recipe_floor_lock_exempt`` 透传(ADR-0564,缺省 False 逐位同旧)。
+    ``required_names`` 透传(判据必需件首桶,见 select_deployments 注)。
     """
     return has_deployable_reasoned(
         bench, deployed_cids=deployed_cids, deployed_fac=deployed_fac,
         board=board, cap=cap, front_total=front_total, back_total=back_total,
         target_factions=target_factions, target_cores=target_cores,
         fw_carry=fw_carry, locked_factions=locked_factions,
-        recipe_floor_lock_exempt=recipe_floor_lock_exempt)[0]
+        recipe_floor_lock_exempt=recipe_floor_lock_exempt,
+        required_names=required_names)[0]
 
 
 def has_deployable_reasoned(
@@ -353,6 +356,7 @@ def has_deployable_reasoned(
     fw_carry: frozenset[str] | set[str] = frozenset(),
     locked_factions: frozenset[str] | set[str] = frozenset(),
     recipe_floor_lock_exempt: bool = False,
+    required_names: frozenset[str] | set[str] = frozenset(),
 ) -> tuple[bool, dict[int, str]]:
     """「是否存在可部署件」的带拒因形态(发射侧遥测载体;ADR-0564)。
 
@@ -362,13 +366,15 @@ def has_deployable_reasoned(
     recipe_floor/item_slot)。消费面 = mandate._deployable(部署放行判定:
     ``deploy_emit_held_<reason>`` 发射侧分键的唯一拒因源)与本文件
     ``has_deployable``(委托)。禁第二套围栏语义(单一源同函数路径)。
+    ``required_names`` 透传(判据必需件首桶,见 select_deployments 注)。
     """
     up, _held, reasons = select_deployments_reasoned(
         bench, deployed_cids=deployed_cids, deployed_fac=deployed_fac,
         board=board, cap=cap, front_total=front_total, back_total=back_total,
         target_factions=target_factions, target_cores=target_cores,
         fw_carry=fw_carry, locked_factions=locked_factions,
-        recipe_floor_lock_exempt=recipe_floor_lock_exempt)
+        recipe_floor_lock_exempt=recipe_floor_lock_exempt,
+        required_names=required_names)
     return bool(up), reasons
 
 
@@ -451,6 +457,7 @@ def select_deployments(
     locked_factions: frozenset[str] | set[str] = frozenset(),
     recipe_floor_lock_exempt: bool = False,
     reasons_out: dict[int, str] | None = None,
+    required_names: frozenset[str] | set[str] = frozenset(),
 ) -> tuple[list[int], list[int]]:
     """围栏判定:返回 (上场 bench 下标序, 留 bench 下标)。
 
@@ -480,6 +487,14 @@ def select_deployments(
     'item_slot' 占槽物品恒拒)逐项写入——held 判定语义单一源在本函数,
     消费面(出口③围栏预检/部署执行侧闭环分键)禁第二套围栏语义;带
     reason 消费走 ``select_deployments_reasoned``。
+
+    ``required_names``(判据必需件首桶):目标 comp 的 required_deployed
+    成员名集(装配单一源 = mandate ``_deploy_plan_inputs`` 与 kernel
+    ``assemble_swap_plan_inputs``,来源 = ``Comp.required_deployed``);
+    进选人序首桶,先于核心桶/cap 竞争——推导出处 = ``Comp.
+    required_deployed`` 字段契约(判据必要条件,缺它体系恒不成型)+
+    user_playstyle [31]② 目标件最高优先的必需件特化。缺省空集 = 序
+    逐位同旧(未接线消费面零漂移)。
     """
     reasons: dict[int, str] = {}
     vacancy = front_total + back_total - len(deployed_cids)
@@ -592,7 +607,18 @@ def select_deployments(
     core_tgt = [i for i in tgt_idx
                 if (getattr(bench[i], 'char_id', '') or '') in _core_set]
     other_tgt = [i for i in tgt_idx if i not in core_tgt]
-    order = core_tgt + ignite_rest + other_tgt + plain_rest
+    # 判据必需件首桶(required_names = 目标 comp 的 required_deployed 成员,
+    # 单一源 = pair 物化的 required_deployed,装配面喂入):判据以「该件
+    # 在板」为必要条件(pair_target_comp 的 required_deployed;希儿系判据
+    # seele_system_formed 的合取支)——缺它该体系永远无法成型,普通成员
+    # 可替换而必需件不可;cap 竞争(空位 < 候选数)时普通成员先上会弱占
+    # 优地推迟/破坏成型,[31]②「目标件最高优先」的必需件特化。空集 =
+    # 逐位同旧序。
+    _req_set = set(required_names)
+    req_tgt = [i for i in core_tgt
+               if (getattr(bench[i], 'char_id', '') or '') in _req_set]
+    core_tgt = [i for i in core_tgt if i not in req_tgt]
+    order = req_tgt + core_tgt + ignite_rest + other_tgt + plain_rest
     # cap 截断(动态停语义:超 cap 的留 bench)
     # 同名去重(5.1.7 不变量:同角色在场只 1)扩到
     # **本轮已上名单**——传入 deployed_cids 在实机=开局
@@ -660,6 +686,7 @@ def select_deployments_reasoned(
     fw_carry: frozenset[str] | set[str] = frozenset(),
     locked_factions: frozenset[str] | set[str] = frozenset(),
     recipe_floor_lock_exempt: bool = False,
+    required_names: frozenset[str] | set[str] = frozenset(),
 ) -> tuple[list[int], list[int], dict[int, str]]:
     """N2 规格①:select_deployments 的带拒因形态(单一源同函数路径)。
 
@@ -670,6 +697,7 @@ def select_deployments_reasoned(
     (fuel_filler_stall_held_postbuy)与 op 输入装配段计划构造/sim
     部署代理(ADR-0564 五消费点经此穿豁免参);预检/分键禁第二套
     围栏语义。``recipe_floor_lock_exempt`` 透传(缺省 False 逐位同旧)。
+    ``required_names`` 透传(判据必需件首桶,见 select_deployments 注)。
     """
     reasons: dict[int, str] = {}
     up, held = select_deployments(
@@ -679,7 +707,8 @@ def select_deployments_reasoned(
         target_cores=target_cores, fw_carry=fw_carry,
         locked_factions=locked_factions,
         recipe_floor_lock_exempt=recipe_floor_lock_exempt,
-        reasons_out=reasons)
+        reasons_out=reasons,
+        required_names=required_names)
     return up, held, reasons
 
 
@@ -697,6 +726,7 @@ def can_deploy_single(
     fw_carry: frozenset[str] | set[str] = frozenset(),
     locked_factions: frozenset[str] | set[str] = frozenset(),
     recipe_floor_lock_exempt: bool = False,
+    required_names: frozenset[str] | set[str] = frozenset(),
 ) -> tuple[bool, str]:
     """N2 规格②:单件假想查询(17 号稿 §7.1)。
 
@@ -709,6 +739,7 @@ def can_deploy_single(
     混键,17 号稿 §7.1 fail 向)。``recipe_floor_lock_exempt`` 透传
     (ADR-0564;shop 预检两调用点接线义务——豁免是帧属性,同一帧
     预检与部署语义分裂 = 发射×执行单一源契约破口;缺省 False 逐位同旧)。
+    ``required_names`` 透传(判据必需件首桶,见 select_deployments 注)。
     """
     bench2 = list(bench) + [candidate]
     idx = len(bench2) - 1
@@ -718,7 +749,8 @@ def can_deploy_single(
         back_total=back_total, target_factions=target_factions,
         target_cores=target_cores, fw_carry=fw_carry,
         locked_factions=locked_factions,
-        recipe_floor_lock_exempt=recipe_floor_lock_exempt)
+        recipe_floor_lock_exempt=recipe_floor_lock_exempt,
+        required_names=required_names)
     if idx in up:
         return True, ''
     # 缺省 'unannotated' 显影(策略审查二十三跳必改项):候选 held 而拒因
@@ -1101,6 +1133,53 @@ def fresh_buys_sell_face(session: object) -> frozenset[str]:
     return frozenset(names)
 
 
+def required_swap_arm_pending(ctx: SwapPlanContext | None) -> bool:
+    """板满换入臂触发谓词(纯函数;判定单一源)。
+
+    = required_names 非空(目标 comp 带 required_deployed;当前唯一实例 =
+    希儿系 pair 的 ``pair_target_comp``)∧ 板满(占用数口径,与 M1″ 板满门
+    同链)∧ 必需件不在板 ∧ bench 存在必需件。板不满帧不辖——空位由 M1
+    部署通道直上(经 required 首桶序),无需卖出换血。
+
+    fail 方向:ctx None / required_names 空 / 板满缺读 = 臂关(不放宽
+    target 保护,与基座臂 fail-closed 同向)。
+    """
+    if ctx is None or not ctx.required_names or not ctx.board_full:
+        return False
+    names = {x.char_id for x in ctx.deployed if x is not None and x.char_id}
+    if set(ctx.required_names) & names:
+        return False   # 必需件已在板:无换入需求,臂关
+    bench_names = {b.char_id for b in (ctx.bench or [])
+                   if b is not None and b.char_id}
+    return bool(set(ctx.required_names) & bench_names)
+
+
+def _required_swap_victim_completion_holds(ctx: SwapPlanContext,
+                                           name: str) -> bool:
+    """换入臂 victim 判据保持检验:victim 离场后 AND 腿全保持 ∧ OR 腿
+    至少一条保持(纯结构计数,零星级零战力项)。
+
+    计数源 = ``deployed_bond_counts``(注册表全羁绊口径,与守恒门同源);
+    腿源 = ``ctx.target_comp`` 的 form_tiers / or_legs(装配单源喂入,
+    comp 缺读 = 检验不过 = 臂不开,保守)。只查 AND/OR 腿而不查
+    required 本身:触发谓词已保证必需件不在板(必缺腿),victim 离场若
+    连腿都不保,换入必需件也凑不齐 = 白卖(选排底线在计划侧另有
+    ``post_sell_req_missing`` 拒因兜底)。
+    """
+    comp = ctx.target_comp
+    if comp is None:
+        return False
+    names = {x.char_id for x in ctx.deployed if x is not None and x.char_id}
+    counts = deployed_bond_counts(names - {name})
+    tiers = getattr(comp, 'form_tiers', None) or {}
+    if any(counts.get(bond, 0) < tier for bond, tier in tiers.items()):
+        return False   # AND 腿被卖破:凑齐倒退,不可换
+    or_legs = getattr(comp, 'or_legs', None) or ()
+    # OR 全破(一条都不剩)= 同样倒退;or_legs 空(纯 AND 判据)不辖。
+    return not or_legs or any(counts.get(bond, 0) >= tier
+                              for bond, tier in or_legs)
+
+
 def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
                                star: int | None = None,
                                bench: list[BenchChar] | None = None,
@@ -1175,12 +1254,30 @@ def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
             return ''   # 成型帧(fp≥1.00):成型臂语义照旧(方案 §2.3 不动)
         # 转型域释放件:不取基座臂提前返回,落下方资格族(行 #5)。
     else:
-        if not bonds & DEPLOY_FENCE:
+        # 板满换入臂(target 单位分支判定先行;fence 键集辖域 ≠ target
+        # 键集辖域——量子/贝成员不在 DEPLOY_FENCE 而在 pair target 键集,
+        # 旧「先查 fence 后查 target」次序会把量/贝 target 件挡在臂外):
+        is_target_member = bool(
+            bonds & set(ctx.target_factions) or name in ctx.target_cores
+            or name in ctx.protect_names)
+        if is_target_member:
+            # 换入臂(判据必需件优先于非必需板件;任务书 T-17 问题 2
+            # 修复方向 2):pair 判据以 required_deployed 在板为必要条件
+            # (``Comp.required_deployed`` 字段契约 + seele_system_formed
+            # 合取支),必需件滞留 bench ∧ 板满 = 结构性凑齐失败形态
+            # (sim n1000 s91700 基线 12 失败希儿系局主形态)。victim 让位
+            # 条件 = 离场不破判据:AND 腿(form_tiers)逐条保持 ∧ OR 腿
+            # (or_legs)至少一条保持——破坏任一 = 不可换(凑齐倒退),
+            # 保持 = 换入必需件后判据只差必需件本身,换入严格优(✗→✓
+            # 的支配改进,无新数值参数)。让位后落资格族(engines_guard/
+            # star_guard/merge 素材守卫照走,禁直落 fenced 转型臂分支
+            # ——target 件非转型臂辖域)。
+            if not (required_swap_arm_pending(ctx)
+                    and _required_swap_victim_completion_holds(ctx, name)):
+                return 'target_keep'   # target 单位(offtarget 拒因归因,先于臂分支)
+        elif not bonds & DEPLOY_FENCE:
             return 'target_keep'
-        if (bonds & set(ctx.target_factions) or name in ctx.target_cores
-                or name in ctx.protect_names):
-            return 'target_keep'   # target 单位(offtarget 拒因归因,先于臂分支)
-        if not _trans:
+        elif not _trans:
             # fenced 件被基座/成型臂拒 ⇒ 转型臂资格(原 ADR-0534 分支):
             if not SWAP_TRANSITION_ARM_ENABLED or not _locked:
                 return 'fenced_arm_closed'
@@ -1292,6 +1389,12 @@ class SwapPlanContext:
     #: 不可从卖出后状态重推;消费面(mandate 发射载荷/sim R1-b 重 derive
     #: 钉定参)读本字段。手装 ctx 缺省 False = 域外(与裸构造语义一致)。
     transition_domain: bool = False
+    #: 判据必需件名集(装配单一源 = 目标 comp ``required_deployed``;与
+    #: mandate ``_deploy_plan_inputs`` 同源同值)。消费面 = select_swap_plan
+    #: 卖后上序(必需件首桶,使「卖了换血后」的首个空位优先落必需件——
+    #: 不穿则换血腾出的位仍会被普通成员按旧序占走)与
+    #: ``swap_sell_exclusion_reason`` 的板满换入臂(V2,在册判定)。
+    required_names: frozenset[str] = frozenset()
 
 
 # ===== 换阵可兑现谓词(F1 单一源;发射-执行接缝合拢)=====
@@ -1705,6 +1808,8 @@ def assemble_swap_plan_inputs(
         target_comp=tgt_comp,
         evolution_swap_armed=evolution_armed,
         transition_domain=_domain,   # 装配时点域事实快照(字段注释/ADR-0640)
+        required_names=frozenset(
+            getattr(tgt_comp, 'required_deployed', ()) or ()),
     )
 
 
@@ -1845,10 +1950,20 @@ def select_swap_plan(ctx: SwapPlanContext | None,
             target_factions=ctx.target_factions,
             target_cores=ctx.target_cores, fw_carry=ctx.fw_carry,
             locked_factions=ctx.locked_factions,
-            recipe_floor_lock_exempt=ctx.recipe_floor_lock_exempt)
+            recipe_floor_lock_exempt=ctx.recipe_floor_lock_exempt,
+            required_names=ctx.required_names)
         for _hi in held2:
             _hn = ctx.bench[_hi].char_id or ''
             reasons[_hn] = 'post_sell_held'
+        # 换入臂卖后上序底线:臂武装帧(up 空间 = 本臂腾出)卖后上序必须
+        # 真含 required 件——卖冗余件而空位仍被普通成员占走 = 白卖(板面
+        # 净变弱、凑齐状态不变),与转型臂 post_sell_offline 同型的换入
+        # 版底线。臂未武装帧(含 required 在板帧)不辖,逐位同旧。
+        if up2 and required_swap_arm_pending(ctx) and not any(
+                (getattr(ctx.bench[_i], 'char_id', '') or '')
+                in set(ctx.required_names) for _i in up2):
+            reasons[name] = 'post_sell_req_missing'
+            continue
         if up2 and (_arm != 'transition' or any(
                 _bench_is_target(_i) for _i in up2)):
             plan.sell_names = [name]
