@@ -2872,6 +2872,16 @@ class GameState:
     # bench_layout_epoch = 留证采样/纠漂簿记。
     exec_books: ExecBooks = field(default_factory=ExecBooks)
 
+    # —— 帧触发代次双槽(非 Field 簿记;终态契约 §B:session
+    # prep_frame_class/shop_frame_class 退役迁此,两槽互不相干禁合并——
+    # 标注对象分别为「最近一次备战域/商店域容器观察写点」)。
+    # [值域] 'full' | 'view' | 'none',缺省 'none'。消费协议 = 读后即清
+    # 'none'(读协议半部,防同帧重复刷新);写端 = 备战/商店域观察装配点。
+    # 非 Field 理由 = 纯过程信号(无观察赢仲裁、无 journal 面秒级生命周期),
+    # 容器每局新建 = 天然清零。
+    frame_class_prep: str = 'none'
+    frame_class_shop: str = 'none'
+
     # —— 局级节点序列台账(非 Field 簿记,非域字段,工程结构组单列申报)——
     # [索引定义] 值 = :class:`PlaneNodeLedger`(本模块;seq_by_plane 键为
     # 1-based 位面号,序列下标 0-based = 该位面第 i+1 轮,取值时机 = 写入端

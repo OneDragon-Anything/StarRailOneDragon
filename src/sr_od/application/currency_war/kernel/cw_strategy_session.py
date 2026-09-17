@@ -153,22 +153,12 @@ class StrategySession:
     # 破警告派生帧 / 兼容期旧接口薄委托。读者 = decide_prep_screen(黑板
     # 决策唯一输入源)。
     prep_obs_frame: 'PrepObservation | None' = None   # noqa: F821, UP037
-    # —— 黑板帧刷新代次标注(ADR-0583 §3.4;帧语义标注,属观察层产物)——
-    # 值域 'full' | 'view' | 'none',缺省 'none'。坐标系:prep_frame_class
-    # 标注对象 = 同名黑板帧槽(prep_obs_frame)的最近一次写入;
-    # shop_frame_class 标注对象重锚 =「最近一次商店域容器观察写点」(入口
-    # 观察段 synthesize 喂入/续段重观察;商店黑板槽已随两态制收口退役,
-    # 容器 = 决策读单源)。写者 = 流程
-    # 观察段具名写点(cw_screen_prep 入口 heavy/破墙/逻辑态直写/read_only 分支、
-    # finalize 买后暂存;cw_op_buy_cards 商店 visit 首段/续段;
-    # 写点清单 = ADR-0583 §3.4,守卫 = 契约形状锁 L6);
-    # 策略器/驱动器零标注写点(帧类写'full'/'view' = 观察层专属身份,D6)。
-    # 读者 = 策略器决策入口(flow 层 _consume_*_direction_frame),读后即复位
-    # 'none'(消费即清;复位是读协议半部,非新鲜度宣告)。语义:full = 入口
-    # 主观察帧(方向重估全程触发);view = 派生帧(只刷派生视图);
-    # none = 逻辑态直写/循环续段/pick 未持新观察(不触发刷新)。
-    prep_frame_class: str = 'none'
-    shop_frame_class: str = 'none'
+    # (终态契约 §B:黑板帧刷新代次标注 prep_frame_class/shop_frame_class
+    #  session 槽已退役——迁 gs 非 Field 双槽 frame_class_prep/
+    #  frame_class_shop(值域/消费协议/写点面全量随迁,详 gs 字段注);
+    #  语义:full = 入口主观察帧(方向重估全程);view = 派生帧(只刷视图);
+    #  none = 逻辑态直写/续段/未持新观察。读后即清,消费 = flow 层
+    #  _consume_*_direction_frame。)
     # 结算观察累积槽(ADR-0583 §2.5:旧 on_round_end 拆两半的存活半)。观察层在
     # (终态契约 §B:pending_round_outcomes 槽已删——消费侧 drain 早在
     #  04_survival_budget §7 #7/#8 退役(ADR-0638),本槽只写不读;结算

@@ -992,7 +992,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 帧代次标注(ADR-0583 §3.4):visit 首段入口观察 = full(方向视图
         # 由 decide_shop_action 入口消费刷新);续段刷新重观察 = none
         #(= 旧 _target_seeded「仅首段重估」语义,段内视图不随买入漂移)。
-        match.session.shop_frame_class = (
+        game_state_of(match.session).frame_class_shop = (
             'full' if not _entry_frame_marked else 'none')
         _entry_frame_marked = True
         # 店开观察帧披露覆写(T-88 双写第二写点;ADR-0571 §2.2):备战

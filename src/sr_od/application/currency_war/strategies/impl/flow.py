@@ -408,10 +408,10 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         读后即复位 'none'(消费即清,防同帧重复刷新;
         复位 = 读协议半部,非新鲜度宣告——帧类写点收敛归流程观察段,§3.4/D6)。
         刷新失败不阻塞决策(沿用原 ops 侧守卫语义,日志哨兵 [cw!] 保持)。"""
-        cls = getattr(session, 'prep_frame_class', 'none')
+        cls = game_state_of(session).frame_class_prep
         if cls not in ('full', 'view'):
             return
-        session.prep_frame_class = 'none'
+        game_state_of(session).frame_class_prep = 'none'
         # 帧源 = session 容器单例(与商店线同款)。
         state = game_state_of(session)
         try:
@@ -429,10 +429,10 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         续段 none 帧 → 保持首段值(= 旧 ``_target_seeded``「仅首段重估」语义)。
         不捕获异常:与原 ops 侧 ``cw_op_buy_cards`` 首段直调的失败面一致
         (无守卫)。"""
-        cls = getattr(session, 'shop_frame_class', 'none')
+        cls = game_state_of(session).frame_class_shop
         if cls not in ('full', 'view'):
             return
-        session.shop_frame_class = 'none'
+        game_state_of(session).frame_class_shop = 'none'
         # 帧源 = session 容器(W6 波 4 黑板容器化:标注槽消费不变,
         # 帧本体改容器直读——设计件《商店黑板容器化方案》§2.1-3/§2.4-2)。
         state = game_state_of(session)

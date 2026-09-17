@@ -136,6 +136,13 @@ ENTRY_OVERLAY_CLEAR_ROUNDS: int = 4
 ENTRY_OVERLAY_SETTLE_S: float = 1.0
 
 
+
+def _mark_frame_class(session, domain: str, value: str) -> None:
+    """帧触发代次标注(终态契约 §B:gs 非 Field 双槽,读后即清协议)。"""
+    from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
+    setattr(game_state_of(session), 'frame_class_' + domain, value)
+
+
 def _owned_remove(owned: list[str] | None, item: str) -> list[str] | None:
     """owned 名池摘一件(multiset 语义:同件多份只摘一份);None = 观察域
     未就绪透传(零写留观察)。"""
@@ -1477,7 +1484,7 @@ class CwScreenPrep(CwScreenOpBase):
         obs = self._observe(heavy=True)
         # 帧代次标注(ADR-0583 §3.4):入口 heavy 主观察帧 = full;消费归
         # 决策入口(含经 overlay 防线反弹的 pick 子路径,§5.5-丁)。
-        session.prep_frame_class = 'full'
+        _mark_frame_class(session, 'prep', 'full')
         if obs.event_overlay is not None:
             # overlay 在场 → 交回外循环重识别分发(无计数;对应 loop 0x 分支/op 接管)
             log.info(f'[cw][director] 事件 overlay({obs.event_overlay})→ 交回外循环分发')
@@ -1585,7 +1592,7 @@ class CwScreenPrep(CwScreenOpBase):
             obs = self._project_prep_obs(action, obs)
             session.prep_obs_frame = obs   # 黑板推进(下一动作决策读逻辑态)
             # 直写帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
-            session.prep_frame_class = 'none'
+            _mark_frame_class(session, 'prep', 'none')
         # 访问动作数上限(防御:决策循环不收敛 = 逻辑态或策略 bug,交回外循环
         # 由 stall 防线接管——不静默续跑)
         return self.round_success(
@@ -1637,7 +1644,7 @@ class CwScreenPrep(CwScreenOpBase):
                else self._observe(heavy=True))
         # 帧代次标注(ADR-0583 §3.4):入口 heavy 主观察帧 = full;消费归
         # 决策入口(含经 overlay 防线反弹的 pick 子路径,§5.5-丁)。
-        session.prep_frame_class = 'full'
+        _mark_frame_class(session, 'prep', 'full')
         if obs.event_overlay is not None:
             # 过渡相位检查位(§3.4):overlay 在场 → 交回外循环重识别分发
             # (无计数;对应 loop 0x 分支/op 接管)
@@ -1749,7 +1756,7 @@ class CwScreenPrep(CwScreenOpBase):
             payload = self._project_prep_obs(action, payload)
             session.prep_obs_frame = payload   # 黑板推进(下一动作决策读逻辑态)
             # 直写帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
-            session.prep_frame_class = 'none'
+            _mark_frame_class(session, 'prep', 'none')
         # 访问动作数上限(防御:决策循环不收敛 = 逻辑态或策略 bug,交回外循环
         # 由 stall 防线接管——不静默续跑)
         return self.round_success(
@@ -2134,7 +2141,7 @@ class CwScreenPrep(CwScreenOpBase):
             self._observe(heavy=True)   # 开态观察刷新(gold 真值)
             # 帧代次 = none(ADR-0583 §3.4/D6 补):read_only 分支不接决策
             #(M-6 门)——heavy 观察不等于主观察帧,禁把本分支误标 full
-            match.session.prep_frame_class = 'none'
+            _mark_frame_class(match.session, 'prep', 'none')
             _ = close_shop(self)
             self._probe_node_type()
             return True, 'read_only 开店重读(gold 真值)'
