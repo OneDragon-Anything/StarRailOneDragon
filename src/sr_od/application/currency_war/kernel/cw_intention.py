@@ -1456,12 +1456,14 @@ def _near_death_band(gs: GameState,
 def _bump_obs(session: StrategySession | None, key: str) -> None:
     """观测分键计数(strategy_state_of(session).cw4_counters 容器;键登记惯例同 mandate_v1)。
 
-    session 为 None(纯逻辑直调)静默跳过;容器缺席惰性建空 dict
-    (先例 = mandate_v1/entry.py 初始化面)——只写计数,不碰任何判定
-    输入,零行为。"""
+    双形态宿主(终态契约 §2.6 kernel 注入化):入参即 StrategyState
+    (带 cw4_counters 属性)→ 直用;session/None → 旧路径(strategy_state_lazy;
+    None 纯逻辑直调静默跳过)。容器缺席惰性建空 dict(先例 =
+    mandate_v1/entry.py 初始化面)——只写计数,不碰任何判定输入,零行为。"""
     if session is None:
         return
-    st = strategy_state_lazy(session)
+    st = session if hasattr(session, 'cw4_counters') \
+        else strategy_state_lazy(session)
     if st is None:
         return   # 工厂未注册(第三方策略面):kernel 不代建,静默跳过
     st.cw4_counters[key] = st.cw4_counters.get(key, 0) + 1
@@ -1538,7 +1540,8 @@ def _lock(ist: IntentionState, gs: GameState, sig: IntentionSignal,
 
 def update_intention(gs: GameState, ist: IntentionState,
                      session: StrategySession | None = None,
-                     registry: DecisionV2Registry | None = None
+                     registry: DecisionV2Registry | None = None,
+                     st=None
                      ) -> IntentionState:
     """每回合驱动锁线/撤销状态机(就地改 ist 并返回;不碰 CwSimFrame)。
 
@@ -1552,7 +1555,7 @@ def update_intention(gs: GameState, ist: IntentionState,
         # 吸收态短路也计入锁定率分母(帧末恒 unlocked,分子自然不计;
         # 漏计会虚高锁定率——分键口径声明见函数尾计数块)。
         _plane_key = f'p{min(max(1, plane_of(gs)), 3)}'
-        _bump_obs(session, f'intention_frame_{_plane_key}')
+        _bump_obs(st or session, f'intention_frame_{_plane_key}')
         return ist   # 降格终局是 absorbing 态(点7 止损序同构,不回弹)
     if plane_of(gs) != 1 and ist.transition_pair:
         # 出 P1:过渡对副方向退场(ADR-0367;P2+ 锁定目标=locked_comp 唯一)
@@ -1589,16 +1592,16 @@ def update_intention(gs: GameState, ist: IntentionState,
             comp_wp = get_comp(s.comp_name)
             if comp_wp is None:
                 continue
-            _bump_obs(session, 'weakplane_exempt_eval')
+            _bump_obs(st or session, 'weakplane_exempt_eval')
             thk = _asset_thickness(comp_wp, gs)
             core = intention_core(comp_wp)
             core_vis = bool(core) and core in visible
             if thk >= _a_min and core_vis:
-                _bump_obs(session, 'weakplane_exempt_eval_hit')
+                _bump_obs(st or session, 'weakplane_exempt_eval_hit')
             elif thk < _a_min:
-                _bump_obs(session, 'weakplane_exempt_eval_fail_thickness')
+                _bump_obs(st or session, 'weakplane_exempt_eval_fail_thickness')
             else:
-                _bump_obs(session, 'weakplane_exempt_eval_fail_visible')
+                _bump_obs(st or session, 'weakplane_exempt_eval_fail_visible')
     revoked = False   # 本轮是否发生撤销(出口①miss/出口②):撤后当轮不重锁——
     # 「意向降级为弱意向……直至新信号」= 新信号指下一轮起的信号;同轮撤+锁会让
     # 弱意向态不可观测(判读/遥测断档),状态机一回合最多一次转移。
@@ -1802,16 +1805,16 @@ def update_intention(gs: GameState, ist: IntentionState,
             # fail-closed 前行为零变更。
             _nd = _near_death_band(gs, _reg_f2, session)
             if _nd:
-                _bump_obs(session, 'neardeath_direction_obs_frame')
+                _bump_obs(st or session, 'neardeath_direction_obs_frame')
             sigs = [s for s in sigs
                     if _p2_signal_supply_ok(gs, s, session, _reg_f2,
                                             visible)]
             if len(sigs) != _n0:
                 log.info('[cw][intention] P2 供给可行性缓锁 %d→%d 信号',
                          _n0, len(sigs))
-                _bump_obs(session, 'p2_supply_gate_cull')
+                _bump_obs(st or session, 'p2_supply_gate_cull')
                 if _nd:
-                    _bump_obs(session, 'neardeath_direction_obs_supply_cull')
+                    _bump_obs(st or session, 'neardeath_direction_obs_supply_cull')
         # H1 锁线环境判据(行为无条件化):累积型线强环境不命中(False)的信号
         # 本轮不锁(缓锁——「无环境不选」只辖**主动选线**,已锁线与判据
         # 不辖(None)/信息缺失帧不拦;观察期=line_env_lock_min_round)。
@@ -1963,14 +1966,14 @@ def update_intention(gs: GameState, ist: IntentionState,
         # (G8,输入 = p1_pair_frozen_obs,零行为)。与 G5/G6 分键交叉
         # = 「整局零锁定」摆动局可逐门分解断点(禁合并单键)。
         if _p2_handoff:
-            _bump_obs(session, 'p2_handoff_frame')
+            _bump_obs(st or session, 'p2_handoff_frame')
             if _near_death_band(gs, registry, session):
-                _bump_obs(session, 'neardeath_direction_obs_handoff_frame')
+                _bump_obs(st or session, 'neardeath_direction_obs_handoff_frame')
         _reg_h = registry or DEFAULT_REGISTRY
         if _p2_handoff and ist.p1_pair_frozen_obs:
-            _bump_obs(session, 'promote_candidate_frame')
+            _bump_obs(st or session, 'promote_candidate_frame')
             if promote_candidates(gs, ist, session, _reg_h, visible):
-                _bump_obs(session, 'promote_candidate_nonempty')
+                _bump_obs(st or session, 'promote_candidate_nonempty')
         # P2 移交候选补「锁线可行性」门(锁线可行性批):G > ε 才可锁
         # ——锁线前先验证可达性(供给概率×剩余轮×血预算,注册表派生
         # 零新参数),不可行线不进强锁候选;全不可行 ⇒ 无候选 ⇒ 保持
@@ -2006,9 +2009,9 @@ def update_intention(gs: GameState, ist: IntentionState,
         elif _p2_handoff:
             # G7 观测分键:候选空帧——unlocked 帧零候选 ⇒ handoff_lock
             # 零发射(「整局零锁定」摆动的最直接断点;设计稿 §6)。
-            _bump_obs(session, 'p2_handoff_cand_empty')
+            _bump_obs(st or session, 'p2_handoff_cand_empty')
             if _near_death_band(gs, _reg_h, session):
-                _bump_obs(session, 'neardeath_direction_obs_handoff_empty')
+                _bump_obs(st or session, 'neardeath_direction_obs_handoff_empty')
 
     # 锁定率帧计数(设计稿 §6「锁定率入批统计披露」;分母 = 意向驱动帧,
     # 分子 = 帧末 phase=='locked';按位面分列,与 cw_batch_stats 的
@@ -2017,9 +2020,9 @@ def update_intention(gs: GameState, ist: IntentionState,
     #(ADR-0583 内化;本模块 drive_intention 生产调用点已清零,保留作
     # 纵深防御),共用 strategy_state_of(session).v3_intention_key 段级重入守卫 ⇒ 每 game-round 恰一次)。
     _plane_key = f'p{min(max(1, plane_of(gs)), 3)}'
-    _bump_obs(session, f'intention_frame_{_plane_key}')
+    _bump_obs(st or session, f'intention_frame_{_plane_key}')
     if ist.phase == 'locked' and ist.locked_comp:
-        _bump_obs(session, f'intention_locked_frame_{_plane_key}')
+        _bump_obs(st or session, f'intention_locked_frame_{_plane_key}')
     return ist
 
 
