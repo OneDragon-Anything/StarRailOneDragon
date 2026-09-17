@@ -6,6 +6,8 @@
 """
 from __future__ import annotations
 
+import weakref
+
 from cv2.typing import MatLike
 
 from one_dragon.utils.log_utils import log
@@ -47,14 +49,121 @@ def is_merge_effect_window(screen: MatLike | None) -> bool:
     return bool(_IS_MERGE_EFFECT_FRAME(screen))
 
 
-#: star 降级采新确认门(连续降级读帧数)。推导:确认门 N 必须 > 实测最长
-#: 「同名多星星读抖动」episode 长度——2026-09-15 局深检实锤 bench 同名
-#: 1/2/3★ 三副本并存时星读在帧间
-#: 翻转,本局 3 次 episode 全部「连续 2 次」(05:48:54/05:56:12/06:04:44),
-#: 旧 N=2 恰在 episode 末帧采新 → 锚被洗 → 全程抖动(3★ 合成线报废实证);
-#: 动画窗族(排查结论存档 cw_dev/live_round11_diagnosis.md,274 张存证重放)
-# (终态契约 §A:STAR_DOWNGRADE_CONFIRM_FRAMES 防抖常量与 _hold_star_read
-#  保旧写入端已随 star 回退防抖退役删除——回退即采新,失败可见。)
+# ===== 星级抖动门(槽位锚定 + 两帧一致才采新)=====
+# 病灶(run_20260915_054718 §5/§8 候选2):同名多星单元并存(bench 同名
+# 1/2/3★ 三副本)时 read_star 星级-槽位映射逐帧抖动(不死途 3★→1★,
+# episode ×3 全部「连续 2 帧」形态),「回退即采新」让单帧抖动直进
+# tracked 主账 → 3★ 合成判断与 buy_expect 对账被污染(3★ 合成线整局
+# 未落地实证)。修法两层正交:
+# 1. **槽位锚定**:星级差逐槽判定,锚 = (域, 物理槽号) + 规范名同名——
+#    bench 权威槽位 = 槽位表下标+1(ADR-0605 §5.2 信息位为派生);
+#    deployed = 表下标经 deployed_row_slot 换 (排, 排内槽号)(ADR-0392)。
+#    锚上身份变换(空槽落新单元/换人)= 单元更替事实,星级随身份直采。
+# 2. **两帧一致才采新**:锚上星读 ≠ tracked = 候选(保旧写账 + 抖动
+#    台账行 surface='star');连续两帧候选同值才采新(升/降同门,银狼
+#    升费形态无豁免)。合成特效窗内读数物理不可信:保旧且不登记候选、
+#    不确认(冻结非清零,帧态维 ADR-0420,与时间维两帧门正交)。
+# 候选态宿主 = 按局身份 session 的旁表(WeakKeyDictionary 主路,同
+# game_state_of 模式;新局新 session = 天然清零,无跨局串染面。GameState
+# 本体是 eq-dataclass 不可哈希,故不以其为键;不可弱引用桩面回退 id 键
+# 旁表,超限清空只保在册——同 _DEPLOYED_2SRC_RUN_COUNTS 纪律)。
+# 保旧就地改写读对象 star,其后的纠漂快照与写回消费门后值——单帧抖动
+# 不进 drift 判定(不产「对账纠漂」噪声行),同帧容器席位视图观察写端
+# (备战帧 director 消费同一批读对象)同得保旧值。
+_STAR_GATES: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+#: 桩面兜底第二级:不可弱引用 session 的 id 键旁表(驻留上限见下)。
+_STAR_GATES_BY_ID: dict[int, dict] = {}
+#: id 键旁表驻留上限(超限清空只保新入——测试桩面数量级,生产不走此路)。
+_STAR_GATES_BY_ID_MAX: int = 32
+
+
+def _star_gate_pending(session) -> dict:
+    """星级抖动候选态取口(局身份旁表;缺失惰性建)。"""
+    try:
+        pending = _STAR_GATES.get(session)
+    except TypeError:   # 不可弱引用/不可哈希对象(测试桩面)
+        pending = _STAR_GATES_BY_ID.get(id(session))
+        if pending is None:
+            if len(_STAR_GATES_BY_ID) >= _STAR_GATES_BY_ID_MAX:
+                _STAR_GATES_BY_ID.clear()
+            pending = {}
+            _STAR_GATES_BY_ID[id(session)] = pending
+        return pending
+    if pending is None:
+        pending = {}
+        _STAR_GATES[session] = pending
+    return pending
+
+
+def _gate_star_jitter(session, bench, deployed, screen, *,
+                      source: str) -> None:
+    """星级抖动门本体(语义与出处见上方门注释块)。
+
+    就地改写 ``bench``/``deployed`` 读对象的 ``star`` = 保旧写账;候选态
+    按局身份旁表存(键 = (域, 槽号, 规范名))。锚上身份未锚定
+    (空槽/换人)与读失败侧(None)不辖,候选随锚作废防陈旧假确认。
+    """
+    gs = game_state_of(session)
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        deployed_row_slot,
+    )
+    pending = _star_gate_pending(session)
+    frozen = is_merge_effect_window(screen)
+    for reads, tracked_table, domain in (
+            (bench, gs.tracked_books.bench, 'bench'),
+            (deployed, gs.tracked_books.deployed, 'deployed')):
+        if reads is None:
+            continue   # 读失败侧无读数无证据:候选态保持,不辖
+        tracked_at: dict[tuple[str, int], object] = {}
+        for i, t in enumerate(tracked_table or []):
+            if t is None:
+                continue
+            # 权威锚 = 槽位表下标(bench 下标+1 = 物理槽号;deployed 下标
+            # → (排, 排内槽号)),信息位(槽号字段)为派生不作锚。
+            tracked_at[(domain, i + 1) if domain == 'bench'
+                       else deployed_row_slot(i)] = t
+        for bc in reads:
+            if bc is None:
+                continue
+            anchor = ((domain, bc.slot) if domain == 'bench'
+                      else (bc.position_pref, bc.slot))
+            t = tracked_at.get(anchor)
+            if t is None or not bc.char_id or bc.char_id != t.char_id:
+                # 锚上身份未锚定 = 单元更替,星级随身份直采;该锚旧候选
+                # 作废(防陈旧候选对后续同名单元假确认)。
+                for k in [k for k in pending
+                          if k[0] == anchor[0] and k[1] == anchor[1]]:
+                    del pending[k]
+                continue
+            if bc.star == t.star:
+                pending.pop(anchor + (bc.char_id,), None)
+                continue
+            key = anchor + (bc.char_id,)
+            if not frozen and pending.get(key) == bc.star:
+                pending.pop(key, None)   # 连续两帧同值 → 采新(bc.star 保持)
+                continue
+            if not frozen:
+                pending[key] = bc.star   # 首帧差:登记候选,下帧同值才采新
+            held = bc.star
+            bc.star = t.star             # 保旧写账:就地改写读对象
+            if frozen:
+                _verdict = ('保旧-合成特效窗(窗内星读不可信,不计两帧;'
+                            f'source={source})')
+            else:
+                _verdict = ('保旧-星级抖动门(单帧差弃读,两帧一致才采新;'
+                            f'source={source})')
+            _conflict('star', t.star, held, screen,
+                      verdict=_verdict,
+                      source=source, char=bc.char_id,
+                      slot=anchor[1], domain=anchor[0])
+
+
+#: 星级稳定性口径沿革:终态契约 §A 曾以「回退即采新」替换旧 N=2 防抖
+#: (旧确认门被「连续 2 帧」抖动 episode 骗过,2026-09-15 局深检
+#: .debug/currency_war/deep_review/run_20260915_054718.md §5 三次 episode
+#: 实证);识别优化批以「槽位锚定 + 两帧一致才采新」取代采新口径
+#:(门本体 = :func:`_gate_star_jitter`,与本门特效窗判别正交合并:
+#: 时间维两帧一致 + 帧态维窗内冻结)。
 
 
 def _merge_equips(old_list, new_list) -> list:
@@ -103,10 +212,12 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         bench/deployed: 新读 list[BenchChar](None = 读失败,不写该侧)
         screen: 冲突帧(传则 obs_conflict 存去重截图)
         source: 证据行来源标记(deploy_bench/director)
-        ctx: SrContext(传则 star 回退停机走 run_context.stop_running;None = 离线/测试只留证)
-        合成特效帧态门(采新确认前判别):实现经模块级 ``set_merge_effect_gate`` 注入
-        (分包矩阵禁 kernel→obs 直依);缺省关 = 门放行,走既有
-        STAR_DOWNGRADE_CONFIRM_FRAMES 连续确认主干。
+        ctx: SrContext(兼容形参;star 回退停机钩子已随「星回退处置归观察
+            对账」批退役,不再消费)
+        星级抖动门(槽位锚定 + 两帧一致才采新,单帧差保旧写账 + surface=
+        'star' 台账行);合成特效窗内星读不可信(冻结,不计两帧)——窗判别
+        实现经模块级 ``set_merge_effect_gate`` 注入(分包矩阵禁 kernel→obs
+        直依),缺省关 = 无窗(纯两帧时间维门)。
 
     Returns:
         是否发生了写回(False = 守卫拦截保旧)。边界:槽号健康门拒绝
@@ -135,14 +246,16 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         return False
     new_b = [(bc.char_id, bc.star) for bc in (bench or [])]
     new_d = [(bc.char_id, bc.star) for bc in (deployed or [])]
-    # star 回退留证(终态契约 §A:防抖/帧态门(ADR-0420)/银狼升费豁免退役
-    # ——用户裁定「失败可见」,回退即采新;实机失准走识别优化批)。名级锚
-    # 比较口径保留(名下最高读星对最高旧星仲裁一次)。停机钩子/采样登记
-    # (star_regression)已随「观察对账覆盖」批退役(2026-09-16 用户裁定:
-    # 星回退的处置归 observe-vs-logic 对账,不再单设停机钩子)。
-    # 防抖可能原地改 bench/deployed 副本 star → 纠漂判定与日志必须
-    # 取**防抖后**快照(改前快照会误导排障)。bench/deployed 入参
-    # 是 SIFT 紧凑列表(无 None),但入参若被上游 pad 过则守卫之(同形状契约)。
+    # 星级抖动门(槽位锚定 + 两帧一致才采新):单帧星读抖动保旧写账
+    #(就地改写读对象 star)+ 抖动台账行 surface='star';合成特效窗内
+    # 星读不可信(冻结不计两帧)。门后快照才作纠漂判定与写回基准——
+    # 保旧锚读账一致,不产「对账纠漂」噪声行(出处见 _gate_star_jitter
+    # 上方门注释块)。
+    _gate_star_jitter(session, bench, deployed, screen,
+                      source=source)
+    # 纠漂判定与日志必须取**门后**快照(门可能原地改读对象 star,
+    # 改前快照会误导排障)。bench/deployed 入参是 SIFT 紧凑列表
+    # (无 None),但入参若被上游 pad 过则守卫之(同形状契约)。
     new_b = [(bc.char_id, bc.star) for bc in (bench or []) if bc is not None]
     new_d = [(bc.char_id, bc.star) for bc in (deployed or []) if bc is not None]
     drifted = (old_b != new_b) or (old_d != new_d)

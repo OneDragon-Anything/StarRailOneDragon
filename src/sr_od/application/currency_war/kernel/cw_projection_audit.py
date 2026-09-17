@@ -72,18 +72,24 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_WRITE_END,
         basis='位面入口写定恒稳(链正本 §2),局中不被链读覆盖'),
     # —— 单位域(可失配面核心;吸收规则族)——
+    # 星级读数 = 席位单元属性(非独立容器字段),其识别层单帧抖动的吸收
+    # 规则 = star_two_frame_gate(kernel/cw_reconcile 槽位锚定 + 两帧一致
+    # 才采新),随席位三域写路径一并申报(出处 run_20260915_054718 §5)。
     'front_row': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
         basis='deploy/sell/swap 投影写端 + 行内纯重排采新'
-              '(deploy_slot_reorder,20260918-reconcile 第5例收口)'),
+              '(deploy_slot_reorder,20260918-reconcile 第5例收口)'
+              ' + 星级抖动门采新(star_two_frame_gate,槽位锚定+两帧一致)'),
     'back_row': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
         basis='deploy/sell/swap 投影写端 + 行内纯重排采新'
-              '(deploy_slot_reorder,20260918-reconcile 第5例收口)'),
+              '(deploy_slot_reorder,20260918-reconcile 第5例收口)'
+              ' + 星级抖动门采新(star_two_frame_gate,槽位锚定+两帧一致)'),
     'bench': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
         basis='buy/sell/deploy/swap 投影写端 + 外部授予申报表吸收'
-              '(EXTERNAL_BENCH_GRANTS + external_bench_grant_pending)'),
+              '(EXTERNAL_BENCH_GRANTS + external_bench_grant_pending)'
+              ' + 星级抖动门采新(star_two_frame_gate,槽位锚定+两帧一致)'),
     'back_layout': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='识别口径真值(三信号裁决 = cw_back_layout,观察侧写),'
@@ -344,11 +350,11 @@ def audit_bad_status_keys() -> list[str]:
 #: 已知停局家族的机制必含关键词(完备性锁的抽检半边:五连停局各域的
 #: 收口机制必须仍在其位——防后续重构悄悄拔掉吸收/派生面)。
 _STOP_FAMILY_MECHANISMS: dict[str, tuple[str, ...]] = {
-    'bench': ('EXTERNAL_BENCH_GRANTS',),
+    'bench': ('EXTERNAL_BENCH_GRANTS', 'star_two_frame_gate'),
     'equips': ('EXTERNAL_EQUIP_GRANTS',),
     'gold': ('boundary_gold_backfilled',),
-    'front_row': ('deploy_slot_reorder',),
-    'back_row': ('deploy_slot_reorder',),
+    'front_row': ('deploy_slot_reorder', 'star_two_frame_gate'),
+    'back_row': ('deploy_slot_reorder', 'star_two_frame_gate'),
     'board': ('_resync_board_delta',),
 }
 
