@@ -554,7 +554,8 @@ def emit(obs: PrepObservation, session: StrategySession,
                             _ct_sf0.get('dead_pair_exit_sold_m4_fuel', 0) + 1
                 _vidx = mandate._bench_container_idx(gs, _sf_cands[0])
                 if _vidx is not None:
-                    return [Emitted(SellBench(bench_idx=_vidx), True,
+                    return [Emitted(SellBench(bench_idx=_vidx,
+                                              reason='m4_fuel_sell'), True,
                                     'm4_fuel_sell')]
                 # 容器下标失配(陈旧/carry 帧)= fail-closed 不卖,
                 # 落入下方常规步骤序重评(与候选空集同向)。
@@ -875,10 +876,11 @@ def emit(obs: PrepObservation, session: StrategySession,
                         '') in _f_release:
                     _ct['dead_pair_exit_sold_funding'] = \
                         _ct.get('dead_pair_exit_sold_funding', 0) + 1
-                # 纯归因载体填充/plain 分键计数已随 2026-09-08 用户归因
-                # 遥测删除指令拆除:reason/标记缺省 '' 未标,发射行为零面。
+                # 卖出通道记录字段随发射位填充(SELL_BENCH_REASONS 登记
+                # 键;记录非指令,归因证据层,发射行为零面)。
                 ev_out.append(Emitted(
-                    SellBench(bench_idx=_vidx), False, funding_support=True))
+                    SellBench(bench_idx=_vidx, reason='funding_support'),
+                    False, funding_support=True))
             for bc in _f_fallback:
                 # 容器下标解析(换算收口;失配 = 陈旧/carry 帧,fail-closed 跳过)
                 _vidx = mandate._bench_container_idx(gs, bc)
@@ -888,13 +890,14 @@ def emit(obs: PrepObservation, session: StrategySession,
                             _ct.get('ev_conflict_dropped', 0) + 1
                     continue
                 # 卖出销账(出口①;单笔即止,need 即止)。
-                # reason/标记缺省 '' 未标(归因遥测面不落码)。
+                # reason = 卖出通道记录字段(登记门键,记录非指令)。
                 if (bc.char_id or '') in _f_release:
                     _ct['dead_pair_exit_sold_funding'] = \
                         _ct.get('dead_pair_exit_sold_funding', 0) + 1
                 sell_gate.consume_on_sell(session, bc.char_id or '')
                 ev_out.append(Emitted(
-                    SellBench(bench_idx=_vidx), False, funding_support=True))
+                    SellBench(bench_idx=_vidx, reason='funding_support'),
+                    False, funding_support=True))
                 break
     out = _merge_ev_before_frame_end(out, ev_out)
 
@@ -1271,10 +1274,9 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
                     counters['ev_conflict_dropped'] = \
                         counters.get('ev_conflict_dropped', 0) + 1
                 continue
-            # T3 转化类卖出销账(店侧同款)。转化/plain 分键计数与载体
-            # 归因填充已随 2026-09-08 用户归因遥测删除指令拆除——prep
-            # 卖出恒先于本轮买入,同轮买卖检查豁免面对本位结构性不可达,
-            # reason/标记缺省 '' 未标,销账行为面保留。
+            # T3 转化类卖出销账(店侧同款)。plain 分键计数保留;reason =
+            # 卖出通道记录字段(登记门键,记录非指令)——prep 卖出恒先于
+            # 本轮买入,同轮买卖检查豁免面对本位结构性不可达。
             _fbc = next((b for b in frame.bench if b.slot == s), None)
             _fname = (_fbc.char_id or '') if _fbc is not None else ''
             if _fname in _dp_release:
@@ -1282,8 +1284,9 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
                     counters.get('dead_pair_exit_sold_funding', 0) + 1
             if _fname in _t3_protect:
                 mandate.stall_buys_consume(session, _fname)
-            out.append(Emitted(SellBench(bench_idx=_vidx), False,
-                               funding_support=True))
+            out.append(Emitted(
+                SellBench(bench_idx=_vidx, reason='funding_support'),
+                False, funding_support=True))
             sold_slots.add(_vidx)
         for bc in _f_fallback:
             # 容器下标解析(换算收口;失配 = 陈旧/carry 帧,fail-closed 跳过)
@@ -1293,14 +1296,15 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
                     counters['ev_conflict_dropped'] = \
                         counters.get('ev_conflict_dropped', 0) + 1
                 continue
-            # 卖出销账(出口①;单笔即止,need 即止)。兜底分键计数/载体
-            # 填充已随 2026-09-08 用户归因遥测删除指令拆除(缺省 '' 未标)。
+            # 卖出销账(出口①;单笔即止,need 即止)。兜底分键计数保留;
+            # reason = 卖出通道记录字段(登记门键,记录非指令)。
             if (bc.char_id or '') in _dp_release:
                 counters['dead_pair_exit_sold_funding'] = \
                     counters.get('dead_pair_exit_sold_funding', 0) + 1
             sell_gate.consume_on_sell(session, bc.char_id or '')
             out.append(Emitted(
-                SellBench(bench_idx=_vidx), False, funding_support=True))
+                SellBench(bench_idx=_vidx, reason='funding_support'),
+                False, funding_support=True))
             sold_slots.add(_vidx)
             break
     return out

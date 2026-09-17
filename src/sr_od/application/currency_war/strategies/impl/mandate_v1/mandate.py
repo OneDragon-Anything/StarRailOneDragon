@@ -1044,7 +1044,9 @@ def wanted_closure_emit(session: StrategySession, state: GameState,
         if _vidx is None:
             _count('wanted_leg_fuel_sell_stale_idx')
             return []
-        return [Emitted(SellBench(bench_idx=_vidx), True, 'm4_fuel_sell')]
+        return [Emitted(SellBench(bench_idx=_vidx,
+                                  reason='m4_fuel_sell'), True,
+                        'm4_fuel_sell')]
 
     # 两腿皆不可行 = 裁决放弃态:本节点不再重进;S2 键式保留至节点推进
     # 自动失效(放弃态同样键式,跨节点零污染)。
@@ -1272,7 +1274,8 @@ def run_mandate(frame: MandateFrame,
                 _count('overflow_clear_sell_stale_idx')
                 return []
             _count('overflow_clear_sell')
-            return [Emitted(SellBench(bench_idx=_vidx), True,
+            return [Emitted(SellBench(bench_idx=_vidx,
+                                      reason='m4_fuel_sell'), True,
                             'm4_fuel_sell')]
         _count('overflow_no_fuel')
         return []
@@ -1363,7 +1366,8 @@ def run_mandate(frame: MandateFrame,
                 record_round_sold(session, state, _t1_name_of.get(_s, ''))
                 if _t1_name_of.get(_s, '') in _dp_release:
                     _count('dead_pair_exit_sold_interest')
-                out.append(Emitted(SellBench(bench_idx=_vidx), True,
+                out.append(Emitted(SellBench(bench_idx=_vidx,
+                                             reason='interest_prep'), True,
                                    'interest_prep'))
             _count('t1_interest_prep_emit')
 
@@ -1464,8 +1468,9 @@ def run_mandate(frame: MandateFrame,
                     # 销账行为面保留)。Emitted.reason = route_tag 透传
                     # 载体填充(T-159 §3.3):m4_fuel_sell = 腾席臂构造
                     # 事实,白名单内——落地经路径 (i) 清 S1 开店闩;
-                    # 非归因遥测(T-153 治理立场对表,资格面零触碰),
-                    # 2026-09-08 归因遥测删除令拆除的通道分键不复活。
+                    # 非归因遥测(T-153 治理立场对表,资格面零触碰)。
+                    # SellBench.reason = 卖出通道记录字段(登记门键,
+                    # 记录非指令),归因证据层随发射位填充。
                     _vname = victim.char_id or ''
                     if _vname in _t3_protect:
                         stall_buys_consume(session, _vname)
@@ -1480,7 +1485,8 @@ def run_mandate(frame: MandateFrame,
                         # fail-closed 终止环(重放必再失败,同 no_fuel 形态)。
                         no_fuel = True
                         break
-                    out.append(Emitted(SellBench(bench_idx=_vidx), True,
+                    out.append(Emitted(SellBench(bench_idx=_vidx,
+                                                 reason='m4_fuel_sell'), True,
                                        'm4_fuel_sell'))
                     bench = [b for b in bench if b.slot != victim.slot]
                     freed = True

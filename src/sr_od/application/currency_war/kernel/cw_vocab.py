@@ -408,10 +408,11 @@ class SellBench(CwAction):
     income: int | None = None   # 创建时预期回金(sell_refund 口径;None=未标)
     expect: str = ''           # 代际校验期望名(''=不校验,不符→拒绝)
     reason: str = ''           # 卖出通道记录字段(记录非指令,仿 LevelUp.auth_basis 形态;
-    #                            ''=未标,缺省形态)。现役发射侧唯一承重值 =
-    #                            line_switch_collapse(线账闭合孤儿证明标记,
-    #                            SELL_BENCH_REASONS;纯归因);
-    #                            检查器孤儿豁免分支据此判定(豁免键集 =
+    #                            ''=未标,缺省形态)。承重值 = SELL_BENCH_REASONS
+    #                            通道键(r9 争金归因证据层:失败/压线局的卖出
+    #                            通道占比是归因下钻的直接证据;纯归因);
+    #                            line_switch_collapse 兼孤儿证明标记,检查器
+    #                            孤儿豁免分支据此判定(豁免键集 =
     #                            SELL_BENCH_ORPHAN_REASONS,与发射登记门
     #                            分离的独立闭集)。
     convert_reason: str = ''   # 转化类豁免分键(结构化证明键,ADR-0611):
@@ -462,17 +463,18 @@ SELL_BENCH_CONVERT_REASONS: frozenset[str] = frozenset({
 })
 
 
-# 卖出发射位值域闭集(2026-09-08 用户归因遥测删除指令后 = 唯一承重
-# 值)。原 ADR-0585 §3 批 4 的 5 通道值中,仅 line_switch_collapse 有
-# 存活填充位(凑息回拉换线闭合卖出载体+商店孤儿证明打标链);其余
-# 通道值/转化特化值的发射位填充已全撤,无填充位的枚举值不保留。
-# 转化特化值单一源 = 上方 SELL_BENCH_CONVERT_REASONS(同轮买卖
-# 检查豁免键集,保留)。新增发射位先在此登记再接线(登记门:值漂移
-# 由 test_cw_sell_reason_matrix 双向暴露)。
+# 卖出发射位值域闭集(发射登记门:各 SellBench 发射位的 reason 承重键
+# 必须是本集成员;值 = 通道名,与该发射位 Emitted.reason/route_tag 同键
+# 单一词汇)。新增发射位先在此登记再接线(值漂移由发射面行为锁暴露,
+# 归因消费面按本集分桶)。记录非指令:零行为消费面,资格单一源不变
+# (sell_gate 装配 A)。
 # (unified-action-factory 批2b 自 kernel/cw_prep_actions 迁居,与
 # SELL_BENCH_CONVERT_REASONS 同居;来源语义与登记门不变。)
 SELL_BENCH_REASONS: frozenset[str] = frozenset({
     'line_switch_collapse',     # 线账闭合孤儿清算(ADR-0591 证明打标制)
+    'm4_fuel_sell',             # M4 腾席/压库溢出清位(腾席臂构造事实)
+    'interest_prep',            # T-115 凑息卖出(金位缺口触发)
+    'funding_support',          # 支付筹资卖出(义务买金币位保障)
 })
 
 

@@ -267,6 +267,12 @@ def serialize_action(action: Action) -> dict[str, Any]:
       人次口径已付过的学费)。
     富化只加键不改既有键:旧读端(下钻 card.* 的 query_supply/
     query_economy)零波及,旧记录缺键 .get 兼容。
+
+    行级归一 ``reason`` 键(提取键序单一源 =
+    ``ACTION_REASON_SOURCE_KEYS``):动作行统一附归因串,消费面
+    (复盘骨架/归因下钻)不必逐动作类各认各的键。接线位 = 本函数
+    (动作序列化唯一单点,decisions 行与执行回执载荷同源同键);
+    只加键,提取是纯读,零行为面。
     """
     d = _to_jsonable(action)
     d["__type__"] = type(action).__name__
@@ -280,7 +286,7 @@ def serialize_action(action: Action) -> dict[str, Any]:
                 d['char_id'] = str(_ch.name)
         except Exception:   # noqa: BLE001  观测 best-effort,不阻断落盘
             pass
-    return d
+    return apply_action_reason(d)
 
 
 
@@ -293,7 +299,7 @@ ACTION_REASON_SOURCE_KEYS: tuple[str, ...] = (
 """动作项理由溯源提取键序单一源(提取语义见下;原过程件测试锁已随
 09-13 清理删除,定谳不恢复)。
 
-- 语义:决策行 actions 逐项附 ``reason`` 键(判据命中 id 持久索引),取值 =
+- 语义:序列化动作项统一附 ``reason`` 键(判据命中 id 持久索引),取值 =
   按本键序从**现役决策构建链已有字段**提取首个非空值——纯提取禁新算
   (理由事实是决策时点记录,代码演进后重跑不可靠;留事实,不重算过程值)。
 - 键序依据:动作自带归因字段优先(reason = 买入臂/卖出通道/刷新触发源/
@@ -317,10 +323,8 @@ def action_reason_of(item: dict[str, Any]) -> str:
 def apply_action_reason(item: dict[str, Any]) -> dict[str, Any]:
     """给序列化动作项归一附 ``reason`` 键(只加键不改既有键;原地返回)。
 
-    接线点 = ``TelemetryRecorder.record_decision``(decisions 行写路径
-    单一点);其余消费面(state 流 receipts 行发射载荷等)不经本函数,
-    变更面严格限于决策行。
-    """
+    接线点 = ``serialize_action``(动作序列化唯一单点;decisions 行与
+    执行回执的 action 载荷同经此序列化,归一键随行同源)。"""
     item['reason'] = action_reason_of(item)
     return item
 
