@@ -40,6 +40,36 @@ def _note_receipt(op: SrOperation, applied: bool, reason: str) -> None:
         log.warning('[cw][receipt] 关商店回执写入失败(不阻塞): %s', e)
 
 
+def _clear_shop_payload(op: SrOperation) -> None:
+    """关店时点 kernel 侧 shop payload 清场(W971 04-shop §2 预留挂点落地:
+    「CwOpCloseShop 完成承诺含商店族字段清理」)。
+
+    Why: ``proj_buy_payload`` 买后 logic 态的唯一既有清场写端 =
+    ``apply_shop_action_logic`` 的 CloseShop 分支(``leave_screen``),但
+    生产链 CloseShop 被「终结不入序列」约定截在决策驱动器外
+    (decide_shop_screen 收尾 return,不进 apply),机械关店只点按钮不喂
+    kernel → 买后 payload 跨轮残留,下轮开店帧实读证伪 → 安灯停局
+    (run_20260918_063249 实证:上轮买后 4 空槽+残影 vs 新波 5 卡)。
+    本口 = 「非当前画面 = None」结构语义(§2.2 画面附加域)在机械关店
+    时点的落地,点击已发/幂等已关两出口同清(已关残留同样陈旧)。
+    容器缺席/已 None 静默跳过;失败不阻塞动作链(同回执 best-effort)。
+    """
+    try:
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            ChannelSig,
+            game_state_from_ctx,
+        )
+        gs = game_state_from_ctx(getattr(op, 'ctx', None))
+        if gs is None or gs.shop.value is None:
+            return
+        gs.leave_screen(gs.shop, sig=ChannelSig(
+            family='obs', actor='CwOpCloseShop',
+            screen=SHOP_SCREEN_NAME, mode='read'))
+    except Exception as e:  # noqa: BLE001  清场失败不阻塞动作链
+        from one_dragon.utils.log_utils import log
+        log.warning('[cw][shop] 关店清场写入失败(不阻塞): %s', e)
+
+
 def _close_shop_already_closed(op: SrOperation) -> OperationRoundResult:
     """幂等已关出口构造(单一构造点)。
 
@@ -48,6 +78,7 @@ def _close_shop_already_closed(op: SrOperation) -> OperationRoundResult:
     零转录,总纲契约 1)。
     """
     _note_receipt(op, False, '商店已关(幂等入口观察,无动作可发)')
+    _clear_shop_payload(op)
     return op.round_success('商店已关(收起不在,幂等入口观察)')
 
 
@@ -73,9 +104,9 @@ def close_shop(op: SrOperation) -> OperationRoundResult:
         return _close_shop_already_closed(op)
     time.sleep(SHOP_CLOSE_ANIM_S)
     _note_receipt(op, True, '')
-    # TODO(P2 黑板落地时启用):商店族字段清理挂点——W971 04-shop §2
-    # 「CwOpCloseShop 完成承诺含商店族字段清理」;字段清理随黑板/流程层
-    # 批次落地,本批只留挂点不实现。
+    # 商店族字段清理挂点(W971 04-shop §2)随本批落地:关店机械口即
+    # kernel 侧清场口,见 _clear_shop_payload。
+    _clear_shop_payload(op)
     # 机械交回(验证废除):收起消失与否由下一轮重入幂等观察裁决。
     return op.round_retry('关商店点击已发,重入观察裁决', wait=1)
 
