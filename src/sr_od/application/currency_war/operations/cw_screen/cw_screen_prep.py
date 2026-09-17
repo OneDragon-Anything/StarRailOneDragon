@@ -500,15 +500,11 @@ class CwScreenPrep(CwScreenOpBase):
                 game_state_of as _pobs_gs_of,
             )
             from sr_od.application.currency_war.kernel.cw_game_state import (
-                node_kind_of as _pobs_kind,
-            )
-            from sr_od.application.currency_war.kernel.cw_game_state import (
                 shop_cards_to_legacy as _pobs_cards_legacy,
             )
             _pobs_gs = _pobs_gs_of(session)
-            _node_kind = _pobs_kind(_pobs_gs)
-            if _node_kind:
-                session.last_node_type = _node_kind
+            # (session.last_node_type 写点已随终态契约 §A′ 退役:node 单一源
+            #  = gs 推导 node_kind_of,消费点已直读,本写点无读者。)
             # (last_state 写点已随链退役批删除:遗留读者与执行侧装配源
             #  全切容器单例,端口路径容器喂入 = 观察源实现方契约;原
             #  「写 last_state 前过 gated_hp」门随写点退役,gated_hp 门
@@ -630,12 +626,9 @@ class CwScreenPrep(CwScreenOpBase):
             obs.back_layout_slots = _of.get('back_layout_slots')
             _st = _of.get('read_receipt')
             session = self._session()
-            # shop 关态帧节点行可读 → node_type 真值写 session(商店开态被遮恒
-            # None,plan 路径 boss 判定全死码的根因);仿 last_hp 模式。
-            # (迁移批 3.2:旧 st.bench 帧直写随 read_game_state 返帧退役删除
-            #  ——bench 记录侧唯一写端 = 下方容器观察块,消费读容器单例。)
-            if session is not None and _st is not None and _st.node_type:
-                session.last_node_type = _st.node_type
+            # (session.last_node_type 关态帧写点已随终态契约 §A′ 退役:
+            #  node 单一源 = gs 推导,原「商店开态遮蔽恒 None 致 boss 判定
+            #  死码」的病灶随锚退役一并消亡。)
             # PrepObservation 消费切换转适配器(迁移批次二,设计 §8.7):
             # 决策读自 GameState 容器单例(read_game_state 漏斗直写;
             # 旧 last_state 装配源契约随装配源迁移与链退役批终结,
@@ -2515,44 +2508,9 @@ class CwScreenPrep(CwScreenOpBase):
                                          _plane_now, _ledger_seq)
                     except Exception:   # noqa: BLE001  观测写点 best-effort
                         pass
-                    # current 覆盖链左移优先:OCR 标签
-                    # 位置门拦不住相邻同类标签(reward 标签恰在
-                    # current 下方 x 对上时误读)→
-                    # current 直读不可信。改:**左移推断优先**
-                    # (上帧 upcoming[0]),OCR 标签
-                    # 只在左移无值时兜底(开局首帧)。
-                    # 左移**锚定轮次**——同轮
-                    # 多次 probe(开店/关店/重开)时 upcoming 还是本轮
-                    # 的,会把 current 写成下一节点(超前一位)。
-                    # 只在上次 probe 是更早轮次时才左移;同轮保持原值。
-                    _anchor = (_nd_now.plane, _nd_now.round_num) \
-                        if _nd_now is not None else None
-                    _prev_anchor = getattr(
-                        _sess, 'nodeseq_probe_anchor', None)
-                    if _anchor is not None and _anchor != _prev_anchor:
-                        _prev = getattr(_sess, 'upcoming_types', None) or []
-                        _direct = _prev[0] if _prev else None
-                        if _direct is not None:
-                            _sess.node_type_current = _direct
-                        _sess.nodeseq_probe_anchor = _anchor
-                    # current 直读兜底(首帧:无左移源时)
-                    if getattr(_sess, 'node_type_current', None) is None:
-                        _cur = next((s for s in slots
-                                     if s.state == 'current'), None)
-                        if _cur is not None and _cur.node_type:
-                            _sess.node_type_current = _cur.node_type
-                    # 存本帧 upcoming(下轮左移用; idx 升序)
-                    _sess.upcoming_types = [
-                        s.node_type for s in sorted(
-                            (x for x in slots if x.state == 'upcoming'),
-                            key=lambda x: x.idx) if s.node_type]
-                    # 实时识别权威(用户裁定方向):
-                    # **实时识别是权威**——每备战帧读节点行,
-                    # 应对 invest-env 等策略对节点的改变;
-                    # 开局帧的完整槽序存 plane_node_table 只作
-                    # **离线统计源**(跨局累积建「位面典型节点表」
-                    # 进 sim 骨架/策略知识)+ current 槽高亮读不到
-                    # 时的左移兜底参照。不做决策主源。
+                    # (左移推断/current/upcoming 的 session 写段已随终态契约
+                    #  §A′ node 单一源退役删除:消费点直读 node_kind_of(gs);
+                    #  ledger 落账承探针真值面——重锚宿主迁移另子件 §A′。)
             except Exception:   # noqa: BLE001  best-effort 写入
                 pass
         except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
