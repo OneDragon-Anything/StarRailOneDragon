@@ -67,52 +67,8 @@ def is_merge_effect_window(screen: MatLike | None) -> bool:
 #: 翻转,本局 3 次 episode 全部「连续 2 次」(05:48:54/05:56:12/06:04:44),
 #: 旧 N=2 恰在 episode 末帧采新 → 锚被洗 → 全程抖动(3★ 合成线报废实证);
 #: 动画窗族(排查结论存档 cw_dev/live_round11_diagnosis.md,274 张存证重放)
-#: 窗内假确认 ≤2 帧,且特效帧已由帧态门前置冻结计数、不占 N。N=3 = 观测
-#: 覆盖(2)×1.5 边际;代价不对称:假保旧(真降级晚 N−1 帧,秒级自愈)≪
-#: 假采新(锚洗,整局抖动)。真降级形态 = 同名同槽连续 ≥N 帧低读(持续性
-#: 遮挡),N 再大线性加重该形态自愈时延,3 为观测覆盖与时延的平衡点。
-STAR_DOWNGRADE_CONFIRM_FRAMES: int = 3
-
-
-def _hold_star_read(tracked_bench, bench, deployed, name: str,
-                    anchor_star: int) -> None:
-    """保旧写入端:本帧读链中该名的锚定星不被低读洗掉(原地修读链)。
-
-    判读 = 名级锚比较(主循环只对「名下最高读星 < 锚定星」仲裁一次;
-    逐副本对名 max 比较会把真实 2★/1★ 副本误判成回退并连环误抬——
-    run_20260915_054718 §5 bench 1/2/3★ 三副本并存形态)。保旧三级:
-    ①槽位锚定:tracked 槽位表上锚定星副本所在物理槽(bench 侧 = 表下标
-      +1,ADR-0316)在本帧读链同槽读低 → 原地抬回锚定星(旧「首个低读
-      副本」命中会误抬真实低星副本,假 3★ 与丢真 1★ 双向污染合成/卖牌);
-    ②锚槽缺失(SIFT 漏检锚副本):注入锚副本重建(slot=锚槽,star=锚定星)
-      ——不注入 = 写回即锚被静默洗掉;注入使锚定星跨帧存续,equips 经
-      _merge_equips 同名配对自旧 tracking 续接;
-    ③槽位对不上(deployed 侧 = 排内槽号坐标系,不入锚集)回退首中抬升
-      ——deployed 侧同名唯一性守卫(mutate_bench_deployed W43 裁决)
-      保证至多一副本,首中即唯一。"""
-    anchor_slots = {i + 1 for i, bc in enumerate(tracked_bench or [])
-                    if bc is not None and bc.char_id == name
-                    and bc.star == anchor_star}
-    if anchor_slots:
-        for bc in (bench or []):
-            if (bc is not None and bc.char_id == name
-                    and bc.slot in anchor_slots and bc.star < anchor_star):
-                bc.star = anchor_star
-                return
-        for bc in (bench or []):
-            if bc is not None and bc.char_id == name \
-                    and bc.slot in anchor_slots:
-                return   # 锚槽该名在读但读星≥锚:不修,交常态采信
-        # 锚槽该名整缺(SIFT 漏检)→ 注入锚副本(见 docstring ②)
-        from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
-        bench.append(BenchChar(slot=min(anchor_slots), char_id=name,
-                               star=anchor_star))
-        return
-    for lst in (bench, deployed):
-        for bc in (lst or []):
-            if bc is not None and bc.char_id == name and bc.star < anchor_star:
-                bc.star = anchor_star
-                return
+# (终态契约 §A:STAR_DOWNGRADE_CONFIRM_FRAMES 防抖常量与 _hold_star_read
+#  保旧写入端已随 star 回退防抖退役删除——回退即采新,失败可见。)
 
 
 def _merge_equips(old_list, new_list) -> list:
@@ -197,99 +153,24 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         return False
     new_b = [(bc.char_id, bc.star) for bc in (bench or [])]
     new_d = [(bc.char_id, bc.star) for bc in (deployed or [])]
-    # star 回退留证(观察冲突审计 #13):同名 star 下降(如 2★读回 1★)= read_star
-    # 漏金星 或 卖后重买边缘场景;不保旧(审计:保旧不安全)只留证统计毒化率。
+    # star 回退留证(终态契约 §A:防抖/帧态门(ADR-0420)/银狼升费豁免退役
+    # ——用户裁定「失败可见」,回退即采新;实机失准走识别优化批,行为变化
+    # 登记 design §1.3:合成动画窗误读直进板面账/银狼升费不再豁免/停机钩子
+    # 改绑回退事件本身,留证链保持)。名级锚比较口径保留(名下最高读星对
+    # 最高旧星仲裁一次),防抖分支全删。
     _old_stars = {(n, s) for n, s in old_b + old_d if n}
     _new_stars = {(n, s) for n, s in new_b + new_d if n}
     _reg = dict(game_state_of(session).exec_books.star_regression or {})
-    # ⚖️ star 回退防抖 + 锚定(274 张存证全量重放实证:回退角色 40/40 在场
-    # 且 36/40 **同图重读为 2★**(live 读 1★)→ 真根因 = 3合1 合成动画窗
-    # 识别(read_star 在特效期读 1,存证帧在动画后半段星已显),非 SIFT
-    # 身份错配)。回退即采新写回 → 动画窗 1★ 毒化 tracking,下一帧又纠回
-    # (往返抖)。修法(两级):
-    # ①锚定保旧:首次回退不写回(该角色 star 保旧=_old_s 即锚定星),读低
-    #   副本按槽位锚定抬回(_hold_star_read);下一帧读回正常即自愈。
-    # ②超额证据采新:名级最高读星低于锚定星连续 STAR_DOWNGRADE_CONFIRM_
-    #   FRAMES 帧一致(帧态门帧不计数)才确认真回退采新——N 推导见常量注。
-    _pend = dict(getattr(session, 'star_pending_regression', {}) or {})
-    _tracked_bench_now = game_state_of(session).tracked_books.bench
-    # 名级锚比较:每名只取**最高读星**对**最高旧星(锚定星)**仲裁一次。
-    # 旧实现按 (名,星) 对逐副本比较——同名 1/2/3★ 三副本并存时,2★/1★
-    # 真实副本各被判一次「回退」并连环触发误抬(run_20260915_054718 §5
-    # 实锤形态);锚定语义 = 名下最高确认星不因低读帧洗掉。
     for _n in sorted({n for n, _ in _new_stars}):
         _s = max(s for n, s in _new_stars if n == _n)
         _old_s = max((_os for _on, _os in _old_stars if _on == _n), default=None)
         if _old_s is not None and _s < _old_s:
-            # 银狼升费机制豁免:银狼LV.999 3★拖上场→变4费1★(升费签名
-            # =2★→1★×2-3 与 3★→2★ 成对同刻,文档记载的正常机制,非识别失败);
-            # merge 修复实证不消银狼回退(48条/224局全为机制性),豁免防每2局误停一次
-            if _n.startswith('银狼') and _old_s - _s == 1:
-                log.info(f'[cw][{source}] star 回退豁免:{_n} {_old_s}★→{_s}★(升费机制,非识别失败)')
-                continue
-            # 帧态门(ADR-0420)前置到每一降级读帧:星爆动画/拖拽过渡窗可
-            # 持续 ≥2 帧,特效帧 = 物理不可信窗——保旧并**计数冻结不推进**
-            #(非清零——动画结束后的干净回退帧仍走计数分支确认;门漏检时
-            # 退化为纯防抖行为)。旧实现只在第 2 帧起判门,窗内第 1 帧会
-            # 占计数,与「特效帧读数不进证据」语义不符。
-            if screen is not None and _IS_MERGE_EFFECT_FRAME is not None \
-                    and _IS_MERGE_EFFECT_FRAME(screen):
-                log.info(f'[cw][{source}] star 回退帧态门:{_n} {_old_s}★→{_s}★'
-                         f'(合成特效帧,读数不可信)→ 保旧 {_old_s}★,防抖冻结')
-                _conflict('star', _old_s, _s, screen,
-                          verdict='保旧-合成特效帧态门(采新确认被拦,防抖冻结;'
-                                  'W292/ADR-0420)',
-                          source=source, char=_n)
-                _hold_star_read(_tracked_bench_now, bench, deployed,
-                                _n, _old_s)
-                continue
-            _seen = _pend.get(_n, 0) + 1
-            _pend[_n] = _seen
-            if _seen < STAR_DOWNGRADE_CONFIRM_FRAMES:
-                # 防抖窗:疑星读抖动/动画窗尾——不写回,star 保旧防毒化;
-                # 连续计数达标前读回正常即自愈(离场/恢复分支清计数)。
-                log.info(f'[cw][{source}] star 回退防抖:{_n} {_old_s}★→{_s}★'
-                         f'(疑同名多星星读抖动/动画窗)→ 本帧保旧 {_old_s}★,'
-                         f'连续 {_seen}/{STAR_DOWNGRADE_CONFIRM_FRAMES}')
-                _conflict('star', _old_s, _s, screen,
-                          verdict=(f'保旧-回退防抖(疑星读抖动,'
-                                   f'{_seen}/{STAR_DOWNGRADE_CONFIRM_FRAMES},'
-                                   f'下帧确认)'),
-                          source=source, char=_n)
-                _hold_star_read(_tracked_bench_now, bench, deployed,
-                                _n, _old_s)
-            else:
-                # 连续 N 帧一致:确认真回退(卖后重买/持续性遮挡/真识别
-                # 问题)→ 采新写回(超额证据门,推导见常量注)。确认即
-                # 消费本段连续计数(episode 收口;读回恢复分支仍会兜底清)。
-                _pend.pop(_n, None)
-                log.warning(f'[cw!][{source}] star 回退确认:{_n} {_old_s}★→{_s}★'
-                            f'(连续{_seen}帧一致,超额证据)')
-                _conflict('star', _old_s, _s, screen,
-                          verdict=(f'采新-回退确认(连续{_seen}帧一致)'),
-                          source=source, char=_n)
-                # ⚖️ star 回退留证(排查结论存档 cw_dev/live_round11_diagnosis.md
-                # :根因在 SIFT 身份域,非读星;降级为高频留证——每 5 次回退存
-                # 一张证,不 stop,排查证据流保留。SIFT 身份修复后本段连同
-                # _star_stop_hook 删)。
-                # 钩子归位:留证调用经**队列记录**——真正落盘由 director 对账位
-                # 统一触发(消费统一观察;帧态门在 _star_stop_hook
-                # 内,双层保护)。reconcile 只登记,不做 IO。
-                if _old_s >= 2:
-                    _reg[_n] = _reg.get(_n, 0) + 1
-                    _pending_evidence.append((_n, _old_s, _s, source))
-        elif _n in _pend or _n in _reg:
-            _pend.pop(_n, None)   # 读回恢复(或超预估)→ 清防抖(自愈;pop 而非 del——
-            # 名字可能只在 _reg 不在 _pend,del 抛 KeyError 会打断备战环,实锤 丹恒·饮月)
-            _reg.pop(_n, None)   # 连续回退计数同步清零(恢复语义)
-    # 离场清除 pending(角色卖出/上场后 _pend 残留 → 该角色下次登场时
-    # 单次动画误读被误判「连续第二次确认」)。只在两侧都真读(非 None)时清 —— None 侧
-    # 读失败不代表离场。双空读已在上方守卫早退,这里 old 非空 + 双真读 = 真离场。
-    if _pend and bench is not None and deployed is not None:
-        _gone = [n for n in _pend if n not in {x for x, _ in _new_stars}]
-        for n in _gone:
-            del _pend[n]
-    session.star_pending_regression = _pend
+            _conflict('star', _old_s, _s, screen,
+                      verdict='留证-回退采新(防抖/帧态门/银狼豁免已退役,失败可见)',
+                      source=source, char=_n)
+            if _old_s >= 2:
+                _reg[_n] = _reg.get(_n, 0) + 1
+                _pending_evidence.append((_n, _old_s, _s, source))
     game_state_of(session).exec_books.star_regression = _reg
     # 防抖可能原地改 bench/deployed 副本 star → 纠漂判定与日志必须
     # 取**防抖后**快照(改前快照会误导排障)。bench/deployed 入参
