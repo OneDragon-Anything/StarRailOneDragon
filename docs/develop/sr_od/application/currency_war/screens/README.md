@@ -127,7 +127,7 @@
 |---|---|---|
 | 商店 RefreshShop | **段终结** | 刷新是唯一引入新事实的动作(新牌面),执行即本段 break;下一段入口观察重建期望态。visit 级刷新硬墙 = `cw_screen_buy_cards.py::MAX_REFRESH`(超墙终结集降级仅关店,`shop.md` §3) |
 | 商店 CloseShop | **访问终结** | 恒可用终结 op(全函数「无动作可做」的表达);关店点击由编排壳 CwOpCloseShop 执行,节点探针收尾后交回外循环 |
-| 商店全 unknown 失读窗 | 收工终结 | 牌面含 unknown 槽 → 花钱动作禁发射,仅 CloseShop 收工;未识别卡停机钩子留证(`shop.md` §3) |
+| 商店全 unknown 失读窗 | **入口观察停机** | 牌面含 unknown 槽(读链终判)→ 入口观察处 `stop_running` 框架截图留证,决策/购买不见残缺牌面;决策侧仅 CloseShop 收工为纵深第二线(`shop.md` §5,guards.md §3) |
 | 备战 StartBattle | **访问终结(唯一完成态)** | 出战 → 外循环置战斗窗口(备战→战斗→结算→回备战轮推进,`outer_loop.md` §4) |
 | 备战 OpenShop | 备战环终结 | 交商店访问编排(显式开店)或回外循环重识别(读数开店) |
 | 备战 OpenBox | **访问终结** | 点「开启」即交回外循环重观察;武装箱选择画面由外循环按画面分发独立画面 op 选卡([box_pick.md](box_pick.md)),选卡动作不经备战决策循环 |

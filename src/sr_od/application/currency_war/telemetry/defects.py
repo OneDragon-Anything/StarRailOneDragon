@@ -1,4 +1,4 @@
-"""缺陷判定与安灯:judge_severity/record_defect/bypass_* 出口/安灯旗(自 cw_telemetry 拆出,分包期6)。"""
+"""缺陷判定与分级台账:judge_severity/record_defect/bypass_* 出口(自 cw_telemetry 拆出,分包期6;L0 安灯停线已随 2026-09-16 框架化批退役)。"""
 
 from __future__ import annotations
 
@@ -121,7 +121,7 @@ def record_deployed_count_2src_divergence(paddle_n: int | None, cv_n: int,
     """记一条 deployed 计数双源分键行(best-effort;run_id 缺省 no-op)。
 
     真分歧(paddle 有读值):仲裁已在本侧完成(取低值),逐次行恒 L2
-    留证(auto_resolved=True,不进安灯——决策面已不消费污染源);同局
+    留证(auto_resolved=True——仲裁已在本侧完成,决策面不消费污染源);同局
     真分歧逐次行数达 ``DEPLOYED_COUNT_2SRC_SUSTAINED_N`` 再落一条 L1
     升级行(持续显影,每局至多一条,升级行不进逐次计数)。
     paddle 失读退化帧(paddle_n=None):单源 CV 行动(向板满侧),无

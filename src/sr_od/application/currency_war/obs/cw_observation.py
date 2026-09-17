@@ -577,7 +577,7 @@ def verify_node_type_votes(ctx: SrContext, screen: MatLike,
     - 票C 当前槽高亮态图标 Hu 对模板(``cw_node_reader.current_slot_hu_type``)。
 
     ≥2 张非弃权票一致反对表值 → 落缺陷台账(``cw_telemetry.record_defect``,
-    中相关面;复现升 L0 由既有安灯通道承接)。**投资环境变异窗豁免**
+    中相关面;复现由台账行复现计数显影)。**投资环境变异窗豁免**
     (``ledger.env_grace_until``):窗内节点行合法变异中,不一致是预期而非
     识别错误,不落。同一 (plane, round) 只落一行(逐帧校验每帧跑,去重防刷屏)。
     任何前置不满足(无表值 / 非 clean 帧 / 无当前槽)→ 静默跳过。
@@ -624,7 +624,7 @@ def verify_node_type_votes(ctx: SrContext, screen: MatLike,
     if _verdict == 'defect' and _key not in ledger.defect_seen:
         ledger.defect_seen.add(_key)
         log.warning('[cw!][node_votes] 查表=%s vs 三票=%s(past=%d hu_dist=%.2f 未来对表不符=%d)'
-                    ' → 落缺陷台账(识别错误候选,复现升 L0)', table_t, votes,
+                    ' → 落缺陷台账(识别错误候选,复现计数显影)', table_t, votes,
                     past_n, hu_dist, _future_bad)
         try:
             # 分包期 4:落账经 kernel/cw_telemetry_exit 出口钩子位(零直依 telemetry)
@@ -640,7 +640,7 @@ def verify_node_type_votes(ctx: SrContext, screen: MatLike,
                          f' 未来图标对表不符位={_future_bad})',
                 plane=int(plane or 0), round_num=int(round_num or 0),
                 verdict=('留证-≥2 独立票一致反对权威表值(投资环境窗外)=识别错误候选;'
-                         '复现升 L0 由安灯通道承接'),
+                         '复现由台账行复现计数显影'),
                 reader_source='node_ledger_three_vote',
                 gap_large=False,
                 # refs 旧挂点清理(W7 refs 迁移):decisions 流已退役,

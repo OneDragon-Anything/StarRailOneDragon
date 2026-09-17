@@ -71,14 +71,14 @@ while True(零读屏):
 | 条件 | 语义 |
 |---|---|
 | **CloseShop 终结** | 策略器主动选关店(全函数「无动作可做」的表达)→ 本段收工。唯一常规离店条件 |
-| 全 unknown 窗 | 牌面含 unknown 槽(整帧 OCR/SIFT 失读窗)→ 决策入口前置门仅返回 CloseShop(花钱动作一律禁发射,不猜;真买空 [empty×5] 不受影响)→ 收工段未识别卡停机钩子随即承接留证 |
+| 全 unknown 窗 | 牌面含 unknown 槽(整帧 OCR/SIFT 失读窗)→ **入口观察即停**(见下行;决策入口前置门仅返回 CloseShop 为纵深第二线) |
 | 刷新硬墙 | visit 级 `total_refresh` ≥ MAX_REFRESH → 终结集降级仅关店(本轮当未刷新收工) |
-| 未识别卡停机 | 收工前检查:牌面仍有 unknown 槽(kind=='unknown' 判据;empty=确证空位不计)→ 判据化自愈重读 2 帧(`_wait_shop_row_stable` 两帧指纹一致 + ≥1.0s 最短观察窗)→ 仍 miss → 停机保画面待建档(未识别不能降级带病跑;`cw_screen_buy_cards.py` 收工段停机钩子) |
+| 未识别卡停机 | 每波入口观察回执落地即判:读链终判(内部易误判重观察后)仍含 unknown 槽(empty=确证空位不计)→ `stop_running(save_screenshot=True)` 框架截图留证 + round_fail——决策/购买不见残缺牌面(未识别不能降级带病跑;2026-09-16 迁移+框架化,防抖探针/flag 退役;细则 = [../flow/guards.md](../flow/guards.md) §3) |
 | 循环异常 | 上抛 → 编排层单元 aborted 关账,店不收(交上层重新识别) |
 
 `visit_open_shop` = 商店访问尾段(run_buy_waves → CwOpCloseShop → finalize_buy_phase → 节点探针)的**编排单一源**,显式开店与 0n 转交两路径共用;失败路径不收店(店留着交上层重新识别)。
 
-单元收尾 `finalize_buy_phase`:①买后重估暂存(黑板派生帧标 view,由下一决策入口消费刷新;无升级单元走增量态构造,fail-closed 两维:金失读/tracked 空 → 回退全量 read_game_state);②买牌期望暂存(主环 heavy 定型帧消费对账);③gold 差值双源对拍(expected = 开店首读金 − 全程执行花金 + 全程卖入;|差|>2 → 留证;容忍 ±2 = 收入/连胜金不可观项;关店实读金无条件暂存进单元行);④执行事实暂存(安灯分类器消费);⑤返回单元摘要。
+单元收尾 `finalize_buy_phase`:①买后重估暂存(黑板派生帧标 view,由下一决策入口消费刷新;无升级单元走增量态构造,fail-closed 两维:金失读/tracked 空 → 回退全量 read_game_state);②买牌期望暂存(主环 heavy 定型帧消费对账);③gold 差值双源对拍(expected = 开店首读金 − 全程执行花金 + 全程卖入;|差|>2 → 留证;容忍 ±2 = 收入/连胜金不可观项;关店实读金无条件暂存进单元行);④返回单元摘要。
 
 ## 6. 状态上报面
 
@@ -93,9 +93,8 @@ while True(零读屏):
 
 ## 8. 守卫与防线
 
-- 未识别卡停机钩子(§5;用户裁定:未识别不能降级带病跑)。
+- 未识别卡停机(§5,入口观察即停;用户裁定:未识别不能降级带病跑,识别不到就是 bug)。
 - visit 级刷新硬墙 MAX_REFRESH(防「终结→重进→再刷新」外循环无进展);shop_visit_idle_gold 计数键(visit 语义)。
-- 执行失败安灯:购买单元收尾分类器(判据输入 = 单元暂存 BuyCardsOutcome + finalize 关店金现读;`plan_truncated` 豁免语义 = 刷新硬墙跳过);每局最多停一次。
 - EV 买面席位门(满栏帧不提案,拒因分键 shop_ev_bench_wait;满栏合成买面 m2_merge_completion 提案不在门辖)。
 - 免费刷新 proc 留证:flag 不停机(免费不是失败)。
 

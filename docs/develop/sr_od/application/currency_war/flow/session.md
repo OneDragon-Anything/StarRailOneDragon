@@ -91,7 +91,7 @@
 | `equip_drag_fail_counts` | 装备拖拽执行失败 | CwOpEquipAll 拉黑 | 局 | 同上 |
 | `megastar_candidate_clicked` | 巨星 handler 点击执行 | handler 防重入 | handler 访问内 | **`ctx.cw_match` 级局容器(定案,不留实施批裁量)**——字段定义理由(session 文件:123-124)恰是「防 new CwScreenMegastar instance 重置 instance flag → 重选卡死」,落 op 实例 = 每次新建实例清零 = 原始事故按定义复发(对抗审查 B1 改判;初版落点作废) |
 | `_supply_refresh_used` / `_encounter_refresh_used` | 补给/遭遇刷新点击执行 | handler 防重入(screens/supply.md 开放设计注 裁 carried/执行侧) | 节点 | 画面 op 实例/节点级执行载体 |
-| `star_regression_count` | star 回退停机钩子计数 | 停机钩子判定 | 节点×2 | 执行侧停机钩子载体 |
+| `star_regression_count` | star 回退停机钩子计数 | 停机钩子判定 | 节点×2 | **已删除**(停机钩子随 2026-09-16 框架化批退役,星回退处置归观察对账;容器登记 `exec_books.star_regression` 同批删除) |
 | `tracked_bench_chars` / `tracked_deployed` | 执行侧跟踪账(随动更新) | 双账断言(screens/op-layer.md §1.3) | visit 内 | 执行侧 tracked 账(现状归 session 属历史宿主错位) |
 | `v2_round_key` / `v2_round_sold` | 同轮买卖互斥事实账本(初版误判退役,对抗审查 A2 改判迁出;实施盘点再改判**删除**——A2 申报的「活写端 = `kernel/cw_round_ledger.py:30-34` 带轮键自校验登记」实为恒早退 no-op:`v2_round_key` 全仓零写端,其维护者「决策层轮键重置段」属已删除的 decision_v2;「live 调用方 = cw_shop_action_ops.py:487」申报亦误,唯一调用桩 = cw_sell_bench_action 卖出落地段;`v2_round_sold` 恒空集,买侧互斥消费面不存在) | 无(机制从未在环) | 轮(轮键自校验) | **已删除**(死面僵尸,随执行层状态类目退役;现行同轮已卖互斥单一事实源 = mandate_v1 自有载体 `cw4_round_sold_names`) |
 | `pending_buy_expect` / `xp_expect_ledger` | 期望账构建(执行对账) | heavy 定型帧对账 | 单元/局 | 执行侧对账载体 |
@@ -220,7 +220,7 @@ StrategySession(104 项混装:              StrategySession(30 项:观察 28 + �
 - `tracked_bench_chars`/`pending_buy_expect`/`xp_expect_ledger`/`expected_state`:迁执行侧对账载体,双账断言语义不变(screens/op-layer.md §2.3(ii))。**kernel 读写签名重构**(对抗审查 B2-5 补):`kernel/cw_reconcile.py:78`、`kernel/cw_expected_state.py:333` 对这组字段有读写签名——迁出后 kernel→执行侧载体的访问路径**必须定义**(候选 = 执行侧载体访问口注入 kernel,或对账入口收拢签名),禁让 kernel 直接 getattr session 猜新宿主——那是与 §1-2 同型的耦合换壳复活。
 - `v2_round_key`/`v2_round_bought`/`v2_round_sold`(§2.4 新增):原迁移指令(随 `cw_round_ledger` 宿主迁移,`register_round_sold` 轮键自校验语义不变,live 调用方与仲裁消费点同步换宿主)已作废——实施盘点证明轮键守卫恒早退使 `register_round_sold` 恒为 no-op(调用方实为 cw_sell_bench_action 卖出落地段,非 cw_shop_action_ops),`v2_round_key`/`v2_round_sold` 判死面随执行层状态类目退役删除,`v2_round_bought` 按 §2.5 前置动作删除;现行同轮已卖互斥单一事实源 = mandate_v1 自有载体 `cw4_round_sold_names`。
 - 执行层读策略状态的既有点换访问函数(对抗审查 B2-2/3 补):`cw_op_deploy.py:1014`(读 v3_intention 取 locked_fac)、`cw_shop_action_ops.py:362`(读 cw4_counters)、`:395`(读 v3_intention)——执行层读策略状态的合法通道 = 访问函数,逐点改。
-- `_supply_refresh_used`/`_encounter_refresh_used`/`star_regression_count`:按 §2.4 落点迁,防重入语义逐字段保持;`megastar_candidate_clicked` 按 §2.4 定案落 `ctx.cw_match` 级局容器。(defer_count/bail_reason_counts 已随 DeferSpheres/BailToOuter 词表退役整体删除,不迁移。)
+- `_supply_refresh_used`/`_encounter_refresh_used`:按 §2.4 落点迁,防重入语义逐字段保持(`star_regression_count` 随停机钩子退役删除,不迁移);`megastar_candidate_clicked` 按 §2.4 定案落 `ctx.cw_match` 级局容器。(defer_count/bail_reason_counts 已随 DeferSpheres/BailToOuter 词表退役整体删除,不迁移。)
 
 ### 5.6 sim 引擎
 

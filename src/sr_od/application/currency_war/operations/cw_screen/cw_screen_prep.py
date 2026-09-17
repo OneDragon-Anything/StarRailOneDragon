@@ -1415,8 +1415,8 @@ class CwScreenPrep(CwScreenOpBase):
                          '有副本而识别无✦=合成计算嫌疑或识别暗相漏检,双义'
                          '不逐票判死;game_extra=识别有✦而我方无账=漏算'
                          '留证不判罚。merge_preview 读 0 双义=真无副本∨'
-                         'fail-silent 读不到;零决策记账,单次 L1,复现升'
-                         'L0 由分级安灯承接)'),
+                         'fail-silent 读不到;零决策记账,单次与复现同级 L1,'
+                         '复现计数见台账行)'),
                 refs=[{'field': k, 'value': v} for k, v in (
                     ('slots', str(len(our))),
                     ('unnamed', str(unnamed)),

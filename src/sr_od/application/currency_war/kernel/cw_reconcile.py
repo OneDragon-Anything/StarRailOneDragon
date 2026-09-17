@@ -95,11 +95,8 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     - **漂移留证**:新旧不一致 → obs_conflict(裁决=采新-对账纠漂)+ [cw!] 日志;
       一致 → 静默(常态无噪声)。
 
-    ⚖️ star 回退停机钩子(用户 2026-08-17 指示):买牌 merge 预估升星(tracking)后,实机
-    read_star 回读更低 = 星级识别可疑(read_star 漏金星/星区被遮挡)——**star≥2 的回退连续
-    2 个节点仍现 → 停机保画面排查**(第 1 次可能是升星特效遮挡过渡帧,一节点内消;防抖
-    同 M35 shop_unknown 模式)。sentinel 自描述(删钩子位置/排查项),防「孤儿残留」误判
-    (教训:反复出现的 sentinel 必有活生产者,grep 写入者)。
+    (star 回退停机钩子已随「星回退处置归观察对账」批退役,2026-09-16:
+    merge 预估星被实读证伪 → observe-vs-logic 对账承接,不再单设钩子。)
 
     Args:
         session: StrategySession(tracked_bench_chars/tracked_deployed 被写回)
