@@ -1717,7 +1717,8 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #:   逐 op 行;SellDeployed/DeployMove 不写逻辑态——等观察
 #:   覆盖,申报 = 商店 visit 在产动作集外);
 #: - **None 跳写清单**(域级独立跳写,禁缺省值参与计算):gold /
-#:   xp / 刷新费(paid=None 整动作跳写);
+#:   xp+level(升级推进对,同进退——任一未读则推进对整体跳写)/
+#:   刷新费(paid=None 整动作跳写);
 #: - **executed 回执字段集** = bought_count(BuyCard 实购张数,满栏多买
 #:   k 执行期确定)/ levelup_clicks(LevelUpShop 实际击数)/ refresh_paid
 #:   (RefreshShop 实付刷新费,免费帧 0);回执缺字段 = 该动作本轮不写逻辑态。
@@ -1729,11 +1730,18 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #:   DeployMove 不入(围栏部署 = 结算期代理,obs 通道申报对齐);
 #: - 域集扩:front_row / back_row(v2 腿与合成连锁全场域写回,deployed
 #:   域语义)、board(v2 腿重算派生)、equips(卖出回收腿);
+#: - 域集扩(2026-09-18):level(LevelUpShop 升档直写;语义源 = prep 腿
+#:   apply_prep_action_logic LevelUp 分支同款,推进单一源 =
+#:   ``cw_economy.xp_apply_clicks`` 跨级连跳含内)。依据 = 等级滞留使
+#:   下一击按旧级重算(花金零等级推进),而等级 = 席位 cap 解锁地板
+#:   (``max_units_of`` 经读口跟随,消费位零改动)。域级跳写对 =
+#:   (level, xp) 同进退:任一未读则推进对整体跳写,禁缺省 1 参与
+#:   推进计算。
 #: - 扩面依据:单一转移函数 = sim 引擎动作应用的唯一形态(裁定 A:
 #:   logic_action 族,与 live 同函数同渠道),域覆盖须对齐 simulate
 #:   对应分支的字段转移全集。
 SHOP_PROJECTION_DOMAINS: tuple[str, ...] = (
-    'gold', 'bench', 'shop', 'xp',
+    'gold', 'bench', 'shop', 'xp', 'level',
     'front_row', 'back_row', 'board', 'equips')
 
 
@@ -1822,9 +1830,11 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
       equips/board 随分支。(CompTransaction 腿已随 unified-action-
       factory 批2b R3 删除——整档替换宏动作退役,原子序列重表达归
       策略侧。)
-    - **LevelUpShop** = xp 按实际击数(``xp_apply_clicks`` 单一源:满级
-      封顶零推进)+ gold −击数×单击价(单价 = 动作对象决策期值)。
-      level 域不在逻辑态直写域集(升档等观察覆盖)。满级 = applied=False +
+    - **LevelUpShop** = xp/level 按实际击数推进(``xp_apply_clicks`` 单一源:
+      跨级连跳+溢出结转在算子内;level 跨档直写与 prep 腿同款——等级
+      滞留会让下一击按旧级重算(花金零等级推进),而等级 = 席位 cap
+      解锁地板,``max_units_of`` 经读口自动跟随)+ gold −击数×单击价
+      (单价 = 动作对象决策期值)。满级 = applied=False +
       reason='level_cap' 零写。executed None = 击数自算 1(理想执行)。
     - **RefreshShop** = gold −刷新费(paid=0 免费帧 −0/不写)。executed
       None = 跳写(实付金含免费刷注入等引擎差异,不可自算——sim 引擎
@@ -2103,12 +2113,18 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
         if g is not None:
             _w(gs.gold, int(g) - int(getattr(action, 'cost', 0) or 0) * clicks,
                'proj_levelup_gold')
+        # xp/level 推进(单一源 = xp_apply_clicks,跨级连跳含内);level
+        # 跨档直写(域集扩申报 = SHOP_PROJECTION_DOMAINS 登记面注)。
+        # (level, xp) 域级跳写对同进退:任一未读整体跳写,禁缺省 1 参与
+        # 推进计算(与 prep 腿 LevelUp 分支同纪律)。
+        _lv_v = gs.level.value
         xp_v = gs.xp.value
-        if xp_v is not None:
-            _lvl = level_of(gs)
-            _new_lvl, _cur = xp_apply_clicks(_lvl, int(xp_v[0]), clicks)
+        if xp_v is not None and _lv_v is not None:
+            _new_lvl, _cur = xp_apply_clicks(int(_lv_v), int(xp_v[0]), clicks)
             _w(gs.xp, (_cur, XP_TO_NEXT_LEVEL.get(_new_lvl, _cur)),
                'proj_levelup_xp')
+            if _new_lvl != int(_lv_v):
+                _w(gs.level, _new_lvl, 'proj_levelup_level')
         return LogicOutcome(applied=True)
     # —— RefreshShop ——
     if isinstance(action, RefreshShop):
