@@ -64,6 +64,7 @@ from sr_od.application.currency_war.kernel.cw_reward_node import (
     reward_node_suppressed,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
+    S1_RESET_ROUTE_TAGS,
     CwAction,
     DeployMove,
     FurnaceUse,
@@ -817,16 +818,6 @@ def _redeploy_emission_allowed(session: StrategySession,
 # 下文「§x.y」引用 = ADR-0596 收编的方案 v2.1 同号节(清键三路径
 # 封闭枚举/迁移 A-D/终止性三支柱与安全阀降格/实现裁定申报三条均
 # 在册),节内注释不再重复携带出处路径。
-
-#: S1 清键白名单 route_tag 闭集(§3.3 路径 (i) 卖出类;部署类由动作类型
-#: RunDeploy 承载 = route_tag_of,不占本集)。equip_transfer_sell = 预留
-#: tag(审 D3:M7 伴随卖人发生在组合 op 内部、无现役 prep 域发射位,留作
-#: 枚举完备性,禁虚找挂点)。凑息/压库类 tag 不入白名单:其触发重开只能
-#: 经路径 (ii)(S2 在册 ∧ 腾席翻正,义务优先,猎点 14)。
-S1_RESET_ROUTE_TAGS: frozenset[str] = frozenset({
-    'm4_fuel_sell',
-    'equip_transfer_sell',
-})
 
 #: wanted 重进安全阀上限(§6.2:键式计数 ≤ 每节点)。保守安全阀非紧界
 #: 申报:零调参门自答 = 框架流程防线常量(熔断动作 = 裁决放弃+遥测,

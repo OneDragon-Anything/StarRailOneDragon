@@ -423,7 +423,7 @@ def apply_action_outcome(_aop: 'ActionOp',
         # 备战域白名单 route tag = tag 泄漏进商店域的结构性错位,计数
         # 显影(现役构造面不可达:族 A 动作无 route_tag 字段,防御位)。
         # 离线对账半 = s1_reset_by_* 与卖出通道计数交叉判读。
-        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
+        from sr_od.application.currency_war.kernel.cw_vocab import (
             S1_RESET_ROUTE_TAGS,
         )
         _rt = getattr(action, 'route_tag', '') or ''

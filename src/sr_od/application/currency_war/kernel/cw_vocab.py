@@ -492,6 +492,21 @@ SELL_BENCH_ORPHAN_REASONS: frozenset[str] = frozenset({
 })
 
 
+# S1 清键白名单 route_tag 闭集(备战旗标状态机 ADR-0596 §3.3 路径 (i)
+# 卖出类;部署类由动作类型 DeployMove 承载 = route_tag_of,不占本集)。
+# 宿主 = kernel 词表:值域闭集单一源——策略器清键路由(mandate_v1)与
+# 框架侧防御位误标检出(cw_screen_buy_cards 的 s1_reset_mischannel
+# 计数)双消费同取此源(operations 禁触策略实现包常量)。
+# equip_transfer_sell = 预留 tag(审 D3:M7 伴随卖人发生在组合 op 内部、
+# 无现役 prep 域发射位,留作枚举完备性,禁虚找挂点)。凑息/压库类 tag
+# 不入白名单:其触发重开只能经路径 (ii)(S2 在册 ∧ 腾席翻正,义务
+# 优先,猎点 14)。
+S1_RESET_ROUTE_TAGS: frozenset[str] = frozenset({
+    'm4_fuel_sell',
+    'equip_transfer_sell',
+})
+
+
 @dataclass
 class LevelUp(CwAction):
     cost: int        # 本次「购买经验」单击花金(ADR-0129:一次点击 = +XP_PER_BUY 经验,非整级;凑够门槛才升级)
