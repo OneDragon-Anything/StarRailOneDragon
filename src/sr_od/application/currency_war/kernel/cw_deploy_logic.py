@@ -489,12 +489,16 @@ def select_deployments(
     reason 消费走 ``select_deployments_reasoned``。
 
     ``required_names``(判据必需件首桶):目标 comp 的 required_deployed
-    成员名集(装配单一源 = mandate ``_deploy_plan_inputs`` 与 kernel
-    ``assemble_swap_plan_inputs``,来源 = ``Comp.required_deployed``);
-    进选人序首桶,先于核心桶/cap 竞争——推导出处 = ``Comp.
-    required_deployed`` 字段契约(判据必要条件,缺它体系恒不成型)+
-    user_playstyle [31]② 目标件最高优先的必需件特化。缺省空集 = 序
-    逐位同旧(未接线消费面零漂移)。
+    成员名集(装配单一源 = mandate ``_deploy_plan_inputs``、kernel
+    ``assemble_swap_plan_inputs`` 与 cw_screen_deploy 执行侧两路,来源 =
+    ``Comp.required_deployed``);进选人序首桶,先于核心桶/cap 竞争——
+    推导出处 = ``Comp.required_deployed`` 字段契约(判据必要条件,缺它
+    体系恒不成型)+ user_playstyle [31]② 目标件最高优先的必需件特化。
+    缺省空集 = 序逐位同旧(未接线消费面零漂移)。**分轨边界显式申报**:
+    预检位(shop can_deploy_single 三调用点、cw_launch_admission
+    has_deployable)不穿本参——预检语义 = 单候选可入性,序无关,唯 cap
+    竞争末席帧与发射序存在既有的近似偏差(非本参引入);预检位接线候
+    单独批(shop 文件在飞禁并行触碰)。
     """
     reasons: dict[int, str] = {}
     vacancy = front_total + back_total - len(deployed_cids)
@@ -1136,10 +1140,11 @@ def fresh_buys_sell_face(session: object) -> frozenset[str]:
 def required_swap_arm_pending(ctx: SwapPlanContext | None) -> bool:
     """板满换入臂触发谓词(纯函数;判定单一源)。
 
-    = required_names 非空(目标 comp 带 required_deployed;当前唯一实例 =
-    希儿系 pair 的 ``pair_target_comp``)∧ 板满(占用数口径,与 M1″ 板满门
-    同链)∧ 必需件不在板 ∧ bench 存在必需件。板不满帧不辖——空位由 M1
-    部署通道直上(经 required 首桶序),无需卖出换血。
+    = required_names 非空(目标 comp 带 required_deployed;现役两实例 =
+    希儿系 pair 的 ``pair_target_comp`` 与 COMP_LIBRARY 静态套「希儿量子」
+    (P2+ 锁线路径),单一源 = ``SEELE_CARRY_CHAR``)∧ 板满(占用数口径,
+    与 M1″ 板满门同链)∧ 必需件不在板 ∧ bench 存在必需件。板不满帧不辖
+    ——空位由 M1 部署通道直上(经 required 首桶序),无需卖出换血。
 
     fail 方向:ctx None / required_names 空 / 板满缺读 = 臂关(不放宽
     target 保护,与基座臂 fail-closed 同向)。
@@ -1154,30 +1159,40 @@ def required_swap_arm_pending(ctx: SwapPlanContext | None) -> bool:
     return bool(set(ctx.required_names) & bench_names)
 
 
+class _HypotheticalPanel:
+    """换入臂假想面板(form_progress 鸭型位;与 _deploy_advances_form
+    同型,只提供折法消费的三个视图槽)。"""
+
+    def __init__(self, board_counts: dict[str, int],
+                 deployed_names: set[str]) -> None:
+        from types import SimpleNamespace
+        self.board = SimpleNamespace(value=dict(board_counts))
+        # required 腿席位经行读:假想板上必需件按「已换入」计(臂前提 =
+        # 卖后上序底线保证必需件落位;在此不计则判据恒缺腿,臂永不开)。
+        self.front_row = SimpleNamespace(
+            value=tuple(SimpleNamespace(char_id=n) for n in deployed_names))
+        self.back_row = SimpleNamespace(value=())
+
+
 def _required_swap_victim_completion_holds(ctx: SwapPlanContext,
                                            name: str) -> bool:
-    """换入臂 victim 判据保持检验:victim 离场后 AND 腿全保持 ∧ OR 腿
-    至少一条保持(纯结构计数,零星级零战力项)。
+    """换入臂 victim 判据保持检验(单一源折法,零自写 AND/OR 内联)。
 
-    计数源 = ``deployed_bond_counts``(注册表全羁绊口径,与守恒门同源);
-    腿源 = ``ctx.target_comp`` 的 form_tiers / or_legs(装配单源喂入,
-    comp 缺读 = 检验不过 = 臂不开,保守)。只查 AND/OR 腿而不查
-    required 本身:触发谓词已保证必需件不在板(必缺腿),victim 离场若
-    连腿都不保,换入必需件也凑不齐 = 白卖(选排底线在计划侧另有
-    ``post_sell_req_missing`` 拒因兜底)。
+    = 假想面板(victim 离场 ∧ 必需件按已换入计)下
+    ``cw_comps.form_progress(comp, panel) >= 1.0``——与
+    ``readiness_form_ok`` 同式同源(成型判据唯一折法契约,含 ADR-0621
+    OR 组承接同键档规则;禁消费位绕过自写 AND 账,静态套「希儿量子」
+    form_tiers 全被 OR 承接的形态由此天然正确)。comp 缺读 = 检验不过
+    = 臂不开(保守)。
     """
     comp = ctx.target_comp
     if comp is None:
         return False
+    from sr_od.application.currency_war.kernel.cw_comps import form_progress
     names = {x.char_id for x in ctx.deployed if x is not None and x.char_id}
-    counts = deployed_bond_counts(names - {name})
-    tiers = getattr(comp, 'form_tiers', None) or {}
-    if any(counts.get(bond, 0) < tier for bond, tier in tiers.items()):
-        return False   # AND 腿被卖破:凑齐倒退,不可换
-    or_legs = getattr(comp, 'or_legs', None) or ()
-    # OR 全破(一条都不剩)= 同样倒退;or_legs 空(纯 AND 判据)不辖。
-    return not or_legs or any(counts.get(bond, 0) >= tier
-                              for bond, tier in or_legs)
+    hyp_names = (names - {name}) | set(ctx.required_names)
+    panel = _HypotheticalPanel(deployed_bond_counts(hyp_names), hyp_names)
+    return form_progress(comp, panel) >= 1.0
 
 
 def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
@@ -1257,21 +1272,28 @@ def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
         # 板满换入臂(target 单位分支判定先行;fence 键集辖域 ≠ target
         # 键集辖域——量子/贝成员不在 DEPLOY_FENCE 而在 pair target 键集,
         # 旧「先查 fence 后查 target」次序会把量/贝 target 件挡在臂外):
+        # 臂候选排除保护域扩展集(protect_names − target_cores =
+        # shared ∪ 替班):P41② 禁卖护栏不因换阵解除 + ``Comp.
+        # substitute_plan``「替班=不卖」字段契约。core 成员(本就在
+        # target_cores)不经此排除——判据必需件优先的本体 = 冗余 core
+        # 件让位(20260915 sim 找问题报告问题 2 形态:量3 过剩档,
+        # 卖一量席换入希儿 = form ✗→✓ 严格优),其安全性由判据保持
+        # 检验(离场不破成型)承载,非护栏豁免。
+        if name in (set(ctx.protect_names) - set(ctx.target_cores)):
+            return 'target_keep'
         is_target_member = bool(
-            bonds & set(ctx.target_factions) or name in ctx.target_cores
-            or name in ctx.protect_names)
+            bonds & set(ctx.target_factions) or name in ctx.target_cores)
         if is_target_member:
-            # 换入臂(判据必需件优先于非必需板件;任务书 T-17 问题 2
-            # 修复方向 2):pair 判据以 required_deployed 在板为必要条件
-            # (``Comp.required_deployed`` 字段契约 + seele_system_formed
-            # 合取支),必需件滞留 bench ∧ 板满 = 结构性凑齐失败形态
-            # (sim n1000 s91700 基线 12 失败希儿系局主形态)。victim 让位
-            # 条件 = 离场不破判据:AND 腿(form_tiers)逐条保持 ∧ OR 腿
-            # (or_legs)至少一条保持——破坏任一 = 不可换(凑齐倒退),
-            # 保持 = 换入必需件后判据只差必需件本身,换入严格优(✗→✓
-            # 的支配改进,无新数值参数)。让位后落资格族(engines_guard/
-            # star_guard/merge 素材守卫照走,禁直落 fenced 转型臂分支
-            # ——target 件非转型臂辖域)。
+            # 换入臂(判据必需件优先于非必需板件):pair/静态套判据以
+            # required_deployed 在板为必要条件(``Comp.required_deployed``
+            # 字段契约 + seele_system_formed 合取支),必需件滞留 bench ∧
+            # 板满 = 结构性凑齐失败形态(sim n1000 s91700 基线 12 失败
+            # 希儿系局主形态)。victim 让位条件 = 假想面板(victim 离场 ∧
+            # 必需件按已换入计)下成型判据仍满——破坏 = 凑齐倒退不可换;
+            # 保持 = 换入必需件后判据 ✗→✓ 严格优(支配改进,无新数值
+            # 参数)。让位后落资格族(engines_guard/star_guard/merge
+            # 素材守卫照走,禁直落 fenced 转型臂分支——target 件非转型
+            # 臂辖域)。
             if not (required_swap_arm_pending(ctx)
                     and _required_swap_victim_completion_holds(ctx, name)):
                 return 'target_keep'   # target 单位(offtarget 拒因归因,先于臂分支)
@@ -1392,8 +1414,10 @@ class SwapPlanContext:
     #: 判据必需件名集(装配单一源 = 目标 comp ``required_deployed``;与
     #: mandate ``_deploy_plan_inputs`` 同源同值)。消费面 = select_swap_plan
     #: 卖后上序(必需件首桶,使「卖了换血后」的首个空位优先落必需件——
-    #: 不穿则换血腾出的位仍会被普通成员按旧序占走)与
-    #: ``swap_sell_exclusion_reason`` 的板满换入臂(V2,在册判定)。
+    #: 不穿则换血腾出的位仍会被普通成员按旧序占走)、
+    #: ``swap_sell_exclusion_reason`` 的板满换入臂,与执行侧卖出后补部署
+    #: 重 derive 的同名穿参(cw_screen_deploy R1-b 回落臂;发射⇔执行
+    #: 同源第三路)。
     required_names: frozenset[str] = frozenset()
 
 

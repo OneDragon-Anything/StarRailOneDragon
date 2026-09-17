@@ -6,8 +6,8 @@
 ## 1. 策略思路/算法概述
 
 - **选人围栏**:部署候选受围栏辖——引擎/配方体系件围栏 `DEPLOY_FENCE`(单一源 = `kernel/cw_launch_admission.py::DEPLOY_FENCE`,RECIPE ∪ ENGINE)与发射资格(`cw_launch_admission.py::offtarget_sell_allowed`);部署机按角色前后台属性拖入对应排空槽,后排布局选档单一入口 = `obs/cw_back_layout.py::select_back_layout`。
-- **判据必需件首桶序**:选人序以目标 comp 的 `required_deployed` 成员为第一优先桶(装配单一源 = mandate `_deploy_plan_inputs` 与 `assemble_swap_plan_inputs`,消费 = `select_deployments` `required_names` 参)。依据 = 判据必要条件的支配论证:该件不在板该体系永远无法成型(希儿系判据的「希儿在板」合取支,`Comp.required_deployed` 字段契约),cap 竞争时空位让给普通成员 = 弱占优劣化;空集缺省 = 序逐位同旧(未接线消费面零漂移)。
-- **换血卖出**:off-target 上阵件挡 target 上场时先卖腾位,victim 资格单一判定 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`(义务集 ∪ 新鲜度排除 ∪ 资格族);部署面换血是 M4 之外的姊妹卖出出口(02 §7)。**板满换入臂**:必需件滞留 bench ∧ 板满时,离场不破判据(AND 腿逐条保持 ∧ OR 腿至少一条保持)的 target 板件让位可卖换入必需件(触发谓词 = `required_swap_arm_pending`,腿保持检验 = `_required_swap_victim_completion_holds`);卖后上序须真含必需件,否则计划拒(`post_sell_req_missing`)——判据必需件优先于非必需板件([31]③ 上场侧同构的必需件特化)。
+- **判据必需件首桶序**:选人序以目标 comp 的 `required_deployed` 成员为第一优先桶(现役两实例 = 希儿系 pair 的 `pair_target_comp` 与静态套「希儿量子」;装配单一源 = mandate `_deploy_plan_inputs`、`assemble_swap_plan_inputs` 与 cw_screen_deploy 执行侧两路,消费 = `select_deployments` `required_names` 参)。依据 = 判据必要条件的支配论证:该件不在板该体系永远无法成型(希儿系判据的「希儿在板」合取支,`Comp.required_deployed` 字段契约),cap 竞争时空位让给普通成员 = 弱占优劣化;空集缺省 = 序逐位同旧(未接线消费面零漂移)。分轨边界:预检位(shop `can_deploy_single`、`cw_launch_admission.has_deployable`)不穿本参,序无关的单候选可入性语义,边界申报见 kernel `select_deployments` 注。
+- **换血卖出**:off-target 上阵件挡 target 上场时先卖腾位,victim 资格单一判定 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`(义务集 ∪ 新鲜度排除 ∪ 资格族);部署面换血是 M4 之外的姊妹卖出出口(02 §7)。**板满换入臂**:必需件滞留 bench ∧ 板满时,假想面板(victim 离场 ∧ 必需件按已换入计)下成型判据仍满(`form_progress >= 1.0`,单一源折法含 OR 组承接规则)的 target 板件让位可卖换入必需件(触发谓词 = `required_swap_arm_pending`,保持检验 = `_required_swap_victim_completion_holds`);保护域扩展集(shared ∪ 替班)不因本臂解除(P41② + 替班=不卖契约);卖后上序须真含必需件,否则计划拒(`post_sell_req_missing`)——判据必需件优先于非必需板件([31]③ 上场侧同构的必需件特化)。
 - **补齐语义**:残余补部署 P24(空槽上任意围栏认可件零支出严格优先,`../proofs/p24-residual-fill-dominance.md`);发射门纪律 = 计划空是合法稳态,发射方与执行方同源谓词判空不发射(10 §1)。
 
 ## 2. 会执行的动作清单

@@ -1234,6 +1234,16 @@ class CwScreenDeploy(SrOperation):
         #(落点像素验证已随判效拆除,落地归入口观察 reconcile)。
         _cores = (strategy_state_of(_sess).target_comp.core_chars
                   if (_sess is not None and strategy_state_of(_sess).target_comp is not None) else None) or []
+        # 判据必需件名集(与发射侧 _deploy_plan_inputs 同源 = 目标 comp
+        # required_deployed;消费 = _sel_dep 的 required 首桶序——R1-b 卖出
+        # 后补部署帧不穿参 = 卖出腾出的位回落旧序被普通成员占走 = 白卖
+        # 形态在执行侧复现,发射⇔执行同源第三路)。
+        _required = frozenset(
+            getattr(strategy_state_of(_sess).target_comp,
+                    'required_deployed', ()) or ()
+            if (_sess is not None
+                and strategy_state_of(_sess).target_comp is not None)
+            else frozenset())
         # ADR-0640:m1p 轮部署段消费计划单一源。R1-a 直投
         # 候选核对 = F2 名字级单通道三点式(单通道 = 名字域,禁跨通道
         # board 字典全等——OCR 欠计先例会打穿校验):①victim 身份 =
@@ -1291,6 +1301,7 @@ class CwScreenDeploy(SrOperation):
                     _tgt = frozenset(_ctx_rb.target_factions)
                     _fw_carry = frozenset(_ctx_rb.fw_carry)
                     _cores = list(_ctx_rb.target_cores)
+                    _required = frozenset(_ctx_rb.required_names)
                 log.info('[cw-deploy] m1p 直投前提破(F2 三点式)→ R1-b '
                          f'卖出后现读重 derive(sold={m1p_sold_names}, '
                          f"plan.sell={_sell_names}, deployed={_deployed}, "
@@ -1355,7 +1366,8 @@ class CwScreenDeploy(SrOperation):
                 cap=(_cap if _cap is not None and _cap > 0 else 10 ** 6),
                 target_factions=_tgt, target_cores=set(_cores),
                 fw_carry=_fw_carry, locked_factions=_locked_fac,
-                recipe_floor_lock_exempt=_rf_lock_conflict)
+                recipe_floor_lock_exempt=_rf_lock_conflict,
+                required_names=_required)
             order = [bench_occ[_k] for _k in _up_rel]
         _held = [bench_occ[_k] for _k in _held_rel]
         if _held:
