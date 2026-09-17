@@ -6,17 +6,26 @@
 
 四指标口径(数据可得性已在真实档案核对:2026-09-08 第四跑批 findprob_cal4 /
 findprob_cal4p 的 P1-only sim 载体 + 生产档案;两源统一行 =
-row{plane, round, node_type, gold, hp, form, form_ok, level, locked_comp},
+row{plane, round, node_type, gold, hp, form, form_ok, level, locked_comp,
+p1_pair, state_board_factions/state_deployed(sim 行轮末快照)},
 同轮多决策帧时保留最末帧——sim 末轮清算连帧即得清算后残金):
 - ① P1 出口金 = 每局 plane==1 末行的 gold(行 gold = 决策帧快照,轮结算后值)。
   未通关局的出口金照读,P1通关? 列单独标。
   边界:sim 决策帧 = 决策时点快照,末帧之后仍有动作的局行源金轻微高估局终金
   (cal4p 实测:行源中位 47.5 vs 引擎局账 39;HEAD 腿两源一致 = 5.0)。
-- ② 过渡凑齐率 = ① 同行的 form_ok 布尔;form 原值(b_t 优先/form_score 回退,
-  退役只读)逐局展示。批级 = 通关局中 form_ok 真占比;通关局 = 0 的批
-  (P1-only sim 载体)如实披露不适用,禁折 0。
+- ② 过渡凑齐率 = ① 同行凑齐判定。判定口径 = 行内 state 轮末快照现算
+  readiness 判据(单一源 = kernel/cw_launch_admission
+  ``readiness_form_ok_from_snapshot``;判据核 form_progress 鸭型桩契约
+  消费 board_factions/deployed 两键):决策行 ``form_ok`` 字段是策略器
+  镜像写端(write_shop_mirrors)在商店决策帧时点的读数,与同行 state
+  (引擎轮末值)不同时点——轮内升级解锁席位后补位达标的局镜像恒 False,
+  凑齐率被低估(2026-09-15 批 4/300 实证),故轮末快照可算时一律现算;
+  快照缺输入(生产档案行/旧批行)回退 form_ok 镜像读数(不虚构)。
+  form 原值(b_t 优先/form_score 回退,退役只读)逐局展示。批级 =
+  通关局中凑齐真占比;通关局 = 0 的批(P1-only sim 载体)如实披露
+  不适用,禁折 0。
 - ③ 终局金 = 每局最后一条行的 gold。
-- ④ 终局阵容完成率 = 末行 locked_comp 非空时读该行 form_ok(1/0);
+- ④ 终局阵容完成率 = 末行 locked_comp 非空时按②同款行凑齐判定(1/0);
   locked_comp 空 = 未锁线 = 0(用户规格逐字)。批级 = ④=1 局占比,
   分母 = 可判局。口径分叉:sim 行 locked_comp 缺键/空串 = 未锁线
   (引擎未建锁线态 = 没锁);档案行结构性无 v3_intention 键 = 无数据,
@@ -24,12 +33,11 @@ row{plane, round, node_type, gold, hp, form, form_ok, level, locked_comp},
   **P1 配方对代理键(观测面专用,局表 p 标)**:locked_comp 空而同行
   v3_intention.p1_pair 非空 = P1 配方锁活跃帧(ADR-0357:配方锁局
   locked_comp 恒空,引擎语义零改,本脚本只读遥测)——锁定目标代理 =
-  配方对,④ 改读该行 form_ok 判定并标 p。语义依据:P1 配方锁帧的
-  form_ok 判据核 = readiness_form_ok(target_comp),而 target_comp 在
-  该帧族即配方对物化(strategies/impl/flow.py _refresh_direction_views;
-  kernel/cw_intention.pair_target_comp),故该帧 form_ok ⟺ 终局板面
-  完成配方锁方向 = ④ 问题的 P1 等价问法。动机:P1-only 载体下不加
-  代理则 ④ 结构性恒 0 = 指标-载体错配。边界:配方对空窗帧
+  配方对,④ 改按②同款判定并标 p。语义依据:P1 配方锁的锁定目标 =
+  配方对(kernel/cw_intention.pair_target_comp 物化伪 comp),凑齐判定
+  = 行内轮末快照对该伪 comp 现算 readiness(回退 form_ok 镜像),⟺
+  终局板面完成配方锁方向 = ④ 问题的 P1 等价问法。动机:P1-only 载体
+  下不加代理则 ④ 结构性恒 0 = 指标-载体错配。边界:配方对空窗帧
   (p1_pair 空)仍按未锁线 = 0;①资格锁局 locked_comp 非空走既有
   判定分支,代理不辖;P2+ 帧 p1_pair 恒空(IntentionState 字段契约),
   代理结构性不可达。
@@ -89,10 +97,28 @@ import argparse
 import json
 import re
 import statistics
+import sys
 from pathlib import Path
 
+# src 判据引导(②④轮末现算的判据单一源 = kernel readiness 快照读口):
+# 自脚本位反推仓库 src 加入 sys.path,项目根直跑零前置;导入失败(异机
+# 裸语料/非仓布局)= 判据复用不可用,②④回退 form_ok 镜像读数(回退态
+# stderr 显影一行,统计仍可算,读数口径降级如实申报)。
+_REPO_SRC = Path(__file__).resolve().parents[3] / 'src'
+if _REPO_SRC.is_dir() and str(_REPO_SRC) not in sys.path:
+    sys.path.insert(0, str(_REPO_SRC))
+try:
+    from sr_od.application.currency_war.kernel.cw_launch_admission import (
+        readiness_form_ok_from_snapshot,
+    )
+except ImportError:   # pragma: no cover — 零 src 环境回退分支
+    readiness_form_ok_from_snapshot = None
+    print('[cw-batch-stats] src 判据不可用,②④回退 form_ok 镜像读数'
+          '(轮末现算停用)', file=sys.stderr)
+
 # 落盘根(2026-09-07 布局裁定,.debug/currency_war/telemetry/{live,matches,sim};
-# 单一源 = src kernel/cw_observe 根常量块,本脚本零 src 导入故按同值独立声明)
+# 单一源 = src kernel/cw_observe 根常量块,数据面按同值独立声明——src 可用
+# 时判据面走 kernel 快照读口,数据布局常量维持本地声明不随 src 缺失失效)
 SIM_ROOT = Path('.debug/currency_war/telemetry/sim')
 MATCHES = Path('.debug/currency_war/telemetry/matches')
 
@@ -164,6 +190,9 @@ def _sim_rows(batch: Path) -> dict[str, dict]:
             'locked_comp': (r.get('v3_intention') or {}).get('locked_comp') or '',
             # P1 配方锁目标(v3_intention.p1_pair;缺键/空 = 配方锁未活跃)
             'p1_pair': (r.get('v3_intention') or {}).get('p1_pair') or (),
+            # 轮末快照两键(②④凑齐现算输入;缺 = 回退 form_ok 镜像)
+            'state_board_factions': st.get('board_factions'),
+            'state_deployed': st.get('deployed'),
         })
     for o in outs:
         for row in g(o.get('run_id') or '?')['rows']:
@@ -265,6 +294,22 @@ def _archive_rows(mid: str) -> dict:
 
 # ---------- 四指标 ----------
 
+def _row_form_ok(row: dict) -> bool | None:
+    """行凑齐判定(口径单一源 = 模块 docstring ②节):轮末快照现算优先
+    (kernel readiness 快照读口,消除镜像写端商店帧时点差),快照缺
+    输入/判据不可判(None)回退 form_ok 镜像读数——回退语义与旧口径
+    逐位等价,旧行/档案行零漂移。"""
+    if readiness_form_ok_from_snapshot is not None:
+        v = readiness_form_ok_from_snapshot(
+            {'board_factions': row.get('state_board_factions'),
+             'deployed': row.get('state_deployed')},
+            locked_comp=row.get('locked_comp') or '',
+            p1_pair=row.get('p1_pair') or ())
+        if v is not None:
+            return v
+    return row.get('form_ok')
+
+
 def game_metrics(game: dict) -> dict:
     """逐局四指标取值(口径见模块 docstring;None = 无数据,不折 0)。
 
@@ -296,13 +341,13 @@ def game_metrics(game: dict) -> dict:
     if lc is None:
         comp_done = None            # 档案源结构性无锁线字段 = 无数据
     elif lc:
-        comp_done = 1 if last.get('form_ok') else 0
+        comp_done = 1 if _row_form_ok(last) else 0
     elif last.get('p1_pair'):
         # P1 配方对代理键(观测面专用;口径与语义依据见模块 docstring ④ 节):
         # locked_comp 按 ADR-0357 在 P1 配方锁帧恒空,p1_pair 非空 = 配方锁
-        # 活跃 → 锁定目标代理 = 配方对,完成判定读同行 form_ok(该帧族
-        # form_ok 判据核即配方对物化方向)。只读遥测,ADR-0357 语义零改。
-        comp_done = 1 if last.get('form_ok') else 0
+        # 活跃 → 锁定目标代理 = 配方对,完成判定按②同款行凑齐判定(该
+        # 帧族判据核即配方对物化方向)。只读遥测,ADR-0357 语义零改。
+        comp_done = 1 if _row_form_ok(last) else 0
         proxy = True
     else:
         comp_done = 0               # 未锁线 = 0(用户规格逐字;含配方对空窗帧)
@@ -312,7 +357,7 @@ def game_metrics(game: dict) -> dict:
         'killed': killed,
         'exit_gold': p1_last.get('gold') if p1_last else None,
         'exit_hp': p1_last.get('hp') if p1_last else None,
-        'exit_form_ok': p1_last.get('form_ok') if p1_last else None,
+        'exit_form_ok': _row_form_ok(p1_last) if p1_last else None,
         'exit_form': p1_last.get('form') if p1_last else None,
         'final_gold': last.get('gold') if last else None,
         'comp_done': comp_done,
