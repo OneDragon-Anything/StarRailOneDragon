@@ -403,8 +403,7 @@ def t5_p1_false(gold: int, spend: int, rounds: int, net_income: int,
 # 命题 = math_proofs P90-P94 行)=====
 
 #: 零战斗节点词集(节点表查表的战斗性判定的非战斗半边):生产表中文词
-#: (P1_NODE_TEMPLATE 词表,tools/cw_node_validate)+ sim 表英文词
-#: (engine_p1.P2_NODE_SEQUENCE 同词表);英文半边的单一源 =
+#: (P1_NODE_TEMPLATE 词表,tools/cw_node_validate)+ 英文词;英文半边的单一源 =
 #: kernel cw_line_switch._ZERO_LOSS_NODE_KINDS 同集(此处展开因该常量
 #: 为模块私有,战斗性判定需中英并集,勿再散落第三份)。
 _FRONT_NONCOMBAT_NODES: frozenset[str] = frozenset(

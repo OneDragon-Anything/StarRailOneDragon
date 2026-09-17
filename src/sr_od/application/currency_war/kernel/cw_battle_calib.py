@@ -409,7 +409,7 @@ def _roll_rotation(rng: random.Random, level: int) -> dict[int, float] | None:
 
     ⚠️ 语义已勘误(01_strategy_layer.md §4.10 概率表族,DESIGN_FINAL_ATTACK
     阻断-2):「20%」是 replay 观测在场频率,非机制概率——运行时被测体
-    (sim engine_p1)已改用 ``roll_rotation_per_stage``(对已选环境条件化,
+    已改用 ``roll_rotation_per_stage``(对已选环境条件化,
     每阶段 100% 重掷)。本函数保留作旧树 replay 对拍口径,勿在新消费点接线。
     """
     if rng.random() >= ROTATION_CHANCE:
@@ -422,7 +422,7 @@ def _roll_rotation(rng: random.Random, level: int) -> dict[int, float] | None:
 
 
 def roll_rotation_per_stage(rng: random.Random, level: int) -> dict[int, float] | None:
-    """已选轮岗环境的本备战期概率表(勘误后机制建模,engine_p1 运行时口径)。
+    """已选轮岗环境的本备战期概率表(勘误后机制建模)。
 
     机制(游戏原文 cw_invest_data id=114「每个备战阶段重新随机」):选择后
     **每备战阶段 100% 生效、每阶段重掷翻倍档**;翻倍档分布 = 费用档 1/5

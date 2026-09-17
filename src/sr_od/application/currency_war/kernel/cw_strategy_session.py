@@ -189,10 +189,10 @@ class StrategySession:
     # 身份——保位勿滤,滤掉会让后续位面名字左移错位)。
     briefing_bosses: list[str | None] = field(default_factory=list)
     active_env: str = ""
-    # ⚠️ 显式种子化(sim 确定性报告):default 禁止 OS 熵种子,default=
+    # ⚠️ 显式种子化:default 禁止 OS 熵种子,default=
     # 固定种子 0 的独立实例;真实随机面由消费方显式注入——生产 run loop
-    # 按 cw_config.strategy_seed 覆盖(operations/cw_loop.py),sim 引擎
-    # 从局 seed 派生(sim/engine_p1.py)。本字段是公开随机接口的种子契约锚。
+    # 按 cw_config.strategy_seed 覆盖(operations/cw_loop.py)。
+    # 本字段是公开随机接口的种子契约锚。
     rng: random.Random = field(default_factory=lambda: random.Random(0))
     performance: PerformanceTracker = field(default_factory=PerformanceTracker)  # 观测反馈(双侧 OCR)
     # —— 黑板模式观察帧容器(W971 §2 黑板模式)——
@@ -208,8 +208,8 @@ class StrategySession:
     # 观察段 synthesize 喂入/续段重观察;商店黑板槽已随两态制收口退役,
     # 容器 = 决策读单源)。写者 = 流程
     # 观察段具名写点(cw_screen_prep 入口 heavy/破墙/逻辑态直写/read_only 分支、
-    # finalize 买后暂存;cw_op_buy_cards 商店 visit 首段/续段;sim engine_p1
-    # 每决策段;写点清单 = ADR-0583 §3.4,守卫 = 契约形状锁 L6);
+    # finalize 买后暂存;cw_op_buy_cards 商店 visit 首段/续段;
+    # 写点清单 = ADR-0583 §3.4,守卫 = 契约形状锁 L6);
     # 策略器/驱动器零标注写点(帧类写'full'/'view' = 观察层专属身份,D6)。
     # 读者 = 策略器决策入口(flow 层 _consume_*_direction_frame),读后即复位
     # 'none'(消费即清;复位是读协议半部,非新鲜度宣告)。语义:full = 入口

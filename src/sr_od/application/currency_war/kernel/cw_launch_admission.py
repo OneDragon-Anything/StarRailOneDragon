@@ -1,10 +1,7 @@
 """达标臂发射面的纯逻辑准入核(自 cw_loop/cw_op_deploy 迁出的单一实现)。
 
-为什么在 kernel:发射面观测(sim/engine_p1 的 LaunchBattle 建模)需要
-直调生产 G1 准入判据,而包依赖矩阵(sim 桶不可依 app/operations 桶,
-分层纪律,归 review 与代码规范守卫)禁止 sim→cw_loop 直引。本模块只依
-kernel(cw_line_defs/cw_state)与 data 注册表,三方消费面(sim 引擎/
-cw_loop 调用面/测试)共用同一实现,零第二份。
+单一实现居 kernel(只依 kernel(cw_line_defs/cw_state)与 data 注册表):
+消费面(生产 cw_loop 调用面/测试)共用,零第二份。
 
 victim 资格单一源 = offtarget_sell_allowed fenced 臂全条件(判据语义
 见其 docstring,自 cw_op_deploy 迁出未改动);cw_op_deploy 保留同名
@@ -46,8 +43,8 @@ if TYPE_CHECKING:
 # cw_op_deploy._DEPLOY_FENCE 自本常量别名(消费路径兼容,实现单一)。
 DEPLOY_FENCE: frozenset[str] = frozenset(_RECIPE | _ENGINE_FENCE)
 
-# 质量闸观测分键名(单一源;写点 = engine_p1 发射判定位 + cw_loop 达标
-# 臂判定位,best-effort 双面 sink,ADR-0570 待标定①载体)——消费面禁
+# 质量闸观测分键名(单一源;写点 = cw_loop 达标
+# 臂判定位,best-effort sink,ADR-0570 待标定①载体)——消费面禁
 # 字面量散写(三审07轮 C2),键名改这里即全链跟随。
 LAUNCH_QUALITY_DEFER_FRAMES_KEY: str = 'launch_quality_defer_frames'
 #: 质量评估异常帧分键(fail-open 显影;armed∧quality_eval_error 帧,
@@ -234,8 +231,7 @@ def readiness_launch_decision(gs: GameState, comp: Comp | None,
 
     消费面拓扑(裁决 = ADR-0557,方案三混合):实机 = operations/cw_loop
     备战分支驱动执行(发射核 launch_prepared_battle 留 operations 不动);
-    sim = engine_p1 轮入口消费同一输出驱动行为建模(发射帧短路决策段,
-    门 = armed 单键)。两面差异全部属执行/观测皮肤,判据语义恰此处一份,
+    判据语义恰此处一份,
     禁任一消费面内联第二实现(布局守卫 + 测试单一源锁)。armed 关闸帧
     (配方完备 ∧ 质量推迟)的判读观测位 = ``quality.defer_by_quality``。
 

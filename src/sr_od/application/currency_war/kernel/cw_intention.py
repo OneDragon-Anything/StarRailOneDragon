@@ -44,9 +44,8 @@
 from __future__ import annotations
 
 import math
-from dataclasses import asdict, dataclass, field, fields, is_dataclass
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
@@ -2672,66 +2671,3 @@ def alloc_reason_consistency(session, target_faction: str = '',
         return ''
     return f'off_lock:{target_comp_name or target_faction}'
 
-
-# ===== 遥测序列化下沉(serialize_intention 语义归本模块:序列化的是本模块
-# 的 IntentionState,cw_telemetry 反向 import 本节符号(telemetry→kernel 合法向)。
-# ⚠️ 权威副本 = knowledge/cw_serialize(_to_jsonable/
-# serialize_intention;telemetry 保留层消费已全部改接)。本节副本仅为 sim
-# (ledger_hooks/engine_p1)/旧判据未迁消费点保留(sim 禁动),
-# 迁移完成后随文件删除;勿新增消费。
-
-def _to_jsonable(obj: Any) -> Any:
-    """dataclass / 基础类型 → JSON 可序列化(递归)。"""
-    if is_dataclass(obj) and not isinstance(obj, type):
-        return {k: _to_jsonable(v) for k, v in asdict(obj).items()}
-    if isinstance(obj, dict):
-        return {str(k): _to_jsonable(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
-        return [_to_jsonable(x) for x in obj]
-    if isinstance(obj, set):
-        return sorted(_to_jsonable(x) for x in obj)
-    if isinstance(obj, Path):
-        return str(obj)
-    return obj
-
-
-def serialize_intention(ist: Any) -> dict[str, Any] | None:
-    """v3 意向状态(IntentionState)→ JSON-safe dict。
-
-    line_strategy 退役后锁定真值在 ``strategy_state_of(session).v3_intention``,但 decisions 行
-    只有恒空的 v1 遗留键(``v2_locked_line``/``v2_mode``)——实机判读
-    「锁定时点/锁定目标」不可读,只能日志考古。本序列化把意向状态机
-    全量落遥测(锁定目标改过渡配方(ADR-0357)的实机验证依赖它)。
-
-    - ``None`` = session 无意向状态机(default 栈/未初始化)——与
-      「有意向未锁」(dict 且 ``phase='unlocked'``)显式区分,消费方
-      不用猜;
-    - dict 按字段全量序列化(dataclass fields 遍历,set→sorted list,
-      嵌套 LineTrack 同构)——IntentionState 字段演进(如配方锁设计件调整
-      锁定语义)时自动跟上,不改本函数。
-
-    **可变容器深拷贝(活引用污染防线)**:dict/list 字段值经
-    ``_to_jsonable`` 递归拷贝(嵌套 dataclass 走 asdict=深拷贝)——
-    ``tracks: dict[str, LineTrack]`` 是**活引用**,旧版直接把引用
-    落进账本行,session 后续轮原地改 LineTrack 会污染**已落账的
-    早期行**(sim P2 段改写同局 P1 行的 tracks,P2 谱系分布验证的对比门曾排除
-    该字段)。tuple/str 不可变,原样保留(类型不漂移)。
-
-    只读不碰 ``cw_intention``;非 dataclass 输入退 None。
-    """
-    if not is_dataclass(ist):
-        return None
-    out: dict[str, Any] = {}
-    for f in fields(ist):
-        v = getattr(ist, f.name)
-        if isinstance(v, set):
-            out[f.name] = sorted(v)
-        elif is_dataclass(v):
-            out[f.name] = _to_jsonable(v)
-        elif isinstance(v, (dict, list)):
-            # 可变容器深拷贝落账(活引用污染防线,
-            # 见 docstring);tuple 不可变不辖(类型不漂移)
-            out[f.name] = _to_jsonable(v)
-        else:
-            out[f.name] = v
-    return out

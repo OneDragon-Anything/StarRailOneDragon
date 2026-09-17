@@ -962,10 +962,8 @@ def board_next_tier_of(board_factions: dict[str, int]) -> dict[str, int]:
 
     语义 = 左面板「X/Y」的 Y:对注册表 ``FACTIONS[].tiers`` 取 >当前人数
     的最小档,无更高档不计入。**本函数 = 该推导的 kernel 单一源**——
-    迁移批次二起,obs computed 支(cw_observation read_game_state)与
-    sim 观测键(engine_p1._board_next_tier_of,ADR-0488 硬依赖键供给)
-    均委托至此,禁第三份推导(sim 侧旧注释「与 obs computed 支同一式」
-    的对齐义务由委托结构保证)。
+    迁移批次二起,obs computed 支(cw_observation read_game_state)
+    委托至此,禁第三份推导。
     """
     from sr_od.application.currency_war.data.cw_factions import FACTIONS
     out: dict[str, int] = {}
@@ -2762,9 +2760,9 @@ class GameState:
     # (dict 内集合已按容器 JSON 序列化安全形存 list,record_fresh_buy 内部
     # 转形,读端成员判断在个位数量级无性能面);phase 失配 = 跨轮整体作废
     #(读取零销账,无逐名生命周期面);None = 本局未登记。写端 = shop.
-    # _emit_buy 全部 BuyCard 发射位 + sim/engine_p1 决策帧,经
+    # _emit_buy 全部 BuyCard 发射位,经
     # cw_deploy_logic.record_fresh_buy 单口(渠道②动作上报,actor =
-    # 'CwDeployLogic' 登记面在册),sim/live 同口由单口保证;读端 =
+    # 'CwDeployLogic' 登记面在册);读端 =
     # cw_deploy_logic.fresh_buys_of(换出守卫)+ fresh_buys_sell_face
     #(L1 卖侧闩,fail-closed,ADR-0611 §3-1;写读单口不变)。
     round_fresh_buys: Field[dict | None] = field(default_factory=Field)

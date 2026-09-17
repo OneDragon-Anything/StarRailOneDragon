@@ -42,9 +42,8 @@ live 写端 = ``_do_action`` 刷新分支单点直写容器(渠道② logic_acti
 在写,两源同域));chosen_supply 写端 = 选定确认时点(真选分支)确认即写
 单次逻辑写入豁免(§2.2/§6.5-6)。节点完成判定 = 下一轮 observe 门 ``_in_node``
 复检(观察驱动节点循环,非生命周期验证段——用户裁定 2026-09-10 验证段废除,
-confirm 点击系统性不生效 = 动作链 bug 根修动作链)。本屏 sim 腿 = 引擎补给
-决策段已在(engine_p1 直调 kernel decide_supply,T5 接口收敛挂账)但本批未
-接线(sim 接线批后续),等价判据主承重 = 实机在册行为锁(test_cw_runnode_retire
+confirm 点击系统性不生效 = 动作链 bug 根修动作链)。等价判据主承重 =
+实机在册行为锁(test_cw_runnode_retire
 + test_cw_game_state_consume + 本批锁 test_cw_obs_arch_event_screens_step3)。
 """
 import re

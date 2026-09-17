@@ -950,7 +950,7 @@ def swap_yield_contribution(target_factions: frozenset[str] | set[str],
 # record_fresh_buy 单口):发射位买入时逐名写入的名集,键式 =
 # {'phase': (plane, round_num), 'names': list[str]}——位面/轮次推进自动
 # 失效(M7 闩键式同构)。写点 = 生产 shop.py 全部 BuyCard 发射位
-# 经 ``_emit_buy`` 收口调用(5edcf324)+ sim/engine_p1 决策帧。
+# 经 ``_emit_buy`` 收口调用(5edcf324)。
 # 取舍声明:沿用发射位写入(与 ``cw4_fuel_filler_stall_buys`` 先例同位),
 # 被截断器丢弃的买入意图也入排除集 = 过度排除压制合法 swap,方向安全
 # (留置合法稳态,发射契约口径),失真经 fresh_buy 拒因可追溯;单调性由
@@ -1250,8 +1250,7 @@ class SwapPlanContext:
 # 修订节:本谓词消费 form 成型度(fp 经装配 ctx 单字段)与
 # victim 资格(swap_sell_exclusion_reason)两个已登记共享单点,零新增
 # 派生链——只消费装配 ctx(SwapPlanContext)字段,禁第二份 fp/目标视图
-# 派生。sim 镜像(engine_p1.m1p_intent_record)经
-# select_swap_plan 自动继承,零第二份。
+# 派生。
 
 #: swap_realizable 拒因闭集(plan 级弃权键;层位 = plan 级弃权键(登记 = ADR-0530 决策4 键表追加行),
 #: 非逐件拒因闭集——后者见 swap_sell_exclusion_reason docstring)。
