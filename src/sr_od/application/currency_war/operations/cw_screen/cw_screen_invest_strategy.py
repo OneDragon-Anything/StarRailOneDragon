@@ -321,12 +321,11 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         try:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
-                game_state_of,
             )
             from sr_od.application.currency_war.kernel.cw_investments import (
                 normalize_invest_name,
             )
-            _gs_rc = game_state_of(match.session)
+            _gs_rc = match.gs
             _used = dict(_gs_rc.strategy_refresh_used.value or {})
             _k = normalize_invest_name(_click.name)
             _used[_k] = int(_used.get(_k, 0)) + 1
@@ -401,7 +400,7 @@ class CwScreenInvestStrategy(CwScreenOpBase):
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     game_state_of,
                 )
-                pick = match.strategy.decide_invest('strategy', names, game_state_of(match.session), match.session, config)
+                pick = match.strategy.decide_invest('strategy', names, match.gs, match.session, config)
             else:
                 # 防御:无 match(局外独立跑)。经验分退役后 decide_event 不读
                 # hp/品质惩罚(唯一局面消费 = board.value or {},未观察等价
@@ -531,10 +530,9 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         # (§3.4 申报豁免)。终态契约 §B:session 份退役,直读直写容器。
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
-            game_state_of,
         )
         _gs_inv = (match.gs if getattr(match, 'gs', None) is not None
-                   else game_state_of(match.session))
+                   else match.gs)
         _cur = list(_gs_inv.active_strategies.value or [])
         if chosen not in _cur:
             _cur.append(chosen)
@@ -560,7 +558,7 @@ class CwScreenInvestStrategy(CwScreenOpBase):
             )
             _spec = STRATEGY_EFFECTS.get(normalize_invest_name(chosen))
             if _spec is not None:
-                _gs_reg = game_state_of(match.session)
+                _gs_reg = match.gs
                 _nd = _gs_reg.node.value
                 _t = ((_nd.plane - 1) * 9 + _nd.round_num
                       if _nd is not None else None)

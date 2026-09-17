@@ -276,10 +276,7 @@ class CwScreenPartner(CwScreenOpBase):
             if match is not None and options:
                 # 决策输入消费切换(迁移批次二):GameState 视图
                 # (kernel/cw_game_state.game_state_of)替 last_state 直读。
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    game_state_of,
-                )
-                _state = game_state_of(match.session)
+                _state = match.gs
                 _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
                 pick = match.strategy.decide_partner(options, _state, match.session, _cfg)
                 idx = pick.idx if 0 <= pick.idx < len(cands) else 0
@@ -292,10 +289,9 @@ class CwScreenPartner(CwScreenOpBase):
                 # chosen_*;单次逻辑写入,§3.4 申报豁免)。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     ChannelSig,
-                    game_state_of,
                 )
-                game_state_of(match.session).write_logic(
-                    game_state_of(match.session).chosen_partner,
+                match.gs.write_logic(
+                    match.gs.chosen_partner,
                     options[idx].char_id or '',
                     produced_by='CwScreenPartner',
                     sig=ChannelSig(family='logic_action',

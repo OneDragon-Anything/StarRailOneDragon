@@ -156,10 +156,7 @@ class CwScreenBookcard(CwScreenOpBase):
             _match = getattr(self.ctx, 'cw_match', None)
             if _match is not None:
                 # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读。
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    game_state_of,
-                )
-                _st = game_state_of(_match.session)
+                _st = _match.gs
                 _decided = _match.strategy.decide_star_tome(
                     [c[0] for c in cards], _st, _match.session,
                     getattr(_match, 'config', None))

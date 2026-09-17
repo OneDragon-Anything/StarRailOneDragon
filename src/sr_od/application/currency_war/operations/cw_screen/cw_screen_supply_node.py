@@ -224,7 +224,7 @@ class CwScreenSupplyNode(CwScreenOpBase):
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 game_state_of,
             )
-            _state = game_state_of(match.session)
+            _state = match.gs
             _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
             pick = match.strategy.decide_supply(
                 [o for o, _ in opts], _state, match.session, _cfg,
@@ -240,7 +240,7 @@ class CwScreenSupplyNode(CwScreenOpBase):
                         ChannelSig,
                         game_state_of,
                     )
-                    _gs_r = game_state_of(match.session)
+                    _gs_r = match.gs
                     _gs_r.write_logic(
                         _gs_r.supply_refresh_used,
                         int(_gs_r.supply_refresh_used.value or 0) + 1,

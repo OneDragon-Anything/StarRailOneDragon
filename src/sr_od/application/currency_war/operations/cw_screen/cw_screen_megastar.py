@@ -163,10 +163,9 @@ class CwScreenMegastar(CwScreenOpBase):
             if match is not None and options:
                 # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读;
                 # overlay 时用上次备战快照(语义同旧,值源切 GameState)。
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    game_state_of,
-                )
-                _state = game_state_of(match.session)
+                # 终态契约 §B(T-4):持有引用直用(桩无 gs = None 态,决策缺省支)。
+                _state = match.gs if getattr(match, 'gs', None) is not None \
+                    else None
                 _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
                 pick = match.strategy.decide_megastar(options, _state, match.session, _cfg)
                 if 0 <= pick.idx < len(options):
@@ -189,16 +188,16 @@ class CwScreenMegastar(CwScreenOpBase):
                 if _st is not None:
                     _st.megastar_clicked = True
                 # r358d(遥测接线):巨星选择落容器(chosen_megastar,gs 单一源
-                # ——终态契约 §B:session 份退役)。
-                if options and 0 <= idx < len(options):
+                # ——终态契约 §B:session 份退役;桩无 gs = 跳过写)。
+                if options and 0 <= idx < len(options) \
+                        and getattr(_match, 'gs', None) is not None:
                     # GameState 写端(迁移批次二,§3.4.5:各屏选卡写入
                     # chosen_*;单次逻辑写入,§3.4 申报豁免)。
                     from sr_od.application.currency_war.kernel.cw_game_state import (
                         ChannelSig,
-                        game_state_of,
                     )
-                    game_state_of(_match.session).write_logic(
-                        game_state_of(_match.session).chosen_megastar,
+                    _match.gs.write_logic(
+                        _match.gs.chosen_megastar,
                         options[idx].char_id or '',
                         produced_by='CwScreenMegastar',
                         sig=ChannelSig(family='logic_action',

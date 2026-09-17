@@ -297,10 +297,7 @@ class CwScreenInvestEnv(CwScreenOpBase):
                 # 但 HP 分档/持有策略该用真值。决策输入消费切换(迁移批次二):
                 # 值源 = GameState 视图(kernel/cw_game_state
                 # .game_state_of),原 last_state 直读退役。
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    game_state_of,
-                )
-                pick = match.strategy.decide_invest('env', names, game_state_of(match.session), match.session, config)
+                pick = match.strategy.decide_invest('env', names, match.gs, match.session, config)
             else:
                 # 防御:无 match(局外独立跑)——防御空容器直喂(容器签名;
                 # 经验分退役后 decide_event 不读 hp/品质惩罚,空容器安全)。
@@ -384,10 +381,9 @@ class CwScreenInvestEnv(CwScreenOpBase):
             # 选择落地无定型帧可核对,后果走观察覆盖)。
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
-                game_state_of,
             )
-            game_state_of(match.session).write_logic(
-                game_state_of(match.session).active_env, chosen,
+            match.gs.write_logic(
+                match.gs.active_env, chosen,
                 produced_by='CwScreenInvestEnv',
                 sig=ChannelSig(family='logic_action',
                                actor='CwScreenInvestEnv', mode='compute'))
