@@ -18,56 +18,23 @@
 Early 期判定(plane1 + 未定型)由消费方内联声明(框架启动变体已退役,ADR-0469)。
 plan 的买牌/上阵在 Early 期以过渡包为 target(过渡包羁绊低费快成型),
 P1 末/P2 起切最终 comp(select_comp 照常,积累的贯穿牌无缝继承)。
+
+**数据宿主**:TRANSITION_PACK/FRAMEWORK_FACTIONS/FRAMEWORKS 权威副本 =
+``knowledge/cw_line_facts.py``(策展数据归知识层);本模块只留 kernel 判据函数,
+从 knowledge 取数,禁在本模块重建数据副本。
 """
 from __future__ import annotations
 
-# P1 过渡双框架(plaza 549 篇阵营激活口径修正:主流 = 仙舟系 32% + 列车系 29%,
-# 其余各 ≤5%;用户口径「DOT 和仙舟两种」——饮月/卡芙卡等仙舟阵营 flows 带 DOT,
-# 「3仙舟+2DOT」在数据上呈现为仙舟大羁绊)。两包各自内部自洽,选其一集中买。
-# 值:角色 → (框架, 档:carry=贯穿最终 / drop=P1末弃 / partial)
-# ⚠️ 入包双条件 = **Early 出现率 ≥8%** AND
-# 过渡功能(保留率分档只在满足前者后才有意义——保留率暴涨可能是反向
-# 指标=纯终局核心,如瓦尔特 5费 Early 0.2% 等级锁刷不出;娜塔莎/佩拉/
-# 腾荒 Early 出现率不足,无过渡资格,不在包)。
-# ⚠️ 迁移挂账(docs/develop/currency_war/archive/redesign/03_legacy_cleanup_plan.md):
-# 权威副本 = knowledge/cw_line_facts.TRANSITION_PACK(telemetry/query 消费已改接);
-# 本副本仅为 sim/旧判据未迁消费点保留,按该计划随文件删除;勿新增消费。
-TRANSITION_PACK: dict[str, tuple[str, str]] = {
-    # —— 仙舟框架(32% 主流;3 仙舟大羁绊 + DOT flows)——
-    '藿藿': ('仙舟', 'carry'),          # Early 33%→Final 20%
-    '丹恒·饮月': ('仙舟', 'carry'),     # 31%→20%
-    '爻光': ('仙舟', 'partial'),        # 25%→14%
-    '卡芙卡': ('仙舟', 'drop'),         # 9%→7%(DOT 件)
-    '椒丘': ('仙舟', 'drop'),           # 21%→8%
-    # —— 列车框架(29% 主流;4 列车或 2 小羁绊)——
-    '三月七': ('列车', 'carry'),        # 23%→31% 最强贯穿
-    '姬子·启行': ('列车', 'carry'),     # 14%→39%
-    '花火': ('列车', 'carry'),          # 20%→46%(2费,非 4 费——注册表+plaza 双核实)
-    # —— 量子框架(三框架统一化;希儿 59 帖:主流=3量子+2贝,量子契约/贝概念股环境;
-    # 「过渡=终局雏形」线——carry 档=过渡终局同体,定型零交接)——
-    '希儿': ('量子', 'carry'),          # 3费(Lv4 起 10%)Early 69%→贯穿 0.70(来牌即信号)
-    '缇宝': ('量子', 'partial'),        # 2费(Lv4 起 25%)48% Early(量子+群攻双 flow)
-    '符玄': ('量子', 'partial'),        # 4费(Lv5 起 2%,非 2 费;
-    #                                    量子 core 三件两件 ≥3费 → 配方成型窗口整体偏后,
-    #                                    Lv5 前贝洛伯格档主要靠 pack 外贝件,属设计内)
-    # —— 双框架通用插件 ——
-    '千冶·刃': ('通用', 'carry'),       # 19%→51%(Final 反超:最强通用插件)
-    # 纯过渡散件(框架外,仅应急)
-    '艾丝妲': ('散件', 'drop'),         # 22%→3% 最纯过渡
-}
-# 花火双 flow(列车阵营+量子):框架计数按阵营,量子侧靠
-# 希儿/缇宝/符玄;策略加分统一走 env/augment affinity,不走 pack。
+from sr_od.application.currency_war.knowledge.cw_line_facts import (
+    FRAMEWORK_FACTIONS,
+    FRAMEWORKS,
+    TRANSITION_PACK,
+)
 
-# 框架 → 目标羁绊(Early 期 form 判定用)
-FRAMEWORK_FACTIONS: dict[str, tuple[str, ...]] = {
-    '仙舟': ('仙舟', '持续伤害'),       # 3仙舟+2DOT(guide 口径)
-    '列车': ('列车同行',),               # 4 列车
-    '量子': ('量子同频', '贝洛伯格'),    # 3量子+2贝(希儿线主流构成)
-    # 狼狩/贝洛伯格两条已封存桥(hunt3/dot_belog)的
-    # 框架映射随桥删除(已封存线不再有框架豁免通道);
-    # 量子键的贝洛伯格保留——那是希儿线主流构成(希儿系判据内)。
-}
-FRAMEWORKS: tuple[str, ...] = ('仙舟', '列车', '量子')
+# P1 过渡双框架数据(TRANSITION_PACK/FRAMEWORK_FACTIONS/FRAMEWORKS)单一源 =
+# ``knowledge/cw_line_facts.py``(零漂移契约:策展数据归知识层,kernel 判据函数
+# 从 knowledge 取数;2026-09 策略内容回流普查裁决收敛,旧 kernel 副本已删)。
+# 本模块只留判据函数:_framework_counts / pick_framework / transition_score。
 
 
 def _framework_counts(bench, deployed,
@@ -180,15 +147,10 @@ SIGNAL_WEIGHTS: dict[str, float] = {
 
 # (信号定型门已退役 2026-09-04,「未证即退役」裁定:旧
 # COMMIT_SIGNAL_THRESHOLD=5.0 / COMMIT_MIN_T=7 为拍死值(原注释只证了
-# 「不能更低」),且 ready() 全库零生产消费(定型权威 =
-# cw_intention.committed_authority:plane≥2 / 意向状态机 locked /
+# 「不能更低」),且 ready() 全库零生产消费(定型权威 = cw_intention.committed_authority:plane≥2 / 意向状态机 locked /
 # p1_pair 非空)。连同退役:t_of 全局轮序换算(唯一消费 = 已删 ready 的
 # 轮门,P2=7 节点按 9 计的量纲失真一并消失)。CommitSignals 保留为
 # 遥测累积器,SIGNAL_WEIGHTS 见上注。)
-
-#: P1 过渡期人口上限(用户指导 + plaza 实证:Early 上场 79% = 5 人,中位/众数 5;
-#: 本质 = 低人口省升级金,尽快 50 金吃满息;等级在定型时才拉)。
-EARLY_POP_CAP: int = 5
 
 
 class CommitSignals:
@@ -230,7 +192,7 @@ def transition_score(char_id: str, faction: str, framework: str = '') -> float:
     预囤只对 **carry/partial**(囤了围绕它走);drop 档返 0
     (应急件,囤了 P1 末就卖 = 浪费金,与 recipe 追买口径一致)。
     阵营兜底(列车件池实为 8 人:配方羁绊
-    计数认阵营池,买牌只认 TRANSITION_PACK 策展 3 人——饮月(仙舟+列车
+    计数认阵营池,买牌只认 TRANSITION_PACK 策展 2 人——饮月(仙舟+列车
     双阵营)/星期日/瓦尔特被当散件放过,「列车×4」难凑齐):
     阵营命中当前框架但不在策展同框架 → partial 级分(羁绊计数有贡献)。
     """

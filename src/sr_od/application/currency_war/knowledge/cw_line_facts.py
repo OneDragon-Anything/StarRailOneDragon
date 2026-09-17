@@ -78,6 +78,18 @@ TRANSITION_PACK: dict[str, tuple[str, str]] = {
 # 列车阵营+量子)」——前半句与注册表冲突(花火阵营=盛会之星,无列车),已按注册表归位量子框架;
 # 策略加分统一走 env/augment affinity,不走 pack(此口径不变)。
 
+# —— P1 过渡框架键面(自 kernel/cw_transition 迁入;策展知识归知识层)——
+# 框架 → 目标羁绊(Early 期 form 判定用)
+FRAMEWORK_FACTIONS: dict[str, tuple[str, ...]] = {
+    '仙舟': ('仙舟', '持续伤害'),       # 3仙舟+2DOT(guide 口径)
+    '列车': ('列车同行',),               # 4 列车
+    '量子': ('量子同频', '贝洛伯格'),    # 3量子+2贝(希儿线主流构成)
+    # 狼狩/贝洛伯格两条已封存桥(hunt3/dot_belog)的
+    # 框架映射随桥删除(已封存线不再有框架豁免通道);
+    # 量子键的贝洛伯格保留——那是希儿线主流构成(希儿系判据内)。
+}
+FRAMEWORKS: tuple[str, ...] = ('仙舟', '列车', '量子')
+
 # —— 体系键与成员集(原 kernel/cw_intention)——
 #: 希儿系体系键(单卡二元判定,不占羁绊键;与 cw_battle_calib._engines_count
 #: 的希儿系哨兵同口径)。

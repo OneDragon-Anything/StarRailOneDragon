@@ -21,7 +21,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
-from sr_od.application.currency_war.kernel.cw_transition import TRANSITION_PACK
+from sr_od.application.currency_war.knowledge.cw_line_facts import TRANSITION_PACK
 
 # 配方伪 comp 注册表(框架 → Comp;core = 该框架 carry+partial 件;form_tiers = 配方目标档)。
 # ⚠️ core 含 partial(爻光/缇宝/符玄)不含 drop(卡芙卡/椒丘 = 应急战力件,买了就上但不追;

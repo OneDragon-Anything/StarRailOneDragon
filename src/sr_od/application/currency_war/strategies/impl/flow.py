@@ -586,7 +586,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         fw = getattr(self.state, 'transition_framework', '')
         _fw_facs: set[str] = set()
         if fw:
-            from sr_od.application.currency_war.kernel.cw_transition import (
+            from sr_od.application.currency_war.knowledge.cw_line_facts import (
                 FRAMEWORK_FACTIONS,
             )
             _fw_facs = set(FRAMEWORK_FACTIONS.get(fw, ()) or ())
@@ -628,7 +628,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         fw = getattr(self.state, 'transition_framework', '')
         _fw_facs: set[str] = set()
         if fw:
-            from sr_od.application.currency_war.kernel.cw_transition import (
+            from sr_od.application.currency_war.knowledge.cw_line_facts import (
                 FRAMEWORK_FACTIONS,
             )
             _fw_facs = set(FRAMEWORK_FACTIONS.get(fw, ()) or ())

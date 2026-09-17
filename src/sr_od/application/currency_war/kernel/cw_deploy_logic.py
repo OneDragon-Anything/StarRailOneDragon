@@ -418,7 +418,7 @@ def deploy_target_sets(target_comp: object | None,
     fw_carry: set[str] = set()
     if fw:
         from sr_od.application.currency_war.kernel.cw_recipe import recipe_comp
-        from sr_od.application.currency_war.kernel.cw_transition import (
+        from sr_od.application.currency_war.knowledge.cw_line_facts import (
             FRAMEWORK_FACTIONS,
             TRANSITION_PACK,
         )
