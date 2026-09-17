@@ -35,7 +35,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     DEPLOYED_CAPACITY,
 )
-from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
+from sr_od.application.currency_war.kernel.cw_game_state import gs_of_ctx
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CW_ACTION_TYPES,
     ClickSpheres,
@@ -410,7 +410,7 @@ class PrepActionExecutor:
             # 落地不触清键面,与其置位语义(商店决策访问位)自洽。
             try:
                 from sr_od.application.currency_war.kernel.cw_game_state import (
-                    game_state_of,
+                    gs_of_ctx,
                 )
                 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
                     mark_s1_route_check,
@@ -419,7 +419,7 @@ class PrepActionExecutor:
                 _sess = _m.session if _m is not None else None
                 if _sess is not None:
                     mark_s1_route_check(
-                        _sess, game_state_of(_sess), action,
+                        _sess, gs_of_ctx(getattr(self, "ctx", None), _sess), action,
                         pre_bench_count=_pre_bench,
                         post_bench_count=self._bench_tracked_count(),
                         landed=False)
@@ -498,14 +498,14 @@ class PrepActionExecutor:
             if session is None:
                 return None
             if isinstance(action, SellBench):
-                tracked = game_state_of(session).tracked_books.bench or []
+                tracked = gs_of_ctx(getattr(self, "ctx", None), session).tracked_books.bench or []
                 return (tracked[action.bench_idx]
                         if 0 <= action.bench_idx < len(tracked) else None)
             from sr_od.application.currency_war.kernel.cw_exec_state import (
                 pad_deployed,
             )
             tracked = pad_deployed(list(
-                game_state_of(session).tracked_books.deployed or []))
+                gs_of_ctx(getattr(self, "ctx", None), session).tracked_books.deployed or []))
             idx = action.deployed_idx
             return tracked[idx] if 0 <= idx < len(tracked) else None
         except Exception:   # noqa: BLE001  观测容缺,不阻塞执行链
@@ -595,7 +595,7 @@ class PrepActionExecutor:
             match = self._ctx.cw_match
             if match is None or match.session is None:
                 return -1
-            tracked = game_state_of(match.session).tracked_books.bench
+            tracked = gs_of_ctx(getattr(self, "ctx", None), match.session).tracked_books.bench
             return sum(1 for bc in tracked if bc is not None)
         except Exception:   # noqa: BLE001  观测 best-effort
             return -1
@@ -750,7 +750,7 @@ class PrepActionExecutor:
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             pad_bench,
         )
-        _books = game_state_of(match.session).tracked_books
+        _books = gs_of_ctx(getattr(self, "ctx", None), match.session).tracked_books
         _pre = list(_books.bench or [])
         _expose_unhealthy_tracked_slots(_pre)
         tracked = pad_bench(_pre)
@@ -769,12 +769,12 @@ class PrepActionExecutor:
             pad_deployed,
         )
         tracked = pad_deployed(list(
-            game_state_of(match.session).tracked_books.deployed))
+            gs_of_ctx(getattr(self, "ctx", None), match.session).tracked_books.deployed))
         idx = deployed_idx_of(row, slot)
         if 0 <= idx < len(tracked) and tracked[idx] is not None \
                 and tracked[idx].position_pref == row:
             tracked[idx] = None
-        game_state_of(match.session).tracked_books.deployed = tracked
+        gs_of_ctx(getattr(self, "ctx", None), match.session).tracked_books.deployed = tracked
 
     def _track_move_deployed(self, bench_idx: int, to_row: str, to_slot: int) -> None:
         """上阵后备势跟踪同步:bench 条目 → deployed 条目(位置/槽位改写)。
@@ -789,7 +789,7 @@ class PrepActionExecutor:
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             pad_bench,
         )
-        _books = game_state_of(match.session).tracked_books
+        _books = gs_of_ctx(getattr(self, "ctx", None), match.session).tracked_books
         tracked = pad_bench(list(_books.bench or []))
         _expose_unhealthy_tracked_slots(tracked)
         moved = (tracked[bench_idx]
@@ -802,7 +802,7 @@ class PrepActionExecutor:
         from sr_od.application.currency_war.kernel.cw_exec_state import deployed_place
         if moved is not None:
             moved.position_pref = to_row
-            deployed_place(game_state_of(match.session).tracked_books.deployed,
+            deployed_place(gs_of_ctx(getattr(self, "ctx", None), match.session).tracked_books.deployed,
                            moved)
             moved.slot = to_slot
 

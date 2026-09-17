@@ -983,10 +983,10 @@ class CwLoop(SrOperation):
         if self.ctx.cw_selected_difficulty:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
-                game_state_of,
+                gs_of_ctx,
             )
-            game_state_of(session).write_logic(
-                game_state_of(session).selected_difficulty,
+            gs_of_ctx(getattr(self, "ctx", None), session).write_logic(
+                gs_of_ctx(getattr(self, "ctx", None), session).selected_difficulty,
                 self.ctx.cw_selected_difficulty,
                 produced_by='CwLoop',
                 sig=ChannelSig(family='logic_action', actor='CwLoop',
@@ -1077,9 +1077,9 @@ class CwLoop(SrOperation):
                 return
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
-                game_state_of,
+                gs_of_ctx,
             )
-            _gs_resumed = game_state_of(session)
+            _gs_resumed = gs_of_ctx(getattr(self, "ctx", None), session)
             _gs_resumed.write_logic(
                 _gs_resumed.resumed_match, True,
                 produced_by='ResumeAttach', evidence='takeover_resumed',
@@ -1255,12 +1255,12 @@ class CwLoop(SrOperation):
         _m = self.ctx.cw_match
         _sess = getattr(_m, 'session', None) if _m is not None else None
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            game_state_of,
+            gs_of_ctx,
             plane_of,
             round_num_of,
             write_match_final,
         )
-        _gs = game_state_of(_sess) if _sess is not None else None
+        _gs = gs_of_ctx(getattr(self, "ctx", None), _sess) if _sess is not None else None
         _observed = _gs is not None and _gs.node.value is not None
         _has_outcome = not (self._settle.last_outcome_hp is None
                             and self._settle.rounds_done == 0)

@@ -47,8 +47,8 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     ShopActionExecuted,
     apply_shop_action_logic,
     bench_slots_of,
-    game_state_of,
     gold_of,
+    gs_of_ctx,
     plane_of,
     round_num_of,
     shop_payload_content_cards,
@@ -408,12 +408,12 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         读后即复位 'none'(消费即清,防同帧重复刷新;
         复位 = 读协议半部,非新鲜度宣告——帧类写点收敛归流程观察段,§3.4/D6)。
         刷新失败不阻塞决策(沿用原 ops 侧守卫语义,日志哨兵 [cw!] 保持)。"""
-        cls = game_state_of(session).frame_class_prep
+        cls = gs_of_ctx(getattr(self, "ctx", None), session).frame_class_prep
         if cls not in ('full', 'view'):
             return
-        game_state_of(session).frame_class_prep = 'none'
+        gs_of_ctx(getattr(self, "ctx", None), session).frame_class_prep = 'none'
         # 帧源 = session 容器单例(与商店线同款)。
-        state = game_state_of(session)
+        state = gs_of_ctx(getattr(self, "ctx", None), session)
         try:
             if cls == 'full':
                 self._refresh_direction(state, session)
@@ -429,13 +429,13 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         续段 none 帧 → 保持首段值(= 旧 ``_target_seeded``「仅首段重估」语义)。
         不捕获异常:与原 ops 侧 ``cw_op_buy_cards`` 首段直调的失败面一致
         (无守卫)。"""
-        cls = game_state_of(session).frame_class_shop
+        cls = gs_of_ctx(getattr(self, "ctx", None), session).frame_class_shop
         if cls not in ('full', 'view'):
             return
-        game_state_of(session).frame_class_shop = 'none'
+        gs_of_ctx(getattr(self, "ctx", None), session).frame_class_shop = 'none'
         # 帧源 = session 容器(W6 波 4 黑板容器化:标注槽消费不变,
         # 帧本体改容器直读——设计件《商店黑板容器化方案》§2.1-3/§2.4-2)。
-        state = game_state_of(session)
+        state = gs_of_ctx(getattr(self, "ctx", None), session)
         if cls == 'full':
             self._refresh_direction(state, session)
         else:
@@ -639,17 +639,15 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             else:
                 key_equips = list(comp.key_equips or ())
         # 终态契约 §B:spare 库存打分源 = gs.equips(镜像退役)。
-        from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
-        spare = list(game_state_of(session).equips.value or [])
+        spare = list(gs_of_ctx(getattr(self, "ctx", None), session).equips.value or [])
         # 在身装备(game state 唯一消费口:策略禁读执行侧
         # 簿记)—— deployed 单成员带
         # equips,bench 槽位视图成员 = Unit(含 equips 透传)。
         from sr_od.application.currency_war.kernel.cw_game_state import (
             bench_slots_of,
             deployed_slots_of,
-            game_state_of,
         )
-        _gs_wear = game_state_of(session)
+        _gs_wear = gs_of_ctx(getattr(self, "ctx", None), session)
         worn = [eq
                 for _bc in (list(deployed_slots_of(_gs_wear))
                             + list(bench_slots_of(_gs_wear)))
@@ -685,7 +683,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # 决策 = 观察层失约同型抛错(黑板契约 None 检查的容器等价物,
         # 「禁静默按空牌面决策」语义不变)。开店态 OCR 失读窗 = 容器沿用
         # 上一开店牌面(喂入口失读不写),照旧决策、执行侧核对兜底。
-        gs = game_state_of(session)
+        gs = gs_of_ctx(getattr(self, "ctx", None), session)
         if gs.shop.value is None:
             raise ValueError(
                 'decide_shop_action: 容器商店 payload 离屏(shop=None)'
@@ -737,7 +735,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # = apply_shop_action_logic(执行回执经 kernel 单一源派生);逐域
         # 期望态由投影直锁钉住(test_cw_shop_projection_logic,锁 M1)。
         # 帧缺失 = 容器离屏 = 观察层失约同型抛错(在屏前置)。
-        gs = game_state_of(session)
+        gs = gs_of_ctx(getattr(self, "ctx", None), session)
         if gs.shop.value is None:
             raise ValueError(
                 'decide_shop_screen 驱动器: 容器商店 payload 离屏'

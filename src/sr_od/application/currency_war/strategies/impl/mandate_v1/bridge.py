@@ -36,6 +36,7 @@ from sr_od.application.currency_war.kernel.cw_events import (
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
+    gs_of_ctx,
     shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -189,13 +190,10 @@ class MandateV1Strategy(CwFlowStrategy):
         # 原装配缝调用位——前置发射位判定之后,非 armed 帧才到达,armed
         # 短路帧维持不披露,零行为变化)。披露面禁决策消费(语义锚 =
         # mandate_state.py 披露字段注释与守卫锁 test_cw_budget_disclosure)。
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            game_state_of,
-        )
         from sr_od.application.currency_war.strategies.impl.mandate_v1.economy_cycle import (
             disclose_budget,
         )
-        disclose_budget(game_state_of(session), session, self.registry)
+        disclose_budget(gs_of_ctx(getattr(self, "ctx", None), session), session, self.registry)
         actions = decide_prep_frame(obs, session, config,
                                     registry=self.registry)
         return actions[0] if actions else None
@@ -243,12 +241,11 @@ class MandateV1Strategy(CwFlowStrategy):
             apply_shop_action_logic,
             bench_slots_of,
             deployed_slots_of,
-            game_state_of,
         )
         # 驱动器同路(W6 波 4,设计件 §2.2-3):决策读容器单例 + 逻辑态直写推进
         # 切 apply_shop_action_logic;在屏前置 = gs.shop.value is not None,
         # 离屏 = 观察层失约抛错(黑板契约容器化等价物)。
-        gs = game_state_of(session)
+        gs = gs_of_ctx(getattr(self, "ctx", None), session)
         if gs.shop.value is None:
             raise ValueError(
                 'mandate_v1.decide_shop_screen: 容器商店 payload 离屏'
