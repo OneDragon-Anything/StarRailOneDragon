@@ -145,8 +145,8 @@ class StrategySession:
     # 简报词缀(对局开始 debuff/boss 词缀;写入端 = CwScreenBriefing 内联
     # 直写(仅空时写);mechanics_fit 输入,ADR-0397/0398 保位勿滤)。
     briefing_affixes: list[str] = field(default_factory=list)
-    # 本局职级(A1..A8;CwEntryStart 难度确认屏读 → loop copy;保血阈值)。
-    selected_difficulty: str = ""
+    # (selected_difficulty session 份已随终态契约 §B 退役:单一源 =
+    #  gs.selected_difficulty,写端 = 入口链漏斗/loop 吸收位直写。)
     # 敌人难度数值(简报「敌人难度N」读;read_game_state 填 state)。
     enemy_difficulty: int | None = None
     # 位面序 boss 真值(3 位面 boss 名;cw_loop 首个稳定备战帧 copy 自简报

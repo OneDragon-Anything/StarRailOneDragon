@@ -976,12 +976,21 @@ class CwLoop(SrOperation):
         # else 续跑:延用 self.ctx.cw_match(上轮留下),仅刷新 _cw_config(用户可能改 max_rounds 等运行时配置)
 
     def _absorb_selected_difficulty(self, session: StrategySession) -> None:
-        """入口链职级难度 ctx 中转 → session(自原 _absorb_ctx_mailbox 收缩)。
+        """入口链职级难度 ctx 中转 → 容器(终态契约 §B:直写 gs.selected_difficulty)。
         """
-        # 本局职级(CwEntryStart 难度确认屏读存 ctx.cw_selected_difficulty)→ session.selected_difficulty
-        # → 策略层填 state → effective_hp_threshold D-32(3.5.1 接线)
+        # 本局职级(CwEntryStart 难度确认屏读存 ctx.cw_selected_difficulty)
+        # → gs.selected_difficulty → 策略层 effective_hp_threshold D-32(3.5.1 接线)
         if self.ctx.cw_selected_difficulty:
-            session.selected_difficulty = self.ctx.cw_selected_difficulty
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                ChannelSig,
+                game_state_of,
+            )
+            game_state_of(session).write_logic(
+                game_state_of(session).selected_difficulty,
+                self.ctx.cw_selected_difficulty,
+                produced_by='CwLoop',
+                sig=ChannelSig(family='logic_action', actor='CwLoop',
+                               screen='', mode='compute'))
             self.ctx.cw_selected_difficulty = None  # 取走清空(防跨局复用)
 
     def _snap(self, tag: str) -> None:

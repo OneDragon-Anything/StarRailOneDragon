@@ -305,7 +305,8 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
         # 先验非真读,readable=False;真值帧到达即被观察覆盖。
         prior = (opening_hp_prior(
             getattr(session, 'briefing_affixes', None),
-            getattr(session, 'selected_difficulty', ''),
+            (game_state_of(session).selected_difficulty.value or '')
+            if session is not None else '',
             getattr(session, 'enemy_difficulty', None))
             if session is not None else None)
         if prior is not None:

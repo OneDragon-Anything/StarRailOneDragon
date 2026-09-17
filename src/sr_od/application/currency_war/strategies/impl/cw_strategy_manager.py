@@ -103,8 +103,16 @@ def establish_new_match(ctx: SrContext, config) -> bool:
     # game_state_of 缺省 None=不装配口径不受影响。
     # 职级就地吸收(难度确认屏先于本调用读存 ctx;取走清空仍归 run loop
     # 信箱段——简报词缀/boss 读数在本调用之后才产生,由 run loop 统一吸收)。
+    # 终态契约 §B:直写 gs.selected_difficulty(session 份退役)。
     if getattr(ctx, 'cw_selected_difficulty', None):
-        _session.selected_difficulty = ctx.cw_selected_difficulty
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            ChannelSig,
+        )
+        _gs.write_logic(_gs.selected_difficulty, ctx.cw_selected_difficulty,
+                        produced_by='ensure_match_container',
+                        sig=ChannelSig(family='logic_action', actor='CwLoop',
+                                       screen='', mode='compute'))
+        ctx.cw_selected_difficulty = None
     log.info('[cw-entry] match 容器已建立(进对局前移点,strategy=%s)',
              config.strategy_id)
     return True

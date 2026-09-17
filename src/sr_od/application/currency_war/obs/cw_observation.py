@@ -2645,11 +2645,11 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             # 库存变化先落 session 镜像(logic 增量写点),gs 在下一次备战
             # 入口观察时刷新——中继「已有正式值跳过」语义使滞后窗内视图拿到
             # 的是上一次观察值(带 logic 源标记),比透传陈值可分。
+            # (selected_difficulty 中继行已随终态契约 §B 退役:漏斗/入口链
+            #  直接写 gs,session 中转源不复存在。)
             _owned_equips: list = getattr(session, 'last_owned_equips', None) or []
             gs.relay(gs.equips, [str(n) for n in _owned_equips],
                      sig=_relay_sig)
-            _sel_diff = getattr(session, 'selected_difficulty', '') or ''
-            gs.relay(gs.selected_difficulty, str(_sel_diff), sig=_relay_sig)
             # —— 画面上下文 + 节点推进派生(R1 §3.1.4/§3.4;R5 W1 常开)——
             # 本口 = read_game_state 唯一漏斗 = 观察汇聚模块(上下文域唯一写点):
             # 随分派观察写 prev/current 上下文对,同临界区跑四腿派生规则(备战腿
