@@ -697,8 +697,9 @@ class OpenBookcard(CwAction):
     书册卡 = 备战席占槽道具(与补给箱/秘密典籍并列第三件;R10 归位备战
     词表,与 OpenBox/OpenTome 同签名,design.md §2.6 R10)。选卡决策不在
     本执行链——点完开启本动作即交回,专家邀请函弹窗由外循环按画面分发
-    ``CwScreenExpertInvite`` 选卡(选卡决策单一源 =
-    ``cw_screen_expert_invite.choose_expert_index`` 原位);本批发射位 =
+    ``CwScreenExpertInvite`` 选卡(选卡决策单一源 = kernel
+    ``cw_events.choose_expert_index``,普查迁移批 2 自画面 op 迁入);
+    本批发射位 =
     备战环入口清场段(``cw_screen_prep._clear_prep_cards``),是否升
     director 门控留策略侧定。slot=None → 第一张书册卡。
     """
@@ -841,9 +842,9 @@ class PickOption(CwAction):
     策略器终态契约 design §2.2)。``reason`` = 归因记录字段
     (判读面 parity,继承 Pick 族 reason 语义;''=未标)。
 
-    per-screen 子类(本节九个)即执行注册表的分发键:注册行换键名、
-    注册表结构不变;handler 自管消费链(投资/星典/祈愿/武装箱)读
-    idx 直点,不经注册表。"""
+    per-screen 子类(本节十二个,契约扩员 12→15)即执行注册表的分发键:
+    注册行换键名、注册表结构不变;handler 自管消费链(投资/星典/祈愿/
+    武装箱/命运卜者/专家邀请函/选择装备)读 idx 直点,不经注册表。"""
     idx: int
     reason: str = ''
 
@@ -895,6 +896,26 @@ class PickBoxCard(PickOption):
 
 
 @dataclass
+class PickFortune(PickOption):
+    """命运卜者强化三选一选择(契约扩员 12→15 新增;普查迁移批 2)。"""
+
+
+@dataclass
+class PickExpertInvite(PickOption):
+    """专家邀请函选卡选择(契约扩员 12→15 新增;普查迁移批 2)。
+
+    [索引定义] idx 取值域扩展:0..3 = 候选卡区下标(卡-1..卡-4);
+    **-1 = 现金为王**(经济兜底,非候选卡槽下标;kernel
+    ``choose_expert_index`` 契约原样,handler 据此点「卡-现金为王」区)。
+    """
+
+
+@dataclass
+class PickEquip(PickOption):
+    """选择装备三选一选择(契约扩员 12→15 新增;普查迁移批 2)。"""
+
+
+@dataclass
 class RefreshNodeOptions(CwAction):
     """遭遇节点刷新建议(替代 EncounterPick.refresh 旗标):策略建议点击
     节点刷新钮。encounter 刷新链 = 同访问重决策——发射本动作前须以重读
@@ -942,19 +963,22 @@ CW_ACTION_TYPES: tuple = (
     StaffProjectorUse, PerfectProjectorUse, LuckyTokenUse,
     StartBattle,
     OpenShop,
-    # 选择族动作化(终态契约;decide 接线归终态切换批,本批纯落型)
+    # 选择族动作化(终态契约;decide 接线归终态切换批,本批纯落型;
+    # PickFortune/PickExpertInvite/PickEquip = 契约扩员 12→15 新增,普查迁移批 2)
     PickEncounter, PickSupply, PickInvest, PickMegastar, PickPartner,
     PickPlanner, PickStarTome, PickWishTrial, PickBoxCard,
+    PickFortune, PickExpertInvite, PickEquip,
     RefreshNodeOptions, RefreshSupply, RefreshInvestCards,
     HoldFrame,
 )
 
-#: 选择族收敛单表(终态契约 §2.7):九 pick 子类型单表,供 handler 分派/
-#: 注册完备锁遍历(三刷新动作走各自既有点击链不入本表;HoldFrame =
-#: 无操作语义,不属选择族)。
+#: 选择族收敛单表(终态契约 §2.7):pick 子类型单表(9+3,契约扩员
+#: 12→15 后十二个),供 handler 分派/注册完备锁遍历(三刷新动作走各自
+#: 既有点击链不入本表;HoldFrame = 无操作语义,不属选择族)。
 PICK_ACTION_TYPES: tuple = (
     PickEncounter, PickSupply, PickInvest, PickMegastar, PickPartner,
     PickPlanner, PickStarTome, PickWishTrial, PickBoxCard,
+    PickFortune, PickExpertInvite, PickEquip,
 )
 
 

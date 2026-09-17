@@ -9,8 +9,10 @@
 x≈510/900/1290 / 确认 (1441-1543,584-615)。
 
 识别:「请选择」+「强化效果」关键词(id_mark 由 screen_info 承担)。
-策略:OCR 三卡文字 → decide_event 类打分(机制词缀向);v1 用
-decide_planner 同款文本规则(奥迹/伤害=战力类,留白=保守)。
+策略:OCR 三卡文字 → 判据单一源 = kernel ``cw_events.decide_fortune``
+(战力关键词权重 argmax,无匹配缺省卡 1;普查迁移批 2 自本文件 v1 内联
+文本规则收编),消费唯一入口 = 策略器零参 ``decide_fortune()``
+(契约扩员 12→15),写槽 → 零参决策,handler 零打分实现。
 
 统一观察架构逐屏迁移(试点步骤 3;架构设计 §9.2 迁移步骤 4 + 开放问题清单
 B3 三段走第二段「补给 + 余事件屏按族批量」):本类是 CwScreenOpBase 子类,
@@ -140,16 +142,34 @@ class CwScreenFortune(CwScreenOpBase):
                                           wait=2.0)
         screen = self.screenshot()
         texts = self._read_cards(screen)
-        # 文本策略 v1:战力关键词优先(伤害/强度/提高),无匹配选第一张
-        best_i, best_s = 0, -1.0
-        for i, t in enumerate(texts):
-            s = 0.0
-            for kw, w in (('伤害倍率', 3.0), ('强度提高', 2.0), ('层数提高', 2.0),
-                          ('伤害', 1.0), ('提高', 0.5)):
-                if kw in t:
-                    s += w
-            if s > best_s:
-                best_i, best_s = i, s
+        # 选卡判据(普查迁移批 2:单一源 = kernel decide_fortune;唯一入口
+        # = 策略对象,handler 禁自拟打分,kernel 直调仅无 match 防御路径
+        # ——cw_screen_planner 同款)。写槽 → 零参决策(终态契约 §2.7);
+        # 本屏无 chosen 写端(fortune 选择存证行已随删除波 1 退役)。
+        best_i = 0
+        _match = getattr(self.ctx, 'cw_match', None)
+        if _match is not None:
+            try:
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    ChannelSig,
+                )
+                _match.gs.write_logic(
+                    _match.gs.fortune_opts, list(texts),
+                    produced_by='CwScreenFortune',
+                    sig=ChannelSig(family='logic_action',
+                                   actor='CwScreenFortune', mode='compute'))
+                best_i = _match.strategy.decide_fortune().idx
+                if not (0 <= best_i < len(self.CARD_XS)):
+                    best_i = 0   # 越界防御 = 缺省首卡(判据侧无匹配同款)
+            except Exception as e:   # noqa: BLE001  策略失败 fallback 第1张
+                log.warning('[cw][fortune] 策略决策异常(fallback 第1张): %s', e)
+                best_i = 0
+        else:
+            # 无 match 局外兜底(已申报豁免面):kernel 直调,零策略构造
+            from sr_od.application.currency_war.kernel.cw_events import (
+                decide_fortune,
+            )
+            best_i = decide_fortune(list(texts))
         target = Point(self.CARD_XS[best_i], self.CARD_Y)
         log.info('[cw][fortune] 命运卜者强化:卡=%s → 选卡%d(%s)',
                  [t[:12] for t in texts], best_i + 1, texts[best_i][:20] or 'OCR空')

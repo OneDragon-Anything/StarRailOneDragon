@@ -885,6 +885,67 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
     return PlannerPick(idx=best_idx, reason=best_reason or '全部未识别,兜底左卡')
 
 
+# ===== 命运卜者强化三选一(decide_fortune 判据;普查迁移批 2 F-overlay-01
+# ===== 收编:自 cw_screen_fortune handler v1 内联文本规则逐位平移,判据
+# ===== 单一源住 kernel,handler 留 OCR 分桶/写槽/点卡/确认链)=====
+
+#: 战力关键词权重表(逐位平移自 handler v1)。累加制:同文多词各计各的——
+#: 「伤害倍率」文本同时命中「伤害」「提高」子串,是迁移前既有行为非重复计分缺陷。
+FORTUNE_KEYWORD_WEIGHTS: tuple[tuple[str, float], ...] = (
+    ('伤害倍率', 3.0), ('强度提高', 2.0), ('层数提高', 2.0),
+    ('伤害', 1.0), ('提高', 0.5),
+)
+
+
+def decide_fortune(texts: list[str]) -> int:
+    """命运卜者强化三选一 → 应点选的卡下标(0 基;卡序 = handler OCR 分桶序)。
+
+    判据(行为保持版,逐位复刻迁移前实码):逐卡累加命中关键词权重 →
+    严格大于 argmax(并列取首卡);全无命中(全 0 分)= 首卡(卡 1 缺省,
+    保守向);texts 为空同样落 0。
+    """
+    best_i, best_s = 0, -1.0
+    for i, t in enumerate(texts):
+        s = 0.0
+        for kw, w in FORTUNE_KEYWORD_WEIGHTS:
+            if kw in t:
+                s += w
+        if s > best_s:
+            best_i, best_s = i, s
+    return best_i
+
+
+# ===== 专家邀请函选卡(choose_expert_index;普查迁移批 2 F-overlay-02
+# ===== 收编:自 cw_screen_expert_invite 整函数平移,三级语义原样)=====
+
+
+def choose_expert_index(card_bonds: list[str | None],
+                        board: dict[str, int]) -> int:
+    """默认策略:返回应点选的卡下标(0..n-1);-1 = 现金为王。
+
+    判据(行为保持版=在场浓度版,三级语义原样):
+    ① 主力阵营(在场计数最大;并列取名字序首个,保证确定性)同线优先;
+    ② 次选任意在场阵营(board 计数 > 0)同线——羁绊面板口径 = factions∪flows
+    并计(read_board),卡上阵营/流派标签同属一个羁绊命名空间,可直接对键;
+    ③ 全无同线 → -1(现金为王)。
+    board 为空(读数失败)走 ③:选卡无依据时经济兜底优于盲选。
+
+    边界:本实现与 13_pick_family.md E9 在案规格(目标线成员优先 → 池
+    浓度)是两套语义,分叉已作为独立行为变更挂账(迁移批 2 报告),不在
+    迁移中消解——本函数保持实码行为。
+    """
+    if not card_bonds or not board:
+        return -1
+    dominant = max(sorted(board), key=lambda f: board[f])
+    for i, bond in enumerate(card_bonds):
+        if bond is not None and bond == dominant:
+            return i
+    for i, bond in enumerate(card_bonds):
+        if bond is not None and board.get(bond, 0) > 0:
+            return i
+    return -1
+
+
 # ===== 事件线 pick 族运行时元组(统一动作工厂批4;kernel 纯函数返回载体
 # ===== 元组。终态契约 §2.2:策略器产出 = cw_vocab 词表 Pick 子类型并
 # ===== 收敛单表 CW_ACTION_TYPES,本表 = kernel decide_* 返回载体的

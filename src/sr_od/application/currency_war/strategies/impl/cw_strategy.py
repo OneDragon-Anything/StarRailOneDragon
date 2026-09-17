@@ -11,8 +11,8 @@
 
 四个组件(本模块 3 个 + manager):
 - ``CwStrategy`` —— ABC,大脑接口(终态契约:构造注入 + 零参入口
-  abstract 12,无工厂成员;零策略专属语义——方向重估节拍/意向 target
-  机器是具体策略实现的私事,不在基类契约面上)。
+  abstract 15,无工厂成员;契约扩员 12→15 = 普查迁移批 2;零策略专属
+  语义——方向重估节拍/意向 target 机器是具体策略实现的私事,不在基类契约面上)。
 - ``StrategySession`` —— 每局跨步状态(框架新建 / 局终销毁;策略读写)。
 - ``CurrencyWarMatch`` —— 运行时持有 strategy+session 的轻容器,挂 ``ctx.cw_match``。
 - ``StrategyManager``(``cw_strategy_manager.py``)—— 约定式文件扫描发现 + 去重 + 实例化。
@@ -31,6 +31,9 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
     PickBoxCard,
     PickEncounter,
+    PickEquip,
+    PickExpertInvite,
+    PickFortune,
     PickInvest,
     PickMegastar,
     PickPartner,
@@ -76,8 +79,10 @@ class CwStrategy(ABC, Generic[_TState]):
       构造即唯一冷建口;``create_session``/``create_state`` 工厂退役。
     - **实例不跨局**:局容器弃置 = 实例连带回收(引导漏斗每局 instantiate);
       异常路径残留容器弃置守卫(:func:`discard_stale_match_container`)保留。
-    - **零参入口 12**:备战/商店/invest 双相/pick 族八屏——决策输入一律
-      ``self.gs`` 自取,会话残余依赖由 §3.2/§3.3 重复账退役清偿。
+    - **零参入口 15**:备战/商店/invest 双相/pick 族八屏 + 契约扩员三屏
+      (命运卜者强化/专家邀请函/选择装备;普查迁移批 2,动因 =
+      F-overlay-01/02/03)——决策输入一律 ``self.gs`` 自取,会话残余依赖
+      由 §3.2/§3.3 重复账退役清偿。
     - **输出统一**:单一 ``CwAction``(选择族 per-screen 子类型 + 三刷新动作
       + HoldFrame,无 None)。
 
@@ -191,6 +196,25 @@ class CwStrategy(ABC, Generic[_TState]):
     @abstractmethod
     def decide_box_card(self) -> PickBoxCard:
         """武装箱/节点弹窗装备卡 4 选 1(候选读 ``gs.box_card_names`` 槽;
+        返回动作子类型)。"""
+
+    # —— 契约扩员 12→15(普查迁移批 2;动因 = F-overlay-01/02/03:
+    #    三 overlay 选卡判据收编 kernel + handler 改写槽→零参 decide,
+    #    见 changes/2026-09-16-strategy-terminal-contract/design.md 契约扩员附记)——
+
+    @abstractmethod
+    def decide_fortune(self) -> PickFortune:
+        """命运卜者强化三选一(候选读 ``gs.fortune_opts`` 槽,OCR 卡文;
+        返回动作子类型)。"""
+
+    @abstractmethod
+    def decide_expert_invite(self) -> PickExpertInvite:
+        """专家邀请函选卡(候选读 ``gs.expert_invite`` 弹窗载体槽;
+        idx = -1 表现金为王,值域扩展见 PickExpertInvite 注)。"""
+
+    @abstractmethod
+    def decide_equip_pick(self) -> PickEquip:
+        """选择装备三选一(候选读 ``gs.equip_pick_opts`` 槽,OCR 卡名带;
         返回动作子类型)。"""
 
 

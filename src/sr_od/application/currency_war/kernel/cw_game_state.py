@@ -165,6 +165,9 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'star_tome_opts': 1,       # 星徽秘典候选槽(str)
     'wish_trial_opts': 1,      # 祈愿试炼候选槽(str)
     'box_card_opts': 1,        # 武装箱候选槽(str)
+    'fortune_opts': 1,         # 命运卜者强化候选槽(str;契约扩员 12→15)
+    'expert_invite': 1,        # 专家邀请函选卡载体(ExpertInvitePayload;契约扩员 12→15)
+    'equip_pick_opts': 1,      # 选择装备候选槽(str;契约扩员 12→15)
     'inventory': 1,         # equips/consumables/免战牌(§3.2.15/§3.2.16/§3.2.19〔勘误:免战牌正本=effect_inventory.remaining_uses,§8.6-3——本域不含其字段〕)
     'spheres': 1,           # 奖励球(§3.2.8,不占席)
     'substate': 1,          # 分类子态/事件浮层(§3.2.17/§3.6.1)
@@ -207,6 +210,9 @@ _PAYLOAD_DOMAINS: dict[str, tuple[str, bool]] = {
     'star_tome_opts': ('货币战争-星徽秘典弹窗', True),
     'wish_trial_opts': ('货币战争-祈愿试炼', True),
     'box_card_names': ('货币战争-备战-武装箱选择', True),
+    'fortune_opts': ('货币战争-命运卜者强化', True),
+    'expert_invite': ('货币战争-备战-专家邀请函', True),
+    'equip_pick_opts': ('货币战争-选择装备', True),
 }
 
 
@@ -334,7 +340,8 @@ REGISTERED_ACTORS: set[str] = {
     'CwScreenBookcard',        # 星徽秘典弹窗(chosen_tome 选择写点)
     'CwScreenBriefing',        # 简报(enemy_difficulty 恒稳基线写端,终态契约 §B)
     'CwScreenEncounter',       # 遭遇弹窗(chosen_encounter/刷新计数写点)
-    'CwScreenExpertInvite',    # 专家邀约(chosen_expert 选择写点)
+    'CwScreenExpertInvite',    # 专家邀约(chosen_expert 选择写点;
+                               # expert_invite 弹窗载体写点,普查迁移批 2)
     'CwScreenInvestEnv',       # 投资环境(active_env 选择写点)
     'CwScreenInvestStrategy',  # 投资策略(active_strategies/刷新计数写点)
     'CwScreenMegastar',        # 盛会之星(chosen_megastar 选择写点)
@@ -378,6 +385,8 @@ REGISTERED_ACTORS: set[str] = {
     'CwScreenPlanner',         # 骇入策划(planner_opts 写点,现役唯一
                                # 未登记的新写端之一)
     'CwScreenBoxPick',         # 武装箱选择(box_card_names 写点,同上)
+    'CwScreenFortune',         # 命运卜者强化(fortune_opts 写点,契约扩员 12→15)
+    'CwScreenEquipPick',       # 选择装备(equip_pick_opts 写点,契约扩员 12→15)
     'cw_loop_route_clear',     # 外循环路由清点挂点(离屏置 None 写端,
                                # sig family/mode 同 CloseShop 腿清点行,
                                # actor 单列供 journal 行过滤)
@@ -671,6 +680,19 @@ class SupplyPayload:
     """补给屏附加(§3.4.2):列数动态——通常4选1,效果改写3-5,勿写死(cw_node_obs.py:279-282)。options 元素 = SupplyOption(终态契约形状升级:裸 tuple(str,str,bool) → typed;迁移期同上零行为)。"""
 
     options: list[SupplyOption] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class ExpertInvitePayload:
+    """专家邀请函弹窗附加(契约扩员 12→15 新槽;普查迁移批 2):选卡
+    决策双输入载体(kernel ``choose_expert_index`` 的两参打包)。
+
+    [索引定义] card_bonds = 四卡区羁绊解析,坐标系 = 画面「卡-1..卡-4」
+    物理区序(0 基下标即判据返回的卡下标,恒稳);取值时机 = 弹窗帧
+    OCR 解析期快照,写入端 = CwScreenExpertInvite。board = 弹窗帧羁绊
+    面板现读计数;读数失败 = {}(判据侧据此落现金为王兜底,语义复刻)。"""
+    card_bonds: list[str | None] = field(default_factory=list)
+    board: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -2965,6 +2987,11 @@ class GameState:
     star_tome_opts: Field[list[str] | None] = field(default_factory=Field)
     wish_trial_opts: Field[list[str] | None] = field(default_factory=Field)
     box_card_names: Field[list[str] | None] = field(default_factory=Field)
+    # —— 契约扩员 12→15 新槽(普查迁移批 2;写端 = 各画面 handler 写槽,
+    #    消费 = flow 三新零参入口 decide_fortune/expert_invite/equip_pick)——
+    fortune_opts: Field[list[str] | None] = field(default_factory=Field)
+    expert_invite: Field[ExpertInvitePayload | None] = field(default_factory=Field)
+    equip_pick_opts: Field[list[str] | None] = field(default_factory=Field)
     # encounter 刷新建议 per-visit 位(契约:写 False = 各决策路径首调前置,
     # 写 True = 刷新发射同步直写,均 fail-loud;读侧 None 缺省 False;
     # journal 归属 = write_logic 常规规则,不适用刷新计数组豁免类)

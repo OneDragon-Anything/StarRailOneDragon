@@ -12,11 +12,17 @@
   交互事实来源 = 2026-08-30 实机人工处理实录(点槽开弹窗;点停云卡 → 弹窗关、
   回备战、停云入商店)。
 
-默认策略判据(任务判据,实机首例背书):读当前羁绊面板(``read_board``,
-弹窗帧左侧面板透出可读)→ ①选与**主力阵营**(在场计数最大)同线的卡;
-②无主力同线 → 选与任一在场阵营同线的卡(凑档边际仍正);③全无同线 →
-现金为王(经济兜底,不引入板外新阵营)。实机首例:board 仙舟3 → 四选一
-人工选停云(仙舟),与本判据一致。
+默认策略判据(普查迁移批 2 收编 kernel:单一源 =
+``kernel/cw_events.choose_expert_index``,三级语义原样=在场浓度版):
+读当前羁绊面板(``read_board``,弹窗帧左侧面板透出可读)→ ①选与**主力
+阵营**(在场计数最大)同线的卡;②无主力同线 → 选与任一在场阵营同线的卡
+(凑档边际仍正);③全无同线 → 现金为王(经济兜底,不引入板外新阵营)。
+实机首例:board 仙舟3 → 四选一人工选停云(仙舟),与本判据一致。
+消费唯一入口 = 策略器零参 ``decide_expert_invite()`(契约扩员 12→15),
+写槽(弹窗载体 = 卡羁绊解析 + 板面计数)→ 零参决策,handler 零判据实现。
+行为分叉申报:E9 在案规格(13_pick_family.md §2,目标线成员优先 → 池
+浓度)与实码(在场计数版)分叉,已挂账独立行为变更(迁移批 2 报告),
+迁移保持实码行为。
 
 统一观察架构逐屏迁移(试点步骤 3;架构设计 §9.2 迁移步骤 4 + 开放问题清单
 B3 三段走第二段「补给 + 余事件屏按族批量」):本类是 CwScreenOpBase 子类,
@@ -77,29 +83,6 @@ INVITE_MARK_AREA: str = '标识-专家邀请函'
 #: 四张角色卡 area(点选目标与 OCR 分区);现金为王单独一个 area
 CARD_AREAS: tuple[str, ...] = ('卡-1', '卡-2', '卡-3', '卡-4')
 CASH_AREA: str = '卡-现金为王'
-
-
-def choose_expert_index(card_bonds: list[str | None],
-                        board: dict[str, int]) -> int:
-    """默认策略:返回应点选的卡下标(0..n-1);-1 = 现金为王。
-
-    判据(见模块 docstring;纯函数,单测锁行为):
-    ① 主力阵营(在场计数最大;并列取名字序首个,保证确定性)同线优先;
-    ② 次选任意在场阵营(board 计数 > 0)同线——羁绊面板口径 = factions∪flows
-    并计(read_board),卡上阵营/流派标签同属一个羁绊命名空间,可直接对键;
-    ③ 全无同线 → -1(现金为王)。
-    board 为空(读数失败)走 ③:选卡无依据时经济兜底优于盲选。
-    """
-    if not card_bonds or not board:
-        return -1
-    dominant = max(sorted(board), key=lambda f: board[f])
-    for i, bond in enumerate(card_bonds):
-        if bond is not None and bond == dominant:
-            return i
-    for i, bond in enumerate(card_bonds):
-        if bond is not None and board.get(bond, 0) > 0:
-            return i
-    return -1
 
 
 def _resolve_card_bonds(ctx: SrContext, screen, card_area: str) -> str | None:
@@ -223,7 +206,30 @@ class CwScreenExpertInvite(CwScreenOpBase):
             log.warning('[cw-bookcard] 羁绊面板读数失败(走现金为王兜底): %s', e)
         card_bonds = [_resolve_card_bonds(self.ctx, screen, a)
                       for a in CARD_AREAS]
-        idx = choose_expert_index(card_bonds, board)
+        # 选卡判据(普查迁移批 2:单一源 = kernel choose_expert_index;唯一
+        # 入口 = 策略对象,handler 禁自拟判据,kernel 直调仅无 match 防御
+        # 路径)。写槽 → 零参决策(终态契约 §2.7):弹窗载体 = 卡羁绊解析
+        # + 板面计数打包;board 读数失败 = {} 的现金为王兜底语义经载体
+        # 原样进判据。
+        _match = getattr(self.ctx, 'cw_match', None)
+        if _match is not None:
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                ChannelSig,
+                ExpertInvitePayload,
+            )
+            _match.gs.write_logic(
+                _match.gs.expert_invite,
+                ExpertInvitePayload(card_bonds=list(card_bonds),
+                                    board=dict(board)),
+                produced_by='CwScreenExpertInvite',
+                sig=ChannelSig(family='logic_action',
+                               actor='CwScreenExpertInvite', mode='compute'))
+            idx = _match.strategy.decide_expert_invite().idx
+        else:
+            from sr_od.application.currency_war.kernel.cw_events import (
+                choose_expert_index,
+            )
+            idx = choose_expert_index(card_bonds, board)
         area = CASH_AREA if idx < 0 else CARD_AREAS[idx]
         pick_desc = ('现金为王(经济兜底)' if idx < 0
                      else f'卡{idx + 1}(羁绊={card_bonds[idx]})')
@@ -246,7 +252,8 @@ class CwScreenExpertInvite(CwScreenOpBase):
         §3.4 申报豁免;调用点 = 出口验真通过后)。
 
         真选守卫照 chosen_tome 式(CwScreenBookcard):仅卡分支写,值 = 该卡
-        羁绊原文名(choose_expert_index 仅在羁绊读出时返非负下标);「现金
+        羁绊原文名(kernel choose_expert_index 仅在羁绊读出时返非负下标);
+        「现金
         为王」兜底分支不写——chosen_expert 语义 = 受邀专家(羁绊),现金 =
         无专家受邀,该事实由 ConfirmExpertCash +4 金到账登记通道承载(照旧
         不动)。记录面失败不阻塞收案。"""
