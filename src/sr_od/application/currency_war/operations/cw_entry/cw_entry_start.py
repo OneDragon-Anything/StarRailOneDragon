@@ -15,6 +15,10 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 # propagate=False),本文件日志从未落地 → 改挂框架 logger。
 from one_dragon.utils.log_utils import log as _log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.kernel.cw_entry_policy import (
+    DifficultyEntryIntent,
+    difficulty_entry_intent,
+)
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_briefing import (
     CwScreenBriefing,
@@ -340,8 +344,10 @@ class CwEntryStart(SrOperation):
             return self.round_wait(wait=1.5)
 
         # 1) 前进按钮(恢复/新局两路的明确推进)
-        # 难度确认屏:默认开"当前选择"难度(本号 = A5 紫金);"返回最高职级"按钮在 = 未在最高 → 先点它
-        # 切到玩家最高职级(本号 = A8 财富造物主,即目标最高难度),再"开始对局"。
+        # 难度确认屏:选难度判据单一源 = kernel/cw_entry_policy「恒选最高」缺省纯函数
+        # (策略内容普查 F-D-OPS-01 迁入,行为保持):「按钮-返回最高职级」在场 = 未在
+        # 最高职级 → 先点它切到玩家最高职级(本号 = A8 财富造物主,即目标最高难度),
+        # 再「开始对局」;本 op 只做观察(按钮在场 + 职级读数)→ 按意图机械点击。
         # (2026-08-03 入口画面建档发现:此前 op 直接点"开始对局" → 一直打 A5 而非目标的最高难度。)
         # 难度确认:用 screen_info area 检测+点击(round_by_find_and_click_area),替代全屏 round_by_ocr。
         # crop_first=False:全屏 OCR 后按 area.rect 过滤(小 area crop 易漏字,全屏 OCR 稳)。
@@ -364,13 +370,23 @@ class CwEntryStart(SrOperation):
             if _diff:
                 self.ctx.cw_selected_difficulty = _diff
                 _log.info('[cw-entry] 本局职级: %s', _diff)
-        if self.round_by_find_and_click_area(
+        _go_highest_seen = self.round_by_find_area(
+            screen, CwEntryStart.DIFFICULTY_SCREEN, '按钮-返回最高职级',
+            crop_first=False).is_success
+        _start_seen = self.round_by_find_area(
+            screen, CwEntryStart.DIFFICULTY_SCREEN, '按钮-开始对局',
+            crop_first=False).is_success
+        _intent = difficulty_entry_intent(
+            _go_highest_seen, _start_seen, self.ctx.cw_selected_difficulty)
+        if _intent is DifficultyEntryIntent.SWITCH_TO_HIGHEST:
+            self.round_by_find_and_click_area(
                 screen, CwEntryStart.DIFFICULTY_SCREEN, '按钮-返回最高职级',
-                success_wait=2, crop_first=False).is_success:
+                success_wait=2, crop_first=False)
             return self.round_wait(wait=2)
-        if self.round_by_find_and_click_area(
+        if _intent is DifficultyEntryIntent.START_MATCH:
+            self.round_by_find_and_click_area(
                 screen, CwEntryStart.DIFFICULTY_SCREEN, '按钮-开始对局',
-                success_wait=2, crop_first=False).is_success:
+                success_wait=2, crop_first=False)
             return self.round_wait(wait=2)
         # 1a) 有 screen_info 的前进按钮 → area 点击(替代全屏 ocr,根治 LCS 误匹配)。
         #     「开始对局」已在上面难度确认段单独处理(因要先判「返回最高职级」切最高难度)。

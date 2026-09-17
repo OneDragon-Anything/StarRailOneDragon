@@ -9,6 +9,11 @@
 
 """货币战争 清存量 off-target deployed(点 deployed 头像→详情面板露阵营+出售按钮)。
 
+**红线注记(策略内容普查 F-D-OPS-02 裁决)**:本件【退役·禁接旧码】内含策略判据
+文本(阵营∉target→sell,见 ``clean`` 节 _is_target/_do_sell 段);重接前必须先把
+「谁该卖」判据迁策略侧 kernel 纯函数(宿主候选 = cw_deploy_logic 卖出选择族),
+禁原样复活。
+
 **背景(突破)**:整个 session 根本瓶颈 = 身份墙(无 per-char 身份 → 无法 selective 清
 off-target → board 永久 spread → r6+ HP 崩)。实机验证:点 deployed 舞台角色 → 弹**详情面板**,
 含 per-char 阵营/羁绊(OCR 可读)+「出售」按钮(work!点→真卖)。故可逐个识别 deployed 角色 →
