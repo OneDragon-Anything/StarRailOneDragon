@@ -682,6 +682,12 @@ def swap_transition_narrow_frame(state: GameState,
     本旗作辖域前置;豁免臂零消费。fail 方向 = 域外/缺读帧恒 False
     (不收窄 = 旧行为,保守可逆);未锁帧短路返回——语义同谓词
     (D⊆locked,p88_check 断言 1)且免 fp/板满推导成本。
+
+    辖域分界(双轨对锁期推广后):kernel 装配点(``assemble_swap_plan_
+    inputs``)的 locked 已推广为「终局线锁 ∨ P1 配方对锁」,部署换血域
+    随之在配方对锁帧开启;本函数刻意不随——买侧 S_spec 收窄辖域保持
+    终局线,配方对锁帧恒 False = P1 买侧旧行为(不收窄 = 保守可逆)。
+    两域各自自洽,禁任一侧静默跟随另一侧。
     """
     _ms = state_of(session)
     ist = getattr(_ms, 'v3_intention', None)
@@ -794,10 +800,22 @@ def _redeploy_emission_allowed(session: StrategySession,
     if ctx is None:
         return False
     _membership = getattr(ctx, 'membership', None)
-    if not _membership:
-        return False
-    _waiting = [b for b in (getattr(ctx, 'bench', None) or [])
-                if (getattr(b, 'char_id', '') or '') in _membership]
+    if _membership:
+        _waiting = [b for b in (getattr(ctx, 'bench', None) or [])
+                    if (getattr(b, 'char_id', '') or '') in _membership]
+    else:
+        # 对锁期读法(轴①辖域推广):membership 空集 = 锁线采购集
+        # 的未锁帧缺省(``locked_buy_membership`` 触发条件 = locked_comp
+        # 非空),配方对锁帧若沿用「空集即无线内成员」会把转型域计划
+        # 全数 defer(kernel 域开、发射门恒关的分轨态)。压席成员轴退
+        # target 视图(kernel ``target_view_char_is`` 单一源;pair comp
+        # 键面 = 视图本体,与计划 up 底线同一视图)。
+        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+            target_view_char_is,
+        )
+        _waiting = [b for b in (getattr(ctx, 'bench', None) or [])
+                    if target_view_char_is(
+                        ctx, getattr(b, 'char_id', '') or '')]
     if not _waiting:
         return False   # ①替补席无线内成员
     # 判读源与计划同源(落地审 F2):装配 ctx 携带本计划实际消费的

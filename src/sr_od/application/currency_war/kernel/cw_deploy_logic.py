@@ -1140,23 +1140,33 @@ def fresh_buys_sell_face(session: object) -> frozenset[str]:
 def required_swap_arm_pending(ctx: SwapPlanContext | None) -> bool:
     """板满换入臂触发谓词(纯函数;判定单一源)。
 
-    = required_names 非空(目标 comp 带 required_deployed;现役两实例 =
-    希儿系 pair 的 ``pair_target_comp`` 与 COMP_LIBRARY 静态套「希儿量子」
-    (P2+ 锁线路径),单一源 = ``SEELE_CARRY_CHAR``)∧ 板满(占用数口径,
-    与 M1″ 板满门同链)∧ 必需件不在板 ∧ bench 存在必需件。板不满帧不辖
-    ——空位由 M1 部署通道直上(经 required 首桶序),无需卖出换血。
+    两分支任一成立即武装(板满 = 占用数口径,与 M1″ 板满门同链;板不满
+    帧不辖——空位由 M1 部署通道直上,无需卖出换血):
+    - **必需件滞留**:required_names 非空(目标 comp 带 required_deployed;
+      现役两实例 = 希儿系 pair 的 ``pair_target_comp`` 与 COMP_LIBRARY
+      静态套「希儿量子」(P2+ 锁线路径),单一源 = ``SEELE_CARRY_CHAR``)
+      ∧ 必需件不在板 ∧ bench 存在必需件;
+    - **配方完成件滞留**(双轨对锁期通道):方向锁在效(``ctx.locked``,
+      终局线锁 ∨ P1 配方对锁,辖域门单点 = ``_completion_swap_ins``)∧
+      fp < 1.0 ∧ bench 存在「入板即成型」件——桥池 pair 的
+      required_deployed 恒空,双轨期板面义务本体 = 过渡配方(cw_recipe
+      模块不变量),完成件压席帧由本分支承接;✗→✓ 严格优(换入后物化
+      判据改善才准换;依据 = user_playstyle [20] 配方驱动板面 / [13]
+      凑齐优先;出处 = 2026-09-18 sim 实证:配方对锁局板满帧全
+      plan_empty)。
 
-    fail 方向:ctx None / required_names 空 / 板满缺读 = 臂关(不放宽
-    target 保护,与基座臂 fail-closed 同向)。
+    fail 方向:ctx None / 板满缺读 / fp 缺读 = 臂关(不放宽 target 保护,
+    与基座臂 fail-closed 同向)。
     """
-    if ctx is None or not ctx.required_names or not ctx.board_full:
+    if ctx is None or not ctx.board_full:
         return False
     names = {x.char_id for x in ctx.deployed if x is not None and x.char_id}
-    if set(ctx.required_names) & names:
-        return False   # 必需件已在板:无换入需求,臂关
-    bench_names = {b.char_id for b in (ctx.bench or [])
-                   if b is not None and b.char_id}
-    return bool(set(ctx.required_names) & bench_names)
+    if ctx.required_names and not (set(ctx.required_names) & names):
+        bench_names = {b.char_id for b in (ctx.bench or [])
+                       if b is not None and b.char_id}
+        if set(ctx.required_names) & bench_names:
+            return True
+    return bool(_completion_swap_ins(ctx))
 
 
 class _HypotheticalPanel:
@@ -1192,6 +1202,96 @@ def _required_swap_victim_completion_holds(ctx: SwapPlanContext,
     names = {x.char_id for x in ctx.deployed if x is not None and x.char_id}
     hyp_names = (names - {name}) | set(ctx.required_names)
     panel = _HypotheticalPanel(deployed_bond_counts(hyp_names), hyp_names)
+    return form_progress(comp, panel) >= 1.0
+
+
+def _completion_swap_ins(ctx: SwapPlanContext) -> frozenset[str]:
+    """配方完成件换入候选集(判据 ✗→✓ 严格优;单帧现算,无状态)。
+
+    辖域门(本函数单点):方向锁在效(``ctx.locked``,终局线锁 ∨ 配方
+    对锁,装配单一源)——未对锁帧恒空集,三消费位(触发谓词完成分支/
+    victim 让位检验/卖后上序底线)同吃,禁消费位另设第二份门。
+
+    = bench 中「入板即成型」的件名:M 在 bench ∧ 板上无同名 ∧ 假想面板
+    (板 ∪ {M})下 ``form_progress(ctx.target_comp) >= 1.0``。前提帧 =
+    ctx.fp < 1.0(已成型帧无完成缺口,辖成型/基座臂)∧ 板满(空位帧由
+    M1 通道直上)。折法单一源 = form_progress(与必需件 hold 同一折法,
+    含 OR 组承接/required 腿;禁消费位自写 AND/OR 内联)。成型腿键 ⊆
+    comp 视图键 ⇒ 目标视图成员资格由判据本体蕴含,不另设第二份视图过滤
+    (双源禁)。空集 = 通道关(fail 向不换)。
+
+    出处 = 2026-09-18 sim 实证:配方对锁局板满帧全 plan_empty,配方
+    完成件压席无解(必需件臂只辖 required_deployed 成员,桥池 pair
+    required 恒空);玩法口径 = user_playstyle [20]/[13]。
+    """
+    if ctx is None or not ctx.board_full:
+        return frozenset()
+    if not getattr(ctx, 'locked', False):
+        return frozenset()   # 方向锁不在效帧通道关(未锁/未对锁语义照旧)
+    comp = ctx.target_comp
+    if comp is None:
+        return frozenset()
+    fp = getattr(ctx, 'fp', None)
+    if fp is None or fp >= 1.0:
+        return frozenset()   # 成型帧无完成缺口;fp 缺读 = 判据不可得,关
+    names = {x.char_id for x in ctx.deployed if x is not None and x.char_id}
+    from sr_od.application.currency_war.kernel.cw_comps import form_progress
+    out: set[str] = set()
+    for b in (ctx.bench or []):
+        m = getattr(b, 'char_id', '') or ''
+        if not m or m in names:
+            continue   # 同名在板:真上序被 name_dup 恒留置,入选无意义
+        hyp = names | {m}
+        panel = _HypotheticalPanel(deployed_bond_counts(hyp), hyp)
+        if form_progress(comp, panel) >= 1.0:
+            out.add(m)
+    return frozenset(out)
+
+
+def _swap_victim_yields_for_swap_in(ctx: SwapPlanContext, name: str) -> bool:
+    """victim 让位总检验(消费位 = swap_sell_exclusion_reason 让位门)。
+
+    = 必需件 hold(T-17:假想面板 victim 离场 ∧ required 全体按已换入
+    计,判据满)∨ 完成件 hold(∃ 完成件 M:victim 离场 ∧ M 入板后判据
+    满)。两 hold 同一折法(form_progress 假想面板)——让位当且仅当
+    「换入后判据 ✗→✓ 或不下坠」,否则凑齐倒退不可换。
+    """
+    if _required_swap_victim_completion_holds(ctx, name):
+        return True
+    comp = ctx.target_comp
+    if comp is None:
+        return False
+    ins = _completion_swap_ins(ctx)
+    if not ins:
+        return False
+    from sr_od.application.currency_war.kernel.cw_comps import form_progress
+    names = {x.char_id for x in ctx.deployed if x is not None and x.char_id}
+    for m in sorted(ins):
+        hyp = (names - {name}) | {m}
+        panel = _HypotheticalPanel(deployed_bond_counts(hyp), hyp)
+        if form_progress(comp, panel) >= 1.0:
+            return True
+    return False
+
+
+def _seat_completes_form(ctx: SwapPlanContext, victim: str,
+                         up_name: str) -> bool:
+    """卖后落位复检:up_name 真入板(该 victim 离场)后成型判据满。
+
+    卖后上序底线专用,与候选集判定(``_completion_swap_ins``)互补:候选
+    集只证「该件有完成能力」,不绑定 victim 成对——「候选普通成员占位、
+    完成件仍滞留」的白卖形态须按计划的实际 (victim, up) 对折算在此拒。
+    同名在板件 = 真上序被 name_dup 留置,落位不发生,恒 False。
+    """
+    comp = ctx.target_comp
+    if comp is None or not up_name or up_name == victim:
+        return False
+    names = {x.char_id for x in ctx.deployed if x is not None and x.char_id}
+    if up_name in names:
+        return False
+    from sr_od.application.currency_war.kernel.cw_comps import form_progress
+    hyp = (names - {victim}) | {up_name}
+    panel = _HypotheticalPanel(deployed_bond_counts(hyp), hyp)
     return form_progress(comp, panel) >= 1.0
 
 
@@ -1284,18 +1384,19 @@ def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
         is_target_member = bool(
             bonds & set(ctx.target_factions) or name in ctx.target_cores)
         if is_target_member:
-            # 换入臂(判据必需件优先于非必需板件):pair/静态套判据以
-            # required_deployed 在板为必要条件(``Comp.required_deployed``
-            # 字段契约 + seele_system_formed 合取支),必需件滞留 bench ∧
-            # 板满 = 结构性凑齐失败形态(sim n1000 s91700 基线 12 失败
-            # 希儿系局主形态)。victim 让位条件 = 假想面板(victim 离场 ∧
-            # 必需件按已换入计)下成型判据仍满——破坏 = 凑齐倒退不可换;
-            # 保持 = 换入必需件后判据 ✗→✓ 严格优(支配改进,无新数值
-            # 参数)。让位后落资格族(engines_guard/star_guard/merge
-            # 素材守卫照走,禁直落 fenced 转型臂分支——target 件非转型
-            # 臂辖域)。
+            # 换入臂(判据必需件/完成件优先于非必需板件):pair/静态套
+            # 判据以 required_deployed 在板为必要条件(``Comp.required_
+            # deployed`` 字段契约 + seele_system_formed 合取支),必需件
+            # 滞留 bench ∧ 板满 = 结构性凑齐失败形态(sim n1000 s91700
+            # 基线 12 失败希儿系局主形态);双轨对锁期扩展 = 配方完成件
+            # 滞留(桥池 pair required 恒空,``required_swap_arm_pending``
+            # 完成分支)。victim 让位条件 = 假想面板(victim 离场 ∧
+            # 换入件按已换入计)下成型判据仍满——破坏 = 凑齐倒退不可换;
+            # 保持 = 换入后判据 ✗→✓ 严格优(支配改进,无新数值参数)。
+            # 让位后落资格族(engines_guard/star_guard/merge 素材守卫
+            # 照走,禁直落 fenced 转型臂分支——target 件非转型臂辖域)。
             if not (required_swap_arm_pending(ctx)
-                    and _required_swap_victim_completion_holds(ctx, name)):
+                    and _swap_victim_yields_for_swap_in(ctx, name)):
                 return 'target_keep'   # target 单位(offtarget 拒因归因,先于臂分支)
         elif not bonds & DEPLOY_FENCE:
             return 'target_keep'
@@ -1736,6 +1837,19 @@ def assemble_swap_plan_inputs(
     ist = getattr(strategy_state_of(session), 'v3_intention', None)
     locked = bool(getattr(ist, 'locked_comp', None)) if ist is not None \
         else False   # 锁线布尔单源 = ist.locked_comp 非空(ADR-0534 §1)
+    # 方向锁推广(双轨对锁期):P1 配方对锁(ist.p1_pair 非空,
+    # ADR-0357 意向锁定产物;冻结闩 p1_pair_frozen 钉向)与终局线锁同为
+    # 「方向锁在效」。换血域前提按辖域对齐:双轨期板面义务本体 = 过渡
+    # 配方(cw_recipe 模块不变量),配方对锁帧不开转型域 = 配方完成件
+    # 压席无合法 victim(2026-09-18 sim 实证:配方对锁局板满帧全
+    # plan_empty,fenced_arm_closed/target_keep 主导;判定尺 =
+    # user_playstyle [20]/[13])。演进降级换血臂不受影响:pair 帧
+    # membership 空集(locked_buy_membership 未锁帧缺省)使其 member 门
+    # 恒关,辖域仍在终局线。店侧 S_spec 收窄
+    # (mandate.swap_transition_narrow_frame)直读 ist.locked_comp,
+    # 刻意不随本推广(买侧收窄辖域不变,对称申报见其 docstring)。
+    if ist is not None and getattr(ist, 'p1_pair', ()):
+        locked = True
     fenced_on = False
     fp: float | None = None
     board_full = False
@@ -1980,14 +2094,20 @@ def select_swap_plan(ctx: SwapPlanContext | None,
             _hn = ctx.bench[_hi].char_id or ''
             reasons[_hn] = 'post_sell_held'
         # 换入臂卖后上序底线:臂武装帧(up 空间 = 本臂腾出)卖后上序必须
-        # 真含 required 件——卖冗余件而空位仍被普通成员占走 = 白卖(板面
-        # 净变弱、凑齐状态不变),与转型臂 post_sell_offline 同型的换入
-        # 版底线。臂未武装帧(含 required 在板帧)不辖,逐位同旧。
-        if up2 and required_swap_arm_pending(ctx) and not any(
-                (getattr(ctx.bench[_i], 'char_id', '') or '')
-                in set(ctx.required_names) for _i in up2):
-            reasons[name] = 'post_sell_req_missing'
-            continue
+        # 真兑现换入对象——required 件直接认名;完成件按**实际落位复检**
+        # (该 victim 离场 ∧ 该 up 名入板后成型判据满,``_seat_completes_
+        # form``):候选集成员资格不足以防「同属候选的普通成员占位」白卖,
+        # 须绑定卖出 victim 成对兑现。臂未武装帧(含 required 在板帧)
+        # 不辖,逐位同旧。
+        if up2 and required_swap_arm_pending(ctx):
+            _req = set(ctx.required_names)
+            _up_names = [getattr(ctx.bench[_i], 'char_id', '') or ''
+                         for _i in up2]
+            if not (any(_u in _req for _u in _up_names)
+                    or any(_seat_completes_form(ctx, name, _u)
+                           for _u in _up_names)):
+                reasons[name] = 'post_sell_req_missing'
+                continue
         if up2 and (_arm != 'transition' or any(
                 _bench_is_target(_i) for _i in up2)):
             plan.sell_names = [name]
