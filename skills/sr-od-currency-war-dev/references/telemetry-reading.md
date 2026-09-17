@@ -140,6 +140,7 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
 - 新复盘需求 = 新视图/查询参数(schema 变更查询同步),不是新 py 文件。
 - **别为复盘写一次性脚本**——新复盘需求 = 新视图/查询参数;确需脚本用完即删。
 - **阵容质量 = 三维**(羁绊档位 × 角色构成 × 装备分配)——只看羁绊 = 空壳盲判(羁绊够但核心不在场/装备乱用都看不见;数据在 state.deployed[].star/equips 里,别被视图边界限制)。
+- **名×帧粒度键(逐帧累加型,状态显影计数)禁按事件频度判读**:绝对值只作跨局带对照;时滞/摩擦类问题盯轮差分键;判「某键异常」前先核写入语义(事件计数 vs 状态显影),单一源 = 写入点注释——按事件频度误读状态显影键会立一轮假排查。
 - 改动效果对照:改策略后下一局 `--recent 5` 并列对比(测试绿≠实跑行为对)。
 - **sim 批次同法可查**:sim 批判读走 skills 侧 `cw_batch_stats`(sim 自写账本;判读 CLI `--sim-batch` 入口已随旧流退役,journal 侧 sim 视图待统一账迁移后续批补建),详见 [sim-testing.md](sim-testing.md)——本文档案判读手法按各账本面对应成立,生产判读 CLI 不指向 sim 产物目录。
 - 判读定位的策略行为病**必须固化 sim**(检查项/单帧锁),闭环纪律见 [autonomous-loop.md](autonomous-loop.md) 实机监控第 4 步;需要锁死的确定行为固化成单帧锁,见 [strategy-work.md](strategy-work.md)「单帧锁」。

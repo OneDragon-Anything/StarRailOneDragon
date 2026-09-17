@@ -12,7 +12,7 @@
 
 ## 阶段 2 · 逐轮复盘(按外层循环调用序;**2026-09-07 用户裁定:粒度 = 外层循环画面 op 调用**)
 
-复盘基本单元 = **一次画面 op 调用**(架构依据:`docs/develop/sr_od/application/currency_war/flow/screen_op.md` §1「一次画面 op 调用 = 入口观察 + 逐动作决策循环」;分支序表 = `flow/outer_loop.md` §2.2)。每节点(P×R×)作分组标题,组内 op 按实际调用序(时间戳)排列,**每个画面 op 调用单独一条记录**:
+复盘基本单元 = **一次画面 op 调用**(架构依据:`docs/develop/sr_od/application/currency_war/screens/op-layer.md`「单动作决策循环」节;分支序表 = `flow/outer_loop.md` §2.2)。每节点(P×R×)作分组标题,组内 op 按实际调用序(时间戳)排列,**每个画面 op 调用单独一条记录**:
 
 ```
 ### P1·R1（节点类型）
@@ -31,7 +31,7 @@
 ```
 
 **op 边界重建规则**(档案 = `--match <game_id>` 直读,查询工具见 telemetry-reading「查询工具」节):
-- 档案决策帧的动作序列里,**OpenShop…CloseShop 决策行段 = 备战内显式开店通道的商店访问**(该通道在 prep 决策环内发射 OpenShop 落行,**非 0n 分发**——旧标注「分支 0n」系错标,按显式开店通道口径已纠正;处理类 = `CwScreenPrep.visit_open_shop` 备战内联);**0n 直入通道**(直调 visit_open_shop、不发射 OpenShop 决策行)与**仲裁触发通道**(达标臂发射帧仲裁的商店访问,op='发射帧仲裁商店访问')按**主日志 `[cw-op]` 行**独立计数(op_journal 流已退役,2026-09-15;局后按本局时间窗取日志行,存量旧档案 v12 内嵌的 op_journal 切片只读可用、不作新局口径)——`[cw-op]` 行为主、决策行为辅;局内佐证 = 档案 `state/journal.jsonl` 切片的 receipts 行簇(`field='receipts'` 行 action 载荷 `__type__` 序,BuyCard…/CloseShop 发射行)与 `field='gold'` 行流;**零消费访问(开店即关、无任何动作)在 receipts/gold 行零痕迹,仅 `[cw-op]` 行可见——三载体计数以日志为准**;商店访问总数 = 三载体并集(显式开店/0n 直入/仲裁触发),引用计数注明口径。其余备战动作 = 备战 op(分支 1,`CwScreenPrep.execute`;备战访问在一次 RunDeploy/RunEquip/LevelUp 等未建模投影动作后终结重入,边界按 `flow/prep_visit.md` §1 投影规则 + 帧时距重建);
+- 档案决策帧的动作序列里,**OpenShop…CloseShop 决策行段 = 备战内显式开店通道的商店访问**(该通道在 prep 决策环内发射 OpenShop 落行,**非 0n 分发**——旧标注「分支 0n」系错标,按显式开店通道口径已纠正;处理类 = `CwScreenPrep.visit_open_shop` 备战内联);**0n 直入通道**(直调 visit_open_shop、不发射 OpenShop 决策行)与**仲裁触发通道**(达标臂发射帧仲裁的商店访问,op='发射帧仲裁商店访问')按**主日志 `[cw-op]` 行**独立计数(op_journal 流已退役,2026-09-15;局后按本局时间窗取日志行,存量旧档案 v12 内嵌的 op_journal 切片只读可用、不作新局口径)——`[cw-op]` 行为主、决策行为辅;局内佐证 = 档案 `state/journal.jsonl` 切片的 receipts 行簇(`field='receipts'` 行 action 载荷 `__type__` 序,BuyCard…/CloseShop 发射行)与 `field='gold'` 行流;**零消费访问(开店即关、无任何动作)在 receipts/gold 行零痕迹,仅 `[cw-op]` 行可见——三载体计数以日志为准**;商店访问总数 = 三载体并集(显式开店/0n 直入/仲裁触发),引用计数注明口径。其余备战动作 = 备战 op(分支 1,`CwScreenPrep.execute`;备战访问在一次 RunDeploy/RunEquip/LevelUp 等未建模投影动作后终结重入,边界按 `flow/projection_contract.md`(备战逻辑态面交互契约:字段消费/坐标系/快照 vs 现读时序)+ 帧时距重建);
 - 战斗窗/结算 = `CwScreenBattleWait` 一体 op(三段式,`outer_loop.md` §2.2),按 outcomes/outcome 行定位;补给(`CwScreenSupplyNode`,决策帧 `phase=supply_detour/supply_pick`)、遭遇选择(`CwScreenEncounter`,exogenous `event_choice` 行)按各自数据面定位;投资选卡:历史档案按 `invest_cards` 切片定位(冻结档案,只读)——该流已随删除波 1 停写,新局切片零产出(断供已定谳),新局定位改按 journal 行型 1 写入行:`active_strategies` 写入行(选卡名,局级累计追加,单次选择 = 相邻行差分;写入点 = cw_screen_invest_strategy.py 确认成功块)+`strategy_refresh_used` 写入行(刷新明细,行内 evidence='refresh_click@slotN';写入点 = 同文件刷新发射块);reason 归因串(+槽N刷新等)仅应用日志 [cw-strat]/[cw-env] 行承载不入档案(策略侧决策行文件属两文件模型规划载体,落地前无写入端);
 - **无决策行的纯路由迭代(弹窗关闭类)不逐条成节**,按轮汇总为「无决策行迭代」小清单,并入文末完整性审计的源数据缺口。
 
@@ -43,6 +43,11 @@
 - 每个判定三槽先问「**玩法文档/在册裁定说正确做法是什么**」,再对照算法实际决策;**偏离即算法缺陷候选**。
 - **缺陷候选证据格式**:档案字段/帧(当帧数据)+ 裁定/文档出处(file:line 或条目号)+ 在册修复任务号(有在册任务引任务号,无则立新候选标记)。
 - 裁决口径沿用:以决策时点的信息与期望值口径判断最优性;禁用「运气」作归因,禁用事后结果反推(牌后来没来,不构成当时不买的理由,也不构成当时买了的功绩)。
+- **判「某键异常」前先核该键的写入语义**(事件计数 vs 状态显影/逐帧累加),单一源 = 写入点代码注释——逐帧累加型键禁按事件频度判读,绝对值只作跨局带对照,时滞类问题盯轮差分键;按事件频度误读状态显影键 = 无中生有的排查立案。
+
+## 回灌判据读数(必填;缺 = 复盘未完成)
+
+逐 op 判定之外,固定读四组数作缺陷候选的**回灌对照基线**(修复后同口径复测比对用):①**buys**——购买动作数与花金分布(rounds 行 actions/shop 键);②**2★/3★ 到手与到位轮次**(deployed 星级演进);③**hp 均值与区间**(跨局对照口径,单局只记值;hp 真值链判读口径 = telemetry-reading);④**刷新带**——刷新次数与触发轮分布(journal 刷新写入行)。只读数不裁决(裁决归编排者);每个数字带局 id 与行锚,不带 = 没读。
 
 ## 阶段 3 · 位面总结(三问收口)
 

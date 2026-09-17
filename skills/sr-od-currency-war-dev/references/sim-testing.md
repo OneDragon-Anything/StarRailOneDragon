@@ -21,6 +21,7 @@
 - **并行 sim 批的种子段必须互斥**:sim 局 = seed + 池指纹可复现,两批种子段重叠 = 同种子局逐位重复、零新信息(实证:2026-09-09 两对并行批种子段全同,约 600 局冗余白烧)。
 - **纪律 = 种子段由编排者统一下发**:派单任务书写明该批 `seed_base` 与局数 n(占用段 = `[seed_base, seed_base+n)`);派发前对账在飞批已占段,不重叠才派。
 - **消费端对账**:批 `manifest.json` 的 `seeds` 键即该批占用段;发现段重叠的批,其对比结论降权(重叠局不当作独立样本)。批组织与常驻跑法 → autonomous-loop「sim 批组织细则」,本节只辖种子段互斥。
+- **跨批互证必须不相交 seed 集**:聚合分布类指标(阵营分布/比值带等)的跨批对照,两批 seed 集必须不相交——同 seed+同采样器+同策略的两批,批间一致恰是**相关性的证据**,不是独立复证(实证:两批同用一段 seed 集,「连续两批同向→不再是抽样噪声」的升级推理被审计证伪);同 seed 重放只许用于逐帧恒等对照(零假设=恒等);凡引「两批一致」作升级证据,先声明两批 seed 集关系。
 
 ## 一、找问题(三步主线)
 
@@ -33,4 +34,4 @@
 从第 1 步的指标里筛出表现不好的(怎么筛不规定:与设计预期对照、与历史批/同批分布比,哪种都行)。
 
 ### 3. 挑一局复盘——归因到决策
-对表现不好的指标,拿体现它最重的那一局做复盘(脚本按指标点名最差局):sim 局=批次目录里该局的记录,实机局=对局档案;按 match-review.md 复盘协议读,带上面边界——sim 边界造成的现象不立为策略病灶。sim 局直查 = 批目录(缺省 `.debug/currency_war/telemetry/sim/<批名>/`)内 `decisions.jsonl` 行行自足直读(联接键 run_id+round_num)——sim 批无判读 CLI 视图入口(`--sim-batch` 已随统一账迁移退役,仓内亦无 cw_telemetry/cw_sim 独立命令,别手搓脚本)。复盘骨架与可疑项预填生成器(前置 `$env:PYTHONPATH='src'`):`uv run python tools/cw/review_skeleton.py --decisions <批目录>/decisions.jsonl [--run-id <局id>]`(跑 sim/checks/suspects.py 检测器集全量,清单以该文件 `_SUSPECT_DETECTORS` 注册表为准;条目嵌对应节点小节判定三槽前)。逐轮决策表直读批目录 `decisions.jsonl` 即可(重放/批跑通道已删,见「先知道边界」末条)。
+对表现不好的指标,拿体现它最重的那一局做复盘(脚本按指标点名最差局):sim 局=批次目录里该局的记录,实机局=对局档案;按 match-review.md 复盘协议读,带上面边界——sim 边界造成的现象不立为策略病灶。sim 局直查 = 批目录(缺省 `.debug/currency_war/telemetry/sim/<批名>/`)内 `decisions.jsonl` 行行自足直读(联接键 run_id+round_num)——sim 批无判读 CLI 视图入口(`--sim-batch` 已随统一账迁移退役,仓内亦无 cw_telemetry/cw_sim 独立命令,别手搓脚本)。复盘骨架生成器(零 src 导入,项目根直接跑):`uv run python tools/cw/review_skeleton.py --decisions <批目录>/decisions.jsonl [--run-id <局id>]`——生成逐节点骨架(入口观察/决策循环摘要/判定三槽);原版随附的可疑项检测器预填(sim/checks/suspects.py)已随 sim 重做退役,当前为纯骨架,可疑项由复盘者按三槽自查,检测器注册表重建后恢复预填。逐轮决策表直读批目录 `decisions.jsonl` 即可(重放/批跑通道已删,见「先知道边界」末条)。
