@@ -324,11 +324,11 @@ class CwScreenBattleWait(CwScreenOpBase):
         保真,详见原处 git 历史。差异仅两处载体:循环态挂 SettlementState、
         ADR-0250 窗口关由 saw_settlement 承载。)
         **ADR-0583 拆两半**:策略生命周期钩子 on_round_end 删除后,本回路
-        直接承担观察半——结算真值观察字段(performance.record/last_streak/
-        last_hp 过置信门/last_hp_t)在结算点即时直写(写点与原 on_round_end
-        同点同时序,performance.history 无缺行窗口);策略半(RoundOutcome)
-        追加进 ``session.pending_round_outcomes`` 待加工槽,由策略器下一决策
-        入口惰性 drain。telemetry-only 面(败局页补录)不写任何一侧。
+        直接承担观察半——结算真值观察(performance.record)在结算点即时
+        直写(写点与原 on_round_end 同点同时序,performance.history 无缺行
+        窗口);策略半(pending_round_outcomes 入槽)已随终态契约 §B 删
+        (消费侧 drain 退役,ADR-0638)。telemetry-only 面(败局页补录)
+        不写任何一侧。
         """
         if self.ctx.cw_match is None:
             return
@@ -479,10 +479,9 @@ class CwScreenBattleWait(CwScreenOpBase):
                 # —— 观察半直写(ADR-0583 §2.5;原 on_round_end 观察段逐行平移,
                 # 写点与原调用同点同时序;hp 结算锚已随终态契约 §A 退役)——
                 _write_settlement_observation(_session, _obs)
-                # —— 策略半入槽(ADR-0583 §2.5):策略器下一决策入口惰性 drain
-                #(掉血三臂喂入/node_type 回落/谷底回滚登记 = flow 层
-                # _drain_pending_round_outcomes;处理即清)。
-                _session.pending_round_outcomes.append(_obs)
+                # (策略半入槽 pending_round_outcomes 已随终态契约 §B 删:
+                #  消费侧 drain 早在 ADR-0638 退役,结算真值归宿 = gs
+                #  settlement 覆盖 + performance.history。)
                 # 结算真值现役归宿 = GameState settlement
                 # 域 apply_settlement_cover(观察半直写链)。
                 if _obs.hp_confidence >= 0.9:

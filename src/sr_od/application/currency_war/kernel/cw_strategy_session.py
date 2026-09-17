@@ -28,7 +28,6 @@ from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_performance import (
     PerformanceTracker,
-    RoundOutcome,
 )
 
 if TYPE_CHECKING:
@@ -182,12 +181,9 @@ class StrategySession:
     prep_frame_class: str = 'none'
     shop_frame_class: str = 'none'
     # 结算观察累积槽(ADR-0583 §2.5:旧 on_round_end 拆两半的存活半)。观察层在
-    # 结算点(cw_screen_battle_wait 结算回路)追加 ``RoundOutcome`` 留档;
-    # 消费侧策略半惰性 drain 已删除(04_survival_budget
-    # §7 #7/#8:掉血三臂/谷底回滚均零行为死链,ADR-0638)——本槽现为
-    # 只写不读的结算观察累积面,若后续无消费方,候遥测面清理批再评估。
-    # 写者 = 观察层(单一写端)。
-    pending_round_outcomes: list[RoundOutcome] = field(default_factory=list)
+    # (终态契约 §B:pending_round_outcomes 槽已删——消费侧 drain 早在
+    #  04_survival_budget §7 #7/#8 退役(ADR-0638),本槽只写不读;结算
+    #  真值归宿 = gs 结算覆盖写端 + performance.history。)
     # —— 策略器状态黑盒引用(session.md §3.1 裁决 1)——
     # 类型由实现包自定义(mandate_v1 = StrategyState,§8.6-6 改名归位);
     # 框架经 create_state 工厂按局冷建、只搬运引用不识内部(所有权归策略器;
