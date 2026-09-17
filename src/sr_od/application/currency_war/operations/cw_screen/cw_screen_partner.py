@@ -285,9 +285,9 @@ class CwScreenPartner(CwScreenOpBase):
                 idx = pick.idx if 0 <= pick.idx < len(cands) else 0
                 reason = pick.reason
             log.info('[cw-partner] candidates=%s pick=idx%s %s', [o.char_id for o in options], idx, reason)
-            # r358d(遥测接线):伙伴选择落 session(复盘维度;选中确认后写)。
+            # r358d(遥测接线):伙伴选择落容器(chosen_partner,gs 单一源
+            # ——终态契约 §B:session 份退役;选中确认后写)。
             if match is not None and options and 0 <= idx < len(options):
-                match.session.chosen_partner = options[idx].char_id or ''
                 # GameState 写端(迁移批次二,§3.4.5:各屏选卡写入
                 # chosen_*;单次逻辑写入,§3.4 申报豁免)。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -296,7 +296,7 @@ class CwScreenPartner(CwScreenOpBase):
                 )
                 game_state_of(match.session).write_logic(
                     game_state_of(match.session).chosen_partner,
-                    match.session.chosen_partner,
+                    options[idx].char_id or '',
                     produced_by='CwScreenPartner',
                     sig=ChannelSig(family='logic_action',
                                    actor='CwScreenPartner', mode='compute'))

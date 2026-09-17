@@ -188,9 +188,9 @@ class CwScreenMegastar(CwScreenOpBase):
                 _st = strategy_state_of(_match.session)
                 if _st is not None:
                     _st.megastar_clicked = True
-                # r358d(遥测接线):巨星选择落 session(复盘「绑定与 comp 匹配」维度)。
+                # r358d(遥测接线):巨星选择落容器(chosen_megastar,gs 单一源
+                # ——终态契约 §B:session 份退役)。
                 if options and 0 <= idx < len(options):
-                    _match.session.chosen_megastar = options[idx].char_id or ''
                     # GameState 写端(迁移批次二,§3.4.5:各屏选卡写入
                     # chosen_*;单次逻辑写入,§3.4 申报豁免)。
                     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -199,7 +199,7 @@ class CwScreenMegastar(CwScreenOpBase):
                     )
                     game_state_of(_match.session).write_logic(
                         game_state_of(_match.session).chosen_megastar,
-                        _match.session.chosen_megastar,
+                        options[idx].char_id or '',
                         produced_by='CwScreenMegastar',
                         sig=ChannelSig(family='logic_action',
                                        actor='CwScreenMegastar',

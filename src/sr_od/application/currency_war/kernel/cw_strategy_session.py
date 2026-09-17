@@ -141,10 +141,8 @@ class StrategySession:
     # (state.equips 拷贝)与载体中继兜底;决策输入(门①/工具评估/计划
     # 产出位)已切黑板帧 owned_equips,勿回接本镜像(陈旧快照面)。
     last_owned_equips: list[str] = field(default_factory=list)
-    # 遥测接线(ADR-0229 缺口):选择类 handler 写 → read_game_state 回写
-    # state 同名字段(复盘维度:巨星绑定/伙伴选择与 comp 匹配)。
-    chosen_megastar: str = ''
-    chosen_partner: str = ''
+    # (chosen_megastar/chosen_partner session 份已随终态契约 §B 退役:
+    #  单一源 = gs.chosen_*(write_logic 选择写点),session 份零读者。)
     # 简报词缀(对局开始 debuff/boss 词缀;写入端 = CwScreenBriefing 内联
     # 直写(仅空时写);mechanics_fit 输入,ADR-0397/0398 保位勿滤)。
     briefing_affixes: list[str] = field(default_factory=list)
