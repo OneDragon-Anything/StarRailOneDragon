@@ -207,24 +207,36 @@ class CwScreenExpertInvite(CwScreenOpBase):
         card_bonds = [_resolve_card_bonds(self.ctx, screen, a)
                       for a in CARD_AREAS]
         # 选卡判据(普查迁移批 2:单一源 = kernel choose_expert_index;唯一
-        # 入口 = 策略对象,handler 禁自拟判据,kernel 直调仅无 match 防御
-        # 路径)。写槽 → 零参决策(终态契约 §2.7):弹窗载体 = 卡羁绊解析
-        # + 板面计数打包;board 读数失败 = {} 的现金为王兜底语义经载体
-        # 原样进判据。
+        # 入口 = 策略对象,handler 禁自拟判据,kernel 直调限防御路径:无
+        # match 分支 + 决策链异常降级)。写槽 → 零参决策(终态契约 §2.7):
+        # 弹窗载体 = 卡羁绊解析 + 板面计数打包;board 读数失败 = {} 的现金
+        # 为王兜底语义经载体原样进判据。
         _match = getattr(self.ctx, 'cw_match', None)
         if _match is not None:
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                ChannelSig,
-                ExpertInvitePayload,
-            )
-            _match.gs.write_logic(
-                _match.gs.expert_invite,
-                ExpertInvitePayload(card_bonds=list(card_bonds),
-                                    board=dict(board)),
-                produced_by='CwScreenExpertInvite',
-                sig=ChannelSig(family='logic_action',
-                               actor='CwScreenExpertInvite', mode='compute'))
-            idx = _match.strategy.decide_expert_invite().idx
+            try:
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    ChannelSig,
+                    ExpertInvitePayload,
+                )
+                _match.gs.write_logic(
+                    _match.gs.expert_invite,
+                    ExpertInvitePayload(card_bonds=list(card_bonds),
+                                        board=dict(board)),
+                    produced_by='CwScreenExpertInvite',
+                    sig=ChannelSig(family='logic_action',
+                                   actor='CwScreenExpertInvite',
+                                   mode='compute'))
+                idx = _match.strategy.decide_expert_invite().idx
+            except Exception as e:   # noqa: BLE001  决策链异常降级,不出 op
+                # 兜底 = kernel 直调同无 match else 分支(现金为王语义一致,
+                # 判据仍单一源 kernel,handler 零自拟);可直调因防御路径豁免
+                # 在案——「kernel 直调仅无 match」辖正常路径,catch 降级同属
+                # 防御面(fortune/equip 两姊妹 handler 同姿态)。
+                log.warning('[cw-bookcard] 决策链异常(落现金为王兜底): %s', e)
+                from sr_od.application.currency_war.kernel.cw_events import (
+                    choose_expert_index,
+                )
+                idx = choose_expert_index(card_bonds, board)
         else:
             from sr_od.application.currency_war.kernel.cw_events import (
                 choose_expert_index,
