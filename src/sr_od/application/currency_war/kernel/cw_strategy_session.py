@@ -140,16 +140,13 @@ class StrategySession:
     last_owned_equips: list[str] = field(default_factory=list)
     # (chosen_megastar/chosen_partner session 份已随终态契约 §B 退役:
     #  单一源 = gs.chosen_*(write_logic 选择写点),session 份零读者。)
-    # 简报词缀(对局开始 debuff/boss 词缀;写入端 = CwScreenBriefing 内联
-    # 直写(仅空时写);mechanics_fit 输入,ADR-0397/0398 保位勿滤)。
-    briefing_affixes: list[str] = field(default_factory=list)
+    # (briefing_affixes/briefing_bosses session 份已随终态契约 §B 退役:
+    #  单一源 = gs.enemy_affixes/gs.plane_bosses,写端 = 简报/位面详情采集/
+    #  prep 补采直写;affixes 幂等辖读+采、bosses 恒覆写含读空清、保位
+    #  None 不滤语义全部上移容器写端。)
     # (selected_difficulty/enemy_difficulty session 份已随终态契约 §B 退役:
     #  单一源 = gs.selected_difficulty/gs.enemy_difficulty,写端 = 入口链
     #  漏斗/briefing 写端直写。)
-    # 位面序 boss 真值(3 位面 boss 名;cw_loop 首个稳定备战帧 copy 自简报
-    # LCS 清洗读数 + CwScreenPlaneIntel 实采;元素可 None = 徽章态采不到
-    # 身份——保位勿滤,滤掉会让后续位面名字左移错位)。
-    briefing_bosses: list[str | None] = field(default_factory=list)
     # (active_env session 份已随终态契约 §B 退役——单一源 = gs.active_env。)
     # ⚠️ 显式种子化:default 禁止 OS 熵种子,default=
     # 固定种子 0 的独立实例;真实随机面由消费方显式注入——生产 run loop

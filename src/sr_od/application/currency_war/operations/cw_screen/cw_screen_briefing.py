@@ -135,15 +135,27 @@ class CwScreenBriefing(CwScreenOpBase):
         + 点「下一步」+ 置位(落地判定归下一轮重入裁决)。"""
         _match = getattr(self.ctx, 'cw_match', None)
         _session = _match.session if _match is not None else None
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            ChannelSig as _cs_b,
+        )
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            game_state_of as _gso_b,
+        )
+        _gs_b = _gso_b(_session) if _session is not None else None
 
-        # ② 读敌人词缀(名+center,A8 最高 4)→ session 直写(mechanics_fit 输入)。
-        #    词缀幂等:session 已有(重入/retry)不重读,避免重复采效果点击。
+        # ② 读敌人词缀(名+center,A8 最高 4)→ gs 直写(mechanics_fit 输入)。
+        #    词缀幂等:容器已有(重入/retry)不重读,避免重复采效果点击。
         _affixes_pos: list[tuple[str, Point]] = []
-        if _session is not None and not _session.briefing_affixes:
+        if _gs_b is not None and not _gs_b.enemy_affixes.value:
             _affixes_pos = read_affixes_with_pos(self.ctx, screen)
             if _affixes_pos:
-                _session.briefing_affixes = [n for n, _ in _affixes_pos]
-                log.info('简报词缀读得(写 session): %s', _session.briefing_affixes)
+                _names_aff = [n for n, _ in _affixes_pos]
+                _gs_b.write_logic(
+                    _gs_b.enemy_affixes, _names_aff,
+                    produced_by='CwScreenBriefing',
+                    sig=_cs_b(family='logic_action', actor='CwScreenBriefing',
+                              screen='', mode='compute'))
+                log.info('简报词缀读得(写容器): %s', _names_aff)
                 # 词缀效果采集(01-opening §1 随迁职责):每词缀点采 OCR 效果,
                 # 与注册表比对,新名/不一致 → 截图 + 写回注册表(best-effort:
                 # 失败不阻塞点「下一步」;write_affix_effects 本轮内存不生效,下轮 import 生效)。
@@ -168,14 +180,18 @@ class CwScreenBriefing(CwScreenOpBase):
                     log.warning(f'[cw-briefing] 词缀效果账本登记失败(不阻塞): {e}')
         # 位面序真值:每次进简报屏都重读覆写(不做「已存跳过」幂等守卫——守卫会把
         # 上一局残留当本局真值;retry 重跑同屏重读成本 = 一次区域 OCR,可接受)。
-        # 读得 → LCS 清洗归一(boss_fit 消费端规范名)→ session 直写;读空 → 清 None
-        #(防跨局残留假真值)。
+        # 读得 → LCS 清洗归一(boss_fit 消费端规范名)→ gs 直写;读空 → 清 None
+        #(防跨局残留假真值)。终态契约 §B:容器单源。
         _bosses = read_bosses(self.ctx, screen)
         _cleaned = clean_boss_names_by_lcs(_bosses) if _bosses else None
-        if _session is not None:
-            _session.briefing_bosses = list(_cleaned) if _cleaned else None
+        if _gs_b is not None:
+            _gs_b.write_logic(
+                _gs_b.plane_bosses, list(_cleaned) if _cleaned else None,
+                produced_by='CwScreenBriefing',
+                sig=_cs_b(family='logic_action', actor='CwScreenBriefing',
+                          screen='', mode='compute'))
         if _bosses:
-            log.info('简报首领读得(位面序,LCS 清洗后,写 session): %s', _cleaned)
+            log.info('简报首领读得(位面序,LCS 清洗后,写容器): %s', _cleaned)
         else:
             # 空读也要可见:「read_bosses 恒空」vs「幂等跳过」可区分(W222 先例)。
             log.info('简报首领未读到(read_bosses 空:区域-首领行 OCR 无 4-8 字中文名)')

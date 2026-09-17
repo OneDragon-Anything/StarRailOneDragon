@@ -303,17 +303,17 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
         # 开局全无真值 → 遥测实证的初值表先验(ADR-0559;实证档 A8/108:
         # 基础 82、「开局不利」62;无实证档 → None 诚实未知,ADR-0491)。
         # 先验非真读,readable=False;真值帧到达即被观察覆盖。
-        # (终态契约 §B:selected_difficulty/enemy_difficulty 先验输入读容器;
-        #  briefing_affixes 归 T-3 briefing 切片后同换。)
+        # (终态契约 §B:三先验输入全读容器——briefing 写端直入
+        #  gs.enemy_affixes/selected_difficulty/enemy_difficulty。)
         prior = (opening_hp_prior(
-            getattr(session, 'briefing_affixes', None),
+            game_state_of(session).enemy_affixes.value,
             (game_state_of(session).selected_difficulty.value or '')
             if session is not None else '',
             game_state_of(session).enemy_difficulty.value)
             if session is not None else None)
         if prior is not None:
             log.info(f'[cw][{source}] hp 开局无真值 → 初值表先验 {prior}'
-                     f'(词缀={sorted(set(getattr(session, "briefing_affixes", None) or []))};'
+                     f'(词缀={sorted(set(game_state_of(session).enemy_affixes.value or []))};'
                      f'ADR-0559,readable=False,真值帧到达即被覆盖)')
             return prior, False
         return None, False   # 无实证档(其他难度/未读到难度)→ None 诚实未知(ADR-0491)

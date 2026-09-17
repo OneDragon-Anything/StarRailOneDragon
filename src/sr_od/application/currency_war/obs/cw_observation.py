@@ -2450,11 +2450,9 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         # 词缀/巨星/伙伴/连胜)与决策(mechanics_fit/boss_fit/
         # 连胜门)同源。注入点单一(此处),策略器的
         # 方向刷新注入保留(两处都幂等:非空才覆)。
-        # (active 双字段已上移容器源;briefing 双字段归 T-3 briefing 切片。)
-        if getattr(_sess, 'briefing_bosses', None):
-            plane_bosses_val = list(_sess.briefing_bosses)
-        if getattr(_sess, 'briefing_affixes', None):
-            enemy_affixes_val = list(_sess.briefing_affixes)
+        # (终态契约 §B:active 双字段与 briefing 双字段中继全部退役——
+        #  写端(选择 handler/简报/位面详情采集/prep 补采)直入容器,
+        #  session 中转面死亡。)
     # shop_cards:spec 无的阶段(prep_clean 面板未开;battle 帧同)直置
     # None(三态语义 None=离屏,不与「买光=[empty×5]」混载),连锚判定都
     # 省(ADR-0462)。

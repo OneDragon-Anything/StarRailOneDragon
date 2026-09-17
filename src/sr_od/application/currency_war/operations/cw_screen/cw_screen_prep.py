@@ -1870,7 +1870,8 @@ class CwScreenPrep(CwScreenOpBase):
                                     ) -> OperationRoundResult | None:
         """接管局补采(W971 §2.1/01-opening §2.1;单轮化后挂点 = 单轮 op 观察段)。
 
-        触发 = session.briefing_bosses 空(本局尚无位面序真值);可交互门 = 节点条
+        触发 = gs.plane_bosses 空(本局尚无位面序真值;终态契约 §B:session
+        中转退役);可交互门 = 节点条
         可读;会开/关位面详情画面 → 执行后交回外循环重识别。计数挂容器
         match_facts 域 Field(单轮 op 每外循环轮次重建,实例属性不存活);
         成功或 2 次失败后停。旗标渠道 = 渠道③接管协议(logic_hook,actor =
@@ -1879,8 +1880,7 @@ class CwScreenPrep(CwScreenOpBase):
         _gs = game_state_of(session)
         _sig_takeover = ChannelSig(family='logic_hook', actor='ResumeAttach',
                                    mode='compute')
-        if (_gs.takeover_collect_done.value
-                or getattr(session, 'briefing_bosses', None)):
+        if _gs.takeover_collect_done.value or _gs.plane_bosses.value:
             return None
         _tk_slots = None
         with contextlib.suppress(Exception):
@@ -1928,10 +1928,19 @@ class CwScreenPrep(CwScreenOpBase):
                             sig=_sig_takeover)
             # 保位写(ADR-0398):徽章态位面采得 None 原样占 3 槽,
             # 丢弃会让后续位面名字左移错位(位面序真值变假)。
-            session.briefing_bosses = _names
+            # 终态契约 §B:直写 gs.plane_bosses(session 中转退役)。
+            _gs.write_logic(_gs.plane_bosses, _names,
+                            produced_by='ResumeAttach',
+                            sig=ChannelSig(family='logic_hook',
+                                           actor='ResumeAttach',
+                                           screen='', mode='compute'))
             log.info('[cw][director] 开局 boss 实采完成(位面序保位):%s', _names)
-        if _affixes and not getattr(session, 'briefing_affixes', None):
-            session.briefing_affixes = _affixes
+        if _affixes and not _gs.enemy_affixes.value:
+            _gs.write_logic(_gs.enemy_affixes, _affixes,
+                            produced_by='ResumeAttach',
+                            sig=ChannelSig(family='logic_hook',
+                                           actor='ResumeAttach',
+                                           screen='', mode='compute'))
             log.info('[cw][director] 词缀补采(位面详情横条随采,简报未供时):%s', _affixes)
         return self.round_success('接管补采执行,交回外循环重识别', wait=1.0)
 
