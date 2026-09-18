@@ -153,7 +153,9 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'match_facts': 2,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/board/接管恢复旗标(§3.1/§3.2.6/§3.2.14/§3.2.20;域版本 2 =
                             # 接管/恢复三字段(resumed_match/takeover_collect_done/
                             # takeover_tries)迁入,渠道③接管协议 logic_hook)
-    'refresh_counters': 1,  # 商店刷新计数组(§3.3.6-§3.3.9,写入=仅逻辑)
+    # (refresh_counters 域已随 2026-09-18 用户裁决迁出容器:三字段住效果
+    #  账本 ActiveEffectInventory(统一计算,写端 = 刷新上报函数),域版本
+    #  面退役,考古走 git。)
     'node_screen_refresh': 2,  # 节点屏刷新计数组(§3.4.1-§3.4.4;遭遇/补给/环境/策略逐卡)
                                # 域版本 2 = 新增顶层字段 encounter_refreshed_in_visit
                                # (encounter 刷新建议 per-visit 位,终态契约)
@@ -1323,17 +1325,15 @@ def apply_effect_burst_grant(gs: GameState, spec: Any, *,
     语义由登记时点单次调用承载,其余挂点不得重复调本函数。
 
     采样点 = 选卡登记挂点(CwScreenInvestStrategy 确认落地,登记成功后
-    紧随调用);写入 = write_logic(§3.3.6 余额写入=仅逻辑)。额度 0 或
+    紧随调用);记账 = 效果账本(2026-09-18 迁入裁决:免费余额住
+    ActiveEffectInventory,经 grant_free_refreshes 统一出口)。额度 0 或
     payload 无此字段(如 BattlefieldEffect 族)= no-op。
     """
     n = int(getattr(getattr(spec, 'payload', None), 'free_refresh_burst', 0) or 0)
     if n <= 0:
         return
     _ev = f'effect_burst@{frame}' if frame else 'effect_burst'
-    balance = gs.free_refresh_balance.value or 0
-    gs.write_logic(gs.free_refresh_balance, int(balance) + n,
-                   produced_by='EffectLedgerBridge', evidence=_ev,
-                   sig=_bridge_sig(gs))
+    gs.effects.grant_free_refreshes(n)
 
 
 def grant_effect_node_refresh_balance(gs: GameState, *,
@@ -1354,9 +1354,9 @@ def grant_effect_node_refresh_balance(gs: GameState, *,
     采样点 = 节点 tick 挂点(cw_loop 备战分支),**仅在 advance_node 返回
     advanced=True 时调用**(每节点恰一次,重复调用即双计;条件形态与静态
     形态同闸门——授予量随当拍金现值变化,触发时点恒为节点边界一次);
-    写入 = write_logic(§3.3.6)。静态活载体 = 双手狸(2/节点);条件活载体 =
-    本金充裕/+(50/10/3)。固定理财位面开始段(PLANE_START)不属本形态,
-    未建模挂账不改本桥。
+    记账 = 效果账本(2026-09-18 迁入裁决)。静态活载体 = 双手狸(2/节点);
+    条件活载体 = 本金充裕/+(50/10/3)。固定理财位面开始段(PLANE_START)不
+    属本形态,未建模挂账不改本桥。
     """
     per_node = 0
     gold = gs.gold.value
@@ -1373,11 +1373,7 @@ def grant_effect_node_refresh_balance(gs: GameState, *,
                 per_node += min(surplus // step, cap)
     if per_node <= 0:
         return
-    _ev = f'effect_per_node@{frame}' if frame else 'effect_per_node'
-    balance = gs.free_refresh_balance.value or 0
-    gs.write_logic(gs.free_refresh_balance, int(balance) + per_node,
-                   produced_by='EffectLedgerBridge', evidence=_ev,
-                   sig=_bridge_sig(gs))
+    gs.effects.grant_free_refreshes(per_node)
 
 
 def project_effect_capacity(gs: GameState) -> None:
@@ -2511,10 +2507,11 @@ class GameState:
     board: Field[dict[str, int]] = field(default_factory=Field)      # 上阵羁绊计数(§3.2.6;下档阈值=派生不存储)
     shop_refresh_cost: Field[int] = field(default_factory=Field)     # 刷新费,动态(§3.3.4/ADR-0622 现场 OCR;免费帧不写,None≠0)
 
-    # —— 商店刷新计数组(§3.3.6-§3.3.9;写入=仅逻辑,无 UI 观察通道)——
-    free_refresh_balance: Field[int] = field(default_factory=Field)  # 未消耗免费刷新次数(§3.3.6)
-    paid_refresh_count: Field[int] = field(default_factory=Field)    # 累计付费刷新(§3.3.7;长线利好触发计数载体)
-    total_refresh_count: Field[int] = field(default_factory=Field)   # 累计全部刷新(§3.3.8;二手市场/采购专员计数载体)
+    # (商店刷新计数组三字段——free_refresh_balance/paid_refresh_count/
+    #  total_refresh_count——已随 2026-09-18 用户裁决迁出容器,住效果账本
+    #  ActiveEffectInventory(统一计算,写端 = 刷新上报函数;消费方 =
+    #  env_economy 选卡评估/免费闸),考古走 git。prev_node_spent 不属
+    #  迁出面,保留原位。)
     prev_node_spent: Field[bool] = field(default_factory=Field)      # 上节点是否花费(§3.3.9;存款回报条件输入,观察需求)
 
     # —— 节点屏刷新计数组(§3.4.1-§3.4.4;渠道② logic_action,写入=仅逻辑)——

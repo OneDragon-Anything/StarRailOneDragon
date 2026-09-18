@@ -169,16 +169,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'shop_refresh_cost': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='刷新费现场 OCR(ADR-0622),零逻辑写端'),
-    # —— 刷新计数组(写入=仅逻辑,无观察通道)——
-    'free_refresh_balance': ProjectionAuditRow(
-        status=AUDIT_PROCESS_ONLY,
-        basis='刷新计数组(§3.3.6-9 仅逻辑写,无 UI 观察通道)'),
-    'paid_refresh_count': ProjectionAuditRow(
-        status=AUDIT_PROCESS_ONLY,
-        basis='刷新计数组(§3.3.7)'),
-    'total_refresh_count': ProjectionAuditRow(
-        status=AUDIT_PROCESS_ONLY,
-        basis='刷新计数组(§3.3.8)'),
+    # (刷新计数组三行——free_refresh_balance/paid_refresh_count/
+    #  total_refresh_count——已随 2026-09-18 迁入裁决移出容器,审计面
+    #  随域退役;账本侧审计 = 效果账本自身测试面。)
     'prev_node_spent': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='上节点花费位(§3.3.9,仅逻辑写)'),

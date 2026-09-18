@@ -39,7 +39,6 @@ from sr_od.application.currency_war.kernel.cw_action_report.level_up_shop import
     report_action_level_up_shop_param,
 )
 from sr_od.application.currency_war.kernel.cw_action_report.refresh_shop import (
-    record_refresh_execution,
     report_action_refresh_shop_param,
 )
 from sr_od.application.currency_war.kernel.cw_action_report.sell_bench import (
@@ -102,11 +101,10 @@ def apply_player_action(gs: GameState, action: CwAction, *,
       陈旧提案守卫/落位拒绝在腿内)。
     - 商店族(买/卖备战/卖上阵/换位/购买经验含商店屏双类型/刷新/关店):
       逐类型直调对应上报函数;sim 自喂 ``executed`` 决定量——刷新实付金
-      = ``refresh_cost_for``(免费刷额度先行),购买经验击数恒 1(单动作
-      形态,腾席链多击归策略器多发动作),买牌 k 自算(满栏合成买在
-      函数内)。
-    - 应用成功且为刷新 → 刷新执行事实组记账(§3.3.6-8:免费帧闸;
-      record_refresh_execution 挂 outcome.applied 原位保留)。
+      = ``refresh_cost_for``(免费刷额度先行)并同喂 ``free``,购买经验击数
+      恒 1(单动作形态,腾席链多击归策略器多发动作),买牌 k 自算(满栏
+      合成买在函数内)。刷新计数 = 上报函数内统一触发(效果账本单口,
+      2026-09-18 迁入裁决;无引擎旁路记账)。
     - 词表外/集外动作 = applied=False 'unsupported_action_type'(原聚合
       口拒绝语义逐位平移,禁静默吞)。
     """
@@ -129,14 +127,11 @@ def apply_player_action(gs: GameState, action: CwAction, *,
     if isinstance(action, CwActionLevelUpParam):
         return report_action_level_up_param(gs, action, sig, executed=executed)
     if isinstance(action, CwActionRefreshShopParam):
-        executed = ShopActionExecuted(
-            refresh_paid=refresh_cost_for(gs), levelup_clicks=1)
-        outcome = report_action_refresh_shop_param(gs, action, sig,
-                                                   executed=executed)
-        if outcome.applied:
-            record_refresh_execution(gs, free=(executed.refresh_paid == 0),
-                                     frame=node_tag)
-        return outcome
+        _paid = refresh_cost_for(gs)
+        return report_action_refresh_shop_param(
+            gs, action, sig,
+            executed=ShopActionExecuted(refresh_paid=_paid, levelup_clicks=1),
+            free=(_paid == 0))
     if isinstance(action, CwActionCloseShopParam):
         return report_action_close_shop_param(gs, action, sig)
     return LogicOutcome(applied=False, reason='unsupported_action_type')

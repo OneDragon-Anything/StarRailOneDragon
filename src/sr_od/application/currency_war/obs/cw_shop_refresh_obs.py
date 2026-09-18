@@ -11,7 +11,7 @@ cost=徽标(cw_observation,旁证)。
 刷新钮**按钮态**读数(:func:`read_shop_refresh_button`,建档接入):单帧三态
 =免费态(「免费刷新」锚+剩余次数)/付费耗尽态(「刷新」+金币图标+标价,白亮钮)/
 不可用灰态(同付费渲染,按钮变暗,金<标价)。免费态次数 = §3.3.6
-free_refresh_balance 的 UI 观察通道(实机取证:免费帧按钮渲染「免费刷新」+
+效果账本免费余额的 UI 观察通道(实机取证:免费帧按钮渲染「免费刷新」+
 次数数字,次数与「文本-刷新价格」rect 同位——推翻该节「画面无计数控件」旧对拍
 申报,正本更新归设计批)。三态渲染规格与行为实锤出处 =
 ``.debug/currency_war/evidence/20260912_t15_t13_t18/``(免费帧
@@ -174,7 +174,7 @@ class ShopRefreshButton:
     - ``free``:True=免费态(锚命中);False=付费域(锚未中∧标价读出,
       含耗尽与灰态两形);None=判不出(area 缺失/OCR 双空),消费方按失读
       回退逻辑账,禁当 False。
-    - ``free_remaining``:免费态钮内剩余次数(§3.3.6 free_refresh_balance
+    - ``free_remaining``:免费态钮内剩余次数(效果账本免费余额
       的 UI 观察通道)。非免费态/失读 = None。
     - ``price``:付费态标价(§3.3.4 同源 :func:`read_shop_refresh_price`);
       免费态恒 None(免费帧不写语义在解析层结构性满足——次数 rect 读数

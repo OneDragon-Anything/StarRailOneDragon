@@ -10,7 +10,7 @@
   不加规则);直出 2/3 星概率 = 0(U12 首版口径,仅明确效果触发的
   变费/升星机制建模);
 - 手动刷新 2 金/次恒定(``REFRESH_COST_BASE`` 多局对账定谳);免费刷
-  额度先行(容器 free_refresh_balance);刷新重置整店 5 槽;
+  额度先行(效果账本免费余额);刷新重置整店 5 槽;
 - 节点切换自动全刷零继承 / 升级不触发刷新 / 整店锁(锁定后跨节点不
   自动刷)——推进时机由引擎相位机承载,本模块只供发牌与刷价;
 - 轮岗环境(重做设计稿 M02 挂钩):每备战阶段重掷翻倍档 = kernel
@@ -60,13 +60,10 @@ def effective_deal_probs(level: int, rng: random.Random, *,
 def refresh_cost_for(gs: GameState) -> int:
     """本次刷新实付金(免费刷额度先行 → 0;否则基价 2 恒定)。
 
-    免费余额域 = 容器 §3.3.6(未消耗免费刷新次数);None = 未写(无
-    免费来源常态)按 0 额度处理。
+    免费余额域 = 效果账本(2026-09-18 迁入裁决:
+    ``gs.effects.free_refresh_balance``;效果发放 +/刷新执行 −,0 起)。
     """
-    balance = gs.free_refresh_balance.value
-    if balance is not None and balance > 0:
-        return 0
-    return REFRESH_COST_BASE
+    return 0 if gs.effects.free_refresh_balance > 0 else REFRESH_COST_BASE
 
 
 def deal_shop(gs: GameState, rng: random.Random, *, level: int,

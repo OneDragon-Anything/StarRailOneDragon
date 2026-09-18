@@ -89,7 +89,7 @@ class ShopVisitLedger:
     # 免费闸)。None = 失读回退逻辑账(接线前保守形态),禁当 False。
     refresh_free_truth: bool | None = None
     # T-13 次数余量联动:免费态钮内剩余次数 UI 读数(同帧快照;消费方 =
-    # apply_action_outcome 与 free_refresh_balance 逻辑账刷前值对票,失配落
+    # 刷新 op 与效果账本免费余额刷前值对票(留证票住 op),失配落
     # 缺陷台账零决策)。
     refresh_free_remaining_truth: int | None = None
     # T-219 免费刷新对账三件(判定 = 对账类,比对收口在观察侧;动作 op

@@ -47,8 +47,8 @@ XP_GOLD_RATE: float = 1.0
 _PLANE_ARRIVAL_KEY = 'plane_arrival_p{}'
 # 刷新阈值概率 = refresh_{scope}_ge{阈值}_p(design §2.2.4 需估参数②的
 # P(达 20)/P(达 30));scope ∈ {total, paid} 对齐统一 state 计数载体:
-# total = 累计全部刷新(total_refresh_count,二手市场「商店刷新20次后」)、
-# paid = 累计付费刷新(paid_refresh_count,长线利好「花费金币进行30次刷新」)。
+# total = 累计全部刷新(效果账本 refresh_total,二手市场「商店刷新20次后」)、
+# paid = 累计付费刷新(效果账本 refresh_paid,长线利好「花费金币进行30次刷新」)。
 # 数据批口径 = 逐局 CwActionRefreshShopParam 动作计数,cost>0 记付费
 # (细则 = invest-env 迭代 data-batch-estimates 详设,git 历史可溯)。
 _REFRESH_P_KEY = 'refresh_{}_ge{}_p'
@@ -239,8 +239,8 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
       (_STRATEGY_PICK_PLANES 结构表);
     - gold_after_refreshes(B 类):P(累计刷新达阈值)× 返金。付费/总分型 =
       refresh_cost_after 在场判(在场 = 长线利好「花费金币进行30次刷新」付费
-      阈值,读 gs.paid_refresh_count;否则 = 二手市场总阈值,读
-      gs.total_refresh_count)。计数 ≥ 阈值 → P=1(选中即触发按立即结算
+      阈值,读 效果账本 refresh_paid;否则 = 二手市场总阈值,读
+      效果账本 refresh_total)。计数 ≥ 阈值 → P=1(选中即触发按立即结算
       建模,未实采;开局桩形计数恒 0 不达);计数 None(未读)按 0(起始
       计数)。v1 用整局分布参数不按当前计数条件化——局内重发帧系统性高估,
       申报为近似(主要消费帧 = 开局三选一,整局参数即精确口径),条件化
@@ -307,9 +307,9 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     if eff.gold_after_refreshes is not None:
         _th, _refund = eff.gold_after_refreshes
         _scope = 'paid' if eff.refresh_cost_after is not None else 'total'
-        _count = (gs.paid_refresh_count if _scope == 'paid'
-                  else gs.total_refresh_count).value
-        _cur = int(_count or 0)
+        # 计数载体 = 效果账本(2026-09-18 迁入裁决:gs.effects 统一计算)
+        _cur = (gs.effects.refresh_paid if _scope == 'paid'
+                else gs.effects.refresh_total)
         if _cur >= _th:
             _pw: tuple[float, float, float] | None = (1.0, 1.0, 1.0)
         else:
