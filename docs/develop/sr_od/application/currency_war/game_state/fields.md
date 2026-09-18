@@ -1318,10 +1318,10 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
     下双窗同开,失配链边界补结在先,球金窗顺延到店开帧收口——known 窗
     闭后残窗期第二独立正差被球金窗吞、unknown 形态球金入边界行台账
     归因混账,均为已申报残余面,机理见 `_absorb_prep_sphere_income`
-    docstring)/部署 miss
-    申报闩(`deploy_miss_pending`,消费 = `consume_deploy_miss_mark` 投影跳写)
-    与其连续计数(`deploy_miss_streak_key/n`,同键连续 miss 达
-    `DEPLOY_MISS_REDISPATCH_LIMIT` 由备战决策循环 round_fail 交上层)。
+    docstring)。**动作 op 行为模型 = 机械执行 + 发出即记账**(执行回执
+    唯一写点 = `note_action_receipt`,§9.3):执行层零「是否生效」验证、
+    零重试、零 miss 闩;静默不生效的治理 = 投影照写 → heavy 实读对账
+    失配 → 安灯停局 → 按真 bug 根因调查(2026-09-18 用户裁定)。
   - `TrackedBooks`(GameState.tracked_books):tracked 主账槽位簿记(bench/deployed
     两面,§3.2.22 配套裁定)。
   - `plane_node_sequences`(GameState 位面节点序列台账,`PlaneNodeLedger` 载体):
@@ -1329,6 +1329,17 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
     三访问函数(get_node_ledger/ledger_node_type/ledger_update_plane)与
     `fill_boss_by_position`(类本体住 cw_game_state.py,函数转发保持既有 import
     路径),消费面 = cw_vocab 转出口/cw_equip_wear_plan/obs 与各画面 op。
+  - `NodeBooks`(GameState.node_books;节点序列探针簿记组,容器内独立宿主组):
+    `plane_node_table`(开局帧实读槽序表,当前位面内恒定)/
+    `plane_node_table_plane`(表归属位面号)/`plane_lengths_seen`(已揭晓位面
+    长度序列);唯一写端 = `cw_screen_prep.store_plane_table`(每位面首帧采集),
+    读端 = `kernel/cw_plane_table`(经 game_state_of 桥)。
+  - 其余非 Field 宿主(语义/写读点逐字段住代码注释,此处只记符号):
+    `settlement_ring`(结算观测环:产结算屏节点的 RoundOutcome 消费子集,
+    深度 10 同场去重)/`encounter_log`(本局全量遭遇行,遭遇经验证据通道)/
+    `prep_obs`(备战黑板帧整帧快照宿主,观察装配点整帧覆盖写)/
+    `frame_class_prep`/`frame_class_shop`(帧触发代次双槽,值域
+    full/view/none,读后即清)。
 
 ### 8.6 实现语义申报
 
