@@ -191,3 +191,56 @@
 **核三**:迭代本体(拆第三类载体)是架构级治本,方向成立;反例 = #17(迁僵尸机制,发现 [1])与 #15(带删除预告的状态迁容器而非删,发现 [7])。四个未点名字段的裁定对照:#16/#20 处置合理(问题分别在文件面与函数宿主);#15 处置依据失真;#19 族标签矛盾、可评估删除。
 
 **部分核验/未深核(如实申报)**:①#15 的 `_star_stop_hook` 当前存续状态未独立定位(依据 = reconcile 内注);②#8「decisions 行两文件模型不受影响」仅核 schema.py:473 注释锚,未核决策行 schema 全文;③#20 六个消费文件仅核 import 面,未逐文件核调用形态;④test_cw_shop_unobserved_gate.py:212 与 contract §8 仅定位命中,未读全文上下文;⑤「零写端期间禁按字段值做决策」申报段的精确位置未定位(fields.md §3.4.x 区域存在同类句,landing 3.3 判据的可操作性已因 [5] 另立发现);⑥sim 目录 exec_state 零命中依首轮全量 grep(117 命中全集无 sim 文件)佐证,未逐文件复查。
+
+---
+
+## 复审(r2)
+
+> 对象 = 修订稿(commit 410e01998,design.md/landing.md 全文重写)。只核修订是否成立与有无新失实,不重开全量攻击。修订稿新引入的事实申报逐项回到代码验证(非采信自述)。
+
+### r2-1 逐条闭合判定
+
+| 原# | 判定 | 核验依据 |
+|---|---|---|
+| [1] 致命 | **闭合** | #17 改判删,删除面经 grep 复核完整:`register_round_sold` 唯一调用方 = cw_sell_bench_action.py:67-70(懒 import + 调用),再无他处;两字段注释锚(cw_exec_state.py:147-148)随字段删除;调用方归属已改正;三条改判依据(零写端/消费面已死/第二已卖账)如实落表,§2.3 取舍二补同构论证。模块去留微瑕见 r2-C。 |
+| [2] | **闭合** | landing 3.4 明示「既有测试不存在,本阶段补」,文件面补新增测试;另补卖出落地路径行为对照判据。 |
+| [3] | **闭合** | 3.5 文件面补 cw_screen_buy_cards.py + cw_shop_action_ops.py,标注 = #16 消费点。 |
+| [4] | **闭合(已实证)** | 3.1 文件面补 cw_op_equip_all.py + mandate.py;「已落地」申报属实——commit 83ea60e5d 实改恰 4 文件(cw_equip_wear_plan/cw_exec_state/cw_op_equip_all/mandate.py),与文件面逐一吻合。 |
+| [5] | **闭合** | 判据改「三字段(supply/encounter/strategy)写端在产;env_refresh_used 维持零写端申报不动」,3.3 边界显式排除 env。 |
+| [6] | **闭合** | #5/#6 行 + §2.2-3 双计毒化红线条款闭合(「只删 ExecState 置位/清零/add 行,禁新增第二容器写点」);#6 读写点标注修正;新增判据「单次刷新恰 +1 无双计——测试断言」可验;「测试在锁」申报属实(test_cw_obs_arch_phase_screens.py:34/:445 发射型接线锁在册)。 |
+| [7] | **闭合** | #15 族标签改「留证采样簿记」并注明 attack [7] 修正;「不评估本迭代删」显式声明为战术取舍(退役前置 = SIFT 修复,另批)——符合「症状修法须声明权衡 + 排期」;`star_pending_regression` 入 §1 明确不解决④。 |
+| [8] | **闭合** | 全文 MandateState → StrategyState(design/landing/正本清单),§1② 注明正本 flow/README §2.5 旧名随正本批修正。 |
+| [9] | **闭合** | #8 行「3.2 仅删 xp 字段;refreshed 归 3.3(防遥测空窗)」;landing 3.2/3.3 范围与文件面归属注同步。 |
+| [10] | **闭合** | §1 两处计数改 21。 |
+| [11] | **闭合** | #20 行写明「类迁 cw_game_state.py;三访问函数 + fill_boss_by_position 留守 cw_exec_state.py,函数内惰性 import 类」,零改动申报前提闭合;landing 3.5 同步。 |
+| [12] | **闭合** | §2.2-4 通道改 kernel `strategy_state_of`(None-safe 不冷建;符号在 cw_strategy_session.py:76,None-safe 语义依据 = mandate_state.py:52-56 边界注),禁 impl 侧 state_of 从执行层调用;写端缺席态 = 跳过;读侧防御 getattr;正本清单补 flow/README 通道一句。 |
+| [13] | **闭合且可执行** | §2.2-1a 逐新字段给域归属(match_facts bump / 新域 round_ledger + 版本项 / 既有 node_screen_refresh);#18 值形状申报 set→list(序列化安全 + 读端量级论证);3.5 判据补「match_facts 域版本 bump 落行(journal 断言)」。 |
+| [14] | **闭合(新申报已验证)** | ExecBooks 独立簿记组(§2.2-1b,不塞 tracked_books,含判定依据);#19 族标签改「执行面观测闩」并附删除评估记录——新依据「projection_contract §4.3 在册判读面(臂态位)」**经查属实**(flow/projection_contract.md:101 节、:104 明列「臂态位:ExecState.cw4_swap_arm_on…供判读开合抖动」;该正本锚已在 3.6 正本清单辖内)。 |
+| [15] | **闭合** | 正本清单补 flow/README §2.2 条目;行文 bs_schema 已全改 gs_schema。 |
+| [16] | **闭合** | 3.6 判据改「符号引用(import/属性访问/构造)归零」,注释锚移交正本清单;正本清单新增专条「注释历史锚处置」列名七文件。 |
+| [17] | **闭合** | #11 行口径分叉显式申报(supply 确认即写 + 差异理由 = 载体消亡;chosen_tome 维持家族口径;未落地窗低危——chosen_supply 确无决策读者,r1 已核);landing 3.2 要求注释同步。 |
+
+### r2-2 修订稿新引入申报的事实核验(全部属实)
+
+- 「已落地(commit 83ea60e5d)」:commit 存在,`git show --stat` = 恰修订文件面所列 4 文件。
+- design #9 三通道分解「paddle 审计/drag_expect/equip_expect,输入全为 acct 暂存」**属实**:acct dict 键与消费位(cw_screen_prep.py:1997-2000/:3128-3149;paddle 审计 reader_source='paddle_action_audit' :3122);保留的纯观察审计三通道 `_reconcile_faction_display`(:1606)/`_reconcile_shop_pool`(:1674)/`_reconcile_merge_preview`(:1731)存在且仅吃 obs。
+- `DragExpect` 族存在(cw_prep_expect.py:52/:70/:100)。
+- design #4「sim 已经 observe 在写、本屏无 on_outcome 注册件、无双计面」属实(cw_sim_engine.py:569-571;cw_screen_supply_node.py:38-41)。
+- design #6「闸 1 = 屏上余量现读」双闸论证与字段注一致(「可否再刷」权威判定 = 逐卡计数现读,ExecState 集唯一职责 = 同 visit 防重入),visit 清零语义消亡无重入放大面。
+- #4/#5「>0 = 已用」语义保真:现役两 ExecState 旗标均无复位点(每局闩),容器累计计数同语义。
+
+### r2-3 残留发现(无致命/重要;两条次要 + 一条提示)
+
+**[r2-A] 次要 | landing 正本更新清单(session.md 条目)| 清单不完整:session.md 正本携带与 r1 [1] 同源的 v2_round_* 误判,删除后多处 as-designed 断言失真,清单未点名。** session.md:94(§2.4 表)称 v2_round_key/sold「**活写端** = register_round_sold 带轮键自校验登记,**live 调用方 = cw_shop_action_ops.py:487**」——两断言皆误(守卫恒假 no-op;唯一调用方 = cw_sell_bench_action.py:70,与 r1 [1] 同一误判谱系);派生面:§3.2 风险表 :150(同轮已卖集评级「中」)、§6.2-4 判读义务(:148/:264)、§6.1 切换批迁移指令(:219/:243「活读写点换源」)均建立在该误判上。#17 改判删后,现行清单只覆盖「§2.4 表落点列/§2 统计行/§4」,上述四处失真不在清零面 → 收尾判据「正本与实现一致」不收敛。**修复:session.md 正本条目补点名(§2.4 该行活写端误判修正、§3.2 风险表行、§6.1 迁移指令作废注、§6.2-4 判读义务注销)。**
+
+**[r2-B] 次要 | landing 3.2 完成判据 | 符号归零清单漏 EquipExpect 族。** 范围含 equip_expect 期望账通道拆除,其载体 = cw_prep_expect.py:457-577 的 `EquipExpect`/`compute_equip_drag_expect`/`compare_equip_expect`/`EquipDragIntent`(消费 = _reconcile_equip_expect :1870),判据只列「BuyExpect/XpLedger/DragExpect 归零」→ EquipExpect 族有成为死码残留的面。**修复:判据符号清单补 EquipExpect 族(或显式并入「存活函数逐一注明」的排除申报面)。**
+
+**[r2-C] 提示(不阻断)| design #17/landing 3.4 | `cw_round_ledger.py` 模块去留未申报**:register_round_sold 是该模块唯一函数,删除后仅剩 docstring;全仓无其他 import 方,删模块可行,但设计未写明「删模块 or 留空壳」——停手令条款下应写明。另正本清单 game_state/README 条目把非 Field 簿记 `plane_node_sequences` 系在「节点域」名下(域 = Field 分组),正本批措辞需归位至簿记申报处(fields.md 条目已覆盖,不阻断)。
+
+### r2-4 试读结论(landing 3.2-3.6 凭这份能开工吗)
+
+**能。** 3.2:通道分解/保留面/符号清单/归段(refreshed 归 3.3)全部落字,唯一缺口 = r2-B 判据符号面;3.3:通道选型(strategy_state_of 禁冷建)、双计红线、env 排除、判据四条均可验;3.4:改判删的删除面完整(唯一调用桩定位)、新增测试义务落文件面、值形状/新域申报可执行;3.5:ExecBooks 宿主、域版本 bump 判据(journal 断言)、三函数留守前提、边界排除(star_pending_regression/_star_stop_hook)齐备;3.6:符号形态归零口径 + 注释锚清单移交正本批,判据可执行。
+
+### r2 结论
+
+**可定稿**——前置完成两处一行级补正(r2-A 正本清单 session.md 条目补点名、r2-B 判据补 EquipExpect 符号),无设计语义级残留;17 条原发现全部闭合,修订稿新引入申报经代码验证无一失实。
