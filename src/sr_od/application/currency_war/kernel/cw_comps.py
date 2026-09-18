@@ -1916,11 +1916,16 @@ def _wearable_gate_ok(worn_all: list[str], char: str, item: str) -> bool:
       读法定谳前取最保守「身上有任意件即拒」(真值读法空间「全空 vs
       ≥2 空槽」两读法下有件均拒,保守缺省无需先行定谳);新件漏建模由
       互检显警兜(消费点 = equip_allocation 头部,禁解析散文)。
-    - **W3 骇客目标类 fail-closed → 拒**:类别可穿性门在册(同上结构化
-      载体)∧ char 不在白名单。白名单 = 银狼LV.999 为假说级(四条旁证收敛
-      无直接实证,禁当已证):定谳前 fail-closed 保守拒(错杀 = 件滞留;
-      漏放 = 白拖 + 拉黑 + 永久滞留,前者严格小),定谳后按真值收窄或
-      改写「不参与 drag 分配」。
+    - **W3 件级/类别专属可穿性门 → 拒**:fail-closed 白名单双键(结构化
+      载体 data/cw_equipment_wear_rules_data)。件级门 ``ITEM_WEAR_GATES``
+      先查(更具体层):银狼专属 10 件,白名单 = 银狼 + 银狼LV.999
+      【口述·权威 2026-09-18 定谳 + 实机实证:run_20260918_075416 分身
+      墨镜Max 拖丹恒·饮月静默不生效→安灯停局;拖错角色 = 游戏静默拒
+      无反馈,装备滞留 owned】。类别门 ``CATEGORY_WEAR_GATES`` 后查:
+      骇客类,同源定谳(假说期「仅银狼LV.999」按口述扩圈为两角色)。
+      任一命中且 char 不在名单即拒;白名单外恒拒(fail-closed 结构不变:
+      错杀 = 件滞留 owned;漏放 = 白拖 + 拉黑记忆污染 + 永久滞留,
+      前者严格小)。
 
     已知输入失真面(部分有效申报):W1/W2 的 worn 输入与容量扣减同源
     (below-avatar 画面现读),read_row_equipped mini icon 漏读(3 件读 1 实证)
@@ -1931,6 +1936,7 @@ def _wearable_gate_ok(worn_all: list[str], char: str, item: str) -> bool:
     from sr_od.application.currency_war.data.cw_equipment_wear_rules_data import (
         CATEGORY_WEAR_GATES,
         EQUIP_WEAR_PREREQUISITES,
+        ITEM_WEAR_GATES,
         WEAR_PREREQ_EMPTY_SLOTS,
     )
     from sr_od.application.currency_war.data.cw_synthesis import (
@@ -1945,7 +1951,11 @@ def _wearable_gate_ok(worn_all: list[str], char: str, item: str) -> bool:
     entry = EQUIP_WEAR_PREREQUISITES.get(item)
     if entry is not None and entry.predicate == WEAR_PREREQ_EMPTY_SLOTS and worn_all:
         return False
-    # W3:类别可穿性门(fail-closed 白名单)
+    # W3:件级专属门(per-item 白名单,先查更具体层)→ 类别可穿性门
+    # (fail-closed 白名单);任一命中且 char 不在名单即拒
+    _gate = ITEM_WEAR_GATES.get(item)
+    if _gate is not None and char not in _gate:
+        return False
     eq = EQUIPMENTS.get(item)
     if eq is not None:
         allowed = CATEGORY_WEAR_GATES.get(eq.category)
@@ -2083,7 +2093,8 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
     模块级 ``_wearable_gate_ok``,docstring 载三谓词全文与证据分级):对游戏
     以概率 1 拒收的 (件,角色) 对,分配前排除严格支配分配后重试——W1 同名∧
     非两基础件合成图谱对 / W2 件专属前置(「需要空装备栏」族,结构化载体
-    data/cw_equipment_wear_rules_data)/ W3 骇客目标类 fail-closed。与
+    data/cw_equipment_wear_rules_data)/ W3 件级/类别专属可穿性门 fail-closed(银狼专属 10 件白名单 = 银狼 + 银狼LV.999,
+     2026-09-18 口述定谳)。与
     ``_pairing_ok``/``_emblem_ok`` 同构并列,被拦件**留 pool**(跳过=留
     owned,不 pop 丢弃);W1 拦域与配对守卫例外①②辖域显式互斥(两域交=空,
     同名自配对合法穿着即合成通道不拦)。消费位 = key 环/core 吃满/非 core
