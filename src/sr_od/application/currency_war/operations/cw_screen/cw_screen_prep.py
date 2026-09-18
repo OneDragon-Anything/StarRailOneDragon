@@ -55,9 +55,14 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     SellBench,
     SellDeployed,
     StartBattle,
+    WearEquip,
     action_key,
 )
 from sr_od.application.currency_war.obs.currency_war_cv import slot_occupied
+from sr_od.application.currency_war.operations.cw_op.cw_wear_equip_action import (
+    wear_miss_brake_status,
+    wear_miss_consume,
+)
 from sr_od.application.currency_war.obs.cw_faction_obs import (
     compare_factions,
     read_displayed_factions,
@@ -928,7 +933,9 @@ class CwScreenPrep(CwScreenOpBase):
         - LevelUp(批 2a 补齐,定案④):视觉帧零变,容器域 xp/level 推进
           (gold 中间态不写,金腿 = 执行缝金差);
         - WearEquip:``owned_equips`` 摘件(视觉域,与 OpenBox/OpenTome
-          同形;容器 equips 域留观察覆盖——域集封闭申报);
+          同形;容器 equips 域留观察覆盖——域集封闭申报);摘件前置
+          穿戴 miss 闩消费(T-55,消费口 = wear_miss_consume:命中 =
+          拖拽静默未生效 → 跳写保持事实);
         - 工具原子(R8):按 ``EQUIP_WRITE_SIDES`` 申报逐类直写——
           冶金炉 = 工具 −1 + 装备腿目标件消失(变异产物 = 随机面观察
           收口)/角色腿穿戴域 → 库存域全量迁移;特权赋予卡 = 工具 −1 +
@@ -1096,6 +1103,15 @@ class CwScreenPrep(CwScreenOpBase):
                 sig=ChannelSig(family='logic_action', actor='CwScreenPrep'))
             return obs
         if isinstance(action, WearEquip):
+            # 穿戴拖拽未落地闩消费(T-55;置位端 = WearEquipOp 拖后 owned
+            # 格像素验证,载体 = cw4_counters,消费口 = wear_miss_consume
+            # 单一源):命中 = 拖拽静默未生效(执行噪声非推算 bug)→ 黑板
+            # 保持事实(owned_equips 不摘件;容器 logic 腿已由执行器
+            # emitted 门跳写)——逻辑态从未写下失真值,下一帧 heavy 实读
+            # 一致,安灯零接触;重试 = 决策循环自然重派(黑板仍见该件,
+            # 策略重发同动作)。闩不在/陈旧闩 = 照常摘件(现行为逐位不变)。
+            if wear_miss_consume(self._session(), action):
+                return obs
             _owned = _owned_remove(
                 getattr(obs, 'owned_equips', None), action.item_name)
             return dataclasses.replace(obs, owned_equips=_owned)
@@ -1132,6 +1148,29 @@ class CwScreenPrep(CwScreenOpBase):
             return None
         log.warning('[cw!][director] %s → round_fail 交上层处置'
                     '(部署 miss 重派预算耗尽)', _status)
+        return self.round_fail(status=_status)
+
+    def _wear_miss_brake_round(self, session: object,
+                               action: CwAction) -> OperationRoundResult | None:
+        """穿戴 miss 刹车(T-55;同族 = ``_deploy_miss_brake_round``):
+        WearEquip 投影步刚走完(命中闩 = 本次 miss 已在消费口计数)时查
+        :func:`cw_wear_equip_action.wear_miss_brake_status`,同键(件名+
+        目标排槽)连续 miss 达 ``WEAR_MISS_REDISPATCH_LIMIT`` → round_fail
+        显式停交上层——miss 申报闩只防失真投影,重发无预算,拖拽被系统
+        性吞时「黑板仍见该件 → 策略重发 → miss」无限循环且不进外环
+        op-fail 计数网(op 恒返回成功)。触顶走既有 redispatch 上限路径
+        语义(交上层,可被外环 fail 网计数/恢复)。非 WearEquip 或未触顶
+        = None 零动作。位置契约 = ``_project_prep_obs`` **之后**(计数
+        发生在投影步的闩消费点,先计数后判定;跳写路径黑板保持事实,此处
+        fail 交回不携带失真逻辑态)。
+        """
+        if not isinstance(action, WearEquip):
+            return None
+        _status = wear_miss_brake_status(session)
+        if _status is None:
+            return None
+        log.warning('[cw!][director] %s → round_fail 交上层处置'
+                    '(穿戴 miss 重派预算耗尽)', _status)
         return self.round_fail(status=_status)
 
     def _project_tool_obs(self, action: CwAction,
@@ -1633,6 +1672,9 @@ class CwScreenPrep(CwScreenOpBase):
             _brake = self._deploy_miss_brake_round(session, action)
             if _brake is not None:
                 return _brake
+            _brake = self._wear_miss_brake_round(session, action)
+            if _brake is not None:
+                return _brake
             game_state_of(session).prep_obs = obs   # 黑板推进(下一动作决策读逻辑态)
             # 直写帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
             _mark_frame_class(session, 'prep', 'none')
@@ -1799,6 +1841,9 @@ class CwScreenPrep(CwScreenOpBase):
             game_state_of(session).prep_obs = self._project_prep_obs(
                 action, payload)   # 黑板推进(下一动作决策读逻辑态;终态契约 §2.6 宿主 = gs.prep_obs)
             _brake = self._deploy_miss_brake_round(session, action)
+            if _brake is not None:
+                return _brake
+            _brake = self._wear_miss_brake_round(session, action)
             if _brake is not None:
                 return _brake
             # 直写帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新

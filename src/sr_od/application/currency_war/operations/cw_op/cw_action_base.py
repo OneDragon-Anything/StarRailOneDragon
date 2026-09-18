@@ -50,7 +50,11 @@ class ActionOp(ABC):
     落地门两侧不动 + miss 连续刹车,T-44;投影失真停局形态
     run_20260918_055133 实证,像素验证缺席时保守放行恒 True)。
     prep 域 ``(detail, emitted)`` 语义经 PrepExecEnv 旁路字段承载,
-    不进返回值。
+    不进返回值;prep 域在册语义例外 = WearEquipOp(拖拽未生效时
+    ``emitted = False``——返回值仍恒 True,miss 事实经旁路字段承载:
+    emitted 门跳写容器 logic 腿 + 申报闩消费口跳写黑板腿,连续 miss
+    刹车 = 闩消费口计数,T-55;投影失真停局形态 run_20260918_075416
+    实证,像素验证缺席/载体缺席时保守放行 emitted=True)。
     """
 
     #: 终结动作(执行即本画面访问结束,交回外循环;决策 4)

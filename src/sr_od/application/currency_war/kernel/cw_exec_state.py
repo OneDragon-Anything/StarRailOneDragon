@@ -147,8 +147,11 @@ def apply_op_effect(session, action: CwAction | dict, *,
                 _owned_add(session, eq)
                 _eff(f'owned[{eq}]', '+1(卖场上装备全额返还)', 'owned')
     elif isinstance(action, WearEquip):
-        # 穿戴原子(R2;发出即登记,零比对形态——原「落点已验后调」门
-        # 随 CV-diff 拆除):owned −1 + tracked 目标角色 +1。
+        # 穿戴原子(R2;落地臂登记——本分支仅在执行器 emitted 门放行时
+        # 可达:像素验证判 miss 时 op 置 emitted=False,本口整支跳写,
+        # 失真 owned −1/tracked +1 从未写下,T-55;原「落点已验后调」门
+        # 随 CV-diff 拆除后的「零比对发出即写」形态已由申报闩族取代):
+        # owned −1 + tracked 目标角色 +1。
         # WearEquip 是坐标参数化机械动作(row/slot = 画面物理槽位,词表
         # 定义);物理→下标换算单一函数 = deployed_idx_of(执行坐标边)。
         from sr_od.application.currency_war.kernel.cw_game_state import (
