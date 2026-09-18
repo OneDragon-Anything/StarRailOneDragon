@@ -13,105 +13,89 @@
 四选一选卡职责在独立画面 op(cw_screen_box_pick,CwScreenBoxPick;R7 批 2a 起替代
 原 CwActionPickBoxCardParam 备战动作形态),本 op 只关弹窗。
 
-统一观察架构逐屏迁移(收尾五屏;架构设计 §9.1 并存纪律):本类是
-CwScreenOpBase 子类,handle 顶部装配点分流(重入裁决**之后**,先例锚 =
-cw_screen_encounter.py :241-251 重入裁决 / :252-258 装配点分流;总纲契约 6):
-cw_game_ports 两端口完整在场 → 五段生命周期新路径;缺省 None = 生产直连
-旧路径(原序列,生产行为零变化)。五段形态:observe = 标识门(miss 未发 →
-fail 交编排壳)+ 帧引用(实机适配器① = 轻观察封口,简报屏同式;重入
-裁决不在本段,总纲契约 6:留守 handle 分流前共享段);reconcile = 空申报;
-decide+act 内聚 ``_close_dialog``(读「按钮-关闭」center → mouse_move+click
-+1s → 置位,两路径共享零转录);on_outcome = 无登记件(注册表缺席 = 零
-动作,__init__ 申报)。本屏裁决位序 = pending 先行、miss fail 后置(与未达
-上限弹窗的 miss 分支内序不同,逐字保真禁统一,收尾屏详设 §2)。本屏 sim 腿
-= 不适用(F11 例外清单:sim 无对应画面段),等价判据主承重 = 实机在册行为
-锁 + 新路径行为锁(test_cw_obs_arch_closing_screens.py)。
+形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两段
+直继承 SrOperation(轻屏统一形态)。观察 node = 标识门(id_mark「标识-简易
+武装箱」,miss 未发 = round_fail 交编排壳按步分流)+ obs{on_screen} → 调
+占位 ``report_screen_armory_box_obs``(统一形态;本屏现役零容器写点,接口
+为占位,match/gs 缺席跳过)→ obs 挂实例属性进决策 node。决策动作 node =
+重入裁决顶部(点 × 已发 → 锚不在 = 弹窗已关(道具进背包)→ success 交回;
+锚在 = 点击未落地 → 重点)→ 点 × 关闭 → ``round_wait`` 循环推进(不烧节点
+重试预算;不收敛 = 动作 bug 响亮暴露,无防御上限)。原单 node 形态的
+「pending 先行、miss fail 后置」位序随两 node 拆分自然消解(门在观察 node
+先行,裁决住决策 node 顶部)。本屏 sim 腿 = 不适用(sim 无对应画面段),
+等价判据主承重 = 实机在册行为锁。
 """
 import time
-from dataclasses import dataclass
-from typing import Any, ClassVar
+from typing import ClassVar
 
+from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
-from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
-    CwScreenOpBase,
+from sr_od.application.currency_war.kernel.cw_screen_report.armory_box import (
+    CwScreenArmoryBoxObs,
+    report_screen_armory_box_obs,
 )
 from sr_od.context.sr_context import SrContext
+from sr_od.operations.sr_operation import SrOperation
 
 
-@dataclass
-class ArmoryBoxObservation:
-    """武装箱弹窗观察 payload(五段之段1产物;实机转录形态)。
-
-    中断弹窗族轻观察(收尾屏详设 §2):标识门判定在段内(门失败 →
-    round_fail 早退交编排壳按步分流);payload 仅携带稳定帧引用(实机
-    识别域载体,不出端口——sim 适配器落位时该域 = None 帧语义,F11
-    例外清单本批不建)。
-    """
-
-    screen: Any = None
-
-
-class ArmoryBoxLiveObservationAdapter:
-    """实机适配器①(观察端口;架构设计 §2.3 识别链封口)。
-
-    轻观察封口(先例 = 简报屏轻观察适配器):标识门须在段内产出早退
-    轮次,归 ``lifecycle_observe``;适配器仅装配稳定帧引用。sim 实现 =
-    不适用(F11 例外清单),本批不建。
-    """
-
-    def observe(self, op: 'CwScreenArmoryBox') -> ArmoryBoxObservation:
-        return ArmoryBoxObservation(screen=op.last_screenshot)
-
-
-class CwScreenArmoryBox(CwScreenOpBase):
+class CwScreenArmoryBox(SrOperation):
     """道具获得说明弹窗:点 × 关闭 + 重入观察裁决交回(验证废除)。"""
 
     DIALOG_SCREEN: ClassVar[str] = '货币战争-武装箱弹窗'
 
     def __init__(self, ctx: SrContext):
-        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-武装箱弹窗')
-        # 适配器位缺省装配(先例 = 五相位屏):观察口 = 实机适配器
-        #(轻观察封口);动作口 = None = 直连现役动作体(基类「None = 子类
-        # 缺省实现自担」)。on_outcome 注册表:本屏无登记件(注册表缺席 =
-        # 零动作)。
-        self._observation_adapter = ArmoryBoxLiveObservationAdapter()
-        # 点 × 已发待重入裁决标志(验证废除形态):标识不在 + 已发 = 弹窗已关
-        #(道具进背包)→ success 交回;标识在 = 重点(计节点预算)。
+        SrOperation.__init__(self, ctx, op_name='货币战争-武装箱弹窗')
+        # 点 × 已发待重入裁决标志(验证废除形态):锚不在 + 已发 = 弹窗已关
+        #(道具进背包)→ success 交回;锚在 = 点击未落地 → 重点。
         self._click_pending: bool = False
+        # 观察结果(观察 node 产物,决策动作 node 消费)。
+        self._obs: CwScreenArmoryBoxObs | None = None
 
-    @operation_node(name='武装箱弹窗', is_start_node=True, node_max_retry_times=8)
-    def handle(self) -> OperationRoundResult:
+    @operation_node(name='观察', is_start_node=True)
+    def observe(self) -> OperationRoundResult:
+        """标识门 + obs{on_screen} → 占位 report 接线。
+
+        门 miss = round_fail 早退交编排壳按步分流(现役首闸同 status)。
+        门 hit → obs 装载 + ``report_screen_armory_box_obs`` 占位调用(本屏
+        现役零容器写点,接口为统一形态占位;match/gs 缺席跳过)。"""
         screen = self.last_screenshot
         _hit = self.round_by_find_area(
             screen, CwScreenArmoryBox.DIALOG_SCREEN, '标识-简易武装箱', crop_first=False).is_success
-        # 重入裁决(观察驱动):上轮点 × 已发 → 标识不在 = 弹窗已关(底层屏
-        # 交还 loop)→ success;标识在 = 点击未落地 → 重点。两路径共用
-        #(分流前挂,先于五段 lifecycle 的 observe 门;总纲契约 6)。
-        if self._click_pending:
-            self._click_pending = False
-            if not _hit:
-                log.info('[cw-armbox] 弹窗已关(重入观察裁决,底层屏交还 loop)')
-                return self.round_success(wait=1.0)
-        # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run/
-        # CwScreenEncounter.handle):两端口完整在场(= 测试 harness 显式装配)
-        # → 五段生命周期新路径;缺省 None = 生产直连旧路径(下方原序列,
-        # 生产行为零变化)。
-        if observation_source() is not None and action_sink() is not None:
-            return self.run_lifecycle()
-        # 旧路径原序列(§9.1 并存期逐位保留):
         if not _hit:
             return self.round_fail('非武装箱弹窗')
+        obs = CwScreenArmoryBoxObs(on_screen=True, screen=screen)
+        _match = getattr(self.ctx, 'cw_match', None)
+        _gs = getattr(_match, 'gs', None) if _match is not None else None
+        if _gs is not None:
+            report_screen_armory_box_obs(_gs, obs)
+        self._obs = obs
+        return self.round_success()
+
+    @node_from(from_name='观察')
+    @operation_node(name='决策动作', node_max_retry_times=8)
+    def act(self) -> OperationRoundResult:
+        """重入裁决(顶部)→ 点 × 关闭 → round_wait。
+
+        重入裁决(观察驱动,验证废除形态):上轮点 × 已发 → 锚不在 = 弹窗
+        已关(底层屏交还 loop)→ success;锚在 = 点击未落地 → 清标志重点。
+        循环推进 = round_wait(不烧节点重试预算;不收敛 = 动作 bug 响亮
+        暴露,无防御上限)。"""
+        if self._click_pending:
+            self._click_pending = False
+            if not self.round_by_find_area(
+                    self.last_screenshot, CwScreenArmoryBox.DIALOG_SCREEN,
+                    '标识-简易武装箱', crop_first=False).is_success:
+                log.info('[cw-armbox] 弹窗已关(重入观察裁决,底层屏交还 loop)')
+                return self.round_success(wait=1.0)
         return self._close_dialog()
 
     def _close_dialog(self) -> OperationRoundResult:
-        """点 × 关闭体(五段 decide+act 两路径共享零转录;旧 handle :51-61
-        逐位平移):读「按钮-关闭」center(缺失 → fail 缺坐标;道具进背包,
-        开箱走备战箱槽 CwActionOpenBoxParam 链路)→ mouse_move+click+1s → 置位(落地
-        判定归下一轮重入裁决)。"""
+        """点 × 关闭体:读「按钮-关闭」center(缺失 → fail 缺坐标;道具进背包,
+        开箱走备战箱槽 CwActionOpenBoxParam 链路)→ mouse_move+click+1s → 置位
+        (落地判定归下一轮重入裁决)。"""
         _pt = area_center(self.ctx, '按钮-关闭', CwScreenArmoryBox.DIALOG_SCREEN)
         if _pt is None:
             return self.round_fail('武装箱弹窗缺「按钮-关闭」坐标')
@@ -119,36 +103,6 @@ class CwScreenArmoryBox(CwScreenOpBase):
         self.ctx.controller.mouse_move(_pt)   # bug#1 缓解
         self.ctx.controller.click(_pt)
         time.sleep(1.0)
-        # 机械交回(验证废除):弹窗消失与否由下一轮重入观察裁决(handle 顶部)。
+        # 机械交回(验证废除):弹窗消失与否由下一轮重入观察裁决(act 顶部)。
         self._click_pending = True
-        return self.round_retry('点 × 已发,重入观察裁决', wait=1)
-
-    # ---- 五段生命周期(统一观察架构 §5.1;先例 = 简报屏)----
-
-    def lifecycle_observe(self
-                          ) -> tuple[ArmoryBoxObservation,
-                                     OperationRoundResult | None]:
-        """段1 observe:标识门(id_mark「标识-简易武装箱」miss 未发 →
-        round_fail 早退交编排壳按步分流,旧 handle 首闸逐位转录)→ 轻观察
-        payload。重入裁决不在本段(总纲契约 6:留守 handle 分流前共享段)。"""
-        _adp = self._observation_port()
-        obs = (_adp.observe(self) if _adp is not None
-               else ArmoryBoxObservation(screen=self.last_screenshot))
-        _hit = self.round_by_find_area(
-            self.last_screenshot, CwScreenArmoryBox.DIALOG_SCREEN,
-            '标识-简易武装箱', crop_first=False).is_success
-        if not _hit:
-            return obs, self.round_fail('非武装箱弹窗')
-        return obs, None
-
-    def lifecycle_decision_cycle(self, payload: ArmoryBoxObservation
-                                 ) -> OperationRoundResult:
-        """段3-5(单动作决策循环):decide+act 内聚 ``_close_dialog``
-        (点 × 关闭体,两路径共享零转录);on_outcome = 本屏无登记件
-        (注册表缺席 = 零动作,__init__ 申报)。轮次终结出口 = 机械交回
-        round_retry(落地判定归下一轮重入裁决,验证废除形态)。"""
-        self._lifecycle_mark('decide')
-        self._lifecycle_mark('act')
-        rs = self._close_dialog()
-        self._lifecycle_mark('on_outcome')
-        return rs
+        return self.round_wait('点 × 已发,重入观察裁决', wait=1)

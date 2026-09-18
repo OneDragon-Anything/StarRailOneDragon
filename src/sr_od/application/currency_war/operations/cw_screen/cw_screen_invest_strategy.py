@@ -7,17 +7,16 @@ OCR 3 张投资策略卡名 → 经 ``match.strategy.decide_invest``(委托 ``cw
 逐卡刷新 = 终结动作(用户裁定 2026-09-14,照投资环境屏同款形态):
 ``decide_event`` 帧级触发(零阈值结构判据:全精确分类 ∧ 无 S1/S2 ∧ max_N≠1,
 推导见 ADR-0600 §3.2 + math_proofs P81)→ 返回 ``refresh_slots`` 非空 ∧
-逐槽计数现读授权(读缺 = 无授权)→ 文本锚定点刷新圆钮一次 → 固定等待
-(机械时序,非判效)→ 本访问即交回(pending + round_retry,与确认交回同款);
-新事实的观察与决策归重入的下一访问(重入裁决后走正常观察链重分类重决策)。
-投资策略屏刷新是**逐卡刷新**(每卡独立按钮、独立计数,归档帧对实证)。
+逐槽计数现读授权(读缺 = 无授权)∧ 容器逐卡计数闸(发射过的卡不重刷)→
+文本锚定点刷新圆钮一次 → 固定等待(机械时序,非判效)→ 本访问即终结交回
+(外循环重进 = 入口重建,新事实的观察与决策归重进的下一访问)。投资策略
+屏刷新是**逐卡刷新**(每卡独立按钮、独立计数,归档帧对实证)。
 验效双通道已拆除(用户裁定 2026-09-10:动作 op 只管机械执行禁止验效,出处 =
 验证违规清查报告 H2),2026-09-14 裁定进一步收敛为零比对:访问内刷后
 不重读不比对不重决策,「刷没刷成」不判;读缺守卫 = 逐槽计数现读的
-读缺按无授予处理(失败安全)。已发射逐卡账 = 容器
-``node_screen_refresh.strategy_refresh_used`` 逐卡计数(局内累计,
-on_outcome 发射型钩子写,发射即 +1;无 visit 级清零——闸 1 屏上余量
-现读 + 逐卡计数双闸下无重入放大面,终结动作化后每访问恰一次决策)。
+读缺按无授予处理(失败安全)。逐卡「已发射」账读端 = 容器
+``node_screen_refresh.strategy_refresh_used`` 逐卡计数(局内累计;**计数
+写端随画面 op 基类退役**,记账由动作 op 会话承接,本 op 只保留读端闸)。
 
 卡名按行过滤(2026-08-04 snap 实测):标题「请选择投资策略」顶(y≈98)、卡名中(y≈490,
 center)、描述下(y≈520+)、「刷新次数1」底(y≈841)、「确认」底(y≈983);取 y≈490 行
@@ -31,39 +30,33 @@ center)、描述下(y≈520+)、「刷新次数1」底(y≈841)、「确认」�
 CARD_CLICK_Y + 确认坐标进 screen_info(``currency_war_invest_strategy``):``区域-卡名行``
 + ``按钮-确认``,task#20 已完成;本 op 经 ``cw_obs_core.area_center`` 读,缺失才用兜底常量。
 
-统一观察架构逐屏迁移(五相位屏;架构设计 §9.1 并存纪律):本类是
-CwScreenOpBase 子类,handle 顶部装配点分流(重入裁决**之后**,先例锚 =
-cw_screen_encounter.py :241-251 重入裁决 / :252-258 装配点分流;总纲契约 6
-——裁决出口写端 ``_append_confirmed_strategy`` 随共享段两路径同承,ADR-0598
-幻影卡收口语义原位保留):两端口完整在场 → 五段生命周期新路径;缺省 None =
-生产直连旧路径(原序列,生产行为零变化)。五段形态:observe = 入口锚复探窗
-(ADR-0529)→ visit 起点单点复位 → 1s 稳定帧 → 候选读取(实机适配器①封口 =
-``_observe_frame``,两路径共享同一读链,G10 首帧 OCR 存底随 payload);
-decide+act 内聚 ``_decide_and_act``(决策 → 逐卡刷新链 → 点卡 → 确认置位,
-两路径共享零转录);on_outcome = **收编 1 件 ``strategy_refresh_used``**(架构
-设计 §6.4-R-E 在册两件②「策略屏迁移批其写端入本面接线」):写端自内联位
-(:289-309)随迁注册表发射钩子体,触发点 = ``_emit_refresh_click`` 两路径共
-用分派面(触发唯一性先例 = 遭遇屏同名面),随刷新点击置位不等验效,值/键
-归一/produced_by/evidence 逐位一致。豁免留守(不入注册表收编面):
-``active_strategies`` 本体追加 + write_logic(重入裁决出口)、效果账本
-``register_strategy`` + ``apply_effect_burst_grant``(``_append_confirmed_
-strategy`` 原位)。本屏 sim 腿 = 不适用(F11 例外清单:有 sim 事实来源
-``decide_invest`` 注入段但 sim 端口适配器未建,归 sim 接线批),等价判据
-主承重 = 实机在册行为锁 + 写入流对拍(锁面 = sr-od-test
-test_cw_obs_arch_phase_screens.py)。
+形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两段
+直继承 SrOperation。观察 node = 入口锚复探窗(ADR-0529 有界自愈:复探窗内
+自愈、超窗 round_retry 消耗观察 node 预算,既有 retry 面不属新增帽)→
+visit 起点单点复位 → 1s 稳定帧 → 候选一次读(G10 首帧 OCR 存底随 obs)→
+``report_screen_invest_strategy_obs`` 落容器 ``invest_strategy_opts``(提名
+序列;names 空 = OCR 未读得不写,闸在 report 内)→ obs 挂实例属性进决策
+node。决策动作 node = 重入裁决顶部(确认已发 → 入口锚不在 = overlay 已关
+= 选卡落地 → 此刻才 append ``active_strategies`` + success 交回;锚在 =
+未落地 → 清标志重走)→ 零参决策(候选自容器槽)→ 逐卡刷新终结交回 / 点
+卡名选中 → 确认 → ``round_wait`` 循环推进(不烧节点重试预算;不收敛 =
+策略 bug 响亮暴露,无防御上限)。决策面留守写点:``active_strategies``
+重入裁决出口 append(ADR-0598 幻影卡收口:确认未落地轮 = 重走重选,不留
+幻影)+ 效果账本登记 + 授予置闩(``_append_confirmed_strategy`` 原位)。
+本屏 sim 腿 = 不适用(sim 端口适配器未建),等价判据主承重 = 实机在册
+行为锁。
 """
 import time
-from dataclasses import dataclass
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
+from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
 from sr_od.application.currency_war.kernel.cw_comps import augment_affinity
 from sr_od.application.currency_war.kernel.cw_events import (
     decide_event,
@@ -75,6 +68,10 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     normalize_invest_name,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
+from sr_od.application.currency_war.kernel.cw_screen_report.invest_strategy import (
+    CwScreenInvestStrategyObs,
+    report_screen_invest_strategy_obs,
+)
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPickInvestParam,
     CwActionRefreshInvestCardsParam,
@@ -87,11 +84,8 @@ from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import
     emit_overlay_confirm,
     safe_click,
 )
-from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
-    ActionOutcome,
-    CwScreenOpBase,
-)
 from sr_od.context.sr_context import SrContext
+from sr_od.operations.sr_operation import SrOperation
 
 
 def _guard_classify(name: str, config) -> tuple[bool, bool, bool, bool]:
@@ -119,53 +113,7 @@ def _guard_classify(name: str, config) -> tuple[bool, bool, bool, bool]:
     return True, blood, forbidden, top
 
 
-@dataclass
-class StrategyRefreshClick:
-    """逐卡刷新点击意图(on_outcome 登记件 ``strategy_refresh_used`` 的触发
-    载荷;发射型单一发射口)。
-
-    - ``slot``:策略屏画面槽位下标左→右 0-2(与 CwActionPickEventParam.refresh_slots
-      同源坐标系);值 = 发射期快照(点击时点现值)。
-    - ``name``:该槽发射时点的候选卡名(登记件键归一输入 = 现读名集该槽位)。
-    """
-
-    slot: int
-    name: str
-
-
-@dataclass
-class InvestStrategyObservation:
-    """投资策略观察 payload(五段之段1产物;实机转录形态)。
-
-    - ``entry_ok``:入口锚复探窗判定(ADR-0529;False = 超窗,observe 段
-      round_retry 有界自愈);
-    - ``options``:候选卡 ``(名字, center-x, center-y)`` 现役读链产物;
-    - ``first_ocr_map``:首帧全图 OCR 存底(G10 观察采集域;刷新链读缺回退
-      消费已随 2026-09-14 终结交回裁定退役,域保留);
-    - ``screen``:稳定帧引用(逐卡计数读同帧同源;sim 适配器落位时该域 =
-      None 帧语义,F11 例外清单本批不建)。
-    """
-
-    entry_ok: bool
-    options: list[tuple[str, int, int]]
-    first_ocr_map: dict | None = None
-    screen: Any = None
-
-
-class InvestStrategyLiveObservationAdapter:
-    """实机适配器①(观察端口;架构设计 §2.3 识别链封口)。
-
-    内部复用现役读链(``CwScreenInvestStrategy._observe_frame``:入口锚复探
-    窗 + 1s 稳定帧 + 候选读取)——识别机制不出端口(§2.1 契约
-    三则);重入裁决不进适配器(总纲契约 6)。sim 实现 = T5 后辖域本批不建
-    (F11 例外清单)。
-    """
-
-    def observe(self, op: 'CwScreenInvestStrategy') -> InvestStrategyObservation:
-        return op._observe_payload()
-
-
-class CwScreenInvestStrategy(CwScreenOpBase):
+class CwScreenInvestStrategy(SrOperation):
     """投资策略 3 选 1:OCR 卡名 → decide_invest 决策 → (按需逐卡刷新)→ 点最优卡 + 确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资策略'   # screen_info 画面(currency_war_invest_strategy.yml)
@@ -187,7 +135,7 @@ class CwScreenInvestStrategy(CwScreenOpBase):
     #: #11),首帧采样可 miss「标识-请选择投资策略」;旧实现单探测 miss 即
     #: round_fail(round_fail 不吃 node_max_retry_times,直接炸出整 op),外层
     #: 重试才自愈但每次触发哨兵报警+退出。修法(复探=短窗+新截图):首探
-    #: miss → 短窗后新截图复探,窗口内命中即继续;超窗仍 miss 才 round_fail
+    #: miss → 短窗后新截图复探,窗口内命中即继续;超窗仍 miss 才 round_retry
     #: (防无限等真非目标屏)。决策记录 = ADR-0529。执行层时序常量,非策略数值。
     ENTRY_REPROBE_TIMES: ClassVar[int] = 4
     ENTRY_REPROBE_WAIT_S: ClassVar[float] = 0.8
@@ -203,22 +151,7 @@ class CwScreenInvestStrategy(CwScreenOpBase):
     REFRESH_ANIM_WAIT_S: ClassVar[float] = 1.5
 
     def __init__(self, ctx: SrContext):
-        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-投资策略')
-        # 适配器位缺省装配(先例 = CwScreenPrep/CwScreenEncounter):观察口 =
-        # 实机适配器(现役读链封口);动作口 = None = 直连现役动作体(基类
-        # 「None = 子类缺省实现自担」)。
-        self._observation_adapter = InvestStrategyLiveObservationAdapter()
-        # on_outcome 落地登记注册表(架构设计 §6.4;单一发射口,发射即触发
-        # ——发射端口契约):收编 1 件 strategy_refresh_used(逐件申报面
-        # EMIT_TRIGGERED_DECLARED 在册两件②「策略屏迁移批其写端入本面接线」)。
-        # 写端自 handle 刷新链内联位随迁钩子体(位置迁移语义不变):随刷新
-        # 点击置位、不等验效(选择落地不置位;发射证据 refresh_click@slot{i}),
-        # 逐卡 dict[str,int] write_logic,键 = normalize_invest_name 归一。
-        # active_strategies 本体追加 + 效果账本登记 = 豁免留守(重入裁决出口
-        # _append_confirmed_strategy 原位,§3.4 申报豁免面不入收编面)。
-        self.register_outcome_hook(
-            StrategyRefreshClick, self._on_refresh_emitted,
-            name='strategy_refresh_used')
+        SrOperation.__init__(self, ctx, op_name='货币战争-投资策略')
         self._ocr_map: dict | None = None   # _read_options 存全图 OCR(ADR-0132 效果采集复用,零额外 OCR)
         # 确认已发待重入裁决的选卡名(验证废除形态,用户裁定 2026-09-10):
         # 确认点击发出后置位,下一轮重入由入口观察裁决——锚不在 = overlay 已关
@@ -226,9 +159,9 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         # 语义保持:确认未落地轮 = 重走重选,不留幻影;append 时点后移一轮,
         # 由重入观察承载)。None = 无待裁决选卡。
         self._confirm_pending: str | None = None
-        # 刷新已发待重入裁决标志(终结动作交回形态,用户裁定 2026-09-14,
-        # 投资环境 _refresh_pending 同款):重入裁决见 handle 顶部。
-        self._refresh_pending: bool = False
+        # 观察结果(观察 node 产物,决策动作 node 消费;entry_ok False = 复探
+        # 超窗,观察轮 round_retry 不装载)。
+        self._obs: CwScreenInvestStrategyObs | None = None
 
     def _read_options(self, screen) -> list[tuple[str, int, int]]:
         """OCR 3 张卡的 ``(名字, center-x, center-y)``,按卡名行 y 过滤 + 左→右排序。"""
@@ -273,147 +206,87 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         # 出现仍误报失败——恰是本复探窗要容忍的形态边缘)。
         return hit
 
-    def _observe_frame(self) -> InvestStrategyObservation:
-        """入口锚复探窗 + 1s 稳定帧 + 候选读取(实机适配器①
-        封口内容;两路径共用读链,总纲 §2.1-1 抽共享方法)。时序口径逐位
+    def _observe_frame(self) -> CwScreenInvestStrategyObs:
+        """入口锚复探窗 + 1s 稳定帧 + 候选读取(观察轮读链)。时序口径逐位
         保留:用户口述口径(docs/game/currency_war/research/
         screen_flow_timing.md #11,2026-09-02)「请选择投资策略」标题出现
         1s 后画面(三卡)才稳定(流转 = 备战 → 金币过场动画 → overlay 自动
         弹出)——入口帧可能在稳定期内,立即读刷新次数/卡名有读缺风险。等
-        1s 重截稳定帧再读(与 cw_screen_invest_env #3 修复同型)。超窗 =
+        1s 重截稳定帧再读(与 cw_screen_invest_env 同型)。超窗 =
         entry_ok False(调用方 round_retry 有界自愈,ADR-0529 二次治本)。"""
         if not self._ensure_entry_screen():
-            return InvestStrategyObservation(entry_ok=False, options=[])
-        # 用户口述口径(docs/game/currency_war/research/screen_flow_timing.md
-        # #11,2026-09-02):「请选择投资策略」标题出现 1s 后画面(三卡)才稳定
-        # (流转 = 备战 → 金币过场动画 → overlay 自动弹出)——入口帧可能在
-        # 稳定期内,立即读刷新次数/卡名有读缺风险。等 1s 重截稳定帧再读
-        # (与 cw_screen_invest_env #3 修复同型)。
+            return CwScreenInvestStrategyObs(entry_ok=False, options=[])
         time.sleep(1.0)
         screen = self.screenshot()
         opts = self._read_options(screen)
-        return InvestStrategyObservation(entry_ok=True, options=opts,
+        return CwScreenInvestStrategyObs(entry_ok=True, options=opts,
                                          first_ocr_map=self._ocr_map, screen=screen)
 
-    def _observe_payload(self) -> InvestStrategyObservation:
-        """稳定帧观察链 → payload(适配器①与缺省直连共用的装配形态)。"""
-        return self._observe_frame()
+    @operation_node(name='观察', is_start_node=True, node_max_retry_times=10)
+    def observe(self) -> OperationRoundResult:
+        """入口锚复探窗(ADR-0529 有界自愈)+ 稳定帧一次读 → report 落容器。
 
-    def _emit_refresh_click(self, slot: int, name: str) -> None:
-        """刷新点击发射时点(单一发射口,发射即触发;§6.5-4 随点击置位不等
-        验效)。逐卡「已发射」账 = 容器 strategy_refresh_used 逐卡计数,
-        写端 = 本发射经 on_outcome 注册表触发的登记件钩子(唯一容器写点,
-        禁第二写点——双计即计数毒化);本方法 = 两路径(旧 handle / 五段
-        循环)共用分派面,触发唯一性先例 = CwScreenEncounter._emit_
-        refresh_click。"""
-        self.fire_outcome_hooks(
-            StrategyRefreshClick(slot=slot, name=name),
-            evidence=f'refresh_click@slot{slot}')
+        超窗走 round_retry 而非 round_fail(二次治本,2026-09-06
+        04:16:38 实证复探窗 3.2s 仍不够覆盖个别过渡段):retry 消耗
+        观察节点 node_max_retry_times 预算有界自愈,且不产生 ERROR 行——
+        round_fail 会炸出整 op 并触发哨兵报警退出(20-22 局实证
+        每次 fail 一次哨兵退出)。ADR-0529 原「拒 fail→retry」的
+        前提(外层重试等价)被实证推翻,重审结论见 ADR 修订。
+        在窗 → 候选一次读 → ``report_screen_invest_strategy_obs`` 落容器
+        ``invest_strategy_opts``(names 空 = OCR 未读得不写,闸在 report
+        内;match/gs 缺席的局外兜底路径跳过 report)→ obs 挂实例属性。"""
+        obs = self._observe_frame()
+        if not obs.entry_ok:
+            return self.round_retry('投资策略屏未稳定,复探超窗重试')
+        _match = getattr(self.ctx, 'cw_match', None)
+        _gs = getattr(_match, 'gs', None) if _match is not None else None
+        if _gs is not None:
+            report_screen_invest_strategy_obs(_gs, obs)
+        self._obs = obs
+        return self.round_success()
 
-    def _on_refresh_emitted(self, outcome: ActionOutcome) -> None:
-        """strategy_refresh_used 写端(on_outcome 注册表·发射型钩子体;
-        §6.4 收编行「策略屏逐卡刷新计数」,自 handle 刷新链内联位随迁)。
-        策略屏刷新已用**随刷新点击置位、不等验效**,选择落地不置位;逐卡键
-        = 注册表规范卡名(normalize_invest_name 归一后入键,与
-        STRATEGY_EFFECTS 同键空间,§3.4.4 键口径)。单次逻辑写入(§3.4 申报
-        豁免:自身动作事实,无可核对的后续定型帧;之后仍受观察覆盖辖)。
-        best-effort 记录面:失败不阻塞刷新链(与升级挂点同纪律)。"""
-        _click = outcome.action
-        match = self.ctx.cw_match
-        if match is None:
-            return
-        try:
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                ChannelSig,
-            )
-            from sr_od.application.currency_war.kernel.cw_investments import (
-                normalize_invest_name,
-            )
-            _gs_rc = match.gs
-            _used = dict(_gs_rc.strategy_refresh_used.value or {})
-            _k = normalize_invest_name(_click.name)
-            _used[_k] = int(_used.get(_k, 0)) + 1
-            _gs_rc.write_logic(
-                _gs_rc.strategy_refresh_used, _used,
-                produced_by='CwScreenInvestStrategy',
-                evidence=outcome.evidence,
-                sig=ChannelSig(family='logic_action',
-                               actor='CwScreenInvestStrategy',
-                               mode='compute'))
-        except Exception as e:   # noqa: BLE001  记录面失败不阻塞
-            log.warning(f'[cw-strat] 刷新计数记录失败(不阻塞): {e}')
+    @node_from(from_name='观察')
+    @operation_node(name='决策动作', node_max_retry_times=10)
+    def act(self) -> OperationRoundResult:
+        """重入裁决(顶部)→ 零参决策 → 逐卡刷新终结交回 / 点卡+确认 → round_wait。
 
-    @operation_node(name='投资策略', is_start_node=True, node_max_retry_times=10)
-    def handle(self) -> OperationRoundResult:
-        # 重入裁决(观察驱动,验证废除形态):上轮已发确认 → 本轮入口锚不在
-        # = overlay 已关(选卡落地)→ 补 append + success 交回;锚仍在 = 确认
-        # 未落地 → 清标志重走(计节点预算,重读重选)。两路径共用(分流前挂,
-        # 先于五段 lifecycle 的 observe 门;总纲契约 6,先例锚
-        # cw_screen_encounter.py :241-251/:252-258;裁决出口写端
-        # _append_confirmed_strategy 随共享段)。
+        重入裁决(观察驱动,验证废除形态):上轮已发确认 → 本轮入口锚不在
+        = overlay 已关(选卡落地)→ 补 append active_strategies + success
+        交回;锚在 = 确认未落地 → 清标志重走(重选重确认)。循环推进 =
+        round_wait(不烧节点重试预算;不收敛 = 策略 bug 响亮暴露,无防御
+        上限)。"""
         if self._confirm_pending is not None:
             _p = self._confirm_pending
             self._confirm_pending = None
             if not self._entry_anchor_hit(self.last_screenshot):
                 self._append_confirmed_strategy(_p)
                 return self.round_success(f'{_p} 已确认(重入观察裁决)', wait=2.0)
-        # 刷新重入裁决(终结动作交回形态,与确认重入裁决同款结构,投资环境
-        # 投资环境屏先例):上轮已发刷新 → 本轮入口锚在 = 预期(逐卡重掷后
-        # overlay 仍在、新卡已渲染)→ 穿透到正常观察链(重观察 + 重分类
-        # 重决策);锚不在 = overlay 意外离开(刷新从不关 overlay,非预期面)
-        # → success 交回外循环按当前画面重分派。两路径共用(分流前挂)。
-        if self._refresh_pending:
-            self._refresh_pending = False
-            if not self._entry_anchor_hit(self.last_screenshot):
-                return self.round_success(
-                    '投资策略刷新后画面已离开(重入观察裁决)', wait=2.0)
-        # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run/
-        # CwScreenEncounter.handle):两端口完整在场 → 五段生命周期新路径;
-        # 缺省 None = 生产直连旧路径(下方原序列,生产行为零变化)。
-        if observation_source() is not None and action_sink() is not None:
-            return self.run_lifecycle()
-        obs = self._observe_frame()
-        if not obs.entry_ok:
-            # 超窗走 round_retry 而非 round_fail(二次治本,2026-09-06
-            # 04:16:38 实证复探窗 3.2s 仍不够覆盖个别过渡段):retry 消耗
-            # node_max_retry_times 预算有界自愈,且不产生 ERROR 行——
-            # round_fail 会炸出整 op 并触发哨兵报警退出(20-22 局实证
-            # 每次 fail 一次哨兵退出)。ADR-0529 原「拒 fail→retry」的
-            # 前提(外层重试等价)被实证推翻,重审结论见 ADR 修订。
-            return self.round_retry('投资策略屏未稳定,复探超窗重试')
-        return self._decide_and_act(obs.options, obs.screen, obs.first_ocr_map)
+        obs = self._obs
+        return self._decide_and_act(
+            obs.options if obs is not None else [],
+            obs.screen if obs is not None else None,
+            obs.first_ocr_map if obs is not None else None)
 
     def _decide_and_act(self, opts: list[tuple[str, int, int]], screen,
                         first_ocr_map: dict | None) -> OperationRoundResult:
-        """决策+动作内聚体(五段 decide+act 两路径共享零转录;旧 handle
-        :226-389 逐位平移):decide_invest 决策(无 match 防御路径显式跳过
-        刷新链)→ 逐卡刷新终结动作(发射点 = ``_emit_refresh_click``;点钮
-        后本访问即交回,链内注)→ 点卡名选中 → 确认置位(落地判定归下一轮
+        """决策+动作内聚体(决策面):decide_invest 决策(无 match 防御路径
+        显式跳过刷新链)→ 逐卡刷新终结动作(点钮后本访问即终结交回,外循
+        环重进重观察重决策)→ 点卡名选中 → 确认置位(落地判定归下一轮
         重入裁决,ADR-0598)。
 
         ``first_ocr_map`` = 观察段首帧 OCR 存底(G10 域;终结交回形态下
-        刷新链零重读,本参保留观察 payload 契约,链内不再消费)。"""
+        刷新链零重读,本参保留观察 obs 契约,链内不再消费)。"""
+
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         names = [n for n, _x, _y in opts]
         match = self.ctx.cw_match
-        # 写槽 → 零参决策(终态契约 §2.7:写槽以本分支将调用 decide 为前提;
-        # 同访问覆盖写,三分语义 details §2.3)。输出 = 单一 CwAction:
+        # 零参决策(写槽已由观察轮 report 落容器 invest_strategy_opts;决策
+        # 调用形态不变,同访问覆盖写)。输出 = 单一 CwAction:
         # CwActionRefreshInvestCardsParam(逐卡刷新建议)/ CwActionPickInvestParam(选卡)互斥单发。
         act = None
         refresh_slots: tuple[int, ...] = ()
         if names:
             if match is not None:
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    ChannelSig,
-                )
-                _gs_inv = match.gs
-                _gs_inv.write_logic(
-                    _gs_inv.invest_strategy_opts,
-                    list(names),
-                    produced_by='CwScreenInvestStrategy',
-                    sig=ChannelSig(family='logic_action',
-                                   actor='CwScreenInvestStrategy',
-                                   mode='compute'))
                 act = match.strategy.decide_invest_strategy()
             else:
                 # 防御:无 match(局外独立跑)。经验分退役后 decide_event 不读
@@ -432,21 +305,20 @@ class CwScreenInvestStrategy(CwScreenOpBase):
             refresh_slots = act.slots
 
         # ===== 逐卡刷新 = 终结动作(用户裁定 2026-09-14,照投资环境屏
-        # 形态:点钮后本访问即交回,重入后重观察重决策;闸门语义 = ADR-0600
-        # §3.3 逐卡预算)=====
-        if refresh_slots and opts:
+        # 形态:点钮后本访问即终结交回,外循环重进后重观察重决策;闸门
+        # 语义 = ADR-0600 §3.3 逐卡预算)=====
+        if refresh_slots and opts and match is not None:
             _counts = read_invest_refresh_counts(self.ctx, screen, 'strategy')
             _slot_hits = (pair_refresh_counts_to_slots(
                 _counts, [x for _n, x, _y in opts])
                 if _counts else [None] * len(opts))
-            # 闸 2 读源 = 容器逐卡计数快照(键 = 注册表规范卡名,§3.4.4;
-            # 写端 = on_outcome 发射型钩子,发射即 +1,局内累计)。
+            # 闸 2 读源 = 容器逐卡计数快照(键 = 注册表规范卡名;**计数写端
+            # 随画面 op 基类退役**——记账由动作 op 会话承接,本读端闸原样)。
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 game_state_of,
             )
             _used_map = dict(game_state_of(
                 match.session).strategy_refresh_used.value or {})
-            _clicked = False
             for _i in refresh_slots:
                 if _i >= len(opts):
                     continue
@@ -456,10 +328,9 @@ class CwScreenInvestStrategy(CwScreenOpBase):
                 _hit = _slot_hits[_i] if _i < len(_slot_hits) else None
                 if _hit is None or _hit[0] <= 0:
                     continue
-                # 闸 2:防重入 = 容器逐卡计数 >0(发射即 +1 的同笔账,与闸 1
-                # 现读互为双闸;visit 级复位语义随旧执行侧槽集消亡——闸 1
-                # 屏上余量现读 + 本计数下无重入放大面,终结动作化后每访问
-                # 恰一次决策)。
+                # 闸 2:防重入 = 容器逐卡计数 >0(与闸 1 现读互为双闸;
+                # visit 级复位语义随旧执行侧槽集消亡——闸 1 屏上余量现读 +
+                # 本计数下无重入放大面,终结动作化后每访问恰一次决策)。
                 if _used_map.get(normalize_invest_name(names[_i]), 0) > 0:
                     continue
                 # 闸 3:F2 唯一 L1 槽守卫(按当前名集现算,预注册锁 14,
@@ -474,19 +345,14 @@ class CwScreenInvestStrategy(CwScreenOpBase):
                 _tx, _ty = _hit[1], _hit[2]
                 safe_click(self, Point(_tx + CwScreenInvestStrategy._REFRESH_BTN_DX, _ty),
                            tag='cw-strat')
-                # 登记件经 on_outcome 注册表(发射型触发点单一分派面
-                # _emit_refresh_click;值/键归一/produced_by/evidence 逐位
-                # 随迁钩子体,对拍锁面)——容器逐卡计数即本发射的「已发射」
-                # 账,闸 2 读同一笔账。
-                self._emit_refresh_click(_i, names[_i])
                 # 动画窗固定等待(机械执行时序,非判效)→ 终结交回:本访问
                 # 零比对(刷后不重读不比对不重决策,用户裁定 2026-09-14),
-                # 选卡/确认均不在本访问;pending + round_retry 节点重跑,
-                # 重入裁决(handle 顶部)后走正常观察链重分类重决策。
+                # 选卡/确认均不在本访问;round_success 交回外循环重进 = 入口
+                # 重建,重进后重观察重分类重决策。
                 time.sleep(CwScreenInvestStrategy.REFRESH_ANIM_WAIT_S)
-                log.info(f'[cw-strat] 槽{_i}刷新终结交回:重入后重观察重决策')
-                self._refresh_pending = True
-                return self.round_retry(wait=1)
+                log.info(f'[cw-strat] 槽{_i}刷新终结交回:重进后重观察重决策')
+                return self.round_success('投资策略刷新终结交回(重进重观察重决策)',
+                                          wait=1)
             # 三闸全败(建议帧但无可执行刷新)→ 同访问重调落选卡:策略侧
             # 同帧去重(建议帧首调发建议、紧随重调落选卡)等价旧 CwActionPickEventParam
             # 「idx + refresh_slots 并载、闸败回退选卡」行为,零选卡漂移。
@@ -502,9 +368,9 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         else:
             chosen, choose_x, choose_y, reason = '?', 920, 490, 'fallback(no-ocr)'
         log.info(f'[cw-strat] options={names} chose={chosen!r}@({choose_x},{choose_y}) reason={reason}')
-        # 持卡注入面(session.active_strategies)的 append 已移至确认成功后
+        # 持卡注入面(gs.active_strategies)的 append 已移至确认成功后
         #(重入裁决出口 _append_confirmed_strategy;ADR-0598 幻影卡收口)——
-        # 旧时序 append 先于点卡确认,确认失败轮(session.active_strategies
+        # 旧时序 append 先于点卡确认,确认失败轮(active_strategies
         # 是息帽 resolved 链的输入源)留下幻影卡:幻影买断制 = 息线全关,
         # 比幻影 9/10 更烈。
         # ADR-0132 采集(候选卡面+效果原文按卡分桶)已随 invest_cards 流写入端
@@ -524,19 +390,17 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         safe_click(self, target, tag='cw-strat')
         time.sleep(0.7)
         # 确认 + 机械交回(验证废除:不读屏判「overlay 关没关」,落地由下一轮
-        # 重入入口观察裁决——裁决点补 append,见 handle 顶部/_append_confirmed_strategy)。
-        # 确认 center 从 screen_info 读,缺失兜底。
+        # 重入入口观察裁决——裁决点补 append,见 act 顶部/_append_confirmed_
+        # strategy)。确认 center 从 screen_info 读,缺失兜底。
         _confirm = area_center(self.ctx, '按钮-确认', CwScreenInvestStrategy.SCREEN_NAME) or CwScreenInvestStrategy.CONFIRM
         self._confirm_pending = chosen if chosen != '?' else None
-        _rr = emit_overlay_confirm(self, confirm_point=_confirm, entry_keyword='投资策略',
-                                   tag='cw-strat')
-        return _rr
+        emit_overlay_confirm(self, confirm_point=_confirm, entry_keyword='投资策略',
+                             tag='cw-strat')
+        return self.round_wait(wait=1)
 
     def _append_confirmed_strategy(self, chosen: str) -> None:
         """重入裁决出口的持卡登记面(ADR-0598 幻影卡收口语义承载):调用点 =
-        handle 顶部重入裁决(入口锚不在 = overlay 已关 = 选卡落地)。两路径
-        共用(总纲契约 6:裁决出口写端随共享段;豁免留守 = 本体追加 + 到账
-        登记不入 on_outcome 注册表收编面)。
+        act 顶部重入裁决(入口锚不在 = overlay 已关 = 选卡落地)。
 
         持卡本体追加 + 到账登记(§3.3 #22 ConfirmStrategy;粗粒度 expected,
         效果走台账不进 session 推进);去重防重复入列。原「chosen 只点不存」
@@ -544,9 +408,9 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         match = self.ctx.cw_match
         if match is None or not chosen or chosen == '?':
             return
-        # GameState 写端(迁移批次二,§3.4.4/§4 投资选择行):持有投资
+        # GameState 写端(§3.4.4/§4 投资选择行):持有投资
         # 策略=本屏写入、局级累计(逐次选择追加);单次逻辑写入
-        # (§3.4 申报豁免)。终态契约 §B:session 份退役,直读直写容器。
+        # (申报豁免)。终态契约 §B:session 份退役,直读直写容器。
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
         )
@@ -561,7 +425,7 @@ class CwScreenInvestStrategy(CwScreenOpBase):
             produced_by='CwScreenInvestStrategy',
             sig=ChannelSig(family='logic_action',
                            actor='CwScreenInvestStrategy', mode='compute'))
-        # 效果账本选卡登记挂点(迁移批次三,设计 §5.1「买卡=激活登记」
+        # 效果账本选卡登记挂点(设计 §5.1「买卡=激活登记」
         # /§8.7 批次三件 4;免战牌同点自动登记——件 5「§3.2.19 载体归一
         # 的另一半,禁只做一半」)。chosen 命中效果注册表(规范名归一
         # 后)才登记;acquired_t = 登记时点节点序快照((plane-1)*9+round,
@@ -635,36 +499,3 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         # (原 register_confirm_arrival('ConfirmStrategy') 已随 ADR-0651
         #  两态制废除:active_strategies 本体追加 + write_logic 直写均在
         #  上方确认成功写点,无挂账登记环节。)
-
-    # ---- 五段生命周期(统一观察架构 §5.1,先例 = CwScreenEncounter)----
-
-    def lifecycle_observe(self
-                          ) -> tuple[InvestStrategyObservation,
-                                     OperationRoundResult | None]:
-        """段1 observe:入口锚复探窗(ADR-0529,超窗 round_retry 早退有界
-        自愈)→ 实机适配器①稳定帧观察(1s 稳定期 + 候选读取,G10 首帧
-        OCR 存底随 payload)。重入裁决不在本段(总纲契约 6:留守 handle
-        分流前共享段,裁决出口写端随段共享)。"""
-        _adp = self._observation_port()
-        obs = (_adp.observe(self) if _adp is not None
-               else self._observe_payload())
-        if not obs.entry_ok:
-            # 超窗走 round_retry 而非 round_fail(二次治本;语义与旧 handle
-            # 逐位一致,出处注 = handle 旧路径同位注释/ADR-0529 修订)。
-            return obs, self.round_retry('投资策略屏未稳定,复探超窗重试')
-        return obs, None
-
-    def lifecycle_decision_cycle(self, payload: InvestStrategyObservation
-                                 ) -> OperationRoundResult:
-        """段3-5(单动作决策循环):decide+act 内聚 ``_decide_and_act``
-        (决策/逐卡刷新终结动作/点卡/确认置位全在现役时序,两路径共享零转录;
-        刷新登记件发射点 = ``_emit_refresh_click`` 共用分派面);on_outcome
-        = 注册表触发随发射点(本屏唯一收编件 strategy_refresh_used)。
-        轮次终结出口 = 逐卡刷新终结交回 + 确认机械交回(两者的落地/重观察
-        判定均归下一轮重入裁决,ADR-0598/用户裁定 2026-09-14)。"""
-        self._lifecycle_mark('decide')
-        self._lifecycle_mark('act')
-        rs = self._decide_and_act(payload.options, payload.screen,
-                                  payload.first_ocr_map)
-        self._lifecycle_mark('on_outcome')
-        return rs
