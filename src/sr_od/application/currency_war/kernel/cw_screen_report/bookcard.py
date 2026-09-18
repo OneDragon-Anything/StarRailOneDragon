@@ -1,10 +1,10 @@
-"""星徽秘典屏观察契约与上报(kernel 纯数据;迭代
-2026-09-18-screen-op-flat-report design.md §2.2/§2.3)。
+"""星徽秘典屏观察契约与上报(kernel 纯数据;正本 =
+docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 入口门判定 + 卡阵营名 OCR(「X星徽」去后缀,x 升序)。
-report 写点转录来源 = operations/cw_screen/cw_screen_bookcard.py::
-``_handle_overlay`` 写槽(锚 :163);辖域边界 = design.md §2.3(动作
-事实 ``chosen_tome`` 不收编,留守重入裁决点)。
+report 摄入点 = operations/cw_screen/cw_screen_bookcard.py::
+``CwScreenBookcard.observe``(观察 node);辖域边界:动作事实
+``chosen_tome`` 不收编,留守重入裁决点。
 """
 from __future__ import annotations
 
@@ -37,9 +37,9 @@ def report_screen_bookcard_obs(gs: GameState, obs: CwScreenBookcardObs, *,
                                sig: ChannelSig | None = None) -> None:
     """星徽秘典屏观察上报:卡阵营名写 ``star_tome_opts``。
 
-    写点锚 = cw_screen_bookcard.py::``_handle_overlay`` 写槽(锚 :163);
-    options 空 = OCR 未读得,不写(原写点「读得才写」闸逐位平移);
-    ``chosen_tome`` 留守重入裁决点(design.md §2.3 动作事实边界)。
+    写点锚 = cw_screen_bookcard.py::``CwScreenBookcard.observe``(观察 node
+    摄入);options 空 = OCR 未读得,不写(原写点「读得才写」闸逐位平移);
+    ``chosen_tome`` 留守重入裁决点(动作事实边界)。
     """
     if sig is None:
         sig = ChannelSig(family='logic_action',

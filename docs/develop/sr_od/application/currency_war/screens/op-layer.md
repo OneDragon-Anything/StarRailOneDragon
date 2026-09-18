@@ -1,132 +1,97 @@
-# 画面 op 层设计(op-layer · 行为规范 + 基类机制 + 观察解析工具箱)
+# 画面 op 层设计(op-layer · 行为规范 + 上报接口 + 形态分型 + 观察解析工具箱)
 
-> 本文 = 画面 op 层唯一设计正本,三章合一:**§1 行为规范**(每个画面 op 必须表现成什么样,合同)、**§2 基类机制**(框架怎么让合同可继承、实机/sim 怎么只在取数与落击两步分流)、**§3 观察解析工具箱**(obs/ 地图)、**§4 并存期纪律**。各画面的具体文档 = 同目录各篇(一画面一文档,索引 = [README.md](README.md))。代码锚 = `文件::符号名`(路径根 = `src/sr_od/application/currency_war/`)。
-> 术语:**逻辑态** = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态;真值以下一帧观察为准(观察赢)。**GameState/记录模型** 字段级正本 = [../game_state/fields.md](../game_state/fields.md)——记录模型管「记什么」,本文管「谁在什么时机喂进去、决策怎么消费、动作怎么落回」;冲突以字段正本为准。
+> 本文 = 画面 op 层唯一设计正本:**§1 行为规范**(每个画面 op 必须表现成什么样,合同)、**§2 上报接口**(观察数据怎么进容器)、**§3 形态分型**(37 画面 op 的形态分类)、**§4 辖域边界**(本层不承载的机制)、**§5 观察解析工具箱**(obs/ 地图)、**§6 流程转点观测锚**(在库机制)。各画面的具体文档 = 同目录各篇(一画面一文档,索引 = [README.md](README.md))。代码锚 = `文件::符号名`(路径根 = `src/sr_od/application/currency_war/`)。
+> 术语:**逻辑态** = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态;真值以下一帧观察为准(观察赢)。**obs** = 一个画面一次观察的结果对象(类型化载荷);**report** = 该画面在 kernel 侧的上报函数,把 obs 写进容器。**GameState/记录模型** 字段级正本 = [../game_state/fields.md](../game_state/fields.md)——记录模型管「记什么」,本文管「谁在什么时机喂进去、决策怎么消费、动作怎么落回」;冲突以字段正本为准。
 
 ## §1 行为规范
 
-### 1.1 总则:一次画面 op 调用 = 一轮「入口观察 + 逐动作决策循环」
+### 1.1 总则:每个画面 op = 两个 node(观察 → 决策动作),直继承 SrOperation
+
+画面 op 不设共享基类:每个画面一个独立类直继承框架 `SrOperation`,类内声明两个 node。
 
 ```
 画面 op 入口
-  ├─ 入口观察(唯一读屏点之一):真实读屏 → 生成期望态(= 入口对账,见 1.4)
-  └─ 决策循环(循环内零读屏):
-       action = 策略器(期望态)          # 商店/备战均恰返回一个动作(备战无动作 = None 交回重观察)
-       action.execute(ctx)              # 机械执行,无成败回执(1.2)
-       落地且非终结 → 容器规则通道逻辑态直写   # game state 独占写(1.3)
-       if action 是终结动作: break       # 画面 op 结束,交回外循环
+  ├─ 观察 node(is_start_node):
+  │    门(画面身份/节点完成判定;身份门 miss = round_fail 交回外循环重判,
+  │        完成门 miss = 画面已离开,round_success 交回)
+  │    → 显式读屏(本 op 唯一读屏点)→ 组装 CwScreenXxxObs
+  │    → report_screen_xxx_obs(gs, obs) 落容器(match/gs 缺席的局外兜底路径跳过)
+  │    → obs 挂实例属性,round_success 进决策动作 node
+  └─ 决策动作 node:
+       重入裁决(顶部;上轮动作已发 → 锚不在 = 已落地 → 补记录 + success 交回)
+       → 决策(从容器零参读;恰一个动作;备战空发射帧 = HoldFrame 合法交回)
+       → 动作(经动作 op 机械执行;动作 op 自上报推进逻辑态,零读屏)
+       → round_wait 循环推进(node runner 每轮给新帧)
 ```
 
-- **决策循环内不读屏**:期望态的生成与更新都不得依赖读屏;识别质量问题归识别层既有遥测,不进决策循环。
-- **策略器全函数(分域表述)**:商店域策略器 = 全函数——「无动作可做」的表达 = 直接选终结动作(如关店);备战域策略器返回恰一个动作(`CwAction | None`),`None` = 本帧无动作合法交回,不折算出战替身(出战 = 受判据辖制的决策动作,非「无动作」缺省出口)。None 通道不表达控制流(备战域 None = 「本帧无动作」合法交回,与商店域——该通道已由 CloseShop 终结取代——分域表述)。
+- **两 node 职责**:观察 node = 门 + 读屏 + 观察结果上报,无循环、小预算;决策动作 node = 重入裁决 + 决策 + 动作,迭代一律 `round_wait`(不烧 node 重试预算)。act node 保留现役 `node_max_retry_times` 值(仅框架异常路径消费,不新建上限机制)。
+- **循环无防御上限**:决策循环不收敛 = 策略实现 bug,响亮暴露(不收敛场景挂起可观测,修策略根因,不加兜底帽)。循环兜底不变量 = 1.4 恒可用终结。
+- **出口三语义**:决策动作 node 的循环只有三种出口——①**终结动作**(1.4,执行即本访问结束交回外循环);②**重入裁决成功**(动作已落地,补记录后交回);③**异常 fail**(策略异常/执行异常,错误传播交外循环,非防御上限)。备战域另有合法交回通道:策略器返回 `HoldFrame`(本帧无动作,`kernel/cw_vocab.py::HoldFrame`)= round_success 交回外循环重观察,不折算战替身。
+- **重入裁决留在决策动作 node 顶部**:「确认已发 → 下一轮锚不在 = 落地」是动作落地裁决,属循环出口判定,不回观察 node。chosen_* 类落地记录在此刻写(见 §2 动作事实边界)。
+- **显式读屏只在观察 node**:决策动作 node 迭代用 node runner 进 node 时给的 `last_screenshot`(`round_wait` 每轮新帧)。除观察 node 外,画面 op 内不调 `screenshot()`。
 - **外循环形态不变**:画面识别分发、轮次推进、停机/遥测钩子([../flow/outer_loop.md](../flow/outer_loop.md))不随本规范改动。
 
-### 1.2 动作基类与动作粒度
+### 1.2 动作 op 契约与动作粒度
 
-- **动作 op 形态** = `CwActionXxxOp`(框架 `SrOperation` 子类,构造 = `(ctx, param, env)`;原 `cw_action_base.py::ActionOp` ABC 已删除):机械执行后直调自己的上报函数(`kernel/cw_action_report/report_action_<snake>_param`),逻辑态由上报函数族独占写入,动作 op 自身不记账。发出即职责完成,落地判定归观察侧对账;执行异常上抛。**验证不是生命周期段**:动作 op 只管机械执行,禁做任何验证、禁设「验证失败→重试/恢复」编排;动作未生效(观察正确而下一帧对账失配)的处置 = 修动作适配器本身的可靠性(点击链坐标/时序/确认序列),禁止以验证+重试结构兜底。
+- **动作 op 形态** = `CwActionXxxOp`(框架 `SrOperation` 子类,构造 = `(ctx, param, env)`):机械执行后直调自己的上报函数(`kernel/cw_action_report/report_action_<snake>_param`),逻辑态由上报函数族独占写入,动作 op 自身不记账。发出即职责完成,落地判定归观察侧;执行异常上抛。**验证不是生命周期段**:动作 op 只管机械执行,禁做任何验证、禁设「验证失败→重试/恢复」编排;动作未生效(观察正确而下一帧对账失配)的处置 = 修动作执行链本身的可靠性(点击链坐标/时序/确认序列),禁止以验证+重试结构兜底。
 - **动作粒度**:买一张 = 一个 op、卖一张 = 一个 op、买经验一击 = 一个 op(单击 +4XP;升级 = XP 过门槛表结果,非动作)、刷新 = 一个 op。**满栏例外**:板凳满时点合成槽位,游戏机制自动多买至 3 的倍数张(每张原价)——一击多张 = 一个动作 op,逻辑态直写按实际张数计。复合宏动作(整档替换)已全链退役。
 
 ### 1.3 守卫断言与对账边界
 
-- **合法性判定全部内化于策略器**(提议侧约束);执行侧只余**守卫断言**——防 bug 路栏而非控制流分支,非法返回 = 策略器 bug 响亮暴露(禁静默跳过或降级续跑)。op 框架既有的重试/等待语义属 execute 执行实现层,不算第二道合法性门。
-- **两级分型**:`guard_proposal_vs_expected`(提案对象在期望态存在且未被消费——防策略器算术 bug,恒炸);`guard_expected_vs_tracked`(逻辑态 vs 执行侧 tracked 账——逻辑态建模缺陷的在环检测器;多集等价 = WARNING + 按 tracked 真值就地重播种,真分歧 = 炸出)。两守卫零读屏。
-- **对账唯一发生点(硬规则)**:对账 = 观察 vs 逻辑的双态比对,唯一合法时点 = **画面 op 上报观察数据进入 game state 的观察边界**(入口观察/reconcile),由 game state 执行比对与仲裁(`kernel/cw_reconcile.py`;锚定机制属 game state 层内部实现);**其余任何状态/op 层不做双态比对,也不做店内原地重建**——动作级「发射即登记 + 下一帧对账」不属于双态比对(归观察侧闭环)。
+- **合法性判定全部内化于策略器**(提议侧约束);执行侧只余**守卫断言**——防 bug 路栏而非控制流分支,非法返回 = 策略器 bug 响亮暴露(禁静默跳过或降级续跑)。现役守卫 = `operations/cw_op/cw_shop_action_ops.py::guard_proposal_vs_expected`(提案对象在期望态存在且未被消费——防策略器算术 bug,恒炸)。守卫零读屏。op 框架既有的重试/等待语义属 execute 执行实现层,不算第二道合法性门。
+- **对账唯一发生点 = 观察边界(硬规则)**:对账 = 观察 vs 逻辑的双态比对,唯一合法时点 = **观察数据经 report 进入 game state 的观察边界**(画面 op 观察 node / 动作自上报后的下一观察帧),由 game state 执行比对与仲裁(`kernel/cw_reconcile.py`;锚定机制属 game state 层内部实现);**其余任何状态/op 层不做双态比对,也不做店内原地重建**——动作级「发射即登记 + 下一帧对账」不属于双态比对(归观察侧闭环)。**摄入逻辑住屏文件**:该画面观察进容器的全部逻辑(写点/屏级门/派生/对账特判)住 kernel 屏文件(§2),op 层只组装 obs 并调用 report;依赖读帧的观察审计链(如备战羁绊显示/商店池一致性核对)不迁 kernel,留守画面 op 观察 node(§2 辖域边界)。
 
 ### 1.4 终结动作集与期望态生命周期
 
 - **终结动作是一等动作**(策略器主动选择,不是循环逃生口);执行即画面 op 结束、交回外循环。**恒可用终结不变量**:每个决策画面的动作空间至少含一个恒可用终结动作(商店 = 关店、备战 = 开战、单选族 = 确认、等待/切换类 = 推进)。**刷新 = 终结的语义自洽**:刷新是唯一引入新事实的动作(新牌面),期望态必须在新事实处重建。终结判定现值 = 注册表 op 类 `terminal`/`terminal_wait` 属性,消费点经 `action_op_class_for` 读取(禁消费点私表);终结集总表 = [README.md](README.md) §6。
-- **期望态生命周期**:入口观察(重建,即对账)→ 逐动作逻辑态直写(纯计算零读屏)→ 终结(失效,交回外循环下次重建)。逐动作转移函数腿规格 = [../game_state/logic-updates/](../game_state/logic-updates/README.md)(R9 全覆盖:词表逐动作有逻辑态分支,「未建模→保守回退」已废;词表外 = AssertionError 响亮暴露)。
-- **字段未观察态**:tracked 账字段取值域含**「未观察」态**——无任何观察锚定,值不可消费;与「已观察下的空」类型可分。进入 = 显式失效事件;退出 = 入口观察对账的屏幕真值写回。策略消费口唯一 = game state;执行侧 tracked 记录 = 执行簿记,不设面向策略的读口。策略默认实现 = 商店开遇未观察 → 返回关店 → 外循环重判落回备战 → 入口观察锚定后再进店;未观察跳过的访问留遥测分键,连续循环 = 锚定失败显式失败出口,禁静默重试。
-- **读屏点只剩两个**:画面 op 入口(期望态生成)与终结后交回外循环(= 下一次入口观察)。
+- **期望态生命周期**:入口观察(重建,即对账)→ 逐动作逻辑态直写(经动作自上报函数族,零读屏)→ 终结(失效,交回外循环下次重建)。逐动作转移函数腿规格 = [../game_state/logic-updates/](../game_state/logic-updates/README.md)(词表逐动作有逻辑态分支;词表外 = AssertionError 响亮暴露)。
+- **字段未观察态**:tracked 账字段取值域含**「未观察」态**——无任何观察锚定,值不可消费;与「已观察下的空」类型可分。进入 = 显式失效事件;退出 = 入口观察对账的屏幕真值写回。策略消费口唯一 = game state。策略默认实现 = 商店开遇未观察 → 返回关店 → 外循环重判落回备战 → 入口观察锚定后再进店;未观察跳过的访问留遥测分键,连续循环 = 锚定失败显式失败出口,禁静默重试。
+- **读屏点**:显式读屏只在画面 op 的观察 node;终结交回后外循环重分发,下一次访问的观察 node 即下一次读屏。
 
 ### 1.5 形态判据
 
-- 入决策规范 ⇔ **选择面 ∧ 逻辑态账**(商店/备战);空决策形态 ⇔ 已建档分发画面且两者皆缺(纯推进为流程义务:入口观察 + 推进 + 交回;新 op 单尝试,重试预算归外循环);单选族例外 = 有选择面零逻辑态账。三形态画面清单 = [README.md](README.md) §3。
+- 画面 op 按观察/决策/上报三面的有无分型(全形态/节点循环/推进型空决策/驻留状态机/重型屏),判据与 37 屏分类总表 = §3。
 
-## §2 基类机制
+## §2 上报接口(kernel/cw_screen_report/)
 
-### 2.1 结构公式:两个适配器 + 一份共用中段
+### 2.1 包形态
 
-```
-              ┌─ 适配器①(获取观察数据)──────────────────┐
-   实机: 截图 → 识别链(OCR/CV/SIFT/模板) ────→ 类型化观察 payload
-   sim:  引擎真值 GameState ───────────────────→ 同一套类型化观察 payload
-              └──────────────────────────────────────────┘
-                            ↓  (唯一的入口分叉)
-   ┌──────────────── 共用中段(一份代码)────────────────┐
-   │  观察写入 state(observe/write_logic/carry/        │
-   │  leave_screen/relay)→ 对账(观察赢)→ 策略器消费    │
-   └─────────────────────────────────────────────────────┘
-                            ↓  (意图 = 统一词表动作对象)
-              ┌─ 适配器②(执行决策)──────────────────────┐
-   实机: 点击/拖拽/等待/画面流转(机械执行)
-   sim:  引擎动作应用(语义逻辑态直写 + 真值演化)
-              └──────────────────────────────────────────┘
-                            ↓  (动作发射)
-   ┌──────────────── on_outcome 落地登记钩子(共用)──────┐
-   │  单一发射口,发射即触发同一套登记;落地判定归观察侧  │
-   └─────────────────────────────────────────────────────┘
-```
+- **每画面一文件**:obs 类与该画面上报函数同居(`kernel/cw_screen_report/<画面snake>.py`);与动作侧 `kernel/cw_action_report/<action>.py` 每动作一文件对称。文件名 = 画面 snake;`__init__.py` 不暴露模块(项目惯例),消费方按画面文件名直接 import。
+- **命名机械规约**:obs 类 = `CwScreenXxxObs`(商店框 op = `CwOpXxxObs`);上报函数 = `report_screen_<snake>_obs`(obs 类去前缀 `CwScreen` 去后缀 `Obs` 转 snake)。与动作上报函数族同约定:**一个「上报」概念一个形状**,动作/画面观察两族互不混用,都禁按类型聚合的分派转移函数。完备锁测试遍历包内 obs 类,断言 report 函数在场/不在场分侧(推进型不在场)。
+- **obs 类**:该画面一次观察的类型化载荷,字段 = 该屏读到的结构化结果 + 稳定帧引用(`screen: Any`,实机识别域载体)。纯数据:只可 import kernel 既有类型 + `cv2.typing.MatLike`。
+- **sig 逐位沿原值**:上报函数的 `ChannelSig`(family/actor/evidence)沿用该画面原写点原值(如 actor='CwScreenEncounter'),`REGISTERED_ACTORS` 零扩面;journal 写行语义与迁出前连续。sig 缺省 = 函数体内按原值构造;对 obs 字段缺失的防御口径与原写点一致(读缺 = 跳过写,不加强不减弱)。
 
-三条要点:
+### 2.2 辖域边界
 
-1. **入口分叉只有一步(每端;辖域 = 画面 op 内)**。实机/sim 的全部差异压缩到「观察从哪来」与「动作落到哪去」两个端口;写记录、对账、决策消费、落地登记是同一份代码。op 外现存读屏调用点以**调用点白名单制**管理(发射帧仲裁/开局最小读/买牌波入口/遥测录局),立锁前重跑 `read_game_state` 调用点全量扫描证基线未漂移。
-2. **evidence 标注是数据差异,不是分支逻辑**:sim 合成观察恒带 `sim:synthesized`,实机识别带来源注记——「记录里多一个字段」,不是 `if sim:` 分支。失读分支(carry/先验/离屏)写在共用代码,sim 永不触发。
-3. **数学单一源**:sim 的观察与换算直接复用 kernel 逻辑计算(升星/退款/收入/账本推进/派生键);凡 sim 私有换算都该删成对 kernel 函数的调用。先例 = `board_next_tier_of` 薄委托。
-4. **分叉圈养原则**:适配器内无重复逻辑——分叉圈养在一个模式选择 + 两个适配器类里,中段零分叉。实机适配器只含实机世界的答案(像素/坐标/等待),sim 适配器只含 sim 世界的答案(读变量/步进/真值合成);凡逻辑(口径/公式/判据/登记语义)一律不进适配器。自检判据:一段代码若能在两个适配器里各写一份且语义相同,它就不该在任何适配器里。
+- **屏文件 = 该画面观察进容器的全部逻辑的家**:①写点(类型化 obs 载荷 → 容器字段,含屏级幂等门/懒写/恒覆写等写法);②该屏更新逻辑(写点之上的派生/优先级);③该屏对账特判(只在类型化 obs 载荷上运算的观察 vs 逻辑态比对)。**判断线:只在类型化载荷上运算 → 进 kernel 屏文件;要摸帧(读像素/OCR/CV)→ 留在观察侧**(画面 op 观察 node 或 obs/ 工具箱)——识别机制不出观察域,kernel 零像素纪律不破;kernel→obs 直依被分包矩阵禁止,观察侧纯函数以「函数体搬进」kernel 屏文件的方式落地,不是 import。
+- **漏斗边界**:`obs/cw_observation.py::read_game_state` 漏斗内部的容器写端 = 既有观察边界,不经 report 接口、不重复承接(备战/买牌的整包观察直写容器,report 相应保持占位或不设摄入面)。
+- **动作事实边界(硬规则)**:chosen_*(选择落地记录)与 per-visit 位(如 `encounter_refreshed_in_visit`)留守画面 op——其值在「确认已落地」重入观察后才可信,记账随判定点走(重入裁决点/选择点),不进 report。
+- **刷新计数出辖**:节点屏刷新计数(`encounter_refresh_used`/`strategy_refresh_used`)的写端不在画面 op 层(见 §4),`refresh_left` 观察读数只是 obs 字段。
 
-### 2.2 观察端口契约
+## §3 形态分型(37 画面 op)
 
-- **契约三则**:①保真位语义不取消(payload 携带可读/可信位;实机失读走 carry 通道,sim 恒真读是环境参数不是造假);②观察 = 类型化 payload,识别机制不出端口(共用中段禁摸像素、禁直摸引擎对象);③点击坐标不入 payload(存储面),坐标单一真相源 = screen_info。
-- **观察输出结构**:载体 = 容器已定形类型(NodeKey/ShopCard/ShopPayload/EncounterPayload/SupplyPayload/Settlement/Unit/BenchView/SphereSight)+ 备战席位身份域 PrepObservation(执行域透传申报)。逐画面「观察输出 → 写入容器域」映射 = 各画面文档观察面节 + [../game_state/fields.md](../game_state/fields.md)。
-- **实机实现 = 识别链封口**:备战族观察漏斗单一入口 = `obs/cw_observation.py::read_game_state`(观察流,逐字段门 = PHASE_FIELD_SPEC 三档);简报/结算/节点屏各归 owner 模块(§3 工具箱)。映射表是声明式清单,失读分支在基类共用代码,读取器只回答「读到什么/可不可信」。
-- **sim 实现 = 引擎真值映射**(`kernel/cw_game_state.py::synthesize_from_game_state` 升格为适配器①):逐字段直取,真值缺席 = 结构离屏(payload 域非当前画面一律 leave_screen 语义,**当前画面由相位声明、不从数据反推**);派生量调 kernel 单一源;evidence 恒带 `sim:synthesized`;**帧供给双落**——合成写入 GameState 之外同帧写 `session.last_state`(保真位恒真读形态;决策视图透传域从 last_state 取值,其中 refresh_probs 双落必带,漏带 = 商店刷新概率静默退基线表)。
-- **装配机制** = `cw_game_ports.py`(CwObservationSource/CwActionSink 协议 + 模块级安装槽):缺省 None = 生产直连现役路径;安装只发生在显式装配点,进程内单装配,卸载复位(测试 harness 显式装配,生产不装)。
+画面 op 共 37 个:`operations/cw_screen/` 35 类 + 商店框 2 类(`operations/cw_op/cw_op_open_shop.py::CwOpOpenShop`/`cw_op_close_shop.py::CwOpCloseShop`)。分五型:
 
-### 2.3 相位与启动边界
+| 型 | 判据 | 屏清单 | report |
+|---|---|---|---|
+| **全形态** | 观察 node + 决策动作 node + report;决策动作 node 承载完整决策循环(重入裁决/分支刷新/确认链) | CwScreenEncounter(专用刷新链保留)、CwScreenSupplyNode、CwScreenInvestStrategy、CwScreenInvestEnv、CwScreenBriefing、CwScreenBossBriefing、CwScreenWaitOneOne、CwScreenDeployNotFull、CwScreenPlaneTransition(链观察)、CwScreenPlaneIntel、CwScreenBoxPick、CwScreenArmoryBox | 12 屏全设;其中 BossBriefing/WaitOneOne/DeployNotFull/PlaneIntel/ArmoryBox 现役零容器摄入面,接口为统一形态占位 |
+| **节点循环** | overlay 单选族:两 node,决策动作 node = 单动作(选卡/确认)`round_wait` 循环 | CwScreenMegastar(轻门 + 懒读先例:确认访问不重读候选)、CwScreenEquipPick、CwScreenPartner、CwScreenPlanner、CwScreenFortune、CwScreenWishTrial、CwScreenBookcard、CwScreenExpertInvite | 8 屏全设(候选写 `*_opts` 槽) |
+| **推进型空决策** | 无选择面无容器域:观察 node = 门判定;决策动作 node = 单步推进 + 重入裁决;**无 report 接口** | CwScreenNextButton、CwScreenPlaneDetail、CwScreenConsumableOverlay、CwScreenEmblemDetailPopup、CwScreenItemDetailPopup、CwScreenInterruptDialog、CwScreenRefreshOddsPopup、CwScreenRoleDetailOverlay、CwScreenShopCardDetail、CwScreenPrepLockedReturn、CwScreenAhaEquipPick(11)+ CwOpOpenShop/CwOpCloseShop(商店框,推进型只读/导航变体) | 无(obs 类只记入口裁决;完备锁断言函数不在场) |
+| **驻留状态机**(用户裁定豁免两 node) | 内部 while 处理结算帧、逐轮分类;出口判定(大厅终局锚/完成白名单)与分支链的轮次耦合拆进两 node 会切开 | CwScreenBattleWait(单 node `wait()`;内部结算链 `_write_settlement_observation`/`apply_settlement_cover`/SettlementState 零改动) | report 占位(结算覆盖写端在结算域,非画面观察记账) |
+| **重型屏** | 观察 = 既有漏斗 + op 层散落写点收编;决策动作 = 无帽循环/波循环 | CwScreenPrep(观察 node = 环装配 + heavy 观察 + 接管补采 + 纯观察审计留守;决策动作 node = 单动作决策 `while True` 循环,无防御上限;可选域经 report 落容器)、CwScreenBuyCards(观察 node = 入口段 `_shop_entry_read` 含未识别卡停机闸;决策动作 node = 波循环 `run_buy_waves` 内聚状态机,首段复用观察回执不重读) | prep = 可选域(链域/接管域)report;buy_cards = report 占位(容器写端在漏斗) |
 
-- **循环起点 = 第一帧观察就绪**;简报(职级/难度确认)是循环内的相位 1,由同一基类生命周期处理,不是循环外特殊代码。
-- **启动边界两侧**:实机侧启动序列(大厅导航→开始对局→难度确认屏,载体 CwEntryStart,纯菜单导航 op)留在循环外;sim 侧 = `Engine.new_match(seed)` 新建局即激活简报相位;两侧在「第一帧观察就绪」汇合,此后至对局终了是同一份循环代码。
-- **相位映射(sim 侧唯一翻译面)**:引擎没有画面,只有段序与节点类型——引擎在段边界**显式申报段身份**(申报住引擎,禁反向依赖实机画面词表),适配器按映射表把段身份翻译成相位;payload 域由相位声明(不从 st.shop 数据反推);每帧合成带轮键。战斗节点在 sim 是瞬时函数调用,只产结算帧不产战斗中帧。
-- **过渡相位** = 边界事件触发的轻观察相位(简报/难度确认/位面详情/敌人情报/中断弹窗):主循环每帧 observe 先查过渡相位表,命中 → 读选项 → 决策 → 确认 → 写 state → 回主循环;表驱动的一次性小生命周期,不是散落特判。
-- **相位 1 深度统一(待批面)**:kernel 选职级缺省函数「恒选最高」两域同源 + 难度确认屏写端切观察 + `ctx.cw_selected_difficulty` 两吸收点注销;前置 = 难度确认屏对局类型建档采证。
+出辖 1:`operations/cw_screen/cw_screen_deploy.py::CwScreenDeploy`(部署机,在备战画面上拖拽执行,直继承 SrOperation)不属画面分发主体,其 obs 化评估另立批。合计 12 + 8 + 13 + 1 + 2 + 1 = 37。
 
-### 2.4 五段生命周期(基类模板)
+## §4 辖域边界(本层不承载的机制)
 
-```
-observe()   适配器①分派:取观察 payload(实机=识别链 / sim=引擎真值)
-   ↓
-reconcile   对账:payload 写入 GameState + 观察赢(一致静默;失配→缺陷台账)
-   ↓
-decide()    策略消费:strategy_input_state 决策视图 → 策略入口 → 意图
-            (含发射决策:mandate_v1 前置发射位,armed 帧产受限访问/StartBattle 意图)
-   ↓
-act()       适配器②分派:意图 → 机械执行(实机=点击/拖拽;sim=引擎应用)
-   ↓
-on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一发射口)
-```
+- **画面 op 基类/端口/段迹/登记注册表/决策帧假环境分支不存在**:画面 op 层无五段生命周期基类、无观察/动作适配器端口与装配点分流、无生命周期段迹、无 on_outcome 落地登记注册表、无决策帧观察证据注入分支——上述机制整体退役,任何一侧的重新出现即架构回潮。观察/决策两段职责由两 node 直接承载(§1),观察进容器由 report 接口承载(§2)。
+- **刷新计数记账不在画面 op 层**:`encounter_refresh_used`/`strategy_refresh_used` 的写端模型与「动作上报 → game state 扣减」改造归动作 op 侧;画面 op 只保留 `refresh_left` 观察读数(obs 字段)与门读容器计数的读端闸(>0 = 已用),不写计数。
+- **观察审计链留守**:依赖读帧的观察审计(备战羁绊显示对账、商店池一致性、合成预览交叉验证、刷新留证)住画面 op 观察 node,消费 obs/ 工具箱识别产物;不迁 kernel、不进 report。
+- **策略判据面不在本层**:买/卖/升/刷数学归策略器(策略文档区);画面 op 只做容器零参读 + 动作编排放大。
 
-- 对账、决策消费、落地登记在基类一份代码;observe/act 是两个抽象口,实机/sim 各一实现。
-- decide 的输入 = `strategy_input_state`(kernel/cw_gs_view)产出的 GameState 视图——策略器读 GameState 形状不变,值源已切容器。
-- **on_outcome 触发契约**:输入 = 意图 + 发射时点证据;**单一发射口,发射即触发**(发出即职责完成,成败回执退役)。「未落地不计数」防线由观察侧 reconcile 对账承接;sim 路径同样触发(记录面,零 rng 影响)。
-- 现役件对应:备战 op(CwScreenPrep)五段是生命周期原型;外循环分发保留;`CwProgressionScreenOp` = 空决策变体(observe/重入裁决/reconcile + 空申报/act = progress_once/无登记件);全部 cw_screen/ op 均为基类后代(收口锁在册)。
+## §5 观察解析工具箱(obs/)
 
-### 2.5 动作端口契约
-
-- **意图词表统一**:词表单一源 = `kernel/cw_vocab.py::CW_ACTION_TYPES`;两适配器消费同一意图类型——新动作入词表 = 先改契约(两适配器同批给映射)再落码,禁适配器私有动作类型;控制流类动作已整体退役出词表。
-- **实机适配器② = 点击/等待/画面流转链的封口**:每个意图类型一张动作映射(点击链怎么落);适配器只机械执行,不做落地判定(判效权归观察侧 reconcile);逐动作点击链细则正本 = 各画面文档 + [../flow/action_exec.md](../flow/action_exec.md)。
-- **sim 适配器② = 引擎动作应用的接口化包装**(协议位 = CwActionSink.execute_action):**applied 两域分轨**——sim 侧规则性拒绝(如满栏非合成拒买)是真值保留;实机侧发射型恒真不携带落地判定,规则性拒绝的实机承接 = 策略层发射前置谓词,门漏判由下一帧对账暴露。**恒 paid 不对称申报**:sim 免费判定输入结构性 None,免费腿 sim 不触发。**禁绕意图词表**:引擎内部直接采样决策结果不产生意图对象 = 分叉。
-- **on_outcome 登记注册表**:登记件封闭集 = `cw_screen_op_base.py::EMIT_TRIGGERED_DECLARED`(新登记件先改申报面再登记,禁静默新增);现役在册 = 遭遇/策略屏刷新计数 + 经验账本两通道。登记语义不变承诺:免费闸照旧、同节点去重守卫原样(节点级事件非动作级)、随点击置位不等验效、逻辑直写统一走 write_logic(两态制)、on_outcome 只写记录不改引擎真值(禁双计)。
-
-### 2.6 框架归属与依赖方向
-
-- op 基类住 operations 桶;kernel/one_dragon 不感知基类。依赖方向:`operations → cw_game_ports 协议 ← obs/sim 实现`;kernel 被所有人依赖、不依赖任何上层。
-- **sim 驱动器住 app 根**(依赖边裁决拍死):sim-driver 同时 import operations(基类)与 sim(引擎/端口实现),**sim→operations 边不产生**;职责 = 构建引擎局、安装 sim 端口实现、把基类生命周期驱动器套在引擎段序上(段边界按相位映射表翻译)。
-- 基类不含策略语义、不含画面知识:画面知识(锚/区域/交互时序)在实机适配器,引擎知识(段序/节点类型)在 sim 适配器,判据在策略器。
-
-## §3 观察解析工具箱(obs/)
-
-一屏一解析器;识别机制不出端口(§2.2 契约三则),解析器只回答「读到什么/可不可信」。清单(符号 = `obs/<模块>::符号`):
+一屏一解析器;识别机制不出观察域(§2 辖域边界),解析器只回答「读到什么/可不可信」。清单(符号 = `obs/<模块>::符号`):
 
 | 模块 | 管什么 |
 |---|---|
@@ -146,18 +111,13 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
 | `cw_shop_refresh_obs.py` | 商店刷新钮标价/按钮态现场 OCR |
 | `cw_arbitration.py` | 观察层读数多源仲裁统一注册面 |
 | `cw_resume_lock.py` | 恢复局(locked-resume)检测纯函数 |
-| `cw_anchor.py` | 流程转点观测锚机制(ANCHOR_REGISTRY/AnchorSpec/emit_anchor;见 §5) |
+| `cw_anchor.py` | 流程转点观测锚机制(ANCHOR_REGISTRY/AnchorSpec/emit_anchor;见 §6) |
 
-## §4 并存期纪律
+**类型化载荷出料**:`kernel/cw_screen_report/` 包 = 各画面 obs 类 + `report_screen_<snake>_obs` 上报函数同居处(§2;每画面一文件,与动作侧 `kernel/cw_action_report/` 对称)——obs/ 解析器产读数,kernel 屏文件承载「读数 → 容器」的落写语义。
 
-- **现状**:cw_screen/ 全目录画面 op + cw_op/ 商店系三件均已基类化(收口锁 = AST 断言:凡 op 祖链达 SrOperation 者必为 CwScreenOpBase 后代);**生产恒走旧路径**(装配点缺省 None),各迁移批生产行为零变化。sim 适配器接线随 sim 重做批(`changes/2026-09-15-sim-redesign/`)。
-- **等价门(主门)**:①在册行为锁经 op `execute()` 走新基类全绿;②GameState 写入流分域夹具对拍(实机 = 固定截图夹具 → payload → gs 全帧对拍;sim = 引擎真值 → 合成帧 → gs 对拍)。次门 = 商店策略面回归哨兵(cw_replay --diff 只重放商店决策面),不作为等价主证——禁把哨兵通过读成「等价已证」。每个迁移画面定义等价断言集,禁退化为「跑通了 = 等价」。
-- **旧路径退役**候等价门通过后的后续批;回退 = 装配点卸载端口(恢复 None = 直连现役路径),git revert 单操作。
-- **相位 1 深度统一待独立批**(见 2.3);op 外读屏调用点白名单重扫随批。
+## §6 流程转点观测锚(机制在库,接线候批)
 
-## §5 流程转点观测锚(机制在库,接线候批)
-
-- **锚** = 在流程确定性转点上触发的一次结构化观测,三要素 = 确定性触发时点 × 该时点权威事实集 × 落载体登记;是 on_outcome 登记件族的观测扩员,不是新机制。目的 = 让框架提供更准确的游戏观察数据(事件事实零读屏即确定;事后从散点帧推断是多次实证的缺陷类)。**观测-only 边界**:只做记录面,状态改写/效果施加出栈(payload 预留 effect_ref 槽位恒空,非空 = 红)。
+- **锚** = 在流程确定性转点上触发的一次结构化观测,三要素 = 确定性触发时点 × 该时点权威事实集 × 落载体登记;是画面/动作上报面族的观测扩员,不是新机制。目的 = 让框架提供更准确的游戏观察数据(事件事实零读屏即确定;事后从散点帧推断是多次实证的缺陷类)。**观测-only 边界**:只做记录面,状态改写/效果施加出栈(payload 预留 effect_ref 槽位恒空,非空 = 红)。
 - **触发三型**:landed(动作落地事实,如买牌落地 = 卡名/扣金/合成判定三事实同点唯一可得处)/ emitted(发射即登记,如遭遇·策略刷新计数)/ boundary(流程边界:进节点/进位面/结算)。锚点事件集 = 登记式封闭集(`kernel/cw_anchor.py::ANCHOR_REGISTRY`,现役闭集 8 锚;新锚先登记再接线,集外 = 红);**现役零生产调用点**(惰性纯机制面),动作锚接线随执行器收编批、boundary 触发口候裁决,禁实现批静默选型。
 - **锚行封装**:anchor_id/trigger_type/时点键/payload/scope(口径域:global|plane|unit,防跨批口径混用)/evidence_refs(判定事实型必填)/produced_by。载体三面全部复用既有设施:事件行 = ExogenousEvent kind 词表扩展(schema 修订归一个批次,防逐锚散改)、状态锚 = GameState 既有写入 API(source 标注 `anchor:<id>`)、计数 = 效果账本既有挂点。
-- **防双源声明**:锚是 on_outcome 注册表的登记清单面非平行触发机制;与采集钩子(临时采样)辖域互补禁混同;与停机钩子无交(锚永不触碰 run 状态);帧观察 → 锚 → 遥测落盘是一条管道的三段,锚不产生独立数据域。节点推进权威 = 统一 state 派生规则,锚行禁携带第二份节点序计数。
+- **防双源声明**:锚是上报接口面的登记清单面,非平行触发机制;与采集钩子(临时采样)辖域互补禁混同;与停机钩子无交(锚永不触碰 run 状态);帧观察 → 锚 → 遥测落盘是一条管道的三段,锚不产生独立数据域。节点推进权威 = 统一 state 派生规则,锚行禁携带第二份节点序计数。

@@ -22,7 +22,7 @@
 
 ## 3. 商店未识别卡停机
 
-位置 = 商店画面 op **入口观察处**（`cw_screen_buy_cards.run_buy_waves`，回执落地即判）。判据 = 读链终判（`read_shop_cards` 内部易误判重观察之后）仍含 unknown 槽 → `stop_running(save_screenshot=True)` 框架截图留证（`[stop]` 日志行）+ round_fail——观察落地即停，决策/购买不见残缺牌面。**不能降级带病跑**（未识别卡按非 target 跳过 = 决策在残缺牌面上做 + 错过新内容建档窗口；用户 2026-08-24 裁决接受阻断代价）。决策侧 unknown 窗收窄（花钱禁发射、仅 CloseShop，`mandate_v1/shop.py`）保留为纵深第二线。
+位置 = 商店画面 op **观察 node 入口段**（`cw_screen_buy_cards.py::CwScreenBuyCards.observe` 调 `_shop_entry_read`，回执落地即判）。判据 = 读链终判（`read_shop_cards` 内部易误判重观察之后）仍含 unknown 槽 → `stop_running(save_screenshot=True)` 框架截图留证（`[stop]` 日志行）+ round_fail——观察落地即停，决策/购买不见残缺牌面。**不能降级带病跑**（未识别卡按非 target 跳过 = 决策在残缺牌面上做 + 错过新内容建档窗口；用户 2026-08-24 裁决接受阻断代价）。决策侧 unknown 窗收窄（花钱禁发射、仅 CloseShop，`mandate_v1/shop.py`）保留为纵深第二线。
 处理流程：对 `[stop]` 截图跑 analyze_screen + 离线 SIFT 对拍（真实 rect 商店牌-1..5）确认真未知 → 新卡建档（screen_info/立绘库）→ 重启 server 重跑。
 
 ## 4. 召唤物/物品未识别停机（`obs/cw_identity_obs.py`）

@@ -1,11 +1,11 @@
-"""投资策略屏观察契约与上报(kernel 纯数据;迭代
-2026-09-18-screen-op-flat-report design.md §2.2/§2.3)。
+"""投资策略屏观察契约与上报(kernel 纯数据;正本 =
+docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 入口锚命中与稳定窗 + 逐卡读数(卡名, x, y;入口稳定帧
-OCR 快照)。report 写点转录来源 = operations/cw_screen/cw_screen_invest_
-strategy.py::``_decide_and_act`` 观察性写槽(锚 :410);辖域边界 =
-design.md §2.3(``active_strategies`` 追加写点留守重入裁决)与 §2.4
-(``strategy_refresh_used`` 逐卡刷新计数出辖,钩子随基类退役不转录)。
+OCR 快照)。report 摄入点 = operations/cw_screen/cw_screen_invest_strategy.py::
+``CwScreenInvestStrategy.observe``(观察 node);辖域边界:
+``active_strategies`` 追加写点留守重入裁决;``strategy_refresh_used``
+逐卡刷新计数出辖动作侧。
 """
 from __future__ import annotations
 
@@ -28,8 +28,8 @@ class CwScreenInvestStrategyObs:
     - ``options``:(卡名, x, y) 元组列表;[索引定义] 列表序 = 画面物理
       卡位序(左→右,刷新建议 slots 与此序同坐标系);取值时机 = 入口
       稳定帧 OCR 快照。report 提取名序列写 ``invest_strategy_opts``;
-      ``active_strategies`` 追加写点与逐卡刷新计数留守(design.md
-      §2.3/§2.4)。
+      ``active_strategies`` 追加写点与逐卡刷新计数留守(动作事实与出辖
+      边界)。
     - ``first_ocr_map``:观察段首帧 OCR 存底(G10 域;现役刷新链零重读后
       本域仅保留 payload 契约,链内不消费)。
     """
@@ -46,10 +46,10 @@ def report_screen_invest_strategy_obs(gs: GameState,
                                       sig: ChannelSig | None = None) -> None:
     """投资策略屏观察上报:逐卡名写 ``invest_strategy_opts``。
 
-    写点锚 = cw_screen_invest_strategy.py::``_decide_and_act`` 观察性写槽
-    (锚 :410)。决策与动作事实面留守:``active_strategies`` 追加写点
-    (重入裁决点)/``strategy_refresh_used`` 逐卡刷新计数(design.md §2.4
-    出辖)均不收编。names 空 = OCR 未读得,不写(原写点「读得才写」闸
+    写点锚 = cw_screen_invest_strategy.py::``CwScreenInvestStrategy.observe``
+    (观察 node 摄入)。决策与动作事实面留守:``active_strategies`` 追加写点
+    (重入裁决点)/``strategy_refresh_used`` 逐卡刷新计数(出辖动作侧)
+    均不收编。names 空 = OCR 未读得,不写(原写点「读得才写」闸
     逐位平移)。
     """
     if sig is None:

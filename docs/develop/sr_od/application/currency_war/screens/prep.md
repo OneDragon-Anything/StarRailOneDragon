@@ -25,13 +25,13 @@
 
 ## 4. 动作面
 
-单动作决策循环(`for _vi in range(VISIT_ACTION_CAP)`,循环内零读屏):
+单动作决策循环(`while True`,循环内零读屏;无防御上限——不收敛 = 策略 bug 响亮暴露,不加兜底帽):
 
 ```
 action = strategy.decide_prep_screen(容器 game state 直读;HoldFrame = 本帧无动作 → 交回外循环重观察)
 → F3 validate(参数非法 = 拒绝执行 + 交回留证;执行前输入契约检查,非动作后判效)
 → 执行 _act_execute(机械执行,无成败回执,发出即职责完成;
-   落地登记注册表在发射点统一触发——单一发射口,发射即触发)
+   落地登记发射点留位——登记注册表随基类退役,发射点 = no-op 契约留位)
 → 终结判定读注册表 action_op_class_for(action).terminal(终结 → _terminal_exit 交回)
 → op 自上报 report_action_<snake>_param(动作后逻辑态唯一更新点 = 上报函数单点,
    纯计算零读屏;下一动作决策读容器逻辑态)
@@ -47,7 +47,7 @@ action = strategy.decide_prep_screen(容器 game state 直读;HoldFrame = 本帧
 
 - **StartBattle = 唯一完成态**:发射即终结交回外循环,外循环置战斗窗口(`_battle_ts` 置位 + `_battle_wait_active`,下轮战斗等待分支接管;`outer_loop.md` §4)。
 - **OpenShop = 备战环终结**:显式开店(read_only=False)交商店访问编排;read_only 读数开店后交回重识别。
-- 无动作(None)/ overlay 交回 / 访问动作数达上限(VISIT_ACTION_CAP;防御:决策循环不收敛 = 逻辑态或策略 bug,交回外循环由 stall 防线接管,不静默续跑)均合法交回;每轮外循环重识别保证稳定性。
+- HoldFrame(本帧无动作,合法交回重观察)/ overlay 交回 / 终结动作;决策循环无防御上限(不收敛 = 逻辑态或策略 bug,响亮暴露,交回外循环由 stall 防线接管,不静默续跑)。
 - 环让位重入契约:本 op 返回后外循环必经 return → 下轮 loop 顶全分支重判,不在同一迭代内直接回备战分支。
 
 ## 6. 状态上报面

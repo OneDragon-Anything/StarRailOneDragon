@@ -1,10 +1,10 @@
-"""选择装备屏观察契约与上报(kernel 纯数据;迭代
-2026-09-18-screen-op-flat-report design.md §2.2/§2.3)。
+"""选择装备屏观察契约与上报(kernel 纯数据;正本 =
+docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = overlay 门判定 + 三卡位 OCR 卡名(入口帧一次读)。
-report 写点转录来源 = operations/cw_screen/cw_screen_equip_pick.py::
-``_handle_overlay`` 写槽(锚 :154);辖域边界 = design.md §2.3(动作
-事实不收编;本屏无 chosen 写端)。
+report 摄入点 = operations/cw_screen/cw_screen_equip_pick.py::
+``CwScreenEquipPick.observe``(观察 node);辖域边界:动作事实不收编;
+本屏无 chosen 写端。
 """
 from __future__ import annotations
 
@@ -37,8 +37,9 @@ def report_screen_equip_pick_obs(gs: GameState, obs: CwScreenEquipPickObs, *,
                                  sig: ChannelSig | None = None) -> None:
     """选择装备屏观察上报:OCR 卡名写 ``equip_pick_opts``。
 
-    写点锚 = cw_screen_equip_pick.py::``_handle_overlay`` 写槽(锚 :154;
-    原写点无候选空门,直写——空表照写,防线逐位平移不加强不减弱)。
+    写点锚 = cw_screen_equip_pick.py::``CwScreenEquipPick.observe``
+    (观察 node;原写点无候选空门,直写——空表照写,防线逐位平移不加强
+    不减弱)。
     """
     if sig is None:
         sig = ChannelSig(family='logic_action',

@@ -1,5 +1,6 @@
 """货币战争 画面观察上报包(每画面一文件:obs 类 + ``report_screen_*_obs``
-函数同居;迭代 2026-09-18-screen-op-flat-report design.md §2.2/§2.3)。
+函数同居;正本 =
+docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 - 文件名 = 画面 snake;obs 类命名 = ``CwScreenXxxObs``(商店框 op =
   ``CwOpXxxObs``),字段 = 现役 ``XxxObservation`` 逐位平移;

@@ -1,11 +1,11 @@
-"""简报屏观察契约与上报(kernel 纯数据;迭代
-2026-09-18-screen-op-flat-report design.md §2.2/§2.3)。
+"""简报屏观察契约与上报(kernel 纯数据;正本 =
+docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 入口门判定 + 三读数(敌人词缀/位面序 boss/敌人难度;读数
-挪进观察侧归迁移批,本批字段进即写)。report 写点转录来源 =
-operations/cw_screen/cw_screen_briefing.py::``_read_and_advance`` 三写点
-(锚 :146-215);辖域边界 = design.md §2.3——原幂等守卫辖「读+采」,
-词缀效果点采与登记留守画面 op 观察侧,收编后只辖容器写。
+在观察侧读取,字段进即写)。report 摄入点 =
+operations/cw_screen/cw_screen_briefing.py::``CwScreenBriefing.observe``
+(观察 node 三写点);辖域边界:原幂等守卫辖「读+采」,词缀效果点采与
+登记留守画面 op 观察侧,收编后只辖容器写。
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 @dataclass
 class CwScreenBriefingObs:
     """简报屏观察结果(摄入口 = :func:`report_screen_briefing_obs`;三读数
-    字段为本屏 report 所需——读数挪进观察侧归迁移批,本批字段进即写)。"""
+    字段为本屏 report 所需——读数在观察侧读取,字段进即写)。"""
 
     on_screen: bool = False
     #: 敌人词缀名单(OCR 原名;空 = 读缺或幂等门已挡,report 不写)。
@@ -39,8 +39,8 @@ class CwScreenBriefingObs:
 def report_screen_briefing_obs(gs: GameState, obs: CwScreenBriefingObs, *,
                                sig: ChannelSig | None = None) -> None:
     """简报屏观察上报:三字段分闸落容器(写点锚 =
-    cw_screen_briefing.py::``_read_and_advance`` 三写点,锚 :146-215;
-    读数挪进观察侧归迁移批,本函数按字段进即写)。三闸语义逐位平移:
+    cw_screen_briefing.py::``CwScreenBriefing.observe``(观察 node 三写点);
+    本函数按字段进即写)。三闸语义逐位平移:
 
     - ``enemy_affixes``:幂等门「容器已有不重写」保留(原幂等守卫辖
       「读+采」,收编后只辖容器写——效果点采留守画面 op);

@@ -1,10 +1,10 @@
-"""命运卜者强化屏观察契约与上报(kernel 纯数据;迭代
-2026-09-18-screen-op-flat-report design.md §2.2/§2.3)。
+"""命运卜者强化屏观察契约与上报(kernel 纯数据;正本 =
+docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = overlay 门判定 + 三卡位 OCR 卡名(入口帧一次读)。
-report 写点转录来源 = operations/cw_screen/cw_screen_fortune.py::
-``_handle_overlay`` 写槽(锚 :156);辖域边界 = design.md §2.3(本屏
-无 chosen 写端——fortune 选择存证行已随删除波退役)。
+report 摄入点 = operations/cw_screen/cw_screen_fortune.py::
+``CwScreenFortune.observe``(观察 node);辖域边界:本屏无 chosen 写端
+(fortune 选择存证行已退役)。
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def report_screen_fortune_obs(gs: GameState, obs: CwScreenFortuneObs, *,
                               sig: ChannelSig | None = None) -> None:
     """命运卜者强化屏观察上报:三卡 OCR 写 ``fortune_opts``。
 
-    写点锚 = cw_screen_fortune.py::``_handle_overlay`` 写槽(锚 :156;
+    写点锚 = cw_screen_fortune.py::``CwScreenFortune.observe``(观察 node;
     原写点无空门,直写——空表照写,防线逐位平移)。
     """
     if sig is None:

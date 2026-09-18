@@ -3,7 +3,7 @@
 > 本目录是货币战争（CW）**流程控制的唯一现行设计家**，由流程层代码反向规格化而成。原 `strategy-docs/09_architecture.md`（契约/插件/管理器/注册壳/三臂）已删除，其内容全部收编入本 README §2。
 > 职责分界（用户裁定）：**策略文档（`../strategy-docs/`）只管"每个画面结合哪些数学证明、怎么产出决策"；流程控制单独立文档（本目录）**——画面识别与路由、访问相位推进、动作发射契约、守卫与停机。
 > 读者 = 无会话历史的工程师/智能体。术语首次出现给定义。代码定位一律用符号锚 `文件::符号名`（loop 内语义段用 `文件::CwLoop.loop(段名)` 形态）——行号随代码增长漂移，不作定位依据；路径根 = `src/sr_od/application/currency_war/`。
-> 决策形态 = 单动作循环(入口观察→逐动作决策循环→终结 op),目标态规格 = [../screens/op-layer.md](../screens/op-layer.md);波批时代旧序列契约的解读钥匙见 §2.2 历史注。
+> 决策形态 = 画面 op 两 node(观察 node → 决策动作 node,决策动作 = 单动作决策循环→终结 op),规格正本 = [../screens/op-layer.md](../screens/op-layer.md);波批时代旧序列契约的解读钥匙见 §2.2 历史注。
 > 术语注(首次出现):逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态;真值以下一帧观察为准(观察赢)。
 > 路径缩写约定:本文反引号短路径 `research/X.md`/`data/X.md` 等 = `docs/game/currency_war/` 下对应文件(非 src 树);game 侧文档同理指向本仓 docs/。
 
@@ -15,11 +15,13 @@
 │ 画面识别 → 分支路由（overlay 0x 系 → 备战 1 → 战斗窗 → 大厅 3c）│
 │ 轮次推进（备战环 → 出战 → 战斗等待 → 结算 → 回备战）            │
 │ 停机/遥测钩子（守卫、runs summary、分配器、对局存档）           │
-├─ 画面指挥（cw_screen_prep.py = 备战单轮：入口 heavy 观察+对账+单动作决策循环）─────────────────┤
-│ ①入口观察(heavy) ②对账(暂存记账入口消费) ③-⑤单动作循环:   │
-│ 逐帧恰取一个动作(接口返回 CwAction | None,None = 本帧无动作) │
-│ →期望态计算→执行→逻辑态直写(零读屏);终结 op 交回外循环      │
-│ 商店编排（_open_shop_phase：开店→单动作循环→关店→finalize→节点探针）│
+├─ 画面指挥(37 画面 op,每屏独立类直继承 SrOperation,两 node 形态)──┤
+│ 观察 node:门 → 显式读屏(唯一读屏点)→ CwScreenXxxObs →          │
+│   report_screen_*_obs 落容器(kernel/cw_screen_report/ 每屏一文件)│
+│ 决策动作 node:重入裁决 → 决策(容器零参读;空发射帧 = HoldFrame)│
+│   → 动作(零读屏)→ round_wait 循环(无防御上限);终结动作交回  │
+│ 备战(CwScreenPrep):heavy 观察+接管补采+审计留守观察 node;       │
+│   决策动作 = 单动作 while 循环;商店编排(_open_shop_phase)        │
 ├─ 策略步进（mandate_v1：bridge.py 决策入口 + entry.py 三遍编排）┤
 │ 备战决策 live 链 = bridge.decide_prep_screen：方向代次消费 →      │
 │   前置发射位 _launch_front_check(armed 帧短路 return,短路帧不披   │
@@ -37,8 +39,7 @@
 │  (cw_<action>_action.py 一 op 一文件,CwActionXxxOp(SrOperation);│
 │  守卫 cw_shop_action_ops.py) + cw_screen_deploy.py 部署）──────┤
 │ 机械发出（零判效;round 成功态 = 发出事实）→ op 内直调自己的   │
-│ 上报函数（容器写单点）+ 落地登记注册表守卫断言面；终结判定 =  │
-│ 注册表 op 类 terminal 属性                                    │
+│ 上报函数（容器写单点）;终结判定 = 注册表 op 类 terminal 属性  │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -115,7 +116,7 @@
 |---|---|
 | [outer_loop.md](outer_loop.md) | 外层循环：两阶段身份分发、路由、轮次推进、停机/遥测钩子 |
 | [exit_chain.md](exit_chain.md) | 退出链：返回大世界 × 对局退出三层结构、退出路由分发序、A 类名单与停机位同源契约、逐屏归档、穿透/干净判据语义分工 |
-| [../screens/op-layer.md](../screens/op-layer.md) | **画面 op 层设计**（行为规范+基类机制+obs 工具箱+并存期纪律）——单动作决策循环、execute 单方法、对账边界、终结动作集、五段生命周期 |
+| [../screens/op-layer.md](../screens/op-layer.md) | **画面 op 层设计**（行为规范+上报接口+形态分型+obs 工具箱）——两 node 形态(观察+决策动作)、round_wait 循环无防御上限、report 上报接口、对账边界、终结动作集 |
 | [../screens/](../screens/README.md) | **画面 op 各篇（一画面一文档）**：备战（prep）/商店（shop）/单选族/弹窗族/推进族——能力矩阵与画面文档模板在其 README |
 | [action_exec.md](action_exec.md) | 动作执行：词表与注册表、执行契约（op 自上报 + round 成功态）、落地登记、商店/备战/部署执行要点、重试语义 |
 | [projection_contract.md](projection_contract.md) | 备战逻辑态面交互契约：状态面板/观察帧 ↔ 执行臂的字段消费、坐标系、快照 vs 现读时序、注释规范缺口登记 |
@@ -126,7 +127,7 @@
 | 守卫 | 触发 | 动作 | 载体 |
 |---|---|---|---|
 | 未知画面兜底 | 连续 15 轮全分支不命中（每轮 1s 重试） | round_fail 交框架失败 | `cw_loop.py::CwLoop._handle_unknown_fallback` |
-| 商店未识别卡停机 | 入口观察回执含 unknown 槽（读链终判） | stop_running 框架截图留证 + round_fail | `cw_screen_buy_cards.py::run_buy_waves` 入口观察处 |
+| 商店未识别卡停机 | 入口观察回执含 unknown 槽（读链终判） | stop_running 框架截图留证 + round_fail | `cw_screen_buy_cards.py::CwScreenBuyCards.observe`（`_shop_entry_read` 入口段） |
 | 外环连续 fail 重派网 | 同一分发 op 连续 fail 5（ok 清零） | round_fail 显式停交上层 | `cw_loop.py::CwLoop.OP_FAIL_REDISPATCH_LIMIT`（`_dispatch_screen_op`） |
 
 ## 5. 入口链（enter/start）与弹窗守卫族

@@ -1,11 +1,10 @@
-"""武装箱选择屏观察契约与上报(kernel 纯数据;迭代
-2026-09-18-screen-op-flat-report design.md §2.2/§2.3)。
+"""武装箱选择屏观察契约与上报(kernel 纯数据;正本 =
+docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 入口锚复验(标识-请选择)+ OCR 卡名行(2-8 字过滤,x 升序)。
-report 写点转录来源 = operations/cw_screen/cw_screen_box_pick.py::
-``_decide_card_index`` 写槽(锚 :111);辖域边界 = design.md §2.3
-(本屏选卡即终结,无 chosen 写端;选错不可逆的「卡名空交回重派」闸
-留守观察侧)。
+report 摄入点 = operations/cw_screen/cw_screen_box_pick.py::
+``CwScreenBoxPick.observe``(观察 node);辖域边界:本屏选卡即终结,
+无 chosen 写端;选错不可逆的「卡名空交回重派」闸留守观察侧。
 """
 from __future__ import annotations
 
@@ -38,7 +37,7 @@ def report_screen_box_pick_obs(gs: GameState, obs: CwScreenBoxPickObs, *,
                                sig: ChannelSig | None = None) -> None:
     """武装箱选择屏观察上报:OCR 卡名写 ``box_card_names``。
 
-    写点锚 = cw_screen_box_pick.py::``_decide_card_index`` 写槽(锚 :111;
+    写点锚 = cw_screen_box_pick.py::``CwScreenBoxPick.observe``(观察 node;
     调用方「卡名空 = round_fail 交回重派」闸已保证非空到达,原写点无
     空门——防线逐位平移不加强不减弱)。
     """

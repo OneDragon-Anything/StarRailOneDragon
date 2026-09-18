@@ -1,11 +1,11 @@
-"""补给节点屏观察契约与上报(kernel 纯数据;迭代
-2026-09-18-screen-op-flat-report design.md §2.2/§2.3)。
+"""补给节点屏观察契约与上报(kernel 纯数据;正本 =
+docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 节点内门判定 + 逐列选项读取(每列角色+装备,列数动态)。
-report 写点转录来源 = operations/cw_screen/cw_screen_supply_node.py::
-``_do_action`` 写槽(锚 :228);辖域边界 = design.md §2.3(动作事实
-``chosen_supply`` 不收编)与 §2.4(刷新面出辖,``supply_refresh_used``
-写端不转录)。
+report 摄入点 = operations/cw_screen/cw_screen_supply_node.py::
+``CwScreenSupplyNode.observe``(观察 node);辖域边界:动作事实
+``chosen_supply`` 不收编;刷新面出辖,``supply_refresh_used`` 写端归
+动作侧辖域。
 """
 from __future__ import annotations
 
@@ -42,11 +42,11 @@ def report_screen_supply_node_obs(gs: GameState, obs: CwScreenSupplyNodeObs, *,
                                   sig: ChannelSig | None = None) -> None:
     """补给屏观察上报:选项写 ``supply`` 附加域。
 
-    写点锚 = cw_screen_supply_node.py::``_do_action`` 写槽(锚 :228;
-    原写点以「本分支将调用 decide」为前提取 ``[o for o, _ in opts]``,
-    元素类型对齐 ``SupplyPayload.options`` 声明)。options 空 = 读缺
-    (CARD_BODY 兜底路径),不写(原写点「读得才写」闸逐位平移);
-    ``chosen_supply``/刷新计数留守(design.md §2.3/§2.4)。
+    写点锚 = cw_screen_supply_node.py::``CwScreenSupplyNode.observe``
+    (观察 node 摄入;原写点以「本分支将调用 decide」为前提取
+    ``[o for o, _ in opts]``,元素类型对齐 ``SupplyPayload.options`` 声明)。
+    options 空 = 读缺(CARD_BODY 兜底路径),不写(原写点「读得才写」闸
+    逐位平移);``chosen_supply``/刷新计数留守(动作事实与出辖边界)。
     """
     if sig is None:
         sig = ChannelSig(family='logic_action',

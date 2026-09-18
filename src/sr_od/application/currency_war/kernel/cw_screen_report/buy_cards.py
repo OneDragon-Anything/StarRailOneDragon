@@ -6,11 +6,11 @@ obs/ 包,同面自持;装配点 = cw_screen_buy_cards 观察段读链,语义与
 回执同源)。容器写端在 read_game_state 漏斗,本函数不重复承接,
 report 保持占位。
 
-op 层观察写点勘察结论(重型屏迁移批):唯一候选 =
+op 层观察写点勘察结论:唯一候选 =
 cw_screen_buy_cards 段头 gold 救援补写(首读假 0 救回后
 ``gs.observe(gs.gold, ..., evidence='gold_rescue:shop_first_read_fake_zero')``)
 ——属入口观察链内的纠正补写(救援读循环 + obs_conflict 留证三元组的
-同点写半),非独立观察域,本批不收编零行为改道;是否收编交后续批裁决。
+同点写半),非独立观察域,不收编、零行为改道;是否收编交后续批裁决。
 """
 from __future__ import annotations
 

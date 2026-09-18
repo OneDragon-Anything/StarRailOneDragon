@@ -1,10 +1,10 @@
-"""祈愿试炼屏观察契约与上报(kernel 纯数据;迭代
-2026-09-18-screen-op-flat-report design.md §2.2/§2.3)。
+"""祈愿试炼屏观察契约与上报(kernel 纯数据;正本 =
+docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = overlay 门判定 + 各卡 objective 文本 OCR 桶 join(入口帧一次
-读)。report 写点转录来源 = operations/cw_screen/cw_screen_wish_trial.py::
-``_handle_overlay`` 写槽(锚 :161);辖域边界 = design.md §2.3(动作
-事实 ``chosen_wish`` 不收编,留守重入裁决点)。
+读)。report 摄入点 = operations/cw_screen/cw_screen_wish_trial.py::
+``CwScreenWishTrial.observe``(观察 node);辖域边界:动作事实
+``chosen_wish`` 不收编,留守重入裁决点。
 """
 from __future__ import annotations
 
@@ -37,9 +37,9 @@ def report_screen_wish_trial_obs(gs: GameState, obs: CwScreenWishTrialObs, *,
                                  sig: ChannelSig | None = None) -> None:
     """祈愿试炼屏观察上报:objective 写 ``wish_trial_opts``。
 
-    写点锚 = cw_screen_wish_trial.py::``_handle_overlay`` 写槽(锚 :161;
-    段内直写,无空门——OCR 空桶照写,决策侧 fallback 首卡,防线逐位
-    平移);``chosen_wish`` 留守重入裁决点(design.md §2.3 动作事实边界)。
+    写点锚 = cw_screen_wish_trial.py::``CwScreenWishTrial.observe``(观察
+    node 摄入;段内直写,无空门——OCR 空桶照写,决策侧 fallback 首卡,
+    防线逐位平移);``chosen_wish`` 留守重入裁决点(动作事实边界)。
     """
     if sig is None:
         sig = ChannelSig(family='logic_action',
