@@ -2489,18 +2489,6 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
     return
 
 
-#: 部署 miss 重派上限(出处=改动三审 2026-09-18「部署 miss 刹车」;
-#: 同键连续 miss 达本值 → 决策循环
-#: round_fail 显式停交上层,语义对齐 cw_loop.OP_FAIL_REDISPATCH_LIMIT 的
-#: 「连续同因重试预算」)。取 3 的依据:① 每次完整 miss 重试周期 = 一次
-#: 拖拽 + 2s 徽章动画等待 + 策略重决策 + 一轮 prep 单轮,单位成本远高于
-#: fail 网的单次分发重试(后者上限 5 已实锤 T-266 事故形态),预算更紧;
-#: ② 防误伤:像素验证假阳是单帧噪声,单次假阳后必有成功部署把计数归零,
-#: 永不满——连续 3 次同键 miss 需要同一目标槽被持续性噪声覆盖,已是系统
-#: 性形态应停;③ 键窄(同单位同目标槽)排除键轮换的合法反复,无需 fail
-#: 网 5 次的跨键容错。
-DEPLOY_MISS_REDISPATCH_LIMIT: int = 3
-
 #: 外部授予闩窗口上界(闩龄;出处=改动三审 2026-09-18「闩窗口上界」,
 #: 修法 = 等值观察计数达限即销闩 + 台账行)。计数粒度 = 字段级 observe
 #: 调用(bench/equips 各计 1,同一备战帧双域等值贡献 2,同
@@ -2583,84 +2571,6 @@ def latch_external_grants(gs: GameState, card_name: str, *,
              gs.exec_books.external_bench_grant_pending,
              gs.exec_books.external_equip_grant_pending)
     return (n_bench, n_equip)
-
-
-def deploy_miss_brake_status(gs: GameState) -> str | None:
-    """部署 miss 刹车触顶判定(纯读;出处=改动三审 2026-09-18
-    「部署 miss 刹车」)。
-
-    :return: 触顶时的 round_fail 状态文案;未触顶 = None。判定消费点 =
-    决策循环(cw_screen_prep 两路径共式),本函数只承载阈值与文案单一源。
-    """
-    n = gs.exec_books.deploy_miss_streak_n
-    if n < DEPLOY_MISS_REDISPATCH_LIMIT:
-        return None
-    key = gs.exec_books.deploy_miss_streak_key
-    return (f'DeployMove(源槽{0 if key is None else key[0] + 1}→'
-            f'{"前排" if key is None or key[1] == "front" else "后排"})'
-            f'连续 {n} 次拖拽未生效超上限(交上层处置)')
-
-
-def consume_deploy_miss_mark(gs: GameState, action: Any, *,
-                             sig: ChannelSig) -> bool:
-    """部署拖拽未落地闩消费(投影写端唯一合法消费口;置位端 =
-    ``DeployMoveOp`` 拖后像素验证,闩 = ``exec_books.deploy_miss_pending``)。
-
-    消费契约(投影写端 DeployMove 分支在容器投影与黑板投影**之前**调用):
-    - 返回 True = 本次动作的拖拽已被判「静默未生效」(执行噪声非推算
-      bug),调用方**跳过投影**(容器零写 + 黑板保持事实)——逻辑态从未
-      写下失真值,下一帧 heavy 实读一致,安灯零接触;重试 = 决策循环自然
-      重派(黑板仍见该单位在备战席,策略重发同动作);
-    - 返回 False = 照常投影。两种形态:闩不在(正常部署)/ 陈旧闩(动作
-      不匹配——闩读即清但不跳写,任何路径的部署动作都不消费上一动作的
-      申报,防陈旧闩吞新动作投影);
-    - 命中落 ``deploy_miss_skip`` 台账行(无告警无停机,豁免 ≠ 消失同
-      纪律)。安灯停机语义零改动:本口只阻止失真投影写入,不做任何
-      observe 失配吸收;闩在时的观察失配照真停。
-    - miss 连续计数(出处=改动三审 2026-09-18「部署 miss 刹车」):
-      命中 = 同键 miss 计数 +1(同键
-      累加/异键归 1,键 = (bench_idx, to_row));闩不在与陈旧闩 = 归零。
-      触顶停交上层由决策循环经 :func:`deploy_miss_brake_status` 判定,
-      本口返回契约(bool)零变化。
-    """
-    mark = gs.exec_books.deploy_miss_pending
-    gs.exec_books.deploy_miss_pending = None   # 读即清(单动作窗)
-    if mark is None:
-        # 正常部署(本次拖拽无 miss 申报)= 同键情节有了结 → 计数归零。
-        gs.exec_books.deploy_miss_streak_key = None
-        gs.exec_books.deploy_miss_streak_n = 0
-        return False
-    if not (mark.bench_idx == int(getattr(action, 'bench_idx', -1))
-            and mark.to_row == str(getattr(action, 'to_row', ''))):
-        log.info('[cw-gs] 部署未落地闩与本次动作不匹配(陈旧闩弃用):'
-                 '闩 bench_idx=%s→%s,动作 bench_idx=%s→%s',
-                 mark.bench_idx, mark.to_row,
-                 getattr(action, 'bench_idx', None),
-                 getattr(action, 'to_row', None))
-        # 情节已换(粘滞对象不再同一)→ 计数归零(异键 miss 由下次
-        # 消费从 1 起算,不继承旧情节)。
-        gs.exec_books.deploy_miss_streak_key = None
-        gs.exec_books.deploy_miss_streak_n = 0
-        return False
-    # miss 情节计数(出处=改动三审 2026-09-18「部署 miss 刹车」):
-    # 同键累加 / 异键归 1(语义先例 =
-    # cw_loop.op_fail_redispatch_tick);触顶停由决策循环经
-    # :func:`deploy_miss_brake_status` 判定(本口只计数,不改返回契约)。
-    _key = (mark.bench_idx, mark.to_row)
-    gs.exec_books.deploy_miss_streak_n = (
-        gs.exec_books.deploy_miss_streak_n + 1
-        if gs.exec_books.deploy_miss_streak_key == _key else 1)
-    gs.exec_books.deploy_miss_streak_key = _key
-    _emit_defect(
-        field_name='deploy',
-        expected=(f'DeployMove bench_idx={mark.bench_idx}→{mark.to_row}'
-                  f'(单位 {mark.char_id} 投影)'),
-        actual='拖拽未生效(目标槽像素零变化),投影跳写',
-        evidence=None, sig=sig, kind='deploy_miss_skip')
-    log.info('[cw][gs] 部署拖拽未生效,投影跳写:bench_idx=%s→%s(单位 %s);'
-             '逻辑态保持事实,决策循环重派', mark.bench_idx, mark.to_row,
-             mark.char_id)
-    return True
 
 
 # ============================================================ 局终行写口(§3.6.1 runs 收编;ADR-0630 修订节)
@@ -2873,26 +2783,6 @@ class TrackedBooks:
     deployed: list = field(default_factory=list)
 
 
-@dataclass(frozen=True)
-class DeployMissMark:
-    """部署拖拽未落地申报闩载荷(T-22;置位端 = ``DeployMoveOp`` 拖后像素
-    验证,唯一消费端 = :func:`consume_deploy_miss_mark`)。
-
-    [索引定义] ``bench_idx`` = 动作源槽 = bench 槽位表下标 0-8(与
-    :class:`~sr_od.application.currency_war.kernel.cw_vocab.DeployMove`
-    .bench_idx 同坐标系);``to_row`` = 目标排 front/back(消费端动作匹配
-    校验维,防陈旧闩吞不同动作的投影);取值时机 = 拖拽发出后 ~2s 目标槽
-    区域像素零变化判定期一次性写入;``char_id`` = 拖拽单位身份(置位时
-    tracked 现读,留证判读用,不参与消费校验)。frozen = 申报一经置位
-    不被就地改写(与 ExemptEntry 同纪律);消费即清(单动作窗,清除点 =
-    消费端读即清 + 执行器下次部署入口清位)。
-    """
-
-    bench_idx: int
-    to_row: str
-    char_id: str
-
-
 #: 节点边界金待补结闩·量域枚举(置位端 = :func:`apply_settlement_cover`,
 #: 消费端 = :meth:`GameState.observe`;值语义见
 #: ``ExecBooks.boundary_gold_mode`` 字段注释):known = 结算屏金面板读成功
@@ -3038,43 +2928,6 @@ class ExecBooks:
     # (boundary_gold_mode 任一清零路径)归 False。等值观察不置(零新信息,
     # 公式腿仍可用,同 T-21「等值观察不误关窗」语义)。
     boundary_gold_truth_seen: bool = False
-    # 部署拖拽未落地申报闩(T-22;载荷 = :class:`DeployMissMark`)。机理:
-    # 部署投影契约 = 「发出即写」(动作机械执行无成败回执,B1 拆除裁定;
-    # 落地判定归观察侧 reconcile),但拖拽是 UI 动作,存在**静默不生效**
-    # 形态(拖拽输入被游戏吞,实机 run 20260918 02:40:20 实证:椒丘同路径
-    # 生效、艾丝妲静默未落场)——投影照写即逻辑态失真,下一备战帧 heavy
-    # 实读必然失配(board/bench/front_row 三行连发)→ 安灯当推算 bug 停机。
-    # 拖拽静默丢是执行环境噪声非推算 bug,不属安灯辖域:执行器拖后对目标
-    # 槽区域做像素验证,零变化 = 未生效 → 置本闩,投影写端
-    # (:func:`consume_deploy_miss_mark`,唯一消费端)按动作匹配消费后
-    # **跳过投影**(容器与黑板零写,逻辑态保持事实),重试 = 决策循环
-    # 自然重派(黑板仍见该单位在 bench,策略重发同动作)。
-    # [索引定义] 单动作窗闩:取值时机 = DeployMoveOp 拖后验证失败一次性
-    # 写入;清除 = 消费端读即清 + 执行器下次部署入口清位(任何路径的部署
-    # 动作都不消费上一动作的申报,陈旧闩由动作匹配校验双保险兜住)。
-    # 局级生命周期(新局新容器 = 天然清零)。安灯停机语义零改动:本闩只
-    # 阻止失真投影写入,不做任何 observe 失配吸收;闩在时的观察失配照真
-    # 停(未被申报覆盖的变更不被吞)。
-    deploy_miss_pending: DeployMissMark | None = None
-    # 部署 miss 连续计数(出处=改动三审 2026-09-18「部署 miss 刹车」):
-    # miss 申报闩
-    # 只防失真投影,重试 = 决策循环自然重派零预算——拖拽被**系统性**吞
-    #(模拟器拖拽协议/坐标漂移)时黑板恒见单位在备战席,策略恒重发同
-    # 动作,miss → 跳写 → 重发循环无界(fail 重派网不辖:op 恒返回成功,
-    # 不进 ok=False 计数),仅 NODE-DWELL 900s 系统哨兵兜底(T-266 同族
-    # 第 2 件)。修法 = 消费点按动作键连续计数
-    #(:func:`consume_deploy_miss_mark`,唯一累加点),触
-    # :data:`DEPLOY_MISS_REDISPATCH_LIMIT` 由决策循环
-    #(:meth:`CwScreenPrep` 判定,round_fail)走既有 redispatch 上限路径
-    # 显式停交上层。
-    # [索引定义] ``deploy_miss_streak_key`` = (bench_idx, to_row) 动作键
-    #(与消费端动作匹配校验同维;char_id 不入键同校验口径),None = 无
-    # 在计情节;``deploy_miss_streak_n`` = 同键连续 miss 次数。计数语义
-    # = 同键累加 / 异键归 1(粘滞对象已换,新情节起算)/ 部署成功(闩
-    # 不在)或陈旧闩(情节已换)归零。局级生命周期(新局新容器 = 天然
-    # 清零)。
-    deploy_miss_streak_key: tuple[int, str] | None = None
-    deploy_miss_streak_n: int = 0
 
 
 class NodeBooks:
