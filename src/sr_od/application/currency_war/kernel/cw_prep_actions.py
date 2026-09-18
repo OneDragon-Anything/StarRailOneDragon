@@ -25,6 +25,25 @@ from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 SPHERE_CLICK_HARD_CAP: int = 12
 
 
+def sphere_click_targets_of(gs) -> list:
+    """奖励球点击目标读口(容器 spheres 域 → select_sphere_clicks 消费
+    形态;迭代 2026-09-18-prep-obs-retirement 阶段 3.4 立口)。
+
+    SphereSight.points((color, x, y, r) 平铺元组)还原为
+    ``[(color, Point, r)]``——与旧黑板 ``obs.spheres`` 产物形态逐位同构
+    (read_reward_spheres 消费契约),调用方签名零改动。域未观察(None)
+    = 空列(未观察 ≠ 有球,宁不点;与「点空由下一入口观察回补」机制
+    配对)。
+    """
+    from one_dragon.base.geometry.point import Point
+
+    view = gs.spheres.value if gs is not None else None
+    if view is None or not view.points:
+        return []
+    return [(color, Point(x, y), r)
+            for color, x, y, r in view.points]
+
+
 def select_sphere_clicks(spheres: list, cap: int,
                          ) -> tuple[tuple[int, int], ...]:
     """奖励球挑选 kernel 单一源(R4 ClickSpheres 改形;纯函数)。

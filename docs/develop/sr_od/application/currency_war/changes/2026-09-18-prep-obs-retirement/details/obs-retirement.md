@@ -22,7 +22,7 @@
 
 ### 阶段 3.4：奖励球立域（批 4）
 
-1. **容器新域** `spheres`：Field value = `list[dict]`，每项 `{color, x, y, r}`（观察产物 `(color, Point, r)` 同构、像素坐标平铺；球无槽号，坐标必须随识别走——总纲坐标契约）。kernel 立读口还原 `(color, Point, r)` 元组形态，消费面签名不变。
+1. **复用既有域 + 扩载荷坐标**（实施期修正：容器 `spheres` 域已存在——§3.2.8 立域,`SphereSight` 现役仅 count/colors 交互机会信号、**零写端**;坐标契约要求点击载荷随识别进容器,故扩充 `SphereSight.points: tuple[(color, x, y, r), ...]`,frozen dataclass 缺省空元组向后兼容）。kernel 立读口 `sphere_click_targets_of(gs)`（cw_prep_actions,与 select_sphere_clicks 同文件配套）还原 `(color, Point, r)` 元组形态,消费面签名不变。
 2. **写端**：备战入口观察链上报（两帧持存防抖 `filter_persistent_spheres` 留在观察链内部，cw_screen_prep.py:574-578，防抖状态 op 局部自持）。
 3. **读端切换（三处，全量清单）**：球臂探针分支（entry.py:507-509）、**席自由分支发射位（entry.py:492-495，同式 `select_sphere_clicks(obs.spheres, ...)`）**、**席满让路门成效签名（entry.py:170-186 `_sphere_progress_sig`——`getattr(obs, 'spheres')` 球计数与 `getattr(obs, 'bench_chars')` 席计数两分量分别切容器球域读数与 `bench_free_slots` 派生**；此消费若漏切，批 5 删字段后签名经 getattr 缺省静默退化（门成效重置失效无报错），属本迭代要消灭的形态，列为本阶段验收项）。
 4. **逻辑态迁移**：`ClickSpheres` 增 kernel 写口分支（`apply_prep_action_logic`，载荷坐标精确摘除，语义 = 现黑板腿 cw_screen_prep.py:974-978 逐位迁移）；黑板球腿删除。正本 `game_state/logic-updates/click-spheres.md` 的「容器 GameState 零写（视觉域推进）」语义翻转（正本更新清单）。

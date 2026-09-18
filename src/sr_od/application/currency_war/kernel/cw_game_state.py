@@ -576,6 +576,13 @@ class SphereSight:
 
     count: int | None = None
     colors: tuple[str, ...] = ()
+    # [索引定义] points = 点击目标载荷(迭代 2026-09-18-prep-obs-retirement
+    # 阶段 3.4 扩充):每项 (color, x, y, r) 平铺元组——球为自由位置识别物
+    # 无槽号,像素坐标必须随识别进容器(总纲坐标契约;点击列由 kernel
+    # ``sphere_click_targets_of`` 还原消费)。取值时机 = 备战入口 heavy
+    # 每帧实读覆盖(两态制,观察赢;两帧持存防抖留观察链);写入端单一
+    # 源 = CwScreenPrep 观察写端。ClickSpheres 逻辑态按载荷坐标精确摘除。
+    points: tuple[tuple[str, int, int, int], ...] = ()
 
 
 # ============================================================ 节点与画面载荷(§8.3)
@@ -2332,9 +2339,10 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
       **deploy_cap 不写**——容量真值由观察写端防抖读承接,``max_units``
       的 cap<level 兜底规则自然保守承接升级增量。level/xp/gold 缺读 =
       域级跳写(值留观察覆盖)。
-    - **OpenBox/OpenTome/ClickSpheres/WearEquip/工具原子** = 视觉域推进
-      (boxes/tomes/spheres/owned_equips 在黑板帧上),容器零写,本口
-      直接返回。
+    - **OpenBox/OpenTome/WearEquip/工具原子** = 视觉域推进
+      (boxes/tomes/owned_equips 在黑板帧上),容器零写,本口直接返回。
+      **ClickSpheres 例外**(阶段 3.4 迁移) = 容器 spheres 载荷坐标精确
+      摘除(见下方分支;正本 logic-updates/click-spheres.md 同步翻转)。
 
     输入域 None 语义(域级独立跳写):gold 未读(None)时回金域跳过、
     值留观察覆盖;level/xp 未读时该两域跳写。逻辑态直写值受后续观察
@@ -2352,12 +2360,14 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
         sell_refund,
     )
     from sr_od.application.currency_war.kernel.cw_vocab import (
+        ClickSpheres,
         DeployMove,
         LevelUp,
         SellBench,
         SellDeployed,
     )
-    if not isinstance(action, (SellBench, SellDeployed, DeployMove, LevelUp)):
+    if not isinstance(action, (SellBench, SellDeployed, DeployMove, LevelUp,
+                               ClickSpheres)):
         # 集外动作型:零写(登记面申报,等观察覆盖;禁扩静默)。
         return
     _grp_sig = (sig if sig.group_id is not None else _dc_replace(
@@ -2463,6 +2473,26 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
         _w(gs.back_row, back, 'proj_deploy_back')
         # board 羁绊计数 = 派生量:行写端挂钩 _resync_board_delta 自动
         # 重算(增量口径,基座贡献保留),本口禁再手写 board。
+        return
+
+    # ClickSpheres(迭代 2026-09-18-prep-obs-retirement 阶段 3.4 迁移;
+    # 规则 = flow/action-logic-state.md ClickSpheres 条「载荷精确摘球」
+    # ——原黑板腿逐位迁移,容器翻转申报见正本更新清单):按载荷坐标
+    # 集合从容器 spheres 精确摘除被点的球(坐标匹配,与 _project_prep_obs
+    # 旧分支同式);域未观察或载荷与现值无交集 = 陈旧提案,本口零写。
+    if isinstance(action, ClickSpheres):
+        view = gs.spheres.value
+        if view is None:
+            return   # 球域未观察,零写(等观察覆盖)
+        _drop = {(int(x), int(y)) for x, y in action.points}
+        _pts = tuple(p for p in view.points
+                     if (int(p[1]), int(p[2])) not in _drop)
+        if len(_pts) == len(view.points):
+            return   # 陈旧提案(无交集),本口零写
+        _w(gs.spheres, SphereSight(
+            count=len(_pts),
+            colors=tuple(dict.fromkeys(p[0] for p in _pts)),
+            points=_pts), 'proj_click_spheres_drop')
         return
 
     # LevelUp(单击;xp/level 推进 + gold −action.cost 直写,批2b 翻转)

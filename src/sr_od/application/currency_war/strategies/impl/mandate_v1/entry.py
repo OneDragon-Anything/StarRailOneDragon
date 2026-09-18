@@ -71,6 +71,7 @@ from sr_od.application.currency_war.kernel.cw_intention import (
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     select_sphere_clicks,
+    sphere_click_targets_of,
 )
 from sr_od.application.currency_war.kernel.cw_reward_node import (
     reward_node_suppressed,
@@ -171,22 +172,25 @@ SPHERE_DEFER_PROBE_K: int = 1
 SPHERE_CLICK_BATCH_MAX_K: int = 3
 
 
-def _sphere_progress_sig(gs: GameState,
-                         obs: PrepObservation) -> int:
+def _sphere_progress_sig(gs: GameState) -> int:
     """席满让路门成效计数签名((轮次, 席计数, 球计数) 压缩整型;ADR-0642)。
 
     载体 = 容器 gs(prep 链容器化段 1:签名切 gs)。轮次经
     ``round_num_of`` 读口——未观察帧缺省 1 镜像旧「state is None → 1」
     分支(波 1 读口等价契约,单一源 = 读口 docstring),分支退役零行为差。
-    三分量全部 gs/obs 现成字段,零新识别;压缩进 int 保持 cw4_counters
+    三分量全部 gs 现成字段,零新识别;压缩进 int 保持 cw4_counters
     数值账本面(禁存 tuple/str)。装箱域:席/球计数各 4 bit,>15 回绕 = 误判「有成效」
     → 多一环探针点击,良性偏置。噪声口径:刻意不采 raw gold(OCR 噪声
     会误复位使门失效,ADR-0554 修订节 5 同源教训);球计数经 Hough 检出
     存在抖动,每次误变只多一环探针,无进展守卫(阈值 3)仍兜底。
     """
     _round = round_num_of(gs)
-    _bench_n = len(getattr(obs, 'bench_chars', None) or ())
-    _sphere_n = len(getattr(obs, 'spheres', None) or ())
+    # 席/球计数换源(容器派生,迭代 2026-09-18-prep-obs-retirement 阶段
+    # 3.4):席占用 = BENCH_CAPACITY − bench_free_slots(箱/典籍占席自动
+    # 计入;未观察 None → 占用 0 保守);球计数 = 容器 spheres 载荷数
+    # (未观察 → 0)。getattr 缺省静默退化面随换源消亡。
+    _bench_n = BENCH_CAPACITY - (bench_free_slots(gs) or BENCH_CAPACITY)
+    _sphere_n = len(sphere_click_targets_of(gs))
     return ((_round * 16) + (_bench_n & 0xF)) * 16 + (_sphere_n & 0xF)
 
 log = logging.getLogger(__name__)
@@ -495,9 +499,10 @@ def emit(obs: PrepObservation, session: StrategySession,
                 _ct_sp['sphere_defer_streak'] = 0
             return [Emitted(ClickSpheres(
                         points=select_sphere_clicks(
-                            obs.spheres, SPHERE_CLICK_BATCH_MAX_K)),
+                            sphere_click_targets_of(gs),
+                            SPHERE_CLICK_BATCH_MAX_K)),
                         True, 'prep_spheres')]
-        _prog_sig = _sphere_progress_sig(gs, obs)
+        _prog_sig = _sphere_progress_sig(gs)
         _streak = 0
         if isinstance(_ct_sp, dict) \
                 and _ct_sp.get('sphere_defer_progress_sig') == _prog_sig:
@@ -510,7 +515,8 @@ def emit(obs: PrepObservation, session: StrategySession,
             # 单探针:同发射形态 = 常规 prep_spheres 动作。
             return [Emitted(ClickSpheres(
                         points=select_sphere_clicks(
-                            obs.spheres, SPHERE_CLICK_BATCH_MAX_K)),
+                            sphere_click_targets_of(gs),
+                            SPHERE_CLICK_BATCH_MAX_K)),
                         True, 'prep_spheres')]
         if isinstance(_ct_sp, dict):
             _ct_sp['sphere_defer_yield'] = \
@@ -523,9 +529,11 @@ def emit(obs: PrepObservation, session: StrategySession,
         # 激活(晶矿 odds 采集批登记占席色,方案 §4)时恢复可达 = 让路
         # 帧腾席先于收球。禁删除:退役-复活双倍审面(方案稿 §7.1 编排者
         # 终态;读者陷阱以本标注显影,零行为代价)。
+        # 名单/球读点换容器现读(迭代 2026-09-18-prep-obs-retirement
+        # 阶段 3.4;黑板字段批 5 删除,死码块同步换源保激活可用)。
         _sf_occupied = any(
             (color or '') in SPHERE_OCCUPYING_COLORS
-            for color, _pt, _r in obs.spheres)
+            for color, _pt, _r in sphere_click_targets_of(gs))
         if _sf_occupied:
             _sf_k = predicates.line_members(
                 getattr(state_of(session), 'target_comp', None))
@@ -535,12 +543,15 @@ def emit(obs: PrepObservation, session: StrategySession,
                 current_round=_round_num)
             # 释放集同参同源(N3:cap_hold 与本位装配同一现读)。
             _sf_release = sell_gate.dead_pair_exit_release(
-                session, _sf_k, list(obs.bench_chars),
-                list(obs.deployed_chars), _round_num,
+                session, _sf_k,
+                [c for c in bench_slots_of(gs) if c is not None],
+                [c for c in deployed_slots_of(gs) if c is not None],
+                _round_num,
                 cap_hold=locked_buy_cap_hold(gs),
                 counters=state_of(session).cw4_counters)
             _sf_cands = mandate.fuel_sell_candidates(
-                list(obs.bench_chars), _sf_k, state=gs,
+                [c for c in bench_slots_of(gs) if c is not None], _sf_k,
+                state=gs,
                 exclude_names=_sf_excl,
                 merge_guard_release=_sf_release,
                 counters=state_of(session).cw4_counters,

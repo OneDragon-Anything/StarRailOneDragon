@@ -28,6 +28,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
+    SphereSight,
     apply_prep_action_logic,
     game_state_of,
     gs_of_ctx,
@@ -746,6 +747,23 @@ class CwScreenPrep(CwScreenOpBase):
                         {f'{row}:{int(slot)}': list(names)
                          for (row, slot), names
                          in obs.occupied_equips.items()},
+                        sig=_prep_sig)
+                if obs.spheres:
+                    # 奖励球点击目标观察写端(阶段 3.4):现读载荷
+                    # [(color, Point, r)] → SphereSight.points((color,x,y,r)
+                    # 平铺;球为自由位置识别物,坐标必须随识别走——总纲
+                    # 坐标契约)。空读 = 真无球,照写 count=0(合法真值,
+                    # 防上一帧残留假球);两帧持存防抖已在 obs.spheres
+                    # 现读链完成(本点只做形态搬运)。
+                    _sph_pts = tuple((color, int(p.x), int(p.y), int(r))
+                                     for color, p, r in obs.spheres)
+                    _gs_obs.observe(
+                        _gs_obs.spheres,
+                        SphereSight(
+                            count=len(_sph_pts),
+                            colors=tuple(dict.fromkeys(
+                                c for c, _p, _r in obs.spheres)),
+                            points=_sph_pts),
                         sig=_prep_sig)
                 # 溢出告警观察写端(2026-09-15 实机建档 prep.md 告警/溢出节):横幅 = 游戏侧权威信号(出战被游戏忽略的
                 # 处理门,策略消费 = mandate 溢出门强收窄);溢出位 SIFT =
