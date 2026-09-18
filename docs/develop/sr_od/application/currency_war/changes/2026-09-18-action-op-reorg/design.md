@@ -105,3 +105,29 @@ class CwActionSellBenchOp(SrOperation):
 ## 5. 提交切分
 
 每子步独立 commit、全量绿:③a op 换壳(核心链)→ ③b pick/tool 换壳 → ③c 分派点改写+双记防线删除 → ④ 删聚合口+sim/驱动器切换 → ⑤ 文档。测试仓随批单独 commit。
+
+## 6. 追加裁决(2026-09-18 二轮,用户发起):上报函数族物理拆分
+
+用户判:`cw_game_state.py` 过长,上报内容应按动作拆出专辖文件。落地:
+
+- 新包 `kernel/cw_action_report/`:**有容器写语义的动作 = 一动作一文件**
+  (文件名 = snake:`buy_card/sell_bench/sell_deployed/swap_deploy/level_up/
+  level_up_shop/deploy_move/click_spheres/open_tome/open_bookcard/wear_equip/
+  start_battle/refresh_shop/close_shop`);函数体自 cw_game_state 逐字迁移,
+  语义零变化(L3 全量同基线 1185 绿)。
+- 零写族(25 类,函数体 = 三行委托)集中 `zero_writes.py`——无逐类专辖
+  内容,不逐类开文件;完备锁照常逐类点收(经包级 `__getattr__`)。
+- 刷新执行计数组 `record_refresh_execution` 语义同主,并入 `refresh_shop.py`
+  (刷新上报 + 计数组同文件单源);签名去 `*`(§0.3:改动签名即显式;
+  两调用点均关键字传参,行为零变化)。
+- `level_up_shop.py` = level_up 别名委托独立文件(保持「文件名 = snake」均一)。
+- 包 `__init__` = 族规约正本 docstring(收编原族头「动作上报接口」声明)+
+  命名规约 lazy 解析(`report_action_<snake>_param` → 同名模块,未命中落
+  `zero_writes`);生产 op 直调面建议直接 import 具名模块(文件归属显式)。
+- 依赖方向:包 → cw_game_state 单向(容器/渠道签名/值类型/读口);
+  cw_game_state 反向模块级零 import(懒加载纪律同 kernel 既有)。
+- 时序:先于 ③ 接线(③ op 直调、④ sim 委托串直接 import 最终路径,
+  免二次翻动)。
+- 消费面更新:`cw_screen_buy_cards`/`cw_sim_actions`(record_refresh_execution
+  导入路径)与完备锁测试(改查包级;锁变硬 = 文件在即函数在)、
+  test_cw_game_state_consume(计数组导入跟包)。

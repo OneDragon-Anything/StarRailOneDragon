@@ -459,9 +459,11 @@ def apply_action_outcome(_aop: 'ActionOp',
         # shop_refresh_cost 本口不写(§3.3.4 写端=现场 OCR 唯一;免费帧
         # 「免费」读数 OCR 为 None → 喂入口 carried,不落 0,免费帧不写闸
         # 由观察通道结构性满足)。
+        from sr_od.application.currency_war.kernel.cw_action_report.refresh_shop import (
+            record_refresh_execution,
+        )
         from sr_od.application.currency_war.kernel.cw_game_state import (
             game_state_of,
-            record_refresh_execution,
         )
         _gs = game_state_of(match.session)
         _logic_bal = _gs.free_refresh_balance.value

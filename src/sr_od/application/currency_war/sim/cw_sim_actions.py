@@ -22,6 +22,9 @@
 """
 from __future__ import annotations
 
+from sr_od.application.currency_war.kernel.cw_action_report.refresh_shop import (
+    record_refresh_execution,
+)
 from sr_od.application.currency_war.kernel.cw_economy import (
     MAX_PLAYER_LEVEL,
     XP_TO_NEXT_LEVEL,
@@ -32,7 +35,6 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     ShopActionExecuted,
     apply_prep_action_logic,
     apply_shop_action_logic,
-    record_refresh_execution,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
