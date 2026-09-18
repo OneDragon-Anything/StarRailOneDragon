@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import contextlib
 import time
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from cv2.typing import MatLike
 
@@ -24,7 +24,6 @@ from sr_od.application.currency_war.cw_game_ports import (
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BenchChar,
-    deployed_row_slot,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
@@ -46,13 +45,9 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
-    DeployMove,
     HoldFrame,
-    LevelUp,
     OpenBookcard,
     OpenShop,
-    SellBench,
-    SellDeployed,
     StartBattle,
     action_key,
 )
@@ -457,19 +452,11 @@ class CwScreenPrep(CwScreenOpBase):
         # 回执后由 _act_execute_default 写入,on_outcome 触发时消费)。
         self._last_mech_detail: str = ''
         self._bench_pts = []                        # screen_info 槽位中心(首步惰性读)
-        # light 步沿用的 heavy 缓存(观察分层)。容器化段 2:state 缓存槽
-        # 随黑板槽退役收缩为视觉域——bench/deployed/vacancy/gold_trusted
-        # 四件 + 商店牌读取器域载荷(✦ merge_preview 信号,不入容器存储,
-        # 供合成预览对账 det 侧同帧对齐;structurally 读取器域非局内事实)。
+        # 商店牌读取器域载荷缓存(✦ merge_preview 信号,不入容器存储,供
+        # 合成预览对账 det 侧同帧对齐;structurally 读取器域非局内事实)。
+        # (bench/deployed/vacancy/gold_trusted/装备三路 light 缓存已随黑板
+        #  退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5。)
         self._cached_shop_cards: list = []
-        self._cached_bench: list[BenchChar] = []
-        self._cached_deployed: list[BenchChar] = []
-        self._cached_vacancy: int = 0
-        self._cached_gold_trusted: bool = False
-        # 装备域三路 light 沿用缓存(P4 观察接线;None = 识别域未就绪)
-        self._cached_owned_equips: list | None = None
-        self._cached_occupied_equips: dict | None = None
-        self._cached_back_layout_slots: int | None = None
         # 适配器位缺省装配(统一观察架构 §9.2 步骤 1):实机适配器 = 现役
         # 识别链/点击链封口(不新建读屏/点击实现);注入替位 = 构造参数/
         # 直接赋值(sim 适配器 = 步骤 2)。__new__ 绕道构造的测试桩无此
@@ -528,13 +515,8 @@ class CwScreenPrep(CwScreenOpBase):
             self._cached_shop_cards = (
                 _pobs_cards_legacy(shop_payload_content_cards(_pobs_payload))
                 if _pobs_payload is not None else [])
-            self._cached_bench = list(obs.bench_chars)
-            self._cached_deployed = list(obs.deployed_chars)
-            self._cached_vacancy = obs.deploy_vacancy
-            self._cached_gold_trusted = obs.state_gold_trusted
-        # 黑板写路径(W971 §2,P2):写者白名单 = 本装配点(与读屏路径同点)
-        if session is not None:
-            game_state_of(session).prep_obs = obs
+        # (黑板写路径 gs.prep_obs = obs 已随黑板退役删除——迭代
+        #  2026-09-18-prep-obs-retirement 阶段 3.5。)
         return obs
 
     def _observe(self, heavy: bool, screen: MatLike | None = None) -> PrepObservation:
@@ -574,11 +556,14 @@ class CwScreenPrep(CwScreenOpBase):
         )
         _spheres_raw = read_reward_spheres(self.ctx, screen)
         _prev_spheres = getattr(self, '_prev_spheres_raw', None)
-        obs.spheres = (filter_persistent_spheres(_spheres_raw, _prev_spheres)
-                       if _prev_spheres else _spheres_raw)
+        _sph_list = (filter_persistent_spheres(_spheres_raw, _prev_spheres)
+                     if _prev_spheres else _spheres_raw)
         self._prev_spheres_raw = _spheres_raw
-        obs.boxes = read_supply_boxes(self.ctx, screen)
-        obs.tomes = cw_identity_obs_read_tomes(self.ctx, screen)
+        _box_slots = read_supply_boxes(self.ctx, screen)
+        _tome_slots = cw_identity_obs_read_tomes(self.ctx, screen)
+        # (箱/典籍占席自阶段 3.5 起经 bench 槽位 kind 进容器——本帧槽号集
+        #  供 bench_view_from_obs 细分参数,像素坐标不落盘;黑板 boxes/tomes
+        #  字段随黑板退役删除。)
         obs.shop_open = self.round_by_find_area(
             screen, SHOP_SCREEN_NAME, '按钮-收起', crop_first=False).is_success
         # (box_overlay_open 采集已退役删除:唯一决策消费面(entry 武装箱臂)
@@ -598,14 +583,11 @@ class CwScreenPrep(CwScreenOpBase):
                     crop_first=False).is_success:
                 obs.event_overlay = _spec.bail_tag
                 break
-        occupied = [i + 1 for i, p in enumerate(self._bench_pts)
-                    if slot_occupied(screen, int(p.x), int(p.y))]
-        obs.free_bench_slots = max(0, len(self._bench_pts) - len(occupied))
+        # (free_bench_slots/front_size 黑板写点已删——阶段 3.5:席空数 =
+        #  容器 bench_free_slots 派生,前排槽数 = row_area_centers 现算;
+        #  front/back_occupied = 对拍腿识别轻字段,消费在观察链内部存续。)
         front_pts = row_area_centers(self.ctx, '前排')
         back_pts = row_area_centers(self.ctx, '后排')
-        obs.front_size = len(front_pts)
-        # (obs.back_size 写点随死字段退役删除(波 5b,终端消费者零——决策链
-        #  后排容量读容器 back_capacity_of);back_occupied 仍按后排点现读。)
         obs.front_occupied = {i + 1 for i, p in enumerate(front_pts)
                               if slot_occupied(screen, int(p.x), int(p.y))}
         obs.back_occupied = {i + 1 for i, p in enumerate(back_pts)
@@ -624,18 +606,17 @@ class CwScreenPrep(CwScreenOpBase):
                                session=self._session())   # P4R4:SIFT 三层漏斗(session 优先匹配)
             templates = ensure_portrait_templates(self.ctx)   # 复用单一源(路径+缓存)
             if templates is not None:
-                obs.bench_chars = _of.get('bench_chars') or []
-                obs.deployed_chars = _of.get('deployed_chars') or []
-                self._reconcile_tracking(obs.bench_chars, obs.deployed_chars, screen)
+                _bench_chars = _of.get('bench_chars') or []
+                _deployed_chars = _of.get('deployed_chars') or []
             else:
-                obs.bench_chars = list(self._cached_bench)
-                obs.deployed_chars = list(self._cached_deployed)
-            # 装备域三路回填(P4 观察接线):采集已归位 observe_full
-            # heavy 装配层,本点只做产物拷贝(单写者原则);None = 识别域
-            # 未就绪,照 None 落帧(消费方按 fail/保守通道处理,禁造空值)。
-            obs.owned_equips = _of.get('owned_equips')
-            obs.occupied_equips = _of.get('occupied_equips')
-            obs.back_layout_slots = _of.get('back_layout_slots')
+                # 失读帧局部空表 → 容器写端 carry 保旧值(与旧缓存沿用
+                # 行为等价,阶段 3.5 缓存退役后的等价路径);对账空读守卫
+                # 跳过(公共 reconcile 空集守卫)。
+                _bench_chars = []
+                _deployed_chars = []
+            self._reconcile_tracking(_bench_chars, _deployed_chars, screen)
+            # (装备域三路 obs 回填已删——阶段 3.5:写端直用 _of 局部产物,
+            #  黑板字段退役。)
             _st = _of.get('read_receipt')
             session = self._session()
             # (session.last_node_type 关态帧写点已随终态契约 §A′ 退役:
@@ -667,7 +648,16 @@ class CwScreenPrep(CwScreenOpBase):
                 # 宁缺勿造,先例=商店空牌面观察漏斗 shop_cards 分支),
                 # 禁把「9 槽全空」当 observation 入记录
                 # (席空数派生误报 free=9 污染席满决策)。
-                _bench_obs = bench_view_from_obs(obs.bench_chars)
+                # item_kind_by_slot 细分(阶段 3.5):同帧箱/典籍槽号集
+                # 构造映射,bench 槽位 kind 精确到 supply_box/tome(原
+                # is_item_slot 布尔统一 supply_box,OpenBox/OpenTome 臂
+                # 分派无据)。
+                _item_kind = {int(slot): 'supply_box' for slot, _pt
+                              in _box_slots}
+                _item_kind.update({int(slot): 'tome' for slot, _pt
+                                   in _tome_slots})
+                _bench_obs = bench_view_from_obs(
+                    _bench_chars, item_kind_by_slot=_item_kind)
                 if _bench_obs is not None:
                     # 合成特效窗态门(P3-10 批次二复审,两态制 ADR-0651 等价
                     # 形态):星爆动画窗(≥2 帧)内 read_star 读旧星(reconcile_
@@ -696,7 +686,7 @@ class CwScreenPrep(CwScreenOpBase):
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     deployed_rows_from_obs,
                 )
-                _dep_rows = deployed_rows_from_obs(obs.deployed_chars)
+                _dep_rows = deployed_rows_from_obs(_deployed_chars)
                 _dep_carried_sig = ChannelSig(
                     family='obs', actor='CwScreenPrep',
                     screen='货币战争-备战', mode='carried')
@@ -731,13 +721,14 @@ class CwScreenPrep(CwScreenOpBase):
                 # 采集层无权丢数据,工具件照录);失读(None)= 识别域未就绪
                 # 不写保现值(宁缺勿造,同 bench 空集守卫族;装备区读不受
                 # 合成特效窗影响,无需 is_merge_effect_window 门)。
-                if obs.owned_equips is not None:
+                if _of.get('owned_equips') is not None:
                     # (终态契约 §B:session.last_owned_equips 镜像行随重复
                     #  账退役删——gs.equips 观察写端即单一源,商店线权重/
                     #  flow 打分/库存 ±1 腿全部读容器。)
-                    _gs_obs.observe(_gs_obs.equips, list(obs.owned_equips),
+                    _gs_obs.observe(_gs_obs.equips,
+                                    list(_of.get('owned_equips')),
                                     sig=_prep_sig)
-                if obs.occupied_equips is not None:
+                if _of.get('occupied_equips') is not None:
                     # 穿戴位置观察写端(迭代 2026-09-18-prep-obs-retirement
                     # 阶段 3.2):采集产物 {(row, slot): [件名]} → 容器键
                     # 'front:1' 形态(tuple 键 JSON 序列化不安全);失读
@@ -746,24 +737,22 @@ class CwScreenPrep(CwScreenOpBase):
                         _gs_obs.occupied_equips,
                         {f'{row}:{int(slot)}': list(names)
                          for (row, slot), names
-                         in obs.occupied_equips.items()},
+                         in _of.get('occupied_equips').items()},
                         sig=_prep_sig)
-                if obs.spheres is not None:
-                    # 奖励球点击目标观察写端(阶段 3.4;reviewer r1 打回项1
-                    # 修正:守卫只挡「识别域未装配」(None),**空读照写**
-                    # count=0——空读 = 真无球,跳写会留上一帧残留假球坐标
-                    # 喂进点击载荷(幽灵球);两帧持存防抖已在 obs.spheres
-                    # 现读链完成(本点只做形态搬运)。
-                    _sph_pts = tuple((color, int(p.x), int(p.y), int(r))
-                                     for color, p, r in obs.spheres)
-                    _gs_obs.observe(
-                        _gs_obs.spheres,
-                        SphereSight(
-                            count=len(_sph_pts),
-                            colors=tuple(dict.fromkeys(
-                                c for c, _p, _r in obs.spheres)),
-                            points=_sph_pts),
-                        sig=_prep_sig)
+                # 奖励球点击目标观察写端(阶段 3.4;reviewer r1 打回项1
+                # 修正:空读照写 count=0——空读 = 真无球,跳写会留上一帧
+                # 残留假球坐标喂进点击载荷(幽灵球);两帧持存防抖已在
+                # _sph_list 现读链完成(本点只做形态搬运)。
+                _sph_pts = tuple((color, int(p.x), int(p.y), int(r))
+                                 for color, p, r in _sph_list)
+                _gs_obs.observe(
+                    _gs_obs.spheres,
+                    SphereSight(
+                        count=len(_sph_pts),
+                        colors=tuple(dict.fromkeys(
+                            c for c, _p, _r in _sph_list)),
+                        points=_sph_pts),
+                    sig=_prep_sig)
                 # 溢出告警观察写端(2026-09-15 实机建档 prep.md 告警/溢出节):横幅 = 游戏侧权威信号(出战被游戏忽略的
                 # 处理门,策略消费 = mandate 溢出门强收窄);溢出位 SIFT =
                 # 入位对象身份旁路(SellBench 溢出腿;缺读 '' = 未识别,
@@ -797,14 +786,10 @@ class CwScreenPrep(CwScreenOpBase):
             # (obs.state 视图合成随黑板槽退役消亡——容器化段 2 消点:
             #  game_state_view 全仓最后活调用清零,决策读自容器单例;
             #  cw_bs_view 文件本体删除归波 5,设计件 §2.3/§2.6。)
-            obs.state_gold_trusted = obs.shop_open   # F2:gold 仅 shop 开态可信(关态读空)
-            if not obs.state_gold_trusted:
-                log.debug('[cw][director] heavy 读 state 于 shop 关态 → gold 不可信')
-            # (last_state 写点已随链退役批删除:写点原带「写前过 gated_hp」
-            #  hp 双源收口门,门随写点退役——gated_hp 门现役在册位 = prep
-            #  装配消费位;hp 局内宿主 = 容器(观察漏斗质量门写入),期望态
-            #  覆盖点·备战观察块已随 ADR-0651 两态制废除,tracked/gold
-            #  实读写入链照常——观察赢。)
+            # (obs.state_gold_trusted 黑板写点已删——阶段 3.5:F2 门
+            #  (gold 仅 shop 开态可信)派生位 = shop_open,代码消费为零
+            #  (reviewer T-1 r1 勘察),指引注释 cw_observation.py:2177-2184
+            #  同步改写。)
             # substate 消费:observe_full 的可读性
             # 标注落 PrepObservation(下游对账/日志可判;轻步
             # 沿用缓存,同 _cached_state 语义)。
@@ -845,12 +830,9 @@ class CwScreenPrep(CwScreenOpBase):
                               cap, cap - _audit_level, cap - _audit_level)
             dep_n = read_deployed_count(self.ctx, screen)
             _cv_occ = len(obs.front_occupied) + len(obs.back_occupied)
-            # vacancy 消费仲裁值(15 号稿批 C/§4.1,A5 根:同一量两条口径并存
-            # 无对账——部署放行判定消费的 vacancy 此前用未仲裁 dep_n):判定收在
-            # 纯函数 :func:`vacancy_from_reads`(判据见其 docstring),
-            # divergent/stale 位随 obs 传播(§4.2 放行判定延迟语义的准备面载体)。
-            obs.deploy_vacancy, obs.deploy_divergent, obs.deploy_stale = \
-                vacancy_from_reads(cap, dep_n, _cv_occ, self._cached_vacancy)
+            # (obs.deploy_vacancy/deploy_divergent/deploy_stale 黑板三元组
+            #  写点已删——阶段 3.5:三字段无决策活消费(frame.deploy_vacancy
+            #  为 frame 属性现算),仲裁值仅在下方对拍注册面就地消费。)
             # deployed 总数双源对拍(同帧全齐):paddle X(读 deployed_count)
             # vs CV 占用(front+back)。
             # ⚠️ board 的 X 是「该阵营在场人数」非「角色数」——
@@ -891,365 +873,13 @@ class CwScreenPrep(CwScreenOpBase):
                             dep_n, _cv_occ, 'director_heavy')
                     except Exception:   # noqa: BLE001  遥测 best-effort
                         pass
-            # 更新 light 沿用缓存(视觉域载荷;trusted 位随帧缓存,MED-1
-            # —— light 步不重判 shop 态,缓存生成时的可信度就是它的可信度)
-            self._cached_shop_cards = list(_st.shop if _st is not None else [])
-            self._cached_bench = list(obs.bench_chars)
-            self._cached_deployed = list(obs.deployed_chars)
-            self._cached_vacancy = obs.deploy_vacancy
-            self._cached_gold_trusted = obs.state_gold_trusted
-            # 装备域三路缓存(P4 接线):None(识别域未就绪)照缓存,None
-            # 沿用同族——light 步拿到的仍是上次 heavy 的识别域状态。
-            self._cached_owned_equips = obs.owned_equips
-            self._cached_occupied_equips = obs.occupied_equips
-            self._cached_back_layout_slots = obs.back_layout_slots
-        else:
-            # light:heavy 字段沿用缓存(上次真读值;不恒默认防永动机)。
-            # state 缓存随黑板槽退役消亡(容器化段 2):视觉域四件照旧沿用。
-            obs.state_gold_trusted = self._cached_gold_trusted   # MED-1:trusted 位随缓存帧
-            obs.bench_chars = list(self._cached_bench)
-            obs.deployed_chars = list(self._cached_deployed)
-            obs.deploy_vacancy = self._cached_vacancy
-            # 装备域三路沿用(同分层语义;含 None = 上次 heavy 也未就绪)。
-            obs.owned_equips = self._cached_owned_equips
-            obs.occupied_equips = self._cached_occupied_equips
-            obs.back_layout_slots = self._cached_back_layout_slots
-        # 黑板写路径(W971 §2,P2):备战观察结果直写 session(写者白名单 =
-        # 本装配点;读者 = decide_prep_screen)。离线契约:无 match(局外
-        # 单跑/mock)不写。帧对象原样入 session(实现决策:容器形态,
-        # 逐字段扇出归 P3,见 cw_strategy_session.prep_obs_frame 注)。
-        _sess = self._session()
-        if _sess is not None:
-            game_state_of(_sess).prep_obs = obs
+            # (light 沿用缓存已随黑板退役删除——迭代 2026-09-18-prep-obs-
+            #  retirement 阶段 3.5:light 分支现生产无调用方,缓存字段
+            #  _cached_bench/_cached_deployed/_cached_vacancy/
+            #  _cached_gold_trusted/_cached_owned_equips/
+            #  _cached_occupied_equips/_cached_back_layout_slots 一并退役;
+            #  黑板写路径 gs.prep_obs = obs 同批删除。)
         return obs
-
-    def _project_prep_obs(self, action: CwAction,
-                          obs: PrepObservation) -> PrepObservation:
-        """执行后期望态逻辑态直写(ADR-0517 决策 7/10;纯计算零读屏)。
-
-        R9 逻辑态全覆盖(规则全集正本 = ``game_state/action-logic-state.md``):
-        词表逐动作有逻辑态计算,
-        「未建模 → 返回 None 保守回退交回外循环」分支**删除**;词表外
-        类型 = 分派漏斗被绕过,AssertionError 响亮暴露(注册表同款纪律)。
-
-        逐动作分支(确定性 UI 消耗/腾席/容器域直写;随机面一律观察收口):
-        - OpenTome:开一件即腾席,tomes 按 ``action.slot`` 摘对应槽的件
-          (slot=None = 首件,与发射形态对齐);
-        - OpenBookcard:开卡即腾席(书册卡无独立载荷列表字段,占席事实只在
-          ``free_bench_slots`` 现读口径 → 摘件 = 腾席 +1,与 heavy 现读
-          ``slot_occupied`` 扫描同式;容器零写同箱/典籍,R10);
-        - ClickSpheres:按载荷坐标**精确摘球**(R4 改形;原保守清空退役
-          ——载荷即点击列,被点的球从 spheres 摘除,坐标匹配);
-        - SellBench:该物理槽位件离席(bench_chars 摘除 +
-          free_bench_slots+1;溢出腿落地时改为入位卡回占该槽、free 不变
-          ——黑板帧镜像,与容器腿/执行账吸收同帧同源;规则正本 =
-          game_state/action-logic-state.md §2.4 溢出条件行)+
-          容器域逻辑态直写(gold 回金 + bench 摘槽,
-          kernel 写口 ``apply_prep_action_logic`` 单一源);
-        - DeployMove(批 2a 补齐,§3.1):bench 摘件 + deployed 落件
-          (排/槽号信息位重写)+ 占用集推进 + 容器域(bench/front_row/
-          back_row/board 增量);
-        - SellDeployed(批 2a 补齐,§3.2):deployed 摘件 + 容器域
-          (front_row/back_row/board 重算 + gold 回金);
-        - LevelUp(批 2a 补齐,定案④):视觉帧零变,容器域 xp/level 推进
-          (gold 中间态不写,金腿 = 执行缝金差);
-        - WearEquip:``owned_equips`` 摘件(视觉域,与 OpenBox/OpenTome
-          同形;容器 equips 域留观察覆盖——域集封闭申报);
-        - 工具原子(R8):按 ``EQUIP_WRITE_SIDES`` 申报逐类直写——
-          冶金炉 = 工具 −1 + 装备腿目标件消失(变异产物 = 随机面观察
-          收口)/角色腿穿戴域 → 库存域全量迁移;特权赋予卡 = 工具 −1 +
-          库存腿确定变换(名替换,桥 = ``transform_equip_to_privilege``)
-          /拖角色腿只写工具 −1(哪件被选 = 随机面);拆装扳手 = 穿戴域
-          全量回库存 + 工具 −1;精密扳手同款不消耗;投影仪 = 备战席
-          创造 1 星复制(席满拒落零写)+ 工具 −1;好运令牌 = 工具 −1
-          (选件随机面归观察);
-        - OpenBox:**终结化**(R7)后不经本口——结束判定先行交回外循环
-          (武装箱选择画面 op 分发),分支随终结化作废删除。
-
-        保真边界:gold 可信位(``state_gold_trusted``)不随逻辑态翻转——
-        直写金是账面值,可信位语义(heavy 真读)保持不变。
-        """
-        import dataclasses
-
-        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-            empty_deploy_slots,
-        )
-        from sr_od.application.currency_war.kernel.cw_vocab import (
-            ClickSpheres,
-            FurnaceUse,
-            LuckyTokenUse,
-            OpenBookcard,
-            OpenTome,
-            PerfectProjectorUse,
-            PrecisionWrenchUse,
-            PrivilegeCardUse,
-            StaffProjectorUse,
-            WearEquip,
-            WrenchUse,
-        )
-        if isinstance(action, OpenTome):
-            _tomes = list(getattr(obs, 'tomes', None) or [])
-            if _tomes:
-                _drop = action.slot if action.slot is not None else _tomes[0][0]
-                _tomes = [t for t in _tomes if t[0] != _drop]
-            return dataclasses.replace(obs, tomes=_tomes)
-        if isinstance(action, OpenBookcard):
-            # 开卡即腾席(R10 视觉域;发射位 = 环入口清场段交回,本分支为
-            # 词表发射形态的完整逻辑态面,升 director 门控时与 OpenBox
-            # 终结化同构补 visit 终结分支)
-            return dataclasses.replace(
-                obs, free_bench_slots=(getattr(obs, 'free_bench_slots', 0) or 0) + 1)
-        if isinstance(action, ClickSpheres):
-            _pts = {(int(x), int(y)) for x, y in action.points}
-            _spheres = [s for s in (getattr(obs, 'spheres', None) or [])
-                        if (int(s[1].x), int(s[1].y)) not in _pts]
-            return dataclasses.replace(obs, spheres=_spheres)
-        if isinstance(action, SellBench):
-            _sess = self._session()
-            _gs_sell = gs_of_ctx(getattr(self, 'ctx', None), _sess)
-            # 溢出腿镜像读数(先读后写):溢出卡身份/旗标在本写口内被消费
-            # 清空,镜像判定须取写前值;落地判定 = 写后旗标已清(本调用内
-            # 唯一清空者 = 溢出腿,陈旧提案零写分支不清 → 镜像不误发)。
-            _ov_id_pre = str(_gs_sell.overflow_card.value or '')
-            _ov_warn_pre = bool(_gs_sell.overflow_warning.value)
-            # 容器域逻辑态直写(容器化段 2:黑板帧 state 复制腿消亡;
-            # gold 回金公式单一源 = cw_state.sell_refund,bench 摘槽 =
-            # BenchView 重建 write_logic——写口内自持陈旧提案守卫;
-            # 写口经模块顶 import 单一源,函数内禁局部再 import——局部
-            # import 会把名字标记为函数局部变量,令同函数其余分支的
-            # 裸引用在未走该分支时 UnboundLocalError)。
-            # session 透传(溢出腿):溢出腿落地时写口内同步吸收执行侧
-            # tracked 主账(容器腿/执行账同帧同源,商店播种守卫对拍
-            # 不因本腿分叉)。
-            apply_prep_action_logic(
-                _gs_sell, action,
-                produced_by='CwScreenPrep',
-                sig=ChannelSig(family='logic_action', actor='CwScreenPrep'),
-                session=_sess)
-            # 黑板帧键 = SIFT 槽位信息位(物理槽号);动作携容器下标,读键
-            # 映射 = 下标+1(构造不变量 slot=idx+1,容器槽位表换算惯例)。
-            _slot_key = action.bench_idx + 1
-            _bench = [bc for bc in (getattr(obs, 'bench_chars', None) or [])
-                      if bc is None or getattr(bc, 'slot', None) != _slot_key]
-            _free = (getattr(obs, 'free_bench_slots', 0) or 0)
-            if _ov_warn_pre and _ov_id_pre \
-                    and _gs_sell.overflow_warning.value is False:
-                # 黑板帧镜像(溢出腿):溢出卡当帧入位,腾出槽即刻回占——
-                # 入位卡补进黑板 bench,free 不 +1(与容器腿/tracked 吸收
-                # 同帧同源;缺镜像 = 决策面假空席,席满拒落类门被假象绕过)。
-                _bench = list(_bench) + [
-                    BenchChar(slot=_slot_key, char_id=_ov_id_pre)]
-                return dataclasses.replace(obs, bench_chars=_bench,
-                                           free_bench_slots=_free)
-            return dataclasses.replace(
-                obs, bench_chars=_bench,
-                free_bench_slots=_free + 1)
-        if isinstance(action, DeployMove):
-            _gs = gs_of_ctx(getattr(self, 'ctx', None), self._session())
-            apply_prep_action_logic(
-                _gs, action, produced_by='CwScreenPrep',
-                sig=ChannelSig(family='logic_action', actor='CwScreenPrep'))
-            # 黑板帧键 = SIFT 槽位信息位(同上);落位槽 = 本帧 deployed
-            # 视图首空(kernel empty_deploy_slots 单一源,与发射位
-            # assign_deploy_slots/执行坐标边同式规则)。
-            _slot_key = action.bench_idx + 1
-            _bench = [bc for bc in (getattr(obs, 'bench_chars', None) or [])
-                      if bc is None or getattr(bc, 'slot', None) != _slot_key]
-            moved = next((bc for bc in (getattr(obs, 'bench_chars', None) or [])
-                          if bc is not None
-                          and getattr(bc, 'slot', None) == _slot_key), None)
-            _deployed = list(getattr(obs, 'deployed_chars', None) or [])
-            if moved is not None:
-                import copy as _copy
-                _back_total = (getattr(obs, 'back_layout_slots', None) or 6)
-                _fe, _be = empty_deploy_slots(
-                    _deployed, front_total=4, back_total=int(_back_total))
-                _chosen, _fb = ((_fe, _be) if action.to_row == 'front'
-                                else (_be, _fe))
-                if _chosen:
-                    _row, _slot_no = action.to_row, _chosen[0]
-                elif _fb:
-                    _row = 'back' if action.to_row == 'front' else 'front'
-                    _slot_no = _fb[0]
-                else:
-                    _row, _slot_no = action.to_row, 0   # 满板:信息位照记,
-                    # 真实落位归容器 deployed_place 守卫(陈旧提案零写)
-                moved = _copy.copy(moved)
-                moved.position_pref = _row
-                moved.slot = _slot_no
-                _deployed.append(moved)
-            _front = set(getattr(obs, 'front_occupied', None) or set())
-            _back = set(getattr(obs, 'back_occupied', None) or set())
-            # 占用集按 fallback 解析排(_row)记行——按 to_row 记会把换排
-            # 落位记成假前排占位/漏记后排;满板分支(slot=0 信息位)不入集
-            #(0 非物理槽号,真值归 heavy 现读;改动三审 代-1)。
-            if moved is not None and moved.slot:
-                (_front if _row == 'front' else _back).add(moved.slot)
-            return dataclasses.replace(
-                obs, bench_chars=_bench, deployed_chars=_deployed,
-                front_occupied=_front, back_occupied=_back,
-                free_bench_slots=(getattr(obs, 'free_bench_slots', 0) or 0) + 1)
-        if isinstance(action, SellDeployed):
-            _gs = gs_of_ctx(getattr(self, 'ctx', None), self._session())
-            apply_prep_action_logic(
-                _gs, action, produced_by='CwScreenPrep',
-                sig=ChannelSig(family='logic_action', actor='CwScreenPrep'))
-            # 容器下标 → (排, 槽号) 读键映射 = kernel deployed_row_slot
-            # 单一函数(执行坐标边换算收口);黑板帧 deployed 是 SIFT 物理
-            # 键视图,按读键对位摘除。
-            _row, _slot_no = deployed_row_slot(action.deployed_idx)
-            _deployed = [d for d in (getattr(obs, 'deployed_chars', None) or [])
-                         if d is None
-                         or not (getattr(d, 'position_pref', '') == _row
-                                 and getattr(d, 'slot', None) == _slot_no)]
-            return dataclasses.replace(obs, deployed_chars=_deployed)
-        if isinstance(action, LevelUp):
-            # 视觉帧零变;容器域 xp/level/gold(action.cost 直写)推进
-            _gs = gs_of_ctx(getattr(self, 'ctx', None), self._session())
-            apply_prep_action_logic(
-                _gs, action, produced_by='CwScreenPrep',
-                sig=ChannelSig(family='logic_action', actor='CwScreenPrep'))
-            return obs
-        if isinstance(action, WearEquip):
-            _owned = _owned_remove(
-                getattr(obs, 'owned_equips', None), action.item_name)
-            return dataclasses.replace(obs, owned_equips=_owned)
-        if isinstance(action, (FurnaceUse, PrivilegeCardUse, WrenchUse,
-                               PrecisionWrenchUse, StaffProjectorUse,
-                               PerfectProjectorUse, LuckyTokenUse)):
-            return self._project_tool_obs(action, obs)
-        # 词表外类型 = 分派漏斗被绕过(F3 白名单之后不可达),响亮暴露
-        # (注册表 AssertionError 同款纪律;R9 保守回退分支已删,禁静默)。
-        raise AssertionError(
-            f'_project_prep_obs:动作 {type(action).__name__} 无逻辑态分支'
-            '(词表外/分派漏斗被绕过,响亮暴露)')
-
-    def _project_tool_obs(self, action: CwAction,
-                          obs: PrepObservation) -> PrepObservation:
-        """工具原子逻辑态(R8 七类逐件;规则正本 = ``game_state/action-logic-state.md``
-        §4,写端登记单一源 = ``EQUIP_WRITE_SIDES``)。逐类:
-
-        - 冶金炉:装备腿 = 工具 −1 + 目标件消失(变异产物随机 → 观察);
-          角色腿 = 穿戴域全量 → 库存域(名迁移,变异随机 → 观察)+ 工具 −1;
-        - 特权赋予卡:库存腿 = 工具 −1 + 目标件名确定变换(桥 =
-          ``transform_equip_to_privilege``,经 ``apply_tool_execution_write``
-          容器写端);拖角色腿 = 只写工具 −1(哪件被选随机 → 观察);
-        - 拆装扳手 = 目标角色穿戴域全量回库存 + 工具 −1;精密扳手同款
-          不消耗(工具库存面不递减);
-        - 员工/完美投影仪 = 目标角色 1 星复制入备战席(费用门/席满拒落
-          零写,门表单一源 = ``_TOOL_SPAWN_COST_GATE``)+ 工具 −1;
-        - 好运令牌 = 工具 −1(选件 = 策略决策面,选定前无容器可算面)。
-        """
-        import copy as _copy
-        import dataclasses
-
-        from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-        from sr_od.application.currency_war.kernel.cw_affix_effects import (
-            _TOOL_SPAWN_COST_GATE,
-            apply_tool_execution_write,
-        )
-        from sr_od.application.currency_war.kernel.cw_effect_inventory import (
-            privilege_counterpart,
-        )
-        from sr_od.application.currency_war.kernel.cw_vocab import (
-            FurnaceUse,
-            LuckyTokenUse,
-            PerfectProjectorUse,
-            PrecisionWrenchUse,
-            PrivilegeCardUse,
-            StaffProjectorUse,
-            WrenchUse,
-        )
-        tool_name = {
-            FurnaceUse: '冶金炉',
-            PrivilegeCardUse: '特权赋予卡',
-            WrenchUse: '拆装扳手',
-            PrecisionWrenchUse: '精密拆装扳手',
-            StaffProjectorUse: '员工投影仪',
-            PerfectProjectorUse: '完美投影仪',
-            LuckyTokenUse: '好运令牌',
-        }[type(action)]
-        consume_tool = not isinstance(action, PrecisionWrenchUse)
-        owned = list(getattr(obs, 'owned_equips', None) or [])
-        occupied = ({(row, int(slot)): list(names)
-                     for (row, slot), names
-                     in (getattr(obs, 'occupied_equips', None) or {}).items()}
-                    if getattr(obs, 'occupied_equips', None) is not None
-                    else None)
-        _no_write = dataclasses.replace(obs)
-
-        def _tool_minus(names: list[str]) -> list[str]:
-            if not consume_tool:
-                return names
-            out = list(names)
-            if tool_name in out:
-                out.remove(tool_name)
-            return out
-
-        target_kind = getattr(action, 'target_kind', 'char')
-        if isinstance(action, (FurnaceUse, PrivilegeCardUse)) \
-                and target_kind == 'equip':
-            tgt = action.item_name
-            if owned is None or tgt not in owned:
-                return _no_write   # 库存未观察/目标已消失 → 零写留观察
-            if isinstance(action, PrivilegeCardUse):
-                # 库存腿确定变换(桥;容器写端 + 帧面镜像)
-                gs = game_state_of(self._session())
-                apply_tool_execution_write(gs, tool_name,
-                                           target_equip_name=tgt,
-                                           frame=f'tool_{tool_name}')
-                new_name = privilege_counterpart(tgt)
-                if new_name is None:
-                    return _no_write   # 非进阶成品 = 调用错,零写留观察
-                owned = _tool_minus(owned)
-                owned = _owned_replace_one(owned, tgt, new_name)
-            else:
-                owned = _tool_minus(owned)
-                owned = _owned_remove(owned, tgt)   # 产物随机 → 观察收口
-            return dataclasses.replace(obs, owned_equips=owned)
-        # 角色目标腿(炉·角色/特权·角色/扳手两件/投影仪两件/令牌)
-        _worn = list((occupied or {}).get((action.row, int(action.slot)), []))
-        if occupied is not None:
-            if isinstance(action, (FurnaceUse, WrenchUse, PrecisionWrenchUse)):
-                # 穿戴域 → 库存域全量迁移(名迁移;炉变异随机 → 观察)
-                for name in _worn:
-                    owned = _owned_add(owned, name)
-                occupied = dict(occupied)
-                occupied[(action.row, int(action.slot))] = []
-        if isinstance(action, (StaffProjectorUse, PerfectProjectorUse)):
-            # 费用门 + 席满拒落零写(§4.5:席满不是部分成功,是无落位)
-            gate = _TOOL_SPAWN_COST_GATE.get(tool_name, 0)
-            dep = next((d for d in (getattr(obs, 'deployed_chars', None) or [])
-                        if d is not None
-                        and getattr(d, 'position_pref', '') == action.row
-                        and getattr(d, 'slot', None) == action.slot), None)
-            ch = CHARACTERS.get(getattr(dep, 'char_id', '') or '') \
-                if dep is not None else None
-            cost = int(getattr(ch, 'cost', 0) or 0) if ch is not None else None
-            free = int(getattr(obs, 'free_bench_slots', 0) or 0)
-            if dep is None or cost is None or free <= 0 \
-                    or (gate and cost > gate):
-                return _no_write   # 拒落(超门/席满/目标未识别)零写
-            if owned is not None:
-                owned = _tool_minus(owned)
-            _bench = list(getattr(obs, 'bench_chars', None) or [])
-            _copy_bc = _copy.copy(dep)
-            _copy_bc.slot = _next_free_bench_slot(_bench)
-            _copy_bc.position_pref = 'back'
-            _copy_bc.star = 1
-            _copy_bc.equips = []
-            _bench.append(_copy_bc)
-            return dataclasses.replace(
-                obs, owned_equips=owned, bench_chars=_bench,
-                free_bench_slots=free - 1)
-        # 其余角色腿:确定面 = 工具 −1(令牌选件/特权拖角色腿选件随机 → 观察)
-        if owned is None:
-            return _no_write
-        owned = _tool_minus(owned)
-        out = {'owned_equips': owned}
-        if occupied is not None:
-            out['occupied_equips'] = occupied
-        return dataclasses.replace(obs, **out)
 
     def _reconcile_tracking(self, bench: list[BenchChar], deployed: list[BenchChar],
                             screen=None) -> None:
@@ -1493,10 +1123,6 @@ class CwScreenPrep(CwScreenOpBase):
         session = match.session
         self._executor = PrepActionExecutor(self, self.ctx)
         self._cached_shop_cards = []
-        self._cached_bench = []
-        self._cached_deployed = []
-        self._cached_vacancy = 0
-        self._cached_gold_trusted = False
 
         # —— ① 数据观察:清场 + 开商店合法态收起(读互斥:hp 关态可读)→ heavy 全量观察写 session
         self._clear_entry_overlays()
@@ -1590,7 +1216,7 @@ class CwScreenPrep(CwScreenOpBase):
             #      (§6.4 on_outcome)在其发射点统一触发(单一发射口,发射即
             #      触发)。
             try:
-                self._act_execute(action, obs)
+                self._act_execute(action)
             except StopBrakeShortCircuit as e:
                 # W209j 刹车短路(ADR-0388):停机标志已设,动作未发出 →
                 # 交回外循环,下轮 loop 顶见 STOP 退出(原回执 False 通道
@@ -1615,12 +1241,18 @@ class CwScreenPrep(CwScreenOpBase):
             _op_cls = action_op_class_for(action)
             if _op_cls.terminal:
                 return self._terminal_exit(action, key, _op_cls)
-            # —— 逻辑态直写(ADR-0517 决策 7/10:逐动作零读屏,期望态纯计算
-            #      推进;发出即直写。假黑板风险由下一入口 heavy reconcile 以
-            #      实读纠逻辑态承担(期望态对账族即纠偏通道)。R9:词表逐
-            #      动作有逻辑态分支,保守回退分支已删——词表外 = 响亮暴露)
-            obs = self._project_prep_obs(action, obs)
-            game_state_of(session).prep_obs = obs   # 黑板推进(下一动作决策读逻辑态)
+            # —— 逻辑态直写(kernel 写口统一调用,ADR-0517 决策 7/10;
+            #      迭代阶段 3.5 拓扑迁移:动作后逻辑态唯一更新点 =
+            #      apply_prep_action_logic,原 _project_prep_obs 黑板腿随
+            #      gs.prep_obs 退役删除,词表外 AssertionError 防线随迁写口。
+            #      假黑板风险由下一入口 heavy reconcile 以实读纠逻辑态承担。
+            #      R9:词表逐动作有逻辑态分支,保守回退分支已删——词表外 =
+            #      响亮暴露)
+            apply_prep_action_logic(
+                game_state_of(session), action,
+                produced_by='CwScreenPrep',
+                sig=ChannelSig(family='logic_action',
+                               actor='CwScreenPrep'))
             # 直写帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
             _mark_frame_class(session, 'prep', 'none')
         # 访问动作数上限(防御:决策循环不收敛 = 逻辑态或策略 bug,交回外循环
@@ -1657,10 +1289,6 @@ class CwScreenPrep(CwScreenOpBase):
         session = match.session
         self._executor = PrepActionExecutor(self, self.ctx)
         self._cached_shop_cards = []
-        self._cached_bench = []
-        self._cached_deployed = []
-        self._cached_vacancy = 0
-        self._cached_gold_trusted = False
         # —— 段1 观察:清场 + 开商店合法态收起(读互斥:hp 关态可读)→ heavy 全量观察写 session
         self._clear_entry_overlays()
         if self._clear_prep_cards():
@@ -1704,10 +1332,14 @@ class CwScreenPrep(CwScreenOpBase):
         session = self._match().session
         self._v2_post_frame_accounting(payload, session)
 
-    def lifecycle_decision_cycle(self, payload: PrepObservation) -> OperationRoundResult:
-        """段3-5 单动作决策循环。
+    def lifecycle_decision_cycle(self, payload: Any = None) -> OperationRoundResult:
+        """段3-5 单动作决策循环(阶段 3.5:黑板帧载体语义随 gs.prep_obs
+        退役——决策零参直读容器,循环内零读屏)。
 
-        decide(黑板 = session.prep_obs_frame,策略消费,F3 形状校验)→
+        ``payload`` 形参 = 基类抽象签名保持(cw_screen_op_base 统一分发面
+        传参,子类覆写禁减参);本类零消费。
+
+        decide(容器 game state 直读,F3 形状校验)→
         act(适配器②:意图机械执行,无成败回执)→ on_outcome(落地登记
         注册表在 _act_execute 发射点统一触发,单一发射口发射即触发)。
         生命周期无验证段(用户裁定 2026-09-10:动作未生效归动作层修可靠
@@ -1757,7 +1389,7 @@ class CwScreenPrep(CwScreenOpBase):
             #      发射即触发,发出即职责完成)
             self._lifecycle_mark('act')
             try:
-                self._act_execute(action, payload)
+                self._act_execute(action)
             except StopBrakeShortCircuit as e:
                 # W209j 刹车短路(ADR-0388):停机标志已设,动作未发出 →
                 # 交回外循环,下轮 loop 顶见 STOP 退出。
@@ -1781,10 +1413,15 @@ class CwScreenPrep(CwScreenOpBase):
             _op_cls = action_op_class_for(action)
             if _op_cls.terminal:
                 return self._terminal_exit(action, key, _op_cls)
-            # —— 逻辑态直写(ADR-0517 决策 7/10;R9:词表逐动作有逻辑态
-            #      分支,保守回退分支已删,词表外 = 响亮暴露)
-            game_state_of(session).prep_obs = self._project_prep_obs(
-                action, payload)   # 黑板推进(下一动作决策读逻辑态;终态契约 §2.6 宿主 = gs.prep_obs)
+            # —— 逻辑态直写(kernel 写口统一调用,ADR-0517 决策 7/10;
+            #      迭代阶段 3.5 拓扑迁移,与读屏路径孪生环同构——原
+            #      _project_prep_obs 黑板腿随 gs.prep_obs 退役删除;R9:
+            #      词表逐动作有逻辑态分支,词表外 = 响亮暴露)
+            apply_prep_action_logic(
+                game_state_of(session), action,
+                produced_by='CwScreenPrep',
+                sig=ChannelSig(family='logic_action',
+                               actor='CwScreenPrep'))
             # 直写帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
             _mark_frame_class(session, 'prep', 'none')
         # 访问动作数上限(防御:决策循环不收敛 = 逻辑态或策略 bug,交回外循环
@@ -1825,8 +1462,7 @@ class CwScreenPrep(CwScreenOpBase):
             f'[cw][director] 非终结动作进入终结出口:{type(action).__name__}'
             '(终结集与消费面失配,响亮暴露)')
 
-    def _act_execute(self, action: CwAction,
-                     obs: PrepObservation | None = None) -> None:
+    def _act_execute(self, action: CwAction) -> None:
         """动作执行段(五段之 act 的端口分派面;两路径共用,落地登记注册表
         的**唯一触发点**)。注入动作适配器在场 → 经适配器机械执行(§6.2
         端口,无返回);缺省 = 现役点击链直连(:meth:`_act_execute_default`)。
@@ -1839,11 +1475,10 @@ class CwScreenPrep(CwScreenOpBase):
         if _adp is not None:
             _adp.execute(self, action)
         else:
-            self._act_execute_default(action, obs)
+            self._act_execute_default(action)
         self.fire_outcome_hooks(action, detail=self._last_mech_detail)
 
-    def _act_execute_default(self, action: CwAction,
-                             obs: PrepObservation | None = None) -> None:
+    def _act_execute_default(self, action: CwAction) -> None:
         """现役点击链缺省执行体(实机适配器②的封口内容;旧路径 run() 与
         五段循环同调,自身**不触发**注册表——触发统一归
         :meth:`_act_execute` 分派面,防双计)。OpenShop = 流程层商店编排
@@ -1852,9 +1487,9 @@ class CwScreenPrep(CwScreenOpBase):
         本口。机械摘要写入 ``_last_mech_detail``(登记件 detail 供给;
         端口无返回后的旁路通道)。
 
-        ``obs`` = 当前黑板帧(调用方传入;缺省 = session.prep_obs_frame
-        黑板现值——黑板两写点[入口观察/循环逻辑态直写步]与决策循环局部帧恒
-        同步,契约 W971 §2,故黑板现值即合法供给源)。"""
+        ``obs`` 黑板形参已随 gs.prep_obs 退役删除(迭代阶段 3.5;旧
+        OpenShop 腿的 obs 死参消费早已为零——strategy-input-unification
+        批审在案)。"""
         if isinstance(action, StartBattle):
             # 出战意图执行 = 统一执行器(face=armed:屏态复验→浮层安全检查
             # →部署原子序→出战点击链;迭代 design §2.2/方案 4——策略前置
@@ -1884,12 +1519,8 @@ class CwScreenPrep(CwScreenOpBase):
                 log.info(f'[cw][director] {action_key(action)} → '
                          f'{self._last_mech_detail}')
                 return
-            if obs is None:
-                _sess = self._session()
-                obs = (game_state_of(_sess).prep_obs
-                       if _sess is not None else None)
             try:
-                progressed, detail = self._open_shop_phase(action, obs)
+                progressed, detail = self._open_shop_phase(action)
             except Exception as e:
                 self._last_mech_detail = f'执行异常:{e}'
                 raise
@@ -2133,8 +1764,7 @@ class CwScreenPrep(CwScreenOpBase):
 
     # ===== W970 批 C:流程层商店编排(整段买牌解体的承接,§4.3.2/§4.3.6)=====
 
-    def _open_shop_phase(self, action: CwAction,
-                         obs: PrepObservation) -> tuple[bool, str]:
+    def _open_shop_phase(self, action: CwAction) -> tuple[bool, str]:
         """OpenShop 动作的流程层编排(壳直调三 op 调用点自 BuyShopCards 上移)。
 
         - read_only=True(腾席链 b 取 gold 真值 / 开态清洁面板):CwOpOpenShop

@@ -689,12 +689,10 @@ Action = (BuyCard | SellBench | LevelUp | DeployMove | RefreshShop | CloseShop
 class ClickSpheres(CwAction):
     """点奖励球(R4 坐标参数化机械动作:载荷 = 有序球坐标点击列表)。
 
-    ``points`` = 按点击顺序排列的球心坐标 (x, y)(1080p 游戏空间,与
-    ``PrepObservation.spheres`` 的 Point 同系)。挑选逻辑(大球优先/
-    上界截断)归决策侧 kernel 单一源 = :func:`cw_prep_actions
+    ``points`` = 按点击顺序排列的球心坐标 (x, y)(1080p 游戏空间)。挑选
+    逻辑(大球优先/上界截断)归决策侧 kernel 单一源 = :func:`cw_prep_actions
     .select_sphere_clicks`,发射位调用之;执行器纯机械逐个点,零读屏
-    零排序。逻辑态按载荷精确摘球(坐标匹配,
-    ``cw_screen_prep._project_prep_obs``)。
+    零排序。逻辑态按载荷精确摘球(坐标匹配,容器 spheres 域)。
     """
     points: tuple[tuple[int, int], ...] = ()
 

@@ -114,9 +114,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state imp
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_prep_actions import (
-        PrepObservation,
-    )
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
     )
@@ -433,12 +430,14 @@ def _upgrader_evaluate(session: StrategySession, gs: GameState,
     return sig
 
 
-def emit(obs: PrepObservation, session: StrategySession,
+def emit(session: StrategySession,
          config: object, *, ev_arm: str = 'full',
          registry: DecisionV2Registry | None = None) -> list[Emitted]:
     """决策入口三遍编排(R189-4 结构签名;返回 Emitted 列表交桥截断发射)。
 
-    决策输入 = obs(黑板)+ session 容器直读。
+    决策输入 = **容器 game state 直读**(迭代 2026-09-18-prep-obs-
+    retirement 阶段 3.5:obs 黑板形参退役,gs.prep_obs 槽随批删除——
+    策略器唯读容器契约归位)。
     编排:① prep 实体面(箱选卡/球/箱/典籍——控制流与 overlay 切换
     优先于三遍)→ ①′ wanted 闭环消费臂(迁移 A;义务优先)→ ② 证明
     pass(信号臂/K/stop_flag/线级状态机/换线)→ ②′ 工具消费发射位
@@ -463,10 +462,19 @@ def emit(obs: PrepObservation, session: StrategySession,
     # (武装箱选择对话框在场的选卡臂随 PickBoxCard 删除退役,批 2a R7:
     #  OpenBox 终结化后选卡归独立画面 op 分发——cw_loop 按画面派发
     #  ``CwScreenBoxPick``,决策核不再消费 ``box_overlay_open``;采集面已随批2b 退役删除)。
-    if obs.boxes:
-        return [Emitted(OpenBox(slot=obs.boxes[0][0]), True, 'prep_box')]
-    if obs.tomes:
-        return [Emitted(OpenTome(slot=obs.tomes[0][0]), True, 'prep_tome')]
+    # 开箱/开典籍臂(迭代 2026-09-18-prep-obs-retirement 阶段 3.5 换源):
+    # 触发物 = 容器 bench 槽位 kind(supply_box/tome 占席;box 优先于 tome
+    # 与旧 obs.boxes→obs.tomes 序一致)。动作参数 = 物理槽号,执行器按槽号
+    # 现算点击坐标(总纲坐标契约:像素不落盘)。
+    _gs_bench_slots = bench_slots_of(gs)
+    _box_slot = next((i for i, s in enumerate(_gs_bench_slots)
+                      if s is not None and s.kind == 'supply_box'), None)
+    if _box_slot is not None:
+        return [Emitted(OpenBox(slot=_box_slot + 1), True, 'prep_box')]
+    _tome_slot = next((i for i, s in enumerate(_gs_bench_slots)
+                       if s is not None and s.kind == 'tome'), None)
+    if _tome_slot is not None:
+        return [Emitted(OpenTome(slot=_tome_slot + 1), True, 'prep_tome')]
     # 球臂门+载荷同源(迭代阶段 3.4 换源收口,reviewer r1 打回项2):
     # 门条件与点击载荷共用同一容器读口推导——黑板 obs.spheres 消费清零,
     # 防陈旧门真/载荷空(空转)或批 5 删字段后 AttributeError。

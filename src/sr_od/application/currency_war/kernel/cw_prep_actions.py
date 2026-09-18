@@ -19,7 +19,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from one_dragon.base.geometry.point import Point
-from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 
 #: 点球单批硬上限(原执行器 SPHERE_MAX_CLICKS 常量迁居 kernel:挑选上界
 #: 归挑选函数,执行器只机械点载荷;防识别抖动死循环的防线语义不变)。
@@ -66,60 +65,23 @@ def select_sphere_clicks(spheres: list, cap: int,
 
 @dataclass
 class PrepObservation:
-    """备战决策环统一观察(决策单一输入,组合现成 reader 不新写识别)。
+    """备战决策环观察载体(阶段 3.5 瘦身版,迭代 2026-09-18-prep-obs-
+    retirement)。
 
-    P1 恒空字段(策略不得依赖):overlay_state / overlay_options / shop_cards。
-    (owned_equips 原列本清单,已随 P4 观察接线转正——见下方装备域字段块。)
+    **宿主降级申报**:本类已不再是策略器输入——名单/装备/占用/球全部
+    容器域承载,策略器唯读容器契约归位;本帧仅承载**控制信号与识别
+    元信息**(观察链/op 内部消费,不进 gs、不进 session):
+    - ``shop_open``:观察链门参数(F2 gold 可信派生/卡池票门);
+    - ``substate``:observe_full 可读性标注(对账/日志判读);
+    - ``event_overlay``:bail 控制信号(交回外循环分发)。
 
-    分层语义:bench_chars/deployed_chars/deploy_vacancy 只在 heavy
-    观察刷新(环入口 + 每个执行过的游戏动作后);light 步沿用上次 heavy 值(可能 stale,
-    单线程内 stale 窗口 = 无动作步,安全)。轻字段(spheres/boxes/占用/shop_open/overlay)
-    每步现读。
-    局内事实不在帧上(容器化段 2:state 槽退役,黑板帧 = 纯视觉/占用
-    观察载体,帧保留域封闭清单见设计件 §2.1-2;决策读 = session 容器
-    单例 game_state_of,同帧同视图纪律)。
-    state_gold_trusted = gold 仅 shop 开态可信(F2 门,heavy 刷新)。
+    状态类字段(bench_chars/deployed_chars/装备三路/spheres/boxes/tomes/
+    free_bench_slots/deploy_vacancy 族/front_occupied/back_occupied/
+    front_size/state_gold_trusted/P1P5 恒空字段)已随黑板退役删除——
+    去向表见迭代详设 obs-retirement §阶段 3.5。
     """
-    state_gold_trusted: bool = False      # gold 是否可信(= heavy 时 shop 开)
-    # 子态可读性(observe_full 产出;heavy 刷新/
-    # light 沿用)——node_seq/shop_cards 本帧是否可读(按子态
-    # 尽力读,跨步拼装全面性)。
-    substate: dict = field(default_factory=dict)
-    bench_chars: list[BenchChar] = field(default_factory=list)   # heavy: SIFT 身份
-    deployed_chars: list[BenchChar] = field(default_factory=list)
-    spheres: list = field(default_factory=list)       # read_reward_spheres [(color, Point, r)]
-    boxes: list = field(default_factory=list)         # read_supply_boxes [(slot, Point)]
-    tomes: list = field(default_factory=list)         # read_tomes [(slot, Point)] 秘密典籍
-    free_bench_slots: int = 0           # 9 − 占用(角色+箱都占席;CV 每步现读)
-    deploy_vacancy: int = 0             # deploy_cap − deployed_count(heavy 刷新)
-    deploy_divergent: bool = False      # vacancy 分母双源分歧位(15 号稿批 C:
-                                        # True=deployed 计数取的是低值仲裁,
-                                        # 部署放行判定按 §4.2 延迟;准备面载体)
-    deploy_stale: bool = False          # vacancy 陈旧位(True=缓存沿用:
-                                        # cap/paddle 双缺,B5 陈旧值过门申报)
-    shop_open: bool = False             # 锚点「按钮-收起」可见(每步现读)
-    front_occupied: set = field(default_factory=set)  # 前排占用物理槽位号(每步现读)
-    back_occupied: set = field(default_factory=set)
-    front_size: int = 4
-    # (back_size 字段已删(波 5b 死字段退役,写读闭环终端消费者零;决策链
-    #  后排容量单一源 = 容器 back_capacity_of)。)
-    overlay_state: str | None = None    # P5
+    substate: dict = field(default_factory=dict)   # observe_full 可读性(对账/日志)
+    shop_open: bool = False             # 锚点「按钮-收起」可见(观察链门参数)
     # 事件 overlay 检测(盛会之星/选择伙伴/祈愿试炼 —— 挡操作,检测到即
     # 交回外循环分支 handler;实锤:盛会之星 overlay 下 deploy 全灭 → 空场 HP 82→1)
     event_overlay: str | None = None
-    overlay_options: list | None = None # P5
-    shop_cards: list | None = None      # P1 恒 None(仅买牌阶段刷新)
-    # ===== 装备域三路事实 P4 观察接线(ADR-0601 §3-C1 演进方向)=====
-    # 采集点 = observe_full heavy 装配层(obs 域统一采集单一源);deployed
-    # 名单已由上方 deployed_chars 覆盖,此三字段补 owned/occupied 两路。
-    # None = 识别域资源未就绪(模板库/区域/TM grays 缺,原因在采集层
-    # log 留证),消费方按各自 fail/保守通道处理;[]/{} = 真读到空。
-    owned_equips: list | None = None     # 装备区 owned 件名池(全量含工具,W209g 口径;heavy 刷新)
-    # occupied_equips 键坐标系:row ∈ 'front'|'back',slot = 画面物理槽位
-    # 1-based(前排 1-4 / 后排 1-选档 N;执行域槽位语义,与机械动作参数
-    # 字段同域);取值时机 = 生成期快照(heavy 帧现读)。
-    occupied_equips: dict | None = None  # 已穿装备明细 {(row, 物理槽位): [件名]}
-    # 消费 = 装备计划步后排槽位戳记上界(执行域)。决策链后排容量单一源
-    # 仍 = 容器 back_capacity_of,勿回接本字段(波 5b 删除的 back_size 是
-    # 决策链死字段;本字段是执行域戳记消费,两者不同源不互通)。
-    back_layout_slots: int | None = None  # 后排布局选档槽数(select_back_layout 直传;None=布局未知态双弃权帧)

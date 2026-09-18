@@ -2177,8 +2177,9 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 金读走稳定门(read_gold_settled):开店帧收入计数器可能在跳,单帧读拿
     # 入账前旧值 = `w489_sim_real_gap/` 感知面「开局金系统性偏低」根因环;
     # gold_readable 语义不变(None=读不到)。gold 值 = raw 读数——失读兜底 0
-    #(gold 值勘误口径;需要可信金判读的消费方走 gold_readable 位或
-    # 备战观察链的 ``prep_obs_frame.state_gold_trusted``)。
+    # (gold 值勘误口径;需要可信金判读的消费方走 gold_readable 位——
+    # 备战观察链 state_gold_trusted 位已随黑板退役删除,迭代
+    # 2026-09-18-prep-obs-retirement 阶段 3.5)。
     _gold_opt = read_gold_settled(ctx, screen) if _w('gold') else None
     gold_val = 0 if _gold_opt is None else _gold_opt
     gold_readable = _gold_opt is not None   # r319 保真位(对齐 hp_readable)

@@ -52,9 +52,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state imp
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_prep_actions import (
-        PrepObservation,
-    )
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
     )
@@ -166,22 +163,18 @@ class MandateV1Strategy(CwFlowStrategy):
         calibration.apply()
 
     def decide_prep_screen(self) -> CwAction:
-        """备战画面黑板决策(终态零参口 §2.1;单动作;空发射帧 = HoldFrame)。
+        """备战画面决策(终态零参口 §2.1;单动作;空发射帧 = HoldFrame)。
 
-        输入 = ``gs.prep_obs``(黑板契约:画面 op 是唯一写者;缺失即抛错 =
-        观察层失约,禁静默按空观察决策)。输出 = 决策核发射序列的**首个
-        动作**;空序列(含截断截空)→ ``HoldFrame`` = 本帧无动作交回外循环
+        输入 = **容器 game state 直读**(迭代 2026-09-18-prep-obs-
+        retirement 阶段 3.5:黑板 gs.prep_obs 读点与缺失抛错防线随黑板
+        退役删除——「观察先于决策」前提由画面 op 编排保证,op 入口
+        heavy 先于决策调用)。输出 = 决策核发射序列的**首个动作**;
+        空序列(含截断截空)→ ``HoldFrame`` = 本帧无动作交回外循环
         重观察(None 退役,终态契约 §2.2)。帧稳定截断为决策核内发射组织,
         非流程侧契约。入口内务 = 备战帧代次消费(方向刷新先于三遍编排)。
         管线宿主 = self.gs(state_of(gs) 经同源接线解析策略器状态;
         game_state_of(gs) 本体直通)。
         """
-        obs = self.gs.prep_obs
-        if obs is None:
-            raise ValueError(
-                'mandate_v1.decide_prep_screen: gs.prep_obs 缺失'
-                '(黑板契约:画面 op 是唯一写者;None=观察层失约,'
-                '禁静默按空观察决策)')
         # 方向重估先于决策(触发 = 帧代次标注;ADR-0583 §3.3-①)
         self._consume_prep_direction_frame()
         # —— 前置发射位(迭代 changes/2026-09-16-prep-visit-op design
@@ -200,7 +193,7 @@ class MandateV1Strategy(CwFlowStrategy):
         # 宿主双槽 = gs(state 槽给容器现值,session 槽给 state_of(gs) 同源
         # 解析——经 self.state 传递会让下游 game_state_of 解析一次性空容器)。
         disclose_budget(self.gs, self.gs, self.registry)
-        actions = decide_prep_frame(obs, self.gs, self.config,
+        actions = decide_prep_frame(self.gs, self.config,
                                     registry=self.registry)
         return actions[0] if actions else HoldFrame()
 
@@ -335,21 +328,20 @@ class MandateV1Strategy(CwFlowStrategy):
             f'bench={bench_is_full(gs)})')
 
 
-def decide_prep_frame(obs: PrepObservation,
-                      session: StrategySession, config: object,
+def decide_prep_frame(session: StrategySession, config: object,
                       *, registry: DecisionV2Registry | None = None,
                       ) -> list[CwAction]:
     """三遍编排 + 帧稳定截断(纯函数;R189-4 结构签名;决策输入 =
-    obs(黑板)+ session 容器直读)。
+    容器 game state 直读,迭代阶段 3.5 去 obs 形参)。
 
     ev_arm 模式参数取 ``config.ev_arm``(缺省 full;非法值回落 full)。
     截断语境供给(R196 症5):conditional 类名-槽一致性复检消费的
-    bench 占用槽位集,自黑板观察 ``obs.bench_chars`` 现读派生。
+    bench 占用槽位集,容器读口 ``bench_slots_of`` 现读派生。
     """
     ev_arm = getattr(config, 'ev_arm', 'full')
     if ev_arm not in entry.EV_ARM_VALUES:
         ev_arm = 'full'
-    emitted = entry.emit(obs, session, config,
+    emitted = entry.emit(session, config,
                          ev_arm=ev_arm, registry=registry)
     # route_tag 伴带透传(方案 v2.1 §3.3 通道载体主案,ADR-0596 收编):
     # 发射臂身份自 Emitted.reason 写入动作自带字段,消旧「actions 列表

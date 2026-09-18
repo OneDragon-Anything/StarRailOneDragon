@@ -34,9 +34,9 @@ class WearEquipOp(ActionOp):
         按名定位源件 → 单次拖拽。机械执行零判效:发出即记账
         (emitted=True),拖后零读屏零落地判定;拖拽静默不生效由下一
         入口观察对账显影(账实失配 → 安灯停 → 按真 bug 修),重派重算
-        = 决策循环按新观察自然承接。逻辑态(owned 摘件)容器腿经执行器
-        emitted 门放行后的 apply_op_effect 直写,黑板腿在观察侧
-        ``_project_prep_obs`` 直写。
+        = 决策循环按新观察自然承接。装备域容器腿 = 容器零写
+        (action-logic-state.md 正本申报「消费真值归观察」,截断点独占
+        发射帧零窗口,下一入口 heavy 覆盖)。
 
         [索引定义] 拖拽坐标 = owned 网格定位点(格心 = read_equips 逐格
         分类现读)→ 目标排 avatar 拖点(screen_info 建档派生)。

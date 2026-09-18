@@ -53,8 +53,9 @@ class ToolUseOp(ActionOp):
         源件 = 工具 icon(按注册名定位);目标 = equip 模式 owned 网格
         icon / char 模式角色槽位中心。零消耗确认对拍(裁决 3:原
         CwOpTools 三态对拍随原子化由观察承接)——拖后固定等待,消费
-        真值 = 下一帧装备区读数;逻辑态(工具 −1/库存变换)在
-        ``_project_prep_obs`` 按 ``EQUIP_WRITE_SIDES`` 申报直写。
+        真值 = 下一帧装备区读数;装备域容器腿 = 容器零写
+        (action-logic-state.md 正本申报「消费真值归观察」,截断点独占
+        发射帧零窗口,下一入口 heavy 覆盖)。
         """
         action: CwAction = self.action
         ex = env.executor

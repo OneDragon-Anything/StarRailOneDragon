@@ -1430,7 +1430,9 @@ def project_effect_capacity(gs: GameState) -> None:
 # ============================================================ 备战席观察写端(§3.2.5)
 
 
-def bench_view_from_obs(bench_chars: list) -> BenchView | None:
+def bench_view_from_obs(bench_chars: list,
+                        item_kind_by_slot: dict[int, str] | None = None,
+                        ) -> BenchView | None:
     """备战席 SIFT 读链 → BenchView(观察写端的值构造;§3.2.5 观察写端=本屏)。
 
     - **空集 = 失读非全空**(P2-1 批次二落地审):overlay 残留/动画帧/识别
@@ -1441,11 +1443,15 @@ def bench_view_from_obs(bench_chars: list) -> BenchView | None:
       静默丢弃 = 身份静默丢失);
     - ``is_item_slot`` 占位件(读链道具位,箱/典籍/书册卡)→ supply_box
       槽位往返保旗标(占 1 席、非可卖燃料;与 :func:`bench_slots_to_legacy`
-      的重建分支配对);
+      的重建分支配对)。``item_kind_by_slot``(迭代 2026-09-18-prep-obs-
+      retirement 阶段 3.5)= 槽号 → 'supply_box'/'tome' 细分映射(观察链
+      用同帧 read_supply_boxes/read_tomes 槽号集构造;缺省 None = 旧行为
+      逐位不变,占位件恒 supply_box);
     - 非 None 返回 = 槽位保序映射(下标 i = 物理槽 i+1,与 sim 合成口同构)。
     """
     if not bench_chars:
         return None
+    _kind_map = item_kind_by_slot or {}
     slots: list[BenchSlot] = [BenchSlot(kind='empty')] * BENCH_CAPACITY_DEFAULT
     for bc in bench_chars:
         s = int(getattr(bc, 'slot', 0) or 0)
@@ -1453,8 +1459,10 @@ def bench_view_from_obs(bench_chars: list) -> BenchView | None:
             if bool(getattr(bc, 'is_item_slot', False)):
                 # 占位件保旗标(与 bench_view_of_slots 的 supply_box 映射配对):
                 # 恒映射 'unit' 会把占位件退化成 '' 1★ 可卖燃料,腾席守卫失守
-                #(波 4 落码审 A 组探针同款形态)。
-                slots[s - 1] = BenchSlot(kind='supply_box')
+                #(波 4 落码审 A 组探针同款形态)。细分映射缺省 supply_box,
+                # 典籍槽(同帧 read_tomes 槽号集)精确为 'tome'。
+                slots[s - 1] = BenchSlot(
+                    kind=_kind_map.get(s, 'supply_box'))
                 continue
             slots[s - 1] = BenchSlot(kind='unit', unit=Unit(
                 char_id=str(getattr(bc, 'char_id', '') or ''),
@@ -1515,10 +1523,11 @@ def bench_slots_to_legacy(view: BenchView) -> list:
     for i, slot in enumerate(view.slots):
         u = getattr(slot, 'unit', None)
         kind = getattr(slot, 'kind', 'empty')
-        if kind == 'supply_box':
+        if kind in ('supply_box', 'tome'):
             # 占位件往返重建(与 bench_view_of_slots 的 supply_box 映射
-            # 配对):is_item_slot=True 的 BenchChar,守卫线(占位恒拒)
-            # 与部署装配点识别线消费同旗标。
+            # 配对;tome 分支 = 阶段 3.5 kind 细分配对——reviewer r1 #1
+            # 申报的「单边破裂」处置):is_item_slot=True 的 BenchChar,
+            # 守卫线(占位恒拒)与部署装配点识别线消费同旗标。
             out.append(BenchChar(slot=i + 1, char_id='', star=1,
                                  is_item_slot=True))
             continue
@@ -1672,6 +1681,11 @@ def bench_view_of_slots(bench_list: list) -> BenchView:
             # 占位恒拒防线与部署装配点识别线共用)→ supply_box kind 往返
             # 保旗标——恒映射 'unit' 会让占位件在容器决策面退化成 '' 1★
             # 可卖燃料(腾席守卫失守,波 4 落码审 A 组探针实证)。
+            # ⚠️ 类型降级申报(阶段 3.5):本口输入是 is_item_slot 布尔,
+            # 无 box/tome 类型信息,占位件恒 supply_box——kind 细分的权威
+            # 写端 = bench_view_from_obs 的 item_kind_by_slot(生产观察链);
+            # 本口仅 sim 合成/逻辑态面(占位件稀有路径),细分降级 = 已知
+            # 边界非缺陷。
             slots.append(BenchSlot(kind='supply_box'))
         else:
             slots.append(BenchSlot(kind='unit', unit=Unit(
@@ -2302,8 +2316,9 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
                             session: object = None) -> None:
     """备战动作逻辑态直写(逐动作零读屏的期望态纯计算推进的容器半;
     设计件《prep 链容器化方案》§2.4-3;R9 全覆盖扩域见
-    :data:`PREP_PROJECTION_DOMAINS` 登记面)。落位 = 本写口单一源,
-    消费位 = ``cw_screen_prep._project_prep_obs``(黑板帧保留视觉域半)。
+    :data:`PREP_PROJECTION_DOMAINS` 登记面)。落位 = 本写口**唯一更新点**
+    (迭代 2026-09-18-prep-obs-retirement 阶段 3.5:备战环执行点统一调用,
+    原黑板投影函数随 gs.prep_obs 退役删除)。
 
     session(可选):执行侧 tracked 主账宿主。溢出腿落地时同帧
     对称吸收进 ``tracked_bench_chars``(见 SellBench 分支)——容器腿只写
@@ -2363,11 +2378,13 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
         ClickSpheres,
         DeployMove,
         LevelUp,
+        OpenBookcard,
+        OpenTome,
         SellBench,
         SellDeployed,
     )
     if not isinstance(action, (SellBench, SellDeployed, DeployMove, LevelUp,
-                               ClickSpheres)):
+                               ClickSpheres, OpenTome, OpenBookcard)):
         # 集外动作型:零写(登记面申报,等观察覆盖;禁扩静默)。
         return
     _grp_sig = (sig if sig.group_id is not None else _dc_replace(
@@ -2378,13 +2395,19 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
                        evidence=evidence, sig=_grp_sig)
 
     if isinstance(action, SellBench):
-        bench_slots = bench_slots_of(gs)
+        # 原生 BenchSlot 形态操作(阶段 3.5:不走 bench_slots_of→
+        # bench_view_of_slots legacy roundtrip——is_item_slot 布尔无法
+        # 恢复 box/tome 类型,roundtrip 会让 kind 细分在首次写后退化为
+        # supply_box,OpenTome 臂分派失据)。
+        _bview = gs.bench.value
+        bench_slots = list(_bview.slots) if _bview is not None else []
         idx = int(action.bench_idx)   # 槽位表下标直取(统一坐标系,零换算)
-        if not (0 <= idx < len(bench_slots)) or bench_slots[idx] is None:
-            return   # 陈旧提案(守卫),本口零写
-        sold = bench_slots[idx]
-        new_slots = list(bench_slots)
-        new_slots[idx] = None
+        if not (0 <= idx < len(bench_slots)) or bench_slots[idx] is None \
+                or bench_slots[idx].kind != 'unit' \
+                or bench_slots[idx].unit is None:
+            return   # 陈旧提案(空槽/占位件无卖出语义),本口零写
+        sold = bench_slots[idx].unit
+        bench_slots[idx] = BenchSlot(kind='empty')
         # 溢出腿(规则 = flow/action-logic-state.md §2.4 溢出条
         # 件行):席满溢出态(overflow_warning 在场)下卖牌,腾出槽当帧记
         # 溢出卡入位——「卖 → 溢出卡自动入自由槽」是游戏侧行为(prep.md
@@ -2396,10 +2419,9 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
         _ov_warn = gs.overflow_warning.value
         _ov_id = gs.overflow_card.value
         if _ov_warn and _ov_id:
-            from sr_od.application.currency_war.kernel.cw_exec_state import (
-                BenchChar,
-            )
-            new_slots[idx] = BenchChar(slot=idx + 1, char_id=_ov_id)
+            bench_slots[idx] = BenchSlot(
+                kind='unit', unit=Unit(char_id=_ov_id, star=1, equips=[],
+                                       slot=idx + 1))
             _w(gs.overflow_card, '', 'proj_overflow_absorbed')
             _w(gs.overflow_warning, False, 'proj_overflow_cleared')
             # 执行侧 tracked 对称吸收:入位卡同帧记进执行主账,
@@ -2410,6 +2432,7 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
             # 腿同构,下帧 heavy 实读覆盖修正(观察赢)。
             if session is not None:
                 from sr_od.application.currency_war.kernel.cw_exec_state import (
+                    BenchChar,
                     bench_from_compact,
                 )
                 _books = gs.tracked_books
@@ -2417,7 +2440,11 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
                             if bc is not None and bc.slot != idx + 1]
                 _tracked.append(BenchChar(slot=idx + 1, char_id=_ov_id))
                 _books.bench = bench_from_compact(_tracked)
-        _w(gs.bench, bench_view_of_slots(new_slots), 'proj_sell_bench')
+        _w(gs.bench, BenchView(slots=bench_slots,
+                               capacity=(_bview.capacity
+                                         if _bview is not None
+                                         else BENCH_CAPACITY_DEFAULT)),
+           'proj_sell_bench')
         g = gs.gold.value
         if g is not None:
             refund = sell_refund(int(getattr(sold, 'star', 1) or 1),
@@ -2445,18 +2472,29 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
 
     if isinstance(action, DeployMove):
         from sr_od.application.currency_war.kernel.cw_exec_state import (
+            BenchChar,
             deployed_place,
         )
-        bench_slots = bench_slots_of(gs)
+        # bench 侧原生 BenchSlot 操作(阶段 3.5,同 SellBench 分支理由:
+        # legacy roundtrip 会丢 kind 细分);deployed 侧 deployed_place
+        # 消费 BenchChar 形态,bench unit 按 ADR-0392 转换喂入。
+        _bview = gs.bench.value
+        bench_slots = list(_bview.slots) if _bview is not None else []
         dep_slots = deployed_slots_of(gs)
         from_idx = int(action.bench_idx)   # 槽位表下标直取(统一坐标系)
         to_row = getattr(action, 'to_row', '')
         if to_row not in ('front', 'back'):
             return   # 参数非法(词表校验在册),本口零写
         if not (0 <= from_idx < len(bench_slots)) \
-                or bench_slots[from_idx] is None:
+                or bench_slots[from_idx] is None \
+                or bench_slots[from_idx].kind != 'unit' \
+                or bench_slots[from_idx].unit is None:
             return   # 陈旧提案(守卫:源槽空),本口零写
-        moved = bench_slots[from_idx]
+        _mu = bench_slots[from_idx].unit
+        moved = BenchChar(slot=from_idx + 1,
+                          char_id=str(_mu.char_id or ''),
+                          star=int(_mu.star or 1),
+                          equips=list(_mu.equips or []))
         # 首空落位(与 simulate DeployMove 分支同式单一源:按 position_pref
         # 路由首选排,排满 fallback 另一排;槽号信息位在落位口重写)。
         # 先试落位后写账:板满(placed None)= 陈旧提案,本口零写。
@@ -2465,9 +2503,12 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
         placed_idx = deployed_place(scratch, moved)
         if placed_idx is None:
             return   # 陈旧提案(守卫:两排全满),本口零写
-        new_bench = list(bench_slots)
-        new_bench[from_idx] = None
-        _w(gs.bench, bench_view_of_slots(new_bench), 'proj_deploy_src_clear')
+        bench_slots[from_idx] = BenchSlot(kind='empty')
+        _w(gs.bench, BenchView(slots=bench_slots,
+                               capacity=(_bview.capacity
+                                         if _bview is not None
+                                         else BENCH_CAPACITY_DEFAULT)),
+           'proj_deploy_src_clear')
         front, back = deployed_slots_to_rows(scratch)
         _w(gs.front_row, front, 'proj_deploy_front')
         _w(gs.back_row, back, 'proj_deploy_back')
@@ -2493,6 +2534,28 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
             count=len(_pts),
             colors=tuple(dict.fromkeys(p[0] for p in _pts)),
             points=_pts), 'proj_click_spheres_drop')
+        return
+
+    # OpenTome/OpenBookcard(阶段 3.5 腾席分支;开件即腾席 = bench 槽位
+    # kind → empty,占席事实进容器。OpenBox 不列:R7 终结化,终结交回后
+    # 下一入口 heavy 覆盖,零窗口;WearEquip/工具原子装备腿不列——正本
+    # action-logic-state.md 申报「消费真值归观察」,且均为截断点独占
+    # 发射帧,下一入口 heavy 即覆盖)。
+    if isinstance(action, (OpenTome, OpenBookcard)):
+        view = gs.bench.value
+        if view is None:
+            return   # bench 未观察,零写(等观察覆盖)
+        _kind = 'tome' if isinstance(action, OpenTome) else 'supply_box'
+        slots = list(view.slots)
+        _idx = (int(action.slot) - 1 if action.slot is not None
+                else next((i for i, s in enumerate(slots)
+                           if s is not None and s.kind == _kind), None))
+        if _idx is None or not (0 <= _idx < len(slots)) \
+                or slots[_idx] is None or slots[_idx].kind != _kind:
+            return   # 陈旧提案(槽不存在/类型不符),本口零写
+        slots[_idx] = BenchSlot(kind='empty')
+        _w(gs.bench, BenchView(slots=slots, capacity=view.capacity),
+           'proj_open_item_clear')
         return
 
     # LevelUp(单击;xp/level 推进 + gold −action.cost 直写,批2b 翻转)
@@ -3250,9 +3313,9 @@ class GameState:
     # —— 节点序列探针簿记宿主(非 Field;终态契约 §A′ 自 session 迁入,
     # 成员与访问纪律见 :class:`NodeBooks` 类注)——
     node_books: NodeBooks = field(default_factory=NodeBooks)
-    # —— 备战黑板帧宿主(非 Field;终态契约 §2.6 自 session.prep_obs_frame
-    # 迁入;整帧快照语义,观察装配点整帧覆盖写,bridge 决策读。局级清零)——
-    prep_obs: object | None = None
+    # (备战黑板帧宿主 prep_obs 已随黑板退役删除——迭代
+    #  2026-09-18-prep-obs-retirement 阶段 3.5:名单/装备/占用/球全部
+    #  容器域承载,策略器唯读容器契约归位。)
 
     # —— 帧触发代次双槽(非 Field 簿记;终态契约 §B:session
     # prep_frame_class/shop_frame_class 退役迁此,两槽互不相干禁合并——

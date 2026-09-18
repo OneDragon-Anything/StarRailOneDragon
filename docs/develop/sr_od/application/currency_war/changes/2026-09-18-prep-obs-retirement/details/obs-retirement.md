@@ -52,6 +52,14 @@
 4. **缓存与 light 分支退役**：`_cached_bench`/`_cached_deployed`/`_cached_vacancy`/`_cached_gold_trusted`/`_cached_owned_equips`/`_cached_occupied_equips`/`_cached_back_layout_slots`/`_cached_shop_cards`（shop payload 容器已有）/`_prev_spheres_raw`（防抖移观察链局部）全删；`_observe` 的 light 分支整体退役（「现生产无调用方」申报在册，cw_screen_prep.py:546）。
 5. **验收**：符号清零 grep（`gs.prep_obs` / `prep_obs` 写读点 / `PrepObservation` 已删字段 / `_cached_` 系 / 黑板投影腿分支 / `state_gold_trusted` 残留指引注释）+ 全量测试 + **OpenBox/OpenTome 臂分派用例**（bench kind='supply_box'/'tome' 槽号分派正确）+ 实机一局 smoke（决策迹锚与改前同难度局对照，参照 `changes/2026-09-16-strategy-input-unification/landing.md` 的 smoke 申报形态；候实机窗口，不阻代码收口、阻迭代收尾）。
 
+### 阶段 3.5 实施期修正（落地实况与原稿的差异，验收按本段为准）
+
+1. **词表补齐清单收缩**：`WearEquip`/工具原子族**不进写口**——正本 `action-logic-state.md` 申报「消费真值归观察」，且两者均为截断点（独占发射帧）→ 发出即 visit 结束 → 下一入口 heavy 覆盖，**零窗口暴露**；原稿列名过度设计。实际进写口的只有 `OpenTome`/`OpenBookcard` 腾席分支（bench 槽 kind → `empty` 化；OpenTome 非终结、同 visit 后续帧球谓词消费 bench 席空数，存在真实窗口）。词表外防线语义 = **合法零写**（登记面申报,docstring 明列两集），非 AssertionError——AssertionError 随投影函数整体消亡。测试锚 = `test_vocab_actions_all_have_logic_state_projection`（写口分支集 write_seq 推进 + 零写集 write_seq 不变的行为锁）。
+2. **kernel 写口 bench 侧原生化（roundtrip 残余根因修）**：`SellBench`/`DeployMove` 分支原走 `bench_slots_of`→`bench_view_of_slots` legacy roundtrip——`is_item_slot` 布尔无法恢复 box/tome 类型,roundtrip 会让 kind 细分在**写口首次写后退化为 supply_box**,OpenTome 臂分派失据（T-5 实施中 2a 锁实测暴露）。修 = 两分支改原生 `BenchView.slots` 操作（Unit 直取消费）,legacy roundtrip 从写口消失。
+3. **`lifecycle_decision_cycle` 的 `payload` 形参保留**——基类 `cw_screen_op_base` 抽象签名（统一分发面传参）,子类覆写禁减参;本类零消费,docstring 申报。
+4. **黑板球腿删除收口**：`_project_prep_obs`（含 `_project_tool_obs`）整体删除即覆盖——ClickSpheres 的黑板推进随函数消亡,容器写口（阶段 3.4）为唯一摘球端。
+5. **`front_occupied`/`back_occupied` 保留**（对拍腿识别轻字段,消费在观察链内部;阶段 3.3 修正的延续）,其余字段按去向表删。
+
 ## 关键取舍
 
 1. **宝箱/典籍像素坐标不落盘**——动作参数只需槽号（entry.py:458-461 实证消费形态），槽号→点击坐标是 1080p 固定布局映射（执行器 `_bench_pts` 簇现算）；落盘像素会引入第二份坐标真值。用户裁定 2026-09-18（宝箱/典籍在备战席里，归 bench 表达）。
