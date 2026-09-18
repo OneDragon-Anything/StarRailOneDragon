@@ -8,7 +8,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     pad_bench,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
-    SellBench,
+    CwActionSellBenchParam,
     mutate_bench_deployed,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
@@ -23,7 +23,7 @@ class SellBenchOp(ActionOp):
     """卖一张 = 一个动作 op;卖回金实收遥测 = 执行实现层(候选 a)。"""
 
     def execute(self, env: ShopExecEnv) -> bool:
-        action: SellBench = self.action
+        action: CwActionSellBenchParam = self.action
         op, match, ledger = env.op, env.match, env.ledger
         from sr_od.application.currency_war.kernel.cw_game_state import (
             bench_slots_of,

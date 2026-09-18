@@ -76,7 +76,7 @@ def encounter_options() -> tuple[EncounterOption, ...]:
 
     ``EncounterOption.difficulty`` 坐标系 = kernel 档位序 1 基(1=易..
     4=难,与 ``decide_encounter`` 的 diff_norm 归一同域);idx = 档位集
-    0 基下标(策略器 PickEvent option_idx 消费)。实机档位含敌人词缀
+    0 基下标(策略器 CwActionPickEventParam option_idx 消费)。实机档位含敌人词缀
     构成(战后才显,cw_screen_encounter 在案)不建模——词缀对战斗的
     数值影响随第一期随机输出面无消费(设计稿 M20)。
     """
@@ -193,7 +193,7 @@ def box_options() -> tuple[str, ...]:
 def apply_box_pick(gs: GameState, equip_name: str) -> None:
     """开箱入账:选中装备直入装备栏(箱不可卖 = M09 物品槽语义,装备
     一经入账即 owned;箱体本身不入备战席——开箱即腾席,cw_vocab
-    OpenBox 执行语义)。"""
+    CwActionOpenBoxParam 执行语义)。"""
     gs.observe(gs.equips, list(gs.equips.value or []) + [equip_name],
                evidence=sim_evidence('box:equip'),
                sig=obs_sig(group_id='sim:box'))
@@ -214,7 +214,7 @@ def supply_options(rng: random.Random) -> tuple[SupplyOption, ...]:
 
     ``SupplyOption.char`` 恒空(补给 = 装备选;kernel 选项结构的角色
     维是实机读屏兼容面,补给无角色内容);``idx`` = 选项 0 基下标
-    (PickEvent option_idx 消费)。offer 内不重名(同屏 3 件互异装备,
+    (CwActionPickEventParam option_idx 消费)。offer 内不重名(同屏 3 件互异装备,
     画面语义;不放回采样)。
     """
     pool = sorted(SYNTHESIS_BASES)

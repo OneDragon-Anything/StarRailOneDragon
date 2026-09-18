@@ -84,22 +84,22 @@ KEY_PRECHECK_SKIP: str = 'launch_arbitrage_precheck_skip'
 def launch_spend_cost(action) -> int:
     """动作逻辑态成本(预算闸用;零新判据,成本字段随动作类单一来源)。
 
-    - BuyCard:``card.cost``(缺省 3 中费保守估,与评估栈 check_affordable
+    - CwActionBuyCardParam:``card.cost``(缺省 3 中费保守估,与评估栈 check_affordable
       同口径);
-    - LevelUp 族(含 LevelUpShop):``cost`` 属性(策略器发射时写入的
+    - CwActionLevelUpParam 族(含 CwActionLevelUpShopParam):``cost`` 属性(策略器发射时写入的
       整批单击金;缺省 0 = 无成本动作不辖闸);
-    - RefreshShop:``cost``(刷价现读随动作;缺省 0);
+    - CwActionRefreshShopParam:``cost``(刷价现读随动作;缺省 0);
     - 其余(卖出/部署事务族):0——卖出回金不减仓,部署事务金效应
       预算闸不辖(闸辖「花」,不辖「换手」)。
     """
     from sr_od.application.currency_war.kernel.cw_vocab import (
-        BuyCard,
-        LevelUp,
-        RefreshShop,
+        CwActionBuyCardParam,
+        CwActionLevelUpParam,
+        CwActionRefreshShopParam,
     )
-    if isinstance(action, BuyCard):
+    if isinstance(action, CwActionBuyCardParam):
         return int(getattr(getattr(action, 'card', None), 'cost', 0) or 3)
-    if isinstance(action, (LevelUp, RefreshShop)):
+    if isinstance(action, (CwActionLevelUpParam, CwActionRefreshShopParam)):
         return int(getattr(action, 'cost', 0) or 0)
     return 0
 

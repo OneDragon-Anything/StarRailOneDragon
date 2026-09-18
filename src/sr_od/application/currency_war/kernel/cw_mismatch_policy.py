@@ -70,7 +70,7 @@ class ExemptEntry:
 EXEMPT_REGISTRY: dict[tuple[str, str], tuple[ExemptEntry, ...]] = {
     # 备战帧随机收入盲区:奖励节点点球金(奖励球内容随机,金额执行点
     # 不可推算)不预入逻辑金账——声明盲区锚 = cw_exec_state.apply_op_effect
-    # 的 ClickSpheres 零推进申报与 prep_actions._executed_gold_delta
+    # 的 CwActionClickSpheresParam 零推进申报与 prep_actions._executed_gold_delta
     # docstring。下一备战帧实读把「卖牌退款投影」证伪时,差值恰为该随机
     # 收入,属机制性差异非推算 bug;豁免行留证可审计,真投影错(退款
     # 公式错)由 sim 单帧锁守,不经本条目兜。点球收入若证实可确定性
@@ -80,7 +80,7 @@ EXEMPT_REGISTRY: dict[tuple[str, str], tuple[ExemptEntry, ...]] = {
             screen='货币战争-备战', field='gold',
             logic_evidence='proj_sell_refund',
             reason='备战帧随机收入(奖励节点点球金)不可预知,声明盲区'
-                   '(kernel/cw_exec_state apply_op_effect ClickSpheres '
+                   '(kernel/cw_exec_state apply_op_effect CwActionClickSpheresParam '
                    '零推进申报;2026-09-16 归因批 journal 实证 +4/+7 两起)'),
     ),
 }
@@ -323,9 +323,9 @@ EXTERNAL_EQUIP_GRANTS: dict[str, int] = {
 #: (选卡确认挂点发账),不属外部授予吸收面;卡文随机金/条件金类(爆晶矿
 #: 族战利品晶矿、黄晶矿工、节假日礼盒、招财狗佩佩供金、搜打撤首领价值
 #: 金、深井角斗场宝钻金)金额执行点不可推算,与备战帧点球金同族;备战环
-#: ClickSpheres 点球金的主吸收面 = ``GameState._absorb_prep_sphere_
+#: CwActionClickSpheresParam 点球金的主吸收面 = ``GameState._absorb_prep_sphere_
 #: income``(pending 闩 = ``ExecBooks.prep_sphere_income_pending``,置位端
-#: = apply_op_effect ClickSpheres 分支按载荷球数开窗,正向差精确吸收,
+#: = apply_op_effect CwActionClickSpheresParam 分支按载荷球数开窗,正向差精确吸收,
 #: 店开帧收口;20260918-reconcile 第 9 例收口——豁免条目 screen 维与金
 #: 真值读帧备战-开商店错位,转残量面零改保留);节点边界战斗收入
 #: (非投资卡)无结算写端 = 补结机制域,本模块不设申报位。

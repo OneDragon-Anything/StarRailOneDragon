@@ -75,7 +75,7 @@ class DecisionV2Registry:
     #: 唯一加权实现 cw_discipline_rules.star_weighted_copies 仍为同名
     #: 加权,分星接线随 P1 落码批落地,落地前以旧实现为准。
     #: (`w242_star_directed/`/ADR-0405 C 项)同为「完成素材放行」语义对称,无条件于
-    #: 末窗 gap(完成价值全程存在,不作定向授权)。仅辖 BuyCard
+    #: 末窗 gap(完成价值全程存在,不作定向授权)。仅辖 CwActionBuyCardParam
     #(synthesize 候选虽 merge=True 但不辖)。
     #: 开臂裁决(ADR-0438,`w436_merge_exempt_ab/` A/B 兑现,CI 口径同 `w422_form_ab/`/`w429_dup_ab/`):第三张
     #: offer 买率 off 53.93%→ex 83.52%(+29.6pp CI [21.1,38.9] 显著)/
@@ -298,7 +298,7 @@ class DecisionV2Registry:
     #: 折中——买是一次性金→板面资产兑换,「停在低档到位面末」的
     #: 上界前件描述的 FORM 政策态由相位地板辖,不在 EV 门重复计罚;
     #: 3.0=两界之间的保守中点,网格精调(1-5)留 sim 批。只辖买侧
-    #: (arbiter.interest_rule 的 BuyCard 分支);刷新(D)与升级平台账
+    #: (arbiter.interest_rule 的 CwActionBuyCardParam 分支);刷新(D)与升级平台账
     #: 保持平面 R 上界不动(P5⑤ 退化输出/平台语义)。
     interest_recovery_rounds: float = 3.0
     # ===== `w154_p2d/`/ADR-0361 P2 段 V_D 修法(P11/P12 口径;常数归本层可 A/B 注入)=====
@@ -514,7 +514,7 @@ class DecisionV2Registry:
     engine_complete_grade_down: bool = True
     # ===== `w179_gate/`/ADR-0372 P1 早期新件买入门(双条件窗:缺件密度 × 息档口径)=====
     #: 总开关:False=回 `w174_deploy/` 后行为(A/B 基线臂;FORM 相位地板对配方对
-    #: 件买入照旧全拒)。True 时 arbiter.gold_floor 对满足窗的 BuyCard
+    #: 件买入照旧全拒)。True 时 arbiter.gold_floor 对满足窗的 CwActionBuyCardParam
     #: 放行「买入后同息档」的购买(窗语义见 discipline.p1_early_gate_open
     #: 与 arbiter 的逐笔息档/单轮上限检查)——修 `w173_supply/`/`w175_gate/` 的 pass_buy
     #: 形态(own<门槛=买少了:缺件曾 1-3 费出现在店、金 7-15 金穷轮,
@@ -551,7 +551,7 @@ class DecisionV2Registry:
     #: 卖出的件均非 engine_char_names 名单件,方向切换后失去目标身份)。
     #: 不辖:非 TT 件/owned>tier 的冗余件(体系有余量时清仓照旧)/
     #: execute_replacement 保留序卖出(ADR-0360 件3+ADR-0363 件1
-    #: 已辖)/谷底回滚 SellDeployed(恢复机件)。
+    #: 已辖)/谷底回滚 CwActionSellDeployedParam(恢复机件)。
     sell_sole_engine_guard_enabled: bool = True
     # ===== `w192_seelex/`/ADR-0375 希儿系守卫辖域补全(迁移审计 w190(git 历史) 巡检两件)=====
     #: 希儿系(四过渡体系之一,单卡判据)并入卖侧唯一体系引擎守卫与
@@ -583,12 +583,12 @@ class DecisionV2Registry:
     #: 压死良性轮换」语义保持)/补完事务 sell(_locked_protected_names
     #: 引擎键∪pair 成员保护已覆盖,`w192_seelex/` 辖域不变)。
     sell_floor_exec_guard_enabled: bool = True
-    # ===== `w194_p2line/` [33] 稳态 LevelUp 多击组(迁移审计 w185(git 历史) 泛化)=====
+    # ===== `w194_p2line/` [33] 稳态 CwActionLevelUpParam 多击组(迁移审计 w185(git 历史) 泛化)=====
     #: 总开关:False=回 `w193_p2sim/` 后行为(A/B 基线臂——多击组只在轮内
     #: deploy_cap 拒绝触发补偿时发射,Catch-22 原状)。True 时
     #: arbiter 末段主动发稳态多击组(remediation.steady_state_
     #: levelup_group):进轮 cap 满 ∧ bench 有方向件([33] 稳态字面
-    #: 语义)→ [LevelUp]*clicks_to_next_level 整组,授权=
+    #: 语义)→ [CwActionLevelUpParam]*clicks_to_next_level 整组,授权=
     #: levelup_ev_basis 按 n×总价(稳态下人口位臂天然成立)+
     #: 逐动作 gold_floor 事务性重验(与 deploy_cap 补偿臂同一重验
     #: 链)。修「恒 lv6 通道缺陷」(迁移审计 w185(git 历史):每轮 1 击吞吐,lv6→lv7 需
@@ -717,7 +717,7 @@ class DecisionV2Registry:
     #: ADR-0411)。行为语义:P1
     #: 末窗承接缺口 gap>0(handoff.handoff_gate_gap 单一源复用)**且**
     #: 存在追名 peak≥2 的目标件(锁定采购目标名集内某名 star 加权在
-    #: 手副本 ∈[2,3),距 3合1 只差最后一张)时,向刷新(RefreshShop)
+    #: 手副本 ∈[2,3),距 3合1 只差最后一张)时,向刷新(CwActionRefreshShopParam)
     #: 开放有界预算。**只辖刷新维**(防双计,`w232_filler_star/` A/B/`w242_star_directed/` C 各辖买牌
     #: 维,互斥边界:同一动作只有一条授权来源——买候选走既有
     #: interest_rule 缺口项/copy 放行路径不动;refresh 候选要么走既有
@@ -929,7 +929,7 @@ class DecisionV2Registry:
     #: boss 轮判定(node_type='boss';P1 r9 兜底同辖)。迁移审计 w255(git 历史)/ADR-0410:
     #: 消费面只剩 boss 窗地板/覆盖态语境(b 类保留)。
     boss_round_node_types: frozenset[str] = frozenset({'boss'})
-    #: LevelUp 等级上限(封顶 10)
+    #: CwActionLevelUpParam 等级上限(封顶 10)
     level_max: int = 10
     #: bench 槽容量(游戏常数 9)
     bench_capacity: int = 9

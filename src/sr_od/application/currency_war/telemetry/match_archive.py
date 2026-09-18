@@ -149,10 +149,10 @@ log = log_utils.log
 #: 事件派生列,装配端纯读派生、零新运行时写入)。缺口实锤(g_20260907_075840
 #: p1r1,Saber):执行期 deploy 换血卖出(CwScreenDeploy._sell_offtarget_deployed)
 #: 的逐件身份只在 log 行与匿名计数键(sell_offtarget_*),无遥测行——场上件
-#: 「无卖出动作而消失」挡 pivot 判读。决策时点卖出(SellBench/SellDeployed)
+#: 「无卖出动作而消失」挡 pivot 判读。决策时点卖出(CwActionSellBenchParam/CwActionSellDeployedParam)
 #: 本就逐件在案(actions+期望态快照),不在本列重复;本列吃的是帧间差分:
 #: 相邻决策帧 state.deployed 身份多重集相减,通道分键 sell_recorded(帧动作
-#: SellDeployed 槽位解析命中)/ merge_promoted(同名更高星在场=买牌合成链)/
+#: CwActionSellDeployedParam 槽位解析命中)/ merge_promoted(同名更高星在场=买牌合成链)/
 #: unexplained(= 换血卖出信号通道;感知纠噪也可能落入,判读并读 obs_conflicts)。
 #: 旧档案经 load_archive 版本检查自动重装配补齐。加法字段。
 #: v11(零结算段自标识批,ADR-0615):+段条目 ``settlement_gap``(装配端纯读
@@ -160,7 +160,7 @@ log = log_utils.log
 #: docstring)。锚点病灶:段摘要 rounds_survived 取自收口时点 state.round_num
 #: (备战停滞段可带非零冻结值),「rounds_survived=N 且本段零 outcome 行」
 #: 曾被判读成「结算遥测断流」(实证:g_20260908_165445 续段 run_20260908_
-#: 210431,79 决策帧全冻结 p2-r6、零 StartBattle 发射、rounds_survived=6;
+#: 210431,79 决策帧全冻结 p2-r6、零 CwActionStartBattleParam 发射、rounds_survived=6;
 #: g_20260909_012536,4 次出战尝试未成战后无进展守卫停机,rounds_survived=1
 #: ——两段本就零结算,非遥测丢失)。本字段在场 = 本段零结算,判读直接可见。
 #: 旧档案经 load_archive 版本检查自动重装配补齐。加法字段。
@@ -597,7 +597,7 @@ def _terminal_closure(last_frame: dict[str, Any] | None) -> str | None:
 
     - 步进帧的记录时点 = 动作**执行前**的最近观察(cw_screen_prep
       ``_decide_port`` → ``_record_step(acct['last_obs'], …)``)。末帧动作
-      含 StartBattle ⇒ 该帧观察在全部备战动作执行之后(出战决策以定型
+      含 CwActionStartBattleParam ⇒ 该帧观察在全部备战动作执行之后(出战决策以定型
       观察为输入)→ terminal 可信为执行后账面('start_battle');
       末帧是普通备战动作 ⇒ 轮经强制出战/bail/停机等**异常出口**收口
       (出战没走 decide 记录)→ terminal 滞后一个动作('mid_prep')。
@@ -607,7 +607,7 @@ def _terminal_closure(last_frame: dict[str, Any] | None) -> str | None:
     if last_frame is None:
         return None
     for a in last_frame.get('actions') or []:
-        if isinstance(a, dict) and a.get('__type__') == 'StartBattle':
+        if isinstance(a, dict) and a.get('__type__') == 'CwActionStartBattleParam':
             return 'start_battle'
     return 'mid_prep'
 
@@ -740,7 +740,7 @@ def _hp_pay_events(exo_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 #: 离场通道闭集(单一源;键语义见 _derive_departures docstring)
 DEPARTURE_CHANNELS: tuple[str, ...] = (
-    'sell_recorded',      # 该帧动作 SellDeployed 按 deployed_idx 换算解析命中此件(决策时点卖出)
+    'sell_recorded',      # 该帧动作 CwActionSellDeployedParam 按 deployed_idx 换算解析命中此件(决策时点卖出)
     'merge_promoted',     # 同名更高星在后帧在场(买牌合成链,1★ 副本离场)
     'unexplained',        # 无卖出动作而消失 = 执行期 deploy 换血卖出信号通道
 )
@@ -767,11 +767,11 @@ def _deployed_multiset(frame: dict[str, Any]) -> Counter | None:
 
 
 def _sell_deployed_target_names(frame: dict[str, Any]) -> set[str]:
-    """帧动作里 SellDeployed 的卖出目标名集合(按同帧 deployed 解析槽位身份)。
+    """帧动作里 CwActionSellDeployedParam 的卖出目标名集合(按同帧 deployed 解析槽位身份)。
 
     解析键 = 动作 ``deployed_idx``(= state.deployed 槽位表下标 0-9,
     ADR-0392)——这是唯一能落帧的生产形状:全仓唯一构造点 = kernel
-    cw_state.SellDeployed(cw_evolution 谷底回滚 / sim engine,序列化字段
+    cw_state.CwActionSellDeployedParam(cw_evolution 谷底回滚 / sim engine,序列化字段
     deployed_idx/income/reason/expect,无 row/slot);cw_prep_actions 的
     同名 row+slot 类零构造点、且策略辖外声明不发射(test_cw_shop_line
     辖外锁),不会出现在 decisions 帧。
@@ -782,12 +782,12 @@ def _sell_deployed_target_names(frame: dict[str, Any]) -> set[str]:
     1-6,deployed_slot_no 单一源),条目级 position_pref/slot 信息位随
     序列化保留、由 deployed_place 落位归一,按此对上。键缺失/越界 =
     解析不出身份,不入集合(该件落 unexplained,宁缺勿造不炸)。
-    SellBench 卖的是备战席,不解释场上离场,不入集合。
+    CwActionSellBenchParam 卖的是备战席,不解释场上离场,不入集合。
     """
     names: set[str] = set()
     dep = (frame.get('state') or {}).get('deployed') or []
     for a in frame.get('actions') or []:
-        if not isinstance(a, dict) or a.get('__type__') != 'SellDeployed':
+        if not isinstance(a, dict) or a.get('__type__') != 'CwActionSellDeployedParam':
             continue
         idx = a.get('deployed_idx')
         if isinstance(idx, bool) or not isinstance(idx, int) \
@@ -810,13 +810,13 @@ def _derive_departures(dec: list[dict[str, Any]],
     - 缺口与实锤:执行期 deploy 换血卖出(CwScreenDeploy._sell_offtarget_deployed)
       逐件身份只在 log 行与匿名计数键,无遥测行——复盘实证 g_20260907_075840
       p1r1 Saber(08:00:18 帧 [椒丘,藿藿,Saber] → 08:00:42 帧 [椒丘,艾丝妲,
-      藿藿],无任何 Sell 动作)。决策时点卖出(SellBench/SellDeployed)本就
+      藿藿],无任何 Sell 动作)。决策时点卖出(CwActionSellBenchParam/CwActionSellDeployedParam)本就
       逐件在案(actions+期望态快照,决策迹),不在本列重复。
     - 派生口径:段内相邻决策帧(第 1 基,ts 升序)的 state.deployed 身份
       多重集差;任一侧身份不可知(缺/非列表)整对跳过。战斗不改场上
       (部署/买卖只发生在备战期),帧间差分即备战动作净效果。
     - 通道分键(closed set = DEPARTURE_CHANNELS):
-      sell_recorded = 该帧 SellDeployed 按 deployed_idx 换算解析命中
+      sell_recorded = 该帧 CwActionSellDeployedParam 按 deployed_idx 换算解析命中
       (解析口径见 _sell_deployed_target_names);merge_promoted =
       同名更高星在后帧在场(买牌 3 合 1 的 1★ 副本离场);unexplained =
       其余,首义 = 换血卖出(离场常伴 1:1 到场,行内 same_window_arrivals

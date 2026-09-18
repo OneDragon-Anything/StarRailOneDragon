@@ -299,7 +299,7 @@ for side in ('cw3', 'legacy_v2'):
                 encoding='utf-8').splitlines():
             r = json.loads(line)
             for a in r.get('actions') or []:
-                if a.get('__type__') == 'LevelUp':
+                if a.get('__type__') == 'CwActionLevelUpParam':
                     ups.append(r['gold'])
                     break
     ups.sort()

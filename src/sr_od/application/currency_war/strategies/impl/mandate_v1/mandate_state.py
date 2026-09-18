@@ -225,7 +225,7 @@ class StrategyState:
     # 层确认已执行后写 (动作型名 type().__name__, 当前段序号),物理写入
     # 位三处:①生产商店循环(cw_op_buy_cards.run_buy_waves 执行位);
     # ②sim-replay 驱动器(bridge.decide_shop_screen 逻辑态直写位);③生产 prep
-    # 循环主环(cw_screen_prep 决策循环 OpenShop/执行器分支合流执行位)。
+    # 循环主环(cw_screen_prep 决策循环 CwActionOpenShopParam/执行器分支合流执行位)。
     # 调用方申报:备战期开店循环
     #(cw_screen_prep 开店分支逐动作调 decide_shop_action)无 token 写入
     # 无段序号置位 ⇒ 域内缓存恒不命中(保守端=现行为,读清单点覆盖

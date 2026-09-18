@@ -40,16 +40,16 @@
 ## 实质推进(STALL/LOOP 两分支单一判据,2026-09-03 语义修复)
 
 无操作成功**不算推进**。计为推进的只有:
-  ① plan 结果行含非零动作:现行流程行 = `[cw][director] OpenShop(...) → ✓
+  ① plan 结果行含非零动作:现行流程行 = `[cw][director] CwActionOpenShopParam(...) → ✓
      买牌 plan 买N张 升N次 刷N次 卖N张`(买/升/刷/卖 全 0 = 纯读店空转,
      1-1 卡死循环每 ~23s 一条,旧 PROGRESS 子串判据把它当推进 → STALL
      整局失明);判词用 NONZERO_RE(只认 ≥1 的动作数)。
   ② `[cw][composite]` 复合动作成功(部署/装备等真实执行,prep_actions 发出)。
   ③ state 行/on_round_end 的 round/plane 变化(含新局回绕);「进位面」。
-  ④ 点球收集成功(ClickSpheres → ✓,奖励节点无战斗时的唯一推进迹象,
+  ④ 点球收集成功(CwActionClickSpheresParam → ✓,奖励节点无战斗时的唯一推进迹象,
      08-25 回放实证 03:28/17:07 两例缺它误报)。
 刻意不算:「→ ✓」「执行成功」「出战成功」等裸成功字样——run 24 实证弹窗
-误判下「出战成功」每轮假成功;1-1 卡死实证「OpenShop → ✓」每轮假成功。
+误判下「出战成功」每轮假成功;1-1 卡死实证「CwActionOpenShopParam → ✓」每轮假成功。
 
 ## 版本历史(标定依据随版本保留)
 
@@ -75,7 +75,7 @@ log 387 次全是真崩溃栈);『执行失败』(operation.py:695);『STOPPED�
 (cw_loop.py:1401 round_fail 状态,未触发过,保留);『state gold=』
 (cw_op_buy_cards.py:614);『[cw-loop]』『[cw][battle]』『[cw-deploy]』
 (cw_loop.py/prep_actions.py/cw_op_deploy.py);『[cw][director]』
-(现行 plan 结果行 OpenShop 由 prep_director 发出)。
+(现行 plan 结果行 CwActionOpenShopParam 由 prep_director 发出)。
 已死删除:『人工结束』(operation.py:410 注释实证已被 stop_source 机制取代,
 全文 grep 0 命中,STOPPED 覆盖同事件);『返回状态 plan』『step1/step2
 RunBuyPhase』『[cw][director] step』(W971 备战 step 机→序列契约迁移前的旧核
@@ -238,9 +238,9 @@ SILENCE_SEC = int(os.environ.get('CW_SENTINEL_SILENCE', 360))  # 静默死锁阈
 SILENCE_CONFIRM = int(os.environ.get('CW_SENTINEL_CONFIRM', 420))  # v3.4:二次确认窗
 
 # ── 实质推进判据(v5,STALL/LOOP 单一源;详见文件头「实质推进」节)──────
-# plan 结果行:现行流程 = prep_director 发出的 OpenShop 行;旧核
+# plan 结果行:现行流程 = prep_director 发出的 CwActionOpenShopParam 行;旧核
 # 『返回状态 plan』『step1/step2 RunBuyPhase』已随 W971 迁移死亡(全文 grep 0)。
-PLAN_LINE = ('[cw][director] OpenShop',)
+PLAN_LINE = ('[cw][director] CwActionOpenShopParam',)
 # 非零动作计数(买N张/升N次/刷N次/卖N张,N≥1);全 0 形态不匹配 = 无操作成功。
 NONZERO_RE = re.compile(r'[买升刷卖][1-9]\d*')
 
@@ -256,7 +256,7 @@ LOOP_PREFIXES = ('[cw][director]', '[cw-loop]', '[cw][battle]', '[cw-deploy]')
 # 两种日志形态都认(2026-08-25/26 实测):
 #   ① shop 决策行 'state gold=24 hp=84 lv=4 plane=1 round=3 ...'(cw_op_buy_cards);
 #   ② 战斗回合行 '[cw-loop] on_round_end plane=1 round=9 ...'(两期通用)。
-# 08-25 只认①时三类正常段误报实证:点球爆发(ClickSpheres 同签名一局 7-10 次)
+# 08-25 只认①时三类正常段误报实证:点球爆发(CwActionClickSpheresParam 同签名一局 7-10 次)
 # /备战相位进入/部署跳过——②缺位 → round 推进不可见。
 STATE_GATE = 'state gold='
 ROUND_RE = re.compile(r'round=(\d+)')
@@ -462,7 +462,7 @@ def _loop_feed(line: str, tod: int) -> tuple[bool, str, str]:
     # 点球(奖励球收集)成功 = 实质游戏状态推进——08-25 回放实证:奖励节点无战斗
     # → 无 on_round_end,旧格式 state 行缺位,点球爆发(单轮 4-7 次)是唯一推进
     # 迹象;不认它则奖励段跨 600s 即误报(03:28/17:07 两例实证)。
-    if 'ClickSpheres' in line and '→ ✓' in line:
+    if 'CwActionClickSpheresParam' in line and '→ ✓' in line:
         progressed = True
     if progressed:
         loop_progress.append(tod)
@@ -672,7 +672,7 @@ def process_line(line: str, line_end: int | None) -> tuple[str, bool] | None:
     去重,不提前 return)→ run 终态标记 → 循环/滞留喂行(同时产出实质推进)
     → STALL(零推进下的 WARNING/ERROR 堆积)→ LOOP/DWELL 报警。
     v5:STALL 的推进判据改与 LOOP 共用「实质推进」(无操作成功不算推进),
-    修复 1-1 卡死段「OpenShop 买0张 → ✓」被当推进致 STALL 整局失明的缺陷。
+    修复 1-1 卡死段「CwActionOpenShopParam 买0张 → ✓」被当推进致 STALL 整局失明的缺陷。
     """
     global _seen_terminal
     _t = _tod(line)
@@ -1016,26 +1016,26 @@ def _selftest() -> int:
             lt = time.localtime(ep)
             return f'[{lt.tm_hour:02d}:{lt.tm_min:02d}:{lt.tm_sec:02d}]'
         # 案1 run24/1-1 卡死形态:11 轮同循环(state 行 round/plane 恒定 +
-        # 同签名动作行,含现行 OpenShop 无操作成功行)→ LOOP
+        # 同签名动作行,含现行 CwActionOpenShopParam 无操作成功行)→ LOOP
         lines = []
         for i in range(11):
             t = ts(i * 55)
             lines.append(f'{t} [shop.py 394] [INFO]: [cw] state gold=24 hp=84 lv=4 round=3 node=? plane=1 board={{}} target=\'\' fp=-1.00 bench=2\n')
-            lines.append(f'{t} [prep_director.py 1338] [INFO]: [cw][director] OpenShop({{\'read_only\': False}}) → ✓ 买牌 plan 买0张 升0次 刷0次 卖0张(+0金,守卫拦0) (gold=24 lv=4 plane=1)\n')
-            lines.append(f'{t} [cw_loop.py 1179] [INFO]: [cw-loop] 备战环返回(success=True status=OpenShop ✓)→ 交回顶层分发(下轮全分支重判)\n')
+            lines.append(f'{t} [prep_director.py 1338] [INFO]: [cw][director] CwActionOpenShopParam({{\'read_only\': False}}) → ✓ 买牌 plan 买0张 升0次 刷0次 卖0张(+0金,守卫拦0) (gold=24 lv=4 plane=1)\n')
+            lines.append(f'{t} [cw_loop.py 1179] [INFO]: [cw-loop] 备战环返回(success=True status=CwActionOpenShopParam ✓)→ 交回顶层分发(下轮全分支重判)\n')
         # 案2 正常局:12 轮,每轮 state 行 round 递增 + 无操作成功行 → 不报警
         lines2 = []
         for i in range(12):
             t = ts(i * 55)
             lines2.append(f'{t} [shop.py 394] [INFO]: [cw] state gold=24 hp=84 lv=4 round={i + 1} node=? plane=1 board={{}} target=\'\' fp=-1.00 bench=2\n')
-            lines2.append(f'{t} [prep_director.py 1338] [INFO]: [cw][director] OpenShop({{\'read_only\': False}}) → ✓ 买牌 plan 买0张 升0次 刷0次 卖0张(+0金,守卫拦0) (gold=24 lv=4 plane=1)\n')
-            lines2.append(f'{t} [cw_loop.py 1179] [INFO]: [cw-loop] 备战环返回(success=True status=OpenShop ✓)→ 交回顶层分发(下轮全分支重判)\n')
-        # 案3(v5)无操作成功循环 + WARNING 堆积:全零 OpenShop 不再算推进 →
+            lines2.append(f'{t} [prep_director.py 1338] [INFO]: [cw][director] CwActionOpenShopParam({{\'read_only\': False}}) → ✓ 买牌 plan 买0张 升0次 刷0次 卖0张(+0金,守卫拦0) (gold=24 lv=4 plane=1)\n')
+            lines2.append(f'{t} [cw_loop.py 1179] [INFO]: [cw-loop] 备战环返回(success=True status=CwActionOpenShopParam ✓)→ 交回顶层分发(下轮全分支重判)\n')
+        # 案3(v5)无操作成功循环 + WARNING 堆积:全零 CwActionOpenShopParam 不再算推进 →
         # 同特征 WARNING 堆积达阈值即报 STALL(v4 时代被假推进掩盖)
         lines3 = []
         for i in range(10):
             t = ts(i * 30)
-            lines3.append(f'{t} [cw_screen_prep.py 1338] [INFO]: [cw][director] OpenShop({{\'read_only\': False}}) → ✓ 买牌 plan 买0张 升0次 刷0次 卖0张(+0金,守卫拦0) (gold=4 lv=4 plane=1)\n')
+            lines3.append(f'{t} [cw_screen_prep.py 1338] [INFO]: [cw][director] CwActionOpenShopParam({{\'read_only\': False}}) → ✓ 买牌 plan 买0张 升0次 刷0次 卖0张(+0金,守卫拦0) (gold=4 lv=4 plane=1)\n')
             lines3.append(f'{t} [cw_loop.py 972] [WARNING]: [cw!][loop] 备战连续 10 轮 session 无变化 → 留证(无进展)\n')
         # 案4(v5)节点滞留:同 (plane,round) state 行每 60s 一条 ×20(跨度
         # 1140s ≥ 900)→ NODE-DWELL;无白名单动作行,不与 LOOP 混淆

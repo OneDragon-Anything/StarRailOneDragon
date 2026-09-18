@@ -56,8 +56,8 @@ from sr_od.application.currency_war.kernel.cw_events import decide_event
 from sr_od.application.currency_war.kernel.cw_investments import is_known_env
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_vocab import (
-    PickInvest,
-    RefreshInvestCards,
+    CwActionPickInvestParam,
+    CwActionRefreshInvestCardsParam,
 )
 from sr_od.application.currency_war.obs.cw_node_obs import read_invest_refresh_counts
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
@@ -296,7 +296,7 @@ class CwScreenInvestEnv(CwScreenOpBase):
         match = self.ctx.cw_match
         # 写槽 → 零参决策(终态契约 §2.7:写槽以本分支将调用 decide 为前提;
         # 同访问覆盖写,三分语义 details §2.3)。输出 = 单一 CwAction:
-        # RefreshInvestCards(整组刷新建议)/ PickInvest(选卡)互斥单发。
+        # CwActionRefreshInvestCardsParam(整组刷新建议)/ CwActionPickInvestParam(选卡)互斥单发。
         act = None
         refresh_slots: tuple[int, ...] = ()
         if names:
@@ -321,8 +321,8 @@ class CwScreenInvestEnv(CwScreenOpBase):
                 )
                 _kpick = decide_event(names, config,
                                       _GS_Empty(schema_version=1))
-                act = PickInvest(idx=_kpick.option_idx, reason=_kpick.reason)
-        if isinstance(act, RefreshInvestCards):
+                act = CwActionPickInvestParam(idx=_kpick.option_idx, reason=_kpick.reason)
+        if isinstance(act, CwActionRefreshInvestCardsParam):
             refresh_slots = act.slots
         # ===== 环境刷新 = 终结动作(用户裁定 2026-09-14:刷新 = 唯一引入
         # 新事实的动作,须交回外循环重观察;结构语义 = flow/screen_op.md
@@ -381,12 +381,12 @@ class CwScreenInvestEnv(CwScreenOpBase):
                 self._refresh_pending = True
                 return self.round_retry(wait=1)
             # 闸全败(建议帧但计数无授权)→ 同访问重调落选卡:策略侧同帧
-            # 去重(建议帧首调发建议、紧随重调落选卡)等价旧 PickEvent
+            # 去重(建议帧首调发建议、紧随重调落选卡)等价旧 CwActionPickEventParam
             # 「idx + refresh_slots 并载、闸败回退选卡」行为,零选卡漂移。
             act = match.strategy.decide_invest_env()
-            if isinstance(act, RefreshInvestCards):   # 防御:策略未实现去重
+            if isinstance(act, CwActionRefreshInvestCardsParam):   # 防御:策略未实现去重
                 act = None
-        if isinstance(act, PickInvest) and 0 <= act.idx < len(opts):
+        if isinstance(act, CwActionPickInvestParam) and 0 <= act.idx < len(opts):
             chosen, choose_x = opts[act.idx]
             reason = act.reason
         elif opts:

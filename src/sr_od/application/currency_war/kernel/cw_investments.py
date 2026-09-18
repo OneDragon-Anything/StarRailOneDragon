@@ -390,7 +390,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
 # 边界:只产策略源;环境('portal')/词缀('affix')双源注册属环境/词缀效果辖域,此处不建其条目。
 STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 淘金客:官方「你每次消耗金币刷新商店,都会获得2经验值」;免费刷不产 XP(「消耗金币」
-    # 文本充分;实采复核挂账)。姿态谓词/LevelUp 抑制属淘金客姿态面辖域,本批不接。
+    # 文本充分;实采复核挂账)。姿态谓词/CwActionLevelUpParam 抑制属淘金客姿态面辖域,本批不接。
     '淘金客': EffectSpec(
         id='301601', name='淘金客', trigger=TriggerKind.ON_REFRESH,
         duration=DurationKind.WHILE_HELD, category=EffectKind.STATE,
@@ -421,7 +421,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
         payload=BattlefieldEffect(steal_on_level_up=3),
         duties=DutyFlags(predict=True, respond=True),
-        notes='LevelUp 后商店必刷新+偷最贵 3 张;shop 读牌/买牌对账须预知'),
+        notes='CwActionLevelUpParam 后商店必刷新+偷最贵 3 张;shop 读牌/买牌对账须预知'),
     # 双手狸开键盘!(游戏内单位名 Gemi狸;注册表官方卡名见 204101):
     # 官方「进入新节点时,它会免费刷新商店2次,自动购买你场上拥有的角色」。
     '双手狸开键盘！': EffectSpec(
@@ -689,9 +689,9 @@ def refresh_invest_active(state) -> bool:
     (免费刷新/每刷经验——淘金客/加油站/搜打撤族,与 operations.
     buy_cards 免费刷新采证钩子同族判据)。消费面(ADR-0465 预算收权):
     ① ``economy_cycle.schedule_upgrade``——升级通道退役(sim 注入臂实证:
-    LevelUp 退役是刷驱姿态行为的主驱动,预算式仅是语义显式化);
+    CwActionLevelUpParam 退役是刷驱姿态行为的主驱动,预算式仅是语义显式化);
     ② ``ev.levelup_ev_basis``——升级授权链同步关闭(含人口位臂,
-    与 sim 注入臂的「LevelUp 全抑制」同口径;等级回落预期带
+    与 sim 注入臂的「CwActionLevelUpParam 全抑制」同口径;等级回落预期带
     见批 3 A/B 验证协议 §4 出口 9)。
     """
     for name in (getattr(state, 'active_strategies', None) or ()):

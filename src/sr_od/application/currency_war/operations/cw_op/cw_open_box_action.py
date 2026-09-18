@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_vocab import OpenBox
+from sr_od.application.currency_war.kernel.cw_vocab import CwActionOpenBoxParam
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
     ActionOp,
 )
@@ -27,11 +27,11 @@ class OpenBoxOp(ActionOp):
     """开箱:找箱槽 → 点「开启」→ 固定动画等待(纯机械执行,ADR-0601)。
 
     选卡动作不在本执行链(R7 批 2a 定形):点完开启本动作即终结
-    (OpenBox 终结化,决策循环交回外循环)——武装箱选择画面由外循环
+    (CwActionOpenBoxParam 终结化,决策循环交回外循环)——武装箱选择画面由外循环
     按画面分发独立画面 op(:mod:`cw_screen_box_pick`)选卡(选卡
     决策单一源 = 策略 ``decide_box_card`` 契约 / 局外 kernel
-    ``pick_equipment`` 机器;原「决策面 PickBoxCard 臂 + 执行器选卡半」
-    随 PickBoxCard 删除退役)。
+    ``pick_equipment`` 机器;原「决策面 CwActionPickBoxCardParam 臂 + 执行器选卡半」
+    随 CwActionPickBoxCardParam 删除退役)。
     A3 拆除:「轮询验 overlay 弹出」判效半删除,改固定动画等待
     (等待归产生动画的操作);弹窗就位与否交下一帧观察。
     """
@@ -48,7 +48,7 @@ class OpenBoxOp(ActionOp):
 
     def execute(self, env: PrepExecEnv) -> bool:
         """机械执行;终结动作(交回等待归消费点按 ``terminal_wait`` 读)。"""
-        action: OpenBox = self.action
+        action: CwActionOpenBoxParam = self.action
         ex = env.executor
         from sr_od.application.currency_war.obs.cw_identity_obs import (
             read_supply_boxes,

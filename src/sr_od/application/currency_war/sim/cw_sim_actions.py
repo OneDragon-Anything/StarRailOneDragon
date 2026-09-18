@@ -5,8 +5,8 @@
 
 - **动作应用单一源**:买/卖/刷/升级/换位全部经 kernel 单一转移函数
   ``apply_shop_action_logic``(拒绝语义在腿内,``LogicOutcome`` 出参;
-  禁引擎自判拒绝);部署 = ``DeployMove`` 经 ``apply_prep_action_logic``
-  (kernel 平移契约:DeployMove 不入商店转移口)。满栏合成买/连锁合成
+  禁引擎自判拒绝);部署 = ``CwActionDeployMoveParam`` 经 ``apply_prep_action_logic``
+  (kernel 平移契约:CwActionDeployMoveParam 不入商店转移口)。满栏合成买/连锁合成
   在转移函数内(sim 传 ``executed=None`` 自算 k;刷新实付金由引擎侧
   ``refresh_paid`` 显式喂——免费刷额度先行的申报差异 #2 参数通道);
 - **LEVEL_CAP 分歧反转**(§2.4.2):真值 cap=10、lv10 拒付(旧 sim
@@ -34,7 +34,10 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     apply_shop_action_logic,
     record_refresh_execution,
 )
-from sr_od.application.currency_war.kernel.cw_vocab import CwAction, DeployMove
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwAction,
+    CwActionDeployMoveParam,
+)
 from sr_od.application.currency_war.sim.cw_sim_base import (
     logic_sig,
     obs_sig,
@@ -60,22 +63,22 @@ def apply_player_action(gs: GameState, action: CwAction, *,
                         node_tag: str = 'prep') -> LogicOutcome | None:
     """玩家动作 → 单一转移函数应用(sim 引擎唯一动作入口)。
 
-    - 商店族(BuyCard/SellBench/SellDeployed/SwapDeploy/LevelUpShop/
-      RefreshShop/CloseShop):经 ``apply_shop_action_logic``;刷新实付
+    - 商店族(CwActionBuyCardParam/CwActionSellBenchParam/CwActionSellDeployedParam/CwActionSwapDeployParam/CwActionLevelUpShopParam/
+      CwActionRefreshShopParam/CwActionCloseShopParam):经 ``apply_shop_action_logic``;刷新实付
       金 = ``refresh_cost_for``(免费刷额度先行)显式喂 ``executed``;
-      买牌 k 自算(满栏合成买在转移函数内);LevelUpShop 击数恒 1
+      买牌 k 自算(满栏合成买在转移函数内);CwActionLevelUpShopParam 击数恒 1
       (单动作形态,腾席链多击归策略器多发动作)。
-    - ``DeployMove``:经 ``apply_prep_action_logic``(无出参,返 None;
+    - ``CwActionDeployMoveParam``:经 ``apply_prep_action_logic``(无出参,返 None;
       同名守卫/落位拒绝在腿内)。
     - 应用成功且为刷新 → 刷新执行事实组记账(§3.3.6-8:免费帧闸)。
     """
-    if isinstance(action, DeployMove):
+    if isinstance(action, CwActionDeployMoveParam):
         apply_prep_action_logic(gs, action, produced_by='SimEngineV2',
                                 sig=logic_sig(group_id=f'act:sim@{node_tag}'))
         return None
     paid: int | None = None
-    from sr_od.application.currency_war.kernel.cw_vocab import RefreshShop
-    if isinstance(action, RefreshShop):
+    from sr_od.application.currency_war.kernel.cw_vocab import CwActionRefreshShopParam
+    if isinstance(action, CwActionRefreshShopParam):
         paid = refresh_cost_for(gs)
     outcome = apply_shop_action_logic(
         gs, action, produced_by='SimEngineV2',

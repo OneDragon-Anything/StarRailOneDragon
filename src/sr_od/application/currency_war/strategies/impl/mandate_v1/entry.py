@@ -18,16 +18,16 @@ as-built 权威 = docs/develop/sr_od/application/currency_war/flow/action_exec.m
 .debug 不入 git),§1 即该词表行的首次文档落档,权威链重锚申报 =
 ADR-0585 §5 + flow/action_exec.md §1 正本)+ §3.3 fail-closed(词表外/无分类
 动作 ⇒ 截断 + 计数披露,禁静默丢弃)。发射器实现期增补条目须回契约
-改版,禁只改代码。R196 修复批(症5)对齐:ClickSpheres=条件判(末批
+改版,禁只改代码。R196 修复批(症5)对齐:CwActionClickSpheresParam=条件判(末批
 可能掉箱 ⇒ 其后截断)、conditional 五类名-槽一致性复检(推不出即截断,
 计数 ``emitter_conditional_truncated``)。
 
 R197 修复批(症1)发射序规格:同一 decide 输出内,EV 卖面
 (line_switch_sell/funding_support)与骨架动作按**依赖拓扑**重排——
 EV 卖面全部系 bench 域操作(画面零迁移,契约 §2 可续),而骨架的开店
-意图(OpenShop)系截断点;EV 卖面插到首个截断点/终点动作**之前**
+意图(CwActionOpenShopParam)系截断点;EV 卖面插到首个截断点/终点动作**之前**
 (``_merge_ev_before_frame_end``),否则换线生效帧(M2 对新线缺口发
-OpenShop 的典型帧)的塌缩出口发射会落在截断点之后被静默丢弃
+CwActionOpenShopParam 的典型帧)的塌缩出口发射会落在截断点之后被静默丢弃
 (IMPL_ADV_R197 症1;「EV 只追加」的义务先行语义=02_mandate_layer §2/§7
 权限划界,其追加面=发射
 组织面,执行序按依赖拓扑承载)。截断器丢弃尾动作一律计数
@@ -77,24 +77,24 @@ from sr_od.application.currency_war.kernel.cw_reward_node import (
     reward_node_suppressed,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
-    ClickSpheres,
     CwAction,
-    DeployMove,
-    FurnaceUse,
-    LevelUp,
-    LuckyTokenUse,
-    OpenBox,
-    OpenShop,
-    OpenTome,
-    PerfectProjectorUse,
-    PrecisionWrenchUse,
-    PrivilegeCardUse,
-    SellBench,
-    SellDeployed,
-    StaffProjectorUse,
-    StartBattle,
-    WearEquip,
-    WrenchUse,
+    CwActionClickSpheresParam,
+    CwActionDeployMoveParam,
+    CwActionFurnaceUseParam,
+    CwActionLevelUpParam,
+    CwActionLuckyTokenUseParam,
+    CwActionOpenBoxParam,
+    CwActionOpenShopParam,
+    CwActionOpenTomeParam,
+    CwActionPerfectProjectorUseParam,
+    CwActionPrecisionWrenchUseParam,
+    CwActionPrivilegeCardUseParam,
+    CwActionSellBenchParam,
+    CwActionSellDeployedParam,
+    CwActionStaffProjectorUseParam,
+    CwActionStartBattleParam,
+    CwActionWearEquipParam,
+    CwActionWrenchUseParam,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
     mandate,
@@ -130,7 +130,7 @@ EV_ARM_VALUES: tuple[str, ...] = ('skeleton_only', 'full')
 #: 球内容占席颜色集(迁移 B 球谓词第二腿的判定输入;ADR-0596 §4.9③)。
 #: CV 颜色域 = {'gold','blue','gray'}(cw_identity_obs 圆心 HSV 分类),
 #: 但「颜色 → 内容是否占席」的玩法机制面待实机实证——现役缺省 = 空集
-#(球均按不占席,宁多收球不误卖:点击失败可自愈、SellBench 不可逆;
+#(球均按不占席,宁多收球不误卖:点击失败可自愈、CwActionSellBenchParam 不可逆;
 #: 占席球面的损失面由 2026-09-02 席满球裁定
 #: screen_flow_timing #16「部分没点开自然回补」容忍语义承载)。实证
 #: 落地后在此登记占席颜色,谓词第二腿自动收紧(腾席先于点球)。
@@ -195,26 +195,26 @@ log = logging.getLogger(__name__)
 # ===== 帧稳定截断分类(契约 v2 §3.2 备战线域逐类)=====
 
 #: 截断点(该动作可作序列最后一个动作发出,其后截断)。武装箱选卡(R7)
-#: = 画面 op 分发,非动作词表成员,PickBoxCard 行随批 2a 删除。穿戴/工具
+#: = 画面 op 分发,非动作词表成员,CwActionPickBoxCardParam 行随批 2a 删除。穿戴/工具
 #: 原子(R2/R8,批 2a)= 截断点:穿戴即合成/网格 reflow aftermath 不可
 #: 静态预测(决策侧逐帧现算,每原子独占发射帧)。
 _TRUNCATION_POINTS: tuple[type, ...] = (
-    OpenBox, OpenTome, OpenShop,
-    WearEquip, FurnaceUse, PrivilegeCardUse, WrenchUse, PrecisionWrenchUse,
-    StaffProjectorUse, PerfectProjectorUse, LuckyTokenUse,
+    CwActionOpenBoxParam, CwActionOpenTomeParam, CwActionOpenShopParam,
+    CwActionWearEquipParam, CwActionFurnaceUseParam, CwActionPrivilegeCardUseParam, CwActionWrenchUseParam, CwActionPrecisionWrenchUseParam,
+    CwActionStaffProjectorUseParam, CwActionPerfectProjectorUseParam, CwActionLuckyTokenUseParam,
 )
-#: 终点(只能作序列最后一个动作;StartBattle=出战环出口)
-_TERMINAL: tuple[type, ...] = (StartBattle,)
+#: 终点(只能作序列最后一个动作;CwActionStartBattleParam=出战环出口)
+_TERMINAL: tuple[type, ...] = (CwActionStartBattleParam,)
 #: 可续(画面零迁移/坐标不变)
-_CONTINUE: tuple[type, ...] = (LevelUp,)
+_CONTINUE: tuple[type, ...] = (CwActionLevelUpParam,)
 #: 条件续(bench 索引结构恒稳+名-槽一致性复检;board 空位/星级合成按
-#: 前序动作累积静态推出,推不出即截断——契约 §3.2 五行+ClickSpheres 行;
-#: 原组合动作类(SellDeployed/RunDeploy/RunEquip)行随组合壳删除退役
-#: (unified-action-factory 批2b,R2)——SellDeployed 为显式发射动作,
-#: 复检语境语义与 SellBench 同源,本批起按条件续复检)
+#: 前序动作累积静态推出,推不出即截断——契约 §3.2 五行+CwActionClickSpheresParam 行;
+#: 原组合动作类(CwActionSellDeployedParam/RunDeploy/RunEquip)行随组合壳删除退役
+#: (unified-action-factory 批2b,R2)——CwActionSellDeployedParam 为显式发射动作,
+#: 复检语境语义与 CwActionSellBenchParam 同源,本批起按条件续复检)
 _CONDITIONAL: tuple[type, ...] = (
-    SellBench, SellDeployed, DeployMove,
-    ClickSpheres,                          # 条件:常态可续;末批可能掉箱后截断
+    CwActionSellBenchParam, CwActionSellDeployedParam, CwActionDeployMoveParam,
+    CwActionClickSpheresParam,                          # 条件:常态可续;末批可能掉箱后截断
 )
 
 
@@ -256,22 +256,22 @@ def truncate_frame_stable(actions: list[CwAction],
     前序累积静态推出,推不出即截断」;键 = 容器槽位表下标,unified-action-
     factory 批2b 翻转——bridge 供给语境 = 容器读口占用下标集):
 
-    - ``SellBench``/``DeployMove``:bench 槽位引用对 ``bench_slots``
+    - ``CwActionSellBenchParam``/``CwActionDeployMoveParam``:bench 槽位引用对 ``bench_slots``
       (生成期观察的占用容器下标集)复检 + 前序同序列卖出/拖出累积逻辑态
       (槽位卖出后从逻辑态集移除)——引用空槽/未知槽 ⇒ 推不出 ⇒ 该动作
       处截断 + ``emitter_conditional_truncated`` 计数。``bench_slots``
       缺省 None = 复检语境缺失,按条件成立续发(发射器自身产序列时
       引用即生成期观察,生产路径 bridge 总是供给语境)。
-    - ``ClickSpheres``:末批判——同序列其后还有 ClickSpheres 批次 ⇒
-      非末批,常态分支可续;本批为序列内最后一批 ClickSpheres(可能
+    - ``CwActionClickSpheresParam``:末批判——同序列其后还有 CwActionClickSpheresParam 批次 ⇒
+      非末批,常态分支可续;本批为序列内最后一批 CwActionClickSpheresParam(可能
       掉箱,掉箱弹 overlay 不可静态预测)⇒ 其后截断(契约 §3.2
-      ClickSpheres 行;末批截断系判型内语义,非失败,不计
+      CwActionClickSpheresParam 行;末批截断系判型内语义,非失败,不计
       ``emitter_conditional_truncated``)。
-    - ``SellDeployed``:deployed 槽表下标恒稳(ADR-0392,卖出置 None
+    - ``CwActionSellDeployedParam``:deployed 槽表下标恒稳(ADR-0392,卖出置 None
       不移位),序列内成立 ⇒ 可续。
 
     尾动作丢弃计数(R197 症1②):任一截断路径(词表外/复检失败/截断点/
-    终点/ClickSpheres 末批)丢弃的后续动作逐个计数
+    终点/CwActionClickSpheresParam 末批)丢弃的后续动作逐个计数
     ``emitter_post_truncation_dropped``——截断本身系契约语义(非失败),
     但「丢弃了什么」必须可观测,禁零计数静默(EV 发射被截断丢弃时
     遥测可辨「评估了不发射」vs「发射被丢弃」)。
@@ -300,14 +300,14 @@ def truncate_frame_stable(actions: list[CwAction],
             _count('emitter_unknown_action_truncated')
             return _cut()       # 词表外:该动作处截断(不猜测分类)
         if kind == 'conditional':
-            if isinstance(a, ClickSpheres):
+            if isinstance(a, CwActionClickSpheresParam):
                 has_later_batch = any(
-                    isinstance(a2, ClickSpheres) for a2 in actions[i + 1:])
+                    isinstance(a2, CwActionClickSpheresParam) for a2 in actions[i + 1:])
                 out.append(a)
                 if not has_later_batch:
                     return _cut()  # 末批可能掉箱 ⇒ 其后截断(判型内语义)
                 continue
-            if isinstance(a, SellBench):
+            if isinstance(a, CwActionSellBenchParam):
                 if slots is not None and a.bench_idx not in slots:
                     _count('emitter_conditional_truncated')
                     return _cut()  # 名-槽一致性复检失败:推不出即截断
@@ -315,7 +315,7 @@ def truncate_frame_stable(actions: list[CwAction],
                 if slots is not None:
                     slots.discard(a.bench_idx)
                 continue
-            if isinstance(a, DeployMove):
+            if isinstance(a, CwActionDeployMoveParam):
                 if slots is not None and a.bench_idx not in slots:
                     _count('emitter_conditional_truncated')
                     return _cut()
@@ -323,7 +323,7 @@ def truncate_frame_stable(actions: list[CwAction],
                 if slots is not None:
                     slots.discard(a.bench_idx)
                 continue
-            # SellDeployed:deployed 槽表下标恒稳(ADR-0392),序列内成立
+            # CwActionSellDeployedParam:deployed 槽表下标恒稳(ADR-0392),序列内成立
             out.append(a)
             continue
         out.append(a)
@@ -442,7 +442,7 @@ def emit(session: StrategySession,
     优先于三遍)→ ①′ wanted 闭环消费臂(迁移 A;义务优先)→ ② 证明
     pass(信号臂/K/stop_flag/线级状态机/换线)→ ②′ 工具消费发射位
     (迁移 C,物理移出自 run_mandate)→ ③ 升档器求值位 → ④ 骨架 pass
-    (M1-M7)→ ⑤ EV pass(criteria,臂①旁路)→ ⑥ 无动作 ⇒ StartBattle
+    (M1-M7)→ ⑤ EV pass(criteria,臂①旁路)→ ⑥ 无动作 ⇒ CwActionStartBattleParam
     (序列终点=备战环正常出口)。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
@@ -459,8 +459,8 @@ def emit(session: StrategySession,
     _round_num = round_num_of(gs)
 
     # ① prep 实体面
-    # (武装箱选择对话框在场的选卡臂随 PickBoxCard 删除退役,批 2a R7:
-    #  OpenBox 终结化后选卡归独立画面 op 分发——cw_loop 按画面派发
+    # (武装箱选择对话框在场的选卡臂随 CwActionPickBoxCardParam 删除退役,批 2a R7:
+    #  CwActionOpenBoxParam 终结化后选卡归独立画面 op 分发——cw_loop 按画面派发
     #  ``CwScreenBoxPick``,决策核不再消费 ``box_overlay_open``;采集面已随批2b 退役删除)。
     # 开箱/开典籍臂(迭代 2026-09-18-prep-obs-retirement 阶段 3.5 换源):
     # 触发物 = 容器 bench 槽位 kind(supply_box/tome 占席;box 优先于 tome
@@ -470,11 +470,11 @@ def emit(session: StrategySession,
     _box_slot = next((i for i, s in enumerate(_gs_bench_slots)
                       if s is not None and s.kind == 'supply_box'), None)
     if _box_slot is not None:
-        return [Emitted(OpenBox(slot=_box_slot + 1), True, 'prep_box')]
+        return [Emitted(CwActionOpenBoxParam(slot=_box_slot + 1), True, 'prep_box')]
     _tome_slot = next((i for i, s in enumerate(_gs_bench_slots)
                        if s is not None and s.kind == 'tome'), None)
     if _tome_slot is not None:
-        return [Emitted(OpenTome(slot=_tome_slot + 1), True, 'prep_tome')]
+        return [Emitted(CwActionOpenTomeParam(slot=_tome_slot + 1), True, 'prep_tome')]
     # 球臂门+载荷同源(迭代阶段 3.4 换源收口,reviewer r1 打回项2):
     # 门条件与点击载荷共用同一容器读口推导——黑板 obs.spheres 消费清零,
     # 防陈旧门真/载荷空(空转)或批 5 删字段后 AttributeError。
@@ -491,8 +491,8 @@ def emit(session: StrategySession,
         #   每搁浅情节首环发单探针(K=1 预注册,区分「机制性拒绝」vs
         #   「单帧偶发落空」),次环起让路 fall-through:球分支零发射、
         #   不 return,落入 ①′→②→③⑤→⑥ 常规链(席满帧常规链恢复
-        #   求值;三 SellBench 发射位受既有 sell_gate 契约核验与息线
-        #   冻结门辖域,非本批新判据;空批 → ⑥ StartBattle 合法交回)。
+        #   求值;三 CwActionSellBenchParam 发射位受既有 sell_gate 契约核验与息线
+        #   冻结门辖域,非本批新判据;空批 → ⑥ CwActionStartBattleParam 合法交回)。
         # - 成效重置:席自由化 ∨ 成效计数签名变化(轮次/席计数/球计数
         #   任一,见 _sphere_progress_sig)。设计动机(B5 对偶面):若
         #   「席满可点开」形态真实存在(金球内容即时入账方向),每次成功
@@ -509,7 +509,7 @@ def emit(session: StrategySession,
         if _sf_free > 0:
             if isinstance(_ct_sp, dict):
                 _ct_sp['sphere_defer_streak'] = 0
-            return [Emitted(ClickSpheres(
+            return [Emitted(CwActionClickSpheresParam(
                         points=select_sphere_clicks(
                             _sf_targets, SPHERE_CLICK_BATCH_MAX_K)),
                         True, 'prep_spheres')]
@@ -524,7 +524,7 @@ def emit(session: StrategySession,
             _ct_sp['sphere_defer_progress_sig'] = _prog_sig
         if _streak <= SPHERE_DEFER_PROBE_K:
             # 单探针:同发射形态 = 常规 prep_spheres 动作。
-            return [Emitted(ClickSpheres(
+            return [Emitted(CwActionClickSpheresParam(
                         points=select_sphere_clicks(
                             _sf_targets, SPHERE_CLICK_BATCH_MAX_K)),
                         True, 'prep_spheres')]
@@ -579,7 +579,7 @@ def emit(session: StrategySession,
                             _ct_sf0.get('dead_pair_exit_sold_m4_fuel', 0) + 1
                 _vidx = mandate._bench_container_idx(gs, _sf_cands[0])
                 if _vidx is not None:
-                    return [Emitted(SellBench(bench_idx=_vidx,
+                    return [Emitted(CwActionSellBenchParam(bench_idx=_vidx,
                                               reason='m4_fuel_sell'), True,
                                     'm4_fuel_sell')]
                 # 容器下标失配(陈旧/carry 帧)= fail-closed 不卖,
@@ -691,7 +691,7 @@ def emit(session: StrategySession,
     # 语义 = 判据/准入通过的 RunTools 挂起,骨架 pass 输出后前置合并
     #(见下方 ④ 合流)——RunTools 逻辑态未建模,当帧 visit 终结,消耗品
     # 给的经验/金经下一 visit 入口 heavy 进 M3;前移真正消除的是
-    # 「旧输入 LevelUp 先执行→错误升级照发」面(编者⑤ 裁决输入新鲜度;
+    # 「旧输入 CwActionLevelUpParam 先执行→错误升级照发」面(编者⑤ 裁决输入新鲜度;
     # 收益路径口径 = 方案 §4 猎点 12 v2.1 更正)。
     from sr_od.application.currency_war.kernel.cw_equip_env import (
         admitted_tool_actions as _admit_tools,
@@ -761,7 +761,7 @@ def emit(session: StrategySession,
                                  if n in _priv_targets), '')
                 else:
                     # 未知 usable 动作 = 判据面扩容未同步原子类(禁猜交互,
-                    # 与执行面 plan_tool_drags 同款口径;LuckyTokenUse 禁
+                    # 与执行面 plan_tool_drags 同款口径;CwActionLuckyTokenUseParam 禁
                     # 无判据发射,判据面建模批挂账 = 枚举文档 §7)。
                     _ct_tools['m7_5_atomic_unmapped'] = \
                         _ct_tools.get('m7_5_atomic_unmapped', 0) + 1
@@ -769,10 +769,10 @@ def emit(session: StrategySession,
                 if not _tgt:
                     continue
                 if _ta.tool == '冶金炉':
-                    _atom: CwAction = FurnaceUse(target_kind='equip',
+                    _atom: CwAction = CwActionFurnaceUseParam(target_kind='equip',
                                                    item_name=_tgt)
                 elif _ta.tool == '特权赋予卡':
-                    _atom = PrivilegeCardUse(target_kind='equip',
+                    _atom = CwActionPrivilegeCardUseParam(target_kind='equip',
                                              item_name=_tgt)
                 else:
                     _ct_tools['m7_5_atomic_unmapped'] = \
@@ -835,8 +835,8 @@ def emit(session: StrategySession,
     # 同一注入链)。
     out: list[Emitted] = mandate.run_mandate(frame, session, state=gs,
                                              registry=registry)
-    # ④ 合流(迁移 C):工具发射前置 = 同帧 LevelUp+RunTools 形态执行序
-    # = RunTools 先于 LevelUp(编者⑤ 升级裁决输入新鲜度;行为锚 =
+    # ④ 合流(迁移 C):工具发射前置 = 同帧 CwActionLevelUpParam+RunTools 形态执行序
+    # = RunTools 先于 CwActionLevelUpParam(编者⑤ 升级裁决输入新鲜度;行为锚 =
     # test_cw_prep_flag_machine::test_runtools_emit_position)。RunTools
     # 逻辑态未建模 ⇒ 当帧 visit 在工具消费后终结,其后动作下一帧带新输入
     # 重评。M7 发射序回排块(run_mandate 内)已不见 RunTools,零特例叠加。
@@ -846,7 +846,7 @@ def emit(session: StrategySession,
     # ⑤ EV pass(臂①旁路集=§4.2.1 显式清单;仅 criteria 真 EV 项)。
     # R197 症1:EV 输出先收进独立列表,经 _merge_ev_before_frame_end
     # 按依赖拓扑并入(EV 卖面=bench 域可续动作,插到骨架首个截断点/
-    # 终点动作之前——否则换线生效帧的塌缩出口发射落在 OpenShop 之后
+    # 终点动作之前——否则换线生效帧的塌缩出口发射落在 CwActionOpenShopParam 之后
     # 被截断器静默丢弃)。
     ev_out: list[Emitted] = []
     if not skeleton_only:
@@ -858,7 +858,7 @@ def emit(session: StrategySession,
         # 支付支撑通道(两臂同开,R13-5):金不足侧筹资变现;同槽冲突
         # 先到先得丢弃(R196 症2,与骨架 M4 已发射槽位比对)
         sold_slots = {e.action.slot for e in out
-                      if isinstance(e.action, SellBench)}
+                      if isinstance(e.action, CwActionSellBenchParam)}
         missing = [m for m in k_members
                    if m not in set(bench_names) | set(deployed_names)]
         # 判据契约核验(单一源=criteria/contracts.py):前提不成立 ⇒ 本帧弃权
@@ -914,7 +914,7 @@ def emit(session: StrategySession,
                 # 卖出通道记录字段随发射位填充(SELL_BENCH_REASONS 登记
                 # 键;记录非指令,归因证据层,发射行为零面)。
                 ev_out.append(Emitted(
-                    SellBench(bench_idx=_vidx, reason='funding_support'),
+                    CwActionSellBenchParam(bench_idx=_vidx, reason='funding_support'),
                     False, funding_support=True))
             for bc in _f_fallback:
                 # 容器下标解析(换算收口;失配 = 陈旧/carry 帧,fail-closed 跳过)
@@ -931,18 +931,18 @@ def emit(session: StrategySession,
                         _ct.get('dead_pair_exit_sold_funding', 0) + 1
                 sell_gate.consume_on_sell(session, bc.char_id or '')
                 ev_out.append(Emitted(
-                    SellBench(bench_idx=_vidx, reason='funding_support'),
+                    CwActionSellBenchParam(bench_idx=_vidx, reason='funding_support'),
                     False, funding_support=True))
                 break
     out = _merge_ev_before_frame_end(out, ev_out)
 
     # ⑤′ 姿态兑现对账(经济冻结批病灶②):预算核姿态(spend_mode='level')
-    # 授权了本轮升级而发射序列无 LevelUp ⇒ posture_unfulfilled 显式置位
+    # 授权了本轮升级而发射序列无 CwActionLevelUpParam ⇒ posture_unfulfilled 显式置位
     # + 姿态降级声明 + 计数/日志。旧形态=守卫字段接而不用:授权面
     # (get_node_goal,确定性预算核单一供给)与执行面(M3:arm1 存在性 +
     # spend_unified 整批纪律)判定不一致时零对账,session.v3_posture_
     # unfulfilled 恒 None(实机局 g_20260904_042657 p1r7-r9 posture=
-    # 'level' 全程零 LevelUp)。本对账只声明不兜底花钱(禁重引入「乱花」
+    # 'level' 全程零 CwActionLevelUpParam)。本对账只声明不兜底花钱(禁重引入「乱花」
     # 对立面:P56 下界语义零触碰,升级仍由 M3 判据独裁)。
     _reconcile_posture_authorization(session, gs, out, k_members,
                                      registry=registry)
@@ -953,14 +953,14 @@ def emit(session: StrategySession,
     # supply_arbitration_design/DESIGN.md §5.1 terminal_targetless_idle
     # (不分位面,键名从其申报);设计出处 = p2_blood_band_unified_design/
     # DESIGN.md §2.1 fail-closed 观测面。载体辖域申报 = 备战决策帧主通道
-    # (emit ①/①′ 实体面提前返回帧不入键);OpenShop 计入消费面
+    # (emit ①/①′ 实体面提前返回帧不入键);CwActionOpenShopParam 计入消费面
     #(开店即买入意图,金将在店帧消费,非滞留)。判定面零行为:计数不改
     # 发射序列,守卫锁 = test_cw_p2_blood_band.py。载体 = 置顶 gs(段 2:
     # 裸金判定经 gold_of 读口,缺省 0 镜像;旧 state-None 守卫消亡)。
     if (gold_of(gs) > 0
             and getattr(state_of(session), 'target_comp', None) is None
             and not in_must_spend_zone(gold_of(gs), session)
-            and not any(isinstance(e.action, (LevelUp, OpenShop))
+            and not any(isinstance(e.action, (CwActionLevelUpParam, CwActionOpenShopParam))
                         for e in out)
             and (predicates.p1_blood_floor(gs)
                  or predicates.p2_blood_floor(gs))):
@@ -971,11 +971,11 @@ def emit(session: StrategySession,
     # F1(T-167)后本出口的可达面恢复:无方向态 M1″ 换阵臂被「换阵可
     # 兑现」谓词(kernel swap_realizable)弃权,不再发射执行面必然空转的
     # 幻影 RunDeploy(实证:run_20260908_210431 发射 53 次、执行 0 次,
-    # 交替活锁把本出口堵死 15 分钟)——闩闭帧序列归空,StartBattle 自然
+    # 交替活锁把本出口堵死 15 分钟)——闩闭帧序列归空,CwActionStartBattleParam 自然
     # 可达(支配性论证:备战等待边际收益恒 0,见 cw_loop 收益耗尽判据
     # docstring)。有向态语义不变(计划非空照发,计划空本就达本出口)。
     if not out:
-        out.append(Emitted(StartBattle(), True, 'battle'))
+        out.append(Emitted(CwActionStartBattleParam(), True, 'battle'))
     state_of(session).cw4_prev_line_name = cur_name   # 下帧 k_switched 判定基准
     return out
 
@@ -997,7 +997,7 @@ def _reconcile_posture_authorization(session: StrategySession,
     授权面 = ``get_node_goal`` 确定性预算核(spend_mode 单一供给,遥测
     dp_posture 同源);执行面 = M3 升级链(arm1 存在性 → lv9 停 →
     spend_unified 整批纪律 → 可负担)。spend_mode='level'(本轮授权升级)
-    而发射序列无 LevelUp ⇒ 逐门评估定位未兑现原因,显式声明:
+    而发射序列无 CwActionLevelUpParam ⇒ 逐门评估定位未兑现原因,显式声明:
     - ``state_of(session).v3_posture_unfulfilled`` 置位(遥测 posture_unfulfilled
       消费;形状与 decision_v2.posture_release.reconcile_spend 同构);
     - 计数键 ``posture_unfulfilled_level``(state_of(session).cw4_counters);
@@ -1005,7 +1005,7 @@ def _reconcile_posture_authorization(session: StrategySession,
       round 取读口值,格式不变)。
 
     只声明不兜底:不因授权未兑现而改发射(升级发射仍由 M3 判据独裁,
-    P56 下界语义零触碰)。授权形态非 level / 已发射 LevelUp ⇒ 返回
+    P56 下界语义零触碰)。授权形态非 level / 已发射 CwActionLevelUpParam ⇒ 返回
     None(且入口帧级复位保证无声明滞留)。
     """
     _plane = plane_of(gs)
@@ -1029,7 +1029,7 @@ def _reconcile_posture_authorization(session: StrategySession,
                        or None)
     if getattr(ng, 'spend_mode', '') != 'level':
         return None
-    if any(isinstance(e.action, LevelUp) for e in emitted):
+    if any(isinstance(e.action, CwActionLevelUpParam) for e in emitted):
         return None
     # T-115 规则① 消费位4(ADR-0580):奖励帧抑制授权面让位 = 显式降级,
     # 防奖励帧被「逐门定位未兑现原因」当故障链走(与 crisis_yield 修复
@@ -1175,13 +1175,13 @@ def _merge_ev_before_frame_end(skeleton: list[Emitted],
                                ev: list[Emitted]) -> list[Emitted]:
     """EV 卖面与骨架动作的依赖拓扑合并(R197 症1;执行序=02_mandate_layer §3)。
 
-    EV 卖面(line_switch_sell/funding_support 的 SellBench)系 bench 域
-    操作(画面零迁移,契约 §2 可续类);骨架的开店意图(OpenShop)系
+    EV 卖面(line_switch_sell/funding_support 的 CwActionSellBenchParam)系 bench 域
+    操作(画面零迁移,契约 §2 可续类);骨架的开店意图(CwActionOpenShopParam)系
     截断点。合并规则:EV 发射整体插到骨架序列中**首个截断点/终点动作
     之前**,骨架内部相对序与 EV 内部序均不变;骨架无截断点/终点 ⇒ EV
     追加尾部(与 R196 前行为一致)。「EV 只追加」(02_mandate_layer §7 权限划界)的追加面=
     发射组织面;执行序按依赖拓扑承载——不重排则换线生效帧(K 已翻为
-    K′、新线有缺口 ⇒ M2 发 OpenShop 的典型帧)的塌缩出口发射全部落
+    K′、新线有缺口 ⇒ M2 发 CwActionOpenShopParam 的典型帧)的塌缩出口发射全部落
     在截断点之后,被截断器静默丢弃(IMPL_ADV_R197 症1)。
     """
     if not ev:
@@ -1209,7 +1209,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
 
     None 期缺省姿态:各面内部 fail-closed(未标定不发射);本函数
     只做发射面组织。冲突处理(R196 症2 落地):EV 项与已发射动作冲突
-    (同槽 SellBench——M4 已卖槽/同 pass 内重复提案)⇒ 先到先得丢弃
+    (同槽 CwActionSellBenchParam——M4 已卖槽/同 pass 内重复提案)⇒ 先到先得丢弃
     + 记遥测(``ev_conflict_dropped``):第二笔执行必 progressed=False
     触发 fail-stop,整序列后半被一帧废动作截断(契约 §2),禁重发。
     """
@@ -1220,10 +1220,10 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
     if not isinstance(counters, dict):
         counters = {}
         state_of(session).cw4_counters = counters
-    # 先到先得冲突域:骨架 pass 已发射的 SellBench 容器下标(席位冲突面;
+    # 先到先得冲突域:骨架 pass 已发射的 CwActionSellBenchParam 容器下标(席位冲突面;
     # 统一词表坐标系 = bench 槽位表下标,批2b 翻转,物理槽号键退役)
     sold_slots = {e.action.bench_idx for e in (skeleton_out or [])
-                  if isinstance(e.action, SellBench)}
+                  if isinstance(e.action, CwActionSellBenchParam)}
     # 拦截事件去重集(C1 口径:同一备战帧内同一素材名只计 1;跨通道共享,
     # 单一源 = cw_state.count_merge_material_blocked)
     _mm_dedup: set[str] = set()
@@ -1259,7 +1259,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
             counters['dead_pair_exit_sold_line_switch'] = \
                 counters.get('dead_pair_exit_sold_line_switch', 0) + 1
         out.append(Emitted(
-            SellBench(bench_idx=_vidx, reason='line_switch_collapse'),
+            CwActionSellBenchParam(bench_idx=_vidx, reason='line_switch_collapse'),
             False, 'line_switch_collapse'))
         sold_slots.add(_vidx)
     # 凑息档 EV 面 / 压库 / 装备精修 / 付费刷新:商店线辖域或【拟】
@@ -1320,7 +1320,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
             if _fname in _t3_protect:
                 mandate.stall_buys_consume(session, _fname)
             out.append(Emitted(
-                SellBench(bench_idx=_vidx, reason='funding_support'),
+                CwActionSellBenchParam(bench_idx=_vidx, reason='funding_support'),
                 False, funding_support=True))
             sold_slots.add(_vidx)
         for bc in _f_fallback:
@@ -1338,7 +1338,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
                     counters.get('dead_pair_exit_sold_funding', 0) + 1
             sell_gate.consume_on_sell(session, bc.char_id or '')
             out.append(Emitted(
-                SellBench(bench_idx=_vidx, reason='funding_support'),
+                CwActionSellBenchParam(bench_idx=_vidx, reason='funding_support'),
                 False, funding_support=True))
             sold_slots.add(_vidx)
             break

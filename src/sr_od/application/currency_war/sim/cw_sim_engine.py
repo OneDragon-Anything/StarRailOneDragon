@@ -21,12 +21,12 @@
   跳过——裁定②:锁 = 引擎自有状态,动作词表无锁通道,首版恒解锁
   +披露)→ offer 日程检查(M11/U07:打完 1-2/2-1/3-1 生效于下一轮
   备战窗口,联席决策挂 2-6)→ PREP;
-- PREP:装备/工具四路(WearEquip/WrenchUse/PrecisionWrenchUse/
-  FurnaceUse,M10)= sim 侧游戏规则腿(cw_sim_equips 分派;炉走
+- PREP:装备/工具四路(CwActionWearEquipParam/CwActionWrenchUseParam/CwActionPrecisionWrenchUseParam/
+  CwActionFurnaceUseParam,M10)= sim 侧游戏规则腿(cw_sim_equips 分派;炉走
   ``M10/炉/{uses}`` 流);其余玩家动作经单一转移函数(M07/M08/M09),
   动作后消费银狼升 2 星触发判据(M21,planner_overlay_due + 全域
-  星级快照);OpenBox → 箱候选 →
-  BOX_PICK(M17);StartBattle = 备战终结动作(补给 → 选卡面/
+  星级快照);CwActionOpenBoxParam → 箱候选 →
+  BOX_PICK(M17);CwActionStartBattleParam = 备战终结动作(补给 → 选卡面/
   遭遇 → 选档面/其余 → M13 结算);
 - 结算(M12→M14→M15→M08 序):随机输出面(M13;扑满不掉血豁免,
   M17)→ HP 折算与保底(M14,dead → 局终)→ 连胜双账(M15)→ 节点
@@ -65,13 +65,13 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
-    FurnaceUse,
-    OpenBox,
-    PickEvent,
-    PrecisionWrenchUse,
-    StartBattle,
-    WearEquip,
-    WrenchUse,
+    CwActionFurnaceUseParam,
+    CwActionOpenBoxParam,
+    CwActionPickEventParam,
+    CwActionPrecisionWrenchUseParam,
+    CwActionStartBattleParam,
+    CwActionWearEquipParam,
+    CwActionWrenchUseParam,
 )
 from sr_od.application.currency_war.sim.cw_sim_actions import (
     apply_node_xp,
@@ -362,11 +362,11 @@ class CwSimEngine:
     # ---------------------------------------------------------- PREP
 
     def _step_prep(self, eng: _Eng, action: CwAction) -> LogicOutcome | None:
-        if isinstance(action, StartBattle):
+        if isinstance(action, CwActionStartBattleParam):
             self._settle_or_dispatch(eng)
             return None
-        if isinstance(action, OpenBox):
-            # 箱落席 → 开箱 → 武装箱 4 选 1(cw_vocab OpenBox 执行语义;
+        if isinstance(action, CwActionOpenBoxParam):
+            # 箱落席 → 开箱 → 武装箱 4 选 1(cw_vocab CwActionOpenBoxParam 执行语义;
             # 候选 = 占位固定集,U24 箱内容池候实机,占位不消费随机)
             eng.box_cands = box_options()
             eng.phase = CwSimPhase.BOX_PICK
@@ -391,24 +391,24 @@ class CwSimEngine:
         重掷),本方法只做分派与 ``LogicOutcome`` 回声包装,禁重写腿
         语义;拒因 = 腿布尔契约的统一回声(细则在腿 docstring)。
         """
-        if isinstance(action, WearEquip):
+        if isinstance(action, CwActionWearEquipParam):
             ok = apply_wear_equip(eng.gs, action)
             return LogicOutcome(applied=ok,
                                 reason='' if ok else 'wear_equip_rejected')
-        if isinstance(action, WrenchUse):
+        if isinstance(action, CwActionWrenchUseParam):
             ok = apply_wrench(eng.gs, action)
             return LogicOutcome(applied=ok,
                                 reason='' if ok else 'wrench_rejected')
-        if isinstance(action, PrecisionWrenchUse):
+        if isinstance(action, CwActionPrecisionWrenchUseParam):
             ok = apply_precision_wrench(eng.gs, action)
             return LogicOutcome(
                 applied=ok,
                 reason='' if ok else 'precision_wrench_rejected')
-        if isinstance(action, FurnaceUse):
+        if isinstance(action, CwActionFurnaceUseParam):
             return self._apply_furnace(eng, action)
         return None
 
-    def _apply_furnace(self, eng: _Eng, action: FurnaceUse) -> LogicOutcome:
+    def _apply_furnace(self, eng: _Eng, action: CwActionFurnaceUseParam) -> LogicOutcome:
         """冶金炉分派(M10 双模式):equip 模式 = 同类型随机重掷腿,流键
         ``M10/炉/{uses}`` 按实际重掷序装配;char 模式(拖角色全拆+逐件
         变异)首版不建模,显式拒(披露键恒在册 = _BASE_DISCLOSURES)。"""
@@ -526,7 +526,7 @@ class CwSimEngine:
     # ---------------------------------------------------------- 结算
 
     def _settle_or_dispatch(self, eng: _Eng) -> None:
-        """StartBattle:按节点类型分派(补给 → 选卡/遭遇 → 选档/
+        """CwActionStartBattleParam:按节点类型分派(补给 → 选卡/遭遇 → 选档/
         其余 → M13 结算)。"""
         kind = node_sequence_of(eng.plane)[eng.round_num - 1]
         if kind == 'supply':
@@ -543,7 +543,7 @@ class CwSimEngine:
         self._settle_combat(eng, encounter_tier=None)
 
     def _step_encounter(self, eng: _Eng, action: CwAction) -> None:
-        if not isinstance(action, PickEvent):
+        if not isinstance(action, CwActionPickEventParam):
             return
         tier, _reward = apply_encounter_pick(eng.gs, action.option_idx)
         eng.encounter_tier = tier
@@ -586,7 +586,7 @@ class CwSimEngine:
         self._after_settlement(eng)
 
     def _step_supply(self, eng: _Eng, action: CwAction) -> None:
-        if not isinstance(action, PickEvent):
+        if not isinstance(action, CwActionPickEventParam):
             return
         if action.refresh:
             # 免费刷新一次(实机两步 decide_supply 语义;一次性)
@@ -610,7 +610,7 @@ class CwSimEngine:
         self._after_settlement(eng)
 
     def _step_ball(self, eng: _Eng, action: CwAction) -> None:
-        if not isinstance(action, PickEvent):
+        if not isinstance(action, CwActionPickEventParam):
             return
         # option_idx 坐标系 = 帧内剩余球列表下标(0 基;面板按剩余序
         # 收缩呈现,策略器逐球点,已点球不可再点)
@@ -626,7 +626,7 @@ class CwSimEngine:
             self._after_settlement(eng)
 
     def _step_box(self, eng: _Eng, action: CwAction) -> None:
-        if not isinstance(action, PickEvent):
+        if not isinstance(action, CwActionPickEventParam):
             return
         if 0 <= action.option_idx < len(eng.box_cands):
             eng.disclosures.setdefault('box_pool_pending_u24', 'bases4')
@@ -634,7 +634,7 @@ class CwSimEngine:
         eng.phase = CwSimPhase.PREP
 
     def _step_overlay(self, eng: _Eng, action: CwAction) -> None:
-        if not isinstance(action, PickEvent):
+        if not isinstance(action, CwActionPickEventParam):
             return
         kind = eng.overlay_queue.pop()
         eng.disclosures.setdefault(OVERLAY_PARAM_PENDING,
@@ -667,8 +667,8 @@ class CwSimEngine:
         self._enter_node(eng, plane, 1)
 
     def _step_card_pick(self, eng: _Eng, action: CwAction) -> None:
-        """选卡族相位(环境/策略)共用:PickEvent(option_idx) 选 1。"""
-        if not isinstance(action, PickEvent):
+        """选卡族相位(环境/策略)共用:CwActionPickEventParam(option_idx) 选 1。"""
+        if not isinstance(action, CwActionPickEventParam):
             return
         idx = action.option_idx
         if not (0 <= idx < len(eng.options)):

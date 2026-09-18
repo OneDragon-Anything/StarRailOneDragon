@@ -266,7 +266,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         None, 'XP 期望账本升级停(lv9_stop 轮内盲区补位;与 lv9_stop '
         '同位合取消费,消费位=shop M3 批/shop 必花域 L3;live level_max=10 '
         '无门槛表项判据不辖,行为零变更)',
-        'design.md unified-action-factory §2.6 LevelUp 定案④'
+        'design.md unified-action-factory §2.6 CwActionLevelUpParam 定案④'
         '(xp_apply_clicks 推进算子单一源)+20260913 sim 找问题报告问题 1'),
     ('levelup', 'level_spend_blocked'): Contract(
         None, '危机带经验授权让位(候选③;判据自带 ALL IN 豁免与 '

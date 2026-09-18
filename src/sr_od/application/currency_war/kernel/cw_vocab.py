@@ -7,7 +7,7 @@
 备战观察视图 PrepObservation 与点球挑选 kernel 纯函数。坐标系裁定 =
 容器槽位表下标(族A 口径,0 基;ADR-0316/0392)——发射面从容器槽位表
 读口直接取下标构造动作;物理槽位号仅存观察写入边与执行坐标边两边界
-(design.md §2.6 换算归属)。例外 = 坐标参数化机械动作(WearEquip/
+(design.md §2.6 换算归属)。例外 = 坐标参数化机械动作(CwActionWearEquipParam/
 工具原子类):row/slot 字段按定义 = 画面物理排槽位 1 基(执行器拖点
 直取画面 area;字段注释逐类声明)。
 
@@ -50,9 +50,9 @@ kernel/cw_intention.py ``committed_authority`` 形态注)已兑现。
   载体(sim/状态侧 BenchChar),非容器路径口径。
 - ``deployed`` = bot 自己跟踪的已上阵角色(含 char_id/star/站位),用于 char_quality 评估
   已上阵的优先角色 + 站位分流。两者在已知身份域一致(deployed 按羁绊全集聚合 == board)。
-- DeployMove 更新 deployed(槽位落位 deployed_place,ADR-0392);board 不随
-  DeployMove 独立写(旧 ``_recount_board`` 写端已退役,容器侧随行写端挂钩重算)。
-- BuyCard 后做 3 合 1 升星(同名同星 ≥3 → 合并为 star+1)。
+- CwActionDeployMoveParam 更新 deployed(槽位落位 deployed_place,ADR-0392);board 不随
+  CwActionDeployMoveParam 独立写(旧 ``_recount_board`` 写端已退役,容器侧随行写端挂钩重算)。
+- CwActionBuyCardParam 后做 3 合 1 升星(同名同星 ≥3 → 合并为 star+1)。
 """
 from __future__ import annotations
 
@@ -217,7 +217,7 @@ class CwSimFrame:
     # 元素 BenchChar | None(空槽);下标 0-3 = 前排槽 1-4、4-9 = 后排槽 1-6
     # (BenchChar.position_pref='front'/'back' 与 slot 1-based 排内槽号保留为
     # 信息位;权威槽位 = 下标)。卖出/下场置 None 不移位 → deployed_idx 跨
-    # 动作组恒稳(同轮多笔 SellDeployed 不可能再漂移);容量判据 = 占用数
+    # 动作组恒稳(同轮多笔 CwActionSellDeployedParam 不可能再漂移);容量判据 = 占用数
     # (``deployed_occupied``),**禁止 len(deployed)**;迭代一律
     # ``iter_occupied_deployed``(裸 for 会撞 None)。
     deployed: list[BenchChar | None] = field(default_factory=list)
@@ -225,7 +225,7 @@ class CwSimFrame:
     # bench = 槽位语义模型(ADR-0316):**定长 BENCH_CAPACITY(9)槽表**,
     # 元素 BenchChar | None(空槽);列表下标 0-8 = 物理槽位 1-9 减一
     # (BenchChar.slot 保留 1-based 屏幕槽号,信息位;权威槽位=下标)。
-    # 卖出/上阵置 None 不移位 → 索引跨动作组稳定(同轮多笔 SellBench
+    # 卖出/上阵置 None 不移位 → 索引跨动作组稳定(同轮多笔 CwActionSellBenchParam
     # 不可能再漂移);容量判据 = 占用数(``bench_occupied``),**禁止
     # len(bench)**;迭代一律 ``iter_occupied``(裸 for 会撞 None)。
     bench: list[BenchChar | None] = field(default_factory=list)
@@ -260,12 +260,12 @@ class CwSimFrame:
     # flex 白名单真家 = StrategyState.focus_factions(方向刷新写入),
     # 决策读端走策略态。
     active_strategies: list[str] = field(default_factory=list)  # 已持有投资策略(局中选,可多张;影响经济/难度)
-    # 动作v2 账本(契约包 C1,步2):显式动作(SellDeployed/SwapDeploy)
+    # 动作v2 账本(契约包 C1,步2):显式动作(CwActionSellDeployedParam/CwActionSwapDeployParam)
     # 的执行结果逐条记录(applied/rejected + reason)
     # ——事务拒绝必须可见(checks 消费;冻结 invariant「拒绝记录进账本」)。
     # 三消费面:策略不读(决策禁依赖账本);遥测经 sim ledger 的 actions
     # 序列化间接可见;sim 代理 = 本字段自身(simulate 写、cw_sim 转录)。
-    # 旧动作(BuyCard 等)不记(零行为变化)。
+    # 旧动作(CwActionBuyCardParam 等)不记(零行为变化)。
     action_log: list[dict] = field(default_factory=list)
 
     def __post_init__(self) -> None:
@@ -355,36 +355,28 @@ def deployed_clear(deployed: list[BenchChar | None], idx: int) -> BenchChar | No
 # 各只允许一处换算函数:①观察写入边(observe/reconcile 写链);
 # ②执行坐标边(executor 单点;kernel 助手 = ``cw_exec_state
 # .deployed_row_slot``/``deployed_idx_of``)。坐标参数化机械动作
-# (WearEquip/工具原子类,见备战域节)的 row/slot 字段 = 画面物理排槽位,
+# (CwActionWearEquipParam/工具原子类,见备战域节)的 row/slot 字段 = 画面物理排槽位,
 # 属动作参数定义,不在换算边辖域。
 
-@dataclass
-class CwAction:
-    """货币战争动作标记基类(策略 → 框架的单步意图载体;统一词表全类
-    公共祖先,sim 侧运行时 isinstance 检查统一用本基类)。
+# ``route_tag`` 字段契约(原 CwAction 基类唯一字段,摊平后逐动作类重声明):
+# 策略内部路由键(发射分支的构造事实,不随时间漂移、不维护状态),只回答
+# 「该次落地该不该清 S1 开店闩」的环路控制路由问题,非卖出资格面(资格
+# 单一源 = sell_gate 装配 A)、非放行证据(禁检查器采信)。值域现役 =
+# m4_fuel_sell / interest_prep(单帧锁 test_route_tag_whitelist 锁映射表);
+# kw_only 缺省 '' ⇒ 构造调用全向后兼容;action_key_exclude metadata =
+# 不入动作实例键,幂等粒度 = 行为参数(route_tag 与归因字段同规)。
 
-    ``route_tag`` = 发射臂路线标签(备战旗标状态机 §3.3;桥
-    ``bridge.decide_prep_frame`` 从 ``Emitted.reason`` 透传,动作自带、
-    无时序错位面)。定位 = 策略内部路由键(发射分支的构造事实,不随
-    时间漂移、不维护状态),只回答「该次落地该不该清 S1 开店闩」的
-    环路控制路由问题,**非**卖出资格面(资格单一源 = sell_gate 装配 A)
-    、非放行证据(治理立场对表:禁检查器采信)。值域:现役发射位
-    = m4_fuel_sell / interest_prep(单帧锁
-    ``test_route_tag_whitelist`` 锁映射表)。kw_only 缺省 '' ⇒ 构造调用
-    全向后兼容(归一前族A 类无本字段,sim 构造面零改动)。
-    """
+
+@dataclass
+class CwActionBuyCardParam:
+    card: ShopCard
+    reason: str = ''   # 买入分类(① 账本 reason 单一源;line/bridge_seed/p2_core/pair/engine/board_focus/emergency/swap/plan;''=旧调用未标)
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 
 
 @dataclass
-class BuyCard(CwAction):
-    card: ShopCard
-    reason: str = ''   # 买入分类(① 账本 reason 单一源;line/bridge_seed/p2_core/pair/engine/board_focus/emergency/swap/plan;''=旧调用未标)
-
-
-@dataclass
-class SellBench(CwAction):
+class CwActionSellBenchParam:
     """bench 卖出动作。
 
     [坐标系] bench_idx = bench 槽位表下标 0-8(ADR-0316 定长 9 槽)。
@@ -399,7 +391,7 @@ class SellBench(CwAction):
     ``expect``(ADR-0317 代际校验第三块,ADR-0326 §1.7 激活;''=不校验):
     提案生成时该槽位指向内容的期望名(char_id)——提案生成→应用之间
     槽位内容可能已变,应用时不符 → no-op + stale_proposal 语义
-    (对齐 SellDeployed/SwapDeploy 既有守卫形态)。
+    (对齐 CwActionSellDeployedParam/CwActionSwapDeployParam 既有守卫形态)。
     **防线写入端核查(ADR-0326 §1.7;N3② 勘误,ADR-0585 批 4)**:发射点
     = mandate_v1/shop.py 卖出发射位(M2 腾席两处/凑息回拉/funding 变现
     /funding 兜底,逐位带 expect 写入;原「remediation 两补偿器」表述
@@ -415,7 +407,7 @@ class SellBench(CwAction):
     #             取值时机: 生成期=执行期(槽位表恒稳,卖出置 None 不移位)
     income: int | None = None   # 创建时预期回金(sell_refund 口径;None=未标)
     expect: str = ''           # 代际校验期望名(''=不校验,不符→拒绝)
-    reason: str = ''           # 卖出通道记录字段(记录非指令,仿 LevelUp.auth_basis 形态;
+    reason: str = ''           # 卖出通道记录字段(记录非指令,仿 CwActionLevelUpParam.auth_basis 形态;
     #                            ''=未标,缺省形态)。承重值 = SELL_BENCH_REASONS
     #                            通道键(r9 争金归因证据层:失败/压线局的卖出
     #                            通道占比是归因下钻的直接证据;纯归因);
@@ -435,6 +427,8 @@ class SellBench(CwAction):
     #                            §4,防窗口段回归洗白),检查器按键分工判定
     #                            (转化类读本字段/孤儿读 reason),迁移期不
     #                            并读零双源。
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 # 转化类卖出豁免键集(同轮买后卖检查的豁免边;检查侧单一源):
@@ -458,7 +452,7 @@ class SellBench(CwAction):
 # 方案审零阻断放行的语义演进,出处 = 2026-09-08 同轮交互
 # 方案审 + ADR-0591)。
 # 发射侧填充现状(两通道分键起):两类放行键(T3 末位牺牲/
-# funding 两键)经 SellBench.convert_reason 结构化字段填充(值域收窄,
+# funding 两键)经 CwActionSellBenchParam.convert_reason 结构化字段填充(值域收窄,
 # 见字段注);line_switch_collapse 仍在役于 reason(孤儿证明打标制 +
 # entry 换线塌缩通道位)。检查器按键分工判定,禁单键并读双源;
 # 键集保留 = 检查器豁免面单一源(键语义/豁免边不变,可核查面三格:
@@ -471,7 +465,7 @@ SELL_BENCH_CONVERT_REASONS: frozenset[str] = frozenset({
 })
 
 
-# 卖出发射位值域闭集(发射登记门:各 SellBench 发射位的 reason 承重键
+# 卖出发射位值域闭集(发射登记门:各 CwActionSellBenchParam 发射位的 reason 承重键
 # 必须是本集成员;值 = 通道名,与该发射位 Emitted.reason/route_tag 同键
 # 单一词汇)。新增发射位先在此登记再接线(值漂移由发射面行为锁暴露,
 # 归因消费面按本集分桶)。记录非指令:零行为消费面,资格单一源不变
@@ -501,7 +495,7 @@ SELL_BENCH_ORPHAN_REASONS: frozenset[str] = frozenset({
 
 
 # S1 清键白名单 route_tag 闭集(备战旗标状态机 ADR-0596 §3.3 路径 (i)
-# 卖出类;部署类由动作类型 DeployMove 承载 = route_tag_of,不占本集)。
+# 卖出类;部署类由动作类型 CwActionDeployMoveParam 承载 = route_tag_of,不占本集)。
 # 宿主 = kernel 词表:值域闭集单一源——策略器清键路由(mandate_v1)与
 # 框架侧防御位误标检出(cw_screen_buy_cards 的 s1_reset_mischannel
 # 计数)双消费同取此源(operations 禁触策略实现包常量)。
@@ -516,60 +510,66 @@ S1_RESET_ROUTE_TAGS: frozenset[str] = frozenset({
 
 
 @dataclass
-class LevelUp(CwAction):
+class CwActionLevelUpParam:
     cost: int        # 本次「购买经验」单击花金(ADR-0129:一次点击 = +XP_PER_BUY 经验,非整级;凑够门槛才升级)
     auth_basis: str = ''
     # 授权依据**记录**字段(非指令;ADR-0354):
     # 放行臂名('pop_slot'=①[33]人口位 / 'dp'=②DP 花费授权 /
     # 'static_ev'=③静态 EV 平台账;''=未过 ev.levelup_ev_authorized 的
     # 旧调用/未接线路径)。由 arbiter 升级门与 remediation 补偿臂在
-    # **放行时**写入(sim 账本 actions 侧序列化为 LevelUp 行的 auth 键,
-    # 检查器 levelup_interest_engine_gate 消费)。仿 SellBench.income
+    # **放行时**写入(sim 账本 actions 侧序列化为 CwActionLevelUpParam 行的 auth 键,
+    # 检查器 levelup_interest_engine_gate 消费)。仿 CwActionSellBenchParam.income
     # 「记录不是指令」形态——执行层不读此字段,行为零改动。
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class LevelUpShop(LevelUp):
-    """商店开画面专用升级意图(W970 §4.1.3 / W971 §2.8.2:LevelUp 拆 LevelUpShop)。
+class CwActionLevelUpShopParam:
+    """商店开画面专用升级意图(W970 §4.1.3 / W971 §2.8.2:CwActionLevelUpParam 拆 CwActionLevelUpShopParam)。
 
     唯一产出者 = ``decide_shop_screen``(商店屏接口);兼容期旧入口(已随退役批删除)
-    ``decide_prep`` 仍产出基类 ``LevelUp``——两入口行为由构造保证等价,
+    ``decide_prep`` 仍产出基类 ``CwActionLevelUpParam``——两入口行为由构造保证等价,
     类型拆分只为执行器/遥测/对拍**消歧**(商店屏动作 vs 备战屏腾席链
     升级)。**刻意设计成无新字段的子类**:执行器(shop 买牌循环)与
-    sim/simulate 全部按 ``isinstance(a, LevelUp)`` 消费,子类零改动兼容;
-    对拍口径 = LevelUpShop ≡ LevelUp(同字段逐项全等,类型归一后比较)。
+    sim/simulate 全部按 ``isinstance(a, CwActionLevelUpParam)`` 消费,子类零改动兼容;
+    对拍口径 = CwActionLevelUpShopParam ≡ CwActionLevelUpParam(同字段逐项全等,类型归一后比较)。
     """
 
     # 显式重声明继承字段:kwarg 签名审计(ast 静态)不追 dataclass 继承链,
-    # 不重声明则 decide_shop_screen 的 LevelUpShop(cost=…, auth_basis=…)
+    # 不重声明则 decide_shop_screen 的 CwActionLevelUpShopParam(cost=…, auth_basis=…)
     # 构造被误判 kwargs 违例(2026-09-02 L3 暴露)。
     cost: int = 0
     auth_basis: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 
 @dataclass
-class DeployMove(CwAction):
+class CwActionDeployMoveParam:
     """bench → 上阵(某排)。
 
     [坐标系] bench_idx = bench 槽位表下标 0-8(ADR-0316 定长 9 槽)。
     上阵落位物理槽 = 执行坐标边现读首空位(kernel ``empty_deploy_slots``
     同式);``faction`` = 上阵后 board 阵营计数所需,发射位从容器槽位表
-    角色对象现取(simulate 的 DeployMove 分支消费此字段)。
+    角色对象现取(simulate 的 CwActionDeployMoveParam 分支消费此字段)。
     """
     bench_idx: int
-    # [索引定义] 坐标系: bench 槽位表下标 0-8(ADR-0316;同 SellBench.bench_idx)
+    # [索引定义] 坐标系: bench 槽位表下标 0-8(ADR-0316;同 CwActionSellBenchParam.bench_idx)
     #             取值时机: 生成期=执行期(槽位表恒稳;simulate/mutate 按
     #             下标读槽并置 None)
     to_row: str      # "front" / "back"
     faction: str     # 该角色阵营(上阵后 board[faction] += 1)
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class RefreshShop(CwAction):
+class CwActionRefreshShopParam:
     cost: int = 0    # 刷新花费(实机 OCR 补)
-    # 触发源**记录**字段(非指令;先例 = LevelUp.
-    # auth_basis / SellBench.income 的「记录不是指令」形态——执行层
+    # 触发源**记录**字段(非指令;先例 = CwActionLevelUpParam.
+    # auth_basis / CwActionSellBenchParam.income 的「记录不是指令」形态——执行层
     # 不读此字段,行为零改动)。值域(发射位单一源 = mandate_v1/shop
     # R1 发射位,今日唯一刷新发射点;L2 补位=买卡、L3 末位=升级,
     # 结构上不产刷新动作,槽位留作未来发射点扩展):
@@ -578,10 +578,12 @@ class RefreshShop(CwAction):
     #   yielded 支);
     # - '' = 旧调用/未标(引擎 obs 归 'other' 桶)。
     reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class CloseShop(CwAction):
+class CwActionCloseShopParam:
     """关店终结动作(ADR-0517 决策 4/5/6:商店画面的恒可用终结 op)。
 
     单动作架构(ADR-0517)下「无动作可做」的表达 = 策略器主动选关店终结
@@ -592,10 +594,12 @@ class CloseShop(CwAction):
     终结作废,由下一次入口观察重建)。
     """
     reason: str = ''   # 账本 reason(''=默认)
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class PickEvent(CwAction):
+class CwActionPickEventParam:
     """选事件选项(投资环境/策略/遭遇/补给)。
 
     refresh(重立判据,ADR-0600;旧「阈值建议」判据已退役,
@@ -623,10 +627,12 @@ class PickEvent(CwAction):
     #             写入端: cw_events.decide_event(ADR-0600 §3.1;空元组 = 不建议;
     #             环境屏恒空 = 执行不启用)。消费端 = CwScreenInvestStrategy
     #             槽序循环(逐槽计数现读闸 + 已发射槽集防重入)。
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class SellDeployed(CwAction):
+class CwActionSellDeployedParam:
     """卖场上单位(deployed 生命周期开口;不再'只增不减')——契约包 C1。
 
     [坐标系] deployed_idx = state.deployed **槽位表**下标 0-9(ADR-0392;
@@ -637,15 +643,17 @@ class SellDeployed(CwAction):
     # [索引定义] 坐标系: deployed 槽位表下标 0-9(ADR-0392 定长 10 槽,空槽
     #             None)
     #             取值时机: 生成期=执行期(槽位表恒稳,卖出置 None 不移位)
-    income: int | None = None  # 预期回金(sell_refund 口径;None=未标;记录非指令,同 SellBench)
+    income: int | None = None  # 预期回金(sell_refund 口径;None=未标;记录非指令,同 CwActionSellBenchParam)
     reason: str = ''           # 账本 reason(如 'evict_replaced'/'plugin_recycle')
     expect: str = ''           # 遥测观测字段(ADR-0392 降级:槽位恒稳后不再承担
                                # 拦截漂移职责,记录生成期期望名供判读对照;
                                # 校验保留——名不符仍是跨代际提案的拒绝信号)
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class SwapDeploy(CwAction):
+class CwActionSwapDeployParam:
     """bench ↔ deployed 换位(场上场下对调;装备随人走)——契约包 C1。
 
     [坐标系] deployed_idx = state.deployed 槽位表下标 0-9(ADR-0392)/
@@ -653,7 +661,7 @@ class SwapDeploy(CwAction):
 
     装备随人走 = 换位移动 BenchChar 对象本身(``equips`` 字段随对象迁移,
     无单独装备转移步骤);上场者继承下场者的排(``position_pref``),
-    开拓者按目标排做形态归一(同 DeployMove 语义,单一源)。
+    开拓者按目标排做形态归一(同 CwActionDeployMoveParam 语义,单一源)。
     """
     deployed_idx: int
     # [索引定义] 坐标系: deployed 槽位表下标 0-9(ADR-0392,恒稳)
@@ -666,10 +674,12 @@ class SwapDeploy(CwAction):
     # 在槽位表下索引恒稳;名不符仍是跨代际换人提案的拒绝信号。
     expect_deployed: str = ''  # 期望下场者名
     expect_bench: str = ''     # 期望上场者名
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
-Action = (BuyCard | SellBench | LevelUp | DeployMove | RefreshShop | CloseShop
-          | SellDeployed | SwapDeploy)
+Action = (CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam | CwActionDeployMoveParam | CwActionRefreshShopParam | CwActionCloseShopParam
+          | CwActionSellDeployedParam | CwActionSwapDeployParam)
 
 
 # ===== 统一词表·备战域动作(unified-action-factory 批2b 自
@@ -686,7 +696,7 @@ Action = (BuyCard | SellBench | LevelUp | DeployMove | RefreshShop | CloseShop
 #   ADR-0392)。
 
 @dataclass
-class ClickSpheres(CwAction):
+class CwActionClickSpheresParam:
     """点奖励球(R4 坐标参数化机械动作:载荷 = 有序球坐标点击列表)。
 
     ``points`` = 按点击顺序排列的球心坐标 (x, y)(1080p 游戏空间)。挑选
@@ -695,30 +705,36 @@ class ClickSpheres(CwAction):
     零排序。逻辑态按载荷精确摘球(坐标匹配,容器 spheres 域)。
     """
     points: tuple[tuple[int, int], ...] = ()
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class OpenBox(CwAction):
+class CwActionOpenBoxParam:
     """开补给箱(点「开启」→ 弹武装箱 overlay;开箱即腾席)。slot=None → 第一箱。"""
     slot: int | None = None
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class OpenTome(CwAction):
+class CwActionOpenTomeParam:
     """开秘密典籍(点槽两次:选中→开启 → 弹星徽四选一;开典籍即腾席+loop 0i 接管选卡)。
 
     建档:投资策略「秘密典籍」给的红金典籍道具占备战席 1 槽(类补给箱);
     选卡决策在 loop 0i handler(板上阵营匹配),本动作只负责把典籍点开。slot=None → 第一典籍。
     """
     slot: int | None = None
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class OpenBookcard(CwAction):
+class CwActionOpenBookcardParam:
     """开书册卡(点槽「开启」→ 弹专家邀请函五选一;开卡即腾席)。
 
     书册卡 = 备战席占槽道具(与补给箱/秘密典籍并列第三件;R10 归位备战
-    词表,与 OpenBox/OpenTome 同签名,design.md §2.6 R10)。选卡决策不在
+    词表,与 CwActionOpenBoxParam/CwActionOpenTomeParam 同签名,design.md §2.6 R10)。选卡决策不在
     本执行链——点完开启本动作即交回,专家邀请函弹窗由外循环按画面分发
     ``CwScreenExpertInvite`` 选卡(选卡决策单一源 = kernel
     ``cw_events.choose_expert_index``,普查迁移批 2 自画面 op 迁入);
@@ -727,15 +743,17 @@ class OpenBookcard(CwAction):
     director 门控留策略侧定。slot=None → 第一张书册卡。
     """
     slot: int | None = None
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class WearEquip(CwAction):
+class CwActionWearEquipParam:
     """穿装备(装备库 owned 件 → 目标角色物理槽位;R2 穿戴原子通路)。
 
     计划构造 = kernel ``build_equip_wear_plan``(自执行器模块迁居,
     决策侧逐帧现算);发射序即执行序(决策核逐帧取首项)。逻辑态 =
-    ``obs.owned_equips`` 摘件(视觉域,与 OpenBox/OpenTome 同形);
+    ``obs.owned_equips`` 摘件(视觉域,与 CwActionOpenBoxParam/CwActionOpenTomeParam 同形);
     穿没穿归观察写入边对账(裁决 3 零比对出生:体内零 CV-diff 验穿)。
     ``char_name`` = 目标角色注册名('' = front-only 回退步,拖点 =
     前排空槽 avatar,与 EquipWearStep 契约同形)。
@@ -744,10 +762,12 @@ class WearEquip(CwAction):
     char_name: str
     row: str            # 'front' | 'back'(见上方通用坐标系声明)
     slot: int           # 画面物理槽位 1 基(前排 1-4 / 后排 1-N)
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class FurnaceUse(CwAction):
+class CwActionFurnaceUseParam:
     """冶金炉(R8 按消耗品各立类;双模式)。
 
     - target_kind='equip':拖装备 = 原地变异同类型随机(target =
@@ -761,10 +781,12 @@ class FurnaceUse(CwAction):
     item_name: str = ''  # target_kind='equip':装备库 owned 件名
     row: str = ''        # target_kind='char':见上方通用坐标系声明
     slot: int = 0        # target_kind='char':画面物理槽位 1 基
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class PrivilegeCardUse(CwAction):
+class CwActionPrivilegeCardUseParam:
     """特权赋予卡(R8;双腿)。
 
     - target_kind='equip'(库存腿,现役执行臂):确定变换 = target 件
@@ -774,47 +796,57 @@ class PrivilegeCardUse(CwAction):
       特权——「哪件被选」= 随机面 → 逻辑态只写工具 −1,选定后确定面
       归观察收口(``transform_worn_equip_to_privilege`` 桥在册)。
     """
-    target_kind: str    # 'equip' | 'char'(值域封闭,同 FurnaceUse)
+    target_kind: str    # 'equip' | 'char'(值域封闭,同 CwActionFurnaceUseParam)
     item_name: str = ''  # target_kind='equip':被变换的进阶成品件名
     row: str = ''        # target_kind='char':见上方通用坐标系声明
     slot: int = 0        # target_kind='char':画面物理槽位 1 基
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class WrenchUse(CwAction):
+class CwActionWrenchUseParam:
     """拆装扳手(R8):target = 角色槽位(取下该角色全部穿戴,装备归属
     面回区);工具消耗品 −1(用后消失)。"""
     row: str            # 见上方通用坐标系声明
     slot: int           # 画面物理槽位 1 基
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class PrecisionWrenchUse(CwAction):
-    """精密拆装扳手(R8):target = 角色槽位(同 WrenchUse);无限次用,
+class CwActionPrecisionWrenchUseParam:
+    """精密拆装扳手(R8):target = 角色槽位(同 CwActionWrenchUseParam);无限次用,
     工具库存面不递减(重复获得改 +1 金 = 贡献算术,获得回执窗在册)。"""
     row: str            # 见上方通用坐标系声明
     slot: int           # 画面物理槽位 1 基
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class StaffProjectorUse(CwAction):
+class CwActionStaffProjectorUseParam:
     """员工投影仪(R8 投影仪按型号两类之一):target = 角色槽位
     (在备战席创造该角色 1 星复制);费用门 = 3 费及以下(门表单一源 =
     ``cw_affix_effects`` 投影仪费用门行),门由发射位判据面辖。"""
     row: str            # 见上方通用坐标系声明
     slot: int           # 画面物理槽位 1 基
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class PerfectProjectorUse(CwAction):
+class CwActionPerfectProjectorUseParam:
     """完美投影仪(R8 投影仪按型号两类之二):target = 角色槽位
-    (同 StaffProjectorUse 但无费用门)。"""
+    (同 CwActionStaffProjectorUseParam 但无费用门)。"""
     row: str            # 见上方通用坐标系声明
     slot: int           # 画面物理槽位 1 基
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class LuckyTokenUse(CwAction):
+class CwActionLuckyTokenUseParam:
     """好运令牌(R8):拖到角色 → 从其推荐进阶装备中获得一件。
 
     ⚠️ 发射位挂账(裁决 1/R9 纪律):作用对象判据面现役 fail-closed
@@ -824,10 +856,12 @@ class LuckyTokenUse(CwAction):
     """
     row: str            # 见上方通用坐标系声明
     slot: int           # 画面物理槽位 1 基
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class OpenShop(CwAction):
+class CwActionOpenShopParam:
     """开商店意图(W970 批 C/§4.3.6;EnsureShop 意图退役后的承接形态)。
 
     read_only=False:显式开店 → 流程层编排商店动作循环(观察→decide_shop_screen
@@ -842,12 +876,16 @@ class OpenShop(CwAction):
     """
     read_only: bool = False
     restricted_spend: bool = False
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class StartBattle(CwAction):
+class CwActionStartBattleParam:
     """出战(环出口;含未达上限确认)。零转移验证机械单发:点击序列发出即交回
-    (未发出 = 找不到按钮返 False),转移与否由交回后下一帧观察裁决。StartBattle 豁免屏蔽。"""
+    (未发出 = 找不到按钮返 False),转移与否由交回后下一帧观察裁决。CwActionStartBattleParam 豁免屏蔽。"""
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 # 动作全集白名单(统一词表运行时元组;注册完备锁的遍历单一源,批4
@@ -856,107 +894,197 @@ class StartBattle(CwAction):
 # —— 选择族动作化(策略器终态契约;落地 landing §3.1 纯新增零消费,
 #       decide 接线归终态切换批)=====
 
+# 选择族公共契约(原 PickOption 基类,摊平后 12 个叶子逐类重声明 idx/reason):
+# ``idx`` = 该画面候选槽位序号,坐标系 = 对应 payload 槽 options 列表下标
+# (0 基,与写槽时 OCR 顺序一致,槽位表恒稳);取值时机 = 生成期快照。
+# per-screen 子类即执行注册表的分发键;handler 自管消费链(投资/星典/祈愿/
+# 武装箱/命运卜者/专家邀请函/选择装备)读 idx 直点,不经注册表。
+
+
 @dataclass
-class PickOption(CwAction):
-    """选择动作基类:策略在某画面选中了一个候选项。
-
-    [索引定义] idx = 该画面候选槽位序号,坐标系 = 对应 payload 槽
-    options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
-    取值时机 = 生成期快照(写槽→decide 同访问相邻,契约见
-    策略器终态契约 design §2.2)。``reason`` = 归因记录字段
-    (判读面 parity,继承 Pick 族 reason 语义;''=未标)。
-
-    per-screen 子类(本节十二个,契约扩员 12→15)即执行注册表的分发键:
-    注册行换键名、注册表结构不变;handler 自管消费链(投资/星典/祈愿/
-    武装箱/命运卜者/专家邀请函/选择装备)读 idx 直点,不经注册表。"""
+class CwActionPickEncounterParam:
+    """遭遇节点选择(替代 EncounterPick;刷新建议另发 CwActionRefreshNodeOptionsParam)。"""
     idx: int
+    # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
+    #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
+    #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
+    #             重声明;``reason`` = 归因记录字段,''=未标)。
     reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class PickEncounter(PickOption):
-    """遭遇节点选择(替代 EncounterPick;刷新建议另发 RefreshNodeOptions)。"""
+class CwActionPickSupplyParam:
+    """补给节点选择(替代 SupplyPick;刷新建议另发 CwActionRefreshSupplyParam)。"""
+    idx: int
+    # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
+    #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
+    #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
+    #             重声明;``reason`` = 归因记录字段,''=未标)。
+    reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class PickSupply(PickOption):
-    """补给节点选择(替代 SupplyPick;刷新建议另发 RefreshSupply)。"""
+class CwActionPickInvestParam:
+    """投资选择(投资策略/投资环境两入口共用,替代 CwActionPickEventParam;逐卡刷新
+    建议另发 CwActionRefreshInvestCardsParam)。"""
+    idx: int
+    # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
+    #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
+    #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
+    #             重声明;``reason`` = 归因记录字段,''=未标)。
+    reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class PickInvest(PickOption):
-    """投资选择(投资策略/投资环境两入口共用,替代 PickEvent;逐卡刷新
-    建议另发 RefreshInvestCards)。"""
-
-
-@dataclass
-class PickMegastar(PickOption):
+class CwActionPickMegastarParam:
     """盛会之星选择(替代 MegastarPick)。"""
+    idx: int
+    # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
+    #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
+    #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
+    #             重声明;``reason`` = 归因记录字段,''=未标)。
+    reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class PickPartner(PickOption):
+class CwActionPickPartnerParam:
     """列车同行伙伴选择(替代 PartnerPick)。"""
+    idx: int
+    # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
+    #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
+    #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
+    #             重声明;``reason`` = 归因记录字段,''=未标)。
+    reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class PickPlanner(PickOption):
+class CwActionPickPlannerParam:
     """骇入策划选择(替代 PlannerPick)。"""
+    idx: int
+    # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
+    #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
+    #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
+    #             重声明;``reason`` = 归因记录字段,''=未标)。
+    reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class PickStarTome(PickOption):
+class CwActionPickStarTomeParam:
     """星徽秘典选择(替代裸 int 返回)。"""
+    idx: int
+    # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
+    #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
+    #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
+    #             重声明;``reason`` = 归因记录字段,''=未标)。
+    reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class PickWishTrial(PickOption):
+class CwActionPickWishTrialParam:
     """祈愿试炼选择(替代裸 int 返回)。"""
+    idx: int
+    # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
+    #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
+    #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
+    #             重声明;``reason`` = 归因记录字段,''=未标)。
+    reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class PickBoxCard(PickOption):
+class CwActionPickBoxCardParam:
     """武装箱选择(替代裸 int 返回)。"""
+    idx: int
+    # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
+    #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
+    #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
+    #             重声明;``reason`` = 归因记录字段,''=未标)。
+    reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class PickFortune(PickOption):
+class CwActionPickFortuneParam:
     """命运卜者强化三选一选择(契约扩员 12→15 新增;普查迁移批 2)。"""
+    idx: int
+    # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
+    #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
+    #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
+    #             重声明;``reason`` = 归因记录字段,''=未标)。
+    reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class PickExpertInvite(PickOption):
+class CwActionPickExpertInviteParam:
     """专家邀请函选卡选择(契约扩员 12→15 新增;普查迁移批 2)。
 
     [索引定义] idx 取值域扩展:0..3 = 候选卡区下标(卡-1..卡-4);
     **-1 = 现金为王**(经济兜底,非候选卡槽下标;kernel
     ``choose_expert_index`` 契约原样,handler 据此点「卡-现金为王」区)。
     """
+    idx: int
+    # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
+    #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
+    #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
+    #             重声明;``reason`` = 归因记录字段,''=未标)。
+    reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class PickEquip(PickOption):
+class CwActionPickEquipParam:
     """选择装备三选一选择(契约扩员 12→15 新增;普查迁移批 2)。"""
+    idx: int
+    # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
+    #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
+    #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
+    #             重声明;``reason`` = 归因记录字段,''=未标)。
+    reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class RefreshNodeOptions(CwAction):
+class CwActionRefreshNodeOptionsParam:
     """遭遇节点刷新建议(替代 EncounterPick.refresh 旗标):策略建议点击
     节点刷新钮。encounter 刷新链 = 同访问重决策——发射本动作前须以重读
     产物覆盖写槽再决策(刷新链分屏形态申报,禁沿用旧槽内容)。"""
     reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class RefreshSupply(CwAction):
+class CwActionRefreshSupplyParam:
     """补给节点刷新建议(替代 SupplyPick.refresh 旗标):supply 刷新链 =
     发射后交回重入型(重入访问走常规写槽→决策起点链)。"""
     reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class RefreshInvestCards(CwAction):
-    """投资逐卡刷新建议(替代 PickEvent.refresh_slots):**纯建议**——
+class CwActionRefreshInvestCardsParam:
+    """投资逐卡刷新建议(替代 CwActionPickEventParam.refresh_slots):**纯建议**——
     是否真刷由 handler 决定(逐槽计数现读 >0 才点,失败安全 = 现状)。
 
     [索引定义] slots = 待刷新投资卡槽位序号集,坐标系 = 投资界面卡槽
@@ -964,35 +1092,55 @@ class RefreshInvestCards(CwAction):
                 留在画面 handler。"""
     slots: tuple[int, ...] = ()
     reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
-class HoldFrame(CwAction):
+class HoldFrame:
     """备战空发射帧显式信号:本帧无动作可发,交回外循环重新观察。
 
     消费契约:不进执行器、不进动作注册表、不写续段 token/动作记录
     (等待帧非动作);备战决策环分支判等对象由 None 换本类型,
     round 返回形态与等待时长逐字不变。"""
     reason: str = ''
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
+
+# 动作类型总和(union 类型别名,**非基类**;继承基类已摊平,每动作一个
+# 独立 dataclass。本名仅为既有 ``CwAction`` 注解面与 ``isinstance(x,
+# CwAction)`` 判定的零改动兼容保留;Python 3.10+ union isinstance 合法)。
+CwAction = (
+    CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam | CwActionLevelUpShopParam |
+    CwActionDeployMoveParam | CwActionRefreshShopParam | CwActionCloseShopParam | CwActionSellDeployedParam |
+    CwActionSwapDeployParam | CwActionClickSpheresParam | CwActionOpenBoxParam | CwActionOpenTomeParam |
+    CwActionOpenBookcardParam | CwActionWearEquipParam | CwActionFurnaceUseParam | CwActionPrivilegeCardUseParam |
+    CwActionWrenchUseParam | CwActionPrecisionWrenchUseParam | CwActionStaffProjectorUseParam | CwActionPerfectProjectorUseParam |
+    CwActionLuckyTokenUseParam | CwActionStartBattleParam | CwActionOpenShopParam | CwActionPickEventParam |
+    CwActionPickEncounterParam | CwActionPickSupplyParam | CwActionPickInvestParam | CwActionPickMegastarParam |
+    CwActionPickPartnerParam | CwActionPickPlannerParam | CwActionPickStarTomeParam | CwActionPickWishTrialParam |
+    CwActionPickBoxCardParam | CwActionPickFortuneParam | CwActionPickExpertInviteParam | CwActionPickEquipParam |
+    CwActionRefreshNodeOptionsParam | CwActionRefreshSupplyParam | CwActionRefreshInvestCardsParam | HoldFrame
+)
 # ——漏登记时执行面 validate 拒「未知动作类型」,动作从未真正执行
-# (OpenTome 曾漏登记,数百次拒绝被误读为执行失败;登记是入口门)。
+# (CwActionOpenTomeParam 曾漏登记,数百次拒绝被误读为执行失败;登记是入口门)。
 CW_ACTION_TYPES: tuple = (
-    BuyCard, SellBench, LevelUp, LevelUpShop, DeployMove, RefreshShop,
-    CloseShop, SellDeployed,
-    ClickSpheres, OpenBox, OpenTome, OpenBookcard,
-    WearEquip,
-    FurnaceUse, PrivilegeCardUse, WrenchUse, PrecisionWrenchUse,
-    StaffProjectorUse, PerfectProjectorUse, LuckyTokenUse,
-    StartBattle,
-    OpenShop,
+    CwActionBuyCardParam, CwActionSellBenchParam, CwActionLevelUpParam, CwActionLevelUpShopParam, CwActionDeployMoveParam, CwActionRefreshShopParam,
+    CwActionCloseShopParam, CwActionSellDeployedParam,
+    CwActionClickSpheresParam, CwActionOpenBoxParam, CwActionOpenTomeParam, CwActionOpenBookcardParam,
+    CwActionWearEquipParam,
+    CwActionFurnaceUseParam, CwActionPrivilegeCardUseParam, CwActionWrenchUseParam, CwActionPrecisionWrenchUseParam,
+    CwActionStaffProjectorUseParam, CwActionPerfectProjectorUseParam, CwActionLuckyTokenUseParam,
+    CwActionStartBattleParam,
+    CwActionOpenShopParam,
     # 选择族动作化(终态契约;decide 接线归终态切换批,本批纯落型;
-    # PickFortune/PickExpertInvite/PickEquip = 契约扩员 12→15 新增,普查迁移批 2)
-    PickEncounter, PickSupply, PickInvest, PickMegastar, PickPartner,
-    PickPlanner, PickStarTome, PickWishTrial, PickBoxCard,
-    PickFortune, PickExpertInvite, PickEquip,
-    RefreshNodeOptions, RefreshSupply, RefreshInvestCards,
+    # CwActionPickFortuneParam/CwActionPickExpertInviteParam/CwActionPickEquipParam = 契约扩员 12→15 新增,普查迁移批 2)
+    CwActionPickEncounterParam, CwActionPickSupplyParam, CwActionPickInvestParam, CwActionPickMegastarParam, CwActionPickPartnerParam,
+    CwActionPickPlannerParam, CwActionPickStarTomeParam, CwActionPickWishTrialParam, CwActionPickBoxCardParam,
+    CwActionPickFortuneParam, CwActionPickExpertInviteParam, CwActionPickEquipParam,
+    CwActionRefreshNodeOptionsParam, CwActionRefreshSupplyParam, CwActionRefreshInvestCardsParam,
     HoldFrame,
 )
 
@@ -1000,17 +1148,17 @@ CW_ACTION_TYPES: tuple = (
 #: 12→15 后十二个),供 handler 分派/注册完备锁遍历(三刷新动作走各自
 #: 既有点击链不入本表;HoldFrame = 无操作语义,不属选择族)。
 PICK_ACTION_TYPES: tuple = (
-    PickEncounter, PickSupply, PickInvest, PickMegastar, PickPartner,
-    PickPlanner, PickStarTome, PickWishTrial, PickBoxCard,
-    PickFortune, PickExpertInvite, PickEquip,
+    CwActionPickEncounterParam, CwActionPickSupplyParam, CwActionPickInvestParam, CwActionPickMegastarParam, CwActionPickPartnerParam,
+    CwActionPickPlannerParam, CwActionPickStarTomeParam, CwActionPickWishTrialParam, CwActionPickBoxCardParam,
+    CwActionPickFortuneParam, CwActionPickExpertInviteParam, CwActionPickEquipParam,
 )
 
 
 def action_key(action: CwAction) -> str:
-    """动作实例键(屏蔽计数粒度 = 动作类型 + 参数;SellBench(3) 与 SellBench(5) 各自计数)。
+    """动作实例键(屏蔽计数粒度 = 动作类型 + 参数;CwActionSellBenchParam(3) 与 CwActionSellBenchParam(5) 各自计数)。
 
     带 ``action_key_exclude`` metadata 的字段不入键(现役 =
-    SellBench.reason 卖出归因 + CwAction.route_tag 发射臂路线标签
+    CwActionSellBenchParam.reason 卖出归因 + CwAction.route_tag 发射臂路线标签
     [旗标状态机 §3.3]):幂等粒度 = 行为参数,归因/路由标签不改变动作实例
     身份——同槽位不同归因是同一动作,禁拆成两个幂等键。
     """
@@ -1022,7 +1170,7 @@ def action_key(action: CwAction) -> str:
             if f.metadata.get('action_key_exclude'):
                 params.pop(f.name, None)
         if not params:
-            return type(action).__name__   # 无字段 dataclass(StartBattle 等)→ 裸名
+            return type(action).__name__   # 无字段 dataclass(CwActionStartBattleParam 等)→ 裸名
         return f'{type(action).__name__}({params})'
     return type(action).__name__
 
@@ -1044,7 +1192,7 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
     ``session.bench``/``session.deployed``。gold/shop/XP 期望态不在此辖:
     容器逻辑态直写 = ``apply_shop_action_logic``(动作语义单一源,避双源漂移)。
     ADR-0316/0392:bench/deployed 均为槽位表(定长 9/10,None=空槽)——入口防御性 pad。
-    LevelUp/RefreshShop/PickEvent 不影响 bench/deployed → no-op。
+    CwActionLevelUpParam/CwActionRefreshShopParam/CwActionPickEventParam 不影响 bench/deployed → no-op。
 
     ``shop``(缺省 None = 零漂移兼容):调用方的当前店面视图。提供时,
     满栏合成买走 ``_apply_full_bench_merge_buy`` 单一源——满栏时游戏对完成合成
@@ -1054,12 +1202,12 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
     """
     pad_bench(bench)
     pad_deployed(deployed)
-    if isinstance(action, BuyCard):
+    if isinstance(action, CwActionBuyCardParam):
         _placed = bench_place(bench, _card_to_bench(action.card)) is not None
         if not _placed and shop is not None and (action.card.name or ''):
             _apply_full_bench_merge_buy(bench, deployed, action.card, shop)
         _merge_bench(bench, deployed)   # 全场域(live tracking 与 simulate 同源)
-    elif isinstance(action, SellBench):
+    elif isinstance(action, CwActionSellBenchParam):
         # ADR-0317 代际校验(与 simulate 同源):expect 非空且不符 →
         # 陈旧提案 no-op(不移除)
         if 0 <= action.bench_idx < len(bench) \
@@ -1067,7 +1215,7 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
                 and (not action.expect
                      or bench[action.bench_idx].char_id == action.expect):
             bench_clear(bench, action.bench_idx)
-    elif isinstance(action, DeployMove):
+    elif isinstance(action, CwActionDeployMoveParam):
         _tgt = (bench[action.bench_idx]
                 if 0 <= action.bench_idx < len(bench) else None)
         if _tgt is not None:
@@ -1080,7 +1228,7 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
             _apply_row_to_char(bc, action.to_row)
             # 开拓者形态切换(同 simulate 语义,单一源 helper)
             deployed_place(deployed, bc)   # ADR-0392:按排路由落槽
-    elif isinstance(action, SellDeployed):
+    elif isinstance(action, CwActionSellDeployedParam):
         # 动作 v2(契约包 C1):runtime 跟踪侧只做身份转移(金/装备归
         # CwSimFrame 域,本函数不管——与 simulate 单一源规则一致)
         if 0 <= action.deployed_idx < len(deployed) \
@@ -1089,7 +1237,7 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
                      or deployed[action.deployed_idx].char_id == action.expect):
             deployed_clear(deployed, action.deployed_idx)
             # ADR-0392:置 None 不移位(deployed_idx 恒稳;陈旧提案=代际不符 no-op)
-    elif isinstance(action, SwapDeploy):
+    elif isinstance(action, CwActionSwapDeployParam):
         if 0 <= action.deployed_idx < len(deployed) \
                 and deployed[action.deployed_idx] is not None \
                 and 0 <= action.bench_idx < len(bench) \

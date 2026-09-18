@@ -54,8 +54,8 @@ from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
-    PickEncounter,
-    RefreshNodeOptions,
+    CwActionPickEncounterParam,
+    CwActionRefreshNodeOptionsParam,
 )
 from sr_od.application.currency_war.obs.cw_node_obs import (
     read_encounter_options,
@@ -135,7 +135,7 @@ class CwScreenEncounter(CwScreenOpBase):
         # 一次——双计即计数毒化)。chosen_encounter = 选择 handler 单次
         # 逻辑写入豁免,不在收编面(§2.2)。
         self.register_outcome_hook(
-            RefreshNodeOptions, self._on_refresh_emitted,
+            CwActionRefreshNodeOptionsParam, self._on_refresh_emitted,
             name='encounter_refresh_used')
         # 确认已发待重入裁决的选卡(验证废除形态,用户裁定 2026-09-10):
         # (options, idx) 快照——确认点击发出后置位,下一轮重入由入口观察
@@ -167,7 +167,7 @@ class CwScreenEncounter(CwScreenOpBase):
         except Exception as e:   # noqa: BLE001  记录面失败不阻塞
             log.warning(f'[cw-encounter] 刷新计数记录失败(不阻塞): {e}')
 
-    def _emit_refresh_click(self, act: RefreshNodeOptions) -> None:
+    def _emit_refresh_click(self, act: CwActionRefreshNodeOptionsParam) -> None:
         """刷新点击发射时点(单一发射口,发射即触发;§6.5-4 随点击置位不等
         验效)。「已用」账 = 容器 encounter_refresh_used 计数,写端 = 本
         发射经 on_outcome 注册表触发的登记件钩子(唯一容器写点,禁第二
@@ -209,7 +209,7 @@ class CwScreenEncounter(CwScreenOpBase):
         gs.write_logic(gs.encounter_refreshed_in_visit, False,
                        produced_by='CwScreenEncounter', sig=_sig())
         act = match.strategy.decide_encounter()
-        if isinstance(act, RefreshNodeOptions):
+        if isinstance(act, CwActionRefreshNodeOptionsParam):
             # ===== 分支刷新执行链:建议刷新 → 有次数且未用 → 点钮 → 重读重决策 =====
             # 验效双通道已拆(用户裁定 2026-09-10 动作 op 禁验效,清查报告 H1):
             # 发射即置位 → 点钮+固定等待 → 无条件重读 → per-visit 位置 True
@@ -238,11 +238,11 @@ class CwScreenEncounter(CwScreenOpBase):
             gs.write_logic(gs.encounter_refreshed_in_visit, True,
                            produced_by='CwScreenEncounter', sig=_sig())
             act = match.strategy.decide_encounter()
-            if isinstance(act, RefreshNodeOptions):
+            if isinstance(act, CwActionRefreshNodeOptionsParam):
                 # 防御:置位后重调仍返回建议(策略未消费 per-visit 位)→
                 # 不再循环,按无决策处理(失败安全)。
                 act = None
-        if isinstance(act, PickEncounter):
+        if isinstance(act, CwActionPickEncounterParam):
             if 0 <= act.idx < len(options):
                 idx = act.idx
             reason = act.reason
@@ -378,7 +378,7 @@ class CwScreenEncounter(CwScreenOpBase):
         # 出口验真语义时点后移)。
         return self._act_execute(pick, options, idx)
 
-    def _act_execute(self, pick: PickEncounter | None,
+    def _act_execute(self, pick: CwActionPickEncounterParam | None,
                      options: list[EncounterOption], idx: int
                      ) -> OperationRoundResult:
         """动作执行分派面(五段之 act 端口分派;两路径共用)。注入动作
@@ -417,7 +417,7 @@ class CwScreenEncounter(CwScreenOpBase):
         env = OverlayPickExecEnv(op=self)
         # 派发实例 = 生效选中下标的规范实例(决策半钳位后的 idx;策略 pick
         # 缺席/越界时本实例即唯一载体——工厂按类型解析,机械参数随实例)。
-        action_op_for(PickEncounter(idx=idx)).execute(env)
+        action_op_for(CwActionPickEncounterParam(idx=idx)).execute(env)
         return env.round_result
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 2,先例 = CwScreenPrep)----

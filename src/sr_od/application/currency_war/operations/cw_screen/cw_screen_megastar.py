@@ -217,14 +217,16 @@ class CwScreenMegastar(CwScreenOpBase):
         # 写入豁免面),逐字连续搬迁不可得——确认机械半先收拢,候选半随
         # 写端迁移批再收拢(裁定申报见 T-216 交付报告)。派发实例仅作
         # 注册表解析键(机械参数 = 确认钮定位,op 类体内自读 screen_info)。
-        from sr_od.application.currency_war.kernel.cw_vocab import PickMegastar
+        from sr_od.application.currency_war.kernel.cw_vocab import (
+            CwActionPickMegastarParam,
+        )
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
         from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
             OverlayPickExecEnv,
         )
-        action_op_for(PickMegastar(idx=0)).execute(
+        action_op_for(CwActionPickMegastarParam(idx=0)).execute(
             OverlayPickExecEnv(op=self))
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 2,先例 = CwScreenPrep)----

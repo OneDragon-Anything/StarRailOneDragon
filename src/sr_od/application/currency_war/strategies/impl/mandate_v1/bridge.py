@@ -39,9 +39,9 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
+    CwActionPickEncounterParam,
+    CwActionRefreshNodeOptionsParam,
     HoldFrame,
-    PickEncounter,
-    RefreshNodeOptions,
 )
 from sr_od.application.currency_war.strategies.impl.flow import (
     CwFlowStrategy,
@@ -75,13 +75,13 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
       ``launch_quality_eval_error`` 后照常发射(fail-open 防死锁,
       ADR-0570 分界)——键单一源 = kernel cw_launch_admission 常量;
     - armed ∧ 帧级金判定 ``in_launch_spend_zone`` 命中(禁内联金息线
-      比较)→ 受限商店访问意图 ``OpenShop(restricted_spend=True)``;
+      比较)→ 受限商店访问意图 ``CwActionOpenShopParam(restricted_spend=True)``;
       **每武装段至多一次**(段旗 cw4_launch_spend_visited,失武装复位;
       复位后再武装仍命中允许新段再访);段内已访问 → 落无条件发射
       (旧形态「访问后照发」跨帧等价,金不回落无死循环);
-      **不经 S1 开店闩与 OpenShop 节流**(旧仲裁直调 open_shop 同形态,
+      **不经 S1 开店闩与 CwActionOpenShopParam 节流**(旧仲裁直调 open_shop 同形态,
       空转防护 = 段旗);
-    - armed ∧ 未命中 → StartBattle 终点意图(词表现成);
+    - armed ∧ 未命中 → CwActionStartBattleParam 终点意图(词表现成);
     - 非 armed → 段旗复位,返回 None = 原三遍编排接管(非 armed 帧零变化)。
 
     终态契约 §2.1:gs/config 构造注入——入参即容器;策略器状态读口 =
@@ -97,8 +97,8 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
         readiness_launch_decision,
     )
     from sr_od.application.currency_war.kernel.cw_vocab import (
-        OpenShop,
-        StartBattle,
+        CwActionOpenShopParam,
+        CwActionStartBattleParam,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         line_members,
@@ -123,9 +123,9 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
     if in_launch_spend_zone(gold_of(gs), gs):
         if not _st.cw4_launch_spend_visited:
             _st.cw4_launch_spend_visited = True
-            return OpenShop(restricted_spend=True)
+            return CwActionOpenShopParam(restricted_spend=True)
         # 段内已访问:落无条件发射
-    return StartBattle()
+    return CwActionStartBattleParam()
 
 
 class MandateV1Strategy(CwFlowStrategy):
@@ -197,7 +197,7 @@ class MandateV1Strategy(CwFlowStrategy):
                                     registry=self.registry)
         return actions[0] if actions else HoldFrame()
 
-    def decide_encounter(self) -> PickEncounter | RefreshNodeOptions:
+    def decide_encounter(self) -> CwActionPickEncounterParam | CwActionRefreshNodeOptionsParam:
         """遭遇分支选卡(终态零参口;候选 = ``gs.encounter`` payload):E-2
         判据落码(kernel/cw_encounter_selection.py 单一源)。
 
@@ -210,8 +210,8 @@ class MandateV1Strategy(CwFlowStrategy):
         入口内务 = 备战帧代次消费(覆写不落基类实现,须自带)。
         刷新旗标输入源 = ``gs.encounter_refreshed_in_visit`` per-visit 位
         (details §2.3 读点声明,handler 写端;None 缺省 False)。
-        输出包装(终态契约 §2.2):刷新建议 = RefreshNodeOptions,选卡 =
-        PickEncounter(两型互斥单发)。
+        输出包装(终态契约 §2.2):刷新建议 = CwActionRefreshNodeOptionsParam,选卡 =
+        CwActionPickEncounterParam(两型互斥单发)。
         """
         self._consume_prep_direction_frame()
         payload = self.gs.encounter.value
@@ -228,8 +228,8 @@ class MandateV1Strategy(CwFlowStrategy):
         pick: EncounterPick = cw_encounter_selection.decide_encounter(
             options, self.gs, refresh_used=refresh_used)
         if pick.refresh:
-            return RefreshNodeOptions(reason=pick.reason)
-        return PickEncounter(idx=pick.idx, reason=pick.reason)
+            return CwActionRefreshNodeOptionsParam(reason=pick.reason)
+        return CwActionPickEncounterParam(idx=pick.idx, reason=pick.reason)
 
     def decide_shop_screen(self, session: StrategySession | None = None,
                            config: CurrencyWarConfig | None = None) -> list:
@@ -240,8 +240,8 @@ class MandateV1Strategy(CwFlowStrategy):
         ``cw_op_buy_cards.run_buy_waves``);本驱动器保留给 sim 引擎/回放/既有序列锁——
         驱动 = 逐帧调单动作核 + 容器逻辑态直写推进期望态
         (``apply_shop_action_logic`` 简单腿 + 合成升星腿;T-163 起零
-        simulate 前瞻消费),终结动作(RefreshShop)截停
-        序列、CloseShop 收尾不入序列(与旧截断器的输出形态对齐)。与旧波
+        simulate 前瞻消费),终结动作(CwActionRefreshShopParam)截停
+        序列、CwActionCloseShopParam 收尾不入序列(与旧截断器的输出形态对齐)。与旧波
         批的输出等价是条件命题(波批逻辑态直写无残差时逐位一致;逻辑态残差史见
         ADR-0517 §消灭的 bug 类)——帧级序列锁不预期保持绿,按锁纪律重推
         语义。观察帧缺失 = 观察层失约,抛错(禁静默按空态决策)。rng 中立。
@@ -282,9 +282,9 @@ class MandateV1Strategy(CwFlowStrategy):
         _pre_shop: list | None = None
         for _ in range(512):   # 防御上界:决策循环不收敛 = 策略器 bug 响亮暴露
             a = self.decide_shop_action()   # 零参单动作核(终态契约 §2.1)
-            if isinstance(a, cw_state.CloseShop):
+            if isinstance(a, cw_state.CwActionCloseShopParam):
                 return out
-            if isinstance(a, (cw_state.BuyCard,)):
+            if isinstance(a, (cw_state.CwActionBuyCardParam,)):
                 self.state.cw4_visit_bought_names.append(a.card.name or '')
                 # 买前快照三件组(升星腿 scratch 基点;必须在直写口写之前
                 # 取,失准形态申报见 apply_shop_merge_leg docstring)。
@@ -300,22 +300,22 @@ class MandateV1Strategy(CwFlowStrategy):
             # 停摆续段缓存命中。
             self.state.cw4_frame_action_record = (
                 type(a).__name__, self.state.cw4_segment_serial)
-            if isinstance(a, cw_state.RefreshShop):
+            if isinstance(a, cw_state.CwActionRefreshShopParam):
                 return out      # 终结 op:序列到止(重观察语境;原
                 # CompTransaction 邻接终结已随批2b R3 删除)
             # 逻辑态直写推进 = apply_shop_action_logic(设计件 §2.2-3 驱动器同路;
             # 回执 kernel 判据派生,单动作核逐帧恰一动作 = 击数恒 1)。
             _exec = ShopActionExecuted(
-                bought_count=1 if isinstance(a, cw_state.BuyCard) else None,
-                levelup_clicks=1 if isinstance(a, cw_state.LevelUp) else None,
+                bought_count=1 if isinstance(a, cw_state.CwActionBuyCardParam) else None,
+                levelup_clicks=1 if isinstance(a, cw_state.CwActionLevelUpParam) else None,
                 refresh_paid=(int(getattr(a, 'cost', 0) or 0)
-                              if isinstance(a, cw_state.RefreshShop) else None))
+                              if isinstance(a, cw_state.CwActionRefreshShopParam) else None))
             apply_shop_action_logic(gs, a, executed=_exec,
                                     produced_by=type(a).__name__, sig=_sig)
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 apply_shop_merge_leg,
             )
-            # 升星腿对非 BuyCard 自 no-op,pre_* 透传即可。
+            # 升星腿对非 CwActionBuyCardParam 自 no-op,pre_* 透传即可。
             apply_shop_merge_leg(gs, a, sig=_sig, pre_bench=_pre_bench,
                                  pre_deployed=_pre_dep, pre_shop=_pre_shop)
         from sr_od.application.currency_war.kernel.cw_game_state import (

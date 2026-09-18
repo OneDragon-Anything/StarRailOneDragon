@@ -319,7 +319,9 @@ class CwScreenPartner(CwScreenOpBase):
         # 留守上方;选中态标记与脉冲计数宿主仍是本 op,经 env.op 消费。
         # 派发实例仅作注册表解析键(机械输入 = unselected 实证 + 本 op
         # 状态,经 env 传递)。
-        from sr_od.application.currency_war.kernel.cw_vocab import PickPartner
+        from sr_od.application.currency_war.kernel.cw_vocab import (
+            CwActionPickPartnerParam,
+        )
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
@@ -327,7 +329,7 @@ class CwScreenPartner(CwScreenOpBase):
             OverlayPickExecEnv,
         )
         _env = OverlayPickExecEnv(op=self, unselected=unselected)
-        action_op_for(PickPartner(idx=0)).execute(_env)
+        action_op_for(CwActionPickPartnerParam(idx=0)).execute(_env)
         return _env.round_result
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----

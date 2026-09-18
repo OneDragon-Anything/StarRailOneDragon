@@ -13,7 +13,7 @@
 2. ``equips_ledger_multiset`` / ``assert_ledger_conserved``:动作前后的装备守恒
    对账(assigned = bench+deployed 各 char 的 equips;pool = ``state.equips``;
    装备只随人走/卖出回收,动作前后多重集必须相等)。挂点 = ``cw_state.simulate``
-   的 BuyCard/SellBench/SellDeployed/SwapDeploy 分支后(原 CompTransaction 分支随批2b R3 删除)
+   的 CwActionBuyCardParam/CwActionSellBenchParam/CwActionSellDeployedParam/CwActionSwapDeployParam 分支后(原 CompTransaction 分支随批2b R3 删除)
    (mismatch 记 action_log,checks/遥测可见,不静默)。
 
 **演进引擎 v1 不消费 bench 装备**(契约包六矛盾 leader 裁决):替换决策按
@@ -23,12 +23,12 @@ from __future__ import annotations
 
 from collections import Counter
 
+from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     bench_slots_of,
     deployed_slots_of,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame
 
 

@@ -26,7 +26,7 @@
   环境源('portal')登记端未建,ActiveEffect.source 词表预留。
 - 改写面写端:装备申报面已按归属判据落码(EQUIP_WRITE_SIDES 三形登记;
   写端桥为账本→字段桥,生产挂点接线归工具执行/节点结算/获得回执各辖批,
-  接线前一律观察覆盖兜底);词缀面写端(LevelUp 金/装备库存/hp_max)不在
+  接线前一律观察覆盖兜底);词缀面写端(CwActionLevelUpParam 金/装备库存/hp_max)不在
   本模块,归属单一源 = 各 spec 的 notes,仍观察覆盖兜底。
 - 开局不利不入 SPEC:其确定性写端已有专用载体 kernel/cw_opening_hp.opening_hp_prior
   (_AFFIX_HP_DELTA,ADR-0559),再建 EffectSpec = −20 数值第二份(双源漂移),
@@ -76,7 +76,7 @@ if TYPE_CHECKING:
 # ===== 词缀源效果规格(键 = affix_effects_data 词缀名;spec.id 同键)=====
 AFFIX_EFFECT_SPECS: dict[str, EffectSpec] = {
     # 成长的烦恼:官方「在你达到8级后，每次购买经验会损失1金币。」(affix_effects_data
-    # 同键原文;competitors.md 玩法知识面)。改写面 = LevelUp 经验金面:等级窗开窗后
+    # 同键原文;competitors.md 玩法知识面)。改写面 = CwActionLevelUpParam 经验金面:等级窗开窗后
     # 每次购经验 +1 金,确定性 → 归属 = 逻辑写(效果写入归属判据:结果可准确计算);
     # 写端未接线,现走观察覆盖兜底。duties.predict = 买经验成本对账须预知(注意:
     # predict_for 的 action→trigger 映射只回同 trigger 条目,本条 CONDITIONAL 不经
@@ -89,7 +89,7 @@ AFFIX_EFFECT_SPECS: dict[str, EffectSpec] = {
         payload=EconomyEffect(xp_click_surcharge_from_level=1,
                               xp_click_surcharge_from_level_at=8),
         duties=DutyFlags(predict=True),
-        notes='LevelUp 金面改写源:8级起每次购经验+1金;归属=逻辑写(确定性),写端未接线走观察覆盖'),
+        notes='CwActionLevelUpParam 金面改写源:8级起每次购经验+1金;归属=逻辑写(确定性),写端未接线走观察覆盖'),
     # 变宝为废:官方「每个位面开始时，首次合成的进阶装备会有50%的概率变成垃圾袋。」
     # 改写面 = 装备库存:随机 50% → 不建逻辑写端,观察收口(归属判据:含概率/随机
     # 结果不可预知)。trigger=ON_MERGE(装备合成事件,与武力刷新同触发面;每位面
@@ -246,7 +246,7 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
     '精密拆装扳手': '金面:重复获得拆装扳手改+1金(确定性→逻辑写;写端=贡献算术'
                  'equip_wrench_duplicate_gold,组合写收口=settle_wrench_duplicate_'
                  'gold,获得回执时点窗口独占);装备归属面:∞次取下全装备回区,op 域'
-                 '既有写端(RunTools/SellBench,流向锚=cw_equip_env 装备转移链)',
+                 '既有写端(RunTools/CwActionSellBenchParam,流向锚=cw_equip_env 装备转移链)',
     '极·阿瓦隆': '生命面:获得宝具时+50小队生命(确定性→逻辑写;写端=桥 apply_'
               'equip_acquire_hp,获得时点窗口独占,hp 写入闸辖——hp 未读跳过;'
               '现观察覆盖兜底)',
@@ -288,7 +288,7 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
               '特权化桥 transform_worn_equip_to_privilege,双腿分派=apply_tool_'
               'execution_write)',
     '拆装扳手': '装备归属面:角色装备全量回区(确定性→逻辑写;写端=op 域既有'
-             'SellBench 卖出回区/RunTools 拆装扳手腿,流向锚=cw_equip_env 装备'
+             'CwActionSellBenchParam 卖出回区/RunTools 拆装扳手腿,流向锚=cw_equip_env 装备'
              '转移链);工具消耗品−1',
     '干将莫邪': '装备面:战斗开始时投影随机进阶装备——战斗内临时面,非备战期装备库存'
              '持久改写;观察收口',
@@ -332,7 +332,7 @@ EQUIP_WRITE_SIDES: dict[str, str] = {
     '分身墨镜Max': 'bridge:spawn_equip_bench_unit',
     '冶金炉': 'observation',
     '特权赋予卡': 'bridge:transform_equip_to_privilege',
-    '拆装扳手': 'op:SellBench/RunTools 装备转移链(cw_equip_env 既有流向锚)',
+    '拆装扳手': 'op:CwActionSellBenchParam/RunTools 装备转移链(cw_equip_env 既有流向锚)',
     '干将莫邪': 'observation',
     '极·干将莫邪': 'observation',
     '诅咒·干将莫邪': 'observation',

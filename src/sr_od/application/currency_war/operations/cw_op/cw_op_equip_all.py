@@ -78,7 +78,7 @@ def register_equip_worn(session, item_name: str, char_name: str,
     后调」门随验穿拆除;实读帧照常覆盖,失配 = 推算 bug 留证修码):
     ``last_owned_equips`` −1 件 + ``tracked_deployed`` 目标角色 equips +1 件。
     槽位坐标系:deployed 槽位表下标 = 前排 slot−1 / 后排
-    DEPLOYED_FRONT_CAPACITY+slot−1(与 apply_op_effect SellDeployed 同式)。
+    DEPLOYED_FRONT_CAPACITY+slot−1(与 apply_op_effect CwActionSellDeployedParam 同式)。
     best-effort:session 缺失 / infra 异常不阻塞穿戴主循环。
     """
     if session is None:

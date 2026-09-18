@@ -5,7 +5,7 @@
 的形态,本批只迁形不改语义)。
 
 非终结:点完开启本动作即交回——专家邀请函弹窗由外循环 0k 分发
-``CwScreenExpertInvite`` 选卡(R7 OpenBox 终结化同构)。
+``CwScreenExpertInvite`` 选卡(R7 CwActionOpenBoxParam 终结化同构)。
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import time
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_vocab import OpenBookcard
+from sr_od.application.currency_war.kernel.cw_vocab import CwActionOpenBookcardParam
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
     ActionOp,
 )
@@ -30,15 +30,15 @@ class OpenBookcardOp(ActionOp):
         """开书册卡:``find_bookcards`` 识别 → 点槽中心 → 固定动画等待。
 
         点完开启本动作即交回——专家邀请函弹窗由外循环 0k 分发
-        ``CwScreenExpertInvite`` 选卡(选卡决策不在本执行链,与 OpenBox
+        ``CwScreenExpertInvite`` 选卡(选卡决策不在本执行链,与 CwActionOpenBoxParam
         终结化同构)。动画等待取家族常量 ``_OVERLAY_ANIM_WAIT_S``(原
         open_card 固定 1.5s,统一至开箱/典籍同族单一源,值只增不减 =
         弹窗弹出窗覆盖面不缩水);弹窗就位与否交下一帧观察。识别按
-        ``action.slot`` 对位(slot=None = 首张,与 OpenBox/OpenTome 同形);
+        ``action.slot`` 对位(slot=None = 首张,与 CwActionOpenBoxParam/CwActionOpenTomeParam 同形);
         书册卡识别含「青蓝卡+白色书册 icon+『开启』」模板语义,单一源 =
         ``find_bookcards``。
         """
-        action: OpenBookcard = self.action
+        action: CwActionOpenBookcardParam = self.action
         ex = env.executor
         from sr_od.application.currency_war.obs.cw_identity_obs import (
             _ctx_slots,

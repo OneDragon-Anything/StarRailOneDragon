@@ -106,7 +106,7 @@ def recipe_kinds_1cost() -> int:
 def classify_buy(card, state) -> str:
     """买牌**身份**分类单一源(① 账本 reason 与冷启动门共用)。
 
-    判卡身份(与购买路径无关;路径语义由各创建点记 BuyCard.reason
+    判卡身份(与购买路径无关;路径语义由各创建点记 CwActionBuyCardParam.reason
     ——line/board_focus/emergency/swap/plan 是**通道**,身份是
     本函数输出;账本 actions 里两字段分列,通道经济分析别混桶):
     - ``'bridge_seed'``:桥名单件(BRIDGE_POOL fixed∪core,P1)

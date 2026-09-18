@@ -1,6 +1,6 @@
-"""P21 · P2 濒死 LevelUp 雨的期望收益模型(可重跑计算脚本)。
+"""P21 · P2 濒死 CwActionLevelUpParam 雨的期望收益模型(可重跑计算脚本)。
 
-命题(math_proofs P21):hp ≤ H0(P2 濒死段)时连发 LevelUp 换人口的期望收益为负;
+命题(math_proofs P21):hp ≤ H0(P2 濒死段)时连发 CwActionLevelUpParam 换人口的期望收益为负;
 判据形式给出「升级不再负」的参数域。模型与常量出处见单篇
 docs/game/currency_war/research/proofs/p21-p2-deathbed-levelup-ev.md。
 

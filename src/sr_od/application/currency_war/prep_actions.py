@@ -10,12 +10,12 @@ reconcile 对账;终裁:执行回执 ``(progressed, detail)`` 退役,
   本动作未发出,机械交回外循环重观察重决策;
 - 执行异常 → 异常上抛(Director 上抛 = 本环 fail,外层 op retry 接管)。
 
-slot 语义(unified-action-factory 批2b 归一后):席位域动作(SellBench/
-SellDeployed/DeployMove)携**容器槽位表下标**(0 基,词表单一源 =
+slot 语义(unified-action-factory 批2b 归一后):席位域动作(CwActionSellBenchParam/
+CwActionSellDeployedParam/CwActionDeployMoveParam)携**容器槽位表下标**(0 基,词表单一源 =
 kernel/cw_vocab,坐标系裁定见其模块头);本执行器 = **执行坐标边**——
 容器下标 → screen_info 槽位中心的换算单点(bench 侧 = 备战栏-N area 序
 直取;deployed 侧 = kernel ``deployed_row_slot`` 单一函数)。坐标参数化
-机械动作(WearEquip/工具原子类/OpenBox/OpenTome/OpenBookcard)的
+机械动作(CwActionWearEquipParam/工具原子类/CwActionOpenBoxParam/CwActionOpenTomeParam/CwActionOpenBookcardParam)的
 row/slot 字段 = 画面物理排槽位 1 基(动作参数定义,拖点直取 area,
 不经换算)。
 统一动作工厂批3 收编(design.md unified-action-factory §2.4):动作级
@@ -38,24 +38,24 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
 from sr_od.application.currency_war.kernel.cw_game_state import gs_of_ctx
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CW_ACTION_TYPES,
-    ClickSpheres,
     CwAction,
-    DeployMove,
-    FurnaceUse,
-    LevelUp,
-    LuckyTokenUse,
-    OpenBookcard,
-    OpenBox,
-    OpenTome,
-    PerfectProjectorUse,
-    PrecisionWrenchUse,
-    PrivilegeCardUse,
-    SellBench,
-    SellDeployed,
-    StaffProjectorUse,
-    StartBattle,
-    WearEquip,
-    WrenchUse,
+    CwActionClickSpheresParam,
+    CwActionDeployMoveParam,
+    CwActionFurnaceUseParam,
+    CwActionLevelUpParam,
+    CwActionLuckyTokenUseParam,
+    CwActionOpenBookcardParam,
+    CwActionOpenBoxParam,
+    CwActionOpenTomeParam,
+    CwActionPerfectProjectorUseParam,
+    CwActionPrecisionWrenchUseParam,
+    CwActionPrivilegeCardUseParam,
+    CwActionSellBenchParam,
+    CwActionSellDeployedParam,
+    CwActionStaffProjectorUseParam,
+    CwActionStartBattleParam,
+    CwActionWearEquipParam,
+    CwActionWrenchUseParam,
 )
 
 if TYPE_CHECKING:
@@ -92,7 +92,7 @@ class StopBrakeShortCircuit(RuntimeError):
     """W209j 停机短路异常(ADR-0388 纵深防御第二层)。
 
     语义 = 运行中被停 → 拒绝执行任何动作(run 27 实证:director 环在
-    Deploy 钩子 stop_running 后仍发 StartBattle 点出战——环顶检查(第一层)
+    Deploy 钩子 stop_running 后仍发 CwActionStartBattleParam 点出战——环顶检查(第一层)
     之外,本入口兜底覆盖绕环路径)。原表达通道 = 执行回执 ``(False, '已
     停止[W209j刹车]')``,随端口回执退役改为停机短路异常:执行器抛出,
     调用方(cw_screen_prep 决策环 / cw_loop 发射核)捕获后交回外循环,
@@ -142,7 +142,7 @@ def sell_point(ctx: SrContext) -> Point:
 def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> None:
     """拖备战槽(槽位下标 0-8)→ 出售区(共享卖原语,W62 件2/设计章2.10)。
 
-    d2 卖通道生产接线(shop.py prefix 循环 SellBench 分支)与 prep_actions
+    d2 卖通道生产接线(shop.py prefix 循环 CwActionSellBenchParam 分支)与 prep_actions
     ``_sell_bench`` 共用本 helper:「拖→出售区」机械一段(拆源槽
     像素验重试:发出即职责完成,落地事实归观察侧 reconcile 对账);
     tracking 同步由调用方各自做。失焦守卫同 ``PrepActionExecutor._drag``
@@ -262,8 +262,8 @@ class PrepActionExecutor:
         # 写入,None = 该动作执行点金差不可推算(诚实缺失,非 0);消费方
         # = 回执 extra 金差键与观察侧备战帧金对账。getattr 容缺
         # (__new__ 桩形态,execute 入口显式复位不依赖构造)。
-        # (LevelUp 金腿已随批2b 翻转切 action.cost 直写——
-        # apply_prep_action_logic 单一写点,本执行缝对 LevelUp 恒 0。)
+        # (CwActionLevelUpParam 金腿已随批2b 翻转切 action.cost 直写——
+        # apply_prep_action_logic 单一写点,本执行缝对 CwActionLevelUpParam 恒 0。)
         self.last_gold_delta: int | None = None
         # 槽位中心(screen_info 静态,构造时读一次;F3 参数校验 + 拖拽坐标共用)
         self._bench_pts: list[Point] = row_area_centers(ctx, '备战栏')
@@ -284,42 +284,42 @@ class PrepActionExecutor:
         """
         if not isinstance(action, CW_ACTION_TYPES):
             return f'未知动作类型 {type(action).__name__}(不在动作全集,§4)'
-        if isinstance(action, SellBench):
+        if isinstance(action, CwActionSellBenchParam):
             if not (0 <= action.bench_idx < len(self._bench_pts)):
-                return (f'SellBench bench_idx={action.bench_idx} 越界'
+                return (f'CwActionSellBenchParam bench_idx={action.bench_idx} 越界'
                         f'(0-{len(self._bench_pts) - 1})')
-        elif isinstance(action, SellDeployed):
+        elif isinstance(action, CwActionSellDeployedParam):
             n = DEPLOYED_CAPACITY
             if not (0 <= action.deployed_idx < n):
-                return f'SellDeployed deployed_idx={action.deployed_idx} 越界(0-{n - 1})'
-        elif isinstance(action, DeployMove):
+                return f'CwActionSellDeployedParam deployed_idx={action.deployed_idx} 越界(0-{n - 1})'
+        elif isinstance(action, CwActionDeployMoveParam):
             if not (0 <= action.bench_idx < len(self._bench_pts)):
-                return (f'DeployMove bench_idx={action.bench_idx} 越界'
+                return (f'CwActionDeployMoveParam bench_idx={action.bench_idx} 越界'
                         f'(0-{len(self._bench_pts) - 1})')
             if action.to_row not in ('front', 'back'):
-                return f'DeployMove to_row={action.to_row!r} 非法(front/back)'
-        elif isinstance(action, ClickSpheres):
+                return f'CwActionDeployMoveParam to_row={action.to_row!r} 非法(front/back)'
+        elif isinstance(action, CwActionClickSpheresParam):
             if not action.points:
-                return 'ClickSpheres 载荷为空(挑选归决策侧 kernel,空载荷 = 无对象)'
+                return 'CwActionClickSpheresParam 载荷为空(挑选归决策侧 kernel,空载荷 = 无对象)'
             if len(action.points) > SPHERE_CLICK_HARD_CAP:
-                return (f'ClickSpheres 载荷 {len(action.points)} '
+                return (f'CwActionClickSpheresParam 载荷 {len(action.points)} '
                         f'超硬上限 {SPHERE_CLICK_HARD_CAP}(挑选越权)')
-        elif isinstance(action, OpenBox):
+        elif isinstance(action, CwActionOpenBoxParam):
             if action.slot is not None and not (1 <= action.slot <= len(self._bench_pts)):
-                return f'OpenBox slot={action.slot} 越界(1-{len(self._bench_pts)})'
-        elif isinstance(action, OpenTome):
+                return f'CwActionOpenBoxParam slot={action.slot} 越界(1-{len(self._bench_pts)})'
+        elif isinstance(action, CwActionOpenTomeParam):
             if action.slot is not None and not (1 <= action.slot <= len(self._bench_pts)):
-                return f'OpenTome slot={action.slot} 越界(1-{len(self._bench_pts)})'
-        elif isinstance(action, OpenBookcard):
+                return f'CwActionOpenTomeParam slot={action.slot} 越界(1-{len(self._bench_pts)})'
+        elif isinstance(action, CwActionOpenBookcardParam):
             if action.slot is not None and not (1 <= action.slot <= len(self._bench_pts)):
-                return f'OpenBookcard slot={action.slot} 越界(1-{len(self._bench_pts)})'
-        elif isinstance(action, WearEquip):
+                return f'CwActionOpenBookcardParam slot={action.slot} 越界(1-{len(self._bench_pts)})'
+        elif isinstance(action, CwActionWearEquipParam):
             if action.row not in ('front', 'back'):
-                return f'WearEquip row={action.row!r} 非法(front/back)'
+                return f'CwActionWearEquipParam row={action.row!r} 非法(front/back)'
             n = len(self._front_pts if action.row == 'front' else self._back_pts)
             if not (1 <= action.slot <= n):
-                return f'WearEquip slot={action.slot} 越界(1-{n})'
-        elif isinstance(action, (FurnaceUse, PrivilegeCardUse)):
+                return f'CwActionWearEquipParam slot={action.slot} 越界(1-{n})'
+        elif isinstance(action, (CwActionFurnaceUseParam, CwActionPrivilegeCardUseParam)):
             if action.target_kind not in ('equip', 'char'):
                 return (f'{type(action).__name__} target_kind='
                         f'{action.target_kind!r} 非法(equip/char)')
@@ -335,9 +335,9 @@ class PrepActionExecutor:
                 if not (1 <= action.slot <= n):
                     return (f'{type(action).__name__} slot={action.slot} '
                             f'越界(1-{n})')
-        elif isinstance(action, (WrenchUse, PrecisionWrenchUse,
-                                StaffProjectorUse, PerfectProjectorUse,
-                                LuckyTokenUse)):
+        elif isinstance(action, (CwActionWrenchUseParam, CwActionPrecisionWrenchUseParam,
+                                CwActionStaffProjectorUseParam, CwActionPerfectProjectorUseParam,
+                                CwActionLuckyTokenUseParam)):
             if action.row not in ('front', 'back'):
                 return f'{type(action).__name__} row={action.row!r} 非法(front/back)'
             n = len(self._front_pts if action.row == 'front' else self._back_pts)
@@ -385,12 +385,12 @@ class PrepActionExecutor:
         #  本处 gold_delta 仅进回执 extra 留证。)
         _gold_extra = ({'gold_delta': int(gold_delta)}
                        if gold_delta not in (None, 0) else None)
-        if isinstance(action, StartBattle) and self._last_skip_substate:
+        if isinstance(action, CwActionStartBattleParam) and self._last_skip_substate:
             # 跳过子态标记进回执 extra(上报动作事实的遥测面;递减本体 =
             # apply_op_effect,回执只留证)。
             _gold_extra = {**(_gold_extra or {}), 'skip_substate': True}
         self._note_action_receipt(action, emitted, detail, extra=_gold_extra)
-        if isinstance(action, StartBattle):
+        if isinstance(action, CwActionStartBattleParam):
             # 出战点击事实(出战域重设计,T-286):真执行链 = 注册表分派
             # StartBattleOp 点击序列 ok(False = 找不到按钮/area 缺失,
             # 在册例外返回契约,design.md unified-action-factory §2.4);
@@ -403,10 +403,10 @@ class PrepActionExecutor:
             # 过渡期恒传 False = fail-closed(宁「该清不清」不「乱清」,
             # 后者可无限重复——交替活锁形态;「该清不清」侧 wanted 滞留
             # 一拍自愈,非正确性损害,mandate docstring 在案)。部署类
-            # (DeployMove)(i)-deploy_launch 路径过渡期不清,防线语义
+            # (CwActionDeployMoveParam)(i)-deploy_launch 路径过渡期不清,防线语义
             # (no-op 不清)完整存活。发射位只读不写的同型纪律在此不适用
             # ——本门消费「已落地」事实,发射侧天然无此事实(猎点 8)。
-            # OpenShop 分支不经本执行器(cw_screen_prep 流程层编排),开店
+            # CwActionOpenShopParam 分支不经本执行器(cw_screen_prep 流程层编排),开店
             # 落地不触清键面,与其置位语义(商店决策访问位)自洽。
             try:
                 from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -480,7 +480,7 @@ class PrepActionExecutor:
         """卖出对象 dispatch 前 tracked 快照(执行点金差供给;卖出外
         动作 = None)。
 
-        [索引定义] SellBench.bench_idx / SellDeployed.deployed_idx =
+        [索引定义] CwActionSellBenchParam.bench_idx / CwActionSellDeployedParam.deployed_idx =
         容器槽位表下标(0 基;tracked 表 = 同构槽位表,tracked_bench 经
         bench_from_compact 重建恒 pad 态、tracked_deployed 恒 pad 态
         ADR-0316/0392)——按下标直接对位,零换算。取值时机 = execute()
@@ -490,14 +490,14 @@ class PrepActionExecutor:
         _executed_gold_delta 一次读用,不跨动作存活。tracked 不可读
         (无局/形状异常)= None(金差诚实缺失,观察覆盖兜底)。
         """
-        if not isinstance(action, (SellBench, SellDeployed)):
+        if not isinstance(action, (CwActionSellBenchParam, CwActionSellDeployedParam)):
             return None
         try:
             match = self._ctx.cw_match
             session = match.session if match is not None else None
             if session is None:
                 return None
-            if isinstance(action, SellBench):
+            if isinstance(action, CwActionSellBenchParam):
                 tracked = gs_of_ctx(getattr(self, "ctx", None), session).tracked_books.bench or []
                 return (tracked[action.bench_idx]
                         if 0 <= action.bench_idx < len(tracked) else None)
@@ -517,14 +517,14 @@ class PrepActionExecutor:
         机械半边发出时点的金变化量。
 
         公式单一源与边界:
-        - ``SellBench``/``SellDeployed`` = +sell_refund(星×招募费;对象 =
+        - ``CwActionSellBenchParam``/``CwActionSellDeployedParam`` = +sell_refund(星×招募费;对象 =
           dispatch 前快照,费单一源 = kernel ``bench_char_cost``——与容器
           逻辑态写口 apply_prep_action_logic 同式;身份不可辨 = None 诚实
           缺失,不做保守估值假账,观察覆盖兜底);
-        - ``LevelUp`` = 0(批2b 翻转:金腿切 ``action.cost`` 直写,唯一
-          写点 = apply_prep_action_logic LevelUp 分支;原执行缝金差
+        - ``CwActionLevelUpParam`` = 0(批2b 翻转:金腿切 ``action.cost`` 直写,唯一
+          写点 = apply_prep_action_logic CwActionLevelUpParam 分支;原执行缝金差
           ``_last_levelup_spent`` 通道随翻转退役,防双记);
-        - ``ClickSpheres`` = None(球金通道随机,执行点不可推算——声明
+        - ``CwActionClickSpheresParam`` = None(球金通道随机,执行点不可推算——声明
           盲区,观察覆盖兜底,禁拍值);
         - 其余动作 = 0(发出零金动);未发出 = None(无金动无账)。
         ``None`` 与 0 的消费语义:仅非 None 非 0 进回执 extra 金差键
@@ -535,7 +535,7 @@ class PrepActionExecutor:
         """
         if not emitted:
             return None
-        if isinstance(action, (SellBench, SellDeployed)):
+        if isinstance(action, (CwActionSellBenchParam, CwActionSellDeployedParam)):
             if pre_sell_bc is None:
                 return None
             if not str(getattr(pre_sell_bc, 'char_id', '') or ''):
@@ -547,7 +547,7 @@ class PrepActionExecutor:
             refund = sell_refund(int(getattr(pre_sell_bc, 'star', 1) or 1),
                                  bench_char_cost(pre_sell_bc))
             return int(refund)
-        if isinstance(action, ClickSpheres):
+        if isinstance(action, CwActionClickSpheresParam):
             return None
         return 0
 
@@ -568,7 +568,7 @@ class PrepActionExecutor:
         env = PrepExecEnv(op=self._op, match=self._ctx.cw_match, config=None,
                           executor=self)
         ret = action_op_for(action).execute(env)
-        if isinstance(action, StartBattle):
+        if isinstance(action, CwActionStartBattleParam):
             # 免战跳过子态标记转发(op 上报 → game state 上报路径消费;
             # getattr 容缺 = 桩 env 形态)
             self._last_skip_substate = bool(getattr(env, 'skip_substate',
@@ -578,7 +578,7 @@ class PrepActionExecutor:
 
     # ===== 奖励域 =====
 
-    def _click_spheres(self, action: ClickSpheres) -> tuple[str, bool]:
+    def _click_spheres(self, action: CwActionClickSpheresParam) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_click_spheres_action.ClickSpheresOp``,统一
         动作工厂批3 体迁 + 薄委托,替身缝保留;机械语义 docstring 随体)。"""
         return self._dispatch_action(action)
@@ -600,35 +600,35 @@ class PrepActionExecutor:
         except Exception:   # noqa: BLE001  观测 best-effort
             return -1
 
-    def _open_box(self, action: OpenBox) -> tuple[str, bool]:
+    def _open_box(self, action: CwActionOpenBoxParam) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_open_box_action.OpenBoxOp``;批3 体迁 +
         薄委托,替身缝保留)。终结动作(R7):交回等待 = OpenBoxOp.
         terminal_wait(与 _OVERLAY_ANIM_WAIT_S 等价,等价锁在册)。"""
         return self._dispatch_action(action)
 
-    def _open_tome(self, action: OpenTome) -> tuple[str, bool]:
+    def _open_tome(self, action: CwActionOpenTomeParam) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_open_tome_action.OpenTomeOp``;批3 体迁 +
         薄委托,替身缝保留)。"""
         return self._dispatch_action(action)
 
-    def _open_bookcard(self, action: OpenBookcard) -> tuple[str, bool]:
+    def _open_bookcard(self, action: CwActionOpenBookcardParam) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_open_bookcard_action.OpenBookcardOp``;批3
         体迁 + 薄委托,替身缝保留——测试直调面沿此缝)。"""
         return self._dispatch_action(action)
 
     # ===== 席位域 =====
 
-    def _sell_bench(self, action: SellBench) -> tuple[str, bool]:
+    def _sell_bench(self, action: CwActionSellBenchParam) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_prep_sell_bench_action.PrepSellBenchOp``;
         批3 体迁 + 薄委托,替身缝保留)。"""
         return self._dispatch_action(action)
 
-    def _sell_deployed(self, action: SellDeployed) -> tuple[str, bool]:
+    def _sell_deployed(self, action: CwActionSellDeployedParam) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_sell_deployed_action.SellDeployedOp``;批3
         体迁 + 薄委托,替身缝保留)。"""
         return self._dispatch_action(action)
 
-    def _deploy_move(self, action: DeployMove) -> tuple[str, bool]:
+    def _deploy_move(self, action: CwActionDeployMoveParam) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_deploy_move_action.DeployMoveOp``;批3 体迁
         + 薄委托,替身缝保留)。"""
         return self._dispatch_action(action)
@@ -687,7 +687,7 @@ class PrepActionExecutor:
         entry = next(((n, p) for n, p, _ in hits if n == item_name), None)
         return Point(entry[1][0], entry[1][1]) if entry is not None else None
 
-    def _wear_equip(self, action: WearEquip) -> tuple[str, bool]:
+    def _wear_equip(self, action: CwActionWearEquipParam) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_wear_equip_action.WearEquipOp``;批3 体迁 +
         薄委托,替身缝保留)。"""
         return self._dispatch_action(action)
@@ -808,14 +808,14 @@ class PrepActionExecutor:
 
     # ===== 商店域 =====
 
-    def _level_up(self, action: LevelUp | None = None) -> tuple[str, bool]:
+    def _level_up(self, action: CwActionLevelUpParam | None = None) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_prep_level_up_action.PrepLevelUpOp``;批3
         体迁 + 薄委托,替身缝保留)。
 
         ``action`` 形参 = 注册表分派载体(原签名无参——单击体不读动作
         字段;缺省补零价占位实例仅作类型解析,行为零变化)。"""
         return self._dispatch_action(
-            action if action is not None else LevelUp(cost=0))
+            action if action is not None else CwActionLevelUpParam(cost=0))
 
     # ===== 战斗域 =====
     # StartBattleOp 现体 = 点击出战和弹窗(零判效,点击序列已执行语义);
@@ -824,7 +824,7 @@ class PrepActionExecutor:
     def _start_battle(self) -> tuple[bool, str]:
         """薄委托(体已迁 ``cw_start_battle_action.StartBattleOp``;批3
         体迁 + 薄委托,替身缝保留)。"""
-        detail, emitted = self._dispatch_action(StartBattle())
+        detail, emitted = self._dispatch_action(CwActionStartBattleParam())
         return emitted, detail
 
 

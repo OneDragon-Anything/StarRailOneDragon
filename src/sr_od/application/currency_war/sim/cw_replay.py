@@ -48,17 +48,21 @@ class _Cfg:
 
 
 def _fmt(actions: list) -> str:
-    from sr_od.application.currency_war.kernel.cw_vocab import LevelUp
+    from sr_od.application.currency_war.kernel.cw_vocab import (
+        CwActionLevelUpParam,
+        CwActionLevelUpShopParam,
+    )
     parts = []
     for a in actions:
         t = type(a).__name__
-        if t == 'BuyCard':
+        if t == 'CwActionBuyCardParam':
             parts.append(f"Buy({a.card.name})")
-        elif isinstance(a, LevelUp):   # LevelUpShop(商店屏新词表)同渲染为 LvUp
+        elif isinstance(a, (CwActionLevelUpParam, CwActionLevelUpShopParam)):
+            # 同字段双类型(摊平后显式双查),同渲染为 LvUp
             parts.append('LvUp')
-        elif t == 'RefreshShop':
+        elif t == 'CwActionRefreshShopParam':
             parts.append('D')
-        elif t == 'SellBench':
+        elif t == 'CwActionSellBenchParam':
             parts.append(f"Sell({a.bench_idx})")
         else:
             parts.append(t)

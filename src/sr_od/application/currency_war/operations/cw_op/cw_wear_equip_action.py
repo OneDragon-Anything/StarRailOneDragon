@@ -2,7 +2,7 @@
 体自 ``prep_actions.py::PrepActionExecutor._wear_equip`` 逐字迁移,原方法
 改薄委托保持替身缝,design.md unified-action-factory §2.4)。
 
-WearEquip 原子通路机械半(R2)。非终结。
+CwActionWearEquipParam 原子通路机械半(R2)。非终结。
 
 机械执行零判效(用户裁定「动作 op = 机械执行」,落地判定归观察侧
 reconcile 对账):发出即记账(env.emitted = True),拖后不做像素验证。
@@ -15,7 +15,7 @@ import time
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_vocab import WearEquip
+from sr_od.application.currency_war.kernel.cw_vocab import CwActionWearEquipParam
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
     ActionOp,
 )
@@ -25,10 +25,10 @@ if TYPE_CHECKING:
 
 
 class WearEquipOp(ActionOp):
-    """穿装备单步(WearEquip 原子通路机械半)。非终结。"""
+    """穿装备单步(CwActionWearEquipParam 原子通路机械半)。非终结。"""
 
     def execute(self, env: PrepExecEnv) -> bool:
-        """穿装备单步(WearEquip 原子通路机械半)。
+        """穿装备单步(CwActionWearEquipParam 原子通路机械半)。
 
         流程 = 稳帧确认(动画收尾输入条件化等待,非判效)→ owned 网格
         按名定位源件 → 单次拖拽。机械执行零判效:发出即记账
@@ -41,7 +41,7 @@ class WearEquipOp(ActionOp):
         [索引定义] 拖拽坐标 = owned 网格定位点(格心 = read_equips 逐格
         分类现读)→ 目标排 avatar 拖点(screen_info 建档派生)。
         """
-        action: WearEquip = self.action
+        action: CwActionWearEquipParam = self.action
         ex = env.executor
         target = ex._equip_slot_drag_point(action.row, action.slot)
         if target is None:

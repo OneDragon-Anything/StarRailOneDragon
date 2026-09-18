@@ -139,7 +139,7 @@ class ThompsonAllocator:
 # MatchOutcome(docstring 点名消费语义 = 跨局分配器/runs summary)。
 # ============================================================
 
-# 动作集 v2(契约包 C1,步2)+ CloseShop 终结动作(ADR-0517 商店恒可用终结)
+# 动作集 v2(契约包 C1,步2)+ CwActionCloseShopParam 终结动作(ADR-0517 商店恒可用终结)
 
 
 @dataclass

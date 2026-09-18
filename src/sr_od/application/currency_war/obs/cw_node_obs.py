@@ -170,7 +170,7 @@ def pair_refresh_counts_to_slots(
 
     每槽取 x 距离最近的一条计数文本,一条只配一槽(防同文本重复消费);
     距离超 ``_PAIR_X_TOL``(半槽距)→ 该槽落 None = 读缺。槽序 = slot_xs 下标
-    (画面左→右,与 PickEvent.refresh_slots 同坐标系)。计数条数 ≠ 槽数
+    (画面左→右,与 CwActionPickEventParam.refresh_slots 同坐标系)。计数条数 ≠ 槽数
     (读缺/碎片)时缺口落 None,调用方按无授予处理(失败安全)。
     """
     remaining = list(range(len(counts)))

@@ -15,7 +15,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
-    BuyCard,
+    CwActionBuyCardParam,
     bench_char_cost,
 )
 
@@ -256,7 +256,7 @@ def serialize_state(state: GameState) -> dict[str, Any]:
 def serialize_action(action: Action) -> dict[str, Any]:
     """单 Action → JSON-safe dict(带 type 标签,便于复盘识别)。
 
-    BuyCard 决策帧富化(观察层数据移交批,纯观测零行为):顶层平铺
+    CwActionBuyCardParam 决策帧富化(观察层数据移交批,纯观测零行为):顶层平铺
     ``char_id`` 与 ``cost``——此前买入角色只以 OCR 原名嵌在
     ``card.name`` 里,跨流对账(spend_ledger 采购账/补给行/ BenzChar
     char_id 侧)拿不到注册表规范名,费用也要下钻 card 嵌套。
@@ -276,7 +276,7 @@ def serialize_action(action: Action) -> dict[str, Any]:
     """
     d = _to_jsonable(action)
     d["__type__"] = type(action).__name__
-    if isinstance(action, BuyCard):
+    if isinstance(action, CwActionBuyCardParam):
         d['cost'] = int(getattr(action.card, 'cost', 0) or 0)
         d['char_id'] = ''
         try:
@@ -304,8 +304,8 @@ ACTION_REASON_SOURCE_KEYS: tuple[str, ...] = (
   (理由事实是决策时点记录,代码演进后重跑不可靠;留事实,不重算过程值)。
 - 键序依据:动作自带归因字段优先(reason = 买入臂/卖出通道/刷新触发源/
   控制流原因),发射臂标签次之(route_tag = mandate_v1 Emitted.reason 经
-  bridge.decide_prep_frame 透传),授权/豁免记录兜底(LevelUp.auth_basis /
-  SellBench.convert_reason,「记录非指令」形态)。
+  bridge.decide_prep_frame 透传),授权/豁免记录兜底(CwActionLevelUpParam.auth_basis /
+  CwActionSellBenchParam.convert_reason,「记录非指令」形态)。
 - 键集扩条只改本元组;各键的值域闭集归其定义模块(sell_gate/
   cw_vocab.SELL_BENCH_REASONS 等),本元组不做第二登记。
 """
@@ -720,7 +720,7 @@ class ExogenousEvent:
     kind: str = ""                  # node_enter/popup/briefing/event_choice/level_up(r378b 收敛到
     # 有生产者的值:前三种见 22/31 号预案;event_choice(迁移审计 w312(git 历史),遥测审计 G1)=
     # overlay 选项选择族(遭遇/巨星/伙伴/策划/命运卜者/装备选卡/祈愿)统一 kind;
-    # sell_income(迁移审计 w323(git 历史),遥测审计 G2)= 卖牌执行点实收回金(shop.py SellBench
+    # sell_income(迁移审计 w323(git 历史),遥测审计 G2)= 卖牌执行点实收回金(shop.py CwActionSellBenchParam
     # 执行分支,执行前后 gold 差——decisions 行的 actions 是执行前快照,
     # 实际回金只有执行点可知)。event_choice/sell_income 的结构化载荷在 choice
     # (detail 只放一行人读摘要);hp_pay(ADR-0577)= 血购执行回执
@@ -766,7 +766,7 @@ class SpendUnitRecord:
     gold_close_trusted: bool = False
     # 执行侧「计划≠尝试」可见化(`w577_refresh_fee_and_andon/`,ADR-0456):生产者 = shop.py 执行循环
     #(经 set_unit_truncation 暂存、单元关闭落账时消费填充;未挂钩路径恒缺省)。
-    plan_truncated: bool = False     # True=plan 里有动作未尝试(硬墙跳过/至首个 RefreshShop 截断丢弃)——口径差非执行失败
+    plan_truncated: bool = False     # True=plan 里有动作未尝试(硬墙跳过/至首个 CwActionRefreshShopParam 截断丢弃)——口径差非执行失败
     refresh_skipped: str | None = None  # 刷新被跳过的原因:'max_cap'=MAX_REFRESH 硬墙;None=未跳过
     refresh_attempted: bool = False  # 本单元内至少点击过一次刷新
     refresh_board_changed: bool | None = None  # 刷新点击后牌面是否已变(两帧一致门+牌名集对拍);None=未尝试/不可判

@@ -46,11 +46,11 @@ def xp_ledger_stop(xp_progress: tuple[int, int] | None,
                    level_max: int) -> bool:
     """XP 期望账本升级停判据(lv9_stop 的轮内盲区补位,与 lv9_stop
     同位合取消费;语义锚 = design.md unified-action-factory §2.6
-    LevelUp 定案④「推进算子单一源 = xp_apply_clicks」)。
+    CwActionLevelUpParam 定案④「推进算子单一源 = xp_apply_clicks」)。
 
     为什么需要(病灶实测):商店域逻辑态直写只写 xp 元组不写 level
     域(升档等观察覆盖,kernel/cw_game_state.py apply_shop_action_logic
-    LevelUpShop 行);ALL IN 窗逐击决策环(decide_shop_screen 驱动器
+    CwActionLevelUpShopParam 行);ALL IN 窗逐击决策环(decide_shop_screen 驱动器
     逐动作直写推进)内 level 域滞留轮初值 ⇒ lv9_stop 恒 False,而
     clicks_to_next_level 按推进后元组的新级 need 续算 ⇒ 同窗内连买
     下级(sim n100 s77000 段 44/100 局 R9 击数超整买上限,批计 ≥864 金,
@@ -392,7 +392,7 @@ def batch_form(level: int, target_level: int) -> bool:
 def level_spend_blocked(gs: GameState, session: StrategySession,
                         registry: DecisionV2Registry | None = None) -> bool:
     """危机带内整批经验授权让位保命面(实机复盘 g_20260904_054904
-    p2r1 候选③:hp=1 败即死帧 9×LevelUpShop 36g,m3_batch 批授权把
+    p2r1 候选③:hp=1 败即死帧 9×CwActionLevelUpShopParam 36g,m3_batch 批授权把
     67% 金转为本帧零收益经验)。M3 发射位(mandate/shop 两域)消费。
 
     载体 = 容器 gs 单形态(prep 链容器化段 2;entry 姿态镜像与商店线/

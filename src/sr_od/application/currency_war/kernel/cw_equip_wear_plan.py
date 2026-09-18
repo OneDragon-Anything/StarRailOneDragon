@@ -71,7 +71,7 @@ class EquipWearStep:
     PrepObservation,P4 观察接线后零读屏,由 kernel 判据单一源
     求值),随 ``CwOpEquipAll.__init__(ctx, plan)`` 构造下发;op 对计划
     只做机械执行(定位/拖拽/报告),禁二次求值。2a 原子通路:本步同时
-    是 ``WearEquip`` 动作的构造源(发射位逐步产原子动作)。
+    是 ``CwActionWearEquipParam`` 动作的构造源(发射位逐步产原子动作)。
 
     字段坐标系(索引/槽位字段定义注释约定):
     - ``row``: 'front'|'back'(画面物理排;deployed 槽位表同坐标系);

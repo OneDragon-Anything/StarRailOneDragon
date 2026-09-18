@@ -221,8 +221,8 @@ class CwScreenSupplyNode(CwScreenOpBase):
                 SupplyPayload,
             )
             from sr_od.application.currency_war.kernel.cw_vocab import (
-                PickSupply,
-                RefreshSupply,
+                CwActionPickSupplyParam,
+                CwActionRefreshSupplyParam,
             )
             _gs = match.gs
             _gs.write_logic(
@@ -232,7 +232,7 @@ class CwScreenSupplyNode(CwScreenOpBase):
                 sig=ChannelSig(family='logic_action',
                                actor='CwScreenSupplyNode', mode='compute'))
             pick = match.strategy.decide_supply()
-            if isinstance(pick, RefreshSupply) and not _refresh_used:
+            if isinstance(pick, CwActionRefreshSupplyParam) and not _refresh_used:
                 # 只刷一次(容器计数 >0 = 已用;kernel 刷新闸同源同值,本闸
                 # = handler 侧同口径保留)。
                 _anchor = self._read_refresh_anchor(screen)
@@ -266,7 +266,7 @@ class CwScreenSupplyNode(CwScreenOpBase):
                     return
                 refresh_target = Point(_anchor.x + CwScreenSupplyNode._REFRESH_BTN_DX,
                                        _anchor.y)
-            elif isinstance(pick, PickSupply) and 0 <= pick.idx < len(opts):
+            elif isinstance(pick, CwActionPickSupplyParam) and 0 <= pick.idx < len(opts):
                 target = opts[pick.idx][1]
                 reason = pick.reason
                 # 选定快照(角色/装备/钻;refreshed=刷新是否已用;附实际识别
@@ -313,11 +313,13 @@ class CwScreenSupplyNode(CwScreenOpBase):
             return
         # 点卡选中 → 确认机械半经工厂(统一动作工厂批4:体迁
         # ``cw_overlay_pick_action.SupplyPickOp``,方法级替身缝保留;刷新圆钮
-        # 机械点击留守上方——刷新链 = RefreshSupply 建议的执行半,与
+        # 机械点击留守上方——刷新链 = CwActionRefreshSupplyParam 建议的执行半,与
         # 遭遇屏 _try_refresh 同类,§2.5 pick execute 语义 = 点卡选中 → 确认)。
         # 派发实例仅作注册表解析键(机械参数 target/picked 经 env 传递;
         # 无 match 兜底路径同形派发)。
-        from sr_od.application.currency_war.kernel.cw_vocab import PickSupply
+        from sr_od.application.currency_war.kernel.cw_vocab import (
+            CwActionPickSupplyParam,
+        )
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
@@ -326,7 +328,7 @@ class CwScreenSupplyNode(CwScreenOpBase):
         )
         _env = OverlayPickExecEnv(op=self, match=match, target=target,
                                   picked=picked)
-        action_op_for(PickSupply(idx=0)).execute(_env)
+        action_op_for(CwActionPickSupplyParam(idx=0)).execute(_env)
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----
 

@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_vocab import ClickSpheres
+from sr_od.application.currency_war.kernel.cw_vocab import CwActionClickSpheresParam
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
     ActionOp,
 )
@@ -35,9 +35,9 @@ class ClickSpheresOp(ActionOp):
         飞行动画最长 ~2s → 点完等满动画;去向 = 备战/商店/装备栏)。零读屏
         零排序零截断(原读屏选球与 max_k 截断半随改形退役);席满时部分球
         可能没点开——由后续 heavy 观察自然回补(球仍在 → 下轮再派)。
-        掉箱感知随之删除(掉箱归下一帧观察 → OpenBox 臂)。
+        掉箱感知随之删除(掉箱归下一帧观察 → CwActionOpenBoxParam 臂)。
         """
-        action: ClickSpheres = self.action
+        action: CwActionClickSpheresParam = self.action
         ex = env.executor
         for _x, _y in action.points:
             center = Point(_x, _y)

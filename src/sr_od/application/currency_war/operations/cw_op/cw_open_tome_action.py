@@ -11,7 +11,7 @@ import time
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_vocab import OpenTome
+from sr_od.application.currency_war.kernel.cw_vocab import CwActionOpenTomeParam
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
     ActionOp,
 )
@@ -29,7 +29,7 @@ class OpenTomeOp(ActionOp):
         A3 拆除:「轮询验星徽四选一弹出」判效半删除,改固定等待;弹窗就位
         与否交下一帧观察(0i 分发重判)。
         """
-        action: OpenTome = self.action
+        action: CwActionOpenTomeParam = self.action
         ex = env.executor
         from sr_od.application.currency_war.obs.cw_identity_obs import read_tomes
         from sr_od.application.currency_war.prep_actions import (

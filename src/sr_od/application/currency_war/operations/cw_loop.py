@@ -141,10 +141,10 @@ def locked_resume_sync_and_battle(op, ctx):
     """恢复局锁定直出战(ADR-0329)+ **首战前备战同步步**(裁定出处 =
     策略审查报告 .debug/temp/currency_war/20260905-093104-strategy-review/
     策略审查-第十二跳.md #7):恢复局分支原样跳过全部备战交互直接
-    StartBattle,板面调整被跳过(实证:恢复局首战快照 board_before 为空
-    ——部署面零执行)。本函数在 StartBattle 前插一次 **部署原子序同步步**
+    CwActionStartBattleParam,板面调整被跳过(实证:恢复局首战快照 board_before 为空
+    ——部署面零执行)。本函数在 CwActionStartBattleParam 前插一次 **部署原子序同步步**
     (批 2a:RunDeploy 组合壳退役,按 kernel select_deployments 现算逐
-    move 发 DeployMove——板空时计划恒空,与零商店交互形态同构;锁定
+    move 发 CwActionDeployMoveParam——板空时计划恒空,与零商店交互形态同构;锁定
     局「商店探针零响应」禁令只辖商店域,部署面不受辖)。
 
     证据位语义(批3a 修订,T-223 最严读法申报「发出即写」):同步步
@@ -178,7 +178,7 @@ def _battle_chain_deploy_moves(session) -> list:
     与 mandate 发射位同参同源(``_deploy_plan_inputs`` 装配 +
     ``select_deployments`` 选人 + ``assign_deploy_slots`` 选排),禁第二套
     计划语义。恢复局同步步/达标臂共用;空板面/计划空 = 空 move 序
-    (StartBattle 照发)。"""
+    (CwActionStartBattleParam 照发)。"""
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         assign_deploy_slots,
         empty_deploy_slots,
@@ -193,7 +193,7 @@ def _battle_chain_deploy_moves(session) -> list:
         max_units_of,
     )
     from sr_od.application.currency_war.kernel.cw_vocab import (
-        DeployMove,
+        CwActionDeployMoveParam,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
         MandateFrame,
@@ -221,7 +221,7 @@ def _battle_chain_deploy_moves(session) -> list:
     # 容器读口对位);faction = 容器槽位表角色对象现取(sim board 计数)。
     # 对位防线(T-266 追加,三审代-2 编排者升应修):容器槽位表存在重复/
     # 越界槽号时 ``{slot: 下标}`` 字典对位语义未定义(dict 推导静默保留
-    # 后值 = DeployMove 对位同槽号另一条目、拖错人出场的通道;T-261 已治
+    # 后值 = CwActionDeployMoveParam 对位同槽号另一条目、拖错人出场的通道;T-261 已治
     # tracked 写点与写回门,本处为读侧残余通道)。判据单一源 =
     # ``bench_slots_healthy``(槽号健康不变量,T-261 落地);不健康 →
     # fail-closed 整份部署计划不出(映射整体不可信,无部分可信子集;
@@ -236,33 +236,33 @@ def _battle_chain_deploy_moves(session) -> list:
                 _bcd_counters.get('deploy_chain_slot_table_unhealthy', 0) + 1
         log.warning('[cw!][loop] 出战链部署计划弃算:容器槽位表槽号不健康'
                     '(重复/越界,%s)→ {slot:下标} 对位 fail-closed,'
-                    '本帧零 DeployMove(出战照常,对账归观察侧)', _slot_nos)
+                    '本帧零 CwActionDeployMoveParam(出战照常,对账归观察侧)', _slot_nos)
         return []
     _cidx_of = {b.slot: i for i, b in enumerate(bench_slots) if b is not None}
-    _out: list[DeployMove] = []
+    _out: list[CwActionDeployMoveParam] = []
     for bi, row, _slot in assign_deploy_slots(bench, up, front_empty,
                                               back_empty):
         _bi = _cidx_of.get(bench[bi].slot)
         if _bi is None:
             continue   # 对位失配(陈旧帧)= fail-closed 跳过该 move
-        _out.append(DeployMove(bench_idx=_bi, to_row=row,
+        _out.append(CwActionDeployMoveParam(bench_idx=_bi, to_row=row,
                                faction=(bench[bi].faction or '')))
     return _out
 
 
 def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
     """出战底层发射核(C1 单一发射函数,14号稿 §9.6):部署原子序 +
-    StartBattle 的执行核,恢复局面与达标臂两调用面共用,禁各写一套
-    StartBattle 发射位。
+    CwActionStartBattleParam 的执行核,恢复局面与达标臂两调用面共用,禁各写一套
+    CwActionStartBattleParam 发射位。
 
     - ``sync_once=True``(恢复局面面,调用面 = locked_resume_sync_and_
       battle):首战前插备战同步步,**发出即置位**证据位
       ``op._cw_locked_sync_done``(批3a,T-223 回执退役后失败概念消解);
-      锁定确认分支复位证据位。同步步载体 = DeployMove 原子序(批 2a:
+      锁定确认分支复位证据位。同步步载体 = CwActionDeployMoveParam 原子序(批 2a:
       RunDeploy 组合壳退役,按 kernel select_deployments 现算逐 move 发;
       恢复局卖出通道整体跳过语义不变——board 未观察时计划恒空)。
     - ``sync_once=False``(达标臂面,调用面 = readiness_battle_launch):
-      **不过闩**——每达标帧都部署原子序 + StartBattle(部署面现读重建,
+      **不过闩**——每达标帧都部署原子序 + CwActionStartBattleParam(部署面现读重建,
       已同步形态下零 move 即零待部署;闩只辖恢复局面,达标臂第二次发射
       被「每局恰一次」闩吞 = C1 明令防的双源病)。
 
@@ -273,7 +273,7 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
     已设)→ 返回 (False, '已停止[W209j刹车]'),交回外循环由 loop 顶退出。
     """
     from sr_od.application.currency_war.kernel.cw_vocab import (
-        StartBattle,
+        CwActionStartBattleParam,
     )
     from sr_od.application.currency_war.prep_actions import (
         PrepActionExecutor,
@@ -293,7 +293,7 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
                     ex.execute(_mv)   # 机械执行无返回(T-223)
                 # 发出即写(批3a申报,T-223 回执退役;失败概念消解)
                 op._cw_locked_sync_done = True
-                log.info('[cw-loop] 恢复局备战同步步(DeployMove×%d)已发出: %s',
+                log.info('[cw-loop] 恢复局备战同步步(CwActionDeployMoveParam×%d)已发出: %s',
                          len(_moves), getattr(ex, 'last_detail', ''))
             else:
                 log.debug('[cw-loop] 恢复局同步步已置位,跳过部署原子序')
@@ -308,11 +308,11 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
                 ex.execute(_mv)
             log.info('[cw-loop] 达标臂部署原子序 ×%d: %s',
                      len(_moves), getattr(ex, 'last_detail', ''))
-        ex.execute(StartBattle())
+        ex.execute(CwActionStartBattleParam())
     except StopBrakeShortCircuit as e:
         log.info('[cw-loop] 停机刹车(%s)→ 出战链动作未发出,交回外循环', e)
         return False, '已停止[W209j刹车]'
-    # StartBattle 点击序列事实(出战域重设计 T-286 收缩语义;getattr 容缺 =
+    # CwActionStartBattleParam 点击序列事实(出战域重设计 T-286 收缩语义;getattr 容缺 =
     # __new__/桩形态兼容)
     return bool(getattr(ex, 'last_launch_ok', False) or False), \
         getattr(ex, 'last_detail', '')
@@ -420,7 +420,7 @@ def launch_battle_unified(op, ctx, *, face: str) -> tuple[bool, str]:
     现役三路径语义盘点 = 同目录 audit-executor.md §1)。
 
     内部序 = 屏态复验 → 浮层安全检查 → face 分轨(部署原子序)→
-    StartBattle 执行。失败语义按调用面分轨:本函数只返回事实
+    CwActionStartBattleParam 执行。失败语义按调用面分轨:本函数只返回事实
     ``(launch_ok, detail)``,计数与复位归调用方(禁调用面私有记账入本函数)。
 
     :param face: ``'armed'``(达标臂面:G1 准入预估显影 + 部署原子序每帧
@@ -604,7 +604,7 @@ def _launch_frame_arbitration(op) -> dict:
             return report
         _launch_arb_counter(op, cw_launch_arbitrage.KEY_ZONE_FRAMES)
         # 第三载体 [cw-op] 行(ADR-0584 §5.1):仲裁触发的商店访问此前零
-        # 边界载体——不经 dispatch 包装、无 OpenShop 决策行,复盘按行重建
+        # 边界载体——不经 dispatch 包装、无 CwActionOpenShopParam 决策行,复盘按行重建
         # 会误归 0n。行窗口 = 访问尝试边界(open_shop 前),覆盖全部出口
         #(open 失败/abort/正常/异常),只落出口行。
         _arb_pos = _dispatch_pos(op.ctx)
@@ -826,7 +826,7 @@ class CwLoop(SrOperation):
     # 结算链常量族(SETTLE_* 族)现役单一源 = CwScreenBattleWait(W971 05-battle §1)。
     # 备战稳定门防护替身(W971 §2.6/03-prep §1):①逐动作回流程层确认画面
     # (overlay 弹出当步即见,转入 overlay op)②触发计算式追加等待
-    # (03-prep §3 DeployMove 行)③director 环入口清场+自动开店预收探针。
+    # (03-prep §3 CwActionDeployMoveParam 行)③director 环入口清场+自动开店预收探针。
 
     #: 0e 投资策略浮层分发复探窗口(N5 分发判别稳定化):首探测 miss 且
     #: 备战双锚命中(浮层穿透形态)时,短窗后新截图复探一次。执行层时序
@@ -1329,12 +1329,12 @@ class CwLoop(SrOperation):
         语义三定义(design §2.3):命中映射内屏 = 只清属屏 ≠ 它的槽;
         映射外建档屏 / 非身份臂 / 未识别 = 清全部十槽(该语境无任何 decide
         消费,清点只影响审计面);`shop` route_clearable=False 挂点跳过
-        (清点源 = CloseShop 腿 + prep 相位 miss 分支两处显式口独占)。
+        (清点源 = CwActionCloseShopParam 腿 + prep 相位 miss 分支两处显式口独占)。
         已 None 跳过(不占 write_seq 不落 journal)。早退轮(stop_at_prep)
         发生在识别前,本挂点不执行、顺延下次路由周期——陈旧窗口内无 decide
         消费(早退屏非映射属屏)。
 
-        sig: family/mode 同既有 CloseShop 腿清点行常量源(family='obs',
+        sig: family/mode 同既有 CwActionCloseShopParam 腿清点行常量源(family='obs',
         mode='read'),actor 单列 'cw_loop_route_clear' 供 journal 行过滤
         (三登记见 REGISTERED_ACTORS)。容器未建立(loop 兜底直跑早期)
         静默跳过(best-effort;无容器 = 无可陈旧面)。
@@ -1499,7 +1499,7 @@ class CwLoop(SrOperation):
                 wait=1.5, on_result=_on_prep_locked)
 
         if name == '货币战争-备战-开商店':
-            # 转交商店访问路径(ADR-0562):策略器逐动作决策 → CloseShop 终结收店。
+            # 转交商店访问路径(ADR-0562):策略器逐动作决策 → CwActionCloseShopParam 终结收店。
             # 深度防御保留:达标臂浮层扫描与 CwScreenPrep 环入口守卫降级为单点兜底。
             _so_counters = getattr(strategy_state_of(
                 self.ctx.cw_match.session), 'cw4_counters', None)
@@ -1898,7 +1898,7 @@ class CwLoop(SrOperation):
             # 恢复局(locked-resume)检测与直接出战。
             # 判据(设计章1.2)= 新 match(无本局记录)+ 首个备战相位 round>1 → 候选;
             # 一次「点商店→验收起」探针(章1.3)区分锁定/未锁(锁定唯一可观测特征
-            # =商店按钮零响应);锁定态跳过全部备战交互直接出战(复用 StartBattle
+            # =商店按钮零响应);锁定态跳过全部备战交互直接出战(复用 CwActionStartBattleParam
             # 执行体,内含出战后两类弹窗确认——出战域重设计 T-286 同款语义),
             # 出战成功即解除(章1.5)。误判防线:候选
             # 撤回(1-1 正常新局)/探针可开(非锁定)两处都不进锁定分支。
@@ -1927,7 +1927,7 @@ class CwLoop(SrOperation):
                         log.warning('[cw!][loop] 恢复局锁定确认(P%s-r%s,商店探针'
                                     '零响应)→ 直接出战', _pr[0], _pr[1])
             if self._cw_locked_resume:
-                # 首战前备战同步步 + StartBattle(组合封装,见函数 docstring;
+                # 首战前备战同步步 + CwActionStartBattleParam(组合封装,见函数 docstring;
                 # 同步步每锁定局恰一次,证据位 _cw_locked_sync_done)。
                 progressed, detail = locked_resume_sync_and_battle(self, self.ctx)
                 if progressed:

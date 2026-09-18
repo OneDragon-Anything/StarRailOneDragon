@@ -1041,7 +1041,7 @@ def swap_yield_contribution(target_factions: frozenset[str] | set[str],
 # 定义注 = kernel/cw_game_state.py;渠道②动作上报,经本模块
 # record_fresh_buy 单口):发射位买入时逐名写入的名集,键式 =
 # {'phase': (plane, round_num), 'names': list[str]}——位面/轮次推进自动
-# 失效(M7 闩键式同构)。写点 = 生产 shop.py 全部 BuyCard 发射位
+# 失效(M7 闩键式同构)。写点 = 生产 shop.py 全部 CwActionBuyCardParam 发射位
 # 经 ``_emit_buy`` 收口调用(5edcf324)。
 # 取舍声明:沿用发射位写入(与 ``cw4_fuel_filler_stall_buys`` 先例同位),
 # 被截断器丢弃的买入意图也入排除集 = 过度排除压制合法 swap,方向安全
@@ -2163,7 +2163,7 @@ def assign_deploy_slots(bench: list[BenchChar],
                         back_empty: list[int],
                         front_total: int = 4,
                         ) -> list[tuple[int, str, int]]:
-    """原子部署选排指派(纯函数;发射位 DeployMove 载荷单一源)。
+    """原子部署选排指派(纯函数;发射位 CwActionDeployMoveParam 载荷单一源)。
 
     输入 = bench(选排消费 position_pref)/ ``up_idx``(select_deployments
     上场序,bench 下标)/ 前后排空槽(物理 1 基)。输出 =

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     deployed_row_slot,
 )
-from sr_od.application.currency_war.kernel.cw_vocab import SellDeployed
+from sr_od.application.currency_war.kernel.cw_vocab import CwActionSellDeployedParam
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
     ActionOp,
 )
@@ -31,7 +31,7 @@ class SellDeployedOp(ActionOp):
         观察侧 reconcile 对账)。执行坐标边:deployed_idx → (row, 物理槽号)
         单一换算函数 = kernel ``deployed_row_slot``。
         """
-        action: SellDeployed = self.action
+        action: CwActionSellDeployedParam = self.action
         ex = env.executor
         from sr_od.application.currency_war.prep_actions import sell_point
         row, slot_no = deployed_row_slot(action.deployed_idx)

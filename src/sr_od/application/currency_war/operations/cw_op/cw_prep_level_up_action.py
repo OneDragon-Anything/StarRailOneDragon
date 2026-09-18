@@ -3,8 +3,8 @@
 薄委托保持替身缝,design.md unified-action-factory §2.4)。
 
 R6 定案④逐帧单击形态(批2 定形,本批只迁形)。命名申报:词表类
-``LevelUp`` 的本域 op 不可与商店域 ``cw_level_up_action.LevelUpOp`` 同名
-同包(批1 注册行更替为备战 op;``LevelUpShop`` is-a ``LevelUp`` 经
+``CwActionLevelUpParam`` 的本域 op 不可与商店域 ``cw_level_up_action.LevelUpOp`` 同名
+同包(批1 注册行更替为备战 op;``CwActionLevelUpShopParam`` is-a ``CwActionLevelUpParam`` 经
 is-a 兜底同解析本 op),冠 ``Prep`` 前缀区分域。非终结。
 """
 from __future__ import annotations
@@ -32,7 +32,7 @@ class PrepLevelUpOp(ActionOp):
     def execute(self, env: PrepExecEnv) -> bool:
         """买经验(R6 逐帧单击形态:找钮 → 单击 → 固定等待,零授权零计数)。
 
-        执行器授权面全删(design.md unified-action-factory §2.6 LevelUp
+        执行器授权面全删(design.md unified-action-factory §2.6 CwActionLevelUpParam
         粒度定案):授权击数推导/血闸整级授权/逐击金地板全部上移发射位
         (kernel ``clicks_to_next_level`` 现算击数 > 0 = 每帧发射前置;
         spend_unified / levelup_budget_gate / posture 血闸 = 决策核发射门)。
@@ -40,12 +40,12 @@ class PrepLevelUpOp(ActionOp):
         ``cw_level_up_action`` 同构先例)。
 
         金腿 = 容器逻辑态直写(批2b 翻转定案):金账唯一写点 =
-        ``apply_prep_action_logic`` LevelUp 分支按 ``action.cost`` 扣减
+        ``apply_prep_action_logic`` CwActionLevelUpParam 分支按 ``action.cost`` 扣减
         (cost = 发射面 xp_click_cost 现算装载);原 2a 中间态执行缝金差
         (``_last_levelup_spent`` → ``_executed_gold_delta``)随翻转退役。
         单击价本处现算仅作 detail 显影(与发射面同源 kernel 读口)。
         经验/等级真值 = 下一帧观察对账族 + 逻辑态 xp/level 推进
-        (``apply_prep_action_logic`` LevelUp 分支)双通道。
+        (``apply_prep_action_logic`` CwActionLevelUpParam 分支)双通道。
         """
         ex = env.executor
         match = ex._ctx.cw_match

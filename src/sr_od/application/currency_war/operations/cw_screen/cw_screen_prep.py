@@ -45,10 +45,10 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
+    CwActionOpenBookcardParam,
+    CwActionOpenShopParam,
+    CwActionStartBattleParam,
     HoldFrame,
-    OpenBookcard,
-    OpenShop,
-    StartBattle,
     action_key,
 )
 from sr_od.application.currency_war.obs.currency_war_cv import slot_occupied
@@ -407,7 +407,7 @@ class PrepLiveObservationAdapter:
 class PrepLiveActionAdapter:
     """实机适配器②(动作端口;统一观察架构 §6.2 点击链封口,试点步骤 1)。
 
-    内部复用现役点击链(``CwScreenPrep._act_execute_default``:OpenShop 流程
+    内部复用现役点击链(``CwScreenPrep._act_execute_default``:CwActionOpenShopParam 流程
     层编排 + PrepActionExecutor 机械执行),机械执行**无返回**(
     发出即职责完成,端口回执 ``(progressed, detail)`` 退役;落地判定完全
     归观察侧 reconcile,§6.2/§6.5-1)。sim 实现 = 步骤 2 辖域
@@ -465,9 +465,9 @@ class CwScreenPrep(CwScreenOpBase):
         self._action_adapter = PrepLiveActionAdapter()
         # on_outcome 落地登记注册表(架构设计 §6.4;单一发射口,发射即触发
         # ——最严读法:两 fire 口合并,落地回执门退役):本 op 级
-        # 登记件原两件 = 经验期望账本推进(LevelUp/OpenShop 两通道),随
+        # 登记件原两件 = 经验期望账本推进(CwActionLevelUpParam/CwActionOpenShopParam 两通道),随
         # 期望账拆除退役——「未落地不计数」防线
-        # 由逻辑态直写(apply_prep_action_logic LevelUp 分支)与观察覆盖
+        # 由逻辑态直写(apply_prep_action_logic CwActionLevelUpParam 分支)与观察覆盖
         # 承接。执行器内
         # 登记件(刷新计数组免费闸 record_refresh_execution、免战牌
         # consume_use,现役接线点 = cw_op_buy_cards 执行落地门/kernel
@@ -521,7 +521,7 @@ class CwScreenPrep(CwScreenOpBase):
 
     def _observe(self, heavy: bool, screen: MatLike | None = None) -> PrepObservation:
         """组装备战观察(ADR-0517 迁移后:heavy = 画面 op 入口单次——期望态
-        重建的唯一读屏点,即对账;调用点 = 单轮入口 / OpenShop(read_only)
+        重建的唯一读屏点,即对账;调用点 = 单轮入口 / CwActionOpenShopParam(read_only)
         开态 gold 真值刷新)。旧「每个执行过的游戏动作后必调 heavy」契约已
         随单动作循环退役:逐动作零读屏,期望态由 ``apply_prep_action_logic(kernel 写口)`` 纯计算
         推进,动作后首读的光标 parking 职责随之迁移(入口观察 park 一次;
@@ -650,7 +650,7 @@ class CwScreenPrep(CwScreenOpBase):
                 # (席空数派生误报 free=9 污染席满决策)。
                 # item_kind_by_slot 细分(阶段 3.5):同帧箱/典籍槽号集
                 # 构造映射,bench 槽位 kind 精确到 supply_box/tome(原
-                # is_item_slot 布尔统一 supply_box,OpenBox/OpenTome 臂
+                # is_item_slot 布尔统一 supply_box,CwActionOpenBoxParam/CwActionOpenTomeParam 臂
                 # 分派无据)。
                 _item_kind = {int(slot): 'supply_box' for slot, _pt
                               in _box_slots}
@@ -755,7 +755,7 @@ class CwScreenPrep(CwScreenOpBase):
                     sig=_prep_sig)
                 # 溢出告警观察写端(2026-09-15 实机建档 prep.md 告警/溢出节):横幅 = 游戏侧权威信号(出战被游戏忽略的
                 # 处理门,策略消费 = mandate 溢出门强收窄);溢出位 SIFT =
-                # 入位对象身份旁路(SellBench 溢出腿;缺读 '' = 未识别,
+                # 入位对象身份旁路(CwActionSellBenchParam 溢出腿;缺读 '' = 未识别,
                 # 腿降级槽留空等下帧)。两读独立;横幅在场 = 唯一门语义,
                 # 身份只作 tracked 闭合不作门。
                 _ov_hit = self.round_by_find_area(
@@ -1128,8 +1128,8 @@ class CwScreenPrep(CwScreenOpBase):
         self._clear_entry_overlays()
         if self._clear_prep_cards():
             # 书册卡开卡交回(批2c 链拆):弹窗已弹,heavy 观察禁读弹窗帧 →
-            # 交回外循环 0k 分发选卡;交回等待值来源写死 = OpenBookcard 动画
-            # 等待 _OVERLAY_ANIM_WAIT_S(R7 OpenBox 终结化同构,§3.2a 口径)。
+            # 交回外循环 0k 分发选卡;交回等待值来源写死 = CwActionOpenBookcardParam 动画
+            # 等待 _OVERLAY_ANIM_WAIT_S(R7 CwActionOpenBoxParam 终结化同构,§3.2a 口径)。
             return self.round_success('书册卡开卡(交回:专家邀请函弹窗分发)',
                                       wait=_OVERLAY_ANIM_WAIT_S)
         self._try_collapse_open_shop()
@@ -1170,7 +1170,7 @@ class CwScreenPrep(CwScreenOpBase):
         #      每动作落地后 heavy 重观察的保守口径)。新形态:入口 heavy 一次
         #      建黑板 → 逐动作『决策(黑板=逻辑态)→ F3 校验 →
         #      执行 → 逻辑态直写』循环,循环内零读屏。已知画面出口
-        #      (OpenShop/StartBattle/OpenBox)= 终结 op,执行即本访问结束
+        #      (CwActionOpenShopParam/CwActionStartBattleParam/CwActionOpenBoxParam)= 终结 op,执行即本访问结束
         #      交回外循环(下次入口重观察)。
         #      B1 拆除(用户裁定 2026-09-10):验证段+恢复原语分支退役——
         #      动作机械执行(端口无成败回执),无进展治理归外循环 stall
@@ -1226,7 +1226,7 @@ class CwScreenPrep(CwScreenOpBase):
             except Exception as e:  # noqa: BLE001  执行异常上抛 = 本轮 fail
                 log.warning(f'[cw!][director] 执行异常 {key}: {e}')
                 return self.round_fail(status=f'执行异常 {key}: {e}')
-            # 续段 token 写入(生产 prep 循环执行位;OpenShop 分支与
+            # 续段 token 写入(生产 prep 循环执行位;CwActionOpenShopParam 分支与
             # 执行器分支在此合流):发出即写(批3a 申报择一;原 progressed
             # 门退役)。状态对象缺席 = 无缓存载体,跳过(B4 缺席退缺省口径)。
             _st_tok = strategy_state_of(session)
@@ -1399,7 +1399,7 @@ class CwScreenPrep(CwScreenOpBase):
                 log.warning(f'[cw!][director] 执行异常 {key}: {e}')
                 return self.round_fail(status=f'执行异常 {key}: {e}')
             self._lifecycle_mark('on_outcome')
-            # 续段 token 写入(生产 prep 循环执行位;OpenShop 分支与
+            # 续段 token 写入(生产 prep 循环执行位;CwActionOpenShopParam 分支与
             # 执行器分支在此合流):发出即写(批3a 申报择一;原 progressed
             # 门退役)。状态对象缺席 = 无缓存载体,跳过(B4 缺席退缺省口径)。
             _st_tok = strategy_state_of(session)
@@ -1451,7 +1451,7 @@ class CwScreenPrep(CwScreenOpBase):
             return self.round_success(f'{key} ✓,交回外循环重识别',
                                       wait=op_cls.terminal_wait)
         if op_cls is OpenBoxOp:
-            # OpenBox 终结化(R7,批2a):开箱即引入新事实(武装箱选择画面
+            # CwActionOpenBoxParam 终结化(R7,批2a):开箱即引入新事实(武装箱选择画面
             # 出现,与刷新终结结构语义 R5 同构)→ 本访问交回,外循环按
             # 武装箱选择画面分发新画面 op 选卡。交回等待 =
             # OpenBoxOp.terminal_wait(与 ``_open_box`` 动画等待
@@ -1481,16 +1481,16 @@ class CwScreenPrep(CwScreenOpBase):
     def _act_execute_default(self, action: CwAction) -> None:
         """现役点击链缺省执行体(实机适配器②的封口内容;旧路径 run() 与
         五段循环同调,自身**不触发**注册表——触发统一归
-        :meth:`_act_execute` 分派面,防双计)。OpenShop = 流程层商店编排
+        :meth:`_act_execute` 分派面,防双计)。CwActionOpenShopParam = 流程层商店编排
         [spend 单元记账 + _open_shop_phase];其余 = 执行器机械执行。发射型
         登记件(遭遇/策略屏刷新计数)由各自执行链在点击发射点触发,不经
         本口。机械摘要写入 ``_last_mech_detail``(登记件 detail 供给;
         端口无返回后的旁路通道)。
 
         ``obs`` 黑板形参已随 gs.prep_obs 退役删除(迭代阶段 3.5;旧
-        OpenShop 腿的 obs 死参消费早已为零——strategy-input-unification
+        CwActionOpenShopParam 腿的 obs 死参消费早已为零——strategy-input-unification
         批审在案)。"""
-        if isinstance(action, StartBattle):
+        if isinstance(action, CwActionStartBattleParam):
             # 出战意图执行 = 统一执行器(face=armed:屏态复验→浮层安全检查
             # →部署原子序→出战点击链;迭代 design §2.2/方案 4——策略前置
             # 发射位的意图在此落执行)。launch_fired = 交回契约事实。
@@ -1503,7 +1503,7 @@ class CwScreenPrep(CwScreenOpBase):
             self._last_mech_detail = _detail_lbu
             log.info(f'[cw][director] {action_key(action)} → {_detail_lbu}')
             return
-        if isinstance(action, OpenShop):
+        if isinstance(action, CwActionOpenShopParam):
             if getattr(action, 'restricted_spend', False):
                 # 受限访问(发射帧仲裁意图执行;金出口族出口 B):仲裁单元
                 # 自含预检/域判/预算闸/第三载体行,语义单一源 = cw_loop
@@ -1664,9 +1664,9 @@ class CwScreenPrep(CwScreenOpBase):
           (揭示后 heavy 观察读到的已是揭示后的真实板面,不毒化对账)。
           上界 3 轮防识别抖动死循环;揭示后卡片消失 → 自然防重入。
         - 书册卡(R10 链拆):识别到书册卡 → 改产备战词表
-          动作 ``OpenBookcard`` 经执行器发射(遥测动作行 OpenBookcard 在册,
+          动作 ``CwActionOpenBookcardParam`` 经执行器发射(遥测动作行 CwActionOpenBookcardParam 在册,
           单一发射口)→ **本访问交回**:专家邀请函弹窗由外循环 0k 分发
-          ``CwScreenExpertInvite`` 选卡(R7 OpenBox 终结化同构;原 journal
+          ``CwScreenExpertInvite`` 选卡(R7 CwActionOpenBoxParam 终结化同构;原 journal
           包装全链路径退役——该包装 = ADR-0584 §5.3 收编件,链拆后动作行
           归执行器、op 行归 0k 分发,双通道行缺口不再存在)。每次访问至多
           发一张,其余张由外循环下一轮自然续清;识别后不开(过渡帧/校验
@@ -1713,7 +1713,7 @@ class CwScreenPrep(CwScreenOpBase):
         except Exception:   # noqa: BLE001  离线契约
             return False
         # 过渡帧点击会落空(r133 同型教训)→ 上判不在过渡帧才发。
-        action = OpenBookcard(slot=_bc_cards[0][0])
+        action = CwActionOpenBookcardParam(slot=_bc_cards[0][0])
         err = self._executor.validate(action)
         if err is not None:
             log.warning(f'[cw!][director] 参数非法 {action_key(action)}: '
@@ -1726,7 +1726,7 @@ class CwScreenPrep(CwScreenOpBase):
             # 外循环,下轮 loop 顶见 STOP 退出(与 visit 循环执行位同处置)。
             log.info(f'[cw][director] 停机刹车({e}),动作未发出 → 交回外循环')
             return True
-        log.info('[cw][director] 书册卡 slot%s → OpenBookcard 已发'
+        log.info('[cw][director] 书册卡 slot%s → CwActionOpenBookcardParam 已发'
                  '(交回外循环,0k 分发选卡)', _bc_cards[0][0])
         return True
 
@@ -1765,7 +1765,7 @@ class CwScreenPrep(CwScreenOpBase):
     # ===== W970 批 C:流程层商店编排(整段买牌解体的承接,§4.3.2/§4.3.6)=====
 
     def _open_shop_phase(self, action: CwAction) -> tuple[bool, str]:
-        """OpenShop 动作的流程层编排(壳直调三 op 调用点自 BuyShopCards 上移)。
+        """CwActionOpenShopParam 动作的流程层编排(壳直调三 op 调用点自 BuyShopCards 上移)。
 
         - read_only=True(腾席链 b 取 gold 真值 / 开态清洁面板):CwOpOpenShop
           (幂等,已开不点)→ heavy 观察(gold 开态真值进 session)→ **不调
@@ -1867,10 +1867,10 @@ class CwScreenPrep(CwScreenOpBase):
 
         语义 = 「从店已开状态进入」(ADR-0517 单动作循环的入口形态):
         入口观察现读当前牌面重建期望态 → 策略器逐动作决策(买/卖/升/刷)
-        → CloseShop 终结收店交回。**不调 open_shop**——店已开由外循环
+        → CwActionCloseShopParam 终结收店交回。**不调 open_shop**——店已开由外循环
         0n 三 id_mark 锚判定确认,直接跳过开店动作(比依赖 open_shop
         幂等性更进一步:已开连点都不发);「收不收」由策略器基于期望态
-        决定(CloseShop = 商店画面 op 的一等终结动作),路由层不硬编码收起。
+        决定(CwActionCloseShopParam = 商店画面 op 的一等终结动作),路由层不硬编码收起。
 
         (hp 三件组形参已随黑板帧退役删除——迁移批 3.2:访问内 hp 决策
         消费统一经 decision_hp 容器读口,显式开店路径与 0n 路径同源。)
@@ -2194,7 +2194,7 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
     total_sell = ledger.total_sell
     total_sell_income = ledger.total_sell_income
     _spend_executed = ledger.spend_executed
-    # (「买后重估容器喂入」残段已退役,2026-09-16 归因批确认流程:OpenShop
+    # (「买后重估容器喂入」残段已退役,2026-09-16 归因批确认流程:CwActionOpenShopParam
     #  = 终结动作,执行完交回外循环,下一次备战访问的入口 heavy 观察必然
     #  先于任何决策发生——它以真读覆盖容器并把帧类标 'full',本段喂入的
     #  gold 真读写 / bench tracked 重播 / 'view' 标记三样全被覆盖,从不被

@@ -193,9 +193,9 @@ class MatchRecord:
 def _scan_match(path: Path) -> MatchRecord:
     """单档案解析:窗口量逐节点聚合 + 取卡帧组 + 污染判别。
 
-    逐轮量口径:LevelUp 动作数 = 购经验单击数(4 金/击);RefreshShop
-    cost>0 记付费(旧 schema cost=None 剔除该动作);SellBench.income 累加
-    为卖出收入;BuyCard cost==5 计 5 费购买;星级事件 = deployed∪bench 中
+    逐轮量口径:CwActionLevelUpParam 动作数 = 购经验单击数(4 金/击);CwActionRefreshShopParam
+    cost>0 记付费(旧 schema cost=None 剔除该动作);CwActionSellBenchParam.income 累加
+    为卖出收入;CwActionBuyCardParam cost==5 计 5 费购买;星级事件 = deployed∪bench 中
     角色星级首次达到 2/3(同角色跨轮取最大,卖出后重合成的重复事件不计 =
     下偏申报);金/等级观测取该轮落账值。
     """
@@ -270,24 +270,24 @@ def _scan_match(path: Path) -> MatchRecord:
         obs['n'] += 1
         for a in (r.get('actions') or []):
             t = a.get('__type__')
-            if t == 'RefreshShop':
+            if t == 'CwActionRefreshShopParam':
                 c = a.get('cost')
                 if c is None:
                     continue   # 旧 schema 无金额:不计入任何口径
                 obs['refresh_total'] += 1
                 if c > 0:
                     obs['refresh_paid'] += 1
-            elif t == 'SellBench':
+            elif t == 'CwActionSellBenchParam':
                 with suppress(TypeError, ValueError):
                     obs['sell_income'] += float(a.get('income') or 0)
-            elif t == 'BuyCard':
+            elif t == 'CwActionBuyCardParam':
                 cost = (a.get('card') or {}).get('cost')
                 try:
                     if cost is not None and int(cost) == 5:
                         obs['buys5'] += 1
                 except (TypeError, ValueError):
                     pass
-            elif t == 'LevelUp':
+            elif t == 'CwActionLevelUpParam':
                 obs['lu_clicks'] += 1
         # 星级事件(deployed ∪ bench;条目可含 None 占位)
         max_star: dict[str, int] = getattr(rec, '_max_star', None)

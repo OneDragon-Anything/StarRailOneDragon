@@ -66,7 +66,7 @@ def offtarget_sell_allowed(char_id: str, bonds: set[str],
     振荡(两层目标视图分歧:deploy 看终局 comp,买/演进层看意向体系对/骨架纪律)。
     振荡熔断:**引擎/配方体系件(``DEPLOY_FENCE`` = RECIPE ∪ ENGINE,与散牌
     围栏同源)恒不卖**——deploy 自己都把它们当围栏件不许留 bench,卖出判定不得
-    同源反向。真要换血走演进层显式 SellDeployed 原子序(有保护集分级,
+    同源反向。真要换血走演进层显式 CwActionSellDeployedParam 原子序(有保护集分级,
     ADR-0382;原 CompTransaction 事务载体已随批2b R3 删除),不归 deploy 的机会性腾位通道管。
 
     换阵卖出义务臂(板满换阵死锁修复;第七局 r9 实证):
@@ -275,7 +275,7 @@ def readiness_launch_decision(gs: GameState, comp: Comp | None,
     ∧〔板面承重满额 ∨ 部署计划不可得 fail-open〕,质量维定义与防死锁
     语义见 :func:`launch_board_quality_report`/ADR-0570——配方腿阈值
     唯一面 = form_progress 语义,质量腿零自由参数)、``auth_basis``
-    (触发臂名,与生产 LaunchBattle/LevelUp.auth_basis 观测同键名族)、
+    (触发臂名,与生产 LaunchBattle/CwActionLevelUpParam.auth_basis 观测同键名族)、
     ``admission``(armed 时的 G1 准入三元 = ``launch_admission_report``;
     best-effort:预估异常吞为 None——admission 仅观测位,消费门只读
     armed,见 ADR-0557 §4)、``quality``(配方完备帧的质量维报告;

@@ -208,7 +208,7 @@ class CwScreenPlanner(CwScreenOpBase):
                 ChannelSig,
             )
             from sr_od.application.currency_war.kernel.cw_vocab import (
-                PickPlanner,
+                CwActionPickPlannerParam,
             )
             _match.gs.write_logic(
                 _match.gs.planner_opts,
@@ -225,12 +225,12 @@ class CwScreenPlanner(CwScreenOpBase):
             # CwSimFrame + 过渡桥装箱退役。kernel 返回值包装动作子类型
             # (终态契约 §2.2:kernel 纯函数零触碰,包装归入口/防御路径)。
             from sr_od.application.currency_war.kernel.cw_vocab import (
-                PickPlanner,
+                CwActionPickPlannerParam,
             )
             _kpick = decide_planner(options,
                                     GameState(schema_version=GAME_STATE_SCHEMA_VERSION),
                                     None)
-            pick = PickPlanner(idx=_kpick.idx, reason=_kpick.reason)
+            pick = CwActionPickPlannerParam(idx=_kpick.idx, reason=_kpick.reason)
         target = self._card_point(pick.idx)
         log.info('[cw][planner] 策划决策:%s → %s卡(%s)',
                  pick.reason, '左' if pick.idx == 0 else '右',

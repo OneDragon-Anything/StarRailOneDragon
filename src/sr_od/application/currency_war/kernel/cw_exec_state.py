@@ -107,11 +107,11 @@ def apply_op_effect(session, action: CwAction | dict, *,
     效果上抛形态,只含本函数实际写过的字段)。
 
     **卖出回金不在本口**(统一观察对账迭代 2026-09-16 归因批退役双记
-    腿):SellBench/SellDeployed 的容器金账唯一写点 =
+    腿):CwActionSellBenchParam/CwActionSellDeployedParam 的容器金账唯一写点 =
     :func:`apply_prep_action_logic` 对应分支(实机执行缝+投影双腿各记
-    一次 +refund,实读倒挂 −2 实证);本口 SellDeployed 仅保留 owned
+    一次 +refund,实读倒挂 −2 实证);本口 CwActionSellDeployedParam 仅保留 owned
     装备回收腿(执行账单一写者,无投影对应物)。专项金腿存续面 =
-    现金为王弃卡回金与 dict 形 BuyCard(无投影对应物,单写点)。
+    现金为王弃卡回金与 dict 形 CwActionBuyCardParam(无投影对应物,单写点)。
 
     ``skip_substate`` = 出战动作的免战跳过子态标记(StartBattleOp 经
     runner 包络上报;op 零 game state 直写)。True = 本次出战走「跳过」
@@ -126,16 +126,16 @@ def apply_op_effect(session, action: CwAction | dict, *,
     if session is None:
         return effects
     from sr_od.application.currency_war.kernel.cw_vocab import (
-        ClickSpheres,
-        SellDeployed,
-        StartBattle,
-        WearEquip,
+        CwActionClickSpheresParam,
+        CwActionSellDeployedParam,
+        CwActionStartBattleParam,
+        CwActionWearEquipParam,
     )
 
     def _eff(path: str, value, kind: str) -> None:
         effects.append({'path': path, 'value': value, 'kind': kind})
 
-    if isinstance(action, SellDeployed):
+    if isinstance(action, CwActionSellDeployedParam):
         # (卖出回金容器唯一写点 = apply_prep_action_logic 对应分支,
         #  本口不记金防双记——实机 −2 倒挂实证;owned 装备回收腿 =
         #  执行账单一写者。)
@@ -146,12 +146,12 @@ def apply_op_effect(session, action: CwAction | dict, *,
             for eq in (getattr(bc, 'equips', None) or []):
                 _owned_add(session, eq)
                 _eff(f'owned[{eq}]', '+1(卖场上装备全额返还)', 'owned')
-    elif isinstance(action, WearEquip):
+    elif isinstance(action, CwActionWearEquipParam):
         # 穿戴原子(R2;发出即记账):本分支仅在执行器 emitted 门放行时
         # 可达(op 定位失败等未发出通道 emitted=False,整支跳过,无账可
         # 记);照常发出路径 = 机械执行零判效(用户裁定,落地判定归观察
         # 侧 reconcile),owned −1 + tracked 目标角色 +1。
-        # WearEquip 是坐标参数化机械动作(row/slot = 画面物理槽位,词表
+        # CwActionWearEquipParam 是坐标参数化机械动作(row/slot = 画面物理槽位,词表
         # 定义);物理→下标换算单一函数 = deployed_idx_of(执行坐标边)。
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
@@ -175,7 +175,7 @@ def apply_op_effect(session, action: CwAction | dict, *,
                 + [action.item_name]
             _eff(f'deployed[{idx}].equips', f'+{action.item_name}(穿戴)',
                  'tracked')
-    elif isinstance(action, StartBattle):
+    elif isinstance(action, CwActionStartBattleParam):
         # 进战斗:hp/gold/streak 由结算屏观察覆盖接管(原显式不推进理由
         # 升格为分支);唯一逻辑推进 = 免战牌跳过递减(上报时递减;标记
         # 由 StartBattleOp 经 runner 包络上报,op 零 game state 直写)。
@@ -195,7 +195,7 @@ def apply_op_effect(session, action: CwAction | dict, *,
                     _eff('effects[免战牌]', f'remaining_uses→{_left}(跳过上报递减)',
                          'effects')
                     log.info('[cw][battle] 免战牌跳过上报 → 次数递减(余 %s)', _left)
-    elif isinstance(action, ClickSpheres):
+    elif isinstance(action, CwActionClickSpheresParam):
         # 备战环随机收入申报窗(20260918-reconcile 第 9 例收口)。零推进
         # 语义不变:球金金额执行点不可推算(声明盲区),金账照旧不写——
         # 本分支只按载荷球数开「待吸收窗」,下一可信金读帧的正向差由
@@ -222,28 +222,28 @@ def apply_op_effect(session, action: CwAction | dict, *,
             # 与 owned 确认族同一推进语义单一源;shop_wave_top 实读覆盖修正)。
             _advance_gold(session, 4, produced_by=produced_by)
             _eff('gold', '+4(现金为王弃卡回金)', 'gold')
-        elif op == 'BuyCard':
-            # dict 形 BuyCard(模拟/离线入口):合成引擎算购买数,金账
+        elif op == 'CwActionBuyCardParam':
+            # dict 形 CwActionBuyCardParam(模拟/离线入口):合成引擎算购买数,金账
             # 逻辑推进;tracked 本体推进 = 执行器/调用方辖。
             _apply_buy_card(session, action, _eff)
     else:
         # 显式不推进理由(原 §3 铁律枚举,两态制下语义存续):
-        # - OpenBox/OpenTome:箱/典籍不消失(仅画面态,消耗在选卡确认;
-        #   OpenBox 2a 终结化后选卡 = 武装箱选择画面 op,零容器账);
-        # - OpenShop(含 read_only):画面态周转,零局状态变更;
-        # - LevelUp:经验/等级/金 = 容器逻辑态(apply_prep_action_logic
-        #   LevelUp 分支,xp_apply_clicks + action.cost 直写单一源,
+        # - CwActionOpenBoxParam/CwActionOpenTomeParam:箱/典籍不消失(仅画面态,消耗在选卡确认;
+        #   CwActionOpenBoxParam 2a 终结化后选卡 = 武装箱选择画面 op,零容器账);
+        # - CwActionOpenShopParam(含 read_only):画面态周转,零局状态变更;
+        # - CwActionLevelUpParam:经验/等级/金 = 容器逻辑态(apply_prep_action_logic
+        #   CwActionLevelUpParam 分支,xp_apply_clicks + action.cost 直写单一源,
         #   批2b 翻转后金腿不经执行缝);
-        # - SellBench:容器金/bench 逻辑态全归 apply_prep_action_logic
+        # - CwActionSellBenchParam:容器金/bench 逻辑态全归 apply_prep_action_logic
         #   (金腿双记退役,统一观察对账迭代 2026-09-16);
-        # - DeployMove/SellDeployed:容器逻辑态 = apply_prep_action_logic
+        # - CwActionDeployMoveParam/CwActionSellDeployedParam:容器逻辑态 = apply_prep_action_logic
         #   扩域分支(金腿同上批退役);tracked 位移/摘除 = 执行器
         #   _track_* 单一写者;
-        # - 工具原子(FurnaceUse 等):消耗/变换 = 视觉域逻辑态
+        # - 工具原子(CwActionFurnaceUseParam 等):消耗/变换 = 视觉域逻辑态
         #   (容器零写:消费真值归观察——action-logic-state.md 正本申报)+ 下一帧装备区
         #   读数覆盖;last_owned_equips 挂账面随对拍拆除不入本口;
-        # - ClickSpheres:零金账推进(球金不可推算)+ 按载荷球数开点球金
-        #   待吸收窗(本文件 ClickSpheres 分支申报);
+        # - CwActionClickSpheresParam:零金账推进(球金不可推算)+ 按载荷球数开点球金
+        #   待吸收窗(本文件 CwActionClickSpheresParam 分支申报);
         # - 买牌单元:tracked 本体推进 = 执行器/调用方辖(容器
         #   tracked_books 随动同步,mutate_bench_deployed 单口)。
         pass
@@ -251,7 +251,7 @@ def apply_op_effect(session, action: CwAction | dict, *,
 
 
 def _apply_buy_card(session, action: dict, _eff) -> None:
-    """dict 形 BuyCard 的金账推进(merge_simulate 单一引擎算购买数)。"""
+    """dict 形 CwActionBuyCardParam 的金账推进(merge_simulate 单一引擎算购买数)。"""
     from sr_od.application.currency_war.kernel.cw_merge_simulate import (
         merge_simulate,
     )
@@ -515,7 +515,7 @@ def deployed_from_compact(chars: list[BenchChar]) -> list[BenchChar | None]:
 
 
 def _apply_row_to_char(bc: BenchChar, to_row: str) -> None:
-    """记录实际站位 + 开拓者换排形态归一(DeployMove/动作 v2 单一源)。
+    """记录实际站位 + 开拓者换排形态归一(CwActionDeployMoveParam/动作 v2 单一源)。
 
     拖到另一排 = 命途切换(前台记忆/后台欢愉),羁绊随之变 → char_id
     同步换成目标排形态,faction 跟随首阵营(下游 board/装备计算自然对)。

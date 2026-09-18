@@ -2,7 +2,7 @@
 
 「书册卡」= 备战席占槽道具(青蓝卡+白色书册 icon+「开启」,模板
 ``assets/template/currency_war/supply/书册卡_未知.png``,find_bookcards 识别):
-其开卡动作自 R10 归位备战词表(``kernel/cw_vocab.OpenBookcard``,执行器分支
+其开卡动作自 R10 归位备战词表(``kernel/cw_vocab.CwActionOpenBookcardParam``,执行器分支
 ``prep_actions._open_bookcard``,发射位 = 备战环入口清场段)——本 op 只辖
 **弹窗已开后的选卡**:点选一个 → 该角色加入商店(由正常商店逻辑接管)/
 或 +4 金 → 弹窗关回备战。
@@ -129,7 +129,7 @@ class CwScreenExpertInvite(CwScreenOpBase):
     """专家邀请函弹窗选卡(默认策略)→ 验弹窗关(收案)。
 
     入口态单一 = 弹窗已开(外循环 0k 按画面分发;开卡半已随 R10 链拆
-    归备战词表 ``OpenBookcard``,见模块 docstring)。
+    归备战词表 ``CwActionOpenBookcardParam``,见模块 docstring)。
     """
 
     def __init__(self, ctx: SrContext):
@@ -189,7 +189,7 @@ class CwScreenExpertInvite(CwScreenOpBase):
                 crop_first=False).is_success:
             # 入口门:弹窗不在(已被处理 / 0k 检测后消失)→ fail 交回外循环
             # 重识别(外循环按下一帧画面重分发,自愈;开卡缺位由备战词表
-            # OpenBookcard 链承接,与本 op 无关)
+            # CwActionOpenBookcardParam 链承接,与本 op 无关)
             return self.round_fail('选卡入口:邀请函弹窗未现')
         return self._handle_overlay(screen)
 

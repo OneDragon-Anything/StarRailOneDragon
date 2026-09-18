@@ -221,7 +221,7 @@ def all_in_xp_domain_hit(gs: GameState, session: StrategySession | None,
     d=0 形态/档 1/让位卖出后部署;XP 升级类仅支A 兑现链形态合法),
     本谓词只辖「hp 落停升级线内」的帧——域外帧(hp>停线)不受过滤,
     维持既有 [18] 全豁免(域外不动申报 = ADR-0604 §4-F5:批#2 s9 型
-    hp=35 帧 8×LevelUp 在域外,过滤后不拦)。hp 不可信/None 帧 = 线内线外
+    hp=35 帧 8×CwActionLevelUpParam 在域外,过滤后不拦)。hp 不可信/None 帧 = 线内线外
     不可判 → False 不过滤([18]「末战花光是时机不是血线判断」豁免
     语义在不可信帧仍生效,与 blood_budget_levelup_blocked 的豁免序、
     p2_crisis_band 的「血预算未知不判带」非对称口径一致:误放有地板
@@ -304,7 +304,7 @@ def blood_budget_levelup_blocked(gs: GameState,
     EV=−C−I 严格负(本函数数学),证据缺失时禁令保持有效与误放的非对称
     代价(误放=血线内追级,误拦=少升一级)同型于 ADR-0428 兜底假值帧拒
     语义。不降姿态/不维持上次决策:谓词逐帧无状态且被三面共享,引入跨帧
-    记忆=新状态机不成比例;只封 LevelUp 通道,买牌/刷新各有其门。置于
+    记忆=新状态机不成比例;只封 CwActionLevelUpParam 通道,买牌/刷新各有其门。置于
     ALL IN 豁免之后:豁免语义=「末战花光是时机不是血线判断」,在不可信
     帧上仍生效。
     """

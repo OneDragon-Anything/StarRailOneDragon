@@ -140,7 +140,7 @@ LAUNCH_CAUSE_BY_ARM: dict[str, str] = {
 
 
 def launch_cause_of(reason: str) -> str | None:
-    """买入臂名(BuyCard.reason)→ 因果类(LAUNCH_CAUSE_BY_ARM 查因;
+    """买入臂名(CwActionBuyCardParam.reason)→ 因果类(LAUNCH_CAUSE_BY_ARM 查因;
     未映射臂 = None)。A4 硬闸(ADR-0611):发射位
     ``_emit_buy`` 对 None 改抛错——静默跳过登记分支 = 新臂绕过登记与
     一切以字典为臂全集的穷举断言,抛错后该字典才是臂全集的硬地基;
@@ -640,7 +640,7 @@ DEAD_PAIR_EXIT_MIN_AGE: int = SEED_WINDOW_ROUNDS + 1
 #:   真窗内 age<N)/_identity(已释放遭身份段剔除——③④/枢纽对体量
 #:   观察位,喂方向④后续门)/_chain(3★ 链 1★ 腿保留);
 #: - ``dead_pair_exit_sold_<channel>``:释放成员经各通道实际卖出笔数
-#:   (按通道分键,写点 = 各通道 SellBench 发射位)。
+#:   (按通道分键,写点 = 各通道 CwActionSellBenchParam 发射位)。
 DEAD_PAIR_EXIT_RELEASED_KEY: str = 'dead_pair_exit_released'
 DEAD_PAIR_EXIT_KEPT_PREFIX: str = 'dead_pair_exit_guard_kept'
 DEAD_PAIR_EXIT_SOLD_PREFIX: str = 'dead_pair_exit_sold'
@@ -1025,7 +1025,7 @@ def empty_board_sell_blocked(deployed: object, *,
     该笔卖出执行后的上场占用数,而非卖出前的板面状态——前置形态对
     「从有板逐个卖穿到空」路径每次卖出瞬间恒假,最后一卖照常放行,
     守卫目标(不进空板态)失守;后态判定自然覆盖「板已空连卖 bench」
-    与「卖掉仅存部署位」两类路径。现行策略面唯一卖类 = SellBench(不
+    与「卖掉仅存部署位」两类路径。现行策略面唯一卖类 = CwActionSellBenchParam(不
     改变 deployed)⇒ 后态占用数 = 现占用数(``deployed_occupied``,
     ADR-0392 占用数,禁 len);取后态形态是为辖未来卖 deployed 类通道
     的接线对账——消费位传「占用数减待卖件」即可,谓词本体零改。

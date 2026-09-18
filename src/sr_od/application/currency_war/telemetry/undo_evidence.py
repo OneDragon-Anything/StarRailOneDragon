@@ -6,7 +6,7 @@ record 模式,禁第二套机制)。
   保留了什么;写入点 = cw_op_deploy off-target 卖出通道的围栏保留分支);
 - ``drought_buy_no_reset``:干旱计数器买入不重置证据面(pair_drought
   重置单一源 = 商店可见性 _update_pair_drought,买入不重置——干旱解锁
-  流程审计面;写入点 = BuyCard 执行成功点)。
+  流程审计面;写入点 = CwActionBuyCardParam 执行成功点)。
 
 既有覆盖(复用不另建):m2_retry_exhausted / bench_full_buy_abandon /
 shop_churn_pair_buy 等 cw4_counters 族 + 干旱当值内联本证据行

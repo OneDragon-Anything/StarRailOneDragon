@@ -13,7 +13,7 @@ flow/screen_op.md`` §1「一次画面 op 调用 = 入口观察 + 逐动作决�
 ## 两遍式渲染
 
 - **第一遍(op 序列重建)**:按 op 边界规则从档案流行重建 op 序列——
-  decisions 帧动作切分(OpenShop…CloseShop 段 = 商店访问 op,其余备战动作
+  decisions 帧动作切分(CwActionOpenShopParam…CwActionCloseShopParam 段 = 商店访问 op,其余备战动作
   按逻辑态终结规则切备战 op)、快照边界定位商店 op 起点、exogenous 行定位
   遭遇/简报等 op。op 属性 = 序号 + 分支号 + 处理类名 + 入口时间戳。
 - **第二遍(分组渲染)**:节点(P×R×)分组、组内按时间戳输出 op 记录;
@@ -26,12 +26,12 @@ flow/screen_op.md`` §1「一次画面 op 调用 = 入口观察 + 逐动作决�
   - ``phase`` 以 ``supply`` 开头 → 补给帧;分流帧(detour)与拾取帧(pick)
     合并为**一个补给 op**,节点归属取分流帧(拾取帧轮号有跨轮漂移先例,
     见 084421 复盘完整性审计 S5,档案 = matches/reviews/g_20260907_084421.md);
-  - 动作含商店词表(BuyCard/LevelUpShop/RefreshShop/OpenShop)或行级
+  - 动作含商店词表(CwActionBuyCardParam/CwActionLevelUpShopParam/CwActionRefreshShopParam/CwActionOpenShopParam)或行级
     ``phase`` 非空(零买入段行 acts=[] 只有 phase 可辨)→ 商店帧;
     连续商店帧合并为**一个商店访问 op**(刷新产生的多波段行同属一次访问);
   - 其余 = 备战帧;备战帧按逻辑态终结规则切 op——帧动作含
-    RunDeploy/RunEquip/LevelUp/DeployMove/SellDeployed(prep_visit.md §1
-    逻辑态未建模面)或 StartBattle(出战,§3 唯一完成态)→ 该帧后切分;
+    RunDeploy/RunEquip/CwActionLevelUpParam/CwActionDeployMoveParam/CwActionSellDeployedParam(prep_visit.md §1
+    逻辑态未建模面)或 CwActionStartBattleParam(出战,§3 唯一完成态)→ 该帧后切分;
     无终结动作收尾 = 访问交回外循环重识别(如下一调度是商店)。
 - 战斗窗/结算 = 每个 outcomes 行(合成补给行除外)一个 ``CwScreenBattleWait``
   一体 op;合成补给行(source=synthetic_supply)挂靠最近的补给 op。
@@ -41,7 +41,7 @@ flow/screen_op.md`` §1「一次画面 op 调用 = 入口观察 + 逐动作决�
   上一次结算到本次结算之间)。BOSS 简报(exogenous ``briefing``)与投资环境
   (帧 state.active_env,选项面未采集)归开局段;对局收口(endgame)归收口段。
 - 无决策行的纯路由迭代(弹窗关闭类,outer_loop.md §2.2 浮层族)档案零痕迹,
-  不逐条成节;CloseShop 终结结构性不入行(flow/shop_visit.md §2 申报)——
+  不逐条成节;CwActionCloseShopParam 终结结构性不入行(flow/shop_visit.md §2 申报)——
   两者在文末缺口清单声明。
 
 ## 用法(主仓根目录)
@@ -146,31 +146,31 @@ _CONFLICT_ROWS_CAP = 15
 # op 词表与边界规则(flow/outer_loop.md §2.2 + flow/prep_visit.md §1/§3)
 # ---------------------------------------------------------------------------
 
-#: 商店动作词表(动作含其一 = 商店帧;SellBench 不入表:它在 prep_visit.md §1
-#: 属建模逻辑态直写动作,且只出现在商店语境——含 SellBench 的帧必同时含其他商店
+#: 商店动作词表(动作含其一 = 商店帧;CwActionSellBenchParam 不入表:它在 prep_visit.md §1
+#: 属建模逻辑态直写动作,且只出现在商店语境——含 CwActionSellBenchParam 的帧必同时含其他商店
 #: 动作或带段行 phase)
 _SHOP_ACTION_TYPES: frozenset[str] = frozenset(
-    {'OpenShop', 'BuyCard', 'LevelUpShop', 'RefreshShop'})
+    {'CwActionOpenShopParam', 'CwActionBuyCardParam', 'CwActionLevelUpShopParam', 'CwActionRefreshShopParam'})
 
 #: 补给帧的行级 phase 前缀(决策帧 phase=supply_detour/supply_pick)
 _SUPPLY_PHASE_PREFIX = 'supply'
 
 #: 备战截断类动作(unified-action-factory 批2b 后口径;语义单一源 =
-#: entry.classify_frame_stability 的截断/终点两类——截断点 = OpenBox/
-#: OpenTome/OpenShop/装备原子/工具原子,终点 = StartBattle 另列于
+#: entry.classify_frame_stability 的截断/终点两类——截断点 = CwActionOpenBoxParam/
+#: CwActionOpenTomeParam/CwActionOpenShopParam/装备原子/工具原子,终点 = CwActionStartBattleParam 另列于
 #: _BATTLE_ACTION):帧动作含其一则该帧是备战 op 的终结帧。集合含
 #: 'RunDeploy'/'RunEquip' 旧档兼容键(组合壳已删,仅历史档案行出现,
 #: 新档案零构造;读旧档案判终结帧保真)。
 _PREP_TERM_ACTIONS: frozenset[str] = frozenset({
-    'OpenBox', 'OpenTome', 'OpenShop', 'StartBattle',
-    'WearEquip', 'FurnaceUse', 'PrivilegeCardUse', 'WrenchUse',
-    'PrecisionWrenchUse', 'StaffProjectorUse', 'PerfectProjectorUse',
-    'LuckyTokenUse',
+    'CwActionOpenBoxParam', 'CwActionOpenTomeParam', 'CwActionOpenShopParam', 'CwActionStartBattleParam',
+    'CwActionWearEquipParam', 'CwActionFurnaceUseParam', 'CwActionPrivilegeCardUseParam', 'CwActionWrenchUseParam',
+    'CwActionPrecisionWrenchUseParam', 'CwActionStaffProjectorUseParam', 'CwActionPerfectProjectorUseParam',
+    'CwActionLuckyTokenUseParam',
     'RunDeploy', 'RunEquip',   # 旧档兼容(见上注)
 })
 
 #: 出战动作(prep_visit.md §3:唯一完成态,交回外循环战斗分支)
-_BATTLE_ACTION = 'StartBattle'
+_BATTLE_ACTION = 'CwActionStartBattleParam'
 
 #: op 类型 → (分支号, 名称, 处理类名)。分支号 = outer_loop.md §2.2 分支序表;
 #: 战斗窗在分支序表中无数字序位(以战斗窗驻留判定接管),如实标注。
@@ -535,7 +535,7 @@ def _group_frames(frames: list[tuple[int, dict[str, Any]]]
                   ) -> list[dict[str, Any]]:
     """decisions 帧 → 帧级 op(备战/商店/补给)。
 
-    - 连续商店帧合并为一个商店访问 op;OpenShop 行在场 = 开店步已记录。
+    - 连续商店帧合并为一个商店访问 op;CwActionOpenShopParam 行在场 = 开店步已记录。
     - 连续补给帧(detour+pick)合并为一个补给 op,节点取首帧(分流帧;
       拾取帧轮号跨轮漂移先例 = 084421 复盘完整性审计 S5)。
     - 备战帧按终结动作切分(prep_visit.md §1 逻辑态直写规则/§3 出战):帧动作
@@ -569,7 +569,7 @@ def _group_frames(frames: list[tuple[int, dict[str, Any]]]
             cur['ts_end'] = ts
             if key is not None and cur['key'] is None:
                 cur['key'] = key
-            if any(a.get('__type__') == 'OpenShop'
+            if any(a.get('__type__') == 'CwActionOpenShopParam'
                    for a in _frame_actions(row)):
                 cur['open_shop_recorded'] = True
         else:  # supply
@@ -1302,15 +1302,15 @@ def _op_header(op: dict[str, Any], idx: int) -> str:
 
 
 def _terminal_line(op: dict[str, Any], next_kind: str | None) -> list[str]:
-    """终结标记(每 op 必有终结面;CloseShop 结构性不入行按
+    """终结标记(每 op 必有终结面;CwActionCloseShopParam 结构性不入行按
     flow/shop_visit.md §2 申报——渲染器把「没入行」本身标出来防误读)。"""
     if op['kind'] == 'shop':
-        return ['- 终结:CloseShop(结构性不入行,收店)']
+        return ['- 终结:CwActionCloseShopParam(结构性不入行,收店)']
     if op['kind'] != 'prep' or not op['frames']:
         return []
     last_acts = {a.get('__type__') for a in _frame_actions(op['frames'][-1][1])}
     if _BATTLE_ACTION in last_acts:
-        return ['- 终结:StartBattle 出战 → 交战斗窗']
+        return ['- 终结:CwActionStartBattleParam 出战 → 交战斗窗']
     term = sorted(last_acts & _PREP_TERM_ACTIONS)
     if term:
         return [f'- 终结:{"、".join(term)}(逻辑态未建模,访问终结交回外循环)']
@@ -1387,8 +1387,8 @@ def _render_op(op: dict[str, Any], idx: int, next_kind: str | None,
                 rej_s = '、'.join(f'{k}={_short(v, 20)}' for k, v in rej.items())
                 lines.append(f'  - 拒因(帧 [{gidx:02d}]):{_esc(rej_s)}')
         if kind == 'shop':
-            lines.append('  - (开店/收店步不入决策行:OpenShop 有无见标题标注;'
-                         'CloseShop 结构性不入行)')
+            lines.append('  - (开店/收店步不入决策行:CwActionOpenShopParam 有无见标题标注;'
+                         'CwActionCloseShopParam 结构性不入行)')
         parts += (['- 决策循环:'] + lines + ['']) if lines \
             else ['- 决策循环:(无动作行)', '']
     parts += _annot_lines(op) if kind != 'encounter' else []
@@ -1417,7 +1417,7 @@ def _node_alias(node: Any) -> str:
 def _round_facts(r: dict[str, Any] | None, ctx: dict[str, Any],
                  key: tuple[int, int], gaps: GapLog) -> list[str]:
     """组尾「轮级事实」:强化计数(审计渲染缺 R11:升级两条通道都计,此前
-    只数 LevelUpShop+ClickSpheres,备战 LevelUp 花钱升 6 渲染成 ×0)/ 血购
+    只数 CwActionLevelUpShopParam+CwActionClickSpheresParam,备战 CwActionLevelUpParam 花钱升 6 渲染成 ×0)/ 血购
     事件 / 对账注记 / 留证 / 观测冲突。全部条件渲染(无内容零噪声)。"""
     parts: list[str] = []
     counts: dict[str, int] = {}
@@ -1427,22 +1427,22 @@ def _round_facts(r: dict[str, Any] | None, ctx: dict[str, Any],
             if t:
                 counts[t] = counts.get(t, 0) + 1
     if counts:
-        up_shop = counts.get('LevelUpShop', 0)
-        up_prep = counts.get('LevelUp', 0)
+        up_shop = counts.get('CwActionLevelUpShopParam', 0)
+        up_prep = counts.get('CwActionLevelUpParam', 0)
         bits = []
         if up_shop or up_prep:
             bits.append(f'升级 店内×{up_shop}+备战×{up_prep}')
-        if counts.get('ClickSpheres'):
-            bits.append(f"点经验×{counts['ClickSpheres']}")
-        if counts.get('OpenBox'):
-            bits.append(f"开箱×{counts['OpenBox']}")
+        if counts.get('CwActionClickSpheresParam'):
+            bits.append(f"点经验×{counts['CwActionClickSpheresParam']}")
+        if counts.get('CwActionOpenBoxParam'):
+            bits.append(f"开箱×{counts['CwActionOpenBoxParam']}")
         rest = {k: v for k, v in counts.items()
-                if k not in ('LevelUpShop', 'LevelUp', 'ClickSpheres', 'OpenBox')}
+                if k not in ('CwActionLevelUpShopParam', 'CwActionLevelUpParam', 'CwActionClickSpheresParam', 'CwActionOpenBoxParam')}
         if rest:
             bits.append(' '.join(f'{k}×{v}' for k, v in sorted(rest.items())))
         if bits:
-            parts.append('**强化动作计数**(升级含店内 LevelUpShop 与备战'
-                         ' LevelUp 两通道):' + ' · '.join(bits))
+            parts.append('**强化动作计数**(升级含店内 CwActionLevelUpShopParam 与备战'
+                         ' CwActionLevelUpParam 两通道):' + ' · '.join(bits))
             parts.append('')
     if ctx['has_hp_events_col']:
         events = [e for e in ctx['hp_events']
@@ -2027,7 +2027,7 @@ def render_match(archive: dict[str, Any], replay_dir: Path,
 
     parts = _render_header(archive, seg_ids, run_filter, gaps)
     parts += ['## 2. 逐 op 复盘(外层循环画面 op 粒度)', '']
-    parts += ['> op 边界重建规则:decisions 帧动作切分——OpenShop…CloseShop 段'
+    parts += ['> op 边界重建规则:decisions 帧动作切分——CwActionOpenShopParam…CwActionCloseShopParam 段'
               ' = 商店访问 op(分支 0n),备战动作按逻辑态终结规则切备战 op'
               '(分支 1,flow/prep_visit.md §1);战斗窗/结算 = 每条 outcomes 行'
               '一个一体 op;补给/遭遇/投资选卡按各自数据面定位。协议 = '
@@ -2081,7 +2081,7 @@ def render_match(archive: dict[str, Any], replay_dir: Path,
               '故障;出现的路径即遥测缺口清单。)_', '']
     parts += ['**结构性不可见声明**(非遥测缺):弹窗关闭类纯路由迭代'
               '(outer_loop.md §2.2 浮层族:详情弹窗/概率表/道具详情/前进按钮'
-              '等)在档案零痕迹,条数不可知,本稿无法逐条成节;CloseShop 终结'
+              '等)在档案零痕迹,条数不可知,本稿无法逐条成节;CwActionCloseShopParam 终结'
               '结构性不入行(flow/shop_visit.md §2 申报),商店访问的收店时点'
               '以下一次 op 的入口时间为上界。', '']
     return '\n'.join(parts) + '\n'

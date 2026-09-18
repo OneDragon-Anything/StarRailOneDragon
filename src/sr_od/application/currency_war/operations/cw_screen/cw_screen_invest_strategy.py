@@ -76,8 +76,8 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_vocab import (
-    PickInvest,
-    RefreshInvestCards,
+    CwActionPickInvestParam,
+    CwActionRefreshInvestCardsParam,
 )
 from sr_od.application.currency_war.obs.cw_node_obs import (
     pair_refresh_counts_to_slots,
@@ -124,7 +124,7 @@ class StrategyRefreshClick:
     """逐卡刷新点击意图(on_outcome 登记件 ``strategy_refresh_used`` 的触发
     载荷;发射型单一发射口)。
 
-    - ``slot``:策略屏画面槽位下标左→右 0-2(与 PickEvent.refresh_slots
+    - ``slot``:策略屏画面槽位下标左→右 0-2(与 CwActionPickEventParam.refresh_slots
       同源坐标系);值 = 发射期快照(点击时点现值)。
     - ``name``:该槽发射时点的候选卡名(登记件键归一输入 = 现读名集该槽位)。
     """
@@ -398,7 +398,7 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         match = self.ctx.cw_match
         # 写槽 → 零参决策(终态契约 §2.7:写槽以本分支将调用 decide 为前提;
         # 同访问覆盖写,三分语义 details §2.3)。输出 = 单一 CwAction:
-        # RefreshInvestCards(逐卡刷新建议)/ PickInvest(选卡)互斥单发。
+        # CwActionRefreshInvestCardsParam(逐卡刷新建议)/ CwActionPickInvestParam(选卡)互斥单发。
         act = None
         refresh_slots: tuple[int, ...] = ()
         if names:
@@ -427,8 +427,8 @@ class CwScreenInvestStrategy(CwScreenOpBase):
                 )
                 _kpick = decide_event(names, config,
                                       GameState(schema_version=GAME_STATE_SCHEMA_VERSION))
-                act = PickInvest(idx=_kpick.option_idx, reason=_kpick.reason)
-        if isinstance(act, RefreshInvestCards):
+                act = CwActionPickInvestParam(idx=_kpick.option_idx, reason=_kpick.reason)
+        if isinstance(act, CwActionRefreshInvestCardsParam):
             refresh_slots = act.slots
 
         # ===== 逐卡刷新 = 终结动作(用户裁定 2026-09-14,照投资环境屏
@@ -488,13 +488,13 @@ class CwScreenInvestStrategy(CwScreenOpBase):
                 self._refresh_pending = True
                 return self.round_retry(wait=1)
             # 三闸全败(建议帧但无可执行刷新)→ 同访问重调落选卡:策略侧
-            # 同帧去重(建议帧首调发建议、紧随重调落选卡)等价旧 PickEvent
+            # 同帧去重(建议帧首调发建议、紧随重调落选卡)等价旧 CwActionPickEventParam
             # 「idx + refresh_slots 并载、闸败回退选卡」行为,零选卡漂移。
             act = match.strategy.decide_invest_strategy()
-            if isinstance(act, RefreshInvestCards):   # 防御:策略未实现去重
+            if isinstance(act, CwActionRefreshInvestCardsParam):   # 防御:策略未实现去重
                 act = None
 
-        if isinstance(act, PickInvest) and 0 <= act.idx < len(opts):
+        if isinstance(act, CwActionPickInvestParam) and 0 <= act.idx < len(opts):
             chosen, choose_x, choose_y = opts[act.idx]
             reason = act.reason
         elif opts:

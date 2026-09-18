@@ -1,8 +1,8 @@
 """cw4 商店线 decide_shop_action——步4b 商店线(单动作形态,ADR-0517)。
 
 策略面收缩声明(T-271,判例 = screens-actions-capability §5):商店期
-动作面 = **买牌/刷新/关店**——卖备战(SellBench)与买经验(LevelUp/
-LevelUpShop)收缩至备战期决策(策略归属 = strategy-docs 22/23 号篇);
+动作面 = **买牌/刷新/关店**——卖备战(CwActionSellBenchParam)与买经验(CwActionLevelUpParam/
+CwActionLevelUpShopParam)收缩至备战期决策(策略归属 = strategy-docs 22/23 号篇);
 腾位/筹资/凑息动机的「先卖后做」由跨段状态 substrate 承载(函数尾
 声明),本模块零卖射零升级射。
 
@@ -27,15 +27,15 @@ SIM_CONSUMPTION_MAP Q1:sim A/B 证明面 = 商店经济决策(买/刷/事务)
    (动作后真值),「帧首快照 + 逐动作累积逻辑态」口径随波批退役;
 3. criteria 发射(骨架面[M2/dominance/M6 存在性]两臂同开,真 EV 发射面
    [ev_buy/付费刷新]臂①旁路;席位/缺金形态 = 关店交回,腾位链见 4);
-4. 终结集:RefreshShop(付费刷新)/ CloseShop(恒可用)——刷新是唯一
+4. 终结集:CwActionRefreshShopParam(付费刷新)/ CwActionCloseShopParam(恒可用)——刷新是唯一
    引入新事实的动作,执行即本画面访问结束交回外循环重观察(ADR-0517
    决策 7;旧截断器的截断点语义被终结 op 吸收);席满缺员/席满囤腿/
-   席满核心卡/义务缺金形态的表达 = CloseShop 交回,腾位链 = 关店→
+   席满核心卡/义务缺金形态的表达 = CwActionCloseShopParam 交回,腾位链 = 关店→
    备战卖→重开(节点内牌面持久,research/economy.md §2.1)。
 
 R197 防线重定位(ADR-0517 §现行代码映射;防线存在前提 = 波批多动作共享
 同一帧快照,单动作下按守卫断言语义重定位,详见 cw_shop_action_ops):
-同槽去重(症3)/名-槽复检(症4①)/LevelUp 归一化(症4②)不再在发射侧
+同槽去重(症3)/名-槽复检(症4①)/CwActionLevelUpParam 归一化(症4②)不再在发射侧
 截断,proposal-vs-expected 断言在执行侧承接。
 
 rng 中立:本模块零 rng 消费(SIM_CONSUMPTION_MAP ③-5 会话流派生契约);
@@ -74,7 +74,7 @@ core_numeric_fail_closed 尾键收窄(席满停摆帧不再共火,for-else 语�
 
 键语义申报:``bench_full_buy_abandon`` = 缺员义务遇席满帧关店交回
 (腾位链第一步;原「腾席发射/诚实停摆」两分支随卖射退役并为本单一
-形态);``shop_visit_idle_gold`` = CloseShop 收尾且金 ≥10 的
+形态);``shop_visit_idle_gold`` = CwActionCloseShopParam 收尾且金 ≥10 的
 **visit**(单动作迁移批自旧 ``shop_wave_idle_gold`` 改名——「波」结构
 已退役;旧计数跨结构不可对拍,visit 含刷新段时旧波计数与其不等值,
 判读须按新语义重建基线);``shop_ev_bench_wait`` = EV 候选在场但
@@ -128,7 +128,7 @@ transition_hold_locked_frame(方向④纯计数:配方锁帧 bench 上 ④ 件
 dead_pair_exit_guard_kept_{k,no_entry,young,identity,chain}(退出
 判据释放/保留事件,名×轮去重,写点 = dead_pair_exit_release 单点)/
 dead_pair_exit_sold_{m4_fuel,interest,funding,line_switch}(释放成员
-实际卖出笔数,按通道分键,写点 = 各通道 SellBench 发射位)。
+实际卖出笔数,按通道分键,写点 = 各通道 CwActionSellBenchParam 发射位)。
 """
 from __future__ import annotations
 
@@ -196,12 +196,12 @@ from sr_od.application.currency_war.kernel.cw_reward_node import (
     reward_node_suppressed,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
-    BuyCard,
-    CloseShop,
-    DeployMove,
-    RefreshShop,
-    SellBench,
-    SellDeployed,
+    CwActionBuyCardParam,
+    CwActionCloseShopParam,
+    CwActionDeployMoveParam,
+    CwActionRefreshShopParam,
+    CwActionSellBenchParam,
+    CwActionSellDeployedParam,
     ShopCard,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
@@ -252,7 +252,7 @@ if TYPE_CHECKING:
     )
 
 # ===== 商店截断语义(ADR-0517 迁移批)=====
-# RefreshShop 即终结,CloseShop 恒可用;名-槽一致性复检 = 执行侧
+# CwActionRefreshShopParam 即终结,CwActionCloseShopParam 恒可用;名-槽一致性复检 = 执行侧
 # proposal-vs-expected 守卫断言(cw_shop_action_ops;ADR-0517 决策 9 和解注)。
 
 # ===== M2 停摆续段缓存退役(T-271)=====
@@ -469,8 +469,8 @@ def shop_unbought_reasons(gs: GameState,
       = 金/席/息/素材门逐帧判,精确门序以 hub_option_* 计数键为准);
     - 其余:``non_line``。
 
-    口径 = 帧首静态快照 + 逐动作累积投影:金按已发射 BuyCard 总价扣减、
-    SellBench/SellDeployed/DeployMove 的席与回金同步投影(修复:旧版只投影
+    口径 = 帧首静态快照 + 逐动作累积投影:金按已发射 CwActionBuyCardParam 总价扣减、
+    CwActionSellBenchParam/CwActionSellDeployedParam/CwActionDeployMoveParam 的席与回金同步投影(修复:旧版只投影
     金不投影席——M2 波内先买的成员占掉末席后,同波后续线内件被席闸跳过,
     会被误标成 missing_no_path 而非 missing_bench_full,复盘归因失真)。
     拒因串是判读线索,非审计账(精确门序以 shop_ev_*/m2_* 各计数键为准)。
@@ -487,22 +487,22 @@ def shop_unbought_reasons(gs: GameState,
     gold = gold_of(gs)
     bench_free = BENCH_CAPACITY - len(bench)
     for a in actions:
-        if isinstance(a, BuyCard):
+        if isinstance(a, CwActionBuyCardParam):
             gold -= card_cost(a.card)
             bench_free -= 1
-        elif isinstance(a, (SellBench, SellDeployed)):
-            # 卖出投影:席释放 + 回金(SellBench.income 缺失按 0 保守——
+        elif isinstance(a, (CwActionSellBenchParam, CwActionSellDeployedParam)):
+            # 卖出投影:席释放 + 回金(CwActionSellBenchParam.income 缺失按 0 保守——
             # 金低估只会把拒因推向 unaffordable 侧,不会造假 no_path)
             bench_free += 1
             income = getattr(a, 'income', None)
             if income:
                 gold += income
-        elif isinstance(a, DeployMove):
-            bench_free += 1     # bench→board:席释放(SwapDeploy 一进一出净 0)
+        elif isinstance(a, CwActionDeployMoveParam):
+            bench_free += 1     # bench→board:席释放(CwActionSwapDeployParam 一进一出净 0)
     trans = (set(getattr(comp, 'transition_chars', []) or [])
              if comp is not None else set())
     bought_names = {a.card.name or '' for a in actions
-                    if isinstance(a, BuyCard)}
+                    if isinstance(a, CwActionBuyCardParam)}
     out: dict[str, str] = {}
     for card in shop_payload_content_cards(gs.shop.value):
         name = card.name or ''
@@ -630,7 +630,7 @@ def _obligation_book(session: StrategySession) -> dict:
 
 
 # (线账闭合孤儿证明集帧首读位随商店域卖射退役删除,T-271:该集唯一
-#  消费 = SellBench.reason 孤儿证明标记,读口单一源 =
+#  消费 = CwActionSellBenchParam.reason 孤儿证明标记,读口单一源 =
 #  sell_gate.line_switch_orphans_of,备战域卖出位按需直读。)
 
 
@@ -744,7 +744,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     """商店单动作决策(ADR-0517 决策 1/2;前身份 = ``decide_shop_wave`` 波批)。
 
     契约:**全函数**——f(期望态) → 恰一个动作,永不返回 None(决策 5);
-    「无动作可做」= 返回 ``CloseShop`` 终结动作(决策 4/6,取代旧「空序列
+    「无动作可做」= 返回 ``CwActionCloseShopParam`` 终结动作(决策 4/6,取代旧「空序列
     = 决策完成」通道)。画面内合法性全部内化于本函数(决策 2 和解注:以
     期望态为据只提合法动作);执行侧只余守卫断言(cw_shop_action_ops)。
 
@@ -755,7 +755,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     → hub → M2 囤腿(席满 = 关店交回)→ dominance → C1 核心卡支配支
     (dominance 邻位,ADR-0569;席满 = 关店交回)→ ④转线(席满 = 关店)
     → 死金压库 → 档 1 可上场买 → M6 溢余 → EV 买面 → R1 付费刷新(终结)
-    → 筹资形态(义务缺金 = 关店交回备战筹资)→ CloseShop(终结)。
+    → 筹资形态(义务缺金 = 关店交回备战筹资)→ CwActionCloseShopParam(终结)。
     升级/腾位/筹资/凑息的「先卖后做」动机承载 = 跨段状态 substrate
     (函数尾声明),框架侧不做动机判断。输入 ``state`` = 期望态当前值
     (动作后真值,ADR-0517 §8.1 裁决:契约核验与决策同源消费此值,
@@ -772,16 +772,16 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     counters: dict = state_of(session).cw4_counters
 
     # 全 unknown 窗(用户三态裁定 2026-09-13,shop-slot-model §5.1):店开
-    # 而牌面含 unknown(整帧 OCR/SIFT 失读窗)→ 花钱动作(BuyCard/
-    # RefreshShop/LevelUp)一律禁发射(烧金在失读牌面上、刷后重观察多半
-    # 仍失读,不猜),终结集降级为仅 CloseShop。主防线 = 商店 op 入口观察
+    # 而牌面含 unknown(整帧 OCR/SIFT 失读窗)→ 花钱动作(CwActionBuyCardParam/
+    # CwActionRefreshShopParam/CwActionLevelUpParam)一律禁发射(烧金在失读牌面上、刷后重观察多半
+    # 仍失读,不猜),终结集降级为仅 CwActionCloseShopParam。主防线 = 商店 op 入口观察
     # 即停(cw_screen_buy_cards 入口观察处,2026-09-16 迁移:观察落地即停,
     # 决策/购买不见残缺牌面)——本门为纵深第二线(unknown 绕过 op 停机
     # 入容器时兜底);真买空([empty×5])不受影响。
     _payload_u = gs.shop.value
     if _payload_u is not None and any(
             s.kind == 'unknown' for s in _payload_u.cards):
-        return CloseShop()
+        return CwActionCloseShopParam()
 
     _st = state_of(session)
     # T-159 B4 内容面观测:重进店内段(本节点 S1 曾被旗标机清键)的
@@ -798,7 +798,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 本函数被调 = 开店动作真执行、商店域决策访问已发生——闩语义
     # 「本备战期商店已被访问,期内重开无信息量」的记账位在访问发生,
     # 不在 mandate 发射位(备战环单动作环下发射≠执行,发射列表中
-    # OpenShop 前的可续动作先执行即终结本环、OpenShop 未执行;发射即
+    # CwActionOpenShopParam 前的可续动作先执行即终结本环、CwActionOpenShopParam 未执行;发射即
     # 置闩会让闩烧而店未开、后续环被闩挡死空批出战。实证与修法裁决 =
     # run_mandate docstring「备战期开店闩」节;装备闩同型残留先例)。
     # read_only 开店(纯读数,不进本函数)不消耗闩:读数访问不改店面,
@@ -810,11 +810,11 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         counters[key] = counters.get(key, 0) + 1
 
     def _emit_buy(card: ShopCard, reason: str, *,
-                  launch_cause: str | None = None) -> BuyCard:
+                  launch_cause: str | None = None) -> CwActionBuyCardParam:
         """买入发射位 fresh 排除登记(ADR-0530 开闸批接线;单一载体 =
         kernel GameState.round_fresh_buys,禁第二实现)。单动作契约(本函数
         docstring)下 return 动作被决策循环无条件采纳执行——生产买面无
-        截断丢弃面(刷新硬墙只降级 RefreshShop),故本写入时点 = 买入
+        截断丢弃面(刷新硬墙只降级 CwActionRefreshShopParam),故本写入时点 = 买入
         采纳;发射位逐名写入(漏记 = 卖出环切不断),过度排除方向安全
         (载体注释口径,拒因 fresh_buy 可追溯)。
 
@@ -841,7 +841,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
 
         sim 边界(ADR-0585 §6 申报,三审 F2 回填):上述等价性前提 =
         生产单动作循环;sim/replay 序列驱动形态下引擎两个作废通道
-        (仲裁预算闸拒/事务 fill 后陈旧 BuyCard 作废重决策)可作废
+        (仲裁预算闸拒/事务 fill 后陈旧 CwActionBuyCardParam 作废重决策)可作废
         已发射动作,而本发射位 consume_on_merge 已销账(同轮卖回保护
         缺口)、register_launch 已开账(≤1 轮滞留,轮界销兜底)——
         缺口有界低概率无决策行为差,sim 为测试载体生产不可达,接线
@@ -882,7 +882,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 and same_star_count(_buy_name, 1,
                                     bench_slots_of(gs), deployed_slots_of(gs)) >= 2:
             sell_gate.consume_on_merge(session, _buy_name)
-            return BuyCard(card=card, reason=reason)
+            return CwActionBuyCardParam(card=card, reason=reason)
         _cause = launch_cause
         if _cause is None:
             # 登记写点扩全映射(T-141;ADR-0585 §6「写点随矩阵批落」
@@ -940,7 +940,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 plane=(gs.node.value.plane if gs.node.value is not None else None),
                 round_num=int(round_num_of(gs) or 1),
                 star=getattr(card, 'star', 1) or 1)
-        return BuyCard(card=card, reason=reason)
+        return CwActionBuyCardParam(card=card, reason=reason)
 
     ev_arm = getattr(config, 'ev_arm', 'full')
     if ev_arm not in entry.EV_ARM_VALUES:
@@ -1258,7 +1258,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 _wanted_snap.append((_m, card_cost(_cands[0])))
         mandate.shop_wanted_defer(
             session, gs, missing, in_shop_snapshot=tuple(_wanted_snap))
-        return CloseShop()
+        return CwActionCloseShopParam()
 
     # P86 乙臂发射位(枢纽期权;unlocked p2plus 无目标带;物理位次先于 M2
     # = 同帧仲裁三层序的承载,证明批 §4.4/§6 增量 1)。获取 = 备战席持有
@@ -1475,7 +1475,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             # 备战,腾位链 = 关店→备战卖→重开,节点内牌面持久
             #(research/economy.md §2.1),重开后本臂原判据续评。
             _count('bench_full')
-            return CloseShop()
+            return CwActionCloseShopParam()
         _on_target_buy()
         if _spot2 is not None:
             _count('m2_stockpile_spot2_buy')   # W4(ADR-0626):2★ 现货达成路线显影;义务 reason 键不扩闭集
@@ -1614,7 +1614,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 与锁线态可并存)两通道动作同致:既有通道序位在前先买 + 1★ 全额退/
     # 席位判据共享单一源,单动作契约下无双发射(spotcheck δ2 措辞口径)。
     # 开店闩申报(设计 §2 落码批核对项):备战期开店闩(cw4_shopped_phase)
-    # 辖 run_mandate 的 OpenShop 发射节流(mandate._emit_open_shop,
+    # 辖 run_mandate 的 CwActionOpenShopParam 发射节流(mandate._emit_open_shop,
     # shop_latch_skip_* 计数);本通道在商店决策访问位下游,闩不辖,
     # 默认不消费、零闩读/写。
     # 息纪律口径:不破息判据 = L 项零损(predicates.t5_p1_false 单一源,
@@ -1686,7 +1686,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         else:
             _count(f'{prefix}_unaffordable_strict')
 
-    def _core_seat_full_close(prefix: str) -> CloseShop:
+    def _core_seat_full_close(prefix: str) -> CwActionCloseShopParam:
         """席满交回支(三腿共享单函数;T-271 收缩形态):席满帧不再腾
         席卖——关店交回备战,腾位链 = 关店→备战卖→重开,节点内牌面
         持久(research/economy.md §2.1),重开后原臂原判据买入。出口键
@@ -1694,7 +1694,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         发射面退役并入;sim 判红检测器 seen 帧必落 ≥1 出口键判据由本
         桶承接)。"""
         _count(f'{prefix}_no_fuel')
-        return CloseShop()
+        return CwActionCloseShopParam()
 
     _core_locked = _buy_members is not None
     _core_cands = [c for c in _buy_view('core_single_card_buy')
@@ -2438,7 +2438,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             elif cands:
                 # 席位门(ADR-0518):满栏帧 EV 买不提案——EV 候选非义务
                 # 面,无 M4 腾席前置;满栏非合并买入在 simulate 走「bench_full
-                # 整动作 no-op」分支(cw_state.py BuyCard bench_full 返回
+                # 整动作 no-op」分支(cw_state.py CwActionBuyCardParam bench_full 返回
                 # state.copy())⇒ 同帧重复提案同候选 = 决策循环不收敛。
                 # 门形态与 dominance_buy 的 check_seats 同款;拒因分键
                 # shop_ev_bench_wait。席位门后,买面全 gated(满栏 §2.5
@@ -2501,7 +2501,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         # 级账 T_up 取小);P40 R2 息线熔断保留原语义。金基准 = 期望态
         # 现值(旧「买后逻辑态金」专修无存在载体——每帧金即真值)。
         # 触发源记录初值(息线门 R1 域外常规;域内 yielded 支在上方
-        # 切分线覆写。值域契约见 kernel/cw_state.RefreshShop.reason 注)。
+        # 切分线覆写。值域契约见 kernel/cw_state.CwActionRefreshShopParam.reason 注)。
         _r1_src = 'r1'
         if contracts.ensure_contract(
                 ('refresh', 'r1_commitment_account'),
@@ -2573,7 +2573,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     # 量)全域一致辖刷新发射——计划账超预算 = 一次买不
                     # 齐,部分刷的期望尾段 = 零产出烧金段(主批零买入
                     # 刷新 761 次 × 2 金);拦后帧落 L3 必花域升级
-                    #(转升级)或 CloseShop(停手),泄金阶梯买/压库臂
+                    #(转升级)或 CwActionCloseShopParam(停手),泄金阶梯买/压库臂
                     # 不受影响。血线维度不辖本判据(user_playstyle
                     # [39]:hp 只进读数位)。
                     ok_r1 = False
@@ -2601,7 +2601,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 # p40 R0-1 在册语义的席满维/可购性维落地:四买入通道
                 # (dominance/义务 M2/EV/合成完备购)帧级可达全假 ⇒
                 # 任何店产不触发买入 ⇒ 付费刷新净差 = −(c_eff+L) < 0
-                # 严格,拦刷(fail-closed,落凑息/CloseShop 既有续流)。
+                # 严格,拦刷(fail-closed,落凑息/CwActionCloseShopParam 既有续流)。
                 # 判定尺单一源 = crit_refresh.all_channel_buy_exists;
                 # seat_recoverable 传收窄判定 p92_seat_recoverable
                 #(腾席臂同参资格面非空,IC-1 单源;旧 P56 投影金额代理
@@ -2654,8 +2654,8 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     if _reopen_armed:
                         _count('shop_reopen_discretionary_actions')
                     # reason = 触发源记录字段(非指令;sim obs 分键消费,
-                    # 执行层不读——cw_state.RefreshShop.reason 值域契约)。
-                    return RefreshShop(
+                    # 执行层不读——cw_state.CwActionRefreshShopParam.reason 值域契约)。
+                    return CwActionRefreshShopParam(
                         cost=refresh_cost_effective(None, 0, gs=gs),
                         reason=_r1_src)
                 if _p92_ready:
@@ -2672,7 +2672,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 _count('must_spend_r1_budget_fail')
         # (凑息卖·回拉发射位随商店期策略面收缩退役,T-271:卖备战收缩
         # 至备战期,金位回拉 = 备战期 ②(a) 接线(crit_sell.sell_for_
-        # interest 判据本体单一源不变);商店收工路径 = 终结 CloseShop
+        # interest 判据本体单一源不变);商店收工路径 = 终结 CwActionCloseShopParam
         # 交回,备战环再评凑息。)
     # 筹资形态(支付支撑通道收缩形态,T-271):骨架义务缺员 ∧ 金不足
     # 最便宜可买形态 ⇒ 不再店内卖件筹资(卖备战收缩至备战期)——关店
@@ -2696,7 +2696,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 break
         if gold < need:
             _count('funding_close_defer')
-            return CloseShop()
+            return CwActionCloseShopParam()
 
     # ---- D-D 硬节点补强门消费(观察级接线;逐帧计数,粒度申报见上)----
     _gate_open, _gkey = crit_refresh.hard_node_reinforce_gate(
@@ -2708,8 +2708,8 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     if _gate_open:
         _count('shop_hard_node_gate_open')
 
-    # ---- 终结:CloseShop(恒可用;D-P2idle 带金零动作帧计数)----
-    # 键语义 = CloseShop 收尾且金 ≥10 的 visit(visit 含刷新段时与旧
+    # ---- 终结:CwActionCloseShopParam(恒可用;D-P2idle 带金零动作帧计数)----
+    # 键语义 = CwActionCloseShopParam 收尾且金 ≥10 的 visit(visit 含刷新段时与旧
     # shop_wave_idle_gold 波计数不等值,跨结构不可对拍)。
     if gold_of(gs) >= 10:
         _count('shop_visit_idle_gold')
@@ -2735,6 +2735,6 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     #   处置后重开,在售牌面与决策语境保留,腾位/筹资/凑息的「先卖
     #   后做」往返不损失已刷牌面;行为锁 = sr-od-test 商店期动作面
     #   收缩锁 + 牌面持久契约锁。
-    return CloseShop()
+    return CwActionCloseShopParam()
 
 

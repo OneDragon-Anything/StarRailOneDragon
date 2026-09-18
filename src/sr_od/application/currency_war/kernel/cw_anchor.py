@@ -140,12 +140,12 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
     'buy_landed': AnchorSpec(
         anchor_id='buy_landed',
         trigger_type=ANCHOR_TRIGGER_LANDED,
-        host='on_outcome(BuyCard) 注册表件(现役登记件还在 cw_op_buy_cards'
+        host='on_outcome(CwActionBuyCardParam) 注册表件(现役登记件还在 cw_op_buy_cards'
              ' 执行落地门)',
         carrier_kind='buy_landed',
         sim_domain='实机先行',
         evidence_required=False,
-        prerequisite='触发口 on_outcome(BuyCard) 随 §6.4 执行器收编批成立'
+        prerequisite='触发口 on_outcome(CwActionBuyCardParam) 随 §6.4 执行器收编批成立'
                      '(R-J 挂账在案),禁绕收编私接触发;payload 类型化槽位'
                      '(含买因槽候裁)随 H2',
         source='统一观察架构 §12.2 buy_landed 行'),

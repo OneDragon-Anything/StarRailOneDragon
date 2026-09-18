@@ -15,7 +15,7 @@ kernel 规则单一源,与序列驱动器同形;写语义由投影直锁钉
 **一击一张**(kernel 规则面同判:常态单击单张,满栏例外按 merge_buy_k
 一击多张),规则模型误差由入口
 对账兜底(下一画面入口观察 = 事实重建,决策 8)。实机冻结解除后补档
-验证:验证未过则该买面升格为终结 op(原 fallback 载体 CompTransactionOp 已随 unified-action-factory 批2b R3 删除,终结语义收敛于 RefreshShop/CloseShop)。
+验证:验证未过则该买面升格为终结 op(原 fallback 载体 CompTransactionOp 已随 unified-action-factory 批2b R3 删除,终结语义收敛于 CwActionRefreshShopParam/CwActionCloseShopParam)。
 
 守卫断言(决策 9):执行侧检查 = 防 bug 路栏非控制流分支,非法返回 =
 策略器 bug 响亮暴露——``guard_proposal_vs_expected``(提案动作的对象在
@@ -44,8 +44,8 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
-    BuyCard,
-    SellBench,
+    CwActionBuyCardParam,
+    CwActionSellBenchParam,
 )
 
 if TYPE_CHECKING:
@@ -162,43 +162,43 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
 
     提案动作引用的对象在期望态中确实存在且未被消费——防策略器算术 bug
     (单动作循环下期望态每动作后即更新,此属天然成立;断言炸出 = 策略器
-    bug,禁静默跳过)。辖面:SellBench 的槽位占用与 expect 名一致性;
-    BuyCard 的所购牌名在期望态店中(已买走/陈旧快照牌再提案 = 跨代际
+    bug,禁静默跳过)。辖面:CwActionSellBenchParam 的槽位占用与 expect 名一致性;
+    CwActionBuyCardParam 的所购牌名在期望态店中(已买走/陈旧快照牌再提案 = 跨代际
     提案,炸出;未识别牌 name 空 = 无名可对,跳过名断言交未识别面处理;
     满栏 merge 买的「一击多张」豁免属 expected-vs-tracked 双账豁免,
     本断言不受豁免——提案时点牌仍在店中,名恒可对)。
     """
     # bench_slots_of 读口在函数顶导入:函数体内任何位置的 import 语句都会
-    # 把名字绑定为全函数局部变量——曾放 BuyCard 分支内,SellBench 分支
+    # 把名字绑定为全函数局部变量——曾放 CwActionBuyCardParam 分支内,CwActionSellBenchParam 分支
     # 未执行该 import 即引用,UnboundLocalError(2026-09-13 实机 T-181:
     # r2 席满卖人决策被守卫自身炸掉,触发买空店重进崩溃循环)。
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_slots_of,
     )
-    if isinstance(action, BuyCard):
+    if isinstance(action, CwActionBuyCardParam):
         _name = action.card.name or ''
         _payload = state.shop.value
         if _name and not any((c.name or '') == _name
                              for c in shop_payload_content_cards(_payload)):
             raise AssertionError(
-                f'[cw-shop][guard] BuyCard 提案牌不在期望态店中:'
+                f'[cw-shop][guard] CwActionBuyCardParam 提案牌不在期望态店中:'
                 f'name={_name!r} cost={action.card.cost} '
                 f'shop={[(c.name or "") for c in shop_payload_content_cards(_payload)]}'
                 '(策略器 bug:跨代际/已消费提案,ADR-0517 决策 9)')
         return
-    if isinstance(action, SellBench):
+    if isinstance(action, CwActionSellBenchParam):
         _slots = bench_slots_of(state)
         tgt = (_slots[action.bench_idx]
                if 0 <= action.bench_idx < len(_slots) else None)
         if tgt is None:
             raise AssertionError(
-                f'[cw-shop][guard] SellBench 提案指向空槽/越界:'
+                f'[cw-shop][guard] CwActionSellBenchParam 提案指向空槽/越界:'
                 f'bench_idx={action.bench_idx} expect={action.expect!r} '
                 f'bench={[b.char_id if b else None for b in _slots]}'
                 '(策略器 bug:期望态无此对象,ADR-0517 决策 9)')
         if action.expect and (tgt.char_id or '') != action.expect:
             raise AssertionError(
-                f'[cw-shop][guard] SellBench 名-槽不一致:'
+                f'[cw-shop][guard] CwActionSellBenchParam 名-槽不一致:'
                 f'idx={action.bench_idx} expect={action.expect!r} '
                 f'实际={(tgt.char_id or "")!r}'
                 '(策略器 bug:跨代际提案,ADR-0517 决策 9)')

@@ -13,10 +13,10 @@ details/data-batch-estimates.md):
   系统性低估整局行为量;败局是完整 horizon(死亡即终点)不剔除。
 - 位面到达:P(到达位面 k) = 完成局中 ``endgame.plane_reached ≥ k`` 占比;
   区间 = Wilson 95% 比例区间(小样本比例的标准选择,下界不塌 0/1)。
-- 刷新计数:逐局 ``rounds[].actions`` 中 ``RefreshShop`` 动作计数;
+- 刷新计数:逐局 ``rounds[].actions`` 中 ``CwActionRefreshShopParam`` 动作计数;
   **付费口径 = action.cost > 0**(长线利好「花费金币进行30次刷新」= 付费
   阈值,GameState §3.3.7 paid_refresh_count 载体);**总口径 = 全部
-  RefreshShop**(二手市场「商店刷新20次后」= 总阈值,§3.3.8
+  CwActionRefreshShopParam**(二手市场「商店刷新20次后」= 总阈值,§3.3.8
   total_refresh_count 载体)。cost 为 None 的旧 schema 行按未知剔除该动作。
   已知风险:免费刷新若以陈旧 cost(>0)落账会并入付费计数——当前语料
   无 cost=0 行(高效决策持卡局 1 局、零免费刷记录),分型风险暂无实证。
@@ -125,7 +125,7 @@ def collect(matches_dir: Path) -> dict:
                 slot_modes.setdefault(key, {})
                 slot_modes[key][nt] = slot_modes[key].get(nt, 0) + 1
             for a in r.get('actions') or []:
-                if a.get('__type__') != 'RefreshShop':
+                if a.get('__type__') != 'CwActionRefreshShopParam':
                     continue
                 c = a.get('cost')
                 if c is None:
@@ -165,7 +165,7 @@ def main() -> None:
     print(f'=== 样本 ===\n档案 {d["n_all"]} 局;完成局 {n_done};'
           f'难度分布 {d["difficulties"]}')
     print(f'选择环境计数(含弃局): {d["env_counter"]}')
-    print(f'RefreshShop cost 分布(全部局): '
+    print(f'CwActionRefreshShopParam cost 分布(全部局): '
           f'{dict(sorted(d["cost_values"].items()))}')
 
     print('\n=== 位面到达(完成局) ===')
@@ -174,7 +174,7 @@ def main() -> None:
         ci = wilson_interval(hits, n_done)
         print(fmt_est(f'plane_arrival_p{k}', hits, n_done, ci))
 
-    print('\n=== 刷新阈值概率(完成局;付费=cost>0 / 总=全部 RefreshShop) ===')
+    print('\n=== 刷新阈值概率(完成局;付费=cost>0 / 总=全部 CwActionRefreshShopParam) ===')
     for scope, xs in (('total', d['total_list']), ('paid', d['paid_list'])):
         for th in (20, 30):
             hits = sum(1 for x in xs if x >= th)

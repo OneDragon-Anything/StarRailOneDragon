@@ -927,7 +927,7 @@ def equip_diamond_phase_gold(gs: GameState, *, phases_elapsed: int) -> int:
 def equip_wrench_duplicate_gold(gs: GameState) -> int:
     """贡献算术·精密拆装扳手金面(持有精密后再获得拆装扳手改 +1 金):
     获得结算载体的合计项,纯算术零直写——获得时点窗口与到账战利品共享
-    (球/补给内容即时入账等观察覆盖,§4 ClickSpheres),单独直写=部分预测
+    (球/补给内容即时入账等观察覆盖,§4 CwActionClickSpheresParam),单独直写=部分预测
     刷缺陷台账。调用时机 = 拆装扳手获得回执(每次一件);返回本笔应得金
     (0 = 精密不在场,扳手照常入栏不发金)。定额与持有件数无关(官方文
     「改为获得1金币」)。"""
@@ -1059,7 +1059,7 @@ def transform_equip_to_privilege(gs: GameState, source_name: str, *,
 # - **获得回执窗**(:func:`settle_wrench_duplicate_gold`):精密扳手重复
 #   获得金(申报行「组合写归获得结算载体」的落码位)——获得回执 → 下一次
 #   金读数之间无其他金变更源,窗口独占,直接 +1 直写(与极·阿瓦隆获得 hp
-#   桥同形)。到账战利品的金面仍走观察覆盖(§4 ClickSpheres),本载体不
+#   桥同形)。到账战利品的金面仍走观察覆盖(§4 CwActionClickSpheresParam),本载体不
 #   吸收——随机/观察收口面不进组合写。
 # )
 

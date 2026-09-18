@@ -46,7 +46,7 @@ def sphere_click_targets_of(gs) -> list[tuple[str, Point, int]]:
 
 def select_sphere_clicks(spheres: list, cap: int,
                          ) -> tuple[tuple[int, int], ...]:
-    """奖励球挑选 kernel 单一源(R4 ClickSpheres 改形;纯函数)。
+    """奖励球挑选 kernel 单一源(R4 CwActionClickSpheresParam 改形;纯函数)。
 
     输入 = ``PrepObservation.spheres``([(color, Point, r)];颜色与半径
     仅排序消费,不进载荷);``cap`` = 本批点击预算(发射位常量,如
@@ -55,7 +55,7 @@ def select_sphere_clicks(spheres: list, cap: int,
     SPHERE_CLICK_HARD_CAP)。席满让路门/占席球语义归发射位(既有门),
     本函数不辖。
 
-    消费面:发射位(mandate_v1 entry)构造 ClickSpheres 载荷;执行器
+    消费面:发射位(mandate_v1 entry)构造 CwActionClickSpheresParam 载荷;执行器
     零排序零截断纯机械点(第二实现禁)。
     """
     budget = max(0, min(int(cap), SPHERE_CLICK_HARD_CAP))

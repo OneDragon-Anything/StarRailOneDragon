@@ -108,11 +108,11 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '注册表条目'),
     'level': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='LevelUpShop 升档直写(f810f2454 投影补 level 域)+ prep 腿'
+        basis='CwActionLevelUpShopParam 升档直写(f810f2454 投影补 level 域)+ prep 腿'
               '推进(xp_apply_clicks 单一源)+ 观察覆盖'),
     'xp': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='LevelUpShop/prep 腿推进(xp_apply_clicks)+ 观察覆盖'),
+        basis='CwActionLevelUpShopParam/prep 腿推进(xp_apply_clicks)+ 观察覆盖'),
     'streak': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='纯观察读面(结算带符号 vs 备战 magnitude 双源留证),'
@@ -223,7 +223,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='浮层双义读面(§3.6.1),零逻辑写端'),
     'overflow_warning': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='观察每入口帧实读覆盖 + SellBench 溢出腿 logic 直写 False'
+        basis='观察每入口帧实读覆盖 + CwActionSellBenchParam 溢出腿 logic 直写 False'
               '(推算消亡,观察赢)'),
     'overflow_card': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
@@ -231,9 +231,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     # —— 画面附加域(payload 随画面重建)——
     'shop': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='BuyCard payload 投影(proj_buy_payload)+ 关店机械口离屏'
+        basis='CwActionBuyCardParam payload 投影(proj_buy_payload)+ 关店机械口离屏'
               '清场(CwOpCloseShop._clear_shop_payload → leave_screen;'
-              'apply_shop_action_logic CloseShop 分支同口 = sim 路径)'
+              'apply_shop_action_logic CwActionCloseShopParam 分支同口 = sim 路径)'
               ';刷后牌面 = 续段重观察覆盖'),
     'encounter': ProjectionAuditRow(
         status=AUDIT_WRITE_END,

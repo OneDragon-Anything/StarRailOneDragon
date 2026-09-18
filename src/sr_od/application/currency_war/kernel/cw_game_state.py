@@ -388,7 +388,7 @@ REGISTERED_ACTORS: set[str] = {
     'CwScreenFortune',         # 命运卜者强化(fortune_opts 写点,契约扩员 12→15)
     'CwScreenEquipPick',       # 选择装备(equip_pick_opts 写点,契约扩员 12→15)
     'cw_loop_route_clear',     # 外循环路由清点挂点(离屏置 None 写端,
-                               # sig family/mode 同 CloseShop 腿清点行,
+                               # sig family/mode 同 CwActionCloseShopParam 腿清点行,
                                # actor 单列供 journal 行过滤)
 }
 
@@ -581,7 +581,7 @@ class SphereSight:
     # 无槽号,像素坐标必须随识别进容器(总纲坐标契约;点击列由 kernel
     # ``sphere_click_targets_of`` 还原消费)。取值时机 = 备战入口 heavy
     # 每帧实读覆盖(两态制,观察赢;两帧持存防抖留观察链);写入端单一
-    # 源 = CwScreenPrep 观察写端。ClickSpheres 逻辑态按载荷坐标精确摘除。
+    # 源 = CwScreenPrep 观察写端。CwActionClickSpheresParam 逻辑态按载荷坐标精确摘除。
     points: tuple[tuple[str, int, int, int], ...] = ()
 
 
@@ -1220,10 +1220,10 @@ def shop_cards_to_legacy(cards: list[ShopCard],
 
 def record_refresh_execution(gs: GameState, *, free: bool,
                              frame: str = '') -> None:
-    """RefreshShop op 执行回执 → 刷新计数组逻辑写入(§3.3.6-§3.3.8,
+    """CwActionRefreshShopParam op 执行回执 → 刷新计数组逻辑写入(§3.3.6-§3.3.8,
     写入=仅逻辑;接线点 = cw_op_buy_cards 执行落地门,迁移批次二)。
 
-    行为口径(§4 RefreshShop 行为申报配套):
+    行为口径(§4 CwActionRefreshShopParam 行为申报配套):
     - total_refresh_count 恒 +1(§3.3.8:付费+免费全量);
     - free=True(免费帧):**不写** paid_refresh_count(§3.3.7 该键=付费
       累计,长线利好触发载体,免费帧混入即计数毒化)并消耗免费余额
@@ -1244,15 +1244,15 @@ def record_refresh_execution(gs: GameState, *, free: bool,
                       group_id=f'act:CwScreenBuyCards@{gs.write_seq + 1}')
     total = gs.total_refresh_count.value or 0
     gs.write_logic(gs.total_refresh_count, int(total) + 1,
-                   produced_by='RefreshShop', evidence=_ev, sig=_sig)
+                   produced_by='CwActionRefreshShopParam', evidence=_ev, sig=_sig)
     if free:
         balance = gs.free_refresh_balance.value or 0
         gs.write_logic(gs.free_refresh_balance, max(int(balance) - 1, 0),
-                       produced_by='RefreshShop', evidence=_ev, sig=_sig)
+                       produced_by='CwActionRefreshShopParam', evidence=_ev, sig=_sig)
     else:
         paid = gs.paid_refresh_count.value or 0
         gs.write_logic(gs.paid_refresh_count, int(paid) + 1,
-                       produced_by='RefreshShop', evidence=_ev, sig=_sig)
+                       produced_by='CwActionRefreshShopParam', evidence=_ev, sig=_sig)
 
 
 # ============================================================ 动作回执域(R2 §3.1.1-4/§3.2.5)
@@ -1671,7 +1671,7 @@ def _json_safe(value: Any) -> Any:
 def bench_view_of_slots(bench_list: list) -> BenchView:
     """CwSimFrame.bench 槽位表(0 基下标 + None 洞)→ BenchView(记录模型
     形状契约;槽 i = 物理槽 i+1,与 sim 合成口同构映射)。逻辑态面用
-    (BuyCard 升星逻辑态直写的值构造源,ADR-0651)。"""
+    (CwActionBuyCardParam 升星逻辑态直写的值构造源,ADR-0651)。"""
     slots: list[BenchSlot] = []
     for i, bc in enumerate(bench_list or []):
         if bc is None:
@@ -1699,7 +1699,7 @@ def bench_view_of_slots(bench_list: list) -> BenchView:
 
 
 def detect_merge_upgrade(cur: Any, proj: Any) -> bool:
-    """BuyCard 逻辑态直写是否发生 3 合 1 升星(§3.2.18 修法 a 触发判定;纯函数)。
+    """CwActionBuyCardParam 逻辑态直写是否发生 3 合 1 升星(§3.2.18 修法 a 触发判定;纯函数)。
 
     判据 = 同名角色直写后最高星级 > 直写前同名最高星——3 份合成是该
     签名的唯一来源(星级只经合成上升;买新卡不抬同名最高星)。合成域 =
@@ -1790,29 +1790,29 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 
 #: 逻辑态公式语义源锁的登记面(设计件 §4-M5:直写域集/None 跳写清单/
 #: executed 回执字段集/支持动作集随本锁登记;未登记写点 = 缺陷,禁扩静默):
-#: - **域集封闭**(gold / bench / shop payload / xp 四域;CloseShop 的
+#: - **域集封闭**(gold / bench / shop payload / xp 四域;CwActionCloseShopParam 的
 #:   leave_screen 为同域通道形态);
-#: - **支持动作集** = BuyCard / SellBench / LevelUpShop(is-a LevelUp) /
-#:   RefreshShop / CloseShop(商店单动作循环在产动作面;fields.md §4.2
-#:   逐 op 行;SellDeployed/DeployMove 不写逻辑态——等观察
+#: - **支持动作集** = CwActionBuyCardParam / CwActionSellBenchParam / CwActionLevelUpShopParam(is-a CwActionLevelUpParam) /
+#:   CwActionRefreshShopParam / CwActionCloseShopParam(商店单动作循环在产动作面;fields.md §4.2
+#:   逐 op 行;CwActionSellDeployedParam/CwActionDeployMoveParam 不写逻辑态——等观察
 #:   覆盖,申报 = 商店 visit 在产动作集外);
 #: - **None 跳写清单**(域级独立跳写,禁缺省值参与计算):gold /
 #:   xp+level(升级推进对,同进退——任一未读则推进对整体跳写)/
 #:   刷新费(paid=None 整动作跳写);
-#: - **executed 回执字段集** = bought_count(BuyCard 实购张数,满栏多买
-#:   k 执行期确定)/ levelup_clicks(LevelUpShop 实际击数)/ refresh_paid
-#:   (RefreshShop 实付刷新费,免费帧 0);回执缺字段 = 该动作本轮不写逻辑态。
+#: - **executed 回执字段集** = bought_count(CwActionBuyCardParam 实购张数,满栏多买
+#:   k 执行期确定)/ levelup_clicks(CwActionLevelUpShopParam 实际击数)/ refresh_paid
+#:   (CwActionRefreshShopParam 实付刷新费,免费帧 0);回执缺字段 = 该动作本轮不写逻辑态。
 #: **扩面申报表**(扩面须逐批显式登记于本表,
 #: 原「禁扩静默」条款由本表承接):
-#: - 支持动作集扩:v2 动作族 SellDeployed / SwapDeploy
+#: - 支持动作集扩:v2 动作族 CwActionSellDeployedParam / CwActionSwapDeployParam
 #:   (语义源 = simulate 对应分支逐腿平移,直锁 test_cw_transfer_golden
 #:   钉住);
-#:   DeployMove 不入(围栏部署 = 结算期代理,obs 通道申报对齐);
+#:   CwActionDeployMoveParam 不入(围栏部署 = 结算期代理,obs 通道申报对齐);
 #: - 域集扩:front_row / back_row(v2 腿与合成连锁全场域写回,deployed
 #:   域语义)、board(**派生量**:行写端挂钩 ``_resync_board_delta``
 #:   自动重算,禁独立手写;单一源见该方法注)、equips(卖出回收腿);
-#: - 域集扩(2026-09-18):level(LevelUpShop 升档直写;语义源 = prep 腿
-#:   apply_prep_action_logic LevelUp 分支同款,推进单一源 =
+#: - 域集扩(2026-09-18):level(CwActionLevelUpShopParam 升档直写;语义源 = prep 腿
+#:   apply_prep_action_logic CwActionLevelUpParam 分支同款,推进单一源 =
 #:   ``cw_economy.xp_apply_clicks`` 跨级连跳含内)。依据 = 等级滞留使
 #:   下一击按旧级重算(花金零等级推进),而等级 = 席位 cap 解锁地板
 #:   (``max_units_of`` 经读口跟随,消费位零改动)。域级跳写对 =
@@ -1837,9 +1837,9 @@ class LogicOutcome:
     驱动,禁在引擎自判拒绝(§2.1 单一源红线)。live 调用点忽略本出参
     (返回值不接 = 行为零变化)。
 
-    - bought_count = BuyCard 实际应用张数的权威回声(两路径恒填充:
+    - bought_count = CwActionBuyCardParam 实际应用张数的权威回声(两路径恒填充:
       executed 回执给定 or 函数自算;k 与金账扣减、payload 移除同源)。
-    - income = SellDeployed 卖出回金;fill_cost 字段保留为出参契约位
+    - income = CwActionSellDeployedParam 卖出回金;fill_cost 字段保留为出参契约位
       (现役恒 None)。
     """
 
@@ -1855,27 +1855,27 @@ class ShopActionExecuted:
     """商店动作执行落地门回执(:func:`apply_shop_action_logic` 形参)。
 
     执行期决定量以落地门回执为准,禁按动作对象预估(设计件 §2.1-2):
-    BuyCard 满栏多买 k 张(LevelUp 满栏例外一击多张)与 LevelUpShop
+    CwActionBuyCardParam 满栏多买 k 张(CwActionLevelUpParam 满栏例外一击多张)与 CwActionLevelUpShopParam
     实际击数(循环点击至 level+1)均由执行侧回执;缺字段(None)= 该
     动作本轮不写逻辑态,等观察覆盖。
 
     **Optional 语义(详设 §3 修订)**:executed 整体可缺省
     (None = 理想执行)——live 传执行回执(参数化不变);sim 引擎传
-    None,函数自算执行期决定量(BuyCard k 自算,满栏合成买 k 从
+    None,函数自算执行期决定量(CwActionBuyCardParam k 自算,满栏合成买 k 从
     :func:`_apply_full_bench_merge_buy` 应用面出)。executed 只辖 k 等
     决定量**来源**,不辖应用面位置——合成连锁/满栏合成买的应用两路径
     同在转移函数内(单源本义)。executed 与自算值的关系核对归调用方
     守卫面(本函数不判)。
     """
 
-    #: BuyCard 实购张数(满栏多买 k;单一源 = 执行侧 merge_buy_k 计数)
+    #: CwActionBuyCardParam 实购张数(满栏多买 k;单一源 = 执行侧 merge_buy_k 计数)
     bought_count: int | None = None
-    #: LevelUpShop 实际击数(单动作形态恒 1;腾席链多击以回执为准)
+    #: CwActionLevelUpShopParam 实际击数(单动作形态恒 1;腾席链多击以回执为准)
     levelup_clicks: int | None = None
-    #: RefreshShop 实付刷新费(免费帧 = 0 → gold 不写,fields.md §3.3.4)。
+    #: CwActionRefreshShopParam 实付刷新费(免费帧 = 0 → gold 不写,fields.md §3.3.4)。
     #: 现役喂入方 = sim/replay 驱动器(flow/bridge decide_shop_screen,按
     #: 动作 cost 派生);生产落地门(cw_op_buy_cards.apply_action_outcome)
-    #: **暂不喂本字段**——商店线 RefreshShop 是终结 op,生产逻辑态直写门对终结
+    #: **暂不喂本字段**——商店线 CwActionRefreshShopParam 是终结 op,生产逻辑态直写门对终结
     #: 动作整体跳写(期望态按下段入口重观察作废,终结不写逻辑态为申报过渡
     #: 语义),单接本字段不可达;接线(含终结直写语义改)与 receipts 接线
     #: 同批评估(批首清单候选,波 5 sim 反转时裁决)。
@@ -1894,33 +1894,33 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
     申报表):动作字段转移全集在函数内应用(含合成连锁/满栏合成买——
     应用面两路径同在函数内,单源本义;executed 只辖 k 等决定量来源)。
 
-    - **BuyCard** = gold −单价×k + bench 落位 + shop payload −k 张
+    - **CwActionBuyCardParam** = gold −单价×k + bench 落位 + shop payload −k 张
       ((name, star) 计数,与 simulate 的 x 槽位删除同义多集)+ 合成连锁
       全场域应用(``_merge_bench``/满栏 ``_apply_full_bench_merge_buy``,
       触发升级时 bench + front/back rows 整表写)。满栏且合成不可达 =
       游戏拒买(applied=False + reason='bench_full',零写,ADR-0283)。
       k 来源:executed 回执给定(live)/函数自算(sim None;简单腿 1,
       满栏从应用机器出)。
-    - **SellBench** = bench −该牌 + gold +退款 + equips 回收(卖出装备
+    - **CwActionSellBenchParam** = bench −该牌 + gold +退款 + equips 回收(卖出装备
       归 owned 池,simulate 同源;域扩面申报)。陈旧提案(expect 失配)
       = applied=False + reason='stale_proposal:…' 零写(语义源 =
       simulate 分支);槽位空/越界同理拒。
-    - **SellDeployed / SwapDeploy**(v2 动作族)
+    - **CwActionSellDeployedParam / CwActionSwapDeployParam**(v2 动作族)
       = simulate 对应分支逐腿平移:deployed 槽表中间形态(置空/对调
       不移位)→ front/back rows 整表 write_logic(平移契约);gold/
       equips/board 随分支。(CompTransaction 腿已随 unified-action-
       factory 批2b R3 删除——整档替换宏动作退役,原子序列重表达归
       策略侧。)
-    - **LevelUpShop** = xp/level 按实际击数推进(``xp_apply_clicks`` 单一源:
+    - **CwActionLevelUpShopParam** = xp/level 按实际击数推进(``xp_apply_clicks`` 单一源:
       跨级连跳+溢出结转在算子内;level 跨档直写与 prep 腿同款——等级
       滞留会让下一击按旧级重算(花金零等级推进),而等级 = 席位 cap
       解锁地板,``max_units_of`` 经读口自动跟随)+ gold −击数×单击价
       (单价 = 动作对象决策期值)。满级 = applied=False +
       reason='level_cap' 零写。executed None = 击数自算 1(理想执行)。
-    - **RefreshShop** = gold −刷新费(paid=0 免费帧 −0/不写)。executed
+    - **CwActionRefreshShopParam** = gold −刷新费(paid=0 免费帧 −0/不写)。executed
       None = 跳写(实付金含免费刷注入等引擎差异,不可自算——sim 引擎
       显式传 refresh_paid,申报差异 #2 参数通道)。
-    - **CloseShop** = ``leave_screen(gs.shop)``(结构离屏;离屏写渠道
+    - **CwActionCloseShopParam** = ``leave_screen(gs.shop)``(结构离屏;离屏写渠道
       = obs 族,内部按 sig.actor 转造 obs 签名)。
 
     输入域 None 语义(域级独立跳写,禁缺省值参与计算):gold/xp/刷新费
@@ -1952,13 +1952,14 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
         _merge_bench,
     )
     from sr_od.application.currency_war.kernel.cw_vocab import (
-        BuyCard,
-        CloseShop,
-        LevelUp,
-        RefreshShop,
-        SellBench,
-        SellDeployed,
-        SwapDeploy,
+        CwActionBuyCardParam,
+        CwActionCloseShopParam,
+        CwActionLevelUpParam,
+        CwActionLevelUpShopParam,
+        CwActionRefreshShopParam,
+        CwActionSellBenchParam,
+        CwActionSellDeployedParam,
+        CwActionSwapDeployParam,
         board_unique_key,
     )
     from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -1988,8 +1989,8 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
         _w(gs.front_row, front, 'proj_deployed_front')
         _w(gs.back_row, back, 'proj_deployed_back')
 
-    # —— BuyCard ——
-    if isinstance(action, BuyCard):
+    # —— CwActionBuyCardParam ——
+    if isinstance(action, CwActionBuyCardParam):
         card = action.card
         name = str(getattr(card, 'name', '') or '')
         star = int(getattr(card, 'star', 1) or 1)
@@ -2003,7 +2004,7 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
         k_exec = (max(1, int(executed.bought_count))
                   if executed is not None and executed.bought_count is not None
                   else None)
-        # 应用机器(两路径同源,语义源 = simulate BuyCard 分支):
+        # 应用机器(两路径同源,语义源 = simulate CwActionBuyCardParam 分支):
         # 有空位 = 落位 + _merge_bench 全场合成连锁;满栏 = 满栏合成买
         # 应用(_apply_full_bench_merge_buy,前置不满足返回 None = 拒买)。
         scratch_b = list(bench_slots)
@@ -2022,7 +2023,7 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
         placed = bench_place(scratch_b, new_bc) is not None
         if placed:
             k = k_exec if k_exec is not None else 1
-            # 全场合成连锁(3合1;语义源 = simulate BuyCard 分支同源调用;
+            # 全场合成连锁(3合1;语义源 = simulate CwActionBuyCardParam 分支同源调用;
             # 应用面在函数内 = 校正①单源本义,两路径同跑)
             _merge_bench(scratch_b, scratch_d)
         else:
@@ -2068,15 +2069,15 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
         if _dep_post_sig != _dep_pre_sig:
             _write_deployed(scratch_d)
         return LogicOutcome(applied=True, bought_count=k)
-    # —— SellBench ——
-    if isinstance(action, SellBench):
+    # —— CwActionSellBenchParam ——
+    if isinstance(action, CwActionSellBenchParam):
         idx = int(getattr(action, 'bench_idx', -1))
         bench_slots = bench_slots_of(gs)
         if not (0 <= idx < len(bench_slots)) or bench_slots[idx] is None:
             return LogicOutcome(
                 applied=False, reason=f'bench_idx_out_of_range:{idx}')
         sold = bench_slots[idx]
-        # 陈旧提案拒(语义源 = simulate SellBench 分支 ADR-0317;live 提案
+        # 陈旧提案拒(语义源 = simulate CwActionSellBenchParam 分支 ADR-0317;live 提案
         # expect 恒 '' 不校验 = 零行为,校验面辖非空 expect 提案)。
         if getattr(action, 'expect', '') \
                 and sold.char_id != action.expect:
@@ -2099,8 +2100,8 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
         return LogicOutcome(applied=True,
                             reason=str(getattr(action, 'reason', '') or ''),
                             income=int(refund))
-    # —— SellDeployed(v2 族;语义源 = simulate SellDeployed 分支逐腿平移)——
-    if isinstance(action, SellDeployed):
+    # —— CwActionSellDeployedParam(v2 族;语义源 = simulate CwActionSellDeployedParam 分支逐腿平移)——
+    if isinstance(action, CwActionSellDeployedParam):
         dep_slots = deployed_slots_of(gs)
         idx = int(getattr(action, 'deployed_idx', -1))
         if not (0 <= idx < len(dep_slots)) or dep_slots[idx] is None:
@@ -2129,8 +2130,8 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
         return LogicOutcome(applied=True,
                             reason=str(getattr(action, 'reason', '') or ''),
                             income=int(refund))
-    # —— SwapDeploy(v2 族;语义源 = simulate SwapDeploy 分支逐腿平移)——
-    if isinstance(action, SwapDeploy):
+    # —— CwActionSwapDeployParam(v2 族;语义源 = simulate CwActionSwapDeployParam 分支逐腿平移)——
+    if isinstance(action, CwActionSwapDeployParam):
         d_idx = int(getattr(action, 'deployed_idx', -1))
         b_idx = int(getattr(action, 'bench_idx', -1))
         dep_slots = deployed_slots_of(gs)
@@ -2172,14 +2173,14 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
         _write_deployed(scratch_d)
         return LogicOutcome(applied=True,
                             reason=str(getattr(action, 'reason', '') or ''))
-    # —— LevelUpShop(is-a LevelUp)——
-    if isinstance(action, LevelUp):
+    # —— CwActionLevelUpParam / CwActionLevelUpShopParam(同字段双类型,摊平后显式双查)——
+    if isinstance(action, (CwActionLevelUpParam, CwActionLevelUpShopParam)):
         # executed None = 击数自算 1(理想执行,sim 路径;详设 §3 修订)
         clicks = executed.levelup_clicks if executed is not None else 1
         if clicks is None:
             return LogicOutcome(applied=False, reason='levelup_clicks_not_fed')
         clicks = max(0, int(clicks))
-        # 满级购买无效(fields.md §4.2 LevelUp 行:满级零金零经验)。
+        # 满级购买无效(fields.md §4.2 CwActionLevelUpParam 行:满级零金零经验)。
         # 投影期望态由直锁钉住(锁 M1,test_cw_shop_projection_logic)。
         # 封顶单一源 = MAX_PLAYER_LEVEL(10)。
         if level_of(gs) >= MAX_PLAYER_LEVEL:
@@ -2191,7 +2192,7 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
         # xp/level 推进(单一源 = xp_apply_clicks,跨级连跳含内);level
         # 跨档直写(域集扩申报 = SHOP_PROJECTION_DOMAINS 登记面注)。
         # (level, xp) 域级跳写对同进退:任一未读整体跳写,禁缺省 1 参与
-        # 推进计算(与 prep 腿 LevelUp 分支同纪律)。
+        # 推进计算(与 prep 腿 CwActionLevelUpParam 分支同纪律)。
         _lv_v = gs.level.value
         xp_v = gs.xp.value
         if xp_v is not None and _lv_v is not None:
@@ -2201,8 +2202,8 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
             if _new_lvl != int(_lv_v):
                 _w(gs.level, _new_lvl, 'proj_levelup_level')
         return LogicOutcome(applied=True)
-    # —— RefreshShop ——
-    if isinstance(action, RefreshShop):
+    # —— CwActionRefreshShopParam ——
+    if isinstance(action, CwActionRefreshShopParam):
         paid = executed.refresh_paid if executed is not None else None
         if paid is None:
             # 跳写(实付金含免费刷注入等引擎侧差异,不可自算;sim 引擎
@@ -2216,14 +2217,14 @@ def apply_shop_action_logic(gs: GameState, action: Any, *,
                 _w(gs.gold, int(g) - paid, 'proj_refresh_gold')
         # 刷后牌面 = 续段重观察(payload 不写;免费帧 gold 同不写)
         return LogicOutcome(applied=True)
-    # —— CloseShop(结构离屏;离屏渠道 = obs 族,actor 沿逻辑态直写 sig)——
-    if isinstance(action, CloseShop):
+    # —— CwActionCloseShopParam(结构离屏;离屏渠道 = obs 族,actor 沿逻辑态直写 sig)——
+    if isinstance(action, CwActionCloseShopParam):
         if gs.shop.value is not None:
             _off_sig = ChannelSig(family='obs', actor=sig.actor,
                                   mode='read', group_id=sig.group_id)
             gs.leave_screen(gs.shop, sig=_off_sig)
         return LogicOutcome(applied=True)
-    # 集外动作型:零写(登记面申报;DeployMove 不入本口——围栏部署 =
+    # 集外动作型:零写(登记面申报;CwActionDeployMoveParam 不入本口——围栏部署 =
     # 结算期代理,obs 通道申报对齐)。
     return LogicOutcome(applied=False, reason='unsupported_action_type')
 
@@ -2232,7 +2233,7 @@ def apply_shop_merge_leg(gs: GameState, action: Any, *,
                          pre_bench: list[BenchChar | None],
                          pre_deployed: list[BenchChar | None],
                          pre_shop: list[ShopCard] | None = None) -> None:
-    """BuyCard 合成升星腿(设计件 §2.1-2「升星腿维持既有口」;生产落地门
+    """CwActionBuyCardParam 合成升星腿(设计件 §2.1-2「升星腿维持既有口」;生产落地门
     (``cw_op_buy_cards.apply_action_outcome``)与序列驱动器(flow 基类/
     mandate 覆写;sim/回放同路)共用的单一形态)。
 
@@ -2255,8 +2256,8 @@ def apply_shop_merge_leg(gs: GameState, action: Any, *,
     from types import SimpleNamespace as _NS
 
     from sr_od.application.currency_war.kernel.cw_exec_state import snapshot_copy
-    from sr_od.application.currency_war.kernel.cw_vocab import BuyCard
-    if not isinstance(action, BuyCard):
+    from sr_od.application.currency_war.kernel.cw_vocab import CwActionBuyCardParam
+    if not isinstance(action, CwActionBuyCardParam):
         return
     scratch_bench = [snapshot_copy(b) if b is not None else None
                      for b in pre_bench]
@@ -2267,7 +2268,7 @@ def apply_shop_merge_leg(gs: GameState, action: Any, *,
     if detect_merge_upgrade(_NS(bench=pre_bench, deployed=pre_deployed),
                             _NS(bench=scratch_bench, deployed=scratch_dep)):
         gs.write_logic(gs.bench, bench_view_of_slots(scratch_bench),
-                       produced_by='BuyCard',
+                       produced_by='CwActionBuyCardParam',
                        evidence='proj_merge_upgrade',
                        sig=ChannelSig(
                            family='logic_action', actor=sig.actor,
@@ -2288,24 +2289,24 @@ def mutate_bench_deployed_local(bench, deployed, action,
 #: 备战逻辑态直写域集封闭登记面(设计件《prep 链容器化方案》§2.4-3/§4-P5,
 #: 形态对齐 :data:`SHOP_PROJECTION_DOMAINS` 的商店登记面;批 2a 扩域申报 =
 #: unified-action-factory design.md §2.6「逻辑态计算全覆盖(R9)」):
-#: - gold(SellBench/SellDeployed 回金,公式单一源 = ``cw_state.
-#:   sell_refund``)+ bench(SellBench/DeployMove 摘槽,BenchView 重建
+#: - gold(CwActionSellBenchParam/CwActionSellDeployedParam 回金,公式单一源 = ``cw_state.
+#:   sell_refund``)+ bench(CwActionSellBenchParam/CwActionDeployMoveParam 摘槽,BenchView 重建
 #:   write_logic,重播种先例 =《商店黑板容器化方案》§2.3 布局代次行);
-#: - xp/level(批 2a 扩:LevelUp 逐帧单击分支,推进算子单一源 =
+#: - xp/level(批 2a 扩:CwActionLevelUpParam 逐帧单击分支,推进算子单一源 =
 #:   ``cw_economy.xp_apply_clicks``;**金腿本批不写**——2a 中间态 =
 #:   执行缝金差承担,``action.cost`` 直写翻转归批 2b);
-#: - front_row/back_row/board(批 2a 扩:DeployMove 落槽 / SellDeployed
+#: - front_row/back_row/board(批 2a 扩:CwActionDeployMoveParam 落槽 / CwActionSellDeployedParam
 #:   摘槽,槽表中间形态 → 整表 write_logic 平移契约,与
 #:   :func:`deployed_slots_to_rows` 同源;board = **派生量**,行写端挂钩
 #:   ``_resync_board_delta`` 自动重算,禁独立手写);
-#: - **OpenBox/OpenTome/ClickSpheres/WearEquip/工具原子直写只动视觉域**
+#: - **CwActionOpenBoxParam/CwActionOpenTomeParam/CwActionClickSpheresParam/CwActionWearEquipParam/工具原子直写只动视觉域**
 #:   (boxes/tomes/spheres/owned_equips 在黑板帧上推进,容器零写;
-#:   ClickSpheres 视觉域见 ``本写口(apply_prep_action_logic)`` 精确摘球);
+#:   CwActionClickSpheresParam 视觉域见 ``本写口(apply_prep_action_logic)`` 精确摘球);
 #: - **None 跳写清单**(域级独立跳写,禁缺省值参与计算):gold(gold
 #:   未读 None 时回金域跳写)、level/xp(等级或经验进度未读时该域跳写,
 #:   值留观察覆盖;bench/deployed 摘槽不受其辖);
 #: - **陈旧提案守卫**:目标槽位空/越界 = 提案与容器失配,本口零写
-#:   (等观察覆盖,与商店 SellBench 支同纪律)。
+#:   (等观察覆盖,与商店 CwActionSellBenchParam 支同纪律)。
 PREP_PROJECTION_DOMAINS: tuple[str, ...] = (
     'gold', 'bench', 'xp', 'level', 'front_row', 'back_row', 'board',
 )
@@ -2321,32 +2322,32 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
     原黑板投影函数随 gs.prep_obs 退役删除)。
 
     session(可选):执行侧 tracked 主账宿主。溢出腿落地时同帧
-    对称吸收进 ``tracked_bench_chars``(见 SellBench 分支)——容器腿只写
+    对称吸收进 ``tracked_bench_chars``(见 CwActionSellBenchParam 分支)——容器腿只写
     GameState,执行账不吸收 = 守卫 expected-vs-tracked 播种期对拍分叉
     (实机 2-4 停机实证);None = 缺席跳过(离线/旧调用形态行为零变化)。
 
     逐动作分支(域集封闭,登记面见域集注释,禁扩静默):
 
-    - **SellBench** = bench −该槽 + gold +退款(退款锚 = ``cw_state.
+    - **CwActionSellBenchParam** = bench −该槽 + gold +退款(退款锚 = ``cw_state.
       sell_refund``,与 ``cw_state.simulate`` 卖出分支同式单一源)。
       溢出腿落地时容器 bench 该槽回占入位卡,并同帧吸收执行侧
       tracked 主账(session 在场;与容器腿对称,缺口实证 = 实机 2-4
       商店播种守卫 tracked 缺入位卡停机)。
-      备战动作槽坐标 = ``SellBench.bench_idx`` = bench 槽位表下标 0-8
+      备战动作槽坐标 = ``CwActionSellBenchParam.bench_idx`` = bench 槽位表下标 0-8
       (统一词表坐标系,读口 ``bench_slots_of`` 同基直取,零换算)。
       槽位空/越界 = 陈旧提案,本口零写(等观察覆盖);槽位件缺星级/
       缺费 = ``bench_char_cost`` 注册表单一源兜底。
-    - **SellDeployed**(批 2a 补齐,规则 = flow/action-logic-state.md §3.2)
+    - **CwActionSellDeployedParam**(批 2a 补齐,规则 = flow/action-logic-state.md §3.2)
       = deployed 槽表摘槽(``deployed_idx`` 槽表下标直取,ADR-0392)
       + gold +退款(board 随行写派生,见 ``_resync_board_delta``)。
-    - **DeployMove**(批 2a 补齐,规则 = flow/action-logic-state.md §3.1;
+    - **CwActionDeployMoveParam**(批 2a 补齐,规则 = flow/action-logic-state.md §3.1;
       批2b 起目标落位 = ``deployed_place`` 首空单一源,与 simulate
-      DeployMove 分支同式)
+      CwActionDeployMoveParam 分支同式)
       = bench 源槽摘槽 + deployed 目标排首空落位(对象整体迁移,身份/
       星级/装备随人走,排/槽号信息位重写)+ board 羁绊计数派生重算
       (行写端挂钩自动,增量口径防全量重算抹掉面板真值贡献,见
       ``_resync_board_delta`` 方法注)+ 上阵计数(派生,零独立字段)。
-    - **LevelUp**(规则 = design.md §2.6 LevelUp 粒度定案④;批2b 翻转)
+    - **CwActionLevelUpParam**(规则 = design.md §2.6 CwActionLevelUpParam 粒度定案④;批2b 翻转)
       = xp/level 跨门槛推进(推进算子单一源 = ``cw_economy.
       xp_apply_clicks``,单击 +XP_PER_BUY)+ gold −``action.cost`` 直写
       (2a 中间态执行缝金差随翻转退役,本口为金账唯一写点;cost =
@@ -2354,9 +2355,9 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
       **deploy_cap 不写**——容量真值由观察写端防抖读承接,``max_units``
       的 cap<level 兜底规则自然保守承接升级增量。level/xp/gold 缺读 =
       域级跳写(值留观察覆盖)。
-    - **OpenBox/OpenTome/WearEquip/工具原子** = 视觉域推进
+    - **CwActionOpenBoxParam/CwActionOpenTomeParam/CwActionWearEquipParam/工具原子** = 视觉域推进
       (boxes/tomes/owned_equips 在黑板帧上),容器零写,本口直接返回。
-      **ClickSpheres 例外**(阶段 3.4 迁移) = 容器 spheres 载荷坐标精确
+      **CwActionClickSpheresParam 例外**(阶段 3.4 迁移) = 容器 spheres 载荷坐标精确
       摘除(见下方分支;正本 logic-updates/click-spheres.md 同步翻转)。
 
     输入域 None 语义(域级独立跳写):gold 未读(None)时回金域跳过、
@@ -2375,16 +2376,16 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
         sell_refund,
     )
     from sr_od.application.currency_war.kernel.cw_vocab import (
-        ClickSpheres,
-        DeployMove,
-        LevelUp,
-        OpenBookcard,
-        OpenTome,
-        SellBench,
-        SellDeployed,
+        CwActionClickSpheresParam,
+        CwActionDeployMoveParam,
+        CwActionLevelUpParam,
+        CwActionOpenBookcardParam,
+        CwActionOpenTomeParam,
+        CwActionSellBenchParam,
+        CwActionSellDeployedParam,
     )
-    if not isinstance(action, (SellBench, SellDeployed, DeployMove, LevelUp,
-                               ClickSpheres, OpenTome, OpenBookcard)):
+    if not isinstance(action, (CwActionSellBenchParam, CwActionSellDeployedParam, CwActionDeployMoveParam, CwActionLevelUpParam,
+                               CwActionClickSpheresParam, CwActionOpenTomeParam, CwActionOpenBookcardParam)):
         # 集外动作型:零写(登记面申报,等观察覆盖;禁扩静默)。
         return
     _grp_sig = (sig if sig.group_id is not None else _dc_replace(
@@ -2394,11 +2395,11 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
         gs.write_logic(target, value, produced_by=produced_by,
                        evidence=evidence, sig=_grp_sig)
 
-    if isinstance(action, SellBench):
+    if isinstance(action, CwActionSellBenchParam):
         # 原生 BenchSlot 形态操作(阶段 3.5:不走 bench_slots_of→
         # bench_view_of_slots legacy roundtrip——is_item_slot 布尔无法
         # 恢复 box/tome 类型,roundtrip 会让 kind 细分在首次写后退化为
-        # supply_box,OpenTome 臂分派失据)。
+        # supply_box,CwActionOpenTomeParam 臂分派失据)。
         _bview = gs.bench.value
         bench_slots = list(_bview.slots) if _bview is not None else []
         idx = int(action.bench_idx)   # 槽位表下标直取(统一坐标系,零换算)
@@ -2452,7 +2453,7 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
             _w(gs.gold, int(g) + int(refund), 'proj_sell_refund')
         return
 
-    if isinstance(action, SellDeployed):
+    if isinstance(action, CwActionSellDeployedParam):
         dep_slots = deployed_slots_of(gs)
         idx = int(action.deployed_idx)   # 槽位表下标直取(统一坐标系,零换算)
         if not (0 <= idx < len(dep_slots)) or dep_slots[idx] is None:
@@ -2470,12 +2471,12 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
             _w(gs.gold, int(g) + int(refund), 'proj_sell_deployed_gold')
         return
 
-    if isinstance(action, DeployMove):
+    if isinstance(action, CwActionDeployMoveParam):
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             BenchChar,
             deployed_place,
         )
-        # bench 侧原生 BenchSlot 操作(阶段 3.5,同 SellBench 分支理由:
+        # bench 侧原生 BenchSlot 操作(阶段 3.5,同 CwActionSellBenchParam 分支理由:
         # legacy roundtrip 会丢 kind 细分);deployed 侧 deployed_place
         # 消费 BenchChar 形态,bench unit 按 ADR-0392 转换喂入。
         _bview = gs.bench.value
@@ -2495,7 +2496,7 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
                           char_id=str(_mu.char_id or ''),
                           star=int(_mu.star or 1),
                           equips=list(_mu.equips or []))
-        # 首空落位(与 simulate DeployMove 分支同式单一源:按 position_pref
+        # 首空落位(与 simulate CwActionDeployMoveParam 分支同式单一源:按 position_pref
         # 路由首选排,排满 fallback 另一排;槽号信息位在落位口重写)。
         # 先试落位后写账:板满(placed None)= 陈旧提案,本口零写。
         scratch = list(dep_slots)
@@ -2516,12 +2517,12 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
         # 重算(增量口径,基座贡献保留),本口禁再手写 board。
         return
 
-    # ClickSpheres(迭代 2026-09-18-prep-obs-retirement 阶段 3.4 迁移;
-    # 规则 = flow/action-logic-state.md ClickSpheres 条「载荷精确摘球」
+    # CwActionClickSpheresParam(迭代 2026-09-18-prep-obs-retirement 阶段 3.4 迁移;
+    # 规则 = flow/action-logic-state.md CwActionClickSpheresParam 条「载荷精确摘球」
     # ——原黑板腿逐位迁移,容器翻转申报见正本更新清单):按载荷坐标
-    # 集合从容器 spheres 精确摘除被点的球(坐标匹配,与写口 ClickSpheres 分支
+    # 集合从容器 spheres 精确摘除被点的球(坐标匹配,与写口 CwActionClickSpheresParam 分支
     # 旧分支同式);域未观察或载荷与现值无交集 = 陈旧提案,本口零写。
-    if isinstance(action, ClickSpheres):
+    if isinstance(action, CwActionClickSpheresParam):
         view = gs.spheres.value
         if view is None:
             return   # 球域未观察,零写(等观察覆盖)
@@ -2536,16 +2537,16 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
             points=_pts), 'proj_click_spheres_drop')
         return
 
-    # OpenTome/OpenBookcard(阶段 3.5 腾席分支;开件即腾席 = bench 槽位
-    # kind → empty,占席事实进容器。OpenBox 不列:R7 终结化,终结交回后
-    # 下一入口 heavy 覆盖,零窗口;WearEquip/工具原子装备腿不列——正本
+    # CwActionOpenTomeParam/CwActionOpenBookcardParam(阶段 3.5 腾席分支;开件即腾席 = bench 槽位
+    # kind → empty,占席事实进容器。CwActionOpenBoxParam 不列:R7 终结化,终结交回后
+    # 下一入口 heavy 覆盖,零窗口;CwActionWearEquipParam/工具原子装备腿不列——正本
     # action-logic-state.md 申报「消费真值归观察」,且均为截断点独占
     # 发射帧,下一入口 heavy 即覆盖)。
-    if isinstance(action, (OpenTome, OpenBookcard)):
+    if isinstance(action, (CwActionOpenTomeParam, CwActionOpenBookcardParam)):
         view = gs.bench.value
         if view is None:
             return   # bench 未观察,零写(等观察覆盖)
-        _kind = 'tome' if isinstance(action, OpenTome) else 'supply_box'
+        _kind = 'tome' if isinstance(action, CwActionOpenTomeParam) else 'supply_box'
         slots = list(view.slots)
         _idx = (int(action.slot) - 1 if action.slot is not None
                 else next((i for i, s in enumerate(slots)
@@ -2558,7 +2559,7 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
            'proj_open_item_clear')
         return
 
-    # LevelUp(单击;xp/level 推进 + gold −action.cost 直写,批2b 翻转)
+    # CwActionLevelUpParam(单击;xp/level 推进 + gold −action.cost 直写,批2b 翻转)
     _lv = gs.level.value
     _xp = gs.xp.value
     if _lv is None or _xp is None:
@@ -2960,7 +2961,7 @@ class ExecBooks:
     external_grant_equal_obs: int = 0
     # 备战环随机收入待吸收窗(点球金;失配精确吸收第三例,20260918-
     # reconcile 第 9 例收口)。机理:奖励节点备战画面的奖励球由
-    # ClickSpheres 动作点击,球金由游戏侧异步入账且金额执行点不可推算
+    # CwActionClickSpheresParam 动作点击,球金由游戏侧异步入账且金额执行点不可推算
     #(实机样本 +4/+7/+6 无界,data 注册表无球金数值表 = 声明盲区),设计上
     # 无逻辑写端——点击到下一可信金读帧(店开帧 heavy 观察,F2 gold 仅
     # shop 开态可信)之间的任意金投影写端(卖退款/买牌/升级/刷新)都会被
@@ -2979,8 +2980,8 @@ class ExecBooks:
     # (如窗内正差超球数×上限价不吸收)。残量面 = 豁免注册表
     # ('货币战争-备战', 'gold') × proj_sell_refund 条目(窗外语境,
     # 零改保留)。
-    # [索引定义] 计数坐标系 = 本局 ClickSpheres 执行点球个数(非槽位号,
-    # 多批执行累加);取值时机 = apply_op_effect ClickSpheres 分支写入
+    # [索引定义] 计数坐标系 = 本局 CwActionClickSpheresParam 执行点球个数(非槽位号,
+    # 多批执行累加);取值时机 = apply_op_effect CwActionClickSpheresParam 分支写入
     # (唯一写端)、observe() gold 失配吸收或店开帧金观察清零(唯一消费
     # 端)。局级生命周期(新局新容器 = 天然清零)。
     prep_sphere_income_pending: int = 0
@@ -3154,7 +3155,7 @@ class GameState:
     # True = kernel reconcile_tracking 的 bench 侧屏幕真值写回成功点
     #(唯一锚定写端;bench 读失败/双空读守卫/槽号健康门拒绝均不写 = 保持
     # 未观察)。消费面:策略商店门(flow.decide_shop_action,未观察 →
-    # CloseShop 交回外循环走备战重锚定;判定单一源 = 本模块
+    # CwActionCloseShopParam 交回外循环走备战重锚定;判定单一源 = 本模块
     # tracked_unobserved)。tracked 主账宿主 = 容器簿记 tracked_books
     #(reconcile 输入/输出与动作随动同步),无面向策略的读口。
     tracked_account_observed: Field[bool] = field(default_factory=Field)
@@ -3242,7 +3243,7 @@ class GameState:
     # (dict 内集合已按容器 JSON 序列化安全形存 list,record_fresh_buy 内部
     # 转形,读端成员判断在个位数量级无性能面);phase 失配 = 跨轮整体作废
     #(读取零销账,无逐名生命周期面);None = 本局未登记。写端 = shop.
-    # _emit_buy 全部 BuyCard 发射位,经
+    # _emit_buy 全部 CwActionBuyCardParam 发射位,经
     # cw_deploy_logic.record_fresh_buy 单口(渠道②动作上报,actor =
     # 'CwDeployLogic' 登记面在册);读端 =
     # cw_deploy_logic.fresh_buys_of(换出守卫)+ fresh_buys_sell_face
@@ -3280,7 +3281,7 @@ class GameState:
     # 溢出角色(此刻出战点击被游戏忽略——launch_dead 三连停机实证;策略
     # 消费门 = mandate 溢出门,先卖腾位再出战)。取值时机 = 备战 heavy
     # 观察每入口帧实读覆盖(两态制,观察赢);写入端单一源 = CwScreenPrep
-    # 观察写端(渠道①)。SellBench 溢出腿(apply_prep_action_logic)落地
+    # 观察写端(渠道①)。CwActionSellBenchParam 溢出腿(apply_prep_action_logic)落地
     # 后 logic 直写 False(推算消亡,下帧实读覆盖);落地同帧容器 bench
     # 回占入位卡 + 执行侧 tracked 主账对称吸收(session 在场;
     # 缺吸收 = 守卫播种期双账分叉实机停机)。
@@ -3288,7 +3289,7 @@ class GameState:
     # [索引定义] overflow_card:溢出位(固定停车位,建档 area「区域-溢出角色」,
     # 1080p rect 1352,710-1465,805)上的角色身份。'' = 溢出位无卡或身份未
     # 识别(与 overflow_warning 配对解读:True ∧ '' = 有卡未识别);值语义
-    # = SellBench 溢出腿的入位对象身份(char_id;星级缺读按 1 兜底,下帧
+    # = CwActionSellBenchParam 溢出腿的入位对象身份(char_id;星级缺读按 1 兜底,下帧
     # heavy 实读覆盖修正)。写入端单一源 = 同上观察写端;溢出腿落地后
     # logic 直写 ''(入位消费)。
     overflow_card: Field[str] = field(default_factory=Field)
@@ -3774,7 +3775,7 @@ class GameState:
                                    sig: ChannelSig) -> bool:
         """备战环随机收入(点球金)精确吸收(§2.3 失配分支前置;申报窗 =
         ``GameState.exec_books.prep_sphere_income_pending``,置位端 =
-        ``cw_exec_state.apply_op_effect`` ClickSpheres 分支)。奖励球金由
+        ``cw_exec_state.apply_op_effect`` CwActionClickSpheresParam 分支)。奖励球金由
         游戏侧异步入账而 bot 无逻辑写端(金额执行点不可推算,声明盲区;
         机理与红线见闩字段注释),窗在时逻辑金被实读证伪的唯一合法形状 =
         正向差 → 落 ``prep_sphere_income_absorbed`` 台账行(无告警无停机,

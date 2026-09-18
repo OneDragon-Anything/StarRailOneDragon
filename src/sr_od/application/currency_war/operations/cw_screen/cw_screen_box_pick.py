@@ -2,13 +2,13 @@
 
 R7 正位(用户裁定,design.md §2.6/R7):武装箱 4 选 1 的访问面是**独立建档
 画面**「货币战争-备战-武装箱选择」——此前选卡以备战动作承载
-(``PickBoxCard``,发射点 entry 'prep_box_pick' 臂,执行器内嵌默认选卡),
+(``CwActionPickBoxCardParam``,发射点 entry 'prep_box_pick' 臂,执行器内嵌默认选卡),
 策略实现长进了备战词表且错挂画面归属。批 2a 起形态:
 
-- 词表:``PickBoxCard`` 全链删除(词表类/发射点/执行器选卡半/适配器
+- 词表:``CwActionPickBoxCardParam`` 全链删除(词表类/发射点/执行器选卡半/适配器
   映射/效果账分支);武装箱选卡不属备战动作词表(screen_op.md §7
   单选族例外:选卡即终结);
-- 链路:备战环 ``OpenBox`` 点开启(**终结化**——开箱即交回)→ 外循环按
+- 链路:备战环 ``CwActionOpenBoxParam`` 点开启(**终结化**——开箱即交回)→ 外循环按
   本画面分发本 op → OCR 卡名 → 选卡决策(局内策略 ``decide_box_card``
   契约面,局外 kernel ``pick_equipment`` 机器单一源)→ 点卡 → 固定动画
   等待 → **选卡即终结交回**(选卡落地由下一帧观察覆盖)。
@@ -69,7 +69,7 @@ class CwScreenBoxPick(SrOperation):
         card_point = Point(choose_x, CwScreenBoxPick.CARD_Y)
         self.ctx.controller.mouse_move(card_point)   # bug#1 缓解
         self.ctx.controller.click(card_point)        # 点卡选中即确认(实测单步)
-        # 固定动画等待(来源写死 = 现役 overlay 动画等待常量;与 OpenBox
+        # 固定动画等待(来源写死 = 现役 overlay 动画等待常量;与 CwActionOpenBoxParam
         # 终结化交回等待同源,弹窗/选卡动画就位与否交下一帧观察)
         from sr_od.application.currency_war.prep_actions import (
             _OVERLAY_ANIM_WAIT_S,

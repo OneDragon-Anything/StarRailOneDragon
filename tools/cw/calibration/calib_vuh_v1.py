@@ -99,7 +99,7 @@ def collect_events(match: dict) -> dict:
     """单局 → (按档买入事件, used 轮距样本, used 终局计数, 局级汇总)。
 
     轮序键 = (plane, round);deployed 角色 = 该轮决策帧 state.deployed
-    (战前上场名单,win_features 同源口径);BuyCard 动作的卡名/费档
+    (战前上场名单,win_features 同源口径);CwActionBuyCardParam 动作的卡名/费档
     来自 actions(决策帧已含买入意图的卡对象)。
     """
     rounds = sorted(match.get('rounds', []), key=_round_key)
@@ -111,7 +111,7 @@ def collect_events(match: dict) -> dict:
                  if d.get('char_id')}
         deployed_names_at[key] = names
         for a in (r.get('actions') or []):
-            if a.get('__type__') == 'BuyCard':
+            if a.get('__type__') == 'CwActionBuyCardParam':
                 card = a.get('card') or {}
                 name = card.get('name')
                 cost = card.get('cost')

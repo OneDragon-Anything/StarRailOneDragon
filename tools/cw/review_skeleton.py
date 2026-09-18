@@ -35,11 +35,11 @@ import argparse
 import json
 from pathlib import Path
 
-#: 花费类动作白名单(合并行动作并集的入集判据)。卖出动作行(SellBench)
-#: 入并集供决策循环摘要的买卖对复核语境;生产 SellBench 动作行缺
+#: 花费类动作白名单(合并行动作并集的入集判据)。卖出动作行(CwActionSellBenchParam)
+#: 入并集供决策循环摘要的买卖对复核语境;生产 CwActionSellBenchParam 动作行缺
 #: name/sell_reason 键(早期批)时摘要按缺键跳过,如实显示。
-_SPEND_ACTION_TYPES = ('BuyCard', 'LevelUp', 'RefreshShop',
-                       'SellBench')
+_SPEND_ACTION_TYPES = ('CwActionBuyCardParam', 'CwActionLevelUpParam', 'CwActionRefreshShopParam',
+                       'CwActionSellBenchParam')
 
 
 def merge_round_rows(rows: list[dict]) -> list[dict]:
@@ -52,8 +52,8 @@ def merge_round_rows(rows: list[dict]) -> list[dict]:
     合并口径:
     - gold/hp/gold_readable/hp_readable = 本轮**首帧**(决策时点;
       末帧 gold 已含本轮花销,拿去判「溢余未泄」会系统性偏小);
-    - actions = 全帧**花费类**动作并集(BuyCard/LevelUp/RefreshShop/
-      SellBench;生产 StartBattle 等非花费动作不入);
+    - actions = 全帧**花费类**动作并集(CwActionBuyCardParam/CwActionLevelUpParam/CwActionRefreshShopParam/
+      CwActionSellBenchParam;生产 CwActionStartBattleParam 等非花费动作不入);
     - formed_stop = 全帧或;
     - state = 首帧 state 派生:board→board_factions(engines 代理的
       生产同构键;生产 GameState 快照无 board_factions 键)、

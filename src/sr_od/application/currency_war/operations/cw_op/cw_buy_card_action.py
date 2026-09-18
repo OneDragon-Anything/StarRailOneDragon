@@ -31,7 +31,7 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import (
     strategy_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
-    BuyCard,
+    CwActionBuyCardParam,
     mutate_bench_deployed,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
@@ -52,7 +52,7 @@ class BuyCardOp(ActionOp):
 
     def execute(self, env: ShopExecEnv) -> bool:
         from one_dragon.base.geometry.point import Point as _Pt
-        action: BuyCard = self.action
+        action: CwActionBuyCardParam = self.action
         from sr_od.application.currency_war.kernel.cw_game_state import (
             bench_slots_of,
         )

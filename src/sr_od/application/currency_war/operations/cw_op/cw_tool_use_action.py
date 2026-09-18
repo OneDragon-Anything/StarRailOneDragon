@@ -15,13 +15,13 @@ from typing import TYPE_CHECKING, ClassVar
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
-    FurnaceUse,
-    LuckyTokenUse,
-    PerfectProjectorUse,
-    PrecisionWrenchUse,
-    PrivilegeCardUse,
-    StaffProjectorUse,
-    WrenchUse,
+    CwActionFurnaceUseParam,
+    CwActionLuckyTokenUseParam,
+    CwActionPerfectProjectorUseParam,
+    CwActionPrecisionWrenchUseParam,
+    CwActionPrivilegeCardUseParam,
+    CwActionStaffProjectorUseParam,
+    CwActionWrenchUseParam,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
     ActionOp,
@@ -38,13 +38,13 @@ class ToolUseOp(ActionOp):
     #: 工具词表类 → 注册名(icon 定位锚,与装备注册表同名;体迁自执行器
     #: 类属性,唯一消费 = 本 op)。
     _TOOL_NAME_BY_CLASS: ClassVar[dict[type, str]] = {
-        FurnaceUse: '冶金炉',
-        PrivilegeCardUse: '特权赋予卡',
-        WrenchUse: '拆装扳手',
-        PrecisionWrenchUse: '精密拆装扳手',
-        StaffProjectorUse: '员工投影仪',
-        PerfectProjectorUse: '完美投影仪',
-        LuckyTokenUse: '好运令牌',
+        CwActionFurnaceUseParam: '冶金炉',
+        CwActionPrivilegeCardUseParam: '特权赋予卡',
+        CwActionWrenchUseParam: '拆装扳手',
+        CwActionPrecisionWrenchUseParam: '精密拆装扳手',
+        CwActionStaffProjectorUseParam: '员工投影仪',
+        CwActionPerfectProjectorUseParam: '完美投影仪',
+        CwActionLuckyTokenUseParam: '好运令牌',
     }
 
     def execute(self, env: PrepExecEnv) -> bool:

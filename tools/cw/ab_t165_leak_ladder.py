@@ -15,17 +15,17 @@ T-169 污染声明(任务书口径):涉引擎周期/成型率指标在 T-169 修
 F 挂 T-168 域恒只报。
 
 判据与线(§4.2 摘录;基线池指纹 0e091d4d 批):
-- A:P2 RefreshShop:BuyCard 比,基线 ≈4.9:1 → 线 ≤3.5:1(方向线非
+- A:P2 CwActionRefreshShopParam:CwActionBuyCardParam 比,基线 ≈4.9:1 → 线 ≤3.5:1(方向线非
   拍定判据;采纳判据仍=数学结构+方向票一致+无回归)。
 - B:终局阵容完成率 4/100 → ≥8/100(弱证据+功效注,mode=full 才判)。
 - D:位面末出口金 ≥50 占比(只报;~1.3x 膨胀读数禁当达标证据)。
 - G:ALL IN 窗 ∧ P21 域(hp ≤ 停升级线,kernel p1/p2_levelup_stop_hp
   单一源现查)帧非支A XP 支出局数 = 0(判据级 0 容忍);支A 判读 =
-  LevelUp 动作行 dec_board_full/dec_bench_2star 披露键(T-135 决策帧
+  CwActionLevelUpParam 动作行 dec_board_full/dec_bench_2star 披露键(T-135 决策帧
   真值),缺披露键的击单独计数不进 0 容忍(防旧账本假红)。
 - H:P1 R5+ 刷新:买比 + 位面末息基(只报)。
 - 归因四支判读键(§4.2):档 1/档 2/dominance 摘旗后发射计数按
-  BuyCard.reason 分臂输出——处理臂三键全 0 = 实现 bug 信号(归因①)。
+  CwActionBuyCardParam.reason 分臂输出——处理臂三键全 0 = 实现 bug 信号(归因①)。
 
 用法(项目根):
     uv run python tools/cw/ab_t165_leak_ladder.py \
@@ -48,7 +48,7 @@ sys.path.insert(0, str(REPO / 'src'))
 
 # ---------------- 预注册常量(设计方案 §4.2;跑批后禁改) ----------------
 
-#: A 线:P2 RefreshShop:BuyCard 比 ≤3.5(方向线;基线 ≈4.9:1)。
+#: A 线:P2 CwActionRefreshShopParam:CwActionBuyCardParam 比 ≤3.5(方向线;基线 ≈4.9:1)。
 LINE_A_P2_REFRESH_BUY_RATIO: float = 3.5
 #: B 线:终局阵容完成率 ≥8/100(弱证据;仅 mode=full 判,T-169 前 defer)。
 LINE_B_FORM_OK_RATE: float = 0.08
@@ -134,16 +134,16 @@ def game_metrics(rows: list[dict], *, stop_hp_of_plane) -> dict:
         if plane == 2:
             for a in acts:
                 t = a.get('__type__')
-                if t == 'RefreshShop':
+                if t == 'CwActionRefreshShopParam':
                     m['p2_refresh'] += 1
-                elif t == 'BuyCard':
+                elif t == 'CwActionBuyCardParam':
                     m['p2_buycard'] += 1
         if plane == 1 and rnd >= 5:
             for a in acts:
                 t = a.get('__type__')
-                if t == 'RefreshShop':
+                if t == 'CwActionRefreshShopParam':
                     m['p1_r5_refresh'] += 1
-                elif t == 'BuyCard':
+                elif t == 'CwActionBuyCardParam':
                     m['p1_r5_buycard'] += 1
         # 位面末金(每行 last-wins;行序已按轮排序)
         g = r.get('gold')
@@ -164,7 +164,7 @@ def game_metrics(rows: list[dict], *, stop_hp_of_plane) -> dict:
                 and stop_hp is not None
                 and hp_decision <= stop_hp):
             for a in acts:
-                if a.get('__type__') not in ('LevelUp', 'LevelUpShop'):
+                if a.get('__type__') not in ('CwActionLevelUpParam', 'CwActionLevelUpShopParam'):
                     continue
                 full, two = a.get('dec_board_full'), a.get('dec_bench_2star')
                 if isinstance(full, bool) and isinstance(two, bool):
@@ -176,7 +176,7 @@ def game_metrics(rows: list[dict], *, stop_hp_of_plane) -> dict:
                 else:
                     m['g_unknown_xp'] += 1   # 缺披露键:不进 0 容忍(防假红)
         for a in acts:
-            if a.get('__type__') == 'BuyCard':
+            if a.get('__type__') == 'CwActionBuyCardParam':
                 reason = a.get('reason') or ''
                 m['arm_reason_counts'][reason] = \
                     m['arm_reason_counts'].get(reason, 0) + 1
@@ -363,7 +363,7 @@ def _write_row(batch: Path, rid: str, plane: int, rnd: int, *, gold: int,
 
 
 def _buy(reason: str, cost: int = 1) -> dict:
-    return {'__type__': 'BuyCard', 'reason': reason,
+    return {'__type__': 'CwActionBuyCardParam', 'reason': reason,
             'card': {'name': reason, 'cost': cost}}
 
 
@@ -376,7 +376,7 @@ def _make_batch(batch: Path, *, seeds: range, p2_ratio_rows: bool,
         rid = f'{batch.name}_s{s}'
         # P2 行:处置臂买多刷少(A 达标),基线形刷多买少(A 超)
         n_refresh, n_buy = ((1, 5) if p2_ratio_rows else (5, 1))
-        acts = ([{'__type__': 'RefreshShop', 'cost': 2}] * n_refresh
+        acts = ([{'__type__': 'CwActionRefreshShopParam', 'cost': 2}] * n_refresh
                 + [_buy('m6_stockpile' if arms else 'm2_line_member')] * n_buy)
         # P2 首行(hp=10:作为 boss 行的「上一行」供决策帧 hp 滚动取数)
         _write_row(batch, rid, 2, 2, gold=60, hp=10, acts=acts)
@@ -386,8 +386,8 @@ def _make_batch(batch: Path, *, seeds: range, p2_ratio_rows: bool,
         _write_row(batch, rid, 1, 9, gold=55 if not g_violation else 10,
                    hp=55, acts=[])
         # G 行:ALL IN boss 末轮,决策帧 hp = 上一行结算 10(≤P2 线 21)
-        # 含非支A LevelUp
-        g_act = [{'__type__': 'LevelUp', 'cost': 4,
+        # 含非支A CwActionLevelUpParam
+        g_act = [{'__type__': 'CwActionLevelUpParam', 'cost': 4,
                   'dec_board_full': False, 'dec_bench_2star': False}]
         _write_row(batch, rid, 2, 7, gold=20, hp=10, node='boss',
                    acts=g_act if g_violation else [])

@@ -11,13 +11,13 @@
 方法(逐笔记账差分):
   败轮 N 的备战帧金 g(N) 与下一可读轮 N+1 的备战帧金 g(N+1) 之间,金流 =
   轮内动作净支出 + 卖金钩子 + 补发 + 利息。轮内动作自带金额字段
-  (BuyCard.card.cost / LevelUp.cost / LevelUpShop.cost / RefreshShop.cost),
+  (CwActionBuyCardParam.card.cost / CwActionLevelUpParam.cost / CwActionLevelUpShopParam.cost / CwActionRefreshShopParam.cost),
   卖金走 exogenous.sell_income 钩子(choice.gold_delta,按 plane+round 归轮),
   CompTransaction 的卖也经该钩子入账。于是
       补发估算 = g(N+1) − g(N) + Σ支出 − Σ卖金 − 利息(g_settle),
   g_settle = g(N) − Σ支出 + Σ卖金(结算时点持金)。
   主子集限 0 ≤ g_settle < 10(利息恒 0,且不受息帽卡影响),差值即补发基项。
-  未知金额面(ClickSpheres/OpenBox/OpenTome 的内容物、事件即时金;原 PickBoxCard/RunTools 项随 unified-action-factory 批2a/2b 词表删除退役)
+  未知金额面(CwActionClickSpheresParam/CwActionOpenBoxParam/CwActionOpenTomeParam 的内容物、事件即时金;原 CwActionPickBoxCardParam/RunTools 项随 unified-action-factory 批2a/2b 词表删除退役)
   一律整轮剔除;金面效果卡局(狸财经狸息 flat/双手狸代买扣金)整局剔除。
   胜轮同法校验 = 方法自检:差值应 = base + streak_gold(进轮连胜) + 利息。
 
@@ -34,14 +34,14 @@ from collections import Counter, defaultdict
 
 #: 动作 → 轮内支出金额提取键(无金额字段=旧 schema,该轮剔除)
 SPEND_FIELDS: dict[str, tuple[str, ...]] = {
-    'BuyCard': ('card', 'cost'),
-    'LevelUp': ('cost',),
-    'LevelUpShop': ('cost',),
-    'RefreshShop': ('cost',),
+    'CwActionBuyCardParam': ('card', 'cost'),
+    'CwActionLevelUpParam': ('cost',),
+    'CwActionLevelUpShopParam': ('cost',),
+    'CwActionRefreshShopParam': ('cost',),
 }
 #: 未知金流动作(内容物可能含金且无金额记录)——出现即整轮剔除
 UNKNOWN_GOLD_ACTIONS: frozenset[str] = frozenset({
-    'ClickSpheres', 'OpenBox', 'OpenTome',
+    'CwActionClickSpheresParam', 'CwActionOpenBoxParam', 'CwActionOpenTomeParam',
 })
 
 #: 遥测节点类型(中文为主,旧局混英文 token)→ 引擎 token(与 LOSS_GOLD_BY_NODE 键同域)

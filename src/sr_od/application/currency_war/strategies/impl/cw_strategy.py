@@ -29,21 +29,21 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
-    PickBoxCard,
-    PickEncounter,
-    PickEquip,
-    PickExpertInvite,
-    PickFortune,
-    PickInvest,
-    PickMegastar,
-    PickPartner,
-    PickPlanner,
-    PickStarTome,
-    PickSupply,
-    PickWishTrial,
-    RefreshInvestCards,
-    RefreshNodeOptions,
-    RefreshSupply,
+    CwActionPickBoxCardParam,
+    CwActionPickEncounterParam,
+    CwActionPickEquipParam,
+    CwActionPickExpertInviteParam,
+    CwActionPickFortuneParam,
+    CwActionPickInvestParam,
+    CwActionPickMegastarParam,
+    CwActionPickPartnerParam,
+    CwActionPickPlannerParam,
+    CwActionPickStarTomeParam,
+    CwActionPickSupplyParam,
+    CwActionPickWishTrialParam,
+    CwActionRefreshInvestCardsParam,
+    CwActionRefreshNodeOptionsParam,
+    CwActionRefreshSupplyParam,
 )
 
 if TYPE_CHECKING:
@@ -147,54 +147,54 @@ class CwStrategy(ABC, Generic[_TState]):
 
     @abstractmethod
     def decide_shop_action(self) -> Action:
-        """商店单动作决策(恒可用终结 = CloseShop,恒不 None)。观察帧缺失 =
+        """商店单动作决策(恒可用终结 = CwActionCloseShopParam,恒不 None)。观察帧缺失 =
         观察层失约,实现须抛错(禁静默按空态决策)。"""
 
     @abstractmethod
-    def decide_invest_strategy(self) -> PickInvest | RefreshInvestCards:
+    def decide_invest_strategy(self) -> CwActionPickInvestParam | CwActionRefreshInvestCardsParam:
         """投资策略 3 选 1(原 decide_invest 双相拆分;候选读
         ``gs.invest_strategy_opts`` 槽,离屏 None = 观察层失约抛错)。
-        刷新建议 = RefreshInvestCards 动作(候选卡逐卡槽位);选卡 =
-        PickInvest(两型互斥输出)。"""
+        刷新建议 = CwActionRefreshInvestCardsParam 动作(候选卡逐卡槽位);选卡 =
+        CwActionPickInvestParam(两型互斥输出)。"""
 
     @abstractmethod
-    def decide_invest_env(self) -> PickInvest | RefreshInvestCards:
-        """投资环境 3 选 1(与策略相共用 PickInvest;候选读
-        ``gs.invest_env_opts`` 槽;刷新建议 = RefreshInvestCards 整组槽)。"""
+    def decide_invest_env(self) -> CwActionPickInvestParam | CwActionRefreshInvestCardsParam:
+        """投资环境 3 选 1(与策略相共用 CwActionPickInvestParam;候选读
+        ``gs.invest_env_opts`` 槽;刷新建议 = CwActionRefreshInvestCardsParam 整组槽)。"""
 
     @abstractmethod
-    def decide_supply(self) -> PickSupply | RefreshSupply:
+    def decide_supply(self) -> CwActionPickSupplyParam | CwActionRefreshSupplyParam:
         """补给选装备(候选读 ``gs.supply`` payload 槽;刷新建议 =
-        RefreshSupply 动作,非布尔位)。"""
+        CwActionRefreshSupplyParam 动作,非布尔位)。"""
 
     @abstractmethod
-    def decide_encounter(self) -> PickEncounter | RefreshNodeOptions:
+    def decide_encounter(self) -> CwActionPickEncounterParam | CwActionRefreshNodeOptionsParam:
         """遭遇难度选(候选读 ``gs.encounter`` payload 槽;刷新建议 =
-        RefreshNodeOptions 动作,非布尔位)。"""
+        CwActionRefreshNodeOptionsParam 动作,非布尔位)。"""
 
     @abstractmethod
-    def decide_megastar(self) -> PickMegastar:
+    def decide_megastar(self) -> CwActionPickMegastarParam:
         """巨星选候选(候选读 ``gs.megastar_opts`` 槽)。"""
 
     @abstractmethod
-    def decide_partner(self) -> PickPartner:
+    def decide_partner(self) -> CwActionPickPartnerParam:
         """选择伙伴(候选读 ``gs.partner_opts`` 槽)。"""
 
     @abstractmethod
-    def decide_planner(self) -> PickPlanner:
+    def decide_planner(self) -> CwActionPickPlannerParam:
         """银狼策划事件 3 选 1(候选读 ``gs.planner_opts`` 槽)。"""
 
     @abstractmethod
-    def decide_star_tome(self) -> PickStarTome:
+    def decide_star_tome(self) -> CwActionPickStarTomeParam:
         """星徽秘典四选一(候选读 ``gs.star_tome_opts`` 槽;返回动作子类型,
         handler 翻译既有点击链)。"""
 
     @abstractmethod
-    def decide_wish_trial(self) -> PickWishTrial:
+    def decide_wish_trial(self) -> CwActionPickWishTrialParam:
         """祈愿试炼选卡(候选读 ``gs.wish_trial_opts`` 槽;返回动作子类型)。"""
 
     @abstractmethod
-    def decide_box_card(self) -> PickBoxCard:
+    def decide_box_card(self) -> CwActionPickBoxCardParam:
         """武装箱/节点弹窗装备卡 4 选 1(候选读 ``gs.box_card_names`` 槽;
         返回动作子类型)。"""
 
@@ -203,17 +203,17 @@ class CwStrategy(ABC, Generic[_TState]):
     #    见 changes/2026-09-16-strategy-terminal-contract/design.md 契约扩员附记)——
 
     @abstractmethod
-    def decide_fortune(self) -> PickFortune:
+    def decide_fortune(self) -> CwActionPickFortuneParam:
         """命运卜者强化三选一(候选读 ``gs.fortune_opts`` 槽,OCR 卡文;
         返回动作子类型)。"""
 
     @abstractmethod
-    def decide_expert_invite(self) -> PickExpertInvite:
+    def decide_expert_invite(self) -> CwActionPickExpertInviteParam:
         """专家邀请函选卡(候选读 ``gs.expert_invite`` 弹窗载体槽;
-        idx = -1 表现金为王,值域扩展见 PickExpertInvite 注)。"""
+        idx = -1 表现金为王,值域扩展见 CwActionPickExpertInviteParam 注)。"""
 
     @abstractmethod
-    def decide_equip_pick(self) -> PickEquip:
+    def decide_equip_pick(self) -> CwActionPickEquipParam:
         """选择装备三选一(候选读 ``gs.equip_pick_opts`` 槽,OCR 卡名带;
         返回动作子类型)。"""
 

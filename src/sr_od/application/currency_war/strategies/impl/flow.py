@@ -54,23 +54,23 @@ from sr_od.application.currency_war.kernel.cw_registry import (
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
-    CloseShop,
+    CwActionCloseShopParam,
+    CwActionPickBoxCardParam,
+    CwActionPickEncounterParam,
+    CwActionPickEquipParam,
+    CwActionPickExpertInviteParam,
+    CwActionPickFortuneParam,
+    CwActionPickInvestParam,
+    CwActionPickMegastarParam,
+    CwActionPickPartnerParam,
+    CwActionPickPlannerParam,
+    CwActionPickStarTomeParam,
+    CwActionPickSupplyParam,
+    CwActionPickWishTrialParam,
+    CwActionRefreshInvestCardsParam,
+    CwActionRefreshNodeOptionsParam,
+    CwActionRefreshSupplyParam,
     CwSimFrame,
-    PickBoxCard,
-    PickEncounter,
-    PickEquip,
-    PickExpertInvite,
-    PickFortune,
-    PickInvest,
-    PickMegastar,
-    PickPartner,
-    PickPlanner,
-    PickStarTome,
-    PickSupply,
-    PickWishTrial,
-    RefreshInvestCards,
-    RefreshNodeOptions,
-    RefreshSupply,
 )
 from sr_od.application.currency_war.strategies.impl.cw_strategy import (
     CwStrategy,
@@ -424,18 +424,18 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 f'禁静默按空态决策;槽 = {slot_name})')
         return value
 
-    def decide_invest_strategy(self) -> PickInvest | RefreshInvestCards:
+    def decide_invest_strategy(self) -> CwActionPickInvestParam | CwActionRefreshInvestCardsParam:
         """投资策略 3 选 1(终态零参口;候选 = ``gs.invest_strategy_opts``)。"""
         return self._decide_invest('strategy', self.gs.invest_strategy_opts,
                                    'invest_strategy_opts')
 
-    def decide_invest_env(self) -> PickInvest | RefreshInvestCards:
+    def decide_invest_env(self) -> CwActionPickInvestParam | CwActionRefreshInvestCardsParam:
         """投资环境 3 选 1(终态零参口;候选 = ``gs.invest_env_opts``)。"""
         return self._decide_invest('env', self.gs.invest_env_opts,
                                    'invest_env_opts')
 
     def _decide_invest(self, kind: str, slot: object,
-                       slot_name: str) -> PickInvest | RefreshInvestCards:
+                       slot_name: str) -> CwActionPickInvestParam | CwActionRefreshInvestCardsParam:
         """投资策略/投资环境共用决策核(原 decide_invest 双相拆分)。
         P1 两 kind 同一实现(委托 ``decide_event``)。
         ADR-0597(用户裁定 2026-09-08「投资选卡优先经济、然后是终局阵容,
@@ -450,11 +450,11 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         承载,ADR-0597 §5.3)。
 
         输出包装(终态契约 §2.2 刷新建议动作化):kernel refresh_slots 非空
-        → ``RefreshInvestCards(slots)``;否则 ``PickInvest(idx)``。三闸点击链
+        → ``CwActionRefreshInvestCardsParam(slots)``;否则 ``CwActionPickInvestParam(idx)``。三闸点击链
         留 handler——闸全败帧 handler 同访问再调本入口取选卡:同帧去重
         (scratch 键 = (kind, 候选元组))保证「建议帧首调发建议、紧随重调
         落选卡后键清」——重入访问(新候选/同候选)恢复首调语义,等价旧
-        PickEvent 单返回「idx + refresh_slots 并载、闸败回退选卡」行为。
+        CwActionPickEventParam 单返回「idx + refresh_slots 并载、闸败回退选卡」行为。
         """
         options = list(self._require_slot_options(slot, slot_name))
         # 入口内务(ADR-0583 §3.2:pick 入口入触发面;消费最近一次备战黑板帧)
@@ -493,11 +493,11 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 self.state.scratch.pop(self._INVEST_ADVICE_MEMO_KEY, None)
             else:
                 self.state.scratch[self._INVEST_ADVICE_MEMO_KEY] = memo_key
-                return RefreshInvestCards(slots=tuple(pick.refresh_slots),
+                return CwActionRefreshInvestCardsParam(slots=tuple(pick.refresh_slots),
                                           reason=pick.reason)
-        return PickInvest(idx=pick.option_idx, reason=pick.reason)
+        return CwActionPickInvestParam(idx=pick.option_idx, reason=pick.reason)
 
-    def decide_supply(self) -> PickSupply | RefreshSupply:
+    def decide_supply(self) -> CwActionPickSupplyParam | CwActionRefreshSupplyParam:
         """补给选装备/出钻(终态零参口;候选 = ``gs.supply`` payload)。
         刷新闸输入源 = ``gs.supply_refresh_used`` 容器计数派生(details §2.3,
         与现调用方派生式逐字节相同)。"""
@@ -509,10 +509,10 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                                        self.state.target_comp, self.config,
                                        refresh_used)
         if pick.refresh:
-            return RefreshSupply(reason=pick.reason)
-        return PickSupply(idx=pick.idx, reason=pick.reason)
+            return CwActionRefreshSupplyParam(reason=pick.reason)
+        return CwActionPickSupplyParam(idx=pick.idx, reason=pick.reason)
 
-    def decide_encounter(self) -> PickEncounter | RefreshNodeOptions:
+    def decide_encounter(self) -> CwActionPickEncounterParam | CwActionRefreshNodeOptionsParam:
         """遭遇难度/词缀避开(终态零参口;候选 = ``gs.encounter`` payload)。
         刷新旗标输入源 = ``gs.encounter_refreshed_in_visit`` per-visit 位
         (details §2.3 读点声明;None 缺省 False = 第三方/测试直调口径;
@@ -525,10 +525,10 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                                           self.state.target_comp, self.config,
                                           refresh_used=refresh_used)
         if pick.refresh:
-            return RefreshNodeOptions(reason=pick.reason)
-        return PickEncounter(idx=pick.idx, reason=pick.reason)
+            return CwActionRefreshNodeOptionsParam(reason=pick.reason)
+        return CwActionPickEncounterParam(idx=pick.idx, reason=pick.reason)
 
-    def decide_megastar(self) -> PickMegastar:
+    def decide_megastar(self) -> CwActionPickMegastarParam:
         """巨星选候选(终态零参口;候选 = ``gs.megastar_opts``):委托
         ``cw_comps.select_megastar`` 拿角色名 → 名在 options 命中该 idx;否则 idx=0。
         ⚠️ OCR 未就绪(char_id 全空 → 匹配恒失败 → idx=0 = 今天盲点左候选,随阶段5)。
@@ -543,12 +543,12 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         if chosen_name:
             for o in options:
                 if o.char_id == chosen_name:
-                    return PickMegastar(
+                    return CwActionPickMegastarParam(
                         idx=o.idx,
                         reason=f"select_megastar 命中 {chosen_name}")
-        return PickMegastar(idx=0, reason="fallback 左候选(OCR 未就绪,char_id 空)")
+        return CwActionPickMegastarParam(idx=0, reason="fallback 左候选(OCR 未就绪,char_id 空)")
 
-    def decide_partner(self) -> PickPartner:
+    def decide_partner(self) -> CwActionPickPartnerParam:
         """选择伙伴(终态零参口;候选 = ``gs.partner_opts``):优先
         ``config.character_build_around`` / ``target.core_chars`` 命中;否则 idx=0。
         ⚠️ OCR 未就绪(char_id 全空 → 命中恒失败 → idx=0 = 今天盲点 stage 立绘,随阶段5)。"""
@@ -560,10 +560,10 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             wants += list(self.state.target_comp.core_chars)
         for o in options:
             if o.char_id and o.char_id in wants:
-                return PickPartner(idx=o.idx, reason=f"命中偏好/核心 {o.char_id}")
-        return PickPartner(idx=0, reason="fallback(OCR 未就绪,char_id 空)")
+                return CwActionPickPartnerParam(idx=o.idx, reason=f"命中偏好/核心 {o.char_id}")
+        return CwActionPickPartnerParam(idx=0, reason="fallback(OCR 未就绪,char_id 空)")
 
-    def decide_planner(self) -> PickPlanner:
+    def decide_planner(self) -> CwActionPickPlannerParam:
         """银狼策划事件(终态零参口;候选 = ``gs.planner_opts``;r104 用户定调:
         接入策略模块由它定;委托 cw_events.decide_planner)。
 
@@ -573,9 +573,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                                              'planner_opts')
         self._consume_prep_direction_frame()   # ADR-0583 入口内务
         pick = cw_events.decide_planner(options, self.gs, self.state.target_comp)
-        return PickPlanner(idx=pick.idx, reason=pick.reason)
+        return CwActionPickPlannerParam(idx=pick.idx, reason=pick.reason)
 
-    def decide_star_tome(self) -> PickStarTome:
+    def decide_star_tome(self) -> CwActionPickStarTomeParam:
         """星徽秘典四选一(终态零参口;候选 = ``gs.star_tome_opts``;r104 接入
         策略模块;原 loop 内联 board 匹配迁此)。
 
@@ -586,7 +586,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                                              'star_tome_opts')
         self._consume_prep_direction_frame()   # ADR-0583 入口内务
         if not options:
-            return PickStarTome(idx=0)
+            return CwActionPickStarTomeParam(idx=0)
         fw = getattr(self.state, 'transition_framework', '')
         _fw_facs: set[str] = set()
         if fw:
@@ -612,9 +612,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 s += PICK_BIAS.tome_framework_faction
             if s > best_s:
                 best_i, best_s = i, s
-        return PickStarTome(idx=best_i)
+        return CwActionPickStarTomeParam(idx=best_i)
 
-    def decide_wish_trial(self) -> PickWishTrial:
+    def decide_wish_trial(self) -> CwActionPickWishTrialParam:
         """祈愿试炼选卡(终态零参口;候选 = ``gs.wish_trial_opts``;r104 接入
         策略模块;原固定第1张)。
 
@@ -625,7 +625,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                                              'wish_trial_opts')
         self._consume_prep_direction_frame()   # ADR-0583 入口内务
         if not options:
-            return PickWishTrial(idx=0)
+            return CwActionPickWishTrialParam(idx=0)
         _tgt_facs: set[str] = set()
         if self.state.target_comp is not None:
             _tgt_facs = set(self.state.target_comp.all_factions or [])
@@ -647,9 +647,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 s += PICK_BIAS.wish_operation
             if s > best_s:
                 best_i, best_s = i, s
-        return PickWishTrial(idx=best_i)
+        return CwActionPickWishTrialParam(idx=best_i)
 
-    def decide_box_card(self) -> PickBoxCard:
+    def decide_box_card(self) -> CwActionPickBoxCardParam:
         """武装箱/节点弹窗装备卡 4 选 1(终态零参口;候选 =
         ``gs.box_card_names``;薄壳;armory-box-value 定稿设计
         §2.2-§2.5)。锚 = 意向状态 locked_comp 两态(get_comp 失败落未锁 +
@@ -663,7 +663,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                                            'box_card_names')
         self._consume_prep_direction_frame()   # ADR-0583 入口内务
         if not names:
-            return PickBoxCard(idx=0)
+            return CwActionPickBoxCardParam(idx=0)
         _ist = self._ensure_intention(self.state)
         locked = _ist.locked_comp
         key_equips: list[str] = []
@@ -693,7 +693,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         from sr_od.application.currency_war.kernel.cw_equip_value import (
             pick_equipment,
         )
-        return PickBoxCard(idx=pick_equipment(
+        return CwActionPickBoxCardParam(idx=pick_equipment(
             names, key_equips=tuple(key_equips),
             owned_spare=spare,
             owned_total=spare + worn))
@@ -701,16 +701,16 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
     # ===== 契约扩员 12→15 三入口(普查迁移批 2;F-overlay-01/02/03 判据
     # ===== 收编 kernel,本壳零打分实现,委托同构 decide_box_card 先例)=====
 
-    def decide_fortune(self) -> PickFortune:
+    def decide_fortune(self) -> CwActionPickFortuneParam:
         """命运卜者强化三选一(终态零参口;候选 = ``gs.fortune_opts``
         OCR 卡文;判据单一源 = kernel ``decide_fortune`` 战力关键词权重
         argmax,无匹配缺省首卡,handler 侧越界防御同落首卡)。"""
         texts = list(self._require_slot_options(self.gs.fortune_opts,
                                                 'fortune_opts'))
         self._consume_prep_direction_frame()   # ADR-0583 入口内务
-        return PickFortune(idx=cw_events.decide_fortune(texts))
+        return CwActionPickFortuneParam(idx=cw_events.decide_fortune(texts))
 
-    def decide_expert_invite(self) -> PickExpertInvite:
+    def decide_expert_invite(self) -> CwActionPickExpertInviteParam:
         """专家邀请函选卡(终态零参口;候选 = ``gs.expert_invite`` 弹窗
         载体(卡羁绊解析 + 板面羁绊计数,写端 = CwScreenExpertInvite);
         判据单一源 = kernel ``choose_expert_index`` 三级语义原样(在场
@@ -722,10 +722,10 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         payload = self._require_slot_options(self.gs.expert_invite,
                                              'expert_invite')
         self._consume_prep_direction_frame()   # ADR-0583 入口内务
-        return PickExpertInvite(idx=cw_events.choose_expert_index(
+        return CwActionPickExpertInviteParam(idx=cw_events.choose_expert_index(
             list(payload.card_bonds), dict(payload.board)))
 
-    def decide_equip_pick(self) -> PickEquip:
+    def decide_equip_pick(self) -> CwActionPickEquipParam:
         """选择装备三选一(终态零参口;候选 = ``gs.equip_pick_opts``
         OCR 卡名带;判据单一源 = kernel ``decide_equip_overlay_pick``,
         key_fit 子串 +100 / 泛用关键词 +1.0,并列取首卡)。
@@ -736,7 +736,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                                                 'equip_pick_opts'))
         self._consume_prep_direction_frame()   # ADR-0583 入口内务
         _ist = self._ensure_intention(self.state)
-        return PickEquip(idx=cw_equip_value.decide_equip_overlay_pick(
+        return CwActionPickEquipParam(idx=cw_equip_value.decide_equip_overlay_pick(
             texts, locked_comp=_ist.locked_comp))
 
     def decide_shop_action(self) -> Action:
@@ -745,7 +745,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
 
         输入 = gs 容器(黑板契约容器化,设计件《商店黑板容器化方案》
         §2.2-1:入口观察/单动作逻辑态直写/sim 引擎写);输出 = **恰一个
-        动作**,全函数永不 None——「无动作可做」由 ``CloseShop`` 恒可用
+        动作**,全函数永不 None——「无动作可做」由 ``CwActionCloseShopParam`` 恒可用
         终结表达(决策 5/6)。决策本体 = ``mandate_v1/shop.
         decide_shop_action``(选择序 = 决策本体候选扫描序,逐帧恰取一个
         动作)。执行侧单动作循环逐帧调用本接口;sim/兼容路径走
@@ -772,17 +772,17 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # 未观察门(观察态落容器字段,策略消费只走 game state):tracked
         # 主账未按屏幕真值锚定(接管/重置/账失效事件后,备战环 heavy 观察
         # 尚未置位)时商店决策的关键输入(席面)不可信——返回恒可用终结
-        # CloseShop 交编排壳收店,外循环全分支重判自然落回备战节点,heavy
+        # CwActionCloseShopParam 交编排壳收店,外循环全分支重判自然落回备战节点,heavy
         # 观察完成锚定后再进店;店内不做任何原地重建(读屏重建出口已退役)。
         # 判定单一源 = kernel cw_game_state.tracked_unobserved;跳过事件
-        # 留痕与连续跳过熔断在执行侧 run_buy_waves 的 CloseShop 出口。
+        # 留痕与连续跳过熔断在执行侧 run_buy_waves 的 CwActionCloseShopParam 出口。
         from sr_od.application.currency_war.kernel.cw_game_state import (
             tracked_unobserved,
         )
         if tracked_unobserved(self.gs):
             log.info('[cw][shop] tracked 未观察(待备战 heavy 观察锚定)'
-                     '→ CloseShop 交回外循环重判')
-            return CloseShop()
+                     '→ CwActionCloseShopParam 交回外循环重判')
+            return CwActionCloseShopParam()
         # 入口刷新先于镜像/决策(方向视图 = 本帧语境;ADR-0583 内化锚)
         self._consume_shop_direction_frame()
         # v3_b_t 逐帧镜像写者(纯遥测,零行为面;口径与边界见
@@ -805,8 +805,8 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         sim/回放/既有序列锁消费(生产执行侧走单动作循环):逐帧调
         :meth:`decide_shop_action`(单动作核,帧代次消费在核入口)+ 容器
         逻辑态直写推进期望态(``apply_shop_action_logic`` 简单腿 + 合成升星
-        腿;零 simulate 前瞻消费),终结动作(RefreshShop)截停、
-        ``CloseShop`` 收尾不入序列。本缺省 = 通用
+        腿;零 simulate 前瞻消费),终结动作(CwActionRefreshShopParam)截停、
+        ``CwActionCloseShopParam`` 收尾不入序列。本缺省 = 通用
         循环(不绑 mandate 判据);mandate 特有记账(已买件/段序号/续段
         token)在 ``MandateV1Strategy.decide_shop_screen`` 覆写。观察帧
         缺失 = 观察层失约,抛错。"""
@@ -832,7 +832,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         def _executed_of(a) -> ShopActionExecuted:
             # 驱动器执行回执(离线驱动无落地门,kernel 判据派生;与生产
             # 执行侧 merge_buy_k 同源,禁按动作对象预估的第二实现)。
-            if isinstance(a, cw_state.BuyCard):
+            if isinstance(a, cw_state.CwActionBuyCardParam):
                 _slots = bench_slots_of(gs)
                 _k = 1
                 if all(b is not None for b in _slots):
@@ -845,9 +845,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                         shop_payload_content_cards(gs.shop.value)
                         if gs.shop.value is not None else []))
                 return ShopActionExecuted(bought_count=_k)
-            if isinstance(a, cw_state.LevelUp):
+            if isinstance(a, cw_state.CwActionLevelUpParam):
                 return ShopActionExecuted(levelup_clicks=1)
-            if isinstance(a, cw_state.RefreshShop):
+            if isinstance(a, cw_state.CwActionRefreshShopParam):
                 return ShopActionExecuted(refresh_paid=int(
                     getattr(a, 'cost', 0) or 0))
             return ShopActionExecuted()
@@ -858,12 +858,12 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         _pre_shop: list | None = None
         for _ in range(512):   # 防御上界:决策循环不收敛 = 策略器 bug 响亮暴露
             a = self.decide_shop_action()   # 零参单动作核(终态契约 §2.1)
-            if isinstance(a, cw_state.CloseShop):
+            if isinstance(a, cw_state.CwActionCloseShopParam):
                 return out
             out.append(a)
-            if isinstance(a, cw_state.RefreshShop):
+            if isinstance(a, cw_state.CwActionRefreshShopParam):
                 return out      # 终结 op:序列到止(重观察语境)
-            if isinstance(a, cw_state.BuyCard):
+            if isinstance(a, cw_state.CwActionBuyCardParam):
                 # 买前快照三件组(升星腿 scratch 基点;必须在直写口写之前
                 # 取,失准形态申报见 apply_shop_merge_leg docstring)。
                 _pre_bench = list(bench_slots_of(gs))
@@ -876,7 +876,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 apply_shop_merge_leg,
             )
-            # 升星腿对非 BuyCard 自 no-op,pre_* 透传即可。
+            # 升星腿对非 CwActionBuyCardParam 自 no-op,pre_* 透传即可。
             apply_shop_merge_leg(gs, a, sig=_sig, pre_bench=_pre_bench,
                                  pre_deployed=_pre_dep, pre_shop=_pre_shop)
         from sr_od.application.currency_war.kernel.cw_game_state import (

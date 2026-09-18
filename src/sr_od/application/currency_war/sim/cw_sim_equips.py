@@ -10,7 +10,7 @@
   缺口在 sim 侧补齐)——穿戴后该角色 worn 集内可合成的两件(基础件
   两两配方 = ``cw_synthesis.synthesize_target`` K8 闭合)立即合成为
   进阶件;装备栏内主动合成同路径;两路径均不耗金。kernel 对
-  WearEquip 为视觉域零写面(PREP_PROJECTION_DOMAINS 登记面「禁扩
+  CwActionWearEquipParam 为视觉域零写面(PREP_PROJECTION_DOMAINS 登记面「禁扩
   静默」),装备动作腿 = sim 侧游戏规则建模(本模块);
 - **角色上限 3 件**;产物占最左简易槽(worn 序内替换语义);卖出角色
   装备全量回装备区(卖出腿归 M07/M09 卖出路径,kernel 腿承载);
@@ -43,9 +43,9 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     Unit,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
-    PrecisionWrenchUse,
-    WearEquip,
-    WrenchUse,
+    CwActionPrecisionWrenchUseParam,
+    CwActionWearEquipParam,
+    CwActionWrenchUseParam,
 )
 from sr_od.application.currency_war.sim.cw_sim_base import obs_sig, sim_evidence
 
@@ -91,7 +91,7 @@ def _find_and_mutate_unit(gs: GameState, char_name: str,
 
     ``mutate`` = 单位 → 变换单位(None = 拒:变更非法,整体不写);
     未命中 → False。容器视图为 frozen dataclass 链,穿戴写 = 对应域
-    整表重建后 obs 写(与 DeployMove 的整表平移契约同形)。
+    整表重建后 obs 写(与 CwActionDeployMoveParam 的整表平移契约同形)。
     """
     from dataclasses import replace
 
@@ -163,7 +163,7 @@ def _slots_to_chars(slots: list) -> list:
     return out
 
 
-def apply_wear_equip(gs: GameState, action: WearEquip) -> bool:
+def apply_wear_equip(gs: GameState, action: CwActionWearEquipParam) -> bool:
     """穿装备腿(游戏规则建模:摘件 → 穿戴 → 穿着即合成)。
 
     拒绝形态(静默拒 = False,调用方按动作未生效处理):owned 无该
@@ -271,7 +271,7 @@ def _find_and_mutate_by_slot(gs: GameState, row: str, slot: int,
     return True
 
 
-def apply_wrench(gs: GameState, action: WrenchUse) -> bool:
+def apply_wrench(gs: GameState, action: CwActionWrenchUseParam) -> bool:
     """拆装扳手腿:取下全部穿戴回装备区,工具消耗(用后消失)。"""
     taken = _unequip_all(gs, action.row, action.slot)
     if taken is None:
@@ -285,7 +285,7 @@ def apply_wrench(gs: GameState, action: WrenchUse) -> bool:
 
 
 def apply_precision_wrench(gs: GameState,
-                           action: PrecisionWrenchUse) -> bool:
+                           action: CwActionPrecisionWrenchUseParam) -> bool:
     """精密拆装扳手腿:同拆装扳手但库存不递减(无限次用)。"""
     return _unequip_all(gs, action.row, action.slot) is not None
 

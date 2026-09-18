@@ -19,7 +19,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_game_state import (
     game_state_of,
 )
-from sr_od.application.currency_war.kernel.cw_vocab import DeployMove
+from sr_od.application.currency_war.kernel.cw_vocab import CwActionDeployMoveParam
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
     ActionOp,
 )
@@ -29,10 +29,10 @@ if TYPE_CHECKING:
 
 
 class DeployMoveOp(ActionOp):
-    """bench → 上阵单步拖拽(腾席链专用;统一词表 DeployMove)。非终结。"""
+    """bench → 上阵单步拖拽(腾席链专用;统一词表 CwActionDeployMoveParam)。非终结。"""
 
     def execute(self, env: PrepExecEnv) -> bool:
-        """bench → 上阵单步拖拽(腾席链专用;统一词表 DeployMove)。
+        """bench → 上阵单步拖拽(腾席链专用;统一词表 CwActionDeployMoveParam)。
 
         执行坐标边:源拖点 = ``bench_idx`` 备战栏 area 序直取(容器下标 =
         area 序,零换算);落位排 = ``to_row``,落位物理槽 = tracked 占用
@@ -45,7 +45,7 @@ class DeployMoveOp(ActionOp):
         记上阵;拖后零落地判定,静默不生效由下一入口观察对账显影,重试 =
         决策循环按新观察自然重派。
         """
-        action: DeployMove = self.action
+        action: CwActionDeployMoveParam = self.action
         ex = env.executor
         match = ex._ctx.cw_match
         session = match.session if match is not None else None

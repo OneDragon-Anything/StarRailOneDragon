@@ -147,19 +147,19 @@ def act_cost(acts: list[dict]) -> int:
     spend = 0
     for a in acts:
         t = a.get('__type__')
-        if t == 'BuyCard':
+        if t == 'CwActionBuyCardParam':
             spend += (a.get('card') or {}).get('cost') or 0
-        elif t == 'LevelUp':
+        elif t == 'CwActionLevelUpParam':
             spend += a.get('cost') or 0
-        elif t == 'RefreshShop':
+        elif t == 'CwActionRefreshShopParam':
             spend += 2
-        elif t == 'SellBench':
+        elif t == 'CwActionSellBenchParam':
             spend -= (a.get('cost') or (a.get('card') or {}).get('cost') or 0)
     return spend
 
 
 def _zero_action(acts: list[dict]) -> bool:
-    return not any(a.get('__type__') in ('BuyCard', 'LevelUp', 'RefreshShop')
+    return not any(a.get('__type__') in ('CwActionBuyCardParam', 'CwActionLevelUpParam', 'CwActionRefreshShopParam')
                    for a in acts)
 
 
@@ -222,9 +222,9 @@ def game_metrics(g: dict, *, planes: int, planned_rounds: int) -> dict:
     m['S2'] = float(best)
     # S3 死锁局:结算行数 < 计划轮数一半(轮转卡死/提前删失)
     m['S3'] = float(len(out) < planned_rounds / 2)
-    # S4 行动量:BuyCard+LevelUp 合计(局级,聚合取中位)
+    # S4 行动量:CwActionBuyCardParam+CwActionLevelUpParam 合计(局级,聚合取中位)
     m['S4'] = float(sum(1 for r in rows for a in r['acts']
-                        if a.get('__type__') in ('BuyCard', 'LevelUp')))
+                        if a.get('__type__') in ('CwActionBuyCardParam', 'CwActionLevelUpParam')))
     # S5 终局 hp(仅哨兵/报告,不作主指标——锁 §1 纪律条款)
     m['final_hp'] = (out[-1].get('hp_after')
                      if out and out[-1].get('hp_after') is not None
@@ -965,9 +965,9 @@ def _write_game(batch: Path, seed: int, *, planes: int = 2, planned: int = 16,
             break  # 未进 P2:只写 P1 段
         idle = i < idle_rounds + danger_idle
         acts = [] if idle else (
-            [{'__type__': 'BuyCard', 'card': {'cost': 3, 'name': f'c{j}'}}
+            [{'__type__': 'CwActionBuyCardParam', 'card': {'cost': 3, 'name': f'c{j}'}}
              for j in range(n_buys)]
-            + [{'__type__': 'LevelUp', 'cost': 4} for _ in range(n_levels)])
+            + [{'__type__': 'CwActionLevelUpParam', 'cost': 4} for _ in range(n_levels)])
         # 位面末轮(P1 末=i=8;P2 末=最后一轮)可注入指定携金(G2 自测用)
         plane_end = (i == 8) or (i == n_rounds - 1)
         gold = (end_gold if (end_gold is not None and plane_end)

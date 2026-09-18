@@ -66,7 +66,7 @@ def xp_apply_clicks(level: int, xp_cur: int, clicks: int,
     """N 次「购买经验」后的期望 (level, xp_cur)(纯函数;XP 期望态账本的推进算子)。
 
     语义 = ADR-0129 单一源:每击 +xp_per_buy 经验;攒满当前级门槛即升级、
-    溢出结转(与 cw_state LevelUp 动作应用 / sim 轮末升级清零结转同规则)。
+    溢出结转(与 cw_state CwActionLevelUpParam 动作应用 / sim 轮末升级清零结转同规则)。
     封顶 MAX_PLAYER_LEVEL(10)级(live 与 sim 同语义:满级后购买经验
     无效,sim 动作面同消费本常量)。
 
@@ -91,7 +91,7 @@ def xp_clicks_to_level(level: int, xp_cur: int,
     """当前级攒到**恰升 1 级**所需的最少购买经验次数(纯函数)。
 
     = ceil((need − cur) / xp_per_buy);cur 已达门槛 → 1(再点一次即升)。
-    消费端 = CwScreenPrep 直接 LevelUp 动作(腾席链「循环点至 level+1、
+    消费端 = CwScreenPrep 直接 CwActionLevelUpParam 动作(腾席链「循环点至 level+1、
     首次验证成功即停」通道):progressed=True 时实际击数 = 本值。
     已升满 MAX_PLAYER_LEVEL(10)级 → 0(点击无效,调用方零推进)。
     """
@@ -104,7 +104,7 @@ def xp_clicks_to_level(level: int, xp_cur: int,
     return (gap + xp_per_buy - 1) // xp_per_buy
 
 # 刷新商店实付金 = 基价常量(建模值,非 OCR 读数)。出处:多局旧决策行
-# 相邻金差对账(只含 LevelUp+Refresh 的最小对账对)全部 = 2,不随金币/
+# 相邻金差对账(只含 CwActionLevelUpParam+Refresh 的最小对账对)全部 = 2,不随金币/
 # 次数/等级变;invest_effects.md「刷新 45% 概率免费 → 期望刷价 1.1」隐含基价
 # 2(2×0.55=1.1)。右下角「文本-刷新金币数」rect 实际读到的是面板徽标
 # (数值 = min(gold//10,5) = 利息公式,非刷价;三流对拍定谳,ADR-0456)——

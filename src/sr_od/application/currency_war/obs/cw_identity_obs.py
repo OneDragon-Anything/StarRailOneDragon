@@ -1482,7 +1482,7 @@ _REWARD_MAX_R: int = 60
 # (不抛不猜,语义见 read_reward_spheres),禁回退硬编码 rect。
 
 # ===== 幻检交叉验证(奖励域读取防幻检批;实机停机局实证:×12 礼盒蝴蝶结/
-# 扣饰被 Hough 幻检为 2 球,点击零消失 → ClickSpheres 同签名死循环
+# 扣饰被 Hough 幻检为 2 球,点击零消失 → CwActionClickSpheresParam 同签名死循环
 # 停机;同族第 2 件,前件 = W261 装备 icon 越界假圆)=====
 # 三道门全部标定自 18 样本离线对拍(3 真球 fixture reward_spheres_4/5/8 共
 # 16 真球 + 礼盒停机帧 2 幻球;标定脚本口径 = 圆内 r−4 mask 的 Canny 边缘
@@ -1563,7 +1563,7 @@ def note_phantom_sphere(ctx: SrContext, pt: Point) -> None:
 
     黑名单 = session 动态挂 ``reward_sphere_phantom_points``(局级生命周期,
     与漏斗/期望账本同款挂载模式);读侧 ``read_reward_spheres`` 按位置容差
-    过滤 → 后续环不再把该目标派给 ClickSpheres(禁无限循环的唯一出口,
+    过滤 → 后续环不再把该目标派给 CwActionClickSpheresParam(禁无限循环的唯一出口,
     黑名单守卫不再是唯一出路)。重复登记同一位置幂等。"""
     try:
         m = ctx.cw_match

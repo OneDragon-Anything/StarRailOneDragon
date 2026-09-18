@@ -5,7 +5,7 @@
 
 - 实机计算路径:``cw_observation.board_from_tracked``(面板真值对齐);
 - sim/状态派生路径:``cw_state._recount_board``(= ``cw_battle_calib._board_counts_of``,
-  DeployMove/事务/围栏后的 board 维护);
+  CwActionDeployMoveParam/事务/围栏后的 board 维护);
 - 检查镜像:``cw_sim_checks._board_agg_of_deployed_row``(账本行聚合)。
 
 口径分层(ADR-0312;sim-wiring.md「羁绊口径分层」节):

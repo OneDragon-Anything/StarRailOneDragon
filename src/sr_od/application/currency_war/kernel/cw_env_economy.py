@@ -49,7 +49,7 @@ _PLANE_ARRIVAL_KEY = 'plane_arrival_p{}'
 # P(达 20)/P(达 30));scope ∈ {total, paid} 对齐统一 state 计数载体:
 # total = 累计全部刷新(total_refresh_count,二手市场「商店刷新20次后」)、
 # paid = 累计付费刷新(paid_refresh_count,长线利好「花费金币进行30次刷新」)。
-# 数据批口径 = 逐局 RefreshShop 动作计数,cost>0 记付费
+# 数据批口径 = 逐局 CwActionRefreshShopParam 动作计数,cost>0 记付费
 # (细则 = invest-env 迭代 data-batch-estimates 详设,git 历史可溯)。
 _REFRESH_P_KEY = 'refresh_{}_ge{}_p'
 # 刷新条件后继期望 = refresh_{scope}_after{阈值}_e = E[(N−阈值)+ | N≥阈值]
@@ -127,12 +127,12 @@ ENV_ECONOMY_ESTIMATES: dict[str, EconomyEstimate] = {
     # —— 刷新次数分布(design §2.2.4 需估参数②;只落有消费通道的键)——
     'refresh_total_ge20_p': EconomyEstimate(
         value=0.0088, ci=(0.0016, 0.0480),
-        source='对局档案逐局 RefreshShop 动作计数(完成局 114;总口径);'
+        source='对局档案逐局 CwActionRefreshShopParam 动作计数(完成局 114;总口径);'
                ' tools/cw/env_economy_estimates.py,Wilson 95%',
         cutoff='2026-09-12'),
     'refresh_paid_ge30_p': EconomyEstimate(
         value=0.0, ci=(0.0, 0.0326),
-        source='对局档案逐局 RefreshShop 动作计数(完成局 114;付费口径'
+        source='对局档案逐局 CwActionRefreshShopParam 动作计数(完成局 114;付费口径'
                ' cost>0,零命中); tools/cw/env_economy_estimates.py,Wilson 95%',
         cutoff='2026-09-12'),
 }

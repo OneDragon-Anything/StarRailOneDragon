@@ -46,7 +46,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     resolve_strategy_canonical,
     strategy_bindings,
 )
-from sr_od.application.currency_war.kernel.cw_vocab import PickEvent
+from sr_od.application.currency_war.kernel.cw_vocab import CwActionPickEventParam
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_comps import Comp
@@ -191,7 +191,7 @@ def _opt_counters_dot(opt: str) -> bool:
 
 def decide_event(options: list[str], config, gs: GameState,
                  locked_comp: str = '', demoted_endgame: bool = False,
-                 evicted: frozenset[str] | set[str] = frozenset()) -> PickEvent:
+                 evicted: frozenset[str] | set[str] = frozenset()) -> CwActionPickEventParam:
     """事件选项打分(投资策略/环境 3 选 1;判据重构,ADR-0597)。
 
     分值来源优先级表(每项只在**高于当前分**时覆盖;ADR-0143/0144/0144b 语义;
@@ -567,7 +567,7 @@ def decide_event(options: list[str], config, gs: GameState,
         # 归因后缀仅观测归因,不进任何检查器白名单(C1→D4 迁移
         # 兼容口径,沿投资选卡归因串先例;裁定见 sim/checks/suspects.py 模块头)。
         best_reason = f'{best_reason}+refresh-suggest'
-    return PickEvent(option_idx=best_idx, refresh=bool(refresh_slots),
+    return CwActionPickEventParam(option_idx=best_idx, refresh=bool(refresh_slots),
                      refresh_slots=refresh_slots,
                      reason=f"{best_reason} score={best_score:.0f}")
 
