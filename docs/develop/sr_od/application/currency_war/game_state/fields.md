@@ -579,28 +579,17 @@ effective_refresh_prob:键在且 >0 直用、≤0/缺键退基线表——**契�
   step 金 +1 次、至多 cap(50/10/3);已结构化入注册表(STRATEGY_EFFECTS 两条
   EffectSpec),经节点桥 `grant_effect_node_refresh_balance` 按金现值评估自动生效。
 
-#### 3.3.6 商店免费刷新余额 free_refresh_balance
+#### 3.3.6-3.3.8 刷新三计数(已迁出容器)
 
-当前未消耗免费刷新次数。**写入=仅逻辑**(结构化族按效果激活经账本累加——**桥接
-载体**,kernel/cw_game_state.py):`apply_effect_burst_grant`(burst=选卡一次性,
-活载体=固定理财即时段)/`grant_effect_node_refresh_balance`(per_node=每节点 +N,
-活载体=双手狸 2/节点;**条件判定族已同桥 wire**——按 gs.gold 现值逐条目评估,金未读
-None 保守零授予;闸门=advance_node 的 advanced 位每节点恰一次)。**无 UI 观察通道**
-——画面档与游戏 UI 均无计数控件(对拍申报);间接核对信号=免费帧刷价显示 0/「免费」
-(挂实机采证义务)。付费帧/免费帧判定输入。
-
-#### 3.3.7 累计付费刷新次数 paid_refresh_count
-
-本局**付费**刷新累计。**写入=仅逻辑**(RefreshShop 执行落地门事件累加,无 UI 观察
-通道)。长线利好的触发计数载体(卡文=「**花费金币**进行 30 次刷新」,付费域)。
-
-#### 3.3.8 累计刷新总次数 total_refresh_count
-
-本局**全部**刷新累计(付费+免费)。**写入=仅逻辑**(RefreshShop 执行落地门事件
-累加,无 UI 观察通道;语义对齐注册表 CounterKey.REFRESH 通用刷新计数)。触发计数
-载体:二手市场(20 刷后 +30 金+投影仪)/采购专员(每 7/5 次刷同费五张——卡文无付费
-限定=全部刷新域)/合并同类项逐刷判定。
-**边界**:采购专员计费域若实采为付费域则归属一行反转(待实机实证标注)。
+`free_refresh_balance`/`paid_refresh_count`/`total_refresh_count` 已随 2026-09-18
+用户裁决迁出容器,住**效果账本** `ActiveEffectInventory`
+(`free_refresh_balance`/`refresh_paid`/`refresh_total`,统一计算)。写端 = 刷新
+上报函数 `report_action_refresh_shop_param` 单口(生产 = 刷新 op 自上报,sink 吸收
+路径 = 接收侧补触发);效果发放端 = 桥 `apply_effect_burst_grant`/
+`grant_effect_node_refresh_balance` → `grant_free_refreshes` 统一出口。消费方 =
+选卡评估(`cw_env_economy` 通道5,全量/付费阈值)+ 免费闸 + 按策略触发面
+(`CounterKey.REFRESH`,采购专员族)。免费判定输入 = 刷前按钮态 UI 真值优先,
+失读回退账本余额>0(保守形态同迁移前)。域版本面退役,考古走 git。
 
 #### 3.3.9 条件性免费发放与每节点自动刷新
 
@@ -835,12 +824,13 @@ proc 留证(牌面已变 ∧ 金未扣 → 截图+flag,不停机)与刷新期望
 覆盖,快照属 op 局部变量——准入③)。
 **边界**:免费来源按 §3.3.5–§3.3.9 分族口径引用;免费帧刷费不写。**修饰**:按刷产
 经验——淘金客 xp_per_refresh=2(经验等级 logic 写端)。
-**刷新执行事实组行为口径**:计数组(§3.3.6-§3.3.8)写端 = RefreshShop **执行落地门**
-(apply_action_outcome;触发时点=发射语义,统一观察架构 v12;「未落地不计数」防线
-由观察侧 reconcile 对账承接)——total_refresh_count 恒 +1;**免费帧闸 = 不写
-paid_refresh_count**(付费域纯净性;免费判定输入 = 免费刷新余额>0,余额未建模局恒
-paid=现状保守形态),免费帧同时消耗余额(下限 0)。刷价字段本口**不写**(写端=现场
-OCR 唯一,§3.3.4)。**每节点自动刷新不进计数组**(§3.3.9 单列基础行为事实)。
+**刷新执行事实组行为口径**(2026-09-18 迁入裁决):计数 = 效果账本统一计算
+(`ActiveEffectInventory.record_refresh`;写端 = 刷新上报函数
+`report_action_refresh_shop_param` 单口,生产 = 刷新 op 自上报,sink 吸收路径 =
+接收侧补触发)——refresh_total 恒 +1;**免费帧闸 = 不进 refresh_paid**(付费域
+纯净性;免费判定输入 = 显式 free 真值优先,回退账本余额>0),免费帧同时消耗余额
+(下限 0)。刷价字段不写(写端=现场 OCR 唯一,§3.3.4)。**每节点自动刷新不进
+计数组**(§3.3.9 单列基础行为事实)。
 
 #### RunEquip 装备
 
@@ -1508,7 +1498,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
 | 34 | shop_refresh_cost | `gs.shop_refresh_cost` | D | 同上;sim 帧恒基价常量 `REFRESH_COST_BASE` |
 | 35 | selected_difficulty | `gs.selected_difficulty` | D | 同上 |
 
-**容器独有域(反向汇总)**:node_path / game_mode / refresh_counters(3)/
+**容器独有域(反向汇总)**:node_path / game_mode / (refresh_counters 三字段已迁出容器住效果账本,2026-09-18)/
 node_screen_refresh(4)/ consumables / spheres / substate / event_overlay /
 event_choices(chosen_×10)/ settlement / hp_floor_triggered / prev_screen /
 current_screen / top_bar_raw / node_ord / receipts / match_final /

@@ -14,6 +14,14 @@
 7. 分派只允许:实机 op 直调(零选择逻辑)+ sim/回放引擎入口「一行委托」分支串。禁新增任何按类型聚合的转移函数/分发表。
 8. `LogicOutcome` 出参保留(拒绝语义单源「禁引擎自判」+ 决定量回流)。
 9. 装配点 = 注册表(词表类 → op 类,精确类型表);注册表现有机制保留。
+10. **刷新计数组迁入效果账本**(2026-09-18 追加裁决):GameState 三字段
+    (`free_refresh_balance`/`paid_refresh_count`/`total_refresh_count`)迁出容器,
+    住 `ActiveEffectInventory` 统一计算;**`report_action_refresh_shop_param` 为
+    唯一触发点**(生产 = 刷新 op 自上报,sim = 委托串直调,sink 吸收路径 =
+    接收侧补触发;落地门计数块删除)。终结跳写申报收窄:金与 payload 不写
+    (观察覆盖),计数照触发;free = 刷前按钮态 UI 真值优先,失读回退账本
+    余额判定。消费方(选卡评估 env_economy 通道5/免费闸/采购专员触发面)
+    读口随迁,行为逐位等价。
 
 ## 1. 阶段③:Op 层重组
 

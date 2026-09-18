@@ -94,7 +94,7 @@ op = `operations/cw_op/cw_refresh_shop_action.py::CwActionRefreshShopOp`（**段
 **确定面**：
 
 - gold −= 实付刷新费。刷价真值 = 容器 `shop_refresh_cost`（备战帧现场 OCR，ADR-0622 观察通道；缺读 = 建模基价 `REFRESH_COST_BASE` 显式缺省，`kernel/cw_economy.py::refresh_cost_effective`）。免费帧（paid=0）金域不写（付费域纯净性，fields.md §3.3.4）。
-- 计数组腿（容器写端 = 刷新执行落地门）：`total_refresh_count` 恒 +1；付费帧 `paid_refresh_count` +1；免费帧 `free_refresh_balance` −1（下限 0）且 paid 不写（fields.md §4.2 RefreshShop）。
+- 计数组（效果账本统一计算，2026-09-18 迁入裁决）：`refresh_total` 恒 +1；付费帧 `refresh_paid` +1；免费帧扣 `free_refresh_balance`（下限 0）且 paid 不进；写端 = 上报函数 `report_action_refresh_shop_param`（刷新 op 自上报统一触发；fields.md §3.3.6-8 迁出申报）。
 - 修饰腿（注册表口径）：免费刷新来源（概率事件 / 按节点免费额度）只影响实付金，不改「整店全换」；按刷产经验（淘金客，`xp_per_refresh`）= 经验域 logic 写（fields.md §4.2 修饰段）。
 
 **随机面**：刷新后的牌面 = 整店 5 槽全换（非逐槽补空，实机实锤 `research/economy.md` §2.1）→ **店载荷失效，新牌面归下一段入口观察**；容器 shop payload 本动作不写（随机面域级跳写，新牌面留观察覆盖）。UI 陷阱在册：面板右下「刷新金币数」区域实际印的是利息徽标不是刷价（三流对拍定谳，`REFRESH_COST_BASE` 注）。

@@ -50,7 +50,8 @@
 
 ## 6. 动作侧计数面(效果账计数)
 
-- `CounterKey.BUY`/`CounterKey.REFRESH`:`effects.bump_key` 推进(挂执行落地门 = `cw_screen_buy_cards.py::apply_action_outcome`;对全部声明 `duties.track` 的在册条目推进,消费按 (spec_id, key) 隔离读)——返利族「每购 3 张 5 费」/采购专员族「每刷 7/5 次」计数面;
+- `CounterKey.BUY`:商店落地门 `effects.bump_key` 推进(`cw_screen_buy_cards.py::apply_action_outcome`;对全部声明 `duties.track` 的在册条目推进,消费按 (spec_id, key) 隔离读)——返利族「每购 3 张 5 费」计数面;
+- `CounterKey.REFRESH`:刷新上报函数统一触发(`report_action_refresh_shop_param` → `gs.effects.record_refresh`,2026-09-18 迁入裁决:刷新三计数同入账本统一计算)——采购专员族「每刷 7/5 次」触发面 + 选卡评估全量计数(refresh_total/refresh_paid);
 - 免战牌次数:`consume_use`(跳过执行落地递减,归零移除,见 [start-battle.md](start-battle.md));
 - 升级事件:`effects.on_level_up`(挂点 = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp` 内,发出即登记,best-effort 观测零决策语义)。
 

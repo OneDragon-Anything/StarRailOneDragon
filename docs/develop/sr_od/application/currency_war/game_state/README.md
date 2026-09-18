@@ -98,7 +98,7 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | 派生域(derivation) | top_bar_raw(观察层)/ node_ord(逻辑层)/ prev_screen / current_screen / node_hist_ord(哨兵) | ①观察+③派生(见 node-domain.md §2-§3) |
 | 单位域(units) | front_row / back_row / bench(BenchView)/ back_layout / deploy_cap | ①观察+②动作+③效果桥 |
 | 经济域(economy) | gold / hp / level / xp / streak / level_up_cost / shop_refresh_cost | ①观察+②动作 |
-| 商店刷新计数域(refresh_counters) | free_refresh_balance / paid_refresh_count / total_refresh_count / prev_node_spent | ②动作+③效果桥(写入=仅逻辑) |
+| 商店刷新计数域(refresh_counters) | 三计数已迁出容器住效果账本(2026-09-18,写端=刷新上报函数);prev_node_spent 保留容器(economy 面) | ②动作+③效果桥 |
 | 节点屏刷新计数域(node_screen_refresh) | encounter_refresh_used / supply_refresh_used / env_refresh_used / strategy_refresh_used(逐卡) | ②动作(遭遇/策略经 on_outcome 发射钩子写、补给为 live 刷新发射单点,三写端在产;环境零写端在册) |
 | 持久账本域(inventory) | equips / consumables(免战牌载体归一入效果账本,不在本域) | ①观察+②动作 |
 | 奖励球域(spheres) | spheres | ①观察 |
