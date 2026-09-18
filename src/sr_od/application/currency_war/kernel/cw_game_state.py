@@ -3163,6 +3163,16 @@ class GameState:
     # skip_battle_active/remaining 两 Field 已按正本归一移除,消费走
     # gs.effects 查询)。
     equips: Field[list[str]] = field(default_factory=Field)          # 装备库存(§3.2.15)
+    # [索引定义] occupied_equips:已穿装备位置(装备域姊妹面,迭代
+    # 2026-09-18-prep-obs-retirement 阶段 3.2 立域)。键坐标系 =
+    # 'front:1'/'back:2' 形态字符串(row ∈ front|back,slot = 画面物理槽位
+    # 1-based,前排 1-4/后排 1-选档 N,与机械动作参数同域——坐标系正本 =
+    # cw_prep_actions.PrepObservation.occupied_equips 声明;tuple 键 JSON
+    # 序列化不安全故字符串化);值 = 件名列表。取值时机 = 备战 heavy 观察
+    # 每入口帧实读覆盖(两态制,观察赢);写入端单一源 = CwScreenPrep 观察
+    # 写端(与 equips 同点同环);未观察(None) = 识别域未就绪,M7 装备计划
+    # 按 fail 门保守关(与旧黑板 None 语义同映射)。
+    occupied_equips: Field[dict[str, list[str]]] = field(default_factory=Field)
     consumables: Field[list[str]] = field(default_factory=Field)     # 消耗品库存(§3.2.16)
 
     # —— 奖励球(§3.2.8,不占席)——

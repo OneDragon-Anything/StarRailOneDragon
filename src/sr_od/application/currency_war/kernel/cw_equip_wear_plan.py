@@ -115,10 +115,12 @@ def _build_equip_wear_plan(session: Any,
                            registry: Any = None) -> EquipPlanBuild:
     """装备穿戴计划产出位(分发段;ADR-0601 §3-C1 计划随指令下发)。
 
-    P4 观察接线:三路事实源 = **入口观察产物**
-    ``session.prep_obs_frame``(PrepObservation;写者白名单 = cw_screen_prep
-    观察装配点/循环逻辑态直写步,装备域采集单一源 = ``obs.cw_observe_full
-    .observe_full`` heavy)。本函数**零读屏**:原对执行帧现读三路
+    事实源 = **容器 game state 读口**(迭代 2026-09-18-prep-obs-retirement
+    阶段 3.2 换源):owned ← ``gs.equips``、occupied ← ``gs.occupied_equips``
+    (键 'front:1' 形态)、deployed ← ``deployed_slots_of``、后排选档 ←
+    ``gs.back_layout`` Field 原值;写者单一源 = cw_screen_prep 观察装配点
+    (装备域采集单一源 = ``obs.cw_observe_full.observe_full`` heavy)。
+    本函数**零读屏**:原对执行帧现读三路
     owned(read_equips)/occupied(read_row_equipped)/deployed
     (read_deployed_chars)退役 = 调用位置迁移——识别函数本体归观察链
     复用(识别机制不出端口,obs.cw_observe_full 采集);kernel 判据单一
@@ -159,34 +161,39 @@ def _build_equip_wear_plan(session: Any,
         resolve_wear_release,
     )
 
-    # ===== 事实源前置(读入口观察产物,零读屏;fail_reason 通道)=====
-    from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
-    obs = game_state_of(session).prep_obs
-    if obs is None:
-        return EquipPlanBuild(
-            fail_reason='备战观察帧缺失(黑板契约:入口观察先于派发)')
-    if getattr(obs, 'owned_equips', None) is None:
+    # ===== 事实源前置(容器现读,零读屏;fail_reason 通道)=====
+    # 全面换源(迭代 2026-09-18-prep-obs-retirement 阶段 3.2):owned/
+    # occupied/back_layout/deployed 四路输入全部改容器读口,黑板帧
+    # (gs.prep_obs)消费清零。None 语义映射 = 容器 Field 未观察(None)
+    # = 识别域未就绪,fail 门保守关方向与旧黑板 None 逐位同。
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        deployed_slots_of,
+        game_state_of,
+    )
+    _gs_c = game_state_of(session)
+    _owned_v = _gs_c.equips.value
+    if _owned_v is None:
         return EquipPlanBuild(
             fail_reason='装备观察域未就绪:owned'
                         '(cw_equip 模板库未加载/区域-道具装备 缺失)')
-    if getattr(obs, 'occupied_equips', None) is None:
+    owned_names = list(_owned_v)
+    _occupied_v = _gs_c.occupied_equips.value
+    if _occupied_v is None:
         return EquipPlanBuild(
             fail_reason='装备观察域未就绪:occupied'
                         '(cw_equip TM grays 未加载)')
-    owned_names = list(obs.owned_equips)
-    # occupied 键坐标系 = (row, 物理槽位 1-based),采集层直出;防御拷贝
-    # (计划求值全程本地态,禁反向污染黑板帧)。
-    occupied_all: dict = {(row, int(slot)): list(names)
-                          for (row, slot), names in obs.occupied_equips.items()}
-    _bk_n = getattr(obs, 'back_layout_slots', None)
-    # deployed 换源(容器现读;迭代 2026-09-18-prep-obs-retirement 阶段
-    # 3.1):黑板 obs.deployed_chars 一拍陈旧是部署超上限事故的同类输入
-    # 面,M7 的 deployed 消费(穿戴对象枚举)同帧同源改容器读口派生。
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        deployed_slots_of,
-    )
-    deployed = [c for c in deployed_slots_of(game_state_of(session))
-                if c is not None]
+    # occupied 容器键 'front:1' 形态 → 求值键 (row, 物理槽位 1-based)
+    # (坐标系正本 = cw_prep_actions.PrepObservation.occupied_equips 声明);
+    # 防御拷贝(计划求值全程本地态,禁反向污染容器)。
+    occupied_all: dict = {(key.split(':', 1)[0], int(key.split(':', 1)[1])):
+                          list(names)
+                          for key, names in _occupied_v.items()}
+    # back_layout 读 Field 原值:None(未观察) = 布局未知双弃权帧,有值 =
+    # 槽数(禁 back_capacity_of——其 None→6 缺省翻转弃权语义);
+    # 依据 = 迭代详设 obs-retirement §阶段 3.2-4。
+    _bk_raw = _gs_c.back_layout.value
+    _bk_n = int(_bk_raw) if _bk_raw is not None else None
+    deployed = [c for c in deployed_slots_of(_gs_c) if c is not None]
     _tgt_comp = strategy_state_of(session).target_comp
     # ⚖️ 过渡期持有语义修正(r70 审计刀②):过渡期**穿给当前上场的 5 人**
     # ——key_equips 命中件照穿,非 key 散件穿给当前板面高战力者(carry 优先);
@@ -194,12 +201,8 @@ def _build_equip_wear_plan(session: Any,
     # 装配源换源(ADR-0530 决策2 核销):执行侧装配源 =
     # session 容器单例(备战帧观察写端同链刷新);容器与帧同帧同源
     # (同一备战观察),读口 = 容器公共读口单一源。
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        game_state_of,
-    )
-    _gs_c = game_state_of(session)
     _form = 0.0
-    if _tgt_comp is not None and deployed and _gs_c is not None:
+    if _tgt_comp is not None and deployed:
         from sr_od.application.currency_war.kernel.cw_comps import (
             form_progress,
         )

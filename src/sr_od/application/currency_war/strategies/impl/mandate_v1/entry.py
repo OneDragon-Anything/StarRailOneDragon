@@ -675,10 +675,10 @@ def emit(obs: PrepObservation, session: StrategySession,
         evaluate_tool_actions as _eval_tools,
     )
     _tools_emitted: list[Emitted] = []
-    # owned 快照源 = 黑板帧 owned_equips(P4 观察接线,T-171;旧
-    # session.last_owned_equips 陈旧快照读点退役——评估输入与计划产出位
-    # 同帧同源,开箱新件经下一入口观察进帧)。
-    _owned_snap = list(getattr(obs, 'owned_equips', None) or [])
+    # owned 快照源 = 容器 equips 读口(迭代 2026-09-18-prep-obs-
+    # retirement 阶段 3.2 换源;旧黑板 owned_equips 读点退役——评估输入
+    # 与 M7 计划产出位同源同链,开箱新件经下一入口观察进容器)。
+    _owned_snap = list(gs.equips.value or [])
     if _owned_snap:
         _ct_tools = state_of(session).cw4_counters
         _tool_actions = _eval_tools(
@@ -797,7 +797,10 @@ def emit(obs: PrepObservation, session: StrategySession,
         round_num=_round_num,
         # 装备域 owned 件名池直传(P4 观察接线,T-171):M7 装备穿戴放行
         # 判定输入与计划产出位同帧同源(None = 识别域未就绪,门按空保守关)。
-        owned_equips=getattr(obs, 'owned_equips', None),
+        # 装备域 owned 件名池(阶段 3.2 换源:容器 equips 读口;None =
+        # 未观察=识别域未就绪,门按空保守关——与旧黑板 None 语义同映射)。
+        owned_equips=(list(gs.equips.value)
+                      if gs.equips.value is not None else None),
         # 溢出告警旗标直传(T-226/R11):容器观察写端单一源(cw_screen_prep
         # 溢出观察写端);缺读 None = 门关(fail-open 向常规决策,与 False
         # 同向——旗标只由真读横幅置位)。

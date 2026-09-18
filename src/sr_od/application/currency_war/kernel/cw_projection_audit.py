@@ -205,6 +205,11 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'consumables': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='消耗品库存读面(§3.2.16),零逻辑写端'),
+    'occupied_equips': ProjectionAuditRow(
+        status=AUDIT_OBSERVATION_ONLY,
+        basis='已穿装备位置读面(装备域姊妹面,迭代 2026-09-18-prep-obs-'
+              'retirement 阶段 3.2 立域;写端单一源 = CwScreenPrep 观察'
+              '装配点),零逻辑写端'),
     'spheres': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='奖励球视觉域(§3.2.8,点击目标非席位居民),零逻辑写端'),
