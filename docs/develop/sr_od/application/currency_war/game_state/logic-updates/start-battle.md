@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-点击「按钮-出战」推进节点进入战斗——**转移动作**(备战访问终结·唯一完成态):只把画面从备战转移到战斗,不按游戏规则改写任何局内资源。词表 = `kernel/cw_vocab.py::StartBattle`(无字段 dataclass);执行 = 三路径(备战环/统一执行器/恢复局)经同一注册表分派到达 `operations/cw_op/cw_start_battle_action.py::StartBattleOp`(点击+弹窗确认,零判效零重发);**发射统一执行器** = `operations/cw_loop.py::launch_battle_unified`(屏态复验→浮层安全检查→部署原子序→出战点击链;face = armed/resume 两调用面);发射准入判据 = mandate_v1 前置发射位消费 kernel `readiness_launch_decision`(策略层宿主,2026-09-16 迁移)。战斗窗置位 = 外循环既有口径(ADR-0250 驻留闩),事实通道 = CwScreenPrep.launch_fired(交回契约)。
+点击「按钮-出战」推进节点进入战斗——**转移动作**(备战访问终结·唯一完成态):只把画面从备战转移到战斗,不按游戏规则改写任何局内资源。词表 = `kernel/cw_vocab.py::StartBattle`(无字段 dataclass);执行 = 三路径(备战环/统一执行器/恢复局)经同一注册表分派到达 `operations/cw_op/cw_start_battle_action.py::StartBattleOp`(点击+弹窗确认,零判效零重发);**发射统一执行器** = `operations/cw_loop.py::launch_battle_unified`(屏态复验→浮层安全检查→部署原子序→出战点击链;face = armed/resume 两调用面);发射准入判据 = mandate_v1 前置发射位消费 kernel `readiness_launch_decision`(策略层宿主)。战斗窗置位 = 外循环既有口径(ADR-0250 驻留闩),事实通道 = CwScreenPrep.launch_fired(交回契约)。
 
 ## 2. 逻辑态域集
 
@@ -15,7 +15,7 @@
 ## 3. 确定面转移规则(逐条)
 
 1. **上报动作**(非容器域):op 完成步(点击出战/跳过 + 弹窗确认后)上报动作事实;免战牌子态经 apply_op_effect 分支执行效果账本 consume_use(上报时递减,未登记零动作);战斗窗口置位归外循环(出战点击落地由游戏承载,op 零判效)。
-2. **常规发射**(执行器):找钮(「按钮-出战」,免战子态查「按钮-跳过」,正交态查找不锁死单一屏——免战与商店开可叠加)→ mouse_move + click + 失焦守卫(重点一次)→ 未达上限警告弹窗勾选 + 确认(勾「本局不再提示」,对齐 CwScreenDeployNotFull)→ 轮询转移;
+2. **常规发射**(执行器):找钮(「按钮-出战」;免战子态查「按钮-跳过」;备战 + 开商店两屏正交态查找——免战与商店开可叠加,叠加帧识别为开商店屏)→ mouse_move + click(基本单击)→ 固定等待 1.0s(`POST_CLICK_WAIT_S`,弹窗渲染窗,不轮询)→ 单帧截图弹窗收口(「货币战争-未达上限警告」= 勾「勾选-本局不再提示」+ 点「按钮-确认」,对齐 CwScreenDeployNotFull;「货币战争-提示-前台无角色」= 点「按钮-确认」;都没有 = 完成——出战点击后的真弹窗全清单已排查仅此两类)→ 上报动作事实交回。旧发射家族(6×0.5s 转移轮询/备战标识消失验证/POST_LAUNCH_BLOCKERS 拦截弹窗守卫/重发长按下/失焦守卫/launch_dead 连败停机)已整删:op 不判效,交回后画面状态由外循环下一帧重判;
 3. **零重试零判效**:点击未落地/被拒不重发不计数——交回外循环重判,下一周期策略自然重提案;点击丢失的停顿监测归哨兵(框架不裁策略卡死)。
 4. **免战牌子态**(策略卡「免战牌」激活):出战按钮变「跳过(N/N)」= 本节点直跳战斗(免 2 次战);跳过点击并完成上报 → 效果账本次数递减(上报时递减,§3 第 1 条)(`kernel/cw_effect_inventory.py::ActiveEffectInventory.consume_use`:remaining_uses −1,归零移除;余量种子 = `EffectSpec.duration_uses`)。递减挂点与登记挂点解耦(登记面缺位的局 consume_use 返 None 零动作,不炸发射回执);「用尽后按钮恢复出战」待实机验(观察工作清单)。
 
@@ -25,8 +25,8 @@
 
 ## 5. 拒绝语义
 
-- 找不到出战/跳过按钮 = `emitted=False`(「找不到出战按钮」),交上层处置;
-- area 缺失 = 确定性失败禁兜底坐标(如实上报「未执行」交回);
+- 找不到出战/跳过按钮 = `emitted=False`(detail =「未执行:找不到按钮」,交上层处置;
+- area 缺失 = 确定性失败禁兜底坐标(detail =「area 缺失:<area 名>」,按序列未完成上报「未执行」交回);
 - 出战被拒弹窗(未达上限警告/前台无角色)= op 内点确认后完成交回;重部署归策略部署义务(下一备战帧自然提案),框架零恢复链。
 - W209j 刹车(ADR-0388):运行中被停 → `StopBrakeShortCircuit` 异常拒绝执行任何动作(停机非动作,不五回执行);
 - 容器零写语义下无 applied=False 拒绝形态(`apply_op_effect` else 分支零推进)。
@@ -45,13 +45,8 @@ StartBattle 不在 `cw_vocab.py::Action` 联合内——节点推进归 sim 引�
 
 ## 9. 依据
 
-[../action-logic-state.md](../action-logic-state.md) §5(转场类动作逻辑态 = 空 + 免战牌态);[fields.md](../fields.md) §3.2.19(免战牌激活态与剩余跳过次数)/§4.2 出战行(免战分支与 G9 暂定表述)/§4.2 结算覆盖行;`prep_actions.py::PrepActionExecutor._start_battle` docstring(恢复语义 = 禁 active_window 激活,重发 = 同通道原样重试);[flow/action_exec.md](../../flow/action_exec.md) §7(发射重发/连败停机流程防线)。
+[../action-logic-state.md](../action-logic-state.md) §5(转场类动作逻辑态 = 空 + 免战牌态);[fields.md](../fields.md) §3.2.19(免战牌激活态与剩余跳过次数)/§4.2 出战行(免战分支与 G9 暂定表述)/§4.2 结算覆盖行;`operations/cw_op/cw_start_battle_action.py` 模块头(执行序与旧发射家族整删申报;替身缝 = `prep_actions.py::PrepActionExecutor._start_battle` 薄委托);[flow/action_exec.md](../../flow/action_exec.md) §7(发射重发/连败停机流程防线)。
 
 ## 10. 同族:OpenShop(开店)
 
-转场族另一注册行,逻辑态同为**空**(与开战同节收录,指针来源 = [prep-executor-actions.md](prep-executor-actions.md) §6 边界):
-
-- **词表与注册行**:`kernel/cw_vocab.py::OpenShop`(read_only / restricted_spend 两形态);注册行 = terminal 承载行——`operations/cw_op/cw_open_shop_action.py::OpenShopOp.execute` 抛 AssertionError(开店流程编排截流在 `operations/cw_screen/cw_screen_prep.py::_open_shop_phase`,可达即分派漏斗被绕过);类属性承载终结判定/等待(`terminal=True`,`terminal_wait=1.0`);
-- **容器零写**:开店 = 画面态周转(备战画面 → 商店面板块),零局内资源变更;`apply_op_effect` else 分支显式不建模清单点名 OpenShop;商店载荷/gold 真值由开店后的入口观察重建(`shop` 载荷域 = 观察写端,路由清点独占);
-- **流程层消费**:`_open_shop_phase` 编排 read_only(只读看牌)/ restricted_spend(限花购物)两形态,读数性开店回执 `(progressed, detail)` = 开店成功(读数性回执,非动作成败回执);
-- **拒绝语义**:容器零写语义下无 `applied=False` 拒绝形态;开店失败 = 流程层编排轮次语义,归画面 op 层,不在本篇。
+转场族另一注册行,逻辑态同为**空**;逐动作逻辑态已拆专篇 = [open-shop.md](open-shop.md)(terminal 承载行;容器零写;流程层消费 = `cw_screen_prep._open_shop_phase`)。
