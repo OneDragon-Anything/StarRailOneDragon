@@ -8,9 +8,11 @@
 
 ## 2. 逻辑态域集
 
-容器 GameState **零写**(显式申报):`kernel/cw_game_state.py::apply_prep_action_logic` 对集外动作型直接返回;`kernel/cw_exec_state.py::apply_op_effect` else 分支显式不建模清单点名 OpenTome(典籍不消失,消耗在选卡确认)。
+**容器腾席腿**(kernel 写口 = `kernel/cw_game_state.py::apply_prep_action_logic` OpenTome 分支,迭代 2026-09-18-prep-obs-retirement 阶段 3.5 起):bench 槽位 kind `tome` → `empty`(开典籍即腾席,占席事实进容器)。守卫 = bench 未观察 / 槽不存在 / 槽类型不符 → 陈旧提案零写;`slot=None` = 首个 `kind='tome'` 槽(与发射形态对齐)。腾席窗口 = OpenTome 非终结,同 visit 后续帧球谓词消费 `bench_free_slots`(派生自容器 bench),直写消除「开典籍后席空数少计一帧」的保守偏置。
 
-**备战观察帧推进**(`kernel/cw_prep_actions.py::PrepObservation`,写口 = `operations/cw_screen/cw_screen_prep.py::_project_prep_obs` OpenTome 分支):`tomes` 载体按 `action.slot` **摘件**(None = 首件,与发射形态对齐)——腾出的席位事实由 tomes 载体与下一帧 heavy 现读承接,本分支不改写 `free_bench_slots`(与 OpenBookcard 分支的差异:典籍有独立载荷列表字段,占席语义走摘件而非腾席计数)。
+**其它域零写**:选卡后果(星徽四选一)随机面归观察;`kernel/cw_exec_state.py::apply_op_effect` else 分支显式不建模清单点名 OpenTome(典籍不消失,消耗在选卡确认)。
+
+**触发物识别**(备战观察链):典籍占席事实经 bench 槽位 `kind='tome'` 进容器(观察写端 `bench_view_from_obs` 的 `item_kind_by_slot` 细分,同帧 `read_tomes` 槽号集构造;决策臂 = mandate_v1 entry 开典籍臂读容器 bench 首个 tome 槽)。
 
 ## 3. 确定面转移规则(逐条)
 
@@ -25,15 +27,15 @@
 
 ## 5. 拒绝语义
 
-无典籍 / 槽不匹配 = 未发出(`emitted=False`,观察-执行竞态),交回重观察重派;`action.slot` 对位无匹配 = 未发出(detail 载实读槽位表);过渡帧不开(`is_prep_like_frame` 不命中)= 不发,交 heavy 观察;validate 参数非法(slot 越界)= 发出前输入契约拒绝。容器零写语义下无 `applied=False` 拒绝形态。
+无典籍 / 槽不匹配 = 未发出(`emitted=False`,观察-执行竞态),交回重观察重派;`action.slot` 对位无匹配 = 未发出(detail 载实读槽位表);过渡帧不开(`is_prep_like_frame` 不命中)= 不发,交 heavy 观察;validate 参数非法(slot 越界)= 发出前输入契约拒绝。容器腾席腿守卫(槽不存在/类型不符)= 静默零写等观察覆盖。
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::OpenTome`;`operations/cw_op/cw_open_tome_action.py::OpenTomeOp`;`kernel/cw_prep_actions.py::PrepObservation`;`operations/cw_screen/cw_screen_prep.py::_project_prep_obs`(OpenTome 分支 = tomes 摘件);`kernel/cw_exec_state.py::apply_op_effect`(else 显式不建模 + dict ConfirmTome 分支);`operations/cw_screen/cw_screen_bookcard.py`(`chosen_tome` 写点 / ConfirmTome 登记);`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`。
+`kernel/cw_vocab.py::OpenTome`;`operations/cw_op/cw_open_tome_action.py::OpenTomeOp`;`kernel/cw_game_state.py::apply_prep_action_logic`(OpenTome 腾席分支)/ `bench_view_from_obs`(kind 细分观察写端);`kernel/cw_exec_state.py::apply_op_effect`(else 显式不建模 + dict ConfirmTome 分支);`operations/cw_screen/cw_screen_bookcard.py`(`chosen_tome` 写点 / ConfirmTome 登记);`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`。
 
 ## 7. 语义验证
 
-OpenTome 不在 `cw_vocab.py::Action` 联合的容器动作辖内——零局内资源推进语义,与「视觉域动作容器零写」契约同义;观察帧摘件行为 = `_project_prep_obs` 分支直断(词表外类型 AssertionError 响亮暴露,R9 纪律)。无 M1 投影直锁对象(本动作不经 `apply_shop_action_logic`/`apply_prep_action_logic` 写口)。
+腾席腿语义单一源 = `apply_prep_action_logic` OpenTome 分支(bench kind 'tome' → 'empty',陈旧提案零写;行为锁 = `test_cw_unified_action_2a` 词表覆盖锁写口分支集)。触发物识别 = 容器 bench 槽 kind 细分(观察写端 `item_kind_by_slot` 映射,决策臂读容器分派;行为锁 = mandate_v1 决策面 bench kind 分派用例)。选卡后果归观察(ConfirmTome 登记)。
 
 ## 8. 判例注记(发射期)
 
@@ -41,4 +43,4 @@ OpenTome 不在 `cw_vocab.py::Action` 联合的容器动作辖内——零局内
 
 ## 9. 依据
 
-[flow/action_ops.md](../../flow/action_ops.md) §4.2 OpenTome 行(两次点击/非终结);`operations/cw_screen/cw_screen_prep.py::_project_prep_obs` 段头注(OpenTome 分支语义);`operations/cw_screen/cw_screen_bookcard.py` 模块头(`chosen_tome` 写点与 ConfirmTome 推进);[fields.md](../fields.md) §3.2.5(占席道具)/§4.2 事件选择行。
+[flow/action_ops.md](../../flow/action_ops.md) §4.2 OpenTome 行(两次点击/非终结);`kernel/cw_game_state.py::apply_prep_action_logic` OpenTome 分支 docstring(腾席守卫与零写面);`operations/cw_screen/cw_screen_bookcard.py` 模块头(`chosen_tome` 写点与 ConfirmTome 推进);[fields.md](../fields.md) §3.2.5(占席道具)/§4.2 事件选择行。

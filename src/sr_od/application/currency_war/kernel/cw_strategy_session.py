@@ -15,23 +15,17 @@ op/流程侧产生的状态按其语义各自归位——局内事实写 GameSta
 驻 kernel 理由:kernel 判据层以本类为观察数据载体消费(经
 ``strategy_state_of`` 访问函数取策略状态——None-safe 不冷建;kernel
 不持有策略内部结构的字段注解,运行时零 impl 包 import,
-TYPE_CHECKING 承载)。类体逐字段无 app 引用;``prep_obs_frame``
-注解字符串化(app 桶
-类型仅注解引用)。
+TYPE_CHECKING 承载)。类体逐字段无 app 引用。
 """
 from __future__ import annotations
 
 import random
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_performance import (
     PerformanceTracker,
 )
-
-if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_prep_actions import PrepObservation
 
 #: 策略器状态工厂注入槽(kernel 不识策略状态具体类型——依赖矩阵禁 kernel→impl
 #: 边,连 TYPE_CHECKING 引用也在分层纪律禁域(该纪律归 review 与代码规范
@@ -142,12 +136,10 @@ class StrategySession:
     # 本字段是公开随机接口的种子契约锚。
     rng: random.Random = field(default_factory=lambda: random.Random(0))
     performance: PerformanceTracker = field(default_factory=PerformanceTracker)  # 观测反馈(双侧 OCR)
-    # —— 黑板模式观察帧容器(W971 §2 黑板模式)——
-    # prep_obs_frame:备战观察结果(PrepObservation 整帧)。生命周期 =
-    # 新鲜快照(每次备战观察覆写)。写者白名单 = cw_screen_prep._observe /
-    # 破警告派生帧 / 兼容期旧接口薄委托。读者 = decide_prep_screen(黑板
-    # 决策唯一输入源)。
-    prep_obs_frame: 'PrepObservation | None' = None   # noqa: F821, UP037
+    # (prep_obs_frame 黑板帧槽已随黑板退役删除——迭代
+    #  2026-09-18-prep-obs-retirement 阶段 3.5:名单/装备/占用/球全部容器
+    #  域承载,策略器唯读容器契约归位;观察控制信号降级为备战环 op 局部
+    #  对象,不经 session。)
     # (终态契约 §B:黑板帧刷新代次标注 prep_frame_class/shop_frame_class
     #  session 槽已退役——迁 gs 非 Field 双槽 frame_class_prep/
     #  frame_class_shop(值域/消费协议/写点面全量随迁,详 gs 字段注);

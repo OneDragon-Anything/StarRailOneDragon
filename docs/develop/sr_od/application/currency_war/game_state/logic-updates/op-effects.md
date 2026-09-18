@@ -44,7 +44,7 @@
 
 ## 5. 工具执行批分派 → 专篇
 
-工具族七件的执行写端组合口 `apply_tool_execution_write`、视觉域帧面(`_project_tool_obs`)与逐类写端申报已拆专篇:[tools.md](tools.md)(机械半 + 逐类写端表 + 判据准入)。本总述只留机制锚:分派口 = `kernel/cw_affix_effects.py::apply_tool_execution_write`,写端申报单一源 = `EQUIP_WRITE_SIDES`(§3),桥语义 = §4。
+工具族七件的执行写端组合口 `apply_tool_execution_write` 与逐类写端申报已拆专篇:[tools.md](tools.md)(机械半 + 逐类写端表 + 判据准入;容器域 = 合法零写集,黑板帧面随 `gs.prep_obs` 退役删除)。本总述只留机制锚:分派口 = `kernel/cw_affix_effects.py::apply_tool_execution_write`,写端申报单一源 = `EQUIP_WRITE_SIDES`(§3),桥语义 = §4。
 
 ## 6. 动作侧计数面(效果账计数)
 

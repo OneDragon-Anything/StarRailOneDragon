@@ -526,7 +526,7 @@ class CwScreenPrep(CwScreenOpBase):
         随单动作循环退役:逐动作零读屏,期望态由 ``_project_prep_obs`` 纯计算
         推进,动作后首读的光标 parking 职责随之迁移(入口观察 park 一次;
         执行侧读数性通道——卖出回金遥测等——的局部 park 由动作实现层自理)。
-        light 分支保留为兼容形态(现生产无调用方)。
+        (light 沿用分支已随黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5)。
 
         screen 传入时(gate 末帧)复用该帧不重截——gate 稳定帧的全图 OCR 已
         按 id(image) 缓存,本方法所有 crop_first=False 读取(id_mark 判定/
@@ -1185,8 +1185,8 @@ class CwScreenPrep(CwScreenOpBase):
         if _st_seg is not None:
             _st_seg.cw4_segment_serial += 1
         for _vi in range(self.VISIT_ACTION_CAP):
-            # —— ③ 决策(黑板:读 session.prep_obs_frame,写者 = 入口观察/
-            #      循环逻辑态直写步;首帧 = 入口 heavy,后续 = 逻辑态)
+            # —— ③ 决策(容器 game state 直读;阶段 3.5 黑板退役,
+            #      动作后逻辑态 = kernel 写口统一直写)
             try:
                 result = match.strategy.decide_prep_screen()
             except Exception as e:  # noqa: BLE001  策略异常 = 本轮 fail(外循环 retry 链兜)
@@ -1357,8 +1357,8 @@ class CwScreenPrep(CwScreenOpBase):
         if _st_seg is not None:
             _st_seg.cw4_segment_serial += 1
         for _vi in range(self.VISIT_ACTION_CAP):
-            # —— 段3 decide(黑板:读 session.prep_obs_frame,写者 = 入口
-            #      观察/循环逻辑态直写步;首帧 = 入口 heavy,后续 = 逻辑态)
+            # —— 段3 decide(容器 game state 直读;阶段 3.5 黑板退役,
+            #      动作后逻辑态 = kernel 写口统一直写)
             self._lifecycle_mark('decide')
             try:
                 result = match.strategy.decide_prep_screen()

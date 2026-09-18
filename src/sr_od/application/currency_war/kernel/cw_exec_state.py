@@ -240,7 +240,7 @@ def apply_op_effect(session, action: CwAction | dict, *,
         #   扩域分支(金腿同上批退役);tracked 位移/摘除 = 执行器
         #   _track_* 单一写者;
         # - 工具原子(FurnaceUse 等):消耗/变换 = 视觉域逻辑态
-        #   (_project_prep_obs 按 EQUIP_WRITE_SIDES 申报)+ 下一帧装备区
+        #   (容器零写:消费真值归观察——action-logic-state.md 正本申报)+ 下一帧装备区
         #   读数覆盖;last_owned_equips 挂账面随对拍拆除不入本口;
         # - ClickSpheres:零金账推进(球金不可推算)+ 按载荷球数开点球金
         #   待吸收窗(本文件 ClickSpheres 分支申报);

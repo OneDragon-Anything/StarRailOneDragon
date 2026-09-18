@@ -8,14 +8,13 @@
 
 ## 2. 逻辑态域集
 
-容器 GameState `equips` 域**不写**(域集封闭申报,留观察覆盖)。两类写账随动作同步:
+容器 GameState `equips` 域**不写**(域集封闭申报,留观察覆盖;合法零写集申报 = `apply_prep_action_logic` 登记面)。两类写账随动作同步:
 
 | 账 | 写端 | 内容 |
 |---|---|---|
 | tracked(执行账)| `kernel/cw_exec_state.py::apply_op_effect` WearEquip 分支(仅执行器 emitted 门放行时可达;op 零 game state 直写)| owned 库存 −1 件(`gs.equips` write_logic,evidence `owned[<件>] -1(穿戴)`;owned 无此件 = 只跳该侧)+ tracked 目标角色 equips +1(物理 (row, slot) → `deployed_idx_of` 换算)|
-| 视觉域(黑板帧)| `operations/cw_screen/cw_screen_prep.py::_project_prep_obs` WearEquip 分支 | `PrepObservation.owned_equips` 摘件(与 OpenBox/OpenTome 同形)|
 
-落地真值(穿没穿)= 观察写入边对账(下一入口装备区读数覆盖)。
+落地真值(穿没穿)= 观察写入边对账(下一入口装备区读数覆盖)。**零窗口申报**:WearEquip = 截断点(独占发射帧),发出即 visit 结束 → 下一入口 heavy 装备区实读覆盖,无同 visit 后续帧消费——容器 `equips` 零写无暴露窗。(原「视觉域黑板帧摘件腿」随 `gs.prep_obs` 黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5。)
 
 ## 3. 确定面转移规则(逐条)
 
@@ -37,11 +36,11 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::WearEquip`;`kernel/cw_exec_state.py::apply_op_effect`(WearEquip 分支)/ `deployed_idx_of`;`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan` / `EquipWearStep`;`kernel/cw_comps.py::EQUIP_CAPACITY`;`prep_actions.py::PrepActionExecutor._wear_equip` / `_owned_grid_locate` / `_equip_slot_drag_point` / `_wait_stable_frame`;`operations/cw_op/cw_wear_equip_action.py::WearEquipOp`;`operations/cw_screen/cw_screen_prep.py::_project_prep_obs`(WearEquip 分支);`obs/cw_back_layout.py::select_back_layout`。
+`kernel/cw_vocab.py::WearEquip`;`kernel/cw_exec_state.py::apply_op_effect`(WearEquip 分支)/ `deployed_idx_of`;`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan` / `EquipWearStep`(四路输入容器读口,迭代阶段 3.2 换源);`kernel/cw_comps.py::EQUIP_CAPACITY`;`prep_actions.py::PrepActionExecutor._wear_equip` / `_owned_grid_locate` / `_equip_slot_drag_point` / `_wait_stable_frame`;`operations/cw_op/cw_wear_equip_action.py::WearEquipOp`;`obs/cw_back_layout.py::select_back_layout`。
 
 ## 7. 语义验证
 
-WearEquip 不在 `cw_vocab.py::Action` 联合内,零局内资源推进语义,同「视觉域动作容器零写」契约;tracked/观察帧两账随动作同步,落地真值归观察边界 reconcile。无 M1 投影直锁对象(本动作不经 `apply_shop_action_logic`/`apply_prep_action_logic` 写口)。
+WearEquip 不在 `cw_vocab.py::Action` 联合内,零局内资源推进语义,**合法零写集成员**(登记面申报,行为锁 = `test_cw_unified_action_2a` 词表覆盖锁零写集断言:write_seq 不变);tracked 账随动作同步,落地真值归观察边界 reconcile。本动作不经 `apply_shop_action_logic`/`apply_prep_action_logic` 容器写腿。
 
 ## 8. 判例注记(发射期)
 

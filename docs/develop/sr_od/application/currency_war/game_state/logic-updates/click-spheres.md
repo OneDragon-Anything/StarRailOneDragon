@@ -12,7 +12,7 @@
 
 **本动作的逻辑态计算 = 窗登记**:`apply_op_effect` ClickSpheres 分支按载荷球数开**备战环随机收入待吸收窗**——`game_state_of(session).exec_books.prep_sphere_income_pending += len(action.points)`(唯一写端)。窗 = `kernel/cw_game_state.py::ExecBooks.prep_sphere_income_pending`(非 Field 过程簿记,计数坐标系 = 本局点球个数,局级清零)。
 
-**视觉域**(黑板帧,非容器):`operations/cw_screen/cw_screen_prep.py::_project_prep_obs` ClickSpheres 分支——按载荷坐标**精确摘球**(载荷即点击列,被点的球按坐标匹配从 `PrepObservation.spheres` 摘除;原「保守清空」已随 R4 改形退役)。
+**视觉域容器翻转**(迭代 2026-09-18-prep-obs-retirement 阶段 3.4/3.5):球载荷进容器 `spheres` 域(`SphereSight.points`),**容器摘球腿** = `apply_prep_action_logic` ClickSpheres 分支——按载荷坐标精确摘除(坐标匹配,原黑板腿逐位迁移;域未观察/载荷无交集 = 陈旧提案零写;count/colors 同步重算)。
 
 ## 3. 确定面转移规则(逐条)
 
@@ -34,11 +34,11 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::ClickSpheres`;`kernel/cw_prep_actions.py::select_sphere_clicks` / `SPHERE_CLICK_HARD_CAP`;`kernel/cw_exec_state.py::apply_op_effect`(ClickSpheres 分支 = 窗登记);`kernel/cw_game_state.py::ExecBooks.prep_sphere_income_pending` / `GameState._absorb_prep_sphere_income` / `GameState.observe`(店开帧收口);`operations/cw_op/cw_click_spheres_action.py::ClickSpheresOp`;`operations/cw_screen/cw_screen_prep.py::_project_prep_obs`(ClickSpheres 分支)。
+`kernel/cw_vocab.py::ClickSpheres`;`kernel/cw_prep_actions.py::select_sphere_clicks` / `sphere_click_targets_of` / `SPHERE_CLICK_HARD_CAP`;`kernel/cw_exec_state.py::apply_op_effect`(ClickSpheres 分支 = 窗登记);`kernel/cw_game_state.py::apply_prep_action_logic`(ClickSpheres 分支 = 容器精确摘球)/`ExecBooks.prep_sphere_income_pending` / `GameState._absorb_prep_sphere_income` / `GameState.observe`(店开帧收口);`operations/cw_op/cw_click_spheres_action.py::ClickSpheresOp`。
 
 ## 7. 语义验证
 
-容器零写语义 = 「视觉域动作容器零写」契约 + `apply_op_effect` 分支申报(零金推进);窗语义 = 失配精确吸收第三例(20260918-reconcile 第 9 例收口),吸收行为由观察边界测试与台账行(`prep_sphere_income_absorbed`)承载。无 M1 投影直锁对象(本动作不经 `apply_shop_action_logic`/`apply_prep_action_logic` 写口)。
+金域零写语义 = 「消费真值归观察」契约 + `apply_op_effect` 分支申报(零金推进);容器摘球腿 = `apply_prep_action_logic` 写口分支(测试锚 `test_click_spheres_container_precise_drop`/`test_sphere_empty_read_yields_no_targets`);窗语义 = 失配精确吸收第三例(20260918-reconcile 第 9 例收口),吸收行为由观察边界测试与台账行(`prep_sphere_income_absorbed`)承载。
 
 ## 8. 判例注记(发射期)
 
@@ -46,4 +46,4 @@
 
 ## 9. 依据
 
-`kernel/cw_game_state.py::ExecBooks.prep_sphere_income_pending` 字段注(机理/红线/盲区正本);`kernel/cw_exec_state.py::apply_op_effect` ClickSpheres 分支 docstring;`operations/cw_screen/cw_screen_prep.py::_project_prep_obs` 段头注(精确摘球 R4 改形);[flow/action_ops.md](../../flow/action_ops.md) §4.2 ClickSpheres 行/§2.2 固定等待族;[fields.md](../fields.md) §3.2.8(奖励球)。
+`kernel/cw_game_state.py::ExecBooks.prep_sphere_income_pending` 字段注(机理/红线/盲区正本);`kernel/cw_exec_state.py::apply_op_effect` ClickSpheres 分支 docstring;`kernel/cw_game_state.py::apply_prep_action_logic` ClickSpheres 分支(容器精确摘球);[flow/action_ops.md](../../flow/action_ops.md) §4.2 ClickSpheres 行/§2.2 固定等待族;[fields.md](../fields.md) §3.2.8(奖励球)。

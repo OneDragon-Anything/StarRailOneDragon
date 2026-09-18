@@ -12,17 +12,16 @@
 
 | 域 | 写 / 跳写 | 说明 |
 |---|---|---|
-| bench | 写 | 源槽摘除(置 None 不移位),`bench_view_of_slots` 重建直写(evidence `proj_deploy_src_clear`) |
+| bench | 写 | 源槽摘除(槽 kind → `empty` 不移位),**原生 `BenchView.slots` 直操**(不经 legacy 往返,防 kind 细分丢失;evidence `proj_deploy_src_clear`) |
 | front_row / back_row | 写 | deployed 槽表中间形态 → 整表 `write_logic` 平移契约(`deployed_slots_to_rows`;evidence `proj_deploy_front` / `proj_deploy_back`) |
 | board | 派生随写 | **派生量**:front_row/back_row 行写端挂钩 `GameState._resync_board_delta` 自动增量重算(evidence `proj_board_resync`),本腿禁手写 board |
 | 上阵计数 | 派生 | 零独立字段,`deployed_count_of` 读口现算 |
 
-**装备随人走**(对象整体迁移):身份/星级/装备随 `BenchChar` 对象迁入 deployed。
+**装备随人走**(对象整体迁移):身份/星级/装备随落位对象迁入 deployed。
 
-配套两账随动作同步:
+配套账随动作同步:
 
-- 观察帧(黑板帧)= `operations/cw_screen/cw_screen_prep.py::_project_prep_obs` DeployMove 分支:bench_chars 摘件(键 = `bench_idx`+1)+ deployed_chars 落件(排/槽号信息位重写)+ front_occupied/back_occupied 占用集推进(满板分支 slot=0 信息位不入集)+ free_bench_slots +1 + 容器域直写(同一写口,actor = CwScreenPrep);
-- tracked 主账 = `prep_actions.py::PrepActionExecutor._track_move_deployed`:bench 侧按下标置 None(置 None 不移位),`moved.position_pref = to_row` + `deployed_place` 落槽 + `slot` 信息位覆写。
+- tracked 主账 = `prep_actions.py::PrepActionExecutor._track_move_deployed`:bench 侧按下标置 None(置 None 不移位),`moved.position_pref = to_row` + `deployed_place` 落槽 + `slot` 信息位覆写。(原「观察帧(黑板帧)」同步腿随 `gs.prep_obs` 黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5,bench 侧原生化的类型保全理由见 sell-bench.md §2。)
 
 ## 3. 确定面转移规则(逐条)
 
@@ -47,7 +46,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_game_state.py::apply_prep_action_logic`(DeployMove 腿)/ `GameState._resync_board_delta`(board 派生挂钩单一源)/ `_row_unit_tags`;`kernel/cw_vocab.py::mutate_bench_deployed`(同名守卫 + 开拓者形态归一挂 tracked 口);`kernel/cw_exec_state.py::deployed_place` / `deployed_row_slot` / `_apply_row_to_char`;`kernel/cw_deploy_logic.py::select_deployments` / `assign_deploy_slots` / `empty_deploy_slots`;`kernel/cw_bond_equips.py::unit_bond_tags` / `_recount_board`(faction 载体面,装备授予/sim);`prep_actions.py::PrepActionExecutor._track_move_deployed`;`operations/cw_op/cw_deploy_move_action.py::DeployMoveOp`;`operations/cw_screen/cw_screen_prep.py::_project_prep_obs`(DeployMove 分支)。
+`kernel/cw_game_state.py::apply_prep_action_logic`(DeployMove 腿,bench 侧原生 `BenchView.slots` 直操)/ `GameState._resync_board_delta`(board 派生挂钩单一源)/ `_row_unit_tags`;`kernel/cw_vocab.py::mutate_bench_deployed`(同名守卫 + 开拓者形态归一挂 tracked 口);`kernel/cw_exec_state.py::deployed_place` / `deployed_row_slot` / `_apply_row_to_char`;`kernel/cw_deploy_logic.py::select_deployments` / `assign_deploy_slots` / `empty_deploy_slots`;`kernel/cw_bond_equips.py::unit_bond_tags` / `_recount_board`(faction 载体面,装备授予/sim);`prep_actions.py::PrepActionExecutor._track_move_deployed`;`operations/cw_op/cw_deploy_move_action.py::DeployMoveOp`。
 
 ## 7. 语义验证(容器口径)
 

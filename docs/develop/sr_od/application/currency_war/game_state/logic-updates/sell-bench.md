@@ -17,7 +17,7 @@
 | equips | 写 | 被卖单位身上全部装备追加进 owned 库存(`sold.equips` 非空才写) |
 | 其余域 | 跳写 | 不触商店载荷/经验/上阵域 |
 
-**备战域写口** = `kernel/cw_game_state.py::apply_prep_action_logic` SellBench 腿,域集封闭 = `PREP_PROJECTION_DOMAINS` 的 gold/bench 子集;**equips 域不在备战写口域集**(域集封闭申报,装备回区留观察覆盖)。溢出腿另写 `overflow_card`/`overflow_warning` 两旗标域(§3 第 5 条)。
+**备战域写口** = `kernel/cw_game_state.py::apply_prep_action_logic` SellBench 腿,域集封闭 = `PREP_PROJECTION_DOMAINS` 的 gold/bench 子集;**equips 域不在备战写口域集**(域集封闭申报,装备回区留观察覆盖)。溢出腿另写 `overflow_card`/`overflow_warning` 两旗标域(§3 第 5 条)。bench 侧 = **原生 `BenchView.slots` 直操**(容器原生形态,不经 `bench_slots_of`→`bench_view_of_slots` legacy 往返——`is_item_slot` 布尔无法恢复 box/tome 类型,往返会让 kind 细分在写口首次写后退化为 supply_box):卖出席位 = 槽 kind → `empty`(对应旧「置 None」语义),守卫 = 空槽/**占位件**(kind ≠ 'unit')零写——占位件无卖出语义(sell_gate 占位恒拒防线同口径)。
 
 **效果账面(申报:金腿不在 `apply_op_effect`)**:卖出回金的容器唯一写点 = 容器写口两条腿(商店域 `apply_shop_action_logic` SellBench 腿 / 备战域 `apply_prep_action_logic` SellBench 腿,均按 `sell_refund` 直写金账)——`kernel/cw_exec_state.py::apply_op_effect` 的 SellBench 分支已随「统一观察对账迭代 2026-09-16 归因批」退役(执行缝 + 投影双腿各记一次 +refund,实读倒挂 −2 实证);执行缝现只算执行点金差 `_executed_gold_delta` 进回执 extra 留证,**不经它直推容器金账**。备战域装备回收 = 观察 `equips` 域覆盖(备战写口域集无 equips),与卖上阵的 owned 恢复腿不对称(见 sell-deployed.md §2)。
 
@@ -27,7 +27,7 @@
 2. `gold += 退款`,公式单一源 = `kernel/cw_economy.py::sell_refund`:退款 = 招募费(`bench_char_cost`,注册表单一源,未知按中位保守估)× 星级倍数表 `_SELL_MULT`(1★ 全额;2★/3★/4★ = 合成副本数同构倍数);**手续费口径**:star≥2 且 cost≥2 再 −1;cost=1 豁免(2★1费 卖出 = 全额倍数,live 实测定谳;3★2费 = +17 已 live 定谳,4★ 档仍未核 = 缺口 G3 剩余);
 3. **装备全量回装备区**(商店域腿):被卖单位身上全部装备(简易/进阶/核心不分)进 owned 装备库存——穿戴是可逆暂借(【口述·权威】`research/equipment_mechanics.md` §1;kernel 按 C6 装备守恒回收建模);
 4. 陈旧提案拒:expect 身份与槽内不符 = 零写(ADR-0317);
-5. **溢出条件腿**(2026-09-15 实机建档,`docs/game/screens/currency_war_prep.md` 告警节):`overflow_warning` 在场(备战席满告警横幅 = 存在未安置溢出角色,此刻出战点击被游戏忽略)时,卖出语义补一条——**腾出槽当帧记溢出卡入位**(`bench[idx] := 溢出卡`;「卖 → 溢出卡自动入自由槽」是游戏侧行为,有溢出时席必满、自由槽恒唯一,落位无歧义)+ `overflow_card` 消费清空 + 旗标 logic 消亡(下帧实读覆盖)。入位对象身份缺读(`overflow_card` 空)= 跳过入位(槽留空等观察),卖出语义本体不受阻;星级缺读按 1 兜底。**三账同帧**:容器腿(本写口)/ 执行侧 tracked 主账吸收(session 形参在场时,摘该槽 + 追加入位卡后经 `bench_from_compact` 重建槽位表——缺吸收 = 商店播种守卫双账分叉,实机 2-4 停机实证)/ 黑板帧镜像(`_project_prep_obs` 入位卡补进 bench_chars、free_bench_slots 不 +1——腾出槽即刻回占)三面同帧同源。
+5. **溢出条件腿**(2026-09-15 实机建档,`docs/game/screens/currency_war_prep.md` 告警节):`overflow_warning` 在场(备战席满告警横幅 = 存在未安置溢出角色,此刻出战点击被游戏忽略)时,卖出语义补一条——**腾出槽当帧记溢出卡入位**(`bench[idx]` 槽 kind 回占为 `unit`(入位卡身份,星级缺读按 1 兜底);「卖 → 溢出卡自动入自由槽」是游戏侧行为,有溢出时席必满、自由槽恒唯一,落位无歧义)+ `overflow_card` 消费清空 + 旗标 logic 消亡(下帧实读覆盖)。入位对象身份缺读(`overflow_card` 空)= 跳过入位(槽留空等观察),卖出语义本体不受阻。**两账同帧**:容器腿(本写口,入位卡回占槽位——席空数派生自然不 +1,腾出槽即刻回占)/ 执行侧 tracked 主账吸收(session 形参在场时,摘该槽 + 追加入位卡后经 `bench_from_compact` 重建槽位表——缺吸收 = 商店播种守卫双账分叉,实机 2-4 停机实证)。(原第三面「黑板帧镜像」随 `gs.prep_obs` 黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5,镜像语义由容器回占面全量承载。)
 
 ## 4. 随机面
 
@@ -41,7 +41,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_game_state.py::apply_shop_action_logic`(SellBench 腿)/ `apply_prep_action_logic`(SellBench 腿 + 溢出腿);`kernel/cw_economy.py::sell_refund` / `bench_char_cost` / `_SELL_MULT`;`kernel/cw_vocab.py::mutate_bench_deployed`(SellBench 分支,tracked 同步);`prep_actions.py::PrepActionExecutor._sell_bench` / `_track_remove_bench` / `_executed_gold_delta`(金差仅回执留证) / `drag_bench_to_sell`;`operations/cw_screen/cw_screen_prep.py::_project_prep_obs`(溢出镜像)。
+`kernel/cw_game_state.py::apply_shop_action_logic`(SellBench 腿)/ `apply_prep_action_logic`(SellBench 腿 + 溢出腿,bench 侧原生 `BenchView.slots` 直操);`kernel/cw_economy.py::sell_refund` / `bench_char_cost` / `_SELL_MULT`;`kernel/cw_vocab.py::mutate_bench_deployed`(SellBench 分支,tracked 同步);`prep_actions.py::PrepActionExecutor._sell_bench` / `_track_remove_bench` / `_executed_gold_delta`(金差仅回执留证) / `drag_bench_to_sell`。
 
 ## 7. 语义验证(M1 直锁)
 

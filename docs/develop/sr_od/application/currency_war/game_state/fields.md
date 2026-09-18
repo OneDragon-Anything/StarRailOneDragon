@@ -296,7 +296,13 @@ sim 合成口同域直写。
 #### 3.2.8 奖励球 spheres
 
 数量/颜色——交互机会信号,不占席(§3.2.5)。席满时奖励无法落位的拦截判据归 op
-写入策略(§4 ClickSpheres)。
+写入策略(§4 ClickSpheres)。**载荷坐标**(迭代 2026-09-18-prep-obs-retirement
+阶段 3.4 扩充):`SphereSight.points` = `(color, x, y, r)` 平铺元组——球为自由
+位置识别物无槽号,像素坐标必须随识别进容器(坐标单一真相源纪律;点击列由 kernel
+`sphere_click_targets_of` 还原消费)。**写端** = CwScreenPrep 备战入口 heavy
+观察上报(空读照写 count=0 防残留假球;两帧持存防抖留观察链);**逻辑写端** =
+`ClickSpheres` 按载荷坐标精确摘除(§4 ClickSpheres,原黑板腿随
+gs.prep_obs 退役迁移本口)。
 
 #### 3.2.9 金币 gold(主条目)
 
@@ -364,8 +370,8 @@ evidence 区分。旗牌通道=**弱**(stylized 数字 OCR 常空,两级放大�
 **语义**:持有装备库存(物品栏),OCR 装备区(本屏区域-道具装备),跨备战/商店/
 工具面消费。
 **写端**(完整清单):
-- 观察写端:本屏装备区 OCR 覆盖;备战装配环装备分配链装备区现读(prep_actions 两
-  分支)+喂入口 relay 兜底(接线滞后窗值冻结申报)。
+- 观察写端:本屏装备区 OCR 覆盖;备战入口 heavy 装配环装备分配链装备区现读
+  (CwScreenPrep 观察写端,单一装配点)。
 - 逻辑写端(op,§4.2):OpenBox 开箱(装备入区);RunTools 冶金炉(拖装备→变同类型
   随机,产出不可预知=观察收口);RunTools 拆装扳手(角色装备全量回区、消耗品 −1);
   SellBench 卖出角色(装备全量回区)。
@@ -373,6 +379,17 @@ evidence 区分。旗牌通道=**弱**(stylized 数字 OCR 常空,两级放大�
   银/金/彩(进节点物品栏全量变同品质);保险的装备效果(每损 20 血获随机简易入区);
   变宝为废(词缀,每位面首次合成进阶装备 50% 变垃圾袋——随机面观察收口,§5.3 词缀源)。
 补给/事件获得的装备不记预期值,经观察覆盖收口(§4.1 豁免)。
+
+#### 3.2.15b 已穿装备位置 occupied_equips
+
+**语义**(迭代 2026-09-18-prep-obs-retirement 阶段 3.2 立域):已穿装备位置——
+键 = `'front:1'`/`'back:2'` 形态字符串(row ∈ front|back,slot = 画面物理槽位
+1-based,前排 1-4/后排 1-选档 N,与机械动作参数同域;tuple 键 JSON 序列化不安全
+故字符串化),值 = 件名列表。装备域姊妹面(§3.2.15),M7 装备计划四路输入之一
+(`cw_equip_wear_plan._build_equip_wear_plan` 容器读口;未观察 None = 识别域
+未就绪,fail 门保守关)。
+**写端**:单一源 = CwScreenPrep 备战入口 heavy 观察上报(与 equips 同点同环,
+每帧实读覆盖);零逻辑写端。**消费** = M7 装备计划(occupied_all 求值)。
 
 #### 3.2.16 消耗品库存 consumables
 
@@ -1282,13 +1299,16 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
   `note_action_receipt`(receipts 唯一写点)/`write_match_final`(局终域唯一写点)。
   API 契约细则 = [journal.md](journal.md) §6。
 - 备战动作逻辑态写口 = `apply_prep_action_logic`(kernel/cw_game_state.py,模块级
-  写口;备战动作零读屏期望态推进的容器半,消费位 =
-  `cw_screen_prep._project_prep_obs`)。域集封闭 = `PREP_PROJECTION_DOMAINS`
-  ——gold(SellBench 回金,退款公式单一源 = `cw_state.sell_refund`)+ bench(摘槽
-  重建 BenchView);集外动作零写(禁扩静默);域级 None 跳写(值留观察覆盖,§2.2);
-  陈旧提案守卫(槽位空/越界零写,等观察覆盖)。sig 必填 = family='logic_action'
-  (渠道签名纪律)、actor 在册校验、group_id 按 `act:<op类名>@<seq>`
-  先例在口内补齐;逻辑态直写值受观察覆盖辖(§2.3)。
+  写口;备战动作零读屏期望态推进,**动作后逻辑态唯一更新点**——迭代
+  2026-09-18-prep-obs-retirement 阶段 3.5:备战环两条决策循环执行点统一调用,
+  原黑板投影函数 `cw_screen_prep._project_prep_obs` 随 gs.prep_obs 退役删除)。
+  覆盖面两集(登记面申报 = 写口 docstring):**写口分支集** = SellBench/SellDeployed/
+  DeployMove/LevelUp/ClickSpheres/OpenTome/OpenBookcard;**合法零写集**(消费真值
+  归观察/终结化) = OpenBox/WearEquip/工具原子七类。bench 侧原生 `BenchView.slots`
+  操作(不走 legacy roundtrip,is_item_slot 布尔无法恢复 box/tome 类型);域级 None
+  跳写(值留观察覆盖,§2.2);陈旧提案守卫(槽位空/越界/载荷无交集零写,等观察覆盖)。
+  sig 必填 = family='logic_action'(渠道签名纪律)、actor 在册校验、group_id 按
+  `act:<op类名>@<seq>` 先例在口内补齐;逻辑态直写值受观察覆盖辖(§2.3)。
 - 效果账本 = `ActiveEffectInventory`(登记/推进/计数/移除方法域;读端
   by_category/by_trigger/by_source/first/counter/predict_for);规格载体 =
   `EffectSpec` 四元组,声明式驱动单一源 = [effect-domain.md](effect-domain.md) §7。
@@ -1337,9 +1357,12 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
   - 其余非 Field 宿主(语义/写读点逐字段住代码注释,此处只记符号):
     `settlement_ring`(结算观测环:产结算屏节点的 RoundOutcome 消费子集,
     深度 10 同场去重)/`encounter_log`(本局全量遭遇行,遭遇经验证据通道)/
-    `prep_obs`(备战黑板帧整帧快照宿主,观察装配点整帧覆盖写)/
     `frame_class_prep`/`frame_class_shop`(帧触发代次双槽,值域
     full/view/none,读后即清)。
+    (`prep_obs` 备战黑板帧宿主已随黑板退役删除——迭代
+    2026-09-18-prep-obs-retirement 阶段 3.5:名单/装备/占用/球全部容器域
+    承载,策略器唯读容器契约归位;观察控制信号 shop_open/substate/
+    event_overlay 降级为备战环 op 局部对象。)
 
 ### 8.6 实现语义申报
 

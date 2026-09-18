@@ -30,12 +30,12 @@
 | LevelUp(LevelUpShop is-a 兜底同行) | `PrepLevelUpOp` | [level-up.md](level-up.md) | `apply_prep_action_logic` LevelUp 分支 + 商店域 LevelUpShop 腿 |
 | DeployMove | `DeployMoveOp` | [deploy-move.md](deploy-move.md) | `apply_prep_action_logic` DeployMove 腿 + board 派生挂钩 |
 | SellDeployed | `SellDeployedOp` | [sell-deployed.md](sell-deployed.md) | `apply_prep_action_logic` SellDeployed 腿(商店域腿同篇双域) |
-| WearEquip | `WearEquipOp` | [wear-equip.md](wear-equip.md) | `apply_op_effect` WearEquip 分支(容器 equips 零写,视觉域 + tracked) |
-| ClickSpheres | `ClickSpheresOp` | [click-spheres.md](click-spheres.md) | `apply_op_effect` ClickSpheres 分支(球金窗登记;容器零写) |
-| OpenBox | `OpenBoxOp` | [open-box.md](open-box.md) | 容器零写(终结动作,交回外循环) |
-| OpenTome | `OpenTomeOp` | [open-tome.md](open-tome.md) | 容器零写(视觉域 tomes 摘件) |
-| OpenBookcard | `OpenBookcardOp` | [open-bookcard.md](open-bookcard.md) | 容器零写(视觉域腾席 +1) |
-| FurnaceUse | `ToolUseOp` | [tools.md](tools.md) | 视觉域帧面(`_project_tool_obs` 按 `EQUIP_WRITE_SIDES`)+ `apply_tool_execution_write` |
+| WearEquip | `WearEquipOp` | [wear-equip.md](wear-equip.md) | `apply_op_effect` WearEquip 分支(合法零写集:容器 equips 零写 + tracked 账) |
+| ClickSpheres | `ClickSpheresOp` | [click-spheres.md](click-spheres.md) | `apply_op_effect` ClickSpheres 分支(球金窗登记)+ `apply_prep_action_logic` 容器精确摘球 |
+| OpenBox | `OpenBoxOp` | [open-box.md](open-box.md) | 合法零写集(终结动作,交回外循环下一入口覆盖) |
+| OpenTome | `OpenTomeOp` | [open-tome.md](open-tome.md) | `apply_prep_action_logic` 腾席分支(bench kind tome → empty) |
+| OpenBookcard | `OpenBookcardOp` | [open-bookcard.md](open-bookcard.md) | `apply_prep_action_logic` 腾席分支(bench kind supply_box → empty) |
+| FurnaceUse | `ToolUseOp` | [tools.md](tools.md) | 合法零写集(容器零写)+ `apply_tool_execution_write` |
 | PrivilegeCardUse | `ToolUseOp` | [tools.md](tools.md) | 同上 |
 | WrenchUse | `ToolUseOp` | [tools.md](tools.md) | 同上 |
 | PrecisionWrenchUse | `ToolUseOp` | [tools.md](tools.md) | 同上 |

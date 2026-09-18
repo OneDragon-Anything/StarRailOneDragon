@@ -2234,7 +2234,7 @@ def _emit_deploy_moves(out: list, frame: MandateFrame,
     后排容量 = 容器 back_layout,值域 6-9,缺省 6 基线)。发射序即执行序
     (备战环逐帧取决策输出首项);同帧多 move 排序由本发射位表达。逻辑态
     (bench 摘槽/deployed 落槽/board 增量)在观察侧
-    ``_project_prep_obs`` 直写,下一帧对 fresh 黑板重评自然续发剩余 move。
+    kernel 写口直写(容器逻辑态,迭代 2026-09-18-prep-obs-retirement 阶段 3.5),下一帧对容器现值重评自然续发剩余 move。
     """
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         assign_deploy_slots,

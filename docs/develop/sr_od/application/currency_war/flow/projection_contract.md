@@ -10,14 +10,14 @@
 - **族 A / 族 B（动作坐标系两族）**：同名动作类在两个模块里坐标系不同基——族 A = `kernel/cw_game_state.py` 的策略动作（状态坐标系，容器下标）；族 B = `kernel/cw_prep_actions.py` 的执行动作（画面坐标系，物理槽位）。权威对照表单一源 = `cw_state.py` Action 节约定块（§2 引用，不复制）。
 - **生成期快照 / 执行期现读**：生成期 = 决策帧装配时点（入口 heavy 观察到动作发射之间）；执行期 = 执行器真正读屏/拖拽时点。「生成期=执行期」表示索引跨该间隙恒稳，两时点读同一槽得到同一格。
 - **tracked 账**：tracked 主账槽位簿记 `GameState.tracked_books`（`kernel/cw_game_state.py::TrackedBooks`，bench/deployed 两面非 Field 簿记组），由卖出/部署 handler 在动作落地时同步增删。
-- **黑板**：`session.prep_obs_frame`（备战观察帧，写者白名单 = 入口观察段/循环逻辑态直写步；读者 = 决策入口），语义见 `../screens/prep.md` §2。
+- ~~**黑板**：`session.prep_obs_frame`~~（**已退役**，迭代 2026-09-18-prep-obs-retirement 阶段 3.5）：备战观察帧宿主与 `gs.prep_obs` 槽已删,策略器唯读容器契约归位;`PrepObservation` 瘦身为备战环 op 局部控制信号载体(shop_open/substate/event_overlay,不进 gs、不进 session、不再是策略器输入),语义见 `../screens/prep.md` §2。
 
 ## 1. 逻辑态面的数据面分层
 
 | 层 | 载体 | 角色 | 关键契约 |
 |---|---|---|---|
-| 状态面板 | `kernel/cw_game_state.py::GameState` | 决策域局面模型（OCR 填充 + bot 跟踪） | `bench` 定长 9 槽表、`deployed` 定长 10 槽表；卖出/下场置 None 不移位 |
-| 观察帧 | `kernel/cw_prep_actions.py::PrepObservation` | 备战决策单一输入（黑板内容物） | heavy 字段（`state`/`bench_chars`/`deployed_chars`/`deploy_vacancy`）入口单次刷新，light 步沿用可能 stale；轻字段（球/箱/占用/开态）每步现读 |
+| 状态面板 | `kernel/cw_game_state.py::GameState` | 决策域局面模型（OCR 填充 + bot 跟踪）= **策略器唯一输入** | `bench` 定长 9 槽表(BenchView,BenchSlot.kind ∈ unit/supply_box/tome/empty)、`deployed` 定长 10 槽表；卖出/下场置 None 不移位；球域 SphereSight.points 载点击坐标 |
+| 观察载体 | `kernel/cw_prep_actions.py::PrepObservation` | 备战环 **op 局部控制信号**(shop_open/substate/event_overlay),不进策略器 | 宿主 = 备战环 op 局部对象;不再承载名单/装备/占用/球(全容器域) |
 
 执行侧载体（消费方读写的落地对象）：
 
@@ -89,14 +89,18 @@
 
 ```
 备战节点入口 heavy 观察(obs.cw_observe_full::observe_full，唯一读屏点)
-  → 写黑板 session.prep_obs_frame（写者白名单）
+  → 容器 game state 直写(CwScreenPrep 观察装配点:bench/deployed/equips/
+     occupied_equips/spheres/node_chain/...渠道①;PrepObservation 局部
+     载控制信号)
   → bridge.decide_prep_screen：方向代次消费（帧代次标注读后即清）
   → 前置发射位 _launch_front_check（armed 帧短路 return；短路帧不披露）
   → 预算遥测披露 economy_cycle.disclose_budget（落点 = 前置发射位判定之后，非 armed 帧才到达）
-  → 决策（decide_prep_frame → entry.emit 三遍编排；决策输入 = obs（黑板）+ session 容器直读；动作产出 = 恰一个动作（CwAction | None））
-  → 帧稳定截断（entry.py::truncate_frame_stable；单动作循环逐帧恰取一个动作，None = 本帧无动作交回重观察）
+  → 决策（decide_prep_frame → entry.emit 三遍编排；决策输入 = 容器 game state 直读，零黑板；动作产出 = 恰一个动作（CwAction | HoldFrame））
+  → 帧稳定截断（entry.py::truncate_frame_stable；单动作循环逐帧恰取一个动作，HoldFrame = 本帧无动作交回重观察）
   → 执行（PrepActionExecutor / 组合 op）
-  → 期望态登记 + tracked 随动 → 逐动作逻辑态直写（纯计算零读屏）→ 下一动作或终结 op
+  → 期望态登记 + tracked 随动 → kernel 写口 apply_prep_action_logic 统一调用
+    （动作后逻辑态唯一更新点,写口分支集 7 动作/合法零写集 9 动作）
+    → 下一动作或终结 op
 ```
 
 ### 4.2 动作参数的时序语义
@@ -112,9 +116,9 @@
 - **判定单一源 + 两域差**：换血计划装配单一源 = `kernel/cw_deploy_logic.py::assemble_swap_plan_inputs` + `select_swap_plan`（发射⇔执行同函数同参，禁第二份口径）。已知域差（by design，非分叉）：发射面喂入决策帧槽位表（`mandate.py` m1p 段，`frame.bench`/`frame.deployed`）；执行面喂入 `session.last_state` 滞后帧 + **SIFT 现读覆写** `evolution_swap_armed`（`cw_screen_deploy.py` deploy-swap 段，域 = 本帧 SIFT 读）。发射⇔执行间隙内 bench 变化由执行面现读吸收；逐件可卖判定单一源 = `swap_sell_exclusion_reason`。
 - **装备穿戴的执行期时序**（L0/L1 实证批素材）：穿戴落点判定 = avatar 下方 mini icon 区 CV-diff（`_below_icon_diff`，阈值常量在 `cw_op_equip_all.py`），drag 前稳帧确认 + 落空补救链坐标现读重定位；owned 授予快照每次穿戴 op 执行只记一遍（`_snap_logged`，循环重读不重复记）；跨轮 owned 演化靠穿戴销账与复读覆盖——消费 `session.last_owned_equips` 的一方不得假设其逐帧重读。
 
-### 4.4 观察分层的时序边界
+### 4.4 观察时序边界
 
-`PrepObservation` heavy 字段在 light 步沿用上次值（stale 窗口 = 无动作步，单线程内安全）；`state.gold` 仅商店开态可信（F2 门）；`boxes`/`spheres`/`front_occupied` 等轻字段每步现读。执行侧对同一画面的**再读**与决策帧之间无一致性承诺——需要强一致的判定（如 deploy 的占用检测）一律执行期现读（CV `slot_occupied`），不从决策帧取。
+备战观察 = 入口 heavy 单次读屏直写容器;`PrepObservation` 局部载体只载控制信号(shop_open/substate/event_overlay),不承载状态面(名单/装备/占用/球全容器域,阶段 3.5 起黑板退役)。执行侧对同一画面的**再读**与决策帧之间无一致性承诺——需要强一致的判定（如 deploy 的占用检测）一律执行期现读（CV `slot_occupied`），不从观察载体取。动作-观察间隙内的局面推进 = kernel 写口 `apply_prep_action_logic` 逻辑态直写(「在观察态到来之前供决策使用」是逻辑态的全部职能),真值以下一帧观察为准。
 
 ## 5. 消费方读什么（逐臂）
 

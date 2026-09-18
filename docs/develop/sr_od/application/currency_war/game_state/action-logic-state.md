@@ -47,7 +47,13 @@
 | tracked 主账随动账 | `GameState.tracked_books`（`TrackedBooks` 容器簿记,bench/deployed 槽位表） | `mutate_bench_deployed` + 执行器 tracked 同步分支（`prep_actions.py::PrepActionExecutor._track_remove_bench` / `_track_remove_deployed` / `_track_move_deployed`） | 执行侧随动账;双账比对已退役（2026-09-15,对账唯一发生点 = 观察边界,见 screen_op §2.3/§4） |
 | 推演帧 | sim 引擎 `CwSimFrame` 整帧副本 | 原写口 `simulate`（整帧副本单步动作应用器）已退役（零生产消费，考古归 git） | 动作转移语义单一源 = 容器逻辑态直写（首行）；语义验证 = M1 直锁（`test_cw_shop_projection_logic`） |
 
-另有一个非容器落点：**备战观察帧**（`kernel/cw_prep_actions.py::PrepObservation`，宿主 `session.prep_obs_frame`）——球/箱/典籍/装备/工具等视觉域动作的逻辑态推进落在它上面（`operations/cw_screen/cw_screen_prep.py::_project_prep_obs`），容器零写（`apply_prep_action_logic` 对这些动作显式返回）。
+视觉域动作的容器面（迭代 2026-09-18-prep-obs-retirement 阶段 3.5 起）：球/箱/典籍
+的容器腿已进 `apply_prep_action_logic` 写口（ClickSpheres 精确摘球 / OpenTome·
+OpenBookcard 腾席，§3.4-§3.7）；`PrepObservation`（`kernel/cw_prep_actions.py`）
+降级为备战环 op 局部控制信号载体（shop_open/substate/event_overlay），不再是
+策略器输入，黑板宿主 `gs.prep_obs`/`session.prep_obs_frame` 已退役删除。
+WearEquip/工具原子/OpenBox 的装备域容器腿 = 容器零写（消费真值归观察的正本申报，
+§3.4/§3A；截断点独占发射帧零窗口，下一入口 heavy 覆盖）。
 
 ### 1.5 枚举范围与动作计数
 
@@ -115,7 +121,7 @@ op = `operations/cw_op/cw_close_shop_action.py::CloseShopOp`（动作 op 内 no-
 2. gold += 退款，公式单一源 = `kernel/cw_economy.py::sell_refund`：退款 = 招募费（`bench_char_cost`，注册表单一源，未知按中位保守估）× 星级倍数表 `_SELL_MULT`（星级倍数 = 合成副本数结构：1★=全额，2★/3★/4★ = `star_base_copies` 同构倍数）；**手续费口径**：star≥2 且 cost≥2 再 −1；cost=1 豁免（2★1费 卖出=全额倍数，live 实测定谳，`sell_refund` 注 + `research/economy.md` §3）；3★/4★ 的手续费档 = 推测待 live 核（§7 G3）；
 3. **装备全量回装备区**：被卖单位身上的全部装备（简易/进阶/核心不分）进入 owned 装备库存——穿戴是可逆暂借（【口述·权威】`research/equipment_mechanics.md` §1「卖出角色=装备全量回装备区」；kernel 按 C6 装备守恒回收建模，`cw_vocab.py` 卖出分支注；实机帧级证据未采 = §7 G5）；商店逻辑态直写腿已落码 equips 回收（`apply_shop_action_logic` SellBench 腿）；备战写口域集 = gold/bench（`apply_prep_action_logic`，equips 域留观察覆盖——域集封闭申报）；
 4. 陈旧提案拒：expect 身份与槽内不符 = 零写（ADR-0317）。
-5. **溢出条件腿**（2026-09-15 实机建档 [prep.md 告警节](../../../../../game/screens/currency_war_prep.md)）：`overflow_warning` 在场（备战席满告警横幅 = 存在未安置溢出角色，此刻出战点击被游戏忽略）时，卖出语义补一条——**腾出槽当帧记溢出卡入位**（`bench[i] := 溢出卡`，「卖 → 溢出卡自动入自由槽」是游戏侧行为；有溢出时席必满、自由槽恒唯一，落位无歧义）+ `overflow_card` 消费清空 + 旗标 logic 消亡（下帧实读覆盖，两态制观察赢）。入位对象身份缺读（`overflow_card=''`）= 跳过入位（槽留空等观察），卖出语义本体不受阻；星级缺读按 1 兜底。容器字段 = `overflow_warning: bool` / `overflow_card: str`（观察写端 = `cw_screen_prep` 备战 heavy 溢出观察写端，渠道①）；策略消费门 = mandate 溢出门（flag 在场 → 本帧决策强收窄单动作 SellBench，禁发 StartBattle/冻结买面）。**三账同帧**：腿落地是跨账事件，容器腿（本写口）/ 执行侧 tracked 主账吸收（本写口 `session` 形参在场时，摘该槽 + 追加入位卡后经 `bench_from_compact` 重建槽位表——缺吸收 = 商店播种守卫 expected-vs-tracked 双账分叉，实机 2-4 停机实证）/ 黑板帧镜像（`_project_prep_obs` 入位卡补进 `bench_chars`、`free_bench_slots` 不 +1——腾出槽即刻回占）三面同帧同源。
+5. **溢出条件腿**（2026-09-15 实机建档 [prep.md 告警节](../../../../../game/screens/currency_war_prep.md)）：`overflow_warning` 在场（备战席满告警横幅 = 存在未安置溢出角色，此刻出战点击被游戏忽略）时，卖出语义补一条——**腾出槽当帧记溢出卡入位**（`bench[i] := 溢出卡`，「卖 → 溢出卡自动入自由槽」是游戏侧行为；有溢出时席必满、自由槽恒唯一，落位无歧义）+ `overflow_card` 消费清空 + 旗标 logic 消亡（下帧实读覆盖，两态制观察赢）。入位对象身份缺读（`overflow_card=''`）= 跳过入位（槽留空等观察），卖出语义本体不受阻；星级缺读按 1 兜底。容器字段 = `overflow_warning: bool` / `overflow_card: str`（观察写端 = `cw_screen_prep` 备战 heavy 溢出观察写端，渠道①）；策略消费门 = mandate 溢出门（flag 在场 → 本帧决策强收窄单动作 SellBench，禁发 StartBattle/冻结买面）。**两账同帧**：腿落地是跨账事件，容器腿（本写口，入位卡回占槽位——席空数派生自然不 +1，腾出槽即刻回占）/ 执行侧 tracked 主账吸收（本写口 `session` 形参在场时，摘该槽 + 追加入位卡后经 `bench_from_compact` 重建槽位表——缺吸收 = 商店播种守卫 expected-vs-tracked 双账分叉，实机 2-4 停机实证）。（原第三面「黑板帧镜像」随 `gs.prep_obs` 黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5，镜像语义由容器回占面全量承载。）
 
 **随机面**：无（卖价修饰效果 = 大裁员/降本增效的卖价 ×2，其作用口径待实证 = §7 G4，缺口闭合前不写修饰腿）。
 
@@ -209,7 +215,7 @@ op = `operations/cw_op/cw_comp_transaction_action.py::CompTransactionOp`（**终
 
 **腾席**（本篇用词）= 备战席占用槽位被释放、可用空槽数增加。
 
-**确定面**：被点补给箱所在备战槽位的占位物品离席 → 槽位腾出（「开箱即腾席」，`kernel/cw_prep_actions.py::OpenBox` 注；逻辑态直写已建模面 = `cw_screen_prep.py::_project_prep_obs`）。**容器 GameState 零写**（`apply_prep_action_logic` 对本动作显式返回——箱/典籍是视觉域推进，落点 = 备战观察帧）。
+**确定面**：被点补给箱所在备战槽位的占位物品离席 → 槽位腾出（「开箱即腾席」，`kernel/cw_prep_actions.py::OpenBox` 注）。**容器 GameState 零写**（`apply_prep_action_logic` 合法零写集——R7 终结化：本访问交回后下一入口 heavy 观察覆盖，零窗口暴露）。
 
 **随机面 / 观察面**：箱内四选一内容 = 掉落内容归观察；本动作点「开启」后**本访问交回（终结化，R7）**——武装箱选择画面由外循环按画面分发独立画面 op 选卡（`operations/cw_screen/cw_screen_box_pick.py`，见 §6 单选族边界），备战动作词表无选卡动作（`PickBoxCard` 已删，批 2a）。动画等待 `_OVERLAY_ANIM_WAIT_S`，弹窗就位与否交下一帧观察（`research/screen_flow_timing.md` #28）。
 
@@ -219,7 +225,7 @@ op = `operations/cw_op/cw_comp_transaction_action.py::CompTransactionOp`（**终
 
 ### 3.5 OpenTome（开秘密典籍）
 
-**确定面**：秘密典籍道具占备战席 1 槽（类补给箱；**获得时入席** = 投资策略「秘密典籍」的发放事件，属观察面非本动作）。本动作点槽两次（选中→开启）→ 典籍离席腾槽 + 星徽四选一 overlay 弹出；容器零写（同 §3.4 视觉域推进）。
+**确定面**：秘密典籍道具占备战席 1 槽（类补给箱；**获得时入席** = 投资策略「秘密典籍」的发放事件，属观察面非本动作）。本动作点槽两次（选中→开启）→ 典籍离席腾槽 + 星徽四选一 overlay 弹出；**容器腾席腿**（迭代阶段 3.5 进写口）：bench 槽 kind `'tome'` → `'empty'`（OpenTome 非终结，同 visit 后续帧球谓词消费 bench 席空数存在真实窗口；陈旧提案 = 槽类型不符零写）。
 
 **随机面 / 观察面**：四选一卡面内容归观察；选卡决策 = 外循环 0i handler（板上阵营匹配），落地记录走 chosen_tome（§6 边界），本动作不选卡。
 
@@ -227,7 +233,7 @@ op = `operations/cw_op/cw_comp_transaction_action.py::CompTransactionOp`（**终
 
 ### 3.6 ClickSpheres（点奖励球）
 
-**确定面**：坐标列表（奖励球观察面 `spheres`）中**被点的球按载荷坐标精确摘除**（逻辑态精确摘球，`_project_prep_obs`——坐标匹配，R4 改形后载荷即点击列；原「保守清空」随改形退役）。容器 GameState 零写（视觉域推进）。
+**确定面**：坐标列表中**被点的球按载荷坐标精确摘除**（容器 spheres 域 `SphereSight.points` 精确摘除，`apply_prep_action_logic` ClickSpheres 分支——坐标匹配，R4 改形后载荷即点击列；原「保守清空」随改形退役；域未观察/载荷无交集 = 陈旧提案零写；原黑板腿随 gs.prep_obs 退役迁移本口，迭代阶段 3.4）。count/colors 随摘除同步重算。
 
 **发射形态（R4 坐标参数化机械动作）**：载荷 = 有序球坐标点击列表（大球优先/上界挑选归决策侧 kernel 单一源 = `kernel/cw_prep_actions.py::select_sphere_clicks`，发射位以预算常量 `SPHERE_CLICK_BATCH_MAX_K` 调用）；执行器纯机械逐个点（原读屏选球与批内截断半随改形退役）。
 
@@ -241,7 +247,7 @@ op = `operations/cw_op/cw_comp_transaction_action.py::CompTransactionOp`（**终
 
 **词表**：`kernel/cw_vocab.py::OpenBookcard`（R10 开卡归位备战词表：书册卡 = 备战席占槽道具，与补给箱/秘密典籍并列第三件；与 OpenBox/OpenTome 同签名，`slot: int | None`，None = 首张）。
 
-**确定面**：书册卡道具占备战席 1 槽；点槽「开启」→ 书册卡离席腾槽 + 专家邀请函五选一弹窗弹出。书册卡无独立载荷列表字段（箱/典籍有 `boxes`/`tomes`，书册卡占席事实只在 `free_bench_slots` 现读口径）→ 逻辑态 = 腾席 +1（`_project_prep_obs`，与 heavy 现读 `slot_occupied` 扫描同式）；**容器 GameState 零写**（`apply_prep_action_logic` 集外动作型直接返回，同 §3.4/§3.5 视觉域推进）。
+**确定面**：书册卡道具占备战席 1 槽；点槽「开启」→ 书册卡离席腾槽 + 专家邀请函五选一弹窗弹出。**容器腾席腿**（迭代阶段 3.5 进写口）：书册卡读链并入 `is_item_slot` → 容器 kind=`'supply_box'`，腾席 = 该槽 kind → `'empty'`（按 `action.slot` 定位，None = 首张；陈旧提案零写）；容器腾席即 `bench_free_slots` 派生 +1。
 
 **随机面 / 观察面**：五选一卡面内容归观察；选卡决策 = 弹窗画面 op `CwScreenExpertInvite`（默认策略单一源 = `choose_expert_index` 原位，chosen_expert 落地记录 §6 边界），本动作不选卡。动画等待 `_OVERLAY_ANIM_WAIT_S`，弹窗就位与否交下一帧观察。
 
@@ -257,7 +263,7 @@ op = `operations/cw_op/cw_comp_transaction_action.py::CompTransactionOp`（**终
 
 **确定面**：
 
-- 装备归属转移：owned 库存 −1 件（视觉域逻辑态 = `obs.owned_equips` 摘件，`_project_prep_obs`；容器 equips 域留观察覆盖——域集封闭申报；tracked 面 = `apply_op_effect` WearEquip 分支 owned −1 + 目标角色 equips +1）；目标角色已穿域 +1（角色装备上限 = `EQUIP_CAPACITY`）；
+- 装备归属转移：owned 库存 −1 件（容器 equips 域零写——消费真值归观察的正本申报；WearEquip = 截断点独占发射帧，下一入口 heavy 装备区读数覆盖，零窗口；tracked 面 = `apply_op_effect` WearEquip 分支 owned −1 + 目标角色 equips +1）；目标角色已穿域 +1（角色装备上限 = `EQUIP_CAPACITY`）；
 - **零比对出生（裁决 3）**：动作 op 内零 CV-diff 验穿——穿没穿归观察写入边对账（装备期望态对账族下一入口暴露）；原 avatar-slot CV-diff 验穿面随原子化删除；
 - 计划构造 kernel 单一源 = `kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`（决策侧逐帧现算）。
 
@@ -280,7 +286,7 @@ op = `operations/cw_op/cw_comp_transaction_action.py::CompTransactionOp`（**终
 - **档 1（判据准入放行，原子类发射）**：冶金炉（→`FurnaceUse`，furnace_single）、特权赋予卡（→`PrivilegeCardUse`，privilege_upgrade）；
 - **档 2（判据面 fail-closed，类随族立档、发射位禁无判据发射）**：拆装扳手（→`WrenchUse`）、精密拆装扳手（→`PrecisionWrenchUse`）、员工投影仪（→`StaffProjectorUse`）、完美投影仪（→`PerfectProjectorUse`）、好运令牌（→`LuckyTokenUse`）——判据面拒因分键在册（dest_unready/cold_start_later/rc_missing）；其中员工投影仪/完美投影仪/好运令牌的 kernel 写端桥已备（接线 = 桥调用），拆装扳手走执行域既有装备转移链。
 
-**通用边界**：工具消耗品 −1 与目标件消失的逻辑态 = 视觉域帧面直写（`_project_prep_obs` 工具分支，按 `EQUIP_WRITE_SIDES` 申报逐类落）+ 下一帧装备区读数覆盖；消耗确认三态对拍随原子化退役（消费真值归观察）。首件消费后画面网格重排（reflow）→ 工具原子 = 截断类（发射帧独占，后续网格目标动作下帧重评）。装备获得固定入栏序（第 1 排消耗品从右往左、装备区先右列后左列，`research/equipment_mechanics.md` §5）= 观察剪枝知识，不进逻辑态。
+**通用边界**：工具消耗品 −1 与目标件消失 = **容器零写**（消费真值归观察——装备域下一帧读数覆盖；工具原子 = 截断类，发射帧独占零窗口）；消耗确认三态对拍随原子化退役（消费真值归观察）。首件消费后画面网格重排（reflow）→ 工具原子 = 截断类（发射帧独占，后续网格目标动作下帧重评）。装备获得固定入栏序（第 1 排消耗品从右往左、装备区先右列后左列，`research/equipment_mechanics.md` §5）= 观察剪枝知识，不进逻辑态。
 
 ### 4.1 冶金炉（装备目标·档 1 已接）
 

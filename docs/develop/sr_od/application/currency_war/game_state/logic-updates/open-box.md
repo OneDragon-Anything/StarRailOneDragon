@@ -8,9 +8,9 @@
 
 ## 2. 逻辑态域集
 
-容器 GameState **零写**(显式申报):`kernel/cw_game_state.py::apply_prep_action_logic` 对集外动作型直接返回(箱/典籍/书册卡 = 视觉域动作,容器零写契约同 [open-bookcard.md](open-bookcard.md) §2);`kernel/cw_exec_state.py::apply_op_effect` else 分支显式不建模清单点名 OpenBox——箱不消失,消耗在选卡确认。
+容器 GameState **零写**(合法零写集申报):`kernel/cw_game_state.py::apply_prep_action_logic` 对 OpenBox **合法零写**(登记面两集申报:写口分支集 7 动作 / 合法零写集含 OpenBox)——**R7 终结化**,结束判定先行交回外循环,不经逻辑态写;腾席/到账事实由交回后的下一入口 heavy 观察覆盖(零窗口:终结 = 发出即 visit 结束,无同 visit 后续帧消费)。`kernel/cw_exec_state.py::apply_op_effect` else 分支显式不建模清单点名 OpenBox——箱不消失,消耗在选卡确认。
 
-**黑板帧零推进(终结化申报)**:OpenBox 终结化(R7)后**不经** `_project_prep_obs`——结束判定先行交回外循环,原视觉域分支随终结化作废删除(`operations/cw_screen/cw_screen_prep.py::_project_prep_obs` 段头注申报)。腾席事实不由本动作推算,由交回后的下一入口 heavy 观察重建。
+**触发物识别**(备战观察链):补给箱占席事实经 bench 槽位 `kind='supply_box'` 进容器(观察写端 `bench_view_from_obs` 细分;决策臂 = mandate_v1 entry 开箱臂读容器 bench 首个 supply_box 槽,臂序 box 优先于典籍)。
 
 ## 3. 确定面转移规则(逐条)
 
@@ -29,11 +29,11 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::OpenBox`;`operations/cw_op/cw_open_box_action.py::OpenBoxOp`(`terminal`/`terminal_wait` 类属性,消费点经注册表 `action_op_class_for` 读);`kernel/cw_game_state.py::apply_prep_action_logic`(集外零写申报);`kernel/cw_exec_state.py::apply_op_effect`(else 分支显式不建模 + dict ConfirmBox 分支);`operations/cw_screen/cw_screen_box_pick.py`(`box_card_names` 写点 / `decide_box_card`);终结判定总表 = [screens/README](../../screens/README.md) §4。
+`kernel/cw_vocab.py::OpenBox`;`operations/cw_op/cw_open_box_action.py::OpenBoxOp`(`terminal`/`terminal_wait` 类属性,消费点经注册表 `action_op_class_for` 读);`kernel/cw_game_state.py::apply_prep_action_logic`(合法零写集申报)/ `bench_view_from_obs`(kind 细分观察写端);`kernel/cw_exec_state.py::apply_op_effect`(else 分支显式不建模 + dict ConfirmBox 分支);`operations/cw_screen/cw_screen_box_pick.py`(`box_card_names` 写点 / `decide_box_card`);终结判定总表 = [screens/README](../../screens/README.md) §4。
 
 ## 7. 语义验证
 
-OpenBox 不在 `cw_vocab.py::Action` 联合的容器动作辖内——零局内资源推进语义,与「视觉域动作容器零写」契约同义;等价性由契约承载,无 M1 投影直锁对象(本动作不经 `apply_shop_action_logic`/`apply_prep_action_logic` 写口)。
+OpenBox = **合法零写集成员**(登记面申报,行为锁 = `test_cw_unified_action_2a` 词表覆盖锁零写集断言:write_seq 不变);终结化语义由注册表 `terminal=True` 承载(执行即交回外循环,下一入口 heavy 覆盖腾席/到账真值)。触发物识别 = 容器 bench 槽 kind 细分(mandate_v1 决策面 bench kind 分派用例)。
 
 ## 8. 判例注记(发射期)
 
@@ -41,4 +41,4 @@ OpenBox 不在 `cw_vocab.py::Action` 联合的容器动作辖内——零局内�
 
 ## 9. 依据
 
-[flow/action_ops.md](../../flow/action_ops.md) §4.2 OpenBox 行(终结化/识别/点击链);`operations/cw_screen/cw_screen_prep.py::_project_prep_obs` 段头注(终结化分支作废申报);`operations/cw_screen/cw_screen_box_pick.py` docstring(`box_card_names` 写槽与选卡即终结);[fields.md](../fields.md) §3.2.5(占席道具)/§4.2 事件选择行。
+[flow/action_ops.md](../../flow/action_ops.md) §4.2 OpenBox 行(终结化/识别/点击链);`kernel/cw_game_state.py::apply_prep_action_logic` docstring(两集申报);`operations/cw_screen/cw_screen_box_pick.py` docstring(`box_card_names` 写槽与选卡即终结);[fields.md](../fields.md) §3.2.5(占席道具)/§4.2 事件选择行。
