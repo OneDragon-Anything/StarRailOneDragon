@@ -5,8 +5,8 @@
 - 落地:[landing.md](landing.md)
 
 ## 进度
-- 迭代设计:定稿(用户五轮裁定代行对抗,2026-09-18 会话)
-- 设计对抗:收敛(用户逐项裁定:①基类废弃+独立类+obs+report;②多 node+对账段去除;③round_wait+on_outcome 退役;④无防御上限;⑤刷新计数出辖,动作 op 侧另会话)
+- 迭代设计:定稿(用户六轮裁定代行对抗,2026-09-18 会话)
+- 设计对抗:收敛(用户逐项裁定:①基类废弃+独立类+obs+report;②多 node+对账段去除;③round_wait+on_outcome 退役;④无防御上限;⑤刷新计数出辖,动作 op 侧另会话;⑥report 与动作上报统一模块级函数族 report_screen_*_obs)
 - 落地:阶段 0/8 done(明细见 landing.md)
 - 正本更新:未开始
 

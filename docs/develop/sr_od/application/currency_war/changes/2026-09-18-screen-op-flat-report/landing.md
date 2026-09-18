@@ -4,7 +4,7 @@
 
 ## 3.1 kernel 基座(obs 类 + report 接口)
 
-**范围**：新建 `kernel/cw_screen_obs.py`（§2.6 全表 obs 类，字段 = 现役 `XxxObservation` 逐位平移；推进型屏入口裁决 obs）；`GameState` 新增 `report_xxx` 方法族（§2.6 全表有 report 列者），方法体 = 各画面现役观察性写点逐位转录（`ChannelSig` actor 改标 `'GameState.report_xxx'`，其余语义零改动）。**纯新增，零行为切换**——本阶段无任何 op 改道。
+**范围**：新建 `kernel/cw_screen_obs.py`（§2.6 全表 obs 类，字段 = 现役 `XxxObservation` 逐位平移；推进型屏入口裁决 obs）；`kernel/cw_game_state.py` 新增 `report_screen_*_obs` 模块级函数族（§2.6 全表有 report 列者；**与动作上报函数族 `report_action_*_param` 同约定**，design §2.3 第六轮裁定），函数体 = 各画面现役观察性写点逐位转录（sig/produced_by 语义不变，actor 改标本函数名，其余语义零改动）。**纯新增，零行为切换**——本阶段无任何 op 改道。
 **设计依据**：design.md §2.2/§2.3/§2.6。
 **文件面**：`kernel/cw_screen_obs.py`（新建）、`kernel/cw_game_state.py`。
 **依赖**：无。
