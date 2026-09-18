@@ -49,28 +49,23 @@
 id_mark/两个节点条);boss 节点圆由 ``read_plane_detail_nodes`` 动态定位
 (节点数随位面/投资策略变:位面1=9,位面2/3=7,不硬编码)。
 
-统一观察架构逐屏迁移(收尾五屏;架构设计 §9.1 并存纪律):本类是
-CwScreenOpBase 子类,``collect()`` 节点首行装配点分流(先例锚 =
-cw_screen_encounter.py :241-251/:252-258):cw_game_ports 两端口完整在场 →
-五段生命周期新路径;缺省 None = 生产直连旧路径(原序列,生产行为零变化)。
-本屏 = 总纲契约 2「薄转录」适用实例(收尾屏详设 §5):observe = 帧引用
-直通(场景门[在位面详情/备战/其它]本就在现役采集体内,零拆改);reconcile
-= 空申报;decide+act 内聚 = 现采集体**方法级共享**(``_collect_cycle``,新旧
-路径调用同一份,禁第二套转录);on_outcome = 无登记件(注册表缺席 = 零
-动作,__init__ 申报)。**双节点图保留**(关键取舍 2):``采集``→``关闭并
-回写``显式 ``node_from`` 边是首跑教训落码(无显式边时采集 success 被当 op
-终点,关闭节点漏跑);lifecycle 早退/成功轮次交回后节点图经既有边自然走到
-关闭节点,``run_lifecycle`` 返回值 = collect 节点 round 结果,流转语义不变。
-接口短横线:采集结果中转仍走 ``ctx.cw_plane_bosses``/``cw_plane_affixes``
-(消费接线批挂账,原样;五屏零 GameState 写端,写入流对拍无适用面如实申
-报)。本屏 sim 腿 = 不适用(F11 例外清单:sim 无位面详情/敌人情报对应画面
-段),等价判据主承重 = 纯函数三件在册测试锁(零触碰)+ 新路径行为锁
+形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;
+**薄转录直通形态**——场景门[在位面详情/备战/其它]本就在现役采集体内,
+不前移,零拆改):观察 node = 装帧(稳定帧引用 → obs{on_screen} → 调
+占位 ``report_screen_plane_intel_obs``;本屏现役零容器写点——采集产物
+写端 = 节点序列台账三访问函数辖域,非 Field 观察记账;接口为统一形态
+占位,match/gs 缺席跳过)→ obs 挂实例属性。决策动作面 = 现役双节点图
+**保留**:``采集``(round_wait 自环三位面循环)→ ``关闭并回写``显式
+``node_from`` 边是首跑教训落码(无显式边时采集 success 被当 op 终点,
+关闭节点漏跑);采集体/关闭回写体逐位平移零行为变更。接口短横线:采集
+结果中转仍走 ``ctx.cw_plane_bosses``/``cw_plane_affixes``(消费接线批
+挂账,原样)。本屏 sim 腿 = 不适用(sim 无位面详情/敌人情报对应画面
+段),等价判据主承重 = 纯函数三件在册测试锁(零触碰)+ 双节点图边锁
 (test_cw_obs_arch_closing_screens.py)。
 """
 import contextlib
 import logging
 import time
-from dataclasses import dataclass
 from typing import Any, ClassVar
 
 from cv2.typing import MatLike
@@ -79,11 +74,12 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
-from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
-    CwScreenOpBase,
+from sr_od.application.currency_war.kernel.cw_screen_report.plane_intel import (
+    CwScreenPlaneIntelObs,
+    report_screen_plane_intel_obs,
 )
 from sr_od.context.sr_context import SrContext
+from sr_od.operations.sr_operation import SrOperation
 
 _log = logging.getLogger(__name__)
 
@@ -206,31 +202,7 @@ def decide_plane_skip(plane_no: int,
     return True, f'跳过(位面{plane_no}<起始位面{start_plane},已通过位面不重采)'
 
 
-@dataclass
-class PlaneIntelObservation:
-    """位面情报采集观察 payload(五段之段1产物;实机转录形态)。
-
-    薄转录直通形态(收尾屏详设 §5):observe 无门无早退(场景门[在位面
-    详情/备战/其它]本就在现役采集体内),payload 仅携带稳定帧引用(实机
-    识别域载体,不出端口——sim 适配器落位时该域 = None 帧语义,F11 例外
-    清单本批不建)。
-    """
-
-    screen: Any = None
-
-
-class PlaneIntelLiveObservationAdapter:
-    """实机适配器①(观察端口;架构设计 §2.3 识别链封口)。
-
-    直通封口(先例 = 轻观察适配器族;本屏薄转录,场景门不前移):适配
-    器仅装配稳定帧引用。sim 实现 = 不适用(F11 例外清单),本批不建。
-    """
-
-    def observe(self, op: 'CwScreenPlaneIntel') -> PlaneIntelObservation:
-        return PlaneIntelObservation(screen=op.last_screenshot)
-
-
-class CwScreenPlaneIntel(CwScreenOpBase):
+class CwScreenPlaneIntel(SrOperation):
     """位面详情:一次采集位面情报(三 boss 大图标 SIFT + 词缀横条 + 节点带;
     接管局补采主通道,亦开局校准通用)。"""
 
@@ -243,12 +215,7 @@ class CwScreenPlaneIntel(CwScreenOpBase):
         时序反过来,先识别当前节点得当前位面再进详情);调用方没算出时
         本 op 在备战入口自行现读,仍无则全量采集(保底)。
         """
-        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-位面情报采集')
-        # 适配器位缺省装配(先例 = 五相位屏):观察口 = 实机适配器
-        #(直通封口);动作口 = None = 直连现役采集体(基类「None = 子类
-        # 缺省实现自担」)。on_outcome 注册表:本屏无登记件(注册表缺席 =
-        # 零动作)。
-        self._observation_adapter = PlaneIntelLiveObservationAdapter()
+        SrOperation.__init__(self, ctx, op_name='货币战争-位面情报采集')
         self._plane_bosses: list[str | None] = [None, None, None]   # 位面1..3
         self._cur_plane: int = 0          # 0-based 当前采集位面索引
         self._start_plane: int = max(0, int(start_plane))   # 1-based;0=未知全采
@@ -274,6 +241,9 @@ class CwScreenPlaneIntel(CwScreenOpBase):
         # 上一次进门时的缩略图(None=本等待幕尚无前帧)+ 连续零变化帧计数。
         self._gate_prev_thumb: Any = None
         self._gate_static_streak: int = 0
+        # 观察结果(装帧观察 node 产物,薄转录直通:采集体不消费 obs,
+        # 挂实例属性仅为统一形态)。
+        self._obs: CwScreenPlaneIntelObs | None = None
 
     # ---- 内部工具 -------------------------------------------------------
 
@@ -436,25 +406,40 @@ class CwScreenPlaneIntel(CwScreenOpBase):
             f'位面{plane_no} 节点条静止不可读({reason}),结论=情报不可得,'
             f'推进下一位面')
 
-    # ---- 节点图(round 语义驱动,同 HandleBriefing 形态) -----------------
+    # ---- 节点图(两段式:观察装帧 → 采集 → 关闭并回写) -----------------
 
-    @operation_node(name='采集', is_start_node=True, node_max_retry_times=60)
+    @operation_node(name='观察', is_start_node=True)
+    def observe(self) -> OperationRoundResult:
+        """装帧观察 node(薄转录直通形态):场景门[在位面详情/备战/其它]
+        本就在现役采集体内不前移(零拆改),本 node 仅装配稳定帧引用 →
+        obs{on_screen} → 调占位 ``report_screen_plane_intel_obs``(统一
+        形态;本屏现役零容器写点——采集产物写端 = 节点序列台账三访问函数
+        辖域,非 Field 观察记账;match/gs 缺席跳过)→ obs 挂实例属性进
+        采集 node。"""
+        screen = self.last_screenshot
+        obs = CwScreenPlaneIntelObs(on_screen=True, screen=screen)
+        _match = getattr(self.ctx, 'cw_match', None)
+        _gs = getattr(_match, 'gs', None) if _match is not None else None
+        if _gs is not None:
+            report_screen_plane_intel_obs(_gs, obs)
+        self._obs = obs
+        return self.round_success()
+
+    @node_from(from_name='观察')
+    @operation_node(name='采集', node_max_retry_times=60)
     def collect(self) -> OperationRoundResult:
         """入口核对 + 三位面采集循环节点(状态在 self;round_wait 自环推进)。
 
-        装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run/
-        CwScreenEncounter.handle,总纲契约 1 迁移手法):两端口完整在场
-        (= 测试 harness 显式装配)→ 五段生命周期新路径(薄转录:observe
-        直通 + 决策循环消费同一份 ``_collect_cycle``);缺省 None = 生产直连
-        旧路径(原序列,生产行为零变化)。本屏无重入裁决旗标 → 分流在节点
-        首行(收尾屏详设 §5)。"""
-        if observation_source() is not None and action_sink() is not None:
-            return self.run_lifecycle()
+        分支序:①已在位面详情(重跑/续采)→ 采集循环;②备战 → 点当前
+        节点图标开详情(round_wait 等开);③其它屏 → retry 等。
+        采集循环(每位面):点卡 → 点 boss 节点(最右,位置先验)→ 详情条
+        标签验「首领」+ 大图标 SIFT → 头像态命中记录 / 徽章态记 None 跳过 /
+        标签异常 retry;三位面齐 → success(转关闭)。
+        """
         return self._collect_cycle()
 
     def _collect_cycle(self) -> OperationRoundResult:
-        """采集体(五段 decide+act 两路径共享零转录;旧 collect 体逐位平移,
-        分支序禁重排——旧 handle 注释随体保留)。
+        """采集体(现役采集体逐位平移,分支序禁重排)。
 
         分支序:①已在位面详情(重跑/续采)→ 采集循环;②备战 → 点当前
         节点图标开详情(round_wait 等开);③其它屏 → retry 等。
@@ -689,32 +674,6 @@ class CwScreenPlaneIntel(CwScreenOpBase):
                      'boss 槽/未识别位自然跳过不判')
         _log.info('[cw-plane-intel] 节点序列互证不一致(位面%d)位次%s → 台账留证',
                   self._prep_plane, mism)
-
-    # ---- 五段生命周期(统一观察架构 §5.1,薄转录形态)--------------
-
-    def lifecycle_observe(self
-                          ) -> tuple[PlaneIntelObservation,
-                                     OperationRoundResult | None]:
-        """段1 observe:帧引用直通(薄转录,收尾屏详设 §5 五段表——场景门
-        [在位面详情/备战/其它]本就在 ``_collect_cycle`` 体内,零拆改不前移;
-        段迹如实申报 observe/reconcile 恒直通,无早退出口)。"""
-        _adp = self._observation_port()
-        obs = (_adp.observe(self) if _adp is not None
-               else PlaneIntelObservation(screen=self.last_screenshot))
-        return obs, None
-
-    def lifecycle_decision_cycle(self, payload: PlaneIntelObservation
-                                 ) -> OperationRoundResult:
-        """段3-5:decide+act 内聚 = 采集体 ``_collect_cycle``(新旧路径调用
-        同一份,禁第二套转录);on_outcome = 本屏无登记件(注册表缺席 = 零
-        动作,__init__ 申报)。返回值 = collect 节点 round 结果,节点图经
-        既有 ``采集→关闭并回写`` 显式边流转(双节点保留,收尾屏详设关键
-        取舍 2)。"""
-        self._lifecycle_mark('decide')
-        self._lifecycle_mark('act')
-        rs = self._collect_cycle()
-        self._lifecycle_mark('on_outcome')
-        return rs
 
     @node_from(from_name='采集')   # 首跑教训:无显式边时「采集」success 被当 op 终点,关闭节点漏跑(画面留在位面详情)
     @operation_node(name='关闭并回写', node_max_retry_times=6)
