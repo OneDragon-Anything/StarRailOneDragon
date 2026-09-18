@@ -57,14 +57,14 @@ class CwScreenXxx(SrOperation):
 
 ### 2.2 观察结果类 `CwScreenXxxObs`
 
-- **住址**：`kernel/cw_screen_obs.py`（新模块，kernel 纯数据契约）。依据：`GameState.report_xxx` 签名引用 obs 类型，GameState 住 kernel 层，分包依赖方向 operations→kernel，obs 类必须住 kernel 才不反向依赖（用户裁定 #7）。
+- **住址**：`kernel/cw_screen_report/<screen>.py`——**每画面一文件,obs 类与该画面 `report_screen_*_obs` 函数同居**(用户裁定⑦:一律直接每画面一个文件,推进型也不例外,避免后续再拆;与动作侧 `kernel/cw_action_report/<action>.py` 每动作一文件对称)。文件名 = 画面 snake;`__init__.py` 不暴露模块(项目惯例)。obs 类字段 = 现役 `XxxObservation` 逐位平移(帧引用字段保留),推进型屏 obs = 入口裁决 `{on_screen: bool, screen}`。kernel 纯数据:obs 类只可 import kernel 既有类型 + `cv2.typing.MatLike`。
 - **命名映射**：现役 `XxxObservation`（散住各 op 文件）→ `CwScreenXxxObs`，字段逐位平移不改语义；帧引用字段（`screen: Any`）保留（实机识别域载体，与现役一致）。
 - **读时机保真（用户裁定 #2）**：迁移不增加读屏。懒读语义保留（典型 = `CwScreenMegastar`：确认访问不重读候选，obs.options 仅在「本访问将选择」时填充，字段注释写明门槛条件）；单发 overlay 屏升级为「入口观察一次读 → report 写槽 → 决策只消费 obs/game state」（读写同帧等价，即 screens/op-layer.md §1.1 既有目标形态）。
 - **推进型屏 obs**：每屏仍建 `CwScreenXxxObs`（记录入口裁决结果，如 `on_screen: bool`），**不设 report 接口**（空决策形态无对账面/无容器域，依据：ADR-0584 空决策合同 + 用户裁定 #6）。
 
 ### 2.3 `report_screen_*_obs` 上报接口族
 
-- **形状**：`kernel/cw_game_state.py` 模块级函数，一画面一函数：`def report_screen_<snake>_obs(gs: GameState, obs: CwScreenXxxObs, *, sig: ChannelSig | None = None) -> None`。**与动作上报函数族 `report_action_*_param` 同约定**（用户裁定 2026-09-18 第六轮：一个「上报」概念一个形状；方法形状废弃）——命名机械规约同构（obs 类 `CwScreenXxxObs` 去前缀 `CwScreen` 去后缀 `Obs` 转 snake）；完备锁测试遍历 obs 类断言函数在场；两族（动作/画面观察）互不混用，且都禁按类型聚合的分派转移函数（分派只允许在「手里攥着任意流」的引擎入口，同动作族分节申报）。sig 缺省 = 函数体内构造规范签名（family 沿用原写点，actor = 本函数名）。
+- **形状**：`kernel/cw_screen_report/<screen>.py` 模块级函数，一画面一函数(与 obs 类同居，§2.2):`def report_screen_<snake>_obs(gs: GameState, obs: CwScreenXxxObs, *, sig: ChannelSig | None = None) -> None`。**与动作上报函数族 `report_action_*_param` 同约定**(用户裁定六:一个「上报」概念一个形状)——命名机械规约同构(obs 类 `CwScreenXxxObs` 去前缀 `CwScreen` 去后缀 `Obs` 转 snake);完备锁测试遍历包内 obs 类断言函数在场/推进型不在场;两族(动作/画面观察)互不混用,都禁按类型聚合的分派转移函数。sig 缺省 = 函数体内构造签名,**actor/ family/evidence 逐位沿用该画面现役写点原值**(如 actor='CwScreenEncounter')——REGISTERED_ACTORS 零扩面,**cw_game_state.py 本迭代零改动**(用户裁定⑦配套;并行会话在飞该文件,零触碰即零冲突),journal 写行语义与现役逐位连续。
 - **辖域边界（硬规则）**：report 收编的是**纯数据写点**（内核知识可从 obs 字段直接表达的 `write_logic`）；需 obs 桶 helper 或读帧的观察审计链（如羁绊显示核对、商店池核对）**留守 op 的观察 node**，属观察处理非记账——kernel→obs 直依被分包矩阵禁止（依据：flow/README §2.3 装配点注记「分包依赖矩阵禁 decision→obs 直依」同构；obs 审计函数住 `obs/` 桶）。
 - **漏斗边界**：`read_game_state` 漏斗内部的容器写端 = 既有观察边界，不动（用户裁定 #3）；prep/买牌的 report 函数只收编 op 层散落写点（接管补采写点 `takeover_*`/`plane_bosses`/`enemy_affixes`、`node_path` 写点、结算观察写点等，逐屏清单见 §2.6；重型屏辖域细化随 T-5 迁移批落地，landing 带注）。
 - **动作事实边界（硬规则）**：chosen_*（选择落地记录）留守画面 op 的重入裁决点——其值在「确认已落地」重入观察后才可信，记账随判定点走（用户裁定会话确认）。刷新计数**不适用**此边界（§2.4 出辖）。

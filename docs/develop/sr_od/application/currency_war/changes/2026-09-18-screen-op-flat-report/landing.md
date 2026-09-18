@@ -2,11 +2,11 @@
 
 > 阶段唯一源;立任务照各节 `dag.py add`。每阶段含本阶段测试同步(§2.8),验证 = ruff(改动文件)+ 本族测试;T-7/T-8 收口跑 L1 全量,末尾 L3。
 
-## 3.1 kernel 基座(obs 类 + report 接口)
+## 3.1 kernel 基座(cw_screen_report 包:每画面一文件 obs+report)
 
-**范围**：新建 `kernel/cw_screen_obs.py`（§2.6 全表 obs 类，字段 = 现役 `XxxObservation` 逐位平移；推进型屏入口裁决 obs）；`kernel/cw_game_state.py` 新增 `report_screen_*_obs` 模块级函数族（§2.6 全表有 report 列者；**与动作上报函数族 `report_action_*_param` 同约定**，design §2.3 第六轮裁定），函数体 = 各画面现役观察性写点逐位转录（sig/produced_by 语义不变，actor 改标本函数名，其余语义零改动）。**纯新增，零行为切换**——本阶段无任何 op 改道。
+**范围**：新建 `kernel/cw_screen_report/` 包(**每画面一文件**,§2.6 全表 35+2 屏各一文件:obs 类 + `report_screen_*_obs` 函数同居;推进型/商店框屏文件只含 obs 类与「无 report」声明——用户裁定⑦一律直接拆到位,避免后续再拆);函数体 = 各画面现役观察性写点逐位转录(sig/family/actor/evidence 沿用原写点原值,REGISTERED_ACTORS 零扩面,其余语义零改动)。**纯新增,零行为切换**——本阶段无任何 op 改道,`cw_game_state.py` 零触碰。
 **设计依据**：design.md §2.2/§2.3/§2.6。
-**文件面**：`kernel/cw_screen_obs.py`（新建）、`kernel/cw_game_state.py`。
+**文件面**：`kernel/cw_screen_report/`（新建包）、`sr-od-test` 对应测试；**禁碰** `cw_game_state.py`/`cw_action_report/`/`cw_screen_buy_cards.py`/`sim/`（并行会话在飞面）。
 **依赖**：无。
 **优先级建议**：9。
 **完成判据**：
