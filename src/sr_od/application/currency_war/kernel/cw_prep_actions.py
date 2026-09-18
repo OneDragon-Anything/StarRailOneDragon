@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from one_dragon.base.geometry.point import Point
 from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 
 #: 点球单批硬上限(原执行器 SPHERE_MAX_CLICKS 常量迁居 kernel:挑选上界
@@ -25,7 +26,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 SPHERE_CLICK_HARD_CAP: int = 12
 
 
-def sphere_click_targets_of(gs) -> list:
+def sphere_click_targets_of(gs) -> list[tuple[str, Point, int]]:
     """奖励球点击目标读口(容器 spheres 域 → select_sphere_clicks 消费
     形态;迭代 2026-09-18-prep-obs-retirement 阶段 3.4 立口)。
 

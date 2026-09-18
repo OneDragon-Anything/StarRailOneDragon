@@ -748,12 +748,11 @@ class CwScreenPrep(CwScreenOpBase):
                          for (row, slot), names
                          in obs.occupied_equips.items()},
                         sig=_prep_sig)
-                if obs.spheres:
-                    # 奖励球点击目标观察写端(阶段 3.4):现读载荷
-                    # [(color, Point, r)] → SphereSight.points((color,x,y,r)
-                    # 平铺;球为自由位置识别物,坐标必须随识别走——总纲
-                    # 坐标契约)。空读 = 真无球,照写 count=0(合法真值,
-                    # 防上一帧残留假球);两帧持存防抖已在 obs.spheres
+                if obs.spheres is not None:
+                    # 奖励球点击目标观察写端(阶段 3.4;reviewer r1 打回项1
+                    # 修正:守卫只挡「识别域未装配」(None),**空读照写**
+                    # count=0——空读 = 真无球,跳写会留上一帧残留假球坐标
+                    # 喂进点击载荷(幽灵球);两帧持存防抖已在 obs.spheres
                     # 现读链完成(本点只做形态搬运)。
                     _sph_pts = tuple((color, int(p.x), int(p.y), int(r))
                                      for color, p, r in obs.spheres)

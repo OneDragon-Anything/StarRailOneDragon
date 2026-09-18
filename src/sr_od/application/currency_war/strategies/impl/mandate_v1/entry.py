@@ -467,7 +467,11 @@ def emit(obs: PrepObservation, session: StrategySession,
         return [Emitted(OpenBox(slot=obs.boxes[0][0]), True, 'prep_box')]
     if obs.tomes:
         return [Emitted(OpenTome(slot=obs.tomes[0][0]), True, 'prep_tome')]
-    if obs.spheres:
+    # 球臂门+载荷同源(迭代阶段 3.4 换源收口,reviewer r1 打回项2):
+    # 门条件与点击载荷共用同一容器读口推导——黑板 obs.spheres 消费清零,
+    # 防陈旧门真/载荷空(空转)或批 5 删字段后 AttributeError。
+    _sf_targets = sphere_click_targets_of(gs)
+    if _sf_targets:
         # 席满让路门(T-297 落码;ADR-0642;方案正本 = T-281 修复方案稿
         # v2.1,重写自 ADR-0596 §4.9③ 迁移 B 两腿谓词的收球行为,结构
         # 保活面见下方死码块)。门显式条件化(方案 §3.2/B5):
@@ -499,8 +503,7 @@ def emit(obs: PrepObservation, session: StrategySession,
                 _ct_sp['sphere_defer_streak'] = 0
             return [Emitted(ClickSpheres(
                         points=select_sphere_clicks(
-                            sphere_click_targets_of(gs),
-                            SPHERE_CLICK_BATCH_MAX_K)),
+                            _sf_targets, SPHERE_CLICK_BATCH_MAX_K)),
                         True, 'prep_spheres')]
         _prog_sig = _sphere_progress_sig(gs)
         _streak = 0
@@ -515,8 +518,7 @@ def emit(obs: PrepObservation, session: StrategySession,
             # 单探针:同发射形态 = 常规 prep_spheres 动作。
             return [Emitted(ClickSpheres(
                         points=select_sphere_clicks(
-                            sphere_click_targets_of(gs),
-                            SPHERE_CLICK_BATCH_MAX_K)),
+                            _sf_targets, SPHERE_CLICK_BATCH_MAX_K)),
                         True, 'prep_spheres')]
         if isinstance(_ct_sp, dict):
             _ct_sp['sphere_defer_yield'] = \
