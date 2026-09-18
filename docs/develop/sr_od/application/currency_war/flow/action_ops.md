@@ -6,12 +6,14 @@
 
 **用户裁定(原文)**:动作 op 是机械执行——只负责把一个动作发出去(点击/拖拽)+ 如实上报动作事实。禁止做验证,禁止做重试。任何需要验证或需要重试的地方,一律是 bug。
 
+**用户裁定(增补)**:**不存在偶发丢失——动作未生效必有确定性根因,禁止以偶发结案**;安灯拦停的每个未生效都必须查到根因(如:装备角色专属约束/前置不满足/时序错误),修法落根因层。
+
 **归属说明(每类需求去哪一层)**:
 
 | 需求 | 归属层 |
 |---|---|
 | 「动作有没有生效」的落地判定 | 观察侧对账(reconcile):挂起预期 vs 下一帧实读,失配 = 纠偏/缺陷台账;入口 = 画面 op 生命周期 reconcile 段 |
-| 动作失败后的重试 | 决策循环 / 失败网:逻辑态保持事实,下一帧策略对未完成事项自然重派;重派预算由上层刹车上限封顶 |
+| 动作失败后的重试 | 决策循环 / 失败网:逻辑态保持事实,下一帧策略对未完成事项自然重派;重派预算由外循环节点轮次预算封顶(`node_max_retry_times`),无动作级重试 |
 | 动作点不响/拖不动本身 | 动作层修可靠性:点击链坐标、时序、确认序列——不为它加验证这种复杂度 |
 
 在档更完整表述(用户裁定 2026-09-10,宿主 = `operations/cw_screen/cw_screen_op_base.py` 类 docstring「验证不是生命周期段」节):「动作 op 只管机械执行,禁止做任何验证,也禁止在画面 op 做验证。如果观察正确,动作 op 没生效,那就是动作 op 有 bug,不应该为了 bug 增加验证这种复杂度。」同款裁定另见 `operations/cw_screen/_overlay_confirm.py` 模块头(验证废除形态)。
@@ -20,19 +22,13 @@
 
 ## 2. 边界澄清(什么属于申报,什么属于验证)
 
-### 2.1 落地申报闩族(像素差申报三件)
+### 2.1 动作未生效的治理链(现行为模型申报)
 
-动作发出后,op 对画面做一次前后两帧的像素差读数,判断「刚发的动作有没有产生可见变化」;零变化时**不重发、不等画面转移**,只把「未生效」如实申报出去(申报闩/返回值/旁路字段),逻辑态保持事实,改道权全在上层。按 §1 口径,这是「发出即记账的留证与申报」,不是流程验证,也不是重试:
+动作 op 层的三件落地判读机制(部署/买牌/穿戴:动作发出后的画面差读数申报、连续未生效计数闩、重派刹车)已全部拆除——动作 op 层不存在「动作是否生效」的判定面,残留即违 §1。现行为模型:
 
-| 动作(在册代号) | 判定区 | 未生效时的申报 | 消费口(跳写/不动账) | miss 计数与刹车宿主 |
-|---|---|---|---|---|
-| DeployMoveOp(T-22) | 目标槽 ±60/65px(`DEPLOY_LAND_DIFF_THRESHOLD=2.0`) | `GameState.exec_books.deploy_miss_pending`(`DeployMissMark`;tracked 保持事实) | `kernel/cw_game_state.py::consume_deploy_miss_mark`(投影写端跳写) | `cw_game_state.py::deploy_miss_brake_status`,上限 `DEPLOY_MISS_REDISPATCH_LIMIT=3`,决策循环 round_fail(消费点 `cw_screen_prep`) |
-| BuyCardOp(T-44) | 商店牌槽位矩形(`BUY_LAND_DIFF_THRESHOLD=2.0`) | 返回 False + `env.last_buy_slot_no`,零落账(账本/逻辑态两侧不动) | 上层 `run_buy_waves` 落地门两侧不动 | `cw_screen_buy_cards.py::buy_miss_streak_tick` / `buy_miss_brake_status`,上限 `BUY_MISS_REDISPATCH_LIMIT=3` |
-| WearEquipOp(T-55) | owned 源件格 ±36px(`WEAR_LAND_DIFF_THRESHOLD=2.0`) | 闩 `wear_miss_skip_pending`(载体 `strategy_state.cw4_counters`)+ `env.emitted=False`,两投影腿跳写 | 容器腿 = 执行器 emitted 门;黑板腿 = `cw_wear_equip_action.py::wear_miss_consume` | `wear_miss_brake_status`,上限 `WEAR_MISS_REDISPATCH_LIMIT=3`,决策循环 round_fail(消费点 `cw_screen_prep`) |
-
-三件共同取向:缺证不可判(缺帧/两帧形状不一致/矩形越界)与载体缺席 = 保守放行走既有发出即写语义——读数只采集申报事实,不改变动作语义;首采零变化先经 settle 延迟重采一次(0.8s,卡牌飞行/拖拽回弹动画收敛,防时序误报)——重采是**重新读数**,不是重新执行动作。
-
-与 §1 的关系要说透:像素差判定在动作 op 体内做了画面读数,这与「零读屏纯机械」形态不同;它成立的依据 = §1 归属说明里的「如实上报动作事实」——判定产物只作申报,不改道不重发。若口径收紧为「动作 op 体内禁任何画面读数」,此族的宿主需要迁移;现状按在册裁定执行。
+- **动作 op = 机械执行 + 发出即记账**:点击/拖拽发出即记账(账本/逻辑态直写,基类契约恒 True);机械不能发出(定位缺失/无空槽)才以 `emitted=False` 申报未发出事实——这是「发出」侧的动作事实,不是效果判定。
+- **动作未生效的治理链**:下一入口 heavy 帧实读对账(挂起预期 vs 实读)失配 → 安灯停 → 按真 bug 追根因(根因纪律见 §1 用户裁定:不存在偶发丢失,禁止以偶发结案)。
+- **决策环按新观察自然重规划**:重派 = 决策循环按新观察自然重派,预算由外循环节点轮次预算封顶,无动作级重试;系统性吞输入由决策环通用失败网/哨兵兜底。
 
 ### 2.2 固定等待族(等待不是判效)
 
@@ -41,18 +37,13 @@
 ### 2.3 上报通道(动作事实怎么出去)
 
 - **prep 域旁路字段** `env.detail` / `env.emitted`(`PrepExecEnv`):机械执行摘要 + 是否已发出;基类返回值恒 True。
-- **返回值在册例外**(`cw_action_base.ActionOp` 例外登记口):`StartBattleOp`(返回值 = 点击序列已执行,找不到按钮/area 缺失 = False,消费面 = runner 包络 `last_launch_ok` 旁路)、`BuyCardOp`(返回值 = 落地像素验证结果,消费面 = 落地门 + miss 刹车);`WearEquipOp` 返回恒 True、miss 经 `emitted=False` 旁路。
+- **返回值在册例外**(`cw_action_base.ActionOp` 例外登记口):在册例外仅 `StartBattleOp`(返回值 = 点击序列已执行,找不到按钮/area 缺失 = False——未发出事实非判效,消费面 = runner 包络 `last_launch_ok` 旁路);`BuyCardOp` / `WearEquipOp` 均回基类契约恒 True,落地与否不是返回值语义,归观察侧对账(§2.1)。prep 域 `emitted=False` = 机械未发出事实(定位缺失/无空槽),非效果判定。
 - **pick 族旁路** `env.round_result`:轮次流转语义,不是动作成败回执;`operations/cw_screen/_overlay_confirm.py::emit_overlay_confirm` = 机械确认 + 固定等待 + 无条件 round_retry——不读屏判「是否生效」,落地与否由下一轮重入的入口观察裁决(重入时入口词不在 = 已离开本画面交回 success;仍在 = 重做确认,计节点 retry 预算)。
 - **落地登记注册表**(`operations/cw_screen/cw_screen_op_base.py` §6.4):单一发射口,发射即触发;逐件申报面 = `EMIT_TRIGGERED_DECLARED`(现役 2 件:encounter_refresh_used / strategy_refresh_used,随点击置位不等验效)。
 
 ## 3. 偏离清单
 
-核查面 = §4 全量清单(注册表 26 行 / 20 个 op 类)逐文件核读 + `operations/cw_op/` 全目录 grep(`until_find_all`/`until_not_find_all` 零命中):**零条**「动作 op 内做画面转移 until 验证」或「op 内自带重试循环」形态。
-
-注释残留 2 条(非行为,触碰对应文件时应顺带更正):
-
-1. `kernel/cw_vocab.py::StartBattle` docstring 仍写「验证=备战标识消失」,与其 op 实现(`cw_start_battle_action.py`,零转移验证)不符。
-2. `operations/cw_op/cw_overlay_pick_action.py::MegastarPickOp.execute` 首行注释「retry 重 confirm 防 bug#1 落空」为旧口径残留,现行为 = 纯机械单发(同函数下方注释已按现行口径书写)。
+核查面 = §4 全量清单(注册表 26 行 / 20 个 op 类)逐文件核读 + `operations/cw_op/` 全目录 grep(`until_find_all`/`until_not_find_all` 零命中):**零条**「动作 op 内做画面转移 until 验证」或「op 内自带重试循环」形态;注释面与实现一致,无旧口径残留。
 
 ## 4. 全量清单(基准 = `operations/cw_op/cw_action_registry.py`)
 
@@ -62,8 +53,8 @@
 
 | 词表类 | op 类 | 文件 | 说明 |
 |---|---|---|---|
-| BuyCard | BuyCardOp | `cw_buy_card_action.py` | 点买一张牌:槽号按期望态 payload 定长槽阵列解析(身份同一性优先,退化按 (name, star))→ screen_info「商店牌-N」中心点击;买前裁片纯留证;点击后槽位像素差申报(§2.1);生效/缺证 → 发出即记账(total_buy / spend_executed / bought_names + tracked 同步,满栏多买补差 k = `merge_buy_k`)。参数 = `action.card`(ShopCard)。发射条件 = 商店决策面产 BuyCard(义务/策略买入)。 |
-| RefreshShop | RefreshShopOp | `cw_refresh_shop_action.py` | 刷新商店(终结动作):刷前落对账件(刷前金/牌名/待对账标记/期望,零比对)+ 刷新钮真值读(三态+免费剩余次数,best-effort)→ 点刷新钮 → 固定等待 1s → 刷价记账(实付恒基价口径)+ 刷后牌名集原样落账(只读不比,三值对比单一源在观察侧 `cw_shop_refresh_obs.refresh_board_changed_of`);「刷新是否生效」归观察侧对账,执行侧零重试。发射条件 = 商店决策产 RefreshShop(现役发射位 = 息线门 R1)。 |
+| BuyCard | BuyCardOp | `cw_buy_card_action.py` | 点买一张牌:槽号按期望态 payload 定长槽阵列解析(身份同一性优先,退化按 (name, star))→ screen_info「商店牌-N」中心点击;买前裁片纯留证(保留理由:「买了什么」的像素级证据随期望态带到对账点,零判效非验证);恒发出即记账(total_buy / spend_executed / bought_names + tracked 同步,满栏多买补差 k = `merge_buy_k`);落地与否归观察侧对账(§2.1)。参数 = `action.card`(ShopCard)。发射条件 = 商店决策面产 BuyCard(义务/策略买入)。 |
+| RefreshShop | RefreshShopOp | `cw_refresh_shop_action.py` | 刷新商店(终结动作):刷前落对账件(刷前金/牌名/待对账标记/期望,零比对)+ 刷新钮真值读(三态+免费剩余次数,best-effort)→ 点刷新钮 → 固定等待 1s(`REFRESH_CLICK_SETTLE_WAIT_S`;保留理由:等刷新动画收敛的时序等待,非判效)→ 刷价记账(实付恒基价口径)+ 刷后牌名集原样落账(只读不比,三值对比单一源在观察侧 `cw_shop_refresh_obs.refresh_board_changed_of`);「刷新是否生效」归观察侧对账,执行侧零重试。发射条件 = 商店决策产 RefreshShop(现役发射位 = 息线门 R1)。 |
 | CloseShop | CloseShopOp | `cw_close_shop_action.py` | 关店恒可用终结 op:execute 内 no-op(恒 True),关店点击由编排壳 `cw_op_close_shop.py::CwOpCloseShop` 承担。发射条件 = 商店决策无动作可做时主动选它终结本画面访问(全函数契约要求的恒可用终结)。 |
 
 ### 4.2 备战族(9 行 + 工具原子 7 行)
@@ -72,9 +63,9 @@
 |---|---|---|---|
 | SellBench | PrepSellBenchOp | `cw_prep_sell_bench_action.py` | 卖备战席角色:drag 备战栏槽中心(area 序 = `bench_idx` 容器槽表下标,零换算)→ 出售区(`prep_actions.drag_bench_to_sell` 单一源),发出即记账(`_track_remove_bench`)+ 固定等待 1s(卖出金币动画)。发射条件 = 备战策略产 SellBench;`reason` 为归因记录字段非指令。 |
 | LevelUp(LevelUpShop is-a 兜底同本行) | PrepLevelUpOp | `cw_prep_level_up_action.py` | 买经验单击:找钮「备战标识-购买经验」(area 缺失回退兜底常量)单击一次 + 光标 park(防光标压等级显示区毒化 OCR);零授权零计数(击数推导/血闸全上移发射位,击数 > 0 = 每帧发射前置);金腿 = 容器逻辑态直写(`apply_prep_action_logic` 按 `action.cost` 扣)。升 N 击 = N 帧。发射条件 = 备战策略产 LevelUp(cost 现算装载);LevelUpShop(商店屏升级意图)is-a LevelUp 经注册表兜底同解析本行。 |
-| DeployMove | DeployMoveOp | `cw_deploy_move_action.py` | bench→上阵单步拖拽(腾席链专用):源拖点 = `bench_idx` area 序直取,落位排 = `to_row`、物理槽 = tracked 占用现读首空位(kernel `empty_deploy_slots` 单一源,首选排满 fallback 另一排,两排全满 = 未发出);拖后目标槽像素差申报(§2.1)+ 固定等待 2s + 盛会之星 overlay 快查(detail 标注,外环接管)。发射条件 = 备战策略按 kernel 部署计划逐帧产 DeployMove(bench_idx / to_row / faction)。 |
+| DeployMove | DeployMoveOp | `cw_deploy_move_action.py` | bench→上阵单步拖拽(腾席链专用):源拖点 = `bench_idx` area 序直取,落位排 = `to_row`、物理槽 = tracked 占用现读首空位(kernel `empty_deploy_slots` 单一源,首选排满 fallback 另一排,两排全满 = 未发出);拖后零落地判定,落地归观察侧对账(§2.1)+ 固定等待 2s(羁绊徽章动画窗,保留面)+ 盛会之星 overlay 快查(detail 标注,外环接管)。发射条件 = 备战策略按 kernel 部署计划逐帧产 DeployMove(bench_idx / to_row / faction)。 |
 | SellDeployed | SellDeployedOp | `cw_sell_deployed_action.py` | 卖上阵角色:drag 排槽中心 → 出售区(`deployed_idx`→(row, 物理槽号) 换算单一源 = kernel `deployed_row_slot`;落点 `sell_point` 单一源),发出即记账(`_track_remove_deployed`)+ 固定等待 1s。发射条件 = 备战策略产 SellDeployed(deployed_idx = deployed 槽表下标)。 |
-| WearEquip | WearEquipOp | `cw_wear_equip_action.py` | 穿装备单步:owned 网格按名定位源件 → 拖至目标角色排槽(row/slot = 画面物理槽 1 基);拖后源件格像素差申报(§2.1);槽位坐标缺失/源件未定位 = 不发出(`emitted=False`,下帧重派重算计划)。发射条件 = 备战策略穿戴计划(kernel `build_equip_wear_plan`)逐帧取首项产 WearEquip(item_name / char_name / row / slot)。 |
+| WearEquip | WearEquipOp | `cw_wear_equip_action.py` | 穿装备单步:owned 网格按名定位源件 → 拖至目标角色排槽(row/slot = 画面物理槽 1 基);拖后零落地判定,落地归观察侧对账(§2.1);槽位坐标缺失/源件未定位 = 未发出事实(`emitted=False`,下帧重派重算计划)。发射条件 = 备战策略穿戴计划(kernel `build_equip_wear_plan`)逐帧取首项产 WearEquip(item_name / char_name / row / slot)。 |
 | ClickSpheres | ClickSpheresOp | `cw_click_spheres_action.py` | 点奖励球:载荷 = 有序球心坐标点击列,纯机械逐个点(mouse_move + click + park),零读屏零排序零截断(大球优先/上界挑选归决策侧 kernel `select_sphere_clicks`);固定等待 2s 等飞行动画;席满未点开的球由下一帧观察回补。发射条件 = 备战策略产 ClickSpheres(points = 按点击序的坐标列)。 |
 | OpenBox | OpenBoxOp | `cw_open_box_action.py` | 开补给箱(终结动作,terminal_wait=1.8s):`read_supply_boxes` 识别 → 点「开启」(槽中心 + `BOX_OPEN_DY=41`)→ 固定动画等待;交回外循环,武装箱选择画面分发选卡。无箱/指定槽无箱 = 不发出(`emitted=False`)。发射条件 = 备战策略产 OpenBox(slot=None = 第一箱)。 |
 | OpenTome | OpenTomeOp | `cw_open_tome_action.py` | 开秘密典籍(非终结):`read_tomes` 识别 → 点槽两次(第一次选中、第二次开启,间隔 1s)→ 固定动画等待;星徽四选一 overlay 弹出由外循环 0i 接管选卡。无典籍/槽不匹配 = 不发出。发射条件 = 备战策略产 OpenTome(slot=None = 第一典籍)。 |
@@ -123,5 +114,5 @@
 - `CwScreenDeploy`(`operations/cw_screen/cw_screen_deploy.py`):部署机画面 op——整建制拖拽循环(逐槽动态 cap 复查/同名禁双/列车配方底线仲裁/换排纠正/off-target 卖出腾位/遮蔽哨),产出具名轮次状态(STATUS_NOOP / STATUS_DEPLOYED / STATUS_OVERLAY_PREEMPTED 等)——这是画面 op 的轮次结果语义,不是动作回执;部署落地零像素判效,落地事实归备战环入口观察对账。生产直调 = 外循环 0j 恢复链。
 - `CwOpCloseShop`(`operations/cw_op/cw_op_close_shop.py`):关店编排壳——CloseShop 动作的关店点击承担者(CloseShopOp 本体 no-op)。
 - `_open_shop_phase`(`operations/cw_screen/cw_screen_prep.py`):开店编排——OpenShop 动作的流程层执行半(read_only / restricted_spend 消费位);读数性开店的 `(progressed, detail)` 中 progressed = 开店成功(读数性回执,非动作成败回执)。
-- `run_buy_waves`(`operations/cw_screen/cw_screen_buy_cards.py`):商店买波编排——BuyCardOp 发射循环 + 落地门消费 + buy_miss 刹车宿主(§2.1)。
+- `run_buy_waves`(`operations/cw_screen/cw_screen_buy_cards.py`):商店买波编排——BuyCardOp 发射循环 + 逐动作回执簿记(`_ok` = 发出事实透传非判效,发出即记账)+ 容器逻辑态直写;段尾买牌落位 pixel-diff 对拍留证保留在观察侧(零决策零改道,失败不停不重试,对账语义见 §2.1)。
 - `PrepActionExecutor`(`prep_actions.py`):备战域执行器——备战动作 op 体迁后的替身缝宿主(原方法薄委托);`PrepExecEnv` 定义处。

@@ -139,7 +139,7 @@ class MegastarPickOp(ActionOp):
     def execute(self, env: OverlayPickExecEnv) -> bool:
         """机械执行(确认钮单发 + 固定等待;零判效)。"""
         op = env.op
-        # confirm(候选已选一次 → confirm 跳过 step2(可选)→ overlay 关;retry 重 confirm 防 bug#1 落空)。
+        # confirm(确认钮纯机械单发;候选选中半留守画面 op,overlay 关否由下一帧重入裁决)。
         # 确认钮中心从 screen_info 读(task#103 化债,W265);缺失兜底常量。
         confirm = area_center(op.ctx, '按钮-确认选择', '货币战争-盛会之星') or CwScreenMegastar.CONFIRM
         op.ctx.controller.mouse_move(confirm)

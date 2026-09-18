@@ -848,7 +848,8 @@ class OpenShop(CwAction):
 
 @dataclass
 class StartBattle(CwAction):
-    """出战(环出口;含未达上限确认;验证=备战标识消失)。StartBattle 豁免屏蔽。"""
+    """出战(环出口;含未达上限确认)。零转移验证机械单发:点击序列发出即交回
+    (未发出 = 找不到按钮返 False),转移与否由交回后下一帧观察裁决。StartBattle 豁免屏蔽。"""
 
 
 # 动作全集白名单(统一词表运行时元组;注册完备锁的遍历单一源,批4
