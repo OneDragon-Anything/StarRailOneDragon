@@ -1314,7 +1314,11 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
     (`boundary_gold_mode` 量域三态:known=结算屏金面板读成功精确额窗、
     unknown=读失败未知额度窗(正向差按差额吸收,窗存续到店开帧金观察
     收口,配 `boundary_gold_truth_seen` 公式腿双计防标记),消费 =
-    observe 失配分支正向差补结)/部署 miss
+    observe 失配分支正向差补结;两窗并存已知放宽:点球→结算入账常态序
+    下双窗同开,失配链边界补结在先,球金窗顺延到店开帧收口——known 窗
+    闭后残窗期第二独立正差被球金窗吞、unknown 形态球金入边界行台账
+    归因混账,均为已申报残余面,机理见 `_absorb_prep_sphere_income`
+    docstring)/部署 miss
     申报闩(`deploy_miss_pending`,消费 = `consume_deploy_miss_mark` 投影跳写)
     与其连续计数(`deploy_miss_streak_key/n`,同键连续 miss 达
     `DEPLOY_MISS_REDISPATCH_LIMIT` 由备战决策循环 round_fail 交上层)。

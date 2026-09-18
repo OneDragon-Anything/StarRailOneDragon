@@ -1892,9 +1892,11 @@ def assemble_swap_plan_inputs(
         _lf = locked_faction_scope(ist) or frozenset()
     except Exception:   # noqa: BLE001  围栏兜底 best-effort(同执行侧)
         _lf = frozenset()
-    # 锁定线语境豁免武装位(配方底线门,ADR-0564):与 locked 同读
-    # ist.locked_comp 单源(helper 自身 fail-safe:清空路径/套名解析
-    # 失败自动 False,无需调用侧兜底)。
+    # 锁定线语境豁免武装位(配方底线门,ADR-0564):只与终局线锁第一腿
+    # 同读(ist.locked_comp 非空),不随 ``locked`` 方向锁推广(P1 配方
+    # 对锁帧不豁免),两词口径分名见 17_stall_form_spend_authority §1.1
+    # (helper 自身 fail-safe:清空路径/套名解析失败自动 False,无需调用
+    # 侧兜底)。
     recipe_floor_lock_exempt = locked_line_recipe_floor_conflict(ist)
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         strategy_state_of,
@@ -2102,8 +2104,10 @@ def select_swap_plan(ctx: SwapPlanContext | None,
         # 真兑现换入对象——required 件直接认名;完成件按**实际落位复检**
         # (该 victim 离场 ∧ 该 up 名入板后成型判据满,``_seat_completes_
         # form``):候选集成员资格不足以防「同属候选的普通成员占位」白卖,
-        # 须绑定卖出 victim 成对兑现。臂未武装帧(含 required 在板帧)
-        # 不辖,逐位同旧。
+        # 须绑定卖出 victim 成对兑现。辖域 = ``required_swap_arm_pending``
+        # 真帧——required 在板帧完成分支仍可武装(有意设计,
+        # test_cw_swap_pair_domain 完成件让位锁钉定),此帧底线同样会辖;
+        # 谓词假帧不辖,逐位同旧。
         if up2 and required_swap_arm_pending(ctx):
             _req = set(ctx.required_names)
             _up_names = [getattr(ctx.bench[_i], 'char_id', '') or ''
