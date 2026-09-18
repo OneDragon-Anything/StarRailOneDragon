@@ -39,4 +39,4 @@
 
 ## 9. 依据
 
-`kernel/cw_vocab.py::OpenShop` docstring(两形态语义);`operations/cw_screen/cw_screen_prep.py::_open_shop_phase` docstring(read_only 分支/节点探针挂点/失败不开收);`operations/cw_op/cw_open_shop_action.py` 模块头(terminal 承载行裁定);[../action-logic-state.md](../action-logic-state.md) §5(转场类动作逻辑态 = 空)。
+`kernel/cw_vocab.py::CwActionOpenShopParam` docstring(两形态语义);`operations/cw_screen/cw_screen_prep.py::_open_shop_phase` docstring(read_only 分支/节点探针挂点/失败不开收);`operations/cw_op/cw_open_shop_action.py` 模块头(terminal 承载行裁定);[../action-logic-state.md](../action-logic-state.md) §5(转场类动作逻辑态 = 空)。

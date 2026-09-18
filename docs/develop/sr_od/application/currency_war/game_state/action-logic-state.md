@@ -239,7 +239,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 ### 3.7 OpenBookcard（开书册卡）
 
-**词表**：`kernel/cw_vocab.py::OpenBookcard`（R10 开卡归位备战词表：书册卡 = 备战席占槽道具，与补给箱/秘密典籍并列第三件；与 OpenBox/OpenTome 同签名，`slot: int | None`，None = 首张）。
+**词表**：`kernel/cw_vocab.py::CwActionOpenBookcardParam`（R10 开卡归位备战词表：书册卡 = 备战席占槽道具，与补给箱/秘密典籍并列第三件；与 `CwActionOpenBoxParam`/`CwActionOpenTomeParam` 同签名，`slot: int | None`，None = 首张）。
 
 **确定面**：书册卡道具占备战席 1 槽；点槽「开启」→ 书册卡离席腾槽 + 专家邀请函五选一弹窗弹出。**容器腾席腿**（迭代阶段 3.5 进写口）：书册卡读链并入 `is_item_slot` → 容器 kind=`'supply_box'`，腾席 = 该槽 kind → `'empty'`（按 `action.slot` 定位，None = 首张；陈旧提案零写）；容器腾席即 `bench_free_slots` 派生 +1。
 
@@ -247,7 +247,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 **发射形态**：本批发射位 = 备战环入口清场段（`cw_screen_prep._clear_prep_cards` 改产本动作经执行器发射 + 本访问交回，外循环 0k 按画面分发选卡；R7 OpenBox 终结化同构）。是否升 director 门控留策略侧定——升门控时需随 OpenBox 同构补备战 visit 终结分支（当前词表发射形态已备完整逻辑态分支，R9 全覆盖）。
 
-**依据**：`kernel/cw_vocab.py::OpenBookcard`；`prep_actions.py::PrepActionExecutor._open_bookcard`；design.md unified-action-factory §2.6 R10；`landing.md` §3.2c。
+**依据**：`kernel/cw_vocab.py::CwActionOpenBookcardParam`；`prep_actions.py::PrepActionExecutor._open_bookcard`；design.md unified-action-factory §2.6 R10；`landing.md` §3.2c。
 
 ## 3A. 穿装备与工具消耗（R2/R8 原子类）
 
