@@ -71,7 +71,7 @@
 | OpenTome | OpenTomeOp | `cw_open_tome_action.py` | 开秘密典籍(非终结):`read_tomes` 识别 → 点槽两次(第一次选中、第二次开启,间隔 1s)→ 固定动画等待;星徽四选一 overlay 弹出由外循环 0i 接管选卡。无典籍/槽不匹配 = 不发出。发射条件 = 备战策略产 OpenTome(slot=None = 第一典籍)。 |
 | OpenBookcard | OpenBookcardOp | `cw_open_bookcard_action.py` | 开书册卡(非终结):`find_bookcards` 识别 → 点槽中心 → 固定动画等待(`_OVERLAY_ANIM_WAIT_S`);专家邀请函弹窗由外循环 0k 分发 `CwScreenExpertInvite` 选卡。无卡/槽不匹配 = 不发出。发射条件 = 备战环入口清场段(`cw_screen_prep._clear_prep_cards`)产 OpenBookcard(slot=None = 首张)。 |
 
-工具原子七类(注册表 7 行同指 `ToolUseOp`;机械半 = owned 网格按注册名定位工具 icon → 拖至目标(equip 模式 = owned 目标件 icon;char 模式 = 角色排槽中心)→ 固定等待 1.5s;零消耗确认对拍,消费真值 = 下一帧装备区读数,逻辑态经 `_project_prep_obs` 按 `EQUIP_WRITE_SIDES` 申报直写。发射条件 = 装备域判据面 `cw_equip_env.evaluate_tool_actions` 准入后策略产动作):
+工具原子七类(注册表 7 行同指 `ToolUseOp`;机械半 = owned 网格按注册名定位工具 icon → 拖至目标(equip 模式 = owned 目标件 icon;char 模式 = 角色排槽中心)→ 固定等待 1.5s;零消耗确认对拍,消费真值 = 下一帧装备区读数,装备域容器零写(action-logic-state.md 正本申报「消费真值归观察」,截断点独占发射帧零窗口,下一入口 heavy 覆盖)。发射条件 = 装备域判据面 `cw_equip_env.evaluate_tool_actions` 准入后策略产动作):
 
 | 词表类 | op 类 | 文件 | 说明 |
 |---|---|---|---|

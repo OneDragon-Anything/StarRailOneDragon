@@ -1415,7 +1415,7 @@ class CwScreenPrep(CwScreenOpBase):
                 return self._terminal_exit(action, key, _op_cls)
             # —— 逻辑态直写(kernel 写口统一调用,ADR-0517 决策 7/10;
             #      迭代阶段 3.5 拓扑迁移,与读屏路径孪生环同构——原
-            #      apply_prep_action_logic(kernel 写口) 黑板腿随 gs.prep_obs 退役删除;R9:
+            #      `_project_prep_obs` 黑板腿随 gs.prep_obs 退役删除;R9:
             #      词表逐动作有逻辑态分支,词表外 = 响亮暴露)
             apply_prep_action_logic(
                 game_state_of(session), action,
