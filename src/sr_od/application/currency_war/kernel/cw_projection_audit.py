@@ -63,7 +63,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'node': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='派生规则四腿(备战解析/弹窗/0q/0p)write_logic + 两帧确认门'
-              '(链正本 §2-4);观察每帧覆盖'),
+              '(链正本 §2-4);商店查链目标 = 生效序与镜像最新者'
+              '(_shop_panel_type_target,20260918-reconcile 第 11 例)+ '
+              '类型直定倒退免疫(镜像序领先丢弃留证);观察每帧覆盖'),
     'node_path': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='链写端 = 备战帧链读 + maybe_emit_chain_diff 两帧确认;'
@@ -362,6 +364,7 @@ _STOP_FAMILY_MECHANISMS: dict[str, tuple[str, ...]] = {
     'front_row': ('deploy_slot_reorder', 'star_two_frame_gate'),
     'back_row': ('deploy_slot_reorder', 'star_two_frame_gate'),
     'board': ('_resync_board_delta', 'board_derived_adopt'),
+    'node': ('_shop_panel_type_target',),
 }
 
 

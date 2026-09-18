@@ -4230,16 +4230,18 @@ class GameState:
             # 规则四②·商店查现行链(链观察落地批):商店对任意节点类型
             # 都开(非专属,不入直定映射)→ 类型查现行链——链在位 = 直定写
             # (actor 同族),链缺/位越界/未辨 = 零写(禁猜,链正本 §6 零
-            # 内建回落)。目标节点 = 刚推进的 hist 反解(弹窗屏属即将进入
-            # 的节点,仿 :func:`_derive_node_plane_transition` 位面反解式)。
-            if self.node_hist_ord is not None:
-                _hist = self.node_hist_ord
-                _shop_plane = (_hist - 1) // 9 + 1
-                _shop_round = (_hist - 1) % 9 + 1
+            # 内建回落)。目标节点 = 生效序与观察镜像的最新者(店开帧可在
+            # 推进腿未计数的新节点上,镜像已由读链写新序键——目标只取
+            # hist 会把类型回写上一节点,run_20260918_074040 第 11 例病理;
+            # 仿 :func:`_derive_node_plane_transition` 位面反解式)。
+            _shop_target = _shop_panel_type_target(self)
+            if _shop_target is not None:
+                _shop_plane = (_shop_target - 1) // 9 + 1
+                _shop_round = (_shop_target - 1) % 9 + 1
                 _chain_q = chain_node_type(self, _shop_plane, _shop_round)
                 if _chain_q.token is not None:
                     _write_derived_node_type(
-                        self, _chain_q.token, target_ord=_hist,
+                        self, _chain_q.token, target_ord=_shop_target,
                         actor='derive_node_type',
                         trigger_screen=screen_name, seq=seq)
         # —— 效果推进段(迁移迭代 design §2.1;管线尾段同临界区)。prep_frame 闸
@@ -4293,6 +4295,31 @@ def effective_node_ord(gs: GameState) -> int | None:
     vals = [v for v in (gs.node_ord.value, gs.node_hist_ord)
             if v is not None]
     return max(vals) if vals else None
+
+
+def _obs_node_ordinal(gs: GameState) -> int | None:
+    """node 观察镜像的节点序(派生计算:镜像 NodeKey (plane, round) 正解
+    序;镜像空 = None)。镜像由读链在非备战帧也写(店开帧 votes 读),
+    可领先推进水位——它是「当前节点」的观察权威源。"""
+    cur = gs.node.value
+    if cur is None:
+        return None
+    return node_ordinal_of(cur.plane, cur.round_num)
+
+
+def _shop_panel_type_target(gs: GameState) -> int | None:
+    """商店查链类型派生的目标节点序 = 生效序与观察镜像的最新者
+    (双源全空 = 目标不可知,禁猜零写)。
+
+    为什么不单取 hist:店开帧读链可把镜像写到推进腿尚未计数的新序键
+    (备战帧未过,弹窗腿/备战腿都未触发),目标只取 hist 会把类型直定
+    回写上一节点——后续备战帧真读新节点与被回写的 logic 值类型失配,
+    统一观察对账安灯照停(run_20260918_074040 未投影族第 11 例病理)。
+    取 max = 「当前节点」语义;弹窗腿先推进的形态下 max 仍取推进值,
+    行为与旧 hist 单源一致。"""
+    ords = [v for v in (effective_node_ord(gs), _obs_node_ordinal(gs))
+            if v is not None]
+    return max(ords) if ords else None
 
 
 def _derive_node_observed(gs: GameState, candidate: int, *,
@@ -4471,19 +4498,34 @@ def _write_derived_node_type(gs: GameState, kind: str, *, target_ord: int,
     """类型派生写入(§3.4.1 类型派生;经节点域③格写 gs.node,§3.1.3):
     专属画面直定该节点类型,(plane, round) 由目标序公式反解。
 
+    - 倒退免疫(R3 规则三同簇,20260918-reconcile 第 11 例收口):镜像
+      现值序 > 目标序 = 镜像比派生目标鲜活(读链已在店开帧写新节点),
+      直定旧节点会把新节点回写旧键 → 丢弃留证不写(obs_event
+      arbitrate),类型由镜像源(读链 votes/后继帧)承接;
     - 冲突纪律(G10 同簇):镜像现值已在目标节点且类型不一致 → obs_event
       留证(event='arbitrate',禁静默覆盖)+ 最新直定值落位(最新观察 =
       真相);直定证据 = 画面现身锚,属观察级事实,sig 走 obs 族
       (note_obs_event 契约),actor = 触发规则登记名保留归因;
     - 已知边界(申报):弹窗族屏重入/缓存滞后形态下目标 = hist,若历史
-      推进与屏所属节点错位,类型暂挂错节点——后续备战帧真读类型经观察
-      覆盖纠偏(§2.3 观察赢,失配缺陷行显影),禁在派生段预判屏-节点错位
-      (无判据,猜即第二错源);
+      推进与屏所属节点错位,倒退免疫丢弃留证(不落错键);目标序 ≥ 镜像
+      序的错位形态(弹窗屏属下一节点)类型照落,后续备战帧真读类型经
+      观察覆盖核对(§2.3 观察赢)——真失配才走三分流;
     - 商店面板块不专属 → 不入直定映射(observe_screen_context 分流),
       类型「未定型」零写;查现行链接口 = :func:`chain_node_type`。
     """
     key = _node_key_for_ord(target_ord, kind)
     cur = gs.node.value
+    if cur is not None and node_ordinal_of(cur.plane, cur.round_num) > target_ord:
+        gs.note_obs_event(
+            'arbitrate', 'node',
+            {'mirror': f'{cur.plane}-{cur.round_num}-{cur.kind}',
+             'target_ord': target_ord, 'target_kind': kind},
+            verdict='类型直定倒退丢弃留证(R3 规则三倒退免疫;镜像序 > '
+                    '目标序,不回写旧节点)',
+            sig=ChannelSig(family='obs', actor=actor, screen=trigger_screen,
+                           mode='read',
+                           group_id=f'hook:{actor}@{seq}'))
+        return
     if cur is not None and cur.plane == key.plane \
             and cur.round_num == key.round_num and cur.kind != kind:
         gs.note_obs_event(
