@@ -812,6 +812,10 @@ class PlannerOption:
 
     text:卡描述全文(如「提升费用至4费,变为1星银狼LV.999」/「使后续节点【弱化】…」/
     装备名+效果)。「提升费用」字样判升费卡由本模块打分表达,handler 不写死。
+    升费腿结果 = 变为下一个费用档的 1 星银狼LV.999(卡面「变为1星银狼LV.999」
+    即指此:单位身份保持银狼LV.999、费用档升一级、星级为 1 星
+    [口述·权威 2026-09-18];机制单一源 = docs/game/currency_war/research/
+    equipment_mechanics.md §7)。
     """
     idx: int
     text: str = ''

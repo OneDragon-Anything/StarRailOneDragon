@@ -163,6 +163,9 @@ DISCLOSURE_LV10_XP: str = 'level_cap_xp_denominator_none'
 DISCLOSURE_P3_UNOBSERVED: str = 'p3_unobserved'
 DISCLOSURE_ENV_CHANNELS: str = 'env_economy_channels_pending_m02'
 DISCLOSURE_BOX_TRIGGER: str = 'box_spawn_trigger_pending_u23'
+#: planner 选卡效果披露(M22 选卡只记账不应用)。机制本身已定谳(升费腿 =
+#: 变为下一个费用档的 1 星银狼LV.999 [口述·权威 2026-09-18],
+#: research/equipment_mechanics.md §7)——pending 指效果应用未建模,非机制未知。
 DISCLOSURE_PLANNER_EFFECT: str = 'planner_pick_effect_pending_u26'
 
 #: 单局步数上限(防策略器死循环;正常局 < 2000 步)。
