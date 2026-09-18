@@ -28,10 +28,9 @@
 """
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from cv2.typing import MatLike
 
@@ -47,18 +46,13 @@ _KEEP_PER_TAG = 40
 
 
 # ===== 决策帧落盘根装配槽(两遥测写根之一;三审二波 F2)=====
-# 为什么是槽:决策帧写根原恒锚生产树(.debug/temp/currency_war/
-# decision_frames/),假环境只靠 harness monkeypatch 私函数 _out_dir 改道
-# ——不经 harness 的假局驱动方(易失离线 runner/未来 sim 批真 op 驱动)
-# 会把 kind=observation_evidence 的观察证据静默写进生产树,正是写端根
-# 隔离要防的静默混流形态换流复发(出处:.debug/temp/currency_war/attacks/
-# three_review_20260908/三审报告-第二波.md F2,**易失产物**待 ADR 回填;
-# 原第三槽 op_journal.set_journal_dir 已随该流 2026-09-15 退役拆除)。
-# 与既有另一槽(telemetry.state.set_recorder_replay_dir)同构:
-# 缺省 None = 生产路径逐位不变;驱动方显式接指假局档案根,teardown 复位
-# (进程全局槽,残留会把后续帧带去假局根)。零生产行为变更:生产全程
-# 无设槽点,生产公式逐位保留(守卫 = test_cw_telemetry_root_slot 的缺省
-# 路径锁 + 生产树零设槽点扫描 TestZeroProductionWiring)。
+# 为什么是槽:决策帧写根缺省恒锚生产树(.debug/temp/currency_war/
+# decision_frames/),不经 harness 的假局驱动方(易失离线 runner/未来
+# sim 批真 op 驱动)会把假局决策帧静默写进生产树——写端根隔离要防的
+# 静默混流形态。与既有另一槽(telemetry.state.set_recorder_replay_dir)
+# 同构:缺省 None = 生产路径逐位不变;驱动方显式接指假局档案根,
+# teardown 复位(进程全局槽,残留会把后续帧带去假局根)。零生产行为
+# 变更:生产全程无设槽点,生产公式逐位保留。
 _DIR_OVERRIDE: Path | None = None
 
 
@@ -89,10 +83,10 @@ def _out_dir(run_id: str) -> Path:
             / 'decision_frames' / run_id)
 
 
-def _prune_old(dir_path: Path, tag: str, suffix: str = '.png') -> None:
+def _prune_old(dir_path: Path, tag: str) -> None:
     """按 tag 维度滚动删除,保留最近 _KEEP_PER_TAG 帧(文件名 ts 前缀字典序=时间序)。"""
     mine = sorted(p for p in dir_path.iterdir()
-                  if p.is_file() and p.name.endswith(f'_{tag}{suffix}'))
+                  if p.is_file() and p.name.endswith(f'_{tag}.png'))
     for p in mine[:-_KEEP_PER_TAG] if len(mine) > _KEEP_PER_TAG else []:
         p.unlink(missing_ok=True)
 
@@ -105,54 +99,16 @@ def save_decision_frame(op: Operation, tag: str,
         用 op.screenshot() 截新帧——挂点已有帧时显式传入,避免二次截图错帧)
     :param tag: 挂点名(如 shop_entry/deploy/overlay_partner),同 tag 滚动治理
     :param screen: 当前游戏截图(RGB);None 时 op.screenshot() 现截
-    :return: 落盘文件名(与旧流决策行行 ts 秒级同源,ts 面语义不变);None=跳过/失败
-
-    假环境改形(契约三则「留证面改形」):观察源端口
-    在场(假环境)时,「识别完成点原始帧」不存在语义(无读图)——留证
-    改落**结构化观察 JSON**(观察内容快照,消费端按来源分型),不再落
-    PNG(stub 帧落图 = 假证据)。观察载荷经 duck-typed
-    ``evidence_snapshot(tag)`` 从端口实现方取(协议不折叠载荷形状;
-    实现方无此能力 = 只落定位行)。
+    :return: 落盘 PNG 文件名(ts 秒级命名);None=跳过/失败
     """
     try:
-        from sr_od.application.currency_war.cw_game_ports import (
-            observation_source,
-        )
         from sr_od.application.currency_war.telemetry.state import current_run_id
         run_id = current_run_id() or 'norun'
-        src = observation_source()
-        if src is not None and _DIR_OVERRIDE is None:
-            # 拒写守卫(写端根隔离,同上裁决):假环境观察证据 +
-            # 未接根槽 = 三审二波 F2 的静默混流形态(证据落生产
-            # decision_frames 树)。宁缺勿混——证据缺失在消费端表现为
-            # 文件不存在(可发现),混流是静默污染(不可发现);生产
-            # 路径零感知(生产 observation_source 恒 None 不进本分支)。
-            # 判定位次须先于 mkdir:守卫拒写连目录也不得建(空目录
-            # 同为生产树写痕迹)。
-            log.warning('[cw-dframe] 假环境观察证据未接决策帧根槽,'
-                        '拒写 tag=%s(驱动方需 set_decision_frame_dir)',
-                        tag)
-            return None
         out = _out_dir(run_id)
         out.mkdir(parents=True, exist_ok=True)
         now = datetime.now()
         stem = (f'{now.strftime("%Y%m%d_%H%M%S")}_{now.microsecond // 1000:03d}'
                 f'_{tag}')
-        if src is not None:
-            payload: dict[str, Any] = {'kind': 'observation_evidence', 'tag': tag,
-                             'ts': now.isoformat(timespec='seconds'),
-                             'run_id': run_id}
-            snap = getattr(src, 'evidence_snapshot', None)
-            if callable(snap):
-                loaded = snap(tag)
-                if isinstance(loaded, dict):
-                    payload.update(loaded)
-            fn = f'{stem}.json'
-            (out / fn).write_text(json.dumps(payload, ensure_ascii=False,
-                                             default=str),
-                                  encoding='utf-8')
-            _prune_old(out, tag, suffix='.json')
-            return fn
         if screen is None:
             screen = op.screenshot()
         if screen is None:
