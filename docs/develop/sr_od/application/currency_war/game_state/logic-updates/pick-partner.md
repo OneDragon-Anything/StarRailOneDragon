@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-列车同行伙伴 overlay「点选候选 → 确认」脉冲链。词表 = `kernel/cw_vocab.py::PickPartner`(`PickOption` 子类:字段 `idx` = 候选下标 0 起、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_overlay_pick_action.py::PartnerPickOp`(体迁自 `cw_screen_partner.py::CwScreenPartner._handle_overlay` 脉冲尾段,替身缝 = 方法级桩保留;域 env = `OverlayPickExecEnv`)。
+列车同行伙伴 overlay「点选候选 → 确认」脉冲链。词表 = `kernel/cw_vocab.py::CwActionPickPartnerParam`(`PickOption` 子类:字段 `idx` = 候选下标 0 起、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_overlay_pick_action.py::CwActionPickPartnerOp`(体迁自 `cw_screen_partner.py::CwScreenPartner._handle_overlay` 脉冲尾段,替身缝 = 方法级桩保留;域 env = `OverlayPickExecEnv`)。
 
 ## 2. 逻辑态域集
 
@@ -30,7 +30,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::PickPartner` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::PartnerPickOp` / `OverlayPickExecEnv`;`kernel/cw_game_state.py::chosen_partner` / `REGISTERED_ACTORS`(CwScreenPartner 行);`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`(ConfirmPartner 零写分道);`operations/cw_screen/cw_screen_partner.py::CwScreenPartner`(状态宿主/写端/替身缝)。
+`kernel/cw_vocab.py::CwActionPickPartnerParam` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickPartnerOp` / `OverlayPickExecEnv`;`kernel/cw_game_state.py::chosen_partner` / `REGISTERED_ACTORS`(CwScreenPartner 行);`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`(ConfirmPartner 零写分道);`operations/cw_screen/cw_screen_partner.py::CwScreenPartner`(状态宿主/写端/替身缝)。
 
 ## 7. 语义验证
 
@@ -42,4 +42,4 @@
 
 ## 9. 依据
 
-`operations/cw_op/cw_overlay_pick_action.py::PartnerPickOp` docstring(脉冲链/状态宿主归属/单屏单选澄清);`operations/cw_screen/_overlay_confirm.py` 分道申报;[flow/action_ops.md](../../flow/action_ops.md) §4.4(pick 族行);[fields.md](../fields.md) §3.4(事件选择域组)。
+`operations/cw_op/cw_overlay_pick_action.py::CwActionPickPartnerOp` docstring(脉冲链/状态宿主归属/单屏单选澄清);`operations/cw_screen/_overlay_confirm.py` 分道申报;[flow/action_ops.md](../../flow/action_ops.md) §4.4(pick 族行);[fields.md](../fields.md) §3.4(事件选择域组)。

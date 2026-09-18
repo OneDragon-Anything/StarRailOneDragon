@@ -56,9 +56,9 @@ while True(零读屏):
   │            免费刷新 proc 留证(牌面已变∧金未扣 → flag 不停机)
   │    SellBench(能力面;注册行已更替备战域):拖拽机械单发 → 发出即记账
   ├─ 落地门 apply_action_outcome(调用环单一源):execute 无返回(发出即职责完成,零判效);
-  │    门保留为结构防线——未落地 ⇒ 两侧都不动;落地且非终结才进逻辑态直写
-  ├─ 逻辑态直写(容器规则通道,纯计算零读屏):apply_shop_action_logic 简单腿 +
-  │    apply_shop_merge_leg 合成升星腿(买前快照三件组基点)直写容器
+  │    门保留为结构防线——未落地 ⇒ 两侧都不动;期望态推进 = op 自上报单点(终结跳写判断随 op 自辖)
+  ├─ op 自上报(容器规则通道,纯计算零读屏):report_action_buy_card_param 单点
+  │    (简单落位与合成升星腿内聚,买前快照三件组基点函数内第一时间取)直写容器
   │    → guard_expected_vs_tracked 双账断言(满栏合成买双账同构豁免)
   段尾:CloseShop 终结不入行;刷新 = 段终结后本段即 break ⇒ 每刷独立成行
 段间判定:did_refresh=False → break(本段无刷新/硬墙 → 收工)
@@ -82,8 +82,8 @@ while True(零读屏):
 
 ## 6. 状态上报面
 
-- 动作 → 转移函数腿:`apply_shop_action_logic`(简单腿)+ `apply_shop_merge_leg`(合成升星腿,基点 = 买前快照三件组 pre_bench/pre_deployed/pre_shop,升星判据单一源 = `kernel/cw_game_state.py::detect_merge_upgrade`);逐动作规格 = [../game_state/logic-updates/](../game_state/logic-updates/README.md)。
-- 刷新计数域(refresh_counters)与 prev_node_spent 由转移函数腿直写(仅逻辑渠道)。
+- 动作 → 上报函数:op 自上报 `kernel/cw_action_report/<snake>.py::report_action_<snake>_param` 单点(买牌 = `report_action_buy_card_param`,快照与合成升星腿内聚,升星判据单一源 = `kernel/cw_game_state.py::detect_merge_upgrade`);逐动作规格 = [../game_state/logic-updates/](../game_state/logic-updates/README.md)。
+- 刷新计数域(refresh_counters)与 prev_node_spent 由上报函数腿直写(仅逻辑渠道)。
 
 ## 7. 子态与 overlay
 

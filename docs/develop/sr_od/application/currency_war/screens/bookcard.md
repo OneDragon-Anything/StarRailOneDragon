@@ -42,7 +42,7 @@ target = _card_point(idx, faction_x):「星徽卡-1..4」area 中心;
 ## 6. 状态上报面
 
 - `chosen_tome` write_logic(重入裁决点写;值 = 选中卡阵营名)。
-- 到账登记 `ConfirmTome`(`kernel/cw_exec_state.py::apply_op_effect` dict 分支,owned += 「X星徽」;OCR 卡名已去后缀作阵营名,登记时回拼全名,已是全名则原样)。
+- 到账登记 `ConfirmTome`(`kernel/cw_exec_state.py::apply_confirm_effect` dict 分支,owned += 「X星徽」;OCR 卡名已去后缀作阵营名,登记时回拼全名,已是全名则原样)。
 - 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.5 / §4「事件选择」;到账登记 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §2(ConfirmTome 行)。
 
 ## 7. 子态与 overlay

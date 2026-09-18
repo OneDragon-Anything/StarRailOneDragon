@@ -33,10 +33,12 @@
 │   收编仍由 flow.py 中间 ABC 承载│
 ├─ 动作执行（kernel/cw_vocab.py 词表 + prep_actions.py 执行器│
 │ + cw_screen_buy_cards.py 循环壳 + cw_action_registry.py 单一注册表  │
- │ (cw_<action>_action.py 一 op 一文件;守卫 cw_shop_action_ops.py)  │
- │ (execute 单方法) + cw_screen_deploy.py 部署）────────────────────┤
-│ 机械发出（无成败回执，发出即职责完成）+ 落地登记注册表   │
-│ 守卫断言面；终结判定 = 注册表 op 类 terminal 属性                          │
+│ + kernel/cw_action_report/ 上报函数族（每动作一个具名上报接口）│
+│  (cw_<action>_action.py 一 op 一文件,CwActionXxxOp(SrOperation);│
+│  守卫 cw_shop_action_ops.py) + cw_screen_deploy.py 部署）──────┤
+│ 机械发出（零判效;round 成功态 = 发出事实）→ op 内直调自己的   │
+│ 上报函数（容器写单点）+ 落地登记注册表守卫断言面；终结判定 =  │
+│ 注册表 op 类 terminal 属性                                    │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -74,7 +76,7 @@
 
 **非契约成员(实现层,不在 ABC 面)**:
 
-- `decide_shop_screen`(flow 层缺省驱动器 + bridge 覆写)——**序列兼容驱动器**:逐帧调 `decide_shop_action` + 容器逻辑态直写推进期望态(`apply_shop_action_logic` 简单腿 + `apply_shop_merge_leg` 合成升星腿,买前快照三件组基点;此后零 `cw_state.simulate` 前瞻消费),终结动作截停、CloseShop 收尾不入序列。sim 引擎/回放/既有序列锁消费;生产执行侧不走(单动作循环)。mandate 覆写保留特有记账(已买件/段序号/续段 token)。
+- `decide_shop_screen`(flow 层缺省驱动器 + bridge 覆写)——**序列兼容驱动器**:逐帧调 `decide_shop_action` + 逐动作直调上报函数推进期望态(kernel/cw_action_report 函数族,引擎入口委托分支串;快照三件组与升星腿内聚买牌上报;此后零 `cw_state.simulate` 前瞻消费),终结动作截停、CloseShop 收尾不入序列。sim 引擎/回放/既有序列锁消费;生产执行侧不走(单动作循环)。mandate 覆写保留特有记账(已买件/段序号/续段 token)。
 - `_refresh_direction`/`_refresh_direction_views`(flow 层私有)——**方向节拍内化**:键守卫贵段(`update_intention` 状态机 + 候选评分遥测)每 game-round 恰一次 + 便宜派生视图段;触发信号 = 黑板帧代次标注(`session.prep_frame_class`/`shop_frame_class` ∈ full/view/none,写者 = 流程观察段具名写点,读者 = 决策入口,读后即清;驱动器不写帧类槽)。
 - ~~`_drain_pending_round_outcomes`(flow 层私有)~~——**已删(退役批)**:结算策略半惰性加工(掉血三臂/node_type 回落/谷底回滚登记)经方案批复核为零行为死链(登记臂前置零写端/三臂零决策消费端),04_survival_budget §7 #7/#8 裁决落地删除;`session.pending_round_outcomes` 槽保留为观察半累积面。
 - `write_shop_mirrors`(遥测镜像写者)。
@@ -84,7 +86,7 @@
 **序列语义(历史注——波批时代的冻结条款,反向自旧 `cw_strategy.py` 与旧 `cw_screen_prep.py` 序列消费段)**【本节为**历史契约**:整波返回/帧稳定截断/空批终止语义已由终结动作与单动作循环取代([../screens/op-layer.md](../screens/op-layer.md) §1),本节仅作旧序列锁与历史 ADR 的解读钥匙;其中 fail-stop/恢复原语条款已随验证段废除批退役,现行控制流 = 终结动作 + 机械执行零判效】:
 - **帧稳定域**(历史):序列内第 i+1 个动作不得依赖第 i 个动作执行后的新观察;发射时逐动作判"执行后画面状态能否静态推出",推不出即截断——截断器已退役,截断点语义由终结动作吸收;流程侧保守口径(每动作落地后 heavy 重观察)已由「入口单次 heavy + 逐动作逻辑态直写」取代。OpenShop/StartBattle 现为终结动作。
 - **fail-stop**(已退役):原「任一动作未落地 → 恢复原语(关已知弹层)→ 交回外循环 heavy 重观察重调接口」随验证段废除批删除;现行 = 动作机械发出零判效,落地判定归观察侧对账(../screens/op-layer.md §1)。参数非法拒绝仍为执行前契约检查。
-- **对账唯一发生点 = 观察边界**(现行有效,两态制归一):动作 op 上报经 `apply_prep_action_logic`/`apply_shop_action_logic` 直写容器逻辑态,落地判定归观察边界对账(`cw_reconcile` + observe 失配台账兜底);执行侧验证已废(零判效),期望态暂存对账通道已随执行层状态类目退役(git 历史可溯)。
+- **对账唯一发生点 = 观察边界**(现行有效,两态制归一):动作 op 自上报(`report_action_<snake>_param`,每动作一个具名接口)直写容器逻辑态,落地判定归观察边界对账(`cw_reconcile` + observe 失配台账兜底);执行侧验证已废(零判效),期望态暂存对账通道已随执行层状态类目退役(git 历史可溯)。
 - **控制流类动作已整体退役出词表**(DeferSpheres 族随词汇清理批删除;overlay 让位由环入口直接交回外循环承载);策略器禁用空批表达控制流(商店侧空批通道已由 CloseShop 终结取代)。
 - **生命周期机制归流程侧**(现行有效):幂等键 `action_key`、stall 门、强制出战;执行失败记忆机制已随执行层状态类目退役(git 历史可溯)。
 
@@ -115,7 +117,7 @@
 | [exit_chain.md](exit_chain.md) | 退出链：返回大世界 × 对局退出三层结构、退出路由分发序、A 类名单与停机位同源契约、逐屏归档、穿透/干净判据语义分工 |
 | [../screens/op-layer.md](../screens/op-layer.md) | **画面 op 层设计**（行为规范+基类机制+obs 工具箱+并存期纪律）——单动作决策循环、execute 单方法、对账边界、终结动作集、五段生命周期 |
 | [../screens/](../screens/README.md) | **画面 op 各篇（一画面一文档）**：备战（prep）/商店（shop）/单选族/弹窗族/推进族——能力矩阵与画面文档模板在其 README |
-| [action_exec.md](action_exec.md) | 动作执行：词表与注册表、执行契约（无成败回执）、落地登记、商店/备战/部署执行要点、重试语义 |
+| [action_exec.md](action_exec.md) | 动作执行：词表与注册表、执行契约（op 自上报 + round 成功态）、落地登记、商店/备战/部署执行要点、重试语义 |
 | [projection_contract.md](projection_contract.md) | 备战逻辑态面交互契约：状态面板/观察帧 ↔ 执行臂的字段消费、坐标系、快照 vs 现读时序、注释规范缺口登记 |
 | [guards.md](guards.md) | 守卫总册：外环通用网、未知兜底、未识别卡停机、降级链(停滞判读归事件哨兵 cw_sentinel.py,住 skill scripts/) |
 

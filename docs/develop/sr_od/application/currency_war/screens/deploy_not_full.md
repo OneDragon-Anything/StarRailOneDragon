@@ -29,7 +29,7 @@
 ## 7. 子态与 overlay
 
 - 本 op 自身即 overlay 处理件;命中即自处理,底层屏交回重判。
-- **同弹窗第二消费者**:出战链 `cw_op/cw_start_battle_action.py::StartBattleOp` 出战点击轮询段内嵌同款行为(勾选幂等 + 确认 + 轮询)——出战语境由出战链就地消化,不经 0d 分发;两处行为对齐为申报面,无单一源锁。
+- **同弹窗第二消费者**:出战链 `cw_op/cw_start_battle_action.py::CwActionStartBattleOp` 出战点击轮询段内嵌同款行为(勾选幂等 + 确认 + 轮询)——出战语境由出战链就地消化,不经 0d 分发;两处行为对齐为申报面,无单一源锁。
 
 ## 8. 守卫与防线
 

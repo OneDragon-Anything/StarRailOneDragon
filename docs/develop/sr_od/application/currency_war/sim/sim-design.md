@@ -14,7 +14,7 @@
 | **策略器** | 纯决策函数族（mandate_v1）：全函数 f(期望态)→动作，永不返回 None；「无动作」= 选终结动作 |
 | **容器** | `kernel/cw_game_state.py` 的 `GameState`：局内已知事实的唯一状态类型，live 与 sim 同一类型；单例宿主 = session 旁表（`game_state_of(session)`），写入走带渠道签名的写入口（渠道族封闭集 obs/logic_action/logic_hook），frozen 帧替换（持旧引用的读者不被污染） |
 | **逻辑态** | 动作执行后不经观察、按游戏规则推算并直写容器的预期状态；真值以下一帧观察为准（观察赢）。经单一转移函数推进该状态 |
-| **单一转移函数** | `kernel/cw_game_state.py` 的 `apply_shop_action_logic(gs, action)`：把商店动作的字段转移就地应用到容器（logic_action 渠道），返回 `LogicOutcome` 结果出参，拒绝语义在动作族腿内。live 执行侧与 sim 引擎共用的状态转移函数 |
+| **单一转移函数** | `kernel/cw_action_report/` 上报函数族(每动作一文件 `report_action_<snake>_param`):把动作的字段转移就地应用到容器(logic_action 渠道),返回 `LogicOutcome` 结果出参,拒绝语义在函数内;命名规约完备锁 = test_cw_action_report_contract。live 执行侧与 sim 引擎共用的状态转移函数(禁按类型聚合的转移函数——分派只允许在引擎入口一行委托分支串) |
 | **观测帧** | 容器 `GameState` 快照 + 相位；帧只读呈现 sim 真值，不含评判面。帧携带的选项载荷按相位填充（加相位 = 加观测帧字段，策略接口稳定） |
 | **相位** | 与实机画面对应的交互状态机状态（枚举见 §1.3），策略器据此路由决策，与实机 flow 层同构 |
 | **流键** | 随机子流的键 = 模块号 + 局内坐标（如 `M05/p1/r3` 发牌）；全部随机量按流键派生独立子流（§2） |
@@ -76,7 +76,7 @@ sim 是唯一的状态推进者与随机量产生者；策略器不消费 sim �
 
 ## 3. 动作应用契约
 
-- **玩家动作**（买/卖/刷/升级/部署/穿戴/选卡/点球/工具）→ 经单一转移函数 `apply_shop_action_logic` 及其动作族腿应用，拒绝语义在腿内（`LogicOutcome` 出参），禁引擎自判拒绝；部署 = `DeployMove` 经 `apply_prep_action_logic`（DeployMove 不入商店转移口）。
+- **玩家动作**（买/卖/刷/升级/部署/穿戴/选卡/点球/工具）→ 引擎入口 `sim/cw_sim_actions.py::apply_player_action` 一行委托分支串逐动作直调上报函数族 `kernel/cw_action_report/report_action_<snake>_param`，拒绝语义在函数内（`LogicOutcome` 出参），禁引擎自判拒绝；部署 = `CwActionDeployMoveParam` 同串直调 `report_action_deploy_move_param`（sim 自喂 `executed` 决定量：refresh_paid = refresh_cost_for、levelup_clicks=1、买牌 k 自算——满栏合成买在函数内）。
 - **环境事件**（发牌/收入/结算/offer 生成/位面推进）→ sim 机制面按各模块规格执行，以 obs 渠道写容器。
 - 各模块（开局/位面日程/商店/牌池/收入/战斗/装备/节点事件/offer/overlay/敌人难度/特殊角色）的模拟规格承载在 `sim/cw_sim_*.py` 模块 docstring（每模块写实机逻辑依据、sim 状态与转移、概率源与流键），本文不重复。
 

@@ -129,10 +129,10 @@
 
 | 模块 | 负责 |
 |---|---|
-| `cw_game_state.py` | **GameState 局内容器**:每字段观察态/逻辑态/未观察三态;单一转移函数族 `apply_shop_action_logic`/`apply_prep_action_logic`(动作 op 上报动作后,由它独占写逻辑态);局容器建立时开启遥测装配 |
+| `cw_game_state.py` | **GameState 局内容器**:每字段观察态/逻辑态/未观察三态;动作语义单一源 = `kernel/cw_action_report/` 上报函数族(每动作一文件 `report_action_<snake>_param`,op 自上报后由函数族独占写逻辑态;零写族 = `zero_writes.py`);局容器建立时开启遥测装配 |
 | `cw_state_journal.py` | state 状态流水落盘(StateJournal:内存缓冲+批量 flush;装配口 `install_state_telemetry`/`ensure_journal_assembly`) |
 | `cw_reconcile.py` | 观察边界对账:观察态 vs 逻辑态比对与仲裁、星级锚定、槽号健康不变量、bench 写回 |
-| `cw_exec_state.py` | 战斗域领域模型与纯函数宿主(无状态面):`apply_op_effect`(op 逻辑效果推进)、槽位表(`BenchChar`/槽位语义 helpers/物理坐标↔表下标换算)、位面节点台账三访问函数(台账值载体住 `cw_game_state.py`,本模块转发保持 import 路径) |
+| `cw_exec_state.py` | 战斗域领域模型与纯函数宿主(无状态面):`apply_confirm_effect`(dict 确认族到账推进;动作类效果已收编各 op 自上报函数)、槽位表(`BenchChar`/槽位语义 helpers/物理坐标↔表下标换算)、位面节点台账三访问函数(台账值载体住 `cw_game_state.py`,本模块转发保持 import 路径) |
 | `cw_strategy_session.py` | 策略会话载体(session:策略侧对象的身份与生命周期) |
 
 ### 领域模型族(纯逻辑,被策略与容器消费)

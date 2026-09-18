@@ -6,17 +6,18 @@
 
 - **词表单一源** = `kernel/cw_vocab.py::CW_ACTION_TYPES`(统一动作白名单;新增动作必须同步登记,漏登记 = 执行面拒「未知动作类型」,动作从未真正执行)。
 - **注册表单一源** = `operations/cw_op/cw_action_registry.py`(词表类 → 动作 op 类一张表;`action_op_for`/`action_op_class_for` 全动作唯一注册点;行序 isinstance 首中即返,is-a 链父类行兜底规则见模块头)。词表外类型 = AssertionError 响亮暴露(非法返回 = 策略器 bug,禁静默跳过)。
-- **备战域动作全集**:`ClickSpheres(max_k)`/`OpenBox(slot)`/`OpenTome(slot)`/`SellBench(slot, reason)`/`SellDeployed(row, slot)`/`DeployMove(from_slot, to_row, to_slot)`/`LevelUp`/`OpenShop(read_only)`/`StartBattle`。(组合壳 RunDeploy/RunEquip/RunTools 已随统一词表退役,批2b R2:部署 = DeployMove 原子序发射位逐帧现算,穿戴 = WearEquip 原子,工具 = 工具原子类经 ToolUseOp;`CwScreenDeploy` 唯一生产直调 = 外循环 0j 恢复链)。
+- **备战域动作全集**:`ClickSpheres(max_k)`/`OpenBox(slot)`/`OpenTome(slot)`/`SellBench(slot, reason)`/`SellDeployed(row, slot)`/`DeployMove(from_slot, to_row, to_slot)`/`LevelUp`/`OpenShop(read_only)`/`StartBattle`。(组合壳 RunDeploy/RunEquip/RunTools 已随统一词表退役,批2b R2:部署 = DeployMove 原子序发射位逐帧现算,穿戴 = WearEquip 原子,工具 = 工具原子类经 `CwActionToolUseOp`;`CwScreenDeploy` 唯一生产直调 = 外循环 0j 恢复链)。
 - `SellBench.reason` = 线账闭合孤儿证明载体(**记录非指令**,执行层不读;'' = 未标缺省);发射侧值域闭集 = `cw_prep_actions.SELL_BENCH_REASONS` 唯一承重值 `line_switch_collapse`;reason 不入幂等键。
 - 动作实例键 `action_key(action)` = 类型+行为参数(SellBench(3) 与 SellBench(5) 各自计数;归因字段经字段 metadata 不入键)——屏蔽/失败计数的幂等粒度。
 
 ## 2. 执行契约
 
-**动作 op = 机械执行,无成败回执**(规范正文单一源 = [action_ops.md](action_ops.md) §1;本节保留执行面契约表):
+**动作 op = `CwActionXxxOp`(框架 `SrOperation` 子类,构造 = `(ctx, param, env)`;op 内机械执行后直调自己的上报函数)**(规范正文单一源 = [action_ops.md](action_ops.md) §1;本节保留执行面契约表):
 
 | 执行面 | 契约形态 |
 |---|---|
-| 动作 op(`cw_op/cw_<action>_action.py`,`ActionOp.execute` 单方法) | 机械执行(点击/拖拽)+ 向 game state 上报动作事实(逻辑态由 game state 经 `apply_*` 族独占写入);**无返回**——发出即职责完成,零判效 |
+| 动作 op(`cw_op/cw_<action>_action.py`,单节点 op;注册表 `action_op_class_for` 类级解析 + `(ctx, param, env)` 组装,节点函数直调) | 机械执行(点击/拖拽)→ **op 内直调自己的上报函数**(上报 = `kernel/cw_action_report/report_action_<snake>_param`,每动作一个具名接口;容器逻辑态写入单点);round 结果成功态 = 发出事实(失败 = 定位落空等未发出通道,`round_fail` 零重试交回) |
+| 上报函数族(`kernel/cw_action_report/`) | 每动作恰一个具名函数 = 该动作的容器写语义单点(命名机械可推导,完备锁 = test_cw_action_report_contract);分派只允许 op 直调与引擎入口(sim/回放)的委托分支串;终结跳写(refresh/close 生产不写)与零写族策略声明在包 `__init__` |
 | 落地登记注册表(`cw_screen_op_base.py` §6.4) | 动作发射点统一触发(单一发射口,发射即触发);逐件申报面 = `EMIT_TRIGGERED_DECLARED`(遭遇/策略刷新计数、经验账本两通道);「未落地不计数」防线由观察侧 reconcile 承接 |
 | 画面 op 级状态(`CwScreenDeploy` 等) | 具名成功/失败状态(STATUS_NOOP/STATUS_DEPLOYED/STATUS_OVERLAY_PREEMPTED 等,判读侧分键)——这是画面 op 的轮次结果语义,不是动作回执 |
 | 商店编排(`_open_shop_phase`) | `(progressed, detail)`:读数性开店 progressed = 开店成功 |
@@ -32,11 +33,11 @@
 
 ## 4. 商店动作执行(一 op 一文件 `cw_op/cw_<action>_action.py`;注册表 `cw_action_registry.py`;守卫 `cw_shop_action_ops.py`)
 
-- **BuyCardOp**(`cw_buy_card_action.py`):点击定位 = 期望态 payload 定长槽阵列(数组下标+1 = 物理槽;身份同一性优先,退化按 (name, star);坐标 = screen_info「商店牌-N」现取,area 缺失显式失败)→ 买前裁片**纯留证**(零判效)→ 点击 → 动画窗 → **发出即记账**(total_buy / spend_executed / bought_names)→ tracking 同步(mutate 与逻辑态直写同分支单一源:满栏合成买 tracked 侧同样合成腾槽)→ 满栏自动多买补差(k = `merge_buy_k` 单一源)。**execute 无返回**(发出即职责完成,零判效)。期望态推进 = 容器规则通道(`apply_shop_action_logic` 简单腿 + `apply_shop_merge_leg` 合成升星腿,基点 = 买前快照三件组)。
-- **LevelUpOp**(`cw_level_up_action.py`):点购买经验单击 → 动画等待(光标遮挡由段顶 park 防)→ 记账(clicks 序列 = 动作内部步骤,决策循环逐帧重组——外部买面在 clicks 之间不可插花)。
-- **RefreshShopOp**(`cw_refresh_shop_action.py`,段终结):硬墙(`../screens/shop.md` §5,visit 级);刷前现读两口径 → 刷前刷新钮真值读(三态+免费剩余次数,best-effort)→ 点击 → 固定等待 1s 等动画收敛(`REFRESH_CLICK_SETTLE_WAIT_S`)→ **发出即记账**(刷价 = 基价常量;total_refresh/did_refresh)。牌名集对比仅作遥测留证(refresh_board_changed;原安灯 free_refresh_proc 豁免消费已随安灯退役);「刷新是否生效」判定归观察侧 reconcile,执行侧零重试。
-- **SellBenchOp**(`cw_sell_bench_action.py`,商店域能力面;注册行已更替备战域):拖拽卖出(统一拖拽原语机械单发,零判效零重试)→ 发出即记账 → tracking 同步(置 None 不紧缩)+ `register_round_sold`(同轮不回买)。
-- **CloseShopOp**(`cw_close_shop_action.py`,访问终结恒可用):动作 op 内 no-op,关店点击由编排壳 `cw_op_close_shop.py::CwOpCloseShop` 承担。
+- **CwActionBuyCardOp**(`cw_buy_card_action.py`):点击定位 = 期望态 payload 定长槽阵列(数组下标+1 = 物理槽;身份同一性优先,退化按 (name, star);坐标 = screen_info「商店牌-N」现取,area 缺失显式失败)→ 买前裁片**纯留证**(零判效)→ 点击 → 动画窗 → **发出即记账**(total_buy / spend_executed / bought_names)→ tracking 同步(mutate 与上报同分支单一源:满栏合成买 tracked 侧同样合成腾槽)→ 满栏自动多买补差(k = `merge_buy_k` 单一源,上报 executed 回执携带)。期望态推进 = op 自上报 `report_action_buy_card_param`(gold −单价×k + 落位 + payload −k + 合成连锁/升星腿,买前快照三件组内聚函数内)。
+- **CwActionLevelUpOp**(`cw_prep_level_up_action.py`;`CwActionLevelUpShopParam` 同字段双类型共用):点购买经验单击 → 动画等待(光标遮挡由段顶 park 防)→ 记账;上报 = `report_action_level_up_param`(击数自算 1,满级拒付 `level_cap`)。clicks 序列 = 动作内部步骤,决策循环逐帧重组——外部买面在 clicks 之间不可插花。
+- **CwActionRefreshShopOp**(`cw_refresh_shop_action.py`,段终结):硬墙(`../screens/shop.md` §5,visit 级);刷前现读两口径 → 刷前刷新钮真值读(三态+免费剩余次数,best-effort)→ 点击 → 固定等待 1s 等动画收敛(`REFRESH_CLICK_SETTLE_WAIT_S`)→ **发出即记账**(刷价 = 基价常量;total_refresh/did_refresh)。**终结跳写:op 体内不调上报**(期望态按下段入口重观察作废);刷新执行计数组(`record_refresh_execution`)由商店落地门在执行回执点接线;牌名集对比仅作遥测留证(refresh_board_changed);「刷新是否生效」判定归观察侧 reconcile,执行侧零重试。
+- **CwActionSellBenchOp**(`cw_prep_sell_bench_action.py`,备战域 = 唯一活执行路径):拖拽卖出(统一拖拽原语机械单发,零判效零重试)→ 发出即记账 → tracking 同步(置 None 不紧缩);上报 = `report_action_sell_bench_param`(退款/装备回收/溢出腿单点)。
+- **CwActionCloseShopOp**(`cw_close_shop_action.py`,访问终结恒可用):动作 op 内 no-op,关店点击由编排壳 `cw_op_close_shop.py::CwOpCloseShop` 承担;终结跳写(结构离屏写 = 编排壳观察写端)。
 
 ## 5. 部署执行(CwScreenDeploy,`cw_screen_deploy.py`)
 

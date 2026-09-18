@@ -4,20 +4,20 @@
 
 ## 1. 动作是什么
 
-收起商店面板回备战画面。**访问终结**动作、恒可用终结(全函数契约「无动作可做」的表达 = 策略器主动选关店)。op 载体 = `operations/cw_op/cw_close_shop_action.py::CloseShopOp`(`terminal=True`,动作 op 内 no-op);关店点击由编排壳 `operations/cw_op/cw_op_close_shop.py::CwOpCloseShop`(`close_shop`)承担。词表 = `kernel/cw_vocab.py::CloseShop`。
+收起商店面板回备战画面。**访问终结**动作、恒可用终结(全函数契约「无动作可做」的表达 = 策略器主动选关店)。op 载体 = `operations/cw_op/cw_close_shop_action.py::CwActionCloseShopOp`(`terminal=True`,动作 op 内 no-op);关店点击由编排壳 `operations/cw_op/cw_op_close_shop.py::CwOpCloseShop`(`close_shop`)承担。词表 = `kernel/cw_vocab.py::CwActionCloseShopParam`。
 
 ## 2. 逻辑态域集
 
 | 域 | 写 / 跳写 | 说明 |
 |---|---|---|
-| shop | 转移函数腿写(结构离屏),生产跳写 | 转移函数腿 = `leave_screen(bs.shop)`(载荷语义失效;离屏写渠道 = obs 族,actor 沿逻辑态直写签名转造);**生产落地门对终结动作整体跳写**——牌面/gold 真值由下一段入口观察重建 |
+| shop | 上报函数写(结构离屏),生产跳写 | 上报函数腿 = `leave_screen(bs.shop)`(载荷语义失效;离屏写渠道 = obs 族,actor 沿逻辑态直写签名转造);**生产落地门对终结动作整体跳写**——牌面/gold 真值由下一段入口观察重建 |
 | 其余全部域 | 跳写 | 关店本身不改任何局内资源事实 |
 
 回执域(`receipts`):编排壳两出口各落一条(`kernel/cw_game_state.py::note_action_receipt` 唯一写点)——点击已发 = applied=true;幂等已关(「按钮-收起」不在)= applied=false + reason(无动作可发)。
 
 ## 3. 确定面转移规则(逐条)
 
-1. shop 域结构离屏(转移函数腿,`apply_shop_action_logic` CloseShop 分支;`bs.shop.value` 非 None 才写);
+1. shop 域结构离屏(上报函数 `report_action_close_shop_param` = `leave_screen`;`bs.shop.value` 非 None 才写);
 2. **关店本身不改牌面事实**:节点内关店→重开**不刷新**(牌面持久),跨节点才自动刷新全店(`research/economy.md` §2.1)——牌面去留由节点推进事件锚定,不由本动作推算;
 3. 编排壳机械序:幂等入口观察(「收起」不在 = 店已关,直接成功)→ 点「按钮-收起」→ 固定等待 `SHOP_CLOSE_ANIM_S`(收起过场 ~1s,`research/screen_flow_timing.md` #15)→ 机械交回(零验证,收起消失与否由下一轮重入幂等观察/下一帧观察裁决)。
 
@@ -31,11 +31,11 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_game_state.py::apply_shop_action_logic`(CloseShop 腿 = `leave_screen`)/ `note_action_receipt`;`operations/cw_op/cw_op_close_shop.py::close_shop` / `CwOpCloseShop`;终结语义总表 = [screens/README](../../screens/README.md) §4。
+`kernel/cw_action_report/close_shop.py::report_action_close_shop_param`(`leave_screen`)/ `note_action_receipt`;`operations/cw_op/cw_op_close_shop.py::close_shop` / `CwOpCloseShop`;终结语义总表 = [screens/README](../../screens/README.md) §4。
 
 ## 7. 语义验证(终结作废契约)
 
-动作转移语义单一源 = 容器写口(`apply_shop_action_logic` CloseShop 腿 = `leave_screen` 结构离屏)。CloseShop 不在 `cw_vocab.py::Action` 联合内,原单步动作应用器 `simulate` 无该分支,已退役(考古归 git)。投影直锁 M1(`test_cw_shop_projection_logic`)含 CloseShop 离屏腿;本动作期望态语义由「终结作废」契约承载——期望态随终结作废,由下一次入口观察重建,离屏域值失效等价于下帧观察全量覆盖。
+动作转移语义单一源 = 上报函数(`report_action_close_shop_param` = `leave_screen` 结构离屏)。原聚合写口调用面与原单步动作应用器 `simulate` 已随动作 op 重组与 sim 重做退役,考古归 git。投影直锁 M1(`test_cw_shop_projection_logic`)含 CloseShop 离屏腿;本动作期望态语义由「终结作废」契约承载——期望态随终结作废,由下一次入口观察重建,离屏域值失效等价于下帧观察全量覆盖。
 
 ## 8. 判例注记(发射期)
 
@@ -43,4 +43,4 @@
 
 ## 9. 依据
 
-`research/economy.md` §2.1(节点内关店重开不刷新);`research/screen_flow_timing.md` #15;`kernel/cw_game_state.py::apply_shop_action_logic` CloseShop 腿 docstring 与 `ShopActionExecuted.refresh_paid` 注(终结跳写申报);[screens/README](../../screens/README.md) §3.5/§4(访问终结语义)。
+`research/economy.md` §2.1(节点内关店重开不刷新);`research/screen_flow_timing.md` #15;`kernel/cw_action_report/close_shop.py::report_action_close_shop_param` docstring 与 `ShopActionExecuted.refresh_paid` 注(终结跳写申报);[screens/README](../../screens/README.md) §3.5/§4(访问终结语义)。

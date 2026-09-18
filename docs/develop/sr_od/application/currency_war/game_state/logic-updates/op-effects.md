@@ -1,25 +1,27 @@
 # 效果账机制(op-effects):写端归属与执行推进总述
 
-> 归属:[logic-updates/](README.md) 索引下**效果账机制总述**——只写效果账机制(写端归属判据、`apply_op_effect` 分支全集、登记面、写端桥与两窗);逐动作逻辑态全在专篇(工具七类 → [tools.md](tools.md),pick 族 → pick-*.md 五篇),总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。两大写口 = `kernel/cw_exec_state.py::apply_op_effect`(执行域效果推进)+ `kernel/cw_affix_effects.py`(登记/申报/执行写端分派,写端桥宿主 = `kernel/cw_effect_inventory.py`)。
+> 归属:[logic-updates/](README.md) 索引下**效果账机制总述**——只写效果账机制(写端归属判据、效果内聚落点、登记面、写端桥与两窗);逐动作逻辑态全在专篇(工具七类 → [tools.md](tools.md),pick 族 → pick-*.md 五篇),总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。效果推进按宿主分落点:**动作类效果内聚于各自上报函数**(op 自上报,`kernel/cw_action_report/` 函数族);**dict 确认族到账 = `kernel/cw_exec_state.py::apply_confirm_effect`**(消费方 = `_overlay_confirm.register_confirm_arrival`);装备写端登记/申报/分派 = `kernel/cw_affix_effects.py`(写端桥宿主 = `kernel/cw_effect_inventory.py`)。
 
 ## 1. 效果账是什么
 
-动作 op 机械发出后,除容器动作转移函数外还有一类**可推算效果**需要直接写状态账:选卡到账(装备/道具入 owned)、卖出装备回收(执行缝)、工具消耗的确定性变换、随机收入的窗登记。纪律与动作逻辑态同源:确定性(结果可准确计算)= 逻辑写;含概率/随机 = 不建逻辑写端,观察收口(归属判据正本 = `docs/develop/sr_od/application/currency_war/game_state/effect-domain.md` §6.3)。op 层零自带记账,推进统一挂 `apply_op_effect`(两执行面同源入口:商店落地门侧语义经执行器/桥消费;推进失败不阻塞执行链)。
+动作 op 机械发出后,除容器动作转移语义外还有一类**可推算效果**需要直接写状态账:选卡到账(装备/道具入 owned)、卖出装备回收、穿戴 tracked 账、免战递减、工具消耗的确定性变换、随机收入的窗登记。纪律与动作逻辑态同源:确定性(结果可准确计算)= 逻辑写;含概率/随机 = 不建逻辑写端,观察收口(归属判据正本 = `docs/develop/sr_od/application/currency_war/game_state/effect-domain.md` §6.3)。op 层零自带记账——动作类效果内聚于各自上报函数(op 机械执行后直调,效果与动作转移同函数单点);dict 确认族到账经 `apply_confirm_effect`(推进失败不阻塞执行链)。
 
-## 2. apply_op_effect 分支全集(执行域推进)
+## 2. 效果内聚落点(动作类 = op 自上报;dict 确认族 = apply_confirm_effect)
 
-`kernel/cw_exec_state.py::apply_op_effect`(produced_by 默认 `PrepActionExecutor`;返回推进清单 `[{path, value, kind}]`)。**卖出回金不在本口**(双记腿退役:执行缝 + 投影双腿各记一次 +refund,实读倒挂 −2 实证)——SellBench/SellDeployed 的容器金账唯一写点 = `apply_prep_action_logic` 对应分支;执行缝现役金面 = `_executed_gold_delta` 算金差进回执 extra 留证,不直推:
+**动作类效果分支已全量收编各 op 自上报函数**(动作 op 重组批④:原聚合口 `apply_op_effect` 的动作词表类分支删除 = 双记防线,语义逐字迁移进 `kernel/cw_action_report/` 各函数;本口瘦身改名 `apply_confirm_effect` 只留 dict 确认族)。**卖出回金唯一写点 = 上报函数**(双记腿退役:执行缝 + 投影双腿各记一次 +refund,实读倒挂 −2 实证);执行缝现役金面 = `_executed_gold_delta` 算金差进回执 extra 留证,不直推:
 
-| 分支 | 推进面 | 说明 |
+| 效果 | 内聚宿主 | 说明 |
 |---|---|---|
-| `SellDeployed` | owned | tracked 快照被卖单位装备逐件 `_owned_add`(「卖场上装备全额返还」;执行账单一写者,无投影对应物)。**金腿不在本口**(见上) |
-| `WearEquip` | owned + tracked | 发出即登记零比对形态:`gs.equips` −1 + tracked 目标角色 equips +1(物理 (row,slot) → `deployed_idx_of` 换算;仅执行器 emitted 门放行时可达;owned 无此件只跳 owned 侧) |
-| `StartBattle` | effects | 唯一逻辑推进 = 免战牌跳过递减:`skip_substate=True`(StartBattleOp 经 runner 包络上报,op 零 game state 直写)→ `effects.consume_use`(上报时递减,非「验证落地后」;登记面缺位的局返 None 零动作) |
-| `ClickSpheres` | 窗登记 | 零金账推进(球金金额执行点不可推算 = 声明盲区)+ 按 `len(action.points)` 开备战环随机收入待吸收窗 `exec_books.prep_sphere_income_pending`(唯一写端;吸收/收口/红线见 [click-spheres.md](click-spheres.md) §3-4) |
-| dict `ConfirmSupply/ConfirmBox/ConfirmTome` | owned | 确认类到账:`{'op','item'}` → owned +1(经 `_overlay_confirm.register_confirm_arrival` 消费;现役登记发射位 = ConfirmSupply 补给选卡 / ConfirmTome 星徽秘典;ConfirmBox 暂无在役发射点) |
-| dict `ConfirmExpertCash` | gold | 专家邀请函「现金为王」弃卡取现金固定回金 +4(与投资策略卡「现金为王」撞名两实体,按画面域限定) |
-| dict `BuyCard` | gold | 模拟/离线入口:`merge_simulate` 引擎算购买数 → 金账 −cost×k |
-| else(显式不建模清单) | 零推进 | OpenBox/OpenTome(箱/典籍不消失,消耗在选卡确认)/ OpenShop(画面态周转)/ **StartBattle 的 hp/gold/streak**(由结算屏观察覆盖接管)/ **SellBench**(分支整支已删,金/bench 全归 `apply_prep_action_logic`)/ **LevelUp**(经验/等级/金 = `apply_prep_action_logic` LevelUp 分支单一写点,金腿不经执行缝)/ DeployMove/SellDeployed 的 tracked 位移(执行器 `_track_*` 单一写者)/ 工具原子(视觉域帧面 + `EQUIP_WRITE_SIDES` 申报,见 [tools.md](tools.md))。另申报:`_handle_bench_full` 席满急救不经执行器 = 不在推进面(声明而非遗漏) |
+| SellDeployed owned 恢复 | `report_action_sell_deployed_param` | tracked 快照被卖单位装备逐件回收(「卖场上装备全额返还」;原执行账单写者面随函数内聚单点化)。金腿同函数(`sell_refund` 直写) |
+| WearEquip owned + tracked | `report_action_wear_equip_param` | 发出即登记零比对形态:`gs.equips` −1 + tracked 目标角色 equips +1(物理 (row,slot) → `deployed_idx_of` 换算;session 缺席 = tracked 腿跳过;owned 无此件只跳 owned 侧) |
+| StartBattle 免战递减 | `report_action_start_battle_param` | 唯一逻辑推进 = 免战牌跳过递减:`skip_substate=True`(CwActionStartBattleOp 上报携带)→ `effects.consume_use`(上报时递减,非「验证落地后」;登记面缺位的局返 None 零动作) |
+| ClickSpheres 窗登记 | `report_action_click_spheres_param` | 零金账推进(球金金额执行点不可推算 = 声明盲区)+ 按 `len(action.points)` 开备战环随机收入待吸收窗 `exec_books.prep_sphere_income_pending`(唯一写端;吸收/收口/红线见 [click-spheres.md](click-spheres.md) §3-4) |
+| SellBench 回金/装备回收/溢出腿 | `report_action_sell_bench_param` | 回金唯一写点 + C6 装备回收 + 溢出腿内聚(原执行缝 SellBench 分支整支已删,双记防线) |
+| LevelUp 经验/等级/金 | `report_action_level_up_param` | 单一写点,金腿按 `action.cost`×击数直写(金腿不经执行缝) |
+| dict `ConfirmSupply/ConfirmBox/ConfirmTome` | `apply_confirm_effect` | 确认类到账:`{'op','item'}` → owned +1(经 `_overlay_confirm.register_confirm_arrival` 消费;现役登记发射位 = ConfirmSupply 补给选卡 / ConfirmTome 星徽秘典;ConfirmBox 暂无在役发射点) |
+| dict `ConfirmExpertCash` | `apply_confirm_effect` | 专家邀请函「现金为王」弃卡取现金固定回金 +4(与投资策略卡「现金为王」撞名两实体,按画面域限定) |
+| dict `CwActionBuyCardParam`(dict 形) | `apply_confirm_effect` | 模拟/离线入口:`merge_simulate` 引擎算购买数 → 金账 −cost×k |
+| 其余(零写族策略) | 零推进 | OpenBox/OpenTome/OpenShop/工具原子七类等零容器写动作 = `zero_writes.py` 上报函数族(`report_action_<snake>_param` 恒 applied=True 零容器写,等观察覆盖;显式不建模面申报 = 各函数 docstring)/ **StartBattle 的 hp/gold/streak**(由结算屏观察覆盖接管)/ DeployMove/SellDeployed 的 tracked 位移(执行器 `_track_*` 单一写者)。另申报:`_handle_bench_full` 席满急救不经执行器 = 不在推进面(声明而非遗漏) |
 
 ## 3. 效果写端登记面(cw_affix_effects)
 
@@ -50,20 +52,20 @@
 
 - `CounterKey.BUY`/`CounterKey.REFRESH`:`effects.bump_key` 推进(挂执行落地门 = `cw_screen_buy_cards.py::apply_action_outcome`;对全部声明 `duties.track` 的在册条目推进,消费按 (spec_id, key) 隔离读)——返利族「每购 3 张 5 费」/采购专员族「每刷 7/5 次」计数面;
 - 免战牌次数:`consume_use`(跳过执行落地递减,归零移除,见 [start-battle.md](start-battle.md));
-- 升级事件:`effects.on_level_up`(挂点 = `operations/cw_op/cw_prep_level_up_action.py::PrepLevelUpOp.execute` 内,发出即登记,best-effort 观测零决策语义)。
+- 升级事件:`effects.on_level_up`(挂点 = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp` 内,发出即登记,best-effort 观测零决策语义)。
 
 ## 7. 事件线 pick 族 → 专篇
 
-注册表 pick 族 5 行逐类专篇:[pick-encounter.md](pick-encounter.md) / [pick-supply.md](pick-supply.md) / [pick-megastar.md](pick-megastar.md) / [pick-partner.md](pick-partner.md) / [pick-planner.md](pick-planner.md)。本总述只留族共通机制锚:op 类 = `operations/cw_op/cw_overlay_pick_action.py` 五类(域 env = `OverlayPickExecEnv`,机械参数由各画面 op 决策半现算传入,op 类体内零决策);容器 GameState 零写(事件线选择非逻辑态通道),写边只有确认到账 grant(SupplyPickOp 一类,经 `register_confirm_arrival` → `apply_op_effect` dict 分支)与 chosen_* 观察写端(`REGISTERED_ACTORS` 登记面;策划选择落地域 `chosen_hack` 现役无写入端);机械确认链纪律正本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.4。
+注册表 pick 族 5 行逐类专篇:[pick-encounter.md](pick-encounter.md) / [pick-supply.md](pick-supply.md) / [pick-megastar.md](pick-megastar.md) / [pick-partner.md](pick-partner.md) / [pick-planner.md](pick-planner.md)。本总述只留族共通机制锚:op 类 = `operations/cw_op/cw_overlay_pick_action.py` 五类(`CwActionPickEncounterOp`/`CwActionPickSupplyOp`/`CwActionPickMegastarOp`/`CwActionPickPartnerOp`/`CwActionPickPlannerOp`,域 env = `OverlayPickExecEnv`,机械参数由各画面 op 决策半现算传入,op 类体内零决策);容器 GameState 零写(事件线选择非逻辑态通道),写边只有确认到账 grant(CwActionPickSupplyOp 一类,经 `register_confirm_arrival` → `apply_confirm_effect` dict 分支)与 chosen_* 观察写端(`REGISTERED_ACTORS` 登记面;策划选择落地域 `chosen_hack` 现役无写入端);机械确认链纪律正本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.4。
 
 ## 8. 语义验证(观察边界 reconcile)
 
-效果账的装备类写端(穿戴/特权化)与装备多集真值的守恒核对,活机制 = **观察边界 reconcile**(下一入口装备区读数覆盖)。原 sim 侧对账入口(`cw_vocab.py::simulate` 对 BuyCard/SellBench/SellDeployed/SwapDeploy 动作前后跑 `EquipsLedger` 快照比对)**随 simulate 退役**,考古归 git;卖出回收面现役 = 容器写口腿(`apply_prep_action_logic`)+ 观察覆盖。桥/组合写的等价性 = 窗口独占契约(完全预测,失配等价推算 bug 走缺陷台账,不静默不改道);点球金/边界金两窗 = 失配精确吸收面(台账行留证,红线见 [click-spheres.md](click-spheres.md) §4 与 `ExecBooks` 字段注)。
+效果账的装备类写端(穿戴/特权化)与装备多集真值的守恒核对,活机制 = **观察边界 reconcile**(下一入口装备区读数覆盖)。原 sim 侧对账入口(`cw_vocab.py::simulate` 对 BuyCard/SellBench/SellDeployed/SwapDeploy 动作前后跑 `EquipsLedger` 快照比对)**随 simulate 退役**,考古归 git;卖出回收面现役 = 上报函数(`report_action_sell_bench_param`/`report_action_sell_deployed_param`)+ 观察覆盖。桥/组合写的等价性 = 窗口独占契约(完全预测,失配等价推算 bug 走缺陷台账,不静默不改道);点球金/边界金两窗 = 失配精确吸收面(台账行留证,红线见 [click-spheres.md](click-spheres.md) §4 与 `ExecBooks` 字段注)。
 
 ## 9. 判例注记(发射期)
 
-效果账挂点跟宿主动作走:选卡/确认 grant 归各 overlay 画面期(事件线选择非逻辑态通道);卖出装备回收腿归备战期执行缝(容器金/bench = 容器写口腿);工具/特权效果归备战期(判据准入/发射位见 [tools.md](tools.md) §8);点球金窗归备战期奖励面板(店开帧收口)。商店期默认面(买/刷/关)不触效果账写端(计数面 BUY 除外,随买牌挂落地门)。
+效果账挂点跟宿主动作走:选卡/确认 grant 归各 overlay 画面期(事件线选择非逻辑态通道);卖出装备回收/回金腿归备战期(op 自上报函数内聚单点);工具/特权效果归备战期(判据准入/发射位见 [tools.md](tools.md) §8);点球金窗归备战期奖励面板(店开帧收口)。商店期默认面(买/刷/关)不触效果账写端(计数面 BUY 除外,随买牌挂落地门)。
 
 ## 10. 依据
 
-`kernel/cw_exec_state.py::apply_op_effect` docstring(卖出回金退役申报/显式不建模清单/ClickSpheres 窗登记);`kernel/cw_affix_effects.py` 模块头(辖域/边界/防漂移锁)与 `EQUIP_WRITE_SIDES` 四形判据;`kernel/cw_effect_inventory.py` 写端桥段(窗口独占性分形判据)+ `settle_node_boundary_gold` docstring;`kernel/cw_game_state.py::tick_effect_boundary`(待补结闩四重闸);`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`(分道申报);[fields.md](../fields.md) §5.1(效果激活账本)/ §5.3(效果族归属四选一);`docs/develop/sr_od/application/currency_war/game_state/effect-domain.md` §6.3(效果写入归属判据正本);`research/equipment_mechanics.md` §5(工具 7 件全量)/「装备转移机制」节。
+`kernel/cw_exec_state.py::apply_confirm_effect` docstring(dict 确认族辖域与零推进申报)与 `kernel/cw_action_report/` 各函数 docstring(动作类效果内聚申报);`kernel/cw_affix_effects.py` 模块头(辖域/边界/防漂移锁)与 `EQUIP_WRITE_SIDES` 四形判据;`kernel/cw_effect_inventory.py` 写端桥段(窗口独占性分形判据)+ `settle_node_boundary_gold` docstring;`kernel/cw_game_state.py::tick_effect_boundary`(待补结闩四重闸);`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`(分道申报);[fields.md](../fields.md) §5.1(效果激活账本)/ §5.3(效果族归属四选一);`docs/develop/sr_od/application/currency_war/game_state/effect-domain.md` §6.3(效果写入归属判据正本);`research/equipment_mechanics.md` §5(工具 7 件全量)/「装备转移机制」节。

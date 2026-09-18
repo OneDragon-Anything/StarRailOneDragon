@@ -10,15 +10,15 @@
 
 **发射形态(R2 原子通路)**:决策核逐帧发原子动作(部署 = DeployMove 序/穿戴 = WearEquip 序/卖出 = SellBench/SellDeployed),备战环逐帧执行决策输出的恰一个动作(None = 本帧无动作,交回外循环重观察);组合壳(RunDeploy/RunEquip/RunTools)已退役。发射位计划构造单一源 = `kernel/cw_deploy_logic.py::select_deployments`+`assign_deploy_slots`(部署)、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`(穿戴)。
 
-**执行器三件套(每动作同构)**:①机械执行(`_dispatch_action` 经注册表 `action_op_for` 分派,`emitted` = 发出事实,False 只用于执行前输入契约拒绝);②tracked 主账同步(`_track_remove_bench`/`_track_remove_deployed`/`_track_move_deployed`,置 None 不移位,摘除腿照常执行只显影不拒写);③逻辑效果推进(`apply_op_effect` 两执行面同源挂点)+ 执行点金差显影(`_executed_gold_delta`:卖 = +`sell_refund`、ClickSpheres = None、其余 0/未发出 None——**仅进回执 extra 留证,不经它直推容器金账**;容器金账唯一写点 = `apply_prep_action_logic` 对应分支,执行缝直推腿已退役防双记)+ 回执域(`note_action_receipt`)与 journal 行。
+**执行器三件套(每动作同构)**:①机械执行(`_dispatch_action` 经注册表 `action_op_class_for` 分派,`emitted` = 发出事实,False 只用于执行前输入契约拒绝);②tracked 主账同步(`_track_remove_bench`/`_track_remove_deployed`/`_track_move_deployed`,置 None 不移位,摘除腿照常执行只显影不拒写);③效果随 op 自上报(动作 op 内直调自己的上报函数,`kernel/cw_action_report/` 函数族 = 效果内聚单点)+ 执行点金差显影(`_executed_gold_delta`:卖 = +`sell_refund`、ClickSpheres = None、其余 0/未发出 None——**仅进回执 extra 留证,不经它直推容器金账**;容器金账唯一写点 = 上报函数 `report_action_sell_bench_param`/`report_action_sell_deployed_param`,执行缝直推腿已退役防双记)+ 回执域(`note_action_receipt`)与 journal 行。
 
 ## 2. 卖出族共通执行面(SellBench / SellDeployed)
 
-逐动作逻辑态全文见 [sell-bench.md](sell-bench.md) / [sell-deployed.md](sell-deployed.md);本节只留执行器侧共通面:执行器拖槽中心 → 出售区(`sell_point` 单一源,area 缺失 RuntimeError 禁兜底坐标);卖出动画 1s 等待(`research/screen_flow_timing.md` #21 口径);tracked 摘除 = 按下标置 None(信息位/下标脱节不再按 slot 重构);执行点金差(`_executed_gold_delta`)按 `sell_refund` 进回执 extra 留证——容器金账唯一写点 = `apply_prep_action_logic` 两分支,效果账 `apply_op_effect` 无金腿(残差 = SellDeployed 保留 owned 恢复腿,见 sell-deployed.md §2)。
+逐动作逻辑态全文见 [sell-bench.md](sell-bench.md) / [sell-deployed.md](sell-deployed.md);本节只留执行器侧共通面:执行器拖槽中心 → 出售区(`sell_point` 单一源,area 缺失 RuntimeError 禁兜底坐标);卖出动画 1s 等待(`research/screen_flow_timing.md` #21 口径);tracked 摘除 = 按下标置 None(信息位/下标脱节不再按 slot 重构);执行点金差(`_executed_gold_delta`)按 `sell_refund` 进回执 extra 留证——容器金账唯一写点 = 上报函数(`report_action_sell_bench_param`/`report_action_sell_deployed_param`),执行缝无金腿(SellDeployed 的 owned 恢复腿内聚于上报函数,见 sell-deployed.md §2)。
 
 ## 3. 词表完备性注:SwapDeploy(上阵↔备战对调;非注册行)
 
-词表 + 容器逻辑态直写 + sim 消费在役,**生产执行器未接线**(备战域部署换位经部署机拖拽承载);**不经注册表分发**,不在 [README.md](README.md) 注册行映射内。逻辑态规则(规则在册,供接线/sim 消费):deployed 槽 `d_idx` 与 bench 槽 `b_idx` **原槽对调**(置空不移位坐标系);上场者继承下场者的排(含开拓者形态归一 `_apply_row_to_char`),槽号信息位重写;board 派生随写(front/back rows 行写挂钩 `_resync_board_delta`,本腿禁手写);拒绝 = 同名同星已在场其余位(`duplicate_on_board`)/ expect 双侧失配(陈旧提案)/槽空越界。装备随人走(对象迁移)。kernel 锚 = `kernel/cw_game_state.py::apply_shop_action_logic`(SwapDeploy 腿)、`kernel/cw_vocab.py::mutate_bench_deployed` SwapDeploy 分支(W43 裁决 1/2 代际校验 + 同名唯一性)。
+词表 + 容器逻辑态直写 + sim 消费在役,**生产执行器未接线**(备战域部署换位经部署机拖拽承载);**不经注册表分发**,不在 [README.md](README.md) 注册行映射内。逻辑态规则(规则在册,供接线/sim 消费):deployed 槽 `d_idx` 与 bench 槽 `b_idx` **原槽对调**(置空不移位坐标系);上场者继承下场者的排(含开拓者形态归一 `_apply_row_to_char`),槽号信息位重写;board 派生随写(front/back rows 行写挂钩 `_resync_board_delta`,本腿禁手写);拒绝 = 同名同星已在场其余位(`duplicate_on_board`)/ expect 双侧失配(陈旧提案)/槽空越界。装备随人走(对象迁移)。kernel 锚 = `kernel/cw_action_report/swap_deploy.py::report_action_swap_deploy_param`、`kernel/cw_vocab.py::mutate_bench_deployed` SwapDeploy 分支(W43 裁决 1/2 代际校验 + 同名唯一性)。
 
 ## 4. 边界(逐动作逻辑态专篇索引)
 
@@ -26,4 +26,4 @@
 
 ## 5. 依据
 
-[../action-logic-state.md](../action-logic-state.md) §3/§3A/§1.4(执行态跟踪账落点);`prep_actions.py` 模块头(执行器坐标系与「发出即职责完成」契约);`kernel/cw_game_state.py::apply_prep_action_logic` docstring 与 `PREP_PROJECTION_DOMAINS` 登记面;`kernel/cw_exec_state.py` ADR-0316/ADR-0392 槽位语义注;[fields.md](../fields.md) §4.2(基础行为面);`research/merge_mechanics.md` §3(同名唯一恒成立);`research/equipment_mechanics.md` §1(穿着即合成/装备上限 3 件)。
+[../action-logic-state.md](../action-logic-state.md) §3/§3A/§1.4(执行态跟踪账落点);`prep_actions.py` 模块头(执行器坐标系与「发出即职责完成」契约);`kernel/cw_action_report/` 包 `__init__` docstring(上报函数族规约与双域腿统一申报);`kernel/cw_exec_state.py` ADR-0316/ADR-0392 槽位语义注;[fields.md](../fields.md) §4.2(基础行为面);`research/merge_mechanics.md` §3(同名唯一恒成立);`research/equipment_mechanics.md` §1(穿着即合成/装备上限 3 件)。

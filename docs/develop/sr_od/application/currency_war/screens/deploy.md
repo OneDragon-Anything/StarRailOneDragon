@@ -6,7 +6,7 @@
 
 - 无外循环分发分支;两个调用面:
   - **唯一直调** = cw_loop 0j「前台无角色提示」恢复链(`cw_loop.py::_frontless_recovery_step` → `CwScreenDeploy(ctx).execute()`;`prep_actions.py` 模块头明文:「CwScreenDeploy 画面 op 仍由 cw_loop 0j 前台无角色恢复链直调,非词表成员」)。
-  - **备战期部署的生产载体 = DeployMove 原子序**(部署机不在常规备战环路径):发射核 `cw_loop.py::launch_prepared_battle` / `cw_loop.py::_battle_chain_deploy_moves` 按 kernel 计划现算逐 move 发,执行 = `prep_actions.py::PrepActionExecutor` + 注册行 `cw_op/cw_deploy_move_action.py::DeployMoveOp`;组合壳 RunDeploy 已退役(`kernel/cw_vocab.py` 词表无该类)。
+  - **备战期部署的生产载体 = DeployMove 原子序**(部署机不在常规备战环路径):发射核 `cw_loop.py::launch_prepared_battle` / `cw_loop.py::_battle_chain_deploy_moves` 按 kernel 计划现算逐 move 发,执行 = `prep_actions.py::PrepActionExecutor` + 注册行 `cw_op/cw_deploy_move_action.py::CwActionDeployMoveOp`;组合壳 RunDeploy 已退役(`kernel/cw_vocab.py` 词表无该类)。
 - 入口执行断言:`cw_screen_deploy.py::CwScreenDeploy.deploy` 首闸 = `kernel/cw_overlay_registry.py::derive_decision` 全集锚任一命中 → `round_fail(STATUS_EVENT_OVERLAY+命中画面名)`(执行环境失配速报交回重判;口径 = registry 内,registry 外 overlay 为已知漏检残余,口径申报见 action_exec.md §5 前置节)。
 
 ## 2. 画面形态声明
@@ -35,7 +35,7 @@
 
 ## 6. 状态上报面
 
-- 零逻辑态直写:部署/卖出逻辑态未建模面,容器真值归下一帧观察对账;本 op 不消费 `apply_prep_action_logic`(与备战域 DeployMove/SellDeployed 动作的直写语义分属两条链)。
+- 零逻辑态直写:部署/卖出逻辑态未建模面,容器真值归下一帧观察对账;本 op 不消费上报函数族(与备战域 DeployMove/SellDeployed 动作的 `report_action_deploy_move_param`/`report_action_sell_deployed_param` 直写语义分属两条链)。
 - 执行侧分键族(best-effort,`strategy_state.cw4_counters`):`deploy_exec_held_*`(计划拒因)/ `deploy_exec_r288_skip_ctx_open|closed`(底线门命中分桶)/ `deploy_swap_sell_excluded_*` / `deploy_swap_sell_rejected_*`(卖出逐件拒因)/ `sell_offtarget_arm_*|regular`(驱动归因);与发射侧 `deploy_emit_*` 同粒度对读。
 
 ## 7. 子态与 overlay

@@ -21,7 +21,7 @@
 
 | 通道 | 辖面 | 载体 |
 |---|---|---|
-| logic_action(动作应用) | 动作的字段转移全集,域集 = `SHOP_PROJECTION_DOMAINS`(gold/bench/shop/xp/front_row/back_row/board/equips) | 单一转移函数 `apply_shop_action_logic`(全动作族;DeployMove 不入本口——围栏部署走 obs,登记面申报) |
+| logic_action(动作应用) | 动作的字段转移全集,登记面 = `SHOP_PROJECTION_DOMAINS`(gold/bench/shop/xp/level/front_row/back_row/board/equips) | 上报函数族 `kernel/cw_action_report/report_action_<snake>_param`(每动作一函数;引擎入口 = `cw_sim_actions.apply_player_action` 一行委托分支串逐动作直调) |
 | obs(外部事件) | 非动作语义的状态事实 = sim 的真值写入面 | `gs.observe(...)`,签名 = actor `SimEngineP1` + mode `synthesized` + evidence 前缀 `sim:engine:` |
 | 引擎白名单(不写容器) | XP 权威账本(买牌累加/轮末结转)、牌池登记(ret/take)、金出入转录、装备分配记账、观测披露键(auth/dec_* 族)、免费刷额度注入 | 引擎本地账本与批账本(waves/actions/checks) |
 

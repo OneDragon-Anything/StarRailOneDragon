@@ -4,11 +4,11 @@
 
 ## 1. 动作是什么
 
-在商店开画面点击一张牌,把它买入备战席;若这次买入使同名同星凑满 3 个则自动升星(连锁可多级),备战席满时若该点击能完成一次合成则一击多张买满缺数。op 载体 = `operations/cw_op/cw_buy_card_action.py::BuyCardOp`(非终结);词表 = `kernel/cw_vocab.py::BuyCard`。
+在商店开画面点击一张牌,把它买入备战席;若这次买入使同名同星凑满 3 个则自动升星(连锁可多级),备战席满时若该点击能完成一次合成则一击多张买满缺数。op 载体 = `operations/cw_op/cw_buy_card_action.py::CwActionBuyCardOp`(非终结);词表 = `kernel/cw_vocab.py::CwActionBuyCardParam`。
 
 ## 2. 逻辑态域集
 
-容器写口单一源 = `kernel/cw_game_state.py::apply_shop_action_logic` BuyCard 腿 + 合成升星腿 `apply_shop_merge_leg`(先简单腿后整表覆盖,两写合计为买牌投影语义单一源,直锁 M1 = `test_cw_shop_projection_logic`)。域集封闭 = `SHOP_PROJECTION_DOMAINS`,本动作涉及的写域:
+容器写语义单一源 = 上报函数 `kernel/cw_action_report/buy_card.py::report_action_buy_card_param`(简单落位与合成升星腿内聚单点:买前快照三件组函数内第一时间取,升星发生才整表覆盖,直锁 M1 = `test_cw_shop_projection_logic`)。登记面 = `SHOP_PROJECTION_DOMAINS`,本动作涉及的写域:
 
 | 域 | 写 / 跳写 | 说明 |
 |---|---|---|
@@ -29,14 +29,14 @@
 2. gold `−=` 牌单价 × k(常态 k=1;金账全款无打包价——满栏自动多买也无价格优惠,`research/merge_mechanics.md` §2.5);
 3. 商店载荷:被买槽置 empty 留空不紧缩(买后右邻槽像素零变化实锤,`research/economy.md` §2.1);
 4. **全场合成连锁**:买入后同名同星计数(备战∪场上,`cw_merge_simulate.py::same_star_count`)≥3 即升星。落点 = 场上那张的位置(装备/站位随之继承)或三张全在备战栏时最左一张的位置;连锁可多级(2★ 产物再凑 3 → 3★);三只身上的装备**全部**继承到产物(`kernel/cw_merge_simulate.py::_merge_bench` 不动点循环;装备继承 = 玩家定谳,merge_simulate 模块头规则 4)。升星触发时 front_row/back_row 整表 + board 重算随写(值签名变化才写)。升星触发判定单一源 = `kernel/cw_game_state.py::detect_merge_upgrade`(同名最高星抬升);
-5. 生产落地门调用序 = 先 `apply_shop_action_logic`(简单落位,executed 回执喂 k)后 `apply_shop_merge_leg`(买前快照三件组 = pre_bench/pre_deployed/pre_shop 作 scratch 基点;升星发生才整表覆盖,后写赢)。调用点 = `operations/cw_screen/cw_screen_buy_cards.py::apply_action_outcome`。
+5. 生产调用序 = 动作 op(`CwActionBuyCardOp`)机械执行后直调 `report_action_buy_card_param` 单点——简单落位与升星腿内聚:买前快照三件组 = pre_bench/pre_deployed/pre_shop 作 scratch 基点,函数内第一时间取(原落地门/两驱动器三处抄写收编单点);升星发生才整表覆盖,后写赢。原落地门两写调用面(`apply_action_outcome` 直写块)已随动作 op 重组删除 = 双记防线;落地门现役保留面 = BUY·REFRESH 计数/刷新计数组/卖出 route-tag 显影。
 
 **满栏例外腿(备战席满)**:
 
 - 满栏仍买得进**当且仅当**本次点击能完成一次合成(判据单一源 = `cw_merge_simulate.py::merge_buy_completes`,前提门 = 已有同名同星素材 own≥1;own=0 满栏域游戏拒买,ADR-0619/ADR-0283);
 - 一击多买张数 k = `cw_merge_simulate.py::merge_buy_k` = min(店内同名同星张数, 3 − 已有数 mod 3)(绝不多买,`research/merge_mechanics.md` §2.5);
 - k 张逐张原价扣金(总价 = k×单价)、店载荷下架 k 张同身份牌、合成腾槽(应用机器 = `cw_merge_simulate.py::_apply_full_bench_merge_buy`,逻辑态直写与 tracked 双账同构单一源);
-- 执行器张数回执 = `BuyCardOp` 现算 `merge_buy_k`,执行账补差 (k−1)×单价。
+- 执行器张数回执 = `CwActionBuyCardOp` 现算 `merge_buy_k`,执行账补差 (k−1)×单价。
 
 ## 4. 随机面
 
@@ -50,11 +50,11 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_game_state.py::apply_shop_action_logic`(BuyCard 腿)/ `apply_shop_merge_leg` / `detect_merge_upgrade`;`kernel/cw_merge_simulate.py::merge_buy_k` / `merge_buy_completes` / `_merge_bench` / `_apply_full_bench_merge_buy` / `same_star_count`;`kernel/cw_economy.py::card_cost`;`kernel/cw_exec_state.py::bench_place`;生产落地门 = `operations/cw_screen/cw_screen_buy_cards.py::apply_action_outcome`。
+`kernel/cw_action_report/buy_card.py::report_action_buy_card_param`(简单落位与升星腿内聚)/ `kernel/cw_game_state.py::detect_merge_upgrade`;`kernel/cw_merge_simulate.py::merge_buy_k` / `merge_buy_completes` / `_merge_bench` / `_apply_full_bench_merge_buy` / `same_star_count`;`kernel/cw_economy.py::card_cost`;`kernel/cw_exec_state.py::bench_place`;落地门 = `operations/cw_screen/cw_screen_buy_cards.py::apply_action_outcome`(计数与显影保留面)。
 
 ## 7. 语义验证(M1 直锁)
 
-买牌动作转移语义单一源 = 容器写口两写合计(`apply_shop_action_logic` BuyCard 腿 + `apply_shop_merge_leg` 整表覆盖):常态腿 gold 扣减 + 首空落位 + (name, star) 计数置换下架店牌(三态定长 5 槽模型);满栏腿 `_apply_full_bench_merge_buy` + 按 (name, star) 多集移除 k 张。原 `kernel/cw_vocab.py::simulate` BuyCard 分支(整帧副本第二载体)已随零生产消费退役,考古归 git。语义验证 = 投影直锁 M1(测试 `test_cw_shop_projection_logic`:常态落位/满栏多买 −k×单价/升档结转/满栏拒买逐域直断言)。
+买牌动作转移语义单一源 = 上报函数 `report_action_buy_card_param` 单点(快照与升星腿内聚):常态腿 gold 扣减 + 首空落位 + (name, star) 计数置换下架店牌(三态定长 5 槽模型);满栏腿 `_apply_full_bench_merge_buy` + 按 (name, star) 多集移除 k 张。原 `kernel/cw_vocab.py::simulate` BuyCard 分支(整帧副本第二载体)已随零生产消费退役,考古归 git。语义验证 = 投影直锁 M1(测试 `test_cw_shop_projection_logic`:常态落位/满栏多买 −k×单价/升档结转/满栏拒买逐域直断言)。
 
 ## 8. 判例注记(发射期)
 
@@ -62,4 +62,4 @@
 
 ## 9. 依据
 
-`research/merge_mechanics.md` §1/§2/§2.5/§2.6/§3;`research/economy.md` §2.1(槽位留空/整店全换);`research/xp-rules.md` §2(买牌不产经验);`kernel/cw_game_state.py::apply_shop_action_logic`/`apply_shop_merge_leg` docstring;[fields.md](../fields.md) §3.3.1(商店牌行)/§4.2 BuyCard 行。
+`research/merge_mechanics.md` §1/§2/§2.5/§2.6/§3;`research/economy.md` §2.1(槽位留空/整店全换);`research/xp-rules.md` §2(买牌不产经验);`kernel/cw_action_report/buy_card.py` docstring(快照/升星腿内聚与 k 来源申报);[fields.md](../fields.md) §3.3.1(商店牌行)/§4.2 BuyCard 行。

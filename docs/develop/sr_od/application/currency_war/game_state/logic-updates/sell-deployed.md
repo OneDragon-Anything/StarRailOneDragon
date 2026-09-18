@@ -4,23 +4,21 @@
 
 ## 1. 动作是什么
 
-把已上阵(前排/后排)的某个单位拖到出售区卖出,回收退款并腾出上阵位。v2 动作族成员:词表 + 容器逻辑态直写 + sim 消费在役,**商店 op 表未收录**(生产策略面归备战域)。执行载体 = `prep_actions.py::PrepActionExecutor._sell_deployed` 与部署面换血 `operations/cw_screen/cw_screen_deploy.py::_sell_offtarget_deployed`。词表 = `kernel/cw_vocab.py::SellDeployed`(`deployed_idx` = deployed 槽位表下标 0-9,0-3 前/4-9 后,ADR-0392)。
+把已上阵(前排/后排)的某个单位拖到出售区卖出,回收退款并腾出上阵位。v2 动作族成员:词表 + 容器逻辑态直写 + sim 消费在役,**商店 op 表未收录**(生产策略面归备战域)。执行载体 = `prep_actions.py::PrepActionExecutor._sell_deployed` 与部署面换血 `operations/cw_screen/cw_screen_deploy.py::_sell_offtarget_deployed`。词表 = `kernel/cw_vocab.py::CwActionSellDeployedParam`(`deployed_idx` = deployed 槽位表下标 0-9,0-3 前/4-9 后,ADR-0392)。
 
 ## 2. 逻辑态域集
 
-**商店域写口** = `kernel/cw_game_state.py::apply_shop_action_logic` SellDeployed 腿(v2 族):
+**容器写口(双域统一单点)** = 上报函数 `kernel/cw_action_report/sell_deployed.py::report_action_sell_deployed_param`(原商店腿/备战腿的历史两份随动作 op 重组合一):
 
 | 域 | 写 / 跳写 | 说明 |
 |---|---|---|
 | front_row / back_row | 写 | deployed 槽表中间形态置空(不移位)→ 整表 `write_logic`(平移契约,`deployed_slots_to_rows` 换算) |
 | board | 派生随写 | **派生量**:front_row/back_row 行写端挂钩 `GameState._resync_board_delta` 自动增量重算(观察基座 + 行变更差),本腿禁手写 board(见 §3 第 4 条) |
 | gold | 写 | `gold += 退款`;None 跳写 |
-| equips | 写 | 被卖单位装备全量追加进 owned 库存(`sold.equips` 非空才写) |
+| equips | 写 | 被卖单位装备全量追加进 owned 库存(`sold.equips` 非空才写;原执行账 owned 恢复腿随函数内聚单点化) |
 | bench / shop / xp | 跳写 | 不触 |
 
-**备战域写口** = `kernel/cw_game_state.py::apply_prep_action_logic` SellDeployed 腿,域集 = front_row/back_row/board/gold 子集(`PREP_PROJECTION_DOMAINS` 封闭;**equips 留观察覆盖**)。
-
-**效果账腿** = `kernel/cw_exec_state.py::apply_op_effect` SellDeployed 分支:**仅 owned 恢复腿**(tracked 快照被卖单位装备逐件 `_owned_add` +1,「卖场上装备全额返还」)。**金腿不在本口**:卖出回金的容器唯一写点 = 容器写口两条腿(商店域 `apply_shop_action_logic` / 备战域 `apply_prep_action_logic` SellDeployed 腿)——`apply_op_effect` 金腿已随「统一观察对账迭代 2026-09-16 归因批」退役(执行缝 + 投影双腿各记一次 +refund,实读倒挂 −2 实证);与 SellBench 分支(整支已删)的残差不对称点 = 本口保留 owned 恢复腿(执行账单一写者,无投影对应物,见 sell-bench.md §2)。
+**效果账面(申报:执行缝无金腿/无独立 owned 腿)**:回金与 owned 恢复的唯一写点 = 上报函数(原 `apply_op_effect` 金腿已随「统一观察对账迭代 2026-09-16 归因批」退役——执行缝 + 投影双腿各记一次 +refund,实读倒挂 −2 实证;原执行账 owned 恢复腿(执行账单一写者、无投影对应物)随 op 自上报收编进本函数单点)。
 
 ## 3. 确定面转移规则(逐条)
 
@@ -36,22 +34,22 @@
 
 ## 5. 拒绝语义
 
-- 槽位越界 / 槽空:`applied=False, reason='deployed_idx_out_of_range:<idx>'`(商店域腿);备战域腿 = 静默零写守卫;
+- 槽位越界 / 槽空:`applied=False, reason='deployed_idx_out_of_range:<idx>'`(上报函数守卫零写);
 - **期望失配 stale_proposal**:expect 非空且与槽内 `char_id` 不符 = `applied=False`(ADR-0317;expect 经 ADR-0392 降级为遥测观测字段,名不符仍是跨代际提案的拒绝信号);
 - 执行器零判效:拖拽发出即职责完成,落地归观察 reconcile。
 
 ## 6. kernel 符号锚
 
-`kernel/cw_game_state.py::apply_shop_action_logic`(SellDeployed 腿)/ `apply_prep_action_logic`(SellDeployed 腿)/ `GameState._resync_board_delta`(board 派生挂钩单一源)/ `_row_unit_tags`;`kernel/cw_economy.py::sell_refund` / `bench_char_cost`;`kernel/cw_exec_state.py::apply_op_effect`(SellDeployed 分支 = 仅 owned 恢复腿)/ `deployed_row_slot` / `deployed_idx_of`;`prep_actions.py::PrepActionExecutor._sell_deployed` / `_track_remove_deployed`;`operations/cw_screen/cw_screen_deploy.py::_sell_offtarget_deployed`(部署面换血卖出,资格单一源 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`)。
+`kernel/cw_action_report/sell_deployed.py::report_action_sell_deployed_param`(双域统一单点)/ `GameState._resync_board_delta`(board 派生挂钩单一源)/ `_row_unit_tags`;`kernel/cw_economy.py::sell_refund` / `bench_char_cost`;`kernel/cw_exec_state.py::deployed_row_slot` / `deployed_idx_of`;`prep_actions.py::PrepActionExecutor._sell_deployed` / `_track_remove_deployed`;`operations/cw_screen/cw_screen_deploy.py::_sell_offtarget_deployed`(部署面换血卖出,资格单一源 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`)。
 
 ## 7. 语义验证(M1 直锁)
 
-卖上阵动作转移语义单一源 = 容器写口(商店域 `apply_shop_action_logic` SellDeployed 腿:空槽/越界拒 + expect 失配拒零推进 + 摘槽 + `sell_refund` 回金 + 装备回收 + front/back rows 整表平移(board 派生挂钩随写);备战域 `apply_prep_action_logic` SellDeployed 腿同规则)。原 `kernel/cw_vocab.py::simulate` SellDeployed 分支(整帧副本第二载体)已随零生产消费退役,考古归 git。商店域投影语义由直锁 M1(`test_cw_shop_projection_logic`)钉住,v2 族金样直锁 = `test_cw_transfer_golden`(初态本地构造)。C6 装备守恒核对的活机制 = 观察边界 reconcile(原 sim 侧 `EquipsLedger` 快照比对对账入口随 simulate 退役)。
+卖上阵动作转移语义单一源 = 上报函数(`report_action_sell_deployed_param`:空槽/越界拒 + expect 失配拒零推进 + 摘槽 + `sell_refund` 回金 + 装备回收 + front/back rows 整表平移(board 派生挂钩随写),双域统一单点)。原 `kernel/cw_vocab.py::simulate` SellDeployed 分支(整帧副本第二载体)已随零生产消费退役,考古归 git。商店域投影语义由直锁 M1(`test_cw_shop_projection_logic`)钉住,v2 族金样直锁 = `test_cw_transfer_golden`(初态本地构造)。C6 装备守恒核对的活机制 = 观察边界 reconcile(原 sim 侧 `EquipsLedger` 快照比对对账入口随 simulate 退役)。
 
 ## 8. 判例注记(发射期)
 
-生产策略面归**备战期**(部署期换血/腾位卖,策略判据 = strategy-docs/24 号篇):商店域七动作族能力面保留(SellDeployed 腿在 `apply_shop_action_logic` 在役),但商店 op 表(`cw_action_registry.py`)未收录本动作——商店期默认面 = 买/刷/关(判例 = [screens/README](../../screens/README.md) §5)。
+生产策略面归**备战期**(部署期换血/腾位卖,策略判据 = strategy-docs/24 号篇):商店域 v2 动作族能力面保留(上报函数 `report_action_sell_deployed_param` 在役),但商店 op 表(`cw_action_registry.py`)未收录本动作——商店期默认面 = 买/刷/关(判例 = [screens/README](../../screens/README.md) §5)。
 
 ## 9. 依据
 
-`research/economy.md` §3;`research/equipment_mechanics.md` §1 与「装备转移机制」节(卖角色 = 装备回区主力通道);`kernel/cw_game_state.py::apply_shop_action_logic` v2 族 docstring;[fields.md](../fields.md) §3.2.3/§3.2.4(前后台角色)/§4.2 SellBench 行(「卖场上角色 → 前台/后台 −该牌」)。
+`research/economy.md` §3;`research/equipment_mechanics.md` §1 与「装备转移机制」节(卖角色 = 装备回区主力通道);`kernel/cw_action_report/sell_deployed.py::report_action_sell_deployed_param` docstring(v2 族语义正本);[fields.md](../fields.md) §3.2.3/§3.2.4(前后台角色)/§4.2 SellBench 行(「卖场上角色 → 前台/后台 −该牌」)。

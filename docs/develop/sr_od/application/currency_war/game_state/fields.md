@@ -484,7 +484,7 @@ active_env 核对源。开局写端见 §3.4.3(多屏写入,本条=备战屏侧�
   **消费端** = mandate 溢出门(flag 在场 → 本帧决策强收窄单动作 SellBench,
   禁发 StartBattle/冻结买面,action-logic-state.md §2.4 溢出条件行)。
   腿落地同帧 = 三账事件:容器 bench 回占 + 执行侧 tracked 主账吸收
-  (`apply_prep_action_logic` `session` 形参;缺吸收 = 商店播种守卫
+  (`report_action_sell_bench_param` `session` 形参;缺吸收 = 商店播种守卫
   双账分叉实机停机)+ 黑板帧镜像。
 - `overflow_card: str`——溢出位角色身份(char_id;`''` = 溢出位无卡或身份未
   识别,与 warning 配对解读:True ∧ `''` = 有卡未识别)。**写端** = 同上观察
@@ -1298,13 +1298,16 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
   标准通道)/`relay`(载体中继,空值闸)/`logic_written_fields`(对账巡检用)/
   `note_action_receipt`(receipts 唯一写点)/`write_match_final`(局终域唯一写点)。
   API 契约细则 = [journal.md](journal.md) §6。
-- 备战动作逻辑态写口 = `apply_prep_action_logic`(kernel/cw_game_state.py,模块级
-  写口;备战动作零读屏期望态推进,**动作后逻辑态唯一更新点**——迭代
-  2026-09-18-prep-obs-retirement 阶段 3.5:备战环两条决策循环执行点统一调用,
-  原黑板投影函数 `cw_screen_prep._project_prep_obs` 随 gs.prep_obs 退役删除)。
-  覆盖面两集(登记面申报 = 写口 docstring):**写口分支集** = SellBench/SellDeployed/
-  DeployMove/LevelUp/ClickSpheres/OpenTome/OpenBookcard;**合法零写集**(消费真值
-  归观察/终结化) = OpenBox/WearEquip/工具原子七类。bench 侧原生 `BenchView.slots`
+- 备战动作逻辑态写口 = 上报函数族 `kernel/cw_action_report/`(每动作一文件
+  `report_action_<snake>_param`;备战动作零读屏期望态推进,op 机械执行后直调
+  自己的上报函数 = **动作后逻辑态唯一更新点**——原聚合写口
+  `apply_prep_action_logic` 已随动作 op 重组拆分为本函数族,原黑板投影函数
+  `cw_screen_prep._project_prep_obs` 随 gs.prep_obs 退役删除)。
+  覆盖面申报(登记面 = 各上报函数 docstring 与零写族 `zero_writes.py`):
+  **有容器写语义动作** = SellBench/SellDeployed/DeployMove/LevelUp/ClickSpheres/
+  OpenTome/OpenBookcard 各一函数;**零写族**(消费真值归观察/终结化) =
+  OpenBox/WearEquip/工具原子七类集中在 `zero_writes.py`。bench 侧原生
+  `BenchView.slots`
   操作(不走 legacy roundtrip,is_item_slot 布尔无法恢复 box/tome 类型);域级 None
   跳写(值留观察覆盖,§2.2);陈旧提案守卫(槽位空/越界/载荷无交集零写,等观察覆盖)。
   sig 必填 = family='logic_action'(渠道签名纪律)、actor 在册校验、group_id 按
@@ -1328,7 +1331,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
     等值观察达 `EXTERNAL_GRANT_EQUAL_OBS_LIMIT` 次销闩留证,消费 =
     `_absorb_external_grant` 纯超集精确吸收)/备战环随机收入待吸收窗
     (`prep_sphere_income_pending`,点球金:奖励球金额执行点不可推算、
-    无逻辑写端,置位端 = `apply_op_effect` ClickSpheres 分支按载荷球数
+    无逻辑写端,置位端 = `report_action_click_spheres_param` 按载荷球数
     开窗,消费 = `_absorb_prep_sphere_income` 正向差精确吸收 + 店开帧金
     观察收口,未申报/负差/收口后照真失配停)/节点边界金补结闩
     (`boundary_gold_mode` 量域三态:known=结算屏金面板读成功精确额窗、

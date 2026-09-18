@@ -4,11 +4,11 @@
 
 ## 1. 动作是什么
 
-把备战席某槽位的角色拖到上阵(前排/后排)落位——腾席链与部署义务的原子步。词表 = `kernel/cw_vocab.py::DeployMove`(容器动作域,`cw_vocab.py::Action` 联合在册;字段 `bench_idx` = bench 槽位表下标 0-8、`to_row` ∈ front/back、`faction` = 上阵后 board 阵营计数所需,执行面不消费)。op 载体 = `operations/cw_op/cw_deploy_move_action.py::DeployMoveOp`(非终结;体迁自执行器,`prep_actions.py::PrepActionExecutor._deploy_move` 薄委托)。发射形态(R2 原子通路)= 决策核逐帧发 DeployMove 序,备战环逐帧执行决策输出的恰一个动作(None = 本帧无动作,交回外循环重观察);组合壳(RunDeploy)已退役。发射位计划构造单一源 = `kernel/cw_deploy_logic.py::select_deployments` + `assign_deploy_slots`;执行落位槽现读 = `kernel/cw_deploy_logic.py::empty_deploy_slots`(与发射位选排规则同构:首选排满 fallback 另一排)。
+把备战席某槽位的角色拖到上阵(前排/后排)落位——腾席链与部署义务的原子步。词表 = `kernel/cw_vocab.py::CwActionDeployMoveParam`(容器动作域,`cw_vocab.py::Action` 联合在册;字段 `bench_idx` = bench 槽位表下标 0-8、`to_row` ∈ front/back、`faction` = 上阵后 board 阵营计数所需,执行面不消费)。op 载体 = `operations/cw_op/cw_deploy_move_action.py::CwActionDeployMoveOp`(非终结;体迁自执行器,`prep_actions.py::PrepActionExecutor._deploy_move` 薄委托)。发射形态(R2 原子通路)= 决策核逐帧发 DeployMove 序,备战环逐帧执行决策输出的恰一个动作(None = 本帧无动作,交回外循环重观察);组合壳(RunDeploy)已退役。发射位计划构造单一源 = `kernel/cw_deploy_logic.py::select_deployments` + `assign_deploy_slots`;执行落位槽现读 = `kernel/cw_deploy_logic.py::empty_deploy_slots`(与发射位选排规则同构:首选排满 fallback 另一排)。
 
 ## 2. 逻辑态域集
 
-容器写口 = `kernel/cw_game_state.py::apply_prep_action_logic` DeployMove 腿,域集 = bench / front_row / back_row / board(`PREP_PROJECTION_DOMAINS` 封闭子集;gold/xp/level 不触):
+容器写口 = 上报函数 `kernel/cw_action_report/deploy_move.py::report_action_deploy_move_param`,写域 = bench / front_row / back_row / board(board 派生随行写挂钩;gold/xp/level 不触,申报面 = 函数 docstring):
 
 | 域 | 写 / 跳写 | 说明 |
 |---|---|---|
@@ -46,11 +46,11 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_game_state.py::apply_prep_action_logic`(DeployMove 腿,bench 侧原生 `BenchView.slots` 直操)/ `GameState._resync_board_delta`(board 派生挂钩单一源)/ `_row_unit_tags`;`kernel/cw_vocab.py::mutate_bench_deployed`(同名守卫 + 开拓者形态归一挂 tracked 口);`kernel/cw_exec_state.py::deployed_place` / `deployed_row_slot` / `_apply_row_to_char`;`kernel/cw_deploy_logic.py::select_deployments` / `assign_deploy_slots` / `empty_deploy_slots`;`kernel/cw_bond_equips.py::unit_bond_tags` / `_recount_board`(faction 载体面,装备授予/sim);`prep_actions.py::PrepActionExecutor._track_move_deployed`;`operations/cw_op/cw_deploy_move_action.py::DeployMoveOp`。
+`kernel/cw_action_report/deploy_move.py::report_action_deploy_move_param`(bench 侧原生 `BenchView.slots` 直操)/ `GameState._resync_board_delta`(board 派生挂钩单一源)/ `_row_unit_tags`;`kernel/cw_vocab.py::mutate_bench_deployed`(同名守卫 + 开拓者形态归一挂 tracked 口);`kernel/cw_exec_state.py::deployed_place` / `deployed_row_slot` / `_apply_row_to_char`;`kernel/cw_deploy_logic.py::select_deployments` / `assign_deploy_slots` / `empty_deploy_slots`;`kernel/cw_bond_equips.py::unit_bond_tags` / `_recount_board`(faction 载体面,装备授予/sim);`prep_actions.py::PrepActionExecutor._track_move_deployed`;`operations/cw_op/cw_deploy_move_action.py::CwActionDeployMoveOp`。
 
 ## 7. 语义验证(容器口径)
 
-DeployMove 转移语义单一源 = 容器写口(`apply_prep_action_logic` DeployMove 腿:三守卫/摘槽/`deployed_place` 首空落槽/front/back rows 整表平移 + board 派生挂钩随写;原 `simulate` DeployMove 分支载体已退役,考古归 git)。board 增量口径的容器派生路径 = 未知身份零贡献;「未知身份回退 faction」口径的单一源 = `cw_bond_equips._recount_board`(faction 字段所在载体 BenchChar,装备授予/sim 面)。派生漂移由下一备战帧观察覆盖收敛:`_absorb_board_derived` 命中(evidence 前缀 `proj_board_resync` 辖域)落 `board_derived_adopt` 台账行采新,安灯不响;「上阵单位集合」不变量由 front_row/back_row 失配/纯重排吸收面独立把守。
+DeployMove 转移语义单一源 = 上报函数(`report_action_deploy_move_param`:三守卫/摘槽/`deployed_place` 首空落槽/front/back rows 整表平移 + board 派生挂钩随写;原聚合写口与 `simulate` DeployMove 分支载体已随动作 op 重组与 sim 重做退役,考古归 git)。board 增量口径的容器派生路径 = 未知身份零贡献;「未知身份回退 faction」口径的单一源 = `cw_bond_equips._recount_board`(faction 字段所在载体 BenchChar,装备授予/sim 面)。派生漂移由下一备战帧观察覆盖收敛:`_absorb_board_derived` 命中(evidence 前缀 `proj_board_resync` 辖域)落 `board_derived_adopt` 台账行采新,安灯不响;「上阵单位集合」不变量由 front_row/back_row 失配/纯重排吸收面独立把守。
 
 ## 8. 判例注记(发射期)
 
@@ -58,4 +58,4 @@ DeployMove 转移语义单一源 = 容器写口(`apply_prep_action_logic` Deploy
 
 ## 9. 依据
 
-[../action-logic-state.md](../action-logic-state.md) §3/§3A/§1.4(执行态跟踪账落点);`kernel/cw_game_state.py::apply_prep_action_logic` docstring 与 `PREP_PROJECTION_DOMAINS` 登记面;`GameState._resync_board_delta` 方法注(增量口径依据);`kernel/cw_exec_state.py` ADR-0316/ADR-0392 槽位语义注;`research/merge_mechanics.md` §3(同名唯一恒成立);`research/screen_flow_timing.md` #10/#24。
+[../action-logic-state.md](../action-logic-state.md) §3/§3A/§1.4(执行态跟踪账落点);`kernel/cw_action_report/deploy_move.py` docstring(写域与守卫申报面);`GameState._resync_board_delta` 方法注(增量口径依据);`kernel/cw_exec_state.py` ADR-0316/ADR-0392 槽位语义注;`research/merge_mechanics.md` §3(同名唯一恒成立);`research/screen_flow_timing.md` #10/#24。

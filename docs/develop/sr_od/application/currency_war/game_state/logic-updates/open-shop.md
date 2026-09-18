@@ -4,11 +4,11 @@
 
 ## 1. 动作是什么
 
-备战画面点开商店面板——转场族动作,画面态周转(备战 → 商店面板块)。词表 = `kernel/cw_vocab.py::OpenShop`(两形态字段:`read_only` 读数性开店 / `restricted_spend` 受限访问)。op 载体 = `operations/cw_op/cw_open_shop_action.py::OpenShopOp`——**注册行 = terminal 承载行**:类属性承载终结判定/等待(`terminal=True`,`terminal_wait=1.0`,消费点经注册表 `action_op_class_for` 读类属性,禁消费点私表);`execute` 抛 AssertionError——开店流程编排截流在 `operations/cw_screen/cw_screen_prep.py::_act_execute_default`(OpenShop 分支)→ `_open_shop_phase`,动作 op 不承载开店;可达(经注册表分派到本 op 执行)= 分派漏斗被绕过,响亮暴露防静默复活。
+备战画面点开商店面板——转场族动作,画面态周转(备战 → 商店面板块)。词表 = `kernel/cw_vocab.py::CwActionOpenShopParam`(两形态字段:`read_only` 读数性开店 / `restricted_spend` 受限访问)。op 载体 = `operations/cw_op/cw_open_shop_action.py::CwActionOpenShopOp`——**注册行 = terminal 承载行**:类属性承载终结判定/等待(`terminal=True`,`terminal_wait=1.0`,消费点经注册表 `action_op_class_for` 读类属性,禁消费点私表);`execute` 抛 AssertionError——开店流程编排截流在 `operations/cw_screen/cw_screen_prep.py::_act_execute_default`(OpenShop 分支)→ `_open_shop_phase`,动作 op 不承载开店;可达(经注册表分派到本 op 执行)= 分派漏斗被绕过,响亮暴露防静默复活。
 
 ## 2. 逻辑态域集
 
-容器 GameState **全域零写(显式申报「逻辑态 = 空」)**:开店 = 画面态周转,零局内资源变更;`kernel/cw_exec_state.py::apply_op_effect` else 分支显式不建模清单点名 OpenShop(含 read_only)。商店载荷/gold 真值由开店后的入口观察重建(`shop` 载荷域 = 观察写端,路由清点独占)。
+容器 GameState **全域零写(显式申报「逻辑态 = 空」)**:开店 = 画面态周转,零局内资源变更;上报函数 = `zero_writes.py::report_action_open_shop_param`(零写族申报,含 read_only)。商店载荷/gold 真值由开店后的入口观察重建(`shop` 载荷域 = 观察写端,路由清点独占)。
 
 ## 3. 确定面转移规则(逐条)
 
@@ -27,11 +27,11 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::OpenShop`;`operations/cw_op/cw_open_shop_action.py::OpenShopOp`(`terminal`/`terminal_wait` 类属性;execute 抛);`operations/cw_screen/cw_screen_prep.py::_act_execute_default`(OpenShop 截流)/ `_open_shop_phase` / `visit_open_shop`;`operations/cw_loop.py::_launch_frame_arbitration`(restricted_spend 仲裁);`kernel/cw_exec_state.py::apply_op_effect`(else 分支显式不建模)。
+`kernel/cw_vocab.py::CwActionOpenShopParam`;`operations/cw_op/cw_open_shop_action.py::CwActionOpenShopOp`(`terminal`/`terminal_wait` 类属性;execute 抛);`operations/cw_screen/cw_screen_prep.py::_act_execute_default`(OpenShop 截流)/ `_open_shop_phase` / `visit_open_shop`;`operations/cw_loop.py::_launch_frame_arbitration`(restricted_spend 仲裁);`kernel/cw_action_report/zero_writes.py::report_action_open_shop_param`(零写申报)。
 
 ## 7. 语义验证
 
-「逻辑态 = 空」的容器声明:本动作不改写局内资源,真值由开店后入口观察重建;无 M1 投影直锁对象(不经 `apply_shop_action_logic`/`apply_prep_action_logic` 写口)。终结判定/等待时长消费 = 注册表类属性读取(`terminal_wait=1.0` 与原决策循环逐字等价,等价测试锁 = `test_cw_unified_action_3`)。
+「逻辑态 = 空」的容器声明:本动作不改写局内资源,真值由开店后入口观察重建;无 M1 投影直锁对象(零写族函数,不经商店/备战上报函数写域)。终结判定/等待时长消费 = 注册表类属性读取(`terminal_wait=1.0` 与原决策循环逐字等价,等价测试锁 = `test_cw_unified_action_3`)。
 
 ## 8. 判例注记(发射期)
 

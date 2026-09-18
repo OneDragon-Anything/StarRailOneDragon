@@ -1,10 +1,10 @@
-# 工具原子七类(ToolUseOp)逐动作逻辑态
+# 工具原子七类(CwActionToolUseOp)逐动作逻辑态
 
 > 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。数值只写常量名,单一源在代码。**一篇辖七注册行**:七类共用一个 op 类(族文件先例,`cw_tool_use_action.py` 单类七行),机械半同构,逐类差异在写端申报与判据准入——以代码结构自然边界为准,本篇内逐类小节。
 
 ## 1. 动作是什么
 
-拖拽使用装备注册表 category='工具' 的消耗品:owned 装备网格内工具 icon → 目标(装备件/角色槽位)机械拖曳。注册表七行(每词表类一行)同指 `operations/cw_op/cw_tool_use_action.py::ToolUseOp`(非终结;体迁自执行器,`prep_actions.py::PrepActionExecutor._use_tool` 薄委托):
+拖拽使用装备注册表 category='工具' 的消耗品:owned 装备网格内工具 icon → 目标(装备件/角色槽位)机械拖曳。注册表七行(每词表类一行)同指 `operations/cw_op/cw_tool_use_action.py::CwActionToolUseOp`(非终结;体迁自执行器,`prep_actions.py::PrepActionExecutor._use_tool` 薄委托):
 
 | 词表类(`kernel/cw_vocab.py`) | 注册名 | 字段形 |
 |---|---|---|
@@ -16,11 +16,11 @@
 | `PerfectProjectorUse` | 完美投影仪 | `row` + `slot` |
 | `LuckyTokenUse` | 好运令牌 | `row` + `slot` |
 
-工具名解析表 = `ToolUseOp._TOOL_NAME_BY_CLASS`(注册名 = icon 定位锚,与装备注册表同名)。七类均在 `cw_vocab.py::Action` 联合外(零容器动作转移语义)。
+工具名解析表 = `CwActionToolUseOp._TOOL_NAME_BY_CLASS`(注册名 = icon 定位锚,与装备注册表同名)。七类均在 `cw_vocab.py::Action` 联合外(零容器动作转移语义)。
 
 ## 2. 逻辑态域集
 
-容器 GameState `equips` 域**合法零写**(域集封闭申报;迭代 2026-09-18-prep-obs-retirement 阶段 3.5 起登记面两集申报 = `apply_prep_action_logic` docstring:工具原子七类 ∈ 合法零写集——消费真值归观察,截断点独占发射帧零窗口,下一入口 heavy 装备区实读覆盖)。本族写账 = **执行写端**单面,写端归属申报单一源 = `kernel/cw_affix_effects.py::EQUIP_WRITE_SIDES`(逐件恰一个落码写端,值词表四形 bridge:/contribution:/op:/observation):
+容器 GameState `equips` 域**合法零写**(零写族申报 = `zero_writes.py::report_action_<snake>_param` 七函数集中承载——消费真值归观察,截断点独占发射帧零窗口,下一入口 heavy 装备区实读覆盖)。本族写账 = **执行写端**单面,写端归属申报单一源 = `kernel/cw_affix_effects.py::EQUIP_WRITE_SIDES`(逐件恰一个落码写端,值词表四形 bridge:/contribution:/op:/observation):
 
 | 工具(腿)| 执行写端(`apply_tool_execution_write` 分派)|
 |---|---|
@@ -55,7 +55,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py` 七词表类;`kernel/cw_affix_effects.py::EQUIP_WRITE_SIDES` / `apply_tool_execution_write` / `_TOOL_SPAWN_COST_GATE` / `EQUIP_REWRITE_DECLARATIONS`;`kernel/cw_effect_inventory.py::privilege_counterpart` / `transform_equip_to_privilege` / `transform_worn_equip_to_privilege` / `spawn_equip_bench_unit` / `grant_equip_item` / `STAFF_PROJECTOR_COST_GATE` / `settle_wrench_duplicate_gold`;`kernel/cw_equip_env.py::evaluate_tool_actions` / `admitted_tool_actions`;`prep_actions.py::PrepActionExecutor._use_tool` / `_owned_grid_locate`;`operations/cw_op/cw_tool_use_action.py::ToolUseOp`(`_TOOL_NAME_BY_CLASS`)。
+`kernel/cw_vocab.py` 七词表类(`CwAction<Tool>UseParam`);`kernel/cw_action_report/zero_writes.py`(七类零写上报函数);`kernel/cw_affix_effects.py::EQUIP_WRITE_SIDES` / `apply_tool_execution_write` / `_TOOL_SPAWN_COST_GATE` / `EQUIP_REWRITE_DECLARATIONS`;`kernel/cw_effect_inventory.py::privilege_counterpart` / `transform_equip_to_privilege` / `transform_worn_equip_to_privilege` / `spawn_equip_bench_unit` / `grant_equip_item` / `STAFF_PROJECTOR_COST_GATE` / `settle_wrench_duplicate_gold`;`kernel/cw_equip_env.py::evaluate_tool_actions` / `admitted_tool_actions`;`prep_actions.py::PrepActionExecutor._use_tool` / `_owned_grid_locate`;`operations/cw_op/cw_tool_use_action.py::CwActionToolUseOp`(`_TOOL_NAME_BY_CLASS`)。
 
 ## 7. 语义验证
 

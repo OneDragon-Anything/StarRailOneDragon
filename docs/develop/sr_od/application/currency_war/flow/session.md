@@ -95,7 +95,7 @@
 | `tracked_bench_chars` / `tracked_deployed` | 执行侧跟踪账(随动更新) | 双账断言(screens/op-layer.md §1.3) | visit 内 | 执行侧 tracked 账(现状归 session 属历史宿主错位) |
 | `v2_round_key` / `v2_round_sold` | 同轮买卖互斥事实账本(初版误判退役,对抗审查 A2 改判迁出;实施盘点再改判**删除**——A2 申报的「活写端 = `kernel/cw_round_ledger.py:30-34` 带轮键自校验登记」实为恒早退 no-op:`v2_round_key` 全仓零写端,其维护者「决策层轮键重置段」属已删除的 decision_v2;「live 调用方 = cw_shop_action_ops.py:487」申报亦误,唯一调用桩 = cw_sell_bench_action 卖出落地段;`v2_round_sold` 恒空集,买侧互斥消费面不存在) | 无(机制从未在环) | 轮(轮键自校验) | **已删除**(死面僵尸,随执行层状态类目退役;现行同轮已卖互斥单一事实源 = mandate_v1 自有载体 `cw4_round_sold_names`) |
 | `pending_buy_expect` / `xp_expect_ledger` | 期望账构建(执行对账) | heavy 定型帧对账 | 单元/局 | 执行侧对账载体 |
-| `expected_state` | apply_op_effect 到账登记 | reconcile_expected 覆盖点 | visit 内 | 执行侧期望对账容器 |
+| `expected_state` | 原聚合口 `apply_op_effect`(动作 op 重组批④后瘦身改名 `apply_confirm_effect`,只留 dict 确认族)到账登记 | reconcile_expected 覆盖点(期望账机制已随本表退役) | visit 内 | 执行侧期望对账容器 |
 
 ### 2.5 退役字段——删除(5 项,全部带前置动作)
 

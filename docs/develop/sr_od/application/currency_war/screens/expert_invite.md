@@ -5,7 +5,7 @@
 ## 1. 分发判定
 
 - 外循环分支 0k:id_mark 锚「货币战争-备战-专家邀请函.标识-专家邀请函」;命中即接管(同 0i)。分发 = 阶段一身份行,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
-- 处理链分工:开卡半 = 备战词表 `OpenBookcard`(`kernel/cw_vocab.py` 在册;执行器 = `cw_open_bookcard_action.py::OpenBookcardOp`,发射位 = 备战环入口清场段 `cw_screen_prep.py::CwScreenPrep._clear_prep_cards`,开卡即交回)→ 弹窗由 0k 按画面分发本 op——**本 op 只辖弹窗已开后的选卡**,入口态单一 = 弹窗已开。
+- 处理链分工:开卡半 = 备战词表 `OpenBookcard`(`kernel/cw_vocab.py::CwActionOpenBookcardParam` 在册;执行器 = `cw_open_bookcard_action.py::CwActionOpenBookcardOp`,发射位 = 备战环入口清场段 `cw_screen_prep.py::CwScreenPrep._clear_prep_cards`,开卡即交回)→ 弹窗由 0k 按画面分发本 op——**本 op 只辖弹窗已开后的选卡**,入口态单一 = 弹窗已开。
 
 ## 2. 画面形态声明
 
@@ -53,7 +53,7 @@ area = 「卡-现金为王」(idx<0)∨「卡-1..4」→ area_center 缺失 = ro
 ## 6. 状态上报面
 
 - `chosen_expert` write_logic(重入裁决点写;仅卡分支,值 = 该卡羁绊原文名——chosen_expert 语义 = 受邀专家羁绊;「现金为王」= 无专家受邀,不写)。
-- 到账登记 `ConfirmExpertCash`(`kernel/cw_exec_state.py::apply_op_effect` dict 分支,gold +4 固定回金;仅现金分支)。⚠️ 与投资策略卡「现金为王」撞名两实体、效果域不同,按画面域限定匹配禁跨屏按名(fields.md §4)。
+- 到账登记 `ConfirmExpertCash`(`kernel/cw_exec_state.py::apply_confirm_effect` dict 分支,gold +4 固定回金;仅现金分支)。⚠️ 与投资策略卡「现金为王」撞名两实体、效果域不同,按画面域限定匹配禁跨屏按名(fields.md §4)。
 - 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.5 / §4「事件选择」;到账登记 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §2(ConfirmExpertCash 行)。
 
 ## 7. 子态与 overlay

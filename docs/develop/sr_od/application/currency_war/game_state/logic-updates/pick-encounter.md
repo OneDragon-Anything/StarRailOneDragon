@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-遭遇节点弹窗点选一张遭遇卡并确认。词表 = `kernel/cw_vocab.py::PickEncounter`(`PickOption` 子类:字段 `idx` = 画面候选卡位下标 0 起(左→右)、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_overlay_pick_action.py::EncounterPickOp`(体迁自 `cw_screen_encounter.py::CwScreenEncounter._confirm_default`,替身缝 = 原方法薄委托保留;域 env = `OverlayPickExecEnv`)。
+遭遇节点弹窗点选一张遭遇卡并确认。词表 = `kernel/cw_vocab.py::CwActionPickEncounterParam`(`PickOption` 子类:字段 `idx` = 画面候选卡位下标 0 起(左→右)、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_overlay_pick_action.py::CwActionPickEncounterOp`(体迁自 `cw_screen_encounter.py::CwScreenEncounter._confirm_default`,替身缝 = 原方法薄委托保留;域 env = `OverlayPickExecEnv`)。
 
 ## 2. 逻辑态域集
 
@@ -30,11 +30,11 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::PickEncounter` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::EncounterPickOp` / `OverlayPickExecEnv`;`operations/cw_screen/_overlay_confirm.py::safe_click` / `emit_overlay_confirm`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_game_state.py::chosen_encounter` / `REGISTERED_ACTORS`(CwScreenEncounter 行);`operations/cw_screen/cw_screen_encounter.py::CwScreenEncounter`(替身缝/写点)。
+`kernel/cw_vocab.py::CwActionPickEncounterParam` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickEncounterOp` / `OverlayPickExecEnv`;`operations/cw_screen/_overlay_confirm.py::safe_click` / `emit_overlay_confirm`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_game_state.py::chosen_encounter` / `REGISTERED_ACTORS`(CwScreenEncounter 行);`operations/cw_screen/cw_screen_encounter.py::CwScreenEncounter`(替身缝/写点)。
 
 ## 7. 语义验证
 
-容器零写语义 = 「事件线选择非逻辑态通道」契约;选择落地真值 = chosen_encounter 观察写端 + 下一帧重入观察。无 M1 投影直锁对象(不经 `apply_shop_action_logic`/`apply_prep_action_logic` 写口)。
+容器零写语义 = 「事件线选择非逻辑态通道」契约;选择落地真值 = chosen_encounter 观察写端 + 下一帧重入观察。无 M1 投影直锁对象(零写族上报函数 `zero_writes.py::report_action_pick_encounter_param`)。
 
 ## 8. 判例注记(发射期)
 
@@ -42,4 +42,4 @@
 
 ## 9. 依据
 
-`operations/cw_op/cw_overlay_pick_action.py` 模块头(体迁纪律/域 env 契约)与 `EncounterPickOp` docstring;[flow/action_ops.md](../../flow/action_ops.md) §4.4(pick 族行);[fields.md](../fields.md) §3.4(事件选择域组)。
+`operations/cw_op/cw_overlay_pick_action.py` 模块头(体迁纪律/域 env 契约)与 `CwActionPickEncounterOp` docstring;[flow/action_ops.md](../../flow/action_ops.md) §4.4(pick 族行);[fields.md](../fields.md) §3.4(事件选择域组)。

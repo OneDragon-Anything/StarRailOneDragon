@@ -4,21 +4,21 @@
 
 ## 1. 动作是什么
 
-点击商店「按钮-刷新」,整店 5 槽全部重掷。**段终结**动作:刷新是唯一引入新事实的动作,执行即本段结束,下一段入口观察重建期望态。op 载体 = `operations/cw_op/cw_refresh_shop_action.py::RefreshShopOp`(`terminal=True`);词表 = `kernel/cw_vocab.py::RefreshShop`。
+点击商店「按钮-刷新」,整店 5 槽全部重掷。**段终结**动作:刷新是唯一引入新事实的动作,执行即本段结束,下一段入口观察重建期望态。op 载体 = `operations/cw_op/cw_refresh_shop_action.py::CwActionRefreshShopOp`(`terminal=True`);词表 = `kernel/cw_vocab.py::CwActionRefreshShopParam`。
 
 ## 2. 逻辑态域集
 
 | 域 | 写 / 跳写 | 说明 |
 |---|---|---|
-| gold | 转移函数腿写,生产跳写 | 转移函数:`gold −= 实付刷新费`(paid>0 才写,None 跳写);**生产落地门对终结动作整体跳写**(期望态按下段入口重观察作废,`ShopActionExecuted.refresh_paid` 申报注)——现役喂入方 = sim/回放驱动器 |
+| gold | 上报函数腿写,生产跳写 | 上报函数:`gold −= 实付刷新费`(paid>0 才写,None 跳写);**生产落地门对终结动作整体跳写**(期望态按下段入口重观察作废,`ShopActionExecuted.refresh_paid` 申报注)——现役喂入方 = sim/回放驱动器 |
 | shop | **跳写(域级)** | 刷后牌面 = 整店 5 槽全换(随机面)→ payload 本动作不写,新牌面归下一段入口观察 |
-| total_refresh_count / paid_refresh_count / free_refresh_balance | 写(计数组腿) | 容器写端 = 刷新执行落地门 `kernel/cw_game_state.py::record_refresh_execution`,生产在役(终结跳写不影响计数组——它挂在落地门的 RefreshShop 分支,先于终结门) |
+| total_refresh_count / paid_refresh_count / free_refresh_balance | 写(计数组腿) | 容器写端 = 刷新执行落地门 `kernel/cw_action_report/refresh_shop.py::record_refresh_execution`(与刷新上报同文件单源),生产在役(终结跳写不影响计数组——它挂在落地门的 RefreshShop 分支,先于终结门) |
 | shop_refresh_cost | **跳写** | 写端 = 现场 OCR 唯一(ADR-0622 观察通道);免费帧「免费」读数 None → 不落 0(付费域纯净性) |
 | xp(按刷产经验修饰) | 修饰腿写 | 淘金客 `xp_per_refresh` = 经验域 logic 写(fields.md §4.2 修饰段) |
 
 ## 3. 确定面转移规则(逐条)
 
-1. **金腿**(转移函数腿):`gold −= 实付刷新费`。刷价真值 = 容器 `shop_refresh_cost`(备战帧现场 OCR,ADR-0622;缺读 = 建模基价 `REFRESH_COST_BASE` 显式缺省,`kernel/cw_economy.py::refresh_cost_effective`)。免费帧(paid=0)金域不写。免费刷新来源(概率事件 / 按节点免费额度)只影响实付金,不改「整店全换」;
+1. **金腿**(上报函数腿):`gold −= 实付刷新费`。刷价真值 = 容器 `shop_refresh_cost`(备战帧现场 OCR,ADR-0622;缺读 = 建模基价 `REFRESH_COST_BASE` 显式缺省,`kernel/cw_economy.py::refresh_cost_effective`)。免费帧(paid=0)金域不写。免费刷新来源(概率事件 / 按节点免费额度)只影响实付金,不改「整店全换」;
 2. **计数组腿**(`record_refresh_execution`,写入 = 仅逻辑,未落地不计数):`total_refresh_count` 恒 +1;免费帧 `paid_refresh_count` **不写**(付费域纯净性,长线利好触发载体防毒化)且 `free_refresh_balance` −1(下限 0);付费帧 `paid_refresh_count` +1。计数从未写过(None)按 0 基线起算(局内单调累计的构造事实);免费判定输入 = 刷前按钮态 UI 真值优先(`ShopVisitLedger.refresh_free_truth`),失读回退逻辑账余额(余额未建模局恒 paid = 保守形态);真值↔逻辑账分歧落缺陷票(零决策留证);
 3. **效果账计数腿**:`apply_action_outcome` 内 `effects.bump_key(CounterKey.REFRESH)`(采购专员族门槛计数面,挂执行落地门);
 4. 执行侧留证:刷前金/刷前牌名/待对账标记三件进 ledger(对账收口在观察侧,op 内零比对,`REFRESH_CLICK_SETTLE_WAIT_S` 固定等待);牌名集前后三值对比仅作安灯豁免判定输入 + 遥测字段(非判效)。
@@ -31,16 +31,16 @@
 
 ## 5. 拒绝语义
 
-- 转移函数无 executed 回执(`refresh_paid=None`)= `applied=False, reason='refresh_paid_not_fed'` 跳写(实付金含免费刷注入等引擎差异不可自算;sim 引擎显式传 `refresh_paid` = 申报差异参数通道);
-- 生产侧无 applied=False 拒绝形态(刷新恒可发);visit 级刷新硬墙 = `MAX_REFRESH`(`cw_screen_buy_cards.py`,超墙终结集降级仅关店,`../../screens/shop.md` §5)是发射面预算闸,非转移函数拒绝。
+- 上报函数无 executed 回执(`refresh_paid=None`)= `applied=False, reason='refresh_paid_not_fed'` 跳写(实付金含免费刷注入等引擎差异不可自算;sim 引擎显式传 `refresh_paid` = 申报差异参数通道);
+- 生产侧无 applied=False 拒绝形态(刷新恒可发);visit 级刷新硬墙 = `MAX_REFRESH`(`cw_screen_buy_cards.py`,超墙终结集降级仅关店,`../../screens/shop.md` §5)是发射面预算闸,非上报函数拒绝。
 
 ## 6. kernel 符号锚
 
-`kernel/cw_game_state.py::apply_shop_action_logic`(RefreshShop 腿)/ `record_refresh_execution`;`kernel/cw_economy.py::REFRESH_COST_BASE` / `refresh_cost_effective` / `SHOP_REFRESH_COST`(赋值别名,非第二源);执行落地门 = `operations/cw_screen/cw_screen_buy_cards.py::apply_action_outcome`(计数组 + 效果账计数挂点);`operations/cw_op/cw_refresh_shop_action.py::RefreshShopOp`。
+`kernel/cw_action_report/refresh_shop.py::report_action_refresh_shop_param` / `record_refresh_execution`(与刷新上报同文件);`kernel/cw_economy.py::REFRESH_COST_BASE` / `refresh_cost_effective` / `SHOP_REFRESH_COST`(赋值别名,非第二源);执行落地门 = `operations/cw_screen/cw_screen_buy_cards.py::apply_action_outcome`(计数组 + 效果账计数挂点);`operations/cw_op/cw_refresh_shop_action.py::CwActionRefreshShopOp`。
 
 ## 7. 语义验证(M1 直锁)
 
-刷新动作转移语义单一源 = 容器写口(`apply_shop_action_logic` RefreshShop 腿:金腿 + shop payload 域级跳写,新牌面随机面归下一段入口观察)。原 `simulate` RefreshShop 分支(仅扣金、不模拟牌面)已退役,考古归 git。投影直锁 M1(`test_cw_shop_projection_logic`:付费刷新扣金/免费帧金域不写,均在锁内)。差异申报保留:生产落地门对终结动作整体跳写(期望态按下段入口重观察作废),sim/回放驱动器显式喂 `refresh_paid`——归属 = 「终结动作整体跳写」的申报语义,非规则分叉。
+刷新动作转移语义单一源 = 上报函数(`report_action_refresh_shop_param`:金腿 + shop payload 域级跳写,新牌面随机面归下一段入口观察)。原 `simulate` RefreshShop 分支(仅扣金、不模拟牌面)已随 sim 重做退役,考古归 git。投影直锁 M1(`test_cw_shop_projection_logic`:付费刷新扣金/免费帧金域不写,均在锁内)。差异申报保留:生产落地门对终结动作整体跳写(期望态按下段入口重观察作废),sim/回放驱动器显式喂 `refresh_paid`——归属 = 「终结动作整体跳写」的申报语义,非规则分叉。
 
 ## 8. 判例注记(发射期)
 

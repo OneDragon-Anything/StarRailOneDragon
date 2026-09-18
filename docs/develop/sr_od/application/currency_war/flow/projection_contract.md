@@ -28,7 +28,8 @@
   独立状态载体（执行层状态类目已退役，git 历史可溯）；失败记忆/期望态容器随类目
   退役删除。
 - 期望态路径寻址：期望态条目表已随期望账机制退役（`ExpectedEntry` 不存在），
-  身份寻址对账消亡；字段路径字符串现仅作 `apply_op_effect` 推进清单与遥测面载体
+  身份寻址对账消亡；字段路径字符串现仅作上报函数族（`kernel/cw_action_report/`）与
+  `kernel/cw_exec_state.py::apply_confirm_effect` 推进清单及遥测面载体
   （§2.4）。
 - 帧级透传槽：`StrategyState.cw4_m1p_arm_pending`（换血臂发射⇔执行归因透传，§4.3）。
 
@@ -62,8 +63,8 @@
 ### 2.4 期望态路径命名空间（已退役）
 
 期望态条目表与身份寻址对账已随期望账机制退役（对账唯一发生点 = 观察边界）。
-历史 path 形态与基的判读知识保留如下——字段路径字符串现仍作 `apply_op_effect`
-推进清单与遥测面载体，判读者按 path 直读槽号时仍须分域：
+历史 path 形态与基的判读知识保留如下——字段路径字符串现仍作上报函数族/
+`apply_confirm_effect` 推进清单与遥测面载体，判读者按 path 直读槽号时仍须分域：
 
 | path 形态 | 括号内语义 | 基 |
 |---|---|---|
@@ -77,10 +78,10 @@
 
 1. **槽位表形状**：bench/deployed 为定长槽位表，元素 `BenchChar | None`；删除语义 = 置 None 不移位。由此「生成期索引 = 执行期索引」在单轮内成立，同轮多笔卖出/部署不可能引起索引漂移（的立法目的）。
 2. **信息位归一**：任何把 `BenchChar` 放进槽位表的写端（`bench_place`/`deployed_place`/部署装配 `assemble_bench_list`）必须让 `slot`/`position_pref` 与落位下标一致；跨排移动经 `_apply_row_to_char` 归一。
-3. **快照隔离**：`kernel/cw_exec_state.py::snapshot_copy` 浅拷贝 + equips 固化 tuple 使拷贝与 `session.tracked_*` 断开对象别名——session 侧就地写端（shop 星级/装备拼接、deploy 装备覆盖）不穿透拷贝，反向亦然。`snapshot_copy` 现役消费方 = `cw_game_state.py` 部署装配 scratch 拷贝链（`apply_shop_merge_leg`），拷贝隔离由机制保证、不靠消费纪律，不随已退役的视图层消失。
+3. **快照隔离**：`kernel/cw_exec_state.py::snapshot_copy` 浅拷贝 + equips 固化 tuple 使拷贝与 `session.tracked_*` 断开对象别名——session 侧就地写端（shop 星级/装备拼接、deploy 装备覆盖）不穿透拷贝，反向亦然。`snapshot_copy` 现役消费方 = `kernel/cw_action_report/buy_card.py::report_action_buy_card_param`（买牌买前快照 scratch 拷贝链——快照与升星腿内聚单点），拷贝隔离由机制保证、不靠消费纪律，不随已退役的视图层消失。
 4. **tracked 账随动**：卖出 handler 销账（`prep_actions.py::_track_remove_bench` 按 `bc.slot` 过滤；`_track_remove_deployed` 按 换算置 None）；上阵落槽走 `deployed_place` 单一源（`_track_move_deployed`）；部署 op 收尾 SIFT 真值纠漂（`cw_screen_deploy.py::_reconcile_tracking`，观测回路）+ 装备快照回写（`_snapshot_equips_into_tracking` 写 `tracked_books.deployed[].equips`）。落地事实的权威判定 = 观察边界对账（观察赢），tracked 账为其输入/输出簿记。
 5. **披露面承诺**：预算遥测披露面 = `v3_reserve_cap`/`v3_reserve_overflow`/`v3_release_budget`/`v3_release_spent` 四字段 + `v3_disclosure_key` 键戳，唯一写点 = `economy_cycle.disclose_budget`，两调用点 = 备战决策入口（`bridge.py::decide_prep_screen`，前置发射位判定之后的原装配缝位，非 armed 短路帧才到达）与店开帧覆写（`economy_cycle.py::disclose_budget_at_shop_frame`）；披露面是遥测列非决策输入，禁决策消费，守卫锁 = test_cw_budget_disclosure（armed 短路帧不披露单帧锁 = test_armed_shortcircuit_frame_writes_no_disclosure）。
-6. **期望态两执行面同源**：原子动作的期望态推进唯一入口 = `kernel/cw_exec_state.py::apply_op_effect`（`PrepActionExecutor.execute` 与 decision 面绑定回放共同底层，登记挂执行器入口一次覆盖）。
+6. **期望态两执行面同源**：原子动作的期望态推进唯一入口 = 上报函数族 `kernel/cw_action_report/report_action_<snake>_param`（动作 op 组装后直调自己的上报函数 = 实机 op 自上报；sim/回放引擎入口 = 一行委托分支串，`cw_sim_actions.apply_player_action`；驱动器 `decide_shop_screen` 两覆写逐动作直调）——两执行面同走同一函数族,单点即同源（动作 op 重组批④,design.md §2）。
 7. **装备 owned 搬运链**：装备 owned 名单写端 = `cw_op_equip_all.py::CwOpEquipAll`（`read_equips` 多列读 → `session.last_owned_equips`）；穿戴落地销账 = `cw_op_equip_all.py::register_equip_worn`（owned −1 件 + `tracked_deployed[idx]` equips +1，deployed 下标换算公式在其 docstring 声明）。
 
 ## 4. 时序：生成期快照 vs 执行期现读
@@ -97,9 +98,9 @@
   → 预算遥测披露 economy_cycle.disclose_budget（落点 = 前置发射位判定之后，非 armed 帧才到达）
   → 决策（decide_prep_frame → entry.emit 三遍编排；决策输入 = 容器 game state 直读，零黑板；动作产出 = 恰一个动作（CwAction | HoldFrame））
   → 帧稳定截断（entry.py::truncate_frame_stable；单动作循环逐帧恰取一个动作，HoldFrame = 本帧无动作交回重观察）
-  → 执行（PrepActionExecutor / 组合 op）
-  → 期望态登记 + tracked 随动 → kernel 写口 apply_prep_action_logic 统一调用
-    （动作后逻辑态唯一更新点,写口分支集 7 动作/合法零写集 9 动作）
+  → 执行（PrepActionExecutor 分派 → CwActionXxxOp(SrOperation) 节点直调）
+  → op 自上报（report_action_<snake>_param）+ tracked 随动（执行器 _track_*）
+    （动作后逻辑态唯一更新点 = 上报函数族单点）
     → 下一动作或终结 op
 ```
 
@@ -118,7 +119,7 @@
 
 ### 4.4 观察时序边界
 
-备战观察 = 入口 heavy 单次读屏直写容器;`PrepObservation` 局部载体只载控制信号(shop_open/substate/event_overlay),不承载状态面(名单/装备/占用/球全容器域,阶段 3.5 起黑板退役)。执行侧对同一画面的**再读**与决策帧之间无一致性承诺——需要强一致的判定（如 deploy 的占用检测）一律执行期现读（CV `slot_occupied`），不从观察载体取。动作-观察间隙内的局面推进 = kernel 写口 `apply_prep_action_logic` 逻辑态直写(「在观察态到来之前供决策使用」是逻辑态的全部职能),真值以下一帧观察为准。
+备战观察 = 入口 heavy 单次读屏直写容器;`PrepObservation` 局部载体只载控制信号(shop_open/substate/event_overlay),不承载状态面(名单/装备/占用/球全容器域,阶段 3.5 起黑板退役)。执行侧对同一画面的**再读**与决策帧之间无一致性承诺——需要强一致的判定（如 deploy 的占用检测）一律执行期现读（CV `slot_occupied`），不从观察载体取。动作-观察间隙内的局面推进 = op 自上报函数（`report_action_<snake>_param`）逻辑态直写(「在观察态到来之前供决策使用」是逻辑态的全部职能),真值以下一帧观察为准。
 
 ## 5. 消费方读什么（逐臂）
 
@@ -126,8 +127,7 @@
 |---|---|---|---|
 | 部署臂 | `operations/cw_screen/cw_screen_deploy.py::CwScreenDeploy` | bench/前/后排占用（CV `slot_occupied` 现读）、身份（SIFT `read_bench_chars`/`read_deployed_chars`）、`deploy_cap`（防抖真读）、board（`session.last_state.board`） | 全执行期现读；计划判定单一源 = kernel `select_deployments_reasoned`；`assemble_bench_list` 构造 BenchChar（`slot=_bi+1`，占槽物品显式 `is_item_slot=True`） |
 | 换血臂（M1″/m1p） | 发射面 `mandate.py` m1p 段 + 执行面 `CwScreenDeploy.deploy` deploy-swap 卖出臂 | 发射面 = 决策帧槽位表（MandateFrame/GameState 域）；执行面 = last_state 滞后帧 + SIFT 现读；逐件拒因 = `swap_sell_exclusion_reason` 现读域喂入 | §4.3；1:1 替换上限 = `bench_target_count`；卖出后残余补部署走 `residual_fill_plan`（点位下标域） |
-| 卖出臂（prep 域） | `prep_actions.py::_sell_bench` | 族 B `SellBench.slot`（物理槽号） | `drag_bench_to_sell(op, ctx, slot−1)`（基转换在调用点）；成功后 `_track_remove_bench` 销 tracked 账 + `apply_op_effect` 登记期望态 |
-| 卖出臂（shop 域） | `operations/cw_op/cw_sell_bench_action.py::SellBenchOp` | 族 A `SellBench.bench_idx`（槽位表下标）+ `expect` 期望名 | `drag_bench_to_sell` 直收 0-based，机械单发发出即记账（tracked 账无条件推进：置 None 不紧缩）；expect 代际校验归转移函数（`apply_shop_action_logic` 对非空 expect 做 `stale_proposal` 拒，applied=False 零容器写）；零判效，落地事实归下一入口观察对账 |
+| 卖出臂（SellBench，双域统一） | `operations/cw_op/cw_prep_sell_bench_action.py::CwActionSellBenchOp`（词表摊平后商店/备战共用单一注册行；原商店域文件 `cw_sell_bench_action.py` 已退役删除） | `CwActionSellBenchParam.bench_idx`（槽位表下标 0-8）+ `expect` 期望名 | `drag_bench_to_sell` 直收 0-based，机械单发发出即记账；op 自上报 `report_action_sell_bench_param`（容器逻辑态单点：expect 非空失配 = `stale_proposal` 拒零写 + 置 empty + 回金 + 装备回收）+ 执行器 `_track_remove_bench` 销 tracked 账；零判效，落地事实归下一入口观察对账 |
 | 装备臂 | `operations/cw_op/cw_op_equip_all.py::CwOpEquipAll` | owned 多列网格（`read_equips`）、`session.last_owned_equips`、`read_row_equipped` 已穿表（slot 1-based）、avatar CV-diff | §3.7 搬运链；穿戴候选过滤工具类；P0-2 只往空槽 drag（`_empty_slots`，防覆盖已穿） |
 
 ## 6. 现状边界与缺口登记（对照注释规范逐文件点名）
@@ -137,7 +137,7 @@
 | # | 文件::符号 | 缺口 | 影响 |
 |---|---|---|---|
 | G1 | `kernel/cw_game_state.py::BenchChar.slot` | 逻辑态面最核心槽位字段**自身零定义注释**：坐标系/取值时机/双容器语义（bench 域 = 1-based 物理槽号权威输入；deployed 域 = 排内槽号信息位、派生自下标）只散在 GameState 容器注释与 Action 对照表；`_card_to_bench`(现役 kernel/cw_vocab.py 与 cw_merge_simulate.py)构造的 `slot=0`「未落槽」哨兵值也无处声明 | 跨模块读者只能靠猜；slot=0 哨兵与 1-based 值域混存于同一字段无声明 |
-| G3 | ~~`kernel/cw_exec_state.py::apply_op_effect`（path 构造）与 `ExpectedEntry` docstring~~（**已消解**） | 期望态路径命名空间同一括号形态两种基（`tracked_bench_chars[N]` = 1-based、`tracked_deployed[N]` = 0-based、`deployed.{row}.{slot}` = 1-based）；缺口对象 `ExpectedEntry` 已随期望态条目表退役,身份寻址对账消亡 | path 字符串仍作推进清单/遥测面载体,判读者按 path 直读槽号须分域的提醒保留于 §2.4 |
+| G3 | ~~`kernel/cw_exec_state.py::apply_op_effect`（path 构造；动作 op 重组批④后本口瘦身改名 `apply_confirm_effect`）与 `ExpectedEntry` docstring~~（**已消解**） | 期望态路径命名空间同一括号形态两种基（`tracked_bench_chars[N]` = 1-based、`tracked_deployed[N]` = 0-based、`deployed.{row}.{slot}` = 1-based）；缺口对象 `ExpectedEntry` 已随期望态条目表退役,身份寻址对账消亡 | path 字符串仍作上报函数族/`apply_confirm_effect` 推进清单/遥测面载体,判读者按 path 直读槽号须分域的提醒保留于 §2.4 |
 | G4 | `kernel/cw_prep_actions.py::SellBench.slot` / `SellDeployed.row+slot` / `DeployMove.from_slot/to_slot`（族 B 全部槽位字段） | 坐标系有声明（模块头+类 docstring：物理槽位），**取值时机零声明**；「族 B 无 expect 代际校验、依赖单动作循环生成即执行短间隙」的结构边界未写在动作定义处（只散在 prep_visit/action_exec 的循环语义） | 族 B 动作一旦进入跨帧队列即无代际防线；登记为契约边界，接线跨帧队列前必须先补 expect 类防线或取值时机声明 |
 | G5 | `obs/cw_identity_obs.py::find_supply_boxes` / `find_tomes` / `read_supply_boxes` / `read_tomes` | 返回值 `slot_idx` 的基（1-based，来自 `_ctx_slots` 的 `range(1, count+1)`）只在实现里，函数级 docstring 未声明；对照同文件 `bench_item_slots` 的「注释规范硬门」写法属漏网 | 消费方 `OpenBox.slot`/`OpenTome.slot` 的 validate（1-9）与匹配（`b[0]==action.slot`）全依赖此基；声明缺失=新读取方易按 0-based 惯例错拿 |
 | G6 | `operations/cw_screen/cw_screen_deploy.py::residual_fill_plan` | 返回三元组声明了 `slot_idx` 基（排行点位表 0-based 下标），但 `bench_idx` 的基与入参 `bench_pos`/`bench_cid` 的键域（bench 槽位表下标 0-8）只在调用方局部变量注释里有，函数自身 docstring 未声明 | 该函数标注「可离线直测」，离线构造入参时键域无函数级依据 |

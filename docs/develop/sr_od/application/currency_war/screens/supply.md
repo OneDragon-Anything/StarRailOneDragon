@@ -57,7 +57,7 @@ pick = decide_supply([o for o,_ in opts], game_state_of(session), ..., refresh_u
 ## 6. 状态上报面
 
 - `chosen_supply` write_logic(**确认即写**,选定确认时点单次逻辑写入豁免;值 = (角色, 装备, 有钻石);兜底点卡/刷新轮无选定不写,None 保持「无记录」)。口径申报:supply 确认即写,chosen_tome 维持「出口验真后写」家族口径——差异理由 = supply 的中转暂存宿主随执行层状态类目退役(git 历史可溯),直写是载体消亡后的唯一形态;确认未落地窗内容器短暂持未落地选定,现无决策读者,低危可接受,出口验真保留为观察面。
-- 到账登记 `ConfirmSupply`(`kernel/cw_exec_state.py::apply_op_effect` dict 分支,owned += 装备名;equip 未读到 = 不登记)。
+- 到账登记 `ConfirmSupply`(`kernel/cw_exec_state.py::apply_confirm_effect` dict 分支,owned += 装备名;equip 未读到 = 不登记)。
 - 刷新已用:容器 `supply_refresh_used` 计数在产——**live 写端 = 本 op 刷新分支单点 write_logic +1**(发射即记不等验效;本屏无 on_outcome 注册件,无双计面),sim 引擎经 observe 通道在写,两源同域;读点 = 刷新链容器计数对照(>0 = 已用)。
 - 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.2 / §4「事件选择」;到账登记 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §2(ConfirmSupply 行)。
 

@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-银狼骇入策划 overlay 点卡选中并确认。词表 = `kernel/cw_vocab.py::PickPlanner`(`PickOption` 子类:字段 `idx` = 候选下标 0 起、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_overlay_pick_action.py::PlannerPickOp`(体迁自 `cw_screen_planner.py::CwScreenPlanner._handle_overlay` 点卡确认尾段,替身缝 = 方法级桩保留;域 env = `OverlayPickExecEnv`)。
+银狼骇入策划 overlay 点卡选中并确认。词表 = `kernel/cw_vocab.py::CwActionPickPlannerParam`(`PickOption` 子类:字段 `idx` = 候选下标 0 起、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_overlay_pick_action.py::CwActionPickPlannerOp`(体迁自 `cw_screen_planner.py::CwScreenPlanner._handle_overlay` 点卡确认尾段,替身缝 = 方法级桩保留;域 env = `OverlayPickExecEnv`)。
 
 ## 2. 逻辑态域集
 
@@ -31,7 +31,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::PickPlanner` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::PlannerPickOp` / `OverlayPickExecEnv`;`operations/cw_screen/_overlay_confirm.py::emit_overlay_confirm`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_game_state.py::chosen_hack`(在册无写端);`operations/cw_screen/cw_screen_planner.py::CwScreenPlanner`(替身缝/选中点几何单一源)。
+`kernel/cw_vocab.py::CwActionPickPlannerParam` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickPlannerOp` / `OverlayPickExecEnv`;`operations/cw_screen/_overlay_confirm.py::emit_overlay_confirm`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_game_state.py::chosen_hack`(在册无写端);`operations/cw_screen/cw_screen_planner.py::CwScreenPlanner`(替身缝/选中点几何单一源)。
 
 ## 7. 语义验证
 
@@ -43,4 +43,4 @@
 
 ## 9. 依据
 
-`operations/cw_op/cw_overlay_pick_action.py::PlannerPickOp` docstring(点卡几何/裁决词全词/面板防御拆除裁定);[flow/action_ops.md](../../flow/action_ops.md) §4.4(pick 族行);[fields.md](../fields.md) §3.4(事件选择域组;chosen_hack 暂无画面建档注)。
+`operations/cw_op/cw_overlay_pick_action.py::CwActionPickPlannerOp` docstring(点卡几何/裁决词全词/面板防御拆除裁定);[flow/action_ops.md](../../flow/action_ops.md) §4.4(pick 族行);[fields.md](../fields.md) §3.4(事件选择域组;chosen_hack 暂无画面建档注)。
