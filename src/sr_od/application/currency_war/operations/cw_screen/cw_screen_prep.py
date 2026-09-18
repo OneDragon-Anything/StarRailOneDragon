@@ -9,8 +9,7 @@
 清 None/执行器构建/缓存复位)+ 环入口清场 + 书册卡交回 + 开商店收起 +
 heavy 观察 → CwScreenPrepObs(可选域经 report_screen_prep_obs 落容器)
 + 事件 overlay 交回早退 + 接管补采 + 纯观察审计族;决策动作 node =
-③④⑤ 单动作决策循环整体(内部 for 循环宿主 = 单节点执行体,非 node
-轮次循环——VISIT_ACTION_CAP 保守例外申报见类注)。
+③④⑤ 单动作决策循环(无防御上限,用户裁定:不收敛 = 策略实现 bug)。
 """
 
 from __future__ import annotations
@@ -400,18 +399,8 @@ class CwScreenPrep(SrOperation):
     接管补采 + 纯观察审计族)→ 决策动作 node(③④⑤ 单动作决策循环整体:
     决策(容器 game state 直读,F3 形状校验)→ 执行(机械执行无成败
     回执;终结 op 发出即交回外循环)→ 逻辑态直写(动作 op 自上报))。
-
-    保守例外申报(VISIT_ACTION_CAP):决策动作 node 的循环宿主是**单节点
-    执行体内部 for 循环**,与 node 重试机制无关——用户「决策循环无防御
-    上限」裁定的适用面 = node 轮次循环(round_wait 推进),删本帽属行为
-    变更(决策不收敛时从「交回外循环由 stall 防线接管」变「单节点内
-    挂死」)。本批保留原值并申报,交编排者/用户裁决。
+    决策循环无防御上限(用户裁定:不收敛 = 策略实现 bug)。
     """
-
-    # 单动作访问动作数上限(ADR-0517:防御上界——决策循环不收敛 = 逻辑态或
-    # 策略 bug,到顶交回外循环由 stall 防线接管,不静默续跑;保守例外
-    # 申报见类注)
-    VISIT_ACTION_CAP: ClassVar[int] = 16
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-备战决策环')
@@ -1107,15 +1096,11 @@ class CwScreenPrep(SrOperation):
         交回外循环(下次入口重观察)。
         B1 拆除(用户裁定 2026-09-10):验证段+恢复原语分支退役——
         动作机械执行(无成败回执),无进展治理归外循环 stall
-        防线(F2),落地判定归观察侧 reconcile。
-
-        保守例外申报:循环宿主 = 本 node 执行体内部 for 循环(VISIT_
-        ACTION_CAP,原值保留),非 node 轮次 round_wait 循环——「无防御
-        上限」裁定的删帽申请交编排者/用户裁决,见类注。
+        防线(F2),落地判定归观察侧 reconcile。决策循环无防御上限
+        (用户裁定:不收敛 = 策略实现 bug)。
         """
         match = self._match()
         session = match.session
-        _visit_acts: list[str] = []
         # 段序号置位(备战期开始;唯一置位点 = 本 prep 访问循环入口):
         # 访问 = 腾席拒绝结论的输入不变性段,入口 +1 使上一访问/上一域
         #(商店 visit/破墙段)残留的续段 token/结论闩按序号不等自动失效。
@@ -1124,7 +1109,7 @@ class CwScreenPrep(SrOperation):
         _st_seg = strategy_state_of(session)
         if _st_seg is not None:
             _st_seg.cw4_segment_serial += 1
-        for _vi in range(self.VISIT_ACTION_CAP):
+        while True:
             # —— ③ 决策(容器 game state 直读;阶段 3.5 黑板退役,
             #      动作后逻辑态 = kernel 写口统一直写)
             try:
@@ -1172,7 +1157,6 @@ class CwScreenPrep(SrOperation):
             if _st_tok is not None:
                 _st_tok.cw4_frame_action_record = (
                     type(action).__name__, _st_tok.cw4_segment_serial)
-            _visit_acts.append(type(action).__name__)
             # —— 结束判定 → 交回外循环(动画等待已由执行器/编排内建)
             #      批3 终结判定对齐:终结集与等待时长改读注册表 op 类
             #      terminal/terminal_wait 类属性(消费点经注册表读类属性,
@@ -1187,10 +1171,6 @@ class CwScreenPrep(SrOperation):
             #      heavy reconcile 以实读纠逻辑态承担(观察赢)。
             # 直写帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
             _mark_frame_class(session, 'prep', 'none')
-        # 访问动作数上限(防御:决策循环不收敛 = 逻辑态或策略 bug,交回外循环
-        # 由 stall 防线接管——不静默续跑;保守例外申报见类注)
-        return self.round_success(
-            f'访问动作数达上限({self.VISIT_ACTION_CAP}),交回外循环重观察', wait=1.0)
 
     # ===== 统一观察架构·五段生命周期段已随两 node 形态迁移删除(装配点
     # 分流/段迹/适配器端口一并退役;六条已锁语义保绿载体位置:P2-1 bench

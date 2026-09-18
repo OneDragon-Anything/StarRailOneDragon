@@ -43,7 +43,6 @@ from sr_od.application.currency_war.obs.cw_observation import (
     ensure_portrait_templates,
     new_bench_slots,
     read_game_state,
-    read_gold,
     read_gold_opt,  # noqa: F401  模块属性路由:cw_shop_action_ops 经本模块名取读函数(替身缝)
     read_shop_cards,  # noqa: F401  替身缝:测试经本模块名桩读链(非本文件运行时消费)
 )
@@ -792,42 +791,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         #  退役批删除(T-166 对账表 E 类行 30/31 兑现):决策读端 =
         #  committed_from(session) 派生与 StrategyState 真家,帧字段无
         #  消费面,随帧退役不迁容器。)
-        # gold-robust:gold 数字 stylized,paddle OCR det 间歇漏 → 读 0 时重读几帧取首个 >0。
-        # 观察冲突审计 #6:救援结果留证(救回/连读 0 统计,为 gold 双源排期供数据)。
-        _gold_rescued = None
-        if _entry.gold == 0:
-            for _ in range(4):
-                time.sleep(0.4)
-                gv = read_gold(op.ctx, op.screenshot())
-                if gv > 0:
-                    _gold_rescued = gv
-                    break
-            from sr_od.application.currency_war.kernel.cw_observe import (
-                obs_conflict,
-            )
-            obs_conflict('gold', 0, _gold_rescued if _gold_rescued is not None else 0,
-                         None, verdict=('采新-救援成功(首读假0,stylized漏)' if _gold_rescued is not None
-                                        else '确认真0(4帧连读0)'),
-                         source='shop_rescue')
-            # gold 救援喂入口写(波 4 黑板容器化,设计件《商店黑板容器化
-            # 方案》§2.4-4:gold 救援保留——识别质量机制非黑板拷入,结果
-            # 经既有观察喂入口写 gs.gold,禁静默丢失)。首读假 0 已由观察
-            # 漏斗 observe 落容器,救援值同渠道覆盖(观察赢,来源同级)。
-            if _gold_rescued is not None:
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    ChannelSig as _RescueSig,
-                )
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    game_state_of as _gs_of_rescue,
-                )
-                _gs_rescue = _gs_of_rescue(match.session)
-                _gs_rescue.observe(
-                    _gs_rescue.gold, int(_gold_rescued),
-                    evidence='gold_rescue:shop_first_read_fake_zero',
-                    sig=_RescueSig(family='obs', actor='CwScreenBuyCards',
-                                   mode='read',
-                                   group_id=(f'obs:CwScreenBuyCards@'
-                                             f'{_gs_rescue.write_seq + 1}')))
+        # (gold 救援补写已删,用户裁定:动作过程不含观察——首读假 0 的
+        #  自愈归下一入口观察,假 0 期间策略按容器值决策自然空过一段。)
         # (开店首读金快照 gold_open 随 outcome 退役移出本函数——迁移批
         #  3.2:基线 = 编排壳 visit 入口容器 gold 现读暂存,详见 visit_open_shop。)
         # 播种单一源 = tracked_bench_chars(带 star+merge,mutate/对账全程同步)。

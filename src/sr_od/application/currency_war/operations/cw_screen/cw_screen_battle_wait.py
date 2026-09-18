@@ -29,14 +29,14 @@
 本 op ①段(等结算画面)轮询中消费「自动战斗未开启」信号(画面右下角
 「我方行动中」文本,待建档)→ 自愈/报警;接通前战斗段依赖自动战斗已开。
 
-统一观察架构逐屏迁移(五相位屏;保守例外申报):本屏 = **驻留状态机**
+统一观察架构逐屏迁移(五相位屏;用户裁定豁免):本屏 = **驻留状态机**
 (内部 while 处理结算帧,round_wait 逐轮分类),「观察 node + 决策动作
 node」两段形态不适配——出口判定(大厅终局锚/完成白名单)与分支链在
 单 node 内逐轮重判,拆两 node 会把出口判定与分支序的轮次耦合切开。
 本批只做:直继承 SrOperation、基类挂接/适配器/五段方法/装配点分流
 随基类退役删除;内部结算链(settlement 页循环/_write_settlement_
 observation/apply_settlement_cover/SettlementState)逐位零改动。
-驻留形态例外交编排者/用户知悉;kernel/cw_screen_report/battle_wait
+驻留形态豁免经用户裁定;kernel/cw_screen_report/battle_wait
 保持占位(零 op 层观察容器写点)。结构参数:SettlementState 跨局状态机
 注入(``__init__(ctx, st, config)``,RunLoop 持有)不变;
 ``node_max_retry_times=400`` 归节点不变。本屏 sim 腿 = 不适用(F11 例外
@@ -968,4 +968,4 @@ class CwScreenBattleWait(SrOperation):
         return self.round_wait(wait=1.5)
 
     # (五段生命周期段已随基类退役删除:装配点分流/适配器/段迹一并退;
-    #  驻留形态例外申报见模块头——两 node 形态不适配,交编排者/用户知悉。)
+    #  驻留形态豁免经用户裁定,见模块头——两 node 形态不适配。)
