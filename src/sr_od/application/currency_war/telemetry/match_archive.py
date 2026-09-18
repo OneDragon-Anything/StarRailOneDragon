@@ -987,8 +987,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
         # 同轮全帧动作合并(流内序;口径以本实现为唯一载体,判读读面不共享):
         # 代表帧只承载字段展示,动作计数不能只看代表帧——载体帧与决策帧
         # 同为单动作时「并列取末帧」让载体帧胜出,该轮买/升/刷全计 0
-        # (实证 g_20260903_232823 p1r1/r2;计划口径边界见 query.plan_gold_flow
-        #  docstring「口径边界」)。
+        # (实证 g_20260903_232823 p1r1/r2)。
         round_actions: list[dict[str, Any]] = []
         for d in dec:
             try:

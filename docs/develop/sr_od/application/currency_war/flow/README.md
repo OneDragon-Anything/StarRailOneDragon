@@ -119,15 +119,14 @@
 | [projection_contract.md](projection_contract.md) | 备战逻辑态面交互契约：状态面板/观察帧 ↔ 执行臂的字段消费、坐标系、快照 vs 现读时序、注释规范缺口登记 |
 | [guards.md](guards.md) | 守卫总册：外环通用网、未知兜底、未识别卡停机、降级链(停滞判读归事件哨兵 cw_sentinel.py,住 skill scripts/) |
 
-## 4. 守卫总览（细则 = guards.md）
+## 4. 守卫总览（细则 = guards.md；全量防线含召唤物/对账安灯/特殊投资/降级链）
 
 | 守卫 | 触发 | 动作 | 载体 |
 |---|---|---|---|
-| 未知画面兜底 | 连续 15 轮全分支不命中（指数退避封顶 10s） | 停机保画面待建档 | `cw_loop.py::CwLoop._handle_unknown_fallback` |
-| 商店未识别卡停机 | 收工段牌面仍有 unknown 槽（kind 判据）；判据化自愈重读 2 帧自愈面 | 停机保画面待建档 | `cw_screen_buy_cards.py::run_buy_waves` 未识别卡停机钩子段 |
+| 未知画面兜底 | 连续 15 轮全分支不命中（每轮 1s 重试） | round_fail 交框架失败 | `cw_loop.py::CwLoop._handle_unknown_fallback` |
+| 商店未识别卡停机 | 入口观察回执含 unknown 槽（读链终判） | stop_running 框架截图留证 + round_fail | `cw_screen_buy_cards.py::run_buy_waves` 入口观察处 |
 | 外环连续 fail 重派网 | 同一分发 op 连续 fail 5（ok 清零） | round_fail 显式停交上层 | `cw_loop.py::CwLoop.OP_FAIL_REDISPATCH_LIMIT`（`_dispatch_screen_op`） |
 
-> 执行失败安灯（购买单元"计划≠金动"停机）已随「未建档实证的故障形态不作兜底理由」裁定退役（2026-09-16，动作 op 机械执行后无成败判定输入），细节归 git 历史。
 ## 5. 入口链（enter/start）与弹窗守卫族
 
 > 反向规格化来源 = `currency_war_app.py` + `operations/cw_entry/`（app/enter/start 三层）。对局内循环见 outer_loop.md，本节管「大世界 → 大厅 → 备战」入口链。守卫族决策依据 = 「守卫引入」→「注册表化+领取目标修正」两次演进（细节归 git 历史）。

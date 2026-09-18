@@ -12,10 +12,6 @@ CLI);本模块只保留仍被**活消费方**引用的纯函数单一源:
 - ``HP_CONF_TRUSTED``/``_outcome_hp_trusted``:outcome 行 hp 可信门单一源
   (match_archive 档案真值链 + sim 池语料面)。
 
-(原 ``plan_gold_flow``/``classify_spend_unit`` 支出账分类族已随执行失败
-安灯退役删除——2026-09-16 裁定「未建档实证的故障形态不作兜底理由」,
-安灯挂点/谓词/分类单一源一并删,git 历史可复活。)
-
 吃旧流的存量语料判读:裸 JSONL 可直接读(归档只读);git 历史可复活已删
 视图(申报 = 候裁 6 考古工具面口径,retirement.md §7-#7)。
 """
