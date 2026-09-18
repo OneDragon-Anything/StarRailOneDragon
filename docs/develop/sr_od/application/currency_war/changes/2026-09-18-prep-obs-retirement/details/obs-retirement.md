@@ -17,8 +17,8 @@
 ### 阶段 3.3：占用改现算（批 3）
 
 1. **席空数读端切换 = 复用既有读口，零新立**：kernel 已有 `bench_free_slots(gs)`（cw_game_state.py:1085-1092，`slot_occupies` 口径 :1079-1082——unit/supply_box/tome 天然占席，宝箱/典籍占席自动计入）与 `bench_is_full`（:1095-1100）。球谓词席自由槽读数（entry.py:141-146 `_sphere_bench_free`）改读 `bench_free_slots`：None（bench 未观察）→ BENCH_CAPACITY 保守（宁多收球不误卖，语义与既有口 None=不确定吻合）。
-2. **双源审计容器侧**：备战 heavy 的占用双源审计（cw_screen_prep.py:819，CV 占用计数 vs 容器侧）容器侧改 `deployed_count_of(state)`（:5017，ADR-0392 占用数口径现成读口）。
-3. **前后排占用集（`obs.front_occupied`/`back_occupied`）不迁移**：其消费仅剩双源审计（容器侧已改 `deployed_count_of`）与黑板投影推进（cw_screen_prep.py:1053-1059，随阶段 3.5 投影退役消失）。字段停止更新（消费已断），随批 5 删。
+2. **前后排占用集（`obs.front_occupied`/`back_occupied`）不迁移、本阶段不动**（实施期修正：原稿误判其审计消费为容器侧）：双源对拍（cw_screen_prep.py:829-856，paddle OCR X vs CV 占用扫描）两条腿**均为识别面读数互证**，与容器无关；占用集本身 = 每步现读的识别轻字段（非状态账）。其消费 = 该对拍（合法存续）+ 黑板投影推进（cw_screen_prep.py:1053-1059，随阶段 3.5 投影退役消失）。
+3. `free_bench_slots` 黑板字段消费已断（球谓词已切容器派生），随批 5 删;`deploy_vacancy`/`front_size` 同（无决策活消费）。
 
 ### 阶段 3.4：奖励球立域（批 4）
 

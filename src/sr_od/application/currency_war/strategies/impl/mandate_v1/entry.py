@@ -54,6 +54,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
 from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
+    bench_free_slots,
     bench_slots_of,
     deployed_slots_of,
     game_state_of,
@@ -138,11 +139,14 @@ EV_ARM_VALUES: tuple[str, ...] = ('skeleton_only', 'full')
 SPHERE_OCCUPYING_COLORS: frozenset[str] = frozenset()
 
 
-def _sphere_bench_free(obs: PrepObservation) -> int:
-    """席自由槽读数(球谓词第一腿输入;缺省方向 = adapter.py 在库裁决
-    对齐:free_bench_slots None/缺读 → BENCH_CAPACITY,宁多收球不误卖,
-    非 0 值按物理现读)。"""
-    _free = getattr(obs, 'free_bench_slots', None)
+def _sphere_bench_free(gs: GameState) -> int:
+    """席自由槽读数(球谓词第一腿输入;容器派生读口 ``bench_free_slots``
+    单一源,迭代 2026-09-18-prep-obs-retirement 阶段 3.3——旧黑板
+    ``free_bench_slots`` 独立记账退役,箱/典籍占席由 ``slot_occupies``
+    口径自动计入)。缺省方向 = adapter.py 在库裁决对齐:free None
+    (bench 未观察,不确定)→ BENCH_CAPACITY,宁多收球不误卖,
+    非 0 值按物理现读。"""
+    _free = bench_free_slots(gs)
     return BENCH_CAPACITY if _free is None else max(0, int(_free))
 
 
@@ -485,7 +489,7 @@ def emit(obs: PrepObservation, session: StrategySession,
         # sphere_defer_yield(让路帧计数)/ sphere_blocked_bench_full
         #(死码块内,现状恒零写)。
         _ct_sp = state_of(session).cw4_counters
-        _sf_free = _sphere_bench_free(obs)
+        _sf_free = _sphere_bench_free(gs)
         if _sf_free > 0:
             if isinstance(_ct_sp, dict):
                 _ct_sp['sphere_defer_streak'] = 0
