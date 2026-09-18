@@ -2229,7 +2229,7 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
     # (读金+对拍)随守卫跳过——对拍对象 = 本次动作账,外部金变更(点球
     # 随机金/投资授予)不属其辖域。读金与消费必须同在守卫内:消费悬在
     # 守卫外时空账访问 UnboundLocalError(实机 2026-09-18 reconcile 事故
-    # 首爆;T-186 账本迁移把消费块移出守卫引入,守卫 = 原意图)。
+    # 首爆)。
     # ADR-0329 件2:gold 差值对拍纳入卖入——卖出接线后,卖轮实际金 =
     # 开店金 − 花出 + 卖入(游戏侧卖出入账);旧口径不含卖入与实读金恒差
     # income → 每卖轮误报 gold_delta 冲突留证(design 章2.7 必改项)。
