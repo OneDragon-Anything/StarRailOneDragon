@@ -46,3 +46,12 @@ StartBattle 不在 `cw_vocab.py::Action` 联合内——节点推进归 sim 引�
 ## 9. 依据
 
 [../action-logic-state.md](../action-logic-state.md) §5(转场类动作逻辑态 = 空 + 免战牌态);[fields.md](../fields.md) §3.2.19(免战牌激活态与剩余跳过次数)/§4.2 出战行(免战分支与 G9 暂定表述)/§4.2 结算覆盖行;`prep_actions.py::PrepActionExecutor._start_battle` docstring(恢复语义 = 禁 active_window 激活,重发 = 同通道原样重试);[flow/action_exec.md](../../flow/action_exec.md) §7(发射重发/连败停机流程防线)。
+
+## 10. 同族:OpenShop(开店)
+
+转场族另一注册行,逻辑态同为**空**(与开战同节收录,指针来源 = [prep-executor-actions.md](prep-executor-actions.md) §6 边界):
+
+- **词表与注册行**:`kernel/cw_vocab.py::OpenShop`(read_only / restricted_spend 两形态);注册行 = terminal 承载行——`operations/cw_op/cw_open_shop_action.py::OpenShopOp.execute` 抛 AssertionError(开店流程编排截流在 `operations/cw_screen/cw_screen_prep.py::_open_shop_phase`,可达即分派漏斗被绕过);类属性承载终结判定/等待(`terminal=True`,`terminal_wait=1.0`);
+- **容器零写**:开店 = 画面态周转(备战画面 → 商店面板块),零局内资源变更;`apply_op_effect` else 分支显式不建模清单点名 OpenShop;商店载荷/gold 真值由开店后的入口观察重建(`shop` 载荷域 = 观察写端,路由清点独占);
+- **流程层消费**:`_open_shop_phase` 编排 read_only(只读看牌)/ restricted_spend(限花购物)两形态,读数性开店回执 `(progressed, detail)` = 开店成功(读数性回执,非动作成败回执);
+- **拒绝语义**:容器零写语义下无 `applied=False` 拒绝形态;开店失败 = 流程层编排轮次语义,归画面 op 层,不在本篇。

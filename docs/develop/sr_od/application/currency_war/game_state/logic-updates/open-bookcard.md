@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-点开占备战席 1 槽的书册卡道具:书册卡离席腾槽 + 专家邀请函五选一弹窗弹出;选卡不在本执行链,点完开启本动作即交回。词表 = `kernel/cw_vocab.py::OpenBookcard`(`slot: int | None`,None = 首张;与 OpenBox/OpenTome 同签名);执行器机械半 = `prep_actions.py::PrepActionExecutor._open_bookcard`。op 载体 = 执行器统一执行面(无独立 op 文件;书册卡原独立导航链已 R10 链拆归位备战词表)。
+点开占备战席 1 槽的书册卡道具:书册卡离席腾槽 + 专家邀请函五选一弹窗弹出;选卡不在本执行链,点完开启本动作即交回。词表 = `kernel/cw_vocab.py::OpenBookcard`(`slot: int | None`,None = 首张;与 OpenBox/OpenTome 同签名);op 载体 = `operations/cw_op/cw_open_bookcard_action.py::OpenBookcardOp`(体迁薄委托 = `prep_actions.py::PrepActionExecutor._open_bookcard`;书册卡原独立导航链已 R10 链拆归位备战词表)。
 
 ## 2. 逻辑态域集
 

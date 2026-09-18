@@ -19,7 +19,7 @@
 
 **备战域写口** = `kernel/cw_game_state.py::apply_prep_action_logic` SellBench 腿,域集封闭 = `PREP_PROJECTION_DOMAINS` 的 gold/bench 子集;**equips 域不在备战写口域集**(域集封闭申报,装备回区留观察覆盖)。溢出腿另写 `overflow_card`/`overflow_warning` 两旗标域(§3 第 5 条)。
 
-**效果账腿** = `kernel/cw_exec_state.py::apply_op_effect` SellBench 分支:tracked 快照退款 → `_advance_gold` 直推容器金账(logic_action 渠道,观察赢);身份不可辨 = None 诚实缺失,禁保守估值假账。注意与 SellDeployed 分支的不对称:本分支**无** owned 装备恢复腿(备战域装备回收归观察覆盖),卖上阵分支有(op-effects.md §2)。
+**效果账面(申报:金腿不在 `apply_op_effect`)**:卖出回金的容器唯一写点 = 容器写口两条腿(商店域 `apply_shop_action_logic` SellBench 腿 / 备战域 `apply_prep_action_logic` SellBench 腿,均按 `sell_refund` 直写金账)——`kernel/cw_exec_state.py::apply_op_effect` 的 SellBench 分支已随「统一观察对账迭代 2026-09-16 归因批」退役(执行缝 + 投影双腿各记一次 +refund,实读倒挂 −2 实证);执行缝现只算执行点金差 `_executed_gold_delta` 进回执 extra 留证,**不经它直推容器金账**。备战域装备回收 = 观察 `equips` 域覆盖(备战写口域集无 equips),与卖上阵的 owned 恢复腿不对称(见 sell-deployed.md §2)。
 
 ## 3. 确定面转移规则(逐条)
 
@@ -41,7 +41,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_game_state.py::apply_shop_action_logic`(SellBench 腿)/ `apply_prep_action_logic`(SellBench 腿 + 溢出腿);`kernel/cw_economy.py::sell_refund` / `bench_char_cost` / `_SELL_MULT`;`kernel/cw_exec_state.py::apply_op_effect`(SellBench 分支)/ `_advance_gold`;`kernel/cw_vocab.py::mutate_bench_deployed`(SellBench 分支,tracked 同步);`prep_actions.py::PrepActionExecutor._sell_bench` / `_track_remove_bench` / `drag_bench_to_sell`;`operations/cw_screen/cw_screen_prep.py::_project_prep_obs`(溢出镜像)。
+`kernel/cw_game_state.py::apply_shop_action_logic`(SellBench 腿)/ `apply_prep_action_logic`(SellBench 腿 + 溢出腿);`kernel/cw_economy.py::sell_refund` / `bench_char_cost` / `_SELL_MULT`;`kernel/cw_vocab.py::mutate_bench_deployed`(SellBench 分支,tracked 同步);`prep_actions.py::PrepActionExecutor._sell_bench` / `_track_remove_bench` / `_executed_gold_delta`(金差仅回执留证) / `drag_bench_to_sell`;`operations/cw_screen/cw_screen_prep.py::_project_prep_obs`(溢出镜像)。
 
 ## 7. 语义验证(M1 直锁)
 

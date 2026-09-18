@@ -15,7 +15,8 @@
 | gold | 写 | `gold −= 牌单价 × k`(k = 实购张数);gold 未读(None)= 域级跳写,值留观察覆盖 |
 | shop | 写 | 被买槽 kind 置 empty(留空不紧缩);同 (name, star) 的 k 张按槽序对前 k 个置换;离屏(None)= 跳写 |
 | bench | 写 | 新单位落备战席首个空槽 + 合成连锁应用后的整表终态(`bench_view_of_slots` 重建直写) |
-| front_row / back_row / board | 条件写 | 仅当合成连锁消费/升星了场上件(deployed 值签名变化)才整表随写;无合成触及场上 = 零写 |
+| front_row / back_row | 条件写 | 仅当合成连锁消费/升星了场上件(deployed 值签名变化)才整表随写;无合成触及场上 = 零写 |
+| board | 派生随写 | **派生量**:front_row/back_row 行写端挂钩 `GameState._resync_board_delta` 自动增量重算,随上行条件写触发,本腿禁手写 |
 | xp / level / equips / hp | 跳写 | 买牌不产经验(零购买子集反证,`research/xp-rules.md` §2);不触装备域 |
 
 执行侧配套(非容器域):op 内 tracked 双账同步(`mutate_bench_deployed`,shop 视图透传)、买前裁片留证、效果账本 `CounterKey.BUY` 计数推进(挂执行落地门 `apply_action_outcome`)。

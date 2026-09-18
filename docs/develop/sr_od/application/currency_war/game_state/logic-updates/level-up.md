@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-点击「购买经验」按钮一次 = +`XP_PER_BUY` 经验、扣单击价金;经验攒满当前级门槛即升级、溢出结转(单击经验模型,ADR-0129)。两形态一词表:商店单击形态 `LevelUpShop`(is-a `LevelUp`,op = `operations/cw_op/cw_level_up_action.py::LevelUpOp`,单动作形态每帧恰发一击);备战逐帧单击形态(粒度定案④/R6:升 N 击 = N 帧各发一次,执行器授权面全删)。词表 = `kernel/cw_vocab.py::LevelUp`。
+点击「购买经验」按钮一次 = +`XP_PER_BUY` 经验、扣单击价金;经验攒满当前级门槛即升级、溢出结转(单击经验模型,ADR-0129)。两形态一词表、一注册行:注册行 = `operations/cw_op/cw_prep_level_up_action.py::PrepLevelUpOp`(备战 op,批1 注册行更替后唯一活执行路径;`LevelUpShop` is-a `LevelUp` 经注册表 issubclass 兜底同解析本行——商店屏升级意图与备战单击同构,升 N 击 = N 帧各发一次);商店域 op 文件 `operations/cw_op/cw_level_up_action.py::LevelUpOp` = 能力面保留、生产不可达(商店决策面仅产 BuyCard/RefreshShop/CloseShop,`cw_action_registry.py` 模块头「同名动作双域行更替申报」)。词表 = `kernel/cw_vocab.py::LevelUp`。
 
 ## 2. 逻辑态域集
 
@@ -14,7 +14,7 @@
 |---|---|---|
 | gold | 写 | `gold −= 动作 cost × 实击数`;None 跳写 |
 | xp | 写 | 二元组 `(当前级已攒, 升下一级门槛)`,推进算子单一源 = `xp_apply_clicks`(跨级结转 + 满级封顶零推进) |
-| level | **跳写(域集封闭申报)** | 升档等观察覆盖;`level` 不在 `SHOP_PROJECTION_DOMAINS` |
+| level | **条件写**(2026-09-18 扩面) | 升档直写:跨档才写(`proj_levelup_level`);跳写对 = (level, xp) 同进退,任一未读整体跳写——等级滞留会让下一击按旧级重算(花金零等级推进),而等级 = 席位 cap 解锁地板(`max_units_of` 经读口自动跟随)。`level` 在 `SHOP_PROJECTION_DOMAINS`(域集封闭申报) |
 | shop / bench / equips | 跳写 | 修饰效果副作用(商业间谍偷牌/晋升名额变费)未建模,后果归观察(缺口 G7/G8) |
 
 **备战域写口** = `kernel/cw_game_state.py::apply_prep_action_logic` LevelUp 分支:域集 = xp/**level**/gold 子集(`PREP_PROJECTION_DOMAINS`;备战域 level **写**,与商店域 level 跳写的域集差异 = 各域集封闭申报面)。**deploy_cap 不写**——容量真值由观察写端防抖读承接(`max_units` 的 cap<level 兜底规则保守承接升级增量)。level/xp 缺读 = 域级跳写。
@@ -45,11 +45,11 @@
 
 ## 7. 语义验证(M1 直锁)
 
-买经验动作转移语义单一源 = 容器写口(商店域 `apply_shop_action_logic` LevelUpShop 腿 + 备战域 `apply_prep_action_logic` LevelUp 分支,推进算子共用 `xp_apply_clicks`)。原 `kernel/cw_vocab.py::simulate` LevelUp 分支(整帧副本第二载体)已随零生产消费退役,考古归 git。语义验证 = 投影直锁 M1(`test_cw_shop_projection_logic`:击数×单击价扣金/xp 跨档结转/满级零金零经验零写,均在锁内)。`LevelUpShop ≡ LevelUp`(is-a 同字段全等,词表同一语义)。
+买经验动作转移语义单一源 = 容器写口(商店域 `apply_shop_action_logic` LevelUpShop 腿 + 备战域 `apply_prep_action_logic` LevelUp 分支,推进算子共用 `xp_apply_clicks`;商店域 level 跨档直写与 prep 腿同款,域集扩面申报见 `SHOP_PROJECTION_DOMAINS` 登记面注)。原 `kernel/cw_vocab.py::simulate` LevelUp 分支(整帧副本第二载体)已随零生产消费退役,考古归 git。语义验证 = 投影直锁 M1(`test_cw_shop_projection_logic`:击数×单击价扣金/xp 跨档结转/level 升档直写/满级零金零经验零写,均在锁内)。`LevelUpShop ≡ LevelUp`(is-a 同字段全等,词表同一语义)。
 
 ## 8. 判例注记(发射期)
 
-**能力面在役、策略面收缩至备战期**(判例 = [screens/README](../../screens/README.md) §5,2026-09-14):商店开画面的 LevelUpOp 机制上可用,但默认策略**不在商店期买经验**——升等级收缩至备战期决策(strategy-docs/22 号篇)。备战域逐帧单击形态 = 升级唯一生产发射面。
+**能力面在役、策略面收缩至备战期**(判例 = [screens/README](../../screens/README.md) §5,2026-09-14):注册行已更替为备战 op(§1),商店域 op 文件机制上保留但生产不可达,默认策略**不在商店期买经验**——升等级收缩至备战期决策(strategy-docs/22 号篇)。备战域逐帧单击形态 = 升级唯一生产发射面。
 
 ## 9. 依据
 
