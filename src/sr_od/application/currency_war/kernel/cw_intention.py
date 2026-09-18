@@ -743,9 +743,63 @@ def _p1_system_ordering(gs: GameState,
     return out
 
 
+def _progressive_second_seat(gs: GameState,
+                             incumbent: tuple[str, ...],
+                             registry: DecisionV2Registry | None,
+                             session: StrategySession | None,
+                             ) -> tuple[str, ...] | None:
+    """单体系点火后的第二体系渐进方向(两体系组合目标候选;[20] 配方渐进)。
+
+    判定尺 = kernel 成型线(cw_battle_calib._transition_formed:四体系
+    **两两组合**=成型,「单个体系点火不等于成型」)与玩法 [20]/[13]
+    (过渡=两两组合配方渐进;单体系达标不是成型,不停手)。门槛维合格集
+    内无挑战者(chall=∅)时,第二席不能等满支持度自证(无第二体系目标 →
+    不买第二体系件 → 永无满支持的自证死锁,sim 批 20260918_073401 问题 1:
+    65.6% 局终态锁停在单体系),改为按「期望完成轮数最小」选向。
+
+    选择判据 = argmin ``e_rounds(pair_target_comp(inc∪{c}), gs)``
+    (kernel 单一估计器,与 ``_p1_pair_gate``/``_p1_pair_overwindow`` 同源;
+    零新常数零新参数族)。该估计器天然承载三判据:in-store(货架可见件
+    计入 line_distance 的 shelf 腿)、概率峰(当前等级费档出现概率
+    p_bar_faction)、手上资产(tier_progress held 腿)——[3] 概率级判据
+    与「变体按来牌选」的落码形态。平手按 ``_P1_PAIR_PREF`` 声明序
+    (纯确定性);E=inf(静态不可达)排末位,由可行性门统一拒绝。
+    物化失败(None)的候选跳过;全失败返回 None(保持单体系对)。
+
+    返回候选对本身,可行性(E ≤ R_rem)由调用方的 ``_p1_pair_gate``
+    统一裁决(单一比较源;门拒 = 渐进窗口关闭,保持单体系对 = 现行为)。
+    """
+    if len(incumbent) != 1:
+        return None
+    inc_f = incumbent[0]
+    best: tuple[str, ...] | None = None
+    best_key: tuple[float, int] | None = None
+    for f in _P1_PAIR_PREF:
+        if f in (inc_f, SEELE_SYSTEM):
+            # 希儿系不参选:①E 估计器对它结构性失真(无桥条目的对在
+            # pair_target_comp 兜底里剥掉量/贝放大器键,form_tiers 只剩
+            # 他体系档,tier_progress 视角恒「已完成」→ E 虚假为 0);
+            # ②希儿系是 carry 单卡依赖(transition_combos 定义行:无希儿
+            # 时量/贝不能独立当过渡)——零证据渐进选它 = 最高风险向。
+            # 其合法入场 = Q 门槛路径(支持度 ≥1.0 = 希儿+放大器在手,
+            # chall 非空支,语义不变)。
+            continue
+        cand_pair = tuple(sorted((inc_f, f), key=_P1_PAIR_PREF.index))
+        comp = pair_target_comp(cand_pair)
+        if comp is None:
+            continue
+        e = e_rounds(comp, gs, registry, session=session)
+        key = (e, _P1_PAIR_PREF.index(f))
+        if best_key is None or key < best_key:
+            best_key, best = key, cand_pair
+    return best
+
+
 def _p1_pair_eased(gs: GameState,
                    incumbent: tuple[str, ...] = (),
                    gate_first: bool = True,
+                   registry: DecisionV2Registry | None = None,
+                   session: StrategySession | None = None,
                    ) -> tuple[tuple[str, ...], tuple[str, ...] | None]:
     """夺席算子 T(ord, I, Q)(ADR-0616 §2.1 在任优先单席易手核;§2.3
     门槛过滤先行组合谓词)。返回 (派生对, 换席候选):换席候选非 None
@@ -757,7 +811,11 @@ def _p1_pair_eased(gs: GameState,
       ``p1_early_pair`` 无门槛物化面并批消费——编排者裁决①);
     - |I∩Q|=0 空窗进入:按 (−ord, PREF) 取前 min(2,|Q|) 席;
     - |I∩Q|=1:留任席无条件保持,最佳挑战者填空席(空席填充不触动
-      已占用席 = §2.3(iv) 申报帧类,不辖可行性门);
+      已占用席 = §2.3(iv) 申报帧类,不辖可行性门);挑战者空集时的
+      渐进填充(第二体系方向 = argmin E 两体系对,候选走 ``_p1_pair_gate``
+      可行性门,门拒保持单体系对)= ``_progressive_second_seat``
+      (语义与死锁依据见其 docstring;kernel 成型线两两组合,[20] 配方渐进
+      ——单体系点火非成型,对必须可向第二体系扩张)。
     - |I∩Q|=2:只换最弱席,**每帧至多一席易手**;换席条件 =
       ord(最佳挑战者) > ord(最弱席)**严格大于**——平手 = 零优势证据,
       换席成本确定存在(囤货集作废、跟线投资重置),不换席弱支配换席
@@ -791,7 +849,12 @@ def _p1_pair_eased(gs: GameState,
         if chall:
             fill = min(chall, key=lambda f: (-ordv(f), pref(f)))
             return tuple(sorted(inc + [fill], key=pref)), None
-        return inc_pair, None
+        # 渐进通道(单体系点火 → 两体系组合目标;[20]/kernel 成型线):
+        # 第二席按 argmin E 选向,产出候选对交调用方可行性门——门开 =
+        # 对升级两体系(买/部署/换入三面向第二体系渐进,readiness 随
+        # 两档 AND 自动对齐 kernel 成型线);门拒 = 渐进窗口关闭
+        #(E > R_rem),保持单体系对 = 旧行为(fp≥1.0 冻结 → 停手战)。
+        return inc_pair, _progressive_second_seat(gs, inc, registry, session)
     weakest = min(inc, key=lambda f: (ordv(f), pref(f)))
     if chall:
         best = min(chall, key=lambda f: (-ordv(f), pref(f)))
@@ -849,7 +912,8 @@ def _derive_p1_pair(gs: GameState,
     进入**(抑制在调用方 update_intention P1 段;调用时机/闩/出口归
     状态机,本函数保持纯派生)。
     """
-    pair, cand = _p1_pair_eased(gs, incumbent)
+    pair, cand = _p1_pair_eased(gs, incumbent, registry=registry,
+                                session=session)
     if cand is not None:
         ok, _e_alt, _r_rem = _p1_pair_gate(cand, gs, registry, session)
         if ok:
@@ -1866,8 +1930,11 @@ def update_intention(gs: GameState, ist: IntentionState,
             else:
                 # 在任优先单席易手(ADR-0616 §2.1,I=现值 p1_pair 先于
                 # 本次计票)+ 命题 3 可行性门后置合取(§2.4:仅辖换席
-                # 候选;空窗首进/空席填充/在任保持不辖门)。
-                pair, cand = _p1_pair_eased(gs, ist.p1_pair)
+                # 候选;空窗首进/空席填充/在任保持不辖门)。registry/
+                # session 透传 = 单体系点火渐进通道的 E 估计器输入
+                # (_progressive_second_seat;与 gate 估计同源同参)。
+                pair, cand = _p1_pair_eased(gs, ist.p1_pair,
+                                            registry=registry, session=session)
                 gate_e: float = 0.0
                 gate_r: int = 0
                 gate_denied = False
