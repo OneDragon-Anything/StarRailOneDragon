@@ -131,7 +131,7 @@ class CwScreenXxx(SrOperation):
 
 ### 2.7 依赖与装配不变量
 
-- 依赖方向不变：operations → kernel 单向；kernel 零像素触达；`kernel/cw_screen_obs.py` 只依赖 kernel 既有类型（`cw_events`/`cw_vocab`/`cv2.typing`）。
+- 依赖方向不变：operations → kernel 单向；kernel 零像素触达；`kernel/cw_screen_report/` 包每屏文件只依赖 kernel 既有类型（`cw_events`/`cw_vocab`/`cw_game_state`/`cv2.typing`），对 `cw_game_state.py` 零反写（REGISTERED_ACTORS 零扩面，本迭代该文件零改动）。
 - `report_xxx` 对 `obs` 字段缺失的防御口径与现役写点一致（如 match/gs 缺席 = 跳过写，桩面安全），逐点平移不加强不减弱。
 - 商店框 op（OpenShop/CloseShop）与 `cw_flow_const.py`/`_overlay_confirm.py` 共享 helper 不在退役面。
 

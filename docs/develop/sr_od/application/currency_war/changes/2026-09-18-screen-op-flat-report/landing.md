@@ -101,3 +101,4 @@
 - `docs/develop/sr_od/application/currency_war/game_state/fields.md`：report 接口摄入映射（若有字段级增改）← T-1/T-3/T-5
 - `docs/develop/sr_od/application/currency_war/flow/guards.md`：商店未识别卡停机载体描述核对 ← T-5
 - `docs/develop/sr_od/application/currency_war/flow/outer_loop.md`：分发表述若提及基类/段迹 ← T-7
+- `kernel/cw_screen_report/` 全部屏文件 docstring：**changes/ 引用清理——铁律「代码禁引 changes/」**,改为正本 op-layer.md 锚或就地内联语义 ← T-1(交付时引了 design.md §2.2/§2.3/§2.4)/T-2..T-6 同批面
