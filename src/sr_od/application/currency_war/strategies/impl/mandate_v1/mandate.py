@@ -2084,6 +2084,43 @@ DEPLOY_EMIT_FLOOR_EXEMPT_OPEN: str = 'deploy_emit_floor_exempt_open'
 #: M5/M1/M1′ 调三次,帧内 reason 集取并集、每键至多 +1(帧内差异面
 #: 由执行侧 deploy_exec_ 键补盲,如实申报)。
 DEPLOY_EMIT_TELEMETRY_ATTR: str = 'cw4_deploy_emit_frame'
+#: 板满门帧级去重注册的 session 挂载属性名(与 DEPLOY_EMIT_TELEMETRY_ATTR
+#: 同族;值 = {'phase': (plane, round_num)})。
+_DEPLOY_CAP_FULL_REG_ATTR: str = 'cw4_deploy_cap_full_frame'
+
+
+def _deploy_cap_full_gate(session: StrategySession, state: GameState,
+                          frame: MandateFrame) -> bool:
+    """板满可行性门(容器现读口径;部署发射位与放行判定的共同前置防线)。
+
+    判式 = 占用数 ≥ 可上阵数,读口单一源 ``deployed_count_of``/
+    ``max_units_of``(ADR-0392 占用数口径——kernel 逐候选 cap 判定按 ID
+    集合 len,对 SIFT 未识别件偏松;本门用占用数口径把该边界一并堵住,
+    两道防线分工 = 换源修主形态、本门堵口径边界 + 提供计划级确定性
+    拒因,迭代 2026-09-18-prep-obs-retirement 阶段 3.1)。板满帧不产出
+    部署计划,拒因 ``deploy_cap_full`` 落 cw4_counters 计划级分键(帧级
+    去重 = 同 (plane, round) 只计一次;与候选级 ``deploy_emit_held_cap``
+    分工 = 计划级「本帧板满」确定性申报,交决策循环另行规划)。返回
+    True = 板满(调用方零发射 / 放行 False)。
+    """
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        deployed_count_of,
+        max_units_of,
+        plane_of,
+    )
+    if deployed_count_of(state) < max_units_of(state):
+        return False
+    st = state_of(session)
+    counters = getattr(st, 'cw4_counters', None)
+    if not isinstance(counters, dict):
+        counters = {}
+        st.cw4_counters = counters
+    phase = (plane_of(state), getattr(frame, 'round_num', 1))
+    reg = getattr(session, _DEPLOY_CAP_FULL_REG_ATTR, None)
+    if not (isinstance(reg, dict) and reg.get('phase') == phase):
+        setattr(session, _DEPLOY_CAP_FULL_REG_ATTR, {'phase': phase})
+        counters['deploy_cap_full'] = counters.get('deploy_cap_full', 0) + 1
+    return True
 
 
 def _record_deploy_emit_held(session: StrategySession,
@@ -2154,6 +2191,9 @@ def _deploy_plan_inputs(frame: MandateFrame, session: StrategySession,
         deploy_target_sets,
         deployed_bond_counts,
     )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        max_units_of,
+    )
     from sr_od.application.currency_war.kernel.cw_intention import (
         locked_faction_scope,
     )
@@ -2167,8 +2207,11 @@ def _deploy_plan_inputs(frame: MandateFrame, session: StrategySession,
         'deployed_cids': _cids,
         'deployed_fac': deployed_bond_counts(_cids),
         'board': dict(state.board.value or {}),
-        'cap': (frame.deploy_cap if frame.deploy_cap and frame.deploy_cap > 0
-                else 10 ** 6),
+        # cap 单一源 = max_units_of 容器派生链(迭代 2026-09-18-prep-obs-
+        # retirement 阶段 3.1;原 frame.deploy_cap 缺读退 10**6 无限回退
+        # 分支退役——max_units_of 恒 ≥1 有值,该分支不可达,且无限回退
+        # 会让 kernel cap 判定对板满帧失效)。
+        'cap': max_units_of(state),
         'target_factions': _tgt,
         'target_cores': set(getattr(_comp, 'core_chars', None) or ()),
         'fw_carry': _fw_carry,
@@ -2202,6 +2245,9 @@ def _emit_deploy_moves(out: list, frame: MandateFrame,
         bench_slots_of,
         deployed_slots_of,
     )
+    # 板满前置门(阶段 3.1):占用 ≥ cap → 不产出部署计划,拒因落账。
+    if _deploy_cap_full_gate(session, state, frame):
+        return
     _inputs = _deploy_plan_inputs(frame, session, state)
     up, _held, _reasons = select_deployments_reasoned(**_inputs)
     if not up:
@@ -2266,6 +2312,10 @@ def _deployable(frame: MandateFrame, session: StrategySession,
     )
     st = state_of(session)
     _ist = getattr(st, 'v3_intention', None)
+    # 板满前置门(阶段 3.1):占用 ≥ cap → 不提案部署序,拒因落账与
+    # _emit_deploy_moves 同门同源。
+    if _deploy_cap_full_gate(session, state, frame):
+        return False
     try:
         _rf_ctx = locked_line_recipe_floor_conflict(_ist)
     except Exception:   # noqa: BLE001  豁免语境 best-effort:fail-closed

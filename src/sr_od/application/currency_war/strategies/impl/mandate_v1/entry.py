@@ -570,8 +570,15 @@ def emit(obs: PrepObservation, session: StrategySession,
     # = 臂动作即本帧发射(单动作环直通);空返回 = 臂无发射(门 0 失效/
     # 门 1 S1 已清/放弃态),照常落回常规步骤序。deploy_cap 真值链与
     # ④ 骨架帧同源(max_units_of 读口派生,R4 单一真值源)。
+    # 名单输入换源(容器现读;迭代 2026-09-18-prep-obs-retirement 阶段
+    # 3.1):黑板 obs 名单一拍陈旧是部署超上限事故的根因(板满帧 cap 门槛
+    # 按陈旧名单放行第 4 拖,游戏侧静默拒收),备战决策的名单消费面同帧
+    # 同源改读容器读口派生——wanted 臂与下方组装两处共用同一推导,禁再
+    # 引 obs 名单第二份。黑板字段退役面归阶段 3.5。
+    _gs_bench = [c for c in bench_slots_of(gs) if c is not None]
+    _gs_deployed = [c for c in deployed_slots_of(gs) if c is not None]
     _arm_out = mandate.wanted_closure_emit(
-        session, gs, list(obs.bench_chars), list(obs.deployed_chars),
+        session, gs, _gs_bench, _gs_deployed,
         max_units_of(gs), _round_num)
     if _arm_out:
         return _arm_out
@@ -604,8 +611,8 @@ def emit(obs: PrepObservation, session: StrategySession,
                 k_members = tuple(sorted(_fb))
                 state_of(session).cw4_counters[f'prep_k_fallback_{_band}'] = \
                     state_of(session).cw4_counters.get(f'prep_k_fallback_{_band}', 0) + 1
-    bench = list(obs.bench_chars)
-    deployed = list(obs.deployed_chars)
+    bench = list(_gs_bench)
+    deployed = list(_gs_deployed)
     bench_names = [b.char_id or '' for b in bench]
     deployed_names = [b.char_id or '' for b in deployed]
 

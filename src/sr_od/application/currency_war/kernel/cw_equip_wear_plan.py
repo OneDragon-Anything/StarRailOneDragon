@@ -179,7 +179,14 @@ def _build_equip_wear_plan(session: Any,
     occupied_all: dict = {(row, int(slot)): list(names)
                           for (row, slot), names in obs.occupied_equips.items()}
     _bk_n = getattr(obs, 'back_layout_slots', None)
-    deployed = list(getattr(obs, 'deployed_chars', None) or [])
+    # deployed 换源(容器现读;迭代 2026-09-18-prep-obs-retirement 阶段
+    # 3.1):黑板 obs.deployed_chars 一拍陈旧是部署超上限事故的同类输入
+    # 面,M7 的 deployed 消费(穿戴对象枚举)同帧同源改容器读口派生。
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        deployed_slots_of,
+    )
+    deployed = [c for c in deployed_slots_of(game_state_of(session))
+                if c is not None]
     _tgt_comp = strategy_state_of(session).target_comp
     # ⚖️ 过渡期持有语义修正(r70 审计刀②):过渡期**穿给当前上场的 5 人**
     # ——key_equips 命中件照穿,非 key 散件穿给当前板面高战力者(carry 优先);
