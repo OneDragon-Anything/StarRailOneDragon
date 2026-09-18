@@ -2,7 +2,7 @@
 (refresh 期望态依赖 obs.cw_shop_obs,留 app 合法向)。
 
 对账职责 = 纯观察审计族(羁绊显示/商店池/合成预览/刷新,heavy 定型帧
-消费);动作上报的对账归一走 apply_prep_action_logic 逻辑态直写 +
+消费);动作上报的对账归一走 op 自上报(上报函数族)+
 观察边界 cw_reconcile 兜底。
 """
 
@@ -463,7 +463,7 @@ class CwScreenPrep(CwScreenOpBase):
         # ——最严读法:两 fire 口合并,落地回执门退役):本 op 级
         # 登记件原两件 = 经验期望账本推进(CwActionLevelUpParam/CwActionOpenShopParam 两通道),随
         # 期望账拆除退役——「未落地不计数」防线
-        # 由逻辑态直写(apply_prep_action_logic CwActionLevelUpParam 分支)与观察覆盖
+        # 由逻辑态直写(买经验自上报)与观察覆盖
         # 承接。执行器内
         # 登记件(刷新计数组免费闸 record_refresh_execution、免战牌
         # consume_use,现役接线点 = cw_op_buy_cards 执行落地门/kernel
@@ -519,7 +519,7 @@ class CwScreenPrep(CwScreenOpBase):
         """组装备战观察(ADR-0517 迁移后:heavy = 画面 op 入口单次——期望态
         重建的唯一读屏点,即对账;调用点 = 单轮入口 / CwActionOpenShopParam(read_only)
         开态 gold 真值刷新)。旧「每个执行过的游戏动作后必调 heavy」契约已
-        随单动作循环退役:逐动作零读屏,期望态由 ``apply_prep_action_logic(kernel 写口)`` 纯计算
+        随单动作循环退役:逐动作零读屏,期望态由上报函数族(kernel)纯计算
         推进,动作后首读的光标 parking 职责随之迁移(入口观察 park 一次;
         执行侧读数性通道——卖出回金遥测等——的局部 park 由动作实现层自理)。
         (light 沿用分支已随黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5)。
@@ -1145,7 +1145,7 @@ class CwScreenPrep(CwScreenOpBase):
         #      (羁绊显示/商店池/合成预览/刷新留证;零决策)。
         #      ADR-0517 决策 8 的「入口观察即对账」时点存续,per-action
         #      heavy 重读契约已灭。动作上报的对账归一 = 逻辑态直写
-        #      (apply_prep_action_logic)+ 观察边界 cw_reconcile 兜底;
+        #      (op 自上报)+ 观察边界 cw_reconcile 兜底;
         #      错卖类不可逆损害窗口的收窄手段 = 执行侧
         #      tracked 账随动,同商店线双账口径。
         self._v2_post_frame_accounting(obs, session)
@@ -1314,7 +1314,7 @@ class CwScreenPrep(CwScreenOpBase):
           (§2.3;obs.state 消费视图随黑板槽退役消亡,容器化段 2);
         - 本段 = op 级对账:纯观察审计族在本帧定型帧统一消费(ADR-0517
           决策 8:入口观察即对账)。动作上报的对账归一 = 逻辑态直写
-          (apply_prep_action_logic)+ 观察边界 cw_reconcile 兜底。原观察
+          (op 自上报)+ 观察边界 cw_reconcile 兜底。原观察
           终饰(dual 态拷回/gated_hp 单写者门)已随黑板槽退役消亡——
           dual_track_phase 不入容器(消费读 committed_from 派生),hp
           消费统一经 decision_hp(容器化段 2,设计件 §2.4-2)。"""
@@ -1904,7 +1904,7 @@ class CwScreenPrep(CwScreenOpBase):
         输入 = 本帧 obs;每通道内部 best-effort,异常不阻塞环。覆盖:
         羁绊显示 / 商店池 / 合成预览。动作期望账通道(paddle 审计/
         drag_expect/买牌期望/经验/装备期望)不属本口——动作上报的对账
-        归一 = 逻辑态直写(apply_prep_action_logic)+ 观察边界
+        归一 = 逻辑态直写(op 自上报)+ 观察边界
         cw_reconcile 兜底。
         """
         import contextlib

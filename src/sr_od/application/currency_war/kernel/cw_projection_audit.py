@@ -233,7 +233,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_WRITE_END,
         basis='CwActionBuyCardParam payload 投影(proj_buy_payload)+ 关店机械口离屏'
               '清场(CwOpCloseShop._clear_shop_payload → leave_screen;'
-              'apply_shop_action_logic CwActionCloseShopParam 分支同口 = sim 路径)'
+              'report_action_close_shop_param 同口 = sim 路径)'
               ';刷后牌面 = 续段重观察覆盖'),
     'encounter': ProjectionAuditRow(
         status=AUDIT_WRITE_END,

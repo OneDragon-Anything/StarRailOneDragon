@@ -477,7 +477,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 落注册表条目(设计 §8.7 批次三件 5):次数类余量首例
     # (duration_uses=2 → remaining_uses,§3.2.19 正本=effect_inventory
     # .remaining_uses,§8.6-3),递减挂点 = 跳过型出战上报(kernel
-    # cw_exec_state.apply_op_effect;StartBattleOp 经 runner 包络上报跳过
+    # 出战 op 自上报(report_action_start_battle_param;批④ 前身 = cw_exec_state)
     # 子态,上报时递减——出战域重设计 T-286),用尽移除。+30 经验 = 选牌当场
     # 即时经验(§4 投资选择通用通道,xp_instant 词表;§5.2 显式豁免——即时
     # 到账不入缺口清单,经观察覆盖收口)。trigger=NODE_ENTER(跳过发生在

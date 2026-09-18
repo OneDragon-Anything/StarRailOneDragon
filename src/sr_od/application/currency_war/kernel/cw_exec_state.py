@@ -3,7 +3,8 @@
 本模块不承载跨调用状态——原执行层状态载体已整体退役,局内事实宿主 =
 GameState(kernel/cw_game_state.py)。现辖三类领域函数:
 
-- op 逻辑效果推进:``apply_op_effect``(两态制标准语义,ADR-0651);
+- 确认族到账推进:``apply_confirm_effect``(两态制标准语义,ADR-0651;
+  原 apply_op_effect 动作类分支随动作 op 重组批④ 收编 op 自上报后瘦身);
 - 槽位表领域模型:``BenchChar`` + bench/deployed 槽位语义 helpers 与
   物理(排,槽号)↔ 表下标换算(deployed_row_slot / deployed_idx_of
   互逆对);
@@ -15,7 +16,6 @@ GameState(kernel/cw_game_state.py)。现辖三类领域函数:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
 
@@ -28,17 +28,10 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     PlaneNodeLedger,
 )
 
-if TYPE_CHECKING:
-    # 仅类型注解引用(项目规范;运行时按需惰性 import,守同仓懒加载惯例)。
-    from sr_od.application.currency_war.kernel.cw_vocab import (
-        CwAction,
-    )
-
-
-# ============================================================ op 逻辑效果推进
-# (波 5b 自 kernel/cw_expected_state 迁入:模块名随期望态条目表概念退役,
-# ADR-0651 两态制存续函数整体搬迁,零行为变化;消费点 = root prep_actions
-# 执行器两处 + _overlay_confirm.register_confirm_arrival。
+# ============================================================ 确认族到账推进
+# (波 5b 自 kernel/cw_expected_state 迁入;动作 op 重组批④ 瘦身改名:
+# 动作词表类分支收编 op 自上报(kernel/cw_action_report),本口只剩 dict
+# 确认族,消费点 = _overlay_confirm.register_confirm_arrival。
 # ⚠️ 动作词表/合成引擎(cw_vocab/cw_merge_simulate)模块级 import 本模块
 # (转出口),本模块对其依赖一律函数内惰性 import,模块级引入会成环——
 # 沿用本仓懒加载惯例。)
@@ -96,157 +89,48 @@ def _owned_add(session, item: str) -> None:
                                    screen='', mode='compute'))
 
 
-def apply_op_effect(session, action: CwAction | dict, *,
-                    produced_by: str = 'PrepActionExecutor',
-                    detail: str = '',
-                    skip_substate: bool = False) -> list[dict]:
-    """原子 op 的逻辑效果推进(两态制标准语义,ADR-0651;两执行面同源入口)。
+def apply_confirm_effect(session, payload: dict, *,
+                         produced_by: str = 'PrepActionExecutor',
+                         detail: str = '') -> list[dict]:
+    """确认类到账 dict 的逻辑效果推进(原 ``apply_op_effect`` 瘦身改名,
+    动作 op 重组批④:动作词表类分支已全量收编各 op 自上报
+    (kernel/cw_action_report 函数族),本口只剩 dict 确认族;消费方 =
+    ``_overlay_confirm.register_confirm_arrival``)。
 
-    按游戏规则把 op 的可推算效果**直接写 session 字段**(owned 增减/
-    专项金腿),返回推进清单 [{path, value, kind}](组合动作子动作
-    效果上抛形态,只含本函数实际写过的字段)。
+    语义(逐行自原 dict 分支平移,零行为):
+    - ``ConfirmSupply``/``ConfirmBox``/``ConfirmTome`` 且 item 在场:
+      owned +1(终态契约 §B:单一源 = gs.equips,现读-改写-回写);
+    - ``ConfirmExpertCash``:现金为王弃卡取现金固定回金 +4 金账直推;
+    - ``CwActionBuyCardParam``(dict 形,模拟/离线入口):合成引擎算
+      购买数,金账逻辑推进;
+    - 其余/未知 op = 零推进(显式不建模面,原 else-pass 语义存续:
+      ConfirmStrategy 本体追加归 handler 确认成功后既有写点;
+      ConfirmMegastar/ConfirmPartner chosen_* 写端 = 各 handler)。
 
-    **卖出回金不在本口**(统一观察对账迭代 2026-09-16 归因批退役双记
-    腿):CwActionSellBenchParam/CwActionSellDeployedParam 的容器金账唯一写点 =
-    :func:`apply_prep_action_logic` 对应分支(实机执行缝+投影双腿各记
-    一次 +refund,实读倒挂 −2 实证);本口 CwActionSellDeployedParam 仅保留 owned
-    装备回收腿(执行账单一写者,无投影对应物)。专项金腿存续面 =
-    现金为王弃卡回金与 dict 形 CwActionBuyCardParam(无投影对应物,单写点)。
-
-    ``skip_substate`` = 出战动作的免战跳过子态标记(StartBattleOp 经
-    runner 包络上报;op 零 game state 直写)。True = 本次出战走「跳过」
-    按钮(免战牌生效)→ 次数递减挂本口(上报时递减,非「验证落地后」
-    ——出战 op 已零验证,T-286 出战域重设计)。
-
-    显式不建模盲区(EXPECTED_STATE §6 原申报语义存续):``_handle_bench_full``
-    席满急救(买经验×10 + 卖前几槽)不经执行器 → 不在推进面,该形态由
-    观察覆盖兜底(声明而非遗漏)。
-    """
+    返回推进清单 [{path, value, kind}](本函数实际写过的字段;
+    best-effort 记录面)。"""
     effects: list[dict] = []
-    if session is None:
+    if session is None or not isinstance(payload, dict):
         return effects
-    from sr_od.application.currency_war.kernel.cw_vocab import (
-        CwActionClickSpheresParam,
-        CwActionSellDeployedParam,
-        CwActionStartBattleParam,
-        CwActionWearEquipParam,
-    )
 
     def _eff(path: str, value, kind: str) -> None:
         effects.append({'path': path, 'value': value, 'kind': kind})
 
-    if isinstance(action, CwActionSellDeployedParam):
-        # (卖出回金容器唯一写点 = apply_prep_action_logic 对应分支,
-        #  本口不记金防双记——实机 −2 倒挂实证;owned 装备回收腿 =
-        #  执行账单一写者。)
-        _bench, dep = _session_tracked(session)
-        bc = dep[action.deployed_idx] \
-            if 0 <= action.deployed_idx < len(dep) else None
-        if bc is not None:
-            for eq in (getattr(bc, 'equips', None) or []):
-                _owned_add(session, eq)
-                _eff(f'owned[{eq}]', '+1(卖场上装备全额返还)', 'owned')
-    elif isinstance(action, CwActionWearEquipParam):
-        # 穿戴原子(R2;发出即记账):本分支仅在执行器 emitted 门放行时
-        # 可达(op 定位失败等未发出通道 emitted=False,整支跳过,无账可
-        # 记);照常发出路径 = 机械执行零判效(用户裁定,落地判定归观察
-        # 侧 reconcile),owned −1 + tracked 目标角色 +1。
-        # CwActionWearEquipParam 是坐标参数化机械动作(row/slot = 画面物理槽位,词表
-        # 定义);物理→下标换算单一函数 = deployed_idx_of(执行坐标边)。
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            ChannelSig,
-            game_state_of,
-        )
-        _gs_we = game_state_of(session)
-        owned = list(_gs_we.equips.value or [])
-        if action.item_name in owned:
-            owned.remove(action.item_name)
-            _gs_we.write_logic(_gs_we.equips, owned,
-                               produced_by='PrepActionExecutor',
-                               evidence=f'owned[{action.item_name}] -1(穿戴)',
-                               sig=ChannelSig(family='logic_action',
-                                              actor='PrepActionExecutor',
-                                              screen='', mode='compute'))
-            _eff(f'owned[{action.item_name}]', '-1(穿戴)', 'owned')
-        idx = deployed_idx_of(action.row, action.slot)
-        _bench, dep = _session_tracked(session)
-        if 0 <= idx < len(dep) and dep[idx] is not None:
-            dep[idx].equips = list(getattr(dep[idx], 'equips', None) or []) \
-                + [action.item_name]
-            _eff(f'deployed[{idx}].equips', f'+{action.item_name}(穿戴)',
-                 'tracked')
-    elif isinstance(action, CwActionStartBattleParam):
-        # 进战斗:hp/gold/streak 由结算屏观察覆盖接管(原显式不推进理由
-        # 升格为分支);唯一逻辑推进 = 免战牌跳过递减(上报时递减;标记
-        # 由 StartBattleOp 经 runner 包络上报,op 零 game state 直写)。
-        # 递减 best-effort 记录面:未登记(登记面缺位的局)→ consume_use
-        # 返 None 零动作,与升级挂点同纪律(cw_effect_inventory.consume_use)。
-        if skip_substate:
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                game_state_of,
-            )
-            from sr_od.application.currency_war.kernel.cw_investments import (
-                STRATEGY_EFFECTS,
-            )
-            _spec = STRATEGY_EFFECTS.get('免战牌')
-            if _spec is not None:
-                _left = game_state_of(session).effects.consume_use(_spec.id)
-                if _left is not None:
-                    _eff('effects[免战牌]', f'remaining_uses→{_left}(跳过上报递减)',
-                         'effects')
-                    log.info('[cw][battle] 免战牌跳过上报 → 次数递减(余 %s)', _left)
-    elif isinstance(action, CwActionClickSpheresParam):
-        # 备战环随机收入申报窗(20260918-reconcile 第 9 例收口)。零推进
-        # 语义不变:球金金额执行点不可推算(声明盲区),金账照旧不写——
-        # 本分支只按载荷球数开「待吸收窗」,下一可信金读帧的正向差由
-        # ``GameState._absorb_prep_sphere_income`` 精确吸收,店开帧收口
-        #(机理与红线 = ``ExecBooks.prep_sphere_income_pending`` 字段注释;
-        # pending_reward 无 session 字段载体,零推进原申报存续)。
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            game_state_of,
-        )
-        game_state_of(session).exec_books.prep_sphere_income_pending += \
-            len(action.points)
-    elif isinstance(action, dict):
-        # 确认类到账(dict 形态;{'op','item'}):owned 本体推进。
-        # ConfirmStrategy 不在此推(active_strategies 本体追加 = handler
-        # 确认成功后既有写点,cw_screen_invest_strategy)。
-        op = action.get('op', '')
-        item = action.get('item', '')
-        if op in ('ConfirmSupply', 'ConfirmBox', 'ConfirmTome') and item:
-            _owned_add(session, item)
-            _eff(f'owned[{item}]', f'+1({op})', 'owned')
-        elif op == 'ConfirmExpertCash':
-            # 专家邀请函「现金为王」:弃卡取现金固定回金 +4 金账直推
-            # (原 _overlay_confirm 内联 last_state 直推随链退役迁入本口,
-            # 与 owned 确认族同一推进语义单一源;shop_wave_top 实读覆盖修正)。
-            _advance_gold(session, 4, produced_by=produced_by)
-            _eff('gold', '+4(现金为王弃卡回金)', 'gold')
-        elif op == 'CwActionBuyCardParam':
-            # dict 形 CwActionBuyCardParam(模拟/离线入口):合成引擎算购买数,金账
-            # 逻辑推进;tracked 本体推进 = 执行器/调用方辖。
-            _apply_buy_card(session, action, _eff)
-    else:
-        # 显式不推进理由(原 §3 铁律枚举,两态制下语义存续):
-        # - CwActionOpenBoxParam/CwActionOpenTomeParam:箱/典籍不消失(仅画面态,消耗在选卡确认;
-        #   CwActionOpenBoxParam 2a 终结化后选卡 = 武装箱选择画面 op,零容器账);
-        # - CwActionOpenShopParam(含 read_only):画面态周转,零局状态变更;
-        # - CwActionLevelUpParam:经验/等级/金 = 容器逻辑态(apply_prep_action_logic
-        #   CwActionLevelUpParam 分支,xp_apply_clicks + action.cost 直写单一源,
-        #   批2b 翻转后金腿不经执行缝);
-        # - CwActionSellBenchParam:容器金/bench 逻辑态全归 apply_prep_action_logic
-        #   (金腿双记退役,统一观察对账迭代 2026-09-16);
-        # - CwActionDeployMoveParam/CwActionSellDeployedParam:容器逻辑态 = apply_prep_action_logic
-        #   扩域分支(金腿同上批退役);tracked 位移/摘除 = 执行器
-        #   _track_* 单一写者;
-        # - 工具原子(CwActionFurnaceUseParam 等):消耗/变换 = 视觉域逻辑态
-        #   (容器零写:消费真值归观察——action-logic-state.md 正本申报)+ 下一帧装备区
-        #   读数覆盖;last_owned_equips 挂账面随对拍拆除不入本口;
-        # - CwActionClickSpheresParam:零金账推进(球金不可推算)+ 按载荷球数开点球金
-        #   待吸收窗(本文件 CwActionClickSpheresParam 分支申报);
-        # - 买牌单元:tracked 本体推进 = 执行器/调用方辖(容器
-        #   tracked_books 随动同步,mutate_bench_deployed 单口)。
-        pass
+    op = payload.get('op', '')
+    item = payload.get('item', '')
+    if op in ('ConfirmSupply', 'ConfirmBox', 'ConfirmTome') and item:
+        _owned_add(session, item)
+        _eff(f'owned[{item}]', f'+1({op})', 'owned')
+    elif op == 'ConfirmExpertCash':
+        # 专家邀请函「现金为王」:弃卡取现金固定回金 +4 金账直推
+        # (原 _overlay_confirm 内联 last_state 直推随链退役迁入本口,
+        # 与 owned 确认族同一推进语义单一源;shop_wave_top 实读覆盖修正)。
+        _advance_gold(session, 4, produced_by=produced_by)
+        _eff('gold', '+4(现金为王弃卡回金)', 'gold')
+    elif op == 'CwActionBuyCardParam':
+        # dict 形 CwActionBuyCardParam(模拟/离线入口):合成引擎算购买数,金账
+        # 逻辑推进;tracked 本体推进 = 执行器/调用方辖。
+        _apply_buy_card(session, payload, _eff)
     return effects
 
 

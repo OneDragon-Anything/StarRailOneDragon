@@ -39,7 +39,7 @@ def register_confirm_arrival(session: 'StrategySession | None', op: str, item: s
 
     语义按 op 分道:
     - ConfirmSupply/ConfirmBox/ConfirmTome/ConfirmExpertCash(dict 形态
-      apply_op_effect):owned += item / 现金为王 gold +4(推进宿主 =
+      现 apply_confirm_effect):owned += item / 现金为王 gold +4(推进宿主 =
       容器单例金账,写通道单一源在 cw_exec_state);
     - ConfirmStrategy:本函数零写——active_strategies 本体追加由 handler
       在确认成功后既有写点承担(cw_screen_invest_strategy);
@@ -54,12 +54,12 @@ def register_confirm_arrival(session: 'StrategySession | None', op: str, item: s
         return
     try:
         from sr_od.application.currency_war.kernel.cw_exec_state import (
-            apply_op_effect,
+            apply_confirm_effect,
         )
         if op in ('ConfirmSupply', 'ConfirmBox', 'ConfirmTome',
                   'ConfirmExpertCash'):
-            apply_op_effect(session, {'op': op, 'item': item},
-                            produced_by=produced_by)
+            apply_confirm_effect(session, {'op': op, 'item': item},
+                                 produced_by=produced_by)
             return
     except Exception as e:  # noqa: BLE001  观测面不阻塞确认
         log.info(f'[cw-overlay] 逻辑推进跳过: {e}')

@@ -49,7 +49,7 @@ def xp_ledger_stop(xp_progress: tuple[int, int] | None,
     CwActionLevelUpParam 定案④「推进算子单一源 = xp_apply_clicks」)。
 
     为什么需要(病灶实测):商店域逻辑态直写只写 xp 元组不写 level
-    域(升档等观察覆盖,kernel/cw_game_state.py apply_shop_action_logic
+    域(升档等观察覆盖,kernel/cw_action_report 上报函数族
     CwActionLevelUpShopParam 行);ALL IN 窗逐击决策环(decide_shop_screen 驱动器
     逐动作直写推进)内 level 域滞留轮初值 ⇒ lv9_stop 恒 False,而
     clicks_to_next_level 按推进后元组的新级 need 续算 ⇒ 同窗内连买

@@ -35,7 +35,6 @@ from sr_od.application.currency_war.kernel.cw_events import (
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
-    shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
@@ -239,7 +238,7 @@ class MandateV1Strategy(CwFlowStrategy):
         生产执行侧已改调 :meth:`decide_shop_action`(单动作循环,
         ``cw_op_buy_cards.run_buy_waves``);本驱动器保留给 sim 引擎/回放/既有序列锁——
         驱动 = 逐帧调单动作核 + 容器逻辑态直写推进期望态
-        (``apply_shop_action_logic`` 简单腿 + 合成升星腿;T-163 起零
+        (上报函数族委托分支串;T-163 起零
         simulate 前瞻消费),终结动作(CwActionRefreshShopParam)截停
         序列、CwActionCloseShopParam 收尾不入序列(与旧截断器的输出形态对齐)。与旧波
         批的输出等价是条件命题(波批逻辑态直写无残差时逐位一致;逻辑态残差史见
@@ -248,16 +247,29 @@ class MandateV1Strategy(CwFlowStrategy):
         覆写存在理由 = mandate 特有记账(下方已买件/段序号/续段 token)。
         """
         from sr_od.application.currency_war.kernel import cw_vocab as cw_state
+        from sr_od.application.currency_war.kernel.cw_action_report.buy_card import (
+            report_action_buy_card_param,
+        )
+        from sr_od.application.currency_war.kernel.cw_action_report.level_up import (
+            report_action_level_up_param,
+        )
+        from sr_od.application.currency_war.kernel.cw_action_report.sell_bench import (
+            report_action_sell_bench_param,
+        )
+        from sr_od.application.currency_war.kernel.cw_action_report.sell_deployed import (
+            report_action_sell_deployed_param,
+        )
+        from sr_od.application.currency_war.kernel.cw_action_report.swap_deploy import (
+            report_action_swap_deploy_param,
+        )
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
             ShopActionExecuted,
-            apply_shop_action_logic,
-            bench_slots_of,
-            deployed_slots_of,
         )
-        # 驱动器同路(W6 波 4,设计件 §2.2-3):决策读容器单例 + 逻辑态直写推进
-        # 切 apply_shop_action_logic;在屏前置 = gs.shop.value is not None,
-        # 离屏 = 观察层失约抛错(黑板契约容器化等价物)。
+        # 驱动器同路(W6 波 4,设计件 §2.2-3):决策读容器单例 + 期望态
+        # 推进 = 逐动作直调上报函数(动作 op 重组批④:快照三件组内聚,
+        # 双抄写段退役)。在屏前置 = gs.shop.value is not None,离屏 =
+        # 观察层失约抛错(黑板契约容器化等价物)。
         gs = self.gs
         if gs.shop.value is None:
             raise ValueError(
@@ -277,22 +289,12 @@ class MandateV1Strategy(CwFlowStrategy):
         # 变性段,入口 +1 使上一 visit/上一域残留 token/闩按序号不等失效。
         self.state.cw4_segment_serial += 1
         out: list = []
-        _pre_bench: list = []
-        _pre_dep: list = []
-        _pre_shop: list | None = None
         for _ in range(512):   # 防御上界:决策循环不收敛 = 策略器 bug 响亮暴露
             a = self.decide_shop_action()   # 零参单动作核(终态契约 §2.1)
             if isinstance(a, cw_state.CwActionCloseShopParam):
                 return out
             if isinstance(a, (cw_state.CwActionBuyCardParam,)):
                 self.state.cw4_visit_bought_names.append(a.card.name or '')
-                # 买前快照三件组(升星腿 scratch 基点;必须在直写口写之前
-                # 取,失准形态申报见 apply_shop_merge_leg docstring)。
-                _pre_bench = list(bench_slots_of(gs))
-                _pre_dep = list(deployed_slots_of(gs))
-                _payload_now = gs.shop.value
-                _pre_shop = (shop_payload_content_cards(_payload_now)
-                             if _payload_now is not None else [])
             out.append(a)
             # T-82 续段 token 写入(sim/replay 驱动器位):驱动器采纳并
             # append = 动作确认执行(终结 op 由引擎执行后重观察,其执行
@@ -303,21 +305,21 @@ class MandateV1Strategy(CwFlowStrategy):
             if isinstance(a, cw_state.CwActionRefreshShopParam):
                 return out      # 终结 op:序列到止(重观察语境;原
                 # CompTransaction 邻接终结已随批2b R3 删除)
-            # 逻辑态直写推进 = apply_shop_action_logic(设计件 §2.2-3 驱动器同路;
-            # 回执 kernel 判据派生,单动作核逐帧恰一动作 = 击数恒 1)。
-            _exec = ShopActionExecuted(
-                bought_count=1 if isinstance(a, cw_state.CwActionBuyCardParam) else None,
-                levelup_clicks=1 if isinstance(a, cw_state.CwActionLevelUpParam) else None,
-                refresh_paid=(int(getattr(a, 'cost', 0) or 0)
-                              if isinstance(a, cw_state.CwActionRefreshShopParam) else None))
-            apply_shop_action_logic(gs, a, executed=_exec,
-                                    produced_by=type(a).__name__, sig=_sig)
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                apply_shop_merge_leg,
-            )
-            # 升星腿对非 CwActionBuyCardParam 自 no-op,pre_* 透传即可。
-            apply_shop_merge_leg(gs, a, sig=_sig, pre_bench=_pre_bench,
-                                 pre_deployed=_pre_dep, pre_shop=_pre_shop)
+            # 期望态推进 = 逐动作直调上报函数(引擎入口委托分支串,
+            # design.md §2;单动作核逐帧恰一动作 = 击数恒 1)。
+            if isinstance(a, cw_state.CwActionBuyCardParam):
+                report_action_buy_card_param(gs, a, _sig)
+            elif isinstance(a, cw_state.CwActionSellBenchParam):
+                report_action_sell_bench_param(gs, a, _sig)
+            elif isinstance(a, cw_state.CwActionSellDeployedParam):
+                report_action_sell_deployed_param(gs, a, _sig)
+            elif isinstance(a, cw_state.CwActionSwapDeployParam):
+                report_action_swap_deploy_param(gs, a, _sig)
+            elif isinstance(a, (cw_state.CwActionLevelUpParam,
+                                cw_state.CwActionLevelUpShopParam)):
+                report_action_level_up_param(
+                    gs, a, _sig,
+                    executed=ShopActionExecuted(levelup_clicks=1))
         from sr_od.application.currency_war.kernel.cw_game_state import (
             bench_is_full,
             gold_of,

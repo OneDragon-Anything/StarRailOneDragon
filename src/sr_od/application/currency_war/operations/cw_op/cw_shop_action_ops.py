@@ -3,7 +3,7 @@
 动作基类单方法(execute;原 execute+project 两方法契约(ADR-0517 决策 10)
 的 project 半已删——T-163 纯规则路线裁定(用户 2026-09-12):策略与实机
 操作链零 simulate 前瞻消费,期望态推进改走容器逻辑态直写
-(``apply_shop_action_logic`` 简单腿 + ``apply_shop_merge_leg`` 合成升星腿,
+(上报函数族单点,kernel/cw_action_report;
 kernel 规则单一源,与序列驱动器同形;写语义由投影直锁钉
 (锁 M1,test_cw_shop_projection_logic)):
 

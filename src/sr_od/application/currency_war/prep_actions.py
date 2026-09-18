@@ -502,10 +502,10 @@ class PrepActionExecutor:
         公式单一源与边界:
         - ``CwActionSellBenchParam``/``CwActionSellDeployedParam`` = +sell_refund(星×招募费;对象 =
           dispatch 前快照,费单一源 = kernel ``bench_char_cost``——与容器
-          逻辑态写口 apply_prep_action_logic 同式;身份不可辨 = None 诚实
+          上报函数(report_action_sell_*)同式;身份不可辨 = None 诚实
           缺失,不做保守估值假账,观察覆盖兜底);
         - ``CwActionLevelUpParam`` = 0(批2b 翻转:金腿切 ``action.cost`` 直写,唯一
-          写点 = apply_prep_action_logic CwActionLevelUpParam 分支;原执行缝金差
+          写点 = 买经验自上报(report_action_level_up_param);原执行缝金差
           ``_last_levelup_spent`` 通道随翻转退役,防双记);
         - ``CwActionClickSpheresParam`` = None(球金通道随机,执行点不可推算——声明
           盲区,观察覆盖兜底,禁拍值);
@@ -513,7 +513,7 @@ class PrepActionExecutor:
         ``None`` 与 0 的消费语义:仅非 None 非 0 进回执 extra 金差键
         (回执留证);**容器金账不经本值直推**——统一观察对账迭代
         (2026-09-16 归因批)退役执行缝直推腿,卖出/花金容器唯一写点 =
-        ``apply_prep_action_logic`` 对应分支,防双腿双记(实机 −2 倒挂
+        卖出自上报(report_action_sell_*),防双腿双记(实机 −2 倒挂
         实证)。None = 该动作本拍金账留观察覆盖。
         """
         if not emitted:

@@ -29,11 +29,11 @@ kernel/cw_intention.py ``committed_authority`` 形态注)已兑现。
 
 策略为纯规则路线(用户裁定 2026-09-12):规则直接产出动作,决策零模拟
 试探。原单步动作应用器 ``simulate``(整帧副本纯函数)已删除——期望态
-推进单一源 = 容器逻辑态直写(``cw_game_state.apply_shop_action_logic``
+推进单一源 = 容器逻辑态直写(kernel/cw_action_report 上报函数族
 + 合成升星腿);动作语义验证 = 投影直锁(M1,test_cw_shop_projection_logic):
 - 现役策略(mandate_v1)决策 = mandate_v1/shop.decide_shop_action
   (容器读,纯规则分支),期望态推进 = 容器逻辑态直写
-  (``cw_game_state.apply_shop_action_logic`` + 合成升星腿)。
+  (上报函数族,合成升星腿内聚 buy_card 上报)。
 
 字段多由 sim 环境剧本/重放档案构造填充;未填(None/默认)时决策安全降级。
 
@@ -1190,7 +1190,7 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
     本函数**就地改** bench/deployed 两个列表,只做身份/星级/站位转移(buy→bench+merge / deploy→deployed /
     sell→置 None),供运行时执行点(shop.buy / deploy_bench verify / _handle_bench_full sell)同步
     ``session.bench``/``session.deployed``。gold/shop/XP 期望态不在此辖:
-    容器逻辑态直写 = ``apply_shop_action_logic``(动作语义单一源,避双源漂移)。
+    容器逻辑态直写 = 上报函数族(report_action_<snake>_param,动作语义单一源,避双源漂移)。
     ADR-0316/0392:bench/deployed 均为槽位表(定长 9/10,None=空槽)——入口防御性 pad。
     CwActionLevelUpParam/CwActionRefreshShopParam/CwActionPickEventParam 不影响 bench/deployed → no-op。
 

@@ -45,7 +45,7 @@ def _clear_shop_payload(op: SrOperation) -> None:
     「CwOpCloseShop 完成承诺含商店族字段清理」)。
 
     Why: ``proj_buy_payload`` 买后 logic 态的唯一既有清场写端 =
-    ``apply_shop_action_logic`` 的 CwActionCloseShopParam 分支(``leave_screen``),但
+    关店上报(report_action_close_shop_param,``leave_screen``),但
     生产链 CwActionCloseShopParam 被「终结不入序列」约定截在决策驱动器外
     (decide_shop_screen 收尾 return,不进 apply),机械关店只点按钮不喂
     kernel → 买后 payload 跨轮残留,下轮开店帧实读证伪 → 安灯停局

@@ -693,7 +693,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     - 决策循环(零读屏,决策 1/8):``decide_shop_action`` 每次恰返回一个
       动作 → proposal 守卫(``guard_proposal_vs_expected``,防策略器算术
       bug)→ 执行(动作 op ``execute``,观测通道候选 a
-      遥测在内)→ 容器逻辑态直写推进期望态(``apply_shop_action_logic``
+      遥测在内)→ 容器逻辑态直写推进期望态(op 自上报,上报函数族
       简单腿 + 合成升星腿;T-163 起零 simulate 前瞻消费)。tracked 未观察
       时策略门返回 CwActionCloseShopParam = 跳过访问,留痕与熔断见段顶/出口注(T-268)。
     - 终结 op(CwActionRefreshShopParam/CwActionCloseShopParam):执行即本段结束。刷新终结 = 交回

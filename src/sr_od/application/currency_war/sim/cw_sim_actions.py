@@ -3,27 +3,53 @@
 设计正本 = ``docs/develop/sr_od/application/currency_war/changes/
 2026-09-15-sim-redesign/design.md`` §2.2 M07/M08/M09:
 
-- **动作应用单一源**:买/卖/刷/升级/换位全部经 kernel 单一转移函数
-  ``apply_shop_action_logic``(拒绝语义在腿内,``LogicOutcome`` 出参;
-  禁引擎自判拒绝);部署 = ``CwActionDeployMoveParam`` 经 ``apply_prep_action_logic``
-  (kernel 平移契约:CwActionDeployMoveParam 不入商店转移口)。满栏合成买/连锁合成
-  在转移函数内(sim 传 ``executed=None`` 自算 k;刷新实付金由引擎侧
-  ``refresh_paid`` 显式喂——免费刷额度先行的申报差异 #2 参数通道);
+- **动作应用单一源**:动作语义全部住 kernel 上报函数族
+  (kernel/cw_action_report,每动作一个具名接口);本入口 = 「一行委托
+  分支串」引擎(动作 op 重组批④,design.md §2——分派只允许出现在
+  手里攥着任意 param 流的引擎入口);拒绝语义在腿内(``LogicOutcome``
+  出参,禁引擎自判拒绝);部署 = ``CwActionDeployMoveParam`` 同串直调
+  上报函数。sim 自喂 ``executed`` 决定量(refresh_paid = refresh_cost_for、
+  levelup_clicks=1;买牌 k 自算,满栏合成买在函数内);
 - **LEVEL_CAP 分歧反转**(§2.4.2):真值 cap=10、lv10 拒付(旧 sim
-  冻结 lv9 的 sim-only 差异删除);kernel 转移函数满级门单一源即
+  冻结 lv9 的 sim-only 差异删除);kernel 上报函数满级门单一源即
   ``MAX_PLAYER_LEVEL=10``,本模块不再设第二把尺;
 - **XP 权威账本在引擎**(M08,机制口径 = ``research/xp-rules.md``):
   节点基础经验 战斗/奖励/遭遇 +2、补给 +0、BOSS +12(U17 定稿口径:
   位面末一次性);**买牌不产经验**(M08 机制口径;旧引擎「买牌累加
   XP」口径随重做废弃);升级结转规则与 ``xp_apply_clicks`` 单一源
   同式,通用量版(节点经验含非 4 倍数)在本模块承载;
-- 升级不触发刷新 / 买后槽位留空不紧缩 = 转移函数与发牌面既有语义,
+- 升级不触发刷新 / 买后槽位留空不紧缩 = 上报函数与发牌面既有语义,
   引擎相位机承载。
 """
 from __future__ import annotations
 
+from sr_od.application.currency_war.kernel.cw_action_report.buy_card import (
+    report_action_buy_card_param,
+)
+from sr_od.application.currency_war.kernel.cw_action_report.close_shop import (
+    report_action_close_shop_param,
+)
+from sr_od.application.currency_war.kernel.cw_action_report.deploy_move import (
+    report_action_deploy_move_param,
+)
+from sr_od.application.currency_war.kernel.cw_action_report.level_up import (
+    report_action_level_up_param,
+)
+from sr_od.application.currency_war.kernel.cw_action_report.level_up_shop import (
+    report_action_level_up_shop_param,
+)
 from sr_od.application.currency_war.kernel.cw_action_report.refresh_shop import (
     record_refresh_execution,
+    report_action_refresh_shop_param,
+)
+from sr_od.application.currency_war.kernel.cw_action_report.sell_bench import (
+    report_action_sell_bench_param,
+)
+from sr_od.application.currency_war.kernel.cw_action_report.sell_deployed import (
+    report_action_sell_deployed_param,
+)
+from sr_od.application.currency_war.kernel.cw_action_report.swap_deploy import (
+    report_action_swap_deploy_param,
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
     MAX_PLAYER_LEVEL,
@@ -33,12 +59,18 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     LogicOutcome,
     ShopActionExecuted,
-    apply_prep_action_logic,
-    apply_shop_action_logic,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
+    CwActionBuyCardParam,
+    CwActionCloseShopParam,
     CwActionDeployMoveParam,
+    CwActionLevelUpParam,
+    CwActionLevelUpShopParam,
+    CwActionRefreshShopParam,
+    CwActionSellBenchParam,
+    CwActionSellDeployedParam,
+    CwActionSwapDeployParam,
 )
 from sr_od.application.currency_war.sim.cw_sim_base import (
     logic_sig,
@@ -63,33 +95,51 @@ NODE_XP_PENDING_U17: str = 'node_xp_pending_u17'
 
 def apply_player_action(gs: GameState, action: CwAction, *,
                         node_tag: str = 'prep') -> LogicOutcome | None:
-    """玩家动作 → 单一转移函数应用(sim 引擎唯一动作入口)。
+    """玩家动作 → 上报函数委托分支串(sim 引擎唯一动作入口;动作 op 重组
+    批④,design.md §2——分派只允许出现在引擎入口,逐类型一行委托)。
 
-    - 商店族(CwActionBuyCardParam/CwActionSellBenchParam/CwActionSellDeployedParam/CwActionSwapDeployParam/CwActionLevelUpShopParam/
-      CwActionRefreshShopParam/CwActionCloseShopParam):经 ``apply_shop_action_logic``;刷新实付
-      金 = ``refresh_cost_for``(免费刷额度先行)显式喂 ``executed``;
-      买牌 k 自算(满栏合成买在转移函数内);CwActionLevelUpShopParam 击数恒 1
-      (单动作形态,腾席链多击归策略器多发动作)。
-    - ``CwActionDeployMoveParam``:经 ``apply_prep_action_logic``(无出参,返 None;
-      同名守卫/落位拒绝在腿内)。
-    - 应用成功且为刷新 → 刷新执行事实组记账(§3.3.6-8:免费帧闸)。
+    - ``CwActionDeployMoveParam``:直调上阵上报(出参忽略,返 None;
+      陈旧提案守卫/落位拒绝在腿内)。
+    - 商店族(买/卖备战/卖上阵/换位/购买经验含商店屏双类型/刷新/关店):
+      逐类型直调对应上报函数;sim 自喂 ``executed`` 决定量——刷新实付金
+      = ``refresh_cost_for``(免费刷额度先行),购买经验击数恒 1(单动作
+      形态,腾席链多击归策略器多发动作),买牌 k 自算(满栏合成买在
+      函数内)。
+    - 应用成功且为刷新 → 刷新执行事实组记账(§3.3.6-8:免费帧闸;
+      record_refresh_execution 挂 outcome.applied 原位保留)。
+    - 词表外/集外动作 = applied=False 'unsupported_action_type'(原聚合
+      口拒绝语义逐位平移,禁静默吞)。
     """
+    sig = logic_sig(group_id=f'act:sim@{node_tag}')
     if isinstance(action, CwActionDeployMoveParam):
-        apply_prep_action_logic(gs, action, produced_by='SimEngineV2',
-                                sig=logic_sig(group_id=f'act:sim@{node_tag}'))
+        report_action_deploy_move_param(gs, action, sig)
         return None
-    paid: int | None = None
-    from sr_od.application.currency_war.kernel.cw_vocab import CwActionRefreshShopParam
+    executed = ShopActionExecuted(levelup_clicks=1)
+    if isinstance(action, CwActionBuyCardParam):
+        return report_action_buy_card_param(gs, action, sig, executed=executed)
+    if isinstance(action, CwActionSellBenchParam):
+        return report_action_sell_bench_param(gs, action, sig)
+    if isinstance(action, CwActionSellDeployedParam):
+        return report_action_sell_deployed_param(gs, action, sig)
+    if isinstance(action, CwActionSwapDeployParam):
+        return report_action_swap_deploy_param(gs, action, sig)
+    if isinstance(action, CwActionLevelUpShopParam):
+        return report_action_level_up_shop_param(gs, action, sig,
+                                                 executed=executed)
+    if isinstance(action, CwActionLevelUpParam):
+        return report_action_level_up_param(gs, action, sig, executed=executed)
     if isinstance(action, CwActionRefreshShopParam):
-        paid = refresh_cost_for(gs)
-    outcome = apply_shop_action_logic(
-        gs, action, produced_by='SimEngineV2',
-        sig=logic_sig(group_id=f'act:sim@{node_tag}'),
-        executed=(ShopActionExecuted(refresh_paid=paid, levelup_clicks=1)
-                  if paid is not None else ShopActionExecuted(levelup_clicks=1)))
-    if outcome.applied and paid is not None:
-        record_refresh_execution(gs, free=(paid == 0), frame=node_tag)
-    return outcome
+        executed = ShopActionExecuted(
+            refresh_paid=refresh_cost_for(gs), levelup_clicks=1)
+        outcome = report_action_refresh_shop_param(gs, action, sig,
+                                                   executed=executed)
+        if outcome.applied:
+            record_refresh_execution(gs, free=(executed.refresh_paid == 0),
+                                     frame=node_tag)
+        return outcome
+    if isinstance(action, CwActionCloseShopParam):
+        return report_action_close_shop_param(gs, action, sig)
+    return LogicOutcome(applied=False, reason='unsupported_action_type')
 
 
 def xp_apply_amount(level: int, xp_cur: int, amount: int) -> tuple[int, int]:

@@ -628,7 +628,7 @@ def _launch_frame_arbitration(op) -> dict:
             # ``gold_of``(缺省 0 镜像,与原 ``int(... or 0)`` 兜底同型
             # 零行为差;禁裸 gs.gold.value 引入 None 形态行为差)——黑板
             # 槽退役后闸与决策同读容器,逐动作逻辑态回写经
-            # apply_shop_action_logic 承接,同帧同值语义不变。
+            # 上报函数族承接,同帧同值语义不变。
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 game_state_of,
                 gold_of,

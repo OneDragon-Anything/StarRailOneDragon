@@ -548,7 +548,7 @@ def _seed_frame_axes(session: StrategySession) -> tuple[
       段入口粒度对轮/位面恒安全);
     - **bench 轴 = gs.bench**(prep 帧观察值 + visit 内逻辑态直写)。原
       「双帧并集」的活性闭合语义由容器活值天然承载:逐动作逻辑态直写
-      (apply_shop_action_logic bench 域)使店内新鲜买入即时在席,
+      (卖出自上报 bench 域)使店内新鲜买入即时在席,
       last_state 段入口滞后窗与逻辑态帧 prep 语境滞留窗一并消亡——
       对抗审发现 1(新鲜种子账被活性闭合在获取 visit 内就地销毁)的
       防线由容器活值续承。
