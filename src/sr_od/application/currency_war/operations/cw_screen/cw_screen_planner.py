@@ -246,7 +246,7 @@ class CwScreenPlanner(CwScreenOpBase):
             OverlayPickExecEnv,
         )
         _env = OverlayPickExecEnv(op=self, target=target)
-        action_op_for(pick).execute(_env)
+        action_op_for(pick, self.ctx, _env).execute()
         return _env.round_result
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----

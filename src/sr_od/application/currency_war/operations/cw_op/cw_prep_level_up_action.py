@@ -1,52 +1,69 @@
-"""买经验动作 op(PrepLevelUpOp)——备战域动作文件(统一动作工厂批3 体迁:
-体自 ``prep_actions.py::PrepActionExecutor._level_up`` 逐字迁移,原方法改
-薄委托保持替身缝,design.md unified-action-factory §2.4)。
+"""买经验动作 op(CwActionLevelUpOp)——动作 op 重组批③ 换壳(原
+``PrepLevelUpOp``,ActionOp ABC → 框架 SrOperation;机械执行后 **op 内
+直调自己的上报函数** ``report_action_level_up_param``,零分派,design.md
+§1.1/§1.2)。R6 定案④逐帧单击形态。非终结。
 
-R6 定案④逐帧单击形态(批2 定形,本批只迁形)。命名申报:词表类
-``CwActionLevelUpParam`` 的本域 op 不可与商店域 ``cw_level_up_action.LevelUpOp`` 同名
-同包(批1 注册行更替为备战 op;``CwActionLevelUpShopParam`` is-a ``CwActionLevelUpParam`` 经
-is-a 兜底同解析本 op),冠 ``Prep`` 前缀区分域。非终结。
+命名申报:``CwActionLevelUpParam``/``CwActionLevelUpShopParam`` 同字段双
+类型共用本 op(注册表两行同指,上报 = 同一函数;原商店域
+``cw_level_up_action.LevelUpOp`` 生产不可达,随批③文件删除)。
 """
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 from one_dragon.base.geometry.point import Point
+from one_dragon.base.operation.operation_node import operation_node
+from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_action_report.level_up import (
+    report_action_level_up_param,
+)
 from sr_od.application.currency_war.kernel.cw_economy import (
     XP_CLICK_COST_FALLBACK,
 )
-from sr_od.application.currency_war.kernel.cw_obs_core import area_center
-from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
-    ActionOp,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
+    game_state_from_ctx,
 )
+from sr_od.application.currency_war.kernel.cw_obs_core import area_center
+from sr_od.application.currency_war.kernel.cw_vocab import CwActionLevelUpParam
+from sr_od.context.sr_context import SrContext
+from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
 
-class PrepLevelUpOp(ActionOp):
+class CwActionLevelUpOp(SrOperation):
     """买经验(R6 逐帧单击形态:找钮 → 单击 → 固定等待,零授权零计数)。
     非终结。"""
 
-    def execute(self, env: PrepExecEnv) -> bool:
-        """买经验(R6 逐帧单击形态:找钮 → 单击 → 固定等待,零授权零计数)。
+    #: 非终结动作(每类显式声明,无基类缺省)。
+    terminal = False
+    terminal_wait = 0.0
 
-        执行器授权面全删(design.md unified-action-factory §2.6 CwActionLevelUpParam
-        粒度定案):授权击数推导/血闸整级授权/逐击金地板全部上移发射位
-        (kernel ``clicks_to_next_level`` 现算击数 > 0 = 每帧发射前置;
-        spend_unified / levelup_budget_gate / posture 血闸 = 决策核发射门)。
-        升 N 击 = N 帧(决策循环逐帧重组,与商店域单击形态
-        ``cw_level_up_action`` 同构先例)。
+    def __init__(self, ctx: SrContext, param: CwActionLevelUpParam,
+                 env: PrepExecEnv):
+        SrOperation.__init__(self, ctx, op_name='CwActionLevelUpOp',
+                             need_check_game_win=False)
+        self.param = param
+        self.env = env
 
-        金腿 = 容器逻辑态直写(批2b 翻转定案):金账唯一写点 =
-        ``apply_prep_action_logic`` CwActionLevelUpParam 分支按 ``action.cost`` 扣减
-        (cost = 发射面 xp_click_cost 现算装载);原 2a 中间态执行缝金差
-        (``_last_levelup_spent`` → ``_executed_gold_delta``)随翻转退役。
-        单击价本处现算仅作 detail 显影(与发射面同源 kernel 读口)。
-        经验/等级真值 = 下一帧观察对账族 + 逻辑态 xp/level 推进
-        (``apply_prep_action_logic`` CwActionLevelUpParam 分支)双通道。
+    @operation_node(name='level_up', is_start_node=True)
+    def run(self) -> OperationRoundResult:
+        """买经验单击(R6 逐帧单击形态:找钮 → 单击 → 固定等待)。
+
+        执行器授权面全删(design.md unified-action-factory §2.6 粒度定案):
+        授权击数推导/血闸整级授权/逐击金地板全部上移发射位(kernel
+        ``clicks_to_next_level`` 现算击数 > 0 = 每帧发射前置)。升 N 击 =
+        N 帧(决策循环逐帧重组,单击形态)。
+
+        经验/等级/金真值 = 上报函数单点直写(单击击数自算 = 1;金腿 =
+        ``action.cost`` 直写,cost = 发射面 xp_click_cost 现算装载)+ 下一帧
+        观察对账族双通道。单击价本处现算仅作 detail 显影。
         """
+        action: CwActionLevelUpParam = self.param
+        env = self.env
         ex = env.executor
         match = ex._ctx.cw_match
         session = match.session if match is not None else None
@@ -75,8 +92,14 @@ class PrepLevelUpOp(ActionOp):
                 game_state_of(session).effects.on_level_up()
         except Exception as e:   # noqa: BLE001  观测失败不阻塞对局
             log.warning('[cw][levelup] effect inventory 挂点失败(不阻塞): %s', e)
+        # —— 自上报(机械发出后;design.md §1.1):单击击数自算 = 1 ——
+        gs = game_state_from_ctx(self.ctx)
+        if gs is not None:
+            report_action_level_up_param(
+                gs, action,
+                ChannelSig(family='logic_action',
+                           actor=type(self).__name__, mode='compute'))
         detail = (f'买经验单击 1 击花金{_price}'
                   '(逐帧单击形态;级真值=下一帧观察 reconcile)')
         log.info(f'[cw][levelup] {detail}')
-        env.detail, env.emitted = detail, True
-        return True
+        return self.round_success(detail)

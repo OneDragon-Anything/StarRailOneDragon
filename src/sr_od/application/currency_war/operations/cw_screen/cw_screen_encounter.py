@@ -403,11 +403,11 @@ class CwScreenEncounter(CwScreenOpBase):
 
     def _confirm_default(self, idx: int) -> OperationRoundResult:
         """现役确认链缺省执行体 → 薄委托(统一动作工厂批4:体迁
-        ``cw_overlay_pick_action.EncounterPickOp``,经工厂 ``action_op_for``
-        分派,替身缝保留;机械语义 docstring 随体:点卡选中(screen_info
-        坐标缺失走历史实测兜底常量)→ 确认机械交回,验证废除——落地由
-        handle 顶部重入裁决承载)。自身**不触发**注册表触发点(刷新发射
-        归 ``_emit_refresh_click``,防双计)。"""
+        ``cw_overlay_pick_action.CwActionPickEncounterOp``,经工厂
+        ``action_op_for`` 分派,替身缝保留;机械语义 docstring 随体:点卡
+        选中(screen_info 坐标缺失走历史实测兜底常量)→ 确认机械交回,
+        验证废除——落地由 handle 顶部重入裁决承载)。自身**不触发**注册表
+        触发点(刷新发射归 ``_emit_refresh_click``,防双计)。"""
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
@@ -417,7 +417,8 @@ class CwScreenEncounter(CwScreenOpBase):
         env = OverlayPickExecEnv(op=self)
         # 派发实例 = 生效选中下标的规范实例(决策半钳位后的 idx;策略 pick
         # 缺席/越界时本实例即唯一载体——工厂按类型解析,机械参数随实例)。
-        action_op_for(CwActionPickEncounterParam(idx=idx)).execute(env)
+        action_op_for(CwActionPickEncounterParam(idx=idx), self.ctx,
+                      env).execute()
         return env.round_result
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 2,先例 = CwScreenPrep)----

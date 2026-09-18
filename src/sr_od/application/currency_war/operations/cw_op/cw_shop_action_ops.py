@@ -225,9 +225,8 @@ def bench_layout_stale(session, seed_epoch: int) -> bool:
     return game_state_of(session).exec_books.bench_layout_epoch != seed_epoch
 
 
-# 商店单动作 op 族住动作文件:通用基类 ActionOp = cw_action_base.py
-# (批1 自 ShopActionOp 升格);六动作 = 各自 cw_<action>_action.py;
-# 词表→op 工厂 = cw_action_registry.py(单一注册表,批1 自
-# cw_shop_actions 迁入,消费面 shop_action_op_for 转薄委托)。本文件 =
-# 账本+守卫+执行支撑(ShopExecEnv/ShopVisitLedger 单一源;ShopExecEnv
-# 以公共字段 op/match/config 结构化满足 ActionExecEnv 协议)。
+# 商店单动作 op 族住动作文件:动作 op = CwActionXxxOp(SrOperation,批③
+# 换壳;原 ActionOp ABC 随动作 op 重组退役)。六动作 = 各自
+# cw_<action>_action.py;词表→op 工厂 = cw_action_registry.py(单一注册
+# 表)。本文件 = 账本+守卫+执行支撑(ShopExecEnv/ShopVisitLedger 单一源;
+# ShopExecEnv 为 op 构造的域执行环境结构化包,批③起构造时传入)。

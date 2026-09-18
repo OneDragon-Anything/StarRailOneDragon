@@ -28,7 +28,6 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     SphereSight,
-    apply_prep_action_logic,
     game_state_of,
     gs_of_ctx,
     shop_payload_content_cards,
@@ -79,20 +78,17 @@ from sr_od.application.currency_war.obs.cw_shop_obs import (
     compare_merge_preview,
     refresh_expect,
 )
-from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
-    ActionOp,
-)
 from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
     action_op_class_for,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_open_box_action import (
-    OpenBoxOp,
+    CwActionOpenBoxOp,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_open_shop_action import (
-    OpenShopOp,
+    CwActionOpenShopOp,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_start_battle_action import (
-    StartBattleOp,
+    CwActionStartBattleOp,
 )
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
     CwScreenOpBase,
@@ -1241,18 +1237,11 @@ class CwScreenPrep(CwScreenOpBase):
             _op_cls = action_op_class_for(action)
             if _op_cls.terminal:
                 return self._terminal_exit(action, key, _op_cls)
-            # —— 逻辑态直写(kernel 写口统一调用,ADR-0517 决策 7/10;
-            #      迭代阶段 3.5 拓扑迁移:动作后逻辑态唯一更新点 =
-            #      apply_prep_action_logic,原 _project_prep_obs 黑板腿随
-            #      gs.prep_obs 退役删除,词表外 AssertionError 防线随迁写口。
-            #      假黑板风险由下一入口 heavy reconcile 以实读纠逻辑态承担。
-            #      R9:词表逐动作有逻辑态分支,保守回退分支已删——词表外 =
-            #      响亮暴露)
-            apply_prep_action_logic(
-                game_state_of(session), action,
-                produced_by='CwScreenPrep',
-                sig=ChannelSig(family='logic_action',
-                               actor='CwScreenPrep'))
+            # —— 动作逻辑态直写已随动作 op 重组批③ 收编进 op 自上报
+            #      (op 内直调自己的上报函数,design.md §1.1/§1.3):本环
+            #      原按 apply_prep_action_logic 的直写调用删除 = 双记防线
+            #      (op 已写,本处再写即双记)。假账风险仍由下一入口
+            #      heavy reconcile 以实读纠逻辑态承担(观察赢)。
             # 直写帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
             _mark_frame_class(session, 'prep', 'none')
         # 访问动作数上限(防御:决策循环不收敛 = 逻辑态或策略 bug,交回外循环
@@ -1413,15 +1402,9 @@ class CwScreenPrep(CwScreenOpBase):
             _op_cls = action_op_class_for(action)
             if _op_cls.terminal:
                 return self._terminal_exit(action, key, _op_cls)
-            # —— 逻辑态直写(kernel 写口统一调用,ADR-0517 决策 7/10;
-            #      迭代阶段 3.5 拓扑迁移,与读屏路径孪生环同构——原
-            #      `_project_prep_obs` 黑板腿随 gs.prep_obs 退役删除;R9:
-            #      词表逐动作有逻辑态分支,词表外 = 响亮暴露)
-            apply_prep_action_logic(
-                game_state_of(session), action,
-                produced_by='CwScreenPrep',
-                sig=ChannelSig(family='logic_action',
-                               actor='CwScreenPrep'))
+            # —— 动作逻辑态直写已随动作 op 重组批③ 收编进 op 自上报
+            #      (与读屏路径孪生环同构,design.md §1.1/§1.3):本环原
+            #      apply_prep_action_logic 直写调用删除 = 双记防线。
             # 直写帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
             _mark_frame_class(session, 'prep', 'none')
         # 访问动作数上限(防御:决策循环不收敛 = 逻辑态或策略 bug,交回外循环
@@ -1430,7 +1413,7 @@ class CwScreenPrep(CwScreenOpBase):
             f'访问动作数达上限({self.VISIT_ACTION_CAP}),交回外循环重观察', wait=1.0)
 
     def _terminal_exit(self, action: CwAction, key: str,
-                       op_cls: type[ActionOp]) -> OperationRoundResult:
+                       op_cls: type[SrOperation]) -> OperationRoundResult:
         """终结动作交回(批3 终结判定对齐):终结判定与等待时长改读
         注册表 op 类 ``terminal``/
         ``terminal_wait`` 类属性(消费点经注册表读类属性,禁消费点私表;
@@ -1440,21 +1423,21 @@ class CwScreenPrep(CwScreenOpBase):
         调用契约 = 仅 ``op_cls.terminal`` 为真时进入(两处调用点同守卫);
         非终结动作到达 = 终结集与消费面失配,响亮暴露。
         """
-        if op_cls is StartBattleOp:
+        if op_cls is CwActionStartBattleOp:
             # 出战提前终结(批3a:发出即终结——点击序列完成即交回外循环
             # 战斗分支;点击序列事实经执行器 last_launch_ok 旁路供 cw_loop
             # 发射核,出战域重设计 T-286 收缩语义)。
             return self.round_success('出战(交回外循环战斗分支)',
                                       wait=op_cls.terminal_wait)
-        if op_cls is OpenShopOp:
+        if op_cls is CwActionOpenShopOp:
             # 开店切商店画面(非帧稳定)→ 终结,交回外循环重识别
             return self.round_success(f'{key} ✓,交回外循环重识别',
                                       wait=op_cls.terminal_wait)
-        if op_cls is OpenBoxOp:
+        if op_cls is CwActionOpenBoxOp:
             # CwActionOpenBoxParam 终结化(R7,批2a):开箱即引入新事实(武装箱选择画面
             # 出现,与刷新终结结构语义 R5 同构)→ 本访问交回,外循环按
             # 武装箱选择画面分发新画面 op 选卡。交回等待 =
-            # OpenBoxOp.terminal_wait(与 ``_open_box`` 动画等待
+            # CwActionOpenBoxOp.terminal_wait(与 ``_open_box`` 动画等待
             # ``_OVERLAY_ANIM_WAIT_S`` 等价,等价测试锁 = test_cw_unified_action_3)。
             return self.round_success(f'{key} ✓(交回:武装箱选择画面分发)',
                                       wait=op_cls.terminal_wait)

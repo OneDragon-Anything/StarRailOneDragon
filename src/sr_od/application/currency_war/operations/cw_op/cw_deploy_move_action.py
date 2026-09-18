@@ -1,51 +1,67 @@
-"""部署动作 op(DeployMoveOp)——备战域动作文件(统一动作工厂批3 体迁:
-体自 ``prep_actions.py::PrepActionExecutor._deploy_move`` 逐字迁移,原
-方法改薄委托保持替身缝,design.md unified-action-factory §2.4)。
-
-bench → 上阵单步拖拽(腾席链专用;R2 原子通路发射形态 = 决策核逐帧
-按 kernel 计划逐 move 发本动作)。非终结。
+"""部署动作 op(CwActionDeployMoveOp)——动作 op 重组批③ 换壳(原
+``DeployMoveOp``,ActionOp ABC → 框架 SrOperation;机械执行后 **op 内
+直调自己的上报函数** ``report_action_deploy_move_param``,零分派,
+design.md §1.1/§1.2)。bench → 上阵单步拖拽(腾席链专用)。非终结。
 
 机械执行零判效(用户裁定「动作 op = 机械执行」,落地判定归观察侧
-reconcile 对账):发出即记账(tracked 记上阵),拖后不做像素验证。
-拖拽静默不生效属执行环境噪声,由下一入口 heavy 实读对账显影(账实
-失配 → 安灯停 → 按真 bug 修),重试 = 决策循环按新观察自然重派。
+reconcile 对账):拖后不做像素验证。拖拽静默不生效属执行环境噪声,由
+下一入口 heavy 实读对账显影,重试 = 决策循环按新观察自然重派。
 """
 from __future__ import annotations
 
 import time
 from typing import TYPE_CHECKING
 
+from one_dragon.base.operation.operation_node import operation_node
+from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_action_report.deploy_move import (
+    report_action_deploy_move_param,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
+    game_state_from_ctx,
     game_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionDeployMoveParam
-from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
-    ActionOp,
-)
+from sr_od.context.sr_context import SrContext
+from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
 
-class DeployMoveOp(ActionOp):
-    """bench → 上阵单步拖拽(腾席链专用;统一词表 CwActionDeployMoveParam)。非终结。"""
+class CwActionDeployMoveOp(SrOperation):
+    """bench → 上阵单步拖拽(腾席链专用;统一词表 CwActionDeployMoveParam)。
+    非终结。"""
 
-    def execute(self, env: PrepExecEnv) -> bool:
-        """bench → 上阵单步拖拽(腾席链专用;统一词表 CwActionDeployMoveParam)。
+    #: 非终结动作(每类显式声明,无基类缺省)。
+    terminal = False
+    terminal_wait = 0.0
+
+    def __init__(self, ctx: SrContext, param: CwActionDeployMoveParam,
+                 env: PrepExecEnv):
+        SrOperation.__init__(self, ctx, op_name='CwActionDeployMoveOp',
+                             need_check_game_win=False)
+        self.param = param
+        self.env = env
+
+    @operation_node(name='deploy_move', is_start_node=True)
+    def run(self) -> OperationRoundResult:
+        """bench → 上阵单步拖拽。
 
         执行坐标边:源拖点 = ``bench_idx`` 备战栏 area 序直取(容器下标 =
         area 序,零换算);落位排 = ``to_row``,落位物理槽 = tracked 占用
-        现读首空位(kernel ``empty_deploy_slots`` 单一源,与发射位
-        ``assign_deploy_slots`` 选排规则逐位同构——首选排满 fallback 另一排)。
-        两排全满 = 未发出(False,观察重派);faction 字段不入执行(sim
-        board 计数消费)。
+        现读首空位(kernel ``empty_deploy_slots`` 单一源,与上报函数
+        ``deployed_place`` 选排规则逐位同构——首选排满 fallback 另一排)。
+        两排全满 = 未发出(round_fail,观察重派);faction 字段不入执行。
 
         发出即记账(用户裁定「动作 op = 机械执行」):拖拽发出后 tracked
-        记上阵;拖后零落地判定,静默不生效由下一入口观察对账显影,重试 =
-        决策循环按新观察自然重派。
+        记上阵 + 上报函数落容器;拖后零落地判定,静默不生效由下一入口
+        观察对账显影。
         """
-        action: CwActionDeployMoveParam = self.action
+        action: CwActionDeployMoveParam = self.param
+        env = self.env
         ex = env.executor
         match = ex._ctx.cw_match
         session = match.session if match is not None else None
@@ -70,9 +86,7 @@ class DeployMoveOp(ActionOp):
             row = 'back' if action.to_row == 'front' else 'front'
             slot_no = fallback[0]
         else:
-            env.detail, env.emitted = \
-                '部署落位无空槽(两排全满,观察重派)', False
-            return True
+            return self.round_fail('部署落位无空槽(两排全满,观察重派)')
         src = ex._bench_pts[action.bench_idx]
         dst = (ex._front_pts if row == 'front' else ex._back_pts)[slot_no - 1]
         ex._drag(src, dst)
@@ -95,11 +109,15 @@ class DeployMoveOp(ActionOp):
             log.info('[cw][deploy] 拖后检出盛会之星 overlay(羁绊达标触发)')
         # 发出即记账:拖拽发出即 tracked 记上阵(机械执行零判效)。
         ex._track_move_deployed(action.bench_idx, row, slot_no)
+        # —— 自上报(机械发出后;design.md §1.1)——
+        gs = game_state_from_ctx(self.ctx)
+        if gs is not None:
+            report_action_deploy_move_param(
+                gs, action,
+                ChannelSig(family='logic_action',
+                           actor=type(self).__name__, mode='compute'))
         if _overlay:
-            env.detail, env.emitted = \
-                ('部署已发,盛会之星 overlay 弹出(外环接管)', True)
-            return True
-        env.detail = (f'部署槽{action.bench_idx + 1}→{row}{slot_no} ✓'
-                      '(发出即记账,落地归观察对账)')
-        env.emitted = True
-        return True
+            return self.round_success('部署已发,盛会之星 overlay 弹出(外环接管)')
+        return self.round_success(
+            f'部署槽{action.bench_idx + 1}→{row}{slot_no} ✓'
+            '(发出即记账,落地归观察对账)')

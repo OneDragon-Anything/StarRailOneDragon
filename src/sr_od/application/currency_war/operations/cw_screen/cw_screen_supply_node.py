@@ -328,7 +328,7 @@ class CwScreenSupplyNode(CwScreenOpBase):
         )
         _env = OverlayPickExecEnv(op=self, match=match, target=target,
                                   picked=picked)
-        action_op_for(CwActionPickSupplyParam(idx=0)).execute(_env)
+        action_op_for(CwActionPickSupplyParam(idx=0), self.ctx, _env).execute()
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----
 

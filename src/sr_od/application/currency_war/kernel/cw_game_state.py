@@ -364,6 +364,28 @@ REGISTERED_ACTORS: set[str] = {
     'PrepActionExecutor',      # 备战动作执行器(动作全集唯一分派点)
     'CwScreenBuyCards',            # 商店单动作循环(run_buy_waves;含刷新执行
                                # 事实组 record_refresh_execution 的计数写入)
+    # —— 动作 op 重组批③(design.md §1.1):CwActionXxxOp(SrOperation)
+    # 自上报,actor = type(self).__name__,随 op 类名单体登记 ——
+    'CwActionBuyCardOp',
+    'CwActionRefreshShopOp',
+    'CwActionCloseShopOp',
+    'CwActionSellBenchOp',
+    'CwActionLevelUpOp',
+    'CwActionDeployMoveOp',
+    'CwActionSellDeployedOp',
+    'CwActionWearEquipOp',
+    'CwActionClickSpheresOp',
+    'CwActionOpenBoxOp',
+    'CwActionOpenTomeOp',
+    'CwActionOpenBookcardOp',
+    'CwActionToolUseOp',
+    'CwActionStartBattleOp',
+    'CwActionOpenShopOp',
+    'CwActionPickEncounterOp',
+    'CwActionPickSupplyOp',
+    'CwActionPickMegastarOp',
+    'CwActionPickPartnerOp',
+    'CwActionPickPlannerOp',
     'CwOpOpenShop',            # 开商店原子(op 函数与独立壳同名登记)
     'CwOpCloseShop',           # 关商店原子
     'CwFlowStrategy',          # 商店序列驱动器·基类缺省(逻辑态直写,波 4)

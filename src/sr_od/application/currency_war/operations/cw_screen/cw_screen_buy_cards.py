@@ -71,9 +71,6 @@ if TYPE_CHECKING:
         CwActionCloseShopParam,
         CwActionLevelUpShopParam,
     )
-    from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
-        ActionOp,
-    )
     from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
         ShopVisitLedger,
     )
@@ -394,11 +391,11 @@ def _fmt_action(a: 'Action') -> str:
     return type(a).__name__
 
 
-def apply_action_outcome(_aop: 'ActionOp',
-                         action: 'CwActionBuyCardParam | CwActionRefreshShopParam | CwActionSellBenchParam | CwActionLevelUpShopParam | CwActionCloseShopParam',
-                         _ok: bool, _cur: 'GameStateReadReceipt',
-                         match: 'CurrencyWarMatch', ledger: 'ShopVisitLedger',
-                         visit_actions: list) -> None:
+def apply_action_outcome(
+        action: 'CwActionBuyCardParam | CwActionRefreshShopParam | CwActionSellBenchParam | CwActionLevelUpShopParam | CwActionCloseShopParam',
+        _ok: bool, _cur: 'GameStateReadReceipt',
+        match: 'CurrencyWarMatch', ledger: 'ShopVisitLedger',
+        visit_actions: list) -> None:
     """执行结果落地门(调用环单一源;落地审补办清单 C1 调用环级锁的承载体。
 
     C1 语义 = 旧 return True 使期望账逻辑态与 tracked 实账分叉;应修-2 语义
@@ -406,14 +403,14 @@ def apply_action_outcome(_aop: 'ActionOp',
     2026-09-05;原清单为会话产物不入库,语义以此为准)。
 
     未落地(_ok=False,如执行侧检出购买未生效)⇒ **两侧都不动**:不写逻辑态、
-    不入「已买」集(防检出帧名污染 prefer_names/churn/P60,应修-2);
-    落地且非终结 ⇒ 逻辑态直写(容器规则通道:直写口简单腿 + 合成升星腿)。
-    原「+ guard_expected_vs_tracked 双账对拍(满栏买入豁免)」已随 T-268
-    退役(对账归属原则:双态比对唯一合法时点 = 观察边界 kernel
-    cw_reconcile)——逻辑态建模 bug 的检出归 reconcile 纠漂显影(观察赢)。
+    不入「已买」集(防检出帧名污染 prefer_names/churn/P60,应修-2)。
+    容器逻辑态直写已随动作 op 重组批③ 收编进各 op 自上报(op 内直调
+    自己的上报函数,design.md §1.3)——原非终结直写块(apply_shop_action_
+    logic + 合成升星腿)删除 = 双记防线;终结跳写判断随 op 自辖不再需要。
+    本门保留面:卖出 route-tag 泄漏显影、效果账本 BUY/REFRESH 计数、
+    刷新执行计数组(record_refresh_execution,§3.3.6-8 未落地不计数)。
 
-    ``_cur`` = 段顶入口观察回执(defects 留证行 plane/round 基准 + 逻辑
-    直写帧标识;期望态真值在容器,函数无返回值,调用方不再推进任何帧链载体;迁移批 3.2 起载体 =
+    ``_cur`` = 段顶入口观察回执(defects 留证行 plane/round 基准;载体 =
     :class:`GameStateReadReceipt`,visit 内 plane/round 恒定不变)。
     """
     visit_actions.append(action)
@@ -517,75 +514,11 @@ def apply_action_outcome(_aop: 'ActionOp',
             _gs.effects.bump_key(CounterKey.REFRESH)
         except Exception as e:   # noqa: BLE001  记录面失败不阻塞
             log.warning(f'[cw-buy] 效果账本 REFRESH 计数失败(不阻塞): {e}')
-    if _ok and not _aop.terminal:
-        # 商店动作逻辑态直写·容器通道(纯规则路线,T-163:期望态推进 =
-        # 逻辑态直写口 + 合成升星腿,与序列驱动器
-        # 同形单一源;设计件《商店黑板容器化方案》§2.1-2/§4-M1)。
-        # 写序申报:直写口先写(含 bench 简单落位),升星整表直写后写覆盖
-        # (后写赢)——两写合计的期望态由投影直锁钉住(锁 M1,
-        # test_cw_shop_projection_logic)。
-        # 执行回执(设计件 §2.1-2):k = 执行侧实购张数(merge_buy_k 计数,
-        # ledger.buy_purchases 执行落地事实);CwActionLevelUpShopParam 单动作形态恒
-        # 1 击;非买/升动作无执行期决定量(空回执)。
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            ChannelSig as _ProjSig,
-        )
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            ShopActionExecuted as _ShopExecuted,
-        )
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            apply_shop_action_logic as _apply_shop_logic,
-        )
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            apply_shop_merge_leg as _apply_merge_leg,
-        )
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            bench_slots_of as _sg_slots,
-        )
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            game_state_of as _gs_of_proj,
-        )
-        _gs_proj = _gs_of_proj(match.session)
-        _executed = _ShopExecuted()
-        if isinstance(action, CwActionBuyCardParam):
-            _k = 1
-            if ledger.buy_purchases \
-                    and (ledger.buy_purchases[-1].name or '') \
-                    == (getattr(action.card, 'name', '') or ''):
-                _k = max(1, int(ledger.buy_purchases[-1].count or 1))
-            _executed = _ShopExecuted(bought_count=_k)
-        elif isinstance(action, (CwActionLevelUpParam, CwActionLevelUpShopParam)):
-            _executed = _ShopExecuted(levelup_clicks=1)
-        # 买前快照三件组(升星腿 scratch 基点;必须在直写口写之前取——
-        # 基点误取买后容器会重复落位,shop 视图缺失会漏满栏合成,失准
-        # 形态申报见 apply_shop_merge_leg docstring)。
-        if isinstance(action, CwActionBuyCardParam):
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                deployed_slots_of as _sg_dep,
-            )
-            _pre_bench = list(_sg_slots(_gs_proj))
-            _pre_dep = list(_sg_dep(_gs_proj))
-            _payload_now = _gs_proj.shop.value
-            _pre_shop = (shop_payload_content_cards(_payload_now)
-                         if _payload_now is not None else [])
-        _proj_sig = _ProjSig(family='logic_action', actor='CwScreenBuyCards',
-                             mode='compute',
-                             group_id=(f'act:CwScreenBuyCards@'
-                                       f'{_gs_proj.write_seq + 1}'))
-        _apply_shop_logic(_gs_proj, action, executed=_executed,
-                          produced_by=type(action).__name__,
-                          sig=_proj_sig)
-        if isinstance(action, CwActionBuyCardParam):
-            # 合成升星整表直写(升星腿,买前快照基点):发生 3 合 1 升星 →
-            # 合成后 bench 视图经 write_logic 直写(source=logic,策略器
-            # 立即可读);下一备战帧实读照常覆盖(观察赢),失配 = 逻辑态
-            # 模型 bug,缺陷台账留证后修推算代码。last-wins:同段级联
-            # 合并只留末张直写。纯记录面,决策零影响(bench 为消费视图
-            # 透传域,§8.7 批次二 as-built)。
-            _apply_merge_leg(_gs_proj, action, sig=_proj_sig,
-                             pre_bench=_pre_bench, pre_deployed=_pre_dep,
-                             pre_shop=_pre_shop)
-        ledger.refresh_first_action = False
+    # (容器逻辑态直写块已随动作 op 重组批③ 删除:非终结动作的期望态
+    #  推进 = op 自上报单点(apply_shop_action_logic/apply_shop_merge_leg
+    #  调用面退役,双记防线 = 本删除);终结动作跳写语义由 op 自辖。
+    #  段内续动作标记照常落账。)
+    ledger.refresh_first_action = False
 
 
 def accrue_release_spent(match: 'CurrencyWarMatch',
@@ -782,15 +715,16 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     (迁移批 3.2:产出载体 = ShopVisitLedger 本体——BuyCardsOutcome 已退役,
     动作账/期望态基座随账本外发。)
     """
-    # 工厂住聚合注册文件(动作 op 一 op 一文件后 cw_shop_action_ops 不持 op 类)
+    # 工厂住单一注册表(动作 op 重组批③:op 构造 = 注册表类级解析 +
+    # (ctx, param, env) 组装,design.md §1.3)
     from sr_od.application.currency_war.kernel.cw_vocab import CwActionCloseShopParam
+    from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
+        action_op_class_for,
+    )
     from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
         ShopExecEnv,
         ShopVisitLedger,
         guard_proposal_vs_expected,
-    )
-    from sr_od.application.currency_war.operations.cw_op.cw_shop_actions import (
-        shop_action_op_for,
     )
 
     config = CurrencyWarConfig(op.ctx.current_instance_idx)
@@ -1172,7 +1106,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             )
             _cur_gs = _gs_of_cur(match.session)
             guard_proposal_vs_expected(action, _cur_gs)
-            _aop = shop_action_op_for(action)
+            # 动作 op 重组批③(design.md §1.3):op 经注册表类级解析 +
+            # (ctx, param, env) 组装;上报由 op 自调,落地门只留计数/回执。
+            _op_cls = action_op_class_for(action)
             _env = ShopExecEnv(
                 op=op, match=match, config=config, click_pts=click_pts,
                 level_btn=level_btn, refresh_btn=refresh_btn,
@@ -1184,15 +1120,18 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             if _sink is not None:
                 _ok = _sink.execute_action(op.ctx, action, _env).applied
             else:
-                _ok = _aop.execute(_env)
+                # 直调节点函数(单节点 op;重试/停机查归包络与交回面,
+                # 动作层零重试;节点异常原样上抛 = 执行异常通道不变)
+                _result = _op_cls(op.ctx, action, env=_env).run()
+                _ok = bool(_result.is_success)
             # 执行落地回执(R2 回执域,逐动作 op 一条 logic_action 行):
-            # applied = 动作 op 自身机械事实(未落地 = False + 摘要),
-            # 发出即簿记非验证——本行零新增读屏零成败判定。
+            # applied = 动作 op 自身机械事实(round 成功态;未落地 = False
+            # + 摘要),发出即簿记非验证——本行零新增读屏零成败判定。
             # (迁移批 3.2 安灯换轨:发射行附 serialize_action 同 schema
             #  动作载荷 = 安灯动作序列源;刷新行附 refresh 留证半边的
             #  牌面变化位——free_refresh_proc 豁免判定输入。批4 比对收口:
             #  三值对比单一源 = cw_shop_refresh_obs.refresh_board_changed_
-            #  of,刷前/刷后名集由 RefreshShopOp 落账,此处按单一源现算,
+            #  of,刷前/刷后名集由刷新 op 落账,此处按单一源现算,
             #  行值与迁出前 execute 预算式逐位同值。)
             _rcpt_extra = (
                 {'refresh_board_changed':
@@ -1201,9 +1140,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 if isinstance(action, CwActionRefreshShopParam) else None)
             note_shop_action_receipt(
                 match, action, applied=bool(_ok),
-                reason='' if _ok else f'执行未落地({type(_aop).__name__})',
+                reason='' if _ok else f'执行未落地({_op_cls.__name__})',
                 extra=_rcpt_extra)
-            apply_action_outcome(_aop, action, _ok, _cur, match,
+            apply_action_outcome(action, _ok, _cur, match,
                                  ledger, visit_actions)
             # T-82 续段 token 写入(生产商店循环执行位):动作确认已执行
             # 后置位 (动作型名, 当前段序号);未执行路径(闸拒/硬墙/
@@ -1220,7 +1159,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             # (帧链推进随 simulate 前瞻消费删除退役,T-163:_cur 恒为段顶
             # 入口观察帧,visit 内 plane/round 不变,journal 行基准语义
             # 不变;期望态真值在容器,由逻辑态直写口推进。)
-            if _aop.terminal:
+            if _op_cls.terminal:
                 # 终结 op 统一退出(ADR-0517 决策 4/7;终结 op 语义 review
                 # V1/V2 修复,P35 实证):终结动作 execute 后黑板不写逻辑态
                 # (apply_action_outcome 对终结跳过,期望态按规格作废)——

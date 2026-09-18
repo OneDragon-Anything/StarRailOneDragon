@@ -1,24 +1,32 @@
-"""买牌动作 op(BuyCardOp)——动作文件一 op 一文件拆分自
-cw_shop_actions.py(该文件转聚合注册,本文件只放本动作)。
+"""买牌动作 op(CwActionBuyCardOp)——动作 op 重组批③ 换壳
+(ActionOp ABC → 框架 SrOperation,构造 = (ctx, param, env);机械执行后
+**op 内直调自己的上报函数** `report_action_buy_card_param`,零分派,
+design.md §1.1/§1.2)。一 op 一文件。
 
 机械执行零判效(用户裁定「动作 op = 机械执行」,落地判定归观察侧
-reconcile 对账):点击后零像素验证,发出即记账(账本/逻辑态直写,返回
-恒 True)。点击静默不生效属执行环境噪声,由下一入口 heavy 实读对账
-显影(shop+gold 失配 → 安灯停 → 按真 bug 修),重试 = 决策循环按新
-观察自然重派。买前裁片 = 纯留证零判效(「买了什么」的像素级证据,随
-期望态带到对账点)。
+reconcile 对账):点击后零像素验证,发出即记账。点击静默不生效属执行
+环境噪声,由下一入口 heavy 实读对账显影(shop+gold 失配 → 安灯停 →
+按真 bug 修),重试 = 决策循环按新观察自然重派。买前裁片 = 纯留证零判效。
 """
 from __future__ import annotations
 
 import contextlib
 import time
 
+from one_dragon.base.operation.operation_node import operation_node
+from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_action_report.buy_card import (
+    report_action_buy_card_param,
+)
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
     bench_occupied,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
+    ShopActionExecuted,
+    game_state_from_ctx,
     shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_merge_simulate import merge_buy_k
@@ -34,25 +42,39 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionBuyCardParam,
     mutate_bench_deployed,
 )
-from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
-    ActionOp,
-)
 from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
     ShopExecEnv,
 )
+from sr_od.context.sr_context import SrContext
+from sr_od.operations.sr_operation import SrOperation
 
 
-class BuyCardOp(ActionOp):
-    """买一张 = 一个动作 op(ADR-0517 决策 3;满栏例外下一击多张仍一个
-    op,张数由游戏规则定、逻辑态直写按 merge_buy_k 计——方案 A 补裁)。
+class CwActionBuyCardOp(SrOperation):
+    """买一张 = 一个动作 op(满栏例外下一击多张仍一个 op,张数由游戏
+    规则定、上报按 merge_buy_k 计——方案 A 补裁)。
 
-    execute 返回恒 True(基类契约:发出即职责完成,零判效——落地事实
-    归下一帧入口观察 reconcile 对账)。
+    自上报(design.md §1.1):机械发出后直调
+    ``report_action_buy_card_param``,executed.bought_count 直接取
+    ``ledger.buy_purchases[-1]``(执行落地事实,单一源);出参
+    LogicOutcome 忽略(live 调用点忽略出参 = 行为零变化)。
     """
 
-    def execute(self, env: ShopExecEnv) -> bool:
+    #: 非终结动作(每类显式声明,无基类缺省;design.md §1.1)。
+    terminal = False
+    terminal_wait = 0.0
+
+    def __init__(self, ctx: SrContext, param: CwActionBuyCardParam,
+                 env: ShopExecEnv):
+        SrOperation.__init__(self, ctx, op_name='CwActionBuyCardOp',
+                             need_check_game_win=False)
+        self.param = param
+        self.env = env
+
+    @operation_node(name='buy_card', is_start_node=True)
+    def run(self) -> OperationRoundResult:
         from one_dragon.base.geometry.point import Point as _Pt
-        action: CwActionBuyCardParam = self.action
+        action: CwActionBuyCardParam = self.param
+        env = self.env
         from sr_od.application.currency_war.kernel.cw_game_state import (
             bench_slots_of,
         )
@@ -169,4 +191,16 @@ class BuyCardOp(ActionOp):
                 name=action.card.name, star=action.card.star,
                 count=_cnt, unit_cost=action.card.cost or 0,
                 crop=_card_crop))
-        return True
+        # —— 自上报(机械发出后;design.md §1.1):k 取执行落地事实 ——
+        _k = 1
+        if action.card.name and ledger.buy_purchases:
+            _k = max(1, int(ledger.buy_purchases[-1].count or 1))
+        gs = game_state_from_ctx(self.ctx)
+        if gs is not None:
+            report_action_buy_card_param(
+                gs, action,
+                ChannelSig(family='logic_action',
+                           actor=type(self).__name__, mode='compute'),
+                executed=ShopActionExecuted(bought_count=_k))
+        return self.round_success(
+            f'买牌 slot={_slot_no} {action.card.name or "?"}×{_k}')

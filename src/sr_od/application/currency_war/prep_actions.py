@@ -210,16 +210,14 @@ def _expose_unhealthy_tracked_slots(tracked: list[BenchChar | None]) -> None:
 
 @dataclass
 class PrepExecEnv:
-    """备战动作 op 执行环境(统一动作工厂批3;design.md unified-action-
-    factory §2.4 env 条款)。
+    """备战动作 op 执行环境(动作 op 重组批③;design.md §1.1 env 条款)。
 
-    以公共字段 ``op``/``match``/``config`` 结构化满足
-    ``cw_action_base.ActionExecEnv`` 协议(与 ShopExecEnv 同构;运行时不
-    检查协议,项目既有风格)。``executor`` = 备战 runner 包络引用(坐标
-    槽位表/机械原语/tracked 账同步的单一宿主;体迁 op 经此消费,执行包络
-    留守 runner);``detail``/``emitted`` = prep 域 ``(detail, emitted)``
-    语义旁路字段(基类 ``execute`` 返回契约恒 True,不进返回值;与现行
-    ``executor.last_detail`` 旁路同构),op 类写、runner 包络读。
+    域依赖结构化包,op 构造时传入(原 execute 时刻注入改为构造时)。
+    ``executor`` = 备战 runner 包络引用(坐标槽位表/机械原语/tracked 账
+    同步的单一宿主;op 体经此消费,执行包络留守 runner)。``detail``/
+    ``emitted`` = 历史 prep 域旁路字段(批③起消费面改 round 结果成功态
+    与 status,op 体保留写以维持体迁移逐字性,字段值不再被包络消费);
+    ``skip_substate`` 仍被包络消费(回执 extra 留证)。
     """
 
     op: SrOperation
@@ -253,9 +251,8 @@ class PrepActionExecutor:
         # 值旁路)。getattr 容缺(__new__ 桩形态)。
         self.last_launch_ok: bool | None = None
         # StartBattleOp 上报的免战跳过子态标记(op 写 env.skip_substate,
-        # dispatch 后由本 runner 读取一次转发 game state 上报路径
-        # apply_op_effect——op 零 game state 直写)。getattr 容缺
-        # (__new__ 桩形态)。
+        # dispatch 后由本 runner 读取一次,只进回执 extra 留证——递减本体
+        # = op 自上报)。getattr 容缺(__new__ 桩形态)。
         self._last_skip_substate: bool = False
         # 执行点金差显影(备战执行缝账务包络;写点 = execute 每次
         # 入口复位)。取值时机 = dispatch 后由 _executed_gold_delta 现算
@@ -374,26 +371,26 @@ class PrepActionExecutor:
         # 已同步移除,事后复查恒落空)。
         _pre_sell_bc = self._pre_sell_tracked_bc(action)
         # 免战跳过子态标记每动作复位(上动作残留禁跨动作流入;op 上报经
-        # _dispatch_action 写入,apply_op_effect 消费)。
+        # _dispatch_action 写入,回执 extra 消费)。
         self._last_skip_substate = False
         detail, emitted = self._dispatch_action(action)
         self.last_detail = detail
         gold_delta = self._executed_gold_delta(action, emitted, _pre_sell_bc)
         self.last_gold_delta = gold_delta
-        # (卖出回金的容器唯一写点 = apply_prep_action_logic 对应分支,
-        #  防双记——执行缝与投影双腿各记一次的实机倒挂实证归 git。
-        #  本处 gold_delta 仅进回执 extra 留证。)
+        # (卖出回金的容器唯一写点 = 卖出 op 自上报
+        #  (report_action_sell_*_param),防双记——执行缝与投影双腿各记
+        #  一次的实机倒挂实证归 git。本处 gold_delta 仅进回执 extra 留证。)
         _gold_extra = ({'gold_delta': int(gold_delta)}
                        if gold_delta not in (None, 0) else None)
         if isinstance(action, CwActionStartBattleParam) and self._last_skip_substate:
             # 跳过子态标记进回执 extra(上报动作事实的遥测面;递减本体 =
-            # apply_op_effect,回执只留证)。
+            # op 自上报,回执只留证)。
             _gold_extra = {**(_gold_extra or {}), 'skip_substate': True}
         self._note_action_receipt(action, emitted, detail, extra=_gold_extra)
         if isinstance(action, CwActionStartBattleParam):
             # 出战点击事实(出战域重设计,T-286):真执行链 = 注册表分派
-            # StartBattleOp 点击序列 ok(False = 找不到按钮/area 缺失,
-            # 在册例外返回契约,design.md unified-action-factory §2.4);
+            # CwActionStartBattleOp 点击序列,round 结果成功态即发出事实
+            # (round_fail = 找不到按钮/area 缺失,design.md §1.1);
             # 执行缝(假环境)不经真分派 = applied 真值(F11 双轨申报)。
             self.last_launch_ok = emitted
         if emitted:
@@ -425,22 +422,9 @@ class PrepActionExecutor:
                         landed=False)
             except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
                 log.warning('[cw][s1-route] 清键门失败(不阻塞): %s', e)
-            # 逻辑效果推进(两态制 ADR-0651:op 可推算效果直接写 session
-            # 字段,两执行面同源接线)——本执行器是两执行面的共同底层,
-            # 推进挂本入口 = 两面一次覆盖、零双写;推进失败不阻塞执行
-            #(观测面,best-effort)。
-            try:
-                from sr_od.application.currency_war.kernel.cw_exec_state import (
-                    apply_op_effect,
-                )
-                match = self._ctx.cw_match
-                session = match.session if match is not None else None
-                if session is not None:
-                    apply_op_effect(session, action, detail=detail,
-                                    produced_by=type(self).__name__,
-                                    skip_substate=self._last_skip_substate)
-            except Exception as e:  # noqa: BLE001  推进失败不阻塞执行
-                log.warning('[cw][expect] apply_op_effect 失败(不阻塞): %s', e)
+        # (动作逻辑效果推进已随动作 op 重组批③ 收编进各 op 自上报
+        #  (op 内直调自己的上报函数,design.md §1.1):原执行器
+        #  apply_op_effect 调用删除 = 双记防线——op 已写,本处再写即双记。)
         log.info('[cw][exec] %s → %s', type(action).__name__,
                  detail or '(无摘要)')
 
@@ -485,8 +469,7 @@ class PrepActionExecutor:
         bench_from_compact 重建恒 pad 态、tracked_deployed 恒 pad 态
         ADR-0316/0392)——按下标直接对位,零换算。取值时机 = execute()
         内 dispatch **前** tracked 账现读(卖出 handler 在 dispatch 内
-        同步销账,dispatch 后按 tracked 复查恒落空——apply_op_effect
-        卖入会话推进在现役链路不可达的同根);消费 = dispatch 后
+        同步销账,dispatch 后按 tracked 复查恒落空);消费 = dispatch 后
         _executed_gold_delta 一次读用,不跨动作存活。tracked 不可读
         (无局/形状异常)= None(金差诚实缺失,观察覆盖兜底)。
         """
@@ -552,29 +535,32 @@ class PrepActionExecutor:
         return 0
 
     def _dispatch_action(self, action: CwAction) -> tuple[str, bool]:
-        """动作分派(统一动作工厂批3 收编:入口查单一注册表
-        ``action_op_for``;design.md unified-action-factory §2.4)。
+        """动作分派(动作 op 重组批③:经注册表类级解析 + (ctx, param,
+        env) 组装新壳 op ``CwActionXxxOp(SrOperation)``,执行取 round
+        结果;design.md §1.3)。
 
-        返回 ``(机械执行摘要, 是否实际发出)``。prep 域 ``(detail,
-        emitted)`` 语义经 :class:`PrepExecEnv` 旁路字段承载(动作 op 的
-        ``execute`` 返回契约恒 True,基类 cw_action_base);在册例外 =
-        StartBattleOp——返回值 = **点击序列已执行**(非恒 True;找不到
-        按钮/area 缺失 = False),即发出事实。词表外类型 = 注册表
-        AssertionError 响亮暴露(生产不可达:F3 validate 先拒)。
+        返回 ``(机械执行摘要, 是否实际发出)``。emitted = round 结果成功态
+        (``round_success`` = 已发出;``round_fail`` = 定位失败等未发出
+        通道,零重试即失败交回)。机械摘要 = round 结果 status。词表外
+        类型 = 注册表 AssertionError 响亮暴露(生产不可达:F3 validate
+        先拒)。
         """
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
-            action_op_for,
+            action_op_class_for,
         )
         env = PrepExecEnv(op=self._op, match=self._ctx.cw_match, config=None,
                           executor=self)
-        ret = action_op_for(action).execute(env)
+        op = action_op_class_for(action)(self._ctx, action, env=env)
+        # 直调节点函数(单节点 op;不走 Operation.execute() 循环:重试/
+        # 超时/停机查归本 runner 包络与交回面所有,动作层零重试语义——
+        # 节点异常原样上抛 = 执行异常通道不变)
+        result = op.run()
         if isinstance(action, CwActionStartBattleParam):
-            # 免战跳过子态标记转发(op 上报 → game state 上报路径消费;
-            # getattr 容缺 = 桩 env 形态)
+            # 免战跳过子态标记转发(op 写 env.skip_substate;递减本体 =
+            # op 自上报,回执 extra 留证消费;getattr 容缺 = 桩 env 形态)
             self._last_skip_substate = bool(getattr(env, 'skip_substate',
                                                     False))
-            return env.detail, bool(ret)
-        return env.detail, env.emitted
+        return (result.status or ''), bool(result.is_success)
 
     # ===== 奖励域 =====
 

@@ -226,8 +226,9 @@ class CwScreenMegastar(CwScreenOpBase):
         from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
             OverlayPickExecEnv,
         )
-        action_op_for(CwActionPickMegastarParam(idx=0)).execute(
-            OverlayPickExecEnv(op=self))
+        _env = OverlayPickExecEnv(op=self)
+        action_op_for(CwActionPickMegastarParam(idx=0), self.ctx,
+                      _env).execute()
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 2,先例 = CwScreenPrep)----
 
