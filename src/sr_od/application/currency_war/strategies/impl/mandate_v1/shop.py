@@ -774,10 +774,10 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 全 unknown 窗(用户三态裁定 2026-09-13,shop-slot-model §5.1):店开
     # 而牌面含 unknown(整帧 OCR/SIFT 失读窗)→ 花钱动作(BuyCard/
     # RefreshShop/LevelUp)一律禁发射(烧金在失读牌面上、刷后重观察多半
-    # 仍失读,不猜),终结集降级为仅 CloseShop——收工路径的未识别卡停机
-    # 钩子(kind=='unknown' 判据)随即留证停机。行为收紧显式申报:旧
-    # 「失读窗沿用陈旧牌面续决策」退役,该窗从「带陈旧牌面试买」收紧为
-    # 「快速收店+停机留证」;真买空([empty×5])不受影响。
+    # 仍失读,不猜),终结集降级为仅 CloseShop。主防线 = 商店 op 入口观察
+    # 即停(cw_screen_buy_cards 入口观察处,2026-09-16 迁移:观察落地即停,
+    # 决策/购买不见残缺牌面)——本门为纵深第二线(unknown 绕过 op 停机
+    # 入容器时兜底);真买空([empty×5])不受影响。
     _payload_u = gs.shop.value
     if _payload_u is not None and any(
             s.kind == 'unknown' for s in _payload_u.cards):
