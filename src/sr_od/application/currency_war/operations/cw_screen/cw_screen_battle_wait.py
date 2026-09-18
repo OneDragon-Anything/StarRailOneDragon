@@ -55,7 +55,6 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
@@ -128,7 +127,7 @@ def _write_settlement_observation(session: StrategySession,
 
 #: 战斗窗覆盖度守卫的窗口单元出口集(bail 不计:帧锚可重入续同窗,计则
 #: 假阳——同一 battle_ts 的后续窗观测落地后锚即匹配;bail 形态自有
-#: battle_wait_bail.flag + 未知兜底链留证暴露,不依赖本守卫)。
+#: op 截图留证(prefix=battle_wait_bail)+ 未知兜底链留证暴露,不依赖本守卫)。
 _COVERAGE_EXIT_STATUSES: frozenset[str] = frozenset(
     {'back_to_loop', 'terminal_lobby'})
 
@@ -1004,19 +1003,11 @@ class CwScreenBattleWait(CwScreenOpBase):
         if self._unknown_streak >= CwScreenBattleWait.UNKNOWN_BAIL_N:
             try:
                 _shot = self.save_screenshot(prefix='battle_wait_bail')
-                _ev = (get_project_root() / '.debug' / 'temp' / 'currency_war'
-                       / 'battle_wait_bail.flag')
-                _ev.parent.mkdir(parents=True, exist_ok=True)
-                _ev.write_text(
-                    f'[BATTLE-WAIT-BAIL] 战斗等待 op 连续 {self._unknown_streak} '
-                    f'轮未识别 → bail 交主循环兜底链(05-battle §1 超时兜底;留证)\n'
-                    f'补判据的依据:本截图即卡点帧。处理:建档/加分支后删本 flag。\n'
-                    f'shot={_shot}', encoding='utf-8')
-                log.warning('[cw!][bwait] 连续 %s 轮未识别 → bail(留证 '
-                            'battle_wait_bail.flag, shot=%s)',
-                            self._unknown_streak, _shot)
-            except Exception as e:  # noqa: BLE001  留证失败不阻塞 bail
-                log.warning('[cw-bwait] bail 留证失败: %s', e)
+            except Exception:  # noqa: BLE001  留证失败不阻塞 bail
+                _shot = ''
+            log.warning('[cw!][bwait] 连续 %s 轮未识别 → bail 交主循环兜底'
+                        '(shot=%s,处理流程归 guards.md §2)',
+                        self._unknown_streak, _shot)
             return self.round_fail('战斗等待连续未识别,bail 交主循环兜底')
         return self.round_wait(wait=1.5)
 

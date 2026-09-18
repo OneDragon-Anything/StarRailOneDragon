@@ -17,6 +17,7 @@
 
 - 触发 = loop 尾所有分支不命中（兜一切未知态，非点名某态的临时捕获；移除条件 = 该类未知态全部建档实际不可达，长期保留）。
 - 处置（2026-09-16 框架化）：每轮 1s 重试（`UNKNOWN_RETRY_WAIT_S=1`，恒定无退避），连续 `UNKNOWN_FAIL_THRESHOLD=15` 轮耗尽 → round_fail 交框架失败（运行 FAILED 收口）——不再 stop_running/flag/截图，日志 `[cw!]` 行 + 失败结果即信号。
+- 前置 bail = 战斗等待 op 自己的节点级预算（`cw_screen_battle_wait`，`UNKNOWN_BAIL_N=10` 轮未知 → op 截图留证 + round_fail bail 交回本兜底；不停机，兜底链裁决权留外循环）。
 - 处理流程：analyze_screen 离线判已建档命中 → 未命中按元素语义建档 + cw_loop 0x 分支加 handler → 重跑；战斗特效帧（OCR 乱码）**先确认非新画面**（analyze_screen 为准）才可调大阈值或加等待。画面被任何分支接走 → 计数自然复位。
 
 ## 3. 商店未识别卡停机
@@ -55,4 +56,4 @@
 - **执行失败安灯**（2026-09-16，`75e107dc9`）：「计划花费>0 且金差≈0」判定语义随动作 op 机械执行化失效，并入 §6 统一对账。
 - **L0 观察缺陷安灯**（2026-09-16）：「确认缺陷即停实机」的停机决策不该住在缺陷/遥测层——判级与台账保留（L1/L2），停机不再由缺陷层发起。
 - **星级回退停机钩子**（2026-09-16）：星回退处置归 §6 观察对账（observe-vs-logic），不再单设钩子与采样登记（`exec_books.star_regression` 随删）。
-- **flag 文件全量退役**（2026-09-16）：`unknown_state`/`shop_unk`/`summon_stop_hook`/`l0_andon_hook`/`cw_reconcile_andon`/`spec_invest_shop_hook` 等 flag 不再产出——停机现场事实 = `[stop]` 日志行（reason + 截图路径）+ `.debug/images/` 框架截图；处理流程知识归本篇各节。
+- **flag 文件全量退役**（2026-09-16）：`unknown_state`/`shop_unk`/`summon_stop_hook`/`l0_andon_hook`/`cw_reconcile_andon`/`spec_invest_shop_hook`/`battle_wait_bail` 等 flag 不再产出——停机现场事实 = `[stop]` 日志行（reason + 截图路径）+ `.debug/images/` 框架截图；处理流程知识归本篇各节。孤儿历史文件（含写端早亡的 `stall_watch`/`prep_no_progress`）已清。例外 = `cw_free_refresh_proc.flag`（免费刷新对账留证，不停机非停机钩子，§7）。
