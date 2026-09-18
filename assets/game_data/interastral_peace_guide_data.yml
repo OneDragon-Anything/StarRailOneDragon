@@ -469,6 +469,12 @@
       remark_in_game: "遗器"
       show_in_power_plan: true
       mission_list:
+        - mission_name: "观火之径"
+          show_in_power_plan: true
+          display_name: "观火之径"
+          region_name: "观览云岛站"
+          power: 40
+
         - mission_name: "魔占之径"
           show_in_power_plan: true
           display_name: "闪耀功勋的魔法少女/应天涉远的卜者"
@@ -517,9 +523,9 @@
           region_name: "绥园"
           power: 40
 
-        - mission_name: "幽冥之径"
+        - mission_name: "药使之径"
           show_in_power_plan: true
-          display_name: "宝命长存的莳者 骇域漫游的信使"
+          display_name: "药使之径"
           region_name: "丹鼎司"
           power: 40
 
