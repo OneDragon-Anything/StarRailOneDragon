@@ -14,12 +14,12 @@
 
 | 动作 | 词表/op 载体 | 触发判据(指针) |
 |---|---|---|
-| 买牌 | `BuyCard` → `operations/cw_op/cw_buy_card_action.py::BuyCardOp` | 六序判类 + M2 义务 + M2b/C1 支配支 + EV 买面(§1 候选买入评估行) |
-| 刷新 | `RefreshShop` → `cw_refresh_shop_action.py::RefreshShopOp`(**段终结**) | 刷新门路径总账 + R2 熔断 + P92 存在性门 + P36-a(§1 刷新门行) |
-| 关商店 | `CloseShop` → `cw_close_shop_action.py::CloseShopOp`(**访问终结**) | 收工判定(§1);席满腾位链第一步 |
+| 买牌 | `BuyCard` → `operations/cw_op/cw_buy_card_action.py::CwActionBuyCardOp` | 六序判类 + M2 义务 + M2b/C1 支配支 + EV 买面(§1 候选买入评估行) |
+| 刷新 | `RefreshShop` → `cw_refresh_shop_action.py::CwActionRefreshShopOp`(**段终结**) | 刷新门路径总账 + R2 熔断 + P92 存在性门 + P36-a(§1 刷新门行) |
+| 关商店 | `CloseShop` → `cw_close_shop_action.py::CwActionCloseShopOp`(**访问终结**) | 收工判定(§1);席满腾位链第一步 |
 
 ## 3. 能力 vs 策略(在案判例)
 
-- **判例(用户裁定 2026-09-14)**:卖备战(`SellBenchOp`)与买经验(`LevelUpOp`)是商店开画面**可用**动作(能力矩阵篇 §3.5 两行在役),但默认策略**不在商店期做**——两者收缩至备战期决策([22_prep_screen.md](22_prep_screen.md))。
+- **判例(用户裁定 2026-09-14)**:卖备战(`CwActionSellBenchOp`,词表摊平后单一注册行指备战 op)与买经验(`CwActionLevelUpOp` 同上)是商店开画面**可用**动作(能力矩阵篇 §3.5 两行在役),但默认策略**不在商店期做**——两者收缩至备战期决策([22_prep_screen.md](22_prep_screen.md))。
 - 原则定义与记载纪律 = 能力矩阵篇 §1:能力面按「画面机制全集」记(op/词表/转移函数全保留),策略面按本篇动作清单记;收缩只改决策提案集,不删执行面。
 - 商店期另不做:上阵/卖上阵(本就非商店画面动作面)。

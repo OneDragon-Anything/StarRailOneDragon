@@ -7,7 +7,7 @@
 ## 术语
 
 - **逻辑态面**：把「画面实况 + bot 跟踪」整理成策略可消费的状态数据的各层数据结构的总称；其中动作执行后不经观察、按游戏规则推算并直写容器的预期状态即**逻辑态**（真值以下一帧观察为准(观察赢)）。不是游戏画面上的视觉投影（拖拽预览、浮窗等视觉现象归画面建档域，见 `od-dev-screen-onboarding`）。
-- **族 A / 族 B（动作坐标系两族）**：同名动作类在两个模块里坐标系不同基——族 A = `kernel/cw_game_state.py` 的策略动作（状态坐标系，容器下标）；族 B = `kernel/cw_prep_actions.py` 的执行动作（画面坐标系，物理槽位）。权威对照表单一源 = `cw_state.py` Action 节约定块（§2 引用，不复制）。
+- **动作坐标系(统一词表)**：席位域动作(`CwActionSellBenchParam.bench_idx`/`CwActionSellDeployedParam.deployed_idx`/`CwActionDeployMoveParam.bench_idx`)携**容器槽位表下标**(0 基;词表单一源 = `kernel/cw_vocab.py`,坐标系裁定见各类 docstring)——原「策略/执行同名双模块双坐标系(族 A/族 B)」随词表摊平退役,同类不再双模块同名。坐标参数化机械动作(`CwActionWearEquipParam`/工具原子/`CwActionOpenBoxParam`/`CwActionOpenTomeParam`/`CwActionOpenBookcardParam`)的 `row`/`slot` = 画面物理排槽位 1 基(拖点直取 area,不经换算)。
 - **生成期快照 / 执行期现读**：生成期 = 决策帧装配时点（入口 heavy 观察到动作发射之间）；执行期 = 执行器真正读屏/拖拽时点。「生成期=执行期」表示索引跨该间隙恒稳，两时点读同一槽得到同一格。
 - **tracked 账**：tracked 主账槽位簿记 `GameState.tracked_books`（`kernel/cw_game_state.py::TrackedBooks`，bench/deployed 两面非 Field 簿记组），由卖出/部署 handler 在动作落地时同步增删。
 - ~~**黑板**：`session.prep_obs_frame`~~（**已退役**，迭代 2026-09-18-prep-obs-retirement 阶段 3.5）：备战观察帧宿主与 `gs.prep_obs` 槽已删,策略器唯读容器契约归位;`PrepObservation` 瘦身为备战环 op 局部控制信号载体(shop_open/substate/event_overlay,不进 gs、不进 session、不再是策略器输入),语义见 `../screens/prep.md` §2。
@@ -42,22 +42,14 @@
 
 `BenchChar.position_pref` / `BenchChar.slot` 在两容器中均为信息位，落槽写端（`bench_place` / `deployed_place`）负责归一信息位与下标一致；权威槽位恒为下标。
 
-### 2.2 动作字段双族对照（单一源引用）
+### 2.2 动作字段坐标系(统一词表,零换算)
 
-权威对照表与换算公式 = `cw_state.py` Action 节约定块「双族对照表」（代码注释，本篇不复制全文）。摘要：
-
-| 同名类 | 族 A（`cw_state`，状态坐标系） | 族 B（`cw_prep_actions`，画面坐标系） |
-|---|---|---|
-| `SellBench` | `bench_idx` = 槽位表下标 0-8 | `slot` = 物理槽位 1-9 |
-| `DeployMove` | `bench_idx` = 槽位表下标 0-8 | `from_slot`/`to_slot` = 物理槽位 |
-| `SellDeployed` | `deployed_idx` = 槽位表下标 0-9 | `row`+`slot` = 物理排+槽位 |
-
-换算：bench 域 族 A = 族 B − 1；deployed 域 族 A 下标 = front: slot−1 ∣ back: 4+slot−1。跨族阅读时以类头「≠ 另一族」标注为准。
+词表摊平后单一坐标系(原双族对照表随双模块词表退役,考古走 git):席位域动作直携容器槽位表下标(0 基,§2.1 权威),执行坐标边(容器下标 → screen_info 槽位中心)换算单点 = `PrepActionExecutor`(bench 侧备战栏-N area 序直取;deployed 侧 `kernel/cw_exec_state.py::deployed_row_slot`);坐标参数化机械动作的物理排槽位 1 基字段拖点直取(§术语)。跨域阅读锚 = 各动作类 docstring(`kernel/cw_vocab.py`)。
 
 ### 2.3 画面点位（下标 → 像素）
 
 - 点位单一源 = screen_info「货币战争-备战」的 `备战栏-N` / `前排-N` / `后排-N` area，经 `prep_actions.py::row_area_centers` 按 N 升序读出中心点。
-- 执行器（`PrepActionExecutor.__init__`）构造时读一次三排点位表；族 B 物理槽号 → 点位 = `pts[slot - 1]`；0-based 助手（如 `prep_actions.py::drag_bench_to_sell` 的 `bench_idx`）= `pts[bench_idx]`。screen_info 是静态建档，点位表构造一次全程有效；槽位**内容**才是动态面。
+- 执行器（`PrepActionExecutor.__init__`）构造时读一次三排点位表；物理槽号 → 点位 = `pts[slot - 1]`；容器下标直取（如 `prep_actions.py::drag_bench_to_sell` 的 `bench_idx`）= `pts[bench_idx]`。screen_info 是静态建档，点位表构造一次全程有效；槽位**内容**才是动态面。
 - 后排点位按 cap 差公式选档（`cw_back_layout.py::select_back_layout` 单一入口），`row_area_centers` 读全部已建档区自动跟上。
 
 ### 2.4 期望态路径命名空间（已退役）
@@ -106,9 +98,9 @@
 
 ### 4.2 动作参数的时序语义
 
-- **族 A 动作**（sim/策略域）：`bench_idx`/`deployed_idx` 取值时机 = 生成期=执行期（槽位表恒稳）；提案代际校验字段 `expect`（期望名）由发射点写入，应用时名不符 → `stale_proposal` 拒绝。expect 写入端逐字段声明见各动作类 docstring（如 `cw_state.py::SellBench`）。
-- **族 B 动作**（执行域）：`slot`/`from_slot`/`to_slot` 取值时机 = 生成期快照（决策帧观察），**无 expect 代际校验字段**。防线依赖两个前提：①单动作循环生成即执行，决策-执行间隙内画面由逐动作逻辑态直写推定（`../screens/prep.md` §2）；②执行拖拽**机械单发**（`DragCwChar.drag_char`，零判效零重试——拖后像素验已拆除），发出即记账，落地事实由下一入口观察对账暴露（失配留证）。若未来族 B 动作进入跨帧队列，该前提失效，需先补代际防线（缺口登记 G4）。
-- **消费方不得把族 B 动作参数当执行期索引复用**：执行器把槽号转点位后即拖拽（机械发出）；换血臂（§4.3）的 victim 选择在执行面用 SIFT 现读重判，不信任发射帧的槽位内容。
+- **携 `expect` 代际校验的动作**（卖出/换位类;原「族 A」语义）：`bench_idx`/`deployed_idx` 取值时机 = 生成期=执行期（槽位表恒稳）；提案代际校验字段 `expect`（期望名）由发射点写入，应用时名不符 → `stale_proposal` 拒绝。expect 写入端逐字段声明见各动作类 docstring（`kernel/cw_vocab.py`）。
+- **坐标参数化机械动作**（穿戴/工具/开件类;原「族 B」语义）：`slot`/`row` 取值时机 = 生成期快照（决策帧观察），**无 expect 代际校验字段**。防线依赖两个前提：①单动作循环生成即执行，决策-执行间隙内画面由逐动作逻辑态直写推定（`../screens/prep.md` §2）；②执行拖拽**机械单发**（`DragCwChar.drag_char`，零判效零重试——拖后像素验已拆除），发出即记账，落地事实由下一入口观察对账暴露（失配留证）。若未来此类动作进入跨帧队列，该前提失效，需先补代际防线（缺口登记 G4）。
+- **消费方不得把坐标参数化动作的字段当执行期索引复用**：执行器把槽号转点位后即拖拽（机械发出）；换血臂（§4.3）的 victim 选择在执行面用 SIFT 现读重判，不信任发射帧的槽位内容。
 
 ### 4.3 发射⇔执行透传通道（换血臂）
 
