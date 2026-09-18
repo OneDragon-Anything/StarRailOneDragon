@@ -14,64 +14,39 @@
 策略:卡名 OCR → 判据单一源 = kernel
 ``cw_equip_value.decide_equip_overlay_pick``(已锁线 key_fit_names 子串
 +100 / 泛用关键词 +1.0;普查迁移批 2 自本文件 handler 打分收编),消费
-唯一入口 = 策略器零参 ``decide_equip_pick()``(契约扩员 12→15),写槽 →
-零参决策,handler 零判据零意向读。locked_comp 意向读随判据迁策略侧
-(策略入口自 self.state 取值注入 kernel 参数,终态契约 §2.5 参数注入桶);
-S13 裁定语义随判据在 kernel 注释在案:未锁线无任何绑定项(stash/伪 comp
-方向不再进装备选择)。
+唯一入口 = 策略器零参 ``decide_equip_pick()``,写槽 → 零参决策,handler
+零判据零意向读。locked_comp 意向读随判据迁策略侧(策略入口自 self.state
+取值注入 kernel 参数);S13 裁定语义随判据在 kernel 注释在案:未锁线无
+任何绑定项(stash/伪 comp 方向不再进装备选择)。
 
-统一观察架构逐屏迁移(试点步骤 3;架构设计 §9.2 迁移步骤 4 + 开放问题清单
-B3 三段走第二段「补给 + 余事件屏按族批量」):本类是 CwScreenOpBase 子类,
-handle 顶部装配点分流(两端口完整在场 → 五段生命周期新路径;缺省 None =
-生产直连旧路径,生产行为零变化 §9.1)。迁移手法单一源 = 盛会之星先例
-(验收评审统一形态注意项 = lifecycle_observe
-消费 ``_observation_port()`` 位):handle 体纯移入 ``_handle_overlay``
-(两路径共享零转录);**本屏无 op 内入口门**(入口判定归主循环 0 系分发
-双 id_mark,observe 段 = 轻观察帧引用);本屏无 on_outcome 落地登记件
-(§6.4 收编面无事件屏 chosen 行;equip_pick 无 chosen_* 写端,选择存证行已
-随删除波 1 退役)。本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应画面
-段,事件浮层族即时落定),等价判据主承重 = 实机在册行为锁(本批锁
-test_cw_obs_arch_event_screens_step3)。
+形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两
+段直继承 SrOperation。本屏无 op 内入口门(入口判定归主循环 0 系分发双
+id_mark,分发即门)→ 观察 node = 三卡位 OCR 一次读(入口帧一次读,与现役
+决策体读同帧等价)→ ``report_screen_equip_pick_obs`` 落容器
+``equip_pick_opts`` → obs 挂实例属性进决策 node。决策动作 node = 重入裁决
+顶部(点击已发 → 「请选择」不在 = 落地 → success 交回)→ 决策从容器零参
+读 → 点卡 → round_wait 循环(不烧节点重试预算,无防御上限;选卡点击已发
+未落地轮重点选)。本屏无 chosen_* 写端(选择存证行已随删除波 1 退役);
+本屏 sim 腿 = 不适用(sim 无对应画面段,事件浮层族即时落定),等价判据
+主承重 = 实机在册行为锁。
 """
 import time
-from dataclasses import dataclass
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
+from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
-from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
-    CwScreenOpBase,
+from sr_od.application.currency_war.kernel.cw_screen_report.equip_pick import (
+    CwScreenEquipPickObs,
+    report_screen_equip_pick_obs,
 )
 from sr_od.context.sr_context import SrContext
+from sr_od.operations.sr_operation import SrOperation
 
 
-@dataclass
-class EquipPickObservation:
-    """选择装备观察 payload(五段之段1产物;试点步骤 3 实机转录形态)。
-
-    observe 段 = 轻观察帧引用(卡名 OCR 读取归共享动作体现役内聚;实机
-    识别域载体,不出端口,架构设计 §2.1;sim 适配器 = 不适用,F11 例外
-    清单)。
-    """
-
-    screen: Any = None
-
-
-class EquipPickLiveObservationAdapter:
-    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,试点步骤 3)。
-
-    本屏无 op 内入口门(分发即门),适配器仅装配帧引用。sim 实现 =
-    不适用(F11 例外清单),本批不建。
-    """
-
-    def observe(self, op: 'CwScreenEquipPick') -> EquipPickObservation:
-        return op._observe_frame()
-
-
-class CwScreenEquipPick(CwScreenOpBase):
+class CwScreenEquipPick(SrOperation):
     """选择装备三选一:OCR 卡名 → 策略选卡(点卡即选,出战按钮由主流程点)。"""
 
     # ⚠️ 待实机核(坐标单一源清点项):以下卡位为 2026-08-20 实拍字面量,
@@ -82,20 +57,12 @@ class CwScreenEquipPick(CwScreenOpBase):
     TEXT_Y_HI: ClassVar[int] = 300
 
     def __init__(self, ctx: SrContext):
-        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-选择装备')
-        # 适配器位缺省装配(试点步骤 3;先例 = CwScreenPrep/盛会之星):观察口 =
-        # 实机适配器(帧引用封口);动作口 = None = 直连现役共享体
-        # ``_handle_overlay``(多步链,无单意图 act 分派面)。on_outcome 注册
-        # 表:本屏无落地登记件(§6.4 收编面无事件屏 chosen 行,见模块
-        # docstring)。
-        self._observation_adapter = EquipPickLiveObservationAdapter()
+        SrOperation.__init__(self, ctx, op_name='货币战争-选择装备')
         # 选卡点击已发待重入裁决标志(验证废除形态):本屏分发即门(无 op 内
-        # 入口守卫),重入出口裁决见 _handle_overlay 顶部。
+        # 入口守卫),重入出口裁决见决策动作 node 顶部。
         self._pick_pending: bool = False
-
-    def _observe_frame(self) -> EquipPickObservation:
-        """轻观察帧装配(实机适配器①封口内容;卡名读取归共享体现役内聚)。"""
-        return EquipPickObservation(screen=self.last_screenshot)
+        # 观察结果(观察 node 产物,决策动作 node 消费;options = 入口帧一次读)。
+        self._obs: CwScreenEquipPickObs | None = None
 
     def _read_cards(self, screen) -> list[str]:
         ocr_map = self.ctx.ocr_service.get_ocr_result_map(
@@ -114,48 +81,45 @@ class CwScreenEquipPick(CwScreenOpBase):
                 buckets[nearest].append(text)
         return [' '.join(buckets[x]) for x in self.CARD_XS]
 
-    @operation_node(name='选择装备', is_start_node=True, node_max_retry_times=5)
-    def handle(self) -> OperationRoundResult:
-        # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run):
-        # cw_game_ports 两端口完整在场(= 测试 harness 显式装配)→ 五段生命
-        # 周期新路径;缺省 None = 生产直连旧路径(原序列整体移入
-        # _handle_overlay 共享体,试点等价门通过前生产行为零变化)。
-        if observation_source() is not None and action_sink() is not None:
-            return self.run_lifecycle()
-        return self._handle_overlay()
+    @operation_node(name='观察', is_start_node=True)
+    def observe(self) -> OperationRoundResult:
+        """三卡位 OCR 一次读 → report 落容器(入口帧一次读,与现役决策体
+        读同帧等价;本屏无 op 内入口门,分发即门)。match/gs 缺席的局外
+        兜底路径跳过 report(决策走 kernel 直调防御分支,分支原样)。"""
+        screen = self.last_screenshot
+        obs = CwScreenEquipPickObs(on_screen=True,
+                                   options=self._read_cards(screen),
+                                   screen=screen)
+        _match = getattr(self.ctx, 'cw_match', None)
+        _gs = getattr(_match, 'gs', None) if _match is not None else None
+        if _gs is not None:
+            report_screen_equip_pick_obs(_gs, obs)
+        self._obs = obs
+        return self.round_success()
 
-    def _handle_overlay(self) -> OperationRoundResult:
-        """选卡链(旧 handle 体纯移入,两路径共享零转录;试点步骤 3,先例 =
-        盛会之星 ``_do_action`` 共享式)。key_equips 打分语义逐位保留;重读
-        选中态验效半拆除(用户裁定 2026-09-10:动作 op 禁验证),落地由重入
-        出口门裁决。"""
-        # 重入裁决(观察驱动,M7 同化先例):本屏分发即门(无 op 内入口守卫),
-        # round_retry 重入不经外循环分发 → 顶部出口门补位:「请选择」不在 =
-        # overlay 已关(点卡即选已落地)→ success 交回外循环(出战按钮由
-        # 主流程处理);在 = 重走选卡(计节点预算)。
+    @node_from(from_name='观察')
+    @operation_node(name='决策动作', node_max_retry_times=5)
+    def act(self) -> OperationRoundResult:
+        """重入裁决(顶部)→ 零参决策 → 点卡 → round_wait 循环。
+
+        重入裁决(观察驱动,M7 同化先例):本屏分发即门(无 op 内入口守卫),
+        round_wait 重入不经外循环分发 → 顶部出口门补位:「请选择」不在 =
+        overlay 已关(点卡即选已落地)→ success 交回外循环(出战按钮由
+        主流程处理);在 = 重走选卡(重点选)。"""
         if self._pick_pending:
             self._pick_pending = False
-            if not self.round_by_ocr(self.screenshot(), '请选择',
+            if not self.round_by_ocr(self.last_screenshot, '请选择',
                                      lcs_percent=0.5).is_success:
                 return self.round_success(status='装备选择完成(重入观察裁决)')
-        screen = self.screenshot()
-        texts = self._read_cards(screen)
+        texts = self._obs.options if self._obs is not None else []
         # 选卡判据(普查迁移批 2:单一源 = kernel decide_equip_overlay_pick;
         # 唯一入口 = 策略对象,handler 禁自拟打分与意向读,kernel 直调仅无
-        # match 防御路径)。写槽 → 零参决策(终态契约 §2.7);locked_comp
+        # match 防御路径)。写槽已由 report 落容器 → 零参决策;locked_comp
         # 由策略入口自 self.state 注入 kernel(本 handler 零意向读)。
         best_i = 0
         _match = getattr(self.ctx, 'cw_match', None)
         if _match is not None:
             try:
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    ChannelSig,
-                )
-                _match.gs.write_logic(
-                    _match.gs.equip_pick_opts, list(texts),
-                    produced_by='CwScreenEquipPick',
-                    sig=ChannelSig(family='logic_action',
-                                   actor='CwScreenEquipPick', mode='compute'))
                 best_i = _match.strategy.decide_equip_pick().idx
                 if not (0 <= best_i < len(self.CARD_XS)):
                     best_i = 0   # 越界防御 = 缺省首卡(判据侧并列同款)
@@ -177,30 +141,7 @@ class CwScreenEquipPick(CwScreenOpBase):
         self.ctx.controller.click(target)
         time.sleep(1.2)
         # 单选即定(出战按钮由主流程处理);机械交回(验证废除):「请选择」
-        # 标题在不在由下一轮重入出口门裁决(本方法顶部)。
+        # 标题在不在由下一轮重入出口门裁决(本方法顶部)。round_wait 推进
+        # 循环(不烧节点重试预算;不落地轮重点选,无防御上限)。
         self._pick_pending = True
-        return self.round_retry(wait=1, status='装备选择点击已发,重入观察裁决')
-
-    # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----
-
-    def lifecycle_observe(self
-                          ) -> tuple[EquipPickObservation,
-                                     OperationRoundResult | None]:
-        """段1 observe:本屏无 op 内入口门(入口判定归主循环 0 系分发双
-        id_mark,分发即门)→ 轻观察 payload 直接交后续段(盛会之星同式,
-        帧引用载体)。"""
-        _adp = self._observation_port()
-        obs = (_adp.observe(self) if _adp is not None
-               else self._observe_frame())
-        return obs, None
-
-    def lifecycle_decision_cycle(self, payload: EquipPickObservation
-                                 ) -> OperationRoundResult:
-        """段3-5(单动作内聚):decide+act 内聚于 ``_handle_overlay`` 共享体
-        (卡名 OCR/key_equips 打分/遥测/点卡/重读选中态全部原位,两路径共享
-        零转录)。段5 on_outcome = 本屏无落地登记件(注册表缺席 = 零动作,
-        见 __init__ 申报);轮次结果语义在共享体内逐位保留(段迹到 act)。"""
-        self._lifecycle_mark('decide')
-        rs = self._handle_overlay()
-        self._lifecycle_mark('act')
-        return rs
+        return self.round_wait(wait=1, status='装备选择点击已发,重入观察裁决')

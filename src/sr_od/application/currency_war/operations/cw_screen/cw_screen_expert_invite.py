@@ -18,63 +18,39 @@
 阵营**(在场计数最大)同线的卡;②无主力同线 → 选与任一在场阵营同线的卡
 (凑档边际仍正);③全无同线 → 现金为王(经济兜底,不引入板外新阵营)。
 实机首例:board 仙舟3 → 四选一人工选停云(仙舟),与本判据一致。
-消费唯一入口 = 策略器零参 ``decide_expert_invite()`(契约扩员 12→15),
+消费唯一入口 = 策略器零参 ``decide_expert_invite()``,
 写槽(弹窗载体 = 卡羁绊解析 + 板面计数)→ 零参决策,handler 零判据实现。
 行为分叉申报:E9 在案规格(13_pick_family.md §2,目标线成员优先 → 池
 浓度)与实码(在场计数版)分叉,已挂账独立行为变更(迁移批 2 报告),
 迁移保持实码行为。
 
-统一观察架构逐屏迁移(试点步骤 3;架构设计 §9.2 迁移步骤 4 + 开放问题清单
-B3 三段走第二段「补给 + 余事件屏按族批量」):本类是 CwScreenOpBase 子类,
-装配点分流在**选卡节点顶部**(决策承载段:读板面→选卡→点击→验关内联其
-handle 语义;两端口完整在场 → 五段生命周期新路径;缺省 None = 生产直连
-旧路径,生产行为零变化 §9.1)。迁移手法单一源 =
-盛会之星先例(验收评审统一形态注意项 =
-lifecycle_observe 消费 ``_observation_port()`` 位):门后读板面+选卡+验关链
-纯移入 ``_handle_overlay``(两路径共享零转录);本屏无 on_outcome 落地登记件
-(§6.4 收编面无事件屏 chosen 行;chosen_expert = 出口验真通过分支单次逻辑
-直写(write_logic,ADR-0651 两态制),留守共享体;ConfirmExpertCash 逻辑
-推进 = gold +4 直推,非注册表辖)。本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应画面段,
-事件浮层族即时落定),等价判据主承重 = 实机在册行为锁
-(test_cw_game_state_consume chosen_expert 锁 + test_cw_node_screens 接线锁
-+ test_cw_obs_arch_event_screens_step3 生命周期段迹锁)。
+形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两
+段直继承 SrOperation。观察 node = 弹窗在场门(标识-专家邀请函,miss =
+round_fail 交回外循环重识别)+ 弹窗载体一次读(四卡区羁绊解析 + 羁绊面板
+现读计数,入口帧一次读,与现役决策体读同帧等价)→
+``report_screen_expert_invite_obs`` 落容器 ``expert_invite``(payload 双输入
+打包)→ obs 挂实例属性进决策 node。决策动作 node = 重入裁决顶部(选卡
+点击已发 → 弹窗不在 = 选卡落地 → 此刻才写 chosen_expert + 现金为王到账
+登记 + success 交回;在 = 点击未落地 → 清标志重走)→ 决策从容器零参读
+(kernel 直调仅防御路径:无 match 分支 + 决策链异常降级)→ 点选 →
+round_wait 循环(不烧节点重试预算,无防御上限)。chosen_expert 与
+ConfirmExpertCash 到账登记 = 重入裁决点留守(动作事实边界,不进 report;
+ConfirmExpertCash 逻辑推进 = gold +4 直推);本屏 sim 腿 = 不适用(sim 无
+对应画面段,事件浮层族即时落定),等价判据主承重 = 实机在册行为锁
+(test_cw_game_state_consume chosen_expert 锁 + test_cw_node_screens 接线锁)。
 """
 import time
-from dataclasses import dataclass
-from typing import Any
 
+from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
-from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
-    CwScreenOpBase,
+from sr_od.application.currency_war.kernel.cw_screen_report.expert_invite import (
+    CwScreenExpertInviteObs,
+    report_screen_expert_invite_obs,
 )
 from sr_od.context.sr_context import SrContext
-
-
-@dataclass
-class ExpertObservation:
-    """专家邀请函观察 payload(五段之段1产物;试点步骤 3 实机转录形态)。
-
-    observe 段 = 弹窗在场门 + 帧引用(板面/卡羁绊 OCR 读取归共享动作体
-    现役内聚;实机识别域载体,不出端口,架构设计 §2.1;sim 适配器 =
-    不适用,F11 例外清单)。
-    """
-
-    screen: Any = None
-
-
-class ExpertLiveObservationAdapter:
-    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,试点步骤 3)。
-
-    本屏 observe = 弹窗在场门已归 ``lifecycle_observe``;适配器仅装配帧
-    引用。sim 实现 = 不适用(F11 例外清单),本批不建。
-    """
-
-    def observe(self, op: 'CwScreenExpertInvite') -> ExpertObservation:
-        return op._observe_frame()
-
+from sr_od.operations.sr_operation import SrOperation
 
 #: 专家邀请函弹窗画面(assets/game_data/screen_info/currency_war_expert_invitation.yml)
 INVITE_SCREEN: str = '货币战争-备战-专家邀请函'
@@ -125,7 +101,7 @@ def _resolve_card_bonds(ctx: SrContext, screen, card_area: str) -> str | None:
     return None
 
 
-class CwScreenExpertInvite(CwScreenOpBase):
+class CwScreenExpertInvite(SrOperation):
     """专家邀请函弹窗选卡(默认策略)→ 验弹窗关(收案)。
 
     入口态单一 = 弹窗已开(外循环 0k 按画面分发;开卡半已随 R10 链拆
@@ -133,39 +109,60 @@ class CwScreenExpertInvite(CwScreenOpBase):
     """
 
     def __init__(self, ctx: SrContext):
-        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-书册卡处理')
-        # 适配器位缺省装配(试点步骤 3;先例 = CwScreenPrep/盛会之星):观察口 =
-        # 实机适配器(弹窗在场门 + 帧引用封口);动作口 = None = 直连现役
-        # 共享体 ``_handle_overlay``(多步链,无单意图 act 分派面)。on_outcome
-        # 注册表:本屏无落地登记件(§6.4 收编面无事件屏 chosen 行,见模块
-        # docstring)。
-        self._observation_adapter = ExpertLiveObservationAdapter()
+        SrOperation.__init__(self, ctx, op_name='货币战争-书册卡处理')
         # 选卡点击已发待重入裁决的 (idx, card_bonds)(验证废除形态):
-        # 重入裁决由 choose 入口门承载(弹窗不在 = 选卡落地)→ 此刻才写
-        # chosen_expert + 到账登记;弹窗仍在 = 点击未落地 → 重走(计预算)。
+        # 重入裁决由决策动作 node 顶部承载(弹窗不在 = 选卡落地)→ 此刻才写
+        # chosen_expert + 到账登记;弹窗仍在 = 点击未落地 → 重走。
         self._pick_pending: tuple[int, list[str | None]] | None = None
+        # 观察结果(观察 node 产物,决策动作 node 消费;card_bonds/board =
+        # 弹窗帧一次读)。
+        self._obs: CwScreenExpertInviteObs | None = None
 
-    def _observe_frame(self) -> ExpertObservation:
-        """轻观察帧装配(实机适配器①封口内容):弹窗在场门在 observe 段,
-        本方法仅携带当前帧引用(板面/羁绊读取归共享体现役内聚)。"""
-        return ExpertObservation(screen=self.last_screenshot)
+    @operation_node(name='观察', is_start_node=True)
+    def observe(self) -> OperationRoundResult:
+        """弹窗在场门 + 弹窗载体一次读 → report 落容器。
 
-    @operation_node(name='选卡', is_start_node=True, node_max_retry_times=6)
-    def choose(self) -> OperationRoundResult:
-        """读板面阵营 → 默认策略选卡 → 点击 → 机械交回(重入裁决收案)。
+        门 miss = round_fail 早退(与现役首闸同 status:弹窗不在(已被处理 /
+        0k 检测后消失)→ 交回外循环重识别,外循环按下一帧画面重分发自愈;
+        开卡缺位由备战词表 CwActionOpenBookcardParam 链承接,与本 op 无关)。
+        门后载体一次读(板面读数失败 = {} 的现金为王兜底语义原样携带)→
+        ``report_screen_expert_invite_obs``;match/gs 缺席的局外兜底路径跳过
+        report(决策走 kernel 直调防御分支,分支原样)。"""
+        screen = self.last_screenshot
+        if not self.round_by_find_area(
+                screen, INVITE_SCREEN, INVITE_MARK_AREA,
+                crop_first=False).is_success:
+            return self.round_fail('选卡入口:邀请函弹窗未现')
+        board: dict[str, int] = {}
+        try:
+            from sr_od.application.currency_war.obs.cw_observation import read_board
+            board = read_board(self.ctx, screen) or {}
+        except Exception as e:   # noqa: BLE001  板面读数失败走兜底(现金为王)
+            log.warning('[cw-bookcard] 羁绊面板读数失败(走现金为王兜底): %s', e)
+        card_bonds = [_resolve_card_bonds(self.ctx, screen, a)
+                      for a in CARD_AREAS]
+        obs = CwScreenExpertInviteObs(on_screen=True, card_bonds=card_bonds,
+                                      board=board, screen=screen)
+        _match = getattr(self.ctx, 'cw_match', None)
+        _gs = getattr(_match, 'gs', None) if _match is not None else None
+        if _gs is not None:
+            report_screen_expert_invite_obs(_gs, obs)
+        self._obs = obs
+        return self.round_success()
+
+    @node_from(from_name='观察')
+    @operation_node(name='决策动作', node_max_retry_times=6)
+    def act(self) -> OperationRoundResult:
+        """重入裁决(顶部)→ 零参决策 → 点选 → round_wait。
 
         重入裁决(观察驱动,验证废除形态):上轮选卡已发 → 弹窗不在 = 选卡
         落地 → 写 chosen_expert + 到账登记 + success 交回;弹窗仍在 = 未落地
-        → 重走(计节点预算)。
-
-        装配点分流在本节点顶部(决策承载段;试点步骤 3;本 op 单节点,
-        入口门 = 弹窗已开,见模块 docstring 链拆申报)。"""
-        # 重入裁决先于分流(两路径共用)。
+        → 重走。"""
         if self._pick_pending is not None:
             _idx, _bonds = self._pick_pending
             self._pick_pending = None
             if not self.round_by_find_area(
-                    self.screenshot(), INVITE_SCREEN, INVITE_MARK_AREA,
+                    self.last_screenshot, INVITE_SCREEN, INVITE_MARK_AREA,
                     crop_first=False).is_success:
                 self._record_chosen_expert(_idx, _bonds)
                 if _idx < 0:
@@ -177,55 +174,16 @@ class CwScreenExpertInvite(CwScreenOpBase):
                     register_confirm_arrival(_sess, 'ConfirmExpertCash', '现金为王',
                                              produced_by='CwScreenExpertInvite')
                 return self.round_success('邀请函选卡已确认(重入观察裁决)', wait=2)
-        # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run):
-        # cw_game_ports 两端口完整在场(= 测试 harness 显式装配)→ 五段生命
-        # 周期新路径;缺省 None = 生产直连旧路径(下方原序列,试点等价门
-        # 通过前生产行为零变化)。
-        if observation_source() is not None and action_sink() is not None:
-            return self.run_lifecycle()
-        screen = self.screenshot()
-        if not self.round_by_find_area(
-                screen, INVITE_SCREEN, INVITE_MARK_AREA,
-                crop_first=False).is_success:
-            # 入口门:弹窗不在(已被处理 / 0k 检测后消失)→ fail 交回外循环
-            # 重识别(外循环按下一帧画面重分发,自愈;开卡缺位由备战词表
-            # CwActionOpenBookcardParam 链承接,与本 op 无关)
-            return self.round_fail('选卡入口:邀请函弹窗未现')
-        return self._handle_overlay(screen)
-
-    def _handle_overlay(self, screen) -> OperationRoundResult:
-        """门后读板面+选卡+机械交回链(旧 choose 门后体纯移入,两路径共享零
-        转录;试点步骤 3,先例 = 盛会之星 ``_do_action`` 共享式)。
-        chosen_expert/到账登记 = 重入裁决点承载(choose 顶部 pending 分支);
-        验关半拆除(用户裁定 2026-09-10)。"""
-        board: dict[str, int] = {}
-        try:
-            from sr_od.application.currency_war.obs.cw_observation import read_board
-            board = read_board(self.ctx, screen) or {}
-        except Exception as e:   # noqa: BLE001  板面读数失败走兜底(现金为王)
-            log.warning('[cw-bookcard] 羁绊面板读数失败(走现金为王兜底): %s', e)
-        card_bonds = [_resolve_card_bonds(self.ctx, screen, a)
-                      for a in CARD_AREAS]
+        obs = self._obs
+        board = obs.board if obs is not None else {}
+        card_bonds = (list(obs.card_bonds) if obs is not None else [])
         # 选卡判据(普查迁移批 2:单一源 = kernel choose_expert_index;唯一
         # 入口 = 策略对象,handler 禁自拟判据,kernel 直调限防御路径:无
-        # match 分支 + 决策链异常降级)。写槽 → 零参决策(终态契约 §2.7):
-        # 弹窗载体 = 卡羁绊解析 + 板面计数打包;board 读数失败 = {} 的现金
-        # 为王兜底语义经载体原样进判据。
+        # match 分支 + 决策链异常降级)。写槽已由 report 落容器 expert_invite
+        # → 零参决策(决策调用形态不变)。
         _match = getattr(self.ctx, 'cw_match', None)
         if _match is not None:
             try:
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    ChannelSig,
-                    ExpertInvitePayload,
-                )
-                _match.gs.write_logic(
-                    _match.gs.expert_invite,
-                    ExpertInvitePayload(card_bonds=list(card_bonds),
-                                        board=dict(board)),
-                    produced_by='CwScreenExpertInvite',
-                    sig=ChannelSig(family='logic_action',
-                                   actor='CwScreenExpertInvite',
-                                   mode='compute'))
                 idx = _match.strategy.decide_expert_invite().idx
             except Exception as e:   # noqa: BLE001  决策链异常降级,不出 op
                 # 兜底 = kernel 直调同无 match else 分支(现金为王语义一致,
@@ -254,14 +212,15 @@ class CwScreenExpertInvite(CwScreenOpBase):
         log.info('[cw-bookcard] 邀请函选卡: board=%s 卡羁绊=%s → %s @(%s,%s)',
                  board, card_bonds, pick_desc, pt.x, pt.y)
         time.sleep(1.2)   # 选卡 → 弹窗关闭动画窗
-        # 机械交回(验证废除):弹窗关没关由下一轮重入入口门裁决
-        #(裁决点 = choose 顶部 _pick_pending 分支)。
+        # 机械交回(验证废除):弹窗关没关由下一轮重入裁决(本方法顶部
+        # _pick_pending 分支)。round_wait 推进循环(不烧节点重试预算,
+        # 无防御上限)。
         self._pick_pending = (idx, card_bonds)
-        return self.round_retry('邀请函选卡点击已发,重入观察裁决', wait=1)
+        return self.round_wait('邀请函选卡点击已发,重入观察裁决', wait=1)
 
     def _record_chosen_expert(self, idx: int, card_bonds: list[str | None]) -> None:
-        """选卡落地记录面:写 ``chosen_expert``(设计 §3.4.5;单次逻辑写入,
-        §3.4 申报豁免;调用点 = 出口验真通过后)。
+        """选卡落地记录面:写 ``chosen_expert``(单次逻辑写入,申报豁免;
+        调用点 = 重入裁决出口,选卡落地后值才可信)。
 
         真选守卫照 chosen_tome 式(CwScreenBookcard):仅卡分支写,值 = 该卡
         羁绊原文名(kernel choose_expert_index 仅在羁绊读出时返非负下标);
@@ -288,35 +247,3 @@ class CwScreenExpertInvite(CwScreenOpBase):
                                            mode='compute'))
         except Exception as e:   # noqa: BLE001  记录面失败不阻塞收案
             log.warning('[cw-bookcard] chosen_expert 记录失败(不阻塞): %s', e)
-
-    # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星;
-    # ---- 单节点辖选卡,入口门 = 弹窗已开见模块 docstring 链拆申报)----
-
-    def lifecycle_observe(self
-                          ) -> tuple[ExpertObservation,
-                                     OperationRoundResult | None]:
-        """段1 observe:弹窗在场门(标识-专家邀请函,旧 choose 首闸逐位
-        转录)→ 轻观察 payload。门失败 = round_fail 早退(与旧 choose 同
-        status,选卡节点无 fail 边 = op FAIL 语义不变),后续段不执行。"""
-        screen = self.screenshot()
-        if not self.round_by_find_area(
-                screen, INVITE_SCREEN, INVITE_MARK_AREA,
-                crop_first=False).is_success:
-            return (ExpertObservation(screen=screen),
-                    self.round_fail('选卡入口:邀请函弹窗未现'))
-        _adp = self._observation_port()
-        obs = (_adp.observe(self) if _adp is not None
-               else self._observe_frame())
-        return obs, None
-
-    def lifecycle_decision_cycle(self, payload: ExpertObservation
-                                 ) -> OperationRoundResult:
-        """段3-5(单动作内聚):decide+act 内聚于 ``_handle_overlay`` 共享体
-        (板面读数/卡羁绊解析/默认策略/点卡/验关/chosen 与到账登记全部原位,
-        两路径共享零转录)。段5 on_outcome = 本屏无落地登记件(注册表缺席
-        = 零动作,见 __init__ 申报);出口验真/轮次结果语义在共享体内逐位
-        保留(段迹到 act)。"""
-        self._lifecycle_mark('decide')
-        rs = self._handle_overlay(payload.screen)
-        self._lifecycle_mark('act')
-        return rs

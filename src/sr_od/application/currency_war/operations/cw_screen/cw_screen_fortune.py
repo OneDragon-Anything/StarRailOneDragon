@@ -11,62 +11,39 @@ x≈510/900/1290 / 确认 (1441-1543,584-615)。
 识别:「请选择」+「强化效果」关键词(id_mark 由 screen_info 承担)。
 策略:OCR 三卡文字 → 判据单一源 = kernel ``cw_events.decide_fortune``
 (战力关键词权重 argmax,无匹配缺省卡 1;普查迁移批 2 自本文件 v1 内联
-文本规则收编),消费唯一入口 = 策略器零参 ``decide_fortune()``
-(契约扩员 12→15),写槽 → 零参决策,handler 零打分实现。
+文本规则收编),消费唯一入口 = 策略器零参 ``decide_fortune()``,
+写槽 → 零参决策,handler 零打分实现。
 
-统一观察架构逐屏迁移(试点步骤 3;架构设计 §9.2 迁移步骤 4 + 开放问题清单
-B3 三段走第二段「补给 + 余事件屏按族批量」):本类是 CwScreenOpBase 子类,
-handle 顶部装配点分流(两端口完整在场 → 五段生命周期新路径;缺省 None =
-生产直连旧路径,生产行为零变化 §9.1)。迁移手法单一源 = 盛会之星先例
-(验收评审统一形态注意项 = lifecycle_observe
-消费 ``_observation_port()`` 位):handle 体纯移入 ``_handle_overlay``
-(两路径共享零转录);**本屏无 op 内入口门**(入口判定归主循环 0 系分发,
-observe 段 = 轻观察帧引用);本屏无 on_outcome 落地登记件(§6.4 收编面无
-事件屏 chosen 行;fortune 无 chosen_* 写端,选择存证行已随删除波 1 退役)。
-本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应画面
-段,事件浮层族即时落定),等价判据主承重 = 实机在册行为锁(本批锁
-test_cw_obs_arch_event_screens_step3)。
+形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两
+段直继承 SrOperation。本屏无 op 内入口门(入口判定归主循环 0 系分发,
+分发即门)→ 观察 node = 三卡位 OCR 一次读(入口帧一次读,与现役决策体读
+同帧等价)→ ``report_screen_fortune_obs`` 落容器 ``fortune_opts``(无空门,
+空表照写)→ obs 挂实例属性进决策 node。决策动作 node = 重入裁决顶部
+(入口词「命运卜者」不在 = overlay 已关 → success 交回)→ 决策从容器零参
+读(kernel 直调仅无 match 防御路径)→ 选卡 safe_click + 确认机械交回 →
+round_wait 循环(不烧节点重试预算,无防御上限;确认未落地轮重走)。
+本屏无 chosen_* 写端(fortune 选择存证行已随删除波 1 退役);本屏 sim 腿
+= 不适用(sim 无对应画面段,事件浮层族即时落定),等价判据主承重 = 实机
+在册行为锁。
 """
 import time
-from dataclasses import dataclass
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
+from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
-from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
-    CwScreenOpBase,
+from sr_od.application.currency_war.kernel.cw_screen_report.fortune import (
+    CwScreenFortuneObs,
+    report_screen_fortune_obs,
 )
 from sr_od.context.sr_context import SrContext
+from sr_od.operations.sr_operation import SrOperation
 
 
-@dataclass
-class FortuneObservation:
-    """命运卜者观察 payload(五段之段1产物;试点步骤 3 实机转录形态)。
-
-    observe 段 = 轻观察帧引用(卡面 OCR 读取归共享动作体现役内聚;实机
-    识别域载体,不出端口,架构设计 §2.1;sim 适配器 = 不适用,F11 例外
-    清单)。
-    """
-
-    screen: Any = None
-
-
-class FortuneLiveObservationAdapter:
-    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,试点步骤 3)。
-
-    本屏无 op 内入口门(分发即门),适配器仅装配帧引用。sim 实现 =
-    不适用(F11 例外清单),本批不建。
-    """
-
-    def observe(self, op: 'CwScreenFortune') -> FortuneObservation:
-        return op._observe_frame()
-
-
-class CwScreenFortune(CwScreenOpBase):
+class CwScreenFortune(SrOperation):
     """命运卜者强化三选一:OCR 卡文字 → 文本策略选卡 → 确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-命运卜者强化'   # screen_info 画面(cw_fortune_picker.yml)
@@ -82,21 +59,13 @@ class CwScreenFortune(CwScreenOpBase):
     CONFIRM: ClassVar[Point] = Point(1491, 600)
 
     def __init__(self, ctx: SrContext):
-        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-命运卜者强化')
-        # 适配器位缺省装配(试点步骤 3;先例 = CwScreenPrep/盛会之星):观察口 =
-        # 实机适配器(帧引用封口);动作口 = None = 直连现役共享体
-        # ``_handle_overlay``(多步链,无单意图 act 分派面)。on_outcome 注册
-        # 表:本屏无落地登记件(§6.4 收编面无事件屏 chosen 行,见模块
-        # docstring)。
-        self._observation_adapter = FortuneLiveObservationAdapter()
+        SrOperation.__init__(self, ctx, op_name='货币战争-命运卜者强化')
         # 确认已发待重入裁决标志(验证废除形态):本屏分发即门(无 op 内入口
         # 守卫),重入出口裁决区分「首发 miss」与「重入 miss(= overlay 已关
-        # → success 交回)」,见 _handle_overlay 顶部。
+        # → success 交回)」,见决策动作 node 顶部。
         self._confirm_pending: bool = False
-
-    def _observe_frame(self) -> FortuneObservation:
-        """轻观察帧装配(实机适配器①封口内容;卡面读取归共享体现役内聚)。"""
-        return FortuneObservation(screen=self.last_screenshot)
+        # 观察结果(观察 node 产物,决策动作 node 消费;options = 入口帧一次读)。
+        self._obs: CwScreenFortuneObs | None = None
 
     def _read_cards(self, screen) -> list[str]:
         """OCR 三卡文字 → x 近邻分流。"""
@@ -116,48 +85,46 @@ class CwScreenFortune(CwScreenOpBase):
                 buckets[nearest].append(text)
         return [' '.join(buckets[x]) for x in self.CARD_XS]
 
-    @operation_node(name='命运卜者强化', is_start_node=True, node_max_retry_times=5)
-    def handle(self) -> OperationRoundResult:
-        # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run):
-        # cw_game_ports 两端口完整在场(= 测试 harness 显式装配)→ 五段生命
-        # 周期新路径;缺省 None = 生产直连旧路径(原序列整体移入
-        # _handle_overlay 共享体,试点等价门通过前生产行为零变化)。
-        if observation_source() is not None and action_sink() is not None:
-            return self.run_lifecycle()
-        return self._handle_overlay()
+    @operation_node(name='观察', is_start_node=True)
+    def observe(self) -> OperationRoundResult:
+        """三卡位 OCR 一次读 → report 落容器(无空门,空表照写;match/gs
+        缺席的局外兜底路径跳过 report,决策走 kernel 直调防御分支,分支
+        原样)。"""
+        screen = self.last_screenshot
+        obs = CwScreenFortuneObs(on_screen=True,
+                                 options=self._read_cards(screen),
+                                 screen=screen)
+        _match = getattr(self.ctx, 'cw_match', None)
+        _gs = getattr(_match, 'gs', None) if _match is not None else None
+        if _gs is not None:
+            report_screen_fortune_obs(_gs, obs)
+        self._obs = obs
+        return self.round_success()
 
-    def _handle_overlay(self) -> OperationRoundResult:
-        """选卡+确认链(旧 handle 体纯移入,两路径共享零转录;试点步骤 3,
-        先例 = 盛会之星 ``_do_action`` 共享式)。文本策略 v1/safe_click/
-        确认机械交回语义逐位保留;验关半拆除(用户裁定 2026-09-10)。"""
-        # 重入裁决(观察驱动,M7 同化先例 + cw_entry_start 守卫先例):本屏
-        # 分发即门(无 op 内入口守卫),round_retry 重入不经外循环分发 →
-        # 顶部出口门补位:入口词不在 = overlay 已关(上轮确认已落地)→
-        # success 交回外循环;在 = 重走选卡+确认(计节点预算)。
+    @node_from(from_name='观察')
+    @operation_node(name='决策动作', node_max_retry_times=5)
+    def act(self) -> OperationRoundResult:
+        """重入裁决(顶部)→ 零参决策 → 选卡+确认机械交回 → round_wait。
+
+        重入裁决(观察驱动,M7 同化先例 + cw_entry_start 守卫先例):本屏
+        分发即门(无 op 内入口守卫),round_wait 重入不经外循环分发 →
+        顶部出口门补位:入口词不在 = overlay 已关(上轮确认已落地)→
+        success 交回外循环;在 = 重走选卡+确认。"""
         if self._confirm_pending:
             self._confirm_pending = False
-            if not self.round_by_ocr(self.screenshot(), '命运卜者',
+            if not self.round_by_ocr(self.last_screenshot, '命运卜者',
                                      lcs_percent=0.5).is_success:
                 return self.round_success('命运卜者强化已确认(重入观察裁决)',
                                           wait=2.0)
-        screen = self.screenshot()
-        texts = self._read_cards(screen)
+        texts = self._obs.options if self._obs is not None else []
         # 选卡判据(普查迁移批 2:单一源 = kernel decide_fortune;唯一入口
         # = 策略对象,handler 禁自拟打分,kernel 直调仅无 match 防御路径
-        # ——cw_screen_planner 同款)。写槽 → 零参决策(终态契约 §2.7);
+        # ——cw_screen_planner 同款)。写槽已由 report 落容器 → 零参决策;
         # 本屏无 chosen 写端(fortune 选择存证行已随删除波 1 退役)。
         best_i = 0
         _match = getattr(self.ctx, 'cw_match', None)
         if _match is not None:
             try:
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    ChannelSig,
-                )
-                _match.gs.write_logic(
-                    _match.gs.fortune_opts, list(texts),
-                    produced_by='CwScreenFortune',
-                    sig=ChannelSig(family='logic_action',
-                                   actor='CwScreenFortune', mode='compute'))
                 best_i = _match.strategy.decide_fortune().idx
                 if not (0 <= best_i < len(self.CARD_XS)):
                     best_i = 0   # 越界防御 = 缺省首卡(判据侧无匹配同款)
@@ -175,7 +142,8 @@ class CwScreenFortune(CwScreenOpBase):
                  [t[:12] for t in texts], best_i + 1, texts[best_i][:20] or 'OCR空')
         # 选卡=safe_click(bug#1 缓解);确认=机械交回(点+固定等待,不验关;
         # 重入裁决见本方法顶部)。原 r315「确认落空→round_retry 计预算兜底」
-        # 防线由重入裁决 + 预算耗尽 bail 承接。
+        # 防线由重入裁决 + 循环自愈承接。round_wait 推进循环(不烧节点重试
+        # 预算;确认未落地轮重走,无防御上限)。
         from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
             emit_overlay_confirm,
             safe_click,
@@ -187,30 +155,7 @@ class CwScreenFortune(CwScreenOpBase):
         # 兜底常量(megastar/invest_env 同款派生 + 缺损兜底模式)。
         _confirm = (area_center(self.ctx, '按钮-确认选择', CwScreenFortune.SCREEN_NAME)
                     or CwScreenFortune.CONFIRM)
-        return emit_overlay_confirm(
+        emit_overlay_confirm(
             self, confirm_point=_confirm,
             entry_keyword='命运卜者', tag='cw-fortune')
-
-    # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----
-
-    def lifecycle_observe(self
-                          ) -> tuple[FortuneObservation,
-                                     OperationRoundResult | None]:
-        """段1 observe:本屏无 op 内入口门(入口判定归主循环 0 系分发,
-        分发即门)→ 轻观察 payload 直接交后续段(盛会之星同式,帧引用
-        载体)。"""
-        _adp = self._observation_port()
-        obs = (_adp.observe(self) if _adp is not None
-               else self._observe_frame())
-        return obs, None
-
-    def lifecycle_decision_cycle(self, payload: FortuneObservation
-                                 ) -> OperationRoundResult:
-        """段3-5(单动作内聚):decide+act 内聚于 ``_handle_overlay`` 共享体
-        (卡面 OCR/文本策略/遥测/点卡/确认收尾全部原位,两路径共享零转录)。
-        段5 on_outcome = 本屏无落地登记件(注册表缺席 = 零动作,见 __init__
-        申报);轮次结果语义在共享体内逐位保留(段迹到 act)。"""
-        self._lifecycle_mark('decide')
-        rs = self._handle_overlay()
-        self._lifecycle_mark('act')
-        return rs
+        return self.round_wait()
