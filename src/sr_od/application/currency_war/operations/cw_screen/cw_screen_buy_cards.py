@@ -4,20 +4,16 @@ import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
+from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_game_ports import (
-    action_sink,
-    observation_source,
-)
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     bench_occupied,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     game_state_of,
-    shop_payload_content_cards,
     tracked_unobserved,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import (
@@ -25,6 +21,9 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     SHOP_SCREEN_NAME,
     area_center,
     shop_card_click_points,
+)
+from sr_od.application.currency_war.kernel.cw_screen_report.buy_cards import (
+    CwScreenBuyCardsObs,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
     strategy_state_of,
@@ -50,9 +49,6 @@ from sr_od.application.currency_war.obs.cw_observation import (
 )
 from sr_od.application.currency_war.obs.cw_shop_refresh_obs import (
     refresh_board_changed_of,
-)
-from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
-    CwScreenOpBase,
 )
 from sr_od.application.currency_war.operations.decision_frame_hooks import (
     save_decision_frame,
@@ -319,36 +315,54 @@ def refresh_wave_is_refresh_only(actions: list) -> bool:
     return bool(actions) and isinstance(actions[0], CwActionRefreshShopParam)
 
 
-def _entry_receipt_from_container(gs) -> GameStateReadReceipt:
-    """端口路径入口回执装配(迁移批 3.2/切片4:假环境容器真值 → 轻量回执)。
+def _shop_entry_read(op: SrOperation, match: 'CurrencyWarMatch',
+                     ) -> tuple[GameStateReadReceipt | None, Any,
+                                OperationRoundResult | None]:
+    """商店入口观察读半部(段顶唯一读屏点的读+防抖+停机闸三段;
+    生产读屏路径与观察 node 共用单一实现,零第二转录)。
 
-    观察源端口实现方已把真值直写容器(与读屏路径漏斗直写同语义契约),
-    本装配把决策/日志/安灯消费的逐帧读数面从容器读口映射为
-    :class:`GameStateReadReceipt`——生产路径同面由 read_game_state 原生
-    产出。完美观测形态:gold/hp 可读位 = source=='observation'(假环境
-    恒真读);shop = 容器 payload 牌(容器 ShopCard 形态,消费面
-    name/faction/cost 兼容)。
+    - read_game_state 直连(漏斗容器直写 + 原生回执);
+    - 店开入口防抖:开店转场/淡入帧可令收起锚 miss → shop payload 未入
+      容器(fresh 容器无上一牌面可沿用,decide 前置门即炸——实机买光店
+      五败定谳),有界重读(3 × 0.8s)直至 shop 入容器;仍缺 = 真离屏/
+      持续失读,交由决策前置门大声失败(禁静默空态);
+    - 商店未识别卡停机(2026-09-16 迁移+框架化,用户裁定「识别不到就是
+      bug」):判据 = 读链终判(read_shop_cards 内部易误判重观察之后)仍含
+      unknown 槽;处置 = stop_running(框架截图留证 + [stop] 日志行)+
+      round_fail,协作停机窗内不续波,交回外循环收口。处理流程知识归
+      guards.md §3。
+
+    Returns:
+        (入口回执, 入口帧, None) 正常;(None, None, round_fail) 停机闸
+        命中(stop_running 已发,调用方以 (round_fail, None) 收工)。
     """
+    _entry_shot = op.screenshot()
+    _entry = read_game_state(op.ctx, _entry_shot,
+                             phase=PHASE_PREP_SHOP_OPEN,
+                             screen_name=SHOP_SCREEN_NAME)   # ADR-0462 开店动作期
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        gold_of,
-        level_of,
-        node_kind_of,
-        plane_of,
-        round_num_of,
+        game_state_of as _gs_of_debounce,
     )
-    payload = gs.shop.value
-    hp_val = gs.hp.value
-    return GameStateReadReceipt(
-        gold=gold_of(gs),
-        gold_readable=bool(gs.gold.source == 'observation'),
-        hp=int(hp_val) if hp_val is not None else None,
-        hp_readable=bool(gs.hp.source == 'observation'),
-        level=level_of(gs),
-        plane=plane_of(gs),
-        round_num=round_num_of(gs),
-        node_type=node_kind_of(gs),
-        board=dict(gs.board.value or {}),
-        shop=shop_payload_content_cards(payload))
+    for _attempt in range(3):
+        if _gs_of_debounce(match.session).shop.value is not None:
+            break
+        time.sleep(0.8)
+        _entry_shot = op.screenshot()
+        _entry = read_game_state(op.ctx, _entry_shot,
+                                 phase=PHASE_PREP_SHOP_OPEN,
+                                 screen_name=SHOP_SCREEN_NAME)
+    _unk = [i + 1 for i, s in enumerate(_entry.shop)
+            if getattr(s, 'kind', '') == 'unknown']
+    if _unk:
+        log.warning('[cw!] [shop] 未识别卡槽%s(读链终判)→ 停机留证待建档',
+                    _unk)
+        _rc = getattr(op.ctx, 'run_context', None)
+        if _rc is not None:
+            _rc.stop_running(reason='hook:shop_unknown_card',
+                             save_screenshot=True)
+        return (None, None, op.round_fail(
+            status=f'shop 未识别卡槽{_unk},停机留证'))
+    return _entry, _entry_shot, None
 
 
 def _form_progress(comp: 'Comp', session) -> float:
@@ -610,6 +624,7 @@ def _note_shop_skip_unobserved(op: SrOperation,
 
 def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                   *, spend_gate: Callable[[object], tuple[bool, str]] | None = None,
+                  pre_entry: 'tuple[GameStateReadReceipt, Any] | None' = None,
                   ) -> tuple[OperationRoundResult | None, 'ShopVisitLedger']:
     """商店单动作循环主体(ADR-0517 迁移批;前身份 = 买牌波循环)。
 
@@ -621,6 +636,11 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     既有评估序,违金出口族红线 5)——与既有 MAX_REFRESH 硬墙同为「终结
     降级关店」路径,关店由编排壳承担。闸自身遥测由闭包侧计数,本函数
     零感知闸语义。
+
+    ``pre_entry``(缺省 None = 既有行为零漂移):CwScreenBuyCards 观察 node
+    已完成的段顶入口观察 ``(回执, 帧引用)``,首段复用不重读(迁移不增加
+    读屏;防抖与未识别卡停机闸已在观察 node 过闸);缺省 None = 段顶照旧
+    现读(生产编排壳直调路径,行为逐位不变)。
 
     一次画面访问 = 轮「入口观察 + 逐动作决策循环」(ADR-0517 决策 1):
 
@@ -721,6 +741,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     _entry_frame_marked = False
     _prev_refresh_only = False
     _entry: GameStateReadReceipt | None = None
+    _pre = pre_entry
     for _ in range(MAX_REFRESH + 1):
         ledger.refresh_first_action = True   # 段级复位(仅刷新段判定输入)
         # did_refresh 段级复位(终结 op 语义 review 修复批暴露):两消费点
@@ -729,62 +750,25 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 段循环跑满 range(MAX_REFRESH+1) 不收工(终结 break 落地后每段
         # 恰一刷新,该残留即显形;修复前被「段内连刷至硬墙」形态掩盖)。
         ledger.did_refresh = False
-        if not _prev_refresh_only:
-            time.sleep(0.3)  # 等 board 面板 settle(连击续刷段前一动作是刷新,面板未变,跳过)
-        # 光标 parking(审计 P0,2026-08-16):上轮 CwActionBuyCardParam/CwActionLevelUpParam/Refresh 点击后光标停在按钮上
-        # → 污染本帧 read_game_state;park 后再读。
-        op.park_cursor(after_wait=0.1)
-        # ---- 入口观察(ADR-0517 决策 1/8:唯一读屏点,即对账)----
-        # 观察源端口改道(T-120 方案 §2.3/§3.3,批 1;迁移批 3.2 切片4:
-        # 端口契约 = 容器形态,实现方直写真值,消费面经容器读口装配回执);
-        # 缺省 None = 生产真实读屏(read_game_state 漏斗直写 + 原生回执)。
-        _src = observation_source()
-        _entry_shot = op.screenshot()
-        if _src is not None:
-            _src.observe_prep(op.ctx, PHASE_PREP_SHOP_OPEN)
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                game_state_of as _gs_of_port,
-            )
-            _entry = _entry_receipt_from_container(
-                _gs_of_port(match.session))
+        if _pre is None and not _prev_refresh_only:
+            time.sleep(0.3)  # 等 board 面板 settle(连击续刷段前一动作是刷新,面板未变,跳过;
+                             # 首段入口观察已由观察 node 完成时本段 park+读半在彼处,同样跳过)
+        if _pre is not None:
+            # 首段:入口观察已由 CwScreenBuyCards 观察 node 完成(_shop_entry_
+            # read:防抖与停机闸已过)——本段复用其回执,不重读(迁移不增加
+            # 读屏);段头其余簿记照常。
+            _entry, _entry_shot = _pre
+            _pre = None
         else:
-            _entry = read_game_state(op.ctx, _entry_shot,
-                                     phase=PHASE_PREP_SHOP_OPEN,
-                                     screen_name=SHOP_SCREEN_NAME)   # ADR-0462 开店动作期
-            # 店开入口防抖:开店转场/淡入帧可令收起锚 miss → shop payload
-            # 未入容器(fresh 容器无上一牌面可沿用,decide 前置门即炸——
-            # 实机买光店五败定谳;已渲染帧离线全链复现全绿,读数函数无恙)。
-            # 本 op 前置已知店在屏,有界重读(3 × 0.8s)直至 shop 入容器;
-            # 仍缺 = 真离屏/持续失读,交由决策前置门大声失败(禁静默空态)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                game_state_of as _gs_of_debounce,
-            )
-            for _attempt in range(3):
-                if _gs_of_debounce(match.session).shop.value is not None:
-                    break
-                time.sleep(0.8)
-                _entry_shot = op.screenshot()
-                _entry = read_game_state(op.ctx, _entry_shot,
-                                         phase=PHASE_PREP_SHOP_OPEN,
-                                         screen_name=SHOP_SCREEN_NAME)
-        # 商店未识别卡停机(2026-09-16 迁移+框架化,用户裁定「识别不到就是
-        # bug」):入口观察一落地即判——决策/购买永不见残缺牌面(旧收工段
-        # 钩子在买波之后,防抖探针×2 随裁定退役)。判据 = 读链终判
-        # (read_shop_cards 内部易误判重观察之后)仍含 unknown 槽;历史触发
-        # (刷新动画/settle 瞬时帧)由该重观察与刷新 settle 等待前置收敛。
-        # 处置 = stop_running(框架截图留证 + [stop] 日志行)+ round_fail,
-        # 协作停机窗内不续波,交回外循环收口。处理流程知识归 guards.md §3。
-        _unk = [i + 1 for i, s in enumerate(_entry.shop)
-                if getattr(s, 'kind', '') == 'unknown']
-        if _unk:
-            log.warning('[cw!] [shop] 未识别卡槽%s(读链终判)→ 停机留证待建档',
-                        _unk)
-            _rc = getattr(op.ctx, 'run_context', None)
-            if _rc is not None:
-                _rc.stop_running(reason='hook:shop_unknown_card',
-                                 save_screenshot=True)
-            return op.round_fail(
-                status=f'shop 未识别卡槽{_unk},停机留证')
+            # 光标 parking(审计 P0,2026-08-16):上轮 CwActionBuyCardParam/CwActionLevelUpParam/Refresh 点击后光标停在按钮上
+            # → 污染本帧 read_game_state;park 后再读。
+            op.park_cursor(after_wait=0.1)
+            # ---- 入口观察(ADR-0517 决策 1/8:唯一读屏点,即对账)----
+            # (观察源端口分支已随画面 op 基类退役删除:read_game_state
+            #  直连 = 唯一路径,读+防抖+停机闸三段单一实现 = _shop_entry_read。)
+            _entry, _entry_shot, _stop = _shop_entry_read(op, match)
+            if _stop is not None:
+                return (_stop, None)
         save_decision_frame(op, 'shop_entry', _entry_shot)   # 识别完成点原始帧留证(牌面仲裁基准;每段一帧,刷新重观察同点覆盖)
         # 免费刷新对账点(T-219 裁定:对账类判定收口在观察态写入的对账
         # 点,动作 op 内不做;批4 比对收口扩展 = 两腿判定迁宿主
@@ -1044,39 +1028,18 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             )
             _cur_gs = _gs_of_cur(match.session)
             guard_proposal_vs_expected(action, _cur_gs)
-            # 动作 op 重组批③(design.md §1.3):op 经注册表类级解析 +
+            # 动作 op 重组批③:op 经注册表类级解析 +
             # (ctx, param, env) 组装;上报由 op 自调,落地门只留计数/回执。
             _op_cls = action_op_class_for(action)
             _env = ShopExecEnv(
                 op=op, match=match, config=config, click_pts=click_pts,
                 level_btn=level_btn, refresh_btn=refresh_btn,
                 ledger=ledger, state=_cur_gs)
-            # 执行器端口改道(T-120 方案 §2.4/§3.3,批 1):端口在场(假
-            # 环境)时动作落假游戏状态机(sink 账本位随动,机械点击层
-            # 被替换);缺省 None = 生产真实执行,行为逐位不变。
-            _sink = action_sink()
-            if _sink is not None:
-                _ok = _sink.execute_action(op.ctx, action, _env).applied
-                if _ok and isinstance(action, CwActionRefreshShopParam):
-                    # 假环境端口路径 op 未运行:刷新计数在接收侧补触发
-                    # (生产路径 = op 自上报单口,此处补报防该路径丢计;
-                    # free 缺省 = 上报函数回退账本余额判定,本路径无按钮
-                    # 真值,与迁移前落地门回退形态一致)。
-                    from sr_od.application.currency_war.kernel.cw_action_report.refresh_shop import (
-                        report_action_refresh_shop_param,
-                    )
-                    from sr_od.application.currency_war.kernel.cw_game_state import (
-                        ChannelSig as _sig_cls,
-                    )
-                    report_action_refresh_shop_param(
-                        _cur_gs, action,
-                        _sig_cls(family='logic_action',
-                                 actor='CwScreenBuyCards', mode='compute'))
-            else:
-                # 直调节点函数(单节点 op;重试/停机查归包络与交回面,
-                # 动作层零重试;节点异常原样上抛 = 执行异常通道不变)
-                _result = _op_cls(op.ctx, action, env=_env).run()
-                _ok = bool(_result.is_success)
+            # (执行器端口分支已随画面 op 基类退役删除:直调节点函数 =
+            # 唯一路径;重试/停机查归包络与交回面,动作层零重试;节点异常
+            # 原样上抛 = 执行异常通道不变。)
+            _result = _op_cls(op.ctx, action, env=_env).run()
+            _ok = bool(_result.is_success)
             # 执行落地回执(R2 回执域,逐动作 op 一条 logic_action 行):
             # applied = 动作 op 自身机械事实(round 成功态;未落地 = False
             # + 摘要),发出即簿记非验证——本行零新增读屏零成败判定。
@@ -1231,78 +1194,72 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     return None, ledger
 
 
-class CwScreenBuyCards(CwScreenOpBase):
-    """备战-开商店原子 op:执行商店单动作循环(ADR-0517 迁移批;
-    前身份 = 商店动作波循环,W970 批 A 契约 §4.2)。
+class CwScreenBuyCards(SrOperation):
+    """备战-开商店原子 op(两 node 形态;ADR-0517 迁移批,前身份 = 商店
+    动作波循环,W970 批 A 契约 §4.2)。
 
     生产路径由编排壳直调 :func:`run_buy_waves`(宿主 op 复用,保证读屏
     次序/替身桩行为等价);本类为独立可跑壳(``run_operation`` 单跑定位
     失败步)。hp 决策消费统一经容器政策读口 decision_hp(迁移批 3.2 起
     hp 三件组传参链随黑板帧退役删除)。
 
-    统一观察架构收编(B4 挂账批,账本 T-45):改挂 ``CwScreenOpBase``,
-    ``buy`` 节点顶部装配点分流(架构设计 §9.1 并存纪律:两端口完整在场
-    → ``run_lifecycle()``;缺省 None = 生产直连旧路径,原序列逐位保留,
-    生产行为零变化)。变体形态申报 = **旧体委托**(直迁全五段的过渡
-    替代):入口观察/播种对账/单动作决策循环全部住 :func:`run_buy_waves`
-    段循环内(每段一次),本类不拆段循环——拆段会把「刷新终结交回重进」
-    的物理载体(段循环下一次迭代,ADR-0517)改成节点重入、并连带改节点
-    预算语义,违总纲契约 5 行为零变更红线;全五段直迁留待旧路径退役批。
-    变体五段在本类的映射:observe/reconcile = 空申报(无独立早退面/
-    对账面——两半住委托体内,非空决策合同声明)、decide/act 及其后 =
-    决策循环段承载委托体(:func:`_buy_round` 单一共享,新旧路径同一份;
-    策略消费在委托体内 ``decide_shop_action``,**不申报** B4 选项②空
-    决策合同——与只读/导航变体的空申报语义区分)、on_outcome = 无登记件
-    (注册表缺席 = 零动作)。
+    两 node 形态:观察 node = ①入口段(park + 入口观察 read_game_state
+    直连 + 店开防抖 3×0.8s + 未识别卡停机闸,读+防抖+闸三段单一实现 =
+    :func:`_shop_entry_read`)→ CwScreenBuyCardsObs(入口回执同面镜像,
+    挂实例属性供决策侧/测试消费;无容器摄入面——容器写端在观察漏斗,
+    report 保持占位);决策动作 node = 波循环(:func:`run_buy_waves` 内核:
+    段循环/账本/终结判定/CloseShop 收尾)整体,首段复用观察 node 回执
+    不重读。**波循环例外申报**(同备战 VISIT_ACTION_CAP 口径):循环宿主
+    = 波循环内聚状态机(段循环 = 「刷新终结交回重进」的物理载体,决策
+    循环零读屏),不是 node 轮次 round_wait 循环——round_wait 化属行为
+    变更,本批不拆不改,交编排者/用户知悉。
     """
 
     def __init__(self, ctx: SrContext):
-        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-买牌')
+        SrOperation.__init__(self, ctx, op_name='货币战争-买牌')
+        # 观察 node 产物:入口回执镜像(obs,决策侧/测试消费面)与首段
+        # 复用载荷((回执, 帧),决策动作 node 首段不重读)。
+        self._obs: CwScreenBuyCardsObs | None = None
+        self._pre_entry: tuple[GameStateReadReceipt, Any] | None = None
 
-    def _buy_round(self) -> OperationRoundResult:
-        """旧路径委托体(buy 节点旧路径与变体决策循环共享的单一实现)。"""
-        rr, ledger = run_buy_waves(self, self.ctx.cw_match)
+    @operation_node(name='观察', is_start_node=True)
+    def observe(self) -> OperationRoundResult:
+        """①入口段:park + 入口观察 + 店开防抖 + 未识别卡停机闸。
+
+        无对局(独立单跑)= 入口观察的防抖/停机闸需容器宿主(match
+        .session)→ 空 obs 交决策动作 node,:func:`run_buy_waves` 兜底建核
+        后段顶照旧现读(与旧单节点形态同序,行为零差)。"""
+        match = getattr(self.ctx, 'cw_match', None)
+        if match is None:
+            self._obs = CwScreenBuyCardsObs()
+            return self.round_success('无对局(独立单跑,决策 node 兜底建核)')
+        # 等 board 面板 settle(波循环首段段头时序随观察 node 前移,值不变)
+        time.sleep(0.3)
+        # 光标 parking(审计 P0,2026-08-16):park 后再读。
+        self.park_cursor(after_wait=0.1)
+        _entry, _entry_shot, _stop = _shop_entry_read(self, match)
+        if _stop is not None:
+            return _stop
+        self._obs = CwScreenBuyCardsObs(
+            gold=_entry.gold, gold_readable=_entry.gold_readable,
+            hp=_entry.hp, hp_readable=_entry.hp_readable,
+            hp_trusted=_entry.hp_trusted,
+            level=_entry.level, level_readable=_entry.level_readable,
+            plane=_entry.plane, round_num=_entry.round_num,
+            node_type=_entry.node_type, board=dict(_entry.board or {}),
+            shop=list(_entry.shop or []), screen=_entry_shot)
+        self._pre_entry = (_entry, _entry_shot)
+        return self.round_success()
+
+    @node_from(from_name='观察')
+    @operation_node(name='决策动作')
+    def act(self) -> OperationRoundResult:
+        """波循环整体(:func:`run_buy_waves` 内核;例外申报见类注)。"""
+        rr, ledger = run_buy_waves(self, self.ctx.cw_match,
+                                   pre_entry=self._pre_entry)
+        self._pre_entry = None
         if rr is not None:
             return rr
         return self.round_success(
             f'plan 买{ledger.total_buy}张 经验{ledger.total_xp_buy}击 '
             f'刷{ledger.total_refresh}次 卖{ledger.total_sell}张')
-
-    @operation_node(name='买牌', is_start_node=True)
-    def buy(self) -> OperationRoundResult:
-        # 装配点分流(架构设计 §9.1 并存期;先例锚 = cw_screen_encounter
-        # 同式判据):两端口完整在场 → 变体五段(旧体委托);缺省 None =
-        # 生产直连下方旧路径(原序列逐位保留)。
-        if observation_source() is not None and action_sink() is not None:
-            return self.run_lifecycle()
-        return self._buy_round()
-
-    # ---- 变体五段(旧体委托形态;映射申报见类 docstring)----
-
-    def lifecycle_observe(self) -> tuple[Any, OperationRoundResult | None]:
-        """段1 observe:空申报(旧体委托变体)。
-
-        入口观察住 :func:`run_buy_waves` 段循环内(每段一次,含
-        ``cw_game_ports`` 端口改道),变体不拆段循环(拆段 = 「刷新终结
-        交回重进」物理载体与节点预算语义变更,总纲契约 5 红线)——
-        无独立早退面,恒不早退。
-        """
-        return None, None
-
-    def lifecycle_reconcile(self, payload: Any) -> None:
-        """段2 reconcile:空申报(旧体委托变体——观察/对账住委托体段循环内,
-        无独立对账面;对账唯一发生点 = 观察边界 kernel cw_reconcile)。"""
-        return None
-
-    def lifecycle_decision_cycle(self, payload: Any) -> OperationRoundResult:
-        """段3-5:决策循环段承载委托体(:func:`_buy_round` 单一共享)。
-
-        策略消费(decide_shop_action)住委托体内,本段**不申报** B4
-        选项②空决策合同(与只读/导航变体的空申报语义区分);on_outcome
-        = 无登记件(注册表缺席 = 零动作)。
-        """
-        self._lifecycle_mark('decide')
-        self._lifecycle_mark('act')
-        rs = self._buy_round()
-        self._lifecycle_mark('on_outcome')
-        return rs
