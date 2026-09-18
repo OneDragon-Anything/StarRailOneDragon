@@ -7,8 +7,8 @@ LevelUpShop)收缩至备战期决策(策略归属 = strategy-docs 22/23 号篇);
 声明),本模块零卖射零升级射。
 
 SIM_CONSUMPTION_MAP Q1:sim A/B 证明面 = 商店经济决策(买/刷/事务)
-——本模块是 mandate_v1 商店线的决策本体,黑板唯一输入 =
-``session.prep_obs_frame`` + 容器单例 ``game_state_of(session)``
+——本模块是 mandate_v1 商店线的决策本体,唯一输入 =
+容器单例 `game_state_of(session)`
 (GameState,写者=商店入口观察段/单动作逻辑态直写)。
 
 商店单动作形态(ADR-0517;前身份 = 波批 decide_shop_wave,迁移批改型):

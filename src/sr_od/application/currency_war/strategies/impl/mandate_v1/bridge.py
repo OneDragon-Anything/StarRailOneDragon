@@ -13,7 +13,7 @@
 商店线口径(步4b,STEP34_REPORT 裁量 #1 的接线兑现;ADR-0517 迁移批
 后形态):
 ``decide_shop_screen`` = 序列兼容驱动器(循环调 ``shop.decide_shop_action``
-单动作核,黑板=``session.prep_obs_frame`` + 容器单例
+单动作核,输入 = 容器单例
 ``game_state_of(session)``;生产执行侧入口 =
 ``decide_shop_action``,由 cw_op_buy_cards.run_buy_waves 单动作循环消费)
 ——sim A/B 证明面=商店波(SIM_CONSUMPTION_MAP Q1)自此有行为载体。

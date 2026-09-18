@@ -68,7 +68,7 @@
 
 | 接口 | 输入(黑板) | 返回 | 语义 |
 |---|---|---|---|
-| `decide_prep_screen(session, config)` | `session.prep_obs_frame`(备战观察帧;写者 = CwScreenPrep 入口观察段/破墙派生帧/循环逻辑态直写步) | **恰一个动作**(`CwAction`),`None` = 本帧无动作(交回外循环重观察) | `None` 合法 = 本帧无动作可发,交回外循环重观察(连续 `None` 的 stall 兜底归外循环防线);**观察帧缺失即抛错**(禁静默按空观察决策) |
+| decide_prep_screen(session, config) | 容器 game state 直读(game_state_of;迭代 2026-09-18-prep-obs-retirement 阶段 3.5 黑板退役,观察先于决策由画面 op 编排保证) | **恰一个动作**(CwAction),空发射帧 = HoldFrame(交回外循环重观察
 | `decide_shop_action(session, config)` [本批升格入 ABC] | `session.shop_state_frame`(期望态;写者 = 入口观察段/单动作逻辑态直写步/sim 引擎) | **恰一个动作**,「无动作可做」= `CloseShop` 恒可用终结;生产执行侧单动作循环逐帧调用(`run_buy_waves`),契约核验挂本入口 | 决策本体 = `mandate_v1/shop.py`;观察帧缺失即抛错 |
 | `decide_invest/supply/encounter/megastar/partner/planner/star_tome/wish_trial/box_card`(pick 族 9) | overlay 观察实参 + session | PickEvent 系载体/索引 | 选项决策;动作编排归画面 op,不进序列契约辖内。决策规格 = `../strategy-docs/13_pick_family.md` |
 

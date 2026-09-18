@@ -2300,7 +2300,7 @@ def mutate_bench_deployed_local(bench, deployed, action,
 #:   ``_resync_board_delta`` 自动重算,禁独立手写);
 #: - **OpenBox/OpenTome/ClickSpheres/WearEquip/工具原子直写只动视觉域**
 #:   (boxes/tomes/spheres/owned_equips 在黑板帧上推进,容器零写;
-#:   ClickSpheres 视觉域见 ``cw_screen_prep._project_prep_obs`` 精确摘球);
+#:   ClickSpheres 视觉域见 ``本写口(apply_prep_action_logic)`` 精确摘球);
 #: - **None 跳写清单**(域级独立跳写,禁缺省值参与计算):gold(gold
 #:   未读 None 时回金域跳写)、level/xp(等级或经验进度未读时该域跳写,
 #:   值留观察覆盖;bench/deployed 摘槽不受其辖);
@@ -2519,7 +2519,7 @@ def apply_prep_action_logic(gs: GameState, action: Any, *,
     # ClickSpheres(迭代 2026-09-18-prep-obs-retirement 阶段 3.4 迁移;
     # 规则 = flow/action-logic-state.md ClickSpheres 条「载荷精确摘球」
     # ——原黑板腿逐位迁移,容器翻转申报见正本更新清单):按载荷坐标
-    # 集合从容器 spheres 精确摘除被点的球(坐标匹配,与 _project_prep_obs
+    # 集合从容器 spheres 精确摘除被点的球(坐标匹配,与写口 ClickSpheres 分支
     # 旧分支同式);域未观察或载荷与现值无交集 = 陈旧提案,本口零写。
     if isinstance(action, ClickSpheres):
         view = gs.spheres.value

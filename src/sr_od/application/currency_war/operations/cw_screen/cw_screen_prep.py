@@ -523,7 +523,7 @@ class CwScreenPrep(CwScreenOpBase):
         """组装备战观察(ADR-0517 迁移后:heavy = 画面 op 入口单次——期望态
         重建的唯一读屏点,即对账;调用点 = 单轮入口 / OpenShop(read_only)
         开态 gold 真值刷新)。旧「每个执行过的游戏动作后必调 heavy」契约已
-        随单动作循环退役:逐动作零读屏,期望态由 ``_project_prep_obs`` 纯计算
+        随单动作循环退役:逐动作零读屏,期望态由 ``apply_prep_action_logic(kernel 写口)`` 纯计算
         推进,动作后首读的光标 parking 职责随之迁移(入口观察 park 一次;
         执行侧读数性通道——卖出回金遥测等——的局部 park 由动作实现层自理)。
         (light 沿用分支已随黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5)。
@@ -1415,7 +1415,7 @@ class CwScreenPrep(CwScreenOpBase):
                 return self._terminal_exit(action, key, _op_cls)
             # —— 逻辑态直写(kernel 写口统一调用,ADR-0517 决策 7/10;
             #      迭代阶段 3.5 拓扑迁移,与读屏路径孪生环同构——原
-            #      _project_prep_obs 黑板腿随 gs.prep_obs 退役删除;R9:
+            #      apply_prep_action_logic(kernel 写口) 黑板腿随 gs.prep_obs 退役删除;R9:
             #      词表逐动作有逻辑态分支,词表外 = 响亮暴露)
             apply_prep_action_logic(
                 game_state_of(session), action,
