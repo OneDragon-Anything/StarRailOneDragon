@@ -1,0 +1,20 @@
+"""中断对话弹窗屏观察契约(kernel 纯数据;迭代
+2026-09-18-screen-op-flat-report design.md §2.2)。
+
+观察面 = 入口裁决:门判定 + 稳定帧引用。
+**空决策形态,无 report 接口**(design.md §2.2:推进型屏无对账面/
+无容器域,完备锁对本侧断言 report 函数不在场;design.md §2.3 辖域
+边界——本屏现役零观察性容器写点,无可收编面)。
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+
+@dataclass
+class CwScreenInterruptDialogObs:
+    """中断对话弹窗屏观察结果(统一形态:门判定 + 帧引用)。"""
+
+    on_screen: bool = False
+    screen: Any = None
