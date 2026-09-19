@@ -7,7 +7,7 @@
 ## 进度
 - 迭代设计:定稿(用户七轮裁定代行对抗,2026-09-18 会话)
 - 设计对抗:收敛(用户逐项裁定:①基类废弃+独立类+obs+report;②多 node+对账段去除;③round_wait+on_outcome 退役;④无防御上限;⑤刷新计数出辖,动作 op 侧另会话;⑥report 与动作上报统一模块级函数族 report_screen_*_obs;⑦kernel/cw_screen_report/ 包每画面一文件 obs+report 同居,推进型也拆,cw_game_state.py 零触碰)
-- 落地:阶段 8/8 done(T-1 kernel基座/T-2 节点循环族/T-3 面板刷新链族/T-4 阶段简报过渡族/T-5 重型屏/T-6 推进型+box_pick/T-7 退役/T-8 正本更新)
+- 落地:阶段 9/9 done(T-1 kernel基座/T-2 节点循环族/T-3 面板刷新链族/T-4 阶段简报过渡族/T-5 重型屏/T-6 推进型+box_pick/T-7 退役/T-8 正本更新/T-9 画面文档同步批)
 - 正本更新:清零(清单含 kernel docstring changes/ 引用清理)
 
 ## 协调注记
