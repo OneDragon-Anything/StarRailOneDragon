@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-点击备战画面奖励面板的晶矿晶矿,点开后晶矿金由游戏侧异步入账。op 载体 = `operations/cw_op/cw_click_spheres_action.py::CwActionCollectOreOp`(批3 体迁,`prep_actions.py::PrepActionExecutor._click_spheres` 薄委托);词表 = `kernel/cw_vocab.py::CwActionCollectOreParam`(`points` = 按点击序的晶矿心坐标列)。发射条件 = 备战策略产 ClickSpheres(点击列由决策侧现算,见 §3)。
+点击备战画面奖励面板的晶矿,点开后晶矿金由游戏侧异步入账。op 载体 = `operations/cw_op/cw_collect_ore_action.py::CwActionCollectOreOp`(批3 体迁,`prep_actions.py::PrepActionExecutor._collect_ore` 薄委托);词表 = `kernel/cw_vocab.py::CwActionCollectOreParam`(`points` = 按点击序的晶矿心坐标列)。发射条件 = 备战策略产 ClickSpheres(点击列由决策侧现算,见 §3)。
 
 ## 2. 逻辑态域集
 
@@ -34,11 +34,11 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::CwActionCollectOreParam`;`kernel/cw_prep_actions.py::select_ore_clicks` / `ore_click_targets_of` / `SPHERE_CLICK_HARD_CAP`;`kernel/cw_action_report/click_spheres.py::report_action_collect_ore_param`(容器精确摘晶矿 + 窗登记内聚单点)/`ExecBooks.prep_sphere_income_pending` / `GameState._absorb_prep_sphere_income` / `GameState.observe`(店开帧收口);`operations/cw_op/cw_click_spheres_action.py::CwActionCollectOreOp`。
+`kernel/cw_vocab.py::CwActionCollectOreParam`;`kernel/cw_prep_actions.py::select_ore_clicks` / `ore_click_targets_of` / `SPHERE_CLICK_HARD_CAP`;`kernel/cw_action_report/click_spheres.py::report_action_collect_ore_param`(容器精确摘晶矿 + 窗登记内聚单点)/`ExecBooks.prep_sphere_income_pending` / `GameState._absorb_prep_sphere_income` / `GameState.observe`(店开帧收口);`operations/cw_op/cw_collect_ore_action.py::CwActionCollectOreOp`。
 
 ## 7. 语义验证
 
-金域零写语义 = 「消费真值归观察」契约 + 上报函数申报(零金推进);容器摘晶矿腿 = `report_action_collect_ore_param` 单点(测试锚 `test_click_spheres_container_precise_drop`/`test_sphere_empty_read_yields_no_targets`);窗语义 = 失配精确吸收第三例(20260918-reconcile 第 9 例收口),吸收行为由观察边界测试与台账行(`prep_sphere_income_absorbed`)承载。
+金域零写语义 = 「消费真值归观察」契约 + 上报函数申报(零金推进);容器摘晶矿腿 = `report_action_collect_ore_param` 单点(测试锚 `test_collect_ore_container_precise_drop`/`test_sphere_empty_read_yields_no_targets`);窗语义 = 失配精确吸收第三例(20260918-reconcile 第 9 例收口),吸收行为由观察边界测试与台账行(`prep_sphere_income_absorbed`)承载。
 
 ## 8. 判例注记(发射期)
 

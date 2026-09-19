@@ -143,7 +143,7 @@ class BattlePrepRecognizer(ScreenRecognizer):
                         'category 工具/特殊=消耗品,其余简易/进阶/特权/星徽/白昼/命运/骇客=装备;'
                         'cx/cy=1080p 原图绝对坐标(点该坐标开对应物品详情);空→None;templates 未加载→None)',
         'supply_boxes': '备战栏补给箱 list(read_supply_boxes TM;元素 {slot,cx,cy},cx/cy=开启按钮中心'
-                        '(点它开箱腾席);晶矿(晶矿)开启可能掉箱占 1 备战席槽;空→None',
+                        '(点它开箱腾席);奖励球(晶矿)开启可能掉箱占 1 备战席槽;空→None',
         'reward_spheres': '奖励面板晶矿 list(read_ore_sights HoughCircles;元素 {color,cx,cy,r},'
                           'color=gold/blue/gray,cx/cy=采晶矿坐标;通关奖励节点后出现;席满点不动(先开箱腾席);空→None',
     }

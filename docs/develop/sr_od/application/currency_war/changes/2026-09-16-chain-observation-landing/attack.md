@@ -19,7 +19,7 @@
 
 - 现状锚全部属实：台账三写点①（cw_screen_plane_intel.py:495-506）②（cw_screen_invest_env.py:448/451-484）③（cw_screen_prep.py:3206-3210）；商店回填段 cw_screen_buy_cards.py:951-973（与设计行号精确一致）；轮位对齐门 cw_screen_prep.py:3195-3205、变异窗门 :3208、开窗点 cw_screen_invest_env.py:432；`node_path: Field[list[str]]`（cw_game_state.py:2532）零写端恒空；`chain_node_type` 语义预留（:3458，docstring「查链接线归件 B 实施批」）；`SCREEN_NODE_TYPE_DIRECT` 商店不入映射=未定型零写（:218-230）；`OBS_EVENT_EVENTS` 现值 (arbitrate, miss, popup)（:262）。
 - 链正本 §2/§3/§4/§6 的语义映射（TokenCell/NodeChain 形状、channel 封闭集、整帧覆盖/基线整值覆盖、diff 触发纪律、零内建回落、失读放行）逐条忠实，无复写越界。
-- fixture `sr-od-test/screens/货币战争-位面过渡/plane_1to2.webp` 存在，实读确认：晶矿 1 高亮 + 底部 9 槽全行（补给/战斗/遭遇/奖励/boss 可辨形），与 plane_schedule_observed.md P1=9 地面真值形态一致；「开局屏同构歧义」（晶矿 1 高亮行=P1）成立。
+- fixture `sr-od-test/screens/货币战争-位面过渡/plane_1to2.webp` 存在，实读确认：球 1 高亮 + 底部 9 槽全行（补给/战斗/遭遇/奖励/boss 可辨形），与 plane_schedule_observed.md P1=9 地面真值形态一致；「开局屏同构歧义」（球 1 高亮行=P1）成立。
 - schema 域升版机制在册（DEFAULT_BS_SCHEMA 'node' 域 :135；'derivation':3 升版注记先例 :150-153），design §2.1-1 的「按 fields.md §3.7 机制」可落地。
 - 特别攻击点④（删回填与查链接线间的窗口真空）：**不存在**——landing 3.5 同批内先接线后删；3.1-3.4 期间回填继续查 session 台账，行为无窗。
 - 特别攻击点⑤（写点③保留后的双写）：**自洽**——session 侧零改动、零新增职责，双载体语义分格已在链正本 §7 申报。

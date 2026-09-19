@@ -233,9 +233,9 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 **随机面 / 观察面**：晶矿内容（金币/角色/装备/掉箱）与金额 = 随机面归观察——执行点金差显式申报为 None 盲区（`PrepActionExecutor._executed_gold_delta` ClickSpheres 支，禁拍值）；点开占席晶矿（角色/箱）落席占 1 槽；掉箱 → 下一帧观察 → OpenBox 臂统筹。
 
-**前置谓词（席满拦截）**：bench 空闲 >0 ∨ 晶矿均不占席，才发射采晶矿（fields.md §4.2 ClickSpheres；席满让路门 = 策略发射面席满探针）。席满点占席晶矿 = 游戏侧点不动，晶矿仍在 → 下一帧观察回补、下轮再派。
+**前置谓词（席满拦截）**：bench 空闲 >0 ∨ 晶矿均不占席，才发射采晶矿（fields.md §4.2 CollectOre；席满让路门 = 策略发射面席满探针）。席满点占席晶矿 = 游戏侧点不动，晶矿仍在 → 下一帧观察回补、下轮再派。
 
-**依据**：`kernel/cw_prep_actions.py::ClickSpheres`/`select_ore_clicks`；`prep_actions.py::_click_spheres`；`fields.md` §4.2 ClickSpheres；`research/screen_flow_timing.md` #16（飞行动画 ≤2s）。
+**依据**：`kernel/cw_prep_actions.py::ore_click_targets_of`/`select_ore_clicks`；`prep_actions.py::_collect_ore`；`fields.md` §4.2 CollectOre；`research/screen_flow_timing.md` #16（飞行动画 ≤2s）。
 
 ### 3.7 OpenBookcard（开书册卡）
 
