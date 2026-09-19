@@ -17,16 +17,13 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     LogicOutcome,
     SphereSight,
     _validate_sig,
-    game_state_of,
 )
 
 
 def report_action_click_spheres_param(gs: GameState, param: Any, sig: ChannelSig,
                                       session: object = None) -> LogicOutcome:
-    """点奖励球上报:容器 spheres 载荷坐标精确摘除被点的球 + 备战环
-    随机收入待吸收窗(session 在场时按载荷球数开窗,下一可信金读帧
-    正向差精确吸收,机理 = ``ExecBooks.prep_sphere_income_pending``)。
-    球域未观察或载荷与现值无交集 = 零摘球(等观察覆盖),窗口照开。"""
+    """点奖励球上报:容器 spheres 载荷坐标精确摘除被点的球。
+    球域未观察或载荷与现值无交集 = 零摘球(等观察覆盖)。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
 
@@ -37,10 +34,6 @@ def report_action_click_spheres_param(gs: GameState, param: Any, sig: ChannelSig
         gs.write_logic(target, value, produced_by='CwActionClickSpheresParam',
                        evidence=evidence, sig=_grp_sig)
 
-    # 随机收入待吸收窗(执行侧单写者语义存续;金账本体现察覆盖,禁拍值)
-    if session is not None:
-        game_state_of(session).exec_books.prep_sphere_income_pending += \
-            len(param.points)
     view = gs.spheres.value
     if view is None:
         return LogicOutcome(applied=True, reason='spheres_unobserved')
