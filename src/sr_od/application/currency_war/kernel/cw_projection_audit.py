@@ -9,8 +9,8 @@
 1. ``write_end``:游戏侧该域的合法变更都有动作/结算/派生**投影写端**
    (bot 动作后逻辑态随写,或从观察数据派生写入);
 2. ``absorb_rule``:存在**吸收规则**承接无写端的游戏侧变更(申报表
-   ``EXTERNAL_BENCH_GRANTS``/``EXTERNAL_EQUIP_GRANTS``、待补结闩
-   ``boundary_gold_pending``、豁免注册表、行内纯重排采新
+   ``EXTERNAL_BENCH_GRANTS``/``EXTERNAL_EQUIP_GRANTS``、结算真值收口
+   ``settle_truth``、豁免注册表、行内纯重排采新
    ``deploy_slot_reorder``);
 3. ``observation_only``:字段**有观察读端但零逻辑写端**——observe 覆盖
    逻辑态不存在,失配比对(``observe()`` 仅在 ``target.source == 'logic'``
@@ -102,8 +102,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     # —— 经济与成长 ——
     'gold': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
-        basis='buy/sell/levelup/refresh 投影 + 节点边界金补结闩'
-              '(boundary_gold_backfilled)+ 点球金豁免注册表条目'),
+        basis='buy/sell/levelup/refresh 投影 + 结算真值收口 '
+              '(settle_truth:边界收入随结算入账,boundary_income_credited 留证)'
+              '+ 点球金豁免注册表条目'),
     'level': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='CwActionLevelUpShopParam 升档直写(f810f2454 投影补 level 域)+ prep 腿'
@@ -356,7 +357,7 @@ def audit_bad_status_keys() -> list[str]:
 _STOP_FAMILY_MECHANISMS: dict[str, tuple[str, ...]] = {
     'bench': ('EXTERNAL_BENCH_GRANTS', 'star_two_frame_gate'),
     'equips': ('EXTERNAL_EQUIP_GRANTS',),
-    'gold': ('boundary_gold_backfilled',),
+    'gold': ('settle_truth',),
     'front_row': ('deploy_slot_reorder', 'star_two_frame_gate'),
     'back_row': ('deploy_slot_reorder', 'star_two_frame_gate'),
     'board': ('_resync_board_delta', 'board_derived_adopt'),
