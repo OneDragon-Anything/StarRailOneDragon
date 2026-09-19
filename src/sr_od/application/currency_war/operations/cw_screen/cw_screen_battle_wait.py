@@ -521,17 +521,24 @@ class CwScreenBattleWait(SrOperation):
                 try:
                     from sr_od.application.currency_war.obs.cw_settlement_obs import (
                         parse_settlement_assets,
+                        read_settle_gold_opt,
                     )
                     _assets = parse_settlement_assets(_ocr_texts)
+                    if _assets.get('gold') is None:
+                        # 旧版「存量 <N>」token 锚在当前版本结算布局不存在
+                        #(run_20260918_084010 当日 6/6 胜局解析全失败,证据帧
+                        # 见 read_settle_gold_opt docstring)→ 退定点读右上角
+                        # 金币存量;仍失败才落 unknown 量域(原语义不变)。
+                        _assets['gold'] = read_settle_gold_opt(self.ctx, screen)
                     if _assets.get('gold') is None \
                             and getattr(_obs, 'killed', None) is True:
                         # 读失败原因定位留证(T-42):胜局结算页必有金面板
                         #(经济知识=economy.md「金币明细面板只在胜局结算屏
-                        # 出现」),读失败 = OCR token 形态漂移而非面板缺席
+                        # 出现」),token 解析与定点读双失败 = 布局再漂移
                         # ——落全帧 token 供解析器加固对账(败局页无面板,
                         # 读失败是预期形态,不刷屏)。
-                        log.warning('[cw-bwait] 结算屏金面板读失败(胜局,'
-                                    '将置 unknown 量域闩): ocr_tokens=%s',
+                        log.warning('[cw-bwait] 结算屏金读失败(token+定点双失败,'
+                                    '胜局,将置 unknown 量域闩): ocr_tokens=%s',
                                     _ocr_texts)
                     # GameState 结算覆盖写端(迁移批次二,任务书件 8/设计
                     # §3.5.1):结算真值组(hp/streak 带方向/gold·level·xp

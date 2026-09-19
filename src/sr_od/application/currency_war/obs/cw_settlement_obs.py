@@ -11,13 +11,22 @@
 from __future__ import annotations
 
 import re
+import time
 
+import cv2
 import numpy as np
 from cv2.typing import MatLike
 
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_obs_core import HP_MAX, HP_MIN
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    GOLD_MAX,
+    GOLD_MIN,
+    HP_MAX,
+    HP_MIN,
+    _area_rect,
+    _first_int,
+)
 from sr_od.context.sr_context import SrContext
 
 
@@ -151,6 +160,97 @@ def parse_settlement_assets(ocr_texts: list[str]) -> dict[str, int | None]:
                 out['xp_cur'] = int(m.group(1))
                 out['xp_next'] = int(m.group(2))
     return out
+
+
+#: 结算屏右上角金币存量 area(screen「货币战争-战斗结算」;坐标单一真相源)。
+#: 只框数字区(排除左邻金币图标),备战 read_gold 同款收紧先例。
+A_SETTLE_GOLD: str = '战斗结算-金币存量'
+
+#: 金存量稳定门补采参数(含义与量级出处 = cw_observation.read_gold_settled:
+#: 入账计数器单调向上,单帧可能拿到入账前旧值,两帧一致才采信/取末帧)。
+#: 结算屏停留短,补采上限比备战侧少一帧。
+SETTLE_GOLD_MAX_POLLS: int = 2
+SETTLE_GOLD_INTERVAL_S: float = 0.5
+
+
+def _read_settle_gold_once(ctx: SrContext, screen: MatLike) -> int | None:
+    """右上角金币存量单帧读(裁 area + 3x 放大;area 缺失/裁空/越界 → None)。"""
+    rect = _area_rect(ctx, A_SETTLE_GOLD, '货币战争-战斗结算')
+    if rect is None:
+        return None
+    crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
+    if crop.size == 0:
+        return None
+    up = cv2.resize(crop, (crop.shape[1] * 3, crop.shape[0] * 3),
+                    interpolation=cv2.INTER_CUBIC)
+    v = _first_int([r.data for r in ctx.ocr_service.get_ocr_result_list(image=up)])
+    if v is None or not (GOLD_MIN <= v <= GOLD_MAX):
+        return None
+    return v
+
+
+def read_settle_gold_opt(ctx: SrContext, screen: MatLike) -> int | None:
+    """结算屏右上角金币存量(稳定门版;None = 读不到)。
+
+    为什么存在:``parse_settlement_assets`` 的「存量 <N>」锚属旧版结算布局,
+    当前版本 token 流无该词 → 胜局金解析全失败(实锤 run_20260918_084010 结算
+    帧 .debug/temp/currency_war/redesign/fixtures/settle_ocr/window_batch/
+    h_004_084253.png 亲读 + 当日 6/6 胜局读失败警告),战后金真值入口全灭。
+    真值实际挂在**右上角货币计数**(同帧实证:计数 11 = 账本 7 + 获得金币
+    总览 4,分毫不差),本函数定点读它。
+    稳定门(纪律单一源 = cw_observation.read_gold_settled,`w489_sim_real_gap/`
+    审计感知面):计数器可在结算展示期仍在入账滚动(settle_ocr 时序批实测
+    165656..165808 帧 9,9,空,空,13),单帧可能拿旧值 → 首读失败补采一帧
+    (渲染未就绪形态),读到后帧间不一致取末帧 + 冲突留证;控制器不可得
+    (离线/单测)退单帧读,行为与无门一致。边界:area 缺失/裁空/越界
+    (GOLD_MIN..GOLD_MAX)→ None,不猜;任何异常(帧不可下标/识别链故障)
+    → None,观测面 best-effort 不毒化结算覆盖链。
+    """
+    try:
+        return _read_settle_gold_gated(ctx, screen)
+    except Exception:   # noqa: BLE001  观测面 best-effort(帧哨兵/识别链异常)
+        return None
+
+
+def _read_settle_gold_gated(ctx: SrContext, screen: MatLike) -> int | None:
+    """``read_settle_gold_opt`` 主体(读数 + 稳定门;异常上抛由壳兜)。"""
+    v = _read_settle_gold_once(ctx, screen)
+    if v is None:
+        # 渲染未就绪形态(时序批 h_001 空读后 h_003 起稳定):补采一帧再判。
+        controller = getattr(ctx, 'controller', None)
+        if controller is None or not hasattr(controller, 'screenshot'):
+            return None
+        try:
+            time.sleep(SETTLE_GOLD_INTERVAL_S)
+            v = _read_settle_gold_once(ctx, controller.screenshot())
+        except Exception:   # noqa: BLE001  补采帧不可得 → 维持读失败
+            return None
+        if v is None:
+            return None
+    controller = getattr(ctx, 'controller', None)
+    if controller is None or not hasattr(controller, 'screenshot'):
+        return v   # 离线/单测:无真控制器,单帧读即全部能力
+    last = v
+    final = v
+    disagreed = False
+    for _ in range(SETTLE_GOLD_MAX_POLLS):
+        try:
+            time.sleep(SETTLE_GOLD_INTERVAL_S)
+            nxt = _read_settle_gold_once(ctx, controller.screenshot())
+        except Exception:   # noqa: BLE001  补采帧不可得 → 保留已读值
+            break
+        if nxt is None:
+            break
+        final = nxt
+        if nxt == last:
+            break
+        last = nxt
+        disagreed = True
+    if not disagreed:
+        return final
+    log.warning('[cw!] 结算金稳定门:首帧=%s 末帧=%s(帧间在动,采末帧=入账后真值)',
+                v, final)
+    return final
 
 
 def parse_streak(ocr_texts: list[str]) -> int | None:
