@@ -1959,12 +1959,14 @@ class CwLoop(SrOperation):
                 self.round_by_find_and_click_area(screen, '货币战争-备战', '按钮-返回补给阶段', success_wait=2)
                 log.info('[cw-loop] 补给节点(nodeseq current=supply)→ 点返回补给阶段 进补给屏(下轮 CwScreenSupplyNode)')
                 return self.round_wait(wait=2)
-            # T-176 V-2 收编→再迁移:备战分支派发前的试用揭示卡/书册卡
-            # 清场识别+点击曾迁 CwScreenPrep 环入口清场段(``_clear_prep_cards``),
+            # T-176 V-2 收编→再迁移:备战分支派发前的书册卡清场识别+点击
+            # 曾迁 CwScreenPrep 环入口清场段(``_clear_prep_cards``),
             # 用户裁定 2026-09-19 开卡时机归策略实现管后该段撤销——识别
-            # kind('trial_card'/'bookcard')进容器 bench,开卡动作由策略器
-            # entry ① 卡片臂发射(均终结动作,交回语义不变);外循环只保留
-            # 画面识别分派(书册卡弹窗选卡 = 本文件 0k 分支,先例不变)。
+            # kind('bookcard')进容器 bench,开卡动作由策略器 entry ① 卡片臂
+            # 发射(终结动作,交回语义不变);外循环只保留画面识别分派
+            #(书册卡弹窗选卡 = 本文件 0k 分支,先例不变)。
+            # (「试用角色揭示卡」= 动画帧误判的幻影机制,2026-09-19 定谳撤销,
+            # 墓碑见 cw_identity_obs;勿再为它接线。)
             def _on_prep_round(ok: bool, res: Any) -> None:
                 if ok:   # success 才是判据(OperationResult 无 __bool__,
                     # 裸 bool(fail) 为 True(实证过的坑))

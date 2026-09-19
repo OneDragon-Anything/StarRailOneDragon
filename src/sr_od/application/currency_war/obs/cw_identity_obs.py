@@ -868,7 +868,7 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
         # r100k:书册卡已建档(find_bookcards)进 _obj_slots → 本钩子不再拦它。
         # 书册卡开启语义已确认(2026-08-30 实机:点槽 → 「专家邀请函」五选一),
         # 原确认停机钩子退役,自动处理链见 operations/cw_screen/cw_screen_expert_invite.py
-        # (备战环预清场 + loop 0k 弹窗分支接线)。
+        # (开卡发射位 = 策略器 entry ① 卡片臂 + loop 0k 弹窗分支接线)。
         # 排除集单一源(部署伪槽修复批 ①):原内联段(find_* 族 ∪ 泛 TM 低阈
         # 扫描)整体迁入 bench_item_slots,本钩子消费模糊档(精确 ∪ 泛扫描,
         # 行为与原内联段等价);停机钩子其余段(面板守卫/帧态门/ADR-0263 锚
@@ -1332,76 +1332,14 @@ def read_tomes(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]]:
     return find_tomes(screen, _ctx_slots(ctx, '备战栏', 9))
 
 
-# ===== 试用角色揭示卡(备战栏槽位;summon 停机钩子首捕建档)=====
-# 机制(2026-08-30 局22 2-4 实机确认):备战栏偶现**发光金色神秘卡**(非角色立绘,
-# 金光粒子特效)。点击即揭示为**试用角色 2★ 卡**(无任何代价,揭示后原地变普通角色卡,
-# 详情带「试用」徽标)。证据帧:.debug/temp/currency_war/shots/summon_unknown__9ab94f70.png
-# (slot3 发光卡)+ 揭示后帧(.debug/sr_od_mcp/screenshot/screenshot_20260829_120411_171833.png)。
-# 识别 = **双通道 OR**(单正样本帧标定,两通道各留倍数余量;发光动画会变,双通道互补):
-# ① 灰度 TM:模板 = 揭示前帧 slot3 内窗 91x114(< 全槽 111x134 防 shape 守卫判盲)。
-#    标定(47 张备战 fixture 全部 slot3 负样本):自身 1.0 / 生产加载路径自命中 0.958 /
-#    负样本 max 0.254 → 阈 0.5 居中。
-# ② 亮金发光签名:槽内 HSV 亮橙金窗口(V≥200 自发光带)像素占比。正样本 0.441 /
-#    负样本 max 0.076 → 阈 0.25(正 0.57×、负 3.3× 余量)。TM 兜「光弱但卡面在」,
-#    发光签名兜「粒子闪烁致 TM 掉分」——双通道都单正样本标定,漏检时 summon 兜底
-#    钩子仍会停机(安全网在,不静默)。
-_TRIAL_REVEAL_TM_THR: float = 0.5
-_TRIAL_GLOW_LO: tuple[int, int, int] = (15, 80, 200)
-_TRIAL_GLOW_HI: tuple[int, int, int] = (35, 255, 255)
-_TRIAL_GLOW_RATIO_THR: float = 0.25
-_trial_reveal_gray: MatLike | None = None
-_trial_reveal_loaded: bool = False
-
-
-def _get_trial_reveal_gray() -> MatLike | None:
-    """加载试用角色揭示卡模板灰度图(``assets/template/currency_war/supply/试用角色揭示卡.png``)。
-
-    模板 = 建档帧 slot3 真值裁片内窗(91x114,< 全部槽裁片,防 shape 守卫判盲);
-    单正样本帧标定,阈值数字见常量块注释。
-    """
-    global _trial_reveal_gray, _trial_reveal_loaded
-    if not _trial_reveal_loaded:
-        _trial_reveal_loaded = True
-        p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'supply' / '试用角色揭示卡.png'
-        img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
-        _trial_reveal_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
-    return _trial_reveal_gray
-
-
-def find_trial_reveal_cards(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int, Point]]:
-    """纯 CV 核心:槽位内检测试用角色揭示卡(双通道 OR)→ ``[(slot_idx, 槽 center)]``。
-
-    点该中心即揭示(免费得 2★ 试用角色,原地变普通角色卡 → 自然被 SIFT 识别,
-    无需后续处理;揭示动作由备战环派发前统一做,见 cw_loop 备战分支接线)。
-    可离线硬编码 rect 测(同 ``find_supply_boxes`` 分层约定)。
-    """
-    tm = _get_trial_reveal_gray()
-    hsv = cv2.cvtColor(screen, cv2.COLOR_RGB2HSV)
-    glow_mask = cv2.inRange(hsv, _TRIAL_GLOW_LO, _TRIAL_GLOW_HI)
-    out: list[tuple[int, Point]] = []
-    for idx, rect in slots:
-        hit = False
-        crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
-        # 裁片可能为空(rect 越出小尺寸测试帧):cvtColor 对空阵抛错,守卫跳过
-        if crop.size == 0:
-            continue
-        if tm is not None:
-            gray_crop = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
-            if gray_crop.shape[0] >= tm.shape[0] and gray_crop.shape[1] >= tm.shape[1]:
-                r = cv2.matchTemplate(gray_crop, tm, cv2.TM_CCOEFF_NORMED)
-                hit = cv2.minMaxLoc(r)[1] >= _TRIAL_REVEAL_TM_THR
-            else:
-                _note_shape_skip('find_trial_reveal_cards', idx, crop.shape[0], crop.shape[1],
-                                 tm.shape[0], tm.shape[1])
-        if not hit:
-            # 通道② 亮金发光占比(HSV 全帧算一次,逐槽只做裁片均值,便宜)
-            gr = glow_mask[rect.y1:rect.y2, rect.x1:rect.x2]
-            if gr.size and float((gr > 0).mean()) >= _TRIAL_GLOW_RATIO_THR:
-                hit = True
-        if hit:
-            out.append((idx, Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)))
-    return out
-
+# ===== [幻影机制墓碑] 「试用角色揭示卡」=====
+# 历史定性更正(用户 2026-09-19 定谳):备战栏偶现的发光金卡 = **动画帧**(合成/
+# 到账类瞬态特效),不是可点道具。W595 曾据单帧把它建模成「试用角色揭示卡」
+# (find_trial_reveal_cards 双通道检测 + 模板 + 试用揭示动作),整链已撤销删除,
+# 模板 png 同批删除;禁再以任何形态复活。备战栏发光帧的正确处置 = 等
+# 动画播完的下一帧自然可读;若动画帧再次触发 summon 停机钩子,按现场截图
+# 人工确认后直接续跑,复现频次足以采样时再按「复现新形态再扩签名」纪律
+# 给 is_merge_effect_frame 补 bench 带签名(现签名只覆盖前排带,勿单帧草标)。
 
 # ===== 占槽物品排除集·单一源(部署伪槽修复批 ①)=====
 # 双源缺口(方案 .debug/temp/currency_war/deploy_pseudo_slot/方案.md §0):
@@ -1420,8 +1358,8 @@ def bench_item_slots(ctx: SrContext, screen: MatLike, *, fuzzy: bool) -> set[int
 
     **双置信档**(方案 A1:两处消费的置信要求不同,禁止一个全集合两处共用):
     - 精确档(``fuzzy=False``)= find_supply_boxes(补给箱/简易武装箱)
-      ∪ find_tomes(秘密典籍)∪ find_bookcards(书册卡)∪ find_trial_reveal_cards
-      (试用角色揭示卡)。部署面**只许**消费本档:泛扫描是模糊判据,真角色
+      ∪ find_tomes(秘密典籍)∪ find_bookcards(书册卡)。部署面**只许**
+      消费本档:泛扫描是模糊判据,真角色
       立绘在极端帧可能弱匹配过阈 → 部署面误排真角色 = 战力真空(贵方向,
       r60 同型),比伪槽白拖更贵。
     - 模糊档(``fuzzy=True``)= 精确档 ∪ 泛 TM 低阈扫描(0.45 阈,箱/典籍
@@ -1434,9 +1372,6 @@ def bench_item_slots(ctx: SrContext, screen: MatLike, *, fuzzy: bool) -> set[int
     out: set[int] = {i for i, _p in find_supply_boxes(screen, slots9)}
     out |= {i for i, _p in find_tomes(screen, slots9)}
     out |= {i for i, _p in find_bookcards(screen, slots9)}
-    # 试用角色揭示卡(summon 钩子首捕建档):发光金卡点开即免费得 2★ 试用角色,
-    # 揭示动作由备战环派发前统一做(cw_loop 备战分支接线)→ 视为已知物品。
-    out |= {i for i, _p in find_trial_reveal_cards(screen, slots9)}
     if fuzzy:
         # 泛 TM 低阈扫描(原 read_bench_chars 内联段逐行搬移,判定零变化):
         # 兜已知形态全部漏认的低分渲染物品变体(r100j:卡包变体 TM 0.54 漏检型)。

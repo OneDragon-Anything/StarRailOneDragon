@@ -561,19 +561,17 @@ class Unit:
 
 @dataclass(frozen=True)
 class BenchSlot:
-    """备战席一槽:六种内容之一(统一槽位视图,占位真值一份,§3.2.5)。
+    """备战席一槽:五种内容之一(统一槽位视图,占位真值一份,§3.2.5)。
 
-    占席真值 = :func:`slot_occupies`:unit/supply_box/tome/bookcard/
-    trial_card 占 1 槽、empty 不占(晶矿不占席——它是点击目标不是席位
-    居民,§3.2.5)。sim 合成帧「箱不占席」= sim 无箱实体的内部口径约定,
-    **记录模型按实机真值**。bookcard/trial_card = 备战席占槽道具细分
-    (书册卡/试用角色揭示卡;开卡动作的策略器发射臂按 kind 分派,用户
-    裁定 2026-09-19 开卡时机归策略实现管——原先统一降级 supply_box,
-    策略器开箱臂会对着卡槽发 OpenBox 必败,由入口清场先于观察 masking)。
+    占席真值 = :func:`slot_occupies`:unit/supply_box/tome/bookcard 占 1 槽、
+    empty 不占(晶矿不占席——它是点击目标不是席位居民,§3.2.5)。sim 合成
+    帧「箱不占席」= sim 无箱实体的内部口径约定,**记录模型按实机真值**。
+    bookcard = 书册卡细分(开卡动作的策略器发射臂按 kind 分派,用户裁定
+    2026-09-19 开卡时机归策略实现管——原先统一降级 supply_box,策略器开箱
+    臂会对着卡槽发 OpenBox 必败,由入口清场先于观察 masking)。
     """
 
-    kind: Literal['unit', 'supply_box', 'tome', 'bookcard', 'trial_card',
-                  'empty'] = 'empty'
+    kind: Literal['unit', 'supply_box', 'tome', 'bookcard', 'empty'] = 'empty'
     unit: Unit | None = None        # kind='unit' 时有效
     # tome=星徽秘典:席位内容物之一,占席待实机证实(§3.2.5——画面档案只有
     # 弹窗、无席位区域锚);按「席位内容物」建模即占席,证伪时改归不占席域。
@@ -1093,8 +1091,8 @@ def current_run_id_safe() -> str:
 
 
 def slot_occupies(kind: str) -> bool:
-    """槽位占席谓词(§3.2.5 实机真值):unit/supply_box/tome/bookcard/
-    trial_card 占 1 槽,empty 不占。席满判定/席空数同源派生的底座。"""
+    """槽位占席谓词(§3.2.5 实机真值):unit/supply_box/tome/bookcard
+    占 1 槽,empty 不占。席满判定/席空数同源派生的底座。"""
     return kind != 'empty'
 
 
@@ -1408,10 +1406,9 @@ def bench_view_from_obs(bench_chars: list,
     - ``is_item_slot`` 占位件(读链道具位,箱/典籍/书册卡)→ supply_box
       槽位往返保旗标(占 1 席、非可卖燃料;与 :func:`bench_slots_to_legacy`
       的重建分支配对)。``item_kind_by_slot``(迭代 2026-09-18-prep-obs-
-      retirement 阶段 3.5)= 槽号 → 'supply_box'/'tome'/'bookcard'/
-      'trial_card' 细分映射(观察链用同帧 read_supply_boxes/read_tomes/
-      find_bookcards/find_trial_reveal_cards 槽号集构造;缺省 None =
-      旧行为逐位不变,占位件恒 supply_box);
+      retirement 阶段 3.5)= 槽号 → 'supply_box'/'tome'/'bookcard' 细分
+      映射(观察链用同帧 read_supply_boxes/read_tomes/find_bookcards
+      槽号集构造;缺省 None = 旧行为逐位不变,占位件恒 supply_box);
     - 非 None 返回 = 槽位保序映射(下标 i = 物理槽 i+1,与 sim 合成口同构)。
     """
     if not bench_chars:
@@ -1488,11 +1485,11 @@ def bench_slots_to_legacy(view: BenchView) -> list:
     for i, slot in enumerate(view.slots):
         u = getattr(slot, 'unit', None)
         kind = getattr(slot, 'kind', 'empty')
-        if kind in ('supply_box', 'tome', 'bookcard', 'trial_card'):
+        if kind in ('supply_box', 'tome', 'bookcard'):
             # 占位件往返重建(与 bench_view_of_slots 的 supply_box 映射
-            # 配对;tome/bookcard/trial_card 分支 = kind 细分配对——
-            # reviewer r1 #1 申报的「单边破裂」处置):is_item_slot=True
-            # 的 BenchChar,守卫线(占位恒拒)与部署装配点识别线消费同旗标。
+            # 配对;tome/bookcard 分支 = kind 细分配对——reviewer r1 #1
+            # 申报的「单边破裂」处置):is_item_slot=True 的 BenchChar,
+            # 守卫线(占位恒拒)与部署装配点识别线消费同旗标。
             out.append(BenchChar(slot=i + 1, char_id='', star=1,
                                  is_item_slot=True))
             continue

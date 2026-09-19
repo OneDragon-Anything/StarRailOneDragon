@@ -749,24 +749,6 @@ class CwActionOpenBookcardParam:
 
 
 @dataclass
-class CwActionRevealTrialParam:
-    """点试用角色揭示卡(发光金卡点开即免费得 2★ 试用角色,原地变普通
-    角色卡由 SIFT 自然识别)。
-
-    无代价、无分支选择,但揭示即引入新事实(板上多一个未知角色)→
-    终结动作:点完即交回外循环,下一入口 heavy 观察读到揭示后真实板面
-    再续决策(与 OpenBox R7 终结化同构;原「备战环入口清场段直接清」
-    已按用户裁定 2026-09-19 撤销——开卡时机归策略实现管)。发射位 =
-    策略器 entry ① prep 实体面卡片臂(容器 bench 槽位 kind 'trial_card'
-    触发)。识别单一源 = ``cw_identity_obs.find_trial_reveal_cards``。
-    slot=None → 第一张揭示卡。
-    """
-    slot: int | None = None
-    route_tag: str = field(default='', kw_only=True,
-                           metadata={'action_key_exclude': True})
-
-
-@dataclass
 class CwActionWearEquipParam:
     """穿装备(装备库 owned 件 → 目标角色物理槽位;R2 穿戴原子通路)。
 
@@ -1137,7 +1119,7 @@ CwAction = (
         CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam | CwActionLevelUpShopParam |
         CwActionDeployMoveParam | CwActionRefreshShopParam | CwActionCloseShopParam | CwActionSellDeployedParam |
         CwActionSwapDeployParam | CwActionCollectOreParam | CwActionOpenBoxParam | CwActionOpenTomeParam |
-        CwActionOpenBookcardParam | CwActionRevealTrialParam | CwActionWearEquipParam | CwActionFurnaceUseParam | CwActionPrivilegeCardUseParam |
+        CwActionOpenBookcardParam | CwActionWearEquipParam | CwActionFurnaceUseParam | CwActionPrivilegeCardUseParam |
         CwActionWrenchUseParam | CwActionPrecisionWrenchUseParam | CwActionStaffProjectorUseParam | CwActionPerfectProjectorUseParam |
         CwActionLuckyTokenUseParam | CwActionStartBattleParam | CwActionOpenShopParam | CwActionPickEventParam |
         CwActionPickEncounterParam | CwActionPickSupplyParam | CwActionPickInvestParam | CwActionPickMegastarParam |
@@ -1151,7 +1133,6 @@ CW_ACTION_TYPES: tuple = (
     CwActionBuyCardParam, CwActionSellBenchParam, CwActionLevelUpParam, CwActionLevelUpShopParam, CwActionDeployMoveParam, CwActionRefreshShopParam,
     CwActionCloseShopParam, CwActionSellDeployedParam,
     CwActionCollectOreParam, CwActionOpenBoxParam, CwActionOpenTomeParam, CwActionOpenBookcardParam,
-    CwActionRevealTrialParam,
     CwActionWearEquipParam,
     CwActionFurnaceUseParam, CwActionPrivilegeCardUseParam, CwActionWrenchUseParam, CwActionPrecisionWrenchUseParam,
     CwActionStaffProjectorUseParam, CwActionPerfectProjectorUseParam, CwActionLuckyTokenUseParam,

@@ -22,7 +22,7 @@
 | RefreshShop | `CwActionRefreshShopOp` | [refresh-shop.md](refresh-shop.md) | `report_action_refresh_shop_param` + 同文件 `record_refresh_execution` 计数组 |
 | CloseShop | `CwActionCloseShopOp` | [close-shop.md](close-shop.md) | `report_action_close_shop_param`(`leave_screen`) |
 
-### 备战族(10 行 + 工具原子 7 行)
+### 备战族(9 行 + 工具原子 7 行)
 
 | 注册行 | op 类 | 专篇 | 上报函数(动作语义单一源) |
 |---|---|---|---|
@@ -35,7 +35,6 @@
 | OpenBox | `CwActionOpenBoxOp` | [open-box.md](open-box.md) | 零写族 `zero_writes`(终结动作,交回外循环下一入口覆盖) |
 | OpenTome | `CwActionOpenTomeOp` | [open-tome.md](open-tome.md) | `report_action_open_tome_param` 腾席(bench kind tome → empty) |
 | OpenBookcard | `CwActionOpenBookcardOp` | [open-bookcard.md](open-bookcard.md) | `report_action_open_bookcard_param` 腾席(bench kind bookcard → empty;2026-09-19 起终结动作,发射位 = 策略器卡片臂) |
-| RevealTrial | `CwActionRevealTrialOp` | [reveal-trial.md](reveal-trial.md) | 零写族 `zero_writes`(终结动作,揭示身份归下一入口 heavy 观察;2026-09-19 用户裁定开卡时机归策略器) |
 | FurnaceUse | `CwActionToolUseOp` | [tools.md](tools.md) | 零写族 `zero_writes`(容器零写)+ `apply_tool_execution_write` |
 | PrivilegeCardUse | `CwActionToolUseOp` | [tools.md](tools.md) | 同上 |
 | WrenchUse | `CwActionToolUseOp` | [tools.md](tools.md) | 同上 |

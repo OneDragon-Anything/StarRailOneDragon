@@ -57,7 +57,7 @@ WearEquip/工具原子/OpenBox 的装备域容器腿 = 容器零写（消费真�
 
 ### 1.5 枚举范围与动作计数
 
-本篇枚举 = 商店域 6 个动作词条（§2）+ 备战域原子动作（§3：DeployMove/SellDeployed/LevelUp/OpenBox/OpenTome/ClickSpheres/OpenBookcard/RevealTrial + §3A WearEquip 与工具原子类，规则见 §4）+ 转场类 2 个（§5）+ 词表完备性注 2 条（§2.7）。事件线选择（pick 族，含武装箱四选一画面 op）按 §6 声明为非逻辑态通道。动作词表本体与执行载体表 = [action_exec.md](../flow/action_exec.md) §1、[screens/README](../screens/README.md) §4（能力面/策略面之分不在本篇重复）。
+本篇枚举 = 商店域 6 个动作词条（§2）+ 备战域原子动作（§3：DeployMove/SellDeployed/LevelUp/OpenBox/OpenTome/ClickSpheres/OpenBookcard + §3A WearEquip 与工具原子类，规则见 §4）+ 转场类 2 个（§5）+ 词表完备性注 2 条（§2.7）。事件线选择（pick 族，含武装箱四选一画面 op）按 §6 声明为非逻辑态通道。动作词表本体与执行载体表 = [action_exec.md](../flow/action_exec.md) §1、[screens/README](../screens/README.md) §4（能力面/策略面之分不在本篇重复）。（幻影机制墓碑：「试用角色揭示卡」= 备战栏动画帧误判，2026-09-19 用户定谳撤销，禁再建模；墓碑 = `cw_identity_obs` 模块内注。）
 
 各动作条目统一形状：**词表/op → 确定面规则（逐腿）→ 随机面 → 拒绝边界（游戏拒/提案陈旧 = 零容器写）→ 依据**。
 
@@ -248,18 +248,6 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 **发射形态**（用户裁定 2026-09-19 开卡时机归策略实现管）：发射位 = 策略器 entry ① prep 实体面卡片臂（容器 bench kind `'bookcard'` 触发；原备战环入口清场段 `_clear_prep_cards` 代发通道撤销）。**终结动作**（op 类 `terminal=True`，弹窗 = 新事实，交回外循环重分发选卡；备战 visit 终结分支已随批补齐）。
 
 **依据**：`kernel/cw_vocab.py::CwActionOpenBookcardParam`；`prep_actions.py::PrepActionExecutor._open_bookcard`；design.md unified-action-factory §2.6 R10；`landing.md` §3.2c。
-
-### 3.8 RevealTrial（点试用角色揭示卡）
-
-**词表**：`kernel/cw_vocab.py::CwActionRevealTrialParam`（卡片臂策略器化批新增，2026-09-19；与 OpenBox/OpenTome/OpenBookcard 同签名，`slot: int | None`，None = 首张）。
-
-**确定面**：揭示卡占备战席 1 槽（容器 kind=`'trial_card'`）；点槽 → 免费得 2★ 试用角色入席（原地变普通角色卡，SIFT 自然识别）。**容器零写**（零写族申报 = `zero_writes.py::report_action_reveal_trial_param`——揭示身份不可预知，归下一入口 heavy 观察覆盖）。
-
-**随机面 / 观察面**：揭示出的角色身份与星级 = 随机/观察面。
-
-**发射形态**：发射位 = 策略器 entry ① prep 实体面卡片臂（kind `'trial_card'` 触发，臂序先于 OpenBookcard）。**终结动作**（揭示即新事实，交回外循环重观察后再续决策）。历史形态：原为备战环入口清场段直接点击（非动作），随卡片臂策略器化收编为词表动作。
-
-**依据**：`kernel/cw_vocab.py::CwActionRevealTrialParam`；`operations/cw_op/cw_reveal_trial_action.py`；[logic-updates/reveal-trial.md](logic-updates/reveal-trial.md)。
 
 ## 3A. 穿装备与工具消耗（R2/R8 原子类）
 

@@ -9,10 +9,9 @@
 /缓存复位)+ 环入口清场 + 开商店收起 + heavy 观察 → CwScreenPrepObs
 (可选域经 report_screen_prep_obs 落容器)+ 事件 overlay 交回早退 +
 接管补采 + 纯观察审计族;决策动作 node = ③④⑤ 单动作决策循环(无防御
-上限,用户裁定:不收敛 = 策略实现 bug)。备战栏占槽卡片(书册卡/试用
-揭示卡)的开卡时机归策略实现管(用户裁定 2026-09-19):观察链产
-kind='bookcard'/'trial_card' 槽位,策略器 entry ① 卡片臂发射终结动作,
-本画面 op 不再代发。
+上限,用户裁定:不收敛 = 策略实现 bug)。书册卡的开卡时机归策略实现管
+(用户裁定 2026-09-19):观察链产 kind='bookcard' 槽位,策略器 entry ①
+卡片臂发射终结动作,本画面 op 不再代发。
 """
 
 from __future__ import annotations
@@ -68,7 +67,6 @@ from sr_od.application.currency_war.obs.cw_identity_obs import (
     _ctx_slots,
     ensure_portrait_templates,
     find_bookcards,
-    find_trial_reveal_cards,
     read_ore_sights,
     read_supply_boxes,
 )
@@ -100,9 +98,6 @@ from sr_od.application.currency_war.operations.cw_op.cw_open_box_action import (
 )
 from sr_od.application.currency_war.operations.cw_op.cw_open_shop_action import (
     CwActionOpenShopOp,
-)
-from sr_od.application.currency_war.operations.cw_op.cw_reveal_trial_action import (
-    CwActionRevealTrialOp,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_start_battle_action import (
     CwActionStartBattleOp,
@@ -478,11 +473,9 @@ class CwScreenPrep(SrOperation):
         _box_slots = read_supply_boxes(self.ctx, screen)
         _tome_slots = cw_identity_obs_read_tomes(self.ctx, screen)
         # 备战栏占槽卡片(策略器 entry ① 卡片臂的发射依据,用户裁定
-        # 2026-09-19 开卡时机归策略实现管):书册卡/试用揭示卡同帧现读,
-        # 槽号经 item_kind_by_slot 细分进容器 bench kind。
+        # 2026-09-19 开卡时机归策略实现管):书册卡同帧现读,槽号经
+        # item_kind_by_slot 细分进容器 bench kind。
         _book_slots = find_bookcards(screen, _ctx_slots(self.ctx, '备战栏', 9))
-        _trial_slots = find_trial_reveal_cards(
-            screen, _ctx_slots(self.ctx, '备战栏', 9))
         # (箱/典籍占席自阶段 3.5 起经 bench 槽位 kind 进容器——本帧槽号集
         #  供 bench_view_from_obs 细分参数,像素坐标不落盘;黑板 boxes/tomes
         #  字段随黑板退役删除。)
@@ -571,19 +564,17 @@ class CwScreenPrep(SrOperation):
                 # 禁把「9 槽全空」当 observation 入记录
                 # (席空数派生误报 free=9 污染席满决策)。
                 # item_kind_by_slot 细分(阶段 3.5 起 box/tome,2026-09-19
-                # 起 bookcard/trial_card):同帧识别槽号集构造映射,bench
-                # 槽位 kind 精确到具体占槽物(策略器 entry ① 臂按 kind
-                # 分派;原 is_item_slot 布尔统一 supply_box 曾使卡片槽
-                # 被开箱臂误指,由入口清场先于观察 masking——已随卡片臂
-                # 策略器化根治)。
+                # 起 bookcard):同帧识别槽号集构造映射,bench 槽位 kind
+                # 精确到具体占槽物(策略器 entry ① 臂按 kind 分派;原
+                # is_item_slot 布尔统一 supply_box 曾使书册卡槽被开箱臂
+                # 误指,由入口清场先于观察 masking——已随书册卡臂策略器化
+                # 根治)。
                 _item_kind = {int(slot): 'supply_box' for slot, _pt
                               in _box_slots}
                 _item_kind.update({int(slot): 'tome' for slot, _pt
                                    in _tome_slots})
                 _item_kind.update({int(slot): 'bookcard' for slot, _pt
                                    in _book_slots})
-                _item_kind.update({int(slot): 'trial_card' for slot, _pt
-                                   in _trial_slots})
                 _bench_obs = bench_view_from_obs(
                     _bench_chars, item_kind_by_slot=_item_kind)
                 if _bench_obs is not None:
@@ -1045,10 +1036,9 @@ class CwScreenPrep(SrOperation):
         CwScreenPrepObs 装配(可选域经 :func:`report_screen_prep_obs` 在
         原写点位落容器:链域在 heavy 观察链内、接管域在补采簇内,字段在
         场才写)→ 帧代次标注 → 事件 overlay 交回早退 → 接管补采 →
-        审计族消费。备战栏占槽卡片不再入口代清:识别 kind 进容器,开卡
-        时机由策略器 entry ① 卡片臂裁决(用户裁定 2026-09-19,发射的
-        CwActionOpenBookcardParam/CwActionRevealTrialParam 均为终结动作,
-        交回语义与原入口代发一致)。"""
+        审计族消费。书册卡不再入口代清:识别 kind 进容器,开卡时机由
+        策略器 entry ① 卡片臂裁决(用户裁定 2026-09-19,发射的
+        CwActionOpenBookcardParam 为终结动作,交回语义与原入口代发一致)。"""
         match = self._match()
         if match is None or match.strategy is None:
             return self.round_fail(status='无 cw_match(对局未初始化)')
@@ -1228,12 +1218,6 @@ class CwScreenPrep(SrOperation):
             # 原画面 op 入口清场代交回通道撤销):弹专家邀请函 = 新事实 →
             # 本访问交回,外循环 0k 分发 CwScreenExpertInvite 选卡。
             return self.round_success(f'{key} ✓(交回:专家邀请函弹窗分发)',
-                                      wait=op_cls.terminal_wait)
-        if op_cls is CwActionRevealTrialOp:
-            # 揭示终结(同批卡片臂):免费 2★ 试用角色入席 = 新事实
-            #(身份不可预知)→ 本访问交回,下一入口 heavy 观察读揭示后
-            # 真实板面再续决策。
-            return self.round_success(f'{key} ✓(交回:试用角色入席重观察)',
                                       wait=op_cls.terminal_wait)
         raise AssertionError(
             f'[cw][director] 非终结动作进入终结出口:{type(action).__name__}'
