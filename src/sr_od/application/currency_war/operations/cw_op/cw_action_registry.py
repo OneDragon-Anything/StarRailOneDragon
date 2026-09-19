@@ -49,12 +49,16 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionOpenShopParam,
     CwActionOpenTomeParam,
     CwActionPerfectProjectorUseParam,
+    CwActionPickBoxCardParam,
     CwActionPickEncounterParam,
+    CwActionPickEquipParam,
+    CwActionPickExpertInviteParam,
     CwActionPickFortuneParam,
     CwActionPickInvestParam,
     CwActionPickMegastarParam,
     CwActionPickPartnerParam,
     CwActionPickPlannerParam,
+    CwActionPickStarTomeParam,
     CwActionPickSupplyParam,
     CwActionPickWishTrialParam,
     CwActionPrecisionWrenchUseParam,
@@ -92,12 +96,16 @@ from sr_od.application.currency_war.operations.cw_op.cw_open_tome_action import 
     CwActionOpenTomeOp,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+    CwActionPickBoxCardOp,
     CwActionPickEncounterOp,
+    CwActionPickEquipOp,
+    CwActionPickExpertInviteOp,
     CwActionPickFortuneOp,
     CwActionPickInvestOp,
     CwActionPickMegastarOp,
     CwActionPickPartnerOp,
     CwActionPickPlannerOp,
+    CwActionPickStarTomeOp,
     CwActionPickSupplyOp,
     CwActionPickWishTrialOp,
 )
@@ -167,6 +175,10 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     CwActionPickInvestParam: CwActionPickInvestOp,   # pick-op-unify 批收编(投资环境/策略两屏共用)
     CwActionPickFortuneParam: CwActionPickFortuneOp,   # pick-op-unify 批收编(T-3)
     CwActionPickWishTrialParam: CwActionPickWishTrialOp,   # pick-op-unify 批收编(T-3)
+    CwActionPickStarTomeParam: CwActionPickStarTomeOp,   # pick-op-unify 批收编(T-4,点卡即选)
+    CwActionPickBoxCardParam: CwActionPickBoxCardOp,   # pick-op-unify 批收编(T-4,点卡即选)
+    CwActionPickExpertInviteParam: CwActionPickExpertInviteOp,   # pick-op-unify 批收编(T-4,点卡即选)
+    CwActionPickEquipParam: CwActionPickEquipOp,   # pick-op-unify 批收编(T-4,点卡即选)
 }
 
 

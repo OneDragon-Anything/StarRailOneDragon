@@ -34,12 +34,16 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_action_report.zero_writes import (
+    report_action_pick_box_card_param,
     report_action_pick_encounter_param,
+    report_action_pick_equip_param,
+    report_action_pick_expert_invite_param,
     report_action_pick_fortune_param,
     report_action_pick_invest_param,
     report_action_pick_megastar_param,
     report_action_pick_partner_param,
     report_action_pick_planner_param,
+    report_action_pick_star_tome_param,
     report_action_pick_supply_param,
     report_action_pick_wish_trial_param,
 )
@@ -49,12 +53,16 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwActionPickBoxCardParam,
     CwActionPickEncounterParam,
+    CwActionPickEquipParam,
+    CwActionPickExpertInviteParam,
     CwActionPickFortuneParam,
     CwActionPickInvestParam,
     CwActionPickMegastarParam,
     CwActionPickPartnerParam,
     CwActionPickPlannerParam,
+    CwActionPickStarTomeParam,
     CwActionPickSupplyParam,
     CwActionPickWishTrialParam,
 )
@@ -521,3 +529,157 @@ class CwActionPickWishTrialOp(SrOperation):
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
         return self.round_success('祈愿试炼确认链已发')
+
+
+class CwActionPickEquipOp(SrOperation):
+    """选择装备三选一选卡链(pick-op-unify 批收编;点卡即选,无确认钮)。
+
+    点卡(mouse_move+click bug#1 缓解;选中点 = 卡名带 x + 卡身 y,决策半
+    现算经 env 传入)→ 选中动画固定等待。本屏零 chosen 写端(选择存证已
+    退役),容器写零。落地判定归画面 op 重入裁决(「请选择」不在)。"""
+
+    #: 非终结动作(每类显式声明,无基类缺省)。
+    terminal = False
+    terminal_wait = 0.0
+
+    def __init__(self, ctx: SrContext, param: CwActionPickEquipParam,
+                 env: OverlayPickExecEnv):
+        SrOperation.__init__(self, ctx, op_name='CwActionPickEquipOp',
+                             need_check_game_win=False)
+        self.param = param
+        self.env = env
+
+    @operation_node(name='pick_equip', is_start_node=True)
+    def run(self) -> OperationRoundResult:
+        """机械执行(点卡即选 + 固定等待;轮次结果经旁路回传恒成功)。"""
+        action = self.param
+        env = self.env
+        op = env.op
+        op.ctx.controller.mouse_move(env.target)
+        op.ctx.controller.click(env.target)
+        time.sleep(1.2)
+        # 自上报(机械链发出后;零写,契约面统一)。
+        gs = game_state_from_ctx(self.ctx)
+        if gs is not None:
+            report_action_pick_equip_param(
+                gs, action,
+                ChannelSig(family='logic_action',
+                           actor=type(self).__name__, mode='compute'))
+        return self.round_success('装备选卡点击已发(结果经旁路回传)')
+
+
+class CwActionPickBoxCardOp(SrOperation):
+    """武装箱四选一选卡链(pick-op-unify 批收编;点卡选中即确认,单步)。
+
+    点卡(mouse_move+click bug#1 缓解;点击点 = 卡名带下方 y=290 避
+    「查看详情」按钮,决策半现算经 env 传入)→ overlay 动画固定等待
+    (``_OVERLAY_ANIM_WAIT_S``,与开箱终结交回等待同源)。选卡即终结 =
+    画面 op 派发后 round_success 交回(落地归下一帧观察);本 op 零
+    chosen 写端,容器写零。"""
+
+    #: 非终结动作(每类显式声明,无基类缺省)。
+    terminal = False
+    terminal_wait = 0.0
+
+    def __init__(self, ctx: SrContext, param: CwActionPickBoxCardParam,
+                 env: OverlayPickExecEnv):
+        SrOperation.__init__(self, ctx, op_name='CwActionPickBoxCardOp',
+                             need_check_game_win=False)
+        self.param = param
+        self.env = env
+
+    @operation_node(name='pick_box_card', is_start_node=True)
+    def run(self) -> OperationRoundResult:
+        """机械执行(点卡选中即确认 + 动画等待;轮次结果经旁路回传)。"""
+        from sr_od.application.currency_war.prep_actions import (
+            _OVERLAY_ANIM_WAIT_S,
+        )
+        action = self.param
+        env = self.env
+        op = env.op
+        op.ctx.controller.mouse_move(env.target)
+        op.ctx.controller.click(env.target)
+        # 固定动画等待(来源写死 = 现役 overlay 动画等待常量)。
+        time.sleep(_OVERLAY_ANIM_WAIT_S)
+        # 自上报(机械链发出后;零写,契约面统一)。
+        gs = game_state_from_ctx(self.ctx)
+        if gs is not None:
+            report_action_pick_box_card_param(
+                gs, action,
+                ChannelSig(family='logic_action',
+                           actor=type(self).__name__, mode='compute'))
+        return self.round_success('武装箱选卡点击已发(结果经旁路回传)')
+
+
+class CwActionPickStarTomeOp(SrOperation):
+    """星徽秘典四选一选卡链(pick-op-unify 批收编;点卡即选,弹窗自关)。
+
+    点卡(safe_click bug#1 缓解;选中点 = 建档「星徽卡-N」近邻匹配,决策半
+    现算经 env 传入)→ 选中动画固定等待。``chosen_tome``/ConfirmTome 到账
+    登记留守画面 op 重入裁决出口(动作事实边界),本 op 容器写零。"""
+
+    #: 非终结动作(每类显式声明,无基类缺省)。
+    terminal = False
+    terminal_wait = 0.0
+
+    def __init__(self, ctx: SrContext, param: CwActionPickStarTomeParam,
+                 env: OverlayPickExecEnv):
+        SrOperation.__init__(self, ctx, op_name='CwActionPickStarTomeOp',
+                             need_check_game_win=False)
+        self.param = param
+        self.env = env
+
+    @operation_node(name='pick_star_tome', is_start_node=True)
+    def run(self) -> OperationRoundResult:
+        """机械执行(点卡即选 + 固定等待;轮次结果经旁路回传)。"""
+        action = self.param
+        env = self.env
+        op = env.op
+        safe_click(op, env.target, tag='cw-pick-tome')
+        time.sleep(1.0)
+        # 自上报(机械链发出后;零写,契约面统一)。
+        gs = game_state_from_ctx(self.ctx)
+        if gs is not None:
+            report_action_pick_star_tome_param(
+                gs, action,
+                ChannelSig(family='logic_action',
+                           actor=type(self).__name__, mode='compute'))
+        return self.round_success('星徽秘典选卡点击已发(结果经旁路回传)')
+
+
+class CwActionPickExpertInviteOp(SrOperation):
+    """专家邀请函选卡链(pick-op-unify 批收编;点卡即选,无确认钮)。
+
+    点选(area 中心 = 建档「卡-N」/「卡-现金为王」现取,idx=-1 = 现金为王
+    由决策半解析为定位点,area 缺失在决策半显式失败)→ 弹窗关闭动画
+    固定等待。``chosen_expert``/ConfirmExpertCash 到账登记留守画面 op
+    重入裁决出口(动作事实边界),本 op 容器写零。"""
+
+    #: 非终结动作(每类显式声明,无基类缺省)。
+    terminal = False
+    terminal_wait = 0.0
+
+    def __init__(self, ctx: SrContext, param: CwActionPickExpertInviteParam,
+                 env: OverlayPickExecEnv):
+        SrOperation.__init__(self, ctx, op_name='CwActionPickExpertInviteOp',
+                             need_check_game_win=False)
+        self.param = param
+        self.env = env
+
+    @operation_node(name='pick_expert_invite', is_start_node=True)
+    def run(self) -> OperationRoundResult:
+        """机械执行(点选 + 弹窗关闭动画等待;轮次结果经旁路回传)。"""
+        action = self.param
+        env = self.env
+        op = env.op
+        op.ctx.controller.mouse_move(env.target)
+        op.ctx.controller.click(env.target)
+        time.sleep(1.2)   # 选卡 → 弹窗关闭动画窗
+        # 自上报(机械链发出后;零写,契约面统一)。
+        gs = game_state_from_ctx(self.ctx)
+        if gs is not None:
+            report_action_pick_expert_invite_param(
+                gs, action,
+                ChannelSig(family='logic_action',
+                           actor=type(self).__name__, mode='compute'))
+        return self.round_success('邀请函选卡点击已发(结果经旁路回传)')

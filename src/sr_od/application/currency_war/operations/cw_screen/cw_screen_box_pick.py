@@ -32,11 +32,11 @@ miss 未发 = round_fail 交回外循环按画面重分发)+ OCR 卡名行读数
 ``box_card_names`` 落容器(原决策半内联写点收编;「写槽以本访问将决策
 为前提」由门 + 非空闸保证,桩无 gs → 跳过写、决策照走)→ obs 与原始
 读数(x 坐标对)挂实例属性进决策动作 node。决策动作 node = 选卡决策
-(``_decide_card_index`` 决策半原位消费,失败契约不变)→ 点卡(选中即
-确认)→ 固定动画等待 → 选卡即终结交回(单选族例外,screen_op.md §7;
+(``_decide_card_index`` 决策半原位消费,失败契约不变)→ 选卡链经
+``CwActionPickBoxCardOp`` 派发(pick-op-unify 批:点卡选中即确认 + 动画
+等待迁入动作 op)→ 选卡即终结交回(单选族例外,screen_op.md §7;
 选卡落地由下一帧观察覆盖,无重入裁决旗标)。
 """
-import time
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -48,6 +48,9 @@ from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect, _ocr
 from sr_od.application.currency_war.kernel.cw_screen_report.box_pick import (
     CwScreenBoxPickObs,
     report_screen_box_pick_obs,
+)
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwActionPickBoxCardParam,
 )
 from sr_od.application.currency_war.prep_actions import _OVERLAY_ANIM_WAIT_S
 from sr_od.context.sr_context import SrContext
@@ -106,15 +109,24 @@ class CwScreenBoxPick(SrOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=5)
     def act(self) -> OperationRoundResult:
-        """选卡决策 → 点卡 → 固定动画等待 → 交回(选卡即终结)。"""
+        """选卡决策 → 选卡链经工厂派发 → 选卡即终结交回。
+
+        pick-op-unify 批:点卡选中即确认 + 动画等待迁入
+        ``CwActionPickBoxCardOp``(选卡落地归下一帧观察覆盖);本 op 只
+        决策(fail-closed 契约不变)与交回。派发实例携真实选中下标
+        (上报 param 即真实选择)。"""
         idx = self._decide_card_index([n for n, _ in self._cards])
         chosen, choose_x = self._cards[idx]
         card_point = Point(choose_x, CwScreenBoxPick.CARD_Y)
-        self.ctx.controller.mouse_move(card_point)   # bug#1 缓解
-        self.ctx.controller.click(card_point)        # 点卡选中即确认(实测单步)
-        # 固定动画等待(来源写死 = 现役 overlay 动画等待常量;与 CwActionOpenBoxParam
-        # 终结化交回等待同源,弹窗/选卡动画就位与否交下一帧观察)
-        time.sleep(_OVERLAY_ANIM_WAIT_S)
+        from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
+            action_op_for,
+        )
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+            OverlayPickExecEnv,
+        )
+        _env = OverlayPickExecEnv(op=self, idx=idx, target=card_point)
+        action_op_for(CwActionPickBoxCardParam(idx=idx), self.ctx,
+                      _env).execute()
         log.info(f'[cw][boxpick] 选卡 {chosen} → 点击已发(选卡即终结,'
                  '交回外循环)')
         return self.round_success(

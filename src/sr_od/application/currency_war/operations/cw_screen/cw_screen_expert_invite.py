@@ -39,8 +39,6 @@ ConfirmExpertCash 逻辑推进 = gold +4 直推);本屏 sim 腿 = 不适用(sim 
 对应画面段,事件浮层族即时落定),等价判据主承重 = 实机在册行为锁
 (test_cw_game_state_consume chosen_expert 锁 + test_cw_node_screens 接线锁)。
 """
-import time
-
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -48,6 +46,9 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_screen_report.expert_invite import (
     CwScreenExpertInviteObs,
     report_screen_expert_invite_obs,
+)
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwActionPickExpertInviteParam,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -207,15 +208,25 @@ class CwScreenExpertInvite(SrOperation):
         pt = area_center(self.ctx, area, INVITE_SCREEN)
         if pt is None:
             return self.round_fail(f'选卡 area 缺坐标:{area}')
-        self.ctx.controller.mouse_move(pt)
-        self.ctx.controller.click(pt)
         log.info('[cw-bookcard] 邀请函选卡: board=%s 卡羁绊=%s → %s @(%s,%s)',
                  board, card_bonds, pick_desc, pt.x, pt.y)
-        time.sleep(1.2)   # 选卡 → 弹窗关闭动画窗
+        # 选卡链经工厂(pick-op-unify 批:点卡即选 + 弹窗关闭动画等待迁入
+        # ``CwActionPickExpertInviteOp``,本 op 只决策;定位点决策半现算
+        # (含 idx=-1 = 卡-现金为王 area 解析)经 env 显式传入)。派发实例
+        # 携真实选中下标(上报 param 即真实选择,含 -1 现金为王语义)。
         # 机械交回(验证废除):弹窗关没关由下一轮重入裁决(本方法顶部
-        # _pick_pending 分支)。round_wait 推进循环(不烧节点重试预算,
-        # 无防御上限)。
+        # _pick_pending 分支),chosen_expert/ConfirmExpertCash 到账随裁决
+        # 出口。round_wait 推进循环(不烧节点重试预算,无防御上限)。
         self._pick_pending = (idx, card_bonds)
+        from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
+            action_op_for,
+        )
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+            OverlayPickExecEnv,
+        )
+        _env = OverlayPickExecEnv(op=self, idx=idx, target=pt)
+        action_op_for(CwActionPickExpertInviteParam(idx=idx), self.ctx,
+                      _env).execute()
         return self.round_wait('邀请函选卡点击已发,重入观察裁决', wait=1)
 
     def _record_chosen_expert(self, idx: int, card_bonds: list[str | None]) -> None:

@@ -30,7 +30,6 @@ id_mark,分发即门)→ 观察 node = 三卡位 OCR 一次读(入口帧一次�
 本屏 sim 腿 = 不适用(sim 无对应画面段,事件浮层族即时落定),等价判据
 主承重 = 实机在册行为锁。
 """
-import time
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -41,6 +40,9 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_screen_report.equip_pick import (
     CwScreenEquipPickObs,
     report_screen_equip_pick_obs,
+)
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwActionPickEquipParam,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -137,11 +139,21 @@ class CwScreenEquipPick(SrOperation):
         target = Point(self.CARD_XS[best_i], self.CARD_Y)
         log.info('[cw-equip-pick] 装备选择:卡=%s → 选卡%d(%s)',
                  [t[:10] for t in texts], best_i + 1, texts[best_i][:16] or 'OCR空')
-        self.ctx.controller.mouse_move(target)
-        self.ctx.controller.click(target)
-        time.sleep(1.2)
+        # 选卡链经工厂(pick-op-unify 批:点卡即选机械链迁入
+        # ``CwActionPickEquipOp``,本 op 只决策;定位点决策半现算经 env
+        # 显式传入)。派发实例携真实选中下标(上报 param 即真实选择;
+        # 越界防御/策略异常 fallback = 0)。
         # 单选即定(出战按钮由主流程处理);机械交回(验证废除):「请选择」
         # 标题在不在由下一轮重入出口门裁决(本方法顶部)。round_wait 推进
         # 循环(不烧节点重试预算;不落地轮重点选,无防御上限)。
         self._pick_pending = True
+        from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
+            action_op_for,
+        )
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+            OverlayPickExecEnv,
+        )
+        _env = OverlayPickExecEnv(op=self, idx=best_i, target=target)
+        action_op_for(CwActionPickEquipParam(idx=best_i), self.ctx,
+                      _env).execute()
         return self.round_wait(wait=1, status='装备选择点击已发,重入观察裁决')

@@ -17,7 +17,6 @@ round_wait 循环(不烧节点重试预算,无防御上限)。chosen_tome 与 Co
 族即时落定),等价判据主承重 = 实机在册行为锁(test_cw_fake_channels_
 outerloop 典籍通道真 op 锁 + test_cw_game_state_consume chosen_tome 锁)。
 """
-import time
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -30,8 +29,8 @@ from sr_od.application.currency_war.kernel.cw_screen_report.bookcard import (
     CwScreenBookcardObs,
     report_screen_bookcard_obs,
 )
-from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-    safe_click,
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwActionPickStarTomeParam,
 )
 from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
     CW_OVERLAY_SETTLE_S,
@@ -146,12 +145,23 @@ class CwScreenBookcard(SrOperation):
             return self.round_fail('星徽秘典缺「星徽卡-N」建档')
         log.info('[cw-flow-bookcard] 候选=%s → 选 %s @(%s,%s)',
                  [c[0] for c in cards] or 'OCR未读到', pick_name, target.x, target.y)
-        safe_click(self, target, tag='cw-flow-bookcard')
-        time.sleep(1.0)   # 点卡即选,弹窗自关(现役 0i 实测口径)
+        # 选卡链经工厂(pick-op-unify 批:点卡即选机械链迁入
+        # ``CwActionPickStarTomeOp``,本 op 只决策;定位点决策半现算经 env
+        # 显式传入)。派发实例携真实选中下标(上报 param 即真实选择;
+        # fallback = 0)。
         # 机械交回(验证废除):弹窗关没关由下一轮重入裁决(本方法顶部
-        # _pick_pending 分支)。round_wait 推进循环(不烧节点重试预算,
-        # 无防御上限)。
+        # _pick_pending 分支),chosen_tome/ConfirmTome 到账随裁决出口。
+        # round_wait 推进循环(不烧节点重试预算,无防御上限)。
         self._pick_pending = pick_name
+        from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
+            action_op_for,
+        )
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+            OverlayPickExecEnv,
+        )
+        _env = OverlayPickExecEnv(op=self, idx=idx, target=target)
+        action_op_for(CwActionPickStarTomeParam(idx=idx), self.ctx,
+                      _env).execute()
         return self.round_wait('选卡点击已发,重入观察裁决')
 
     def _settle_picked_tome(self, pick_name: str) -> None:
