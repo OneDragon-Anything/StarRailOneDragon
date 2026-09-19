@@ -798,10 +798,6 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             log.info(f'[cw] tracked_bench_chars='
                      f'{[(c.char_id, c.star) for c in game_state_of(match.session).tracked_books.bench if c is not None]}'
                      f'(播种取消,仅日志显影)')
-        # T-308 S3:播种期布局代次快照(单动作循环每动作消费前检差用;
-        # 空播种段同样取值——检差面不依赖是否播种)。宿主 = 容器簿记组
-        # ExecBooks(载体解散迭代迁入;写点 = kernel/cw_reconcile 纠漂期)。
-        _seed_epoch = game_state_of(match.session).exec_books.bench_layout_epoch
         # 段顶入口观察的局内事实宿主 = 容器单例,写入 = 观察漏斗直写。
         # visit 基准载体(黑板槽退役收口,ADR-0651 容器单源):段顶入口
         # 观察回执,T-163 起恒定不随动作推进(帧级逻辑态推算链已随 simulate 前瞻
@@ -877,22 +873,6 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 见函数尾「完整收工且未跳过」的完成点复位。
         visit_actions: list = []
         while True:
-            # S3 布局代次检差(fail-stop 形态,T-271):命中 = visit 内
-            # 布局已重排(reconcile 纠漂递增 epoch),已发射动作的
-            # bench_idx 代际失效 → 本段收工交回外循环重观察(与未观察
-            # 机制同构:关店→备战 heavy 观察→reconcile 锚定后再进店)。
-            # 禁店内按执行侧簿记重播种容器 bench(原 reseed 三步封装
-            # 删除):那是 op 层第二条容器 bench 写口,违写口归属硬规则
-            #(对账/仲裁唯一发生在观察边界,screen_op §4 + action-logic-
-            # state §1.3)。
-            from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
-                bench_layout_stale,
-            )
-            if bench_layout_stale(match.session, _seed_epoch):
-                ledger.plan_truncated = True
-                log.warning('[cw!][plan] 布局代次检差命中 → fail-stop '
-                            '本段收工,交回外循环重观察')
-                break
             # (决策循环帧帽已删,用户裁定:不收敛 = 策略实现 bug,框架不兜底。)
             # r95 审计必修②:决策异常留证(完整栈到 log,再向上抛,行为不变)。
             try:

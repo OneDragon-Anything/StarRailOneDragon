@@ -1857,20 +1857,6 @@ def mutate_bench_deployed_local(bench, deployed, action,
     mutate_bench_deployed(bench, deployed, action, shop=shop)
 
 
-#: 外部授予闩窗口上界(闩龄;出处=改动三审 2026-09-18「闩窗口上界」,
-#: 修法 = 等值观察计数达限即销闩 + 台账行)。计数粒度 = 字段级 observe
-#: 调用(bench/equips 各计 1,同一备战帧双域等值贡献 2,同
-#: :meth:`GameState._tick_external_grant_window`)。取 3 的依据:
-#: ① 正常形态 = 确认后下一次备战帧 heavy 实读即吸收(首例事故实证:
-#: 确认后实读 bench 立即多出 2 单位),首个非等值调用(失配吸收)即
-#: 窗口了结;② 余量语义(按调用粒度):达限 3 = 首帧双域等值 2 次 +
-#: 次帧 1 次 ≈ 1.5 个备战帧,覆盖「战斗后入账迟到入镜」类未证延迟的
-#: 短延迟形态;③ 误销后果 = 真实授予到达时照真失配停(响亮可发现),
-#: 不销后果 = 虚额残留吞真投影 bug(静默)——按「宁可响亮不可静默吞」
-#: 取向取紧不取松。
-EXTERNAL_GRANT_EQUAL_OBS_LIMIT: int = 3
-
-
 def latch_external_grants(gs: GameState, card_name: str, *,
                           actor: str) -> tuple[int, int]:
     """外部随机授予置闩单一源(出处=改动三审 2026-09-18「置闩幂等化」;
@@ -1882,12 +1868,9 @@ def latch_external_grants(gs: GameState, card_name: str, *,
     latched_cards``)重入不叠加——确认点击落空时 op 机械交回、下一轮
     重入重走决策再选同卡,置闩原形 ``+=`` 会二次累加使 pending 虚高,
     放宽 ``_absorb_external_grant`` 的「差额 ≤ 待吸收数」闸(虚额残留
-    期内吞真投影 bug)。卡选完即消耗,一局至多一次授予,「每卡一次」
-    即幂等;不同卡各自累加不受影响。命中时同时复位闩龄
-    (``external_grant_equal_obs`` = 新窗口起点)。「一局至多一次授予」
-    前提带代码防线:第二张带授予卡置闩时落 ``external_grant_multi_card``
-    台账行 + 告警(窗口销联动清零按共享计数全局清零,前提破除必须响亮,
-    见实现内联注)。
+    期内吞真投影 bug)。卡选完即消耗,「每卡一次」即幂等;不同卡各自
+    累加不受影响(多卡授予形态合法:各卡 pending 叠加并存,失配吸收
+    按「差额 ≤ 两闩总额」闸精确扣减)。
 
     :param card_name: 已归一卡名(:func:`normalize_invest_name` 输出)。
     :param actor: 日志标注(挂点身份,审计面)。
@@ -1909,31 +1892,9 @@ def latch_external_grants(gs: GameState, card_name: str, *,
                  gs.exec_books.external_bench_grant_pending,
                  gs.exec_books.external_equip_grant_pending)
         return (0, 0)
-    if latched:
-        # 「一局至多一次授予」前提防线(出处=改动三审 2026-09-18「闩
-        # 窗口销联动前提补防」):窗口达限时两闩按共享计数全局清零
-        # (:meth:`GameState._tick_external_grant_window`,不区分来源卡),
-        # 先置卡超窗会把后置卡的真实 pending 一并清零——后卡授予迟到时
-        # 照真失配停 = 响亮但误停一轮。该前提原本仅存于注释、第二卡置闩
-        # 即静默发生;本防线不阻断置闩(挂点 best-effort 纪律,异常会被
-        # 确认链吞,raise 无效),只把前提破除改响亮:告警 + 台账行留证。
-        _emit_defect(
-            field_name='external_grant',
-            expected='一局至多一次授予(窗口销联动清零的前提)',
-            actual=(f'第二张带授予卡 {card_name} 置闩'
-                    f'(先置卡:{sorted(latched)})'),
-            evidence=None,
-            sig=ChannelSig(family='logic_action', actor=actor,
-                           mode='compute'),
-            kind='external_grant_multi_card')
-        log.warning('[cw!][gs] 外部授予第二卡置闩:「一局至多一次授予」'
-                    '前提已破(%s;先置卡 %s)——窗口超时销联动会清零全部'
-                    ' pending,后置卡授予迟到时将照真失配停,需人工核对'
-                    '该局卡授予形态', card_name, sorted(latched))
     latched.add(card_name)
     gs.exec_books.external_bench_grant_pending += n_bench
     gs.exec_books.external_equip_grant_pending += n_equip
-    gs.exec_books.external_grant_equal_obs = 0
     log.info('[cw][gs] 外部随机授予置闩(%s):%s bench +%d equips +%d'
              '(待吸收 %d/%d)', actor, card_name, n_bench, n_equip,
              gs.exec_books.external_bench_grant_pending,
@@ -2163,21 +2124,6 @@ class ExecBooks:
     访问纪律:经 ``game_state_of(session).exec_books`` 直读(非 Field 无
     渠道面,与 tracked_books/settlement_ring 同型;禁 getattr session 猜宿主)。
     """
-    # bench 布局代次(churn 事件通道,最小面)。[索引定义] 坐标系
-    # = 单调递增计数器(非槽位号、非下标);取值时机 = reconcile 纠漂写回期
-    # 递增(kernel/cw_reconcile,唯一写点)/ 逻辑态播种期快照(每段入口观察)
-    # + 单动作循环每动作消费前现读检差(cw_screen_buy_cards 播种快照 /
-    # cw_shop_action_ops.bench_layout_stale,消费点)。命中 = 布局已重排,
-    # 在飞动作的 bench_idx 代际失效 → 序列决策契约截断+按 tracked 重播种+
-    # 重入决策。当前架构 reconcile 均在 visit 外跑,visit 内恒不变
-    #(S2+S1 后纯未来防御:防 visit 中段未来引入读屏/对账点时布局变化
-    # 无人知晓)。局级生命周期(新局新容器 = 天然清零)。
-    bench_layout_epoch: int = 0
-    # fenced 臂上一帧状态(换阵卖出义务臂开合的帧间闩;语义产生者 = 执行面
-    # 逐环重评,非策略推导)。唯一消费 = 开合变更日志(cw_screen_deploy
-    # 臂态位,projection_contract §4.3 在册判读面——删 = 丢判读通道,故
-    # 保留簿记)。None = 尚无臂态记录。
-    swap_arm_on: object = None
     # 外部随机授予待吸收数(观察对账精确吸收闩;申报表 =
     # cw_mismatch_policy.EXTERNAL_BENCH_GRANTS)。[索引定义] 计数坐标系 =
     # 备战席单位个数(非槽位号);取值时机 = 选卡确认挂点写入
@@ -2210,15 +2156,6 @@ class ExecBooks:
     # 不清(吸收扣减不动本集合——登记语义 = 「该卡的授予已被置闩过」,
     # 与 pending 余额正交),局级生命周期(新局新容器 = 天然清零)。
     external_grant_latched_cards: set[str] | None = None
-    # 闩龄(外部授予闩窗口上界;出处=改动三审 2026-09-18「闩窗口上界」:
-    # 等值观察不消费会让闩跨多
-    # 备战轮存续,虚额残留期内正向失配被误吸收吞真 bug)。[索引定义]
-    # 计数坐标系 = 置闩后经历的**等值观察**连续次数(bench/equips 实读
-    # == 逻辑态的 observe 次数;失配观察即窗口了结,计数归零);取值
-    # 时机 = observe() 闩在时递增(:meth:`GameState._tick_external_grant_
-    # window`,唯一写端)、达 :data:`EXTERNAL_GRANT_EQUAL_OBS_LIMIT` 销闩
-    # 并归零。局级生命周期(新局新容器 = 天然清零)。
-    external_grant_equal_obs: int = 0
 
 
 class NodeBooks:
@@ -2505,9 +2442,6 @@ class GameState:
     tracked_books: TrackedBooks = field(default_factory=TrackedBooks)
     # —— 执行侧过程簿记组(非 Field,准入与访问
     # 纪律见 :class:`ExecBooks` 类注)——
-    # [索引定义] swap_arm_on = 换阵卖出义务臂上一帧开合态(帧间闩;写读点
-    # = cw_screen_deploy 卖出臂门,开合变更日志消费)。bench_layout_epoch =
-    # 纠漂簿记。
     exec_books: ExecBooks = field(default_factory=ExecBooks)
     # —— 节点序列探针簿记宿主(非 Field;终态契约 §A′ 自 session 迁入,
     # 成员与访问纪律见 :class:`NodeBooks` 类注)——
@@ -2828,11 +2762,6 @@ class GameState:
                              'leave_screen,禁清正式值)')
         _validate_sig(sig, ('obs',))
         name = self._field_name(target)
-        if name in ('bench', 'equips'):
-            # 外部授予闩窗口上界(出处=改动三审 2026-09-18):闩在时的
-            # 每次等值 observe 调用计数(字段级,同帧 bench/equips 双等值
-            # 贡献 2),达限销闩留证——虚额残留不无限期吞正向失配。
-            self._tick_external_grant_window(target, value, sig)
         if target.source == 'logic' and target.value is not None \
                 and target.value != value:
             if self._absorb_slot_reorder(name, target, value,
@@ -3026,48 +2955,6 @@ class GameState:
         self.write_logic(self.board, new_board, produced_by=produced_by,
                          evidence='proj_board_resync', sig=sig)
 
-
-    def _tick_external_grant_window(self, target: Field, value: Any,
-                                    sig: ChannelSig) -> None:
-        """外部授予闩窗口上界(闩龄;出处=改动三审 2026-09-18
-        「闩窗口上界」,取值依据 =
-        :data:`EXTERNAL_GRANT_EQUAL_OBS_LIMIT` 注)。
-
-        闩的正式消费 = 失配分支「纯超集 + 差额 ∈ (0, 待吸收数]」精确
-        吸收;等值观察(实读 == 逻辑态:授予未入账/已提前吸收完)零新
-        信息不消费,闩因此可跨多备战帧存续——虚额残留期内任意正向失配
-        被误吸收吞真 bug。本口在闩在时:等值 observe 调用计数 +1(粒度
-        = 字段级调用;同帧 bench/equips 双等值贡献 2,两闩同源同窗故
-        计数共享、销联动),达限 → 两闩销 + ``external_grant_expired``
-        台账行——响亮作废,真实授予迟到到达时照真失配停(可发现),
-        不设上界则静默吞(不可发现);非等值观察 = 窗口有了结进展
-        (吸收或失配处置),计数归零。
-        """
-        bench_pending = self.exec_books.external_bench_grant_pending
-        equip_pending = self.exec_books.external_equip_grant_pending
-        if bench_pending <= 0 and equip_pending <= 0:
-            return
-        if target.value != value:
-            self.exec_books.external_grant_equal_obs = 0
-            return
-        n = self.exec_books.external_grant_equal_obs + 1
-        if n < EXTERNAL_GRANT_EQUAL_OBS_LIMIT:
-            self.exec_books.external_grant_equal_obs = n
-            return
-        self.exec_books.external_bench_grant_pending = 0
-        self.exec_books.external_equip_grant_pending = 0
-        self.exec_books.external_grant_equal_obs = 0
-        _emit_defect(field_name='external_grant',
-                     expected=(f'待吸收 bench={bench_pending}/'
-                               f'equips={equip_pending}'),
-                     actual=(f'连续 {EXTERNAL_GRANT_EQUAL_OBS_LIMIT} 次'
-                             f'等值观察未消费,闩超窗作废'),
-                     evidence=None, sig=sig,
-                     kind='external_grant_expired')
-        log.info('[cw][gs] 外部授予闩超窗作废:连续 %d 次等值观察未消费,'
-                 '待吸收 %d/%d 清零(external_grant_expired 留证;真实授予'
-                 '迟到到达时照真失配停)',
-                 EXTERNAL_GRANT_EQUAL_OBS_LIMIT, bench_pending, equip_pending)
 
     def settle_truth(self, target: Field, value: Any, sig: ChannelSig) -> None:
         """结算屏真值收口(金币专用;无条件观察赢,不走失配三分流)。

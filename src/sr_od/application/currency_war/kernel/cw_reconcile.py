@@ -282,11 +282,6 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     new_b = [(bc.char_id, bc.star) for bc in (bench or []) if bc is not None]
     new_d = [(bc.char_id, bc.star) for bc in (deployed or []) if bc is not None]
     drifted = (old_b != new_b) or (old_d != new_d)
-    # 布局代次写回事实位:bench 侧是否实际写回(健康门通过)。
-    # drifted 分支据此决定是否递增 bench_layout_epoch——deployed 驱动的
-    # 纠漂不递增(bench 布局未变);误递增无害(重播种幂等)、漏递增有害
-    #(布局变化无人知晓),故取「bench 写回 ∧ drifted」。
-    _bench_written = False
     if bench is not None:
         # ADR-0646 S2 主修:写回经 bench_from_compact 重建槽位表——
         # 与下方 deployed 侧 deployed_from_compact 同构(ADR-0392 单一源
@@ -317,7 +312,6 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
             # 容器缺席/写失败不阻断对账主链(簿记已照常写回)。
             game_state_of(session).tracked_books.bench = bench_from_compact(
                 _merge_equips(_books.bench, bench))
-            _bench_written = True
             try:
                 game_state_of(session).write_logic(
                     game_state_of(session).tracked_account_observed, True,
@@ -356,13 +350,6 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
                     f' deployed {old_d}→{new_d}')
         _conflict('tracking', f'{old_b}|{old_d}', f'{new_b}|{new_d}', screen,
                   verdict='采新-对账纠漂(SIFT 实读)', source=source)
-        # ADR-0646 S3:布局代次递增(churn 事件通道最小面)。对账纠漂
-        # = 布局可能重排,visit 内未来消费者(单动作循环每动作消费前检差)
-        # 据此截断在飞计划并按 tracked 重播种。当前架构 reconcile 均在
-        # visit 外跑,恒无消费者(S2+S1 后 epoch 只递增不消费,纯未来防御:
-        # 防 visit 中段未来引入读屏/对账点时布局变化无人知晓)。
-        if _bench_written:
-            game_state_of(session).exec_books.bench_layout_epoch += 1
     return True
 
 

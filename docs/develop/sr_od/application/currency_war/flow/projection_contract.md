@@ -24,7 +24,7 @@
 - `kernel/cw_game_state.py::GameState` 容器簿记：tracked 主账 = `tracked_books`
   （`TrackedBooks`，bench/deployed 两面槽位簿记；形状契约 = 槽位表、pad 后含 None；
   bench 恒 pad 态由 reconcile 写回端经 `bench_from_compact` 重建保证，消费端下标即
-  布局）；换血臂帧间闩 = `exec_books.swap_arm_on`（§4.3 臂态位）。执行层不再设
+  布局）。执行层不再设
   独立状态载体（执行层状态类目已退役，git 历史可溯）；失败记忆/期望态容器随类目
   退役删除。
 - 期望态路径寻址：期望态条目表已随期望账机制退役（`ExpectedEntry` 不存在），
@@ -105,7 +105,6 @@
 ### 4.3 发射⇔执行透传通道（换血臂）
 
 - **归因透传**：`StrategyState.cw4_m1p_arm_pending`——写端 = mandate 发射位（帧级无条件复位 None,m1p 臂武装时置臂名）；原消费点 = 部署机卖出臂(读后即清),**已随部署机画面 op 退役删除——现役零读端,归因分键悬空**,接线归 SellDeployed 动作路径侧重组批。该槽只承载归因分键（键族 `sell_offtarget_arm_*`），不承载行为参数。
-- **臂态位**：`GameState.exec_books.swap_arm_on`——执行面换阵卖出义务臂开合状态(容器非 Field 簿记组 `ExecBooks` 成员),供判读开合抖动;原写端(部署机逐环重评)已随部署机退役删除,现役写端待 SellDeployed 动作路径侧重组批落位。
 - **判定单一源**：换血计划装配单一源 = `kernel/cw_deploy_logic.py::assemble_swap_plan_inputs` + `select_swap_plan`（发射侧同函数同参,禁第二份口径）。执行面现读(SIFT 覆写)随部署机退役;逐件可卖判定单一源 = `swap_sell_exclusion_reason`(现役消费面 = mandate 发射侧)。
 - **装备穿戴的执行期时序**（L0/L1 实证批素材）：穿戴落点判定 = avatar 下方 mini icon 区 CV-diff（`_below_icon_diff`，阈值常量在 `cw_op_equip_all.py`），drag 前稳帧确认 + 落空补救链坐标现读重定位；owned 授予快照每次穿戴 op 执行只记一遍（`_snap_logged`，循环重读不重复记）；跨轮 owned 演化靠穿戴销账与复读覆盖——消费 `session.last_owned_equips` 的一方不得假设其逐帧重读。
 

@@ -40,7 +40,6 @@ from typing import TYPE_CHECKING
 from one_dragon.base.geometry.point import Point
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
-    game_state_of,
     shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -202,27 +201,6 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
                 f'idx={action.bench_idx} expect={action.expect!r} '
                 f'实际={(tgt.char_id or "")!r}'
                 '(策略器 bug:跨代际提案,ADR-0517 决策 9)')
-
-
-def bench_layout_stale(session, seed_epoch: int) -> bool:
-    """S3 布局代次检差(T-271 fail-stop 形态)。
-
-    检差:容器簿记布局代次(GameState.exec_books.bench_layout_epoch,唯一
-    写点 kernel/cw_reconcile)vs 播种期快照——命中 = visit 内布局已重排,
-    已发射动作的 bench_idx 代际失效。
-
-    处置 = fail-stop(与未观察机制同构,编排者裁定,T-268 卡 note):
-    命中即本段收工交回外循环,外循环落回备战 heavy 观察 → 入口
-    reconcile 锚定后再进店。禁店内按执行侧簿记重播种容器 bench——那是
-    op 层第二条容器 bench 写口,违写口归属硬规则(对账与仲裁唯一发生
-    在观察边界,flow/screen_op.md §4 + action-logic-state.md §1.3);
-    槽号健康门留证职责由 reconcile 前置槽号健康门承接。
-
-    Returns:
-        True = 布局代次已漂移(调用方 fail-stop 本段收工);
-        False = 代次未变(常态)。
-    """
-    return game_state_of(session).exec_books.bench_layout_epoch != seed_epoch
 
 
 # 商店单动作 op 族住动作文件:动作 op = CwActionXxxOp(SrOperation,批③

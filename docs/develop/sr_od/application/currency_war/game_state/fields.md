@@ -1325,15 +1325,11 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
   的 Field 准入,但需局级存续与确定性清零——新局新容器 = 天然清零;访问纪律 =
   经 `game_state_of(session)` 直读属性,非 Field 无渠道面,禁 getattr session 猜宿主):
   - `ExecBooks`(GameState.exec_books;执行侧过程簿记组,独立宿主不塞 tracked_books
-    ——TrackedBooks 契约 = tracked 主账槽位簿记,语义不容混装):`bench_layout_epoch`
-    (布局重排单调代次,唯一写点 = `cw_reconcile`,消费 = `cw_screen_buy_cards`/
-    `cw_shop_action_ops`)/`swap_arm_on`(换血臂开合帧间闩,读写点 = `cw_screen_deploy`,
-    消费 = projection_contract §4.3 臂态位判读)。申报闩族(置位端/消费端/索引
-    定义逐字段住代码注释,此处只记语义与常量名):外部授予待吸收闩
-    (`external_bench/equip_grant_pending`,置闩单一源 = `latch_external_grants`
-    幂等——同卡登记不叠加,登记 = `external_grant_latched_cards`;窗口上界 =
-    等值观察达 `EXTERNAL_GRANT_EQUAL_OBS_LIMIT` 次销闩留证,消费 =
-    `_absorb_external_grant` 纯超集精确吸收)。**动作 op 行为模型 = 机械执行 +
+    ——TrackedBooks 契约 = tracked 主账槽位簿记,语义不容混装):外部授予待吸收闩
+    (`external_bench/equip_grant_pending`,置位端/消费端/索引定义逐字段住代码注释;
+    置闩单一源 = `latch_external_grants` 幂等——同卡登记不叠加,登记 =
+    `external_grant_latched_cards`;多卡授予形态合法,各卡 pending 并存叠加;
+    消费 = `_absorb_external_grant` 纯超集精确吸收)。**动作 op 行为模型 = 机械执行 +
     发出即记账**(执行回执
     唯一写点 = `note_action_receipt`,§9.3):执行层零「是否生效」验证、
     零重试、零 miss 闩;静默不生效的治理 = 投影照写 → heavy 实读对账
