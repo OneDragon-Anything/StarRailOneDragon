@@ -1333,11 +1333,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
     (`external_bench/equip_grant_pending`,置闩单一源 = `latch_external_grants`
     幂等——同卡登记不叠加,登记 = `external_grant_latched_cards`;窗口上界 =
     等值观察达 `EXTERNAL_GRANT_EQUAL_OBS_LIMIT` 次销闩留证,消费 =
-    `_absorb_external_grant` 纯超集精确吸收)/备战环随机收入待吸收窗
-    (`prep_sphere_income_pending`,点球金:奖励球金额执行点不可推算、
-    无逻辑写端,置位端 = `report_action_click_spheres_param` 按载荷球数
-    开窗,消费 = `_absorb_prep_sphere_income` 正向差精确吸收 + 店开帧金
-    观察收口,未申报/负差/收口后照真失配停)/节点边界金补结闩
+    `_absorb_external_grant` 纯超集精确吸收)/节点边界金补结闩
     (`boundary_gold_mode` 量域三态:known=结算屏金面板读成功精确额窗、
     unknown=读失败未知额度窗(正向差按差额吸收,窗存续到店开帧金观察
     收口,配 `boundary_gold_truth_seen` 公式腿双计防标记),消费 =

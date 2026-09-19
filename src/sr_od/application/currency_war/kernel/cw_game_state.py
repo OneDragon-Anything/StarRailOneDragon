@@ -2245,32 +2245,6 @@ class ExecBooks:
     # window`,唯一写端)、达 :data:`EXTERNAL_GRANT_EQUAL_OBS_LIMIT` 销闩
     # 并归零。局级生命周期(新局新容器 = 天然清零)。
     external_grant_equal_obs: int = 0
-    # 备战环随机收入待吸收窗(点球金;失配精确吸收第三例,20260918-
-    # reconcile 第 9 例收口)。机理:奖励节点备战画面的奖励球由
-    # CwActionClickSpheresParam 动作点击,球金由游戏侧异步入账且金额执行点不可推算
-    #(实机样本 +4/+7/+6 无界,data 注册表无球金数值表 = 声明盲区),设计上
-    # 无逻辑写端——点击到下一可信金读帧(店开帧 heavy 观察,F2 gold 仅
-    # shop 开态可信)之间的任意金投影写端(卖退款/买牌/升级/刷新)都会被
-    # 随机收入证伪。豁免注册表按「写端前缀」申报的三维键表达不了「无写端
-    # 的外部收入」形状,且其 screen 维(备战)与金真值读帧(备战-开商店)
-    # 错位(run_20260918_071019:v40/v43 退款投影 3→4→5,v46 店开帧实读
-    # 11 = +6 停局)。吸收语义照 bench 族(申报 + pending 闩 + 形状校验):
-    # 执行发出按载荷球数开窗,observe() 失配分支对 gold 做「正向差 + 窗在」
-    # 精确吸收(落 prep_sphere_income_absorbed 台账行),店开帧金观察收口
-    # (窗不跨轮存续,防虚额残留吞后续正向失配,同外部授予闩窗口上界纪律)。
-    # 红线:未申报(窗关)照停 / 负差照停(收入不可负,负差 = 推算 bug)/
-    # 店开帧后照停;真投影 bug(买落空等)由 bench/board 行域失配面独立
-    # 把守。已知盲区(显式申报):窗内「卖退款投影少算」类纯 gold 正向
-    # bug 无行域痕迹,会被本窗吞且无第二道防线无报警(低概率:退款投影
-    # 自有逻辑写端,窗常态只跨一帧);实机台账再现同类形态再立项收窄
-    # (如窗内正差超球数×上限价不吸收)。残量面 = 豁免注册表
-    # ('货币战争-备战', 'gold') × proj_sell_refund 条目(窗外语境,
-    # 零改保留)。
-    # [索引定义] 计数坐标系 = 本局 CwActionClickSpheresParam 执行点球个数(非槽位号,
-    # 多批执行累加);取值时机 = op 自上报(report_action_click_spheres_param)写入
-    # (唯一写端)、observe() gold 失配吸收或店开帧金观察清零(唯一消费
-    # 端)。局级生命周期(新局新容器 = 天然清零)。
-    prep_sphere_income_pending: int = 0
     # 节点边界金待补结闩(量域三态;失配精确吸收第二例,事故第 3 例修法 =
     # 边界事件持久化的 T-42 扩窗形态)。机理:战斗/节点边界收入族由游戏侧
     # 入账而 bot 无逻辑写端(实机 journal 实证:结算屏金面板读数已含入账,
@@ -2970,9 +2944,6 @@ class GameState:
             elif self._absorb_board_derived(name, target, value,
                                             evidence, sig):
                 pass   # board 派生漂移观察覆盖采新已落台账行,跳过三分流
-            elif self._absorb_prep_sphere_income(name, target, value,
-                                                 evidence, sig):
-                pass   # 备战环随机收入吸收已落台账行,跳过三分流(覆盖照常)
             elif not self._absorb_external_grant(name, target, value,
                                                  evidence, sig):
                 _route_logic_mismatch(field_name=name, expected=target.value,
@@ -2994,14 +2965,6 @@ class GameState:
                      f'{target.value} → 实读 {value}'
                      f'(+{int(value) - int(target.value)},unknown 闩窗内'
                      f'正向差采新,unknown_settled 留证)')
-        if name == 'gold' and self.exec_books.prep_sphere_income_pending > 0 \
-                and sig.screen == SCREEN_SHOP_PANEL:
-            # 点球金窗收口(店开帧 = 备战随机收入窗末站;同节点边界闩收口
-            # 判定二同型,置于失配链后——链内吸收须先读到窗)。店开帧
-            # heavy 观察是金真值的首个可信读点(F2),点球到账(或球金为
-            # 0/点击落空)在此都有了结——窗不跨轮存续,防虚额残留吞后续
-            # 正向失配(同外部授予闩窗口上界纪律)。
-            self.exec_books.prep_sphere_income_pending = 0
         self._swap(name, Field(value=value, source='observation',
                                evidence=evidence),
                    sig=sig, note=note)
@@ -3055,41 +3018,6 @@ class GameState:
         log.info(f'[cw][gs] 外部随机授予吸收:{field_name} 实读多 '
                  f'{surplus_total}(待吸收 {pending}→{_remaining},'
                  f'申报表 = cw_mismatch_policy.{table_ref})')
-        return True
-
-    def _absorb_prep_sphere_income(self, field_name: str, target: Field,
-                                   value: Any, observed_evidence: str | None,
-                                   sig: ChannelSig) -> bool:
-        """备战环随机收入(点球金)精确吸收(§2.3 失配分支前置;申报窗 =
-        ``GameState.exec_books.prep_sphere_income_pending``,置位端 =
-        op 自上报(report_action_click_spheres_param))。奖励球金由
-        游戏侧异步入账而 bot 无逻辑写端(金额执行点不可推算,声明盲区;
-        机理与红线见闩字段注释),窗在时逻辑金被实读证伪的唯一合法形状 =
-        正向差 → 落 ``prep_sphere_income_absorbed`` 台账行(无告警无停机,
-        豁免 ≠ 消失同纪律)后清窗,覆盖照常 = 收入采新。实读不升(平/负
-        差)或窗关(未申报)返回 False 交回三分流照真失配停——安灯停机
-        语义零改动,真投影 bug 不被吞。
-        双窗并存残余面(显式申报;点球 → 结算入账 = 常态并存序):失配
-        链边界补结在先,正差被边界闩先行消费时本分支不达、本窗顺延到
-        店开帧收口——known 窗已闭的残窗期内第二个独立正差会被本窗吞
-        (放宽方向,与「窗不跨轮存续」字面相悖;兜底 = bench/board 行域
-        失配面独立把守),unknown 窗存续形态下球金入边界行 = 台账金额
-        归因混账。申报不收紧的 why:边界消费时同步清本窗会让球金典型
-        到账点(店开帧正差)失去吸收窗,20260918-reconcile 第 9 例收口
-        形态假停。
-        返回 True = 已吸收(调用方跳过失配分流)。"""
-        if field_name != 'gold' or value <= target.value:
-            return False
-        if self.exec_books.prep_sphere_income_pending <= 0:
-            return False
-        self.exec_books.prep_sphere_income_pending = 0
-        _emit_defect(field_name=field_name, expected=target.value,
-                     actual=value, evidence=observed_evidence, sig=sig,
-                     logic_evidence=target.evidence,
-                     kind='prep_sphere_income_absorbed')
-        log.info(f'[cw][gs] 备战环随机收入吸收:gold 逻辑 {target.value} → '
-                 f'实读 {value}(+{int(value) - int(target.value)},'
-                 f'点球金待吸收窗内正向差,prep_sphere_income_absorbed 留证)')
         return True
 
     def _absorb_boundary_gold(self, field_name: str, target: Field,
