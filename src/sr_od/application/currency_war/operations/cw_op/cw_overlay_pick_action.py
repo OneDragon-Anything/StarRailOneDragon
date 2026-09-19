@@ -35,11 +35,13 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_action_report.zero_writes import (
     report_action_pick_encounter_param,
+    report_action_pick_fortune_param,
     report_action_pick_invest_param,
     report_action_pick_megastar_param,
     report_action_pick_partner_param,
     report_action_pick_planner_param,
     report_action_pick_supply_param,
+    report_action_pick_wish_trial_param,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
@@ -48,11 +50,13 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPickEncounterParam,
+    CwActionPickFortuneParam,
     CwActionPickInvestParam,
     CwActionPickMegastarParam,
     CwActionPickPartnerParam,
     CwActionPickPlannerParam,
     CwActionPickSupplyParam,
+    CwActionPickWishTrialParam,
 )
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     emit_overlay_confirm,
@@ -60,6 +64,9 @@ from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import
 )
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_encounter import (
     CwScreenEncounter,
+)
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_fortune import (
+    CwScreenFortune,
 )
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_megastar import (
     CwScreenMegastar,
@@ -425,3 +432,92 @@ class CwActionPickInvestOp(SrOperation):
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
         return self.round_success('投资选择确认链已发(结果经旁路回传)')
+
+
+class CwActionPickFortuneOp(SrOperation):
+    """命运卜者强化三选一确认链(pick-op-unify 批收编)。
+
+    点卡选中(safe_click bug#1 缓解;选中点 = 卡下半部避「详情」按钮区,
+    决策半从 OCR 桶现算经 env 传入)→ 选中动画固定等待 → 确认
+    (emit_overlay_confirm 机械交回,裁决词 = 标题「命运卜者」)。确认钮
+    中心 = 建档「按钮-确认选择」现取,缺失兜底常量(巨星/策划同款派生
+    模式)。本屏零 chosen 写端(选择存证已退役),容器写零。"""
+
+    #: 非终结动作(每类显式声明,无基类缺省)。
+    terminal = False
+    terminal_wait = 0.0
+
+    def __init__(self, ctx: SrContext, param: CwActionPickFortuneParam,
+                 env: OverlayPickExecEnv):
+        SrOperation.__init__(self, ctx, op_name='CwActionPickFortuneOp',
+                             need_check_game_win=False)
+        self.param = param
+        self.env = env
+
+    @operation_node(name='pick_fortune', is_start_node=True)
+    def run(self) -> OperationRoundResult:
+        """机械执行(点卡 → 选中动画等待 → 确认;轮次结果经旁路回传)。"""
+        action = self.param
+        env = self.env
+        op = env.op
+        safe_click(op, env.target, tag='cw-pick-fortune')
+        time.sleep(1.2)
+        # 确认钮主源 = 建档「按钮-确认选择」中心(坐标单一真相源);缺失
+        # 回退兜底常量。
+        _confirm = (area_center(op.ctx, '按钮-确认选择', CwScreenFortune.SCREEN_NAME)
+                    or CwScreenFortune.CONFIRM)
+        env.round_result = emit_overlay_confirm(
+            op, confirm_point=_confirm,
+            entry_keyword='命运卜者', tag='cw-pick-fortune')
+        # 自上报(机械链发出后;零写,契约面统一)。
+        gs = game_state_from_ctx(self.ctx)
+        if gs is not None:
+            report_action_pick_fortune_param(
+                gs, action,
+                ChannelSig(family='logic_action',
+                           actor=type(self).__name__, mode='compute'))
+        return self.round_success('命运卜者确认链已发(结果经旁路回传)')
+
+
+class CwActionPickWishTrialOp(SrOperation):
+    """祈愿试炼确认链(pick-op-unify 批收编)。
+
+    点试炼卡身选中(bug#1 缓解,选中点 = 建档卡位决策半现算)→ 选中
+    动画固定等待 → 确认(「按钮-确认选择」area 位置点击,success_wait
+    =1.5,现役形态逐位迁移;本屏独有检测在前,不与伙伴/巨星的
+    「确认选择」撞)。``chosen_wish`` = 重入裁决出口写,留守画面 op。"""
+
+    #: 非终结动作(每类显式声明,无基类缺省)。
+    terminal = False
+    terminal_wait = 0.0
+
+    def __init__(self, ctx: SrContext, param: CwActionPickWishTrialParam,
+                 env: OverlayPickExecEnv):
+        SrOperation.__init__(self, ctx, op_name='CwActionPickWishTrialOp',
+                             need_check_game_win=False)
+        self.param = param
+        self.env = env
+
+    @operation_node(name='pick_wish_trial', is_start_node=True)
+    def run(self) -> OperationRoundResult:
+        """机械执行(点卡 → 选中动画等待 → area 确认;轮次结果经旁路回传)。"""
+        action = self.param
+        env = self.env
+        op = env.op
+        # 点卡选中(bug#1 缓解:mouse_move 先,零移动落 click)。
+        op.ctx.controller.mouse_move(env.target)
+        op.ctx.controller.click(env.target)
+        time.sleep(1.0)
+        # 确认选择(祈愿试炼屏 area;原位形态:找到才点,success_wait 等
+        # 关闭动画,零判效)。轮次结果经旁路回传(族形态)。
+        env.round_result = op.round_by_find_and_click_area(
+            op.screenshot(), '货币战争-祈愿试炼', '按钮-确认选择',
+            success_wait=1.5)
+        # 自上报(机械链发出后;零写,契约面统一)。
+        gs = game_state_from_ctx(self.ctx)
+        if gs is not None:
+            report_action_pick_wish_trial_param(
+                gs, action,
+                ChannelSig(family='logic_action',
+                           actor=type(self).__name__, mode='compute'))
+        return self.round_success('祈愿试炼确认链已发')

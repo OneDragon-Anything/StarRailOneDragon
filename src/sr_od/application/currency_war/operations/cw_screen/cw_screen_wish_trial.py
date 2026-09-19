@@ -17,13 +17,13 @@
 同帧等价)→ ``report_screen_wish_trial_obs`` 落容器 ``wish_trial_opts``
 (无空门,空桶照写)→ obs 挂实例属性进决策 node。决策动作 node = 重入裁决
 顶部(确认已发 → 标识不在 = overlay 已关 → 此刻才写 chosen_wish + success
-交回;在 = 确认未落地 → 清标志重走)→ 决策从容器零参读 → 点卡 + 确认 →
+交回;在 = 确认未落地 → 清标志重走)→ 决策从容器零参读 → 选卡+确认链经
+``CwActionPickWishTrialOp`` 派发(pick-op-unify 批机械链迁入动作 op)→
 round_wait 循环(不烧节点重试预算,无防御上限)。chosen_wish = 重入裁决点
 单次逻辑写入留守(动作事实边界,不进 report);本屏 sim 腿 = 不适用(sim
 无对应画面段,事件浮层族即时落定),等价判据主承重 = 实机在册行为锁
 (test_cw_game_state_consume chosen_wish 接线锁)。
 """
-import time
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -34,6 +34,9 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_screen_report.wish_trial import (
     CwScreenWishTrialObs,
     report_screen_wish_trial_obs,
+)
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwActionPickWishTrialParam,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -134,19 +137,25 @@ class CwScreenWishTrial(SrOperation):
             except Exception as e:   # noqa: BLE001  策略失败 fallback 第1张
                 log.warning('[cw-wish] 策略决策异常(fallback 第1张): %s', e)
         log.info('[cw-wish] 祈愿决策: %s → 点 (%s,%s)', pick_desc, target.x, target.y)
-        # 点卡选中(bug#1 缓解:mouse_move 先,零移动落 click,防 before_screenshot 移光标)。
-        self.ctx.controller.mouse_move(target)
-        self.ctx.controller.click(target)
-        time.sleep(1.0)
-        # 确认选择(本屏 area 位置;祈愿试炼 独有检测在前,不与 partner/megastar 的「确认选择」撞)。
-        self.round_by_find_and_click_area(
-            self.screenshot(), '货币战争-祈愿试炼', '按钮-确认选择', success_wait=1.5)
+        # 选卡+确认链经工厂(pick-op-unify 批:机械链迁入
+        # ``CwActionPickWishTrialOp``,本 op 只决策;定位点决策半现算经 env
+        # 显式传入)。派发实例携真实选中下标(上报 param 即真实选择;
+        # fallback/越界 = 0)。
         # 机械交回(验证废除,用户裁定 2026-09-14 删确认后同轮「标识消失」
         # 判——同轮验关 = 退役的落地回执消费形态):确认是否落地由下一轮
         # 重入裁决(本方法顶部 pending 分支)承载,chosen_wish 写端随之在
         # 裁决点;未落地轮重走重选。round_wait 推进循环(不烧节点重试预算,
         # 无防御上限)。
         self._confirm_pending = (list(objs), pick_idx)
+        from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
+            action_op_for,
+        )
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+            OverlayPickExecEnv,
+        )
+        _env = OverlayPickExecEnv(op=self, idx=pick_idx, target=target)
+        action_op_for(CwActionPickWishTrialParam(idx=pick_idx), self.ctx,
+                      _env).execute()
         return self.round_wait(wait=1)
 
     def _record_chosen(self, objs: list[str] | None, pick_idx: int) -> None:

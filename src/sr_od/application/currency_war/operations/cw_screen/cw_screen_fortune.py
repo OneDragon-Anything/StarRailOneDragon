@@ -20,13 +20,13 @@ x≈510/900/1290 / 确认 (1441-1543,584-615)。
 同帧等价)→ ``report_screen_fortune_obs`` 落容器 ``fortune_opts``(无空门,
 空表照写)→ obs 挂实例属性进决策 node。决策动作 node = 重入裁决顶部
 (入口词「命运卜者」不在 = overlay 已关 → success 交回)→ 决策从容器零参
-读(kernel 直调仅无 match 防御路径)→ 选卡 safe_click + 确认机械交回 →
-round_wait 循环(不烧节点重试预算,无防御上限;确认未落地轮重走)。
+读(kernel 直调仅无 match 防御路径)→ 选卡+确认链经 ``CwActionPickFortuneOp``
+派发(pick-op-unify 批机械链迁入动作 op)→ round_wait 循环(不烧节点重试
+预算,无防御上限;确认未落地轮重走)。
 本屏无 chosen_* 写端(fortune 选择存证行已随删除波 1 退役);本屏 sim 腿
 = 不适用(sim 无对应画面段,事件浮层族即时落定),等价判据主承重 = 实机
 在册行为锁。
 """
-import time
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -34,10 +34,12 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_screen_report.fortune import (
     CwScreenFortuneObs,
     report_screen_fortune_obs,
+)
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwActionPickFortuneParam,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -140,22 +142,21 @@ class CwScreenFortune(SrOperation):
         target = Point(self.CARD_XS[best_i], self.CARD_Y)
         log.info('[cw][fortune] 命运卜者强化:卡=%s → 选卡%d(%s)',
                  [t[:12] for t in texts], best_i + 1, texts[best_i][:20] or 'OCR空')
-        # 选卡=safe_click(bug#1 缓解);确认=机械交回(点+固定等待,不验关;
-        # 重入裁决见本方法顶部)。原 r315「确认落空→round_retry 计预算兜底」
-        # 防线由重入裁决 + 循环自愈承接。round_wait 推进循环(不烧节点重试
-        # 预算;确认未落地轮重走,无防御上限)。
-        from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-            emit_overlay_confirm,
-            safe_click,
-        )
-        safe_click(self, target, tag='cw-fortune')
-        time.sleep(1.2)
+        # 选卡+确认链经工厂(pick-op-unify 批:机械链迁入
+        # ``CwActionPickFortuneOp``,本 op 只决策;定位点决策半现算经 env
+        # 显式传入,确认钮定位 = op 类体内自读 screen_info)。派发实例携
+        # 真实选中下标(上报 param 即真实选择;fallback/越界 = 0)。
+        # round_wait 推进循环(不烧节点重试预算;确认未落地轮重走,无防御
+        # 上限)。
         self._confirm_pending = True
-        # 确认点主源 = 建档「按钮-确认选择」中心(坐标单一真相源);area 缺失回退
-        # 兜底常量(megastar/invest_env 同款派生 + 缺损兜底模式)。
-        _confirm = (area_center(self.ctx, '按钮-确认选择', CwScreenFortune.SCREEN_NAME)
-                    or CwScreenFortune.CONFIRM)
-        emit_overlay_confirm(
-            self, confirm_point=_confirm,
-            entry_keyword='命运卜者', tag='cw-fortune')
+        from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
+            action_op_for,
+        )
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+            OverlayPickExecEnv,
+        )
+        _env = OverlayPickExecEnv(op=self, idx=best_i, target=target,
+                                  entry_keyword='命运卜者')
+        action_op_for(CwActionPickFortuneParam(idx=best_i), self.ctx,
+                      _env).execute()
         return self.round_wait()
