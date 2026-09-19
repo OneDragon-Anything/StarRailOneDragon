@@ -87,7 +87,7 @@
 
 | 字段 | 产生者 | 消费者 | 生命周期 | 迁出落点(目标态归属) |
 |---|---|---|---|---|
-| `deploy_fail_counts` | 部署拖拽执行失败 | DeployMove 跳过重试 | 局 | 执行侧(CwScreenDeploy/PrepActionExecutor 载体) |
+| `deploy_fail_counts` | 部署拖拽执行失败 | DeployMove 跳过重试 | 局 | 执行侧(PrepActionExecutor/DeployMove 动作 op 载体) |
 | `equip_drag_fail_counts` | 装备拖拽执行失败 | CwOpEquipAll 拉黑 | 局 | 同上 |
 | `megastar_candidate_clicked` | 巨星 handler 点击执行 | handler 防重入 | handler 访问内 | **`ctx.cw_match` 级局容器(定案,不留实施批裁量)**——字段定义理由(session 文件:123-124)恰是「防 new CwScreenMegastar instance 重置 instance flag → 重选卡死」,落 op 实例 = 每次新建实例清零 = 原始事故按定义复发(对抗审查 B1 改判;初版落点作废) |
 | `_supply_refresh_used` / `_encounter_refresh_used` | 补给/遭遇刷新点击执行 | handler 防重入(screens/supply.md 开放设计注 裁 carried/执行侧) | 节点 | 画面 op 实例/节点级执行载体 |
@@ -216,7 +216,7 @@ StrategySession(104 项混装:              StrategySession(30 项:观察 28 + �
 
 ### 5.5 执行层消费点
 
-- `deploy_fail_counts`/`equip_drag_fail_counts`:迁到执行器/动作 op 载体(CwScreenDeploy、CwOpEquipAll、prep_actions 发射器),生命周期语义逐字段保持(局级/跨环)——载体落点实施批裁,候选 = `ctx.cw_match` 级执行态容器或 op 实例字段;**禁**为它们新开 session 字段。
+- `deploy_fail_counts`/`equip_drag_fail_counts`:迁到执行器/动作 op 载体(PrepActionExecutor、DeployMove 动作 op、CwOpEquipAll、prep_actions 发射器),生命周期语义逐字段保持(局级/跨环)——载体落点实施批裁,候选 = `ctx.cw_match` 级执行态容器或 op 实例字段;**禁**为它们新开 session 字段。
 - `tracked_bench_chars`/`pending_buy_expect`/`xp_expect_ledger`/`expected_state`:迁执行侧对账载体,双账断言语义不变(screens/op-layer.md §2.3(ii))。**kernel 读写签名重构**(对抗审查 B2-5 补):`kernel/cw_reconcile.py:78`、`kernel/cw_expected_state.py:333` 对这组字段有读写签名——迁出后 kernel→执行侧载体的访问路径**必须定义**(候选 = 执行侧载体访问口注入 kernel,或对账入口收拢签名),禁让 kernel 直接 getattr session 猜新宿主——那是与 §1-2 同型的耦合换壳复活。
 - `v2_round_key`/`v2_round_bought`/`v2_round_sold`(§2.4 新增):原迁移指令(随 `cw_round_ledger` 宿主迁移,`register_round_sold` 轮键自校验语义不变,live 调用方与仲裁消费点同步换宿主)已作废——实施盘点证明轮键守卫恒早退使 `register_round_sold` 恒为 no-op(调用方实为 cw_sell_bench_action 卖出落地段,非 cw_shop_action_ops),`v2_round_key`/`v2_round_sold` 判死面随执行层状态类目退役删除,`v2_round_bought` 按 §2.5 前置动作删除;现行同轮已卖互斥单一事实源 = mandate_v1 自有载体 `cw4_round_sold_names`。
 - 执行层读策略状态的既有点换访问函数(对抗审查 B2-2/3 补):`cw_op_deploy.py:1014`(读 v3_intention 取 locked_fac)、`cw_shop_action_ops.py:362`(读 cw4_counters)、`:395`(读 v3_intention)——执行层读策略状态的合法通道 = 访问函数,逐点改。

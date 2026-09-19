@@ -111,7 +111,7 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 
 ### 4.6 层级区别:动作域之外的组合壳 / 画面 op(不进注册表,列出以划清「动作 op」边界)
 
-- `CwScreenDeploy`(`operations/cw_screen/cw_screen_deploy.py`):部署机画面 op——整建制拖拽循环(逐槽动态 cap 复查/同名禁双/列车配方底线仲裁/换排纠正/off-target 卖出腾位/遮蔽哨),产出具名轮次状态(STATUS_NOOP / STATUS_DEPLOYED / STATUS_OVERLAY_PREEMPTED 等)——这是画面 op 的轮次结果语义,不是动作回执;部署落地零像素判效,落地事实归备战环入口观察对账。生产直调 = 外循环 0j 恢复链。
+- `CwScreenDeploy`(部署机画面 op)**已退役删除**——部署 = 备战决策环动作:`CwActionDeployMoveParam` 原子序由 mandate 发射位逐帧现算,经 `CwActionDeployMoveOp` 机械拖拽 + 自上报 `report_action_deploy_move_param` 推进部署逻辑态(路径速查 = [../screens/deploy.md](../screens/deploy.md));落地事实归备战环入口观察对账。
 - `CwOpCloseShop`(`operations/cw_op/cw_op_close_shop.py`):关店编排壳——CloseShop 动作的关店点击承担者(`CwActionCloseShopOp` 本体 no-op)。
 - `_open_shop_phase`(`operations/cw_screen/cw_screen_prep.py`):开店编排——OpenShop 动作的流程层执行半(read_only / restricted_spend 消费位);读数性开店的 `(progressed, detail)` 中 progressed = 开店成功(读数性回执,非动作成败回执)。
 - `run_buy_waves`(`operations/cw_screen/cw_screen_buy_cards.py`):商店买波编排——`CwActionBuyCardOp` 发射循环 + 逐动作回执簿记(`_ok` = 发出事实透传非判效,发出即记账);期望态推进 = op 自上报单点(原「容器逻辑态直写块」已随动作 op 重组删除 = 双记防线);段尾买牌落位 pixel-diff 对拍留证保留在观察侧(零决策零改道,失败不停不重试,对账语义见 §2.1)。

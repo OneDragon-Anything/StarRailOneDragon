@@ -1,6 +1,6 @@
 # 备战画面(prep · 货币战争-备战)
 
-> 代码 = `operations/cw_screen/cw_screen_prep.py::CwScreenPrep`(编排)+ `strategies/impl/mandate_v1/bridge.py`(决策入口)+ `prep_actions.py::PrepActionExecutor`(备战执行器)+ `operations/cw_screen/cw_screen_deploy.py`(部署机)。职责:一次备战画面访问的完整编排——入口观察→对账→单动作决策循环(执行→逻辑态直写),直到终结动作交回外循环。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_prep.py::CwScreenPrep`(编排)+ `strategies/impl/mandate_v1/bridge.py`(决策入口)+ `prep_actions.py::PrepActionExecutor`(备战执行器;部署 = DeployMove 动作,路径速查 = [deploy.md](deploy.md))。职责:一次备战画面访问的完整编排——入口观察→对账→单动作决策循环(执行→逻辑态直写),直到终结动作交回外循环。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 分发判定
 

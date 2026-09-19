@@ -70,7 +70,7 @@
 
 ## §3 形态分型(37 画面 op)
 
-画面 op 共 37 个:`operations/cw_screen/` 35 类 + 商店框 2 类(`operations/cw_op/cw_op_open_shop.py::CwOpOpenShop`/`cw_op_close_shop.py::CwOpCloseShop`)。分五型:
+画面 op 共 36 个:`operations/cw_screen/` 34 类 + 商店框 2 类(`operations/cw_op/cw_op_open_shop.py::CwOpOpenShop`/`cw_op_close_shop.py::CwOpCloseShop`)。分五型:
 
 | 型 | 判据 | 屏清单 | report |
 |---|---|---|---|
@@ -80,7 +80,7 @@
 | **驻留状态机**(用户裁定豁免两 node) | 内部 while 处理结算帧、逐轮分类;出口判定(大厅终局锚/完成白名单)与分支链的轮次耦合拆进两 node 会切开 | CwScreenBattleWait(单 node `wait()`;内部结算链 `_write_settlement_observation`/`apply_settlement_cover`/SettlementState 零改动) | report 占位(结算覆盖写端在结算域,非画面观察记账) |
 | **重型屏** | 观察 = 既有漏斗 + op 层散落写点收编;决策动作 = 无帽循环/波循环 | CwScreenPrep(观察 node = 环装配 + heavy 观察 + 接管补采 + 纯观察审计留守;决策动作 node = 单动作决策 `while True` 循环,无防御上限;可选域经 report 落容器)、CwScreenBuyCards(观察 node = 入口段 `_shop_entry_read` 含未识别卡停机闸;决策动作 node = 波循环 `run_buy_waves` 内聚状态机,首段复用观察回执不重读) | prep = 可选域(链域/接管域)report;buy_cards = report 占位(容器写端在漏斗) |
 
-出辖 1:`operations/cw_screen/cw_screen_deploy.py::CwScreenDeploy`(部署机,在备战画面上拖拽执行,直继承 SrOperation)不属画面分发主体,其 obs 化评估另立批。合计 12 + 8 + 13 + 1 + 2 + 1 = 37。
+退役 1:`CwScreenDeploy`(部署机画面 op)已退役删除——部署 = 备战决策环动作(`CwActionDeployMoveParam` 原子序经 `CwActionDeployMoveOp` 机械执行 + `report_action_deploy_move_param` 自上报逻辑态),部署判定单一源驻 `kernel/cw_deploy_logic.py`,路径速查 = [deploy.md](deploy.md)。合计 12 + 8 + 13 + 1 + 2 = 36。
 
 ## §4 辖域边界(本层不承载的机制)
 

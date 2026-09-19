@@ -253,7 +253,7 @@ B3 直调证实:`_r1_ledger_terms`(shop.py:157-202)现行合格集已含「无 2
 | `strategies/impl/mandate_v1/shop.py` M6 段(:592-616)+ `criteria/stockpile.py` `stockpile_buy`(:11) | **M6 压库入口对账(N2 采纳;排除域收口 = 全部线内件,落码批 as-built 定稿)**:线内副本买入全链归义务通道(M2 j=0→1 / 臂① j=1∧cnt2=0 / M2b j=2 完成段,§3.4 边界表),M6 压库域收窄为**非线内件**(shop.py M6 循环排除 buy_members + `m6_line_member_excluded` 分键零静默)。旧「仅在 cnt1=0 帧排除、cnt1≥1 帧允许 M6 完成合成买入」字面**作废**:合成完成段已由 M2b 义务门管辖(带 star==1/cnt 判据),M6 无 cnt 判据的盲买可绕过臂① cnt2==0 守卫制造「cnt1=2∧有 2★」死库存(§3.7);「cnt1=2 ∧ 已有 2★」子形态仍属 §5.3 残量白名单(退出 = 目标档变更,§8④ 挂账重开条件不变) | N2/R4-3 |
 | **F1:本稿不落修法** | `_r1_ledger_terms` 不动;定位批按 §6.2 假设表出报告 | §6 |
 | `kernel/cw_deploy_logic.py` `has_deployable`/`select_deployments` + mandate.py 部署发射位(m1:338/m1′:386/提案合法门:521-563) | swap 分支(与发射门同批,发射×执行契约);**围栏拒因分键(N4 采纳,新增)**:held 路径(cap:369-370/同名去重:372-374/配方底线门:376-379/散牌围栏:301-306)加 reason 返回或 sim 侧重算,承载 arm0 探针分键——落码批与 swap 分支同批 | §9/N4 |
-| **`operations/cw_screen/cw_screen_deploy.py` swap/victim 段(符号锚,Y2:设计时行号 :312-358 已漂移,现行 :417-502;三-1 采纳,新增行)** | **victim 判定收口位**:执行侧现行消费 all_factions+core_chars(r70 双轨口径)、无星级/退款资格过滤——收口为单一源(发射门同款:k_members ∩ 燃料资格函数「零重叠 ∧ 1★ 全退」),否则门/执行两套判据分叉,卡芙卡被卖 4 次同型事故复发口。**宿主分层裁决(轮 3 存疑处置)**:单一源宿主优先上收 kernel 层(operations → strategies 的 import 方向反分层),落码批在「kernel 新函数」vs「fuel_sell_candidates 上收」二选一并验 | §9 |
+| **victim 判定收口位(原部署机 swap/victim 段锚;部署机退役后单一源宿主 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`,上收裁决已收敛 kernel)** | **victim 判定收口位**:原执行侧现行消费 all_factions+core_chars(r70 双轨口径)、无星级/退款资格过滤——已收口为单一源(发射门同款:k_members ∩ 燃料资格函数「零重叠 ∧ 1★ 全退」),否则门/执行两套判据分叉,卡芙卡被卖 4 次同型事故复发口。**宿主分层裁决**:单一源宿主上收 kernel 层(operations → strategies 的 import 方向反分层),已落 kernel | §9 |
 | `kernel/cw_registry.py` | copies_cap 注释口径回写(§3.5) | B6 |
 | `criteria/buy.py` EV 面 | 不改(fail-closed 面保持;臂①走义务通道绕开) | 臂① |
 | telemetry | 拒因分键(m2_stockpile/stockpile_unaffordable/bench_full/deploy_swap_no_victim)、危机带置位帧计数、segments 三指标 | 全臂 |
@@ -303,7 +303,7 @@ paired 同 seed 代码版本对照,两侧同池指纹;预注册判据先 commit 
 
 ### 9.1 病灶面
 
-锁线事件后板满(cap=level)、bench 有 target_cores、场上存在 off-target ⇒ 现行三发射位(m5 限开局、m1/m1′ 均 `deploy_vacancy > 0` 门)全关,RunDeploy 整期零发射(match9 g_20260904_071522 p2r1 希儿形态)。执行侧 deploy-swap(**卖场上 off-target 腾位 + redeploy bench target**,`operations/cw_screen/cw_screen_deploy.py:336-358`)通道已存在但只在 RunDeploy 发射后可达——发射门关着,swap 是死通道。
+锁线事件后板满(cap=level)、bench 有 target_cores、场上存在 off-target ⇒ 现行三发射位(m5 限开局、m1/m1′ 均 `deploy_vacancy > 0` 门)全关,RunDeploy 整期零发射(match9 g_20260904_071522 p2r1 希儿形态)。执行侧 deploy-swap 通道随部署机退役消失(换血卖出现役 = mandate 直发 `CwActionSellDeployedParam`,判定单一源 = `swap_sell_exclusion_reason`)——原「发射门关着 swap 是死通道」的争议随组合壳退役消失。
 
 ### 9.2 发射位规格
 

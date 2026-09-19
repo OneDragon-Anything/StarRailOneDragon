@@ -48,7 +48,7 @@
 | CloseShop(关商店) | `CwActionCloseShopParam` | `cw_close_shop_action.py::CwActionCloseShopOp`(关店点击由编排壳 `cw_op_close_shop.py::CwOpCloseShop` 承担) | **访问终结**(§6) |
 | SellBench(卖备战) | `CwActionSellBenchParam` | `cw_prep_sell_bench_action.py::CwActionSellBenchOp`(词表摊平后商店/备战共用单一注册行;原商店域文件 `cw_sell_bench_action.py` 已退役删除) | 非终结 |
 | LevelUp(买经验) | `CwActionLevelUpParam`(`CwActionLevelUpShopParam` 同字段双类型,显式独立行同备战 op,单击) | 注册行 = `cw_prep_level_up_action.py::CwActionLevelUpOp`;原商店域 `cw_level_up_action.py` 已退役删除 | 非终结 |
-| SellDeployed(卖上阵) | `CwActionSellDeployedParam` | `cw_sell_deployed_action.py::CwActionSellDeployedOp` + 部署面换血(`cw_screen_deploy.py::_sell_offtarget_deployed`) | 非终结 |
+| SellDeployed(卖上阵) | `CwActionSellDeployedParam` | `cw_sell_deployed_action.py::CwActionSellDeployedOp`(换血判定单一源 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`) | 非终结 |
 | SwapDeploy(上阵↔备战对调) | `CwActionSwapDeployParam` | 未接线(词表+上报函数/sim 消费在役;词表完备性保留) | 非终结 |
 | DeployMove(部署) | `CwActionDeployMoveParam` | `cw_deploy_move_action.py::CwActionDeployMoveOp`(bench→上阵单步拖拽,发射位逐帧现算) | 非终结 |
 | 领取类(开箱) | `CwActionOpenBoxParam` | `cw_open_box_action.py::CwActionOpenBoxOp` | **访问终结**(§6) |
@@ -56,7 +56,7 @@
 | 穿戴/工具 | `CwActionWearEquipParam`/`CwActionFurnaceUseParam`/`CwActionPrivilegeCardUseParam`/`CwActionWrenchUseParam`/`CwActionPrecisionWrenchUseParam`/`CwActionStaffProjectorUseParam`/`CwActionPerfectProjectorUseParam`/`CwActionLuckyTokenUseParam` | `cw_wear_equip_action.py::CwActionWearEquipOp`/`cw_tool_use_action.py::CwActionToolUseOp` | 非终结 |
 | 转场 | `CwActionOpenShopParam`/`CwActionStartBattleParam` | `cw_open_shop_action.py::CwActionOpenShopOp`(terminal 承载行,执行抛,正常路径不可达)/`cw_start_battle_action.py::CwActionStartBattleOp`(返回值在册例外) | 备战环终结/备战访问终结 |
 
-组合壳(RunDeploy/RunEquip/RunTools)已随统一词表退役(批2b R2):部署 = 发射位逐帧现算 DeployMove 原子序,穿戴 = WearEquip 原子,工具 = 工具原子类经 `CwActionToolUseOp`;`CwScreenDeploy` 唯一生产直调 = 外循环 0j 恢复链(见 [deploy.md](deploy.md))。
+组合壳(RunDeploy/RunEquip/RunTools)已随统一词表退役(批2b R2):部署 = 发射位逐帧现算 DeployMove 原子序,穿戴 = WearEquip 原子,工具 = 工具原子类经 `CwActionToolUseOp`;部署机画面 op `CwScreenDeploy` 已退役删除——部署无画面 op 载体,路径速查 = [deploy.md](deploy.md)。
 
 **动作坐标系(二分)**:席位域动作(SellBench/SellDeployed/DeployMove)携**容器槽位表下标 0 基**(bench 0-8 / deployed 0-9,读口 `bench_slots_of`/`deployed_slots_of` 同基直取零换算);**画面物理槽位 1 基**仅存于坐标参数化机械动作(WearEquip/工具七类/OpenBox/OpenTome/OpenBookcard)的 `row`/`slot` 字段。执行坐标边换算单点 = `kernel/cw_exec_state.py::deployed_row_slot`(下标→物理排槽)/ `deployed_idx_of`(物理→下标)。
 
@@ -83,10 +83,10 @@
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 策略归属 | 访问终结语义 |
 |---|---|---|---|---|
-| 上阵(拖备战栏→前排/后排空槽) | 等级=可上阵数(`data/gameplay.md`);站位前台/后台激活角色赋能 | `DeployMove`(部署 = 发射位逐帧现算原子序;`CwScreenDeploy` 直调 = 0j 恢复链,见 [deploy.md](deploy.md)) | 备战期(22/24 号篇) | 非终结 |
-| 换排(上阵单位前排↔后排拖拽) | 同上 | 部署机内拖拽(`_deploy_deterministic` 含错排归位 `_fix_misplaced_rows`) | 备战期 | 同上 |
+| 上阵(拖备战栏→前排/后排空槽) | 等级=可上阵数(`data/gameplay.md`);站位前台/后台激活角色赋能 | `DeployMove`(部署 = 发射位逐帧现算原子序,备战决策环动作;路径速查 = [deploy.md](deploy.md)) | 备战期(22/24 号篇) | 非终结 |
+| 换排(上阵单位前排↔后排拖拽) | 同上 | `DeployMove`(to_row 重拖,策略发;错排事实归备战环入口观察对账) | 备战期 | 同上 |
 | 卖备战(拖备战栏→区域-出售区) | 卖出退金(`research/economy.md` §3;单一源 `kernel/cw_economy.py::sell_refund`) | `CwActionSellBenchOp`(注册行)+ `prep_actions.py::drag_bench_to_sell` | 备战期:腾位(M4)/凑息/筹资/换线塌缩(22 号篇) | 非终结 |
-| 卖上阵(拖上阵位→出售区) | 同上 | `CwActionSellDeployedOp` + 部署面换血(`cw_screen_deploy.py::_sell_offtarget_deployed`) | 备战期/部署期换血(24 号篇) | 非终结 |
+| 卖上阵(拖上阵位→出售区) | 同上 | `CwActionSellDeployedOp`(换血判定单一源 = `swap_sell_exclusion_reason`) | 备战期/部署期换血(24 号篇) | 非终结 |
 | 买经验(点「备战标识-购买经验」) | 4 金/击=+4 经验,升级=过门槛表(`research/xp-rules.md` §2;表值 = `kernel/cw_economy.py::XP_TO_NEXT_LEVEL`) | `CwActionLevelUpOp` 备战连点 | 备战期(22 号篇;商店期收缩后的唯一买经验期) | 非终结 |
 | 开商店(点「按钮-商店」) | 商店每节点自动刷新 1 次(`data/gameplay.md`) | `OpenShop`(read_only 两形态);编排 = `cw_screen_prep.py` 商店访问段(文档 = [shop.md](shop.md)) | 备战期(进商店访问的唯一入口动作) | **备战环终结**:开店/读数开店后交商店访问编排或回外循环重识别 |
 | 出战(点「按钮-出战」) | 未在行动值内取胜扣血(`data/gameplay.md`) | `CwActionStartBattleOp`;发射意图 = mandate_v1 前置发射位(判据 = `kernel/cw_launch_admission.py::readiness_launch_decision`);执行 = 统一执行器 `operations/cw_loop.py::launch_battle_unified` | 备战期出口(唯一完成态) | **备战访问终结**:交回外循环战斗分支 |
@@ -96,9 +96,9 @@
 | 查看详情(角色/装备详情浮层) | 游戏辅助功能(`data/gameplay.md`) | 推进弹窗族 `CwScreenRoleDetailOverlay` 等(1b/1d/1g 分支,空决策形态) | 无策略归属(推进为流程义务) | 关闭/点空白即终结 |
 | 锁商店(跨节点保牌) | `research/economy.md` §2.1(整店级锁;官方机制) | **生产链路未建模**(建档已有「按钮-商店锁定」坐标备作将来) | 无 | — |
 
-### 5.4 部署执行段(备战画面内,无独立建档画面)与商店开画面(货币战争-备战-开商店)
+### 5.4 部署执行(备战画面内,无独立建档画面、无独立画面 op)与商店开画面(货币战争-备战-开商店)
 
-部署不是独立 screen_info 画面:部署机 `CwScreenDeploy` 以拖拽在备战画面上执行(`SCREEN_NAME = '货币战争-备战'`);`currency_war_deploy_not_full.yml`(未达上限警告,0d 分支)为部署被拒确认弹窗。商店开画面建档 = `currency_war_battle_prep_shop_open.yml`;文档 = [shop.md](shop.md)。
+部署不是独立 screen_info 画面:部署 = 备战决策环动作(`CwActionDeployMoveParam` 原子序经 `CwActionDeployMoveOp` 在备战画面上拖拽;部署机画面 op 已退役,路径速查 = [deploy.md](deploy.md));`currency_war_deploy_not_full.yml`(未达上限警告,0d 分支)为部署被拒确认弹窗。商店开画面建档 = `currency_war_battle_prep_shop_open.yml`;文档 = [shop.md](shop.md)。
 
 商店开画面能力面:买牌(`CwActionBuyCardOp`)/刷新(`CwActionRefreshShopOp`,段终结)/买经验(能力面可用、策略面收缩)/卖备战(同前)/关商店(`CwActionCloseShopOp` + CwOpCloseShop,访问终结)/牌详情弹窗(0t,点 X 绝不点购买)/刷新概率表(0e2,概率条直读进 `refresh_probs` 为观察非动作)/锁商店(未建模)。策略面 = 商店期默认动作面仅 买/刷/关(判例 §7;23 号篇)。
 
