@@ -186,7 +186,7 @@ class BenchChar:
     # 占槽物品标记(部署伪槽修复批 ②,防线字段;B1 返工=显式标记形态):
     # True = 该槽画面是物品(箱/典籍/书册卡/揭示卡等)非角色。坐标系 =
     # 备战栏 1-based slot(与 slot 字段同系);取值时机 = 部署装配期快照;
-    # 写入端 = 部署装配点(cw_op_deploy.assemble_bench_list 构造时显式写),
+    # 写入端 = 备战观察读链 BenchChar 构造时显式写,
     # 识别来源 = obs 单一源精确档(cw_identity_obs.bench_item_slots
     # fuzzy=False)的命中产出;obs 未命中的槽位恒 False(缺省),与本字段
     # 无关的 char_id='' 不触发(kernel 对 True 恒 held、拒因 'item_slot',
