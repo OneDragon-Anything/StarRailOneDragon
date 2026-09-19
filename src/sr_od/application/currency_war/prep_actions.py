@@ -15,7 +15,7 @@ CwActionSellDeployedParam/CwActionDeployMoveParam)携**容器槽位表下标**(0
 kernel/cw_vocab,坐标系裁定见其模块头);本执行器 = **执行坐标边**——
 容器下标 → screen_info 槽位中心的换算单点(bench 侧 = 备战栏-N area 序
 直取;deployed 侧 = kernel ``deployed_row_slot`` 单一函数)。坐标参数化
-机械动作(CwActionWearEquipParam/工具原子类/CwActionOpenBoxParam/CwActionOpenTomeParam/CwActionOpenBookcardParam)的
+机械动作(CwActionWearEquipParam/工具原子类/CwActionOpenBoxParam/CwActionOpenTomeParam/CwActionOpenBookcardParam/CwActionRevealTrialParam)的
 row/slot 字段 = 画面物理排槽位 1 基(动作参数定义,拖点直取 area,
 不经换算)。
 统一动作工厂批3 收编(design.md unified-action-factory §2.4):动作级
@@ -50,6 +50,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPerfectProjectorUseParam,
     CwActionPrecisionWrenchUseParam,
     CwActionPrivilegeCardUseParam,
+    CwActionRevealTrialParam,
     CwActionSellBenchParam,
     CwActionSellDeployedParam,
     CwActionStaffProjectorUseParam,
@@ -310,6 +311,9 @@ class PrepActionExecutor:
         elif isinstance(action, CwActionOpenBookcardParam):
             if action.slot is not None and not (1 <= action.slot <= len(self._bench_pts)):
                 return f'CwActionOpenBookcardParam slot={action.slot} 越界(1-{len(self._bench_pts)})'
+        elif isinstance(action, CwActionRevealTrialParam):
+            if action.slot is not None and not (1 <= action.slot <= len(self._bench_pts)):
+                return f'CwActionRevealTrialParam slot={action.slot} 越界(1-{len(self._bench_pts)})'
         elif isinstance(action, CwActionWearEquipParam):
             if action.row not in ('front', 'back'):
                 return f'CwActionWearEquipParam row={action.row!r} 非法(front/back)'

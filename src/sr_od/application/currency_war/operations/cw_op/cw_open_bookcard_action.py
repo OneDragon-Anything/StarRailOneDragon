@@ -2,8 +2,12 @@
 ``OpenBookcardOp``,ActionOp ABC → 框架 SrOperation;机械执行后 **op 内
 直调自己的上报函数** ``report_action_open_bookcard_param``,零分派,
 design.md §1.1/§1.2;机械半本体 = R10/批2c 自 ``cw_screen_expert_invite.
-open_card`` 迁入执行器的形态)。非终结:点完开启本动作即交回——专家邀请
-函弹窗由外循环 0k 分发 ``CwScreenExpertInvite`` 选卡。"""
+open_card`` 迁入执行器的形态)。
+
+终结动作(用户裁定 2026-09-19 开卡时机归策略器,发射位 = entry ①
+prep 实体面卡片臂;原非终结 + 画面 op 入口清场代交回通道撤销):点完
+开启即引入新事实(专家邀请函弹窗在场)→ 本动作终结交回外循环,弹窗由
+外循环 0k 分发 ``CwScreenExpertInvite`` 选卡。"""
 from __future__ import annotations
 
 import time
@@ -29,11 +33,15 @@ if TYPE_CHECKING:
 
 class CwActionOpenBookcardOp(SrOperation):
     """开书册卡:``find_bookcards`` 识别 → 点槽中心 → 固定动画等待
-    (纯机械执行)。非终结。"""
+    (纯机械执行)。终结动作(用户裁定 2026-09-19 发射位迁策略器,
+    弹专家邀请函 = 新事实 → 终结交回,与 OpenBox R7 同构)。"""
 
-    #: 非终结动作(每类显式声明,无基类缺省)。
-    terminal = False
-    terminal_wait = 0.0
+    #: 终结动作(专家邀请函弹窗在场 = 新事实,交回外循环重分发选卡)。
+    terminal = True
+
+    #: 交回等待 = 开卡动画等待值(与 prep_actions._OVERLAY_ANIM_WAIT_S
+    #: 逐字等价,漂移由等价锁暴露;原画面 op 交回等待同源)。
+    terminal_wait = 1.8
 
     def __init__(self, ctx: SrContext, param: CwActionOpenBookcardParam,
                  env: PrepExecEnv):

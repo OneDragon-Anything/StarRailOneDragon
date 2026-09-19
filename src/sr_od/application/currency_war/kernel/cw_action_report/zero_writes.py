@@ -40,6 +40,13 @@ def report_action_open_box_param(gs: GameState, param: Any, sig: ChannelSig) -> 
 
 
 
+def report_action_reveal_trial_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
+    """点试用角色揭示卡上报:揭示出的 2★ 试用角色身份不可预知,
+    归下一入口 heavy 实读(终结交回零窗口,与开箱同构),容器零写。"""
+    return _report_zero_write(gs, param, sig, 'zero_write(reveal_trial)')
+
+
+
 def report_action_furnace_use_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """冶金炉上报:消耗/变换 = 视觉域逻辑态(容器零写,随机面观察收口)。"""
     return _report_zero_write(gs, param, sig, 'zero_write(furnace_use)')

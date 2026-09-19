@@ -2,8 +2,9 @@
 
 「书册卡」= 备战席占槽道具(青蓝卡+白色书册 icon+「开启」,模板
 ``assets/template/currency_war/supply/书册卡_未知.png``,find_bookcards 识别):
-其开卡动作自 R10 归位备战词表(``kernel/cw_vocab.CwActionOpenBookcardParam``,执行器分支
-``prep_actions._open_bookcard``,发射位 = 备战环入口清场段)——本 op 只辖
+其开卡动作自 R10 归位备战词表(``kernel/cw_vocab.CwActionOpenBookcardParam``);
+用户裁定 2026-09-19 开卡时机归策略实现管后,发射位 = 策略器 entry ①
+prep 实体面卡片臂(原备战环入口清场段代发撤销)——本 op 只辖
 **弹窗已开后的选卡**:点选一个 → 该角色加入商店(由正常商店逻辑接管)/
 或 +4 金 → 弹窗关回备战。
 

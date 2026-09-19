@@ -1310,7 +1310,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
   覆盖面申报(登记面 = 各上报函数 docstring 与零写族 `zero_writes.py`):
   **有容器写语义动作** = SellBench/SellDeployed/DeployMove/LevelUp/ClickSpheres/
   OpenTome/OpenBookcard 各一函数;**零写族**(消费真值归观察/终结化) =
-  OpenBox/WearEquip/工具原子七类集中在 `zero_writes.py`。bench 侧原生
+  OpenBox/RevealTrial/WearEquip/工具原子七类集中在 `zero_writes.py`。bench 侧原生
   `BenchView.slots`
   操作(不走 legacy roundtrip,is_item_slot 布尔无法恢复 box/tome 类型);域级 None
   跳写(值留观察覆盖,§2.2);陈旧提案守卫(槽位空/越界/载荷无交集零写,等观察覆盖)。

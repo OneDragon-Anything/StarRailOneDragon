@@ -561,14 +561,19 @@ class Unit:
 
 @dataclass(frozen=True)
 class BenchSlot:
-    """备战席一槽:四种内容之一(统一槽位视图,占位真值一份,§3.2.5)。
+    """备战席一槽:六种内容之一(统一槽位视图,占位真值一份,§3.2.5)。
 
-    占席真值 = :func:`slot_occupies`:unit/supply_box/tome 占 1 槽、empty
-    不占(晶矿不占席——它是点击目标不是席位居民,§3.2.5)。sim 合成帧
-    「箱不占席」= sim 无箱实体的内部口径约定,**记录模型按实机真值**。
+    占席真值 = :func:`slot_occupies`:unit/supply_box/tome/bookcard/
+    trial_card 占 1 槽、empty 不占(晶矿不占席——它是点击目标不是席位
+    居民,§3.2.5)。sim 合成帧「箱不占席」= sim 无箱实体的内部口径约定,
+    **记录模型按实机真值**。bookcard/trial_card = 备战席占槽道具细分
+    (书册卡/试用角色揭示卡;开卡动作的策略器发射臂按 kind 分派,用户
+    裁定 2026-09-19 开卡时机归策略实现管——原先统一降级 supply_box,
+    策略器开箱臂会对着卡槽发 OpenBox 必败,由入口清场先于观察 masking)。
     """
 
-    kind: Literal['unit', 'supply_box', 'tome', 'empty'] = 'empty'
+    kind: Literal['unit', 'supply_box', 'tome', 'bookcard', 'trial_card',
+                  'empty'] = 'empty'
     unit: Unit | None = None        # kind='unit' 时有效
     # tome=星徽秘典:席位内容物之一,占席待实机证实(§3.2.5——画面档案只有
     # 弹窗、无席位区域锚);按「席位内容物」建模即占席,证伪时改归不占席域。
@@ -913,20 +918,6 @@ def consume_defect_sink() -> list[dict]:
 _MISMATCH_SUPPRESS_PREFIXES: tuple[str, ...] = ('sim:engine', SIM_SYNTHESIZED)
 
 
-def _bench_unit_multiset(view: Any) -> Counter:
-    """BenchView → (char_id, star) 多重集(纯超集校验的提取单一源;外部
-    随机授予吸收与真失配的形状分界只认「身份×星级」多重集,槽位号不在
-    校验域——授予单位落首空槽会平移既有单位槽号,槽号相等不成立)。
-    非 BenchView 形状(None/缺 slots)= 空集,由调用方形状校验兜住。"""
-    if view is None or not hasattr(view, 'slots'):
-        return Counter()
-    out: Counter = Counter()
-    for slot in view.slots:
-        if getattr(slot, 'kind', None) == 'unit' and slot.unit is not None:
-            out[(slot.unit.char_id, slot.unit.star)] += 1
-    return out
-
-
 def _rows_unit_key(u: Any) -> tuple[str, int, tuple[str, ...]]:
     """行写端单位多重集键(board 派生重算与纯重排吸收共用;键 =
     (char_id, star, 装备集排序元组)。槽位号/行内顺序**不在键内**——
@@ -1102,8 +1093,8 @@ def current_run_id_safe() -> str:
 
 
 def slot_occupies(kind: str) -> bool:
-    """槽位占席谓词(§3.2.5 实机真值):unit/supply_box/tome 占 1 槽,
-    empty 不占。席满判定/席空数同源派生的底座。"""
+    """槽位占席谓词(§3.2.5 实机真值):unit/supply_box/tome/bookcard/
+    trial_card 占 1 槽,empty 不占。席满判定/席空数同源派生的底座。"""
     return kind != 'empty'
 
 
@@ -1417,9 +1408,10 @@ def bench_view_from_obs(bench_chars: list,
     - ``is_item_slot`` 占位件(读链道具位,箱/典籍/书册卡)→ supply_box
       槽位往返保旗标(占 1 席、非可卖燃料;与 :func:`bench_slots_to_legacy`
       的重建分支配对)。``item_kind_by_slot``(迭代 2026-09-18-prep-obs-
-      retirement 阶段 3.5)= 槽号 → 'supply_box'/'tome' 细分映射(观察链
-      用同帧 read_supply_boxes/read_tomes 槽号集构造;缺省 None = 旧行为
-      逐位不变,占位件恒 supply_box);
+      retirement 阶段 3.5)= 槽号 → 'supply_box'/'tome'/'bookcard'/
+      'trial_card' 细分映射(观察链用同帧 read_supply_boxes/read_tomes/
+      find_bookcards/find_trial_reveal_cards 槽号集构造;缺省 None =
+      旧行为逐位不变,占位件恒 supply_box);
     - 非 None 返回 = 槽位保序映射(下标 i = 物理槽 i+1,与 sim 合成口同构)。
     """
     if not bench_chars:
@@ -1496,11 +1488,11 @@ def bench_slots_to_legacy(view: BenchView) -> list:
     for i, slot in enumerate(view.slots):
         u = getattr(slot, 'unit', None)
         kind = getattr(slot, 'kind', 'empty')
-        if kind in ('supply_box', 'tome'):
+        if kind in ('supply_box', 'tome', 'bookcard', 'trial_card'):
             # 占位件往返重建(与 bench_view_of_slots 的 supply_box 映射
-            # 配对;tome 分支 = 阶段 3.5 kind 细分配对——reviewer r1 #1
-            # 申报的「单边破裂」处置):is_item_slot=True 的 BenchChar,
-            # 守卫线(占位恒拒)与部署装配点识别线消费同旗标。
+            # 配对;tome/bookcard/trial_card 分支 = kind 细分配对——
+            # reviewer r1 #1 申报的「单边破裂」处置):is_item_slot=True
+            # 的 BenchChar,守卫线(占位恒拒)与部署装配点识别线消费同旗标。
             out.append(BenchChar(slot=i + 1, char_id='', star=1,
                                  is_item_slot=True))
             continue
@@ -1857,51 +1849,6 @@ def mutate_bench_deployed_local(bench, deployed, action,
     mutate_bench_deployed(bench, deployed, action, shop=shop)
 
 
-def latch_external_grants(gs: GameState, card_name: str, *,
-                          actor: str) -> tuple[int, int]:
-    """外部随机授予置闩单一源(出处=改动三审 2026-09-18「置闩幂等化」;
-    置闩挂点 =
-    CwScreenInvestStrategy / CwScreenInvestEnv 两确认点,查表仍走
-    :func:`cw_mismatch_policy.external_grant_totals` 双表单一消费面)。
-
-    幂等契约:同卡(session 内,登记 = ``exec_books.external_grant_
-    latched_cards``)重入不叠加——确认点击落空时 op 机械交回、下一轮
-    重入重走决策再选同卡,置闩原形 ``+=`` 会二次累加使 pending 虚高,
-    放宽 ``_absorb_external_grant`` 的「差额 ≤ 待吸收数」闸(虚额残留
-    期内吞真投影 bug)。卡选完即消耗,「每卡一次」即幂等;不同卡各自
-    累加不受影响(多卡授予形态合法:各卡 pending 叠加并存,失配吸收
-    按「差额 ≤ 两闩总额」闸精确扣减)。
-
-    :param card_name: 已归一卡名(:func:`normalize_invest_name` 输出)。
-    :param actor: 日志标注(挂点身份,审计面)。
-    :return: (本次实际置入的 bench 数, equips 数);未申报卡 / 重入 = (0, 0)。
-    """
-    from sr_od.application.currency_war.kernel.cw_mismatch_policy import (
-        external_grant_totals,
-    )
-    n_bench, n_equip = external_grant_totals(card_name)
-    if not (n_bench or n_equip):
-        return (0, 0)
-    latched = gs.exec_books.external_grant_latched_cards
-    if latched is None:
-        latched = set()
-        gs.exec_books.external_grant_latched_cards = latched
-    if card_name in latched:
-        log.info('[cw][gs] 外部授予置闩重入不叠加:%s 已登记'
-                 '(确认重入形态,pending 保持 %s/%s)', card_name,
-                 gs.exec_books.external_bench_grant_pending,
-                 gs.exec_books.external_equip_grant_pending)
-        return (0, 0)
-    latched.add(card_name)
-    gs.exec_books.external_bench_grant_pending += n_bench
-    gs.exec_books.external_equip_grant_pending += n_equip
-    log.info('[cw][gs] 外部随机授予置闩(%s):%s bench +%d equips +%d'
-             '(待吸收 %d/%d)', actor, card_name, n_bench, n_equip,
-             gs.exec_books.external_bench_grant_pending,
-             gs.exec_books.external_equip_grant_pending)
-    return (n_bench, n_equip)
-
-
 # ============================================================ 局终行写口(§3.6.1 runs 收编;ADR-0630 修订节)
 
 #: 局终行落盘事件监听槽(复盘触发器挂点;缺省 None = 关,与缺陷/流水 sink
@@ -2110,52 +2057,6 @@ class TrackedBooks:
 
     bench: list = field(default_factory=list)
     deployed: list = field(default_factory=list)
-
-
-@dataclass
-class ExecBooks:
-    """执行侧过程簿记组(容器内独立宿主组;非 Field,不进快照流水)。
-
-    成员准入 = 历史累积计数/单调事件号/帧间闩类**过程簿记与判读面**——
-    不符「只描述此刻」的 Field 准入(模块头 §8.8 治理),但需局级存续与
-    确定性清零(新局新容器 = 天然清零)。独立宿主组,**不塞 tracked_books**
-    (后者契约 = tracked 主账槽位簿记,语义不容混装)。
-
-    访问纪律:经 ``game_state_of(session).exec_books`` 直读(非 Field 无
-    渠道面,与 tracked_books/settlement_ring 同型;禁 getattr session 猜宿主)。
-    """
-    # 外部随机授予待吸收数(观察对账精确吸收闩;申报表 =
-    # cw_mismatch_policy.EXTERNAL_BENCH_GRANTS)。[索引定义] 计数坐标系 =
-    # 备战席单位个数(非槽位号);取值时机 = 选卡确认挂点写入
-    #(cw_screen_invest_strategy 确认登记点,唯一写端)、下一干净备战帧
-    # bench 观察失配分支「纯超集+差额≤计数」命中后扣减
-    #(:meth:`GameState._absorb_external_grant`,唯一消费端)。局级生命
-    # 周期(新局新容器 = 天然清零):恢复局新容器 pending 恒 0,残局
-    # 差异照真失配停。
-    external_bench_grant_pending: int = 0
-    # 外部随机授予待吸收件数·装备库存(与 external_bench_grant_pending
-    # 同型对称闩;申报表 = cw_mismatch_policy.EXTERNAL_EQUIP_GRANTS)。
-    # [索引定义] 计数坐标系 = 装备库存件数(非槽位号);取值时机 = 选卡
-    # 确认挂点写入(cw_screen_invest_strategy / cw_screen_invest_env 两
-    # 确认登记点,唯一写端)、下一干净备战帧 equips 观察失配分支「纯超集
-    # +差额≤件数」命中后扣减(:meth:`GameState._absorb_external_grant`,
-    # 唯一消费端)。局级生命周期(新局新容器 = 天然清零):恢复局新容器
-    # pending 恒 0,残局差异照真失配停。
-    external_equip_grant_pending: int = 0
-    # 幂等登记(外部授予置闩防重入;出处=改动三审 2026-09-18
-    # 「置闩幂等化」):置闩原形 = 挂点
-    # ``+=`` 累加,确认点击落空(overlay 未关)→ op 机械交回 → 下一轮
-    # 重入重走决策再选同卡 → 同卡二次累加 → pending 虚高 →
-    # ``_absorb_external_grant`` 的「差额 ≤ 待吸收数」闸放宽,虚额残留
-    # 期内任意正向 bench/equips 失配(含真推算 bug)被误吸收。修法 =
-    # 置闩收敛单一源 :func:`latch_external_grants`,本集合记录 session
-    # 内已置闩卡规范名,同卡重入不叠加(卡选完即消耗,一局至多一次
-    # 授予;不同卡各自累加不受影响)。
-    # [索引定义] 集合坐标系 = 卡规范名(:func:`normalize_invest_name`
-    # 输出形);取值时机 = 置闩单一源函数命中申报表时一次性写入,只增
-    # 不清(吸收扣减不动本集合——登记语义 = 「该卡的授予已被置闩过」,
-    # 与 pending 余额正交),局级生命周期(新局新容器 = 天然清零)。
-    external_grant_latched_cards: set[str] | None = None
 
 
 class NodeBooks:
@@ -2440,9 +2341,6 @@ class GameState:
     # 边界锚定写回)+ 动作随动同步(prep 执行器/溢出腿/部署装备回写/
     # 商店 mutate)。观察状态(未观察/已观察)= 上方 tracked_account_observed。
     tracked_books: TrackedBooks = field(default_factory=TrackedBooks)
-    # —— 执行侧过程簿记组(非 Field,准入与访问
-    # 纪律见 :class:`ExecBooks` 类注)——
-    exec_books: ExecBooks = field(default_factory=ExecBooks)
     # —— 节点序列探针簿记宿主(非 Field;终态契约 §A′ 自 session 迁入,
     # 成员与访问纪律见 :class:`NodeBooks` 类注)——
     node_books: NodeBooks = field(default_factory=NodeBooks)
@@ -2770,65 +2668,13 @@ class GameState:
             elif self._absorb_board_derived(name, target, value,
                                             evidence, sig):
                 pass   # board 派生漂移观察覆盖采新已落台账行,跳过三分流
-            elif not self._absorb_external_grant(name, target, value,
-                                                 evidence, sig):
+            else:
                 _route_logic_mismatch(field_name=name, expected=target.value,
                                       actual=value, observed_evidence=evidence,
                                       logic_evidence=target.evidence, sig=sig)
         self._swap(name, Field(value=value, source='observation',
                                evidence=evidence),
                    sig=sig, note=note)
-
-    def _absorb_external_grant(self, field_name: str, target: Field,
-                               value: Any, observed_evidence: str | None,
-                               sig: ChannelSig) -> bool:
-        """外部随机授予精确吸收(§2.3 失配分支前置;申报表 =
-        ``cw_mismatch_policy.EXTERNAL_BENCH_GRANTS`` / ``EXTERNAL_EQUIP_
-        GRANTS`` 两表):「获得随机角色/随机装备」类卡按效果域写入归属判据
-        不建逻辑写端(effect-domain §6.3 概率随机分支/§6.4 随机资产面观察
-        收口),确认后实读必多出逻辑态没有的单位/件——本口按申报的待吸收
-        数做形状校验后吸收,替代「真失配停机」。命中条件全列(缺一不可):
-        字段 ∈ {bench, equips}(逐字段取对应 pending 计数与多重集提取:
-        bench = (char_id, star) 多重集,equips = 装备名多重集);待吸收
-        计数 > 0;实读多重集 ⊇ 逻辑值多重集;差额总数 ∈ (0, 待吸收数]
-        (差额 0 = 纯槽位错位/纯顺序错位,差额超申报 = 异常增益,都交回
-        三分流照停,真投影 bug 不被吞)。命中 → ``external_grant_absorbed``
-        台账行(无告警无停机,豁免 ≠ 消失同纪律)+ 对应待吸收数扣减,
-        覆盖照常(观察赢)返回 True;否则返回 False。"""
-        if field_name == 'bench':
-            pending = self.exec_books.external_bench_grant_pending
-            expected_units = _bench_unit_multiset(target.value)
-            actual_units = _bench_unit_multiset(value)
-            table_ref = 'EXTERNAL_BENCH_GRANTS'
-        elif field_name == 'equips':
-            pending = self.exec_books.external_equip_grant_pending
-            expected_units = Counter(target.value or [])
-            actual_units = Counter(value or [])
-            table_ref = 'EXTERNAL_EQUIP_GRANTS'
-        else:
-            return False
-        if pending <= 0:
-            return False
-        if any(actual_units[k] < expected_units[k] for k in expected_units):
-            return False
-        surplus_total = sum((actual_units - expected_units).values())
-        if surplus_total <= 0 or surplus_total > pending:
-            return False
-        if field_name == 'bench':
-            self.exec_books.external_bench_grant_pending = pending - surplus_total
-        else:
-            self.exec_books.external_equip_grant_pending = pending - surplus_total
-        _remaining = (self.exec_books.external_bench_grant_pending
-                      if field_name == 'bench'
-                      else self.exec_books.external_equip_grant_pending)
-        _emit_defect(field_name=field_name, expected=target.value,
-                     actual=value, evidence=observed_evidence, sig=sig,
-                     logic_evidence=target.evidence,
-                     kind='external_grant_absorbed')
-        log.info(f'[cw][gs] 外部随机授予吸收:{field_name} 实读多 '
-                 f'{surplus_total}(待吸收 {pending}→{_remaining},'
-                 f'申报表 = cw_mismatch_policy.{table_ref})')
-        return True
 
     def _absorb_slot_reorder(self, field_name: str, target: Field,
                              value: Any, observed_evidence: str | None,

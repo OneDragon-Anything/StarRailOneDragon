@@ -64,6 +64,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPrecisionWrenchUseParam,
     CwActionPrivilegeCardUseParam,
     CwActionRefreshShopParam,
+    CwActionRevealTrialParam,
     CwActionSellBenchParam,
     CwActionSellDeployedParam,
     CwActionStaffProjectorUseParam,
@@ -118,6 +119,9 @@ from sr_od.application.currency_war.operations.cw_op.cw_prep_sell_bench_action i
 from sr_od.application.currency_war.operations.cw_op.cw_refresh_shop_action import (
     CwActionRefreshShopOp,
 )
+from sr_od.application.currency_war.operations.cw_op.cw_reveal_trial_action import (
+    CwActionRevealTrialOp,
+)
 from sr_od.application.currency_war.operations.cw_op.cw_sell_deployed_action import (
     CwActionSellDeployedOp,
 )
@@ -154,6 +158,7 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     CwActionOpenBoxParam: CwActionOpenBoxOp,
     CwActionOpenTomeParam: CwActionOpenTomeOp,
     CwActionOpenBookcardParam: CwActionOpenBookcardOp,
+    CwActionRevealTrialParam: CwActionRevealTrialOp,
     CwActionFurnaceUseParam: CwActionToolUseOp,
     CwActionPrivilegeCardUseParam: CwActionToolUseOp,
     CwActionWrenchUseParam: CwActionToolUseOp,

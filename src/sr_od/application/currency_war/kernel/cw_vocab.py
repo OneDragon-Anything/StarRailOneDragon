@@ -737,10 +737,29 @@ class CwActionOpenBookcardParam:
     词表,与 CwActionOpenBoxParam/CwActionOpenTomeParam 同签名,design.md §2.6 R10)。选卡决策不在
     本执行链——点完开启本动作即交回,专家邀请函弹窗由外循环按画面分发
     ``CwScreenExpertInvite`` 选卡(选卡决策单一源 = kernel
-    ``cw_events.choose_expert_index``,普查迁移批 2 自画面 op 迁入);
-    本批发射位 =
-    备战环入口清场段(``cw_screen_prep._clear_prep_cards``),是否升
-    director 门控留策略侧定。slot=None → 第一张书册卡。
+    ``cw_events.choose_expert_index``,普查迁移批 2 自画面 op 迁入)。
+    发射位 = 策略器 entry ① prep 实体面卡片臂(容器 bench 槽位 kind
+    'bookcard' 触发;原「备战环入口清场段 ``cw_screen_prep._clear_prep_cards``
+    代发」已按用户裁定 2026-09-19 撤销——开卡时机归策略实现管)。
+    终结动作(弹专家邀请函 = 引入新事实,交回外循环重观察)。slot=None → 第一张书册卡。
+    """
+    slot: int | None = None
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
+
+
+@dataclass
+class CwActionRevealTrialParam:
+    """点试用角色揭示卡(发光金卡点开即免费得 2★ 试用角色,原地变普通
+    角色卡由 SIFT 自然识别)。
+
+    无代价、无分支选择,但揭示即引入新事实(板上多一个未知角色)→
+    终结动作:点完即交回外循环,下一入口 heavy 观察读到揭示后真实板面
+    再续决策(与 OpenBox R7 终结化同构;原「备战环入口清场段直接清」
+    已按用户裁定 2026-09-19 撤销——开卡时机归策略实现管)。发射位 =
+    策略器 entry ① prep 实体面卡片臂(容器 bench 槽位 kind 'trial_card'
+    触发)。识别单一源 = ``cw_identity_obs.find_trial_reveal_cards``。
+    slot=None → 第一张揭示卡。
     """
     slot: int | None = None
     route_tag: str = field(default='', kw_only=True,
@@ -1118,7 +1137,7 @@ CwAction = (
         CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam | CwActionLevelUpShopParam |
         CwActionDeployMoveParam | CwActionRefreshShopParam | CwActionCloseShopParam | CwActionSellDeployedParam |
         CwActionSwapDeployParam | CwActionCollectOreParam | CwActionOpenBoxParam | CwActionOpenTomeParam |
-        CwActionOpenBookcardParam | CwActionWearEquipParam | CwActionFurnaceUseParam | CwActionPrivilegeCardUseParam |
+        CwActionOpenBookcardParam | CwActionRevealTrialParam | CwActionWearEquipParam | CwActionFurnaceUseParam | CwActionPrivilegeCardUseParam |
         CwActionWrenchUseParam | CwActionPrecisionWrenchUseParam | CwActionStaffProjectorUseParam | CwActionPerfectProjectorUseParam |
         CwActionLuckyTokenUseParam | CwActionStartBattleParam | CwActionOpenShopParam | CwActionPickEventParam |
         CwActionPickEncounterParam | CwActionPickSupplyParam | CwActionPickInvestParam | CwActionPickMegastarParam |
@@ -1132,6 +1151,7 @@ CW_ACTION_TYPES: tuple = (
     CwActionBuyCardParam, CwActionSellBenchParam, CwActionLevelUpParam, CwActionLevelUpShopParam, CwActionDeployMoveParam, CwActionRefreshShopParam,
     CwActionCloseShopParam, CwActionSellDeployedParam,
     CwActionCollectOreParam, CwActionOpenBoxParam, CwActionOpenTomeParam, CwActionOpenBookcardParam,
+    CwActionRevealTrialParam,
     CwActionWearEquipParam,
     CwActionFurnaceUseParam, CwActionPrivilegeCardUseParam, CwActionWrenchUseParam, CwActionPrecisionWrenchUseParam,
     CwActionStaffProjectorUseParam, CwActionPerfectProjectorUseParam, CwActionLuckyTokenUseParam,

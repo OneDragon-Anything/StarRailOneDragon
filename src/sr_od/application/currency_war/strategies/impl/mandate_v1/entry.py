@@ -83,12 +83,14 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionFurnaceUseParam,
     CwActionLevelUpParam,
     CwActionLuckyTokenUseParam,
+    CwActionOpenBookcardParam,
     CwActionOpenBoxParam,
     CwActionOpenShopParam,
     CwActionOpenTomeParam,
     CwActionPerfectProjectorUseParam,
     CwActionPrecisionWrenchUseParam,
     CwActionPrivilegeCardUseParam,
+    CwActionRevealTrialParam,
     CwActionSellBenchParam,
     CwActionSellDeployedParam,
     CwActionStaffProjectorUseParam,
@@ -200,6 +202,7 @@ log = logging.getLogger(__name__)
 #: 静态预测(决策侧逐帧现算,每原子独占发射帧)。
 _TRUNCATION_POINTS: tuple[type, ...] = (
     CwActionOpenBoxParam, CwActionOpenTomeParam, CwActionOpenShopParam,
+    CwActionOpenBookcardParam, CwActionRevealTrialParam,
     CwActionWearEquipParam, CwActionFurnaceUseParam, CwActionPrivilegeCardUseParam, CwActionWrenchUseParam, CwActionPrecisionWrenchUseParam,
     CwActionStaffProjectorUseParam, CwActionPerfectProjectorUseParam, CwActionLuckyTokenUseParam,
 )
@@ -462,11 +465,28 @@ def emit(session: StrategySession,
     # (武装箱选择对话框在场的选卡臂随 CwActionPickBoxCardParam 删除退役,批 2a R7:
     #  CwActionOpenBoxParam 终结化后选卡归独立画面 op 分发——cw_loop 按画面派发
     #  ``CwScreenBoxPick``,决策核不再消费 ``box_overlay_open``;采集面已随批2b 退役删除)。
-    # 开箱/开典籍臂(迭代 2026-09-18-prep-obs-retirement 阶段 3.5 换源):
-    # 触发物 = 容器 bench 槽位 kind(supply_box/tome 占席;box 优先于 tome
-    # 与旧 obs.boxes→obs.tomes 序一致)。动作参数 = 物理槽号,执行器按槽号
-    # 现算点击坐标(总纲坐标契约:像素不落盘)。
-    _gs_bench_slots = bench_slots_of(gs)
+    # 开箱/开典籍/卡片臂(迭代 2026-09-18-prep-obs-retirement 阶段 3.5 换源;
+    # 卡片臂 = 用户裁定 2026-09-19 开卡时机归策略器,原备战环入口清场
+    # ``cw_screen_prep._clear_prep_cards`` 代发通道撤销):触发物 = 容器
+    # bench 槽位 kind(占席物细分)。⚠️ 读口 = 容器 BenchView.slots 直读,
+    # 禁走 ``bench_slots_of``——legacy 换算把占位件压成 is_item_slot 布尔,
+    # kind 信息在该路丢失(读 legacy 元素 .kind = AttributeError,批5 前旧
+    # 臂的半落地隐患,本批随卡片臂接线一并根治)。BenchView slots[i] =
+    # 物理槽 i+1(动作参数 = 物理槽号,执行器按槽号现算点击坐标——总纲
+    # 坐标契约:像素不落盘);bench 未观察(None 视图)→ 臂全跳过。
+    _gs_bench_slots = (gs.bench.value.slots
+                       if gs.bench.value is not None else [])
+    # 卡片臂序沿用旧清场序(免费揭示先于选卡;卡先于箱/典籍 = 旧「入口
+    # 清场先于观察」的全局序)。两动作均终结(op 类 terminal=True),交回
+    # 外循环重观察后下一访问续清其余张(每次访问恰一张,与旧清场节奏一致)。
+    _trial_slot = next((i for i, s in enumerate(_gs_bench_slots)
+                        if s is not None and s.kind == 'trial_card'), None)
+    if _trial_slot is not None:
+        return [Emitted(CwActionRevealTrialParam(slot=_trial_slot + 1), True, 'prep_trial')]
+    _book_slot = next((i for i, s in enumerate(_gs_bench_slots)
+                       if s is not None and s.kind == 'bookcard'), None)
+    if _book_slot is not None:
+        return [Emitted(CwActionOpenBookcardParam(slot=_book_slot + 1), True, 'prep_bookcard')]
     _box_slot = next((i for i, s in enumerate(_gs_bench_slots)
                       if s is not None and s.kind == 'supply_box'), None)
     if _box_slot is not None:

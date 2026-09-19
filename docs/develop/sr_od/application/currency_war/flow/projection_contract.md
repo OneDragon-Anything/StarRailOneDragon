@@ -16,7 +16,7 @@
 
 | 层 | 载体 | 角色 | 关键契约 |
 |---|---|---|---|
-| 状态面板 | `kernel/cw_game_state.py::GameState` | 决策域局面模型（OCR 填充 + bot 跟踪）= **策略器唯一输入** | `bench` 定长 9 槽表(BenchView,BenchSlot.kind ∈ unit/supply_box/tome/empty)、`deployed` 定长 10 槽表；卖出/下场置 None 不移位；晶矿域 SphereSight.points 载点击坐标 |
+| 状态面板 | `kernel/cw_game_state.py::GameState` | 决策域局面模型（OCR 填充 + bot 跟踪）= **策略器唯一输入** | `bench` 定长 9 槽表(BenchView,BenchSlot.kind ∈ unit/supply_box/tome/bookcard/trial_card/empty)、`deployed` 定长 10 槽表；卖出/下场置 None 不移位；晶矿域 SphereSight.points 载点击坐标 |
 | 观察载体 | `kernel/cw_prep_actions.py::PrepObservation` | 备战环 **op 局部控制信号**(shop_open/substate/event_overlay),不进策略器 | 宿主 = 备战环 op 局部对象;不再承载名单/装备/占用/晶矿(全容器域) |
 
 执行侧载体（消费方读写的落地对象）：

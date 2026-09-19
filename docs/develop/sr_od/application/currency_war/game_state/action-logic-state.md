@@ -57,7 +57,7 @@ WearEquip/工具原子/OpenBox 的装备域容器腿 = 容器零写（消费真�
 
 ### 1.5 枚举范围与动作计数
 
-本篇枚举 = 商店域 6 个动作词条（§2）+ 备战域原子动作（§3：DeployMove/SellDeployed/LevelUp/OpenBox/OpenTome/ClickSpheres/OpenBookcard + §3A WearEquip 与工具原子类，规则见 §4）+ 转场类 2 个（§5）+ 词表完备性注 2 条（§2.7）。事件线选择（pick 族，含武装箱四选一画面 op）按 §6 声明为非逻辑态通道。动作词表本体与执行载体表 = [action_exec.md](../flow/action_exec.md) §1、[screens/README](../screens/README.md) §4（能力面/策略面之分不在本篇重复）。
+本篇枚举 = 商店域 6 个动作词条（§2）+ 备战域原子动作（§3：DeployMove/SellDeployed/LevelUp/OpenBox/OpenTome/ClickSpheres/OpenBookcard/RevealTrial + §3A WearEquip 与工具原子类，规则见 §4）+ 转场类 2 个（§5）+ 词表完备性注 2 条（§2.7）。事件线选择（pick 族，含武装箱四选一画面 op）按 §6 声明为非逻辑态通道。动作词表本体与执行载体表 = [action_exec.md](../flow/action_exec.md) §1、[screens/README](../screens/README.md) §4（能力面/策略面之分不在本篇重复）。
 
 各动作条目统一形状：**词表/op → 确定面规则（逐腿）→ 随机面 → 拒绝边界（游戏拒/提案陈旧 = 零容器写）→ 依据**。
 
@@ -241,13 +241,25 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 **词表**：`kernel/cw_vocab.py::CwActionOpenBookcardParam`（R10 开卡归位备战词表：书册卡 = 备战席占槽道具，与补给箱/秘密典籍并列第三件；与 `CwActionOpenBoxParam`/`CwActionOpenTomeParam` 同签名，`slot: int | None`，None = 首张）。
 
-**确定面**：书册卡道具占备战席 1 槽；点槽「开启」→ 书册卡离席腾槽 + 专家邀请函五选一弹窗弹出。**容器腾席腿**（迭代阶段 3.5 进写口）：书册卡读链并入 `is_item_slot` → 容器 kind=`'supply_box'`，腾席 = 该槽 kind → `'empty'`（按 `action.slot` 定位，None = 首张；陈旧提案零写）；容器腾席即 `bench_free_slots` 派生 +1。
+**确定面**：书册卡道具占备战席 1 槽；点槽「开启」→ 书册卡离席腾槽 + 专家邀请函五选一弹窗弹出。**容器腾席腿**（迭代阶段 3.5 进写口；kind 细分批 2026-09-19 起槽 kind = `'bookcard'`，不再统一降级 `'supply_box'`）：腾席 = 该槽 kind → `'empty'`（按 `action.slot` 定位，None = 首张；陈旧提案零写）；容器腾席即 `bench_free_slots` 派生 +1。
 
 **随机面 / 观察面**：五选一卡面内容归观察；选卡决策 = 弹窗画面 op `CwScreenExpertInvite`（默认策略单一源 = `choose_expert_index` 原位，chosen_expert 落地记录 §6 边界），本动作不选卡。动画等待 `_OVERLAY_ANIM_WAIT_S`，弹窗就位与否交下一帧观察。
 
-**发射形态**：本批发射位 = 备战环入口清场段（`cw_screen_prep._clear_prep_cards` 改产本动作经执行器发射 + 本访问交回，外循环 0k 按画面分发选卡；R7 OpenBox 终结化同构）。是否升 director 门控留策略侧定——升门控时需随 OpenBox 同构补备战 visit 终结分支（当前词表发射形态已备完整逻辑态分支，R9 全覆盖）。
+**发射形态**（用户裁定 2026-09-19 开卡时机归策略实现管）：发射位 = 策略器 entry ① prep 实体面卡片臂（容器 bench kind `'bookcard'` 触发；原备战环入口清场段 `_clear_prep_cards` 代发通道撤销）。**终结动作**（op 类 `terminal=True`，弹窗 = 新事实，交回外循环重分发选卡；备战 visit 终结分支已随批补齐）。
 
 **依据**：`kernel/cw_vocab.py::CwActionOpenBookcardParam`；`prep_actions.py::PrepActionExecutor._open_bookcard`；design.md unified-action-factory §2.6 R10；`landing.md` §3.2c。
+
+### 3.8 RevealTrial（点试用角色揭示卡）
+
+**词表**：`kernel/cw_vocab.py::CwActionRevealTrialParam`（卡片臂策略器化批新增，2026-09-19；与 OpenBox/OpenTome/OpenBookcard 同签名，`slot: int | None`，None = 首张）。
+
+**确定面**：揭示卡占备战席 1 槽（容器 kind=`'trial_card'`）；点槽 → 免费得 2★ 试用角色入席（原地变普通角色卡，SIFT 自然识别）。**容器零写**（零写族申报 = `zero_writes.py::report_action_reveal_trial_param`——揭示身份不可预知，归下一入口 heavy 观察覆盖）。
+
+**随机面 / 观察面**：揭示出的角色身份与星级 = 随机/观察面。
+
+**发射形态**：发射位 = 策略器 entry ① prep 实体面卡片臂（kind `'trial_card'` 触发，臂序先于 OpenBookcard）。**终结动作**（揭示即新事实，交回外循环重观察后再续决策）。历史形态：原为备战环入口清场段直接点击（非动作），随卡片臂策略器化收编为词表动作。
+
+**依据**：`kernel/cw_vocab.py::CwActionRevealTrialParam`；`operations/cw_op/cw_reveal_trial_action.py`；[logic-updates/reveal-trial.md](logic-updates/reveal-trial.md)。
 
 ## 3A. 穿装备与工具消耗（R2/R8 原子类）
 
