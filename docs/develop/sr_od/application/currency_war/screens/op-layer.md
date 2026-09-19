@@ -75,12 +75,14 @@
 | 型 | 判据 | 屏清单 | report |
 |---|---|---|---|
 | **全形态** | 观察 node + 决策动作 node + report;决策动作 node 承载完整决策循环(重入裁决/分支刷新/确认链) | CwScreenEncounter(专用刷新链保留)、CwScreenSupplyNode、CwScreenInvestStrategy、CwScreenInvestEnv、CwScreenBriefing、CwScreenBossBriefing、CwScreenWaitOneOne、CwScreenDeployNotFull、CwScreenPlaneTransition(链观察)、CwScreenPlaneIntel、CwScreenBoxPick、CwScreenArmoryBox | 12 屏全设;其中 BossBriefing/WaitOneOne/DeployNotFull/PlaneIntel/ArmoryBox 现役零容器摄入面,接口为统一形态占位 |
-| **节点循环** | overlay 单选族:两 node,决策动作 node = 单动作(选卡/确认)`round_wait` 循环 | CwScreenMegastar(轻门 + 懒读先例:确认访问不重读候选)、CwScreenEquipPick、CwScreenPartner、CwScreenPlanner、CwScreenFortune、CwScreenWishTrial、CwScreenBookcard、CwScreenExpertInvite | 8 屏全设(候选写 `*_opts` 槽) |
+| **节点循环** | overlay 单选族:两 node,决策动作 node = 零参决策 + 选卡确认链派发(`CwActionPickXxxOp` 经注册表,机械链在动作 op 内,pick-op-unify 批)`round_wait` 循环 | CwScreenMegastar(轻门 + 懒读先例:确认访问不重读候选;选中半迁入动作 op)、CwScreenEquipPick、CwScreenPartner、CwScreenPlanner、CwScreenFortune、CwScreenWishTrial、CwScreenBookcard、CwScreenExpertInvite | 8 屏全设(候选写 `*_opts` 槽) |
 | **推进型空决策** | 无选择面无容器域:观察 node = 门判定;决策动作 node = 单步推进 + 重入裁决;**无 report 接口** | CwScreenNextButton、CwScreenPlaneDetail、CwScreenConsumableOverlay、CwScreenEmblemDetailPopup、CwScreenItemDetailPopup、CwScreenInterruptDialog、CwScreenRefreshOddsPopup、CwScreenRoleDetailOverlay、CwScreenShopCardDetail、CwScreenPrepLockedReturn、CwScreenAhaEquipPick(11)+ CwOpOpenShop/CwOpCloseShop(商店框,推进型只读/导航变体) | 无(obs 类只记入口裁决;完备锁断言函数不在场) |
 | **驻留状态机**(用户裁定豁免两 node) | 内部 while 处理结算帧、逐轮分类;出口判定(大厅终局锚/完成白名单)与分支链的轮次耦合拆进两 node 会切开 | CwScreenBattleWait(单 node `wait()`;内部结算链 `_write_settlement_observation`/`apply_settlement_cover`/SettlementState 零改动) | report 占位(结算覆盖写端在结算域,非画面观察记账) |
 | **重型屏** | 观察 = 既有漏斗 + op 层散落写点收编;决策动作 = 无帽循环/波循环 | CwScreenPrep(观察 node = 环装配 + heavy 观察 + 接管补采 + 纯观察审计留守;决策动作 node = 单动作决策 `while True` 循环,无防御上限;可选域经 report 落容器)、CwScreenBuyCards(观察 node = 入口段 `_shop_entry_read` 含未识别卡停机闸;决策动作 node = 波循环 `run_buy_waves` 内聚状态机,首段复用观察回执不重读) | prep = 可选域(链域/接管域)report;buy_cards = report 占位(容器写端在漏斗) |
 
 退役 1:`CwScreenDeploy`(部署机画面 op)已退役删除——部署 = 备战决策环动作(`CwActionDeployMoveParam` 原子序经 `CwActionDeployMoveOp` 机械执行 + `report_action_deploy_move_param` 自上报逻辑态),部署判定单一源驻 `kernel/cw_deploy_logic.py`,路径速查 = [deploy.md](deploy.md)。合计 12 + 8 + 13 + 1 + 2 = 36。
+
+注(pick-op-unify 批):单选族 13 屏的选卡动作全集收编为 12 个 pick 动作 op(投资两屏共用 `CwActionPickInvestParam` 行,全节点循环/全形态单选屏经注册表派发),op 内 = 选中 → 确认(或点卡即选)→ 自上报(零写);刷新链(遭遇/补给/投资两屏)留守画面 op。
 
 ## §4 辖域边界(本层不承载的机制)
 

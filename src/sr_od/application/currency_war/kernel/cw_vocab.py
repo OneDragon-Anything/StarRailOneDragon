@@ -897,8 +897,10 @@ class CwActionStartBattleParam:
 # 选择族公共契约(原 PickOption 基类,摊平后 12 个叶子逐类重声明 idx/reason):
 # ``idx`` = 该画面候选槽位序号,坐标系 = 对应 payload 槽 options 列表下标
 # (0 基,与写槽时 OCR 顺序一致,槽位表恒稳);取值时机 = 生成期快照。
-# per-screen 子类即执行注册表的分发键;handler 自管消费链(投资/星典/祈愿/
-# 武装箱/命运卜者/专家邀请函/选择装备)读 idx 直点,不经注册表。
+# 12 类全量在注册表分发(pick-op-unify 批收编,零上报例外撤销):执行 op =
+# ``CwActionPickXxxOp``(机械链 = 选中 → 确认/点卡即选,op 内自上报,零写);
+# 确认后容器写(chosen_*/Confirm* 到账)留守画面 op;``PickExpertInviteParam.idx``
+# = -1 语义 = 现金为王(非候选槽下标)。
 
 
 @dataclass

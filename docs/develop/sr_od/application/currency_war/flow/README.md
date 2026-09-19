@@ -37,9 +37,11 @@
 │ + cw_screen_buy_cards.py 循环壳 + cw_action_registry.py 单一注册表  │
 │ + kernel/cw_action_report/ 上报函数族（每动作一个具名上报接口）│
 │  (cw_<action>_action.py 一 op 一文件,CwActionXxxOp(SrOperation);│
-│  守卫 cw_shop_action_ops.py) + cw_screen_deploy.py 部署）──────┤
+│  守卫 cw_shop_action_ops.py)）──────┤
 │ 机械发出（零判效;round 成功态 = 发出事实）→ op 内直调自己的   │
-│ 上报函数（容器写单点）;终结判定 = 注册表 op 类 terminal 属性  │
+│ 上报函数（容器写单点）;终结判定 = 注册表 op 类 terminal 属性;  │
+│ 事件线 pick 族 12 op 全在注册表（cw_overlay_pick_action.py,│
+│ 自上报零写;pick-op-unify 批收编,零上报例外撤销）  │
 └────────────────────────────────────────────────────────────────┘
 ```
 

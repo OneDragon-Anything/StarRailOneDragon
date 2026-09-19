@@ -106,6 +106,8 @@
 
 投资策略/补给/遭遇(货币战争-遭遇节点)/盛会之星/选择伙伴/选择装备/命运卜者(`cw_screen_fortune.py`)/骇入策划(`cw_screen_planner.py`)/祈愿试炼/星徽秘典四选一/专家邀请函/武装箱弹窗。决策 = pick 族九接口 + `decide_box_card`,规格 = strategy-docs 13 号篇。
 
+**选卡动作执行载体(pick-op-unify 批起统一)**:13 屏的选卡动作 = 12 个 `CwActionPickXxxOp`(投资两屏共用 `CwActionPickInvestParam` 注册行),画面 op 决策半只决策与组装机械参数,选中→确认(或点卡即选)机械链 + 自上报(`report_action_pick_*_param`,零写)在动作 op 内;确认后容器写(chosen_*/Confirm* 到账)留守画面 op。契约正本 = [../flow/action_exec.md](../flow/action_exec.md) §2。
+
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
 | 选卡(N 选 1) | 各事件机制(`data/gameplay.md`/`research/economy.md` §9) | 各画面 op(分支序 0c/0e/0e1/0a 族/0h/0i/0k/0f) | 确认离开(overlay 消失)= 画面终结 |

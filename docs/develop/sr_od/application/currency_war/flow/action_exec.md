@@ -21,6 +21,8 @@
 | 画面 op 级状态(各画面 op 的具名轮次状态,判读侧分键) | 具名成功/失败状态——这是画面 op 的轮次结果语义,不是动作回执(部署机历史 STATUS 族已随其退役消失) |
 | 商店编排(`_open_shop_phase`) | `(progressed, detail)`:读数性开店 progressed = 开店成功 |
 
+**事件线 pick 族(`cw_op/cw_overlay_pick_action.py`,12 op)**(pick-op-unify 批起全族同契约):每屏选择动作 = 一个 `CwActionPickXxxOp`,op 内 = 选中点击 → 确认点击(或点卡即选)→ 自上报(`report_action_pick_*_param`,全族零写)——动作 op 重组批 §1.1 登记的「零上报例外」已撤销。机械参数(定位点/确认钮/裁决词)由画面 op 决策半现算经 `OverlayPickExecEnv` 传入(op 类体内零决策);确认后容器写(`chosen_*`/`active_*`/效果登记/置闩/`register_confirm_arrival` Confirm* 到账)留守画面 op 原写点原时点。刷新三动作(RefreshNodeOptions/RefreshSupply/RefreshInvestCards)不经注册表(分屏形态各异,留守画面 op 刷新链,注册完备锁豁免)。
+
 配套**发射门**(发射方与执行方同源谓词,防空计划发射):部署候选单一源 = kernel `select_deployments`(`cw_deploy_logic`;发射×执行单一源)。发射门与执行侧经同一帧属性 `recipe_floor_lock_exempt` 同帧同值——锁定线语境豁免:豁免武装帧且本帧无有效仙舟供给时门让位;发射侧拒因/开火分键 = `deploy_emit_*`,执行侧计划拒因/门命中分桶 = `deploy_exec_*`。
 
 ## 3. 备战单动作消费
