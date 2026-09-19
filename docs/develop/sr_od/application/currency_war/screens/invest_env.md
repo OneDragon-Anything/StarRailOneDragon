@@ -36,7 +36,6 @@ act = match.strategy.decide_invest_env()(零参,候选读容器 invest_env_opts 
 │    差异为各自实证语义,禁互相统一):GameState active_env write_logic
 │    (选完即关整局保留;session 份退役)+ portal 效果登记
 │    (register_portal_from_env,best-effort;经济环境入结构化条目)
-│    + 外部随机授予置闩(latch_external_grants,best-effort)
 ├─ 台账变异窗:选卡链派发**前**开窗(env_grace_until = now + 45s 常量
 │    ENV_GRACE_S;pick-op-unify 批起自「确认前」平移至「派发前」,
 │    宽限面只增不减)——环境选择是位面节点序列唯一变异源,确认到节点行
@@ -67,7 +66,6 @@ act = match.strategy.decide_invest_env()(零参,候选读容器 invest_env_opts 
 
 - `active_env` write_logic(本屏写入、选完即关整局保留;session 份退役;单次逻辑写入豁免——选择落地无定型帧可核对,后果走观察覆盖)。
 - portal 效果登记(`kernel/cw_effect_inventory.py::register_portal_from_env`,active_env 写入同址;零决策消费,经济判据接登记数据归后续批)。
-- 外部随机授予置闩(`latch_external_grants`,best-effort;观察对账精确吸收)。
 - 候选观察:`report_screen_invest_env_obs` 候选写容器 `invest_env_opts` 槽(空候选不写)。
 - 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.3 / §4「投资选择」;效果账 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §8;效果激活账本 = fields.md §5.1。
 

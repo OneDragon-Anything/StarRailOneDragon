@@ -8,8 +8,7 @@
 
 1. ``write_end``:游戏侧该域的合法变更都有动作/结算/派生**投影写端**
    (bot 动作后逻辑态随写,或从观察数据派生写入);
-2. ``absorb_rule``:存在**吸收规则**承接无写端的游戏侧变更(申报表
-   ``EXTERNAL_BENCH_GRANTS``/``EXTERNAL_EQUIP_GRANTS``、结算真值收口
+2. ``absorb_rule``:存在**吸收规则**承接无写端的游戏侧变更(结算真值收口
    ``settle_truth``、豁免注册表、行内纯重排采新
    ``deploy_slot_reorder``);
 3. ``observation_only``:字段**有观察读端但零逻辑写端**——observe 覆盖
@@ -89,9 +88,10 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               ' + 星级抖动门采新(star_two_frame_gate,槽位锚定+两帧一致)'),
     'bench': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
-        basis='buy/sell/deploy/swap 投影写端 + 外部授予申报表吸收'
-              '(EXTERNAL_BENCH_GRANTS + external_bench_grant_pending)'
-              ' + 星级抖动门采新(star_two_frame_gate,槽位锚定+两帧一致)'),
+        basis='buy/sell/deploy/swap 投影写端 + 星级抖动门采新'
+              '(star_two_frame_gate,槽位锚定+两帧一致)。已知缺口:投资卡'
+              '随机授予现无写端无吸收(申报表族 2026-09-19 拆除待重设计),'
+              '命中照真失配停'),
     'back_layout': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='识别口径真值(三信号裁决 = cw_back_layout,观察侧写),'
@@ -103,8 +103,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'gold': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
         basis='buy/sell/levelup/refresh 投影 + 结算真值收口 '
-              '(settle_truth:边界收入随结算入账,boundary_income_credited 留证)'
-              '+ 晶矿金豁免注册表条目'),
+              '(settle_truth:边界收入随结算入账,boundary_income_credited 留证)。'
+              '已知缺口:奖励节点晶矿随机金现无豁免条目(2026-09-19 拆除待重设计),'
+              '命中照真失配停'),
     'level': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='CwActionLevelUpShopParam 升档直写(f810f2454 投影补 level 域)+ prep 腿'
@@ -192,8 +193,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     # —— 持久账本 ——
     'equips': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
-        basis='sell 回收/穿戴扣减/桥直写 + 外部授予申报表吸收'
-              '(EXTERNAL_EQUIP_GRANTS + external_equip_grant_pending)'),
+        basis='sell 回收/穿戴扣减/桥直写。已知缺口:投资卡随机装备授予'
+              '现无写端无吸收(申报表族 2026-09-19 拆除待重设计),'
+              '命中照真失配停'),
     'consumables': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='消耗品库存读面(§3.2.16),零逻辑写端'),
@@ -355,8 +357,7 @@ def audit_bad_status_keys() -> list[str]:
 #: 已知停局家族的机制必含关键词(完备性锁的抽检半边:五连停局各域的
 #: 收口机制必须仍在其位——防后续重构悄悄拔掉吸收/派生面)。
 _STOP_FAMILY_MECHANISMS: dict[str, tuple[str, ...]] = {
-    'bench': ('EXTERNAL_BENCH_GRANTS', 'star_two_frame_gate'),
-    'equips': ('EXTERNAL_EQUIP_GRANTS',),
+    'bench': ('star_two_frame_gate',),
     'gold': ('settle_truth',),
     'front_row': ('deploy_slot_reorder', 'star_two_frame_gate'),
     'back_row': ('deploy_slot_reorder', 'star_two_frame_gate'),

@@ -352,27 +352,6 @@ class CwScreenInvestEnv(SrOperation):
                              f'({_portal.category.value})')
             except Exception as e:   # noqa: BLE001  登记面失败不阻塞
                 log.warning(f'[cw-env] portal 效果账本登记失败(不阻塞): {e}')
-            # 外部随机授予置闩(观察对账精确吸收的申报消费;申报表 =
-            # cw_mismatch_policy.EXTERNAL_BENCH_GRANTS / EXTERNAL_EQUIP_
-            # GRANTS;与 CwScreenInvestStrategy 确认挂点同型):投资环境
-            # 卡文含「开局时获得…角色/初始简易装备」(概念股族)、「获得
-            # 【X】」(契约/邀请/贵族族)等授予效应,随机身份/随机装备不建
-            # 逻辑写端(effect-domain §6.3/§6.4),确认后置 pending,下一
-            # 干净备战帧 bench/equips 实读对逻辑态纯超集时精确吸收
-            #(external_grant_absorbed 行),形状不符照真失配停。置闩收敛
-            # kernel 单一源(幂等 + 闩龄上界住 kernel,出处=改动三审
-            # 2026-09-18「置闩幂等化」;本挂点零本地逻辑)。best-effort 同登记挂点纪律。
-            try:
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    latch_external_grants,
-                )
-                from sr_od.application.currency_war.kernel.cw_investments import (
-                    normalize_invest_name,
-                )
-                latch_external_grants(match.gs, normalize_invest_name(chosen),
-                                      actor='CwScreenInvestEnv')
-            except Exception as e:   # noqa: BLE001  置闩失败不阻塞确认链
-                log.warning(f'[cw-env] 外部授予置闩失败(不阻塞): {e}')
         # 效果原文回流断供为裁定的接受后果,收编归宿 =
         # strategy_offer 画面 payload 域,候其落地批接线。
 

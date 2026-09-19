@@ -62,12 +62,13 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 
 - **观察赢**:观察写入覆盖 logic 来源值;失配记 `observe_vs_logic_mismatch` 缺陷行
   (留证显影,不静默)。失配 = 推算代码 bug,修推算代码。失配比对前的**前置吸收
-  面**(形状受控的机制性差异,命中即台账行采新、不进安灯):bench/equips 外部随机
-  授予申报表(EXTERNAL_BENCH_GRANTS / EXTERNAL_EQUIP_GRANTS,「纯超集+差额≤申报数」
-  精确吸收)/ gold 节点边界金补结闩(boundary_gold_backfilled)/ front_row、back_row
-  行槽位纯重排(deploy_slot_reorder,同单位多重集仅排列差异 = 游戏侧行内重排无逻辑
+  面**(形状受控的机制性差异,命中即台账行采新、不进安灯):gold 节点边界金补结
+  闩(boundary_gold_backfilled)/ front_row、back_row 行槽位纯重排
+  (deploy_slot_reorder,同单位多重集仅排列差异 = 游戏侧行内重排无逻辑
   写端,采新入纠漂面)/ board 派生漂移观察覆盖采新(board_derived_adopt,辖
-  `proj_board_resync` 写端)。
+  `proj_board_resync` 写端)。**已知缺口**:bench/equips 投资卡随机授予、
+  晶矿随机金现无吸收规则(随机对账申报面 2026-09-19 用户裁定整体拆除待重设计),
+  命中照真失配停。
 - **board 派生量**(禁独立写):上阵羁绊计数 = front_row/back_row 单位集合的派生量,
   逻辑写端经 `write_logic` 行域挂钩 `_resync_board_delta` 单一源自动重算(观察基座 +
   行变更增量);独立手写 board = 越格(非派生写端的 board 失配照真失配停)。派生量

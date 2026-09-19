@@ -487,26 +487,6 @@ class CwScreenInvestStrategy(SrOperation):
                 log.info(f'[cw-strat] 效果账本登记:{_spec.name}(t={_t})')
         except Exception as e:   # noqa: BLE001  登记面失败不阻塞
             log.warning(f'[cw-strat] 效果账本登记失败(不阻塞): {e}')
-        # 外部随机授予置闩(观察对账精确吸收的申报消费;申报表 =
-        # cw_mismatch_policy.EXTERNAL_BENCH_GRANTS / EXTERNAL_EQUIP_GRANTS):
-        # 卡文含「获得随机角色/随机装备」的投资卡(效果注册表未逐条确定;
-        # 随机身份按 effect-domain §6.3 不建逻辑写端)确认后按申报表置入
-        # 待吸收数,下一干净备战帧 bench/equips 观察对逻辑态纯超集时精确
-        # 吸收(external_grant_absorbed 行),形状不符照真失配停。置闩收敛
-        # kernel 单一源(幂等 + 闩龄上界住 kernel,与 CwScreenInvestEnv
-        # 挂点同型同源,出处=改动三审 2026-09-18「置闩幂等化」;
-        # 本挂点零本地逻辑)。best-effort 同登记挂点纪律。
-        try:
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                latch_external_grants,
-            )
-            from sr_od.application.currency_war.kernel.cw_investments import (
-                normalize_invest_name,
-            )
-            latch_external_grants(match.gs, normalize_invest_name(chosen),
-                                  actor='CwScreenInvestStrategy')
-        except Exception as e:   # noqa: BLE001  置闩失败不阻塞选卡主链
-            log.warning(f'[cw-strat] 外部授予置闩失败(不阻塞): {e}')
         # (原 register_confirm_arrival('ConfirmStrategy') 已随 ADR-0651
         #  两态制废除:active_strategies 本体追加 + write_logic 直写均在
         #  上方确认成功写点,无挂账登记环节。)
