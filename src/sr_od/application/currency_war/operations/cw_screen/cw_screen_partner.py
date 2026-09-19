@@ -74,6 +74,10 @@ class CwScreenPartner(SrOperation):
         # 选定点位(本执行内一次决策缓存):重入轮复用同点位重点选,不重跑
         # SIFT/决策/session 写(单执行内点位稳定,防跨轮决策抖动换候选)。
         self._pick_point: Point | None = None
+        # 生效选中下标缓存(决策轮随点位同步缓存,派发实例携真实 idx 供
+        # 上报 param;[索引定义] 坐标系 = 候选 options 列表下标 0 基;
+        # 取值时机 = 决策轮快照,脉冲轮复用)。
+        self._pick_idx: int = 0
         # 「点选→确认」脉冲计数(确认被拒防线的有界重试预算,见 CONFIRM_REJECT_MAX)。
         self._confirm_pulses: int = 0
         # 观察结果(观察 node 产物,决策动作 node 消费;options = 入口帧一次读)
@@ -260,6 +264,7 @@ class CwScreenPartner(SrOperation):
                 pick = match.strategy.decide_partner()
                 idx = pick.idx if 0 <= pick.idx < len(cands) else 0
                 reason = pick.reason
+            self._pick_idx = idx
             log.info('[cw-partner] candidates=%s pick=idx%s %s', [o.char_id for o in options], idx, reason)
             # r358d(遥测接线):伙伴选择落容器(chosen_partner,gs 单一源
             # ——终态契约 §B:session 份退役;选中确认后写)。
@@ -290,8 +295,8 @@ class CwScreenPartner(SrOperation):
         # 「点选候选 → 确认」脉冲链经工厂(统一动作工厂批4:体迁
         # ``cw_overlay_pick_action.PartnerPickOp``,方法级替身缝保留)。
         # 决策半(确认被拒守卫/点位解析/chosen 写端)留守上方;选中态标记
-        # 与脉冲计数宿主仍是本 op,经 env.op 消费。派发实例仅作注册表解析
-        # 键(机械输入 = unselected 实证 + 本 op 状态,经 env 传递)。
+        # 与脉冲计数宿主仍是本 op,经 env.op 消费。派发实例携真实选中
+        # 下标(上报 param 即真实选择;脉冲轮复用缓存 idx)。
         # round_wait 推进循环(不烧节点重试预算;确认未落地轮重走脉冲,
         # 有界防线 = CONFIRM_REJECT_MAX)。
         from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -303,7 +308,7 @@ class CwScreenPartner(SrOperation):
         from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
             OverlayPickExecEnv,
         )
-        _env = OverlayPickExecEnv(op=self, unselected=unselected)
-        action_op_for(CwActionPickPartnerParam(idx=0), self.ctx,
+        _env = OverlayPickExecEnv(op=self, idx=self._pick_idx, unselected=unselected)
+        action_op_for(CwActionPickPartnerParam(idx=self._pick_idx), self.ctx,
                       _env).execute()
         return self.round_wait()

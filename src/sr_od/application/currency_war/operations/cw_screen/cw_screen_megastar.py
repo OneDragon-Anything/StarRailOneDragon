@@ -9,10 +9,11 @@
 选择」即未选中时读候选;确认访问不重读,迁移不增加读屏)→
 ``report_screen_megastar_obs`` 落容器 ``megastar_opts`` → obs 挂实例属性进
 决策 node。决策动作 node = 节点完成复检(每轮新帧,overlay 消失 = 完成)→
-决策从容器零参读 → 候选选中点击/确认单发一个动作 → round_wait 循环推进
-(不烧节点重试预算;不收敛 = 策略 bug 响亮暴露,无防御上限)。
-``chosen_megastar`` = 选择点单次逻辑写入留守决策面(动作事实边界,不进
-report);选中旗标宿主 = 策略器 StrategyState(经 kernel strategy_state_of
+决策从容器零参读 → 「选中 → 确认」链经 ``CwActionPickMegastarOp`` 派发
+(pick-op-unify 批:候选选中半迁入动作 op,``env.need_select`` 驱动)→
+round_wait 循环推进(不烧节点重试预算;不收敛 = 策略 bug 响亮暴露,无防御
+上限)。``chosen_megastar`` = 选择点单次逻辑写入留守决策面(动作事实边界,
+不进 report);选中旗标宿主 = 策略器 StrategyState(经 kernel strategy_state_of
 None-safe 通道,执行层不冷建)。本屏 sim 腿 = 不适用(sim 无对应画面段,
 事件浮层族即时落定),等价判据主承重 = 实机在册行为锁。
 
@@ -26,7 +27,6 @@ dispatch 是 OCR 反应式(主循环 0b 检测「盛会之星」就接)→ 不�
 重入裁决,节点循环单确认自愈。候选坐标经 screen_info
 ``currency_war_megastar``(候选-左/右 + 按钮-确认选择);缺失用兜底常量。
 """
-import time
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -73,6 +73,10 @@ class CwScreenMegastar(SrOperation):
         # 观察结果(观察 node 产物,决策动作 node 消费;options 懒读门槛见
         # ``observe`` 注:仅「本访问将选择」即未选中时填充)。
         self._obs: CwScreenMegastarObs | None = None
+        # 生效选中下标缓存(决策轮现算,派发实例携真实 idx 供上报 param;
+        # [索引定义] 坐标系 = 候选 options 列表下标 0 基;取值时机 = 决策
+        # 轮快照,确认轮复用)。
+        self._pick_idx: int = 0
 
     def _in_node(self, screen) -> bool:
         # 巨星 overlay:盛会之星标题在(用 screen_info 标题 area 位置区分,非全屏 LCS)。原用「确认选择
@@ -139,10 +143,17 @@ class CwScreenMegastar(SrOperation):
         return self.round_wait(wait=1.5)
 
     def _do_action(self) -> None:
-        """单动作体:未选中 → 决策(容器零参读)+ 候选选中点击 + chosen
-        写端留守;两态都收尾确认单发(经工厂,方法级替身缝保留)。"""
+        """单动作体:决策 + chosen 写端留守 + 「选中 → 确认」链经工厂。
+
+        pick-op-unify 批:候选选中点击迁入 ``CwActionPickMegastarOp``
+        (``env.need_select`` 驱动),本方法只决策与写端——``chosen_
+        megastar`` 写端与选中旗标留守(单次逻辑写入豁免面;派发前写,
+        原写点原 actor,时序申报 = 自「点选后」平移至「点选前」,窗口内
+        无读者,迭代 design.md §2)。确认轮(已选中)只发确认。"""
         _match = self.ctx.cw_match
-        if not self._clicked_of(_match):
+        need_select = not self._clicked_of(_match)
+        candidate = None
+        if need_select:
             options = self._obs.options if self._obs is not None else []
             idx = 0
             if _match is not None and options:
@@ -154,13 +165,11 @@ class CwScreenMegastar(SrOperation):
                 log.info(f'[cw-megastar] candidates={[o.char_id for o in options]} pick=idx{idx} {pick.reason}')
             else:
                 log.info(f'[cw-megastar] options={len(options)} match={_match is not None} → default idx0')
-            # 结果回写 session.chosen_megastar 照常。
+            self._pick_idx = idx
             # 候选坐标从 screen_info 读(task#103 化债,W265);缺失走历史实测兜底常量。
             candidate = ((area_center(self.ctx, '候选-左', '货币战争-盛会之星') or CwScreenMegastar.CANDIDATE_LEFT)
                          if idx == 0 else
                          (area_center(self.ctx, '候选-右', '货币战争-盛会之星') or CwScreenMegastar.CANDIDATE_RIGHT))
-            self.ctx.controller.mouse_move(candidate)
-            self.ctx.controller.click(candidate)
             if _match is not None:
                 # 置位经 kernel strategy_state_of(None-safe 不冷建):状态
                 # 对象缺席跳过写(局级:跨 re-dispatch 持久,session.md
@@ -183,12 +192,9 @@ class CwScreenMegastar(SrOperation):
                         sig=ChannelSig(family='logic_action',
                                        actor='CwScreenMegastar',
                                        mode='compute'))
-            time.sleep(0.6)
-        # 确认半经工厂(统一动作工厂批4:体迁 ``cw_overlay_pick_action
-        # .MegastarPickOp``,方法级替身缝保留)。候选选中点击留守上方:
-        # 候选选中半与 chosen_megastar 写端在体内交错(单次逻辑写入豁免
-        # 面)。派发实例仅作注册表解析键(机械参数 = 确认钮定位,op 类
-        # 体内自读 screen_info)。
+        # 「选中(need_select)→ 确认」链经工厂(选中半迁入动作 op,本批;
+        # 确认钮定位 = op 类体内自读 screen_info)。派发实例携真实选中
+        # 下标(上报 param 即真实选择;确认轮复用缓存 idx)。
         from sr_od.application.currency_war.kernel.cw_vocab import (
             CwActionPickMegastarParam,
         )
@@ -198,6 +204,7 @@ class CwScreenMegastar(SrOperation):
         from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
             OverlayPickExecEnv,
         )
-        _env = OverlayPickExecEnv(op=self)
-        action_op_for(CwActionPickMegastarParam(idx=0), self.ctx,
+        _env = OverlayPickExecEnv(op=self, idx=self._pick_idx,
+                                  target=candidate, need_select=need_select)
+        action_op_for(CwActionPickMegastarParam(idx=self._pick_idx), self.ctx,
                       _env).execute()

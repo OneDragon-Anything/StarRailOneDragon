@@ -6,13 +6,19 @@ overlay act 确认链 op 类,经 ``cw_action_registry.action_op_for`` 工厂
 确认过程代码收拢为「意图类型 → 点击链」声明式(统一观察架构 §6.2)。
 
 域 env = :class:`OverlayPickExecEnv`(结构化包,构造时传入);机械参数
-(定位点/选定快照/未选中实证)由各画面 op 决策半现算后经 env 显式传入,
-op 类体内零决策零读决策输入。轮次结果(确认链末步 ``round_*`` 产物)经
-``round_result`` 旁路字段回传——op 自身 round 结果恒成功(发出即职责
-完成),画面 op act 分派面读旁路字段。族先例 = cw_tool_use_action。
+(定位点/选定快照/未选中实证/确认钮定位)由各画面 op 决策半现算后经
+env 显式传入,op 类体内零决策零读决策输入。轮次结果(确认链末步
+``round_*`` 产物)经 ``round_result`` 旁路字段回传——op 自身 round 结果
+恒成功(发出即职责完成),画面 op act 分派面读旁路字段。族先例 =
+cw_tool_use_action。
 
-**零上报例外登记**(design.md §1.1):本族上报函数为零写,原体无上报位
-——本批仅换壳,体内**不调上报**(完备锁不辖 op 内接线)。
+**自上报统一(pick-op-unify 批,撤销 2026-09-18 动作 op 重组批 §1.1
+「零上报例外登记」)**:本族每类 run 体在机械链(选中点击 → 确认点击)
+发出后直调自己的上报函数 ``report_action_pick_<snake>_param``
+(``kernel/cw_action_report/zero_writes``,零容器写)——与 buy_card 等
+其它动作 op 同一执行契约;上报函数零写,容器写语义(chosen_*/Confirm*
+到账)仍由画面 op 原写点承载,本批零行为变化。partner 确认点读缺的
+retry 旁路分支未发确认点击,不上报。
 
 体迁纪律(零行为):各 op 类 run 体 = 现役 overlay act 确认链逐字迁移
 (接收者 ``self``→``env.op``、机械参数→env 字段两处归一,批4 已迁;
@@ -27,6 +33,17 @@ from typing import Any
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_action_report.zero_writes import (
+    report_action_pick_encounter_param,
+    report_action_pick_megastar_param,
+    report_action_pick_partner_param,
+    report_action_pick_planner_param,
+    report_action_pick_supply_param,
+)
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
+    game_state_from_ctx,
+)
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPickEncounterParam,
@@ -54,12 +71,17 @@ from sr_od.operations.sr_operation import SrOperation
 
 @dataclass
 class OverlayPickExecEnv:
-    """事件线 pick 域执行环境(统一动作工厂批4 起)。
+    """事件线 pick 域执行环境(统一动作工厂批4 起;pick-op-unify 批扩字段)。
 
     公共字段 ``op``/``match``/``config`` + 域字段 = 决策半产物(机械参数,
     构造时显式传入,op 类体内不自算):``idx`` = 生效选中下标(决策半
     钳位后)、``target`` = 点卡定位点、``picked`` = 选定快照(到账登记
     输入)、``unselected`` = 未选中提示在场实证。
+    ``confirm`` = 确认钮中心(决策半从 screen_info 现取;None = 点卡即选
+    族无确认步);``entry_keyword`` = 确认裁决词(emit_overlay_confirm
+    消费,仅日志与调用方重入裁决对照);``need_select`` = 选中半开关
+    (巨星迁入半:True = 先点 ``target`` 候选选中再确认;False = 跳过
+    选中直发确认)。
     ``round_result`` = 旁路回传(确认链末步 ``round_*`` 产物;op 自身
     round 结果恒成功不携带语义),op 类写、画面 op act 分派面读。
     """
@@ -70,6 +92,9 @@ class OverlayPickExecEnv:
     idx: int = 0              # [索引定义] 坐标系: 决策半候选列表下标(0 起);
     #             取值时机: 决策半现算快照(钳位后生效值,执行期恒稳)
     target: Any = None        # Point|None 点卡定位点(决策半从 screen_info/OCR 现算)
+    confirm: Any = None       # Point|None 确认钮中心(决策半现取;None=点卡即选)
+    entry_keyword: str = ''   # 确认裁决词(emit_overlay_confirm;仅日志/重入对照)
+    need_select: bool = False  # True = 先点 target 选中再确认(巨星选中半)
     picked: dict | None = None
     unselected: bool = False
     round_result: OperationRoundResult | None = None
@@ -111,6 +136,13 @@ class CwActionPickEncounterOp(SrOperation):
         # 标签 2 字,LCS 0.5<0.8 不误匹配;live 2026-08-15)。
         env.round_result = emit_overlay_confirm(op, confirm_point=select_btn,
                                                 entry_keyword='遭遇节点', lcs_percent=0.8, tag='cw-encounter')
+        # 自上报(机械链发出后;零写,契约面统一)。
+        gs = game_state_from_ctx(self.ctx)
+        if gs is not None:
+            report_action_pick_encounter_param(
+                gs, action,
+                ChannelSig(family='logic_action',
+                           actor=type(self).__name__, mode='compute'))
         return self.round_success('遭遇选择确认链已发(结果经旁路回传)')
 
 
@@ -136,6 +168,7 @@ class CwActionPickSupplyOp(SrOperation):
     @operation_node(name='pick_supply', is_start_node=True)
     def run(self) -> OperationRoundResult:
         """机械执行(点卡 → 固定等待 → 确认 → 到账登记;零判效)。"""
+        action = self.param
         env = self.env
         op = env.op
         match = env.match
@@ -155,6 +188,13 @@ class CwActionPickSupplyOp(SrOperation):
             register_confirm_arrival(match.session, 'ConfirmSupply',
                                      picked['equip'],
                                      produced_by='CwScreenSupplyNode')
+        # 自上报(机械链发出后;零写,契约面统一)。
+        gs = game_state_from_ctx(self.ctx)
+        if gs is not None:
+            report_action_pick_supply_param(
+                gs, action,
+                ChannelSig(family='logic_action',
+                           actor=type(self).__name__, mode='compute'))
         # 选定事实现役归宿 = journal chosen 域 + 到账登记。
         return self.round_success('补给选择确认链已发')
 
@@ -179,10 +219,20 @@ class CwActionPickMegastarOp(SrOperation):
 
     @operation_node(name='pick_megastar', is_start_node=True)
     def run(self) -> OperationRoundResult:
-        """机械执行(确认钮单发 + 固定等待;零判效)。"""
+        """机械执行(选中半[need_select] → 确认钮单发 + 固定等待;零判效)。
+
+        选中半(pick-op-unify 批自画面 op 迁入):``env.need_select`` 且
+        ``env.target`` 在场 → 点候选选中 + 固定等待(原选中后 0.6s 动画窗,
+        时序逐位保留)。``chosen_megastar`` 写端与选中旗标留守画面 op
+        (单次逻辑写入豁免面,派发前写——时序申报见迭代 design.md §2)。"""
+        action = self.param
         env = self.env
         op = env.op
-        # confirm(确认钮纯机械单发;候选选中半留守画面 op,overlay 关否由下一帧重入裁决)。
+        if env.need_select and env.target is not None:
+            op.ctx.controller.mouse_move(env.target)
+            op.ctx.controller.click(env.target)
+            time.sleep(0.6)
+        # confirm(确认钮纯机械单发;overlay 关否由下一帧重入裁决)。
         # 确认钮中心从 screen_info 读(task#103 化债,W265);缺失兜底常量。
         confirm = area_center(op.ctx, '按钮-确认选择', '货币战争-盛会之星') or CwScreenMegastar.CONFIRM
         op.ctx.controller.mouse_move(confirm)
@@ -198,6 +248,13 @@ class CwActionPickMegastarOp(SrOperation):
         # (原「到账登记」ConfirmMegastar 块已随 ADR-0651 两态制废除:
         #  chosen_megastar 写端 = 候选选中时点的 session 写 + write_logic
         #  直写(画面 op 候选分支),无挂账登记环节。)
+        # 自上报(机械链发出后;零写,契约面统一)。
+        gs = game_state_from_ctx(self.ctx)
+        if gs is not None:
+            report_action_pick_megastar_param(
+                gs, action,
+                ChannelSig(family='logic_action',
+                           actor=type(self).__name__, mode='compute'))
         return self.round_success('盛会之星确认已发')
 
 
@@ -224,6 +281,7 @@ class CwActionPickPartnerOp(SrOperation):
     @operation_node(name='pick_partner', is_start_node=True)
     def run(self) -> OperationRoundResult:
         """机械执行(点选脉冲 + 确认脉冲;轮次结果经旁路回传)。"""
+        action = self.param
         env = self.env
         op = env.op
         unselected = env.unselected
@@ -250,6 +308,14 @@ class CwActionPickPartnerOp(SrOperation):
         # 本屏无第二画面、无「选强化目标」步——点选→确认 → 重入裁决即完。
         # retry 轮重复确认零副作用(置灰态被游戏拒绝,无确认穿透风险)。
         op._confirm_pending = True
+        # 自上报(确认点击发出后;零写,契约面统一。读缺旁路分支未发
+        # 确认点击,不上报——见模块头)。
+        gs = game_state_from_ctx(self.ctx)
+        if gs is not None:
+            report_action_pick_partner_param(
+                gs, action,
+                ChannelSig(family='logic_action',
+                           actor=type(self).__name__, mode='compute'))
         env.round_result = op.round_retry(wait=1)
         return self.round_success('伙伴选择确认脉冲已发(重入裁决承接)')
 
@@ -276,6 +342,7 @@ class CwActionPickPlannerOp(SrOperation):
     @operation_node(name='pick_planner', is_start_node=True)
     def run(self) -> OperationRoundResult:
         """机械执行(点卡 → 选中动画等待 → 确认;轮次结果经旁路回传)。"""
+        action = self.param
         env = self.env
         op = env.op
         target = env.target
@@ -302,4 +369,11 @@ class CwActionPickPlannerOp(SrOperation):
             op, confirm_point=_confirm,
             entry_keyword='我来当策划', tag='cw-planner',
             press_time=op.CLICK_PRESS_TIME)
+        # 自上报(机械链发出后;零写,契约面统一)。
+        gs = game_state_from_ctx(self.ctx)
+        if gs is not None:
+            report_action_pick_planner_param(
+                gs, action,
+                ChannelSig(family='logic_action',
+                           actor=type(self).__name__, mode='compute'))
         return self.round_success('策划选择确认链已发(结果经旁路回传)')

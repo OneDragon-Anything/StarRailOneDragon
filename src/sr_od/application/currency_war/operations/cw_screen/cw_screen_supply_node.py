@@ -184,6 +184,8 @@ class CwScreenSupplyNode(SrOperation):
         target = CwScreenSupplyNode.CARD_BODY
         reason = 'no-options(CARD_BODY 兜底)'
         refresh_target = None
+        # 派发实例真实选中下标(上报 param 即真实选择;兜底/刷新轮 = 0 占位)。
+        param_idx = 0
         # 本轮选定快照(选卡确认后合成决策帧的 extra 载荷;None=兜底点卡
         # 路径/刷新路径——决策帧照写但不带选择字段,读端按 None 分型)。
         # 只本地拷贝,不动 _LAST_SUPPLY_PICK 暂存槽(其唯一消费者仍是
@@ -235,6 +237,7 @@ class CwScreenSupplyNode(SrOperation):
             elif isinstance(pick, CwActionPickSupplyParam) and 0 <= pick.idx < len(opts):
                 target = opts[pick.idx][1]
                 reason = pick.reason
+                param_idx = pick.idx
                 # 选定快照(角色/装备/钻;refreshed=刷新是否已用;附实际识别
                 # 选项清单)——现役消费方 = 到账登记(equip)。
                 _opt = opts[pick.idx][0]
@@ -278,7 +281,7 @@ class CwScreenSupplyNode(SrOperation):
             return True
         # 点卡选中 → 确认机械半经工厂(刷新圆钮机械点击留守上方——刷新链 =
         # CwActionRefreshSupplyParam 建议的执行半,与遭遇屏 _try_refresh 同类,
-        # pick execute 语义 = 点卡选中 → 确认)。派发实例仅作注册表解析键
+        # pick execute 语义 = 点卡选中 → 确认)。派发实例携真实选中下标
         #(机械参数 target/picked 经 env 传递;无 match 兜底路径同形派发)。
         from sr_od.application.currency_war.kernel.cw_vocab import (
             CwActionPickSupplyParam,
@@ -289,7 +292,7 @@ class CwScreenSupplyNode(SrOperation):
         from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
             OverlayPickExecEnv,
         )
-        _env = OverlayPickExecEnv(op=self, match=match, target=target,
-                                  picked=picked)
-        action_op_for(CwActionPickSupplyParam(idx=0), self.ctx, _env).execute()
+        _env = OverlayPickExecEnv(op=self, match=match, idx=param_idx,
+                                  target=target, picked=picked)
+        action_op_for(CwActionPickSupplyParam(idx=param_idx), self.ctx, _env).execute()
         return False
