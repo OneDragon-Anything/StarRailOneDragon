@@ -38,8 +38,9 @@ visit 起点单点复位 → 1s 稳定帧 → 候选一次读(G10 首帧 OCR 存
 序列;names 空 = OCR 未读得不写,闸在 report 内)→ obs 挂实例属性进决策
 node。决策动作 node = 重入裁决顶部(确认已发 → 入口锚不在 = overlay 已关
 = 选卡落地 → 此刻才 append ``active_strategies`` + success 交回;锚在 =
-未落地 → 清标志重走)→ 零参决策(候选自容器槽)→ 逐卡刷新终结交回 / 点
-卡名选中 → 确认 → ``round_wait`` 循环推进(不烧节点重试预算;不收敛 =
+未落地 → 清标志重走)→ 零参决策(候选自容器槽)→ 逐卡刷新终结交回 /
+选卡+确认链经 ``CwActionPickInvestOp`` 派发(pick-op-unify 批机械链迁入
+动作 op)→ ``round_wait`` 循环推进(不烧节点重试预算;不收敛 =
 策略 bug 响亮暴露,无防御上限)。决策面留守写点:``active_strategies``
 重入裁决出口 append(ADR-0598 幻影卡收口:确认未落地轮 = 重走重选,不留
 幻影)+ 效果账本登记 + 授予置闩(``_append_confirmed_strategy`` 原位)。
@@ -81,7 +82,6 @@ from sr_od.application.currency_war.obs.cw_node_obs import (
     read_invest_refresh_counts,
 )
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-    emit_overlay_confirm,
     safe_click,
 )
 from sr_od.context.sr_context import SrContext
@@ -382,20 +382,31 @@ class CwScreenInvestStrategy(SrOperation):
             if _n not in ('?',) and get_strategy(_n) is None:
                 log.warning(f'[cw-strat] 投资策略名不在注册表(数据缺口): {_n!r}')
 
-        # 点最优卡的**卡名**选中(Y 从 screen_info「区域-卡名行」center 读;缺失兜底 CARD_CLICK_Y=474)。
-        # safe_click 带 bug#1 mouse_move 缓解(partner reset 根因同类)。
+        # 点最优卡的**卡名**选中(Y 从 screen_info「区域-卡名行」center 读;
+        # 缺失兜底 CARD_CLICK_Y=474)+ 确认链经工厂(pick-op-unify 批:
+        # 机械链迁入 ``CwActionPickInvestOp``,本 op 只决策与写端;定位点/
+        # 确认钮中心决策半现算经 env 显式传入)。
         _sel = area_center(self.ctx, '区域-卡名行', CwScreenInvestStrategy.SCREEN_NAME)
         _click_y = _sel.y if _sel is not None else CwScreenInvestStrategy.CARD_CLICK_Y
         target = Point(choose_x, _click_y)
-        safe_click(self, target, tag='cw-strat')
-        time.sleep(0.7)
         # 确认 + 机械交回(验证废除:不读屏判「overlay 关没关」,落地由下一轮
         # 重入入口观察裁决——裁决点补 append,见 act 顶部/_append_confirmed_
         # strategy)。确认 center 从 screen_info 读,缺失兜底。
+        # 派发实例携真实选中下标(上报 param 即真实选择;fallback/盲点 = 0)。
         _confirm = area_center(self.ctx, '按钮-确认', CwScreenInvestStrategy.SCREEN_NAME) or CwScreenInvestStrategy.CONFIRM
         self._confirm_pending = chosen if chosen != '?' else None
-        emit_overlay_confirm(self, confirm_point=_confirm, entry_keyword='投资策略',
-                             tag='cw-strat')
+        from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
+            action_op_for,
+        )
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+            OverlayPickExecEnv,
+        )
+        _param_idx = (act.idx if isinstance(act, CwActionPickInvestParam)
+                      and 0 <= act.idx < len(opts) else 0)
+        _env = OverlayPickExecEnv(op=self, idx=_param_idx, target=target,
+                                  confirm=_confirm, entry_keyword='投资策略')
+        action_op_for(CwActionPickInvestParam(idx=_param_idx), self.ctx,
+                      _env).execute()
         return self.round_wait(wait=1)
 
     def _append_confirmed_strategy(self, chosen: str) -> None:

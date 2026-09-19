@@ -50,6 +50,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionOpenTomeParam,
     CwActionPerfectProjectorUseParam,
     CwActionPickEncounterParam,
+    CwActionPickInvestParam,
     CwActionPickMegastarParam,
     CwActionPickPartnerParam,
     CwActionPickPlannerParam,
@@ -90,6 +91,7 @@ from sr_od.application.currency_war.operations.cw_op.cw_open_tome_action import 
 )
 from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
     CwActionPickEncounterOp,
+    CwActionPickInvestOp,
     CwActionPickMegastarOp,
     CwActionPickPartnerOp,
     CwActionPickPlannerOp,
@@ -158,6 +160,7 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     CwActionPickMegastarParam: CwActionPickMegastarOp,
     CwActionPickPartnerParam: CwActionPickPartnerOp,
     CwActionPickPlannerParam: CwActionPickPlannerOp,
+    CwActionPickInvestParam: CwActionPickInvestOp,   # pick-op-unify 批收编(投资环境/策略两屏共用)
 }
 
 

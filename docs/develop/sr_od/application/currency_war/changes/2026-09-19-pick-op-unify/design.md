@@ -74,11 +74,13 @@ class CwActionPickXxxOp(SrOperation):
 | 批 | 内容 | 验收门 |
 |---|---|---|
 | T-1 | 现有 5 op 自上报 + 巨星选中半迁入 + env 扩展 + 真实 idx | `uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"` 绿 + ruff 改动文件 |
-| T-2 | PickInvestOp + 投资两屏改派发 + 注册行 | 同上 |
-| T-3 | Fortune/WishTrial 两 op + 画面 op 改派发 | 同上 |
-| T-4 | Equip/BoxCard/StarTome/ExpertInvite 四 op + 画面 op 改派发 | 同上 |
-| T-5 | 锁面收窄 + pick 行为锁补新 7 op + 全量受影响测试 | 同上 |
+| T-2 | PickInvestOp + 投资两屏改派发 + 注册行 + 豁免集收窄(PickInvest)+ 投资 op 行为锁 | 同上 |
+| T-3 | Fortune/WishTrial 两 op + 画面 op 改派发 + 豁免收窄 + 行为锁 | 同上 |
+| T-4 | Equip/BoxCard/StarTome/ExpertInvite 四 op + 画面 op 改派发 + 豁免收窄 + 行为锁 | 同上 |
+| T-5 | 受影响测试全量复核(行为锁齐 7 新 op、锁豁免集终形 = 三刷新+HoldFrame) | 同上 |
 | T-6 | 文档同步 + L3 全量 `uv run pytest sr-od-test/ -m "not slow"` | 全量绿 |
+
+锁面豁免集收窄随批进行(每收编一类即自豁免集移除,保持每批全量绿)。
 
 主仓/测试仓逐文件点名 add,每批各一 commit。
 

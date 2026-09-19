@@ -35,6 +35,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_action_report.zero_writes import (
     report_action_pick_encounter_param,
+    report_action_pick_invest_param,
     report_action_pick_megastar_param,
     report_action_pick_partner_param,
     report_action_pick_planner_param,
@@ -47,6 +48,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPickEncounterParam,
+    CwActionPickInvestParam,
     CwActionPickMegastarParam,
     CwActionPickPartnerParam,
     CwActionPickPlannerParam,
@@ -377,3 +379,49 @@ class CwActionPickPlannerOp(SrOperation):
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
         return self.round_success('策划选择确认链已发(结果经旁路回传)')
+
+
+class CwActionPickInvestOp(SrOperation):
+    """投资选择确认链(投资环境/投资策略两屏共用,pick-op-unify 批新建)。
+
+    两屏机械链同构:点选中位(safe_click bug#1 缓解)→ 固定等待 →
+    确认(emit_overlay_confirm 机械交回)。屏间差异全部经 env 显式
+    传入(定位点 = 决策半从各自建档 area 现算;确认钮中心 = 决策半
+    从各自「按钮-确认」现取;裁决词 = '投资环境'/'投资策略'),op
+    类体内零决策零读屏。``active_env``/``active_strategies`` 及效果
+    登记/置闩等容器写留守画面 op 原写点(零行为)。"""
+
+    #: 非终结动作(每类显式声明,无基类缺省)。
+    terminal = False
+    terminal_wait = 0.0
+
+    def __init__(self, ctx: SrContext, param: CwActionPickInvestParam,
+                 env: OverlayPickExecEnv):
+        SrOperation.__init__(self, ctx, op_name='CwActionPickInvestOp',
+                             need_check_game_win=False)
+        self.param = param
+        self.env = env
+
+    @operation_node(name='pick_invest', is_start_node=True)
+    def run(self) -> OperationRoundResult:
+        """机械执行(点卡选中 → 选中动画等待 → 确认;轮次结果经旁路回传)。"""
+        action = self.param
+        env = self.env
+        op = env.op
+        # 点卡选中(bug#1 缓解:click 前 mouse_move)→ 选中动画固定等待
+        #(环境屏 0.7s/策略屏同值,时序逐位保留)。
+        safe_click(op, env.target, tag='cw-pick-invest')
+        time.sleep(0.7)
+        # 确认 + 机械交回(验证废除:落地由下一轮重入裁决;裁决词 =
+        # 各屏入口标题,经 env.entry_keyword 传入)。
+        env.round_result = emit_overlay_confirm(
+            op, confirm_point=env.confirm,
+            entry_keyword=env.entry_keyword, tag='cw-pick-invest')
+        # 自上报(机械链发出后;零写,契约面统一)。
+        gs = game_state_from_ctx(self.ctx)
+        if gs is not None:
+            report_action_pick_invest_param(
+                gs, action,
+                ChannelSig(family='logic_action',
+                           actor=type(self).__name__, mode='compute'))
+        return self.round_success('投资选择确认链已发(结果经旁路回传)')

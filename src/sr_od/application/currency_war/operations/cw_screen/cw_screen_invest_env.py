@@ -34,7 +34,8 @@ board 不可读 → 传空 board stub(dot_punish 为次要细化,白名单主策
 交回;锚在 = 未落地 → 清标志重走)→ 零参决策(候选自容器槽)→ 环境刷新
 终结交回 / ``active_env`` 选卡时点写(点卡**前**,ADR-0598 投资两屏各自实证
 语义,禁与策略屏重入裁决出口 append 统一)→ portal 效果登记(active_env
-写入同址,best-effort)→ 点卡 → 台账变异窗 → 确认 → ``round_wait`` 循环
+写入同址,best-effort)→ 台账变异窗 → 选卡+确认链经 ``CwActionPickInvestOp``
+派发(pick-op-unify 批机械链迁入动作 op)→ ``round_wait`` 循环
 推进(不烧节点重试预算;不收敛 = 策略 bug 响亮暴露,无防御上限)。
 本屏 sim 腿 = 不适用(sim 端口适配器未建),等价判据主承重 = 实机在册
 行为锁。
@@ -61,7 +62,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 )
 from sr_od.application.currency_war.obs.cw_node_obs import read_invest_refresh_counts
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-    emit_overlay_confirm,
     safe_click,
 )
 from sr_od.context.sr_context import SrContext
@@ -376,13 +376,13 @@ class CwScreenInvestEnv(SrOperation):
         # 效果原文回流断供为裁定的接受后果,收编归宿 =
         # strategy_offer 画面 payload 域,候其落地批接线。
 
-        # 点最优卡底(task#20:Y 从 screen_info「区域-卡牌描述行」center 读;缺失兜底 CARD_CLICK_Y)。
-        # safe_click 带 bug#1 mouse_move 缓解(partner reset 根因同类)。
+        # 点最优卡底(Y 从 screen_info「区域-卡牌描述行」center 读;缺失兜底
+        # CARD_CLICK_Y)+ 确认链经工厂(pick-op-unify 批:机械链迁入
+        # ``CwActionPickInvestOp``,本 op 只决策与写端;定位点/确认钮中心
+        # 决策半现算经 env 显式传入)。
         _sel = area_center(self.ctx, '区域-卡牌描述行', CwScreenInvestEnv.SCREEN_NAME)
         _click_y = _sel.y if _sel is not None else CwScreenInvestEnv.CARD_CLICK_Y
         target = Point(choose_x, _click_y)
-        safe_click(self, target, tag='cw-env')
-        time.sleep(0.7)
 
         # 台账:确认前开「投资环境变异窗」豁免——环境选择是位面节点序列唯一
         # 变异源(用户口述),确认到节点行重读刷新之间查表与逐帧校验的不一致
@@ -398,13 +398,22 @@ class CwScreenInvestEnv(SrOperation):
             pass
 
         # 确认 + 机械交回(验证废除:不读屏判「overlay 关没关」,落地由下一轮
-        # 重入入口观察裁决——原「点了就 success」不观察 → bug#1/卡未选中/
-        # 隐藏多步 flat-loop 防线由重入裁决承接)。确认 center
-        # 从 screen_info 读,缺失兜底。
+        # 重入入口观察裁决)。确认 center 从 screen_info 读,缺失兜底。
+        # 派发实例携真实选中下标(上报 param 即真实选择;fallback/盲点 = 0)。
         _confirm = area_center(self.ctx, '按钮-确认', CwScreenInvestEnv.SCREEN_NAME) or CwScreenInvestEnv.CONFIRM
         self._confirm_pending = True
-        emit_overlay_confirm(self, confirm_point=_confirm, entry_keyword='投资环境',
-                             tag='cw-env')
+        from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
+            action_op_for,
+        )
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+            OverlayPickExecEnv,
+        )
+        _param_idx = (act.idx if isinstance(act, CwActionPickInvestParam)
+                      and 0 <= act.idx < len(opts) else 0)
+        _env = OverlayPickExecEnv(op=self, idx=_param_idx, target=target,
+                                  confirm=_confirm, entry_keyword='投资环境')
+        action_op_for(CwActionPickInvestParam(idx=_param_idx), self.ctx,
+                      _env).execute()
         # (台账写点②「确认后自截屏重读节点行」已退役——链观察落地批:环境
         #  改型由返回备战后的入口观察链读承接(diff 连续两帧一致才记行),
         #  变异窗开窗保留、关窗迁至备战帧链写端;op 层不再自读屏幕。)
