@@ -1210,29 +1210,16 @@ class CwScreenPrep(SrOperation):
             '(终结集与消费面失配,响亮暴露)')
 
     def _act_execute(self, action: CwAction) -> None:
-        """动作执行段(决策循环执行位;落地登记发射点留位)。现役点击链
-        直连(:meth:`_act_execute_default`);on_outcome 注册表本体随画面
-        op 基类退役(本 op 无登记件,见 __init__ 注),发射点触发保留为
-        空登记 no-op(单一发射口契约留位,见 :meth:`_fire_outcome_hooks`)。
-        机械摘要经 ``_last_mech_detail`` 旁路供登记件 detail(非成败回执)。
+        """动作执行段(决策循环执行位)。现役点击链直连
+        (:meth:`_act_execute_default`);落地登记注册表随画面 op 基类退役,
+        无登记面——动作事实走各动作 op 自上报,不在此口。
         执行异常原样上抛(含 W209j 停机短路),由决策循环统一处置。"""
         self._act_execute_default(action)
-        self._fire_outcome_hooks(action, detail=self._last_mech_detail)
-
-    def _fire_outcome_hooks(self, action: CwAction, detail: str = '', *,
-                            evidence: str = '') -> int:
-        """落地登记发射点留位(单一发射口,发射即触发):注册表机制随画面
-        op 基类退役,本 op 零登记件 → 恒 no-op 返回 0。契约语义(发射点
-        统一触发/登记件逐件申报)由本留位锚定;登记面若复活归退役批后
-        独立批裁定。"""
-        return 0
 
     def _act_execute_default(self, action: CwAction) -> None:
-        """现役点击链缺省执行体(决策循环执行位;自身**不触发**登记——
-        触发统一归 :meth:`_act_execute`,防双计)。CwActionOpenShopParam = 流程层商店编排
-        [spend 单元记账 + _open_shop_phase];其余 = 执行器机械执行。发射型
-        登记件(遭遇/策略屏刷新计数)由各自执行链在点击发射点触发,不经
-        本口。机械摘要写入 ``_last_mech_detail``(登记件 detail 供给)。
+        """现役点击链缺省执行体(决策循环执行位)。CwActionOpenShopParam = 流程层商店编排
+        [spend 单元记账 + _open_shop_phase];其余 = 执行器机械执行。
+        机械摘要写入 ``_last_mech_detail``(执行日志供给)。
 
         ``obs`` 黑板形参已随 gs.prep_obs 退役删除(迭代阶段 3.5;旧
         CwActionOpenShopParam 腿的 obs 死参消费早已为零——strategy-input-unification

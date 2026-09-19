@@ -177,10 +177,9 @@ def reset_run_state() -> None:
     close_run 自洽推进(收口位由下一局 start_run 复位),复位
     语义只属于测试 teardown,本函数禁入任何生产调用链。
 
-    边界:只复位 run 态簇四件;_RECORDER 与落盘根两槽有各自正规入口
-    (:func:`set_recorder_replay_dir` /
-    ``decision_frame_hooks.set_decision_frame_dir``,两槽出处 = 三审
-    二波 F2 同报告 F1 节的复位链纪律;op_journal 第三槽随其流退役拆除),
+    边界:只复位 run 态簇四件;_RECORDER 与落盘根槽有各自正规入口
+    (:func:`set_recorder_replay_dir`;decision_frame_hooks 落盘根装配槽
+    零消费已随批退役拆除,现役写根恒生产公式),
     teardown 按槽分立调用,职责不混。
     """
     global _CURRENT_RUN_ID, _RUN_MATCH, _RUN_CLOSED

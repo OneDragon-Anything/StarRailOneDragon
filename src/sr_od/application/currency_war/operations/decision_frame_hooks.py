@@ -11,12 +11,14 @@
 (秒级)对齐还原归属(行写入已随删除波 1 退役;帧留证钩子保留——
 识别仲裁基准与账本形态无关)。
 
-挂点(4 类,均为识别完成点的原始帧):
+挂点(2 类,均为识别完成点的原始帧):
 1. 商店入口观察帧(run_buy_waves 每段循环入口观察刚完成时,每段一帧;
    牌面解析的仲裁基准)——刷新完成后的重观察与挂点 1 同点自然覆盖
    (刷新终结 → 下一次入口观察);
-2. 部署执行帧(CwScreenDeploy.deploy 主流程一帧);
-3. 事件 overlay 命中帧(cw_loop 0 系浮层分支命中时一帧)。
+2. 事件 overlay 命中帧(cw_loop 0 系浮层分支命中时一帧)。
+
+(原挂点「部署执行帧」随部署机画面 op 退役消失;原装配槽
+``set_decision_frame_dir`` 零消费随批退役拆除——写根恒生产公式。)
 
 预算与治理(留证钩子形态:无条件触发,不留开关/参数):
 - 每帧成本 = 一次内存截图落盘(挂点已有帧直接复用,不截新图),<100ms;
@@ -45,40 +47,9 @@ if TYPE_CHECKING:
 _KEEP_PER_TAG = 40
 
 
-# ===== 决策帧落盘根装配槽(两遥测写根之一;三审二波 F2)=====
-# 为什么是槽:决策帧写根缺省恒锚生产树(.debug/temp/currency_war/
-# decision_frames/),不经 harness 的假局驱动方(易失离线 runner/未来
-# sim 批真 op 驱动)会把假局决策帧静默写进生产树——写端根隔离要防的
-# 静默混流形态。与既有另一槽(telemetry.state.set_recorder_replay_dir)
-# 同构:缺省 None = 生产路径逐位不变;驱动方显式接指假局档案根,
-# teardown 复位(进程全局槽,残留会把后续帧带去假局根)。零生产行为
-# 变更:生产全程无设槽点,生产公式逐位保留。
-_DIR_OVERRIDE: Path | None = None
-
-
-def set_decision_frame_dir(path: Path | None) -> None:
-    """接通/复位决策帧落盘根(缺省 None = 生产路径)。
-
-    与 :func:`telemetry.state.set_recorder_replay_dir` 同装配纪律:
-    缺省关、驱动方显式接通、teardown 复位。两槽同点接指同一假局档案根
-    (harness 先例 = fixtures/cw_harness.fake_p1_run)——漏接一件即
-    部分隔离,该驱动方的遥测流仍触生产树。
-    """
-    global _DIR_OVERRIDE
-    _DIR_OVERRIDE = Path(path) if path is not None else None
-
-
 def _out_dir(run_id: str) -> Path:
-    """决策帧目录现算(根槽优先;槽是函数内读取,测试可 monkeypatch
-    槽变量后立即生效,不经模块 import 绑定快照——
-    telemetry/state 落盘根槽同纪律)。
-
-    槽缺省回落生产公式**活读** ``get_project_root``:既有测试以
-    monkeypatch ``get_project_root`` 作落盘重定向缝
-    (test_cw_decision_frame_hooks 同款),缝保持活读=不失效;根槽是
-    追加缝,不改写既有缝语义。"""
-    if _DIR_OVERRIDE is not None:
-        return _DIR_OVERRIDE / 'decision_frames' / run_id
+    """决策帧目录现算(生产公式;既有测试以 monkeypatch
+    ``get_project_root`` 作落盘重定向缝,缝保持活读=不失效)。"""
     return (get_project_root() / '.debug' / 'temp' / 'currency_war'
             / 'decision_frames' / run_id)
 
@@ -120,7 +91,3 @@ def save_decision_frame(op: Operation, tag: str,
     except Exception as e:  # noqa: BLE001  留证 best-effort,失败不阻塞对局
         log.warning('[cw-dframe] 决策帧落盘失败 tag=%s: %s', tag, e)
         return None
-
-
-# 供测试与审计读(单一源:保留帧数常量)
-KEEP_PER_TAG = _KEEP_PER_TAG
