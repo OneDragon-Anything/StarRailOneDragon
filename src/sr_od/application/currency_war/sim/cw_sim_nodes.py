@@ -1,4 +1,4 @@
-"""sim 重做·节点事件面(M16 遭遇 / M17 奖励球·扑满·补给箱 / M18 补给)。
+"""sim 重做·节点事件面(M16 遭遇 / M17 晶矿·扑满·补给箱 / M18 补给)。
 
 设计正本 = ``docs/develop/sr_od/application/currency_war/changes/
 2026-09-15-sim-redesign/design.md`` §2.2 M16/M17/M18,U22/U23/U24
@@ -10,9 +10,9 @@
   加成四档 0/10/20/30 = ``research/economy.md`` §9 定谳真值;档位数/
   奖励包数值候实机数据(占位常量随局披露)。流键
   ``M16/offer/{plane}``(实机档位集随机性候实机数据,首版固定档位集);
-- **M17 奖励球**:奖励节点走 M12 战斗框架,胜后进 reward_ball 相位
-  逐球入账(金/装备直接加,角色/箱落备战席占 1 槽;席满球点不动)。
-  面板结构以实测样本单例为唯一锚(U23:1 大金球+5 蓝球+2 灰球);
+- **M17 晶矿**:奖励节点走 M12 战斗框架,胜后进 reward_ball 相位
+  逐晶矿入账(金/装备直接加,角色/箱落备战席占 1 槽;席满晶矿点不动)。
+  面板结构以实测样本单例为唯一锚(U23:1 大金晶矿+5 蓝晶矿+2 灰晶矿);
   内容数值无档 → 显式占位常量 + 披露,禁拍值伪装实证。扑满替换 =
   经济过热/严重过热环境(容器 ``active_env`` × ``PIGGY_ENV_NAMES``
   单一源)把奖励节点替换为次元扑满——扑满不掉血(gameplay「节点
@@ -103,9 +103,9 @@ def apply_encounter_pick(gs: GameState, option_idx: int) -> tuple[int, str]:
     return opt.difficulty, reward_text
 
 
-# ============================================================ M17 奖励球/扑满/箱
+# ============================================================ M17 晶矿/扑满/箱
 
-#: 球面板单例锚(U23:实测 1-8 清关样本 1 大金球+5 蓝球+2 灰球;颜色
+#: 晶矿面板单例锚(U23:实测 1-8 清关样本 1 大金晶矿+5 蓝晶矿+2 灰晶矿;颜色
 #: 结构 = 唯一有据面,分布参数候实机数据)。
 REWARD_BALL_PANEL_ANCHOR: tuple[tuple[str, int], ...] = (
     ('金', 1), ('蓝', 5), ('灰', 2),
@@ -119,7 +119,7 @@ REWARD_BALL_CONTENT_PLACEHOLDER: dict[str, tuple[str, int]] = {
     '灰': ('gold', 5),
 }
 
-#: 球内容占位披露键(U23)。
+#: 晶矿内容占位披露键(U23)。
 REWARD_BALL_CONTENT_PENDING: str = 'reward_ball_content_pending_u23'
 
 #: 扑满节点战力要求语义披露键(扑满关有战力要求、不掉血;第一期随机
@@ -141,7 +141,7 @@ def is_piggy_node(gs: GameState) -> bool:
 
 
 def reward_ball_panel() -> tuple[RewardBall, ...]:
-    """奖励球面板(U23 单例锚展开;球序 = 色档序内先大后小,点选按
+    """晶矿面板(U23 单例锚展开;晶矿序 = 色档序内先大后小,点选按
     面板下标)。内容占位随局披露 :data:`REWARD_BALL_CONTENT_PENDING`。"""
     balls: list[RewardBall] = []
     for color, count in REWARD_BALL_PANEL_ANCHOR:
@@ -156,7 +156,7 @@ def reward_ball_panel() -> tuple[RewardBall, ...]:
 
 def apply_ball_pick(gs: GameState, ball_index: int, *,
                     rng: random.Random) -> tuple[str, int]:
-    """逐球入账(点球即时语义:金币直加金账,装备直入装备栏;角色/
+    """逐晶矿入账(采晶矿即时语义:金币直加金账,装备直入装备栏;角色/
     箱类内容落备战席占 1 槽——首版占位内容不含角色/箱,席满闸为
     占位内容扩展预留,渠道对齐 gameplay「奖励节点清关奖励」节)。
 
@@ -241,7 +241,7 @@ def apply_supply_pick(gs: GameState, option: SupplyOption) -> bool:
 
 
 def bench_has_space(gs: GameState) -> bool:
-    """备战席是否有空槽(球角色内容落席/箱落席的席满闸;pad 视图派生,
+    """备战席是否有空槽(晶矿角色内容落席/箱落席的席满闸;pad 视图派生,
     None 视图 = 未写席,按有空槽处理——开局写端保证非 None,防御面)。"""
     view = gs.bench.value
     if view is None:
@@ -251,9 +251,9 @@ def bench_has_space(gs: GameState) -> bool:
 
 def place_bench_unit_placeholder(gs: GameState, char_id: str, faction: str,
                                  ) -> bool:
-    """角色类奖励落备战席(占 1 槽;席满拒 = 球点不动语义,先开箱腾席)。
+    """角色类奖励落备战席(占 1 槽;席满拒 = 晶矿点不动语义,先开箱腾席)。
 
-    首版占位内容不含角色球,本函数为 M17 内容扩展预留的统一落席口
+    首版占位内容不含角色晶矿,本函数为 M17 内容扩展预留的统一落席口
     (渠道对齐 gameplay「备战席溢出」节:席满不丢,溢出悬挂由容器
     overflow 面承载,非本 sim 辖域)。容器 BenchView 槽序 ↔ 9 槽定长
     表转换后经 ``bench_place`` 找空位落件。

@@ -16,8 +16,8 @@
 
 | 层 | 载体 | 角色 | 关键契约 |
 |---|---|---|---|
-| 状态面板 | `kernel/cw_game_state.py::GameState` | 决策域局面模型（OCR 填充 + bot 跟踪）= **策略器唯一输入** | `bench` 定长 9 槽表(BenchView,BenchSlot.kind ∈ unit/supply_box/tome/empty)、`deployed` 定长 10 槽表；卖出/下场置 None 不移位；球域 SphereSight.points 载点击坐标 |
-| 观察载体 | `kernel/cw_prep_actions.py::PrepObservation` | 备战环 **op 局部控制信号**(shop_open/substate/event_overlay),不进策略器 | 宿主 = 备战环 op 局部对象;不再承载名单/装备/占用/球(全容器域) |
+| 状态面板 | `kernel/cw_game_state.py::GameState` | 决策域局面模型（OCR 填充 + bot 跟踪）= **策略器唯一输入** | `bench` 定长 9 槽表(BenchView,BenchSlot.kind ∈ unit/supply_box/tome/empty)、`deployed` 定长 10 槽表；卖出/下场置 None 不移位；晶矿域 SphereSight.points 载点击坐标 |
+| 观察载体 | `kernel/cw_prep_actions.py::PrepObservation` | 备战环 **op 局部控制信号**(shop_open/substate/event_overlay),不进策略器 | 宿主 = 备战环 op 局部对象;不再承载名单/装备/占用/晶矿(全容器域) |
 
 执行侧载体（消费方读写的落地对象）：
 
@@ -111,7 +111,7 @@
 
 ### 4.4 观察时序边界
 
-备战观察 = 入口 heavy 单次读屏直写容器;`PrepObservation` 局部载体只载控制信号(shop_open/substate/event_overlay),不承载状态面(名单/装备/占用/球全容器域,阶段 3.5 起黑板退役)。执行侧对同一画面的**再读**与决策帧之间无一致性承诺——需要强一致的判定（如 deploy 的占用检测）一律执行期现读（CV `slot_occupied`），不从观察载体取。动作-观察间隙内的局面推进 = op 自上报函数（`report_action_<snake>_param`）逻辑态直写(「在观察态到来之前供决策使用」是逻辑态的全部职能),真值以下一帧观察为准。
+备战观察 = 入口 heavy 单次读屏直写容器;`PrepObservation` 局部载体只载控制信号(shop_open/substate/event_overlay),不承载状态面(名单/装备/占用/晶矿全容器域,阶段 3.5 起黑板退役)。执行侧对同一画面的**再读**与决策帧之间无一致性承诺——需要强一致的判定（如 deploy 的占用检测）一律执行期现读（CV `slot_occupied`），不从观察载体取。动作-观察间隙内的局面推进 = op 自上报函数（`report_action_<snake>_param`）逻辑态直写(「在观察态到来之前供决策使用」是逻辑态的全部职能),真值以下一帧观察为准。
 
 ## 5. 消费方读什么（逐臂）
 

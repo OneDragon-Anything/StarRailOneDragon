@@ -15,7 +15,7 @@
 | SellDeployed owned 恢复 | `report_action_sell_deployed_param` | tracked 快照被卖单位装备逐件回收(「卖场上装备全额返还」;原执行账单写者面随函数内聚单点化)。金腿同函数(`sell_refund` 直写) |
 | WearEquip owned + tracked | `report_action_wear_equip_param` | 发出即登记零比对形态:`gs.equips` −1 + tracked 目标角色 equips +1(物理 (row,slot) → `deployed_idx_of` 换算;session 缺席 = tracked 腿跳过;owned 无此件只跳 owned 侧) |
 | StartBattle 免战递减 | `report_action_start_battle_param` | 唯一逻辑推进 = 免战牌跳过递减:`skip_substate=True`(CwActionStartBattleOp 上报携带)→ `effects.consume_use`(上报时递减,非「验证落地后」;登记面缺位的局返 None 零动作) |
-| ClickSpheres 窗登记 | `report_action_click_spheres_param` | 零金账推进(球金金额执行点不可推算 = 声明盲区)+ 按 `len(action.points)` 开备战环随机收入待吸收窗 `exec_books.prep_sphere_income_pending`(唯一写端;吸收/收口/红线见 [click-spheres.md](click-spheres.md) §3-4) |
+| ClickSpheres 窗登记 | `report_action_collect_ore_param` | 零金账推进(晶矿金金额执行点不可推算 = 声明盲区)+ 按 `len(action.points)` 开备战环随机收入待吸收窗 `exec_books.prep_sphere_income_pending`(唯一写端;吸收/收口/红线见 [collect-ore.md](collect-ore.md) §3-4) |
 | SellBench 回金/装备回收/溢出腿 | `report_action_sell_bench_param` | 回金唯一写点 + C6 装备回收 + 溢出腿内聚(原执行缝 SellBench 分支整支已删,双记防线) |
 | LevelUp 经验/等级/金 | `report_action_level_up_param` | 单一写点,金腿按 `action.cost`×击数直写(金腿不经执行缝) |
 | dict `ConfirmSupply/ConfirmBox/ConfirmTome` | `apply_confirm_effect` | 确认类到账:`{'op','item'}` → owned +1(经 `_overlay_confirm.register_confirm_arrival` 消费;现役登记发射位 = ConfirmSupply 补给选卡 / ConfirmTome 星徽秘典;ConfirmBox 暂无在役发射点) |
@@ -61,11 +61,11 @@
 
 ## 8. 语义验证(观察边界 reconcile)
 
-效果账的装备类写端(穿戴/特权化)与装备多集真值的守恒核对,活机制 = **观察边界 reconcile**(下一入口装备区读数覆盖)。原 sim 侧对账入口(`cw_vocab.py::simulate` 对 BuyCard/SellBench/SellDeployed/SwapDeploy 动作前后跑 `EquipsLedger` 快照比对)**随 simulate 退役**,考古归 git;卖出回收面现役 = 上报函数(`report_action_sell_bench_param`/`report_action_sell_deployed_param`)+ 观察覆盖。桥/组合写的等价性 = 窗口独占契约(完全预测,失配等价推算 bug 走缺陷台账,不静默不改道);点球金/边界金两窗 = 失配精确吸收面(台账行留证,红线见 [click-spheres.md](click-spheres.md) §4 与 `ExecBooks` 字段注)。
+效果账的装备类写端(穿戴/特权化)与装备多集真值的守恒核对,活机制 = **观察边界 reconcile**(下一入口装备区读数覆盖)。原 sim 侧对账入口(`cw_vocab.py::simulate` 对 BuyCard/SellBench/SellDeployed/SwapDeploy 动作前后跑 `EquipsLedger` 快照比对)**随 simulate 退役**,考古归 git;卖出回收面现役 = 上报函数(`report_action_sell_bench_param`/`report_action_sell_deployed_param`)+ 观察覆盖。桥/组合写的等价性 = 窗口独占契约(完全预测,失配等价推算 bug 走缺陷台账,不静默不改道);晶矿金/边界金两窗 = 失配精确吸收面(台账行留证,红线见 [collect-ore.md](collect-ore.md) §4 与 `ExecBooks` 字段注)。
 
 ## 9. 判例注记(发射期)
 
-效果账挂点跟宿主动作走:选卡/确认 grant 归各 overlay 画面期(事件线选择非逻辑态通道);卖出装备回收/回金腿归备战期(op 自上报函数内聚单点);工具/特权效果归备战期(判据准入/发射位见 [tools.md](tools.md) §8);点球金窗归备战期奖励面板(店开帧收口)。商店期默认面(买/刷/关)不触效果账写端(计数面 BUY 除外,随买牌挂落地门)。
+效果账挂点跟宿主动作走:选卡/确认 grant 归各 overlay 画面期(事件线选择非逻辑态通道);卖出装备回收/回金腿归备战期(op 自上报函数内聚单点);工具/特权效果归备战期(判据准入/发射位见 [tools.md](tools.md) §8);晶矿金窗归备战期奖励面板(店开帧收口)。商店期默认面(买/刷/关)不触效果账写端(计数面 BUY 除外,随买牌挂落地门)。
 
 ## 10. 依据
 

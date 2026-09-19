@@ -29,7 +29,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
-    SphereSight,
+    OreSight,
     game_state_of,
     gs_of_ctx,
     shop_payload_content_cards,
@@ -64,7 +64,7 @@ from sr_od.application.currency_war.obs.cw_faction_obs import (
 )
 from sr_od.application.currency_war.obs.cw_identity_obs import (
     ensure_portrait_templates,
-    read_reward_spheres,
+    read_ore_sights,
     read_supply_boxes,
 )
 from sr_od.application.currency_war.obs.cw_identity_obs import (
@@ -452,17 +452,17 @@ class CwScreenPrep(SrOperation):
         obs = PrepObservation()
         if not self._bench_pts:
             self._bench_pts = row_area_centers(self.ctx, '备战栏')
-        # 轻:球/箱/典籍/overlay/占用(每步现读)
-        # 球读带两帧持存交叉验证(奖励域防幻检批):瞬态特效假圆下一帧
+        # 轻:晶矿/箱/典籍/overlay/占用(每步现读)
+        # 晶矿读带两帧持存交叉验证(奖励域防幻检批):瞬态特效假圆下一帧
         # 即消失,不采信;本帧原始读数(含黑名单过滤)存为下帧 prev
         #(实例属性跨步存活;CwScreenPrep 每备战环重建 → 跨环不残留,
         # 语义 = 环内连续帧)。
         from sr_od.application.currency_war.obs.cw_identity_obs import (
-            filter_persistent_spheres,
+            filter_persistent_ores,
         )
-        _spheres_raw = read_reward_spheres(self.ctx, screen)
+        _spheres_raw = read_ore_sights(self.ctx, screen)
         _prev_spheres = getattr(self, '_prev_spheres_raw', None)
-        _sph_list = (filter_persistent_spheres(_spheres_raw, _prev_spheres)
+        _sph_list = (filter_persistent_ores(_spheres_raw, _prev_spheres)
                      if _prev_spheres else _spheres_raw)
         self._prev_spheres_raw = _spheres_raw
         _box_slots = read_supply_boxes(self.ctx, screen)
@@ -645,15 +645,15 @@ class CwScreenPrep(SrOperation):
                          for (row, slot), names
                          in _of.get('occupied_equips').items()},
                         sig=_prep_sig)
-                # 奖励球点击目标观察写端(阶段 3.4;reviewer r1 打回项1
-                # 修正:空读照写 count=0——空读 = 真无球,跳写会留上一帧
-                # 残留假球坐标喂进点击载荷(幽灵球);两帧持存防抖已在
+                # 晶矿点击目标观察写端(阶段 3.4;reviewer r1 打回项1
+                # 修正:空读照写 count=0——空读 = 真无晶矿,跳写会留上一帧
+                # 残留假晶矿坐标喂进点击载荷(幽灵晶矿);两帧持存防抖已在
                 # _sph_list 现读链完成(本点只做形态搬运)。
                 _sph_pts = tuple((color, int(p.x), int(p.y), int(r))
                                  for color, p, r in _sph_list)
                 _gs_obs.observe(
                     _gs_obs.spheres,
-                    SphereSight(
+                    OreSight(
                         count=len(_sph_pts),
                         colors=tuple(dict.fromkeys(
                             c for c, _p, _r in _sph_list)),
@@ -1415,7 +1415,7 @@ class CwScreenPrep(SrOperation):
                 if not _cards or not is_prep_like_frame(self.ctx, screen):
                     break
                 _slot, _center = _cards[0]
-                self.ctx.controller.mouse_move(_center)   # bug#1 缓解(同出战/点球口径)
+                self.ctx.controller.mouse_move(_center)   # bug#1 缓解(同出战/采晶矿口径)
                 self.ctx.controller.click(_center)
                 log.info('[cw][director] 试用角色揭示卡 slot%s → 点击揭示(免费 2★)', _slot)
             except Exception:   # noqa: BLE001  离线契约
@@ -1965,7 +1965,7 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
     )
     _fb_gs = _fb_gs_of(match.session)
     # 空账早退语义:全零 visit(无买/升/刷/卖)无动作账可对拍,整段审计
-    # (读金+对拍)随守卫跳过——对拍对象 = 本次动作账,外部金变更(点球
+    # (读金+对拍)随守卫跳过——对拍对象 = 本次动作账,外部金变更(采晶矿
     # 随机金/投资授予)不属其辖域。读金与消费必须同在守卫内:消费悬在
     # 守卫外时空账访问 UnboundLocalError(实机 2026-09-18 reconcile 事故
     # 首爆)。

@@ -308,7 +308,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         dispatch_priority=18,
         recovery_exit=RECOVERY_HANDLE,
     ),
-    # 商店卡牌详情弹窗(实机事故建档,2026-09-08):奖励节点点球误触
+    # 商店卡牌详情弹窗(实机事故建档,2026-09-08):奖励节点采晶矿误触
     # 开的角色 offer 购买页(0e2 概率表/1d 星徽详情之后同族第三例)。语义
     # display(买不买归商店域——0t 分支只点 X 关闭交回重判,店开时商店
     # 访问路径接管购买,关闭不丢决策内容);closable=False ⇒ 不进清场

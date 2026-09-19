@@ -216,7 +216,7 @@ Character 条目——识别库与「deploy 剔除 cost==0」按注册表运行�
 随后,获得3件简易装备」)——时限效果,激活期间 capacity=3、3 节点后自动回 9,经
 效果账本容量逻辑态桥 `project_effect_capacity` 逻辑写入(桥声明契约=payload 鸭子属性
 capacity_limit;当前注册表零条目携带=恒默认 9 幂等 no-op;**首批容量条目入册须同批
-补观察构造器容量感知**,防观察覆盖 logic 刷缺陷台账)。**奖励球不占席**——它是点击
+补观察构造器容量感知**,防观察覆盖 logic 刷缺陷台账)。**晶矿不占席**——它是点击
 目标不是席位居民(角色/补给箱才落席占 1 槽、席满点不动)。席空数=**策略器侧派生
 计算,不入容器**(字段准入四问③):没读到=不确定、禁猜 0;sim 合成帧「箱不占席」
 =sim 内部口径约定(sim 无箱实体),记录模型按实机真值。**席满判定=同源派生**
@@ -297,14 +297,14 @@ sim 合成口同域直写。
 消费面」,先例 = board、level_up_cost):cap = 识别源(采信门输出),back_layout =
 三信号裁决结果。两域冲突走缺陷台账,不互改。
 
-#### 3.2.8 奖励球 spheres
+#### 3.2.8 晶矿 spheres
 
 数量/颜色——交互机会信号,不占席(§3.2.5)。席满时奖励无法落位的拦截判据归 op
 写入策略(§4 ClickSpheres)。**载荷坐标**(迭代 2026-09-18-prep-obs-retirement
-阶段 3.4 扩充):`SphereSight.points` = `(color, x, y, r)` 平铺元组——球为自由
+阶段 3.4 扩充):`SphereSight.points` = `(color, x, y, r)` 平铺元组——晶矿为自由
 位置识别物无槽号,像素坐标必须随识别进容器(坐标单一真相源纪律;点击列由 kernel
-`sphere_click_targets_of` 还原消费)。**写端** = CwScreenPrep 备战入口 heavy
-观察上报(空读照写 count=0 防残留假球;两帧持存防抖留观察链);**逻辑写端** =
+`ore_click_targets_of` 还原消费)。**写端** = CwScreenPrep 备战入口 heavy
+观察上报(空读照写 count=0 防残留假晶矿;两帧持存防抖留观察链);**逻辑写端** =
 `ClickSpheres` 按载荷坐标精确摘除(§4 ClickSpheres,原黑板腿随
 gs.prep_obs 退役迁移本口)。
 
@@ -472,7 +472,7 @@ skip_battle_active/remaining 两 Field 已按正本移除,负向锁防复发)。
 overlay 无独立建档、名/效果文本均无区域级锚——接线前先补档;补档前本通道不作为
 active_env 核对源。开局写端见 §3.4.3(多屏写入,本条=备战屏侧通道)。
 
-> 本画面上的决策操作(点球/开箱/部署/卖出/装备/工具/出战)写入规则见 §4.2 对应行。
+> 本画面上的决策操作(采晶矿/开箱/部署/卖出/装备/工具/出战)写入规则见 §4.2 对应行。
 
 #### 3.2.21 备战席溢出(告警旗标 + 溢出位身份)
 
@@ -777,11 +777,11 @@ sim-记录分叉,修正随 sim 建模批)。布局修饰未建模:玩家裁定�
 
 ### 4.2 各 op 写入面
 
-#### ClickSpheres 点奖励球
+#### ClickSpheres 点晶矿
 
-游戏事实=点球即开启、内容即时入账、角色/箱落席占 1 槽、席满点不动。**席满拦截
-判据=前置谓词两腿:bench_free>0 ∨ 球均不占席**。**记录层面=点球 op 不改
-席占位**,全部等后续观察覆盖(金币/装备即时入账同样等识别;批式点球+后续大观察
+游戏事实=采晶矿即开启、内容即时入账、角色/箱落席占 1 槽、席满点不动。**席满拦截
+判据=前置谓词两腿:bench_free>0 ∨ 晶矿均不占席**。**记录层面=采晶矿 op 不改
+席占位**,全部等后续观察覆盖(金币/装备即时入账同样等识别;批式采晶矿+后续大观察
 自愈)——「游戏事实」与「记录层面」分开陈述防混读。
 
 #### OpenBox 开箱
@@ -1293,7 +1293,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
 
 - 字段容器 `Field[T]`(value/source/evidence;frozen 帧替换,构造守卫断言冻结
   不变式)。
-- 结构类型:`Unit`(阵营不存,查表派生)/`BenchView`(slots+capacity)/`SphereSight`/
+- 结构类型:`Unit`(阵营不存,查表派生)/`BenchView`(slots+capacity)/`OreSight`/
   `NodeKey`/`ShopCard`(cost_source 三值)/`ShopPayload`/`EncounterPayload`/
   `SupplyPayload`/`Settlement`/`MatchFinal`(局终行载荷)。
 - 容器字段全集与域注释 = `GameState` dataclass 定义(§3.7.1 域版本映射 =
@@ -1356,7 +1356,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
     `frame_class_prep`/`frame_class_shop`(帧触发代次双槽,值域
     full/view/none,读后即清)。
     (`prep_obs` 备战黑板帧宿主已随黑板退役删除——迭代
-    2026-09-18-prep-obs-retirement 阶段 3.5:名单/装备/占用/球全部容器域
+    2026-09-18-prep-obs-retirement 阶段 3.5:名单/装备/占用/晶矿全部容器域
     承载,策略器唯读容器契约归位;观察控制信号 shop_open/substate/
     event_overlay 降级为备战环 op 局部对象。)
 

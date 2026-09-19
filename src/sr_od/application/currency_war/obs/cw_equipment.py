@@ -43,7 +43,7 @@ __all__ = ['Equipment', 'EQUIPMENTS', 'EQUIPMENT_ROSTER', 'get_equip', 'load_equ
 _EQUIP_SIFT = cv2.SIFT_create()  # type: ignore[attr-defined]  # cv2 stubs 不含 SIFT(实际存在)
 _EQUIP_MATCHER = cv2.BFMatcher()
 
-# ①-a 全程 VLM 误判「装饰球体」的教训:VLM 不懂游戏,装备 icon 识别易误判。
+# ①-a 全程 VLM 误判「装饰晶矿体」的教训:VLM 不懂游戏,装备 icon 识别易误判。
 # 装备身份以模板匹配为准;别依赖 VLM 推断游戏事实,游戏知识以用户/图鉴为准。
 
 

@@ -5,7 +5,7 @@
 
 ## 1. 策略思路/算法概述
 
-决策入口 = `strategies/impl/mandate_v1/bridge.py::decide_prep_screen` → `entry.py::emit` 三遍编排,单动作循环逐帧恰取一个动作(接口返回 `CwAction | None`,`None` = 本帧无动作交回外循环重观察):① 备战实体面(武装箱/典籍/奖励球)→ ①′ wanted 闭环 → ② 证明 pass(线状态机/换线登记)→ ②′ 工具消费 → ③ 升档器求值位 → ④ 骨架 pass(M1-M7)→ ⑤ EV pass → ⑥ 无动作 ⇒ 出战(备战环唯一完成态)。各面:
+决策入口 = `strategies/impl/mandate_v1/bridge.py::decide_prep_screen` → `entry.py::emit` 三遍编排,单动作循环逐帧恰取一个动作(接口返回 `CwAction | None`,`None` = 本帧无动作交回外循环重观察):① 备战实体面(武装箱/典籍/晶矿)→ ①′ wanted 闭环 → ② 证明 pass(线状态机/换线登记)→ ②′ 工具消费 → ③ 升档器求值位 → ④ 骨架 pass(M1-M7)→ ⑤ EV pass → ⑥ 无动作 ⇒ 出战(备战环唯一完成态)。各面:
 
 - **攒息规划**:守息线 g* = 饱和线(常量单一源 = `kernel/cw_economy.py::saturation_line`);溢余处置 = 骨架义务 M6;可变现息线下界 = P56(`../proofs/p56-realizable-interest-floor.md`)。
 - **等级节奏**:骨架义务 M3 双臂(存在性 arm1 + 调度门 arm2),支出过升级预算闸(P71/P72)、整批可负担(P48 整买纪律)、等级帽资格闸(`kernel/cw_registry.py::level_max`)、血本位支付检查(`kernel/cw_economy.py::blood_xp_gate`)与血预算停追级线(04 §4)。
@@ -23,7 +23,7 @@
 | 卖备战(腾位/凑息/筹资/换线塌缩) | `SellBench` | M4(`mandate.py::fuel_sell_candidates`)/ P49+P56(`criteria/sell.py::sell_for_interest`)/ 筹资(`criteria/sell.py::funding_support_sell`)/ 塌缩(12 号篇);资格面 = `sell_gate.py::sell_exclusions`(P78) |
 | 买经验(连点「购买经验」至升一级;商店期收缩后的唯一买经验期) | `LevelUp` | M3 双臂 + 预算闸 + 整买纪律 + 等级帽 + 血本位/血预算线(§1 等级节奏行全链) |
 | 开商店(显式/读数两形态) | `OpenShop` | 骨架/EV 需要店面时;读数开商店 = 腾席链取金真值等(词表载体 = `kernel/cw_vocab.py::CwActionOpenShopParam`) |
-| 开补给箱/开典籍/点奖励球 | `OpenBox`/`OpenTome`/`ClickSpheres` | 实体面优先(`entry.py::emit` ①;箱选卡判据 = 13 号篇;席满让路门 = entry 席满探针段) |
+| 开补给箱/开典籍/点晶矿 | `OpenBox`/`OpenTome`/`ClickSpheres` | 实体面优先(`entry.py::emit` ①;箱选卡判据 = 13 号篇;席满让路门 = entry 席满探针段) |
 | 穿装备/消耗工具 | `WearEquip`/工具原子类(经 `CwActionToolUseOp`) | M7 + 18 号篇 + `cw_equip_env` 求值 |
 | 出战 | `StartBattle` | 前置发射位(`kernel/cw_launch_admission.py::readiness_launch_decision`,宿主 = mandate_v1 decide 入口);备战环正常出口(唯一完成态,详见 [26_battle_settlement.md](26_battle_settlement.md)) |
 

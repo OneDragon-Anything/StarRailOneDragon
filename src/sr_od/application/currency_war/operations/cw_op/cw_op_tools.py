@@ -180,7 +180,7 @@ def run_tool_queue(queue: list[ToolDragPlan], exec_fn,
     不再重评准入自建新队列(replan 删除——「重评 admitted」是策略判据的
     第二次触发,违反动作 op 机械执行规范),计划失效如实上报交回分发层,
     下一环重派即天然重算(发射位 G1 对 fresh owned 重评 = 判据单一源;
-    _click_spheres「观察-执行竞态 → 下轮再派」同形先例)。cancel 件直接
+    _collect_ore「观察-执行竞态 → 下轮再派」同形先例)。cancel 件直接
     丢弃(exec_fn 内重试预算已耗尽,同件原地重拖失败相关,bug#1 结论;
     画面未消费 = 无 reflow,队列其余坐标仍有效,继续下一件)。
     ``max_pass`` = 执行尝试硬上限(防异常态空转)。

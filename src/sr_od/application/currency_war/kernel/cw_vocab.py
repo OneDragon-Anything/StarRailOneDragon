@@ -4,7 +4,7 @@
 单一真相源 = 本模块。基类 ``CwAction`` + 全动作类 + ``CW_ACTION_TYPES``
 运行时元组 + ``action_key`` 幂等键函数同居此处;原族B 词表
 (kernel/cw_prep_actions,物理槽位 1 基)已随归一退役,该模块现仅承载
-备战观察视图 PrepObservation 与点球挑选 kernel 纯函数。坐标系裁定 =
+备战观察视图 PrepObservation 与采晶矿挑选 kernel 纯函数。坐标系裁定 =
 容器槽位表下标(族A 口径,0 基;ADR-0316/0392)——发射面从容器槽位表
 读口直接取下标构造动作;物理槽位号仅存观察写入边与执行坐标边两边界
 (design.md §2.6 换算归属)。例外 = 坐标参数化机械动作(CwActionWearEquipParam/
@@ -696,13 +696,13 @@ Action = (CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam |
 #   ADR-0392)。
 
 @dataclass
-class CwActionClickSpheresParam:
-    """点奖励球(R4 坐标参数化机械动作:载荷 = 有序球坐标点击列表)。
+class CwActionCollectOreParam:
+    """点晶矿(R4 坐标参数化机械动作:载荷 = 有序晶矿坐标点击列表)。
 
-    ``points`` = 按点击顺序排列的球心坐标 (x, y)(1080p 游戏空间)。挑选
-    逻辑(大球优先/上界截断)归决策侧 kernel 单一源 = :func:`cw_prep_actions
-    .select_sphere_clicks`,发射位调用之;执行器纯机械逐个点,零读屏
-    零排序。逻辑态按载荷精确摘球(坐标匹配,容器 spheres 域)。
+    ``points`` = 按点击顺序排列的晶矿心坐标 (x, y)(1080p 游戏空间)。挑选
+    逻辑(大晶矿优先/上界截断)归决策侧 kernel 单一源 = :func:`cw_prep_actions
+    .select_ore_clicks`,发射位调用之;执行器纯机械逐个点,零读屏
+    零排序。逻辑态按载荷精确摘晶矿(坐标匹配,容器 spheres 域)。
     """
     points: tuple[tuple[int, int], ...] = ()
     route_tag: str = field(default='', kw_only=True,
@@ -1115,23 +1115,23 @@ class HoldFrame:
 # 独立 dataclass。本名仅为既有 ``CwAction`` 注解面与 ``isinstance(x,
 # CwAction)`` 判定的零改动兼容保留;Python 3.10+ union isinstance 合法)。
 CwAction = (
-    CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam | CwActionLevelUpShopParam |
-    CwActionDeployMoveParam | CwActionRefreshShopParam | CwActionCloseShopParam | CwActionSellDeployedParam |
-    CwActionSwapDeployParam | CwActionClickSpheresParam | CwActionOpenBoxParam | CwActionOpenTomeParam |
-    CwActionOpenBookcardParam | CwActionWearEquipParam | CwActionFurnaceUseParam | CwActionPrivilegeCardUseParam |
-    CwActionWrenchUseParam | CwActionPrecisionWrenchUseParam | CwActionStaffProjectorUseParam | CwActionPerfectProjectorUseParam |
-    CwActionLuckyTokenUseParam | CwActionStartBattleParam | CwActionOpenShopParam | CwActionPickEventParam |
-    CwActionPickEncounterParam | CwActionPickSupplyParam | CwActionPickInvestParam | CwActionPickMegastarParam |
-    CwActionPickPartnerParam | CwActionPickPlannerParam | CwActionPickStarTomeParam | CwActionPickWishTrialParam |
-    CwActionPickBoxCardParam | CwActionPickFortuneParam | CwActionPickExpertInviteParam | CwActionPickEquipParam |
-    CwActionRefreshNodeOptionsParam | CwActionRefreshSupplyParam | CwActionRefreshInvestCardsParam | HoldFrame
+        CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam | CwActionLevelUpShopParam |
+        CwActionDeployMoveParam | CwActionRefreshShopParam | CwActionCloseShopParam | CwActionSellDeployedParam |
+        CwActionSwapDeployParam | CwActionCollectOreParam | CwActionOpenBoxParam | CwActionOpenTomeParam |
+        CwActionOpenBookcardParam | CwActionWearEquipParam | CwActionFurnaceUseParam | CwActionPrivilegeCardUseParam |
+        CwActionWrenchUseParam | CwActionPrecisionWrenchUseParam | CwActionStaffProjectorUseParam | CwActionPerfectProjectorUseParam |
+        CwActionLuckyTokenUseParam | CwActionStartBattleParam | CwActionOpenShopParam | CwActionPickEventParam |
+        CwActionPickEncounterParam | CwActionPickSupplyParam | CwActionPickInvestParam | CwActionPickMegastarParam |
+        CwActionPickPartnerParam | CwActionPickPlannerParam | CwActionPickStarTomeParam | CwActionPickWishTrialParam |
+        CwActionPickBoxCardParam | CwActionPickFortuneParam | CwActionPickExpertInviteParam | CwActionPickEquipParam |
+        CwActionRefreshNodeOptionsParam | CwActionRefreshSupplyParam | CwActionRefreshInvestCardsParam | HoldFrame
 )
 # ——漏登记时执行面 validate 拒「未知动作类型」,动作从未真正执行
 # (CwActionOpenTomeParam 曾漏登记,数百次拒绝被误读为执行失败;登记是入口门)。
 CW_ACTION_TYPES: tuple = (
     CwActionBuyCardParam, CwActionSellBenchParam, CwActionLevelUpParam, CwActionLevelUpShopParam, CwActionDeployMoveParam, CwActionRefreshShopParam,
     CwActionCloseShopParam, CwActionSellDeployedParam,
-    CwActionClickSpheresParam, CwActionOpenBoxParam, CwActionOpenTomeParam, CwActionOpenBookcardParam,
+    CwActionCollectOreParam, CwActionOpenBoxParam, CwActionOpenTomeParam, CwActionOpenBookcardParam,
     CwActionWearEquipParam,
     CwActionFurnaceUseParam, CwActionPrivilegeCardUseParam, CwActionWrenchUseParam, CwActionPrecisionWrenchUseParam,
     CwActionStaffProjectorUseParam, CwActionPerfectProjectorUseParam, CwActionLuckyTokenUseParam,

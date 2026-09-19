@@ -16,7 +16,7 @@
   kernel 侧只列 cw_vocab/cw_prep_actions/cw_deploy_logic/cw_exec_state,无
   cw_game_state。2b 面虽有该文件,标注仅「CompTransaction 提案分支删」。
 - **修法**:2a 文件面补 `kernel/cw_game_state.py`(域集扩 + LevelUp 分支 +
-  owned_equips/摘球写口按 design §2.6 R9)。
+  owned_equips/摘晶矿写口按 design §2.6 R9)。
 
 ### A2【landing §3.2a/§3.2b】LevelUp cost/auth_basis 装载批归属自相矛盾,2a 中间态 cost 源悬空
 - **问题**:①2a 范围括号内出现「发射面 cost = xp_click_cost 现算,失读回退
@@ -48,7 +48,7 @@
   打分单一源 `pick_equipment` 已在 `kernel/cw_equip_value.py`;真正待迁面 = 执行器内
   OCR 读卡名 + 调用编排(`_default_box_card` :1213-1250 的决策半)→ 新画面 op。
   「迁 kernel/决策侧」表述会让实现者误以为决策函数也要搬家;2a 文件面括号只写
-  「穿戴计划/球挑选的 kernel 模块选址随任务书」,未提选卡决策落位。
+  「穿戴计划/晶矿挑选的 kernel 模块选址随任务书」,未提选卡决策落位。
 - **修法**:R7 改述为「OCR 读名与调用编排自执行器迁新画面 op,决策函数原位
   (decide_box_card 策略侧 / pick_equipment kernel 侧)」;或点名落位文件。
 

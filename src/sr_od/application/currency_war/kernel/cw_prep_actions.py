@@ -1,11 +1,11 @@
-"""货币战争 备战决策环 统一观察视图 + 点球挑选 kernel(kernel 桶)。
+"""货币战争 备战决策环 统一观察视图 + 采晶矿挑选 kernel(kernel 桶)。
 
 本模块原为族B 备战动作词表宿主(PrepAction 动作全集 + PREP_ACTION_TYPES +
 action_key);统一词表归一(unified-action-factory 批2b)后动作词表退役,
 单一真相源 = :mod:`kernel.cw_vocab`(基类 ``CwAction`` + 全动作类 +
 ``CW_ACTION_TYPES`` + ``action_key``)。现役居民 = 决策单一输入的统一观察
-视图 :class:`PrepObservation` 与点球挑选 kernel 纯函数
-(:func:`select_sphere_clicks` + ``SPHERE_CLICK_HARD_CAP``)。
+视图 :class:`PrepObservation` 与采晶矿挑选 kernel 纯函数
+(:func:`select_ore_clicks` + ``SPHERE_CLICK_HARD_CAP``)。
 
 为何落在 kernel:观察视图由决策核(策略)与执行层(app)共同消费,任一侧
 定义都会造成另一侧的反向依赖(分包依赖矩阵 §3.2:decision 只可依
@@ -20,19 +20,19 @@ from dataclasses import dataclass, field
 
 from one_dragon.base.geometry.point import Point
 
-#: 点球单批硬上限(原执行器 SPHERE_MAX_CLICKS 常量迁居 kernel:挑选上界
+#: 采晶矿单批硬上限(原执行器 SPHERE_MAX_CLICKS 常量迁居 kernel:挑选上界
 #: 归挑选函数,执行器只机械点载荷;防识别抖动死循环的防线语义不变)。
 SPHERE_CLICK_HARD_CAP: int = 12
 
 
-def sphere_click_targets_of(gs) -> list[tuple[str, Point, int]]:
-    """奖励球点击目标读口(容器 spheres 域 → select_sphere_clicks 消费
+def ore_click_targets_of(gs) -> list[tuple[str, Point, int]]:
+    """晶矿点击目标读口(容器 spheres 域 → select_ore_clicks 消费
     形态;迭代 2026-09-18-prep-obs-retirement 阶段 3.4 立口)。
 
-    SphereSight.points((color, x, y, r) 平铺元组)还原为
+    OreSight.points((color, x, y, r) 平铺元组)还原为
     ``[(color, Point, r)]``——与旧黑板 ``obs.spheres`` 产物形态逐位同构
-    (read_reward_spheres 消费契约),调用方签名零改动。域未观察(None)
-    = 空列(未观察 ≠ 有球,宁不点;与「点空由下一入口观察回补」机制
+    (read_ore_sights 消费契约),调用方签名零改动。域未观察(None)
+    = 空列(未观察 ≠ 有晶矿,宁不点;与「点空由下一入口观察回补」机制
     配对)。
     """
     from one_dragon.base.geometry.point import Point
@@ -44,18 +44,18 @@ def sphere_click_targets_of(gs) -> list[tuple[str, Point, int]]:
             for color, x, y, r in view.points]
 
 
-def select_sphere_clicks(spheres: list, cap: int,
-                         ) -> tuple[tuple[int, int], ...]:
-    """奖励球挑选 kernel 单一源(R4 CwActionClickSpheresParam 改形;纯函数)。
+def select_ore_clicks(spheres: list, cap: int,
+                      ) -> tuple[tuple[int, int], ...]:
+    """晶矿挑选 kernel 单一源(R4 CwActionCollectOreParam 改形;纯函数)。
 
     输入 = ``PrepObservation.spheres``([(color, Point, r)];颜色与半径
     仅排序消费,不进载荷);``cap`` = 本批点击预算(发射位常量,如
     mandate_v1 SPHERE_CLICK_BATCH_MAX_K)。输出 = 有序 (x, y) 点击列——
-    大球优先(r 降序;稳定排序保持观察序),上界 = min(cap, 硬上限
-    SPHERE_CLICK_HARD_CAP)。席满让路门/占席球语义归发射位(既有门),
+    大晶矿优先(r 降序;稳定排序保持观察序),上界 = min(cap, 硬上限
+    SPHERE_CLICK_HARD_CAP)。席满让路门/占席晶矿语义归发射位(既有门),
     本函数不辖。
 
-    消费面:发射位(mandate_v1 entry)构造 CwActionClickSpheresParam 载荷;执行器
+    消费面:发射位(mandate_v1 entry)构造 CwActionCollectOreParam 载荷;执行器
     零排序零截断纯机械点(第二实现禁)。
     """
     budget = max(0, min(int(cap), SPHERE_CLICK_HARD_CAP))
@@ -68,7 +68,7 @@ class PrepObservation:
     """备战决策环观察载体(阶段 3.5 瘦身版,迭代 2026-09-18-prep-obs-
     retirement)。
 
-    **宿主降级申报**:本类已不再是策略器输入——名单/装备/占用/球全部
+    **宿主降级申报**:本类已不再是策略器输入——名单/装备/占用/晶矿全部
     容器域承载,策略器唯读容器契约归位;本帧仅承载**控制信号与识别
     元信息**(观察链/op 内部消费,不进 gs、不进 session):
     - ``shop_open``:观察链门参数(F2 gold 可信派生/卡池票门);

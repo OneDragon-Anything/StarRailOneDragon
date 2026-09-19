@@ -18,7 +18,7 @@ as-built 权威 = docs/develop/sr_od/application/currency_war/flow/action_exec.m
 .debug 不入 git),§1 即该词表行的首次文档落档,权威链重锚申报 =
 ADR-0585 §5 + flow/action_exec.md §1 正本)+ §3.3 fail-closed(词表外/无分类
 动作 ⇒ 截断 + 计数披露,禁静默丢弃)。发射器实现期增补条目须回契约
-改版,禁只改代码。R196 修复批(症5)对齐:CwActionClickSpheresParam=条件判(末批
+改版,禁只改代码。R196 修复批(症5)对齐:CwActionCollectOreParam=条件判(末批
 可能掉箱 ⇒ 其后截断)、conditional 五类名-槽一致性复检(推不出即截断,
 计数 ``emitter_conditional_truncated``)。
 
@@ -70,15 +70,15 @@ from sr_od.application.currency_war.kernel.cw_intention import (
     locked_buy_cap_hold,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
-    select_sphere_clicks,
-    sphere_click_targets_of,
+    ore_click_targets_of,
+    select_ore_clicks,
 )
 from sr_od.application.currency_war.kernel.cw_reward_node import (
     reward_node_suppressed,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
-    CwActionClickSpheresParam,
+    CwActionCollectOreParam,
     CwActionDeployMoveParam,
     CwActionFurnaceUseParam,
     CwActionLevelUpParam,
@@ -127,22 +127,22 @@ if TYPE_CHECKING:
 #: ev_arm 值域(R1-1:skeleton_only=臂① EV 发射面旁路;full=臂② 全开)
 EV_ARM_VALUES: tuple[str, ...] = ('skeleton_only', 'full')
 
-#: 球内容占席颜色集(迁移 B 球谓词第二腿的判定输入;ADR-0596 §4.9③)。
+#: 晶矿内容占席颜色集(迁移 B 晶矿谓词第二腿的判定输入;ADR-0596 §4.9③)。
 #: CV 颜色域 = {'gold','blue','gray'}(cw_identity_obs 圆心 HSV 分类),
 #: 但「颜色 → 内容是否占席」的玩法机制面待实机实证——现役缺省 = 空集
-#(球均按不占席,宁多收球不误卖:点击失败可自愈、CwActionSellBenchParam 不可逆;
-#: 占席球面的损失面由 2026-09-02 席满球裁定
+#(晶矿均按不占席,宁多收晶矿不误卖:点击失败可自愈、CwActionSellBenchParam 不可逆;
+#: 占席晶矿面的损失面由 2026-09-02 席满晶矿裁定
 #: screen_flow_timing #16「部分没点开自然回补」容忍语义承载)。实证
-#: 落地后在此登记占席颜色,谓词第二腿自动收紧(腾席先于点球)。
+#: 落地后在此登记占席颜色,谓词第二腿自动收紧(腾席先于采晶矿)。
 SPHERE_OCCUPYING_COLORS: frozenset[str] = frozenset()
 
 
-def _sphere_bench_free(gs: GameState) -> int:
-    """席自由槽读数(球谓词第一腿输入;容器派生读口 ``bench_free_slots``
+def _ore_bench_free(gs: GameState) -> int:
+    """席自由槽读数(晶矿谓词第一腿输入;容器派生读口 ``bench_free_slots``
     单一源,迭代 2026-09-18-prep-obs-retirement 阶段 3.3——旧黑板
     ``free_bench_slots`` 独立记账退役,箱/典籍占席由 ``slot_occupies``
     口径自动计入)。缺省方向 = adapter.py 在库裁决对齐:free None
-    (bench 未观察,不确定)→ BENCH_CAPACITY,宁多收球不误卖,
+    (bench 未观察,不确定)→ BENCH_CAPACITY,宁多收晶矿不误卖,
     非 0 值按物理现读。"""
     _free = bench_free_slots(gs)
     return BENCH_CAPACITY if _free is None else max(0, int(_free))
@@ -155,39 +155,39 @@ def _sphere_bench_free(gs: GameState) -> int:
 #: 守卫常量与在册机制假设夹逼出可行域后取 1。
 SPHERE_DEFER_PROBE_K: int = 1
 
-#: 单批点球上界(收编自旧 decision 核的发射形态值,统一迁移批随
+#: 单批采晶矿上界(收编自旧 decision 核的发射形态值,统一迁移批随
 #: entry.py 入 mandate_v1;判读底稿低危项3补三形态归属标注):
 #: **归属 = 框架流程防线常量,非三形态决策值**(同 WANTED_REOPEN_CAP
 #: 豁免类——它上界化单帧发射的点击预算,不作任何做/不做闸门)。
-#: 机制依据 = 席满时球点不动(docs/game/screens/currency_war_prep.md
-#: 奖励球节):每球内容可能占席,批式连点越过自由席位数即空点,批间由
-#: 球计数自然回补(screen_flow_timing #16「部分没点开自然回补」用户
+#: 机制依据 = 席满时晶矿点不动(docs/game/screens/currency_war_prep.md
+#: 晶矿节):每晶矿内容可能占席,批式连点越过自由席位数即空点,批间由
+#: 晶矿计数自然回补(screen_flow_timing #16「部分没点开自然回补」用户
 #: 裁定容忍语义)。层位关系:执行层硬帽 = kernel ``SPHERE_CLICK_HARD_CAP``
 #:=12(防识别抖动死循环,批 2a 随挑选函数迁居 kernel,不互替);
-#: kernel ``select_sphere_clicks``(批 2a 大球优先/上界挑选单一源)
+#: kernel ``select_ore_clicks``(批 2a 大晶矿优先/上界挑选单一源)
 #: 显式消费本常量为预算参数(单一源,禁再内联字面 3)。
 SPHERE_CLICK_BATCH_MAX_K: int = 3
 
 
-def _sphere_progress_sig(gs: GameState) -> int:
-    """席满让路门成效计数签名((轮次, 席计数, 球计数) 压缩整型;ADR-0642)。
+def _ore_progress_sig(gs: GameState) -> int:
+    """席满让路门成效计数签名((轮次, 席计数, 晶矿计数) 压缩整型;ADR-0642)。
 
     载体 = 容器 gs(prep 链容器化段 1:签名切 gs)。轮次经
     ``round_num_of`` 读口——未观察帧缺省 1 镜像旧「state is None → 1」
     分支(波 1 读口等价契约,单一源 = 读口 docstring),分支退役零行为差。
     三分量全部 gs 现成字段,零新识别;压缩进 int 保持 cw4_counters
-    数值账本面(禁存 tuple/str)。装箱域:席/球计数各 4 bit,>15 回绕 = 误判「有成效」
+    数值账本面(禁存 tuple/str)。装箱域:席/晶矿计数各 4 bit,>15 回绕 = 误判「有成效」
     → 多一环探针点击,良性偏置。噪声口径:刻意不采 raw gold(OCR 噪声
-    会误复位使门失效,ADR-0554 修订节 5 同源教训);球计数经 Hough 检出
+    会误复位使门失效,ADR-0554 修订节 5 同源教训);晶矿计数经 Hough 检出
     存在抖动,每次误变只多一环探针,无进展守卫(阈值 3)仍兜底。
     """
     _round = round_num_of(gs)
-    # 席/球计数换源(容器派生,迭代 2026-09-18-prep-obs-retirement 阶段
+    # 席/晶矿计数换源(容器派生,迭代 2026-09-18-prep-obs-retirement 阶段
     # 3.4):席占用 = BENCH_CAPACITY − bench_free_slots(箱/典籍占席自动
-    # 计入;未观察 None → 占用 0 保守);球计数 = 容器 spheres 载荷数
+    # 计入;未观察 None → 占用 0 保守);晶矿计数 = 容器 spheres 载荷数
     # (未观察 → 0)。getattr 缺省静默退化面随换源消亡。
     _bench_n = BENCH_CAPACITY - (bench_free_slots(gs) or BENCH_CAPACITY)
-    _sphere_n = len(sphere_click_targets_of(gs))
+    _sphere_n = len(ore_click_targets_of(gs))
     return ((_round * 16) + (_bench_n & 0xF)) * 16 + (_sphere_n & 0xF)
 
 log = logging.getLogger(__name__)
@@ -208,13 +208,13 @@ _TERMINAL: tuple[type, ...] = (CwActionStartBattleParam,)
 #: 可续(画面零迁移/坐标不变)
 _CONTINUE: tuple[type, ...] = (CwActionLevelUpParam,)
 #: 条件续(bench 索引结构恒稳+名-槽一致性复检;board 空位/星级合成按
-#: 前序动作累积静态推出,推不出即截断——契约 §3.2 五行+CwActionClickSpheresParam 行;
+#: 前序动作累积静态推出,推不出即截断——契约 §3.2 五行+CwActionCollectOreParam 行;
 #: 原组合动作类(CwActionSellDeployedParam/RunDeploy/RunEquip)行随组合壳删除退役
 #: (unified-action-factory 批2b,R2)——CwActionSellDeployedParam 为显式发射动作,
 #: 复检语境语义与 CwActionSellBenchParam 同源,本批起按条件续复检)
 _CONDITIONAL: tuple[type, ...] = (
     CwActionSellBenchParam, CwActionSellDeployedParam, CwActionDeployMoveParam,
-    CwActionClickSpheresParam,                          # 条件:常态可续;末批可能掉箱后截断
+    CwActionCollectOreParam,                          # 条件:常态可续;末批可能掉箱后截断
 )
 
 
@@ -262,16 +262,16 @@ def truncate_frame_stable(actions: list[CwAction],
       处截断 + ``emitter_conditional_truncated`` 计数。``bench_slots``
       缺省 None = 复检语境缺失,按条件成立续发(发射器自身产序列时
       引用即生成期观察,生产路径 bridge 总是供给语境)。
-    - ``CwActionClickSpheresParam``:末批判——同序列其后还有 CwActionClickSpheresParam 批次 ⇒
-      非末批,常态分支可续;本批为序列内最后一批 CwActionClickSpheresParam(可能
+    - ``CwActionCollectOreParam``:末批判——同序列其后还有 CwActionCollectOreParam 批次 ⇒
+      非末批,常态分支可续;本批为序列内最后一批 CwActionCollectOreParam(可能
       掉箱,掉箱弹 overlay 不可静态预测)⇒ 其后截断(契约 §3.2
-      CwActionClickSpheresParam 行;末批截断系判型内语义,非失败,不计
+      CwActionCollectOreParam 行;末批截断系判型内语义,非失败,不计
       ``emitter_conditional_truncated``)。
     - ``CwActionSellDeployedParam``:deployed 槽表下标恒稳(ADR-0392,卖出置 None
       不移位),序列内成立 ⇒ 可续。
 
     尾动作丢弃计数(R197 症1②):任一截断路径(词表外/复检失败/截断点/
-    终点/CwActionClickSpheresParam 末批)丢弃的后续动作逐个计数
+    终点/CwActionCollectOreParam 末批)丢弃的后续动作逐个计数
     ``emitter_post_truncation_dropped``——截断本身系契约语义(非失败),
     但「丢弃了什么」必须可观测,禁零计数静默(EV 发射被截断丢弃时
     遥测可辨「评估了不发射」vs「发射被丢弃」)。
@@ -300,9 +300,9 @@ def truncate_frame_stable(actions: list[CwAction],
             _count('emitter_unknown_action_truncated')
             return _cut()       # 词表外:该动作处截断(不猜测分类)
         if kind == 'conditional':
-            if isinstance(a, CwActionClickSpheresParam):
+            if isinstance(a, CwActionCollectOreParam):
                 has_later_batch = any(
-                    isinstance(a2, CwActionClickSpheresParam) for a2 in actions[i + 1:])
+                    isinstance(a2, CwActionCollectOreParam) for a2 in actions[i + 1:])
                 out.append(a)
                 if not has_later_batch:
                     return _cut()  # 末批可能掉箱 ⇒ 其后截断(判型内语义)
@@ -438,7 +438,7 @@ def emit(session: StrategySession,
     决策输入 = **容器 game state 直读**(迭代 2026-09-18-prep-obs-
     retirement 阶段 3.5:obs 黑板形参退役,gs.prep_obs 槽随批删除——
     策略器唯读容器契约归位)。
-    编排:① prep 实体面(箱选卡/球/箱/典籍——控制流与 overlay 切换
+    编排:① prep 实体面(箱选卡/晶矿/箱/典籍——控制流与 overlay 切换
     优先于三遍)→ ①′ wanted 闭环消费臂(迁移 A;义务优先)→ ② 证明
     pass(信号臂/K/stop_flag/线级状态机/换线)→ ②′ 工具消费发射位
     (迁移 C,物理移出自 run_mandate)→ ③ 升档器求值位 → ④ 骨架 pass
@@ -475,13 +475,13 @@ def emit(session: StrategySession,
                        if s is not None and s.kind == 'tome'), None)
     if _tome_slot is not None:
         return [Emitted(CwActionOpenTomeParam(slot=_tome_slot + 1), True, 'prep_tome')]
-    # 球臂门+载荷同源(迭代阶段 3.4 换源收口,reviewer r1 打回项2):
+    # 晶矿臂门+载荷同源(迭代阶段 3.4 换源收口,reviewer r1 打回项2):
     # 门条件与点击载荷共用同一容器读口推导——黑板 obs.spheres 消费清零,
     # 防陈旧门真/载荷空(空转)或批 5 删字段后 AttributeError。
-    _sf_targets = sphere_click_targets_of(gs)
+    _sf_targets = ore_click_targets_of(gs)
     if _sf_targets:
         # 席满让路门(T-297 落码;ADR-0642;方案正本 = T-281 修复方案稿
-        # v2.1,重写自 ADR-0596 §4.9③ 迁移 B 两腿谓词的收球行为,结构
+        # v2.1,重写自 ADR-0596 §4.9③ 迁移 B 两腿谓词的收晶矿行为,结构
         # 保活面见下方死码块)。门显式条件化(方案 §3.2/B5):
         # - 格3 席自由(free>0):自愈形态(screen_flow_timing #16),
         #   行为等价——动作序列与状态迁移与改前一致,新增仅 streak 归零
@@ -489,14 +489,14 @@ def emit(session: StrategySession,
         # - 格1/格2 席满(free==0):机制性拒绝形态(2026-09-11 实机
         #   12 击零消失实证,与 cw_identity_obs.py 建档注释一致)——
         #   每搁浅情节首环发单探针(K=1 预注册,区分「机制性拒绝」vs
-        #   「单帧偶发落空」),次环起让路 fall-through:球分支零发射、
+        #   「单帧偶发落空」),次环起让路 fall-through:晶矿分支零发射、
         #   不 return,落入 ①′→②→③⑤→⑥ 常规链(席满帧常规链恢复
         #   求值;三 CwActionSellBenchParam 发射位受既有 sell_gate 契约核验与息线
         #   冻结门辖域,非本批新判据;空批 → ⑥ CwActionStartBattleParam 合法交回)。
-        # - 成效重置:席自由化 ∨ 成效计数签名变化(轮次/席计数/球计数
-        #   任一,见 _sphere_progress_sig)。设计动机(B5 对偶面):若
-        #   「席满可点开」形态真实存在(金球内容即时入账方向),每次成功
-        #   点开必减球计数 → 重置 → 连续收球不被打断——宁多收球在门
+        # - 成效重置:席自由化 ∨ 成效计数签名变化(轮次/席计数/晶矿计数
+        #   任一,见 _ore_progress_sig)。设计动机(B5 对偶面):若
+        #   「席满可点开」形态真实存在(金晶矿内容即时入账方向),每次成功
+        #   点开必减晶矿计数 → 重置 → 连续收晶矿不被打断——宁多收晶矿在门
         #   语义层保住。
         # 遥测键登记(单一源 = 本写点;design_telemetry.md 已随文档树
         # 重组灭失,键节落写点旁):sphere_defer_streak(席满搁浅情节内
@@ -505,15 +505,15 @@ def emit(session: StrategySession,
         # sphere_defer_yield(让路帧计数)/ sphere_blocked_bench_full
         #(死码块内,现状恒零写)。
         _ct_sp = state_of(session).cw4_counters
-        _sf_free = _sphere_bench_free(gs)
+        _sf_free = _ore_bench_free(gs)
         if _sf_free > 0:
             if isinstance(_ct_sp, dict):
                 _ct_sp['sphere_defer_streak'] = 0
-            return [Emitted(CwActionClickSpheresParam(
-                        points=select_sphere_clicks(
+            return [Emitted(CwActionCollectOreParam(
+                        points=select_ore_clicks(
                             _sf_targets, SPHERE_CLICK_BATCH_MAX_K)),
                         True, 'prep_spheres')]
-        _prog_sig = _sphere_progress_sig(gs)
+        _prog_sig = _ore_progress_sig(gs)
         _streak = 0
         if isinstance(_ct_sp, dict) \
                 and _ct_sp.get('sphere_defer_progress_sig') == _prog_sig:
@@ -524,26 +524,26 @@ def emit(session: StrategySession,
             _ct_sp['sphere_defer_progress_sig'] = _prog_sig
         if _streak <= SPHERE_DEFER_PROBE_K:
             # 单探针:同发射形态 = 常规 prep_spheres 动作。
-            return [Emitted(CwActionClickSpheresParam(
-                        points=select_sphere_clicks(
+            return [Emitted(CwActionCollectOreParam(
+                        points=select_ore_clicks(
                             _sf_targets, SPHERE_CLICK_BATCH_MAX_K)),
                         True, 'prep_spheres')]
         if isinstance(_ct_sp, dict):
             _ct_sp['sphere_defer_yield'] = \
                 _ct_sp.get('sphere_defer_yield', 0) + 1
-        # 让路 fall-through:不发球动作,落入下方常规步骤序(ADR-0642)。
+        # 让路 fall-through:不发晶矿动作,落入下方常规步骤序(ADR-0642)。
         # —— 旧谓词第二腿 + 腾席臂(迁移 B 原案;ADR-0596 §4.9③「结构
         # 保活」明文):**保留原位,当前不可达**(结构性死码,非退役)。
         # 触发条件 `_sf_occupied` 要求 SPHERE_OCCUPYING_COLORS 非空(见
-        # 模块头:现役缺省空集 = 宁多收球不误卖),整块不可达;备选A
+        # 模块头:现役缺省空集 = 宁多收晶矿不误卖),整块不可达;备选A
         # 激活(晶矿 odds 采集批登记占席色,方案 §4)时恢复可达 = 让路
-        # 帧腾席先于收球。禁删除:退役-复活双倍审面(方案稿 §7.1 编排者
+        # 帧腾席先于收晶矿。禁删除:退役-复活双倍审面(方案稿 §7.1 编排者
         # 终态;读者陷阱以本标注显影,零行为代价)。
-        # 名单/球读点换容器现读(迭代 2026-09-18-prep-obs-retirement
+        # 名单/晶矿读点换容器现读(迭代 2026-09-18-prep-obs-retirement
         # 阶段 3.4;黑板字段批 5 删除,死码块同步换源保激活可用)。
         _sf_occupied = any(
             (color or '') in SPHERE_OCCUPYING_COLORS
-            for color, _pt, _r in sphere_click_targets_of(gs))
+            for color, _pt, _r in ore_click_targets_of(gs))
         if _sf_occupied:
             _sf_k = predicates.line_members(
                 getattr(state_of(session), 'target_comp', None))
@@ -568,7 +568,7 @@ def emit(session: StrategySession,
                 dedup_names=set())
             if _sf_cands:
                 # 轮内卖出登记(泄金阶梯档 2 新鲜度排除写端,ADR-0604 §3;
-                # 球路径 M4 腾席与 prep/shop 域 M4 同口径——漏记 = 卖X 后同轮
+                # 晶矿路径 M4 腾席与 prep/shop 域 M4 同口径——漏记 = 卖X 后同轮
                 # 压库买回 X 的净零自旋在该路径残余可达)。
                 mandate.record_round_sold(session, gs,
                                           _sf_cands[0].char_id or '')
@@ -588,7 +588,7 @@ def emit(session: StrategySession,
             if isinstance(_ct_sf, dict):
                 _ct_sf['sphere_blocked_bench_full'] = \
                     _ct_sf.get('sphere_blocked_bench_full', 0) + 1
-            # 球残留跳过:不 return,落入下方常规步骤序(下帧 ① 再尝试)
+            # 晶矿残留跳过:不 return,落入下方常规步骤序(下帧 ① 再尝试)
 
     # ①′ wanted 闭环消费臂(T-159 迁移 A;位次 = ①实体面后、②证明 pass
     # 前——wanted 是未完成义务,滞留越久损失越大,方案 §5.2)。非空返回

@@ -137,7 +137,7 @@ class StrategySession:
     rng: random.Random = field(default_factory=lambda: random.Random(0))
     performance: PerformanceTracker = field(default_factory=PerformanceTracker)  # 观测反馈(双侧 OCR)
     # (prep_obs_frame 黑板帧槽已随黑板退役删除——迭代
-    #  2026-09-18-prep-obs-retirement 阶段 3.5:名单/装备/占用/球全部容器
+    #  2026-09-18-prep-obs-retirement 阶段 3.5:名单/装备/占用/晶矿全部容器
     #  域承载,策略器唯读容器契约归位;观察控制信号降级为备战环 op 局部
     #  对象,不经 session。)
     # (终态契约 §B:黑板帧刷新代次标注 prep_frame_class/shop_frame_class

@@ -612,8 +612,8 @@ class CwSimEngine:
     def _step_ball(self, eng: _Eng, action: CwAction) -> None:
         if not isinstance(action, CwActionPickEventParam):
             return
-        # option_idx 坐标系 = 帧内剩余球列表下标(0 基;面板按剩余序
-        # 收缩呈现,策略器逐球点,已点球不可再点)
+        # option_idx 坐标系 = 帧内剩余晶矿列表下标(0 基;面板按剩余序
+        # 收缩呈现,策略器逐晶矿点,已采晶矿不可再点)
         if not (0 <= action.option_idx < len(eng.balls_left)):
             return
         eng.disclosures.setdefault('reward_ball_content_pending_u23',

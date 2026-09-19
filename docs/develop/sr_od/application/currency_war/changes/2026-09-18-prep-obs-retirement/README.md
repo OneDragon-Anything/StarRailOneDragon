@@ -3,7 +3,7 @@
 ## 文档
 - 设计总纲:[design.md](design.md)
 - 详设:[details/cap-fix.md](details/cap-fix.md)（批 1：部署名单换源 + cap 门槛 + 拒因）
-- 详设:[details/obs-retirement.md](details/obs-retirement.md)（批 2–5：装备归位/占用现算/奖励球域/黑板退役）
+- 详设:[details/obs-retirement.md](details/obs-retirement.md)（批 2–5：装备归位/占用现算/晶矿域/黑板退役）
 - 落地:[landing.md](landing.md)
 
 ## 进度

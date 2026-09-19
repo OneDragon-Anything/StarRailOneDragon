@@ -1,12 +1,12 @@
 """货币战争 备战决策环 执行器(P1;strategy/03(原 doc 15§4)/§13)。
 
-框架层:本模块**不含玩法判断**(何时收球/卖谁/何时出战 = 策略层 CwStrategy.decide_prep_screen),
+框架层:本模块**不含玩法判断**(何时收晶矿/卖谁/何时出战 = 策略层 CwStrategy.decide_prep_screen),
 只负责「机械执行一个动作」(用户裁定 2026-09-10:动作 op 只管机械执行,
 禁止做任何验证——点击/拖拽后不读屏判「是否生效」,落地判定完全归观察侧
 reconcile 对账;终裁:执行回执 ``(progressed, detail)`` 退役,
 ``execute`` 无返回,发出即职责完成)。失败路径(§13.2 修订):
 - 参数非法 → validate 返回错误串(Director 拒绝执行 + 交回留证);
-- 执行前输入契约拒绝(球/箱/按钮等目标不在,执行前观察,M6 边界面)→
+- 执行前输入契约拒绝(晶矿/箱/按钮等目标不在,执行前观察,M6 边界面)→
   本动作未发出,机械交回外循环重观察重决策;
 - 执行异常 → 异常上抛(Director 上抛 = 本环 fail,外层 op retry 接管)。
 
@@ -39,7 +39,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import gs_of_ctx
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CW_ACTION_TYPES,
     CwAction,
-    CwActionClickSpheresParam,
+    CwActionCollectOreParam,
     CwActionDeployMoveParam,
     CwActionFurnaceUseParam,
     CwActionLevelUpParam,
@@ -275,7 +275,7 @@ class PrepActionExecutor:
         两层:① 统一词表白名单(review M-4 —— 未知类型走参数非法路径拒绝,
         不进 execute 的验证失败/fail 循环;元组单一源 = cw_vocab
         CW_ACTION_TYPES);② 静态可判参数(槽位越界/row 枚举)。动态前置
-        (球是否存在/overlay 是否开)由 execute 的完成验证覆盖(验证失败
+        (晶矿是否存在/overlay 是否开)由 execute 的完成验证覆盖(验证失败
         路径,非参数非法路径)。席位域动作坐标系 = 容器槽位表下标 0 基
         (词表模块头声明);机械动作 row/slot = 画面物理槽位 1 基。
         """
@@ -295,11 +295,11 @@ class PrepActionExecutor:
                         f'(0-{len(self._bench_pts) - 1})')
             if action.to_row not in ('front', 'back'):
                 return f'CwActionDeployMoveParam to_row={action.to_row!r} 非法(front/back)'
-        elif isinstance(action, CwActionClickSpheresParam):
+        elif isinstance(action, CwActionCollectOreParam):
             if not action.points:
-                return 'CwActionClickSpheresParam 载荷为空(挑选归决策侧 kernel,空载荷 = 无对象)'
+                return 'CwActionCollectOreParam 载荷为空(挑选归决策侧 kernel,空载荷 = 无对象)'
             if len(action.points) > SPHERE_CLICK_HARD_CAP:
-                return (f'CwActionClickSpheresParam 载荷 {len(action.points)} '
+                return (f'CwActionCollectOreParam 载荷 {len(action.points)} '
                         f'超硬上限 {SPHERE_CLICK_HARD_CAP}(挑选越权)')
         elif isinstance(action, CwActionOpenBoxParam):
             if action.slot is not None and not (1 <= action.slot <= len(self._bench_pts)):
@@ -507,7 +507,7 @@ class PrepActionExecutor:
         - ``CwActionLevelUpParam`` = 0(批2b 翻转:金腿切 ``action.cost`` 直写,唯一
           写点 = 买经验自上报(report_action_level_up_param);原执行缝金差
           ``_last_levelup_spent`` 通道随翻转退役,防双记);
-        - ``CwActionClickSpheresParam`` = None(球金通道随机,执行点不可推算——声明
+        - ``CwActionCollectOreParam`` = None(晶矿金通道随机,执行点不可推算——声明
           盲区,观察覆盖兜底,禁拍值);
         - 其余动作 = 0(发出零金动);未发出 = None(无金动无账)。
         ``None`` 与 0 的消费语义:仅非 None 非 0 进回执 extra 金差键
@@ -530,7 +530,7 @@ class PrepActionExecutor:
             refund = sell_refund(int(getattr(pre_sell_bc, 'star', 1) or 1),
                                  bench_char_cost(pre_sell_bc))
             return int(refund)
-        if isinstance(action, CwActionClickSpheresParam):
+        if isinstance(action, CwActionCollectOreParam):
             return None
         return 0
 
@@ -564,8 +564,8 @@ class PrepActionExecutor:
 
     # ===== 奖励域 =====
 
-    def _click_spheres(self, action: CwActionClickSpheresParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_click_spheres_action.ClickSpheresOp``,统一
+    def _collect_ore(self, action: CwActionCollectOreParam) -> tuple[str, bool]:
+        """薄委托(体已迁 ``cw_collect_ore_action.CollectOreOp``,统一
         动作工厂批3 体迁 + 薄委托,替身缝保留;机械语义 docstring 随体)。"""
         return self._dispatch_action(action)
 

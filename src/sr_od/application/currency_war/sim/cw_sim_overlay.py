@@ -136,7 +136,7 @@ def apply_expert_pick(gs: GameState, char_id: str, faction: str, *,
     落席与席满闸单一实现,禁第二份;默认不注入 = 零副作用契约)。
 
     Returns:
-        落席是否成功(False = 席满拒,球/卡点不动语义)。
+        落席是否成功(False = 席满拒,晶矿/卡点不动语义)。
     """
     ok = bool(place_unit(char_id, faction))
     if ok:

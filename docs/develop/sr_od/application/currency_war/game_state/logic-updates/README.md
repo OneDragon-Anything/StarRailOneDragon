@@ -31,7 +31,7 @@
 | DeployMove | `CwActionDeployMoveOp` | [deploy-move.md](deploy-move.md) | `report_action_deploy_move_param` + board 派生挂钩 |
 | SellDeployed | `CwActionSellDeployedOp` | [sell-deployed.md](sell-deployed.md) | `report_action_sell_deployed_param`(双域统一单点) |
 | WearEquip | `CwActionWearEquipOp` | [wear-equip.md](wear-equip.md) | `report_action_wear_equip_param`(容器 equips 零写 + tracked 账内聚) |
-| ClickSpheres | `CwActionClickSpheresOp` | [click-spheres.md](click-spheres.md) | `report_action_click_spheres_param`(容器精确摘球 + 球金窗登记内聚单点) |
+| ClickSpheres | `CwActionCollectOreOp` | [collect-ore.md](collect-ore.md) | `report_action_collect_ore_param`(容器精确摘晶矿 + 晶矿金窗登记内聚单点) |
 | OpenBox | `CwActionOpenBoxOp` | [open-box.md](open-box.md) | 零写族 `zero_writes`(终结动作,交回外循环下一入口覆盖) |
 | OpenTome | `CwActionOpenTomeOp` | [open-tome.md](open-tome.md) | `report_action_open_tome_param` 腾席(bench kind tome → empty) |
 | OpenBookcard | `CwActionOpenBookcardOp` | [open-bookcard.md](open-bookcard.md) | `report_action_open_bookcard_param` 腾席(bench kind supply_box → empty) |

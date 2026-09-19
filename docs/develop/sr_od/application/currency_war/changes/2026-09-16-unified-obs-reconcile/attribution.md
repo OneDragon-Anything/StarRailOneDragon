@@ -25,14 +25,14 @@
 
 ### 2b. 奖励节点随机收入盲区(+7/+4 两起;run_20260915_065919 / run_20260916_095808)
 
-- 现场:奖励节点(`kind='reward'`)点球(ClickSpheres,2-3 个)+ 卖牌动作链后,投影金 5/7,下一备战帧实读 12/11(差 +7/+4)= 点球奖励金未入逻辑账。
-- 机制:奖励球内容随机(金/装备/角色),金额执行点不可推算——**声明盲区**(持久锚:`cw_exec_state.apply_op_effect` 的 ClickSpheres 零推进申报、`prep_actions._executed_gold_delta` docstring「球金通道随机……禁拍值」)。确证为游戏机制性差异且建模不可行。
+- 现场:奖励节点(`kind='reward'`)采晶矿(ClickSpheres,2-3 个)+ 卖牌动作链后,投影金 5/7,下一备战帧实读 12/11(差 +7/+4)= 采晶矿奖励金未入逻辑账。
+- 机制:晶矿内容随机(金/装备/角色),金额执行点不可推算——**声明盲区**(持久锚:`cw_exec_state.apply_op_effect` 的 ClickSpheres 零推进申报、`prep_actions._executed_gold_delta` docstring「晶矿金通道随机……禁拍值」)。确证为游戏机制性差异且建模不可行。
 - **出口②结构性申报豁免(已落地)**:注册表条目 `('货币战争-备战', 'gold', logic_evidence='proj_sell_refund')`(kernel/cw_mismatch_policy.py EXEMPT_REGISTRY,reason 带声明盲区持久锚);该模式失配落 `exempt_mismatch` 行(可审计、无告警无停机)。逐画面申报,未用字段级通配(粒度纪律);真投影错(退款公式错)由 sim 单帧锁守,真卖出失败经 bench 维失配照停。
 - 验收:条目在册锁 `test_shipped_registry_declares_prep_reward_gold_blind_spot` + 路由/漏斗 exempt 行锁(3.1 已落)+ 3.3 实机验证期 exempt 行落证。
 
 ### 残余风险申报
 
-- 点球收入若与其他逻辑金写端(如 `op_effect_gold_delta` 现金为王 +4)同屏叠加,该写端证伪不在条目辖域 → 安灯停机(罕见;复现即补逐写端申报,治理面在位)。
+- 采晶矿收入若与其他逻辑金写端(如 `op_effect_gold_delta` 现金为王 +4)同屏叠加,该写端证伪不在条目辖域 → 安灯停机(罕见;复现即补逐写端申报,治理面在位)。
 - 「卖出点击未生效」真失败:金维被本条目豁免,但 bench 维投影同被实读证伪 → bench 失配行(无豁免)照停,真失败不灭失。
 
 ## 直写端族时序面清点(design §2.6-3,逐个定性)

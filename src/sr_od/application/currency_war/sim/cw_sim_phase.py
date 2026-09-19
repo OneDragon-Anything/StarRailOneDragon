@@ -39,7 +39,7 @@ class CwSimPhase(Enum):
     SUPPLY_PICK = 'supply_pick'
     #: 补给箱 4 选 1 装备(M17)
     BOX_PICK = 'box_pick'
-    #: 奖励球逐球点选(M17)
+    #: 晶矿逐晶矿点选(M17)
     REWARD_BALL = 'reward_ball'
     #: 事件浮层族(巨星/伙伴/专家邀请/Fate/骇入等,M22)
     EVENT_OVERLAY = 'event_overlay'
@@ -61,10 +61,10 @@ CARD_OFFER_PHASES: frozenset[CwSimPhase] = frozenset({
 
 @dataclass(frozen=True)
 class RewardBall:
-    """奖励球面板一球(M17/U23:球内容入账语义;分布参数候实机数据,
+    """晶矿面板一晶矿(M17/U23:晶矿内容入账语义;分布参数候实机数据,
     首版以实测样本单例披露)。"""
 
-    #: 球档位色签(实测样本 1 大金球+5 蓝球+2 灰球;词表随 U23 回填定型)
+    #: 晶矿档位色签(实测样本 1 大金晶矿+5 蓝晶矿+2 灰晶矿;词表随 U23 回填定型)
     color: str
     #: 内容物描述(金/装备名/角色名/补给箱;入账通道按内容分派)
     content: str
@@ -87,7 +87,7 @@ class CwSimObservation:
     encounter_options: tuple[EncounterOption, ...] = ()
     #: 箱候选装备名(box_pick,4 选 1)
     box_options: tuple[str, ...] = ()
-    #: 奖励球面板(reward_ball;逐球点选)
+    #: 晶矿面板(reward_ball;逐晶矿点选)
     balls: tuple[RewardBall, ...] = ()
     #: 浮层类别名(event_overlay;megastar/partner/expert/planner/fate/aha/hack)
     overlay_kind: str = ''

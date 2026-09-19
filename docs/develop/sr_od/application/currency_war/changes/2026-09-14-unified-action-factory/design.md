@@ -10,7 +10,7 @@
 > 改决策核逐个发原子动作;删除时机=原子通路就位后,归一词表批内);
 > R3 CompTransaction 删(整档替换宏动作=策略内容,词表/kernel 建模/
 > sim 消费/op 全链删除);
-> R4 ClickSpheres 改形(动作携带球坐标列表,执行器纯机械逐个点;
+> R4 ClickSpheres 改形(动作携带晶矿坐标列表,执行器纯机械逐个点;
 > 词表边界声明:框架词表=原子动作+坐标参数化机械动作,其余=策略实现);
 > R5 刷新=终结(投资环境刷新圆钮已落码,commit 05b027af6;作为「刷新
 > 终结」结构语义先例写入本设计);
@@ -88,7 +88,7 @@
   4. 词表边界失守:备战词表混入策略实现——组合壳 `RunDeploy`/`RunEquip`
      /`RunTools`(一次发射封装整段流程,计划与授权在执行器内闭环,
      `cw_prep_actions.py:156-167`);批式挑选载荷 `ClickSpheres.max_k`
-     (大球优先与预算截断在执行器 `_click_spheres` :1046-1063);商店
+     (大晶矿优先与预算截断在执行器 `_click_spheres` :1046-1063);商店
      词表混入整档替换宏 `CompTransaction`(`cw_vocab.py:611`,全仓零
      生产构造,仅词表内 :1239 内部重组构造);选卡决策以备战动作承载:
    `PickBoxCard`(`cw_prep_actions.py:68`,发射点 `entry.py:457`
@@ -392,13 +392,13 @@
     策略截停集收缩(`flow.py:744/:799`、`bridge.py:170/:231`、
     `shop.py:260`)。
 - **ClickSpheres 改形**(用户裁定 R4):保留动作类,改坐标参数化——
-  载荷 = 有序球坐标列表(观察侧供球:`PrepObservation.spheres`
+  载荷 = 有序晶矿坐标列表(观察侧供晶矿:`PrepObservation.spheres`
   `cw_prep_actions.py:230`,形态 [(color, Point, r)]);执行器纯机械
-  逐个点(现 `_click_spheres` 读屏与排序半 :1059-1063 删除);大球优先
+  逐个点(现 `_click_spheres` 读屏与排序半 :1059-1063 删除);大晶矿优先
   /上界挑选逻辑迁决策侧 kernel 单一源(纯选择函数:输入 obs.spheres +
   席位约束,输出有序点击列表);发射位(`entry.py:492/:506`)调用之。
   逻辑态随改形收紧:现保守清空(`_project_prep_obs` :933-934)改按载荷
-  精确摘球。旧 max_k 载荷退役,旧 journal 行可弃(R1 同规)。
+  精确摘晶矿。旧 max_k 载荷退役,旧 journal 行可弃(R1 同规)。
 - **武装箱四选一独立成画面 op**(用户裁定 R7):
   - **PickBoxCard 删除**(词表 13 → 12):发射点 `entry.py:457`
     ('prep_box_pick' 臂)删除;执行链 `validate`(:690-692)/分派

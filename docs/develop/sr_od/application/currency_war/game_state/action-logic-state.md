@@ -21,7 +21,7 @@
 动作后果一分为二：
 
 - **确定面** = 规则上唯一可推算的部分：扣多少金、哪个槽位清空、谁升星、退多少金。逻辑态只写确定面。
-- **随机面** = 游戏内部掷随机数的部分：刷新后的新牌面、冶金炉的变异产物、奖励球的掉落内容、掉落的金币数额。**随机面不进逻辑态，归下一帧观察。**
+- **随机面** = 游戏内部掷随机数的部分：刷新后的新牌面、冶金炉的变异产物、晶矿的掉落内容、掉落的金币数额。**随机面不进逻辑态，归下一帧观察。**
 
 ### 1.3 写口归属：op 上报动作，game state 独占写逻辑态（硬规则）
 
@@ -47,8 +47,8 @@
 | tracked 主账随动账 | `GameState.tracked_books`（`TrackedBooks` 容器簿记,bench/deployed 槽位表） | `mutate_bench_deployed` + 执行器 tracked 同步分支（`prep_actions.py::PrepActionExecutor._track_remove_bench` / `_track_remove_deployed` / `_track_move_deployed`） | 执行侧随动账;双账比对已退役（2026-09-15,对账唯一发生点 = 观察边界,见 screen_op §2.3/§4） |
 | 推演帧 | sim 引擎 `CwSimFrame` 整帧副本 | 原写口 `simulate`（整帧副本单步动作应用器）已退役（零生产消费，考古归 git） | 动作转移语义单一源 = 容器逻辑态直写（首行）；语义验证 = M1 直锁（`test_cw_shop_projection_logic`） |
 
-视觉域动作的容器面（迭代 2026-09-18-prep-obs-retirement 阶段 3.5 起）：球/箱/典籍
-的容器腿已进各自上报函数（ClickSpheres 精确摘球 = `report_action_click_spheres_param` /
+视觉域动作的容器面（迭代 2026-09-18-prep-obs-retirement 阶段 3.5 起）：晶矿/箱/典籍
+的容器腿已进各自上报函数（ClickSpheres 精确摘晶矿 = `report_action_collect_ore_param` /
 OpenTome·OpenBookcard 腾席 = `report_action_open_tome_param`/`report_action_open_bookcard_param`，§3.4-§3.7）；`PrepObservation`（`kernel/cw_prep_actions.py`）
 降级为备战环 op 局部控制信号载体（shop_open/substate/event_overlay），不再是
 策略器输入，黑板宿主 `gs.prep_obs`/`session.prep_obs_frame` 已退役删除。
@@ -160,7 +160,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 备战域动作词表 = `kernel/cw_vocab.py::CW_ACTION_TYPES` 备战域子集；执行器 = `prep_actions.py::PrepActionExecutor`（机械执行，发出即职责完成，落地判定归观察对账）。容器写语义单一源 = 各动作的上报函数 `kernel/cw_action_report/<snake>.py::report_action_<snake>_param`（写域申报面 = 各函数 docstring；金账/库存腿内聚于函数 `session` 形参面；零写动作族 = `zero_writes.py` 集中申报）；dict 确认族到账 = `kernel/cw_exec_state.py::apply_confirm_effect`。slot 语义 = 词表摊平后统一为槽位表下标（原生 `BenchSlot` 形态，零换算；历史「备战栏物理槽位 1-9」口径随双域腿统一消亡）。
 
-**发射形态（R2 原子通路，批 2a 起）**：决策核逐帧发原子动作（部署 = DeployMove 序 / 穿戴 = WearEquip 序 / 工具 = 各消耗品原子类 / 卖出 = SellBench/SellDeployed），备战环逐帧执行决策输出的恰一个动作（None = 本帧无动作，交回外循环重观察）；组合壳（RunDeploy/RunEquip/RunTools）不再是生产发射形态（类与登记行删除归批 2b 归一删除面）。发射位计划构造单一源 = `kernel/cw_deploy_logic.py::select_deployments`+`assign_deploy_slots`（部署）、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`（穿戴）、`kernel/cw_equip_env.py::evaluate_tool_actions`+`admitted_tool_actions`（工具 G1 准入）、`kernel/cw_prep_actions.py::select_sphere_clicks`（点球载荷）。
+**发射形态（R2 原子通路，批 2a 起）**：决策核逐帧发原子动作（部署 = DeployMove 序 / 穿戴 = WearEquip 序 / 工具 = 各消耗品原子类 / 卖出 = SellBench/SellDeployed），备战环逐帧执行决策输出的恰一个动作（None = 本帧无动作，交回外循环重观察）；组合壳（RunDeploy/RunEquip/RunTools）不再是生产发射形态（类与登记行删除归批 2b 归一删除面）。发射位计划构造单一源 = `kernel/cw_deploy_logic.py::select_deployments`+`assign_deploy_slots`（部署）、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`（穿戴）、`kernel/cw_equip_env.py::evaluate_tool_actions`+`admitted_tool_actions`（工具 G1 准入）、`kernel/cw_prep_actions.py::select_ore_clicks`（采晶矿载荷）。
 
 ### 3.1 DeployMove（备战席 → 上阵单步拖拽）
 
@@ -219,23 +219,23 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 ### 3.5 OpenTome（开秘密典籍）
 
-**确定面**：秘密典籍道具占备战席 1 槽（类补给箱；**获得时入席** = 投资策略「秘密典籍」的发放事件，属观察面非本动作）。本动作点槽两次（选中→开启）→ 典籍离席腾槽 + 星徽四选一 overlay 弹出；**容器腾席腿**（迭代阶段 3.5 进写口）：bench 槽 kind `'tome'` → `'empty'`（OpenTome 非终结，同 visit 后续帧球谓词消费 bench 席空数存在真实窗口；陈旧提案 = 槽类型不符零写）。
+**确定面**：秘密典籍道具占备战席 1 槽（类补给箱；**获得时入席** = 投资策略「秘密典籍」的发放事件，属观察面非本动作）。本动作点槽两次（选中→开启）→ 典籍离席腾槽 + 星徽四选一 overlay 弹出；**容器腾席腿**（迭代阶段 3.5 进写口）：bench 槽 kind `'tome'` → `'empty'`（OpenTome 非终结，同 visit 后续帧晶矿谓词消费 bench 席空数存在真实窗口；陈旧提案 = 槽类型不符零写）。
 
 **随机面 / 观察面**：四选一卡面内容归观察；选卡决策 = 外循环 0i handler（板上阵营匹配），落地记录走 chosen_tome（§6 边界），本动作不选卡。
 
 **依据**：`kernel/cw_prep_actions.py::OpenTome`；`prep_actions.py::_open_tome`。
 
-### 3.6 ClickSpheres（点奖励球）
+### 3.6 ClickSpheres（点晶矿）
 
-**确定面**：坐标列表中**被点的球按载荷坐标精确摘除**（容器 spheres 域 `SphereSight.points` 精确摘除，`report_action_click_spheres_param`——坐标匹配，R4 改形后载荷即点击列；原「保守清空」随改形退役；域未观察/载荷无交集 = 陈旧提案零写；原黑板腿随 gs.prep_obs 退役迁移本口，迭代阶段 3.4）。count/colors 随摘除同步重算。
+**确定面**：坐标列表中**被点的晶矿按载荷坐标精确摘除**（容器 spheres 域 `SphereSight.points` 精确摘除，`report_action_collect_ore_param`——坐标匹配，R4 改形后载荷即点击列；原「保守清空」随改形退役；域未观察/载荷无交集 = 陈旧提案零写；原黑板腿随 gs.prep_obs 退役迁移本口，迭代阶段 3.4）。count/colors 随摘除同步重算。
 
-**发射形态（R4 坐标参数化机械动作）**：载荷 = 有序球坐标点击列表（大球优先/上界挑选归决策侧 kernel 单一源 = `kernel/cw_prep_actions.py::select_sphere_clicks`，发射位以预算常量 `SPHERE_CLICK_BATCH_MAX_K` 调用）；执行器纯机械逐个点（原读屏选球与批内截断半随改形退役）。
+**发射形态（R4 坐标参数化机械动作）**：载荷 = 有序晶矿坐标点击列表（大晶矿优先/上界挑选归决策侧 kernel 单一源 = `kernel/cw_prep_actions.py::select_ore_clicks`，发射位以预算常量 `SPHERE_CLICK_BATCH_MAX_K` 调用）；执行器纯机械逐个点（原读屏选晶矿与批内截断半随改形退役）。
 
-**随机面 / 观察面**：球内容（金币/角色/装备/掉箱）与金额 = 随机面归观察——执行点金差显式申报为 None 盲区（`PrepActionExecutor._executed_gold_delta` ClickSpheres 支，禁拍值）；点开占席球（角色/箱）落席占 1 槽；掉箱 → 下一帧观察 → OpenBox 臂统筹。
+**随机面 / 观察面**：晶矿内容（金币/角色/装备/掉箱）与金额 = 随机面归观察——执行点金差显式申报为 None 盲区（`PrepActionExecutor._executed_gold_delta` ClickSpheres 支，禁拍值）；点开占席晶矿（角色/箱）落席占 1 槽；掉箱 → 下一帧观察 → OpenBox 臂统筹。
 
-**前置谓词（席满拦截）**：bench 空闲 >0 ∨ 球均不占席，才发射点球（fields.md §4.2 ClickSpheres；席满让路门 = 策略发射面席满探针）。席满点占席球 = 游戏侧点不动，球仍在 → 下一帧观察回补、下轮再派。
+**前置谓词（席满拦截）**：bench 空闲 >0 ∨ 晶矿均不占席，才发射采晶矿（fields.md §4.2 ClickSpheres；席满让路门 = 策略发射面席满探针）。席满点占席晶矿 = 游戏侧点不动，晶矿仍在 → 下一帧观察回补、下轮再派。
 
-**依据**：`kernel/cw_prep_actions.py::ClickSpheres`/`select_sphere_clicks`；`prep_actions.py::_click_spheres`；`fields.md` §4.2 ClickSpheres；`research/screen_flow_timing.md` #16（飞行动画 ≤2s）。
+**依据**：`kernel/cw_prep_actions.py::ClickSpheres`/`select_ore_clicks`；`prep_actions.py::_click_spheres`；`fields.md` §4.2 ClickSpheres；`research/screen_flow_timing.md` #16（飞行动画 ≤2s）。
 
 ### 3.7 OpenBookcard（开书册卡）
 
@@ -345,4 +345,4 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 | G8 | 晋升名额「买经验时随机一槽变高 1 费」副作用 | LevelUp（两形态） | 同 G7（随机面归观察） | 持晋升名额局买经验前后牌面费用对拍 |
 | G9 | 免战牌跳过后 hp/streak/收入「不动」（暂定表述） | StartBattle（跳过子态） | 跳过无结算帧；下一备战帧观察覆盖时三字段必核对 | 免战局跳过前后三字段对拍 |
 
-（随机面类目——刷新新牌、冶金炉产物、奖励球内容、掉落金额——**不在本表**：它们受 §1.2 确定性原则管辖，是原则性的观察收口，不是待补档缺口。）
+（随机面类目——刷新新牌、冶金炉产物、晶矿内容、掉落金额——**不在本表**：它们受 §1.2 确定性原则管辖，是原则性的观察收口，不是待补档缺口。）

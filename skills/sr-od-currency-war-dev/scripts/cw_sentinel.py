@@ -46,7 +46,7 @@
      整局失明);判词用 NONZERO_RE(只认 ≥1 的动作数)。
   ② `[cw][composite]` 复合动作成功(部署/装备等真实执行,prep_actions 发出)。
   ③ state 行/on_round_end 的 round/plane 变化(含新局回绕);「进位面」。
-  ④ 点球收集成功(CwActionClickSpheresParam → ✓,奖励节点无战斗时的唯一推进迹象,
+  ④ 采晶矿收集成功(CwActionCollectOreParam → ✓,奖励节点无战斗时的唯一推进迹象,
      08-25 回放实证 03:28/17:07 两例缺它误报)。
 刻意不算:「→ ✓」「执行成功」「出战成功」等裸成功字样——run 24 实证弹窗
 误判下「出战成功」每轮假成功;1-1 卡死实证「CwActionOpenShopParam → ✓」每轮假成功。
@@ -256,17 +256,17 @@ LOOP_PREFIXES = ('[cw][director]', '[cw-loop]', '[cw][battle]', '[cw-deploy]')
 # 两种日志形态都认(2026-08-25/26 实测):
 #   ① shop 决策行 'state gold=24 hp=84 lv=4 plane=1 round=3 ...'(cw_op_buy_cards);
 #   ② 战斗回合行 '[cw-loop] on_round_end plane=1 round=9 ...'(两期通用)。
-# 08-25 只认①时三类正常段误报实证:点球爆发(CwActionClickSpheresParam 同签名一局 7-10 次)
+# 08-25 只认①时三类正常段误报实证:采晶矿爆发(CwActionCollectOreParam 同签名一局 7-10 次)
 # /备战相位进入/部署跳过——②缺位 → round 推进不可见。
 STATE_GATE = 'state gold='
 ROUND_RE = re.compile(r'round=(\d+)')
 PLANE_RE = re.compile(r'plane=(\d+)')
-# 推进事件的「阻断时效」(秒):推进后此窗口内不判循环(点球爆发等单轮高频
+# 推进事件的「阻断时效」(秒):推进后此窗口内不判循环(采晶矿爆发等单轮高频
 # 正常动作靠它豁免);超时后即使窗口里还有更早的推进行,只要同签名动作行
 # 已重复满阈值仍报警——run 24 实证:推进停在 04:34:02,若阻断时效=整个
 # LOOP_WIN(1500s) 则 04:59 才报,浪费 16min。
 LOOP_STALE = int(os.environ.get('CW_SENTINEL_LOOP_STALE', 600))
-# 同签名首末出现最小跨度(秒):区分「持续循环」与「单轮爆发」。奖励节点点球
+# 同签名首末出现最小跨度(秒):区分「持续循环」与「单轮爆发」。奖励节点采晶矿
 # 单轮可爆发 4-7 次同一签名(44s 内),run 24 卡死循环 10 次跨 ~500s——跨度
 # <300s 的纯爆发不算卡死(08-25 03:28/17:07 两例误报的根因)。
 LOOP_SPAN_MIN = int(os.environ.get('CW_SENTINEL_LOOP_SPAN', 300))
@@ -435,7 +435,7 @@ def _loop_feed(line: str, tod: int) -> tuple[bool, str, str]:
 
     实质推进(任一,记入 loop_progress;判据单一源见文件头):
       ①plan 结果行含非零 买/升/刷/卖;②[composite] 复合动作成功;
-      ③state 行 round/plane 变化;④「进位面」;⑤点球收集成功。
+      ③state 行 round/plane 变化;④「进位面」;⑤采晶矿收集成功。
     白名单动作行记入 loop_recent;窗口内零推进且同签名 ≥ LOOP_N(跨度达
     LOOP_SPAN_MIN)→ ('loop', 签名, '')。
     state/on_round_end 行同相位持续观测 ≥ DWELL_SEC → ('dwell', 相位描述, '')。
@@ -459,10 +459,10 @@ def _loop_feed(line: str, tod: int) -> tuple[bool, str, str]:
             loop_last_rp = rp
     if '进位面' in line:
         progressed = True
-    # 点球(奖励球收集)成功 = 实质游戏状态推进——08-25 回放实证:奖励节点无战斗
-    # → 无 on_round_end,旧格式 state 行缺位,点球爆发(单轮 4-7 次)是唯一推进
+    # 采晶矿(晶矿收集)成功 = 实质游戏状态推进——08-25 回放实证:奖励节点无战斗
+    # → 无 on_round_end,旧格式 state 行缺位,采晶矿爆发(单轮 4-7 次)是唯一推进
     # 迹象;不认它则奖励段跨 600s 即误报(03:28/17:07 两例实证)。
-    if 'CwActionClickSpheresParam' in line and '→ ✓' in line:
+    if 'CwActionCollectOreParam' in line and '→ ✓' in line:
         progressed = True
     if progressed:
         loop_progress.append(tod)

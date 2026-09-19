@@ -44,7 +44,7 @@ sim 是**游戏本体的单局模拟器**（「模拟实机环境」），不是
 
 ### 1.3 观测帧与相位
 
-相位枚举 = 实机画面对应的交互状态机：`opening_env`（投资环境选卡，环境在场时）/`prep`（备战：商店/买/升/部署/卖）/`invest_offer`（局中策略选卡）/`encounter_offer`（遭遇选档）/`supply_pick`（补给 3 选 1）/`box_pick`（补给箱）/`reward_ball`（奖励球）/`event_overlay`（巨星/伙伴/专家邀请/Fate/骇入等）/`settlement`（结算）/`plane_transition`（位面过渡）/`game_over`。相位与实机画面建档（`docs/game/screens/currency_war_*.md`）一一对应。
+相位枚举 = 实机画面对应的交互状态机：`opening_env`（投资环境选卡，环境在场时）/`prep`（备战：商店/买/升/部署/卖）/`invest_offer`（局中策略选卡）/`encounter_offer`（遭遇选档）/`supply_pick`（补给 3 选 1）/`box_pick`（补给箱）/`reward_ball`（晶矿）/`event_overlay`（巨星/伙伴/专家邀请/Fate/骇入等）/`settlement`（结算）/`plane_transition`（位面过渡）/`game_over`。相位与实机画面建档（`docs/game/screens/currency_war_*.md`）一一对应。
 
 sim 是唯一的状态推进者与随机量产生者；策略器不消费 sim 的随机流、不感知 seed。
 
@@ -76,7 +76,7 @@ sim 是唯一的状态推进者与随机量产生者；策略器不消费 sim �
 
 ## 3. 动作应用契约
 
-- **玩家动作**（买/卖/刷/升级/部署/穿戴/选卡/点球/工具）→ 引擎入口 `sim/cw_sim_actions.py::apply_player_action` 一行委托分支串逐动作直调上报函数族 `kernel/cw_action_report/report_action_<snake>_param`，拒绝语义在函数内（`LogicOutcome` 出参），禁引擎自判拒绝；部署 = `CwActionDeployMoveParam` 同串直调 `report_action_deploy_move_param`（sim 自喂 `executed` 决定量：refresh_paid = refresh_cost_for、levelup_clicks=1、买牌 k 自算——满栏合成买在函数内）。
+- **玩家动作**（买/卖/刷/升级/部署/穿戴/选卡/采晶矿/工具）→ 引擎入口 `sim/cw_sim_actions.py::apply_player_action` 一行委托分支串逐动作直调上报函数族 `kernel/cw_action_report/report_action_<snake>_param`，拒绝语义在函数内（`LogicOutcome` 出参），禁引擎自判拒绝；部署 = `CwActionDeployMoveParam` 同串直调 `report_action_deploy_move_param`（sim 自喂 `executed` 决定量：refresh_paid = refresh_cost_for、levelup_clicks=1、买牌 k 自算——满栏合成买在函数内）。
 - **环境事件**（发牌/收入/结算/offer 生成/位面推进）→ sim 机制面按各模块规格执行，以 obs 渠道写容器。
 - 各模块（开局/位面日程/商店/牌池/收入/战斗/装备/节点事件/offer/overlay/敌人难度/特殊角色）的模拟规格承载在 `sim/cw_sim_*.py` 模块 docstring（每模块写实机逻辑依据、sim 状态与转移、概率源与流键），本文不重复。
 

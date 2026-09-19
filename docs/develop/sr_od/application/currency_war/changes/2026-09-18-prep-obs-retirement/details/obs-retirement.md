@@ -2,7 +2,7 @@
 
 ## 问题与约束
 
-- 总纲接口契约 3（坐标契约）、4（写端唯一）约束本篇；阶段 3.1 已完成决策帧名单换源与 M7 读点切换（`details/cap-fix.md`），本篇在其基础上把装备、占用、奖励球依次归位，最终删除 `gs.prep_obs`。
+- 总纲接口契约 3（坐标契约）、4（写端唯一）约束本篇；阶段 3.1 已完成决策帧名单换源与 M7 读点切换（`details/cap-fix.md`），本篇在其基础上把装备、占用、晶矿依次归位，最终删除 `gs.prep_obs`。
 - 约束：识别 reader 本体（SIFT/OCR/模板）不动；本篇只迁移「识别结果的承载与消费」。
 
 ## 方案
@@ -16,18 +16,18 @@
 
 ### 阶段 3.3：占用改现算（批 3）
 
-1. **席空数读端切换 = 复用既有读口，零新立**：kernel 已有 `bench_free_slots(gs)`（cw_game_state.py:1085-1092，`slot_occupies` 口径 :1079-1082——unit/supply_box/tome 天然占席，宝箱/典籍占席自动计入）与 `bench_is_full`（:1095-1100）。球谓词席自由槽读数（entry.py:141-146 `_sphere_bench_free`）改读 `bench_free_slots`：None（bench 未观察）→ BENCH_CAPACITY 保守（宁多收球不误卖，语义与既有口 None=不确定吻合）。
+1. **席空数读端切换 = 复用既有读口，零新立**：kernel 已有 `bench_free_slots(gs)`（cw_game_state.py:1085-1092，`slot_occupies` 口径 :1079-1082——unit/supply_box/tome 天然占席，宝箱/典籍占席自动计入）与 `bench_is_full`（:1095-1100）。晶矿谓词席自由槽读数（entry.py:141-146 `_ore_bench_free`）改读 `bench_free_slots`：None（bench 未观察）→ BENCH_CAPACITY 保守（宁多收晶矿不误卖，语义与既有口 None=不确定吻合）。
 2. **前后排占用集（`obs.front_occupied`/`back_occupied`）不迁移、本阶段不动**（实施期修正：原稿误判其审计消费为容器侧）：双源对拍（cw_screen_prep.py:829-856，paddle OCR X vs CV 占用扫描）两条腿**均为识别面读数互证**，与容器无关；占用集本身 = 每步现读的识别轻字段（非状态账）。其消费 = 该对拍（合法存续）+ 黑板投影推进（cw_screen_prep.py:1053-1059，随阶段 3.5 投影退役消失）。
-3. `free_bench_slots` 黑板字段消费已断（球谓词已切容器派生），随批 5 删;`deploy_vacancy`/`front_size` 同（无决策活消费）。
+3. `free_bench_slots` 黑板字段消费已断（晶矿谓词已切容器派生），随批 5 删;`deploy_vacancy`/`front_size` 同（无决策活消费）。
 
-### 阶段 3.4：奖励球立域（批 4）
+### 阶段 3.4：晶矿立域（批 4）
 
-1. **复用既有域 + 扩载荷坐标**（实施期修正：容器 `spheres` 域已存在——§3.2.8 立域,`SphereSight` 现役仅 count/colors 交互机会信号、**零写端**;坐标契约要求点击载荷随识别进容器,故扩充 `SphereSight.points: tuple[(color, x, y, r), ...]`,frozen dataclass 缺省空元组向后兼容）。kernel 立读口 `sphere_click_targets_of(gs)`（cw_prep_actions,与 select_sphere_clicks 同文件配套）还原 `(color, Point, r)` 元组形态,消费面签名不变。
-2. **写端**：备战入口观察链上报（两帧持存防抖 `filter_persistent_spheres` 留在观察链内部，cw_screen_prep.py:574-578，防抖状态 op 局部自持）。
-3. **读端切换（三处，全量清单）**：球臂探针分支（entry.py:507-509）、**席自由分支发射位（entry.py:492-495，同式 `select_sphere_clicks(obs.spheres, ...)`）**、**席满让路门成效签名（entry.py:170-186 `_sphere_progress_sig`——`getattr(obs, 'spheres')` 球计数与 `getattr(obs, 'bench_chars')` 席计数两分量分别切容器球域读数与 `bench_free_slots` 派生**；此消费若漏切，批 5 删字段后签名经 getattr 缺省静默退化（门成效重置失效无报错），属本迭代要消灭的形态，列为本阶段验收项）。
-4. **逻辑态迁移**：`ClickSpheres` 增 kernel 写口分支（`apply_prep_action_logic`，载荷坐标精确摘除，语义 = 现黑板腿 cw_screen_prep.py:974-978 逐位迁移）；黑板球腿删除。正本 `game_state/logic-updates/click-spheres.md` 的「容器 GameState 零写（视觉域推进）」语义翻转（正本更新清单）。
-5. **死码块同批换源**：球路径腾席判据块（entry.py:522-566，结构性死码）内的 `obs.spheres`（:524）与 `obs.bench_chars`/`obs.deployed_chars`（:534-539）读点随本阶段换容器读口——批 5 删字段前消除对该块的不可达性依赖（cap-fix.md §方案-5 申报的归属落点）。
-6. **对账收益**：球域写入进事件流，「点空 = 球未消」由下一入口观察回补覆盖的既有机制获得 journal 显影。
+1. **复用既有域 + 扩载荷坐标**（实施期修正：容器 `spheres` 域已存在——§3.2.8 立域,`OreSight` 现役仅 count/colors 交互机会信号、 **零写端**;坐标契约要求点击载荷随识别进容器,故扩充 `SphereSight.points: tuple[(color, x, y, r), ...]`,frozen dataclass 缺省空元组向后兼容）。kernel 立读口 `sphere_click_targets_of(gs)`（cw_prep_actions,与 select_ore_clicks 同文件配套）还原 `(color, Point, r)` 元组形态,消费面签名不变。
+2. **写端**：备战入口观察链上报（两帧持存防抖 `filter_persistent_ores` 留在观察链内部，cw_screen_prep.py:574-578，防抖状态 op 局部自持）。
+3. **读端切换（三处，全量清单）**：晶矿臂探针分支（entry.py:507-509）、 **席自由分支发射位（entry.py:492-495，同式 `select_ore_clicks(obs.spheres, ...)`）**、 **席满让路门成效签名（entry.py:170-186 `_ore_progress_sig`——`getattr(obs, 'spheres')` 晶矿计数与 `getattr(obs, 'bench_chars')` 席计数两分量分别切容器晶矿域读数与 `bench_free_slots` 派生**；此消费若漏切，批 5 删字段后签名经 getattr 缺省静默退化（门成效重置失效无报错），属本迭代要消灭的形态，列为本阶段验收项）。
+4. **逻辑态迁移**：`ClickSpheres` 增 kernel 写口分支（`apply_prep_action_logic`，载荷坐标精确摘除，语义 = 现黑板腿 cw_screen_prep.py:974-978 逐位迁移）；黑板晶矿腿删除。正本 `game_state/logic-updates/collect-ore.md` 的「容器 GameState 零写（视觉域推进）」语义翻转（正本更新清单）。
+5. **死码块同批换源**：晶矿路径腾席判据块（entry.py:522-566，结构性死码）内的 `obs.spheres`（:524）与 `obs.bench_chars`/`obs.deployed_chars`（:534-539）读点随本阶段换容器读口——批 5 删字段前消除对该块的不可达性依赖（cap-fix.md §方案-5 申报的归属落点）。
+6. **对账收益**：晶矿域写入进事件流，「点空 = 晶矿未消」由下一入口观察回补覆盖的既有机制获得 journal 显影。
 
 ### 阶段 3.5：gs.prep_obs 退役（批 5）
 
@@ -37,7 +37,7 @@
 |---|---|
 | `bench_chars` / `deployed_chars` | 阶段 3.1 已切容器（entry 组装 + wanted 臂 + M7 读点）；本阶段删 |
 | `owned_equips` / `occupied_equips` / `back_layout_slots` | 阶段 3.2 已切容器；本阶段删 |
-| `spheres` | 阶段 3.4 已切容器（含 `_sphere_progress_sig` 与死码块）；本阶段删 |
+| `spheres` | 阶段 3.4 已切容器（含 `_ore_progress_sig` 与死码块）；本阶段删 |
 | `boxes` / `tomes` | **占席与分派归容器 bench kind，写端本阶段细分补齐**（见下 1a）；决策臂改读 bench kind；字段本阶段删 |
 | `free_bench_slots` | 阶段 3.3 已切 `bench_free_slots`；本阶段删 |
 | `front_occupied` / `back_occupied` | 阶段 3.3 审计侧已切 `deployed_count_of`，投影面随本阶段退役；本阶段删 |
@@ -54,10 +54,10 @@
 
 ### 阶段 3.5 实施期修正（落地实况与原稿的差异，验收按本段为准）
 
-1. **词表补齐清单收缩**：`WearEquip`/工具原子族**不进写口**——正本 `action-logic-state.md` 申报「消费真值归观察」，且两者均为截断点（独占发射帧）→ 发出即 visit 结束 → 下一入口 heavy 覆盖，**零窗口暴露**；原稿列名过度设计。实际进写口的只有 `OpenTome`/`OpenBookcard` 腾席分支（bench 槽 kind → `empty` 化；OpenTome 非终结、同 visit 后续帧球谓词消费 bench 席空数，存在真实窗口）。词表外防线语义 = **合法零写**（登记面申报,docstring 明列两集），非 AssertionError——AssertionError 随投影函数整体消亡。测试锚 = `test_vocab_actions_all_have_logic_state_projection`（写口分支集 write_seq 推进 + 零写集 write_seq 不变的行为锁）。
+1. **词表补齐清单收缩**：`WearEquip`/工具原子族**不进写口**——正本 `action-logic-state.md` 申报「消费真值归观察」，且两者均为截断点（独占发射帧）→ 发出即 visit 结束 → 下一入口 heavy 覆盖，**零窗口暴露**；原稿列名过度设计。实际进写口的只有 `OpenTome`/`OpenBookcard` 腾席分支（bench 槽 kind → `empty` 化；OpenTome 非终结、同 visit 后续帧晶矿谓词消费 bench 席空数，存在真实窗口）。词表外防线语义 = **合法零写**（登记面申报,docstring 明列两集），非 AssertionError——AssertionError 随投影函数整体消亡。测试锚 = `test_vocab_actions_all_have_logic_state_projection`（写口分支集 write_seq 推进 + 零写集 write_seq 不变的行为锁）。
 2. **kernel 写口 bench 侧原生化（roundtrip 残余根因修）**：`SellBench`/`DeployMove` 分支原走 `bench_slots_of`→`bench_view_of_slots` legacy roundtrip——`is_item_slot` 布尔无法恢复 box/tome 类型,roundtrip 会让 kind 细分在**写口首次写后退化为 supply_box**,OpenTome 臂分派失据（T-5 实施中 2a 锁实测暴露）。修 = 两分支改原生 `BenchView.slots` 操作（Unit 直取消费）,legacy roundtrip 从写口消失。
 3. **`lifecycle_decision_cycle` 的 `payload` 形参保留**——基类 `cw_screen_op_base` 抽象签名（统一分发面传参）,子类覆写禁减参;本类零消费,docstring 申报。
-4. **黑板球腿删除收口**：`_project_prep_obs`（含 `_project_tool_obs`）整体删除即覆盖——ClickSpheres 的黑板推进随函数消亡,容器写口（阶段 3.4）为唯一摘球端。
+4. **黑板晶矿腿删除收口**：`_project_prep_obs`（含 `_project_tool_obs`）整体删除即覆盖——ClickSpheres 的黑板推进随函数消亡,容器写口（阶段 3.4）为唯一摘晶矿端。
 5. **`front_occupied`/`back_occupied` 保留**（对拍腿识别轻字段,消费在观察链内部;阶段 3.3 修正的延续）,其余字段按去向表删。
 
 ## 关键取舍
@@ -65,6 +65,6 @@
 1. **宝箱/典籍像素坐标不落盘**——动作参数只需槽号（entry.py:458-461 实证消费形态），槽号→点击坐标是 1080p 固定布局映射（执行器 `_bench_pts` 簇现算）；落盘像素会引入第二份坐标真值。用户裁定 2026-09-18（宝箱/典籍在备战席里，归 bench 表达）。
 2. **`PrepObservation` 降级保留而非整类删除**——event_overlay bail、观察链门参数、对账元信息是环内控制信号而非游戏事实，立容器域会让「写端唯二」反而多出观察写端；局部对象不违反「策略器唯读 game state」（策略器不再读它）。
 3. **occupied 域立容器 vs M7 挂观察参数直喂**——直喂会让装备域出现「owned 在容器、occupied 走参数」的双轨，且观察产物跨函数透传正是本次退役要消灭的形态；容器域与 equips 平级、同一观察写端上报，契约一致。
-4. **奖励球立容器域 vs 留局部**——用户裁定 2026-09-18（奖励球带坐标上报 game state）：球是跨动作存续的盘面事实（点掉才消失），点空回补机制天然需要对账载体；与宝箱/典籍（开掉即消耗、槽位即坐标）分流的判据 = 有无槽号。
+4. **晶矿立容器域 vs 留局部**——用户裁定 2026-09-18（晶矿带坐标上报 game state）：晶矿是跨动作存续的盘面事实（点掉才消失），点空回补机制天然需要对账载体；与宝箱/典籍（开掉即消耗、槽位即坐标）分流的判据 = 有无槽号。
 5. **boxes/tomes 细分走观察写端参数化 vs 识别层改类型**——识别层给 `is_item_slot` 升类型枚举要动 SIFT 读链本体（本迭代约束禁改）；观察写端已持有同帧 boxes/tomes 槽号集（两个独立 reader 现成），参数化细分零识别改动、缺省参数保旧行为逐位不变。
-6. **席空数复用 `bench_free_slots` vs 新立读口**——既有口（cw_game_state.py:1085）`slot_occupies` 口径已含箱/典籍占席且 None=不确定语义与球谓词保守方向吻合；新立同语义读口 = 本迭代主线（灭双源）里再造双源。对立方案放弃。
+6. **席空数复用 `bench_free_slots` vs 新立读口**——既有口（cw_game_state.py:1085）`slot_occupies` 口径已含箱/典籍占席且 None=不确定语义与晶矿谓词保守方向吻合；新立同语义读口 = 本迭代主线（灭双源）里再造双源。对立方案放弃。

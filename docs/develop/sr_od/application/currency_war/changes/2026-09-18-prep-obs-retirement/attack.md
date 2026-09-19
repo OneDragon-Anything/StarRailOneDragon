@@ -17,13 +17,13 @@
 **位置**：details/obs-retirement.md §阶段 3.2-2/3.2-3/3.4-3、§阶段 3.5 字段去向表。
 **发现**：去向表与各阶段读端切换点漏了三个真实消费点：
 1. **entry.py:674** `_owned_snap = list(getattr(obs, 'owned_equips', None) or [])`——②′ 工具消费发射位的 owned 快照源。3.2-3 只切了 entry.py:793 帧装配；landing 3.2 判据「grep 无 obs.owned_equips 消费」会红，但设计未回答这处怎么切（工具臂评估输入语义需设计裁定）。
-2. **entry.py:492-495**——席自由分支的 `ClickSpheres` 发射同样消费 `obs.spheres`（`select_sphere_clicks(obs.spheres, ...)`）；3.4-3 只列了 entry.py:507-509（探针分支）。漏切则批 4 容器域立好后决策仍读黑板旧值。
+2. **entry.py:492-495**——席自由分支的 `ClickSpheres` 发射同样消费 `obs.spheres`（`select_ore_clicks(obs.spheres, ...)`）；3.4-3 只列了 entry.py:507-509（探针分支）。漏切则批 4 容器域立好后决策仍读黑板旧值。
 3. **cw_equip_wear_plan.py:182** `deployed = list(getattr(obs, 'deployed_chars', None) or [])`——M7 的 deployed 读点。批 1 只切 entry.py:607-608 与 wanted 臂；去向表称 `deployed_chars`「阶段 3.1 已切容器」，对 M7 这处不成立——批 5 删字段即断。
 **依据**：entry.py:674/492-495/507-510/607-608；cw_equip_wear_plan.py:163-182 实读。
 
-### 3. [major] `_sphere_progress_sig` 是 spheres/bench_chars 的隐藏消费面，批 4/5 后静默退化
+### 3. [major] `_ore_progress_sig` 是 spheres/bench_chars 的隐藏消费面，批 4/5 后静默退化
 **位置**：details/obs-retirement.md §阶段 3.4-3、§阶段 3.5 字段去向表（`spheres`/`bench_chars` 行）。
-**发现**：entry.py:170-186 `_sphere_progress_sig` 经 `getattr(obs, 'bench_chars', None)` / `getattr(obs, 'spheres', None)` 取席计数与球计数，构成席满让路门（ADR-0642）的成效重置签名。设计任何阶段均未提及其切换；批 5 删字段后 getattr 恒 None → 签名退化为「轮次单分量」，门成效重置逻辑静默失效（不崩溃、无报错）——正是本次事故同类的「静默失效」形态。
+**发现**：entry.py:170-186 `_ore_progress_sig` 经 `getattr(obs, 'bench_chars', None)` / `getattr(obs, 'spheres', None)` 取席计数与晶矿计数，构成席满让路门（ADR-0642）的成效重置签名。设计任何阶段均未提及其切换；批 5 删字段后 getattr 恒 None → 签名退化为「轮次单分量」，门成效重置逻辑静默失效（不崩溃、无报错）——正是本次事故同类的「静默失效」形态。
 **依据**：entry.py:170-186（含 docstring「三分量全部 gs/obs 现成字段」）、496（`_prog_sig = _sphere_progress_sig(gs, obs)` 消费位）。
 
 ### 4. [major] 立新读口 `bench_free_of` 与既有 `bench_free_slots` 重复——第二源
@@ -38,7 +38,7 @@
 
 ### 6. [major] 投影腿退役后 `apply_prep_action_logic` 的调用位迁移未设计
 **位置**：details/obs-retirement.md §阶段 3.5-3/3.5-2；landing 3.5 范围。
-**发现**：3.5-3 删除 `_project_prep_obs` 的全部分支（名单/球/装备/瞬态摘除），但 kernel 写口 `apply_prep_action_logic` 的现役调用点全部在**被删分支内部**（SellBench :996、DeployMove :1021、SellDeployed :1066、LevelUp :1081），黑板推进写点在 :1594-1595 与 :1758（`game_state_of(session).prep_obs = self._project_prep_obs(...)`）。删除后：① SellBench/DeployMove/SellDeployed/LevelUp 的容器逻辑态写由谁在哪调用——设计未答；② :1594/:1758 两个写点的替换形态（直调 kernel 写口？删除？）未申报；③ `_project_prep_obs` 函数本体存废未声明（词表外类型的 AssertionError 防线随函数存废）。实现者必须自行设计调用拓扑。
+**发现**：3.5-3 删除 `_project_prep_obs` 的全部分支（名单/晶矿/装备/瞬态摘除），但 kernel 写口 `apply_prep_action_logic` 的现役调用点全部在**被删分支内部**（SellBench :996、DeployMove :1021、SellDeployed :1066、LevelUp :1081），黑板推进写点在 :1594-1595 与 :1758（`game_state_of(session).prep_obs = self._project_prep_obs(...)`）。删除后：① SellBench/DeployMove/SellDeployed/LevelUp 的容器逻辑态写由谁在哪调用——设计未答；② :1594/:1758 两个写点的替换形态（直调 kernel 写口？删除？）未申报；③ `_project_prep_obs` 函数本体存废未声明（词表外类型的 AssertionError 防线随函数存废）。实现者必须自行设计调用拓扑。
 **依据**：cw_screen_prep.py:996/1021/1066/1081（kernel 写口调用位）、1093-1097（词表外 AssertionError）、1594-1595/1758（黑板推进写点）。
 
 ### 7. [major] cap-fix §1 锚错误：升级授权谓词消费位标成 entry.py，实际在 mandate.py
@@ -63,7 +63,7 @@
 
 ### 11. [minor] 死码块的 obs 直读未申报处置，批 5 删字段后仅靠不可达性保护
 **位置**：details/cap-fix.md §方案-5；details/obs-retirement.md §阶段 3.5。
-**发现**：球路径腾席死码块（entry.py:522-566）直读 `obs.spheres`（:524）、`obs.bench_chars`/`obs.deployed_chars`（:534-539），注释明文「禁删除……激活时恢复可达」。cap-fix 称「激活时随退役批换源」但未指明哪个阶段；3.5 字段删除后该块属性访问将 AttributeError——当前仅因 `SPHERE_OCCUPYING_COLORS` 空集而不可达。设计应显式申报：换源归属阶段（3.4 球域立域时同步换 `obs.spheres` 读点最自然）或维持不可达保护的判据。
+**发现**：晶矿路径腾席死码块（entry.py:522-566）直读 `obs.spheres`（:524）、`obs.bench_chars`/`obs.deployed_chars`（:534-539），注释明文「禁删除……激活时恢复可达」。cap-fix 称「激活时随退役批换源」但未指明哪个阶段；3.5 字段删除后该块属性访问将 AttributeError——当前仅因 `SPHERE_OCCUPYING_COLORS` 空集而不可达。设计应显式申报：换源归属阶段（3.4 晶矿域立域时同步换 `obs.spheres` 读点最自然）或维持不可达保护的判据。
 **依据**：entry.py:138/516-524/534-539 实读；cap-fix.md §方案-5 原文。
 
 ### 12. [minor] `state_gold_trusted`「消费面勘察为零」与在册消费指针矛盾

@@ -170,7 +170,7 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'expert_invite': 1,        # 专家邀请函选卡载体(ExpertInvitePayload;契约扩员 12→15)
     'equip_pick_opts': 1,      # 选择装备候选槽(str;契约扩员 12→15)
     'inventory': 1,         # equips/consumables/免战牌(§3.2.15/§3.2.16/§3.2.19〔勘误:免战牌正本=effect_inventory.remaining_uses,§8.6-3——本域不含其字段〕)
-    'spheres': 1,           # 奖励球(§3.2.8,不占席)
+    'spheres': 1,           # 晶矿(§3.2.8,不占席)
     'substate': 1,          # 分类子态/事件浮层(§3.2.17/§3.6.1)
     'shop': 1,              # 商店开态 payload(§3.3)
     'encounter': 2,         # 遭遇屏 payload(§3.4.1;域版本 2 = options 形状
@@ -375,7 +375,7 @@ REGISTERED_ACTORS: set[str] = {
     'CwActionDeployMoveOp',
     'CwActionSellDeployedOp',
     'CwActionWearEquipOp',
-    'CwActionClickSpheresOp',
+    'CwActionCollectOreOp',
     'CwActionOpenBoxOp',
     'CwActionOpenTomeOp',
     'CwActionOpenBookcardOp',
@@ -564,7 +564,7 @@ class BenchSlot:
     """备战席一槽:四种内容之一(统一槽位视图,占位真值一份,§3.2.5)。
 
     占席真值 = :func:`slot_occupies`:unit/supply_box/tome 占 1 槽、empty
-    不占(奖励球不占席——它是点击目标不是席位居民,§3.2.5)。sim 合成帧
+    不占(晶矿不占席——它是点击目标不是席位居民,§3.2.5)。sim 合成帧
     「箱不占席」= sim 无箱实体的内部口径约定,**记录模型按实机真值**。
     """
 
@@ -590,8 +590,8 @@ class BenchView:
 
 
 @dataclass(frozen=True)
-class SphereSight:
-    """奖励球观察面(§3.2.8):数量/颜色——交互机会信号,**不占席**。
+class OreSight:
+    """晶矿观察面(§3.2.8):数量/颜色——交互机会信号,**不占席**。
 
     colors 为画面读取到的颜色标签元组(词表随识别线建线批定型,先以
     不透明字符串承载);count None = 未读到。
@@ -600,11 +600,11 @@ class SphereSight:
     count: int | None = None
     colors: tuple[str, ...] = ()
     # [索引定义] points = 点击目标载荷(迭代 2026-09-18-prep-obs-retirement
-    # 阶段 3.4 扩充):每项 (color, x, y, r) 平铺元组——球为自由位置识别物
+    # 阶段 3.4 扩充):每项 (color, x, y, r) 平铺元组——晶矿为自由位置识别物
     # 无槽号,像素坐标必须随识别进容器(总纲坐标契约;点击列由 kernel
-    # ``sphere_click_targets_of`` 还原消费)。取值时机 = 备战入口 heavy
+    # ``ore_click_targets_of`` 还原消费)。取值时机 = 备战入口 heavy
     # 每帧实读覆盖(两态制,观察赢;两帧持存防抖留观察链);写入端单一
-    # 源 = CwScreenPrep 观察写端。CwActionClickSpheresParam 逻辑态按载荷坐标精确摘除。
+    # 源 = CwScreenPrep 观察写端。CwActionCollectOreParam 逻辑态按载荷坐标精确摘除。
     points: tuple[tuple[str, int, int, int], ...] = ()
 
 
@@ -2467,8 +2467,8 @@ class GameState:
     occupied_equips: Field[dict[str, list[str]]] = field(default_factory=Field)
     consumables: Field[list[str]] = field(default_factory=Field)     # 消耗品库存(§3.2.16)
 
-    # —— 奖励球(§3.2.8,不占席)——
-    spheres: Field[SphereSight] = field(default_factory=Field)
+    # —— 晶矿(§3.2.8,不占席)——
+    spheres: Field[OreSight] = field(default_factory=Field)
 
     # —— 交互状态 ——
     prep_substate: Field[str] = field(default_factory=Field)     # 分类子态四档(§3.2.17;恢复锁定=会话推断档,写端=接管协议 §6.3)
@@ -2513,7 +2513,7 @@ class GameState:
     # 成员与访问纪律见 :class:`NodeBooks` 类注)——
     node_books: NodeBooks = field(default_factory=NodeBooks)
     # (备战黑板帧宿主 prep_obs 已随黑板退役删除——迭代
-    #  2026-09-18-prep-obs-retirement 阶段 3.5:名单/装备/占用/球全部
+    #  2026-09-18-prep-obs-retirement 阶段 3.5:名单/装备/占用/晶矿全部
     #  容器域承载,策略器唯读容器契约归位。)
 
     # —— 帧触发代次双槽(非 Field 簿记;终态契约 §B:session

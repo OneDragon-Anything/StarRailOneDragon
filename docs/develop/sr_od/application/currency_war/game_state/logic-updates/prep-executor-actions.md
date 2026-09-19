@@ -22,7 +22,7 @@
 
 ## 4. 边界(逐动作逻辑态专篇索引)
 
-备战域注册行逐动作专篇:[sell-bench.md](sell-bench.md) / [sell-deployed.md](sell-deployed.md) / [level-up.md](level-up.md) / [deploy-move.md](deploy-move.md) / [wear-equip.md](wear-equip.md) / [click-spheres.md](click-spheres.md) / [open-box.md](open-box.md) / [open-tome.md](open-tome.md) / [open-bookcard.md](open-bookcard.md) / [tools.md](tools.md);转场与事件线:[start-battle.md](start-battle.md) / [open-shop.md](open-shop.md) / pick 族五篇(pick-*.md)。全集映射(26 注册行)见 [README.md](README.md)。
+备战域注册行逐动作专篇:[sell-bench.md](sell-bench.md) / [sell-deployed.md](sell-deployed.md) / [level-up.md](level-up.md) / [deploy-move.md](deploy-move.md) / [wear-equip.md](wear-equip.md) / [collect-ore.md](collect-ore.md) / [open-box.md](open-box.md) / [open-tome.md](open-tome.md) / [open-bookcard.md](open-bookcard.md) / [tools.md](tools.md);转场与事件线:[start-battle.md](start-battle.md) / [open-shop.md](open-shop.md) / pick 族五篇(pick-*.md)。全集映射(26 注册行)见 [README.md](README.md)。
 
 ## 5. 依据
 

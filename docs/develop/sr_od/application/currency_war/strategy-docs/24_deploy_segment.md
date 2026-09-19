@@ -14,9 +14,9 @@
 
 | 动作 | 词表/op 载体 | 触发判据(指针) |
 |---|---|---|
-| 选人上阵 | `RunDeploy`(组合路径 = 部署机 `operations/cw_screen/cw_screen_deploy.py::CwScreenDeploy.deploy`) | M1/M5 + 围栏 + 10 §1 |
-| 换排 | 部署机内拖拽(含错排归位 `_fix_misplaced_rows`) | 同上(放对激活角色赋能) |
-| 换血卖出 | 部署机内 `SellDeployed`(`_sell_offtarget_deployed`) | victim 资格 = `swap_sell_exclusion_reason`(义务集∪新鲜度排除∪资格族) |
+| 选人上阵 | `CwActionDeployMoveParam` 原子序(备战环决策发射,拖拽 = `cw_op/cw_deploy_move_action.py::CwActionDeployMoveOp`;部署机画面 op 已退役) | M1/M5 + 围栏 + 10 §1(判定单一源 = `kernel/cw_deploy_logic.py`) |
+| 换排 | `CwActionDeployMoveParam`(to_row 重拖,策略发) | 同上(放对激活角色赋能;错排事实归备战环入口观察对账) |
+| 换血卖出 | `CwActionSellDeployedParam`(`cw_sell_deployed_action.py`;判定单一源 = `swap_sell_exclusion_reason`) | victim 资格 = `swap_sell_exclusion_reason`(义务集∪新鲜度排除∪资格族) |
 
 ## 3. 能力 vs 策略
 

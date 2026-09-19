@@ -8,7 +8,7 @@
 
 ## 2. 逻辑态域集
 
-**容器腾席腿**(上报函数 = `kernel/cw_action_report/open_tome.py::report_action_open_tome_param`,op 自上报):bench 槽位 kind `tome` → `empty`(开典籍即腾席,占席事实进容器)。守卫 = bench 未观察 / 槽不存在 / 槽类型不符 → 陈旧提案零写;`slot=None` = 首个 `kind='tome'` 槽(与发射形态对齐)。腾席窗口 = OpenTome 非终结,同 visit 后续帧球谓词消费 `bench_free_slots`(派生自容器 bench),直写消除「开典籍后席空数少计一帧」的保守偏置。
+**容器腾席腿**(上报函数 = `kernel/cw_action_report/open_tome.py::report_action_open_tome_param`,op 自上报):bench 槽位 kind `tome` → `empty`(开典籍即腾席,占席事实进容器)。守卫 = bench 未观察 / 槽不存在 / 槽类型不符 → 陈旧提案零写;`slot=None` = 首个 `kind='tome'` 槽(与发射形态对齐)。腾席窗口 = OpenTome 非终结,同 visit 后续帧晶矿谓词消费 `bench_free_slots`(派生自容器 bench),直写消除「开典籍后席空数少计一帧」的保守偏置。
 
 **其它域零写**:选卡后果(星徽四选一)随机面归观察;典籍不消失,消耗在选卡确认(申报 = 上报函数 docstring)。
 

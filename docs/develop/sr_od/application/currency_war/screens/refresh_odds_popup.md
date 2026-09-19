@@ -1,6 +1,6 @@
 # 商店刷新概率表弹窗(refresh_odds_popup · 货币战争-商店刷新概率表)
 
-> 代码 = `operations/cw_screen/cw_screen_refresh_odds_popup.py::CwScreenRefreshOddsPopup`。职责:点球误触开的刷新概率表弹窗(0e2,遮挡底层屏关键按钮)的一次访问——点 × 关闭交回。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_refresh_odds_popup.py::CwScreenRefreshOddsPopup`。职责:采晶矿误触开的刷新概率表弹窗(0e2,遮挡底层屏关键按钮)的一次访问——点 × 关闭交回。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 分发判定
 

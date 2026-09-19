@@ -1,6 +1,6 @@
 # 商店卡牌详情弹窗(shop_card_detail · 货币战争-商店卡牌详情)
 
-> 代码 = `operations/cw_screen/cw_screen_shop_card_detail.py::CwScreenShopCardDetailPopup`。职责:点球误触开的「角色 offer 购买页」弹窗(0t,中央角色大面板 + 底部五牌条 + 购买/角色详情双按钮 + 右上 X)的一次访问——点 X 关闭交回,**绝不点购买**。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_shop_card_detail.py::CwScreenShopCardDetailPopup`。职责:采晶矿误触开的「角色 offer 购买页」弹窗(0t,中央角色大面板 + 底部五牌条 + 购买/角色详情双按钮 + 右上 X)的一次访问——点 X 关闭交回,**绝不点购买**。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 分发判定
 

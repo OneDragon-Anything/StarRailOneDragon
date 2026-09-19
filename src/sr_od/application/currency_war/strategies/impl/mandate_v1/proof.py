@@ -105,7 +105,7 @@ class LineState:
     - ``evicted``:(线名, 撤线后步数)——回锁禁止窗载体(D-P4)。
       计量口径(【R197 症7 勘误,原「逐帧 +1」失准】):步进载体 =
       ``update_line_state``,每个**到达证明 pass 的备战期帧** +1——
-      prep 实体面(球/箱/典籍/overlay)早退帧在证明 pass 之前 return,
+      prep 实体面(晶矿/箱/典籍/overlay)早退帧在证明 pass 之前 return,
       不步进本窗。窗口判据按备战期数计量,方向保守(窗偏长);
       ``since`` 的比较对象 D_min 系备战期维参数。
     - ``drought`` 读端申报(R197 症7):cw4 内 drought 无行为消费端

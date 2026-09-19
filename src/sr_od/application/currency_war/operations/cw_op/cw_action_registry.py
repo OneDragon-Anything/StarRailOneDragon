@@ -37,8 +37,8 @@ from typing import TYPE_CHECKING
 from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
     CwActionBuyCardParam,
-    CwActionClickSpheresParam,
     CwActionCloseShopParam,
+    CwActionCollectOreParam,
     CwActionDeployMoveParam,
     CwActionFurnaceUseParam,
     CwActionLevelUpParam,
@@ -74,11 +74,11 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 from sr_od.application.currency_war.operations.cw_op.cw_buy_card_action import (
     CwActionBuyCardOp,
 )
-from sr_od.application.currency_war.operations.cw_op.cw_click_spheres_action import (
-    CwActionClickSpheresOp,
-)
 from sr_od.application.currency_war.operations.cw_op.cw_close_shop_action import (
     CwActionCloseShopOp,
+)
+from sr_od.application.currency_war.operations.cw_op.cw_collect_ore_action import (
+    CwActionCollectOreOp,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_deploy_move_action import (
     CwActionDeployMoveOp,
@@ -150,7 +150,7 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     CwActionDeployMoveParam: CwActionDeployMoveOp,
     CwActionSellDeployedParam: CwActionSellDeployedOp,
     CwActionWearEquipParam: CwActionWearEquipOp,
-    CwActionClickSpheresParam: CwActionClickSpheresOp,
+    CwActionCollectOreParam: CwActionCollectOreOp,
     CwActionOpenBoxParam: CwActionOpenBoxOp,
     CwActionOpenTomeParam: CwActionOpenTomeOp,
     CwActionOpenBookcardParam: CwActionOpenBookcardOp,

@@ -33,7 +33,7 @@
 ### F4(低)`strategy-docs/22_prep_screen.md` 存量死词表/死路径引用与 item 11 同文件,验收机械判据不可见
 
 - **位置**:L22「组合 `RunDeploy`」、L26「`(+PickBoxCard)`」、L27「`RunEquip`/`RunTools`」、L25「`kernel/cw_prep_actions.py::OpenShop`」。
-- **证据**:RunDeploy/RunEquip/RunTools 已随统一词表退役(prep.md §4、screens/README §4 后注、entry.py `_CONDITIONAL` 注释三处互证;CW_ACTION_TYPES 22 类无此三类);PickBoxCard 已删(entry.py L196-197、cw_open_box_action.py L33-34);`cw_prep_actions.py` 现仅承载 PrepObservation 与点球挑选函数,无 OpenShop 转发(grep 确认),OpenShop 单一源在 `cw_vocab.py`。landing item 11 触同文件 L8/L28,但 3.3 闭域三关键词与 PrepAction 裸名扫描对这些行零命中,验收不会发现。
+- **证据**:RunDeploy/RunEquip/RunTools 已随统一词表退役(prep.md §4、screens/README §4 后注、entry.py `_CONDITIONAL` 注释三处互证;CW_ACTION_TYPES 22 类无此三类);PickBoxCard 已删(entry.py L196-197、cw_open_box_action.py L33-34);`cw_prep_actions.py` 现仅承载 PrepObservation 与采晶矿挑选函数,无 OpenShop 转发(grep 确认),OpenShop 单一源在 `cw_vocab.py`。landing item 11 触同文件 L8/L28,但 3.3 闭域三关键词与 PrepAction 裸名扫描对这些行零命中,验收不会发现。
 - **修正方向**:item 11 扩两条(L22/L26/L27 词表列改现役载体、L25 指针改 `cw_vocab.py::OpenShop`),或 design §1 申报该存量归属将来批;鉴于本批已触同文件同表,顺手收敛成本近零。
 
 ### F5(低)§2.1 基类 docstring「整段替换·同款待遇」读法下输入载体句丢失风险

@@ -487,7 +487,7 @@ def stall_buys_prune_deployed(session, deployed_names) -> int:
 # 烧动作。载体与 kernel GameState.round_fresh_buys 同构键式
 # {'phase': (plane, round_num), 'names': set[str]},位面/轮次推进自动
 # 失效;方向 = 排除向(过度排除上界 ≤1 轮,轮界自动过期,有界可判读)。
-# 写端 = 各卖出发射位(prep 凑息/M4/wanted 腿2 + entry 球路径 M4;
+# 写端 = 各卖出发射位(prep 凑息/M4/wanted 腿2 + entry 晶矿路径 M4;
 # 商店域 _note_sell 收口随商店期卖射退役删除,T-271——本载体现辖
 # 「备战同轮卖 → 商店买回」的换手排除面);读端 = shop 档 2(M6)候选集。
 # entry 域
@@ -1098,7 +1098,7 @@ def mark_s1_route_check(session: StrategySession, state: GameState | None,
          压库(义务残差优先,猎点 14;腾席即解除 wanted 封锁约束,tag
          不豁免);席位翻正读数 = 执行器 tracked 账 pre/post 现读;
     (iii) 门 1 = 消费臂内提前收敛形态,归 wanted_closure_emit,不经本门。
-    纯金变更(球金/无席变动的金入账)永不清(B3 裁决唯一绝对项)。
+    纯金变更(晶矿金/无席变动的金入账)永不清(B3 裁决唯一绝对项)。
     商店域落地(apply_action_outcome)不挂本门(§3.3 落域澄清:店内段
     S1 语义正在成立中,域内卖出经由六序域内闭环,旗标无感)。
     误标损失上界(勘误,T-167:原「不该清乱清 = 一次无信息量重

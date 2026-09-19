@@ -930,9 +930,9 @@ def _merge_item_occupied_slots(ctx: SrContext, screen: MatLike,
     """已建档物品(补给箱/秘密典籍/书册卡)占用的备战席槽位并入身份读链结果
     (就地追加 ``is_item_slot=True`` 空名位)。
 
-    为什么必须:SIFT 只产角色位,而物品同样占备战席 1 槽(补给球掉箱实机
+    为什么必须:SIFT 只产角色位,而物品同样占备战席 1 槽(补给晶矿掉箱实机
     语义,见下方「补给箱识别」节首注)——漏记 = 席满帧被当成有空位,策略照
-    幻影空位发买牌、游戏侧全部拒买且金不动(实机局:点球奖励「开启」箱补满
+    幻影空位发买牌、游戏侧全部拒买且金不动(实机局:采晶矿奖励「开启」箱补满
     末槽后 3 张连发全拒)。识别面 = ``bench_item_slots`` 精确档(与部署装配
     路径同源,同函数同档);泛扫描档不入账,留召唤物停机钩子兜未建档变体。
     坐标系:slot = 备战栏物理槽 1..9(与 ``BenchChar.slot`` 同系);已识别
@@ -1128,9 +1128,9 @@ def read_bench_chars_tiered(session, ctx: SrContext, screen: MatLike,
 
 
 # ===== 补给箱识别(备战栏槽位;2026-08-14 首见实机) =====
-# 奖励节点清关后右侧面板出「奖励球」(=晶矿,factions 晶矿条目:开启后可能获金币/角色/装备/稀有物品)。点球开启:
+# 奖励节点清关后右侧面板出「晶矿」(=晶矿,factions 晶矿条目:开启后可能获金币/角色/装备/稀有物品)。采晶矿开启:
 # 内容即时入账(金币/装备),或掉「补给箱」**落备战席占 1 槽**(箱子手提箱 icon + 「开启」文字 + 蓝底,
-# 点它开箱 → 腾槽 + 得内容)。备战席满时球点不动(球可能给角色/箱,都要占席)→ **开箱优先于点球**。
+# 点它开箱 → 腾槽 + 得内容)。备战席满时晶矿点不动(晶矿可能给角色/箱,都要占席)→ **开箱优先于采晶矿**。
 # 箱子是固定 UI icon → 灰度 TM 足够(SIFT 无必要);分离度(2026-08-14 实测):箱槽 1.0 vs 角色槽 ≤0.242。
 # ⚠️ 拖动后选中态(蓝光效环)降 TM 至 ~0.65-0.69(2026-08-14 拖动实测;点空白取消选中 → 0.931 恢复,跨槽位稳)
 # → 阈值取 0.6:覆盖选中态,噪声槽 0.242 仍有 ~2.4× 分离。bench 满判定:箱占席但非角色,read_bench_chars 读不到
@@ -1465,13 +1465,13 @@ def bench_item_slots(ctx: SrContext, screen: MatLike, *, fuzzy: bool) -> set[int
     return out
 
 
-# ===== 奖励球识别(奖励节点清关后 区域-奖励 面板;2026-08-14 live 建档) =====
-# 奖励球 = 晶矿(factions 晶矿条目:开启后可能获金币/角色/装备/稀有物品)。通关奖励节点后备战右侧
-# 面板出现球形奖励(实测 1-8 清关:1 大金球[r~44] + 5 蓝球[r~32] + 2 灰球[r~18])。点球即开启:
-# 金币/装备即时入账;角色/补给箱落备战席占槽;**备战席满时球点不动**(先开箱腾席再点球)。
+# ===== 晶矿识别(奖励节点清关后 区域-奖励 面板;2026-08-14 live 建档) =====
+# 晶矿 = 晶矿(factions 晶矿条目:开启后可能获金币/角色/装备/稀有物品)。通关奖励节点后备战右侧
+# 面板出现晶矿形奖励(实测 1-8 清关:1 大金晶矿[r~44] + 5 蓝晶矿[r~32] + 2 灰晶矿[r~18])。采晶矿即开启:
+# 金币/装备即时入账;角色/补给箱落备战席占槽;**备战席满时晶矿点不动**(先开箱腾席再采晶矿)。
 #
-# 检测 = HoughCircles(颜色分割不可行:**背景与蓝球 HSV 几乎同值** —— 实测 蓝球 H111-113 S195-209
-# V253-255 vs 背景 H119-120 S172-175 V224-225,mask 无分离度)。球是圆形发光体,背景是点阵纹理
+# 检测 = HoughCircles(颜色分割不可行:**背景与蓝晶矿 HSV 几乎同值** —— 实测 蓝晶矿 H111-113 S195-209
+# V253-255 vs 背景 H119-120 S172-175 V224-225,mask 无分离度)。晶矿是圆形发光体,背景是点阵纹理
 # 无大圆 → 圆检测天然分离。空面板实测 0 误报(点阵/按钮均不触发)。
 # 颜色分类(圆心 HSV):金 H15-35+S>80 / 灰 S<70 / 其余=蓝。r 可辅助(金~44/蓝~32/灰~18)。
 _REWARD_HOUGH_DP: float = 1.2
@@ -1479,36 +1479,36 @@ _REWARD_HOUGH_PARAM2: float = 40
 _REWARD_MIN_R: int = 15
 _REWARD_MAX_R: int = 60
 # 检测域 = screen_info「区域-奖励」rect 单一真相源;区域缺档 → 空读数
-# (不抛不猜,语义见 read_reward_spheres),禁回退硬编码 rect。
+# (不抛不猜,语义见 read_ore_sights),禁回退硬编码 rect。
 
 # ===== 幻检交叉验证(奖励域读取防幻检批;实机停机局实证:×12 礼盒蝴蝶结/
-# 扣饰被 Hough 幻检为 2 球,点击零消失 → CwActionClickSpheresParam 同签名死循环
+# 扣饰被 Hough 幻检为 2 晶矿,点击零消失 → CwActionCollectOreParam 同签名死循环
 # 停机;同族第 2 件,前件 = W261 装备 icon 越界假圆)=====
-# 三道门全部标定自 18 样本离线对拍(3 真球 fixture reward_spheres_4/5/8 共
-# 16 真球 + 礼盒停机帧 2 幻球;标定脚本口径 = 圆内 r−4 mask 的 Canny 边缘
+# 三道门全部标定自 18 样本离线对拍(3 真晶矿 fixture reward_spheres_4/5/8 共
+# 16 真晶矿 + 礼盒停机帧 2 幻晶矿;标定脚本口径 = 圆内 r−4 mask 的 Canny 边缘
 # 占比与 HSV V 均值):
-#: 真球内部纹理:16 真球样本 Canny 边缘占比 0.000-0.145(发光平滑球面)
-#: / 礼盒幻球 0.205-0.324(蝴蝶结缎带纹理)。阈值 0.17 双向余量 ≥0.025。
+#: 真晶矿内部纹理:16 真晶矿样本 Canny 边缘占比 0.000-0.145(发光平滑晶矿面)
+#: / 礼盒幻晶矿 0.205-0.324(蝴蝶结缎带纹理)。阈值 0.17 双向余量 ≥0.025。
 _SPHERE_EDGE_RATIO_MAX: float = 0.17
-#: 真球亮度:真球为自发光体,16 样本圆内 V 均值 164-252(灰球最暗 ~164)
-#: / 礼盒幻球 112-116(哑光实体)。阈值 140 双向余量 ≥24,与纹理门独立维度。
+#: 真晶矿亮度:真晶矿为自发光体,16 样本圆内 V 均值 164-252(灰晶矿最暗 ~164)
+#: / 礼盒幻晶矿 112-116(哑光实体)。阈值 140 双向余量 ≥24,与纹理门独立维度。
 _SPHERE_V_MEAN_MIN: float = 140
-#: 真球半径带(2026-08-14 建档:gold~44/blue~32/gray~18);礼盒幻球 r56
+#: 真晶矿半径带(2026-08-14 建档:gold~44/blue~32/gray~18);礼盒幻晶矿 r56
 #: 超带。上限 48 = gold 带 +1 呼吸余量;仅作第三道辅助门(纹理/亮度为主门)。
 _SPHERE_R_MAX: int = 48
 #: 两帧持存圆心/半径容差(px;Hough 亚像素抖动 + 发光呼吸效应)。
 _SPHERE_PERSIST_POS_TOL: int = 12
 _SPHERE_PERSIST_R_TOL: int = 6
-#: 点击后幻球黑名单命中容差(px;点击坐标 → 复现检测圆心的匹配带宽)。
+#: 点击后幻晶矿黑名单命中容差(px;点击坐标 → 复现检测圆心的匹配带宽)。
 _SPHERE_PHANTOM_MATCH_TOL: int = 18
 
 
-def _sphere_texture_gate(hsv: MatLike, edges: MatLike, ix: int, iy: int,
+def _ore_texture_gate(hsv: MatLike, edges: MatLike, ix: int, iy: int,
                          r: int) -> bool:
-    """单圆幻检门(纯函数):纹理 + 亮度 + 半径三道,任一不过 = 非真球。
+    """单圆幻检门(纯函数):纹理 + 亮度 + 半径三道,任一不过 = 非真晶矿。
 
-    标定数字见上方常量块注释(18 样本:16 真球全过 / 2 礼盒幻球全杀,
-    两主门独立维度双向余量充足)。真球 = 自发光平滑球面;面板内非球实体
+    标定数字见上方常量块注释(18 样本:16 真晶矿全过 / 2 礼盒幻晶矿全杀,
+    两主门独立维度双向余量充足)。真晶矿 = 自发光平滑晶矿面;面板内非晶矿实体
     (礼盒蝴蝶结/装备 icon 等哑光高纹理物)两主门同杀 —— 属 W261 家族
     通用排除,非单点补丁。
     """
@@ -1525,18 +1525,18 @@ def _sphere_texture_gate(hsv: MatLike, edges: MatLike, ix: int, iy: int,
     return float(hsv[:, :, 2][m > 0].mean()) >= _SPHERE_V_MEAN_MIN
 
 
-def filter_persistent_spheres(
+def filter_persistent_ores(
         cur: list[tuple[str, Point, int]],
         prev: list[tuple[str, Point, int]] | None,
         pos_tol: int = _SPHERE_PERSIST_POS_TOL,
         r_tol: int = _SPHERE_PERSIST_R_TOL,
 ) -> list[tuple[str, Point, int]]:
-    """两帧持存交叉验证(纯函数):cur 中与 prev 某球同位置同半径的才采信。
+    """两帧持存交叉验证(纯函数):cur 中与 prev 某晶矿同位置同半径的才采信。
 
-    依据:真球在面板停留期间逐帧稳定(位置/半径仅 Hough 抖动级浮动);
+    依据:真晶矿在面板停留期间逐帧稳定(位置/半径仅 Hough 抖动级浮动);
     瞬态特效/动画帧的偶发假圆下一帧即消失。``prev=None``(首帧/无历史)
     → 原样返回(宁缺勿造的反向:首帧采信由纹理门 + 点击后零消失检测兜底,
-    不因缺历史而漏球)。"""
+    不因缺历史而漏晶矿)。"""
     if not prev:
         return list(cur)
     out: list[tuple[str, Point, int]] = []
@@ -1549,7 +1549,7 @@ def filter_persistent_spheres(
 
 
 def _session_phantom_points(ctx: SrContext) -> list[Point]:
-    """会话幻球黑名单(局级生命周期;读侧过滤用)。无 session(离线/局外)→ 空。"""
+    """会话幻晶矿黑名单(局级生命周期;读侧过滤用)。无 session(离线/局外)→ 空。"""
     try:
         m = ctx.cw_match
         s = m.session if m is not None else None
@@ -1558,12 +1558,12 @@ def _session_phantom_points(ctx: SrContext) -> list[Point]:
         return []
 
 
-def note_phantom_sphere(ctx: SrContext, pt: Point) -> None:
-    """点击后零消失的球登记为幻球(会话黑名单 + 分键留证;best-effort)。
+def note_phantom_ore(ctx: SrContext, pt: Point) -> None:
+    """点击后零消失的晶矿登记为幻晶矿(会话黑名单 + 分键留证;best-effort)。
 
     黑名单 = session 动态挂 ``reward_sphere_phantom_points``(局级生命周期,
-    与漏斗/期望账本同款挂载模式);读侧 ``read_reward_spheres`` 按位置容差
-    过滤 → 后续环不再把该目标派给 CwActionClickSpheresParam(禁无限循环的唯一出口,
+    与漏斗/期望账本同款挂载模式);读侧 ``read_ore_sights`` 按位置容差
+    过滤 → 后续环不再把该目标派给 CwActionCollectOreParam(禁无限循环的唯一出口,
     黑名单守卫不再是唯一出路)。重复登记同一位置幂等。"""
     try:
         m = ctx.cw_match
@@ -1592,31 +1592,31 @@ def note_phantom_sphere(ctx: SrContext, pt: Point) -> None:
         _nd = game_state_of(s).node.value
         record_defect(
             'reward_sphere', 'reward_sphere_phantom',
-            expected='点击后球消失(真球)',
-            observed=f'点击后同位置仍检出幻球({pt.x},{pt.y})',
+            expected='点击后晶矿消失(真晶矿)',
+            observed=f'点击后同位置仍检出幻晶矿({pt.x},{pt.y})',
             plane=int(_nd.plane if _nd is not None else 0),
             round_num=int(_nd.round_num if _nd is not None else 0),
             gap_large=False, severity=SEVERITY_L2_RECORD,
-            verdict=('留证-奖励域幻球(点击零消失):已入会话黑名单,后续读侧'
-                     '过滤放弃该目标;同族=面板内非球物幻检(W261 装备 icon/'
+            verdict=('留证-奖励域幻晶矿(点击零消失):已入会话黑名单,后续读侧'
+                     '过滤放弃该目标;同族=面板内非晶矿物幻检(W261 装备 icon/'
                      '礼盒蝴蝶结),复现新形态先跑纹理门标定再扩证据'),
             refs=[{'stream': 'arbitration', 'key': f'point={pt.x},{pt.y}'}],
             reader_source='click_spheres_verify',
-            note='奖励域幻球分键(幻检无交叉验证家族第 3 道:点击后验证)')
-    except Exception:   # noqa: BLE001  幻球登记 best-effort,不阻塞点球
+            note='奖励域幻晶矿分键(幻检无交叉验证家族第 3 道:点击后验证)')
+    except Exception:   # noqa: BLE001  幻晶矿登记 best-effort,不阻塞采晶矿
         pass
 
 
-def find_reward_spheres(screen: MatLike, panel_rect: Rect) -> list[tuple[str, Point, int]]:
-    """纯 CV 核心:奖励面板内 HoughCircles 检球 → ``[(颜色, center, radius)]``(点球用)。
+def find_ore_sights(screen: MatLike, panel_rect: Rect) -> list[tuple[str, Point, int]]:
+    """纯 CV 核心:奖励面板内 HoughCircles 检晶矿 → ``[(颜色, center, radius)]``(采晶矿用)。
 
     颜色 = 'gold' | 'blue' | 'gray'(圆心 HSV 分类;gold=高价值晶矿)。radius 可辅助优先级
-    (金球大)。可离线硬编码 rect 测(同 ``find_supply_boxes`` 分层约定)。
+    (金晶矿大)。可离线硬编码 rect 测(同 ``find_supply_boxes`` 分层约定)。
 
     **幻检交叉验证**(三道门,标定与依据见常量块注释):纹理(圆内 Canny
-    边缘占比)+ 亮度(圆内 V 均值)+ 半径带 —— 面板内非球实体(礼盒蝴蝶结
-    /装备 icon 等哑光高纹理物)被 Hough 检出的圆在此淘汰;真球 16 fixture
-    样本全过。点击后零消失检测(``note_phantom_sphere`` 黑名单)为第三道
+    边缘占比)+ 亮度(圆内 V 均值)+ 半径带 —— 面板内非晶矿实体(礼盒蝴蝶结
+    /装备 icon 等哑光高纹理物)被 Hough 检出的圆在此淘汰;真晶矿 16 fixture
+    样本全过。点击后零消失检测(``note_phantom_ore`` 黑名单)为第三道
     独立防线,不在本纯函数(需要点击交互上下文)。"""
     x1, y1, x2, y2 = panel_rect.x1, panel_rect.y1, panel_rect.x2, panel_rect.y2
     panel = screen[y1:y2, x1:x2]
@@ -1637,7 +1637,7 @@ def find_reward_spheres(screen: MatLike, panel_rect: Rect) -> list[tuple[str, Po
         ix, iy = int(cx), int(cy)
         if not (0 <= ix < panel.shape[1] and 0 <= iy < panel.shape[0]):
             continue
-        if not _sphere_texture_gate(hsv, edges, ix, iy, int(r)):
+        if not _ore_texture_gate(hsv, edges, ix, iy, int(r)):
             continue
         h, s, _v = hsv[iy, ix]
         if 15 <= h <= 35 and s > 80:
@@ -1651,24 +1651,24 @@ def find_reward_spheres(screen: MatLike, panel_rect: Rect) -> list[tuple[str, Po
     return out
 
 
-def read_reward_spheres(ctx: SrContext, screen: MatLike,
-                        prev: list[tuple[str, Point, int]] | None = None,
-                        ) -> list[tuple[str, Point, int]]:
-    """奖励面板晶矿球(screen_info「区域-奖励」)→ ``[(颜色, center, radius)]``(点球 op 用)。
+def read_ore_sights(ctx: SrContext, screen: MatLike,
+                    prev: list[tuple[str, Point, int]] | None = None,
+                    ) -> list[tuple[str, Point, int]]:
+    """奖励面板晶矿(screen_info「区域-奖励」)→ ``[(颜色, center, radius)]``(采晶矿 op 用)。
 
     ``prev`` = 上一帧原始读数(两帧持存交叉验证;None = 首帧单帧采信,
-    语义见 ``filter_persistent_spheres``)。另:会话幻球黑名单
-    (``note_phantom_sphere`` 登记,点击后零消失的坐标)在此读侧过滤 ——
-    黑名单坐标不再进返回值,点球环由此获得「放弃该目标」的出口。"""
+    语义见 ``filter_persistent_ores``)。另:会话幻晶矿黑名单
+    (``note_phantom_ore`` 登记,点击后零消失的坐标)在此读侧过滤 ——
+    黑名单坐标不再进返回值,采晶矿环由此获得「放弃该目标」的出口。"""
     rect = _area_rect(ctx, '区域-奖励')
     if rect is None:
         # 区域缺档(建档漂移/档案损坏)→ 空读数:reader 既有 no-read 语义
-        # (不抛不猜,点球环自然无目标),禁回退硬编码 rect 对陈旧区域
+        # (不抛不猜,采晶矿环自然无目标),禁回退硬编码 rect 对陈旧区域
         # Hough 检测(坐标单一真相源)。
         return []
-    spheres = find_reward_spheres(screen, rect)
+    spheres = find_ore_sights(screen, rect)
     if prev is not None:
-        spheres = filter_persistent_spheres(spheres, prev)
+        spheres = filter_persistent_ores(spheres, prev)
     phantom = _session_phantom_points(ctx)
     if phantom:
         spheres = [s for s in spheres

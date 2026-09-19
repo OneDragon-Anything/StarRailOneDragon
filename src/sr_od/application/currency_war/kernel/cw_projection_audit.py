@@ -104,7 +104,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_ABSORB_RULE,
         basis='buy/sell/levelup/refresh 投影 + 结算真值收口 '
               '(settle_truth:边界收入随结算入账,boundary_income_credited 留证)'
-              '+ 点球金豁免注册表条目'),
+              '+ 晶矿金豁免注册表条目'),
     'level': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='CwActionLevelUpShopParam 升档直写(f810f2454 投影补 level 域)+ prep 腿'
@@ -204,7 +204,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '装配点),零逻辑写端'),
     'spheres': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
-        basis='奖励球视觉域(§3.2.8,点击目标非席位居民),零逻辑写端'),
+        basis='晶矿视觉域(§3.2.8,点击目标非席位居民),零逻辑写端'),
     # —— 交互状态 ——
     'prep_substate': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,

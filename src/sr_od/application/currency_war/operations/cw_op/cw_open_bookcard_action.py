@@ -74,7 +74,7 @@ class CwActionOpenBookcardOp(SrOperation):
                     f'槽{action.slot} 无书册卡(实读 {cards})')
             picked = matched
         slot, center = picked
-        ex._ctx.controller.mouse_move(center)   # bug#1 缓解(同开箱/点球口径)
+        ex._ctx.controller.mouse_move(center)   # bug#1 缓解(同开箱/采晶矿口径)
         ex._ctx.controller.click(center)
         # 固定动画等待(A3 纪律:等待归产生动画的操作;判效交下一帧观察)
         time.sleep(_OVERLAY_ANIM_WAIT_S)

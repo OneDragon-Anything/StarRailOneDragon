@@ -99,7 +99,7 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | 商店刷新计数域(refresh_counters) | 三计数已迁出容器住效果账本(2026-09-18,写端=刷新上报函数);prev_node_spent 保留容器(economy 面) | ②动作+③效果桥 |
 | 节点屏刷新计数域(node_screen_refresh) | encounter_refresh_used / supply_refresh_used / env_refresh_used / strategy_refresh_used(逐卡) | ②动作(遭遇/策略经 on_outcome 发射钩子写、补给为 live 刷新发射单点,三写端在产;环境零写端在册) |
 | 持久账本域(inventory) | equips / consumables(免战牌载体归一入效果账本,不在本域) | ①观察+②动作 |
-| 奖励球域(spheres) | spheres | ①观察 |
+| 晶矿域(spheres) | spheres | ①观察 |
 | 交互状态域(substate) | prep_substate(分类子态四档)/ event_overlay | ①观察+③接管协议 |
 | 画面 payload 域(shop/encounter/supply) | shop / encounter / supply(非当前画面=None) | ①观察 |
 | 选择结果域(event_choices) | chosen_encounter / chosen_supply / chosen_megastar / chosen_partner / chosen_wish / chosen_fortune / chosen_hack / chosen_expert / chosen_tome / chosen_equip | ②选择 handler 单次逻辑写 |

@@ -39,7 +39,7 @@ deployed = [c for c in deployed_slots_of(gs) if c is not None]
 
 ### 5. 不动的相邻面（边界申报）
 
-- 球路径腾席判据（entry.py:522-566）：结构性死码（触发集 `SPHERE_OCCUPYING_COLORS` 现役空集，entry.py:138；注释明文「保留原位，当前不可达」），本阶段不动。其块内直读 `obs.spheres`（:524）与 `obs.bench_chars`/`obs.deployed_chars`（:534-539）的换源**归属阶段 3.4**（球域立域时同批切换，见 obs-retirement.md §阶段 3.4-5）——批 5 删字段前该块必须已完成换源，否则不可达保护失效后即 AttributeError。
+- 晶矿路径腾席判据（entry.py:522-566）：结构性死码（触发集 `SPHERE_OCCUPYING_COLORS` 现役空集，entry.py:138；注释明文「保留原位，当前不可达」），本阶段不动。其块内直读 `obs.spheres`（:524）与 `obs.bench_chars`/`obs.deployed_chars`（:534-539）的换源**归属阶段 3.4**（晶矿域立域时同批切换，见 obs-retirement.md §阶段 3.4-5）——批 5 删字段前该块必须已完成换源，否则不可达保护失效后即 AttributeError。
 - `PrepObservation` 的名单字段本体与黑板投影腿：批 5 面，本阶段禁删（总纲契约 1）。
 
 ### 6. 失读方向等价性论证（总纲契约 2 的本篇落实）

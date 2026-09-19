@@ -566,7 +566,7 @@ _REWARD_BASE_DEFAULT: int = BASE_INCOME
 #: 跨批次对比先核 manifest.economy_calib_version(局终指纹核对锚)。
 ECONOMY_CALIB_VERSION: int = 2
 #: v2(ADR-0447):事件金表按实机逐轮金轨迹反馈整定(状态分布校准总闸);
-#: v1 旧表(奖励球残差近似)
+#: v1 旧表(晶矿残差近似)
 #: 批次与本版不可比,跨批对照须 economy_calib_version 一致。
 
 # 息权重算账(gold 0-15 < 升级 cost 36-48)→ 卡低 level → 弱 comp。息 delta(50vs0)=20

@@ -60,13 +60,13 @@ CompTransaction 行删除(行键先稳,删除归批2,R3)。
     现算,失读回退 `XP_CLICK_COST_FALLBACK`)与 auth_basis 分键装载
     随 2b 类合并翻转生效,翻转时金腿切 `action.cost` 直写,该切换落
     §3.2b 消费面收口);ClickSpheres 改形
-   (载荷 = 有序球坐标列表,大球优先挑选迁 kernel 纯函数,执行器机械化);
+   (载荷 = 有序晶矿坐标列表,大晶矿优先挑选迁 kernel 纯函数,执行器机械化);
    备战逻辑态建模扩域(逻辑态 = 动作执行后不经观察、按游戏规则推算预期
    状态并直写容器的状态;用户裁定 2026-09-14 正名,旧称「投影」;本批
    代码标识符不改名)(`apply_prep_action_logic` 域集 + xp/level 的
-   LevelUp 分支;owned_equips 摘件;ClickSpheres 精确摘球);执行器
+   LevelUp 分支;owned_equips 摘件;ClickSpheres 精确摘晶矿);执行器
    `_level_up` 单击化、`_click_spheres` 机械化的体内语义半删除(授权/
-   挑选/读屏选球归决策侧——本步含执行器体改,批3 只迁形);武装箱
+   挑选/读屏选晶矿归决策侧——本步含执行器体改,批3 只迁形);武装箱
    四选一独立画面 op(R7):新画面 op 独立立文件(「货币战争-备战-
    武装箱选择」,勿与 cw_screen_armory_box.py 道具说明弹窗混)+ cw_loop
     画面分发行 + OpenBox 开箱后本访问交回(终结化;`_project_prep_obs`
@@ -91,7 +91,7 @@ CompTransaction 行删除(行键先稳,删除归批2,R3)。
 **文件面**:`kernel/cw_vocab.py`(新原子类入词表)、
 `kernel/cw_prep_actions.py`(PickBoxCard 删 + 新类登记)、
 `prep_actions.py`(体改)、`kernel/cw_deploy_logic.py`(部署计划构造
-kernel 落位;穿戴计划/球挑选的 kernel 模块选址随任务书,单一源语义按
+kernel 落位;穿戴计划/晶矿挑选的 kernel 模块选址随任务书,单一源语义按
 design.md §2.6 不变)、`operations/cw_loop.py`(发射链 +
 EXHAUSTION_WINDOW_ACTIONS + 武装箱分发行)、
 `operations/cw_screen/cw_screen_prep.py`(逻辑态 + 发射消费面)、
@@ -100,7 +100,7 @@ EXHAUSTION_WINDOW_ACTIONS + 武装箱分发行)、
 `kernel/cw_exec_state.py`(PickBoxCard 分支删)、
 `kernel/cw_game_state.py`(逻辑态写口 `apply_prep_action_logic`:
 域集 `PREP_PROJECTION_DOMAINS` 扩 ('xp','level') + LevelUp 分支 +
-owned_equips 摘件/ClickSpheres 精确摘球写口,按 design.md §2.6 R9)、
+owned_equips 摘件/ClickSpheres 精确摘晶矿写口,按 design.md §2.6 R9)、
 `decision_assembly.py`、`sr-od-test/` 回归与专锁。
 **依赖**:批1(注册表行键先行就位);`flow/action-logic-state.md` 在案
 (本节点实现规格来源;其与定案④相反的现状行随本批同步转录,见
@@ -113,8 +113,8 @@ owned_equips 摘件/ClickSpheres 精确摘球写口,按 design.md §2.6 R9)、
   下一入口 heavy 对账闭合(中间态金腿 = 执行缝金差,不写 gold,
   2b 类合并翻转切 `action.cost` 直写);posture_unfulfilled 对账按
   新口径绿;
-- **ClickSpheres 专锁**:载荷 = 有序球坐标列表;执行器零读屏选球;
-  逻辑态按载荷精确摘球;
+- **ClickSpheres 专锁**:载荷 = 有序晶矿坐标列表;执行器零读屏选晶矿;
+  逻辑态按载荷精确摘晶矿;
   观察四卡 → decide_box_card(策略侧)→ 点卡 → 确认 → 交回(选卡即
   终结,单选族例外);全仓无 PickBoxCard 构造/发射残留;
   终结,单选族例外);全仓无 PickBoxCard 构造/发射残留;

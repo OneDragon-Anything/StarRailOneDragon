@@ -64,7 +64,7 @@ class CwActionSellBenchOp(SrOperation):
 | `DeployMoveOp`(cw_deploy_move_action.py) | `CwActionDeployMoveOp` | deploy_move |
 | `SellDeployedOp`(cw_sell_deployed_action.py) | `CwActionSellDeployedOp` | sell_deployed |
 | `WearEquipOp`(cw_wear_equip_action.py) | `CwActionWearEquipOp` | wear_equip(session) |
-| `ClickSpheresOp`(cw_click_spheres_action.py) | `CwActionClickSpheresOp` | click_spheres(session) |
+| `CollectOreOp`(cw_click_spheres_action.py) | `CwActionCollectOreOp` | click_spheres(session) |
 | `OpenBoxOp`/`OpenTomeOp`/`OpenBookcardOp` | `CwActionOpen{Box,Tome,Bookcard}Op` | open_box / open_tome / open_bookcard |
 | `ToolUseOp`(cw_tool_use_action.py,6 工具参数共用) | `CwActionToolUseOp` | 6 个零写函数按 param 类型调 |
 | `StartBattleOp` | `CwActionStartBattleOp` | start_battle(skip_substate) |
