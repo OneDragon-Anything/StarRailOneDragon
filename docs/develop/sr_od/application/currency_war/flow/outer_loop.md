@@ -25,6 +25,14 @@ loop()（@operation_node，node_max_retry_times=400；cw_loop.py::CwLoop.loop）
 
 run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loop.py::CwLoop.handle_init`）：plane/round 缓存清零、`_is_new_match = ctx.cw_match is None`（续跑支持：cw_match 已存在则延用，手动逐轮验证靠此跨 run 延续 match）、职级难度 ctx 中转吸收（取走清空防跨局复用）、SettlementState/CwScreenBattleWait 实例化、新局兜底 `establish_new_match`。
 
+### 1.1 循环上限规范（用户裁定，2026-09-19）
+
+**框架不负责多轮循环的上限限制。** 外循环的轮次推进与画面 op 的决策循环均**不设迭代数上限**——健康循环永不因迭代计数被截断；死循环/不收敛 = **策略实现 bug**，修复在策略侧，框架不兜底（不收敛表现为挂起，可观测）。
+
+- 轮次推进以 `round_wait` 形态继续（`loop()` 各分支，迭代不烧 `node_max_retry_times` 预算；该预算仅失败路径 round_retry 消费）；
+- **失败类出口不属于迭代上限**：连续 fail 重派网（`OP_FAIL_REDISPATCH_LIMIT`，guards.md §2）、未知画面兜底、异常传播 = 对「错误条件」的响应，与迭代计数无关；
+- 兜底不变量：每个决策画面的动作空间至少含一个恒可用终结动作（op-layer.md §1.4）——正确策略必收敛，收敛性由策略侧保证。
+
 ## 2. 画面识别与分发（两阶段身份分发；判据单一源 = 各画面建档 id_mark 组合）
 
 ### 2.1 判定原语与预检
