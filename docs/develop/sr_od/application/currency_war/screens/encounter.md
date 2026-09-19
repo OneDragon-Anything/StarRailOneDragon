@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1;带刷新链的最复杂代表屏):观察 node = 画面身份门(「标识-遭遇节点」,miss = round_fail 交回外循环重判)→ 入口 2s 稳定期 → 稳定帧一次读(候选 + 刷新剩余)→ `report_screen_encounter_obs` 落容器 `encounter` 域 → obs 挂实例属性。决策动作 node = 顶部重入裁决(见下)→ 零参决策 `match.strategy.decide_encounter()`(候选自容器 `encounter` 槽;双轨:基线核 = `kernel/cw_events.py::decide_encounter`「未成型→低难保生存 / 成型+词缀利→高难拿奖励 / 全克→刷新」;mandate_v1 核 = EV 判据 `strategies/impl/mandate_v1/encounter.py`,语义单一源 = 代码本体;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→(按需)分支刷新链(访问内重读重选,不终结)→ 点卡 + 确认 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=10` 现役值仅框架异常路径消费)。重入裁决一件(决策动作 node 顶部):确认 pending = 上轮已发确认的选卡快照 `(options, idx)` → 本轮入口锚不在 = overlay 已关(选卡落地)→ 补写 `chosen_encounter` + success;锚在 = 未落地 → 清标志重走。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1;带刷新链的最复杂代表屏):观察 node = 画面身份门(「标识-遭遇节点」,miss = round_fail 交回外循环重判)→ 入口 2s 稳定期 → 稳定帧一次读(候选 + 刷新剩余)→ `report_screen_encounter_obs` 落容器 `encounter` 域 → obs 挂实例属性。决策动作 node = 顶部重入裁决(见下)→ 零参决策 `match.strategy.decide_encounter()`(候选自容器 `encounter` 槽;双轨:基线核 = `kernel/cw_events.py::decide_encounter`「未成型→低难保生存 / 成型+词缀利→高难拿奖励 / 全克→刷新」;mandate_v1 核 = EV 判据 `strategies/impl/mandate_v1/encounter.py`,语义单一源 = 代码本体;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→(按需)分支刷新链(访问内重读重选,不终结)→ 选卡确认链经 `CwActionPickEncounterOp` 派发(机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=10` 现役值仅框架异常路径消费)。重入裁决一件(决策动作 node 顶部):确认 pending = 上轮已发确认的选卡快照 `(options, idx)` → 本轮入口锚不在 = overlay 已关(选卡落地)→ 补写 `chosen_encounter` + success;锚在 = 未落地 → 清标志重走。
 
 ## 3. 观察面
 
@@ -36,14 +36,16 @@ pick = match.strategy.decide_encounter()(零参;候选读容器 encounter 槽)
 │      → report_screen_encounter_obs 二次覆盖写(容器终值 = 刷后候选)
 │    → 置 encounter_refreshed_in_visit 抑制位 → 重调决策按原评分选
 │      (「刷没刷成」不判:卡面未变时新观察 = 旧 options,重决策结果天然等价)
-└─ 确认链:置确认 pending
+└─ 确认链:置确认 pending → 派发 CwActionPickEncounterOp
+     (机械链在动作 op 内,op 内自上报 report_action_pick_encounter_param
+     零写;派发 param 携真实选中 idx)
      → 点卡身选中(「遭遇卡-其一/其二」area center,
        兜底常量 (665,500)/(1288,550))→ 0.8s → 点「选择」确认
        (「按钮-选择」area center,兜底 (1082,898))→ emit_overlay_confirm
        (机械交回零判效;落地判定归重入裁决)
 ```
 
-交互陷阱:点卡身选中 → 点「选择」确认,**中间勿插空白点击**(会取消选中 → 死循环;防线 = 重入裁决);「选择」钮未选中卡时灰置禁用。确认链机械半经动作工厂(`cw_overlay_pick_action.py::CwActionPickEncounterOp`);刷新发射零登记件(计数写端出辖动作侧,本链只点钮不记账)。
+交互陷阱:点卡身选中 → 点「选择」确认,**中间勿插空白点击**(会取消选中 → 死循环;防线 = 重入裁决);「选择」钮未选中卡时灰置禁用。确认链整体(点卡 + 确认 + 自上报)经动作工厂(`cw_overlay_pick_action.py::CwActionPickEncounterOp`,上报零写);刷新发射零登记件(计数写端出辖动作侧,本链只点钮不记账)。
 
 ## 5. 终结与交回
 

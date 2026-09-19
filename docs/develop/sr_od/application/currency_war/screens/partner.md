@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(「标识-选择伙伴」,miss = round_fail 交回外循环重判)→ 候选一次读 → `report_screen_partner_obs` 落容器 `partner_opts` 槽 → obs + 候选坐标挂实例属性。决策动作 node = 顶部重入裁决(确认 pending:标识不在 = overlay 关 = 链完结 → success;标识在 = 重走脉冲)→ 零参决策 `match.strategy.decide_partner()`(候选自容器槽;缺省实现优先 `config.character_build_around`/`target.core_chars` 命中,否则 idx=0,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E6)→ 「点选候选 → 确认」脉冲 → `round_wait` 循环(无防御上限;`node_max_retry_times=10` 现役值仅框架异常路径消费,有界防线 = CONFIRM_REJECT_MAX,见 §8)。chosen_partner 留守选择点,不进 report。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(「标识-选择伙伴」,miss = round_fail 交回外循环重判)→ 候选一次读 → `report_screen_partner_obs` 落容器 `partner_opts` 槽 → obs + 候选坐标挂实例属性。决策动作 node = 顶部重入裁决(确认 pending:标识不在 = overlay 关 = 链完结 → success;标识在 = 重走脉冲)→ 零参决策 `match.strategy.decide_partner()`(候选自容器槽;缺省实现优先 `config.character_build_around`/`target.core_chars` 命中,否则 idx=0,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E6)→ 「点选候选 → 确认」脉冲链经 `CwActionPickPartnerOp` 派发(机械链+自上报在动作 op 内,pick-op-unify 批;确认点读缺旁路不上报)→ `round_wait` 循环(无防御上限;`node_max_retry_times=10` 现役值仅框架异常路径消费,有界防线 = CONFIRM_REJECT_MAX,见 §8)。chosen_partner 留守选择点,不进 report。
 
 ## 3. 观察面
 
@@ -23,7 +23,7 @@
 
 ## 4. 动作面
 
-脉冲链(每轮一脉冲;确认被拒守卫/零参决策/chosen 写端留守决策动作 node,「点选候选 → 确认」机械半经动作工厂 `cw_overlay_pick_action.py::PartnerPickOp`):
+脉冲链(每轮一脉冲;确认被拒守卫/零参决策/chosen 写端留守决策动作 node,「点选候选 → 确认」脉冲 + 自上报零写整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickPartnerOp`,派发 param 携真实选中 idx):
 
 ```
 1. 未选中提示在场 ∧ 脉冲计数 ≥ CONFIRM_REJECT_MAX(4) → 显式 round_fail

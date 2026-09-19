@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1);**本屏无 op 内入口门**(入口判定归主循环 0 系分发双 id_mark,分发即门):观察 node = 三卡位 OCR 一次读 → `report_screen_equip_pick_obs` 落容器 `equip_pick_opts` 槽 → obs 挂实例属性;决策动作 node = 顶部重入出口门(`_pick_pending` 置位 → 「请选择」不在 = 点卡即选已落地 → success 交回)→ 零参决策 `match.strategy.decide_equip_pick()`(候选自容器槽;判据单一源 = kernel `cw_equip_value.py::decide_equip_overlay_pick`,共享机器 = 同文件 `key_fit_names`,判据归属 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) E18 同域的装备价值机器;本 op 零意向读,locked_comp 由策略入口注入 kernel)→ 点卡即选 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=5` 现役值仅框架异常路径消费)。无 chosen_* 写端。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1);**本屏无 op 内入口门**(入口判定归主循环 0 系分发双 id_mark,分发即门):观察 node = 三卡位 OCR 一次读 → `report_screen_equip_pick_obs` 落容器 `equip_pick_opts` 槽 → obs 挂实例属性;决策动作 node = 顶部重入出口门(`_pick_pending` 置位 → 「请选择」不在 = 点卡即选已落地 → success 交回)→ 零参决策 `match.strategy.decide_equip_pick()`(候选自容器槽;判据单一源 = kernel `cw_equip_value.py::decide_equip_overlay_pick`,共享机器 = 同文件 `key_fit_names`,判据归属 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) E18 同域的装备价值机器;本 op 零意向读,locked_comp 由策略入口注入 kernel)→ 选卡链经 `CwActionPickEquipOp` 派发(点卡即选机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=5` 现役值仅框架异常路径消费)。无 chosen_* 写端。
 
 ## 3. 观察面
 
@@ -17,15 +17,17 @@
 
 ## 4. 动作面
 
-决策动作 node 选卡链:
+决策动作 node 选卡链(整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickEquipOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx):
 
 ```
 重入出口门(决策动作 node 顶部):_pick_pending 置位 → 「请选择」OCR(lcs 0.5)不在 =
   overlay 已关(点卡即选已落地)→ success 交回外循环(出战按钮由主流程处理);
   在 = 重走选卡(重点选)
 texts = 观察轮 obs 载体 → decide_equip_pick()(零参;候选读容器 equip_pick_opts 槽)
-target = (槽 x 常量[best], 卡名带 y 常量 280)→ mouse_move + click → 1.2s
-→ 置 _pick_pending → round_wait(机械交回,零判效)
+target = (槽 x 常量[best], 卡名带 y 常量 280)→ 置 _pick_pending → 派发
+  (动作 op 内:target mouse_move + click → 1.2s
+   → 自上报 report_action_pick_equip_param)
+  (机械交回,零判效)
 ```
 
 交互陷阱:点卡即选(单步,无确认钮);重读选中态验效半拆除(验证废除,落地归重入出口门)。

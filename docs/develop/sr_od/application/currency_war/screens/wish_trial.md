@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(「标识-祈愿试炼」,miss = round_fail 交回外循环重判)→ objective 一次读 → `report_screen_wish_trial_obs` 落容器 `wish_trial_opts` 槽(空桶照写)→ obs 挂实例属性。决策动作 node = 顶部重入裁决(确认 pending = 上轮已发确认的 `(objectives, pick_idx)` 快照;标识不在 = overlay 已关 → 此刻才写 `chosen_wish` + success;标识在 = 未落地 → 清标志重走)→ 零参决策 `match.strategy.decide_wish_trial()`(候选自容器槽;打分:金币类/阵营词命中/刷新购买操作向 + 效果偏置基分,权重常量单一源 = `strategies/impl/pick_bias.py::PICK_BIAS`,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E5)→ 点卡选中 + 确认 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 现役值仅框架异常路径消费)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(「标识-祈愿试炼」,miss = round_fail 交回外循环重判)→ objective 一次读 → `report_screen_wish_trial_obs` 落容器 `wish_trial_opts` 槽(空桶照写)→ obs 挂实例属性。决策动作 node = 顶部重入裁决(确认 pending = 上轮已发确认的 `(objectives, pick_idx)` 快照;标识不在 = overlay 已关 → 此刻才写 `chosen_wish` + success;标识在 = 未落地 → 清标志重走)→ 零参决策 `match.strategy.decide_wish_trial()`(候选自容器槽;打分:金币类/阵营词命中/刷新购买操作向 + 效果偏置基分,权重常量单一源 = `strategies/impl/pick_bias.py::PICK_BIAS`,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E5)→ 选卡确认链经 `CwActionPickWishTrialOp` 派发(机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 现役值仅框架异常路径消费)。
 
 ## 3. 观察面
 
@@ -17,17 +17,18 @@
 
 ## 4. 动作面
 
-决策动作 node 选卡+确认链(直驱):
+决策动作 node 选卡+确认链(整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickWishTrialOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx):
 
 ```
 objs = 观察轮 obs 载体 → idx = decide_wish_trial()(零参;候选读容器 wish_trial_opts 槽)
   (策略异常 = 留证告警 fallback 第 1 张;越界 = 不改 target)
-target = (槽 x 常量[idx], 卡身 y 常量 340)→ mouse_move + click(点卡身选中:
-  金色边框 + 确认选择亮)→ 1.0s
-→ 点「按钮-确认选择」(round_by_find_and_click_area,success_wait 1.5;
-  本屏独有检测,不与 partner/megastar 的同名钮撞——祈愿锚在前已分流)
-→ 置确认 pending → round_wait(机械交回零判效;落地判定归决策动作 node 顶部重入裁决,
-  chosen_wish 写端随之在裁决点,防未落地轮留幻影登记)
+target = (槽 x 常量[idx], 卡身 y 常量 340)→ 置确认 pending → 派发
+  (动作 op 内:target mouse_move + click[点卡身选中:金色边框 + 确认选择亮]
+   → 1.0s → 点「按钮-确认选择」[round_by_find_and_click_area,success_wait 1.5;
+   本屏独有检测,不与 partner/megastar 的同名钮撞——祈愿锚在前已分流]
+   → 自上报 report_action_pick_wish_trial_param)
+  (机械交回零判效;落地判定归决策动作 node 顶部重入裁决,
+   chosen_wish 写端随之在裁决点,防未落地轮留幻影登记)
 ```
 
 交互陷阱:ESC 不关本 overlay(禁键盘纪律下无替代键路径,唯一出口 = 选卡+确认);卡身建档(卡位坐标)挂账实机批,现走槽常量。

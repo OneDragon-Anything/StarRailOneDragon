@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。**节点循环**形态,两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 节点完成门(`_in_node`:「标识-盛会之星」还在;miss = 复位 `StrategyState.megastar_clicked` + 节点完成 round_success 交回外循环)→ 候选懒读(仅未选中时读,见 §3)→ `report_screen_megastar_obs` 落容器 `megastar_opts` 槽 → obs 挂实例属性。决策动作 node = 顶部节点完成复检(每轮新帧)→ 零参决策 `match.strategy.decide_megastar()`(候选自容器槽;缺省实现委托 `kernel/cw_comps.py::select_megastar`,未命中/OCR 空 → idx=0,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E7)→ 单动作(选候选 ∨ 确认)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 现役值仅框架异常路径消费)。chosen_megastar 留守选择点,不进 report。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。**节点循环**形态,两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 节点完成门(`_in_node`:「标识-盛会之星」还在;miss = 复位 `StrategyState.megastar_clicked` + 节点完成 round_success 交回外循环)→ 候选懒读(仅未选中时读,见 §3)→ `report_screen_megastar_obs` 落容器 `megastar_opts` 槽 → obs 挂实例属性。决策动作 node = 顶部节点完成复检(每轮新帧)→ 零参决策 `match.strategy.decide_megastar()`(候选自容器槽;缺省实现委托 `kernel/cw_comps.py::select_megastar`,未命中/OCR 空 → idx=0,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E7)→ 「选中 → 确认」链经 `CwActionPickMegastarOp` 派发(选中半迁入动作 op,`env.need_select` 驱动,pick-op-unify 批;`chosen_megastar` 写端与选中旗标留守决策面,派发前写)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 现役值仅框架异常路径消费)。chosen_megastar 留守选择点,不进 report。
 
 ## 3. 观察面
 
@@ -17,12 +17,10 @@
 
 ## 4. 动作面
 
-决策动作 node 单动作体 `_do_action`(零参:候选自观察轮 obs 载体),两步:
+决策动作 node 单动作体 `_do_action`(零参:候选自观察轮 obs 载体):决策与写端留守 + 「选中 → 确认」链派发(`CwActionPickMegastarOp`;机械链在动作 op 内,pick-op-unify 批):
 
-1. **点候选**(仅当 `StrategyState.megastar_clicked` 为 False,经 kernel `strategy_state_of` 通道读写,状态缺席不冷建):`decide_megastar()` 零参决策(候选读容器 `megastar_opts` 槽)选 idx → 点候选位(「候选-左」/「候选-右」area center,兜底常量 (822,333)/(1061,333);名位置 = 卡身选中区)→ mouse_move + click → 置位选中标记(局级,跨 re-dispatch 持久)→ `chosen_megastar` 写(容器 `game_state_of(match.session).write_logic`,候选选中时点;session 份退役,gs 单一源)→ 0.6s。
-2. **点确认**:`「按钮-确认选择」area center`(兜底 (1490,560))→ mouse_move + click → 0.9s。确认 = 纯机械单发(验证废除;「请选择强化角色」文本 = 确认钮旁伴随文案非第二画面步骤,未建模独立处理);确认未落地 overlay 残留 = 下一轮门复检自愈(门仍在 → 候选已选 → 机械单发确认再推进)。
-
-确认半经动作工厂(`cw_overlay_pick_action.py::MegastarPickOp`;候选选中半与 chosen_megastar 写端留守决策体)。
+1. **决策 + 写端留守**(仅当 `StrategyState.megastar_clicked` 为 False,经 kernel `strategy_state_of` 通道读写,状态缺席不冷建):`decide_megastar()` 零参决策(候选读容器 `megastar_opts` 槽)选 idx → 置位选中标记(局级,跨 re-dispatch 持久)→ `chosen_megastar` 写(容器 `game_state_of(match.session).write_logic`,派发前写——原「候选选中时点」平移至「点选前」,窗口内无读者,时序申报 = 迭代 design.md §2;session 份退役,gs 单一源)→ 组 env(候选位 = 「候选-左」/「候选-右」area center,兜底常量 (822,333)/(1061,333) + `need_select=True`)→ 派发。
+2. **机械链(动作 op 内)**:`need_select` → 点候选(mouse_move + click)→ 0.6s → 点确认(`「按钮-确认选择」area center`,兜底 (1490,560))→ mouse_move + click → 0.9s → 自上报 `report_action_pick_megastar_param`(零写)。确认 = 纯机械单发(验证废除;「请选择强化角色」文本 = 确认钮旁伴随文案非第二画面步骤,未建模独立处理);确认未落地 overlay 残留 = 下一轮门复检自愈(门仍在 → 候选已选 → 机械单发确认再推进)。确认轮(已选中)只发确认(`need_select=False`,idx 复用决策轮缓存)。
 
 ## 5. 终结与交回
 
@@ -52,5 +50,5 @@
 ## 9. 遥测与锁面
 
 - journal op 名 =「巨星强化」;op 内日志 tag = `[cw-megastar]`(candidates/pick/reason)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens.py`(遭遇 + 盛会之星两 node 形态锁:门完成/懒读跳过/重派不复点)、test_cw_runnode_retire.py(旧节点基类退役等价)。
+- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens.py`(遭遇 + 盛会之星两 node 形态锁:门完成/懒读跳过/重派不重触发选中[派发 `env.need_select` 断言]/门 miss 复位/缺席态不冷建)、test_cw_unified_action_4.py(巨星 op 机械链行为锁)、test_cw_runnode_retire.py(旧节点基类退役等价)。
 - game 侧知识:机制(巨星 = 阵营羁绊选 1 角色给全队 buff) = [../../../../game/screens/currency_war_megastar.md](../../../../../game/screens/currency_war_megastar.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1。

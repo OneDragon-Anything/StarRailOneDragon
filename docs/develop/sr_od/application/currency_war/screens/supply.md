@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。**committed-but-verifying 节点循环**形态,两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 节点完成门(`_in_node`:标识锚还在;已离开 = 节点完成 round_success 交回外循环)→ 选项一次读 → `report_screen_supply_node_obs` 落容器 `supply` → obs + 点卡定位点挂实例属性。决策动作 node = 顶部节点完成复检(每轮新帧)→ 零参决策 `match.strategy.decide_supply()`(候选自容器 `supply` 槽;缺省实现委托 `kernel/cw_events.py::decide_supply`,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E4)→ 单动作(刷新终结交回 ∨ 选卡+确认)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 现役值仅框架异常路径消费)。无独立落地登记面——`chosen_supply` 确认即写与刷新计数内联写留守决策体(见 §6)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。**committed-but-verifying 节点循环**形态,两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 节点完成门(`_in_node`:标识锚还在;已离开 = 节点完成 round_success 交回外循环)→ 选项一次读 → `report_screen_supply_node_obs` 落容器 `supply` → obs + 点卡定位点挂实例属性。决策动作 node = 顶部节点完成复检(每轮新帧)→ 零参决策 `match.strategy.decide_supply()`(候选自容器 `supply` 槽;缺省实现委托 `kernel/cw_events.py::decide_supply`,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E4)→ 单动作(刷新终结交回 ∨ 选卡确认链经 `CwActionPickSupplyOp` 派发,机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 现役值仅框架异常路径消费)。无独立落地登记面——`chosen_supply` 确认即写与刷新计数内联写留守决策体(见 §6)。
 
 ## 3. 观察面
 
@@ -45,7 +45,7 @@ pick = match.strategy.decide_supply()(零参;候选读容器 supply 槽)
        ConfirmSupply(owned += equip,动作 op 机械半)
 ```
 
-刷新轮不走选卡分支(选定快照保持 None;兜底点卡轮同样不带快照,决策帧照写但不带选择字段,读端按 None 分型)。选卡+确认机械半经动作工厂(`cw_overlay_pick_action.py::CwActionPickSupplyOp`,到账登记在彼)。
+刷新轮不走选卡分支(选定快照保持 None;兜底点卡轮同样不带快照,决策帧照写但不带选择字段,读端按 None 分型)。选卡+确认+自上报(`report_action_pick_supply_param`,零写)整体经动作工厂(`cw_overlay_pick_action.py::CwActionPickSupplyOp`;派发 param 携真实选中 idx,到账登记 ConfirmSupply 在彼)。
 
 ## 5. 终结与交回
 

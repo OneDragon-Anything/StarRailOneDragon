@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;选卡即终结,单步无确认)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 两道闸(入口锚复验,分发即门 op 内机械复验防误派;OCR 卡名空 = 未发出通道)→ 任一 miss = round_fail 交回外循环重派(重观察语境禁猜,禁盲点首卡;report 不调,容器不进盲值)→ `report_screen_box_pick_obs` 落容器 `box_card_names` 槽 → obs + OCR 坐标挂实例属性。决策动作 node = 选卡决策 → 点卡 → 固定动画等待 → round_success 交回(选卡落地由下一帧观察覆盖;op 内零重试轮,重试预算归外循环重分发;`node_max_retry_times=5` 现役值仅框架异常路径消费)。零参决策 `match.strategy.decide_box_card()`(候选自容器槽;局内 fail-closed:异常留证完整栈后显式上抛 / 返回越界索引同上抛——两者都禁无声回落内联打分,策略 bug 禁永久遮蔽;局外防御 = kernel 机器空键纯通用排序;薄壳语义:locked_comp 两态锚 + 三本库存账 → 共享机器 `kernel/cw_equip_value.py::pick_equipment` 序数分档,key 直击 > 近兑现 > 材料 > 通用,base = 通用输出先验;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;选卡即终结,单步无确认)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 两道闸(入口锚复验,分发即门 op 内机械复验防误派;OCR 卡名空 = 未发出通道)→ 任一 miss = round_fail 交回外循环重派(重观察语境禁猜,禁盲点首卡;report 不调,容器不进盲值)→ `report_screen_box_pick_obs` 落容器 `box_card_names` 槽 → obs + OCR 坐标挂实例属性。决策动作 node = 选卡决策 → 选卡链经 `CwActionPickBoxCardOp` 派发(点卡选中即确认 + 动画等待迁入动作 op,pick-op-unify 批)→ round_success 交回(选卡落地由下一帧观察覆盖;op 内零重试轮,重试预算归外循环重分发;`node_max_retry_times=5` 现役值仅框架异常路径消费)。零参决策 `match.strategy.decide_box_card()`(候选自容器槽;局内 fail-closed:异常留证完整栈后显式上抛 / 返回越界索引同上抛——两者都禁无声回落内联打分,策略 bug 禁永久遮蔽;局外防御 = kernel 机器空键纯通用排序;薄壳语义:locked_comp 两态锚 + 三本库存账 → 共享机器 `kernel/cw_equip_value.py::pick_equipment` 序数分档,key 直击 > 近兑现 > 材料 > 通用,base = 通用输出先验;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18)。
 
 ## 3. 观察面
 
@@ -27,12 +27,14 @@ idx = _decide_card_index(决策动作 node):
     同上抛——两者都禁无声回落内联打分,策略 bug 禁永久遮蔽)
   局外 = kernel pick_equipment(机器空键)
 card_point = (选中卡 x 中心, 卡身 y 常量 290)(点卡名带下方一点,避「查看详情」按钮)
-→ mouse_move + click(bug#1 缓解)→ 点卡选中即确认(单步)
-→ 固定动画等待(_OVERLAY_ANIM_WAIT_S = prep_actions overlay 动画等待常量)
+→ 派发 CwActionPickBoxCardOp(动作 op 内:target mouse_move + click
+  [bug#1 缓解]→ 点卡选中即确认[单步]→ 固定动画等待
+  [_OVERLAY_ANIM_WAIT_S = prep_actions overlay 动画等待常量]
+  → 自上报 report_action_pick_box_card_param;派发 param 携真实选中 idx)
 → round_success(选卡即终结,交回外循环)
 ```
 
-选卡+确认均画面 op 直驱;武装箱选卡不属备战动作词表(与备战 `OpenBox` 开箱动作分属两域)。
+选卡+确认+自上报经动作工厂(`CwActionPickBoxCardOp`)派发;武装箱选卡不属备战动作词表(与备战 `OpenBox` 开箱动作分属两域)。
 
 ## 5. 终结与交回
 

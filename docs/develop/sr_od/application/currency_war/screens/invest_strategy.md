@@ -1,6 +1,6 @@
 # 投资策略三选一(invest_strategy · 货币战争-投资策略)
 
-> 代码 = `operations/cw_screen/cw_screen_invest_strategy.py::CwScreenInvestStrategy`(两 node 直继承 `SrOperation`)。职责:投资策略 overlay 一次访问——入口稳定帧观察 → `decide_invest` 决策 →(按需)逐卡刷新终结动作 → 点最优卡 + 确认机械交回。路径根 = `src/sr_od/application/currency_war/`。建档 = `assets/game_data/screen_info/currency_war_invest_strategy.yml`。
+> 代码 = `operations/cw_screen/cw_screen_invest_strategy.py::CwScreenInvestStrategy`(两 node 直继承 `SrOperation`)。职责:投资策略 overlay 一次访问——入口稳定帧观察 → `decide_invest` 决策 →(按需)逐卡刷新终结动作 → 选卡确认链经 `CwActionPickInvestOp` 派发。路径根 = `src/sr_od/application/currency_war/`。建档 = `assets/game_data/screen_info/currency_war_invest_strategy.yml`。
 
 ## 1. 分发判定
 
@@ -11,7 +11,7 @@
 
 **横幅中间态**(2026-09-15 决策帧实证 + 用户裁定,过渡记录 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #30):入口展开为两段——备战画面先完整可见,选卡页展开过程中存在「备战完整可见 + 中部横幅『请选择投资策略』(y≈510,选卡未渲染)」的中间态。横幅态**零可交互元素,裁定不派发不处理**(等展开完成;横幅态标题不在 id_mark 位 [855,78,1065,118],锚判定天然 miss,现行分发判据与该裁定一致)。
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;不入决策规范,op 形态照常)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口锚复探窗(ADR-0529 有界自愈)→ 1s 稳定帧 → 候选一次读 → `report_screen_invest_strategy_obs` 落容器 `invest_strategy_opts` 槽 → obs 挂实例属性。决策动作 node = 顶部重入裁决两件 → 零参决策 `strategies/impl/cw_strategy.py::CwStrategy.decide_invest_strategy()`(候选自容器槽;判据本体 = `kernel/cw_events.py::decide_event`,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→ 逐卡刷新终结交回 ∨ 点卡 + 确认 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=10` 现役值仅框架异常路径消费)。重入裁决两件(决策动作 node 顶部):
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;不入决策规范,op 形态照常)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口锚复探窗(ADR-0529 有界自愈)→ 1s 稳定帧 → 候选一次读 → `report_screen_invest_strategy_obs` 落容器 `invest_strategy_opts` 槽 → obs 挂实例属性。决策动作 node = 顶部重入裁决两件 → 零参决策 `strategies/impl/cw_strategy.py::CwStrategy.decide_invest_strategy()`(候选自容器槽;判据本体 = `kernel/cw_events.py::decide_event`,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→ 逐卡刷新终结交回 ∨ 选卡确认链经 `CwActionPickInvestOp` 派发(投资两屏共用 op,机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=10` 现役值仅框架异常路径消费)。重入裁决两件(决策动作 node 顶部):
 - 确认裁决:上轮已发确认 → 本轮入口锚不在 = overlay 已关(选卡落地)→ 补 append 持卡 + success 交回;锚仍在 = 确认未落地 → 清标志重走。
 - 刷新 = 终结动作,无 pending 裁决:点钮后本访问即 round_success 终结交回,外循环重进 = 入口重建重观察重决策。
 
@@ -45,13 +45,16 @@ names = opts 卡名;act = match.strategy.decide_invest_strategy()
 │    → 点「刷新次数N」文本锚 + 固定偏移 _REFRESH_BTN_DX(-88,safe_click)
 │    → 动画窗固定等待 1.5s(机械时序)→ round_success = 本访问终结交回
 │      (访问内零比对:刷后不重读不比对不重决策;新事实归重进访问重建)
-├─ 点卡:卡名行 Y(「区域-卡名行」center,兜底常量)+ 该卡 center-x → safe_click → 0.7s
-└─ 确认:「按钮-确认」center(兜底常量)→ 置确认 pending → emit_overlay_confirm
-     (机械交回,验效废除 = [op-layer.md](op-layer.md) §1.2;
-      落地判定归 §2 确认裁决)
+├─ 选卡确认链:置确认 pending(待裁决选卡名)→ 派发 CwActionPickInvestOp
+│    (投资两屏共用;机械链在动作 op 内,op 内自上报
+│     report_action_pick_invest_param 零写;派发 param 携真实选中 idx,
+│     定位点 = 「区域-卡名行」center[兜底常量] + 该卡 center-x,
+│     确认钮 = 「按钮-确认」center[兜底常量],裁决词「投资策略」)
+│    (机械交回,验效废除 = [op-layer.md](op-layer.md) §1.2;
+│     落地判定归 §2 确认裁决)
 ```
 
-交互陷阱:选中点击 = **卡名行**(y≈474);点描述区/卡底不选中(选中失败 → 确认灰置,重入裁决兜底)。点卡/确认/刷新点击均画面 op 直驱(safe_click + emit_overlay_confirm);刷新槽位坐标 = `pair_refresh_counts_to_slots` 现读配对(slot = 画面槽位下标左→右 0-2,与 `RefreshInvestCards.slots` 同坐标系)。
+交互陷阱:选中点击 = **卡名行**(y≈474);点描述区/卡底不选中(选中失败 → 确认灰置,重入裁决兜底)。选卡+确认链经动作工厂(`CwActionPickInvestOp`)派发,刷新圆钮点击留守画面 op(safe_click);刷新槽位坐标 = `pair_refresh_counts_to_slots` 现读配对(slot = 画面槽位下标左→右 0-2,与 `RefreshInvestCards.slots` 同坐标系)。
 
 ## 5. 终结与交回
 

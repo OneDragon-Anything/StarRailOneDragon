@@ -8,7 +8,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1);**分发即门**(无 op 内入口守卫):观察 node = 三卡位 OCR 一次读 → `report_screen_fortune_obs` 落容器 `fortune_opts` 槽(空表照写)→ obs 挂实例属性;决策动作 node = 顶部重入出口门(确认已发 → OCR「命运卜者」不在 = overlay 已关 → success 交回)→ 零参决策 `match.strategy.decide_fortune()`(候选自容器槽;判据单一源 = kernel `cw_events.py::decide_fortune` 战力关键词加权,唯一入口 = 策略对象,handler 禁自拟打分;事件面判据目录 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §2)→ 点卡下半部选中 + 确认 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=5` 现役值仅框架异常路径消费)。无 chosen_* 写端。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1);**分发即门**(无 op 内入口守卫):观察 node = 三卡位 OCR 一次读 → `report_screen_fortune_obs` 落容器 `fortune_opts` 槽(空表照写)→ obs 挂实例属性;决策动作 node = 顶部重入出口门(确认已发 → OCR「命运卜者」不在 = overlay 已关 → success 交回)→ 零参决策 `match.strategy.decide_fortune()`(候选自容器槽;判据单一源 = kernel `cw_events.py::decide_fortune` 战力关键词加权,唯一入口 = 策略对象,handler 禁自拟打分;事件面判据目录 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §2)→ 选卡确认链经 `CwActionPickFortuneOp` 派发(机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=5` 现役值仅框架异常路径消费)。无 chosen_* 写端。
 
 ## 3. 观察面
 
@@ -16,16 +16,17 @@
 
 ## 4. 动作面
 
-决策动作 node 选卡+确认链:
+决策动作 node 选卡+确认链(整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickFortuneOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx):
 
 ```
 重入出口门(决策动作 node 顶部):_confirm_pending 置位 → OCR「命运卜者」(lcs 0.5)不在 =
   overlay 已关(上轮确认已落地)→ success 交回外循环;在 = 重走选卡+确认
 texts = 观察轮 obs 载体 → decide_fortune()(零参;候选读容器 fortune_opts 槽)
 target = (槽 x 常量[best], 卡身 y 常量 480)——点卡下半部选中,避详情按钮带
-  → safe_click(bug#1 缓解)→ 1.2s
-→ 置 _confirm_pending → 确认:「按钮-确认选择」center(建档 rect 中心,
-  兜底常量同按钮)→ emit_overlay_confirm(裁决词「命运卜者」;机械交回零判效)
+→ 置 _confirm_pending → 派发(动作 op 内:target safe_click[bug#1 缓解] → 1.2s
+  → 确认:「按钮-确认选择」center[建档 rect 中心,兜底常量同按钮]
+  → emit_overlay_confirm[裁决词「命运卜者」;机械交回零判效]
+  → 自上报 report_action_pick_fortune_param)
 ```
 
 ## 5. 终结与交回

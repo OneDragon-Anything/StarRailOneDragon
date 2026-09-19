@@ -1,6 +1,6 @@
 # 投资环境三选一(invest_env · 货币战争-投资环境)
 
-> 代码 = `operations/cw_screen/cw_screen_invest_env.py::CwScreenInvestEnv`(两 node 直继承 `SrOperation`)。职责:投资环境 overlay 一次访问——稳定帧观察 → `decide_invest` 决策 →(按需)整组刷新终结动作 → 点最优卡底 + 确认 + 台账变异窗收尾。路径根 = `src/sr_od/application/currency_war/`。建档 = `assets/game_data/screen_info/currency_war_invest_env.yml`。
+> 代码 = `operations/cw_screen/cw_screen_invest_env.py::CwScreenInvestEnv`(两 node 直继承 `SrOperation`)。职责:投资环境 overlay 一次访问——稳定帧观察 → `decide_invest` 决策 →(按需)整组刷新终结动作 → 选卡确认链经 `CwActionPickInvestOp` 派发(台账变异窗派发前开)。路径根 = `src/sr_od/application/currency_war/`。建档 = `assets/game_data/screen_info/currency_war_invest_env.yml`。
 
 ## 1. 分发判定
 
@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口锚门(miss = round_fail 交回外循环重判)→ 1s 稳定帧 → 候选一次读 → `report_screen_invest_env_obs` 落容器 `invest_env_opts` 槽 → obs 挂实例属性。决策动作 node = 顶部重入裁决(确认裁决:锚不在 = 环境选择落地 → success;锚在 = 未落地重走)→ 零参决策 `match.strategy.decide_invest_env()`(候选自容器槽;委托 `kernel/cw_events.py::decide_event`;环境帧刷新判据在 kernel,handler 禁直调 kernel 判据算刷新建议,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→ 整组刷新终结交回 ∨ 点卡底 + 确认 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=10` 现役值仅框架异常路径消费)。刷新 = 终结动作,无 pending 裁决:点钮后本访问即 round_success 交回,外循环重进 = 入口重建重观察重分类。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口锚门(miss = round_fail 交回外循环重判)→ 1s 稳定帧 → 候选一次读 → `report_screen_invest_env_obs` 落容器 `invest_env_opts` 槽 → obs 挂实例属性。决策动作 node = 顶部重入裁决(确认裁决:锚不在 = 环境选择落地 → success;锚在 = 未落地重走)→ 零参决策 `match.strategy.decide_invest_env()`(候选自容器槽;委托 `kernel/cw_events.py::decide_event`;环境帧刷新判据在 kernel,handler 禁直调 kernel 判据算刷新建议,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→ 整组刷新终结交回 ∨ 选卡确认链经 `CwActionPickInvestOp` 派发(投资两屏共用 op,机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=10` 现役值仅框架异常路径消费)。刷新 = 终结动作,无 pending 裁决:点钮后本访问即 round_success 交回,外循环重进 = 入口重建重观察重分类。
 
 ## 3. 观察面
 
@@ -37,17 +37,21 @@ act = match.strategy.decide_invest_env()(零参,候选读容器 invest_env_opts 
 │    (选完即关整局保留;session 份退役)+ portal 效果登记
 │    (register_portal_from_env,best-effort;经济环境入结构化条目)
 │    + 外部随机授予置闩(latch_external_grants,best-effort)
-├─ 点最优卡底:「区域-卡牌描述行」center.y(兜底常量 450)+ 该卡 center-x
-│    → safe_click → 0.7s(点立绘/卡名不选中,点描述区才选中)
-├─ 台账变异窗:确认前开窗(env_grace_until = now + 45s 常量 ENV_GRACE_S)——
-│    环境选择是位面节点序列唯一变异源,确认到节点行重读之间的查表不一致
-│    是合法变异,三票校验不得落缺陷台账(关窗迁备战帧链写端)
-└─ 确认:「按钮-确认」center(兜底常量)→ 置确认 pending → emit_overlay_confirm
-     (落地判定归 §2 确认裁决;台账写点②「确认后自截屏重读节点行」已
-      退役——环境改型由返回备战后的入口观察链读承接)
+├─ 台账变异窗:选卡链派发**前**开窗(env_grace_until = now + 45s 常量
+│    ENV_GRACE_S;pick-op-unify 批起自「确认前」平移至「派发前」,
+│    宽限面只增不减)——环境选择是位面节点序列唯一变异源,确认到节点行
+│    重读之间的查表不一致是合法变异,三票校验不得落缺陷台账
+│    (关窗迁备战帧链写端)
+└─ 选卡确认链:置确认 pending → 派发 CwActionPickInvestOp(投资两屏共用;
+     机械链在动作 op 内,op 内自上报 report_action_pick_invest_param 零写;
+     派发 param 携真实选中 idx,定位点 = 「区域-卡牌描述行」center.y
+     [兜底常量 450] + 该卡 center-x[点立绘/卡名不选中,点描述区才选中],
+     确认钮 = 「按钮-确认」center[兜底常量],裁决词「投资环境」;
+     落地判定归 §2 确认裁决;台账写点②「确认后自截屏重读节点行」已
+     退役——环境改型由返回备战后的入口观察链读承接)
 ```
 
-点卡/确认/刷新点击均画面 op 直驱(safe_click + emit_overlay_confirm);刷新臂刷后机械重读只作零效果留证输入(`_reconcile_refresh_no_effect`),不进决策。
+选卡+确认链经动作工厂(`CwActionPickInvestOp`)派发;刷新圆钮点击留守画面 op(safe_click),刷新臂刷后机械重读只作零效果留证输入(`_reconcile_refresh_no_effect`),不进决策。
 
 ## 5. 终结与交回
 

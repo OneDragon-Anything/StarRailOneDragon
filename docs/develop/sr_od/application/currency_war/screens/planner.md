@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1);**分发即门**(无 op 内入口守卫):观察 node = 左右两卡 OCR 桶一次读 → `report_screen_planner_obs` 落容器 `planner_opts` 槽(恒两卡,空桶照写;match/gs 缺席的局外兜底路径跳过)→ obs 挂实例属性;决策动作 node = 顶部重入出口门(确认已发 → OCR「我来当策划」不在 = overlay 已关 → success 交回)→ 零参决策 `match.strategy.decide_planner()`(候选自容器槽;唯一入口 = 策略对象,handler 禁 kernel 直调;委托 `kernel/cw_events.py::decide_planner` 升费卡打分含银狼线/在场判定,target_comp 决定银狼线加成,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E16。「何时升费非最优」由策略模块表达,handler 不写死优先级)→ 点卡+确认链 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=5` 现役值仅框架异常路径消费)。无 chosen_* 写端。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1);**分发即门**(无 op 内入口守卫):观察 node = 左右两卡 OCR 桶一次读 → `report_screen_planner_obs` 落容器 `planner_opts` 槽(恒两卡,空桶照写;match/gs 缺席的局外兜底路径跳过)→ obs 挂实例属性;决策动作 node = 顶部重入出口门(确认已发 → OCR「我来当策划」不在 = overlay 已关 → success 交回)→ 零参决策 `match.strategy.decide_planner()`(候选自容器槽;唯一入口 = 策略对象,handler 禁 kernel 直调;委托 `kernel/cw_events.py::decide_planner` 升费卡打分含银狼线/在场判定,target_comp 决定银狼线加成,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E16。「何时升费非最优」由策略模块表达,handler 不写死优先级)→ 点卡+确认链经 `CwActionPickPlannerOp` 派发(机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=5` 现役值仅框架异常路径消费)。无 chosen_* 写端。
 
 ## 3. 观察面
 
@@ -17,7 +17,7 @@
 
 ## 4. 动作面
 
-决策动作 node 选卡+确认链(点卡+确认机械半经动作工厂 `cw_overlay_pick_action.py::PlannerPickOp`;决策半留守):
+决策动作 node 选卡+确认链(点卡+确认+自上报零写整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickPlannerOp`,派发 param 携真实选中 idx;决策半留守):
 
 ```
 重入出口门(决策动作 node 顶部):_confirm_pending 置位 → OCR「我来当策划」全词(lcs 0.5)不在

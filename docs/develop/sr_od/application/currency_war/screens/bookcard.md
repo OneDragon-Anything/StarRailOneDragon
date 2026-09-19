@@ -8,7 +8,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(「标识-星徽秘典」,miss = round_fail 交回外循环重判)→ 卡阵营名一次读 → `report_screen_bookcard_obs` 落容器 `star_tome_opts` 槽 → obs + 候选坐标挂实例属性。决策动作 node = 顶部重入裁决(选卡 pending = 上轮已发选卡的星徽名;弹窗不在 = 选卡落地 → 此刻才写 chosen_tome + 到账登记 + success;弹窗在 = 点击未落地 → 重走重选,不留幻影登记)→ 零参决策 `match.strategy.decide_star_tome()`(候选自容器槽;打分:target 阵营命中 / board 已有阵营 / 配方框架阵营命中,权重 = `strategies/impl/pick_bias.py::PICK_BIAS` tome_* 常量,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E17)→ 点卡即选 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=5` 现役值仅框架异常路径消费)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(「标识-星徽秘典」,miss = round_fail 交回外循环重判)→ 卡阵营名一次读 → `report_screen_bookcard_obs` 落容器 `star_tome_opts` 槽 → obs + 候选坐标挂实例属性。决策动作 node = 顶部重入裁决(选卡 pending = 上轮已发选卡的星徽名;弹窗不在 = 选卡落地 → 此刻才写 chosen_tome + 到账登记 + success;弹窗在 = 点击未落地 → 重走重选,不留幻影登记)→ 零参决策 `match.strategy.decide_star_tome()`(候选自容器槽;打分:target 阵营命中 / board 已有阵营 / 配方框架阵营命中,权重 = `strategies/impl/pick_bias.py::PICK_BIAS` tome_* 常量,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E17)→ 选卡链经 `CwActionPickStarTomeOp` 派发(点卡即选机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=5` 现役值仅框架异常路径消费)。
 
 ## 3. 观察面
 
@@ -16,15 +16,17 @@
 
 ## 4. 动作面
 
-决策动作 node 读卡+选卡+机械交回链(直驱):
+决策动作 node 读卡+选卡+机械交回链(整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickStarTomeOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx):
 
 ```
 cards = 观察轮实例载体 → idx = decide_star_tome()(零参;候选读容器 star_tome_opts 槽)
   (cards 空 / 无 match = idx 0 fallback)
 target = _card_point(idx, faction_x):「星徽卡-1..4」area 中心;
   OCR x 已知时取 x 近邻 area(防 area 序与画面序错位);任一 area 缺失 = round_fail
-  (禁裸坐标兜底)→ safe_click(bug#1 缓解)→ 1.0s
-→ 置选卡 pending → round_wait(机械交回零判效;弹窗关没关由下一轮重入裁决)
+  (禁裸坐标兜底)→ 置选卡 pending → 派发
+  (动作 op 内:target safe_click[bug#1 缓解]→ 1.0s
+   → 自上报 report_action_pick_star_tome_param)
+  (机械交回零判效;弹窗关没关由下一轮重入裁决)
 ```
 
 交互陷阱:点卡即选、弹窗自关(无确认步骤);fallback 轮(idx 0 无 OCR 依据)记名 = `(fallback卡1)` 哨兵值,落地裁决时哨兵名不登记(防幻影记录)。与备战词表 `OpenTome`(开秘密典籍道具)分属两域——本屏是弹窗选卡画面,OpenTome 是备战开道具动作。

@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 弹窗在场门(「标识-专家邀请函」,miss = round_fail 交回外循环重识别自愈)→ 弹窗载体一次读(板面 + 卡羁绊)→ `report_screen_expert_invite_obs` 落容器 `expert_invite` 槽 → obs 挂实例属性。决策动作 node = 顶部重入裁决(选卡 pending = 上轮已发的 `(idx, card_bonds)` 快照;弹窗不在 = 选卡落地 → 补写 chosen_expert + 现金分支到账登记 + success;弹窗在 = 未落地 → 重走)→ 零参决策 `match.strategy.decide_expert_invite()`(候选自容器槽;判据单一源 = kernel `cw_events.py::choose_expert_index`,羁绊同线优先兜底现金为王,判据见 §4)→ 点选 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=6` 现役值仅框架异常路径消费)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 弹窗在场门(「标识-专家邀请函」,miss = round_fail 交回外循环重识别自愈)→ 弹窗载体一次读(板面 + 卡羁绊)→ `report_screen_expert_invite_obs` 落容器 `expert_invite` 槽 → obs 挂实例属性。决策动作 node = 顶部重入裁决(选卡 pending = 上轮已发的 `(idx, card_bonds)` 快照;弹窗不在 = 选卡落地 → 补写 chosen_expert + 现金分支到账登记 + success;弹窗在 = 未落地 → 重走)→ 零参决策 `match.strategy.decide_expert_invite()`(候选自容器槽;判据单一源 = kernel `cw_events.py::choose_expert_index`,羁绊同线优先兜底现金为王,判据见 §4)→ 选卡链经 `CwActionPickExpertInviteOp` 派发(点卡即选机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=6` 现役值仅框架异常路径消费)。
 
 ## 3. 观察面
 
@@ -22,7 +22,7 @@
 
 ## 4. 动作面
 
-决策动作 node 选卡链(直驱):
+决策动作 node 选卡链(整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickExpertInviteOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx,含 -1 现金为王语义):
 
 ```
 board/card_bonds = 观察轮 obs 载体
@@ -34,8 +34,10 @@ idx = decide_expert_invite()(零参;候选读容器 expert_invite 槽;
   ③ 全无同线 / board 空 / card_bonds 空 → -1(现金为王:选卡无依据时
     经济兜底优于盲选)
 area = 「卡-现金为王」(idx<0)∨「卡-1..4」→ area_center 缺失 = round_fail
-→ mouse_move + click → 1.2s(选卡 → 弹窗关闭动画窗)
-→ 置选卡 pending → round_wait(机械交回零判效;落地归决策动作 node 顶部重入裁决)
+→ 置选卡 pending → 派发
+  (动作 op 内:target mouse_move + click → 1.2s[选卡 → 弹窗关闭动画窗]
+   → 自上报 report_action_pick_expert_invite_param)
+  (机械交回零判效;落地归决策动作 node 顶部重入裁决)
 ```
 
 交互事实(点选语义):点选一个角色卡 → 该角色加入商店(由正常商店逻辑接管);点「现金为王」→ +4 金;弹窗关回备战。
