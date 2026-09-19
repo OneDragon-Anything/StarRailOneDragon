@@ -1333,15 +1333,8 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
     (`external_bench/equip_grant_pending`,置闩单一源 = `latch_external_grants`
     幂等——同卡登记不叠加,登记 = `external_grant_latched_cards`;窗口上界 =
     等值观察达 `EXTERNAL_GRANT_EQUAL_OBS_LIMIT` 次销闩留证,消费 =
-    `_absorb_external_grant` 纯超集精确吸收)/节点边界金补结闩
-    (`boundary_gold_mode` 量域三态:known=结算屏金面板读成功精确额窗、
-    unknown=读失败未知额度窗(正向差按差额吸收,窗存续到店开帧金观察
-    收口,配 `boundary_gold_truth_seen` 公式腿双计防标记),消费 =
-    observe 失配分支正向差补结;两窗并存已知放宽:点球→结算入账常态序
-    下双窗同开,失配链边界补结在先,球金窗顺延到店开帧收口——known 窗
-    闭后残窗期第二独立正差被球金窗吞、unknown 形态球金入边界行台账
-    归因混账,均为已申报残余面,机理见 `_absorb_prep_sphere_income`
-    docstring)。**动作 op 行为模型 = 机械执行 + 发出即记账**(执行回执
+    `_absorb_external_grant` 纯超集精确吸收)。**动作 op 行为模型 = 机械执行 +
+    发出即记账**(执行回执
     唯一写点 = `note_action_receipt`,§9.3):执行层零「是否生效」验证、
     零重试、零 miss 闩;静默不生效的治理 = 投影照写 → heavy 实读对账
     失配 → 安灯停局 → 按真 bug 根因调查(2026-09-18 用户裁定)。

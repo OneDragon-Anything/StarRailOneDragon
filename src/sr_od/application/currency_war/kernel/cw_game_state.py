@@ -996,8 +996,7 @@ def _emit_defect(*, field_name: str, expected: Any, actual: Any,
                  evidence: str | None,
                  sig: ChannelSig,
                  logic_evidence: str | None = None,
-                 kind: str = 'observe_vs_logic_mismatch',
-                 note: str = '') -> None:
+                 kind: str = 'observe_vs_logic_mismatch') -> None:
     """缺陷台账留证(§2.3 观察赢):观察覆盖 logic 值失配 = 推算 bug,
     留证后修推算代码(ADR-0651;不做运行时挂账对账)。best-effort:
     外送钩子异常不阻塞观察主链。抑制登记面见
@@ -1011,9 +1010,7 @@ def _emit_defect(*, field_name: str, expected: Any, actual: Any,
     ``kind / field / expected / actual / observed_evidence / ts /
     screen / actor / group_id / logic_evidence``——ts = journal 行同款
     秒级时刻;screen/actor/group_id = 观察侧渠道签名;logic_evidence =
-    逻辑侧写端注记(豁免注册表第三维,归因回溯用);note = 可选量域注记
-    (吸收行分型,如 boundary_gold_backfilled 的 unknown_settled;缺省
-    不落键,既有行形状零漂移)。
+    逻辑侧写端注记(豁免注册表第三维,归因回溯用)。
     真失配 kind 行落盘后同步触发安灯钩子(:func:`fire_reconcile_andon`,
     行落盘先于钩子——证据在场不依赖钩子成败);豁免行无告警无停机。"""
     # 抑制登记面发射口兜底:吸收族落台账行不经 _route_logic_mismatch
@@ -1033,8 +1030,6 @@ def _emit_defect(*, field_name: str, expected: Any, actual: Any,
                  'ts': datetime.now().isoformat(timespec='seconds'),
                  'screen': sig.screen, 'actor': sig.actor,
                  'group_id': sig.group_id, 'logic_evidence': logic_evidence}
-    if note:
-        row['note'] = note
     _DEFECT_BUFFER.append(row)
     if len(_DEFECT_BUFFER) > _DEFECT_BUFFER_CAP:
         del _DEFECT_BUFFER[:len(_DEFECT_BUFFER) - _DEFECT_BUFFER_CAP]
@@ -1738,14 +1733,8 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
     _sig = ChannelSig(family='obs', actor='CwScreenBattleWait', mode='read')
     # 节点边界金待补结闩置位(唯一置位端;必须先于本函数的 gold 覆盖观察
     # ——结算屏金面板展示的是战后入账真值,解析成功时该观察即补结窗口的
-    # 第一观察,失配在此就地吸收)。量域按金面板可读性定量:读成功 =
-    # known(精确额窗,T-21 原形态:首观察就地补结后关窗);读失败 =
-    # unknown(未知额度窗:窗内存续,正向差按差额吸收,店开帧收口——
-    # 实机实证边界收入可拆两腿到账,机理与窗口界定见闩字段注释)。
-    gs.exec_books.boundary_gold_mode = (
-        BOUNDARY_GOLD_MODE_KNOWN if gold is not None
-        else BOUNDARY_GOLD_MODE_UNKNOWN)
-    gs.exec_books.boundary_gold_truth_seen = False
+    # 第一观察,失配在此就地吸收,缺读时闩存续到下一金观察)。
+    gs.exec_books.boundary_gold_pending = True
     if hp_after is not None:
         gs.observe(gs.hp, int(hp_after), sig=_sig)
     if streak_after is not None:
@@ -2163,20 +2152,6 @@ class TrackedBooks:
     deployed: list = field(default_factory=list)
 
 
-#: 节点边界金待补结闩·量域枚举(置位端 = :func:`apply_settlement_cover`,
-#: 消费端 = :meth:`GameState.observe`;值语义见
-#: ``ExecBooks.boundary_gold_mode`` 字段注释):known = 结算屏金面板读成功
-#:(精确额窗,T-21 原形态);unknown = 读失败(未知额度窗,正向差按差额
-#: 吸收,店开帧收口)。None 形态由字段类型 ``str | None`` 承载,不设第三常量。
-BOUNDARY_GOLD_MODE_KNOWN: str = 'known'
-BOUNDARY_GOLD_MODE_UNKNOWN: str = 'unknown'
-
-#: unknown 量域窗吸收行的台账注记(:meth:`GameState._absorb_boundary_gold`
-#: 落行注记;区分「读失败后按差额吸收」与「known 精确额就地补结」两形态,
-#: 判读面按行内 note 键分型)。
-BOUNDARY_GOLD_NOTE_UNKNOWN_SETTLED: str = 'unknown_settled'
-
-
 @dataclass
 class ExecBooks:
     """执行侧过程簿记组(容器内独立宿主组;非 Field,不进快照流水)。
@@ -2245,43 +2220,6 @@ class ExecBooks:
     # window`,唯一写端)、达 :data:`EXTERNAL_GRANT_EQUAL_OBS_LIMIT` 销闩
     # 并归零。局级生命周期(新局新容器 = 天然清零)。
     external_grant_equal_obs: int = 0
-    # 节点边界金待补结闩(量域三态;失配精确吸收第二例,事故第 3 例修法 =
-    # 边界事件持久化的 T-42 扩窗形态)。机理:战斗/节点边界收入族由游戏侧
-    # 入账而 bot 无逻辑写端(实机 journal 实证:结算屏金面板读数已含入账,
-    # 如 run_20260918_022233 结算屏 52 = 逻辑 34 + 边界 18),且收入可拆
-    # **两腿**到账(run_20260918_054257/055133 journal 定谳:第一腿 = 结算后
-    # 首个备战帧金观察(+4/+5),第二腿 = 店开帧金观察(+2/+5),两腿间隔着
-    # bot 卖牌投影写)——T-21 单发闩被第一腿提前关窗,第二腿照真失配停
-    #(两局安灯停局根因)。窗语义按量域分型:
-    # - known = 结算屏金面板读成功:面板存量即战后入账真值(精确额),窗内
-    #   首个带真值变化的 gold 观察「实读 vs 逻辑」就地补结后**即关窗**
-    #   (T-21 原形态并存保留);
-    # - unknown = 结算屏金面板读失败:额度未知,窗内 gold 正向差按差额吸收
-    #   (即战斗收入,落 boundary_gold_backfilled 行标注 unknown_settled),
-    #   窗存续到**店开帧金观察**收口(两腿收入的末站实证);负向差照旧语义
-    #   (逻辑被证伪 → 三分流照停;观察→观察采新但负向差关窗不续吞);
-    #   等值观察零新信息不消费不关窗。
-    # 已知盲区(与球金窗同族,显式申报):窗内「卖退款投影少算」类纯
-    # gold 正向 bug 会被本窗吸收归因边界收入,无行域痕迹无第二道防线
-    # (低概率;收窄候选同 prep_sphere_income_pending 字段注)。
-    # None = 窗关。
-    # [索引定义] 三态闩坐标系 = 单次战斗结算窗(可跨多帧存续到店开帧);
-    # 取值时机 = 结算屏真值覆盖写端置位(:func:`apply_settlement_cover`,
-    # 唯一置位端,先于其自身 gold 覆盖观察,按 gold 形参可读性定量域)、
-    # :meth:`GameState.observe` 收口(known 首观察/unknown 负差/店开帧金
-    # 观察)、公式结算腿消费(:func:`tick_effect_boundary`,金读 carried 无
-    # 观察时的补结腿,结算后关窗防真值+公式双计)、下一结算覆盖重置。
-    # 局级生命周期(新局新容器 = 天然清零):恢复局首战前恒 None,开局前
-    # 收入不吸收。
-    boundary_gold_mode: str | None = None
-    # 本窗内已有「带真值变化」的 gold 观察到达标记(公式腿双计防第二重闸:
-    # T-21 单发闩下「观察消费闩 = 公式禁发」隐式成立,扩窗后观察到达时窗
-    # 仍存续,须显式标记公式腿禁发——真值已随观察入账,公式再叠算必双计,
-    # 实证形态 = run_20260918_022233 公式 +5 vs 真差 +4)。取值时机 =
-    # :meth:`GameState.observe` gold 观察带真值变化时置 True;窗收口
-    # (boundary_gold_mode 任一清零路径)归 False。等值观察不置(零新信息,
-    # 公式腿仍可用,同 T-21「等值观察不误关窗」语义)。
-    boundary_gold_truth_seen: bool = False
 
 
 class NodeBooks:
@@ -2706,7 +2644,7 @@ class GameState:
     # total<=0 落;金未读形态不落,下个入口帧重试);None = 本 run 尚无金
     # 结算。写端 = 效果推进段(:func:`tick_effect_boundary`,接线位 =
     # observe_screen_context 尾段);结算触发另受待补结闩闸
-    #(exec_books.boundary_gold_mode,闩字段注释载机理)。
+    #(exec_books.boundary_gold_pending,闩字段注释载机理)。
     boundary_settled_ord: int | None = None
     # [索引定义] node_path_diff_pending = 链 diff 两帧确认门的待确认候选
     # (链观察落地批):上一 clean 备战帧相对基线的差异链快照,下一 clean
@@ -2900,34 +2838,17 @@ class GameState:
                              'leave_screen,禁清正式值)')
         _validate_sig(sig, ('obs',))
         name = self._field_name(target)
-        # 节点边界金待补结窗簿记(量域三态;机理与窗口界定见闩字段注释)。
-        # boundary_mode 局部锚 = 字段置位时点快照:收口判定先于吸收段改写
-        # 字段,吸收行的量域注记读局部值不受影响。
-        boundary_mode = (self.exec_books.boundary_gold_mode
-                         if name == 'gold' else None)
-        boundary_pending = (boundary_mode is not None
+        boundary_pending = (name == 'gold'
+                            and self.exec_books.boundary_gold_pending
                             and value != target.value)
         if boundary_pending:
-            # 真值观察到达标记(公式腿双计防第二重闸):带真值变化的 gold
-            # 观察已入账,公式结算禁再叠算;等值观察不置(零新信息,同
-            # T-21「不误关窗」语义)。
-            self.exec_books.boundary_gold_truth_seen = True
-            # 收口判定一(带真值变化的观察):known 首观察即了结 = 精确额
-            # 已入账(T-21 原形态);unknown 负向差照旧消费语义关窗(不续
-            # 吞),正向差存续等下一腿(两腿收入结构的扩窗本体)。基座未读
-            # (现值 None)无方向可比,只置标记不收口不吸收。
-            if boundary_mode == BOUNDARY_GOLD_MODE_KNOWN \
-                    or (target.value is not None
-                        and boundary_mode == BOUNDARY_GOLD_MODE_UNKNOWN
-                        and value < target.value):
-                self.exec_books.boundary_gold_mode = None
-                self.exec_books.boundary_gold_truth_seen = False
-        if name == 'gold' and self.exec_books.boundary_gold_mode is not None \
-                and sig.screen == SCREEN_SHOP_PANEL:
-            # 收口判定二(店开帧 = 边界入账族末站):金观察过站即收口,只认
-            # 帧位不认差值(含等值形态)——防窗跨轮存活继续吞正向差。
-            self.exec_books.boundary_gold_mode = None
-            self.exec_books.boundary_gold_truth_seen = False
+            # 闩消费条件 = 金观察带来真值变化(实读 ≠ 逻辑现值):分歧即
+            # 窗口了结(真值随下方覆盖照常入逻辑;失配形状的吸收留证在
+            # 下方失配分支)。等值观察零新信息不消费——结算屏金币面板与
+            # 逻辑同值(入账尚未发生/尚未入镜)的形态不误关窗口,公式
+            # 补结腿(金读 carried 无观察)保留;公式结算载体同读此闩,
+            # 窗口已了结则禁再叠算(防真值+公式值双计)。
+            self.exec_books.boundary_gold_pending = False
         if name in ('bench', 'equips'):
             # 外部授予闩窗口上界(出处=改动三审 2026-09-18):闩在时的
             # 每次等值 observe 调用计数(字段级,同帧 bench/equips 双等值
@@ -2936,7 +2857,7 @@ class GameState:
         if target.source == 'logic' and target.value is not None \
                 and target.value != value:
             if boundary_pending and self._absorb_boundary_gold(
-                    name, target, value, evidence, sig, boundary_mode):
+                    name, target, value, evidence, sig):
                 pass   # 边界金补结已落台账行,跳过三分流(覆盖照常 = 补结)
             elif self._absorb_slot_reorder(name, target, value,
                                            evidence, sig):
@@ -2949,22 +2870,6 @@ class GameState:
                 _route_logic_mismatch(field_name=name, expected=target.value,
                                       actual=value, observed_evidence=evidence,
                                       logic_evidence=target.evidence, sig=sig)
-        elif boundary_pending and target.value is not None \
-                and value > target.value \
-                and boundary_mode == BOUNDARY_GOLD_MODE_UNKNOWN:
-            # unknown 窗内观察→观察正向差(两腿收入的第一腿常态:结算后金
-            # 场源仍为观察态,无失配比对可达)——观察赢本就采新,零行为差,
-            # 补 unknown_settled 归因行 = 收入腿入账的台账证据(与逻辑被证伪
-            # 的吸收行同 kind 异注,判读按 note 键分型)。
-            _emit_defect(field_name=name, expected=target.value,
-                         actual=value, evidence=evidence, sig=sig,
-                         logic_evidence=target.evidence,
-                         kind='boundary_gold_backfilled',
-                         note=BOUNDARY_GOLD_NOTE_UNKNOWN_SETTLED)
-            log.info(f'[cw][gs] 节点边界金补结(unknown 量域):gold '
-                     f'{target.value} → 实读 {value}'
-                     f'(+{int(value) - int(target.value)},unknown 闩窗内'
-                     f'正向差采新,unknown_settled 留证)')
         self._swap(name, Field(value=value, source='observation',
                                evidence=evidence),
                    sig=sig, note=note)
@@ -3022,32 +2927,26 @@ class GameState:
 
     def _absorb_boundary_gold(self, field_name: str, target: Field,
                               value: Any, observed_evidence: str | None,
-                              sig: ChannelSig,
-                              boundary_mode: str | None) -> bool:
+                              sig: ChannelSig) -> bool:
         """节点边界金补结吸收(§2.3 失配分支前置第二例;待补结闩 =
-        ``GameState.exec_books.boundary_gold_mode``,置位端 =
-        ``apply_settlement_cover``)。战斗/节点边界收入族由游戏侧入账而
-        bot 无逻辑写端(机理与窗口界定见该闩字段注释:known 精确额窗 /
-        unknown 未知额度窗,unknown 可跨两腿收入存续到店开帧),闩在窗时
+        ``GameState.exec_books.boundary_gold_pending``,置位端 =
+        ``apply_settlement_cover``)。战斗/节点边界收入族由游戏侧在结算屏
+        前入账而 bot 无逻辑写端(机理与窗口界定见该闩字段注释),闩在窗时
         逻辑金被实读证伪的唯一可能形状 = 正向差 → 落
-        ``boundary_gold_backfilled`` 台账行(unknown 窗加注
-        :data:`BOUNDARY_GOLD_NOTE_UNKNOWN_SETTLED`,无告警无停机,豁免 ≠
-        消失同纪律)后覆盖照常 = 补结落地(逻辑金被实读真值修正,台账行 +
-        journal 写行双证据可审计)。实读不升(平/负差)形状不符交回三分流
-        照真失配停——入账族不可负,负差 = 推算 bug 不被吞(安灯停机语义零
-        改动)。返回 True = 已吸收(调用方跳过失配分流)。"""
+        ``boundary_gold_backfilled`` 台账行(无告警无停机,豁免 ≠ 消失同
+        纪律)后覆盖照常 = 补结落地(逻辑金被实读真值修正,台账行 + journal
+        写行双证据可审计)。实读不升(平/负差)形状不符交回三分流照真失配
+        停——入账族不可负,负差 = 推算 bug 不被吞(安灯停机语义零改动)。
+        返回 True = 已吸收(调用方跳过失配分流)。"""
         if field_name != 'gold' or value <= target.value:
             return False
-        _note = (BOUNDARY_GOLD_NOTE_UNKNOWN_SETTLED
-                 if boundary_mode == BOUNDARY_GOLD_MODE_UNKNOWN else '')
         _emit_defect(field_name=field_name, expected=target.value,
                      actual=value, evidence=observed_evidence, sig=sig,
                      logic_evidence=target.evidence,
-                     kind='boundary_gold_backfilled', note=_note)
+                     kind='boundary_gold_backfilled')
         log.info(f'[cw][gs] 节点边界金补结:gold 逻辑 {target.value} → '
                  f'实读 {value}(+{int(value) - int(target.value)},'
-                 f'待补结闩[{boundary_mode}]窗内正向差,'
-                 f'boundary_gold_backfilled 留证)')
+                 f'待补结闩窗内正向差,boundary_gold_backfilled 留证)')
         return True
 
     def _absorb_slot_reorder(self, field_name: str, target: Field,
@@ -3600,13 +3499,12 @@ def tick_effect_boundary(gs: GameState, *, prep_frame: bool) -> None:
     - 推进闸:effective None → 整段跳过(「未观察不当真进节点」守卫,禁虚耗
       余期/虚累余额);
     - 账本推进(内置去重兜底同序幂等)→ 到期留证 → 刷新发放(advanced 位闸)
-      → 节点边界金结算(推进/结算双水位 + 待补结闩四重闸:仅 prep_frame ∧
-      effective > 水位 ∧ exec_books.boundary_gold_mode 非空 ∧ 窗内无真值
-      观察(truth_seen)——闩 = 战斗结算窗内有未入逻辑的游戏侧边界收入,
-      金观察先到则真值已入账(truth_seen 置位),公式结算只补金读 carried
-      无观察的窗,防真值+公式双计;参数源 = 派生序反解 + 镜像 kind;
-      node/streak/settlement/killed 四守卫任一不可知 = 静默跳过;金未读
-      不落水位,下个入口帧重试)→ 容量重锚;
+      → 节点边界金结算(推进/结算双水位 + 待补结闩三重闸:仅 prep_frame ∧
+      effective > 水位 ∧ exec_books.boundary_gold_pending——闩 = 战斗结算
+      窗内有未入逻辑的游戏侧边界收入,金观察先到则窗口已由观察真值了结,
+      公式结算只补金读 carried 无观察的窗,防真值+公式双计;参数源 =
+      派生序反解 + 镜像 kind;node/streak/settlement/killed 四守卫任一
+      不可知 = 静默跳过;金未读不落水位,下个入口帧重试)→ 容量重锚;
     - 经济参数 = 容器直读 active_strategies(空/None → 聚合缺省);
     - 异常边界:吞 Exception 记 warning 不上抛(不毒化派生链)。
     """
@@ -3628,12 +3526,10 @@ def _tick_effect_boundary_impl(gs: GameState, *, prep_frame: bool) -> None:
     if advanced:
         grant_effect_node_refresh_balance(gs, frame=frame)
     if prep_frame and effective > (gs.boundary_settled_ord or 0) \
-            and gs.exec_books.boundary_gold_mode is not None \
-            and not gs.exec_books.boundary_gold_truth_seen:
-        # 待补结闩闸(第 3 例修法 + T-42 第二重闸):闩 = 战斗结算窗内有未
-        # 入逻辑的游戏侧边界收入;窗内已有带真值变化的金观察(truth_seen)
-        # 则真值已入账,公式结算禁再叠算(双计防;扩窗形态下观察到达时窗
-        # 仍存续等下一腿,单看 mode 不再充分)。闩不在/已消费 = 无欠可结。
+            and gs.exec_books.boundary_gold_pending:
+        # 待补结闩闸(第 3 例修法):闩 = 战斗结算 → 下一金观察窗内有未
+        # 入逻辑的游戏侧边界收入;闩已消费(金观察已到,真值随覆盖照常入
+        # 逻辑)则公式结算禁再叠算(双计),闩不在 = 无欠可结。
         _nd = gs.node.value
         _st = gs.streak.value
         _stl = gs.settlement.value
@@ -3668,8 +3564,7 @@ def _tick_effect_boundary_impl(gs: GameState, *, prep_frame: bool) -> None:
             )
             # 公式结算消费待补结窗(金读 carried 无观察到达时的补结腿):
             # 此后同窗金观察失配不再吸收,公式欠准由下一观察照真失配显影。
-            gs.exec_books.boundary_gold_mode = None
-            gs.exec_books.boundary_gold_truth_seen = False
+            gs.exec_books.boundary_gold_pending = False
             if _nb.written or _nb.total <= 0:
                 gs.boundary_settled_ord = effective   # 金未读形态不落(重试)
             if _nb.written:
