@@ -380,13 +380,6 @@ def _form_progress(comp: 'Comp', session) -> float:
 
 # 「购买经验」按钮(= 买经验升等级)screen_info area 名;中心运行时读(area_center)
 BUY_EXP_AREA: str = '备战标识-购买经验'
-# D牌(刷新)硬上限:plan 的 _refresh_cap 是单次 plan 软上限;两阶段循环里再加硬墙防死循环
-MAX_REFRESH: int = 4
-# 单段决策循环防御帧帽(ADR-0518):决策侧席位门等提案门失效时的执行侧
-# 兜底,与 cw_screen_prep.VISIT_ACTION_CAP 同款防线——决策循环不收敛 =
-# 逻辑态或策略器 bug,超帽响亮暴露(RuntimeError)+ 遥测分键
-# plan_visit_action_cap,禁静默续跑。
-SHOP_SEGMENT_ACTION_CAP: int = 16
 
 
 def _fmt_action(a: 'Action') -> str:
@@ -632,9 +625,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     ``kernel/cw_launch_arbitrage.launch_arbitration_gate``,ADR-0566)。
     语义 = 逐动作执行前咨询;``(False, why)`` ⇒ 该动作**不执行**、本访问
     即刻收工(拒绝语义 = 消费终止非跳过续试:跳过高位动作改试低位 = 重排
-    既有评估序,违金出口族红线 5)——与既有 MAX_REFRESH 硬墙同为「终结
-    降级关店」路径,关店由编排壳承担。闸自身遥测由闭包侧计数,本函数
-    零感知闸语义。
+    既有评估序,违金出口族红线 5)——同为「终结降级关店」路径,关店由
+    编排壳承担。闸自身遥测由闭包侧计数,本函数零感知闸语义。
 
     ``pre_entry``(缺省 None = 既有行为零漂移):CwScreenBuyCards 观察 node
     已完成的段顶入口观察 ``(回执, 帧引用)``,首段复用不重读(迁移不增加
@@ -656,9 +648,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     - 终结 op(CwActionRefreshShopParam/CwActionCloseShopParam):执行即本段结束。刷新终结 = 交回
       外循环重进——物理载体 = 本函数段循环的下一次迭代(入口观察重建,
       读屏次数与波批持平,ADR-0517 §读屏成本·节奏对拍);关店终结 = 本
-      访问收工(关店点击由编排壳 CwOpCloseShop 承担)。MAX_REFRESH 硬墙
-      重定位 = 执行侧 visit 级计数(``ledger.total_refresh``,§3.1 候选
-      (a) 同款防线:防「终结→重进→再刷新」无进展环)。
+      访问收工(关店点击由编排壳 CwOpCloseShop 承担)。刷新无次数上限
+      (用户裁定:无限刷新环 = 策略实现 bug,框架不兜底)。
 
     (访问内 hp 决策消费统一经容器政策读口 decision_hp,门前真值由备战帧
      观察/结算既有写端承接,段间无战斗值同源,覆盖回写是绕行。)
@@ -741,13 +732,11 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     _prev_refresh_only = False
     _entry: GameStateReadReceipt | None = None
     _pre = pre_entry
-    for _ in range(MAX_REFRESH + 1):
+    while True:
         ledger.refresh_first_action = True   # 段级复位(仅刷新段判定输入)
         # did_refresh 段级复位(终结 op 语义 review 修复批暴露):两消费点
         # (段尾 _prev_refresh_only / did_refresh=False 收工判定)语义都是
-        # 「本段」——不复位时首段刷新后的所有后续段都被陈旧 True 钉住,
-        # 段循环跑满 range(MAX_REFRESH+1) 不收工(终结 break 落地后每段
-        # 恰一刷新,该残留即显形;修复前被「段内连刷至硬墙」形态掩盖)。
+        # 「本段」——不复位时首段刷新后的所有后续段都被陈旧 True 钉住。
         ledger.did_refresh = False
         if _pre is None and not _prev_refresh_only:
             time.sleep(0.3)  # 等 board 面板 settle(连击续刷段前一动作是刷新,面板未变,跳过;
@@ -887,9 +876,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 下方 CwActionCloseShopParam 出口的跳过留痕/熔断。连续跳过计数复位不在段顶:
         # 见函数尾「完整收工且未跳过」的完成点复位。
         visit_actions: list = []
-        _seg_frames = 0
         while True:
-            _seg_frames += 1
             # S3 布局代次检差(fail-stop 形态,T-271):命中 = visit 内
             # 布局已重排(reconcile 纠漂递增 epoch),已发射动作的
             # bench_idx 代际失效 → 本段收工交回外循环重观察(与未观察
@@ -906,29 +893,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 log.warning('[cw!][plan] 布局代次检差命中 → fail-stop '
                             '本段收工,交回外循环重观察')
                 break
-            # 段界序号 _seg_frames 只服务帧帽防线。
-            if _seg_frames > SHOP_SEGMENT_ACTION_CAP:
-                # 防御帧帽(对抗发现:决策循环不收敛的响亮暴露——禁静默续跑/
-                # 禁吞异常续跑。收敛根因修复在决策侧席位门,本帽 = 执行
-                # 侧最后防线,与 prep 线 VISIT_ACTION_CAP 同构但更严:
-                # 商店段动作单价高(买/卖不可逆),超帽不交回外循环重试)。
-                # 帧帽诊断读 = 容器(W6 波 4 读者切换,设计件 §2.4-2)
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    bench_slots_of as _bslots_of,
-                )
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    game_state_of as _bcap_of,
-                )
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    gold_of as _gold_of,
-                )
-                _st_cap = _bcap_of(match.session)
-                _msg = (f'[cw!][plan] 决策循环帧数超帽'
-                        f'({SHOP_SEGMENT_ACTION_CAP}),疑逻辑态/策略器不收敛'
-                        f'(末态 gold={_gold_of(_st_cap)} '
-                        f'bench={bench_occupied(_bslots_of(_st_cap))})')
-                log.error('%s', _msg)
-                raise RuntimeError(_msg)
+            # (决策循环帧帽已删,用户裁定:不收敛 = 策略实现 bug,框架不兜底。)
             # r95 审计必修②:决策异常留证(完整栈到 log,再向上抛,行为不变)。
             try:
                 action = match.strategy.decide_shop_action()   # 终态零参口(§2.1)
@@ -953,23 +918,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                     if _stop is not None:
                         return (_stop, None)
                 break
-            if isinstance(action, CwActionRefreshShopParam) and ledger.total_refresh >= MAX_REFRESH:
-                # 硬墙重定位(ADR-0517 §3.1 候选 (a)):visit 级刷新计数超墙
-                # ⇒ 终结集降级为仅关店。硬墙跳过=计划了但未尝试,可见化
-                # 不停(`w577_refresh_fee_and_andon/`,局22 误停根因)。
-                # plan_truncated 现役载体 = receipts extra(本行;安灯换轨
-                # 后数据源,迁移批 3.2)。
-                ledger.plan_truncated = True
-                # 受阻也簿记(R2 回执域):计划未尝试在账可见(exec_events
-                # 词表「放弃」族;plan_truncated/refresh_skipped 结构化入回执)。
-                # 动作未发射 → include_payload=False(plan 口径与旧 visit_actions 同界)。
-                note_shop_action_receipt(
-                    match, action, applied=False,
-                    reason='skipped:max_cap(刷新硬墙,计划未尝试)',
-                    extra={'plan_truncated': True,
-                           'refresh_skipped': 'max_cap'},
-                    include_payload=False)
-                break
+            # (刷新硬墙闸已删,用户裁定:无限刷新环 = 策略实现 bug,
+            #  框架不兜底——刷新建议照常执行,无次数上限。)
             if spend_gate is not None:
                 # 单动作政策闸(缺省 None 零漂移;发射帧仲裁专用,ADR-0566):
                 # 拒 = 本动作不执行 + 本访问收工(消费终止语义,见签名注)。
