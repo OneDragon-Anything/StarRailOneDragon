@@ -1,7 +1,7 @@
 # 战斗等待(battle_wait · 战斗/结算窗族)
 
-> 代码 = `operations/cw_screen/cw_screen_battle_wait.py::CwScreenBattleWait`(三段式 op)+ `::SettlementState`(战斗/结算链跨迭代状态机;`cw_loop.py::CwLoop.handle_init` 随 RunLoop 实例化注入,`__init__(ctx, st, config)`)。职责:出战交回后的战斗/结算窗驻留——等结算 → 结算处理(遥测读点 → 点「继续挑战」)→ 完成白名单/团灭终局分叉交回外循环。战斗自动进行(auto-battler),玩家无操作面。路径根 = `src/sr_od/application/currency_war/`。
-> 装配点分流([op-layer.md](op-layer.md) §4 并存期纪律):`cw_game_ports` 两端口完整在场 → 五段生命周期新路径;缺省 None = 生产直连旧路径(`wait()` 原序列,生产行为零变化)。两路径共享分支链 `_dispatch_frame` 零转录,分支序禁重排。
+> 代码 = `operations/cw_screen/cw_screen_battle_wait.py::CwScreenBattleWait`(驻留状态机,单 node `wait`;用户裁定豁免两 node 形态)+ `::SettlementState`(战斗/结算链跨迭代状态机;`cw_loop.py::CwLoop.handle_init` 随 RunLoop 实例化注入,`__init__(ctx, st, config)`)。职责:出战交回后的战斗/结算窗驻留——等结算 → 结算处理(遥测读点 → 点「继续挑战」)→ 完成白名单/团灭终局分叉交回外循环。战斗自动进行(auto-battler),玩家无操作面。路径根 = `src/sr_od/application/currency_war/`。
+> 驻留状态机豁免(用户裁定):本 op 单 node `wait()`(「战斗等待」,`node_max_retry_times=400`)——出口判定(大厅终局锚/完成白名单)与分支链在单 node 内逐轮重判,拆观察/决策动作两 node 会把出口判定与分支序的轮次耦合切开;内部结算链(`_write_settlement_observation`/`apply_settlement_cover`/SettlementState)逐位零改动。report = `kernel/cw_screen_report/battle_wait.py` 占位(结算覆盖写端在结算域,非画面观察记账,op 层零调用)。
 
 ## 1. 分发判定
 
@@ -15,7 +15,7 @@
 
 ## 3. 观察面
 
-驻留型轻观察(`BattleWaitObservation` = 稳定帧引用;终局锚/完成白名单出口判定含早退轮次语义,归 observe 段)。每轮 `round_wait` 后重截重判 = 等待型轮询观察。分支链消费 obs 解析工具箱(`obs/cw_settlement_obs.py`):`read_round_outcome`(结算读数 → `RoundOutcome`)/`parse_settlement_round`(头部「X-Y」)/`parse_settlement_progress`/`parse_progress_fill_ratio`/`read_settle_damage_breakdown`/`settle_page1_progress_sign`/`parse_settlement_assets`;`obs/cw_observation.py::read_phase_round`(last-known 兜底源)。观察上报即对账边界:结算写点见 §6(时序红线 = 「结算即写」,禁惰性化)。
+驻留型轻观察(每轮 `round_wait` 后重截重判 = 等待型轮询观察;终局锚/完成白名单出口判定含早退轮次语义,归 `wait` node 内)。分支链消费 obs 解析工具箱(`obs/cw_settlement_obs.py`):`read_round_outcome`(结算读数 → `RoundOutcome`)/`parse_settlement_round`(头部「X-Y」)/`parse_settlement_progress`/`parse_progress_fill_ratio`/`read_settle_damage_breakdown`/`settle_page1_progress_sign`/`parse_settlement_assets`;`obs/cw_observation.py::read_phase_round`(last-known 兜底源)。结算读数即对账边界:结算写点见 §6(时序红线 = 「结算即写」,禁惰性化)。
 
 ## 4. 动作面
 
@@ -33,7 +33,7 @@
 
 ## 5. 终结与交回
 
-出口在 `wait()`/`lifecycle_observe` 段(分支链之前):
+出口在 `wait()` node 内、分支链之前:
 
 | 出口 | 判定 | 语义 |
 |---|---|---|
@@ -47,7 +47,7 @@
 
 结算读数 → GameState/Session 覆盖链(`_record_round_outcome` = 结算观测回路,结算点即时直写;观察半写点单一源 = 模块级 `_write_settlement_observation`):
 
-- **观察半直写**(「结算即写」时序红线,禁惰性化):`performance.record` / `session.last_streak`(「连胜×N」带方向;失读 None 化 = 跳过沿用上次真值,防连胜/连败假复位)/ `session.last_hp`·`last_hp_t`(过置信门 `kernel/cw_performance.py::HP_CONFIDENCE_THRESHOLD`)。
+- **观察半直写**(「结算即写」时序红线,禁惰性化):`_write_settlement_observation` = `session.performance.record(obs)`(`RoundOutcome` 入 history 存档;last_streak/last_hp 等 session 防御缓存已随终态契约 §A/§B 退役——streak/hp/gold/level 真值链由结算覆盖写端直入容器 gs,失读 None 化跳过语义由覆盖写端承载)。
 - **容器半覆盖写**:`kernel/cw_game_state.py::apply_settlement_cover`(GameState settlement 域:hp_after/streak_after/killed/progress_delta/gold/level/xp——金/等级/经验仅胜局,缺席不写;note=`battle_done:<节点类型>`;best-effort 失败不阻塞)。结算域字段规格 = [../game_state/fields.md](../game_state/fields.md) §3.5。
 - **策略半入槽**:`session.pending_round_outcomes` 追加 `RoundOutcome`(只写不读的结算观察累积面)。
 - **plane/round 真值覆盖**:结算屏头部「X-Y」对 last-known 走单调门覆盖;双读不等 → `defects.record_defect('phase_round','perception_conflict')` 留证;残留屏(`_mark_relaunch_residual`)豁免并按屏面真值校正。
@@ -71,9 +71,9 @@
 ## 9. 遥测与锁面
 
 - journal op 名 = 「战斗等待」(dispatch 包装统一落 `[cw-op]` 行);缺陷分键 = `phase_round`/`perception_conflict`(reader_source=`settlement_vs_prep_round`);结算观测日志前缀 `[cw-bwait]`,bail 留证 `[cw!]` 行;结算屏时序帧采集 = `operations/settle_collect_hooks.py::settle_frame_collect`(临时采集件,文件自声明清单完成后整段可删)。
-- 测试锁:五段新路径行为锁 + bail 预算锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`(锁面目录 = 同目录;战斗等待专属行为锁的重建归属见模块头申报)。
+- 测试锁:bail 预算锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`(锁面目录 = 同目录;战斗等待专属行为锁的重建归属见模块头申报)。
 - game 侧知识:结算时序 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #6/#25;画面档 = `assets/game_data/screen_info/currency_war_battle.yml`/`currency_war_settlement.yml`/`currency_war_settlement_fail.yml`/`currency_war_lobby.yml`。
 
 ## 开放设计注
 
-① 五段 reconcile = 恒空申报:结算写点拆入 reconcile 必改「结算即写」执行时序,五段形状让位于零变更红线(候裁面挂架构详设)。② 结算锚 boundary 触发口(op-layer §5(转点锚 boundary 触发口候裁决))本批不接线——结算登记 = 观察写端非动作发射登记,on_outcome 无登记件。③ 模块头「自动战斗检测本批不做/接口预留」的表述与代码体已实现的自愈链(点开关)不一致,以代码体为准(详见交付偏差清单)。
+① 结算写点 = 「结算即写」时序红线:驻留状态机豁免两 node 拆分,结算写点不迁不拆(拆入独立对账段必改执行时序,零变更红线优先;用户裁定)。② 结算锚 boundary 触发口([op-layer.md](op-layer.md) §6,转点锚 boundary 触发口候裁决)不接线——结算登记 = 观察写端非动作发射登记,动作锚注册表无登记件。③ 模块头「自动战斗检测本批不做/接口预留」的表述与代码体已实现的自愈链(点开关)不一致,以代码体为准(详见交付偏差清单)。

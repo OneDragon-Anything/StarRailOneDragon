@@ -1,6 +1,6 @@
 # 等待 1-1 备战(wait_one_one · 开局补给动画等待)
 
-> 代码 = `operations/cw_screen/cw_screen_wait_one_one.py::CwScreenWaitOneOne`。职责:投资环境确认后进 1-1 的开局补给动画等待——动画长且无结束标志,轮询「备战阶段」锚判「备战面板就绪」;固定上界仅作超时兜底。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_wait_one_one.py::CwScreenWaitOneOne`(两 node 直继承 `SrOperation`)。职责:投资环境确认后进 1-1 的开局补给动画等待——动画长且无结束标志,轮询「备战阶段」锚判「备战面板就绪」;固定上界仅作超时兜底。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 分发判定
 
@@ -8,11 +8,11 @@
 
 ## 2. 画面形态声明
 
-**空决策纯等待形态**:decide/act 段零动作如实申报;decision cycle = `round_wait(ONE_ONE_POLL_INTERVAL_S)` 轮询等下一帧(wait 语义不耗框架 retry 预算,轮询由固定超时兜底)。装配点分流同族(两端口在场 → 五段;缺省 → 生产直连旧路径);`_monotonic` = 可测时钟模块级单点(测试换假时钟验超时)。
+**空决策纯等待形态**。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 轮询主体——锚命中 → obs 装载 + 占位 report → success 进决策动作 node;超时 → 存图留证 + round_fail 交回;未就绪未超时 → `round_wait(ONE_ONE_POLL_INTERVAL_S)` 轮询(wait 语义不耗框架 retry 预算,轮询由固定超时兜底)。决策动作 node = 零动作 success 交回(纯等待型无推进动作)。`_monotonic` = 可测时钟模块级单点(测试换假时钟验超时)。
 
 ## 3. 观察面
 
-轮询单锚判定(`lifecycle_observe` 两早退:锚命中 / 超时);超时基 = `_first_seen_ts`(首见非就绪帧时钟起点)。零写端。
+轮询单锚判定(观察 node 两早退:锚命中 / 超时);超时基 = `_first_seen_ts`(首见非就绪帧时钟起点)。obs = `CwScreenWaitOneOneObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/wait_one_one.py`;锚命中轮装载,轮询轮与超时轮不装载——锚判定外零读屏);report = `report_screen_wait_one_one_obs` 占位调用(本屏现役零容器写点,接口为统一形态占位;match/gs 缺席跳过)。零容器写端。
 
 ## 4. 动作面
 
@@ -38,5 +38,5 @@
 ## 9. 遥测与锁面
 
 - journal op 名 = 「等待1-1」;日志前缀 `[cw-flow-wait11]`。
-- 测试锁:五段路径 + 假时钟超时锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(代码注另引 `test_cw_flow_ops.py`,现状不在测试仓,同 [plane_transition.md](plane_transition.md) 开放设计注)。
+- 测试锁:两 node 行为锁 + 假时钟超时锁(锚命中 round_wait 轮询/超时留证 fail)= `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(代码注另引 `test_cw_flow_ops.py`,现状不在测试仓,同 [plane_transition.md](plane_transition.md) 开放设计注)。
 - game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #5/#29。

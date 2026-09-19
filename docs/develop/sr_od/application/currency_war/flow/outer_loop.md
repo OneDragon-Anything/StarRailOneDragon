@@ -93,9 +93,9 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 
 ## 3. 备战表面默认分支的进入序（cw_loop.py::CwLoop.loop 备战分支段）
 
-双锚命中后按序（原步骤 1 战斗时间戳清理/步骤 2 心跳采样+效果账本 tick 已分别退役与迁出——时间戳清理无消费者、效果推进归 kernel 派生管线尾段，见 changes/2026-09-15-effect-ledger-self-advance）：
+双锚命中后按序（原步骤 1 战斗时间戳清理/步骤 2 心跳采样+效果账本 tick 已分别退役与迁出——时间戳清理无消费者、效果推进归 kernel 派生管线尾段,自推进在派生管线内完成,本分支零挂点）：
 
-1. **达标帧发射决策 = 策略层前置发射位**（2026-09-16 迁移退役本面达标臂：mandate_v1 `decide_prep_screen` 入口消费 kernel `readiness_launch_decision`（判据 = 配方完备 fp≥1.0 ∧〔板面承重满额 ∨ 部署计划不可得 fail-open〕，质量推迟帧不发射分键显影）→ armed 帧产意图：金超息线（kernel `in_launch_spend_zone`）→ `OpenShop(restricted_spend=True)` 受限商店访问意图（每武装段至多一次；执行 = 备战访问 op 内仲裁单元：预检/域判/预算闸/第三载体 `[cw-op]` 行 op='发射帧仲裁商店访问'）；未命中 → `StartBattle` 终点意图。执行统一走 `launch_battle_unified`（屏态复验 + 浮层安全检查 + 部署原子序 + 出战点击链）；判定核 kernel 不动。出处 = changes/2026-09-16-prep-visit-op）；
+1. **达标帧发射决策 = 策略层前置发射位**（本面达标臂已退役：mandate_v1 `decide_prep_screen` 入口消费 kernel `readiness_launch_decision`（判据 = 配方完备 fp≥1.0 ∧〔板面承重满额 ∨ 部署计划不可得 fail-open〕，质量推迟帧不发射分键显影）→ armed 帧产意图：金超息线（kernel `in_launch_spend_zone`）→ `OpenShop(restricted_spend=True)` 受限商店访问意图（每武装段至多一次；执行 = 备战访问 op 内仲裁单元：预检/域判/预算闸/第三载体 `[cw-op]` 行 op='发射帧仲裁商店访问'）；未命中 → `StartBattle` 终点意图。执行统一走 `launch_battle_unified`（屏态复验 + 浮层安全检查 + 部署原子序 + 出战点击链）；判定核 kernel 不动）；
 2. 备战画面 → 派发 `CwScreenPrep`（备战单轮两 node:观察 node(heavy 观察+接管补采+审计留守)+ 决策动作 node（单动作决策循环）, [../screens/prep.md](../screens/prep.md)；环入口清场收编于观察段）。交回契约：op 携带 `launch_fired` 出战事实（通道载体与观测面）；战斗窗置位策略 = 外循环既有口径（ADR-0250：备战环 success → 窗开驻留闩）；
 3. "返回投资策略选择"按钮在 → 点去选策略（上游策略屏处理失败 symptom，计数报警）；
 4. **恢复局（locked-resume）检测**：候选 = 新 match ∧ 首个备战相位 round>1；商店探针（点商店→验收起）区分锁定/未锁；锁定态跳过全部备战交互经统一执行器（face=resume，含屏态复验与浮层安全检查——防误触补齐）直接出战，出战成功即解除（`cw_loop.py::locked_resume_sync_and_battle`）；

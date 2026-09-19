@@ -1,6 +1,6 @@
 # 位面详情 overlay(plane_detail · 货币战争-位面详情)
 
-> 代码 = `operations/cw_screen/cw_screen_plane_detail.py::CwScreenPlaneDetail`(推进型骨架基类 = `_progression_base.py::CwProgressionScreenOp`)。职责:一切来源(情报采集 op 失败退出残留 / 开局自动弹出等)的位面详情 overlay → 点 X 关闭交回。
+> 代码 = `operations/cw_screen/cw_screen_plane_detail.py::CwScreenPlaneDetail`(两 node 直继承 `SrOperation`)。职责:一切来源(情报采集 op 失败退出残留 / 开局自动弹出等)的位面详情 overlay → 点 X 关闭交回。
 
 ## 1. 分发判定
 
@@ -9,11 +9,11 @@
 
 ## 2. 画面形态声明
 
-**空决策形态**(推进弹窗族)。骨架 = 入口观察 → 单次推进 → 重入观察裁决 → 交回;节点预算 = 1 次推进 + 1 次重入(`node_max_retry_times=2`),其余重试归外循环(基类合同 = [op-layer.md](op-layer.md) §1.5 空决策形态/验证废除)。
+**空决策形态**(推进弹窗族)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口锚门(「货币战争-位面详情.标识-位面详情标题」,与分发判定同源同参;miss = round_fail 交回外循环重判)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部重入裁决(推进已发 → 锚不在 = 已离开本画面 → success 交回)→ 点 X 单次推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 现役值仅框架异常路径消费)。空决策形态无 report 接口。
 
 ## 3. 观察面
 
-入口/重入锚 = 同一标题 id_mark(与分发判定同源同参);零写端。
+观察 node = 标题 id_mark(「标识-位面详情标题」,与分发判定同源同参)→ obs = `CwScreenPlaneDetailObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/plane_detail.py`;无 report 接口);零写端。
 
 ## 4. 动作面
 
@@ -21,7 +21,7 @@
 
 ## 5. 终结与交回
 
-推进已发 → round_retry(机械交回);重入锚不在 = 已离开本画面 → success 交回外循环;首发锚 miss = 误分发 fail 交回重判;节点预算耗尽 → FAIL 交回。
+推进已发 → `round_wait`(机械交回);重入锚不在 = 已离开本画面 → success 交回外循环;首发锚 miss = 误分发 fail 交回重判(循环无防御上限)。
 
 ## 6. 状态上报面
 
@@ -33,8 +33,8 @@
 
 ## 8. 守卫与防线
 
-节点预算 2(有界终止单);无停机钩子——关闭不了由外循环重派/兜底链裁决。
+`node_max_retry_times=2` 现役值仅框架异常路径消费;无停机钩子——关闭不了由外循环重派/兜底链裁决。
 
 ## 9. 遥测与锁面
 
-journal op 名 = 「位面详情」;无专属测试锁在册(锁面目录 = `sr-od-test/test/sr_od/application/currency_war/`);画面档 = `assets/game_data/screen_info/currency_war_plane_detail.yml`。
+journal op 名 = 「位面详情」;测试锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(推进型骨架内联形态锁,plane_detail 在册);画面档 = `assets/game_data/screen_info/currency_war_plane_detail.yml`。

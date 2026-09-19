@@ -8,11 +8,11 @@
 
 ## 2. 画面形态声明
 
-**空决策形态**(无选择面 ∧ 无逻辑态账,判据 = [README.md](README.md) §3)。基类直迁子类(`CwScreenOpBase`):`handle` 自持标识门 → 重入裁决(留守分流前共享段)→ 装配点分流(两端口在场走五段,缺省生产直连旧序列)→ `_close_dialog` 单动作体。
+**空决策形态**(无选择面 ∧ 无逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 标识门(「标识-简易武装箱」,miss = round_fail 交回外循环)→ obs{on_screen} + 占位 report 调用 → obs 挂实例属性;决策动作 node = 顶部重入裁决(点 × 已发 → 锚不在 = 弹窗已关 → success 交回;锚在 = 点击未落地 → 重点)→ `_close_dialog` 点 × 单动作体 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 现役值仅框架异常路径消费)。
 
 ## 3. 观察面
 
-轻观察:payload = `cw_screen_armory_box.py::ArmoryBoxObservation`(仅稳定帧引用);标识门在 `lifecycle_observe` 段内(miss 且未发 → `round_fail` 交编排壳)。零 GameState 写端。
+轻观察:payload = `CwScreenArmoryBoxObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/armory_box.py`);标识门在观察 node(miss → `round_fail` 交回外循环)。report = `report_screen_armory_box_obs` 占位调用(本屏现役零容器写点,接口为统一形态占位;match/gs 缺席跳过)。零 GameState 写端。
 
 ## 4. 动作面
 
@@ -20,7 +20,7 @@
 
 ## 5. 终结与交回
 
-重入裁决:`_click_pending` 在 ∧ 标识 miss = 已关 → `round_success(wait=1.0)` 交回;标识仍在 = 点击未落地 → 重点(计节点预算)。交回后外循环全分支重判:0e/0s 投资策略/环境、1 备战、0f2 武装箱选择。
+重入裁决:`_click_pending` 在 ∧ 标识 miss = 已关 → `round_success(wait=1.0)` 交回;标识仍在 = 点击未落地 → 重点(`round_wait` 循环推进,无防御上限)。交回后外循环全分支重判:0e/0s 投资策略/环境、1 备战、0f2 武装箱选择。
 
 ## 6. 状态上报面
 
@@ -32,12 +32,12 @@
 
 ## 8. 守卫与防线
 
-节点预算 = `node_max_retry_times=8`,耗尽 FAIL 交回(有界终止单);无停机钩子/安灯面(细则 = [../flow/guards.md](../flow/guards.md))。
+`node_max_retry_times=8` 现役值仅框架异常路径消费;无停机钩子/安灯面(细则 = [../flow/guards.md](../flow/guards.md))。
 
 ## 9. 遥测与锁面
 
-- journal op 名 = 「武装箱」(dispatch 包装落 `[cw-op]` 行);frame_tag = `overlay_armory_box`;日志前缀 `[cw-armbox]`。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(`_CLOSING_OPS` 点名成员);建档 = `currency_war_armory_box_dialog.yml`。
+- journal op 名 = 「武装箱」(dispatch 包装落 `[cw-op]` 行);frame_tag = `overlay_armory_box`;日志前缀 `[cw-armbox]`。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(武装箱两 node 形态锁:观察 report 占位 + round_wait 推进);建档 = `currency_war_armory_box_dialog.yml`。
 
 ## 开放设计注
 
-- 档案「按钮-开箱点击」定位区无生产消费点(退役或保留候建档清理批);sim 腿不适用(F11 例外清单),等价判据承重 = 实机行为锁 + 新路径行为锁。
+- 档案「按钮-开箱点击」定位区无生产消费点(退役或保留候建档清理批);sim 腿不适用(F11 例外清单),等价判据承重 = 实机行为锁 + 两 node 行为锁。

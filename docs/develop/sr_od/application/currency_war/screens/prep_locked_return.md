@@ -9,11 +9,11 @@
 
 ## 2. 画面形态声明
 
-**空决策形态**(纯推进)。推进型变体(`_progression_base.py::CwProgressionScreenOp` 子类,画面档/入口锚经构造参数覆写):入口观察 → 单次推进 → 重入观察裁决交回;节点预算 = 2(合同 = [op-layer.md](op-layer.md) §1.5)。
+**空决策形态**(纯推进)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1;画面档/入口锚经构造参数覆写):观察 node = 入口锚门(构造传入的返回按钮,与分发判定同源同参;miss = round_fail 交回外循环重判)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部重入裁决(推进已发 → 锚不在 = 已离开本画面 → success 交回)→ 点返回按钮单次推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 现役值仅框架异常路径消费)。空决策形态无 report 接口。
 
 ## 3. 观察面
 
-轻观察:入口/重入观察 = `entry_ok` 基类 area 锚原语(构造传入的返回按钮,入口与点击同锚)。零 GameState 写端——暗色态下 gold/牌面不可信,不读不写。
+轻观察:观察 node = `entry_ok` area 锚原语(构造传入的返回按钮,入口与点击同锚)→ obs = `CwScreenPrepLockedReturnObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/prep_locked_return.py`;无 report 接口)。零 GameState 写端——暗色态下 gold/牌面不可信,不读不写。
 
 ## 4. 动作面
 
@@ -21,7 +21,7 @@
 
 ## 5. 终结与交回
 
-推进已发 → `round_retry` 重入;重入 = 锚 miss = 已离开 → `success` 交回;预算耗尽 FAIL 交回。落点 = 对应 overlay(策略选择/遭遇节点分支接管)。
+推进已发 → `round_wait` 重入;重入 = 锚 miss = 已离开 → `success` 交回(无防御上限)。落点 = 对应 overlay(策略选择/遭遇节点分支接管)。
 
 ## 6. 状态上报面
 
@@ -33,11 +33,11 @@
 
 ## 8. 守卫与防线
 
-节点预算 = 2(基类合同);无停机钩子/安灯面(细则 = [../flow/guards.md](../flow/guards.md))。
+`node_max_retry_times=2` 现役值仅框架异常路径消费;无停机钩子/安灯面(细则 = [../flow/guards.md](../flow/guards.md))。
 
 ## 9. 遥测与锁面
 
-- journal op 名 = 「备战暗色锁定」;frame_tag = `overlay_lock`(dispatch 包装,on_result 闭包记录命中画面档)。测试锁:无点名行为锁(骨架锁随基类,锁面根 = `sr-od-test/test/sr_od/application/currency_war/`);暗色态时序 = `docs/game/currency_war/research/screen_flow_timing.md` #18/#12/#20。
+- journal op 名 = 「备战暗色锁定」;frame_tag = `overlay_lock`(dispatch 包装,on_result 闭包记录命中画面档)。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(推进型骨架内联形态锁,prep_locked_return 在册);暗色态时序 = `docs/game/currency_war/research/screen_flow_timing.md` #18/#12/#20。
 
 ## 开放设计注
 

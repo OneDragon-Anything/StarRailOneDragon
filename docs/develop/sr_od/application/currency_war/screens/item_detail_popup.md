@@ -8,19 +8,19 @@
 
 ## 2. 画面形态声明
 
-**空决策形态**(纯推进)。推进型变体(`_progression_base.py::CwProgressionScreenOp` 子类):入口观察 → 单次推进 → 重入观察裁决交回;节点预算 = 2(合同 = [op-layer.md](op-layer.md) §1.5)。
+**空决策形态**(纯推进)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(`entry_ok` OCR「聘用书」∧ 祈愿排他复判,与分发判定同源同参;miss = round_fail 交回外循环重判)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部重入裁决(推进已发 → 门不命中 = 已离开本画面 → success 交回)→ 点 × 单次推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 现役值仅框架异常路径消费)。空决策形态无 report 接口。
 
 ## 3. 观察面
 
-轻观察:入口/重入观察 = `entry_ok` OCR+排他复判(payload = None)。零 GameState 写端。
+轻观察:观察 node = `entry_ok` OCR+排他复判 → obs = `CwScreenItemDetailPopupObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/item_detail_popup.py`;无 report 接口)。零 GameState 写端。
 
 ## 4. 动作面
 
-`progress_once` = 读 `货币战争-道具详情弹窗.按钮-关闭` center(`kernel/cw_obs_core.py::area_center`)→ `mouse_move`+`click`(bug#1 缓解)。坐标缺失 = False → 基类 `round_fail`。
+`progress_once` = 读 `货币战争-道具详情弹窗.按钮-关闭` center(`kernel/cw_obs_core.py::area_center`)→ `mouse_move`+`click`(bug#1 缓解)。坐标缺失 = False → 决策动作 node `round_fail`。
 
 ## 5. 终结与交回
 
-推进已发 → `round_retry` 重入;重入 = OCR∧排他复判,不命中 = 已离开 → `success` 交回;预算耗尽 FAIL 交回。落点:祈愿帧让路 0h,其余 = 获得道具语境的底层屏(备战/补给等)重判。
+推进已发 → `round_wait` 重入;重入 = OCR∧排他复判,不命中 = 已离开 → `success` 交回(无防御上限)。落点:祈愿帧让路 0h,其余 = 获得道具语境的底层屏(备战/补给等)重判。
 
 ## 6. 状态上报面
 
@@ -32,11 +32,11 @@
 
 ## 8. 守卫与防线
 
-节点预算 = 2(基类合同);无停机钩子/安灯面(细则 = [../flow/guards.md](../flow/guards.md))。
+`node_max_retry_times=2` 现役值仅框架异常路径消费;无停机钩子/安灯面(细则 = [../flow/guards.md](../flow/guards.md))。
 
 ## 9. 遥测与锁面
 
-- journal op 名 = 「道具详情弹窗」;frame_tag = `overlay_item_detail`(dispatch 包装,on_result 日志闭包)。测试锁:无点名行为锁(骨架锁随基类,锁面根 = `sr-od-test/test/sr_od/application/currency_war/`);建档 = `currency_war_item_detail.yml`。
+- journal op 名 = 「道具详情弹窗」;frame_tag = `overlay_item_detail`(dispatch 包装,on_result 日志闭包)。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(推进型骨架内联形态锁,item_detail_popup 在册);建档 = `currency_war_item_detail.yml`。
 
 ## 开放设计注
 

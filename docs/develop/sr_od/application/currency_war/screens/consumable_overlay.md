@@ -8,19 +8,19 @@
 
 ## 2. 画面形态声明
 
-**空决策形态**。推进型变体(`_progression_base.py::CwProgressionScreenOp` 子类):入口观察 → `progress_once` 单次推进 → 重入观察裁决交回;节点预算 = 2(合同 = [op-layer.md](op-layer.md) §1.5)。
+**空决策形态**。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(双 OCR 复判,与分发判定同源同参;miss = round_fail 交回外循环重判)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部重入裁决(推进已发 → 双 OCR 不命中 = 已离开本画面 → success 交回)→ 点 × 单次推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 现役值仅框架异常路径消费)。空决策形态无 report 接口。
 
 ## 3. 观察面
 
-轻观察:入口/重入观察 = `entry_ok` 双 OCR 复判(payload = None)。零 GameState 写端。
+轻观察:观察 node = `entry_ok` 双 OCR 复判 → obs = `CwScreenConsumableOverlayObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/consumable_overlay.py`;无 report 接口)。零 GameState 写端。
 
 ## 4. 动作面
 
-`progress_once` = 读 `货币战争-道具详情弹窗.按钮-关闭` center(消耗品 modal 与聘用书 modal 同为道具详情弹窗家族,× 同位,借道同族档案)→ `mouse_move`+`click`(bug#1 缓解,与 `cw_screen_item_detail_popup.py::CwScreenItemDetailPopup` 同式)。坐标缺失 = False → 基类 `round_fail`。刻意不用 ESC:× 永远安全,ESC 在 modal 已自关时落备战会误弹「中断挑战」。
+`progress_once` = 读 `货币战争-道具详情弹窗.按钮-关闭` center(消耗品 modal 与聘用书 modal 同为道具详情弹窗家族,× 同位,借道同族档案)→ `mouse_move`+`click`(bug#1 缓解,与 `cw_screen_item_detail_popup.py::CwScreenItemDetailPopup` 同式)。坐标缺失 = False → 决策动作 node `round_fail`。刻意不用 ESC:× 永远安全,ESC 在 modal 已自关时落备战会误弹「中断挑战」。
 
 ## 5. 终结与交回
 
-推进已发 → `round_retry` 重入;重入 = 双 OCR 复判,双条件不命中 = 已离开 → `success` 交回;预算耗尽 FAIL 交回。落点 = 底层屏(投资策略/备战等获得消耗品语境)重判。
+推进已发 → `round_wait` 重入;重入 = 双 OCR 复判,双条件不命中 = 已离开 → `success` 交回(无防御上限)。落点 = 底层屏(投资策略/备战等获得消耗品语境)重判。
 
 ## 6. 状态上报面
 
@@ -32,11 +32,11 @@
 
 ## 8. 守卫与防线
 
-节点预算 = 2(基类合同);无停机钩子/安灯面(细则 = [../flow/guards.md](../flow/guards.md))。
+`node_max_retry_times=2` 现役值仅框架异常路径消费;无停机钩子/安灯面(细则 = [../flow/guards.md](../flow/guards.md))。
 
 ## 9. 遥测与锁面
 
-- journal op 名 = 「消耗品浮层」;frame_tag = `overlay_consumable`(dispatch 包装)。测试锁:无点名行为锁(骨架锁随基类,锁面根 = `sr-od-test/test/sr_od/application/currency_war/`);关闭坐标借道 `currency_war_item_detail.yml`。
+- journal op 名 = 「消耗品浮层」;frame_tag = `overlay_consumable`(dispatch 包装)。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(推进型骨架内联形态锁,consumable_overlay 在册);关闭坐标借道 `currency_war_item_detail.yml`。
 
 ## 开放设计注
 

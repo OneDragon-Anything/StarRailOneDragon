@@ -1,19 +1,19 @@
 # 位面情报采集(plane_intel · 货币战争-位面详情)
 
-> 代码 = `operations/cw_screen/cw_screen_plane_intel.py::CwScreenPlaneIntel`(采集型 op;双节点图「采集 → 关闭并回写」)+ 纯函数三件 `conclude_plane_boss`/`node_seq_cross_mismatch`/`decide_plane_skip`(模块级,可单测)。职责:在位面详情画面一次采集三类情报——三位面 boss(大图标 SIFT)/ 敌人词缀横条 / 位面节点带;接管局补采主通道,亦开局校准通用。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_plane_intel.py::CwScreenPlaneIntel`(采集型 op,三 node 图「观察 → 采集 → 关闭并回写」,直继承 `SrOperation`)+ 纯函数三件 `conclude_plane_boss`/`node_seq_cross_mismatch`/`decide_plane_skip`(模块级,可单测)。职责:在位面详情画面一次采集三类情报——三位面 boss(大图标 SIFT)/ 敌人词缀横条 / 位面节点带;接管局补采主通道,亦开局校准通用。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 分发判定
 
 非外循环分支直管画面 op,由调用方在备战态调起:
 
-- 接管补采 = `cw_screen_prep.py::CwScreenPrep._takeover_collect_if_needed`(触发 = `session.briefing_bosses` 空 ∧ 节点条可读;2 次失败放弃;放弃也清 ctx 两池防跨局泄漏);
+- 接管补采 = `cw_screen_prep.py::CwScreenPrep._takeover_collect_if_needed`(触发 = 容器 `gs.takeover_collect_done` 未置 ∧ `gs.plane_bosses` 空 ∧ 节点条可读;2 次失败放弃;放弃也清 ctx 两池防跨局泄漏);
 - 独立 takeover 入口 = `operations/cw_entry/cw_entry_plane_intel.py`。
 
 入口契约:必须在**定型备战帧**调起(boss 战后位面过场的半开备战帧点不开详情;调用方自带 2 次重试账,过场帧首试失败后下个稳定备战帧再试)。op 内场景门三分(`_collect_cycle`):已在位面详情 → 续采 / 备战(「货币战争-备战.备战标识-购买经验」命中)→ 点任意节点图标开详情 / 其它 → retry 等画面。本屏消费画面档与 0a4 分支同档(「货币战争-位面详情」),采集运行中不经该分支。
 
 ## 2. 画面形态声明
 
-**采集型空决策形态**(零策略器问询、零逻辑态账;采集状态在 self,`round_wait` 自环三位面循环)。五段薄转录:observe = 帧引用直通(场景门不前移);decide+act 内聚 `_collect_cycle`(两路径方法级共享,禁第二套转录);reconcile/on_outcome = 空申报。**双节点图保留**:「采集」(start,预算 60)→「关闭并回写」显式 `node_from` 边——无显式边时采集 success 被当 op 终点、关闭节点漏跑。装配点分流同族(两端口在场 → 五段;缺省 → 生产直连旧路径)。
+**采集型空决策形态**(零策略器问询、零逻辑态账;采集状态在 self,`round_wait` 自环三位面循环)。三 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1,装帧薄转录形态):观察 node = 稳定帧装帧直通(场景门不前移,零拆改)+ obs{on_screen} + 占位 report 调用;采集 node = `_collect_cycle` 采集体(状态在 self,`round_wait` 自环,预算 60);关闭并回写 node = 点 X 验标题消失 → 结果落 ctx 中转(预算 6)。**「采集 → 关闭并回写」显式 `node_from` 边保留**——无显式边时采集 success 被当 op 终点、关闭节点漏跑。
 
 ## 3. 观察面
 
@@ -44,7 +44,7 @@
 
 ## 6. 状态上报面
 
-- **ctx 中转**:`ctx.cw_plane_bosses`(3 槽**保位**——徽章态 None 占位勿滤,滤掉让后续位面名左移错位)/ `ctx.cw_plane_affixes`;消费 = `_takeover_collect_if_needed` 取走写 `session.briefing_bosses`/`session.briefing_affixes`(与简报同字段,词缀仅简报未供时补)。
+- **ctx 中转**:`ctx.cw_plane_bosses`(3 槽**保位**——徽章态 None 占位勿滤,滤掉让后续位面名左移错位)/ `ctx.cw_plane_affixes`;消费 = `_takeover_collect_if_needed` 取走,经 `report_screen_prep_obs` 可选域落容器(`plane_bosses`/`enemy_affixes`,logic_hook 渠道 ResumeAttach;session 份退役,gs 单一源;词缀仅简报未供时补)。
 - **节点类型台账**:`kernel/cw_exec_state.py::ledger_update_plane` 两源(prep_row 备战行按位合并 / plane_detail 详情条整面覆盖,合并语义 = None 位保旧;boss 位按「首领 = 位面最后节点」位置先验回填 `fill_boss_by_position`)。台账值载体宿主 = `GameState.plane_node_sequences`(`PlaneNodeLedger`,容器非 Field 簿记;访问口 = cw_exec_state 三访问函数转发,消费面零改动)。
 - **词缀运行时登记**:`kernel/cw_affix_effects.py::register_affixes_from_names`(产出点登记;登记体按在册条目幂等,补采重跑不双登记;best-effort)。
 - **defect 留证**:节点序列互证不一致(`node_seq`/`perception_conflict`,reader_source=`prep_vs_plane_detail_seq`)。
@@ -60,7 +60,7 @@
 ## 9. 遥测与锁面
 
 - journal op 名 = 「货币战争-位面情报采集」(子 op execute,不经 dispatch 包装,随宿主备战访问的 `[cw-op]` 行承载);日志前缀 `[cw-plane-intel]`。
-- 测试锁:五段新路径行为锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`;纯函数三件锁 = 代码注声称在册、测试仓现状无对应文件(开放设计注②)。
+- 测试锁:两 node 形态锁(装帧观察 node 直通 + 占位 report/「采集 → 关闭并回写」显式边保留)= `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`;纯函数三件锁 = 代码注声称在册、测试仓现状无对应文件(开放设计注②)。
 - game 侧知识:位面结构/节点链 = [../../../../game/currency_war/research/README.md](../../../../../game/currency_war/research/README.md)(台账容器侧对接 = [../game_state/chain-observation.md](../game_state/chain-observation.md));画面档 = `assets/game_data/screen_info/currency_war_plane_detail.yml`(+ 备战档节点条 area)。
 
 ## 开放设计注

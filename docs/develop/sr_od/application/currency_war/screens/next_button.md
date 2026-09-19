@@ -1,6 +1,6 @@
 # 前进按钮(next_button · OCR 兜底推进)
 
-> 代码 = `operations/cw_screen/cw_screen_next_button.py::CwScreenNextButton`(推进型骨架基类 = `_progression_base.py::CwProgressionScreenOp`)。职责:简报等画面的「下一步」前进按钮(外循环分支 5)的兜底推进——OCR 找到即点,无验效。
+> 代码 = `operations/cw_screen/cw_screen_next_button.py::CwScreenNextButton`(两 node 直继承 `SrOperation`)。职责:简报等画面的「下一步」前进按钮(外循环分支 5)的兜底推进——OCR 找到即点,无验效。
 
 ## 1. 分发判定
 
@@ -8,11 +8,11 @@
 
 ## 2. 画面形态声明
 
-**空决策形态**(推进族)。免锚形态:无「已离开本画面」观察信号,重入裁决不可达 → 推进发出即 `round_success` 交回(基类免锚分支;有界性归外循环重派/分发 bail 计数)。
+**空决策形态**(推进族)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(OCR「下一步」,与分发判定同源同参;miss = round_fail 交回外循环重判)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部重入裁决(推进已发 → OCR 不命中 = 已离开本画面 → success 交回)→ 点击「下一步」单次推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 现役值仅框架异常路径消费)。空决策形态无 report 接口。
 
 ## 3. 观察面
 
-入口 = `round_by_ocr('下一步')`;零写端。
+观察 node = `round_by_ocr('下一步')` → obs = `CwScreenNextButtonObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/next_button.py`;无 report 接口)。零写端。
 
 ## 4. 动作面
 
@@ -20,7 +20,7 @@
 
 ## 5. 终结与交回
 
-点击已发即 success 交回外循环全分支重判;推进未落地(二次 OCR miss)→ fail 交回重判。
+推进已发 → `round_wait` 重入;重入 = OCR「下一步」不命中 = 已离开 → `success` 交回外循环全分支重判;推进未落地(点击 OCR miss)→ `round_fail` 交回重判。
 
 ## 6. 状态上报面
 
@@ -32,8 +32,8 @@
 
 ## 8. 守卫与防线
 
-无专属防线(兜底分支本性;节点预算 = 基类 2,其余重试归外循环)。
+无专属防线(兜底分支本性;`node_max_retry_times=2` 现役值仅框架异常路径消费)。
 
 ## 9. 遥测与锁面
 
-journal op 名 = 「前进按钮」;无专属测试锁在册(锁面目录 = `sr-od-test/test/sr_od/application/currency_war/`)。
+journal op 名 = 「前进按钮」;测试锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(推进型骨架内联形态锁,next_button 在册)。

@@ -1,6 +1,6 @@
 # BOSS 简报(boss_briefing · 货币战争-BOSS简报)
 
-> 代码 = `operations/cw_screen/cw_screen_boss_briefing.py::CwScreenBossBriefing`。职责:boss 节点前的「强敌来袭」全屏横幅——识别 → 点空白推进 → 直接交回外循环重判(点掉后去向由外循环全分支自然处理)。
+> 代码 = `operations/cw_screen/cw_screen_boss_briefing.py::CwScreenBossBriefing`(两 node 直继承 `SrOperation`)。职责:boss 节点前的「强敌来袭」全屏横幅——识别 → 点空白推进 → 直接交回外循环重判(点掉后去向由外循环全分支自然处理)。
 > **判别单一源红线**:两画面判别器 `BOSS_BRIEFING_TOKENS`/`is_boss_briefing_texts` 禁在改码/迁移中分叉——三处消费同源(op 内锚 miss 兜底 / `CwScreenBattleWait._hit_completion_anchor` 完成白名单 / 外循环阶段一位面过渡身份臂排他接管)。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 分发判定
@@ -12,11 +12,11 @@
 
 ## 2. 画面形态声明
 
-**空决策形态**(纯推进)。本屏无重入裁决旗标:点空白 `round_success` 即交回,横幅退场由下一帧外循环分发判定(不承诺落点);横幅已退 = observe 段早退 success 同语义。单动作单发零 op 内重试,节点预算 8。装配点分流同族(两端口在场 → 五段;缺省 → 生产直连旧路径)。
+**空决策形态**(纯推进)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 横幅判定(area 锚 miss → 判别兜底;判定不在 = 已推进 → 早退 success 交回)+ obs{on_screen} + 占位 report 调用;决策动作 node = 单动作单发(点空白)→ `round_success` 交回——本屏无重入裁决旗标,横幅退场由下一帧外循环分发判定(不承诺落点);`node_max_retry_times=8` 现役值仅框架异常路径消费。
 
 ## 3. 观察面
 
-横幅判定(`lifecycle_observe`):area 锚 miss → `is_boss_briefing_texts(read_ocr_texts)` 兜底(`read_ocr_texts` = 全帧 OCR,`ocr_service` 同帧缓存);判定不在 = 已推进 → 早退 success。零 GameState/session 写端(纯过场,无观察上报面)。
+横幅判定(观察 node):area 锚 miss → `is_boss_briefing_texts(read_ocr_texts)` 兜底(`read_ocr_texts` = 全帧 OCR,`ocr_service` 同帧缓存);判定不在 = 已推进 → 早退 success。obs = `CwScreenBossBriefingObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/boss_briefing.py`);report = `report_screen_boss_briefing_obs` 占位调用(本屏现役零容器写点,接口为统一形态占位;match/gs 缺席跳过)。零 GameState/session 写端(纯过场,无观察上报面)。
 
 ## 4. 动作面
 
@@ -28,7 +28,7 @@
 
 ## 6. 状态上报面
 
-零写端(无转移函数腿、无 session 面、on_outcome 无登记件)。
+零写端(无转移函数腿、无 session 面;无落地登记件)。
 
 ## 7. 子态与 overlay
 
@@ -36,12 +36,12 @@
 
 ## 8. 守卫与防线
 
-节点预算 8;误分发防线在分发侧(0p 锚加固 + 阶段一位面过渡身份臂排他接管 + 0q 本屏 rect 判定/排他,见 §1)。原 0q 误分发型 fail streak 守卫(`PLANE_MISDISPATCH_LIMIT`)已退役,连续 fail 预算统一归外环通用网([../flow/guards.md](../flow/guards.md) §1)。
+`node_max_retry_times=8` 现役值仅框架异常路径消费;误分发防线在分发侧(0p 锚加固 + 阶段一位面过渡身份臂排他接管 + 0q 本屏 rect 判定/排他,见 §1)。原 0q 误分发型 fail streak 守卫(`PLANE_MISDISPATCH_LIMIT`)已退役,连续 fail 预算统一归外环通用网([../flow/guards.md](../flow/guards.md) §1)。
 
 ## 9. 遥测与锁面
 
 - journal op 名 = 「BOSS简报」;日志前缀 `[cw-flow-boss]`。
-- 测试锁:五段路径行为锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`;锚排他锁 = 代码注引用 `test_cw_anchor_exclusion.py`,该文件现状不在测试仓(开放设计注②)。
+- 测试锁:两 node 行为锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`(BOSS 简报真类装配与观察门 miss 早退);锚排他锁 = 代码注引用 `test_cw_anchor_exclusion.py`,该文件现状不在测试仓(开放设计注②)。
 - game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #26(「点击空白处继续」出现即可点);画面档 = `assets/game_data/screen_info/currency_war_boss_briefing.yml`。
 
 ## 开放设计注

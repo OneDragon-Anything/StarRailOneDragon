@@ -1380,7 +1380,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
 - **骨架与规格分叉对账(在册例外)**:bench 载体=**BenchView**(slots+capacity)非
   Field[list[BenchSlot]];xp=**tuple[int,int]**(「X/Y」现读)——容量随效果改写需
   一等承载;「X/Y」升级进度按画面现读形状。
-- **透传残差申报**(决策视图适配器 cw_gs_view 的「不入容器」域,显式理由在册):
+- **透传残差申报**(不入容器的策略侧派生域,显式理由在册):
   front_max=常量供数不入容器;back_max 不收编(值源切换语义裁决另立批);
   dual_track_phase/focus_factions=策略侧派生/回填不入容器。已建模域的收编口径 =
   §3.2.7.1(deploy_cap 双存)/§3.2.13(hp 门前真值+消费侧施门)/§3.3.1(双 ShopCard

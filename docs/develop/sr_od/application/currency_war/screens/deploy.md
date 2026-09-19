@@ -1,6 +1,6 @@
 # 部署机(deploy · 备战画面执行段;SCREEN_NAME = 货币战争-备战)
 
-> 代码 = `operations/cw_screen/cw_screen_deploy.py::CwScreenDeploy`(直属 `SrOperation`,非 `CwScreenOpBase` 后代)。**非独立建档画面**:部署机在备战画面上以拖拽执行,槽位坐标全部来自备战建档(`assets/game_data/screen_info/currency_war_battle_prep.yml`:备战栏-1..9 / 前排-1..4 / 后排-N / 区域-出售区)。执行细则单一源 = [../flow/action_exec.md](../flow/action_exec.md) §5(前置断言/输入装配/围栏/拖拽循环守卫/换排/off-target/收尾逐条在彼),本篇只写画面侧编排与调用契约,禁复制成第二源。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_deploy.py::CwScreenDeploy`(直继承 `SrOperation` 单体,单 node「部署备战栏角色」;**出辖申报**:不属画面分发主体,两 node 化与 obs 化未立项——评估另立批,裁延迟,[op-layer.md](op-layer.md) §3 出辖)。**非独立建档画面**:部署机在备战画面上以拖拽执行,槽位坐标全部来自备战建档(`assets/game_data/screen_info/currency_war_battle_prep.yml`:备战栏-1..9 / 前排-1..4 / 后排-N / 区域-出售区)。执行细则单一源 = [../flow/action_exec.md](../flow/action_exec.md) §5(前置断言/输入装配/围栏/拖拽循环守卫/换排/off-target/收尾逐条在彼),本篇只写画面侧编排与调用契约,禁复制成第二源。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 调用契约(分发判定)
 

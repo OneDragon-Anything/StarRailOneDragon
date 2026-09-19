@@ -16,10 +16,11 @@
                                       ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 画面 op 层(operations/cw_screen,一画面一 op)                  │
-│   cw_screen_op_base 五段结构:观察→对账→决策→动作执行→落地登记     │
+│   两 node 形态(直继承 SrOperation):观察(门+读屏+            │
+│   report 落容器)→ 决策动作(重入裁决+决策+动作,round_wait 循环)│
 │   备战·商店·战斗等待·伙伴·遭遇·投资·补给·结算·位面转换·弹窗族     │
 │                                                              │
-│   观察解析工具箱(obs/,五段①的解析设施,一屏一解析器):            │
+│   观察解析工具箱(obs/,观察侧解析设施,一屏一解析器):             │
 │     备战屏 read_game_state·节点选项·结算屏·简报屏·商店对账        │
 │     角色识别 SIFT·CV 工具·多源仲裁·恢复锁 …(入口链/动作 op/      │
 │     kernel/档案有少量复用)                                     │
@@ -79,21 +80,20 @@
 | `currency_war_app.py` | 应用五件套组装、把对局循环接入框架 app 体系、单跑道约束 | 具体对局逻辑 |
 | `operations/cw_entry/*` | 入局流程(从大厅进对局)、残局接管与恢复、位面情报采集;是 run 领取的入口链 | 对局内的节点决策 |
 | `operations/cw_loop.py` | 对局主循环:按节点类型分发画面 op、看门狗、op 失败重派防线(外环防线)、局终收口钩子 | 任何策略判断;画面内交互(归各画面 op) |
-| app 根级:`prep_actions.py` / `decision_assembly.py` / `run_state.py` / `cw_screen_state.py` / `cw_game_ports.py` | 备战决策环执行器(flow 层「动作执行」主干件,被 cw_screen_prep 消费)/ 实机观察→Snapshot 装配半部 / 执行失败停机钩子旗标族 / 轻量画面状态判定(入口链兜底复用) / 假环境注入口协议(惰性,零生产消费) | 具体判据(归策略/画面层) |
+| app 根级:`prep_actions.py` / `decision_assembly.py` / `cw_screen_state.py` | 备战决策环执行器(flow 层「动作执行」主干件,被 cw_screen_prep 消费;停机短路防线在此,执行器抛出交回外循环)/ 实机观察→Snapshot 装配半部 / 轻量画面状态判定(入口链兜底复用) | 具体判据(归策略/画面层) |
 
 ## 三、画面 op 层(operations/cw_screen)
 
-**基类与公共**:
+**公共件**:
 
 | 模块 | 负责 |
 |---|---|
-| `cw_screen/cw_screen_op_base.py` | 画面 op 五段结构基类:入口观察(读屏,经观察解析工具箱)→ 对账(观察边界)→ 决策(问策略)→ 动作执行 → 落地登记(on_outcome);观察上报、对账、落地登记都在基类,一份代码。验证不是生命周期段(用户裁定):动作未生效的处置 = 修动作适配器,落地判定归观察侧对账(screens/op-layer.md §1.2) |
 | `operations/decision_frame_hooks.py` / `operations/settle_collect_hooks.py`(两件住 operations/ 直下,非 cw_screen/) | 决策帧/结算屏的留证钩子(证据帧采集) |
-| `cw_flow_const.py` / `_overlay_confirm.py` / `_progression_base.py` | 流程常量、overlay 确认公共件、推进类画面公共基类 |
+| `cw_flow_const.py` / `_overlay_confirm.py` | 流程常量、overlay 确认公共件(画面 op 无共享基类:每画面独立类直继承 `SrOperation`,两 node 形态 = screens/[op-layer.md](screens/op-layer.md) §1) |
 
 **画面 op(一画面一文件,职责 = 该画面的识别、交互、把观察态上报 game state、调用动作 op 执行)**:备战(`cw_screen_prep`,备战环:部署/卖/移位/装备/升级的执行环)、商店(`cw_screen_buy_cards`,买牌 + 种子锚定检查)、战斗等待(`cw_screen_battle_wait`)、选择伙伴(`cw_screen_partner`)、遭遇(`cw_screen_encounter`,难度档选择+刷新)、投资策略/环境(`cw_screen_invest_strategy`/`cw_screen_invest_env`)、补给(`cw_screen_supply_node`)、结算族(`cw_screen_briefing`/`boss_briefing`)、位面转换与情报(`cw_screen_plane_transition`/`plane_intel`/`plane_detail`)、装备/道具弹窗族(`equip_pick`/`aha_equip_pick`/`emblem_detail_popup`/`item_detail_popup`/`role_detail_overlay`/`shop_card_detail`)、宝箱族(`armory_box`/`box_pick`/`fortune`)、书册(`cw_screen_bookcard`)、巨星(`cw_screen_megastar`)、试牌(`cw_screen_wish_trial`)、专家邀请(`cw_screen_expert_invite`)、中断对话框(`cw_screen_interrupt_dialog`)、其他推进件(`next_button`/`wait_one_one`/`deploy`/`deploy_not_full`/`planner`/`refresh_odds_popup`/`consumable_overlay`/`prep_locked_return`)。
 
-**观察解析工具箱(obs/,五段①「观察」的解析设施,一屏一解析器)**:备战屏(`cw_observation` read_game_state 容器直写+轻量回执、`cw_observe_full` 全面识别组装、`cw_identity_obs` SIFT 视觉身份、`cw_faction_obs` 羁绊面板、`cw_back_layout` 后排布局)、节点族(`cw_node_obs` 遭遇/补给/巨星/伙伴选项、`cw_node_reader` 节点行类型)、结算屏(`cw_settlement_obs`)、简报屏(`cw_briefing_obs`,敌人词缀+位面首领)、商店(`cw_shop_obs` 开态对账、`cw_shop_refresh_obs` 刷新钮现场读)、装备/角色(`cw_equipment`、`currency_war_char_id` SIFT 角色识别)、公共件(`currency_war_cv` CV 工具、`cw_arbitration` 多源仲裁、`cw_resume_lock` 恢复局检测、`recognizers/*` 画面识别器注册)。入口链、动作 op、kernel(遭遇选档)、档案记录器有少量复用。
+**观察解析工具箱(obs/,观察侧解析设施,一屏一解析器)**:备战屏(`cw_observation` read_game_state 容器直写+轻量回执、`cw_observe_full` 全面识别组装、`cw_identity_obs` SIFT 视觉身份、`cw_faction_obs` 羁绊面板、`cw_back_layout` 后排布局)、节点族(`cw_node_obs` 遭遇/补给/巨星/伙伴选项、`cw_node_reader` 节点行类型)、结算屏(`cw_settlement_obs`)、简报屏(`cw_briefing_obs`,敌人词缀+位面首领)、商店(`cw_shop_obs` 开态对账、`cw_shop_refresh_obs` 刷新钮现场读)、装备/角色(`cw_equipment`、`currency_war_char_id` SIFT 角色识别)、公共件(`currency_war_cv` CV 工具、`cw_arbitration` 多源仲裁、`cw_resume_lock` 恢复局检测、`recognizers/*` 画面识别器注册)。入口链、动作 op、kernel(遭遇选档)、档案记录器有少量复用。
 
 ## 四、动作 op 层(operations/cw_op)
 
