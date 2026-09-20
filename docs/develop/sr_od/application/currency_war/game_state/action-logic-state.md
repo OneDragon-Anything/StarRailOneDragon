@@ -321,14 +321,15 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 **逻辑态规则**：拖到角色 → 从其**推荐进阶装备**中获得一件；工具 −1。**选定后确定**：选件事实（chosen_equip）已知时 = 装备库存 +1（桥 = `grant_equip_item`，非进阶类别 = 调用错；库存未观察 = 零写留观察）。**随机面 / 缺口**：候选池真实结构（效果文「四件」vs 图鉴「3+3」）待实测 = §7 G6（proofs/p14 Q5 在册）；选哪件 = 策略决策面，选定前无容器可算面。**依据**：`EQUIP_REWRITE_DECLARATIONS['好运令牌']`；equipment_mechanics §5。
 
-## 5. 转场类动作（逻辑态 = 空）
+## 5. 转场与观察类动作（逻辑态 = 空）
 
-**OpenShop**（开店意图，`kernel/cw_prep_actions.py::OpenShop`，备战环终结）与 **StartBattle**（出战，备战访问终结·唯一完成态）是**转移动作**：它们只把画面从 A 转移到 B，不按游戏规则改写任何局内资源。
+**OpenShop**（开店意图，`kernel/cw_prep_actions.py::OpenShop`，备战环终结）与 **StartBattle**（出战，备战访问终结·唯一完成态）是**转移动作**：它们只把画面从 A 转移到 B，不按游戏规则改写任何局内资源。**Obs**（环内重观察，`operations/cw_op/cw_obs_action.py::CwActionObsOp`）同类逻辑态 = 空：它的容器更新通道 = 宿主画面 op 的 heavy 观察链重跑（观察漏斗直写 = 观察边界对账，非动作逻辑态直写）；动作上报面零写（`zero_writes.py::report_action_obs_param` 占位）。
 
 - **OpenShop**：容器逻辑态 = 空（显式声明）。开店不触发刷新（基础刷新触发只有「节点切换」+「手动」，`research/economy.md` §2.1）；开店后牌面/gold = 入口观察重建（read_only 形态的读数目标 = gold 真值，观察面）。
 - **StartBattle**：容器逻辑态 = 空（显式声明）。进战斗后 hp/gold/streak 全部由结算屏真值覆盖接管（op 自上报 `report_action_start_battle_param`：hp/gold/streak 零推进；败轮金按轮首补发口径，fields.md §4.2 轮首收入）。**免战牌子态**：出战按钮变「跳过」；跳过经上报即递减（`report_action_start_battle_param` 内 `consume_use`，归零移除——效果账本侧确定性维护，非 GameState 字段逻辑态）；「跳过后 hp/streak/收入不动」= 待实机实证的暂定表述（§7 G9）。发射重发/连败停机 = 流程防线（[action_exec.md](../flow/action_exec.md) §7），不属逻辑态。
+- **Obs**：容器逻辑态 = 空（显式声明；策略发射后宿主 `CwScreenPrep.reobserve_in_visit` 重跑观察链，帧代次标 full 归决策循环写点——方向重估触发同入口帧）。重观察见事件 overlay = 抛 `CwObsOverlayBail` 交回外循环重分发（画面路由归外循环，环内不消化）。
 
-依据：`kernel/cw_prep_actions.py::OpenShop`/`StartBattle`；`kernel/cw_action_report/zero_writes.py::report_action_open_shop_param` 与 `start_battle.py::report_action_start_battle_param` docstring（零写/零推进申报）；`fields.md` §4.2 出战。
+依据：`kernel/cw_prep_actions.py::OpenShop`/`StartBattle`；`kernel/cw_action_report/zero_writes.py::report_action_open_shop_param`、`start_battle.py::report_action_start_battle_param` 与 `report_action_obs_param` docstring（零写/零推进申报）；`fields.md` §4.2 出战。
 
 ## 6. 事件线选择（pick 族）：非逻辑态通道边界
 

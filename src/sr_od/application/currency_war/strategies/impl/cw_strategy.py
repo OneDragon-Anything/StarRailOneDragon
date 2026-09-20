@@ -84,7 +84,7 @@ class CwStrategy(ABC, Generic[_TState]):
       F-overlay-01/02/03)——决策输入一律 ``self.gs`` 自取,会话残余依赖
       由 §3.2/§3.3 重复账退役清偿。
     - **输出统一**:单一 ``CwAction``(选择族 per-screen 子类型 + 三刷新动作
-      + HoldFrame,无 None)。
+      + HoldFrame + 环内重观察 CwActionObsParam,无 None)。
 
     兼容裁定:注册面封闭集 {mandate_v1},第三方存量策略在新契约下不兼容 =
     显式破坏申报(flow/README §2.4)。
@@ -143,7 +143,9 @@ class CwStrategy(ABC, Generic[_TState]):
 
     @abstractmethod
     def decide_prep_screen(self) -> CwAction:
-        """备战画面黑板决策(单动作;空发射帧返回 HoldFrame,None 退役)。"""
+        """备战画面黑板决策(单动作;空发射帧返回 HoldFrame,None 退役;
+        环内重观察 = CwActionObsParam,宿主观察链重跑后原地续决策,
+        不交回外循环)。"""
 
     @abstractmethod
     def decide_shop_action(self) -> Action:

@@ -44,6 +44,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionLevelUpParam,
     CwActionLevelUpShopParam,
     CwActionLuckyTokenUseParam,
+    CwActionObsParam,
     CwActionOpenBookcardParam,
     CwActionOpenBoxParam,
     CwActionOpenShopParam,
@@ -82,6 +83,9 @@ from sr_od.application.currency_war.operations.cw_op.cw_collect_ore_action impor
 )
 from sr_od.application.currency_war.operations.cw_op.cw_deploy_move_action import (
     CwActionDeployMoveOp,
+)
+from sr_od.application.currency_war.operations.cw_op.cw_obs_action import (
+    CwActionObsOp,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_open_bookcard_action import (
     CwActionOpenBookcardOp,
@@ -164,6 +168,10 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     # 转场族
     CwActionStartBattleParam: CwActionStartBattleOp,   # 终结(交回外循环战斗分支)
     CwActionOpenShopParam: CwActionOpenShopOp,         # terminal 承载行(执行抛,正常路径不可达)
+    # 观察族(策略发射 CwActionObs = 环内重观察上报,不交回外循环;
+    # 现役接线域 = 备战决策环,重观察执行半 = 宿主 CwScreenPrep
+    # .reobserve_in_visit;其他域发射 = 宿主能力缺失 AssertionError 响亮暴露)
+    CwActionObsParam: CwActionObsOp,
     # 事件线 pick 族(批4;overlay act 段经工厂,机械体 = 各 overlay 画面
     # op act 确认链迁移体。终态契约:策略器产出 = 词表 Pick 子类型,kernel
     # Pick 族 = 纯函数内部返回值,不再进注册表)。

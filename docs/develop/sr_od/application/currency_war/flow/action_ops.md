@@ -47,7 +47,7 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 
 ## 4. 全量清单(基准 = `operations/cw_op/cw_action_registry.py`)
 
-覆盖声明:注册表 **27 行**全列(§4.1–§4.4,词表类 → op 类逐行对齐);词表 `kernel/cw_vocab.py::CW_ACTION_TYPES` 共 **38 类**,除注册表 27 键外,其余 11 类不经注册表分发,见 §4.5。§4.1–§4.4 文件路径省略前缀 `operations/cw_op/`。决策循环逐动作消费细则 = [../screens/prep.md](../screens/prep.md) §4,不在本篇重复。
+覆盖声明:注册表 **35 行**全列(§4.1–§4.5,词表类 → op 类逐行对齐);词表 `kernel/cw_vocab.py::CW_ACTION_TYPES` 共 **39 类**,除注册表 35 键外,其余 4 类不经注册表分发,见 §4.6。§4.1–§4.5 文件路径省略前缀 `operations/cw_op/`。决策循环逐动作消费细则 = [../screens/prep.md](../screens/prep.md) §4,不在本篇重复。
 
 ### 4.1 商店族(3 行)
 
@@ -90,7 +90,13 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 | StartBattle | CwActionStartBattleOp | `cw_start_battle_action.py` | 出战点击序列(终结动作,terminal_wait=3):找「按钮-出战」(备战+开商店两屏查,叠加帧兼容;免战子态查「按钮-跳过」同语义点它,子态经 `env.skip_substate` 上报)→ mouse_move + click → 固定等 1s → 单帧截图收口两类真弹窗(未达上限警告 = 勾选+确认;前台无角色 = 确认);零转移验证,交回外循环重判。round 结果 = 点击序列已执行(在册例外;找不到按钮/area 缺失 = False,经执行器 `last_launch_ok` 旁路)。机械执行后 op 自上报 `report_action_start_battle_param`(免战递减内聚)。发射条件 = 备战策略产 StartBattle(环出口,豁免屏蔽)。 |
 | OpenShop | CwActionOpenShopOp | `cw_open_shop_action.py` | 开店注册行 = terminal 承载行:执行抛 AssertionError(开店流程编排截流在 `cw_screen_prep._act_execute_default` → `_open_shop_phase`,可达即分派漏斗被绕过);类属性承载终结判定/等待(terminal=True,terminal_wait=1.0)。发射条件 = 备战策略产 OpenShop(read_only / restricted_spend 两形态,消费在流程层编排)。 |
 
-### 4.4 事件线 pick 族(5 行;域 env = `OverlayPickExecEnv`,机械参数由各画面 op 决策半现算经 env 传入,op 类体内零决策)
+### 4.4 观察族(1 行)
+
+| 词表类 | op 类 | 文件 | 说明 |
+|---|---|---|---|
+| Obs | CwActionObsOp | `cw_obs_action.py` | 环内重观察(策略发射 CwActionObs = 当前画面重新观察上报,不交回外循环):执行体 = 宿主画面 op `reobserve_in_visit`(现役唯一宿主 = 备战 CwScreenPrep)heavy 观察链重跑,漏斗直写容器 = 观察边界对账;零点击零拖拽;自上报 = 零写占位(容器更新通道 = 观察漏斗本体)。重观察见事件 overlay = 抛 `CwObsOverlayBail` 交回外循环重分发(捕获点 = 备战决策循环,画面路由归外循环);非终结,执行后帧代次标 full(方向重估触发,同入口帧;贵段消费侧键守卫限频),决策环原地续跑。发射域无重观察能力(env.op 未接线)= AssertionError 响亮暴露(策略器 bug)。发射条件 = 策略对随机面/不确定面动作后需要真值再决策(与 HoldFrame 分界:HoldFrame = 无动作交回外循环重观察,付重分发成本;Obs = 留环内拿新鲜观察)。 |
+
+### 4.5 事件线 pick 族(12 行;域 env = `OverlayPickExecEnv`,机械参数由各画面 op 决策半现算经 env 传入,op 类体内零决策)
 
 | 词表类 | op 类 | 文件 | 说明 |
 |---|---|---|---|
@@ -99,17 +105,20 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 | PickMegastar | CwActionPickMegastarOp | `cw_overlay_pick_action.py` | 盛会之星确认链:点「按钮-确认选择」(area 缺失回退兜底常量)→ 固定等 0.9s;纯机械单发,确认未落地 = 下一帧重入裁决自愈(计节点 retry 预算)。发射条件 = 决策半产 PickMegastar(候选选中半留守画面 op)。 |
 | PickPartner | CwActionPickPartnerOp | `cw_overlay_pick_action.py` | 列车同行伙伴确认链:未选中实证(或首轮强制)下重点选候选(`env.op._pick_point`)→ 固定等 0.7s → OCR 找「确认选择」点击(找不到 = round_retry 上报,交框架轮次机制);脉冲计数与选中态宿主 = 画面 op。发射条件 = 决策半产 PickPartner。 |
 | PickPlanner | CwActionPickPlannerOp | `cw_overlay_pick_action.py` | 骇入策划确认链:`env.target` 点卡(避开卡内「详情」按钮区的选中点几何归决策半单一源)→ 固定等 1.2s → `emit_overlay_confirm` 机械确认(裁决词全词「我来当策划」);点卡 = 机械单发(无详情面板检测;面板若真弹出归下一帧重入自愈)。发射条件 = 决策半产 PickPlanner。 |
+| PickInvest | CwActionPickInvestOp | `cw_overlay_pick_action.py` | 投资环境/投资策略两屏共用行(pick-op-unify 批收编,T-2):点选中位(`env.idx`/`env.target` 决策半现算)→ 点确认钮 → 自上报(零写)。 |
+| PickFortune | CwActionPickFortuneOp | `cw_overlay_pick_action.py` | 命运卜者强化三选一(pick-op-unify 批收编,T-3):点卡(`env.target`)→ 点确认钮(建档缺失臂兜底常量)→ 自上报(零写)。 |
+| PickWishTrial | CwActionPickWishTrialOp | `cw_overlay_pick_action.py` | 祈愿试炼(pick-op-unify 批收编,T-3):点卡(`env.target`)→ 点「按钮-确认选择」area 确认 → 自上报(零写)。 |
+| PickStarTome | CwActionPickStarTomeOp | `cw_overlay_pick_action.py` | 星徽秘典(pick-op-unify 批收编,T-4,点卡即选):选中点击 + 动画等待,零确认步 → 自上报(零写)。 |
+| PickBoxCard | CwActionPickBoxCardOp | `cw_overlay_pick_action.py` | 武装箱(pick-op-unify 批收编,T-4,点卡即选):同上形态。 |
+| PickExpertInvite | CwActionPickExpertInviteOp | `cw_overlay_pick_action.py` | 专家邀请函(pick-op-unify 批收编,T-4,点卡即选):idx=-1 = 现金为王(点「卡-现金为王」区,非候选卡槽)。 |
+| PickEquip | CwActionPickEquipOp | `cw_overlay_pick_action.py` | 选择装备三选一(pick-op-unify 批收编,T-4,点卡即选):同上形态。 |
 
-### 4.5 词表在册、不经注册表分发的类(11 类)
+### 4.6 词表在册、不经注册表分发的类(4 类)
 
-发射面:LevelUpShop 经注册表显式独立行同解析 `CwActionLevelUpOp`(同字段双类型,词表摊平后 is-a 链消亡);其余 10 类不走注册表分派,消费面如下:
-
-- `LevelUpShop`:LevelUp 同字段双类型,注册表显式独立行同解析 `CwActionLevelUpOp`(对拍口径 LevelUpShop ≡ LevelUp,同字段逐项全等)。
-- `PickInvest` / `PickStarTome` / `PickWishTrial` / `PickBoxCard` / `PickFortune` / `PickExpertInvite` / `PickEquip`:7 个 pick 子类由各画面 handler 自管消费链读 idx 直点,不经注册表(宿主画面 op = 投资策略/星徽秘典/祈愿试炼/武装箱/命运卜者/专家邀请函/选择装备;单一源 = `cw_vocab.PickOption` docstring)。
-- `RefreshNodeOptions` / `RefreshSupply` / `RefreshInvestCards`:三刷新建议动作,走各画面既有点击链(遭遇刷新链/补给刷新链/投资逐卡刷新,是否真刷由 handler 按逐槽计数现读决定);遭遇与投资逐卡两链的刷新计数入 `EMIT_TRIGGERED_DECLARED` 申报面(§2.3)。
+- `RefreshNodeOptions` / `RefreshSupply` / `RefreshInvestCards`:三刷新建议动作,走各画面既有点击链(遭遇刷新链/补给刷新链/投资逐卡刷新,是否真刷由 handler 按逐槽计数现读决定);遭遇与投资逐卡两链的刷新计数入 `EMIT_TRIGGERED_DECLARED` 申报面(§2.3)。(LevelUpShop 与 pick 12 类曾在本节名单,分别随注册表显式独立行与 pick-op-unify 批收编出列。)
 - `HoldFrame`:备战空发射帧显式信号——不进执行器、不进注册表、不写动作记录(决策环分支判等用;等待帧非动作)。
 
-### 4.6 层级区别:动作域之外的组合壳 / 画面 op(不进注册表,列出以划清「动作 op」边界)
+### 4.7 层级区别:动作域之外的组合壳 / 画面 op(不进注册表,列出以划清「动作 op」边界)
 
 - `CwScreenDeploy`(部署机画面 op)**已退役删除**——部署 = 备战决策环动作:`CwActionDeployMoveParam` 原子序由 mandate 发射位逐帧现算,经 `CwActionDeployMoveOp` 机械拖拽 + 自上报 `report_action_deploy_move_param` 推进部署逻辑态(路径速查 = [../screens/deploy.md](../screens/deploy.md));落地事实归备战环入口观察对账。
 - `CwOpCloseShop`(`operations/cw_op/cw_op_close_shop.py`):关店编排壳——CloseShop 动作的关店点击承担者(`CwActionCloseShopOp` 本体 no-op)。

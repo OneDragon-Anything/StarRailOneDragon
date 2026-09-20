@@ -26,9 +26,9 @@
 
 - **两 node 职责**:观察 node = 门 + 读屏 + 观察结果上报,无循环、小预算;决策动作 node = 重入裁决 + 决策 + 动作,迭代一律 `round_wait`(不烧 node 重试预算)。act node 保留现役 `node_max_retry_times` 值(仅框架异常路径消费,不新建上限机制)。
 - **循环无上限规范(用户裁定)**:框架不负责多轮循环的上限限制——决策动作 node 的循环与外循环轮次推进均不设迭代数上限(无防御帽、无兜底计数,健康循环永不因计数被截断);不收敛/死循环 = **策略实现 bug**,响亮暴露(挂起可观测),修策略根因。失败类出口(异常 fail、外循环 fail 熔断、未知画面兜底)不属于迭代上限。循环兜底不变量 = 1.4 恒可用终结。
-- **出口三语义**:决策动作 node 的循环只有三种出口——①**终结动作**(1.4,执行即本访问结束交回外循环);②**重入裁决成功**(动作已落地,补记录后交回);③**异常 fail**(策略异常/执行异常,错误传播交外循环,非防御上限)。备战域另有合法交回通道:策略器返回 `HoldFrame`(本帧无动作,`kernel/cw_vocab.py::HoldFrame`)= round_success 交回外循环重观察,不折算战替身。
+- **出口三语义**:决策动作 node 的循环只有三种出口——①**终结动作**(1.4,执行即本访问结束交回外循环);②**重入裁决成功**(动作已落地,补记录后交回);③**异常 fail**(策略异常/执行异常,错误传播交外循环,非防御上限)。备战域另有合法交回通道:策略器返回 `HoldFrame`(本帧无动作,`kernel/cw_vocab.py::HoldFrame`)= round_success 交回外循环重观察,不折算战替身;策略发射 `CwActionObsParam` 环内重观察见事件 overlay = `CwObsOverlayBail`(动作 op 抛出,决策循环捕获)交回外循环重分发(画面路由归外循环,环内不消化)。
 - **重入裁决留在决策动作 node 顶部**:「确认已发 → 下一轮锚不在 = 落地」是动作落地裁决,属循环出口判定,不回观察 node。chosen_* 类落地记录在此刻写(见 §2 动作事实边界)。
-- **显式读屏只在观察 node**:决策动作 node 迭代用 node runner 进 node 时给的 `last_screenshot`(`round_wait` 每轮新帧)。除观察 node 外,画面 op 内不调 `screenshot()`。
+- **显式读屏只在观察 node**:决策动作 node 迭代用 node runner 进 node 时给的 `last_screenshot`(`round_wait` 每轮新帧)。除观察 node 外,画面 op 内不调 `screenshot()`。**在册例外(动作通道)**:策略显式发射 `CwActionObsParam`(环内重观察)= 经注册表派发 `CwActionObsOp` → 宿主画面 op `reobserve_in_visit`(现役 = `CwScreenPrep`)重跑 heavy 观察链——漏斗直写容器即「重新观察上报」,决策环原地续跑;该通道是唯一的决策循环内读屏点,其余路径仍零读屏(通道细则 = [../flow/action_exec.md](../flow/action_exec.md) §3)。
 - **外循环形态不变**:画面识别分发、轮次推进、停机/遥测钩子([../flow/outer_loop.md](../flow/outer_loop.md))不随本规范改动。
 
 ### 1.2 动作 op 契约与动作粒度

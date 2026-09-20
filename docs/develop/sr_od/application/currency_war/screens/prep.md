@@ -25,7 +25,7 @@
 
 ## 4. 动作面
 
-单动作决策循环(`while True`,循环内零读屏;无防御上限——不收敛 = 策略 bug 响亮暴露,不加兜底帽):
+单动作决策循环(`while True`,循环内零读屏——在册例外 = CwActionObs 环内重观察,见下方通道行;无防御上限——不收敛 = 策略 bug 响亮暴露,不加兜底帽):
 
 ```
 action = strategy.decide_prep_screen(容器 game state 直读;HoldFrame = 本帧无动作 → 交回外循环重观察)
@@ -35,10 +35,13 @@ action = strategy.decide_prep_screen(容器 game state 直读;HoldFrame = 本帧
 → 终结判定读注册表 action_op_class_for(action).terminal(终结 → _terminal_exit 交回)
 → op 自上报 report_action_<snake>_param(动作后逻辑态唯一更新点 = 上报函数单点,
    纯计算零读屏;下一动作决策读容器逻辑态)
-   (直写帧代次 = 'none':同 visit 内续动作不重复触发方向刷新)
+   (直写帧代次 = 'none':同 visit 内续动作不重复触发方向刷新;
+    CwActionObs = 'full':访问内重观察 = 新观察写点,方向重估触发同入口帧)
 ```
 
-- **动作全集**(备战域):OpenBox/OpenTome/OpenBookcard/ClickSpheres/DeployMove/SellBench/SellDeployed/WearEquip/LevelUp/OpenShop/StartBattle(组合壳 RunDeploy/RunEquip/RunTools 已随统一词表退役,批2b R2:部署 = DeployMove 原子序发射位逐帧现算,穿戴 = WearEquip 原子,工具 = 工具原子类经 `CwActionToolUseOp`)。词表单一源 = `kernel/cw_vocab.py::CW_ACTION_TYPES`;注册表 = `operations/cw_op/cw_action_registry.py`(SellBench/LevelUp 注册行 = 备战域 op)。
+- **环内重观察通道(CwActionObs)**:策略发射 `CwActionObsParam` → 注册表派发 `CwActionObsOp` → 宿主 `reobserve_in_visit()` heavy 观察链重跑(漏斗直写容器 = 重新观察上报),帧代次标 full 后**决策环原地续跑**(不交回外循环,访问/段序号不重启);重观察见事件 overlay = `CwObsOverlayBail` 抛出、决策循环捕获交回外循环重分发。通道细则单一源 = [../flow/action_exec.md](../flow/action_exec.md) §3。
+
+- **动作全集**(备战域):OpenBox/OpenTome/OpenBookcard/ClickSpheres/DeployMove/SellBench/SellDeployed/WearEquip/LevelUp/OpenShop/StartBattle/Obs(环内重观察,零点击零拖拽;通道细则 = 上方「环内重观察通道」行)(组合壳 RunDeploy/RunEquip/RunTools 已随统一词表退役,批2b R2:部署 = DeployMove 原子序发射位逐帧现算,穿戴 = WearEquip 原子,工具 = 工具原子类经 `CwActionToolUseOp`)。词表单一源 = `kernel/cw_vocab.py::CW_ACTION_TYPES`;注册表 = `operations/cw_op/cw_action_registry.py`(SellBench/LevelUp 注册行 = 备战域 op)。
 - **逻辑态直写覆盖**(上报函数族申报):有容器写语义动作 = SellBench/SellDeployed/DeployMove/LevelUp/ClickSpheres/OpenTome/OpenBookcard(各一上报函数,op 自上报单点);零写族 = OpenBox(R7 终结化)/WearEquip/工具原子七类/事件线 pick 族集中在 `zero_writes.py`(消费真值归观察,截断点独占发射帧零窗口)。规则全集正本 = [../game_state/action-logic-state.md](../game_state/action-logic-state.md) + [../game_state/logic-updates/](../game_state/logic-updates/README.md)。
 - 段序号置位:访问入口 `strategy_state.cw4_segment_serial += 1`(访问 = 腾席拒绝结论的输入不变性段;上一访问/上一域残留的续段 token/结论闩按序号不等自动失效)。
 - 执行要点(交互陷阱):拖拽类 = 统一拖拽原语机械单发(确认 settle → hold 短拖 → 光标 parking,零判效零重试);ClickSpheres 批式一次全点 → 等 2s → 统一验证;LevelUp 备战连点至升一级(单击价现读,缺读兜底 `kernel/cw_economy.py::XP_CLICK_COST_FALLBACK`)。细则 = [../flow/action_exec.md](../flow/action_exec.md)。
@@ -48,7 +51,7 @@ action = strategy.decide_prep_screen(容器 game state 直读;HoldFrame = 本帧
 - **StartBattle = 唯一完成态**:发射即终结交回外循环,外循环置战斗窗口(`_battle_ts` 置位 + `_battle_wait_active`,下轮战斗等待分支接管;`outer_loop.md` §4)。
 - **OpenShop = 备战环终结**:显式开店(read_only=False)交商店访问编排;read_only 读数开店后交回重识别。
 - **OpenBookcard = 终结**(2026-09-19 卡片臂策略器化):开卡即引入新事实(专家邀请函弹窗在场),交回外循环重观察;原备战环入口清场代发通道撤销,发射位 = 策略器 entry ① 卡片臂。
-- HoldFrame(本帧无动作,合法交回重观察)/ overlay 交回 / 终结动作;决策循环无防御上限(不收敛 = 逻辑态或策略 bug,响亮暴露,交回外循环由 stall 防线接管,不静默续跑)。
+- HoldFrame(本帧无动作,合法交回重观察)/ overlay 交回 / 终结动作;CwActionObs 执行见事件 overlay = `CwObsOverlayBail` 交回重分发(画面路由归外循环);决策循环无防御上限(不收敛 = 逻辑态或策略 bug,响亮暴露,交回外循环由 stall 防线接管,不静默续跑)。
 - 环让位重入契约:本 op 返回后外循环必经 return → 下轮 loop 顶全分支重判,不在同一迭代内直接回备战分支。
 
 ## 6. 状态上报面

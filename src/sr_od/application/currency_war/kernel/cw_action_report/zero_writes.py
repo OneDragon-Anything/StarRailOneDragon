@@ -190,3 +190,11 @@ def report_action_hold_frame_param(gs: GameState, param: Any, sig: ChannelSig) -
     """空发射帧上报(等待帧非动作,不进执行链;函数在场 = 命名规约
     完备锁全集覆盖),容器零写。"""
     return _report_zero_write(gs, param, sig, 'zero_write(hold_frame)')
+
+
+
+def report_action_obs_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
+    """环内重观察上报(CwActionObsParam):本动作的容器更新通道 = 观察
+    漏斗本体(宿主 heavy 观察链直写,观察边界对账),动作上报面零写;
+    函数在场 = 命名规约完备锁对象 + op 自上报回执统一形态。"""
+    return _report_zero_write(gs, param, sig, 'zero_write(obs)')

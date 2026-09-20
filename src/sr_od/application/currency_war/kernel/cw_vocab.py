@@ -1100,6 +1100,31 @@ class CwActionRefreshInvestCardsParam:
 
 
 @dataclass
+class CwActionObsParam:
+    """环内重观察动作(策略发射 → 当前画面重新观察上报,不交回外循环)。
+
+    语义:执行体 = 宿主画面 op 的 heavy 观察链重跑(漏斗直写容器 = 观察
+    边界对账,「观察赢」),决策环原地续跑——访问不重启、段序号不置位、
+    外循环零往返。与 HoldFrame 的分界:HoldFrame = 本帧无动作,交回外
+    循环重观察(付一次重分发成本);本动作 = 留在决策环内拿新鲜观察,
+    适用于动作后随机面/不确定面需要真值再决策的场景。
+
+    重观察发现事件 overlay 在场 = 抛 CwObsOverlayBail 交回外循环重分发
+    (画面识别与路由归外循环,环内不消化 overlay;捕获点 =
+    ``cw_screen_prep.act``)。帧代次标注 'full' 归决策循环写点(方向重估
+    触发,同入口帧;贵段消费侧有每 game-round 恰一次键守卫限频)。
+
+    零容器动作写语义:上报通道 = 观察漏斗本体(read_game_state 直写),
+    ``report_action_obs_param`` = 零写族占位(命名规约完备锁对象)。
+    现役接线域 = 备战决策环(CwScreenPrep);其他决策域发射 = 宿主能力
+    缺失 AssertionError 响亮暴露(策略器 bug)。
+    """
+    reason: str = ''   # 归因记录字段(非指令;''=未标)
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
+
+
+@dataclass
 class HoldFrame:
     """备战空发射帧显式信号:本帧无动作可发,交回外循环重新观察。
 
@@ -1125,7 +1150,8 @@ CwAction = (
         CwActionPickEncounterParam | CwActionPickSupplyParam | CwActionPickInvestParam | CwActionPickMegastarParam |
         CwActionPickPartnerParam | CwActionPickPlannerParam | CwActionPickStarTomeParam | CwActionPickWishTrialParam |
         CwActionPickBoxCardParam | CwActionPickFortuneParam | CwActionPickExpertInviteParam | CwActionPickEquipParam |
-        CwActionRefreshNodeOptionsParam | CwActionRefreshSupplyParam | CwActionRefreshInvestCardsParam | HoldFrame
+        CwActionRefreshNodeOptionsParam | CwActionRefreshSupplyParam | CwActionRefreshInvestCardsParam |
+        CwActionObsParam | HoldFrame
 )
 # ——漏登记时执行面 validate 拒「未知动作类型」,动作从未真正执行
 # (CwActionOpenTomeParam 曾漏登记,数百次拒绝被误读为执行失败;登记是入口门)。
@@ -1144,6 +1170,7 @@ CW_ACTION_TYPES: tuple = (
     CwActionPickPlannerParam, CwActionPickStarTomeParam, CwActionPickWishTrialParam, CwActionPickBoxCardParam,
     CwActionPickFortuneParam, CwActionPickExpertInviteParam, CwActionPickEquipParam,
     CwActionRefreshNodeOptionsParam, CwActionRefreshSupplyParam, CwActionRefreshInvestCardsParam,
+    CwActionObsParam,
     HoldFrame,
 )
 

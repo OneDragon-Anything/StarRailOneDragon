@@ -52,6 +52,7 @@ from sr_od.application.currency_war.kernel.cw_screen_report.prep import (
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
+    CwActionObsParam,
     CwActionOpenShopParam,
     CwActionStartBattleParam,
     HoldFrame,
@@ -89,6 +90,9 @@ from sr_od.application.currency_war.obs.cw_shop_obs import (
 )
 from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
     action_op_class_for,
+)
+from sr_od.application.currency_war.operations.cw_op.cw_obs_action import (
+    CwObsOverlayBail,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_open_bookcard_action import (
     CwActionOpenBookcardOp,
@@ -800,6 +804,18 @@ class CwScreenPrep(SrOperation):
             #  黑板写路径 gs.prep_obs = obs 同批删除。)
         return obs
 
+    def reobserve_in_visit(self) -> PrepObservation:
+        """访问内重观察(CwActionObs 动作执行通道;op-layer §1.1 读屏点
+        规范的在册例外):决策环内策略显式发射 CwActionObs 才触发的
+        heavy 观察链重跑——漏斗直写容器 = 观察边界对账(「重新观察上报」)。
+
+        辖域 = 最小重观察:入口专属段(环入口清场/开商店收起/接管补采/
+        纯观察审计族)不在本通道,仍归观察 node;帧代次标注归决策循环
+        写点(本方法零帧代次写);event_overlay 由调用方裁决(动作 op 抛
+        CwObsOverlayBail 交回外循环重分发)。唯一调用方 = CwActionObsOp。
+        """
+        return self._observe(heavy=True)
+
     def _reconcile_tracking(self, bench: list[BenchChar], deployed: list[BenchChar],
                             screen=None) -> None:
         """环入口对账(§3:read≠tracking 漂移是既有 bug 源 → SIFT 真值重置 tracking)。
@@ -1099,9 +1115,12 @@ class CwScreenPrep(SrOperation):
         每动作落地后 heavy 重观察的保守口径)。
 
         形态:入口 heavy 一次观察 → 逐动作『决策(容器=逻辑态)→ F3
-        校验 → 执行 → 逻辑态直写』循环,循环内零读屏。已知画面出口
+        校验 → 执行 → 逻辑态直写』循环,循环内零读屏(在册例外 =
+        CwActionObs 环内重观察:策略显式发射才触发宿主观察链重跑,
+        帧代次标 full 后原地续决策)。已知画面出口
         (CwActionOpenShopParam/CwActionStartBattleParam/CwActionOpenBoxParam)= 终结 op,执行即本访问结束
-        交回外循环(下次入口重观察)。
+        交回外循环(下次入口重观察);CwActionObs 执行见事件 overlay =
+        CwObsOverlayBail 交回外循环重分发(路由归外循环)。
         B1 拆除(用户裁定 2026-09-10):验证段+恢复原语分支退役——
         动作机械执行(无成败回执),无进展治理归外循环 stall
         防线(F2),落地判定归观察侧 reconcile。决策循环无防御上限
@@ -1155,6 +1174,13 @@ class CwScreenPrep(SrOperation):
                 # 已退役改停机短路异常)。
                 log.info(f'[cw][director] 停机刹车({e}),动作未发出 → 交回外循环')
                 return self.round_success(f'停机刹车({e}),动作未发出,交回外循环', wait=1.0)
+            except CwObsOverlayBail as e:
+                # 环内重观察发现事件 overlay(CwActionObs 执行回执):
+                # 画面识别与路由归外循环,环内不消化 → 交回重分发
+                # (观察 node 同语义早退;无计数;帧代次不写——交回后
+                # 下次入口观察重标)。
+                log.info(f'[cw][director] {e} → 交回外循环重分发')
+                return self.round_success(f'{e},交回外循环重分发', wait=0.8)
             except Exception as e:  # noqa: BLE001  执行异常上抛 = 本轮 fail
                 log.warning(f'[cw!][director] 执行异常 {key}: {e}')
                 return self.round_fail(status=f'执行异常 {key}: {e}')
@@ -1177,8 +1203,13 @@ class CwScreenPrep(SrOperation):
             #      原按 apply_prep_action_logic 的直写调用删除 = 双记防线
             #      (op 已写,本处再写即双记)。假账风险仍由下一入口
             #      heavy reconcile 以实读纠逻辑态承担(观察赢)。
-            # 直写帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
-            _mark_frame_class(session, 'prep', 'none')
+            # 直写帧代次(ADR-0583 §3.4):同 visit 内续动作直写 = none,
+            # 不重复触发方向刷新;CwActionObs = 访问内重观察(新观察写点)
+            # = full(方向重估触发,同入口帧;贵段消费侧键守卫限频每
+            # game-round 恰一次,环内多次重观察不放大方向刷新成本)。
+            _mark_frame_class(session, 'prep',
+                              'full' if isinstance(action, CwActionObsParam)
+                              else 'none')
 
     # ===== 统一观察架构·五段生命周期段已随两 node 形态迁移删除(装配点
     # 分流/段迹/适配器端口一并退役;六条已锁语义保绿载体位置:P2-1 bench

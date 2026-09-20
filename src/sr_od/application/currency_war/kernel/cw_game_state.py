@@ -398,6 +398,8 @@ REGISTERED_ACTORS: set[str] = {
     'CwActionPickMegastarOp',
     'CwActionPickPartnerOp',
     'CwActionPickPlannerOp',
+    'CwActionObsOp',           # 环内重观察(自上报零写占位;容器更新通道 =
+                               # 观察漏斗本体,actor 登记 = 回执统一形态)
     'CwOpOpenShop',            # 开商店原子(op 函数与独立壳同名登记)
     'CwOpCloseShop',           # 关商店原子
     'CwFlowStrategy',          # 商店序列驱动器·基类缺省(逻辑态直写,波 4)
