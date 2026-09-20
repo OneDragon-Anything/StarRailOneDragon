@@ -45,8 +45,8 @@ engine_p2 `build_state` 全量进场态)。抽牌 payload 的 obs 写点 = 回�
 | xp | logic_action LevelUpShop 腿(`xp_apply_clicks` 单一源:满级封顶零推进)+ obs 回声写(买牌 xp-echo/轮末结转) | 策略追级消费(clicks_to_next_level) |
 | hp | obs opening 初值 + settle 结算轨迹 | 结算模型/Δ池采样 |
 | streak | obs opening + settle(带符号:正连胜/负连败) | 收入侧连胜金/结算 |
-| bench | obs opening 播种与部署代理整表写;logic_action BuyCard 落位/合成连锁/SellBench | 读口 `bench_slots_of`(定长 9 槽表);策略与围栏 |
-| front_row / back_row | obs 部署代理与装备穿戴整表写;logic_action v2 族腿经 deployed 槽表中间形态(置空/对调不移位)整表写 | 读口 `deployed_slots_of`(ADR-0392 定长 10 槽表,0-3 前/4-9 后)等 |
+| bench | obs opening 播种与部署代理整表写;logic_action BuyCard 落位/合成连锁/SellBench | 读口 `bench_view_slots_of`/`bench_entries_of`/`bench_units_of`(BenchView 槽序,kind 五分类)+ 派生 `bench_free_slots`/`bench_is_full`;策略与围栏 |
+| front_row / back_row | obs 部署代理与装备穿戴整行写;logic_action 上报族按载荷落位直写两行(整行 write_logic,无中间形态) | 读口 `deployed_rows_of`(两行 Unit 容器原生)/`deployed_count_of` 等 |
 | board | obs 部署代理整表重算(重算单一源 = `cw_bond_equips._recount_board`);logic_action v2 腿重算 | 围栏「成对/点火」判据/策略 |
 | equips | obs 装备发放穿戴;logic_action SellBench/CompTransaction 回收腿(卖出装备归 owned 池) | 装备分配记账(引擎白名单面)消费 |
 | shop | obs 抽牌 payload(回合初始化与刷新后重采样;定长 5 槽全真值,缺位 empty);logic_action BuyCard 槽置换/CloseShop 离屏 | 策略决策面(payload.cards 三态消费) |
@@ -58,12 +58,14 @@ engine_p2 `build_state` 全量进场态)。抽牌 payload 的 obs 写点 = 回�
 
 ## 三、读口族(值读单一源)
 
-kernel 决策面公共读口 12 口(kernel/cw_game_state.py):`plane_of` /
+kernel 决策面公共读口族(kernel/cw_game_state.py):`plane_of` /
 `round_num_of` / `node_kind_of` / `gold_of` / `level_of` /
-`deployed_slots_of` / `bench_slots_of` / `back_capacity_of` /
-`deployed_count_of` / `front_count_of` / `back_count_of` / `max_units_of`。
-读口负责镜像旧缺省形态(如 gold 未读 = 0、deployed 双排全未观察 =
-`[None]×10`、back_layout 未读 = 机制基线 6),禁消费点自写兜底造成
+`deployed_rows_of`(两行 Unit 容器原生)/ `bench_view_slots_of` /
+`bench_entries_of` / `bench_units_of` / `back_capacity_of` /
+`deployed_count_of` / `front_count_of` / `back_count_of` / `max_units_of`
++ 席位派生判定 `bench_free_slots` / `bench_is_full`。
+读口负责缺省形态归一(未观察域按各读口 docstring 的缺省口径,如
+gold 未读 = 0、back_layout 未读 = 机制基线 6),禁消费点自写兜底造成
 第二源;引擎在此之上另有 Field 直读(gs.shop.value/gs.equips.value 等)。
 
 表示申报:阵营不入容器——Unit 只存 char_id,阵营经角色注册表派生
@@ -96,7 +98,7 @@ level_readable / gold_readable / board_readable / bench_readable)一律
 | 层 | 内容 | 消费方 | 状态 |
 |---|---|---|---|
 | L1 纯羁绊全集 | 角色标签:factions+flows+independent,开拓者按排归一 | board 语义、recipe 门、tier 计算、判读 | **三处一致**(实机 `board_from_tracked` / sim `_recount_board` / checks 镜像,per-unit 单一源 = `cw_bond_equips.unit_bond_tags`) |
-| L2 +装备羁绊贡献 | L1 + 星徽「加入【X】」/卡带「计数+1」(净效果无条件 +1) | board_from_tracked(实机)、GameState.equips→BenchChar.equips(sim 代理)、win_features faction_counts | **落地**(equips 消费链通,sim equip_allocation 回写) |
+| L2 +装备羁绊贡献 | L1 + 星徽「加入【X】」/卡带「计数+1」(净效果无条件 +1) | board_from_tracked(实机)、Unit.equips(sim 代理同款字段)、win_features faction_counts | **落地**(equips 消费链通,sim equip_allocation 回写) |
 | L3 全战力 | L2 + 装备 props 强度 + 投资策略/环境效果 + 羁绊档位效果数值 | win_model 特征、power_table、结算校准层 | 未建(挂「语料积累后」,裁定链见 sim-power-model) |
 
 配对端点资格:Δ池任一差分的两行端点须过 `sim/pool.py` 的 `hp_pair_endpoint_admissible`(合成行恒拒 + hp 可信门;`build_pool` 与 `_pool_from_replay` 共用单件)。

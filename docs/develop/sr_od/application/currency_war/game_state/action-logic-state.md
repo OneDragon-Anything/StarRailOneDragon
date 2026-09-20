@@ -44,13 +44,14 @@
 
 ### 1.4 逻辑态的三个落点（载体）
 
-同一套规则按宿主分落点落码；本篇按动作写规则一次，在役落点同规则消费（推演帧落点的写口已退役，见末行）：
+同一套规则按宿主分落点落码；本篇按动作写规则一次，在役落点同规则消费：
 
 | 落点 | 宿主 | 写口（符号锚） | 消费方 |
 |---|---|---|---|
 | 容器逻辑态直写 | `GameState` 字段（渠道 family='logic_action'） | 上报函数族 `kernel/cw_action_report/<snake>.py::report_action_<snake>_param`（每动作一函数、双域腿统一；快照与升星腿内聚于买牌函数单点；备战金账与库存腿内聚于各函数 `session` 形参面；零写族 = `zero_writes.py`；dict 确认族 = `apply_confirm_effect`） | 动作 op 机械执行后直调自己的上报函数；商店序列驱动器（`bridge.py::decide_shop_screen`）与 sim 引擎入口（`cw_sim_actions.apply_player_action`）逐动作直调；观察赢修正 |
-| tracked 主账随动账 | `GameState.tracked_books`（`TrackedBooks` 容器簿记,bench/deployed 槽位表） | `mutate_bench_deployed` + 执行器 tracked 同步分支（`prep_actions.py::PrepActionExecutor._track_remove_bench` / `_track_remove_deployed` / `_track_move_deployed`） | 执行侧随动账;双账比对已退役（2026-09-15,对账唯一发生点 = 观察边界,见 screen_op §2.3/§4） |
-| 推演帧 | sim 引擎 `CwSimFrame` 整帧副本 | 原写口 `simulate`（整帧副本单步动作应用器）已退役（零生产消费，考古归 git） | 动作转移语义单一源 = 容器逻辑态直写（首行）；语义验证 = M1 直锁（`test_cw_shop_projection_logic`） |
+| tracked 主账随动账 | `GameState.tracked_books`（`TrackedBooks` 容器簿记,bench 定长 9 保洞 / deployed 定长 10 下标恒稳） | `mutate_bench_deployed` + 执行器 tracked 同步分支（`prep_actions.py::PrepActionExecutor._track_remove_bench` / `_track_remove_deployed` / `_track_move_deployed`） | 执行侧随动账;双账比对已退役（2026-09-15,对账唯一发生点 = 观察边界,见 screen_op §2.3/§4） |
+
+(sim 整帧副本单步应用器 `simulate` 及其宿主推演帧已随 sim 帧通道退役删除——sim 与实机共用容器逻辑态直写落点（首行）,考古归 git;语义验证 = M1 直锁(`test_cw_shop_projection_logic`)。)
 
 视觉域动作的容器面（迭代 2026-09-18-prep-obs-retirement 阶段 3.5 起）：晶矿/箱/典籍
 的容器腿已进各自上报函数（CollectOre 精确摘晶矿 = `report_action_collect_ore_param` /
@@ -122,11 +123,11 @@ op = `operations/cw_op/cw_prep_sell_bench_action.py::CwActionSellBenchOp`（词�
 
 **确定面**：
 
-1. 备战席该槽位清空（置 None **不移位**，ADR-0316 槽位语义；跨动作组下标恒稳）；
+1. 备战席该槽位清空（kind → `empty` **不移位**，ADR-0316 槽位语义；跨动作组下标恒稳）；
 2. gold += 退款，公式单一源 = `kernel/cw_economy.py::sell_refund`：退款 = 招募费（`bench_char_cost`，注册表单一源，未知按中位保守估）× 星级倍数表 `_SELL_MULT`（星级倍数 = 合成副本数结构：1★=全额，2★/3★/4★ = `star_base_copies` 同构倍数）；**手续费口径**：star≥2 且 cost≥2 再 −1；cost=1 豁免（2★1费 卖出=全额倍数，live 实测定谳，`sell_refund` 注 + `research/economy.md` §3）；3★/4★ 的手续费档 = 推测待 live 核（§7 G3）；
 3. **装备全量回装备区**：被卖单位身上的全部装备（简易/进阶/核心不分）进入 owned 装备库存——穿戴是可逆暂借（【口述·权威】`research/equipment_mechanics.md` §1「卖出角色=装备全量回装备区」；kernel 按 C6 装备守恒回收建模，`cw_vocab.py` 卖出分支注；实机帧级证据未采 = §7 G5）；equips 回收统一落上报函数（`report_action_sell_bench_param` C6 守恒腿——原「商店腿有/备战域缺口」的不对称随双域腿统一补齐）；
 4. 陈旧提案拒：expect 身份与槽内不符 = 零写（ADR-0317）。
-5. **溢出条件腿**（2026-09-15 实机建档 [prep.md 告警节](../../../../../game/screens/currency_war_prep.md)）：`overflow_warning` 在场（备战席满告警横幅 = 存在未安置溢出角色，此刻出战点击被游戏忽略）时，卖出语义补一条——**腾出槽当帧记溢出卡入位**（`bench[i] := 溢出卡`，「卖 → 溢出卡自动入自由槽」是游戏侧行为；有溢出时席必满、自由槽恒唯一，落位无歧义）+ `overflow_card` 消费清空 + 旗标 logic 消亡（下帧实读覆盖，两态制观察赢）。入位对象身份缺读（`overflow_card=''`）= 跳过入位（槽留空等观察），卖出语义本体不受阻；星级缺读按 1 兜底。容器字段 = `overflow_warning: bool` / `overflow_card: str`（观察写端 = `cw_screen_prep` 备战 heavy 溢出观察写端，渠道①）；策略消费门 = mandate 溢出门（flag 在场 → 本帧决策强收窄单动作 SellBench，禁发 StartBattle/冻结买面）。**两账同帧**：腿落地是跨账事件，容器腿（本写口，入位卡回占槽位——席空数派生自然不 +1，腾出槽即刻回占）/ 执行侧 tracked 主账吸收（本写口 `session` 形参在场时，摘该槽 + 追加入位卡后经 `bench_from_compact` 重建槽位表——缺吸收 = 商店播种守卫 expected-vs-tracked 双账分叉，实机 2-4 停机实证）。（原第三面「黑板帧镜像」随 `gs.prep_obs` 黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5，镜像语义由容器回占面全量承载。）
+5. **溢出条件腿**（2026-09-15 实机建档 [prep.md 告警节](../../../../../game/screens/currency_war_prep.md)）：`overflow_warning` 在场（备战席满告警横幅 = 存在未安置溢出角色，此刻出战点击被游戏忽略）时，卖出语义补一条——**腾出槽当帧记溢出卡入位**（`bench[i] := 溢出卡`，「卖 → 溢出卡自动入自由槽」是游戏侧行为；有溢出时席必满、自由槽恒唯一，落位无歧义）+ `overflow_card` 消费清空 + 旗标 logic 消亡（下帧实读覆盖，两态制观察赢）。入位对象身份缺读（`overflow_card=''`）= 跳过入位（槽留空等观察），卖出语义本体不受阻；星级缺读按 1 兜底。容器字段 = `overflow_warning: bool` / `overflow_card: str`（观察写端 = `cw_screen_prep` 备战 heavy 溢出观察写端，渠道①）；策略消费门 = mandate 溢出门（flag 在场 → 本帧决策强收窄单动作 SellBench，禁发 StartBattle/冻结买面）。**两账同帧**：腿落地是跨账事件，容器腿（本写口，入位卡回占槽位——席空数派生自然不 +1，腾出槽即刻回占）/ 执行侧 tracked 主账吸收（本写口 `session` 形参在场时，摘该槽 + 追加入位卡按下标直写 tracked.bench——表下标权威，直写即同槽同位，ADR-0316 保洞语义不变；缺吸收 = 商店播种守卫 expected-vs-tracked 双账分叉，实机 2-4 停机实证）。（原第三面「黑板帧镜像」随 `gs.prep_obs` 黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5，镜像语义由容器回占面全量承载。）
 
 **随机面**：无（卖价修饰效果 = 大裁员/降本增效的卖价 ×2，其作用口径待实证 = §7 G4，缺口闭合前不写修饰腿）。
 
@@ -159,7 +160,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 ### 2.7 词表完备性注：SellDeployed / SwapDeploy 的商店逻辑态直写腿
 
 - **SellDeployed**（卖上阵）：上报函数 `report_action_sell_deployed_param` 在役（v2 动作族，双域统一单点），生产商店 op 表未收录（策略面由备战域承担，§3.2 主述）。规则与 §3.2 同一条。
-- **SwapDeploy**（上阵↔备战对调）：词表 + 容器逻辑态直写 + sim 消费在役，**生产执行器未接线**（备战域部署换位经部署机拖拽承载）。逻辑态（规则在册，供接线/sim 消费）：deployed 槽 di 与 bench 槽 bi **原槽对调**（置空不移位坐标系）；上场者继承下场者的排（含开拓者形态归一），槽号信息位重写；board 重算；同名同星已在场其余位 = 拒（`duplicate_on_board`）；expect 双侧失配 = 陈旧提案拒。装备随人走（对象迁移）。依据：`kernel/cw_action_report/swap_deploy.py::report_action_swap_deploy_param` + `cw_vocab.py::mutate_bench_deployed` SwapDeploy 分支（W43 裁决 1/2 代际校验 + 同名唯一性）。
+- **SwapDeploy**（上阵↔备战对调）：词表 + 容器逻辑态直写 + sim 消费在役，**生产执行器未接线**（备战域部署换位经部署机拖拽承载）。逻辑态（规则在册，供接线/sim 消费）：deployed 下标 di 与 bench 下标 bi **原槽对调**（置空不移位坐标系）；上场者继承下场者的排（含开拓者形态归一），`Unit.slot` 信息位重写；board 重算；同名同星已在场其余位 = 拒（`duplicate_on_board`）；expect 双侧失配 = 陈旧提案拒。装备随人走（对象迁移）。依据：`kernel/cw_action_report/swap_deploy.py::report_action_swap_deploy_param` + `cw_vocab.py::mutate_bench_deployed` SwapDeploy 分支（W43 裁决 1/2 代际校验 + 同名唯一性）。
 
 ## 3. 备战域动作（原子词表）
 
@@ -171,16 +172,16 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 **确定面**：
 
-1. 备战席 `from_slot` 槽位清空（置 None 不移位）；目标单位对象整体迁移（身份/星级/装备随人走），落 `to_row` 排的 `to_slot`（`deployed_place` 按排路由，ADR-0392 定长槽表；槽号信息位重写）；
+1. 备战席 `from_slot` 槽位清空（kind → `empty` 不移位）；目标单位对象整体迁移（身份/星级/装备随人走），落 `to_row` 排的 `to_slot`（载荷 `(to_row, to_slot)` 直指——排内 1 基槽号经换算单一源 `deployed_idx_of` 定表下标；目标槽空 = 放置、有人 = 交换，被占位单位回源槽；`Unit.slot` 信息位随落位归一）；
 2. board 羁绊计数重算：按上场单位的羁绊标签全集（`unit_bond_tags`——星徽/卡带贡献在内；无标签回退阵营）随行写派生重算（行写端挂钩 `_resync_board_delta` 自动承载，ADR-0312 增量全集，防全量重算抹掉 OCR 真值）；
 3. 上阵计数 +1（= 部署空位 deploy_vacancy −1；heavy 帧重读校准）；
-4. 腾席链语境：`from_slot` 常为开箱/开典籍腾出的槽（§3.4/§3.5 先行）。
+4. 腾席链语境：`bench_idx` 常为开箱/开典籍腾出的槽（§3.4/§3.5 先行）。
 
 **随机面**：无（羁绊徽章动画 ~2s、达标触发的 overlay 延迟弹出 = 画面时序，`research/screen_flow_timing.md` #10/#24，非逻辑态）。
 
 **拒绝边界**：同名同星已在场 = 游戏拒（恒成立约束「场上同名同星 ≤1」，`research/merge_mechanics.md` §3；kernel `mutate_bench_deployed` 同名唯一性守卫 duplicate_on_board）→ 零容器写；目标槽被占/拖拽未落地 = 零变化，落地事实归下一帧观察。
 
-**依据**：`kernel/cw_action_report/deploy_move.py::report_action_deploy_move_param`（bench 摘槽 + `deployed_place` 首空落槽 + board 行写挂钩随写）；`prep_actions.py::_deploy_move` + `_track_move_deployed`；`research/merge_mechanics.md` §3。
+**依据**：`kernel/cw_action_report/deploy_move.py::report_action_deploy_move_param`（bench 摘槽 + 载荷 `(to_row, to_slot)` 直落两行 + 开拓者形态归一 + board 行写挂钩随写）；`prep_actions.py::_deploy_move` + `_track_move_deployed`；`research/merge_mechanics.md` §3。
 
 ### 3.2 SellDeployed（卖上阵角色）
 

@@ -12,7 +12,7 @@
 
 | 域 | 写 / 跳写 | 说明 |
 |---|---|---|
-| bench | 写 | 该槽 kind → `empty`(**不移位**,ADR-0316 槽位语义;跨动作组下标恒稳),**原生 `BenchView.slots` 直操**(容器原生形态,不经 legacy 往返——`is_item_slot` 布尔无法恢复 box/tome 类型,往返会让 kind 细分在写口首次写后退化为 supply_box) |
+| bench | 写 | 该槽 kind → `empty`(**不移位**,ADR-0316 槽位语义;跨动作组下标恒稳),**原生 `BenchView.slots` 直操**(容器原生形态,不经任何换形往返,BenchSlot kind 五分类在写口保形) |
 | gold | 写 | `gold += 退款`;gold 未读(None)= 域级跳写 |
 | equips | 写 | 被卖单位身上全部装备追加进 owned 库存(`sold.equips` 非空才写;原备战域缺口随双域腿统一补齐——历史「商店腿有/备战域留观察覆盖」的不对称消亡) |
 | overflow_card / overflow_warning | 条件写 | 溢出腿另写两旗标域(§3 第 5 条,容器状态条件域无关携带) |

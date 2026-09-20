@@ -117,7 +117,7 @@ R5 规划为准)。
 | 1 | 判读 CLI(`telemetry/cli.py`+`query.py` 视图族) | 新视图族改读两文件(按行读+行间差分,零重放);旧视图读旧档案只读保留至停写批 | 候 | M4 |
 | 2 | 对局档案装配(`telemetry/match_archive.py`) | 切片改两文件+候裁保留专用流;派生列改从流水行派生(comps/pivot 标待策略侧);旧档案只读兼容 | 候 | M4 |
 | 3 | 回放/修复工具(`tools/cw/replay_to_md.py`、`repair_invest_attribution.py`;自原遥测设计件(已删,git 可溯) §3.6.2 档案行拆出单列——本文 11 面对正本表 10 行=拆行细化,非矛盾) | 改读新档案面(随装配器 v12) | 候 | M4 |
-| 4 | sim 账本三消费面(`sim/checks/ledger.py` 红则判据/`sim/engine_p1.py` 轮差分/`sim/ab_core_swap.py` 预注册披露) | 按逐 key 审计结论切新载体,三面同批;sim runner 经统一写入口落流水(synthesize_from_game_state 同口);deployed→front/back 槽位映射前置 | 候 | M4(停写批前置) |
+| 4 | sim 账本三消费面(`sim/checks/ledger.py` 红则判据/`sim/engine_p1.py` 轮差分/`sim/ab_core_swap.py` 预注册披露) | 按逐 key 审计结论切新载体,三面同批;sim runner 经统一写入口落流水(引擎直写容器口径;原合成口已随帧通道退役);deployed→front/back 槽位映射前置 | 候 | M4(停写批前置) |
 | 5 | 复测批/AB 判读(`tools/cw/ab_judge.py`、`cw_batch_stats.py`) | sim 账本切新面后指标重接 | 候 | M4 |
 | 6 | defect_ledger(若裁保留专用;幸存流+旧流消费方双身份) | refs 目标迁移(指 journal `(run_id,v)` 键)+寿命联动(随 run 段同批淘汰) | 候(随 §2 保留裁) | M4 |
 | 7 | 校准/证明脚本(`tools/cw/proofs/*`、`win_model_*`) | 存量语料归档只读不迁移;新语料走新视图;跨期语料窗受寿命契约辖 | 候 | M4 后按需 |

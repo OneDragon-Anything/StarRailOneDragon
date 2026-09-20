@@ -7,7 +7,7 @@
 ## 术语
 
 - **逻辑态面**：把「画面实况 + bot 跟踪」整理成策略可消费的状态数据的各层数据结构的总称；其中动作执行后不经观察、按游戏规则推算并直写容器的预期状态即**逻辑态**（真值以下一帧观察为准(观察赢)）。不是游戏画面上的视觉投影（拖拽预览、浮窗等视觉现象归画面建档域，见 `od-dev-screen-onboarding`）。
-- **动作坐标系(统一词表)**：席位域动作(`CwActionSellBenchParam.bench_idx`/`CwActionSellDeployedParam.deployed_idx`/`CwActionDeployMoveParam.bench_idx`)携**容器槽位表下标**(0 基;词表单一源 = `kernel/cw_vocab.py`,坐标系裁定见各类 docstring)——原「策略/执行同名双模块双坐标系(族 A/族 B)」随词表摊平退役,同类不再双模块同名。坐标参数化机械动作(`CwActionWearEquipParam`/工具原子/`CwActionOpenBoxParam`/`CwActionOpenTomeParam`/`CwActionOpenBookcardParam`)的 `row`/`slot` = 画面物理排槽位 1 基(拖点直取 area,不经换算)。
+- **动作坐标系(统一词表)**：席位域动作(`CwActionSellBenchParam.bench_idx`/`CwActionSellDeployedParam.deployed_idx`/`CwActionDeployMoveParam.bench_idx`)携**容器槽位表下标**(0 基;词表单一源 = `kernel/cw_vocab.py`,坐标系裁定见各类 docstring)——原「策略/执行同名双模块双坐标系(族 A/族 B)」随词表摊平退役,同类不再双模块同名。DeployMove 的落位 = `(to_row, to_slot)` 载荷直指(`to_slot` = 排内 1 基画面槽号,表下标 = `deployed_idx_of(to_row, to_slot)`;落位决策权归策略层,执行边零现读)。坐标参数化机械动作(`CwActionWearEquipParam`/工具原子/`CwActionOpenBoxParam`/`CwActionOpenTomeParam`/`CwActionOpenBookcardParam`)的 `row`/`slot` = 画面物理排槽位 1 基(拖点直取 area,不经换算)。
 - **生成期快照 / 执行期现读**：生成期 = 决策帧装配时点（入口 heavy 观察到动作发射之间）；执行期 = 执行器真正读屏/拖拽时点。「生成期=执行期」表示索引跨该间隙恒稳，两时点读同一槽得到同一格。
 - **tracked 账**：tracked 主账槽位簿记 `GameState.tracked_books`（`kernel/cw_game_state.py::TrackedBooks`，bench/deployed 两面非 Field 簿记组），由卖出/部署 handler 在动作落地时同步增删。
 - ~~**黑板**：`session.prep_obs_frame`~~（**已退役**，迭代 2026-09-18-prep-obs-retirement 阶段 3.5）：备战观察帧宿主与 `gs.prep_obs` 槽已删,策略器唯读容器契约归位;`PrepObservation` 瘦身为备战环 op 局部控制信号载体(shop_open/substate/event_overlay,不进 gs、不进 session、不再是策略器输入),语义见 `../screens/prep.md` §2。
@@ -16,15 +16,18 @@
 
 | 层 | 载体 | 角色 | 关键契约 |
 |---|---|---|---|
-| 状态面板 | `kernel/cw_game_state.py::GameState` | 决策域局面模型（OCR 填充 + bot 跟踪）= **策略器唯一输入** | `bench` 定长 9 槽表(BenchView,BenchSlot.kind ∈ unit/supply_box/tome/bookcard/empty)、`deployed` 定长 10 槽表；卖出/下场置 None 不移位；晶矿域 OreSight.points 载点击坐标 |
+| 状态面板 | `kernel/cw_game_state.py::GameState` | 决策域局面模型（OCR 填充 + bot 跟踪）= **策略器唯一输入** | `bench` = `BenchView`（slots+capacity,元素 `BenchSlot` 五分类 kind ∈ unit/supply_box/tome/bookcard/empty）、`front_row`/`back_row` = Unit 行（= 上阵面,排内 1 基 `slot` 信息位;阵营不入 Unit,注册表派生）；tracked 主账 = `tracked_books`（bench 定长 9 保洞 / deployed 定长 10 下标恒稳）；晶矿域 OreSight.points 载点击坐标 |
 | 观察载体 | `kernel/cw_prep_actions.py::PrepObservation` | 备战环 **op 局部控制信号**(shop_open/substate/event_overlay),不进策略器 | 宿主 = 备战环 op 局部对象;不再承载名单/装备/占用/晶矿(全容器域) |
 
 执行侧载体（消费方读写的落地对象）：
 
 - `kernel/cw_game_state.py::GameState` 容器簿记：tracked 主账 = `tracked_books`
-  （`TrackedBooks`，bench/deployed 两面槽位簿记；形状契约 = 槽位表、pad 后含 None；
-  bench 恒 pad 态由 reconcile 写回端经 `bench_from_compact` 重建保证，消费端下标即
-  布局）。执行层不再设
+  （`TrackedBooks`，bench/deployed 两面槽位簿记；形状契约 = `bench` =
+  `list[BenchSlot | None]` 定长 9（元素 = 容器同款 BenchSlot 五分类,kind 随形
+  保留;None = 洞,卖出/上阵/合成消耗置 None 不移位,ADR-0316 保洞）、
+  `deployed` = `list[Unit | None]` 定长 10（表下标 = deployed_idx 恒稳,排归属
+  由下标派生 0-3 前/4-9 后,换算单一源 = `cw_exec_state.deployed_row_slot`/
+  `deployed_idx_of`,ADR-0392）。执行层不再设
   独立状态载体（执行层状态类目已退役，git 历史可溯）；失败记忆/期望态容器随类目
   退役删除。
 - 期望态路径寻址：期望态条目表已随期望账机制退役（`ExpectedEntry` 不存在），
@@ -37,10 +40,10 @@
 
 ### 2.1 两个容器（权威槽位 = 下标）
 
-- **bench（备战栏）**：定长 `BENCH_CAPACITY=9` 槽表（`cw_state.py::BENCH_CAPACITY`）。列表下标 0-8 = 物理槽位 1-9 减一；`BenchChar.slot` 保留 1-based 屏幕槽号，**信息位**。卖出/上阵置 None 不移位 → 索引跨动作组恒稳。容量判据 = `kernel/cw_exec_state.py::bench_occupied`，**禁止 `len(bench)`**；迭代一律 `cw_state.py::iter_occupied`。
-- **deployed（上阵）**：定长 `DEPLOYED_CAPACITY=10` 槽表。下标 0-3 = 前排槽 1-4、4-9 = 后排槽 1-6（后排实际格数随布局档 6/7/8 变，扩展格属画面布局域不进本表示，见 `cw_back_layout.py`）。容量判据 = `deployed_occupied`；迭代 = `iter_occupied_deployed`；下标→排内槽号换算 = `deployed_slot_no`。
+- **bench（备战栏）**：观察面 = `gs.bench`（`BenchView`,slots 定长 = capacity,列表下标 0-8 = 物理槽位 1-9 减一;空槽 = `kind='empty'`,非 None 洞）；tracked 面 = `tracked_books.bench`（定长 9 保洞,卖出/上阵置 None 不移位 → 下标跨动作组恒稳）。容量判据 = 派生单一源 `kernel/cw_game_state.py::bench_free_slots`/`bench_is_full`，**禁止 `len(slots)` 数占用**。
+- **deployed（上阵）**：观察面 = `gs.front_row`/`gs.back_row`（Unit 行,元素 `Unit.slot` = 排内 1 基物理槽号）；tracked 面 = `tracked_books.deployed`（定长 10 下标表,下标 0-3 = 前排槽 1-4、4-9 = 后排槽 1-6；后排实际格数随布局档 6/7/8 变，扩展格属画面布局域不进本表示，见 `cw_back_layout.py`）。下标→排内槽号换算 = `deployed_slot_no`，反向 = `deployed_idx_of`。
 
-`BenchChar.position_pref` / `BenchChar.slot` 在两容器中均为信息位，落槽写端（`bench_place` / `deployed_place`）负责归一信息位与下标一致；权威槽位恒为下标。
+`Unit.slot` 为排内 1 基信息位（观察期快照），落槽写端（`bench_place`/上报函数落位腿）负责让信息位与落位下标一致；权威槽位恒为下标。阵营不入 Unit——由 char_id 查角色注册表派生。
 
 ### 2.2 动作字段坐标系(统一词表,零换算)
 
@@ -68,10 +71,10 @@
 
 ## 3. 写入端不变式（逻辑态面对消费方的承诺）
 
-1. **槽位表形状**：bench/deployed 为定长槽位表，元素 `BenchChar | None`；删除语义 = 置 None 不移位。由此「生成期索引 = 执行期索引」在单轮内成立，同轮多笔卖出/部署不可能引起索引漂移（的立法目的）。
-2. **信息位归一**：任何把 `BenchChar` 放进槽位表的写端（`bench_place`/`deployed_place`/部署装配 `assemble_bench_list`）必须让 `slot`/`position_pref` 与落位下标一致；跨排移动经 `_apply_row_to_char` 归一。
+1. **槽位表形状**：tracked 主账 bench/deployed 为定长槽位表（元素 `BenchSlot | None` / `Unit | None`）；删除语义 = 置 None 不移位（保洞）。由此「生成期索引 = 执行期索引」在单轮内成立，同轮多笔卖出/部署不可能引起索引漂移（的立法目的）。观察面 `gs.bench`/`front_row`/`back_row` 无洞语义——空槽 = `kind='empty'`、行 = Unit 列表。
+2. **信息位归一**：bench 落槽写端（`kernel/cw_exec_state.py::bench_place`）与上报函数落位腿让 `Unit.slot` 与落位下标一致；跨排移动的开拓者形态归一（char_id 随排切换）核 = `cw_exec_state.trailblazer_row_identity`（deploy_move/swap 两上报函数同源调用）。排路由不在写端——发射期由策略层 `deploy_row_pref`（comp 站位覆盖 > 注册表 position_pref 派生 > back 兜底）定。
 3. **快照隔离**：`kernel/cw_exec_state.py::snapshot_copy` 浅拷贝 + equips 固化 tuple 使拷贝与 `session.tracked_*` 断开对象别名——session 侧就地写端（shop 星级/装备拼接、deploy 装备覆盖）不穿透拷贝，反向亦然。`snapshot_copy` 现役消费方 = `kernel/cw_action_report/buy_card.py::report_action_buy_card_param`（买牌买前快照 scratch 拷贝链——快照与升星腿内聚单点），拷贝隔离由机制保证、不靠消费纪律，不随已退役的视图层消失。
-4. **tracked 账随动**：卖出 handler 销账（`prep_actions.py::_track_remove_bench` 按 `bc.slot` 过滤；`_track_remove_deployed` 按 换算置 None）；上阵落槽走 `deployed_place` 单一源（`_track_move_deployed`）。落地事实的权威判定 = 观察边界对账（观察赢），tracked 账为其输入/输出簿记(原部署 op 收尾 SIFT 纠漂/装备快照回路随部署机画面 op 退役删除;对账权威 = 备战入口 heavy 观察,星级抖动门驻 `kernel/cw_reconcile.py`)。
+4. **tracked 账随动**：卖出 handler 销账（`prep_actions.py::_track_remove_bench` 按下标置 None；`_track_remove_deployed` 经 `deployed_idx_of` 换算置 None）；上阵落槽 = `_track_move_deployed` 载荷 `(to_row, to_slot)` 直写下标（与执行拖点/容器写侧同源,交换语义镜像——被占位单位回源槽）。落地事实的权威判定 = 观察边界对账（观察赢），tracked 账为其输入/输出簿记(原部署 op 收尾 SIFT 纠漂/装备快照回路随部署机画面 op 退役删除;对账权威 = 备战入口 heavy 观察,星级抖动门驻 `kernel/cw_reconcile.py`)。
 5. **披露面承诺**：预算遥测披露面 = `v3_reserve_cap`/`v3_reserve_overflow`/`v3_release_budget`/`v3_release_spent` 四字段 + `v3_disclosure_key` 键戳，唯一写点 = `economy_cycle.disclose_budget`，两调用点 = 备战决策入口（`bridge.py::decide_prep_screen`，前置发射位判定之后的原装配缝位，非 armed 短路帧才到达）与店开帧覆写（`economy_cycle.py::disclose_budget_at_shop_frame`）；披露面是遥测列非决策输入，禁决策消费，守卫锁 = test_cw_budget_disclosure（armed 短路帧不披露单帧锁 = test_armed_shortcircuit_frame_writes_no_disclosure）。
 6. **期望态两执行面同源**：原子动作的期望态推进唯一入口 = 上报函数族 `kernel/cw_action_report/report_action_<snake>_param`（动作 op 组装后直调自己的上报函数 = 实机 op 自上报；sim/回放引擎入口 = 一行委托分支串，`cw_sim_actions.apply_player_action`；驱动器 `decide_shop_screen` 两覆写逐动作直调）——两执行面同走同一函数族,单点即同源（动作 op 重组批④,design.md §2）。
 7. **装备 owned 搬运链**：装备 owned 名单写端 = `cw_op_equip_all.py::CwOpEquipAll`（`read_equips` 多列读 → `session.last_owned_equips`）；穿戴落地销账 = `cw_op_equip_all.py::register_equip_worn`（owned −1 件 + `tracked_deployed[idx]` equips +1，deployed 下标换算公式在其 docstring 声明）。
@@ -116,7 +119,7 @@
 
 | 臂 | 载体 | 读的逻辑态面字段 | 读法 |
 |---|---|---|---|
-| 部署臂 | 备战环动作路径:mandate 发射位 → `CwActionDeployMoveOp`(`cw_deploy_move_action.py`) | 逻辑态面(容器):bench 槽位表/期望态;物理真值 = 下一帧备战入口 heavy 观察(占用 CV/身份 SIFT/`deploy_cap` 防抖,由漏斗写端承接) | 逐动作机械拖拽 + 自上报 `report_action_deploy_move_param`(零像素判效);计划判定单一源 = kernel `select_deployments_reasoned`/`residual_fill_plan` |
+| 部署臂 | 备战环动作路径:mandate 发射位 → `CwActionDeployMoveOp`(`cw_deploy_move_action.py`) | 逻辑态面(容器):bench 槽位表/期望态;物理真值 = 下一帧备战入口 heavy 观察(占用 CV/身份 SIFT/`deploy_cap` 防抖,由漏斗写端承接) | 逐动作机械拖拽 + 自上报 `report_action_deploy_move_param`(零像素判效);计划单一源 = 策略层 `mandate_v1/deploy_plan.py::deploy_plan_moves`(选人 `select_deployments_reasoned` + 排路由 `deploy_row_pref` + 槽位 `deploy_slot_plans`);kernel `cw_deploy_logic.py::residual_fill_plan` = 残余补位 |
 | 换血臂（M1″/m1p） | 发射面 `mandate.py` m1p 段;执行面 = `CwActionSellDeployedOp`(`cw_sell_deployed_action.py`)+ 后续 DeployMove 补部署(原部署机卖出臂执行面已随其退役) | 发射面 = 决策帧槽位表(MandateFrame/GameState 域);逐件拒因 = `swap_sell_exclusion_reason`(现役消费面 = 发射侧) | §4.3;1:1 替换上限 = `bench_target_count`;卖出后残余补部署走 `residual_fill_plan` |
 | 卖出臂（SellBench，双域统一） | `operations/cw_op/cw_prep_sell_bench_action.py::CwActionSellBenchOp`（词表摊平后商店/备战共用单一注册行；原商店域文件 `cw_sell_bench_action.py` 已退役删除） | `CwActionSellBenchParam.bench_idx`（槽位表下标 0-8）+ `expect` 期望名 | `drag_bench_to_sell` 直收 0-based，机械单发发出即记账；op 自上报 `report_action_sell_bench_param`（容器逻辑态单点：expect 非空失配 = `stale_proposal` 拒零写 + 置 empty + 回金 + 装备回收）+ 执行器 `_track_remove_bench` 销 tracked 账；零判效，落地事实归下一入口观察对账 |
 | 装备臂 | `operations/cw_op/cw_op_equip_all.py::CwOpEquipAll` | owned 多列网格（`read_equips`）、`session.last_owned_equips`、`read_row_equipped` 已穿表（slot 1-based）、avatar CV-diff | §3.7 搬运链；穿戴候选过滤工具类；P0-2 只往空槽 drag（`_empty_slots`，防覆盖已穿） |
@@ -127,15 +130,15 @@
 
 | # | 文件::符号 | 缺口 | 影响 |
 |---|---|---|---|
-| G1 | `kernel/cw_game_state.py::BenchChar.slot` | 逻辑态面最核心槽位字段**自身零定义注释**：坐标系/取值时机/双容器语义（bench 域 = 1-based 物理槽号权威输入；deployed 域 = 排内槽号信息位、派生自下标）只散在 GameState 容器注释与 Action 对照表；`_card_to_bench`(现役 kernel/cw_vocab.py 与 cw_merge_simulate.py)构造的 `slot=0`「未落槽」哨兵值也无处声明 | 跨模块读者只能靠猜；slot=0 哨兵与 1-based 值域混存于同一字段无声明 |
+| G1 | ~~`kernel/cw_game_state.py::BenchChar.slot`~~（**已消解**） | 缺口宿主 `BenchChar` 已随容器化退役：`Unit.slot` 现役带 `[索引定义]` 注释（行内 1 基画面槽号 + 观察期快照时机），tracked 形状与下标坐标系声明住 `TrackedBooks` docstring 与动作类 docstring；旧 `slot=0`「未落槽」哨兵随 `_card_to_bench` 换形口删除 | 跨模块读者依据 = 代码注释与本文 §2.1 |
 | G3 | ~~`kernel/cw_exec_state.py::apply_op_effect`（path 构造；动作 op 重组批④后本口瘦身改名 `apply_confirm_effect`）与 `ExpectedEntry` docstring~~（**已消解**） | 期望态路径命名空间同一括号形态两种基（`tracked_bench_chars[N]` = 1-based、`tracked_deployed[N]` = 0-based、`deployed.{row}.{slot}` = 1-based）；缺口对象 `ExpectedEntry` 已随期望态条目表退役,身份寻址对账消亡 | path 字符串仍作上报函数族/`apply_confirm_effect` 推进清单/遥测面载体,判读者按 path 直读槽号须分域的提醒保留于 §2.4 |
-| G4 | `kernel/cw_prep_actions.py::SellBench.slot` / `SellDeployed.row+slot` / `DeployMove.from_slot/to_slot`（族 B 全部槽位字段） | 坐标系有声明（模块头+类 docstring：物理槽位），**取值时机零声明**；「族 B 无 expect 代际校验、依赖单动作循环生成即执行短间隙」的结构边界未写在动作定义处（只散在 prep_visit/action_exec 的循环语义） | 族 B 动作一旦进入跨帧队列即无代际防线；登记为契约边界，接线跨帧队列前必须先补 expect 类防线或取值时机声明 |
+| G4 | `kernel/cw_prep_actions.py::SellBench.slot` / `SellDeployed.row+slot` / `DeployMove.bench_idx+to_row+to_slot`（坐标参数化族全部槽位字段） | 坐标系有声明（模块头+类 docstring：物理槽位/载荷直指），**取值时机零声明**；「无 expect 代际校验、依赖单动作循环生成即执行短间隙」的结构边界未写在动作定义处（只散在 prep_visit/action_exec 的循环语义） | 坐标参数化动作一旦进入跨帧队列即无代际防线；登记为契约边界，接线跨帧队列前必须先补 expect 类防线或取值时机声明 |
 | G5 | `obs/cw_identity_obs.py::find_supply_boxes` / `find_tomes` / `read_supply_boxes` / `read_tomes` | 返回值 `slot_idx` 的基（1-based，来自 `_ctx_slots` 的 `range(1, count+1)`）只在实现里，函数级 docstring 未声明；对照同文件 `bench_item_slots` 的「注释规范硬门」写法属漏网 | 消费方 `OpenBox.slot`/`OpenTome.slot` 的 validate（1-9）与匹配（`b[0]==action.slot`）全依赖此基；声明缺失=新读取方易按 0-based 惯例错拿 |
 | G6 | `kernel/cw_deploy_logic.py::residual_fill_plan`(部署机锚已随其退役收敛 kernel 单一源) | 返回三元组声明了 `slot_idx` 基（排行点位表 0-based 下标），但 `bench_idx` 的基与入参 `bench_pos`/`bench_cid` 的键域（bench 槽位表下标 0-8）只在调用方局部变量注释里有，函数自身 docstring 未声明 | 该函数标注「可离线直测」，离线构造入参时键域无函数级依据 |
 | G7 | ~~`strategies/impl/mandate_v1/turn_state.py` + `assembly.py`~~（**已结案**） | TurnState 层已随 turnstate-retirement 物理删除；hoard/hoard_readable 随 DirectionView 消亡 | 现行决策通路 = §4.1 时间线 |
 | G8 | ~~`strategies/impl/mandate_v1/contracts.py`~~（**已结案**：Snapshot 契约族经用户裁定随 turnstate-retirement T-6 退役整删，零生产消费实证在案；权威表灭失挂账随之销项） | 权威表指向 w583_stage2_contracts/SCHEMA_DRAFT.md，原始件已灭失（2026-09-12 清理）——载体删除后不再存在迁入问题 | 契约族残留引用 = 零（src/测试仓 grep 实证）；历史裁决原文归 git 历史 |
 
-已核对合规（抽样，供后续审计对照，不再逐一列出）：族 A 全部 `[索引定义]` 字段（`SellBench.bench_idx`/`DeployMove.bench_idx`/`SellDeployed.deployed_idx`/`SwapDeploy.deployed_idx+bench_idx`/`FillSpec.idx`/`PickEvent.option_idx+refresh_slots`）、`GameState.bench/deployed` 容器注释、`BenchChar.is_item_slot`、`cw_identity_obs.py::bench_item_slots`、`prep_actions.py::drag_bench_to_sell`、`cw_op_equip_all.py::register_equip_worn`、`cw_state.py::xp_apply_clicks`。（`cw_exec_state.py::_invest_refresh_used_slots` 抽样条目已随该字段退役移除。）
+已核对合规（抽样，供后续审计对照，不再逐一列出）：族 A 全部 `[索引定义]` 字段（`SellBench.bench_idx`/`DeployMove.bench_idx`/`DeployMove.to_row+to_slot`/`SellDeployed.deployed_idx`/`SwapDeploy.deployed_idx+bench_idx`/`FillSpec.idx`/`PickEvent.option_idx+refresh_slots`）、`GameState.bench`(BenchView)`/front_row/back_row` 容器注释、`BenchSlot.kind` 五分类与 `Unit.slot` 索引定义、`cw_identity_obs.py::bench_item_slots`、`prep_actions.py::drag_bench_to_sell`、`cw_op_equip_all.py::register_equip_worn`、`cw_state.py::xp_apply_clicks`。（`cw_exec_state.py::_invest_refresh_used_slots` 抽样条目已随该字段退役移除。）
 
 ## 7. 接口注（被挡下游的消费面依据）
 
