@@ -6,6 +6,6 @@
 
 ## 进度
 - 迭代设计:草案（攻击收敛已修订，待用户定稿）
-- 设计对抗:收敛 · 报告=[attack.md](attack.md)（阻断 2 已修：F1 锚定写端迁 CwScreenPrep、F2 推进生效原语）
+- 设计对抗:第二轮进行中 · 报告=[attack.md](attack.md) / [attack-r2.md](attack-r2.md)（第一轮收敛：阻断 2 已修）
 - 落地:阶段 0/7 done（明细见 landing.md）
 - 正本更新:未开始
