@@ -1,13 +1,13 @@
 # 节点推进动作上报化 落地
 
 ## 3.1 kernel 推进生效原语与锚定 helper（共存新增）
-**范围**：`kernel/cw_game_state.py` 新增 ①推进生效原语 `advance_node_effective`（candidate 去重守卫 + write_logic + hist 占位 + `tick_effect_boundary` 尾段同临界区；序号前进唯一入口）；②`report_node_advance`（观察态门 → candidate=effective+1 → 原语；trigger 封闭集）；③`observe_node_anchor` 锚定 helper（三分支处置，design §2.2 表；R>v 分支经原语落账）；④`tick_effect_boundary` 的遗迹参数 `prep_frame` 删除 + `observe_screen_context` 尾段过期闸注释清理；⑤REGISTERED_ACTORS 扩新 actor 名。旧四腿与现管线**本阶段不动**（共存期语义见 design §2.5 切换纪律：3.2 后 settle_confirm 门挡留证噪声、3.3 后 supply_confirm 部分放行）。边界：不改漏斗、不删任何现役路径。
-**设计依据**：design.md §2.2（处置规则表 + 推进生效原语段）/ §2.3 共用函数段
+**范围**：`kernel/cw_game_state.py` 新增 ①推进生效原语 `advance_node_effective`（candidate 去重守卫 + 写 node_ord（来源由调用方定：动作=logic/锚定补推=observation）+ hist 占位 + `tick_effect_boundary` 尾段同临界区；序号前进唯一入口）；②`report_node_advance`（观察态门 = value 在场 ∧ source=observation 双条件 → candidate=effective+1 → 原语；trigger 封闭集）；③`observe_node_anchor` 锚定 helper（四分支处置含 v=None 首锚定行，design §2.2 表；R>v 分支经原语落账、不经通用 observe()）；④`tick_effect_boundary` 的遗迹参数 `prep_frame` 删除 + `observe_screen_context` 尾段过期闸注释清理；⑤新写端 actor 标识与 sig family 申报（攻击 R2 定谳：现役 `_validate_sig` 只校 family、无 actor 注册闸，无注册面改动）。旧四腿与现管线**本阶段不动**（共存期语义见 design §2.5 切换纪律：3.2 后 settle_confirm 门挡留证噪声、3.3 后 supply_confirm 部分放行）。边界：不改漏斗、不删任何现役路径。
+**设计依据**：design.md §2.2（处置规则表 + 推进生效原语段 + 写法边界段）/ §2.3 共用函数段
 **文件面**：`src/sr_od/application/currency_war/kernel/cw_game_state.py`
 **依赖**：无
 **优先级建议**：5
 **完成判据**：
-- 单元测试（sr-od-test）：门挡（source=logic 时上报零推进+留证行）/ 门放行推进恰一档 / 等值观察翻锚定后可再推进 / R<v 丢弃留证 / **R>v 补推经原语含尾段发放恰一次（模拟跳档场景不漏发，攻击 F2① 回归锁）** / 推进尾段发放每节点余额恰一次
+- 单元测试（sr-od-test）：**value=None 门挡（新容器首次上报零推进+留证行，攻击 R1 回归锁）**/ v=None 首锚定建账含尾段发放 / 门挡（source=logic 时上报零推进+留证行）/ 门放行推进恰一档 / 等值观察翻锚定后可再推进 / R<v 丢弃留证 / **R>v 补推经原语含尾段发放恰一次（模拟跳档场景不漏发，攻击 F2① 回归锁）** / 推进尾段发放每节点余额恰一次
 - `uv run ruff check` 改动文件
 **验收凭据形式**：测试名清单 + 运行输出
 
@@ -57,8 +57,8 @@
 **验收凭据形式**：grep 归零输出 + 测试运行输出
 
 ## 3.6 测试收口
-**范围**：场景锁全量改写与补齐（对照 node-derivation.md §3.6 S1-S10 走查集按新模型重写）：开局锚定建 1 / 快弹窗全型（确认→弹窗→选卡→备战锚定）/ 补给两形态 / boss 段（奖励关确认推进 + 简报纯类型直定）/ 跨位面确认 / 恢复局锚定 / 锁定臂门挡自愈 / 重复上报结构挡 / 全量回归。
-**设计依据**：design.md §2.1-§2.4
+**范围**：场景锁全量改写与补齐（对照 node-derivation.md §3.6 S1-S10 走查集按新模型重写）：开局首锚定建 1（v=None 行）/ 快弹窗全型（确认→弹窗→选卡→备战锚定）/ 补给两形态 / boss 段（奖励关确认推进 + 简报类型直定 + **证据集同源：boss 流确认证据 miss 不产生错位类型直定，攻击 R3 回归锁**）/ 跨位面确认 / 恢复局锚定 / 锁定臂门挡自愈 / 重复上报结构挡 / **结算真值金采样（条件族发放按结算金评估，design §2.7-3）** / **补推当帧发放（跳档不漏发，design §2.7-8，攻击 R5 补锚）** / 全量回归。
+**设计依据**：design.md §2.1-§2.4 / §2.7
 **文件面**：`sr-od-test/`（CW 测试域）
 **依赖**：3.5
 **优先级建议**：4

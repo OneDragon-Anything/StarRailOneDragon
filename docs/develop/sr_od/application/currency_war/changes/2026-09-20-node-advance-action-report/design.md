@@ -31,8 +31,8 @@
 - **observation（锚定态）**：写端 = `observe(node_ord, R)`，R = 顶栏/节点条读数序号（解析读数，与 gold 的 OCR 解析同类，非游戏规则推算——这是「observe 直写」的合法性依据；`top_bar_raw` 原文观察层保留不动，两字段分工不变）。锚定写端两处（§2.4）。
 - **logic（推进态，未确认）**：写端 = 终结动作上报推进（§2.3）。
 
-**推进门（用户裁定③）**：`report_node_advance` 前置门 = `node_ord.source == 'observation'`。门挡 → obs_event arbitrate 留证，零推进。语义：只有已被观察确认的节点值才允许被动作推进——重复上报、重试、任何第二条推进路径在结构上不可能；去重键 `node_hist_ord` 保留作水位与第二道防线。
-开局态（value=None，入口链/恢复局首帧前）门自然挡住——开局没有终结动作，首锚定由观察建立。
+**推进门（用户裁定③）**：`report_node_advance` 前置门 = **双条件** `node_ord.value is not None ∧ node_ord.source == 'observation'`。门挡 → obs_event arbitrate 留证，零推进。语义：只有已被观察确认的节点值才允许被动作推进——重复上报、重试、任何第二条推进路径在结构上不可能；去重键 `node_hist_ord` 保留作水位与第二道防线。
+**value 守卫不可省（攻击 R1 定谳）**：Field 缺省 `source='observation'`（cw_game_state.py::Field 定义），新容器 node_ord = (None, 'observation')——若门只查 source，开局/恢复局（锁定臂直出战、relaunch 残留结算屏）的首次终结确认会误放行且 candidate = effective+1 在 effective=None 时无定义。双条件下：value=None（开局链/恢复局首锚定前）→ 挡；value 在场且 source=observation → candidate = max(value, hist)+1 可计算。锁定臂语义修正复述：其首次结算确认被 **value 守卫**挡（非 source 门），由战后备战帧观察锚定补齐——行为结论不变，机制表述以本段为准。
 
 **观察锚定处置规则**（单一源 = kernel 锚定 helper，两写端共用；R = 本帧读数，v = 现值）：
 
@@ -41,6 +41,7 @@
 | R > v | 观察采新，且**经推进生效原语落账**（写 node_ord/hist + 效果推进尾段同临界区；补推：漏上报自愈） | 绝对值坐标，采新即对齐；账本 `advance_node` 去重为序相等判（cw_effect_inventory.py::advance_node），序号前进不经 tick 即永久漏该节点每节点发放（攻击 F2①） |
 | R == v | 直写同值（source=observation，同值行；logic 态此分支 = 动作推进被观察确认翻锚定态——下一节点终结动作由此解锁） | 重复上报解锁即锚定语义 |
 | R < v | 不写 + obs_event arbitrate 留证（倒退免疫，node-derivation.md §3.3 规则三现值保留） | 节点序局内单调（游戏无回退流转，§3.1 E15 终局除外）；R<v 只能是读数误读或幻影推进残余 |
+| v = None（首锚定） | 任何 R → 写 R（source=observation）+ hist 占位 + 效果推进尾段 | E4 开局建 1 / 恢复局重建语义；开局链期间拾取的效果由此首拍发放（与现行首备战帧 tick 时机一致） |
 
 **幻影推进残余的自愈路径**（申报）：上报已带转移证据门（§2.3），幻影（上报了但游戏没走）被结构性预防；若证据被误命中（模板误报级），残余形态 = logic 值领先一档，后续锚定被 R<v 分支挡住、下一次终结动作被门挡、再下一节点观察 R>v 补齐——**绝对值坐标保证无累积误差，偏差有界一个观察周期**。效果账本不回滚（`grant_free_refreshes` 计数器与 `advance_node` 递减无逆操作；幻影预防在前，接受该残余边界并留证）。
 
@@ -50,10 +51,11 @@
 
 ### 2.3 推进触发面（动作上报）
 
-**共用推进函数**（kernel，唯一动作推进口）：`report_node_advance(gs, *, trigger: str, sig: ChannelSig | None = None) -> None` = 观察态门 → candidate = `effective_node_ord + 1` → 推进生效原语（§2.2）。trigger 封闭集 = `{'settle_confirm', 'supply_confirm'}`（留证 actor 归因）；sig family = logic_action，actor = 触发 op 登记名（REGISTERED_ACTORS 扩两名额，sig 纪律同 R5 W1/ADR-0634）。
+**共用推进函数**（kernel，唯一动作推进口）：`report_node_advance(gs, *, trigger: str, sig: ChannelSig | None = None) -> None` = 观察态门（§2.2 双条件）→ candidate = `effective_node_ord + 1` → 推进生效原语（§2.2）。trigger 封闭集 = `{'settle_confirm', 'supply_confirm'}`（留证 actor 归因）；sig family = logic_action，actor = 触发 op 自由命名标识（攻击 R2 定谳：现役 `_validate_sig` 只校 family、不设 actor 注册闸，`REGISTERED_ACTORS` 机制已退役——journal 行归因用 actor 字符串，无注册面）。
 
-**触发点 1——结算确认动作 op（用户裁定④）**：新 op `CwOpSettleConfirm`（`operations/cw_op/cw_op_settle_confirm.py`；非策略动作面——不经动作注册表、无 CwAction param，命名与构造从画面框 op 惯例 `CwOpOpenShop/CwOpCloseShop`）。职责 = 点击「继续挑战」（含现役 M39 长按兜底重试策略，cw_screen_battle_wait.py 长按兜底专用点迁入）→ 等完成判据白名单命中（转移证据；白名单纯判定方法与 `CwScreenBattleWait` 提出 helper 共用）→ `report_node_advance(trigger='settle_confirm')`。证据 miss = 不上报，长按兜底继续重试（现行为）。`CwScreenBattleWait` ②段（结算点击）改调本 op；③段白名单出口判定保留（幂等：已命中帧不重复点击）。战败分支不建 op、不推进（终局流转 E15，节点序止于终局）。
-锚定可用性边界（申报）：恢复局锁定臂（`cw_loop.py::locked_resume_sync_and_battle` 直出战）若首战前无备战锚定，其结算确认被门挡一次，由战后备战帧观察锚定补齐——绝对值坐标，无 skew。
+**触发点 1——结算确认动作 op（用户裁定④）**：新 op `CwOpSettleConfirm`（`operations/cw_op/cw_op_settle_confirm.py`；非策略动作面——不经动作注册表、无 CwAction param，命名与构造从画面框 op 惯例 `CwOpOpenShop/CwOpCloseShop`）。职责 = 点击「继续挑战」（含现役 M39 长按兜底重试策略，cw_screen_battle_wait.py 长按兜底专用点迁入）→ 等完成判据白名单命中（转移证据）→ `report_node_advance(trigger='settle_confirm')`。证据 miss = 不上报，长按兜底继续重试（现行为）。`CwScreenBattleWait` ②段（结算点击）改调本 op；③段白名单出口判定保留（幂等：已命中帧不重复点击）。战败分支不建 op、不推进（终局流转 E15，节点序止于终局）。
+**证据集同源条款（攻击 R3 定谳，封 E12 拆批缝）**：op 的转移证据集 = 完成判据白名单**全集**（备战系/补给/遭遇/投资策略/**强敌来袭**锚，与 `CwScreenBattleWait` ③段同一判定 helper），等待语义同 ③段（白名单命中即返，无独立短超时）。由此：boss 流中「证据 miss 而流转真实发生」不可达——流转发生 ⇒ 简报锚现身 ⇒ 白名单命中 ⇒ 上报先于 `CwScreenBossBriefing` 分派，hist 已推进至 boss 节点，简报类型直定目标恒正确（序号与类型经同锚同源归凑，等价旧模型 `_derive_node_boss_brief` 同批原子性）；证据 miss ⇒ 流转未发生（或锚识别失败——此时简报 op 同样不会被分派，类型直定无从触发，缝不存在）。
+锚定可用性边界（申报，机制表述随 R1 修正）：恢复局锁定臂（`cw_loop.py::locked_resume_sync_and_battle` 直出战）首次结算确认被 value 守卫挡（§2.2），由战后备战帧观察锚定补齐——绝对值坐标，无 skew。
 
 **触发点 2——补给确认**：`CwActionPickSupplyOp`（`cw_overlay_pick_action.py::CwActionPickSupplyOp`）确认链点击补转移证据（until = 下一节点备战锚，E11：补给确认 → 下一节点干净备战帧，无自动弹链）→ 现有 `report_action_pick_supply_param` 调用点旁增调 `report_node_advance(trigger='supply_confirm')`。证据 miss = 不上报（无重试编排，兜底 = 观察锚定补推 §2.2）。
 辖域契约修正案（攻击 F5）：转移证据在本 op 中的角色 = **上报时点门**（决定报不报），非执行验证（不重试、不恢复、不判效）——与 screens/op-layer.md §1.2「动作 op 禁做任何验证」的禁令（verify+retry 编排）不冲突但字面相抵，正本更新阶段在 §1.2 增补具名例外条款：「节点终结上报类动作 op 允许以转移证据作上报时点门；证据 miss 不上报不重试，兜底归观察锚定」。
@@ -62,7 +64,7 @@
 
 ### 2.4 观察锚定面（两写端）
 
-1. **干净备战帧：`CwScreenPrep` 观察 node**（攻击 F1 定谳，原「漏斗尾段」方案作废）：备战 heavy 观察（`obs/cw_observe_full.py::observe_full`，内部漏斗 `read_game_state`）的回执 `GameStateReadReceipt` 携带本帧 plane/round_num → 备战 op 观察段调 `observe_node_anchor(node_ordinal_of(plane, round_num))`（§2.2 处置规则）。**漏斗彻底退出节点域写入**（上下文对/`top_bar_raw` 观察层保留）——recorder（`cw_match_recorder.py::extract_frame` 经漏斗）与一切旁路读数从此零节点域副作用，§2.7-5 申报成立。锚定输入与现行备战腿同源（`read_phase_round` 直读/缓存/守卫语义不变，风险面不变）。覆盖面核对：生产备战帧唯一消费 op = `CwScreenPrep`（外循环备战分支分派）；锁定臂不经备战 op = 无锚定，门挡自愈路径照走（§2.3 触发点 1 申报）。
+1. **干净备战帧：`CwScreenPrep` 观察 node**（攻击 F1 定谳，原「漏斗尾段」方案作废）：备战 heavy 观察（`obs/cw_observe_full.py::observe_full`，内部漏斗 `read_game_state`）的回执 `GameStateReadReceipt` 携带本帧 plane/round_num → 备战 op 观察段调 `observe_node_anchor(node_ordinal_of(plane, round_num))`（§2.2 处置规则）。**漏斗彻底退出节点域写入**（上下文对/`top_bar_raw` 观察层保留）——recorder（`cw_match_recorder.py::extract_frame` 经漏斗）与一切旁路读数从此零节点域副作用，§2.7-5 申报成立。锚定输入与现行备战腿同源（`read_phase_round` 直读/缓存/守卫语义不变，风险面不变）。覆盖面核对：生产备战帧的画面 op 消费 = `CwScreenPrep`（外循环备战分支分派，锚定唯一挂点）；`cw_loop.py` 仲裁路径另有 prep_clean 漏斗读（`cw_loop.py:598`）——纯域读数不挂锚定，无缺口（攻击 R4 表述修正）；锁定臂不经备战 op = 无锚定，门挡自愈路径照走（§2.3 触发点 1 申报）。
 2. **补给屏节点条**：`CwScreenSupplyNode` 观察链新增节点条读数（视觉实证 V3：补给屏顶部居中节点条「备战阶段 X-Y」屏显，node-derivation.md §④-C V3；现役 `read_phase_round` 的 A_PHASE 识别区不含该位置——需 screen_info 扩识别 area，按 od-dev-screen-onboarding 建档流程落坐标与模板）→ 同一锚定 helper。这是补给「自动弹」形态（结算确认直接弹补给屏，无本节点备战帧）的唯一锚定点，缺它则补给确认被门挡、走观察补齐（可运行但退化，故列为必做）。
 
 `prev_screen`/`current_screen` 上下文对与 `top_bar_raw` 观察层：保持现状（观察域，供 journal 审计与商店查链）。
@@ -73,7 +75,7 @@
 |---|---|
 | 弹窗腿本体 + 守卫族/弹窗族常量 + 缓存守卫 + 恢复局禁用分支 | `cw_game_state.py::_derive_node_inferred`、`SCREEN_CONTEXT_POPUP_FAMILY`、`SCREEN_CONTEXT_GUARD_PREV` |
 | 位面过渡腿 | `cw_game_state.py::_derive_node_plane_transition`（跨位面由序号公式自然承载，§2.1） |
-| BOSS 简报腿 + 幂等锚（序号半部） | `cw_game_state.py::_derive_node_boss_brief` 序号推进半退役；**类型直定半迁移触发点**（攻击 F4）：现触发 = 本腿内部 + `_note_branch_screen('货币战争-BOSS简报')`，两载体均退役——类型直定改挂 `CwScreenBossBriefing` 观察 node（简报屏上报经 kernel `_write_derived_node_type` 直定 boss 类型，目标 = 现 hist = 已被奖励关结算确认推进的 boss 节点；actor/sig 语义保留），简报屏仍是 boss 类型权威 |
+| BOSS 简报腿 + 幂等锚（序号半部） | `cw_game_state.py::_derive_node_boss_brief` 序号推进半退役；**类型直定半迁移触发点**（攻击 F4）：现触发 = 本腿内部 + `_note_branch_screen('货币战争-BOSS简报')`，两载体均退役——类型直定改挂 `CwScreenBossBriefing` 观察 node（简报屏上报经 kernel `_write_derived_node_type` 直定 boss 类型，目标 = 现 hist = 已被奖励关结算确认推进的 boss 节点；actor/sig 语义保留），简报屏仍是 boss 类型权威。**直定前置同源守卫（攻击 R3 定谳）**：直定仅在简报 op 被分派（锚命中）时发生，而锚命中 ⇒ 结算确认证据命中（证据集同源条款 §2.3）⇒ hist 已是 boss 节点——「hist 落后、类型写错节点」的形态结构性不可达 |
 | 循环分支写点 ×5 | `cw_loop.py::_note_branch_screen` 及五处分支调用点（BOSS简报/位面过渡/简报/投资环境/等待1-1） |
 | 遭遇/补给/策略休眠类型直定路径 | `SCREEN_NODE_TYPE_DIRECT` 三成员（生产从未有写点，退役 = 零行为变化；类型来源 = 简报直定 + 链读链 + 商店查链，均现役） |
 | 备战腿派生写法 | `_derive_node_observed` 的 write_logic 写法 → observe 锚定 helper（§2.2 改判） |
