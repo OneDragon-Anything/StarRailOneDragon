@@ -6,6 +6,6 @@
 
 ## 进度
 - 迭代设计:草案（攻击收敛已修订，待用户定稿）
-- 设计对抗:第二轮收敛 · 报告=[attack.md](attack.md) / [attack-r2.md](attack-r2.md)（两轮阻断 F1/F2/R1 已修，待用户定稿）
+- 设计对抗:第三轮进行中 · 报告=[attack.md](attack.md) / [attack-r2.md](attack-r2.md) / [attack-r3.md](attack-r3.md)（R1-R5 已修，待第三轮验证）
 - 落地:阶段 0/7 done（明细见 landing.md）
 - 正本更新:未开始
