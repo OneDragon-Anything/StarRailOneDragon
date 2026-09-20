@@ -18,6 +18,8 @@
 
 ## 3.2 释放谓词、持久获取账与通道接线落码
 
+> **状态：已落地（2026-09-15，T-253 commit 0a563186a）**——本节全部交付物在码（sell_gate.py 获取账+释放单点+四通道接线、shop.py 写端、行为锁①-⑤ = test_cw_dead_pair_exit.py）；新鲜度复查核实后不再重复实施，实现期细化 5 处已回写 design.md。
+
 **范围**:①**持久获取账**(design.md §2.0/§2.1.5):session 属性 `{名: (位面, 最新获取轮)}`,写端 = `shop._emit_buy` 全因类无条件写(与种子登记同位先例),位面闭合 + 全场域活性闭合,与发射登记簿四出口解耦;②`fuel_sell_candidates` 增 `merge_guard_release` 形参(缺省空集零漂移)与 G-S1 旁路分支;③sell_gate 新单点函数 `dead_pair_exit_release`(判据 (a)(b)(c) 三合取,(b) 基准 = `_resolve_base` 输出)与四通道消费位接线;④遥测键 `dead_pair_exit_released`/`dead_pair_exit_guard_kept`(子键 kept_k/kept_age/kept_identity/kept_chain)/`dead_pair_exit_sold`(事件口径 C1 去重);⑤行为锁①-⑤(§2.1.5,含 ADR-0558 案发回归形态锁④与获取账生命周期锁⑤);⑥方向④纯计数键 `transition_hold_locked_frame`/`deadlock_only_transition_victim`(零行为,触发谓词按 §2.2.3)。链状态合取按 §2.1.7-2 随批并入(一次注册表读)。边界:不改 G-S1 本体、不改装配 A 各段、不改买侧防线谓词、不碰部署侧同键守卫。
 **设计依据**:design.md §2.1.5(判据规格/获取账规格/接线位/遥测)、§2.1.7(边界与 fail-closed 方向)、§2.2.3(方向④遥测谓词)。
 **文件面**:`src/sr_od/application/currency_war/strategies/impl/mandate_v1/sell_gate.py`(获取账+释放函数)、`strategies/impl/mandate_v1/shop.py`(获取账写端 + 消费位)、`strategies/impl/mandate_v1/mandate.py`、`strategies/impl/mandate_v1/criteria/sell.py`(三函数同旁路消费)、`sr-od-test/test/sr_od/app/currency_war/test_cw_dead_pair_exit.py`(新,行为锁①-⑤)。
