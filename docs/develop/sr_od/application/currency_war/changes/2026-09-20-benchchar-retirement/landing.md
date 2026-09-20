@@ -67,6 +67,8 @@
 - §3 全部不变量锁绿。
 **验收凭据形式**：逐域 grep 归零记录 + 测试名 + L1 全绿。
 
+**裁定追加（2026-09-20 用户裁定 B，行为变化申报第 3 项）**：三处席空数读数（cw_line_switch.e_rounds 买刷截断 / proof c_sat 席位压力项 / economy_cycle `_scan_shop_buy_accounts`）从定长 9 基线统一改吃 `bench_free_slots`（capacity 跟随单一源）；新增三处消费行为锁（capacity=8 帧断言读数跟随）；三处 ⚠️ 挂账注释收敛为既定语义说明。落地批 = 追加任务（账本），非本节原范围。
+
 ### 3.6 P5 sim 帧退役与测试种子层
 
 **范围**：`CwSimFrame`/`synthesize_from_game_state`/`feed_sim_truth` 退役；测试仓 builder 直写容器域（§2.5 载体）；种子 builder 含商店屏态域字段（承接现 synthesize_from_game_state 的 shop_open/shop_empty_off_screen 分支语义，字段语义在 builder 处声明）；种子重写（CwSimFrame 87 处/18 文件 + `BenchChar(` 直造 116 处/32 文件，名字表达纪律）；M1 投影锁语义逐字节保形；死函数删（economy_score/star_weighted_copies/state_equips_multiset）。
