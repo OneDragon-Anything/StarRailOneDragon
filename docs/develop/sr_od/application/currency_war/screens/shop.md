@@ -1,12 +1,12 @@
 # 商店开画面(shop · 货币战争-备战-开商店)
 
-> 代码 = `operations/cw_screen/cw_screen_prep.py::_open_shop_phase`(流程层商店编排)+ `operations/cw_screen/cw_screen_buy_cards.py::run_buy_waves`(商店单动作循环)+ `finalize_buy_phase`(单元收尾)。职责:商店打开态的一次访问编排——单动作决策循环驱动 `decide_shop_action`、终结动作离店、收尾。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_prep.py::_open_shop_phase`(流程层商店编排)+ `operations/cw_screen/cw_screen_buy_cards.py::run_buy_waves`(商店单动作循环)+ `probe_node_type`(关店后节点行探针,商店域)。职责:商店打开态的一次访问编排——单动作决策循环驱动 `decide_shop_action`、终结动作离店、收尾。路径根 = `src/sr_od/application/currency_war/`。
 > **决策判据(买什么/卖什么/刷不刷/升不升)一律不在本篇**——本篇只管「循环怎么转、期望态怎么推进、何时离店」;判据见 [../../strategy-docs/11_shop_decisions.md](../strategy-docs/11_shop_decisions.md)。
 
 ## 1. 分发判定
 
 - 外循环分支 0n(店已开态):开商店画面档**三 id_mark** 同帧——「备战标识-购买经验」∧「按钮-收起」∧「标识-备战阶段」(`_shop_open_anchors_hit`;与干净备战的「按钮-出战」天然互斥)。分发 = 阶段一身份行(三 id_mark;历史穿透命中曾把部署/出战点击打在浮层上,§2.2)。
-- 显式开店:备战访问内 `OpenShop`(read_only=False)动作 → `visit_open_shop`(本篇 §2 编排单一源);read_only=True 读数性开店 → 开店+heavy 观察+关店,不进买牌循环。
+- 显式开店:备战访问内 `OpenShop` 动作 → `visit_open_shop`(本篇 §2 编排单一源)。受限访问(`restricted_spend=True`)在 `_act_execute_default` 截流走仲裁单元,不经本篇编排。
 - 发射帧仲裁受限访问:策略前置发射位产受限访问意图(armed ∧ 金超息线)→ 备战访问 op 执行仲裁单元(spend_gate 仲裁;带内段 fail-closed 不开店)。
 - 建档 = `assets/game_data/screen_info/currency_war_battle_prep_shop_open.yml`(商店牌-1..5 / 按钮-刷新 / 备战标识-购买经验 / 按钮-收起 等 area)。
 
@@ -76,9 +76,9 @@ while True(零读屏):
 | 未识别卡停机 | 每波入口观察回执落地即判:读链终判(内部易误判重观察后)仍含 unknown 槽(empty=确证空位不计)→ `stop_running(save_screenshot=True)` 框架截图留证 + round_fail——决策/购买不见残缺牌面(未识别不能降级带病跑;2026-09-16 迁移+框架化,防抖探针/flag 退役;细则 = [../flow/guards.md](../flow/guards.md) §3) |
 | 循环异常 | 上抛 → 编排层单元 aborted 关账,店不收(交上层重新识别) |
 
-`visit_open_shop` = 商店访问尾段(run_buy_waves → CwOpCloseShop → finalize_buy_phase → 节点探针)的**编排单一源**,显式开店与 0n 转交两路径共用;失败路径不收店(店留着交上层重新识别)。
+`visit_open_shop` = 商店访问尾段(run_buy_waves → CwOpCloseShop → 节点探针)的**编排单一源**,显式开店与 0n 转交两路径共用;失败路径不收店(店留着交上层重新识别)。访问回执 detail = ledger 计数排版(`买牌 plan 买N张 …`),行形 = 哨兵 PREP-SPIN 实质推进判据的消费面。
 
-单元收尾 `finalize_buy_phase`:①买后重估暂存(黑板派生帧标 view,由下一决策入口消费刷新;无升级单元走增量态构造,fail-closed 两维:金失读/tracked 空 → 回退全量 read_game_state);②买牌期望暂存(主环 heavy 定型帧消费对账);③gold 差值双源对拍(expected = 开店首读金 − 全程执行花金 + 全程卖入;|差|>2 → 留证;容忍 ±2 = 收入/连胜金不可观项;关店实读金无条件暂存进单元行);④返回单元摘要。
+收尾观测 `probe_node_type`(住 `cw_screen_buy_cards.py`,商店域):关店后 clean 备战帧读节点行序列(read_node_sequence)→ log + 未识别图标采集(版本前哨)+ 槽序表(`plane_node_table`)与台账按位合并写(写点③;挂点 = 商店访问尾,非商店轮不触发,覆盖以此为界)。纯观测,失败不阻塞收尾,无决策消费。
 
 ## 6. 状态上报面
 

@@ -1243,7 +1243,7 @@ def run_mandate(frame: MandateFrame,
         if shopped:
             _count(f'shop_latch_skip_{tag}')
             return
-        out.append(Emitted(CwActionOpenShopParam(read_only=False), True, tag))
+        out.append(Emitted(CwActionOpenShopParam(), True, tag))
 
     out: list[Emitted] = []
     k = frame.k_members

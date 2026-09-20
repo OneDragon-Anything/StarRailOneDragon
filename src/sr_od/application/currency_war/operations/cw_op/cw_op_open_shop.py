@@ -84,7 +84,7 @@ class CwOpOpenShop(SrOperation):
     """货币战争-备战 → 备战-开商店 原子 op(W970 批 A;推进型两 node 形态)。
 
     生产路径由编排壳直调 :func:`open_shop`(宿主 op 复用);本类为独立
-    可跑壳(W970 批 C 流程层接管后成为编排单元,含腾席链 b read_only 开店)。
+    可跑壳(流程层接管后成为编排单元的机械开店臂)。
 
     两 node 形态(推进型空决策,幂等原子动作零策略消费;无 report——
     空决策形态无对账面/无容器域,kernel/cw_screen_report/open_shop.py

@@ -215,33 +215,6 @@ def vacancy_from_reads(cap: int | None, dep_n: int | None, cv_occ: int,
 #  prep_obs 覆盖点逐条目 diff 对账随 expected_state 条目表一并拆除。)
 
 
-def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
-    """开局帧槽序表的**每位面首帧**写入(ADR-0368)。
-
-    write-once 守卫会使 P1 的 9 槽表整局滞留:进 P2 后 7 槽真值永不落盘 →
-    nodes_of_plane / battles_left_p2 / 位面日程真值(cw_plane_table.schedule_of)
-    全读错(表「在」但是错的)。按 ``plane_node_table_plane`` 锚定,位面变更即
-    重写(位面内恒定语义不变,同位面多次 probe 不覆写);同时 append
-    ``plane_lengths_seen``(位面长度真值序列,P3 进表即自适应)。
-
-    返回是否写入(供调用方记日志)。纯簿记写入,无画面依赖,可单测。
-    (终态契约 §A′:宿主 = gs.node_books,session 中转退役。)
-    """
-    if not seq or plane is None:
-        return False
-    from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
-    _nb = game_state_of(sess).node_books
-    if _nb.plane_node_table_plane == plane:
-        return False
-    _nb.plane_node_table = list(seq)
-    _nb.plane_node_table_plane = plane
-    if _nb.plane_lengths_seen is None:
-        _nb.plane_lengths_seen = []
-    _nb.plane_lengths_seen.append(len(seq))
-    return True
-
-
-
 #: 单轮入口开商店收起探针后的落地等待(秒)。背景:战斗胜利后新回合游戏
 #: 可能自动开商店(时序竞争),单轮入口收起后需等收起动画落地再观察
 #(读互斥:hp/gold 关态可读;原「预收重试窗」随内环 gate 拆除)。
@@ -376,14 +349,6 @@ def refresh_reconcile_mismatches(expect: RefreshExpect,
     return mism
 
 
-
-#: 未识别节点图标采集防抖(idx → 上次采集时刻)。module-level:CwScreenPrep 每备战环重建
-#: (cw_loop loop 内构造),实例属性跨环零存活 → 300s 窗
-#: 失效(同 idx 每环各采一张,内容哈希对帧微变不设防)。
-_NODE_ICON_SHOT_TS: dict[int, float] = {}
-
-
-
 def faction_display_ok_debug_line(row_count: int, ocr_skip_count: int,
                                   suspects: list[str],
                                   computed_missing_count: int) -> str:
@@ -442,8 +407,8 @@ class CwScreenPrep(SrOperation):
 
     def _observe(self, heavy: bool, screen: MatLike | None = None) -> PrepObservation:
         """组装备战观察(ADR-0517 迁移后:heavy = 画面 op 入口单次——期望态
-        重建的唯一读屏点,即对账;调用点 = 单轮入口 / CwActionOpenShopParam(read_only)
-        开态 gold 真值刷新)。旧「每个执行过的游戏动作后必调 heavy」契约已
+        重建的唯一读屏点,即对账;调用点 = 单轮入口 / reobserve_in_visit
+        (CwActionObs 环内重观察在册通道))。旧「每个执行过的游戏动作后必调 heavy」契约已
         随单动作循环退役:逐动作零读屏,期望态由上报函数族(kernel)纯计算
         推进,动作后首读的光标 parking 职责随之迁移(入口观察 park 一次;
         执行侧读数性通道——卖出回金遥测等——的局部 park 由动作实现层自理)。
@@ -1299,7 +1264,7 @@ class CwScreenPrep(SrOperation):
                          f'{self._last_mech_detail}')
                 return
             try:
-                progressed, detail = self._open_shop_phase(action)
+                progressed, detail = self._open_shop_phase()
             except Exception as e:
                 self._last_mech_detail = f'执行异常:{e}'
                 raise
@@ -1447,28 +1412,15 @@ class CwScreenPrep(SrOperation):
 
     # ===== W970 批 C:流程层商店编排(整段买牌解体的承接,§4.3.2/§4.3.6)=====
 
-    def _open_shop_phase(self, action: CwAction) -> tuple[bool, str]:
+    def _open_shop_phase(self) -> tuple[bool, str]:
         """CwActionOpenShopParam 动作的流程层编排(壳直调三 op 调用点自 BuyShopCards 上移)。
 
-        - read_only=True(腾席链 b 取 gold 真值 / 开态清洁面板):CwOpOpenShop
-          (幂等,已开不点)→ heavy 观察(gold 开态真值进 session)→ **不调
-          商店决策**(M-6 门保持:free=0 不进买牌)→ CwOpCloseShop → 节点探针
-          → 回备战(W970 §4.3.6)。
-        - read_only=False:开店前容器 hp 已由备战观察链直写(商店开态 HP 区
-          不可读,W970 §4.3.4 读互斥;访问内 hp 决策消费统一经 decision_hp
-          政策读口——迁移批 3.2 起 hp 三件组传参链随黑板帧退役删除)→
-          商店单动作循环(run_buy_waves:入口观察 → decide_shop_action
-          逐动作循环+逻辑态直写,终结 op 交回;MAX_REFRESH 硬墙)→
-          CwOpCloseShop → finalize_buy_phase(买后重估/期望暂存/gold 对拍/
-          执行事实)→ 节点探针。
-
-        节点探针挂点 = CwOpCloseShop 完成后(店确定关的可靠时点;旧关店
-        通道的字符串匹配判据已退役,改类型分派)。
-        波循环失败路径不开收(店留着交上层/外环重新识别,同 BuyShopCards 原语义)。
+        显式开店:open_shop(幂等,已开不点)→ visit_open_shop(商店访问
+        编排单一源:入口观察 → 商店单动作循环 run_buy_waves → CwOpCloseShop
+        → 节点探针)。受限访问(restricted_spend)在 _act_execute_default
+        截流,不经本方法。波循环失败路径不开收(店留着交上层/外环重新识别,
+        同 BuyShopCards 原语义)。
         """
-        from sr_od.application.currency_war.operations.cw_op.cw_op_close_shop import (
-            close_shop,
-        )
         from sr_od.application.currency_war.operations.cw_op.cw_op_open_shop import (
             open_shop,
         )
@@ -1476,21 +1428,9 @@ class CwScreenPrep(SrOperation):
         if match is None:
             return False, '无 cw_match(对局未初始化)'
         # B3 拆除(验证废除,用户裁定 2026-09-10:调用方不问成败,M1③):
-        # open_shop/close_shop 的验关型失败回执消费删除——发出即职责完成,
-        # 店实际开没开/关没关由下一帧观察侧对账自然闭环(heavy 观察 gold
-        # 真值/0n 三锚/备战帧读互斥;波循环失败路径不开收语义不变)。
+        # open_shop 的验关型失败回执消费删除——发出即职责完成,店实际开没开
+        # 由下一帧观察侧对账自然闭环(0n 三锚/备战帧读互斥)。
         _ = open_shop(self)
-        if action.read_only:
-            self._observe(heavy=True)   # 开态观察刷新(gold 真值)
-            # 帧代次 = none(ADR-0583 §3.4/D6 补):read_only 分支不接决策
-            #(M-6 门)——heavy 观察不等于主观察帧,禁把本分支误标 full
-            _mark_frame_class(match.session, 'prep', 'none')
-            _ = close_shop(self)
-            self._probe_node_type()
-            return True, 'read_only 开店重读(gold 真值)'
-        # (hp 三件组读数块随黑板帧退役删除——迁移批 3.2,波 4 步 4 同款
-        # 结论:容器 hp 由备战帧观察/结算既有写端承接,消费统一经
-        # decision_hp 政策读口,覆盖传参链是绕行。)
         return self.visit_open_shop()
 
     # ===== [临时段·特殊投资策略商店停机钩子](od-dev-stop-hooks §2.1
@@ -1559,8 +1499,10 @@ class CwScreenPrep(SrOperation):
         消费统一经 decision_hp 容器读口,显式开店路径与 0n 路径同源。)
 
         编排单一源归属:本方法 = 商店访问尾段(run_buy_waves → CwOpCloseShop
-        → finalize_buy_phase → 节点探针)的唯一编排点,显式开店路径与 0n
-        转交路径共用。失败路径不开收(店留着交上层重新识别,同 _open_shop_phase)。
+        → 节点探针)的唯一编排点,显式开店路径与 0n 转交路径共用。节点探针
+        挂点 = CwOpCloseShop 完成后(店确定关的可靠时点;实现住商店域
+        ``cw_screen_buy_cards.probe_node_type``,本方法只持调用位)。
+        失败路径不开收(店留着交上层重新识别,同 _open_shop_phase)。
         """
         # [临时钩子挂点] 特殊投资策略商店采集停机(采够删:整段 = 上方
         # _spec_invest_shop_stop_hook 临时段 + 本两行);触发即已停机留证,
@@ -1570,21 +1512,13 @@ class CwScreenPrep(SrOperation):
         match = self._match()
         if match is None:
             return False, '无 cw_match(对局未初始化)'
-        # gold_open = visit 入口现读快照(finalize 金差值对拍基线;对抗
-        # F2-3:Field 单最新帧无历史,禁事后从容器回取历史帧)。
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            game_state_of as _gs_of_open,
-        )
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            gold_of as _gold_of_open,
-        )
         from sr_od.application.currency_war.operations.cw_op.cw_op_close_shop import (
             close_shop,
         )
         from sr_od.application.currency_war.operations.cw_screen.cw_screen_buy_cards import (
+            probe_node_type,
             run_buy_waves,
         )
-        _gold_open = _gold_of_open(_gs_of_open(match.session))
         _rr, ledger = run_buy_waves(self, match)
         if _rr is not None or ledger is None:
             return (False, f'买牌循环未完成'
@@ -1593,9 +1527,14 @@ class CwScreenPrep(SrOperation):
         # 「收起消失」——店关没关由下一帧观察侧对账(0n 三锚/备战双锚)
         # 自然闭环,误入口时外循环 0n 重入商店访问幂等收起自愈。
         _ = close_shop(self)
-        _summary = finalize_buy_phase(self, match, ledger, _gold_open)
-        self._probe_node_type()
-        return True, f'买牌 {_summary}'
+        probe_node_type(self)
+        # 访问摘要 = ledger 计数纯排版(无读屏无对账;行形 = 哨兵
+        # PREP-SPIN 实质推进判据的 PLAN_LINE+NONZERO_RE 消费面,勿改形)。
+        return (True,
+                f'买牌 plan 买{ledger.total_buy}张 '
+                f'经验{ledger.total_xp_buy}击 刷{ledger.total_refresh}次 '
+                f'卖{ledger.total_sell}张(+{ledger.total_sell_income}金,'
+                f'守卫拦{ledger.total_sell_skip})')
 
     def _v2_post_frame_accounting(self, obs: PrepObservation,
                                   session: StrategySession) -> None:
@@ -1615,149 +1554,6 @@ class CwScreenPrep(SrOperation):
             self._reconcile_shop_pool(obs)
         with contextlib.suppress(Exception):
             self._reconcile_merge_preview(obs)
-
-    def _probe_node_type(self, screen: MatLike | None = None) -> None:
-        """[观测] 备战入场读节点行序列(read_node_sequence)→ log。
-
-        read_node_sequence =
-        HoughCircles 动态定圆 + HSV 三态 + Hu 匹配 + OCR(见 cw_node_reader)。
-        screen 传入时(关店后的 gate 稳定帧透传)复用该帧
-        不重截——gate 稳定帧的全图 OCR 已按 id(image) 缓存,节点行 OCR 读缓存命中,
-        省一次截图 + 全图 OCR;None=自截图(旧行为,离线/其他调用点兼容)。
-        未识别图标采集钩子(版本前哨,保留):未来圆 hu_dist > 阈值 → 裁图标存盘。
-        ⚠️ 已知误报(2026-08-16 复盘):历史 61 张采集全是**宝箱(奖励)图标的小尺寸 Hu 漂移**
-        (idx 4/5/7 远处节点,非新类型)——HU_DIST_UNRECOGNIZED=2.8 对远距小图标过严,
-        修阈值/过滤属 reader 校准待办(与扑满无关:扑满=奖励图标已实证,M45 current:reward
-        直接命中)。真新类型出现时本钩子仍是唯一自动捕获渠道,保留。"""
-        try:
-            from sr_od.application.currency_war.obs.cw_node_reader import (
-                HU_DIST_UNRECOGNIZED,
-                NODE_ROW_RECT,
-            )
-            from sr_od.application.currency_war.obs.cw_observation import (
-                read_node_sequence,
-            )
-            screen = screen if screen is not None else self.screenshot()
-            slots = read_node_sequence(self.ctx, screen)
-            if not slots:
-                log.info('[cw-director][nodeseq] skip(模板未加载 / 非 clean 备战帧)')
-                return
-            summary = ', '.join(
-                f'{s.idx}:{s.state}:{s.node_type}' + (f'({s.hu_dist:.1f})' if s.hu_dist else '')
-                for s in slots)
-            log.info(f'[cw-director][nodeseq] n={len(slots)} | {summary}')
-            self._capture_unrecognized_node_icons(screen, slots, NODE_ROW_RECT, HU_DIST_UNRECOGNIZED)
-            # current 槽类型写 session(结算观测回路 cw_screen_battle_wait 消费——
-            # 节点类型分层遥测;权威源=备战节点行,替代结算屏 OCR 推断)。
-            # current 高亮态 Hu 不匹配(模板只对
-            # future 生效)+OCR 标签错位守卫 → current 直读恒 None。
-            # 修:**last-known upcoming**——上一备战帧 upcoming[i] 就是本轮
-            # current(节点行固定序列左移);本帧 upcoming 同时存下轮用。
-            try:
-                _sess = (self.ctx.cw_match.session
-                         if self.ctx.cw_match is not None else None)
-                if _sess is not None:
-                    # 首帧(r1 或重启后)写开局
-                    # 槽序表——cw_loop 兜底此前**无写入者**
-                    # (审计实锤死读);plane_node_table = 本帧全部槽
-                    # (current+upcoming+past 按 idx)的类型序。
-                    _all = sorted(slots, key=lambda s: s.idx)
-                    _seq = [s.node_type for s in _all if s.node_type]
-                    # 位面锚 = 容器节点读口(last_state 链退役换源;节点
-                    # 未观察 = None,槽序表首帧写入退开局语义不变)。
-                    _nd_now = (gs_of_ctx(getattr(self, 'ctx', None), self.ctx.cw_match.session)
-                               .node.value
-                               if self.ctx.cw_match is not None else None)
-                    _plane_now = (_nd_now.plane if _nd_now is not None
-                                  else None)
-                    if store_plane_table(_sess, _seq, _plane_now):
-                        log.info('[cw-director][nodeseq] 槽序表存 p%s %d 槽:%s',
-                                 _plane_now, len(_seq), _seq)
-                    # 台账写点③·备战行源(遥测观测面;ADR-0609):
-                    # PlaneNodeLedger 原有两个写入端在正常局只覆盖 P1——写点②
-                    # (投资环境选择后重读)只在开局 1-1 前触发,写点①(位面
-                    # 详情采集)仅接管局触发(briefing_bosses 空门)→ P2/P3 序列
-                    # 恒缺,p26 备战帧采样(node_type_next)与 flow 掉血回落查表
-                    # 全 miss(sim 语料 P2 备战轮 miss 18/24 实证)。本写点每备战
-                    # 帧 heavy 观察已在读节点行,读数按位合并进 session 权威表:
-                    # 槽 idx(0-based)= 该位面第 idx+1 轮,与台账 seq 下标同基
-                    # (cw_node_reader「槽 i = 第 1+i 轮」);current 槽已由
-                    # read_node_sequence 的 OCR 标签带位置覆盖填值 → 备战查表
-                    # 「当前轮」从本位面首个 clean 备战帧起即命中。合并语义
-                    # (None 位保旧)下 past 槽 None 不覆盖历史非 None 读数;
-                    # 投资环境变异窗内节点行合法变异中,不写(与三票校验豁免
-                    # 窗同语义,防把变异中序列当真值落表)。另设轮位对齐门
-                    # (检测圆漏检→槽枚举左移的错位帧拒写,见门注)。纯观测
-                    # 写入:失败不阻塞备战环,查表消费面行为不变。
-                    try:
-                        import time as _ltime
-
-                        from sr_od.application.currency_war.kernel.cw_exec_state import (
-                            get_node_ledger,
-                            ledger_update_plane,
-                        )
-                        _ledger_now = get_node_ledger(_sess)
-                        _ledger_seq = [s.node_type for s in _all]
-                        # 轮位对齐门(落地审建议修):槽 idx 是检测圆枚举序,
-                        # HoughCircles 中段漏检一圆 → 后续槽整体左移 → 按绝对位
-                        # 合并会把类型写错位且 past 位不可自愈。帧内自洽交叉锚 =
-                        # current 槽 idx 必须 == round_num-1(台账语义 seq[round-1]
-                        # 即当前轮);错位帧拒写本帧,等下个 clean 备战帧。
-                        _align_cur = next(
-                            (s for s in _all if s.state == 'current'), None)
-                        _align_ok = (
-                            _align_cur is not None
-                            and _nd_now is not None and _nd_now.round_num
-                            and _align_cur.idx == int(_nd_now.round_num) - 1)
-                        if (_ledger_now is not None and _plane_now
-                                and _ledger_seq and _align_ok
-                                and _ledger_now.env_grace_until <= _ltime.monotonic()):
-                            _lchanged = ledger_update_plane(
-                                _sess, int(_plane_now), _ledger_seq, 'prep_row')
-                            if _lchanged:
-                                log.info('[cw-director][nodeseq] 台账落账 p%d(prep_row):%s',
-                                         _plane_now, _ledger_seq)
-                    except Exception:   # noqa: BLE001  观测写点 best-effort
-                        pass
-                    # (左移推断/current/upcoming 的 session 写段已随终态契约
-                    #  §A′ node 单一源退役删除:消费点直读 node_kind_of(gs);
-                    #  ledger 落账承探针真值面——重锚宿主迁移另子件 §A′。)
-            except Exception:   # noqa: BLE001  best-effort 写入
-                pass
-        except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
-            log.info(f'[cw-director] nodeseq skip: {e}')
-
-    def _capture_unrecognized_node_icons(self, screen: MatLike, slots: list,
-                                         node_row_rect: tuple[int, int, int, int],
-                                         hu_threshold: float) -> None:
-        """未识别图标采集(版本前哨):未来圆 Hu 无显著最近 → 裁图标存盘(内容哈希去重)。
-
-        仅 upcoming 槽(判态已修 V 门,变暗过去节点不再混入);RGB 裁剪存盘(颜色信息保留,
-        模板同样 RGB——2026-08-16 用户指导)。
-        同 idx 300s 时间窗防抖 —— 内容哈希去重防不住备战帧微变
-        (光标/金币动画/抗锯齿 → 哈希必新),同 idx 每帧重采刷屏
-        (2-7 实证 idx4/5 连发);
-        已知误报源是远距小图标 Hu 漂移(61 张复盘),300s 窗足够人工/离线跟进,新类型
-        (真未识别)首采不受影响。
-        """
-        import time as _time
-
-        from sr_od.application.currency_war.kernel.cw_observe import cw_shot_unique
-        icon_r = 24   # 采集分析窗(略 > 分类窗 _SAMPLE_R=18,多上下文)
-        x0, y0, x1, y1 = node_row_rect
-        row = screen[y0:y1, x0:x1]
-        now = _time.monotonic()
-        for s in slots:
-            if s.state != 'upcoming' or s.hu_dist is None or s.hu_dist <= hu_threshold:
-                continue
-            if now - _NODE_ICON_SHOT_TS.get(s.idx, 0.0) < 300:
-                continue   # 同 idx 时间窗内已采过(帧微变哈希必新,内容哈希去重失效;module-level 跨环存活)
-            yc0, yc1 = max(0, s.cy - icon_r), s.cy + icon_r
-            xc0, xc1 = max(0, s.cx - icon_r), s.cx + icon_r
-            fn = cw_shot_unique(row[yc0:yc1, xc0:xc1], f'node_unknown_{s.idx}')
-            if fn:
-                _NODE_ICON_SHOT_TS[s.idx] = now
-                log.info(f'[cw-director][nodeseq] 未识别图标 idx={s.idx} hu={s.hu_dist:.1f} → 采 {fn}')
 
     def _record_step(self, obs: PrepObservation, action: CwAction) -> None:
         """(已退役 no-op:步进 decisions 行随 decisions 流写入端删除——删除波 1。)
@@ -1873,95 +1669,3 @@ def _write_prep_node_chain(session: object, slots: list | None,
     except Exception:   # noqa: BLE001  观测写点 best-effort,不阻塞观察链
         pass
 
-
-def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) -> str:
-    """买牌单元收尾(W970 批 C 抽出:整段买牌解体后由流程层
-    ``CwScreenPrep._open_shop_phase`` 与 sim 兼容壳 BuyShopCards.buy 共用;
-    单一源防双份漂移)。gold 对拍 / 执行事实 gold_close 回填,返回单元
-    摘要字符串(消费方包装成 round status/detail)。
-
-    (迁移批 3.2:outcome 形参随 BuyCardsOutcome 退役改账本 ledger 本体;
-     gold 基线 = 编排壳 visit 入口容器 gold 现读(调用方传入);摘要与
-     对拍的 gold/level/plane = 容器读口。)
-    """
-    from sr_od.application.currency_war.obs.cw_observation import (
-        read_gold,
-    )
-    from sr_od.application.currency_war.operations.cw_screen.cw_screen_buy_cards import (
-        expected_gold_after_actions,
-    )
-    total_buy = ledger.total_buy
-    total_xp_buy = ledger.total_xp_buy
-    total_refresh = ledger.total_refresh
-    total_sell = ledger.total_sell
-    total_sell_income = ledger.total_sell_income
-    _spend_executed = ledger.spend_executed
-    # (「买后重估容器喂入」残段已退役,2026-09-16 归因批确认流程:CwActionOpenShopParam
-    #  = 终结动作,执行完交回外循环,下一次备战访问的入口 heavy 观察必然
-    #  先于任何决策发生——它以真读覆盖容器并把帧类标 'full',本段喂入的
-    #  gold 真读写 / bench tracked 重播 / 'view' 标记三样全被覆盖,从不被
-    #  消费;且流程层散读屏幕违反 ADR-0517 唯一读屏点纪律。买后方向刷新
-    #  由入口观察链自然承载(r251 当年病灶的现役结构性替代)。金差值对拍
-    #  职责保留。)
-    # gold 差值双源对拍(观察冲突审计 #6 P2,2026-08-17):动作账(逐动作执行时
-    # 累计的 _spend_executed:买价+升级费+当次刷价)vs 关店后实际读数 ——
-    # expected = 开店首读金 − 全程执行花金 + 全程卖入。基线必须取首读快照
-    # 而非末波重读值(后者已净含各波花销,再减全程账 = 跨波重复扣,多波
-    # 刷新场景期望恒偏低,量级=前面各波刷新费合计)。(read_gold stylized
-    # 间歇漏,但差值对拍容忍 ±2:收入/连胜金不可观项混入)。不等 → 一方有
-    # 毒(stylized 漏读 / cost 错 / 未观收入),留证统计毒化率;机制核对器
-    # (r9)另有 REFRESH_COST 专项,此处只管 gold 总账。
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        game_state_of as _fb_gs_of,
-    )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        gold_of as _fb_gold_of,
-    )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        level_of as _fb_level_of,
-    )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        plane_of as _fb_plane_of,
-    )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        round_num_of as _fb_round_of,
-    )
-    _fb_gs = _fb_gs_of(match.session)
-    # 空账早退语义:全零 visit(无买/升/刷/卖)无动作账可对拍,整段审计
-    # (读金+对拍)随守卫跳过——对拍对象 = 本次动作账,外部金变更(采晶矿
-    # 随机金/投资授予)不属其辖域。读金与消费必须同在守卫内:消费悬在
-    # 守卫外时空账访问 UnboundLocalError(实机 2026-09-18 reconcile 事故
-    # 首爆)。
-    # ADR-0329 件2:gold 差值对拍纳入卖入——卖出接线后,卖轮实际金 =
-    # 开店金 − 花出 + 卖入(游戏侧卖出入账);旧口径不含卖入与实读金恒差
-    # income → 每卖轮误报 gold_delta 冲突留证(design 章2.7 必改项)。
-    # 基线缺读兜底 = 容器现读(旧 outcome.state.gold 回退同型)。
-    if total_buy or total_xp_buy or total_refresh or total_sell:
-        _spend = _spend_executed
-        _final_gold = read_gold(op.ctx, op.screenshot())
-        # (关店实读金暂存 set_unit_gold_close 已随 spend_ledger 流写入端
-        #  退役删除——删除波 1;金对拍冲突留证(下方 obs_conflict,收编
-        #  journal obs_event)照常。)
-        _expected = expected_gold_after_actions(
-            gold_open if gold_open is not None else _fb_gold_of(_fb_gs),
-            _spend, total_sell_income)
-        if _final_gold is not None and abs(_final_gold - _expected) > 2:
-            from sr_od.application.currency_war.kernel.cw_observe import (
-                obs_conflict as _oc,
-            )
-            _oc('gold_delta', _expected, _final_gold, None,
-                verdict='留证-动作账vs读数不等(stylized漏读/cost错/未观收入)',
-                source='shop_spend_audit',
-                plane=_fb_plane_of(_fb_gs), round_num=_fb_round_of(_fb_gs),
-                spend=_spend)
-    # (`w577_refresh_fee_and_andon/` 执行事实暂存 set_unit_exec_facts 已随
-    #  spend_ledger 流写入端退役删除——删除波 1;计划≠尝试可见化的现役
-    #  面 = receipts 发射行 extra(plan_truncated/refresh_skipped 结构化
-    #  在账,note_shop_action_receipt 写点)。)
-    return (
-        f'plan 买{total_buy}张 经验{total_xp_buy}击 刷{total_refresh}次 '
-        f'卖{total_sell}张(+{total_sell_income}金,'
-        f'守卫拦{ledger.total_sell_skip}) '
-        f'(gold={_fb_gold_of(_fb_gs)} lv={_fb_level_of(_fb_gs)} '
-        f'plane={_fb_plane_of(_fb_gs)})'
-    )

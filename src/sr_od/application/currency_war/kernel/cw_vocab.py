@@ -863,19 +863,15 @@ class CwActionLuckyTokenUseParam:
 
 @dataclass
 class CwActionOpenShopParam:
-    """开商店意图(W970 批 C/§4.3.6;EnsureShop 意图退役后的承接形态)。
+    """开商店意图(EnsureShop 意图退役后的承接形态)。
 
-    read_only=False:显式开店 → 流程层编排商店动作循环(观察→decide_shop_screen
-    →波执行→空序列 CwOpCloseShop→节点探针)。
-    read_only=True:读数性开店(腾席链 b 取 gold 真值 / 开态清洁面板)→
-    CwOpOpenShop(幂等:已开不点)→ 商店观察刷新 → **不调商店决策** →
-    CwOpCloseShop → 回备战(M-6 门保持:free=0 不进买牌)。
+    显式开店 → 流程层编排商店访问(open_shop 幂等开店 → 入口观察 →
+    decide_shop_action 逐动作循环 → CwOpCloseShop → 节点探针)。
 
     restricted_spend=True:受限访问(发射帧仲裁意图,金出口族出口 B;
     判定单一源 = 策略前置发射位经 kernel in_launch_spend_zone)→ 买波带
     预算闸(花后金位跌破息线即拒)→ 关店,本帧不发射(次帧复判)。
     """
-    read_only: bool = False
     restricted_spend: bool = False
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})

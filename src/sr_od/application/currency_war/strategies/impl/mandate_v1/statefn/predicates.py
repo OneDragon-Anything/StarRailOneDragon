@@ -424,7 +424,7 @@ def front_window_frame(state: GameState, session) -> bool:
     语义 = plane==1 ∧ 当前轮 ≤ 首个战斗节点槽位(前窗 = 首战前窗,含
     首战备战帧——v3 面①(b)「r3 备战帧上」的 r3 即查表产物,P1 众数
     表下 = 第 3 轮)。节点表单一源 = ``session.plane_node_table``
-    (开局帧实读槽序,cw_screen_prep.store_plane_table 每位面首帧写 /
+    (开局帧实读槽序,cw_screen_buy_cards.store_plane_table 每位面首帧写 /
     sim engine P1 段同构写);位面锚 = ``plane_node_table_plane``(防
     旧表滞留跨位面误读);战斗性判定 = 槽词不在 ``_FRONT_NONCOMBAT_
     NODES`` 零战斗词集(中英并集,出处见常量注)。

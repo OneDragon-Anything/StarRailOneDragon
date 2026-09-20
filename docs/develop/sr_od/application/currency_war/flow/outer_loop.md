@@ -110,7 +110,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 - 出战成功：`_battle_ts = monotonic()`（战斗窗口宽限计时起点，BATTLE_WATCH_GRACE_S=600 覆盖实测 4-5.5min 战斗）+ `_battle_wait_active=True`；
 - 结算：CwScreenBattleWait 完成判据白名单（备战双锚单锚宽判定命中即 success 交回）；`saw_settlement` → `_battle_ts=None`；
 - 轮计数 `_settle.rounds_done`（SettlementState，结算链收编；max_rounds 停点消费）；
-- 节点真值：备战观察段的节点探针写 session（current 左移推断优先 + upcoming 存下轮；`cw_screen_prep.py::CwScreenPrep._probe_node_type`）。
+- 节点真值：节点行探针（`cw_screen_buy_cards.py::probe_node_type`，商店访问尾段挂点——`cw_screen_prep.visit_open_shop` 在 CwOpCloseShop 后调用）写槽序表/台账。
 
 ## 5. 停机与遥测钩子
 
