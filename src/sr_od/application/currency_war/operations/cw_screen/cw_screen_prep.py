@@ -142,7 +142,7 @@ ENTRY_OVERLAY_SETTLE_S: float = 1.0
 
 
 def _mark_frame_class(session, domain: str, value: str) -> None:
-    """帧触发代次标注(终态契约 §B:gs 非 Field 双槽,读后即清协议)。"""
+    """帧触发代次标注(gs 非 Field 双槽,读后即清协议)。"""
     setattr(game_state_of(session), 'frame_class_' + domain, value)
 
 
@@ -337,7 +337,7 @@ class CwScreenPrep(SrOperation):
                               if slot_occupied(screen, int(p.x), int(p.y))}
         obs.back_occupied = {i + 1 for i, p in enumerate(back_pts)
                              if slot_occupied(screen, int(p.x), int(p.y))}
-        # 重:身份/星级/cap(环入口 + 结构变化 = 每个执行过的游戏动作)
+        # 重:身份/星级/cap(入口 heavy + 环内 CwActionObs 重观察)
         if heavy:
             # 可重定位读取(身份/gold==0 重读/substate)进组装层
             # 单一源(observe_full);director 保留副作用编排(session 写/审计/
@@ -364,10 +364,7 @@ class CwScreenPrep(SrOperation):
             #  黑板字段退役。)
             _st = _of.get('read_receipt')
             session = self._session()
-            # (session.last_node_type 关态帧写点已随终态契约 §A′ 退役:
-            #  node 单一源 = gs 推导,原「商店开态遮蔽恒 None 致 boss 判定
-            #  死码」的病灶随锚退役一并消亡。)
-            # PrepObservation 消费切换转适配器(设计 §8.7):
+            # PrepObservation 消费切换转适配器:
             # 决策读自 GameState 容器单例(read_game_state 漏斗直写;
             # 旧 last_state 装配源契约随装配源迁移终结,换源核销;
             # obs.state 视图槽已随黑板槽退役消亡)。
@@ -386,7 +383,7 @@ class CwScreenPrep(SrOperation):
                 _prep_sig = ChannelSig(family='obs', actor='CwScreenPrep',
                                        screen='货币战争-备战', mode='read',
                                        quality={'bench': 'real_read'})
-                # 备战席观察写端(§3.2.5 观察写端=本屏):SIFT 身份+星级
+                # 备战席观察写端(观察写端=本屏):SIFT 身份+星级
                 # (read_star 链)已读,零新增 OCR。
                 # 空集 = 失读非全空(overlay 残留/动画帧/识别退化)——
                 # bench_view_from_obs 返 None 时走 carried(失读保旧值;
@@ -469,9 +466,8 @@ class CwScreenPrep(SrOperation):
                 # 不写保现值(宁缺勿造,同 bench 空集守卫族;装备区读不受
                 # 合成特效窗影响,无需 is_merge_effect_window 门)。
                 if _of.get('owned_equips') is not None:
-                    # (终态契约 §B:session.last_owned_equips 镜像行随重复
-                    #  账退役删——gs.equips 观察写端即单一源,商店线权重/
-                    #  flow 打分/库存 ±1 腿全部读容器。)
+                    # gs.equips 观察写端即单一源,商店线权重/
+                    # flow 打分/库存 ±1 腿全部读容器。
                     _gs_obs.observe(_gs_obs.equips,
                                     list(_of.get('owned_equips')),
                                     sig=_prep_sig)
@@ -613,7 +609,7 @@ class CwScreenPrep(SrOperation):
         return obs
 
     def reobserve_in_visit(self) -> PrepObservation:
-        """访问内重观察(CwActionObs 动作执行通道;op-layer §1.1 读屏点
+        """访问内重观察(CwActionObs 动作执行通道;screens/op-layer.md §1.1 读屏点
         规范的在册例外):决策环内策略显式发射 CwActionObs 才触发的
         heavy 观察链重跑——漏斗直写容器 = 观察边界对账(「重新观察上报」)。
 
@@ -626,7 +622,7 @@ class CwScreenPrep(SrOperation):
 
     def _reconcile_tracking(self, bench: list[BenchChar], deployed: list[BenchChar],
                             screen=None) -> None:
-        """环入口对账(§3:read≠tracking 漂移是既有 bug 源 → SIFT 真值重置 tracking)。
+        """环入口对账(read≠tracking 漂移是既有 bug 源 → SIFT 真值重置 tracking)。
 
         统一走公共 ``cw_reconcile.reconcile_tracking``(空读守卫/漂移留证/
         obs_conflict JSONL 单一实现,star 用 read_star 实机金星)。read 失败
@@ -830,7 +826,7 @@ class CwScreenPrep(SrOperation):
         #      审计链留守观察 node(观察处理,不进 report——依赖读帧的
         #      识别域载荷不迁 kernel)。
         self._v2_post_frame_accounting(obs, session)
-        #      (设计 §3.2.5:警告出现太短暂无法可靠采样,玩家
+        #      (警告出现太短暂无法可靠采样,玩家
         #      裁定 2026-09-09;「双证据互督」随字段裁撤一并取消)。模态
         #      恢复路径改由三既有防线承接:①部署放行判定(前置谓词:
         #      bench_free>0 才发席耗动作,模态源头收敛);②环入口清场
@@ -1047,8 +1043,7 @@ class CwScreenPrep(SrOperation):
                                     ) -> OperationRoundResult | None:
         """接管局补采(挂点 = op 观察 node)。
 
-        触发 = gs.plane_bosses 空(本局尚无位面序真值;终态契约 §B:session
-        中转退役);可交互门 = 节点条
+        触发 = gs.plane_bosses 空(本局尚无位面序真值);可交互门 = 节点条
         可读;会开/关位面详情画面 → 执行后交回外循环重识别。计数挂容器
         match_facts 域 Field(单轮 op 每外循环轮次重建,实例属性不存活);
         成功或 2 次失败后停。旗标渠道 = 渠道③接管协议(logic_hook,actor =
@@ -1098,7 +1093,6 @@ class CwScreenPrep(SrOperation):
         if _pb_res is not None and getattr(_pb_res, 'success', False) and _names:
             # 保位写:徽章态位面采得 None 原样占 3 槽,
             # 丢弃会让后续位面名字左移错位(位面序真值变假)。
-            # 终态契约 §B:直写 gs.plane_bosses(session 中转退役)。
             report_screen_prep_obs(_gs, CwScreenPrepObs(
                 takeover_collect_done=True, plane_bosses=_names))
             log.info('[cw][director] 开局 boss 实采完成(位面序保位):%s', _names)
