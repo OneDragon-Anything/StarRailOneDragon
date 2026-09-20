@@ -50,7 +50,8 @@ kernel/cw_intention.py ``committed_authority`` 形态注)已兑现。
   载体(sim/状态侧 BenchChar),非容器路径口径。
 - ``deployed`` = bot 自己跟踪的已上阵角色(含 char_id/star/站位),用于 char_quality 评估
   已上阵的优先角色 + 站位分流。两者在已知身份域一致(deployed 按羁绊全集聚合 == board)。
-- CwActionDeployMoveParam 更新 deployed(槽位落位 deployed_place,ADR-0392);board 不随
+- CwActionDeployMoveParam 更新 deployed(槽位落位 = 载荷 (to_row, to_slot)
+  直落,ADR-0392 坐标系;目标槽有人 = 交换交互);board 不随
   CwActionDeployMoveParam 独立写(旧 ``_recount_board`` 写端已退役,容器侧随行写端挂钩重算)。
 - CwActionBuyCardParam 后做 3 合 1 升星(同名同星 ≥3 → 合并为 star+1)。
 """
@@ -542,11 +543,15 @@ class CwActionLevelUpShopParam:
 
 @dataclass
 class CwActionDeployMoveParam:
-    """bench → 上阵(某排)。
+    """bench → 上阵(排 + 排内槽;完整落位意图入载荷)。
 
-    [坐标系] bench_idx = bench 槽位表下标 0-8(ADR-0316 定长 9 槽)。
-    上阵落位物理槽 = 执行坐标边现读首空位(kernel ``empty_deploy_slots``
-    同式);``faction`` = 上阵后 board 阵营计数所需,发射位从容器槽位表
+    [坐标系] bench_idx = bench 槽位表下标 0-8(ADR-0316 定长 9 槽);
+    落位 = (to_row, to_slot) 载荷直指——落位决策权归策略层,执行器与
+    容器写侧按载荷直落,禁执行边现读首空位;下标换算单一源 =
+    kernel ``deployed_idx_of``。拖拽语义 = 游戏规则:目标槽空 = 放置,
+    有角色 = 交换交互(被占位角色回本载荷源槽);执行层不判断占位、
+    不拒、禁静默换槽,唯一失败形态 = 拖拽未生效(观察对账显影)。
+    ``faction`` = 上阵后 board 阵营计数所需,发射位从容器槽位表
     角色对象现取(simulate 的 CwActionDeployMoveParam 分支消费此字段)。
     """
     bench_idx: int
@@ -554,6 +559,12 @@ class CwActionDeployMoveParam:
     #             取值时机: 生成期=执行期(槽位表恒稳;simulate/mutate 按
     #             下标读槽并置 None)
     to_row: str      # "front" / "back"
+    to_slot: int
+    # [索引定义] 坐标系: 排内 1 基画面槽号(前排 1-4 / 后排 1-6,与装备族
+    #             CwActionWearEquipParam.slot 同坐标系;与 to_row 合成完整
+    #             落位,表下标 = deployed_idx_of(to_row, to_slot))
+    #             取值时机: 生成期快照(发射位从 kernel 指派/容器现值算出;
+    #             执行期与容器写侧按载荷直落,不再现读)
     faction: str     # 该角色阵营(上阵后 board[faction] += 1)
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
@@ -1267,7 +1278,7 @@ def mutate_bench_deployed(bench: list,
     (name 空,无法判合成对象)时维持旧丢件行为。
     """
     from sr_od.application.currency_war.kernel.cw_exec_state import (
-        place_unit_in_deployed,
+        deployed_idx_of,
         trailblazer_row_unit,
     )
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -1303,15 +1314,32 @@ def mutate_bench_deployed(bench: list,
         if (_tgt is not None and _tgt.kind == 'unit'
                 and _tgt.unit is not None):
             # 同名唯一性守卫(W43 裁决 1,与 simulate 同源):已在场同名不上
+            # (游戏拒收同名部署,swap 换入同名也同拒)。
             _u = _tgt.unit
             _k = board_unique_key(_u)
             if _k is not None and any(board_unique_key(d) == _k
                                       for d in deployed if d is not None):
                 return
+            # 落位 = 载荷 (to_row, to_slot) 直落(换算单一源 =
+            # ``deployed_idx_of``,与执行拖点/容器写侧同源;拖拽语义 =
+            # 游戏规则:目标空 = 放置,有人 = 交换——被占位单位回源
+            # bench 槽,与 ``CwActionSwapDeployParam`` 换位契约同语义);
+            # 禁静默换槽(不另寻空位),载荷槽越出定长表/跨排 = 不写
+            # (陈旧载荷,交观察对账)。
+            from dataclasses import replace
+            _slot = int(action.to_slot)
+            _idx = deployed_idx_of(action.to_row, _slot)
+            if not (0 <= _idx < DEPLOYED_CAPACITY) \
+                    or deployed_slot_no(_idx) != _slot:
+                return
             bench[action.bench_idx] = None   # 保洞:置 None 不移位
             # 开拓者形态切换(同 simulate 语义,归一核单一源)
             _u2 = trailblazer_row_unit(_u, action.to_row)
-            place_unit_in_deployed(deployed, _u2, action.to_row)   # ADR-0392:按排路由落槽
+            _occ = deployed[_idx]
+            deployed[_idx] = replace(_u2, slot=_slot)
+            if _occ is not None:
+                bench[action.bench_idx] = BenchSlot(
+                    kind='unit', unit=replace(_occ, slot=action.bench_idx + 1))
     elif isinstance(action, CwActionSellDeployedParam):
         # 动作 v2(契约包 C1):runtime 跟踪侧只做身份转移(金/装备归
         # sim/容器域其他写点,本函数不管——与 simulate 单一源规则一致)

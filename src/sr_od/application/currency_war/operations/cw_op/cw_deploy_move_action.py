@@ -21,7 +21,6 @@ from sr_od.application.currency_war.kernel.cw_action_report.deploy_move import (
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     game_state_from_ctx,
-    game_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionDeployMoveParam
 from sr_od.context.sr_context import SrContext
@@ -51,53 +50,31 @@ class CwActionDeployMoveOp(SrOperation):
         """bench → 上阵单步拖拽。
 
         执行坐标边:源拖点 = ``bench_idx`` 备战栏 area 序直取(容器下标 =
-        area 序,零换算);落位排 = ``to_row``,落位物理槽 = tracked 占用
-        现读首空位(§2.1 下标派生口径:tracked deployed = 定长 10 下标表,
-        空槽 = 表项 None,排内槽号 = ``deployed_slot_no`` 派生——与上报
-        函数 ``place_unit_in_deployed`` 选排规则逐位同构:首选排满
-        fallback 另一排)。两排全满 = 未发出(round_fail,观察重派);
-        faction 字段不入执行。
+        area 序,零换算);落位 = 载荷 (to_row, to_slot) 直指——排内 1 基
+        画面槽号 → 对应排 area 序 ``to_slot - 1`` 取拖点(落位意图全部在
+        载荷,执行边零现读零决定)。拖拽语义 = 游戏规则:目标槽空 = 放置,
+        有人 = 交换交互——执行层不判断占位、不拒、禁静默换槽,唯一失败
+        形态 = 拖拽未生效(机械发出零判效,由下一入口 heavy 实读对账
+        显影,重试 = 决策循环按新观察自然重派);载荷槽越出画面槽位数 =
+        陈旧载荷未发出(round_fail,观察重派)。faction 字段不入执行。
 
         发出即记账(用户裁定「动作 op = 机械执行」):拖拽发出后 tracked
-        记上阵 + 上报函数落容器;拖后零落地判定,静默不生效由下一入口
-        观察对账显影。
+        按载荷落位记账(tracked 同步与容器写侧同源,``_track_move_
+        deployed``)+ 上报函数落容器;拖后零落地判定,静默不生效由下一
+        入口观察对账显影。
         """
         action: CwActionDeployMoveParam = self.param
         env = self.env
         ex = env.executor
-        match = ex._ctx.cw_match
-        session = match.session if match is not None else None
-        from sr_od.application.currency_war.kernel.cw_exec_state import (
-            DEPLOYED_BACK_CAPACITY,
-            DEPLOYED_FRONT_CAPACITY,
-            deployed_slot_no,
-        )
-        tracked = (list(game_state_of(session).tracked_books.deployed)
-                   if session is not None else [])
-        front_total = min(len(ex._front_pts), DEPLOYED_FRONT_CAPACITY)
-        back_total = min(max(1, len(ex._back_pts)), DEPLOYED_BACK_CAPACITY)
-        # 空槽读数 = 下标派生(迁移过渡口径 §2.2,行为等价:旧
-        # ``empty_deploy_slots`` 按条目信息位 (position_pref, slot) 判定,
-        # P1 起条目无信息位冗余、表下标即权威——禁对快照条目 getattr
-        # 柔取旧字段)。
-        front_empty = [deployed_slot_no(i) for i in range(front_total)
-                       if i >= len(tracked) or tracked[i] is None]
-        back_empty = [deployed_slot_no(i)
-                      for i in range(DEPLOYED_FRONT_CAPACITY,
-                                     DEPLOYED_FRONT_CAPACITY + back_total)
-                      if i >= len(tracked) or tracked[i] is None]
-        chosen, fallback = ((front_empty, back_empty)
-                            if action.to_row == 'front'
-                            else (back_empty, front_empty))
-        if chosen:
-            row, slot_no = action.to_row, chosen[0]
-        elif fallback:
-            row = 'back' if action.to_row == 'front' else 'front'
-            slot_no = fallback[0]
-        else:
-            return self.round_fail('部署落位无空槽(两排全满,观察重派)')
+        row = action.to_row
+        slot_no = int(action.to_slot)
+        pts = ex._front_pts if row == 'front' else ex._back_pts
+        if not (1 <= slot_no <= len(pts)):
+            return self.round_fail(
+                f'落位载荷越界(to_row={row}, to_slot={slot_no}, '
+                f'画面槽位数={len(pts)};陈旧载荷,观察重派)')
         src = ex._bench_pts[action.bench_idx]
-        dst = (ex._front_pts if row == 'front' else ex._back_pts)[slot_no - 1]
+        dst = pts[slot_no - 1]
         ex._drag(src, dst)
         # 用户口述口径(screen_flow_timing.md #10,2026-09-02):拖动触发
         # 羁绊阶段变更时角色头顶徽章动画 ~2s——拖完立即返回会让批尾
@@ -116,7 +93,8 @@ class CwActionDeployMoveOp(SrOperation):
             crop_first=False).is_success
         if _overlay:
             log.info('[cw][deploy] 拖后检出盛会之星 overlay(羁绊达标触发)')
-        # 发出即记账:拖拽发出即 tracked 记上阵(机械执行零判效)。
+        # 发出即记账:拖拽发出即 tracked 按载荷落位记账(机械执行零判效;
+        # 载荷槽 = 拖点,与容器写侧同源)。
         ex._track_move_deployed(action.bench_idx, row, slot_no)
         # —— 自上报(机械发出后;design.md §1.1)——
         gs = game_state_from_ctx(self.ctx)

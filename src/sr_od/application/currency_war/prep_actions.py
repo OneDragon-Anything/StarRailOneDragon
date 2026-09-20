@@ -782,23 +782,43 @@ class PrepActionExecutor:
         _books.deployed = tracked
 
     def _track_move_deployed(self, bench_idx: int, to_row: str, to_slot: int) -> None:
-        """上阵后备势跟踪同步:bench 条目 → deployed 条目(位置/槽位改写)。
+        """上阵后备势跟踪同步:bench 条目 → deployed 条目(载荷落位直写)。
 
         [索引定义] bench_idx = bench 槽位表下标 0-8(tracked 行按下标
-        对位,保洞);to_slot = 落位物理槽号 1 基(执行坐标边现读值;
-        tracked 写入后单位槽号信息位 = 落位下标派生槽号,两者同源一致)。
-        bench 侧摘除 = 按下标置 None(保洞,同 _track_remove_bench)。"""
+        对位,保洞);to_slot = 载荷落位排内 1 基画面槽号(发射位生成期
+        快照透传;tracked 写入下标 = ``deployed_idx_of(to_row, to_slot)``
+        换算单一源,与执行拖点/容器写侧同源,单位槽号信息位 = to_slot)。
+        bench 侧摘除 = 按下标置 None(保洞,同 _track_remove_bench)。
+
+        拖拽语义镜像(游戏规则):目标槽空 = 放置;有人 = 交换——被占位
+        单位回源 bench 槽(与容器写侧/``CwActionSwapDeployParam`` 换位
+        契约同语义,装备随单位对象自然随行);禁静默换槽(不另寻空位),
+        载荷槽越出定长表或跨排 = 不写(陈旧载荷,交观察对账)。"""
         match = self._ctx.cw_match
         if match is None or match.session is None:
             return
+        from dataclasses import replace
+
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             DEPLOYED_CAPACITY,
-            place_unit_in_deployed,
+            deployed_idx_of,
+            deployed_slot_no,
+        )
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            BenchSlot,
         )
         _gs = gs_of_ctx(getattr(self, "ctx", None), match.session)
         _books = _gs.tracked_books
         tracked = list(_books.bench or [])
         _expose_unhealthy_tracked_slots(tracked)
+        # tracked deployed = 定长 10 下标表;载荷 (to_row, to_slot) 经换算
+        # 单一源直写下标(拖点同源;目标有人 = 交换,被占位者回源槽)。
+        # 载荷槽非法 = 整笔不写(bench 摘除也不做,防陈旧载荷把单位写出账)。
+        slot_no = int(to_slot)
+        idx = deployed_idx_of(to_row, slot_no)
+        if not (0 <= idx < DEPLOYED_CAPACITY) \
+                or deployed_slot_no(idx) != slot_no:
+            return
         moved = None
         if 0 <= bench_idx < len(tracked):
             _s = tracked[bench_idx]
@@ -806,15 +826,17 @@ class PrepActionExecutor:
                     and _s.unit is not None:
                 moved = _s.unit
                 tracked[bench_idx] = None   # 置 None 不移位(保洞契约)
-        _books.bench = tracked
-        # tracked deployed = 定长 10 下标表;place_unit_in_deployed 按排
-        # 路由落槽(首选排满全局首空兜底,原 deployed_place 语义),单位
-        # 槽号信息位 = 落位排内槽号(与执行器 to_slot 同源)。
         dep = list(_books.deployed or [])
         while len(dep) < DEPLOYED_CAPACITY:
             dep.append(None)
         if moved is not None:
-            place_unit_in_deployed(dep, moved, to_row)
+            _occ = dep[idx]
+            dep[idx] = replace(moved, slot=slot_no)
+            if _occ is not None:
+                tracked[bench_idx] = BenchSlot(
+                    kind='unit',
+                    unit=replace(_occ, slot=bench_idx + 1))
+        _books.bench = tracked
         _books.deployed = dep
 
     # ===== 商店域 =====

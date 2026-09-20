@@ -2265,12 +2265,15 @@ def _emit_deploy_moves(out: list, frame: MandateFrame,
     if bench_slots_healthy(bench_occupied_slot_nos(bench_slots_of(state))):
         _cidx_of = {b.slot: i for i, b in enumerate(bench_slots_of(state))
                     if b is not None}
-    for bi, row, _slot in assign_deploy_slots(frame.bench, up,
-                                              front_empty, back_empty):
+    for bi, row, slot in assign_deploy_slots(frame.bench, up,
+                                             front_empty, back_empty):
         # 容器下标解析(换算收口,同帧 slot 信息位 ↔ 容器槽位表枚举下标;
         # 失配 = 黑板视图与容器失配,fail-closed 跳过该 move)+ faction =
         # 容器槽位表角色对象现取(design.md §2.6 字段裁定,sim board 计数
-        # 消费)。
+        # 消费)。to_slot = 指派第三元(排内 1 基画面槽号)透传入载荷
+        # (落位意图入载荷契约:执行/写侧按载荷直落,不再执行边现读;
+        # 本阶段现值 = kernel 指派原值零行为变化,落位策略实现归位后由
+        # 策略显式指定)。
         _slot_no = int(frame.bench[bi].slot)
         _bi = _cidx_of.get(_slot_no)
         if _bi is None:
@@ -2278,6 +2281,7 @@ def _emit_deploy_moves(out: list, frame: MandateFrame,
         out.append(Emitted(
             CwActionDeployMoveParam(bench_idx=int(_bi),
                        to_row=row,
+                       to_slot=int(slot),
                        faction=(frame.bench[bi].faction or '')),
             True, tag))
 

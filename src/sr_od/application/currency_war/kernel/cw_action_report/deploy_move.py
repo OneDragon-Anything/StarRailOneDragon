@@ -24,9 +24,10 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     merge_cascade_write,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
+    deployed_idx_of,
     deployed_indexed_to_rows,
+    deployed_row_slot,
     deployed_rows_to_indexed,
-    place_unit_in_deployed,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     BENCH_CAPACITY_DEFAULT,
@@ -48,11 +49,15 @@ _TRANSFORMED_STAR: int = 1
 
 
 def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """上阵上报:bench 源槽摘槽(原生 BenchSlot 形态)+ deployed 目标排
-    首空落位(行域下标派生表上 ``place_unit_in_deployed``,按目标排路由
-    首选排,排满 fallback 另一排;§2.1 下标派生单一源)+ board 羁绊计数
-    派生重算(行写端挂钩 ``_resync_board_delta`` 自动,禁手写 board)。
-    to_row 非法/源槽空/两排全满 = applied=False 零写(陈旧提案)。
+    """上阵上报:bench 源槽摘槽 + 载荷 (to_row, to_slot) 直落
+    (排内 1 基槽号经下标换算单一源 ``deployed_idx_of`` 定表下标,与执行
+    拖点同源无分叉;§2.1 下标派生表)+ board 羁绊计数派生重算(行写端
+    挂钩 ``_resync_board_delta`` 自动,禁手写 board)。
+    to_row 非法/源槽空/载荷槽越出定长表或跨排 = applied=False 零写
+    (陈旧提案)。拖拽语义 = 游戏规则:目标槽空 = 放置;有人 = 交换——
+    被占位单位回源 bench 槽(与 ``report_action_swap_deploy_param`` 换位
+    契约同语义:单位对象整体回填,装备随对象,槽号信息位随落位归一);
+    禁占位拒绝、禁静默换槽。
     落位腿对 (银狼LV.999,3★) = 上阵变换窗:落场写下一费用档 1★
     (非 3★ 原样)+ 级联常规覆盖;其余单位恒等搬运零行为差。
 
@@ -77,6 +82,14 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
     if to_row not in ('front', 'back'):
         return LogicOutcome(applied=False,
                             reason=f'to_row_invalid:{to_row!r}')
+    # 载荷槽 → 表下标(单一源换算);越出定长表或换算回读与载荷 (排, 槽)
+    # 不符(跨排,如 front 5 号落在表后段)= 载荷非法,零写。
+    to_slot = int(param.to_slot)
+    to_idx = deployed_idx_of(to_row, to_slot)
+    if not (0 <= to_idx < len(dep_table)) \
+            or deployed_row_slot(to_idx) != (to_row, to_slot):
+        return LogicOutcome(applied=False,
+                            reason=f'to_slot_invalid:{to_row}{to_slot}')
     if not (0 <= from_idx < len(bench_slots)) \
             or bench_slots[from_idx] is None \
             or bench_slots[from_idx].kind != 'unit' \
@@ -84,7 +97,7 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
         return LogicOutcome(applied=False,
                             reason=f'bench_idx_out_of_range:{from_idx}')
     _mu = bench_slots[from_idx].unit
-    moved = replace(_mu, slot=from_idx + 1)
+    moved = replace(_mu, slot=to_slot)
     # 上阵变换窗(design §2.1A):拖拽载荷唯一指定源(恰此一枚,无歧义)
     # → 落场写下一费用档 1★(身份保持,槽位随拖拽落点,观察为真值)。
     _transform = (moved.char_id == _TRANSFORM_CHAR_ID
@@ -92,10 +105,12 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
     if _transform:
         moved = replace(moved, star=_TRANSFORMED_STAR)
     scratch = list(dep_table)
-    placed_idx = place_unit_in_deployed(scratch, moved, to_row)
-    if placed_idx is None:
-        return LogicOutcome(applied=False, reason='deployed_full')
-    bench_slots[from_idx] = BenchSlot(kind='empty')
+    _occupier = scratch[to_idx]
+    scratch[to_idx] = moved   # 空 = 放置;有人 = 交换(占位不拒,见 docstring)
+    bench_slots[from_idx] = (
+        BenchSlot(kind='empty') if _occupier is None
+        else BenchSlot(kind='unit',
+                       unit=replace(_occupier, slot=from_idx + 1)))
     _w(gs.bench, BenchView(slots=bench_slots,
                            capacity=(_bview.capacity
                                      if _bview is not None
