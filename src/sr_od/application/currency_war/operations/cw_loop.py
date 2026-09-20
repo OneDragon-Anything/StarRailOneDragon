@@ -161,9 +161,9 @@ def locked_resume_sync_and_battle(op, ctx):
     硬地板授权(00_framework §3)——「hp≤阈值则强制同步」形态不落码,
     挂账待玩家确认。与「达标即出战」臂(§9.6)的关系按 C1 规格:本函数
     = 恢复局面调用面(闩辖),底层发射核 = ``launch_prepared_battle``
-    单一函数,达标臂经 ``readiness_battle_launch`` 调用面共用发射核、
-    **不过本闩**(W1:旧「须经本函数单一发射位,禁旁路」话术与 C1 矛盾,
-    按规格改写)。
+    单一函数,达标臂经策略层前置发射位(bridge._launch_front_check)调用
+    面共用发射核、**不过本闩**(旧「须经本函数单一发射位,禁旁路」话术
+    与 C1 矛盾,按规格改写)。
     """
     return launch_battle_unified(op, ctx, face='resume')
 
@@ -196,7 +196,7 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
       锁定确认分支复位证据位。同步步载体 = CwActionDeployMoveParam 原子序(批 2a:
       RunDeploy 组合壳退役,按策略层部署计划现算逐 move 发;
       恢复局卖出通道整体跳过语义不变——board 未观察时计划恒空)。
-    - ``sync_once=False``(达标臂面,调用面 = readiness_battle_launch):
+    - ``sync_once=False``(达标臂面,调用面 = 策略层前置发射位):
       **不过闩**——每达标帧都部署原子序 + CwActionStartBattleParam(部署面现读重建,
       已同步形态下零 move 即零待部署;闩只辖恢复局面,达标臂第二次发射
       被「每局恰一次」闩吞 = C1 明令防的双源病)。
@@ -350,9 +350,7 @@ def _launch_overlay_gate(op, ctx, screen) -> str | None:
 
 
 def launch_battle_unified(op, ctx, *, face: str) -> tuple[bool, str]:
-    """出战统一执行器(迭代 changes/2026-09-16-prep-visit-op design §2.2;
-    landing 3.1 交付,未接线——调用点切换与旧路径退役归 3.3 原子提交,
-    现役三路径语义盘点 = 同目录 audit-executor.md §1)。
+    """出战统一执行器(三路径共用;三路径语义盘点 = 同目录 audit-executor.md §1)。
 
     内部序 = 屏态复验 → 浮层安全检查 → face 分轨(部署原子序)→
     CwActionStartBattleParam 执行。失败语义按调用面分轨:本函数只返回事实
@@ -455,7 +453,7 @@ def _launch_frame_arbitration(op) -> dict:
     判定通过(调用点上游 ``readiness_launch_decision``,判据零改动)→
     ②浮层在场闸通过(调用点上游,``_ov_hit is None``)→ ③本函数内
     ``_prep_anchors_hit`` 预检通过——预检只作仲裁段的门,发射链零改动;
-    调用点 = ``readiness_battle_launch`` 之前,发射核内部屏态复验保留作
+    调用点 = 达标臂发射调用面之前,发射核内部屏态复验保留作
     纵深防线:仲裁若未恢复备战屏态 ⇒ 走既有 stale 分支弃射,调用点记
     ``launch_arbitrage_abandoned_launch`` defect 分键(可辨识残量,从
     「非发射帧 digest 零变化」锚辖域显式豁免,禁静默)。

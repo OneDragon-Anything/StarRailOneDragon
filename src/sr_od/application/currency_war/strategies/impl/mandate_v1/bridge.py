@@ -182,8 +182,7 @@ class MandateV1Strategy(CwFlowStrategy):
         """
         # 方向重估先于决策(触发 = 帧代次标注;ADR-0583 §3.3-①)
         self._consume_prep_direction_frame()
-        # —— 前置发射位(迭代 changes/2026-09-16-prep-visit-op design
-        # §2.3;旧 cw_loop 达标臂的发射决策迁驻策略层)。armed 帧短路
+        # —— 前置发射位(达标臂的发射决策驻策略层)。armed 帧短路
         # 三遍编排;非 armed 帧 None = 原编排零变化。
         _launch_action = _launch_front_check(self.gs)
         if _launch_action is not None:
