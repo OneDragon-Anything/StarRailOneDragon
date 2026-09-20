@@ -19,8 +19,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_game_state import (
-    bench_slots_of,
-    deployed_slots_of,
+    bench_entries_of,
+    deployed_rows_of,
     max_units_of,
 )
 from sr_od.application.currency_war.kernel.cw_line_defs import (
@@ -194,8 +194,9 @@ def launch_board_quality_report(gs: GameState, comp: Comp, *,
       的件数——comp 视图 = 核心∪弹性羁绊(cw_comps.all_factions,
       ADR-0152 口径「弹性羁绊铺板不算 off-target」的板面判定同视图);
       未注册/未识别名按线外计(fail-closed:承重不认)。
-    - ``occupied`` = ``cw_state.deployed_occupied``(ADR-0392 槽位占用
-      单一源)。承重计数 ≤ 占用数恒成立,判据下限取该平凡上界 ⇒
+    - ``occupied`` = 容器占用数(占用判定 = 元素非 None 计 1;P4 容器形,
+      行域本身即紧凑占用序,含未识别占位单位)。承重计数 ≤ 占用数恒成立,
+      判据下限取该平凡上界 ⇒
       ``load_bearing_full`` ⟺ 板面零线外件(线外 = 非核准 ∧ 视图外)。四体系线 comp
       该口径与披露 B_t(kernel ``board_target_line_weight``)同族同源
       ——披露口径本体温测零改(ADR-0535),本报告附 ``b_t_disclosure``
@@ -216,11 +217,8 @@ def launch_board_quality_report(gs: GameState, comp: Comp, *,
         board_target_line_weight,
         deployed_bond_counts,
     )
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        deployed_occupied,
-        iter_occupied_deployed,
-    )
-    deployed = list(iter_occupied_deployed(deployed_slots_of(gs)))
+    front, back = deployed_rows_of(gs)
+    deployed = [d for d in (*front, *back) if d is not None]
     view = set(getattr(comp, 'all_factions', None) or [])
     # 自家核准集 = comp 成员名单(core∪shared),注册表制裁的结构量——
     # 空羁绊单卡(白厄)与视图外 shared 件(不死途/布洛妮娅/刃)经此
@@ -238,14 +236,14 @@ def launch_board_quality_report(gs: GameState, comp: Comp, *,
             continue   # 未识别件承重不认(fail-closed)
         if (set(ch.factions) | set(ch.flows)) & view:
             line_weight += 1
-    occupied = deployed_occupied(deployed_slots_of(gs))
+    occupied = len(deployed)
     cids = {d.char_id for d in deployed if d.char_id}
     try:
         cap = int(max_units_of(gs))
     except Exception:   # noqa: BLE001  cap 缺读 = 放行判定 None 兜底同口径
         cap = 10 ** 6
     plan_available = deploy_plan_available_fn(
-        [b for b in bench_slots_of(gs) if b is not None],
+        bench_entries_of(gs),
         deployed_cids=cids,
         deployed_fac=deployed_bond_counts(cids),
         board=dict(gs.board.value or {}),
@@ -353,12 +351,19 @@ def launch_admission_report(gs: GameState, comp: Comp, *,
         调用方注入同一函数对象,禁各调用面自写第二实现)。
     """
     from sr_od.application.currency_war.data.cw_chars import get_char
-    from sr_od.application.currency_war.kernel.cw_exec_state import deployed_occupied
-    # 裸过滤债(ADR-0557 既有代码):内联 None 过滤未收敛到 deployed 迭代
-    # 单一源 iter_occupied_deployed(同模块 launch_board_quality_report
-    # 同型位已收敛);纯注记申报,收敛属行为面另行批次处置。
-    deployed = [d for d in deployed_slots_of(gs) if d is not None]
-    bench = [b for b in bench_slots_of(gs) if b is not None]
+
+    # 容器单位域现读(P4 容器形):deployed = 行域紧缩序,bench = 占席
+    # 条目域(BenchSlot,身份经解包口取)。
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    front, back = deployed_rows_of(gs)
+    deployed = [d for d in (*front, *back) if d is not None]
+    _bench_entries = bench_entries_of(gs)
+
+    def _bench_name(b) -> str:
+        u = bench_slot_unit(b)
+        return (getattr(u, 'char_id', '') or '') if u is not None else ''
     cores = set(getattr(comp, 'core_chars', []) or [])
     line = set(line_members(comp))
     protect = protect_names_of(comp)
@@ -369,10 +374,10 @@ def launch_admission_report(gs: GameState, comp: Comp, *,
         _cap = int(max_units_of(gs))
     except Exception:   # noqa: BLE001  cap 缺读 = 放行判定 None 兜底同口径
         _cap = 10 ** 6
-    board_full = deployed_occupied(deployed_slots_of(gs)) >= _cap
+    board_full = len(deployed) >= _cap
     bench_core_waiting = False
-    for b in bench:
-        name = b.char_id or ''
+    for b in _bench_entries:
+        name = _bench_name(b)
         if name in line:
             bench_core_waiting = True
             break

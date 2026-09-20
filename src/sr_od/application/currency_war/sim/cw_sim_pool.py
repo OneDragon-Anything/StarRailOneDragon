@@ -22,8 +22,8 @@ from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_shop_odds import POOL_COPIES_PER_CARD
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
-    bench_slots_of,
-    deployed_slots_of,
+    bench_units_of,
+    deployed_rows_of,
 )
 
 #: 专家入池追加副本数(U10 首版假设,标注待核;普通卡 3/4/5 费同为 9)。
@@ -58,8 +58,9 @@ def held_copies(gs: GameState) -> dict[str, int]:
     语义 = 派生自此不再需要可变账本);试用与自有同池同计数(U11)。
     """
     held: dict[str, int] = {}
-    units = [b for b in bench_slots_of(gs) if b is not None]
-    units += [d for d in deployed_slots_of(gs) if d is not None]
+    front, back = deployed_rows_of(gs)
+    units = list(bench_units_of(gs)) + [d for d in (*front, *back)
+                                        if d is not None]
     for u in units:
         name = str(getattr(u, 'char_id', '') or '')
         if not name:

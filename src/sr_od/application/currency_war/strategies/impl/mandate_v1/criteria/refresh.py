@@ -108,6 +108,29 @@ def hard_node_reinforce_gate(node_type: str | None, gold: int,
     return True, ''
 
 
+def _entry_cid(x: object) -> str:
+    """占席条目 → 身份名(bench 占席条目 = BenchSlot 解包,deployed 行域
+    单位直读;P4 容器形统一读点)。"""
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    if getattr(x, 'kind', None) is not None:
+        u = bench_slot_unit(x)
+        return (getattr(u, 'char_id', '') or '') if u is not None else ''
+    return (getattr(x, 'char_id', '') or '')
+
+
+def _entry_star(x: object) -> int:
+    """占席条目 → 星级(bench 占席条目 = BenchSlot 解包,deployed 直读)。"""
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    if getattr(x, 'kind', None) is not None:
+        u = bench_slot_unit(x)
+        return int(getattr(u, 'star', 1) or 1) if u is not None else 1
+    return int(getattr(x, 'star', 1) or 1)
+
+
 def qualified_member_costs(buy_members: tuple[str, ...],
                            bench: list, deployed: list,
                            level: int) -> list[int]:
@@ -129,8 +152,8 @@ def qualified_member_costs(buy_members: tuple[str, ...],
         if ch is None or not ch.cost:
             continue
         copies = [c for c in list(bench) + list(deployed)
-                  if (getattr(c, 'char_id', '') or '') == m]
-        if any((getattr(c, 'star', 1) or 1) >= 2 for c in copies):
+                  if _entry_cid(c) == m]
+        if any(_entry_star(c) >= 2 for c in copies):
             continue
         if refresh_prob(int(level), int(ch.cost)) <= 0.0:
             continue

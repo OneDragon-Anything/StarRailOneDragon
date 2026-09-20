@@ -51,8 +51,9 @@ from sr_od.application.currency_war.kernel.cw_economy import (
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
-    bench_slots_of,
-    deployed_slots_of,
+    bench_entries_of,
+    bench_free_slots,
+    deployed_rows_of,
     gold_of,
     shop_payload_content_cards,
 )
@@ -90,7 +91,8 @@ def _crosses_engine_tier(gs: GameState, name: str) -> bool:
     fac = dict(gs.board.value or {})
     if not (bonds & {b for b, _t in TRANSITION_TRAITS}):
         return False
-    dep_names = {d.char_id for d in deployed_slots_of(gs) if d is not None}
+    front, back = deployed_rows_of(gs)
+    dep_names = {d.char_id for d in (*front, *back) if d is not None}
     before = engines_count(fac, dep_names)
     for b in bonds:
         fac[b] = fac.get(b, 0) + 1
@@ -112,18 +114,24 @@ def _scan_shop_buy_accounts(gs: GameState,
     costs: list[int] = []
     fill: list[int] = []
     from sr_od.application.currency_war.kernel.cw_economy import card_cost
-    from sr_od.application.currency_war.kernel.cw_exec_state import bench_occupied
     from sr_od.application.currency_war.kernel.cw_merge_simulate import (
         will_merge_on_buy,
     )
-    _slots = bench_slots_of(gs)
+    _entries = bench_entries_of(gs)
     _payload_cards = shop_payload_content_cards(gs.shop.value)
-    bench_free = max(0, registry.bench_capacity - bench_occupied(_slots))
+    # 席空数 = 定长容量基线 − 占席条目数(容器 kind 口;未观察 = 全空,
+    # registry.bench_capacity 基线口径零漂移——容量改写语义差异与
+    # e_rounds 同挂设计裁定)
+    _free_raw = bench_free_slots(gs)
+    bench_free = (registry.bench_capacity if _free_raw is None
+                  else max(0, int(_free_raw)))
+    front, back = deployed_rows_of(gs)
+    _deployed_units = [d for d in (*front, *back) if d is not None]
     for sc in _payload_cards:
         name = getattr(sc, 'name', '') or ''
         if not name:
             continue
-        merge = will_merge_on_buy(sc, _slots, deployed_slots_of(gs))
+        merge = will_merge_on_buy(sc, _entries, _deployed_units)
         if merge:
             costs.append(card_cost(sc))   # 合成件不占槽
             continue

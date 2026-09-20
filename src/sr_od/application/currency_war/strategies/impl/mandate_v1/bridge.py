@@ -344,7 +344,7 @@ def decide_prep_frame(session: StrategySession, config: object,
 
     ev_arm 模式参数取 ``config.ev_arm``(缺省 full;非法值回落 full)。
     截断语境供给(R196 症5):conditional 类名-槽一致性复检消费的
-    bench 占用槽位集,容器读口 ``bench_slots_of`` 现读派生。
+    bench 占用槽位集,容器 kind 口现读派生。
     """
     ev_arm = getattr(config, 'ev_arm', 'full')
     if ev_arm not in entry.EV_ARM_VALUES:
@@ -360,12 +360,12 @@ def decide_prep_frame(session: StrategySession, config: object,
     for _e in emitted:
         _e.action.route_tag = _e.reason
     actions = [e.action for e in emitted]
-    # 复检语境 = 生成期占用容器下标集(容器读口直取,统一词表坐标系)
+    # 复检语境 = 生成期占用容器下标集(容器 kind 口直取,统一词表坐标系;
+    # P4 容器形:占席条目枚举下标 = 槽位下标)
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_slots_of,
+        bench_entries_of,
         game_state_of,
     )
-    bench_slots = {i for i, b in enumerate(bench_slots_of(game_state_of(session)))
-                   if b is not None}
+    bench_slots = set(range(len(bench_entries_of(game_state_of(session)))))
     return entry.truncate_frame_stable(actions, session,
                                        bench_slots=bench_slots)

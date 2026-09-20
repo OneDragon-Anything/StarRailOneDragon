@@ -51,14 +51,41 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state imp
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
-    from sr_od.application.currency_war.kernel.cw_game_state import GameState
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        BenchSlot,
+        GameState,
+    )
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         StrategySession,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
         MandateFrame,
     )
+
+
+def _slot_cid(b) -> str:
+    """占席条目 → 身份名(单位 = 内嵌 Unit.char_id;占位件 = '';
+    P4 容器形,解包单一源 = kernel ``bench_slot_unit``)。"""
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    u = bench_slot_unit(b)
+    return (getattr(u, 'char_id', '') or '') if u is not None else ''
+
+
+def _is_item_slot(b) -> bool:
+    """占席条目 → 占位件判定(§2.4 字段映射:is_item_slot=True →
+    kind ∈ tome/bookcard/supply_box)。"""
+    return getattr(b, 'kind', 'unit') in ('tome', 'bookcard', 'supply_box')
+
+
+def _slot_no_of(b) -> int:
+    """占席条目 → 槽号信息位(单位 = 内嵌 Unit.slot,1 基物理槽)。"""
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    u = bench_slot_unit(b)
+    return int(getattr(u, 'slot', 0) or 0) if u is not None else 0
 
 #: 部署计划容器槽位表不健康显影分键(计划级 fail-closed 时 +1)。键名保留
 #: 现役 ``deploy_chain_slot_table_unhealthy``(跨局遥测对照可比性优先;
@@ -104,7 +131,7 @@ def _deploy_plan_inputs(frame: MandateFrame, session: StrategySession,
 
 
 def select_deployments(
-    bench: list[BenchChar],
+    bench: list[BenchSlot],
     deployed_cids: set[str],
     deployed_fac: dict[str, int],
     board: dict[str, int],
@@ -155,7 +182,7 @@ def select_deployments(
     bench_fac: dict[int, str] = {}
     pair_counts: dict[str, int] = dict(board)
     for i, bc in enumerate(bench):
-        cid = getattr(bc, 'char_id', '') or ''
+        cid = _slot_cid(bc)
         ch = get_char(cid) if cid else None
         bonds: set[str] = set()
         if ch is not None:
@@ -186,7 +213,7 @@ def select_deployments(
     # 点再漏伪槽。拒因 'item_slot' 进闭集;char_id='' 不触发本防线
     # (「照旧上」fail-open 语义保留)。
     _item_idx = {k for k in range(len(bench))
-                 if getattr(bench[k], 'is_item_slot', False)}
+                 if _is_item_slot(bench[k])}
     if _item_idx:
         tgt_idx = [k for k in tgt_idx if k not in _item_idx]
         rest = [k for k in rest if k not in _item_idx]
@@ -194,7 +221,7 @@ def select_deployments(
             held.append(k)
             reasons[k] = 'item_slot'
     for i in list(rest):
-        cid = getattr(bench[i], 'char_id', '') or ''
+        cid = _slot_cid(bench[i])
         if not cid:
             continue    # 未识别:照旧上(围栏无法判)
         f = bench_fac.get(i)
@@ -249,7 +276,7 @@ def select_deployments(
     # 冗余 target」语义保留。
     _core_set = set(target_cores)
     core_tgt = [i for i in tgt_idx
-                if (getattr(bench[i], 'char_id', '') or '') in _core_set]
+                if _slot_cid(bench[i]) in _core_set]
     other_tgt = [i for i in tgt_idx if i not in core_tgt]
     # 判据必需件首桶(required_names = 目标 comp 的 required_deployed 成员):
     # 判据以「该件在板」为必要条件——缺它该体系永远无法成型,普通成员
@@ -257,7 +284,7 @@ def select_deployments(
     # 空集 = 逐位同旧序。
     _req_set = set(required_names)
     req_tgt = [i for i in core_tgt
-               if (getattr(bench[i], 'char_id', '') or '') in _req_set]
+               if _slot_cid(bench[i]) in _req_set]
     core_tgt = [i for i in core_tgt if i not in req_tgt]
     order = req_tgt + core_tgt + ignite_rest + other_tgt + plain_rest
     # cap 截断(动态停语义:超 cap 的留 bench)
@@ -281,7 +308,7 @@ def select_deployments(
             held.append(i)
             reasons[i] = 'cap'
             continue
-        cid = getattr(bench[i], 'char_id', '') or ''
+        cid = _slot_cid(bench[i])
         if cid and (cid in deployed_cids or cid in _up_names):
             held.append(i)   # 去重(5.1.7,含本轮已上):留 bench
             reasons[i] = 'name_dup'
@@ -307,7 +334,7 @@ def select_deployments(
 
 
 def select_deployments_reasoned(
-    bench: list[BenchChar],
+    bench: list[BenchSlot],
     deployed_cids: set[str],
     deployed_fac: dict[str, int],
     board: dict[str, int],
@@ -345,7 +372,7 @@ def select_deployments_reasoned(
 
 
 def has_deployable(
-    bench: list[BenchChar],
+    bench: list[BenchSlot],
     deployed_cids: set[str],
     deployed_fac: dict[str, int],
     board: dict[str, int],
@@ -383,7 +410,7 @@ def has_deployable(
 
 
 def has_deployable_reasoned(
-    bench: list[BenchChar],
+    bench: list[BenchSlot],
     deployed_cids: set[str],
     deployed_fac: dict[str, int],
     board: dict[str, int],
@@ -417,8 +444,8 @@ def has_deployable_reasoned(
 
 
 def can_deploy_single(
-    candidate: BenchChar,
-    bench: list[BenchChar],
+    candidate: BenchSlot,
+    bench: list[BenchSlot],
     deployed_cids: set[str],
     deployed_fac: dict[str, int],
     board: dict[str, int],
@@ -484,7 +511,7 @@ def deploy_row_pref(char_id: str, comp: object | None) -> str:
     return 'back'
 
 
-def deploy_slot_plans(bench: list[BenchChar], up_idx: list[int],
+def deploy_slot_plans(bench: list[BenchSlot], up_idx: list[int],
                       comp: object | None, state: GameState,
                       ) -> list[tuple[int, str, int]]:
     """落位策略(排路由 + 前排保证 + 槽位选择;P3 落位决策权归策略本体)。
@@ -520,14 +547,13 @@ def deploy_slot_plans(bench: list[BenchChar], up_idx: list[int],
     oi = 0
     while oi < len(pending):
         bi = pending[oi]
-        pref = deploy_row_pref(
-            str(getattr(bench[bi], 'char_id', '') or ''), comp)
+        pref = deploy_row_pref(_slot_cid(bench[bi]), comp)
         if pref == 'back' and len(fe) == DEPLOYED_FRONT_CAPACITY and fe:
             # 前排保证(重排):队列后方有真 front 候选提到当前位
             _later = next(
                 (j for j in pending[oi + 1:]
                  if deploy_row_pref(
-                     str(getattr(bench[j], 'char_id', '') or ''),
+                     _slot_cid(bench[j]),
                      comp) == 'front'), None)
             if _later is not None:
                 pending.remove(_later)
@@ -569,12 +595,10 @@ def deploy_plan_moves(frame: MandateFrame, session: StrategySession,
     board 计数消费)。
     """
     from one_dragon.utils.log_utils import log
+    from sr_od.application.currency_war.data.cw_chars import char_first_faction
     from sr_od.application.currency_war.kernel.cw_exec_state import (
-        bench_occupied_slot_nos,
+        bench_slot_unit,
         bench_slots_healthy,
-    )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_slots_of,
     )
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         strategy_state_of,
@@ -588,8 +612,14 @@ def deploy_plan_moves(frame: MandateFrame, session: StrategySession,
     # 重建副作用;test 桩态亦不被替换)。
     _comp = getattr(strategy_state_of(session), 'target_comp', None)
     plans = deploy_slot_plans(frame.bench, up, _comp, state)
-    bench_slots = bench_slots_of(state)
-    if not bench_slots_healthy(bench_occupied_slot_nos(bench_slots)):
+    view = state.bench.value
+    bench_slots = list(view.slots) if view is not None else []
+    # 槽号信息位集 = 单位槽内嵌 Unit.slot(P4 容器形;与观察写端按槽落位
+    # 构造同源,健康门语义不变:唯一 ∧ 1..9)
+    if not bench_slots_healthy([
+            int(getattr(u, 'slot', 0) or 0)
+            for s in bench_slots
+            if s is not None and (u := bench_slot_unit(s)) is not None]):
         _bcd_counters = getattr(strategy_state_of(session), 'cw4_counters',
                                 None)
         if isinstance(_bcd_counters, dict):
@@ -597,18 +627,25 @@ def deploy_plan_moves(frame: MandateFrame, session: StrategySession,
                 _bcd_counters.get(DEPLOY_PLAN_SLOT_TABLE_UNHEALTHY_KEY, 0) + 1
         log.warning('[cw!][deploy-plan] 部署计划弃算:容器槽位表槽号不健康'
                     '(重复/越界,%s)→ {slot:下标} 对位 fail-closed,'
-                    '本帧零部署 move', bench_slots and
-                    bench_occupied_slot_nos(bench_slots))
+                    '本帧零部署 move', bench_slots)
         return []
-    _cidx_of = {b.slot: i for i, b in enumerate(bench_slots) if b is not None}
+    _cidx_of = {}
+    for i, s in enumerate(bench_slots):
+        if s is None:
+            continue
+        u = bench_slot_unit(s)
+        if u is not None:
+            _cidx_of[int(getattr(u, 'slot', 0) or 0)] = i
     out: list[tuple[int, str, int, str]] = []
     for bi, row, slot in plans:
-        _slot_no = int(frame.bench[bi].slot)
+        _slot_no = _slot_no_of(frame.bench[bi])
         _bi = _cidx_of.get(_slot_no)
         if _bi is None:
             continue   # 对位失配(陈旧帧)= fail-closed 跳过该 move
+        # 发射载荷 faction = 主阵营注册表派生单一源(char_first_faction,
+        # §2.1 faction 类1:部署装配;未注册名 = '?')
         out.append((int(_bi), row, int(slot),
-                    str(frame.bench[bi].faction or '')))
+                    char_first_faction(_slot_cid(frame.bench[bi]))))
     return out
 
 
@@ -621,8 +658,8 @@ def battle_chain_deploy_params(session: StrategySession) -> list:
     策略层计划入口)。空板面/计划空 = 空 move 序(CwActionStartBattle
     照发)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_slots_of,
-        deployed_slots_of,
+        bench_entries_of,
+        deployed_rows_of,
         game_state_of,
         gold_of,
         level_of,
@@ -635,9 +672,9 @@ def battle_chain_deploy_params(session: StrategySession) -> list:
         MandateFrame,
     )
     gs = game_state_of(session)
-    bench_slots = bench_slots_of(gs)
-    bench = [b for b in bench_slots if b is not None]
-    deployed = [d for d in deployed_slots_of(gs) if d is not None]
+    bench = bench_entries_of(gs)
+    _front, _back = deployed_rows_of(gs)
+    deployed = [d for d in (*_front, *_back) if d is not None]
     _node = gs.node.value
     frame = MandateFrame(
         gold=gold_of(gs), level=level_of(gs),

@@ -74,7 +74,6 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     bench_char_cost,
     sell_refund,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 from sr_od.application.currency_war.kernel.cw_intention import (
     locked_buy_membership,
 )
@@ -554,16 +553,20 @@ def _seed_frame_axes(session: StrategySession) -> tuple[
       防线由容器活值续承。
     NodeKey 未定帧 plane/round = None;bench 未观察 = 空集,消费侧
     fail-closed。"""
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_slots_of,
+        bench_entries_of,
         game_state_of,
     )
     _gs = game_state_of(session)
     node = _gs.node.value
     cur_plane = int(node.plane) if node is not None else None
     cur_round = int(node.round_num) if node is not None else None
-    bench_names = {getattr(b, 'char_id', '') or ''
-                   for b in bench_slots_of(_gs) if b is not None}
+    bench_names = {(u.char_id if (u := bench_slot_unit(b)) is not None
+                    else '') or ''
+                   for b in bench_entries_of(_gs)}
     return (cur_plane, cur_round, frozenset(bench_names))
 
 
@@ -731,8 +734,16 @@ def dead_pair_exit_release(session: StrategySession,
     ct = counters if counters is not None else _counters_of(session)
     _bench = [b for b in (bench or ()) if b is not None]
     _deployed = [d for d in (deployed or ()) if d is not None]
-    bench_names = {getattr(b, 'char_id', '') or '' for b in _bench}
-    deployed_names = {getattr(d, 'char_id', '') or '' for d in _deployed}
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+
+    def _cid_of(x: object) -> str:
+        u = bench_slot_unit(x) if getattr(x, 'kind', None) is not None else x
+        return (getattr(u, 'char_id', '') or '') if u is not None else ''
+
+    bench_names = {_cid_of(b) for b in _bench}
+    deployed_names = {_cid_of(d) for d in _deployed}
     from sr_od.application.currency_war.kernel.cw_game_state import (
         game_state_of,
     )
@@ -818,7 +829,7 @@ def _resolve_base(session: StrategySession,
     B'(**必改位**:零参宽集形态已被取代——宽−窄成员 M2 不再义务重买,
     其保护必要性消失;不改 = M4/凑息/funding 全通道对被截成员持续禁卖
     且 P60/单帧锁观测面照常零异常 = 静默半修,T-295 方案阻断③定谳),
-    未锁态 = ``k_members``。``cap_hold`` = 调用方从决策帧 CwSimFrame 现读
+    未锁态 = ``k_members``。``cap_hold`` = 调用方从决策帧现读
     (``cw_intention.locked_buy_cap_hold(state)``;板面容量是帧事实,
     session 无公共权威链,禁加镜像读——显式传参是唯一合法通道),
     None = 保宽(fail-closed 零漂移端;无帧态调用位如兼容再出口)。
@@ -946,11 +957,11 @@ def sell_exclusions(session: StrategySession,
 
 def funding_hold_fallback(session: StrategySession,
                           k_members: tuple[str, ...],
-                          bench: list[BenchChar], *, gold: int, need: int,
+                          bench: list, *, gold: int, need: int,
                           a_exclusions: frozenset[str] | set[str],
                           deployed: object = None,
                           cap_hold: int | None = None,
-                          ) -> list[BenchChar]:
+                          ) -> list:
     """funding 持有件兜底豁免(P78-5 四条件单一源;三消费位拼装用)。
 
     触发前提由消费位判(主路径空 ∧ 仍需筹资 = gold < need);本函数
@@ -967,7 +978,9 @@ def funding_hold_fallback(session: StrategySession,
       达成,严格有害;该量化同时封死逐帧级联清空兜底池而始终不达
       need 的路径。
 
-    ``deployed`` = 上场槽位表(CwSimFrame.deployed,空板止损守卫输入;
+    ``bench`` = 占席条目域(容器 BenchSlot,身份/星级经解包读口;
+    benchchar-retirement P4 容器形)。
+    ``deployed`` = 上场域(容器行域单位,空板止损守卫输入;
     None = 缺读,fail-closed 拒——资格判据禁缺读放行,与 hold 登记资格
     星/费缺读同纪律)。返回至多一件(单笔即止,need 即止);空列表 =
     无合法兜底(含守卫拒帧)。
@@ -975,18 +988,35 @@ def funding_hold_fallback(session: StrategySession,
     if empty_board_sell_blocked(deployed, counters=_counters_of(session)):
         return []
     st = state_of(session)
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+
+    def _slot_key(b: object) -> tuple[int, int]:
+        u = bench_slot_unit(b)
+        _star = int(getattr(u, 'star', 1) or 1) if u is not None else 1
+        _slot = int(getattr(u, 'slot', 0) or 0) if u is not None else 0
+        return (_star, _slot)
+
     _locked, base = _resolve_base(session, k_members, cap_hold=cap_hold)
     holds = sell_hold_exclusion_names()
     visit = set(getattr(st, 'cw4_visit_bought_names', ()) or ())
-    pool = [b for b in bench
-            if (b.char_id or '') in holds
-            and (b.char_id or '') in a_exclusions
-            and (b.char_id or '') not in visit
-            and (b.char_id or '') not in base]
-    pool.sort(key=lambda b: (b.star, b.slot))
+    pool = []
+    for b in bench:
+        u = bench_slot_unit(b)
+        if u is None:
+            continue   # 占位件无现值,恒不入兜底池
+        cid = u.char_id or ''
+        if cid in holds and cid in a_exclusions \
+                and cid not in visit and cid not in base:
+            pool.append(b)
+    pool.sort(key=_slot_key)
     gap = need - gold
     for b in pool:
-        if sell_refund(b.star, bench_char_cost(b)) >= gap:
+        u = bench_slot_unit(b)
+        if u is None:
+            continue
+        if sell_refund(int(u.star or 1), bench_char_cost(u)) >= gap:
             return [b]
     return []
 
@@ -1026,7 +1056,7 @@ def empty_board_sell_blocked(deployed: object, *,
     「从有板逐个卖穿到空」路径每次卖出瞬间恒假,最后一卖照常放行,
     守卫目标(不进空板态)失守;后态判定自然覆盖「板已空连卖 bench」
     与「卖掉仅存部署位」两类路径。现行策略面唯一卖类 = CwActionSellBenchParam(不
-    改变 deployed)⇒ 后态占用数 = 现占用数(``deployed_occupied``,
+    改变 deployed)⇒ 后态占用数 = 现占用数(容器占用判定,
     ADR-0392 占用数,禁 len);取后态形态是为辖未来卖 deployed 类通道
     的接线对账——消费位传「占用数减待卖件」即可,谓词本体零改。
 
@@ -1040,14 +1070,13 @@ def empty_board_sell_blocked(deployed: object, *,
     恢复正路 = 部署(P24 零支出)与买面,守卫零辖。若观测证明腾席抑制
     代价超界,回 ADR 对表加显式豁免(闭集增项),禁消费位手搓绕行。
 
-    ``deployed`` = 上场槽位表(CwSimFrame.deployed 或任意可迭代表;None
+    ``deployed`` = 上场域(容器行域单位或任意可迭代表;None
     或占用数 0 均判拒——None = 缺读 fail-closed 拒,资格判据禁缺读
-    放行)。占用数单一源 = ``cw_state.deployed_occupied``(ADR-0392
-    占用数;原内联第二实现改委托,禁双源)。``counters`` None = 不计数
+    放行)。占用数 = 容器占用判定(元素非 None 计 1;行域本身即紧凑
+    占用序,benchchar-retirement P4 容器形)。``counters`` None = 不计数
     (谓词纯判读形态,测试用)。
     """
-    from sr_od.application.currency_war.kernel.cw_exec_state import deployed_occupied
-    occupied = deployed_occupied(list(deployed or ()))
+    occupied = sum(1 for d in (deployed or ()) if d is not None)
     if occupied > 0:
         return False
     if counters is not None:

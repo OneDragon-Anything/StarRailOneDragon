@@ -160,12 +160,17 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
     满栏 merge 买的「一击多张」豁免属 expected-vs-tracked 双账豁免,
     本断言不受豁免——提案时点牌仍在店中,名恒可对)。
     """
-    # bench_slots_of 读口在函数顶导入:函数体内任何位置的 import 语句都会
+    # 容器读口在函数顶导入:函数体内任何位置的 import 语句都会
     # 把名字绑定为全函数局部变量——曾放 CwActionBuyCardParam 分支内,CwActionSellBenchParam 分支
     # 未执行该 import 即引用,UnboundLocalError(2026-09-13 实机 T-181:
     # r2 席满卖人决策被守卫自身炸掉,触发买空店重进崩溃循环)。
+    # P4 容器形:席位域 = BenchView.slots(BenchSlot),身份经 bench_slot_unit
+    # 解包读口取(动作 bench_idx = 容器下标,统一词表坐标系)。
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_slots_of,
+        bench_view_slots_of,
     )
     if isinstance(action, CwActionBuyCardParam):
         _name = action.card.name or ''
@@ -179,20 +184,25 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
                 '(策略器 bug:跨代际/已消费提案,ADR-0517 决策 9)')
         return
     if isinstance(action, CwActionSellBenchParam):
-        _slots = bench_slots_of(state)
+        _slots = bench_view_slots_of(state)
         tgt = (_slots[action.bench_idx]
                if 0 <= action.bench_idx < len(_slots) else None)
+
+        def _cid(s) -> str:
+            u = bench_slot_unit(s)
+            return (u.char_id if u is not None else '') or ''
+
         if tgt is None:
             raise AssertionError(
                 f'[cw-shop][guard] CwActionSellBenchParam 提案指向空槽/越界:'
                 f'bench_idx={action.bench_idx} expect={action.expect!r} '
-                f'bench={[b.char_id if b else None for b in _slots]}'
+                f'bench={[(_cid(s) if s is not None else None) for s in _slots]}'
                 '(策略器 bug:期望态无此对象,ADR-0517 决策 9)')
-        if action.expect and (tgt.char_id or '') != action.expect:
+        if action.expect and _cid(tgt) != action.expect:
             raise AssertionError(
                 f'[cw-shop][guard] CwActionSellBenchParam 名-槽不一致:'
                 f'idx={action.bench_idx} expect={action.expect!r} '
-                f'实际={(tgt.char_id or "")!r}'
+                f'实际={_cid(tgt)!r}'
                 '(策略器 bug:跨代际提案,ADR-0517 决策 9)')
 
 

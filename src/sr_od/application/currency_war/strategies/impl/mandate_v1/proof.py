@@ -42,10 +42,7 @@ from typing import TYPE_CHECKING
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_shop_odds import SHOP_SLOTS
 from sr_od.application.currency_war.kernel import cw_line_switch
-from sr_od.application.currency_war.kernel.cw_exec_state import (
-    BENCH_CAPACITY,
-    bench_occupied,
-)
+from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
 from sr_od.application.currency_war.kernel.cw_game_state import (
     shop_payload_content_cards,
 )
@@ -332,16 +329,17 @@ def evidence_gate(missing: list[tuple[int, float]],
 
 
 def _held_counts(gs) -> dict[str, int]:
-    """逐角色名副本计数(bench∪deployed 容器席位 bot 记录库存;槽位模型
-    None 跳过,空名不计)。``odds.slot_q_tag``/帧装配的池衰减 j/t 输入
-    载体。换算单一源 = 波 1 席位读口族。"""
+    """逐角色名副本计数(bench∪deployed 容器席位 bot 记录库存;空名不计)。
+    ``odds.slot_q_tag``/帧装配的池衰减 j/t 输入载体。读数 = 容器单位域
+    (行域 + bench 单位槽,benchchar-retirement P4 容器形)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_slots_of,
-        deployed_slots_of,
+        bench_units_of,
+        deployed_rows_of,
     )
     counts: dict[str, int] = {}
-    for bc in (list(bench_slots_of(gs)) + list(deployed_slots_of(gs))):
-        name = getattr(bc, 'char_id', '') if bc is not None else ''
+    front, back = deployed_rows_of(gs)
+    for u in (*front, *back, *bench_units_of(gs)):
+        name = getattr(u, 'char_id', '') if u is not None else ''
         if name:
             counts[name] = counts.get(name, 0) + 1
     return counts
@@ -479,8 +477,8 @@ def assemble_lock_frame(gs, session: StrategySession,
     held = _held_counts(gs)
     k_members = set(predicates.line_members(k))
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_slots_of,
-        deployed_slots_of,
+        bench_units_of,
+        deployed_rows_of,
         gold_of,
         level_of,
         plane_of,
@@ -503,12 +501,14 @@ def assemble_lock_frame(gs, session: StrategySession,
     band_domain_ok = calibration.band_in_domain(
         max((m for m, _q in missing), default=0), int(r_rem))
 
-    # H−* 侧线件清单 (名, 星, 费)(K 成员名 = predicates.line_members)
+    # H−* 侧线件清单 (名, 星, 费)(K 成员名 = predicates.line_members;
+    # 容器单位域现读,benchchar-retirement P4)
     side: list[tuple[str, int, int]] = []
-    for bc in (list(bench_slots_of(gs)) + list(deployed_slots_of(gs))):
-        name = getattr(bc, 'char_id', '') if bc is not None else ''
+    front, back = deployed_rows_of(gs)
+    for u in (*front, *back, *bench_units_of(gs)):
+        name = getattr(u, 'char_id', '') if u is not None else ''
         if name and name not in k_members:
-            side.append((name, int(getattr(bc, 'star', 1) or 1),
+            side.append((name, int(getattr(u, 'star', 1) or 1),
                          _char_cost(name)))
 
     p_lock = 0.0 if plan.exhausted else p_complete(missing, trials)
@@ -542,7 +542,15 @@ def assemble_lock_frame(gs, session: StrategySession,
             blocked.append(v_opt(level, c_star, 1.0, 0,
                                  gold_of(gs),
                                  refresh_cost))
-    free = BENCH_CAPACITY - bench_occupied(bench_slots_of(gs))
+    # 席空数 = 定长 9 基线 − 占席 kind 槽计数(容器 kind 口,P4;bench
+    # 未观察 = 全空,零漂移缺省——与 e_rounds 同基线口径,容量改写语义
+    # 差异同挂设计裁定)
+    from sr_od.application.currency_war.kernel.cw_game_state import slot_occupies
+    _view = gs.bench.value
+    _used = (sum(1 for s in _view.slots
+                 if s is not None and slot_occupies(s.kind))
+             if _view is not None else 0)
+    free = BENCH_CAPACITY - _used
     c_sat = min(1.0, sum(p_block_terms)) * v_slot(free, blocked)
     c_hold += c_sat
 
@@ -599,7 +607,7 @@ def best_alt_comp(gs, session: StrategySession,
                   registry: DecisionV2Registry | None) -> Comp | None:
     """换线候选线供给(R196 症1 接线;§2.7 接线义务的 alt 半边)。
 
-    候选集 = COMP_LIBRARY(证明层 comp 知识单一源,§1 proof 行「CwSimFrame
+    候选集 = COMP_LIBRARY(证明层 comp 知识单一源,§1 proof 行「容器帧
     + comp 知识(COMP_LIBRARY)」)− 当前线 − drought 排除线(session
     .drought_excluded,基线 best_alt_line 同款读法)。证据门 P38 序数形态
     以两个零参数前置承载:①静态可达(e_rounds 有限——p̄>0,缺口可刷到);

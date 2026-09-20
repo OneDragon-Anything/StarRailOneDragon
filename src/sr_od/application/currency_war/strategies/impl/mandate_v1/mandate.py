@@ -123,9 +123,10 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         SwapPlanContext,
     )
-    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
     from sr_od.application.currency_war.kernel.cw_game_state import (
+        BenchSlot,
         GameState,
+        Unit,
     )
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
@@ -173,28 +174,33 @@ class Emitted:
 class MandateFrame:
     """骨架 pass 输入帧(D-C44:黑板全量现读,每帧重建、零跨帧快照)。
 
-    字段取值时机=生成期快照(从 PrepObservation 现读拷贝);坐标系:
-    bench slot=物理槽位 1-9。``deploy_cap`` 真值源=``CwSimFrame.
-    max_units()`` 派生链(R4 统一:level+宝钻、封顶 = 4+back_max 动态
-    真值〔GameState.back_layout,值域 10-13〕,与 shop 侧
-    同链单源;FIX_REVIEW_20260903 ②-1 双源漂移修复——旧观察复合
-    ``obs.deploy_vacancy+len(deployed)`` 已废),state 缺读=None。
+    **容器形状(benchchar-retirement P4,design §2.1/§2.4)**:
+    - ``bench`` = 占席条目紧缩序(容器 ``BenchSlot``,kind != 'empty',
+      物理槽序;占位件 kind 面在域内,身份经 ``cw_exec_state.
+      bench_slot_unit`` 解包读口取——faction/position_pref 不入形状的
+      注册表派生口径在消费点落位);
+    - ``deployed`` = 行域单位紧缩序(``front_row + back_row`` 的容器
+      ``Unit``,前排在前;char_id/star/equips 直读);
+    ``deploy_cap`` 真值源 = ``max_units_of`` 派生链(R4 统一:level+宝钻、
+    封顶 = 4+back_max 动态真值〔GameState.back_layout,值域 10-13〕,
+    与 shop 侧同链单源;FIX_REVIEW_20260903 ②-1 双源漂移修复——旧观察
+    复合 ``obs.deploy_vacancy+len(deployed)`` 已废),state 缺读=None。
     """
 
     gold: int
     level: int
-    bench: list[BenchChar]
-    deployed: list[BenchChar]
+    bench: list[BenchSlot]
+    deployed: list[Unit]
     deploy_cap: int | None
     node_type: str | None
     stop_flag: bool
     k_members: tuple[str, ...]
-    round_num: int = 1      # 位面内轮次(M5 开局板辖域=开局帧;CwSimFrame 直读)
+    round_num: int = 1      # 位面内轮次(M5 开局板辖域=开局帧;容器 node 读口)
     # 装备域 owned 件名池快照(P4 观察接线,T-171):装配点 = entry.emit
-    # 从黑板帧 obs.owned_equips 拷贝(全量含工具,W209g 口径)。None =
-    # 识别域未就绪(模板库/装备区缺失)或未供给,M7 装备穿戴放行判定按空保守关;
-    # [] = 真读到空。旧读点 = session.last_owned_equips 陈旧快照,已退役
-    # (消费面与计划产出位同帧同源,防门①与产出位双源漂移)。
+    # 从容器 gs.equips 现读拷贝(全量含工具,W209g 口径)。None =
+    # 识别域未就绪(模板库/装备区缺失)或未供给,M7 装备穿戴放行判定按
+    # 空保守关;[] = 真读到空。旧读点 = session.last_owned_equips 陈旧
+    # 快照,已退役(消费面与计划产出位同帧同源,防门①与产出位双源漂移)。
     owned_equips: list[str] | None = None
     # 溢出告警旗标(T-226/R11,2026-09-15):备战席满告警在场 = 存在未安置
     # 溢出角色,出战点击被游戏忽略(prep.md 告警节,launch_dead 三连实证)。
@@ -217,11 +223,15 @@ class MandateFrame:
 
     @property
     def bench_names(self) -> list[str]:
-        return [b.char_id or '' for b in self.bench]
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
+            bench_slot_unit,
+        )
+        return [(u.char_id if (u := bench_slot_unit(b)) is not None else '')
+                or '' for b in self.bench]
 
     @property
     def deployed_names(self) -> list[str]:
-        return [b.char_id or '' for b in self.deployed]
+        return [d.char_id or '' for d in self.deployed]
 
 
 # ===== 四硬约束检查点(§3.2;唯一合法拦截集)=====
@@ -278,55 +288,109 @@ def _phase_key(state: GameState) -> tuple:
     return (plane_of(state), round_num_of(state))
 
 
-def _deployed_of(state: GameState) -> list:
-    """deployed 槽表容器读(波 1 席位读口单一源 deployed_slots_of)。"""
+def _deployed_units_of(state: GameState) -> list:
+    """上场单位域容器读(行域紧缩;benchchar-retirement P4 容器形)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        deployed_slots_of,
+        deployed_rows_of,
     )
-    return deployed_slots_of(state)
+    front, back = deployed_rows_of(state)
+    return [d for d in (*front, *back) if d is not None]
 
 
-def _bench_container_idx(state: GameState, victim: BenchChar) -> int | None:
-    """发射面容器下标解析·bench 域(角色对象入口;见 by_slot 变体)。"""
+def _slot_cid(b) -> str:
+    """占席条目 → 身份名(单位 = 内嵌 Unit.char_id;占位件 = '')。
+    本模块 BenchSlot 解包单一读点(P4 容器形)。"""
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    u = bench_slot_unit(b)
+    return (getattr(u, 'char_id', '') or '') if u is not None else ''
+
+
+def _slot_unit(b):
+    """占席条目 → 内嵌 Unit(占位件/None 洞 = None;P4 容器形解包口,
+    跨模块消费经本名——shop.py 合成对计数等身份+星级双读位共用)。"""
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    return bench_slot_unit(b)
+
+
+def _slot_star(b) -> int:
+    """占席条目 → 星级(占位件缺省 1,资格门先拒,值不被消费)。"""
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    u = bench_slot_unit(b)
+    return int(getattr(u, 'star', 1) or 1) if u is not None else 1
+
+
+def _slot_no_of(b) -> int:
+    """占席条目 → 槽号信息位(单位 = 内嵌 Unit.slot,1 基物理槽)。"""
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    u = bench_slot_unit(b)
+    return int(getattr(u, 'slot', 0) or 0) if u is not None else 0
+
+
+def _bench_container_idx(state: GameState, victim: BenchSlot) -> int | None:
+    """发射面容器下标解析·bench 域(角色条目入口;见 by_slot 变体)。"""
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    u = bench_slot_unit(victim)
     return _bench_container_idx_by_slot(
-        state, int(getattr(victim, 'slot', 0) or 0))
+        state, int(getattr(u, 'slot', 0) or 0) if u is not None else 0)
 
 
 def _bench_container_idx_by_slot(state: GameState, slot_no: int) -> int | None:
-    """发射面容器下标解析·bench 域(unified-action-factory 批2b 换算收口)。
-
-    发射位不产物理槽位、不做 ``slot − 1`` 反推(design.md §2.6 换算归属
-    ——发射面吃容器下标,物理槽位号仅存观察写入边与执行坐标边两边界)。
-    入参 = 帧内槽位信息位(物理槽号,两视图同帧同源——容器 bench 由本帧
-    观察写端按 slot 落位构造),与容器槽位表读口 ``bench_slots_of`` 对位,
-    返回其枚举下标 = 容器下标。失配(None)= 黑板视图与容器失配(陈旧/
-    carry 帧),发射位 fail-closed 跳过该候选,禁猜位。"""
+    """发射面容器下标解析·bench 域(unified-action-factory 批2b 换算收口;
+    P4 容器形:占席判定 = kind 口,BenchView.slots[i] = 物理槽 i+1 与
+    槽号信息位同源构造,失配 None = 陈旧/carry 帧禁猜位)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_slots_of,
+        slot_occupies,
     )
     if slot_no < 1:
         return None
-    return next((i for i, b in enumerate(bench_slots_of(state))
-                 if b is not None and b.slot == slot_no), None)
+    view = state.bench.value
+    if view is None or slot_no > len(view.slots):
+        return None
+    s = view.slots[slot_no - 1]
+    if s is None or not slot_occupies(s.kind):
+        return None
+    return slot_no - 1
 
 
-def _deployed_container_idx(state: GameState, victim: BenchChar) -> int | None:
-    """发射面容器下标解析·deployed 域(换算收口同 :func:`_bench_container_idx`)。
-
-    对位键 = (position_pref, slot) 信息位二元组(场上同名唯一性不变量下
-    与槽位键等价,二元组更稳);返回容器 ``deployed_slots_of`` 枚举下标,
+def _deployed_container_idx(state: GameState, victim: Unit) -> int | None:
+    """发射面容器下标解析·deployed 域(P4 容器形:行归属由行承载,
+    对位键 = (身份, 行内槽号)——场上同名唯一性不变量下与旧
+    (position_pref, slot) 二元组等价;前排命中 = slot−1,后排 =
+    前排容量+slot−1,换算单一源 = deployed_row_slot 域常量)。
     失配 None = fail-closed 跳过。"""
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        deployed_slots_of,
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        DEPLOYED_FRONT_CAPACITY,
     )
-    _row = getattr(victim, 'position_pref', None) or 'back'
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        deployed_rows_of,
+    )
     _slot = int(getattr(victim, 'slot', 0) or 0)
-    return next((i for i, d in enumerate(deployed_slots_of(state))
-                 if d is not None and d.position_pref == _row
-                 and d.slot == _slot), None)
+    if _slot < 1:
+        return None
+    _cid = getattr(victim, 'char_id', '') or ''
+    front, back = deployed_rows_of(state)
+    for u in (front or []):
+        if u is not None and (getattr(u, 'char_id', '') or '') == _cid \
+                and int(getattr(u, 'slot', 0) or 0) == _slot:
+            return _slot - 1
+    for u in (back or []):
+        if u is not None and (getattr(u, 'char_id', '') or '') == _cid \
+                and int(getattr(u, 'slot', 0) or 0) == _slot:
+            return DEPLOYED_FRONT_CAPACITY + _slot - 1
+    return None
 
 
-def fuel_sell_candidates(bench: list[BenchChar],
+def fuel_sell_candidates(bench: list[BenchSlot],
                          k_members: tuple[str, ...],
                          state: GameState,
                          *,
@@ -335,9 +399,13 @@ def fuel_sell_candidates(bench: list[BenchChar],
                          merge_guard_release: frozenset[str] | set[str] = frozenset(),
                          counters: dict | None = None,
                          dedup_names: set[str] | None = None,
-                         ) -> list[BenchChar]:
+                         ) -> list[BenchSlot]:
     """fuel_sell 对象集:1★ ∧ 与锁线零重叠 ∧ 边际贡献≈0
     (R17-2 扩维口径:板面作战边际+bench 后台效果维边际合计构造性 0)。
+
+    输入域 = 占席条目域(容器 ``BenchSlot`` 紧缩序,占位件 kind 面在域内;
+    身份/星级经 ``bench_slot_unit`` 解包读口,benchchar-retirement P4
+    容器形)。
 
     「1★ 无后台效果件 ⇒ bench 维边际构造性 0,精确 0 界」旧表述已废
     (勘误 N3①,ADR-0585 §5):T-123/裁定410 定谳 ③④ 持有件
@@ -381,9 +449,8 @@ def fuel_sell_candidates(bench: list[BenchChar],
     移尾,不改既有相对序——defer 空集时逐位等价旧序(零漂移)。
 
     占位件恒拒(腾席资格物理门,T-18/旧账 T-294):备战槽非角色占位
-    物品(补给箱/星徽秘典/典籍书册等,``BenchChar.is_item_slot`` 识别
-    防线 = 部署装配点 assemble_bench_list 显式标记;知识锚 = board_
-    structure.md §备战栏「备战槽可被非角色物品占据」)恒不入候选——
+    物品(补给箱/星徽秘典/典籍书册等,容器槽位 kind 非 'unit' 识别
+    防线 = 观察写端 kind 落位)恒不入候选——
     游戏真值 = 占位件无卖出交互且无金币现值(实机采证 2026-09-12:
     同参数拖拽出售,角色 9 连全卖、箱零效果;宝箱面 = 4 选 1 装备面板,
     无金币现值、无出售项),任何星级不可变现。与部署侧 ``cw_deploy_
@@ -391,8 +458,7 @@ def fuel_sell_candidates(bench: list[BenchChar],
     判读先于其余资格门。生产观察层 SIFT 不产占位件条目,sim 假环境经
     观察面把占位件直喂 bench——本门 = 卖出发射前唯一资格防线;判据
     单一源已上收为跨通道共享谓词 ``predicates.item_slot_unsellable``
-    (凑息/支付变现通道同门消费,禁第三处内联复制),``getattr``
-    缺省 False = 无标记形态不误伤(与部署侧同款防御读)。
+    (凑息/支付变现通道同门消费,禁第三处内联复制)。
 
     空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
     板空帧腾席卖出腿同弱劣拒帧 → 本函数返空,消费位走各自既有「无
@@ -405,7 +471,10 @@ def fuel_sell_candidates(bench: list[BenchChar],
     第二份)。旁路只撕 G-S1 一道子谓词,下游装配 A 排除(exclude_names)
     照旧全额生效。
     """
-    _deployed = _deployed_of(state)
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    _deployed = _deployed_units_of(state)
     if empty_board_sell_blocked(_deployed, counters=counters):
         return []
     out = []
@@ -415,12 +484,13 @@ def fuel_sell_candidates(bench: list[BenchChar],
         #(跨通道共享谓词;语义出处 = 本函数 docstring「占位件恒拒」段)。
         if predicates.item_slot_unsellable(b):
             continue
-        name = b.char_id or ''
+        name = _slot_cid(b)
+        star = _slot_star(b)
         if name in exclude_names:
             continue
-        if b.star != 1:
+        if star != 1:
             continue
-        if merge_material_reject_reason(name, b.star, bench, _deployed) \
+        if merge_material_reject_reason(name, star, bench, _deployed) \
                 and name not in merge_guard_release:
             if counters is not None:
                 count_merge_material_blocked(counters, name, dedup_names)
@@ -430,13 +500,15 @@ def fuel_sell_candidates(bench: list[BenchChar],
         try:
             if predicates.bench_effect_qualified(
                     name,
-                    predicates.bench_effect_context(state, b, k_members)):
+                    predicates.bench_effect_context(state,
+                                                    bench_slot_unit(b),
+                                                    k_members)):
                 continue
         except Exception:   # noqa: BLE001  注册表查无此名:类级默认(低费燃料)可判
             pass
         out.append(b)
     # T3 末位牺牲序:被保件稳定移尾(非绝对禁卖——唯一燃料帧照常放行)
-    out.sort(key=lambda b: (b.char_id or '') in defer_names)
+    out.sort(key=lambda b: _slot_cid(b) in defer_names)
     return out
 
 
@@ -596,8 +668,8 @@ def dominance_buy_eligible(gold: int, bench_free: int,
 # ===== 买入死库存防线(G-S1 买侧对偶;T-229 方向②)=====
 
 def dead_stock_pair_buy_reject_reason(name: str, star: int,
-                                      bench: list[BenchChar | None],
-                                      deployed: list[BenchChar] | None = None,
+                                      bench: list[BenchSlot | None],
+                                      deployed: list[Unit] | None = None,
                                       k_members: tuple[str, ...] = (),
                                       ) -> str:
     """非定向 1★ 买入资格子谓词:买入将制造「同名 1★ 第二张死库存对」
@@ -676,7 +748,7 @@ def swap_transition_narrow_frame(state: GameState,
     锁线帧 committed_from=True ⇒ 装配点 tgt 退 ``target_comp`` 同读法
     (flow._refresh_direction_views 锁线帧恒置 target_comp = locked
     comp 解析,两读法锁线帧同值);板满 = 占用数 ≥ ``max_units_of``
-    (占用数口径 = ``cw_state.deployed_occupied`` 单点,禁裸 len)。
+    (占用数口径 = 容器占用判定单点,禁裸 len)。
 
     用途 = P88 收窄:仅两 S_spec 发射位(press_narrowed_* 分键)消费
     本旗作辖域前置;豁免臂零消费。fail 方向 = 域外/缺读帧恒 False
@@ -916,8 +988,8 @@ def _wanted_reopen_budget(st: StrategyState, phase: tuple,
 
 
 def wanted_closure_emit(session: StrategySession, state: GameState,
-                        bench: list[BenchChar],
-                        deployed: list[BenchChar],
+                        bench: list[BenchSlot],
+                        deployed: list[Unit],
                         deploy_cap: int | None, round_num: int,
                         ) -> list[Emitted]:
     """S2 wanted 闭环消费臂(T-159 迁移 A;调用位 = entry.emit ①实体面后、
@@ -965,7 +1037,7 @@ def wanted_closure_emit(session: StrategySession, state: GameState,
     )
     k = getattr(st, 'target_comp', None)
     k_members = predicates.line_members(k)
-    bench_names = [b.char_id or '' for b in bench]
+    bench_names = [_slot_cid(b) for b in bench]
     deployed_names = [d.char_id or '' for d in deployed]
     stop_flag = _proof.stop_buy(k, bench_names, deployed_names) \
         if contracts.ensure_contract(('proof', 'stop_buy'),
@@ -1049,8 +1121,9 @@ def wanted_closure_emit(session: StrategySession, state: GameState,
             return []
         _count('wanted_leg_fuel_sell')
         # 轮内卖出登记(档 2 新鲜度排除写端,与 M4 腾席臂同口径)。
-        record_round_sold(session, state, cands[0].char_id or '')
-        if (cands[0].char_id or '') in _dp_release:
+        _c0 = _slot_cid(cands[0])
+        record_round_sold(session, state, _c0)
+        if _c0 in _dp_release:
             _count('dead_pair_exit_sold_m4_fuel')
         _vidx = _bench_container_idx(state, cands[0])
         if _vidx is None:
@@ -1278,8 +1351,9 @@ def run_mandate(frame: MandateFrame,
                                          counters=counters)
         if _ov_cands:
             # 轮内卖出登记(档 2 新鲜度排除写端,与 M4/凑息臂同口径)。
-            record_round_sold(session, state, _ov_cands[0].char_id or '')
-            if (_ov_cands[0].char_id or '') in _ov_release:
+            _ov_c0 = _slot_cid(_ov_cands[0])
+            record_round_sold(session, state, _ov_c0)
+            if _ov_c0 in _ov_release:
                 _count('dead_pair_exit_sold_m4_fuel')
             _vidx = _bench_container_idx(state, _ov_cands[0])
             if _vidx is None:
@@ -1359,8 +1433,14 @@ def run_mandate(frame: MandateFrame,
             _t1_slots, _t1_key = [], 'contract_abstain'
             _count('t1_interest_prep_contract_abstain')
         if not _t1_key and _t1_slots:
-            _t1_name_of = {(b.slot): (b.char_id or '')
-                           for b in frame.bench}
+            from sr_od.application.currency_war.kernel.cw_exec_state import (
+                bench_slot_unit,
+            )
+            _t1_name_of = {
+                (int(getattr(u, 'slot', 0) or 0)
+                 if (u := bench_slot_unit(b)) is not None else 0):
+                (u.char_id if u is not None else '') or ''
+                for b in frame.bench}
             for _s in _t1_slots:
                 # 容器下标解析(换算收口,见 _bench_container_idx_by_slot):
                 # 失配 = 陈旧/carry 帧,fail-closed 跳过该候选。
@@ -1473,7 +1553,8 @@ def run_mandate(frame: MandateFrame,
                         no_fuel = True
                         break       # 0 发射 ⇒ 立即放弃(状态未变,重放必再失败)
                     victim = cands[0]
-                    ok4, _ = check_irreversible(victim.char_id or '', k)
+                    _vname = _slot_cid(victim)
+                    ok4, _ = check_irreversible(_vname, k)
                     if not ok4:
                         break
                     # T3 末位牺牲序命中 + 卖出销账(唯一燃料帧放行转化;
@@ -1483,7 +1564,6 @@ def run_mandate(frame: MandateFrame,
                     # 非归因遥测(T-153 治理立场对表,资格面零触碰)。
                     # CwActionSellBenchParam.reason = 卖出通道记录字段(登记门键,
                     # 记录非指令),归因证据层随发射位填充。
-                    _vname = victim.char_id or ''
                     if _vname in _t3_protect:
                         stall_buys_consume(session, _vname)
                     # 轮内卖出登记(档 2 新鲜度排除写端;腾席卖出后同轮
@@ -1500,7 +1580,8 @@ def run_mandate(frame: MandateFrame,
                     out.append(Emitted(CwActionSellBenchParam(bench_idx=_vidx,
                                                  reason='m4_fuel_sell'), True,
                                        'm4_fuel_sell'))
-                    bench = [b for b in bench if b.slot != victim.slot]
+                    bench = [b for b in bench
+                             if _slot_no_of(b) != _slot_no_of(victim)]
                     freed = True
                     retries += 1
                     # 腾席后席位复检(静态:卖 1 件 ⇒ bench_free+1)
@@ -1517,7 +1598,7 @@ def run_mandate(frame: MandateFrame,
                     # 并入候选后燃料资格面仍空(no_fuel 时末次候选评估已
                     # 含释放集,空集即谓词真)∧ bench 存在 ④ 件。
                     if no_fuel and any(
-                            (b.char_id or '') in transition_release_names()
+                            _slot_cid(b) in transition_release_names()
                             for b in frame.bench):
                         _count('deadlock_only_transition_victim')
                 else:
@@ -2041,8 +2122,8 @@ def _s_reserve(frame: MandateFrame, session: StrategySession) -> int:
     - 息饱和线分量 = ``saturation_line(cap_resolved)``(canonical 行 10⑤⑥
       条件式的调用方供给 resolved 值,默认局 50);
     - 窗口预留卡价:窗口预留槽未标定 ⇒ 空列表(缺输入不计,保守下界);
-    - E[刷费]×2 = 双刷预算,按 ``shop_refresh_cost`` 基价(REFRESH_COST_BASE
-      建模常量,CwSimFrame 字段口径:值恒基价 2)。
+    - E[刷费]×2 = 双刷预算,按 ``shop_refresh_cost`` 建模基价
+      (REFRESH_COST_BASE:值恒基价 2)。
 
     默认局 = 0+50+0+4 = 54(旧值恒 0 系 b_target 零参退化,非规格)。
     """

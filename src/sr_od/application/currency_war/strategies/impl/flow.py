@@ -34,7 +34,6 @@ from sr_od.application.currency_war.kernel.cw_comps import get_comp
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     ShopActionExecuted,
-    bench_slots_of,
     gold_of,
     plane_of,
     round_num_of,
@@ -69,7 +68,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionRefreshInvestCardsParam,
     CwActionRefreshNodeOptionsParam,
     CwActionRefreshSupplyParam,
-    CwSimFrame,
 )
 from sr_od.application.currency_war.strategies.impl.cw_strategy import (
     CwStrategy,
@@ -217,7 +215,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
 
     # ===== 镜像族观察写者(mandate_v1 单臂)=====
 
-    def write_shop_mirrors(self, state: CwSimFrame | GameState,
+    def write_shop_mirrors(self, state: GameState,
                            _ms: StrategyState) -> None:
         """逐帧写 ``v3_b_t`` 板面目标线承重计数(纯遥测观测面)。
 
@@ -252,18 +250,13 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             board_target_line_weight,
         )
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            deployed_slots_of,
+            deployed_rows_of,
         )
         from sr_od.application.currency_war.kernel.cw_launch_admission import (
             readiness_form_ok,
         )
-        if isinstance(state, GameState):
-            deployed = [d for d in deployed_slots_of(state)
-                        if d is not None]
-        else:
-            deployed = [d for d in
-                        (getattr(state, 'deployed', None) or [])
-                        if d is not None]
+        front, back = deployed_rows_of(state)
+        deployed = [d for d in (*front, *back) if d is not None]
         # (无回退补缺:策略层禁读执行侧簿记,消费口只剩 game
         #  state——容器 deployed 空 = 板面真空的事实态,照写 0 不虚构。)
         # 件级计数:名字列表保留重复件(同名多件各计 1,禁 frozenset 去重)
@@ -680,15 +673,15 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # 簿记)—— deployed 单成员带
         # equips,bench 槽位视图成员 = Unit(含 equips 透传)。
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            bench_slots_of,
-            deployed_slots_of,
+            bench_units_of,
+            deployed_rows_of,
         )
         _gs_wear = self.gs
+        _wf, _wb = deployed_rows_of(_gs_wear)
         worn = [eq
-                for _bc in (list(deployed_slots_of(_gs_wear))
-                            + list(bench_slots_of(_gs_wear)))
-                if _bc is not None
-                for eq in (getattr(_bc, 'equips', None) or [])]
+                for _u in (*_wf, *_wb, *bench_units_of(_gs_wear))
+                if _u is not None
+                for eq in (getattr(_u, 'equips', None) or [])]
         from sr_od.application.currency_war.kernel.cw_equip_value import (
             pick_equipment,
         )
@@ -827,7 +820,6 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         )
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
-            deployed_slots_of,
         )
         # 驱动器同路(W6 波 4,设计件 §2.2-3):决策读容器单例 + 期望态
         # 推进 = 逐动作直调上报函数(动作 op 重组批④:快照三件组已内聚
@@ -848,15 +840,29 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             """引擎入口委托分支串(design.md §2;离线驱动无落地门,k 判据
             与生产执行侧 merge_buy_k 同源派生,禁按动作对象预估的第二实现)。"""
             if isinstance(a, cw_state.CwActionBuyCardParam):
-                _slots = bench_slots_of(gs)
+                # 满席才评多买(容器 kind 口逐槽占用;与旧「槽表全占用」
+                # 形态逐位等价——刻意不走 bench_is_full,其随 BenchView.
+                # capacity 走,节省工位改写帧读数不同,本驱动器改形不改
+                # 语义;bench 未观察 = 不满 = 单买,零漂移)。
                 _k = 1
-                if all(b is not None for b in _slots):
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    slot_occupies,
+                )
+                _view = gs.bench.value
+                if _view is not None and all(
+                        s is not None and slot_occupies(s.kind)
+                        for s in _view.slots):
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
+                        bench_entries_of,
+                        deployed_rows_of,
+                    )
                     from sr_od.application.currency_war.kernel.cw_merge_simulate import (
                         merge_buy_k,
                     )
+                    _front, _back = deployed_rows_of(gs)
                     _k = max(1, merge_buy_k(
-                        a.card.name, a.card.star or 1, _slots,
-                        deployed_slots_of(gs),
+                        a.card.name, a.card.star or 1, bench_entries_of(gs),
+                        [d for d in (*_front, *_back) if d is not None],
                         shop_payload_content_cards(gs.shop.value)
                         if gs.shop.value is not None else []))
                 report_action_buy_card_param(

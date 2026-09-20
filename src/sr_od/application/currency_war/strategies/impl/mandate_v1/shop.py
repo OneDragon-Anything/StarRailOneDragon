@@ -170,14 +170,13 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     sell_refund,
     xp_click_cost,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import (
-    BENCH_CAPACITY,
-    BenchChar,
-)
+from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    BenchSlot,
     GameState,
-    bench_slots_of,
-    deployed_slots_of,
+    Unit,
+    bench_entries_of,
+    deployed_rows_of,
     gold_of,
     level_of,
     max_units_of,
@@ -243,11 +242,21 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vopt impo
     refund_full_star_ok,
 )
 
+
+def _deployed_units_of(gs: GameState) -> list[Unit]:
+    """上场单位域紧缩序(行域 front_row+back_row,前排在前;本模块单一读点)。"""
+    front, back = deployed_rows_of(gs)
+    return [d for d in (*front, *back) if d is not None]
+
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_comps import (
         Comp,
     )
-    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        BenchSlot,
+        GameState,
+        Unit,
+    )
     from sr_od.application.currency_war.kernel.cw_vocab import Action
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         StrategySession,
@@ -265,12 +274,19 @@ if TYPE_CHECKING:
 # (cw4_frame_action_record)由备战域继续消费。
 
 
-def _shop_sell_refund(bc: BenchChar) -> int | None:
-    """卖出预期回金(sell_refund 口径;注册表 cost 缺失 ⇒ None=未标)。"""
-    ch = CHARACTERS.get(bc.char_id or '')
+def _shop_sell_refund(bc) -> int | None:
+    """卖出预期回金(sell_refund 口径;注册表 cost 缺失 ⇒ None=未标)。
+
+    入参 = bench 占席条目(容器 BenchSlot,身份经解包口取;占位件无
+    现值 = None)或行域 Unit(P4 容器形)。"""
+    u = mandate._slot_unit(bc) \
+        if getattr(bc, 'kind', None) is not None else bc
+    if u is None:
+        return None
+    ch = CHARACTERS.get(u.char_id or '')
     if ch is None or not ch.cost:
         return None
-    return sell_refund(bc.star, ch.cost)
+    return sell_refund(u.star, ch.cost)
 
 
 def _r1_ledger_terms(buy_members: tuple[str, ...],
@@ -303,13 +319,24 @@ def _r1_ledger_terms(buy_members: tuple[str, ...],
     e_sum = 0.0
     card_fees = 0
     qualified_any = False
+    # 副本身份/星级统一读(bench 占席条目经解包口,deployed 行域直读;
+    # P4 容器形)。
+    def _cid(x):
+        u = mandate._slot_unit(x) \
+            if getattr(x, 'kind', None) is not None else x
+        return (getattr(u, 'char_id', '') or '') if u is not None else ''
+
+    def _star(x):
+        u = mandate._slot_unit(x) \
+            if getattr(x, 'kind', None) is not None else x
+        return int(getattr(u, 'star', 1) or 1) if u is not None else 1
     for m in buy_members:
         ch = CHARACTERS.get(m)
         if ch is None or not ch.cost:
             continue
         copies = [c for c in list(bench) + list(deployed)
-                  if (getattr(c, 'char_id', '') or '') == m]
-        if any((getattr(c, 'star', 1) or 1) >= 2 for c in copies):
+                  if _cid(c) == m]
+        if any(_star(c) >= 2 for c in copies):
             continue                      # 已 2★:成员成型,出合格集(先于
                                           # 可追性判定——成型件不受该级
                                           # 出牌面辖制,禁污染其余成员账)
@@ -339,8 +366,8 @@ def _r2_card_reserve(k_members: tuple[str, ...],
                                         gs, level=level)
 
 
-def _merge_pair_names(bench: list[BenchChar],
-                      deployed: list[BenchChar]) -> set[str]:
+def _merge_pair_names(bench: list[BenchSlot],
+                      deployed: list[Unit]) -> set[str]:
     """合成完备购形态对名集(M2b 循环与 P92 ④通道装配两处共吃的单一
     源,禁第二实现):全局面(bench∪deployed)同名副本恰 2 张 ∧ 均
     1★ 的角色名。
@@ -363,13 +390,17 @@ def _merge_pair_names(bench: list[BenchChar],
     """
     copies: dict[str, list[int]] = {}
     for c in list(bench) + list(deployed):
-        copies.setdefault(c.char_id or '', []).append(c.star or 1)
+        u = mandate._slot_unit(c) \
+            if getattr(c, 'kind', None) is not None else c
+        cid = (getattr(u, 'char_id', '') or '') if u is not None else ''
+        star = int(getattr(u, 'star', 1) or 1) if u is not None else 1
+        copies.setdefault(cid, []).append(star)
     return {n for n, ss in copies.items()
             if len(ss) == 2 and all(s == 1 for s in ss)}
 
 
 def p92_seat_recoverable(session: StrategySession,
-                         bench: list[BenchChar],
+                         bench: list[BenchSlot],
                          k_members: tuple[str, ...],
                          gs: GameState, *,
                          cap_hold: int | None,
@@ -408,7 +439,7 @@ def p92_seat_recoverable(session: StrategySession,
     # 漏算则 P92 在释放可达帧误判席不可落 → 误拦刷新)。
     release = sell_gate.dead_pair_exit_release(
         session, k_members, bench,
-        [d for d in deployed_slots_of(gs) if d is not None],
+        _deployed_units_of(gs),
         current_round, cap_hold=cap_hold, counters=counters)
     cands = mandate.fuel_sell_candidates(bench, k_members, state=gs,
                                          exclude_names=excl,
@@ -482,9 +513,11 @@ def shop_unbought_reasons(gs: GameState,
     =异常态」)以 cw4 M2 义务通道为参照系——M2 对线内缺件是义务买入,
     唯一合法拦截集=金/席硬闸+发射截断。
     """
-    bench = [b for b in bench_slots_of(gs) if b is not None]
-    deployed = [d for d in deployed_slots_of(gs) if d is not None]
-    owned = ({b.char_id or '' for b in bench}
+    # 容器单位域现读(P4 容器形):bench = 占席条目(BenchSlot),身份经
+    # 解包口取;deployed = 行域单位紧缩序(本函数内多处同吃同一推导)。
+    bench = bench_entries_of(gs)
+    deployed = _deployed_units_of(gs)
+    owned = ({mandate._slot_cid(b) for b in bench}
              | {d.char_id or '' for d in deployed})
     gold = gold_of(gs)
     bench_free = BENCH_CAPACITY - len(bench)
@@ -522,8 +555,14 @@ def shop_unbought_reasons(gs: GameState,
                 #   细分(stockpile_bench_full/stockpile_unaffordable/
                 #   stockpile_ready),§7.3 owned 命中占比观测面随之真实;
                 # - 其余(含 cnt2>0 让渡死库存,§3.7):中性 'owned'。
-                copies = [c for c in bench + deployed
-                          if (c.char_id or '') == name]
+                copies = []
+                for c in bench:
+                    u = mandate._slot_unit(c)
+                    if u is not None and (u.char_id or '') == name:
+                        copies.append(u)
+                for d in deployed:
+                    if (d.char_id or '') == name:
+                        copies.append(d)
                 cnt1 = sum(1 for c in copies if (c.star or 1) == 1)
                 cnt2 = len(copies) - cnt1
                 cost = min((card_cost(c))
@@ -581,8 +620,8 @@ def shop_unbought_reasons(gs: GameState,
 
 
 def count_material_stale(counters: dict, session: StrategySession,
-                         bench: list[BenchChar],
-                         deployed: list[BenchChar],
+                         bench: list[BenchSlot],
+                         deployed: list[Unit],
                          round_num: int) -> None:
     """滞留素材显影分键(ADR-0558 §4 滞留显影欠账 G-B1 第四级;官方键,
     取代 sim71 守卫验收批的「重复对在场行数」代理口径)。
@@ -692,9 +731,15 @@ def _s_reserve_remeet_frames(level: int, bench, deployed,
     char = CHARACTERS.get(name)
     base = int(char.cost) if char is not None and char.cost \
         else card_cost(card)
-    held = sum(star_base_copies(c.star)
-               for c in list(bench) + list(deployed)
-               if c is not None and (c.char_id or '') == name)
+    held = 0
+    for c in list(bench) + list(deployed):
+        if c is None:
+            continue
+        u = mandate._slot_unit(c) \
+            if getattr(c, 'kind', None) is not None else c
+        if u is None or (u.char_id or '') != name:
+            continue
+        held += star_base_copies(u.star)
     win = reencounter_window_frames(level, base, held)
     if not math.isfinite(win):
         return _REMEET_WINDOW_CAP_FRAMES
@@ -878,10 +923,12 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             if _zw_armed and predicates.advances_four_system(_buy_name):
                 _count('p90_zerostack_advancing_buy')
         # 合成检出计数单一源 = kernel same_star_count(店内外身份计数
-        # 共用,禁消费方手搓内联——落地审 §2-Ⓑ 附条件收敛行)。
+        # 共用,禁消费方手搓内联——落地审 §2-Ⓑ 附条件收敛行;P4 容器形
+        # 条目域)。
         if (getattr(card, 'star', 1) or 1) == 1 \
                 and same_star_count(_buy_name, 1,
-                                    bench_slots_of(gs), deployed_slots_of(gs)) >= 2:
+                                    bench_entries_of(gs),
+                                    _deployed_units_of(gs)) >= 2:
             sell_gate.consume_on_merge(session, _buy_name)
             return CwActionBuyCardParam(card=card, reason=reason)
         _cause = launch_cause
@@ -923,8 +970,8 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         # 登记;合成补齐分支已提前 return(1★ 即刻离场,无种子账)。
         if _buy_name and sell_gate.seed_acquisition_eligible(
                 _buy_name, getattr(card, 'star', 1) or 1,
-                bench_slots_of(gs),
-                deployed_slots_of(gs)):
+                bench_entries_of(gs),
+                _deployed_units_of(gs)):
             sell_gate.register_seed_acquisition(
                 session, _buy_name,
                 plane=(gs.node.value.plane if gs.node.value is not None else None),
@@ -1049,9 +1096,9 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     '换手对/m2_retry_exhausted 计数;ADR-0647)',
                     len(_buy_members), _cap_hold_now,
                     _cap_hold_now - BENCH_CAPACITY)
-    bench = [b for b in bench_slots_of(gs) if b is not None]
-    deployed = [d for d in deployed_slots_of(gs) if d is not None]
-    bench_names = [b.char_id or '' for b in bench]
+    bench = bench_entries_of(gs)
+    deployed = _deployed_units_of(gs)
+    bench_names = [mandate._slot_cid(b) for b in bench]
     deployed_names = [d.char_id or '' for d in deployed]
     # 滞留素材显影(分键,本体 = ``count_material_stale`` 单一源)。
     count_material_stale(counters, session, bench, deployed,
@@ -1066,7 +1113,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     if getattr(_ist, 'p1_pair', None):
         _trans_names = transition_release_names()
         _trans_n = sum(1 for b in bench
-                       if (b.char_id or '') in _trans_names)
+                       if mandate._slot_cid(b) in _trans_names)
         if _trans_n:
             counters['transition_hold_locked_frame'] = \
                 counters.get('transition_hold_locked_frame', 0) + _trans_n
@@ -1440,9 +1487,18 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 过比较子后闸失败落各自闸键,不再落本键(语义拆分申报随批)。
     def _cnt(name: str, star: int) -> int:
         """同名同星副本计数(全局面 bench∪deployed;14号稿 §3.5 单一源:
-        按 (名,星) 分星计数,2★ 成件不折算 1★)。"""
-        return sum(1 for c in bench + deployed
-                   if (c.char_id or '') == name and (c.star or 1) == star)
+        按 (名,星) 分星计数,2★ 成件不折算 1★;bench 占席条目经解包口
+        取身份,deployed 行域单位直读)。"""
+        n = 0
+        for c in bench:
+            u = mandate._slot_unit(c)
+            if u is not None and (u.char_id or '') == name \
+                    and (u.star or 1) == star:
+                n += 1
+        for d in deployed:
+            if (d.char_id or '') == name and (d.star or 1) == star:
+                n += 1
+        return n
 
     for m in buy_members:
         if _cnt(m, 1) != 1 or _cnt(m, 2) != 0:
@@ -1638,9 +1694,9 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 帧内惰性缓存:单动作契约下同一决策帧 bench/排除面不变,金闸双桶
     # 探测共享一次装配(_mm_dedup 同集防 merge_material 事件双计,P56
     # 投影位同款纪律)。
-    _core_victim_cache: list[tuple[BenchChar | None, bool]] = []
+    _core_victim_cache: list[tuple[BenchSlot | None, bool]] = []
 
-    def _core_victim() -> tuple[BenchChar | None, bool]:
+    def _core_victim() -> tuple[BenchSlot | None, bool]:
         """(victim, 可卖)帧内探测:victim = 首燃料候选,可卖 = 过
         check_irreversible(线内件禁卖)。无候选/不过护栏 = (None, False)。"""
         if _core_victim_cache:
@@ -1666,7 +1722,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         victim = cands[0] if cands else None
         ok4 = False
         if victim is not None:
-            ok4, _ = mandate.check_irreversible(victim.char_id or '',
+            ok4, _ = mandate.check_irreversible(mandate._slot_cid(victim),
                                                 k_members)
         if not ok4:
             victim = None
@@ -1966,12 +2022,9 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     _count('press_buy_deployable_filler_excluded')
                     continue
                 _pd_mch = get_char(name)
-                _pd_cand = BenchChar(
-                    slot=0, char_id=name, star=(card.star or 1),
-                    faction=(_pd_mch.factions[0]
-                             if _pd_mch is not None and _pd_mch.factions
-                             else '?'),
-                    position_pref='back')
+                _pd_cand = BenchSlot(
+                    kind='unit',
+                    unit=Unit(char_id=name, star=(card.star or 1), slot=0))
                 try:
                     # kernel 单一源直调(围栏语义,预检查询非判据面谓词
                     # 不挂 contracts,形态同出口③/T5)。
@@ -2188,13 +2241,12 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                                 _count('below_reserve')
                                 continue
                             # 板面账围栏预检(§2.3 第 4 点;kernel 单一源)
-                            _mch2 = get_char(name)
-                            _cand_bc = BenchChar(
-                                slot=0, char_id=name, star=1,
-                                faction=(_mch2.factions[0]
-                                         if _mch2 is not None
-                                         and _mch2.factions else '?'),
-                                position_pref='back')
+                            # 假想候选 = 容器 BenchSlot(P4 容器形;faction/
+                            # position_pref 不入形状——围栏/排路由经注册表
+                            # 按 char_id 派生,select 链不消费该字段)
+                            _cand_bc = BenchSlot(
+                                kind='unit',
+                                unit=Unit(char_id=name, star=1, slot=0))
                             _tgt2, _fw2 = deploy_target_sets(k)
                             try:
                                 _lfs = cw_intention.locked_faction_scope(
@@ -2325,8 +2377,8 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             _count('t3_precheck_bench_full')
         else:
             _t5_dep = sum(1 for b in bench
-                          if (b.char_id or '') in k_members
-                          and (b.char_id or '') not in deployed_names)
+                          if mandate._slot_cid(b) in k_members
+                          and mandate._slot_cid(b) not in deployed_names)
             # 可部署 bench 件数口径 = 线内件按名去重现读(与 arm0_need
             # 部署去重语义对齐;未锁线 k_members=() 时恒 0)。
             _t5_vac = _cap_now - len(deployed) if _cap_now else None
@@ -2359,13 +2411,11 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     if gold - 1 < s_reserve:
                         _count('t3_below_reserve')
                         continue
-                    _mch5 = get_char(name)
-                    _cand5 = BenchChar(
-                        slot=0, char_id=name, star=1,
-                        faction=(_mch5.factions[0]
-                                 if _mch5 is not None and _mch5.factions
-                                 else '?'),
-                        position_pref='back')
+                    # 假想候选 = 容器 BenchSlot(P4 容器形,同 can_deploy_
+                    # single 输入契约;faction/position_pref 不入形状)
+                    _cand5 = BenchSlot(
+                        kind='unit',
+                        unit=Unit(char_id=name, star=1, slot=0))
                     _tgt5, _fw5 = deploy_target_sets(k)
                     try:
                         _lfs5 = cw_intention.locked_faction_scope(_ist) \

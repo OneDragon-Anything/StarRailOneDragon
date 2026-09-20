@@ -14,19 +14,25 @@ from typing import TYPE_CHECKING
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_comps import RUST_AFFIX_NAME, Comp
 from sr_od.application.currency_war.kernel.cw_economy import loss_exact
-from sr_od.application.currency_war.kernel.cw_exec_state import DEPLOYED_CAPACITY
+from sr_od.application.currency_war.kernel.cw_exec_state import (
+    DEPLOYED_CAPACITY,
+    bench_slot_unit,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
-    deployed_slots_of,
+    deployed_rows_of,
     plane_of,
     round_num_of,
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        BenchSlot,
+        Unit,
+    )
 
 
-def bench_effect_context(state: GameState, unit: BenchChar,
+def bench_effect_context(state: GameState, unit: Unit,
                          k_members: tuple[str, ...] = (),
                          ) -> BenchEffectContext:
     """三消费位(fuel_sell 豁免/凑息档序资格/支付支撑变现)共享的语境
@@ -39,7 +45,7 @@ def bench_effect_context(state: GameState, unit: BenchChar,
       恒可得);
     - ``herta_star_supply``:黑塔纪元 augment 局(``gs.
       active_strategies`` 含 ``proof.DIRECT_LINE_SIGNAL_STRATEGIES``
-      成员,单一源)∨ 板面(``deployed_slots_of``)存在星级供强承载对象
+      成员,单一源)∨ 板面(行域)存在星级供强承载对象
       「大黑塔」(名册锚=cw_chars CHARACTERS['大黑塔'],银河学者星级
       供强线)∨ 线内(K 成员含承载对象——换线过渡期语境)。
 
@@ -65,11 +71,11 @@ def _herta_supply_present(state: GameState,
     """星级供强语境在场判定(例外①的观测面:augment 局 ∨ 板面 ∨ 线内)。"""
     from sr_od.application.currency_war.strategies.impl.mandate_v1 import proof
     strategies = list(state.active_strategies.value or ())
-    deployed = deployed_slots_of(state)
+    front, back = deployed_rows_of(state)
     if any(s in proof.DIRECT_LINE_SIGNAL_STRATEGIES for s in strategies):
         return True
     if any((getattr(d, 'char_id', '') or '') == _HERTA_SUPPLY_TARGET
-           for d in deployed if d is not None):
+           for d in (*front, *back) if d is not None):
         return True
     return _HERTA_SUPPLY_TARGET in k_members
 
@@ -80,7 +86,7 @@ def arm1_existence(deployed_count: int, bench_names: list[str],
     """P39 臂一三元触发信号(R2-2 移入 statefn;M3 消费)。
 
     ①板满:``deployed_count == deploy_cap``——**cap 口径 = 当前可上阵数**
-    (CwSimFrame.max_units() / MandateFrame.deploy_cap:level+宝钻、封顶
+    (deploy_cap 真值链 / MandateFrame.deploy_cap:level+宝钻、封顶
     = 4+back_max 动态真值〔GameState.back_layout,值域 10-13〕),非固定槽表常数 ``DEPLOYED_CAPACITY``(=10,ADR-0392 定长槽表
     的物理长度)。结论出处:2026-09-03 零刷新诊断批(ZERO_REFRESH_DIAG
     §4.2)实证 M3 升级门 13/13 波恒 False 的根因即此——旧条件拿 10 当
@@ -141,15 +147,16 @@ def zero_overlap(name: str, k: tuple[str, ...]) -> bool:
     return name not in k
 
 
-def item_slot_unsellable(unit: BenchChar) -> bool:
+def item_slot_unsellable(unit: BenchSlot) -> bool:
     """占位件物理门(腾席卖出资格跨通道共享谓词;三通道资格循环首门)。
 
-    真值 = ``BenchChar.is_item_slot``(部署装配点 assemble_bench_list
-    显式标记,operations/cw_screen/cw_screen_deploy):备战槽非角色占席物品
-    (补给箱/星徽秘典/典籍书册等)无卖出交互且无金币现值——实机采证:
-    同参数拖拽出售,角色 9 连全卖、箱零效果;宝箱面 = 4 选 1 装备面板,
-    无金币现值、无出售项。任何星级不可变现 ⇒ 恒不入腾席卖出资格集。
-    知识锚 = docs/game/currency_war/research/board_structure.md §备战栏
+    真值 = 备战席槽位 kind 非角色(§2.4 字段映射:``is_item_slot=True``
+    → ``kind ∈ ('tome','bookcard','supply_box')``;观察写端按容器观察
+    kind 落位)——备战槽非角色占席物品(补给箱/星徽秘典/典籍书册等)
+    无卖出交互且无金币现值——实机采证:同参数拖拽出售,角色 9 连全卖、
+    箱零效果;宝箱面 = 4 选 1 装备面板,无金币现值、无出售项。任何星级
+    不可变现 ⇒ 恒不入腾席卖出资格集。知识锚 =
+    docs/game/currency_war/research/board_structure.md §备战栏
     「备战槽可被非角色物品占据」。
 
     消费位 = ``mandate.fuel_sell_candidates``(M4 燃料)/ ``criteria/sell.
@@ -157,15 +164,15 @@ def item_slot_unsellable(unit: BenchChar) -> bool:
     (支付变现)三通道资格循环首门,判读先于其余资格门;生产观察层
     SIFT 不产占位件条目,sim 假环境经观察面直喂 bench——本门 = 各卖出
     通道发射前唯一的占位件资格防线。新卖出通道必须经本谓词,禁第三处
-    ``is_item_slot`` 内联读复制(静态锁 = sr-od-test
+    kind 判定内联复制(静态锁 = sr-od-test
     test_cw_sell_item_slot_predicate.py)。与部署侧 ``cw_deploy_logic``
     'item_slot' 恒 held 同谓词同向(该面防误上,本面防误卖)。
-    ``getattr`` 缺省 False = 无标记形态不误伤(与部署侧同款防御读)。
+    缺省 False = 无标记形态不误伤(与部署侧同款防御读)。
     """
-    return getattr(unit, 'is_item_slot', False)
+    return bench_slot_unit(unit) is None
 
 
-def arm0_need(deployed: list[BenchChar], bench: list[BenchChar],
+def arm0_need(deployed: list[Unit], bench: list[BenchSlot],
               k_members: tuple[str, ...]) -> int:
     """arm0 v2 上阵人数需求 = 期望态现量,零派生规则(14号稿 §4.2 A4:
     v1 need_slots 从 TRANSITION_SYSTEMS 派生已作废——派生规则本身即一组
@@ -173,6 +180,8 @@ def arm0_need(deployed: list[BenchChar], bench: list[BenchChar],
 
     = |deployed| + |{ b ∈ bench | b ∈ k_members(predicates core∪shared
     口径)∧ b.name ∉ deployed 名集 }|,bench 内同名去重(集合计)。
+    ``bench`` = 占席条目域(容器 BenchSlot,身份经解包读口;
+    benchchar-retirement P4 容器形)。
 
     排除口径 = **纯 name**(口径对齐收口,P1消费臂批落地审:与真实部署去重语义对齐——
     check_seats 对象列同名禁上阵 + cw_deploy_logic 按 cid 去重的实际
@@ -189,15 +198,18 @@ def arm0_need(deployed: list[BenchChar], bench: list[BenchChar],
     (可部署现量),臂①囤腿的 buy_members 超集成员不入 need——囤腿件
     走合成→上板,部署/升级授权面与囤腿面两口径禁混。
     """
-    dep_names = {d.char_id or '' for d in (deployed or [])}
+    dep_names = {getattr(d, 'char_id', '') or '' for d in (deployed or [])}
     kset = set(k_members)
-    extra = {b.char_id or '' for b in bench or []
-             if (b.char_id or '') in kset
-             and (b.char_id or '') not in dep_names}
+    extra = set()
+    for b in bench or []:
+        u = bench_slot_unit(b)
+        cid = (u.char_id if u is not None else '') or ''
+        if cid in kset and cid not in dep_names:
+            extra.add(cid)
     return len(deployed or []) + len(extra)
 
 
-def arm0_level_lag(level: int, readable: bool, deployed: list[BenchChar], bench: list[BenchChar],
+def arm0_level_lag(level: int, readable: bool, deployed: list[Unit], bench: list[BenchSlot],
                    k_members: tuple[str, ...],
                    deploy_cap: int | None) -> tuple[bool, str]:
     """arm0 触发谓词 v2(14号稿 §4.2):等级落后于上阵人数需求。

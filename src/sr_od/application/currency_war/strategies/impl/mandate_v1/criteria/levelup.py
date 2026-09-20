@@ -142,8 +142,10 @@ def levelup_budget_gate(gs: GameState,
     """P72 (3) 全段预算闸(ADR-0576):升级支出 s 的量闸(全段辖域)。
 
     载体 = 容器 gs 单形态(prep 链容器化段 2;entry 姿态镜像/商店线
-    两位/mandate 面消费恒直传 gs,CwSimFrame 过渡支随段 2 帧兼容支删除
-    消亡)。内部字段读经读口(``_plane_round_of``/``_max_units_of``)。
+    两位/mandate 面消费恒直传 gs)。内部字段读经读口
+    (``_plane_round_of``/``_max_units_of``)。``bench`` = 占席条目域
+    (容器 BenchSlot,身份/星级经解包读口;P4 容器形)、``deployed`` =
+    容器行域单位。
 
     判据式(证明 = docs/develop/sr_od/application/currency_war/proofs/
     p72-full-band-budget-gate.md;P71-b (3) 辖域的全段化推广非推翻,
@@ -363,24 +365,32 @@ def _realize_chain_ready(gs: GameState, bench: list,
                          deployed: list) -> bool:
     """P72 支A 谓词:C_realize=1 判定(升级收益的兑现链当帧可兑现)。
 
-    板满(deployed_occupied ≥ max_units)∧ bench 有 2★ 等待件——与
+    板满(占用数 ≥ max_units)∧ bench 有 2★ 等待件——与
     ``kernel.cw_economy.schedule_upgrade`` ①臂及
     ``_upgrade_ul_threshold_ok`` ΔV_pop 指示项成同步锚对(同一 P39
     指示项的第三消费位,改谓词多处同改;禁止判据体外的平行实现,
     本注释与 contracts 锚为登记面非实现副本)。两支全断 ⟹
     C_realize=0 构造性精确零(证明 §2.3)。模块私有:非判据面公开
     函数,不入契约/旁路枚举表(契约由 levelup_budget_gate 键承载)。
+    占用判定 = 容器占用(元素非 None 计 1;deployed = 容器行域单位,
+    benchchar-retirement P4 容器形);bench 有 2★ 等待件 = 占席条目
+    经解包读口取星级(占位件无星级,不构成等待件)。
 
-    C_realize ②支(部署面合格谓词 ``kernel.cw_deploy_logic.has_deployable``
-    接线)随支B 挂账(ADR-0576 §判据):谓词真源已在 kernel,接线需
-    闸+检查器双面重建部署语境,随 C_realize 完整评价面批落码;早稿
-    pop_slot 放宽支系「融资腿」非合格判据(P72 §2.3 勘误锚承继)。
+    C_realize ②支(部署面合格谓词,现役单一源 =
+    ``strategies.impl.mandate_v1.deploy_plan.has_deployable_reasoned``,
+    P3 起kernel 不再持有选人/部署语义)随支B 挂账(ADR-0576 §判据):
+    谓词真源已在策略层,接线需闸+检查器双面重建部署语境,随
+    C_realize 完整评价面批落码;早稿 pop_slot 放宽支系「融资腿」非
+    合格判据(P72 §2.3 勘误锚承继)。
     """
-    from sr_od.application.currency_war.kernel.cw_exec_state import deployed_occupied
     cap = _max_units_of(gs)
-    if deployed_occupied(list(deployed or [])) < cap:
+    if sum(1 for d in (deployed or []) if d is not None) < cap:
         return False
-    return any(b is not None and (getattr(b, 'star', 1) or 1) >= 2
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    return any(bench_slot_unit(b) is not None
+               and int(getattr(bench_slot_unit(b), 'star', 1) or 1) >= 2
                for b in (bench or []))
 
 
@@ -396,7 +406,7 @@ def level_spend_blocked(gs: GameState, session: StrategySession,
     67% 金转为本帧零收益经验)。M3 发射位(mandate/shop 两域)消费。
 
     载体 = 容器 gs 单形态(prep 链容器化段 2;entry 姿态镜像与商店线/
-    mandate 消费恒直传 gs,CwSimFrame 过渡支随段 2 帧兼容支删除消亡)。
+    mandate 消费恒直传 gs,旧帧过渡支随段 2 帧兼容支删除消亡)。
     内部血线谓词(kernel ``blood_budget_levelup_blocked``/``p2_crisis_band``)
     已切容器签名,容器 gs 直读。
 

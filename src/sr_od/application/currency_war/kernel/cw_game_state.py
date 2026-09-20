@@ -3941,6 +3941,26 @@ def bench_units_of(gs: GameState) -> list[Unit]:
             if s is not None and s.kind == 'unit' and s.unit is not None]
 
 
+def bench_entries_of(gs: GameState) -> list[BenchSlot]:
+    """备战席占席条目读口(容器原生,紧缩序):BenchView 槽序中占席槽
+    (``kind != 'empty'``,单位与占位件都在内)的 ``BenchSlot``,顺序 =
+    物理槽序;bench 未观察 = []。判定/资格循环输入域(占位件恒在域内,
+    由消费端按 kind 分流);只要单位身份的读数走 :func:`bench_units_of`。"""
+    view = gs.bench.value
+    if view is None:
+        return []
+    return [s for s in view.slots if s is not None and slot_occupies(s.kind)]
+
+
+def bench_view_slots_of(gs: GameState) -> list[BenchSlot | None]:
+    """备战席槽位表读口(容器原生,全槽含空):BenchView.slots 原序
+    (slots[i] = 物理槽 i+1;空槽与占位件都在域内);bench 未观察 = []。
+    守卫/对位类消费(按容器下标取槽、断言槽身份);身份读数经
+    ``cw_exec_state.bench_slot_unit`` 解包。"""
+    view = gs.bench.value
+    return list(view.slots) if view is not None else []
+
+
 def back_capacity_of(gs: GameState) -> int:
     """后排格数读口(旧 ``CwSimFrame.back_max`` 容器版,波3 立口):
     back_layout 真值(值域 6-9,平常 6/宝钻扩展 7/8/9,>9 域外 8 格超集);

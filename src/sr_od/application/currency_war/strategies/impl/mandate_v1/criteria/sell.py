@@ -18,6 +18,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     bench_char_cost,
     sell_refund,
 )
+from sr_od.application.currency_war.kernel.cw_exec_state import bench_slot_unit
 from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     count_merge_material_blocked,
     merge_material_reject_reason,
@@ -33,15 +34,44 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vopt impo
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
     from sr_od.application.currency_war.kernel.cw_game_state import (
+        BenchSlot,
         GameState,
+        Unit,
     )
+
+
+def _slot_of(b: object) -> int:
+    """占席条目 → 槽号信息位(单位 = 内嵌 Unit.slot,1 基物理槽;
+    P4 容器形解包单一读点,本模块三通道共用)。"""
+    u = bench_slot_unit(b)
+    return int(getattr(u, 'slot', 0) or 0) if u is not None else 0
+
+
+def _star_of(b: object) -> int:
+    """占席条目 → 星级(占位件缺省 1,资格门先拒,值不被消费)。"""
+    u = bench_slot_unit(b)
+    return int(getattr(u, 'star', 1) or 1) if u is not None else 1
+
+
+def _cid_of(b: object) -> str:
+    """占席条目 → 身份名(占位件 = '')。"""
+    u = bench_slot_unit(b)
+    return (getattr(u, 'char_id', '') or '') if u is not None else ''
+
+
+def _deployed_units_of(state: GameState) -> list[Unit]:
+    """场上单位域现读(行域紧缩;守卫/素材计数全场域共用同一次解析)。"""
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        deployed_rows_of,
+    )
+    front, back = deployed_rows_of(state)
+    return [d for d in (*front, *back) if d is not None]
 
 
 def line_switch_sell(old_line_members: tuple[str, ...],
                      new_line_members: tuple[str, ...],
-                     bench: list[BenchChar], deployed: list[BenchChar],
+                     bench: list[BenchSlot], deployed: list[Unit],
                      gs: GameState, *, k_switched: bool,
                      counters: dict | None = None,
                      dedup_names: set[str] | None = None,
@@ -49,8 +79,7 @@ def line_switch_sell(old_line_members: tuple[str, ...],
                      ) -> tuple[list[int], str]:
     """换线塌缩出口(§2.2 主比较式的发射位;k_switched=K 已按 K′ 更新)。
 
-    载体 = 容器 gs(prep 链容器化段 2 起 gs 单形态;CwSimFrame 过渡支
-    随段 2 帧兼容支删除消亡)。
+    载体 = 容器 gs(prep 链容器化段 2 起 gs 单形态)。
 
     返回 (拟卖 bench slot 列表, 归因键)。发射前置:
     - K 未切换 ⇒ 无对象(空,'no_event');
@@ -93,30 +122,29 @@ def line_switch_sell(old_line_members: tuple[str, ...],
         return [], 'switchline_exit_blocked'
     # 空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
     # 板空帧不塌缩清算,孤儿件留 bench 下帧再评(损失 = 清算延迟,非自旋)。
-    # deployed 读 = 波 1 席位读口单一源。
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        deployed_slots_of,
-    )
-    _deployed = deployed_slots_of(gs)
+    # deployed 读 = 容器行域单一源。
+    _deployed = _deployed_units_of(gs)
     if empty_board_sell_blocked(_deployed, counters=counters):
         return [], EMPTY_BOARD_SELL_GUARD_KEY
     out: list[int] = []
     for b in bench:
-        name = b.char_id or ''
+        name = _cid_of(b)
         if name in old_line_members and name not in new_line_members:
             # 注入态保守子集:仅燃料类(1★ 全额可退)放行,其余保留
-            if not refund_full_star_ok(b.star, bench_char_cost(b)):
+            if not refund_full_star_ok(_star_of(b), bench_char_cost(
+                    bench_slot_unit(b))):
                 continue
-            if merge_material_reject_reason(name, b.star, bench, deployed) \
+            if merge_material_reject_reason(name, _star_of(b), bench,
+                                            deployed) \
                     and name not in merge_guard_release:
                 if counters is not None:
                     count_merge_material_blocked(counters, name, dedup_names)
                 continue
-            out.append(b.slot)
+            out.append(_slot_of(b))
     return out, ''
 
 
-def sell_for_interest(gold: int, bench: list[BenchChar],
+def sell_for_interest(gold: int, bench: list[BenchSlot],
                       cap_resolved: int,
                       k_members: tuple[str, ...],
                       state: GameState,
@@ -199,12 +227,9 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
         return [], 'p2_blood_floor'
     # 空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
     # 板空帧卖储备换金 = 期权损失换零净金(1★ 全额退),弱劣拒帧。
-    # deployed 读 = 波 1 席位读口单一源(守卫与资格循环两处共用同一次
+    # deployed 读 = 容器行域单一源(守卫与资格循环两处共用同一次
     # 解析,禁双形态各读半份)。
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        deployed_slots_of,
-    )
-    _deployed = deployed_slots_of(state)
+    _deployed = _deployed_units_of(state)
     if empty_board_sell_blocked(_deployed, counters=counters):
         return [], EMPTY_BOARD_SELL_GUARD_KEY
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
@@ -219,16 +244,16 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
         if counters is not None:
             counters[key] = counters.get(key, 0) + n
 
-    _deployed = list(_deployed)
-    qualified: list[BenchChar] = []
+    qualified: list[BenchSlot] = []
     for b in bench:
         # 占位件物理门(先于其余资格门短路):占席物品不可卖、无金币
         # 现值,判据单一源 = predicates.item_slot_unsellable(跨通道共享
         # 谓词,与 M4 燃料/支付变现同门,禁内联复制)。
         if predicates.item_slot_unsellable(b):
             continue
-        name = b.char_id or ''
-        if b.star != 1:
+        name = _cid_of(b)
+        star = _star_of(b)
+        if star != 1:
             continue
         if not predicates.zero_overlap(name, k_members):
             continue
@@ -237,27 +262,29 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
         if name in defer_names:
             _count('t3_protect_deferred')   # T3 同轮保留:回拉通道绝对跳过
             continue
-        if merge_material_reject_reason(name, b.star, bench, _deployed) \
+        if merge_material_reject_reason(name, star, bench, _deployed) \
                 and name not in merge_guard_release:
             if counters is not None:
                 count_merge_material_blocked(counters, name, dedup_names)
             continue
         if predicates.bench_effect_qualified(
-                name, predicates.bench_effect_context(state, b, k_members)):
+                name, predicates.bench_effect_context(state,
+                                                      bench_slot_unit(b),
+                                                      k_members)):
             continue
         qualified.append(b)
     # 序:刚买件优先(R2-N1),其余 (star, slot) 升序(确定性)
     prefer = set(prefer_names)
-    qualified.sort(key=lambda b: (0 if (b.char_id or '') in prefer else 1,
-                                  b.star, b.slot))
+    qualified.sort(key=lambda b: (0 if _cid_of(b) in prefer else 1,
+                                  _star_of(b), _slot_of(b)))
     out: list[int] = []
     remaining = gap
     sellback = 0
     for b in qualified:
-        out.append(b.slot)
+        out.append(_slot_of(b))
         # 1★ 卖回净额 = sell_refund(1, 注册表 cost)(与 funding_support
         # 同款:bench_char_cost 未知名保守估 3,禁字面量双源)
-        refund = sell_refund(1, bench_char_cost(b))
+        refund = sell_refund(1, bench_char_cost(bench_slot_unit(b)))
         remaining -= refund
         sellback += refund
         if remaining <= 0:
@@ -270,7 +297,7 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
     return out, ''
 
 
-def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
+def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
                          k_members: tuple[str, ...],
                          state: GameState,
                          *,
@@ -283,7 +310,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
     """「支付能力变现」子域(R13-5/R14-4:支付支撑通道,两臂同开)。
 
     载体 = 容器 gs 单形态(prep 链容器化段 2;prep 位/商店线消费恒直传
-    gs,CwSimFrame 过渡支随段 2 帧兼容支删除消亡)。
+    gs)。
 
     触发 = 骨架义务动作金不足(gold < need_gold,硬约束①不满足侧的
     筹资面);变现对象 = 凑息档序同资格(占位件物理门 ∧ 1★ ∧ 无后台
@@ -318,44 +345,43 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
     # 空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
     # 板空帧筹资卖出同弱劣拒帧(收益侧=义务在 bench 域,守卫不评收益
     # 只钉卖出腿;恢复正路 = 部署与买面,不在卖出通道)。
-    # deployed 读 = 波 1 席位读口单一源。
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        deployed_slots_of,
-    )
-    _deployed = deployed_slots_of(state)
+    # deployed 读 = 容器行域单一源。
+    _deployed = _deployed_units_of(state)
     if empty_board_sell_blocked(_deployed,
                                 counters=counters):
         return [], EMPTY_BOARD_SELL_GUARD_KEY
     out: list[int] = []
     remaining = need_gold - gold
-    _deployed = list(_deployed or [])
     # T3 末位牺牲序:被保件稳定移尾(转化类放行,非禁卖)
-    for b in sorted(bench, key=lambda x: ((x.char_id or '') in defer_names,
-                                          x.star, x.slot)):
+    for b in sorted(bench, key=lambda x: (_cid_of(x) in defer_names,
+                                          _star_of(x), _slot_of(x))):
         # 占位件物理门(先于其余资格门短路):占席物品不可卖、无金币
         # 现值,判据单一源 = predicates.item_slot_unsellable(跨通道共享
         # 谓词,与 M4 燃料/凑息同门,禁内联复制)。
         if predicates.item_slot_unsellable(b):
             continue
-        name = b.char_id or ''
-        if b.star != 1:
+        name = _cid_of(b)
+        star = _star_of(b)
+        if star != 1:
             continue
         if not predicates.zero_overlap(name, k_members):
             continue
         if name in exclude_names:
             continue   # P60:买面义务集成员禁入卖出资格集
-        if merge_material_reject_reason(name, b.star, bench, _deployed) \
+        if merge_material_reject_reason(name, star, bench, _deployed) \
                 and name not in merge_guard_release:
             if counters is not None:
                 count_merge_material_blocked(counters, name, dedup_names)
             continue
         if predicates.bench_effect_qualified(
-                name, predicates.bench_effect_context(state, b, k_members)):
+                name, predicates.bench_effect_context(state,
+                                                      bench_slot_unit(b),
+                                                      k_members)):
             continue
-        out.append(b.slot)
+        out.append(_slot_of(b))
         # 1★ 卖回净额 = sell_refund(1, 注册表 cost) 派生(R196 症6:
         # 禁字面量 3 双源——bench_char_cost 未知名保守估 3 与旧值同构)
-        remaining -= sell_refund(1, bench_char_cost(b))
+        remaining -= sell_refund(1, bench_char_cost(bench_slot_unit(b)))
         if remaining <= 0:
             break
     return out, ''

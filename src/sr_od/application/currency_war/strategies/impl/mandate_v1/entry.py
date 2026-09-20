@@ -54,9 +54,9 @@ from sr_od.application.currency_war.kernel.cw_economy import (
 from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
+    bench_entries_of,
     bench_free_slots,
-    bench_slots_of,
-    deployed_slots_of,
+    deployed_rows_of,
     game_state_of,
     gold_of,
     level_of,
@@ -113,6 +113,13 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state imp
     state_of,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
+
+
+def _deployed_units_of(gs: GameState) -> list:
+    """上场单位域紧缩序(行域 front_row+back_row 的容器 Unit,前排在前;
+    本模块单一读点,benchchar-retirement P4 容器形)。"""
+    front, back = deployed_rows_of(gs)
+    return [d for d in (*front, *back) if d is not None]
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_registry import (
@@ -468,7 +475,7 @@ def emit(session: StrategySession,
     # 换源;书册卡臂 = 用户裁定 2026-09-19 开卡时机归策略器,原备战环入口
     # 清场 ``cw_screen_prep._clear_prep_cards`` 代发通道撤销):触发物 = 容器
     # bench 槽位 kind(占席物细分)。⚠️ 读口 = 容器 BenchView.slots 直读,
-    # 禁走 ``bench_slots_of``——legacy 换算把占位件压成 is_item_slot 布尔,
+    # 禁走 legacy 槽表换形口——legacy 换算把占位件压成 is_item_slot 布尔,
     # kind 信息在该路丢失(读 legacy 元素 .kind = AttributeError,批5 前旧
     # 臂的半落地隐患,本批随书册卡臂接线一并根治)。BenchView slots[i] =
     # 物理槽 i+1(动作参数 = 物理槽号,执行器按槽号现算点击坐标——总纲
@@ -570,15 +577,16 @@ def emit(session: StrategySession,
                 cap_hold=locked_buy_cap_hold(gs),
                 current_round=_round_num)
             # 释放集同参同源(N3:cap_hold 与本位装配同一现读)。
+            _sf_bench = bench_entries_of(gs)
             _sf_release = sell_gate.dead_pair_exit_release(
                 session, _sf_k,
-                [c for c in bench_slots_of(gs) if c is not None],
-                [c for c in deployed_slots_of(gs) if c is not None],
+                _sf_bench,
+                _deployed_units_of(gs),
                 _round_num,
                 cap_hold=locked_buy_cap_hold(gs),
                 counters=state_of(session).cw4_counters)
             _sf_cands = mandate.fuel_sell_candidates(
-                [c for c in bench_slots_of(gs) if c is not None], _sf_k,
+                _sf_bench, _sf_k,
                 state=gs,
                 exclude_names=_sf_excl,
                 merge_guard_release=_sf_release,
@@ -588,9 +596,9 @@ def emit(session: StrategySession,
                 # 轮内卖出登记(泄金阶梯档 2 新鲜度排除写端,ADR-0604 §3;
                 # 晶矿路径 M4 腾席与 prep/shop 域 M4 同口径——漏记 = 卖X 后同轮
                 # 压库买回 X 的净零自旋在该路径残余可达)。
-                mandate.record_round_sold(session, gs,
-                                          _sf_cands[0].char_id or '')
-                if (_sf_cands[0].char_id or '') in _sf_release:
+                _sf_c0 = mandate._slot_cid(_sf_cands[0])
+                mandate.record_round_sold(session, gs, _sf_c0)
+                if _sf_c0 in _sf_release:
                     _ct_sf0 = state_of(session).cw4_counters
                     if isinstance(_ct_sf0, dict):
                         _ct_sf0['dead_pair_exit_sold_m4_fuel'] = \
@@ -618,8 +626,10 @@ def emit(session: StrategySession,
     # 按陈旧名单放行第 4 拖,游戏侧静默拒收),备战决策的名单消费面同帧
     # 同源改读容器读口派生——wanted 臂与下方组装两处共用同一推导,禁再
     # 引 obs 名单第二份。黑板字段退役面归阶段 3.5。
-    _gs_bench = [c for c in bench_slots_of(gs) if c is not None]
-    _gs_deployed = [c for c in deployed_slots_of(gs) if c is not None]
+    # P4 容器形:bench = 占席条目域(BenchSlot 紧缩序),deployed = 行域
+    # 单位紧缩序(front_row + back_row,前排在前)。
+    _gs_bench = bench_entries_of(gs)
+    _gs_deployed = _deployed_units_of(gs)
     _arm_out = mandate.wanted_closure_emit(
         session, gs, _gs_bench, _gs_deployed,
         max_units_of(gs), _round_num)
@@ -656,8 +666,8 @@ def emit(session: StrategySession,
                     state_of(session).cw4_counters.get(f'prep_k_fallback_{_band}', 0) + 1
     bench = list(_gs_bench)
     deployed = list(_gs_deployed)
-    bench_names = [b.char_id or '' for b in bench]
-    deployed_names = [b.char_id or '' for b in deployed]
+    bench_names = [mandate._slot_cid(b) for b in bench]
+    deployed_names = [d.char_id or '' for d in deployed]
 
     # ② 证明 pass(信号臂 R11-3:两臂同开不旁路;命中=直通线语境,计数披露)
     if proof.signal_arm(session) is not None:
@@ -915,7 +925,7 @@ def emit(session: StrategySession,
                 _f_fallback = sell_gate.funding_hold_fallback(
                     session, k_members, bench, gold=gold_of(gs),
                     need=_f_need, a_exclusions=_f_excl,
-                    deployed=deployed_slots_of(gs),
+                    deployed=_deployed_units_of(gs),
                     cap_hold=locked_buy_cap_hold(gs))
             for s in slots:
                 # 容器下标解析(换算收口;失配 = 陈旧/carry 帧,fail-closed 跳过)
@@ -925,8 +935,8 @@ def emit(session: StrategySession,
                         _ct['ev_conflict_dropped'] = \
                             _ct.get('ev_conflict_dropped', 0) + 1
                     continue
-                if next((b.char_id or '' for b in bench if b.slot == s),
-                        '') in _f_release:
+                if next((mandate._slot_cid(b) for b in bench
+                         if mandate._slot_no_of(b) == s), '') in _f_release:
                     _ct['dead_pair_exit_sold_funding'] = \
                         _ct.get('dead_pair_exit_sold_funding', 0) + 1
                 # 卖出通道记录字段随发射位填充(SELL_BENCH_REASONS 登记
@@ -944,10 +954,11 @@ def emit(session: StrategySession,
                     continue
                 # 卖出销账(出口①;单笔即止,need 即止)。
                 # reason = 卖出通道记录字段(登记门键,记录非指令)。
-                if (bc.char_id or '') in _f_release:
+                _bc_name = mandate._slot_cid(bc)
+                if _bc_name in _f_release:
                     _ct['dead_pair_exit_sold_funding'] = \
                         _ct.get('dead_pair_exit_sold_funding', 0) + 1
-                sell_gate.consume_on_sell(session, bc.char_id or '')
+                sell_gate.consume_on_sell(session, _bc_name)
                 ev_out.append(Emitted(
                     CwActionSellBenchParam(bench_idx=_vidx, reason='funding_support'),
                     False, funding_support=True))
@@ -1138,10 +1149,9 @@ def _reconcile_posture_authorization(session: StrategySession,
     elif cap is None:
         reason = 'contract_cap_missing'
     elif not predicates.arm1_existence(
-            len([d for d in deployed_slots_of(gs) if d is not None]),
-            [b.char_id or '' for b in bench_slots_of(gs) if b is not None],
-            [d.char_id or '' for d in deployed_slots_of(gs)
-             if d is not None], cap):
+            len(_deployed_units_of(gs)),
+            [mandate._slot_cid(b) for b in bench_entries_of(gs)],
+            [d.char_id or '' for d in _deployed_units_of(gs)], cap):
         reason = 'arm1_board_not_full'
     else:
         # 成本计算 = 容器(W6 波 4 接缝族切容器帧后帧形态不再可喂;
@@ -1169,8 +1179,8 @@ def _reconcile_posture_authorization(session: StrategySession,
                 _gate_ok, _gate_why = levelup.levelup_budget_gate(
                     gs, session, _gold,
                     cap_resolved_of_session(session),
-                    k_members, bench_slots_of(gs),
-                    deployed_slots_of(gs), clicks, cost)
+                    k_members, bench_entries_of(gs),
+                    _deployed_units_of(gs), clicks, cost)
             reason = (_gate_why if not _gate_ok and _gate_why
                       else 'contract_other')
     un = {'auth_id': f'{_plane}-{_round}',
@@ -1222,7 +1232,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
     载体 = 容器 gs(prep 链容器化段 1:签名切 gs)。域读:金/轮次经
     ``gold_of``/``round_num_of`` 读口(缺省 0/1 镜像旧帧直读,金轮位
     读口 = 设计件 prep链容器化方案.md §2.2⑤ 行为差申报面);兜底上阵
-    输入 = ``deployed_slots_of(gs)``(换算单一源)。旧 `state is None`
+    输入 = 行域容器现读(P4 容器形)。旧 `state is None`
     守卫随载体退役——gs 恒存在,生产帧视图恒非 None(heavy 观察恒产出)。
 
     None 期缺省姿态:各面内部 fail-closed(未标定不发射);本函数
@@ -1250,7 +1260,8 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
     _dp_release = sell_gate.dead_pair_exit_release(
         session, k_members, frame.bench, frame.deployed, round_num_of(gs),
         cap_hold=locked_buy_cap_hold(gs), counters=counters)
-    _slot_name_of = {(b.slot): (b.char_id or '') for b in frame.bench}
+    _slot_name_of = {mandate._slot_no_of(b): mandate._slot_cid(b)
+                     for b in frame.bench}
     out: list[Emitted] = []
     # line_switch_sell(换线塌缩出口:k_switched 时对旧线件重评;
     # 契约核验(单一源=criteria/contracts.py),前提不成立 ⇒ 本帧弃权+计数;
@@ -1317,7 +1328,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
             _f_fallback = sell_gate.funding_hold_fallback(
                 session, k_members, frame.bench, gold=gold_of(gs),
                 need=_fb_need, a_exclusions=_f_excl,
-                deployed=deployed_slots_of(gs),
+                deployed=_deployed_units_of(gs),
                 cap_hold=locked_buy_cap_hold(gs))
         for s in fslots:
             # 容器下标解析(换算收口;失配 = 陈旧/carry 帧,fail-closed 跳过)
@@ -1330,8 +1341,9 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
             # T3 转化类卖出销账(店侧同款)。plain 分键计数保留;reason =
             # 卖出通道记录字段(登记门键,记录非指令)——prep 卖出恒先于
             # 本轮买入,同轮买卖检查豁免面对本位结构性不可达。
-            _fbc = next((b for b in frame.bench if b.slot == s), None)
-            _fname = (_fbc.char_id or '') if _fbc is not None else ''
+            _fbc = next((b for b in frame.bench
+                         if mandate._slot_no_of(b) == s), None)
+            _fname = mandate._slot_cid(_fbc) if _fbc is not None else ''
             if _fname in _dp_release:
                 counters['dead_pair_exit_sold_funding'] = \
                     counters.get('dead_pair_exit_sold_funding', 0) + 1
@@ -1351,10 +1363,11 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
                 continue
             # 卖出销账(出口①;单笔即止,need 即止)。兜底分键计数保留;
             # reason = 卖出通道记录字段(登记门键,记录非指令)。
-            if (bc.char_id or '') in _dp_release:
+            _fb_name = mandate._slot_cid(bc)
+            if _fb_name in _dp_release:
                 counters['dead_pair_exit_sold_funding'] = \
                     counters.get('dead_pair_exit_sold_funding', 0) + 1
-            sell_gate.consume_on_sell(session, bc.char_id or '')
+            sell_gate.consume_on_sell(session, _fb_name)
             out.append(Emitted(
                 CwActionSellBenchParam(bench_idx=_vidx, reason='funding_support'),
                 False, funding_support=True))

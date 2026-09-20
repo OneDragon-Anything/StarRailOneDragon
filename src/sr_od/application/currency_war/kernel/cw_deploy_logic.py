@@ -9,8 +9,10 @@
 与换阵计划链(select_swap_plan,卖后上序经注入参消费选人函数——包依赖
 矩阵禁 kernel→strategies 直引,注入契约同 line_members 先例)。
 
-这里只收**纯决策**。bench 输入用 BenchChar,
-身份可判(char_id 空串=未识别,围栏语义「照旧上」保留)。
+这里只收**纯决策**。输入 = 容器形状(bench = 占席条目 ``BenchSlot``
+紧缩序,身份经 ``bench_slot_unit`` 解包;deployed = 行域 ``Unit``,
+benchchar-retirement P4 容器形),身份可判(char_id 空串=未识别,
+围栏语义「照旧上」保留)。
 """
 from __future__ import annotations
 
@@ -22,8 +24,7 @@ from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     DEPLOYED_BACK_CAPACITY,
     DEPLOYED_FRONT_CAPACITY,
-    BenchChar,
-    deployed_occupied,
+    bench_slot_unit,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
@@ -42,10 +43,25 @@ from sr_od.application.currency_war.kernel.cw_system_cards import SYSTEM_CARDS
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        BenchSlot,
+        Unit,
+    )
 
-def _bonds_of(bc: BenchChar) -> set[str]:
-    """角色全羁绊(factions+flows);未识别/未注册 → 空集。"""
-    cid = getattr(bc, 'char_id', '') or ''
+
+def _bench_cid(b) -> str:
+    """占席条目 → 身份名(单位 = 内嵌 Unit.char_id;占位件/None = '')。
+    本模块 BenchSlot 解包单一读点(P4 容器形,解包口 = bench_slot_unit)。"""
+    u = bench_slot_unit(b)
+    return (getattr(u, 'char_id', '') or '') if u is not None else ''
+
+
+def _bonds_of(bc) -> set[str]:
+    """角色全羁绊(factions+flows);未识别/未注册 → 空集。
+    入参 = 容器条目(bench 占席条目 BenchSlot 解包 / 行域 Unit 直读,
+    P4 容器形)。"""
+    u = bench_slot_unit(bc) if getattr(bc, 'kind', None) is not None else bc
+    cid = (getattr(u, 'char_id', '') or '') if u is not None else ''
     ch = CHARACTERS.get(cid) if cid else None
     if ch is None:
         return set()
@@ -253,7 +269,7 @@ def recipe_floor_holds(main_faction: str,
     return not (lock_exempt_armed and not supply_exists)
 
 
-def xianzhou_supply_exists(bench: list[BenchChar],
+def xianzhou_supply_exists(bench: list,
                            on_board_cids: set[str]) -> bool:
     """本帧 bench 是否存在「有效仙舟供给」(配方底线门豁免条件(2))。
 
@@ -264,7 +280,8 @@ def xianzhou_supply_exists(bench: list[BenchChar],
     ① 全羁绊(factions+flows)含 '仙舟'(与门增量口径同式——凡部署
        推进仙舟档的件都算供给,对照 select_deployments 的 ``_fac_run``
        全羁绊 +1 口径);
-    ② 非 item_slot(占槽物品恒拒、永不上场 = 死供给);
+    ② 非占位件(槽位 kind ∈ tome/bookcard/supply_box 恒拒、永不上场
+       = 死供给;§2.4 is_item_slot → kind 口);
     ③ char_id ∉ on_board_cids(同名在场拷贝恒 held = 死供给;
        on_board_cids = deployed_cids ∪ 本帧已上——kernel 侧传
        deployed_cids | _up_names,op 侧 _deployed_cids 已含同执行增量);
@@ -282,9 +299,10 @@ def xianzhou_supply_exists(bench: list[BenchChar],
     本谓词恒不抛异常(全分支防御读),消费方无需 try。
     """
     for bc in bench or []:
-        if getattr(bc, 'is_item_slot', False):
+        if getattr(bc, 'kind', 'unit') in ('tome', 'bookcard', 'supply_box'):
             continue
-        cid = getattr(bc, 'char_id', '') or ''
+        u = bench_slot_unit(bc)
+        cid = (getattr(u, 'char_id', '') or '') if u is not None else ''
         if not cid or cid in on_board_cids:
             continue
         ch = CHARACTERS.get(cid)
@@ -431,21 +449,21 @@ def swap_arm_deployed_count(board: dict | None,
                             tracked_deployed: list) -> int:
     """换阵卖出义务臂「板满」条件的部署数喂入(单一口径)。
 
-    = 占用槽位表计数(``cw_state.deployed_occupied``,数据源 =
-    reconcile_tracking 的 SIFT 真读槽位表)。**禁用
+    = 容器占用数(占用判定 = 元素非 None 计 1;P4 容器形,行域本身即
+    紧凑占用序)。**禁用
     ``sum(board.values())``**:board 语义 = 阵营名 → 该阵营在场人数
     (一人多阵营贡献多次,4 人可贡献 11 阵营次)——把羁绊计数当部署数
     喂「板满」门 = 建模对象错,板未满即开臂、熔断自线成型起事实失效。
     """
-    return deployed_occupied(
-        tracked_deployed if isinstance(tracked_deployed, list) else [])
+    return sum(1 for d in (tracked_deployed if isinstance(tracked_deployed, list)
+                           else []) if d is not None)
 
 
 def fenced_swap_arm_of(fp: float, deployed_n: int, cap: int | None) -> bool:
     """换阵卖出义务臂触发判据(纯函数,锁测试面):线成型(fp≥1.00,
     单一源 ``cw_comps.form_progress``)∧ 板满(占用数 ≥ cap——cap =
     可上阵数占用数口径,与 select_swap_plan 板满门同一派生链
-    ``CwSimFrame.max_units``(level+宝钻、封顶 = 4+back_max 动态真值
+    ``max_units_of``(level+宝钻、封顶 = 4+back_max 动态真值
     〔GameState.back_layout,值域 10-13〕;物理槽表常数 DEPLOYED_
     CAPACITY 禁作阈值,理由见下),
     喂入单一源 = ``swap_arm_deployed_count``)。两条件并存 =
@@ -762,8 +780,8 @@ def required_swap_arm_pending(ctx: SwapPlanContext | None) -> bool:
         return False
     names = {x.char_id for x in ctx.deployed if x is not None and x.char_id}
     if ctx.required_names and not (set(ctx.required_names) & names):
-        bench_names = {b.char_id for b in (ctx.bench or [])
-                       if b is not None and b.char_id}
+        bench_names = {_bench_cid(b) for b in (ctx.bench or [])
+                       if b is not None and _bench_cid(b)}
         if set(ctx.required_names) & bench_names:
             return True
     return bool(_completion_swap_ins(ctx))
@@ -838,7 +856,7 @@ def _completion_swap_ins(ctx: SwapPlanContext) -> frozenset[str]:
     from sr_od.application.currency_war.kernel.cw_comps import form_progress
     out: set[str] = set()
     for b in (ctx.bench or []):
-        m = getattr(b, 'char_id', '') or ''
+        m = _bench_cid(b)
         if not m or m in names:
             continue   # 同名在板:真上序被 name_dup 恒留置,入选无意义
         hyp = names | {m}
@@ -897,8 +915,8 @@ def _seat_completes_form(ctx: SwapPlanContext, victim: str,
 
 def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
                                star: int | None = None,
-                               bench: list[BenchChar] | None = None,
-                               deployed: list[BenchChar] | None = None,
+                               bench: list | None = None,
+                               deployed: list | None = None,
                                ) -> str:
     """卖出 victim 的单一判定(逐件;ADR-0530 + 转型臂同位扩展)。
 
@@ -1071,8 +1089,8 @@ class SwapPlanContext:
     membership: frozenset[str] | None
     fresh_buys: frozenset[str]
     board: dict[str, int]
-    deployed: list[BenchChar]
-    bench: list[BenchChar]
+    deployed: list[Unit]
+    bench: list[BenchSlot]
     cap: int | None
     front_slots: int = DEPLOYED_FRONT_CAPACITY
     back_slots: int = DEPLOYED_BACK_CAPACITY
@@ -1182,7 +1200,7 @@ def target_view_char_is(ctx: SwapPlanContext, char_id: str) -> bool:
 
 
 def bench_target_count(ctx: SwapPlanContext | None, *,
-                       bench: list[BenchChar] | None = None) -> int:
+                       bench: list | None = None) -> int:
     """合取②(计数形态):bench 目标视图件数(>0 即合取②成立)。
 
     :param bench: 域覆盖(执行面 SIFT 现读喂入;缺省 ctx.bench 帧)。
@@ -1193,11 +1211,11 @@ def bench_target_count(ctx: SwapPlanContext | None, *,
         return 0
     _bench = bench if bench is not None else ctx.bench
     return sum(1 for b in _bench
-               if target_view_char_is(ctx, getattr(b, 'char_id', '') or ''))
+               if target_view_char_is(ctx, _bench_cid(b)))
 
 
 def board_sellable_offtarget_exists(ctx: SwapPlanContext | None, *,
-                                    deployed: list[BenchChar] | None = None,
+                                    deployed: list | None = None,
                                     ) -> bool:
     """合取③:板上存在其资格臂下可卖的 off-target 件。
 
@@ -1220,8 +1238,8 @@ def board_sellable_offtarget_exists(ctx: SwapPlanContext | None, *,
 
 
 def swap_realizable(ctx: SwapPlanContext | None, *,
-                    bench: list[BenchChar] | None = None,
-                    deployed: list[BenchChar] | None = None,
+                    bench: list | None = None,
+                    deployed: list | None = None,
                     ) -> tuple[bool, str]:
     """换阵可兑现谓词(三合取;发射⇔执行同吃,F1 单一源)。
 
@@ -1292,12 +1310,12 @@ def swap_plan_up_names(plan: SwapPlan | None,
     if plan is None or ctx is None:
         return []
     bench = getattr(ctx, 'bench', None) or []
-    return [getattr(bench[i], 'char_id', '') or ''
+    return [_bench_cid(bench[i])
             for i in plan.up_bench if isinstance(i, int) and 0 <= i < len(bench)]
 
 
 def evolution_swap_arm_trigger(membership: frozenset[str] | None,
-                               bench: list[BenchChar] | None, *,
+                               bench: list | None, *,
                                locked: bool,
                                fp: float | None,
                                board_full: bool) -> bool:
@@ -1338,7 +1356,7 @@ def evolution_swap_arm_trigger(membership: frozenset[str] | None,
         return False
     if not membership:
         return False
-    return any((getattr(b, 'char_id', '') or '') in membership
+    return any(_bench_cid(b) in membership
                for b in (bench or []) if b is not None)
 
 
@@ -1346,8 +1364,8 @@ def assemble_swap_plan_inputs(
         session: object,
         *,
         state: GameState | None,
-        deployed: list[BenchChar],
-        bench: list[BenchChar],
+        deployed: list[Unit],
+        bench: list[BenchSlot],
         cap: int | None,
         deployed_n: int | None = None,
         front_slots: int = DEPLOYED_FRONT_CAPACITY,
@@ -1374,6 +1392,9 @@ def assemble_swap_plan_inputs(
 
     返回 None = 装配不可得(target 视图/板面字典缺读),调用方按
     谓词弃权处理(计划空,不静默发射)。
+    ``deployed``/``bench`` = 容器形状(行域 Unit / 占席条目 BenchSlot,
+    P4 容器形;发射侧 = 决策帧容器现读,执行侧 = SIFT 现读域,
+    ADR-0530 装配源契约分轨不变)。
 
     :param deployed_n: 板满计数覆盖(执行侧喂 ``swap_arm_deployed_count``
         真读槽位口径;None = 按 ``deployed`` 占用件数计——同一占用数
@@ -1458,10 +1479,11 @@ def assemble_swap_plan_inputs(
     fenced_on = False
     fp: float | None = None
     board_full = False
-    # 占用数单一源 = deployed_occupied(容量判据禁裸 len/内联 None 过滤,
-    # 见该源 docstring;deployed_n 覆盖参数语义不变——执行侧真读槽位口径,
-    # None 退现算,同一占用数口径含 SIFT 未识别占位件)。
-    _n = deployed_n if deployed_n is not None else deployed_occupied(deployed)
+    # 占用数 = 容器占用判定(元素非 None 计 1;P4 容器形,行域本身即
+    # 紧凑占用序;deployed_n 覆盖参数语义不变——执行侧真读槽位口径,
+    # None 退现算)。
+    _n = deployed_n if deployed_n is not None else sum(
+        1 for d in (deployed or []) if d is not None)
     if tgt_comp is not None and state is not None:
         try:
             _fp = float(form_progress(tgt_comp, state))
@@ -1525,7 +1547,7 @@ def assemble_swap_plan_inputs(
     # 演进降级换血臂(装配级缺省计算;执行侧 bench 域分轨面在
     # cw_op_deploy 卖出臂 SIFT 现读后经同一触发函数重算覆写,声明见
     # evolution_swap_arm_trigger)。
-    _bench_occ = [b for b in bench if b is not None]
+    _bench_occ = [b for b in (bench or []) if b is not None]
     evolution_armed = evolution_swap_arm_trigger(
         membership, _bench_occ,
         locked=locked, fp=fp, board_full=board_full)
@@ -1645,7 +1667,7 @@ def select_swap_plan(ctx: SwapPlanContext | None,
     # 锁线转型域(辖域谓词单一源 = _swap_transition_domain):域内
     # arm 标注恒 'transition'(行 #5/N5)且 victim 序 = P79-4 让渡序。
     _dep_names = {x.char_id for x in ctx.deployed if x.char_id}
-    victims: list[tuple[tuple, BenchChar, set[str], str]] = []
+    victims: list[tuple[tuple, Unit, set[str], str]] = []
     for _scan, d in enumerate(ctx.deployed):
         name = d.char_id or ''
         ch = CHARACTERS.get(name) if name else None
@@ -1686,8 +1708,7 @@ def select_swap_plan(ctx: SwapPlanContext | None,
     # bench 件是否 target 视图(转型臂卖后上序底线:up ∩ target ≠ ∅;
     # 判定单一源 = target_view_char_is,fw_carry 口径收口后禁第二实现)
     def _bench_is_target(i: int) -> bool:
-        return target_view_char_is(
-            ctx, getattr(ctx.bench[i], 'char_id', '') or '')
+        return target_view_char_is(ctx, _bench_cid(ctx.bench[i]))
 
     plan = SwapPlan(reasons=reasons)
     for _rank, d, _bonds, _arm in victims:
@@ -1706,7 +1727,7 @@ def select_swap_plan(ctx: SwapPlanContext | None,
             recipe_floor_lock_exempt=ctx.recipe_floor_lock_exempt,
             required_names=ctx.required_names)
         for _hi in held2:
-            _hn = ctx.bench[_hi].char_id or ''
+            _hn = _bench_cid(ctx.bench[_hi])
             reasons[_hn] = 'post_sell_held'
         # 换入臂卖后上序底线:臂武装帧(up 空间 = 本臂腾出)卖后上序必须
         # 真兑现换入对象——required 件直接认名;完成件按**实际落位复检**
@@ -1718,8 +1739,7 @@ def select_swap_plan(ctx: SwapPlanContext | None,
         # 谓词假帧不辖,逐位同旧。
         if up2 and required_swap_arm_pending(ctx):
             _req = set(ctx.required_names)
-            _up_names = [getattr(ctx.bench[_i], 'char_id', '') or ''
-                         for _i in up2]
+            _up_names = [_bench_cid(ctx.bench[_i]) for _i in up2]
             if not (any(_u in _req for _u in _up_names)
                     or any(_seat_completes_form(ctx, name, _u)
                            for _u in _up_names)):
@@ -1747,8 +1767,9 @@ def select_swap_plan(ctx: SwapPlanContext | None,
 
 
 
-def board_unique_key(bc: BenchChar) -> str | None:
-    """板上同名唯一性判据键(设计裁定:场上同角色仅 1)。
+def board_unique_key(bc: Unit) -> str | None:
+    """板上同名唯一性判据键(设计裁定:场上同角色仅 1;P4 容器形重写:
+    入参 = 行域/工作表 ``Unit``,唯一消费域;§2.4)。
 
     - ``char_id`` 空 = 未知身份 → None(不参与查重——两个未知不是可证明的重复);
     - 开拓者各排形态(char_id 随排切换)归一为同一键(场上同样仅 1 个开拓者);
