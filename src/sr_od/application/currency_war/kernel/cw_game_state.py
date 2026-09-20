@@ -7,15 +7,16 @@ GameState(正名前暂名 BoardState,ADR-0630 后果节+W8 候裁7)= 当前仍�
 只描述「此刻」;画面 op 与决策 op 写,策略器读(设计 §1)。历史序列归遥测,
 不经本结构。
 
-**与推演内核帧 CwSimFrame 的关系**:平行表示,不是镜像——本容器 =
-实机真值记录模型(只记录实机会产生的已知事实);``CwSimFrame``
-(kernel/cw_vocab)= sim 侧局面帧类型(sim 转移/检查/离线重建面载体)。
-生产写入 = **引擎直写**(sim 引擎内部工作态即本容器,经渠道签名写入口
-落字,渠道族封闭集见下文遥测段);容器值禁回写帧字段(策略与引擎经容器
-读口读值为合法)。逐字段映射对账正本 =
-docs/develop/sr_od/application/currency_war/game_state/fields.md §9。
-字段准入按设计 §8.8 治理三件:派生量(席空数/席满判定/board 下档阈值)
-是计算函数不存储;识别质量位是写入闸门不存储(失读统一口径 =
+**局面表示单一载体**(benchchar-retirement P5 起):本容器 = 实机真值
+记录模型(只记录实机会产生的已知事实),sim 引擎/实机操作链/策略决策
+同吃容器。旧推演内核帧 ``CwSimFrame`` 与帧→容器合成口
+(``synthesize_from_game_state``/``feed_sim_truth``)已随
+benchchar-retirement P5 退役——生产写入 = **引擎直写**(sim 引擎内部
+工作态即本容器,经渠道签名写入口落字,渠道族封闭集见下文遥测段);
+测试种子 = 测试仓 builder 直写容器域(与观察链同写入口)。逐字段映射
+对账正本(game_state/fields.md §9)随帧通道退役失去载体,P8 正本清理
+承接。字段准入按设计 §8.8 治理三件:派生量(席空数/席满判定/board
+下档阈值)是计算函数不存储;识别质量位是写入闸门不存储(失读统一口径 =
 §2.2 carried/机制性 None)。
 
 **两个关键结构**(设计 §2.4;预期条目表已随两态制废除):
@@ -44,13 +45,6 @@ PendingEntry/confirm 转正/discard_expected)全套废除;逻辑态错误 =
 **单例宿主** = session 旁表(:func:`game_state_of`;同 ``cw_exec_state``
 旁表模式,弱引用表 + 桩面兜底)——session 对象 = 局身份,新局新 session
 即天然新建,符合「单例,每局新建」(§1/§6.2)。
-
-**帧→容器合成口** = :func:`synthesize_from_game_state`(正式入口包装 =
-:func:`feed_sim_truth`):CwSimFrame 真值合成时记 observation,evidence
-恒带 ``sim:synthesized``(§2.1)——生产 sim 引擎已直写容器(见上段),
-本口现役消费面 = 离线/测试构造(生产零调用);
-bench 槽位保序映射——记录模型按实机真值箱占席(§3.2.5),不采 sim
-「无箱实体」的内部口径约定。
 
 **统一 state 遥测升级(R5 W1 常开化后形态)**:写入 API 全部带**必填**渠道签名
 (:class:`ChannelSig`,渠道族封闭集 obs/logic_action/logic_hook + 字段级
@@ -135,12 +129,7 @@ from sr_od.application.currency_war.kernel.cw_state_journal import (
 )
 
 if TYPE_CHECKING:
-    # 仅类型注解引用(项目规范);运行时按鸭子类型读 CwSimFrame 属性,
-    # 避免与 cw_state 建立运行时依赖(cw_state 将来消费本模块时不成环)。
-    from sr_od.application.currency_war.kernel.cw_vocab import (
-        CwSimFrame,
-        ShopCard,
-    )
+    pass
 
 
 # ============================================================ 常量
@@ -1568,9 +1557,9 @@ def detect_merge_upgrade(cur: Any, proj: Any) -> bool:
     全场(bench+deployed,``cw_state._merge_bench`` 同口径)。级联合并
     (3×1★→2★→…)只看「有抬升」真值,层级数不影响本判定。
 
-    条目身份读协议 = ``cw_merge_simulate._entry_identity``(P1 起
-    bench 侧 BenchSlot / deployed 侧 Unit;P4 收敛前兼容观察边界
-    BenchChar 形)。"""
+    条目身份读协议 = ``cw_merge_simulate._entry_identity``(容器单形状:
+    bench 侧 BenchSlot / deployed 侧 Unit;benchchar-retirement P5 随
+    观察边界 BenchChar 输入面退役收窄单形)。"""
     from sr_od.application.currency_war.kernel.cw_merge_simulate import (
         _entry_identity,
     )
@@ -3549,214 +3538,6 @@ def maybe_emit_chain_diff(gs: GameState, *, snapshot: bool,
     return True
 
 
-# ============================================================ sim 合成口
-
-
-def synthesize_from_game_state(gs: GameState, st: CwSimFrame, *,
-                               at_round: str = '',
-                               shop_empty_off_screen: bool = True,
-                               shop_open: bool = False) -> None:
-    """CwSimFrame 真值 → 容器域写入(帧→容器合成口的写入实现)。
-
-    生产 sim 引擎已直写容器(引擎内部工作态即容器,渠道签名写入口),不再
-    经本口喂入;经 :func:`feed_sim_truth` 调本函数与直接调用现役 = 离线/
-    测试构造面(识别域调用方传 ``shop_empty_off_screen=False``,理由见下方
-    payload 域分支)。原「sim 合成口」域覆盖口径不变:
-
-    - sim 无识别过程 = 恒真值帧:可读字段全记 observation,evidence 恒带
-      ``sim:synthesized``(at_round 非空时并入轮键后缀
-      ``sim:synthesized@p{plane}-r{round}``,供遥测定位合成时点——P2-6
-      落地审:参数必有消费);真值 None/未建模域不写(保持 None,禁合成假值);
-    - **bench 槽位保序映射**(§3.2.5 任务书件 7):CwSimFrame.bench 的
-      0 基下标 1:1 映射物理槽位(BenchChar → kind='unit',None → 'empty'),
-      记录模型按实机真值箱占席——sim「无箱实体」只是内部口径约定,
-      不进记录模型(占席谓词 = :func:`slot_occupies`,箱/秘典占席);
-    - at_round = 轮键('p{plane}-r{round}' 形,登记期快照);
-    - **payload 域离屏分支**(§2.2 例外):shop 真值缺席 = 结构离屏(置
-      None+left_screen,等价 leave_screen);encounter/supply 两域 sim 不建模,
-      恒离屏口径——三 payload 域在合成帧恒反映「当前画面事实」,禁旧
-      payload 连旧 evidence 残留。**空表与 None 同判 = 离屏**只辖 sim 真值域
-      (``shop_empty_off_screen=True`` 缺省):sim 真值域无 OCR 失读态,
-      CwSimFrame.shop 空表 = 「不在商店」的真值形态(开店帧恒有五张)。
-      实机识别域(``shop_empty_off_screen=False``,店开相位喂入)同形空表 =
-      买空/OCR 失读窗,画面结构仍在店(画面锚 = 外循环 0n 三 id_mark,
-      phase=PHASE_PREP_SHOP_OPEN)——照 live 观察漏斗口径「空牌面不写、
-      保现值」(失读窗沿用,决策侧照旧决策、执行侧核对兜底),**禁按离屏
-      清 None**(2026-09-13 实机事故:买空店重进被真值口径清 None,
-      ``decide_shop_action`` 在屏前置 shop=None 契约崩循环,journal 铁证 =
-      current_screen 开商店同帧 prov.shop evidence=left_screen)。
-    """
-    _ev = f'{SIM_SYNTHESIZED}@{at_round}' if at_round else SIM_SYNTHESIZED
-    # sim 合成签名(R1 §3.2.1:obs 族子模 mode='synthesized'——sim 真值合成
-    # 与实机真读可分;actor = 本口登记名,质量语义与 evidence 标记同源)
-    _synth_sig = ChannelSig(family='obs', actor='synthesize_from_game_state',
-                            mode='synthesized')
-    # node_type None(裸 CwSimFrame 未建模该帧)不写 node——禁 'prep' 占位
-    # 假值(P1-1 同型泛化;engine 路径 node_type 恒引擎真值不受影响)
-    _node_type = getattr(st, 'node_type', None)
-    if _node_type is not None:
-        gs.observe(gs.node,
-                   NodeKey(plane=int(getattr(st, 'plane', 1) or 1),
-                           round_num=int(getattr(st, 'round_num', 1) or 1),
-                           kind=str(_node_type)),
-                   evidence=_ev, sig=_synth_sig)
-    else:
-        _prev_node = gs.node.value
-        if _prev_node is not None:
-            gs.observe(gs.node,
-                       NodeKey(plane=int(getattr(st, 'plane', 1) or 1),
-                               round_num=int(getattr(st, 'round_num', 1) or 1),
-                               kind=_prev_node.kind),
-                       evidence='kind_inherited', sig=_synth_sig)
-        # 无现值且未读:node 不写,保持 None(诚实缺位)
-    if getattr(st, 'gold_readable', True) and st.gold is not None:
-        gs.observe(gs.gold, int(st.gold), evidence=_ev, sig=_synth_sig)
-    if getattr(st, 'level_readable', True):
-        gs.observe(gs.level, int(st.level), evidence=_ev, sig=_synth_sig)
-    if st.xp_progress is not None:
-        gs.observe(gs.xp, tuple(st.xp_progress), evidence=_ev, sig=_synth_sig)
-    if st.streak is not None:
-        gs.observe(gs.streak, int(st.streak), evidence=_ev, sig=_synth_sig)
-    if st.hp is not None:
-        gs.observe(gs.hp, int(st.hp), evidence=_ev, sig=_synth_sig)
-    # deploy_cap(§2.3 W5 入容器):sim 真值直写;None(未建模帧)不写。
-    if st.deploy_cap is not None:
-        gs.observe(gs.deploy_cap, int(st.deploy_cap), evidence=_ev,
-                   sig=_synth_sig)
-    # back_layout(back_max 语义裁决·闸门二,sim 合成口扩员——W5 §2.6
-    # 清单增补第八域,与实机喂入口域覆盖集对齐):sim 真值直写(动态真值
-    # = CwSimFrame.back_max,场景侧设定;实机写端 = 选档裁决链,两写端
-    # 同域不同源,sim 无识别过程故恒真值);缺席不写(禁合成假值,同
-    # 七域纪律)。
-    if st.back_max is not None:
-        gs.observe(gs.back_layout, int(st.back_max), evidence=_ev,
-                   sig=_synth_sig)
-    # 开局域/席位/装备(W5 合成口与实机喂入口域覆盖集对齐;§2.6):
-    # sim 无识别过程,真值域恒 observation + evidence=sim:synthesized。
-    if st.plane_bosses:
-        gs.observe(gs.plane_bosses, list(st.plane_bosses), evidence=_ev,
-                   sig=_synth_sig)
-    if st.enemy_affixes:
-        gs.observe(gs.enemy_affixes, list(st.enemy_affixes), evidence=_ev,
-                   sig=_synth_sig)
-    if st.active_env:
-        gs.observe(gs.active_env, str(st.active_env), evidence=_ev,
-                   sig=_synth_sig)
-    if st.equips:
-        gs.observe(gs.equips, list(st.equips), evidence=_ev, sig=_synth_sig)
-    # front_row/back_row:sim 槽位表(0 基 0-3 前/4-9 后)→ 行内 Unit
-    # (行内 1 基 slot 信息位;阵营不入容器,装备随 BenchChar 透传)。
-    _front_u: list[Unit] = []
-    _back_u: list[Unit] = []
-    for _i, _bc in enumerate(st.deployed or []):
-        if _bc is None or not getattr(_bc, 'char_id', ''):
-            continue
-        _u = Unit(char_id=str(_bc.char_id),
-                  star=int(getattr(_bc, 'star', 1) or 1),
-                  equips=list(getattr(_bc, 'equips', None) or []),
-                  slot=(_i + 1) if _i < 4 else (_i - 3))
-        (_front_u if _i < 4 else _back_u).append(_u)
-    if _front_u or _back_u:
-        gs.observe(gs.front_row, _front_u, evidence=_ev, sig=_synth_sig)
-        gs.observe(gs.back_row, _back_u, evidence=_ev, sig=_synth_sig)
-    # bench 写门(对齐上方 board_readable 先例):未读域≠真空域。v1 漏斗
-    # (read_game_state)不读 bench 身份,其帧 bench 恒默认空表——无门合成
-    # 会把容器内 prep 装配环 bench 观察块(cw_screen_prep heavy 块,唯一
-    # 实机漏斗写端)的真读覆盖成「9 槽全空」假真空(违 read_game_state
-    # 席位通道声明的「禁拿 CwSimFrame 兜底默认值当观察」;历史事故面 =
-    # 商店段入口双账对账对撞,该对账已退役,本门的防覆盖
-    # 语义独立存续——真读被兜底默认值覆盖本身就是观察面破坏)。sim 真值
-    # 帧恒可读(缺省 True)不受影响;真真空写路径由 sim 帧承载。
-    if getattr(st, 'bench_readable', True):
-        bench_slots: list[BenchSlot] = []
-        for i, bc in enumerate(st.bench):
-            if bc is None:
-                bench_slots.append(BenchSlot(kind='empty'))
-            elif bool(getattr(bc, 'is_item_slot', False)):
-                # 占位件旗标往返(同 bench_view_of_slots 口径;sim 假环境经
-                # 观察面直喂占位件,恒 'unit' 映射会让腾席守卫在容器面失守)
-                bench_slots.append(BenchSlot(kind='supply_box'))
-            else:
-                bench_slots.append(BenchSlot(
-                    kind='unit',
-                    unit=Unit(char_id=str(getattr(bc, 'char_id', '') or ''),
-                              star=int(getattr(bc, 'star', 1) or 1),
-                              equips=list(getattr(bc, 'equips', None) or []),
-                              slot=i + 1)))
-        # 输出补齐到容量:定长槽位表是记录模型的形状契约(§3.2.5/ADR-0316 同构),
-        # 兼容旧紧缩构造(前缀顺延占用)不丢槽位语义。
-        while len(bench_slots) < BENCH_CAPACITY_DEFAULT:
-            bench_slots.append(BenchSlot(kind='empty'))
-        gs.observe(gs.bench,
-                   BenchView(slots=bench_slots, capacity=BENCH_CAPACITY_DEFAULT),
-                   evidence=_ev, sig=_synth_sig)
-    if getattr(st, 'board_readable', True) and st.board:
-        gs.observe(gs.board, dict(st.board), evidence=_ev, sig=_synth_sig)
-    if st.shop:
-        # 牌转换 = 映射单一源(W5 双 ShopCard 归一;cost_source 原值透传
-        # 不折叠,roster_fallback 的「徽章失读」证据分级禁丢)。
-        # 定长槽映射:帧卡 x = 抽牌序 i = 物理槽-1,按 x 对槽(缺位 empty)——
-        # 紧凑列表顺延映射会错位槽几何(用户三态裁定 2026-09-13)。
-        slots: list[ShopSlot] = [ShopSlot(kind='empty') for _ in range(5)]
-        for c in st.shop:
-            _i = int(getattr(c, 'x', 0) or 0)
-            if 0 <= _i < 5:
-                slots[_i] = ShopSlot(kind='content',
-                                     card=shop_card_to_container(c))
-        probs = ({int(k): float(v) for k, v in st.refresh_probs.items()}
-                 if st.refresh_probs else {})
-        gs.observe(gs.shop, ShopPayload(cards=slots, refresh_probs=probs),
-                   evidence=_ev, sig=_synth_sig)
-    elif shop_open and shop_empty_off_screen:
-        # 店开显式位(sim 真值域调用方声明;帧模型空表无法区分离屏/买空
-        # ——正是三态定长根治的塌缩病灶,用户三态裁定 2026-09-13):
-        # 买光 = [empty×5] 合法真值,店开即写,None 仅离屏。
-        gs.observe(gs.shop,
-                   ShopPayload(cards=[ShopSlot(kind='empty')
-                                      for _ in range(5)], refresh_probs={}),
-                   evidence=_ev, sig=_synth_sig)
-    elif shop_empty_off_screen:
-        # 画面附加域离屏分支(§2.2 显式例外):sim 真值域空表 = 「不在商店」
-        # 的结构事实——非当前画面置 None(等价 leave_screen,evidence=
-        # left_screen),禁沿用旧 payload 连旧 evidence(残留会把离屏帧误读
-        # 成「商店仍开着」)。识别域(shop_empty_off_screen=False)不走此支:
-        # 空表 = 买空/OCR 失读窗,保现值(分支语义见函数 docstring)。
-        gs.leave_screen(gs.shop, sig=_synth_sig)
-    # encounter/supply 两 payload 域:sim 的 CwSimFrame 不建模这两域(attr
-    # 缺席 = sim 模型里结构离屏)——同口径置 left_screen,保持「三 payload
-    # 域在合成帧恒反映当前画面事实」的域语义;观察真值不进合成(sim 无
-    # 识别过程),禁合成假值。
-    gs.leave_screen(gs.encounter, sig=_synth_sig)
-    gs.leave_screen(gs.supply, sig=_synth_sig)
-    if st.active_strategies:
-        gs.observe(gs.active_strategies, list(st.active_strategies),
-                   evidence=_ev, sig=_synth_sig)
-    gs.mark_frame_obs('full')
-
-
-def feed_sim_truth(gs: GameState, st: CwSimFrame, *,
-                   at_round: str = '', shop_open: bool = False) -> None:
-    """sim 真值直写喂入口(帧→容器合成口的正式入口包装)。
-
-    生产写入 = **引擎直写**(sim 引擎内部工作态即 session 容器,经渠道签名
-    写入口落字,消费端一律经 ``game_state_of(session)`` 直读容器——禁再造
-    桥装箱一次性视图);本口的现役消费面 = 离线/测试构造(生产引擎零调用)。
-    写入实现 = :func:`synthesize_from_game_state`(域覆盖/evidence/
-    payload 离屏口径单一源,本口零第二实现)。
-
-    - best-effort:记录层故障不毒化 sim(与 note_action_receipt 同纪律),
-      异常 log 留痕后返回,容器保持上一拍帧;
-    - sim 真值入容器唯一写端 = 本口,消费端一律 :func:`game_state_of`
-      直读。
-    """
-    try:
-        synthesize_from_game_state(gs, st, at_round=at_round,
-                            shop_open=shop_open)
-    except Exception as e:   # noqa: BLE001  记录层 best-effort,不毒化 sim
-        log.warning('[cw-gs][feed] sim 真值直写跳过(at_round=%s): %r',
-                    at_round, e)
-
-
 def restore_state_snapshot(gs: GameState, snap: dict) -> None:
     """行内 state 快照 → 容器域恢复(波 5 回放/Δ池 journal 切源的
     离线判读面;序列化 = :meth:`GameState.full_state_snapshot`)。
@@ -4035,7 +3816,8 @@ def scalar_projection_state(gold: int, level: int, hp: int, plane: int,
       不写(保持 None);
     - 一次性视图禁向状态流水落行(行 = 改了什么的局内账,投影非局内
       事实;与桥同款:单线程写路径,沉挂全局 sink 后还原);
-    - actor 复用 sim 合成签名的写入者名(投影行为语义与合成口同族)。
+    - actor = 本函数登记名(写入者身份;evidence 沿 sim 合成证据串,
+      投影行为语义与 sim 真值同族)。
     """
     gs = GameState(schema_version=GAME_STATE_SCHEMA_VERSION)
     global _STATE_JOURNAL_SINK
@@ -4043,7 +3825,7 @@ def scalar_projection_state(gold: int, level: int, hp: int, plane: int,
     _STATE_JOURNAL_SINK = None
     try:
         _ev = SIM_SYNTHESIZED
-        _sig = ChannelSig(family='obs', actor='synthesize_from_game_state',
+        _sig = ChannelSig(family='obs', actor='scalar_projection_state',
                           mode='synthesized')
         gs.observe(gs.node,
                    NodeKey(plane=int(plane), round_num=int(round_num),

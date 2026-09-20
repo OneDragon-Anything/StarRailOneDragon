@@ -180,7 +180,7 @@ def e_rounds(comp: Comp, gs: GameState,
     # 刷价单一源消费 = refresh_cost_effective(现值→None 退建模基价;
     # economy 接缝注「字段读统一经容器读口单一源,禁各消费点自写兜底」
     # ——禁在本判据内联第二份读式/裸魔数兜底)。
-    cost = refresh_cost_effective(None, 0, gs=gs)
+    cost = refresh_cost_effective(gs=gs)
     if session is not None:
         floor = saturation_line(cap_resolved_of_session(session))
     else:

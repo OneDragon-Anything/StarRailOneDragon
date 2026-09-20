@@ -1510,7 +1510,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         # None(p=0 不可评域/溢价≤0/无 2★)维持星过滤拒。
         _spot2 = spot2_direct_out_card(
             all_cands, m, level_of(gs),
-            refresh_cost_effective(None, 0, gs=gs)) \
+            refresh_cost_effective(gs=gs)) \
             if not cands1 else None
         if _spot2 is not None:
             card = _spot2
@@ -2557,7 +2557,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         if contracts.ensure_contract(
                 ('refresh', 'r1_commitment_account'),
                 contracts.ContractCtx(), counters):
-            _c_eff = refresh_cost_effective(None, 0, gs=gs)
+            _c_eff = refresh_cost_effective(gs=gs)
             _ibar = net_income(round_num_of(gs), 0)
             _g0 = gold
             _rounds = horizon.r_remaining(session, plane_of(gs),
@@ -2646,7 +2646,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 counters):
             if crit_refresh.r2_budget(
                     gold, r2_reserve,
-                    refresh_cost_effective(None, 0, gs=gs)):
+                    refresh_cost_effective(gs=gs)):
                 # ---- P92 全通道可实现买入集存在性门(T-263,ADR-0635;
                 # math_proofs P92「在册结构的严格化非新门」)----
                 # p40 R0-1 在册语义的席满维/可购性维落地:四买入通道
@@ -2707,7 +2707,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     # reason = 触发源记录字段(非指令;sim obs 分键消费,
                     # 执行层不读——cw_state.CwActionRefreshShopParam.reason 值域契约)。
                     return CwActionRefreshShopParam(
-                        cost=refresh_cost_effective(None, 0, gs=gs),
+                        cost=refresh_cost_effective(gs=gs),
                         reason=_r1_src)
                 if _p92_ready:
                     # 面② 审计①桶计数(全通道口径判定尺,禁以 P40 E

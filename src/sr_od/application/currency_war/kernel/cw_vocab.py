@@ -11,21 +11,12 @@
 工具原子类):row/slot 字段按定义 = 画面物理排槽位 1 基(执行器拖点
 直取画面 area;字段注释逐类声明)。
 
-**推演内核正式类型 = ``CwSimFrame``**(sim 模拟环境的局面帧;旧注入
-包家族 cw_sim_invest/cw_sim_piggy 已随 sim 重做删除面退役,本类现役
-消费面见下「终态消费面声明」):sim 引擎整局推进的状态载体,
-机制契约 = 字段集/转移规则/copy-on-write 试探语义(动作被拒返回原帧副本
-续用),机制本体永不物理删除;与容器 GameState(实机真值记录模型)的
-表示分界、单向同步契约与逐字段映射对账正本 =
-docs/develop/sr_od/application/currency_war/game_state/fields.md §9。
-
-**终态消费面声明**(过渡期双职责已收口):实机执行链的观察工作载体
-职责随 last_state 链退役批终结——session.last_state 槽已删除,三写点
-与 OCR 填帧链的局内事实宿主 = 容器单例(喂入 = read_game_state 漏斗 /
-sim 合成口 ``synthesize_from_game_state``)。
-本类现役消费面 = 推演内核(sim 引擎/engine runner/机制等价性验证锁 M1
-/假环境动作语义逻辑态推算),实机操作链零持有;退役指针(申报面 =
-kernel/cw_intention.py ``committed_authority`` 形态注)已兑现。
+**局面表示单一载体 = 容器 GameState**(kernel/cw_game_state,实机真值
+记录模型):sim 引擎/实机操作链/策略决策同吃容器,域写入 = 观察链漏斗
+或逻辑态直写(上报函数族)。旧推演内核帧 ``CwSimFrame`` 及其合成口
+(``synthesize_from_game_state``/``feed_sim_truth``)已随 benchchar-
+retirement P5 退役——帧↔容器映射契约正本(game_state/fields.md §9)随
+帧失去载体;测试种子 = 测试仓 builder 直写容器域(与观察链同写入口)。
 
 策略为纯规则路线(用户裁定 2026-09-12):规则直接产出动作,决策零模拟
 试探。原单步动作应用器 ``simulate``(整帧副本纯函数)已删除——期望态
@@ -58,7 +49,6 @@ kernel/cw_intention.py ``committed_authority`` 形态注)已兑现。
 from __future__ import annotations
 
 from collections.abc import Callable
-from copy import deepcopy
 from dataclasses import dataclass, field
 
 # ===== 候裁9 词汇迁移·旧路径转发(过渡 shim)=====
@@ -148,170 +138,6 @@ class ShopCard:
     # 供金账对账区分「徽章直读」与「查表派生」(2星/3星直出识别缺口闭环,
     # merge_mechanics §2.6/§2.7)。
     cost_source: str = 'roster'
-
-
-@dataclass
-class CwSimFrame:
-    """一回合决策时的局面快照(由 OCR 填充 + bot 跟踪)。"""
-    gold: int = 0
-    round_num: int = 1     # 位面内轮次 1-6
-    node_type: str | None = None   # 当前节点类型(boss/补给/遭遇/巨星/投资/战斗/精英/奖励;顶部标签 OCR;None=未识别)
-    enemy_difficulty: int | None = None   # 当前敌人难度(左上角 文本-难度,两级管线读法见 ADR-0449;boss 血量 base×1.052^难度)。None=未读到(补给帧无旗牌/管线未命中;合理带 [20,300] 外拒信)
-    # 难度真伪保真位(读链翻转后真读/回退可分,对齐 hp_readable 模式):
-    # True=当轮逐帧真读(备战「文本-难度」OCR 命中);False=回退简报恒值(session,
-    # 开局写死 ≈108 不随轮爬升)或双源皆无。判读侧据此过滤:**False 帧的值别当
-    # 「难度 vs 轮次」爬升曲线样本**。
-    enemy_difficulty_live: bool = False
-    level: int = 1         # 玩家等级 = 可上阵数上限基准(封顶 10)
-    # level 值来源保真位(对齐 hp_readable 模式):
-    # True=等级来自真实观测(OCR 直读或 XP 分母反推至少一源可读);False=纯
-    # ``_expected_level`` 启发式兜底值(OCR 与 XP 双失读)——遥测上「兜底 4」与
-    # 「真读 4」此前不可分,判读侧据此过滤 False 帧的 level 曲线样本。
-    # 默认 True 仅供 sim 恒真读帧约定与旧档案缺省(按现有判读处理),真读帧由
-    # 读取端(read_game_state)显式写。
-    level_readable: bool = True
-    # None = 未读到(shop 态/动画)。level 升级时机决策用(替代纯 _expected_level 估)。
-    xp_progress: tuple[int, int] | None = None
-    # 部署上限真值(= level + 财富宝钻数,可叠加;实机局实证)。
-    # None=未读到/防抖拒信 → max_units() 兜底 level(ADR-0286)。防抖门在
-    # cw_observation.read_deploy_cap_debounced(cap<level 或 |cap-level|>2 重读一帧,仍异拒)。
-    deploy_cap: int | None = None
-    level_up_cost: int | None = None      # 买一次经验的花费(文本-购买经验金币数;None=未读到,用 XP_CLICK_COST_FALLBACK 兜底)
-    shop_refresh_cost: int = REFRESH_COST_BASE  # 刷新实付金 = 基价 2(REFRESH_COST_BASE 建模常量,注释见其声明)。不再由 OCR 填充——「文本-刷新金币数」rect 读的是面板徽标(=min(gold//10,5) 利息数值)非刷价(ADR-0456);字段保留为消费点契约(全 ``or 2``,值恒基价零波及)
-    streak: int | None = None             # 连胜/连败数(带符号:正=连胜 / 负=连败,结算「连胜×N」前缀=方向,fixture 核实 2026-08-11;None=未读到)
-    plane: int = 1         # 位面 1/2/3
-    selected_difficulty: str = ""   # 本局职级 A1..A8 / A8-1..A8-50(难度确认屏检测;""=未检测→阈值回退默认;effective_hp_threshold 用;两阶难度详 docs/game/gameplay/currency_war.md:此=职级,enemy_difficulty=数值)
-    hp: int | None = None  # 小队生命值(锁血决策用)。**None 化(ADR-0491)**:无真值即 None——读不到且 session 无沿用真值(last_hp_real)时 = None,不再兜底 100(「开局兜底 100」旧语义已废止:开局血量随难度/词缀变不恒 100,兜底值是「看起来像真值」的假值)。读不到但有真值 → 对账层沿用 last_hp_real(int)。消费点对 None 一律保守(血线触发条件不触发/授权位门 fail-closed),hp_readable/hp_trusted 两位语义不变。默认构造 CwSimFrame()=未观测态(hp=None;hp_readable 默认 True 仅供 sim 恒真读帧约定,真读帧由读取端显式写)。开局无真值帧由对账层填**初值表先验**(实证档 A8/108 → 82/62,readable=False,先验非真读;ADR-0559,cw_opening_hp),无实证档仍 None)
-    # hp 值来源可读位(ADR-0282;False=读不到,hp 此时为沿用值/兜底值;遥测保真,决策不用)。
-    # 两来源,True 时可信度等同真读:
-    # ①真读=OCR 备战 HP 区;②结算=结算屏「小队生命值」经新鲜度门写入。
-    # r1(位面1轮次1)备战帧血量画面可见:读到的值即真读;读失败(重试后
-    # 仍 miss)=诚实未知,telemetry 层 trace.hp=None,严禁 100 兜底
-    # (shop._r1_retry_read_hp + recorder 写入口径)。
-    hp_readable: bool = True
-    # hp 值可信位(ADR-0282 对账层语义细分;ADR-0431 帧龄门收紧):True=hp
-    # 是可信值(真读且过下行守卫的帧,或**同节点内**沿用了 session.last_hp_real
-    # 真值的帧——shop 开态帧间无战斗,值必然未变);False=跨节点沿用帧
-    # (期间可能发生未观测战斗)/被下行守卫拒信帧(SUSPECT 态)/「开局全无
-    # 真值兜底 100」的假值帧。写入点唯一=read_game_state(按对账结果 +
-    # last_hp_real_node==当前节点号派生)。默认 False=未知帧按不可信处理
-    # (保守);决策消费=posture_release.flip_hit 假帧守卫(hp_readable or
-    # hp_trusted:同节点沿用真值帧可评估,兜底 100 帧仍拒;谓词口径零改)。
-    hp_trusted: bool = False
-    # gold/board 可读保真位(ADR-0213;对齐 hp_readable
-    # 模式——int/dict 契约下动画帧 miss 与真值不可区分;消费方
-    # 遥测/对拍用,决策默认不用)。
-    gold_readable: bool = True     # gold 是否真读到(False=0 是 miss 兜底)
-    board_readable: bool = True    # board 是否真读到(⚠ 空 dict 双义:真清空≠动画空——真清空时本位仍 True)
-    # board = 已上阵阵营计数(OCR 左面板)。deployed = bot 跟踪的已上阵角色(含身份/站位)。
-    board: dict[str, int] = field(default_factory=dict)
-    # board_next_tier = 各阵营「下个 tier 阈值」(左面板 "X/Y" 的 Y;doc 13 FactionState.next_tier)。
-    # 聚焦裁切 OCR 才稳读(全屏把 "2/3" 误读 "213")。comp/progress 评分用「距下个 tier 几人」;默认空(未接/未读到)。
-    board_next_tier: dict[str, int] = field(default_factory=dict)
-    # deployed = 槽位语义模型(ADR-0392):**定长 DEPLOYED_CAPACITY(10)槽表**,
-    # 元素 BenchChar | None(空槽);下标 0-3 = 前排槽 1-4、4-9 = 后排槽 1-6
-    # (BenchChar.position_pref='front'/'back' 与 slot 1-based 排内槽号保留为
-    # 信息位;权威槽位 = 下标)。卖出/下场置 None 不移位 → deployed_idx 跨
-    # 动作组恒稳(同轮多笔 CwActionSellDeployedParam 不可能再漂移);容量判据 = 占用数
-    # (``deployed_occupied``),**禁止 len(deployed)**;迭代一律
-    # ``iter_occupied_deployed``(裸 for 会撞 None)。
-    deployed: list[BenchChar | None] = field(default_factory=list)
-    shop: list[ShopCard] = field(default_factory=list)
-    # bench = 槽位语义模型(ADR-0316):**定长 BENCH_CAPACITY(9)槽表**,
-    # 元素 BenchChar | None(空槽);列表下标 0-8 = 物理槽位 1-9 减一
-    # (BenchChar.slot 保留 1-based 屏幕槽号,信息位;权威槽位=下标)。
-    # 卖出/上阵置 None 不移位 → 索引跨动作组稳定(同轮多笔 CwActionSellBenchParam
-    # 不可能再漂移);容量判据 = 占用数(``bench_occupied``),**禁止
-    # len(bench)**;迭代一律 ``iter_occupied``(裸 for 会撞 None)。
-    bench: list[BenchChar | None] = field(default_factory=list)
-    # bench 是否真读到(对齐 board_readable 门模式;消费口 = 合成口
-    # cw_game_state.synthesize_from_game_state 的 bench 写门)。空表双义与
-    # board 同形:「真真空(全部署)」≠「漏斗未读」——v1 漏斗不读 bench
-    # 身份(read_game_state,席位通道声明见 cw_observation.read_game_state),
-    # 其帧恒带默认空表,合成若不设门会把容器内 prep 装配环的真读观察
-    # 覆盖成「9 槽全空」(未读域≠真空域;禁拿 CwSimFrame 兜底默认值当
-    # 观察)。sim 真值帧恒可读(缺省 True),行为不变。
-    bench_readable: bool = True
-    # 3 位面 boss 名(strategy/06;session.briefing_bosses 同步)。
-    # 元素 None = 该位面徽章态无身份(ADR-0398,boss_fit 跳过 None 项)
-    plane_bosses: list[str | None] = field(default_factory=list)
-    # 开局环境 + 敌人词缀(select_comp / mechanics_fit 用;decide_event 选完写 active_env,实机 OCR 写 enemy_affixes)
-    active_env: str = ""                       # 已选投资环境名(如"昼之半神概念股";ENV_COMP_AFFINITY 用)
-    enemy_affixes: list[str] = field(default_factory=list)   # 当前位面/节点敌人词缀(MECHANIC_COUNTERS/SYNERGIES 用)
-    # 持有装备名(OCR 装备区填;comp 相关 equip_fit 用,详 cw_comps)。阶段 4 接线前默认空。
-    equips: list[str] = field(default_factory=list)
-    front_max: int = 4    # 前排槽位上限(恒 4,非观察事实;板容量封顶 = 4 + back_max,见下)
-    # [供数收口] 本字段 = 全部容量消费的供数收口(max_units 封顶/back_overflow
-    # 阈值/back_left 空位/排路由),动态真值 = GameState.back_layout(三信号
-    # 裁决,值域 6-9:平常 6,宝钻/召唤物扩展上限 9,机制正本 =
-    # board_structure.md;6/7/8/9 四档均已交互建档,>9 域外按 8 格超集 + superset 标记
-    # 运行)。默认 6 = 机制基线,仅作容器空壳引导窗兜底,勿当真值源。
-    back_max: int = 6
-    # 商店开态概率条真值 {费用档 1-5: 概率}(轮岗接线:投资环境轮岗每备战阶段随机
-    # 翻倍一档,概率条直接印在商店上,OCR 即真值;None=未读/商店关 → _sample_cost 退基线表)
-    refresh_probs: dict[int, float] | None = None
-    # 节点序列由 cw_node_reader.NodeSlot 承载(read_node_sequence 直连消费方)。
-    # 双轨判定真家 = cw_intention.committed_from(session) 权威派生;
-    # flex 白名单真家 = StrategyState.focus_factions(方向刷新写入),
-    # 决策读端走策略态。
-    active_strategies: list[str] = field(default_factory=list)  # 已持有投资策略(局中选,可多张;影响经济/难度)
-    # 动作v2 账本(契约包 C1,步2):显式动作(CwActionSellDeployedParam/CwActionSwapDeployParam)
-    # 的执行结果逐条记录(applied/rejected + reason)
-    # ——事务拒绝必须可见(checks 消费;冻结 invariant「拒绝记录进账本」)。
-    # 三消费面:策略不读(决策禁依赖账本);遥测经 sim ledger 的 actions
-    # 序列化间接可见;sim 代理 = 本字段自身(simulate 写、cw_sim 转录)。
-    # 旧动作(CwActionBuyCardParam 等)不记(零行为变化)。
-    action_log: list[dict] = field(default_factory=list)
-
-    def __post_init__(self) -> None:
-        """bench/deployed 槽位模型(ADR-0316/0392):构造/反序列化 pad None
-        到定长 9/10(紧缩前缀顺延占用 0..n-1——旧紧缩构造兼容,与 pad_bench
-        同式)。
-
-        传入超长(>定长)= 非法输入,保留原样由容量检查暴露(不静默截断)。
-        """
-        if len(self.bench) < BENCH_CAPACITY:
-            self.bench = list(self.bench) \
-                + [None] * (BENCH_CAPACITY - len(self.bench))
-        if len(self.deployed) < DEPLOYED_CAPACITY:
-            self.deployed = list(self.deployed) \
-                + [None] * (DEPLOYED_CAPACITY - len(self.deployed))
-
-    def copy(self) -> CwSimFrame:
-        return deepcopy(self)
-
-    def max_units(self) -> int:
-        """可上阵数:deploy_cap 真值(= level + 宝钻,ADR-0286)优先,level 兜底;
-        封顶 = front_max + back_max = 4 + back_max(back_max 动态真值 =
-        GameState.back_layout,值域 6-9 → 封顶值域 10-13;基线局 4+6=10)。
-
-        全部消费点(decision_v2/kernel/operations)经本单点收口——cap 接线只改此处即全接。
-        deploy_cap < level(防抖漏网噪声)视为不可信,兜底 level。
-        """
-        base = (self.deploy_cap
-                if self.deploy_cap is not None and self.deploy_cap >= self.level
-                else self.level)
-        return min(base, self.front_max + self.back_max)
-
-    def deployed_count(self) -> int:
-        return deployed_occupied(self.deployed)   # ADR-0392:占用数,非 len
-
-    def front_count(self) -> int:
-        return sum(1 for c in self.deployed
-                   if c is not None and c.position_pref == "front")
-
-    def back_count(self) -> int:
-        return sum(1 for c in self.deployed
-                   if c is not None and c.position_pref == "back")
-
-    def bench_is_full(self) -> bool:
-        """备战席是否满 = 占用派生(bench_occupied >= BENCH_CAPACITY,§3.2.5)。
-
-        席满判定正本 = GameState 派生(kernel/cw_game_state.bench_is_full,
-        同式同源);本类无警告位字段(「备战席已满」警告太短暂不可靠采样,
-        通道退役有测试墓碑,§3.2.5)。
-        """
-        return bench_occupied(self.bench) >= BENCH_CAPACITY
 
 
 def bench_clear(bench: list[BenchChar | None], idx: int) -> BenchChar | None:

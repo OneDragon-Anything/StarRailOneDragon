@@ -21,11 +21,11 @@ mechanics 为准修齐(单一语义源,双载体是 tracked 原地推进 vs 期�
 恒成立不变量(EXPECTED_STATE §P2 批注 5):合成后「场上同名同星 ≤1」
 ——本引擎出参断言,违例即抛(模型错当场暴露,不进对账静默)。
 
-载体形状(benchchar-retirement P1):bench = ``list[BenchSlot | None]`` /
-deployed = ``list[Unit | None]``(§2.3);元素 frozen → 推进 = replace
-新构造 + 定位符索引,素材摘除 = 置 None(保洞)。观察边界 BenchChar
-形仅经计数族条目读协议(:func:`_entry_identity`)进入,引擎本体零
-BenchChar 载体。
+载体形状(benchchar-retirement P1 定形、P5 单形收窄):bench =
+``list[BenchSlot | None]`` / deployed = ``list[Unit | None]``(§2.3);
+元素 frozen → 推进 = replace 新构造 + 定位符索引,素材摘除 = 置 None
+(保洞)。条目身份读协议(:func:`_entry_identity`)容器单形状,引擎
+全链零 BenchChar 载体。
 """
 from __future__ import annotations
 
@@ -84,30 +84,28 @@ class MergeSimResult:
     overflow: list[BenchSlot] = field(default_factory=list)
 
 
-def _identity_of(x: object) -> tuple[str, int]:
-    """条目身份(容器原生 Unit / 观察边界 BenchChar 双载体,分组键只读
-    char_id/star 两语义位)。"""
+def _identity_of(x: Unit) -> tuple[str, int]:
+    """条目身份(容器 ``Unit``;分组键只读 char_id/star 两语义位)。"""
     return ((str(getattr(x, 'char_id', '') or '')),
             int(getattr(x, 'star', 1) or 1))
 
 
 def _entry_identity(x: object) -> tuple[str, int] | None:
-    """计数族条目身份读协议(迁移期双形单一口):bench 侧 ``BenchSlot``
-    (kind='unit' → 内嵌 Unit 身份;占位/empty → None)与 deployed 侧
-    ``Unit``;观察边界 ``BenchChar`` 形(§2.4 字段映射约定「占用判定
-    is not None → kind == 'unit'」的读法落点)。P4 消费面收敛容器形状
-    后收窄单形。"""
+    """计数族条目身份读协议(容器单形状;benchchar-retirement P5 收窄):
+    bench 侧 ``BenchSlot``(kind='unit' → 内嵌 Unit 身份;占位/empty →
+    None)/deployed 侧 ``Unit``。原「观察边界 BenchChar 形」兼容支已随
+    帧通道退役删除——P5 全仓零调用核实后收窄单形,非容器形状 = None
+    (fail-closed 跳过,禁猜身份)。"""
     if x is None:
         return None
-    kind = getattr(x, 'kind', None)
-    if kind is not None:
+    if isinstance(x, BenchSlot):
         # BenchSlot:unit kind 才有身份(占位件五分类非角色)
-        if kind == 'unit':
-            u = getattr(x, 'unit', None)
-            if u is not None:
-                return _identity_of(u)
+        if x.kind == 'unit' and x.unit is not None:
+            return _identity_of(x.unit)
         return None
-    return _identity_of(x)
+    if isinstance(x, Unit):
+        return _identity_of(x)
+    return None
 
 
 def _slots_iter(bench, deployed):
@@ -429,8 +427,7 @@ def same_star_count(name: str, star: int,
                     bench: list[BenchSlot | None],
                     deployed: list[Unit | None] | None = None) -> int:
     """全场域同名同星计数(bench∪deployed;``_merge_bench`` 分组键同口径;
-    条目身份读协议 = :func:`_entry_identity`,P4 消费面收敛前兼容观察
-    边界 BenchChar 形)。"""
+    条目身份读协议 = :func:`_entry_identity`,容器单形状)。"""
     n = 0
     for _x, ident in _slots_iter(bench, deployed):
         if ident == (name, star):

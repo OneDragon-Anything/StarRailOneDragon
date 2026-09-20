@@ -188,7 +188,7 @@ def channel_capacity(gs: GameState, session: StrategySession,
     total += sum(_countable_buy_costs(gs, session, registry))
     total += bench_fill_account(gs, registry)
     rolls = _ke.refresh_ev_budget(gs, session)
-    total += refresh_cost_effective(None, 0, gs=gs) * rolls
+    total += refresh_cost_effective(gs=gs) * rolls
     return total
 
 

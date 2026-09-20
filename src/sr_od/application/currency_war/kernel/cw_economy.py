@@ -7,9 +7,6 @@ from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-from sr_od.application.currency_war.data.cw_factions import (
-    INTEREST_THRESHOLD,
-)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     gold_of,
     level_of,
@@ -34,7 +31,7 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
-    from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame, ShopCard
+    from sr_od.application.currency_war.kernel.cw_vocab import ShopCard
 
 # ============================================================
 # 候裁9 词汇迁入(原 kernel/cw_state.py 经济域):
@@ -271,7 +268,7 @@ def cap_resolved_of_session(session: StrategySession | None) -> int:
 
     边界:本链不读 registry.interest_cap(A/B 旋钮辖观察/检查器镜像
     面,不辖本链);回落问题的实际形态 = 「从未持有」——投资策略
-    无卖出/移除建模(handler 只 append),与 economy_score/S2 共享
+    无卖出/移除建模(handler 只 append),与 S2 口径共享
     同一 append-only 假设,非本函数独立边界。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
@@ -575,7 +572,7 @@ ECONOMY_CALIB_VERSION: int = 2
 # = 牌 synergy 10 → bot 无差别 → 买不攒)。
 # streak 经济(C 杠杆 2;fixture 核实 2026-08-11 结算「连胜×N」前缀=方向 → streak 接线):
 # ⚖️ **单边**(ADR-0128 #1,2026-08-15:货币战争无连败补偿,vs TFT)——只计连胜方向,
-# 连败 0 分(旧「对称取 magnitude」描述已废,行为自 0128 起就是单边;economy_score:306 同源)。
+# 连败 0 分(旧「对称取 magnitude」描述已废,行为自 0128 起就是单边)。
 STREAK_WEIGHT: float = 2.0            # 每档 streak 的经济分(占位,待实玩校准)
 
 STREAK_CAP: int = 5                   # streak 经济封顶档(连胜金一般 ≤5 档)
@@ -616,21 +613,7 @@ def _strategy_economy(gs: GameState) -> EconomyEffect:
 
 
 
-def _refresh_cost(state: CwSimFrame, refresh_used: int) -> int:
-    """第 refresh_used+1 次刷新的真实花金(ADR-0131):策略免费额度(如 加油站 每节点 1 次)内 = 0。
-
-    (遗留评分面消费;生产刷新费单一源 = refresh_cost_effective,
-    本函数零生产调用;旧帧签名 = 过渡期遗留形态,随遗留消费面
-    退役收口。)
-    """
-    if refresh_used < aggregate_economy(
-            list(getattr(state, 'active_strategies', None)
-                 or [])).free_refresh_per_node:
-        return 0
-    return SHOP_REFRESH_COST
-
-
-def refresh_cost_effective(state: CwSimFrame, refresh_count: int,
+def refresh_cost_effective(refresh_count: int = 0,
                            registry: DecisionV2Registry | None = None,
                            gs: GameState | None = None) -> int:
     """刷新 EV 判据用的参数化刷价(基价直通)。
@@ -645,13 +628,15 @@ def refresh_cost_effective(state: CwSimFrame, refresh_count: int,
     给定时刷价 = GameState.shop_refresh_cost 现场识别值(ADR-0622 观察通
     道,免费帧不写保证该域不出 0);None = 未读到 → **建模基价
     SHOP_REFRESH_COST 显式消费缺省**——原 ``or 2`` falsy 兜底形态的消灭
-    形态:数值恒同,语义从「静默兜底」升为「声明式建模缺省」。``gs``
-    未给(存量调用面)走 state 契约(恒基价,行为零变化)。
+    形态:数值恒同,语义从「静默兜底」升为「声明式建模缺省」。
+    (benchchar-retirement P5 去帧化:旧首参 ``state: CwSimFrame`` 契约
+    支随帧通道退役删除——该支的值恒基价(cw_vocab 字段缺省契约),
+    删除后缺省路径显式回 SHOP_REFRESH_COST,数值逐位一致。)
     """
     if gs is not None:
         _v = gs.shop_refresh_cost.value
         return int(_v) if _v is not None else SHOP_REFRESH_COST
-    return state.shop_refresh_cost or SHOP_REFRESH_COST
+    return SHOP_REFRESH_COST
 
 
 
@@ -921,44 +906,6 @@ def get_node_goal(plane: int, round_num: int, *,
 
 
 
-def economy_score(state: CwSimFrame, economy_mode: str) -> float:
-    """经济健康度:利息(存金到 50)+ 等级合适度 + streak 档位金(C 杠杆 2)。
-
-    economy_mode 只调利息项(rush_level 弱化守息、interest_first 强化守息),等级项不变。
-    阶段保血(前期/低血 → 经济降权)由 evaluate 的 _phase_weights 统一处理。
-    streak 单边计分(ADR-0128 #1:货币战争无连败补偿,只计连胜;连败 0 分);fold(连败保息)已由 HP-gating 实现(02 R2-4b,用户 2026-08-12 确认:血量安全→fold/不安全→急救,经 _phase_weights/_refresh_cap HP gate)。
-    """
-    # ADR-0131(投资策略效果进经济分):利息上限覆写(开源节流 9 档/利息上调 10 档/买断制 0)+
-    # 每节点固定给金(定期福利 2/节点 ≈ 白拿 0.2 档息)+ 连胜奖励倍率(伟大征服 ×3 → streak 更值)。
-    # (遗留评分面:旧帧签名过渡形态,随遗留消费面退役收口;
-    #  _strategy_economy 已切容器帧,本面就地内联同源聚合,禁再引接缝。)
-    _se = aggregate_economy(list(getattr(state, 'active_strategies', None) or []))
-    _icap = _se.interest_cap_override if _se.interest_cap_override is not None else INTEREST_THRESHOLD // 10
-    interest_tiers = min(state.gold // 10, _icap)
-    interest_val = interest_tiers * INTEREST_WEIGHT
-    interest_val += _se.gold_per_node * INTEREST_WEIGHT / 10.0
-    # ADR-0142(重复性经济效果折算进经济分;一次性 instant_gold 在选卡时点已体现,不在此):
-    # - 分期节点金(长期主义系):amount*count 总额摊 20 节点 ≈ 每节点等效金
-    # - boss 节点金(特战资金系):boss 占节点 ~1/9(1-9/2-7 结构)折算每节点等效
-    # - 升级金(节节高升):P1+P2 剩余期望 ~5 次升级,摊 20 节点
-    # - gold_per_20hp_lost(保险)故意不折算:损血换钱是反向激励,选卡评分不应鼓励损血
-    _equiv = (_se.gold_next_nodes_amount * _se.gold_next_nodes_count / 20.0
-              + _se.gold_per_boss_node / 9.0
-              + _se.gold_per_level_up * 5.0 / 20.0)
-    interest_val += _equiv * INTEREST_WEIGHT / 10.0
-    level_val = (state.level - _expected_level(state.round_num, state.plane)) * LEVEL_WEIGHT
-    if economy_mode == "interest_first":
-        interest_val *= 1.5
-    elif economy_mode == "rush_level":
-        interest_val *= 0.5
-        level_val *= 1.5   # rush_level:等级项加权(抢升语义 —— 落后等级更痛、领先更值),不只弱化守息
-    # streak 档位金(C 杠杆 2;fixture 核实后接线 2026-08-11)。ADR-0128(攻略复查 #5):货币战争
-    # **无连败补偿**(核心机制:27,vs TFT)→ 只计连胜方向,连败 0 分(旧 magnitude 对称计 = 把
-    # 不存在的连败金也计入经济分 → 连败中虚高,误导「连败也值钱」)。
-    streak_val = min(max(state.streak or 0, 0), STREAK_CAP) * STREAK_WEIGHT * _se.win_reward_mult
-    return interest_val + level_val + streak_val
-
-
 def effective_refresh_prob(gs: GameState, level: int, cost: int) -> float:
     """轮岗感知的有效刷新概率单一源。
 
@@ -1129,7 +1076,7 @@ def _upgrade_ul_threshold_ok(gs: GameState,
         return False
     if not (_math.isfinite(e_l) and _math.isfinite(e_l1)):
         return e_l <= 0.0 < e_l1     # 当前级不可追而上级可追:纯解锁收益
-    benefit = refresh_cost_effective(None, 0, gs=gs) * (e_l - e_l1)
+    benefit = refresh_cost_effective(gs=gs) * (e_l - e_l1)
     if benefit <= 0:
         return False                 # 概率不升反降(内峰回落档):无收益面
     u_gold = clicks_to_next_level(gs) * xp_click_cost(gs)
@@ -1401,7 +1348,7 @@ def refresh_ev_budget(gs: GameState, session: StrategySession,
         return 0
     # 刷价缺省 = 建模基价显式消费(refresh_cost_effective 单一源;
     # 原帧 ``or 2`` falsy 兜底形态的消灭形态,数值恒同)。
-    cost = refresh_cost_effective(None, 0, gs=gs)
+    cost = refresh_cost_effective(gs=gs)
     core, target_cost = _target_core_cost(session)
     if _omega_collapse_zeroed(gs, session, reg, target_cost):
         return 0

@@ -26,7 +26,7 @@ from collections import Counter
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_game_state import GameState
+    pass
 
 
 class EquipsInconsistencyError(RuntimeError):
@@ -130,28 +130,6 @@ def equips_ledger_multiset(bench_units: list, deployed_units: list,
         out.update(getattr(c, 'equips', None) or ())
     out.update(pool or ())
     return out
-
-
-def state_equips_multiset(state: object) -> Counter:
-    """账本全景对账快照入口(W6 波3 容器一等形态)。
-
-    - GameState:席位经容器读口(行域 ``deployed_rows_of`` + bench 单位域
-      ``bench_units_of``),owned 池 = ``equips.value``;消费面 = 观察对账/
-      容器消费点;
-    - 其余(旧帧直读形态,推演内核对账入口):帧域直读——该调用面属
-      推演内核机制面,**长期存续**至帧域退役(P5);禁实机链新消费点
-      喂旧帧。
-    """
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_units_of,
-        deployed_rows_of,
-    )
-    if isinstance(state, GameState):
-        front, back = deployed_rows_of(state)
-        return equips_ledger_multiset(bench_units_of(state),
-                                      [*front, *back],
-                                      state.equips.value or [])
-    return equips_ledger_multiset(state.bench, state.deployed, state.equips)
 
 
 def ledger_mismatch(before: Counter, after: Counter) -> list[str]:
