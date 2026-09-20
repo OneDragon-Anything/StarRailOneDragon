@@ -96,32 +96,38 @@ G-S1 保护的**不是件,是状态**:「距 2★ 差一张」的合成进度。
 
 #### 2.1.5 判据规格(实现者无需再设计)
 
-**释放集谓词**(帧级,纯函数):
+**释放集谓词**(帧级,纯函数;实现期细化已回写为现役 as-built 形态,T-253 落码批):
 
 ```
-dead_pair_exit_release(session, base, bench, deployed, current_round) → frozenset[str]
+dead_pair_exit_release(session, k_members, bench, deployed, current_round,
+                       *, cap_hold=None, counters=None) → frozenset[str]
+  [签名细化(实现期 N3):base 不由调用方传入,函数内 _resolve_base 自
+   解析;cap_hold = 调用方从决策帧现读,必须与同位 sell_exclusions 的
+   cap_hold 同帧同参(None = 保宽 fail-closed 零漂移端);counters =
+   遥测容器,None = 读会话容器]
   name 入集 ⟺ 全部合取:
   (a) 素材对在位:same_star_count(name, 1, bench, deployed) ≥ 2   [计数单一源 = kernel same_star_count,G-S1 同源]
-  (b) name ∉ base                                                [重买集 = _resolve_base 输出,§2.0 定义;与装配 A 身份段第 1 构件/买面 exclude_names 注入物同基准,同键族防双源]
-  (c) 对的两成员在持久获取账均有登记 ∧ 账位面 == 当前位面 ∧
-      current_round − max(两登记轮) ≥ 3                          [读源 = §2.0 持久获取账;任一成员缺登记或位面失配 → 不入集(fail-closed 保守向)]
+  (b) name ∉ base                                                [base = 函数内 _resolve_base 输出(锁线态 = 截断集 B′,未锁态 = k_members),语义 = §2.0 义务重买集定义不变;与装配 A 身份段第 1 构件/买面 exclude_names 注入物同基准,同键族防双源]
+  (c) 账位面 == 当前位面 ∧ 当前轮 − 获取账登记轮 ≥ 3              [读源 = §2.0 持久获取账;同名覆盖写为最新轮 = 天然取 max(两登记轮),判据折叠为单条目读;缺登记/位面失配/轮号缺读 → 不入集(fail-closed 保守向)]
+  附带保守保留(不释放,按原因计数):同名 2★ 在场(bench∪deployed
+  全场域,N4,漏保留 = 漏保护向)→ 3★ 链 1★ 腿不入集(§2.1.7-2)
 ```
 
 (b) 用 base 而非 k_members 的理由:重买集真值 = base(锁线态 B′ ⊋ k_members,mandate.py fuel docstring 明文)。若用窄口径,B′∖k_members 上的素材对会被释放而义务通道仍会重买它——「买家空集」论证(2.1.2 行 1)在该名集上不成立,且凑息/支付变现卖出 → M2 重买 → C:1→2 重建对 → 再等 N → 再释放,构成 P60 型换手循环。base 基准下判据与「买家空集」同构;P1 配方锁帧(base 解析 None → base=k_members)行为不变。
 
-**持久获取账规格**:载体 = session 属性(duck-typed 属性契约,与种子簿同纪律,改名 = 静默断供给);写端 = `shop._emit_buy` 发射位,全因类无条件写(A4 硬闸 `launch_cause_of` None 抛错已保证一切臂经发射位;与 `register_seed_acquisition` 同位先例),同名重获取覆盖为最新轮;闭合 = 位面闭合(账位面 ≠ 当前位面即销)+ 活性闭合(名不在 bench∪deployed 全场域即销——卖出/部署/合成的件离场机械判;域取全场域因单腿上板的对仍有一腿在场,账须活)。轮算术 = 位面本地轮号,账内条目恒同位面(跨位面条目被位面闭合清除)。空名/位面缺读拒登记(fail-closed,与种子簿同纪律)。
+**持久获取账规格**:载体 = session 属性(duck-typed 属性契约,与种子簿同纪律,改名 = 静默断供给);写端 = `shop._emit_buy` 发射位,全因类无条件写(A4 硬闸 `launch_cause_of` None 抛错已保证一切臂经发射位;与 `register_seed_acquisition` 同位先例),同名重获取覆盖为最新轮;**星级辖 1★**(star≠1 拒登记——2★/3★ 成件非素材对成员,覆盖写会刷新在场 1★ 对的轮戳致晚释放;实现期细化 N1);闭合 = 位面闭合(账位面 ≠ 当前位面即销)+ 活性闭合(名不在 bench∪deployed 全场域即销——卖出/部署/合成的件离场机械判;域取全场域因单腿上板的对仍有一腿在场,账须活)。轮算术 = 位面本地轮号,账内条目恒同位面(跨位面条目被位面闭合清除)。空名/位面缺读拒登记(fail-closed,与种子簿同纪律)。
 
 **接线位**(语义位置,具体行号归落地批):`fuel_sell_candidates` 增可选形参 `merge_guard_release: frozenset[str]`(缺省空集 = 零漂移端);G-S1 判据处(`merge_material_reject_reason` 命中分支)先查释放集,命中则跳过拒入、不计数。释放集由消费位(M4 腾席位/凑息/支付变现/换线四通道的装配位)统一经 sell_gate 新单点函数计算后传入——**判据本体单点,四通道共享**,与装配 A 的入口收拢同构(11_shop_decisions §仲裁单一源语义:「不许卖谁」独占于装配;本谓词是资格子谓词的**条件旁路**,不是新通道)。旁路序 = 先旁路(子谓词内)后装配(下游 `sell_exclusions`),顺序由行为锁③钉死。
 
 **保护面不动的显式声明**:下游 `sell_exclusions`(身份段 = 义务基座 ∪ `sell_hold_exclusion_names` ∪ 乙臂获取名;窗口段;L1 同轮;种子窗)照旧全额生效——释放集只旁路 G-S1 一道子谓词。分类:窗口/种子类被判据 (c) 与窗口段结构排除;**③④/枢纽类可过 (a)(b)(c) 入释放集,由身份段排除后不发生卖出**(kept_identity 子键正是该类观察位)。空板止损守卫(`sell_gate.empty_board_sell_blocked`)、占位件恒拒、`bench_effect_qualified` 等其余资格门零触碰。
 
-**遥测(事件口径 C1,同帧同名去重,单一源 = `count_merge_material_blocked` 同款模式)**:
+**遥测(事件口径 C1 = 名×轮去重——实现期细化 N2:同轮商店/备战两域重复评估同名视为同一事件,去重载体 = session 相位簿 `cw4_dead_pair_exit_frame`,轮推进自动失效;单一源 = `count_merge_material_blocked` 同款模式)**:
 
 | 键 | 语义 |
 |---|---|
 | `dead_pair_exit_released` | 帧内进入释放集的名数(释放评估量) |
-| `dead_pair_exit_guard_kept` | 素材对在位但未形成卖出的名数,按保留原因分子键:`kept_k`(base 成员)/`kept_age`((c) 未满足)/`kept_identity`(释放后遭身份段剔除——③④/枢纽对的体量观察位,喂方向④后续门)/`kept_chain`(链状态保留,§2.1.7-2) |
-| `dead_pair_exit_sold` | 释放成员实际经各通道卖出笔数(按通道分键) |
+| `dead_pair_exit_guard_kept` | 素材对在位但未形成卖出的名数,按保留原因分子键(现役五分,实现期 N2 把原 kept_age 按保留机理拆两键):`kept_k`(base 成员)/`kept_no_entry`((c) 账覆盖缺口:缺登记/位面失配/轮号缺读——窗内保留与账缺口显影分键)/`kept_young`((c) 真窗内 age<N)/`kept_identity`(释放后遭身份段剔除——③④/枢纽对的体量观察位,喂方向④后续门)/`kept_chain`(链状态保留,§2.1.7-2) |
+| `dead_pair_exit_sold` | 释放成员实际经各通道卖出笔数(按通道分键;通道闭集 = `m4_fuel`/`interest`/`funding`/`line_switch`,实现期 N5 登记,写点 = 各通道卖出发射位) |
 
 既有键 `merge_material_guard_blocked` / `merge_material_stale` / `merge_material_stale_ge2` 语义零改,继续作守卫存量显影。
 
@@ -154,7 +160,7 @@ dead_pair_exit_release(session, base, bench, deployed, current_round) → frozen
 
 #### 2.2.1 现状保护结构与其本义
 
-- 静态持有排除集 = `sell_hold_exclusion_names()` = ③注册表核心 ∪ ④转线放行档(cw_card_identity 单一源),经装配 A 身份段对全部卖出通道禁卖。诊断报告称缇宝为「carry 档」——**注册表现值为 `('量子', 'partial')`(cw_line_facts.py:66),两档均在放行集内,保护结论不变,但档位标签以注册表为准**(值对标签错按直调复核纪律更正)。
+- 静态持有排除集 = `sell_hold_exclusion_names()` = ③注册表核心 ∪ ④转线放行档(cw_card_identity 单一源),经装配 A 身份段对全部卖出通道禁卖。诊断报告称缇宝为「carry 档」——**注册表现值为 `('量子', 'partial')`(knowledge/cw_line_facts.py:64),两档均在放行集内,保护结论不变,但档位标签以注册表为准**(值对标签错按直调复核纪律更正)。
 - 本义(P78-4 + ADR-0580 Z1 修法):③④ 件 V_power>0(④ 件 = 候选终局线自身的结构件,12_line_and_intention §2「④ 转线前瞻放行臂」边界行),非燃料类,禁卖 = P41 类资格本义。静态全集排除的「取窄形态」是 ADR-0580 攻击点①(name 型零重叠语义下排除集过大会掏空全部 1★ 燃料资格)的收敛产物(cw_card_identity docstring)。
 
 #### 2.2.2 收益-成本重推(缇宝型帧:配方已锁 ∧ ④ 件线外 ∧ bench 满)
