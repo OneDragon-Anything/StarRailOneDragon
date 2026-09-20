@@ -12,13 +12,12 @@
 **契约偏差声明(相对 C2 伪码)**:
 1. C2 伪码签名 ``card_active(card, board_by_row: BoardByRow)`` —— ``_faction_count``
    身份口径改读
-   ``cw_board_by_row.board_by_row(deployed)`` 全板合计视图(全仓按排聚合单一源;
-   C6 契约);判据语义零变化(仍取 max(board OCR, 身份计数));``card_active`` 入口签名
-   保持 ``CwSimFrame``(BoardByRow 经由内部消费);
+   ``cw_board_by_row.board_by_row_of(gs)`` 全板合计视图(全仓按排聚合单一源;
+   C6 契约,P4 起容器行域直读);判据语义零变化(仍取 max(board OCR, 身份计数));
 2. C2 伪码返回 ``EngineState`` —— 本模块按规格返回 ``bool``(缺件审计走
    ``engine_missing``;EngineState 包装留给 decision_v2 接线面);
 3. C2 伪码 ``pick_card_combination(cards_state, intent, affixes)`` —— 本模块
-   直接接 ``CwSimFrame``(CardState 在函数内组装后参与打分,类型已建)。
+   直接收容器 ``GameState``(CardState 在函数内组装后参与打分,类型已建)。
 
 消费方:decision_v2/candidates 层1 目标集换源、体系判定(board_rung
 口径重接)、空窗期买门。
@@ -33,12 +32,11 @@ from dataclasses import dataclass, field
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
-from sr_od.application.currency_war.kernel.cw_board_by_row import board_by_row
-from sr_od.application.currency_war.kernel.cw_exec_state import iter_occupied_deployed
+from sr_od.application.currency_war.kernel.cw_board_by_row import board_by_row_of
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
-    bench_slots_of,
-    deployed_slots_of,
+    bench_units_of,
+    deployed_rows_of,
     shop_payload_content_cards,
 )
 
@@ -201,14 +199,17 @@ def _char_traits(ch) -> tuple[str, ...]:
     return (ch.factions or ()) + (ch.flows or ())
 
 
+def _owned_units(gs: GameState) -> list:
+    """在场∪bench 的单位域现读(容器原生:行域 ``Unit`` + 备战席 unit 槽
+    ``Unit``;占位件/空槽不计——身份域读口,槽位 kind 面不进本口)。"""
+    front, back = deployed_rows_of(gs)
+    return [*front, *back, *bench_units_of(gs)]
+
+
 def _owned_names(gs: GameState) -> set[str]:
-    """在场∪bench 的角色名集合(char_id 已识别者;tracking 未识别的槽不计)。"""
-    names: set[str] = set()
-    for c in list(iter_occupied_deployed(deployed_slots_of(gs))) \
-            + [x for x in bench_slots_of(gs) if x is not None]:
-        if getattr(c, 'char_id', ''):
-            names.add(c.char_id)
-    return names
+    """在场∪bench 的角色名集合(char_id 已识别者;未识别槽不计)。"""
+    return {u.char_id for u in _owned_units(gs)
+            if getattr(u, 'char_id', '')}
 
 
 def _faction_count(gs: GameState, faction: str) -> int:
@@ -216,19 +217,18 @@ def _faction_count(gs: GameState, faction: str) -> int:
 
     deployed 与 board 应一致(cw_state 头注);单侧 miss(OCR 漏/重建缺身份)时
     取 max 容错——**判激活侧非计费侧**,漏判激活比多判更伤(体系卡是 P1 战力主体)。
-    身份口径 = C6 ``board_by_row`` 全板合计视图(全仓按排聚合单一源;
-    口径:CHARACTERS[char_id] 羁绊全集,
-    多羁绊角色每系都计)。
-    """
+    身份口径 = C6 ``board_by_row_of`` 全板合计视图(全仓按排聚合单一源;
+    口径:CHARACTERS[char_id] 羁绊全集,多羁绊角色每系都计;§2.1 faction
+    类2 注册表派生,未知名不计)。"""
     cnt_board = (gs.board.value or {}).get(faction, 0)
-    cnt_ident = board_by_row(deployed_slots_of(gs)).count(faction)
+    cnt_ident = board_by_row_of(gs).count(faction)
     return max(cnt_board, cnt_ident)
 
 
 def _seele_on_board(gs: GameState) -> bool:
     """希儿在场(= 上阵 deployed;bench 不算「在场」)。"""
-    return any(c.char_id == _SEELE
-               for c in iter_occupied_deployed(deployed_slots_of(gs)))
+    front, back = deployed_rows_of(gs)
+    return any(u.char_id == _SEELE for u in (*front, *back))
 
 
 def card_active(card: SystemCard, gs: GameState) -> bool:
@@ -318,8 +318,7 @@ def card_pieces(card: SystemCard, gs: GameState) -> int:
         # 双分支只计一次;希儿本人既是引擎又属双分支,也只计一次)
         members: set[str] = set()
         for fac in _card_factions(card):
-            for c in list(iter_occupied_deployed(deployed_slots_of(gs))) \
-            + [x for x in bench_slots_of(gs) if x is not None]:
+            for c in _owned_units(gs):
                 if not getattr(c, 'char_id', ''):
                     continue
                 ch = CHARACTERS.get(c.char_id)
@@ -330,8 +329,7 @@ def card_pieces(card: SystemCard, gs: GameState) -> int:
         return len(members)
     fac = _card_factions(card)[0]
     n = 0
-    for c in list(iter_occupied_deployed(deployed_slots_of(gs))) \
-            + [x for x in bench_slots_of(gs) if x is not None]:
+    for c in _owned_units(gs):
         if not getattr(c, 'char_id', ''):
             continue
         ch = CHARACTERS.get(c.char_id)

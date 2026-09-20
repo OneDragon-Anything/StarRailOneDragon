@@ -48,7 +48,7 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
-    deployed_slots_of,
+    deployed_rows_of,
     level_of,
     round_num_of,
 )
@@ -66,9 +66,9 @@ def deployed_star_depth(gs: GameState) -> int:
     载体 2),仅当键恰为 3 的倍数时跨桶——高级合并当前语料零样本,
     语料攒厚后复核。
     """
-    return sum(
-        int(getattr(d, 'star', 1) or 1) - 1
-        for d in deployed_slots_of(gs) if d is not None)
+    front, back = deployed_rows_of(gs)
+    return sum(int(getattr(d, 'star', 1) or 1) - 1
+               for d in (*front, *back) if d is not None)
 
 
 def _star_depth_from_rows(rows) -> int:
@@ -192,9 +192,10 @@ def _settle_rung(gs: GameState) -> int:
     缺星徽贡献,星徽局 rung 系统性偏低落错桶)+上场名单(希儿系单卡判据)。
     """
     from sr_od.application.currency_war.kernel.cw_bond_equips import _recount_board
-    _bf = _recount_board(deployed_slots_of(gs))
-    _names = frozenset(d.char_id for d in deployed_slots_of(gs)
-                       if getattr(d, 'char_id', ''))
+    front, back = deployed_rows_of(gs)
+    _bf = _recount_board([*front, *back])
+    _names = frozenset(d.char_id for d in (*front, *back)
+                       if d is not None and getattr(d, 'char_id', ''))
     return _engines_count(_bf, _names)
 
 

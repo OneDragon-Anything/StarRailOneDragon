@@ -255,6 +255,16 @@ def bench_occupied(bench: list[BenchChar | None]) -> int:
     return sum(1 for b in bench if b is not None)
 
 
+def bench_slot_unit(slot: BenchSlot | None) -> Unit | None:
+    """BenchSlot → 内嵌 Unit 的解包读口(§2.4 字段映射约定的读法单一源):
+    ``kind='unit'`` 且内嵌非空 → 该 Unit;占位件(kind ∈ tome/bookcard/
+    supply_box)/空槽/None 洞 → None。身份(char_id)/星级/装备/槽号
+    信息位的消费面统一经本口解包,禁消费点各自内联 kind 判断。"""
+    if slot is None or slot.kind != 'unit':
+        return None
+    return slot.unit
+
+
 def bench_place(bench: list[BenchSlot | None], slot: BenchSlot) -> int | None:
     """放入首个空槽(买入落位语义);无空槽返回 None(=bench_full 拒)。
 

@@ -4,50 +4,56 @@
 白厄前排法则 / C3 演进引擎)不得自算按排聚合(契约冻结条款;验收 = grep 全仓
 无第二处按排聚合实现)。
 
-口径(契约 C6):
-- 输入 ``deployed``(已带 row = ``BenchChar.position_pref``),纯逻辑组装,无识别;
+口径(契约 C6;benchchar-retirement P4 容器行输入重写,design §2.1/§2.4):
+- 输入 = 容器行域 ``(front_row, back_row)``,元素 = 容器 ``Unit``(§2.1
+  deployed 计算形状),纯逻辑组装,无识别;排归属由行入参原生承载
+  (§2.1「排归属由下标派生」的行域形态,不再读 position_pref 信息位);
 - 标签 = 角色羁绊全集(阵营 factions + 流派 flows,多羁绊角色每系都计——与
   board 左面板多阵营计数口径一致);
-- **开拓者形态按当前排归一**(契约 C6 口径):char_id 是开拓者时按
-  ``position_pref`` 取对应形态再取羁绊(前排=记忆/后排=欢愉);正常链路上
-  ``_apply_row_to_char`` 已归一,此处再归一是防御(直构状态/重建路径未走归一时);
-- 未识别角色(char_id 空)按 ``BenchChar.faction`` 兜底计一个标签(空/ '?' 不计,
-  与 ``_recount_board`` 口径一致);
-- 排归属:``position_pref == 'front'`` 计前排,其余计后排(total 恒等于两排之和,
-  不丢计数;与 ``front_count()`` 的窄口径差异在 docstring 声明)。
+- **开拓者形态按当前排归一**(契约 C6 口径):char_id 是开拓者时按所在行
+  取对应形态再取羁绊(前排=记忆/后排=欢愉);正常链路上行写端归一口
+  (trailblazer_row_unit)已归一,此处再归一是防御(直构状态/重建路径
+  未走归一时);
+- 未识别角色(空名/未注册名):注册表派生不可得 = 不可判标签,不计
+  (§2.1 faction 类3 口径「未知名 = '?'」——'?' 不入标签计数,与退役
+  换形层 faction='?' 兜底不计同值);
+- 排合计:``total()`` 恒等于两行之和,不丢计数。
 
-契约签名(草案级细节,冻结的是单一源语义):
-``board_by_row(deployed: list[BenchChar]) -> BoardByRow``,另给
-``board_by_row_of(state)`` 便捷入口(消费方常持 CwSimFrame)。
+契约签名(冻结的是单一源语义):
+``board_by_row(front_row, back_row) -> BoardByRow``,另给
+``board_by_row_of(state)`` 便捷入口(消费方持容器 GameState)。
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import (
     CHARACTERS,
     is_trailblazer,
     trailblazer_form,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        GameState,
+        Unit,
+    )
 
 
-def _trait_tags(bc: BenchChar) -> tuple[str, ...]:
-    """一个已上阵角色的羁绊标签全集(开拓者先按排归一形态)。
+def _trait_tags(unit: Unit, row: str) -> tuple[str, ...]:
+    """一个已上阵单位的羁绊标签全集(开拓者先按排归一形态)。
 
     char_id 识别 → CHARACTERS 注册表 factions+flows 全集(多羁绊每系都计);
-    未识别 → ``(faction,)`` 兜底(空/'?' 不计,同 ``_recount_board`` 口径)。
+    未识别/未注册 → 空元组(不可判标签不计,口径见模块头)。
     """
-    char_id = getattr(bc, 'char_id', '') or ''
-    row = getattr(bc, 'position_pref', 'back') or 'back'
+    char_id = str(getattr(unit, 'char_id', '') or '')
     if char_id and is_trailblazer(char_id):
         char_id = trailblazer_form(char_id, row)
-    if char_id:
-        ch = CHARACTERS.get(char_id)
-        if ch is not None:
-            return tuple(ch.factions) + tuple(ch.flows)
-    f = getattr(bc, 'faction', '') or ''
-    return (f,) if f and f != '?' else ()
+    ch = CHARACTERS.get(char_id) if char_id else None
+    if ch is None:
+        return ()
+    return tuple(ch.factions) + tuple(ch.flows)
 
 
 @dataclass(frozen=True)
@@ -81,19 +87,27 @@ class BoardByRow:
         return self.row(row).get(tag, 0)
 
 
-def board_by_row(deployed: list[BenchChar]) -> BoardByRow:
-    """按排羁绊聚合(C6 契约 1 冻结签名:纯逻辑组装,输入 deployed 已带 row)。"""
+def board_by_row(front_row: list[Unit] | None,
+                 back_row: list[Unit] | None) -> BoardByRow:
+    """按排羁绊聚合(C6 契约 1 冻结语义;容器行域输入,排归属 = 行入参)。"""
     front: dict[str, int] = {}
     back: dict[str, int] = {}
-    for bc in deployed or []:
-        if bc is None:   # ADR-0392 槽位表空槽
-            continue
-        tags = _trait_tags(bc)
-        if not tags:
-            continue
-        bucket = front if (getattr(bc, 'position_pref', '') == 'front') else back
-        for t in tags:
-            bucket[t] = bucket.get(t, 0) + 1
+    for row, units, bucket in (('front', front_row, front),
+                               ('back', back_row, back)):
+        for unit in (units or []):
+            if unit is None:
+                continue
+            tags = _trait_tags(unit, row)
+            for t in tags:
+                bucket[t] = bucket.get(t, 0) + 1
     return BoardByRow(front=front, back=back)
 
 
+def board_by_row_of(gs: GameState) -> BoardByRow:
+    """便捷入口(消费方持容器 GameState):行域经容器读口
+    :func:`cw_game_state.deployed_rows_of` 现读后聚合。"""
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        deployed_rows_of,
+    )
+    front, back = deployed_rows_of(gs)
+    return board_by_row(front, back)

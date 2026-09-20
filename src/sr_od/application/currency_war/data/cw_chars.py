@@ -200,6 +200,19 @@ def get_char(name: str) -> Character | None:
     return CHARACTERS.get(name)
 
 
+def char_first_faction(char_id: str) -> str:
+    """主阵营注册表派生单一源(faction 不入容器形状,benchchar-retirement
+    design §2.1 三类消费口径共用):注册表命中 → ``factions[0]``
+    (命中但无阵营登记 = '');未注册名/空名 = '?'。与退役换形层
+    ``bench_slots_to_legacy``/``unit_rows_to_deployed`` 的派生式逐位同式。"""
+    if not char_id:
+        return '?'
+    ch = CHARACTERS.get(char_id)
+    if ch is None:
+        return '?'
+    return ch.factions[0] if ch.factions else ''
+
+
 def chars_by_cost(cost: int) -> list[Character]:
     """某费用的全部角色。"""
     return [c for c in CHARACTERS.values() if c.cost == cost]

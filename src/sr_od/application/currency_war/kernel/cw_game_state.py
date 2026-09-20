@@ -3919,6 +3919,28 @@ def bench_slots_of(gs: GameState) -> list:
     return bench_slots_to_legacy(view)
 
 
+def deployed_rows_of(gs: GameState) -> tuple[list[Unit], list[Unit]]:
+    """上阵席位行域读口(容器原生,benchchar-retirement §2.1 计算形状):
+    ``front_row``/``back_row`` 现值直读,行内元素即容器 ``Unit``;任一行
+    未观察(None)按空行计(与旧槽表读口「缺行 = 空行」缺省同向)。
+    P4 起消费面禁再经 ``deployed_slots_of`` 槽表换形。"""
+    front = gs.front_row.value
+    back = gs.back_row.value
+    return list(front or []), list(back or [])
+
+
+def bench_units_of(gs: GameState) -> list[Unit]:
+    """备战席单位读口(容器原生):BenchView 槽序中 ``kind='unit'`` 槽的
+    内嵌 ``Unit``(frozen 本体,顺序 = 物理槽序);bench 未观察 = []。
+    单位域读口——占位件(kind ∈ tome/bookcard/supply_box)与空槽不计,
+    占位件消费面走 ``gs.bench.value.slots`` kind 面。"""
+    view = gs.bench.value
+    if view is None:
+        return []
+    return [s.unit for s in view.slots
+            if s is not None and s.kind == 'unit' and s.unit is not None]
+
+
 def back_capacity_of(gs: GameState) -> int:
     """后排格数读口(旧 ``CwSimFrame.back_max`` 容器版,波3 立口):
     back_layout 真值(值域 6-9,平常 6/宝钻扩展 7/8/9,>9 域外 8 格超集);
