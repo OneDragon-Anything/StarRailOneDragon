@@ -37,11 +37,11 @@ import math
 from sr_od.application.currency_war.kernel.cw_comps import Comp
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
+    bench_free_slots,
     gold_of,
     level_of,
     round_num_of,
     shop_payload_content_cards,
-    slot_occupies,
 )
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
@@ -186,16 +186,12 @@ def e_rounds(comp: Comp, gs: GameState,
     else:
         floor = reg.interest_floor()
     affordable = max(0, (gold_of(gs) - floor) // cost)
-    # 席空数(容器 kind 口,benchchar-retirement P4):占用 = 占席 kind 槽
-    # 计数(单位+占位件,与退役 bench_occupied 的非 None 计数同值);
-    # bench 未观察 = 全空(占位 0,零漂移缺省)。⚠️ 刻意不走
-    # ``bench_free_slots``(其随 BenchView.capacity 走,节省工位改写帧
-    # 读数不同)——本判据改形不改语义,容量口径差异挂设计裁定后统一。
-    _view = gs.bench.value
-    _used = (sum(1 for s in _view.slots
-                 if s is not None and slot_occupies(s.kind))
-             if _view is not None else 0)
-    bench_free = max(0, BENCH_CAPACITY - _used)
+    # 席空数单一源 = bench_free_slots(T-17 裁定:跟随 BenchView.capacity,
+    # 节省工位改写帧按实席数截断买刷;bench 未观察 = None → 全席可用
+    # 缺省,与退役槽表「未观察 = 全空」口径同向)。
+    _free_raw = bench_free_slots(gs)
+    bench_free = (BENCH_CAPACITY if _free_raw is None
+                  else max(0, int(_free_raw)))
     rolls = min(affordable, bench_free)    # 买刷截断到 bench 空位
     per_round = (1 + rolls) * p
     return dist / per_round

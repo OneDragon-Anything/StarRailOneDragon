@@ -119,9 +119,9 @@ def _scan_shop_buy_accounts(gs: GameState,
     )
     _entries = bench_entries_of(gs)
     _payload_cards = shop_payload_content_cards(gs.shop.value)
-    # 席空数 = 定长容量基线 − 占席条目数(容器 kind 口;未观察 = 全空,
-    # registry.bench_capacity 基线口径零漂移——容量改写语义差异与
-    # e_rounds 同挂设计裁定)
+    # 席空数单一源 = bench_free_slots(T-17 裁定:跟随 BenchView.capacity,
+    # 节省工位改写帧按实席数扩账;bench 未观察 = None → registry 基线
+    # 缺省,与退役槽表「未观察 = 全空」口径同向)。
     _free_raw = bench_free_slots(gs)
     bench_free = (registry.bench_capacity if _free_raw is None
                   else max(0, int(_free_raw)))

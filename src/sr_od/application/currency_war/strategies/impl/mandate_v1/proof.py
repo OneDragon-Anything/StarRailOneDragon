@@ -542,15 +542,14 @@ def assemble_lock_frame(gs, session: StrategySession,
             blocked.append(v_opt(level, c_star, 1.0, 0,
                                  gold_of(gs),
                                  refresh_cost))
-    # 席空数 = 定长 9 基线 − 占席 kind 槽计数(容器 kind 口,P4;bench
-    # 未观察 = 全空,零漂移缺省——与 e_rounds 同基线口径,容量改写语义
-    # 差异同挂设计裁定)
-    from sr_od.application.currency_war.kernel.cw_game_state import slot_occupies
-    _view = gs.bench.value
-    _used = (sum(1 for s in _view.slots
-                 if s is not None and slot_occupies(s.kind))
-             if _view is not None else 0)
-    free = BENCH_CAPACITY - _used
+    # 席空数单一源 = bench_free_slots(T-17 裁定:跟随 BenchView.capacity,
+    # 节省工位改写帧按实席数计 v_slot 席位压力;bench 未观察 = None →
+    # 全席可用缺省,与退役槽表「未观察 = 全空」口径同向)。
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_free_slots,
+    )
+    _free_raw = bench_free_slots(gs)
+    free = (BENCH_CAPACITY if _free_raw is None else max(0, int(_free_raw)))
     c_sat = min(1.0, sum(p_block_terms)) * v_slot(free, blocked)
     c_hold += c_sat
 
