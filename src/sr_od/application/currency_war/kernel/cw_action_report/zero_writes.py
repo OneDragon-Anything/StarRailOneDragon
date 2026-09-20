@@ -103,16 +103,12 @@ def report_action_pick_encounter_param(gs: GameState, param: Any, sig: ChannelSi
 
 
 
-def report_action_pick_supply_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """补给节点选择上报:容器零写。"""
-    return _report_zero_write(gs, param, sig, 'zero_write(pick_supply)')
-
-
-
-# report_action_pick_invest_param 已迁出零写族(银狼闭环迭代 design.md
-# §2.3,用户定稿):分步实现正本 = 同包 pick_invest(两相语义 + 双屏分流
-# + 效果函数注册);包级 ``__getattr__`` 命名规约解析 pick_invest 先于
-# 本模块,直接 import 零写委托的旧消费面已随迁改直取 pick_invest。
+# report_action_pick_invest_param / report_action_pick_equip_param /
+# report_action_pick_supply_param 已迁出零写族(银狼闭环迭代 design.md
+# §2.3 与 §2.2 确定性通道宿主迁移):分步实现正本 = 同包 pick_invest /
+# pick_equip / pick_supply(两相语义,效果腿绑「overlay 已关」落地证据
+# 闩);包级 ``__getattr__`` 命名规约解析具名模块先于本模块,直接 import
+# 零写委托的旧消费面已随迁改直取具名模块。
 
 
 
@@ -178,12 +174,6 @@ def report_action_pick_fortune_param(gs: GameState, param: Any, sig: ChannelSig)
 def report_action_pick_expert_invite_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """专家邀请函选卡上报:容器零写(现金为王回金 = dict 确认族通道)。"""
     return _report_zero_write(gs, param, sig, 'zero_write(pick_expert_invite)')
-
-
-
-def report_action_pick_equip_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """选择装备三选一上报:容器零写。"""
-    return _report_zero_write(gs, param, sig, 'zero_write(pick_equip)')
 
 
 

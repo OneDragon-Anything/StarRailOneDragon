@@ -17,10 +17,11 @@ cw_tool_use_action。
 发出后直调自己的上报函数 ``report_action_pick_<snake>_param``
 (``kernel/cw_action_report``,零写族落 zero_writes)——与 buy_card 等
 其它动作 op 同一执行契约;上报发射相零写,容器写语义(chosen_*/Confirm*
-到账)仍由画面 op 原写点承载。银狼闭环迭代起两线例外:pick_invest =
-分步实现(发射相仅意图遥测,落地相在画面 op 重入裁决出口);pick_planner
-发射相 = 意图遥测(零容器写),效果腿同候证据闩。partner 确认点读缺的
-retry 旁路分支未发确认点击,不上报。
+到账)仍由画面 op 原写点承载。银狼闭环迭代起三线例外:pick_invest /
+pick_equip / pick_supply = 分步实现(发射相仅意图遥测,落地相在画面 op
+重入裁决出口/节点完成门,证据闩语义);pick_planner 发射相 = 意图遥测
+(零容器写),效果腿同候证据闩。partner 确认点读缺的 retry 旁路分支未发
+确认点击,不上报。
 
 体迁纪律(零行为):各 op 类 run 体 = 现役 overlay act 确认链逐字迁移
 (接收者 ``self``→``env.op``、机械参数→env 字段两处归一,批4 已迁;
@@ -35,25 +36,30 @@ from typing import Any
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_action_report.pick_equip import (
+    report_action_pick_equip_param,
+)
 from sr_od.application.currency_war.kernel.cw_action_report.pick_invest import (
     report_action_pick_invest_param,
+)
+from sr_od.application.currency_war.kernel.cw_action_report.pick_supply import (
+    report_action_pick_supply_param,
 )
 from sr_od.application.currency_war.kernel.cw_action_report.zero_writes import (
     report_action_pick_box_card_param,
     report_action_pick_encounter_param,
-    report_action_pick_equip_param,
     report_action_pick_expert_invite_param,
     report_action_pick_fortune_param,
     report_action_pick_megastar_param,
     report_action_pick_partner_param,
     report_action_pick_planner_param,
     report_action_pick_star_tome_param,
-    report_action_pick_supply_param,
     report_action_pick_wish_trial_param,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     game_state_from_ctx,
+    register_sig_actors,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -88,6 +94,27 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_planner impor
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
+
+# —— 写入者登记面(§3.2.4):本模块声明的动作 op 类全量自登记(actor =
+# 类名,发射相自上报经 _validate_sig 在册校验)。契约扩员 12→15 与
+# pick-op-unify 批新增的 7 个 op 类名单体漏登记 → 实机发射相自上报
+# ValueError 炸(动作 op 全链 FAIL;投资/装备三选一为常态/银狼线必经
+# 画面,首局即触)。模块导入期扩面 = cw_sim_base 同款先例;
+# register_sig_actors 幂等,与 cw_game_state 静态登记集重复无害。
+register_sig_actors(
+    'CwActionPickEncounterOp',
+    'CwActionPickSupplyOp',
+    'CwActionPickMegastarOp',
+    'CwActionPickPartnerOp',
+    'CwActionPickPlannerOp',
+    'CwActionPickInvestOp',
+    'CwActionPickFortuneOp',
+    'CwActionPickWishTrialOp',
+    'CwActionPickEquipOp',
+    'CwActionPickBoxCardOp',
+    'CwActionPickStarTomeOp',
+    'CwActionPickExpertInviteOp',
+)
 
 
 @dataclass
@@ -215,7 +242,9 @@ class CwActionPickSupplyOp(SrOperation):
             register_confirm_arrival(match.session, 'ConfirmSupply',
                                      picked['equip'],
                                      produced_by='CwScreenSupplyNode')
-        # 自上报(机械链发出后;零写,契约面统一)。
+        # 自上报(发射相:仅登记意图遥测,容器零写;落地相按实际开出内容
+        # 应用 = 单位腿 + 装备后果腿,宿主 = 画面 op 节点完成门证据闩——
+        # 银狼闭环 design §2.2,pick_supply 迁出零写族)。
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_pick_supply_param(
@@ -573,7 +602,9 @@ class CwActionPickEquipOp(SrOperation):
         op.ctx.controller.mouse_move(env.target)
         op.ctx.controller.click(env.target)
         time.sleep(1.2)
-        # 自上报(机械链发出后;零写,契约面统一)。
+        # 自上报(发射相:仅登记意图遥测,容器零写;装备腿落地相 = 入栏 +
+        # 获得后果链,宿主 = 画面 op 重入裁决出口证据闩——银狼闭环
+        # design §2.2,pick_equip 迁出零写族)。
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_pick_equip_param(

@@ -909,13 +909,26 @@ class CwActionPickEncounterParam:
 
 @dataclass
 class CwActionPickSupplyParam:
-    """补给节点选择(替代 SupplyPick;刷新建议另发 CwActionRefreshSupplyParam)。"""
+    """补给节点选择(替代 SupplyPick;刷新建议另发 CwActionRefreshSupplyParam)。
+
+    开出内容载荷(银狼闭环迭代 design.md §2.2 确定性通道·通道宿主迁移,
+    照 PickInvest 载荷扩展先例):``char_name`` = 选中列角色名
+    (read_supply_options roster 校验产物;'' = 列无角色/兜底点卡路径);
+    ``norm_item`` = 选中列装备归一件名(``normalize_equip_name``,OCR 原始
+    名不静默改写由 handler 持有;'' = 未解析)。两字段不入动作实例键
+    (归因载荷不改变动作身份,``route_tag`` 先例);上报落地相按实际开出
+    内容应用(单位腿 + 装备后果腿,pick_supply 两相语义)。
+    """
     idx: int
     # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
     #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
     #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
     #             重声明;``reason`` = 归因记录字段,''=未标)。
     reason: str = ''
+    char_name: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
+    norm_item: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 
@@ -1059,13 +1072,23 @@ class CwActionPickExpertInviteParam:
 
 @dataclass
 class CwActionPickEquipParam:
-    """选择装备三选一选择(契约扩员 12→15 新增;普查迁移批 2)。"""
+    """选择装备三选一选择(契约扩员 12→15 新增;普查迁移批 2)。
+
+    选中件载荷(银狼闭环迭代 design.md §2.2 确定性通道·通道宿主迁移,
+    照 PickInvest 载荷扩展先例):``norm_item`` = 选中卡装备归一件名
+    (``normalize_equip_name``,OCR 原始卡名不静默改写由 handler 持有;
+    '' = 未解析)。不入动作实例键(归因载荷不改变动作身份,``route_tag``
+    先例);上报落地相装备腿 = 入栏 + 获得后果链,未解析 = 值不变翻来源
+    (pick_equip 两相语义)。
+    """
     idx: int
     # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
     #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
     #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
     #             重声明;``reason`` = 归因记录字段,''=未标)。
     reason: str = ''
+    norm_item: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 

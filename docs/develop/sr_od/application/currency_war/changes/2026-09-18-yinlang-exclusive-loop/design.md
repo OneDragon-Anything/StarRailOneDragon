@@ -57,7 +57,7 @@
 
 - **动作 op 规范**（正本 = `flow/action_ops.md` §1）：动作 op = 机械执行 + **发出即记账**；禁验证、禁重试；**禁偶发结案**——每个未生效必有确定性根因，修法落根因层。
 - **两态制容器写**：确定面（结果可准确计算 + 输入已知）→ `write_logic`；随机面（含概率/随机采样）→ `write_logic_rand` 采样链（值 = 猜测；观察覆盖差异 = 预期内 `logic_rand_outcome` 行不响安灯；策略消费前必须重观察，查询口 = `logic_rand_fields`/`any_logic_rand`）。未建模且无法猜测的形态 = 不写 + 台账行留证，失配响停即采证信号（禁猜）。
-- **合成级联单一引擎**：一切 bench/deployed 增员与变换的连锁合成经 `merge_simulate`/`_merge_bench(on_step=...)`（`kernel/cw_merge_simulate.py`，语义权威 = 模块头 §1–§5；每级合并后受影响域各落一行，board 派生随行写自动继承来源态）。**跨档合并禁猜面（对抗审②）**：merge 身份键 =（char_id, star）无费用维度，而银狼LV.999 有 3/4/5 三费档（`cw_chars.py:148`，囤卡常态）——混合费档同名同星是否合并未定谳；**涉 LV.999 的合并级联在 3.1④ 定谳前不推演**（受影响域值不变翻来源 + 留证行），定谳后恢复 merge 推演（确定面或采样按定谳口径）。
+- **合成级联单一引擎**：一切 bench/deployed 增员与变换的连锁合成经 `merge_simulate`/`_merge_bench(on_step=...)`（`kernel/cw_merge_simulate.py`，语义权威 = 模块头 §1–§5；每级合并后受影响域各落一行，board 派生随行写自动继承来源态）。**跨档合并已定谳，级联正常推演**（原对抗审②禁猜面，降级已撤）：merge 身份键 =（char_id, star）无费用维度，而银狼LV.999 有 3/4/5 三费档（`cw_chars.py:148`）——定谳 = **容器内费用档不同时存在**（升星选择升费后商店只出新费用档、赠送单位也只给该费用档，同名即同档；口述·权威 2026-09-18）→ 分组键无跨档歧义，涉 LV.999 的合并级联与普通单位同语义正常推演（共享体 = `cw_effect_inventory.merge_cascade_write`，`lv999_merge_undecided` 降级体已随 commit `c466b0235` 退役）。
 - **动作报告形态**（用户定稿）：每动作一文件（`kernel/cw_action_report/` 包规约），上报函数分步更新 game state、每字段更新各落一行遥测（单次动作报告多次写遥测 = 预期行为，逐字段追加、分步可对账）。
 
 ### 2.1 R1：planner 统一选择 op（选卡 + 确认一 op 完成带载荷上报）
@@ -120,7 +120,7 @@
 
 随机授予一律采样链处理（collect_ore 同范式；`kernel/cw_ore_reward.py` 的 rng 注入与披露键惯例同源）：
 
-- **骇客改件 v0 池 = 4 费装备排除 Max 件**（用户拍定临时建模口径，假设档披露键在册 + `logic_rand_outcome` 行为校准回路）。**池数据缺口申报（对抗审⑧）**：Equipment dataclass 无 cost 字段（实证），「4 费」口径无数据源——v0 池落**硬编码名单常量** = 显式申报的第二真相源（名单即口径本体，披露键在册）；数据源正解 = 引入 plaza cost 数据，候校准批按 `logic_rand_outcome` 校准数据裁决（run_074040 改件 = 特殊类分身墨镜Max 亦证池非骇客类别池，见 §2.6 R8）；
+- **骇客改件 v0 池 = 4 费装备排除 Max 件**（用户拍定临时建模口径，假设档披露键在册 + `logic_rand_outcome` 行为校准回路）。**池数据缺口申报（对抗审⑧）**：Equipment dataclass 无 cost 字段（实证），「4 费」口径无数据源——v0 池落**硬编码名单常量** = 显式申报的第二真相源（名单即口径本体，披露键在册）；**落位申报（更正）**：v0 池实现于 `kernel/cw_action_report/pick_invest.py` 采样器（`HACKER_MOD_POOL_V0` 名单 + `roll_hacker_mod` 采样函数，随骇客专家效果函数注册同居一文件），非独立文件（landing 文件面早期声明的 `cw_hacker_mod_reward.py` 未建，以此为准）；数据源正解 = 引入 plaza cost 数据，候校准批按 `logic_rand_outcome` 校准数据裁决（run_074040 改件 = 特殊类分身墨镜Max 亦证池非骇客类别池，见 §2.6 R8）；
 - **链序**：采样（改件身份）→ 装备入栏 → 其送角色腿（采样命中三件则按 §2.2 后果）→ bench 单位 → 合成/升星级联（`_merge_bench(on_step)` 继承随机态）——逐步各落一行；
 - **翻来源域集按「可能受影响域」裁（对抗审⑪，禁照抄 collect_ore 全域）**：改件链域 = equips / bench / front_row / back_row（board 派生随行写自动继承）——gold 不受改件影响**不翻**，防噪声行；
 - **观察收口** = `logic_rand_outcome` 台账行，预期内不响安灯；校准数据源 = 该行（同 `cw_ore_reward` 惯例）；
