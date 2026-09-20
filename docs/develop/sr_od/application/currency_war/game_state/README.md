@@ -42,14 +42,15 @@
 
 ## 3. 核心规范摘要
 
-### 3.1 写入口两分法:observe() / write_logic()
+### 3.1 写入口:observe() / write_logic() / write_logic_rand()
 
-写入 API 按数据层两分(符号=kernel/cw_game_state.py):
+写入 API 按数据层两分 + 随机扩展(符号=kernel/cw_game_state.py):
 
 | 写口 | 层 | 用途 |
 |---|---|---|
 | `observe()` | 观察层 | 亲眼看到的原始读数,覆盖旧值;value=None 拒绝(缺读不写禁猜) |
 | `write_logic()` | 逻辑层 | 按游戏规则推算的逻辑值**直接写字段**(两态制 标准通道,策略器立即可读;非免检——值之后仍受观察覆盖辖) |
+| `write_logic_rand()` | 逻辑层·随机扩展 | 所对**游戏侧效果本身随机**的推算口径直接写字段(逻辑随机态,source=logic_rand):观察覆盖差异 = 随机效果落地预期内(落 `logic_rand_outcome` 台账行,不进失配三分流);**策略器消费前必须重观察**(查询口 = `logic_rand_fields()`)。随机效果无任何可写口径时仍按域级跳写跳写,禁编值 |
 
 配套口:`carry()`(失读沿用,evidence 带 carried:来源帧)/`write_prior()`
 (先验写入,如开局 hp 先验)/`leave_screen()`(画面附加域离屏置 None)/`relay()`
@@ -66,8 +67,11 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
   闩(boundary_gold_backfilled)/ front_row、back_row 行槽位纯重排
   (deploy_slot_reorder,同单位多重集仅排列差异 = 游戏侧行内重排无逻辑
   写端,采新入纠漂面)/ board 派生漂移观察覆盖采新(board_derived_adopt,辖
-  `proj_board_resync` 写端)。**已知缺口**:bench/equips 投资卡随机授予、
-  晶矿随机金现无吸收规则(随机对账申报面 2026-09-19 用户裁定整体拆除待重设计),
+  `proj_board_resync` 写端)。**逻辑随机态旁路**:logic_rand 来源值的观察
+  覆盖差异 = 随机效果落地预期内,落 `logic_rand_outcome` 台账行采新
+  (无告警无停机),不经三分流。**已知缺口**:bench/equips 投资卡随机授予、
+  晶矿随机金现无吸收规则(随机对账申报面 2026-09-19 用户裁定整体拆除待重设计;
+  重设计机制位 = 逻辑随机态 write_logic_rand,写端接线归后续批),
   命中照真失配停。
 - **board 派生量**(禁独立写):上阵羁绊计数 = front_row/back_row 单位集合的派生量,
   逻辑写端经 `write_logic` 行域挂钩 `_resync_board_delta` 单一源自动重算(观察基座 +
@@ -127,7 +131,7 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | [strategy-env-impacts.md](strategy-env-impacts.md) | 投资策略/环境逐效果在 state 里的影响(已确认条目+候逐条确定占位清单) |
 | [chain-observation.md](chain-observation.md) | 链观察对接:基线链/现行链双源、diff 证据、与遥测账本的挂接 |
 | [retirement.md](retirement.md) | 旧 12 流退役逐流处置与消费方迁移清单 |
-| [action-logic-state.md](action-logic-state.md) | 动作逻辑态总则:两态制纪律、写口归属硬规则(动作 op 只上报动作,逻辑态更新由 game state 独占)、确定面/随机面、拒绝语义 |
+| [action-logic-state.md](action-logic-state.md) | 动作逻辑态总则:两态制纪律(+逻辑随机态扩展)、写口归属硬规则(动作 op 只上报动作,逻辑态更新由 game state 独占)、确定面/随机面、拒绝语义 |
 | [logic-updates/](logic-updates/README.md) | 逐动作逻辑态更新规格(每动作 op 一篇:域集/转移规则/随机面/拒绝语义/kernel 符号锚) |
 
 ## 5. 边界与姊妹文档

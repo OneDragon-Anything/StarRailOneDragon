@@ -130,7 +130,7 @@ API 面(宿主=GameState 写入 API,符号=kernel/cw_game_state.py):
 
 ```text
 渠道①:observe / carry / write_prior / leave_screen     (均带 sig)
-渠道②③:expect / confirm / write_logic / discard_expected / relay   (均带 sig)
+渠道②③:expect / confirm / write_logic / write_logic_rand / discard_expected / relay   (均带 sig)
 观察事件:note_obs_event(...)                            (行型 2,占版本)
 读口:current_version()
 ```

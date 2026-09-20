@@ -30,6 +30,16 @@ PendingEntry/confirm 转正/discard_expected)全套废除;逻辑态错误 =
 代码 bug(修推算代码,不靠运行时挂账对账兜底)。观察赢原则不变(§2.3):
 下一帧实读覆盖 logic,失配缺陷台账留证。
 
+**逻辑随机态**(来源 logic_rand,:meth:`GameState.write_logic_rand` 直写):
+逻辑态的随机效果扩展——推算值所对的**游戏侧效果本身随机**(随机掉落/
+随机授予/随机变异),写入的是确定面或期望口径,真值结构上不可由推算
+钉死。与逻辑态的两条语义分界:①观察覆盖差异 = 随机效果落地,**预期内
+非 bug**——只落 ``logic_rand_outcome`` 台账行留证(无告警无停机,随机
+模型校准遥测面),不进失配三分流;②策略器消费前**必须重观察**(字段值
+是随机口径不是真值,可信度低于逻辑态;查询口 =
+:meth:`GameState.logic_rand_fields`)。随机效果无任何可写口径时仍按
+域级跳写纪律跳写(fields.md §2.5),不强制造假值。
+
 **单例宿主** = session 旁表(:func:`game_state_of`;同 ``cw_exec_state``
 旁表模式,弱引用表 + 桩面兜底)——session 对象 = 局身份,新局新 session
 即天然新建,符合「单例,每局新建」(§1/§6.2)。
@@ -298,8 +308,9 @@ def node_ordinal_of(plane: int, round_num: int) -> int:
 #: 帧观察完整度三档(§2.4 关键结构 2)。
 FrameObsLevel = Literal['full', 'view', 'none']
 
-#: 来源四分类字面量(§2.1)。
-FieldSource = Literal['observation', 'logic', 'carried', 'prior']
+#: 来源五分类字面量(§2.1;observation/logic = 两态制本态,logic_rand =
+#: 逻辑随机态扩展,carried/prior = obs 族来源子模)。
+FieldSource = Literal['observation', 'logic', 'logic_rand', 'carried', 'prior']
 
 #: sim 合成口统一 evidence 标记(§2.1:sim 侧真值合成恒带)。
 SIM_SYNTHESIZED: str = 'sim:synthesized'
@@ -515,14 +526,18 @@ _T = TypeVar('_T')
 
 @dataclass(frozen=True)
 class Field(Generic[_T]):
-    """一个字段:值 + 来源 + 可选源注记。只存正式值——来源两态
-    (observation/logic,ADR-0651;来源子模 carried/prior 见 §2.1)。
+    """一个字段:值 + 来源 + 可选源注记。只存正式值——来源两态 + 随机扩展
+    (observation/logic,ADR-0651;logic_rand = 逻辑随机态,carried/prior =
+    obs 族来源子模,见 §2.1)。
 
     - observation = 亲眼看到的(识别结果/sim 真值合成,evidence 恒带标记);
     - logic = 决策动作按游戏规则推算的预期效果,经
       :meth:`GameState.write_logic` 直接写入(策略器立即可读),**保持
       logic 不翻 observation**(§8.1),直到下一次观察覆盖(失配 = 推算
       bug,缺陷台账留证,修推算代码);
+    - logic_rand = 逻辑随机态:所对游戏侧效果本身随机的推算口径,经
+      :meth:`GameState.write_logic_rand` 写入;观察覆盖差异 = 预期内
+      (随机效果落地),不进失配三分流;策略消费前必须重观察;
     - carried = 沿用上次好值,evidence 必带 ``carried:<来源帧>``
       (§2.1/§2.2 失读处置①);
     - prior = 历史遥测先验(开局 hp,§3.1.6),evidence 必带 ``prior:<来源>``;
@@ -2649,6 +2664,10 @@ class GameState:
         - 覆盖 logic 来源值且失配 → 三分流处置(§2.3 观察赢;失配 =
           逻辑态被实读证伪 = bug,豁免/抑制/安灯三分流——
           :func:`_route_logic_mismatch`;失配默认安灯停机,修推算代码);
+        - 覆盖 logic_rand 来源值且差异 → **预期内**(随机效果落地,非
+          bug):只落 ``logic_rand_outcome`` 台账行留证(无告警无停机,
+          随机模型校准遥测面;sim 证据行由 :func:`_emit_defect` 发射口
+          抑制面兜底),覆盖照常 = 随机结果采新;
         - sig = 渠道①签名(必填;R5 W1 起缺位合成路径已退役,ADR-0634);
         - note = 可选行注记(结算事实等语义,ADR-0634 battle_done 收编)。
         """
@@ -2657,7 +2676,16 @@ class GameState:
                              'leave_screen,禁清正式值)')
         _validate_sig(sig, ('obs',))
         name = self._field_name(target)
-        if target.source == 'logic' and target.value is not None \
+        if target.source == 'logic_rand' and target.value is not None \
+                and target.value != value:
+            # 逻辑随机态被观察覆盖:差异 = 随机效果落地,预期内非 bug
+            # ——不进三分流,只落台账行留证(等值 = 零新信息不产行,
+            # settle_truth 同纪律;发射口抑制面兜底 sim 证据行)。
+            _emit_defect(field_name=name, expected=target.value,
+                         actual=value, evidence=evidence, sig=sig,
+                         logic_evidence=target.evidence,
+                         kind='logic_rand_outcome')
+        elif target.source == 'logic' and target.value is not None \
                 and target.value != value:
             if self._absorb_slot_reorder(name, target, value,
                                          evidence, sig):
@@ -2751,7 +2779,8 @@ class GameState:
                             produced_by: str, sig: ChannelSig) -> None:
         """board 派生重算单一源(front_row/back_row 逻辑写端挂钩;本方法
         是「羁绊/阵营计数 = 上阵单位集合的派生量」的落码位,写入口 =
-        :meth:`write_logic` 行域写后自动触发,禁绕过手写 board)。
+        :meth:`_write_logic_frame` 行域写后自动触发(write_logic/
+        write_logic_rand 共用),禁绕过手写 board)。
 
         语义 = **观察基座 + 行变更增量**:board 现值为 None(板未读过)
         时无派生基座,跳过等观察首读;否则对本次行写做单位多重集差
@@ -2872,6 +2901,8 @@ class GameState:
         """逻辑直写(两态制标准写通道,ADR-0651):决策动作按游戏规则推算
         的预期效果**直接写入字段**(source=logic),策略器立即可读——
         「在观察态到来之前供决策使用」是逻辑态的全部职能。
+        随机效果口径走 :meth:`write_logic_rand`(逻辑随机态,失配预期内),
+        确定面仍走本口。
 
         - 历史「仅限显式申报豁免写端」的限制随 expect/confirm 两步机制
           废除一并解除(ADR-0651):凡逻辑推算写入统一走本口,不再有
@@ -2887,21 +2918,61 @@ class GameState:
         - note = 可选行注记(权威纠偏记录等,§3.4.2)。
         """
         _validate_sig(sig, ('logic_action', 'logic_hook'))
+        self._write_logic_frame(target, value, source='logic',
+                                produced_by=produced_by, evidence=evidence,
+                                sig=sig, note=note)
+
+    def write_logic_rand(self, target: Field, value: Any, *,
+                         produced_by: str, evidence: str | None = None,
+                         sig: ChannelSig,
+                         note: str = '') -> None:
+        """逻辑随机直写(逻辑随机态标准写通道):所对**游戏侧效果本身随机**
+        的推算口径写入字段(source=logic_rand),策略器立即可读。
+
+        与 :meth:`write_logic` 的两条语义分界:
+
+        - 观察覆盖差异 = 随机效果落地,**预期内非 bug**——只落
+          ``logic_rand_outcome`` 台账行留证(无告警无停机),不进失配
+          三分流(差异出 :meth:`observe`);
+        - 写入值是随机口径(确定面或期望),**不是真值承诺**——策略器
+          消费前必须重观察(查询口 = :meth:`logic_rand_fields`;消费门
+          先例 = hp 可信位 ``cw_hp_policy.hp_readable`` 只认
+          observation/carried,logic_rand 自然落入不可信侧)。
+
+        随机效果无任何可写口径时禁走本口编值——仍按域级跳写纪律跳写,
+        值留观察覆盖(fields.md §2.5)。边界:gold 结算屏真值收口
+        (:meth:`settle_truth`)不经随机面,logic_rand gold 与结算真值的
+        差不落 boundary_income 行。其余契约(produced_by/evidence/sig/
+        note、域级跳写、行域 board 派生挂钩)与 write_logic 同一条。
+        """
+        _validate_sig(sig, ('logic_action', 'logic_hook'))
+        self._write_logic_frame(target, value, source='logic_rand',
+                                produced_by=produced_by, evidence=evidence,
+                                sig=sig, note=note)
+
+    def _write_logic_frame(self, target: Field, value: Any, *,
+                           source: FieldSource, produced_by: str,
+                           evidence: str | None,
+                           sig: ChannelSig, note: str) -> None:
+        """逻辑族落帧共用体(write_logic/write_logic_rand 单一实现;
+        source 由调用方定,family 校验已在其各自入口完成)。
+
+        - 行域写旧值快照必须在换帧前取(§2.4 禁就地改);
+        - board 派生重算单一源(行域写后自动触发;羁绊/阵营计数 = 上阵
+          单位集合的派生量,独立手写 board = 越格,见方法注)。派生算术
+          本身确定性,board 恒走 write_logic(logic),不随行域随机态扩散。"""
         name = self._field_name(target)
-        # board 派生重算输入:行域写的旧值快照必须在换帧前取(§2.4 禁就地改)。
         old_row_value = target.value if name in ('front_row', 'back_row') \
             else None
-        self._swap(name, Field(value=value, source='logic', evidence=evidence),
+        self._swap(name, Field(value=value, source=source, evidence=evidence),
                    sig=sig, note=note)
         if name in ('front_row', 'back_row'):
-            # board 派生重算单一源(行域写后自动触发;羁绊/阵营计数 =
-            # 上阵单位集合的派生量,独立手写 board = 越格,见方法注)。
             self._resync_board_delta(name, old_row_value,
                                      produced_by=produced_by, sig=sig)
 
     def relay(self, target: Field, value: Any,
               sig: ChannelSig) -> bool:
-        """载体中继(§2.1,**不设第五来源类**;迁移批次二收敛)。
+        """载体中继(§2.1,**不设专用中继来源类**——中继复用 logic 来源)。
 
         接管/初始化把会话已知事实补写进**从未写过的字段**:
         - source = logic + evidence = 'session_carrier'(中继是已核实事实
@@ -2930,10 +3001,21 @@ class GameState:
         return True
 
     def logic_written_fields(self) -> list[str]:
-        """全部 logic 来源字段名(已直写、尚未被观察重锚——对账巡检用,§8.4)。"""
+        """全部 logic 来源字段名(已直写、尚未被观察重锚——对账巡检用,§8.4)。
+        逻辑随机态字段不辖(随机口径非严格推算承诺,不进对账巡检面;
+        查询口 = :meth:`logic_rand_fields`)。"""
         return [f.name for f in dataclasses.fields(self)
                 if isinstance(getattr(self, f.name), Field)
                 and getattr(self, f.name).source == 'logic']
+
+    def logic_rand_fields(self) -> list[str]:
+        """全部 logic_rand 来源字段名(逻辑随机态,效果随机待重观察——
+        策略消费门用):决策消费这些字段的值前必须安排重观察(值是随机
+        口径不是真值,见 :meth:`write_logic_rand` 注)。被观察覆盖后
+        字段翻 observation,自然移出本清单。"""
+        return [f.name for f in dataclasses.fields(self)
+                if isinstance(getattr(self, f.name), Field)
+                and getattr(self, f.name).source == 'logic_rand']
 
     def observe_screen_context(self, screen_name: str, *,
                                phase_round: tuple[int, int] | None = None,
