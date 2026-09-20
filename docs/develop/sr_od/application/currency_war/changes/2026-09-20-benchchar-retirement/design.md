@@ -3,7 +3,7 @@
 ## 0. 元信息
 
 - 迭代目标：退役 BenchChar 角色形条目，全库备战席/上阵位计算统一容器形状（bench = `BenchView`/`BenchSlot` 五分类 kind；deployed = `front_row`/`back_row` 的 `Unit` 行）；部署落位决策权同步归位策略层。**无兼容层**：不设双路径、不设过渡字段、换形函数禁续命（任何消费面不许靠换形过渡，直接改形状）。
-- 状态：对抗审中
+- 状态：定稿
 - 文档清单：[landing.md](landing.md)（阶段拆分与验收；阶段小节 = 账本任务唯一源）
 
 ## 1. 问题与动机（根因）
@@ -23,7 +23,7 @@
 - **faction/position_pref 不入形状**：消费点经注册表按 char_id 派生（单一源 = `get_char(char_id)` 的 `factions`/`position_pref()`，禁全局 get_role_position）。faction 消费面三类，逐类派生口径：
   - 部署装配（发射载荷 faction 字段）：容器槽位现取（现状不变）；
   - 板面阵营计数/体系卡身份（cw_system_cards）：注册表派生，未知名 = `'?'`（与现 `bench_slots_to_legacy` 派生式同式）；
-  - 羁绊（cw_bond_equips/board_by_row）：按行归属 + 注册表派生，开拓者形态归一随迁（§3.5）。
+  - 羁绊（cw_bond_equips/board_by_row）：按行归属 + 注册表派生，开拓者形态归一随迁（§3 不变量 5）。
 - **(排, 排内槽号) ↔ 槽位表下标换算单一源** = `deployed_row_slot`/`deployed_idx_of`（存活保留，坐标换算与形状无关）。
 
 ### 2.2 落位决策权归策略层
@@ -36,6 +36,7 @@
 - **mandate_v1 内聚落位策略**（策略代码）：上场人选、每人的排（comp 站位覆盖 > 注册表 position_pref 派生 > back 兜底）、槽位选择（遍历容器行列现值自定）；原 kernel 规则中的「前排保证」（前排全空时保证前排有角色）作为策略规则随迁 mandate。
 - **选人同批迁策略**：`select_deployments`/`select_deployments_reasoned` 属策略决策，随落位归权迁入 mandate_v1，kernel 版退役；出战链不再装配选人输入。
 - **出战链**（cw_loop `_battle_chain_deploy_moves`，恢复局同步步/达标臂共用）：改为调用策略层部署计划单一源（mandate_v1 暴露计划函数），不再自带 select+assign 装配。
+- **迁移过渡口径**：P1 tracked 翻形至 P2 执行器改造之间，执行链对空槽/落位的读数一律经 §2.1 下标换算单一源（`deployed_row_slot`/`deployed_idx_of`）派生，禁对快照条目 getattr 柔取旧字段（防翻形期静默漂移，落锁入 P1）。
 - **sim 语义**：sim 引擎应用部署动作 = 忠实建模游戏拖拽语义（空=放置/占=交换），禁发明私有「占位拒绝」规则。sim 买卡入席 = 游戏自动放置规则（首空槽），非策略落位——`bench_place` 容器原生重写后保留（§2.4）。
 
 **行为变化申报（本迭代全部行为变化，共两项）**：
@@ -55,15 +56,16 @@
 **删除（随形状退役）**：
 
 - 形条目：`BenchChar`、`snapshot_copy`、`CwSimFrame`
-- 换形/槽位表族：`bench_slots_of`、`deployed_slots_of`、`bench_slots_to_legacy`、`bench_view_of_slots`、`unit_rows_to_deployed`、`deployed_slots_to_rows`、`bench_from_compact`、`deployed_from_compact`、`pad_bench`、`pad_deployed`、`bench_clear`、`deployed_clear`、`deployed_place`、`_apply_row_to_char`、`iter_occupied`、`iter_occupied_deployed`、`bench_occupied`、`deployed_occupied`
+- 换形/槽位表族：`bench_slots_of`、`deployed_slots_of`、`bench_slots_to_legacy`、`bench_view_of_slots`、`unit_rows_to_deployed`、`deployed_slots_to_rows`、`bench_from_compact`、`deployed_from_compact`、`pad_bench`、`pad_deployed`、`bench_clear`、`deployed_clear`、`deployed_place`、`_apply_row_to_char`、`iter_occupied`、`iter_occupied_deployed`、`iter_deployed_slots`、`bench_occupied`、`deployed_occupied`
 - 落位权归策略：`assign_deploy_slots`、`empty_deploy_slots`
 - 选人迁策略（kernel 版）：`select_deployments`、`select_deployments_reasoned`
 - sim 帧通道：`synthesize_from_game_state`、`feed_sim_truth`
+- 换形杂项：`_card_to_bench`（ShopCard→BenchChar 换形，含其 position_pref='back' 缺省——与落位旧病灶同源；买卡入席改经 bench_place 直落 BenchSlot）
 - 死函数（全仓零调用，含测试仓，2026-09-20 核实）：`economy_score`、`star_weighted_copies`、`state_equips_multiset`、`rebuild_deployed_from_board`
 
 **容器原生重写保留（签名换形状，语义不变）**：
 
-`bench_place`（买卡入席游戏规则：首空槽放置）、`bench_occupied_slot_nos`（容器形输入）、`bench_slots_healthy`（形状无关，原样保留）、`deployed_slot_no`/`deployed_idx_of`/`deployed_row_slot`（坐标换算单一源）、`board_by_row`（容器行输入重写）、`board_unique_key`（容器形重写）、`mutate_bench_deployed`（容器形状重写；实机消费 = operations/cw_op/cw_buy_card_action.py tracked 同步 + buy_card.py 升星腿，随 P1 同批改，禁换形续命）。
+`bench_place`（买卡入席游戏规则：首空槽放置）、`bench_occupied_slot_nos`（容器形输入）、`bench_slots_healthy`（形状无关，原样保留）、`deployed_slot_no`/`deployed_idx_of`/`deployed_row_slot`（坐标换算单一源）、`board_by_row`（容器行输入重写）、`board_unique_key`（容器形重写）、`mutate_bench_deployed`（容器形状重写；实机消费 = operations/cw_op/cw_buy_card_action.py tracked 同步 + buy_card.py 升星腿，随 P1 同批改，禁换形续命）、`mutate_bench_deployed_local`（容器形状重写，随 `mutate_bench_deployed` 同批）。
 
 **字段映射约定（全部消费面统一遵循）**：BenchChar.slot → 容器表下标/行内槽号（§2.1 换算单一源）；BenchChar.faction/position_pref → 注册表派生（§2.1 三类口径）；`is_item_slot=True` → `kind ∈ ('tome','bookcard','supply_box')`；「占用」判定 `is not None` → `kind == 'unit'`（BenchView 下 empty 槽 ≠ 占用）。
 
@@ -91,9 +93,9 @@
 
 ## 4. 面清单（inventory 2026-09-20 实测）
 
-词表 = §2.4 删除族 ∪ 重写保留族符号并集（rg：`BenchChar|bench_slots_of|deployed_slots_of|bench_slots_to_legacy|bench_view_of_slots|unit_rows_to_deployed|deployed_slots_to_rows|deployed_place|_apply_row_to_char|bench_from_compact|deployed_from_compact|assign_deploy_slots|empty_deploy_slots|CwSimFrame|snapshot_copy|bench_place|pad_bench|pad_deployed|iter_occupied|bench_occupied|rebuild_deployed_from_board`）：
+词表 = §2.4 删除族 ∪ 重写保留族符号并集（rg：`BenchChar|bench_slots_of|deployed_slots_of|bench_slots_to_legacy|bench_view_of_slots|unit_rows_to_deployed|deployed_slots_to_rows|deployed_place|_apply_row_to_char|bench_from_compact|deployed_from_compact|assign_deploy_slots|empty_deploy_slots|CwSimFrame|snapshot_copy|bench_place|pad_bench|pad_deployed|iter_occupied|iter_deployed_slots|bench_occupied|rebuild_deployed_from_board|_card_to_bench|mutate_bench_deployed_local`）：
 
-- src：696 处 / 60 文件；测试仓：370 处 / 41 文件。
+- src：704 处 / 60 文件；测试仓：381 处 / 42 文件。
 - 大头：kernel/cw_game_state.py、kernel/cw_merge_simulate.py、kernel/cw_exec_state.py、kernel/cw_vocab.py、kernel/cw_deploy_logic.py、obs/cw_identity_obs.py、策略层 mandate_v1（mandate/shop/predicates/sell_gate/criteria/proof/bridge）、kernel/cw_action_report/*、sim/*。
 - 外围消费面（易漏，须入阶段点名面）：cw_comps、cw_economy、cw_intention、cw_events、cw_system_cards、cw_board_by_row、cw_bench_equips、cw_equip_wear_plan、cw_effect_inventory、cw_line_switch、cw_launch_admission、cw_performance、cw_battle_calib、economy_cycle、telemetry/schema.py、flow.py、entry.py、shop.py、criteria/sell.py、statefn/predicates.py、operations/cw_loop.py、cw_screen_prep、cw_shop_action_ops、cw_screen_planner、sim/cw_sim_pool。
 
@@ -105,7 +107,7 @@
 
 - 落位行为变化（§2.2 申报第 1 项）波及对局指标 → sim A/B 门先行为主，指标异常回退裁决再议。
 - faction 派生点遗漏（§2.1 三类消费面）→ 装配/板面计数/羁绊逐类补锁。
-- 开拓者形态归一遗漏 → 欢愉/记忆羁绊计数事故重现（cw_chars.py 在案；§3.5 归一口 + P0 现状锁 + P3 统一后锁）。
+- 开拓者形态归一遗漏 → 欢愉/记忆羁绊计数事故重现（cw_chars.py 在案；§3 不变量 5 归一口 + P0 现状锁 + P3 统一后锁）。
 - tracked 快照别名（equips list 共享）→ 仅测试网偶发假差（构造点新帧纪律不变）。
 - 测试种子层改造体量大（§2.5 现状面）→ M1 投影锁语义逐字节保形为先决。
 - 体量：逐文件点名 add；每阶段独立 commit。
