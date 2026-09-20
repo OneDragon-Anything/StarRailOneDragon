@@ -1,7 +1,7 @@
 """备战执行器 CwScreenPrep:画面执行 / 对账接线 / 商店 obs 依赖面
 (refresh 期望态依赖 obs.cw_shop_obs,留 app 合法向)。
 
-对账职责 = 纯观察审计族(羁绊显示/商店池/合成预览,heavy 定型帧
+对账职责 = 纯观察审计族(羁绊显示/商店池,heavy 定型帧
 消费,留守观察 node);动作上报的对账归一走 op 自上报(上报函数族)+
 观察边界 cw_reconcile 兜底。
 
@@ -36,7 +36,6 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     gs_of_ctx,
     shop_payload_content_cards,
 )
-from sr_od.application.currency_war.kernel.cw_merge_simulate import same_star_count
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
 from sr_od.application.currency_war.kernel.cw_overlay_registry import (
     derive_clearable,
@@ -83,7 +82,6 @@ from sr_od.application.currency_war.obs.cw_observation import (
 from sr_od.application.currency_war.obs.cw_shop_obs import (
     RefreshExpect,
     check_shop_pool,
-    compare_merge_preview,
     refresh_expect,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
@@ -157,9 +155,6 @@ _SHOP_POOL_DEFECT_KIND = 'shop_pool_violation'
 
 _SHOP_REFRESH_DEFECT_KIND = 'refresh_expect_mismatch'
 
-_SHOP_MERGE_DEFECT_KIND = 'merge_preview_mismatch'
-
-
 
 def _shop_pool_inputs(gs) -> tuple[list[tuple[str, int]], int]:
     """商店容器 payload → (参评牌列表, 未识别张数)(纯函数)。
@@ -178,49 +173,6 @@ def _shop_pool_inputs(gs) -> tuple[list[tuple[str, int]], int]:
         if payload is not None else []
     cards = [(c.name, c.cost) for c in shop if getattr(c, 'name', '')]
     return cards, len(shop) - len(cards)
-
-
-
-def _merge_preview_inputs(gs, frame_cards: list | None = None
-                          ) -> tuple[dict[int, bool], dict[int, bool], int]:
-    """商店容器 payload → (我方合成旗, 识别读数旗, 未识别张数)(纯函数;
-    compare_merge_preview 接线的入参折算单一源)。
-
-    槽位键 = 商店五格物理槽位下标(0 基左→右;同 read_shop_cards 顺序,
-    即 cw_shop_obs.compare_merge_preview 的槽位坐标系)。
-    - our:``cw_state.same_star_count`` 全场域同名同星持有 >0(合成预览语义
-      单一源 = merge_mechanics.md §2.7:✦ 数 = 已持同名同星副本份数;商店牌
-      恒 1★,star 兜 1)。bench/deployed 取容器席位读口(与卡池票同帧一致)。
-    - det:该牌 merge_preview > 0(语义映射:0 是「无副本 ∨
-      读不到」双义,映射为 False,our_suspect 祇当对账率归因,不逐票判死)。
-      ✦ 是读取器派生域不入容器存储,经 ``shop_cards_to_legacy`` 的
-      ``frame_cards`` 形参按同帧 raw 牌下标对齐透传(失配窗置缺省 0,
-      语义申报见该函数)。
-    - 未识别牌(name 空,SIFT miss)两侧都算不出 → 不进 compare,只计数
-      (同 _shop_pool_inputs 口径:识别失败归置信度通道,此处不评)。
-    """
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_slots_of,
-        deployed_slots_of,
-        shop_cards_to_legacy,
-    )
-    our: dict[int, bool] = {}
-    det: dict[int, bool] = {}
-    unnamed = 0
-    bench = list(bench_slots_of(gs))
-    deployed = list(deployed_slots_of(gs))
-    payload = gs.shop.value
-    shop = shop_cards_to_legacy(shop_payload_content_cards(payload), frame_cards) \
-        if payload is not None else []
-    for i, c in enumerate(shop):
-        if not getattr(c, 'name', ''):
-            unnamed += 1
-            continue
-        our[i] = same_star_count(c.name, getattr(c, 'star', 1) or 1,
-                                 bench, deployed) > 0
-        det[i] = int(getattr(c, 'merge_preview', 0) or 0) > 0
-    return our, det, unnamed
-
 
 
 def build_refresh_expect(gold: int | None,
@@ -305,9 +257,6 @@ class CwScreenPrep(SrOperation):
         SrOperation.__init__(self, ctx, op_name='货币战争-备战决策环')
         self._executor: PrepActionExecutor | None = None
         self._bench_pts = []                        # screen_info 槽位中心(首步惰性读)
-        # 商店牌读取器域载荷缓存(✦ merge_preview 信号,不入容器存储,供
-        # 合成预览对账 det 侧同帧对齐;structurally 读取器域非局内事实)。
-        self._cached_shop_cards: list = []
         # 观察结果(观察 node 产物,决策动作 node 消费;可选域经
         # report_screen_prep_obs 落容器,写点在两个采集簇内原位上报)。
         self._obs: CwScreenPrepObs | None = None
@@ -815,76 +764,6 @@ class CwScreenPrep(SrOperation):
         except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
             log.debug(f'[cw-director] shop_pool reconcile skip: {e}')
 
-    def _reconcile_merge_preview(self, obs: PrepObservation) -> None:
-        """商店打开 heavy 帧合成预览交叉验证(cw_shop_obs.compare_merge_preview
-        接线,与 _reconcile_shop_pool 同族同帧;零决策:mismatch 仅落缺陷台账,
-        不 return/不重读不纠错)。
-
-        帧 = obs.shop_open 且 state.shop 非空(与卡池票同门)。our =
-        ``_merge_preview_inputs`` 按同名同星持有折算;det = 商店快照逐牌
-        merge_preview>0(reader = cw_identity_obs.read_merge_preview,已
-        在产线;激活依据 = 激活评估:136 组同刻重复读数 0 分歧/15
-        非零事件 8 例精确相符)。our_suspect/game_extra 均开票留证——
-        our_suspect = 我方合成计算嫌疑(单向罚则唯一对象),game_extra =
-        我方漏算(不判罚只计数);our_suspect 祇当「持有 ≥1 副本但同刻
-        重复读数恒 0」的系统性形态才是暗相漏检证据(激活评估报告有
-        回退采帧解锁条件),单票不判死。节奏 = 同款 heavy 定型帧消费,best-effort。
-        """
-        try:
-            session = self._session()
-            if session is None or not obs.shop_open:
-                return
-            # det 侧吃**同帧 raw 牌**(读取器域载荷缓存):merge_preview 是
-            # ✦ 读取器信号,派生读取器域不入记录容器——容器 payload 经
-            # ``shop_cards_to_legacy(frame_cards=同帧 raw 牌)`` 下标对齐
-            # 透传,失配窗置缺省 0(拿容器当 det 会把「读不到 ✦」伪证成
-            # 「无副本」,对账票毒化——缓存槽语义见 __init__ 注)。
-            # our 侧席位 = 容器读口。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                plane_of,
-                round_num_of,
-            )
-            _gs = gs_of_ctx(getattr(self, 'ctx', None), session)
-            our, det, unnamed = _merge_preview_inputs(
-                _gs, frame_cards=(self._cached_shop_cards or None))
-            if not our:
-                return
-            result = compare_merge_preview(our, det)
-            mism = [r for r in result.rows if r.verdict != 'match']
-            if not mism:
-                return
-            obs_txt = ';'.join(
-                f'slot{r.slot}:{r.verdict}(our={r.our} det={r.detected})'
-                for r in mism)
-            defects.record_defect(
-                _SHOP_DEFECT_SURFACE, _SHOP_MERGE_DEFECT_KIND,
-                expected='0 mismatch(合成预览=我方同名同星持有>0 vs 识别✦>0)',
-                observed=obs_txt,
-                plane=int(plane_of(_gs)),
-                round_num=int(round_num_of(_gs)),
-                gap_large=True,
-                verdict=('留证-商店牌合成预览对账不一致(our_suspect=我方算'
-                         '有副本而识别无✦=合成计算嫌疑或识别暗相漏检,双义'
-                         '不逐票判死;game_extra=识别有✦而我方无账=漏算'
-                         '留证不判罚。merge_preview 读 0 双义=真无副本∨'
-                         'fail-silent 读不到;零决策记账,单次与复现同级 L1,'
-                         '复现计数见台账行)'),
-                refs=[{'field': k, 'value': v} for k, v in (
-                    ('slots', str(len(our))),
-                    ('unnamed', str(unnamed)),
-                    ('our_suspect', ','.join(str(r.slot) for r in mism
-                                             if r.verdict == 'our_suspect')),
-                    ('game_extra', ','.join(str(r.slot) for r in mism
-                                            if r.verdict == 'game_extra')),
-                    ('reader', 'shop.merge_preview(已产线)'))],
-                reader_source='merge_preview_reconcile',
-                note='期望态层·商店:对账票=cw_shop_obs.compare_merge_preview'
-                     ' 纯函数(单向验证,合成主源=我方计算),与卡池票同帧'
-                     '分立')
-        except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
-            log.debug(f'[cw-director] merge_preview reconcile skip: {e}')
-
-
     def _session(self) -> StrategySession | None:
         match = getattr(self.ctx, 'cw_match', None)
         return match.session if (match is not None and match.session is not None) else None
@@ -919,7 +798,6 @@ class CwScreenPrep(SrOperation):
             return self.round_fail(status='无 cw_match(对局未初始化)')
         session = match.session
         self._executor = PrepActionExecutor(self, self.ctx)
-        self._cached_shop_cards = []
 
         # —— 数据观察:清场 + 开商店合法态收起(读互斥:hp 关态可读)→ heavy 全量观察写 session
         self._clear_entry_overlays()
@@ -943,7 +821,7 @@ class CwScreenPrep(SrOperation):
         if _tk is not None:
             return _tk
         # —— 对账段:本轮入口 heavy 观察 = 纯观察审计族消费点
-        #      (羁绊显示/商店池/合成预览/刷新留证;零决策)。
+        #      (羁绊显示/商店池/刷新留证;零决策)。
         #      「入口观察即对账」时点存续,per-action
         #      heavy 重读契约已灭。动作上报的对账归一 = 逻辑态直写
         #      (op 自上报)+ 观察边界 cw_reconcile 兜底;
@@ -1419,7 +1297,7 @@ class CwScreenPrep(SrOperation):
         """新环 heavy 定型帧上的纯观察审计族(零决策)。
 
         输入 = 本帧 obs;每通道内部 best-effort,异常不阻塞环。覆盖:
-        羁绊显示 / 商店池 / 合成预览。动作期望账通道(paddle 审计/
+        羁绊显示 / 商店池。动作期望账通道(paddle 审计/
         drag_expect/买牌期望/经验/装备期望)不属本口——动作上报的对账
         归一 = 逻辑态直写(op 自上报)+ 观察边界
         cw_reconcile 兜底。
@@ -1430,8 +1308,6 @@ class CwScreenPrep(SrOperation):
             self._reconcile_faction_display(obs)
         with contextlib.suppress(Exception):
             self._reconcile_shop_pool(obs)
-        with contextlib.suppress(Exception):
-            self._reconcile_merge_preview(obs)
 
 
 def _build_prep_node_chain(session: object, slots: list | None) -> NodeChain | None:

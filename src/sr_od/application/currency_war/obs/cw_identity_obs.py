@@ -203,61 +203,6 @@ def read_star(crop: MatLike) -> int:
     return max(count, 1)
 
 
-# ===== 升星预览✦(商店牌头顶;W104 发现 / W282 接线,ADR-0416)=====
-# 商店牌 art 顶部「已持同名同星副本数」✦显影 = merge_progress 份数的游戏内视觉印证
-# (迭代档案 W104:买第 3 张即 3合1 升星,✦ 数 = 已持份数)。
-# ⚠️ 不能复用金星 _STAR_GOLD(10-45/V>150):fixture 实测该窗口把亮色立绘背景/金发全部吃进
-# (card5 顶带 mask 连成 146px 大域,card1 砂金金发 3 个大域)。✦ 是自发光更烈的橙金:
-# 核心样本 H=25-30 / S≥60 / **V=255 饱和截断**(背景 V 163-198 / 金发 V≤243),独立严窗口。
-_PREVIEW_GOLD_LO: tuple[int, int, int] = (22, 60, 248)
-_PREVIEW_GOLD_HI: tuple[int, int, int] = (40, 255, 255)
-# ✦ 只出现在牌 art 顶部(裁切 rect y1=70,✦ 带本地 y 0-25 / 全高 190 → 0.25 倍冗余盖动态偏移)。
-_PREVIEW_BAND_RATIO: float = 0.25
-# 2026-09-12 浮动动画漏检事故裁决(用户供帧 _886595/_886604,650ms 相位对):
-# ✦ 上下浮动+明暗脉动 → 严窗口 mask 掉半(577→284px)、刚性 TM 相关性崩
-# (0.93→0.28 < 0.60)漏检 2/4 帧态;shop_open card5 金域 646px 当年被 TM
-# 标定误判「金发噪声」负样本,实为漏检 ✦(用漏检分布定阈值 = 循环论证)。
-# 治本 = 连通域几何计数替代刚性 TM(下游 compare_merge_preview 只消费 >0 布尔;
-# ✦ 粘连体按域宽估份数:单✦宽 ~29 / 双✦粘连宽 ~58,暗相位高度变薄宽度不变)。
-_PREVIEW_AREA_MIN: int = 60
-_PREVIEW_AREA_MAX: int = 700
-_PREVIEW_DOMAIN_W_MAX: int = 70
-_PREVIEW_SINGLE_W_MAX: int = 40
-_PREVIEW_MAX_COUNT: int = 2
-
-
-def read_merge_preview(crop: MatLike) -> int:
-    """数商店牌头顶升星预览✦(= 已持同名同星副本份数;买第 3 张即 3合1,W104/ADR-0416)。
-
-    ``crop`` = 商店牌-N area 的 RGB crop(read_shop_cards 同源裁切)。算法 =
-    HSV 严自发光窗口 → 顶部带二值 mask → **连通域几何计数**(2026-09-12 起,
-    替换刚性 TM:✦ 上下浮动+明暗脉动使 mask 形变,TM 相关性崩 → 漏检 2/4
-    帧态,见常量块事故注)——合格域(面积/宽度门)计数,粘连双✦按域宽估值。
-    **无合格域返 0 非 fallback**——0 = 「无✦」是合法语义(该牌无已持副本),
-    与 read_star「角色必有星」的 fallback 1 性质不同。
-
-    :return: ✦ 指示份数(0-2);空图 → 0。
-    """
-    if crop is None or crop.size == 0:
-        return 0
-    h, w = crop.shape[:2]
-    band = crop[0:int(h * _PREVIEW_BAND_RATIO), :]
-    hsv = cv2.cvtColor(band, cv2.COLOR_RGB2HSV)
-    mask = cv2.inRange(hsv, _PREVIEW_GOLD_LO, _PREVIEW_GOLD_HI)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
-    n, _, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
-    count = 0
-    for i in range(1, n):
-        area = int(stats[i, cv2.CC_STAT_AREA])
-        dom_w = int(stats[i, cv2.CC_STAT_WIDTH])
-        if not (_PREVIEW_AREA_MIN <= area <= _PREVIEW_AREA_MAX):
-            continue
-        if dom_w > _PREVIEW_DOMAIN_W_MAX:
-            continue
-        count += 1 if dom_w <= _PREVIEW_SINGLE_W_MAX else 2
-    return min(count, _PREVIEW_MAX_COUNT)
-
-
 # ===== 合成特效帧态门(W292/ADR-0420,W285 抽样批3)=====
 # 病灶(W285 §三 star 层,抽样 2/2 采新帧全错):read_star 会采在 3合1 合成
 # 星爆动画/拖拽过渡窗内(特效遮挡第 2 星 → 读 1),对账侧「连续 2 次回退才采新」
@@ -271,8 +216,9 @@ def read_merge_preview(crop: MatLike) -> int:
 # read_image 同约定;2026-09-05 离线标定,脚本 .debug/temp/cw_w292_calib5.py):
 #
 # 1. **合成星爆粒子**(正样本 obs_conflict_star__a61848f0:前排带金色四角星
-#    爆点):前排棋盘带内严橙金窗口(复用升星预览✦的 _PREVIEW_GOLD,自发光
-#    V≥248)连通域(≥9px)计数。标定:星爆帧 460px/8 个 ≥9px 域;负样本
+#    爆点):前排棋盘带内严橙金窗口(自发光取色,窗域 = 下方
+#    ``_STARBURST_GOLD_LO/HI``)连通域(≥9px)计数。标定:星爆帧 460px/8 个
+#    ≥9px 域;负样本
 #    4 帧(稳定×2/8 格局/7 格局)gold_px 0-50 但 **≥9px 域全为 0**(卡面
 #    金色装饰被窗口与面积双门滤净)→ 阈 3 = 正样本下限 8 的 0.375×、负样本
 #    上限 0 之上,不贴任何一侧。
@@ -284,6 +230,12 @@ def read_merge_preview(crop: MatLike) -> int:
 # 标定**;星爆若发生在后排/拖拽过渡无满席横幅的形态未采到 —— 漏检时既有
 # 防抖仍兜底(门是加强不是替代),误检代价 = 多保旧一帧(自愈)。复现新形态
 # 再扩签名。
+#: 星爆粒子严橙金窗口(HSV 上/下界;RGB 约定,生产 read_image 同约定):
+#: H=25-30 / S≥60 / V=255 饱和截断(背景 V 163-198 / 金发 V≤243)——
+#: 自发光橙金专属独立严窗,不能复用金星 _STAR_GOLD(10-45/V>150,fixture
+#: 实测该窗口把亮色立绘背景/金发全部吃进)。
+_STARBURST_GOLD_LO: tuple[int, int, int] = (22, 60, 248)
+_STARBURST_GOLD_HI: tuple[int, int, int] = (40, 255, 255)
 _MERGE_EFFECT_FRONT_BAND: tuple[int, int, int, int] = (400, 420, 1500, 580)
 #: 星爆粒子连通域面积下限(px;负样本卡面金装饰最大域 8px,真爆点 12-133)
 _MERGE_EFFECT_COMP_MIN_AREA: int = 9
@@ -319,7 +271,7 @@ def is_merge_effect_frame(screen: MatLike | None) -> bool:
         if y2 <= h and x2 <= w:
             band = screen[y1:y2, x1:x2]
             hsv = cv2.cvtColor(band, cv2.COLOR_RGB2HSV)
-            mask = cv2.inRange(hsv, _PREVIEW_GOLD_LO, _PREVIEW_GOLD_HI)
+            mask = cv2.inRange(hsv, _STARBURST_GOLD_LO, _STARBURST_GOLD_HI)
             nlab, lab = cv2.connectedComponents(mask)
             big = sum(1 for i in range(1, nlab)
                       if int((lab == i).sum()) >= _MERGE_EFFECT_COMP_MIN_AREA)

@@ -135,7 +135,7 @@
 | G7 | ~~`strategies/impl/mandate_v1/turn_state.py` + `assembly.py`~~（**已结案**） | TurnState 层已随 turnstate-retirement 物理删除；hoard/hoard_readable 随 DirectionView 消亡 | 现行决策通路 = §4.1 时间线 |
 | G8 | ~~`strategies/impl/mandate_v1/contracts.py`~~（**已结案**：Snapshot 契约族经用户裁定随 turnstate-retirement T-6 退役整删，零生产消费实证在案；权威表灭失挂账随之销项） | 权威表指向 w583_stage2_contracts/SCHEMA_DRAFT.md，原始件已灭失（2026-09-12 清理）——载体删除后不再存在迁入问题 | 契约族残留引用 = 零（src/测试仓 grep 实证）；历史裁决原文归 git 历史 |
 
-已核对合规（抽样，供后续审计对照，不再逐一列出）：族 A 全部 `[索引定义]` 字段（`SellBench.bench_idx`/`DeployMove.bench_idx`/`SellDeployed.deployed_idx`/`SwapDeploy.deployed_idx+bench_idx`/`FillSpec.idx`/`PickEvent.option_idx+refresh_slots`）、`GameState.bench/deployed` 容器注释、`BenchChar.is_item_slot`、`ShopCard.merge_preview`、`cw_identity_obs.py::bench_item_slots`、`prep_actions.py::drag_bench_to_sell`、`cw_op_equip_all.py::register_equip_worn`、`cw_state.py::xp_apply_clicks`。（`cw_exec_state.py::_invest_refresh_used_slots` 抽样条目已随该字段退役移除。）
+已核对合规（抽样，供后续审计对照，不再逐一列出）：族 A 全部 `[索引定义]` 字段（`SellBench.bench_idx`/`DeployMove.bench_idx`/`SellDeployed.deployed_idx`/`SwapDeploy.deployed_idx+bench_idx`/`FillSpec.idx`/`PickEvent.option_idx+refresh_slots`）、`GameState.bench/deployed` 容器注释、`BenchChar.is_item_slot`、`cw_identity_obs.py::bench_item_slots`、`prep_actions.py::drag_bench_to_sell`、`cw_op_equip_all.py::register_equip_worn`、`cw_state.py::xp_apply_clicks`。（`cw_exec_state.py::_invest_refresh_used_slots` 抽样条目已随该字段退役移除。）
 
 ## 7. 接口注（被挡下游的消费面依据）
 

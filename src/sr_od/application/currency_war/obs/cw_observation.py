@@ -69,7 +69,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import ShopCard
 from sr_od.application.currency_war.obs.cw_identity_obs import (
     ensure_portrait_templates,
     identify_character,
-    read_merge_preview,
     resolve_char_name,
 )
 from sr_od.context.sr_context import SrContext
@@ -1799,9 +1798,8 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
     (建档漂移,旧 continue 静默跳过是病灶根);亮度均值 <50 = empty
     (确定性占位带,实测真卡 min 67.4 vs 空槽 19.5);50-60 灰带 =
     unknown+缺陷(疑暗卡不猜,原 [cw!] 日志升级 defect);≥60 进 SIFT:
-    命中 = content(识别链原样:x=faction/name/cost/badge 费用星级/
-    merge_preview),miss = unknown+读空缺陷(置信度面)。merge_preview
-    仅 content 槽计算(空/未知槽省一次顶部带 mask+TM)。
+    命中 = content(识别链原样:x=faction/name/cost/badge 费用星级),
+    miss = unknown+读空缺陷(置信度面)。
 
     终判稳定门(对抗窄攻 F2,防过渡帧误判):全 empty 或含 unknown 的
     判定成立前,0.8s 后新截屏重读一次——两帧逐槽一致才接受;不一致 =
@@ -1943,9 +1941,6 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
                 cost=cost,
                 star=star,
                 cost_source=cost_src,
-                # 升星预览✦(ADR-0416):与 SIFT 同 crop 只多一次顶部带
-                # mask+TM;仅 content 槽计算(空/未知槽省一次)。
-                merge_preview=read_merge_preview(crop),
             )
             out.append(ShopSlot(kind='content', card=card))
         while len(out) < 5:

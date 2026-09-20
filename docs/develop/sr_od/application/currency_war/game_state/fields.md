@@ -1456,7 +1456,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
   单向成环:帧 →喂入→ 容器 →读口→ 策略 →动作→ 帧;禁令辖的是把
   容器值写进帧字段,不是禁读。
 - **不入同步面(内核独占表示,容器刻意不建)**:商店牌 `ShopCard.x`
-  (购买点击位)/`merge_preview`(升星预览)、备战侧 `position_pref`
+  (购买点击位)、备战侧 `position_pref`
   (排位偏好)、动作账 `action_log`(§9.3)、帧本体 copy-on-write 语义。
 - **实机观测保真位不入同步面**:`hp_readable`/`hp_trusted`/`gold_readable`/
   `board_readable`/`level_readable`/`enemy_difficulty_live` 是实机观测域
@@ -1509,7 +1509,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
 | 17 | refresh_probs | `gs.shop.refresh_probs`(ShopPayload) | A | 已入商店 payload(§3.3) |
 | 18 | deployed | `front_row`+`back_row`(Unit 行) | B | 槽位/星级/装备无损;回程 `unit_rows_to_deployed` 按排还原排位偏好;阵营原值不保(容器刻意不入,经注册表派生替换,§8.6);排位偏好与实际排短暂不一致的形态被归一(`front_count_of` 口径注,边缘语义损耗申报) |
 | 19 | bench | `gs.bench`(BenchView) | B | **排位偏好 position_pref 丢**(Unit 无域,重建走缺省 'back')——机制必需表示留内核的核心实例;阵营同上派生;is_item_slot 经 `BenchSlot.kind='supply_box'` 保真(喂入写/恢复读同链) |
-| 20 | shop | `gs.shop`(ShopPayload.cards) | B | 五记录字段(name/faction/cost/star/cost_source)透传无损;**x/merge_preview 容器不入**(§3.3.1)——sim 买牌下架按 x,该表示留内核 |
+| 20 | shop | `gs.shop`(ShopPayload.cards) | B | 五记录字段(name/faction/cost/star/cost_source)透传无损;**x 容器不入**(§3.3.1)——sim 买牌下架按 x,该表示留内核 |
 | 21 | action_log | 无容器域 | B | 动作账宿主 = 帧自身(§9.3) |
 | 22 | front_max | 无域(常量镜像) | C | 恒 4,非观察事实;容器常量 `DEPLOYED_FRONT_CAPACITY` 同值 |
 | 23 | level_readable | 无域(`Field.source` 近似,不映射) | C | 实机观测保真位;sim 恒 True |

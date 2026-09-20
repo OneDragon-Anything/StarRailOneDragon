@@ -1176,8 +1176,8 @@ def cost_source_group(cost_source: str) -> str:
 # ============================================================ 双 ShopCard 映射单一源(W5 类型去重)
 # 方案语义正本 = docs/develop/sr_od/application/currency_war/game_state/fields.md §3.3.1
 # (双 ShopCard 映射):唯一容器类型 =
-# :class:`ShopCard`(本模块);帧版(cw_vocab 侧同名类,带点击坐标 x
-# 与 merge_preview)是观测/执行域卡(OCR 产物带点击坐标,黑板帧链自持 x)
+# :class:`ShopCard`(本模块);帧版(cw_vocab 侧同名类,带点击坐标 x)是
+# 观测/执行域卡(OCR 产物带点击坐标,黑板帧链自持 x)
 # 兼 sim 机制卡,**随推演内核收编长期并存**——两类型并存为长期形态,
 # **转换只许在本节两个映射函数发生**(喂入面/合成口/消费视图/合成引擎
 # 统一经此,禁散落内联转换——双源漂移温床)。本节 = kernel 内帧版类型的
@@ -1187,8 +1187,7 @@ def shop_card_to_container(card) -> ShopCard:
     """旧容器牌 → 容器牌(喂入口/sim 合成口的值构造单一源)。
 
     字段映射(name/faction/cost/star/cost_source)原值透传不折叠;
-    x/merge_preview 是旧版独有的执行/读取器域字段,容器不入存储
-    (坐标单一真相源 = screen_info;merge_preview = 派生核对信号);
+    x 是旧版独有的执行域字段,容器不入存储(坐标单一真相源 = screen_info);
     slot(物理槽号,观察事实)透传——执行点击按槽号取坐标的唯一依据。
     """
 
@@ -1201,8 +1200,7 @@ def shop_card_to_container(card) -> ShopCard:
                     slot=int(getattr(card, 'slot', 0) or 0))
 
 
-def shop_cards_to_legacy(cards: list[ShopCard],
-                         frame_cards: list | None = None) -> list:
+def shop_cards_to_legacy(cards: list[ShopCard]) -> list:
     """容器牌列表 → 旧容器牌列表(消费视图/合成引擎边界的值构造单一源)。
 
     - 五记录字段(name/faction/cost/star/cost_source)自容器透传;
@@ -1210,34 +1208,22 @@ def shop_cards_to_legacy(cards: list[ShopCard],
       槽号取坐标的依据);
     - ``x``(点击坐标)置 0 不消费:决策消费不用坐标,执行侧 buy 发射
       从 screen_info「商店牌-N」区域按 slot 现取(黑板帧链自持 x,不经
-      本函数);
-    - ``merge_preview`` 不转换(派生计算不入存储,✦ 读取器降级核对
-      信号的消费方自算或吃同帧 raw);
-    - ``frame_cards`` = 同帧 raw 牌列表(可选):长度一致时按下标对齐
-      透传 x/merge_preview 两执行/读取器域字段——容器 payload 与 raw 帧
-      出自同一观察帧时序(喂入口保序),失配窗(失读帧/跨帧)置缺省 0,
-      语义申报 = 执行域字段引导窗,不影响记录值。
+      本函数)。
 
-    :param cards: 容器牌列表(:attr:`ShopPayload.cards`);
-    :param frame_cards: 同帧 raw 牌(旧容器 ShopCard)列表或 None。
+    :param cards: 容器牌列表(:attr:`ShopPayload.cards`)。
     """
     from sr_od.application.currency_war.kernel.cw_vocab import (
         ShopCard as _LegacyShopCard,
     )
     out: list = []
-    n = len(cards)
-    aligned = (frame_cards is not None and len(frame_cards) == n)
-    for i, c in enumerate(cards):
-        fr = frame_cards[i] if aligned else None
+    for c in cards:
         out.append(_LegacyShopCard(
-            x=int(getattr(fr, 'x', 0) or 0) if fr is not None else 0,
+            x=0,
             slot=int(c.slot or 0),
             faction=str(c.faction or ''),
             name=str(c.name or ''),
             cost=int(c.cost or 0),
             star=int(c.star or 1),
-            merge_preview=int(getattr(fr, 'merge_preview', 0) or 0)
-            if fr is not None else 0,
             cost_source=str(c.cost_source or 'roster')))
     return out
 
