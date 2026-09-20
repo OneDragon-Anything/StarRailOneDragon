@@ -240,12 +240,16 @@ def _battle_chain_deploy_moves(session) -> list:
         return []
     _cidx_of = {b.slot: i for i, b in enumerate(bench_slots) if b is not None}
     _out: list[CwActionDeployMoveParam] = []
-    for bi, row, _slot in assign_deploy_slots(bench, up, front_empty,
+    for bi, row, slot in assign_deploy_slots(bench, up, front_empty,
                                               back_empty):
         _bi = _cidx_of.get(bench[bi].slot)
         if _bi is None:
             continue   # 对位失配(陈旧帧)= fail-closed 跳过该 move
+        # to_slot = 指派第三元(排内 1 基画面槽号)透传入载荷(落位意图入
+        # 载荷契约:执行/写侧按载荷直落;现值 = kernel 指派原值零行为变化,
+        # 落位策略实现归 P3 后由策略显式指定)。
         _out.append(CwActionDeployMoveParam(bench_idx=_bi, to_row=row,
+                               to_slot=int(slot),
                                faction=(bench[bi].faction or '')))
     return _out
 
