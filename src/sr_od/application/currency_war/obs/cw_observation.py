@@ -46,7 +46,11 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     get_node_ledger,
     ledger_node_type,
 )
-from sr_od.application.currency_war.kernel.cw_game_state import ShopSlot
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    NodeChain,
+    ShopSlot,
+    TokenCell,
+)
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_BOARD,
     A_GOLD,
@@ -524,6 +528,67 @@ def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
         else:
             _cur_slot.node_type = _t
     return _slots
+
+
+def build_prep_node_chain(session: object, slots: list | None) -> NodeChain | None:
+    """备战帧现行链构造(观察侧标准化转换:识别域读数 → 类型化链载荷;写端 = report_screen_prep_obs 链域)。
+
+    逐格映射:past→dim/None;current→左移携带(上一帧该位 upcoming 的 Hu
+    读数,载体 = 链自身上一帧——自锚定免新增 anchor 状态;首帧无携带 =
+    none/None,与现役台账 fail-open 等价);upcoming→hu/超阈 none;
+    boss 末槽→sift,SIFT miss→none/None 禁回落 Hu(槽 Hu 距离系统性不可靠,
+    cw_node_reader 在案)。
+
+    写门 = 轮位对齐门(current 槽 idx == round-1,错位帧拒写,Hough 漏检
+    左移的错位帧不入)。返回 None = 本帧无链可写(session 缺/槽空/节点缺/
+    对齐门拒);异常按观测 best-effort 收敛为 None(不阻塞观察链)。
+    """
+    if session is None or not slots:
+        return None
+    try:
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            game_state_of,
+        )
+        from sr_od.application.currency_war.obs.cw_node_reader import (
+            HU_DIST_UNRECOGNIZED,
+        )
+        gs = game_state_of(session)
+        nd = gs.node.value
+        if nd is None or not nd.round_num:
+            return None
+        ordered = sorted(slots, key=lambda s: s.idx)
+        cur = next((s for s in ordered if s.state == 'current'), None)
+        if cur is None or cur.idx != int(nd.round_num) - 1:
+            return None   # 轮位对齐门:Hough 漏检左移的错位帧拒写
+        prev = gs.node_path.value
+        carry = None
+        if isinstance(prev, NodeChain) and prev.plane == nd.plane \
+                and 0 <= cur.idx < len(prev.seq):
+            pc = prev.seq[cur.idx]
+            if pc is not None and pc.channel == 'hu' and pc.token:
+                carry = pc
+        last_idx = ordered[-1].idx
+        cells: list[TokenCell] = []
+        for s in ordered:
+            if s.state == 'past':
+                cells.append(TokenCell(None, 'dim'))
+            elif s.state == 'current':
+                if carry is not None:
+                    cells.append(
+                        TokenCell(carry.token, 'hu', carry.hu_dist))
+                else:
+                    cells.append(TokenCell(None, 'none'))
+            elif s.idx == last_idx:
+                cells.append(TokenCell('boss', 'sift', s.hu_dist)
+                             if s.boss else TokenCell(None, 'none'))
+            elif s.node_type and s.hu_dist is not None \
+                    and s.hu_dist <= HU_DIST_UNRECOGNIZED:
+                cells.append(TokenCell(s.node_type, 'hu', s.hu_dist))
+            else:
+                cells.append(TokenCell(None, 'none'))
+        return NodeChain(plane=int(nd.plane), seq=cells)
+    except Exception:   # noqa: BLE001  观测写点 best-effort,不阻塞观察链
+        return None
 
 
 #: 三票·票A 动态 ROI 半径:当前槽圆心 ±60px 小窗(标签在圆下方行带内,
