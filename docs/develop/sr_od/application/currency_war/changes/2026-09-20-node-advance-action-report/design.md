@@ -39,12 +39,12 @@
 | 分支 | 处置 | 依据 |
 |---|---|---|
 | R > v | 观察采新，且**经推进生效原语落账**（写 node_ord/hist + 效果推进尾段同临界区；补推：漏上报自愈） | 绝对值坐标，采新即对齐；账本 `advance_node` 去重为序相等判（cw_effect_inventory.py::advance_node），序号前进不经 tick 即永久漏该节点每节点发放（攻击 F2①） |
-| R == v | `observe(node_ord, R)`（同值行；logic 态此分支 = 动作推进被观察确认，翻锚定态——下一节点终结动作由此解锁） | 重复上报解锁即锚定语义 |
+| R == v | 直写同值（source=observation，同值行；logic 态此分支 = 动作推进被观察确认翻锚定态——下一节点终结动作由此解锁） | 重复上报解锁即锚定语义 |
 | R < v | 不写 + obs_event arbitrate 留证（倒退免疫，node-derivation.md §3.3 规则三现值保留） | 节点序局内单调（游戏无回退流转，§3.1 E15 终局除外）；R<v 只能是读数误读或幻影推进残余 |
 
 **幻影推进残余的自愈路径**（申报）：上报已带转移证据门（§2.3），幻影（上报了但游戏没走）被结构性预防；若证据被误命中（模板误报级），残余形态 = logic 值领先一档，后续锚定被 R<v 分支挡住、下一次终结动作被门挡、再下一节点观察 R>v 补齐——**绝对值坐标保证无累积误差，偏差有界一个观察周期**。效果账本不回滚（`grant_free_refreshes` 计数器与 `advance_node` 递减无逆操作；幻影预防在前，接受该残余边界并留证）。
 
-**推进生效原语（kernel 单一入口）**：序号前进的任何合法写点（动作上报 / 观察补推）都必须经同一原语 `advance_node_effective`（命名实施批可调）：candidate 去重守卫 → `write_logic(node_ord, candidate)` + `node_hist_ord` 占位 → 现有 `tick_effect_boundary` 尾段（账本 advance_node + `grant_effect_node_refresh_balance` 在场盘点发放 + `project_effect_capacity`）同临界区执行。锚定补推（R>v）同样是真实节点进入（恢复局/锁定臂/证据 miss 的自愈路径），漏 tick 即该节点每节点发放永久丢失（攻击 F2① 定谳）。`tick_effect_boundary` 现签名中 `prep_frame` 参数为遗迹（历史语义「金结算仅备战帧触发」随 `settle_node_boundary_gold` 全仓零生产调用点已死，`_tick_effect_boundary_impl` 现值不读该参数），迁移批删除该参数并清理 `observe_screen_context` 尾段过期闸注释（攻击 F2②）；`tick_effect_boundary` 本体保留独立可调口（sim/直测，2026-09-15-effect-ledger-self-advance design §2.1 申报不变）。
+**推进生效原语（kernel 单一入口）**：序号前进的任何合法写点（动作上报 / 观察补推）都必须经同一原语 `advance_node_effective`（命名实施批可调）：candidate 去重守卫 → 写 `node_ord`（**写入来源由调用方定**：动作上报路径 = logic（推进未确认态，观察态门语义的前提）；锚定补推路径 = observation（观察采新即确认态——否则补推后源态落 logic，下一次终结动作被门误挡一拍））+ `node_hist_ord` 占位 → 现有 `tick_effect_boundary` 尾段（账本 advance_node + `grant_effect_node_refresh_balance` 在场盘点发放 + `project_effect_capacity`）同临界区执行。锚定补推（R>v）同样是真实节点进入（恢复局/锁定臂/证据 miss 的自愈路径），漏 tick 即该节点每节点发放永久丢失（攻击 F2① 定谳）。`tick_effect_boundary` 现签名中 `prep_frame` 参数为遗迹（历史语义「金结算仅备战帧触发」随 `settle_node_boundary_gold` 全仓零生产调用点已死，`_tick_effect_boundary_impl` 现值不读该参数），迁移批删除该参数并清理 `observe_screen_context` 尾段过期闸注释（攻击 F2②）；`tick_effect_boundary` 本体保留独立可调口（sim/直测，2026-09-15-effect-ledger-self-advance design §2.1 申报不变）。锚定直写行的 sig = obs 族（mode='read'，actor = 宿主 op 登记名），journal 行型不变。
 
 **锚定 helper 的写法边界（实现级约束）**：`observe_node_anchor` 的写端**不经通用 `observe()`**——R>v 与 logic 现值失配会误入「观察覆盖 logic 失配」安灯三分流（`observe()` 的 logic mismatch 通用机制）；helper 对 node_ord 直写 `Field(source='observation')`（节点域专用写口，先例 = `settle_truth` 的结算金币专用口：绕三分流、留证行承载豁免语义），三分支（R>v 采新+原语 / R==v 锚定 / R<v 丢弃留证）全部在 helper 内显式处置，通用失配机制不辖节点域。
 
