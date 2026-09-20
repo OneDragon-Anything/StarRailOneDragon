@@ -110,7 +110,7 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | 效果账本域(effects) | effects(ActiveEffectInventory 实例清单;非 Field 载体) | inventory 方法域(随快照行自带) |
 | 动作回执域(receipts) | receipts(滚动窗,容量常量 RECEIPTS_WINDOW_CAP) | ②动作 |
 | 局终域(match_final) | match_final(一段终态一行;恢复局跨段多行) | ③局终收口 |
-| 工程结构(非 Field) | schema_version / gs_schema / frame_obs / write_seq / hb_prev_seq / hb_stall_count / created_monotonic;非域簿记组与台账单列——`exec_books`(ExecBooks 执行侧过程簿记组:外部授予待吸收闩族,直读 `game_state_of(session).exec_books`)/ `tracked_books`(TrackedBooks 主账槽位簿记)/ `plane_node_sequences`(位面节点序列台账,PlaneNodeLedger 载体;访问口 = cw_exec_state 三访问函数) | 构造/迁移写;簿记组/台账 = 直读属性(非 Field 无渠道面) |
+| 工程结构(非 Field) | schema_version / gs_schema / frame_obs / write_seq / hb_prev_seq / hb_stall_count / created_monotonic;非域台账单列——`tracked_books`(TrackedBooks 主账槽位簿记)/ `plane_node_sequences`(位面节点序列台账,PlaneNodeLedger 载体;访问口 = cw_exec_state 三访问函数) | 构造/迁移写;簿记组/台账 = 直读属性(非 Field 无渠道面) |
 
 渠道族封闭集 = obs(画面 op 观察)/ logic_action(动作 op 逻辑计算)/ logic_hook
 (state 内部派生逻辑计算);carried/prior/synthesized 是 obs 族内子模,非第四源。

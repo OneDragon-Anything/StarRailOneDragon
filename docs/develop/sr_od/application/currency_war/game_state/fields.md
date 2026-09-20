@@ -1324,12 +1324,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
   历史累积计数/单调事件号/帧间闩/整表台账等过程簿记与判读面,不符「只描述此刻」
   的 Field 准入,但需局级存续与确定性清零——新局新容器 = 天然清零;访问纪律 =
   经 `game_state_of(session)` 直读属性,非 Field 无渠道面,禁 getattr session 猜宿主):
-  - `ExecBooks`(GameState.exec_books;执行侧过程簿记组,独立宿主不塞 tracked_books
-    ——TrackedBooks 契约 = tracked 主账槽位簿记,语义不容混装):外部授予待吸收闩
-    (`external_bench/equip_grant_pending`,置位端/消费端/索引定义逐字段住代码注释;
-    置闩单一源 = `latch_external_grants` 幂等——同卡登记不叠加,登记 =
-    `external_grant_latched_cards`;多卡授予形态合法,各卡 pending 并存叠加;
-    消费 = `_absorb_external_grant` 纯超集精确吸收)。**动作 op 行为模型 = 机械执行 +
+  - **动作 op 行为模型 = 机械执行 +
     发出即记账**(执行回执
     唯一写点 = `note_action_receipt`,§9.3):执行层零「是否生效」验证、
     零重试、零 miss 闩;静默不生效的治理 = 投影照写 → heavy 实读对账
