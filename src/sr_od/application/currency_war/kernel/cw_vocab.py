@@ -1,7 +1,8 @@
 """货币战争 统一动作词表 + sim 推演内核机制面。
 
 **统一词表(unified-action-factory 批2b 归一)**:全仓动作单一坐标系、
-单一真相源 = 本模块。基类 ``CwAction`` + 全动作类 + ``CW_ACTION_TYPES``
+单一真相源 = 本模块。动作类型总和别名 ``CwAction``(union,非基类——
+继承基类已摊平,见下方定义处说明) + 全动作类 + ``CW_ACTION_TYPES``
 运行时元组 + ``action_key`` 幂等键函数同居此处;原族B 词表
 (kernel/cw_prep_actions,物理槽位 1 基)已随归一退役,该模块现仅承载
 备战观察视图 PrepObservation 与采晶矿挑选 kernel 纯函数。坐标系裁定 =
