@@ -61,7 +61,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
+    from sr_od.application.currency_war.kernel.cw_game_state import Unit
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     SCREEN_NAME,
     _area_rect,
@@ -179,19 +179,26 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> None:
 #  发射位(mandate M7)直接消费同一构造函数,无第二源。)
 
 
-def _expose_unhealthy_tracked_slots(tracked: list[BenchChar | None]) -> None:
+def _expose_unhealthy_tracked_slots(tracked: list) -> None:
     """tracked 写点槽号健康显影(占用槽号重复/越界 → 缺陷台账;best-effort)。
 
     判据单一源 = kernel ``bench_slots_healthy``;reader_source 分键
     = 写点 fail-fast 显影(早于对账层暴露既有污染)。
     只显影不拒写:本 helper 的两个调用点均为「只减不增」摘除腿(置 None),
     拒绝摘除会让已卖/已上场件滞留 tracked,两账分叉比污染本身更糟;
-    布局修复归 reconcile 写回(bench_from_compact 重建归一)。"""
+    布局修复归 reconcile 写回(bench_from_compact 重建归一)。
+
+    P1 槽号信息位读取 = 迁移期双形容忍:新形(BenchSlot,槽号由下标
+    权威派生,结构性健康)读不到信息位按无槽号处理恒静默;旧形
+    BenchChar 残账(重复/越界信息位)照常显影——锁面
+    test_cw_tracked_slot_star_guard::test_tracked_write_guard_defect_and_
+    healthy_silence 钉住旧形显影行为。"""
     from sr_od.application.currency_war.kernel.cw_exec_state import (
-        bench_occupied_slot_nos,
         bench_slots_healthy,
     )
-    slots = bench_occupied_slot_nos(tracked)
+    slots = [s for s in (getattr(b, 'slot', None)
+                         for b in tracked if b is not None)
+             if s is not None]
     if bench_slots_healthy(slots):
         return
     try:
@@ -469,18 +476,20 @@ class PrepActionExecutor:
         except Exception as e:  # noqa: BLE001  回执失败不阻塞执行
             log.warning('[cw][receipt] 动作回执写入失败(不阻塞): %s', e)
 
-    def _pre_sell_tracked_bc(self, action: CwAction) -> BenchChar | None:
+    def _pre_sell_tracked_bc(self, action: CwAction) -> Unit | None:
         """卖出对象 dispatch 前 tracked 快照(执行点金差供给;卖出外
         动作 = None)。
 
         [索引定义] CwActionSellBenchParam.bench_idx / CwActionSellDeployedParam.deployed_idx =
-        容器槽位表下标(0 基;tracked 表 = 同构槽位表,tracked_bench 经
-        bench_from_compact 重建恒 pad 态、tracked_deployed 恒 pad 态
+        容器槽位表下标 0 基(tracked 表 = 同构下标表,恒定长 9/10,
         ADR-0316/0392)——按下标直接对位,零换算。取值时机 = execute()
         内 dispatch **前** tracked 账现读(卖出 handler 在 dispatch 内
         同步销账,dispatch 后按 tracked 复查恒落空);消费 = dispatch 后
-        _executed_gold_delta 一次读用,不跨动作存活。tracked 不可读
-        (无局/形状异常)= None(金差诚实缺失,观察覆盖兜底)。
+        _executed_gold_delta 一次读用,不跨动作存活。P1 tracked 形状:
+        bench 侧 = BenchSlot(kind='unit' → 内嵌 Unit;占位件无角色身份
+        → None,与旧 is_item_slot 空名位语义同形)/ deployed 侧 = Unit。
+        tracked 不可读(无局/形状异常)= None(金差诚实缺失,观察覆盖
+        兜底)。
         """
         if not isinstance(action, (CwActionSellBenchParam, CwActionSellDeployedParam)):
             return None
@@ -489,22 +498,24 @@ class PrepActionExecutor:
             session = match.session if match is not None else None
             if session is None:
                 return None
+            _books = gs_of_ctx(getattr(self, "ctx", None),
+                               session).tracked_books
             if isinstance(action, CwActionSellBenchParam):
-                tracked = gs_of_ctx(getattr(self, "ctx", None), session).tracked_books.bench or []
-                return (tracked[action.bench_idx]
-                        if 0 <= action.bench_idx < len(tracked) else None)
-            from sr_od.application.currency_war.kernel.cw_exec_state import (
-                pad_deployed,
-            )
-            tracked = pad_deployed(list(
-                gs_of_ctx(getattr(self, "ctx", None), session).tracked_books.deployed or []))
+                tracked = _books.bench or []
+                if not (0 <= action.bench_idx < len(tracked)):
+                    return None
+                _s = tracked[action.bench_idx]
+                if _s is None or getattr(_s, 'kind', None) != 'unit':
+                    return None
+                return _s.unit
+            tracked = _books.deployed or []
             idx = action.deployed_idx
             return tracked[idx] if 0 <= idx < len(tracked) else None
         except Exception:   # noqa: BLE001  观测容缺,不阻塞执行链
             return None
 
     def _executed_gold_delta(self, action: CwAction, emitted: bool,
-                             pre_sell_bc: BenchChar | None) -> int | None:
+                             pre_sell_bc) -> int | None:
         """执行点金差显影(备战执行缝账务包络):gold 域备战动作在
         机械半边发出时点的金变化量。
 
@@ -732,74 +743,79 @@ class PrepActionExecutor:
         DragCwChar.drag_char(self._op, src, dst)
 
     def _track_remove_bench(self, bench_idx: int) -> None:
-        """卖出后备势跟踪同步(单一跟踪账 tracked_bench_chars)。
+        """卖出后备势跟踪同步(tracked 主账 = tracked_books.bench)。
 
         [索引定义] bench_idx = bench 槽位表下标 0-8(与动作字段同系);
-        摘除 = 按下标置 None(权威槽位 = 下标,pad 态契约 ADR-0316 不破坏;
-        信息位/下标脱节会让后续买入
-        bench_place 追加累积成重复槽号——实机缺陷台账 slots=[1,3,4,5,6,7,8,9,9]
-        等 4 局实证,reseed 健康门 L0/L1 显影后归观察层仲裁批治本)。"""
+        摘除 = 按下标置 None(权威槽位 = 下标,定长 9 保洞契约 ADR-0316;
+        旧紧凑重排会累积重复槽号——实机缺陷台账 slots=[1,3,4,5,6,7,8,9,9]
+        等 4 局实证,保洞治本)。"""
         match = self._ctx.cw_match
         if match is None or match.session is None:
             return
-        from sr_od.application.currency_war.kernel.cw_exec_state import (
-            pad_bench,
-        )
-        _books = gs_of_ctx(getattr(self, "ctx", None), match.session).tracked_books
-        _pre = list(_books.bench or [])
-        _expose_unhealthy_tracked_slots(_pre)
-        tracked = pad_bench(_pre)
+        _books = gs_of_ctx(getattr(self, "ctx", None),
+                           match.session).tracked_books
+        tracked = list(_books.bench or [])
+        _expose_unhealthy_tracked_slots(tracked)
         if 0 <= bench_idx < len(tracked):
-            tracked[bench_idx] = None   # 置 None 不移位(pad 态保持)
+            tracked[bench_idx] = None   # 置 None 不移位(保洞契约)
         _books.bench = tracked
 
     def _track_remove_deployed(self, row: str, slot: int) -> None:
+        """卖场上后备势跟踪同步(tracked 主账 = tracked_books.deployed)。
+
+        [索引定义] tracked deployed = 定长 10 下标表,下标 = deployed_idx
+        恒稳;物理 (row, slot) → 下标换算单一函数 = deployed_idx_of
+        (执行坐标边)。下标即权威(§2.1 排归属由下标派生),旧信息位
+        position_pref 复核随形退役(下标写入天然行内一致)。"""
         match = self._ctx.cw_match
         if match is None or match.session is None:
             return
-        # ADR-0392:tracked_deployed 槽位表(置 None 不移位);物理 (row,
-        # slot) → 槽位下标换算单一函数 = deployed_idx_of(执行坐标边)
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             deployed_idx_of,
-            pad_deployed,
         )
-        tracked = pad_deployed(list(
-            gs_of_ctx(getattr(self, "ctx", None), match.session).tracked_books.deployed))
+        _books = gs_of_ctx(getattr(self, "ctx", None),
+                           match.session).tracked_books
+        tracked = list(_books.deployed or [])
         idx = deployed_idx_of(row, slot)
-        if 0 <= idx < len(tracked) and tracked[idx] is not None \
-                and tracked[idx].position_pref == row:
+        if 0 <= idx < len(tracked) and tracked[idx] is not None:
             tracked[idx] = None
-        gs_of_ctx(getattr(self, "ctx", None), match.session).tracked_books.deployed = tracked
+        _books.deployed = tracked
 
     def _track_move_deployed(self, bench_idx: int, to_row: str, to_slot: int) -> None:
         """上阵后备势跟踪同步:bench 条目 → deployed 条目(位置/槽位改写)。
 
-        [索引定义] bench_idx = bench 槽位表下标 0-8(tracked 行按信息位
-        bc.slot = 下标+1 对位);to_slot = 落位物理槽号 1 基(执行坐标边
-        现读值,落槽后覆写信息位)。bench 侧摘除 = 按下标置 None(同
-        _track_remove_bench 治本:紧凑重排会累积重复槽号,实机台账实证)。"""
+        [索引定义] bench_idx = bench 槽位表下标 0-8(tracked 行按下标
+        对位,保洞);to_slot = 落位物理槽号 1 基(执行坐标边现读值;
+        tracked 写入后单位槽号信息位 = 落位下标派生槽号,两者同源一致)。
+        bench 侧摘除 = 按下标置 None(保洞,同 _track_remove_bench)。"""
         match = self._ctx.cw_match
         if match is None or match.session is None:
             return
         from sr_od.application.currency_war.kernel.cw_exec_state import (
-            pad_bench,
+            DEPLOYED_CAPACITY,
+            place_unit_in_deployed,
         )
-        _books = gs_of_ctx(getattr(self, "ctx", None), match.session).tracked_books
-        tracked = pad_bench(list(_books.bench or []))
+        _gs = gs_of_ctx(getattr(self, "ctx", None), match.session)
+        _books = _gs.tracked_books
+        tracked = list(_books.bench or [])
         _expose_unhealthy_tracked_slots(tracked)
-        moved = (tracked[bench_idx]
-                 if 0 <= bench_idx < len(tracked) else None)
-        if moved is not None:
-            tracked[bench_idx] = None   # 置 None 不移位(pad 态保持)
+        moved = None
+        if 0 <= bench_idx < len(tracked):
+            _s = tracked[bench_idx]
+            if _s is not None and getattr(_s, 'kind', None) == 'unit' \
+                    and _s.unit is not None:
+                moved = _s.unit
+                tracked[bench_idx] = None   # 置 None 不移位(保洞契约)
         _books.bench = tracked
-        # ADR-0392:tracked_deployed 槽位表——deployed_place 单一源落槽;
-        # to_slot 是执行器物理槽位真值,落槽后覆写信息位。
-        from sr_od.application.currency_war.kernel.cw_exec_state import deployed_place
+        # tracked deployed = 定长 10 下标表;place_unit_in_deployed 按排
+        # 路由落槽(首选排满全局首空兜底,原 deployed_place 语义),单位
+        # 槽号信息位 = 落位排内槽号(与执行器 to_slot 同源)。
+        dep = list(_books.deployed or [])
+        while len(dep) < DEPLOYED_CAPACITY:
+            dep.append(None)
         if moved is not None:
-            moved.position_pref = to_row
-            deployed_place(gs_of_ctx(getattr(self, "ctx", None), match.session).tracked_books.deployed,
-                           moved)
-            moved.slot = to_slot
+            place_unit_in_deployed(dep, moved, to_row)
+        _books.deployed = dep
 
     # ===== 商店域 =====
 

@@ -52,9 +52,11 @@ class CwActionDeployMoveOp(SrOperation):
 
         执行坐标边:源拖点 = ``bench_idx`` 备战栏 area 序直取(容器下标 =
         area 序,零换算);落位排 = ``to_row``,落位物理槽 = tracked 占用
-        现读首空位(kernel ``empty_deploy_slots`` 单一源,与上报函数
-        ``deployed_place`` 选排规则逐位同构——首选排满 fallback 另一排)。
-        两排全满 = 未发出(round_fail,观察重派);faction 字段不入执行。
+        现读首空位(§2.1 下标派生口径:tracked deployed = 定长 10 下标表,
+        空槽 = 表项 None,排内槽号 = ``deployed_slot_no`` 派生——与上报
+        函数 ``place_unit_in_deployed`` 选排规则逐位同构:首选排满
+        fallback 另一排)。两排全满 = 未发出(round_fail,观察重派);
+        faction 字段不入执行。
 
         发出即记账(用户裁定「动作 op = 机械执行」):拖拽发出后 tracked
         记上阵 + 上报函数落容器;拖后零落地判定,静默不生效由下一入口
@@ -65,18 +67,25 @@ class CwActionDeployMoveOp(SrOperation):
         ex = env.executor
         match = ex._ctx.cw_match
         session = match.session if match is not None else None
-        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-            empty_deploy_slots,
-        )
         from sr_od.application.currency_war.kernel.cw_exec_state import (
-            pad_deployed,
+            DEPLOYED_BACK_CAPACITY,
+            DEPLOYED_FRONT_CAPACITY,
+            deployed_slot_no,
         )
-        tracked = (pad_deployed(list(
-            game_state_of(session).tracked_books.deployed))
-            if session is not None else [])
-        front_empty, back_empty = empty_deploy_slots(
-            tracked, front_total=len(ex._front_pts),
-            back_total=max(1, len(ex._back_pts)))
+        tracked = (list(game_state_of(session).tracked_books.deployed)
+                   if session is not None else [])
+        front_total = min(len(ex._front_pts), DEPLOYED_FRONT_CAPACITY)
+        back_total = min(max(1, len(ex._back_pts)), DEPLOYED_BACK_CAPACITY)
+        # 空槽读数 = 下标派生(迁移过渡口径 §2.2,行为等价:旧
+        # ``empty_deploy_slots`` 按条目信息位 (position_pref, slot) 判定,
+        # P1 起条目无信息位冗余、表下标即权威——禁对快照条目 getattr
+        # 柔取旧字段)。
+        front_empty = [deployed_slot_no(i) for i in range(front_total)
+                       if i >= len(tracked) or tracked[i] is None]
+        back_empty = [deployed_slot_no(i)
+                      for i in range(DEPLOYED_FRONT_CAPACITY,
+                                     DEPLOYED_FRONT_CAPACITY + back_total)
+                      if i >= len(tracked) or tracked[i] is None]
         chosen, fallback = ((front_empty, back_empty)
                             if action.to_row == 'front'
                             else (back_empty, front_empty))

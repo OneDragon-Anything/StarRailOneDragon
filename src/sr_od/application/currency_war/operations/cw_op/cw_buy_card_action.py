@@ -21,7 +21,6 @@ from sr_od.application.currency_war.kernel.cw_action_report.buy_card import (
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
-    bench_occupied,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
@@ -75,9 +74,6 @@ class CwActionBuyCardOp(SrOperation):
         from one_dragon.base.geometry.point import Point as _Pt
         action: CwActionBuyCardParam = self.param
         env = self.env
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            bench_slots_of,
-        )
         op, match, ledger, state = env.op, env.match, env.ledger, env.state
         # 点击定位 = 牌自带物理槽号 slot(读链写入)→ screen_info
         # 「商店牌-N」现取(W6 波 4 双 ShopCard 归一:容器牌无 x 坐标,
@@ -174,13 +170,19 @@ class CwActionBuyCardOp(SrOperation):
                               action, shop=_payload_cards)
         if action.card.name:
             _cnt = 1
-            if bench_occupied(bench_slots_of(state)) >= BENCH_CAPACITY:
+            # 满栏判定(容器原生读):席占用 = BenchView 槽 kind ≠ empty
+            # (unit+占位件均占席,与旧 bench_slots_of→bench_occupied 同式);
+            # 旧执行缝腿的数据源 = tracked 主账(_books)。
+            _view = state.bench.value
+            _bench_occ = (sum(1 for s in _view.slots if s.kind != 'empty')
+                          if _view is not None else 0)
+            if _bench_occ >= BENCH_CAPACITY:
                 # 满栏例外(merge_mechanics §2.5 方案 A):一击多张,张数
                 # 单一源 = merge_buy_k(禁执行侧重算);金账无折扣 = 总价
                 # k×单价,执行账补差 (k−1)×单价。
                 _cnt = max(1, merge_buy_k(
                     action.card.name, action.card.star or 1,
-                    bench_slots_of(state),
+                    (list(_view.slots) if _view is not None else []),
                     _books.deployed,
                     _payload_cards))
                 ledger.spend_executed += (action.card.cost or 0) * (_cnt - 1)

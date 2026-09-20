@@ -1672,18 +1672,24 @@ def detect_merge_upgrade(cur: Any, proj: Any) -> bool:
     签名的唯一来源(星级只经合成上升;买新卡不抬同名最高星)。合成域 =
     全场(bench+deployed,``cw_state._merge_bench`` 同口径)。级联合并
     (3×1★→2★→…)只看「有抬升」真值,层级数不影响本判定。
-    """
+
+    条目身份读协议 = ``cw_merge_simulate._entry_identity``(P1 起
+    bench 侧 BenchSlot / deployed 侧 Unit;P4 收敛前兼容观察边界
+    BenchChar 形)。"""
+    from sr_od.application.currency_war.kernel.cw_merge_simulate import (
+        _entry_identity,
+    )
+
     def _max_star(st: Any) -> dict[str, int]:
         best: dict[str, int] = {}
-        for c in (list(getattr(st, 'bench', None) or [])
+        for x in (list(getattr(st, 'bench', None) or [])
                   + list(getattr(st, 'deployed', None) or [])):
-            if c is not None:
-                cid = str(getattr(c, 'char_id', '') or '')
-                if not cid:
-                    continue
-                s = int(getattr(c, 'star', 1) or 1)
-                if s > best.get(cid, 0):
-                    best[cid] = s
+            ident = _entry_identity(x)
+            if ident is None or not ident[0]:
+                continue
+            cid, s = ident
+            if s > best.get(cid, 0):
+                best[cid] = s
         return best
     before, after = _max_star(cur), _max_star(proj)
     return any(after.get(cid, 0) > s for cid, s in before.items())
@@ -1844,11 +1850,29 @@ class ShopActionExecuted:
 
 def mutate_bench_deployed_local(bench, deployed, action,
                                 shop=None) -> None:
-    """``cw_state.mutate_bench_deployed`` 惰性转发(本模块与 cw_state 的
+    """``cw_vocab.mutate_bench_deployed`` 惰性转发(本模块与 cw_vocab 的
     运行时依赖纪律 = 函数级懒 import);shop 视图透传(满栏合成买分支
-    ``_apply_full_bench_merge_buy`` 的素材消费源)。"""
+    ``_apply_full_bench_merge_buy`` 的素材消费源)。P1 起形状 = 容器原生
+    (bench: list[BenchSlot | None] / deployed: list[Unit | None],§2.3)。"""
     from sr_od.application.currency_war.kernel.cw_vocab import mutate_bench_deployed
     mutate_bench_deployed(bench, deployed, action, shop=shop)
+
+
+def bench_view_of_working(slots: list, capacity_view=None) -> BenchView:
+    """工作槽表(list[BenchSlot | None],merge/落位引擎工作副本,可能含
+    None 洞)→ BenchView 记录形状(§3.2.5):None → ``kind='empty'`` 归一 +
+    右侧 pad 到容量。容器写侧构造单一源(P1;占位件 kind 原样透传——
+    工作表元素即容器 BenchSlot,零中间形)。``capacity_view`` = BenchView
+    (随原观察容量)或 int 容量;缺省 = 默认容量 9。"""
+    cap = (capacity_view.capacity
+           if hasattr(capacity_view, 'capacity')
+           else (capacity_view if isinstance(capacity_view, int) else None))
+    cap = cap or BENCH_CAPACITY_DEFAULT
+    out: list[BenchSlot] = [
+        s if s is not None else BenchSlot(kind='empty') for s in slots]
+    while len(out) < cap:
+        out.append(BenchSlot(kind='empty'))
+    return BenchView(slots=out, capacity=cap)
 
 
 # ============================================================ 局终行写口(§3.6.1 runs 收编;ADR-0630 修订节)
@@ -2048,17 +2072,42 @@ def tracked_unobserved(session: object) -> bool:
 
 @dataclass
 class TrackedBooks:
-    """tracked 主账簿记(game state 层容器簿记组)。
+    """tracked 主账簿记(game state 层容器簿记组;benchchar-retirement
+    P1 定稿形状,design §2.3)。
 
-    bench/deployed = pad 态定长槽位表(list[BenchChar | None],ADR-0316/
-    0392)。**执行侧簿记容器**:写端 = kernel reconcile_tracking(观察边界
+    - ``bench`` = ``list[BenchSlot | None]``,定长 9:元素 BenchSlot 五分类
+      (占位件 kind 三分类随形保留——本迁移根因即布尔压形的信息销毁);
+      None = 洞(卖出/上阵/合成消耗置 None 不移位,ADR-0316 保洞语义)。
+    - ``deployed`` = ``list[Unit | None]``,定长 10:**表下标 = deployed_idx
+      动作坐标,恒稳**;排归属由下标派生(0-3 前排 / 4-9 后排),换算
+      单一源 = ``cw_exec_state.deployed_row_slot``/``deployed_idx_of``
+      (ADR-0392 保洞语义不变,禁借迁移改索引语义)。
+
+    **执行侧簿记容器**:写端 = kernel reconcile_tracking(观察边界
     锚定写回)+ 动作随动同步(部署/卖出/溢出腿);**策略禁读**——观察
     状态与策略消费口 = GameState.tracked_account_observed +
     bench/front_row/back_row 席位视图。
     """
 
-    bench: list = field(default_factory=list)
-    deployed: list = field(default_factory=list)
+    bench: list = field(default_factory=lambda: _default_tracked_bench())
+    deployed: list = field(default_factory=lambda: _default_tracked_deployed())
+
+
+def _default_tracked_bench() -> list:
+    """tracked bench 定长 9 缺省(容量常量单一源 = cw_exec_state;
+    函数级懒 import 防模块环,同本模块惯例)。"""
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        BENCH_CAPACITY,
+    )
+    return [None] * BENCH_CAPACITY
+
+
+def _default_tracked_deployed() -> list:
+    """tracked deployed 定长 10 缺省(容量常量单一源 = cw_exec_state)。"""
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        DEPLOYED_CAPACITY,
+    )
+    return [None] * DEPLOYED_CAPACITY
 
 
 class NodeBooks:
@@ -2335,15 +2384,16 @@ class GameState:
     overflow_card: Field[str] = field(default_factory=Field)
 
     # —— tracked 主账簿记宿主 ——
-    # [索引定义] tracked_books.bench/deployed = tracked 槽位表(list[BenchChar
-    # | None],pad 态定长 9/10 槽含 None,ADR-0316/0392)。**簿记容器,非
-    # Field 观察面**(先例 = settlement_ring/encounter_log:不经 observe/
-    # write_logic 通道,无观察赢仲裁,写端直改;元素 BenchChar 沿用既有
-    # 就地变异语义——shop mutate/部署装备回写)。**策略禁读**(消费口只有
-    # game state 的观察态字段 tracked_account_observed 与席位视图
-    # bench/front_row/back_row);合法写端 = kernel reconcile_tracking(观察
-    # 边界锚定写回)+ 动作随动同步(prep 执行器/溢出腿/部署装备回写/
-    # 商店 mutate)。观察状态(未观察/已观察)= 上方 tracked_account_observed。
+    # [索引定义] tracked_books.bench = tracked 备战席槽位表(list[BenchSlot
+    # | None],定长 9,None=洞,§2.3);tracked_books.deployed = tracked 上阵
+    # 槽位表(list[Unit | None],定长 10,下标 = deployed_idx 动作坐标恒稳,
+    # 0-3 前/4-9 后)。**簿记容器,非 Field 观察面**(先例 =
+    # settlement_ring/encounter_log:不经 observe/write_logic 通道,无观察赢
+    # 仲裁,写端直改;占位件 kind 三分类随 BenchSlot 保留,deployed 行归属
+    # 由下标派生)。**策略禁读**(消费口只有 game state 的观察态字段
+    # tracked_account_observed 与席位视图 bench/front_row/back_row);合法
+    # 写端 = kernel reconcile_tracking(观察边界锚定写回)+ 动作随动同步
+    # (prep 执行器/溢出腿/部署装备回写/商店 mutate)。
     tracked_books: TrackedBooks = field(default_factory=TrackedBooks)
     # —— 节点序列探针簿记宿主(非 Field;终态契约 §A′ 自 session 迁入,
     # 成员与访问纪律见 :class:`NodeBooks` 类注)——

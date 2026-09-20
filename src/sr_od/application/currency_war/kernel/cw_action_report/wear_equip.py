@@ -26,6 +26,7 @@ def report_action_wear_equip_param(gs: GameState, param: Any, sig: ChannelSig,
     换算单一函数 = ``deployed_idx_of``(执行坐标边)。session 缺席 =
     tracked 腿跳过(离线形态)。"""
     _validate_sig(sig, ('logic_action',))
+    from dataclasses import replace
     from dataclasses import replace as _dc_replace
 
     from sr_od.application.currency_war.kernel.cw_exec_state import (
@@ -46,9 +47,15 @@ def report_action_wear_equip_param(gs: GameState, param: Any, sig: ChannelSig,
            f'owned[{param.item_name}] -1(穿戴)')
     if session is not None:
         idx = deployed_idx_of(param.row, param.slot)
-        dep = list(gs.tracked_books.deployed or [])
+        _books = gs.tracked_books
+        dep = list(_books.deployed or [])
         if 0 <= idx < len(dep) and dep[idx] is not None:
-            dep[idx].equips = list(getattr(dep[idx], 'equips', None) or []) \
-                + [param.item_name]
+            # P1 tracked deployed = list[Unit | None](frozen):穿戴腿 =
+            # replace 新构造整表写回(原就地拼 equips 随形退役)。
+            dep[idx] = replace(
+                dep[idx],
+                equips=list(getattr(dep[idx], 'equips', None) or [])
+                + [param.item_name])
+            _books.deployed = dep
     return LogicOutcome(applied=True)
 

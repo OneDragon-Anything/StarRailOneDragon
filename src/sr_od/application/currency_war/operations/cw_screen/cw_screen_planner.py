@@ -46,7 +46,6 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     apply_equip_acquire_consequence,
-    bench_view_keep_items,
     merge_cascade_write,
 )
 from sr_od.application.currency_war.kernel.cw_events import (
@@ -61,9 +60,6 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     LogicOutcome,
     _emit_defect,
     _validate_sig,
-    bench_slots_of,
-    deployed_slots_of,
-    deployed_slots_to_rows,
 )
 from sr_od.application.currency_war.kernel.cw_screen_report.planner import (
     CwScreenPlannerObs,
@@ -351,7 +347,15 @@ def _apply_upgrade_transform(gs: GameState,
     需要时扩);「新费档银狼刷进商店」连带腿 = 零记账面(商店池无容器
     字段,逐帧观察为真值),注释申报。
     """
-    from copy import deepcopy
+    from dataclasses import replace
+
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        deployed_indexed_to_rows,
+        deployed_rows_to_indexed,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_view_of_working,
+    )
 
     view = gs.bench.value
     front = gs.front_row.value
@@ -363,12 +367,14 @@ def _apply_upgrade_transform(gs: GameState,
                      sig=sig, kind='planner_upgrade_source_missing')
         return LogicOutcome(applied=False,
                             reason='upgrade_source_unobserved')
-    work_bench = [deepcopy(b) if b is not None else None
-                  for b in bench_slots_of(gs)]
-    work_dep = [deepcopy(d) if d is not None else None
-                for d in deployed_slots_of(gs)]
+    # P1 容器原生工作副本:bench = BenchView 槽序、deployed = 行域下标
+    # 派生表(§2.1);元素 frozen,浅拷贝列表即快照(变换 = replace 新
+    # 构造,零别名)。
+    work_bench = list(view.slots) if view is not None else []
+    work_dep = deployed_rows_to_indexed(front, back)
     hits = [i for i, b in enumerate(work_bench)
-            if b is not None and b.char_id == _LV999_ID and b.star == 2]
+            if b is not None and b.kind == 'unit' and b.unit is not None
+            and b.unit.char_id == _LV999_ID and b.unit.star == 2]
     hits_dep = [i for i, d in enumerate(work_dep)
                 if d is not None and d.char_id == _LV999_ID and d.star == 2]
     count = len(hits) + len(hits_dep)
@@ -394,13 +400,14 @@ def _apply_upgrade_transform(gs: GameState,
         return LogicOutcome(applied=True, reason='upgrade_ambiguous_flipped')
     # 恰一枚:工作副本变换(槽位无关)→ 受影响域落行 → 级联。
     if hits:
-        work_bench[hits[0]].star = 1
-        gs.write_logic(gs.bench, bench_view_keep_items(work_bench, view),
+        _s = work_bench[hits[0]]
+        work_bench[hits[0]] = replace(_s, unit=replace(_s.unit, star=1))
+        gs.write_logic(gs.bench, bench_view_of_working(work_bench, view),
                        produced_by=_PLANNER_PRODUCER,
                        evidence='planner_upgrade_transform', sig=sig)
     else:
-        work_dep[hits_dep[0]].star = 1
-        f2, b2 = deployed_slots_to_rows(work_dep)
+        work_dep[hits_dep[0]] = replace(work_dep[hits_dep[0]], star=1)
+        f2, b2 = deployed_indexed_to_rows(work_dep)
         gs.write_logic(gs.front_row, f2, produced_by=_PLANNER_PRODUCER,
                        evidence='planner_upgrade_transform', sig=sig)
         gs.write_logic(gs.back_row, b2, produced_by=_PLANNER_PRODUCER,

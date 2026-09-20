@@ -1607,17 +1607,23 @@ def board_from_tracked(tracked: list) -> dict[str, int] | None:
         混合频率)。**无阵营已知角色不 bail**(2026-08-17):白厄「救世主」复制效果不计人数
         (官方 trait 3005)→ 跳过零贡献即精确;布洛妮娅(factions 空flows 燃血)正常贡献 flows;
         独立羁绊行计入(与左面板显示同口径)。
+
+    P1 入参形状 = tracked deployed 下标表(list[Unit | None],§2.3):
+    排归属由下标派生(0-3 前/4-9 后,§2.1 单一源口径),开拓者形态
+    归一按派生排传入(禁对条目 getattr 柔取 position_pref 旧字段)。
     """
     from sr_od.application.currency_war.kernel.cw_exec_state import (
-        iter_occupied_deployed,
+        DEPLOYED_FRONT_CAPACITY,
     )
-    _occ = list(iter_occupied_deployed(tracked or []))   # ADR-0392 槽位表滤 None
+    _occ = [(i, u) for i, u in enumerate(tracked or [])
+            if u is not None]   # ADR-0392 槽位表滤 None
     if not _occ:
         return None
     from sr_od.application.currency_war.kernel.cw_bond_equips import unit_bond_tags
     counts: dict[str, int] = {}
-    for bc in _occ:
-        tags = unit_bond_tags(bc)
+    for i, bc in _occ:
+        row = 'front' if i < DEPLOYED_FRONT_CAPACITY else 'back'
+        tags = unit_bond_tags(bc, row=row)
         if tags:
             for t in tags:
                 counts[t] = counts.get(t, 0) + 1
@@ -1632,8 +1638,7 @@ def board_from_tracked(tracked: list) -> dict[str, int] | None:
         )
         _cid = cid
         if is_trailblazer(_cid):
-            _cid = trailblazer_form(
-                _cid, getattr(bc, 'position_pref', '') or 'back')
+            _cid = trailblazer_form(_cid, row)
         ch = get_char(_cid)
         if ch is None:
             return None   # 注册表无此角色:阵营贡献算不出,保守退 OCR

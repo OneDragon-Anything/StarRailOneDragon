@@ -94,17 +94,17 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (  # noqa: E402
     bench_place,
     deployed_from_compact,  # noqa: F401
     deployed_occupied,  # noqa: F401
-    deployed_place,
+    deployed_place,  # noqa: F401
     deployed_slot_no,
     fill_boss_by_position,  # noqa: F401
     get_node_ledger,  # noqa: F401
     iter_deployed_slots,  # noqa: F401
     iter_occupied,  # noqa: F401
-    iter_occupied_deployed,
+    iter_occupied_deployed,  # noqa: F401
     ledger_node_type,  # noqa: F401
     ledger_update_plane,  # noqa: F401
     pad_bench,  # noqa: F401
-    pad_deployed,
+    pad_deployed,  # noqa: F401
     rebuild_deployed_from_board,  # noqa: F401
     snapshot_copy,  # noqa: F401
 )
@@ -1238,24 +1238,27 @@ def action_key(action: CwAction) -> str:
     return type(action).__name__
 
 
-def _card_to_bench(card: ShopCard, position_pref: str = "back") -> BenchChar:
-    """买的牌落 bench。"""
-    return BenchChar(slot=0, char_id=card.name, faction=card.faction,
-                     star=card.star, position_pref=position_pref)
-
-
-def mutate_bench_deployed(bench: list[BenchChar | None],
-                          deployed: list[BenchChar],
+def mutate_bench_deployed(bench: list,
+                          deployed: list,
                           action: Action,
                           shop: list[ShopCard] | None = None) -> None:
     """就地应用 action 的 bench/deployed 转移到持久跟踪状态(运行时同步用)。
 
     本函数**就地改** bench/deployed 两个列表,只做身份/星级/站位转移(buy→bench+merge / deploy→deployed /
     sell→置 None),供运行时执行点(shop.buy / deploy_bench verify / _handle_bench_full sell)同步
-    ``session.bench``/``session.deployed``。gold/shop/XP 期望态不在此辖:
+    tracked 主账。gold/shop/XP 期望态不在此辖:
     容器逻辑态直写 = 上报函数族(report_action_<snake>_param,动作语义单一源,避双源漂移)。
-    ADR-0316/0392:bench/deployed 均为槽位表(定长 9/10,None=空槽)——入口防御性 pad。
+    P1 起容器原生形状(benchchar-retirement §2.3):bench =
+    ``list[BenchSlot | None]``(定长 9,None=洞,卖出/上阵置 None 不移位)/
+    deployed = ``list[Unit | None]``(定长 10,下标 = deployed_idx 动作坐标
+    恒稳,排归属由下标派生,ADR-0392);入口防御性补 None 到定长(旧紧缩
+    构造兼容,禁借迁移改索引语义)。
     CwActionLevelUpParam/CwActionRefreshShopParam/CwActionPickEventParam 不影响 bench/deployed → no-op。
+
+    「占用」判定口径(§2.4 字段映射约定):bench 侧 = ``kind == 'unit'``
+    (占位件槽非角色,恒不参与卖/上/合——卖恒拒/部署恒 held 防线的
+    tracked 侧镜像;旧 BenchChar 形靠 is_item_slot 上游拦截,tracked
+    缺检查,本形收口);deployed 侧 = ``is not None``。
 
     ``shop``(缺省 None = 零漂移兼容):调用方的当前店面视图。提供时,
     满栏合成买走 ``_apply_full_bench_merge_buy`` 单一源——满栏时游戏对完成合成
@@ -1263,67 +1266,92 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
     ``_apply_full_bench_merge_buy``,不再丢件漏记;未提供或未识别牌
     (name 空,无法判合成对象)时维持旧丢件行为。
     """
-    pad_bench(bench)
-    pad_deployed(deployed)
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        place_unit_in_deployed,
+        trailblazer_row_unit,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        BenchSlot,
+        Unit,
+    )
+    while len(bench) < BENCH_CAPACITY:
+        bench.append(None)
+    while len(deployed) < DEPLOYED_CAPACITY:
+        deployed.append(None)
     if isinstance(action, CwActionBuyCardParam):
-        _placed = bench_place(bench, _card_to_bench(action.card)) is not None
+        _placed = bench_place(
+            bench,
+            BenchSlot(kind='unit', unit=Unit(char_id=action.card.name or '',
+                                             star=int(action.card.star or 1))),
+        ) is not None
         if not _placed and shop is not None and (action.card.name or ''):
             _apply_full_bench_merge_buy(bench, deployed, action.card, shop)
         _merge_bench(bench, deployed)   # 全场域(live tracking 与 simulate 同源)
     elif isinstance(action, CwActionSellBenchParam):
         # ADR-0317 代际校验(与 simulate 同源):expect 非空且不符 →
         # 陈旧提案 no-op(不移除)
-        if 0 <= action.bench_idx < len(bench) \
-                and bench[action.bench_idx] is not None \
-                and (not action.expect
-                     or bench[action.bench_idx].char_id == action.expect):
-            bench_clear(bench, action.bench_idx)
+        if 0 <= action.bench_idx < len(bench):
+            _s = bench[action.bench_idx]
+            if (_s is not None and _s.kind == 'unit'
+                    and _s.unit is not None
+                    and (not action.expect
+                         or _s.unit.char_id == action.expect)):
+                bench[action.bench_idx] = None   # 保洞:置 None 不移位
     elif isinstance(action, CwActionDeployMoveParam):
         _tgt = (bench[action.bench_idx]
                 if 0 <= action.bench_idx < len(bench) else None)
-        if _tgt is not None:
+        if (_tgt is not None and _tgt.kind == 'unit'
+                and _tgt.unit is not None):
             # 同名唯一性守卫(W43 裁决 1,与 simulate 同源):已在场同名不上
-            _k = board_unique_key(_tgt)
+            _u = _tgt.unit
+            _k = board_unique_key(_u)
             if _k is not None and any(board_unique_key(d) == _k
-                                      for d in iter_occupied_deployed(deployed)):
+                                      for d in deployed if d is not None):
                 return
-            bc = bench_clear(bench, action.bench_idx)
-            _apply_row_to_char(bc, action.to_row)
-            # 开拓者形态切换(同 simulate 语义,单一源 helper)
-            deployed_place(deployed, bc)   # ADR-0392:按排路由落槽
+            bench[action.bench_idx] = None   # 保洞:置 None 不移位
+            # 开拓者形态切换(同 simulate 语义,归一核单一源)
+            _u2 = trailblazer_row_unit(_u, action.to_row)
+            place_unit_in_deployed(deployed, _u2, action.to_row)   # ADR-0392:按排路由落槽
     elif isinstance(action, CwActionSellDeployedParam):
         # 动作 v2(契约包 C1):runtime 跟踪侧只做身份转移(金/装备归
-        # CwSimFrame 域,本函数不管——与 simulate 单一源规则一致)
+        # sim/容器域其他写点,本函数不管——与 simulate 单一源规则一致)
         if 0 <= action.deployed_idx < len(deployed) \
                 and deployed[action.deployed_idx] is not None \
                 and (not action.expect
                      or deployed[action.deployed_idx].char_id == action.expect):
-            deployed_clear(deployed, action.deployed_idx)
+            deployed[action.deployed_idx] = None
             # ADR-0392:置 None 不移位(deployed_idx 恒稳;陈旧提案=代际不符 no-op)
     elif isinstance(action, CwActionSwapDeployParam):
         if 0 <= action.deployed_idx < len(deployed) \
                 and deployed[action.deployed_idx] is not None \
-                and 0 <= action.bench_idx < len(bench) \
-                and bench[action.bench_idx] is not None:
-            out_char = deployed[action.deployed_idx]
-            in_char = bench[action.bench_idx]
+                and 0 <= action.bench_idx < len(bench):
+            _bs = bench[action.bench_idx]
+            if _bs is None or _bs.kind != 'unit' or _bs.unit is None:
+                return
+            out_unit = deployed[action.deployed_idx]
+            in_unit = _bs.unit
             # 代际校验 + 同名唯一性(W43 裁决 1/2,与 simulate 同源)
             if ((action.expect_deployed
-                 and out_char.char_id != action.expect_deployed)
+                 and out_unit.char_id != action.expect_deployed)
                     or (action.expect_bench
-                        and in_char.char_id != action.expect_bench)):
+                        and in_unit.char_id != action.expect_bench)):
                 return   # 陈旧提案 no-op
-            _k = board_unique_key(in_char)
+            _k = board_unique_key(in_unit)
             if _k is not None and any(
                     board_unique_key(d) == _k
-                    for _i, d in iter_deployed_slots(deployed)
-                    if _i != action.deployed_idx):
+                    for _i, d in enumerate(deployed)
+                    if d is not None and _i != action.deployed_idx):
                 return
-            _row = out_char.position_pref
-            deployed[action.deployed_idx] = in_char   # 槽位语义:原槽对调
-            bench[action.bench_idx] = out_char
-            _apply_row_to_char(in_char, _row)
-            in_char.slot = deployed_slot_no(action.deployed_idx)
+            # 上场者继承下场者排(排归属由下标派生,§2.1 口径)+ 开拓者
+            # 形态归一(归一核单一源);槽位信息位随落位归一(frozen replace)。
+            from dataclasses import replace
+            _row = ('front' if action.deployed_idx < DEPLOYED_FRONT_CAPACITY
+                    else 'back')
+            deployed[action.deployed_idx] = replace(
+                trailblazer_row_unit(in_unit, _row),
+                slot=deployed_slot_no(action.deployed_idx))
+            bench[action.bench_idx] = BenchSlot(
+                kind='unit', unit=replace(out_unit, slot=action.bench_idx + 1))
 
 
 

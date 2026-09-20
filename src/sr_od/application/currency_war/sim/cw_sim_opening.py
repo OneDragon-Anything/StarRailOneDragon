@@ -25,12 +25,13 @@ from sr_od.application.currency_war.data.cw_shop_odds import POOL_COPIES_PER_CAR
 from sr_od.application.currency_war.kernel.cw_economy import XP_TO_NEXT_LEVEL
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
-    BenchChar,
     bench_place,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    BenchSlot,
     GameState,
-    bench_view_of_slots,
+    Unit,
+    bench_view_of_working,
 )
 from sr_od.application.currency_war.kernel.cw_opening_hp import opening_hp_prior
 from sr_od.application.currency_war.sim.cw_sim_base import obs_sig, sim_evidence
@@ -92,17 +93,17 @@ def _uniform_char_of_cost(rng: random.Random, cost: int) -> Character:
     return roster[rng.randrange(len(roster))]
 
 
-def opening_bench_chars(rng: random.Random) -> list[BenchChar]:
+def opening_bench_chars(rng: random.Random) -> list[BenchSlot]:
     """开局手牌 → 备战席件表(U28:4 张全 1★;卡名按 M01 占位口径均匀抽)。
 
-    返回 1 基槽位已定位的件表(席恒 9 槽,pad 语义由容器视图承载)。
-    """
+    返回 1 基槽位已定位的件表(P1 容器原生 BenchSlot,席恒 9 槽,pad
+    语义由容器视图承载)。"""
     shape = sample_opening_shape(rng)
-    chars: list[BenchChar] = []
+    chars: list[BenchSlot] = []
     for cost in shape:
         ch = _uniform_char_of_cost(rng, cost)
-        chars.append(BenchChar(slot=0, char_id=ch.name,
-                               faction=(ch.factions or ('散',))[0], star=1))
+        chars.append(BenchSlot(kind='unit', unit=Unit(
+            char_id=ch.name, star=1)))
     if len(chars) != OPENING_HAND_SIZE:
         raise ValueError(f'开局手牌张数 {len(chars)} ≠ U28 定案 '
                          f'{OPENING_HAND_SIZE}')
@@ -121,9 +122,9 @@ def apply_opening(gs: GameState, cfg: RunConfig,
     sig = obs_sig(group_id='sim:engine:opening')
     hp = opening_hp_or_raise(cfg)
     chars = opening_bench_chars(rng)
-    slots: list[BenchChar | None] = [None] * BENCH_CAPACITY
-    for bc in chars:
-        bench_place(slots, bc)
+    slots: list[BenchSlot | None] = [None] * BENCH_CAPACITY
+    for slot in chars:
+        bench_place(slots, slot)
 
     def _obs(field, value, tag: str) -> None:
         gs.observe(field, value, evidence=sim_evidence(tag), sig=sig)
@@ -139,4 +140,4 @@ def apply_opening(gs: GameState, cfg: RunConfig,
     _obs(gs.deploy_cap, OPENING_DEPLOY_CAP, 'opening')
     _obs(gs.xp, (0, XP_TO_NEXT_LEVEL.get(OPENING_LEVEL, 4)), 'opening')
     _obs(gs.streak, 0, 'opening')
-    _obs(gs.bench, bench_view_of_slots(slots), 'opening')
+    _obs(gs.bench, bench_view_of_working(slots, BENCH_CAPACITY), 'opening')

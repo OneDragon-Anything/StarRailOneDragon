@@ -92,11 +92,16 @@ def _find_and_mutate_unit(gs: GameState, char_name: str,
     ``mutate`` = 单位 → 变换单位(None = 拒:变更非法,整体不写);
     未命中 → False。容器视图为 frozen dataclass 链,穿戴写 = 对应域
     整表重建后 obs 写(与 CwActionDeployMoveParam 的整表平移契约同形)。
+
+    P1 容器原生直写(§3.2):bench 域 = 槽序摘换后 BenchView 直构——
+    原有 ``_slots_to_chars``→``bench_view_of_slots`` 旧形往返随换形口
+    退役;保真修复(设计 §2.2 申报第 2 项):非 unit 槽(占位件三分类
+    kind)原样保留,重建不再降级 empty。
     """
     from dataclasses import replace
 
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_view_of_slots,
+        BenchView,
     )
 
     def _mutated(u: Unit | None) -> Unit | None:
@@ -104,17 +109,14 @@ def _find_and_mutate_unit(gs: GameState, char_name: str,
             return mutate(u)
         return u
 
-    # bench 域:BenchSlot.unit 摘换 → BenchView 重建
+    # bench 域:BenchSlot.unit 摘换 → BenchView 直构(占位件槽原样)
     bench_view = gs.bench.value
     if bench_view is not None:
         slots = list(bench_view.slots)
         hit = any(s is not None and s.kind == 'unit' and s.unit is not None
                   and s.unit.char_id == char_name for s in slots)
         if hit:
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                BenchSlot,
-            )
-            new_slots: list[BenchSlot | None] = []
+            new_slots: list = []
             for s in slots:
                 unit = s.unit if (s is not None and s.kind == 'unit'
                                   and s.unit is not None) else None
@@ -125,10 +127,11 @@ def _find_and_mutate_unit(gs: GameState, char_name: str,
                 if m is None:
                     return False
                 new_slots.append(replace(s, unit=m))
-            gs.observe(gs.bench, bench_view_of_slots(
-                _slots_to_chars(new_slots)),
-                evidence=sim_evidence('equip:worn'),
-                sig=obs_sig(group_id='sim:equip'))
+            gs.observe(gs.bench,
+                       BenchView(slots=new_slots,
+                                 capacity=bench_view.capacity),
+                       evidence=sim_evidence('equip:worn'),
+                       sig=obs_sig(group_id='sim:equip'))
             return True
     # deployed 域:front_row/back_row 摘换 → 整行重建(空槽 None 保持)
     for field in (gs.front_row, gs.back_row):
@@ -148,19 +151,6 @@ def _find_and_mutate_unit(gs: GameState, char_name: str,
                        sig=obs_sig(group_id='sim:equip'))
             return True
     return False
-
-
-def _slots_to_chars(slots: list) -> list:
-    """BenchView 槽序 → BenchChar 定长表(bench_view_of_slots 重播入参;
-    装备随 Unit 对象整体迁移,系数 = worn 域单一表示)。"""
-    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
-    out: list[BenchChar | None] = [None] * len(slots)
-    for i, s in enumerate(slots):
-        if s is not None and s.kind == 'unit' and s.unit is not None:
-            out[i] = BenchChar(slot=i + 1, char_id=s.unit.char_id,
-                               faction='', star=s.unit.star,
-                               equips=list(s.unit.equips))
-    return out
 
 
 def apply_wear_equip(gs: GameState, action: CwActionWearEquipParam) -> bool:
@@ -229,7 +219,7 @@ def _find_and_mutate_by_slot(gs: GameState, row: str, slot: int,
     from dataclasses import replace
 
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_view_of_slots,
+        BenchView,
     )
     if row == 'front':
         rows = list(gs.front_row.value or [])
@@ -265,7 +255,7 @@ def _find_and_mutate_by_slot(gs: GameState, row: str, slot: int,
     if s is None or s.kind != 'unit' or s.unit is None:
         return False
     slots[idx] = replace(s, unit=mutate(s.unit))
-    gs.observe(gs.bench, bench_view_of_slots(_slots_to_chars(slots)),
+    gs.observe(gs.bench, BenchView(slots=slots, capacity=bench_view.capacity),
                evidence=sim_evidence('equip:worn'),
                sig=obs_sig(group_id='sim:equip'))
     return True

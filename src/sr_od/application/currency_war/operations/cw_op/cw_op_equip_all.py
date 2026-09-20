@@ -84,8 +84,10 @@ def register_equip_worn(session, item_name: str, char_name: str,
     if session is None:
         return
     try:
+        from dataclasses import replace
+
         from sr_od.application.currency_war.kernel.cw_exec_state import (
-            DEPLOYED_FRONT_CAPACITY,
+            deployed_idx_of,
         )
         from sr_od.application.currency_war.kernel.cw_game_state import (
             game_state_of,
@@ -97,12 +99,17 @@ def register_equip_worn(session, item_name: str, char_name: str,
                 game_state_of(session).equips, owned,
                 produced_by='CwOpEquipAll',
                 evidence=f'owned[{item_name}] -1(穿戴)')
-        idx = (slot - 1 if row == 'front'
-               else DEPLOYED_FRONT_CAPACITY + slot - 1)
-        dep = list(game_state_of(session).tracked_books.deployed or [])
+        idx = deployed_idx_of(row, slot)   # 换算单一源(原内联式,行为等价)
+        _books = game_state_of(session).tracked_books
+        dep = list(_books.deployed or [])
         if 0 <= idx < len(dep) and dep[idx] is not None:
-            dep[idx].equips = list(getattr(dep[idx], 'equips', None) or []) \
-                + [item_name]
+            # P1 tracked deployed = list[Unit | None](frozen):穿戴腿 =
+            # replace 新构造整表写回(原就地拼 equips 随形退役)。
+            dep[idx] = replace(
+                dep[idx],
+                equips=list(getattr(dep[idx], 'equips', None) or [])
+                + [item_name])
+            _books.deployed = dep
     except Exception as e:  # noqa: BLE001  观测面不阻塞穿戴
         log.info('[cw-equip] 装备分布逻辑推进跳过: %s', e)
 

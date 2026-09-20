@@ -24,28 +24,27 @@ __init__`` docstring)。本包 → 容器单向依赖。
 from __future__ import annotations
 
 import random
-from copy import deepcopy
 from dataclasses import replace as _dc_replace
 from typing import Any
 
-from sr_od.application.currency_war.kernel.cw_effect_inventory import (
-    bench_view_keep_items as _bench_view_keep_items,
-)
 from sr_od.application.currency_war.kernel.cw_exec_state import (
-    BenchChar,
     bench_place,
+    deployed_indexed_to_rows,
+    deployed_rows_to_indexed,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    BenchSlot,
     ChannelSig,
     GameState,
     LogicOutcome,
     OreSight,
+    Unit,
     _validate_sig,
-    bench_slots_of,
-    deployed_slots_of,
-    deployed_slots_to_rows,
+    bench_view_of_working,
 )
 from sr_od.application.currency_war.kernel.cw_merge_simulate import (
+    _bench_sig,
+    _dep_sig,
     _merge_bench,
 )
 from sr_od.application.currency_war.kernel.cw_ore_reward import (
@@ -53,15 +52,6 @@ from sr_od.application.currency_war.kernel.cw_ore_reward import (
 )
 
 _PRODUCER = 'CwActionCollectOreParam'
-
-
-def _slot_sig(slots: list[BenchChar | None]) -> list:
-    """槽位表值签名(bench/deployed 通用;变更检测用,防共享对象
-    原地变异导致「签名没变值已变」的假阴——快照在深拷贝工作列表上,
-    签名比较仅判『是否需要落一行』)。"""
-    return [None if b is None else
-            (b.char_id, b.star, tuple(b.equips or ()))
-            for b in slots]
 
 
 def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
@@ -80,6 +70,11 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     - **动作级出参**:全部开成 = applied=True;混合批 =
       'ore_partial_open_skipped';全部席满跳过 = applied=False
       'bench_full_no_open'。
+
+    P1 容器原生(§3.2):bench 工作副本 = BenchView 槽序、deployed =
+    行域下标派生表;整表写 = bench_view_of_working 直构(原
+    ``_bench_view_keep_items`` 占位件保留补丁随换形口退役自然消失——
+    工作表元素即容器 BenchSlot,占位件 kind 原样保留,零降级路径)。
     """
     _validate_sig(sig, ('logic_action',))
     roll_rng = rng if rng is not None else random.Random()
@@ -113,18 +108,18 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
         gs.write_logic_rand(target, value, produced_by=_PRODUCER,
                             evidence=evidence, sig=_grp_sig)
 
-    # 工作态(深拷贝防别名:容器帧持同源对象,合并原地变异不得穿透)
+    # 工作态(元素 frozen,浅拷贝列表即与容器帧断开写入别名;引擎
+    # replace 新构造零就地变异)
     remaining = list(view.points)
-    work_bench: list[BenchChar | None] = [
-        deepcopy(b) if b is not None else None for b in bench_slots_of(gs)]
-    work_dep: list[BenchChar | None] = [
-        deepcopy(d) if d is not None else None for d in deployed_slots_of(gs)]
+    work_bench = list(orig_bench.slots)
+    work_dep = deployed_rows_to_indexed(gs.front_row.value, gs.back_row.value)
 
     opened = 0
     skipped = 0
     for k, p in enumerate(ordered, 1):
         xy = (int(p[1]), int(p[2]))
-        if sum(1 for b in work_bench if b is None) <= 0:
+        if sum(1 for b in work_bench
+               if b is None or b.kind == 'empty') <= 0:
             skipped += 1
             continue   # 席满即该点无效:晶矿留在 spheres,不摘不采
 
@@ -171,15 +166,16 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
         else:
             # 角色奖励:落备战席首空槽 → 3合1 连锁(每级合并后受影响域
             # 各落一行;board 派生随行写自动继承随机态)。bench 整表写
-            # 走保留占位件 kind 口(典籍/书册卡/箱不降级,见 helper 注)
-            bench_place(work_bench, BenchChar(
-                slot=0, char_id=reward.char_id, star=reward.char_star))
-            _w_rand(gs.bench, _bench_view_keep_items(work_bench, orig_bench),
+            # = 工作槽表直构(占位件 kind 原样保留,见函数头 P1 申报)
+            bench_place(work_bench, BenchSlot(
+                kind='unit', unit=Unit(char_id=reward.char_id,
+                                       star=reward.char_star)))
+            _w_rand(gs.bench, bench_view_of_working(work_bench, orig_bench),
                     f'proj_ore_reward_char#ore{k}')
             written.add('bench')
             merge_no = 0
-            last_bs = _slot_sig(work_bench)
-            last_ds = _slot_sig(work_dep)
+            last_bs = _bench_sig(work_bench)
+            last_ds = _dep_sig(work_dep)
 
             def on_step(_k: int = k,
                         _written: set[str] = written) -> None:
@@ -188,16 +184,16 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
                 nonlocal merge_no, last_bs, last_ds
                 merge_no += 1
                 ev = f'proj_ore_merge#{merge_no}#ore{_k}'
-                bs = _slot_sig(work_bench)
+                bs = _bench_sig(work_bench)
                 if bs != last_bs:
                     _w_rand(gs.bench,
-                            _bench_view_keep_items(work_bench, orig_bench),
+                            bench_view_of_working(work_bench, orig_bench),
                             ev)
                     last_bs = bs
                     _written.add('bench')
-                ds = _slot_sig(work_dep)
+                ds = _dep_sig(work_dep)
                 if ds != last_ds:
-                    front, back = deployed_slots_to_rows(work_dep)
+                    front, back = deployed_indexed_to_rows(work_dep)
                     _w_rand(gs.front_row, front, ev)
                     _w_rand(gs.back_row, back, ev)
                     last_ds = ds

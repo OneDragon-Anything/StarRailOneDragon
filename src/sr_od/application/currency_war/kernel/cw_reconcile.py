@@ -99,6 +99,20 @@ def _star_gate_pending(session) -> dict:
     return pending
 
 
+def _tracked_identity(t) -> tuple[str, int, int] | None:
+    """tracked 条目身份读(bench 侧 BenchSlot → 内嵌 Unit;deployed 侧
+    Unit 直读;P6 前观察边界读对象为 BenchChar 同构位)。返回
+    (char_id, star, slot 信息位);无身份(占位/空)→ None。"""
+    kind = getattr(t, 'kind', None)
+    if kind is not None:
+        if kind != 'unit' or getattr(t, 'unit', None) is None:
+            return None
+        t = t.unit
+    cid = str(getattr(t, 'char_id', '') or '')
+    return (cid, int(getattr(t, 'star', 1) or 1),
+            int(getattr(t, 'slot', 0) or 0))
+
+
 def _gate_star_jitter(session, bench, deployed, screen, *,
                       source: str) -> None:
     """星级抖动门本体(语义与出处见上方门注释块)。
@@ -147,14 +161,16 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
             anchor = ((domain, bc.slot) if domain == 'bench'
                       else (bc.position_pref, bc.slot))
             t = tracked_at.get(anchor)
-            if t is None or not bc.char_id or bc.char_id != t.char_id:
+            _tident = _tracked_identity(t) if t is not None else None
+            if t is None or _tident is None or not bc.char_id \
+                    or bc.char_id != _tident[0]:
                 # 锚上身份未锚定 = 单元更替,星级随身份直采;该锚旧候选
                 # 作废(防陈旧候选对后续同名单元假确认)。
                 for k in [k for k in pending
                           if k[0] == anchor[0] and k[1] == anchor[1]]:
                     del pending[k]
                 continue
-            if bc.star == t.star:
+            if bc.star == _tident[1]:
                 pending.pop(anchor + (bc.char_id,), None)
                 continue
             key = anchor + (bc.char_id,)
@@ -164,14 +180,14 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
             if not frozen:
                 pending[key] = bc.star   # 首帧差:登记候选,下帧同值才采新
             held = bc.star
-            bc.star = t.star             # 保旧写账:就地改写读对象
+            bc.star = _tident[1]         # 保旧写账:就地改写读对象
             if frozen:
                 _verdict = ('保旧-合成特效窗(窗内星读不可信,不计两帧;'
                             f'source={source})')
             else:
                 _verdict = ('保旧-星级抖动门(单帧差弃读,两帧一致才采新;'
                             f'source={source})')
-            _conflict('star', t.star, held, screen,
+            _conflict('star', _tident[1], held, screen,
                       verdict=_verdict,
                       source=source, char=bc.char_id,
                       slot=anchor[1], domain=anchor[0])
@@ -196,12 +212,20 @@ def _merge_equips(old_list, new_list) -> list:
     修法:按 char_id 把**旧 tracking 的 equips 续接到新读对象**(同名多副本
     逐个配对消耗,次序无关);新读自带的非空 equips(画面真值,如 deploy_bench
     快照后传参)优先保留不覆盖;旧有新无(角色离场)自然丢弃。
+
+    P1 tracked 双形:旧账 bench 侧 = BenchSlot(kind='unit' → 内嵌 Unit)/
+    deployed 侧 = Unit,身份读经 :func:`_tracked_identity` 同源协议;
+    新读对象 = 观察边界 BenchChar(P6 前读链产形),equips 续写直达。
     """
     old_eq: dict[str, list[list[str]]] = {}
     for bc in (old_list or []):
-        if bc is not None and bc.char_id:
-            old_eq.setdefault(bc.char_id, []).append(
-                list(getattr(bc, 'equips', None) or []))
+        if bc is None:
+            continue
+        ident = _tracked_identity(bc)
+        if ident is not None and ident[0]:
+            old_eq.setdefault(ident[0], []).append(
+                list(getattr(bc.unit if hasattr(bc, 'kind') else bc,
+                             'equips', None) or []))
     out = []
     for bc in (new_list or []):
         if bc is not None and getattr(bc, 'char_id', ''):
@@ -253,11 +277,22 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     # 守卫:跳过 None 槽(空槽在对账语义里=无信息,不是冲突)。
     # 旧账基准 = game state 簿记(宿主 = GameState.
     # tracked_books,本函数 = game state 层内部实现,就地处置)。
+    # P1 tracked 形状:bench = BenchSlot | None(unit 才有身份,占位件
+    # 以 ('',1) 入漂移基准——与旧 BenchChar is_item_slot 空名位同形)/
+    # deployed = Unit | None。
     _books = game_state_of(session).tracked_books
-    old_b = [(bc.char_id, bc.star) for bc in _books.bench
-             if bc is not None]
-    old_d = [(bc.char_id, bc.star) for bc in _books.deployed
-             if bc is not None]
+
+    def _tracked_sig(entries) -> list:
+        out = []
+        for t in (entries or []):
+            if t is None:
+                continue
+            ident = _tracked_identity(t)
+            out.append((ident[0], ident[1]) if ident is not None else ('', 1))
+        return out
+
+    old_b = _tracked_sig(_books.bench)
+    old_d = _tracked_sig(_books.deployed)
     if not bench and not deployed and (old_b or old_d):
         log.warning(f'[cw!][{source}] 对账跳过:SIFT 双空读(疑过渡帧)+前值非空 → 保旧 tracking')
         _conflict('tracking', f'{old_b}|{old_d}', '[]|[]', screen,
@@ -310,8 +345,11 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
             # ——容器观察态字段置 True(策略商店门放行;bench 读失败/双空
             # 读守卫/槽号健康门拒绝不走此处 = 保持未观察)。best-effort:
             # 容器缺席/写失败不阻断对账主链(簿记已照常写回)。
+            # P1 写回形状 = bench_from_compact 直产 BenchSlot 槽表(§2.3);
+            # orig_view = 容器观察帧,占位件 kind 细分权威源(§2.4)。
             game_state_of(session).tracked_books.bench = bench_from_compact(
-                _merge_equips(_books.bench, bench))
+                _merge_equips(_books.bench, bench),
+                orig_view=game_state_of(session).bench.value)
             try:
                 game_state_of(session).write_logic(
                     game_state_of(session).tracked_account_observed, True,

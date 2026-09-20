@@ -1363,79 +1363,51 @@ EQUIP_ACQUIRE_CONSEQUENCES: dict[str, tuple[str, int]] = {
     '数据拷贝仪Max': ('银狼LV.999', 1),
 }
 
-def bench_view_keep_items(work: list, orig: BenchView) -> BenchView:
-    """工作槽位表 → BenchView,占位件 kind 细分按原观察保留(共享口)。
-
-    `bench_view_of_slots` 对占位件(典籍/书册卡/箱)恒降级 supply_box
-    (is_item_slot 布尔无类型信息)——整表换新的角色/单位写会降级占位件,
-    让后续 OpenTome/OpenBookcard 按 kind 找不到槽。本口按原观察槽位还原
-    tome/bookcard/supply_box 细分,其余槽照 unit 形态映射。
-    (原形 = collect_ore 步内私有 helper,随获得后果段升为跨消费共享口,
-    collect_ore 同批改为委托本函数——单一实现零行为差。)
-    """
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        BenchSlot,
-        BenchView,
-        Unit,
-    )
-    slots = []
-    for i, bc in enumerate(work):
-        orig_slot = orig.slots[i] if i < len(orig.slots) else None
-        if bc is None:
-            slots.append(BenchSlot(kind='empty'))
-        elif (bool(getattr(bc, 'is_item_slot', False))
-                and orig_slot is not None
-                and orig_slot.kind in ('tome', 'bookcard', 'supply_box')):
-            slots.append(orig_slot)
-        else:
-            slots.append(BenchSlot(kind='unit', unit=Unit(
-                char_id=str(getattr(bc, 'char_id', '') or ''),
-                star=int(getattr(bc, 'star', 1) or 1),
-                equips=list(getattr(bc, 'equips', None) or []),
-                slot=i + 1)))
-    while len(slots) < len(orig.slots):
-        slots.append(BenchSlot(kind='empty'))
-    return BenchView(slots=slots, capacity=orig.capacity)
-
-
 def _slot_sig(slots: list) -> list:
-    """槽位表值签名(bench/deployed 通用;变更检测用,防共享对象原地
-    变异导致「签名没变值已变」的假阴)。"""
-    return [None if b is None else
-            (b.char_id, b.star, tuple(b.equips or ()))
-            for b in slots]
+    """槽表值签名(变更检测用;bench 侧 BenchSlot/占位 kind 与 deployed
+    侧 Unit 双形,防共享对象原地变异导致「签名没变值已变」的假阴——
+    frozen 形下引擎 replace 新构造,签名比较仅判「是否需要落一行」)。"""
+    out = []
+    for x in (slots or []):
+        if x is None:
+            out.append(None)
+            continue
+        kind = getattr(x, 'kind', None)
+        if kind is not None:
+            u = x.unit if kind == 'unit' else None
+            out.append((kind, None if u is None else
+                        (u.char_id, u.star, tuple(u.equips or ()))))
+        else:
+            out.append((x.char_id, x.star, tuple(x.equips or ())))
+    return out
 
 
 def merge_cascade_write(gs: GameState, work_bench: list, work_dep: list, *,
                         rand: bool, evidence: str, producer: str,
                         sig: ChannelSig,
                         orig_view: BenchView | None = None) -> int:
-    """合成级联写(设计 §2.0/§2.1③ 共用消费体;调用方持深拷贝工作列表)
-    ——全员 merge_simulate 正常推演(与普通单位同语义)。
+    """合成级联写(设计 §2.0/§2.1③ 共用消费体;调用方持工作列表副本)
+    ——全员 merge_simulate 正常推演(与普通单位同语义;费用档不同时
+    存在定谳,分组键 (char_id, star) 无跨档歧义)。
 
-    分组键 (char_id, star) 无费用维度亦无歧义:银狼LV.999 的费用档不同时
-    存在——升星选择升费后商店只出新费用档、赠送单位也只给该费用档,容器
-    内不会同时有跨费用档的同名单位[口述·权威 2026-09-18],同名即同档。
-
-    - 逐级合并后受影响域各落一行(:meth:`cw_merge_simulate._merge_bench`
-      on_step 范式;行域载体在场上 = bench+front+back 同号三行):
-      rand=False 走 write_logic(确定面),rand=True 走 write_logic_rand
-      (采样链内);
-    - ``orig_view`` = bench 原观察帧(占位件 kind 保留,见
-      :func:`bench_view_keep_items`;None = 以 work 状态构造);
+    P1 容器原生形状:``work_bench`` = list[BenchSlot | None](工作槽表)/
+    ``work_dep`` = list[Unit | None](行域下标派生表,§2.3);逐级合并后
+    受影响域各落一行(:meth:`cw_merge_simulate._merge_bench` on_step
+    范式;行域载体在场上 = bench+front+back 同号三行):
+    rand=False 走 write_logic(确定面),rand=True 走 write_logic_rand
+    (采样链内);
+    - ``orig_view`` = bench 原观察帧(容量随原观察;None = 默认容量);
     - 返回落行数(测试/留证用)。
     """
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        deployed_indexed_to_rows,
+    )
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_view_of_slots,
-        deployed_slots_to_rows,
+        bench_view_of_working,
     )
     from sr_od.application.currency_war.kernel.cw_merge_simulate import (
         _merge_bench,
     )
-
-    def _view() -> BenchView:
-        return (bench_view_keep_items(work_bench, orig_view) if orig_view
-                is not None else bench_view_of_slots(work_bench))
 
     write = gs.write_logic_rand if rand else gs.write_logic
     rows = 0
@@ -1449,13 +1421,13 @@ def merge_cascade_write(gs: GameState, work_bench: list, work_dep: list, *,
         ev = f'{evidence}#merge{step_no}'
         bs = _slot_sig(work_bench)
         if bs != last_bs:
-            write(gs.bench, _view(), produced_by=producer, evidence=ev,
-                  sig=sig)
+            write(gs.bench, bench_view_of_working(work_bench, orig_view),
+                  produced_by=producer, evidence=ev, sig=sig)
             last_bs = bs
             rows += 1
         ds = _slot_sig(work_dep)
         if ds != last_ds:
-            front, back = deployed_slots_to_rows(work_dep)
+            front, back = deployed_indexed_to_rows(work_dep)
             write(gs.front_row, front, produced_by=producer, evidence=ev,
                   sig=sig)
             write(gs.back_row, back, produced_by=producer, evidence=ev,
@@ -1482,38 +1454,37 @@ def grant_bench_unit_cascade(gs: GameState, name: str, star: int, *,
                              sig: ChannelSig | None = None) -> BenchGrantResult:
     """单位入席+合成级联共用核心(获得后果/投资效果函数单一实现体)。
 
-    单位落备战席首空槽(bench_place)→ :func:`merge_cascade_write` 级联
-    (全员正常推演)→ 逐步各落一行。``rand`` = 写通道
-    (False = write_logic 确定面 / True = write_logic_rand 采样链);
-    ``sig`` 缺省 = 装备桥 logic_hook 签名,动作报告上下文传入动作 sig 使
-    链行同组。bench 未观察/席满 → 零写拒落(落位真值由观察给出)。
+    单位落备战席首空槽(bench_place,容器原生 BenchSlot 直落)→
+    :func:`merge_cascade_write` 级联(全员正常推演)→ 逐步各落一行。
+    P1 容器原生:工作副本 = BenchView 槽序 + 行域下标派生表(§2.1);
+    占位件槽位 kind 随工作表原样保留(零换形降级)。
+    ``rand`` = 写通道(False = write_logic 确定面 / True =
+    write_logic_rand 采样链);``sig`` 缺省 = 装备桥 logic_hook 签名,
+    动作报告上下文传入动作 sig 使链行同组。bench 未观察/席满 → 零写
+    拒落(落位真值由观察给出)。
     """
-    from copy import deepcopy
-
     from sr_od.application.currency_war.kernel.cw_exec_state import (
-        BenchChar,
         bench_place,
+        deployed_rows_to_indexed,
     )
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_slots_of,
-        deployed_slots_of,
+        BenchSlot,
+        Unit,
+        bench_view_of_working,
     )
     orig_view = gs.bench.value
     if orig_view is None:
         return BenchGrantResult(placed=False, merge_steps=0,
                                 detail='bench_unobserved')
-    work_bench = [deepcopy(b) if b is not None else None
-                  for b in bench_slots_of(gs)]
-    work_dep = [deepcopy(d) if d is not None else None
-                for d in deployed_slots_of(gs)]
-    if bench_place(work_bench, BenchChar(
-            slot=0, char_id=name, star=star,
-            position_pref='back')) is None:
+    work_bench = list(orig_view.slots)
+    work_dep = deployed_rows_to_indexed(gs.front_row.value, gs.back_row.value)
+    if bench_place(work_bench, BenchSlot(
+            kind='unit', unit=Unit(char_id=name, star=star))) is None:
         return BenchGrantResult(placed=False, merge_steps=0,
                                 detail='bench_full')
     write = gs.write_logic_rand if rand else gs.write_logic
     _sig = sig if sig is not None else _equip_bridge_sig(gs)
-    write(gs.bench, bench_view_keep_items(work_bench, orig_view),
+    write(gs.bench, bench_view_of_working(work_bench, orig_view),
           produced_by=producer, evidence=evidence, sig=_sig)
     steps = merge_cascade_write(gs, work_bench, work_dep, rand=rand,
                                 evidence=evidence, producer=producer,

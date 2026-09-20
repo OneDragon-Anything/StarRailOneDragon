@@ -262,30 +262,34 @@ def place_bench_unit_placeholder(gs: GameState, char_id: str, faction: str,
 
     首版占位内容不含角色晶矿,本函数为 M17 内容扩展预留的统一落席口
     (渠道对齐 gameplay「备战席溢出」节:席满不丢,溢出悬挂由容器
-    overflow 面承载,非本 sim 辖域)。容器 BenchView 槽序 ↔ 9 槽定长
-    表转换后经 ``bench_place`` 找空位落件。
-    """
+    overflow 面承载,非本 sim 辖域)。
+
+    P1 容器原生直写(§3.2):BenchView 槽序工作副本上直接落 BenchSlot
+    ——原有「视图↔9 槽表转换 + bench_place」旧形往返随换形口退役;
+    保真修复(设计 §2.2 申报第 2 项):工作副本保留非 unit 槽(占位件
+    kind)与 Unit.equips 原样,重建不再丢占位件槽/丢装备,新角色落
+    **首个真真空槽**。
+    ``faction`` 形参 = 旧 BenchChar 载体时代的落席签名位(对照采集脚本
+    capture.py 沿用);Unit 不存阵营(§3.2.3,注册表派生),本函数不再
+    消费。"""
+    del faction   # 形参保留见函数注;Unit 无阵营位
     from sr_od.application.currency_war.kernel.cw_exec_state import (
-        BenchChar,
         bench_place,
     )
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_view_of_slots,
+        BenchSlot,
+        Unit,
+        bench_view_of_working,
     )
     view = gs.bench.value
     if view is None or not bench_has_space(gs):
         return False
-    ordered: list[BenchChar | None] = [None] * len(view.slots)
-    for i, s in enumerate(view.slots):
-        if s is not None and s.kind == 'unit' and s.unit is not None:
-            u = s.unit
-            ordered[i] = BenchChar(slot=i + 1, char_id=u.char_id,
-                                   faction='', star=u.star)
-    placed_at = bench_place(ordered, BenchChar(slot=0, char_id=char_id,
-                                               faction=faction, star=1))
+    slots = list(view.slots)
+    placed_at = bench_place(slots, BenchSlot(
+        kind='unit', unit=Unit(char_id=char_id, star=1)))
     if placed_at is None:
         return False
-    gs.observe(gs.bench, bench_view_of_slots(ordered),
+    gs.observe(gs.bench, bench_view_of_working(slots, view),
                evidence=sim_evidence('ball:bench'),
                sig=obs_sig(group_id='sim:ball'))
     return True

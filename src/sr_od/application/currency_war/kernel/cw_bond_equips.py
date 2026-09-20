@@ -105,12 +105,14 @@ def equip_bond_grants(equip_name: str) -> tuple[str, ...]:
     return _EQUIP_BOND_GRANTS.get(equip_name, ())
 
 
-def unit_bond_tags(bc) -> tuple[str, ...]:
+def unit_bond_tags(bc, row: str | None = None) -> tuple[str, ...]:
     """一个已上阵单位的羁绊标签**多集**(L1 全集 + L2 装备贡献;ADR-0312)。
 
     - 角色:CHARACTERS 注册表 factions + flows + independent 全集;
-      开拓者按 ``position_pref`` 归一形态(前排=记忆/后排=欢愉,
-      与 board_from_tracked 同口径);
+      开拓者按排归一形态(前排=记忆/后排=欢愉,与 board_from_tracked
+      同口径);排源 = ``row`` 显式形参(容器下标派生,§2.1——P1 起
+      tracked deployed 为 Unit 下标表,行归属由下标传入),缺省回落
+      ``position_pref`` 信息位(观察边界 BenchChar 载体,P6 前读链);
     - 装备分两类语义(用户口述裁定,最高权威):
       * **星徽 = 额外增加一个羁绊**(add-if-absent):只把没有该羁绊的
         单位变成成员;装备者已拥有该羁绊(自报或其他装备已授)时**不重复计数**;
@@ -121,15 +123,15 @@ def unit_bond_tags(bc) -> tuple[str, ...]:
       容器派生 ``cw_game_state._row_unit_tags`` 零兜底——Unit 无 faction
       位,漂移由 board 观察覆盖采新收敛(board_derived_adopt))。
 
-    duck-typed:凡带 char_id/position_pref/equips 属性(BenchChar 或
+    duck-typed:凡带 char_id/equips 属性(BenchChar/Unit 或
     SimpleNamespace shim)皆可——实机/sim/检查三侧同函数。
     """
     cid = getattr(bc, 'char_id', '') or ''
     if not cid or cid == '?':
         return ()
-    row = getattr(bc, 'position_pref', 'back') or 'back'
+    eff_row = row or (getattr(bc, 'position_pref', 'back') or 'back')
     if is_trailblazer(cid):
-        cid = trailblazer_form(cid, row)
+        cid = trailblazer_form(cid, eff_row)
     ch = CHARACTERS.get(cid)
     if ch is None:
         return ()

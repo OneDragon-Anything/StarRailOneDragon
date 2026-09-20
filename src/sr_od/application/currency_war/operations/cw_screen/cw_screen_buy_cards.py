@@ -765,10 +765,20 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # (tracked 播种已随 W6 波 4 黑板容器化取消——设计件 §2.1-5:容器
         #  bench = prep 帧观察值(观察漏斗写端)+ visit 内逻辑态直写;黑板帧
         #  播种的唯一消费者 = 旧帧决策链,读者切换后无行为面。)
-        if game_state_of(match.session).tracked_books.bench:
+        _tb = game_state_of(match.session).tracked_books.bench
+        # P1 tracked bench = list[BenchSlot | None]:unit 槽读内嵌身份,
+        # 占位件槽无身份以 ('', 1) 显影(与旧 is_item_slot 空名位同形)。
+        _tb_rows = []
+        for _b in (_tb or []):
+            if _b is None:
+                continue
+            if getattr(_b, 'kind', None) == 'unit' and _b.unit is not None:
+                _tb_rows.append((_b.unit.char_id, _b.unit.star))
+            else:
+                _tb_rows.append(('', 1))
+        if _tb_rows:
             log.info(f'[cw] tracked_bench_chars='
-                     f'{[(c.char_id, c.star) for c in game_state_of(match.session).tracked_books.bench if c is not None]}'
-                     f'(播种取消,仅日志显影)')
+                     f'{_tb_rows}(播种取消,仅日志显影)')
         # 段顶入口观察的局内事实宿主 = 容器单例,写入 = 观察漏斗直写。
         # visit 基准载体(黑板槽退役收口,ADR-0651 容器单源):段顶入口
         # 观察回执,T-163 起恒定不随动作推进(帧级逻辑态推算链已随 simulate 前瞻

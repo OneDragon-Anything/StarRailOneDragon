@@ -76,19 +76,22 @@ def report_action_sell_bench_param(gs: GameState, param: Any, sig: ChannelSig,
                                    slot=idx + 1))
         _w(gs.overflow_card, '', 'proj_overflow_absorbed')
         _w(gs.overflow_warning, False, 'proj_overflow_cleared')
-        # 执行侧 tracked 对称吸收:入位卡同帧记进执行主账(摘该槽幂等
-        # + 追加入位卡后按槽号重建槽位表,bench_from_compact 重建 =
-        # S2 写回同构,ADR-0316 恒 pad 态)。
+        # 执行侧 tracked 对称吸收:入位卡同帧记进执行主账(P1 tracked
+        # 形状 = list[BenchSlot | None] 定长 9,按下标直写;原「摘槽号
+        # 幂等 + bench_from_compact 重建」腿的信息位寻址随形退役——
+        # 表下标权威,直写即同槽同位,ADR-0316 保洞语义不变)。
         if session is not None:
             from sr_od.application.currency_war.kernel.cw_exec_state import (
-                BenchChar,
-                bench_from_compact,
+                BENCH_CAPACITY,
             )
             _books = gs.tracked_books
-            _tracked = [bc for bc in (_books.bench or [])
-                        if bc is not None and bc.slot != idx + 1]
-            _tracked.append(BenchChar(slot=idx + 1, char_id=_ov_id))
-            _books.bench = bench_from_compact(_tracked)
+            _tracked = list(_books.bench or [])
+            while len(_tracked) < BENCH_CAPACITY:
+                _tracked.append(None)
+            _tracked[idx] = BenchSlot(
+                kind='unit', unit=Unit(char_id=_ov_id, star=1,
+                                       slot=idx + 1))
+            _books.bench = _tracked
     _w(gs.bench, BenchView(slots=bench_slots,
                            capacity=(_bview.capacity
                                      if _bview is not None
