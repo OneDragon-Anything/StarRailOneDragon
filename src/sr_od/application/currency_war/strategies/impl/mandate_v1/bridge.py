@@ -38,9 +38,9 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
+    CwActionObsParam,
     CwActionPickEncounterParam,
     CwActionRefreshNodeOptionsParam,
-    HoldFrame,
 )
 from sr_od.application.currency_war.strategies.impl.flow import (
     CwFlowStrategy,
@@ -162,17 +162,19 @@ class MandateV1Strategy(CwFlowStrategy):
         calibration.apply()
 
     def decide_prep_screen(self) -> CwAction:
-        """备战画面决策(终态零参口 §2.1;单动作;空发射帧 = HoldFrame)。
+        """备战画面决策(终态零参口 §2.1;单动作;空发射 = CwActionObsParam
+        scope='outer_loop' 交回外循环重观察——原 HoldFrame 通道收编,
+        用户裁定 2026-09-20)。
 
         输入 = **容器 game state 直读**(迭代 2026-09-18-prep-obs-
         retirement 阶段 3.5:黑板 gs.prep_obs 读点与缺失抛错防线随黑板
         退役删除——「观察先于决策」前提由画面 op 编排保证,op 入口
         heavy 先于决策调用)。输出 = 决策核发射序列的**首个动作**;
-        空序列(含截断截空)→ ``HoldFrame`` = 本帧无动作交回外循环
-        重观察(None 退役,终态契约 §2.2)。帧稳定截断为决策核内发射组织,
-        非流程侧契约。入口内务 = 备战帧代次消费(方向刷新先于三遍编排)。
-        管线宿主 = self.gs(state_of(gs) 经同源接线解析策略器状态;
-        game_state_of(gs) 本体直通)。
+        空序列(含截断截空)→ 空发射 obs(scope='outer_loop')= 本帧无
+        动作交回外循环重观察(None 退役,终态契约 §2.2)。帧稳定截断为
+        决策核内发射组织,非流程侧契约。入口内务 = 备战帧代次消费
+        (方向刷新先于三遍编排)。管线宿主 = self.gs(state_of(gs) 经同源
+        接线解析策略器状态;game_state_of(gs) 本体直通)。
         """
         # 方向重估先于决策(触发 = 帧代次标注;ADR-0583 §3.3-①)
         self._consume_prep_direction_frame()
@@ -194,7 +196,7 @@ class MandateV1Strategy(CwFlowStrategy):
         disclose_budget(self.gs, self.gs, self.registry)
         actions = decide_prep_frame(self.gs, self.config,
                                     registry=self.registry)
-        return actions[0] if actions else HoldFrame()
+        return actions[0] if actions else CwActionObsParam(scope='outer_loop')
 
     def decide_encounter(self) -> CwActionPickEncounterParam | CwActionRefreshNodeOptionsParam:
         """遭遇分支选卡(终态零参口;候选 = ``gs.encounter`` payload):E-2

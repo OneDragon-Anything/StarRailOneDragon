@@ -88,8 +88,8 @@
   → bridge.decide_prep_screen：方向代次消费（帧代次标注读后即清）
   → 前置发射位 _launch_front_check（armed 帧短路 return；短路帧不披露）
   → 预算遥测披露 economy_cycle.disclose_budget（落点 = 前置发射位判定之后，非 armed 帧才到达）
-  → 决策（decide_prep_frame → entry.emit 三遍编排；决策输入 = 容器 game state 直读，零黑板；动作产出 = 恰一个动作（CwAction | HoldFrame））
-  → 帧稳定截断（entry.py::truncate_frame_stable；单动作循环逐帧恰取一个动作，HoldFrame = 本帧无动作交回重观察）
+  → 决策（decide_prep_frame → entry.emit 三遍编排；决策输入 = 容器 game state 直读，零黑板；动作产出 = 恰一个动作（CwAction））
+  → 帧稳定截断（entry.py::truncate_frame_stable；单动作循环逐帧恰取一个动作，空发射 = CwActionObsParam scope='outer_loop' 交回外循环重观察——原 HoldFrame 收编，用户裁定 2026-09-20）
   → 执行（PrepActionExecutor 分派 → CwActionXxxOp(SrOperation) 节点直调）
   → op 自上报（report_action_<snake>_param）+ tracked 随动（执行器 _track_*）
     （动作后逻辑态唯一更新点 = 上报函数族单点）

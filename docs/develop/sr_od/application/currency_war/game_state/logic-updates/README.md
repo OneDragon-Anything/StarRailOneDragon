@@ -66,5 +66,5 @@
 
 - **SwapDeploy**(容器语义在 `report_action_swap_deploy_param`,生产执行器未接线)→ [prep-executor-actions.md](prep-executor-actions.md) §3(非注册行注);
 - **7 个 handler 自管 pick 子类**(PickInvest/PickStarTome/PickWishTrial/PickBoxCard/PickFortune/PickExpertInvite/PickEquip)由各画面 handler 自管消费链,不经注册表;
-- **3 个刷新动作**(RefreshNodeOptions/RefreshSupply/RefreshInvestCards)走各画面既有点击链;**HoldFrame** = 等待帧非动作;
+- **3 个刷新动作**(RefreshNodeOptions/RefreshSupply/RefreshInvestCards)走各画面既有点击链;(HoldFrame 曾在册 = 等待帧非动作,2026-09-20 用户裁定随重观察动作收编删除——`CwActionObsParam` scope='outer_loop' 同为分支拦截型,但其词表类有注册行(in_place 路径派发用),不属本节无行豁免面);
 - **商店域旧 op 文件**(`cw_sell_bench_action` / `cw_level_up_action`):**已随动作 op 重组退役删除**(词表摊平后单一注册行指备战 op,`cw_action_registry.py` 模块头「同名动作双域行更替申报」注销登记),逻辑态语义由上报函数保留、并入 [sell-bench.md](sell-bench.md) / [level-up.md](level-up.md) 双域记载。

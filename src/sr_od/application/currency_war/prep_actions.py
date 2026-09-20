@@ -38,12 +38,14 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
 from sr_od.application.currency_war.kernel.cw_game_state import gs_of_ctx
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CW_ACTION_TYPES,
+    OBS_SCOPES,
     CwAction,
     CwActionCollectOreParam,
     CwActionDeployMoveParam,
     CwActionFurnaceUseParam,
     CwActionLevelUpParam,
     CwActionLuckyTokenUseParam,
+    CwActionObsParam,
     CwActionOpenBookcardParam,
     CwActionOpenBoxParam,
     CwActionOpenTomeParam,
@@ -332,6 +334,13 @@ class PrepActionExecutor:
                 if not (1 <= action.slot <= n):
                     return (f'{type(action).__name__} slot={action.slot} '
                             f'越界(1-{n})')
+        elif isinstance(action, CwActionObsParam):
+            # scope 值域闭集校验(单一源 = cw_vocab.OBS_SCOPES;outer_loop
+            # 口径在决策循环 F3 之前拦截,到不了这里——这里只拦 in_place
+            # 路径的拼错值)。
+            if action.scope not in OBS_SCOPES:
+                return (f'CwActionObsParam scope={action.scope!r} 非法'
+                        f'(值域闭集 OBS_SCOPES)')
         elif isinstance(action, (CwActionWrenchUseParam, CwActionPrecisionWrenchUseParam,
                                 CwActionStaffProjectorUseParam, CwActionPerfectProjectorUseParam,
                                 CwActionLuckyTokenUseParam)):

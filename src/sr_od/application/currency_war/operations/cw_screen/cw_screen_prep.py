@@ -55,7 +55,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionObsParam,
     CwActionOpenShopParam,
     CwActionStartBattleParam,
-    HoldFrame,
     action_key,
 )
 from sr_od.application.currency_war.obs.currency_war_cv import slot_occupied
@@ -1148,14 +1147,15 @@ class CwScreenPrep(SrOperation):
                 log.warning(f'[cw!][director] 策略输出非 CwAction: '
                             f'{type(result).__name__}')
                 return self.round_fail(status='策略输出非 CwAction(F3)')
-            if isinstance(result, HoldFrame):
-                # HoldFrame = 本帧无动作可发,交回外循环重观察(终态契约
-                # §2.2:备战空发射帧显式信号,None 退役;等待帧非动作——
-                # 不进 validate/执行器/动作注册表/续段 token/动作记录,round
-                # 返回形态与等待时长逐字不变。系统级 stall_watch/NODE-DWELL
-                # 哨兵对其透明;系统并无「连续空发射计数器」,stall 防线
-                # 哨兵只对无进展留证)。
-                return self.round_success('本帧无动作(HoldFrame),交回外循环重观察', wait=1.0)
+            if isinstance(result, CwActionObsParam) \
+                    and result.scope == 'outer_loop':
+                # 交回外循环重新观察(空发射帧显式信号;原 HoldFrame 收编
+                # 进 obs scope 口径,用户裁定 2026-09-20):拦截型——不进
+                # validate/执行器/动作注册表/续段 token/动作记录,round
+                # 返回形态与等待时长与原 HoldFrame 分支逐字一致。系统级
+                # stall_watch/NODE-DWELL 哨兵对其透明;系统并无「连续空
+                # 发射计数器」,stall 防线哨兵只对无进展留证。
+                return self.round_success('本帧无动作(Obs:outer_loop),交回外循环重观察', wait=1.0)
             action = result
             # F3 校验:参数非法交回留证;执行前输入契约检查,非动作后判效
             err = self._executor.validate(action)

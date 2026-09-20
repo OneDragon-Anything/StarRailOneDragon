@@ -1099,38 +1099,45 @@ class CwActionRefreshInvestCardsParam:
                            metadata={'action_key_exclude': True})
 
 
+#: CwActionObsParam.scope 值域闭集(观察口径单一源;消费端 = 备战决策环
+#: 分支判等,in_place 走执行器、outer_loop 拦截交回;F3 静态校验同取本源)。
+OBS_SCOPES: frozenset[str] = frozenset({'in_place', 'outer_loop'})
+
+
 @dataclass
 class CwActionObsParam:
-    """环内重观察动作(策略发射 → 当前画面重新观察上报,不交回外循环)。
+    """重观察动作(策略发射 → 请求新鲜观察,口径由 ``scope`` 选择)。
 
-    语义:执行体 = 宿主画面 op 的 heavy 观察链重跑(漏斗直写容器 = 观察
-    边界对账,「观察赢」),决策环原地续跑——访问不重启、段序号不置位、
-    外循环零往返。与 HoldFrame 的分界:HoldFrame = 本帧无动作,交回外
-    循环重观察(付一次重分发成本);本动作 = 留在决策环内拿新鲜观察,
-    适用于动作后随机面/不确定面需要真值再决策的场景。
+    - ``scope='in_place'``(缺省):**当前画面重新观察上报**——执行体 =
+      宿主画面 op 的 heavy 观察链重跑(漏斗直写容器 = 观察边界对账,
+      「观察赢」),决策环原地续跑:访问不重启、段序号不置位、外循环
+      零往返。帧代次标注 'full'(方向重估触发,同入口帧;贵段消费侧有
+      每 game-round 恰一次键守卫限频)。重观察发现事件 overlay 在场 =
+      抛 CwObsOverlayBail 交回外循环重分发(画面识别与路由归外循环,
+      环内不消化;捕获点 = ``cw_screen_prep.act``)。
+    - ``scope='outer_loop'``:**交回外循环重新观察**——决策环在
+      validate/执行器之前拦截(不进执行器、不进动作注册表、不写续段
+      token/动作记录),round_success(wait=1.0) 交回外循环重观察。
+      本口径收编原 ``HoldFrame`` 空发射帧通道(用户裁定 2026-09-20
+      HoldFrame 删除:两通道同为「观察请求」,口径差异收进参数;空发射
+      语义 = 本帧无动作可发,交回让外循环重判/等待,自旋防护 = 交回后
+      归外循环 stall 防线)。
 
-    重观察发现事件 overlay 在场 = 抛 CwObsOverlayBail 交回外循环重分发
-    (画面识别与路由归外循环,环内不消化 overlay;捕获点 =
-    ``cw_screen_prep.act``)。帧代次标注 'full' 归决策循环写点(方向重估
-    触发,同入口帧;贵段消费侧有每 game-round 恰一次键守卫限频)。
-
-    零容器动作写语义:上报通道 = 观察漏斗本体(read_game_state 直写),
-    ``report_action_obs_param`` = 零写族占位(命名规约完备锁对象)。
-    现役接线域 = 备战决策环(CwScreenPrep);其他决策域发射 = 宿主能力
-    缺失 AssertionError 响亮暴露(策略器 bug)。
+    零容器动作写语义:in_place 口径的容器更新通道 = 观察漏斗本体
+    (read_game_state 直写),``report_action_obs_param`` = 零写族占位
+    (命名规约完备锁对象)。现役接线域 = 备战决策环(CwScreenPrep);
+    in_place 在其他决策域发射 = 宿主能力缺失 AssertionError 响亮暴露
+    (策略器 bug)。
     """
+    scope: str = 'in_place'   # 观察口径,值域闭集 = OBS_SCOPES('in_place' 环内重观察 / 'outer_loop' 交回外循环重观察)
     reason: str = ''   # 归因记录字段(非指令;''=未标)
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 
 
-@dataclass
-class HoldFrame:
-    """备战空发射帧显式信号:本帧无动作可发,交回外循环重新观察。
-
-    消费契约:不进执行器、不进动作注册表、不写续段 token/动作记录
-    (等待帧非动作);备战决策环分支判等对象由 None 换本类型,
-    round 返回形态与等待时长逐字不变。"""
+# (HoldFrame 已删除,用户裁定 2026-09-20:空发射帧通道收编进
+#  CwActionObsParam(scope='outer_loop'),两观察口径统一为一个动作类型;
+#  历史形态考古走 git 历史。)
     reason: str = ''
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
@@ -1151,7 +1158,7 @@ CwAction = (
         CwActionPickPartnerParam | CwActionPickPlannerParam | CwActionPickStarTomeParam | CwActionPickWishTrialParam |
         CwActionPickBoxCardParam | CwActionPickFortuneParam | CwActionPickExpertInviteParam | CwActionPickEquipParam |
         CwActionRefreshNodeOptionsParam | CwActionRefreshSupplyParam | CwActionRefreshInvestCardsParam |
-        CwActionObsParam | HoldFrame
+        CwActionObsParam
 )
 # ——漏登记时执行面 validate 拒「未知动作类型」,动作从未真正执行
 # (CwActionOpenTomeParam 曾漏登记,数百次拒绝被误读为执行失败;登记是入口门)。
@@ -1171,12 +1178,11 @@ CW_ACTION_TYPES: tuple = (
     CwActionPickFortuneParam, CwActionPickExpertInviteParam, CwActionPickEquipParam,
     CwActionRefreshNodeOptionsParam, CwActionRefreshSupplyParam, CwActionRefreshInvestCardsParam,
     CwActionObsParam,
-    HoldFrame,
 )
 
 #: 选择族收敛单表(终态契约 §2.7):pick 子类型单表(9+3,契约扩员
 #: 12→15 后十二个),供 handler 分派/注册完备锁遍历(三刷新动作走各自
-#: 既有点击链不入本表;HoldFrame = 无操作语义,不属选择族)。
+#: 既有点击链不入本表;Obs = 观察请求语义,不属选择族)。
 PICK_ACTION_TYPES: tuple = (
     CwActionPickEncounterParam, CwActionPickSupplyParam, CwActionPickInvestParam, CwActionPickMegastarParam, CwActionPickPartnerParam,
     CwActionPickPlannerParam, CwActionPickStarTomeParam, CwActionPickWishTrialParam, CwActionPickBoxCardParam,
