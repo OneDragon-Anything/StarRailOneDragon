@@ -397,7 +397,7 @@ P59(线成型门辖帧买入集与 off-line 围栏件不相交——**证伪**,�
 
 **armed 判据语义增注(2026-09-07)**:本节触发式第一行「form_progress ≥ 1.00」之上已叠加**成型质量合取**——armed = 配方完备 ∧〔板面承重满额 ∨ 部署计划不可得 fail-open〕(B_t 通道承重结构维,零自由参数;判据资格与待标定项 = §11.10 as-built 补录)。本节代码块保留发射位/位次/硬约束规格历史,armed 判据当前语义权威 = §11.10 as-built。
 
-**宿主迁移注(2026-09-16,备战访问 op 化落地)**:本节发射位的 cw_loop 达标臂宿主形态退役——发射决策迁 mandate_v1 前置发射位(`bridge._launch_front_check`,armed 判据消费本核;质量推迟/评估异常分键随消费迁策略前置位);受限访问 = 意图执行(`OpenShop(restricted_spend)` → 仲裁单元 `_launch_frame_arbitration` 原样复用);发射执行 = 统一执行器 `launch_battle_unified`(屏态复验/浮层闸内嵌,face = armed/resume 两调用面,C1 单一函数保持)。遥测退役申报:随分支与预检消亡的键 = `readiness_launch_fail`/`readiness_launch_giveup`/`KEY_PRECHECK_SKIP`;留执行器的键 = `readiness_stale_screen`/`readiness_overlay_hold`/`deploy_swap_no_victim`/`KEY_ABANDONED_LAUNCH`。判定语义与 as-built 权威(§11.10)不变。
+**宿主迁移注(2026-09-16,备战访问 op 化落地)**:本节发射位的 cw_loop 达标臂宿主形态退役——发射决策迁 mandate_v1 前置发射位(`bridge._launch_front_check`,armed 判据消费本核;质量推迟/评估异常分键随消费迁策略前置位);受限访问 = 意图执行(`OpenShop(restricted_spend)` → 仲裁单元 `_launch_frame_arbitration` 原样复用,唯一调用点 = 备战访问 op `CwScreenPrep` 受限访问执行分支);发射执行 = 统一执行器 `launch_battle_unified`(屏态复验/浮层闸内嵌,face = armed/resume 两调用面,C1 单一函数保持)。遥测写点宿主与退役键逐键申报 = §11.11;要点:随达标臂分支消亡的键 = `readiness_launch_fail`/`readiness_launch_giveup`;仲裁预检未退役——`_prep_anchors_hit` 预检与 `KEY_PRECHECK_SKIP` 分键保留在仲裁单元内(随仲裁执行宿主迁 op);`KEY_ABANDONED_LAUNCH` 写点(旧达标臂弃射路径 defect 分键)随分支拆除消失,键定义保留、现无生产写点。判定语义与 as-built 权威(§11.10)不变。
 
 
 ### 9.7 恢复局备战同步步(伴生件;补段复盘 #7 实证)
@@ -646,3 +646,16 @@ m1p 恒 None 的成因可辨),None = 非发射帧;C-A2 审计桶内分键
 | 原候选作废声明 | 「按 2★ 数/装备覆盖重校成型判据」作废(策略审查打回:板面强度评分进决策门违 00 §1 + P62 form_score 饱和零信息已证);P63(B_t-depth r=0.403)只作方向锚禁作判据资格;判据资格 = 机制定义量结构式(两层权威序全门行使记录 =) | decisions/0570-launch-quality-load-bearing-conjunction.md |
 | 零改动对照面申报 | **本批**零改(工作树中 shop/entry/engine_p1 等另有并行批在飞改动,不属本批申报):停手链(`proof.stop_buy` 成员齐备谓词 + shop/entry 消费位)、镜像写端(v3_form_ok/v3_b_t)、发射帧仲裁(位次链,仲裁段本体零触);armed=True ⟹ 配方完备单向蕴含保持发射帧镜像补写语义正确 | mandate_v1/proof.py、shop.py、entry.py、flow.py、sim/engine_p1.py |
 | 测试锁面 | 新锁 `test_cw_launch_quality_conjunction.py`/视图随目标线回归/自家核准集回归〔反甲白厄空羁绊核心 + 视图外 shared,落地审 F1〕/异常显影旗与分键名单一源 grep 守卫〔三审07轮 C1/C2〕/B5 推迟上界,13 锁);旧「上收逐位等价锁」按锁的存在性纪律改写为合取语义锁(`test_cw_sim_launch_sink.py` TestKernelArmedConjunctionLock;红证口径:旁路形态 = armed 回退配方单键、质量报告保留,跨两文件计 = 新文件推迟支 2 锁 + sink 合取语义锁 1 锁共 3 红) | sr-od-test |
+
+### 11.11 备战访问 op 化落地 as-built 补录(2026-09-16,launch_arbitrage_*/readiness_* 写点宿主与退役键申报;本节只增不改)
+
+> 发射决策迁 mandate_v1 前置发射位、仲裁执行宿主迁备战访问 op 后,发射域遥测分键的写点宿主申报。判定核(kernel)与键名族单一源(`kernel/cw_launch_arbitrage.py`、`kernel/cw_launch_admission.py`)不变,变的只是写点位置。
+
+| 键 | 写点宿主(现役) | 申报 |
+|---|---|---|
+| `launch_arbitrage_frames`/`launch_arbitrage_inband_closed`/`launch_arbitrage_zero_consume`/`launch_arbitrage_gate_blocked`/`launch_arbitrage_cross_line`/`launch_arbitrage_open_failed` | `_launch_frame_arbitration`(函数原样复用;宿主 = 备战访问 op `CwScreenPrep` 受限访问执行分支,唯一调用点) | 宿主自 cw_loop 备战分支迁 op,键名与语义不变 |
+| `launch_arbitrage_precheck_skip`(KEY_PRECHECK_SKIP) | 同上(仲裁单元内 `_prep_anchors_hit` 预检保留——预检只作仲裁段的门) | 预检未随达标臂拆除退役,写点照旧 |
+| `launch_arbitrage_abandoned_launch`(KEY_ABANDONED_LAUNCH) | 无写点 | 旧写点 = 达标臂弃射路径 defect 分键(仲裁已消费、发射核屏态复验未过的弃射显影),随达标臂分支拆除消失;键定义保留,现无生产写点,拟退役归后续遥测清理批 |
+| `readiness_stale_screen`/`readiness_overlay_hold`/`deploy_swap_no_victim` | 统一执行器 `launch_battle_unified` 内部段(屏态复验/浮层安全检查/G1 预估显影) | armed/resume 两调用面同保(浮层检查对 resume 面为防误触补齐) |
+| `LAUNCH_QUALITY_EVAL_ERROR_KEY`/`LAUNCH_QUALITY_DEFER_FRAMES_KEY` | 策略前置发射位 `bridge._launch_front_check` | 写点自 cw_loop 达标臂判定位迁策略;sim 侧 engine_p1 写点不变 |
+| `readiness_launch_fail`/`readiness_launch_giveup` | 无写点 | 随达标臂分支消亡(达标臂发射失败记账与三连败回落守卫链结构一并退役;活性防线现役 = dispatch 包装通用失败重派网,guards.md §2) |

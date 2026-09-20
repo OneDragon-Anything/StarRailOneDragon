@@ -10,9 +10,9 @@
 
 ## 2. 画面形态声明
 
-**决策循环形态**。决策入口 = 契约 `strategies/impl/cw_strategy.py::CwStrategy.decide_prep_screen`(决策输入 = **容器 game state 直读**,零黑板——备战黑板帧已随迭代 2026-09-18-prep-obs-retirement 阶段 3.5 退役);实现链 = `strategies/impl/mandate_v1/bridge.py::decide_prep_screen` → `bridge.py::decide_from_turn`(纯函数)→ `entry.py::emit`。
+**决策循环形态**。决策入口 = 契约 `strategies/impl/cw_strategy.py::CwStrategy.decide_prep_screen`(决策输入 = **容器 game state 直读**,零黑板——备战黑板帧已随迭代 2026-09-18-prep-obs-retirement 阶段 3.5 退役);实现链 = `strategies/impl/mandate_v1/bridge.py::decide_prep_screen`:方向代次消费 → **前置发射位 `bridge.py::_launch_front_check`**(发射决策宿主;armed 帧短路三遍编排,直接产受限商店访问意图或 `StartBattle` 终点意图)→ 预算遥测披露(`economy_cycle.disclose_budget`,非 armed 短路帧才到达)→ `bridge.py::decide_prep_frame`(三遍编排,内调 `entry.py::emit` + 帧稳定截断)。
 
-`entry.emit` 编排序(与代码体一致):①prep 实体面(容器 bench kind 分派:bookcard→OpenBookcard / supply_box→OpenBox / tome→OpenTome,书册卡臂 = 用户裁定 2026-09-19 开卡时机归策略器,终结动作;晶矿容器域→席满让路门:席自由(free>0)照常 CollectOre,席满(free==0)按 `entry.ORE_DEFER_PROBE_K` 单探针后让路 fall-through 落后续步骤序)→ ①′ wanted 闭环消费臂(名单输入 = 容器读口派生)→ ②证明 pass(信号臂/K/stop_flag/线级状态机/换线)→ ②′ 工具消费发射位 → ③升档器求值位 → ④骨架 pass(M1-M7,`mandate.py`,板满可行性门前置)→ ⑤EV pass(criteria,臂①旁路)→ ⑥无动作 ⇒ StartBattle(备战环正常出口)。动作词表 = emit/adapter 自有映射(`adapter.py::_OP_SPECS`),输出恰一个动作(`CwAction`;空发射 = CwActionObsParam scope='outer_loop' 交回外循环重观察——原 HoldFrame 收编,用户裁定 2026-09-20)。
+`entry.emit` 编排序(与代码体一致):①prep 实体面(容器 bench kind 分派:bookcard→OpenBookcard / supply_box→OpenBox / tome→OpenTome,书册卡臂 = 用户裁定 2026-09-19 开卡时机归策略器,终结动作;晶矿容器域→席满让路门:席自由(free>0)照常 CollectOre,席满(free==0)按 `entry.ORE_DEFER_PROBE_K` 单探针后让路 fall-through 落后续步骤序)→ ①′ wanted 闭环消费臂(名单输入 = 容器读口派生)→ ②证明 pass(信号臂/K/stop_flag/线级状态机/换线)→ ②′ 工具消费发射位 → ③升档器求值位 → ④骨架 pass(M1-M7,`mandate.py`,板满可行性门前置)→ ⑤EV pass(criteria,臂①旁路)→ ⑥无动作 ⇒ StartBattle(备战环正常出口;armed 帧的 StartBattle 与受限访问意图由前置发射位短路本序直接产,见上方决策链)。动作词表 = emit/adapter 自有映射(`adapter.py::_OP_SPECS`),输出恰一个动作(`CwAction`;空发射 = CwActionObsParam scope='outer_loop' 交回外循环重观察——原 HoldFrame 收编,用户裁定 2026-09-20)。
 
 ## 3. 观察面
 

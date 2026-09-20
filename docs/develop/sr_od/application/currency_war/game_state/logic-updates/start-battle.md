@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-点击「按钮-出战」推进节点进入战斗——**转移动作**(备战访问终结·唯一完成态):只把画面从备战转移到战斗,不按游戏规则改写任何局内资源。词表 = `kernel/cw_vocab.py::CwActionStartBattleParam`(无字段 dataclass);执行 = 三路径(备战环/统一执行器/恢复局)经同一注册表分派到达 `operations/cw_op/cw_start_battle_action.py::CwActionStartBattleOp`(点击+弹窗确认,零判效零重发);**发射统一执行器** = `operations/cw_loop.py::launch_battle_unified`(屏态复验→浮层安全检查→部署原子序→出战点击链;face = armed/resume 两调用面);发射准入判据 = mandate_v1 前置发射位消费 kernel `readiness_launch_decision`(策略层宿主)。战斗窗置位 = 外循环既有口径(ADR-0250 驻留闩),事实通道 = CwScreenPrep.launch_fired(交回契约)。
+点击「按钮-出战」推进节点进入战斗——**转移动作**(备战访问终结·唯一完成态):只把画面从备战转移到战斗,不按游戏规则改写任何局内资源。词表 = `kernel/cw_vocab.py::CwActionStartBattleParam`(无字段 dataclass);执行 = 三路径(备战环/统一执行器/恢复局)经同一注册表分派到达 `operations/cw_op/cw_start_battle_action.py::CwActionStartBattleOp`(点击+弹窗确认,零判效零重发);**发射统一执行器** = `operations/cw_loop.py::launch_battle_unified`(屏态复验→浮层安全检查→部署原子序→出战点击链;face = armed/resume 两调用面);发射准入判据 = mandate_v1 前置发射位消费 kernel `readiness_launch_decision`(策略层宿主)。战斗窗置位 = 外循环既有口径(ADR-0250 驻留闩),置位通道 = 备战访问 op 的交回(`cw_loop.py::CwLoop.loop` 备战分支 `_on_prep_round` 回调):出战意图在 op 内经统一执行器落执行后,op 以终结出口 success 交回,外循环见 success 交回即置 `_battle_ts` + `_battle_wait_active`;非出战出口的 success 交回误置位由 CwScreenBattleWait 宽限等待与备战白名单锚兜底分流。
 
 ## 2. 逻辑态域集
 
@@ -41,7 +41,7 @@ StartBattle 不在 `cw_vocab.py::Action` 联合内——节点推进归 sim 引�
 
 ## 8. 判例注记(发射期)
 
-**备战期出口(唯一完成态)**(判例 = [screens/README](../../screens/README.md) §4 终结总表):出战落地 = 备战访问终结,交回外循环战斗分支。免战子态下「跳过」同语义点它(推进节点)。发射准入判据(达标臂/锁定重试)= cw_launch_admission 判据族,不属本篇。
+**备战期出口(唯一完成态)**(判例 = [screens/README](../../screens/README.md) §4 终结总表):出战落地 = 备战访问终结,交回外循环战斗分支。免战子态下「跳过」同语义点它(推进节点)。发射准入判据(armed 判定,mandate_v1 前置发射位消费)= kernel `cw_launch_admission` 判据族(`readiness_launch_decision`),不属本篇。
 
 ## 9. 依据
 

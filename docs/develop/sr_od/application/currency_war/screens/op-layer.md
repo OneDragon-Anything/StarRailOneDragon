@@ -20,7 +20,11 @@
   └─ 决策动作 node:
        重入裁决(顶部;上轮动作已发 → 锚不在 = 已落地 → 补记录 + success 交回)
        → 决策(从容器零参读;恰一个动作;备战空发射 = CwActionObsParam
-         scope='outer_loop' 合法交回——原 HoldFrame 收编,用户裁定 2026-09-20)
+         scope='outer_loop' 合法交回——原 HoldFrame 收编,用户裁定 2026-09-20;
+         备战域发射决策 = mandate_v1 前置发射位(`bridge._launch_front_check`,
+         `decide_prep_screen` 入口消费),armed 帧短路三遍编排直接产
+         受限商店访问/出战意图——决策面在策略器,CwScreenPrep 决策段
+         消费意图落执行)
        → 动作(经动作 op 机械执行;动作 op 自上报推进逻辑态,零读屏)
        → round_wait 循环推进(node runner 每轮给新帧)
 ```
