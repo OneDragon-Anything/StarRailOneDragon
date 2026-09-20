@@ -47,6 +47,9 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER
+from sr_od.application.currency_war.kernel.cw_action_report import (
+    report_action_collect_ore_param,
+)
 from sr_od.application.currency_war.kernel.cw_economy import LostNodeRef
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
@@ -65,6 +68,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
+    CwActionCollectOreParam,
     CwActionFurnaceUseParam,
     CwActionOpenBoxParam,
     CwActionPickEventParam,
@@ -77,7 +81,11 @@ from sr_od.application.currency_war.sim.cw_sim_actions import (
     apply_node_xp,
     apply_player_action,
 )
-from sr_od.application.currency_war.sim.cw_sim_base import obs_sig, sim_evidence
+from sr_od.application.currency_war.sim.cw_sim_base import (
+    logic_sig,
+    obs_sig,
+    sim_evidence,
+)
 from sr_od.application.currency_war.sim.cw_sim_battle import (
     SIM_BATTLE_FACE,
     apply_hp_outcome,
@@ -279,6 +287,8 @@ class _Eng:
     #: 宝钻计数(M09 获取通道 = M18 带钻选项;引擎自有状态)
     diamond_count: int = 0
     furnace_uses: int = 0
+    #: 晶矿点开动作序(M1x/ore/{uses} 流键坐标;logic-rand-sampling 迭代)
+    ore_uses: int = 0
     hp_trail: list[int] = field(default_factory=list)
     done: bool = False
     #: 相位载荷(逐相位填充,随帧呈现)
@@ -371,6 +381,11 @@ class CwSimEngine:
             eng.box_cands = box_options()
             eng.phase = CwSimPhase.BOX_PICK
             return None
+        if isinstance(action, CwActionCollectOreParam):
+            # 点晶矿(logic-rand-sampling 迭代):前置拦截旁路直调上报
+            # 函数——采样即世界真值,apply_player_action 主表零改动
+            # (炉先例同型;kernel 上报内采样,rng 经流键注入)
+            return self._apply_collect_ore(eng, action)
         equip_outcome = self._apply_equip_action(eng, action)
         if equip_outcome is not None:
             return equip_outcome
@@ -424,6 +439,23 @@ class CwSimEngine:
                                 reason='furnace_target_not_owned')
         eng.furnace_uses = uses
         return LogicOutcome(applied=True)
+
+    def _apply_collect_ore(self, eng: _Eng,
+                           action: CwActionCollectOreParam) -> LogicOutcome:
+        """点晶矿分派(logic-rand-sampling 迭代;炉先例旁路直调同型):
+        直调上报函数,采样语义单一源住 kernel(cw_ore_reward 常量面),
+        sim 零自算——采样即世界真值。流键 ``M1x/ore/{uses}`` =
+        局内点矿动作单调序(流键硬约束「模块号+局内坐标」,防同局
+        多次点矿采样序列重置);拒分支不耗序(与 _apply_furnace
+        先判后计一致)。"""
+        uses = eng.ore_uses + 1
+        out = report_action_collect_ore_param(
+            eng.gs, action,
+            sig=logic_sig(group_id=f'act:sim@M1x/ore/{uses}'),
+            rng=stream_rng(eng.seed, f'M1x/ore/{uses}'))
+        if out.applied:
+            eng.ore_uses = uses
+        return out
 
     def _check_planner_trigger(self, eng: _Eng, star_before: int) -> None:
         """银狼首次升达 2 星 → planner overlay 入队(M21 有档触发)。
