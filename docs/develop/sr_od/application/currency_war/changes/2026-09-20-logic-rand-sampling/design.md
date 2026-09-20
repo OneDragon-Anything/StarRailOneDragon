@@ -80,15 +80,15 @@ def roll_ore_reward(rng: random.Random, level: int) -> OreReward
 
 **多点载荷语义**：载荷为批式坐标列表（一动作可点开多颗，`select_ore_clicks` + `SPHERE_CLICK_BATCH_MAX_K`）→ **逐点顺序推演**：载荷序遍历，每点独立守卫、独立 roll、独立逐步写（同一动作组 `group_id`，全部 evidence 带点序 `#ore<k>`，k = 载荷序 1 基）。**席满即后续无效**：某点触发席满（含前点角色奖励耗掉空位后的累计判）→ 该晶矿留在 spheres（不摘除、不采样），其后的点同规则逐点继续判（前面点可能不掉席，后续点仍可开）。与在册裁定同源：`screen_flow_timing.md` #16「席满时部分晶矿可能没点开，由后续 heavy 观察自然回补（晶矿仍在→下轮再派）」。
 
-**守卫（逐点前置，全拒 = 该点零写）**：spheres 未观察（现行为，整批拒）/ 载荷无交集（现行为，整批拒）/ **bench 未观察**（新，`'bench_unobserved'` 整批拒——席满守卫与角色落点均不可判）/ **该点时 bench 无空位**（新，该点跳过：晶矿留在 spheres 字段现值中（不摘除）、不采样——裁决 3）/ **level 缺读**（新，整批拒 `'level_unread'`——角色采样需当前等级，宁缺勿造）。spheres 摘除按点推进：开成的点即时摘除（逻辑态），没开的点留在 spheres 字段现值中（不摘除）。
+**守卫（逐点前置，全拒 = 该点零写）**：spheres 未观察（现行为，整批拒）/ 载荷无交集（现行为，整批拒）/ **bench 未观察**（新，`'bench_unobserved'` 整批拒——席满守卫与角色落点均不可判）/ **该点时 bench 无空位**（新，该点跳过：晶矿留在 spheres 字段现值中（不摘除）、不采样——裁决 3）/ **level 缺读**（新，整批拒 `'level_unread'`——角色采样需当前等级，宁缺勿造）。spheres 摘除按点推进：开成的点即时摘除（随机态写，写序表步 1），没开的点留在 spheres 字段现值中（不摘除）。
 
 **动作级出参词表**：全部点开成 = `applied=True`（reason 缺省）；混合批（≥1 开成 + ≥1 席满跳过）= `applied=True, reason='ore_partial_open_skipped'`；全部席满跳过（无一点开成）= `applied=False, reason='bench_full_no_open'`；整批拒词 = spheres 未观察 / 无交集 / `'bench_unobserved'` / `'level_unread'`（见守卫）。
 
-**单点写序**（每步一行，同组 `group_id`；rand = `write_logic_rand`，logic = `write_logic`）：
+**单点写序**（每步一行，同组 `group_id`；**本动作全部容器写均为随机态、全部经 `write_logic_rand`**——spheres 终值同样依随机链而变：逐点推演中后续晶矿能否开启取决于采样奖励是否耗席，真值形态随随机奖励不同而不同，spheres 写下的值是采样世界的一部分）：
 
 | 步 | 域 | 来源 | 值 | evidence |
 |---|---|---|---|---|
-| 1 | spheres | logic | 该点坐标摘除（逻辑态，确定面） | `proj_collect_ore_drop#ore<k>` |
+| 1 | spheres | rand | 该点坐标摘除后的整表 | `proj_collect_ore_drop#ore<k>` |
 | 2 | 未抽中类型的域（gold/equips/bench/front_row/back_row 中不属于抽中类型的，且**现值非 None**） | rand | **值不变**（标记） | `proj_ore_mark_<field>#ore<k>` |
 | 3a | 抽中金：gold | rand | 现值 + N（N ∈ 1..5） | `proj_ore_reward_gold#ore<k>` |
 | 3b | 抽中装备：equips | rand | 现值 + [采样件] | `proj_ore_reward_equip#ore<k>` |
