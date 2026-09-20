@@ -23,11 +23,9 @@
 
 1. 每击:+`XP_PER_BUY` 经验、−单击价;攒满当前级门槛(`XP_TO_NEXT_LEVEL`)即升级、溢出结转(推进算子单一源 = `kernel/cw_economy.py::xp_apply_clicks`;封顶 `MAX_PLAYER_LEVEL`);
 2. **单击价单一源** = `kernel/cw_economy.py::xp_click_cost` 两支语义:**显示价支**(容器 `level_up_cost` 观察价直通——游戏侧已算好全部折扣,下限 0)/ **兜底支**(基价 `XP_CLICK_COST_FALLBACK` 减在册折扣:`xp_buy_cost_discount` + 等级门折扣 `xp_click_discount_from_level`,`level_of(bs) ≥ xp_click_discount_from_level_at` 生效;折扣只降价不减经验)。发射面把现算值装进 `action.cost`,转移函数按 `action.cost` 扣减(商店域 × 击数,备战域单击);
-3. 金:gold `−=` 单击价 × 实击数。击数 = 执行回执 `ShopActionExecuted.levelup_clicks`(生产落地门喂 1;缺回执 = `applied=False, reason='levelup_clicks_not_fed'` 本轮不写,等观察覆盖)。**金腿 = 上报函数按 `action.cost`×击数直写**(本口唯一写点,批 2b 翻转已落码;原 2a 中间态执行缝金差 `_executed_gold_delta` 对 LevelUp 恒 0/退役,防双记);
+3. 金:gold `−=` 单击价 × 实击数。击数 = 执行回执 `ShopActionExecuted.levelup_clicks`(生产落地门喂 1;缺回执 = `applied=False, reason='levelup_clicks_not_fed'` 本轮不写,等观察覆盖)。**金腿 = 上报函数按 `action.cost`×击数直写**(本口唯一写点;执行缝金差 `_executed_gold_delta` 对 LevelUp 恒 0,防双记);
 4. 授权/发射门全在决策核发射位(备战域):每帧发射前置 = `clicks_to_next_level` 现算击数 > 0;金地板(`spend_unified`)/预算闸(`levelup_budget_gate`)/血闸(`blood_xp_gate`)/血本位模式(`blood_xp_gate_for`)= 发射位门链;满级 = 击数 0,无授权不发射。执行器 `PrepActionExecutor._level_up` 零授权零计数(找钮 → 单击 → 光标 parking 防等级显示区毒化 → 升级事件挂点 `effects.on_level_up()`);
 5. 经验/等级真值 = 下一帧观察经验对账族承接(XpLedger 通道单击推进 + OCR 真值 reconcile)。
-
-**文档-实现偏差(action-logic-state.md §3.3)**:原文「金腿(批 2a 中间态)= 执行缝金差……`action.cost` 直写随批 2b 翻转生效」;实况 = 批 2b 翻转已落码,金腿 = 上报函数 `report_action_level_up_param` 按 `action.cost` 直写(`prep_actions.py::PrepActionExecutor._level_up` docstring 同证),执行缝金差对 LevelUp 退役。本篇按实现写入。
 
 ## 4. 随机面
 
@@ -53,4 +51,4 @@
 
 ## 9. 依据
 
-`research/xp-rules.md` §2(购买经验单价/门槛表/折扣只降价不减经验);`kernel/cw_economy.py::xp_click_cost` docstring(两支语义与出域声明);[fields.md](../fields.md) §3.2.10/§3.2.11(level/xp/level_up_cost)/§4.2 LevelUp 行;design.md unified-action-factory §2.6 LevelUp 粒度定案④。
+`research/xp-rules.md` §2(购买经验单价/门槛表/折扣只降价不减经验);`kernel/cw_economy.py::xp_click_cost` docstring(两支语义与出域声明);[fields.md](../fields.md) §3.2.10/§3.2.11(level/xp/level_up_cost)/§4.2 LevelUp 行。

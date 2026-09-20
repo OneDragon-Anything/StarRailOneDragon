@@ -56,7 +56,7 @@
 | 穿戴/工具 | `CwActionWearEquipParam`/`CwActionFurnaceUseParam`/`CwActionPrivilegeCardUseParam`/`CwActionWrenchUseParam`/`CwActionPrecisionWrenchUseParam`/`CwActionStaffProjectorUseParam`/`CwActionPerfectProjectorUseParam`/`CwActionLuckyTokenUseParam` | `cw_wear_equip_action.py::CwActionWearEquipOp`/`cw_tool_use_action.py::CwActionToolUseOp` | 非终结 |
 | 转场 | `CwActionOpenShopParam`/`CwActionStartBattleParam` | `cw_open_shop_action.py::CwActionOpenShopOp`(terminal 承载行,执行抛,正常路径不可达)/`cw_start_battle_action.py::CwActionStartBattleOp`(返回值在册例外) | 备战环终结/备战访问终结 |
 
-组合壳(RunDeploy/RunEquip/RunTools)已随统一词表退役(批2b R2):部署 = 发射位逐帧现算 DeployMove 原子序,穿戴 = WearEquip 原子,工具 = 工具原子类经 `CwActionToolUseOp`;部署机画面 op `CwScreenDeploy` 已退役删除——部署无画面 op 载体,路径速查 = [deploy.md](deploy.md)。
+组合壳(RunDeploy/RunEquip/RunTools)已随统一词表退役:部署 = 发射位逐帧现算 DeployMove 原子序,穿戴 = WearEquip 原子,工具 = 工具原子类经 `CwActionToolUseOp`;部署机画面 op `CwScreenDeploy` 已退役删除——部署无画面 op 载体,路径速查 = [deploy.md](deploy.md)。
 
 **动作坐标系(二分)**:席位域动作(SellBench/SellDeployed/DeployMove)携**容器槽位表下标 0 基**(bench 0-8 / deployed 0-9,观察面读口 `bench_view_slots_of`/`deployed_rows_of` 同基直取零换算;DeployMove 落位另携载荷 `(to_row, to_slot)` 直指,执行边零现读);**画面物理槽位 1 基**仅存于坐标参数化机械动作(WearEquip/工具七类/OpenBox/OpenTome/OpenBookcard)的 `row`/`slot` 字段。执行坐标边换算单点 = `kernel/cw_exec_state.py::deployed_row_slot`(下标→物理排槽)/ `deployed_idx_of`(物理→下标)。
 

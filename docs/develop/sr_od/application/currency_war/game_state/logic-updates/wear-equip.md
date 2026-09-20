@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-把 owned 装备库存网格内的一件拖到目标角色的已穿槽位。词表 = `kernel/cw_vocab.py::CwActionWearEquipParam`(坐标参数化机械动作:字段 `item_name` / `char_name`('' = front-only 回退步)/ `row` ∈ front/back / `slot` = 画面物理槽位 1 基;**不在 `cw_vocab.py::Action` 联合内**——零容器动作转移语义,同「视觉域动作容器零写」契约)。op 载体 = `operations/cw_op/cw_wear_equip_action.py::CwActionWearEquipOp`(非终结;体迁自执行器,`prep_actions.py::PrepActionExecutor._wear_equip` 薄委托)。发射形态(R2 穿戴原子通路)= 决策核逐帧发 WearEquip 序,发射序即执行序;计划构造 kernel 单一源 = `kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`(决策侧逐帧现算,构造点唯一;`EquipWearStep` 为动作构造源,branch = m7 角色级分配 / front_only 身份读失败回退)。
+把 owned 装备库存网格内的一件拖到目标角色的已穿槽位。词表 = `kernel/cw_vocab.py::CwActionWearEquipParam`(坐标参数化机械动作:字段 `item_name` / `char_name`('' = front-only 回退步)/ `row` ∈ front/back / `slot` = 画面物理槽位 1 基;**不在 `cw_vocab.py::Action` 联合内**——零容器动作转移语义,同「视觉域动作容器零写」契约)。op 载体 = `operations/cw_op/cw_wear_equip_action.py::CwActionWearEquipOp`(非终结;体迁自执行器,`prep_actions.py::PrepActionExecutor._wear_equip` 薄委托)。发射形态(穿戴原子通路)= 决策核逐帧发 WearEquip 序,发射序即执行序;计划构造 kernel 单一源 = `kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`(决策侧逐帧现算,构造点唯一;`EquipWearStep` 为动作构造源,branch = m7 角色级分配 / front_only 身份读失败回退)。
 
 ## 2. 逻辑态域集
 
@@ -20,7 +20,7 @@
 
 1. **机械执行**:目标拖点 = `PrepActionExecutor._equip_slot_drag_point(row, slot)`(前排 = 「前排-N」rect 中心 x、y1+21(D-36 校准);后排 = 布局选档 `obs/cw_back_layout.py::select_back_layout` 同式派生;缺失 = None 禁兜底坐标)→ 源件 = owned 网格按名定位 `_owned_grid_locate(item_name)`(名字定位是唯一稳锚,网格 reflow 使快照坐标失真)→ `_wait_stable_frame`(输入条件化等待,非判效)→ mouse_move + drag_to + park_cursor;
 2. **tracked 双侧**(上报函数 `report_action_wear_equip_param`):owned 侧 = `gs.equips` 现读-摘件-回写;tracked 侧 = dep[idx].equips 追加(目标槽位表下标 = `deployed_idx_of(row, slot)`,槽位空 = 跳过;session 缺席 = tracked 腿跳过);角色装备上限 = `kernel/cw_comps.py::EQUIP_CAPACITY`(计划面容量扣减消费);
-3. **零比对出生(裁决 3)**:动作 op 内零 CV-diff 验穿——穿没穿归观察写入边对账;原 avatar-slot CV-diff 验穿面已删除(机械执行零判效纪律),考古归 git;
+3. **零比对出生**:动作 op 内零 CV-diff 验穿——穿没穿归观察写入边对账;原 avatar-slot CV-diff 验穿面已删除(机械执行零判效纪律),考古归 git;
 4. **穿着即合成**(在册建模裁定):两件可合成组件穿到同一角色 = 自动合成;**不记合成预期值**([fields.md](../fields.md) §4.1 豁免)——该豁免是建模裁定,不是知识缺口;后果走观察覆盖 + 缺陷台账。
 
 ## 4. 随机面

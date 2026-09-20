@@ -4,11 +4,11 @@
 
 ## 1. 执行器与发射形态
 
-备战域原子动作经统一执行器 `prep_actions.py::PrepActionExecutor` 机械执行(持 ctx + 宿主 op 复用截图/拖拽原语):**发出即职责完成,零验证零判效**(最严读法:点击/拖拽后不读屏判「是否生效」,落地判定完全归观察侧 reconcile)。词表单一源 = `kernel/cw_vocab.py`(`CwAction` 基类 + 全动作类 + 白名单 `CW_ACTION_TYPES`;执行器 `validate` 两层 = 白名单 + 静态参数)。
+备战域原子动作经统一执行器 `prep_actions.py::PrepActionExecutor` 机械执行(持 ctx + 宿主 op 复用截图/拖拽原语):**发出即职责完成,零验证零判效**(最严读法:点击/拖拽后不读屏判「是否生效」,落地判定完全归观察侧 reconcile)。词表单一源 = `kernel/cw_vocab.py`(全动作类 `CwAction<Xxx>Param` 摊平为独立 dataclass + 运行时白名单 `CW_ACTION_TYPES`;`CwAction` 名 = 全动作 union 别名,注解与 isinstance 兼容面;执行器 `validate` 两层 = 白名单 + 静态参数)。
 
 **坐标系二分(实现现况)**:席位域动作(SellBench/SellDeployed/DeployMove)携**容器槽位表下标 0 基**(bench 0-8 / deployed 0-9,观察面读口 `bench_view_slots_of`/`deployed_rows_of` 同基直取零换算;DeployMove 落位另携载荷 `(to_row, to_slot)` 直指,执行边零现读);**画面物理槽位 1 基**仅存于坐标参数化机械动作(WearEquip/工具七类/OpenBox/OpenTome/OpenBookcard)的 `row`/`slot` 字段。执行坐标边换算单点 = `kernel/cw_exec_state.py::deployed_row_slot`(下标→物理排槽)/ `deployed_idx_of`(物理→下标)。
 
-**发射形态(R2 原子通路)**:决策核逐帧发原子动作(部署 = DeployMove 序/穿戴 = WearEquip 序/卖出 = SellBench/SellDeployed),备战环逐帧执行决策输出的恰一个动作(None = 本帧无动作,交回外循环重观察);组合壳(RunDeploy/RunEquip/RunTools)已退役。发射位计划构造单一源 = `strategies/impl/mandate_v1/deploy_plan.py::deploy_plan_moves`(部署;选人 `select_deployments_reasoned` + 排路由 `deploy_row_pref` + 槽位 `deploy_slot_plans`)、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`(穿戴)。
+**发射形态(原子通路)**:决策核逐帧发原子动作(部署 = DeployMove 序/穿戴 = WearEquip 序/卖出 = SellBench/SellDeployed),备战环逐帧执行决策输出的恰一个动作(None = 本帧无动作,交回外循环重观察);组合壳(RunDeploy/RunEquip/RunTools)已退役。发射位计划构造单一源 = `strategies/impl/mandate_v1/deploy_plan.py::deploy_plan_moves`(部署;选人 `select_deployments_reasoned` + 排路由 `deploy_row_pref` + 槽位 `deploy_slot_plans`)、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`(穿戴)。
 
 **执行器三件套(每动作同构)**:①机械执行(`_dispatch_action` 经注册表 `action_op_class_for` 分派,`emitted` = 发出事实,False 只用于执行前输入契约拒绝);②tracked 主账同步(`_track_remove_bench`/`_track_remove_deployed`/`_track_move_deployed`,置 None 不移位,摘除腿照常执行只显影不拒写);③效果随 op 自上报(动作 op 内直调自己的上报函数,`kernel/cw_action_report/` 函数族 = 效果内聚单点)+ 执行点金差显影(`_executed_gold_delta`:卖 = +`sell_refund`、CollectOre = None、其余 0/未发出 None——**仅进回执 extra 留证,不经它直推容器金账**;容器金账唯一写点 = 上报函数 `report_action_sell_bench_param`/`report_action_sell_deployed_param`,执行缝直推腿已退役防双记)+ 回执域(`note_action_receipt`)与 journal 行。
 

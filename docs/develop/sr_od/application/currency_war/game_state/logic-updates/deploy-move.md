@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-把备战席某槽位的角色拖到上阵(前排/后排)指定槽落位——腾席链与部署义务的原子步。词表 = `kernel/cw_vocab.py::CwActionDeployMoveParam`(容器动作域,`cw_vocab.py::Action` 联合在册;字段 `bench_idx` = bench 槽位表下标 0-8、`to_row` ∈ front/back、`to_slot` = 排内 1 基画面槽号(表下标 = `deployed_idx_of(to_row, to_slot)`)、`faction` = 上阵后 board 阵营计数所需,执行面不消费)。op 载体 = `operations/cw_op/cw_deploy_move_action.py::CwActionDeployMoveOp`(非终结;体迁自执行器,`prep_actions.py::PrepActionExecutor._deploy_move` 薄委托)。发射形态(R2 原子通路)= 决策核逐帧发 DeployMove 序,备战环逐帧执行决策输出的恰一个动作(None = 本帧无动作,交回外循环重观察);组合壳(RunDeploy)已退役。**发射位计划构造单一源** = `strategies/impl/mandate_v1/deploy_plan.py::deploy_plan_moves`(选人 `select_deployments_reasoned` + 排路由 `deploy_row_pref` + 槽位 `deploy_slot_plans`;mandate 发射位与 cw_loop 出战链 `battle_chain_deploy_params` 共用,禁第二套计划装配);执行落位零现读——落位意图全部在载荷 `(to_row, to_slot)`,执行边与容器写侧按载荷直落。
+把备战席某槽位的角色拖到上阵(前排/后排)指定槽落位——腾席链与部署义务的原子步。词表 = `kernel/cw_vocab.py::CwActionDeployMoveParam`(容器动作域,`cw_vocab.py::Action` 联合在册;字段 `bench_idx` = bench 槽位表下标 0-8、`to_row` ∈ front/back、`to_slot` = 排内 1 基画面槽号(表下标 = `deployed_idx_of(to_row, to_slot)`)、`faction` = 上阵后 board 阵营计数所需,执行面不消费)。op 载体 = `operations/cw_op/cw_deploy_move_action.py::CwActionDeployMoveOp`(非终结;体迁自执行器,`prep_actions.py::PrepActionExecutor._deploy_move` 薄委托)。发射形态(原子通路)= 决策核逐帧发 DeployMove 序,备战环逐帧执行决策输出的恰一个动作(None = 本帧无动作,交回外循环重观察);组合壳(RunDeploy)已退役。**发射位计划构造单一源** = `strategies/impl/mandate_v1/deploy_plan.py::deploy_plan_moves`(选人 `select_deployments_reasoned` + 排路由 `deploy_row_pref` + 槽位 `deploy_slot_plans`;mandate 发射位与 cw_loop 出战链 `battle_chain_deploy_params` 共用,禁第二套计划装配);执行落位零现读——落位意图全部在载荷 `(to_row, to_slot)`,执行边与容器写侧按载荷直落。
 
 ## 2. 逻辑态域集
 
@@ -57,7 +57,7 @@ DeployMove 转移语义单一源 = 上报函数(`report_action_deploy_move_param
 
 ## 8. 判例注记(发射期)
 
-备战期;部署属逻辑态已建模面,执行后不强制保守回退交回(R9 全覆盖后帧内逻辑态推进承接;overlay 检出仍环中止交外环 handler)。腾席链(卖前腾位)与部署义务(上阵数未满)共用本动作;发射准入判据(armed 判定,mandate_v1 前置发射位消费 kernel `readiness_launch_decision`)归发射位判据面,不在本篇。
+备战期;部署属逻辑态已建模面,执行后不强制保守回退交回(逻辑态全覆盖后帧内逻辑态推进承接;overlay 检出仍环中止交外环 handler)。腾席链(卖前腾位)与部署义务(上阵数未满)共用本动作;发射准入判据(armed 判定,mandate_v1 前置发射位消费 kernel `readiness_launch_decision`)归发射位判据面,不在本篇。
 
 ## 9. 依据
 
