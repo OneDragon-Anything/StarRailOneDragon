@@ -23,21 +23,22 @@ mechanics 为准修齐(单一语义源,双载体是 tracked 原地推进 vs 期�
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.kernel.cw_exec_state import (
+    BENCH_CAPACITY,
+    BenchChar,
+    bench_place,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ShopCard as _ContainerShopCard,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     shop_cards_to_legacy,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import (
-    BENCH_CAPACITY,
-    BenchChar,
-    bench_place,
-)
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     # 仅类型注解引用(旧 ShopCard = cw_state 动作域词汇;运行时经
@@ -223,7 +224,8 @@ def same_star_count_public(name: str, star: int,
 
 
 def _merge_bench(bench: list[BenchChar | None],
-                 deployed: list[BenchChar] | None = None) -> None:
+                 deployed: list[BenchChar] | None = None,
+                 on_step: Callable[[], None] | None = None) -> None:
     """3 合 1 升星:同名同星 ≥3(全场域 bench+deployed)→ 合并为 1 个 star+1。
 
     游戏机制:招募 3 个相同星级同名角色自动升星。⚠️ **合并域 = 全场**——
@@ -237,6 +239,12 @@ def _merge_bench(bench: list[BenchChar | None],
     亦为槽位表);合成载体留在原槽位。
 
     deployed=None(旧调用兼容)= 只看 bench(等价旧行为)。
+
+    on_step(可选步回调,逻辑随机态采样链用):**每完成一级合并**(升星/
+    置 None/装备继承全部落定后)调用一次,调用侧经回调把工作列表当前
+    状态落容器(逐步写遥测);回调内看到的列表 = 该级合并完成后的状态。
+    None = 现行为(逐级回调缺省,既有消费者零改动)。注意:一级合并可
+    同时变更 bench 与行域(deployed 侧载体),调用侧按受影响域各落一行。
     """
     pools: list[list] = [bench]
     if deployed is not None:
@@ -282,6 +290,8 @@ def _merge_bench(bench: list[BenchChar | None],
                     if _idx is not None:
                         deployed[_idx] = None
             merged_any = True
+            if on_step is not None:
+                on_step()   # 该级合并已全部落定(升星/继承/置 None),回调看终态
             break   # 重扫(列表已变)
         if not merged_any:
             break
