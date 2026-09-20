@@ -88,7 +88,8 @@ def _slot_no_of(b) -> int:
 #: 部署计划容器槽位表不健康显影分键(计划级 fail-closed 时 +1)。键名保留
 #: 现役 ``deploy_chain_slot_table_unhealthy``(跨局遥测对照可比性优先;
 #: 发射点已统一为本函数 = 原出战链局部键的同语义继承,mandate 发射位与
-#: 出战链共用;键名与消费面语义的命名失配归 P8 正本更新一并申报再议)。
+#: 出战链共用;键名沿用 deploy_chain_ 前缀为历史命名,语义 = 本计划单一源
+#: 的计划级显影,benchchar-retirement P8 申报确认)。
 DEPLOY_PLAN_SLOT_TABLE_UNHEALTHY_KEY: str = 'deploy_chain_slot_table_unhealthy'
 
 

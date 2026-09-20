@@ -534,53 +534,6 @@ class DecisionV2Registry:
     #: =P13 同档零损的理论预测逐位兑现;cap2 −2.3 金换 hp +1.3,
     #: 出口金口径上不如 cap1 干净)。每轮增量支出 ≤3 金,息损上界=档内 0。
     p1_early_round_cap: int = 1
-    # ===== `w184_sellguard/`/ADR-0373 卖侧唯一体系引擎守卫(S2 恶化谱系)=====
-    #: 总开关:False=逐位回 `w179_gate/` 后行为(A/B 基线臂)。True 时
-    #: 卖侧唯一体系引擎守卫命中的件不进任何卖件通道——
-    #: 判据=该件是四过渡体系(TRANSITION_TRAITS 三羁绊:仙舟/列车同行/
-    #: 持续伤害,全羁绊 factions∪flows 口径;`w192_seelex/` 起希儿系贡献件另经
-    #: guard_seele_scope_enabled 并入辖域)成员,且其所属某体系的
-    #: 在手件数(bench∪deployed 逐件计)≤ 该体系 tier 门槛 → 卖出会
-    #: 「清空该体系当前唯一 owned 引擎件」或「在手数跌破 tier」。
-    #: 消费面=candidates._sell_tag(arbiter off_target/for_gold/
-    #: free_bench 候选生成)+ discipline.sell_priority_key 守卫
-    #: (carry_gate ④/两补偿器统一挡)。修「演进换线把旧体系件下场到
-    #: bench 后被 off_target 当死库存卖出 → 体系引擎永不回场」
-    #: (`w181_residual/` §3:S2 恶化 {37,71,90,43} 与 `w174_deploy/` 残差 {45} 全此链;
-    #: 卖出的件均非 engine_char_names 名单件,方向切换后失去目标身份)。
-    #: 不辖:非 TT 件/owned>tier 的冗余件(体系有余量时清仓照旧)/
-    #: execute_replacement 保留序卖出(ADR-0360 件3+ADR-0363 件1
-    #: 已辖)/谷底回滚 CwActionSellDeployedParam(恢复机件)。
-    sell_sole_engine_guard_enabled: bool = True
-    # ===== `w192_seelex/`/ADR-0375 希儿系守卫辖域补全(迁移审计 w190(git 历史) 巡检两件)=====
-    #: 希儿系(四过渡体系之一,单卡判据)并入卖侧唯一体系引擎守卫与
-    #: 演进保护集辖域(**核心条件辖**,域修正见 ADR-0375):希儿本人
-    #: 唯一种子不可卖/恒保护;放大器件(量子同频/贝洛伯格)仅当希儿
-    #: 在手时辖(卖拒=放大阵营在手 ≤2 成型门槛;保护集并入——补完
-    #: undeploy/execute_replacement 保留序不下);无希儿时放大器
-    #: 不是体系件(transition_combos:28 帖全部含希儿),照旧合法面。
-    #: False=逐位回 `w188_threestack/` 后行为(辖域=TRANSITION_TRAITS 三羁绊——
-    #: deploy 排序语义被 ADR-0373/0371 借用造成的缺口,见 迁移审计 w190(git 历史) 洞一/二)。
-    #: **新 flag 而非复用 sell_sole_engine_guard_enabled**:后者 off 会
-    #: 连 TT 三羁绊辖域一起关,A/B 配对臂(只隔离辖域差)与回退粒度
-    #: 都不对;辖域修正是 0373/0371「四体系」声称的语义补全,默认开。
-    guard_seele_scope_enabled: bool = True
-    # ===== `w197_comptx/`/ADR-0380 卖侧下界守卫执行点补全(own_gap 演进谱系)=====
-    #: 总开关:False=逐位回 `w195_intent/` 后行为(A/B 基线臂)。True 时
-    #: 「TT 体系件在手≤tier 不可卖」守卫语义在两个此前无守卫的执行点生效:
-    #: ① arbiter 卖候选采纳点复检(对 working 前序采纳后的状态逐笔
-    #:    复检——候选生成是对批前状态计数,同段两笔同名 TT 件逐笔
-    #:    合法而聚合跌破 tier,136 r7 两笔三月七 3→1 实证);
-    #: ② execute_replacement 溢出卖出下界(bench 满截断保留序时,
-    #:    rank0 保护件被卖出 → 改为留场不下场,新上场名单收紧——
-    #:    ADR-0373 不辖清单第 3 条对「卖出面」的豁免撤销,保留序/
-    #:    undeploy 语义不变;136 r9 benchOcc=9 卖 deployed 椒丘实证)。
-    #: 判据族批量逐笔下界已随 benchchar-retirement P5 帧签名清退删除
-    #: (cw_discipline_rules 模块头申报;判据语义归 git 历史)。
-    #: 不辖:owned>tier 冗余件清仓/undeploy 下场(ADR-0373「禁下场
-    #: 压死良性轮换」语义保持)/补完事务 sell(_locked_protected_names
-    #: 引擎键∪pair 成员保护已覆盖,`w192_seelex/` 辖域不变)。
-    sell_floor_exec_guard_enabled: bool = True
     # ===== `w194_p2line/` [33] 稳态 CwActionLevelUpParam 多击组(迁移审计 w185(git 历史) 泛化)=====
     #: 总开关:False=回 `w193_p2sim/` 后行为(A/B 基线臂——多击组只在轮内
     #: deploy_cap 拒绝触发补偿时发射,Catch-22 原状)。True 时
