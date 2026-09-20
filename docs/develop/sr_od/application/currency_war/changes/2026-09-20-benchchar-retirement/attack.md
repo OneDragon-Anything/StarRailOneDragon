@@ -109,3 +109,45 @@ BenchChar：src 244 行 + 测试仓 183 行；CwSimFrame：src 91 行 + 测试�
 3. sim 引擎本体已容器直写（cw_sim_base.py SimEngineV2 签名体系；cw_sim_actions.apply_player_action 委托上报函数族），T-4 实际剩余面 = nodes/opening/equips/pool 四处中间形，比「sim 推进全改」的表述小。
 4. 容器读口族已建齐（back_capacity_of/deployed_count_of/front_count_of/back_count_of/max_units_of，cw_game_state.py:3991-4040），T-3 策略迁移有现成落点；deploy_logic 的羁绊派生本就走注册表（`get_char(ch).factions`，cw_deploy_logic.py:200,297-301,516-519 等），faction 字段的依赖面比 §6 担心的小。
 5. 阶段顺序 T-3（策略）→ T-4（sim）→ T-5（观察）合理：策略判定已容器直读（黑板批 3.5 已清），sim 与观察互不依赖，T-5 最后做不影响前序——前提是 B1 的闭合集先修订。
+
+---
+
+## 复审轮（2026-09-20，对修订提交 1361f8295 的逐条核对）
+
+**结论：收敛可开工（blocker 0；残留 major 1 + minor 4，均不阻断）。** 逐条核对结果与残留观察如下，行号锚为当前工作区现状。
+
+### B1 收编核对 ✅
+
+- §2 新增「tracked_books 迁移（对抗审 B1 核心）」：改存 BenchView 同构槽位快照、读写端 10+ 文件全数入 T-1 闭合集，文件清单与首轮审查取证一致（cw_reconcile/prep_actions/cw_screen_prep/cw_screen_buy_cards/cw_op_equip_all/cw_deploy_move_action/sell_bench/wear_equip 逐一复核无误）。
+- §2 新增 mutate_bench_deployed 链条目：实机消费方 cw_buy_card_action（tracked 同步）+ buy_card 升星腿入单、禁换形续命。
+- §5 T-1+T-2 重写为「闭合集 = 全部直调方，禁换形续命」：mutate_bench_deployed 改吃 BenchView + 行 Unit、sim 两处 bench_place 直调（cw_sim_nodes.py:284 / cw_sim_opening.py:126）提前入单并自证理由（「留到 T-4 会打破逐阶段全绿」）。
+- §1 头部明文裁定「禁换形函数续命（任何消费面不许靠换形过渡，直接改形状）」；状态行改「设计修订轮」。
+- 一致性附带核对：cw_sim_equips 的往返不经 bench_place（用 bench_view_of_slots），留在 T-4 申报正确；cw_sim_pool.held_copies 走 bench_slots_of 读口，属 T-6 读口消费尾，与阶段结构自洽。
+
+### M1/M2（T-0 前置锁）✅
+
+§3 T-0 块 + §5 T-0：装备继承载体锁、部署恒 held 锁、开拓者归一现状锁三把齐，先锁后改、翻签名后作不变量哨兵。M1 采纳了「补锁」支（优于「写入阶段验收」支）；M2 的锁位次（T-0）早于 T-3 的 kind 口改造，满足要求。
+
+### M3（开拓者归一）✅
+
+§3 不变量 5：swap 有归一 / deploy_move 缺归一申报为既有不对称缺陷，随迁移统一归一点并申报修复；§5 T-3「开拓者归一统一（§3.5 申报）」；§6 新增风险行（欢愉/记忆计数事故重现 + cw_chars.py 在案）。T-0 现状锁兜住 T-1+T-2 重写 swap 上报时归一被弄丢的风险。闭环。
+
+### M4（CwSimFrame 体量与 M1 锁保形）✅
+
+§2 退役符号行补「序列化/重放契约已先行切断 + 三个死函数随删」；§5 T-4 补测试种子层 87 处/18 文件改造 + M1 投影锁语义逐字节保形为先决；§6 风险行同步。与首轮审查取证（schema.py:236-252 容器委托、cw_replay.py:31-118 容器恢复、三死函数零调用）逐字对得上。
+
+### M5（申报修正）✅（落点有一处残留歧义，见 R1）
+
+§5 T-4 申报改为「零策略行为变化 + 两处 sim 记录保真偏差显式修复」，点名 cw_sim_nodes（丢占位件槽 + 丢 Unit.equips）与 cw_sim_equips（丢占位件槽），与代码现状（cw_sim_nodes.py:279-285 / cw_sim_equips.py:153-163）一致。T-5 补 recognizer extras_doc 字符串声明同步（battle_prep_recognizer.py:137）。
+
+### 残留观察（不阻断开工）
+
+- **R1（major 残留）**：M5 修复落点与 T-1+T-2「禁换形续命」的相互作用未裁决。sim 两处直调提前入 T-1+T-2 后，`place_bench_unit_placeholder` 的容器原生重写按自然写法（保留占位件槽与既有 equips）落地，本身就是 M5 申报的保真修复——修复实际落点会落在 T-1+T-2 而非申报的 T-4。两条合规路径任选其一并补一句话：① T-1+T-2 容器原生**复刻既有丢弃行为**（可无换形实现，修复仍留 T-4）；② 承认修复提前到 T-1+T-2，申报随之移位。两路都无错误行为，实施时在提交说明里写明即可。
+- **R2（minor 残留）**：tracked_books 的 **deployed 侧**形状未点名——「BenchView 同构槽位快照」只定义了 bench 侧；deployed tracked 依赖 ADR-0392「置 None 不移位、deployed_idx 跨动作组恒稳」（cw_vocab.py:219、prep_actions.py:760），迁冻结快照时需保洞语义或显式声明改行列表 + 按行下标派生，建议 T-1 实施时点名并落锁。
+- **R3（minor 残留）**：T-6 正本更新列了 fields.md §3.2.5/§4.2，但帧↔容器映射契约正本节 = fields.md §9（cw_vocab.py:20 自证），帧退役后 §9 的处置（删或改写为容器正本）应点名；cw_registry.py:75「唯一加权实现」注释随死函数删除同步清理。
+- **R4（minor 残留）**：首轮 m1/m2 未收编——§2 退役符号清单仍未列 deployed_place / bench_from_compact / pad_bench / pad_deployed / _apply_row_to_char / unit_rows_to_deployed / deployed_slots_to_rows 的去留；position_pref 派生仍未点名 CW 注册表函数（正确源 = `get_char(name).position_pref()`，cw_chars.py:40；勿用全局近似 `get_role_position`，cw_factions.py:116）。实施者 grep 可兜，不阻断。
+- **R5（minor 残留）**：首轮 M5 建议的「先锁后修」sim 保真锁（占位件在席 + 装备在席）未入 T-0；建议补进 T-0 或作为 T-4 前置，防保真修复变回归。
+
+### 复审判定
+
+原 blocker B1 的三个构成要件（tracked_books 无归属 / mutate 链直调方缺失 / sim 直调跨阶段断裂）全部收编，且禁换形续命升格为 §1 总则；M1-M5 全部落条文。残留 R1-R5 均为实施期可纠正的申报/ wording 缺口，无「必产错误行为」路径。**判定：收敛可开工。**

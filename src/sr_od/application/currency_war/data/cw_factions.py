@@ -102,7 +102,7 @@ FACTIONS: dict[str, FactionInfo] = {
     "大守护者": FactionInfo("大守护者", "independent", (1,), "布洛妮娅专属:召唤可可利亚"),
     "命运卜者": FactionInfo("命运卜者", "independent", (1,), "黑天鹅专属:占卜屋启示卡"),
     "救世主": FactionInfo("救世主", "independent", (1,), "白厄专属:获得【所有前台角色已激活的非独立羁绊】的当前阶级效果(不影响人数计数);某羁绊激活成员全在后台 → 不获得;效果内部计算照常(如巡海游侠按后台数量加成,白厄同享),详 final_baie_reflect.md"),
-    "头号玩家": FactionInfo("头号玩家", "independent", (1,), "银狼LV.999 专属:升费/骇客改件"),
+    "头号玩家": FactionInfo("头号玩家", "independent", (1,), "银狼LV.999 专属:升费/骇客改件(「骇客改件」= 卡文口径改件族,非注册表「骇客」类别池——改件可落特殊类如分身墨镜Max,run_074040 实读实证;禁按类别池推改件池)"),
     "领航员": FactionInfo("领航员", "independent", (1,), "姬子·启行专属(V4.4):选列车同行角色获其流派+复制首件装备"),
 }
 

@@ -154,6 +154,7 @@ def _build_equip_wear_plan(session: Any,
     )
     from sr_od.application.currency_war.kernel.cw_comps import (
         EQUIP_CAPACITY,
+        _wearable_gate_ok,
     )
     from sr_od.application.currency_war.kernel.cw_equip_env import (
         classify_item_hold,
@@ -408,9 +409,26 @@ def _build_equip_wear_plan(session: Any,
     # 过滤工具类(拆装扳手/冶金炉等非 drag 穿);⚠️ 过滤只辖**穿戴决策**
     # (wearable)。位置分量已无计划面消费,零元组仅保 _prioritize_wearable
     # 元组契约形状。
-    wearable = [(n, (0, 0)) for n in owned_names
-                if EQUIPMENTS.get(n) is not None
-                and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
+    _wearable_all = [n for n in owned_names
+                     if EQUIPMENTS.get(n) is not None
+                     and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
+    # 回退帧穿戴门(fail-closed):回退帧 char='' 无 per-char 语境,判定
+    # 单源 ``_wearable_gate_ok`` 三谓词中 W1(worn 输入)与 W2(空栏前置)
+    # 无信息恒过 = 与历史行为等价;生效面 = W3 专属门——件级门(银狼专属
+    # 10 件)与类别门(骇客类)命中件 × char 不在白名单 → 拒,只放无门件。
+    # 不对称取向与 W3 主路径一致(错杀 = 件滞留 owned;漏放 = 拖错白拖
+    # + 安灯)。单源复用先例 = equip_alloc_empty_reason 同消费本函数,
+    # 禁回退分支内联白名单(分配语义与分配空诊断不漂移)。
+    wearable = []
+    _gate_held: list[str] = []
+    for _n in _wearable_all:
+        if _wearable_gate_ok([], '', _n):
+            wearable.append((_n, (0, 0)))
+        else:
+            _gate_held.append(_n)
+    if _gate_held:
+        log.info('[cw-equip] 回退帧专属门拒穿(fail-closed,滞留 owned): %s',
+                 sorted(set(_gate_held)))
     if not slots:
         # 「前排 avatar 全已穿」→ 空计划具名 NOOP(回退分支不挂哨兵)。
         log.info('[cw-equip] 前排 avatar 全已穿 → 计划空(回退分支)')
