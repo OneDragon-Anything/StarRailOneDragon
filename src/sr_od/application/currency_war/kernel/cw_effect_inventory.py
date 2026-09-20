@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     # 它模块头拉 cw_investments → 后者 import 本模块,模块级 import 成环。
     from sr_od.application.currency_war.kernel.cw_economy import LostNodeRef
     from sr_od.application.currency_war.kernel.cw_game_state import (
+        BenchView,
         ChannelSig,
         GameState,
         Unit,
@@ -1002,8 +1003,11 @@ def spawn_equip_bench_unit(gs: GameState, char_id: str, star: int,
     """桥·装备族单位入席腿(共享):把复制/发放单位落进备战席第一个空槽,
     write_logic 直写(确定性→逻辑写,归属判据确定性分支)。服务面 =
     员工投影仪(拖拽回执,cost_gate=3)/完美投影仪(无门)/数据拷贝仪族
-    计数臂(成熟回执,无门)/分身墨镜族获得发放(获得回执,无门)——
-    登记面映射单一源 = cw_affix_effects.EQUIP_WRITE_SIDES。
+    计数臂(成熟回执,无门)——登记面映射单一源 =
+    cw_affix_effects.EQUIP_WRITE_SIDES。(分身墨镜系获得发放腿已改辖
+    apply_equip_acquire_consequence——获得后果全渠道统一,本桥不再服务
+    该两行;数据拷贝仪Max 行保持本桥辖计数臂,其获得后果由后果函数按
+    数据行统一辖,不经登记表双登记。)
 
     - ``cost``/``cost_gate``:拖动目标费用与其门(>0 时 cost 超门拒落 =
       游戏端拒拖拽语义;员工投影仪 =3,无门传 0);费用查表单一源在调用侧
@@ -1011,8 +1015,8 @@ def spawn_equip_bench_unit(gs: GameState, char_id: str, star: int,
     - 席满(无空槽,与派生 bench_free_slots==0 同源)或 bench 从未观察
       → False 零写入:游戏端拒落/无容器,落位真值由观察给出(§3.2.8
       「席满点不动」同源);
-    - star 集 1..3 外 = 调用错,显式炸错(禁静默写错;银狼LV.999 星级未
-      采证禁走本桥,随其申报行观察收口);
+    - star 集 1..3 外 = 调用错,显式炸错(禁静默写错;银狼LV.999 星级已
+      随获得后果定谳为 1★[口述·权威 2026-09-18],走后果函数不入本桥);
     - 落位单位 slot = 落位物理槽(slots[i] ↔ 槽 i+1,BenchView 坐标系;
       观察期快照语义,下一观察覆盖为真值)。
     """
@@ -1337,3 +1341,266 @@ def settle_copy_machine_participation(gs: GameState, *,
                     ' count=%d)——席满/席未观察,成熟已消费不回退', equip_name,
                     wearer, count)
     return matured
+
+
+# ============================================================ 装备获得后果应用(全渠道统一)
+# (银狼闭环迭代 design.md §2.2:送角色腿建模为装备数据行的获得后果——
+# 获得分身墨镜/分身墨镜Max/数据拷贝仪Max 时,赠送的银狼族单位直接进备战
+# 席,效果与商店购买完全一致(可触发合成/升星)。后果应用函数 = 全渠道
+# 装备入栏的统一后置钩子:确定性通道(获得时件名已知)随 write_logic 入栏
+# 同链应用;随机通道(骇客改件采样链)在链内应用、随链 write_logic_rand。
+# 登记面 = cw_affix_effects.EQUIP_WRITE_SIDES(分身墨镜系两行
+# bridge:apply_equip_acquire_consequence;数据拷贝仪Max 行保持
+# spawn_equip_bench_unit 辖计数臂腿,其获得后果由本函数按数据行统一辖,
+# 不经登记表双登记)。星级按卡文定谳[口述·权威 2026-09-18]:
+# 分身墨镜→1星银狼 / 分身墨镜Max→2星银狼 / 数据拷贝仪Max→1星银狼LV.999。)
+
+#: 获得后果表(件名 → (送出单位名, 星级);表外件 = 无获得后果声明,
+#: 后果函数零写零行为——好运令牌等非专属渠道同锚零差)。
+EQUIP_ACQUIRE_CONSEQUENCES: dict[str, tuple[str, int]] = {
+    '分身墨镜': ('银狼', 1),
+    '分身墨镜Max': ('银狼', 2),
+    '数据拷贝仪Max': ('银狼LV.999', 1),
+}
+
+#: 银狼LV.999 跨档合并身份名(merge 引擎分组键 = (char_id, star) 无费用
+#: 维度,而银狼LV.999 有 3/4/5 三费档;混合费档同名同星是否合并未定谳,
+#: 3.1④ 定谳档 = changes/2026-09-18-yinlang-exclusive-loop/details/
+#: evidence-verdicts.md)。级联禁猜降级判据的名字半边。
+_LV999_MERGE_NAME: str = '银狼LV.999'
+
+#: LV.999 跨档合并降级留证行 kind(台账行;定谳后恢复推演时本行应绝迹,
+#: 残留 = 降级闩未撤的显式信号)。
+LV999_MERGE_UNDECIDED_KIND: str = 'lv999_merge_undecided'
+
+
+def bench_view_keep_items(work: list, orig: BenchView) -> BenchView:
+    """工作槽位表 → BenchView,占位件 kind 细分按原观察保留(共享口)。
+
+    `bench_view_of_slots` 对占位件(典籍/书册卡/箱)恒降级 supply_box
+    (is_item_slot 布尔无类型信息)——整表换新的角色/单位写会降级占位件,
+    让后续 OpenTome/OpenBookcard 按 kind 找不到槽。本口按原观察槽位还原
+    tome/bookcard/supply_box 细分,其余槽照 unit 形态映射。
+    (原形 = collect_ore 步内私有 helper,随获得后果段升为跨消费共享口,
+    collect_ore 同批改为委托本函数——单一实现零行为差。)
+    """
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        BenchSlot,
+        BenchView,
+        Unit,
+    )
+    slots = []
+    for i, bc in enumerate(work):
+        orig_slot = orig.slots[i] if i < len(orig.slots) else None
+        if bc is None:
+            slots.append(BenchSlot(kind='empty'))
+        elif (bool(getattr(bc, 'is_item_slot', False))
+                and orig_slot is not None
+                and orig_slot.kind in ('tome', 'bookcard', 'supply_box')):
+            slots.append(orig_slot)
+        else:
+            slots.append(BenchSlot(kind='unit', unit=Unit(
+                char_id=str(getattr(bc, 'char_id', '') or ''),
+                star=int(getattr(bc, 'star', 1) or 1),
+                equips=list(getattr(bc, 'equips', None) or []),
+                slot=i + 1)))
+    while len(slots) < len(orig.slots):
+        slots.append(BenchSlot(kind='empty'))
+    return BenchView(slots=slots, capacity=orig.capacity)
+
+
+def _slot_sig(slots: list) -> list:
+    """槽位表值签名(bench/deployed 通用;变更检测用,防共享对象原地
+    变异导致「签名没变值已变」的假阴)。"""
+    return [None if b is None else
+            (b.char_id, b.star, tuple(b.equips or ()))
+            for b in slots]
+
+
+def lv999_cascade_blocked(work_bench: list, work_dep: list) -> bool:
+    """跨档合并禁猜降级判据(design §2.0):全场工作副本内是否存在
+    (银狼LV.999, 同星)计数 ≥3 的合成组——merge 分组键 (char_id, star)
+    无费用维度,涉 LV.999 的级联在 3.1④ 定谳前不推演。纯函数。"""
+    counts: dict[tuple[str, int], int] = {}
+    for lst in (work_bench, work_dep):
+        for b in lst or []:
+            if b is not None and getattr(b, 'char_id', ''):
+                key = (str(b.char_id), int(getattr(b, 'star', 1) or 1))
+                counts[key] = counts.get(key, 0) + 1
+    return any(name == _LV999_MERGE_NAME and n >= 3
+               for (name, _star), n in counts.items())
+
+
+def merge_cascade_write(gs: GameState, work_bench: list, work_dep: list, *,
+                        rand: bool, evidence: str, producer: str,
+                        sig: ChannelSig,
+                        orig_view: BenchView | None = None) -> int:
+    """降级感知的合成级联写(设计 §2.0/§2.1③ 共用消费体;调用方持深拷贝
+    工作列表)。
+
+    - **正常路**(:meth:`cw_merge_simulate._merge_bench` on_step 范式,
+      逐级合并后受影响域各落一行;行域载体在场上 = bench+front+back 同号
+      三行):rand=False 走 write_logic(确定面),rand=True 走
+      write_logic_rand(采样链内);
+    - **降级路**(涉 LV.999 级联未定谳,3.1④ 前):不跑 merge 推演,
+      bench/front_row/back_row 值不变翻来源(恒 write_logic_rand,与 rand
+      通道无关——降级即翻源,观察覆盖差异转预期内收口)+ 留证行
+      :data:`LV999_MERGE_UNDECIDED_KIND`;定谳后恢复推演;
+    - ``orig_view`` = bench 原观察帧(占位件 kind 保留,见
+      :func:`bench_view_keep_items`;None = 以 work 状态构造);
+    - 返回落行数(测试/留证用)。
+    """
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        _emit_defect,
+        bench_view_of_slots,
+        deployed_slots_to_rows,
+    )
+    from sr_od.application.currency_war.kernel.cw_merge_simulate import (
+        _merge_bench,
+    )
+
+    def _view() -> BenchView:
+        return (bench_view_keep_items(work_bench, orig_view) if orig_view
+                is not None else bench_view_of_slots(work_bench))
+
+    write = gs.write_logic_rand if rand else gs.write_logic
+    if lv999_cascade_blocked(work_bench, work_dep):
+        rows = 0
+        for fld, val in ((gs.bench, _view()),
+                         (gs.front_row, deployed_slots_to_rows(work_dep)[0]),
+                         (gs.back_row, deployed_slots_to_rows(work_dep)[1])):
+            if fld.value is None:
+                continue   # 未观察域跳写(随机态标记对未知域无信息增益)
+            gs.write_logic_rand(fld, val, produced_by=producer,
+                                evidence=f'{evidence}#lv999_hold', sig=sig)
+            rows += 1
+        _emit_defect(field_name='bench', expected='merge_cascade_pending',
+                     actual='lv999_mixed_cost_merge_undecided',
+                     evidence=evidence, sig=sig,
+                     kind=LV999_MERGE_UNDECIDED_KIND)
+        return rows
+    rows = 0
+    step_no = 0
+    last_bs = _slot_sig(work_bench)
+    last_ds = _slot_sig(work_dep)
+
+    def on_step() -> None:
+        nonlocal step_no, rows, last_bs, last_ds
+        step_no += 1
+        ev = f'{evidence}#merge{step_no}'
+        bs = _slot_sig(work_bench)
+        if bs != last_bs:
+            write(gs.bench, _view(), produced_by=producer, evidence=ev,
+                  sig=sig)
+            last_bs = bs
+            rows += 1
+        ds = _slot_sig(work_dep)
+        if ds != last_ds:
+            front, back = deployed_slots_to_rows(work_dep)
+            write(gs.front_row, front, produced_by=producer, evidence=ev,
+                  sig=sig)
+            write(gs.back_row, back, produced_by=producer, evidence=ev,
+                  sig=sig)
+            last_ds = ds
+            rows += 2
+
+    _merge_bench(work_bench, work_dep, on_step=on_step)
+    return rows
+
+
+@dataclass(frozen=True)
+class BenchGrantResult:
+    """单位入席+级联应用结果(留证/测试用;零决策消费)。"""
+
+    placed: bool     # 是否成功落位(False = 席满/席未观察零写)
+    merge_steps: int  # 级联合并级数(降级路径恒 0)
+    detail: str = ''  # 拒落因:'' / 'bench_unobserved' / 'bench_full'
+
+
+def grant_bench_unit_cascade(gs: GameState, name: str, star: int, *,
+                             rand: bool = False, evidence: str = 'bench_grant',
+                             producer: str = 'EffectLedgerBridge',
+                             sig: ChannelSig | None = None) -> BenchGrantResult:
+    """单位入席+合成级联共用核心(获得后果/投资效果函数单一实现体)。
+
+    单位落备战席首空槽(bench_place)→ :func:`merge_cascade_write` 级联
+    (涉 LV.999 级联自动走禁猜降级)→ 逐步各落一行。``rand`` = 写通道
+    (False = write_logic 确定面 / True = write_logic_rand 采样链);
+    ``sig`` 缺省 = 装备桥 logic_hook 签名,动作报告上下文传入动作 sig 使
+    链行同组。bench 未观察/席满 → 零写拒落(落位真值由观察给出)。
+    """
+    from copy import deepcopy
+
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        BenchChar,
+        bench_place,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_slots_of,
+        deployed_slots_of,
+    )
+    orig_view = gs.bench.value
+    if orig_view is None:
+        return BenchGrantResult(placed=False, merge_steps=0,
+                                detail='bench_unobserved')
+    work_bench = [deepcopy(b) if b is not None else None
+                  for b in bench_slots_of(gs)]
+    work_dep = [deepcopy(d) if d is not None else None
+                for d in deployed_slots_of(gs)]
+    if bench_place(work_bench, BenchChar(
+            slot=0, char_id=name, star=star,
+            position_pref='back')) is None:
+        return BenchGrantResult(placed=False, merge_steps=0,
+                                detail='bench_full')
+    write = gs.write_logic_rand if rand else gs.write_logic
+    _sig = sig if sig is not None else _equip_bridge_sig(gs)
+    write(gs.bench, bench_view_keep_items(work_bench, orig_view),
+          produced_by=producer, evidence=evidence, sig=_sig)
+    steps = merge_cascade_write(gs, work_bench, work_dep, rand=rand,
+                                evidence=evidence, producer=producer,
+                                sig=_sig, orig_view=orig_view)
+    return BenchGrantResult(placed=True, merge_steps=steps)
+
+
+@dataclass(frozen=True)
+class EquipAcquireReport:
+    """获得后果应用结果(留证/测试用;零决策消费)。"""
+
+    item: str        # 入栏装备名(调用侧传入)
+    granted: str     # 送出单位名('' = 表外件无后果声明)
+    star: int        # 送出单位星级(表外件 0)
+    merge_steps: int  # 级联合并级数(降级路径恒 0)
+    performed: bool  # 是否发生容器写(授予腿或级联行;False = 表外件/
+                     # 席满/席未观察零写)
+    detail: str = ''
+
+
+def apply_equip_acquire_consequence(gs: GameState, item: str, *,
+                                    frame: str = '', rand: bool = False,
+                                    sig: ChannelSig | None = None) -> EquipAcquireReport:
+    """桥·装备获得后果应用(全渠道统一后置钩子;design §2.2)。
+
+    件名查 :data:`EQUIP_ACQUIRE_CONSEQUENCES`:命中 → 送出单位经
+    :func:`grant_bench_unit_cascade` 入席+级联(涉 LV.999 级联自动走
+    禁猜降级);表外件 → 零写零行为(非专属渠道同锚零差,含好运令牌
+    grant_equip_item 渠道)。
+
+    - ``rand`` = 调用通道:False = 确定性入栏通道(write_logic,同源);
+      True = 随机采样链内(write_logic_rand,观察覆盖差异 = 预期内);
+    - ``sig`` = 写入签名(缺省 = 装备桥 logic_hook 签名;动作报告上下文
+      传入动作 sig 使链行同组);
+    - 装备入栏(equips 追加)不在本函数辖——入栏写端归各渠道宿主,本
+      函数只辖「获得即送」的后果腿。
+    """
+    granted = EQUIP_ACQUIRE_CONSEQUENCES.get(item)
+    if granted is None:
+        return EquipAcquireReport(item=item, granted='', star=0,
+                                  merge_steps=0, performed=False,
+                                  detail='no_consequence_declared')
+    name, star = granted
+    ev = f'equip_acquire@{frame}' if frame else 'equip_acquire'
+    r = grant_bench_unit_cascade(gs, name, star, rand=rand, evidence=ev,
+                                 sig=sig)
+    return EquipAcquireReport(item=item, granted=name, star=star,
+                              merge_steps=r.merge_steps, performed=r.placed,
+                              detail=r.detail)

@@ -5,6 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from one_dragon.utils.str_utils import longest_common_subsequence_length
+from sr_od.application.currency_war.data.cw_equipment_wear_rules_data import (
+    ITEM_WEAR_GATES,
+)
 from sr_od.application.currency_war.kernel.cw_comps import (
     augment_affinity,
     candidate_faction_universe,
@@ -887,6 +891,91 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
         if score > best_score:
             best_idx, best_score, best_reason = opt.idx, score, reason
     return PlannerPick(idx=best_idx, reason=best_reason or '全部未识别,兜底左卡')
+
+
+# ===== 银狼策划腿型判定单源(记账分类器;银狼闭环迭代 design.md §2.1①)=====
+# 职责边界:本分类器只答「这张卡落在哪条记账腿」(动作上报记账用),与
+# :func:`decide_planner` 的选卡打分关键词是两套语义——决策打分词表(升费
+# 优先级/弱化加分)表达「选哪个」,本分类词表表达「选中后怎么记账」,二者
+# 职责不同禁互相复用(混用 = 装备授予被决策词表误判 → 记账缺位失配停;
+# 具体碰撞例 = 破解芯片卡文含「弱化」而实为装备卡,装备域优先判定消解)。
+
+#: 腿型词表(design §2.1① 封闭集):upgrade=升费腿 / weaken=弱化腿 /
+#: equip=装备腿 / unknown=未识别(零记账留证)。
+PLANNER_LEG_UPGRADE: str = 'upgrade'
+PLANNER_LEG_WEAKEN: str = 'weaken'
+PLANNER_LEG_EQUIP: str = 'equip'
+PLANNER_LEG_UNKNOWN: str = 'unknown'
+
+#: 装备域锚名单单一源 = 银狼专属 10 件穿戴门键集(data/cw_equipment_wear_
+#: rules_data.ITEM_WEAR_GATES——同一名单的第二个消费面,名单收窄/扩圈自动
+#: 跟随;禁复制名单成第二源)。longest-first 排序 = 构建期定序,「分身墨镜
+#: Max」先于「分身墨镜」受检(防短名截胡归一)。
+_PLANNER_EQUIP_ANCHORS: tuple[str, ...] = tuple(
+    sorted(ITEM_WEAR_GATES, key=len, reverse=True))
+
+#: 注册表相似归一的 LCS 占比下限(相对件名长度;0.75 = 件名 4 字容错 1 字
+#: OCR 缺字,再低会把升费卡文「…银狼LV.999」等长文本误挂到短件名上)。
+_EQUIP_NORM_LCS_FLOOR: float = 0.75
+
+
+def _similar_equip_hits(text: str) -> list[str]:
+    """注册表相似候选集(longest-first;LCS 占比 ≥
+    :data:`_EQUIP_NORM_LCS_FLOOR`,相对件名长度)。"""
+    t = text or ''
+    if not t:
+        return []
+    return [name for name in _PLANNER_EQUIP_ANCHORS
+            if (longest_common_subsequence_length(t, name) / len(name))
+            >= _EQUIP_NORM_LCS_FLOOR]
+
+
+def normalize_equip_name(text: str) -> str:
+    """卡面 OCR 文本 × 装备注册表相似归一(longest-match 优先;design
+    §2.1① equip 件名归一单一源)。
+
+    - 判据 = :func:`_similar_equip_hits`;**唯一命中**才返回归一件名,
+      零/多命中返回 ''(未解析——禁猜名,记账侧走值不变翻来源留证);
+    - 纯函数零副作用,handler 决策半与测试共用。
+    """
+    hits = _similar_equip_hits(text)
+    return hits[0] if len(hits) == 1 else ''
+
+
+def classify_planner_leg(text: str) -> tuple[str, str]:
+    """银狼策划选项腿型判定单源(记账分类器;design §2.1① 全序)。
+
+    判定序(装备域优先):
+    1. **锚匹配**:银狼专属 10 件名单(:data:`_PLANNER_EQUIP_ANCHORS`,
+       longest-first)件名 containment 命中 → equip,归一件名 = 命中锚
+       (破解芯片卡文含「弱化」的碰撞在此消解——锚先于关键词);
+    2. **相似归一**:锚未中 → :func:`_similar_equip_hits`——唯一命中 →
+       equip(OCR 形变救援);**多命中 → equip 且件名未解析**(norm_item
+       ='':多件注册表名同时高相似 = 装备信号成立而件名不可辨,禁猜——
+       记账侧走值不变翻来源留证);零命中 = 无装备信号;
+    3. **关键词降级**:「提升费用」→ upgrade;「弱化/降低敌人」→ weaken
+       (记账分类词表 = 本函数内联面,非 decide_planner 决策词表);
+    4. 空/未识别 → unknown(零记账,台账行证未识别事实)。
+
+    返回 ``(leg_type, norm_item)``:norm_item 仅 equip 腿携带归一件名,
+    其余腿恒 ''。
+    """
+    t = text or ''
+    if not t:
+        return (PLANNER_LEG_UNKNOWN, '')
+    for anchor in _PLANNER_EQUIP_ANCHORS:   # longest-first:Max 先于短名
+        if anchor in t:
+            return (PLANNER_LEG_EQUIP, anchor)
+    hits = _similar_equip_hits(t)
+    if len(hits) == 1:
+        return (PLANNER_LEG_EQUIP, hits[0])
+    if len(hits) > 1:
+        return (PLANNER_LEG_EQUIP, '')
+    if '提升费用' in t:
+        return (PLANNER_LEG_UPGRADE, '')
+    if '弱化' in t or '降低敌人' in t:
+        return (PLANNER_LEG_WEAKEN, '')
+    return (PLANNER_LEG_UNKNOWN, '')
 
 
 # ===== 命运卜者强化三选一(decide_fortune 判据;普查迁移批 2 F-overlay-01

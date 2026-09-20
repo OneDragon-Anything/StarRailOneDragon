@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     GameState,
@@ -108,9 +109,10 @@ def report_action_pick_supply_param(gs: GameState, param: Any, sig: ChannelSig) 
 
 
 
-def report_action_pick_invest_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """投资选择上报:容器零写(投资效果 = 授予闩/观察域)。"""
-    return _report_zero_write(gs, param, sig, 'zero_write(pick_invest)')
+# report_action_pick_invest_param 已迁出零写族(银狼闭环迭代 design.md
+# §2.3,用户定稿):分步实现正本 = 同包 pick_invest(两相语义 + 双屏分流
+# + 效果函数注册);包级 ``__getattr__`` 命名规约解析 pick_invest 先于
+# 本模块,直接 import 零写委托的旧消费面已随迁改直取 pick_invest。
 
 
 
@@ -126,9 +128,26 @@ def report_action_pick_partner_param(gs: GameState, param: Any, sig: ChannelSig)
 
 
 
-def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """骇入策划选择上报:容器零写。"""
-    return _report_zero_write(gs, param, sig, 'zero_write(pick_planner)')
+def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
+                                     *, leg_type: str = '',
+                                     norm_item: str = '') -> LogicOutcome:
+    """骇入策划选择上报(发射相 = 仅登记意图遥测,容器零写;银狼闭环
+    design.md §2.1①)。
+
+    - ``leg_type``/``norm_item`` = 决策半腿型载荷(classify_planner_leg
+      产物,经 OverlayPickExecEnv 随发射透传);意图遥测 = 日志行(行级
+      台账无「意图」行型,不强造——同 pick_invest 申报);
+    - **效果腿不在发射相应用**:幂等 = 证据闩,效果在「overlay 已关」
+      落地证据(重入裁决出口)应用一次——应用宿主 =
+      cw_screen_planner.apply_pick_planner_landing(本批宿主,记账函数
+      迁入 kernel/cw_action_report/pick_planner.py = 推广批,
+      design §2.1⑤);
+    - 容器零写,消费真值归观察(原零写委托语义保持)。"""
+    _validate_sig(sig, ('logic_action',))
+    log.info('[cw-pick-planner] 意图遥测:leg_type=%s norm_item=%s idx=%s'
+             '(效果腿候证据闩)', leg_type or '?', norm_item or '',
+             getattr(param, 'idx', '?'))
+    return LogicOutcome(applied=True, reason='intent_only')
 
 
 

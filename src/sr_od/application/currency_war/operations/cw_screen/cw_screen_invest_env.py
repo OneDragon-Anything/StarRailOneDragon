@@ -49,8 +49,19 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.kernel.cw_action_report.pick_invest import (
+    EVIDENCE_OVERLAY_CLOSED,
+    PICK_INVEST_SOURCE_PORTAL,
+    report_action_pick_invest_param,
+)
 from sr_od.application.currency_war.kernel.cw_events import decide_event
-from sr_od.application.currency_war.kernel.cw_investments import is_known_env
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
+)
+from sr_od.application.currency_war.kernel.cw_investments import (
+    is_known_env,
+    normalize_invest_name,
+)
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_screen_report.invest_env import (
     CwScreenInvestEnvObs,
@@ -102,7 +113,9 @@ class CwScreenInvestEnv(SrOperation):
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-投资环境')
         # 确认已发待重入裁决标志(验证废除形态):重入裁决见 act 顶部。
-        self._confirm_pending: bool = False
+        # 值 = 待裁决选中卡名(None = 无待裁决;银狼闭环 §2.3 起携名进
+        # 落地相上报,portal 效果分派只走效果腿、禁入持卡面)。
+        self._confirm_pending: str | None = None
         # 刷新零效果留证证据(批4 比对收口:刷新臂只读不比,读数原样
         # 携带——元组 = (刷前计数, 刷前名集, 刷后计数, 刷后名集);
         # 消费点 = 刷新臂终结交回出口 ``_reconcile_refresh_no_effect``,
@@ -134,6 +147,11 @@ class CwScreenInvestEnv(SrOperation):
         本读数,``_decide_and_act`` 刷新闸独立现读同源 reader)。"""
         _env_counts = read_invest_refresh_counts(self.ctx, screen, 'env')
         log.info(f'[cw-env] 刷新剩余计数读数={_env_counts}(观察通道,V5/V6)')
+
+    def _match_gs(self):
+        """局容器单例读口(无局/局外兜底路径 = None,调用方零行为跳过)。"""
+        _match = getattr(self.ctx, 'cw_match', None)
+        return getattr(_match, 'gs', None) if _match is not None else None
 
     def _reconcile_refresh_no_effect(self) -> None:
         """刷新零效果留证对账(消费点 = 刷新臂终结交回出口):携带证据
@@ -203,14 +221,27 @@ class CwScreenInvestEnv(SrOperation):
         """重入裁决(顶部)→ 零参决策 → 环境刷新终结交回 / 选卡+确认 → round_wait。
 
         重入裁决(观察驱动,验证废除形态):上轮已发确认 → 本轮锚不在 =
-        overlay 已关(环境选择落地)→ success 交回;锚在 = 确认未落地 →
-        清标志重走。循环推进 = round_wait(不烧节点重试预算;不收敛 =
-        策略 bug 响亮暴露,无防御上限)。"""
-        if self._confirm_pending:
-            self._confirm_pending = False
+        overlay 已关(环境选择落地)→ portal 落地相效果分派一次(银狼闭环
+        design §2.3:欢愉契约等 portal 卡确认只走效果腿,禁入持卡面;
+        效果腿幂等 = 证据闩,确认未落地重走不重复)→ success 交回;锚在 =
+        确认未落地 → 清标志重走。循环推进 = round_wait(不烧节点重试预算;
+        不收敛 = 策略 bug 响亮暴露,无防御上限)。"""
+        if self._confirm_pending is not None:
+            _p, self._confirm_pending = self._confirm_pending, None
             if not self.round_by_find_area(
                     self.last_screenshot, '货币战争-投资环境',
                     '标识-投资环境').is_success:
+                _mgs = self._match_gs()
+                if _p and _p != '?' and _mgs is not None:
+                    report_action_pick_invest_param(
+                        _mgs,
+                        CwActionPickInvestParam(
+                            idx=0, source=PICK_INVEST_SOURCE_PORTAL,
+                            norm_name=normalize_invest_name(_p)),
+                        ChannelSig(family='logic_action',
+                                   actor='CwScreenInvestEnv',
+                                   mode='compute'),
+                        evidence=EVIDENCE_OVERLAY_CLOSED)
                 return self.round_success('投资环境已确认(重入观察裁决)', wait=2.0)
         obs = self._obs
         return self._decide_and_act(
@@ -379,8 +410,10 @@ class CwScreenInvestEnv(SrOperation):
         # 确认 + 机械交回(验证废除:不读屏判「overlay 关没关」,落地由下一轮
         # 重入入口观察裁决)。确认 center 从 screen_info 读,缺失兜底。
         # 派发实例携真实选中下标(上报 param 即真实选择;fallback/盲点 = 0)。
+        # 派发实例携双屏分流载荷(银狼闭环 §2.3):source + 归一名随发射进
+        # 上报(意图遥测);落地相效果分派由重入裁决出口持证据调用。
         _confirm = area_center(self.ctx, '按钮-确认', CwScreenInvestEnv.SCREEN_NAME) or CwScreenInvestEnv.CONFIRM
-        self._confirm_pending = True
+        self._confirm_pending = chosen if chosen != '?' else None
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
@@ -391,8 +424,10 @@ class CwScreenInvestEnv(SrOperation):
                       and 0 <= act.idx < len(opts) else 0)
         _env = OverlayPickExecEnv(op=self, idx=_param_idx, target=target,
                                   confirm=_confirm, entry_keyword='投资环境')
-        action_op_for(CwActionPickInvestParam(idx=_param_idx), self.ctx,
-                      _env).execute()
+        action_op_for(CwActionPickInvestParam(
+            idx=_param_idx, source=PICK_INVEST_SOURCE_PORTAL,
+            norm_name=normalize_invest_name(chosen)), self.ctx,
+            _env).execute()
         # (台账写点②「确认后自截屏重读节点行」已退役——链观察落地批:环境
         #  改型由返回备战后的入口观察链读承接(diff 连续两帧一致才记行),
         #  变异窗开窗保留、关窗迁至备战帧链写端;op 层不再自读屏幕。)

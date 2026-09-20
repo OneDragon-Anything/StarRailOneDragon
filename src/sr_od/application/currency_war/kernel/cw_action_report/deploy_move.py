@@ -4,12 +4,23 @@
 ``cw_action_report.__init__`` docstring)。容器、写入口与观察
 写端留守 ``kernel/cw_game_state``,本包 → 容器单向依赖。
 语义正本 = 函数 docstring(自 cw_game_state 逐字迁移)。
+
+**上阵变换窗**(银狼闭环迭代 design.md §2.1A):落位腿对 =
+(银狼LV.999, 3★) 时,落场写**下一费用档的 1★**(角色固有升星升费:
+备战栏不升费、拖上场才触发;单位身份保持银狼LV.999,费用档升一级
+不建模——cost=起始费,多档待策略层需要时扩);其余单位恒等搬运
+零行为差。升费连锁(场上同名同星不变量)经常规级联覆盖,涉 LV.999
+级联在 3.1④ 定谳前自动走禁猜降级(:func:`cw_effect_inventory.
+merge_cascade_write` 值不变翻来源 + 留证行)。
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+    merge_cascade_write,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     BENCH_CAPACITY_DEFAULT,
     BenchSlot,
@@ -19,9 +30,17 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     LogicOutcome,
     _validate_sig,
+    bench_slots_to_legacy,
     deployed_slots_of,
     deployed_slots_to_rows,
 )
+
+#: 变换窗触发单位(银狼LV.999,3★):拖上场变下一费用档 1★
+#: (design §2.1A;名单与星级 = 定谳口径,机制单一源 =
+#: docs/game/gameplay/currency_war.md「银狼LV.999 升星升费」条)。
+_TRANSFORM_CHAR_ID: str = '银狼LV.999'
+_TRANSFORM_STAR: int = 3
+_TRANSFORMED_STAR: int = 1
 
 
 def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
@@ -29,7 +48,10 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
     首空落位(``deployed_place`` 单一源,按 position_pref 路由首选排,
     排满 fallback 另一排)+ board 羁绊计数派生重算(行写端挂钩
     ``_resync_board_delta`` 自动,禁手写 board)。
-    to_row 非法/源槽空/两排全满 = applied=False 零写(陈旧提案)。"""
+    to_row 非法/源槽空/两排全满 = applied=False 零写(陈旧提案)。
+    落位腿对 (银狼LV.999,3★) = 上阵变换窗:落场写下一费用档 1★
+    (非 3★ 原样)+ 级联常规覆盖(涉 LV.999 级联未定谳 → 值不变翻来源
+    留证降级);其余单位恒等搬运零行为差。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
 
@@ -64,6 +86,12 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
                       char_id=str(_mu.char_id or ''),
                       star=int(_mu.star or 1),
                       equips=list(_mu.equips or []))
+    # 上阵变换窗(design §2.1A):拖拽载荷唯一指定源(恰此一枚,无歧义)
+    # → 落场写下一费用档 1★(身份保持,槽位随拖拽落点,观察为真值)。
+    _transform = (moved.char_id == _TRANSFORM_CHAR_ID
+                  and moved.star == _TRANSFORM_STAR)
+    if _transform:
+        moved.star = _TRANSFORMED_STAR
     scratch = list(dep_slots)
     moved.position_pref = to_row
     placed_idx = deployed_place(scratch, moved)
@@ -78,5 +106,13 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
     front, back = deployed_slots_to_rows(scratch)
     _w(gs.front_row, front, 'proj_deploy_front')
     _w(gs.back_row, back, 'proj_deploy_back')
+    if _transform:
+        # 升费连锁(场上同名同星不变量)经常规级联覆盖;涉 LV.999 级联
+        # 3.1④ 定谳前由 merge_cascade_write 自动降级(值不变翻来源+留证)。
+        merge_cascade_write(
+            gs, bench_slots_to_legacy(gs.bench.value), scratch,
+            rand=False, evidence='proj_deploy_lv999_merge',
+            producer='CwActionDeployMoveParam', sig=_grp_sig,
+            orig_view=gs.bench.value)
     return LogicOutcome(applied=True)
 

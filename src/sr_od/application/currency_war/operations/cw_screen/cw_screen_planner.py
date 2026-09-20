@@ -26,9 +26,15 @@
 重入裁决顶部(入口词「我来当策划」不在 = overlay 已关 → success 交回)
 → 决策从容器零参读(kernel 直调仅无 match 防御路径)→ 点卡+确认链经
 工厂 → round_wait 循环(不烧节点重试预算,无防御上限;确认未落地轮重走
-选卡+确认)。本屏无 chosen_* 写端(选择存证行已随删除波 1 退役);本屏
-sim 腿 = 不适用(sim 无对应画面段,事件浮层族即时落定),等价判据主承重
-= 实机在册行为锁(test_cw_planner_strategy_wiring + test_cw_infra_locks)。
+选卡+确认)。**效果腿证据闩**(银狼闭环 design §2.1①/③⑦):重入裁决
+出口「入口词不在 = 上轮确认已落地」即落地证据,效果腿在该时点经
+:func:`apply_pick_planner_landing` 应用一次(非 op 实例闩——动作 op 每
+派发新建实例不设防;发射相仅意图遥测,确认未落地重走不重复);发射
+记账函数迁入 ``kernel/cw_action_report/pick_planner.py`` 与点球 op 同构
+推广 = 推广批(design §2.1⑤,不强制本批)。本屏无 chosen_* 写端(选择
+存证行已随删除波 1 退役);本屏 sim 腿 = 不适用(sim 无对应画面段,事件
+浮层族即时落定),等价判据主承重 = 实机在册行为锁
+(test_cw_planner_strategy_wiring + test_cw_infra_locks)。
 """
 from typing import ClassVar
 
@@ -38,6 +44,27 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+    apply_equip_acquire_consequence,
+    bench_view_keep_items,
+    merge_cascade_write,
+)
+from sr_od.application.currency_war.kernel.cw_events import (
+    PLANNER_LEG_EQUIP,
+    PLANNER_LEG_UNKNOWN,
+    PLANNER_LEG_UPGRADE,
+    classify_planner_leg,
+)
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
+    GameState,
+    LogicOutcome,
+    _emit_defect,
+    _validate_sig,
+    bench_slots_of,
+    deployed_slots_of,
+    deployed_slots_to_rows,
+)
 from sr_od.application.currency_war.kernel.cw_screen_report.planner import (
     CwScreenPlannerObs,
     report_screen_planner_obs,
@@ -92,6 +119,11 @@ class CwScreenPlanner(SrOperation):
         # 确认已发待重入裁决标志(验证废除形态):本屏分发即门(无 op 内入口
         # 守卫),重入出口裁决见决策动作 node 顶部。
         self._confirm_pending: bool = False
+        # 待落地腿型载荷 (leg_type, norm_item)(银狼闭环 design §2.1①):
+        # 派发时随决策半现算存本实例,重入裁决出口「overlay 已关」落地
+        # 证据到达时消费一次(apply_pick_planner_landing)并清空——确认
+        # 未落地重走不消费(证据未到),效果腿幂等由证据绑定保证。
+        self._pending_leg: tuple[str, str] | None = None
         # 观察结果(观察 node 产物,决策动作 node 消费;options = 入口帧一次
         # 读,恒两元素 0=左卡/1=右卡)。
         self._obs: CwScreenPlannerObs | None = None
@@ -116,6 +148,11 @@ class CwScreenPlanner(SrOperation):
         y = min(rect.y1 + int(rect.height * CwScreenPlanner.SELECT_Y_RATIO),
                 rect.y2 - int(rect.height * CwScreenPlanner.DETAIL_MARGIN_RATIO))
         return Point(rect.center.x, y)
+
+    def _match_gs(self):
+        """局容器单例读口(无局/局外兜底路径 = None,调用方零行为跳过)。"""
+        _match = getattr(self.ctx, 'cw_match', None)
+        return getattr(_match, 'gs', None) if _match is not None else None
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
@@ -157,11 +194,20 @@ class CwScreenPlanner(SrOperation):
         重入裁决(观察驱动,M7 同化先例 + cw_entry_start 守卫先例):本屏
         分发即门(无 op 内入口守卫),round_wait 重入不经外循环分发 →
         顶部出口门补位:入口词不在 = overlay 已关(上轮确认已落地)→
-        success 交回外循环;在 = 重走选卡+确认。"""
+        效果腿按证据闩应用一次(apply_pick_planner_landing)后 success
+        交回外循环;在 = 重走选卡+确认(证据未到,效果腿不应用)。"""
         if self._confirm_pending:
             self._confirm_pending = False
             if not self.round_by_ocr(self.last_screenshot, '我来当策划',
                                      lcs_percent=0.5).is_success:
+                _leg, self._pending_leg = self._pending_leg, None
+                _mgs = self._match_gs()
+                if _leg is not None and _leg[0] and _mgs is not None:
+                    apply_pick_planner_landing(
+                        _mgs, leg_type=_leg[0], norm_item=_leg[1],
+                        sig=ChannelSig(family='logic_action',
+                                       actor='CwScreenPlanner',
+                                       mode='compute'))
                 return self.round_success('策划事件已确认(重入观察裁决)',
                                           wait=2.0)
         options = self._obs.options if self._obs is not None else []
@@ -190,9 +236,16 @@ class CwScreenPlanner(SrOperation):
                                     None)
             pick = CwActionPickPlannerParam(idx=_kpick.idx, reason=_kpick.reason)
         target = self._card_point(pick.idx)
-        log.info('[cw][planner] 策划决策:%s → %s卡(%s)',
+        # 腿型载荷(银狼闭环 design §2.1①):判定单源 = kernel
+        # classify_planner_leg(装备域优先);随 env 透传给 op 发射上报
+        # (意图遥测)+ 本实例待落地存证(重入裁决出口消费)。
+        _opt_text = (options[pick.idx].text
+                     if 0 <= pick.idx < len(options) else '')
+        leg_type, norm_item = classify_planner_leg(_opt_text)
+        self._pending_leg = (leg_type, norm_item)
+        log.info('[cw][planner] 策划决策:%s → %s卡(%s) leg=%s/%s',
                  pick.reason, '左' if pick.idx == 0 else '右',
-                 options[pick.idx].text[:24])
+                 options[pick.idx].text[:24], leg_type, norm_item or '-')
         # 点卡选中 → 确认链经工厂(统一动作工厂批4:体迁
         # ``cw_overlay_pick_action.PlannerPickOp``,方法级替身缝保留);
         # 决策半(重入裁决/策略选卡)留守上方,派发实例 = 策略 pick 本体,
@@ -205,6 +258,154 @@ class CwScreenPlanner(SrOperation):
         from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
             OverlayPickExecEnv,
         )
-        _env = OverlayPickExecEnv(op=self, target=target)
+        _env = OverlayPickExecEnv(op=self, target=target,
+                                  leg_type=leg_type, norm_item=norm_item)
         action_op_for(pick, self.ctx, _env).execute()
         return self.round_wait()
+
+
+# ===== 策划落地相效果腿应用(证据闩出口;银狼闭环 design §2.1②③④)=====
+# 动作报告形态记账(分步更新 + 逐字段遥测行);宿主 = 本文件为过渡位,
+# 迁入 kernel/cw_action_report/pick_planner.py(现零写委托退役)与点球 op
+# 同构推广 = 推广批(design §2.1⑤,不强制本批)。发射相 = 意图遥测
+# (zero_writes.report_action_pick_planner_param),容器写全部在落地相。
+
+_PLANNER_PRODUCER: str = 'CwActionPickPlannerParam'
+_LV999_ID: str = '银狼LV.999'   # 变换窗/级联身份名(cw_chars 规范名)
+
+
+def apply_pick_planner_landing(gs: GameState, *, leg_type: str,
+                               norm_item: str,
+                               sig: ChannelSig) -> LogicOutcome:
+    """银狼策划「我来当策划」确认落地效果腿应用(design §2.1 全分支)。
+
+    消费点 = 画面 op 重入裁决出口(入口词不在 = overlay 已关 = 上轮确认
+    已落地)——效果腿在该证据点应用一次;确认未落地重走不会到达本函数
+    (证据未到),重派发的动作 op 只产意图遥测。腿型分派:
+
+    - **equip**(装备腿):归一件名命中 → 装备入栏(write_logic;装备区
+      未观察跳写等观察)+ 获得后果链(apply_equip_acquire_consequence,
+      命中三件则 bench 增员 + 级联,涉 LV.999 级联自动禁猜降级);未解析
+      (norm_item='')→ 禁猜,equips 值不变翻来源 + 留证行
+      (kind=planner_equip_name_unresolved),识别修因后走主路;
+    - **upgrade**(升费腿)= 变换窗三态(见 :func:`_apply_upgrade_transform`);
+    - **unknown**:零记账 + 留证行证未识别事实(kind=planner_leg_unknown);
+    - **weaken**:零记账(全场弱化为节点态语义,无容器字段)。
+    """
+    _validate_sig(sig, ('logic_action',))
+    if leg_type == PLANNER_LEG_EQUIP:
+        return _apply_equip_leg(gs, norm_item, sig)
+    if leg_type == PLANNER_LEG_UPGRADE:
+        return _apply_upgrade_transform(gs, sig)
+    if leg_type == PLANNER_LEG_UNKNOWN:
+        _emit_defect(field_name='planner_opts', expected='planner_leg',
+                     actual='unrecognized_text', evidence='planner_landing',
+                     sig=sig, kind='planner_leg_unknown')
+        return LogicOutcome(applied=True, reason='unknown_leg_evidenced')
+    return LogicOutcome(applied=True, reason='weaken_leg_zero_write')
+
+
+def _apply_equip_leg(gs: GameState, norm_item: str,
+                     sig: ChannelSig) -> LogicOutcome:
+    """装备腿(确定性通道,design §2.1②):入栏 + 获得后果链。"""
+    if not norm_item:
+        # 未解析:禁猜名,equips 值不变翻来源(collect_ore 步2 同款)+
+        # 留证行——观察覆盖差异 = 预期内收口自愈。
+        if gs.equips.value is not None:
+            gs.write_logic_rand(gs.equips, gs.equips.value,
+                                produced_by=_PLANNER_PRODUCER,
+                                evidence='planner_equip_unresolved', sig=sig)
+        _emit_defect(field_name='equips', expected='planner_equip_name',
+                     actual='unresolved', evidence='planner_landing',
+                     sig=sig, kind='planner_equip_name_unresolved')
+        return LogicOutcome(applied=True, reason='equip_name_unresolved')
+    inv = gs.equips.value
+    if inv is not None:
+        gs.write_logic(gs.equips, list(inv) + [norm_item],
+                       produced_by=_PLANNER_PRODUCER,
+                       evidence='planner_equip_gain', sig=sig)
+    # 获得后果链(表外件零写零行为;入栏与后果同源 write_logic)。
+    c = apply_equip_acquire_consequence(gs, norm_item, frame='planner',
+                                        rand=False, sig=sig)
+    return LogicOutcome(applied=True,
+                        reason=f'equip_applied(consequence={c.granted or "none"},'
+                               f'placed={c.performed})')
+
+
+def _apply_upgrade_transform(gs: GameState,
+                             sig: ChannelSig) -> LogicOutcome:
+    """升费腿 = 变换窗三态(design §2.1③):前置硬校验对发射时容器观察
+    态(bench ∪ front_row ∪ back_row 多重集)的 (银狼LV.999, 2★) 计数:
+
+    - **恰一枚** → 工作副本变换(−2★ +1★,槽位无关,落点不建模观察为
+      真值)→ 级联(merge_cascade_write,涉 LV.999 级联 3.1④ 定谳前自动
+      禁猜降级)→ 受影响域各落一行(write_logic);
+    - **多枚**(二次升费现实可发)→ 触发单位不可辨(禁猜)→ 受影响域
+      值不变翻来源 + 留证行(kind=planner_upgrade_ambiguous),观察覆盖
+      差异 = 预期内收口自愈;
+    - **零枚/未观察** → 不写 + 留证行(真异常,照真失配响停,fail-closed
+      禁猜)。
+
+    费用档不建模(cw_chars 银狼LV.999 行注:cost=起始费,多档待策略层
+    需要时扩);「新费档银狼刷进商店」连带腿 = 零记账面(商店池无容器
+    字段,逐帧观察为真值),注释申报。
+    """
+    from copy import deepcopy
+
+    view = gs.bench.value
+    front = gs.front_row.value
+    back = gs.back_row.value
+    if view is None and front is None and back is None:
+        _emit_defect(field_name='bench',
+                     expected=f'({_LV999_ID},2)×1',
+                     actual='containers_unobserved', evidence='planner_landing',
+                     sig=sig, kind='planner_upgrade_source_missing')
+        return LogicOutcome(applied=False,
+                            reason='upgrade_source_unobserved')
+    work_bench = [deepcopy(b) if b is not None else None
+                  for b in bench_slots_of(gs)]
+    work_dep = [deepcopy(d) if d is not None else None
+                for d in deployed_slots_of(gs)]
+    hits = [i for i, b in enumerate(work_bench)
+            if b is not None and b.char_id == _LV999_ID and b.star == 2]
+    hits_dep = [i for i, d in enumerate(work_dep)
+                if d is not None and d.char_id == _LV999_ID and d.star == 2]
+    count = len(hits) + len(hits_dep)
+    if count == 0:
+        _emit_defect(field_name='bench',
+                     expected=f'({_LV999_ID},2)×1', actual='count=0',
+                     evidence='planner_landing', sig=sig,
+                     kind='planner_upgrade_source_missing')
+        return LogicOutcome(applied=False, reason='upgrade_source_missing')
+    if count > 1:
+        # 多枚:值不变翻来源(受影响域全集,未观察域跳写)+ 留证行自愈。
+        for fld in (gs.bench, gs.front_row, gs.back_row):
+            if fld.value is None:
+                continue
+            gs.write_logic_rand(fld, fld.value,
+                                produced_by=_PLANNER_PRODUCER,
+                                evidence='planner_upgrade_ambiguous_mark',
+                                sig=sig)
+        _emit_defect(field_name='bench',
+                     expected=f'({_LV999_ID},2)×1', actual=f'count={count}',
+                     evidence='planner_landing', sig=sig,
+                     kind='planner_upgrade_ambiguous')
+        return LogicOutcome(applied=True, reason='upgrade_ambiguous_flipped')
+    # 恰一枚:工作副本变换(槽位无关)→ 受影响域落行 → 级联。
+    if hits:
+        work_bench[hits[0]].star = 1
+        gs.write_logic(gs.bench, bench_view_keep_items(work_bench, view),
+                       produced_by=_PLANNER_PRODUCER,
+                       evidence='planner_upgrade_transform', sig=sig)
+    else:
+        work_dep[hits_dep[0]].star = 1
+        f2, b2 = deployed_slots_to_rows(work_dep)
+        gs.write_logic(gs.front_row, f2, produced_by=_PLANNER_PRODUCER,
+                       evidence='planner_upgrade_transform', sig=sig)
+        gs.write_logic(gs.back_row, b2, produced_by=_PLANNER_PRODUCER,
+                       evidence='planner_upgrade_transform', sig=sig)
+    merge_cascade_write(gs, work_bench, work_dep, rand=False,
+                        evidence='planner_upgrade_merge',
+                        producer=_PLANNER_PRODUCER, sig=sig,
+                        orig_view=view)
+    return LogicOutcome(applied=True, reason='upgrade_transformed')

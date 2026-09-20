@@ -15,9 +15,11 @@ cw_tool_use_action。
 **自上报统一(pick-op-unify 批,撤销 2026-09-18 动作 op 重组批 §1.1
 「零上报例外登记」)**:本族每类 run 体在机械链(选中点击 → 确认点击)
 发出后直调自己的上报函数 ``report_action_pick_<snake>_param``
-(``kernel/cw_action_report/zero_writes``,零容器写)——与 buy_card 等
-其它动作 op 同一执行契约;上报函数零写,容器写语义(chosen_*/Confirm*
-到账)仍由画面 op 原写点承载,本批零行为变化。partner 确认点读缺的
+(``kernel/cw_action_report``,零写族落 zero_writes)——与 buy_card 等
+其它动作 op 同一执行契约;上报发射相零写,容器写语义(chosen_*/Confirm*
+到账)仍由画面 op 原写点承载。银狼闭环迭代起两线例外:pick_invest =
+分步实现(发射相仅意图遥测,落地相在画面 op 重入裁决出口);pick_planner
+发射相 = 意图遥测(零容器写),效果腿同候证据闩。partner 确认点读缺的
 retry 旁路分支未发确认点击,不上报。
 
 体迁纪律(零行为):各 op 类 run 体 = 现役 overlay act 确认链逐字迁移
@@ -33,13 +35,15 @@ from typing import Any
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_action_report.pick_invest import (
+    report_action_pick_invest_param,
+)
 from sr_od.application.currency_war.kernel.cw_action_report.zero_writes import (
     report_action_pick_box_card_param,
     report_action_pick_encounter_param,
     report_action_pick_equip_param,
     report_action_pick_expert_invite_param,
     report_action_pick_fortune_param,
-    report_action_pick_invest_param,
     report_action_pick_megastar_param,
     report_action_pick_partner_param,
     report_action_pick_planner_param,
@@ -101,6 +105,10 @@ class OverlayPickExecEnv:
     选中直发确认)。
     ``round_result`` = 旁路回传(确认链末步 ``round_*`` 产物;op 自身
     round 结果恒成功不携带语义),op 类写、画面 op act 分派面读。
+    ``leg_type``/``norm_item`` = 银狼策划腿型载荷(银狼闭环 design
+    §2.1①;决策半经 ``classify_planner_leg`` 现算,随发射透传给上报函数
+    登记意图遥测;leg_type ∈ upgrade|weaken|equip|unknown,norm_item =
+    归一件名或空)。
     """
 
     op: SrOperation
@@ -114,6 +122,8 @@ class OverlayPickExecEnv:
     need_select: bool = False  # True = 先点 target 选中再确认(巨星选中半)
     picked: dict | None = None
     unselected: bool = False
+    leg_type: str = ''        # 策划腿型载荷(decision 半 classify_planner_leg 产物)
+    norm_item: str = ''       # 策划装备腿归一件名('' = 未解析/非装备腿)
     round_result: OperationRoundResult | None = None
 
 
@@ -386,13 +396,16 @@ class CwActionPickPlannerOp(SrOperation):
             op, confirm_point=_confirm,
             entry_keyword='我来当策划', tag='cw-planner',
             press_time=op.CLICK_PRESS_TIME)
-        # 自上报(机械链发出后;零写,契约面统一)。
+        # 自上报(发射相:仅登记意图遥测,容器零写;效果腿在「overlay 已关」
+        # 落地证据应用一次,宿主 = 画面 op 重入裁决出口——银狼闭环
+        # design §2.1① 证据闩语义)。
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_pick_planner_param(
                 gs, action,
                 ChannelSig(family='logic_action',
-                           actor=type(self).__name__, mode='compute'))
+                           actor=type(self).__name__, mode='compute'),
+                leg_type=env.leg_type, norm_item=env.norm_item)
         return self.round_success('策划选择确认链已发(结果经旁路回传)')
 
 
@@ -432,7 +445,9 @@ class CwActionPickInvestOp(SrOperation):
         env.round_result = emit_overlay_confirm(
             op, confirm_point=env.confirm,
             entry_keyword=env.entry_keyword, tag='cw-pick-invest')
-        # 自上报(机械链发出后;零写,契约面统一)。
+        # 自上报(发射相:仅登记意图遥测,容器零写;落地分步 = 双屏分流 +
+        # 效果分派,由两屏 handler 重入裁决出口持证据调用——银狼闭环
+        # design §2.3,pick_invest 迁出零写族)。
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_pick_invest_param(

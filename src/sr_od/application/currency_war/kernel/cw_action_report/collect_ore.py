@@ -28,18 +28,18 @@ from copy import deepcopy
 from dataclasses import replace as _dc_replace
 from typing import Any
 
+from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+    bench_view_keep_items as _bench_view_keep_items,
+)
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BenchChar,
     bench_place,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
-    BenchSlot,
-    BenchView,
     ChannelSig,
     GameState,
     LogicOutcome,
     OreSight,
-    Unit,
     _validate_sig,
     bench_slots_of,
     deployed_slots_of,
@@ -53,36 +53,6 @@ from sr_od.application.currency_war.kernel.cw_ore_reward import (
 )
 
 _PRODUCER = 'CwActionCollectOreParam'
-
-
-def _bench_view_keep_items(work: list[BenchChar | None],
-                           orig: BenchView) -> BenchView:
-    """工作槽位表 → BenchView,**占位件 kind 细分按原观察保留**。
-
-    `bench_view_of_slots` 对占位件(典籍/书册卡/箱)恒降级 supply_box
-    (is_item_slot 布尔无类型信息,该口已申报的已知边界)——本动作的
-    角色奖励写会整表换新,降级会让后续 OpenTome/OpenBookcard 按 kind
-    找不到槽(实锁 test_cw_collect_ore_rand 契约)。本口按原观察槽位
-    还原 tome/bookcard/supply_box 细分,其余槽照 unit 形态映射。
-    """
-    slots = []
-    for i, bc in enumerate(work):
-        orig_slot = orig.slots[i] if i < len(orig.slots) else None
-        if bc is None:
-            slots.append(BenchSlot(kind='empty'))
-        elif (bool(getattr(bc, 'is_item_slot', False))
-                and orig_slot is not None
-                and orig_slot.kind in ('tome', 'bookcard', 'supply_box')):
-            slots.append(orig_slot)
-        else:
-            slots.append(BenchSlot(kind='unit', unit=Unit(
-                char_id=str(getattr(bc, 'char_id', '') or ''),
-                star=int(getattr(bc, 'star', 1) or 1),
-                equips=list(getattr(bc, 'equips', None) or []),
-                slot=i + 1)))
-    while len(slots) < len(orig.slots):
-        slots.append(BenchSlot(kind='empty'))
-    return BenchView(slots=slots, capacity=orig.capacity)
 
 
 def _slot_sig(slots: list[BenchChar | None]) -> list:

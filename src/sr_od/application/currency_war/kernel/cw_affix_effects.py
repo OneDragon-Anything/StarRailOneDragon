@@ -57,6 +57,7 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     EffectKind,
     EffectSpec,
     TriggerKind,
+    apply_equip_acquire_consequence,
     grant_equip_item,
     spawn_equip_bench_unit,
     transform_equip_to_privilege,
@@ -267,8 +268,9 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
                '载体=settle_copy_machine_participation(现值观察面=前台+后台在册'
                '单位));任意获得30%概率臂随机→观察收口',
     '数据拷贝仪Max': '单位面:计数臂同数据拷贝仪(参与2战→逻辑写,写端=入席桥,'
-                 '阈值表=COPY_MACHINE_MATURE_BATTLES);立即获得银狼LV.999 腿星级'
-                 '未采证禁猜→观察收口',
+                 '阈值表=COPY_MACHINE_MATURE_BATTLES);立即获得银狼LV.999 腿 = '
+                 '获得后果(1星[口述·权威 2026-09-18],后果 = 装备数据行后果应用 '
+                 'apply_equip_acquire_consequence 统一辖,不经本表登记行双登记)',
     '数据拷贝仪Pro': '单位面:计数臂同数据拷贝仪(参与3战→逻辑写,写端=入席桥)',
     '员工投影仪': '单位面:拖拽→备战席该角色1星复制进席(确定性→逻辑写;官方前置'
                '门=拖动目标3费及以下;写端=桥 spawn_equip_bench_unit 费用门形,'
@@ -276,10 +278,12 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
     '完美投影仪': '单位面:同员工投影仪(无费用门;确定性→逻辑写,写端=桥 spawn_'
               'equip_bench_unit 无门形);执行分派=apply_tool_execution_write',
     '分身墨镜': '单位面:官方文「获得时解锁并获得1星专家【银狼】」=获得时点确定性'
-             '发放,前台强度40%为数值行非发放条件(确定性→逻辑写;写端=桥 spawn_'
-             'equip_bench_unit,获得回执时点);现观察覆盖兜底',
+             '发放,前台强度40%为数值行非发放条件(确定性→逻辑写;获得后果=装备'
+             '数据行后果应用[口述·权威 2026-09-18,送出1星银狼直接进备战席、'
+             '效果与商店购买完全一致],写端=桥 apply_equip_acquire_consequence)',
     '分身墨镜Max': '单位面:同分身墨镜(获得时点 2星专家【银狼】,官方文明示星级;'
-                '确定性→逻辑写,写端=入席桥);现观察覆盖兜底',
+                '确定性→逻辑写,获得后果=装备数据行后果应用,写端=桥 '
+                'apply_equip_acquire_consequence)',
     '冶金炉': '装备面:拖装备变同类型随机=产出不可预知→观察收口;拖角色=全拆+三件'
             '同刷随机→观察收口',
     '特权赋予卡': '装备面:拖拽后进阶装备变对应特权装备/角色已穿进阶装备随机一件变'
@@ -328,8 +332,8 @@ EQUIP_WRITE_SIDES: dict[str, str] = {
     '数据拷贝仪Pro': 'bridge:spawn_equip_bench_unit',
     '员工投影仪': 'bridge:spawn_equip_bench_unit',
     '完美投影仪': 'bridge:spawn_equip_bench_unit',
-    '分身墨镜': 'bridge:spawn_equip_bench_unit',
-    '分身墨镜Max': 'bridge:spawn_equip_bench_unit',
+    '分身墨镜': 'bridge:apply_equip_acquire_consequence',
+    '分身墨镜Max': 'bridge:apply_equip_acquire_consequence',
     '冶金炉': 'observation',
     '特权赋予卡': 'bridge:transform_equip_to_privilege',
     '拆装扳手': 'op:CwActionSellBenchParam/RunTools 装备转移链(cw_equip_env 既有流向锚)',
@@ -507,6 +511,11 @@ def apply_tool_execution_write(
             raise ValueError(
                 f'chosen_equip 须为进阶类别(推荐四件域),得 {chosen_equip!r}')
         ok = grant_equip_item(gs, chosen_equip, frame=frame)
+        # 获得后果链锚(银狼闭环 design §2.2 全渠道统一):入栏后统一走后果
+        # 应用——推荐四件域为进阶件,后果表恒 miss = 零写零行为;未来推荐表
+        # 扩入专属件时本锚零改自洽。
+        if ok:
+            apply_equip_acquire_consequence(gs, chosen_equip, frame=frame)
         return ToolExecutionReport(tool=tool, side=side, leg='grant',
                                    performed=ok,
                                    detail=chosen_equip if ok else '库存未观察')

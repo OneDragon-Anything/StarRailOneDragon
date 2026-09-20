@@ -923,13 +923,27 @@ class CwActionPickSupplyParam:
 @dataclass
 class CwActionPickInvestParam:
     """投资选择(投资策略/投资环境两入口共用,替代 CwActionPickEventParam;逐卡刷新
-    建议另发 CwActionRefreshInvestCardsParam)。"""
+    建议另发 CwActionRefreshInvestCardsParam)。
+
+    双屏分流载荷(银狼闭环迭代 design.md §2.3):``source`` = 发射屏别
+    ('strategy'=投资策略屏 / 'portal'=投资环境屏;''=未分流——上报只登记
+    意图,落地分派零动作);``norm_name`` = 选中卡归一规范名
+    (``normalize_invest_name``,OCR 原始名不静默改写由 handler 持有)。
+    上报分步语义:策略屏确认落地 → 入 ``gs.active_strategies`` + 效果
+    分派;portal 确认落地 → 只走效果分派,禁入持卡面(防 portal 卡污染
+    持卡经济聚合)。两字段不入动作实例键(归因载荷不改变动作身份,同
+    ``route_tag`` 先例)。
+    """
     idx: int
     # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
     #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
     #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
     #             重声明;``reason`` = 归因记录字段,''=未标)。
     reason: str = ''
+    source: str = field(default='', kw_only=True,
+                        metadata={'action_key_exclude': True})
+    norm_name: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 

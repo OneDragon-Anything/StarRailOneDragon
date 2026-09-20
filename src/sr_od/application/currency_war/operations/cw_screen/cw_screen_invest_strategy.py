@@ -37,13 +37,16 @@ visit 起点单点复位 → 1s 稳定帧 → 候选一次读(G10 首帧 OCR 存
 ``report_screen_invest_strategy_obs`` 落容器 ``invest_strategy_opts``(提名
 序列;names 空 = OCR 未读得不写,闸在 report 内)→ obs 挂实例属性进决策
 node。决策动作 node = 重入裁决顶部(确认已发 → 入口锚不在 = overlay 已关
-= 选卡落地 → 此刻才 append ``active_strategies`` + success 交回;锚在 =
-未落地 → 清标志重走)→ 零参决策(候选自容器槽)→ 逐卡刷新终结交回 /
+= 选卡落地 → 此刻才经 ``report_action_pick_invest_param`` 落地相落
+``active_strategies`` + 效果分派 + success 交回;锚在 = 未落地 → 清标志
+重走)→ 零参决策(候选自容器槽)→ 逐卡刷新终结交回 /
 选卡+确认链经 ``CwActionPickInvestOp`` 派发(pick-op-unify 批机械链迁入
-动作 op)→ ``round_wait`` 循环推进(不烧节点重试预算;不收敛 =
-策略 bug 响亮暴露,无防御上限)。决策面留守写点:``active_strategies``
-重入裁决出口 append(ADR-0598 幻影卡收口:确认未落地轮 = 重走重选,不留
-幻影)+ 效果账本登记 + 授予置闩(``_append_confirmed_strategy`` 原位)。
+动作 op;派发实例携双屏分流载荷 source+归一名,银狼闭环 §2.3)→
+``round_wait`` 循环(不烧节点重试预算;不收敛 =
+策略 bug 响亮暴露,无防御上限)。决策面留守写点:确认落地后的效果账本
+三桥(register_strategy/免费刷新 burst/board_rewrite,对抗审⑨ 留守不迁
+—— ``_append_confirmed_strategy`` 原位);持卡面追加已移入上报
+( ``kernel/cw_action_report/pick_invest`` 分步实现)。
 本屏 sim 腿 = 不适用(sim 端口适配器未建),等价判据主承重 = 实机在册
 行为锁。
 """
@@ -58,10 +61,18 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.kernel.cw_action_report.pick_invest import (
+    EVIDENCE_OVERLAY_CLOSED,
+    PICK_INVEST_SOURCE_STRATEGY,
+    report_action_pick_invest_param,
+)
 from sr_od.application.currency_war.kernel.cw_comps import augment_affinity
 from sr_od.application.currency_war.kernel.cw_events import (
     decide_event,
     is_economy_engine,
+)
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     get_strategy,
@@ -405,37 +416,44 @@ class CwScreenInvestStrategy(SrOperation):
                       and 0 <= act.idx < len(opts) else 0)
         _env = OverlayPickExecEnv(op=self, idx=_param_idx, target=target,
                                   confirm=_confirm, entry_keyword='投资策略')
-        action_op_for(CwActionPickInvestParam(idx=_param_idx), self.ctx,
-                      _env).execute()
+        # 派发实例携双屏分流载荷(银狼闭环 design §2.3):source + 归一名
+        # 随发射进上报(意图遥测);落地分步由重入裁决出口持证据调用。
+        action_op_for(CwActionPickInvestParam(
+            idx=_param_idx, source=PICK_INVEST_SOURCE_STRATEGY,
+            norm_name=normalize_invest_name(chosen)), self.ctx,
+            _env).execute()
         return self.round_wait(wait=1)
 
     def _append_confirmed_strategy(self, chosen: str) -> None:
-        """重入裁决出口的持卡登记面(ADR-0598 幻影卡收口语义承载):调用点 =
+        """重入裁决出口的确认落地面(ADR-0598 幻影卡收口语义承载):调用点 =
         act 顶部重入裁决(入口锚不在 = overlay 已关 = 选卡落地)。
 
-        持卡本体追加 + 到账登记(§3.3 #22 ConfirmStrategy;粗粒度 expected,
-        效果走台账不进 session 推进);去重防重复入列。原「chosen 只点不存」
-        bug 的修复语义由本块承载。"""
+        ① **上报落地相**(银狼闭环 design §2.3:现役持卡追加写点自 handler
+        移入上报,本 handler 持「overlay 已关」落地证据调用一次)——分步 =
+        策略入活跃策略表(判重)+ 效果函数分派(容器写腿;首注册 =
+        骇客专家:银狼,未收录卡只走第一步,行为与迁移前一致);
+        ② **现役三桥留守不迁**(对抗审⑨:动作事实/出辖面语义,非效果
+        记账)——效果账本选卡登记挂点(设计 §5.1「买卡=激活登记」
+        /§8.7 批次三件 4;免战牌同点自动登记)。chosen 命中效果注册表
+        (规范名归一后)才登记;acquired_t = 登记时点节点序快照
+        ((plane-1)*9+round,基 1,ActiveEffect 坐标系;GameState 节点
+        单例,节点未观察(引导窗)= None 缺位)。登记面 best-effort:
+        失败不阻塞选卡主链;账本当前零决策消费(§5.1 过渡口径)。
+        """
         match = self.ctx.cw_match
         if match is None or not chosen or chosen == '?':
             return
-        # GameState 写端(§3.4.4/§4 投资选择行):持有投资
-        # 策略=本屏写入、局级累计(逐次选择追加);单次逻辑写入
-        # (申报豁免)。终态契约 §B:session 份退役,直读直写容器。
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            ChannelSig,
-        )
-        _gs_inv = (match.gs if getattr(match, 'gs', None) is not None
-                   else match.gs)
-        _cur = list(_gs_inv.active_strategies.value or [])
-        if chosen not in _cur:
-            _cur.append(chosen)
-        _gs_inv.write_logic(
-            _gs_inv.active_strategies,
-            _cur,
-            produced_by='CwScreenInvestStrategy',
-            sig=ChannelSig(family='logic_action',
-                           actor='CwScreenInvestStrategy', mode='compute'))
+        _gs_inv = match.gs
+        # 上报落地相(持卡面 + 效果分派;归一名 = normalize_invest_name,
+        # 报告侧再做规范名对齐)。idx 无语义(落地分派载荷 = source + 名)。
+        report_action_pick_invest_param(
+            _gs_inv,
+            CwActionPickInvestParam(idx=0,
+                                    source=PICK_INVEST_SOURCE_STRATEGY,
+                                    norm_name=normalize_invest_name(chosen)),
+            ChannelSig(family='logic_action',
+                       actor='CwScreenInvestStrategy', mode='compute'),
+            evidence=EVIDENCE_OVERLAY_CLOSED)
         # 效果账本选卡登记挂点(设计 §5.1「买卡=激活登记」
         # /§8.7 批次三件 4;免战牌同点自动登记——件 5「§3.2.19 载体归一
         # 的另一半,禁只做一半」)。chosen 命中效果注册表(规范名归一
@@ -448,7 +466,6 @@ class CwScreenInvestStrategy(SrOperation):
         try:
             from sr_od.application.currency_war.kernel.cw_investments import (
                 STRATEGY_EFFECTS,
-                normalize_invest_name,
             )
             _spec = STRATEGY_EFFECTS.get(normalize_invest_name(chosen))
             if _spec is not None:
@@ -488,5 +505,5 @@ class CwScreenInvestStrategy(SrOperation):
         except Exception as e:   # noqa: BLE001  登记面失败不阻塞
             log.warning(f'[cw-strat] 效果账本登记失败(不阻塞): {e}')
         # (原 register_confirm_arrival('ConfirmStrategy') 已随 ADR-0651
-        #  两态制废除:active_strategies 本体追加 + write_logic 直写均在
-        #  上方确认成功写点,无挂账登记环节。)
+        #  两态制废除:active_strategies 本体追加在上方上报落地相
+        #  (pick_invest 分步实现),三桥留守本写点,无挂账登记环节。)
