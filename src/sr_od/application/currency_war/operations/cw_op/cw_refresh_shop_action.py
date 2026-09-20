@@ -43,7 +43,7 @@ class CwActionRefreshShopOp(SrOperation):
     比对收口(裁决3):体内**零比对**——①免费刷新判定 = 对账类,只落
     对账件进 ledger,由下一段入口观察对账;②牌名集三值对比单一源 =
     ``cw_shop_refresh_obs.refresh_board_changed_of``,本 op 刷后只读不比、
-    名集原样落账;③刷新期望对账迁入口观察对账点。「刷新是否生效」的
+    名集原样落账。「刷新是否生效」的
     判效权归观察侧 reconcile。计数自上报 = 效果账本统一触发(见模块头,
     2026-09-18 迁入裁决);金与 payload 不写(终结跳写收窄申报)。
     """
@@ -67,9 +67,6 @@ class CwActionRefreshShopOp(SrOperation):
         from sr_od.application.currency_war.operations.cw_screen import (
             cw_screen_buy_cards as _buy_cards_mod,
         )
-        from sr_od.application.currency_war.operations.cw_screen.cw_screen_prep import (
-            build_refresh_expect,
-        )
         env = self.env
         op, _match, ledger, state = (env.op, env.match, env.ledger,
                                      env.state)
@@ -80,7 +77,6 @@ class CwActionRefreshShopOp(SrOperation):
         # plan 读 vs 点击后实读集合必不等,真落空会被洗成免费生效)。
         _pre_shop_names: list[str] | None = None
         _pre_gold: int | None = None
-        _refresh_expect = None
         try:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 gold_of,
@@ -97,20 +93,14 @@ class CwActionRefreshShopOp(SrOperation):
                         _buy_cards_mod.read_shop_cards(op.ctx, _pre_shot)
                         or [])
                     if s.kind == 'content' and s.card and s.card.name]
-            _refresh_expect = build_refresh_expect(
-                _pre_gold, REFRESH_COST_BASE,
-                [(c.name, c.star) for c in _container_cards(state)],
-                _plane_of(state), _round_of(state))
         except Exception:   # noqa: BLE001  best-effort 不阻塞买牌
-            _refresh_expect = None
+            pass
         # 免费刷新对账件落账(判定收口到观察侧对账点,本 op 零比对;
         # 字段坐标系与写入端声明见 ShopVisitLedger)。失读字段照实落
-        # None/空,对账点按腿判空放行(宁缺勿造)。期望 = 随账本
-        # 外发(消费点 = 入口观察对账点 refresh_expect_mismatch 腿)。
+        # None/空,对账点按腿判空放行(宁缺勿造)。
         ledger.refresh_pre_gold = _pre_gold
         ledger.refresh_pre_names = list(_pre_shop_names or [])
         ledger.refresh_pending_reconcile = True
-        ledger.refresh_expect = _refresh_expect
         # 刷前刷新钮真值读(读链接入):按钮三态 + 免费态剩余次数。
         # 经模块属性路由 = 测试替身缝(同 _buy_cards_mod 约定)。best-effort:
         # 识别层故障不阻塞执行链,ledger 字段保持 None = 免费闸回退逻辑账。

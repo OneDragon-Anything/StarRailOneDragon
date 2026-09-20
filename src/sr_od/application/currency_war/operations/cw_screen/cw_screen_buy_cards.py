@@ -170,16 +170,13 @@ def _reconcile_refresh_pending(op: SrOperation, ledger: 'ShopVisitLedger',
     """免费刷新对账点(对账类判定收口,宿主 = 入口观察;T-219 裁定 +
     统一动作工厂批4 比对收口扩展)。上段刷新已发
     (ledger.refresh_pending_reconcile,写入端 = RefreshShopOp.execute)
-    → 两腿零决策判定:
+    → 免费腿零决策判定:
 
     - 免费腿:金未扣(入口金 = 刷前金)∧ 牌面已变——三值对比单一源 =
       ``cw_shop_refresh_obs.refresh_board_changed_of``(刷前/刷后名集由
-      RefreshShopOp 落账,批4 自动作 op 迁出)→ 存证(截图+flag+log);
-    - 期望腿(refresh_expect_mismatch,批4 自 RefreshShopOp 迁入):刷前
-      构建的期望随账本外发(ledger.refresh_expect),与入口观察金/具名
-      牌数对票,失配落缺陷台账——零决策留证语义由缺陷台账承接。
+      RefreshShopOp 落账,批4 自动作 op 迁出)→ 存证(截图+flag+log)。
 
-    任一腿失读/不满足 = 静默放行(宁缺勿造);标记消费即清(清点在调用
+    失读/不满足 = 静默放行(宁缺勿造);标记消费即清(清点在调用
     方),生命周期 = 一次刷新恰一段(刷新为终结 op,段间无其他动作覆盖
     字段)。判定值源同帧化申报:免费腿牌面判定与存证 post_names 同取
     入口观察帧(迁出前 = 点击后现读与入口读两窗口;刷新为终结 op,段间
@@ -197,23 +194,6 @@ def _reconcile_refresh_pending(op: SrOperation, ledger: 'ShopVisitLedger',
                 pre_names=ledger.refresh_pre_names,
                 post_names=_entry_names,
                 plane=entry.plane, round_num=entry.round_num)
-    if ledger.refresh_expect is not None:
-        from sr_od.application.currency_war.operations.cw_screen.cw_screen_prep import (
-            refresh_reconcile_mismatches,
-        )
-        for _m in refresh_reconcile_mismatches(ledger.refresh_expect[0],
-                                               entry.gold, len(_entry_names)):
-            defects.record_defect(
-                'shop', 'refresh_expect_mismatch',
-                expected=(f'{_m["domain"]}/{_m["slot"]}: '
-                          f'{_m["expected"]}'),
-                observed=_m['observed'],
-                plane=ledger.refresh_expect[1],
-                round_num=ledger.refresh_expect[2],
-                verdict='留证-刷新期望不符(零决策)',
-                reader_source='refresh_expect_reconcile',
-                note='期望三输入波前现读,None 跳过;'
-                     '判据真值表已锁')
 
 
 # 买牌动画(卡牌飞行)收敛等待:首采无新槽后重采前的延迟秒数。

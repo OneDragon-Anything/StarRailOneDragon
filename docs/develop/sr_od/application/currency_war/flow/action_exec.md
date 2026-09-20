@@ -34,7 +34,7 @@
   **scope='outer_loop'** = 交回外循环重新观察:决策环在 F3 之前**分支拦截**(不进执行器/动作注册表/续段 token/动作记录),round_success(wait=1.0) 交回,行为与原 HoldFrame 空发射帧逐字一致(用户裁定 2026-09-20 HoldFrame 收编删除;自旋防护 = 交回后归外循环 stall 防线)。
   **读屏点规范的在册例外**:「循环内零读屏」自本通道起收窄——决策环内仅策略显式发射 Obs(in_place) 才触发读屏,其余路径仍零读屏。in_place 发射域无重观察能力(env.op 未接线)= AssertionError 响亮暴露(策略器 bug)。
 
-- 期望态记账(acct 族)在下一入口 heavy 帧消费对账(`_v2_post_frame_accounting`:拖动期望/买牌期望/经验/羁绊/商店池/装备期望),失配 = 纠偏/缺陷台账,零决策不重执行。
+- 期望态记账(acct 族)在下一入口 heavy 帧消费对账(`_v2_post_frame_accounting`:拖动期望/买牌期望/经验/羁绊/装备期望),失配 = 纠偏/缺陷台账,零决策不重执行。
 - **无 fail-stop/恢复原语**:原「执行失败 → try_recovery 关弹层 → 交回」分支已随验证段废除批删除;overlay 残留的治理 = 外循环 0 系 overlay 分支(下一轮重识别自愈)。
 
 ## 4. 商店动作执行(一 op 一文件 `cw_op/cw_<action>_action.py`;注册表 `cw_action_registry.py`;守卫 `cw_shop_action_ops.py`)

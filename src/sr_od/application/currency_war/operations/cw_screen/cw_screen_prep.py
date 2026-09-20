@@ -1,5 +1,5 @@
-"""备战执行器 CwScreenPrep:画面执行 / 对账接线 / 商店 obs 依赖面
-(refresh 期望态依赖 obs.cw_shop_obs,留 app 合法向)。
+"""备战执行器 CwScreenPrep:画面执行 / 对账接线(依赖 obs/ 识别工具箱,
+留 app 合法向)。
 
 对账职责 = 纯观察审计族(羁绊显示/商店池,heavy 定型帧
 消费,留守观察 node);动作上报的对账归一走 op 自上报(上报函数族)+
@@ -34,7 +34,6 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     OreSight,
     game_state_of,
     gs_of_ctx,
-    shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
 from sr_od.application.currency_war.kernel.cw_overlay_registry import (
@@ -79,11 +78,6 @@ from sr_od.application.currency_war.obs.cw_observation import (
     read_node_sequence,
     read_phase_round,
 )
-from sr_od.application.currency_war.obs.cw_shop_obs import (
-    RefreshExpect,
-    check_shop_pool,
-    refresh_expect,
-)
 from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
     action_op_class_for,
 )
@@ -106,9 +100,6 @@ from sr_od.application.currency_war.prep_actions import (
     PrepActionExecutor,
     StopBrakeShortCircuit,
     row_area_centers,
-)
-from sr_od.application.currency_war.telemetry import (
-    defects,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -144,87 +135,6 @@ ENTRY_OVERLAY_SETTLE_S: float = 1.0
 def _mark_frame_class(session, domain: str, value: str) -> None:
     """帧触发代次标注(gs 非 Field 双槽,读后即清协议)。"""
     setattr(game_state_of(session), 'frame_class_' + domain, value)
-
-
-# ===== 商店打开态对账(cw_shop_obs 接线;纯记账+对账,零决策行为变更)=====
-
-#: 台账 surface/kind(商店通道;复现计数按 (surface, kind, expected) 分档)。
-_SHOP_DEFECT_SURFACE = 'shop'
-
-_SHOP_POOL_DEFECT_KIND = 'shop_pool_violation'
-
-_SHOP_REFRESH_DEFECT_KIND = 'refresh_expect_mismatch'
-
-
-def _shop_pool_inputs(gs) -> tuple[list[tuple[str, int]], int]:
-    """商店容器 payload → (参评牌列表, 未识别张数)(纯函数)。
-
-    参评 = 有身份牌 ``(name, cost)``;未识别牌(name 空,SIFT miss 占位,
-    cost=0)不进 check_shop_pool——空名+0 费会成 invalid_cost 假票,且
-    「识别失败」已由置信度通道管辖,此处只计数随 refs 披露。
-    换算单一源 = ``cw_game_state.shop_cards_to_legacy``(双 ShopCard
-    类型归一)。
-    """
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        shop_cards_to_legacy,
-    )
-    payload = gs.shop.value
-    shop = shop_cards_to_legacy(shop_payload_content_cards(payload)) \
-        if payload is not None else []
-    cards = [(c.name, c.cost) for c in shop if getattr(c, 'name', '')]
-    return cards, len(shop) - len(cards)
-
-
-def build_refresh_expect(gold: int | None,
-                         refresh_cost: int | None,
-                         cards_old: list[tuple[str, int]],
-                         plane: int,
-                         round_num: int) -> tuple[RefreshExpect, int, int] | None:
-    """刷新动作发出点 → 期望增量(纯函数;producer 契约,None 口径单一源)。
-
-    刷价输入契约:调用方传 ``cw_state.REFRESH_COST_BASE``
-    基价常量——实付恒基价 2,「文本-刷新金币数」rect 是面板徽标(利息数值)
-    非刷价,期望=实付,refresh_expect_mismatch 缺陷类随之归零。签名保留
-    ``refresh_cost: int | None``:None 仍返回 None 跳过对账(gold 失读同理),
-    供测试与未来免费 proc 建模(届时按「基价−免费抵扣」在此处计)传参;
-    **禁把面板徽标读数当刷价传入**。
-
-    挂账(producer 集成点):期望必须在**刷新动作内**构建——波前金与波前
-    面板费都是单元内部现读;cw_screen_prep 持有的购买单元前后帧均为
-    关店帧(金不可信、五格牌不可读),无合法评估窗。集成点 =
-    ``operations/cw_op/cw_refresh_shop_action.py`` RefreshShopOp 刷新分支现读处
-    (消费时点 = 刷新动作的执行实现层,刷后现读帧即对账帧;
-    旧「本环 heavy 帧消费」时点随 per-action heavy 契约退役归并于此);
-    消费判据 = refresh_reconcile_mismatches(本文件,真值表已锁),落台账
-    kind=refresh_expect_mismatch。
-    """
-    if gold is None or refresh_cost is None:
-        return None
-    return refresh_expect(gold, cards_old, refresh_cost), plane, round_num
-
-
-
-def refresh_reconcile_mismatches(expect: RefreshExpect,
-                                 gold_after_obs: int | None,
-                                 cards_named: int) -> list[dict[str, str]]:
-    """刷新期望 vs 实读对账判据(纯函数;口径:只硬验金差+有牌)。
-
-    - 金腿:``gold_after_obs`` None = 失读不评(宁缺勿造);不等 = 一票
-      (期望侧 gold_after 由 build_refresh_expect 保证基于波前现读,
-      真值表含 0 与 None 分道)。
-    - 牌腿:``cards_named`` = 实读有身份牌数;==0 = 刷新未生效形态开票;
-      1-4 张**不判错**——低等级后槽未解锁是常态,槽位解锁规则未建模,
-      「满格」期望无真值,计数由调用方随 refs 披露。
-    """
-    mism: list[dict[str, str]] = []
-    if gold_after_obs is not None and gold_after_obs != expect.gold_after:
-        mism.append({'domain': 'gold', 'slot': '-',
-                     'expected': str(expect.gold_after),
-                     'observed': str(gold_after_obs)})
-    if cards_named <= 0:
-        mism.append({'domain': 'cards', 'slot': '-',
-                     'expected': '>=1', 'observed': '0'})
-    return mism
 
 
 def faction_display_ok_debug_line(row_count: int, ocr_skip_count: int,
@@ -704,62 +614,6 @@ class CwScreenPrep(SrOperation):
         except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
             log.debug(f'[cw-director] faction_display reconcile skip: {e}')
 
-    def _reconcile_shop_pool(self, obs: PrepObservation) -> None:
-        """商店打开 heavy 帧卡池一致性票(cw_shop_obs.check_shop_pool 接线;
-        零决策:违例仅落缺陷台账,不 return/不重读不纠错)。
-
-        帧 = obs.shop_open 且 state.shop 非空(shop 关态 read_shop_cards
-        自带收起锚门返空,天然跳过;state.shop 即 read_game_state 内
-        read_shop_cards 现读链,零新增 SIFT)。pool_state:无池追踪账
-        (cw_state 只有我方 tracked 持有,池内剩余无人建账)→ 传 None =
-        只查 tier 门,池守恒查如实降级(无池账口径),refs 披露。
-        tier_locked = 该费用档在当前等级概率为 0(REFRESH_PROB 单一源)
-        = 牌识别错或等级读错的强证据。节奏 = heavy 定型帧消费,全程
-        best-effort。
-        """
-        try:
-            session = self._session()
-            if session is None or not obs.shop_open:
-                return
-            # 牌面 = 容器 payload 域(离屏 None 天然跳过);
-            # level/plane/round = 容器读口。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                level_of,
-                plane_of,
-                round_num_of,
-            )
-            _gs = gs_of_ctx(getattr(self, 'ctx', None), session)
-            cards, unnamed = _shop_pool_inputs(_gs)
-            if not cards:
-                return
-            violations = check_shop_pool(cards, int(level_of(_gs)), None)
-            if not violations:
-                return
-            obs_txt = ';'.join(f'{v.name}/{v.cost}:{v.kind}({v.detail})'
-                               for v in violations)
-            defects.record_defect(
-                _SHOP_DEFECT_SURFACE, _SHOP_POOL_DEFECT_KIND,
-                expected='0 违例(五牌两查)',
-                observed=obs_txt,
-                plane=int(plane_of(_gs)),
-                round_num=int(round_num_of(_gs)),
-                gap_large=True,
-                verdict=('留证-商店牌卡池一致性违例(tier_locked=该费用档本'
-                         '等级概率为0,牌识别错或等级读错;invalid_cost=费用'
-                         'OCR误读。pool_state 无账本传 None,池守恒查如实'
-                         '降级未做;零决策记账,单次与复现同级 L1,复现计数见台账行)'),
-                refs=[{'field': k, 'value': v} for k, v in (
-                    ('level', str(int(level_of(_gs)))),
-                    ('cards', str(len(cards))),
-                    ('unnamed', str(unnamed)),
-                    ('pool_state', 'None(池查降级)'))],
-                reader_source='shop_pool_reconcile',
-                note='期望态层·商店:违例票=cw_shop_obs.check_shop_pool'
-                     ' 纯函数(REFRESH_PROB/POOL_COPIES_PER_CARD 单一源),'
-                     '与买牌/经验/羁绊通道分立')
-        except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
-            log.debug(f'[cw-director] shop_pool reconcile skip: {e}')
-
     def _session(self) -> StrategySession | None:
         match = getattr(self.ctx, 'cw_match', None)
         return match.session if (match is not None and match.session is not None) else None
@@ -817,7 +671,7 @@ class CwScreenPrep(SrOperation):
         if _tk is not None:
             return _tk
         # —— 对账段:本轮入口 heavy 观察 = 纯观察审计族消费点
-        #      (羁绊显示/商店池/刷新留证;零决策)。
+        #      (羁绊显示/刷新留证;零决策)。
         #      「入口观察即对账」时点存续,per-action
         #      heavy 重读契约已灭。动作上报的对账归一 = 逻辑态直写
         #      (op 自上报)+ 观察边界 cw_reconcile 兜底;
@@ -1291,7 +1145,7 @@ class CwScreenPrep(SrOperation):
         """新环 heavy 定型帧上的纯观察审计族(零决策)。
 
         输入 = 本帧 obs;每通道内部 best-effort,异常不阻塞环。覆盖:
-        羁绊显示 / 商店池。动作期望账通道(paddle 审计/
+        羁绊显示。动作期望账通道(paddle 审计/
         drag_expect/买牌期望/经验/装备期望)不属本口——动作上报的对账
         归一 = 逻辑态直写(op 自上报)+ 观察边界
         cw_reconcile 兜底。
@@ -1300,8 +1154,6 @@ class CwScreenPrep(SrOperation):
 
         with contextlib.suppress(Exception):
             self._reconcile_faction_display(obs)
-        with contextlib.suppress(Exception):
-            self._reconcile_shop_pool(obs)
 
 
 def _build_prep_node_chain(session: object, slots: list | None) -> NodeChain | None:

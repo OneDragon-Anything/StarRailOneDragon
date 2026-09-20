@@ -109,13 +109,6 @@ class ShopVisitLedger:
     # refresh_pre_names 同帧语义对侧);空表 = 刷后帧失读/全空位(对比
     # 函数按 None 不可判处理,宁缺勿造)。生命周期 = 一次刷新恰一段。
     refresh_post_names: list[str] = field(default_factory=list)
-    # 刷新期望三件组(批4 比对收口随账本外发;原 RefreshShopOp.execute
-    # 内联消费迁入口观察对账点):值 = build_refresh_expect 产物
-    # ((期望金/卡判据, 位面, 轮次)元组)或 None(失读跳过对账,宁缺
-    # 勿造)。写入端 = RefreshShopOp.execute(刷新点击前现读构建,期望
-    # 基于波前状态);消费端 = run_buy_waves 段顶入口观察对账点
-    # (refresh_expect_mismatch 腿,缺陷台账承接,消费即清 pending)。
-    refresh_expect: tuple | None = None
 
 
 @dataclass
