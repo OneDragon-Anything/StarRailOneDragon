@@ -30,7 +30,7 @@
   遭遇 → 选档面/其余 → M13 结算);
 - 结算(M12→M14→M15→M08 序):随机输出面(M13;扑满不掉血豁免,
   M17)→ HP 折算与保底(M14,dead → 局终)→ 连胜双账(M15)→ 节点
-  经验(M08)→ 败态挂账(M04)→ 奖励节点胜 → REWARD_BALL;
+  经验(M08)→ 败态挂账(M04)→ 奖励节点胜 → REWARD_ORE;
 - 收尾检查序:overlay 队列(M22)→ offer(M11)→ 下一节点;
 - 局终:再次归零(M14)/ P3 进场即 game_over 并披露 ``p3_unobserved``
   (M03/U19)/ P2 boss 结算完成 = 全程走完(第一期限 P1+P2 段);
@@ -113,14 +113,14 @@ from sr_od.application.currency_war.sim.cw_sim_income import (
 )
 from sr_od.application.currency_war.sim.cw_sim_nodes import (
     ENCOUNTER_PARAMS_PENDING_U22,
-    apply_ball_pick,
     apply_box_pick,
     apply_encounter_pick,
+    apply_ore_pick,
     apply_supply_pick,
     box_options,
     encounter_options,
     is_piggy_node,
-    reward_ball_panel,
+    reward_ore_panel,
     supply_options,
 )
 from sr_od.application.currency_war.sim.cw_sim_offer import (
@@ -145,7 +145,7 @@ from sr_od.application.currency_war.sim.cw_sim_overlay import (
 from sr_od.application.currency_war.sim.cw_sim_phase import (
     CwSimObservation,
     CwSimPhase,
-    RewardBall,
+    RewardOre,
 )
 from sr_od.application.currency_war.sim.cw_sim_plane_schedule import (
     node_sequence_of,
@@ -296,8 +296,8 @@ class _Eng:
     supply_opts: tuple[SupplyOption, ...] = ()
     encounter_opts: tuple[EncounterOption, ...] = ()
     box_cands: tuple[str, ...] = ()
-    balls: tuple[RewardBall, ...] = ()
-    balls_left: list[int] = field(default_factory=list)
+    ores: tuple[RewardOre, ...] = ()
+    ores_left: list[int] = field(default_factory=list)
     encounter_tier: int | None = None
     disclosures: dict[str, object] = field(default_factory=dict)
 
@@ -352,7 +352,7 @@ class CwSimEngine:
             self._step_encounter(eng, action)
         elif eng.phase is CwSimPhase.SUPPLY_PICK:
             self._step_supply(eng, action)
-        elif eng.phase is CwSimPhase.REWARD_BALL:
+        elif eng.phase is CwSimPhase.REWARD_ORE:
             self._step_ball(eng, action)
         elif eng.phase is CwSimPhase.BOX_PICK:
             self._step_box(eng, action)
@@ -611,9 +611,9 @@ class CwSimEngine:
             eng.pending_loss = LostNodeRef(plane=plane, round_num=r,
                                            node_type=kind)
         if outcome.won and kind == 'reward':
-            eng.balls = reward_ball_panel()
-            eng.balls_left = list(range(len(eng.balls)))
-            eng.phase = CwSimPhase.REWARD_BALL
+            eng.ores = reward_ore_panel()
+            eng.ores_left = list(range(len(eng.ores)))
+            eng.phase = CwSimPhase.REWARD_ORE
             return
         self._after_settlement(eng)
 
@@ -646,15 +646,15 @@ class CwSimEngine:
             return
         # option_idx 坐标系 = 帧内剩余晶矿列表下标(0 基;面板按剩余序
         # 收缩呈现,策略器逐晶矿点,已采晶矿不可再点)
-        if not (0 <= action.option_idx < len(eng.balls_left)):
+        if not (0 <= action.option_idx < len(eng.ores_left)):
             return
-        eng.disclosures.setdefault('reward_ball_content_pending_u23',
+        eng.disclosures.setdefault('ore_content_pending_u23',
                                    'gold30_equip1_gold5_placeholder')
         rng = stream_rng(eng.seed,
-                         f'M17/balls/p{eng.plane}/r{eng.round_num}')
-        panel_idx = eng.balls_left.pop(action.option_idx)
-        apply_ball_pick(eng.gs, panel_idx, rng=rng)
-        if not eng.balls_left:
+                         f'M17/ores/p{eng.plane}/r{eng.round_num}')
+        panel_idx = eng.ores_left.pop(action.option_idx)
+        apply_ore_pick(eng.gs, panel_idx, rng=rng)
+        if not eng.ores_left:
             self._after_settlement(eng)
 
     def _step_box(self, eng: _Eng, action: CwAction) -> None:
@@ -785,7 +785,7 @@ class CwSimEngine:
             supply_options=eng.supply_opts,
             encounter_options=eng.encounter_opts,
             box_options=eng.box_cands,
-            balls=tuple(eng.balls[i] for i in eng.balls_left),
+            ores=tuple(eng.ores[i] for i in eng.ores_left),
             overlay_kind=(eng.overlay_queue.peek() or ''
                           if eng.phase is CwSimPhase.EVENT_OVERLAY else ''),
             overlay_options=eng.options if eng.phase is CwSimPhase.EVENT_OVERLAY else (),

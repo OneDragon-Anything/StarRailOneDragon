@@ -325,13 +325,18 @@ sim 合成口同域直写。
 #### 3.2.8 晶矿 spheres
 
 数量/颜色——交互机会信号,不占席(§3.2.5)。席满时奖励无法落位的拦截判据归 op
-写入策略(§4 ClickSpheres)。**载荷坐标**(迭代 2026-09-18-prep-obs-retirement
-阶段 3.4 扩充):`SphereSight.points` = `(color, x, y, r)` 平铺元组——晶矿为自由
+写入策略(§4 CollectOre)。**载荷坐标**(迭代 2026-09-18-prep-obs-retirement
+阶段 3.4 扩充):`OreSight.points` = `(color, x, y, r)` 平铺元组——晶矿为自由
 位置识别物无槽号,像素坐标必须随识别进容器(坐标单一真相源纪律;点击列由 kernel
 `ore_click_targets_of` 还原消费)。**写端** = CwScreenPrep 备战入口 heavy
 观察上报(空读照写 count=0 防残留假晶矿;两帧持存防抖留观察链);**逻辑写端** =
-`ClickSpheres` 按载荷坐标精确摘除(§4 ClickSpheres,原黑板腿随
-gs.prep_obs 退役迁移本口)。
+`CollectOre` 按载荷坐标精确摘除(§4 CollectOre,原黑板腿随
+gs.prep_obs 退役迁移本口;logic-rand-sampling 迭代起摘除写改随机态)。
+
+**域名既定名声明**(2026-09-20 晶矿标识符 ore 治本收口):域名/字段名
+`spheres` 为晶矿域的**既定名**——本义即晶矿球,非旧名残留;ore 改名波
+(OreSight/ore_click_targets_of/collect_ore 等)不辖容器域名(改 = schema/
+遥测断档,零收益)。识别层同族:`reward_ores` 观察载荷字段同此既定口径。
 
 #### 3.2.9 金币 gold(主条目)
 
@@ -802,7 +807,7 @@ sim-记录分叉,修正随 sim 建模批)。布局修饰未建模:玩家裁定�
 
 ### 4.2 各 op 写入面
 
-#### ClickSpheres 点晶矿
+#### CollectOre 点晶矿
 
 游戏事实=采晶矿即开启、内容即时入账、角色/箱落席占 1 槽、席满点不动。**席满拦截
 判据=前置谓词两腿:bench_free>0 ∨ 晶矿均不占席**。**记录层面(logic-rand-sampling
@@ -1337,7 +1342,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
   `apply_prep_action_logic` 已随动作 op 重组拆分为本函数族,原黑板投影函数
   `cw_screen_prep._project_prep_obs` 随 gs.prep_obs 退役删除)。
   覆盖面申报(登记面 = 各上报函数 docstring 与零写族 `zero_writes.py`):
-  **有容器写语义动作** = SellBench/SellDeployed/DeployMove/LevelUp/ClickSpheres/
+  **有容器写语义动作** = SellBench/SellDeployed/DeployMove/LevelUp/CollectOre/
   OpenTome/OpenBookcard 各一函数;**零写族**(消费真值归观察/终结化) =
   OpenBox/WearEquip/工具原子七类集中在 `zero_writes.py`。bench 侧原生
   `BenchView.slots`

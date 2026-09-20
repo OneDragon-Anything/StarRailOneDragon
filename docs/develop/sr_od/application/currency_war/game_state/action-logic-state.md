@@ -53,7 +53,7 @@
 | 推演帧 | sim 引擎 `CwSimFrame` 整帧副本 | 原写口 `simulate`（整帧副本单步动作应用器）已退役（零生产消费，考古归 git） | 动作转移语义单一源 = 容器逻辑态直写（首行）；语义验证 = M1 直锁（`test_cw_shop_projection_logic`） |
 
 视觉域动作的容器面（迭代 2026-09-18-prep-obs-retirement 阶段 3.5 起）：晶矿/箱/典籍
-的容器腿已进各自上报函数（ClickSpheres 精确摘晶矿 = `report_action_collect_ore_param` /
+的容器腿已进各自上报函数（CollectOre 精确摘晶矿 = `report_action_collect_ore_param` /
 OpenTome·OpenBookcard 腾席 = `report_action_open_tome_param`/`report_action_open_bookcard_param`，§3.4-§3.7）；`PrepObservation`（`kernel/cw_prep_actions.py`）
 降级为备战环 op 局部控制信号载体（shop_open/substate/event_overlay），不再是
 策略器输入，黑板宿主 `gs.prep_obs`/`session.prep_obs_frame` 已退役删除。
@@ -62,7 +62,7 @@ WearEquip/工具原子/OpenBox 的装备域容器腿 = 容器零写（消费真�
 
 ### 1.5 枚举范围与动作计数
 
-本篇枚举 = 商店域 6 个动作词条（§2）+ 备战域原子动作（§3：DeployMove/SellDeployed/LevelUp/OpenBox/OpenTome/ClickSpheres/OpenBookcard + §3A WearEquip 与工具原子类，规则见 §4）+ 转场类 2 个（§5）+ 词表完备性注 2 条（§2.7）。事件线选择（pick 族，含武装箱四选一画面 op）按 §6 声明为非逻辑态通道。动作词表本体与执行载体表 = [action_exec.md](../flow/action_exec.md) §1、[screens/README](../screens/README.md) §4（能力面/策略面之分不在本篇重复）。（幻影机制墓碑：「试用角色揭示卡」= 备战栏动画帧误判，2026-09-19 用户定谳撤销，禁再建模；墓碑 = `cw_identity_obs` 模块内注。）
+本篇枚举 = 商店域 6 个动作词条（§2）+ 备战域原子动作（§3：DeployMove/SellDeployed/LevelUp/OpenBox/OpenTome/CollectOre/OpenBookcard + §3A WearEquip 与工具原子类，规则见 §4）+ 转场类 2 个（§5）+ 词表完备性注 2 条（§2.7）。事件线选择（pick 族，含武装箱四选一画面 op）按 §6 声明为非逻辑态通道。动作词表本体与执行载体表 = [action_exec.md](../flow/action_exec.md) §1、[screens/README](../screens/README.md) §4（能力面/策略面之分不在本篇重复）。（幻影机制墓碑：「试用角色揭示卡」= 备战栏动画帧误判，2026-09-19 用户定谳撤销，禁再建模；墓碑 = `cw_identity_obs` 模块内注。）
 
 各动作条目统一形状：**词表/op → 确定面规则（逐腿）→ 随机面 → 拒绝边界（游戏拒/提案陈旧 = 零容器写）→ 依据**。
 
@@ -230,15 +230,15 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 **依据**：`kernel/cw_prep_actions.py::OpenTome`；`prep_actions.py::_open_tome`。
 
-### 3.6 ClickSpheres（点晶矿）
+### 3.6 CollectOre（点晶矿）
 
 **随机面直写（logic-rand-sampling 迭代起,采样语义首个落地）**：坐标列表中被点的晶矿按载荷坐标**逐点顺序推演**——每点独立守卫（该点时 bench 无空位 = 晶矿留在 spheres 不摘不采,前点奖励耗席累计判）→ 独立采样（临时口径 v0:金 1–5/简易装备池/概率表抽角色,`kernel/cw_ore_reward.py` 常量面,待采集校准）→ **逐步随机态写**（spheres 摘除/抽中域采样值/未抽中域值不变标记/角色落位 + 3合1 连锁每级受影响域各落一行,board 派生随行继承随机态）。全部容器写 = `write_logic_rand`;观察覆盖差异 = 随机效果落地预期内（`logic_rand_outcome` 台账行）。逐动作规格正本 = [logic-updates/collect-ore.md](../game_state/logic-updates/collect-ore.md)。
 
-**发射形态（R4 坐标参数化机械动作）**：载荷 = 有序晶矿坐标点击列表（大晶矿优先/上界挑选归决策侧 kernel 单一源 = `kernel/cw_prep_actions.py::select_ore_clicks`，发射位以预算常量 `SPHERE_CLICK_BATCH_MAX_K` 调用）；执行器纯机械逐个点（原读屏选晶矿与批内截断半随改形退役）。
+**发射形态（R4 坐标参数化机械动作）**：载荷 = 有序晶矿坐标点击列表（大晶矿优先/上界挑选归决策侧 kernel 单一源 = `kernel/cw_prep_actions.py::select_ore_clicks`，发射位以预算常量 `ORE_CLICK_BATCH_MAX_K` 调用）；执行器纯机械逐个点（原读屏选晶矿与批内截断半随改形退役）。
 
 **前置谓词（席满拦截）**：bench 空闲 >0 ∨ 晶矿均不占席，才发射采晶矿（fields.md §4.2 CollectOre；席满让路门 = 策略发射面席满探针）；上报层同口径双保险（逐点守卫）。席满点占席晶矿 = 游戏侧点不动，晶矿仍在 → 下一帧观察回补、下轮再派。
 
-**依据**：`kernel/cw_prep_actions.py::ore_click_targets_of`/`select_ore_clicks`；`prep_actions.py::_collect_ore`；`kernel/cw_action_report/collect_ore.py::report_action_collect_ore_param`（采样+逐步随机写单点）；`kernel/cw_ore_reward.py`（采样器常量面）；`fields.md` §4.2 ClickSpheres；`research/screen_flow_timing.md` #16（飞行动画 ≤2s;席满搁浅观察回补）。
+**依据**：`kernel/cw_prep_actions.py::ore_click_targets_of`/`select_ore_clicks`；`prep_actions.py::_collect_ore`；`kernel/cw_action_report/collect_ore.py::report_action_collect_ore_param`（采样+逐步随机写单点）；`kernel/cw_ore_reward.py`（采样器常量面）；`fields.md` §4.2 CollectOre；`research/screen_flow_timing.md` #16（飞行动画 ≤2s;席满搁浅观察回补）。
 
 ### 3.7 OpenBookcard（开书册卡）
 

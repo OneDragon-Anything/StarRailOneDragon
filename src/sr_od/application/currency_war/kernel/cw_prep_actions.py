@@ -5,7 +5,7 @@ action_key);统一词表归一(unified-action-factory 批2b)后动作词表退�
 单一真相源 = :mod:`kernel.cw_vocab`(基类 ``CwAction`` + 全动作类 +
 ``CW_ACTION_TYPES`` + ``action_key``)。现役居民 = 决策单一输入的统一观察
 视图 :class:`PrepObservation` 与采晶矿挑选 kernel 纯函数
-(:func:`select_ore_clicks` + ``SPHERE_CLICK_HARD_CAP``)。
+(:func:`select_ore_clicks` + ``ORE_CLICK_HARD_CAP``)。
 
 为何落在 kernel:观察视图由决策核(策略)与执行层(app)共同消费,任一侧
 定义都会造成另一侧的反向依赖(分包依赖矩阵 §3.2:decision 只可依
@@ -22,7 +22,7 @@ from one_dragon.base.geometry.point import Point
 
 #: 采晶矿单批硬上限(原执行器 SPHERE_MAX_CLICKS 常量迁居 kernel:挑选上界
 #: 归挑选函数,执行器只机械点载荷;防识别抖动死循环的防线语义不变)。
-SPHERE_CLICK_HARD_CAP: int = 12
+ORE_CLICK_HARD_CAP: int = 12
 
 
 def ore_click_targets_of(gs) -> list[tuple[str, Point, int]]:
@@ -50,15 +50,15 @@ def select_ore_clicks(spheres: list, cap: int,
 
     输入 = ``PrepObservation.spheres``([(color, Point, r)];颜色与半径
     仅排序消费,不进载荷);``cap`` = 本批点击预算(发射位常量,如
-    mandate_v1 SPHERE_CLICK_BATCH_MAX_K)。输出 = 有序 (x, y) 点击列——
+    mandate_v1 ORE_CLICK_BATCH_MAX_K)。输出 = 有序 (x, y) 点击列——
     大晶矿优先(r 降序;稳定排序保持观察序),上界 = min(cap, 硬上限
-    SPHERE_CLICK_HARD_CAP)。席满让路门/占席晶矿语义归发射位(既有门),
+    ORE_CLICK_HARD_CAP)。席满让路门/占席晶矿语义归发射位(既有门),
     本函数不辖。
 
     消费面:发射位(mandate_v1 entry)构造 CwActionCollectOreParam 载荷;执行器
     零排序零截断纯机械点(第二实现禁)。
     """
-    budget = max(0, min(int(cap), SPHERE_CLICK_HARD_CAP))
+    budget = max(0, min(int(cap), ORE_CLICK_HARD_CAP))
     ordered = sorted(spheres, key=lambda t: t[2], reverse=True)[:budget]
     return tuple((int(p.x), int(p.y)) for _c, p, _r in ordered)
 

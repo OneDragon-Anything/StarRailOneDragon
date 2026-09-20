@@ -10,7 +10,7 @@
   加成四档 0/10/20/30 = ``research/economy.md`` §9 定谳真值;档位数/
   奖励包数值候实机数据(占位常量随局披露)。流键
   ``M16/offer/{plane}``(实机档位集随机性候实机数据,首版固定档位集);
-- **M17 晶矿**:奖励节点走 M12 战斗框架,胜后进 reward_ball 相位
+- **M17 晶矿**:奖励节点走 M12 战斗框架,胜后进 reward_ore 相位
   逐晶矿入账(金/装备直接加,角色/箱落备战席占 1 槽;席满晶矿点不动)。
   面板结构以实测样本单例为唯一锚(U23:1 大金晶矿+5 蓝晶矿+2 灰晶矿);
   内容数值无档 → 显式占位常量 + 披露,禁拍值伪装实证。扑满替换 =
@@ -24,8 +24,15 @@
   均匀,披露)。自身金发放 = 基础奖励+息(U05,归 M04 收入面,不在
   本模块);不参与连胜(M15 收入分支承载)。
 
-随机流键(引擎侧装配):``M16/offer/{plane}``、``M17/balls/{plane}/
+随机流键(引擎侧装配):``M16/offer/{plane}``、``M17/ores/{plane}/
 {round}``、``M17/box/{plane}/{round}``、``M18/opts/{plane}/{round}``。
+
+⚠️ 改名申报(2026-09-20 晶矿标识符 ore 治本收口):本模块 ball 族
+(reward_ball_panel/apply_ball_pick/RewardOre/流键 M17/balls→M17/ores/
+披露键 reward_ball_content_pending_u23→ore_content_pending_u23)随
+「晶矿=球」旧名一并改为 ore——**流键改名使 M17 采样序列重排**,旧种子
+复现的局自本点起不再逐位一致(sim 行为变化申报,非缺陷);披露键同步
+新名,历史 sim 段披露面按旧键。 sim 内部旧名「ball」此后不再使用。
 """
 from __future__ import annotations
 
@@ -45,7 +52,7 @@ from sr_od.application.currency_war.kernel.cw_reward_node import (
     PIGGY_ENV_NAMES,
 )
 from sr_od.application.currency_war.sim.cw_sim_base import obs_sig, sim_evidence
-from sr_od.application.currency_war.sim.cw_sim_phase import RewardBall
+from sr_od.application.currency_war.sim.cw_sim_phase import RewardOre
 
 # ============================================================ M16 遭遇
 
@@ -107,20 +114,20 @@ def apply_encounter_pick(gs: GameState, option_idx: int) -> tuple[int, str]:
 
 #: 晶矿面板单例锚(U23:实测 1-8 清关样本 1 大金晶矿+5 蓝晶矿+2 灰晶矿;颜色
 #: 结构 = 唯一有据面,分布参数候实机数据)。
-REWARD_BALL_PANEL_ANCHOR: tuple[tuple[str, int], ...] = (
+REWARD_ORE_PANEL_ANCHOR: tuple[tuple[str, int], ...] = (
     ('金', 1), ('蓝', 5), ('灰', 2),
 )
 
 #: 逐色档内容占位(U23 无档:金=金币 30/蓝=装备 1 件/灰=金币 5,显式
-#: 占位常量禁作实机外推;披露键见 :data:`REWARD_BALL_CONTENT_PENDING`)。
-REWARD_BALL_CONTENT_PLACEHOLDER: dict[str, tuple[str, int]] = {
+#: 占位常量禁作实机外推;披露键见 :data:`ORE_CONTENT_PENDING_U23`)。
+REWARD_ORE_CONTENT_PLACEHOLDER: dict[str, tuple[str, int]] = {
     '金': ('gold', 30),
     '蓝': ('equip', 1),
     '灰': ('gold', 5),
 }
 
 #: 晶矿内容占位披露键(U23)。
-REWARD_BALL_CONTENT_PENDING: str = 'reward_ball_content_pending_u23'
+ORE_CONTENT_PENDING_U23: str = 'ore_content_pending_u23'
 
 #: 扑满节点战力要求语义披露键(扑满关有战力要求、不掉血;第一期随机
 #: 输出面下战力维无消费,不掉血 = M14 豁免位由引擎承载)。
@@ -140,21 +147,21 @@ def is_piggy_node(gs: GameState) -> bool:
             and str(gs.active_env.value or '') in PIGGY_ENV_NAMES)
 
 
-def reward_ball_panel() -> tuple[RewardBall, ...]:
+def reward_ore_panel() -> tuple[RewardOre, ...]:
     """晶矿面板(U23 单例锚展开;晶矿序 = 色档序内先大后小,点选按
-    面板下标)。内容占位随局披露 :data:`REWARD_BALL_CONTENT_PENDING`。"""
-    balls: list[RewardBall] = []
-    for color, count in REWARD_BALL_PANEL_ANCHOR:
-        kind, amount = REWARD_BALL_CONTENT_PLACEHOLDER[color]
+    面板下标)。内容占位随局披露 :data:`ORE_CONTENT_PENDING_U23`。"""
+    ores: list[RewardOre] = []
+    for color, count in REWARD_ORE_PANEL_ANCHOR:
+        kind, amount = REWARD_ORE_CONTENT_PLACEHOLDER[color]
         for _ in range(count):
-            balls.append(RewardBall(
+            ores.append(RewardOre(
                 color=color,
                 content=(f'{kind}+{amount}' if kind == 'gold'
                          else f'{kind}x{amount}')))
-    return tuple(balls)
+    return tuple(ores)
 
 
-def apply_ball_pick(gs: GameState, ball_index: int, *,
+def apply_ore_pick(gs: GameState, ball_index: int, *,
                     rng: random.Random) -> tuple[str, int]:
     """逐晶矿入账(采晶矿即时语义:金币直加金账,装备直入装备栏;角色/
     箱类内容落备战席占 1 槽——首版占位内容不含角色/箱,席满闸为
@@ -164,10 +171,10 @@ def apply_ball_pick(gs: GameState, ball_index: int, *,
         ``(内容种别, 数量)``(引擎披露/轨迹消费;装备种别返回时已入账,
         装备名由引擎按 M10 发放通道披露)。
     """
-    panel = reward_ball_panel()
+    panel = reward_ore_panel()
     ball = panel[ball_index]
     color = ball.color
-    kind, amount = REWARD_BALL_CONTENT_PLACEHOLDER.get(
+    kind, amount = REWARD_ORE_CONTENT_PLACEHOLDER.get(
         color, ('gold', 0))
     sig = obs_sig(group_id='sim:ball')
     if kind == 'gold':

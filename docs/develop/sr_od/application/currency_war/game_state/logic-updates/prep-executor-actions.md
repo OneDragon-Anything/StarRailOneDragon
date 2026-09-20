@@ -10,7 +10,7 @@
 
 **发射形态(R2 原子通路)**:决策核逐帧发原子动作(部署 = DeployMove 序/穿戴 = WearEquip 序/卖出 = SellBench/SellDeployed),备战环逐帧执行决策输出的恰一个动作(None = 本帧无动作,交回外循环重观察);组合壳(RunDeploy/RunEquip/RunTools)已退役。发射位计划构造单一源 = `kernel/cw_deploy_logic.py::select_deployments`+`assign_deploy_slots`(部署)、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`(穿戴)。
 
-**执行器三件套(每动作同构)**:①机械执行(`_dispatch_action` 经注册表 `action_op_class_for` 分派,`emitted` = 发出事实,False 只用于执行前输入契约拒绝);②tracked 主账同步(`_track_remove_bench`/`_track_remove_deployed`/`_track_move_deployed`,置 None 不移位,摘除腿照常执行只显影不拒写);③效果随 op 自上报(动作 op 内直调自己的上报函数,`kernel/cw_action_report/` 函数族 = 效果内聚单点)+ 执行点金差显影(`_executed_gold_delta`:卖 = +`sell_refund`、ClickSpheres = None、其余 0/未发出 None——**仅进回执 extra 留证,不经它直推容器金账**;容器金账唯一写点 = 上报函数 `report_action_sell_bench_param`/`report_action_sell_deployed_param`,执行缝直推腿已退役防双记)+ 回执域(`note_action_receipt`)与 journal 行。
+**执行器三件套(每动作同构)**:①机械执行(`_dispatch_action` 经注册表 `action_op_class_for` 分派,`emitted` = 发出事实,False 只用于执行前输入契约拒绝);②tracked 主账同步(`_track_remove_bench`/`_track_remove_deployed`/`_track_move_deployed`,置 None 不移位,摘除腿照常执行只显影不拒写);③效果随 op 自上报(动作 op 内直调自己的上报函数,`kernel/cw_action_report/` 函数族 = 效果内聚单点)+ 执行点金差显影(`_executed_gold_delta`:卖 = +`sell_refund`、CollectOre = None、其余 0/未发出 None——**仅进回执 extra 留证,不经它直推容器金账**;容器金账唯一写点 = 上报函数 `report_action_sell_bench_param`/`report_action_sell_deployed_param`,执行缝直推腿已退役防双记)+ 回执域(`note_action_receipt`)与 journal 行。
 
 ## 2. 卖出族共通执行面(SellBench / SellDeployed)
 

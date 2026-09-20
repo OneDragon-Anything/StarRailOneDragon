@@ -2322,6 +2322,8 @@ class GameState:
     consumables: Field[list[str]] = field(default_factory=Field)     # 消耗品库存(§3.2.16)
 
     # —— 晶矿(§3.2.8,不占席)——
+    # 域名 spheres = 晶矿域既定名(本义即晶矿球,非旧名残留;2026-09-20
+    # ore 改名收口裁定不辖容器域名,fields.md §3.2.8 声明)。
     spheres: Field[OreSight] = field(default_factory=Field)
 
     # —— 交互状态 ——

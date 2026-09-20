@@ -33,13 +33,15 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     bench_place,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    BenchSlot,
+    BenchView,
     ChannelSig,
     GameState,
     LogicOutcome,
     OreSight,
+    Unit,
     _validate_sig,
     bench_slots_of,
-    bench_view_of_slots,
     deployed_slots_of,
     deployed_slots_to_rows,
 )
@@ -51,6 +53,36 @@ from sr_od.application.currency_war.kernel.cw_ore_reward import (
 )
 
 _PRODUCER = 'CwActionCollectOreParam'
+
+
+def _bench_view_keep_items(work: list[BenchChar | None],
+                           orig: BenchView) -> BenchView:
+    """工作槽位表 → BenchView,**占位件 kind 细分按原观察保留**。
+
+    `bench_view_of_slots` 对占位件(典籍/书册卡/箱)恒降级 supply_box
+    (is_item_slot 布尔无类型信息,该口已申报的已知边界)——本动作的
+    角色奖励写会整表换新,降级会让后续 OpenTome/OpenBookcard 按 kind
+    找不到槽(实锁 test_cw_collect_ore_rand 契约)。本口按原观察槽位
+    还原 tome/bookcard/supply_box 细分,其余槽照 unit 形态映射。
+    """
+    slots = []
+    for i, bc in enumerate(work):
+        orig_slot = orig.slots[i] if i < len(orig.slots) else None
+        if bc is None:
+            slots.append(BenchSlot(kind='empty'))
+        elif (bool(getattr(bc, 'is_item_slot', False))
+                and orig_slot is not None
+                and orig_slot.kind in ('tome', 'bookcard', 'supply_box')):
+            slots.append(orig_slot)
+        else:
+            slots.append(BenchSlot(kind='unit', unit=Unit(
+                char_id=str(getattr(bc, 'char_id', '') or ''),
+                star=int(getattr(bc, 'star', 1) or 1),
+                equips=list(getattr(bc, 'equips', None) or []),
+                slot=i + 1)))
+    while len(slots) < len(orig.slots):
+        slots.append(BenchSlot(kind='empty'))
+    return BenchView(slots=slots, capacity=orig.capacity)
 
 
 def _slot_sig(slots: list[BenchChar | None]) -> list:
@@ -85,7 +117,8 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     view = gs.spheres.value
     if view is None:
         return LogicOutcome(applied=True, reason='spheres_unobserved')
-    if gs.bench.value is None:
+    orig_bench = gs.bench.value
+    if orig_bench is None:
         return LogicOutcome(applied=False, reason='bench_unobserved')
     level = gs.level.value
     if level is None:
@@ -167,10 +200,11 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
                 written.add('equips')
         else:
             # 角色奖励:落备战席首空槽 → 3合1 连锁(每级合并后受影响域
-            # 各落一行;board 派生随行写自动继承随机态)
+            # 各落一行;board 派生随行写自动继承随机态)。bench 整表写
+            # 走保留占位件 kind 口(典籍/书册卡/箱不降级,见 helper 注)
             bench_place(work_bench, BenchChar(
                 slot=0, char_id=reward.char_id, star=reward.char_star))
-            _w_rand(gs.bench, bench_view_of_slots(work_bench),
+            _w_rand(gs.bench, _bench_view_keep_items(work_bench, orig_bench),
                     f'proj_ore_reward_char#ore{k}')
             written.add('bench')
             merge_no = 0
@@ -186,7 +220,9 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
                 ev = f'proj_ore_merge#{merge_no}#ore{_k}'
                 bs = _slot_sig(work_bench)
                 if bs != last_bs:
-                    _w_rand(gs.bench, bench_view_of_slots(work_bench), ev)
+                    _w_rand(gs.bench,
+                            _bench_view_keep_items(work_bench, orig_bench),
+                            ev)
                     last_bs = bs
                     _written.add('bench')
                 ds = _slot_sig(work_dep)

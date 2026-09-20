@@ -116,7 +116,7 @@ class _BattlePrepState:
     bench: list[BenchChar] | None       # 备战栏角色(read_bench_chars SIFT + read_star;备战席无 below icon→equips 恒 [])
     owned_equips: list[dict] | None      # 右侧 owned 装备栏(read_equips SIFT;元素 {name,category,cx,cy,inliers};category 工具/特殊=消耗品,其余简易/进阶/...=装备;空→None;templates 未加载→None)
     supply_boxes: list[dict] | None      # 备战栏补给箱槽位(read_supply_boxes TM;元素 {slot,cx,cy};晶矿开箱掉箱占席,点「开启」腾槽;空→None;2026-08-14 首见机制)
-    reward_spheres: list[dict] | None    # 奖励面板晶矿(read_ore_sights HoughCircles;元素 {color,cx,cy,r};color gold/blue/gray;采晶矿开启入账,角色/箱占席;空→None;2026-08-14 首见机制)
+    reward_ores: list[dict] | None    # 奖励面板晶矿(read_ore_sights HoughCircles;元素 {color,cx,cy,r};color gold/blue/gray;采晶矿开启入账,角色/箱占席;空→None;2026-08-14 首见机制)
 
 
 class BattlePrepRecognizer(ScreenRecognizer):
@@ -144,7 +144,7 @@ class BattlePrepRecognizer(ScreenRecognizer):
                         'cx/cy=1080p 原图绝对坐标(点该坐标开对应物品详情);空→None;templates 未加载→None)',
         'supply_boxes': '备战栏补给箱 list(read_supply_boxes TM;元素 {slot,cx,cy},cx/cy=开启按钮中心'
                         '(点它开箱腾席);奖励球(晶矿)开启可能掉箱占 1 备战席槽;空→None',
-        'reward_spheres': '奖励面板晶矿 list(read_ore_sights HoughCircles;元素 {color,cx,cy,r},'
+        'reward_ores': '奖励面板晶矿 list(read_ore_sights HoughCircles;元素 {color,cx,cy,r},'
                           'color=gold/blue/gray,cx/cy=采晶矿坐标;通关奖励节点后出现;席满点不动(先开箱腾席);空→None',
     }
 
@@ -235,7 +235,7 @@ class BattlePrepRecognizer(ScreenRecognizer):
             supply_boxes=([
                 {'slot': idx, 'cx': p.x, 'cy': p.y} for idx, p in read_supply_boxes(ctx, image)
             ] or None),
-            reward_spheres=([
+            reward_ores=([
                 {'color': c, 'cx': p.x, 'cy': p.y, 'r': r} for c, p, r in read_ore_sights(ctx, image)
             ] or None),
         )

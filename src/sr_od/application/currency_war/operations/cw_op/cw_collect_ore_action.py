@@ -42,7 +42,7 @@ class CwActionCollectOreOp(SrOperation):
         self.param = param
         self.env = env
 
-    @operation_node(name='click_spheres', is_start_node=True)
+    @operation_node(name='collect_ore', is_start_node=True)
     def run(self) -> OperationRoundResult:
         """逐坐标采晶矿(R4 机械执行半;载荷 = kernel ``select_ore_clicks``
         产出的有序点击列)。

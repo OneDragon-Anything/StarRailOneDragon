@@ -44,7 +44,7 @@ sim 是**游戏本体的单局模拟器**（「模拟实机环境」），不是
 
 ### 1.3 观测帧与相位
 
-相位枚举 = 实机画面对应的交互状态机：`opening_env`（投资环境选卡，环境在场时）/`prep`（备战：商店/买/升/部署/卖）/`invest_offer`（局中策略选卡）/`encounter_offer`（遭遇选档）/`supply_pick`（补给 3 选 1）/`box_pick`（补给箱）/`reward_ball`（晶矿）/`event_overlay`（巨星/伙伴/专家邀请/Fate/骇入等）/`settlement`（结算）/`plane_transition`（位面过渡）/`game_over`。相位与实机画面建档（`docs/game/screens/currency_war_*.md`）一一对应。
+相位枚举 = 实机画面对应的交互状态机：`opening_env`（投资环境选卡，环境在场时）/`prep`（备战：商店/买/升/部署/卖）/`invest_offer`（局中策略选卡）/`encounter_offer`（遭遇选档）/`supply_pick`（补给 3 选 1）/`box_pick`（补给箱）/`reward_ore`（晶矿）/`event_overlay`（巨星/伙伴/专家邀请/Fate/骇入等）/`settlement`（结算）/`plane_transition`（位面过渡）/`game_over`。相位与实机画面建档（`docs/game/screens/currency_war_*.md`）一一对应。
 
 sim 是唯一的状态推进者与随机量产生者；策略器不消费 sim 的随机流、不感知 seed。
 

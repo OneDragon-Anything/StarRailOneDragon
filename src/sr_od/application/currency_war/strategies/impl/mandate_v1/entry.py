@@ -154,7 +154,7 @@ def _ore_bench_free(gs: GameState) -> int:
 #: 阻断」建档注释假设保留最小实证敞口(色→内容映射未证,ADR-0596 §4.9③);
 #: K=2 无信息增益仅多 1 环延迟。零新拍定值:由
 #: 守卫常量与在册机制假设夹逼出可行域后取 1。
-SPHERE_DEFER_PROBE_K: int = 1
+ORE_DEFER_PROBE_K: int = 1
 
 #: 单批采晶矿上界(收编自旧 decision 核的发射形态值,统一迁移批随
 #: entry.py 入 mandate_v1;判读底稿低危项3补三形态归属标注):
@@ -163,11 +163,11 @@ SPHERE_DEFER_PROBE_K: int = 1
 #: 机制依据 = 席满时晶矿点不动(docs/game/screens/currency_war_prep.md
 #: 晶矿节):每晶矿内容可能占席,批式连点越过自由席位数即空点,批间由
 #: 晶矿计数自然回补(screen_flow_timing #16「部分没点开自然回补」用户
-#: 裁定容忍语义)。层位关系:执行层硬帽 = kernel ``SPHERE_CLICK_HARD_CAP``
+#: 裁定容忍语义)。层位关系:执行层硬帽 = kernel ``ORE_CLICK_HARD_CAP``
 #:=12(防识别抖动死循环,批 2a 随挑选函数迁居 kernel,不互替);
 #: kernel ``select_ore_clicks``(批 2a 大晶矿优先/上界挑选单一源)
 #: 显式消费本常量为预算参数(单一源,禁再内联字面 3)。
-SPHERE_CLICK_BATCH_MAX_K: int = 3
+ORE_CLICK_BATCH_MAX_K: int = 3
 
 
 def _ore_progress_sig(gs: GameState) -> int:
@@ -188,8 +188,8 @@ def _ore_progress_sig(gs: GameState) -> int:
     # 计入;未观察 None → 占用 0 保守);晶矿计数 = 容器 spheres 载荷数
     # (未观察 → 0)。getattr 缺省静默退化面随换源消亡。
     _bench_n = BENCH_CAPACITY - (bench_free_slots(gs) or BENCH_CAPACITY)
-    _sphere_n = len(ore_click_targets_of(gs))
-    return ((_round * 16) + (_bench_n & 0xF)) * 16 + (_sphere_n & 0xF)
+    _ore_n = len(ore_click_targets_of(gs))
+    return ((_round * 16) + (_bench_n & 0xF)) * 16 + (_ore_n & 0xF)
 
 log = logging.getLogger(__name__)
 
@@ -514,38 +514,41 @@ def emit(session: StrategySession,
         #   点开必减晶矿计数 → 重置 → 连续收晶矿不被打断——宁多收晶矿在门
         #   语义层保住。
         # 遥测键登记(单一源 = 本写点;design_telemetry.md 已随文档树
-        # 重组灭失,键节落写点旁):sphere_defer_streak(席满搁浅情节内
+        # 重组灭失,键节落写点旁):ore_defer_streak(席满搁浅情节内
         # 探针计数,成效重置;会话级=局级,接管局冷建=保守侧恢复点击)/
-        # sphere_defer_progress_sig(成效签名快照,门簿记账非行为计数)/
-        # sphere_defer_yield(让路帧计数)/ sphere_blocked_bench_full
+        # ore_defer_progress_sig(成效签名快照,门簿记账非行为计数)/
+        # ore_defer_yield(让路帧计数)/ ore_blocked_bench_full
         #(死码块内,现状恒零写)。
+        # ⚠️ 键名变更申报(2026-09-20 晶矿标识符 ore 改名收口):前缀
+        # sphere_defer_*/sphere_blocked_* → ore_defer_*/ore_blocked_*,
+        # 旧局决策行按旧键、新局按新键,跨局对照需双键并读。
         _ct_sp = state_of(session).cw4_counters
         _sf_free = _ore_bench_free(gs)
         if _sf_free > 0:
             if isinstance(_ct_sp, dict):
-                _ct_sp['sphere_defer_streak'] = 0
+                _ct_sp['ore_defer_streak'] = 0
             return [Emitted(CwActionCollectOreParam(
                         points=select_ore_clicks(
-                            _sf_targets, SPHERE_CLICK_BATCH_MAX_K)),
+                            _sf_targets, ORE_CLICK_BATCH_MAX_K)),
                         True, 'prep_spheres')]
         _prog_sig = _ore_progress_sig(gs)
         _streak = 0
         if isinstance(_ct_sp, dict) \
-                and _ct_sp.get('sphere_defer_progress_sig') == _prog_sig:
-            _streak = int(_ct_sp.get('sphere_defer_streak', 0) or 0)
+                and _ct_sp.get('ore_defer_progress_sig') == _prog_sig:
+            _streak = int(_ct_sp.get('ore_defer_streak', 0) or 0)
         _streak += 1
         if isinstance(_ct_sp, dict):
-            _ct_sp['sphere_defer_streak'] = _streak
-            _ct_sp['sphere_defer_progress_sig'] = _prog_sig
-        if _streak <= SPHERE_DEFER_PROBE_K:
+            _ct_sp['ore_defer_streak'] = _streak
+            _ct_sp['ore_defer_progress_sig'] = _prog_sig
+        if _streak <= ORE_DEFER_PROBE_K:
             # 单探针:同发射形态 = 常规 prep_spheres 动作。
             return [Emitted(CwActionCollectOreParam(
                         points=select_ore_clicks(
-                            _sf_targets, SPHERE_CLICK_BATCH_MAX_K)),
+                            _sf_targets, ORE_CLICK_BATCH_MAX_K)),
                         True, 'prep_spheres')]
         if isinstance(_ct_sp, dict):
-            _ct_sp['sphere_defer_yield'] = \
-                _ct_sp.get('sphere_defer_yield', 0) + 1
+            _ct_sp['ore_defer_yield'] = \
+                _ct_sp.get('ore_defer_yield', 0) + 1
         # 让路 fall-through:不发晶矿动作,落入下方常规步骤序(ADR-0642)。
         # —— 旧谓词第二腿 + 腾席臂(迁移 B 原案;ADR-0596 §4.9③「结构
         # 保活」明文):**保留原位,当前不可达**(结构性死码,非退役)。
@@ -601,8 +604,8 @@ def emit(session: StrategySession,
                 # 落入下方常规步骤序重评(与候选空集同向)。
             _ct_sf = state_of(session).cw4_counters
             if isinstance(_ct_sf, dict):
-                _ct_sf['sphere_blocked_bench_full'] = \
-                    _ct_sf.get('sphere_blocked_bench_full', 0) + 1
+                _ct_sf['ore_blocked_bench_full'] = \
+                    _ct_sf.get('ore_blocked_bench_full', 0) + 1
             # 晶矿残留跳过:不 return,落入下方常规步骤序(下帧 ① 再尝试)
 
     # ①′ wanted 闭环消费臂(T-159 迁移 A;位次 = ①实体面后、②证明 pass

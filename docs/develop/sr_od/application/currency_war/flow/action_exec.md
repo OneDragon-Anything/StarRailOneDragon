@@ -6,7 +6,7 @@
 
 - **词表单一源** = `kernel/cw_vocab.py::CW_ACTION_TYPES`(统一动作白名单;新增动作必须同步登记,漏登记 = 执行面拒「未知动作类型」,动作从未真正执行)。
 - **注册表单一源** = `operations/cw_op/cw_action_registry.py`(词表类 → 动作 op 类一张表;`action_op_for`/`action_op_class_for` 全动作唯一注册点;行序 isinstance 首中即返,is-a 链父类行兜底规则见模块头)。词表外类型 = AssertionError 响亮暴露(非法返回 = 策略器 bug,禁静默跳过)。
-- **备战域动作全集**:`ClickSpheres(max_k)`/`OpenBox(slot)`/`OpenTome(slot)`/`SellBench(slot, reason)`/`SellDeployed(row, slot)`/`DeployMove(from_slot, to_row, to_slot)`/`LevelUp`/`OpenShop(read_only)`/`StartBattle`/`Obs(scope)`(重观察动作,in_place = 环内重观察零点击零拖拽——宿主画面 op heavy 观察链重跑上报;outer_loop = 交回外循环重观察,分支拦截型;现役接线域 = 备战决策环)。(组合壳 RunDeploy/RunEquip/RunTools 已随统一词表退役,批2b R2:部署 = DeployMove 原子序发射位逐帧现算,穿戴 = WearEquip 原子,工具 = 工具原子类经 `CwActionToolUseOp`;部署机画面 op `CwScreenDeploy` 已退役删除——部署无画面 op 载体)。
+- **备战域动作全集**:`CollectOre(max_k)`/`OpenBox(slot)`/`OpenTome(slot)`/`SellBench(slot, reason)`/`SellDeployed(row, slot)`/`DeployMove(from_slot, to_row, to_slot)`/`LevelUp`/`OpenShop(read_only)`/`StartBattle`/`Obs(scope)`(重观察动作,in_place = 环内重观察零点击零拖拽——宿主画面 op heavy 观察链重跑上报;outer_loop = 交回外循环重观察,分支拦截型;现役接线域 = 备战决策环)。(组合壳 RunDeploy/RunEquip/RunTools 已随统一词表退役,批2b R2:部署 = DeployMove 原子序发射位逐帧现算,穿戴 = WearEquip 原子,工具 = 工具原子类经 `CwActionToolUseOp`;部署机画面 op `CwScreenDeploy` 已退役删除——部署无画面 op 载体)。
 - `SellBench.reason` = 线账闭合孤儿证明载体(**记录非指令**,执行层不读;'' = 未标缺省);发射侧值域闭集 = `cw_prep_actions.SELL_BENCH_REASONS` 唯一承重值 `line_switch_collapse`;reason 不入幂等键。
 - 动作实例键 `action_key(action)` = 类型+行为参数(SellBench(3) 与 SellBench(5) 各自计数;归因字段经字段 metadata 不入键)——屏蔽/失败计数的幂等粒度。
 

@@ -1,10 +1,10 @@
-# 采晶矿(ClickSpheres)逐动作逻辑态
+# 采晶矿(CollectOre)逐动作逻辑态
 
 > 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。**本动作 = 逻辑随机态首个落地**(logic-rand-sampling 迭代;设计正本 = `docs/develop/sr_od/application/currency_war/changes/2026-09-20-logic-rand-sampling/design.md`)。符号锚路径根 = `src/sr_od/application/currency_war/`。数值只写常量名,单一源在代码。
 
 ## 1. 动作是什么
 
-点击备战画面奖励面板的晶矿,点开后掉落奖励即时入账。op 载体 = `operations/cw_op/cw_collect_ore_action.py::CwActionCollectOreOp`;词表 = `kernel/cw_vocab.py::CwActionCollectOreParam`(`points` = 按点击序的晶矿心坐标列,批式多点)。发射条件 = 备战策略产 ClickSpheres(点击列由决策侧现算)。
+点击备战画面奖励面板的晶矿,点开后掉落奖励即时入账。op 载体 = `operations/cw_op/cw_collect_ore_action.py::CwActionCollectOreOp`;词表 = `kernel/cw_vocab.py::CwActionCollectOreParam`(`points` = 按点击序的晶矿心坐标列,批式多点)。发射条件 = 备战策略产 CollectOre(点击列由决策侧现算)。
 
 ## 2. 逻辑随机态域集(全部随机态)
 
@@ -53,4 +53,4 @@ None 域边界:值 None(未观察)的域跳写不标记;抽中类型域值 None 
 
 ## 9. 依据
 
-`kernel/cw_action_report/collect_ore.py` docstring(逐点推演+随机态全表);`kernel/cw_ore_reward.py`(临时口径 v0 常量面+假设档披露);`kernel/cw_merge_simulate.py::_merge_bench` docstring(步回调契约);design = `changes/2026-09-20-logic-rand-sampling/design.md` §2.3-§2.5;[flow/action_ops.md](../../flow/action_ops.md) §4.2 ClickSpheres 行;[fields.md](../fields.md) §3.2.8(晶矿)/§4.2 ClickSpheres。
+`kernel/cw_action_report/collect_ore.py` docstring(逐点推演+随机态全表);`kernel/cw_ore_reward.py`(临时口径 v0 常量面+假设档披露);`kernel/cw_merge_simulate.py::_merge_bench` docstring(步回调契约);design = `changes/2026-09-20-logic-rand-sampling/design.md` §2.3-§2.5;[flow/action_ops.md](../../flow/action_ops.md) §4.2 CollectOre 行;[fields.md](../fields.md) §3.2.8(晶矿)/§4.2 CollectOre。

@@ -1435,7 +1435,7 @@ _SPHERE_R_MAX: int = 48
 _SPHERE_PERSIST_POS_TOL: int = 12
 _SPHERE_PERSIST_R_TOL: int = 6
 #: 点击后幻晶矿黑名单命中容差(px;点击坐标 → 复现检测圆心的匹配带宽)。
-_SPHERE_PHANTOM_MATCH_TOL: int = 18
+_ORE_PHANTOM_MATCH_TOL: int = 18
 
 
 def _ore_texture_gate(hsv: MatLike, edges: MatLike, ix: int, iy: int,
@@ -1488,7 +1488,7 @@ def _session_phantom_points(ctx: SrContext) -> list[Point]:
     try:
         m = ctx.cw_match
         s = m.session if m is not None else None
-        return getattr(s, 'reward_sphere_phantom_points', None) or []
+        return getattr(s, 'ore_phantom_points', None) or []
     except Exception:   # noqa: BLE001  黑名单读侧 best-effort,缺失 = 不过滤
         return []
 
@@ -1496,7 +1496,7 @@ def _session_phantom_points(ctx: SrContext) -> list[Point]:
 def note_phantom_ore(ctx: SrContext, pt: Point) -> None:
     """点击后零消失的晶矿登记为幻晶矿(会话黑名单 + 分键留证;best-effort)。
 
-    黑名单 = session 动态挂 ``reward_sphere_phantom_points``(局级生命周期,
+    黑名单 = session 动态挂 ``ore_phantom_points``(局级生命周期,
     与漏斗/期望账本同款挂载模式);读侧 ``read_ore_sights`` 按位置容差
     过滤 → 后续环不再把该目标派给 CwActionCollectOreParam(禁无限循环的唯一出口,
     黑名单守卫不再是唯一出路)。重复登记同一位置幂等。"""
@@ -1505,12 +1505,12 @@ def note_phantom_ore(ctx: SrContext, pt: Point) -> None:
         s = m.session if m is not None else None
         if s is None:
             return
-        lst = getattr(s, 'reward_sphere_phantom_points', None)
+        lst = getattr(s, 'ore_phantom_points', None)
         if lst is None:
             lst = []
-            s.reward_sphere_phantom_points = lst
-        if any(abs(pt.x - q.x) <= _SPHERE_PHANTOM_MATCH_TOL
-               and abs(pt.y - q.y) <= _SPHERE_PHANTOM_MATCH_TOL for q in lst):
+            s.ore_phantom_points = lst
+        if any(abs(pt.x - q.x) <= _ORE_PHANTOM_MATCH_TOL
+               and abs(pt.y - q.y) <= _ORE_PHANTOM_MATCH_TOL for q in lst):
             return
         lst.append(pt)
         # telemetry 上行走出口钩子位(kernel;分包桶依赖矩阵 obs 禁直依
@@ -1526,7 +1526,7 @@ def note_phantom_ore(ctx: SrContext, pt: Point) -> None:
         # best-effort 留证面不炸)。
         _nd = game_state_of(s).node.value
         record_defect(
-            'reward_sphere', 'reward_sphere_phantom',
+            'ore', 'ore_phantom',
             expected='点击后晶矿消失(真晶矿)',
             observed=f'点击后同位置仍检出幻晶矿({pt.x},{pt.y})',
             plane=int(_nd.plane if _nd is not None else 0),
@@ -1536,7 +1536,7 @@ def note_phantom_ore(ctx: SrContext, pt: Point) -> None:
                      '过滤放弃该目标;同族=面板内非晶矿物幻检(W261 装备 icon/'
                      '礼盒蝴蝶结),复现新形态先跑纹理门标定再扩证据'),
             refs=[{'stream': 'arbitration', 'key': f'point={pt.x},{pt.y}'}],
-            reader_source='click_spheres_verify',
+            reader_source='collect_ore_verify',
             note='奖励域幻晶矿分键(幻检无交叉验证家族第 3 道:点击后验证)')
     except Exception:   # noqa: BLE001  幻晶矿登记 best-effort,不阻塞采晶矿
         pass
@@ -1607,8 +1607,8 @@ def read_ore_sights(ctx: SrContext, screen: MatLike,
     phantom = _session_phantom_points(ctx)
     if phantom:
         spheres = [s for s in spheres
-                   if not any(abs(s[1].x - q.x) <= _SPHERE_PHANTOM_MATCH_TOL
-                              and abs(s[1].y - q.y) <= _SPHERE_PHANTOM_MATCH_TOL
+                   if not any(abs(s[1].x - q.x) <= _ORE_PHANTOM_MATCH_TOL
+                              and abs(s[1].y - q.y) <= _ORE_PHANTOM_MATCH_TOL
                               for q in phantom)]
     return spheres
 

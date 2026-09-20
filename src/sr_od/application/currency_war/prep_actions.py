@@ -68,7 +68,7 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     area_center,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
-    SPHERE_CLICK_HARD_CAP,
+    ORE_CLICK_HARD_CAP,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -300,9 +300,9 @@ class PrepActionExecutor:
         elif isinstance(action, CwActionCollectOreParam):
             if not action.points:
                 return 'CwActionCollectOreParam 载荷为空(挑选归决策侧 kernel,空载荷 = 无对象)'
-            if len(action.points) > SPHERE_CLICK_HARD_CAP:
+            if len(action.points) > ORE_CLICK_HARD_CAP:
                 return (f'CwActionCollectOreParam 载荷 {len(action.points)} '
-                        f'超硬上限 {SPHERE_CLICK_HARD_CAP}(挑选越权)')
+                        f'超硬上限 {ORE_CLICK_HARD_CAP}(挑选越权)')
         elif isinstance(action, CwActionOpenBoxParam):
             if action.slot is not None and not (1 <= action.slot <= len(self._bench_pts)):
                 return f'CwActionOpenBoxParam slot={action.slot} 越界(1-{len(self._bench_pts)})'

@@ -173,12 +173,12 @@ dict 值统一为 int,但键按语义分四类(分类唯一源 = 封闭锁regist
 |---|---|---|---|
 | 事件计数(缺省类) | 336 实例 + 9 开放族的绝大多数 | 带符号差,通常 +1 / +n;单调不减 | 常规频次判读 |
 | 金量 / 帧数累计器 | launch_frame_idle_gold / t1_interest_gap_total / t1_interest_sellback_total / m6_s_reserve_remeet_frames_sum | 金额或帧数累加(一窗口内可 ±大值);单调不减 | 读「累计量」不读「次数」;差分语义与事件计数同构 |
-| 门簿记账(行为读回) | sphere_defer_streak(可清零)/ sphere_defer_progress_sig(签名快照,覆写)/ sphere_defer_yield(让路帧计数) | streak 清零窗口 = 负差;sig 覆写窗口 = 无意义的差值 | **三键被策略行为读回**(entry.py 门簿比较与清零,§3.3),非只写遥测;sig 键的差分值不作判读量,前缀和还原的**绝对值**才是其语义 |
+| 门簿记账(行为读回) | ore_defer_streak(可清零)/ ore_defer_progress_sig(签名快照,覆写)/ ore_defer_yield(让路帧计数) | streak 清零窗口 = 负差;sig 覆写窗口 = 无意义的差值 | **三键被策略行为读回**(entry.py 门簿比较与清零,§3.3),非只写遥测;sig 键的差分值不作判读量,前缀和还原的**绝对值**才是其语义 |
 | (预留) | — | — | 新语义类入封闭锁registry时增行,不改载体 |
 
 ### 3.3 行为读回键的声明(禁当纯遥测处置)
 
-`sphere_defer_streak` / `sphere_defer_progress_sig` / `sphere_defer_yield` 三键在
+`ore_defer_streak` / `ore_defer_progress_sig` / `ore_defer_yield` 三键在
 mandate_v1 entry.py 席满搁浅门内被**读回做行为判定**(进度签名相等比较、streak 清零与
 续计、让路帧累加)。schema 层面的两个义务:
 
@@ -186,6 +186,11 @@ mandate_v1 entry.py 席满搁浅门内被**读回做行为判定**(进度签名�
    与 `_telemetry_` 前缀披露字段不同类);
 2. 判读面读这三键的**行级窗口增量**无意义(负差/签名差),读**前缀和绝对值**才有语义
    (§5.2 恒等式保证前缀和精确还原)。
+
+**键名变更申报**(2026-09-20 晶矿标识符 ore 治本收口):三键及
+`ore_blocked_bench_full` 前缀 `sphere_defer_*`/`sphere_blocked_*` → 
+`ore_defer_*`/`ore_blocked_*`——旧局决策行按旧键、新局按新键,跨局对照
+需双键并读(登记面单一源 = entry.py 席满让路门写点旁申报注)。
 
 ### 3.4 豁免名单排除声明(七名不入字段)
 
@@ -210,7 +215,7 @@ audit/provisional 槽位)。封闭锁豁免清单的反向锁语义沿用,发射
 | F 部署执行面(21+1) | 7 字面 + `deploy_exec_held_{reason}`(8 闭集)/ `deploy_swap_sell_excluded_{3}` / `sell_offtarget_arm_{3}` + 开放族 `deploy_swap_sell_rejected_{资格拒因}` | 事件计数 |
 | G 执行侧杂项(3) | 3 字面名(s1_reset_mischannel 为防御显影位) | 事件计数 |
 | H mandate 骨架(70+1) | 52 字面(含 deploy_emit_floor_ctx_open、deploy_emit_floor_exempt_open 两常量键,与 held 族三件整组同窗)+ 4 闭族 18 实例(`shop_latch_skip_{3}` / `s1_reset_by_{route}`(4)/ levelup 预算门拒因(3)/ `deploy_emit_held_{reason}`(8))+ 开放族 `redeploy_transition_victim_{name}` | 事件计数;exempt_open 计豁免开火帧数 |
-| I entry(33) | 24 字面 + `prep_k_fallback_{band}`(3)/ `m7_5_reject_{action}`(6)+ 门簿记账 3 键(sphere_defer_*) | 事件计数 + 门簿 3 |
+| I entry(33) | 24 字面 + `prep_k_fallback_{band}`(3)/ `m7_5_reject_{action}`(6)+ 门簿记账 3 键(ore_defer_*) | 事件计数 + 门簿 3 |
 | J proof(9+3) | 9 字面 + 开放族 `evidence_gate_unavailable_{cause}` / `evidence_gate_{key}` / `theta_unavailable_{slot}` | 事件计数 |
 | K encounter(10) | 10 字面名 | 事件计数 |
 | L shop 商店域(127+3) | 92 字面 + `shop_k_fallback_{band}`(3)/ `{arm_key}_round_sold_excluded`(臂族,≤15)/ `shop_ev_{ckey}`(2)/ `shop_r1_{rkey}`(3)+ 开放族 `press_buy_deployable_fenced_{why}` / `t3_fenced_{why5}` / `fuel_filler_stall_fenced_{why}` | 事件计数;m6_s_reserve_remeet_frames_sum 为帧数累计器 |
@@ -265,8 +270,8 @@ cw4_counters: dict[str, int] | None
 即:**前缀和精确还原容器在任意行收口时点的内容**——窗口增量载体信息无损,行级累计
 快照(可由前缀和算出)按瘦身判据不入行。
 
-**终局对账不等式(仅单调键)**:记单调键集 M = 全键 − {sphere_defer_streak,
-sphere_defer_progress_sig}(其余键写点均为 get+inc 累加形态,单调不减)。对 k ∈ M:
+**终局对账不等式(仅单调键)**:记单调键集 M = 全键 − {ore_defer_streak,
+ore_defer_progress_sig}(其余键写点均为 get+inc 累加形态,单调不减)。对 k ∈ M:
 
 ```
 Σ_{i=1..n} Δ_i[k] = C(t_n)[k] ≤ C(T)[k] = MatchFinal.cw4_counters[k]
