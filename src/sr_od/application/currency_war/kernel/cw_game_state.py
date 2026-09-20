@@ -3685,26 +3685,23 @@ def back_capacity_of(gs: GameState) -> int:
 
 
 def deployed_count_of(gs: GameState) -> int:
-    """上阵占用数读口(旧 ``CwSimFrame.deployed_count`` 逐式镜像,波3 立口;
-    换算单一源 = :func:`deployed_slots_of` + ``cw_state.deployed_occupied``,
-    ADR-0392 占用数口径非 len)。"""
-    from sr_od.application.currency_war.kernel.cw_exec_state import deployed_occupied
-    return deployed_occupied(deployed_slots_of(gs))
+    """上阵占用数读口(容器原生,ADR-0392 占用数口径非 len):两行现值
+    单位计数(deployed_rows_of 缺行 = 空行缺省)。"""
+    front, back = deployed_rows_of(gs)
+    return len(front) + len(back)
 
 
 def front_count_of(gs: GameState) -> int:
-    """前排人数读口(旧 ``CwSimFrame.front_count`` 逐式镜像,波3 立口):
-    按 ``BenchChar.position_pref == 'front'`` 计(与旧法同式,非按槽段
-    计——BenchChar 站位偏好与所在排可短暂不一致,镜像以旧口径为准)。"""
-    return sum(1 for c in deployed_slots_of(gs)
-               if c is not None and c.position_pref == 'front')
+    """前排人数读口(容器原生):前排行成员计数(排归属 = 容器行域,
+    §2.1 排归属由行承载;占位判定 = 行成员身份,非按槽段计)。"""
+    front, _ = deployed_rows_of(gs)
+    return len(front)
 
 
 def back_count_of(gs: GameState) -> int:
-    """后排人数读口(旧 ``CwSimFrame.back_count`` 逐式镜像,波3 立口;
-    口径同 :func:`front_count_of`)。"""
-    return sum(1 for c in deployed_slots_of(gs)
-               if c is not None and c.position_pref == 'back')
+    """后排人数读口(容器原生;口径同 :func:`front_count_of`)。"""
+    _, back = deployed_rows_of(gs)
+    return len(back)
 
 
 def max_units_of(gs: GameState) -> int:

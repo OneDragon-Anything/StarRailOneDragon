@@ -11,10 +11,8 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.kernel.cw_exec_state import (
-    bench_occupied,
-)
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    bench_entries_of,
     game_state_of,
     gs_of_ctx,
     tracked_unobserved,
@@ -838,14 +836,11 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         _gs_row = match.gs if match.gs is not None else game_state_of(match.session)
         _node = node_kind_of(_gs_row) or '?'
         _next = '?'
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            bench_slots_of as _blog_slots,
-        )
         log.info(f'[cw] state gold={_entry.gold} hp={_entry.hp} lv={_entry.level} '
                  f'plane={_entry.plane} round={_entry.round_num} node={_node} '
                  f'next={_next} board={_entry.board} '
                  f'target={target_name!r} fp={_fp_v:.2f} '
-                 f'bench={bench_occupied(_blog_slots(_gs_of_entry))}')
+                 f'bench={len(bench_entries_of(_gs_of_entry))}')
         # 决策行披露 = 日志披露行(上方)。
         # ---- 单动作决策循环(ADR-0517 决策 1/2;循环内零读屏)----
         # 未观察态的锚定 = 「策略关店 → 备战环 heavy 观察」链,店内零
