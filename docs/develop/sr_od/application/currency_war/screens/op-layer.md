@@ -60,7 +60,7 @@
 - **每画面一文件**:obs 类与该画面上报函数同居(`kernel/cw_screen_report/<画面snake>.py`);与动作侧 `kernel/cw_action_report/<action>.py` 每动作一文件对称。文件名 = 画面 snake;`__init__.py` 不暴露模块(项目惯例),消费方按画面文件名直接 import。
 - **命名机械规约**:obs 类 = `CwScreenXxxObs`(商店框 op = `CwOpXxxObs`);上报函数 = `report_screen_<snake>_obs`(obs 类去前缀 `CwScreen` 去后缀 `Obs` 转 snake)。与动作上报函数族同约定:**一个「上报」概念一个形状**,动作/画面观察两族互不混用,都禁按类型聚合的分派转移函数。完备锁测试遍历包内 obs 类,断言 report 函数在场/不在场分侧(推进型不在场)。
 - **obs 类**:该画面一次观察的类型化载荷,字段 = 该屏读到的结构化结果 + 稳定帧引用(`screen: Any`,实机识别域载体)。纯数据:只可 import kernel 既有类型 + `cv2.typing.MatLike`。
-- **sig 逐位沿原值**:上报函数的 `ChannelSig`(family/actor/evidence)沿用该画面原写点原值(如 actor='CwScreenEncounter'),`REGISTERED_ACTORS` 零扩面;journal 写行语义与迁出前连续。sig 缺省 = 函数体内按原值构造;对 obs 字段缺失的防御口径与原写点一致(读缺 = 跳过写,不加强不减弱)。
+- **sig 逐位沿原值**:上报函数的 `ChannelSig`(family/actor/evidence)沿用该画面原写点原值(如 actor='CwScreenEncounter');journal 写行语义与迁出前连续。sig 缺省 = 函数体内按原值构造;对 obs 字段缺失的防御口径与原写点一致(读缺 = 跳过写,不加强不减弱)。
 
 ### 2.2 辖域边界
 

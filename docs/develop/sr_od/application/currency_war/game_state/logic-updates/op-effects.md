@@ -57,7 +57,7 @@
 
 ## 7. 事件线 pick 族 → 专篇
 
-注册表 pick 族 5 行逐类专篇:[pick-encounter.md](pick-encounter.md) / [pick-supply.md](pick-supply.md) / [pick-megastar.md](pick-megastar.md) / [pick-partner.md](pick-partner.md) / [pick-planner.md](pick-planner.md)。本总述只留族共通机制锚:op 类 = `operations/cw_op/cw_overlay_pick_action.py` 五类(`CwActionPickEncounterOp`/`CwActionPickSupplyOp`/`CwActionPickMegastarOp`/`CwActionPickPartnerOp`/`CwActionPickPlannerOp`,域 env = `OverlayPickExecEnv`,机械参数由各画面 op 决策半现算传入,op 类体内零决策);容器 GameState 零写(事件线选择非逻辑态通道),写边只有确认到账 grant(CwActionPickSupplyOp 一类,经 `register_confirm_arrival` → `apply_confirm_effect` dict 分支)与 chosen_* 观察写端(`REGISTERED_ACTORS` 登记面;策划选择落地域 `chosen_hack` 现役无写入端);机械确认链纪律正本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.4。
+注册表 pick 族 5 行逐类专篇:[pick-encounter.md](pick-encounter.md) / [pick-supply.md](pick-supply.md) / [pick-megastar.md](pick-megastar.md) / [pick-partner.md](pick-partner.md) / [pick-planner.md](pick-planner.md)。本总述只留族共通机制锚:op 类 = `operations/cw_op/cw_overlay_pick_action.py` 五类(`CwActionPickEncounterOp`/`CwActionPickSupplyOp`/`CwActionPickMegastarOp`/`CwActionPickPartnerOp`/`CwActionPickPlannerOp`,域 env = `OverlayPickExecEnv`,机械参数由各画面 op 决策半现算传入,op 类体内零决策);容器 GameState 零写(事件线选择非逻辑态通道),写边只有确认到账 grant(CwActionPickSupplyOp 一类,经 `register_confirm_arrival` → `apply_confirm_effect` dict 分支)与 chosen_* 观察写端(画面 op 类名作 actor 标注;策划选择落地域 `chosen_hack` 现役无写入端);机械确认链纪律正本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.4。
 
 ## 8. 语义验证(观察边界 reconcile)
 

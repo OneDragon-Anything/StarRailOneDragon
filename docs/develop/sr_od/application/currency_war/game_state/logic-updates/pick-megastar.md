@@ -10,7 +10,7 @@
 
 **容器 GameState 零写**——事件线选择非逻辑态通道([../action-logic-state.md](../action-logic-state.md) §6):
 
-- **候选选中半留守画面 op**:候选选中点击与 `chosen_megastar` 写端在原体内交错(点击 → 写端 → 动画等待),写端属单次逻辑写入豁免面——确认机械半先收拢进本 op,候选半随写端留在画面 op;`chosen_megastar`(容器 Field,值 = 强化角色名)写端 = `CwScreenMegastar` 候选选中时点的观察写(`REGISTERED_ACTORS` 在册);
+- **候选选中半留守画面 op**:候选选中点击与 `chosen_megastar` 写端在原体内交错(点击 → 写端 → 动画等待),写端属单次逻辑写入豁免面——确认机械半先收拢进本 op,候选半随写端留在画面 op;`chosen_megastar`(容器 Field,值 = 强化角色名)写端 = `CwScreenMegastar` 候选选中时点的观察写;
 - **确认到账 grant**:无——原「到账登记」ConfirmMegastar 块已随两态制废除(`chosen_megastar` 写端无挂账登记环节);`ConfirmMegastar` 在 `register_confirm_arrival` 零写(`_overlay_confirm.py` 分道申报);
 - 候选选中建议不经本动作确认链外的第二载体;本 op = 确认钮单发。
 
@@ -30,7 +30,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::CwActionPickMegastarParam` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickMegastarOp` / `OverlayPickExecEnv`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_game_state.py::chosen_megastar` / `REGISTERED_ACTORS`(CwScreenMegastar 行);`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`(ConfirmMegastar 零写分道);`operations/cw_screen/cw_screen_megastar.py::CwScreenMegastar`(候选半/写端/替身缝)。
+`kernel/cw_vocab.py::CwActionPickMegastarParam` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickMegastarOp` / `OverlayPickExecEnv`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_game_state.py::chosen_megastar`;`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`(ConfirmMegastar 零写分道);`operations/cw_screen/cw_screen_megastar.py::CwScreenMegastar`(候选半/写端/替身缝)。
 
 ## 7. 语义验证
 

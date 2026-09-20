@@ -803,7 +803,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
 
     ev = f'effect_board_rewrite@{frame}' if frame else 'effect_board_rewrite'
     # 组签名:一次出售清空 = 一次逻辑计算,组内行同 group(§3.2.1 group_id
-    # 语义);actor 复用同族登记名 EffectLedgerBridge(REGISTERED_ACTORS 在册)。
+    # 语义);actor 复用同族写入者名 EffectLedgerBridge。
     sig = ChannelSig(family='logic_hook', actor='EffectLedgerBridge',
                      mode='compute',
                      group_id=f'hook:EffectLedgerBridge@{gs.write_seq + 1}')
@@ -869,9 +869,9 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
 
 def _equip_bridge_sig(gs: GameState) -> ChannelSig:
     """装备改写桥写入的渠道③签名(单一构造点;组 id 格式与板面重写桥一致
-    = hook:<登记名>@<seq>;actor 复用同族登记名 EffectLedgerBridge,
-    REGISTERED_ACTORS 在册)。ChannelSig 运行期惰性取(TYPE_CHECKING 面
-    仅注解,模块头零包内 import 契约)。"""
+    = hook:<写入者名>@<seq>;actor 复用同族写入者名 EffectLedgerBridge)。
+    ChannelSig 运行期惰性取(TYPE_CHECKING 面仅注解,模块头零包内 import
+    契约)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import ChannelSig
     return ChannelSig(family='logic_hook', actor='EffectLedgerBridge',
                       mode='compute',

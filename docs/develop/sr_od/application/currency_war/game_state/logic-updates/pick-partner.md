@@ -10,7 +10,7 @@
 
 **容器 GameState 零写**——事件线选择非逻辑态通道([../action-logic-state.md](../action-logic-state.md) §6):
 
-- **选择落地观察写端**:`chosen_partner`(容器 Field,值 = 候选阵营名)= 画面 op `CwScreenPartner` 的观察写入边(`REGISTERED_ACTORS` 在册);
+- **选择落地观察写端**:`chosen_partner`(容器 Field,值 = 候选阵营名)= 画面 op `CwScreenPartner` 的观察写入边;
 - **确认到账 grant**:无——`ConfirmPartner` 在 `register_confirm_arrival` 零写(handler 既有写点承担,`_overlay_confirm.py` 分道申报);
 - **状态宿主在画面 op**:选中态标记(`op._pick_point`)与脉冲计数(`op._confirm_pulses`/`op._confirm_pending`)宿主 = 画面 op,本 op 经 `env.op` 消费——计数生命周期 = 节点级,画面 op 单一归属不变。
 
@@ -30,7 +30,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::CwActionPickPartnerParam` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickPartnerOp` / `OverlayPickExecEnv`;`kernel/cw_game_state.py::chosen_partner` / `REGISTERED_ACTORS`(CwScreenPartner 行);`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`(ConfirmPartner 零写分道);`operations/cw_screen/cw_screen_partner.py::CwScreenPartner`(状态宿主/写端/替身缝)。
+`kernel/cw_vocab.py::CwActionPickPartnerParam` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickPartnerOp` / `OverlayPickExecEnv`;`kernel/cw_game_state.py::chosen_partner`;`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`(ConfirmPartner 零写分道);`operations/cw_screen/cw_screen_partner.py::CwScreenPartner`(状态宿主/写端/替身缝)。
 
 ## 7. 语义验证
 

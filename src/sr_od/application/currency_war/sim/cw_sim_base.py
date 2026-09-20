@@ -1,4 +1,4 @@
-"""sim 重做基座:容器写入签名/登记/证据标签的共用面。
+"""sim 重做基座:容器写入签名/证据标签的共用面。
 
 设计正本 = ``docs/develop/sr_od/application/currency_war/changes/
 2026-09-15-sim-redesign/design.md``(下称「重做设计稿」)§2.0.1/§2.0.3:
@@ -14,11 +14,9 @@ from __future__ import annotations
 
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
-    register_sig_actors,
 )
 
-#: sim 引擎写入者登记名(容器 actor 登记面在册名;经 register_sig_actors
-#: 申报,重做引擎全部 obs/logic 写入署名此名)。
+#: sim 引擎写入者名(重做引擎全部 obs/logic 写入署名此名)。
 SIM_ENGINE_ACTOR: str = 'SimEngineV2'
 
 #: sim 真值写入证据前缀(失配抑制登记面契约,见模块 docstring)。
@@ -41,6 +39,3 @@ def logic_sig(group_id: str) -> ChannelSig:
     """动作应用签名(logic_action 族;动作经 kernel 单一转移函数署名)。"""
     return ChannelSig(family='logic_action', actor=SIM_ENGINE_ACTOR,
                       mode='compute', group_id=group_id)
-
-
-register_sig_actors(SIM_ENGINE_ACTOR)

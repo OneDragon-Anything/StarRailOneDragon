@@ -10,7 +10,7 @@
 
 **容器 GameState 零写**——事件线选择非逻辑态通道([../action-logic-state.md](../action-logic-state.md) §6)。机械参数由画面 op 决策半现算经 `OverlayPickExecEnv` 传入,op 类体内零决策零读决策输入;轮次结果经 `env.round_result` 旁路回传(基类 execute 返回契约恒 True)。本动作的写边:
 
-- **选择落地观察写端**:`chosen_encounter`(容器 Field,值形 (难度档, 奖励文本))= 画面 op `CwScreenEncounter` 的观察写入边(`REGISTERED_ACTORS` 在册);
+- **选择落地观察写端**:`chosen_encounter`(容器 Field,值形 (难度档, 奖励文本))= 画面 op `CwScreenEncounter` 的观察写入边;
 - **确认到账 grant**:无(本类确认无登记面;`ConfirmStrategy`/`ConfirmMegastar`/`ConfirmPartner` 在 `register_confirm_arrival` 零写,分道申报见 `operations/cw_screen/_overlay_confirm.py`);
 - 刷新建议不经本动作:遭遇刷新链 = 同访问重决策,发射 `RefreshNodeOptions` 前须以重读产物覆盖写槽再决策(刷新链分屏形态申报,`cw_vocab.py::RefreshNodeOptions`)。
 
@@ -30,7 +30,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::CwActionPickEncounterParam` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickEncounterOp` / `OverlayPickExecEnv`;`operations/cw_screen/_overlay_confirm.py::safe_click` / `emit_overlay_confirm`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_game_state.py::chosen_encounter` / `REGISTERED_ACTORS`(CwScreenEncounter 行);`operations/cw_screen/cw_screen_encounter.py::CwScreenEncounter`(替身缝/写点)。
+`kernel/cw_vocab.py::CwActionPickEncounterParam` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickEncounterOp` / `OverlayPickExecEnv`;`operations/cw_screen/_overlay_confirm.py::safe_click` / `emit_overlay_confirm`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_game_state.py::chosen_encounter`;`operations/cw_screen/cw_screen_encounter.py::CwScreenEncounter`(替身缝/写点)。
 
 ## 7. 语义验证
 

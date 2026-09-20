@@ -8,7 +8,7 @@ bail 控制信号不另立顶层字段防双源漂移)——其容器写端在�
 operations/cw_screen/cw_screen_prep.py::``_write_prep_node_chain``
 (备战帧现行链,gs.observe 双写 + 基线幂等)与
 ``_takeover_collect_if_needed``(接管局补采四写点,write_logic);
-sig/actor/evidence 逐位沿用原写点原值,REGISTERED_ACTORS 零扩面。
+sig/actor/evidence 逐位沿用原写点原值。
 """
 from __future__ import annotations
 

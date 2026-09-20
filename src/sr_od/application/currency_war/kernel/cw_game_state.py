@@ -336,109 +336,6 @@ OBS_EVENT_EVENTS: tuple[str, ...] = ('arbitrate', 'miss', 'popup', 'chain_diff')
 #: logic 两族子模:恒 compute(逻辑计算,无观察质量语义)。
 LOGIC_MODES: tuple[str, ...] = ('compute',)
 
-#: actor 登记面在册名(§3.2.1:显式 sig 的写入者须在册,登记式封闭集防自由
-#: 串漂移;未来流程 hook 系统的写入者随其登记面申报——写入口只校验在册,
-#: 零接口预留)。R5 W1 起写入口签名必填(影子期「无 sig 调用」的合成签名
-#: 过渡路径已退役,ADR-0634),全部行 actor 在册非空。
-REGISTERED_ACTORS: set[str] = {
-    'cw_observation',          # 观察汇聚模块(read_game_state 唯一漏斗)
-    'cw_back_layout',          # 后排布局选档(back_layout 观察写端:三信号
-                               # 裁决值经 resolve_back_slots 收尾落容器)
-    'obs_conflict',            # 观察冲突仲裁汇点(obs_conflict 证据行型 2)
-    'CwScreenPrep',            # 备战画面 op(reconcile 核对口观察写入)
-    'CwScreenPlaneTransition',  # 位面过渡 op(过渡屏链观察写点:基线链
-                               # transition_row/离场快照 transition_snapshot,
-                               # 链观察落地批 2026-09-16)
-    'CwScreenBattleWait',      # 战斗/结算画面 op(结算覆盖写端,§3.5.1)
-    'CwScreenBookcard',        # 星徽秘典弹窗(chosen_tome 选择写点)
-    'CwScreenBriefing',        # 简报(enemy_difficulty 恒稳基线写端,终态契约 §B)
-    'CwScreenEncounter',       # 遭遇弹窗(chosen_encounter/刷新计数写点)
-    'CwScreenExpertInvite',    # 专家邀约(chosen_expert 选择写点;
-                               # expert_invite 弹窗载体写点,普查迁移批 2)
-    'CwScreenInvestEnv',       # 投资环境(active_env 选择写点)
-    'CwScreenInvestStrategy',  # 投资策略(active_strategies/刷新计数写点)
-    'CwScreenMegastar',        # 盛会之星(chosen_megastar 选择写点)
-    'CwScreenPartner',         # 伙伴选择(chosen_partner 选择写点)
-    'CwScreenSupplyNode',      # 补给(chosen_supply 选择写点)
-    'CwScreenWishTrial',       # 祈愿试炼(chosen_wish 选择写点)
-    'derive_node_inferred',    # 派生规则·弹窗腿(§3.4.1 规则一)
-    'derive_node_observed',    # 派生规则·备战腿(§3.4.1 规则二)
-    'derive_node_plane_transition',  # 派生规则·位面过渡腿(§3.4.1 规则二·R1.2)
-    'derive_node_boss_brief',        # 派生规则·BOSS简报腿(§3.4.1 规则三·R1.2)
-    'derive_node_type',              # 派生规则·类型直定(§3.4.1 类型派生·R1.2)
-    'ResumeAttach',            # 接管协议(载体中继登记名,§3.2.4)
-    'MatchClose',              # 局终收口(局终域写点,接线归后续批)
-    'synthesize_from_game_state',  # sim 合成口(§2.1;波 5 起为直写喂入口写入实现)
-    'feed_sim_truth',             # sim 真值直写喂入口(波 5 喂入反转正式入口)
-    'EvolutionEngine',            # 阵容演进引擎(事务发射行 receipts 写点,波 5 接线)
-    # —— R2 动作 op 写入接线(渠道② logic_action,§3.2.1 登记类属 =
-    # 「动作 op / handler 类名」;actor = 执行动作的 op 类,动作身份由
-    # 回执记录 op 字段承载)——
-    'PrepActionExecutor',      # 备战动作执行器(动作全集唯一分派点)
-    'CwScreenBuyCards',            # 商店单动作循环(run_buy_waves;含刷新执行
-                               # 事实组 record_refresh_execution 的计数写入)
-    # —— 动作 op 重组批③(design.md §1.1):CwActionXxxOp(SrOperation)
-    # 自上报,actor = type(self).__name__,随 op 类名单体登记 ——
-    'CwActionBuyCardOp',
-    'CwActionRefreshShopOp',
-    'CwActionCloseShopOp',
-    'CwActionSellBenchOp',
-    'CwActionLevelUpOp',
-    'CwActionDeployMoveOp',
-    'CwActionSellDeployedOp',
-    'CwActionWearEquipOp',
-    'CwActionCollectOreOp',
-    'CwActionOpenBoxOp',
-    'CwActionOpenTomeOp',
-    'CwActionOpenBookcardOp',
-    'CwActionToolUseOp',
-    'CwActionStartBattleOp',
-    'CwActionOpenShopOp',
-    'CwActionPickEncounterOp',
-    'CwActionPickSupplyOp',
-    'CwActionPickMegastarOp',
-    'CwActionPickPartnerOp',
-    'CwActionPickPlannerOp',
-    'CwActionObsOp',           # 环内重观察(自上报零写占位;容器更新通道 =
-                               # 观察漏斗本体,actor 登记 = 回执统一形态)
-    'CwOpOpenShop',            # 开商店原子(op 函数与独立壳同名登记)
-    'CwOpCloseShop',           # 关商店原子
-    'CwFlowStrategy',          # 商店序列驱动器·基类缺省(逻辑态直写,波 4)
-    'MandateV1Strategy',       # 商店序列驱动器·mandate 覆写(逻辑态直写,波 4)
-    'CwLoop',                  # 外循环(开局链分支标识写点,obs 族 ①)
-    'EffectLedgerBridge',      # 效果账本→字段桥(容量逻辑态直写/增额授予;v3.2-G4
-                               # §3.2.1 登记类属补项;R5 W1 起显式签名)
-    'SimEngineP1',             # sim P1 引擎(外部事件 obs 族写点
-                               # ——收入/结算/回合初始化/开局播种/装备发放/
-                               # 部署代理;动作应用走 logic_action 族转移函数)
-    'CwReconcile',             # 对账模块(kernel/cw_reconcile;观察态
-                               # 锚定写点——屏幕真值写回成功置
-                               # tracked_account_observed=True)
-    'CwDeployLogic',           # 轮内新鲜度账单口(kernel/cw_deploy_logic.
-                               # record_fresh_buy 的 round_fresh_buys
-                               # 容器 Field 写点,渠道②动作上报)
-    # —— 策略器终态契约预登记(landing §3.1;纯增量零行为——写端接线
-    # 归终态切换批,先登记防 _validate_sig 在册校验炸)——
-    'CwScreenPlanner',         # 骇入策划(planner_opts 写点,现役唯一
-                               # 未登记的新写端之一)
-    'CwScreenBoxPick',         # 武装箱选择(box_card_names 写点,同上)
-    'CwScreenFortune',         # 命运卜者强化(fortune_opts 写点,契约扩员 12→15)
-    'CwScreenEquipPick',       # 选择装备(equip_pick_opts 写点,契约扩员 12→15)
-    'cw_loop_route_clear',     # 外循环路由清点挂点(离屏置 None 写端,
-                               # sig family/mode 同 CwActionCloseShopParam 腿清点行,
-                               # actor 单列供 journal 行过滤)
-}
-
-
-def register_sig_actors(*names: str) -> None:
-    """登记新的写入者名(登记面扩面唯一入口;重复登记幂等)。"""
-    REGISTERED_ACTORS.update(names)
-
-
-def actor_registered(name: str) -> bool:
-    """actor 是否已登记(测试与诊断用;写入口校验走 :func:`_validate_sig`)。"""
-    return name in REGISTERED_ACTORS
-
 
 def _journal_emit(row: dict) -> None:
     """状态流水行外送(写入口共用;缺省关 + 局外拒写 + best-effort)。"""
@@ -454,16 +351,14 @@ def _journal_emit(row: dict) -> None:
 
 
 def _validate_sig(sig: ChannelSig, allowed_families: tuple[str, ...]) -> None:
-    """显式签名的写入口校验(§3.2.4 硬约束 2):渠道族须匹配该 API 的合法族、
-    actor 须在册;违反显式炸错(禁静默收下——渠道面漂移要在写点暴露)。"""
+    """显式签名的写入口校验(§3.2.4 硬约束 2):渠道族须匹配该 API 的合法族;
+    违反显式炸错(禁静默收下——渠道面漂移要在写点暴露)。actor 仅作遥测/
+    台账行的动作身份标注,不设白名单闸:上报方是一方代码,写错身份 = 错账,
+    由观察对账兜住(账实不符 → 安灯 → 根因调查)。"""
     if sig.family not in allowed_families:
         raise ValueError(
             f'渠道族 {sig.family!r} 不属本写入口合法族 {allowed_families}'
             f'(§3.2.4 硬约束 2 渠道封闭集)')
-    if sig.actor not in REGISTERED_ACTORS:
-        raise ValueError(
-            f'actor {sig.actor!r} 未登记(register_sig_actors 申报;§3.2.4 '
-            f'硬约束 2 登记面在册校验)')
 
 
 @dataclass(frozen=True)
@@ -472,8 +367,8 @@ class ChannelSig:
     结构化标注,随状态流水行落盘。
 
     - family = 渠道族(:data:`CHANNEL_FAMILIES` 封闭集,构造期校验);
-    - actor = 登记面在册的写入者名(:data:`REGISTERED_ACTORS`;显式 sig 经
-      写入口在册校验,合成 sig 过渡期豁免);
+    - actor = 写入者身份标注(op 类名/模块名,随行落台账供对账过滤;
+      不设白名单闸);
     - screen = 画面标识(obs = 画面建档 screen_name;logic_hook = 关联画面;
       logic_action = None);
     - mode = 渠道族子模(obs 族 :data:`OBS_MODES` / logic 两族恒 compute,
@@ -1268,7 +1163,7 @@ def note_action_receipt(gs: GameState, *, op: str, applied: bool,
       refresh_skipped/blocked 等,§3.2.1 质量词表执行面);
     - 滚动窗 = :data:`RECEIPTS_WINDOW_CAP` 条先进先出,整窗帧替换写入
       (普通 Field 域,非专用行机制,E3);窗序 = 写入序,同态同形;
-    - 渠道签名:family=logic_action + actor(登记面在册,§3.2.1 ②类属 =
+    - 渠道签名:family=logic_action + actor(§3.2.1 ②类属 =
       执行动作的 op 类名)+ group_id = ``act:<actor>@<seq>``(§3.2.1 ②
       组标识格式);sig.screen 恒 None(逻辑计算无画面),画面桶由回执
       记录 screen 字段承接(exec_events 词表);
@@ -2332,7 +2227,7 @@ class GameState:
     #(读取零销账,无逐名生命周期面);None = 本局未登记。写端 = shop.
     # _emit_buy 全部 CwActionBuyCardParam 发射位,经
     # cw_deploy_logic.record_fresh_buy 单口(渠道②动作上报,actor =
-    # 'CwDeployLogic' 登记面在册);读端 =
+    # 'CwDeployLogic');读端 =
     # cw_deploy_logic.fresh_buys_of(换出守卫)+ fresh_buys_sell_face
     #(L1 卖侧闩,fail-closed,ADR-0611 §3-1;写读单口不变)。
     round_fresh_buys: Field[dict | None] = field(default_factory=Field)
@@ -2569,8 +2464,8 @@ class GameState:
         单点分配——分配与状态变更同临界区,先变更后落行,同一函数内)。
 
         - sig = 显式渠道签名(必填;R5 W1 起 legacy 合成签名路径已随直迁
-          裁定退役——影子期「缺位合成」过渡语义不复存在,行 actor 恒在册
-          非空,ADR-0634;调用方已过 :func:`_validate_sig` 渠道面校验);
+          裁定退役——影子期「缺位合成」过渡语义不复存在,行 actor 非空,
+          ADR-0634;调用方已过 :func:`_validate_sig` 渠道面校验);
         - note = 可选行注记(权威纠偏记录/battle_done 等结算事实语义)。
         """
         old = getattr(self, name)
@@ -4098,8 +3993,7 @@ def scalar_projection_state(gold: int, level: int, hp: int, plane: int,
       不写(保持 None);
     - 一次性视图禁向状态流水落行(行 = 改了什么的局内账,投影非局内
       事实;与桥同款:单线程写路径,沉挂全局 sink 后还原);
-    - actor 复用 sim 合成签名登记名(已在 REGISTERED_ACTORS 在册,投影
-      行为语义与合成口同族,零新登记面)。
+    - actor 复用 sim 合成签名的写入者名(投影行为语义与合成口同族)。
     """
     gs = GameState(schema_version=GAME_STATE_SCHEMA_VERSION)
     global _STATE_JOURNAL_SINK

@@ -11,7 +11,7 @@
 **容器 GameState 主体零写**——事件线选择非逻辑态通道([../action-logic-state.md](../action-logic-state.md) §6);本族五类中**唯一带确认到账登记面**的一类:
 
 - **确认到账 grant(确定面)**:确认收尾调 `operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`(op='ConfirmSupply',item = 选中装备名)→ `kernel/cw_exec_state.py::apply_confirm_effect` dict `ConfirmSupply` 分支 → owned 库存 +1(`gs.equips` write_logic;实读帧照常覆盖)。登记输入 = `env.picked`('equip' 键);equip 未读到 = 无 item 不登记;
-- **选择落地观察写端**:`chosen_supply`(容器 Field,值形 (角色, 装备, 有钻石))= 画面 op `CwScreenSupplyNode` 的观察写入边(`REGISTERED_ACTORS` 在册);
+- **选择落地观察写端**:`chosen_supply`(容器 Field,值形 (角色, 装备, 有钻石))= 画面 op `CwScreenSupplyNode` 的观察写入边;
 - 刷新臂不在本动作:刷新圆钮机械点击留守画面 op(刷新链 = `PickSupply.refresh` 决策建议的执行半,与遭遇屏 `_try_refresh` 同类);刷新建议词表 = `cw_vocab.py::RefreshSupply`(发射后交回重入型)。
 
 ## 3. 确定面转移规则(逐条)
@@ -30,7 +30,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::CwActionPickSupplyParam` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickSupplyOp` / `OverlayPickExecEnv`;`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`;`kernel/cw_exec_state.py::apply_confirm_effect`(dict ConfirmSupply 分支);`kernel/cw_game_state.py::chosen_supply` / `REGISTERED_ACTORS`(CwScreenSupplyNode 行);`operations/cw_screen/cw_screen_supply_node.py::CwScreenSupplyNode`(替身缝/写点)。
+`kernel/cw_vocab.py::CwActionPickSupplyParam` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickSupplyOp` / `OverlayPickExecEnv`;`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`;`kernel/cw_exec_state.py::apply_confirm_effect`(dict ConfirmSupply 分支);`kernel/cw_game_state.py::chosen_supply`;`operations/cw_screen/cw_screen_supply_node.py::CwScreenSupplyNode`(替身缝/写点)。
 
 ## 7. 语义验证
 

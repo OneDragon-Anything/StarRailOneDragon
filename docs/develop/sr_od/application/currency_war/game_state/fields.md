@@ -1348,7 +1348,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
   `BenchView.slots`
   操作(不走 legacy roundtrip,is_item_slot 布尔无法恢复 box/tome 类型);域级 None
   跳写(值留观察覆盖,§2.2);陈旧提案守卫(槽位空/越界/载荷无交集零写,等观察覆盖)。
-  sig 必填 = family='logic_action'(渠道签名纪律)、actor 在册校验、group_id 按
+  sig 必填 = family='logic_action'(渠道签名纪律)、group_id 按
   `act:<op类名>@<seq>` 先例在口内补齐;逻辑态直写值受观察覆盖辖(§2.3)。
 - 效果账本 = `ActiveEffectInventory`(登记/推进/计数/移除方法域;读端
   by_category/by_trigger/by_source/first/counter/predict_for);规格载体 =

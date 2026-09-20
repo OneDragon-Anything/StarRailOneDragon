@@ -1335,8 +1335,8 @@ class CwLoop(SrOperation):
         消费(早退屏非映射属屏)。
 
         sig: family/mode 同既有 CwActionCloseShopParam 腿清点行常量源(family='obs',
-        mode='read'),actor 单列 'cw_loop_route_clear' 供 journal 行过滤
-        (三登记见 REGISTERED_ACTORS)。容器未建立(loop 兜底直跑早期)
+        mode='read'),actor 单列 'cw_loop_route_clear' 供 journal 行过滤。
+        容器未建立(loop 兜底直跑早期)
         静默跳过(best-effort;无容器 = 无可陈旧面)。
         """
         from sr_od.application.currency_war.kernel.cw_game_state import (

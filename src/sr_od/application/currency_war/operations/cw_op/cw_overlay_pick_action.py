@@ -59,7 +59,6 @@ from sr_od.application.currency_war.kernel.cw_action_report.zero_writes import (
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     game_state_from_ctx,
-    register_sig_actors,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -94,27 +93,6 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_planner impor
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
-
-# —— 写入者登记面(§3.2.4):本模块声明的动作 op 类全量自登记(actor =
-# 类名,发射相自上报经 _validate_sig 在册校验)。契约扩员 12→15 与
-# pick-op-unify 批新增的 7 个 op 类名单体漏登记 → 实机发射相自上报
-# ValueError 炸(动作 op 全链 FAIL;投资/装备三选一为常态/银狼线必经
-# 画面,首局即触)。模块导入期扩面 = cw_sim_base 同款先例;
-# register_sig_actors 幂等,与 cw_game_state 静态登记集重复无害。
-register_sig_actors(
-    'CwActionPickEncounterOp',
-    'CwActionPickSupplyOp',
-    'CwActionPickMegastarOp',
-    'CwActionPickPartnerOp',
-    'CwActionPickPlannerOp',
-    'CwActionPickInvestOp',
-    'CwActionPickFortuneOp',
-    'CwActionPickWishTrialOp',
-    'CwActionPickEquipOp',
-    'CwActionPickBoxCardOp',
-    'CwActionPickStarTomeOp',
-    'CwActionPickExpertInviteOp',
-)
 
 
 @dataclass

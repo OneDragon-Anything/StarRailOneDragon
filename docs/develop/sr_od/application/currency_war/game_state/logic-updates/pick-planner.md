@@ -10,7 +10,7 @@
 
 **容器 GameState 零写**——事件线选择非逻辑态通道([../action-logic-state.md](../action-logic-state.md) §6):
 
-- **选择落地观察写端:现役无在册写端**——策划选择的落地域 = `kernel/cw_game_state.py::chosen_hack`(值 = 策划名),字段在册但**暂无画面建档与写入端**(`CwScreenPlanner` 不在 `REGISTERED_ACTORS`;选择落地不落账,归观察侧补档批);
+- **选择落地观察写端:现役无在册写端**——策划选择的落地域 = `kernel/cw_game_state.py::chosen_hack`(值 = 策划名),字段在册但**暂无画面建档与写入端**(选择落地不落账,归观察侧补档批);
 - **确认到账 grant**:无(本类确认无登记面);
 - 选中点几何(避开卡内「详情」按钮区)归决策半 `_card_point` 单一源现算,经 `env.target` 传入。
 
