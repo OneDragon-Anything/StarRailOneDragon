@@ -104,7 +104,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_ABSORB_RULE,
         basis='buy/sell/levelup/refresh 投影 + 结算真值收口 '
               '(settle_truth:边界收入随结算入账,boundary_income_credited 留证)。'
-              '已知缺口:奖励节点晶矿随机金现无豁免条目(2026-09-19 拆除待重设计),'
+              '晶矿随机金已改走逻辑随机态(collect_ore 采样直写,'
+              'logic_rand_outcome 行收口,2026-09-20 logic-rand-sampling);'
+              '投资卡随机授予仍无写端(申报表族 2026-09-19 拆除待重设计),'
               '命中照真失配停'),
     'level': ProjectionAuditRow(
         status=AUDIT_WRITE_END,

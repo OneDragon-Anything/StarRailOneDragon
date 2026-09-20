@@ -12,7 +12,7 @@
 
 **逻辑态**（本篇主题）= 一个动作 op 机械发出后，**不经观察**、只按已核实的游戏规则、从动作前容器状态**推算并直写**的预期状态。
 
-**两态制** = 容器——局内状态唯一快照 `kernel/cw_game_state.py::GameState`（下称「容器」）——的每个字段只保留两种值来源：**观察态**（画面读数，`observe()` 写入）与**逻辑态**（动作后推算，`write_logic()` 写入）；同帧冲突时**观察赢**（观察值覆盖逻辑推算值）。依据：`fields.md` §2.3/§2.5；架构裁定锚 = ADR-0651。**逻辑随机态扩展**（来源 `logic_rand`，`write_logic_rand()` 写入）：所对游戏侧效果本身随机的推算口径可按随机态直写——观察覆盖差异预期内（`logic_rand_outcome` 台账行，不进失配三分流），**策略器消费前必须重观察**（查询口 = `logic_rand_fields()`）；详见 `fields.md` §2.1/§2.5。
+**两态制** = 容器——局内状态唯一快照 `kernel/cw_game_state.py::GameState`（下称「容器」）——的每个字段只保留两种值来源：**观察态**（画面读数，`observe()` 写入）与**逻辑态**（动作后推算，`write_logic()` 写入）；同帧冲突时**观察赢**（观察值覆盖逻辑推算值）。依据：`fields.md` §2.3/§2.5；架构裁定锚 = ADR-0651。**逻辑随机态扩展**（来源 `logic_rand`，`write_logic_rand()` 写入；**采样语义**）：效果随机的动作在上报函数真掷随机、按采样结果走完整确定性链逐步直写，全部容器写标随机态；观察覆盖差异预期内（`logic_rand_outcome` 台账行，不进失配三分流），**策略器消费前必须重观察**（查询口 = `logic_rand_fields()`）；详见 `fields.md` §2.1/§2.5 与 [logic-updates/collect-ore.md](logic-updates/collect-ore.md)（首个落地）。
 
 一句话读法：逻辑态回答「这一下点完，容器**应该**变成什么样」；下一帧观察回答「实际变成了什么样」；两者不等 = 逻辑态模型缺陷，走缺陷台账（不静默、不改道）。
 
@@ -25,10 +25,10 @@
 
 随机面的落法两档：
 
-1. **无可写口径**（如刷新后的整店铺面）→ 域级跳写，归下一帧观察（原则本位,不强制造假值;跳写纪律与上报函数同型——未读域跳写、值留观察覆盖,`kernel/cw_action_report/__init__.py` 模块头申报）;
-2. **有确定面/期望口径可写** → 按**逻辑随机态**直写（`write_logic_rand`，来源 `logic_rand`）:策略面立即可读随机口径,同时显式感知「此处效果随机、待重观察」;观察覆盖差异 = 随机效果落地预期内（`logic_rand_outcome` 台账行,不进安灯）。这替代静默跳写——跳写留下的旧观察值在策略面与「当前真值」不可区分,随机态标记让消费门可判（查询口 = `logic_rand_fields()`）。写端接线按动作逐个申报（现役在册候选 = 晶矿随机金/投资卡随机授予,见 `kernel/cw_projection_audit.py` 已知缺口申报行）。
+1. **采样口径在册** → 按**逻辑随机态**直写（`write_logic_rand`，来源 `logic_rand`）:上报函数**真掷随机**、按采样结果走完整确定性链逐步写,全部容器写标随机态;实机上采样是猜测（观察覆盖差异预期内,`logic_rand_outcome` 台账行,不进安灯）,sim 里采样即世界真值（同一上报函数两副面孔,sim 零自算）。采样错形态时观察收口兜底——**安全的不准确**。首个落地 = 点晶矿（[logic-updates/collect-ore.md](logic-updates/collect-ore.md);临时口径 v0 待采集校准,常量面 = `kernel/cw_ore_reward.py`）;后续迁移批 = 冶金炉/特权卡/好运令牌采样迁入上报函数、投资卡随机授予写端。
+2. **无可写口径且采样未建**（如刷新后的整店铺面）→ 域级跳写，归下一帧观察（跳写纪律与上报函数同型——未读域跳写、值留观察覆盖,`kernel/cw_action_report/__init__.py` 模块头申报）。
 
-原则底线不变：随机面**不存在可写的真值**——确定逻辑态（`write_logic`）禁写随机面（编确定值会制造假缺陷票）,随机口径只能走 logic_rand 或跳写两档。
+原则底线不变：随机面**不存在可写的确定真值**——确定逻辑态（`write_logic`）禁写随机面（编确定值会制造假缺陷票）,随机后果只能走随机态直写或跳写两档。
 
 ### 1.3 写口归属：op 上报动作，game state 独占写逻辑态（硬规则）
 
@@ -232,15 +232,13 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 ### 3.6 ClickSpheres（点晶矿）
 
-**确定面**：坐标列表中**被点的晶矿按载荷坐标精确摘除**（容器 spheres 域 `SphereSight.points` 精确摘除，`report_action_collect_ore_param`——坐标匹配，R4 改形后载荷即点击列；原「保守清空」随改形退役；域未观察/载荷无交集 = 陈旧提案零写；原黑板腿随 gs.prep_obs 退役迁移本口，迭代阶段 3.4）。count/colors 随摘除同步重算。
+**随机面直写（logic-rand-sampling 迭代起,采样语义首个落地）**：坐标列表中被点的晶矿按载荷坐标**逐点顺序推演**——每点独立守卫（该点时 bench 无空位 = 晶矿留在 spheres 不摘不采,前点奖励耗席累计判）→ 独立采样（临时口径 v0:金 1–5/简易装备池/概率表抽角色,`kernel/cw_ore_reward.py` 常量面,待采集校准）→ **逐步随机态写**（spheres 摘除/抽中域采样值/未抽中域值不变标记/角色落位 + 3合1 连锁每级受影响域各落一行,board 派生随行继承随机态）。全部容器写 = `write_logic_rand`;观察覆盖差异 = 随机效果落地预期内（`logic_rand_outcome` 台账行）。逐动作规格正本 = [logic-updates/collect-ore.md](../game_state/logic-updates/collect-ore.md)。
 
 **发射形态（R4 坐标参数化机械动作）**：载荷 = 有序晶矿坐标点击列表（大晶矿优先/上界挑选归决策侧 kernel 单一源 = `kernel/cw_prep_actions.py::select_ore_clicks`，发射位以预算常量 `SPHERE_CLICK_BATCH_MAX_K` 调用）；执行器纯机械逐个点（原读屏选晶矿与批内截断半随改形退役）。
 
-**随机面 / 观察面**：晶矿内容（金币/角色/装备/掉箱）与金额 = 随机面归观察——执行点金差显式申报为 None 盲区（`PrepActionExecutor._executed_gold_delta` ClickSpheres 支，禁拍值）；点开占席晶矿（角色/箱）落席占 1 槽；掉箱 → 下一帧观察 → OpenBox 臂统筹。
+**前置谓词（席满拦截）**：bench 空闲 >0 ∨ 晶矿均不占席，才发射采晶矿（fields.md §4.2 CollectOre；席满让路门 = 策略发射面席满探针）；上报层同口径双保险（逐点守卫）。席满点占席晶矿 = 游戏侧点不动，晶矿仍在 → 下一帧观察回补、下轮再派。
 
-**前置谓词（席满拦截）**：bench 空闲 >0 ∨ 晶矿均不占席，才发射采晶矿（fields.md §4.2 CollectOre；席满让路门 = 策略发射面席满探针）。席满点占席晶矿 = 游戏侧点不动，晶矿仍在 → 下一帧观察回补、下轮再派。
-
-**依据**：`kernel/cw_prep_actions.py::ore_click_targets_of`/`select_ore_clicks`；`prep_actions.py::_collect_ore`；`fields.md` §4.2 CollectOre；`research/screen_flow_timing.md` #16（飞行动画 ≤2s）。
+**依据**：`kernel/cw_prep_actions.py::ore_click_targets_of`/`select_ore_clicks`；`prep_actions.py::_collect_ore`；`kernel/cw_action_report/collect_ore.py::report_action_collect_ore_param`（采样+逐步随机写单点）；`kernel/cw_ore_reward.py`（采样器常量面）；`fields.md` §4.2 ClickSpheres；`research/screen_flow_timing.md` #16（飞行动画 ≤2s;席满搁浅观察回补）。
 
 ### 3.7 OpenBookcard（开书册卡）
 
