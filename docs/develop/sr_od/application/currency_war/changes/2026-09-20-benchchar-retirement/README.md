@@ -4,6 +4,7 @@
 - 进度账本 = `.debug/progress/2026-09-20-benchchar-retirement/dag.jsonl`（T-1..T-6）
 
 ## 进度
-- 迭代设计:草案（实施前过一轮对抗审）
-- 落地:阶段 0/6 done
-- 正本更新:未开始（fields.md §3.2.5/§4.2、action-logic-state.md、projection_contract.md 等,随 T-6 收尾清点）
+- 迭代设计:修订轮（首轮对抗审 blocker×1/major×5 收编完毕，待复审确认）
+- 对抗审:[attack.md](attack.md)（首轮：B1 闭合集缺 tracked_books/mutate 链/sim 直调；M1-M5 见报告）
+- 落地:阶段 0/7 done（T-0 前置锁未开工——T-1 开工前置）
+- 正本更新:未开始
