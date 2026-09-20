@@ -65,6 +65,8 @@
 ### 2.4 观察锚定面（两写端）
 
 1. **干净备战帧：`CwScreenPrep` 观察 node**（攻击 F1 定谳，原「漏斗尾段」方案作废）：备战 heavy 观察（`obs/cw_observe_full.py::observe_full`，内部漏斗 `read_game_state`）的回执 `GameStateReadReceipt` 携带本帧 plane/round_num → 备战 op 观察段调 `observe_node_anchor(node_ordinal_of(plane, round_num))`（§2.2 处置规则）。**漏斗彻底退出节点域写入**（上下文对/`top_bar_raw` 观察层保留）——recorder（`cw_match_recorder.py::extract_frame` 经漏斗）与一切旁路读数从此零节点域副作用，§2.7-5 申报成立。锚定输入与现行备战腿同源（`read_phase_round` 直读/缓存/守卫语义不变，风险面不变）。覆盖面核对：生产备战帧的画面 op 消费 = `CwScreenPrep`（外循环备战分支分派，锚定唯一挂点）；`cw_loop.py` 仲裁路径另有 prep_clean 漏斗读（`cw_loop.py:598`）——纯域读数不挂锚定，无缺口（攻击 R4 表述修正）；锁定臂不经备战 op = 无锚定，门挡自愈路径照走（§2.3 触发点 1 申报）。
+
+**「退出节点域」的精确辖域（攻击 B1 修正）**：漏斗退出的 = **推进域**（`node_ord`/`node_hist_ord` 写入）；`gs.node` 观察镜像写端（漏斗内 plane/round 读口基底，cw_observation.py 漏斗段）**保留在漏斗**——它是决策层坐标消费（`_defeat_latch`/`_shop_panel_type_target`/读口基底，cw_game_state.py 读口段）的供给端，字面拆掉即决策坐标全断。recorder 申报同步精确化：录帧的**推进副作用**（四腿+效果 tick）消失；`gs.node` 镜像/域观察写入保留（与 gold/hp 同类的观察域写入，零派生零推进）。
 2. **补给屏节点条**：`CwScreenSupplyNode` 观察链新增节点条读数（视觉实证 V3：补给屏顶部居中节点条「备战阶段 X-Y」屏显，node-derivation.md §④-C V3；现役 `read_phase_round` 的 A_PHASE 识别区不含该位置——需 screen_info 扩识别 area，按 od-dev-screen-onboarding 建档流程落坐标与模板）→ 同一锚定 helper。这是补给「自动弹」形态（结算确认直接弹补给屏，无本节点备战帧）的唯一锚定点，缺它则补给确认被门挡、走观察补齐（可运行但退化，故列为必做）。
 
 `prev_screen`/`current_screen` 上下文对与 `top_bar_raw` 观察层：保持现状（观察域，供 journal 审计与商店查链）。
@@ -94,7 +96,7 @@
 2. 「先推进后选卡」：由弹窗推断（三类休眠不成立）→ 结构成立。
 3. 效果发放时点：提前到确认时刻；条件族（本金充裕）金采样 = 结算真值（`apply_settlement_cover` 结算链先于「继续挑战」点击，cw_screen_battle_wait.py 结算观察段），比今天快弹窗路径的陈旧金更准。
 4. 入场拿的 per_node 效果当节点发放：默认消失（§2.6 可建模补发）——与快弹窗形态相反、与慢形态一致；策略数学核查挂 3.4。
-5. recorder 录帧副作用消失（漏斗彻底退出节点域写入，锚定写端 = `CwScreenPrep` 观察 node，§2.4；攻击 F1 定谳）。
+5. recorder 录帧的**推进副作用**消失（漏斗退出推进域写入，锚定写端 = `CwScreenPrep` 观察 node，§2.4；攻击 F1 定谳）；`gs.node` 观察镜像写端保留漏斗（观察域写入，非推进，辖域界定见 §2.4 攻击 B1 修正）。
 6. journal 行 actor：派生腿 actor（derive_node_*）退役，新 actor = 两触发 op + 锚定 helper + BOSS 类型直定（`CwScreenBossBriefing` 观察 node）；行型语义（write/obs_event）不变。
 7. 「字段层次终极版·禁 observe 直写序键」裁决推翻（§2.2），正本落改判记录。
 8. 效果发放触发面扩为两条推进路径（动作上报 + 观察锚定补推，均经推进生效原语 §2.2）——恢复局/锁定臂/证据 miss 自愈路径从「序号前进但不发放」变「当帧补齐发放」（攻击 F2① 申报）。

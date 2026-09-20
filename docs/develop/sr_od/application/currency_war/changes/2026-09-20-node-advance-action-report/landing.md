@@ -12,7 +12,7 @@
 **验收凭据形式**：测试名清单 + 运行输出
 
 ## 3.2 结算确认动作 op
-**范围**：新建 `operations/cw_op/cw_op_settle_confirm.py::CwOpSettleConfirm`（点击「继续挑战」+ M39 长按兜底迁入 + 完成判据白名单命中作转移证据 + `report_node_advance(trigger='settle_confirm')`）；白名单判定从 `CwScreenBattleWait` 提出 helper 共用；battle_wait ②段改调本 op，③段出口判定保留。
+**范围**：新建 `operations/cw_op/cw_op_settle_confirm.py::CwOpSettleConfirm`（点击「继续挑战」+ M39 长按兜底迁入 + 完成判据白名单命中作转移证据 + `report_node_advance(trigger='settle_confirm')`）；白名单判定从 `CwScreenBattleWait` 提出 helper 共用；battle_wait ②段改调本 op，③段出口判定保留。归属界定（攻击 B2）：随 op 迁移的仅 = 点击/长按兜底/证据等待/推进上报；②段结算读点、`_record_round_outcome`、rounds_done 计数等结算链记**留宿主 `CwScreenBattleWait`** 不动。
 **设计依据**：design.md §2.3 触发点 1
 **文件面**：`operations/cw_op/cw_op_settle_confirm.py`（新建）、`operations/cw_screen/cw_screen_battle_wait.py`
 **依赖**：3.1
@@ -45,7 +45,7 @@
 **验收凭据形式**：research 篇路径 + 测试名/「零代码」申报
 
 ## 3.5 切换批（原子退役）
-**范围**：一次提交完成 design §2.5 退役清单全部条目 + 新模型激活——备战锚定写端接线 `CwScreenPrep` 观察 node（heavy 回执 plane/round → `observe_node_anchor`，design §2.4 写端 1，攻击 F1 定谳）；BOSS 类型直定迁移 `CwScreenBossBriefing` 观察 node（经 `_write_derived_node_type`，design §2.5 表，攻击 F4）；删弹窗腿/位面过渡腿/BOSS 简报腿序号半部/守卫族与弹窗族常量/`_note_branch_screen` 及五调用点/休眠类型直定三成员；漏斗 `observe_screen_context` 瘦身收口（上下文对/`top_bar_raw` 观察层保留，节点域全退）；残留 import/死代码清理。切换后新模型独跑，无旧路径残留。
+**范围**：一次提交完成 design §2.5 退役清单全部条目 + 新模型激活——备战锚定写端接线 `CwScreenPrep` 观察 node（heavy 回执 plane/round → `observe_node_anchor`，design §2.4 写端 1，攻击 F1 定谳）；BOSS 类型直定迁移 `CwScreenBossBriefing` 观察 node（经 `_write_derived_node_type`，design §2.5 表，攻击 F4）；删弹窗腿/位面过渡腿/BOSS 简报腿序号半部/守卫族与弹窗族常量/`_note_branch_screen` 及五调用点/休眠类型直定三成员；漏斗 `observe_screen_context` 瘦身收口（上下文对/`top_bar_raw` 观察层/`gs.node` 观察镜像写端保留，**推进域（node_ord/hist）全退**——辖域界定 = design §2.4 攻击 B1 修正）；残留 import/死代码清理。切换后新模型独跑，无旧路径残留。
 **设计依据**：design.md §2.4 / §2.5 / §2.7-5/-6/-9
 **文件面**：`kernel/cw_game_state.py`、`kernel/cw_screen_report/boss_briefing.py`、`obs/cw_observation.py`、`operations/cw_loop.py`、`operations/cw_screen/cw_screen_prep.py`、`operations/cw_screen/cw_screen_boss_briefing.py`
 **依赖**：3.2、3.3
@@ -78,7 +78,7 @@
 
 ## 正本更新清单
 - `docs/develop/sr_od/application/currency_war/game_state/node-derivation.md`：全文触发模型改版（定义重立 §2.1 / 观察态门与两态生命周期 §2.2 / 三腿退役与倒退处置 / S1-S10 走查按新模型重写 / 「禁 observe 直写序键」改判记录）← 3.5/3.6
-- `docs/develop/sr_od/application/currency_war/game_state/fields.md`：node_ord 字段语义（两态 + 锚定写端两处）← 3.1/3.5
+- `docs/develop/sr_od/application/currency_war/game_state/fields.md`：node_ord 字段语义（两态 + 锚定写端两处）；`gs.node` 观察镜像写端归属申报（留守漏斗，攻击 B1）← 3.1/3.5
 - `docs/develop/sr_od/application/currency_war/game_state/effect-domain.md`：每节点发放挂点（节点边界 = 终结动作上报；补推路径同源发放）与登记期建模结论 ← 3.4/3.5
 - `docs/develop/sr_od/application/currency_war/flow/README.md`：§1 四层总图喂入描述（漏斗/分支写点 → 动作上报+画面 op 锚定）← 3.5
 - `docs/develop/sr_od/application/currency_war/flow/outer_loop.md`：`_note_branch_screen` 分支写点删除、轮次推进节 ← 3.5
