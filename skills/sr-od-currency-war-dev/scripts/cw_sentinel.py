@@ -1,4 +1,4 @@
-"""r229c 事件哨兵 v5.3(HIT 分级驻留 + 游标恒锚尾;活跃局判定切 journal;v4 循环/静默 + v5 STALL 语义 + 节点滞留 + v5.3 备战环空转)。
+"""r229c 事件哨兵 v5.4(HIT 分级驻留 + 游标恒锚尾;活跃局判定切 journal;v4 循环/静默 + v5 STALL 语义 + 节点滞留 + v5.3 备战环空转 + v5.4 推进判据收敛)。
 
 ## 检测面(当前语义)
 
@@ -40,16 +40,15 @@
 ## 实质推进(STALL/LOOP 两分支单一判据,2026-09-03 语义修复)
 
 无操作成功**不算推进**。计为推进的只有:
-  ① plan 结果行含非零动作:现行流程行 = `[cw][director] CwActionOpenShopParam(...) → ✓
-     买牌 plan 买N张 升N次 刷N次 卖N张`(买/升/刷/卖 全 0 = 纯读店空转,
-     1-1 卡死循环每 ~23s 一条,旧 PROGRESS 子串判据把它当推进 → STALL
-     整局失明);判词用 NONZERO_RE(只认 ≥1 的动作数)。
-  ② `[cw][composite]` 复合动作成功(部署/装备等真实执行,prep_actions 发出)。
-  ③ state 行/on_round_end 的 round/plane 变化(含新局回绕);「进位面」。
-  ④ 采晶矿收集成功(CwActionCollectOreParam → ✓,奖励节点无战斗时的唯一推进迹象,
+  ① `[cw][composite]` 复合动作成功(部署/装备等真实执行,prep_actions 发出)。
+  ② state 行/on_round_end 的 round/plane 变化(含新局回绕);「进位面」。
+  ③ 采晶矿收集成功(CwActionCollectOreParam → ✓,奖励节点无战斗时的唯一推进迹象,
      08-25 回放实证 03:28/17:07 两例缺它误报)。
 刻意不算:「→ ✓」「执行成功」「出战成功」等裸成功字样——run 24 实证弹窗
-误判下「出战成功」每轮假成功;1-1 卡死实证「CwActionOpenShopParam → ✓」每轮假成功。
+误判下「出战成功」每轮假成功;「CwActionOpenShopParam → ✓ 商店访问完成」
+也不算(v5.4 起):访问完成行不带动作数,零动作空转与真买牌在行形上不可
+分,数它 = 空转计推进(1-1 卡死每 ~23s 一条 → STALL 整局失明的旧病灶);
+真买牌的推进可见化 = 买牌改变战局 → 过轮(state 行 round 变化)自然入②。
 
 ## 版本历史(标定依据随版本保留)
 
@@ -65,6 +64,7 @@
 | v5.1 | HIT 分级(关键即退/一般驻留续侦+纪元内同因去重+证据文件)+ 游标恒锚尾不变量(武装/轮转/漂移一律从当前尾起扫,水位文件退役为纯活性心跳) | 2026-09-09 01:13-01:14 脏纪元三连自退实证(死亡实例留新鲜小值水位被信任=重放向量,哨兵逐格啃完脏纪元期间全盲)+ 2026-09-08 70min 补位空窗实证(HIT 即退纯损) |
 | v5.3 | 备战环空转 PREP-SPIN(备战行持续 ∧ 零实质推进 ≥ 600s → 报警;心跳采样退役后的观察断流检测承接) | 心跳采样删除裁定(2026-09-15);效果账本自推进迁移迭代设计 3.3 哨兵交接;采样窗精化挂效果域批 M3 |
 | v5.2 | 活跃局判定数据源切 journal(_run_ended 重写:尾实机段 match_final 收口+行 ts 新鲜;runs/outcomes/decisions 三流写入端已随删除波 1 停写,旧判定链武装即误判「已终局」);实机段形态过滤(run_%Y%m%d_%H%M%S,fake_/sim_/harness 段不采信——journal 多写者单文件新形态) | T-257(删除波 1 落地审新立项);journal 行结构=kernel/cw_board_state._swap/write_match_final,段隔离约定=sim/cw_delta_pool_gen.QUARANTINED_RUN_PREFIXES |
+| v5.4 | 实质推进①退役(plan 行非零动作计数):流程侧商店访问摘要行形已删,「CwActionOpenShopParam → ✓ 商店访问完成」一律不计推进;判据收敛 = composite/state-round/进位面/采晶矿 | 访问完成行不带动作数,零动作空转与真买牌行形不可分,数完成行 = 1-1 卡死「全零也算推进」病灶复活;真买牌经过轮(state 行变化)入 state 信号 |
 
 ## 词汇审计(v5,对照流程侧代码与 .log/mcp_server.log 全文 grep)
 
@@ -75,7 +75,7 @@ log 387 次全是真崩溃栈);『执行失败』(operation.py:695);『STOPPED�
 (cw_loop.py:1401 round_fail 状态,未触发过,保留);『state gold=』
 (cw_op_buy_cards.py:614);『[cw-loop]』『[cw][battle]』『[cw-deploy]』
 (cw_loop.py/prep_actions.py/cw_op_deploy.py);『[cw][director]』
-(现行 plan 结果行 CwActionOpenShopParam 由 prep_director 发出)。
+(director 动作执行行:出战/开商店等流程层执行日志)。
 已死删除:『人工结束』(operation.py:410 注释实证已被 stop_source 机制取代,
 全文 grep 0 命中,STOPPED 覆盖同事件);『返回状态 plan』『step1/step2
 RunBuyPhase』『[cw][director] step』(W971 备战 step 机→序列契约迁移前的旧核
@@ -238,11 +238,9 @@ SILENCE_SEC = int(os.environ.get('CW_SENTINEL_SILENCE', 360))  # 静默死锁阈
 SILENCE_CONFIRM = int(os.environ.get('CW_SENTINEL_CONFIRM', 420))  # v3.4:二次确认窗
 
 # ── 实质推进判据(v5,STALL/LOOP 单一源;详见文件头「实质推进」节)──────
-# plan 结果行:现行流程 = prep_director 发出的 CwActionOpenShopParam 行;旧核
-# 『返回状态 plan』『step1/step2 RunBuyPhase』已随 W971 迁移死亡(全文 grep 0)。
-PLAN_LINE = ('[cw][director] CwActionOpenShopParam',)
-# 非零动作计数(买N张/升N次/刷N次/卖N张,N≥1);全 0 形态不匹配 = 无操作成功。
-NONZERO_RE = re.compile(r'[买升刷卖][1-9]\d*')
+# v5.4:plan 行非零动作判据退役——流程侧商店访问摘要行形已删,访问完成行
+# 不带动作数,零动作空转与真买牌行形不可分,数完成行 = 旧「全零也算推进」
+# 病灶复活;真买牌的推进可见化 = 过轮(state 行 round 变化)入其余信号。
 
 # ── v4.0 活跃循环卡死(W180,run 24 标定)─────────────────────────────
 LOOP_WIN = int(os.environ.get('CW_SENTINEL_LOOP_WIN', 1500))  # 循环判定窗口(秒)
@@ -434,8 +432,8 @@ def _loop_feed(line: str, tod: int) -> tuple[bool, str, str]:
     """循环+滞留检测喂行:返回 (实质推进?, 报警类别, 载荷)。
 
     实质推进(任一,记入 loop_progress;判据单一源见文件头):
-      ①plan 结果行含非零 买/升/刷/卖;②[composite] 复合动作成功;
-      ③state 行 round/plane 变化;④「进位面」;⑤采晶矿收集成功。
+      ①[composite] 复合动作成功;②state 行 round/plane 变化;③「进位面」;
+      ④采晶矿收集成功。商店访问完成行刻意不算(v5.4 起,见文件头)。
     白名单动作行记入 loop_recent;窗口内零推进且同签名 ≥ LOOP_N(跨度达
     LOOP_SPAN_MIN)→ ('loop', 签名, '')。
     state/on_round_end 行同相位持续观测 ≥ DWELL_SEC → ('dwell', 相位描述, '')。
@@ -443,8 +441,6 @@ def _loop_feed(line: str, tod: int) -> tuple[bool, str, str]:
     """
     global loop_last_rp, dwell_phase, dwell_first, dwell_last, dwell_last_line
     progressed = False
-    if any(k in line for k in PLAN_LINE) and NONZERO_RE.search(line):
-        progressed = True
     if '[cw][composite]' in line and '✓' in line:
         progressed = True   # 部署/装备等复合动作真实执行(prep_actions)
     phase_line = False
@@ -1016,26 +1012,26 @@ def _selftest() -> int:
             lt = time.localtime(ep)
             return f'[{lt.tm_hour:02d}:{lt.tm_min:02d}:{lt.tm_sec:02d}]'
         # 案1 run24/1-1 卡死形态:11 轮同循环(state 行 round/plane 恒定 +
-        # 同签名动作行,含现行 CwActionOpenShopParam 无操作成功行)→ LOOP
+        # 同签名动作行,含 CwActionOpenShopParam 访问完成行,该行不计推进)→ LOOP
         lines = []
         for i in range(11):
             t = ts(i * 55)
             lines.append(f'{t} [shop.py 394] [INFO]: [cw] state gold=24 hp=84 lv=4 round=3 node=? plane=1 board={{}} target=\'\' fp=-1.00 bench=2\n')
-            lines.append(f'{t} [prep_director.py 1338] [INFO]: [cw][director] CwActionOpenShopParam({{\'read_only\': False}}) → ✓ 买牌 plan 买0张 升0次 刷0次 卖0张(+0金,守卫拦0) (gold=24 lv=4 plane=1)\n')
+            lines.append(f'{t} [cw_screen_prep.py 1338] [INFO]: [cw][director] CwActionOpenShopParam({{\'restricted_spend\': False}}) → ✓ 买牌访问完成\n')
             lines.append(f'{t} [cw_loop.py 1179] [INFO]: [cw-loop] 备战环返回(success=True status=CwActionOpenShopParam ✓)→ 交回顶层分发(下轮全分支重判)\n')
-        # 案2 正常局:12 轮,每轮 state 行 round 递增 + 无操作成功行 → 不报警
+        # 案2 正常局:12 轮,每轮 state 行 round 递增 + 访问完成行 → 不报警
         lines2 = []
         for i in range(12):
             t = ts(i * 55)
             lines2.append(f'{t} [shop.py 394] [INFO]: [cw] state gold=24 hp=84 lv=4 round={i + 1} node=? plane=1 board={{}} target=\'\' fp=-1.00 bench=2\n')
-            lines2.append(f'{t} [prep_director.py 1338] [INFO]: [cw][director] CwActionOpenShopParam({{\'read_only\': False}}) → ✓ 买牌 plan 买0张 升0次 刷0次 卖0张(+0金,守卫拦0) (gold=24 lv=4 plane=1)\n')
+            lines2.append(f'{t} [cw_screen_prep.py 1338] [INFO]: [cw][director] CwActionOpenShopParam({{\'restricted_spend\': False}}) → ✓ 买牌访问完成\n')
             lines2.append(f'{t} [cw_loop.py 1179] [INFO]: [cw-loop] 备战环返回(success=True status=CwActionOpenShopParam ✓)→ 交回顶层分发(下轮全分支重判)\n')
-        # 案3(v5)无操作成功循环 + WARNING 堆积:全零 CwActionOpenShopParam 不再算推进 →
-        # 同特征 WARNING 堆积达阈值即报 STALL(v4 时代被假推进掩盖)
+        # 案3(v5)无操作成功循环 + WARNING 堆积:访问完成行不算推进(v5.4 起
+        # 一律不算)→ 同特征 WARNING 堆积达阈值即报 STALL(v4 时代被假推进掩盖)
         lines3 = []
         for i in range(10):
             t = ts(i * 30)
-            lines3.append(f'{t} [cw_screen_prep.py 1338] [INFO]: [cw][director] CwActionOpenShopParam({{\'read_only\': False}}) → ✓ 买牌 plan 买0张 升0次 刷0次 卖0张(+0金,守卫拦0) (gold=4 lv=4 plane=1)\n')
+            lines3.append(f'{t} [cw_screen_prep.py 1338] [INFO]: [cw][director] CwActionOpenShopParam({{\'restricted_spend\': False}}) → ✓ 买牌访问完成\n')
             lines3.append(f'{t} [cw_loop.py 972] [WARNING]: [cw!][loop] 备战连续 10 轮 session 无变化 → 留证(无进展)\n')
         # 案4(v5)节点滞留:同 (plane,round) state 行每 60s 一条 ×20(跨度
         # 1140s ≥ 900)→ NODE-DWELL;无白名单动作行,不与 LOOP 混淆
@@ -1291,7 +1287,7 @@ def _selftest() -> int:
 
 
 if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--selftest':
-    print('[selftest] v5.3 十七用例回归:空窗/静默[journal 判定]/漂移/循环/STALL/滞留/推进'
+    print('[selftest] v5.4 十七用例回归:空窗/静默[journal 判定]/漂移/循环/STALL/滞留/推进'
           ' + 七锁(轮转锚尾/武装锚尾/新行双路/同因去重/异因仍报/升级通道/终局标记)')
     sys.exit(_selftest())
 

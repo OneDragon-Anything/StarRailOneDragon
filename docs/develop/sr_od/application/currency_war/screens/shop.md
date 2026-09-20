@@ -76,7 +76,7 @@ while True(零读屏):
 | 未识别卡停机 | 每波入口观察回执落地即判:读链终判(内部易误判重观察后)仍含 unknown 槽(empty=确证空位不计)→ `stop_running(save_screenshot=True)` 框架截图留证 + round_fail——决策/购买不见残缺牌面(未识别不能降级带病跑;2026-09-16 迁移+框架化,防抖探针/flag 退役;细则 = [../flow/guards.md](../flow/guards.md) §3) |
 | 循环异常 | 上抛 → 编排层单元 aborted 关账,店不收(交上层重新识别) |
 
-`visit_open_shop` = 商店访问尾段(run_buy_waves → CwOpCloseShop → 节点探针)的**编排单一源**,显式开店与 0n 转交两路径共用;失败路径不收店(店留着交上层重新识别)。访问回执 detail = ledger 计数排版(`买牌 plan 买N张 …`),行形 = 哨兵 PREP-SPIN 实质推进判据的消费面。
+`visit_open_shop` = 商店访问尾段(run_buy_waves → CwOpCloseShop → 节点探针)的**编排单一源**,显式开店与 0n 转交两路径共用;失败路径不收店(店留着交上层重新识别)。访问回执 detail = 固定完成事实串(无动作计数;该行不计入哨兵实质推进——零动作空转与真买牌在行形上不可分,推进可见化归 state/round 变化、复合动作成功、采晶矿成功等信号)。
 
 收尾观测 `probe_node_type`(住 `cw_screen_buy_cards.py`,商店域):关店后 clean 备战帧读节点行序列(read_node_sequence)→ log + 未识别图标采集(版本前哨)+ 槽序表(`plane_node_table`)与台账按位合并写(写点③;挂点 = 商店访问尾,非商店轮不触发,覆盖以此为界)。纯观测,失败不阻塞收尾,无决策消费。
 

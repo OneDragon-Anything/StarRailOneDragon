@@ -1528,13 +1528,7 @@ class CwScreenPrep(SrOperation):
         # 自然闭环,误入口时外循环 0n 重入商店访问幂等收起自愈。
         _ = close_shop(self)
         probe_node_type(self)
-        # 访问摘要 = ledger 计数纯排版(无读屏无对账;行形 = 哨兵
-        # PREP-SPIN 实质推进判据的 PLAN_LINE+NONZERO_RE 消费面,勿改形)。
-        return (True,
-                f'买牌 plan 买{ledger.total_buy}张 '
-                f'经验{ledger.total_xp_buy}击 刷{ledger.total_refresh}次 '
-                f'卖{ledger.total_sell}张(+{ledger.total_sell_income}金,'
-                f'守卫拦{ledger.total_sell_skip})')
+        return True, '买牌访问完成'
 
     def _v2_post_frame_accounting(self, obs: PrepObservation,
                                   session: StrategySession) -> None:
