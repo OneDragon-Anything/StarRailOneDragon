@@ -9,8 +9,7 @@ GameState(正名前暂名 BoardState,ADR-0630 后果节+W8 候裁7)= 当前仍�
 
 **局面表示单一载体**(benchchar-retirement P5 起):本容器 = 实机真值
 记录模型(只记录实机会产生的已知事实),sim 引擎/实机操作链/策略决策
-同吃容器。旧推演内核帧 ``CwSimFrame`` 与帧→容器合成口
-(``synthesize_from_game_state``/``feed_sim_truth``)已随
+同吃容器。旧推演内核帧与帧→容器合成口已随
 benchchar-retirement P5 退役——生产写入 = **引擎直写**(sim 引擎内部
 工作态即本容器,经渠道签名写入口落字,渠道族封闭集见下文遥测段);
 测试种子 = 测试仓 builder 直写容器域(与观察链同写入口)。逐字段映射
@@ -544,7 +543,7 @@ class ShopCard:
     cost: int = 0
     star: int = 1
     # 信源位(§3.3.1):**原值透传不折叠**(P2-4 落地审:证据分级禁丢)——
-    # 词表 = 现役 CwSimFrame.ShopCard.cost_source 三值:badge=费用徽章直读 /
+    # 词表 = ShopCard.cost_source 三值:badge=费用徽章直读 /
     # roster=注册表查表(sim/replay 构造缺省) / roster_fallback=徽章失读
     # 退查表。设计的两值口径(badge=徽章直读 vs registry=注册表查表)的
     # 归并消费归批次二,消费前必须保住 roster_fallback 的「徽章失读」分级。
@@ -839,8 +838,8 @@ def _row_unit_tags(u: Any, row: str) -> tuple[str, ...]:
     外单位如狸狸/姵姵,或 OCR 误读名)时标签为空,容器派生路径**不回退
     faction**——Unit 不存阵营(防注册表双源),shim 复活 faction 位 =
     双源复活。「未知身份回退 faction」口径的单一源 =
-    ``cw_bond_equips._recount_board``(faction 字段所在载体,装备授予表
-    BenchChar);容器侧的对应漂移由 board 观察覆盖采新收敛
+    ``cw_bond_equips._recount_board``(faction 字段载体,装备授予/
+    sim 代理面);容器侧的对应漂移由 board 观察覆盖采新收敛
     (:meth:`GameState._absorb_board_derived`)。"""
     from types import SimpleNamespace
 
@@ -1281,116 +1280,10 @@ def project_effect_capacity(gs: GameState) -> None:
 
 # ============================================================ 备战席观察写端(§3.2.5)
 #
-# (P6 观察链直产:值构造器 bench_view_from_obs / deployed_rows_from_obs 随
-#  BenchChar 中间形退役删除 —— 读链(obs/cw_identity_obs.read_bench_view /
-#  read_deployed_rows)直接产容器形状,观察写门直写,无换形层。占位件 kind
-#  细分权威源随迁读链(_bench_item_kind_by_slot 识别期定 kind)。)
-
-
-def bench_slots_to_legacy(view: BenchView) -> list:
-    """BenchView(容器备战席)→ CwSimFrame.bench 槽位表(视图收编换算单一源)。
-
-    下标语义两端同构(容器 slots[i] = 物理槽 i+1,旧表下标 i = 物理槽
-    i+1,ADR-0316),逐槽 1:1;Unit → BenchChar:阵营不入容器(§3.2.3),
-    经角色注册表查表派生(唯一例外开拓者形态随排,由 char_id 自带形态
-    名承载);备战席装备 = 容器 Unit.equips(本域观察恒空表 —— 身份链不读
-    装备,上场位装备读在 read_row_equipped 独立通道)。槽位越界/空槽 → None。
-    """
-    from sr_od.application.currency_war.data.cw_chars import get_char
-    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
-    out: list = []
-    for i, slot in enumerate(view.slots):
-        u = getattr(slot, 'unit', None)
-        kind = getattr(slot, 'kind', 'empty')
-        if kind in ('supply_box', 'tome', 'bookcard'):
-            # 占位件往返重建(与 bench_view_of_slots 的 supply_box 映射
-            # 配对;tome/bookcard 分支 = kind 细分配对——reviewer r1 #1
-            # 申报的「单边破裂」处置):is_item_slot=True 的 BenchChar,
-            # 守卫线(占位恒拒)与部署装配点识别线消费同旗标。
-            out.append(BenchChar(slot=i + 1, char_id='', star=1,
-                                 is_item_slot=True))
-            continue
-        if kind != 'unit' or u is None:
-            out.append(None)
-            continue
-        ch = get_char(str(u.char_id or ''))
-        out.append(BenchChar(
-            slot=i + 1,
-            char_id=str(u.char_id or ''),
-            faction=(ch.factions[0] if (ch is not None and ch.factions)
-                     else ('' if ch is not None else '?')),
-            star=int(u.star or 1),
-            equips=list(u.equips or []),
-        ))
-    return out
-
-
-def unit_rows_to_deployed(front_row: list[Unit], back_row: list[Unit]) -> list:
-    """(front_row, back_row)(容器席位)→ CwSimFrame.deployed 槽位表(ADR-0392
-    0 基:0-3 前排/4-9 后排;视图收编换算单一源)。
-
-    坐标系换算(设计 §8.2 注):Unit.slot = 行内 1 基画面槽号(信息位)→
-    旧表下标 = 前排 slot-1 / 后排 3+slot;slot 缺席(0)按占用序顺延兜底
-    (与旧紧缩构造兼容)。阵营派生同 :func:`bench_slots_to_legacy`。
-    """
-    from sr_od.application.currency_war.data.cw_chars import get_char
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        DEPLOYED_CAPACITY,
-        BenchChar,
-    )
-    out: list = [None] * DEPLOYED_CAPACITY
-
-    def _place(units: list[Unit], base: int) -> None:
-        cursor = 0
-        for u in units:
-            ch = get_char(str(u.char_id or ''))
-            bc = BenchChar(
-                slot=int(u.slot or 0),
-                char_id=str(u.char_id or ''),
-                faction=(ch.factions[0] if (ch is not None and ch.factions)
-                         else ('' if ch is not None else '?')),
-                star=int(u.star or 1),
-                position_pref='front' if base == 0 else 'back',
-                equips=list(u.equips or []),
-            )
-            idx = (int(u.slot or 0) - 1 + base) if (int(u.slot or 0) >= 1) else -1
-            if not (base <= idx < base + (4 if base == 0 else DEPLOYED_CAPACITY - 4)) \
-                    or out[idx] is not None:
-                while cursor < (4 if base == 0 else DEPLOYED_CAPACITY) \
-                        and out[cursor] is not None:
-                    cursor += 1
-                idx = cursor if cursor < (4 if base == 0 else DEPLOYED_CAPACITY) \
-                    else -1
-                cursor += 1
-            if idx >= 0:
-                out[idx] = bc
-    _place(list(front_row or []), 0)
-    _place(list(back_row or []), 4)
-    return out
-
-
-def deployed_slots_to_rows(slots: list) -> tuple[list[Unit], list[Unit]]:
-    """CwSimFrame.deployed 槽位表(ADR-0392,0-3 前/4-9 后)→ 容器席位行
-    (:func:`unit_rows_to_deployed` 的逆换算;转移函数单源化新增,
-    v2 动作族腿「槽表中间形态→整表 write_logic」平移契约的写回端)。
-
-    Unit.slot = 行内 1 基槽号(信息位,与观察行域同系);空槽与未识别
-    (char_id 空)不入行(宁缺勿造,容器席位域语义,
-    与喂入口 :func:`game_state_from_ctx` 系同口径);往返 =
-    :func:`unit_rows_to_deployed`(front, back) 逐槽还原( slot-1 定位,
-    无歧义)。阵营不入行(§3.2.3),装备随 Unit 透传。
-    """
-    front: list[Unit] = []
-    back: list[Unit] = []
-    for i, d in enumerate(slots or []):
-        if d is None or not getattr(d, 'char_id', ''):
-            continue
-        unit = Unit(char_id=str(getattr(d, 'char_id', '') or ''),
-                    star=int(getattr(d, 'star', 1) or 1),
-                    equips=list(getattr(d, 'equips', None) or []),
-                    slot=(i + 1) if i < 4 else (i - 3))
-        (front if i < 4 else back).append(unit)
-    return front, back
+# 语义声明:本域无换形层——观察读链(obs/cw_identity_obs.read_bench_view /
+# read_deployed_rows)直接产容器形状,观察写门直写;占位件 kind 细分
+# 权威源在读链识别期定(_bench_item_kind_by_slot)。历史换形值构造器
+# 与紧缩表适配族随角色形中间载体退役删除(design §2.4)。
 
 
 # ============================================================ 局终归档快照(§6.2/§8.8)
@@ -1447,36 +1340,6 @@ def _json_safe(value: Any) -> Any:
 
 # ============================================================ 合成升星逻辑直写构造源(§3.2.18 窟窿一,修法 a)
 
-def bench_view_of_slots(bench_list: list) -> BenchView:
-    """CwSimFrame.bench 槽位表(0 基下标 + None 洞)→ BenchView(记录模型
-    形状契约;槽 i = 物理槽 i+1,与 sim 合成口同构映射)。逻辑态面用
-    (CwActionBuyCardParam 升星逻辑态直写的值构造源,ADR-0651)。"""
-    slots: list[BenchSlot] = []
-    for i, bc in enumerate(bench_list or []):
-        if bc is None:
-            slots.append(BenchSlot(kind='empty'))
-        elif bool(getattr(bc, 'is_item_slot', False)):
-            # 占位件(补给箱/秘典等,``BenchChar.is_item_slot`` 旗标,sell_gate
-            # 占位恒拒防线与部署装配点识别线共用)→ supply_box kind 往返
-            # 保旗标——恒映射 'unit' 会让占位件在容器决策面退化成 '' 1★
-            # 可卖燃料(腾席守卫失守,波 4 落码审 A 组探针实证)。
-            # ⚠️ 类型降级申报(阶段 3.5):本口输入是 is_item_slot 布尔,
-            # 无 box/tome 类型信息,占位件恒 supply_box——kind 细分的权威
-            # 写端 = 观察读链(read_bench_view 识别期定 kind,P6 直产);
-            # 本口仅 sim 合成/逻辑态面(占位件稀有路径),细分降级 = 已知
-            # 边界非缺陷。
-            slots.append(BenchSlot(kind='supply_box'))
-        else:
-            slots.append(BenchSlot(kind='unit', unit=Unit(
-                char_id=str(getattr(bc, 'char_id', '') or ''),
-                star=int(getattr(bc, 'star', 1) or 1),
-                equips=list(getattr(bc, 'equips', None) or []),
-                slot=i + 1)))
-    while len(slots) < BENCH_CAPACITY_DEFAULT:
-        slots.append(BenchSlot(kind='empty'))
-    return BenchView(slots=slots, capacity=BENCH_CAPACITY_DEFAULT)
-
-
 def detect_merge_upgrade(cur: Any, proj: Any) -> bool:
     """CwActionBuyCardParam 逻辑态直写是否发生 3 合 1 升星(§3.2.18 修法 a 触发判定;纯函数)。
 
@@ -1486,8 +1349,7 @@ def detect_merge_upgrade(cur: Any, proj: Any) -> bool:
     (3×1★→2★→…)只看「有抬升」真值,层级数不影响本判定。
 
     条目身份读协议 = ``cw_merge_simulate._entry_identity``(容器单形状:
-    bench 侧 BenchSlot / deployed 侧 Unit;benchchar-retirement P5 随
-    观察边界 BenchChar 输入面退役收窄单形)。"""
+    bench 侧 BenchSlot / deployed 侧 Unit;非容器形状 = None fail-closed)。"""
     from sr_od.application.currency_war.kernel.cw_merge_simulate import (
         _entry_identity,
     )
@@ -1985,7 +1847,7 @@ class PlaneNodeLedger:
 
     #: 键 = 位面号(1-based);值 = 节点类型序列,**下标 i(0-based)= 该位面第 i+1 轮**
     #: 的类型 token(battle/supply/encounter/reward/boss,与
-    #: ``cw_node_reader.NodeSlot.node_type`` / ``CwSimFrame.node_type`` 同词汇表;
+    #: ``cw_node_reader.NodeSlot.node_type`` 同词汇表;
     #: None = 该位次未识别占位,合并时被后续非 None 读数覆盖)。
     #: 取值时机:写入端每次整行重读时快照(见各写入端);读端 = 备战帧查
     #: ``seq[round_num - 1]``。
@@ -3564,75 +3426,45 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
 
 # ============================================================ 决策面公共读口
 # (迁移批次三·W6 波1:kernel 决策簇签名切 GameState 后的值读单一源。
-#  旧 CwSimFrame 标量字段的缺省值形态(非 Optional:int 0/1)在容器侧是
-#  None(未观察),读口负责镜像旧缺省,禁各消费点自写兜底造成第二源。)
+#  未观察字段在容器侧是 None,读口负责返回旧决策簇契约的缺省值,
+#  禁各消费点自写兜底造成第二源。)
 
 
 def plane_of(gs: GameState) -> int:
-    """位面读口(旧 ``CwSimFrame.plane`` 缺省 1 的镜像;未观察帧 = 引导窗)。"""
+    """位面读口(未观察缺省 1 = 引导窗)。"""
     node = gs.node.value
     return int(node.plane) if node is not None else 1
 
 
 def round_num_of(gs: GameState) -> int:
-    """轮次读口(旧 ``CwSimFrame.round_num`` 缺省 1 的镜像)。"""
+    """轮次读口(未观察缺省 1)。"""
     node = gs.node.value
     return int(node.round_num) if node is not None else 1
 
 
 def node_kind_of(gs: GameState) -> str | None:
-    """节点类型读口(旧 ``CwSimFrame.node_type``:None=未识别)。"""
+    """节点类型读口(None = 未识别)。"""
     node = gs.node.value
     return str(node.kind) if node is not None else None
 
 
 def gold_of(gs: GameState) -> int:
-    """金读口(旧 ``CwSimFrame.gold`` 非 Optional 缺省 0 的镜像;可读保真位
-    另经 :attr:`Field.source` 判,读口只供值)。"""
+    """金读口(未观察缺省 0;可读保真位另经 :attr:`Field.source` 判,
+    读口只供值)。"""
     v = gs.gold.value
     return int(v) if v is not None else 0
 
 
 def level_of(gs: GameState) -> int:
-    """等级读口(旧 ``CwSimFrame.level`` 非 Optional 缺省 1 的镜像)。"""
+    """等级读口(未观察缺省 1)。"""
     v = gs.level.value
     return int(v) if v is not None else 1
-
-
-def deployed_slots_of(gs: GameState) -> list:
-    """上阵席位读口(波1 公共读口单一源):front_row/back_row(容器席位)
-    → ADR-0392 定长 10 槽表(0-3 前/4-9 后,元素 BenchChar|None)。
-
-    换算单一源 = :func:`unit_rows_to_deployed`;两行全未观察 = 旧
-    ``CwSimFrame.deployed`` 缺省形态([None]×10)。
-    """
-    front = gs.front_row.value
-    back = gs.back_row.value
-    if front is None and back is None:
-        from sr_od.application.currency_war.kernel.cw_exec_state import (
-            DEPLOYED_CAPACITY,
-        )
-        return [None] * DEPLOYED_CAPACITY
-    return unit_rows_to_deployed(list(front or []), list(back or []))
-
-
-def bench_slots_of(gs: GameState) -> list:
-    """备战席读口(波1 公共读口单一源):BenchView → 定长 9 槽表
-    (元素 BenchChar|None,下标 i = 物理槽 i+1)。换算单一源 =
-    :func:`bench_slots_to_legacy`;未观察 = 旧 ``CwSimFrame.bench`` 缺省
-    形态([None]×9)。"""
-    view = gs.bench.value
-    if view is None:
-        from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
-        return [None] * BENCH_CAPACITY
-    return bench_slots_to_legacy(view)
 
 
 def deployed_rows_of(gs: GameState) -> tuple[list[Unit], list[Unit]]:
     """上阵席位行域读口(容器原生,benchchar-retirement §2.1 计算形状):
     ``front_row``/``back_row`` 现值直读,行内元素即容器 ``Unit``;任一行
-    未观察(None)按空行计(与旧槽表读口「缺行 = 空行」缺省同向)。
-    P4 起消费面禁再经 ``deployed_slots_of`` 槽表换形。"""
+    未观察(None)按空行计(缺行 = 空行缺省)。"""
     front = gs.front_row.value
     back = gs.back_row.value
     return list(front or []), list(back or [])
@@ -3671,12 +3503,12 @@ def bench_view_slots_of(gs: GameState) -> list[BenchSlot | None]:
 
 
 def back_capacity_of(gs: GameState) -> int:
-    """后排格数读口(旧 ``CwSimFrame.back_max`` 容器版,波3 立口):
+    """后排格数读口(波3 立口):
     back_layout 真值(值域 6-9,平常 6/宝钻扩展 7/8/9,>9 域外 8 格超集);
-    未观察帧退机制基线 6(与旧字段缺省同源)。
+    未观察帧退机制基线 6。
 
-    ⚠️ 语义修正申报(W6 波3,调研草案 §4/风险 7):旧 ``CwSimFrame.back_max``
-    静态 6 与实局 7/8 不符,本读口起消费面拿到动态真值——cap 封顶与
+    ⚠️ 语义修正申报(W6 波3,调研草案 §4/风险 7):旧静态 6 基线
+    与实局 7/8 不符,本读口起消费面拿到动态真值——cap 封顶与
     后排容量门输出随之修正,行为差由 cap 域锁(test_cw_cap_domain/
     test_cw_cap_override_link)重推语义辖。单一源:``max_units_of`` 封顶
     域与本读口同式,禁消费面内联第二份。"""
@@ -3705,10 +3537,10 @@ def back_count_of(gs: GameState) -> int:
 
 
 def max_units_of(gs: GameState) -> int:
-    """可上阵数容器版派生(波1 公共读口单一源;旧 ``CwSimFrame.max_units``
-    逐式镜像):deploy_cap 真值(≥level 才采信,ADR-0286 防抖漏网兜底
+    """可上阵数容器版派生(波1 公共读口单一源):deploy_cap 真值(≥level
+    才采信,ADR-0286 防抖漏网兜底
     level)封顶 = 前排恒 4 + back_layout 动态真值(缺省 6 = 机制基线,
-    值域 6-9,与旧 back_max 字段缺省同源;封顶域单一源 =
+    值域 6-9;封顶域单一源 =
     :func:`back_capacity_of`)。"""
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         DEPLOYED_FRONT_CAPACITY,

@@ -13,10 +13,9 @@
 
 **局面表示单一载体 = 容器 GameState**(kernel/cw_game_state,实机真值
 记录模型):sim 引擎/实机操作链/策略决策同吃容器,域写入 = 观察链漏斗
-或逻辑态直写(上报函数族)。旧推演内核帧 ``CwSimFrame`` 及其合成口
-(``synthesize_from_game_state``/``feed_sim_truth``)已随 benchchar-
-retirement P5 退役——帧↔容器映射契约正本(game_state/fields.md §9)随
-帧失去载体;测试种子 = 测试仓 builder 直写容器域(与观察链同写入口)。
+或逻辑态直写(上报函数族)。旧推演内核帧及其帧→容器合成口已随
+benchchar-retirement P5 退役——帧↔容器映射契约正本(game_state/fields.md
+§9)随帧失去载体;测试种子 = 测试仓 builder 直写容器域(与观察链同写入口)。
 
 策略为纯规则路线(用户裁定 2026-09-12):规则直接产出动作,决策零模拟
 试探。原单步动作应用器 ``simulate``(整帧副本纯函数)已删除——期望态
@@ -37,8 +36,8 @@ retirement P5 退役——帧↔容器映射契约正本(game_state/fields.md §
   覆盖采新(board_derived_adopt,安灯不响——派生量以观察为真值源)。
   未知身份单位(注册表外/OCR 误读)在容器派生路径**零贡献**(Unit 不存
   阵营,禁 faction 双源),其面板羁绊经观察覆盖采新入账;
-  ``cw_bond_equips._recount_board`` 的 faction 兜底归 faction 字段所在
-  载体(sim/状态侧 BenchChar),非容器路径口径。
+  ``cw_bond_equips._recount_board`` 的 faction 兜底归其 faction 字段
+  载体(装备授予/sim 代理面),非容器路径口径。
 - ``deployed`` = bot 自己跟踪的已上阵角色(含 char_id/star/站位),用于 char_quality 评估
   已上阵的优先角色 + 站位分流。两者在已知身份域一致(deployed 按羁绊全集聚合 == board)。
 - CwActionDeployMoveParam 更新 deployed(槽位落位 = 载荷 (to_row, to_slot)
@@ -77,27 +76,13 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (  # noqa: E402
     DEPLOYED_BACK_CAPACITY,  # noqa: F401
     DEPLOYED_CAPACITY,  # noqa: F401
     DEPLOYED_FRONT_CAPACITY,  # noqa: F401
-    BenchChar,  # noqa: F401
     PlaneNodeLedger,  # noqa: F401
-    _apply_row_to_char,  # noqa: F401
-    bench_from_compact,  # noqa: F401
-    bench_occupied,  # noqa: F401
     bench_place,
-    deployed_from_compact,  # noqa: F401
-    deployed_occupied,  # noqa: F401
-    deployed_place,  # noqa: F401
     deployed_slot_no,
     fill_boss_by_position,  # noqa: F401
     get_node_ledger,  # noqa: F401
-    iter_deployed_slots,  # noqa: F401
-    iter_occupied,  # noqa: F401
-    iter_occupied_deployed,  # noqa: F401
     ledger_node_type,  # noqa: F401
     ledger_update_plane,  # noqa: F401
-    pad_bench,  # noqa: F401
-    pad_deployed,  # noqa: F401
-    rebuild_deployed_from_board,  # noqa: F401
-    snapshot_copy,  # noqa: F401
 )
 from sr_od.application.currency_war.kernel.cw_merge_simulate import (  # noqa: E402
     _apply_full_bench_merge_buy,  # noqa: F401
@@ -140,24 +125,6 @@ class ShopCard:
     cost_source: str = 'roster'
 
 
-def bench_clear(bench: list[BenchChar | None], idx: int) -> BenchChar | None:
-    """清空占用槽(卖出/上阵语义:置 None 不移位);空槽/越界返回 None。"""
-    if 0 <= idx < len(bench) and bench[idx] is not None:
-        bc = bench[idx]
-        bench[idx] = None
-        return bc
-    return None
-
-
-def deployed_clear(deployed: list[BenchChar | None], idx: int) -> BenchChar | None:
-    """清空占用槽(卖出/下场语义:置 None 不移位,ADR-0392);空槽/越界返回 None。"""
-    if 0 <= idx < len(deployed) and deployed[idx] is not None:
-        bc = deployed[idx]
-        deployed[idx] = None
-        return bc
-    return None
-
-
 # ===== 统一词表(动作类全集;sim 引擎推进/执行链逻辑态直写/守卫消费) =====
 #
 # ── 索引字段定义约定(本族一切 idx/slot/index 字段的单一源;AGENTS.md 硬约束
@@ -171,8 +138,9 @@ def deployed_clear(deployed: list[BenchChar | None], idx: int) -> BenchChar | No
 #
 # 坐标系(unified-action-factory 批2b 归一后单一):bench/deployed 域动作
 # 携**容器槽位表下标**(定长槽位表 ADR-0316/0392,下标恒稳——生成期索引 =
-# 执行期索引);发射面从容器槽位表读口(bench_slots_of/deployed_slots_of)
-# 直接取下标构造动作。物理槽位号(BenchChar.slot 信息位,1 基)仅存两边界,
+# 执行期索引);发射面从容器读口(bench_view_slots_of/deployed_rows_of 系)
+# 直接取下标构造动作。物理槽位号(Unit.slot / BenchSlot 内嵌 Unit.slot
+# 信息位,1 基)仅存两边界,
 # 各只允许一处换算函数:①观察写入边(observe/reconcile 写链);
 # ②执行坐标边(executor 单点;kernel 助手 = ``cw_exec_state
 # .deployed_row_slot``/``deployed_idx_of``)。坐标参数化机械动作
@@ -490,8 +458,8 @@ class CwActionSwapDeployParam:
     [坐标系] deployed_idx = state.deployed 槽位表下标 0-9(ADR-0392)/
     bench_idx = bench 槽位表下标 0-8(两域均定长槽位表,索引恒稳)。
 
-    装备随人走 = 换位移动 BenchChar 对象本身(``equips`` 字段随对象迁移,
-    无单独装备转移步骤);上场者继承下场者的排(``position_pref``),
+    装备随人走 = 换位移动单位对象本身(``equips`` 字段随对象迁移,
+    无单独装备转移步骤);上场者落目标排(``to_row``/行域承载),
     开拓者按目标排做形态归一(同 CwActionDeployMoveParam 语义,单一源)。
     """
     deployed_idx: int
@@ -1094,8 +1062,7 @@ def mutate_bench_deployed(bench: list,
 
     「占用」判定口径(§2.4 字段映射约定):bench 侧 = ``kind == 'unit'``
     (占位件槽非角色,恒不参与卖/上/合——卖恒拒/部署恒 held 防线的
-    tracked 侧镜像;旧 BenchChar 形靠 is_item_slot 上游拦截,tracked
-    缺检查,本形收口);deployed 侧 = ``is not None``。
+    tracked 侧镜像,kind 面单一收口);deployed 侧 = ``is not None``。
 
     ``shop``(缺省 None = 零漂移兼容):调用方的当前店面视图。提供时,
     满栏合成买走 ``_apply_full_bench_merge_buy`` 单一源——满栏时游戏对完成合成

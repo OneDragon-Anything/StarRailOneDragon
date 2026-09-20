@@ -23,7 +23,6 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import (
     CHARACTERS,
@@ -31,10 +30,6 @@ from sr_od.application.currency_war.data.cw_chars import (
     trailblazer_form,
 )
 from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
-
-if TYPE_CHECKING:
-    # 仅类型注解引用(槽位表元素形态;运行时鸭子读,零依赖)。
-    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 
 # 星徽:「装备者加入【X】羁绊。」(装备注册表 22 张星徽 desc 统一句式,
 # cw_equipment_data.py:102-123;数据层 plaza API 溯源)
@@ -110,9 +105,9 @@ def unit_bond_tags(bc, row: str | None = None) -> tuple[str, ...]:
 
     - 角色:CHARACTERS 注册表 factions + flows + independent 全集;
       开拓者按排归一形态(前排=记忆/后排=欢愉,与 board_from_tracked
-      同口径);排源 = ``row`` 显式形参(容器下标派生,§2.1——P1 起
-      tracked deployed 为 Unit 下标表,行归属由下标传入),缺省回落
-      ``position_pref`` 信息位(观察边界 BenchChar 载体,P6 前读链);
+      同口径);排源 = ``row`` 显式形参(容器下标派生,§2.1——
+      tracked deployed 为 Unit 行域/下标表,行归属由行参或下标传入,
+      缺省回落 'back');
     - 装备分两类语义(用户口述裁定,最高权威):
       * **星徽 = 额外增加一个羁绊**(add-if-absent):只把没有该羁绊的
         单位变成成员;装备者已拥有该羁绊(自报或其他装备已授)时**不重复计数**;
@@ -123,7 +118,7 @@ def unit_bond_tags(bc, row: str | None = None) -> tuple[str, ...]:
       容器派生 ``cw_game_state._row_unit_tags`` 零兜底——Unit 无 faction
       位,漂移由 board 观察覆盖采新收敛(board_derived_adopt))。
 
-    duck-typed:凡带 char_id/equips 属性(BenchChar/Unit 或
+    duck-typed:凡带 char_id/equips 属性(Unit 或
     SimpleNamespace shim)皆可——实机/sim/检查三侧同函数。
     """
     cid = getattr(bc, 'char_id', '') or ''
@@ -161,7 +156,7 @@ def unit_bond_tags(bc, row: str | None = None) -> tuple[str, ...]:
 
 
 
-def _recount_board(deployed: list[BenchChar]) -> dict[str, int]:
+def _recount_board(deployed: list) -> dict[str, int]:
     """deployed 生命周期重算板面(动作 v2,契约包 C1):卖/换/事务后
     board 必须与 deployed 名单一致——本函数是 cw_state 侧的派生单一源。
 
@@ -170,7 +165,8 @@ def _recount_board(deployed: list[BenchChar]) -> dict[str, int]:
     计入;与实机 ``board_from_tracked``(= 游戏左面板真值口径)同源,
     per-unit 标签函数单一源 = ``cw_bond_equips.unit_bond_tags``。
     未识别身份(char_id 空/'?'/不在注册表)→ 回退 ``faction`` 字段
-    单标签(空/'?' 不计,生产 OCR 空板同形)。值漂移由 checks 的
+    单标签(空/'?' 不计,生产 OCR 空板同形;Unit 无 faction 位,该兜底
+    仅 faction 载体鸭子输入可达)。值漂移由 checks 的
     board↔deployed 一致性锁双向暴露。"""
     from sr_od.application.currency_war.kernel.cw_bond_equips import unit_bond_tags
     out: dict[str, int] = {}

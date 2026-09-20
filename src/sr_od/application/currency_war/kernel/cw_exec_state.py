@@ -8,23 +8,14 @@ GameState(kernel/cw_game_state.py)。现辖三类领域函数:
 - 槽位表领域模型:bench/deployed 槽位语义 helpers(benchchar-retirement
   P1 起容器原生:bench = ``BenchSlot | None`` 槽表、deployed = ``Unit | None``
   下标槽表 + 容器行域↔下标派生对)与物理(排,槽号)↔ 表下标换算
-  (deployed_row_slot / deployed_idx_of 互逆对);SIFT 观察边界适配器
-  (bench_from_compact/deployed_from_compact,P6 前读链产 BenchChar);
+  (deployed_row_slot / deployed_idx_of 互逆对);观察读链直产容器形状
+  (obs/cw_identity_obs),本模块无换形适配层;
 - 位面节点序列台账访问:get_node_ledger / ledger_node_type /
   ledger_update_plane 与 fill_boss_by_position(台账值载体
   ``PlaneNodeLedger`` 住 kernel/cw_game_state.py,本模块运行时转发,
   保持既有 import 路径不断链)。
 """
 from __future__ import annotations
-
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
-
-from one_dragon.utils.log_utils import log
-
-if TYPE_CHECKING:
-    # 仅类型注解引用(BenchView 观察帧形参;运行时零依赖)。
-    from sr_od.application.currency_war.kernel.cw_game_state import BenchView
 
 # 台账值载体(运行时转发,非仅注解):类本体住 kernel/cw_game_state.py
 # (宿主 = 容器非 Field 簿记 GameState.plane_node_sequences 所在模块),本模块
@@ -181,78 +172,7 @@ DEPLOYED_BACK_CAPACITY: int = 6
 DEPLOYED_CAPACITY: int = DEPLOYED_FRONT_CAPACITY + DEPLOYED_BACK_CAPACITY
 
 
-@dataclass
-class BenchChar:
-    """备战栏/已上阵角色(= strategy/06 的 ``Unit``;加 ``equips``)。"""
-    slot: int
-    char_id: str = ""    # 角色id(SIFT/OCR 名);未知 ""
-    faction: str = "?"   # 阵营
-    star: int = 1        # 星级
-    position_pref: str = "back"  # 命途定位 front/back(来自 get_role_position)
-    # Sequence(快照拷贝语义落码(ADR-0465 §9):拷贝侧固化为 tuple;session/state
-    # 活对象仍 list)——读点(deploy_bench 装备校验/reconcile 配对)均为
-    # Sequence 消费,写端仅 session/state 活对象(list 语义保留)。
-    equips: list[str] | tuple[str, ...] = field(default_factory=list)
-    # 占槽物品标记(部署伪槽修复批 ②,防线字段;B1 返工=显式标记形态):
-    # True = 该槽画面是物品(箱/典籍/书册卡等)非角色。坐标系 =
-    # 备战栏 1-based slot(与 slot 字段同系);取值时机 = 部署装配期快照;
-    # 写入端 = 备战观察读链 BenchChar 构造时显式写,
-    # 识别来源 = obs 单一源精确档(cw_identity_obs.bench_item_slots
-    # fuzzy=False)的命中产出;obs 未命中的槽位恒 False(缺省),与本字段
-    # 无关的 char_id='' 不触发(kernel 对 True 恒 held、拒因 'item_slot',
-    # 「照旧上」fail-open 语义不涉本字段)。sim 不产伪槽:缺省 False 零差。
-    is_item_slot: bool = False
-
-
-def snapshot_copy(bc: BenchChar) -> BenchChar:
-    """快照拷贝语义的元素拷贝(落码判据见 ADR-0465 §9):浅拷贝 + equips 固化
-    为 tuple——快照帧与 session.tracked_*(就地写端=shop.py
-    mutate_bench_deployed 星级/装备拼接、deploy_bench 装备覆盖)断开
-    对象别名,「快照不在帧间存活」由机制保证而非消费纪律约定。
-    保留理由 = 现役活消费方 = cw_game_state.py 部署装配 scratch 拷贝链。
-    成本已量化(ADR-0465 §9):每次 decide_prep ~19 元素 ×6 字段 <20µs,
-    占帧预算 <0.1%。隔离锁=test_cw_migration_budget_authority(迁移哨兵)。"""
-    from dataclasses import replace
-    return replace(bc, equips=tuple(bc.equips or ()))
-
-
-def rebuild_deployed_from_board(board: dict[str, int], back_max: int = 6,
-                               max_count: int | None = None) -> list[BenchChar | None]:
-    """从 board(OCR 阵营计数真值)重建 ``deployed`` 槽位表(ADR-0392;下标
-    0-3=前排/4-9=后排,按 position_pref 路由落槽)→ ``deployed_count()``
-    对齐实际阵上数。
-
-    旧 ``read_game_state`` 不填 deployed → 恒 ``[]`` → 所有门失效,本 helper 从 board
-    重建 deployed。
-    max_count(= level)cap —— 多羁绊角色在 board 多阵营计数(大丽花=击破+盛会之星算 2),
-    sum(board) > 实际 deployed(level)→ deployed_count 虚高 → _saving_for_interest + bench-space 门
-    **误触**(board 没满却当满 → 不买 target 到 bench → 被 block)。cap at level = 实际 deployed 上限。
-    """
-    compact: list[BenchChar] = []
-    back_left = back_max
-    for faction, count in board.items():
-        for _ in range(count):
-            if max_count is not None and len(compact) >= max_count:
-                return deployed_from_compact(compact)
-            pref = "back" if back_left > 0 else "front"
-            if back_left > 0:
-                back_left -= 1
-            compact.append(BenchChar(slot=0, faction=faction, star=1,
-                                     position_pref=pref))
-    return deployed_from_compact(compact)
-
-
 # ===== bench 槽位语义 helpers(ADR-0316;消费端唯一合法入口)=====
-
-
-def iter_occupied(bench: list[BenchChar | None]):
-    """迭代占用槽(滤 None)——bench 迭代单一源,禁止裸 ``for b in bench``。"""
-    return (b for b in bench if b is not None)
-
-
-def bench_occupied(bench: list[BenchChar | None]) -> int:
-    """bench 占用槽数(容量判据单一源,禁止 ``len(bench)``)。"""
-    return sum(1 for b in bench if b is not None)
 
 
 def bench_slot_unit(slot: BenchSlot | None) -> Unit | None:
@@ -288,19 +208,14 @@ def _slot_normalized_at(slot: BenchSlot, idx: int) -> BenchSlot:
     return slot
 
 
-def pad_bench(bench: list[BenchChar | None]) -> list[BenchChar | None]:
-    """pad None 到定长 BENCH_CAPACITY(就地补足,返回同引用)。"""
-    while len(bench) < BENCH_CAPACITY:
-        bench.append(None)
-    return bench
-
-
-def bench_occupied_slot_nos(bench: list[BenchChar | None]) -> list[int]:
+def bench_occupied_slot_nos(bench: list[BenchSlot | None]) -> list[int]:
     """占用槽号信息位集(槽号健康门输入;None 槽跳过)。
 
-    [索引定义] 值 = BenchChar.slot 信息位(1 基物理槽号,ADR-0316);
+    [索引定义] 值 = Unit.slot 信息位(1 基物理槽号,ADR-0316);
     信息位恒为派生位,权威槽位 = 表下标(ADR-0605 §5.2)。"""
-    return [b.slot for b in (bench or []) if b is not None]
+    return [slot.unit.slot for slot in (bench or [])
+            if slot is not None and slot.kind == 'unit'
+            and slot.unit is not None]
 
 
 def bench_slots_healthy(slot_nos: list[int]) -> bool:
@@ -314,69 +229,7 @@ def bench_slots_healthy(slot_nos: list[int]) -> bool:
             and len(set(slot_nos)) == len(slot_nos))
 
 
-def bench_from_compact(chars: list[BenchChar], *,
-                       orig_view: BenchView | None = None,
-                       ) -> list[BenchSlot | None]:
-    """紧缩读序(SIFT 观察边界载体 BenchChar,P6 前读链产形)→ tracked
-    bench 槽位表(``list[BenchSlot | None]``,定长 9,§2.3 定稿形状)。
-
-    占位件三分类映射(§2.4 字段映射约定):``is_item_slot=True`` → kind ∈
-    ('tome','bookcard','supply_box')——kind 细分权威 = ``orig_view``
-    (容器观察帧,该槽为占位 kind 时随真值);缺省降级 supply_box
-    (布尔无类型信息,与 bench_view_of_slots 同款已申报边界,细分随
-    P6 观察链直产收口)。
-
-    槽位放置(ADR-0316 语义不变):BenchChar.slot 带合法 1-based 槽号且
-    目标位空 → 直落;否则冲突回退首空槽 = 归一修复,warning 显影供排障
-    (重复/越界槽号本应被写回健康门拒绝,走到这里是门被绕过的信号)。
-    """
-    bench: list[BenchSlot | None] = [None] * BENCH_CAPACITY
-    for bc in chars:
-        if bc is None:
-            continue
-        slot = bc.slot if 1 <= bc.slot <= BENCH_CAPACITY else None
-        target = _tracked_bench_slot_of(bc, slot, orig_view)
-        if slot is not None and bench[slot - 1] is None:
-            bench[slot - 1] = target
-        else:
-            _idx = bench_place(bench, target)
-            log.warning(f'[cw!] bench_from_compact 槽号冲突回退首空槽'
-                        f'(输入槽号重复/越界,禁静默显影):'
-                        f'slot={bc.slot} char={bc.char_id!r} → 实落槽'
-                        f'{(_idx + 1) if _idx is not None else "无(席满丢弃)"}')
-    return bench
-
-
-def _tracked_bench_slot_of(bc: BenchChar, slot: int | None,
-                           orig_view) -> BenchSlot:
-    """SIFT 读条目 → tracked bench 槽位元素(BenchSlot;§2.4 字段映射)。"""
-    if bool(getattr(bc, 'is_item_slot', False)):
-        kind = 'supply_box'
-        if (orig_view is not None and slot is not None
-                and slot <= len(orig_view.slots)):
-            _k = getattr(orig_view.slots[slot - 1], 'kind', None)
-            if _k in ('tome', 'bookcard', 'supply_box'):
-                kind = _k
-        return BenchSlot(kind=kind)
-    return BenchSlot(kind='unit', unit=Unit(
-        char_id=str(getattr(bc, 'char_id', '') or ''),
-        star=int(getattr(bc, 'star', 1) or 1),
-        equips=list(getattr(bc, 'equips', None) or []),
-        slot=slot if slot is not None else 0))
-
-
 # ===== deployed 槽位语义 helpers(ADR-0392;消费端唯一合法入口)=====
-
-
-def iter_occupied_deployed(deployed: list[BenchChar | None]):
-    """迭代占用槽(滤 None)——deployed 迭代单一源,禁止裸 ``for d in deployed``。"""
-    return (d for d in deployed if d is not None)
-
-
-def deployed_occupied(deployed: list[BenchChar | None]) -> int:
-    """deployed 占用槽数(容量判据单一源,禁止 ``len(deployed)``——定长下
-    len 恒 DEPLOYED_CAPACITY)。"""
-    return sum(1 for d in deployed if d is not None)
 
 
 def deployed_slot_no(idx: int) -> int:
@@ -408,68 +261,13 @@ def deployed_idx_of(row: str, slot_no: int) -> int:
             else DEPLOYED_FRONT_CAPACITY + slot_no - 1)
 
 
-def deployed_place(deployed: list[BenchChar | None], bc: BenchChar) -> int | None:
-    """放入指定排的首个空槽(上场落位语义):position_pref='front' → 前排区
-    0-3,'back' → 后排区 4-9(ADR-0392);放置时归一 ``bc.position_pref``、
-    ``bc.slot``(排内 1-based 槽号信息位)与实际落位下标一致。首选排满时
-    落全局首个空槽兜底,兜底跨排时 pref 随落位改写(写端治本,ADR-0605
-    §5.2:sell_recorded 通道解析键 = deployed_idx→(排,槽号) 固定双射换算
-    后按条目 pref/slot 命中,信息位与下标错位必漏匹配误归 unexplained;
-    权威槽位 = 下标,信息位恒为派生,与 _apply_row_to_char 换排归一同向)。
-    兜底保持「合法动作必成功」(旧行为 append 不看排,排容量门在上游)。
-    无任何空槽返回 None。入口防御 pad(短列表=紧缩前缀,兼容旧构造;
-    同 mutate_bench_deployed 的 pad_bench 入口防御)。
-    """
-    pad_deployed(deployed)
-    lo, hi = ((0, DEPLOYED_FRONT_CAPACITY) if bc.position_pref == 'front'
-              else (DEPLOYED_FRONT_CAPACITY, DEPLOYED_CAPACITY))
-    for rng in (range(lo, hi), range(DEPLOYED_CAPACITY)):
-        for i in rng:
-            if deployed[i] is None:
-                bc.position_pref = ('front' if i < DEPLOYED_FRONT_CAPACITY
-                                    else 'back')
-                bc.slot = deployed_slot_no(i)
-                deployed[i] = bc
-                return i
-    return None
-
-
-def pad_deployed(deployed: list[BenchChar | None]) -> list[BenchChar | None]:
-    """pad None 到定长 DEPLOYED_CAPACITY(就地补足,返回同引用;紧缩前缀
-    顺延占用 0..n-1——旧紧缩构造兼容,ADR-0392)。"""
-    while len(deployed) < DEPLOYED_CAPACITY:
-        deployed.append(None)
-    return deployed
-
-
-def deployed_from_compact(chars: list[BenchChar]) -> list[Unit | None]:
-    """紧缩读序(SIFT 观察边界载体 BenchChar,P6 前读链产形)→ tracked
-    deployed 槽位表(``list[Unit | None]``,定长 10,§2.3 定稿形状)。
-
-    放置语义(原 deployed_place 路由,行为不变):按 position_pref 路由
-    首选排首空槽,排满全局首空兜底;单位槽号信息位归一 = 落位排内槽号
-    (frozen replace 新构造)。旧紧缩构造兼容语义逐位平移。
-    """
-    deployed: list[Unit | None] = [None] * DEPLOYED_CAPACITY
-    for bc in chars:
-        if bc is None:
-            continue
-        unit = Unit(char_id=str(getattr(bc, 'char_id', '') or ''),
-                    star=int(getattr(bc, 'star', 1) or 1),
-                    equips=list(getattr(bc, 'equips', None) or []),
-                    slot=0)
-        place_unit_in_deployed(deployed, unit,
-                               str(getattr(bc, 'position_pref', '') or 'back'))
-    return deployed
-
-
 def deployed_rows_to_indexed(front_row: list[Unit] | None,
                              back_row: list[Unit] | None,
                              ) -> list[Unit | None]:
     """容器行域(front_row/back_row)→ deployed 下标工作表(§2.1「10 槽表
     语义保留在需要处按行下标派生」的容器原生派生单一源;P1 消费面 =
-    上报函数族/sim 的工作副本构造,元素即行内 Unit 对象,零 BenchChar
-    中间形)。Unit.slot = 行内 1 基画面槽号(信息位)定位,缺席(0)按占用
+    上报函数族/sim 的工作副本构造,元素即行内 Unit 对象,零中间形)。
+    Unit.slot = 行内 1 基画面槽号(信息位)定位,缺席(0)按占用
     序顺延兜底(与旧紧缩构造兼容)。两行全未观察(None)→ [None]×10。"""
     out: list[Unit | None] = [None] * DEPLOYED_CAPACITY
 
@@ -509,33 +307,13 @@ def deployed_indexed_to_rows(dep: list[Unit | None] | None,
     return front, back
 
 
-def place_unit_in_deployed(dep: list[Unit | None], unit: Unit,
-                           to_row: str) -> int | None:
-    """放入指定排的首个空槽(上场落位语义,原 deployed_place 路由的
-    Unit 原生版):to_row='front' → 前排区 0-3,'back' → 后排区 4-9
-    (ADR-0392);首选排满落全局首个空槽兜底(「合法动作必成功」语义
-    不变)。放置时归一单位槽号信息位 = 落位排内槽号(frozen replace;
-    Unit 无 position_pref 位,排归属由下标派生)。无任何空槽返回 None。
-    """
-    lo, hi = ((0, DEPLOYED_FRONT_CAPACITY) if to_row == 'front'
-              else (DEPLOYED_FRONT_CAPACITY, DEPLOYED_CAPACITY))
-    from dataclasses import replace
-    for rng in (range(lo, hi), range(DEPLOYED_CAPACITY)):
-        for i in rng:
-            if dep[i] is None:
-                dep[i] = replace(unit, slot=deployed_slot_no(i))
-                return i
-    return None
-
-
 def trailblazer_row_identity(char_id: str, to_row: str,
                              ) -> tuple[str, str | None] | None:
     """开拓者按排形态归一的身份核(单一源):换排 = 命途切换(char_id
     切目标排形态,faction 跟随首阵营)。返回 ``(新 char_id, 首阵营或
     None)``;非开拓者/空名 → None(调用方保持原身份)。
 
-    消费面 = ``_apply_row_to_char``(BenchChar 观察边界载体,P6 前)与
-    :func:`trailblazer_row_unit`(Unit 容器原生)双载体同核,
+    消费面 = :func:`trailblazer_row_unit`(Unit 容器原生唯一载体),
     归一口唯一(design §3 不变量 5;swap 与 deploy_move 两上报均经
     :func:`trailblazer_row_unit` 同源,哨兵 =
     test_cw_trailblazer_stance_normalization)。"""
@@ -559,21 +337,6 @@ def trailblazer_row_unit(unit: Unit, to_row: str) -> Unit:
     from dataclasses import replace
     ident = trailblazer_row_identity(str(unit.char_id or ''), to_row)
     return replace(unit, char_id=ident[0]) if ident is not None else unit
-
-
-def _apply_row_to_char(bc: BenchChar, to_row: str) -> None:
-    """记录实际站位 + 开拓者换排形态归一(CwActionDeployMoveParam/动作 v2 单一源)。
-
-    拖到另一排 = 命途切换(前台记忆/后台欢愉),羁绊随之变 → char_id
-    同步换成目标排形态,faction 跟随首阵营(下游 board/装备计算自然对)。
-    归一核单一源 = :func:`trailblazer_row_identity`(与 Unit 载体同核)。
-    """
-    bc.position_pref = to_row
-    ident = trailblazer_row_identity(str(bc.char_id or ''), to_row)
-    if ident is not None:
-        bc.char_id, fac = ident
-        if fac:
-            bc.faction = fac
 
 # ===== 位面节点序列台账(session 级权威表) ================================
 # 权威依据(用户口述,最高权威):位面内节点类型与数量**只有投资环境选择能改变**
@@ -666,9 +429,3 @@ def fill_boss_by_position(seq: list[str | None]) -> list[str | None]:
     if out and out[-1] is None:
         out[-1] = 'boss'
     return out
-
-
-def iter_deployed_slots(deployed: list[BenchChar | None]):
-    """迭代 (槽位下标, 占用角色) 对(滤 None)——deployed_idx 生成端用
-    (索引 = 槽位下标,生成期=执行期恒稳,ADR-0392)。"""
-    return ((i, d) for i, d in enumerate(deployed) if d is not None)
