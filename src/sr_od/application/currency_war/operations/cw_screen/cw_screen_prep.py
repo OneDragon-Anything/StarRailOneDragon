@@ -26,10 +26,8 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_exec_state import (
-    BenchChar,
-)
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    BenchView,
     ChannelSig,
     OreSight,
     game_state_of,
@@ -62,14 +60,8 @@ from sr_od.application.currency_war.obs.cw_faction_obs import (
     report_faction_reconcile,
 )
 from sr_od.application.currency_war.obs.cw_identity_obs import (
-    _ctx_slots,
     ensure_portrait_templates,
-    find_bookcards,
     read_ore_sights,
-    read_supply_boxes,
-)
-from sr_od.application.currency_war.obs.cw_identity_obs import (
-    read_tomes as cw_identity_obs_read_tomes,
 )
 from sr_od.application.currency_war.obs.cw_observation import (
     board_from_tracked,
@@ -203,14 +195,9 @@ class CwScreenPrep(SrOperation):
         _sph_list = (filter_persistent_ores(_spheres_raw, _prev_spheres)
                      if _prev_spheres else _spheres_raw)
         self._prev_spheres_raw = _spheres_raw
-        _box_slots = read_supply_boxes(self.ctx, screen)
-        _tome_slots = cw_identity_obs_read_tomes(self.ctx, screen)
-        # 备战栏占槽卡片(策略器 entry ① 卡片臂的发射依据,用户裁定
-        # 2026-09-19 开卡时机归策略实现管):书册卡同帧现读,槽号经
-        # item_kind_by_slot 细分进容器 bench kind。
-        _book_slots = find_bookcards(screen, _ctx_slots(self.ctx, '备战栏', 9))
-        # (箱/典籍占席经 bench 槽位 kind 进容器——本帧槽号集
-        #  供 bench_view_from_obs 细分参数,像素坐标不落盘。)
+        # (箱/典籍/书册卡占槽物品的识别与 kind 细分已随 P6 观察链直产移驻
+        #  读链 read_bench_view(同帧 _bench_item_kind_by_slot)——轻段不再
+        #  现读三族槽号集,heavy 观察少三次冗余扫描,写端语义不变。)
         obs.shop_open = self.round_by_find_area(
             screen, SHOP_SCREEN_NAME, '按钮-收起', crop_first=False).is_success
         # 事件 overlay(挡操作:deploy/equip 全灭根因,live 2026-08-15):检测到即由环 bail 交外环。
@@ -248,17 +235,13 @@ class CwScreenPrep(SrOperation):
                                source='director', op=self,
                                shop_open=obs.shop_open,   # gold 仅 shop 开态可信门
                                session=self._session())   # SIFT 三层漏斗(session 优先匹配)
-            templates = ensure_portrait_templates(self.ctx)   # 复用单一源(路径+缓存)
-            if templates is not None:
-                _bench_chars = _of.get('bench_chars') or []
-                _deployed_chars = _of.get('deployed_chars') or []
-            else:
-                # 失读帧局部空表 → 容器写端 carry 保旧值(与旧缓存沿用
-                # 行为等价);对账空读守卫
-                # 跳过(公共 reconcile 空集守卫)。
-                _bench_chars = []
-                _deployed_chars = []
-            self._reconcile_tracking(_bench_chars, _deployed_chars, screen)
+            # P6 观察链直产:observe_full 回传容器形状(备战席 BenchView /
+            # 上场位 (前排, 后排) Unit 行)。templates 未加载 → None → 下方
+            # 换空载体(与旧 [] 等价:对账空读可清账、容器写端 carry)。
+            _bench_view = _of.get('bench_view')
+            _deployed_rows = _of.get('deployed_rows')
+            _wr, _bench_obs, _dep_rows = self._reconcile_tracking(
+                _bench_view, _deployed_rows, screen)
             _st = _of.get('read_receipt')
             session = self._session()
             # PrepObservation 消费切换转适配器:
@@ -266,9 +249,6 @@ class CwScreenPrep(SrOperation):
             # 旧 last_state 装配源契约随装配源迁移终结,换源核销;
             # obs.state 视图槽已随黑板槽退役消亡)。
             if session is not None:
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    bench_view_from_obs,
-                )
                 from sr_od.application.currency_war.kernel.cw_reconcile import (
                     is_merge_effect_window,
                 )
@@ -279,27 +259,15 @@ class CwScreenPrep(SrOperation):
                 _prep_sig = ChannelSig(family='obs', actor='CwScreenPrep',
                                        screen='货币战争-备战', mode='read',
                                        quality={'bench': 'real_read'})
-                # 备战席观察写端(观察写端=本屏):SIFT 身份+星级
-                # (read_star 链)已读,零新增 OCR。
-                # 空集 = 失读非全空(overlay 残留/动画帧/识别退化)——
-                # bench_view_from_obs 返 None 时走 carried(失读保旧值;
-                # 宁缺勿造,先例=商店空牌面观察漏斗 shop_cards 分支),
-                # 禁把「9 槽全空」当 observation 入记录
+                # 备战席观察写端(观察写端=本屏;P6 直产):read_bench_view
+                # 直产容器视图(占位件 kind 识别期细分,零换形),对账门后
+                # 副本随写(星级保旧/装备续接同帧共享)。
+                # 空视图 = 失读非全空(overlay 残留/动画帧/识别退化)——
+                # 走 carried(失读保旧值;宁缺勿造,先例=商店空牌面观察漏斗
+                # shop_cards 分支),禁把「9 槽全空」当 observation 入记录
                 # (席空数派生误报 free=9 污染席满决策)。
-                # item_kind_by_slot 细分(box/tome/bookcard):同帧识别槽号集
-                # 构造映射,bench 槽位 kind 精确到具体占槽物(策略器 entry ①
-                # 臂按 kind 分派;原 is_item_slot 布尔统一 supply_box 曾使
-                # 书册卡槽被开箱臂误指,由入口清场先于观察 masking——已随
-                # 书册卡臂策略器化根治)。
-                _item_kind = {int(slot): 'supply_box' for slot, _pt
-                              in _box_slots}
-                _item_kind.update({int(slot): 'tome' for slot, _pt
-                                   in _tome_slots})
-                _item_kind.update({int(slot): 'bookcard' for slot, _pt
-                                   in _book_slots})
-                _bench_obs = bench_view_from_obs(
-                    _bench_chars, item_kind_by_slot=_item_kind)
-                if _bench_obs is not None:
+                if _bench_obs is not None and any(
+                        s.kind != 'empty' for s in _bench_obs.slots):
                     # 合成特效窗态门:星爆动画窗(≥2 帧)内 read_star 读旧星
                     # (reconcile_tracking 防抖同口径,读数物理不可信)——本帧
                     # **不写观察**(保 bench 的 logic 逻辑态值,失读保旧值的
@@ -318,19 +286,14 @@ class CwScreenPrep(SrOperation):
                                   sig=ChannelSig(
                                       family='obs', actor='CwScreenPrep',
                                       screen='货币战争-备战', mode='carried'))
-                # 上场席位观察写端(与 bench 写端同环同纪律):
-                # deployed_rows_from_obs 空集守卫(与备战席写端同款:空集 =
-                # 失读非全空 → carry,禁「全场无人」假观察);特效窗门同 bench
-                # (star 读数物理不可信);front_row/back_row 分排观察照写,
-                # 换算归 kernel 映射层(deployed_rows_from_obs)。
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    deployed_rows_from_obs,
-                )
-                _dep_rows = deployed_rows_from_obs(_deployed_chars)
+                # 上场席位观察写端(与 bench 写端同环同纪律;P6 直产):
+                # 行域直产自读链(排归属 = 行参承载),空行域 = 失读非全空
+                # → carry,禁「全场无人」假观察;特效窗门同 bench
+                # (star 读数物理不可信);front_row/back_row 观察照写。
                 _dep_carried_sig = ChannelSig(
                     family='obs', actor='CwScreenPrep',
                     screen='货币战争-备战', mode='carried')
-                if _dep_rows is not None:
+                if _dep_rows is not None and (_dep_rows[0] or _dep_rows[1]):
                     if is_merge_effect_window(screen):
                         # 与 bench 特效窗门同语义:窗内不写(保 logic 逻辑态值,
                         # 下帧干净帧实读覆盖),不落 carried 假新鲜度。
@@ -516,21 +479,31 @@ class CwScreenPrep(SrOperation):
         """
         return self._observe(heavy=True)
 
-    def _reconcile_tracking(self, bench: list[BenchChar], deployed: list[BenchChar],
-                            screen=None) -> None:
+    def _reconcile_tracking(self, bench: BenchView | None,
+                            deployed, screen=None) -> tuple:
         """环入口对账(read≠tracking 漂移是既有 bug 源 → SIFT 真值重置 tracking)。
 
         统一走公共 ``cw_reconcile.reconcile_tracking``(空读守卫/漂移留证/
-        obs_conflict JSONL 单一实现,star 用 read_star 实机金星)。read 失败
-        (templates None)不动。漂移 = 需关注([cw!] + 截图存证)。
+        obs_conflict JSONL 单一实现,star 用 read_star 实机金星)。载体 =
+        P6 直产容器形状(备战席 BenchView / 上场位 (前排, 后排) Unit 行);
+        失读 None → 空视图/空行承载(旧链 [] 语义:对账空读可清账,非
+        「读失败不辖」)。
+
+        Returns:
+            ``(是否写回, 门后 bench 视图, 门后 deployed 行)`` —— 门后副本
+            供同帧容器观察写端消费(星级保旧/装备续接随副本共享)。
         """
         session = self._session()
         if session is None:
-            return
+            return False, bench, deployed
         from sr_od.application.currency_war.kernel.cw_reconcile import (
             reconcile_tracking,
         )
-        reconcile_tracking(session, bench, deployed, screen, source='director', ctx=self.ctx)
+        return reconcile_tracking(
+            session,
+            bench if bench is not None else BenchView(),
+            deployed if deployed is not None else ([], []),
+            screen, source='director', ctx=self.ctx)
 
     def _reconcile_faction_display(self, obs: PrepObservation) -> None:
         """备战稳定帧羁绊显示对账(cw_faction_obs 接线;零决策:不一致仅落

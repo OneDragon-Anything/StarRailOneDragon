@@ -10,8 +10,8 @@
 设计:
 - **关键帧门控**:OCR 关键词(备战阶段/结算/商店/补给/失败/简报锚)命中才采集;内容哈希
   去重(与上一帧相同则跳过)。战斗过场/动画帧不采(无法结构化提取)。
-- **结构化提取**:命中帧立即调 ``read_game_state`` + SIFT 身份(``read_deployed_chars`` /
-  ``read_bench_chars``)→ 一条 JSONL(帧文件名 + 全部字段);离线分析不用再跑识别。
+- **结构化提取**:命中帧立即调 ``read_game_state`` + SIFT 身份(``read_deployed_rows`` /
+  ``read_bench_view``)→ 一条 JSONL(帧文件名 + 全部字段);离线分析不用再跑识别。
 - 帧文件与 JSONL 同目录(``.debug/temp/currency_war/recording/<session>/``)。
 
 用法(项目根,PYTHONPATH=src):
@@ -33,8 +33,8 @@ from sr_od.application.currency_war.obs.currency_war_char_id import (
     load_avatar_templates,
 )
 from sr_od.application.currency_war.obs.cw_identity_obs import (
-    read_bench_chars,
-    read_deployed_chars,
+    read_bench_view,
+    read_deployed_rows,
 )
 from sr_od.application.currency_war.obs.cw_observation import (
     read_game_state,
@@ -104,16 +104,22 @@ def extract_frame(ctx, img, templates) -> dict:
     except Exception as e:   # noqa: BLE001
         log.debug(f'[recorder] state 提取失败: {e}')
     try:
-        front = read_deployed_chars(ctx, img, templates)
+        front, back = read_deployed_rows(ctx, img, templates)
         rec['deployed'] = [
-            {'name': c.char_id, 'star': c.star, 'row': c.position_pref, 'slot': c.slot}
-            for c in front]
-        rec['deployed_n'] = len(front)
+            {'name': u.char_id, 'star': u.star, 'row': row, 'slot': u.slot}
+            for row, units in (('front', front), ('back', back))
+            for u in units]
+        rec['deployed_n'] = len(rec['deployed'])
     except Exception as e:   # noqa: BLE001
         log.debug(f'[recorder] deployed 提取失败: {e}')
     try:
-        bench = read_bench_chars(ctx, img, templates)
-        rec['bench'] = [{'name': c.char_id, 'star': c.star, 'slot': c.slot} for c in bench]
+        view = read_bench_view(ctx, img, templates)
+        rec['bench'] = [] if view is None else (
+            [{'name': s.unit.char_id, 'star': s.unit.star, 'slot': s.unit.slot}
+             for s in view.slots if s.kind == 'unit' and s.unit is not None]
+            + [{'name': '', 'star': 1, 'slot': i + 1}
+               for i, s in enumerate(view.slots)
+               if s.kind in ('supply_box', 'tome', 'bookcard')])
     except Exception as e:   # noqa: BLE001
         log.debug(f'[recorder] bench 提取失败: {e}')
     return rec

@@ -1259,8 +1259,9 @@ def project_effect_capacity(gs: GameState) -> None:
     取 min(叠加收紧向)。当前零携带 → 直写恒等于默认 9(幂等 no-op,行为
     与接线前逐位一致)。
 
-    采样点 = 备战帧观察后(cw_loop 备战分支,**每 pass 重锚**):观察构造器
-    (bench_view_from_obs)按默认容量建视图,会覆盖逻辑态直写值,故观察后须重锚;
+    采样点 = 备战帧观察后(cw_loop 备战分支,**每 pass 重锚**):观察链
+    直产视图按默认容量建(bench_view 容量恒 9),会覆盖逻辑态直写值,故
+    观察后须重锚;
     bench 从未观察(值 None)= 无容器可写,跳过(容量随 bench 首帧进入
     记录)。建模批补首张容量条目时须同批补观察构造器的容量感知,防观察
     覆盖 logic 值刷缺陷台账(本桥 docstring 即该义务的挂点)。
@@ -1279,84 +1280,11 @@ def project_effect_capacity(gs: GameState) -> None:
 
 
 # ============================================================ 备战席观察写端(§3.2.5)
-
-
-def bench_view_from_obs(bench_chars: list,
-                        item_kind_by_slot: dict[int, str] | None = None,
-                        ) -> BenchView | None:
-    """备战席 SIFT 读链 → BenchView(观察写端的值构造;§3.2.5 观察写端=本屏)。
-
-    - **空集 = 失读非全空**(P2-1 批次二落地审):overlay 残留/动画帧/识别
-      退化都会产空集,≠实席真清空——返 None,调用方走 carried(§2.2 处置①;
-      先例 = 商店空牌面「宁缺勿造不写」),禁把「9 槽全空」当 observation
-      入记录(席空数派生误报 free=9 会污染席满决策);
-    - 槽位越界条目丢弃并 log 留证(物理槽 1..capacity 外 = 读链漂移信号,
-      静默丢弃 = 身份静默丢失);
-    - ``is_item_slot`` 占位件(读链道具位,箱/典籍/书册卡)→ supply_box
-      槽位往返保旗标(占 1 席、非可卖燃料;与 :func:`bench_slots_to_legacy`
-      的重建分支配对)。``item_kind_by_slot``(迭代 2026-09-18-prep-obs-
-      retirement 阶段 3.5)= 槽号 → 'supply_box'/'tome'/'bookcard' 细分
-      映射(观察链用同帧 read_supply_boxes/read_tomes/find_bookcards
-      槽号集构造;缺省 None = 旧行为逐位不变,占位件恒 supply_box);
-    - 非 None 返回 = 槽位保序映射(下标 i = 物理槽 i+1,与 sim 合成口同构)。
-    """
-    if not bench_chars:
-        return None
-    _kind_map = item_kind_by_slot or {}
-    slots: list[BenchSlot] = [BenchSlot(kind='empty')] * BENCH_CAPACITY_DEFAULT
-    for bc in bench_chars:
-        s = int(getattr(bc, 'slot', 0) or 0)
-        if 1 <= s <= BENCH_CAPACITY_DEFAULT:
-            if bool(getattr(bc, 'is_item_slot', False)):
-                # 占位件保旗标(与 bench_view_of_slots 的 supply_box 映射配对):
-                # 恒映射 'unit' 会把占位件退化成 '' 1★ 可卖燃料,腾席守卫失守
-                #(波 4 落码审 A 组探针同款形态)。细分映射缺省 supply_box,
-                # 典籍槽(同帧 read_tomes 槽号集)精确为 'tome'。
-                slots[s - 1] = BenchSlot(
-                    kind=_kind_map.get(s, 'supply_box'))
-                continue
-            slots[s - 1] = BenchSlot(kind='unit', unit=Unit(
-                char_id=str(getattr(bc, 'char_id', '') or ''),
-                star=int(getattr(bc, 'star', 1) or 1),
-                equips=list(getattr(bc, 'equips', None) or []),
-                slot=s))
-        else:
-            log.warning('[cw!][gs-bench] 备战席读链槽位越界丢弃:'
-                        'slot=%s char=%s(SIFT/星级读链漂移信号)',
-                        s, getattr(bc, 'char_id', '?'))
-    return BenchView(slots=slots, capacity=BENCH_CAPACITY_DEFAULT)
-
-
-def deployed_rows_from_obs(deployed_chars: list) -> tuple[list[Unit], list[Unit]] | None:
-    """上场席位 SIFT 读链 → (front_row, back_row)(观察写端的值构造;§3.2.3/§3.2.4)。
-
-    - **空集 = 失读非全空**(与 :func:`bench_view_from_obs` P2-1 同款纪律):
-      overlay 残留/动画帧/识别退化都会产空集——返 None,调用方走 carried
-      (§2.2 处置①),禁把「全场无人」当 observation 入记录;
-    - 坐标系换算(设计 §8.2,换算归映射层):SIFT 产 BenchChar.slot =
-      行内 1 基画面槽号(前排 1..4/后排 1..N),Unit.slot 同系直传(仅
-      信息位);分排 = 按 ``position_pref``('front'/'back')路由;
-    - 装备不入本观察:SIFT 身份链不读 below-avatar 装备(备战席负探针在
-      案;上场位装备读在 read_row_equipped 独立通道,接线挂装备建模批),
-      Unit.equips 恒空表,不造假值。
-    """
-    if not deployed_chars:
-        return None
-    front: list[Unit] = []
-    back: list[Unit] = []
-    for bc in deployed_chars:
-        cid = str(getattr(bc, 'char_id', '') or '')
-        if not cid:
-            continue   # 未识别槽不进记录(宁缺勿造,与 SIFT 产出契约同)
-        row = str(getattr(bc, 'position_pref', '') or '')
-        unit = Unit(char_id=cid,
-                    star=int(getattr(bc, 'star', 1) or 1),
-                    equips=[],
-                    slot=int(getattr(bc, 'slot', 0) or 0))
-        (front if row == 'front' else back).append(unit)
-    if not front and not back:
-        return None   # 全部条目无身份 = 失读形态
-    return front, back
+#
+# (P6 观察链直产:值构造器 bench_view_from_obs / deployed_rows_from_obs 随
+#  BenchChar 中间形退役删除 —— 读链(obs/cw_identity_obs.read_bench_view /
+#  read_deployed_rows)直接产容器形状,观察写门直写,无换形层。占位件 kind
+#  细分权威源随迁读链(_bench_item_kind_by_slot 识别期定 kind)。)
 
 
 def bench_slots_to_legacy(view: BenchView) -> list:
@@ -1365,8 +1293,8 @@ def bench_slots_to_legacy(view: BenchView) -> list:
     下标语义两端同构(容器 slots[i] = 物理槽 i+1,旧表下标 i = 物理槽
     i+1,ADR-0316),逐槽 1:1;Unit → BenchChar:阵营不入容器(§3.2.3),
     经角色注册表查表派生(唯一例外开拓者形态随排,由 char_id 自带形态
-    名承载);备战席装备 = 容器 Unit.equips(本域观察恒空表,见
-    :func:`deployed_rows_from_obs` 边界申报)。槽位越界/空槽 → None。
+    名承载);备战席装备 = 容器 Unit.equips(本域观察恒空表 —— 身份链不读
+    装备,上场位装备读在 read_row_equipped 独立通道)。槽位越界/空槽 → None。
     """
     from sr_od.application.currency_war.data.cw_chars import get_char
     from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
@@ -1446,8 +1374,8 @@ def deployed_slots_to_rows(slots: list) -> tuple[list[Unit], list[Unit]]:
     (:func:`unit_rows_to_deployed` 的逆换算;转移函数单源化新增,
     v2 动作族腿「槽表中间形态→整表 write_logic」平移契约的写回端)。
 
-    Unit.slot = 行内 1 基槽号(信息位,与 :func:`deployed_rows_from_obs`
-    同系);空槽与未识别(char_id 空)不入行(宁缺勿造,容器席位域语义,
+    Unit.slot = 行内 1 基槽号(信息位,与观察行域同系);空槽与未识别
+    (char_id 空)不入行(宁缺勿造,容器席位域语义,
     与喂入口 :func:`game_state_from_ctx` 系同口径);往返 =
     :func:`unit_rows_to_deployed`(front, back) 逐槽还原( slot-1 定位,
     无歧义)。阵营不入行(§3.2.3),装备随 Unit 透传。
@@ -1534,7 +1462,7 @@ def bench_view_of_slots(bench_list: list) -> BenchView:
             # 可卖燃料(腾席守卫失守,波 4 落码审 A 组探针实证)。
             # ⚠️ 类型降级申报(阶段 3.5):本口输入是 is_item_slot 布尔,
             # 无 box/tome 类型信息,占位件恒 supply_box——kind 细分的权威
-            # 写端 = bench_view_from_obs 的 item_kind_by_slot(生产观察链);
+            # 写端 = 观察读链(read_bench_view 识别期定 kind,P6 直产);
             # 本口仅 sim 合成/逻辑态面(占位件稀有路径),细分降级 = 已知
             # 边界非缺陷。
             slots.append(BenchSlot(kind='supply_box'))

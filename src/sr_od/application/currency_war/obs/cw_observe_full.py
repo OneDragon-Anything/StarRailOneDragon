@@ -40,8 +40,8 @@ from sr_od.application.currency_war.obs.cw_equipment import (
 )
 from sr_od.application.currency_war.obs.cw_identity_obs import (
     ensure_portrait_templates,
-    read_bench_chars,
-    read_deployed_chars,
+    read_bench_view,
+    read_deployed_rows,
     read_row_equipped,
 )
 from sr_od.application.currency_war.obs.cw_observation import (
@@ -51,14 +51,29 @@ from sr_od.application.currency_war.obs.cw_observation import (
 )
 
 
+def _bench_occ_n(view) -> int:
+    """日志计数:容器视图占用槽数(与旧 len(bench_chars) 同口径:占用条目数)。"""
+    if view is None:
+        return 0
+    return sum(1 for s in view.slots if s.kind != 'empty')
+
+
+def _rows_n(rows) -> int:
+    """日志计数:上场位两行合计条目数(与旧 len(deployed_chars) 同口径)。"""
+    if rows is None:
+        return 0
+    return len(rows[0] or []) + len(rows[1] or [])
+
+
 def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
                  source: str, op=None, shop_open: bool = False,
                  session=None) -> dict:
     """对已稳定 frame 做全面识别(heavy 段组装;dict 形态过渡)。
 
     返回字段(对齐 _observe heavy 段产出,消费方=director 回填):
-    - bench_chars/deployed_chars:SIFT 身份(templates 未加载
-      → None,调用方沿用缓存);
+    - bench_view/deployed_rows:备战席容器视图(BenchView,空读/未加载模板
+      → None)+ 上场位 (前排, 后排) Unit 行(P6 观察链直产,无 BenchChar
+      中间形;调用方按 None/空读走 carried);
     - read_receipt::class:`GameStateReadReceipt`(read_game_state 轻量
       回执;旧 ``out['state']`` CwSimFrame 帧槽随返帧退役删除,逐帧读数
       消费面——节点类型/level 审计/raw 牌缓存——改走本回执);
@@ -90,19 +105,19 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
         if templates is not None:
             if session is not None:
                 from sr_od.application.currency_war.obs.cw_identity_obs import (
-                    read_bench_chars_tiered,
-                    read_deployed_chars_tiered,
+                    read_bench_view_tiered,
+                    read_deployed_rows_tiered,
                 )
-                out['bench_chars'] = read_bench_chars_tiered(
+                out['bench_view'] = read_bench_view_tiered(
                     session, ctx, frame, templates)
-                out['deployed_chars'] = read_deployed_chars_tiered(
+                out['deployed_rows'] = read_deployed_rows_tiered(
                     session, ctx, frame, templates)
             else:
-                out['bench_chars'] = read_bench_chars(ctx, frame, templates)
-                out['deployed_chars'] = read_deployed_chars(ctx, frame, templates)
+                out['bench_view'] = read_bench_view(ctx, frame, templates)
+                out['deployed_rows'] = read_deployed_rows(ctx, frame, templates)
         else:
-            out['bench_chars'] = None
-            out['deployed_chars'] = None
+            out['bench_view'] = None
+            out['deployed_rows'] = None
         # screen_name = 备战画面建档名(heavy 段宿主 = 备战画面 op 入口;
         # 店开子态帧传开商店建档名,失配豁免精确键观察侧维度)
         _st = read_game_state(ctx, frame,
@@ -146,7 +161,7 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
         # 名单已由上方身份半采集,此处补 owned/occupied 两路。None = 识别
         # 域资源未就绪(原因 log 留证),消费方(计划产出位)按 None 走
         # fail 通道;[]/{} = 真读到空。后排布局未知态(select_back_layout
-        # 双弃权帧)→ 后排不采集,宁缺勿造(同读侧 read_deployed_chars
+        # 双弃权帧)→ 后排不采集,宁缺勿造(同读侧 read_deployed_rows
         # 单帧未知只返前排的跳过先例)。
         _eq_sift = ensure_equip_sift_templates(ctx)
         # rect 读取须 ctx.screen_loader 在场(资源缺省帧跳过,防误触)
@@ -183,8 +198,8 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
                  'bench=%s deployed=%s gold=%d substate=%s '
                  'owned=%s occupied=%s',
                  tier, source,
-                 len(out['bench_chars'] or []),
-                 len(out['deployed_chars'] or []),
+                 _bench_occ_n(out['bench_view']),
+                 _rows_n(out['deployed_rows']),
                  _st.gold, out['substate'],
                  len(out['owned_equips'] or []),
                  len(out['occupied_equips'] or {}))

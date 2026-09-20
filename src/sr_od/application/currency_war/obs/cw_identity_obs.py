@@ -1,20 +1,25 @@
 """货币战争 **备战屏 视觉身份观测**(SIFT,非 OCR)。
 
 与 ``cw_observation``(OCR 字段)互补:本模块读 OCR 看不见的**身份** —— 备战栏 / 舞台槽内角色
-立绘 → 规范名(``read_deployed_chars`` / ``read_bench_chars``),用 ``currency_war_char_id`` 的
+立绘 → 规范名(``read_deployed_rows`` / ``read_bench_view``),用 ``currency_war_char_id`` 的
 SIFT 匹配器对模板库(生产用 ``currency_war/portrait_plaza`` 官方立绘库,见 ``currency_war_char_id`` docstring)。
 
-**与 bot 跟踪的关系**(设计):``CwSimFrame.deployed`` / ``bench`` 默认由 **bot 跟踪**(buy/deploy
-动作推演,``simulate`` 维护,见 ``cw_state``)—— plan-time 快、无需 SIFT。本模块的视觉 reads 是
-**独立旁路**,用途:① 离线从截图重建 CwSimFrame(测试 / replay,无需跑 bot);② bot 跟踪漂移时
-从画面恢复 / 校验。故**不**接进 ``read_game_state``(避免每帧 SIFT + 与 bot 跟踪双写冲突)。
+**与容器跟踪的关系**(设计):备战席/上场位默认由 bot 跟踪(动作推演 + 观察对账写容器,
+见 kernel/cw_game_state)—— plan-time 快、无需 SIFT。本模块的视觉 reads 是
+**独立旁路**,用途:① 离线从截图重建容器形状(测试 / replay,无需跑 bot);② 跟踪漂移时
+从画面恢复 / 校验。故**不**接进 ``read_game_state``(避免每帧 SIFT + 双写冲突)。
+
+**产形(P6 观察链直产)**:读链直接产容器形状,不产 BenchChar 中间形 ——
+备战席 = ``read_bench_view`` → :class:`BenchView`(占槽物品 kind 识别期按模板细分
+supply_box/tome/bookcard,不经「事后拼 kind 映射」);上场位 = ``read_deployed_rows``
+→ (前排, 后排) Unit 行(排归属由读链行参承载,不依赖 position_pref 换形路由)。
 
 槽位坐标 = screen_info 固定 area(``前排-1..4`` / ``后排-1..6`` / ``备战栏-1..9``),经
 ``cw_obs_core._area_rect`` 读 —— 改坐标改 yml 即可。空槽位 SIFT 内点低 → 自然落 None
 (无需「槽位是否填充」预判)。
 
 **架构:纯 CV 核心 + ctx 薄包装** —— ``identify_slots`` 只吃 (screen, templates, slots, row),
-可离线硬编码 rect 测;``read_deployed_chars`` / ``read_bench_chars`` 从 ctx screen_info 取 rect
+可离线硬编码 rect 测;``read_deployed_rows`` / ``read_bench_view`` 从 ctx screen_info 取 rect
 再调核心。与 ``currency_war_char_id`` 同样的「纯 CV + 外部接线」分层。
 
 **可靠性:实测初步可用(2026-08-09 D-22)**:r1-8 备战截图 SIFT 立绘库 **6/6 有角色槽命中**(inliers
@@ -30,8 +35,14 @@ from cv2.typing import MatLike
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils.file_utils import get_project_root
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER, get_char
-from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    BENCH_CAPACITY_DEFAULT,
+    BenchSlot,
+    BenchView,
+    Unit,
+)
 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
 from sr_od.application.currency_war.obs.currency_war_char_id import (
     AvatarTemplates,
@@ -139,7 +150,7 @@ def read_star(crop: MatLike) -> int:
     放宽到 0.25(立绘库仍 0/71 + 全 fixture 无新 FP),备战-9 读回 2。
 
     :return: 星级(≥1);空图/无匹配/模板缺 → 1(角色必有星,fallback)。
-    ⚠️ **offline 旁路**(live 走 bot tracking ``BenchChar.star``,非 read_star):comp_viability 离线
+    ⚠️ **offline 旁路**(live 走 bot tracking 容器 Unit.star,非 read_star):comp_viability 离线
     校验用(cw_performance:185),不影响 live star_achievement。3星待 live 样本(逻辑同,数金星)。
     """
     if crop is None or crop.size == 0:
@@ -299,12 +310,12 @@ def identify_slots(
     live_only: bool = False,
     center_gate: bool = False,
     variant_keys: set[str] | None = None,
-) -> list[BenchChar]:
-    """纯 CV:按槽位裁切 → SIFT 识别 → BenchChar 列表(离线可测,无 ctx 依赖)。
+) -> list[Unit]:
+    """纯 CV:按槽位裁切 → SIFT 识别 → Unit 命中列表(离线可测,无 ctx 依赖)。
 
     :param slots: ``[(slot_idx, rect), ...]``;rect = 1080p 槽位矩形(来自 screen_info 或硬编码)。
-    :param row: ``"front"`` / ``"back"``(已上阵排)→ BenchChar.position_pref;``""``(备战栏)→ 用
-        角色固有偏好(未上阵)。
+    :param row: ``"front"`` / ``"back"``(已上阵排,开拓者形态归一依据);``""``(备战栏,
+        无形态归一)。排归属不入命中形状(容器 Unit 无排位,由调用方行参/行域承载)。
     :param min_inliers: 识别门槛(identify_character 透传)。部署排(有场景背景)传更高
         (``_DEPLOYED_MIN_INLIERS``);备战栏卡槽背景干净,保持默认。
     :param live_only: 部署排专用(2026-08-26 定策,同日居中勘误后语义微调):
@@ -329,11 +340,12 @@ def identify_slots(
         (:func:`currency_war_char_id._resolve_best`)—— 渗漏假设的中心在邻槽,
         几何直接出局,与内点数无关。 False(默认)= 旧逐槽裁片路径
         (备战栏/商店卡窗与卡同宽无渗漏,保持不变)。
-    :return: 命中角色的 BenchChar 列表(空槽 / 低内点 / 歧义 / 非 roster → 跳过,不进列表)。
+    :return: 命中角色的 Unit 列表(空槽 / 低内点 / 歧义 / 非 roster → 跳过,不进列表;
+        equips 恒空表 —— 身份链不读装备,装备在 read_row_equipped 独立通道)。
 
     每槽:裁 ``screen[y1:y2, x1:x2]`` → ``identify_character``(SIFT 对脸库)→ ``resolve_char_name``
-    → 规范名。faction 取角色首阵营(粗;权威阵营计数看 board OCR);star = ``read_star``(立绘底部
-    金星计数)。
+    → 规范名。阵营/位置偏好不入形状(§2.1:消费点经注册表按 char_id 派生);star =
+    ``read_star``(立绘底部金星计数)。
 
     **相邻幽灵去重**:部署位的角色卡牌比槽窗宽(实测约 170 vs 142px,VLM
     量测),单张卡的立绘可能渗进相邻窗口 → 同名角色相邻两窗双命中(真身
@@ -341,8 +353,7 @@ def identify_slots(
     为残影剔除;其余(分数相近 = 真双副本 / 不相邻)保留。真窗口帧(佩佩局
     双帧)暂未复现幽灵——规则作廉价保险存在,标定数字见 :data:`_GHOST_RATIO`。
     """
-    out: list[BenchChar] = []
-    hits: list[tuple[int, BenchChar, int]] = []   # (slot_idx, char, inliers) 去重用
+    hits: list[tuple[int, Unit, int]] = []   # (slot_idx, unit, inliers) 去重用
     _has_variant: set[str] | None = None
     if live_only:
         # P4R4 漏斗批:变体主档集可由调用方注入(全库口径)——漏斗传的是
@@ -401,15 +412,11 @@ def identify_slots(
         )
         if row and name and is_trailblazer(name):
             name = trailblazer_form(name, row)
-        ch = get_char(name)
-        hits.append((slot_idx, BenchChar(
-            slot=slot_idx,
+        hits.append((slot_idx, Unit(
             char_id=name,
-            # '?'=未知(名不在注册表);''=已知无阵营(白厄类,复制效果不计阵营人数)
-            faction=(ch.factions[0] if (ch is not None and ch.factions)
-                     else ('' if ch is not None else '?')),
             star=read_star(crop),            # 立绘底部金星计数(1/2/3 星;见 read_star)
-            position_pref=row if row else (ch.position_pref() if ch is not None else 'back'),
+            equips=[],
+            slot=slot_idx,
         ), inliers))
     # 相邻幽灵去重(见 docstring):同名相邻双命中,低分 < 高分×0.5 → 剔低分
     drop: set[int] = set()
@@ -565,18 +572,20 @@ def _level_trusted(ctx: SrContext) -> bool | None:
         return None
 
 
-def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates,
-                        level: int | None = None) -> list[BenchChar]:
-    """舞台已上阵角色(前排 4 + 后排 N)→ list[BenchChar](position_pref=front/back)。
+def read_deployed_rows(ctx: SrContext, screen: MatLike, templates: AvatarTemplates,
+                       level: int | None = None) -> tuple[list[Unit], list[Unit]]:
+    """舞台已上阵角色(前排 4 + 后排 N)→ (前排 Unit 行, 后排 Unit 行)(P6 直产)。
 
-    空槽 / 未识别 → 不进列表。用途:离线重建 / 漂移恢复(**不进 read_game_state**;见模块 docstring)。
+    空槽 / 未识别 → 不进该排行列表(双行全空 = 失读,调用方走 carried;
+    与旧 bench_view_from_obs 空集纪律同款)。排归属 = 本函数行参直接承载,
+    不经 position_pref 换形路由。用途:离线重建 / 漂移恢复(**不进 read_game_state**;见模块 docstring)。
     布局选档 **cap 差公式 + CV 双通道**(ADR-0385,旧 level 驱动已废——run 26
     lv8 无召唤物局按 8 格读板失真实证):select_back_layout 现读 read_deploy_cap
     (未传 level 时 session 等级链);读不到 → 6 槽基线。
-    **布局未知态**(15 号稿 §3.2④):单帧未知 → 只返前排(跳过后排读);
-    冻结帧(连续 3 未知)→ 读类退 6 档基线继续读;每帧 JSONL 留证在
-    resolve 侧。level_trusted 接线:未显式传 level 时取容器 level
-    authoritative 位(``_level_trusted``,derived 帧公式通道弃权)。
+    **布局未知态**(15 号稿 §3.2④):单帧未知 → 只返前排(跳过后排读,
+    后排行恒空表);冻结帧(连续 3 未知)→ 读类退 6 档基线继续读;每帧
+    JSONL 留证在 resolve 侧。level_trusted 接线:未显式传 level 时取容器
+    level authoritative 位(``_level_trusted``,derived 帧公式通道弃权)。
     """
     from sr_od.application.currency_war.obs.cw_back_layout import (
         back_row_slot_rects_ctx,
@@ -596,7 +605,7 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
                                min_inliers=_DEPLOYED_MIN_INLIERS,
                                live_only=_DEPLOYED_LIVE_ONLY,
                                center_gate=_DEPLOYED_CENTER_GATE)
-        return front
+        return front, []
     if _lay.get('unknown'):
         # 冻结帧读类(§3.2④ B2):退 6 档基线继续读(读面可重读可纠正,
         # 下一帧覆盖;写类冻结在消费面 cw_op_deploy 侧)。
@@ -644,7 +653,7 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
                              '逐位验证 → upsert 对应档 area → _LAYOUT_PREFIX'
                              ' 登记档位 → 本留证自然停发(2026-08-26 佩佩局'
                              ' 7 格即按此流程闭合)'),
-                    source='read_deployed_chars', cap=_lay['cap'],
+                    source='read_deployed_rows', cap=_lay['cap'],
                     level=_lay['level'], formula=_lay['formula_raw'],
                     cv_readings=_lay.get('cv_readings'))
     except Exception:   # noqa: BLE001  钩子 best-effort,绝不阻塞身份读取
@@ -659,8 +668,8 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
                           center_gate=_DEPLOYED_CENTER_GATE)
     # 系统单位恒最右布局自检(ADR-0281 件3):便宜的常设布局判别器,best-effort
     check_system_unit_layout(screen, back, back_slots, templates,
-                             source='read_deployed_chars')
-    return front + back
+                             source='read_deployed_rows')
+    return front, back
 
 
 # 系统单位布局自检:实测 x 与所选档右格中心的容差(px;ADR-0281 用户口述模型:
@@ -699,10 +708,10 @@ def _sift_locate_x(band: MatLike, templates: AvatarTemplates, char_id: str,
 
 def check_system_unit_layout(
     screen: MatLike,
-    back_chars: list[BenchChar],
+    back_chars: list[Unit],
     back_slots: list[tuple[int, Rect]],
     templates: AvatarTemplates,
-    source: str = 'read_deployed_chars',
+    source: str = 'read_deployed_rows',
 ) -> None:
     """系统单位恒最右布局自检(ADR-0281 件3,常设判别器)。
 
@@ -759,26 +768,78 @@ def check_system_unit_layout(
         pass
 
 
-def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates) -> list[BenchChar]:
-    """备战栏角色(9 槽)→ list[BenchChar](position_pref=角色固有偏好,未上阵)。
+def read_bench_view(ctx: SrContext, screen: MatLike, templates: AvatarTemplates) -> BenchView | None:
+    """备战栏(9 槽)SIFT 读链直产容器视图(P6)→ :class:`BenchView` | None。
 
-    空槽 / 未识别 → 不进列表;已建档物品(箱/典籍/书册卡)占用的槽位以
-    ``is_item_slot=True`` 空名位入列表(占 1 席,见
-    :func:`_merge_item_occupied_slots`)。用途:离线重建 / 漂移恢复。
+    SIFT 命中(角色槽)与已建档占槽物品(箱/典籍/书册卡,kind 识别期细分)
+    合成为定长 9 槽视图。**零占用 = 失读非全空**(P2-1 纪律,原
+    ``bench_view_from_obs`` 空集守卫随直产移驻读链):overlay 残留/动画帧/
+    识别退化都会产空读 → 返 None,调用方走 carried(宁缺勿造),禁把
+    「9 槽全空」当 observation 入记录。占用未识别的槽由召唤物停机钩子
+    (:func:`_summon_unknown_hook`)兜底,不静默丢弃。用途:离线重建 /
+    漂移恢复 / 备战 heavy 观察。
     """
-    chars = identify_slots(screen, templates, _ctx_slots(ctx, '备战栏', 9), '')
-    _summon_unknown_hook(ctx, screen, chars)
-    _merge_item_occupied_slots(ctx, screen, chars)
-    return chars
+    hits = identify_slots(screen, templates, _ctx_slots(ctx, '备战栏', 9), '')
+    _summon_unknown_hook(ctx, screen, hits)
+    return _bench_view_of(hits, _bench_item_kind_by_slot(ctx, screen))
+
+
+def _bench_item_kind_by_slot(ctx: SrContext, screen: MatLike) -> dict[int, str]:
+    """备战栏占槽物品 kind 细分映射(识别期定 kind 单一源;P6 直产)→
+    ``{物理槽号: 'supply_box' | 'tome' | 'bookcard'}``。
+
+    为什么读链必须自含:占位物品同样占备战席 1 槽(补给晶矿掉箱实机语义),
+    漏记 = 席满帧被当成有空位,策略照幻影空位发买牌、游戏侧全部拒买且金
+    不动(实机局:采晶矿奖励「开启」箱补满末槽后 3 张连发全拒)。识别面 =
+    精确识别族(find_supply_boxes 补给箱/简易武装箱 ∪ find_tomes 秘密典籍
+    ∪ find_bookcards 书册卡,与旧 ``bench_item_slots`` 精确档同族同档);
+    泛扫描档不入账,留召唤物停机钩子兜未建档变体。
+
+    [索引定义] 键 = 备战栏物理槽 1..9(1 基,与 BenchView.slots 下标+1 同系);
+    取值时机 = 调用帧现读快照(与 SIFT 命中同帧,跨帧失效)。
+    构造序沿用旧观察链 ``_item_kind``(2026-09-18-prep-obs-retirement 阶段
+    3.5):boxes → tomes 覆盖 → bookcards 覆盖(同槽多命中后写者胜)。
+    """
+    slots9 = _ctx_slots(ctx, '备战栏', 9)
+    kind: dict[int, str] = {int(s): 'supply_box' for s, _p in find_supply_boxes(screen, slots9)}
+    kind.update({int(s): 'tome' for s, _p in find_tomes(screen, slots9)})
+    kind.update({int(s): 'bookcard' for s, _p in find_bookcards(screen, slots9)})
+    return kind
+
+
+def _bench_view_of(hits: list[Unit], kind_by_slot: dict[int, str]) -> BenchView | None:
+    """SIFT 命中 + 占槽物品 kind → 备战席容器视图(观察写端值构造单一源)。
+
+    - SIFT 命中先落槽(unit),占槽物品只填**空槽**(身份胜出——与旧
+      ``_merge_item_occupied_slots``「已识别角色位跳过」同序);
+    - 槽位越界命中丢弃并 log 留证(物理槽 1..capacity 外 = 读链漂移信号,
+      静默丢弃 = 身份静默丢失);
+    - 零占用 → None(失读非全空,见 :func:`read_bench_view`)。
+    """
+    slots: list[BenchSlot] = [BenchSlot(kind='empty')] * BENCH_CAPACITY_DEFAULT
+    for u in hits:
+        s = int(u.slot or 0)
+        if 1 <= s <= BENCH_CAPACITY_DEFAULT:
+            slots[s - 1] = BenchSlot(kind='unit', unit=u)
+        else:
+            log.warning('[cw!][identity] 备战席读链槽位越界丢弃:'
+                        'slot=%s char=%s(SIFT/星级读链漂移信号)',
+                        s, u.char_id)
+    for s, k in kind_by_slot.items():
+        if 1 <= s <= BENCH_CAPACITY_DEFAULT and slots[s - 1].kind == 'empty':
+            slots[s - 1] = BenchSlot(kind=k)
+    if all(sl.kind == 'empty' for sl in slots):
+        return None
+    return BenchView(slots=slots, capacity=BENCH_CAPACITY_DEFAULT)
 
 
 def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
-                         chars: list[BenchChar]) -> None:
+                         hits: list[Unit]) -> None:
     """召唤物/物品停机钩子(偏常驻兜底,hook审计 S3):占用但全部识别路径
     不认识的备战席槽 → 停机保画面留现场建档。
 
-    为什么读链双路径都必须挂:身份读链有旧路径(:func:`read_bench_chars`)
-    与漏斗路径(:func:`read_bench_chars_tiered`,P4R4 heavy 批起的生产主路径)
+    为什么读链双路径都必须挂:身份读链有旧路径(:func:`read_bench_view`)
+    与漏斗路径(:func:`read_bench_view_tiered`,P4R4 heavy 批起的生产主路径)
     两条,钩子段原本只内联在旧路径——漏斗路径「占用未识别」的槽被静默
     丢弃,跟踪席数少 1 → 席满被当有空位,策略照幻影空位发买牌、游戏全拒
     且金不动(实机局:黄泉槽整槽丢读后 2 张连发全拒,2026-09-14
@@ -827,7 +888,7 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
         # 排除/防抖)是停机判定语义,不进该函数、留在钩子内。
         _bench_slots9 = _ctx_slots(ctx, '备战栏', 9)
         _obj_slots = bench_item_slots(ctx, screen, fuzzy=True)
-        _named = {c.slot for c in chars} if chars else set()
+        _named = {u.slot for u in hits} if hits else set()
         for _slot, _rect in _bench_slots9:
             if _slot in _named or _slot in _obj_slots:
                 continue
@@ -873,30 +934,6 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
                     ctx.run_context.stop_running(
                         reason='hook:summon_unknown', save_screenshot=True)
                 break
-    except Exception:   # noqa: BLE001  采集 best-effort,绝不阻塞身份读取
-        pass
-
-
-def _merge_item_occupied_slots(ctx: SrContext, screen: MatLike,
-                               chars: list[BenchChar]) -> None:
-    """已建档物品(补给箱/秘密典籍/书册卡)占用的备战席槽位并入身份读链结果
-    (就地追加 ``is_item_slot=True`` 空名位)。
-
-    为什么必须:SIFT 只产角色位,而物品同样占备战席 1 槽(补给晶矿掉箱实机
-    语义,见下方「补给箱识别」节首注)——漏记 = 席满帧被当成有空位,策略照
-    幻影空位发买牌、游戏侧全部拒买且金不动(实机局:采晶矿奖励「开启」箱补满
-    末槽后 3 张连发全拒)。识别面 = ``bench_item_slots`` 精确档(与部署装配
-    路径同源,同函数同档);泛扫描档不入账,留召唤物停机钩子兜未建档变体。
-    坐标系:slot = 备战栏物理槽 1..9(与 ``BenchChar.slot`` 同系);已识别
-    角色位跳过;异常静默(本模块采集面 best-effort 纪律)。
-    """
-    try:
-        named = {c.slot for c in chars}
-        for slot in sorted(bench_item_slots(ctx, screen, fuzzy=False)):
-            if slot in named:
-                continue
-            chars.append(BenchChar(slot=slot, char_id='', star=1,
-                                   is_item_slot=True))
     except Exception:   # noqa: BLE001  采集 best-effort,绝不阻塞身份读取
         pass
 
@@ -975,11 +1012,11 @@ def identify_slots_tiered(
     min_inliers: int = 10,
     live_only: bool = False,
     center_gate: bool = False,
-) -> list[BenchChar]:
+) -> list[Unit]:
     """三层漏斗识别(L1/L2 子集命中走加严线,弱命中下探 L3;见模块漏斗注释)。
 
     :param session: 局 session(漏斗状态挂载点);None = 直接全库(行为等价旧路径)。
-    :return: 同 :func:`identify_slots`;命中结果同步写回漏斗状态。
+    :return: 同 :func:`identify_slots`(Unit 命中);命中结果同步写回漏斗状态。
     """
     if session is None:
         return identify_slots(screen, templates, slots, row,
@@ -990,55 +1027,56 @@ def identify_slots_tiered(
     # 子集命中的加严线(见 _FUNNEL_SUBSET_MIN_INLIERS_FACTOR 注):子集
     # 冠军 ≠ 全局冠军,弱命中必须下探 L3 仲裁。
     _subset_min = min_inliers * _FUNNEL_SUBSET_MIN_INLIERS_FACTOR
-    out: list[BenchChar] = []
+    out: list[Unit] = []
     for slot_idx, rect in slots:
-        ch: BenchChar | None = None
+        u: Unit | None = None
         row_key = (row or '', slot_idx)
         # L1:该槽上帧识别结果(单模板快配)
         prev = last.get(row_key)
         if prev:
             sub = _sub_templates(templates, [prev])
             if sub:
-                hits = identify_slots(screen, sub, [(slot_idx, rect)], row,
-                                      min_inliers=_subset_min,
-                                      live_only=live_only, center_gate=center_gate,
-                                      variant_keys=variant_keys)
-                if hits:
-                    ch = hits[0]
+                us = identify_slots(screen, sub, [(slot_idx, rect)], row,
+                                    min_inliers=_subset_min,
+                                    live_only=live_only, center_gate=center_gate,
+                                    variant_keys=variant_keys)
+                if us:
+                    u = us[0]
         # L2:本局已见集(排除 L1 已试候选)
-        if ch is None and seen:
+        if u is None and seen:
             l2 = sorted(seen - ({prev} if prev else set()))
             sub = _sub_templates(templates, l2)
             if sub:
-                hits = identify_slots(screen, sub, [(slot_idx, rect)], row,
-                                      min_inliers=_subset_min,
-                                      live_only=live_only, center_gate=center_gate,
-                                      variant_keys=variant_keys)
-                if hits:
-                    ch = hits[0]
+                us = identify_slots(screen, sub, [(slot_idx, rect)], row,
+                                    min_inliers=_subset_min,
+                                    live_only=live_only, center_gate=center_gate,
+                                    variant_keys=variant_keys)
+                if us:
+                    u = us[0]
         # L3:全库兜底(新角色首次上场;= 旧路径原样)
-        if ch is None:
-            hits = identify_slots(screen, templates, [(slot_idx, rect)], row,
-                                  min_inliers=min_inliers, live_only=live_only,
-                                  center_gate=center_gate)
-            if hits:
-                ch = hits[0]
-        if ch is not None:
-            out.append(ch)
-            last[row_key] = ch.char_id
-            seen.add(ch.char_id)
+        if u is None:
+            us = identify_slots(screen, templates, [(slot_idx, rect)], row,
+                                min_inliers=min_inliers, live_only=live_only,
+                                center_gate=center_gate)
+            if us:
+                u = us[0]
+        if u is not None:
+            out.append(u)
+            last[row_key] = u.char_id
+            seen.add(u.char_id)
         else:
             last.pop(row_key, None)   # 上帧占用本帧消失(卖出/合成)→ 失效
     return out
 
 
-def read_deployed_chars_tiered(session, ctx: SrContext, screen: MatLike,
-                               templates: AvatarTemplates,
-                               level: int | None = None) -> list[BenchChar]:
-    """:func:`read_deployed_chars` 的漏斗版(签名多 session;布局解析/
+def read_deployed_rows_tiered(session, ctx: SrContext, screen: MatLike,
+                              templates: AvatarTemplates,
+                              level: int | None = None,
+                              ) -> tuple[list[Unit], list[Unit]]:
+    """:func:`read_deployed_rows` 的漏斗版(签名多 session;布局解析/
     留证钩子/系统单位自检全部复用旧实现,仅 front/back 识别走三层漏斗)。
-    布局未知态语义与旧实现同款(§3.2④):单帧未知只返前排;冻结帧
-    读类退 6 档基线。"""
+    布局未知态语义与旧实现同款(§3.2④):单帧未知只返前排(后排行恒空);
+    冻结帧读类退 6 档基线。"""
     from sr_od.application.currency_war.obs.cw_back_layout import (
         back_row_slot_rects_ctx,
         fallback_back_slots,
@@ -1056,27 +1094,27 @@ def read_deployed_chars_tiered(session, ctx: SrContext, screen: MatLike,
                                   live_only=_DEPLOYED_LIVE_ONLY,
                                   center_gate=_DEPLOYED_CENTER_GATE)
     if _lay.get('unknown') and not _lay.get('frozen'):
-        return front   # 单帧未知:跳过后排读
+        return front, []   # 单帧未知:跳过后排读
     back = identify_slots_tiered(session, screen, templates, back_slots, 'back',
                                  min_inliers=_DEPLOYED_MIN_INLIERS,
                                  live_only=_DEPLOYED_LIVE_ONLY,
                                  center_gate=_DEPLOYED_CENTER_GATE)
     check_system_unit_layout(screen, back, back_slots, templates,
-                             source='read_deployed_chars')
-    return front + back
+                             source='read_deployed_rows')
+    return front, back
 
 
-def read_bench_chars_tiered(session, ctx: SrContext, screen: MatLike,
-                            templates: AvatarTemplates) -> list[BenchChar]:
-    """:func:`read_bench_chars` 的漏斗版(识别走三层漏斗;召唤物停机钩子
+def read_bench_view_tiered(session, ctx: SrContext, screen: MatLike,
+                           templates: AvatarTemplates) -> BenchView | None:
+    """:func:`read_bench_view` 的漏斗版(识别走三层漏斗;召唤物停机钩子
     双路径共用单一源——本路径是 heavy 生产主路径,占用未识别的槽若只静默
-    丢弃,跟踪席数失真会直通策略决策,见 :func:`_summon_unknown_hook`)。"""
-    chars = identify_slots_tiered(session, screen, templates,
-                                  _ctx_slots(ctx, '备战栏', 9), '',
-                                  min_inliers=10)
-    _summon_unknown_hook(ctx, screen, chars)
-    _merge_item_occupied_slots(ctx, screen, chars)
-    return chars
+    丢弃,跟踪席数失真会直通策略决策,见 :func:`_summon_unknown_hook`)。
+    空读语义(零占用 → None)与旧路径同款。"""
+    hits = identify_slots_tiered(session, screen, templates,
+                                 _ctx_slots(ctx, '备战栏', 9), '',
+                                 min_inliers=10)
+    _summon_unknown_hook(ctx, screen, hits)
+    return _bench_view_of(hits, _bench_item_kind_by_slot(ctx, screen))
 
 
 # ===== 补给箱识别(备战栏槽位;2026-08-14 首见实机) =====
@@ -1085,7 +1123,7 @@ def read_bench_chars_tiered(session, ctx: SrContext, screen: MatLike,
 # 点它开箱 → 腾槽 + 得内容)。备战席满时晶矿点不动(晶矿可能给角色/箱,都要占席)→ **开箱优先于采晶矿**。
 # 箱子是固定 UI icon → 灰度 TM 足够(SIFT 无必要);分离度(2026-08-14 实测):箱槽 1.0 vs 角色槽 ≤0.242。
 # ⚠️ 拖动后选中态(蓝光效环)降 TM 至 ~0.65-0.69(2026-08-14 拖动实测;点空白取消选中 → 0.931 恢复,跨槽位稳)
-# → 阈值取 0.6:覆盖选中态,噪声槽 0.242 仍有 ~2.4× 分离。bench 满判定:箱占席但非角色,read_bench_chars 读不到
+# → 阈值取 0.6:覆盖选中态,噪声槽 0.242 仍有 ~2.4× 分离。bench 满判定:箱占席但非角色,read_bench_view 角色位读不到
 # → 硬信号以「备战席已满」OCR 为准。
 _SUPPLY_BOX_TM_THR: float = 0.6
 _supply_box_gray: MatLike | None = None
@@ -1295,7 +1333,7 @@ def read_tomes(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]]:
 
 # ===== 占槽物品排除集·单一源(部署伪槽修复批 ①)=====
 # 双源缺口(方案 .debug/temp/currency_war/deploy_pseudo_slot/方案.md §0):
-# 已知物品(find_* 族)的排除集此前只内联在 read_bench_chars 的 summon 停机
+# 已知物品(find_* 族)的排除集此前只内联在 read_bench_view 前身的 summon 停机
 # 钩子里,部署扫描(cw_op_deploy bench_occ 纯像素占用)完全没消费 → 物件槽
 # 被装配成 char_id='' 伪槽进部署计划 → 游戏「无法移动该目标至场上」白耗
 # (局34 实证)。抽本函数后钩子与部署共用同一份名单,禁再各写一份。
@@ -1304,9 +1342,10 @@ def read_tomes(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]]:
 def bench_item_slots(ctx: SrContext, screen: MatLike, *, fuzzy: bool) -> set[int]:
     """备战栏占槽物品槽位集(单一源,双置信档)→ **1-based** 槽号集合。
 
-    **坐标系与取值时机(注释规范硬门)**:返回值与 ``BenchChar.slot`` 同系
-    (备战栏 1-based);消费方转 0-based 须显式 −1(部署面 ``bench_occ``
-    为 0-based,勿混)。取值时机 = 生成期现读快照(调用方持帧自洽,跨帧失效)。
+    **坐标系与取值时机(注释规范硬门)**:返回值 = 备战栏物理槽号(1 基,
+    与 :class:`BenchView` slots 下标+1 同系);消费方转 0-based 须显式 −1
+    (部署面 ``bench_occ`` 为 0-based,勿混)。取值时机 = 生成期现读快照
+    (调用方持帧自洽,跨帧失效)。
 
     **双置信档**(方案 A1:两处消费的置信要求不同,禁止一个全集合两处共用):
     - 精确档(``fuzzy=False``)= find_supply_boxes(补给箱/简易武装箱)
@@ -1325,7 +1364,7 @@ def bench_item_slots(ctx: SrContext, screen: MatLike, *, fuzzy: bool) -> set[int
     out |= {i for i, _p in find_tomes(screen, slots9)}
     out |= {i for i, _p in find_bookcards(screen, slots9)}
     if fuzzy:
-        # 泛 TM 低阈扫描(原 read_bench_chars 内联段逐行搬移,判定零变化):
+        # 泛 TM 低阈扫描(原 read_bench_view 前身内联段逐行搬移,判定零变化):
         # 兜已知形态全部漏认的低分渲染物品变体(r100j:卡包变体 TM 0.54 漏检型)。
         _item_tms = [t for t in (_get_supply_box_gray(), _get_crate_gray())
                      if t is not None]
@@ -1589,7 +1628,7 @@ def read_row_equipped(
     """某排(前排/后排/备战栏)每槽 below-avatar 已穿装备 → ``{slot_idx: [装备名]}``(纯读)。
 
     从 ctx screen_info 取 ``{prefix}-1..{count}`` avatar rect → ``avatar_to_below`` → ``read_equipped_below``。
-    空槽 / 无命中 → 该 slot 不在 dict。与 ``read_deployed_chars``(角色身份)互补:角色 + 装备 = 完整槽位态。
+    空槽 / 无命中 → 该 slot 不在 dict。与 ``read_deployed_rows``(角色身份)互补:角色 + 装备 = 完整槽位态。
 
     纯读(只 TM screen + templates,不写 session/全局),可进 recognizer(并发安全)。
     """
