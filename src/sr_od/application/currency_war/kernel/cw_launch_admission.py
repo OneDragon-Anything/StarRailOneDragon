@@ -179,7 +179,9 @@ def readiness_form_ok_from_snapshot(state_snapshot: dict | None, *,
     return form_progress(comp, view) >= 1.0
 
 
-def launch_board_quality_report(gs: GameState, comp: Comp) -> dict:
+def launch_board_quality_report(gs: GameState, comp: Comp, *,
+                                deploy_plan_available_fn: Callable[
+                                    [...], bool]) -> dict:
     """armed 质量维报告(ADR-0570;纯函数,配方完备帧调用)。
 
     质量判据(零自由参数,两端均机制定义量):
@@ -198,25 +200,21 @@ def launch_board_quality_report(gs: GameState, comp: Comp) -> dict:
       该口径与披露 B_t(kernel ``board_target_line_weight``)同族同源
       ——披露口径本体温测零改(ADR-0535),本报告附 ``b_t_disclosure``
       供判读对账。
-    - ``deploy_plan_available`` = kernel ``has_deployable`` 判空(发射×执行契约
-      单一源,禁第二套围栏语义)。输入装配取 mandate 部署放行判定同源缺省:
-      cap = ``state.max_units()``(装配缺读退 10**6,与放行判定 None 兜底
-      同口径)、target = ``comp.factions``(framework carry/locked
-      factions 在判据核不可得 → 严格子集,只可能偏「计划不可得」=
-      fail-open 方向,不可能造成关闸后无动作的守卫停摆)。
+    - ``deploy_plan_available`` = 注入的部署计划可入性谓词(单一源 =
+      mandate_v1 deploy_plan.has_deployable;kernel 桶禁 strategies 直引,
+      由调用方注入同一函数对象——依赖倒置契约同 line_members)。
 
     fail-open 语义(ADR-0570 §判据):线外件在场但部署计划不可得 ⇒
     质量目标不可达帧,降格为配方完备发射(「不可达不关闸」防死锁教义,
     论证与出处 = ADR-0570 §判据/§Considered);推迟帧
     (``defer_by_quality``)必有部署动作在途(计划存在 ⇒ 下环
-    RunDeploy 推进换血/填板,P61 族承重单调收敛),金尽稳态由 ADR-0554
+    部署原子序推进换血/填板,P61 族承重单调收敛),金尽稳态由 ADR-0554
     收益耗尽臂兜底(判据与 armed 零耦合)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         board_target_line_weight,
         deployed_bond_counts,
-        has_deployable,
     )
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         deployed_occupied,
@@ -246,7 +244,7 @@ def launch_board_quality_report(gs: GameState, comp: Comp) -> dict:
         cap = int(max_units_of(gs))
     except Exception:   # noqa: BLE001  cap 缺读 = 放行判定 None 兜底同口径
         cap = 10 ** 6
-    plan_available = has_deployable(
+    plan_available = deploy_plan_available_fn(
         [b for b in bench_slots_of(gs) if b is not None],
         deployed_cids=cids,
         deployed_fac=deployed_bond_counts(cids),
@@ -266,8 +264,9 @@ def launch_board_quality_report(gs: GameState, comp: Comp) -> dict:
 
 
 def readiness_launch_decision(gs: GameState, comp: Comp | None,
-                              *, line_members: Callable[[Comp], set[str]]
-                              ) -> dict:
+                              *, line_members: Callable[[Comp], set[str]],
+                              deploy_plan_available_fn: Callable[
+                                  [...], bool]) -> dict:
     """达标臂判据核(单一源;sim 决策下沉两小批之①上收,裁决 = ADR-0557;
     armed 质量合取 = ADR-0570)。
 
@@ -295,6 +294,10 @@ def readiness_launch_decision(gs: GameState, comp: Comp | None,
         strategies.impl.mandate_v1.statefn.predicates.line_members(kernel
         桶禁直引 strategies,由调用方注入同一函数对象——与
         launch_admission_report 同契约)。
+    :param deploy_plan_available_fn: 部署计划可入性谓词注入参,单一源 =
+        strategies.impl.mandate_v1.deploy_plan.has_deployable(kernel 桶
+        禁直引 strategies,由调用方注入同一函数对象——依赖倒置契约同
+        line_members;benchchar-retirement P3 起选人谓词迁策略层)。
     """
     armed = readiness_form_ok(gs, comp)
     quality = None
@@ -302,7 +305,8 @@ def readiness_launch_decision(gs: GameState, comp: Comp | None,
     admission = None
     if armed:
         try:
-            quality = launch_board_quality_report(gs, comp)
+            quality = launch_board_quality_report(
+                gs, comp, deploy_plan_available_fn=deploy_plan_available_fn)
         except Exception:   # noqa: BLE001  质量评估异常 fail-open(算不出
             # 不关闸,防死锁优先;论证 = ADR-0570 §判据 fail-open 分界)
             quality = None

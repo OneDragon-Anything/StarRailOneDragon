@@ -19,10 +19,6 @@ from sr_od.application.currency_war.cw_screen_state import (
     PREP_DIRECT_EXIT_SCREENS,
     get_in_match_screen_name,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import (
-    bench_occupied_slot_nos,
-    bench_slots_healthy,
-)
 from sr_od.application.currency_war.kernel.cw_run_allocator import MatchOutcome
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_observation import (
@@ -143,7 +139,7 @@ def locked_resume_sync_and_battle(op, ctx):
     策略审查-第十二跳.md #7):恢复局分支原样跳过全部备战交互直接
     CwActionStartBattleParam,板面调整被跳过(实证:恢复局首战快照 board_before 为空
     ——部署面零执行)。本函数在 CwActionStartBattleParam 前插一次 **部署原子序同步步**
-    (批 2a:RunDeploy 组合壳退役,按 kernel select_deployments 现算逐
+    (批 2a:RunDeploy 组合壳退役,按策略层部署计划现算逐
     move 发 CwActionDeployMoveParam——板空时计划恒空,与零商店交互形态同构;锁定
     局「商店探针零响应」禁令只辖商店域,部署面不受辖)。
 
@@ -173,85 +169,20 @@ def locked_resume_sync_and_battle(op, ctx):
 
 
 def _battle_chain_deploy_moves(session) -> list:
-    """出战链部署计划(容器读 → kernel 单一源;R2 原子通路,批 2a)。
+    """出战链部署计划(策略层部署计划单一源;R2 原子通路,批 2a)。
 
-    与 mandate 发射位同参同源(``_deploy_plan_inputs`` 装配 +
-    ``select_deployments`` 选人 + ``assign_deploy_slots`` 选排),禁第二套
-    计划语义。恢复局同步步/达标臂共用;空板面/计划空 = 空 move 序
-    (CwActionStartBattleParam 照发)。"""
-    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-        assign_deploy_slots,
-        empty_deploy_slots,
-        select_deployments_reasoned,
+    计划单一源 = mandate_v1 ``deploy_plan.battle_chain_deploy_params``
+    (frame 容器现读装配 + 选人 + 落位策略全在策略层;design
+    2026-09-20-benchchar-retirement §2.2「出战链不再装配选人输入」)。
+    与 mandate 发射位同一计划函数,禁第二套计划语义。恢复局同步步/
+    达标臂共用;空板面/计划空 = 空 move 序(CwActionStartBattleParam
+    照发)。"""
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
+        battle_chain_deploy_params,
     )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_slots_of,
-        deployed_slots_of,
-        game_state_of,
-        gold_of,
-        level_of,
-        max_units_of,
-    )
-    from sr_od.application.currency_war.kernel.cw_vocab import (
-        CwActionDeployMoveParam,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
-        MandateFrame,
-        _deploy_plan_inputs,
-    )
-    gs = game_state_of(session)
-    bench_slots = bench_slots_of(gs)
-    bench = [b for b in bench_slots if b is not None]
-    deployed = [d for d in deployed_slots_of(gs) if d is not None]
-    _node = gs.node.value
-    frame = MandateFrame(
-        gold=gold_of(gs), level=level_of(gs),
-        bench=bench, deployed=deployed, deploy_cap=max_units_of(gs),
-        node_type=None, stop_flag=False, k_members=(),
-        round_num=int(_node.round_num) if _node is not None else 1)
-    _inputs = _deploy_plan_inputs(frame, session, gs)
-    up, _held, _reasons = select_deployments_reasoned(**_inputs)
-    if not up:
+    if session is None:
         return []
-    _back_total = int(gs.back_layout.value or 6)
-    front_empty, back_empty = empty_deploy_slots(
-        deployed, front_total=4, back_total=_back_total)
-    # 容器下标解析(换算收口,unified-action-factory 批2b):bench 源取
-    # 容器槽位表下标(assign 的 bi 是紧缩视图下标,经同帧 slot 信息位对
-    # 容器读口对位);faction = 容器槽位表角色对象现取(sim board 计数)。
-    # 对位防线(T-266 追加,三审代-2 编排者升应修):容器槽位表存在重复/
-    # 越界槽号时 ``{slot: 下标}`` 字典对位语义未定义(dict 推导静默保留
-    # 后值 = CwActionDeployMoveParam 对位同槽号另一条目、拖错人出场的通道;T-261 已治
-    # tracked 写点与写回门,本处为读侧残余通道)。判据单一源 =
-    # ``bench_slots_healthy``(槽号健康不变量,T-261 落地);不健康 →
-    # fail-closed 整份部署计划不出(映射整体不可信,无部分可信子集;
-    # 出战链照常发射,部署缺失由下一帧观察侧 reconcile 对账暴露),
-    # cw4 分键显影防静默降级。
-    _slot_nos = bench_occupied_slot_nos(bench_slots)
-    if not bench_slots_healthy(_slot_nos):
-        _bcd_counters = getattr(strategy_state_of(session), 'cw4_counters',
-                                None)
-        if isinstance(_bcd_counters, dict):
-            _bcd_counters['deploy_chain_slot_table_unhealthy'] = \
-                _bcd_counters.get('deploy_chain_slot_table_unhealthy', 0) + 1
-        log.warning('[cw!][loop] 出战链部署计划弃算:容器槽位表槽号不健康'
-                    '(重复/越界,%s)→ {slot:下标} 对位 fail-closed,'
-                    '本帧零 CwActionDeployMoveParam(出战照常,对账归观察侧)', _slot_nos)
-        return []
-    _cidx_of = {b.slot: i for i, b in enumerate(bench_slots) if b is not None}
-    _out: list[CwActionDeployMoveParam] = []
-    for bi, row, slot in assign_deploy_slots(bench, up, front_empty,
-                                              back_empty):
-        _bi = _cidx_of.get(bench[bi].slot)
-        if _bi is None:
-            continue   # 对位失配(陈旧帧)= fail-closed 跳过该 move
-        # to_slot = 指派第三元(排内 1 基画面槽号)透传入载荷(落位意图入
-        # 载荷契约:执行/写侧按载荷直落;现值 = kernel 指派原值零行为变化,
-        # 落位策略实现归 P3 后由策略显式指定)。
-        _out.append(CwActionDeployMoveParam(bench_idx=_bi, to_row=row,
-                               to_slot=int(slot),
-                               faction=(bench[bi].faction or '')))
-    return _out
+    return list(battle_chain_deploy_params(session))
 
 
 def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
@@ -263,7 +194,7 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
       battle):首战前插备战同步步,**发出即置位**证据位
       ``op._cw_locked_sync_done``(批3a,T-223 回执退役后失败概念消解);
       锁定确认分支复位证据位。同步步载体 = CwActionDeployMoveParam 原子序(批 2a:
-      RunDeploy 组合壳退役,按 kernel select_deployments 现算逐 move 发;
+      RunDeploy 组合壳退役,按策略层部署计划现算逐 move 发;
       恢复局卖出通道整体跳过语义不变——board 未观察时计划恒空)。
     - ``sync_once=False``(达标臂面,调用面 = readiness_battle_launch):
       **不过闩**——每达标帧都部署原子序 + CwActionStartBattleParam(部署面现读重建,

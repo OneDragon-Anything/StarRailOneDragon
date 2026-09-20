@@ -23,7 +23,7 @@ pass 归属单一语义)。
 D-C44(共根组 1):部署/买入意图的输入契约 = **买入结算后 bench/cap/
 dup 黑板全量现读**——本执行器每帧从 PrepObservation 现读重建,不以
 跨帧快照/旧集为输入(与 P24 补部署执行守卫互补:守卫管动作,估值管判断,
-D-dup 谓词 = kernel.cw_deploy_logic.has_deployable 同源去重,发射×执行单一源)。
+D-dup 谓词 = mandate_v1 deploy_plan.has_deployable 同源去重,发射×执行单一源)。
 """
 from __future__ import annotations
 
@@ -48,8 +48,6 @@ from sr_od.application.currency_war.kernel.cw_economy import (
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
-    bench_occupied_slot_nos,
-    bench_slots_healthy,
 )
 from sr_od.application.currency_war.kernel.cw_intention import (
     locked_buy_cap_hold,
@@ -1798,6 +1796,9 @@ def run_mandate(frame: MandateFrame,
             select_swap_plan,
             swap_plan_up_names,
         )
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
+            select_deployments_reasoned as _swap_select_up,
+        )
         _m1p_reasons: dict[str, str] = {}
         # 装配产物持引用(放行判定消费 membership/bench 的替补席成员集合,
         # 同一快照,禁放行判定二次装配出第二份输入)。
@@ -1807,7 +1808,10 @@ def run_mandate(frame: MandateFrame,
             session, state=state,
             deployed=list(frame.deployed),
             bench=list(frame.bench), cap=frame.deploy_cap)
-        _m1p = select_swap_plan(_m1p_ctx, reasons_out=_m1p_reasons)
+        # select_up 注入(kernel 依赖倒置契约;选人单一源 = deploy_plan,
+        # P3 迁移后 kernel 不再持有选人语义)。
+        _m1p = select_swap_plan(_m1p_ctx, reasons_out=_m1p_reasons,
+                                select_up=_swap_select_up)
         # 逐件拒因分键(ADR-0534 §7 键集;T-127 §2.3 分键闭集扩:收窄后
         # 仍被保的弹性件拒因 target_keep 与义务集拒因 buy_membership
         # 纳入闭集——病灶局八件拒因 4×target_keep+2×buy_membership 在
@@ -2140,11 +2144,11 @@ def _record_deploy_emit_held(session: StrategySession,
         locked_factions;armed 帧无豁免对照补跑复用,禁二次装配)。
     """
     try:
-        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-            has_deployable_reasoned,
-        )
         from sr_od.application.currency_war.kernel.cw_game_state import (
             plane_of,
+        )
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
+            has_deployable_reasoned,
         )
         st = state_of(session)
         counters = getattr(st, 'cw4_counters', None)
@@ -2181,115 +2185,39 @@ def _record_deploy_emit_held(session: StrategySession,
         pass
 
 
-def _deploy_plan_inputs(frame: MandateFrame, session: StrategySession,
-                        state: GameState) -> dict:
-    """select_deployments 同参装配(发射侧装配单一源;原 ``_deployable``
-    内联装配抽提——原子发射位(R2)与放行判定谓词共用同一份输入,禁
-    双源)。键集 = ``select_deployments_reasoned`` 形参(围栏/去重/cap/
-    配方底线语义全在 kernel 谓词内)。"""
-    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-        deploy_target_sets,
-        deployed_bond_counts,
-    )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        max_units_of,
-    )
-    from sr_od.application.currency_war.kernel.cw_intention import (
-        locked_faction_scope,
-    )
-    _comp = getattr(state_of(session), 'target_comp', None)
-    _tgt, _fw_carry = deploy_target_sets(
-        _comp, getattr(state_of(session), 'transition_framework', '') or '')
-    _cids = {d.char_id for d in frame.deployed if d.char_id}
-    _ist = getattr(state_of(session), 'v3_intention', None)
-    return {
-        'bench': frame.bench,
-        'deployed_cids': _cids,
-        'deployed_fac': deployed_bond_counts(_cids),
-        'board': dict(state.board.value or {}),
-        # cap 单一源 = max_units_of 容器派生链(迭代 2026-09-18-prep-obs-
-        # retirement 阶段 3.1;原 frame.deploy_cap 缺读退 10**6 无限回退
-        # 分支退役——max_units_of 恒 ≥1 有值,该分支不可达,且无限回退
-        # 会让 kernel cap 判定对板满帧失效)。
-        'cap': max_units_of(state),
-        'target_factions': _tgt,
-        'target_cores': set(getattr(_comp, 'core_chars', None) or ()),
-        'fw_carry': _fw_carry,
-        'locked_factions': (locked_faction_scope(_ist) or frozenset()),
-        # 判据必需件首桶(单一源 = 目标 comp required_deployed;发射⇔执行
-        # 同吃本装配,序语义见 kernel select_deployments 注)。
-        'required_names': frozenset(
-            getattr(_comp, 'required_deployed', ()) or ()),
-    }
-
-
 def _emit_deploy_moves(out: list, frame: MandateFrame,
                        session: StrategySession, state: GameState,
                        tag: str) -> None:
     """原子部署发射位(R2;out 追加 CwActionDeployMoveParam 序,决策核逐帧取首项)。
 
-    部署计划 = kernel ``select_deployments``(发射×执行单一源,输入 =
-    ``_deploy_plan_inputs`` 同参装配)现算;落位指派 = kernel
-    ``assign_deploy_slots``(选排单一源,空槽源 = 容器 deployed 槽位表;
-    后排容量 = 容器 back_layout,值域 6-9,缺省 6 基线)。发射序即执行序
-    (备战环逐帧取决策输出首项);同帧多 move 排序由本发射位表达。逻辑态
+    部署计划单一源 = mandate_v1 ``deploy_plan.deploy_plan_moves``
+    (选人 + 落位策略 + 容器对位;与 cw_loop 出战链共用,禁第二套计划
+    装配。design 2026-09-20-benchchar-retirement §2.2:P3 起落位决策权
+    归策略——排 = comp 站位覆盖 > 注册表派生 > back 兜底,槽位按容器
+    行列现值自定,后排上限 = back_layout 现值)。发射序即执行序
+    (备战环逐帧取决策输出首项)。逻辑态
     (bench 摘槽/deployed 落槽/board 增量)在观察侧
     kernel 写口直写(容器逻辑态,迭代 2026-09-18-prep-obs-retirement 阶段 3.5),下一帧对容器现值重评自然续发剩余 move。
     """
-    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-        assign_deploy_slots,
-        empty_deploy_slots,
-        select_deployments_reasoned,
-    )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_slots_of,
-        deployed_slots_of,
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
+        deploy_plan_moves,
     )
     # 板满前置门(阶段 3.1):占用 ≥ cap → 不产出部署计划,拒因落账。
     if _deploy_cap_full_gate(session, state, frame):
         return
-    _inputs = _deploy_plan_inputs(frame, session, state)
-    up, _held, _reasons = select_deployments_reasoned(**_inputs)
-    if not up:
-        return
-    dep_slots = deployed_slots_of(state)
-    _back_total = (getattr(state.back_layout, 'value', None)
-                   or getattr(state, 'back_max', None) or 6)
-    front_empty, back_empty = empty_deploy_slots(
-        dep_slots, front_total=4, back_total=int(_back_total))
-    # 容器槽位表 → 容器下标对位:重复槽号帧 dict 对位静默遮蔽(后者覆盖
-    # 前者 = 陈旧位指到错下标的换手面),先过槽号健康不变量再建表——
-    # 不健康(重复/越界)帧整表弃用,逐 move fail-closed 跳过。单一源 =
-    # kernel bench_slots_healthy(与对账写回门/tracked 写点显影同源)。
-    _cidx_of: dict[int, int] = {}
-    if bench_slots_healthy(bench_occupied_slot_nos(bench_slots_of(state))):
-        _cidx_of = {b.slot: i for i, b in enumerate(bench_slots_of(state))
-                    if b is not None}
-    for bi, row, slot in assign_deploy_slots(frame.bench, up,
-                                             front_empty, back_empty):
-        # 容器下标解析(换算收口,同帧 slot 信息位 ↔ 容器槽位表枚举下标;
-        # 失配 = 黑板视图与容器失配,fail-closed 跳过该 move)+ faction =
-        # 容器槽位表角色对象现取(design.md §2.6 字段裁定,sim board 计数
-        # 消费)。to_slot = 指派第三元(排内 1 基画面槽号)透传入载荷
-        # (落位意图入载荷契约:执行/写侧按载荷直落,不再执行边现读;
-        # 本阶段现值 = kernel 指派原值零行为变化,落位策略实现归位后由
-        # 策略显式指定)。
-        _slot_no = int(frame.bench[bi].slot)
-        _bi = _cidx_of.get(_slot_no)
-        if _bi is None:
-            continue
+    for bi, row, slot, faction in deploy_plan_moves(frame, session, state):
         out.append(Emitted(
-            CwActionDeployMoveParam(bench_idx=int(_bi),
+            CwActionDeployMoveParam(bench_idx=int(bi),
                        to_row=row,
                        to_slot=int(slot),
-                       faction=(frame.bench[bi].faction or '')),
+                       faction=faction),
             True, tag))
 
 def _deployable(frame: MandateFrame, session: StrategySession,
                 state: GameState) -> bool:
     """部署提案合法门(ADR-0517 决策 2:合法性=提议侧约束)。
 
-    谓词单一源 = ``kernel.cw_deploy_logic.has_deployable_reasoned``
+    谓词单一源 = mandate_v1 ``deploy_plan.has_deployable_reasoned``
     (发射×执行单一源):与部署计划构造(select_deployments_reasoned)
     同源同参语义——围栏/去重/cap/配方底线全在谓词内。计划空(含「候选
     全被规则留 bench」形态)⇒ False,不提案部署序(序内取下一动作)。
@@ -2300,19 +2228,19 @@ def _deployable(frame: MandateFrame, session: StrategySession,
     ['RunDeploy'] ∧ 零推进」停机留证——决策核每轮提案部署,
     执行方计划空报 no-op 成功,逻辑态未建模(保守回退)交回
     外循环,重进再提案,3 环零推进。守卫行为正确,根因 = 本发射位
-    漏接抑制谓词。禁第二实现:判空一律走 kernel;本函数只做输入装配
-    (经 kernel deploy_target_sets /
-    deployed_bond_counts 单一源)。
+    漏接抑制谓词。禁第二实现:判空一律走 deploy_plan 单一源;本函数
+    只做输入装配(经 deploy_plan._deploy_plan_inputs 同源)。
 
     ADR-0564:配方底线门锁定线语境豁免在此同帧武装(豁免是帧属性,
     放行判定与执行侧计划构造经同一 armed 布尔同值);返回值不变(bool),
     逐次调用经 _record_deploy_emit_held 落发射侧分键(帧级去重)。
     """
-    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-        has_deployable_reasoned,
-    )
     from sr_od.application.currency_war.kernel.cw_intention import (
         locked_line_recipe_floor_conflict,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
+        _deploy_plan_inputs,
+        has_deployable_reasoned,
     )
     st = state_of(session)
     _ist = getattr(st, 'v3_intention', None)

@@ -165,7 +165,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 备战域动作词表 = `kernel/cw_vocab.py::CW_ACTION_TYPES` 备战域子集；执行器 = `prep_actions.py::PrepActionExecutor`（机械执行，发出即职责完成，落地判定归观察对账）。容器写语义单一源 = 各动作的上报函数 `kernel/cw_action_report/<snake>.py::report_action_<snake>_param`（写域申报面 = 各函数 docstring；金账/库存腿内聚于函数 `session` 形参面；零写动作族 = `zero_writes.py` 集中申报）；dict 确认族到账 = `kernel/cw_exec_state.py::apply_confirm_effect`。slot 语义 = 词表摊平后统一为槽位表下标（原生 `BenchSlot` 形态，零换算；历史「备战栏物理槽位 1-9」口径随双域腿统一消亡）。
 
-**发射形态（R2 原子通路，批 2a 起）**：决策核逐帧发原子动作（部署 = DeployMove 序 / 穿戴 = WearEquip 序 / 工具 = 各消耗品原子类 / 卖出 = SellBench/SellDeployed），备战环逐帧执行决策输出的恰一个动作（None = 本帧无动作，交回外循环重观察）；组合壳（RunDeploy/RunEquip/RunTools）不再是生产发射形态（类与登记行删除归批 2b 归一删除面）。发射位计划构造单一源 = `kernel/cw_deploy_logic.py::select_deployments`+`assign_deploy_slots`（部署）、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`（穿戴）、`kernel/cw_equip_env.py::evaluate_tool_actions`+`admitted_tool_actions`（工具 G1 准入）、`kernel/cw_prep_actions.py::select_ore_clicks`（采晶矿载荷）。
+**发射形态（R2 原子通路，批 2a 起）**：决策核逐帧发原子动作（部署 = DeployMove 序 / 穿戴 = WearEquip 序 / 工具 = 各消耗品原子类 / 卖出 = SellBench/SellDeployed），备战环逐帧执行决策输出的恰一个动作（None = 本帧无动作，交回外循环重观察）；组合壳（RunDeploy/RunEquip/RunTools）不再是生产发射形态（类与登记行删除归批 2b 归一删除面）。发射位计划构造单一源 = `strategies/impl/mandate_v1/deploy_plan.py::deploy_plan_moves`（部署：选人 `select_deployments` + 落位策略 `deploy_row_pref`/`deploy_slot_plans`——排 = comp 站位覆盖 > 注册表 `position_pref` 派生 > back 兜底，前排保证随迁，槽位按容器行列现值自定，后排上限 = `back_layout` 现值；出战链经 `battle_chain_deploy_params` 共用同源）、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`（穿戴）、`kernel/cw_equip_env.py::evaluate_tool_actions`+`admitted_tool_actions`（工具 G1 准入）、`kernel/cw_prep_actions.py::select_ore_clicks`（采晶矿载荷）。
 
 ### 3.1 DeployMove（备战席 → 上阵单步拖拽）
 

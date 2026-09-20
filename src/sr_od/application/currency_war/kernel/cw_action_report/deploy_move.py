@@ -28,6 +28,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     deployed_indexed_to_rows,
     deployed_row_slot,
     deployed_rows_to_indexed,
+    trailblazer_row_unit,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     BENCH_CAPACITY_DEFAULT,
@@ -51,19 +52,18 @@ _TRANSFORMED_STAR: int = 1
 def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """上阵上报:bench 源槽摘槽 + 载荷 (to_row, to_slot) 直落
     (排内 1 基槽号经下标换算单一源 ``deployed_idx_of`` 定表下标,与执行
-    拖点同源无分叉;§2.1 下标派生表)+ board 羁绊计数派生重算(行写端
-    挂钩 ``_resync_board_delta`` 自动,禁手写 board)。
+    拖点同源无分叉;§2.1 下标派生表)+ 开拓者形态归一(归一核单一源 =
+    ``cw_exec_state.trailblazer_row_identity``,与 swap 上报同源——
+    benchchar-retirement P3 统一申报的缺陷修复:换排 = 命途切换,char_id
+    随目标排形态,欢愉/记忆羁绊计数不再错账)+ board 羁绊计数派生重算
+    (行写端挂钩 ``_resync_board_delta`` 自动,禁手写 board)。
     to_row 非法/源槽空/载荷槽越出定长表或跨排 = applied=False 零写
     (陈旧提案)。拖拽语义 = 游戏规则:目标槽空 = 放置;有人 = 交换——
     被占位单位回源 bench 槽(与 ``report_action_swap_deploy_param`` 换位
     契约同语义:单位对象整体回填,装备随对象,槽号信息位随落位归一);
     禁占位拒绝、禁静默换槽。
     落位腿对 (银狼LV.999,3★) = 上阵变换窗:落场写下一费用档 1★
-    (非 3★ 原样)+ 级联常规覆盖;其余单位恒等搬运零行为差。
-
-    P1 申报现状不对称(§3 不变量 5,归一口统一归 P3):本上报**缺开拓者
-    形态归一**(char_id 不随排切换)——现状缺陷锚
-    test_cw_trailblazer_stance_normalization 钉住,禁顺带修复。"""
+    (非 3★ 原样)+ 级联常规覆盖;其余单位恒等搬运零行为差。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
 
@@ -97,7 +97,8 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
         return LogicOutcome(applied=False,
                             reason=f'bench_idx_out_of_range:{from_idx}')
     _mu = bench_slots[from_idx].unit
-    moved = replace(_mu, slot=to_slot)
+    # 开拓者形态归一先于槽位/星级改写(与 swap 同核;非开拓者原样返回)。
+    moved = trailblazer_row_unit(replace(_mu, slot=to_slot), to_row)
     # 上阵变换窗(design §2.1A):拖拽载荷唯一指定源(恰此一枚,无歧义)
     # → 落场写下一费用档 1★(身份保持,槽位随拖拽落点,观察为真值)。
     _transform = (moved.char_id == _TRANSFORM_CHAR_ID

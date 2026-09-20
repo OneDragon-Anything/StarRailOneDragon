@@ -525,9 +525,10 @@ def trailblazer_row_identity(char_id: str, to_row: str,
     None)``;非开拓者/空名 → None(调用方保持原身份)。
 
     消费面 = ``_apply_row_to_char``(BenchChar 观察边界载体,P6 前)与
-    :func:`trailblazer_row_unit`(Unit 容器原生,P1 起)双载体同核,
-    归一口唯一(design §3 不变量 5;统一收口归 P3,现状不对称由
-    test_cw_trailblazer_stance_normalization 锚定)。"""
+    :func:`trailblazer_row_unit`(Unit 容器原生)双载体同核,
+    归一口唯一(design §3 不变量 5;swap 与 deploy_move 两上报均经
+    :func:`trailblazer_row_unit` 同源,哨兵 =
+    test_cw_trailblazer_stance_normalization)。"""
     from sr_od.application.currency_war.data.cw_chars import (
         get_char,
         is_trailblazer,

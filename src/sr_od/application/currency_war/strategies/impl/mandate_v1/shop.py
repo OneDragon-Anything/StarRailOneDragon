@@ -155,7 +155,6 @@ from sr_od.application.currency_war.kernel.cw_comps import (
     CORE_SINGLE_CARD_REGISTRY,
 )
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-    can_deploy_single,
     deploy_target_sets,
     deployed_bond_counts,
     record_fresh_buy,
@@ -222,6 +221,9 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
     stockpile as crit_stockpile,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
+    can_deploy_single,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,

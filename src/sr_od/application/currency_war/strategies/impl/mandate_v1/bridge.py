@@ -99,12 +99,16 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
         CwActionOpenShopParam,
         CwActionStartBattleParam,
     )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
+        has_deployable,
+    )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         line_members,
     )
     _st = state_of(gs)
     _decision = readiness_launch_decision(
-        gs, getattr(_st, 'target_comp', None), line_members=line_members)
+        gs, getattr(_st, 'target_comp', None), line_members=line_members,
+        deploy_plan_available_fn=has_deployable)
     if not _decision.get('armed'):
         _st.cw4_launch_spend_visited = False   # 武装段结束,段旗复位
         return None
