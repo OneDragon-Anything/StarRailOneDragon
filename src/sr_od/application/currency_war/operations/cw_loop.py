@@ -1893,7 +1893,7 @@ class CwLoop(SrOperation):
                             self._cw_back_btn_count)
                 return self.round_wait(wait=2)
             # 接管局补采(boss+词缀)已迁 CwScreenPrep(W971 §2.1/01-opening §2.1:
-            # 稳定门退役后挂点 = 干净备战观察;见 cw_screen_prep._run_loop 采集块)。
+            # 稳定门退役后挂点 = 干净备战观察;见 cw_screen_prep.CwScreenPrep.observe)。
             # 策略失活防线现役 = 哨兵 journal 面断流探测(skills 侧 cw_sentinel)。
             # 恢复局(locked-resume)检测与直接出战。
             # 判据(设计章1.2)= 新 match(无本局记录)+ 首个备战相位 round>1 → 候选;
