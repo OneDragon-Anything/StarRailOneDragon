@@ -8,11 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from sr_od.application.currency_war.kernel.cw_economy import sell_refund
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    GameState,
-    bench_slots_of,
-    deployed_slots_of,
-)
+from sr_od.application.currency_war.kernel.cw_game_state import GameState
 from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
     CwActionBuyCardParam,
@@ -170,20 +166,25 @@ def salvageable_1star_value(state: GameState) -> int:
     - 件集边界:只算 1★(2★+ 是沉没通道——合成已花成本,卖出还有
       手续费,不构成「活期金」);deployed 与 bench 并集,空槽 None
       跳过。
-    - 件集读口 = 容器公共读口 ``deployed_slots_of``/``bench_slots_of``
-      (kernel 单一源;ADR-0392 定长 10 槽 / 9 槽镜像,元素 BenchChar|
-      None)——本函数不持任何帧表示,容器单例直读。
+    - 件集读口 = 容器单位域(行域 ``deployed_rows_of`` + bench 单位域
+      ``bench_units_of``,benchchar-retirement P4 容器形)——本函数不持
+      任何帧表示,容器单例直读。
     - 纯函数契约:只读 state、零行为消费(P10④ 判读供给;挂载点
       ``TelemetryRecorder.record_decision`` handoff 富化处已随 handoff
       快照换代退役,本函数保留为在册判读口径的读值单一源)。
     """
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_units_of,
+        deployed_rows_of,
+    )
+    front, back = deployed_rows_of(state)
     total = 0
-    for d in deployed_slots_of(state) + bench_slots_of(state):
-        if d is None:
+    for u in (*front, *back, *bench_units_of(state)):
+        if u is None:
             continue
-        if int(getattr(d, 'star', 1) or 1) != 1:
+        if int(getattr(u, 'star', 1) or 1) != 1:
             continue
-        total += sell_refund(1, bench_char_cost(d))
+        total += sell_refund(1, bench_char_cost(u))
     return total
 
 

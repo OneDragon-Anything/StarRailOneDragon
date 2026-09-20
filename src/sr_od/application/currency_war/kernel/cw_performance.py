@@ -22,11 +22,10 @@ from sr_od.application.currency_war.kernel.cw_comps import (
     mechanics_fit,
     weighted_mean,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import iter_occupied_deployed
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
-    bench_slots_of,
-    deployed_slots_of,
+    bench_units_of,
+    deployed_rows_of,
 )
 
 if TYPE_CHECKING:
@@ -203,9 +202,9 @@ def star_achievement(comp: Comp, gs: GameState) -> float:
     """
     if not comp.core_chars:
         return 0.0
-    stars = [bc.star for bc in [x for x in bench_slots_of(gs) if x is not None]
-             + list(iter_occupied_deployed(deployed_slots_of(gs)))
-             if bc.char_id in comp.core_chars]
+    front, back = deployed_rows_of(gs)
+    stars = [u.star for u in (*front, *back, *bench_units_of(gs))
+             if u is not None and u.char_id in comp.core_chars]
     if not stars:
         return 0.0
     avg = sum(stars) / len(stars)
