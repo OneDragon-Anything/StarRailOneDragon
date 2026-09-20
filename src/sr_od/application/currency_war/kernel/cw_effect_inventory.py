@@ -750,10 +750,10 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     直写桥辖域,两桥互不越界)。
 
     **sim 语义申报(适用性/对齐)**:本桥不接 sim——sim 的 GameState 全量
-    经 synthesize_from_game_state 由 sim 真值 CwSimFrame 合成(evidence 恒
+    经 synthesize_from_game_state 由 sim 真值帧合成(evidence 恒
     sim:synthesized),若在 sim 侧调本桥,logic 值立即被下一段合成覆盖且
     与引擎事实不一致(sim 引擎不执行出售/重写)。sim 若建模这两卡的板面
-    后果,改动面 = sim 真值 CwSimFrame(卖全场+退款+发牌),经合成口自动
+    后果,改动面 = sim 真值帧域(卖全场+退款+发牌),经合成口自动
     以 observation 落记录——效果在真值层生效,记录层不插 logic 补丁。现役
     sim 对这两卡零板面建模(选卡仅记名+经济腿),属 sim 模型既有边界。
 

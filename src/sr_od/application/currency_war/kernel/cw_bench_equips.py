@@ -1,8 +1,9 @@
 """货币战争 bench 装备 tracking 单一源 + 对账断言(契约包 C6 契约 2,冻结决定)。
 
 **裁定背景**:画面机制上未上阵角色不显示装备 icon(机制盲区,非识别
-缺陷)→ **bot tracking 记账(``BenchChar.equips`` / ``CwSimFrame.equips`` owned 池)
-是 bench 装备的单一源**,不建 bench 槽详情 reader(``read_bench_slot_detail``
+缺陷)→ **bot tracking 记账(容器 ``Unit.equips``(行域/bench unit 槽)
++ ``gs.equips`` owned 池,benchchar-retirement P4 容器形状)是 bench
+装备的单一源**,不建 bench 槽详情 reader(``read_bench_slot_detail``
 仅漂移恢复预留接口,草案级不承诺实现)。
 
 **对账义务(冻结)**:
@@ -22,14 +23,10 @@
 from __future__ import annotations
 
 from collections import Counter
+from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    GameState,
-    bench_slots_of,
-    deployed_slots_of,
-)
-from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_game_state import GameState
 
 
 class EquipsInconsistencyError(RuntimeError):
@@ -95,9 +92,11 @@ def wear_synthesis_equivalent(ledger: list[str], visible: list[str]) -> bool:
     return _reach(Counter(ledger))
 
 
-def assert_equips_consistency(char: BenchChar, visible: list[str] | None,
+def assert_equips_consistency(char: object, visible: list[str] | None,
                               source: str) -> None:
     """动作前对账(契约 C6 草案签名 + ``visible`` 可读面参数,草案级细化)。
+
+    ``char`` = 容器单位(行域/bench unit 槽的 ``Unit``,duck 读 equips/char_id)。
 
     - ``visible=None``:该侧画面机制不可读(bench 侧盲区)→ 无对拍面,
       单一源 = tracking 账面,直接通过(C6 裁定的本意);
@@ -114,36 +113,43 @@ def assert_equips_consistency(char: BenchChar, visible: list[str] | None,
     if Counter(ledger) != Counter(visible) \
             and not wear_synthesis_equivalent(ledger, visible):
         raise EquipsInconsistencyError(
-            char_desc=f'{getattr(char, "char_id", "") or "?"}'
-                      f'@{getattr(char, "position_pref", "?")}',
+            char_desc=f'{getattr(char, "char_id", "") or "?"}',
             ledger=ledger, visible=visible, source=source)
 
 
-def equips_ledger_multiset(bench: list[BenchChar], deployed: list[BenchChar],
+def equips_ledger_multiset(bench_units: list, deployed_units: list,
                            pool: list[str]) -> Counter:
-    """装备账本全景多重集:assigned(bench+deployed 各 char.equips)+ owned 池。"""
+    """装备账本全景多重集:assigned(单位域各 char.equips)+ owned 池。
+
+    入参 = 单位域列表(容器 ``Unit``,deployed 行域成员与 bench unit 槽
+    内嵌单位;P4 容器形)。"""
     out: Counter = Counter()
-    for c in list(bench or []) + list(deployed or []):
-        if c is None:   # ADR-0316/0392 槽位表空槽
+    for c in list(bench_units or []) + list(deployed_units or []):
+        if c is None:
             continue
         out.update(getattr(c, 'equips', None) or ())
     out.update(pool or ())
     return out
 
 
-def state_equips_multiset(state: GameState | CwSimFrame) -> Counter:
+def state_equips_multiset(state: object) -> Counter:
     """账本全景对账快照入口(W6 波3 容器一等形态)。
 
-    - GameState:席位经波1 读口(bench_slots_of/deployed_slots_of),
-      owned 池 = ``equips.value``;消费面 = 观察对账/容器消费点;
-    - CwSimFrame:帧直读(simulate 守恒对账入口)——该调用面属推演内核
-      机制面(正名后类本体的存续职责),**长期存续**,不属
-      last_state 链退役波辖域(旧「随链退役」措辞与本事实冲突,随链
-      退役批更正);禁实机链新消费点喂旧帧。
+    - GameState:席位经容器读口(行域 ``deployed_rows_of`` + bench 单位域
+      ``bench_units_of``),owned 池 = ``equips.value``;消费面 = 观察对账/
+      容器消费点;
+    - 其余(旧帧直读形态,推演内核对账入口):帧域直读——该调用面属
+      推演内核机制面,**长期存续**至帧域退役(P5);禁实机链新消费点
+      喂旧帧。
     """
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_units_of,
+        deployed_rows_of,
+    )
     if isinstance(state, GameState):
-        return equips_ledger_multiset(bench_slots_of(state),
-                                      deployed_slots_of(state),
+        front, back = deployed_rows_of(state)
+        return equips_ledger_multiset(bench_units_of(state),
+                                      [*front, *back],
                                       state.equips.value or [])
     return equips_ledger_multiset(state.bench, state.deployed, state.equips)
 

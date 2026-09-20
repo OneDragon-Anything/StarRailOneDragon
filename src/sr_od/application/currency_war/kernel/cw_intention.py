@@ -79,12 +79,11 @@ from sr_od.application.currency_war.kernel.cw_economy import (
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
-    iter_occupied_deployed,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
-    bench_slots_of,
-    deployed_slots_of,
+    bench_units_of,
+    deployed_rows_of,
     level_of,
     max_units_of,
     plane_of,
@@ -338,17 +337,21 @@ def _visible_chars(gs: GameState) -> set[str]:
     for card in shop_payload_content_cards(_shop):
         if card.name:
             names.add(card.name)
-    for bc in [*bench_slots_of(gs), *deployed_slots_of(gs)]:
-        if bc is not None and bc.char_id:
-            names.add(bc.char_id)
+    front, back = deployed_rows_of(gs)
+    for u in (*front, *back, *bench_units_of(gs)):
+        if u is not None and u.char_id:
+            names.add(u.char_id)
     return names
 
 def _bond_counts(gs: GameState) -> dict[str, int]:
-    """板上 + bench 的羁绊计数(board 已含 deployed 聚合;bench 逐件加)。"""
+    """板上 + bench 的羁绊计数(board 已含 deployed 聚合;bench 逐件加,
+    §2.1 faction 注册表派生 = char_first_faction 单一源,未知名不计)。"""
     counts: dict[str, int] = dict(gs.board.value or {})
-    for bc in bench_slots_of(gs):
-        if bc is not None and bc.faction and bc.faction != '?':
-            counts[bc.faction] = counts.get(bc.faction, 0) + 1
+    from sr_od.application.currency_war.data.cw_chars import char_first_faction
+    for u in bench_units_of(gs):
+        fac = char_first_faction(getattr(u, 'char_id', '') or '')
+        if fac and fac != '?':
+            counts[fac] = counts.get(fac, 0) + 1
     return counts
 
 
@@ -554,8 +557,9 @@ transition_combos.md:27 与注册表计数),非旧手定权重复活。保守方
 def _owned_chars(gs: GameState) -> set[str]:
     """已到手角色名(bench+deployed;不含 shop 可见——[23] 锁定由
     贯穿件=到手,店里出现过不构成方向承诺)。"""
-    return {bc.char_id for bc in [*bench_slots_of(gs), *deployed_slots_of(gs)]
-            if bc is not None and bc.char_id}
+    front, back = deployed_rows_of(gs)
+    return {u.char_id for u in (*front, *back, *bench_units_of(gs))
+            if u is not None and u.char_id}
 
 
 def _seele_system_support(owned: set[str]) -> float:
@@ -627,12 +631,12 @@ def _p1_system_support(gs: GameState) -> dict[str, float]:
     重推非旧值复活)。
     """
     counts: dict[str, int] = {}
-    for bc in [*bench_slots_of(gs), *deployed_slots_of(gs)]:
-        if bc is None or not bc.char_id:
-            if bc is not None and bc.faction and bc.faction != '?':
-                counts[bc.faction] = counts.get(bc.faction, 0) + 1
-            continue
-        ch = CHARACTERS.get(bc.char_id)
+    front, back = deployed_rows_of(gs)
+    for u in (*front, *back, *bench_units_of(gs)):
+        cid = getattr(u, 'char_id', '') or ''
+        if not cid:
+            continue   # 未识别/占位件:无注册表身份可判,不计(未知名 '?' 口径)
+        ch = CHARACTERS.get(cid)
         if ch is None:
             continue
         for f in set(ch.factions) | set(ch.flows):
@@ -714,7 +718,8 @@ def _p1_system_ordering(gs: GameState,
         else frozenset()
     per: dict[str, float] = {}
     dedup_star: dict[str, int] = {}
-    for bc in [*bench_slots_of(gs), *deployed_slots_of(gs)]:
+    front, back = deployed_rows_of(gs)
+    for bc in (*front, *back, *bench_units_of(gs)):
         if bc is None:
             continue
         cid = getattr(bc, 'char_id', '') or ''
@@ -1247,8 +1252,9 @@ def detect_signals(gs: GameState) -> list[IntentionSignal]:
     # 数据缺口声明:升费资源(道具)暂无容器字段——以升费链角色到手
     # (cost_escalation['角色'] 在 bench/deployed)作「资源到位」代理;字段接入后扩。
     # ADR-0341:④与③同为「卡/资源到手」证据类,P1 终局专属线同门。
-    owned = {bc.char_id for bc in [*bench_slots_of(gs), *deployed_slots_of(gs)]
-             if bc is not None and bc.char_id}
+    _front, _back = deployed_rows_of(gs)
+    owned = {u.char_id for u in (*_front, *_back, *bench_units_of(gs))
+             if u is not None and u.char_id}
     for c in comps:
         ce = c.special_systems.get('cost_escalation')
         if ce and ce.get('角色') in owned:
@@ -1266,10 +1272,10 @@ def _asset_thickness(comp: Comp, gs: GameState) -> float:
     终件 = core_chars。骨架件折算项已退役(旧 SKELETON_ASSET_WEIGHT=0.5
     设计推断无标定,「未证即退役」→ 保守缺省不计;跨线骨架件仍是囤货
     对象,只是不再抬高本线厚度——撤销出口③的替代证据因此更严)。"""
-    pool = list(iter_occupied_deployed(deployed_slots_of(gs))) \
-        + [b for b in bench_slots_of(gs) if b is not None]
-    star_of = {bc.char_id: bc.star for bc in pool
-               if bc is not None and bc.char_id}
+    _front, _back = deployed_rows_of(gs)
+    pool = [*_front, *_back, *bench_units_of(gs)]
+    star_of = {u.char_id: u.star for u in pool
+               if u is not None and u.char_id}
     return float(sum(star_of.get(name, 0) for name in comp.core_chars))
 
 
@@ -1607,7 +1613,7 @@ def update_intention(gs: GameState, ist: IntentionState,
                      registry: DecisionV2Registry | None = None,
                      st=None
                      ) -> IntentionState:
-    """每回合驱动锁线/撤销状态机(就地改 ist 并返回;不碰 CwSimFrame)。
+    """每回合驱动锁线/撤销状态机(就地改 ist 并返回;直吃容器 GameState)。
 
     序:降格终局短路 → 锁定态撤销检查(冻结 → miss-N → 高层信号)
     → 未锁/弱意向解析(新信号锁线,否则⑤兜底方向)→ P3 入口强制锁线。
@@ -2420,7 +2426,7 @@ def committed_authority(state: GameState | None,
       state/session 侧双轨字段降级为兼容残留(读点归零,
       grep 守卫锁),写端退役随老栈(strategy 层)老栈退役(ADR-0466/0469)。
     - **state 形态 = 容器单例**(W6 波3 切换;plane 经 ``plane_of`` 读口)。
-      波5 过渡兼容支(CwSimFrame 帧 plane 属性直读)已随 last_state 链
+      波5 过渡兼容支(旧帧 plane 属性直读)已随 last_state 链
       退役批删除(本形态注即其退役指针,指针兑现);禁新消费点再喂
       旧帧或手造鸭子镜像(同型鸭子桥禁令,_PlaneShim 已随波3 消亡)。
     """

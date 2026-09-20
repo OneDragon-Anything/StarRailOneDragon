@@ -117,9 +117,10 @@ def _build_equip_wear_plan(session: Any,
 
     事实源 = **容器 game state 读口**(迭代 2026-09-18-prep-obs-retirement
     阶段 3.2 换源):owned ← ``gs.equips``、occupied ← ``gs.occupied_equips``
-    (键 'front:1' 形态)、deployed ← ``deployed_slots_of``、后排选档 ←
-    ``gs.back_layout`` Field 原值;写者单一源 = cw_screen_prep 观察装配点
-    (装备域采集单一源 = ``obs.cw_observe_full.observe_full`` heavy)。
+    (键 'front:1' 形态)、deployed ← 容器行域 ``deployed_rows_of``、
+    后排选档 ← ``gs.back_layout`` Field 原值;写者单一源 = cw_screen_prep
+    观察装配点(装备域采集单一源 = ``obs.cw_observe_full.observe_full``
+    heavy)。
     本函数**零读屏**:原对执行帧现读三路
     owned(read_equips)/occupied(read_row_equipped)/deployed
     (read_deployed_chars)退役 = 调用位置迁移——识别函数本体归观察链
@@ -168,7 +169,7 @@ def _build_equip_wear_plan(session: Any,
     # (gs.prep_obs)消费清零。None 语义映射 = 容器 Field 未观察(None)
     # = 识别域未就绪,fail 门保守关方向与旧黑板 None 逐位同。
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        deployed_slots_of,
+        deployed_rows_of,
         game_state_of,
     )
     _gs_c = game_state_of(session)
@@ -194,7 +195,10 @@ def _build_equip_wear_plan(session: Any,
     # 依据 = 迭代详设 obs-retirement §阶段 3.2-4。
     _bk_raw = _gs_c.back_layout.value
     _bk_n = int(_bk_raw) if _bk_raw is not None else None
-    deployed = [c for c in deployed_slots_of(_gs_c) if c is not None]
+    # 容器行域现读(benchchar-retirement P4:(front_row, back_row) 的 Unit,
+    # 排归属由行承载,零 legacy 槽表换形)
+    deployed_rows = deployed_rows_of(_gs_c)
+    _has_deployed = any(units for units in deployed_rows)
     _tgt_comp = strategy_state_of(session).target_comp
     # ⚖️ 过渡期持有语义修正(r70 审计刀②):过渡期**穿给当前上场的 5 人**
     # ——key_equips 命中件照穿,非 key 散件穿给当前板面高战力者(carry 优先);
@@ -203,7 +207,7 @@ def _build_equip_wear_plan(session: Any,
     # session 容器单例(备战帧观察写端同链刷新);容器与帧同帧同源
     # (同一备战观察),读口 = 容器公共读口单一源。
     _form = 0.0
-    if _tgt_comp is not None and deployed:
+    if _tgt_comp is not None and _has_deployed:
         from sr_od.application.currency_war.kernel.cw_comps import (
             form_progress,
         )
@@ -280,16 +284,19 @@ def _build_equip_wear_plan(session: Any,
                  _release.committed_hold, _node_type, _next_node_type,
                  _release.rust_release, _release.output_penalty_release,
                  _form)
-    if deployed:
+    if _has_deployed:
         # W209g 断点③语义保留:后排 occupied 采集随布局选档(ADR-0385/0387
         # 双通道单一源)——本处只消费采集产物。
         occupied_m7: dict[tuple[str, int], list[str]] = occupied_all
         deployed_by_name: dict[str, list] = {}
-        for d in deployed:
+        _row_units: list[tuple[str, object]] = (
+            [('front', u) for u in (deployed_rows[0] or [])]
+            + [('back', u) for u in (deployed_rows[1] or [])])
+        for _rn, d in _row_units:
             if d.char_id:
-                deployed_by_name.setdefault(d.char_id, []).append(d)
+                deployed_by_name.setdefault(d.char_id, []).append((_rn, d))
         log.info('[cw-equip] M7 角色级分配:deployed=%s occupied=%s',
-                 [(d.char_id, d.position_pref, d.slot) for d in deployed],
+                 [(rn, d.char_id, d.slot) for rn, d in _row_units],
                  {f'{r}{s}': '+'.join(v) for (r, s), v in occupied_m7.items() if v})
         # (原 hits = read_equips 执行帧现读退役:owned 件名池 = 入口观察
         #  产物 owned_names。M7 计划消费只辖件名——read_equips 的坐标分量
@@ -349,12 +356,12 @@ def _build_equip_wear_plan(session: Any,
                 owned_wearable_names=wearable)
         # ADR-0526 词缀条件优先层在**释放帧**重排(释放动作的次序)。
         _priority_order = resolve_affix_priority_order(
-            _tgt_comp, deployed,
+            _tgt_comp, deployed_rows,
             sorted(_equip_signals.enemy_affixes), occupied_m7)
         # W880 装备分配入口(kernel/cw_equip_env.apply_equip_env_variants)。
         alloc, _env_actions = _apply_env_variants(
             _equip_signals, _reg_eq, session, _tgt_comp,
-            deployed, _releasable, occupied_m7,
+            deployed_rows, _releasable, occupied_m7,
             hold_active=_fill_hold,
             priority_order=_priority_order)
         if not alloc:
@@ -364,7 +371,7 @@ def _build_equip_wear_plan(session: Any,
                 equip_alloc_empty_reason,
             )
             _empty_reason = equip_alloc_empty_reason(
-                _tgt_comp, deployed, _releasable,
+                _tgt_comp, deployed_rows, _releasable,
                 occupied_m7)
             log.info('[cw-equip] 分配方案空 原因=%s(owned=%s)→ 计划空',
                      _empty_reason, _releasable)
@@ -377,8 +384,7 @@ def _build_equip_wear_plan(session: Any,
         steps: list = []
         for char_name, want in alloc:
             _picked: tuple[str, int] | None = None
-            for d in deployed_by_name.get(char_name) or []:
-                _row = getattr(d, 'position_pref', None) or 'back'
+            for _row, d in deployed_by_name.get(char_name) or []:
                 _slot = int(getattr(d, 'slot', 0) or 1)
                 if (_row == 'front' and 1 <= _slot <= 4) \
                         or (_row != 'front' and 1 <= _slot <= (_bk_n or 6)):

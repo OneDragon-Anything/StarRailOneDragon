@@ -37,8 +37,8 @@ from sr_od.application.currency_war.data.cw_shop_odds import acquirability_facto
 from sr_od.application.currency_war.kernel.cw_economy import effective_hp_threshold
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
-    bench_slots_of,
-    deployed_slots_of,
+    bench_units_of,
+    deployed_rows_of,
     gold_of,
     level_of,
     plane_of,
@@ -1322,9 +1322,10 @@ def gift_hit_tier(grant: GiftGrant, evicted: frozenset[str] | set[str] = frozens
 # ===== 评分 helper(comp 相关)=====
 
 def _owned_chars(gs: GameState) -> set[str]:
-    """已持有的角色名集合(bench + deployed)。"""
-    return {bc.char_id for bc in (*bench_slots_of(gs), *deployed_slots_of(gs))
-            if bc is not None and bc.char_id}
+    """已持有的角色名集合(bench + deployed;容器单位域现读)。"""
+    front, back = deployed_rows_of(gs)
+    return {u.char_id for u in (*front, *back, *bench_units_of(gs))
+            if u is not None and u.char_id}
 
 
 def form_progress(comp: Comp, gs: GameState) -> float:
@@ -1757,18 +1758,17 @@ def _held_base_copies(gs: GameState) -> dict[str, int]:
 
     bench + deployed 各单位按 star 折基础副本(3合1:1星=1 / 2星=3 / 3星=9 / 4星=27 张基础副本)。
     持有越多 → 牌池剩余该角色越少 → 越难再刷(牌库有限,用户根因)。
-    state.bench/deployed 由 session.tracked_* seed(带 char_id+star;shop.py:185);空(首轮/无身份)→ {}。
+    单位域 = 容器现读(bench unit 槽 + 行域 Unit;bench 全空/未观察 → {})。
     """
     counts: dict[str, int] = {}
-    bench = bench_slots_of(gs)
-    deployed = deployed_slots_of(gs)
-    for bc in (*bench, *deployed):
-        if bc is None:
-            continue   # ADR-0316 bench 槽位表空槽
-        cid = getattr(bc, 'char_id', None)
+    front, back = deployed_rows_of(gs)
+    for u in (*front, *back, *bench_units_of(gs)):
+        if u is None:
+            continue
+        cid = getattr(u, 'char_id', None)
         if not cid:
             continue
-        star = max(getattr(bc, 'star', 1), 1)
+        star = max(getattr(u, 'star', 1), 1)
         counts[cid] = counts.get(cid, 0) + 3 ** (star - 1)
     return counts
 
@@ -1964,7 +1964,19 @@ def _wearable_gate_ok(worn_all: list[str], char: str, item: str) -> bool:
     return True
 
 
-def equip_alloc_empty_reason(comp: Comp | None, deployed: list, owned: list[str],
+def _iter_deployed_rows(deployed_rows: tuple[list, list] | None):
+    """容器行域 ``(front_row, back_row)`` → ``(行名, Unit)`` 序列
+    (排归属由行承载,§2.1;分配器与诊断共用同一展开,禁第二份)。"""
+    if not deployed_rows:
+        return []
+    front, back = deployed_rows
+    return ([('front', d) for d in (front or [])]
+            + [('back', d) for d in (back or [])])
+
+
+def equip_alloc_empty_reason(comp: Comp | None,
+                             deployed_rows: tuple[list, list],
+                             owned: list[str],
                              occupied: dict[tuple[str, int], list[str]] | None = None,
                              ) -> str:
     """``equip_allocation`` 返回空时的结构化归因(纯函数)。
@@ -1985,6 +1997,8 @@ def equip_alloc_empty_reason(comp: Comp | None, deployed: list, owned: list[str]
     与 ``equip_allocation`` 同输入口径(occupied/completed 前提下守卫状态一致:
     空分配 ⇔ 无任何 ``_assign`` 发生)。可行性判定与分配器共用
     ``_pairing_guard_ok``/``_wearable_gate_ok`` 单源(镜像纪律)。
+    ``deployed_rows`` = 容器行域 ``(front_row, back_row)``,元素 = 容器
+    ``Unit``(P4 容器形,排归属由行承载,occupied 键 (row, 行内槽号))。
     """
     occ = occupied or {}
     pool = list(owned)
@@ -2002,18 +2016,19 @@ def equip_alloc_empty_reason(comp: Comp | None, deployed: list, owned: list[str]
     worn_all: dict[str, list[str]] = {}
     capacity: dict[str, int] = {}
     by_name: dict[str, list] = {}
-    for d in deployed:
+    for row_name, units in _iter_deployed_rows(deployed_rows):
+        d = units
         n = getattr(d, 'char_id', None)
         if n:
-            by_name.setdefault(n, []).append(d)
-            for w in occ.get((getattr(d, 'position_pref', '') or '',
+            by_name.setdefault(n, []).append((row_name, d))
+            for w in occ.get((row_name,
                               int(getattr(d, 'slot', 0) or 0)), []):
                 worn_all.setdefault(n, []).append(w)
                 if is_basic(w):
                     worn_basics.setdefault(n, []).append(w)
     for n, ds in by_name.items():
-        used = sum(len(occ.get((getattr(d, 'position_pref', '') or '',
-                                int(getattr(d, 'slot', 0) or 0)), [])) for d in ds)
+        used = sum(len(occ.get((_rn, int(getattr(d, 'slot', 0) or 0)), []))
+                   for _rn, d in ds)
         capacity[n] = max(0, EQUIP_CAPACITY * len(ds) - used)
     if not any(v > 0 for v in capacity.values()):
         return 'no_deployed' if not capacity else 'capacity_full'
@@ -2036,7 +2051,9 @@ def equip_alloc_empty_reason(comp: Comp | None, deployed: list, owned: list[str]
     return 'wearable_gate' if wearable_blocked else 'pairing_guard'
 
 
-def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
+def equip_allocation(comp: Comp | None,
+                     deployed_rows: tuple[list, list],
+                     owned: list[str],
                      occupied: dict[tuple[str, int], list[str]] | None = None,
                      priority_order: list[str] | None = None,
                      ) -> list[tuple[str, str]]:
@@ -2049,9 +2066,11 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
        key_equips(multiplicity 消费,不超发);
     2. **其余场上 core** 拿剩余 key_equips(core 顺序);
     3. **剩余通用 owned** 按 deployed 顺序兜底(前排在前 —— 受击/反甲类在前排生效)。
-    ``occupied[(row, slot)]`` = 已穿列表(容量扣减,EQUIP_CAPACITY);deployed 元素需带
-    char_id/position_pref/slot(BenchChar)。comp=None → 全走 3(通用兜底)。
-    纯函数(可离线测);CwOpEquipAll 消费。
+    ``occupied[(row, slot)]`` = 已穿列表(容量扣减,EQUIP_CAPACITY);
+    ``deployed_rows`` = 容器行域 ``(front_row, back_row)``,元素 = 容器
+    ``Unit``(char_id/slot 行内槽号,排归属由行承载——benchchar-retirement
+    P4 容器形)。comp=None → 全走 3(通用兜底)。纯函数(可离线测);
+    CwOpEquipAll 消费。
 
     ``priority_order``(18 号稿 §3.3 签名扩展,ADR-0526):可选分配优先序
     (list[str],角色名);None(缺省)= 现行内部派生序,**零行为漂移**。
@@ -2106,15 +2125,16 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
     pool = list(owned)
     if comp is None:
         priority_order = None   # 18 号稿 §3.3:未定型帧词缀谓词集合退化,强制零重排
+    _units = _iter_deployed_rows(deployed_rows)
     by_name: dict[str, list] = {}
-    for d in deployed:
+    for row_name, d in _units:
         n = getattr(d, 'char_id', None)
         if n:
-            by_name.setdefault(n, []).append(d)
+            by_name.setdefault(n, []).append((row_name, d))
     capacity: dict[str, int] = {}
     for n, ds in by_name.items():
-        used = sum(len(occ.get((getattr(d, 'position_pref', '') or '',
-                                int(getattr(d, 'slot', 0) or 0)), [])) for d in ds)
+        used = sum(len(occ.get((_rn, int(getattr(d, 'slot', 0) or 0)), []))
+                   for _rn, d in ds)
         capacity[n] = max(0, EQUIP_CAPACITY * len(ds) - used)
 
     # ===== ADR-0391:防误合成守卫 + 回收去向(P14 定理 3/4)=====
@@ -2133,11 +2153,11 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
     # 的 W1/W2 输入,经合成产物展开消费)
     worn_basics: dict[str, list[str]] = {}
     worn_all: dict[str, list[str]] = {}
-    for d in deployed:
+    for row_name, d in _units:
         n = getattr(d, 'char_id', None)
         if not n:
             continue
-        for w in occ.get((getattr(d, 'position_pref', '') or '',
+        for w in occ.get((row_name,
                           int(getattr(d, 'slot', 0) or 0)), []):
             worn_all.setdefault(n, []).append(w)
             if _is_basic(w):
@@ -2227,8 +2247,9 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
             _cores = [c for c in priority_order if capacity.get(c, 0) > 0]
         else:
             _cores = [c for c in comp.core_chars if capacity.get(c, 0) > 0]
-        _others = [d for d in deployed
-                   if getattr(d, 'char_id', '') and d.char_id not in comp.core_chars]
+        _others = [(rn, d) for rn, d in _units
+                   if getattr(d, 'char_id', '')
+                   and d.char_id not in comp.core_chars]
         # ADR-0391 死库存回收去向:先于 core 兜底抽取(防 core 盲吃死库存),
         # 非 core 工具人每人至多 2 件(两件互为配对 → 游戏自动 2合1 =
         # 回收线有意触发;发不完留 owned 囤着)
@@ -2237,7 +2258,7 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
             for _pass in range(2):
                 if not _dead:
                     break
-                for d in _others:
+                for _rn, d in _others:
                     if not _dead:
                         break
                     n = d.char_id
@@ -2267,7 +2288,7 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
                     break   # 该 core 对整池都被守卫拦 → 一件不取,整池留 owned
                 _assign(cn, pool.pop(_k))
         # 非 core:每人 1 件保底(同样过配对守卫与穿戴可行性门)
-        for d in _others:
+        for _rn, d in _others:
             n = d.char_id
             if pool and capacity.get(n, 0) > 0:
                 idx = next((i for i, e in enumerate(pool)
@@ -2279,7 +2300,7 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
         return out
     # comp=None:轮转分配;配对守卫生效
     # (comp=None 无豁免信息 → 任何互为配方的基础件对不同人发)
-    _names = [d.char_id for d in deployed if getattr(d, 'char_id', '')]
+    _names = [d.char_id for _rn, d in _units if getattr(d, 'char_id', '')]
     _round = 0
     while pool:
         _gave = False

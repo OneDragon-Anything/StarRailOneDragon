@@ -27,9 +27,9 @@ from sr_od.application.currency_war.kernel.cw_equip_value import (
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
-    bench_slots_of,
+    bench_units_of,
     deployed_count_of,
-    deployed_slots_of,
+    deployed_rows_of,
     max_units_of,
     plane_of,
 )
@@ -857,11 +857,10 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
     _tgt_factions = set(target_comp.factions) if target_comp is not None else set()
     has_wolf_line = bool(_tgt_chars & {'银狼LV.999'}) or bool(
         _tgt_factions & {'欢愉', '量子同频'})
-    # 在场判定:bench+deployed 的 char_id(信息缺失=空列表→不降权,保守)
-    _pool = [d for d in deployed_slots_of(gs) if d is not None] + \
-        [b for b in bench_slots_of(gs) if b is not None]
-    _owned = {getattr(bc, 'char_id', '') for bc in _pool
-              if getattr(bc, 'char_id', '')}
+    # 在场判定:bench+deployed 的 char_id(容器单位域现读;信息缺失=空→不降权,保守)
+    front, back = deployed_rows_of(gs)
+    _owned = {u.char_id for u in (*front, *back, *bench_units_of(gs))
+              if getattr(u, 'char_id', '')}
     wolf_owned = ('银狼LV.999' in _owned) if _owned else True
 
     best_idx, best_score, best_reason = 0, -1.0, ''

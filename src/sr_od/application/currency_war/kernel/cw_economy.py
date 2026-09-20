@@ -30,7 +30,6 @@ from sr_od.application.currency_war.kernel.cw_registry import (
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
     from sr_od.application.currency_war.kernel.cw_game_state import GameState
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
@@ -145,9 +144,11 @@ def sell_refund(star: int, cost: int) -> int:
     return max(refund, 0)
 
 
-def bench_char_cost(bc: BenchChar) -> int:
+def bench_char_cost(bc) -> int:
     """备战角色的招募费(sell_refund / 经济决策用):char_id 已识别 → 查 CHARACTERS;未知 → 3(中费保守估)。
 
+    入参 = 容器单位(行域/bench unit 槽的 ``Unit``,duck 读 char_id;
+    benchchar-retirement P4 容器形)。
     公共名(跨模块私有符号收敛:跨模块消费统一走本名;
     下划线旧名保留为别名,存量消费点不破)。"""
     c = CHARACTERS.get(bc.char_id) if getattr(bc, 'char_id', '') else None
@@ -1058,14 +1059,14 @@ def _pop_slot_indicator(gs: GameState) -> bool:
     本单一源——strategy 层消费位同批改委托,漂移风险由单源天然消解。)
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_slots_of,
+        bench_units_of,
         deployed_count_of,
         max_units_of,
     )
     if deployed_count_of(gs) < max_units_of(gs):
         return False
-    return any(b is not None and (getattr(b, 'star', 1) or 1) >= 2
-               for b in bench_slots_of(gs))
+    return any((getattr(u, 'star', 1) or 1) >= 2
+               for u in bench_units_of(gs))
 
 
 def _upgrade_ul_threshold_ok(gs: GameState,
@@ -1290,13 +1291,14 @@ def _owned_core_copies(gs: GameState, core: str) -> int:
     (cw_shop_odds.acquirability_factor 同口径);身份未识别的槽不计
     ——保守方向=低估持有 → E_find 偏大 → 帽偏松(不缩供给侧)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_slots_of,
-        deployed_slots_of,
+        bench_units_of,
+        deployed_rows_of,
     )
+    front, back = deployed_rows_of(gs)
     n = 0
-    for bc in (*bench_slots_of(gs), *deployed_slots_of(gs)):
-        if bc is not None and bc.char_id == core:
-            n += 3 ** ((bc.star or 1) - 1)
+    for u in (*front, *back, *bench_units_of(gs)):
+        if u is not None and u.char_id == core:
+            n += 3 ** ((u.star or 1) - 1)
     return n
 
 
