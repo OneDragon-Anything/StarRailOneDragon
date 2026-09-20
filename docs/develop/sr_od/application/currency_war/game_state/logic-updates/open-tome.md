@@ -12,7 +12,7 @@
 
 **其它域零写**:选卡后果(星徽四选一)随机面归观察;典籍不消失,消耗在选卡确认(申报 = 上报函数 docstring)。
 
-**触发物识别**(备战观察链):典籍占席事实经 bench 槽位 `kind='tome'` 进容器(观察写端 `bench_view_from_obs` 的 `item_kind_by_slot` 细分,同帧 `read_tomes` 槽号集构造;决策臂 = mandate_v1 entry 开典籍臂读容器 bench 首个 tome 槽)。
+**触发物识别**(备战观察链):典籍占席事实经 bench 槽位 `kind='tome'` 进容器(观察读链 `read_bench_view` 识别期定 kind,同帧 `read_tomes` 槽号集构造;决策臂 = mandate_v1 entry 开典籍臂读容器 bench 首个 tome 槽)。
 
 ## 3. 确定面转移规则(逐条)
 
@@ -31,11 +31,11 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::CwActionOpenTomeParam`;`operations/cw_op/cw_open_tome_action.py::CwActionOpenTomeOp`;`kernel/cw_action_report/open_tome.py::report_action_open_tome_param`(腾席函数)/ `bench_view_from_obs`(kind 细分观察写端);`kernel/cw_exec_state.py::apply_confirm_effect`(dict ConfirmTome 分支);`operations/cw_screen/cw_screen_bookcard.py`(`chosen_tome` 写点 / ConfirmTome 登记);`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`。
+`kernel/cw_vocab.py::CwActionOpenTomeParam`;`operations/cw_op/cw_open_tome_action.py::CwActionOpenTomeOp`;`kernel/cw_action_report/open_tome.py::report_action_open_tome_param`(腾席函数)/ `obs/cw_identity_obs.py::read_bench_view`(kind 识别期细分读链);`kernel/cw_exec_state.py::apply_confirm_effect`(dict ConfirmTome 分支);`operations/cw_screen/cw_screen_bookcard.py`(`chosen_tome` 写点 / ConfirmTome 登记);`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`。
 
 ## 7. 语义验证
 
-腾席腿语义单一源 = `report_action_open_tome_param`(bench kind 'tome' → 'empty',陈旧提案零写;行为锁 = `test_cw_unified_action_2a` 词表覆盖锁)。触发物识别 = 容器 bench 槽 kind 细分(观察写端 `item_kind_by_slot` 映射,决策臂读容器分派;行为锁 = mandate_v1 决策面 bench kind 分派用例)。选卡后果归观察(ConfirmTome 登记)。
+腾席腿语义单一源 = `report_action_open_tome_param`(bench kind 'tome' → 'empty',陈旧提案零写;行为锁 = `test_cw_unified_action_2a` 词表覆盖锁)。触发物识别 = 容器 bench 槽 kind 细分(读链识别期定 kind,决策臂读容器分派;行为锁 = mandate_v1 决策面 bench kind 分派用例)。选卡后果归观察(ConfirmTome 登记)。
 
 ## 8. 判例注记(发射期)
 

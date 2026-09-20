@@ -10,7 +10,7 @@
 
 容器 GameState **零写**(零写族申报):上报函数 = `zero_writes.py::report_action_open_box_param`(**零写族**集中申报,函数体恒零容器写)——**R7 终结化**,结束判定先行交回外循环,不经逻辑态写;腾席/到账事实由交回后的下一入口 heavy 观察覆盖(零窗口:终结 = 发出即 visit 结束,无同 visit 后续帧消费)。箱不消失,消耗在选卡确认(申报 = 函数 docstring)。
 
-**触发物识别**(备战观察链):补给箱占席事实经 bench 槽位 `kind='supply_box'` 进容器(观察写端 `bench_view_from_obs` 细分;决策臂 = mandate_v1 entry 开箱臂读容器 bench 首个 supply_box 槽,臂序 box 优先于典籍)。
+**触发物识别**(备战观察链):补给箱占席事实经 bench 槽位 `kind='supply_box'` 进容器(观察读链 `read_bench_view` 识别期定 kind;决策臂 = mandate_v1 entry 开箱臂读容器 bench 首个 supply_box 槽,臂序 box 优先于典籍)。
 
 ## 3. 确定面转移规则(逐条)
 
@@ -29,7 +29,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::CwActionOpenBoxParam`;`operations/cw_op/cw_open_box_action.py::CwActionOpenBoxOp`(`terminal`/`terminal_wait` 类属性,消费点经注册表 `action_op_class_for` 读);`kernel/cw_action_report/zero_writes.py::report_action_open_box_param`(零写族申报)/ `bench_view_from_obs`(kind 细分观察写端);`kernel/cw_exec_state.py::apply_confirm_effect`(dict ConfirmBox 分支);`operations/cw_screen/cw_screen_box_pick.py`(`box_card_names` 写点 / `decide_box_card`);终结判定总表 = [screens/README](../../screens/README.md) §4。
+`kernel/cw_vocab.py::CwActionOpenBoxParam`;`operations/cw_op/cw_open_box_action.py::CwActionOpenBoxOp`(`terminal`/`terminal_wait` 类属性,消费点经注册表 `action_op_class_for` 读);`kernel/cw_action_report/zero_writes.py::report_action_open_box_param`(零写族申报)/ `obs/cw_identity_obs.py::read_bench_view`(kind 识别期细分读链);`kernel/cw_exec_state.py::apply_confirm_effect`(dict ConfirmBox 分支);`operations/cw_screen/cw_screen_box_pick.py`(`box_card_names` 写点 / `decide_box_card`);终结判定总表 = [screens/README](../../screens/README.md) §4。
 
 ## 7. 语义验证
 
