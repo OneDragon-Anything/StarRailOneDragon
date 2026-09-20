@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-银狼骇入策划 overlay 点卡选中并确认。词表 = `kernel/cw_vocab.py::CwActionPickPlannerParam`(`PickOption` 子类:字段 `idx` = 候选下标 0 起、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_overlay_pick_action.py::CwActionPickPlannerOp`(体迁自 `cw_screen_planner.py::CwScreenPlanner._handle_overlay` 点卡确认尾段,替身缝 = 方法级桩保留;域 env = `OverlayPickExecEnv`)。
+银狼骇入策划 overlay 点卡选中并确认。词表 = `kernel/cw_vocab.py::CwActionPickPlannerParam`(`PickOption` 子类:字段 `idx` = 候选下标 0 起、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_overlay_pick_action.py::CwActionPickPlannerOp`(体迁自 `cw_screen_yinlang.py::CwScreenYinLang._handle_overlay` 点卡确认尾段,替身缝 = 方法级桩保留;域 env = `OverlayPickExecEnv`)。
 
 ## 2. 逻辑态域集
 
@@ -18,7 +18,7 @@
 
 1. **点卡选中**:mouse_move + click `env.target`(press_time = `op.CLICK_PRESS_TIME`;选中点避开卡内「详情」按钮区——点卡身上部,点错触详情面板的实证几何治理)→ 固定等待 1.2s(选中动画);
 2. `op._confirm_pending = True`;
-3. **确认机械交回** = `emit_overlay_confirm`(确认点 = `area_center`(op.ctx, '按钮-骇入确认', `CwScreenPlanner.CARD_AREA_SCREEN`)or `CwScreenPlanner.CONFIRM`;裁决词 = 全词「我来当策划」——短词「策划」在艺术字漏读时可能假通过);轮次结果经 `env.round_result` 旁路回传;
+3. **确认机械交回** = `emit_overlay_confirm`(确认点 = `area_center`(op.ctx, '按钮-骇入确认', `CwScreenYinLang.CARD_AREA_SCREEN`)or `CwScreenYinLang.CONFIRM`;裁决词 = 全词「我来当策划」——短词「策划」在艺术字漏读时可能假通过);轮次结果经 `env.round_result` 旁路回传;
 4. 详情面板防御已拆:面板若真弹出(点错所致)= 选中点几何治理域,后果归下一帧重入自愈——本屏分发即门,外循环按当前画面重分派(详情 overlay 族分支/本 op 重走链)。
 
 ## 4. 随机面
@@ -31,7 +31,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::CwActionPickPlannerParam` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickPlannerOp` / `OverlayPickExecEnv`;`operations/cw_screen/_overlay_confirm.py::emit_overlay_confirm`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_game_state.py::chosen_hack`(在册无写端);`operations/cw_screen/cw_screen_planner.py::CwScreenPlanner`(替身缝/选中点几何单一源)。
+`kernel/cw_vocab.py::CwActionPickPlannerParam` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickPlannerOp` / `OverlayPickExecEnv`;`operations/cw_screen/_overlay_confirm.py::emit_overlay_confirm`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_game_state.py::chosen_hack`(在册无写端);`operations/cw_screen/cw_screen_yinlang.py::CwScreenYinLang`(替身缝/选中点几何单一源)。
 
 ## 7. 语义验证
 

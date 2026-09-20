@@ -135,7 +135,7 @@ def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
       台账无「意图」行型,不强造——同 pick_invest 申报);
     - **效果腿不在发射相应用**:幂等 = 证据闩,效果在「overlay 已关」
       落地证据(重入裁决出口)应用一次——应用宿主 =
-      cw_screen_planner.apply_pick_planner_landing(本批宿主,记账函数
+      cw_screen_yinlang.apply_pick_planner_landing(本批宿主,记账函数
       迁入 kernel/cw_action_report/pick_planner.py = 推广批,
       design §2.1⑤);
     - 容器零写,消费真值归观察(原零写委托语义保持)。"""

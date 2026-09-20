@@ -121,7 +121,7 @@ class CwScreenFortune(SrOperation):
         texts = self._obs.options if self._obs is not None else []
         # 选卡判据(普查迁移批 2:单一源 = kernel decide_fortune;唯一入口
         # = 策略对象,handler 禁自拟打分,kernel 直调仅无 match 防御路径
-        # ——cw_screen_planner 同款)。写槽已由 report 落容器 → 零参决策;
+        # ——cw_screen_yinlang 同款)。写槽已由 report 落容器 → 零参决策;
         # 本屏无 chosen 写端(fortune 选择存证行已随删除波 1 退役)。
         best_i = 0
         _match = getattr(self.ctx, 'cw_match', None)

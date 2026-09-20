@@ -1,6 +1,6 @@
 # 25 事件面画面策略(event overlays)
 
-> 画面族 = 节点 overlay 单选画面:货币战争-投资环境 / 货币战争-投资策略 / 货币战争-补给 / 货币战争-遭遇节点 / 货币战争-盛会之星 / 选择伙伴 / 选择装备(cw_equip_pick)/ 命运卜者强化(cw_fortune_picker)/ 骇入策划(cw_hacker_planner)/ 祈愿试炼 / 星徽秘典四选一 / 专家邀请函 / 武装箱弹窗;**能力面** = [../screens/README.md](../screens/README.md) §5.2/§5.5。本篇 = 该画面族的**策略面**。
+> 画面族 = 节点 overlay 单选画面:货币战争-投资环境 / 货币战争-投资策略 / 货币战争-补给 / 货币战争-遭遇节点 / 货币战争-盛会之星 / 选择伙伴 / 选择装备(cw_equip_pick)/ 命运卜者强化(cw_fortune_picker)/ 银狼升星(cw_yinlang_star_up)/ 祈愿试炼 / 星徽秘典四选一 / 专家邀请函 / 武装箱弹窗;**能力面** = [../screens/README.md](../screens/README.md) §5.2/§5.5。本篇 = 该画面族的**策略面**。
 > 判据本体引用不重复:九接口决策规格 = [13_pick_family.md](13_pick_family.md);事件面目录 E1-E18 = [08_events.md](08_events.md);数值单一源在代码。事件画面由外循环分支 handler 分派(overlay 不占备战/商店期动作面)。
 
 ## 1. 策略思路/算法概述

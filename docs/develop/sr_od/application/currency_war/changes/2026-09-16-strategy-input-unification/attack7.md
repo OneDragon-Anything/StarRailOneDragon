@@ -42,9 +42,9 @@
 
 ### [m3] minor | design.md §2.2 #9/#12;landing.md 3.4 | 两新写端的 actor 登记义务未申报(CwScreenPlanner / CwScreenBoxPick 不在 REGISTERED_ACTORS)
 
-**发现内容**:写入口硬校验 actor 须在册(`kernel/cw_game_state.py::_validate_sig:369`,未登记显式 ValueError)。3.4 后 `CwScreenPlanner`(写 `planner_opts` 槽)与 `CwScreenBoxPick`(写 `box_card_names` 槽)成为**新**容器写端,两者现不在 `REGISTERED_ACTORS`(:285-336 逐项核对;其余 pick handler 均已在册)。设计/landing 均未申报 `register_sig_actors` 扩面义务——首写即炸不会静默错,但属「实现者需自行补的设计决定」。
+**发现内容**:写入口硬校验 actor 须在册(`kernel/cw_game_state.py::_validate_sig:369`,未登记显式 ValueError)。3.4 后 `CwScreenYinLang`(写 `planner_opts` 槽)与 `CwScreenBoxPick`(写 `box_card_names` 槽)成为**新**容器写端,两者现不在 `REGISTERED_ACTORS`(:285-336 逐项核对;其余 pick handler 均已在册)。设计/landing 均未申报 `register_sig_actors` 扩面义务——首写即炸不会静默错,但属「实现者需自行补的设计决定」。
 
-**修正方向**:landing 3.4 范围补「`CwScreenPlanner`/`CwScreenBoxPick` 两新写端 actor 登记(register_sig_actors)」,design §2.2-f 配套一句。
+**修正方向**:landing 3.4 范围补「`CwScreenYinLang`/`CwScreenBoxPick` 两新写端 actor 登记(register_sig_actors)」,design §2.2-f 配套一句。
 
 ### [m4] minor | landing.md 末阶段·词表 | 旧符号 `decide_invest` 不在「decide_ 契约全族 12 符号」内,点名式读法存在漏清面
 

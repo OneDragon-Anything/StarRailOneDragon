@@ -69,7 +69,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenPlanner(SrOperation):
+class CwScreenYinLang(SrOperation):
     """银狼 2 星奖励画面(用户 2026-08-31 定名;弹窗标题「我来当策划」,银狼升
     2★ 时触发——非随机事件):OCR 两卡 → 策略选卡 → 确认 → 关详情面板。
     两选项=扑满病毒(敌人变扑满)vs 升费卡(升费腿 = 变为下一个费用档的
@@ -83,8 +83,8 @@ class CwScreenPlanner(SrOperation):
     # (1225,310) 均触发详情非选中)——**点卡下半部生效选中**(右卡选中+确认亮)。
     # 布局漂移修正(match3 实锤 2026-08-31,见 REPORT W944 §8):卡上移后固定点
     # (1225,480) 落卡外 → 未选中 → 确认无效死循环。改由 area rect 推导:71% 高度
-    # (旧实证点击高度比例)+ 详情钮避让 clamp;rect 单一源在 cw_hacker_planner.yml。
-    CARD_AREA_SCREEN: ClassVar[str] = '货币战争-骇入策划'
+    # (旧实证点击高度比例)+ 详情钮避让 clamp;rect 单一源在 cw_yinlang_star_up.yml。
+    CARD_AREA_SCREEN: ClassVar[str] = '货币战争-银狼升星'
     CARD_AREAS: ClassVar[tuple[str, str]] = ('骇入选项-左卡', '骇入选项-右卡')
     # 点卡/确认按住时长(match2 复盘实证 prep_actions 参数;漏定义=live
     # AttributeError,match3 首局实锤——类属性与引用点同批落码的纪律)
@@ -104,7 +104,7 @@ class CwScreenPlanner(SrOperation):
     # 卡文字 OCR 过滤带(卡描述在 y~330-370;标题 y~376)
     CARD_TEXT_Y_LO: ClassVar[int] = 300
     CARD_TEXT_Y_HI: ClassVar[int] = 420
-    # 确认按钮兜底常量(首选 area_center('按钮-骇入确认'):建档 cw_hacker_planner.yml
+    # 确认按钮兜底常量(首选 area_center('按钮-骇入确认'):建档 cw_yinlang_star_up.yml
     # rect (1420,575,1560,625) 中心 (1490,600),与本常量同按钮差 1px——交互实锤在档:
     # 在**右侧偏下** (1440-1542,584-615),非画面中央!旧写 (960,615) 是猜的——
     # 局29 事件 1.5h 未消费的另一半原因)
@@ -134,15 +134,15 @@ class CwScreenPlanner(SrOperation):
         交回语义 = 机械 round_wait(验证废除;重入裁决见决策动作 node 顶部)。
         """
         area = self.ctx.screen_loader.get_area(
-            CwScreenPlanner.CARD_AREA_SCREEN,
-            CwScreenPlanner.CARD_AREAS[idx])
+            CwScreenYinLang.CARD_AREA_SCREEN,
+            CwScreenYinLang.CARD_AREAS[idx])
         if area is not None:
             rect = area.pc_rect
         else:
-            lx, ly, rx, ry = CwScreenPlanner._LEGACY_CARD_RECTS[idx]
+            lx, ly, rx, ry = CwScreenYinLang._LEGACY_CARD_RECTS[idx]
             rect = Rect(lx, ly, rx, ry)
-        y = min(rect.y1 + int(rect.height * CwScreenPlanner.SELECT_Y_RATIO),
-                rect.y2 - int(rect.height * CwScreenPlanner.DETAIL_MARGIN_RATIO))
+        y = min(rect.y1 + int(rect.height * CwScreenYinLang.SELECT_Y_RATIO),
+                rect.y2 - int(rect.height * CwScreenYinLang.DETAIL_MARGIN_RATIO))
         return Point(rect.center.x, y)
 
     def _match_gs(self):
@@ -202,7 +202,7 @@ class CwScreenPlanner(SrOperation):
                     apply_pick_planner_landing(
                         _mgs, leg_type=_leg[0], norm_item=_leg[1],
                         sig=ChannelSig(family='logic_action',
-                                       actor='CwScreenPlanner',
+                                       actor='CwScreenYinLang',
                                        mode='compute'))
                 return self.round_success('策划事件已确认(重入观察裁决)',
                                           wait=2.0)

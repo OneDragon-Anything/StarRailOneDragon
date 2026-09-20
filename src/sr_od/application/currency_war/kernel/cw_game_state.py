@@ -218,7 +218,7 @@ _PAYLOAD_DOMAINS: dict[str, tuple[str, bool]] = {
     'invest_env_opts': ('货币战争-投资环境', True),
     'megastar_opts': ('货币战争-盛会之星', True),
     'partner_opts': ('货币战争-列车同行', True),
-    'planner_opts': ('货币战争-骇入策划', True),
+    'planner_opts': ('货币战争-银狼升星', True),
     'star_tome_opts': ('货币战争-星徽秘典弹窗', True),
     'wish_trial_opts': ('货币战争-祈愿试炼', True),
     'box_card_names': ('货币战争-备战-武装箱选择', True),

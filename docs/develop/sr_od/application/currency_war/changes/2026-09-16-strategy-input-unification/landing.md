@@ -6,14 +6,14 @@
 
 ### 3.1 增量槽位面与离屏机制（纯增量，零行为）
 
-**范围**：design.md §2.2 槽位表新增面——#5–#12 八个新 opts 槽（8 个新域键）、#3/#4 `EncounterPayload`/`SupplyPayload` 形状升级（typed option 化，现名沿用，2 个变域 bump）、顶层新字段 `encounter_refreshed_in_visit`（`node_screen_refresh` 域版本 +1）、**新写端 actor 预登记**（`REGISTERED_ACTORS` 补 `CwScreenPlanner`/`CwScreenBoxPick`——纯增量期零行为，3.4 写槽接线的前提）、`_PAYLOAD_DOMAINS` 扩展为属屏映射（§2.3 十行清点全集 + shop 保留映射内挂点跳过/prep_obs 豁免）、`cw_loop.py` 路由点陈旧清点挂点（插入点 = 画面识别产出后、`_dispatch_identity_screen` 调用前，复用当轮识别结果；**已 None 跳过**——不占 write_seq 不落 journal；写入口经 `leave_screen` 同口径带具名 sig；**早退轮绕行无害**——`stop_at_prep` 早退发生在识别之前，早退轮无识别结果不清点，早退屏非映射属屏且无 decide 消费，下轮路由补清）。**不含** session 槽删除、`gs.prep_obs` 字段新增（归 3.2）、不含任何 decide 签名变化、不含 handler 写槽接线（新槽无人写读；现状恒 None 的槽被清点跳过 = no-op 等价）。
+**范围**：design.md §2.2 槽位表新增面——#5–#12 八个新 opts 槽（8 个新域键）、#3/#4 `EncounterPayload`/`SupplyPayload` 形状升级（typed option 化，现名沿用，2 个变域 bump）、顶层新字段 `encounter_refreshed_in_visit`（`node_screen_refresh` 域版本 +1）、**新写端 actor 预登记**（`REGISTERED_ACTORS` 补 `CwScreenYinLang`/`CwScreenBoxPick`——纯增量期零行为，3.4 写槽接线的前提）、`_PAYLOAD_DOMAINS` 扩展为属屏映射（§2.3 十行清点全集 + shop 保留映射内挂点跳过/prep_obs 豁免）、`cw_loop.py` 路由点陈旧清点挂点（插入点 = 画面识别产出后、`_dispatch_identity_screen` 调用前，复用当轮识别结果；**已 None 跳过**——不占 write_seq 不落 journal；写入口经 `leave_screen` 同口径带具名 sig；**早退轮绕行无害**——`stop_at_prep` 早退发生在识别之前，早退轮无识别结果不清点，早退屏非映射属屏且无 decide 消费，下轮路由补清）。**不含** session 槽删除、`gs.prep_obs` 字段新增（归 3.2）、不含任何 decide 签名变化、不含 handler 写槽接线（新槽无人写读；现状恒 None 的槽被清点跳过 = no-op 等价）。
 **设计依据**：design.md §2.2（槽位表 + 配套契约 a/c/e/f）、§2.3、§2.1-4。
 **文件面**：`kernel/cw_game_state.py`、`operations/cw_loop.py`（路由清点挂点）、`sr-od-test` 对应新槽/schema 单测。
 **依赖**：无（与 unified-obs 剩余阶段面零交集，design §2.8）。
 **优先级建议**：0
 **完成判据**：
 - 10 个被清槽的属屏映射与 §2.3 表逐行一致；prep_obs/shop 豁免在位（shop 保留映射结构内 + 挂点跳过）；shop 两处既有清点未动；已 None 跳过语义单测（不占版本不产行）；**未识别轮剧本断言**（识别 miss → 挂点清全部十槽）与**早退轮剧本断言**（`stop_at_prep` 早退轮不清点、下轮路由补清）；
-- `_PAYLOAD_DOMAINS` 扩展后 `leave_screen` 守卫面放宽核对申报（8 新槽成合法离屏域）；actor 预登记核对（`REGISTERED_ACTORS` 含 `CwScreenPlanner`/`CwScreenBoxPick`，零行为期无写端触发）；路由清点行 sig 形态断言（family/mode 与既有 CloseShop 腿清点行同源、actor=`cw_loop_route_clear` 可过滤）；
+- `_PAYLOAD_DOMAINS` 扩展后 `leave_screen` 守卫面放宽核对申报（8 新槽成合法离屏域）；actor 预登记核对（`REGISTERED_ACTORS` 含 `CwScreenYinLang`/`CwScreenBoxPick`，零行为期无写端触发）；路由清点行 sig 形态断言（family/mode 与既有 CloseShop 腿清点行同源、actor=`cw_loop_route_clear` 可过滤）；
 - 新槽/新字段读写与缺省 None 单测；#3/#4 升级形状 + 8 新域键 + 域版本 bump 的 schema 断言随批（typed option asdict 往返过）；
 - 全量绿（纯增量零行为）。
 - 通用工程门（本文首节定义）

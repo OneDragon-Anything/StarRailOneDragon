@@ -157,7 +157,7 @@ W362 审查报告(`.debug/temp/currency_war/w362_six_review_batch2/REVIEW.md` §
 - **策划事件「我来当策划」升费腿结果(2026-09-18 口述·权威定谳)**:升费卡
   的结果 = **变为下一个费用档的 1 星银狼LV.999**——单位身份保持
   银狼LV.999(非普通银狼条目),费用档升一级,星级为 1 星;事件二选一
-  全景 = gameplay「银狼我来当策划事件」节,实机 op = `cw_screen_planner.py`
+  全景 = gameplay「银狼我来当策划事件」节,实机 op = `cw_screen_yinlang.py`
   (注释同口径),选项判分 = `cw_events.decide_planner`。
 - 待实测边角:升费幅度精确值(2 星=4 费?)、是否所有「升费角色」共用同一
   费用档映射表、升费后牌池费用档归属(原档还是新档)。

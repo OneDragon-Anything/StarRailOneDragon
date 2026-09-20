@@ -101,9 +101,6 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_plane_detail 
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_plane_transition import (
     CwScreenPlaneTransition,
 )
-from sr_od.application.currency_war.operations.cw_screen.cw_screen_planner import (
-    CwScreenPlanner,
-)
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_prep import (
     CwScreenPrep,
 )
@@ -127,6 +124,9 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_wait_one_one 
 )
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_wish_trial import (
     CwScreenWishTrial,
+)
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_yinlang import (
+    CwScreenYinLang,
 )
 from sr_od.application.currency_war.operations.decision_frame_hooks import (
     save_decision_frame,
@@ -840,7 +840,7 @@ class CwLoop(SrOperation):
     #(按钮在普通节点 revisit 备战同样出现,#18 接线暂缓)、道具详情弹窗/
     #: 消耗品浮层/阿哈装备(无固定身份,阶段三特殊规则)。
     CW_DISPATCH_SCREENS: ClassVar[tuple[str, ...]] = (
-        '货币战争-选择装备', '货币战争-列车同行', '货币战争-骇入策划',
+        '货币战争-选择装备', '货币战争-列车同行', '货币战争-银狼升星',
         '货币战争-命运卜者强化', '货币战争-位面详情', '货币战争-盛会之星',
         '货币战争-遭遇节点', '货币战争-未达上限警告', '货币战争-投资策略',
         '货币战争-补给', '货币战争-武装箱弹窗', '货币战争-备战-武装箱选择',
@@ -1383,10 +1383,10 @@ class CwLoop(SrOperation):
                 CwScreenPartner(self.ctx), journal_name='选择伙伴',
                 frame_tag='overlay_partner', wait=2)
 
-        if name == '货币战争-骇入策划':
+        if name == '货币战争-银狼升星':
             # 失败 round_retry(消费 retry 池,原 0a2 同语义)
             return self._dispatch_screen_op(
-                CwScreenPlanner(self.ctx), journal_name='策划事件',
+                CwScreenYinLang(self.ctx), journal_name='策划事件',
                 frame_tag='overlay_planner', wait=2,
                 on_fail_retry=True)
 

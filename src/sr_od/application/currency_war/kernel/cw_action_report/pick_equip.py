@@ -12,7 +12,7 @@
   (write_logic;装备区未观察跳写等观察)+ 获得后果链(:func:
   `cw_effect_inventory.apply_equip_acquire_consequence`,命中后果表则
   送角色腿 → bench + 合成级联,购买同语义);未解析 → 禁猜名,equips
-  值不变翻来源 + 留证行(照 cw_screen_planner 装备腿既有形态,观察覆盖
+  值不变翻来源 + 留证行(照 cw_screen_yinlang 装备腿既有形态,观察覆盖
   差异 = 预期内收口自愈)。
 
 动作上报函数族拆分件(每动作一文件;族规约 = 包 ``cw_action_report.

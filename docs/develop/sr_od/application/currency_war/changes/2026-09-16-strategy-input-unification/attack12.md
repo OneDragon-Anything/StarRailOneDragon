@@ -10,7 +10,7 @@
 
 ### [A1] major | landing.md 3.4（:52 范围 vs :54 文件面）| 范围承诺的必改文件不在阶段文件面内
 
-**发现内容**：3.4 范围句显式申报「新写端 actor 登记（`kernel/cw_game_state.py::REGISTERED_ACTORS` 补 `CwScreenPlanner`/`CwScreenBoxPick`——`_validate_sig` 显式炸错防线）」，但 3.4 文件面枚举（`cw_strategy.py`/`flow.py`/`bridge.py`/`operations/cw_screen/` 10 文件/`cw_investments.py`/`cw_comps.py`/`cw_equip_value.py`/`cw_events.py`/`cw_screen_equip_pick.py`/`sr-od-test`）**不含 `kernel/cw_game_state.py`**。该文件在本阶段的真实改动义务直调核实在案：`REGISTERED_ACTORS` 现集（`cw_game_state.py:285-336` 逐项读）确无 `CwScreenPlanner`/`CwScreenBoxPick` 两名，而这两名恰是十个新写端中仅有的两个未登记者（其余八名 handler 均已在册）——登记不补，3.4 落码后 planner/box_pick 首次写槽即被 `_validate_sig`（`cw_game_state.py:362-372`）显式炸错，生产链不可运行。阶段小节是账本唯一源（iteration-design.md §3.1），派工按文件面立任务，worker 要么越面改文件、要么停手申报——两种都是本可一行修掉的流程损耗。3.1 文件面虽含 `cw_game_state.py`，但其范围句无 actor 登记义务，登记无法落到 3.1 判据辖内。
+**发现内容**：3.4 范围句显式申报「新写端 actor 登记（`kernel/cw_game_state.py::REGISTERED_ACTORS` 补 `CwScreenYinLang`/`CwScreenBoxPick`——`_validate_sig` 显式炸错防线）」，但 3.4 文件面枚举（`cw_strategy.py`/`flow.py`/`bridge.py`/`operations/cw_screen/` 10 文件/`cw_investments.py`/`cw_comps.py`/`cw_equip_value.py`/`cw_events.py`/`cw_screen_equip_pick.py`/`sr-od-test`）**不含 `kernel/cw_game_state.py`**。该文件在本阶段的真实改动义务直调核实在案：`REGISTERED_ACTORS` 现集（`cw_game_state.py:285-336` 逐项读）确无 `CwScreenYinLang`/`CwScreenBoxPick` 两名，而这两名恰是十个新写端中仅有的两个未登记者（其余八名 handler 均已在册）——登记不补，3.4 落码后 planner/box_pick 首次写槽即被 `_validate_sig`（`cw_game_state.py:362-372`）显式炸错，生产链不可运行。阶段小节是账本唯一源（iteration-design.md §3.1），派工按文件面立任务，worker 要么越面改文件、要么停手申报——两种都是本可一行修掉的流程损耗。3.1 文件面虽含 `cw_game_state.py`，但其范围句无 actor 登记义务，登记无法落到 3.1 判据辖内。
 
 **修正方向**：3.4 文件面补 `kernel/cw_game_state.py`（仅 `REGISTERED_ACTORS` 登记）；或把登记义务显式移入 3.1 范围与判据（3.1 文件面已含该文件；登记为惰性集合扩面，提前落零行为）。二选一，design §2.5/§2.2 无需动。
 

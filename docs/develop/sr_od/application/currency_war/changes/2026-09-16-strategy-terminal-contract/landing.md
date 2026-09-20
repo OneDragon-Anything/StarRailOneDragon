@@ -12,7 +12,7 @@
 **依赖**：无（本阶段面 = kernel/cw_game_state.py + cw_vocab.py + cw_strategy.py（Match 字段）+ cw_loop.py + cw_strategy_manager.py + 测试，与 unified-obs 3.4 文件面零交集；3.2–3.5 各自挂与其文件面相交的 unified-obs 3.4 项，见各阶段依赖行）
 **优先级建议**：0
 **完成判据**：
-- 十二槽/新字段/新动作类型/actor 预登记就位（**三登记**：`CwScreenPlanner`/`CwScreenBoxPick`/`cw_loop_route_clear`——路由清点写端 actor 不预登记则首次清点写在册校验炸），注释带归属与坐标系申报；新动作类型入 `CW_ACTION_TYPES` 白名单 + 注册完备锁随批；
+- 十二槽/新字段/新动作类型/actor 预登记就位（ **三登记**：`CwScreenYinLang`/`CwScreenBoxPick`/`cw_loop_route_clear`——路由清点写端 actor 不预登记则首次清点写在册校验炸），注释带归属与坐标系申报；新动作类型入 `CW_ACTION_TYPES` 白名单 + 注册完备锁随批；
 - 属屏映射十行 + 未识别轮/早退轮剧本断言 + 已 None 跳过 + sig 形态断言；
 - 新动作类型构造单测；schema 断言（8 新域键 + 2 bump + 域 +1）随批；全量绿（纯增量零行为）。
 - 通用工程门（本文首节定义）

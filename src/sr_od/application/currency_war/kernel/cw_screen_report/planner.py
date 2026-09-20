@@ -2,8 +2,8 @@
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = overlay 门判定 + 左右两卡 OCR 桶 join(入口帧一次读)。
-report 摄入点 = operations/cw_screen/cw_screen_planner.py::
-``CwScreenPlanner.observe``(观察 node);辖域边界:本屏无 chosen 写端,
+report 摄入点 = operations/cw_screen/cw_screen_yinlang.py::
+``CwScreenYinLang.observe``(观察 node);辖域边界:本屏无 chosen 写端,
 零动作事实面。
 """
 from __future__ import annotations
@@ -38,12 +38,12 @@ def report_screen_planner_obs(gs: GameState, obs: CwScreenPlannerObs, *,
                               sig: ChannelSig | None = None) -> None:
     """骇入策划屏观察上报:两卡选项写 ``planner_opts``。
 
-    写点锚 = cw_screen_planner.py::``CwScreenPlanner.observe``(观察 node;
+    写点锚 = cw_screen_yinlang.py::``CwScreenYinLang.observe``(观察 node;
     原写点恒写两卡 OCR 桶,无空门直写——空桶照写,防线逐位平移)。
     """
     if sig is None:
         sig = ChannelSig(family='logic_action',
-                         actor='CwScreenPlanner', mode='compute')
+                         actor='CwScreenYinLang', mode='compute')
     _validate_sig(sig, ('logic_action',))
     gs.write_logic(gs.planner_opts, list(obs.options),
-                   produced_by='CwScreenPlanner', sig=sig)
+                   produced_by='CwScreenYinLang', sig=sig)

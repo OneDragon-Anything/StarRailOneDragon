@@ -88,9 +88,9 @@
 - **位置**：design.md §2.3、details §2.2（`actor='cw_loop_route_clear'`）；landing.md 3.1（actor 预登记行）；
   代码锚 `kernel/cw_game_state.py:284-335`（REGISTERED_ACTORS 现值）、`:361-371`（`_validate_sig` 在册硬校验）、
   `:3149-3160`（leave_screen 走 obs 族 + 在册校验）。
-- **发现内容**：直调现值：REGISTERED_ACTORS 含 `CwLoop` 但**无** `cw_loop_route_clear`。清点写入口经
+- **发现内容**：直调现值：REGISTERED_ACTORS 含 `CwLoop` 但 **无** `cw_loop_route_clear`。清点写入口经
   `leave_screen(槽, sig=…)`，sig.actor 必须在册，缺登记 = 第一次「在屏→离屏」转换即 ValueError 响亮炸错（live 首轮必现）。
-  landing 3.1 只预登记了 `CwScreenPlanner`/`CwScreenBoxPick`。
+  landing 3.1 只预登记了 `CwScreenYinLang`/`CwScreenBoxPick`。
 - **修正方向**：landing 3.1 actor 预登记行补 `'cw_loop_route_clear'`（或改用已在册的 `CwLoop` 并同步设计文）。
 
 ### M4 输出词表入册形态未定义：8 个不走注册表的新动作类型与 `CW_ACTION_TYPES` 白名单 / 注册完备锁 / `PICK_ACTION_TYPES` 的关系无承载

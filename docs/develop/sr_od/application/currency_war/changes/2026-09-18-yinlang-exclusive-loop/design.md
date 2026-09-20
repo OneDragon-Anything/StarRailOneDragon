@@ -62,7 +62,7 @@
 
 ### 2.1 R1：planner 统一选择 op（选卡 + 确认一 op 完成带载荷上报）
 
-现状结构（实名，对抗审⑥勘误）：`CwScreenPlanner`（统一观察架构 observe/act 节点）→ 注册表分派 **`CwActionPickPlannerOp`**（`operations/cw_op/cw_overlay_pick_action.py:340`，域 env = `OverlayPickExecEnv`；旧名 `PlannerPickOp` 仅存于 `cw_screen_planner.py:197` 过期注释，随 3.4 注释同步清偿）。增量：
+现状结构（实名，对抗审⑥勘误）：`CwScreenYinLang`（统一观察架构 observe/act 节点）→ 注册表分派 **`CwActionPickPlannerOp`**（`operations/cw_op/cw_overlay_pick_action.py:340`，域 env = `OverlayPickExecEnv`；旧名 `PlannerPickOp` 仅存于 `cw_screen_planner.py:197` 过期注释，随 3.4 注释同步清偿）。增量：
 
 **① 载荷上报**：所选选项内容 = 入参随发射上报（`leg_type` ∈ {`upgrade`|`weaken`|`equip`|`unknown`}、`norm_item` 归一件名或空）：
 

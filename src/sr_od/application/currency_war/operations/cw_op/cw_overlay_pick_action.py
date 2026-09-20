@@ -88,8 +88,8 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_fortune impor
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_megastar import (
     CwScreenMegastar,
 )
-from sr_od.application.currency_war.operations.cw_screen.cw_screen_planner import (
-    CwScreenPlanner,
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_yinlang import (
+    CwScreenYinLang,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -392,13 +392,13 @@ class CwActionPickPlannerOp(SrOperation):
         # 4. 点确认+机械交回(r326/P1⑦ 防线语义由重入裁决+预算耗尽 bail
         # 承接,验关半拆除——用户裁定 2026-09-10:动作 op 禁验证)。
         # r327(终审 E):裁决词用全词「我来当策划」(入场锚同词,
-        # cw_hacker_planner.yml:26 live-verified)——短词「策划」
+        # cw_yinlang_star_up.yml:26 live-verified)——短词「策划」
         # 在艺术字漏读时可能假通过。
         op._confirm_pending = True
         # 确认点主源 = 建档「按钮-骇入确认」中心(坐标单一真相源);area 缺失回退
         # 兜底常量(megastar/invest_env 同款派生 + 缺损兜底模式)。
-        _confirm = (area_center(op.ctx, '按钮-骇入确认', CwScreenPlanner.CARD_AREA_SCREEN)
-                    or CwScreenPlanner.CONFIRM)
+        _confirm = (area_center(op.ctx, '按钮-骇入确认', CwScreenYinLang.CARD_AREA_SCREEN)
+                    or CwScreenYinLang.CONFIRM)
         env.round_result = emit_overlay_confirm(
             op, confirm_point=_confirm,
             entry_keyword='我来当策划', tag='cw-planner',
