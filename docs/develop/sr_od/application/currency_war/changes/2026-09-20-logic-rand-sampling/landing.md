@@ -46,4 +46,4 @@
 - `docs/develop/sr_od/application/currency_war/game_state/logic-updates/collect-ore.md`（点晶矿新写序：守卫/三分支/逐步行/标记集/假设档披露）← 3.2
 - `src/sr_od/application/currency_war/kernel/cw_game_state.py` 模块 docstring「逻辑随机态」段 ← 3.1
 - `src/sr_od/application/currency_war/kernel/cw_projection_audit.py` `gold` 行已知缺口措辞（晶矿随机金改走随机态；投资卡授予缺口措辞保留）← 3.2
-- `docs/game/currency_war/research/` 晶矿掉落规则补档（金 1–5 / 简易池 / 概率表，证据分级 = 用户口述 2026-09-20；归入在册晶矿/奖励相关篇或新建）← 3.3
+- `docs/game/currency_war/research/` 晶矿掉落规则补档（**临时建模口径 v0**：金 1–5 / 简易池 / 概率表；证据分级 = 用户临时拍定 2026-09-20，**非核实游戏事实，待采集数据校准**；归入在册晶矿/奖励相关篇或新建）← 3.3
