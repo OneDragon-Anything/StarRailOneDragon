@@ -60,10 +60,11 @@ if TYPE_CHECKING:
         MandateFrame,
     )
 
-#: 部署计划容器槽位表不健康显影分键(计划级 fail-closed 时 +1;键名随
-#: 计划单一源统一——原出战链局部键 deploy_chain_slot_table_unhealthy 的
-#: 同语义继承,mandate 发射位与出战链共用本键)。
-DEPLOY_PLAN_SLOT_TABLE_UNHEALTHY_KEY: str = 'deploy_plan_slot_table_unhealthy'
+#: 部署计划容器槽位表不健康显影分键(计划级 fail-closed 时 +1)。键名保留
+#: 现役 ``deploy_chain_slot_table_unhealthy``(跨局遥测对照可比性优先;
+#: 发射点已统一为本函数 = 原出战链局部键的同语义继承,mandate 发射位与
+#: 出战链共用;键名与消费面语义的命名失配归 P8 正本更新一并申报再议)。
+DEPLOY_PLAN_SLOT_TABLE_UNHEALTHY_KEY: str = 'deploy_chain_slot_table_unhealthy'
 
 
 def _deploy_plan_inputs(frame: MandateFrame, session: StrategySession,
