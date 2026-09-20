@@ -9,9 +9,10 @@
 (银狼LV.999, 3★) 时,落场写**下一费用档的 1★**(角色固有升星升费:
 备战栏不升费、拖上场才触发;单位身份保持银狼LV.999,费用档升一级
 不建模——cost=起始费,多档待策略层需要时扩);其余单位恒等搬运
-零行为差。升费连锁(场上同名同星不变量)经常规级联覆盖,涉 LV.999
-级联在 3.1④ 定谳前自动走禁猜降级(:func:`cw_effect_inventory.
-merge_cascade_write` 值不变翻来源 + 留证行)。
+零行为差。升费连锁(场上同名同星不变量)经常规级联覆盖
+(:func:`cw_effect_inventory.merge_cascade_write` 正常推演——费用档
+不同时存在[口述·权威 2026-09-18],merge 分组键 (char_id, star)
+无跨档歧义)。
 """
 
 from __future__ import annotations
@@ -50,8 +51,7 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
     ``_resync_board_delta`` 自动,禁手写 board)。
     to_row 非法/源槽空/两排全满 = applied=False 零写(陈旧提案)。
     落位腿对 (银狼LV.999,3★) = 上阵变换窗:落场写下一费用档 1★
-    (非 3★ 原样)+ 级联常规覆盖(涉 LV.999 级联未定谳 → 值不变翻来源
-    留证降级);其余单位恒等搬运零行为差。"""
+    (非 3★ 原样)+ 级联常规覆盖(正常推演);其余单位恒等搬运零行为差。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
 
@@ -107,8 +107,8 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
     _w(gs.front_row, front, 'proj_deploy_front')
     _w(gs.back_row, back, 'proj_deploy_back')
     if _transform:
-        # 升费连锁(场上同名同星不变量)经常规级联覆盖;涉 LV.999 级联
-        # 3.1④ 定谳前由 merge_cascade_write 自动降级(值不变翻来源+留证)。
+        # 升费连锁(场上同名同星不变量)经常规级联覆盖(正常推演;
+        # 费用档不同时存在,merge 分组键 (char_id, star) 无跨档歧义)。
         merge_cascade_write(
             gs, bench_slots_to_legacy(gs.bench.value), scratch,
             rand=False, evidence='proj_deploy_lv999_merge',

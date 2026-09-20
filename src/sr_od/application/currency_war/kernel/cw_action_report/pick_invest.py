@@ -114,8 +114,8 @@ def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
     """效果函数·骇客专家:银狼(策略卡参考实现;design §2.3/§2.4)。
 
     链序(逐步各落一行):
-    1. **bench 腿**(确定性):银狼 1★ 入席 + 合成级联(涉 LV.999 级联
-       自动走禁猜降级,见 merge_cascade_write);
+    1. **bench 腿**(确定性):银狼 1★ 入席 + 合成级联(正常推演,见
+       merge_cascade_write);
     2. **商店池腿**(零容器写):银狼加入本局商店池——商店池无容器字段
        (逐帧观察为真值),遥测行申报(design §2.3「无容器字段则遥测行
        申报、零容器写」);
@@ -178,7 +178,7 @@ def _apply_effect_joy_contract(gs: GameState, *, sig: ChannelSig,
     """效果函数·欢愉契约(portal 卡参考实现;design §2.3/§2.7②)。
 
     - **immediate 腿**(确定性):银狼LV.999 1★ 入席 + 级联(chars_
-      immediate 实证;涉 LV.999 级联自动走禁猜降级);
+      immediate 实证;正常推演);
     - **条件腿**(头号玩家触发)= 采证期临时翻来源通道:bench/equips 值
       不变翻来源(披露键 :data:`JOY_PROVISIONAL_KIND`)→ 触发帧观察差异
       收口自愈留证不停局,多局拼数据;3.1① 定谳后撤闩换正式模型。

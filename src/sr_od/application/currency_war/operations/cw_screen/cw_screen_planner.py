@@ -285,7 +285,7 @@ def apply_pick_planner_landing(gs: GameState, *, leg_type: str,
 
     - **equip**(装备腿):归一件名命中 → 装备入栏(write_logic;装备区
       未观察跳写等观察)+ 获得后果链(apply_equip_acquire_consequence,
-      命中三件则 bench 增员 + 级联,涉 LV.999 级联自动禁猜降级);未解析
+      命中三件则 bench 增员 + 级联,正常推演);未解析
       (norm_item='')→ 禁猜,equips 值不变翻来源 + 留证行
       (kind=planner_equip_name_unresolved),识别修因后走主路;
     - **upgrade**(升费腿)= 变换窗三态(见 :func:`_apply_upgrade_transform`);
@@ -338,8 +338,9 @@ def _apply_upgrade_transform(gs: GameState,
     态(bench ∪ front_row ∪ back_row 多重集)的 (银狼LV.999, 2★) 计数:
 
     - **恰一枚** → 工作副本变换(−2★ +1★,槽位无关,落点不建模观察为
-      真值)→ 级联(merge_cascade_write,涉 LV.999 级联 3.1④ 定谳前自动
-      禁猜降级)→ 受影响域各落一行(write_logic);
+      真值)→ 级联(merge_cascade_write 正常推演——费用档不同时存在
+      [口述·权威 2026-09-18],分组键无跨档歧义)→ 受影响域各落一行
+      (write_logic);
     - **多枚**(二次升费现实可发)→ 触发单位不可辨(禁猜)→ 受影响域
       值不变翻来源 + 留证行(kind=planner_upgrade_ambiguous),观察覆盖
       差异 = 预期内收口自愈;
