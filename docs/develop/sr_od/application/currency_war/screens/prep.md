@@ -18,7 +18,7 @@
 
 入口单次 heavy;唯一决策读屏点 = 入口对账(统一规范 = [op-layer.md](op-layer.md) §1.3):
 
-- **环入口序列**:`_clear_entry_overlays`(残留模态一键关,清场注册表 `ENTRY_OVERLAY_CLOSE`)→ `_try_collapse_open_shop`(开商店态收起探针;店开着则走 0n/商店访问路径)→ `_observe(heavy=True)` → 帧代次标注 `session.prep_frame_class='full'` → `obs.event_overlay` 非空即交回外循环重分发(不计数)→ 接管局补采 `_takeover_collect_if_needed`(`session.briefing_bosses` 空 ∧ 节点条可读 → 位面详情情报采集,2 次失败放弃)。书册卡不在入口代清(用户裁定 2026-09-19 开卡时机归策略器):识别 kind('bookcard')经 `item_kind_by_slot` 进容器 bench,开卡动作由策略器 entry ① 卡片臂发射(终结动作,交回语义不变)。(幻影墓碑:「试用角色揭示卡」= 备战栏动画帧误判,2026-09-19 定谳撤销,墓碑 = `cw_identity_obs` 模块内注,禁再建模。)
+- **环入口序列**:`_clear_entry_overlays`(残留模态一键关,清场注册表 `ENTRY_OVERLAY_CLOSE`)→ `_try_collapse_open_shop`(开商店态收起探针;店开着则走 0n/商店访问路径)→ `_observe(heavy=True)` → 帧代次标注 `gs.frame_class_prep='full'` → `obs.event_overlay` 非空即交回外循环重分发(不计数)→ 接管局补采 `_takeover_collect_if_needed`(`gs.plane_bosses` 空 ∧ 节点条可读 → 位面详情情报采集,2 次失败放弃)。书册卡不在入口代清(用户裁定 2026-09-19 开卡时机归策略器):识别 kind('bookcard')经 `item_kind_by_slot` 进容器 bench,开卡动作由策略器 entry ① 卡片臂发射(终结动作,交回语义不变)。(幻影墓碑:「试用角色揭示卡」= 备战栏动画帧误判,2026-09-19 定谳撤销,墓碑 = `cw_identity_obs` 模块内注,禁再建模。)
 - **heavy 观察消费 obs 解析工具箱**:SIFT 身份(bench/deployed)+ GameState 全量(读漏斗 `obs/cw_observation.py::read_game_state` 容器直写,观察渠道含 carry/prior/leave_screen/relay)+ cap 读取 + 装备域三路(`obs/cw_observe_full.py::observe_full` 组装单一源:owned 件名池全量/occupied 已穿明细/后排布局选档);光标 parking 先行(防 OCR/SIFT 污染)。观察产物 = **容器 game state 直写**(CwScreenPrep 观察装配点,渠道①:bench 含箱/典籍 kind 细分/deployed/equips/occupied_equips/spheres 载荷坐标/node_chain);`PrepObservation` 局部对象仅载控制信号(shop_open/substate/event_overlay),不进 gs、不进 session、不再是策略器输入(黑板已退役,迭代 2026-09-18-prep-obs-retirement 阶段 3.5)。
 - **对账边界**:本屏观察写入 = ①观察态上报进 GameState 的观察边界,对账唯一发生点在此——动作落地判定 = 容器逻辑态直写 + 本帧观察覆盖(观察赢),观察侧失配记缺陷台账;容器侧比对与仲裁 = `kernel/cw_reconcile.py`(锚定/槽号健康不变量/bench 写回);本帧定型时另跑纯观察审计族 `_v2_post_frame_accounting`(羁绊显示,零决策)。
 - 可信门:gold 仅 shop 开态可信(F2 门 = shop_open 现算派生,黑板 state_gold_trusted 位已退役);hp 决策消费统一经 `kernel/cw_hp_policy.py::decision_hp` 门(`cw_strategy.py::gated_hp` = 策略实现层既有调用点的薄委托)。
@@ -31,8 +31,8 @@
 action = strategy.decide_prep_screen(容器 game state 直读;
            空发射 = CwActionObsParam(scope='outer_loop') → 交回外循环重观察)
 → F3 validate(参数非法 = 拒绝执行 + 交回留证;执行前输入契约检查,非动作后判效)
-→ 执行 _act_execute(机械执行,无成败回执,发出即职责完成;
-   落地登记发射点留位——登记注册表随基类退役,发射点 = no-op 契约留位)
+→ 执行 _act_execute_default(机械执行,无成败回执,发出即职责完成;
+   动作事实走各动作 op 自上报,画面 op 侧无登记面)
 → 终结判定读注册表 action_op_class_for(action).terminal(终结 → _terminal_exit 交回)
 → op 自上报 report_action_<snake>_param(动作后逻辑态唯一更新点 = 上报函数单点,
    纯计算零读屏;下一动作决策读容器逻辑态)
