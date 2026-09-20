@@ -74,7 +74,6 @@ from sr_od.application.currency_war.obs.cw_identity_obs import (
     read_tomes as cw_identity_obs_read_tomes,
 )
 from sr_od.application.currency_war.obs.cw_observation import (
-    arbitrate_deployed_count,
     board_from_tracked,
     read_deploy_cap,
     read_deployed_count,
@@ -150,76 +149,8 @@ def _mark_frame_class(session, domain: str, value: str) -> None:
     setattr(game_state_of(session), 'frame_class_' + domain, value)
 
 
-def _owned_remove(owned: list[str] | None, item: str) -> list[str] | None:
-    """owned 名池摘一件(multiset 语义:同件多份只摘一份);None = 观察域
-    未就绪透传(零写留观察)。"""
-    if owned is None or item not in owned:
-        return owned
-    out = list(owned)
-    out.remove(item)
-    return out
-
-
-def _owned_add(owned: list[str] | None, item: str) -> list[str] | None:
-    """owned 名池加一件(multiset 语义);None = 观察域未就绪透传。"""
-    if owned is None:
-        return owned
-    out = list(owned)
-    out.append(item)
-    return out
-
-
-def _owned_replace_one(owned: list[str] | None, old: str,
-                       new: str) -> list[str] | None:
-    """owned 名池内单件名替换(multiset 语义:恰替换一份);None = 未就绪
-    透传;old 不在池 = 原样返回(调用侧守卫)。"""
-    if owned is None or old not in owned:
-        return owned
-    out = list(owned)
-    out[out.index(old)] = new
-    return out
-
-
-def _next_free_bench_slot(bench_chars: list) -> int:
-    """备战帧 bench_chars 占用外首个物理槽位 1-9(投影仪复制入席定位;
-    生成期快照,帧内恒稳)。全占 = 9(调用侧席满守卫先行,不可达)。"""
-    taken = {int(getattr(bc, 'slot', 0) or 0) for bc in bench_chars
-             if bc is not None}
-    for i in range(1, 10):
-        if i not in taken:
-            return i
-    return 9
-
-
-def vacancy_from_reads(cap: int | None, dep_n: int | None, cv_occ: int,
-                       cached_vacancy: int) -> tuple[int, bool, bool]:
-    """heavy 段 deploy_vacancy 判定(纯函数;15 号稿批 C/§4.1)。
-
-    - 语义:vacancy = max(0, cap − **仲裁后** deployed)。deployed 双源
-      (paddle X vs CV 占用)先过仲裁注册面键 ``deployed_count``
-      (``arbitrate_deployed_count``,计数类取低值);此前部署放行判定消费的
-      vacancy 用未仲裁 dep_n,同一量两条口径并存无对账(§1 行 21,A5 根)。
-    - 返回 ``(vacancy, divergent, stale)``:divergent=仲裁判真分歧
-      (取低值生效,§4.2 放行判定延迟语义的准备面载体);paddle 缺席 = CV
-      单源值(计数类声明的退化方向,非 stale,消费侧板满门另有重读+分键
-      契约);stale=True = cap 缺(无 cap 无法成 vacancy)→ 缓存兜底
-      (**陈旧值显式申报**,B5——缓存值不再静默过放行判定)。
-    """
-    arb_dep, divergent = arbitrate_deployed_count(dep_n, cv_occ)
-    if cap is not None and arb_dep is not None:
-        return max(0, cap - arb_dep), divergent, False
-    return cached_vacancy, False, True
-
-
 # (prep_obs_actual_for 单条目实读构造器已随 ADR-0651 两态制废除——
 #  prep_obs 覆盖点逐条目 diff 对账随 expected_state 条目表一并拆除。)
-
-
-#: 单轮入口开商店收起探针后的落地等待(秒)。背景:战斗胜利后新回合游戏
-#: 可能自动开商店(时序竞争),单轮入口收起后需等收起动画落地再观察
-#(读互斥:hp/gold 关态可读;原「预收重试窗」随内环 gate 拆除)。
-PRECOLLAPSE_RETRY_S: float = 1.0
-
 
 
 # ===== 商店打开态对账(cw_shop_obs 接线;纯记账+对账,零决策行为变更)=====
@@ -377,13 +308,7 @@ class CwScreenPrep(SrOperation):
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-备战决策环')
-        # 交回契约事实:出战意图经统一执行器发射成功即置位;战斗窗置位
-        # 策略归外循环既有口径(ADR-0250),本事实为通道载体与观测面。
-        # 单轮 op 每轮次重建,实例属性天然无跨轮残留。
-        self.launch_fired: bool = False
         self._executor: PrepActionExecutor | None = None
-        # 最近一次动作执行的机械摘要(登记件 detail 供给;执行体写入)。
-        self._last_mech_detail: str = ''
         self._bench_pts = []                        # screen_info 槽位中心(首步惰性读)
         # 商店牌读取器域载荷缓存(✦ merge_preview 信号,不入容器存储,供
         # 合成预览对账 det 侧同帧对齐;structurally 读取器域非局内事实)。
@@ -1229,7 +1154,7 @@ class CwScreenPrep(SrOperation):
     def _act_execute_default(self, action: CwAction) -> None:
         """现役点击链缺省执行体(决策循环执行位)。CwActionOpenShopParam = 流程层商店编排
         [spend 单元记账 + _open_shop_phase];其余 = 执行器机械执行。
-        机械摘要写入 ``_last_mech_detail``(执行日志供给)。
+        机械摘要仅落各分支的执行日志(log.info 行)。
 
         ``obs`` 黑板形参已随 gs.prep_obs 退役删除(迭代阶段 3.5;旧
         CwActionOpenShopParam 腿的 obs 死参消费早已为零——strategy-input-unification
@@ -1237,14 +1162,12 @@ class CwScreenPrep(SrOperation):
         if isinstance(action, CwActionStartBattleParam):
             # 出战意图执行 = 统一执行器(face=armed:屏态复验→浮层安全检查
             # →部署原子序→出战点击链;迭代 design §2.2/方案 4——策略前置
-            # 发射位的意图在此落执行)。launch_fired = 交回契约事实。
+            # 发射位的意图在此落执行)。
             from sr_od.application.currency_war.operations.cw_loop import (
                 launch_battle_unified,
             )
-            _ok_lbu, _detail_lbu = launch_battle_unified(self, self.ctx,
-                                                         face='armed')
-            self.launch_fired = bool(_ok_lbu)
-            self._last_mech_detail = _detail_lbu
+            _, _detail_lbu = launch_battle_unified(self, self.ctx,
+                                                   face='armed')
             log.info(f'[cw][director] {action_key(action)} → {_detail_lbu}')
             return
         if isinstance(action, CwActionOpenShopParam):
@@ -1256,24 +1179,22 @@ class CwScreenPrep(SrOperation):
                     _launch_frame_arbitration,
                 )
                 _arb = _launch_frame_arbitration(self)
-                self._last_mech_detail = (
+                _detail = (
                     f"仲裁访问(zone={_arb.get('zone')} "
                     f"executed={_arb.get('executed')} "
                     f"gate_blocks={_arb.get('gate_blocks')})")
                 log.info(f'[cw][director] {action_key(action)} → '
-                         f'{self._last_mech_detail}')
+                         f'{_detail}')
                 return
             try:
                 progressed, detail = self._open_shop_phase()
-            except Exception as e:
-                self._last_mech_detail = f'执行异常:{e}'
+            except Exception:
                 raise
-            self._last_mech_detail = detail
             log.info(f'[cw][director] {action_key(action)} → {detail}')
             return
         self._executor.execute(action)
-        self._last_mech_detail = getattr(self._executor, 'last_detail', '')
-        log.info(f'[cw][director] {action_key(action)} → {self._last_mech_detail}')
+        _detail = getattr(self._executor, 'last_detail', '')
+        log.info(f'[cw][director] {action_key(action)} → {_detail}')
 
     def _takeover_collect_if_needed(self, match: CurrencyWarMatch,
                                     session: StrategySession
@@ -1548,15 +1469,6 @@ class CwScreenPrep(SrOperation):
             self._reconcile_shop_pool(obs)
         with contextlib.suppress(Exception):
             self._reconcile_merge_preview(obs)
-
-    def _record_step(self, obs: PrepObservation, action: CwAction) -> None:
-        """(已退役 no-op:步进 decisions 行随 decisions 流写入端删除——删除波 1。)
-
-        方法体保留空壳的原因:测试 harness(_cw_helpers.make_prep_round_
-        director)按桩面同源声明 monkeypatch 本方法,签名在场 = 桩面契约
-        不破;步进序列的现役证据 = journal 快照行(每帧自带全量 state)。
-        """
-        return
 
 
 def _build_prep_node_chain(session: object, slots: list | None) -> NodeChain | None:
