@@ -765,7 +765,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         #  播种的唯一消费者 = 旧帧决策链,读者切换后无行为面。)
         _tb = game_state_of(match.session).tracked_books.bench
         # P1 tracked bench = list[BenchSlot | None]:unit 槽读内嵌身份,
-        # 占位件槽无身份以 ('', 1) 显影(与旧 is_item_slot 空名位同形)。
+        # 占位件槽无身份以 ('', 1) 显影。
         _tb_rows = []
         for _b in (_tb or []):
             if _b is None:
@@ -787,8 +787,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             game_state_of as _gs_of_entry,
         )
         _gs_of_entry = _gs_of_entry(match.session)
-        # (容器入口喂入 synthesize_from_game_state 随黑板帧退役删除——迁移
-        #  批 3.2:生产路径容器写入已由 read_game_state 漏斗直写承接(obs 族
+        # (生产路径容器写入 = read_game_state 漏斗直写(obs 族
         #  sig);假环境路径的容器真值写入 = 观察源端口实现方契约。)
         if not _entry.shop:
             log.info('[cw] 店开入口牌面空(买空/OCR 失读窗):离屏语义关断,'
@@ -1026,8 +1025,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                     reader_source='bench_buy_pixel_diff',
                     gap_large=False, refs=_bench_refs,
                     note='观测自检框架设计 §2.2:新槽数累计=买牌数−中途卖出数')
-            # 身份回读(留证级):SIFT 纯读走 identify_slots(不经
-            # read_bench_chars,防其内置停机钩子误触)。
+            # 身份回读(留证级):SIFT 纯读走 identify_slots(不走观察读链
+            # read_bench_view,防其内置停机钩子误触)。
             _templates = ensure_portrait_templates(op.ctx)
             if _templates is not None:
                 from sr_od.application.currency_war.obs.cw_identity_obs import (

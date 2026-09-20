@@ -365,7 +365,7 @@ class CwOpEquipAll(SrOperation):
                                     hold_time=DRAG_HOLD_TIME)
         time.sleep(1.5)  # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
         # 光标 parking(审计 R4):drag 终点=目标 avatar,光标停其上 → Director heavy observe 的
-        # read_deployed_chars SIFT 同 rect 读被遮。park 后再继续。
+        # read_deployed_rows SIFT 同 rect 读被遮。park 后再继续。
         self.park_cursor(after_wait=0.1)
 
     def _get_avatar_templates(self) -> AvatarTemplates | None:

@@ -9,10 +9,10 @@ SIFT 匹配器对模板库(生产用 ``currency_war/portrait_plaza`` 官方立�
 **独立旁路**,用途:① 离线从截图重建容器形状(测试 / replay,无需跑 bot);② 跟踪漂移时
 从画面恢复 / 校验。故**不**接进 ``read_game_state``(避免每帧 SIFT + 双写冲突)。
 
-**产形(P6 观察链直产)**:读链直接产容器形状,不产 BenchChar 中间形 ——
+**产形(P6 观察链直产)**:读链直接产容器形状,无中间形 ——
 备战席 = ``read_bench_view`` → :class:`BenchView`(占槽物品 kind 识别期按模板细分
 supply_box/tome/bookcard,不经「事后拼 kind 映射」);上场位 = ``read_deployed_rows``
-→ (前排, 后排) Unit 行(排归属由读链行参承载,不依赖 position_pref 换形路由)。
+→ (前排, 后排) Unit 行(排归属由读链行参承载)。
 
 槽位坐标 = screen_info 固定 area(``前排-1..4`` / ``后排-1..6`` / ``备战栏-1..9``),经
 ``cw_obs_core._area_rect`` 读 —— 改坐标改 yml 即可。空槽位 SIFT 内点低 → 自然落 None
@@ -576,9 +576,9 @@ def read_deployed_rows(ctx: SrContext, screen: MatLike, templates: AvatarTemplat
                        level: int | None = None) -> tuple[list[Unit], list[Unit]]:
     """舞台已上阵角色(前排 4 + 后排 N)→ (前排 Unit 行, 后排 Unit 行)(P6 直产)。
 
-    空槽 / 未识别 → 不进该排行列表(双行全空 = 失读,调用方走 carried;
-    与旧 bench_view_from_obs 空集纪律同款)。排归属 = 本函数行参直接承载,
-    不经 position_pref 换形路由。用途:离线重建 / 漂移恢复(**不进 read_game_state**;见模块 docstring)。
+    空槽 / 未识别 → 不进该排行列表(双行全空 = 失读,调用方走 carried,
+    宁缺勿造)。排归属 = 本函数行参直接承载。
+    用途:离线重建 / 漂移恢复(**不进 read_game_state**;见模块 docstring)。
     布局选档 **cap 差公式 + CV 双通道**(ADR-0385,旧 level 驱动已废——run 26
     lv8 无召唤物局按 8 格读板失真实证):select_back_layout 现读 read_deploy_cap
     (未传 level 时 session 等级链);读不到 → 6 槽基线。
@@ -772,8 +772,8 @@ def read_bench_view(ctx: SrContext, screen: MatLike, templates: AvatarTemplates)
     """备战栏(9 槽)SIFT 读链直产容器视图(P6)→ :class:`BenchView` | None。
 
     SIFT 命中(角色槽)与已建档占槽物品(箱/典籍/书册卡,kind 识别期细分)
-    合成为定长 9 槽视图。**零占用 = 失读非全空**(P2-1 纪律,原
-    ``bench_view_from_obs`` 空集守卫随直产移驻读链):overlay 残留/动画帧/
+    合成为定长 9 槽视图。**零占用 = 失读非全空**(P2-1 纪律,空集守卫
+    驻本读链):overlay 残留/动画帧/
     识别退化都会产空读 → 返 None,调用方走 carried(宁缺勿造),禁把
     「9 槽全空」当 observation 入记录。占用未识别的槽由召唤物停机钩子
     (:func:`_summon_unknown_hook`)兜底,不静默丢弃。用途:离线重建 /

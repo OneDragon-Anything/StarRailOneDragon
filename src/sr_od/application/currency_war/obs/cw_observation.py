@@ -2168,8 +2168,8 @@ class GameStateReadReceipt:
     消费面 = 无单例也能用的逐帧值:遥测 recorder(画面真值对拍语料,
     gold/hp/level 保真位必带)、逐帧标量读点(cw_loop 恢复对局检测
     plane/round、observe_full gold==0 重读门、备战环 node_type/level/
-    shop 帧读、动作行 plane/round 基准)。语义 = 旧 CwSimFrame 返回帧
-    逐字段镜像:gold 失读 raw 0(gold_readable=False)、hp = 对账层决策
+    shop 帧读、动作行 plane/round 基准)。语义 = 旧帧形态逐字段口径:
+    gold 失读 raw 0(gold_readable=False)、hp = 对账层决策
     值(hp_readable/hp_trusted 位不变)、level 三源解析值(level_readable
     阶段跳过帧按旧帧缺省 True)、board = 徽标裁决后计数、shop = 原始
     读牌列表(遗留 ShopCard 形态,与旧帧 shop 域同源)。读数域 None
@@ -2199,7 +2199,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
 
     迁移批 3.2(详设 details/sim-state-switch.md §5):观察 reader 直接产
     容器写(gs.observe/carry/write_prior/relay,写语义与原
-    _feed_board_state 逐位同),漏斗不再构造 CwSimFrame——返回值降为
+    _feed_board_state 逐位同),漏斗不再构造整帧——返回值降为
     :class:`GameStateReadReceipt`(本帧逐面读数 + 保真位;容器单例
     game_state_of(session) 才是决策真值源)。
 
@@ -2746,7 +2746,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 面板物理不可见)直置 None;②read_shop_cards 三态契约(收起锚 miss =
     # 店未开,「不在商店」≠「没牌」)。三态区分(店未开/买光 [empty×5]/
     # 失读 unknown)的权威承载 = 容器域 gs.shop.value(上方 observe/carry/
-    # leave_screen 写端已按三态适配);回执 = 旧 CwSimFrame 逐字段镜像,
+    # leave_screen 写端已按三态适配);回执 = 旧帧形态逐字段镜像,
     # shop 域遗留形态本就是紧缩 [](空表 = 不在商店真值),消费方全为列表
     # 真值/迭代语义,塌缩不丢语义。board 值域恒 dict(徽标裁决合并或 OCR
     # 底座),or 同判 = 同口径防御。

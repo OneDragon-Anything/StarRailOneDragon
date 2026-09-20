@@ -281,7 +281,7 @@ def xianzhou_supply_exists(bench: list,
        推进仙舟档的件都算供给,对照 select_deployments 的 ``_fac_run``
        全羁绊 +1 口径);
     ② 非占位件(槽位 kind ∈ tome/bookcard/supply_box 恒拒、永不上场
-       = 死供给;§2.4 is_item_slot → kind 口);
+       = 死供给;§2.4 字段映射 kind 口);
     ③ char_id ∉ on_board_cids(同名在场拷贝恒 held = 死供给;
        on_board_cids = deployed_cids ∪ 本帧已上——kernel 侧传
        deployed_cids | _up_names,op 侧 _deployed_cids 已含同执行增量);
@@ -1380,7 +1380,7 @@ def assemble_swap_plan_inputs(
     措辞更新)= 执行侧卖出决策实际消费的快照链,不用 PrepObservation
     另起一路:board/fp 消费调用方传入的 ``state``(执行侧/发射侧/sim
     引擎三方均传容器单例 game_state_of——装配源换源把执行侧从
-    旧滞后帧链切容器;sim 侧经 feed_sim_truth 喂后读容器);deployed/
+    旧滞后帧链切容器,sim 侧引擎直写容器);deployed/
     bench 消费调用方现读(执行侧 = SIFT 读面,发射侧 = PrepObservation
     帧)。派生逻辑(target 视图双轨口径/fenced 臂/义务排除集/保护域)全在
     本函数,两侧禁自写第二份。两侧输入的逐字段对齐由 seam 核对批兑现
@@ -1596,7 +1596,7 @@ def select_swap_plan(ctx: SwapPlanContext | None,
 
     - **板满门 = 占用数口径**:``,len(deployed)``(占用件数,含 SIFT
       未识别 char_id='' 占位件)≥ cap——与执行侧 cap 门「禁用衍生计数」
-      同向(``deployed_occupied`` 同源;禁 ``len(deployed_cids)`` 衍生
+      同向(占用数 = 非 None 件逐件计;禁 ``len(deployed_cids)`` 衍生
       集,SIFT 未识别占位件漏计 = 板实满判未满);
     - **victim 资格** = 逐件单一判定 ``swap_sell_exclusion_reason``(义务
       集排除 ``buy_membership``/缺读弃权 ``membership_unreadable`` +

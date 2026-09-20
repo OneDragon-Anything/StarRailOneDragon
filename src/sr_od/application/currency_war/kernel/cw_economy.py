@@ -629,9 +629,6 @@ def refresh_cost_effective(refresh_count: int = 0,
     道,免费帧不写保证该域不出 0);None = 未读到 → **建模基价
     SHOP_REFRESH_COST 显式消费缺省**——原 ``or 2`` falsy 兜底形态的消灭
     形态:数值恒同,语义从「静默兜底」升为「声明式建模缺省」。
-    (benchchar-retirement P5 去帧化:旧首参 ``state: CwSimFrame`` 契约
-    支随帧通道退役删除——该支的值恒基价(cw_vocab 字段缺省契约),
-    删除后缺省路径显式回 SHOP_REFRESH_COST,数值逐位一致。)
     """
     if gs is not None:
         _v = gs.shop_refresh_cost.value
@@ -873,8 +870,7 @@ def get_node_goal(plane: int, round_num: int, *,
     if None not in (gold, level, hp):
         # 标量投影容器:直接按入参构造最小决策容器(供给核只读经济/板面
         # 字段;无 session、无现成容器)。字段契约单一源 =
-        # kernel cw_game_state.scalar_projection_state(对旧「惰性构造
-        # CwSimFrame + 过渡桥装箱」投影的逐字段镜像;旧载体已删)。
+        # kernel cw_game_state.scalar_projection_state。
         # session=None:nodes_of_plane 走缺表回退先验 9(一次性告警即记档)
         # → h=9−r 常 >0,R* 窗口分量在投影容器**照常储蓄**(预算收权攻击
         # 审读 F6b 纠偏:原注释「投影帧不储蓄」与实现不符;方向保守无害)。
@@ -1339,8 +1335,6 @@ def refresh_ev_budget(gs: GameState, session: StrategySession,
     (判据单一址=本函数的 ``_omega_collapse_zeroed``,届时零新概率口径)。
     """
     reg = registry or _registry_of(session)
-    # (本接缝族 CwSimFrame 签名过渡注已随 W6 波 4 签名切换兑现删除:
-    #  is_emergency 直吃容器,桥装箱中间形态消亡。)
     if is_emergency(gs, session, reg):
         return 0
     over = gold_of(gs) - reserve_cap(gs, session)

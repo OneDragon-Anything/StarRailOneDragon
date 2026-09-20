@@ -203,8 +203,7 @@ def get_char(name: str) -> Character | None:
 def char_first_faction(char_id: str) -> str:
     """主阵营注册表派生单一源(faction 不入容器形状,benchchar-retirement
     design §2.1 三类消费口径共用):注册表命中 → ``factions[0]``
-    (命中但无阵营登记 = '');未注册名/空名 = '?'。与退役换形层
-    ``bench_slots_to_legacy``/``unit_rows_to_deployed`` 的派生式逐位同式。"""
+    (命中但无阵营登记 = '');未注册名/空名 = '?'。"""
     if not char_id:
         return '?'
     ch = CHARACTERS.get(char_id)

@@ -46,7 +46,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
 
     P1 容器原生(benchchar-retirement §3.2):bench 工作副本 = BenchView
     槽序(元素即容器 BenchSlot)、deployed 工作副本 = 行域下标派生表
-    (Unit,§2.1);合成引擎容器原生直写,零 BenchChar 中间形。元素
+    (Unit,§2.1);合成引擎容器原生直写,零中间形。元素
     frozen → 浅拷贝列表即快照(推演以 replace 新构造,零别名风险)。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
@@ -68,7 +68,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
 
     # 买前快照三件组(升星腿 scratch 基点;必须在简单腿写之前取——基点
     # 误取买后容器会重复落位,shop 视图缺失会漏满栏合成)。bench 未观察
-    # = 旧 bench_slots_of 缺省形态 [None]×9(全空可落位,非满栏拒)。
+    # = 缺省形态 [None]×9(全空可落位,非满栏拒)。
     _pre_view = gs.bench.value
     pre_bench = (list(_pre_view.slots) if _pre_view is not None
                  else [None] * 9)

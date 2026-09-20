@@ -122,8 +122,7 @@ def _build_equip_wear_plan(session: Any,
     观察装配点(装备域采集单一源 = ``obs.cw_observe_full.observe_full``
     heavy)。
     本函数**零读屏**:原对执行帧现读三路
-    owned(read_equips)/occupied(read_row_equipped)/deployed
-    (read_deployed_chars)退役 = 调用位置迁移——识别函数本体归观察链
+    owned/occupied/deployed 退役 = 调用位置迁移——识别函数本体归观察链
     复用(识别机制不出端口,obs.cw_observe_full 采集);kernel 判据单一
     源求值(释放判据表/hold 逐件/词缀序/环境变体 → equip_allocation)
     → 静态计划(EquipWearStep 列表)随 op 构造下发。

@@ -71,9 +71,8 @@ class DecisionV2Registry:
     #: (已证)承载而非板面差分——评分维
     #(merge_progress 只计第 2 份,ADR-0340 边界)对它构造性零增量,
     #: 非正分拒是评分零维测量伪影非 EV 判断;与既有 'copy' 标签 C 豁免
-    #: 同型。〔待接线〕本字段语义=按 (名,星) 分星计数(设计口径);现行
-    #: 唯一加权实现 cw_discipline_rules.star_weighted_copies 仍为同名
-    #: 加权,分星接线随 P1 落码批落地,落地前以旧实现为准。
+    #: 同型。按 (名,星) 分星计数的单一源 =
+    #: ``cw_merge_simulate.same_star_count``(全局面同名同星)。
     #: (`w242_star_directed/`/ADR-0405 C 项)同为「完成素材放行」语义对称,无条件于
     #: 末窗 gap(完成价值全程存在,不作定向授权)。仅辖 CwActionBuyCardParam
     #(synthesize 候选虽 merge=True 但不辖)。
@@ -537,7 +536,7 @@ class DecisionV2Registry:
     p1_early_round_cap: int = 1
     # ===== `w184_sellguard/`/ADR-0373 卖侧唯一体系引擎守卫(S2 恶化谱系)=====
     #: 总开关:False=逐位回 `w179_gate/` 后行为(A/B 基线臂)。True 时
-    #: discipline.sole_engine_sell_blocked 命中的件不进任何卖件通道——
+    #: 卖侧唯一体系引擎守卫命中的件不进任何卖件通道——
     #: 判据=该件是四过渡体系(TRANSITION_TRAITS 三羁绊:仙舟/列车同行/
     #: 持续伤害,全羁绊 factions∪flows 口径;`w192_seelex/` 起希儿系贡献件另经
     #: guard_seele_scope_enabled 并入辖域)成员,且其所属某体系的
@@ -568,8 +567,7 @@ class DecisionV2Registry:
     guard_seele_scope_enabled: bool = True
     # ===== `w197_comptx/`/ADR-0380 卖侧下界守卫执行点补全(own_gap 演进谱系)=====
     #: 总开关:False=逐位回 `w195_intent/` 后行为(A/B 基线臂)。True 时
-    #: ``sole_engine_sell_blocked`` 的「TT 体系件在手≤tier 不可卖」
-    #: 语义在两个此前无守卫的执行点生效:
+    #: 「TT 体系件在手≤tier 不可卖」守卫语义在两个此前无守卫的执行点生效:
     #: ① arbiter 卖候选采纳点复检(对 working 前序采纳后的状态逐笔
     #:    复检——候选生成是对批前状态计数,同段两笔同名 TT 件逐笔
     #:    合法而聚合跌破 tier,136 r7 两笔三月七 3→1 实证);
@@ -577,8 +575,8 @@ class DecisionV2Registry:
     #:    rank0 保护件被卖出 → 改为留场不下场,新上场名单收紧——
     #:    ADR-0373 不辖清单第 3 条对「卖出面」的豁免撤销,保留序/
     #:    undeploy 语义不变;136 r9 benchOcc=9 卖 deployed 椒丘实证)。
-    #: 判据单一源 = discipline.sole_engine_sell_floor_plan(批量口径,
-    #: 前序可卖件计数扣减;单笔与 sole_engine_sell_blocked 逐位一致)。
+    #: 判据族批量逐笔下界已随 benchchar-retirement P5 帧签名清退删除
+    #: (cw_discipline_rules 模块头申报;判据语义归 git 历史)。
     #: 不辖:owned>tier 冗余件清仓/undeploy 下场(ADR-0373「禁下场
     #: 压死良性轮换」语义保持)/补完事务 sell(_locked_protected_names
     #: 引擎键∪pair 成员保护已覆盖,`w192_seelex/` 辖域不变)。
@@ -757,7 +755,7 @@ class DecisionV2Registry:
     blood_margin_low_hp: int = 40
     #: boss 税分位锚组 {P50, P75, P90}(sim 标定接口,非运行时值)
     boss_tax_anchor_group: tuple[float, float, float] = (32.0, 34.0, 36.0)
-    #: boss 税 p75 位面锚(消费点按位面取值;键 = CwSimFrame.plane,1/2)。
+    #: boss 税 p75 位面锚(消费点按位面取值;键 = 容器位面读口,1/2)。
     #: plane 1 = 现值原样(P1 语料标定),零漂移锚;
     #: plane 2 槽位已就位但默认仍取现值——P2 位面真值方向有语料标定
     #: (git 历史:P2 boss n=90 均损 −21.63 vs P1 −19.54),
@@ -954,7 +952,7 @@ class DecisionV2Registry:
     #: 病灶,局22 实证)。node_type 缺失(None)维持现状 hold(保守降级:观察
     #: 缺失不改变既有行为,宁缺勿错)。行为无条件化(恒 True),依据同上。
     opening_hold_battle_gate_enabled: bool = True
-    #: H3 战斗类节点型名单(词汇表单一源=CwSimFrame.node_type 顶部标签 OCR:
+    #: H3 战斗类节点型名单(词汇表单一源 = 备战帧节点型顶部标签 OCR:
     #: boss/补给/遭遇/巨星/投资/战斗/精英/奖励)。巨星/投资等未知是否战斗
     #: →不入集=维持 hold(保守侧,不猜)。
     opening_hold_battle_nodes: frozenset[str] = frozenset(

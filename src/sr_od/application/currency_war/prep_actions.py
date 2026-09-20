@@ -186,13 +186,10 @@ def _expose_unhealthy_tracked_slots(tracked: list) -> None:
     = 写点 fail-fast 显影(早于对账层暴露既有污染)。
     只显影不拒写:本 helper 的两个调用点均为「只减不增」摘除腿(置 None),
     拒绝摘除会让已卖/已上场件滞留 tracked,两账分叉比污染本身更糟;
-    布局修复归 reconcile 写回(bench_from_compact 重建归一)。
+    布局修复归 reconcile 写回。
 
-    P1 槽号信息位读取 = 迁移期双形容忍:新形(BenchSlot,槽号由下标
-    权威派生,结构性健康)读不到信息位按无槽号处理恒静默;旧形
-    BenchChar 残账(重复/越界信息位)照常显影——锁面
-    test_cw_tracked_slot_star_guard::test_tracked_write_guard_defect_and_
-    healthy_silence 钉住旧形显影行为。"""
+    容器形(BenchSlot)槽号由下标权威派生,结构性健康:读不到元素级
+    槽号信息位按无槽号处理恒静默(显影分支保留作防线,健康输入零噪声)。"""
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         bench_slots_healthy,
     )
@@ -487,7 +484,7 @@ class PrepActionExecutor:
         同步销账,dispatch 后按 tracked 复查恒落空);消费 = dispatch 后
         _executed_gold_delta 一次读用,不跨动作存活。P1 tracked 形状:
         bench 侧 = BenchSlot(kind='unit' → 内嵌 Unit;占位件无角色身份
-        → None,与旧 is_item_slot 空名位语义同形)/ deployed 侧 = Unit。
+        → None,占位件槽无角色身份)/ deployed 侧 = Unit。
         tracked 不可读(无局/形状异常)= None(金差诚实缺失,观察覆盖
         兜底)。
         """

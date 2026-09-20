@@ -474,10 +474,8 @@ def emit(session: StrategySession,
     # 开箱/开典籍/书册卡臂(迭代 2026-09-18-prep-obs-retirement 阶段 3.5
     # 换源;书册卡臂 = 用户裁定 2026-09-19 开卡时机归策略器,原备战环入口
     # 清场 ``cw_screen_prep._clear_prep_cards`` 代发通道撤销):触发物 = 容器
-    # bench 槽位 kind(占席物细分)。⚠️ 读口 = 容器 BenchView.slots 直读,
-    # 禁走 legacy 槽表换形口——legacy 换算把占位件压成 is_item_slot 布尔,
-    # kind 信息在该路丢失(读 legacy 元素 .kind = AttributeError,批5 前旧
-    # 臂的半落地隐患,本批随书册卡臂接线一并根治)。BenchView slots[i] =
+    # bench 槽位 kind(占席物细分)。⚠️ 读口 = 容器 BenchView.slots 直读
+    # (单一形状,无换形路)。BenchView slots[i] =
     # 物理槽 i+1(动作参数 = 物理槽号,执行器按槽号现算点击坐标——总纲
     # 坐标契约:像素不落盘);bench 未观察(None 视图)→ 臂全跳过。
     # 臂序 = 旧「入口清场先于观察」的全局序(书册卡先于箱/典籍)。

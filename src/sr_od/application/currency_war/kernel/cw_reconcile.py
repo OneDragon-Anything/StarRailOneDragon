@@ -121,8 +121,8 @@ def _bench_read_entries(view: BenchView | None) -> list[tuple]:
 
     [索引定义] anchor = ('bench', 物理槽号 1 基)(星级门锚 = 物理槽,ADR-0605
     §5.2 权威槽位 = 表下标、信息位为派生,下标+1 即槽号);占用槽按视图序
-    (下标升序)排列;占位件槽(kind ≠ unit/empty)char_id=''(与旧读链
-    is_item_slot 空名位同形,门内走「无身份 → 清候选」分支)。"""
+    (下标升序)排列;占位件槽(kind ≠ unit/empty)char_id=''
+    (门内走「无身份 → 清候选」分支)。"""
     if view is None:
         return []
     out: list[tuple] = []
@@ -141,7 +141,7 @@ def _deployed_read_entries(rows) -> list[tuple]:
     """观察行域 → 门/签名用的读条目(形态同 :func:`_bench_read_entries`)。
 
     [索引定义] anchor = (排 'front'|'back', 排内 1 基槽号);条目序 = 前排
-    行序 + 后排行序(与旧 read_deployed_chars 的 front+back 拼接读序一致,
+    行序 + 后排行序(与观察读链 front+back 拼接读序一致,
     漂移签名按序比较不受载体影响)。"""
     if rows is None:
         return []
@@ -311,7 +311,7 @@ def _continue_equips_bench(old_list, view: BenchView | None) -> BenchView | None
 def _continue_equips_rows(old_list, rows):
     """对账合并语义(ADR-0387)·deployed 侧:旧 tracked equips 续接到新读
     行域(frozen replace)。续接结果只进 tracked 写回(容器行域观察写端
-    恒空表,不造假值 —— 旧 deployed_rows_from_obs 同款边界申报)。"""
+    恒空表,不造假值 —— 空读守卫边界申报)。"""
     if rows is None:
         return None
     pools = _old_equips_pools(old_list)
@@ -373,8 +373,8 @@ def reconcile_tracking(session, bench: BenchView | None,
         return False, bench, deployed
     # 旧账基准 = game state 簿记(宿主 = GameState.tracked_books,本函数 =
     # game state 层内部实现,就地处置)。P1 tracked 形状:bench =
-    # BenchSlot | None(unit 才有身份,占位件以 ('',1) 入漂移基准——与旧
-    # is_item_slot 空名位同形)/ deployed = Unit | None。
+    # BenchSlot | None(unit 才有身份,占位件以 ('',1) 入漂移基准)/
+    # deployed = Unit | None。
     _books = game_state_of(session).tracked_books
 
     def _tracked_sig(entries) -> list:
@@ -415,7 +415,7 @@ def reconcile_tracking(session, bench: BenchView | None,
         # 下标+1 结构性健康(直产读链槽号来自建档 rect 枚举,ADR-0646
         # 「无守卫槽号」面随形状消失,旧写回槽号健康门拒绝分支失去可达
         # 输入,随直产退役)。入口防御 pad 到定长(空视图 = 空读载体,
-        # 与旧 bench_from_compact([]) 的定长输出契约一致)。
+        # 定长输出契约保持)。
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             BENCH_CAPACITY,
         )

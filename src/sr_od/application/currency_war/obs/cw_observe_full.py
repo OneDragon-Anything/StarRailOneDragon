@@ -72,11 +72,10 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
 
     返回字段(对齐 _observe heavy 段产出,消费方=director 回填):
     - bench_view/deployed_rows:备战席容器视图(BenchView,空读/未加载模板
-      → None)+ 上场位 (前排, 后排) Unit 行(P6 观察链直产,无 BenchChar
-      中间形;调用方按 None/空读走 carried);
+      → None)+ 上场位 (前排, 后排) Unit 行(P6 观察链直产,无中间形;
+      调用方按 None/空读走 carried);
     - read_receipt::class:`GameStateReadReceipt`(read_game_state 轻量
-      回执;旧 ``out['state']`` CwSimFrame 帧槽随返帧退役删除,逐帧读数
-      消费面——节点类型/level 审计/raw 牌缓存——改走本回执);
+      回执;逐帧读数消费面——节点类型/level 审计/raw 牌缓存——改走本回执);
     - gold_reread:bool——是否走了 MED-2 gold==0 重读
       (**重新截图**重读——同帧重读结果恒同,无意义;
       op 可传则用 op.screenshot(),不可传(离线)跳过重读);

@@ -171,8 +171,7 @@ class CwActionBuyCardOp(SrOperation):
         if action.card.name:
             _cnt = 1
             # 满栏判定(容器原生读):席占用 = BenchView 槽 kind ≠ empty
-            # (unit+占位件均占席,与旧 bench_slots_of→bench_occupied 同式);
-            # 旧执行缝腿的数据源 = tracked 主账(_books)。
+            # (unit+占位件均占席);旧执行缝腿的数据源 = tracked 主账(_books)。
             _view = state.bench.value
             _bench_occ = (sum(1 for s in _view.slots if s.kind != 'empty')
                           if _view is not None else 0)

@@ -217,8 +217,8 @@ class CwScreenYinLang(SrOperation):
             from sr_od.application.currency_war.kernel.cw_events import decide_planner
 
             # 换源(登记集消点):防御视图 = 裸容器(全域未观察空视图;
-            # decide_planner 局面消费面未观察态等价旧空帧);旧合成
-            # CwSimFrame + 过渡桥装箱退役。kernel 返回值包装动作子类型
+            # decide_planner 局面消费面未观察态 = 空视图口径)。
+            # kernel 返回值包装动作子类型
             # (终态契约 §2.2:kernel 纯函数零触碰,包装归入口/防御路径)。
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 GAME_STATE_SCHEMA_VERSION,

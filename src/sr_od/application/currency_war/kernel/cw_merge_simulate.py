@@ -25,7 +25,7 @@ mechanics 为准修齐(单一语义源,双载体是 tracked 原地推进 vs 期�
 ``list[BenchSlot | None]`` / deployed = ``list[Unit | None]``(§2.3);
 元素 frozen → 推进 = replace 新构造 + 定位符索引,素材摘除 = 置 None
 (保洞)。条目身份读协议(:func:`_entry_identity`)容器单形状,引擎
-全链零 BenchChar 载体。
+全链容器单形状。
 """
 from __future__ import annotations
 
@@ -91,10 +91,9 @@ def _identity_of(x: Unit) -> tuple[str, int]:
 
 
 def _entry_identity(x: object) -> tuple[str, int] | None:
-    """计数族条目身份读协议(容器单形状;benchchar-retirement P5 收窄):
+    """计数族条目身份读协议(容器单形状):
     bench 侧 ``BenchSlot``(kind='unit' → 内嵌 Unit 身份;占位/empty →
-    None)/deployed 侧 ``Unit``。原「观察边界 BenchChar 形」兼容支已随
-    帧通道退役删除——P5 全仓零调用核实后收窄单形,非容器形状 = None
+    None)/deployed 侧 ``Unit``;非容器形状 = None
     (fail-closed 跳过,禁猜身份)。"""
     if x is None:
         return None
@@ -294,8 +293,7 @@ def merge_simulate(bench: list[BenchSlot | None],
 def _bump_carrier(carrier: object, new_star: int,
                   new_equips: list[str]) -> object:
     """合成载体升星 + 装备继承的 frozen 新构造(bench 侧 BenchSlot 包
-    Unit / 场上裸 Unit 双载体;容器原生形状之外禁入——BenchChar 不再
-    是本引擎载体,观察边界转换归 bench_from_compact/deployed_from_compact)。"""
+    Unit / 场上裸 Unit 双载体;容器原生形状之外禁入)。"""
     from dataclasses import replace
     if isinstance(carrier, BenchSlot):
         u = carrier.unit
@@ -307,7 +305,7 @@ def _bump_carrier(carrier: object, new_star: int,
         return replace(carrier, star=new_star, equips=list(new_equips))
     raise TypeError(
         f'merge 载体形状不支持: {type(carrier).__name__}(容器原生 '
-        f'BenchSlot/Unit 之外形状,禁复活 BenchChar 推演)')
+        f'BenchSlot/Unit 之外形状,禁复活非容器推演)')
 
 
 def field_family_of(path: str) -> str:

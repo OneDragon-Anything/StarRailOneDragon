@@ -41,7 +41,7 @@
    246 覆盖拖测)→ diff==1 直读 7 格;9 格档已交互建档(见机制节)→
    diff≥3 直读 9。**未建档新档位**(>9 域外/CV 新观察)→ 8 格超集运行
    (读全扩展带;拖到不存在格被游戏拒 = 廉价失败方向)+ 留证钩子
-   (``cw_identity_obs.read_deployed_chars``,n_raw 未建档时 obs_conflict
+   (``cw_identity_obs.read_deployed_rows``,n_raw 未建档时 obs_conflict
    留证+去重截图引导人工经 MCP 采集;ADR-0385 件①,7/9 格即按此流程
    闭合后钩子自然静默)。旧「lv6=7 格待采」留证机器
    (note_pending_7slots/_PENDING_7SLOT_LEVELS)随 level 驱动模型作废清理

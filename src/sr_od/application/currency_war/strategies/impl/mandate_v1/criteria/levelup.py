@@ -29,7 +29,7 @@ def lv9_stop(level: int, level_max: int) -> bool:
     不改名(改键牵连判读脚本与历史档案可比性,纯改名无收益,ADR-0565)。
 
     单一源 = 注册表 ``level_max``(kernel/cw_registry.py,实机真值 10,
-    与 cw_state.xp_apply_clicks「封顶 10」live 机制语义同源);sim 侧
+    与 cw_economy.xp_apply_clicks「封顶 10」live 机制语义同源);sim 侧
     经 ``sim_decision_registry`` 注入视图(=9)保持建模冻结,策略零
     感知、sim 行为零漂移。⚠ 与同文件 ``cap_resolved``(利息上限)毫无
     数值或语义关联,禁接错源。

@@ -150,9 +150,8 @@ def zero_overlap(name: str, k: tuple[str, ...]) -> bool:
 def item_slot_unsellable(unit: BenchSlot) -> bool:
     """占位件物理门(腾席卖出资格跨通道共享谓词;三通道资格循环首门)。
 
-    真值 = 备战席槽位 kind 非角色(§2.4 字段映射:``is_item_slot=True``
-    → ``kind ∈ ('tome','bookcard','supply_box')``;观察写端按容器观察
-    kind 落位)——备战槽非角色占席物品(补给箱/星徽秘典/典籍书册等)
+    真值 = 备战席槽位 kind ∈ ('tome','bookcard','supply_box')
+    (观察写端按容器观察 kind 落位)——备战槽非角色占席物品(补给箱/星徽秘典/典籍书册等)
     无卖出交互且无金币现值——实机采证:同参数拖拽出售,角色 9 连全卖、
     箱零效果;宝箱面 = 4 选 1 装备面板,无金币现值、无出售项。任何星级
     不可变现 ⇒ 恒不入腾席卖出资格集。知识锚 =

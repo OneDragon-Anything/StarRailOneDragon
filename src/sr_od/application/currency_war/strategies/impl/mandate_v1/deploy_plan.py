@@ -2,9 +2,8 @@
 
 设计依据 = docs/develop/sr_od/application/currency_war/changes/
 2026-09-20-benchchar-retirement/design.md §2.2(落位决策权归策略层):
-**谁上场、去哪一排、落哪个槽,全部由策略实现决定;框架在落位上零决定**
-——kernel 版 ``select_deployments``/``select_deployments_reasoned``/
-``assign_deploy_slots``/``empty_deploy_slots`` 随本模块接管而退役。
+**谁上场、去哪一排、落哪个槽,全部由本模块决定;框架(执行链/写侧)
+在落位上零决定**——选人/排路由/槽位选择的本模块单一源见下。
 
 - 选人(:func:`select_deployments`,自 kernel 原样迁入):围栏/成对/点火序/
   核心桶/必需件首桶/cap/同名去重/配方底线门/板空保底全套语义,禁第二套;
@@ -73,9 +72,8 @@ def _slot_cid(b) -> str:
     return (getattr(u, 'char_id', '') or '') if u is not None else ''
 
 
-def _is_item_slot(b) -> bool:
-    """占席条目 → 占位件判定(§2.4 字段映射:is_item_slot=True →
-    kind ∈ tome/bookcard/supply_box)。"""
+def _bench_slot_is_item(b) -> bool:
+    """占席条目 → 占位件判定(槽位 kind ∈ tome/bookcard/supply_box)。"""
     return getattr(b, 'kind', 'unit') in ('tome', 'bookcard', 'supply_box')
 
 
@@ -213,7 +211,7 @@ def select_deployments(
     # 点再漏伪槽。拒因 'item_slot' 进闭集;char_id='' 不触发本防线
     # (「照旧上」fail-open 语义保留)。
     _item_idx = {k for k in range(len(bench))
-                 if _is_item_slot(bench[k])}
+                 if _bench_slot_is_item(bench[k])}
     if _item_idx:
         tgt_idx = [k for k in tgt_idx if k not in _item_idx]
         rest = [k for k in rest if k not in _item_idx]

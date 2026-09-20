@@ -264,14 +264,12 @@ def place_bench_unit_placeholder(gs: GameState, char_id: str, faction: str,
     (渠道对齐 gameplay「备战席溢出」节:席满不丢,溢出悬挂由容器
     overflow 面承载,非本 sim 辖域)。
 
-    P1 容器原生直写(§3.2):BenchView 槽序工作副本上直接落 BenchSlot
-    ——原有「视图↔9 槽表转换 + bench_place」旧形往返随换形口退役;
+    P1 容器原生直写(§3.2):BenchView 槽序工作副本上直接落 BenchSlot;
     保真修复(设计 §2.2 申报第 2 项):工作副本保留非 unit 槽(占位件
     kind)与 Unit.equips 原样,重建不再丢占位件槽/丢装备,新角色落
     **首个真真空槽**。
-    ``faction`` 形参 = 旧 BenchChar 载体时代的落席签名位(对照采集脚本
-    capture.py 沿用);Unit 不存阵营(§3.2.3,注册表派生),本函数不再
-    消费。"""
+    ``faction`` 形参 = 对照采集脚本 capture.py 沿用的落席签名位;
+    Unit 不存阵营(§3.2.3,注册表派生),本函数不消费。"""
     del faction   # 形参保留见函数注;Unit 无阵营位
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         bench_place,

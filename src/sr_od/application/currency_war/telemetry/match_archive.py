@@ -780,7 +780,7 @@ def _sell_deployed_target_names(frame: dict[str, Any]) -> set[str]:
     占用序**(ADR-0392,None 空槽剔除),帧内列表下标 ≠ 槽位表下标;
     deployed_idx→(排,排内槽号) 是固定双射(0-3=前排 1-4,4-9=后排
     1-6,deployed_slot_no 单一源),条目级 position_pref/slot 信息位随
-    序列化保留、由 deployed_place 落位归一,按此对上。键缺失/越界 =
+    序列化保留、落位写端按落位下标归一,按此对上。键缺失/越界 =
     解析不出身份,不入集合(该件落 unexplained,宁缺勿造不炸)。
     CwActionSellBenchParam 卖的是备战席,不解释场上离场,不入集合。
     """

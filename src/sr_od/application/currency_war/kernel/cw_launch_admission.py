@@ -332,7 +332,7 @@ def launch_admission_report(gs: GameState, comp: Comp, *,
     返回 dict(全 bool):``board_full``(三元①板满:占用部署数 ≥ 可上阵
     数 ``state.max_units()``;旧口径 = 物理槽位总数 DEPLOYED_CAPACITY,level 驱动 cap 全域
     <10 ⇒ 该分键结构性不显影;换占用数 vs max_units 与 swap 臂同一裁决
-    先例(禁物理门),feed 单一源 = deployed_occupied)、``bench_core_waiting``(三元②:bench 存在线内
+    先例(禁物理门),占用数单一源 = 容器行成员计数)、``bench_core_waiting``(三元②:bench 存在线内
     待上场件——口径 = core∪shared(line_members)∨ 阵营交集,
     与买入/部署义务面对齐)、``victim_missing``(三元③:板上无合格
     victim)。

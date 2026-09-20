@@ -78,7 +78,7 @@ def report_action_sell_bench_param(gs: GameState, param: Any, sig: ChannelSig,
         _w(gs.overflow_warning, False, 'proj_overflow_cleared')
         # 执行侧 tracked 对称吸收:入位卡同帧记进执行主账(P1 tracked
         # 形状 = list[BenchSlot | None] 定长 9,按下标直写;原「摘槽号
-        # 幂等 + bench_from_compact 重建」腿的信息位寻址随形退役——
+        # 幂等 + 槽表重建」腿的信息位寻址随形退役——
         # 表下标权威,直写即同槽同位,ADR-0316 保洞语义不变)。
         if session is not None:
             from sr_od.application.currency_war.kernel.cw_exec_state import (

@@ -5,7 +5,7 @@
 (依据 ``research/equipment_mechanics.md`` 全篇):
 
 - **状态** = 容器 ``equips``(owned 装备库存,设计稿口径工具亦在此栏)
-  / ``BenchChar``/``Unit.equips``(worn 穿戴);
+  / ``Unit.equips``(worn 穿戴;bench 域经 BenchSlot 内嵌);
 - **穿着即合成 = 游戏规则,sim 必须模拟**(§2.4.2:现行「执行链不拦截」
   缺口在 sim 侧补齐)——穿戴后该角色 worn 集内可合成的两件(基础件
   两两配方 = ``cw_synthesis.synthesize_target`` K8 闭合)立即合成为
@@ -93,9 +93,8 @@ def _find_and_mutate_unit(gs: GameState, char_name: str,
     未命中 → False。容器视图为 frozen dataclass 链,穿戴写 = 对应域
     整表重建后 obs 写(与 CwActionDeployMoveParam 的整表平移契约同形)。
 
-    P1 容器原生直写(§3.2):bench 域 = 槽序摘换后 BenchView 直构——
-    原有 ``_slots_to_chars``→``bench_view_of_slots`` 旧形往返随换形口
-    退役;保真修复(设计 §2.2 申报第 2 项):非 unit 槽(占位件三分类
+    P1 容器原生直写(§3.2):bench 域 = 槽序摘换后 BenchView 直构;
+    保真修复(设计 §2.2 申报第 2 项):非 unit 槽(占位件三分类
     kind)原样保留,重建不再降级 empty。
     """
     from dataclasses import replace

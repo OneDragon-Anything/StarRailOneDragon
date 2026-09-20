@@ -30,7 +30,7 @@ def report_action_sell_deployed_param(gs: GameState, param: Any, sig: ChannelSig
     deployed_idx 越界/空槽或 expect 失配 = applied=False 零写。
 
     P1 容器原生:deployed 工作副本 = 行域下标派生表(§2.1 下标派生
-    单一源),零 BenchChar 中间形。"""
+    单一源),零中间形。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
 
