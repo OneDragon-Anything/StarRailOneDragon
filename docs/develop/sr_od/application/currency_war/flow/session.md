@@ -81,7 +81,7 @@
 | `v2_state` / `locked_line` / `bridge_id` | 决策层相位元组/锁线/桥线(初版误判退役;对抗审查 A2 改判——**活读端** = cw_screen_buy_cards.py:658-662 直接属性访问入 decisions 行,**活写端** = sim/engine_p1.py:672/701,见 §5.6) | decisions 行遥测 | 局 | MandateState.相位面(sim 初始相位改经状态构造,§5.6) |
 | `memory`(dict) | 策略 scratch | 策略临时变量 | 局 | **随切换直接消解**(§6.3,用户裁定) |
 
-### 2.4 执行层状态——迁出至执行侧载体(16 项;as-built 实际落点 22 具名 = 16 清册 + 账外第二波 6:`last_prep_action_sig`/`_supply_detour_done`/`cw_prep_pending_accts`/`cw_takeover_collect_done`/`cw_takeover_tries`/`cw4_swap_arm_on`,见 「落位裁量」节)
+### 2.4 执行层状态——迁出至执行侧载体(16 项;as-built 实际落点 22 具名 = 16 清册 + 账外第二波 6:`last_prep_action_sig`/`_supply_detour_done`/`cw_prep_pending_accts`/`cw_takeover_collect_done`/`cw_takeover_tries`(此两名已退役删除——现行接管补采无 gs 字段,真值经位面详情屏写门落容器)/`cw4_swap_arm_on`,见 「落位裁量」节)
 
 > **as-built 退役注(执行层落点列消解)**:执行侧载体(`ExecState`,本表「迁出落点」列的目标态宿主)已随执行层状态类目整体退役(git 历史可溯)——GameState 成为一统的局内事实容器后,执行层不再设独立状态载体。本表各字段终局:失败记忆(`deploy_fail_counts`/`equip_drag_fail_counts`)、死面(`_supply_detour_done`)、期望账(`pending_buy_expect`/`xp_expect_ledger`/`cw_prep_pending_accts`/`expected_state` 族)、僵尸轮账(`v2_round_key`/`v2_round_sold`)删除;防重入半边按语义归位(megastar 旗标 → 策略器状态 `StrategyState.megastar_clicked`,刷新计数 → GameState `node_screen_refresh` 域容器计数);跟踪账 → `GameState.tracked_books`;暂存/接管恢复/簿记/节点台账 → GameState 容器(选择域/match_facts 域/plane_node_sequences)。现行字段规格单一源 = `../game_state/fields.md` §3.4 与 `../game_state/README.md` §3.3。
 

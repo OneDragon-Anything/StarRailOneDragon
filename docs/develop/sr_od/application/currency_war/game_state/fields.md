@@ -132,10 +132,15 @@ carried、不受本硬边界辖;在屏失读不写、沿用旧值,在屏与否�
 #### 3.1.3 位面 boss 与敌人词缀(主条目)
 
 **语义**:位面级字段(三位面 boss 名、当前词缀名单)。
-**写端**:初值写端=开局简报屏(建档区域:区域-词缀行/区域-首领行;摄入口 =
-`report_screen_briefing_obs`,三字段分闸:词缀幂等门「容器已有不重写」/boss
-恒覆写、读空写 None 防跨局残留假真值/敌人难度仅 None 才写——恒稳开局基线,
-逐帧旗牌真读到达即覆盖);现读通道= 位面详情屏(词缀横条/boss 大图标)与敌人
+**写端**:两写点。①初值写端=开局简报屏 `CwScreenBriefing`(建档区域:区域-词缀行/
+区域-首领行;摄入口 = `report_screen_briefing_obs`,三字段分闸:词缀幂等门「容器
+已有不重写」/boss 恒覆写、读空写 None 防跨局残留假真值/敌人难度仅 None 才写——
+恒稳开局基线,逐帧旗牌真读到达即覆盖);②接管补采实采写端=位面详情屏(摄入口 =
+`report_screen_plane_intel_obs`,跳写门两件:`plane_bosses` 已有真值不覆写——
+简报源先落时实采不冲真值;`enemy_affixes` 幂等门,仅容器空时写、空读数不落写;
+sig = logic_action/CwScreenPlaneIntel/货币战争-位面详情/compute,采集真值落账族
+同简报写点族;详 = [../screens/plane_intel.md](../screens/plane_intel.md))。
+现读通道= 位面详情屏(词缀横条/boss 大图标)与敌人
 信息浮层(从备战屏「按钮-敌人难度」打开)。
 **运行时登记**:词缀读链产出点接 `cw_affix_effects.register_affixes_from_names`
 (简报屏/位面详情屏两链)→ 词缀源效果实例入效果账本(source='affix',见
@@ -1279,19 +1284,18 @@ carried 沿用(从未读过→None);③None 仅当从未读过——不是机制
 - 中继纪律:恢复局新 session 的五镜像字段停在默认值,中继把未知固化为正式值的路径
   被 §2.1 空值闸拦断(空白串同判空白;列表元组字典集合非空才中继)。
 
-### 6.4 接管恢复三字段(resumed_match / takeover_collect_done / takeover_tries)
+### 6.4 接管恢复(resumed_match)
 
-局级事实域(match_facts)成员,gs_schema 域版本 2;渠道 = ③接管协议 `logic_hook`
+局级事实域(match_facts)成员,gs_schema 域版本 3;渠道 = ③接管协议 `logic_hook`
 (relay 契约同族)。语义单一源 = 字段定义注释(kernel/cw_game_state.py match_facts
-域组,均带索引定义注):
+域组,带索引定义注):
 
 - `resumed_match`(bool):True = 本局为恢复对局(游戏在中局接管)。写端 =
   `cw_loop._mark_session_resumed` 单口(接管检测确认点);读端 = `cw_observation`
   派生规则弹窗腿(恢复局弹窗清理语义)。
-- `takeover_collect_done`(bool):接管采集已完成(节点内一次性闩)。写读点 =
-  `cw_screen_prep` 接管采集段(经 `report_screen_prep_obs` 接管域落容器;采集
-  完成置位、入口判闩)。
-- `takeover_tries`(int):接管采集重试计数(单调递增,单口累加)。写读点同上。
+
+接管补采无 gs 字段:补采编排 = `CwEntryPlaneIntel`,采集真值经位面详情屏写门落
+`plane_bosses`/`enemy_affixes`(§3.1.3);重复委派由编排的真值跳过门兜住。
 
 ### 6.5 轮内新鲜度账 round_fresh_buys
 
