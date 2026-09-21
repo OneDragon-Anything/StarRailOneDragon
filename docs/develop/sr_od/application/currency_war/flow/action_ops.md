@@ -19,7 +19,7 @@
 
 禁止的写法(现有代码里还存在的 = 欠账,逐批改掉;禁新增):
 
-- **分两步上报**:点的时候只记一条日志,等确认真的生效了才补写结果(现役 pick_invest 的「发射相/落地相」就是这种);
+- **分两步上报**:点的时候只记一条日志,等确认真的生效了才补写结果(发射/落地两相形态已全域退役,现役零例,禁回潮);
 - **等下一轮看画面才补写**:点完不写结果,等下一轮重新截屏、看到弹窗没了,才把选择结果补进 game state;
 - **探下一个画面才上报**:先看看有没有跳到下一个画面,再决定上报;
 - **判重/防重复保护**:选择面绝不第二次给相同的牌(游戏事实),同一个选择不可能被上报两次——真上报了两次只可能是代码 bug,按 bug 修,不为它加防重复保护。
@@ -116,7 +116,7 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 
 ### 4.5 事件线 pick 族(12 行;域 env = `OverlayPickExecEnv`,机械参数由各画面 op 决策半现算经 env 传入,op 类体内零决策)
 
-**欠账标注(§1 增补 2)**:PickPlanner/PickEquip 两行写的「先只记日志、等确认生效的证据再补写结果」分步上报 = 欠账,逐批改为「点完立即上报完整结果」(投资两屏/补给/遭遇已随迁移批与事件屏统一迭代改即时上报,欠账摘除);各行描述随后续迁移批更新,禁新增分步写法。
+**上报形态 = 全族即时上报**(§1 增补 2;有容器写的各屏 = 投资两屏/补给/遭遇/策划/装备,点完确认或点卡即选后立即按成功写完整结果;其余屏 = 零写占位上报):发射/落地两相与证据闩形态已全域清偿,零重入裁决补写面,禁新增分步写法。
 
 | 词表类 | op 类 | 文件 | 说明 |
 |---|---|---|---|
@@ -124,7 +124,7 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 | PickSupply | CwActionPickSupplyOp | `cw_overlay_pick_action.py` | 补给节点选卡确认链(即时单相,3.1):`env.target` 点卡 → 固定等 0.6s → 点「按钮-确认」→ **立即自上报完整结果** `report_action_pick_supply_param`(owned 规范名 + 单位腿 + 装备后果腿一口写)+ `report_node_advance(supply_confirm)`;派发即终结,确认未生效由外循环重识别重派;刷新圆钮点击留守画面 op。发射条件 = 决策半产 PickSupply(env 带 target/归一件名/角色名)。 |
 | PickMegastar | CwActionPickMegastarOp | `cw_overlay_pick_action.py` | 盛会之星确认链:点「按钮-确认选择」(area 缺失回退兜底常量)→ 固定等 0.9s;纯机械单发,确认未落地 = 下一帧重入裁决自愈(计节点 retry 预算)。发射条件 = 决策半产 PickMegastar(候选选中半留守画面 op)。 |
 | PickPartner | CwActionPickPartnerOp | `cw_overlay_pick_action.py` | 列车同行伙伴确认链:未选中实证(或首轮强制)下重点选候选(`env.op._pick_point`)→ 固定等 0.7s → OCR 找「确认选择」点击(找不到 = round_retry 上报,交框架轮次机制);脉冲计数与选中态宿主 = 画面 op。发射条件 = 决策半产 PickPartner。 |
-| PickPlanner | CwActionPickPlannerOp | `cw_overlay_pick_action.py` | 骇入策划确认链:`env.target` 点卡(避开卡内「详情」按钮区的选中点几何归决策半单一源)→ 固定等 1.2s → `emit_overlay_confirm` 机械确认(裁决词全词「我来当策划」);点卡 = 机械单发(无详情面板检测;面板若真弹出归下一帧重入自愈)。发射条件 = 决策半产 PickPlanner。上报 = 两相(`kernel/cw_action_report/pick_planner.py`,银狼升星记账批:发射相意图遥测零写;落地相 = 画面 op 重入裁决出口证据闩——装备腿入栏+后果链 / 升费腿变换窗三态+档行 `lv999_cost_tier`)。 |
+| PickPlanner | CwActionPickPlannerOp | `cw_overlay_pick_action.py` | 骇入策划确认链(即时单相):`env.target` 点卡(避开卡内「详情」按钮区的选中点几何归决策半单一源)→ 固定等 1.2s → `emit_overlay_confirm` 机械确认(裁决词全词「我来当策划」);点卡 = 机械单发(无详情面板检测;面板若真弹出归下一帧外循环重识别自愈)。**确认点击后立即自上报完整结果** `report_action_pick_planner_param`(`kernel/cw_action_report/pick_planner.py`:条件腿 rider 先行 → equip 腿入栏+后果链 / upgrade 变换窗三态+档行 `lv999_cost_tier` / unknown 留证 / unrouted 兜底零写,`leg_type`/`norm_item` 经 env 随派发透传);派发即终结,确认未生效由外循环重识别重派。发射条件 = 决策半产 PickPlanner。 |
 | PickInvestStrategy | CwActionPickInvestOp | `cw_overlay_pick_action.py` | 投资策略屏选择行(投资两屏迁移批:词表拆类,与 PickInvestEnv 两行同指一 op,机械链同构):点选中位(`env.idx`/`env.target` 决策半现算)→ 固定等 0.7s → 点确认钮 → **立即自上报完整结果** `report_action_pick_invest_strategy_param`(session 自 ctx 取)→ 整支走获得链 `kernel/cw_gain_chain.py::gain_invest_strategy`(无效载荷拒绝 → active_strategies 按名字去重追加 → 效果账本登记腿 → `on_strategy_gained` 效果分派;出参 reason=`gain_chain_applied`)。 |
 | PickInvestEnv | CwActionPickInvestOp | `cw_overlay_pick_action.py` | 投资环境屏选择行(同上共 op):点选中位 → 固定等 0.7s → 点确认钮 → **立即自上报完整结果** `report_action_pick_invest_env_param` → 整支走获得链 `gain_invest_env`(active_env 注册 + portal 登记 + `on_env_gained` 效果枚举;出参 reason=`gain_chain_applied`)。 |
 | PickFortune | CwActionPickFortuneOp | `cw_overlay_pick_action.py` | 命运卜者强化三选一(pick-op-unify 批收编,T-3):点卡(`env.target`)→ 点确认钮(建档缺失臂兜底常量)→ 自上报(零写)。 |
@@ -132,7 +132,7 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 | PickStarTome | CwActionPickStarTomeOp | `cw_overlay_pick_action.py` | 星徽秘典(pick-op-unify 批收编,T-4,点卡即选):选中点击 + 动画等待,零确认步 → 自上报(零写)。 |
 | PickBoxCard | CwActionPickBoxCardOp | `cw_overlay_pick_action.py` | 武装箱(pick-op-unify 批收编,T-4,点卡即选):同上形态。 |
 | PickExpertInvite | CwActionPickExpertInviteOp | `cw_overlay_pick_action.py` | 专家邀请函(pick-op-unify 批收编,T-4,点卡即选):idx=-1 = 现金为王(点「卡-现金为王」区,非候选卡槽)。 |
-| PickEquip | CwActionPickEquipOp | `cw_overlay_pick_action.py` | 选择装备三选一(pick-op-unify 批收编,T-4,点卡即选):同上形态。 |
+| PickEquip | CwActionPickEquipOp | `cw_overlay_pick_action.py` | 选择装备三选一(即时单相,点卡即选无确认步):`env.target` 点卡 → 固定等 1.2s → **立即自上报完整结果** `report_action_pick_equip_param`(`kernel/cw_action_report/pick_equip.py`:归一件名命中 = 装备入栏+获得后果链一口写;未解析 = equips 值不变翻来源+留证,禁猜;`norm_item` 由决策半经 `normalize_registry_equip_name` 归一现算);派发即终结,点卡未生效由外循环重识别重派。发射条件 = 决策半产 PickEquip。 |
 
 ### 4.6 词表在册、不经注册表分发的类(3 类)
 

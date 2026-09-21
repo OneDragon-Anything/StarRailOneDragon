@@ -39,12 +39,12 @@
 
 ## 正本更新清单
 
-- `flow/action_ops.md`：§4.5（**欠账标注段整段摘除**——全域清零；PickPlanner/PickEquip 两行描述更新为单相即时上报）、§1 :22 禁止清单例句换现役反例或不举例（pick_invest 已删，「现役」表述过期）← 3.1/3.2
-- `flow/action_exec.md`：§2 事件线 pick 族段（:24 附近「其余屏(策划/补给/装备)=分步形态欠账…欠账标注见 action_ops §4.5」句更新为单相清零表述，消悬空引用；supply 确认行复核）← 3.1/3.2（attack2 F1）
-- `screens/op-layer.md`：§1.2 欠账引用句更新（:43 两相欠账清零）、:33 枚举句更新（分步例外清零）、:36 出口①枚举句更新（策划/装备并入派发即终结枚举）、:96 悬空引用清除、§3 节点循环行分型判据更新（yinlang/equip_pick 重入裁决退役改派发即终结）← 3.1/3.2（attack2 F3 + attack6 S3）
-- `screens/README.md`：§5.5 单选族表（两行上报形态更新）← 3.1/3.2
-- `screens/planner.md`：全篇两相+重入裁决表述清除（**§2(:12)/§4/§5/§6(:55)/开放设计注(:76)** 五处；§1 无涉）← 3.2（attack2 F2）
-- `screens/equip_pick.md`：重入裁决/证据闩表述清除 ← 3.1
-- `game_state/logic-updates/pick-planner.md`：文件头(:3)/**§2 四行(:11 两相节头/:13 发射相 bullet/:14 落地相 bullet——evidence=EVIDENCE_OVERLAY_CLOSED + 重入裁决出口表述/:17「weaken 零记账」行——weaken 已随 14dd40977 退役,该行现役即与代码不一致)**/§3(:23 _confirm_pending 步)/§5(:33 重入裁决)/§7(:41) 两相与证据闩表述清除 + :37「单一定义在 pick_invest」过期句修正（attack3 F2 锚位勘误；attack4 F1 补 §2 三行；attack5 A2 收回「:14 无涉」误排并把 :14 入清除面）← 3.2
-- `screens/README.md` 补：§6(:138) 即时上报枚举更新（attack3 F6）← 3.1/3.2
+✅ - `flow/action_ops.md`：§4.5（**欠账标注段整段摘除**——全域清零；PickPlanner/PickEquip 两行描述更新为单相即时上报）、§1 :22 禁止清单例句换现役反例或不举例（pick_invest 已删，「现役」表述过期）← 3.1/3.2
+✅ - `flow/action_exec.md`：§2 事件线 pick 族段（:24 附近「其余屏(策划/补给/装备)=分步形态欠账…欠账标注见 action_ops §4.5」句更新为单相清零表述，消悬空引用；supply 确认行复核）← 3.1/3.2（attack2 F1）
+✅ - `screens/op-layer.md`：§1.2 欠账引用句更新（:43 两相欠账清零）、:33 枚举句更新（分步例外清零）、:36 出口①枚举句更新（策划/装备并入派发即终结枚举）、:96 悬空引用清除、§3 节点循环行分型判据更新（yinlang/equip_pick 重入裁决退役改派发即终结）← 3.1/3.2（attack2 F3 + attack6 S3）
+✅ - `screens/README.md`：§5.5 单选族表（两行上报形态更新）← 3.1/3.2
+✅ - `screens/planner.md`：全篇两相+重入裁决表述清除（**§2(:12)/§4/§5/§6(:55)/开放设计注(:76)** 五处；§1 无涉）← 3.2（attack2 F2）
+✅ - `screens/equip_pick.md`：重入裁决/证据闩表述清除 ← 3.1
+✅ - `game_state/logic-updates/pick-planner.md`：文件头(:3)/**§2 四行(:11 两相节头/:13 发射相 bullet/:14 落地相 bullet——evidence=EVIDENCE_OVERLAY_CLOSED + 重入裁决出口表述/:17「weaken 零记账」行——weaken 已随 14dd40977 退役,该行现役即与代码不一致)**/§3(:23 _confirm_pending 步)/§5(:33 重入裁决)/§7(:41) 两相与证据闩表述清除 + :37「单一定义在 pick_invest」过期句修正（attack3 F2 锚位勘误；attack4 F1 补 §2 三行；attack5 A2 收回「:14 无涉」误排并把 :14 入清除面）← 3.2
+✅ - `screens/README.md` 补：§6(:138) 即时上报枚举更新（attack3 F6）← 3.1/3.2
 - 兜底：正本更新批内 `EVIDENCE_OVERLAY_CLOSED` 全域 grep（范围 = src + sr-od-test + docs 正本；豁免 = changes/ 历史工件）+「两相/落地相/发射相」措辞 grep（范围 = src + sr-od-test + docs 正本，覆盖叙述面；豁免 = changes/ 历史工件）← 收尾

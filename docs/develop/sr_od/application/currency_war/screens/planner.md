@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1);**分发即门**(无 op 内入口守卫):观察 node = 左右两卡 OCR 桶一次读 → `report_screen_planner_obs` 落容器 `planner_opts` 槽(恒两卡,空桶照写;match/gs 缺席的局外兜底路径跳过)→ obs 挂实例属性;决策动作 node = 顶部重入出口门(确认已发 → OCR「我来当策划」不在 = overlay 已关 → success 交回)→ 零参决策 `match.strategy.decide_planner()`(候选自容器槽;唯一入口 = 策略对象,handler 禁 kernel 直调;委托 `kernel/cw_events.py::decide_planner` 升费卡打分含银狼线/在场判定,target_comp 决定银狼线加成,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E16。「何时升费非最优」由策略模块表达,handler 不写死优先级)→ 点卡+确认链经 `CwActionPickPlannerOp` 派发(机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=5` 现役值仅框架异常路径消费)。无 chosen_* 写端。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1);**分发即门**(无 op 内入口守卫):观察 node = 左右两卡 OCR 桶一次读 → `report_screen_planner_obs` 落容器 `planner_opts` 槽(恒两卡,空桶照写;match/gs 缺席的局外兜底路径跳过)→ obs 挂实例属性;决策动作 node = 零参决策 `match.strategy.decide_planner()`(候选自容器槽;唯一入口 = 策略对象,handler 禁 kernel 直调;委托 `kernel/cw_events.py::decide_planner` 升费卡打分含银狼线/在场判定,target_comp 决定银狼线加成,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E16。「何时升费非最优」由策略模块表达,handler 不写死优先级)→ 点卡+确认链经 `CwActionPickPlannerOp` 派发(机械链+即时自上报在动作 op 内,pick-op-unify 批)→ **派发即 `round_success` 终结交回**(即时上报形态:确认点击后动作 op 一口写完整结果,零重入裁决零证据闩;确认未生效由外循环重识别重派;`node_max_retry_times=5` 现役值仅框架异常路径消费)。无 chosen_* 写端。
 
 ## 3. 观察面
 
@@ -21,22 +21,20 @@
 
 | 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| `CwActionPickPlannerOp`(`CwActionPickPlannerParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:选中点/`leg_type`/`norm_item` 载荷) | 分步上报 `report_action_pick_planner_param`:发射相意图遥测(动作 op 内,`leg_type`/`norm_item` 随载;容器零写)/落地相由本 op 重入裁决出口持 `EVIDENCE_OVERLAY_CLOSED` 调用 | 否(非终结):发出后 `round_wait` 循环推进;落地由重入裁决判——「我来当策划」不在 = success 交回外循环(见 §5) |
+| `CwActionPickPlannerOp`(`CwActionPickPlannerParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:选中点/`leg_type`/`norm_item` 载荷) | 即时单相 `report_action_pick_planner_param`(动作 op 确认点击后一口写,宿主 = `kernel/cw_action_report/pick_planner.py`:条件腿 rider 先行 → 装备腿入栏+获得后果链 / 升费腿变换窗三态+`lv999_cost_tier` 档行 / unknown 留证 / unrouted 兜底零写) | 是(派发即终结):点卡+确认链发出并上报后 `round_success` 终结交回;确认未生效由外循环重识别重派(见 §5) |
 
-决策动作 node 选卡+确认链(点卡+确认+自上报整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickPlannerOp`,派发 param 携真实选中 idx;决策半留守):
+决策动作 node 选卡+确认链(点卡+确认+即时自上报整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickPlannerOp`,派发 param 携真实选中 idx;决策半留守):
 
 ```
-重入出口门(决策动作 node 顶部):_confirm_pending 置位 → OCR「我来当策划」全词(lcs 0.5)不在
-  = overlay 已关(上轮确认已落地)→ 落地相证据闩应用一次(见对照表)→ success 交回;在 = 重走
-  (裁决词 = 全词「我来当策划」:短词「策划」在艺术字漏读时可能假通过)
 options = 观察轮 obs 载体 → decide_planner()(零参;候选读容器 planner_opts 槽)
 target = _card_point(idx):卡 area(「骇入选项-左卡/右卡」)rect 相对几何推导
   = 中心 x + 71% 高度(卡下半部选中),详情钮避让 clamp(底缘上移 11% 比例);
   area 缺失回退旧实证 rect 常量
 → mouse_move + click(press_time 0.15 常量,输入管线半死态短按下不采样的加固)
   → 1.2s 等选中动画
-→ 置 _confirm_pending → 确认:「按钮-骇入确认」center(建档 rect 中心,兜底常量)
+→ 确认:「按钮-骇入确认」center(建档 rect 中心,兜底常量)
   → emit_overlay_confirm(裁决词「我来当策划」,press_time 同加固;机械交回零判效)
+→ 动作 op 确认点击后即时自上报完整结果(单相一口写)→ 派发即 round_success 终结交回
 ```
 
 交互陷阱:点卡上半部 = 弹「属性详情」非选中(选中点击几何治理,见 §7);布局漂移下绝对 y 常数会落卡外 → 选中失败 → 确认无效,防线 = 相对几何(只更 yml rect,本方法零改)。
@@ -45,14 +43,13 @@ target = _card_point(idx):卡 area(「骇入选项-左卡/右卡」)rect 相对�
 
 | 条件 | 级别 | 交回落点 |
 |---|---|---|
-| 重入出口门「我来当策划」不在 | **画面终结** | round_success 交回外循环重分发 |
-| 出口门在(确认未落地) | 节点循环重入 | 重走选卡+确认(`round_wait` 循环推进,不烧节点重试预算,无防御上限) |
+| 选卡确认链派发完成 | **画面终结** | round_success 交回外循环重分发(派发即终结;确认未生效 = overlay 残留由外循环重识别重派) |
 
 「确认离开 = 画面终结」= [README.md](README.md) §6。
 
 ## 6. 状态上报面
 
-本屏无 chosen_hack 写端(该字段位申报不变,fields.md §3.4.5)。**落地相容器写**(银狼升星记账批):重入裁决出口经 `report_action_pick_planner_param`(落地相,evidence=`EVIDENCE_OVERLAY_CLOSED`,宿主 = `kernel/cw_action_report/pick_planner.py`)按腿写——装备腿 `equips` 入栏+获得后果链 / 升费腿 `bench`/行域变换 + `lv999_cost_tier` 档行(fields.md §3.2.23)/ unknown·weaken 零记账。候选观察:`report_screen_planner_obs` 候选写容器 `planner_opts` 槽(恒写,空桶照写)。字段节 = [../game_state/fields.md](../game_state/fields.md) §3.2.23 / §3.4.5 / §4「事件选择」。
+本屏无 chosen_hack 写端(该字段位申报不变,fields.md §3.4.5)。**动作侧即时上报**:动作 op 确认点击后经 `report_action_pick_planner_param`(即时单相一口写,宿主 = `kernel/cw_action_report/pick_planner.py`)按腿写——条件腿 rider 先行;装备腿 `equips` 入栏+获得后果链 / 升费腿 `bench`/行域变换 + `lv999_cost_tier` 档行(fields.md §3.2.23)/ unknown 零记账+留证(弱化词卡文落此)/ unrouted 兜底零写。候选观察:`report_screen_planner_obs` 候选写容器 `planner_opts` 槽(恒写,空桶照写)。字段节 = [../game_state/fields.md](../game_state/fields.md) §3.2.23 / §3.4.5 / §4「事件选择」。
 
 ## 7. 子态与 overlay
 
@@ -73,6 +70,6 @@ target = _card_point(idx):卡 area(「骇入选项-左卡/右卡」)rect 相对�
 
 ## 开放设计注
 
-- chosen_hack 字段位仍无写端(落地相写的是腿效果域,非选择存证;fields.md §3.4.5 申报不变)。
+- chosen_hack 字段位仍无写端(单相上报写的是腿效果域,非选择存证;fields.md §3.4.5 申报不变)。
 - 选中点击高度比例(71%)为单次交互实证的经验值,半区归属的充分统计待补。
 - 观察捕获集变化(旧 y 带 → 卡全域 rect)的实机对拍候实机窗(银狼升星记账批 §2.4 申报)。

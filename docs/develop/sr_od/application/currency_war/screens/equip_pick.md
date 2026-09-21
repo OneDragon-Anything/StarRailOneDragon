@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1);**本屏无 op 内入口门**(入口判定归主循环 0 系分发双 id_mark,分发即门):观察 node = 三卡位 OCR 一次读 → `report_screen_equip_pick_obs` 落容器 `equip_pick_opts` 槽 → obs 挂实例属性;决策动作 node = 顶部重入出口门(`_pick_pending` 置位 → 「请选择」不在 = 点卡即选已落地 → success 交回)→ 零参决策 `match.strategy.decide_equip_pick()`(候选自容器槽;判据单一源 = kernel `cw_equip_value.py::decide_equip_overlay_pick`,共享机器 = 同文件 `key_fit_names`,判据归属 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) E18 同域的装备价值机器;本 op 零意向读,locked_comp 由策略入口注入 kernel)→ 选卡链经 `CwActionPickEquipOp` 派发(点卡即选机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=5` 现役值仅框架异常路径消费)。无 chosen_* 写端。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1);**本屏无 op 内入口门**(入口判定归主循环 0 系分发双 id_mark,分发即门):观察 node = 三卡位 OCR 一次读 → `report_screen_equip_pick_obs` 落容器 `equip_pick_opts` 槽 → obs 挂实例属性;决策动作 node = 零参决策 `match.strategy.decide_equip_pick()`(候选自容器槽;判据单一源 = kernel `cw_equip_value.py::decide_equip_overlay_pick`,共享机器 = 同文件 `key_fit_names`,判据归属 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) E18 同域的装备价值机器;本 op 零意向读,locked_comp 由策略入口注入 kernel)→ 选卡链经 `CwActionPickEquipOp` 派发(点卡即选机械链+即时自上报在动作 op 内,pick-op-unify 批)→ **派发即 `round_success` 终结交回**(即时上报形态:点卡后动作 op 一口写完整结果,零重入裁决零证据闩;点卡未生效由外循环重识别重派;`node_max_retry_times=5` 现役值仅框架异常路径消费)。无 chosen_* 写端。
 
 ## 3. 观察面
 
@@ -21,35 +21,32 @@
 
 | 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| `CwActionPickEquipOp`(`CwActionPickEquipParam`,携归一件名 `norm_item`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:点卡定位点;点卡即选无确认步,机械链全在动作 op 内) | 两相 `report_action_pick_equip_param`:发射相在动作 op(意图遥测,容器零写);落地相由本 op 重入出口门持 `EVIDENCE_OVERLAY_CLOSED` 调用(装备腿应用一次:入栏 + 获得后果链) | 否(非终结):发出后 `round_wait` 循环推进;落地由重入出口门判——「请选择」OCR 不在 = 落地,装备腿落地相应用一次后 `round_success` 交回外循环(出战按钮由主流程处理,见 §5) |
+| `CwActionPickEquipOp`(`CwActionPickEquipParam`,携归一件名 `norm_item` = 决策半经 `normalize_registry_equip_name` 归一现算) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:点卡定位点;点卡即选无确认步,机械链全在动作 op 内) | 即时单相 `report_action_pick_equip_param`(动作 op 点卡后一口写,宿主 = `kernel/cw_action_report/pick_equip.py`:归一件名命中 = 装备入栏 + 获得后果链;未解析 = equips 值不变翻来源+留证,禁猜) | 是(派发即终结):点卡发出并上报后 `round_success` 终结交回;点卡未生效由外循环重识别重派(出战按钮由主流程处理,见 §5) |
 
-决策动作 node 选卡链(整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickEquipOp` 派发,pick-op-unify 批;机械链+发射相自上报在动作 op 内,落地相自本 op 重入出口门,派发 param 携真实选中 idx):
+决策动作 node 选卡链(整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickEquipOp` 派发,pick-op-unify 批;机械链+即时自上报全在动作 op 内,派发 param 携真实选中 idx):
 
 ```
-重入出口门(决策动作 node 顶部):_pick_pending 置位 → 「请选择」OCR(lcs 0.5)不在 =
-  overlay 已关(点卡即选已落地)→ success 交回外循环(出战按钮由主流程处理);
-  在 = 重走选卡(重点选)
 texts = 观察轮 obs 载体 → decide_equip_pick()(零参;候选读容器 equip_pick_opts 槽)
-target = (槽 x 常量[best], 卡名带 y 常量 280)→ 置 _pick_pending → 派发
+target = (槽 x 常量[best], 卡名带 y 常量 280)→ 派发
   (动作 op 内:target mouse_move + click → 1.2s
-   → 自上报 report_action_pick_equip_param)
+   → 即时自上报 report_action_pick_equip_param)
   (机械交回,零判效)
+→ 派发即 round_success 终结交回
 ```
 
-交互陷阱:点卡即选(单步,无确认钮);重读选中态验效半拆除(验证废除,落地归重入出口门)。
+交互陷阱:点卡即选(单步,无确认钮);重读选中态验效半拆除(验证废除,落地归下一帧观察)。
 
 ## 5. 终结与交回
 
 | 条件 | 级别 | 交回落点 |
 |---|---|---|
-| 重入出口门「请选择」不在 | **画面终结** | round_success 交回外循环(出战由主流程) |
-| 出口门「请选择」在(点击未落地) | 节点循环重入 | 重走选卡(`round_wait` 循环推进,不烧节点重试预算,无防御上限) |
+| 选卡链派发完成 | **画面终结** | round_success 交回外循环(出战由主流程;派发即终结,点卡未生效 = overlay 残留由外循环重识别重派) |
 
 「确认离开 = 画面终结」= [README.md](README.md) §6(本屏确认 = 点卡本身)。
 
 ## 6. 状态上报面
 
-本屏无 chosen_\* 写端(选择存证通道已退役);装备腿落地相 = 入栏 + 获得后果链(重入出口门持 `EVIDENCE_OVERLAY_CLOSED` 调 `report_action_pick_equip_param`,见 §4 对照表;装备区未观察态跳写等观察覆盖)。候选观察:`report_screen_equip_pick_obs` 候选写容器 `equip_pick_opts` 槽(空表照写)。字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.5(「装备三选一」行,写端未接线申报)/ §4「事件选择」。
+本屏无 chosen_\* 写端(选择存证通道已退役);装备腿 = 入栏 + 获得后果链(动作 op 点卡后即时调 `report_action_pick_equip_param` 一口写,见 §4 对照表;装备区未观察态跳写等观察覆盖)。候选观察:`report_screen_equip_pick_obs` 候选写容器 `equip_pick_opts` 槽(空表照写)。字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.5(「装备三选一」行,写端未接线申报)/ §4「事件选择」。
 
 ## 7. 子态与 overlay
 

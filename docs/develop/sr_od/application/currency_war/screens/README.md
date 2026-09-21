@@ -106,7 +106,7 @@
 
 投资策略/补给/遭遇(货币战争-遭遇节点)/盛会之星/选择伙伴/选择装备/命运卜者(`cw_screen_fortune.py`)/银狼升星(`cw_screen_yinlang.py`)/祈愿试炼/星徽秘典四选一/专家邀请函/武装箱弹窗。决策 = pick 族九接口 + `decide_box_card`,规格 = strategy-docs 13 号篇。
 
-**选卡动作执行载体(pick-op-unify 批起统一;事件屏统一批更新)**:13 屏的选卡动作 = 13 个 `CwActionPickXxxOp` 注册行(投资两屏拆类 = `CwActionPickInvestStrategyParam`/`CwActionPickInvestEnvParam` 两行同指一 op),画面 op 决策半只决策与组装机械参数,选中→确认(或点卡即选)机械链 + 自上报在动作 op 内。**上报形态**:投资两屏/补给/遭遇 = **即时上报**(点完确认立即按成功写完整结果:投资两屏选择事实+效果经获得链 `gain_invest_strategy`/`gain_invest_env` 记,补给一口写 owned+单位腿+后果腿(`kernel/cw_action_report/pick_supply.py`),遭遇发射即写 `chosen_encounter`(`kernel/cw_action_report/pick_encounter.py`),画面 op 零容器写、派发即终结交回);**两相欠账**(策划/装备屏现役):骇入策划上报 = 发射相意图遥测(动作 op 内)+ 落地相证据闩分步(`kernel/cw_action_report/pick_planner.py`,装备/升费腿含 `lv999_cost_tier` 档行,画面 op 重入裁决出口触发)——装备屏同款欠账,迁移归后续批(外溢任务 T-5 在册)。契约正本 = [../flow/action_exec.md](../flow/action_exec.md) §2。
+**选卡动作执行载体(pick-op-unify 批起统一;事件屏统一批更新)**:13 屏的选卡动作 = 13 个 `CwActionPickXxxOp` 注册行(投资两屏拆类 = `CwActionPickInvestStrategyParam`/`CwActionPickInvestEnvParam` 两行同指一 op),画面 op 决策半只决策与组装机械参数,选中→确认(或点卡即选)机械链 + 自上报在动作 op 内。**上报形态 = 全族即时上报**(发射/落地两相与证据闩已全域清偿,迭代 2026-09-21,用户裁定 = [../flow/action_ops.md](../flow/action_ops.md) §1 增补 2):投资两屏选择事实+效果经获得链 `gain_invest_strategy`/`gain_invest_env` 记;补给一口写 owned+单位腿+后果腿(`kernel/cw_action_report/pick_supply.py`);遭遇发射即写 `chosen_encounter`(`kernel/cw_action_report/pick_encounter.py`);策划一口写腿型分派效果,条件腿 rider 先行,装备/升费腿含 `lv999_cost_tier` 档行(`kernel/cw_action_report/pick_planner.py`);装备一口写入栏+后果链(`kernel/cw_action_report/pick_equip.py`)——画面 op 零容器写、派发即终结交回,确认未生效由外循环重识别重派。契约正本 = [../flow/action_exec.md](../flow/action_exec.md) §2。
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
@@ -135,7 +135,7 @@
 | 备战 OpenBox | **访问终结** | 点「开启」即交回外循环重观察;武装箱选择画面由外循环按画面分发独立画面 op 选卡([box_pick.md](box_pick.md)),选卡动作不经备战决策循环 |
 | 备战 overlay 检出 | 环中止 | 弹层/事件在场 → 交回外循环分支 handler |
 | 备战无动作(None) | 合法交回 | None = 本帧无动作,交回外循环重观察(商店域无此通道,该通道已由 CloseShop 终结取代) |
-| 单选族确认离开 | 画面终结 | overlay 消失即节点完成(补给节点无结算屏);投资两屏/补给/遭遇 = **派发确认链即 round_success 终结交回**(即时上报形态,确认未生效由外循环重识别重派) |
+| 单选族确认离开 | 画面终结 | overlay 消失即节点完成(补给节点无结算屏);投资两屏/补给/遭遇/策划/装备 = **派发确认链(或点卡即选)即 round_success 终结交回**(即时上报形态,确认未生效由外循环重识别重派) |
 | 推进型画面(简报/过渡/详情/弹窗) | 画面终结 | 点推进/关闭即终结(空决策形态) |
 | 恢复局锁定态 | 例外约束 | 进过战斗后异常重启的恢复局,商店交互被游戏禁用(只能出战;`research/economy.md` §2.1 恢复态限制),外循环锁定态直通出战(`operations/cw_loop.py::locked_resume_sync_and_battle`) |
 
