@@ -22,8 +22,8 @@
 | 1 | 分发判定 | 外循环怎么认出本画面(锚 = `画面名.area名`)、与相邻画面的排他/穿透形态;指向 outer_loop §2.2 |
 | 2 | 画面形态声明 | 三选一:决策循环形态(问策略器,注明决策入口)/ 空决策形态(纯推进)/ 单选族例外(有选择面零逻辑态账) |
 | 3 | 观察面 | 本屏读什么:消费哪些 obs 解析器、什么进 GameState(字段组/写端)、heavy/light;观察上报即对账边界 |
-| 4 | 动作面 | 可用动作 op 全集 + 词表成员 + 每个动作的执行要点(点击锚、交互时序、动画等待、已知交互陷阱) |
-| 5 | 终结与交回 | 哪些动作终结本访问交回外循环(terminal/terminal_wait 现值,经注册表读);交回后外循环重判的预期落点 |
+| 4 | 动作面 | **开头放「动作 op 与交回对照表」**(本篇唯一动作清单,逐行 = 动作 op(词表参数类)/发出方式(注册表动作 op ∨ 画面 op 留守臂)/上报函数/是否触发返回外循环(终结语义一句话);无动作 op 的画面表内一行「无——单步推进留守 op 内」)。表后逐动作给执行要点(点击锚、交互时序、动画等待、已知交互陷阱) |
+| 5 | 终结与交回 | 逐出口列「条件/级别/交回落点」表,行与 §4 对照表的「触发返回外循环」列一一对应;交回后外循环重判的预期落点 |
 | 6 | 状态上报面 | 动作 → 哪个上报函数(`kernel/cw_action_report/<snake>.py::report_action_<snake>_param`;dict 确认族到账 = `kernel/cw_exec_state.py::apply_confirm_effect`),指向 [../game_state/logic-updates/](../game_state/logic-updates/README.md) 对应篇 |
 | 7 | 子态与 overlay | 本屏的子态(如备战-开商店、暗色锁定)与本屏会被哪些 overlay 覆盖、命中时交回还是自处理 |
 | 8 | 守卫与防线 | 本屏的停机钩子/安灯/预算(细则指针 = [../flow/guards.md](../flow/guards.md)) |
@@ -74,8 +74,8 @@
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
-| 三选一选环境卡 | `data/gameplay.md`(投资环境 = 整局增益);开场必经 | `operations/cw_screen/cw_screen_invest_env.py::CwScreenInvestEnv`(0s 分支);决策 = pick 族 `decide_invest`(规格 = strategy-docs 13 号篇) | 确认离开(overlay 消失) |
-| 刷新圆钮重掷三卡 | `research/screen_flow_timing.md` #4(刷新动画 ~2s) | 同 op 内整组重掷(`cw_screen_invest_env.py::_decide_and_act`:点→等动画→**本访问即交回**,pending+round_retry 重入后重观察重决策);是否建议刷新 = `PickEvent.refresh` 判据(`kernel/cw_events.py::decide_event`,math_proofs P81) | **刷新即本访问终结**(刷新 = 唯一引入新事实的动作);确认离开才画面终结 |
+| 三选一选环境卡 | `data/gameplay.md`(投资环境 = 整局增益);开场必经 | `operations/cw_screen/cw_screen_invest_env.py::CwScreenInvestEnv`(阶段一身份行「货币战争-投资环境」);决策 = pick 族 `decide_invest_env`(规格 = strategy-docs 13 号篇) | 确认离开(overlay 消失) |
+| 刷新圆钮重掷三卡 | `research/screen_flow_timing.md` #4(刷新动画 ~2s) | 同 op 内整组重掷(`cw_screen_invest_env.py::_decide_and_act`:点→等动画→**本访问即交回**,round_success 终结,无 pending;外循环重进 = 入口重建重观察重分类);是否建议刷新 = `PickEvent.refresh` 判据(`kernel/cw_events.py::decide_event`,math_proofs P81) | **刷新即本访问终结**(刷新 = 唯一引入新事实的动作);确认离开才画面终结 |
 
 ### 5.3 备战画面(货币战争-备战)
 
@@ -106,7 +106,7 @@
 
 投资策略/补给/遭遇(货币战争-遭遇节点)/盛会之星/选择伙伴/选择装备/命运卜者(`cw_screen_fortune.py`)/银狼升星(`cw_screen_yinlang.py`)/祈愿试炼/星徽秘典四选一/专家邀请函/武装箱弹窗。决策 = pick 族九接口 + `decide_box_card`,规格 = strategy-docs 13 号篇。
 
-**选卡动作执行载体(pick-op-unify 批起统一)**:13 屏的选卡动作 = 12 个 `CwActionPickXxxOp`(投资两屏共用 `CwActionPickInvestParam` 注册行),画面 op 决策半只决策与组装机械参数,选中→确认(或点卡即选)机械链 + 自上报(`report_action_pick_*_param`,零写)在动作 op 内;确认后容器写(chosen_*/Confirm* 到账)留守画面 op。契约正本 = [../flow/action_exec.md](../flow/action_exec.md) §2。
+**选卡动作执行载体(pick-op-unify 批起统一)**:13 屏的选卡动作 = 12 个 `CwActionPickXxxOp`(投资两屏共用 `CwActionPickInvestParam` 注册行),画面 op 决策半只决策与组装机械参数,选中→确认(或点卡即选)机械链 + 自上报(`report_action_pick_*_param`,零写)在动作 op 内;确认后容器写(chosen_*/Confirm* 到账)留守画面 op。**两相例外**(银狼升星记账批):策划选择上报 = 发射相意图遥测(动作 op 内)+ 落地相证据闩分步(`kernel/cw_action_report/pick_planner.py`,装备/升费腿含 `lv999_cost_tier` 档行,画面 op 重入裁决出口触发)——余 12 屏零写语义不变。契约正本 = [../flow/action_exec.md](../flow/action_exec.md) §2。
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|

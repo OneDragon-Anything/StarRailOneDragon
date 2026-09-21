@@ -560,6 +560,20 @@ active_env 核对源。开局写端见 §3.4.3(多屏写入,本条=备战屏侧�
   tracked 载体(执行层状态类目已退役,git 历史可溯),`mandate_v1._tracking_view`
   (tracking 优先 + snapshot 静默回退)删除。
 
+#### 3.2.23 银狼LV.999 当前费用档 lv999_cost_tier
+
+**语义**:银狼LV.999 的**当前费用档**,值域 {3,4,5};纯逻辑态——无观察写端,
+**写端 = 两个动作报告**:`pick_planner` 升费腿(现档+1,evidence=
+`planner_upgrade_tier`)/ `deploy_move` 上阵变费腿(现档+1,evidence=
+`deploy_upgrade_tier`);未观察(None)= 未触发任何变换,语义档 = 起始 3 费。
+**读口唯一** = `cw_economy.effective_cost`(当前费用档:观察除数/账实结算/
+随机授予采样空间;静态画像族用注册表起始费,不经本口——双语义边界见该
+docstring)。机制依据:「下一个费用档的 1 星」升费腿定谳 + 同名即同档
+(全场同档,口述·权威 2026-09-18,记录处 = changes/2026-09-18-yinlang-
+exclusive-loop/design.md §2.0;equipment_mechanics §7 待实测项由本字段+
+商店观察对账清偿)。设计正本 = changes/2026-09-20-yinlang-starup-accounting
+/design.md §2.1。
+
 ### 3.3 商店开态(覆盖在备战画面之上)
 
 > 商店面板弹在备战画面上:牌面区字段在本屏写入;下层备战画面被覆盖/压暗——**本屏
