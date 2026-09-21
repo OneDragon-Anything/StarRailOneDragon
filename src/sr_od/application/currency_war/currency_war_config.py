@@ -93,10 +93,8 @@ class CurrencyWarConfig(YamlConfig):
         # app._run_loop 透传给 CwLoop。
         _mr = self.get('max_rounds', None)
         self.max_rounds: int | None = int(_mr) if _mr not in (None, '', 0) else None
-        # 简报 vs 实采对账开关(CwScreenPlaneIntel 采集完成后,逐位面 LCS 比对存证,
-        # 不一致进 defect 台账;零决策行为)。默认开 = 验证期积累「简报 vs 真值」
-        # 配对证据;稳态后可 yml 关掉。消费端 = cw_loop 实采块 + takeover 写回。
-        self.briefing_reconcile: bool = self.get('briefing_reconcile', True)
+        # (简报 vs 实采对账开关键已随对账网退役删除——对账自比较无双源
+        #  可比对,按零实效机制退役;yml 残留旧开关键无害,get() 不再读。)
         # 起局前置码哈希结构闸(ADR-0581;混合码事故防线):工作树≠HEAD 拒绝
         # 起局。默认开 = 安全闸宁拦勿放;闸本体见 kernel/cw_code_hash_gate
         # (豁免名单/口径申报单一源 = ADR-0581 与闸模块 docstring)。
@@ -123,7 +121,6 @@ class CurrencyWarConfig(YamlConfig):
             # max_rounds(review C 附加发现 2026-08-16):save() 此前不含 → GUI 保存静默抹掉
             # 手写 yml 值(单/多轮验证配置丢失)。None 也要持久化(显式清空语义)。
             'max_rounds': self.max_rounds,
-            'briefing_reconcile': self.briefing_reconcile,
             # code_hash_gate 也要持久化(同 max_rounds 先例):缺了则 GUI 保存
             # 静默抹掉 yml 手写的关闭值,闸被悄悄重新打开——配置丢失即行为漂移。
             'code_hash_gate': self.code_hash_gate,

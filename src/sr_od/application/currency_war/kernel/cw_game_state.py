@@ -149,9 +149,11 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                             # + 新增基线链字段 node_path_baseline,链观察落地批 2026-09-16)
     'units': 1,             # front_row/back_row/bench/back_layout(§3.2.3-§3.2.7)
     'economy': 1,           # gold/level/xp/streak/hp/level_up_cost(§3.2.9-§3.2.13)
-    'match_facts': 2,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/board/接管恢复旗标(§3.1/§3.2.6/§3.2.14/§3.2.20;域版本 2 =
-                            # 接管/恢复三字段(resumed_match/takeover_collect_done/
-                            # takeover_tries)迁入,渠道③接管协议 logic_hook)
+    'match_facts': 3,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/board/恢复旗标(§3.1/§3.2.6/§3.2.14/§3.2.20;域版本 3 =
+                            # 接管补采计数/完成闩两字段退役——补采编排归
+                            # CwEntryPlaneIntel,真值经写门落
+                            # plane_bosses/enemy_affixes;域版本 2 = 接管/恢复字段迁入,
+                            # 渠道③接管协议 logic_hook)
     # (refresh_counters 域已随 2026-09-18 用户裁决迁出容器:三字段住效果
     #  账本 ActiveEffectInventory(统一计算,写端 = 刷新上报函数),域版本
     #  面退役,考古走 git。)
@@ -1851,7 +1853,8 @@ class PlaneNodeLedger:
     #: None = 该位次未识别占位,合并时被后续非 None 读数覆盖)。
     #: 取值时机:写入端每次整行重读时快照(见各写入端);读端 = 备战帧查
     #: ``seq[round_num - 1]``。
-    #: 写入端:①位面详情采集(CwScreenPlaneIntel,进位面时的两源互证产物);
+    #: 写入端:①位面详情采集(CwScreenPlaneIntel 详情条源,boss 位按
+    #: 「首领 = 位面最后节点」位置先验回填);
     #: ②投资环境选择完成后重读备战节点行(CwScreenInvestEnv,变异窗后的权威刷新)。
     seq_by_plane: dict[int, list[str | None]] = field(default_factory=dict)
 
@@ -1945,9 +1948,8 @@ class GameState:
     game_mode: Field[str] = field(default_factory=Field)             # 对局类型:标准/超频博弈(§3.1.2;两屏无建档,接线前补档)
     enemy_difficulty: Field[int] = field(default_factory=Field)      # 非单调(§3.2.14)
 
-    # —— 接管/恢复局旗标组(渠道③接管协议 logic_hook,relay 契约同族先例;
-    # match_facts 域扩展,域版本 2)——局级生命周期,新局新容器 = 天然缺省
-    # None 恒假。
+    # —— 恢复局旗标(渠道③接管协议 logic_hook,relay 契约同族先例)——
+    # 局级生命周期,新局新容器 = 天然缺省 None 恒假。
     # [索引定义] resumed_match: True = 本局为恢复对局(新 match 但游戏在中局
     # 续跑)——弹窗腿在派生 hist 空时禁用不猜(防把恢复局首弹窗误推断成开局
     # 节点 1),消化后备战帧腿 A 权威接管。写入端单一源 = cw_loop 恢复检测两
@@ -1957,14 +1959,6 @@ class GameState:
     # 一次性会话语义,非消费即清)。None = 未写(正常新局恒假语义,开局推断
     # 合法不受误伤)。
     resumed_match: Field[bool] = field(default_factory=Field)
-    # [索引定义] takeover_collect_done: 接管采集已完成(节点内一次性)。
-    # 写入端 = cw_screen_prep 接管补采段三点(门读/放弃置位/成功置位),
-    # actor = ResumeAttach(接管协议登记名);None = 未写(恒假语义)。
-    takeover_collect_done: Field[bool] = field(default_factory=Field)
-    # [索引定义] takeover_tries: 接管采集重试计数(单调递增,单口累加;
-    # 值 None 按 0 基线读——计数器是局内累计,0 基线是构造事实非观察兜底)。
-    # 唯一写读点 = cw_screen_prep 接管补采段(每轮次 +1,>2 放弃)。
-    takeover_tries: Field[int] = field(default_factory=Field)
 
     # —— 遭遇选档观测面(E-2 平级新结构;非 Settlement 域字段,准入注释见该域)——
     # 结算观测环:产结算屏节点的 RoundOutcome 消费子集,深度 10,同场去重合并,
@@ -1974,7 +1968,7 @@ class GameState:
     # 遭遇经验表:本局全量遭遇行(其五/六 Δ 无源档的经验正证据通道;跨局
     # 持久化挂账另行立项)。
     encounter_log: EncounterLog = field(default_factory=EncounterLog)
-    plane_bosses: Field[list[str | None]] = field(default_factory=Field)  # 三位面 boss 名,None=该位面无身份(ADR-0398)
+    plane_bosses: Field[list[str | None]] = field(default_factory=Field)  # 三位面 boss 名,保位 3 槽;None=简报源未读得(实采源恒全识别,识别失败响亮暴露不留 None)
     active_env: Field[str | None] = field(default_factory=Field)     # 已选投资环境(§3.2.20/§3.4.3)
     enemy_affixes: Field[list[str]] = field(default_factory=Field)   # 当前词缀名单(§3.1.3;≠投资环境)
     active_strategies: Field[list[str]] = field(default_factory=Field)   # 持有投资策略名单(§3.4.4;品质锚挂建模批)

@@ -755,8 +755,8 @@ def read_plane_detail_nodes(ctx: SrContext, screen: MatLike) -> list | None:
       位面卡,每选中一张调本函数,boss 槽 SIFT 认该位面 boss;
       ⚠️ 选中**过去位面**(位面号 < 会话当前位面)时节点全部变暗(灰态),
       本读法在该渲染下识别可能退化(实机 P2 采位面 1 长停留实证)——
-      消费方 CwScreenPlaneIntel 按 ``decide_plane_skip`` 跳过过去位面,
-      仅台账缺值时降级补采一次;
+      消费方 CwScreenPlaneIntel 恒全采位面 1→2→3,识别失败走 node 重试、
+      耗尽即 op fail 响亮暴露(无跳过/降级分支);
     - clean 门同 ``_MIN_CLEAN_CIRCLES``。
     返回 None:模板未加载 / 非该画面 / 圆数不足(坏帧)。
     """
@@ -791,12 +791,13 @@ def read_plane_detail_nodes(ctx: SrContext, screen: MatLike) -> list | None:
 def read_detail_node_type_label(ctx: SrContext, screen: MatLike) -> str | None:
     """位面详情屏 详情条「文本-节点类型名」OCR → 类型名(如 首领节点/奖励节点)| None。
 
-    boss 定位验证锚(迁移审计 w221(git 历史)/ADR-0398):boss 节点有**两种渲染态**——头像态
-    (run29 型,大图标 SIFT 可认)与徽章态(run30 型:最右节点=通用金色徽章、
-    详情条=「首领节点」+通用描述,本屏无身份信息)。类型名稳定可 OCR
-    (run30 实锺「首领节点」全字命中),作「点到的确是 boss 节点」验证 +
-    徽章态分流依据(消费方 ``cw_screen_plane_intel.conclude_plane_boss``)。
-    读不到 → None(过渡帧/OCR 失败,调用方 retry,勿当徽章态)。
+    boss 定位验证锚:boss 节点有**两种渲染态**——头像态(run29 型,大图标
+    SIFT 可认)与纹章风头像渲染变体(run30 型:最右节点=金色纹章图案,
+    图案即该 boss 的纹章风头像;大图标 SIFT 未命中系模板库缺该风格所致,
+    属识别能力缺口,**非「本屏无身份信息」**——证据帧 = sr-od-test/screens/
+    货币战争-位面详情/位面详情-纹章风头像-run30.png)。类型名稳定可 OCR
+    (run30 实锺「首领节点」全字命中),作「点到的确是 boss 节点」验证。
+    读不到 → None(过渡帧/OCR 失败,调用方重试,重试耗尽响亮失败)。
     """
     rect = _area_rect(ctx, '文本-节点类型名', '货币战争-位面详情')
     if rect is None:

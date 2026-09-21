@@ -139,26 +139,20 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'enemy_difficulty': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='非单调识别真值(§3.2.14),零逻辑写端'),
-    # —— 接管/恢复旗标(bot 自有事实)——
+    # —— 恢复旗标(bot 自有事实)——
     'resumed_match': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='恢复检测旗标(_mark_session_resumed 单口),无 OCR 读端'),
-    'takeover_collect_done': ProjectionAuditRow(
-        status=AUDIT_PROCESS_ONLY,
-        basis='接管采集完成位(补采段单点写),无 OCR 读端'),
-    'takeover_tries': ProjectionAuditRow(
-        status=AUDIT_PROCESS_ONLY,
-        basis='接管重试计数(补采段单读单写),无 OCR 读端'),
     # —— 局级观察面 ——
     'plane_bosses': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='位面 boss 名(接管补采/观察覆盖;开局写定恒稳族)'),
+        basis='位面 boss 名(简报读数/位面详情实采写门;开局写定恒稳族)'),
     'active_env': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='选卡确认挂点直写(active_env 写入)+ 观察覆盖'),
     'enemy_affixes': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='开局写定(接管补采写端)+ 观察覆盖'),
+        basis='开局写定(简报/位面详情实采写门)+ 观察覆盖'),
     'active_strategies': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='选卡确认挂点登记 + 观察覆盖(持卡列表)'),

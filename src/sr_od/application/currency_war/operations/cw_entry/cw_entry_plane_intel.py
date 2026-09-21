@@ -1,47 +1,36 @@
-"""货币战争 接管补采位面情报 op(独立可调起入口)。
+"""货币战争 接管补采位面情报 op(编排单一源,独立可调起入口)。
 
-职责:在**接管场景**(对局进行中但 session 无位面序真值——MCP 重启丢内存 /
-bot 未走过简报链 / 人工要补)一键完成「进位面详情 → 逐位面采集 → 写
-session → 返回」,供 `run_operation` 单独调起,不等 cw_loop 的备战稳定帧
-触发(cw_loop 内联实采块只在 loop 对局轮里跑;重启后 loop 首局 target 重选断档期,
-手动通道是唯一入口)。
+职责:接管场景(对局进行中但容器无位面序真值——MCP 重启丢内存 /
+bot 未走过简报链 / 人工要补)下,一键完成「进位面详情 → 委派实采 →
+关闭位面详情」。两条调用路共用本份编排:①CwScreenPrep 观察 node 触发
+委派(触发谓词 = 容器无位面真值);②MCP ``run_operation`` 手动调起。
 
-组装口径(接管补采裁决):以「货币战争-位面详情」屏为唯一组装画面;难度不在此屏补
-(备战「文本-难度」有独立现读通道);不用图鉴屏/敌人信息浮层兜底。
+节点图(四 node,@node_from 显式边):
+- ``门``(start):对局中(session 在)→ 画面合法(备战/位面详情,其它屏
+  = 调用时机错误快速 fail 并存证截图,不空转 retry 烧预算)→ 真值跳过
+  (容器已有位面真值 → 零点击直通成功,防手动调起白开白关详情屏;放在
+  屏幕门之后,错屏先报错屏,别让跳过门吞掉真实状态信号);
+- ``打开位面详情``:已在详情屏直通(委派失败详情屏留场的自愈分支——
+  失败后不加专用清理,下一轮再进时跳过打开直接委派);备战屏点当前
+  节点图标开详情(点任意节点图标都开,不依赖 current 锚;证据 =
+  位面详情标题出现);
+- ``委派识别``:CwScreenPlaneIntel 6 node 管线执行,结果透传(失败 =
+  本 op round_fail 交调用方失败链,不自旋);
+- ``关闭位面详情``:点 X 验标题消失(真转移)→ success。
 
-复用明细(不重造 reader):采集本体 = :class:`CwScreenPlaneIntel`
-(三 boss 大图标 SIFT + 词缀横条 + 徽章态记 None 保位的全部分支逻辑都在它);
-本 op 只做四件壳事:①入口门(不在备战/位面详情 → 快速 fail 并存证截图,
-不空转 retry 烧预算);②session 真值跳过门(已有 briefing_bosses 不重复采,
-零点击);③委派子 op;④结果落 session(briefing_bosses 保位写 3 槽;
-briefing_affixes 仅空时写)+ 消费后清 ctx 中转池(防跨局判空泄漏,与
-cw_loop 实采块同款收尾)。
-
-写入端语义说明(ADR-0397 勘误节):session.briefing_bosses 的合法写入端两条,
-语义同源(都是位面序真值)——①简报读数经 LCS 清洗后由 cw_loop ``__init__`` copy
-(用户 2026-08-28 裁决:简报排列=位面序);②本 op / cw_loop 内联块的
-CwScreenPlaneIntel 实采(**接管场景内存丢失重采**通道),保位/仅空写词缀/清池口径
-逐条一致,由静态锁双面钉死防漂移;实采完成后与简报读数逐位面对账存证。
-
-节点图(两节点,@node_from 显式边——首跑教训见 cw_screen_plane_intel.py 关闭节点):
-- ``补采``(start):入口门 → 跳过门 → 委派 CwScreenPlaneIntel。
-- ``写回session``:验已离开位面详情 → session 已有真值则不覆写只清池;
-  中转池落 session(briefing_bosses 保位写 3 槽 / briefing_affixes 仅空时
-  写)→ 清池 → success。池空时按真值两分支给结论(session 有真值=success /
-  无=fail),不落任何写。
-
-坐标全走 screen_info area;fixture 验证用 sr-od-test/screens 存档帧离线跑,
-不触实机。
+真值落容器 = 子 op 上报节点的写门(kernel 屏文件唯一一份);本 op 零
+容器写。坐标全走 screen_info area;fixture 验证用 sr-od-test/screens
+存档帧离线跑,不触实机。
 """
-import contextlib
 import logging
+import time
 from typing import ClassVar
 
+from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from sr_od.application.currency_war.kernel.cw_game_state import (
-    ChannelSig,
     gs_of_ctx,
 )
 from sr_od.context.sr_context import SrContext
@@ -53,12 +42,22 @@ _log = logging.getLogger(__name__)
 _PD_SCREEN: str = '货币战争-位面详情'
 _PREP_SCREEN: str = '货币战争-备战'
 
+# 用户定值等待:备战点节点图标 → 位面详情开屏动画落定(~3s,再由
+# 「标题出现」证据判定;不足时走 node 重试账)。
+_DETAIL_OPEN_WAIT_S: float = 3.0
+_CLOSE_WAIT_S: float = 1.5
+
+
+#: 真值跳过门的直通终局状态(门节点返回该状态 = 零点击直通成功;
+#: 门 → 打开 的边按状态匹配,本状态无出边 → op 以此状态终结)。
+_GATE_PASS_STATUS: str = '门通过(session 在、画面合法、无位面真值)'
+
 
 class CwEntryPlaneIntel(SrOperation):
-    """接管补采:进位面详情实采位面情报并写 session(独立调起入口)。"""
+    """接管补采编排:门 → 打开位面详情 → 委派实采 → 关闭(独立调起入口)。"""
 
-    STATUS_DONE: ClassVar[str] = '接管补采完成(session 已落真值)'
-    STATUS_SKIP: ClassVar[str] = 'session 已有真值,跳过补采'
+    STATUS_DONE: ClassVar[str] = '接管补采完成(位面真值已落容器)'
+    STATUS_SKIP: ClassVar[str] = '容器已有位面真值,跳过补采'
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-接管补采位面情报')
@@ -68,15 +67,17 @@ class CwEntryPlaneIntel(SrOperation):
         match_ctx = getattr(self.ctx, 'cw_match', None)
         return getattr(match_ctx, 'session', None) if match_ctx is not None else None
 
-    @operation_node(name='补采', is_start_node=True, node_max_retry_times=3)
-    def takeover(self) -> OperationRoundResult:
-        """入口门 + 跳过门 + 委派 CwScreenPlaneIntel。
+    def _area_center(self, area_name: str, screen_name: str = _PD_SCREEN) -> Point | None:
+        """screen_info area → 中心点(坐标单一源;无 area → None)。"""
+        from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
+        r = _area_rect(self.ctx, area_name, screen_name)
+        if r is None:
+            return None
+        return Point((r.x1 + r.x2) // 2, (r.y1 + r.y2) // 2)
 
-        入口契约:必须在备战或位面详情屏(对局中的合法画面);其它屏 =
-        调用时机错误(局外/大厅/战斗中),快速 fail 并存证截图——cw_loop
-        内联块的「等画面」重试语义属于 loop(有自己的节拍),独立入口空转
-        retry 只会烧预算掩盖真实状态。
-        """
+    @operation_node(name='门', is_start_node=True, node_max_retry_times=3)
+    def gate(self) -> OperationRoundResult:
+        """对局中 → 画面合法 → 真值跳过(三重门,零点击)。"""
         sess = self._session()
         if sess is None:
             self.save_screenshot()
@@ -92,105 +93,77 @@ class CwEntryPlaneIntel(SrOperation):
             return self.round_fail(
                 f'不在货币战争对局画面(需{_PREP_SCREEN}或{_PD_SCREEN}),无法补采')
 
-        # 真值已在(cw_loop 早前采过/上一轮本 op 成功)→ 零点击直接结论。
-        # 放在屏幕门之后:错屏时先报错屏,别让跳过门吞掉真实状态信号。
+        # 真值已在(简报链早前采过/上一轮本 op 成功)→ 零点击直接结论。
         if gs_of_ctx(self.ctx, sess).plane_bosses.value:
             _log.info('[cw-takeover] %s:%s', self.STATUS_SKIP,
                       gs_of_ctx(self.ctx, sess).plane_bosses.value)
             return self.round_success(self.STATUS_SKIP)
+        return self.round_success(_GATE_PASS_STATUS)
 
+    @node_from(from_name='门', status=_GATE_PASS_STATUS)
+    @operation_node(name='打开位面详情', node_max_retry_times=3)
+    def open_detail(self) -> OperationRoundResult:
+        """已在详情屏直通(留场自愈);备战屏点当前节点图标开详情
+        (证据 = 位面详情标题出现)。"""
+        screen = self.last_screenshot
+        if self.round_by_find_area(
+                screen, _PD_SCREEN, '标识-位面详情标题',
+                crop_first=False).is_success:
+            return self.round_success('已在位面详情屏(留场自愈直通)')
+
+        if not self.round_by_find_area(
+                screen, _PREP_SCREEN, '备战标识-购买经验',
+                crop_first=False).is_success:
+            return self.round_fail(
+                f'不在货币战争对局画面(需{_PREP_SCREEN}或{_PD_SCREEN})')
+        from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
+        from sr_od.application.currency_war.obs.cw_observation import (
+            read_node_sequence,
+        )
+        slots = read_node_sequence(self.ctx, screen)
+        cur = next((s for s in (slots or []) if s.state == 'current'), None) or (
+            slots[0] if slots else None)
+        if cur is None:
+            return self.round_retry('备战节点条未读出(半开帧/渲染态),重试')
+        r = _area_rect(self.ctx, '区域-节点条', _PREP_SCREEN)
+        # 兜底字面量:area 缺失(离线/档案损坏)时的节点条原点(1080p 实测值)
+        ox, oy = (r.x1, r.y1) if r is not None else (544, 24)
+        self.ctx.controller.click(Point(cur.cx + ox, cur.cy + oy))
+        time.sleep(_DETAIL_OPEN_WAIT_S)
+        screen = self.screenshot()
+        if self.round_by_find_area(
+                screen, _PD_SCREEN, '标识-位面详情标题',
+                crop_first=False).is_success:
+            return self.round_success('位面详情已打开')
+        return self.round_retry('点节点图标后位面详情未打开,重试')
+
+    @node_from(from_name='打开位面详情')
+    @operation_node(name='委派识别')
+    def delegate(self) -> OperationRoundResult:
+        """委派 CwScreenPlaneIntel 6 node 管线,结果透传(失败不自旋)。"""
         from sr_od.application.currency_war.operations.cw_screen.cw_screen_plane_intel import (
             CwScreenPlaneIntel,
         )
-        # 起始采集位面(2026-09-03 用户裁决:时序反过来——备战帧先识别当前
-        # 节点得当前位面,详情内只采当前及之后的位面;读不到保持 0 = 子 op
-        # 内部再试/全采回退)。仅备战屏可现读;已在位面详情屏交给子 op 兜底。
-        _start_plane = 0
-        if in_prep:
-            with contextlib.suppress(Exception):
-                from sr_od.application.currency_war.obs.cw_observation import (
-                    read_phase_round,
-                )
-                _pp = read_phase_round(self.ctx, self.last_screenshot)
-                if _pp and _pp[0]:
-                    _start_plane = int(_pp[0])
-        _log.info('[cw-takeover] session 无位面序真值 → 委派 CwScreenPlaneIntel 实采'
-                  '(start_plane=%d)', _start_plane)
-        sub = CwScreenPlaneIntel(self.ctx, start_plane=_start_plane)
-        return self.round_by_op_result(sub.execute(), status='位面详情实采')
+        return self.round_by_op_result(
+            CwScreenPlaneIntel(self.ctx).execute(), status='位面详情实采')
 
-    @node_from(from_name='补采')
-    @operation_node(name='写回session', node_max_retry_times=6)
-    def write_back(self) -> OperationRoundResult:
-        """中转池 → session(bosses 保位 3 槽 / affixes 仅空时写)→ 清池 → success。
-
-        池空的两种来路:①跳过门直通(session 本有真值)→ success;
-        ②实采成功却无产出(异常形态)→ fail。两种都不改 session——空表覆写
-        会把已有真值抹成「无数据」。
-        """
-        bosses = getattr(self.ctx, 'cw_plane_bosses', None)
-        affixes = getattr(self.ctx, 'cw_plane_affixes', None)
-        if not bosses:
-            sess = self._session()
-            if sess is not None and gs_of_ctx(self.ctx, sess).plane_bosses.value:
-                return self.round_success(CwEntryPlaneIntel.STATUS_SKIP)
-            return self.round_fail('实采成功但无产出(ctx.cw_plane_bosses 空),不落 session')
-
-        # K2 拆除(验证废除,用户裁定 2026-09-10):原「子 op 称成功但仍在
-        # 位面详情屏 → round_retry」= 对子 op 回执的屏面验证,拆除——写回
-        # 的内容 = 中转池已采真值(与屏面转场无关),转场落地与否归外循环
-        # 下一帧重判(仍在详情屏时外循环重新分发,采集 op 幂等 skip 门兜住)。
-
-        sess = self._session()
-        if sess is None:
-            return self.round_fail('写回时 cw_match.session 已消失(对局被清?)')
-
-        # 已有真值保护:session 本有真值(cw_loop 早前采过 / 上一轮本 op
-        # 成功)→ 中转池内容再新也只是重复或残留,**不覆写**,只清池。
-        # 覆写 = 用陈旧池冲掉真值(cw_loop 内联实采块的「唯一写入端」约定
-        # 退化成最后一写者赢)。
-        # 终态契约 §B:空门/写端换容器源(单一源 = gs.plane_bosses/gs.enemy_affixes)。
-        if gs_of_ctx(self.ctx, sess).plane_bosses.value:
-            self.ctx.cw_plane_bosses = None
-            self.ctx.cw_plane_affixes = None
-            _log.info('[cw-takeover] %s:已有真值不覆写,池已清',
-                      CwEntryPlaneIntel.STATUS_SKIP)
-            return self.round_success(CwEntryPlaneIntel.STATUS_SKIP)
-
-        # 保位写(None=徽章态位面原样占槽,滤掉=后续位面名字左移错序,
-        # ADR-0398;与 cw_loop `_names = list(...)` 同口径)
-        names = list(bosses)
-        gs_of_ctx(self.ctx, sess).write_logic(
-            gs_of_ctx(self.ctx, sess).plane_bosses, names,
-            produced_by='CwEntryPlaneIntel',
-            sig=ChannelSig(family='logic_action', actor='CwEntryPlaneIntel',
-                           screen='', mode='compute'))
-        if affixes and not gs_of_ctx(self.ctx, sess).enemy_affixes.value:
-            gs_of_ctx(self.ctx, sess).write_logic(
-                gs_of_ctx(self.ctx, sess).enemy_affixes, list(affixes),
-                produced_by='CwEntryPlaneIntel',
-                sig=ChannelSig(family='logic_action', actor='CwEntryPlaneIntel',
-                               screen='', mode='compute'))
-
-        # 对账网:实采真值 vs 简报读数逐位面 LCS 比对存证(零决策行为;
-        # 门控 config.briefing_reconcile,与 cw_loop 内联块同口径)。
-        with contextlib.suppress(Exception):   # 对账 best-effort
-            from sr_od.application.currency_war.currency_war_config import (
-                CurrencyWarConfig,
-            )
-            from sr_od.application.currency_war.obs.cw_briefing_obs import (
-                reconcile_briefing_vs_plane_intel,
-            )
-            _gate = CurrencyWarConfig(self.ctx.current_instance_idx).briefing_reconcile
-            # 简报读数源 = gs(终态契约 §B:简报真值唯一写点 = CwScreenBriefing
-            # 直写 gs.plane_bosses,session 中转退役)。
-            reconcile_briefing_vs_plane_intel(
-                gs_of_ctx(self.ctx, sess).plane_bosses.value, names, enabled=_gate)
-
-        # 取走即清(防跨局残留被下局 `not getattr(ctx,...)` 判空误消费)
-        self.ctx.cw_plane_bosses = None
-        self.ctx.cw_plane_affixes = None
-        _log.info('[cw-takeover] %s:bosses=%s affixes=%s',
-                  CwEntryPlaneIntel.STATUS_DONE, names,
-                  gs_of_ctx(self.ctx, sess).enemy_affixes.value)
-        return self.round_success(f'{CwEntryPlaneIntel.STATUS_DONE}:bosses={names}')
+    @node_from(from_name='委派识别')
+    @operation_node(name='关闭位面详情', node_max_retry_times=3)
+    def close_detail(self) -> OperationRoundResult:
+        """点 X 关位面详情(验标题消失 = 真转移)→ success(交回外循环)。"""
+        screen = self.last_screenshot
+        if not self.round_by_find_area(
+                screen, _PD_SCREEN, '标识-位面详情标题',
+                crop_first=False).is_success:
+            return self.round_success('已不在位面详情屏')
+        x = self._area_center('按钮-关闭位面详情')
+        if x is None:
+            return self.round_fail('关闭按钮 area 缺失')
+        self.ctx.controller.click(x)
+        time.sleep(_CLOSE_WAIT_S)
+        screen = self.screenshot()
+        if self.round_by_find_area(
+                screen, _PD_SCREEN, '标识-位面详情标题',
+                crop_first=False).is_success:
+            return self.round_retry('点X未关,重试')
+        return self.round_success(CwEntryPlaneIntel.STATUS_DONE)

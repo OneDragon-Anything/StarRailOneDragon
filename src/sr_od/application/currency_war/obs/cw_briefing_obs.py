@@ -10,7 +10,6 @@
 from __future__ import annotations
 
 import ast
-import contextlib
 import json
 import re
 from pathlib import Path
@@ -172,77 +171,6 @@ def clean_boss_names_by_lcs(names: list[str]) -> list[str]:
         else:
             out.append(refs[idx])
     return out
-
-
-def briefing_reconcile_pairs(briefing: list[str] | None,
-                             truth: list[str | None]) -> list[dict]:
-    """逐位面对账配对(纯函数可单测):简报读数(LCS 清洗后)vs 位面详情实采真值。
-
-    返回每位面一条 ``{plane, briefing, truth, match}``;``match=None`` = 不可判
-    (任一侧 None——实采徽章态 / 简报未读得),``True/False`` = LCS 比对一致/不一致
-    (两侧都过 :func:`clean_boss_names_by_lcs` 归一后再比,吸收简称/形变差)。
-    """
-    from one_dragon.utils.str_utils import (
-        find_best_match_by_lcs,
-        longest_common_subsequence_length,
-    )
-    from sr_od.application.currency_war.data.cw_enemy_data import BOSS_MECHANICS
-    refs: list[str] = list(BOSS_MECHANICS.keys())
-    # 逐位面清洗;位面空读(None)原位保留不送清洗(空值不参与 LCS)
-    _brief_raw = list(briefing) if briefing else []
-    _clean_iter = iter(clean_boss_names_by_lcs([b for b in _brief_raw if b]))
-    brief = [next(_clean_iter) if i < len(_brief_raw) and _brief_raw[i] else None
-             for i in range(3)]
-    pairs: list[dict] = []
-    for i in range(3):
-        b = brief[i] if i < len(brief) else None
-        t = truth[i] if truth and i < len(truth) else None
-        if b is None or t is None:
-            match = None
-        else:
-            tc = find_best_match_by_lcs(t, refs, lcs_percent_threshold=_LCS_CLEAN_THRESHOLD)
-            t_canon = refs[tc] if tc is not None else t
-            # 双侧归一后比对:一致 = LCS 占短名长度 ≥ 阈值(同一名的两种读法)
-            lcs = longest_common_subsequence_length(b, t_canon)
-            match = lcs / min(len(b), len(t_canon)) >= _LCS_CLEAN_THRESHOLD
-        pairs.append({'plane': i + 1, 'briefing': b, 'truth': t, 'match': match})
-    return pairs
-
-
-def reconcile_briefing_vs_plane_intel(briefing: list[str] | None,
-                                      truth: list[str | None],
-                                      round_num: int = 0,
-                                      enabled: bool = True) -> None:
-    """简报读数 vs 位面详情实采真值的对账存证(CwScreenPlaneIntel 采集完成后调,零决策行为)。
-
-    每位面配对(:func:`briefing_reconcile_pairs`)逐位面判定;不一致位面进
-    defect 台账(L2 留证,不动行为)。门控 = config 布尔(验证期默认开)。
-    删除波 1:briefing_reconcile 对拍明细行已随 exogenous 流写入端退役——
-    配对面保留驱动「不一致 → defect 台账」判定,明细可离线重算
-    (:func:`briefing_reconcile_pairs` 纯函数保留)。
-    """
-    if not enabled:
-        return
-    with contextlib.suppress(Exception):   # 对账 best-effort,不阻断采集主流程
-        # 分包期 4:落账经 kernel/cw_telemetry_exit 出口钩子位(零直依 telemetry)
-        from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-            SEVERITY_L2_RECORD,
-            record_defect,
-        )
-        pairs = briefing_reconcile_pairs(briefing, truth)
-        for p in pairs:
-            if p['match'] is False:
-                record_defect(
-                    'briefing', 'briefing_reconcile',
-                    expected=f"简报位面{p['plane']}读数={p['briefing']}",
-                    observed=f"位面详情实采={p['truth']}(LCS 比对不一致)",
-                    plane=int(p['plane']),
-                    verdict='留证-简报读数与实采真值不一致(逐位面 LCS 对账)',
-                    reader_source='briefing_vs_plane_intel',
-                    severity=SEVERITY_L2_RECORD,
-                    note='ADR-0397 勘误节:简报排列=位面序(用户裁决);不一致=OCR/采集噪声信号')
-                _log.warning('[cw!][briefing] 对账不一致:位面%d 简报=%r 实采=%r(台账 L2 留证)',
-                             p['plane'], p['briefing'], p['truth'])
 
 
 def read_affix_effect(ctx: SrContext, screen: MatLike, affix_name: str) -> str:

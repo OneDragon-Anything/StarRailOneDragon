@@ -628,8 +628,9 @@ class OutcomeRecord:
     # 遥测补行,hp 用 last_state 快照非屏面真值)。
     source: str = ""
     # —— 迁移审计 w253(git 历史) boss 身份采集(迁移审计 w244(git 历史) 数据缺口补齐)——
-    # session.briefing_bosses 全量快照(位面序 3 元素;None=该位面徽章态采不到
-    # 身份,**保位勿滤**——滤掉会让后续位面名字左移错位,迁移审计 w221(git 历史)/ADR-0398)。
+    # 位面序 boss 全量快照(3 元素保位;None=简报源未读得——实采源恒全识别,
+    # 识别失败响亮暴露不留 None,**保位勿滤**:滤掉会让后续位面名字左移错位,
+    # 迁移审计 w221(git 历史)/ADR-0398)。
     # boss Δ 双峰归因的数据源(迁移审计 w244(git 历史) 结论④:schema 无 boss 身份→不可分层)。
     # 记录时点快照,行间可能因实采进度而异;旧记录无此字段(读取端 .get 容忍)。
     boss_names: list[str | None] | None = None

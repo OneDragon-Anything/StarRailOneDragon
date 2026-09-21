@@ -265,7 +265,7 @@ class ActiveEffectInventory:
         kernel/cw_affix_effects.AFFIX_EFFECT_SPECS,spec.id = 词缀名)。
 
         生产登记挂点已接线:简报读链(CwScreenBriefing._read_and_advance
-        开局首读)与位面详情补采通道(CwScreenPlaneIntel.close_and_report)
+        开局首读)与位面详情补采通道(CwScreenPlaneIntel 上报节点)
         经共用登记体 cw_affix_effects.register_affixes_from_names 调本方法
         (幂等 + 注册表命中才登记,best-effort 不阻塞读链主链)。词缀改写面
         写端仍一律观察覆盖兜底(写入归属单一源 = 各 spec.notes 与

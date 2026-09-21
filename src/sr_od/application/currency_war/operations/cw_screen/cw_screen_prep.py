@@ -8,7 +8,7 @@
 形态(两 node 直继承 SrOperation):观察 node = 环装配前置(执行器构建
 /缓存复位)+ 环入口清场 + 开商店收起 + heavy 观察 → CwScreenPrepObs
 (可选域经 report_screen_prep_obs 落容器)+ 事件 overlay 交回早退 +
-接管补采 + 纯观察审计族;决策动作 node = 单动作决策循环(无防御
+接管补采委派 + 纯观察审计族;决策动作 node = 单动作决策循环(无防御
 上限,用户裁定:不收敛 = 策略实现 bug)。书册卡的开卡时机归策略实现管
 (用户裁定 2026-09-19):观察链产 kind='bookcard' 槽位,策略器 entry ①
 卡片臂发射终结动作,本画面 op 不再代发。
@@ -69,7 +69,6 @@ from sr_od.application.currency_war.obs.cw_observation import (
     read_deploy_cap,
     read_deployed_count,
     read_node_sequence,
-    read_phase_round,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
     action_op_class_for,
@@ -141,7 +140,7 @@ def faction_display_ok_debug_line(row_count: int, ocr_skip_count: int,
 class CwScreenPrep(SrOperation):
     """备战决策环(两 node 形态):观察 node(环装配前置 + 清场 + heavy
     观察 → CwScreenPrepObs 可选域 report 落容器 + 事件 overlay 早退 +
-    接管补采 + 纯观察审计族)→ 决策动作 node(单动作决策循环整体:
+    接管补采委派 + 纯观察审计族)→ 决策动作 node(单动作决策循环整体:
     决策(容器 game state 直读,F3 形状校验)→ 执行(机械执行无成败
     回执;终结 op 发出即交回外循环)→ 逻辑态直写(动作 op 自上报))。
     决策循环无防御上限(用户裁定:不收敛 = 策略实现 bug)。
@@ -617,8 +616,9 @@ class CwScreenPrep(SrOperation):
             # overlay 在场 → 交回外循环重识别分发(无计数;对应 loop 0x 分支/op 接管)
             log.info(f'[cw][director] 事件 overlay({obs.event_overlay})→ 交回外循环分发')
             return self.round_success(f'事件overlay({obs.event_overlay})交回外循环分发', wait=0.8)
-        # 接管局补采(挂点随观察段平移;详见块内注释)
-        _tk = self._takeover_collect_if_needed(match, session)
+        # 接管局补采委派(挂点随观察段平移;编排单一源 =
+        # CwEntryPlaneIntel,本 op 只判触发与透传,详见方法注释)
+        _tk = self._delegate_plane_intel_if_needed(session)
         if _tk is not None:
             return _tk
         # —— 对账段:本轮入口 heavy 观察 = 纯观察审计族消费点
@@ -823,68 +823,34 @@ class CwScreenPrep(SrOperation):
         _detail = getattr(self._executor, 'last_detail', '')
         log.info(f'[cw][director] {action_key(action)} → {_detail}')
 
-    def _takeover_collect_if_needed(self, match: CurrencyWarMatch,
-                                    session: StrategySession
-                                    ) -> OperationRoundResult | None:
-        """接管局补采(挂点 = op 观察 node)。
+    def _delegate_plane_intel_if_needed(self, session: StrategySession
+                                        ) -> OperationRoundResult | None:
+        """接管补采委派(挂点 = op 观察 node;编排单一源 =
+        CwEntryPlaneIntel:门/开关详情屏/委派实采/真值落容器写门全在编排侧)。
 
-        触发 = gs.plane_bosses 空(本局尚无位面序真值);可交互门 = 节点条
-        可读;会开/关位面详情画面 → 执行后交回外循环重识别。计数挂容器
-        match_facts 域 Field(单轮 op 每外循环轮次重建,实例属性不存活);
-        成功或 2 次失败后停。旗标渠道 = 渠道③接管协议(logic_hook,actor =
-        ResumeAttach 登记名)。
-
-        容器写端 = :func:`report_screen_prep_obs` 可选域(takeover_tries/
-        takeover_collect_done/plane_bosses/enemy_affixes,字段在场才写),
-        各写点在本簇内原位上报(sig/actor/evidence 原值见 kernel 屏文件)。
+        触发谓词 = gs.plane_bosses 空(本局尚无位面序真值;不引入显式
+        失效标记——重复委派由编排的真值跳过门兜住,委派失败交外循环
+        失败链,无自带计数/放弃分支)。「节点条可读」守卫 = 半开帧
+        (过场/overlay)不委派、等下轮免费重判、不烧失败链。
+        委派结果透传:成功 = round_success 交回外循环重识别;失败 =
+        round_fail 走外循环既有失败链(重试/熔断),不自旋。
         """
         _gs = gs_of_ctx(getattr(self, 'ctx', None), session)
-        if _gs.takeover_collect_done.value or _gs.plane_bosses.value:
+        if _gs.plane_bosses.value:
             return None
         _tk_slots = None
         with contextlib.suppress(Exception):
             _tk_slots = read_node_sequence(self.ctx, self.last_screenshot)
         if _tk_slots is None:
-            return None   # 节点条不可读(过场/overlay 半开帧)→ 等下轮,不消耗预算
-        _tries = int(_gs.takeover_tries.value or 0) + 1
-        report_screen_prep_obs(_gs, CwScreenPrepObs(takeover_tries=_tries))
-        if _tries > 2:
-            report_screen_prep_obs(_gs,
-                                   CwScreenPrepObs(takeover_collect_done=True))
-            log.info('[cw][director] 接管补采两次未成,放弃(boss 缺省中性)')
-            # 放弃也清空两池:残留值会被下局判空误消费(跨局泄漏)
-            self.ctx.cw_plane_bosses = None
-            self.ctx.cw_plane_affixes = None
-            return None
-        from sr_od.application.currency_war.operations.cw_screen.cw_screen_plane_intel import (
-            CwScreenPlaneIntel,
+            return None   # 节点条不可读(半开帧)→ 等下轮免费重判
+        from sr_od.application.currency_war.operations.cw_entry.cw_entry_plane_intel import (
+            CwEntryPlaneIntel,
         )
-        log.info('[cw][director] 新局 boss/词缀无实采真值(session 空)'
-                 '→ 位面详情情报采集(可交互备战帧,第%d次)', _tries)
-        # 起始采集位面(2026-09-03 用户裁决:时序反过来——进详情之前先在
-        # 备战帧识别当前节点得当前位面,详情内只采当前及之后的位面);
-        # 读不到保持 0 = 子 op 内部再试/全采回退。
-        _start_plane = 0
-        with contextlib.suppress(Exception):
-            _pp = read_phase_round(self.ctx, self.last_screenshot)
-            if _pp and _pp[0]:
-                _start_plane = int(_pp[0])
-        _pb_res = CwScreenPlaneIntel(self.ctx, start_plane=_start_plane).execute()
-        # 成功取走/失败残留都清空(防泄漏到下局判空;词缀随采结算只在本分支)
-        _names = list(self.ctx.cw_plane_bosses or [])
-        _affixes = list(self.ctx.cw_plane_affixes or [])
-        self.ctx.cw_plane_bosses = None
-        self.ctx.cw_plane_affixes = None
-        if _pb_res is not None and getattr(_pb_res, 'success', False) and _names:
-            # 保位写:徽章态位面采得 None 原样占 3 槽,
-            # 丢弃会让后续位面名字左移错位(位面序真值变假)。
-            report_screen_prep_obs(_gs, CwScreenPrepObs(
-                takeover_collect_done=True, plane_bosses=_names))
-            log.info('[cw][director] 开局 boss 实采完成(位面序保位):%s', _names)
-        if _affixes and not _gs.enemy_affixes.value:
-            report_screen_prep_obs(_gs, CwScreenPrepObs(enemy_affixes=_affixes))
-            log.info('[cw][director] 词缀补采(位面详情横条随采,简报未供时):%s', _affixes)
-        return self.round_success('接管补采执行,交回外循环重识别', wait=1.0)
+        log.info('[cw][director] 新局 boss/词缀无实采真值 → 委派 CwEntryPlaneIntel'
+                 '(接管编排)')
+        return self.round_by_op_result(
+            CwEntryPlaneIntel(self.ctx).execute(),
+            status='接管补采委派,交回外循环重识别')
 
     def _clear_entry_overlays(self) -> None:
         """环入口清场前置段(规范入口序列「先清场、再识别、后动作」):

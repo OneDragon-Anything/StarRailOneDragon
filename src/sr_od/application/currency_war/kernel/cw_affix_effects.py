@@ -19,7 +19,7 @@
   cw_effect_inventory(与诸桥同宿主纪律)。
 - **词缀运行时登记挂点共用体** ``register_affixes_from_names``:简报/位面详情
   两读链的产出点经它入效果账本(生产调用方 = CwScreenBriefing._read_and_advance
-  开局首读 / CwScreenPlaneIntel.close_and_report 补采落点)。
+  开局首读 / CwScreenPlaneIntel 上报节点补采落点)。
 
 **边界**:
 - STRATEGY_EFFECTS 只产策略源(cw_investments overlay 头注,键空间/孤儿校验独立);

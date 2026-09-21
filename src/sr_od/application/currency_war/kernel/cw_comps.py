@@ -230,7 +230,7 @@ def derive_key_equips(comp: Comp) -> list[str]:
 @dataclass
 class ScoreContext:
     """select_comp / comp_score 的每回合上下文(避免长参数列表)。"""
-    bosses: list[str | None] = field(default_factory=list)      # 当前/将遇 boss 名(boss_fit;None=徽章态缺失位,ADR-0398)
+    bosses: list[str | None] = field(default_factory=list)      # 当前/将遇 boss 名(boss_fit;None=简报源未读得位,保位列表——实采源恒全识别)
     mechanics: set[str] = field(default_factory=set)             # 激活机制 tag(current_enemy_mechanics)
     env: str = ""                                                # 已选投资环境名(env_fit)
     held_strategies: list[str] = field(default_factory=list)      # 已持有投资策略(held_strategy_fit;机会型 pivot)
@@ -1510,7 +1510,7 @@ def boss_fit(comp: Comp, bosses: list[str | None]) -> float | None:
         matchup,
         normalize_boss_name,
     )
-    # None 项 = 该位面徽章态采不到身份(ADR-0398,保位列表)→ 跳过;
+    # None 项 = 简报源未读得位(保位列表)→ 跳过;
     # 全 None(无任何身份信息)→ 与空表同形返 None(动态权重剔除)。
     canon = [normalize_boss_name(b) for b in bosses if b]
     if not canon:
