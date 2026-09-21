@@ -17,8 +17,8 @@
   (:data:`PICK_INVEST_EFFECTS`,容器写腿逐项落行);第三步随机腿走采样链
   逐步落行。``source='portal'``(投资环境屏,投资环境确认 = 确定性入口):
   整支走获得链 ``gain_invest_env``(active_env 注册 + portal 登记 +
-  ``on_env_gained`` 效果枚举,gain-chain design §2.5;``session`` 形参
-  显式传入,``None`` = 登记腿跳过[局外/测试形态])。
+  ``on_env_gained`` 效果枚举,正本 = game_state/gain-chain.md;
+  ``session`` 形参显式传入,``None`` = 登记腿跳过[局外/测试形态])。
 
 **双屏分流(对抗审②)**:``param.source`` = 发射屏别('strategy'/'portal')
 ——策略屏确认才入持卡面;portal 确认走获得链(``gain_invest_env``),禁入
@@ -221,8 +221,9 @@ def report_action_pick_invest_param(gs: GameState, param: Any, sig: ChannelSig,
     if not source:
         return LogicOutcome(applied=True, reason='landing_unrouted')
     if source == PICK_INVEST_SOURCE_PORTAL:
-        # portal 支(投资环境确认 = 确定性入口,gain-chain design §2.5):
-        # 整支走获得链——active_env 注册 + portal 登记(best-effort 腿在
+        # portal 支(投资环境确认 = 确定性入口,正本 =
+        # game_state/gain-chain.md):整支走获得链——active_env 注册 + portal
+        # 登记(best-effort 腿在
         # 链内)+ on_env_gained 效果枚举(表外环境安静不写)。canon 空防御
         # = 零写 noop(选择事实缺名禁写,与策略支 `if canon` 守卫同构)。
         if not canon:

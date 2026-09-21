@@ -1,22 +1,23 @@
 """货币战争 获得链(gain-chain):获得三原语 + 事件回调枚举 + 单级合成。
 
-设计 = docs/develop/sr_od/application/currency_war/changes/2026-09-21-gain-chain/
-design.md §2.1-2.4/§2.7(迭代定稿)。首个接入面(投资环境落地相,
-``cw_action_report.pick_invest`` portal 支)自 3.2 起消费本模块。
+链式规范正本 = docs/develop/sr_od/application/currency_war/game_state/
+gain-chain.md(原语契约/时序/溢出落位/随机态纪律/失败安全/接入面现状)。
+首个接入面(投资环境落地相,``cw_action_report.pick_invest`` portal 支)
+消费本模块。
 
-链式过程语义(§2.1):「获得」= 注册/落位 → 事件回调 → 3 合 1 升星判断 →
+链式过程语义:「获得」= 注册/落位 → 事件回调 → 3 合 1 升星判断 →
 升星产物重进获得角色(回调 → 升星判断 → …,无三连同名同星即终止)。回调
 先于升星的理由 = 回调可能补齐第三只(用户裁定);升星产物也触发获得角色
-回调(裁定「升星也会触发获得角色的回调,类似之前的再继续」)。
+回调。
 
-随机态纪律(§2.4,裁定③):每个函数一个 ``rand: bool`` 必带入参、递归
+随机态纪律:每个函数一个 ``rand: bool`` 必带入参、递归
 透传、效果体含采样时可翻转子链——本次写是否处于随机语义,不承诺全链
 一致;写通道 = rand=True 走 ``write_logic_rand``(采样链)、False 走
 ``write_logic``(确定面)。
 
-失败安全(§2.7):链原语**零吞错**(容器写腿/回调效果腿异常上抛);
+失败安全:链原语**零吞错**(容器写腿/回调效果腿异常上抛);
 best-effort 边界只在登记/遥测申报腿内(失败 log + 缺陷留证、不阻塞);
-未观察(bench/equips)= bug 面(裁定⑤):零写 + 留证不停机,根治归观察
+未观察(bench/equips)= bug 面:零写 + 留证不停机,根治归观察
 补全批;席满且溢出位被占 = 游戏行为未实证:零写 + 留证,禁猜。
 """
 from __future__ import annotations
@@ -47,19 +48,19 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     normalize_invest_name,
 )
 
-#: 链内写端缺省署名(§2.1:写点迁移属申报过的行为变化,新写端新名,
+#: 链内写端缺省署名(gain-chain.md §2:写点迁移属申报过的行为变化,新写端新名,
 #: 不沿用旧名伪装连续;落地相接入显式传同值)。
 GAIN_CHAIN_PRODUCER: str = 'CwGainChain'
 
-#: 缺陷留证 kind 词表(_emit_defect 台账行分键;留证不停机,§2.7)。
+#: 缺陷留证 kind 词表(_emit_defect 台账行分键;留证不停机,gain-chain.md §6)。
 DEFECT_BENCH_UNOBSERVED: str = 'gain_chain_bench_unobserved'
 DEFECT_OVERFLOW_TAKEN: str = 'gain_chain_overflow_slot_taken'
 DEFECT_EQUIPS_UNOBSERVED: str = 'gain_chain_equips_unobserved'
 DEFECT_ADVISOR_DECL: str = 'gain_chain_advisor_decl'
 DEFECT_PORTAL_REGISTER: str = 'gain_chain_portal_register_failed'
 
-#: 欢愉契约条件腿采证期临时翻来源闩的披露键 kind(自 pick_invest 迁入,
-#: gain-chain design §2.3-2「条件腿标记面」:头号玩家触发无观察锚无采样
+#: 欢愉契约条件腿采证期临时翻来源闩的披露键 kind(自 pick_invest 迁入;
+#: 「条件腿标记面」:头号玩家触发无观察锚无采样
 #: 模型,定谳前触发帧收口自愈留证不停局;**有界显式测量仪表,定谳后
 #: 必须撤**——残留 = 临时闩未撤的显式信号)。
 JOY_PROVISIONAL_KIND: str = 'joy_contract_provisional'
@@ -84,7 +85,7 @@ class GainOutcome:
 
 
 # ============================================================ 单级合成
-# (§2.1-3:链式版需要「单级合成 + 产物回调」的时机,merge_simulate 是一次
+# (gain-chain.md §2.2 升星判断:链式版需要「单级合成 + 产物回调」的时机,merge_simulate 是一次
 # 到底的不动点推演无回调时机——故此处独立实现单级函数,规则逐条对齐
 # merge_simulate 不动点合并段(:206-279:分组键 (char_id, star)、场上载体
 # 优先、全备战取最左、溢出件合成腾槽归位优先、装备继承并入、场上同名
@@ -128,7 +129,7 @@ def _bump_carrier(carrier: object, new_star: int,
 def merge_step_once(bench: list[BenchSlot | None],
                     deployed: list[Unit | None],
                     overflow: list[BenchSlot]) -> tuple[str, int] | None:
-    """单级 3 合 1(§2.1-3):判一次合成、就地推进三域工作表,返回升星
+    """单级 3 合 1(gain-chain.md §2.2 升星判断):判一次合成、就地推进三域工作表,返回升星
     产物身份 ``(char_id, star+1)``;无同名同星 3 只 → None(链终止)。
 
     规则逐条对齐 ``cw_merge_simulate.merge_simulate`` 不动点合并段
@@ -191,7 +192,7 @@ def merge_step_once(bench: list[BenchSlot | None],
             # 溢出表索引可能已被本级素材摘除位移,按对象身份重定位
             j = next(k for k, s in enumerate(overflow) if s is carrier)
             overflow[j] = new_carrier
-        # 溢出归位:合成腾出的空槽优先承接(§2.5 满栏先腾后落同款)
+        # 溢出归位:合成腾出的空槽优先承接(merge_simulate 溢出件腾槽归位同款)
         still: list[BenchSlot] = []
         for s in list(overflow):
             if bench_place(bench, s) is None:
@@ -239,7 +240,7 @@ def _dep_sig(deployed: list) -> list:
 
 @dataclass
 class _WorkPool:
-    """链内工作池:gs 现帧派生的三域工作副本 + 构建时签名(§2.1 落位
+    """链内工作池:gs 现帧派生的三域工作副本 + 构建时签名(gain-chain.md §2 落位
     基座同 grant_bench_unit_cascade:bench 槽表 + 上阵行域下标派生表)。"""
 
     bench: list[BenchSlot | None]
@@ -258,7 +259,7 @@ def _build_pool(gs: GameState,
     """gs 现帧 → 工作池(回调子链会写 gs,升星判断前必须重建——回调
     补齐的第三只就在新帧里;bench 未观察 = 无池,调用方跳过合成)。
 
-    溢出位来源两分(§2.1-3 合成池口径):链内溢出单位含链记星级;
+    溢出位来源两分(gain-chain.md §2.2 升星判断 合成池口径):链内溢出单位含链记星级;
     观察来源的溢出卡星级缺读按 1 兜底(现行口径,cw_game_state.py
     overflow_card 字段注释)。
     """
@@ -316,7 +317,7 @@ def _write_merge_step(gs: GameState, pool: _WorkPool, *, rand: bool,
 
 
 class _ChainAcc:
-    """链内递归帧共享累计器(效果名/合成级数/写步编号;§2.2 evidence
+    """链内递归帧共享累计器(效果名/合成级数/写步编号;gain-chain.md §2 evidence
     后缀 ``#mergeN`` 编号沿 merge on_step 先例)。"""
 
     def __init__(self) -> None:
@@ -329,7 +330,7 @@ def _gain_character_core(gs: GameState, name: str, star: int, *, rand: bool,
                          sig: ChannelSig, evidence: str, producer: str,
                          enter: bool, ovf_star: int | None,
                          acc: _ChainAcc) -> GainOutcome:
-    """:func:`gain_character` 递归核(帧内固定时序 §2.1:落位(仅
+    """:func:`gain_character` 递归核(帧内固定时序 gain-chain.md §2:落位(仅
     enter 帧)→ 回调 → 单级升星判断 → 产物递归(enter=False,产物已在
     载体位,不再落位——升星产物重进获得角色的语义 = 回调 + 后续升星
     判断,merge_simulate 载体留原位的落点规则不允许二次落位)。"""
@@ -337,7 +338,7 @@ def _gain_character_core(gs: GameState, name: str, star: int, *, rand: bool,
     landing = 'skipped'
     if enter:
         if gs.bench.value is None:
-            # 【待梳理标记】bench 未观察 = bug 面(裁定⑤:接管局进来在
+            # 【待梳理标记】bench 未观察 = bug 面(用户裁定:接管局进来在
             # 备战,观察可补全)——零写 + 留证不停机;根治归观察补全批。
             _emit_defect(field_name='bench',
                          expected='bench 已观察(获得链落位前提)',
@@ -361,7 +362,7 @@ def _gain_character_core(gs: GameState, name: str, star: int, *, rand: bool,
             landing = 'bench'
         elif _overflow_occupied(gs):
             # 溢出位已被占(链内连环授予第二次溢出):游戏行为未实证 →
-            # 零写 + 留证,禁猜(§2.7)
+            # 零写 + 留证,禁猜(gain-chain.md §6)
             _emit_defect(field_name='overflow_card',
                          expected='溢出位空(可落第二次溢出)',
                          actual=f'溢出位已被占(card={gs.overflow_card.value!r},'
@@ -373,7 +374,7 @@ def _gain_character_core(gs: GameState, name: str, star: int, *, rand: bool,
                                effects=tuple(acc.effects),
                                detail='overflow_slot_taken')
         else:
-            # 席满 → 溢出落位(裁定⑥配套):两字段各一行、同 evidence 同
+            # 席满 → 溢出落位(配套裁定:溢出建模):两字段各一行、同 evidence 同
             # sig 同组;星级不入容器字段(只有身份串),链内工作池自记
             #(ovf_star 线程传给升星判断;写入即知真值,不依赖观察兜底)
             pool.ovf.append(slot)
@@ -385,7 +386,7 @@ def _gain_character_core(gs: GameState, name: str, star: int, *, rand: bool,
             landing = 'overflow'
             ovf_star = star
     # 回调(升星产物也触发;回调可递归调任意链原语,递归子链的 rand 按
-    # 效果自身性质传 §2.4)——回调先于升星:回调可能补齐第三只
+    # 效果自身性质传 gain-chain.md §5)——回调先于升星:回调可能补齐第三只
     acc.effects.extend(on_character_gained(gs, name, star, rand=rand,
                                            sig=sig))
     # 升星判断(单级;回调子链已写 gs,必须重建工作池再判)
@@ -411,19 +412,20 @@ def _gain_character_core(gs: GameState, name: str, star: int, *, rand: bool,
                        effects=tuple(acc.effects), detail='')
 
 
-# ============================================================ 三原语(§2.1)
+# ============================================================ 三原语(gain-chain.md §2)
 
 
 def gain_invest_env(gs: GameState, session: object, env_name: str, *,
                     rand: bool, sig: ChannelSig,
                     producer: str = GAIN_CHAIN_PRODUCER) -> GainOutcome:
-    """获得投资环境(§2.1):①注册 = active_env 逻辑写(写点自画面 op
-    迁入,ADR-0598 点卡前写退役;新写端新名不沿用旧名伪装连续);
-    ②效果账本登记(§2.7 best-effort:失败 log + 留证不阻塞;session=None
+    """获得投资环境:①注册 = active_env 逻辑写(active_env 注册在动作落地相
+    获得链——原点卡前写退役,用户裁定 2026-09-21,正本 = game_state/
+    gain-chain.md;新写端新名不沿用旧名伪装连续);
+    ②效果账本登记(best-effort:失败 log + 留证不阻塞;session=None
     = 登记腿跳过、容器写照常,与 report 函数 session 缺省语义同构);
     ③触发环境效果(on_env_gained)。
 
-    容器写腿零吞错(§2.7①):写/回调效果腿异常上抛。
+    容器写腿零吞错:写/回调效果腿异常上抛。
     """
     write = gs.write_logic_rand if rand else gs.write_logic
     write(gs.active_env, env_name, produced_by=producer,
@@ -431,7 +433,7 @@ def gain_invest_env(gs: GameState, session: object, env_name: str, *,
     if session is not None:
         try:
             register_portal_from_env(session, env_name)
-        except Exception as e:  # noqa: BLE001  登记腿 best-effort(§2.7②)
+        except Exception as e:  # noqa: BLE001  登记腿 best-effort(gain-chain.md §6)
             log.warning(f'[cw-gain] portal 登记腿失败(不阻塞):{env_name} {e}')
             _emit_defect(field_name='active_env', expected='portal 登记成功',
                          actual=f'登记腿异常:{e}',
@@ -445,13 +447,13 @@ def gain_invest_env(gs: GameState, session: object, env_name: str, *,
 def gain_character(gs: GameState, name: str, star: int, *, rand: bool,
                    sig: ChannelSig, evidence: str,
                    producer: str) -> GainOutcome:
-    """获得角色(§2.1 固定时序):落位(备战空槽 → bench_place;席满 →
+    """获得角色(gain-chain.md §2 固定时序):落位(备战空槽 → bench_place;席满 →
     溢出落位写 overflow 两字段;溢出位被占/bench 未观察 → 零写留证)→
     on_character_gained 回调 → 单级 3 合 1 升星判断(池 = 备战 ∪ 上阵 ∪
-    溢出)→ 升星产物递归重进本原语。链内所有写共享入口 sig(§2.2),
+    溢出)→ 升星产物递归重进本原语。链内所有写共享入口 sig(gain-chain.md §2),
     evidence 加 ``#place``/``#mergeN`` 后缀区分。
 
-    溢出善后(腾位/卖牌)不归链——链只如实记账(§2.2)。
+    溢出善后(腾位/卖牌)不归链——链只如实记账(gain-chain.md §2)。
     """
     acc = _ChainAcc()
     return _gain_character_core(gs, name, star, rand=rand, sig=sig,
@@ -462,12 +464,12 @@ def gain_character(gs: GameState, name: str, star: int, *, rand: bool,
 def gain_equipment(gs: GameState, item: str, *, rand: bool,
                    sig: ChannelSig, evidence: str,
                    producer: str) -> GainOutcome:
-    """获得装备(§2.1):equips 追加入栏(栏未观察 = 同 bug 留证规则)→
+    """获得装备(gain-chain.md §2):equips 追加入栏(栏未观察 = 同 bug 留证规则)→
     on_equipment_gained 回调(装备获得→送单位数据表分派)。装备无升星
     判断;子链合成级数留证在子链遥测行,本出参 merge_levels 恒 0。"""
     inv = gs.equips.value
     if inv is None:
-        # 【待梳理标记】未观察 = bug 面(裁定⑤):零写 + 留证不停机
+        # 【待梳理标记】未观察 = bug 面(用户裁定):零写 + 留证不停机
         _emit_defect(field_name='equips',
                      expected='equips 已观察(获得链入栏前提)',
                      actual='equips 未观察(None)',
@@ -483,13 +485,13 @@ def gain_equipment(gs: GameState, item: str, *, rand: bool,
                        effects=effects, detail='')
 
 
-# ============================================================ 三枚举回调(§2.3)
-# (无注册表——用户裁定②:回调函数体内枚举即收敛,不设注册机构。)
+# ============================================================ 三枚举回调(gain-chain.md §3)
+# (无注册表——用户裁定:回调函数体内枚举即收敛,不设注册机构。)
 
 
 def on_env_gained(gs: GameState, session: object, env_name: str, *,
                   rand: bool, sig: ChannelSig) -> tuple[str, ...]:
-    """「获得投资环境」触发型效果枚举(§2.3-1)。
+    """「获得投资环境」触发型效果枚举(gain-chain.md §3)。
 
     - ``ENV_GIFTS`` 命中 → **先按 advisor 分道,两道互斥**:advisor=False
       (契约,直接送卡)→ chars_immediate 逐个 ``gain_character(char, 1★)``
@@ -498,7 +500,7 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       顾问入商店)→ **不入席**——容器无商店池字段,身份只进遥测申报
       一行(先例 = pick_invest hacker shop_pool decl);chars_immediate
       在 advisor 行仅作顾问身份输入,禁再入席;
-    - 查无效果(表外环境)= 安静不写(裁定④),真值归观察覆盖。
+    - 查无效果(表外环境)= 安静不写(用户裁定),真值归观察覆盖。
     - 欢愉契约条件腿(头号玩家触发)标记面:bench/equips 值不变
       ``write_logic_rand`` 翻来源 + 留证行 kind =
       :data:`JOY_PROVISIONAL_KIND`(自 pick_invest 效果函数迁入,行为
@@ -517,7 +519,7 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
         return (f'advisor_decl:{_name}',)
     effects: list[str] = []
     for char in grant.chars_immediate:
-        # 送卡为确定发放(非采样)→ rand 原样透传(§2.4)
+        # 送卡为确定发放(非采样)→ rand 原样透传(gain-chain.md §5)
         gain_character(gs, char, 1, rand=rand, sig=sig,
                        evidence=f'on_env_gained:{_name}',
                        producer=GAIN_CHAIN_PRODUCER)
@@ -544,11 +546,11 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
 
 def on_character_gained(gs: GameState, name: str, star: int, *,
                         rand: bool, sig: ChannelSig) -> tuple[str, ...]:
-    """「获得角色」触发型效果枚举(§2.3-2)。
+    """「获得角色」触发型效果枚举(gain-chain.md §3)。
 
     初始枚举 = **空集**(暂无已核实的「获得角色时」触发型效果;查无
-    效果安静不写,裁定④)。**本函数 = 该类效果未来的唯一收敛点**——新
-    效果核实后在此加分支;递归子链的 rand 按效果自身性质传(§2.4)。
+    效果安静不写,用户裁定)。**本函数 = 该类效果未来的唯一收敛点**——新
+    效果核实后在此加分支;递归子链的 rand 按效果自身性质传(gain-chain.md §5)。
     """
     _ = gs, name, star, rand, sig   # 接口位保留(收敛点入参齐全)
     return ()
@@ -556,10 +558,10 @@ def on_character_gained(gs: GameState, name: str, star: int, *,
 
 def on_equipment_gained(gs: GameState, item: str, *, rand: bool,
                         sig: ChannelSig) -> tuple[str, ...]:
-    """「获得装备」触发型效果枚举(§2.3-3):消费
+    """「获得装备」触发型效果枚举(gain-chain.md §3):消费
     ``EQUIP_ACQUIRE_CONSEQUENCES`` 数据表(装备获得→送出单位;该表是
     游戏数据映射不是效果注册表,保留)→ 命中 → ``gain_character`` 送出
-    单位入席递归(表值星级随表;确定发放 → rand 原样透传 §2.4)。
+    单位入席递归(表值星级随表;确定发放 → rand 原样透传 gain-chain.md §5)。
     表外件 = 查无效果安静不写。"""
     granted = EQUIP_ACQUIRE_CONSEQUENCES.get(item)
     if granted is None:

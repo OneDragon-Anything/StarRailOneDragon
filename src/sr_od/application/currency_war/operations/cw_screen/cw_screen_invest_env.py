@@ -38,7 +38,8 @@ board 无新鲜观察 → 该细化自然失效,定序主判据不依赖 board;�
 上报(经获得链 ``gain_invest_env`` 写 active_env + portal 登记,session
 显式传入)→ success 交回;锚在 = 未落地 → 清标志重走)→ 零参决策(候选自
 容器槽)→ 环境刷新终结交回 / 点最优卡底(选择事实零容器写,落地相经获得
-链,gain-chain design §2.5;ADR-0598 点卡前写退役)→ 台账变异窗 →
+链,正本 = game_state/gain-chain.md;原点卡前写语义已退役,用户裁定
+2026-09-21)→ 台账变异窗 →
 选卡+确认链经 ``CwActionPickInvestOp`` 派发(pick-op-unify 批机械链迁入
 动作 op)→ ``round_wait`` 循环
 推进(不烧节点重试预算;不收敛 = 策略 bug 响亮暴露,无防御上限)。
@@ -226,10 +227,10 @@ class CwScreenInvestEnv(SrOperation):
         """重入裁决(顶部)→ 零参决策 → 环境刷新终结交回 / 选卡+确认 → round_wait。
 
         重入裁决(观察驱动,验证废除形态):上轮已发确认 → 本轮锚不在 =
-        overlay 已关(环境选择落地)→ 落地相上报一次(gain-chain design
-        §2.5:portal 支经获得链 gain_invest_env 写 active_env + 触发
-        on_env_gained 效果,禁入持卡面;幂等 = 证据闩,确认未落地重走
-        不重复)→ success 交回;锚在 =
+        overlay 已关(环境选择落地)→ 落地相上报一次(portal 支经获得链
+        ``gain_invest_env`` 写 active_env + 触发 ``on_env_gained`` 效果,
+        禁入持卡面;幂等 = 证据闩,确认未落地重走不重复;正本 =
+        game_state/gain-chain.md)→ success 交回;锚在 =
         确认未落地 → 清标志重走。循环推进 = round_wait(不烧节点重试预算;
         不收敛 = 策略 bug 响亮暴露,无防御上限)。"""
         if self._confirm_pending is not None:
@@ -360,9 +361,9 @@ class CwScreenInvestEnv(SrOperation):
         else:
             chosen, choose_x, reason = '?', 960, 'fallback(no-ocr)'
         log.info(f'[cw-env] options={names} chose={chosen!r}@x={choose_x} reason={reason}')
-        # 选择事实零容器写(画面 op 只观察/决策/机械派发;active_env 写与
-        # portal 登记均迁获得链 gain_invest_env,落地相 = 重入裁决出口上报,
-        # gain-chain design §2.5;ADR-0598 点卡前写语义退役)。
+        # 选择事实零容器写(画面 op 只观察/决策/机械派发;active_env 注册在
+        # 动作落地相获得链 gain_invest_env——原点卡前写退役,用户裁定
+        # 2026-09-21,正本 = game_state/gain-chain.md)。
         # 效果原文回流断供为裁定的接受后果,收编归宿 =
         # strategy_offer 画面 payload 域,候其落地批接线。
 

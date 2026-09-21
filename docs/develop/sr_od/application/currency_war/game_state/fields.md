@@ -522,18 +522,21 @@ active_env 核对源。开局写端见 §3.4.3(多屏写入,本条=备战屏侧�
 (发射期三连实机实证),正确处理 = 先卖一个备战席角色,溢出卡自动入
 自由槽后告警消失(消失闭环以实机续跑验证为准)。
 
-- `overflow_warning: bool`——告警横幅在场。**写端** = 备战 heavy 观察
-  (`cw_screen_prep` 溢出观察写端,渠道①,每入口帧实读覆盖,两态制观察赢);
-  SellBench 溢出腿落地后 logic 直写 False(推算消亡,下帧实读覆盖)。
+- `overflow_warning: bool`——告警横幅在场。**写端 = 双写端**:①备战 heavy 观察
+  写端(`cw_screen_prep` 溢出观察写端,渠道①,每入口帧实读覆盖,两态制观察赢);
+  ②获得链逻辑写端(`kernel/cw_gain_chain.py` 席满溢出落位直写——第二逻辑写端
+  先例 = 卖牌溢出腿,链式规范正本 = [gain-chain.md](gain-chain.md) §4)。SellBench
+  溢出腿落地后 logic 直写 False(推算消亡,下帧实读覆盖)。
   **消费端** = mandate 溢出门(flag 在场 → 本帧决策强收窄单动作 SellBench,
   禁发 StartBattle/冻结买面,action-logic-state.md §2.4 溢出条件行)。
   腿落地同帧 = 三账事件:容器 bench 回占 + 执行侧 tracked 主账吸收
   (`report_action_sell_bench_param` `session` 形参;缺吸收 = 商店播种守卫
   双账分叉实机停机)+ 黑板帧镜像。
 - `overflow_card: str`——溢出位角色身份(char_id;`''` = 溢出位无卡或身份未
-  识别,与 warning 配对解读:True ∧ `''` = 有卡未识别)。**写端** = 同上观察
-  写端(溢出位 SIFT);SellBench 溢出腿落地后 logic 直写 `''`(入位消费;
-  入位时星级缺读按 1 兜底,下帧 heavy 实读覆盖修正)。
+  识别,与 warning 配对解读:True ∧ `''` = 有卡未识别)。**写端 = 双写端**
+  (同 overflow_warning):观察写端(溢出位 SIFT)+ 获得链逻辑写端(席满溢出落位
+  直写身份;星级不入容器字段,链内自记);SellBench 溢出腿落地后 logic 直写 `''`
+  (入位消费;入位时星级缺读按 1 兜底,下帧 heavy 实读覆盖修正)。
 
 ### 3.2.22 tracked 主账观察状态 tracked_account_observed(bool)
 
@@ -712,8 +715,12 @@ effective_refresh_prob:键在且 >0 直用、≤0/缺键退基线表——**契�
 - **环境刷新已用**(`env_refresh_used`):环境刷新优势布局授予 1 次;观察通道在册
   (本屏「剩余次数:N」)。**当前零写端在册**(字段位申报在,无任何写点;接通前置 =
   实机证出刷新钮),接通时口径与遭遇同式(随刷新点击置位不等验效)。
-- **已选投资环境 active_env(本屏写入)**:局级整局增益,选完即关、之后整局保留。
-  与刷新费联动(长线利好改刷新费,§5.2 缺口登记)。
+- **已选投资环境 active_env(本屏落地)**:局级整局增益,选完即关、之后整局保留。
+  与刷新费联动(长线利好改刷新费,§5.2 缺口登记)。**写端 = 动作落地相获得链写**
+  (`kernel/cw_gain_chain.py::gain_invest_env`,写行署名 `GAIN_CHAIN_PRODUCER`;
+  画面 op 决策动作 node 零容器写,选择事实经动作落地链记)——原「点卡前写/选卡确认
+  挂点直写」写时点语义已退役(用户裁定 2026-09-21),链式规范正本 =
+  [gain-chain.md](gain-chain.md)。
 
 #### 3.4.4 投资策略屏
 
@@ -977,8 +984,9 @@ proc 留证(牌面已变 ∧ 金未扣 → 截图+flag,不停机)与刷新期望
 
 #### 投资选择(环境/策略)
 
-持有投资策略名单+品质写入(§3.4.4,局级累计)/ active_env 写入 · effect_inventory
-激活(§5.1,登记挂点=选卡落地,同点接 burst 桥与板面重写桥)· 即时金/即时经验按
+持有投资策略名单+品质写入(§3.4.4,局级累计)/ active_env 写入(动作落地相获得链
+`gain_invest_env`,§3.4.3)/ effect_inventory 激活(§5.1;策略源登记挂点=选卡落地,
+同点接 burst 桥与板面重写桥;portal 源登记挂点=获得链登记腿)· 即时金/即时经验按
 显式登记通道(本金充裕 instant_gold=26、伟大征服 xp_instant=12——均为选牌当场
 语义;延迟/条件金 9 卡不经 instant_gold 消费,其中超发货币单列双腿建模 §5.3;本金
 充裕条件腿已结构化经节点桥 wire,§3.3.6)或申报不记预期值。投资策略屏可刷新、选后
@@ -1032,7 +1040,10 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
   tick/计数 bump/跳过递减(consume_use)/升级标记/**结算挂点 on_battle_end**(已
   接线,宿主=battle_wait 结算覆盖带;注册表现役零 BATTLE_END 条目 → 行为面=结算
   事件标记,条目推进随建模批立条目后经同一挂点自动生效)。词缀源登记挂点 =
-  `register_affixes_from_names`(简报/位面详情两读链产出点)。
+  `register_affixes_from_names`(简报/位面详情两读链产出点)。**获得链登记腿**:
+  portal(投资环境)效果账本登记挂点 = `kernel/cw_gain_chain.py::gain_invest_env`
+  → `cw_effect_inventory.py::register_portal_from_env`(链内 best-effort 腿,
+  失败留证不阻塞;正本 = [gain-chain.md](gain-chain.md) §2.1)。
 - **账本→字段桥**(效果发放换算成 state 字段写入的固定函数口,kernel/
   cw_game_state.py):`apply_effect_burst_grant`(选卡时点一次性批量授予)/
   `grant_effect_node_refresh_balance`(每节点余额累加+条件判定族按金现值评估)/

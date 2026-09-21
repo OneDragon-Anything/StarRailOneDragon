@@ -40,7 +40,7 @@
   `effects` 字段 :1651;kernel/cw_effect_inventory.py `ActiveEffectInventory` 类 :142)。
   session 无独立字段——历史兼容读口 property 已撤,写读直经
   `game_state_of(session).effects`(同一实例,防双账本)。
-- 写端(挂点)五处在产,全部经 inventory 方法(§7.3 映射表),零旁路直改;机器面 =
+- 写端(挂点)六处在产,全部经 inventory 方法(§7.3 映射表),零旁路直改;机器面 =
   效果域直摸锁(journal.md §6 硬约束①族)。
 - 读端 = 查表方法(`by_category`/`by_trigger`/`by_source`/`first`/`counter`/
   `predict_for`;`by_source` 按 source='strategy'/'affix' 词表分源读,词缀源读端)。
@@ -207,6 +207,7 @@ W4 键级三分(游戏效果键→效果域/策略行为键→决策行/无消�
 | 跳过消耗 | `consume_use`(prep_actions.py:1512,跳过执行成功回执) | 次数类余量(免战牌) | uses 计数 +1(目标模型)/ 递减镜像(现表示法,§4) |
 | 升级标记 | `on_level_up`(prep_actions.py:1350) | LEVEL_UP | 事件标记(`_EVENT_LEVEL_UP`,下划线前缀与策略计数器键空间隔离,:124) |
 | 选卡落地 | `register_strategy`(operations/cw_screen/cw_screen_invest_strategy.py:440;免战牌同点自动登记 :416-440)+ burst 桥 `apply_effect_burst_grant`(:448)+ 板面重写桥 `apply_board_rewrite`(同点紧随) | INSTANT | 登记入清单 + 一次性发放 |
+| 获得链登记(portal 源) | 获得链原语 `kernel/cw_gain_chain.py::gain_invest_env` → `register_portal_from_env`(kernel/cw_effect_inventory.py;投资环境落地相经动作上报 `report_action_pick_invest_param` portal 支进入) | INSTANT(portal 效果) | 登记入清单 |
 
 - **账本→字段桥**(效果发放换算成 state 字段写入的固定函数口,kernel/cw_game_state.py):
   `apply_effect_burst_grant`(选卡时点一次性批量授予)/
@@ -235,6 +236,10 @@ W4 键级三分(游戏效果键→效果域/策略行为键→决策行/无消�
   :424-454);递减/消耗挂点与登记挂点解耦——登记面缺位的局 `consume_use` 返回 None
   零动作,保守端 = 记录缺失,不虚构递减(:261-275)。词缀源登记挂点 = 词缀读链产出点
   `cw_affix_effects.register_affixes_from_names`(简报屏/位面详情屏两链,§7.6)。
+  **portal(投资环境)效果登记挂点** = 获得链 `kernel/cw_gain_chain.py::
+  gain_invest_env` → `cw_effect_inventory.py::register_portal_from_env`(链内
+  best-effort 腿:登记/遥测面失败 log + 缺陷留证、不阻塞;`session=None` = 局外/
+  测试形态登记腿跳过)。
 - **结算挂点现状**:`on_battle_end` **已接线**(kernel/cw_effect_inventory.py 定义;
   生产宿主 = CwScreenBattleWait 结算覆盖带 `_record_round_outcome` 非 telemetry_only
   分支,apply_settlement_cover 同分支同时序,独立 best-effort try 不与结算覆盖写端
