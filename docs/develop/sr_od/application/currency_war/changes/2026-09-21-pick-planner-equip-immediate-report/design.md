@@ -30,6 +30,7 @@
 
 - **pick op 单相化**：机械链（点卡 → 固定等待 → [planner] 确认点击）发出后**立即** `report_action_pick_<snake>_param`（删 `evidence` 参数与本文件 `EVIDENCE_OVERLAY_CLOSED` 常量，一口写完整效果腿）→ `round_success` 终结交回。确认未生效 = 代码 bug，overlay 残留由外循环按当前画面重识别重派（修点击链可靠性，禁验证/重试/防重复补丁——增补 2 禁止清单第 4 条：单相化后「未生效重派 → 效果腿重复应用」的风险按裁定接受，不设防）。
 - **画面 op 派发即终结**：act = 决策 → 组装 param/env → 派发 → `round_success` 终结；删重入裁决（`_confirm_pending`/`_pending_leg`/`_pick_param`/`_pick_pending`/`_pending_pick` 全部退役）与对应 OCR 出口门。`CwActionPickPlannerOp` 体内对宿主的 `op._confirm_pending = True` 置位随之删除。
+- **sig actor 随迁移换名（attack4 F3 申报）**：效果腿上报的 `ChannelSig.actor` 由画面 op 名（`CwScreenYinLang`/`CwScreenEquipPick`）换为动作 op 类名（写点随调用点迁入动作 op）——遥测归因面变化，照供给/投资两屏迁移先例接受（先例已同款换 actor），一句申报。
 - **时序等价论证（upgrade 腿前置校验）**：原落地相时点 = 确认生效（overlay 关）；新时点 = 确认点击后。两时点之间容器零写入（overlay 动画窗内无观察发生——观察只发生在画面 op 观察 node 与备战入口 heavy 帧），`_apply_upgrade_transform` 前置校验读的 bench/front/back 观察态等值，三态判定与档行语义不变。
 - **增补 3 合规自查**：迁移后动作 op 内零新增读屏——planner 的 confirm 定位照现状（`emit_overlay_confirm` 机械确认），equip 点卡定位由 env 传入；归一组装点留在画面 op 决策半（现役位置不动），动作 op 不做观察识别。
 
@@ -37,7 +38,7 @@
 
 - **选择装备屏（equip，先做——简单腿立复核）**：
   - `CwActionPickEquipOp.run` = 点卡（env.target）→ 固定等 1.2s → 立即上报（单相：`norm_item` 命中 → owned 入栏 + 获得后果链；'' = 未解析翻来源留证）→ `round_success` 终结。本屏点卡即选、无确认步。
-  - **归一升级（复用 T-1 已建入口）**：组装点 `normalize_equip_name`（银狼 10 件锚）换 `normalize_registry_equip_name`（注册表 158 名分层归一，T-1 已建）——本屏候选含泛用件（docstring「未锁态语义（仅泛用腿）」在册），10 件锚对泛用件恒 ''；注册表级让泛用注册表件规范名入栏，未命中 fail-closed 不写留证 + 观察覆盖自愈（与供给行同构）。`normalize_equip_name` 本体语义不动（银狼域其他消费面）。**注释连带**：`kernel/cw_vocab.py` `CwActionPickEquipParam.norm_item` 字段注释同步改写（T-1 模板注释连带先例）。
+  - **归一升级（复用 T-1 已建入口）**：组装点 `normalize_equip_name`（银狼 10 件锚）换 `normalize_registry_equip_name`（注册表 158 名分层归一，T-1 已建）——本屏候选含泛用件（docstring「未锁态语义（仅泛用腿）」在册），10 件锚对泛用件恒 ''；注册表级让泛用注册表件规范名入栏，未命中 fail-closed 不写留证 + 观察覆盖自愈（与供给行同构）。`normalize_equip_name` 本体语义不动（银狼域其他消费面）。**注释连带三处**：`kernel/cw_vocab.py` `CwActionPickEquipParam.norm_item` 字段注释同步改写 + `CwActionPickSupplyParam.norm_item` T-1 遗留过期注释顺手清 + 两 param docstring「两相/落地相」措辞机械改写（T-1 模板注释连带先例）。
   - 画面 op：删 `_pick_pending`/`_pending_pick`/重入裁决出口门；act = 决策（越界/异常 fallback 第 1 张现状保持）→ 组装 param（idx + 注册表分层归一 norm_item）→ 派发 → `round_success` 终结。本屏零 chosen（选择存证已退役，docstring 在册）。
 - **骇入策划屏（planner，后做——复杂腿）**：
   - `CwActionPickPlannerOp.run` = 点卡（env.target，避开「详情」按钮区选中点照旧）→ 固定等 1.2s → 确认点击（`emit_overlay_confirm`，裁决词「我来当策划」照旧）→ 立即 `report_action_pick_planner_param(gs, action, sig, leg_type=env.leg_type, norm_item=env.norm_item)`（单相；leg_type/norm_item 经 env kwargs 形态保持——planner 载荷先例，不迁 param）→ `round_success` 终结。体内 `op._confirm_pending = True` 置位删除。

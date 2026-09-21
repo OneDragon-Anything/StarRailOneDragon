@@ -45,6 +45,6 @@
 - `screens/README.md`：§5.5 单选族表（两行上报形态更新）← 3.1/3.2
 - `screens/planner.md`：全篇两相+重入裁决表述清除（**§2(:12)/§4/§5/§6(:55)/开放设计注(:76)** 五处；§1 无涉）← 3.2（attack2 F2）
 - `screens/equip_pick.md`：重入裁决/证据闩表述清除 ← 3.1
-- `game_state/logic-updates/pick-planner.md`：文件头(:3)/§3(:23 _confirm_pending 步)/§5(:33 重入裁决)/§7(:41) 两相与证据闩表述清除 + :37「单一定义在 pick_invest」过期句修正（:14 无涉——attack3 F2 锚位勘误）← 3.2
+- `game_state/logic-updates/pick-planner.md`：文件头(:3)/**§2 三行(:11 两相节头/:13 发射相 bullet/:17「weaken 零记账」行——weaken 已随 14dd40977 退役,该行现役即与代码不一致)**/§3(:23 _confirm_pending 步)/§5(:33 重入裁决)/§7(:41) 两相与证据闩表述清除 + :37「单一定义在 pick_invest」过期句修正（:14 无涉——attack3 F2 锚位勘误；attack4 F1 补 §2 三行）← 3.2
 - `screens/README.md` 补：§6(:138) 即时上报枚举更新（attack3 F6）← 3.1/3.2
 - 兜底：正本更新批内 `EVIDENCE_OVERLAY_CLOSED` 全域 grep（范围 = src + sr-od-test + docs 正本；豁免 = changes/ 历史工件）+「两相/落地相/发射相」在 action_ops §4.5 与 action_exec §2 的残留表述 ← 收尾
