@@ -11,7 +11,8 @@
   deploy_cap=3(与 level 一致)、xp 升级所需=4、hp=82(取自在册实证基线;开局数值
   对实机影响有限,sim 贴真优先,后续采集再校);④开局时点(容器建立,简报前)确无
   手牌;进入 1-1 时经「开局补给」赠送内容(细目候实机观察)。
-- 状态:草案(r1 对抗 12 条处置完毕,候复审)
+- 状态:定稿(r1 攻击 12 条 + r2 复攻 4 条全部处置;攻击收敛·试读过;r2 判定
+  「单点修订后定稿」,单点已落)
 - 文档清单:无详设(单文档方案,本篇即完整设计)
 
 ## 1. 问题与动机
@@ -74,14 +75,14 @@
 
 | 字段 | 种子值 | 依据 |
 |---|---|---|
-| `bench` | 空槽位 `BenchView`(9 空槽,capacity 9) | 用户游戏知识(裁定④):容器建立时点(简报前)确无手牌——空底座在建立时点为**真值**;1-1 进入时「开局补给」赠送内容,细目候实机观察,其合并效应归观察覆盖。sim 开局手牌写点 = 引擎起点(1-1 备战),与本种子不同时点,无冲突 |
+| `bench` | 空槽位 `BenchView`(9 空槽,capacity 9) | 用户游戏知识(裁定④):容器建立时点(简报前)确无手牌——空底座在建立时点为**真值**;1-1 进入时「开局补给」赠送内容,细目候实机观察,其合并效应归观察覆盖。**强源三重在册**:`docs/game/currency_war/research/screen_flow_timing.md:70`(投资屏选完进 1-1 触发开局补给,给开局角色+晶矿)、sim-redesign design.md:474(u07u28:开局手牌来自开局补给独立发牌通道,不走商店)、`screens/wait_one_one.md`(等待该动画的 op)。sim 开局手牌写点 = 引擎起点(1-1 备战),与本种子不同时点,无冲突 |
 | `front_row`/`back_row` | 空行 | 布阵发生在备战阶段(游戏流程) |
-| `equips`/`occupied_equips`/`spheres` | 空 | 开局真值 |
+| `equips`/`occupied_equips`/`spheres` | 空 | 开局真值;补给含晶矿发生在 1-1 进入时点(screen_flow_timing #5),建立时点 spheres 为空、1-1 观察覆盖 |
 | `board` | (不直接写) | 经 front_row/back_row 种子走行域派生链自动落(`_write_logic_frame` 行域挂钩 `_resync_board_delta`),值 = 空派生;禁双写 |
 | `gold` | 3 | 用户裁定,对齐 sim M01 `OPENING_GOLD`(`sim/cw_sim_opening.py:52`) |
 | `level` | 3 | 用户裁定;`XP_TO_NEXT_LEVEL` 表键一致(`cw_economy.py:51`);读口旧缺省 1,种子 3 更贴真值(§2.6-8) |
 | `xp` | (0, 4) | 用户裁定(L3 升级所需=4);表值一致(`XP_TO_NEXT_LEVEL[3]`) |
-| `hp` | 82 | 用户裁定;值取在册实证基线 `OPENING_HP_BASE`(109 局零方差,`cw_opening_hp.py:22`,实证域 A8/难度108,其余职级档候采集)。**三写端时序固定**:种子(建立点)→ 先验(首漏斗帧 `write_prior`,按档 82/62 或诚实 None)→ 真读。申报:决策可信位门(`hp_decision_trusted`)只认 observation/carried——种子对可信位消费**零增益**,价值 = 值域统一底座(journal/显示面);开局不利局种子 82 vs 实发 62 的偏差持续到纠正点(§2.6-6) |
+| `hp` | 82 | 用户裁定;值取在册实证基线 `OPENING_HP_BASE`(109 局零方差,`cw_opening_hp.py:22`,实证域 A8/难度108,其余职级档候采集)。**三写端时序固定**:种子(建立点)→ 先验(首漏斗帧 `write_prior`,按档 82/62;非实证档先验返 None → 先验腿跳过,容器保持种子随机态至真读——收窄后 carry 不降级,§2.5)→ 真读。申报:决策可信位门(`hp_decision_trusted`)只认 observation/carried——种子对可信位消费**零增益**,价值 = 值域统一底座(journal/显示面);开局不利局种子 82 vs 实发 62 的偏差持续到纠正点(§2.6-6) |
 | `streak` | 0 | 开局真值 |
 | `back_layout` | 6 | 机制基线(字段注释:平常 6) |
 | `deploy_cap` | 3 | 用户裁定(= level,财富宝钻 0;字段注释「= level + 财富宝钻数」) |
@@ -91,7 +92,8 @@
 | `enemy_affixes` | [] | 新局简报即覆写;接管局位面详情实采覆写;两写端都在决策前(`cw_screen_report/plane_intel.py` 幂等门仅空时写,种子空表放行 = 与今日 None 行为一致) |
 | `shop_refresh_cost` | 2 | `REFRESH_COST_BASE`(`cw_economy.py:109`);现役消费 `int(_v) if _v is not None else SHOP_REFRESH_COST`(`cw_economy.py:660-663`),种子 2 与基价等价 |
 | `prev_node_spent` | False | 开局无花费 |
-| `encounter_refresh_used`/`supply_refresh_used`/`strategy_refresh_used` | 0 / 0 / {} | 开局真值(未刷新过) |
+| `encounter_refresh_used`/`supply_refresh_used` | 0 / 0 | 开局真值(未刷新过) |
+| `strategy_refresh_left` | {} | 开局无持卡真值(剩余语义化,观察写端读缺键跳写 = 键粒度增量,与空表协同;值域纪律照字段注释「基线每卡 1 次,禁按基线核对预期」不变) |
 
 **B 类——不种(None 是设计语义或在册禁令;逐条依据)**:
 
@@ -117,7 +119,7 @@
 | `selected_difficulty` | 新局写端 = 难度确认屏;接管局两屏都不出现——种子值永久无人覆盖,D-32 阈值错底;今日 None → 读口缺省反而是对的 |
 | `enemy_difficulty` | 写端 = 简报;接管局简报缺席 |
 | `game_mode` | 两屏无建档,接线前补档——现役零写端 |
-| `env_refresh_used` | 零写端申报字段,禁按字段值做决策——种 0 等于让决策消费虚构 |
+| `env_refresh_left` | 剩余语义化后已接观察写端(`report_screen_invest_env_obs` 摄入,读缺跳写);开局剩余基线值无在册出处,种猜测值 = 决策面虚构——None = 未观察,投资环境屏现场 OCR 自足 |
 
 **不适用(非 Field 簿记)**:`tracked_books`/`node_books`/`frame_class_prep`/
 `frame_class_shop`/`plane_node_sequences`/`effects`/`settlement_ring`/`encounter_log`/
@@ -166,20 +168,23 @@
 - **语义**:锚定前链的落账是「未验证推算」,走随机态让首观察静默覆盖;锚定后恢复
   形参语义——失配网原样生效,P2/P3 位面环境送卡的落位验证信号保留(对比:失配豁免
   注册表按 screen×field×evidence 前缀区分不了首次锚定与后续锚定,会盲掉后者,故不用)。
-- **锚定前 logic_action 写端穷举清单**(census;逐个写明不收口理由):
-  | 写端 | 目标域 | 不收口理由 |
+- **需按通道规则裁决的写端(census;逐个写明处置)**:
+  | 写端 | 目标域 | 处置 |
   |---|---|---|
   | 获得链全部原语 | 阵容/经济域(A 类) | 收口(本规则主体) |
-  | `cw_loop._absorb_selected_difficulty` | selected_difficulty(C 类不种) | 种子不涉,行为不变 |
-  | 简报三写点(`cw_screen_report/briefing.py`) | enemy_affixes/plane_bosses/enemy_difficulty | enemy_affixes 种子 [] 被直写覆写 = 预期(三读数一局恒定,覆写无信息损失);后两域不种 |
-  | 位面详情写门(`cw_screen_report/plane_intel.py`) | plane_bosses/enemy_affixes | 幂等门/真值不覆写门与种子空值协同 = 今日行为;不种域不涉 |
+  | `cw_loop._absorb_selected_difficulty` | selected_difficulty(C 类不种) | 不收口:种子不涉,行为不变 |
+  | 简报三写点(`cw_screen_report/briefing.py`) | enemy_affixes/plane_bosses/enemy_difficulty | 不收口:enemy_affixes 种子 [] 被直写覆写 = 预期(三读数一局恒定,覆写无信息损失);后两域不种 |
+  | 位面详情写门(`cw_screen_report/plane_intel.py`) | plane_bosses/enemy_affixes | 不收口:幂等门/真值不覆写门与种子空值协同 = 今日行为;不种域不涉 |
+  | always-rand 直写点(pick_supply/pick_planner/tool_use/collect_ore/pick_equip/cw_gain_effects 等,落地时 grep 为准) | 各自目标域 | 天然合规:直 rand 通道不经选择点,规则不辖,列名备查 |
 - **carry 守卫收窄(封洗白通道)**:`carry()` 现守卫只查 `value is None`
   (cw_game_state.py:2544),会把 logic_rand 种子原样换帧成 `source='carried'`
   (可信位),击穿 §8.8 假值防线(实证可达路径:接管局 shop-open 帧 hp 失读支)。收窄 =
   **现值来源为 logic_rand 时 carry 不沿用(返回不动)**——随机态种子/采样值不是
-  「上次好值」,失读时宁保持未验证态不洗白。现役影响面:gold/level/hp/enemy_difficulty
-  四条 carry 腿的目标域现无 logic_rand 写端(采样链写域 = spheres/bench/行域/equips),
-  行为变化仅及种子域,零存量回归。
+  「上次好值」,失读时宁保持未验证态不洗白。**影响面矩阵**:carry 腿共 8 条
+  (gold/level/hp/enemy_difficulty/deploy_cap/streak/board/shop_refresh_cost);
+  现役 rand 写域 ∩ carry 目标域 = **{board}**(行域 rand 写经派生挂钩落 board)——
+  board 失读帧收窄后不再洗白 = **存量语义修正**(与 §2.6-3 合并申报);其余七腿与
+  现役 rand 写域零交点,行为不变。
 
 ### 2.6 行为变化申报
 
@@ -232,10 +237,11 @@
 
 - gain-chain 迭代的【待梳理标记】(gain-chain.md §6、cw_gain_chain.py 两处发射点)
   由本批消偿——正本改写归本批末阶段;
-- **invest-landing-chain(在飞)**:已给 `cw_gain_chain.py` 增第 5 处写选择并新增
-  `gain_invest_strategy` 原语与 `cw_gain_effects.py`——文件冲突面 =
-  `cw_gain_chain.py`/`test_cw_gain_chain.py`;本批 3.2 以「落地时 grep 计数」为准
-  全量收口,与该批的落地次序在进度账本定序,禁双写并飞;
+- **invest-landing-chain**:主落地 `0358aa60a` 已入库(获 `gain_invest_strategy` 原语、
+  `cw_gain_effects.py`、`env_refresh_left`/`strategy_refresh_left` 改名接观察写端)——
+  文件冲突面 = `cw_gain_chain.py`/`cw_game_state.py`/`test_cw_gain_chain.py`;本批 3.1
+  在 `0358aa60a` 之上续作(字段名以 HEAD 为准),3.2 以「落地时 grep 计数」为准全量
+  收口,与该批余量的次序在进度账本定序,禁双写并飞;
 - tool-gain-report 迭代(在飞)自引「裁定⑤同款」的零写分支:其消费域(equips 等)
   在本批后不再出现 None,其语义自然收敛,无需回头改;其攻击报告点名的
   `transform_equip_to_privilege` None 静默面含「无此件」档,与本批无涉(种子后

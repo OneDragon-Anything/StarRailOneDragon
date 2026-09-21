@@ -15,7 +15,7 @@ logic_rand 不沿用,design §2.5 末条)。附:A 类字段定义注释补「开
 **文件面**:`src/sr_od/application/currency_war/kernel/cw_game_state.py`、
 `src/sr_od/application/currency_war/kernel/cw_reconcile.py`、
 `sr-od-test/test/sr_od/application/currency_war/test_cw_game_state*.py`
-**依赖**:无
+**依赖**:invest-landing-chain 主落地已入库(`0358aa60a`,字段名以 HEAD 为准)
 **优先级建议**:5
 **完成判据**:
 - 行为对照 design §2.3/§2.4/§2.5:冷建容器含全部 A 类种子(值/produced_by/evidence/
