@@ -14,8 +14,10 @@ boss 节点前弹「强敌来袭」简报横幅:识别阵营徽记模板锚「�
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation,
 轻屏统一形态):观察 node = 横幅门(徽记模板锚 miss → 「强敌」片段判别
 兜底;不在 = 已推进 → 早退 success 交回外循环重判,obs 不装载)+ 门内
-obs{on_screen} → 调占位 ``report_screen_boss_briefing_obs``(统一形态;
-本屏现役零容器写点,接口为占位,match/gs 缺席跳过)→ obs 挂实例属性进
+obs{on_screen} → ``report_screen_boss_briefing_obs``(boss 类型直定写端,
+目标 = 现 hist——迭代 2026-09-20-node-advance-action-report 切换批自旧
+BOSS 简报腿迁移,design §2.5 表;直定前置同源守卫见 kernel 屏文件,
+match/gs 缺席跳过)→ obs 挂实例属性进
 决策 node。决策动作 node = 点空白一次推进 → success 交回(本屏一次点击
 即终结,横幅退场裁决 = 外循环重派后的下一次入口门,不做 op 内轮询)。
 **判别单一源红线**:迁移只改宿主类,禁改 ``BOSS_BRIEFING_TOKENS``/
@@ -91,8 +93,8 @@ class CwScreenBossBriefing(SrOperation):
         (``is_boss_briefing_texts``,判别单一源,**禁顺手复制判别逻辑**;
         横幅动画相位致模板 miss 时,片段判别按全帧 OCR 文本补一刀)。不在
         = 已推进 → 早退 success 交回外循环重判(loop 全分支识别点掉后的
-        任何画面——boss 战/备战/流转);在 → obs 装载 + 占位 report
-        (match/gs 缺席跳过)。"""
+        任何画面——boss 战/备战/流转);在 → obs 装载 + report(boss 类型
+        直定,目标 = 现 hist;match/gs 缺席跳过)。"""
         screen = self.last_screenshot
         banner_hit = self.round_by_find_area(
             screen, CwScreenBossBriefing.SCREEN_NAME, CwScreenBossBriefing.MARK_AREA,

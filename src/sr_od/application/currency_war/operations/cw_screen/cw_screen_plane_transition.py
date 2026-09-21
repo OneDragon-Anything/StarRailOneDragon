@@ -53,8 +53,8 @@ def _build_transition_chain(gs: GameState | None,
     fixture plane_1to2 实证),逐格:upcoming→hu/超阈 none;boss 末槽→
     sift,SIFT miss→none/None 禁回落 Hu(槽 Hu 距离系统性不可靠,
     cw_node_reader 在案)。行归属位面:开局判别 = 容器节点镜像与 hist 双缺
-    (复用 kernel 过渡腿三源全缺先例语义,cw_game_state
-    ``_derive_node_plane_transition``)= P1 入口;非开局 = 节点镜像 plane,
+    (旧 kernel 过渡腿「三源全缺禁猜」同款语义,腿已随动作上报化切换批
+    退役)= P1 入口;非开局 = 节点镜像 plane,
     镜像缺失返回 None(行归属不可知,禁猜;report 内同门兜底);镜像在
     位面切换窗的滞后语义恰与「刚离开位面」同向。
     """

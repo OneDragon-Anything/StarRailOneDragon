@@ -60,20 +60,19 @@ PendingEntry/confirm 转正/discard_expected)全套废除;逻辑态错误 =
 派生域与画面上下文域**(ADR-0630 决策 1+修订节 2;字段面 as-built =
 ``docs/develop/sr_od/application/currency_war/game_state/node-domain.md`` §2):``prev_screen``/``current_screen``
 (①观察汇聚写)+ ``top_bar_raw``(顶栏原文,**观察层**,observe() 只落原始
-读数)+ ``node_ord``(**逻辑层序键**,派生规则唯一写点;用户终裁 2026-09-11
-字段层次终极版:观察层只放画面原始读数,序键是逻辑层字段,四条腿全部
-write_logic,无 observe 写序键的例外)。
-四规则组:①备战腿顶栏权威/②位面过渡腿 0q→(plane+1,1)/③BOSS简报腿
-0p→当前+1+boss 类型/④弹窗腿守卫族;推进去重键 =(run_id, effective_ord),
-类型派生 = 专属画面直定+商店面板查现行链(已接线,链观察落地批
+读数)+ ``node_ord``(**两态序键**,迭代 2026-09-20-node-advance-action-report:
+观察锚定态 = observe_node_anchor 直写 observation / 推进未确认态 = 终结
+动作上报 write_logic——「禁 observe 直写序键」旧裁决随本迭代推翻,改判
+依据 = 该迭代 design §2.2/§2.7-7)。
+**节点推进触发模型(动作上报化,四推断腿已随同批退役)**:序号前进唯一
+落账入口 = 推进生效原语 :func:`advance_node_effective`(动作上报
+:func:`report_node_advance` / 观察锚定补推 :func:`observe_node_anchor`
+两路径,效果推进尾段同临界区);跨位面由序号公式 (plane-1)*9+round 自然
+承载;推进去重键 =(run_id, effective_ord)。类型派生 = BOSS 简报屏直定
+(经 ``kernel/cw_screen_report/boss_briefing.py``,目标 = 现 hist)+商店
+面板查现行链(``observe_screen_context`` 商店分支;链观察落地批
 2026-09-16:载体 TokenCell/NodeChain,写端 = 过渡屏 transition_row/
-transition_snapshot + 备战帧 prep_row,字段 node_path/node_path_baseline)。本段持久正本 =
-``docs/develop/sr_od/application/currency_war/decisions/0630-unified-state-journal.md``
-(ADR-0630,含修订节:守卫族终版/单字段双值结构/字段层次终极版;设计
-工作稿存 .debug/temp 为易失档,禁作正本指针)。派生规则判定本体单一源 =
-场景一判定方案(现行版次以文件头为准;该档不入 git,持久裁定锚 = ADR-0630
-关联行与 ``docs/game/currency_war/research/screen_flow_timing.md``
-#26/#14/#27)。
+transition_snapshot + 备战帧 prep_row,字段 node_path/node_path_baseline)。
 """
 from __future__ import annotations
 
@@ -183,10 +182,12 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'event_choices': 1,     # 十事件屏 chosen_*(§3.4/§4 事件选择)
     'settlement': 1,        # 结算真值组 + hp 保底事件位(§3.5)
     'effects': 1,           # 在场效果激活账本(§5.1,非 Field 载体)
-    'derivation': 3,        # 逻辑态派生域与画面上下文域(R1 §3.1.4;域版本 3 =
-                            # 字段层次终极版:node_ord 纯逻辑层四腿 write_logic、
-                            # 新增顶栏原文观察层字段 top_bar_raw,用户终裁
-                            # 2026-09-11;历史:1=R1 双腿双字段,2=单字段双层)
+    'derivation': 4,        # 逻辑态派生域与画面上下文域(R1 §3.1.4;域版本 4 =
+                            # node_ord 两态生命周期 + 四推断腿整体退役(切换批
+                            # 2026-09-20-node-advance-action-report:推进 =
+                            # 终结动作上报/观察锚定,弹窗/位面过渡/BOSS简报/
+                            # 备战四腿与守卫族常量删除);历史:3 = 字段层次
+                            # 终极版,1=R1 双腿双字段,2=单字段双层)
     'receipts': 1,          # 动作回执域(R2 §3.1.1-4/§3.2.5:普通 Field 域滚动窗,唯一写点 = note_action_receipt)
     'match_final': 1,       # 局终域(R5 W2;§3.6.1 runs 收编载体:一段一行,
                             # 恢复局跨段 = 多行,game 级聚合取段序末行;唯一
@@ -220,77 +221,32 @@ _PAYLOAD_DOMAINS: dict[str, tuple[str, bool]] = {
 }
 
 
-# ---- 画面上下文域常量(R1 §3.1.4/§3.4;派生规则输入面)----
+# ---- 画面上下文域常量(R1 §3.1.4/§3.4;观察汇聚漏斗的画面标识映射面)----
+# (弹窗腿守卫族/弹窗族清单/位面过渡腿触发面/专属画面类型直定映射四组
+#  常量已随节点推进动作上报化切换批整体退役——
+#  2026-09-20-node-advance-action-report design §2.5 退役清单;考古走 git。)
 
-#: 干净备战帧画面标识(画面建档 screen_name;备战腿触发面)。
+#: 干净备战帧画面标识(画面建档 screen_name;漏斗 prep_clean/全量路径的
+#: 上下文对画面标识,亦是备战锚定写端 ``observe_node_anchor`` 的
+#: trigger_screen)。
 SCREEN_PREP_FRAME: str = '货币战争-备战'
 
-#: 商店面板块画面标识(弹窗族成员;节点类型「未定型」零直定——商店对任意
-#: 节点类型都开,类型来源 = 类型派生四②「商店查现行链」,链观察落地批
-#: 2026-09-16 接线)。
+#: 商店面板块画面标识(节点类型「未定型」零直定——商店对任意节点类型
+#: 都开,类型来源 = observe_screen_context 商店分支「查现行链」
+#: (:func:`chain_node_type`,链观察落地批 2026-09-16 接线))。
 SCREEN_SHOP_PANEL: str = '货币战争-备战-开商店'
 
-#: 弹窗族清单(R1 §3.4.1 规则一;成员照搬判定方案 R3 §3.3 规则一四类:
-#: 遭遇/投资策略/补给/商店面板——「按下一节点类型自动弹」中有独立分发分支
-#: 的四类;巨星/祈愿非节点边界标记不入清单,R3 §5-③.1 残留申报)。
-SCREEN_CONTEXT_POPUP_FAMILY: frozenset[str] = frozenset({
-    '货币战争-遭遇节点',
-    '货币战争-投资策略',
-    '货币战争-补给',
-    SCREEN_SHOP_PANEL,
-})
-
-#: 弹窗腿守卫集(§3.4.1 规则四;语义 = 「本节点备战帧未被分派过」的画面侧
-#: 判据。**成员终版 = 结算窗 ∪ 开局链,0p/0q 出族**(用户终裁 2026-09-11,
-#: ADR-0630 修订节·守卫族终版:守卫族残留 0p/0q 会与专用腿②③构成级联双推进——专用腿推进
-#: 后弹窗腿再 +1,节点键控整段偏移;弹窗腿缓存守卫只是掩码,不是结构防线)):
-#: - ``BATTLE_WAIT_CONTEXT`` = 战斗/结算窗段内相位 token(R3 的「战斗等待」
-#:   分支——段内多物理屏,观察阶段键 battle_or_transit 无法细分到建档名,
-#:   按分支级记录,边界申报见值注释);
-#: - 开局链成员 = 简报/投资环境/等待 1-1(0r/0s 写点 = cw_loop 分派分支的
-#:   分支标识写入,R2 开局链写点)+ 等待 1-1(投资环境后的开局补给动画等待
-#:   段,无独立画面建档——分支级 token 同 ``BATTLE_WAIT_CONTEXT`` 变体;
-#:   判定方案 §3.6 S1 形态判据:等待期商店面板先被采到 → 弹窗腿开局候选);
-#: - **出族成员申报**:``货币战争-BOSS简报``(0p)与 ``货币战争-位面过渡``
-#:   (0q)各有确定性专用腿(本模块规则③/②),自身推进不依赖弹窗腿,作为
-#:   prev 也不得再触发弹窗腿(R1.1 曾以 E12 边序勘误把 0p 列入本族,随规则③
-#:   落码出族;boss 流真序 = 奖励关结算 → 0p 简报 → 商店自动开,
-#:   screen_flow_timing.md #26/#14/#27 不变)。
+#: 战斗/结算段内相位 token(观察阶段键 battle_or_transit 的上下文对标识;
+#: 段内多物理屏,观察阶段键无法细分到建档名,按分支级记录)。恢复局旗标
+#: (resumed_match)供其消费的弹窗腿禁用分支已随弹窗腿退役,本 token 现仅
+#: 承载上下文对画像。
 BATTLE_WAIT_CONTEXT: str = '货币战争-战斗等待'
-SCREEN_CONTEXT_GUARD_PREV: frozenset[str] = frozenset({
-    BATTLE_WAIT_CONTEXT,
-    '货币战争-简报',
-    '货币战争-投资环境',
-    '货币战争-等待1-1',
-})
 
-# ---- 确定性腿触发面与类型派生映射(R1.2,§3.4.1 四规则组终版)----
-
-#: 位面过渡画面标识(0q;规则②触发面。写点 = cw_loop 分支分支标识写入
-#: 「点击空白处继续」判定;0q 不入弹窗守卫族,出族申报见
-#: SCREEN_CONTEXT_GUARD_PREV 值注释)。过渡屏链 = 离开位面链
-#: (件 B 设计 v1.1 §3.1.1 F1 定谳)——下位面节点类型不可自定,本屏只供
-#: 规则②节点推进,零类型写。
-SCREEN_PLANE_TRANSITION: str = '货币战争-位面过渡'
-
-#: BOSS 简报画面标识(0p;规则③触发面,写点 = cw_loop 0p 分支「强敌来袭」
-#: 判定;亦为弹窗腿守卫族成员——成员面申报见上,规则③落码后推进来源 =
-#: 本屏自身,守卫成员降为次序无关的语义申报)。
+#: BOSS 简报画面标识(BOSS 类型直定的 trigger_screen;类型直定写端 =
+#: ``kernel/cw_screen_report/boss_briefing.py``,目标 = 现 hist——简报 op
+#: 被分派 ⇔ 结算确认证据集同源命中 ⇔ hist 已推进至 boss 节点,见该迭代
+#: design §2.5 表/§2.3 证据集同源条款)。
 SCREEN_BOSS_BRIEFING: str = '货币战争-BOSS简报'
-
-#: 类型派生·专属画面直定映射(§3.4.1 类型派生;键 = 画面标识,值 = 节点
-#: 类型 token)。值词表与备战帧链读链(obs ``_NODE_TYPE_KEYWORDS``)及 sim
-#: 引擎类型池同源,禁新造 token。**商店面板块不入本映射**——商店对任意
-#: 节点类型都开(非专属)→ 类型「未定型」零直定写;其类型来源 = 规则四②
-#: 「商店查现行链」(:func:`chain_node_type`,链观察落地批接线,见派生步
-#: 商店分支)。目标节点坐标系 = 专属屏所属节点(弹窗族屏 = 即将
-#: 进入的节点,0p = 简报所报的下一节点)。
-SCREEN_NODE_TYPE_DIRECT: dict[str, str] = {
-    SCREEN_BOSS_BRIEFING: 'boss',
-    '货币战争-补给': 'supply',
-    '货币战争-遭遇节点': 'encounter',
-    '货币战争-投资策略': 'invest',
-}
 
 
 def node_ordinal_of(plane: int, round_num: int) -> int:
@@ -1953,13 +1909,11 @@ class GameState:
     # —— 恢复局旗标(渠道③接管协议 logic_hook,relay 契约同族先例)——
     # 局级生命周期,新局新容器 = 天然缺省 None 恒假。
     # [索引定义] resumed_match: True = 本局为恢复对局(新 match 但游戏在中局
-    # 续跑)——弹窗腿在派生 hist 空时禁用不猜(防把恢复局首弹窗误推断成开局
-    # 节点 1),消化后备战帧腿 A 权威接管。写入端单一源 = cw_loop 恢复检测两
-    # 确认点(_iter==1 战斗帧恢复检测 / 备战帧 resume_candidate 确认,
-    # ``_mark_session_resumed`` 单口);读端 = cw_observation.read_game_state
-    # (经 observe_screen_context(resumed=…) 进派生规则,读值不落旗标——
-    # 一次性会话语义,非消费即清)。None = 未写(正常新局恒假语义,开局推断
-    # 合法不受误伤)。
+    # 续跑)——历史用途 = 弹窗腿在 hist 空时禁用不猜(防把恢复局首弹窗误推断
+    # 成开局节点 1);弹窗腿退役后保留为 journal 局画像事实(写入端单一源 =
+    # cw_loop 恢复检测两确认点,``_mark_session_resumed`` 单口;读端已随
+    # 弹窗腿退役,读值不落旗标——一次性会话语义,非消费即清)。
+    # None = 未写(正常新局恒假语义)。
     resumed_match: Field[bool] = field(default_factory=Field)
 
     # —— 遭遇选档观测面(E-2 平级新结构;非 Settlement 域字段,准入注释见该域)——
@@ -2145,25 +2099,28 @@ class GameState:
 
     # —— 逻辑态派生域与画面上下文域(R1 §3.1.4;gs_schema 域 'derivation')——
     # 写点准入:上下文对与顶栏原文唯一写点 = ①观察汇聚
-    # (observe_screen_context,观察层);node_ord 唯一写点 = 派生规则
-    # (四腿全部 write_logic 逻辑层——备战腿=解析顶栏文本成序键,同样是
-    # 「从观察数据计算逻辑值」,用户终裁 2026-09-11 字段层次终极版)——
+    # (observe_screen_context,观察层);node_ord 写点 = 两态生命周期
+    # (锚定态 observe_node_anchor 直写 observation / 推进态
+    # report_node_advance 经 advance_node_effective 写 logic——「禁 observe
+    # 直写序键」旧裁决已随动作上报化迭代推翻,design §2.2/§2.7-7)——
     # 其余渠道写入 = 越格。
     prev_screen: Field[str] = field(default_factory=Field)       # 上一次分派观察的画面标识(开局前 '')
     current_screen: Field[str] = field(default_factory=Field)    # 最近一次分派观察的画面标识(派生规则输入面)
     # [索引定义] top_bar_raw = 备战帧顶栏原始文本(如「备战阶段 1-3」OCR
     # 原文)。**观察层字段**(唯一 observe() 写点 = 观察汇聚,source=
-    # observation):只落画面原始读数,禁写派生值(用户终裁 2026-09-11 字段
-    # 层次终极版:序键是逻辑层,原文才是观察层)。原文缺读 = 不写(禁猜);
+    # observation):只落画面原始读数,禁写派生值(序键走两态生命周期,
+    # 原文才是观察层)。原文缺读 = 不写(禁猜);
     # 取值时机 = 备战帧观察期快照。生产透传(读链暴露原文)候漏斗接线批。
     top_bar_raw: Field[str] = field(default_factory=Field)
     # [索引定义] node_ord = 节点序 ord=(plane-1)*9+round(基 1,与效果账本
-    # advance_node 同坐标系)。**逻辑层字段(用户终裁 2026-09-11 字段层次
-    # 终极版)**——四条腿(备战规则=解析顶栏文本成序键/弹窗规则/0q/0p)全部
-    # 是「从观察数据计算逻辑值」的派生规则,全部经 write_logic() 写逻辑层
-    # (source=logic),无 observe() 写序键的例外;类型派生同在逻辑层。
+    # advance_node 同坐标系)。**两态序键(迭代 2026-09-20-node-advance-
+    # action-report design §2.2)**:观察锚定态(source=observation,写端 =
+    # observe_node_anchor 直写,「禁 observe 直写序键」旧裁决已推翻)解锁
+    # 下一次终结动作上报;推进未确认态(source=logic,写端 =
+    # report_node_advance 经 advance_node_effective)等观察锚定翻态。
     # 生效序读口 = :func:`effective_node_ord`(派生计算,非存储字段);
-    # None = 未定。取值时机 = 派生写入期快照;写端 = 派生规则。
+    # None = 未定(开局/恢复局首锚定前,观察态门 value 守卫据此挡首次上报)。
+    # 取值时机 = 写入期快照。
     node_ord: Field[int] = field(default_factory=Field)
 
     # —— 动作回执域(R2 §3.1.1-4/§3.2.5;gs_schema 域 'receipts')——
@@ -2767,41 +2724,30 @@ class GameState:
         return False
 
     def observe_screen_context(self, screen_name: str, *,
-                               phase_round: tuple[int, int] | None = None,
-                               resumed: bool = False,
                                top_raw: str | None = None,
                                sig: ChannelSig | None = None) -> None:
-        """画面上下域写入 + 节点推进派生(R1 §3.1.4/§3.4;观察汇聚模块唯一
-        写点,生产接线 = read_game_state 漏斗,随分派
-        观察调用 + cw_loop 开局链分支写点)。
+        """画面上下域写入(观察汇聚模块唯一写点,生产接线 = read_game_state
+        漏斗,随分派观察调用)。
 
         - 上下文对(渠道①):旧 ``current_screen`` 转 ``prev_screen`` 后写
           新值,成对变更同 group(§3.1.4);
-        - 顶栏原文观察层(用户终裁 2026-09-11 字段层次终极版):top_raw 非
-          空 ∧ 干净备战帧 → ``observe(top_bar_raw)`` 落画面**原始读数**
-          (观察层唯一落点;序键经派生写逻辑层,禁 observe 直写序键);
-        - 派生(逻辑层,同临界区——「先推进后选卡」时序语义由写入顺序自然
-          保证,§3.4.1):四规则组终版(实现 = R1.2,纯 _swap 内管线无 hook
-          框架),固定次序 = 节点域判定 → 类型派生:**四条腿全部
-          write_logic 写逻辑层**(备战规则=解析顶栏文本成序键,同属「从观察
-          数据计算逻辑值」):①备战腿(:func:`_derive_node_observed`)在干净
-          备战帧 ∧ 顶栏可读时落权威值;②位面过渡腿
-          (:func:`_derive_node_plane_transition`)在 0q 被采到时推进
-          (plane+1, 1);③BOSS简报腿(:func:`_derive_node_boss_brief`)在
-          0p 被采到时推进 当前+1 并随屏直定 boss 类型;④弹窗腿
-          (:func:`_derive_node_inferred`)在守卫通过时推断 +1;类型派生
-          (:func:`_write_derived_node_type`)对专属屏(遭遇/补给/策略)直定
-          节点类型,商店面板未定型零写(查链接口 :func:`chain_node_type`
-          预留,接线候件 B 实施批)。派生行各占版本、渠道签名 = logic_hook;
-        - phase_round = 本帧顶栏 (plane, round) 读数(备战腿直读输入;弹窗腿
-          缓存守卫输入,判定方案 R3 规则二③;规则②位面来源优先级第一位);
-        - top_raw = 本帧顶栏原始文本(如「备战阶段 1-3」;观察层落点,缺读
-          = None 不写禁猜;生产读链透传候漏斗接线批);
-        - resumed = 恢复局标记(真值随恢复检测接线批带入;真 = 弹窗腿禁用
-          不猜,R3 规则六)。
+        - 顶栏原文观察层:top_raw 非 空 ∧ 干净备战帧 → ``observe(top_bar_raw)``
+          落画面**原始读数**(观察层唯一落点);
+        - 类型派生·商店分支:商店面板(非专属,「未定型」零直定)→ 查现行链
+          (:func:`chain_node_type`)直定,链缺/位越界/未辨 = 零写(禁猜,
+          链正本 §6 零内建回落)。
 
-        上下文/派生写入无条件(journal 常开,R5 W1 影子闸折叠——ADR-0634;
-        行落盘另以 sink 在场/run_id 在场为准,记录被动不分支写路径)。
+        **辖域(迭代 2026-09-20-node-advance-action-report 切换批,design
+        §2.4 攻击 B1 修正)**:本口已退出**推进域**(``node_ord``/
+        ``node_hist_ord`` 写入与效果推进尾段随四推断腿退役)——节点推进唯一
+        落账入口 = :func:`advance_node_effective`(动作上报/观察锚定);
+        ``gs.node`` 观察镜像写端保留在漏斗(决策层坐标供给端,与 gold/hp
+        同类的观察域写入,零派生零推进)。
+
+        - top_raw = 本帧顶栏原始文本(如「备战阶段 1-3」;观察层落点,缺读
+          = None 不写禁猜);
+        - 写入无条件(journal 常开,R5 W1 影子闸折叠——ADR-0634;
+          行落盘另以 sink 在场/run_id 在场为准,记录被动不分支写路径)。
         """
         if not screen_name:
             raise ValueError('observe_screen_context 拒绝空画面标识'
@@ -2823,44 +2769,13 @@ class GameState:
         # —— 观察层:顶栏原始文本(只落原始读数,禁派生值;字段层次终极版)——
         if screen_name == SCREEN_PREP_FRAME and top_raw:
             self.observe(self.top_bar_raw, top_raw, sig=sig)
-        # —— 派生规则(渠道③;四规则组终版 §3.4.1,固定次序 = 节点域判定
-        # → 类型派生;纯 _swap 内管线,无订阅/回调框架,用户 2026-09-10 裁)——
-        if screen_name == SCREEN_PREP_FRAME and phase_round is not None:
-            _derive_node_observed(
-                self, node_ordinal_of(*phase_round),
-                trigger_screen=screen_name, seq=seq)
-        elif (screen_name in SCREEN_CONTEXT_POPUP_FAMILY
-                and prev_val in SCREEN_CONTEXT_GUARD_PREV):
-            _derive_node_inferred(
-                self, prev_screen=prev_val, trigger_screen=screen_name,
-                phase_round=phase_round, resumed=resumed, seq=seq)
-        if screen_name == SCREEN_PLANE_TRANSITION:
-            # 规则②·位面过渡腿(确定性腿;与④互斥按屏身份分流,判定互不
-            # 依赖——④的弹窗族不含 0q,守卫交互只经 hist 去重键)
-            _derive_node_plane_transition(
-                self, phase_round=phase_round, seq=seq)
-        elif screen_name == SCREEN_BOSS_BRIEFING:
-            # 规则③·BOSS 简报腿(确定性腿;推进+boss 类型同批,返回值 =
-            # 类型目标节点序,供固定次序的类型段复用)
-            _derive_node_boss_brief(self, seq=seq)
-        # —— 类型派生(专属画面直定半部;节点域之后同临界区)——
-        # 弹窗族专属屏(遭遇/补给/策略)类型目标 = 推进后 hist(弹窗屏属
-        # 即将进入的节点);0p 的类型已随规则③同批落账,此处跳过防双写。
-        _direct_kind = SCREEN_NODE_TYPE_DIRECT.get(screen_name)
-        if _direct_kind is not None and screen_name != SCREEN_BOSS_BRIEFING \
-                and self.node_hist_ord is not None:
-            _write_derived_node_type(
-                self, _direct_kind, target_ord=self.node_hist_ord,
-                actor='derive_node_type',
-                trigger_screen=screen_name, seq=seq)
-        elif screen_name == SCREEN_SHOP_PANEL:
-            # 规则四②·商店查现行链(链观察落地批):商店对任意节点类型
-            # 都开(非专属,不入直定映射)→ 类型查现行链——链在位 = 直定写
-            # (actor 同族),链缺/位越界/未辨 = 零写(禁猜,链正本 §6 零
-            # 内建回落)。目标节点 = 生效序与观察镜像的最新者(店开帧可在
-            # 推进腿未计数的新节点上,镜像已由读链写新序键——目标只取
-            # hist 会把类型回写上一节点,run_20260918_074040 第 11 例病理;
-            # 仿 :func:`_derive_node_plane_transition` 位面反解式)。
+        # —— 类型派生(商店查现行链;链观察落地批)——
+        # 商店对任意节点类型都开(非专属)→ 类型查现行链——链在位 = 直定写,
+        # 链缺/位越界/未辨 = 零写(禁猜,链正本 §6 零内建回落)。目标节点 =
+        # 生效序与观察镜像的最新者(店开帧可在推进腿未计数的新节点上,镜像
+        # 已由读链写新序键——目标只取 hist 会把类型回写上一节点,
+        # run_20260918_074040 第 11 例病理)。
+        if screen_name == SCREEN_SHOP_PANEL:
             _shop_target = _shop_panel_type_target(self)
             if _shop_target is not None:
                 _shop_plane = (_shop_target - 1) // 9 + 1
@@ -2871,11 +2786,6 @@ class GameState:
                         self, _chain_q.token, target_ord=_shop_target,
                         actor='derive_node_type',
                         trigger_screen=screen_name, seq=seq)
-        # —— 效果推进段(迁移迭代 design §2.1;管线尾段同临界区)。历史
-        # prep_frame 闸随金结算调用点归零退役;生产接线现归推进生效原语
-        # (:func:`advance_node_effective`)尾段,此处为旧派生管线共存期
-        # 保留调用,切换批(3.5)随管线一并退役。
-        tick_effect_boundary(self)
 
     # —— 心跳观察者(§2.4 关键结构 2)——
 
@@ -2897,15 +2807,15 @@ class GameState:
         return cur
 
 
-# ============================================================ 节点推进派生规则(R1 §3.4;渠道③)
+# ============================================================ 节点类型派生与生效序读口(渠道③)
 
 def _derive_write(gs: GameState, target: Field, value: int | NodeKey, *,
                   actor: str, trigger_screen: str, seq: int,
                   note: str = '') -> None:
-    """派生规则写入(逻辑层统一形态):签名 family=logic_hook、
+    """派生写入(逻辑层统一形态):签名 family=logic_hook、
     actor=规则登记名、screen=关联画面、组 id = 'hook:<登记名>@<seq>'。
-    value = 序值(int,node_ord 逻辑层)或节点键(NodeKey,
-    类型派生经节点域写 node.kind,§3.1.3 节点域③格)。"""
+    value = 节点键(NodeKey,类型派生经节点域写 node.kind,§3.1.3 节点域
+    ③格;节点序推进已不走本口——序号前进唯一入口 = advance_node_effective)。"""
     sig = ChannelSig(family='logic_hook', actor=actor, screen=trigger_screen,
                      mode='compute', group_id=f'hook:{actor}@{seq}')
     gs.write_logic(target, value, produced_by=actor, sig=sig, note=note)
@@ -2916,7 +2826,8 @@ def effective_node_ord(gs: GameState) -> int | None:
     ——「node 逻辑态改读派生域」M4 工作项已作废:决策面现读容器 gs.node 镜像
     合规,无切换义务,ADR-0630 修订节 2/正本消费面申报)
     = max(node_ord 字段现值, node_hist_ord)——单字段双值结构(ADR-0630 修订
-    节 2):字段现值 = 最近一次派生写入(四腿全逻辑层 write_logic),hist =
+    节 2):字段现值 = 最近一次写入(锚定直写 observation / 推进 write_logic
+    两态),hist =
     run 内已见最大值(跃迁去重键 ``(run_id, effective_ord)`` 载体);两者之
     差仅存在于纠偏写序中间态,取 max 即生效语义,None 安全(双空 = 未定);
     消费面恒逻辑层,观察层(top_bar_raw)不参与序比较。"""
@@ -2948,80 +2859,6 @@ def _shop_panel_type_target(gs: GameState) -> int | None:
     ords = [v for v in (effective_node_ord(gs), _obs_node_ordinal(gs))
             if v is not None]
     return max(ords) if ords else None
-
-
-def _derive_node_observed(gs: GameState, candidate: int, *,
-                          trigger_screen: str, seq: int) -> None:
-    """备战腿·逻辑层(§3.4.1 规则二,本体照搬判定方案 R3 规则二/三):
-    干净备战帧 ∧ 顶栏可读 → 解析顶栏文本成序键 → ``write_logic(node_ord)``
-    (用户终裁 2026-09-11 字段层次终极版:备战规则同样是「从观察数据计算
-    逻辑值」的派生规则,四腿全部写逻辑层,无 observe() 写序键的例外——
-    顶栏原文的观察层落点 = ``top_bar_raw`` 字段,由观察汇聚 observe() 写)。
-
-    跃迁判定与推进去重(设计 v3.1-N2,去重键 = ``(run_id, effective_ord)``):
-    - candidate > hist → 推进写入(去重键未占,本腿越过 hist);
-    - candidate == hist → 同序照写(去重键已占,不构成第二次跃迁;值未变
-      行自然带 ``same_value=true``,§3.2.3 体积申报 M1 实测);
-    - candidate < hist → 倒退读数,不写字段静默跳过(R3 规则三倒退免疫;
-      v3.2-G10:倒退丢弃 obs_event 留证——拒读类证据占版本内嵌当时 state,
-      事件词表 'arbitrate',actor 保留触发规则登记名归因,family 走 obs 族
-      留证契约,同类型直定冲突先例)。
-    """
-    hist = gs.node_hist_ord
-    if hist is not None and candidate < hist:
-        # v3.2-G10 倒退留证:零状态变更,占版本(obs_event 行型 2)
-        gs.note_obs_event(
-            'arbitrate', 'node_ord',
-            {'candidate': candidate, 'hist': hist},
-            verdict='倒退读数丢弃留证(R3 规则三倒退免疫;候选 < hist 不写字段)',
-            sig=ChannelSig(family='obs', actor='derive_node_observed',
-                           screen=trigger_screen, mode='read',
-                           group_id=f'hook:derive_node_observed@{seq}'))
-        return   # 倒退读数:不写字段(R3 规则三倒退免疫)
-    _derive_write(gs, gs.node_ord, candidate,
-                  actor='derive_node_observed',
-                  trigger_screen=trigger_screen, seq=seq)
-    if hist is None or candidate > hist:
-        gs.node_hist_ord = candidate   # 去重键占位:同序恰一次推进(v3.1-N2)
-
-
-def _derive_node_inferred(gs: GameState, *, prev_screen: str,
-                          trigger_screen: str,
-                          phase_round: tuple[int, int] | None,
-                          resumed: bool, seq: int) -> None:
-    """弹窗腿·逻辑层(§3.4.1 规则一,本体照搬判定方案 R3 规则二/三):
-    上画面 ∈ 前驱守卫族 ∧ 当前 ∈ 弹窗族 → ``write_logic(node_ord)`` 推进 +1
-    (首局无前值且非恢复局 → 1)。
-
-    - 守卫族 = :data:`SCREEN_CONTEXT_GUARD_PREV`(中性名,语义 = 「本节点
-      备战帧未被分派过」= 结算窗 ∪ 开局链,成员终版 0p/0q 出族——专用腿
-      ②③,用户终裁 2026-09-11,ADR-0630 修订节·守卫族终版);弹窗族 =
-      :data:`SCREEN_CONTEXT_POPUP_FAMILY`;
-    - 缓存守卫(R3 规则二③本体):弹窗帧无进度屏显,顶栏读数 = 缓存 c——
-      要求 c == hist 才推断 +1;c 缺位或 ≠ hist → 零触发交腿 A 兜底;
-    - 恢复局禁用(R3 规则六):hist 空 ∧ resumed → 不猜;
-    - 推进去重(v3.1-N2):候选 ≤ hist 不写不锚(重入拒绝;去重键 =
-      (run_id, effective_ord) 已占,同序恰一次推进)。
-    """
-    hist = gs.node_hist_ord
-    effective = effective_node_ord(gs)
-    if hist is None:
-        if resumed:
-            return   # 恢复局腿 B 禁用不猜(R3 规则六),消化后备战帧腿 A 接管
-        candidate = 1
-    else:
-        if phase_round is None:
-            return   # 缓存守卫输入缺位:禁用不猜(交腿 A 兜底)
-        if node_ordinal_of(*phase_round) != hist:
-            return   # c != hist(缓存滞后/超前):零触发,交腿 A 兜底(R3 规则二③)
-        candidate = (effective + 1) if effective is not None else 1
-        if candidate <= hist:
-            return   # 推进去重(v3.1-N2:候选 ≤ hist 不写不锚,去重键已占)
-    _derive_write(gs, gs.node_ord, candidate,
-                  actor='derive_node_inferred',
-                  trigger_screen=trigger_screen, seq=seq)
-    if hist is None or candidate > hist:
-        gs.node_hist_ord = candidate   # 去重键占位(同序恰一次推进)
 
 
 def _node_key_for_ord(ordinal: int, kind: str) -> NodeKey:
@@ -3215,12 +3052,14 @@ def _write_derived_node_type(gs: GameState, kind: str, *, target_ord: int,
       留证(event='arbitrate',禁静默覆盖)+ 最新直定值落位(最新观察 =
       真相);直定证据 = 画面现身锚,属观察级事实,sig 走 obs 族
       (note_obs_event 契约),actor = 触发规则登记名保留归因;
-    - 已知边界(申报):弹窗族屏重入/缓存滞后形态下目标 = hist,若历史
+    - 已知边界(申报):直定屏重入/缓存滞后形态下目标 = hist,若历史
       推进与屏所属节点错位,倒退免疫丢弃留证(不落错键);目标序 ≥ 镜像
-      序的错位形态(弹窗屏属下一节点)类型照落,后续备战帧真读类型经
+      序的错位形态类型照落,后续备战帧真读类型经
       观察覆盖核对(§2.3 观察赢)——真失配才走三分流;
-    - 商店面板块不专属 → 不入直定映射(observe_screen_context 分流),
-      类型「未定型」零写;查现行链接口 = :func:`chain_node_type`。
+    - 商店面板块不专属 → 零直定(observe_screen_context 商店分支查现行链),
+      类型「未定型」零写;查现行链接口 = :func:`chain_node_type`。现役专属
+      画面直定写端 = BOSS 简报屏(kernel/cw_screen_report/boss_briefing)
+      与商店查链两处,actor = 宿主登记名保留归因。
     """
     key = _node_key_for_ord(target_ord, kind)
     cur = gs.node.value
@@ -3246,81 +3085,6 @@ def _write_derived_node_type(gs: GameState, kind: str, *, target_ord: int,
                            group_id=f'hook:{actor}@{seq}'))
     _derive_write(gs, gs.node, key, actor=actor,
                   trigger_screen=trigger_screen, seq=seq)
-
-
-def _derive_node_plane_transition(gs: GameState, *,
-                                  phase_round: tuple[int, int] | None,
-                                  seq: int) -> None:
-    """位面过渡腿(§3.4.1 规则二·R1.2;actor=derive_node_plane_transition):
-    0q 被采到 → 逻辑节点 = (当前位面+1, 1),经节点序坐标系公式落单整数
-    写入 ``node_ord``(逻辑层)。
-
-    - 「当前位面」来源优先级:①调用方顶栏读数 phase_round(测试/未来漏斗
-      直读形态;生产 cw_loop 分支写点不带)②gs.node 观察镜像 plane(顶栏
-      权威链遗产)③hist 反解((hist-1)//9+1)——三源全缺 = 「当前位面」
-      不可知(开局过渡屏形态),禁猜不写,交规则①④计数;
-    - 共同语义:候选 ≤ hist 不写不锚(重复 0q loop pass 重入拒绝,去重键
-      =(run_id, effective_ord) 已占,同序恰一次推进);
-    - 零类型写:过渡屏链 = 离开位面链(件 B v1.1 §3.1.1 F1 定谳),下位面
-      节点类型不可自定——新节点类型由后继专属屏/备战帧链读链承接。
-    """
-    hist = gs.node_hist_ord
-    plane: int | None = None
-    if phase_round is not None:
-        plane = int(phase_round[0])
-    elif gs.node.value is not None:
-        plane = int(gs.node.value.plane)
-    elif hist is not None:
-        plane = (hist - 1) // 9 + 1
-    if plane is None or plane < 1:
-        return   # 当前位面不可知:禁猜(R3 禁猜纪律;开局过渡屏交①④计数)
-    candidate = plane * 9 + 1        # (plane+1, 1) = (plane+1-1)*9+1
-    if hist is not None and candidate <= hist:
-        return   # 重入拒绝(v3.1-N2:候选 ≤ hist 不写不锚,去重键已占)
-    _derive_write(gs, gs.node_ord, candidate,
-                  actor='derive_node_plane_transition',
-                  trigger_screen=SCREEN_PLANE_TRANSITION, seq=seq)
-    gs.node_hist_ord = candidate     # 去重键占位(同序恰一次推进)
-
-
-def _derive_node_boss_brief(gs: GameState, *, seq: int) -> int | None:
-    """BOSS 简报腿(§3.4.1 规则三·R1.2;actor=derive_node_boss_brief):
-    0p 被采到 → 逻辑节点 = 当前节点 + 1,类型 = BOSS 随简报证据自带
-    (禁写死 round=9——boss 序位随位面格数/环境加节点漂移,序位只由
-    「当前+1」承载)。双写 node_ord(逻辑层)+ node.kind(类型派生经节点域,
-    §3.4.1 规则三动作面),同 actor 同批 = 同 group。
-
-    - 当前节点 = effective_ord(max 双派生字段);未知 → +1 不可计算,
-      禁猜不写(交腿 A/④计数);
-    - 重复触发判别(幂等锚):本腿推进时同批把镜像写为 boss 节点键
-      (类型随简报自带 = 本腿的工作回执)——镜像已锚在 hist 且类型 boss
-      = 本简报节点已被计数 → 零写返回 hist(简报屏多 loop pass 重入不
-      重推;候选 effective+1 以移动中的 effective 为基,单独 ≤ hist 判不
-      出本腿自身推进后的重入,锚即判别器)。残余边界(申报):镜像 boss
-      类型经读链继承窗延续到后续节点且恰停 hist 的形态可致假锚漏推一次
-      ——漏推由腿 A 备战帧顶栏兜底计数,节点键无永久偏斜;
-    - 返回值 = 类型目标节点序(observe_screen_context 固定次序的预留读
-      位),不可推进时返回 None。
-    """
-    hist = gs.node_hist_ord
-    effective = effective_node_ord(gs)
-    if effective is None:
-        return None   # 当前节点未知:禁猜
-    cur = gs.node.value
-    if cur is not None and cur.kind == 'boss' \
-            and node_ordinal_of(cur.plane, cur.round_num) == hist:
-        return hist   # 幂等锚命中:本简报节点已计数,零写(防重推)
-    candidate = effective + 1
-    if hist is not None and candidate <= hist:
-        return hist   # 去重键已占(先行腿已推进):boss 节点 = hist
-    _derive_write(gs, gs.node_ord, candidate,
-                  actor='derive_node_boss_brief',
-                  trigger_screen=SCREEN_BOSS_BRIEFING, seq=seq)
-    gs.node_hist_ord = candidate     # 去重键占位(同序恰一次推进)
-    _write_derived_node_type(gs, 'boss', target_ord=candidate,
-                             actor='derive_node_boss_brief',
-                             trigger_screen=SCREEN_BOSS_BRIEFING, seq=seq)
-    return candidate
 
 
 # ============================================================ 现行链查询接口(件 B 设计 v1.1 §3.4 语义预留,R1.2)

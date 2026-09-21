@@ -694,9 +694,35 @@ class CwScreenBattleWait(SrOperation):
 
         # ③出口 A:完成判据白名单任一命中 → 交回循环分发
         if self._hit_completion_anchor(screen):
+            # bail 残余封缝(T-2 reviewer 转交):白名单命中 ⇒ 必有上报尝试
+            # ——CwOpSettleConfirm bail(过渡帧双 miss 上界退出)后流转迟到
+            # (白名单锚后现身)时,本出口补 settle_confirm 上报,恢复
+            # 「白名单命中 ⇒ 必有上报」不变量(design §2.3 证据集同源条款:
+            # 上报先于简报 op 分派,hist 已推进,boss 类型直定目标恒正确)。
+            # 幂等:op 内已报则观察态门挡(零推进),双报告无害;局外/
+            # session 缺/异常 = best-effort 跳过。
+            self._report_settle_confirm_best_effort()
             log.info('[cw-bwait] 完成判据白名单命中 → 交回循环分发')
             return self.round_success('back_to_loop')
         return self._dispatch_frame(screen)
+
+    def _report_settle_confirm_best_effort(self) -> None:
+        """③段白名单命中出口的 settle_confirm 补报(best-effort;幂等 =
+        kernel 观察态门 + 推进原语去重)。"""
+        try:
+            _match = getattr(self.ctx, 'cw_match', None)
+            _session = getattr(_match, 'session', None) \
+                if _match is not None else None
+            if _session is None:
+                return
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                gs_of_ctx,
+                report_node_advance,
+            )
+            report_node_advance(gs_of_ctx(self.ctx, _session),
+                                trigger='settle_confirm')
+        except Exception as e:  # noqa: BLE001  上报 best-effort,不阻塞出口
+            log.debug(f'[cw-bwait] 白名单出口补报跳过: {e}')
 
     def _dispatch_frame(self, screen) -> OperationRoundResult:
         """分支链逐位转录体(旧 wait() 出口判定之后的分支序列平移,

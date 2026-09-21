@@ -958,44 +958,13 @@ class CwLoop(SrOperation):
         counters = getattr(strategy_state_of(session), 'cw4_counters', None)
         return dict(counters) if isinstance(counters, dict) else None
 
-    def _note_branch_screen(self, screen_name: str) -> None:
-        """开局链分支标识 → 画面上下域(R2 开局链写点;弹窗腿守卫集
-        prev_branch 供给,设计 v3.1 §3.4.1)。
-
-        - 只写分支标识,**不碰分派逻辑**——分支判定/序位/守卫域零改动,
-          本方法在分支命中点旁路调用(最小侵入面);
-        - 写入口 = GameState :meth:`observe_screen_context` 唯一写口
-          (域准入:上下文域 ①obs 家族;分支命中 = 锚级画面识别,mode=
-          read,actor = 本外循环 op 类名);旧 current 转 prev 成对同组,
-          下一次分派观察(漏斗/下一分支)即弹窗腿守卫集的 prev 输入;
-        - 分支级标识变体:「等待 1-1」无独立画面建档,token 同
-          ``BATTLE_WAIT_CONTEXT`` 申报(kernel 常量注释;R3 判定方案
-          §3.3 规则二② 开局链五成员之一);
-        - journal 常开(R5 W1 影子闸折叠,ADR-0634)写入无条件;无局跳过;
-          best-effort 不阻塞分派。
-        """
-        try:
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                ChannelSig,
-                game_state_from_ctx,
-            )
-            gs = game_state_from_ctx(self.ctx)
-            if gs is None:
-                return
-            gs.observe_screen_context(
-                screen_name,
-                sig=ChannelSig(family='obs', actor='CwLoop',
-                               screen=screen_name, mode='read'))
-        except Exception as e:  # noqa: BLE001  上下文写入不阻塞分派
-            log.debug(f'[cw-loop] 分支标识写入跳过: {e}')
-
     def _mark_session_resumed(self) -> None:
-        """恢复局旗标 → 容器 match_facts 域 Field(D2 live 接线;R1 缺口承接,
-        R3 判定方案规则六弹窗腿禁用供给面)。
+        """恢复局旗标 → 容器 match_facts 域 Field(D2 live 接线;R1 缺口承接)。
 
         写点 = 恢复检测两确认点(战斗帧恢复检测/备战帧 resume_candidate
-        确认);读端 = 观察汇聚漏斗(经 observe_screen_context(resumed=…)
-        进派生规则,恢复局弹窗腿 hist 空时禁用不猜)。渠道③接管协议
+        确认);历史读端 = 弹窗腿禁用分支,已随弹窗腿退役(迭代
+        2026-09-20-node-advance-action-report 切换批)——旗标现役语义 =
+        journal 局画像事实(恢复局形态判读锚),零逻辑消费。渠道③接管协议
         (logic_hook,actor = ResumeAttach 登记名)。best-effort 不阻塞
         分派;session 缺(局外/桩)静默跳过。
         """
@@ -1478,7 +1447,6 @@ class CwLoop(SrOperation):
                 frame_tag='overlay_frontless', wait=1.0)
 
         if name == '货币战争-BOSS简报':
-            self._note_branch_screen('货币战争-BOSS简报')   # R2 开局链写点
 
             def _on_boss_briefing(ok: bool, res: Any) -> None:
                 log.info('[cw-loop] BOSS 简报 → CwScreenBossBriefing → %s',
@@ -1490,7 +1458,6 @@ class CwLoop(SrOperation):
                 on_result=_on_boss_briefing)
 
         if name == '货币战争-位面过渡':
-            self._note_branch_screen('货币战争-位面过渡')   # R2 开局链写点
             # boss 排他(判别单一源消费;第五局 1-9 形态的纵深):boss 帧标题
             # 「强敌来袭」被 OCR 误读击穿时,其底图位面节点锚若可读,阶段一
             # 身份会命中本分支 → 误派过渡 op 空 fail。命中 boss 判别片段即
@@ -1525,7 +1492,6 @@ class CwLoop(SrOperation):
                 on_result=_on_plane_transition_identity)
 
         if name == '货币战争-简报':
-            self._note_branch_screen('货币战争-简报')   # R2 开局链写点
 
             def _on_briefing(ok: bool, res: Any) -> None:
                 log.info('[cw-loop] 位面简报 → CwScreenBriefing → %s',
@@ -1536,7 +1502,6 @@ class CwLoop(SrOperation):
                 frame_tag='flow_briefing', wait=1.0, on_result=_on_briefing)
 
         if name == '货币战争-投资环境':
-            self._note_branch_screen('货币战争-投资环境')   # R2 开局链写点
             from sr_od.application.currency_war.operations.cw_screen.cw_screen_invest_env import (
                 CwScreenInvestEnv,
             )
@@ -1554,7 +1519,6 @@ class CwLoop(SrOperation):
             self._dispatch_screen_op(
                 CwScreenInvestEnv(self.ctx), journal_name='投资环境',
                 frame_tag='flow_invest_env', wait=0, on_result=_on_invest_env)
-            self._note_branch_screen('货币战争-等待1-1')   # R2 开局链写点(分支级 token)
             return self._dispatch_screen_op(
                 CwScreenWaitOneOne(self.ctx), journal_name='等待1-1',
                 frame_tag='flow_wait_one_one', wait=1.0,

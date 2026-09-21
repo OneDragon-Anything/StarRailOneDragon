@@ -32,6 +32,8 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     OreSight,
     game_state_of,
     gs_of_ctx,
+    node_ordinal_of,
+    observe_node_anchor,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
 from sr_od.application.currency_war.kernel.cw_overlay_registry import (
@@ -252,6 +254,23 @@ class CwScreenPrep(SrOperation):
                     is_merge_effect_window,
                 )
                 _gs_obs = gs_of_ctx(getattr(self, 'ctx', None), session)
+                # 备战帧节点锚定(迭代 2026-09-20-node-advance-action-report
+                # design §2.4 写端 1,攻击 F1 定谳):heavy 观察回执携带本帧
+                # plane/round → observe_node_anchor(处置规则 = kernel
+                # helper 单一源:first_anchor/advance 补推/reanchor/
+                # stale_dropped)。锚定输入与旧备战腿同源(read_phase_round
+                # 直读/缓存/守卫语义不变);漏斗已退出推进域,本写端 = 干净
+                # 备战帧的唯一生产锚定点(外循环仲裁路径的 prep_clean 漏斗读
+                # 不挂锚定,攻击 R4 辖域界定)。读数缺位/局外 = 跳过(禁猜,
+                # best-effort 不阻塞观察链)。
+                if _st is not None and _st.plane is not None \
+                        and _st.round_num is not None:
+                    with contextlib.suppress(Exception):
+                        observe_node_anchor(
+                            _gs_obs,
+                            node_ordinal_of(int(_st.plane), int(_st.round_num)),
+                            trigger_screen='货币战争-备战',
+                            actor='CwScreenPrep')
                 # 备战渠道签名:备战帧观察写入 = 渠道①,actor=本 op、
                 # screen=备战建档名、quality=真读标记(承接现役真读/兜底可分
                 # 语义)。

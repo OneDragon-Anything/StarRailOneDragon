@@ -2730,25 +2730,21 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             #  中继行均已退役——写端(备战观察全量重写 + 穿戴/选卡/卖返
             #  logic 增量 + 入口链漏斗)直入容器,session 镜像面死亡;
             #  商店线权重与 flow 打分读 gs.equips/gs.selected_difficulty。)
-            # —— 画面上下文 + 节点推进派生(R1 §3.1.4/§3.4;R5 W1 常开)——
-            # 本口 = read_game_state 唯一漏斗 = 观察汇聚模块(上下文域唯一写点):
-            # 随分派观察写 prev/current 上下文对,同临界区跑四腿派生规则(备战腿
-            # 在干净备战帧直读顶栏;弹窗腿在守卫通过时推断;判定规则本体 =
-            # 判定方案单一源)。阶段键 → 画面标识映射:battle_or_transit = 战斗/
-            # 结算段内相位(多物理屏,按 prev_branch 语义记分支 token,弹窗腿
-            # 守卫集成员);phase None(全量路径,调用方 = 备战 heavy 环入口)按
-            # 干净备战帧记。写入无条件(journal 常开,R5 W1 影子闸折叠——
-            # ADR-0634;行落盘另以 sink/run_id 在场为准)。
-            _ctx_name, _ctx_top = _phase_screen_context(
-                phase, plane, round_num)
+            # —— 画面上下文(R1 §3.1.4/§3.4;R5 W1 常开)——
+            # 本口 = read_game_state 唯一漏斗 = 观察汇聚模块(上下文域唯一
+            # 写点):随分派观察写 prev/current 上下文对。阶段键 → 画面标识
+            # 映射:battle_or_transit = 战斗/结算段内相位(多物理屏,按
+            # prev_branch 语义记分支 token);phase None(全量路径,调用方 =
+            # 备战 heavy 环入口)按干净备战帧记。写入无条件(journal 常开,
+            # R5 W1 影子闸折叠——ADR-0634;行落盘另以 sink/run_id 在场为准)。
+            # 辖域(切换批 2026-09-20-node-advance-action-report design §2.4
+            # 攻击 B1):漏斗已退出推进域(node_ord/hist 写入与效果推进尾段
+            # 随四推断腿退役)——本调用只写上下文对/顶栏原文;gs.node 观察镜像
+            # 写端保留在本漏斗(上方 node 段,决策层坐标供给端)。
+            _ctx_name = _phase_screen_context(phase, plane, round_num)
             if _ctx_name is not None:
-                # D2 live 接线(R1 缺口承接):恢复局旗标(容器 match_facts
-                # 域 Field resumed_match,写端 = cw_loop 恢复检测两确认点,
-                # 渠道③接管协议)透传进派生规则——恢复局弹窗腿在 hist 空时
-                # 禁用不猜(判定方案规则六)。
-                _resumed = bool(gs.resumed_match.value)
                 gs.observe_screen_context(
-                    _ctx_name, phase_round=_ctx_top, resumed=_resumed,
+                    _ctx_name,
                     sig=_ChannelSig(family='obs', actor='cw_observation',
                                     screen=_ctx_name, mode='read'))
             gs.mark_frame_obs('view' if _spec is not None else 'full')
@@ -2773,35 +2769,36 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         shop=list(shop_val or []))
 def _phase_screen_context(phase: str | None, plane: int | None,
                           round_num: int | None,
-                          ) -> tuple[str | None, tuple[int, int] | None]:
-    """阶段键 → 画面上下域标识 + 顶栏读数(R1 §3.1.4/§3.4;映射单一源)。
+                          ) -> str | None:
+    """阶段键 → 画面上下域标识(R1 §3.1.4/§3.4;映射单一源)。
 
     - prep_clean / None(全量路径,调用方 = 备战 heavy 环入口)→ 干净备战帧
-      (:data:`SCREEN_PREP_FRAME`)——备战腿触发面;
-    - prep_shop_open → 商店面板块('货币战争-备战-开商店',弹窗族成员)——
-      顶栏读数 = 缓存 c,弹窗腿缓存守卫输入(判定方案 R3 规则二③);
-    - battle_or_transit → 战斗/结算段内相位 token(分支级标识,弹窗腿守卫集
-      成员;段内多物理屏无法细分建档名,边界申报见 kernel 常量注释);
+      (:data:`SCREEN_PREP_FRAME`);
+    - prep_shop_open → 商店面板块('货币战争-备战-开商店');
+    - battle_or_transit → 战斗/结算段内相位 token(分支级标识;段内多物理屏
+      无法细分建档名,边界申报见 kernel 常量注释);
     - 未注册阶段名(read_game_state fail-open 态)→ None = 不写(画面身份
       未知禁猜,与「禁拿兜底默认值当观察」同义)。
+
+    辖域:四推断腿退役后本口只供上下文对画像;plane/round None 时不写
+    (沿用旧门——画面身份伴随读数缺位,身份不猜)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
         BATTLE_WAIT_CONTEXT,
         SCREEN_PREP_FRAME,
     )
     if plane is None or round_num is None:
-        return None, None
-    top: tuple[int, int] | None = (int(plane), int(round_num))
+        return None
     if phase is None or phase == PHASE_PREP_CLEAN:
-        return SCREEN_PREP_FRAME, top
+        return SCREEN_PREP_FRAME
     if phase == PHASE_PREP_SHOP_OPEN:
         from sr_od.application.currency_war.kernel.cw_obs_core import (
             SHOP_SCREEN_NAME,
         )
-        return SHOP_SCREEN_NAME, top
+        return SHOP_SCREEN_NAME
     if phase == PHASE_BATTLE_OR_TRANSIT:
-        return BATTLE_WAIT_CONTEXT, top
-    return None, None   # fail-open 未知阶段:身份不猜不写
+        return BATTLE_WAIT_CONTEXT
+    return None   # fail-open 未知阶段:身份不猜不写
 
 
 # → 无法可靠选 deploy comp 卡 + pref 定位。pixel-diff(buy 前/后 bench 截图 diff)找新占槽 = bought 卡落点,
