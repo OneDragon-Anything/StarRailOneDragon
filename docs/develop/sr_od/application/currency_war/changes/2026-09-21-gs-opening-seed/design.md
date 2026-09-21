@@ -176,7 +176,8 @@
   | 简报三写点(`cw_screen_report/briefing.py`) | enemy_affixes/plane_bosses/enemy_difficulty | 不收口:enemy_affixes 种子 [] 被直写覆写 = 预期(三读数一局恒定,覆写无信息损失);后两域不种 |
   | 位面详情写门(`cw_screen_report/plane_intel.py`) | plane_bosses/enemy_affixes | 不收口:幂等门/真值不覆写门与种子空值协同 = 今日行为;不种域不涉 |
   | always-rand 直写点(pick_supply/pick_planner/tool_use/collect_ore/pick_equip/cw_gain_effects 等,落地时 grep 为准) | 各自目标域 | 天然合规:直 rand 通道不经选择点,规则不辖,列名备查 |
-  | 效果账本桥写端群(`cw_effect_inventory` ≈12 处) | bench/行域/equips 等 A 类域 | 现役效果事件均在锚定后画面可达,天然合规;**3.2 复核前提「未锚定期无效果事件」**,若实码推翻按同规则收口 |
+  | 效果账本桥写端群(`cw_effect_inventory` ≈12 处) | bench/行域/equips 等 A 类域 | **前提经 3.2 复核推翻**:投资策略屏「人力重组」(SELL_ALL)经 `gain_invest_strategy` 登记腿 → `apply_board_rewrite` 清空写,写门 = 域已读,种子后三门全开 → **锚定前可达**。裁定 = 本行预埋的「按同规则收口」:`apply_board_rewrite` 容器清空写经锚定闩择道(未锚定 → rand);择道 helper 住 `cw_game_state`(cw_gain_chain `_select_write` 同源委托,防 kernel 内循环 import);UPGRADE_ALL 零写不涉;其余桥写端(补给/策划/上阵/获得回执/工具回执)锚定后可达,天然合规 |
+  | `cw_effect_inventory` 内部选择点 2 处(merge_cascade_write/grant_bench_unit_cascade) | 阵容域 | 调用面锚定后(补给/策划/上阵/回执),按形参语义天然合规(3.2 复核登记,不收口) |
   | `PrepActionExecutor` 2 处 | 执行随动域 | 锚定后窗口,天然合规(登记备查) |
   | 动作上报族 A 类目标若干(kernel/cw_action_report/) | 各动作域 | 锚定后动作,天然合规(登记备查) |
   | `cw_strategy_manager`(职级难度第二写端) | selected_difficulty(C 类不种) | 并入 `_absorb_selected_difficulty` 同行处置:种子不涉,行为不变 |
@@ -223,6 +224,10 @@
 8. **rand 通道语义例外立据(正本义务)**:rand 通道在册纪律「策略消费前必须重观察」
   与种子「供未锚定期直接消费」构成显式例外——例外边界(仅种子底座 + 未锚定期链写,
   锚定后恢复纪律)随 fields.md 新小节立据(正本更新清单)。
+9. **锚定前「人力重组」清空写改道随机态**(census 复核裁定,§2.5):投资策略屏选
+  人力重组(SELL_ALL)时,`apply_board_rewrite` 容器清空写未锚定期走 rand——首观察
+  (含开局补给内容)静默覆盖,**不再触发失配安灯**(改道前该场景必产真失配行);
+  锚定后按形参原语义,失配网保留。
 
 ### 2.7 测试面
 

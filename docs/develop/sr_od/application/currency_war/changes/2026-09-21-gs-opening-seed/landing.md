@@ -48,6 +48,28 @@ logic_rand 不沿用,design §2.5 末条)。附:A 类字段定义注释补「开
 - 通用工程门:照 `sr-od-test/README.md`「提交」节(ruff + 受影响测试 + 相关全量)。
 **验收凭据形式**:测试名(`test_cw_gain_chain` 改写用例)+ 收口计数清单。
 
+## 3.2b 效果账本桥锚定前写道收口(人力重组路径)
+
+**范围**:择道 helper 归位 `cw_game_state.py` 公开(命名实现者定,语义 = 未锚定 →
+write_logic_rand;`cw_gain_chain._select_write` 改为同源委托,行为零变化);
+`cw_effect_inventory.py::apply_board_rewrite` 的 SELL_ALL 容器清空写经锚定闩择道
+(未锚定 → rand,design §2.5 census 效果账本桥行裁定 + §2.6-9)。**不含**:UPGRADE_ALL
+(零写)、其余桥写端(锚定后可达,天然合规)、`cw_effect_inventory` 内部两选择点
+(census 登记不收口)。
+**设计依据**:design.md §2.5(census 效果账本桥行)/§2.6-9
+**文件面**:`src/sr_od/application/currency_war/kernel/cw_game_state.py`、
+`src/sr_od/application/currency_war/kernel/cw_effect_inventory.py`、
+`src/sr_od/application/currency_war/kernel/cw_gain_chain.py`(委托改写)、
+`sr-od-test/test/sr_od/application/currency_war/` 相关测试
+**依赖**:3.1、3.2
+**优先级建议**:5
+**完成判据**:
+- 行为对照 design §2.5/§2.6-9:未锚定(种子容器)选人力重组 → 清空写 source=logic_rand、
+  首观察零三分流行;置闩后 → logic、失配网生效;其余 STRATEGY_EFFECTS 与桥写端回归臂
+  行为不变;
+- 通用工程门:照 `sr-od-test/README.md`「提交」节(ruff + 受影响测试 + 相关全量)。
+**验收凭据形式**:测试名(人力重组双臂 + 回归臂)。
+
 ## 末阶段:正本更新
 
 **范围**:按「正本更新清单」逐条更新正本。
