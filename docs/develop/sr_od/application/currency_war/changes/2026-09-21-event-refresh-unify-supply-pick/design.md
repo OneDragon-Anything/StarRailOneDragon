@@ -8,7 +8,7 @@
   3. **刷新闸一律消费「剩余次数」屏显观察真值**（禁已用推算；字段先例 = `game_state/fields.md` §3.4.3/§3.4.4 的 `env_refresh_left`/`strategy_refresh_left`）。
 
   裁定 2/3 已入正本规范，单一源 = `screens/op-layer.md` §1.4「刷新 = 终结」「刷新闸 = 剩余语义观察真值」两条；遭遇链与两已用字段在正本中标注为在档欠账，本迭代即其清偿批。
-- 状态：对抗审中（修订完成候定稿）
+- 状态：定稿（原三块经 attack.md/attack2.md 两轮收敛；扩围 §2.4 经 attack3.md 三核审处置后定稿，9 条全采纳，处置 = design/landing 同步修订）
 - 文档清单：（无详设——单文档方案，本文即完整设计，深度 = 实现者无需再设计）
 
 ## 1. 问题与动机
@@ -78,7 +78,7 @@
 | | `kernel/cw_game_state.py`（字段 + node_screen_refresh 域版本注释） | 删（随域版本 bump） |
 | `_confirm_pending`（确认已发快照） | `cw_screen_encounter.py`（置位 + 重入裁决读点） | 删（重入裁决退役，§2.4 第二块） |
 | `_record_chosen` | `cw_screen_encounter.py`（重入裁决出口写 chosen） | 删（写端迁动作 report，§2.4 第三块） |
-| `chosen_encounter`（写端） | 画面 op 重入裁决点（留守形态） | 迁 `kernel/cw_action_report/encounter.py::report_action_pick_encounter_param`（发射即写；值组装 = `gs.encounter` payload 槽；兑现后清，§2.4 第三/四块） |
+| `chosen_encounter`（写端） | 画面 op 重入裁决点（留守形态） | 迁 `kernel/cw_action_report/pick_encounter.py::report_action_pick_encounter_param`（发射即写；值组装 = `gs.encounter` payload 槽；兑现后清，§2.4 第三/四块） |
 | `gs.encounter` payload 槽 | 消费点 = 决策入口（decide_encounter） | 新增消费点 = 动作 report 值组装（同源读，§2.4 第三块） |
 | `encounter_reward_claimed`（新字段） | — | 新增：写端 = 结算兑现回调（§2.4 第四块）；审计行新增（cw_projection_audit）；遥测 schema 接线候批申报；兑现后清 `chosen_encounter`（单次消费） |
 | `screen_flow_timing.md` #23 口径注 | encounter 观察注释引用 | 改写（supersession 标记，§2.4 第一块；文档判据 = landing 3.3） |
@@ -92,16 +92,20 @@
 - **覆盖序论证（owned 写后按名消费窗）**：owned 观察写端唯一 = 备战 heavy 帧（`cw_screen_prep.py` observe，失读 None 跳写保现值）。补给确认 → 节点推进 → 交回外循环 → 备战帧：备战 op **观察 node 先于决策动作 node**（两 node 结构序），商店 spare 打分（`flow.py`）/comps/穿戴计划/mandate 帧全部消费于决策侧 → 按名消费恒发生在重观察之后的新真值上。失读跳写窗 = 消费读旧值（暂态规范名或缺件），危害 = 排序/计划次优，与现行原始名入账同量级——残余如实申报，不设额外防线（治理归 reconcile/缺陷台账）。
 - **sim 遭遇侧申报**：sim 引擎唯一决策入口 = 商店决策面（sim/ 全目录零遭遇刷新执行面），`decide_encounter` 判据不在 sim 路径 → `encounter_refresh_left` 无 sim 写端 = 预期非缺口；flow/bridge 判据换源仅 live 生效，sim 无行为差异。
 
-### 2.4 遭遇扩围（2026-09-21 用户裁定；landing 3.3 后三块）
+### 2.4 遭遇扩围（2026-09-21 用户裁定；landing 3.3 后三块；经 attack3 对抗审处置修订）
 
-- **入口稳定期删除**：观察 node 门命中即用 node runner 帧一次读。原 2s 稳定期（`research/screen_flow_timing.md` #23「右上『返回备战界面』出现后 2s 才稳定」）随用户裁定退役——用户为最高权威（先例 = combat.md §3 遭遇高危节点条），口径注同步改写。读帧时点后移风险（入口帧读缺）由既有失败安全承接：候选读缺 = 空表不写容器、剩余读缺 = None = 闸拒绝，两方向均为「少拿一次机会」非卡死面。
-- **选卡派发即终结**：`CwActionPickEncounterOp` 派发后画面 op `round_success` 终结（投资两屏/补给 3.1 同形态），删重入裁决（`_confirm_pending`/锚在重走/`_record_chosen`）。活锁方向安全论证与 §2.0A 同构：决策必产恰一个动作（选卡派发 = 终结 / 刷新 = 终结），`round_wait` 循环对两分支均无跨轮载体。确认未生效 = 代码 bug，overlay 残留由外循环按当前画面重识别重派（修法 = 点击链可靠性）。
-- **chosen_encounter 迁动作侧即时上报**：`report_action_pick_encounter_param` 从零写族升格容器写。值组装 = `gs.encounter` payload 槽 `options[param.idx]`（策略决策同源，param 零扩字段）；payload 离屏/idx 越界 = 缺陷留证不写（None 保持「无记录」，防盲选固化假值——现 `_record_chosen` 守卫口径平移）。op-layer §2.2 动作事实边界硬规则对应腿修订：遭遇例外改判（用户裁定显式迁移，先例 = 投资域 chosen 迁获得链的显式收窄条款）；巨星/伙伴等其余 chosen_* 维持不动。
-- **结算奖励兑现回调**：机制依据 = `research/combat.md` §3「遭遇奖励 = 伤害进度达标制，非清场制」——进度打够最低线即拿奖励，定谳采集点 = 结算屏三项（现役 `progress_delta`/`progress_fill_ratio` 已入 `RoundOutcome` 与容器结算域）。挂点 = `CwOpSettleConfirm` 确认点击后（**推进上报前**调回调：`report_node_advance` 会推进 node 指针，`node_kind_of` 须读推进前值判「当前是遭遇」）。回调 = 纯容器读零读屏：`node_kind_of(gs) == '遭遇'` ∧（`settlement.progress_delta > 0` 主判 ∨ `settlement.killed` 辅判；双 None = 删失不兑现 fail-closed）→ 自 `gs.chosen_encounter` 读 (难度, 奖励文本) 写新顶层字段 `encounter_reward_claimed: tuple[int, str] | None`。**数值不直写**（防双源）：金币真值 = `apply_settlement_cover` 的 `settle_truth`（结算读数）、随机4费角色 = bench heavy 观察（观察赢）；兑现记录 = 语义账面，消费面 = 策略器收益对账/单局复盘。无 chosen（盲选 fallback/残留行）→ 不兑现。
+- **入口稳定期删除**：观察 node 门命中即用 node runner 帧一次读。原 2s 稳定期（`research/screen_flow_timing.md` #23「右上『返回备战界面』出现后 2s 才稳定」）随用户裁定退役——用户为最高权威（先例 = combat.md §3 遭遇高危节点条），口径注同步改写。**空候选分支新行为（attack3 X2）**：候选读缺（`options` 空）≠ 失败安全——现状空候选会以 `idx=0` 盲选左卡并派发确认（不可逆消耗本节点选择）；删除稳定期后读缺概率上升，该盲选路径**一并退役**：`options` 空 = 零点击 `round_success` 终结交回外循环重进重读（与刷新闸数据不一致分支同构，`cw_screen_encounter.py` 现役先例）；剩余读缺 = None = 闸拒绝（不变）。
+- **选卡派发即终结**：`CwActionPickEncounterOp` 派发后画面 op `round_success` 终结（投资两屏/补给 3.1 同形态），删重入裁决（`_confirm_pending`/锚在重走/`_record_chosen`）。活锁方向安全论证与 §2.0A 同构：决策必产恰一个动作（选卡派发 = 终结 / 刷新 = 终结 / 空候选 = 零点击交回），`round_wait` 循环对各分支均无跨轮载体。确认未生效 = 代码 bug，overlay 残留由外循环按当前画面重识别重派（修法 = 点击链可靠性）。
+- **chosen_encounter 迁动作侧即时上报**：`report_action_pick_encounter_param` 从零写族升格容器写，**模块归宿 = 迁具名新模块 `kernel/cw_action_report/pick_encounter.py`**（attack3 X6 处置修正：attack3 建议名 `encounter.py` 与包规约「文件名 = 动作 snake」冲突，落地取 snake 对齐形态；照 pick_supply 升格先例，zero_writes 零写族语义不容容器写函数留守），zero_writes 删该函数并更新迁出注记，landing 文件面同步。值组装 = `gs.encounter` payload 槽 `options[param.idx]`（策略决策同源，param 零扩字段）；payload 离屏/idx 越界 = 缺陷留证不写（None 保持「无记录」，防盲选固化假值——现 `_record_chosen` 守卫口径平移）。**暂态假值窗申报（attack3 X8）**：chosen 迁后语义 = 「发射即写的意图记录」，确认未生效窗内为暂态假值，由外循环重派覆盖自愈；奖励兑现回调对该窗的消费防线见第四块（兑现后清 chosen）。op-layer §2.2 动作事实边界硬规则对应腿修订：遭遇例外改判（用户裁定显式迁移，先例 = 投资域 chosen 迁获得链的显式收窄条款）；巨星/伙伴等其余 chosen_* 维持不动。
+- **结算奖励兑现回调**：机制依据 = `research/combat.md` §3「遭遇奖励 = 伤害进度达标制，非清场制」——进度打够最低线即拿奖励，定谳采集点 = 结算屏三项（现役 `progress_delta` 已入 `RoundOutcome` 与容器结算域）。挂点 = `CwOpSettleConfirm` 确认点击后调 kernel 回调（`kernel/cw_encounter_selection.py::claim_encounter_reward`，遭遇×结算对账域）。回调 = 纯容器读零读屏。
+  - **判据（attack3 X4/X7 处置后）**：节点判遭遇 = 双证——`node_kind_of(gs) == '遭遇'`（读 `gs.node` 镜像 = 最近备战帧观察的节点类型）**∧** 容器结算行 `note == 'battle_done:遭遇'`（本局结算覆盖写端的行注记，防跨节点类型陈旧）；达标 = **单判** `gs.settlement` 域 `progress_delta > 0`（killed 不入判据：结算链 killed 多为 progress 符号派生值、hp 对比兜底腿在遭遇局「伤害进度达标制」下语义未证，attack3 X7）；`progress_delta is None` = 删失不兑现；`chosen_encounter` 为 None（未写/已消费）= 不兑现。**兑现后清 `chosen_encounter`（单次消费语义）**——一并收口三条误兑现面（attack3 X4）：镜像残留（兑现后 chosen 空，后续非遭遇局恒拒）、驻留重入轮（第二轮 chosen 已空，天然幂等，零闩）、结算覆盖 best-effort 失败的陈旧窗（上一场兑现已清 chosen；**残余申报**：本场结算覆盖失败 ∧ 上一场同为遭遇 ∧ 本场 chosen 已写时仍可能误记一条兑现记录——低频观测异常组合，后果 = 语义账面脏行非资金操作，如实申报不设额外防线）。
+  - **载体与接线（attack3 X3）**：新顶层字段 `encounter_reward_claimed: tuple[int, str] | None`（值 = (难度档, 奖励文本)，单槽逐遭遇覆盖）；写通道 = `gs.write_logic`，`ChannelSig(family='logic_action', actor='CwOpSettleConfirm', mode='compute')`（写端 = 回调宿主 op）；`kernel/cw_projection_audit.py` 新增审计行；遥测 schema 接线**候批申报**（现役消费面 = 容器读端（策略器收益对账）+ 审计投影，journal 行随结算确认 op 现有链路）；生命周期 = 局内逐遭遇覆盖，无开局种子（None = 本局未兑现过），局终随容器销毁；sim 零写端申报（sim 无遭遇结算回调面，与 `encounter_refresh_left` 同申报）。
+  - **时序论证（attack3 X4(a) 重写）**：`report_node_advance` 只推进 `gs.node_ord` 序号，不写 `gs.node` 镜像——回调在推进前或后调对 `node_kind_of` 读值无差别；「确认点击后、推进上报前调回调」保留的理由 = 语义顺序（先记账后推进）与防御下一备战帧观察早到覆写镜像；本局结算数据就绪性由宿主 `CwScreenBattleWait` ②段保证（读点先于确认 op 派发，attack3 已核无异议）。
+  - **数值不直写**（防双源）：金币真值 = `apply_settlement_cover` 的 `settle_truth`（结算读数）、随机4费角色 = bench heavy 观察（观察赢）；兑现记录 = 语义账面，消费面 = 策略器收益对账/单局复盘。无 chosen（盲选 fallback/残留行）→ 不兑现。
 
 ## 3. 验收锚（行为级；验收凭据形式见 landing 各阶段）
 
 1. 补给选卡：确认点击后（不等下一帧）容器即持效果逻辑态——owned 含装备规范名（norm_item 命中时）+ bench 含角色（合成级联后）；`chosen_supply` 三元组在派发前已由画面 op 写（现状时机不变）；注册表级分层归一行为锁：特权/后缀族/互撞族（垃圾袋/金垃圾袋、生命之花/生命之环、追击/击破星徽）完美 OCR 恒命中、OCR 形变救援命中、多命中拒识返回 ''；supply 链无落地相补写面（`kernel/cw_action_report/pick_supply.py` 的 `EVIDENCE_OVERLAY_CLOSED` 及其在 supply 链的导入点零残留；pick_equip/pick_planner 同名常量不在辖内）。
 2. 补给刷新：剩余 1 → 建议刷新 → 点钮恰一次 → 访问终结交回；剩余 0 或 None → 零点击不终结，按原评分选卡。
-3. 遭遇刷新：点钮恰一次 → 访问终结交回（无同访问重读、无二次覆盖写、无重决策）；剩余 0 或 None → 按原评分选卡。入口门命中即读（无 2s 稳定期）。选卡：派发即 `round_success` 终结（零重入裁决轮）；确认点击后（不等下一帧）容器即持 `chosen_encounter` = payload 槽所选 (难度, 奖励文本)。奖励兑现：遭遇结算确认 ∧ `progress_delta>0`（或 killed）→ 容器即持 `encounter_reward_claimed` = 所选 (难度, 奖励文本)；未达标/删失/无 chosen → 不写。
+3. 遭遇刷新：点钮恰一次 → 访问终结交回（无同访问重读、无二次覆盖写、无重决策）；剩余 0 或 None → 按原评分选卡。入口门命中即读（无 2s 稳定期）；**候选读缺（options 空）= 零点击 round_success 终结交回（禁盲选派发确认）**。选卡：派发即 `round_success` 终结（零重入裁决轮）；确认点击后（不等下一帧）容器即持 `chosen_encounter` = payload 槽所选 (难度, 奖励文本)；payload 离屏/idx 越界 = 缺陷留证不写。奖励兑现：遭遇结算确认 ∧（node 镜像='遭遇' ∧ 结算行 note='battle_done:遭遇'）∧ `progress_delta>0` → 容器即持 `encounter_reward_claimed` = 所选 (难度, 奖励文本)，**且 `chosen_encounter` 随即被清（单次消费）**；未达标/删失/无 chosen → 不写不清。
 4. 全链零已用计数残留：`supply_refresh_used`/`encounter_refresh_used`/`encounter_refreshed_in_visit` 三符号零命中（grep 范围 = src + sr-od-test；豁免 = telemetry 历史数据只读注释）。
