@@ -841,19 +841,18 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
 
     用户定调:**必接策略模块由它定**(handler 不写死默认),虽结论
     几乎总是升费——打分走通用原则,让「何时升费不是最优」可被策略表达。
-    ADR-0524 定形(16 号稿 §1.7):三层定序结构 = 升费档 > 弱化档 > 装备档,
-    各层方向均有出处(升费优先 = 用户定调 + 银狼策划机制原文;弱化次之 =
-    全场即时战力;装备域内 key_equip 命中优先 = comp 知识);下列数值全部
+    ADR-0524 定形(16 号稿 §1.7):两档定序结构 = 升费档 > 装备档,
+    各层方向均有出处(升费优先 = 用户定调 + 银狼策划机制原文;装备域内
+    key_equip 命中优先 = comp 知识);下列数值全部
     是档位实现常数,只承载层间/层内定序,非基准基数:
 
     - **升费档**(「提升费用」):银狼成长滚动投资前提(升费→新费档刷商店→3星5费
       滚强度)。档内修饰:target 含银狼线(狼尊欢愉/量子系)⇒ **升档**(100+30,
       升费兑现更高);银狼确定不在场(board 有信息但无银狼)⇒ **降档**(100−60,
-      落到弱化档之下=投资无处兑现);信息缺失不降权(在场判定保守)。
-    - **弱化档**(「弱化」/「降低敌人」):全场即时战力(55;原低血 +20 钩子
-      已退役,hp 可标不可定价)。
-    - **装备档**(其余):_equip_value 回落(装备注册表);target key_equip 命中
-      ⇒ **装备域内命中优先键**(+15,只在装备档内排前,不跨域压弱化档)。
+      投资无处兑现);信息缺失不降权(在场判定保守)。
+    - **装备档**(其余;含弱化词未知名卡文按本档回落):_equip_value 回落
+      (装备注册表);target key_equip 命中 ⇒ **装备域内命中优先键**(+15,
+      只在装备档内排前)。
     - 未识别文字:0 分(idx 顺序兜底)。
     """
     _tgt_chars = set(target_comp.core_chars) if target_comp is not None else set()
@@ -878,10 +877,6 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
             elif not wolf_owned:
                 score -= 60.0
                 reason += '-银狼不在场无处兑现'
-        elif '弱化' in t or '降低敌人' in t:
-            # 低血加分(+20「+低血保命」)已退役:hp 可标
-            # 不可定价,经验加分无推导(与其余经验加分项同型)。
-            score, reason = 55.0, '全场弱化(即时战力)'
         else:
             score = float(_equip_value(t)) if t else 0.0
             reason = f'装备({t[:8]})' if t else '未识别'
@@ -898,14 +893,14 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
 # ===== 银狼策划腿型判定单源(记账分类器;银狼闭环迭代 design.md §2.1①)=====
 # 职责边界:本分类器只答「这张卡落在哪条记账腿」(动作上报记账用),与
 # :func:`decide_planner` 的选卡打分关键词是两套语义——决策打分词表(升费
-# 优先级/弱化加分)表达「选哪个」,本分类词表表达「选中后怎么记账」,二者
+# 优先级等)表达「选哪个」,本分类词表表达「选中后怎么记账」,二者
 # 职责不同禁互相复用(混用 = 装备授予被决策词表误判 → 记账缺位失配停;
 # 具体碰撞例 = 破解芯片卡文含「弱化」而实为装备卡,装备域优先判定消解)。
 
-#: 腿型词表(design §2.1① 封闭集):upgrade=升费腿 / weaken=弱化腿 /
-#: equip=装备腿 / unknown=未识别(零记账留证)。
+#: 腿型词表(封闭集):upgrade=升费腿 / equip=装备腿 / unknown=未识别
+#: (零记账留证;含弱化词且装备锚未命中的卡文落 unknown——弱化兜底档
+#: 已按原文二分法退役,静默零记账变响亮申报)。
 PLANNER_LEG_UPGRADE: str = 'upgrade'
-PLANNER_LEG_WEAKEN: str = 'weaken'
 PLANNER_LEG_EQUIP: str = 'equip'
 PLANNER_LEG_UNKNOWN: str = 'unknown'
 
@@ -997,7 +992,7 @@ def normalize_registry_equip_name(text: str) -> str:
 
 
 def classify_planner_leg(text: str) -> tuple[str, str]:
-    """银狼策划选项腿型判定单源(记账分类器;design §2.1① 全序)。
+    """银狼策划选项腿型判定单源(记账分类器;全序)。
 
     判定序(装备域优先):
     1. **锚匹配**:银狼专属 10 件名单(:data:`_PLANNER_EQUIP_ANCHORS`,
@@ -1007,8 +1002,9 @@ def classify_planner_leg(text: str) -> tuple[str, str]:
        equip(OCR 形变救援);**多命中 → equip 且件名未解析**(norm_item
        ='':多件注册表名同时高相似 = 装备信号成立而件名不可辨,禁猜——
        记账侧走值不变翻来源留证);零命中 = 无装备信号;
-    3. **关键词降级**:「提升费用」→ upgrade;「弱化/降低敌人」→ weaken
-       (记账分类词表 = 本函数内联面,非 decide_planner 决策词表);
+    3. **升费关键词**:「提升费用」→ upgrade(记账分类词表 = 本函数内联
+       面,非 decide_planner 决策词表;弱化兜底档已退役——含弱化词且
+       装备锚未命中的卡文落步 4 unknown,静默零记账变响亮留证);
     4. 空/未识别 → unknown(零记账,台账行证未识别事实)。
 
     返回 ``(leg_type, norm_item)``:norm_item 仅 equip 腿携带归一件名,
@@ -1027,8 +1023,6 @@ def classify_planner_leg(text: str) -> tuple[str, str]:
         return (PLANNER_LEG_EQUIP, '')
     if '提升费用' in t:
         return (PLANNER_LEG_UPGRADE, '')
-    if '弱化' in t or '降低敌人' in t:
-        return (PLANNER_LEG_WEAKEN, '')
     return (PLANNER_LEG_UNKNOWN, '')
 
 

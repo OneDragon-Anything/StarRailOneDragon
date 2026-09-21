@@ -20,6 +20,8 @@ gain-chain.md(原语契约/时序/溢出落位/随机态纪律/失败安全/接�
 
 失败安全:链原语**零吞错**(容器写腿/回调效果腿异常上抛);
 best-effort 边界只在登记/遥测申报腿内(失败 log + 缺陷留证、不阻塞);
+唯一调用点级显式例外 = 欢愉契约条件腿授予 rider(住
+``cw_action_report.pick_planner``,授予与选项应用两条独立因果不互拖);
 bench/equips 未观察(None)= 开局种子底座下生产不可达(局容器缓存
 单例冷建即种):直构/sim 域保留拒落档零写,无缺陷发射;席满且溢出位
 被占 = 游戏行为未实证:零写 + 留证,禁猜。
@@ -82,12 +84,6 @@ DEFECT_STRATEGY_REGISTER: str = 'gain_chain_strategy_register_failed'
 #: 无效载荷拒绝 kind(策略名归一后为空/'?'——零写 + 留证;无效输入拒绝,
 #: 非防重复保护)。策略屏迁移批新增,投资两屏立即上报契约配套。
 PICK_INVEST_INVALID_PAYLOAD: str = 'pick_invest_invalid_payload'
-
-#: 欢愉契约条件腿采证期临时翻来源闩的披露键 kind(自 pick_invest 迁入;
-#: 「条件腿标记面」:头号玩家触发无观察锚无采样
-#: 模型,定谳前触发帧收口自愈留证不停局;**有界显式测量仪表,定谳后
-#: 必须撤**——残留 = 临时闩未撤的显式信号)。
-JOY_PROVISIONAL_KIND: str = 'joy_contract_provisional'
 
 
 @dataclass(frozen=True)
@@ -611,10 +607,9 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       一行(先例 = pick_invest hacker shop_pool decl);chars_immediate
       在 advisor 行仅作顾问身份输入,禁再入席;
     - 查无效果(表外环境)= 安静不写(用户裁定),真值归观察覆盖。
-    - 欢愉契约条件腿(头号玩家触发)标记面:bench/equips 值不变
-      ``write_logic_rand`` 翻来源 + 留证行 kind =
-      :data:`JOY_PROVISIONAL_KIND`(自 pick_invest 效果函数迁入,行为
-      逐位等价;临时测量仪表,定谳后撤闩换正式模型)。
+      (欢愉契约条件腿不在本枚举:其正式模型 = 银狼策划选择上报落地相的
+      条件腿 rider,住 ``cw_action_report.pick_planner``,触发事件 =
+      头号玩家选项弹窗被处理。)
     """
     _name = normalize_invest_name(env_name)
     grant = ENV_GIFTS.get(_name)
@@ -634,23 +629,6 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
                        evidence=f'on_env_gained:{_name}',
                        producer=GAIN_CHAIN_PRODUCER)
         effects.append(f'env_gift:{char}')
-    if _name == '欢愉契约':
-        # 条件腿(头号玩家触发)临时翻来源闩:值不变 write_logic_rand 翻
-        # bench/equips 两域 → 触发帧观察差异收口自愈留证不停局,多局拼
-        # 数据;定谳后必须撤(见 JOY_PROVISIONAL_KIND 声明)。
-        for dom in ('bench', 'equips'):
-            fld = gs.bench if dom == 'bench' else gs.equips
-            if fld.value is None:
-                continue
-            gs.write_logic_rand(fld, fld.value,
-                                produced_by=GAIN_CHAIN_PRODUCER,
-                                evidence='on_env_gained:欢愉契约#provisional',
-                                sig=sig)
-            effects.append(f'provisional_mark:{dom}')
-        _emit_defect(field_name='bench', expected='joy_conditional_pending',
-                     actual='joy_contract_provisional_flip',
-                     evidence='on_env_gained:欢愉契约#provisional', sig=sig,
-                     kind=JOY_PROVISIONAL_KIND)
     return tuple(effects)
 
 

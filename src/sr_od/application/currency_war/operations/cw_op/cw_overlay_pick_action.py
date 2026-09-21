@@ -123,7 +123,7 @@ class OverlayPickExecEnv:
     需要逐结果路由时的旁路面。
     ``leg_type``/``norm_item`` = 银狼策划腿型载荷(银狼闭环 design
     §2.1①;决策半经 ``classify_planner_leg`` 现算,随发射透传给上报函数
-    登记意图遥测;leg_type ∈ upgrade|weaken|equip|unknown,norm_item =
+    登记意图遥测;leg_type ∈ upgrade|equip|unknown,norm_item =
     归一件名或空)。
     """
 
