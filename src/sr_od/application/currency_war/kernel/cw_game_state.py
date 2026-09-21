@@ -46,7 +46,8 @@ PendingEntry/confirm 转正/discard_expected)全套废除;逻辑态错误 =
 确定值外壳未验证,首观察静默覆盖,差异只落 ``logic_rand_outcome`` 台账
 行);:attr:`GameState.prep_anchored` = 锚定闩,首次备战 heavy 锚定成功
 置位(生产唯一写点 = reconcile 同点,粘性无复位),未锚定期容器逻辑写
-通道规则的解析读口 = :func:`prep_anchored_of`;carry 失读沿用对随机态
+通道规则的解析读口 = :func:`prep_anchored_of`、择道口 =
+:func:`anchor_aware_write`;carry 失读沿用对随机态
 来源不适用(随机态值不是「上次好值」,不洗白)。
 
 **单例宿主** = session 旁表(:func:`game_state_of`;同 ``cw_exec_state``
@@ -1784,6 +1785,24 @@ def prep_anchored_of(session: object) -> bool:
     置闩专口 = 直接赋值 ``gs.prep_anchored = True``(声明为测试/直构域
     专用,生产禁走)。"""
     return bool(game_state_of(session).prep_anchored)
+
+
+def anchor_aware_write(gs: GameState, rand: bool) -> Callable[..., None]:
+    """锚定感知写通道择道口(通道规则「未锚定 → 随机态」的公开单一选择
+    口;获得链与效果账本桥等容器逻辑写端同源消费,禁散写
+    ``write_logic_rand if rand`` 形态;住本模块防 kernel 内循环 import)。
+
+    语义:形参 ``rand=True``(采样语义)或容器未锚定(:func:`prep_anchored_of`
+    为 False,即开局种子底座窗口)→ ``write_logic_rand``——未锚定期的
+    逻辑落账是「未验证推算」,走随机态让首观察静默覆盖(差异只落
+    ``logic_rand_outcome`` 台账行,不进失配三分流);锚定后按形参
+    (rand=False → ``write_logic`` 确定面,失配网原样生效)。入参 gs 直接
+    可用(:func:`game_state_of` 对 GameState 本体直通);直构容器视同
+    未锚定。
+    """
+    if rand or not prep_anchored_of(gs):
+        return gs.write_logic_rand
+    return gs.write_logic
 
 
 def tracked_unobserved(session: object) -> bool:

@@ -57,9 +57,9 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     Unit,
     _emit_defect,
+    anchor_aware_write,
     apply_effect_burst_grant,
     bench_view_of_working,
-    prep_anchored_of,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_GIFTS,
@@ -238,19 +238,17 @@ def merge_step_once(bench: list[BenchSlot | None],
 
 
 def _select_write(gs: GameState, rand: bool) -> Callable[..., None]:
-    """链写通道选择单一收口(通道规则「未锚定 → 随机态」,开局种子底座
-    与锚定闩;全部写选择点必经本口,禁散写 ``write_logic_rand if rand`` 形态)。
+    """链写通道选择单一收口(同源委托 :func:`anchor_aware_write`——择道
+    语义单一源住 cw_game_state,与效果账本桥共享,防 kernel 内循环
+    import;全部写选择点必经本口,禁散写 ``write_logic_rand if rand`` 形态)。
 
-    语义:形参 ``rand=True``(采样链)或容器未锚定(:func:`prep_anchored_of`
-    为 False,即开局种子底座窗口)→ ``write_logic_rand``——未锚定期链的
-    落账是「未验证推算」,走随机态让首观察静默覆盖(差异只落
-    ``logic_rand_outcome`` 台账行);锚定后恢复形参语义(rand=False →
-    ``write_logic`` 确定面,失配网原样生效,P2/P3 位面环境送卡的落位
-    验证信号保留)。直构容器视同未锚定。
+    语义(与委托口一致):形参 ``rand=True``(采样链)或容器未锚定
+    (开局种子底座窗口)→ ``write_logic_rand``——未锚定期链的落账是
+    「未验证推算」,走随机态让首观察静默覆盖;锚定后恢复形参语义
+    (rand=False → ``write_logic`` 确定面,失配网原样生效,P2/P3 位面
+    环境送卡的落位验证信号保留)。直构容器视同未锚定。
     """
-    if rand or not prep_anchored_of(gs):
-        return gs.write_logic_rand
-    return gs.write_logic
+    return anchor_aware_write(gs, rand)
 
 
 def _slot_sig(slots: list) -> list:

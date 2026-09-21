@@ -731,7 +731,8 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
       = 装备库存精确增量,但注册表无结构化载体(§5.2 缺口登记),经装备
       观察覆盖收口,不在本桥建模。
     - 人力重组(BOARD_REWRITE_SELL_ALL):出售面 = 确定性 → 逻辑写(§5.3
-      归属判据确定性分支)——前台/后台/备战席清空 + 退款按卖价公式入金
+      归属判据确定性分支;容器清空写经锚定闩择道,未锚定期走随机态,
+      见清空写段注释)——前台/后台/备战席清空 + 退款按卖价公式入金
       (单一源 = cw_state.sell_refund,费用查表单一源 = cw_state
       .bench_char_cost,未知 char_id 退中费 3);随后发牌面(2★3费×1 +
       2★2费×2 + 2★1费×2)= 随机 → **不建逻辑写,进席落位走观察覆盖**——
@@ -786,6 +787,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
         BenchSlot,
         BenchView,
         ChannelSig,
+        anchor_aware_write,
     )
 
     front = gs.front_row.value
@@ -811,16 +813,20 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
                      group_id=f'hook:EffectLedgerBridge@{gs.write_seq + 1}')
 
     cleared: list[str] = []
+    # 容器清空写经锚定闩择道(rand=False = 锚定后按本桥确定性语义):
+    # 未锚定 = 未验证推算走随机态,首观察静默覆盖不触发失配安灯;
+    # 锚定后走 write_logic,失配网生效(择道单一源 = anchor_aware_write)。
+    write = anchor_aware_write(gs, rand=False)
     if front is not None:
-        gs.write_logic(gs.front_row, [], produced_by='EffectLedgerBridge',
-                       evidence=ev, sig=sig)
+        write(gs.front_row, [], produced_by='EffectLedgerBridge',
+              evidence=ev, sig=sig)
         cleared.append('front_row')
     if back is not None:
-        gs.write_logic(gs.back_row, [], produced_by='EffectLedgerBridge',
-                       evidence=ev, sig=sig)
+        write(gs.back_row, [], produced_by='EffectLedgerBridge',
+              evidence=ev, sig=sig)
         cleared.append('back_row')
     if view is not None:
-        gs.write_logic(
+        write(
             gs.bench,
             # 槽位表原位清空:槽数保持观察现值,全槽置空;容量保留现值
             #(容量改写辖域 = 容量逻辑态直写桥 project_effect_capacity,互不越界)。
