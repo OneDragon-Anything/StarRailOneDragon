@@ -273,7 +273,13 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '返利+': EconomyEffect(instant_gold=6, gold_per_three_5cost=3),
     '采购专员·金': EconomyEffect(refresh_surprise_every=7),
     '定期福利': EconomyEffect(instant_gold=4, gold_per_node=2),
-    '加油站': EconomyEffect(instant_gold=8, free_refresh_per_node=1),
+    # 加油站:官方「现在及每次进入新节点时获得1次免费刷新,立刻获得8金币」
+    # (cw_invest_data.py:112,id 200301)。两腿分载:「现在」立即腿 =
+    # free_refresh_burst=1(选卡登记期发放,载体惯例同固定理财/乱成一锅粥);
+    # 持续腿 = free_refresh_per_node=1。当节点发放核查结论(逐效果 a/b)单一源 =
+    # docs/game/currency_war/research/per_node_pick_node_grant.md。
+    '加油站': EconomyEffect(instant_gold=8, free_refresh_burst=1,
+                            free_refresh_per_node=1),
     '乱成一锅粥+': EconomyEffect(instant_gold=14, free_refresh_burst=7),
     '乱成一锅粥': EconomyEffect(instant_gold=10, free_refresh_burst=5),
     '着眼当下': EconomyEffect(instant_gold=5),
@@ -509,6 +515,18 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
         payload=STRATEGY_ECONOMY['本金充裕+'], duties=DutyFlags(),
         notes='条件腿与本金充裕逐字同文(50/10/3);加强值=instant_gold 45'),
+    # 加油站:官方「现在及每次进入新节点时获得1次免费刷新,立刻获得8金币」
+    # (cw_invest_data.py:112,id 200301)。入册使两腿经现行挂点生效:选卡
+    # 登记点(CwScreenInvestStrategy 确认落地)burst 桥发「现在」腿 +1;
+    # 节点边界桥(per-node 形态)发持续腿。拿卡当节点不重复发:登记晚于
+    # 本节点边界推进,advance_node 同节点去重位关闸。行为核查结论单一源 =
+    # docs/game/currency_war/research/per_node_pick_node_grant.md。
+    '加油站': EffectSpec(
+        id='200301', name='加油站', trigger=TriggerKind.NODE_ENTER,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['加油站'], duties=DutyFlags(),
+        notes='「现在」+1 刷=burst 腿登记期发放;每节点 +1=节点边界桥;'
+              'instant_gold=8 选卡当场'),
 }
 
 
