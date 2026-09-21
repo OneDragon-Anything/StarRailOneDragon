@@ -43,8 +43,13 @@
 **B. 补给 pick 即时上报形态（照投资两屏先例，`op-layer.md` §1.1 出口①「派发即终结」）**
 
 - `CwActionPickSupplyOp.run` = 点卡 → 0.6s → 点确认 → **立即** `report_action_pick_supply_param`（单相，一口写效果逻辑态）→ `report_node_advance(gs, trigger='supply_confirm')`（现状保持，点击即上报）→ `round_success` 终结交回。确认未生效 = 代码 bug，overlay 残留由外循环按当前画面重识别重派，修法 = 点击链可靠性（禁验证/重试补丁）。
-- **账面恒标准名，param 零扩字段**（用户裁定 2026-09-21：OCR 易错，账面名一律规范形态）：owned 权威写端 `read_equips` 本产规范名（模板逐格分类，`obs/cw_equipment.py`，模板键集 = 装备注册表），现行到账追加原始 OCR 名是账面异类形态——本批退出。**norm_item 锚集升级**：`normalize_equip_name` 现锚 = 银狼专属 10 件穿戴门键（`cw_events._PLANNER_EQUIP_ANCHORS`），补给基础件不在其列 → 恒未解析；supply 侧改用**装备注册表级**相似归一（`kernel/cw_events.py` 增注册表锚入口，`EQUIPMENTS` 键集 + 同 LCS 阈值 0.75，唯一命中才返回、未命中 = '' 禁猜；planner 银狼锚归一语义不动，两入口分立）。handler 组装点换用注册表级归一，param 现有字段（`char_name` roster 校验产物 + `norm_item` 注册表归一）即 report 全部输入——**不扩 raw_item/has_diamond**。
-- **report 函数单相化**：`kernel/cw_action_report/pick_supply.py` 删 `evidence` 参数与 `EVIDENCE_OVERLAY_CLOSED` 常量（**仅本文件的同名常量**；pick_equip/pick_planner 各自同名常量属彼辖不动）；一口写序 = ①`owned += norm_item`（**规范名**；'' = 未解析不写 + 翻来源留证缺陷行——fail-closed：错名不入账，下帧模板匹配观察覆盖真值，观察赢自愈）②单位腿 `grant_bench_unit_cascade`（`char_name` 命中时）③装备后果腿 `apply_equip_acquire_consequence`（`norm_item` 命中时）；单位腿 char_name 未命中 → 现行翻来源留证语义保持。
+- **账面恒标准名，param 零扩字段**（用户裁定 2026-09-21：OCR 易错，账面名一律规范形态）：owned 权威写端 `read_equips` 本产规范名（模板逐格分类，`obs/cw_equipment.py`；模板键集 157 张 **⊆** 注册表 158 名——「财富」无模板，该名观察永不覆盖 = 自愈缺口，申报 + 模板采集挂账 data-collection 批，非本迭代），现行到账追加原始 OCR 名是账面异类形态——本批退出。**norm_item 锚集升级 + 分层归一**：`normalize_equip_name` 现锚 = 银狼专属 10 件穿戴门键（`cw_events._PLANNER_EQUIP_ANCHORS`），补给基础件不在其列 → 恒未解析；supply 侧改用**装备注册表级分层归一**（`kernel/cw_events.py` 新入口；planner 银狼锚归一语义不动，两入口分立），层级定死：
+  1. **精确快道**：text 与注册表键名全等 → 直返。理由 = 纯「LCS 0.75 + 唯一命中」直移 158 名键集，完美 OCR 下实测 79/158 名多命中拒识（垃圾袋/金垃圾袋、生命之花/生命之环 0.75、追击/击破星徽互撞、昼/夜之半神星徽互撞、36 个特权名全撞进阶基名、白昼/极·白昼、Max/Pro 后缀族、命运族、穿刺/穿越死棘之枪）——相似判据不得为首层；
+  2. **containment longest-first**：注册表名 contained in text 取最长唯一（`classify_planner_leg` 判定序第 1 步先例；「·特权」类装饰噪声由本层消解）；并列最长 → 落相似层；
+  3. **相似救援**：LCS ≥ 0.75 唯一命中 → 返回；多命中/零命中 → ''（禁猜，fail-closed）。
+  行为锁 = 特权/后缀族/互撞族完美 OCR 命中 + 形变救援 + 多命中拒识（landing 3.1）。残余申报：OCR 把一件误读成另一件规范名（生命之花→生命之环类）归一层原理不可辨，入账暂态错名由观察覆盖自愈（覆盖序论证 = §2.3）。
+  handler 组装点换用分层归一，param 现有字段（`char_name` roster 校验产物 + `norm_item` 分层归一）即 report 全部输入——**不扩 raw_item/has_diamond**。
+- **report 函数单相化**：`kernel/cw_action_report/pick_supply.py` 删 `evidence` 参数与 `EVIDENCE_OVERLAY_CLOSED` 常量（**仅本文件的同名常量**；pick_equip/pick_planner 各自同名常量属彼辖不动）；一口写序 = ⓪`char_name` 与 `norm_item` 双空（兜底点卡路径）→ 现行「内容全未知」分支逐位保持（bench/equips 值不变翻来源 + `pick_supply_content_unresolved` 缺陷行）→ ①`owned += norm_item`（**规范名**；'' = 未解析不写 + 翻来源留证缺陷行——fail-closed：错名不入账，观察覆盖自愈，覆盖序论证见 §2.3）②单位腿 `grant_bench_unit_cascade`（`char_name` 命中时）③装备后果腿 `apply_equip_acquire_consequence`（`norm_item` 命中时）；单位腿 char_name 未命中 → 现行翻来源留证语义保持。
 - **chosen_supply 不进 report**：留守画面 op 选卡分支确认即写（现状写点、时机均已合规——`screens/op-layer.md` §2.2 动作事实边界硬规则零改动）。
 - **ConfirmSupply 到账边退役**：`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival` 的 ConfirmSupply 分支与 `kernel/cw_exec_state.py::apply_confirm_effect` 对应行删除（ConfirmBox/ConfirmTome/ConfirmExpertCash 不动）；pick op 内到账登记调用删除。
 - **画面 op**：删 `_pending_supply`/`_apply_supply_landing`/证据闩 import；act 选卡分支 = 派发即 `round_success` 终结（零重入裁决）；节点完成门保留于 observe 首门（分发身份安全网：已离开 = 节点完成 success 交回）。
@@ -79,11 +84,13 @@
 - **chosen_supply 留守画面 op，不进 report**：`op-layer.md` §2.2 动作事实边界硬规则零改动；现状「确认即写」时机已合规（写点 = 选择点，点击链发射前），本迭代只清效果腿的两相形态，不迁选择事实写点。对比项：投资域 chosen 迁获得链是显式收窄条款（用户裁定），supply 无同款裁定则不扩豁免。
 - **效果腿进 report 函数，ConfirmSupply 到账边退役**：上报函数 = 该动作效果逻辑态写语义单点（`cw_action_report` 包 docstring 族规约）；两写点合并消双源。owned 名源 = **注册表规范名**（norm_item）——owned 权威写端 `read_equips` 观察摄取本产规范名（模板逐格分类），原始 OCR 名到账是账面异类形态，本批消双形态。
 - **kernel 判据函数签名不动**（`refresh_used` 形参名保持）：`cw_events` 判据为 sim/生产共用面，签名稳定优先；语义换源收敛在上游闸一处。
-- **param 零扩字段**：char_name（roster 校验产物）+ norm_item（注册表级归一）即 report 全部输入；has_diamond 不入 param（chosen_supply 留守 handler 后无 report 腿消费）、raw_item 不设（账面恒标准名，原始名退出——对抗审 F2 载体缺口随 owned 名源改规范名消解）。
+- **param 零扩字段**：char_name（roster 校验产物）+ norm_item（分层归一）即 report 全部输入；has_diamond 不入 param（chosen_supply 留守 handler 后无 report 腿消费）、raw_item 不设（账面恒标准名，原始名退出——对抗审 F2 载体缺口随 owned 名源改规范名消解）。
+- **覆盖序论证（owned 写后按名消费窗）**：owned 观察写端唯一 = 备战 heavy 帧（`cw_screen_prep.py` observe，失读 None 跳写保现值）。补给确认 → 节点推进 → 交回外循环 → 备战帧：备战 op **观察 node 先于决策动作 node**（两 node 结构序），商店 spare 打分（`flow.py`）/comps/穿戴计划/mandate 帧全部消费于决策侧 → 按名消费恒发生在重观察之后的新真值上。失读跳写窗 = 消费读旧值（暂态规范名或缺件），危害 = 排序/计划次优，与现行原始名入账同量级——残余如实申报，不设额外防线（治理归 reconcile/缺陷台账）。
+- **sim 遭遇侧申报**：sim 引擎唯一决策入口 = 商店决策面（sim/ 全目录零遭遇刷新执行面），`decide_encounter` 判据不在 sim 路径 → `encounter_refresh_left` 无 sim 写端 = 预期非缺口；flow/bridge 判据换源仅 live 生效，sim 无行为差异。
 
 ## 3. 验收锚（行为级；验收凭据形式见 landing 各阶段）
 
-1. 补给选卡：确认点击后（不等下一帧）容器即持效果逻辑态——owned 含装备规范名（norm_item 命中时）+ bench 含角色（合成级联后）；`chosen_supply` 三元组在派发前已由画面 op 写（现状时机不变）；supply 链无落地相补写面（`kernel/cw_action_report/pick_supply.py` 的 `EVIDENCE_OVERLAY_CLOSED` 及其在 supply 链的导入点零残留；pick_equip/pick_planner 同名常量不在辖内）。
+1. 补给选卡：确认点击后（不等下一帧）容器即持效果逻辑态——owned 含装备规范名（norm_item 命中时）+ bench 含角色（合成级联后）；`chosen_supply` 三元组在派发前已由画面 op 写（现状时机不变）；注册表级分层归一行为锁：特权/后缀族/互撞族（垃圾袋/金垃圾袋、生命之花/生命之环、追击/击破星徽）完美 OCR 恒命中、OCR 形变救援命中、多命中拒识返回 ''；supply 链无落地相补写面（`kernel/cw_action_report/pick_supply.py` 的 `EVIDENCE_OVERLAY_CLOSED` 及其在 supply 链的导入点零残留；pick_equip/pick_planner 同名常量不在辖内）。
 2. 补给刷新：剩余 1 → 建议刷新 → 点钮恰一次 → 访问终结交回；剩余 0 或 None → 零点击不终结，按原评分选卡。
 3. 遭遇刷新：点钮恰一次 → 访问终结交回（无同访问重读、无二次覆盖写、无重决策）；剩余 0 或 None → 按原评分选卡。
 4. 全链零已用计数残留：`supply_refresh_used`/`encounter_refresh_used`/`encounter_refreshed_in_visit` 三符号零命中（grep 范围 = src + sr-od-test；豁免 = telemetry 历史数据只读注释）。
