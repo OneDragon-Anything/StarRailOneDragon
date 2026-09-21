@@ -13,13 +13,16 @@ gain-chain.md(原语契约/时序/溢出落位/随机态纪律/失败安全/接�
 
 随机态纪律:每个函数一个 ``rand: bool`` 必带入参、递归
 透传、效果体含采样时可翻转子链——本次写是否处于随机语义,不承诺全链
-一致;写通道 = rand=True 走 ``write_logic_rand``(采样链)、False 走
-``write_logic``(确定面)。
+一致;写通道经 :func:`_select_write` 单一收口(通道规则「未锚定 →
+随机态」,开局种子底座与锚定闩):rand=True 或容器未锚定 →
+``write_logic_rand``(未锚定期链落账 = 未验证推算,首观察静默覆盖);
+锚定后按形参(rand=False → ``write_logic`` 确定面,失配网原样生效)。
 
 失败安全:链原语**零吞错**(容器写腿/回调效果腿异常上抛);
 best-effort 边界只在登记/遥测申报腿内(失败 log + 缺陷留证、不阻塞);
-未观察(bench/equips)= bug 面:零写 + 留证不停机,根治归观察
-补全批;席满且溢出位被占 = 游戏行为未实证:零写 + 留证,禁猜。
+bench/equips 未观察(None)= 开局种子底座下生产不可达(局容器缓存
+单例冷建即种):直构/sim 域保留拒落档零写,无缺陷发射;席满且溢出位
+被占 = 游戏行为未实证:零写 + 留证,禁猜。
 
 模块拆分(获得链模块拆文件批):效果内容(策略卡效果注册表 ``PICK_INVEST_
 EFFECTS`` + 骇客采样池 + 效果体)住 ``cw_gain_effects.py``——本模块模块级
@@ -29,6 +32,7 @@ EFFECTS`` + 骇客采样池 + 效果体)住 ``cw_gain_effects.py``——本模�
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 
 from one_dragon.utils.log_utils import log
@@ -55,6 +59,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     _emit_defect,
     apply_effect_burst_grant,
     bench_view_of_working,
+    prep_anchored_of,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_GIFTS,
@@ -67,9 +72,9 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 GAIN_CHAIN_PRODUCER: str = 'CwGainChain'
 
 #: 缺陷留证 kind 词表(_emit_defect 台账行分键;留证不停机,gain-chain.md §6)。
-DEFECT_BENCH_UNOBSERVED: str = 'gain_chain_bench_unobserved'
+#: 未观察两 kind(bench/equips)已随开局种子底座与锚定闩批退役——生产
+#: 不可达,拒落档零写无缺陷发射(gain-chain.md §6 词表同步收敛)。
 DEFECT_OVERFLOW_TAKEN: str = 'gain_chain_overflow_slot_taken'
-DEFECT_EQUIPS_UNOBSERVED: str = 'gain_chain_equips_unobserved'
 DEFECT_ADVISOR_DECL: str = 'gain_chain_advisor_decl'
 DEFECT_PORTAL_REGISTER: str = 'gain_chain_portal_register_failed'
 DEFECT_STRATEGY_REGISTER: str = 'gain_chain_strategy_register_failed'
@@ -232,6 +237,22 @@ def merge_step_once(bench: list[BenchSlot | None],
 # ============================================================ 链内工作池与写腿
 
 
+def _select_write(gs: GameState, rand: bool) -> Callable[..., None]:
+    """链写通道选择单一收口(通道规则「未锚定 → 随机态」,开局种子底座
+    与锚定闩;全部写选择点必经本口,禁散写 ``write_logic_rand if rand`` 形态)。
+
+    语义:形参 ``rand=True``(采样链)或容器未锚定(:func:`prep_anchored_of`
+    为 False,即开局种子底座窗口)→ ``write_logic_rand``——未锚定期链的
+    落账是「未验证推算」,走随机态让首观察静默覆盖(差异只落
+    ``logic_rand_outcome`` 台账行);锚定后恢复形参语义(rand=False →
+    ``write_logic`` 确定面,失配网原样生效,P2/P3 位面环境送卡的落位
+    验证信号保留)。直构容器视同未锚定。
+    """
+    if rand or not prep_anchored_of(gs):
+        return gs.write_logic_rand
+    return gs.write_logic
+
+
 def _slot_sig(slots: list) -> list:
     """槽表值签名(变更检测用;判「该域是否需要落一行」,与
     cw_effect_inventory._slot_sig 同构——签名只驱动落行,不承载语义)。"""
@@ -310,7 +331,7 @@ def _write_merge_step(gs: GameState, pool: _WorkPool, *, rand: bool,
     """单级合成后的容器写(受影响域各落一行,merge_cascade_write 范式:
     签名比对判「是否需要落行」;行域载体在场上 = bench+front+back 同号
     三行;溢出位腾空 → overflow 两字段成对清写)。"""
-    write = gs.write_logic_rand if rand else gs.write_logic
+    write = _select_write(gs, rand)
     if _slot_sig(pool.bench) != pool.bench_sig:
         write(gs.bench, bench_view_of_working(pool.bench, pool.orig_view),
               produced_by=producer, evidence=evidence, sig=sig)
@@ -357,20 +378,16 @@ def _gain_character_core(gs: GameState, name: str, star: int, *, rand: bool,
     landing = 'skipped'
     if enter:
         if gs.bench.value is None:
-            # 【待梳理标记】bench 未观察 = bug 面(用户裁定:接管局进来在
-            # 备战,观察可补全)——零写 + 留证不停机;根治归观察补全批。
-            _emit_defect(field_name='bench',
-                         expected='bench 已观察(获得链落位前提)',
-                         actual='bench 未观察(None)',
-                         evidence=evidence, sig=sig,
-                         kind=DEFECT_BENCH_UNOBSERVED)
+            # bench 未观察(None)= 开局种子底座下生产不可达(局容器缓存
+            # 单例冷建即种);直构/sim 域仍可 None → 拒落档零写,无缺陷
+            # 发射(缺陷 kind 已退役,真值归首观察覆盖)。
             return GainOutcome(placed=False, landing='skipped',
                                merge_levels=acc.merges,
                                effects=tuple(acc.effects),
                                detail='bench_unobserved')
         pool = _build_pool(gs, ovf_star)
         assert pool is not None   # bench 已判非 None,构建恒有池
-        write = gs.write_logic_rand if rand else gs.write_logic
+        write = _select_write(gs, rand)
         slot = BenchSlot(kind='unit', unit=Unit(char_id=name, star=star))
         if bench_place(pool.bench, slot) is not None:
             write(gs.bench, bench_view_of_working(pool.bench,
@@ -446,7 +463,7 @@ def gain_invest_env(gs: GameState, session: object, env_name: str, *,
 
     容器写腿零吞错:写/回调效果腿异常上抛。
     """
-    write = gs.write_logic_rand if rand else gs.write_logic
+    write = _select_write(gs, rand)
     write(gs.active_env, env_name, produced_by=producer,
           evidence=f'gain_invest_env:{env_name}', sig=sig)
     if session is not None:
@@ -467,7 +484,8 @@ def gain_character(gs: GameState, name: str, star: int, *, rand: bool,
                    sig: ChannelSig, evidence: str,
                    producer: str) -> GainOutcome:
     """获得角色(gain-chain.md §2 固定时序):落位(备战空槽 → bench_place;席满 →
-    溢出落位写 overflow 两字段;溢出位被占/bench 未观察 → 零写留证)→
+    溢出落位写 overflow 两字段;溢出位被占 → 零写留证,bench 未观察 =
+    直构域拒落零写)→
     on_character_gained 回调 → 单级 3 合 1 升星判断(池 = 备战 ∪ 上阵 ∪
     溢出)→ 升星产物递归重进本原语。链内所有写共享入口 sig(gain-chain.md §2),
     evidence 加 ``#place``/``#mergeN`` 后缀区分。
@@ -483,20 +501,18 @@ def gain_character(gs: GameState, name: str, star: int, *, rand: bool,
 def gain_equipment(gs: GameState, item: str, *, rand: bool,
                    sig: ChannelSig, evidence: str,
                    producer: str) -> GainOutcome:
-    """获得装备(gain-chain.md §2):equips 追加入栏(栏未观察 = 同 bug 留证规则)→
+    """获得装备(gain-chain.md §2):equips 追加入栏(栏未观察 = 直构域
+    拒落零写)→
     on_equipment_gained 回调(装备获得→送单位数据表分派)。装备无升星
     判断;子链合成级数留证在子链遥测行,本出参 merge_levels 恒 0。"""
     inv = gs.equips.value
     if inv is None:
-        # 【待梳理标记】未观察 = bug 面(用户裁定):零写 + 留证不停机
-        _emit_defect(field_name='equips',
-                     expected='equips 已观察(获得链入栏前提)',
-                     actual='equips 未观察(None)',
-                     evidence=evidence, sig=sig,
-                     kind=DEFECT_EQUIPS_UNOBSERVED)
+        # equips 未观察(None)= 开局种子底座下生产不可达(局容器缓存
+        # 单例冷建即种);直构/sim 域仍可 None → 拒落档零写,无缺陷
+        # 发射(缺陷 kind 已退役,真值归首观察覆盖)。
         return GainOutcome(placed=False, landing='skipped', merge_levels=0,
                            effects=(), detail='equips_unobserved')
-    write = gs.write_logic_rand if rand else gs.write_logic
+    write = _select_write(gs, rand)
     write(gs.equips, list(inv) + [item], produced_by=producer,
           evidence=f'{evidence}#equip', sig=sig)
     effects = on_equipment_gained(gs, item, rand=rand, sig=sig)
@@ -549,7 +565,7 @@ def gain_invest_strategy(gs: GameState, session: object,
                            effects=(), detail='invalid_payload')
     # ① 注册(按名字去重追加;跳写后登记/效果腿照常)
     cur = list(gs.active_strategies.value or [])
-    write = gs.write_logic_rand if rand else gs.write_logic
+    write = _select_write(gs, rand)
     if canon not in cur:
         write(gs.active_strategies, cur + [canon], produced_by=producer,
               evidence=f'gain_invest_strategy:{canon}', sig=sig)
