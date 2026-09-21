@@ -112,7 +112,9 @@ class OverlayPickExecEnv:
     (巨星迁入半:True = 先点 ``target`` 候选选中再确认;False = 跳过
     选中直发确认)。
     ``round_result`` = 旁路回传(确认链末步 ``round_*`` 产物;op 自身
-    round 结果恒成功不携带语义),op 类写、画面 op act 分派面读。
+    round 结果恒成功不携带语义),op 类写;现行两 node 宿主画面 op 均不
+    消费本字段(循环推进按宿主自身形态返回 round_wait),保留作分派面
+    需要逐结果路由时的旁路面。
     ``leg_type``/``norm_item`` = 银狼策划腿型载荷(银狼闭环 design
     §2.1①;决策半经 ``classify_planner_leg`` 现算,随发射透传给上报函数
     登记意图遥测;leg_type ∈ upgrade|weaken|equip|unknown,norm_item =

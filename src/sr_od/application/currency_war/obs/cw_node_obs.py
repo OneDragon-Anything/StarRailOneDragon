@@ -21,6 +21,7 @@ from sr_od.application.currency_war.kernel.cw_events import (
     MegastarOption,
     SupplyOption,
 )
+from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
 from sr_od.context.sr_context import SrContext
 
 # 遭遇卡标题「遭遇其X」→ X 中文数字 → 难度档(其一=1 易 … 其六=6);decide_encounter 按难度选。
@@ -112,15 +113,21 @@ def read_encounter_refresh_count(ctx: SrContext, screen: MatLike) -> tuple[int, 
 # 环境屏「剩余次数：1」全角冒号,均为在册 OCR 实证)。
 _INVEST_REMAIN_RE = re.compile(r'剩余次数\s*[：:]\s*(\d+)')
 _INVEST_REFRESH_COUNT_RE = re.compile(r'刷新次数\s*(\d+)')
-# 计数行 OCR 带(形态对齐遭遇屏 _REMAIN_RECT 先例:只裁 OCR 量,不承点击坐标
-# 真相——点击走文本锚定偏移,非本带;screen_info 已同值建档「区域-刷新次数行」
-# /「区域-剩余次数行」供对账,V7 建档实测收口)。
+# 计数行 OCR 带:单一真相源 = screen_info(策略屏「区域-刷新次数行」/环境屏
+# 「区域-剩余次数行」,读经 ``_area_rect``;缺失/读失败回退下方同值兜底常量,
+# 失败安全)。带只裁 OCR 量,不承点击坐标真相——点击走文本锚定偏移,非本带。
 # - 策略屏:三组「刷新次数N」文本 y≈841-869、x≈421-1530(归档帧 CV/OCR 实测;
 #   旧 docstring 记 y≈841 与归档帧一致)。
 # - 环境屏:「剩余次数：N」文本 x≈703-842、y≈969-997;x 上界 1000 避开「确认」
 #   (x≥1054)文本区。
 _INVEST_STRATEGY_COUNT_RECT = Rect(300, 830, 1560, 880)
 _INVEST_ENV_COUNT_RECT = Rect(300, 955, 1000, 1010)
+# kind → (画面名, area 名, 兜底 rect);未知 kind 沿 env 支(与原三元选择同语义)。
+_COUNT_RECT_SPECS: dict[str, tuple[str, str, Rect]] = {
+    'strategy': ('货币战争-投资策略', '区域-刷新次数行',
+                 _INVEST_STRATEGY_COUNT_RECT),
+    'env': ('货币战争-投资环境', '区域-剩余次数行', _INVEST_ENV_COUNT_RECT),
+}
 
 
 def read_invest_refresh_counts(
@@ -130,15 +137,20 @@ def read_invest_refresh_counts(
 
     kind = 'strategy'(逐卡计数,可多条)/ 'env'(全局计数,至多一条;正则同
     支兼容「剩余次数:0」等形态)。读不到 → [](无授予/读缺的判定归调用方,
-    失败安全)。文本中心供 handler 文本锚定刷新圆钮(单帧证据不足判文本漂移
+    失败安全)。OCR 裁剪带取 screen_info 对应 area(缺失回退同值兜底常量)。
+    文本中心供 handler 文本锚定刷新圆钮(单帧证据不足判文本漂移
     形态,固定 area 不可行——遭遇屏先例同款)。计数 0 的灰置态可读(归档帧
     card3_refreshed 实证:灰置但清晰,对比度 ~150 仍在 OCR 可读域)。
     **走 list 形态 API**(get_ocr_result_list 非 map):策略屏三卡计数常态同文
     (「刷新次数1」×3),map 按文本为键会收敛成一_entry 丢位(ocr_service.
     convert_list_to_map),list 按检测逐条保留位置——三槽计数齐读的前提。
     """
-    rect = (_INVEST_STRATEGY_COUNT_RECT if kind == 'strategy'
-            else _INVEST_ENV_COUNT_RECT)
+    _screen_name, _area_name, _fallback = _COUNT_RECT_SPECS.get(
+        kind, _COUNT_RECT_SPECS['env'])
+    try:
+        rect = _area_rect(ctx, _area_name, _screen_name) or _fallback
+    except Exception:   # noqa: BLE001  画面档读取失败安全,回退兜底带
+        rect = _fallback
     pattern = (_INVEST_REFRESH_COUNT_RE if kind == 'strategy'
                else _INVEST_REMAIN_RE)
     results = ctx.ocr_service.get_ocr_result_list(

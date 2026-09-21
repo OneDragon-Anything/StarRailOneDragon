@@ -26,11 +26,11 @@ source_image: screens/货币战争-投资环境/default.webp
 - 「确认」按钮:底部,screen_info ``按钮-确认`` center ≈ (1082,982)。
 - 「剩余次数：N」(本场 N=1,左下)。
 
-> screen_info ``currency_war_invest_env``:``标识-投资环境``(id_mark 标题锚点)+ ``区域-卡牌描述行``(给选中 Y=450)+ ``按钮-确认``。op ``cw_screen_invest_env`` 经 ``cw_observation.area_center`` 读(screen_info 缺失才用兜底常量)。
+> screen_info ``currency_war_invest_env``:``标识-投资环境``(id_mark 标题锚点)+ ``区域-卡牌描述行``(给选中 Y=450)+ ``按钮-确认`` + ``区域-剩余次数行``(刷新计数 OCR 带单一真相源)。op ``cw_screen_invest_env`` 经 ``cw_obs_core.area_center`` 读(screen_info 缺失才用兜底常量)。
 
 ## 关键数据(策略相关)
 
-> bot 已接 ``decide_event``(``cw_screen_invest_env``):OCR 3 卡名 → 按事件白名单 + 克制打分 → 点最优卡 + 确认(2026-08-04)。投资环境 overlay 时 board 不可读 → decide_event 用空 board stub(白名单主策略不依赖 board)。
+> bot 行为(系统侧设计正本 = `docs/develop/sr_od/application/currency_war/screens/invest_env.md`):观察 node OCR 3 卡名落容器 → 策略契约 `decide_invest_env` 打分(委托 `cw_events.decide_event` 定序:定义型 > 经济引擎档 > 终局对齐 > 常规评估,优先经济后终局阵容)→ 环境帧判据可发**整组刷新**(终结交回重观察)∨ 点最优卡描述区 + 确认(确认链 = `CwActionPickInvestOp`)。环境 overlay 时 board 无新鲜观察,dot 惩罚细化自然失效,定序主判据不依赖 board。
 
 - **3 选项(本场实例)**:
   1. **昼之半神概念股** — 开局得【昼之半神】角色 + 初始简易装备,昼之半神角色刷新率提高。(阵营 buff)

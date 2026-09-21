@@ -1,6 +1,6 @@
 # 投资环境三选一(invest_env · 货币战争-投资环境)
 
-> 代码 = `operations/cw_screen/cw_screen_invest_env.py::CwScreenInvestEnv`(两 node 直继承 `SrOperation`)。职责:投资环境 overlay 一次访问——稳定帧观察 → `decide_invest` 决策 →(按需)整组刷新终结动作 → 选卡确认链经 `CwActionPickInvestOp` 派发(台账变异窗派发前开)。路径根 = `src/sr_od/application/currency_war/`。建档 = `assets/game_data/screen_info/currency_war_invest_env.yml`。
+> 代码 = `operations/cw_screen/cw_screen_invest_env.py::CwScreenInvestEnv`(两 node 直继承 `SrOperation`)。职责:投资环境 overlay 一次访问——稳定帧观察 → `decide_invest_env` 决策 →(按需)整组刷新终结动作 → 选卡确认链经 `CwActionPickInvestOp` 派发(台账变异窗派发前开)。路径根 = `src/sr_od/application/currency_war/`。建档 = `assets/game_data/screen_info/currency_war_invest_env.yml`。
 
 ## 1. 分发判定
 
@@ -33,7 +33,12 @@ act = match.strategy.decide_invest_env()(零参,候选读容器 invest_env_opts 
 ├─ 整组重掷刷新 = 终结动作(与策略屏不同构:单全局钮 + 单全局计数):
 │    计数现读 read_invest_refresh_counts(..., 'env') → 全局计数 >0 才有授权
 │    (读缺 = 无授权失败安全;重进后计数自然闸住再次刷新)
-│    → 点「剩余次数」文本锚 + 固定偏移 _REFRESH_BTN_DX(-101,safe_click)
+│    闸败(建议帧但计数无授权/读缺)→ 同访问重调 decide_invest_env 落选卡:
+│      flow 层 scratch 键 (kind, 候选元组) 同帧去重——建议帧首调发建议、
+│      紧随重调落选卡并清键,重入访问恢复首调语义(等价旧「idx + refresh_slots
+│      并载、闸败回退选卡」行为,零选卡漂移);防御 = 重调仍返刷新建议
+│      (策略未实现去重)则弃动作,落 fallback 选卡链
+│    授权 → 点「剩余次数」文本锚 + 固定偏移 _REFRESH_BTN_DX(-101,safe_click)
 │    → 动画窗固定等待 1.5s → 刷后帧机械重读只作零效果留证输入
 │      (计数未扣 ∧ 名集未变 = 强信号 → 缺陷台账 record_defect L2 留证,
 │       零决策零改道;任一侧读缺 = 过渡帧不可判不猜)
