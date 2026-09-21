@@ -71,17 +71,17 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 | OpenTome | CwActionOpenTomeOp | `cw_open_tome_action.py` | 开秘密典籍(非终结):`read_tomes` 识别 → 点槽两次(第一次选中、第二次开启,间隔 1s)→ 固定动画等待;星徽四选一 overlay 弹出由外循环 0i 接管选卡。无典籍/槽不匹配 = 不发出。机械执行后 op 自上报 `report_action_open_tome_param`(腾席腿)。发射条件 = 备战策略产 OpenTome(slot=None = 第一典籍)。 |
 | OpenBookcard | CwActionOpenBookcardOp | `cw_open_bookcard_action.py` | 开书册卡(非终结):`find_bookcards` 识别 → 点槽中心 → 固定动画等待(`_OVERLAY_ANIM_WAIT_S`);专家邀请函弹窗由外循环 0k 分发 `CwScreenExpertInvite` 选卡。无卡/槽不匹配 = 不发出。机械执行后 op 自上报 `report_action_open_bookcard_param`(腾席腿)。发射条件 = 策略器 entry ① prep 实体面卡片臂(容器 bench kind `'bookcard'` 触发;原入口清场段 `cw_screen_prep._clear_prep_cards` 代发通道已撤销,用户裁定 2026-09-19 开卡时机归策略器)。 |
 
-工具原子七类(注册表 7 行同指 `CwActionToolUseOp`;机械半 = owned 网格按注册名定位工具 icon → 拖至目标(equip 模式 = owned 目标件 icon;char 模式 = 角色排槽中心)→ 固定等待 1.5s;零消耗确认对拍,消费真值 = 下一帧装备区读数,装备域容器零写(零写族 `zero_writes.py` 申报,截断点独占发射帧零窗口,下一入口 heavy 覆盖)。发射条件 = 装备域判据面 `cw_equip_env.evaluate_tool_actions` 准入后策略产动作):
+工具原子七类(注册表 7 行同指 `CwActionToolUseOp`;机械半 = owned 网格按注册名定位工具 icon → 拖至目标(equip 模式 = owned 目标件 icon;char 模式 = 角色排槽中心)→ 固定等待 1.5s;零消耗确认对拍,消费真值 = 下一帧装备区读数。上报 = **机械执行直接上报写容器**(用户裁定 2026-09-21:动作 op 不判成败,上报无条件按成功写;容器写正本 = `kernel/cw_action_report/tool_use.py`,记账载体 = `gs.equips` 合并单笔写——消耗移除与效果同笔禁拆两笔;冶金炉/特权卡变异面不走获得链不触发获得回调,投影仪复制走 `gain_character` 链,零写分支统一留证 `tool_*` 缺陷行)。发射条件 = 装备域判据面 `cw_equip_env.evaluate_tool_actions` 准入后策略产动作):
 
 | 词表类 | op 类 | 文件 | 说明 |
 |---|---|---|---|
-| FurnaceUse | CwActionToolUseOp | `cw_tool_use_action.py` | 冶金炉:equip 模式拖装备 = 原地变异同类型随机;char 模式拖角色 = 全拆 + 每件变异随机。 |
-| PrivilegeCardUse | CwActionToolUseOp | `cw_tool_use_action.py` | 特权赋予卡:equip 腿 = 件名替换为对应·特权名(现役执行臂);char 腿 = 已穿进阶装备随机一件变特权。 |
-| WrenchUse | CwActionToolUseOp | `cw_tool_use_action.py` | 拆装扳手:取下目标角色全部穿戴,工具消耗品 −1。 |
-| PrecisionWrenchUse | CwActionToolUseOp | `cw_tool_use_action.py` | 精密拆装扳手:同拆装扳手,无限次用,工具库存面不递减。 |
-| StaffProjectorUse | CwActionToolUseOp | `cw_tool_use_action.py` | 员工投影仪:在备战席创造该角色 1 星复制(费用门 = 3 费及以下,门在发射位判据面)。 |
-| PerfectProjectorUse | CwActionToolUseOp | `cw_tool_use_action.py` | 完美投影仪:同员工投影仪但无费用门。 |
-| LuckyTokenUse | CwActionToolUseOp | `cw_tool_use_action.py` | 好运令牌:拖到角色 → 从其推荐进阶装备中获得一件;判据面现役 fail-closed 永不进准入(发射位挂账,禁无判据发射)。 |
+| FurnaceUse | CwActionToolUseOp | `cw_tool_use_action.py` | 冶金炉:equip 模式 = 单笔 `write_logic_rand` 合并写(移除工具 ∧ 目标件 → 同类别采样替换;采样池 = `cw_sim_equips.furnace_reroll` 同源,rng 关键字带缺省);char 模式 = ①equips rand 合并(移除工具+穿戴+各件采样替换)②行域穿戴清空 logic。变异面不走链;采样命中后果表键集落采证行 `furnace_mutate_consequence_candidate`。 |
+| PrivilegeCardUse | CwActionToolUseOp | `cw_tool_use_action.py` | 特权赋予卡:equip 腿 = 单笔 `write_logic` 合并(移除工具 ∧ 目标件名 → `privilege_counterpart` 特权名替换);char 腿 = fail-closed 零写留证(用户裁定候实机测试,`tool_privilege_worn_unsupported`)。 |
+| WrenchUse | CwActionToolUseOp | `cw_tool_use_action.py` | 拆装扳手:两笔 `write_logic`——equips 合并(移除工具 ∧ 追加目标角色全部穿戴件)+ 行域穿戴清空;工具消耗品 −1 合并同笔。 |
+| PrecisionWrenchUse | CwActionToolUseOp | `cw_tool_use_action.py` | 精密拆装扳手:同拆装扳手两笔 logic,**equips 不移除工具**(无限次用不递减)。 |
+| StaffProjectorUse | CwActionToolUseOp | `cw_tool_use_action.py` | 员工投影仪:①equips `write_logic` 移除工具;②复制走获得链 `gain_character(char,1★)`(落位→回调→3 合 1 升星;复制触发三合一 = 口述·权威 2026-09-21);费用门 ≤3 注册表现读前置查(防御纵深,超门留证零写)。 |
+| PerfectProjectorUse | CwActionToolUseOp | `cw_tool_use_action.py` | 完美投影仪:同员工投影仪走链,无费用门。 |
+| LuckyTokenUse | CwActionToolUseOp | `cw_tool_use_action.py` | 好运令牌:零写 + 留证行(`tool_token_not_admitted`;判据面现役 fail-closed 永不进准入,发射位挂账禁无判据发射;写端随 R9 判据批)。 |
 
 ### 4.3 转场族(2 行)
 
