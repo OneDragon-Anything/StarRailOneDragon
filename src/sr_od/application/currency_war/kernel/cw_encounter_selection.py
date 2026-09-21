@@ -162,6 +162,12 @@ class SettlementRing:
         """最近 n 个普通战斗行(窗口提取;不足 n = 返回实有行)。"""
         return [r for r in self._rows if r.node_type == '普通战斗'][-n:]
 
+    def last_row(self) -> _RingRow | None:
+        """尾行(最近结算行;空环 None)。兑现回调双证第二腿读口
+        (claim_encounter_reward:尾行 node_type = 本局节点类型入环真值;
+        环写端在宿主结算读点位,先于结算确认 op 派发)。"""
+        return self._rows[-1] if self._rows else None
+
     def __len__(self) -> int:
         return len(self._rows)
 
@@ -457,7 +463,7 @@ def _lowest_idx(options: list[EncounterOption]) -> int:
 
 
 # ===== 遭遇奖励兑现回调(结算确认链挂点;迭代 2026-09-21-event-refresh-
-# unify-supply-pick §2.4,attack3 处置后形态)=====
+# unify-supply-pick §2.4,attack3 X4/X7 + R1 复攻定谳后形态,T-7 r2)=====
 
 def claim_encounter_reward(gs: GameState) -> str:
     """遭遇奖励兑现(纯容器读零读屏;``CwOpSettleConfirm`` 确认点击后、
@@ -465,9 +471,17 @@ def claim_encounter_reward(gs: GameState) -> str:
     覆写 node 镜像;``report_node_advance`` 只推进 node_ord 不写镜像,
     推进前后调对读值无差别)。
 
-    判据(design §2.4):
-    - 节点判遭遇 = ``gs.node`` 镜像(:func:`node_kind_of`,最近备战帧
-      观察的下一节点类型)== ``'encounter'``(英文 token);
+    判据(design §2.4,attack3 X4/X7 + R1 定谳):
+    - 节点判遭遇 = **双证**——``gs.node`` 镜像(:func:`node_kind_of`,
+      最近备战帧观察的下一节点类型,英文 token)== ``'encounter'``
+      **∧** ``gs.settlement_ring`` 尾行 ``node_type == '遭遇'``(本局
+      结算行入环真值;环写端 ``record_settlement_row`` 在宿主
+      ``_record_round_outcome`` 环写位,先于确认 op 派发且在结算覆盖
+      best-effort try 块之外。原「结算行 note」载体不可实现——note
+      仅落 journal 行非容器域,attack3 R1 定谳,落地取 ring 尾行);
+      **假阴性申报(attack3 R4)**:双证存在同源面,镜像缺失遭遇局
+      ring 行落 ``'普通战斗'`` → fail-closed 漏兑现(漏记非误记,
+      方向安全,归观察可靠性治理);
     - 达标 = 容器结算域 ``progress_delta > 0`` **单判**(机制依据 =
       combat.md §3「遭遇奖励 = 伤害进度达标制,非清场制」;killed 不入
       判据:结算链 killed 多为 progress 符号派生值 + hp 对比兜底腿在
@@ -475,19 +489,21 @@ def claim_encounter_reward(gs: GameState) -> str:
     - ``chosen_encounter`` 在场 = 消费票。
 
     兑现 = 写 ``encounter_reward_claimed``(所选 (难度档, 奖励文本),
-    单槽逐遭遇覆盖)**并随即清 ``chosen_encounter``(单次消费)**——
-    一并收口三条误兑现面:node 镜像残留(后续非遭遇局 chosen 恒空)、
-    驻留重入轮(重触发时 chosen 已空,天然幂等零闩)、结算覆盖
-    best-effort 失败的陈旧窗(上一场兑现已清 chosen;残余 = 本场覆盖
-    失败 ∧ 上一场同为遭遇 ∧ 本场 chosen 已写的低频组合,后果 = 语义
-    账面脏行非资金操作,如实申报不设额外防线)。
+    单槽逐遭遇覆盖)**并随即清 ``chosen_encounter``(单次消费;清除写
+    = 同族 sig ``write_logic(None)``,actor 与兑现写一致,attack3 R3
+    配对申报)**——一并收口三条误兑现面:node 镜像残留(后续非遭遇局
+    chosen 恒空)、驻留重入轮(重触发时 chosen 已空,天然幂等零闩)、
+    结算覆盖 best-effort 失败的陈旧窗(上一场兑现已清 chosen,ring 腿
+    又收掉大半;残余 = 本场覆盖失败 ∧ 上一场同为遭遇 ∧ 本场 chosen
+    已写的低频组合,后果 = 语义账面脏行非资金操作,如实申报不设额外
+    防线)。
 
     数值不直写(防双源):金币真值 = ``settle_truth`` 结算读数、随机
-    4费角色 = bench 观察(观察赢);本记录 = 语义账面(策略器收益对账/
-    单局复盘消费)。
+    4费角色 = bench 观察(观察赢);本记录 = 语义账面(现役消费面 =
+    审计投影唯一,策略器收益对账读端挂账——attack3 R5)。
 
-    Returns: 归因串('not-encounter'/'not-qualified'/'no-chosen'/
-    'claimed')。
+    Returns: 归因串('not-encounter'/'ring-mismatch'/'not-qualified'/
+    'no-chosen'/'claimed')。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
         ChannelSig,
@@ -495,6 +511,9 @@ def claim_encounter_reward(gs: GameState) -> str:
     )
     if node_kind_of(gs) != 'encounter':
         return 'not-encounter'
+    _tail = gs.settlement_ring.last_row()
+    if _tail is None or _tail.node_type != '遭遇':
+        return 'ring-mismatch'
     _st = gs.settlement.value
     if _st is None or _st.progress_delta is None \
             or int(_st.progress_delta) <= 0:
