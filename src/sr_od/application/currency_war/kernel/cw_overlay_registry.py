@@ -253,7 +253,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     # 以本注为准)。
     OverlaySpec(
         screen_name='货币战争-星徽详情',
-        anchor_area='标识-流派星徽',
+        anchor_area='标识-套组标题',
         semantic=SEMANTIC_DISPLAY,
         close_area='按钮-关闭',
         dispatch_priority=17,
