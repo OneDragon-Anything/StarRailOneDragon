@@ -6,6 +6,9 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.str_utils import longest_common_subsequence_length
+from sr_od.application.currency_war.data.cw_equipment_data import (
+    EQUIPMENT_ROSTER,
+)
 from sr_od.application.currency_war.data.cw_equipment_wear_rules_data import (
     ITEM_WEAR_GATES,
 )
@@ -939,6 +942,58 @@ def normalize_equip_name(text: str) -> str:
     """
     hits = _similar_equip_hits(text)
     return hits[0] if len(hits) == 1 else ''
+
+
+# ===== 补给装备名注册表级分层归一(迭代 2026-09-21-event-refresh-unify-
+# ===== supply-pick design §2.0B;与上方银狼锚归一两入口分立,互不复用)=====
+
+#: 装备注册表全键集 longest-first 定序(分层归一第 2 层 containment 与
+#: 第 3 层相似的遍历序;构建期定序,「分身墨镜Max」先于「分身墨镜」受检)。
+_REGISTRY_EQUIP_NAMES: tuple[str, ...] = tuple(
+    sorted(EQUIPMENT_ROSTER, key=len, reverse=True))
+
+
+def normalize_registry_equip_name(text: str) -> str:
+    """补给侧装备名归一(注册表 158 键全键集分层归一;design §2.0B)。
+
+    与 :func:`normalize_equip_name`(银狼锚 10 件集)分立:补给基础件不在
+    银狼锚名单,恒未解析——故另立本入口,键集 = 装备注册表全键集。
+
+    层级(定死,相似判据不得为首层——纯 LCS 0.75 直移 158 名键集时,
+    完美 OCR 下 79/158 名多命中拒识:垃圾袋/金垃圾袋、生命之花/生命之环
+    0.75 互撞、追击/击破星徽互撞、36 个特权名全撞进阶基名、Max/Pro
+    后缀族等,精确相等必须走快道):
+
+    1. **精确快道**:text 与注册表键名全等 → 直返;
+    2. **containment longest-first**:注册表名 contained in text 取最长
+       唯一(「·特权」类装饰噪声由本层消解;后缀族白昼/极·白昼同层按
+       最长胜出);并列最长 → 落第 3 层;
+    3. **相似救援**:LCS 占比 ≥ :data:`_EQUIP_NORM_LCS_FLOOR`(相对
+       件名长度)唯一命中 → 返回;多命中/零命中 → ''(禁猜,fail-closed:
+       错名不入账,报告侧翻来源留证,观察覆盖自愈)。
+
+    纯函数零副作用,补给 handler 组装点与测试共用。
+    """
+    t = text or ''
+    if not t:
+        return ''
+    if t in EQUIPMENT_ROSTER:
+        return t
+    best_len = 0
+    contain_hits: list[str] = []
+    for name in _REGISTRY_EQUIP_NAMES:
+        if len(name) < best_len:
+            break   # longest-first 定序,更短的不可能再并列最长
+        if name in t:
+            best_len = len(name)
+            contain_hits.append(name)
+    if len(contain_hits) == 1 and best_len > 0:
+        return contain_hits[0]
+    # 并列最长(歧义)或零 containment 命中 → 相似救援层。
+    sim = [name for name in _REGISTRY_EQUIP_NAMES
+           if (longest_common_subsequence_length(t, name) / len(name))
+           >= _EQUIP_NORM_LCS_FLOOR]
+    return sim[0] if len(sim) == 1 else ''
 
 
 def classify_planner_leg(text: str) -> tuple[str, str]:

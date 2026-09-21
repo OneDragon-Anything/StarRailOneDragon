@@ -38,9 +38,10 @@ def register_confirm_arrival(session: 'StrategySession | None', op: str, item: s
     策略器立即可读;实读帧照常覆盖)。
 
     语义按 op 分道:
-    - ConfirmSupply/ConfirmBox/ConfirmTome/ConfirmExpertCash(dict 形态
-      现 apply_confirm_effect):owned += item / 现金为王 gold +4(推进宿主 =
-      容器单例金账,写通道单一源在 cw_exec_state);
+    - ConfirmBox/ConfirmTome/ConfirmExpertCash(dict 形态现
+      apply_confirm_effect):owned += item / 现金为王 gold +4(推进宿主 =
+      容器单例金账,写通道单一源在 cw_exec_state;补给确认不在本族——
+      其入栏/后果腿由 ``report_action_pick_supply_param`` 即时单相一口写);
     - ConfirmStrategy:本函数零写——投资策略选择事实经动作落地获得链写
       (动作 op 即时上报 → gain_invest_strategy,正本 = game_state/
       gain-chain.md;原 handler 确认写点已随投资两屏迁移批删除);
@@ -57,8 +58,7 @@ def register_confirm_arrival(session: 'StrategySession | None', op: str, item: s
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             apply_confirm_effect,
         )
-        if op in ('ConfirmSupply', 'ConfirmBox', 'ConfirmTome',
-                  'ConfirmExpertCash'):
+        if op in ('ConfirmBox', 'ConfirmTome', 'ConfirmExpertCash'):
             apply_confirm_effect(session, {'op': op, 'item': item},
                                  produced_by=produced_by)
             return

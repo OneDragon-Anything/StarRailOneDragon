@@ -20,10 +20,6 @@ target_comp.key_equips 契合 + 装备通用价值选最优列 → 点该列卡�
 登记件)。锚读缺 = 零点击 + 照常置位已用(流程收敛:零动作空转活锁防线,
 语义与旧码一致)。
 
-选定+确认时点经 cw_telemetry.set_last_supply_pick 暂存选择快照
-(char/equip/has_diamond/refreshed + 实际识别选项清单),供 overlay 消失后
-cw_loop 合成 supply 遥测行消费(synthetic_supply 合成行)。
-
 T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点击点由 read_supply_options 按列返回。
 
 形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两段
@@ -33,14 +29,15 @@ design §2.3 触发点 2/§2.4 写端 2——补给「自动弹」形态的唯�
 进了下一节点 = 节点完成,success 交回外层)+ 选项一次读(每访问恰一次,与
 现役决策体读同帧等价,迁移不增加读屏)→ ``report_screen_supply_node_obs``
 落容器 ``supply``(空 = 读缺 CARD_BODY 兜底路径,闸在 report 内)→ obs 挂
-实例属性进决策 node。决策动作 node = 节点完成复检(每轮新帧)→ 零参决策
-(候选自容器槽)→ 点卡身 + 确认 / 刷新终结交回 → ``round_wait`` 循环推进
-(不烧节点重试预算,无防御上限)。节点完成门 miss = 确认落地面按证据闩
-应用一次(``_apply_supply_landing`` → report_action_pick_supply_param 落地
-相:单位腿 + 装备后果腿;零写族迁出批,银狼闭环 design §2.2 单位/补给腿)。``chosen_supply`` = 确认即写特殊口径
-(选定中转暂存宿主已退役,直写是载体消亡后的唯一形态)留守决策体真选分支;
-本屏 sim 腿 = 引擎补给决策段已在但 sim 接线未接,等价判据主承重 = 实机
-在册行为锁。
+实例属性进决策 node。决策动作 node = 零参决策(候选自容器槽)→ 刷新终结
+交回 / 选卡派发即 ``round_success`` 终结(迭代
+2026-09-21-event-refresh-unify-supply-pick design §2.0B:动作 op 确认
+点击后立即上报完整结果,零重入裁决、零落地相补写面——确认未生效 =
+代码 bug,overlay 残留由外循环按当前画面重识别重派)。``chosen_supply``
+= 确认即写特殊口径(选定中转暂存宿主已退役,直写是载体消亡后的唯一
+形态)留守决策体真选分支,派发前写(``op-layer.md`` §2.2 动作事实边界
+硬规则);本屏 sim 腿 = 引擎补给决策段已在但 sim 接线未接,等价判据
+主承重 = 实机在册行为锁。
 """
 import re
 import time
@@ -52,21 +49,15 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_action_report.pick_supply import (
-    EVIDENCE_OVERLAY_CLOSED,
-    report_action_pick_supply_param,
+from sr_od.application.currency_war.kernel.cw_events import (
+    normalize_registry_equip_name,
 )
-from sr_od.application.currency_war.kernel.cw_events import normalize_equip_name
 from sr_od.application.currency_war.kernel.cw_game_state import (
-    ChannelSig,
     observe_node_anchor,
 )
 from sr_od.application.currency_war.kernel.cw_screen_report.supply_node import (
     CwScreenSupplyNodeObs,
     report_screen_supply_node_obs,
-)
-from sr_od.application.currency_war.kernel.cw_vocab import (
-    CwActionPickSupplyParam,
 )
 from sr_od.application.currency_war.obs.cw_node_obs import read_supply_options
 from sr_od.context.sr_context import SrContext
@@ -97,12 +88,6 @@ class CwScreenSupplyNode(SrOperation):
     _REFRESH_BTN_DX: ClassVar[int] = -100
     # 刷新文本锚 = 建档「文本-剩余次数」area(货币战争-补给;OCR 带 rect 单一源)。
     _REFRESH_TEXT_AREA: ClassVar[str] = '文本-剩余次数'
-
-    # 已派发选择载荷(单位/装备腿落地相证据闩消费)。坐标系/时机:值 =
-    # 最近一次 pick 派发的上报 param(决策半生成期快照);消费时机 = 节点
-    # 完成门 miss(确认已落地)恰一次,消费即清空。类级缺省 None = 局外
-    # 桩替 __init__ 的兜底路径同样安全(刷新终结路径随 op 实例消亡,无残留)。
-    _pending_supply: CwActionPickSupplyParam | None = None
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-补给节点')
@@ -217,46 +202,30 @@ class CwScreenSupplyNode(SrOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=8)
     def act(self) -> OperationRoundResult:
-        """节点完成复检 → 单动作(刷新终结交回 ∨ 选卡+确认)→ round_wait。
+        """分发身份安全网 + 单动作(刷新终结交回 ∨ 选卡派发即终结)。
 
-        每轮 node runner 新帧复检节点完成门(round_wait 不计节点重试预算,
-        不收敛 = 策略 bug 响亮暴露,无防御上限);overlay 消失 = 节点完成,
-        确认落地面按证据闩应用一次(_apply_supply_landing;零写族迁出批,
-        银狼闭环 design §2.2 单位/补给腿)后 success 交还外层。"""
+        门 miss = 已离开本节点画面(分发身份安全网:确认链已发即离开 =
+        节点完成)→ success 交还外层。动作两分支均终结本访问:刷新点钮后
+        交回(外循环重进 = 入口重建);选卡经动作 op 确认点击后立即上报
+        完整结果,派发即 round_success 终结(迭代
+        2026-09-21-event-refresh-unify-supply-pick design §2.0B,零重入
+        裁决、零落地相补写面)。"""
         if not self._in_node(self.last_screenshot):
-            self._apply_supply_landing()
             return self.round_success(f'{self.op_name} 节点完成(已离开本节点画面)')
         if self._do_action():
-            # 刷新 = 终结动作:点钮后本访问交回(外循环重进 = 入口重建,
-            # 新装备面由重进后的入口观察现读承载,ADR-0517 语义连续)。
-            return self.round_success('建议刷新终结交回(重进重建入口)', wait=1.5)
+            return self.round_success('动作已发,本访问终结交回(外循环重进重建入口)',
+                                      wait=1.5)
         return self.round_wait(wait=1.5)
-
-    def _apply_supply_landing(self) -> None:
-        """节点完成门的确认落地面(证据闩出口;零写族迁出批):门 miss =
-        overlay 已关 = 确认已落地 → 上报落地相按实际开出内容应用一次
-        (report_action_pick_supply_param 两相语义:单位腿 + 装备后果腿;
-        design §2.2)。pending 缺(无派发轮先离场)= 零应用,零残留。"""
-        _param, self._pending_supply = self._pending_supply, None
-        if _param is None:
-            return
-        match = getattr(self.ctx, 'cw_match', None)
-        _gs = getattr(match, 'gs', None) if match is not None else None
-        if _gs is not None:
-            report_action_pick_supply_param(
-                _gs, _param,
-                ChannelSig(family='logic_action',
-                           actor='CwScreenSupplyNode', mode='compute'),
-                evidence=EVIDENCE_OVERLAY_CLOSED)
 
     def _do_action(self) -> bool:
         """决策 + 单动作体(零参:候选与点击点自观察轮实例载体消费)。
 
         T#99:``decide_supply`` 按 target_comp.key_equips 契合 + 装备通用价值
         选(替代盲点 CARD_BODY);读不到选项 → CARD_BODY 兜底。刷新分支
-        点圆钮后终结交回(Returns True);选卡分支点卡身 + 确认机械半经
-        工厂(统一动作工厂批4:体迁 ``cw_overlay_pick_action.SupplyPickOp``,
-        方法级替身缝保留)。Returns: True = 刷新已发(终结交回)。
+        点圆钮后终结交回;选卡分支点卡身 + 确认机械半经工厂(统一动作
+        工厂批4:体迁 ``cw_overlay_pick_action.CwActionPickSupplyOp``,
+        方法级替身缝保留),确认点击后动作 op 立即上报完整结果,派发即
+        终结。Returns: True = 动作已发(终结交回)。
         """
         match = self.ctx.cw_match
         opts = self._sup_opts or []
@@ -272,14 +241,13 @@ class CwScreenSupplyNode(SrOperation):
         refresh_target = None
         # 派发实例真实选中下标(上报 param 即真实选择;兜底/刷新轮 = 0 占位)。
         param_idx = 0
-        # 开出内容载荷(零写族迁出批,照 PickInvest 先例;空串 = 兜底点卡
-        # 路径/装备名未解析——报告侧按「内容未知/未解析」分型翻来源留证)。
+        # 开出内容载荷(迭代 2026-09-21-event-refresh-unify-supply-pick:
+        # 空串 = 兜底点卡路径/装备名未解析——报告侧按「内容未知/未解析」
+        # 分型翻来源留证)。
         picked_char = ''
         picked_norm_item = ''
-        # 本轮选定快照(选卡确认后合成决策帧的 extra 载荷;None=兜底点卡
-        # 路径/刷新路径——决策帧照写但不带选择字段,读端按 None 分型)。
-        # 只本地拷贝,不动 _LAST_SUPPLY_PICK 暂存槽(其唯一消费者仍是
-        # cw_loop 合成结算行,提前消费=结算行断粮)。
+        # 本轮选定快照(选定事实现场载荷;None=兜底点卡路径/刷新路径)。
+        # 现役消费面 = 零(design §2.1:选定事实现场载荷,遥测接线候批)。
         picked: dict | None = None
         if match is not None and opts:
             # 零参决策(写槽已由观察轮 report 落容器 supply;决策调用形态
@@ -328,17 +296,18 @@ class CwScreenSupplyNode(SrOperation):
                 target = opts[pick.idx][1]
                 reason = pick.reason
                 param_idx = pick.idx
-                # 选定快照(角色/装备/钻;refreshed=刷新是否已用;附实际识别
-                # 选项清单)——现役消费方 = 到账登记(equip)。
+                # 选定快照(角色/装备/钻;refreshed=刷新是否已用)——选定
+                # 事实现场载荷,现役消费面 = 零(见上方组装点注释)。
                 _opt = opts[pick.idx][0]
                 picked = {'char': _opt.char, 'equip': _opt.equip,
                           'has_diamond': _opt.has_diamond,
                           'refreshed': _refresh_used}
-                # 开出内容载荷(归一件名 = 判定单源 normalize_equip_name
-                # 现算;OCR 原始名不静默改写由 handler 持有,ConfirmSupply
-                # 到账边仍收原始名,时序逐位保持)。
+                # 开出内容载荷(归一件名 = 注册表级分层归一
+                # ``normalize_registry_equip_name`` 现算:精确快道 →
+                # containment longest-first → 相似救援唯一命中;多/零命中
+                # = '' 禁猜,报告侧翻来源留证)。
                 picked_char = _opt.char
-                picked_norm_item = normalize_equip_name(_opt.equip)
+                picked_norm_item = normalize_registry_equip_name(_opt.equip)
                 # GameState 选定记录(chosen_supply)——**确认即写**(口径分叉
                 # 显式申报:supply 直写,chosen_tome 维持「出口验真后写」家族
                 # 口径不变——差异理由 = supply 的中转暂存宿主已随执行层状态
@@ -377,9 +346,9 @@ class CwScreenSupplyNode(SrOperation):
         # 点卡选中 → 确认机械半经工厂(刷新圆钮机械点击留守上方——刷新链 =
         # CwActionRefreshSupplyParam 建议的执行半,与遭遇屏 _try_refresh 同类,
         # pick execute 语义 = 点卡选中 → 确认)。派发实例携真实选中下标与
-        # 开出内容载荷(上报 param 即真实选择+内容;发射相意图遥测、落地相
-        # 单位/装备腿由节点完成门证据闩消费;无 match 兜底路径同形派发,
-        # 内容空 = 报告侧内容未知分型)。
+        # 开出内容载荷(上报 param 即真实选择+内容;动作 op 确认点击后
+        # 立即一口写 owned/单位腿/后果腿;无 match 兜底路径同形派发,
+        # 内容空 = 报告侧内容未知分型)。派发即终结(design §2.0B)。
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
@@ -391,6 +360,5 @@ class CwScreenSupplyNode(SrOperation):
         _param = CwActionPickSupplyParam(idx=param_idx,
                                          char_name=picked_char,
                                          norm_item=picked_norm_item)
-        self._pending_supply = _param
         action_op_for(_param, self.ctx, _env).execute()
-        return False
+        return True

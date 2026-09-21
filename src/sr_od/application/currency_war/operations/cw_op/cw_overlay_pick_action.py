@@ -192,8 +192,10 @@ class CwActionPickSupplyOp(SrOperation):
 
     刷新圆钮机械点击留守画面 op(刷新链 = ``SupplyPick.refresh`` 决策的
     执行半)——pick execute 语义 = 点卡选中 → 确认,不含刷新臂。
-    到账登记 = 确认收尾的写边(ConfirmSupply → owned += 选中装备名),
-    随确认链同体,时序逐位保持。"""
+    **即时上报**(action_ops.md §1 增补 2,迭代 2026-09-21-event-refresh-
+    unify-supply-pick):确认点击后立即一口写全部效果逻辑态(owned 规范名
+    + 单位腿 + 装备后果腿),无到账登记、无落地证据闩——确认未生效 =
+    代码 bug,overlay 残留由外循环按当前画面重识别重派。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False
@@ -208,13 +210,11 @@ class CwActionPickSupplyOp(SrOperation):
 
     @operation_node(name='pick_supply', is_start_node=True)
     def run(self) -> OperationRoundResult:
-        """机械执行(点卡 → 固定等待 → 确认 → 到账登记;零判效)。"""
+        """机械执行(点卡 → 固定等待 → 确认 → 立即上报完整结果;零判效)。"""
         action = self.param
         env = self.env
         op = env.op
-        match = env.match
         target = env.target
-        picked = env.picked
         op.ctx.controller.mouse_move(target)
         op.ctx.controller.click(target)
         time.sleep(0.6)
@@ -224,18 +224,8 @@ class CwActionPickSupplyOp(SrOperation):
         # 随转移证据机制整体退役)。
         confirm_result = op.round_by_find_and_click_area(
             op.screenshot(), '货币战争-补给', '按钮-确认', success_wait=1.5)
-        # 到账登记(§3.3 #18 ConfirmSupply):owned += 选中装备名(粗粒度
-        # expected,单轮即回备战覆盖点实读清账;equip 未读到 = 无 item 不登记)。
-        if match is not None and picked is not None and picked.get('equip'):
-            from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-                register_confirm_arrival,
-            )
-            register_confirm_arrival(match.session, 'ConfirmSupply',
-                                     picked['equip'],
-                                     produced_by='CwScreenSupplyNode')
-        # 自上报(发射相:仅登记意图遥测,容器零写;落地相按实际开出内容
-        # 应用 = 单位腿 + 装备后果腿,宿主 = 画面 op 节点完成门证据闩——
-        # 银狼闭环 design §2.2,pick_supply 迁出零写族)。
+        # 立即自上报完整结果(design §2.0B 单相:owned += norm_item 规范名
+        # + 单位腿 + 装备后果腿;norm_item 未解析 = 翻来源留证)。
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_pick_supply_param(
@@ -246,8 +236,8 @@ class CwActionPickSupplyOp(SrOperation):
             # 被 kernel 观察态门结构性挡;局外 gs 缺席同跳过(best-effort)。
             if confirm_result.is_success:
                 report_node_advance(gs, trigger='supply_confirm')
-        # 选定事实现役归宿 = journal chosen 域 + 到账登记。
-        return self.round_success('补给选择确认链已发')
+        # 选定事实现役归宿 = journal chosen 域(handler 派发前写)。
+        return self.round_success('补给选择确认链已发(结果已即时上报)')
 
 
 class CwActionPickMegastarOp(SrOperation):

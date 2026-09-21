@@ -99,8 +99,10 @@ def apply_confirm_effect(session, payload: dict, *,
     ``_overlay_confirm.register_confirm_arrival``)。
 
     语义(逐行自原 dict 分支平移,零行为):
-    - ``ConfirmSupply``/``ConfirmBox``/``ConfirmTome`` 且 item 在场:
-      owned +1(终态契约 §B:单一源 = gs.equips,现读-改写-回写);
+    - ``ConfirmBox``/``ConfirmTome`` 且 item 在场:
+      owned +1(终态契约 §B:单一源 = gs.equips,现读-改写-回写;补给
+      入栏/后果腿不读本口——写语义单点 =
+      ``cw_action_report.pick_supply.report_action_pick_supply_param``);
     - ``ConfirmExpertCash``:现金为王弃卡取现金固定回金 +4 金账直推;
     - ``CwActionBuyCardParam``(dict 形,模拟/离线入口):合成引擎算
       购买数,金账逻辑推进;
@@ -119,7 +121,7 @@ def apply_confirm_effect(session, payload: dict, *,
 
     op = payload.get('op', '')
     item = payload.get('item', '')
-    if op in ('ConfirmSupply', 'ConfirmBox', 'ConfirmTome') and item:
+    if op in ('ConfirmBox', 'ConfirmTome') and item:
         _owned_add(session, item)
         _eff(f'owned[{item}]', f'+1({op})', 'owned')
     elif op == 'ConfirmExpertCash':
