@@ -53,7 +53,7 @@
 1. **落位**:以 gs 现帧派生工作池(备战槽表 + 上阵行域派生表 + 溢出表)。
    - 备战有空槽 → `cw_exec_state.py::bench_place` 入槽,写 bench;
    - 备战满 → **溢出落位**(§4);
-   - 溢出位已被占 / bench 未观察 → 零写 + 留证(§6)。
+   - 溢出位已被占 → 零写 + 留证(§4);bench 未观察(直构/sim 域)→ 拒落零写(§6)。
 2. **触发「获得角色」回调** `on_character_gained`(§3)——回调可递归调任意链原语。
 3. **回调返回后,单级 3 合 1 升星判断**(合成池 = 备战 ∪ 上阵 ∪ 溢出):恰有同名
    同星 3 只 → 消耗三只、载体升星(单级合成规则见 §2.5)。**回调先于升星**的理由 =
@@ -67,7 +67,7 @@
 ### 2.3 获得装备 gain_equipment
 
 `gain_equipment(gs, item, *, rand, sig, evidence, producer)`:`gs.equips` 追加入栏
-(栏未观察 = 同 bug 留证规则,§6)→ `on_equipment_gained` 回调(§3)。装备无升星判断。
+(栏未观察[直构/sim 域] = 拒落零写,§6)→ `on_equipment_gained` 回调(§3)。装备无升星判断。
 
 ### 2.4 获得投资策略 gain_invest_strategy
 
@@ -158,16 +158,20 @@ merge_simulate 终态」——禁第二套语义。merge_simulate 是一次到�
 - 递归调用点按**该效果自身性质**传参:效果体含采样 → 对其发起的子链传 `rand=True`;
   不含采样 → 原样透传;
 - 语义:任一写点的 rand 值 = 「本次写是否处于随机语义」,不承诺全链一致——采样效果
-  只翻转它自己的子链。写通道:rand=True 走 `write_logic_rand`、False 走
-  `write_logic`(通道语义正本 = fields.md §2.1/§2.5)。
+  只翻转它自己的子链。写通道 = 择道口 `anchor_aware_write`(fields.md §2.6):
+  未锚定(锚定闩 `prep_anchored` 未置)一律 `write_logic_rand`——种子底座/链落账是
+  未验证推算,首观察静默覆盖;锚定后按 rand 形参(失配网生效)。通道语义正本 =
+  fields.md §2.1/§2.5。
 
 ## 6. 失败安全四则
 
 1. **链原语零吞错**:容器写腿/回调效果腿异常上抛(真异常该响);调用方(动作上报
    函数)不包整链、零额外吞错。
-2. **未观察 = bug 面,零写留证**:bench/equips 未观察(None)时零写 + 缺陷台账留证
-   (`kind = DEFECT_BENCH_UNOBSERVED` / `DEFECT_EQUIPS_UNOBSERVED`),不停机。
-   【待梳理标记:接管局进来在备战,观察可补全;根治归观察补全批】
+2. **未锚定期写走随机态,未观察拒落档保留**:容器经开局种子底座播种(fields.md
+   §2.6),生产链路阵容/装备域不再有 None——原「未观察 = bug 面」缺陷 kind
+   (`gain_chain_bench_unobserved`/`gain_chain_equips_unobserved`)已退役;直构容器
+   (sim/测试)的 None 拒落零写与 detail 档保留,零缺陷发射。链写通道随锚定闩择道
+   (§5,fields.md §2.6)。
 3. **查无效果安静不写**(§3):真值归观察覆盖。
 4. **席满且溢出位被占 = 零写留证**(§4;游戏行为未实证,禁猜)。
 

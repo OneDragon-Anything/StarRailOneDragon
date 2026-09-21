@@ -63,6 +63,9 @@ evidence 为可选来源注记,记录证据分级(帧标签稳定范围、当场
 按字段显式申报(§6.3 同源申报面)。**失读帧的字段处置二选一(统一口径)**:
 ①字段已有正式值 → 写 carried(沿用+来源帧标注);②字段从未读过(机制性不可读态
 +新局)→ 字段保持 None。硬边界:字段一旦有过正式值,任何失读都不得把它清成 None。
+**carried 沿用守卫收窄(开局种子底座批)**:现值来源为 `logic_rand`(种子底座/采样链)
+时失读**不沿用**——随机态值不是「上次好值」,失读宁保持未验证态,禁被失读腿洗成
+可信 carried(假值防线 §8.8 同源)。
 **画面附加域显式例外**:shop/encounter/supply payload(§3.3/§3.4/§8.4)语义=
 「当前画面的 payload,非当前画面=None」——离开画面置 None 是结构事实非失读,不适用
 carried、不受本硬边界辖;在屏失读不写、沿用旧值,在屏与否由分类子态判定(§3.2.17)。
@@ -106,12 +109,40 @@ carried、不受本硬边界辖;在屏失读不写、沿用旧值,在屏与否�
 留观察。首个落地 = 点晶矿([logic-updates/collect-ore.md](logic-updates/collect-ore.md);
 临时口径 v0 待采集校准,常量面 = `kernel/cw_ore_reward.py`)。
 
+### 2.6 开局种子底座与锚定闩
+
+局容器冷建时(`game_state_of` 缓存单例建支;`session=None` 一次性支与直构容器不种)
+按**开局真值**播种一批字段,全走 `write_logic_rand`(produced_by/evidence =
+`GsOpeningSeed`/`seed:opening`,journal 过滤键 = sig.actor):阵容域(空
+bench/front_row/back_row/equips/occupied_equips/spheres)、经济域(gold 3/level 3/
+xp (0,4)/hp 82/streak 0/back_layout 6/deploy_cap 3/刷新计数 0/strategy_refresh_left
+{})、局级事实域(active_env ''/active_strategies []/enemy_affixes []/overflow
+False/''/prev_node_spent False)。种子值依据逐字段申报面见迭代设计;hp 实证域 =
+A8/难度108(§3.1.6 三写端时序)。node 族/payload 域/事件选择域/tracked 账等
+**不种**——None 在这些字段上是设计语义(离屏/未选择/未锚定闩本体)。
+
+**语义例外立据**:`logic_rand` 在册纪律「策略器消费前必须重观察」对种子底座构成
+显式例外——种子与未锚定期链写(rand 通道)**供未锚定期直接消费**(值 = 未验证
+开局底座,消费面为 kernel 计算族;真值由首个备战 heavy 观察静默覆盖收口,rand
+旁路 §2.3)。例外边界:仅限种子底座 + 未锚定期容器写;锚定后恢复纪律。
+
+**锚定闩与通道规则**:非 Field 簿记位 `prep_anchored`(缺省 False,粘性,唯一生产
+置位写点 = `reconcile_tracking` bench 侧真值写回成功点)标记「本局已完成首次备战
+heavy 锚定」;择道口 = `anchor_aware_write(gs, rand)`——未锚定一律 `write_logic_rand`
+(未验证推算,首观察静默覆盖),锚定后按 rand 形参(失配网生效)。消费方 = 获得链
+(`gain_invest_env`/`gain_character`/`gain_equipment`/`gain_invest_strategy` 及合成
+写)与效果账本桥锚定前可达写端(`apply_board_rewrite` SELL_ALL 清空写;gold 退款写
+有意保持 logic——算术推导面,失配 = 模型错真信号)。测试/直构域置闩专口 = 直赋
+`gs.prep_anchored = True`。
+
 ## 3. 字段清单(按画面组织)
 
 > 组织规则:字段写在「能写入它的画面」小节里。一个字段能在多个画面写入,主条目写
 > 完整语义(None 含义/边界/效果修饰),其余画面条目互引不复制。画面切换不重置字段:
 > 没有新写入就是保留值(跨画面沿用标 carried,§2.1)。各画面上的决策操作写入规则
-> 见 §4,各画面小节尾有指引。
+> 见 §4,各画面小节尾有指引。**开局种子底座**:阵容/经济域中 §2.6 所列字段在新局/
+> 接管局冷建即含种子(rand 态),本节各字段「None=未观察」语义在生产容器上自冷建起
+> 不可达(直构容器/sim 域保留);各字段行不再复述。
 
 ### 3.1 开局序列(难度确认 → 简报 → 位面过渡)
 
@@ -167,6 +198,9 @@ sig = logic_action/CwScreenPlaneIntel/货币战争-位面详情/compute,采集�
 开局 hp 不等首个备战帧观察:对账层按**遥测先验**写入——实证档=**82/开局不利 62**
 (`_AFFIX_HP_DELTA`,`kernel/cw_opening_hp.py`;经 `cw_reconcile.reconcile_hp` 开局
 分支接线);其余难度档维持 None。来源 evidence=`prior:adr-0559`。
+**三写端时序(开局种子底座批)**:①冷建种子 82(= `OPENING_HP_BASE` 实证基线,
+rand 通道,§2.6)→ ②先验(首漏斗帧按档 82/62;非实证档先验返 None、先验腿跳过,
+容器保持种子随机态)→ ③真读。先验/真读覆写种子均静默(rand 旁路 §2.3)。
 
 ### 3.2 干净的备战画面(商店关闭态)
 

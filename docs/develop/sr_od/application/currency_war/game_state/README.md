@@ -55,12 +55,16 @@
 | `write_logic()` | 逻辑层 | 按游戏规则推算的逻辑值**直接写字段**(两态制 标准通道,策略器立即可读;非免检——值之后仍受观察覆盖辖) |
 | `write_logic_rand()` | 逻辑层·随机扩展 | **效果随机的动作采样链**直写(逻辑随机态,source=logic_rand;采样语义:上报函数真掷随机按采样走确定性链,值 = 可能世界快照):观察覆盖差异 = 随机效果落地预期内(落 `logic_rand_outcome` 台账行,不进失配三分流);**策略器消费前必须重观察**(查询口 = `logic_rand_fields()`,跨动作污染判定 = `any_logic_rand()`)。首个落地 = 点晶矿;采样口径未建的动作仍按域级跳写 |
 
-配套口:`carry()`(失读沿用,evidence 带 carried:来源帧)/`write_prior()`
+配套口:`carry()`(失读沿用,evidence 带 carried:来源帧;**logic_rand 来源不沿用**
+——随机态种子/采样值非「上次好值」,fields.md §2.2)/`write_prior()`
 (先验写入,如开局 hp 先验)/`leave_screen()`(画面附加域离屏置 None)/`relay()`
 (接管中继)/`note_obs_event()`(零状态变更的观察事件留证行)。完整 API 契约见
 journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 [fields.md](fields.md) §8)。(原 `expect()`/`confirm()`/`discard_expected()`
 两步机制已随统一 state 直迁废除。)
+**开局种子底座与锚定闩**:冷建播种 A 类字段(rand 态)+ `prep_anchored` 闩 + 择道口
+`anchor_aware_write`——rand 通道「消费前必须重观察」纪律的显式例外面(种子/未锚定期
+链写供直接消费,锚定后恢复),正本 = [fields.md](fields.md) §2.6。
 
 ### 3.2 权威序
 
@@ -107,7 +111,7 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | 单位域(units) | front_row / back_row / bench(BenchView)/ back_layout / deploy_cap | ①观察+②动作+③效果桥 |
 | 经济域(economy) | gold / hp / level / xp / streak / level_up_cost / shop_refresh_cost | ①观察+②动作 |
 | 商店刷新计数域(refresh_counters) | 三计数已迁出容器住效果账本(2026-09-18,写端=刷新上报函数);prev_node_spent 保留容器(economy 面) | ②动作+③效果桥 |
-| 节点屏刷新计数域(node_screen_refresh) | encounter_refresh_used / supply_refresh_used / env_refresh_used / strategy_refresh_used(逐卡) | ②动作(遭遇/策略经 on_outcome 发射钩子写、补给为 live 刷新发射单点,三写端在产;环境零写端在册) |
+| 节点屏刷新计数域(node_screen_refresh) | encounter_refresh_used / supply_refresh_used / env_refresh_left / strategy_refresh_left(逐卡;环境/策略剩余语义化+观察写端,投资两屏迁移批) | ②动作(遭遇/策略经 on_outcome 发射钩子写、补给为 live 刷新发射单点)+①观察(剩余两字段) |
 | 持久账本域(inventory) | equips / consumables(免战牌载体归一入效果账本,不在本域) | ①观察+②动作 |
 | 晶矿域(spheres) | spheres | ①观察 |
 | 交互状态域(substate) | prep_substate(分类子态四档)/ event_overlay | ①观察+③接管协议 |
@@ -119,7 +123,7 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | 效果账本域(effects) | effects(ActiveEffectInventory 实例清单;非 Field 载体) | inventory 方法域(随快照行自带) |
 | 动作回执域(receipts) | receipts(滚动窗,容量常量 RECEIPTS_WINDOW_CAP) | ②动作 |
 | 局终域(match_final) | match_final(一段终态一行;恢复局跨段多行) | ③局终收口 |
-| 工程结构(非 Field) | schema_version / gs_schema / frame_obs / write_seq / hb_prev_seq / hb_stall_count / created_monotonic;非域台账单列——`tracked_books`(TrackedBooks 主账槽位簿记)/ `plane_node_sequences`(位面节点序列台账,PlaneNodeLedger 载体;访问口 = cw_exec_state 三访问函数) | 构造/迁移写;簿记组/台账 = 直读属性(非 Field 无渠道面) |
+| 工程结构(非 Field) | schema_version / gs_schema / frame_obs / write_seq / hb_prev_seq / hb_stall_count / created_monotonic / prep_anchored(锚定闩,fields.md §2.6);非域台账单列——`tracked_books`(TrackedBooks 主账槽位簿记)/ `plane_node_sequences`(位面节点序列台账,PlaneNodeLedger 载体;访问口 = cw_exec_state 三访问函数) | 构造/迁移写;簿记组/台账 = 直读属性(非 Field 无渠道面) |
 
 渠道族封闭集 = obs(画面 op 观察)/ logic_action(动作 op 逻辑计算)/ logic_hook
 (state 内部派生逻辑计算);carried/prior/synthesized 是 obs 族内子模,非第四源。
