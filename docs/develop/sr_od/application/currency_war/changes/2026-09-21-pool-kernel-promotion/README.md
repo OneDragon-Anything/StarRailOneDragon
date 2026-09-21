@@ -8,7 +8,7 @@
 - 落地:[landing.md](landing.md)(未起草——定稿后拆阶段)
 
 ## 进度
-- 迭代设计:定稿(两轮核一无前提攻击收敛:r1 major 2 + minor 6、r2 major 1 + minor 8 全量清偿,试读过)
-- 设计对抗:两轮收敛 · 报告=[attack.md](attack.md) + [attack2.md](attack2.md)
-- 落地:未开始
+- 迭代设计:定稿(四轮核一无前提攻击收敛:r1 major 2 + minor 6、r2 major 1 + minor 8、r3 major 0 + minor 3、r4 major 0 + minor 5,全量清偿,试读过)
+- 设计对抗:四轮收敛 · 报告=[attack.md](attack.md) + [attack2.md](attack2.md) + [attack3.md](attack3.md) + [attack4.md](attack4.md)
+- 落地:未开始(**用户裁定 2026-09-21 暂缓派工**——并行批在实现,待其收口后开工;无前置依赖,effective_cost 已落地)
 - 正本更新:未开始
