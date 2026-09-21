@@ -57,7 +57,7 @@
 ### 2.1 逐屏差异
 
 - **补给**：建档「文本-剩余次数」已在（`assets/game_data/screen_info/currency_war_supply.yml` rect (1347,969)-(1484,997)，归档帧对账吻合）；`_read_refresh_anchor` 已解析 N——扩为返回 (count, point) 双出（同帧同源，零新增截图）；观察 node 读数进 obs（`CwScreenSupplyNodeObs` 加 `refresh_left` 字段）→ report 摄入。刷新分支删实例旗标 `_refresh_used` 与容器计数写点；锚读缺（count=None）→ 容器 None → 闸拒绝（覆盖原「零点击照常烧旗标」防线，烧旗标机制退役）。选定快照 `picked` dict：3.1 删 ConfirmSupply 消费后保留组装（选定事实现场载荷，现役零消费面，遥测接线候批），3.2 起 `picked['refreshed']` 布尔键改 `picked['refresh_left']`（值 = 容器 left 现值，可 None——布尔随计数闸消亡，left 快照供读端按剩余分型；无「本局初始授予数」基线，布尔不可由 left 等价导出，故改携带而非推导）。
-- **遭遇**：「剩余次数」读数走既有代码内矩形通道 `obs/cw_node_obs.py::read_encounter_refresh_count`（fields.md §3.4.1 在册先例「遭遇屏建档无剩余次数区域」，不新建档）；`CwScreenEncounterObs.refresh_left` 字段已存在（现状 report 不消费）——report 补摄入，**摄入序照先例：options 空整函数早退不写（含 left）**（`invest_env.py` names 空先 return 同构）；`_try_refresh` 删重读半（保留点钮+等待）；`_decide_encounter_action` 删分支重决策/二次覆盖写/per-visit 位读写；选卡分支的重入裁决与 `chosen_encounter` 写端**不动**（动作事实边界现行合法形态，`op-layer.md` §2.2，不在本迭代辖内）。
+- **遭遇**：「剩余次数」读数走既有代码内矩形通道 `obs/cw_node_obs.py::read_encounter_refresh_count`（fields.md §3.4.1 在册先例「遭遇屏建档无剩余次数区域」，不新建档）；`CwScreenEncounterObs.refresh_left` 字段已存在（现状 report 不消费）——report 补摄入，**摄入序照先例：options 空整函数早退不写（含 left）**（`invest_env.py` names 空先 return 同构）；`_try_refresh` 删重读半（保留点钮+等待）；`_decide_encounter_action` 删分支重决策/二次覆盖写/per-visit 位读写；选卡分支的重入裁决与 `chosen_encounter` 写端原列「不动」，**扩围（2026-09-21 用户裁定）后归 §2.4 辖内：重入裁决删除、chosen 写端迁动作侧即时上报，见 §2.4 第二/三块**。
 
 ### 2.2 消费点迁移总表
 
@@ -76,10 +76,14 @@
 | `encounter_refreshed_in_visit` | `strategies/impl/flow.py` + `strategies/impl/mandate_v1/bridge.py`（刷新旗标源） | 改读 `encounter_refresh_left`（used = not(left>0)） |
 | | `cw_screen_encounter.py`（读写点） | 删 |
 | | `kernel/cw_game_state.py`（字段 + node_screen_refresh 域版本注释） | 删（随域版本 bump） |
+| `_confirm_pending`（确认已发快照） | `cw_screen_encounter.py`（置位 + 重入裁决读点） | 删（重入裁决退役，§2.4 第二块） |
+| `_record_chosen` | `cw_screen_encounter.py`（重入裁决出口写 chosen） | 删（写端迁动作 report，§2.4 第三块） |
+| `chosen_encounter`（写端） | 画面 op 重入裁决点（留守形态） | 迁 `kernel/cw_action_report/encounter.py::report_action_pick_encounter_param`（发射即写；值组装 = `gs.encounter` payload 槽；兑现后清，§2.4 第三/四块） |
+| `gs.encounter` payload 槽 | 消费点 = 决策入口（decide_encounter） | 新增消费点 = 动作 report 值组装（同源读，§2.4 第三块） |
+| `encounter_reward_claimed`（新字段） | — | 新增：写端 = 结算兑现回调（§2.4 第四块）；审计行新增（cw_projection_audit）；遥测 schema 接线候批申报；兑现后清 `chosen_encounter`（单次消费） |
+| `screen_flow_timing.md` #23 口径注 | encounter 观察注释引用 | 改写（supersession 标记，§2.4 第一块；文档判据 = landing 3.3） |
 
-### 2.3 关键取舍（正本化时进动机段）
-
-- **剩余字段 = 独立顶层字段，不入 payload**：对齐投资两屏先例（`env_refresh_left`/`strategy_refresh_left` 均顶层）；payload 形状不动 → `encounter`/`supply` payload 域版本不 bump，只有 `node_screen_refresh` 域因字段增删 bump。
+### 2.3 关键取舍（正本化时进动机段）- **剩余字段 = 独立顶层字段，不入 payload**：对齐投资两屏先例（`env_refresh_left`/`strategy_refresh_left` 均顶层）；payload 形状不动 → `encounter`/`supply` payload 域版本不 bump，只有 `node_screen_refresh` 域因字段增删 bump。
 - **读缺(None) = 拒绝刷新，不做分支内现读兜底**：入口观察是唯一摄入点，分支内现读 = 保留第二读屏点（违读屏点纪律方向）；读缺低频低危（浪费一次刷新机会），活锁方向安全。
 - **chosen_supply 留守画面 op，不进 report**：`op-layer.md` §2.2 动作事实边界硬规则零改动；现状「确认即写」时机已合规（写点 = 选择点，点击链发射前），本迭代只清效果腿的两相形态，不迁选择事实写点。对比项：投资域 chosen 迁获得链是显式收窄条款（用户裁定），supply 无同款裁定则不扩豁免。
 - **效果腿进 report 函数，ConfirmSupply 到账边退役**：上报函数 = 该动作效果逻辑态写语义单点（`cw_action_report` 包 docstring 族规约）；两写点合并消双源。owned 名源 = **注册表规范名**（norm_item）——owned 权威写端 `read_equips` 观察摄取本产规范名（模板逐格分类），原始 OCR 名到账是账面异类形态，本批消双形态。
@@ -88,9 +92,16 @@
 - **覆盖序论证（owned 写后按名消费窗）**：owned 观察写端唯一 = 备战 heavy 帧（`cw_screen_prep.py` observe，失读 None 跳写保现值）。补给确认 → 节点推进 → 交回外循环 → 备战帧：备战 op **观察 node 先于决策动作 node**（两 node 结构序），商店 spare 打分（`flow.py`）/comps/穿戴计划/mandate 帧全部消费于决策侧 → 按名消费恒发生在重观察之后的新真值上。失读跳写窗 = 消费读旧值（暂态规范名或缺件），危害 = 排序/计划次优，与现行原始名入账同量级——残余如实申报，不设额外防线（治理归 reconcile/缺陷台账）。
 - **sim 遭遇侧申报**：sim 引擎唯一决策入口 = 商店决策面（sim/ 全目录零遭遇刷新执行面），`decide_encounter` 判据不在 sim 路径 → `encounter_refresh_left` 无 sim 写端 = 预期非缺口；flow/bridge 判据换源仅 live 生效，sim 无行为差异。
 
+### 2.4 遭遇扩围（2026-09-21 用户裁定；landing 3.3 后三块）
+
+- **入口稳定期删除**：观察 node 门命中即用 node runner 帧一次读。原 2s 稳定期（`research/screen_flow_timing.md` #23「右上『返回备战界面』出现后 2s 才稳定」）随用户裁定退役——用户为最高权威（先例 = combat.md §3 遭遇高危节点条），口径注同步改写。读帧时点后移风险（入口帧读缺）由既有失败安全承接：候选读缺 = 空表不写容器、剩余读缺 = None = 闸拒绝，两方向均为「少拿一次机会」非卡死面。
+- **选卡派发即终结**：`CwActionPickEncounterOp` 派发后画面 op `round_success` 终结（投资两屏/补给 3.1 同形态），删重入裁决（`_confirm_pending`/锚在重走/`_record_chosen`）。活锁方向安全论证与 §2.0A 同构：决策必产恰一个动作（选卡派发 = 终结 / 刷新 = 终结），`round_wait` 循环对两分支均无跨轮载体。确认未生效 = 代码 bug，overlay 残留由外循环按当前画面重识别重派（修法 = 点击链可靠性）。
+- **chosen_encounter 迁动作侧即时上报**：`report_action_pick_encounter_param` 从零写族升格容器写。值组装 = `gs.encounter` payload 槽 `options[param.idx]`（策略决策同源，param 零扩字段）；payload 离屏/idx 越界 = 缺陷留证不写（None 保持「无记录」，防盲选固化假值——现 `_record_chosen` 守卫口径平移）。op-layer §2.2 动作事实边界硬规则对应腿修订：遭遇例外改判（用户裁定显式迁移，先例 = 投资域 chosen 迁获得链的显式收窄条款）；巨星/伙伴等其余 chosen_* 维持不动。
+- **结算奖励兑现回调**：机制依据 = `research/combat.md` §3「遭遇奖励 = 伤害进度达标制，非清场制」——进度打够最低线即拿奖励，定谳采集点 = 结算屏三项（现役 `progress_delta`/`progress_fill_ratio` 已入 `RoundOutcome` 与容器结算域）。挂点 = `CwOpSettleConfirm` 确认点击后（**推进上报前**调回调：`report_node_advance` 会推进 node 指针，`node_kind_of` 须读推进前值判「当前是遭遇」）。回调 = 纯容器读零读屏：`node_kind_of(gs) == '遭遇'` ∧（`settlement.progress_delta > 0` 主判 ∨ `settlement.killed` 辅判；双 None = 删失不兑现 fail-closed）→ 自 `gs.chosen_encounter` 读 (难度, 奖励文本) 写新顶层字段 `encounter_reward_claimed: tuple[int, str] | None`。**数值不直写**（防双源）：金币真值 = `apply_settlement_cover` 的 `settle_truth`（结算读数）、随机4费角色 = bench heavy 观察（观察赢）；兑现记录 = 语义账面，消费面 = 策略器收益对账/单局复盘。无 chosen（盲选 fallback/残留行）→ 不兑现。
+
 ## 3. 验收锚（行为级；验收凭据形式见 landing 各阶段）
 
 1. 补给选卡：确认点击后（不等下一帧）容器即持效果逻辑态——owned 含装备规范名（norm_item 命中时）+ bench 含角色（合成级联后）；`chosen_supply` 三元组在派发前已由画面 op 写（现状时机不变）；注册表级分层归一行为锁：特权/后缀族/互撞族（垃圾袋/金垃圾袋、生命之花/生命之环、追击/击破星徽）完美 OCR 恒命中、OCR 形变救援命中、多命中拒识返回 ''；supply 链无落地相补写面（`kernel/cw_action_report/pick_supply.py` 的 `EVIDENCE_OVERLAY_CLOSED` 及其在 supply 链的导入点零残留；pick_equip/pick_planner 同名常量不在辖内）。
 2. 补给刷新：剩余 1 → 建议刷新 → 点钮恰一次 → 访问终结交回；剩余 0 或 None → 零点击不终结，按原评分选卡。
-3. 遭遇刷新：点钮恰一次 → 访问终结交回（无同访问重读、无二次覆盖写、无重决策）；剩余 0 或 None → 按原评分选卡。
+3. 遭遇刷新：点钮恰一次 → 访问终结交回（无同访问重读、无二次覆盖写、无重决策）；剩余 0 或 None → 按原评分选卡。入口门命中即读（无 2s 稳定期）。选卡：派发即 `round_success` 终结（零重入裁决轮）；确认点击后（不等下一帧）容器即持 `chosen_encounter` = payload 槽所选 (难度, 奖励文本)。奖励兑现：遭遇结算确认 ∧ `progress_delta>0`（或 killed）→ 容器即持 `encounter_reward_claimed` = 所选 (难度, 奖励文本)；未达标/删失/无 chosen → 不写。
 4. 全链零已用计数残留：`supply_refresh_used`/`encounter_refresh_used`/`encounter_refreshed_in_visit` 三符号零命中（grep 范围 = src + sr-od-test；豁免 = telemetry 历史数据只读注释）。

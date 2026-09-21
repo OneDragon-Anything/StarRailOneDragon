@@ -30,18 +30,26 @@
 - 通用工程门
 **验收凭据形式**：刷新闸行为锁测试（含 None 拒绝分支）+ sim 补给刷新段测试（初始 left=1 与 left−1 截断）+ 受影响测试全绿
 
-## 3.3 遭遇刷新链终结化与闸观察化
+## 3.3 遭遇链统一：刷新终结化 + 选卡派发即终结 + 奖励兑现回调
 
-**范围**：同构 3.2 于遭遇屏——`encounter_refresh_left` 新字段 + `report_screen_encounter_obs` 摄入（**摄入序照先例：options 空整函数早退不写，含 left**；现状不消费改摄入，读缺跳写）；刷新分支终结化（点钮 + 2s + `round_success` 交回，删 `_try_refresh` 重读半、二次覆盖写、分支重决策、per-visit 位读写）；`encounter_refresh_used`/`encounter_refreshed_in_visit` 退役（字段/种子/审计行/读写点）；`flow.py` 与 `strategies/impl/mandate_v1/bridge.py` 刷新旗标源改读 left；`node_screen_refresh` 域版本随批再 bump。**不含**：遭遇选卡分支的重入裁决与 `chosen_encounter` 写端（动作事实边界现行合法形态，design.md §2.1 明示不动）。
-**设计依据**：design.md §2.0A、§2.1（遭遇）、§2.2 表
-**文件面**：`operations/cw_screen/cw_screen_encounter.py`、`kernel/cw_screen_report/encounter.py`、`kernel/cw_game_state.py`、`kernel/cw_projection_audit.py`、`strategies/impl/flow.py`、`strategies/impl/mandate_v1/bridge.py`、`sr-od-test/` 受影响测试
+> 2026-09-21 用户裁定扩围：原 3.3（刷新链）之上追加三项——入口 2s 稳定期删除、选卡派发即终结（chosen 迁动作侧）、结算奖励兑现回调。原「不含：遭遇选卡分支的重入裁决与 chosen_encounter 写端」条款随之撤销。
+
+**范围**（四块）：
+
+- **刷新链终结化与闸观察化**（原 3.3）：`encounter_refresh_left` 新字段 + `report_screen_encounter_obs` 摄入（**摄入序照先例：options 空整函数早退不写，含 left**；读缺跳写）；刷新分支终结化（点钮 + 2s + `round_success` 交回，删 `_try_refresh` 重读半、二次覆盖写、分支重决策、per-visit 位读写）；`encounter_refresh_used`/`encounter_refreshed_in_visit` 退役（字段/种子/审计行/读写点）；`flow.py` 与 `strategies/impl/mandate_v1/bridge.py` 刷新旗标源改读 left；`node_screen_refresh` 域版本随批再 bump。
+- **入口稳定期删除**（用户裁定）：观察 node 删 2s sleep + 重截，门命中即用 node runner 帧一次读（候选 + 剩余次数同帧同源不变）；`research/screen_flow_timing.md` #23 口径注同步改（用户裁定 supersession 旧「等 2s 才稳定」口径）。
+- **选卡派发即终结 + chosen 迁动作侧**（用户裁定，投资两屏/补给 3.1 同形态）：删重入裁决（`_confirm_pending`/锚在重走/`_record_chosen`）；act 决策后派发 `CwActionPickEncounterOp` → `round_success` 终结交回外循环；`report_action_pick_encounter_param` 升格容器写（点完确认立即写 `gs.chosen_encounter = (难度, 奖励文本)`；值组装 = `gs.encounter` payload 槽 `options[param.idx]`，**param 零扩字段**；payload 离屏/idx 越界 = 缺陷留证不写，None 保持「无记录」，fail-closed）。
+- **结算奖励兑现回调**（用户裁定，新机制）：`CwOpSettleConfirm` 确认链挂 kernel 回调（`kernel/cw_encounter_selection.py`，遭遇×结算对账域）——判当前节点 = 遭遇（`node_kind_of`，**推进前读**）∧ 伤害达标（`progress_delta > 0` 主判 ∨ `killed` 辅判；双 None = 删失不兑现，fail-closed）→ 自 `gs.chosen_encounter` 读所选 (难度, 奖励文本) 写新顶层字段 `encounter_reward_claimed`。**数值不直写**：金币真值 = `settle_truth` 结算读数、随机4费 = bench 观察（观察赢防双源），兑现记录 = 语义账面（策略器/复盘消费「遭遇选了什么、兑现了没有」）。
+
+**设计依据**：design.md §2.0A、§2.1（遭遇）、§2.2 表、§2.4（扩围增补）
+**文件面**：`operations/cw_screen/cw_screen_encounter.py`、`operations/cw_op/cw_op_settle_confirm.py`、`operations/cw_op/cw_overlay_pick_action.py`、`kernel/cw_screen_report/encounter.py`、`kernel/cw_action_report/zero_writes.py`、`kernel/cw_encounter_selection.py`、`kernel/cw_game_state.py`、`kernel/cw_projection_audit.py`、`strategies/impl/flow.py`、`strategies/impl/mandate_v1/bridge.py`、`sr-od-test/` 受影响测试
 **依赖**：3.2（共享 `cw_game_state.py`/`cw_projection_audit.py`/fields 域版本在飞面）
 **优先级建议**：6
 **完成判据**：
-- 行为对照 design.md §3 验收锚 3（行为锁：点钮恰一次 + 访问终结；无同访问 `screenshot()` 重读面；剩余 0/None 按原评分选）
-- grep 零命中（范围 = src + sr-od-test；豁免 = telemetry 历史数据只读注释）：`encounter_refresh_used`/`encounter_refreshed_in_visit`（验收锚 4 收口）
+- 行为对照 design.md §3 验收锚 3（行为锁：点钮恰一次 + 访问终结，无同访问 `screenshot()` 重读面；剩余 0/None 按原评分选；选卡派发即 `round_success` 零重入裁决轮；确认点击后容器即持 `chosen_encounter`；遭遇结算确认 ∧ `progress_delta>0` → 容器即持 `encounter_reward_claimed` = 所选 (难度, 奖励)；未达标/删失 → 不写）
+- grep 零命中（范围 = src + sr-od-test；豁免 = telemetry 历史数据只读注释）：`encounter_refresh_used`/`encounter_refreshed_in_visit`（验收锚 4 收口）+ `_record_chosen`/`_confirm_pending`/`_try_refresh`（遭遇域）
 - 通用工程门
-**验收凭据形式**：遭遇刷新终结行为锁测试 + mandate 遭遇决策受影响测试全绿
+**验收凭据形式**：遭遇刷新终结行为锁 + 选卡即时上报行为锁 + 奖励兑现回调行为锁（达标/未达标/删失三型）+ mandate 遭遇决策受影响测试全绿
 
 ## 末阶段：正本更新
 
@@ -56,10 +64,10 @@
 ## 正本更新清单
 
 - `screens/supply.md`：§2 形态声明（派发即终结、零重入裁决）、§3 观察面（补节点条锚定写端 + refresh_left 摄入）、§4 动作面（选卡行上报改即时单相、刷新行改剩余闸）、§5 终结与交回、§6 状态上报面（ConfirmSupply 退役行 + chosen_supply 确认即写口径复核不变）、§8 守卫（活锁防线改读缺拒绝语义）、§9 锁面 ← 3.1/3.2
-- `screens/encounter.md`：刷新链节（终结化 + 剩余闸 + per-visit 位退役 + 摄入序）← 3.3
+- `screens/encounter.md`：全文重写（入口稳定期删除、刷新链终结化 + 剩余闸、选卡派发即终结零重入裁决、chosen_encounter 迁动作侧、结算奖励兑现回调、per-visit 位退役）← 3.3
 - `screens/README.md`：§5.5 刷新行（遭遇改终结语义、两相欠账段摘 supply）、§6 终结总表「单选族确认离开」行（补给改派发即终结）← 3.2/3.3
-- `screens/op-layer.md`：§1.1（投资两屏即时上报条款扩展为事件单选族现役面）、§1.2（欠账标注收窄为 planner/equip）、§2.1（补给确认宿主表述复核）、§2.2（刷新计数出辖节改剩余语义全域；动作事实边界条款不动——chosen_supply 留守维持）、§3（分型表 supply/encounter 行）← 3.1–3.3
-- `flow/action_ops.md`：§4.5（欠账标注摘 supply 行、PickSupply 行描述更新）、§4.6（三刷新动作闸描述改剩余语义）、§2.2 固定等待族补遭遇/补给刷新 2s 登记（时序 #19/#23）← 3.1–3.3
+- `screens/op-layer.md`：§1.1（投资两屏即时上报条款扩展为事件单选族现役面 + 遭遇选卡迁派发即终结；重入裁决「仅限未迁移屏」清单收敛）、§1.2（欠账标注收窄为 planner/equip）、§1.4（遭遇刷新欠账标注摘除；chosen_* 动作事实边界条款遭遇例外改判——用户裁定迁移）、§2.1（补给确认宿主表述复核 + pick_encounter 零写例外撤销）、§2.2（刷新计数出辖节改剩余语义全域；动作事实边界条款遭遇腿迁移）、§3（分型表 supply/encounter 行）← 3.1–3.3
+- `flow/action_ops.md`：§4.5（欠账标注摘 supply 行、PickSupply/PickEncounter 行描述更新）、§4.6（三刷新动作闸描述改剩余语义）、§2.2 固定等待族补遭遇/补给刷新 2s 登记（时序 #19/#23）← 3.1–3.3
 - `flow/action_exec.md`：§2.1（补给确认行复核）← 3.1
-- `game_state/fields.md`：§3.4.1/§3.4.2 重写（剩余语义字段 + 终结形态 + 待证口径降级注记）← 3.2/3.3
+- `game_state/fields.md`：§3.4.1/§3.4.2 重写（剩余语义字段 + 终结形态 + 待证口径降级注记 + `encounter_reward_claimed` 兑现记录字段节 + chosen_encounter 写端迁动作侧注记）← 3.2/3.3
 - 兜底：正本更新批内按验收锚 4 口径全仓 grep 三退役符号，命中非历史注释即清 ← 收尾
