@@ -106,12 +106,12 @@
 
 投资策略/补给/遭遇(货币战争-遭遇节点)/盛会之星/选择伙伴/选择装备/命运卜者(`cw_screen_fortune.py`)/银狼升星(`cw_screen_yinlang.py`)/祈愿试炼/星徽秘典四选一/专家邀请函/武装箱弹窗。决策 = pick 族九接口 + `decide_box_card`,规格 = strategy-docs 13 号篇。
 
-**选卡动作执行载体(pick-op-unify 批起统一)**:13 屏的选卡动作 = 12 个 `CwActionPickXxxOp`(投资两屏共用 `CwActionPickInvestParam` 注册行),画面 op 决策半只决策与组装机械参数,选中→确认(或点卡即选)机械链 + 自上报(`report_action_pick_*_param`,零写)在动作 op 内;确认后容器写(chosen_*/Confirm* 到账)留守画面 op。**两相例外**(银狼升星记账批):策划选择上报 = 发射相意图遥测(动作 op 内)+ 落地相证据闩分步(`kernel/cw_action_report/pick_planner.py`,装备/升费腿含 `lv999_cost_tier` 档行,画面 op 重入裁决出口触发)——余 12 屏零写语义不变。契约正本 = [../flow/action_exec.md](../flow/action_exec.md) §2。
+**选卡动作执行载体(pick-op-unify 批起统一;投资两屏迁移批更新)**:13 屏的选卡动作 = 13 个 `CwActionPickXxxOp` 注册行(投资两屏拆类 = `CwActionPickInvestStrategyParam`/`CwActionPickInvestEnvParam` 两行同指一 op),画面 op 决策半只决策与组装机械参数,选中→确认(或点卡即选)机械链 + 自上报在动作 op 内。**上报形态**:投资两屏 = **即时上报**(点完确认立即按成功写完整结果,选择事实经获得链 `gain_invest_strategy`/`gain_invest_env` 记,画面 op 零容器写);**两相欠账**(策划屏现役):骇入策划上报 = 发射相意图遥测(动作 op 内)+ 落地相证据闩分步(`kernel/cw_action_report/pick_planner.py`,装备/升费腿含 `lv999_cost_tier` 档行,画面 op 重入裁决出口触发)——装备/补给两屏同款欠账,迁移归后续批。契约正本 = [../flow/action_exec.md](../flow/action_exec.md) §2。
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
 | 选卡(N 选 1) | 各事件机制(`data/gameplay.md`/`research/economy.md` §9) | 各画面 op(阶段一身份分发,号制已退役) | 确认离开(overlay 消失)= 画面终结 |
-| 逐卡/整屏刷新重掷 | 刷新后 ~2s 稳定(时序 #13/#19/#23) | 投资策略逐槽(`cw_screen_invest_strategy.py::_emit_refresh_click`)/ 遭遇(`cw_screen_encounter.py::_try_refresh`)/ 补给(`cw_screen_supply_node.py`「剩余次数」文本锚定);建议刷新 = `PickEvent.refresh`(`kernel/cw_events.py::decide_event`,P81;策略屏逐槽 = `PickEvent.refresh_slots`) | 投资策略逐卡刷新 = **本访问终结**(点一槽刷新圆钮即 pending+round_retry 交回,次轮重入重观察重决策)——与投资环境整组重掷同款;遭遇/补给刷新不终结(留在本画面访问内重读重选);确认离开才画面终结 |
+| 逐卡/整屏刷新重掷 | 刷新后 ~2s 稳定(时序 #13/#19/#23) | 投资策略逐槽(观察 obs 携带逐卡余量 + `safe_click` 留守臂)/ 遭遇(`cw_screen_encounter.py::_try_refresh`)/ 补给(`cw_screen_supply_node.py`「剩余次数」文本锚定);建议刷新 = `PickEvent.refresh`(`kernel/cw_events.py::decide_event`,P81;策略屏逐槽 = `PickEvent.refresh_slots`) | 投资策略逐卡刷新 = **本访问终结**(点一槽刷新圆钮即 round_success 交回,外循环重进重观察重决策)——与投资环境整组重掷同款;遭遇/补给刷新不终结(留在本画面访问内重读重选);确认离开才画面终结 |
 | 开书册卡(点备战席槽位「开启」→ 弹专家邀请函) | 书册卡 = 备战席占槽道具 | `CwActionOpenBookcardOp`(备战决策环终结动作,`terminal=True`;发射位 = 策略器 entry ① prep 实体面卡片臂 `strategies/impl/mandate_v1/entry.py`)→ 弹窗由阶段一身份分发 `operations/cw_screen/cw_screen_expert_invite.py::CwScreenExpertInvite` 选卡 | 开卡即备战访问终结;弹窗选卡确认离开 = 弹窗访问终结 |
 | 返回备战/返回选择(暗色锁定子态) | 暗色蒙层态判别锚 = 右上操作按钮(screen_flow_timing #18) | `operations/cw_screen/cw_screen_prep_locked_return.py::CwScreenPrepLockedReturn`(阶段一身份分发;策略锁定/遭遇锁定两档参数化) | 点返回即终结 |
 | 关「属性详情」面板 | 点卡身上部误触发 | 未建模独立处理(点卡 = 机械单发);面板残留归下一帧重入自愈(重分发重走链/详情 overlay 族分支) | 面板关闭即随重入收敛 |
@@ -135,7 +135,7 @@
 | 备战 OpenBox | **访问终结** | 点「开启」即交回外循环重观察;武装箱选择画面由外循环按画面分发独立画面 op 选卡([box_pick.md](box_pick.md)),选卡动作不经备战决策循环 |
 | 备战 overlay 检出 | 环中止 | 弹层/事件在场 → 交回外循环分支 handler |
 | 备战无动作(None) | 合法交回 | None = 本帧无动作,交回外循环重观察(商店域无此通道,该通道已由 CloseShop 终结取代) |
-| 单选族确认离开 | 画面终结 | overlay 消失即节点完成(补给节点无结算屏) |
+| 单选族确认离开 | 画面终结 | overlay 消失即节点完成(补给节点无结算屏;投资两屏 = 派发确认链即 round_success 终结交回,确认未生效由外循环重识别重派) |
 | 推进型画面(简报/过渡/详情/弹窗) | 画面终结 | 点推进/关闭即终结(空决策形态) |
 | 恢复局锁定态 | 例外约束 | 进过战斗后异常重启的恢复局,商店交互被游戏禁用(只能出战;`research/economy.md` §2.1 恢复态限制),外循环锁定态直通出战(`operations/cw_loop.py::locked_resume_sync_and_battle`) |
 

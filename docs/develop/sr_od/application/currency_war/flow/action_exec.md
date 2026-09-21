@@ -21,7 +21,7 @@
 | 画面 op 级状态(各画面 op 的具名轮次状态,判读侧分键) | 具名成功/失败状态——这是画面 op 的轮次结果语义,不是动作回执(部署机历史 STATUS 族已随其退役消失) |
 | 商店编排(`_open_shop_phase`) | `(progressed, detail)`:读数性开店 progressed = 开店成功 |
 
-**事件线 pick 族(`cw_op/cw_overlay_pick_action.py`,12 op)**(pick-op-unify 批起全族同契约):每屏选择动作 = 一个 `CwActionPickXxxOp`,op 内 = 选中点击 → 确认点击(或点卡即选)→ 自上报(`report_action_pick_*_param`;发射相意图遥测零写,落地相 = 画面 op 重入裁决出口持落地证据调用)——动作 op 重组批 §1.1 登记的「零上报例外」已撤销。机械参数(定位点/确认钮/裁决词)由画面 op 决策半现算经 `OverlayPickExecEnv` 传入(op 类体内零决策);确认后容器写(`chosen_*`/`active_*`/效果登记/置闩/`register_confirm_arrival` Confirm* 到账)留守画面 op 原写点原时点——**PickInvest 例外(portal 支)**:投资环境落地相的 active_env 注册/portal 登记/环境赠卡入席整支走获得链 `kernel/cw_gain_chain.py::gain_invest_env`(rand=False,`session` 形参显式传入;出参 reason=`gain_chain_applied`;链式规范正本 = [../game_state/gain-chain.md](../game_state/gain-chain.md)),strategy 支维持留守分步写。刷新三动作(RefreshNodeOptions/RefreshSupply/RefreshInvestCards)不经注册表(分屏形态各异,留守画面 op 刷新链,注册完备锁豁免)。
+**事件线 pick 族(`cw_op/cw_overlay_pick_action.py`,12 op)**(pick-op-unify 批起全族同契约):每屏选择动作 = 一个 `CwActionPickXxxOp`,op 内 = 选中点击 → 确认点击(或点卡即选)→ 自上报。**上报形态分两代**:投资两屏 = **即时上报**(投资两屏迁移批,`report_action_pick_invest_strategy_param`/`report_action_pick_invest_env_param`,点完确认立即按成功写完整结果——策略支整支走获得链 `gain_invest_strategy`,环境支走 `gain_invest_env`;词表拆类 = `CwActionPickInvestStrategyParam`/`CwActionPickInvestEnvParam` 两行同指一 op,按 param 类型机械分派上报函数);其余屏(策划/补给/装备)= 分步形态欠账(发射相意图遥测零写,落地相 = 画面 op 重入裁决出口持证据调用;迁移归后续批,欠账标注见 action_ops.md §4.5)。机械参数(定位点/确认钮/裁决词)由画面 op 决策半现算经 `OverlayPickExecEnv` 传入(op 类体内零决策)。确认后容器写留守画面 op 的部分 = 其余屏的 `chosen_*`/`register_confirm_arrival` Confirm* 到账(**投资两屏零留守**——选择事实与效果全走获得链)。刷新三动作(RefreshNodeOptions/RefreshSupply/RefreshInvestCards)不经注册表(分屏形态各异,留守画面 op 刷新链,注册完备锁豁免)。
 
 配套**发射门**(发射方与执行方同源谓词,防空计划发射):部署选人单一源 = 策略层 `strategies/impl/mandate_v1/deploy_plan.py::select_deployments`(发射×执行单一源;落位计划单一源 = 同模块 `deploy_plan_moves`)。发射门与执行侧经同一帧属性 `recipe_floor_lock_exempt` 同帧同值——锁定线语境豁免:豁免武装帧且本帧无有效仙舟供给时门让位;发射侧拒因/开火分键 = `deploy_emit_*`,执行侧计划拒因/门命中分桶 = `deploy_exec_*`。
 
@@ -32,7 +32,7 @@
 - **结算确认**(`cw_op/cw_op_settle_confirm.py::CwOpSettleConfirm`,画面框 op 形态、非动作注册表面):点击「继续挑战」(含长按兜底)→ **点击即上报** settle_confirm → 交回宿主。结算读点/rounds_done 等结算链留宿主 CwScreenBattleWait;战败分支不进本 op 不推进。
 - **补给确认**(`cw_op/cw_overlay_pick_action.py::CwActionPickSupplyOp`):点「确认」→ `report_action_pick_supply_param` + `report_node_advance(trigger='supply_confirm')` 直接双上报。
 
-**上报时点 = 点击即上报,观察态门为唯一门**(用户裁定 2026-09-21):动作 op 不做任何确认、不探下一画面锚、不等转移证据——无证据等待 ⇒「上报先于下一节点任何画面渲染」恒成立;推进落账前置**观察态门**(kernel 内):`node_ord` value 在场 ∧ source=observation 双条件才放行,门挡 = obs_event 留证零推进(重复上报/死点击重试报告在结构上零危害);兜底 = 观察锚定(kernel `observe_node_anchor` 补推,锚定写端 = CwScreenPrep 备战顶栏 / CwScreenSupplyNode 补给屏节点条)。推进经生效原语 `advance_node_effective` 落账(candidate 去重守卫 + 效果推进尾段同临界区)。判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md) §3.3。
+**上报时点 = 点击即上报(全动作通用契约)**(通用条款单一源 = [action_ops.md](action_ops.md) §1 增补 2,用户裁定 2026-09-21:选择动作执行按成功处理、点完立即上报写结果、禁事后判断、选择未生效 = 代码 bug 禁防护补丁;本节原 settle/supply 两触发点的「点击即上报」条款已升格为全动作通用,投资两屏 pick 上报随迁移批纳入):动作 op 不做任何确认、不探下一画面锚、不等转移证据——无证据等待 ⇒「上报先于下一节点任何画面渲染」恒成立;节点推进类上报前置**观察态门**(kernel 内):`node_ord` value 在场 ∧ source=observation 双条件才放行,门挡 = obs_event 留证零推进(重复上报/死点击重试报告在结构上零危害);兜底 = 观察锚定(kernel `observe_node_anchor` 补推,锚定写端 = CwScreenPrep 备战顶栏 / CwScreenSupplyNode 补给屏节点条)。推进经生效原语 `advance_node_effective` 落账(candidate 去重守卫 + 效果推进尾段同临界区)。判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md) §3.3。
 
 ## 3. 备战单动作消费
 

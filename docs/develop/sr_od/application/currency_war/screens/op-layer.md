@@ -29,16 +29,16 @@
        → round_wait 循环推进(node runner 每轮给新帧)
 ```
 
-- **两 node 职责**:观察 node = 门 + 读屏 + 观察结果上报,无循环、小预算;决策动作 node = 重入裁决 + 决策 + 动作,迭代一律 `round_wait`(不烧 node 重试预算)。act node 保留现役 `node_max_retry_times` 值(仅框架异常路径消费,不新建上限机制)。
+- **两 node 职责**:观察 node = 门 + 读屏 + 观察结果上报,无循环、小预算;决策动作 node = 重入裁决(仅限未迁移屏)+ 决策 + 动作,迭代一律 `round_wait`(不烧 node 重试预算)。act node 保留现役 `node_max_retry_times` 值(仅框架异常路径消费,不新建上限机制)。**投资两屏已迁即时上报形态**(用户裁定 2026-09-21,action_ops.md §1 增补 2):零重入裁决——派发确认链(动作 op 内点完确认立即按成功写结果)后 `round_success` 终结交回外循环;确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重识别重派,修法 = 点击链可靠性。
 - **循环无上限规范(用户裁定)**:框架不负责多轮循环的上限限制——决策动作 node 的循环与外循环轮次推进均不设迭代数上限(无防御帽、无兜底计数,健康循环永不因计数被截断);不收敛/死循环 = **策略实现 bug**,响亮暴露(挂起可观测),修策略根因。失败类出口(异常 fail、外循环 fail 熔断、未知画面兜底)不属于迭代上限。循环兜底不变量 = 1.4 恒可用终结。
-- **出口三语义**:决策动作 node 的循环只有三种出口——①**终结动作**(1.4,执行即本访问结束交回外循环);②**重入裁决成功**(动作已落地,补记录后交回);③**异常 fail**(策略异常/执行异常,错误传播交外循环,非防御上限)。备战域另有合法交回通道:策略器返回 `CwActionObsParam(scope='outer_loop')`(本帧无动作,交回外循环重观察;原 HoldFrame 收编,`kernel/cw_vocab.py::CwActionObsParam`)= round_success 交回外循环,不折算战替身;策略发射 `CwActionObsParam(scope='in_place')` 环内重观察见事件 overlay = `CwObsOverlayBail`(动作 op 抛出,决策循环捕获)交回外循环重分发(画面路由归外循环,环内不消化)。
-- **重入裁决留在决策动作 node 顶部**:「确认已发 → 下一轮锚不在 = 落地」是动作落地裁决,属循环出口判定,不回观察 node。chosen_* 类落地记录在此刻写(见 §2 动作事实边界)。
+- **出口三语义**:决策动作 node 的循环只有三种出口——①**终结动作**(1.4,执行即本访问结束交回外循环;投资两屏的选卡确认链按此语义:派发即终结);②**重入裁决成功**(动作已落地,补记录后交回;仅限未迁移屏);③**异常 fail**(策略异常/执行异常,错误传播交外循环,非防御上限;投资两屏的空候选/决策无有效输出也走此出口——零盲发)。备战域另有合法交回通道:策略器返回 `CwActionObsParam(scope='outer_loop')`(本帧无动作,交回外循环重观察;原 HoldFrame 收编,`kernel/cw_vocab.py::CwActionObsParam`)= round_success 交回外循环,不折算战替身;策略发射 `CwActionObsParam(scope='in_place')` 环内重观察见事件 overlay = `CwObsOverlayBail`(动作 op 抛出,决策循环捕获)交回外循环重分发(画面路由归外循环,环内不消化)。
+- **重入裁决留在决策动作 node 顶部(仅限未迁移屏)**:「确认已发 → 下一轮锚不在 = 落地」是动作落地裁决,属循环出口判定,不回观察 node。chosen_* 类落地记录在此刻写(见 §2 动作事实边界;巨星/伙伴等维持,投资两屏已改动作执行时经获得链记)。
 - **显式读屏只在观察 node**:决策动作 node 迭代用 node runner 进 node 时给的 `last_screenshot`(`round_wait` 每轮新帧)。除观察 node 外,画面 op 内不调 `screenshot()`。**在册例外只有两类**:①**(动作通道)**策略显式发射 `CwActionObsParam(scope='in_place')`(环内重观察)= 经注册表派发 `CwActionObsOp` → 宿主画面 op `reobserve_in_visit`(现役 = `CwScreenPrep`)重跑 heavy 观察链——漏斗直写容器即「重新观察上报」,决策环原地续跑(通道细则 = [../flow/action_exec.md](../flow/action_exec.md) §3);②**(终结臂留证读)**终结动作执行后、交回前的一次机械重读——零决策零判效,读数只作缺陷台账留证输入,不进决策、不判落地(落地仍归重入裁决/观察对账;现役 = `cw_screen_invest_env.py::CwScreenInvestEnv._decide_and_act` 刷新终结臂的刷后帧重读,依据 = 用户裁定 2026-09-14 刷新零效果留证 + unified-action-factory 批4 裁决3 迁观察侧)。新增读屏点必须先登记本条再落码;除上述两例外,其余路径零读屏。
 - **外循环形态不变**:画面识别分发、轮次推进、停机/遥测钩子([../flow/outer_loop.md](../flow/outer_loop.md))不随本规范改动。
 
 ### 1.2 动作 op 契约与动作粒度
 
-- **动作 op 形态** = `CwActionXxxOp`(框架 `SrOperation` 子类,构造 = `(ctx, param, env)`):机械执行后直调自己的上报函数(`kernel/cw_action_report/report_action_<snake>_param`),逻辑态由上报函数族独占写入,动作 op 自身不记账。发出即职责完成,落地判定归观察侧;执行异常上抛。**验证不是生命周期段**:动作 op 只管机械执行,禁做任何验证、禁设「验证失败→重试/恢复」编排;动作未生效(观察正确而下一帧对账失配)的处置 = 修动作执行链本身的可靠性(点击链坐标/时序/确认序列),禁止以验证+重试结构兜底。节点推进上报(结算/补给确认的 `report_node_advance` 调用)同样**点击即上报**——不探下一画面锚、不等转移证据、不设证据 miss 分支(用户裁定 2026-09-21,原「转移证据上报时点门例外」随证据机制整体退役;推进落账的唯一门 = kernel 观察态门)。
+- **动作 op 形态** = `CwActionXxxOp`(框架 `SrOperation` 子类,构造 = `(ctx, param, env)`):机械执行后直调自己的上报函数(`kernel/cw_action_report/report_action_<snake>_param`),逻辑态由上报函数族独占写入,动作 op 自身不记账。**上报 = 点完即写完整结果**(用户裁定 2026-09-21,契约单一源 = action_ops.md §1 增补 2:执行即按成功处理,分步上报/落地证据等待禁;投资两屏 pick 已按此形态,其余 pick 屏现状见 action_ops.md §4.5 欠账标注)。执行异常上抛。**验证不是生命周期段**:动作 op 只管机械执行,禁做任何验证、禁设「验证失败→重试/恢复」编排;动作未生效(观察正确而下一帧对账失配)的处置 = 修动作执行链本身的可靠性(点击链坐标/时序/确认序列),禁止以验证+重试结构兜底。节点推进上报(结算/补给确认的 `report_node_advance` 调用)同样**点击即上报**——不探下一画面锚、不等转移证据、不设证据 miss 分支(用户裁定 2026-09-21,原「转移证据上报时点门例外」随证据机制整体退役;推进落账的唯一门 = kernel 观察态门)。
 - **动作粒度**:买一张 = 一个 op、卖一张 = 一个 op、买经验一击 = 一个 op(单击 +4XP;升级 = XP 过门槛表结果,非动作)、刷新 = 一个 op。**满栏例外**:板凳满时点合成槽位,游戏机制自动多买至 3 的倍数张(每张原价)——一击多张 = 一个动作 op,逻辑态直写按实际张数计。复合宏动作(整档替换)已全链退役。
 
 ### 1.3 守卫断言与对账边界
@@ -71,8 +71,8 @@
 
 - **屏文件 = 该画面观察进容器的全部逻辑的家**:①写点(类型化 obs 载荷 → 容器字段,含屏级幂等门/懒写/恒覆写等写法);②该屏更新逻辑(写点之上的派生/优先级);③该屏对账特判(只在类型化 obs 载荷上运算的观察 vs 逻辑态比对)。**判断线(按角色分流):类型化 obs 载荷的生产半(识别 + 标准化转换,含跨帧读数稳定化、读数有效性门)住观察侧(画面 op 观察 node 或 obs/ 工具箱);落容器半(写点/屏级写门/写点之上的派生/观察 vs 逻辑对账特判)进 kernel 屏文件,恒只在类型化载荷上运算**——识别机制不出观察域,kernel 零像素纪律不破;kernel→obs 直依被分包矩阵禁止,观察侧纯函数以「函数体搬进」kernel 屏文件的方式落地,不是 import。
 - **漏斗边界**:`obs/cw_observation.py::read_game_state` 漏斗内部的容器写端 = 既有观察边界,不经 report 接口、不重复承接(备战/买牌的整包观察直写容器,report 相应保持占位或不设摄入面)。
-- **动作事实边界(硬规则)**:chosen_*(选择落地记录)与 per-visit 位(如 `encounter_refreshed_in_visit`)留守画面 op——其值在「确认已落地」重入观察后才可信,记账随判定点走(重入裁决点/选择点),不进 report。**投资环境域收窄条款(用户裁定 2026-09-21)**:投资环境屏的 active_env 选择事实经**动作落地链**记(动作 op 上报 → `kernel/cw_gain_chain.py::gain_invest_env` 写 active_env/环境赠卡入席/溢出落位,正本 = [../game_state/gain-chain.md](../game_state/gain-chain.md));画面 op 决策动作 node 对该域零容器写。其余 chosen_*(巨星/伙伴等)维持留守画面 op。
-- **刷新计数出辖**:节点屏刷新计数(`encounter_refresh_used`/`strategy_refresh_used`)的写端不在画面 op 层(见 §4),`refresh_left` 观察读数只是 obs 字段。
+- **动作事实边界(硬规则)**:chosen_*(选择落地记录)与 per-visit 位(如 `encounter_refreshed_in_visit`)留守画面 op——其值在「确认已落地」重入观察后才可信,记账随判定点走(重入裁决点/选择点),不进 report。**投资域收窄条款(用户裁定 2026-09-21,投资两屏迁移批扩为双屏)**:投资环境/投资策略两屏的选择事实(active_env/active_strategies)经**动作落地获得链**记(动作 op 点完确认立即上报 → `kernel/cw_gain_chain.py::gain_invest_env`/`gain_invest_strategy` 写选择事实 + 赠卡入席/溢出落位/效果账本登记,正本 = [../game_state/gain-chain.md](../game_state/gain-chain.md));两屏画面 op 决策动作 node 对该域零容器写、零重入裁决。其余 chosen_*(巨星/伙伴等)维持留守画面 op(迁移归后续批)。
+- **刷新计数出辖**:节点屏刷新计数——投资两屏 = `strategy_refresh_left`/`env_refresh_left`(**剩余语义观察写端,在两屏观察 report 内摄入**,用户裁定 2026-09-21:game state 记录画面可观察的剩余次数);`encounter_refresh_used` 写端在遭遇屏发射钩子。画面 op 决策环零计数识别、零计数写点。
 
 ## §3 形态分型(37 画面 op)
 
@@ -89,12 +89,12 @@
 
 退役 1:`CwScreenDeploy`(部署机画面 op)已退役删除——部署 = 备战决策环动作(`CwActionDeployMoveParam` 原子序经 `CwActionDeployMoveOp` 机械执行 + `report_action_deploy_move_param` 自上报逻辑态),部署判定单一源驻 `kernel/cw_deploy_logic.py`,路径速查 = [deploy.md](deploy.md)。合计 11 + 8 + 13 + 1 + 1 + 2 = 36。
 
-注(pick-op-unify 批):单选族 13 屏的选卡动作全集收编为 12 个 pick 动作 op(投资两屏共用 `CwActionPickInvestParam` 行,全节点循环/全形态单选屏经注册表派发),op 内 = 选中 → 确认(或点卡即选)→ 自上报(零写);刷新链(遭遇/补给/投资两屏)留守画面 op。
+注(pick-op-unify 批 + 投资两屏拆类):单选族 13 屏的选卡动作全集收编为 13 个 pick 动作 op 行(投资两屏拆类后 = `CwActionPickInvestStrategyParam`/`CwActionPickInvestEnvParam` 两行同指 `CwActionPickInvestOp`,全节点循环/全形态单选屏经注册表派发),op 内 = 选中 → 确认(或点卡即选)→ 自上报(**投资两屏 = 点完即写完整结果**;其余屏现状见 action_ops.md §4.5 欠账标注);刷新链(遭遇/补给/投资两屏)留守画面 op。
 
 ## §4 辖域边界(本层不承载的机制)
 
 - **画面 op 基类/端口/段迹/登记注册表/决策帧假环境分支不存在**:画面 op 层无五段生命周期基类、无观察/动作适配器端口与装配点分流、无生命周期段迹、无 on_outcome 落地登记注册表、无决策帧观察证据注入分支——上述机制整体退役,任何一侧的重新出现即架构回潮。观察/决策两段职责由两 node 直接承载(§1),观察进容器由 report 接口承载(§2)。
-- **刷新计数记账不在画面 op 层**:`encounter_refresh_used`/`strategy_refresh_used` 的写端模型与「动作上报 → game state 扣减」改造归动作 op 侧;画面 op 只保留 `refresh_left` 观察读数(obs 字段)与门读容器计数的读端闸(>0 = 已用),不写计数。
+- **刷新计数记账不在画面 op 层**:投资两屏 = `strategy_refresh_left`/`env_refresh_left` 剩余语义,写端 = 各屏观察 report 摄入(读缺跳写;闸消费口径 = 剩余 ≤0 = 尽);`encounter_refresh_used` 写端 = 遭遇屏发射钩子。画面 op 只保留 obs 刷新读数与读端闸,不写计数。
 - **观察审计链留守**:依赖读帧的观察审计住画面 op——备战羁绊显示对账住观察 node,投资环境刷新零效果留证住决策动作 node 刷新终结臂(其读屏 = §1.1 在册例外②);均消费 obs/ 工具箱识别产物,不迁 kernel、不进 report。
 - **策略判据面不在本层**:买/卖/升/刷数学归策略器(策略文档区);画面 op 只做容器零参读 + 动作编排放大。
 
