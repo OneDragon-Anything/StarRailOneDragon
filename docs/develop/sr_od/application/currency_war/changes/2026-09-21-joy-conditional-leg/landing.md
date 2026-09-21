@@ -47,8 +47,12 @@
 ## 正本更新清单
 
 - `game_state/gain-chain.md`:§3 欢愉契约条件腿条目(临时闩标记面 → planner 触发
-  回调模型,临时闩退役)+ §6(条件腿授予调用点级 best-effort 例外申报) ← 3.1
-- `screens/planner.md`:落地相记账段 weaken 字样(退役后三腿) ← 3.1
-- `game_state/logic-updates/pick-planner.md`:§分派表与记账段 weaken 条目 ← 3.1
-- `game_state/strategy-env-impacts.md`:欢愉契约行(若有;条件腿模型指针) ← 3.1(落地时核实该篇是否辖此面)
-- `docs/game/currency_war/research/`(若条件腿机制结论入册:证据分级随实测) ← 视 3.1 实测,候选项
+  回调模型,临时闩退役)+ §6(条件腿授予调用点级 best-effort 例外申报) ← 3.1 ✅
+- `screens/planner.md`:落地相记账段 weaken 字样 → **移交 pick-planner-equip-immediate-report 批**
+  (其 3.2 单相化正本面已辖该文件 :55 区域,避免双写竞态;协调记录 = 本行改记) ← 移交
+- `game_state/logic-updates/pick-planner.md`:§分派表与记账段 weaken 条目 → **同上移交**
+  (其 attack4 F1 已点名 :17 行且其 3.2 清单含 :11/:13/:17 三行) ← 移交
+- `game_state/strategy-env-impacts.md`:落地时核实 → **不辖此面**(全文无欢愉契约/
+  条件腿内容),销项 ← 核实
+- `docs/game/currency_war/research/`(条件腿触发频率实测结论:证据分级随实机局)
+  ← 候选项(实机验证局后)

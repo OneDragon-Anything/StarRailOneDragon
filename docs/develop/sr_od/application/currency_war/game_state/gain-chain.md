@@ -119,9 +119,11 @@ merge_simulate 终态」——禁第二套语义。merge_simulate 是一次到�
   - `advisor=True`(特邀专家,顾问入商店):**不入席**——容器无商店池字段,身份
     只进遥测申报一行(`kind = DEFECT_ADVISOR_DECL`);`chars_immediate` 在 advisor
     行仅作顾问身份输入。
-  - 欢愉契约条件腿(头号玩家触发,标记面):bench/equips 值不变
-    `write_logic_rand` 翻来源 + 留证行(`kind = JOY_PROVISIONAL_KIND`)——有界
-    显式测量仪表,定谳后必须撤(残留 = 临时闩未撤的显式信号)。
+  - 欢愉契约条件腿**不在本枚举**:正式模型 = 银狼策划选择上报落地相的条件腿
+    rider(`kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`,
+    头号玩家选项触发 + 欢愉契约在册 → `gain_character`(火花/开拓者·欢愉随机
+    其一,1★,rand=True),调用点级 best-effort 例外见 §6;条件腿原文与建模依据 =
+    `cw_investments.py::ENV_GIFTS['欢愉契约'].chars_conditional`)。
 - **on_character_gained(gs, name, star, *, rand, sig)**:现役枚举 = **空集**(暂无
   已核实的「获得角色时」触发型效果)。**本函数 = 该类效果未来的唯一收敛点**。
 - **on_equipment_gained(gs, item, *, rand, sig)**:查 `cw_effect_inventory.py::
@@ -175,8 +177,11 @@ merge_simulate 终态」——禁第二套语义。merge_simulate 是一次到�
 3. **查无效果安静不写**(§3):真值归观察覆盖。
 4. **席满且溢出位被占 = 零写留证**(§4;游戏行为未实证,禁猜)。
 
-best-effort 边界只收在**非容器写的观测/登记腿**内(§2.1/§2.4 登记腿、§3 advisor 申报
-行/条件腿标记面):失败 log + 缺陷留证、不阻塞。无效载荷拒绝(§2.4-0)同属
+best-effort 边界收在**非容器写的观测/登记腿**内(§2.1/§2.4 登记腿、§3 advisor 申报
+行):失败 log + 缺陷留证、不阻塞。**唯一容器写调用点级例外 = 条件腿授予 rider**
+(`pick_planner.py::_grant_joy_conditional`,try/except + 缺陷行
+`joy_conditional_grant_failed` 后照常腿型分派——授予与选项应用是两条独立因果,
+授予失败不得拖垮选项应用;链内部零吞错不变)。无效载荷拒绝(§2.4-0)同属
 零写 + 留证(输入校验,非防重复保护)。
 
 ## 7. 与旧机制的关系(grant_bench_unit_cascade 过渡期)
