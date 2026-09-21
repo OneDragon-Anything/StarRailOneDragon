@@ -42,7 +42,7 @@
   - 画面 op：删 `_pick_pending`/`_pending_pick`/重入裁决出口门；act = 决策（越界/异常 fallback 第 1 张现状保持）→ 组装 param（idx + 注册表分层归一 norm_item）→ 派发 → `round_success` 终结。本屏零 chosen（选择存证已退役，docstring 在册）。
 - **骇入策划屏（planner，后做——复杂腿）**：
   - `CwActionPickPlannerOp.run` = 点卡（env.target，避开「详情」按钮区选中点照旧）→ 固定等 1.2s → 确认点击（`emit_overlay_confirm`，裁决词「我来当策划」照旧）→ 立即 `report_action_pick_planner_param(gs, action, sig, leg_type=env.leg_type, norm_item=env.norm_item)`（单相；leg_type/norm_item 经 env kwargs 形态保持——planner 载荷先例，不迁 param）→ `round_success` 终结。体内 `op._confirm_pending = True` 置位删除。
-  - 落地效果腿**逐位保持**（实码四分支口径，attack2 F5 修正）：equip 腿（norm_item 命中 → 入栏+后果链；'' 翻来源留证）/ upgrade 变换窗三态+档行（前置硬校验，见 §2.0 时序等价论证）/ unknown 留证（**弱化词卡文落此**——弱化兜底档已退役，`classify_planner_leg` 现役不产出 weaken）/ unrouted 兜底零写（分类器现役不产出的防御分支，逐位保持）。**joy rider 收口申报（attack3 F4 事实化）**：rider 已随 commit 14dd40977 提交（`pick_planner.py` +63 行 `_grant_joy_conditional`+rng，挂现落地相门；测试面 = `test_cw_gain_chain.py` import + 10 处 evidence 调用）——3.2 派工前置已满足；单相化时 rider 挂点随单相调用点逐位保持，`test_cw_gain_chain.py` 仅做删 evidence kwarg 机械改写，rider 腿行为锁仍归 joy 批验收面。
+  - 落地效果腿**逐位保持**（实码四分支口径，attack2 F5 修正）：equip 腿（norm_item 命中 → 入栏+后果链；'' 翻来源留证）/ upgrade 变换窗三态+档行（前置硬校验，见 §2.0 时序等价论证）/ unknown 留证（**弱化词卡文落此**——弱化兜底档已退役，`classify_planner_leg` 现役不产出 weaken）/ unrouted 兜底零写（分类器现役不产出的防御分支，逐位保持）。**joy rider 收口申报（attack3 F4 事实化）**：rider 已随 commit 14dd40977 提交（`pick_planner.py` 约 +63 行变更 `_grant_joy_conditional`+rng，挂现落地相门；测试面 = `test_cw_gain_chain.py` import + 10 处 evidence 调用）——3.2 派工前置已满足；单相化时 rider 挂点随单相调用点逐位保持，`test_cw_gain_chain.py` 仅做删 evidence kwarg 机械改写，rider 腿行为锁仍归 joy 批验收面。
   - 画面 op：删 `_confirm_pending`/`_pending_leg`/`_pick_param`/重入裁决出口门；act = 零参决策 → `classify_planner_leg` 腿型 → 组装 env → 派发 → `round_success` 终结。本屏零 chosen 字段（现状即无）。
   - **归一不升级**：planner 的 `norm_item` 来自 `classify_planner_leg`（腿型判定单源，银狼锚语义 = 本屏判定域），**保持不动**——它不是入栏归一器，是腿型分类器的副产品。
 
@@ -50,7 +50,7 @@
 
 | 符号 | 现消费点 | 迁移 |
 |---|---|---|
-| `EVIDENCE_OVERLAY_CLOSED`（pick_equip.py 自持） | `cw_screen_equip_pick.py` import+调用；`test_cw_pick_channels_t60.py`（EQUIP_EVIDENCE 面） | 全删；测试改断言「确认点击后容器即持效果」 |
+| `EVIDENCE_OVERLAY_CLOSED`（pick_equip.py 自持） | `cw_screen_equip_pick.py` import+调用；`test_cw_pick_channels_t60.py`（EQUIP_EVIDENCE 面） | 全删；测试改断言「点卡后容器即持效果」 |
 | `EVIDENCE_OVERLAY_CLOSED`（pick_planner.py 自持） | `cw_screen_yinlang.py` import+调用；`test_cw_yinlang_phase32.py`（10+ 处） | 全删；测试改写单相断言 |
 | `_pick_pending`/`_pending_pick`（equip_pick） | 本文件读写点 | 删 |
 | `_confirm_pending`/`_pending_leg`/`_pick_param`（yinlang） | 本文件读写点 + `cw_overlay_pick_action.py::CwActionPickPlannerOp` 体内置位 | 删（含 pick op 体内置位行） |

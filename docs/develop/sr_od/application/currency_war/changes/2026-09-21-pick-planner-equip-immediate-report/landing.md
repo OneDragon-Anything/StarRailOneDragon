@@ -19,7 +19,7 @@
 
 **范围**：`kernel/cw_action_report/pick_planner.py` 单相化（删 `evidence` 参数与本文件 `EVIDENCE_OVERLAY_CLOSED`；一口写 = ⓪unknown 留证分支逐位保持（弱化词卡文落此——弱化兜底档已退役，`classify_planner_leg` 现役不产出 weaken，attack2 F5 实码口径）→ equip 腿 → upgrade 变换窗三态+档行，前置硬校验语义逐位保持 → unrouted 兜底零写逐位保持；**joy rider 挂点随单相调用点逐位保持迁移**，rider 腿行为锁归 joy 批验收面）；`CwActionPickPlannerOp.run` 确认点击后立即上报完整结果（leg_type/norm_item 经 env kwargs）、体内 `op._confirm_pending = True` 置位删除；`cw_overlay_pick_action.py` **模块头「三线例外」自述段**改写为单相清零表述（attack2 F6；3.1 未动此段，本批一并清）；`cw_screen_yinlang.py` 删 `_confirm_pending`/`_pending_leg`/`_pick_param`/重入裁决出口门、act 派发即 `round_success` 终结；`test_cw_gain_chain.py` 删 evidence kwarg 机械改写 10 处（attack3 F1，rider 行为锁断言保留）；`test_cw_unified_action_4.py` 删 `op._confirm_pending is True` 置位断言（点击链断言保留，attack5 A1）。**不含**：equip 屏（3.1 已清）；`classify_planner_leg` 语义。
 **设计依据**：design.md §2.0（时序等价论证）、§2.1（planner）、§2.2 表、§2.3（取舍 1/3/4 + joy 协调申报）
-**文件面**：`src/sr_od/application/currency_war/kernel/cw_action_report/pick_planner.py`、`operations/cw_screen/cw_screen_yinlang.py`、`operations/cw_op/cw_overlay_pick_action.py`（CwActionPickPlannerOp 体 + 模块头例外自述段）、`sr-od-test/` 受影响测试（含 `test_cw_yinlang_phase32.py`、`test_cw_gain_chain.py`、`test_cw_unified_action_4.py`）
+**文件面**：`src/sr_od/application/currency_war/kernel/cw_action_report/pick_planner.py`、`operations/cw_screen/cw_screen_yinlang.py`、`operations/cw_op/cw_overlay_pick_action.py`（CwActionPickPlannerOp 体 + 模块头例外自述段 + `OverlayPickExecEnv` 类 docstring 腿型载荷段）、`sr-od-test/` 受影响测试（含 `test_cw_yinlang_phase32.py`、`test_cw_gain_chain.py`、`test_cw_unified_action_4.py`）
 **依赖**：3.1（共享 `cw_overlay_pick_action.py` 防冲突串行）。joy rider 已提交（14dd40977）——原「joy 批先提交」前置已满足（attack3 F4）
 **优先级建议**：6
 **完成判据**：
@@ -39,9 +39,9 @@
 
 ## 正本更新清单
 
-- `flow/action_ops.md`：§4.5（**欠账标注段整段摘除**——全域清零；PickPlanner/PickEquip 两行描述更新为单相即时上报）← 3.1/3.2
+- `flow/action_ops.md`：§4.5（**欠账标注段整段摘除**——全域清零；PickPlanner/PickEquip 两行描述更新为单相即时上报）、§1 :22 禁止清单例句换现役反例或不举例（pick_invest 已删，「现役」表述过期）← 3.1/3.2
 - `flow/action_exec.md`：§2 事件线 pick 族段（:24 附近「其余屏(策划/补给/装备)=分步形态欠账…欠账标注见 action_ops §4.5」句更新为单相清零表述，消悬空引用；supply 确认行复核）← 3.1/3.2（attack2 F1）
-- `screens/op-layer.md`：§1.2 欠账引用句更新（:43 两相欠账清零）、:33 枚举句更新（分步例外清零）、:96 悬空引用清除、§3 节点循环行分型判据更新（yinlang/equip_pick 重入裁决退役改派发即终结）← 3.1/3.2（attack2 F3）
+- `screens/op-layer.md`：§1.2 欠账引用句更新（:43 两相欠账清零）、:33 枚举句更新（分步例外清零）、:36 出口①枚举句更新（策划/装备并入派发即终结枚举）、:96 悬空引用清除、§3 节点循环行分型判据更新（yinlang/equip_pick 重入裁决退役改派发即终结）← 3.1/3.2（attack2 F3 + attack6 S3）
 - `screens/README.md`：§5.5 单选族表（两行上报形态更新）← 3.1/3.2
 - `screens/planner.md`：全篇两相+重入裁决表述清除（**§2(:12)/§4/§5/§6(:55)/开放设计注(:76)** 五处；§1 无涉）← 3.2（attack2 F2）
 - `screens/equip_pick.md`：重入裁决/证据闩表述清除 ← 3.1
