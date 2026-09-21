@@ -39,6 +39,7 @@
 ### 1.2 动作 op 契约与动作粒度
 
 - **动作 op 形态** = `CwActionXxxOp`(框架 `SrOperation` 子类,构造 = `(ctx, param, env)`):机械执行后直调自己的上报函数(`kernel/cw_action_report/report_action_<snake>_param`),逻辑态由上报函数族独占写入,动作 op 自身不记账。发出即职责完成,落地判定归观察侧;执行异常上抛。**验证不是生命周期段**:动作 op 只管机械执行,禁做任何验证、禁设「验证失败→重试/恢复」编排;动作未生效(观察正确而下一帧对账失配)的处置 = 修动作执行链本身的可靠性(点击链坐标/时序/确认序列),禁止以验证+重试结构兜底。
+- **具名例外(节点终结上报类动作 op 的转移证据)**:结算确认(`cw_op/cw_op_settle_confirm.py::CwOpSettleConfirm`)与补给确认(`cw_op/cw_overlay_pick_action.py::CwActionPickSupplyOp`)允许以转移证据(下一画面完成判据白名单/备战锚命中)作**上报时点门**——证据命中才调 kernel `report_node_advance` 上报节点推进;证据 miss = 不上报、不设重试编排,兜底归观察锚定(kernel `observe_node_anchor` 补推)。该例外只决定报不报,不是「验证→重试/恢复」生命周期段,与上条禁令不冲突(细则 = [../flow/action_exec.md](../flow/action_exec.md) §2.1)。
 - **动作粒度**:买一张 = 一个 op、卖一张 = 一个 op、买经验一击 = 一个 op(单击 +4XP;升级 = XP 过门槛表结果,非动作)、刷新 = 一个 op。**满栏例外**:板凳满时点合成槽位,游戏机制自动多买至 3 的倍数张(每张原价)——一击多张 = 一个动作 op,逻辑态直写按实际张数计。复合宏动作(整档替换)已全链退役。
 
 ### 1.3 守卫断言与对账边界
@@ -63,6 +64,7 @@
 
 - **每画面一文件**:obs 类与该画面上报函数同居(`kernel/cw_screen_report/<画面snake>.py`);与动作侧 `kernel/cw_action_report/<action>.py` 每动作一文件对称。文件名 = 画面 snake;`__init__.py` 不暴露模块(项目惯例),消费方按画面文件名直接 import。
 - **命名机械规约**:obs 类 = `CwScreenXxxObs`(商店框 op = `CwOpXxxObs`);上报函数 = `report_screen_<snake>_obs`(obs 类去前缀 `CwScreen` 去后缀 `Obs` 转 snake)。与动作上报函数族同约定:**一个「上报」概念一个形状**,动作/画面观察两族互不混用,都禁按类型聚合的分派转移函数。完备锁测试遍历包内 obs 类,断言 report 函数在场/不在场分侧(推进型不在场)。
+- **节点推进上报族例外(触发矩阵外)**:节点推进上报走 kernel `report_node_advance`(trigger 封闭集 `{settle_confirm, supply_confirm}`),不设 `report_action_*`/`report_screen_*` 形态——推进是节点域容器语义(经推进生效原语 `advance_node_effective`),不是单动作逻辑态或单画面观察。形态归属:`settle_confirm` 宿主 = `CwOpSettleConfirm`(画面框 op 形态——非动作注册表面、无 CwAction param,构造与命名从 `CwOpOpenShop`/`CwOpCloseShop` 惯例);`supply_confirm` 宿主 = 补给确认动作 `CwActionPickSupplyOp`(注册表动作,上报点旁调);锚定写端 = `CwScreenPrep`/`CwScreenSupplyNode` 观察 node(→ `observe_node_anchor`)。
 - **obs 类**:该画面一次观察的类型化载荷,字段 = 该屏读到的结构化结果 + 稳定帧引用(`screen: Any`,实机识别域载体)。纯数据:只可 import kernel 既有类型 + `cv2.typing.MatLike`。
 - **sig 逐位沿原值**:上报函数的 `ChannelSig`(family/actor/evidence)沿用该画面原写点原值(如 actor='CwScreenEncounter');journal 写行语义与迁出前连续。sig 缺省 = 函数体内按原值构造;对 obs 字段缺失的防御口径与原写点一致(读缺 = 跳过写,不加强不减弱)。
 
@@ -127,4 +129,4 @@
 - **锚** = 在流程确定性转点上触发的一次结构化观测,三要素 = 确定性触发时点 × 该时点权威事实集 × 落载体登记;是画面/动作上报面族的观测扩员,不是新机制。目的 = 让框架提供更准确的游戏观察数据(事件事实零读屏即确定;事后从散点帧推断是多次实证的缺陷类)。**观测-only 边界**:只做记录面,状态改写/效果施加出栈(payload 预留 effect_ref 槽位恒空,非空 = 红)。
 - **触发三型**:landed(动作落地事实,如买牌落地 = 卡名/扣金/合成判定三事实同点唯一可得处)/ emitted(发射即登记,如遭遇·策略刷新计数)/ boundary(流程边界:进节点/进位面/结算)。锚点事件集 = 登记式封闭集(`kernel/cw_anchor.py::ANCHOR_REGISTRY`,现役闭集 8 锚;新锚先登记再接线,集外 = 红);**现役零生产调用点**(惰性纯机制面),动作锚接线随执行器收编批、boundary 触发口候裁决,禁实现批静默选型。
 - **锚行封装**:anchor_id/trigger_type/时点键/payload/scope(口径域:global|plane|unit,防跨批口径混用)/evidence_refs(判定事实型必填)/produced_by。载体三面全部复用既有设施:事件行 = ExogenousEvent kind 词表扩展(schema 修订归一个批次,防逐锚散改)、状态锚 = GameState 既有写入 API(source 标注 `anchor:<id>`)、计数 = 效果账本既有挂点。
-- **防双源声明**:锚是上报接口面的登记清单面,非平行触发机制;与采集钩子(临时采样)辖域互补禁混同;与停机钩子无交(锚永不触碰 run 状态);帧观察 → 锚 → 遥测落盘是一条管道的三段,锚不产生独立数据域。节点推进权威 = 统一 state 派生规则,锚行禁携带第二份节点序计数。
+- **防双源声明**:锚是上报接口面的登记清单面,非平行触发机制;与采集钩子(临时采样)辖域互补禁混同;与停机钩子无交(锚永不触碰 run 状态);帧观察 → 锚 → 遥测落盘是一条管道的三段,锚不产生独立数据域。节点推进权威 = **终结动作上报(`report_node_advance`)+ 观察锚定(`observe_node_anchor`)**(判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md) §3.3),非统一 state 派生规则;锚行禁携带第二份节点序计数。

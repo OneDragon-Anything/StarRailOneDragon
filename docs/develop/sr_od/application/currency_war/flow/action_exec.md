@@ -25,6 +25,15 @@
 
 配套**发射门**(发射方与执行方同源谓词,防空计划发射):部署选人单一源 = 策略层 `strategies/impl/mandate_v1/deploy_plan.py::select_deployments`(发射×执行单一源;落位计划单一源 = 同模块 `deploy_plan_moves`)。发射门与执行侧经同一帧属性 `recipe_floor_lock_exempt` 同帧同值——锁定线语境豁免:豁免武装帧且本帧无有效仙舟供给时门让位;发射侧拒因/开火分键 = `deploy_emit_*`,执行侧计划拒因/门命中分桶 = `deploy_exec_*`。
 
+## 2.1 终结动作上报节点推进(契约)
+
+节点序前进的唯一动作入口 = kernel `report_node_advance(gs, *, trigger)`(kernel/cw_game_state.py;trigger 封闭集 = `{settle_confirm, supply_confirm}`,集外显式炸错)。两触发点:
+
+- **结算确认**(`cw_op/cw_op_settle_confirm.py::CwOpSettleConfirm`,画面框 op 形态、非动作注册表面):点击「继续挑战」(含长按兜底)→ 完成判据白名单全集命中(转移证据,单一源 helper `hit_settle_completion_anchor`,与 `CwScreenBattleWait` ③段出口判定共用)→ 上报 settle_confirm。结算读点/rounds_done 等结算链留宿主 CwScreenBattleWait;战败分支不进本 op 不推进。
+- **补给确认**(`cw_op/cw_overlay_pick_action.py::CwActionPickSupplyOp`):确认点击补 until 转移证据(下一节点备战锚)→ 在 `report_action_pick_supply_param` 调用点旁上报 supply_confirm。
+
+**上报时点门(辖域契约)**:转移证据的角色 = 决定报不报,非执行验证——证据 miss = 不上报、不设重试编排,兜底归观察锚定(kernel `observe_node_anchor` 补推,锚定写端 = CwScreenPrep 备战顶栏 / CwScreenSupplyNode 补给屏节点条)。上报前置**观察态门**(kernel 内):`node_ord` value 在场 ∧ source=observation 双条件才放行,门挡 = obs_event 留证零推进;推进经生效原语 `advance_node_effective` 落账(candidate 去重守卫 + 效果推进尾段同临界区),重复上报/重试在结构上不可能。判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md) §3.3。
+
 ## 3. 备战单动作消费
 
 逐动作循环细则 = [../screens/prep.md](../screens/prep.md) §4(决策恰取一个动作,None = 本帧无动作交回重观察 → F3 validate → 期望态记账 → 执行 → acct 暂存 → 终结判定读注册表 → 逻辑态直写)。本篇只补执行面要点:

@@ -782,11 +782,19 @@ streak 带方向真值(§3.2.12)/ 金币仅胜局覆盖(§3.2.9)——写入规�
 **边界**:`'none'`=确认无浮层(显式枚举值);`None`=这一帧没读到。两者分写,None
 双义禁令适用。
 
-#### 3.6.2 节点域派生字段与画面上下文
+#### 3.6.2 节点域字段与画面上下文
 
-`top_bar_raw`(观察层,顶栏原文)/`node_ord`(逻辑层序键)/`prev_screen`/
-`current_screen` 的双层结构与写点纪律单一源 = [node-domain.md](node-domain.md)
-(字段层次终极版:序键是逻辑层四腿 write_logic,原文才是观察层;本篇不复写)。
+`top_bar_raw`(观察层,顶栏原文)/`node_ord`(节点序,两态字段)/`prev_screen`/
+`current_screen` 的结构与写点纪律单一源 = [node-derivation.md](node-derivation.md)。
+节点序 `node_ord` 两态语义:**锚定态(observation)** = kernel 锚定 helper
+`observe_node_anchor` 解析读数直写(顶栏/节点条读数与 gold 的 OCR 解析同类,非
+游戏规则推算;**锚定写端两处** = CwScreenPrep 备战顶栏 / CwScreenSupplyNode
+补给屏节点条);**推进态(logic,未确认)** = 终结动作上报推进(`report_node_advance`
+经推进生效原语 `advance_node_effective` 写入;序号前进唯一入口,效果推进尾段
+同临界区)。**`gs.node` 观察镜像写端归属 = 留守观察漏斗**(cw_observation 漏斗段
+plane/round 读口基底)——它供决策层坐标消费,属观察域写入(与 gold/hp 同类,
+零派生零推进);漏斗退出的仅 = 推进域(`node_ord`/`node_hist_ord`)写入。本篇
+不复写判定语义。
 
 ### 3.7 工程结构(schema 版本)
 
@@ -1305,8 +1313,10 @@ carried 沿用(从未读过→None);③None 仅当从未读过——不是机制
 域组,带索引定义注):
 
 - `resumed_match`(bool):True = 本局为恢复对局(游戏在中局接管)。写端 =
-  `cw_loop._mark_session_resumed` 单口(接管检测确认点);读端 = `cw_observation`
-  派生规则弹窗腿(恢复局弹窗清理语义)。
+  `cw_loop._mark_session_resumed` 单口(接管检测确认点)。**消费端现状 = 零逻辑
+  消费**:历史读端 = 漏斗派生弹窗腿的恢复局禁用分支,该腿已随观察派生模型退役,
+  现役无任何逻辑消费点(仅遥测/审计画像面)。**退役候选挂账**:该旗标可随容器
+  字段清理批次退役;退役前保持现值与写端不动(代码退役自成批次,不随文档删)。
 
 接管补采无 gs 字段:补采编排 = `CwEntryPlaneIntel`,采集真值经位面详情屏写门落
 `plane_bosses`/`enemy_affixes`(§3.1.3);重复委派由编排的真值跳过门兜住。

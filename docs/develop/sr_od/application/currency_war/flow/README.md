@@ -14,6 +14,7 @@
 ┌─ 外层循环（cw_loop.py）────────────────────────────────────────┐
 │ 画面识别 → 分支路由（overlay 0x 系 → 备战 1 → 战斗窗 → 大厅 3c）│
 │ 轮次推进（备战环 → 出战 → 战斗等待 → 结算 → 回备战）            │
+│ 节点推进 = 终结动作上报（settle/supply_confirm）+ 画面 op 锚定   │
 │ 停机/遥测钩子（守卫、runs summary、分配器、对局存档）           │
 ├─ 画面指挥(37 画面 op,每屏独立类直继承 SrOperation,两 node 形态)──┤
 │ 观察 node:门 → 显式读屏(唯一读屏点)→ CwScreenXxxObs →          │
@@ -31,7 +32,7 @@
 │   单动作循环逐帧恰取一个动作(接口返回 CwAction | None,    │
 │   None = 本帧无动作);商店决策 = decide_shop_action 单动作   │
 │   接口;flow.py 旧备战骨架（相位机/腾席链等 10 方法+session  │
-│   字段）已删（考古走 git 历史）;pick 族 9 接口与冷建/结算   │
+│   字段）已删（考古走 git 历史）;pick 族 13 接口与冷建/结算   │
 │   收编仍由 flow.py 中间 ABC 承载│
 ├─ 动作执行（kernel/cw_vocab.py 词表 + prep_actions.py 执行器│
 │ + cw_screen_buy_cards.py 循环壳 + cw_action_registry.py 单一注册表  │
@@ -45,17 +46,17 @@
 └────────────────────────────────────────────────────────────────┘
 ```
 
-分层判据：**外层循环管"现在是哪个画面、交给谁"；画面指挥管"一次访问内观察→决策→执行的编排"；策略步进管"给一帧期望态提什么动作"（骨架 + 委托 mandate_v1 判据,单动作选择序）；动作执行管"一个动作怎么落地（机械发出、零判效;落地判定归观察侧对账,见 [../screens/op-layer.md](../screens/op-layer.md) §1）"**。策略判据（买/卖/升/刷的数学）一律不在本目录，见 `../strategy-docs/11_shop_decisions.md` 等篇。
+分层判据：**外层循环管"现在是哪个画面、交给谁"；画面指挥管"一次访问内观察→决策→执行的编排"；策略步进管"给一帧期望态提什么动作"（骨架 + 委托 mandate_v1 判据,单动作选择序）；动作执行管"一个动作怎么落地（机械发出、零判效;落地判定归观察侧对账,见 [../screens/op-layer.md](../screens/op-layer.md) §1）"**。节点推进喂入 = **动作上报 + 画面 op 锚定**：战斗/补给节点终结动作 op 上报（kernel `report_node_advance`，trigger 封闭集 {settle_confirm, supply_confirm}）+ 画面 op 观察锚定（`CwScreenPrep` 备战顶栏 / `CwScreenSupplyNode` 节点条 → kernel `observe_node_anchor`）；观察漏斗与外循环分支写点不写推进域（判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md)）。策略判据（买/卖/升/刷的数学）一律不在本目录，见 `../strategy-docs/11_shop_decisions.md` 等篇。
 
 ## 2. 策略↔流程契约(吸收原 strategy-docs/09_architecture.md;意向层重塑拆分)
 
-> 原 09 篇已删除,其四身份分离与接口内容收编于本节。判据语义的归属篇同步改指 strategy-docs 新编号。**契约形状**:契约成员 13 = 分画面决策入口 11(抽象)+ 每局冷建口 2——create_session(抽象)+ create_state(非 abstract 工厂);方向重估节拍/生命周期事件等策略内部构造不在契约面。13 = 对外接口面,实现层内部方法数不计入。
+> 原 09 篇已删除,其四身份分离与接口内容收编于本节。判据语义的归属篇同步改指 strategy-docs 新编号。**契约形状**:契约成员 17 = 分画面决策入口 15(抽象)+ 每局冷建口 2——create_session(抽象)+ create_state(非 abstract 工厂);方向重估节拍/生命周期事件等策略内部构造不在契约面。17 = 对外接口面,实现层内部方法数不计入。
 
 ### 2.1 四身份分离
 
 | 身份 | 载体 | 职责 | 禁止 |
 |---|---|---|---|
-| **契约** | `strategies/impl/cw_strategy.py` 的 `CwStrategy` ABC(抽象 12 + 非 abstract 工厂 1;接口面见 §2.2) | 定义各画面 op 调用策略器的全部决策入口与唯一冷建口(§2.2) | ABC 自身零内置逻辑(纯接口,create_state 工厂除外);零策略专属语义(update_target/意向 target 机器/生命周期事件钩子已出契约面) |
+| **契约** | `strategies/impl/cw_strategy.py` 的 `CwStrategy` ABC(抽象 12 + 非 abstract 工厂 1;接口面见 §2.2) | 定义各画面 op 调用策略器的全部决策入口与唯一冷建口(§2.2) | ABC 自身零内置逻辑(纯接口,create_state 工厂除外);零策略专属语义(update_target/意向 target 机器/生命周期事件钩子已出契约面)。接口计数:抽象 16 + 非 abstract 工厂 1(接口面见 §2.2) |
 | **管理器** | `strategies/impl/cw_strategy_manager.py`(StrategyManager) | 按实例化/选择策略;注册面封闭集 = {mandate_v1}(decision_v2 已随 commit b94e9cfb 删除) | 不承载判据;不知策略内部结构 |
 | **实现** | `strategies/impl/mandate_v1/`(单一核)+ `strategies/impl/flow.py`(`CwFlowStrategy` 中间辅助 ABC:唯一冷建口/方向节拍内化刷新/pick 族/商店单动作接口与驱动器缺省,`_abstract=True` 不注册;旧备战骨架已删;结算策略半惰性 drain 三方法已删(退役批)) | 决策本体 | 禁自实现生命周期机制(幂等键/连败恢复/屏蔽/stall 门——归流程侧);禁绕契约自造接口 |
 | **注册壳** | `strategies/mandate_v1_strategy.py`(MandateV1Live) | 把实现包注册进策略扫描器 | 壳内零判据逻辑 |
@@ -69,13 +70,13 @@
 | `create_session(config)` [abstract] | 每局开始一次(establish_new_match 进对局前移点/防御路径/回放三处同源) | 返回空白 StrategySession + 策略器状态工厂接线 + live 初值 v3_phase='FORM'——**唯一冷建口**(原 on_match_start 冷建与初值双写点收编) |
 | `create_state(config)` [非 abstract 工厂] | 仅由 create_session 接线调用 | 每局冷建策略器状态对象(黑盒契约;缺省 None = 第三方插件兼容条款——新增 abstract 钩子会破坏存量第三方策略,故本口为非 abstract;详 = [session.md](session.md)「第三方插件兼容条款」) |
 
-**分画面决策入口 11**(抽象;方向重估由各入口经黑板帧代次标注内化触发):
+**分画面决策入口 15**(抽象;方向重估由各入口经黑板帧代次标注内化触发):
 
 | 接口 | 输入 | 返回 | 语义 |
 |---|---|---|---|
 | decide_prep_screen(session, config) | 容器 game state 直读(game_state_of;迭代 2026-09-18-prep-obs-retirement 阶段 3.5 黑板退役,「观察先于决策」由画面 op 编排保证) | **恰一个动作**(CwAction),None 退役;重观察动作 = CwActionObsParam 两口径——scope='in_place' 环内重观察(宿主重观察上报后原地续决策)/ scope='outer_loop' 交回外循环重观察(承载原 HoldFrame 空发射语义,用户裁定 2026-09-20 HoldFrame 收编删除) | 空发射是合法通道;策略器异常/非法形状由消费端守卫拒绝(cw_screen_prep 决策循环 try/except:异常→本轮 fail 交外循环 retry 链;非 CwAction 返回→具名 fail 留证) |
 | `decide_shop_action(session, config)` [本批升格入 ABC] | `session.shop_state_frame`(期望态;写者 = 入口观察段/单动作逻辑态直写步/sim 引擎) | **恰一个动作**,「无动作可做」= `CloseShop` 恒可用终结;生产执行侧单动作循环逐帧调用(`run_buy_waves`),契约核验挂本入口 | 决策本体 = `mandate_v1/shop.py`;观察帧缺失即抛错 |
-| `decide_invest/supply/encounter/megastar/partner/planner/star_tome/wish_trial/box_card`(pick 族 9) | overlay 观察实参 + session | PickEvent 系载体/索引 | 选项决策;动作编排归画面 op,不进序列契约辖内。决策规格 = `../strategy-docs/13_pick_family.md` |
+| `decide_invest_env`/`decide_invest_strategy`/`decide_supply`/`decide_encounter`/`decide_megastar`/`decide_partner`/`decide_planner`/`decide_star_tome`/`decide_wish_trial`/`decide_box_card`/`decide_fortune`/`decide_expert_invite`/`decide_equip_pick`(pick 族 13) | 容器槽零参读(候选自各 `*_opts` 槽/payload 槽,写端 = 各画面 op 观察上报;离屏 None = 观察层失约抛错) | 恰一个动作:选卡 `CwActionPickXxxParam` ∨ 刷新建议动作(遭遇/补给/投资两屏),互斥单发 | 选项决策;动作编排归画面 op,不进序列契约辖内。决策规格 = `../strategy-docs/13_pick_family.md` |
 
 **非契约成员(实现层,不在 ABC 面)**:
 
@@ -93,7 +94,7 @@
 - **控制流类动作已整体退役出词表**(DeferSpheres 族随词汇清理批删除;overlay 让位由环入口直接交回外循环承载);策略器禁用空批表达控制流(商店侧空批通道已由 CloseShop 终结取代)。
 - **生命周期机制归流程侧**(现行有效):幂等键 `action_key`、stall 门、强制出战;执行失败记忆机制已随执行层状态类目退役(git 历史可溯)。
 
-共 冷建 2 + 决策入口 11(抽象 12 + 工厂 1 = 13)。新事件面优先归并进既有 pick 接口或走契约改版,禁旁路自造接口。
+共 冷建 2 + 决策入口 15(抽象 16 + 工厂 1 = 17)。新事件面优先归并进既有 pick 接口或走契约改版,禁旁路自造接口。
 
 ### 2.3 装配与依赖矩阵（吸收原 09 §4）
 

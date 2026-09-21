@@ -14,7 +14,7 @@
 2. **效果实例清单**(§4):实例的字段面、唯一性约束、伴生数值空间;
 3. **分类词表**(§5):八类效果语义与各类的 state 记录形态模板;
 4. **生命周期声明**(§7):TriggerKind × DurationKind 声明式驱动与事件映射;
-5. **逐效果规格**(§8):`STRATEGY_EFFECTS` 注册表全量 13 条的在域形态。
+5. **逐效果规格**(§8):`STRATEGY_EFFECTS` 注册表全量 14 条的在域形态。
 
 不管什么(单一源在别处,本篇只引用,防双源):
 
@@ -106,12 +106,13 @@ W4 键级三分(游戏效果键→效果域/策略行为键→决策行/无消�
 
 ## 5. 分类词表(八类)
 
-基数申报(诚实口径):`STRATEGY_EFFECTS` = **13 条,实码全量**(构建层校验与数据层
-不漂移;`len` 实测;含本金充裕/本金充裕+ 条件免费刷新两条,§8 节点推进族);词缀源
+基数申报(诚实口径):`STRATEGY_EFFECTS` = **14 条,实码全量**(构建层校验与数据层
+不漂移;`len` 实测;含本金充裕/本金充裕+ 条件免费刷新两条,§8 节点推进族;含
+加油站登记期 burst 建模条目,§8);词缀源
 注册表 `AFFIX_EFFECT_SPECS` = 3 条 + 豁免表 `AFFIX_SPEC_EXEMPT` = 1 条(§7.6);
 评估面 `STRATEGY_ECONOMY` = 92 条;策略全集
 `INVESTMENT_STRATEGIES` = 335 条;官方 base 全集 `PLAZA_AUGMENTS` = 334 条
-(`len` 实测;目录口径 = 两 overlay 键并集 = **96 卡**,83 候 + 13 已确认,与 impacts
+(`len` 实测;目录口径 = 两 overlay 键并集 = **97 卡**,84 候 + 14 已确认,与 impacts
 §4 目录一致)。讨论口径「89 条经济效果」非设计基数,与实码 92 的精确对应
 关系候用户裁决(§10-9),不作为设计基数。本表**不设每类条数列**——类分布随逐条
 确定进度漂移,静态计数不构成设计结论;逐卡归类登记正本 = impacts。
@@ -201,7 +202,7 @@ W4 键级三分(游戏效果键→效果域/策略行为键→决策行/无消�
 
 | 事件类 | 事件源(实码挂点) | 辖触发面 | 计数语义 |
 |---|---|---|---|
-| 节点推进 | 派生管线效果推进段 `tick_effect_boundary`(kernel/cw_game_state.py;接线 = observe_screen_context 尾段,备战帧闸=金结算/推进即时);同节点去重守卫在 inventory 内(kernel/cw_effect_inventory.py advance_node) | PLANE_START / NODE_ENTER / CONDITIONAL-N_NODES 型 | 节点类 counter +1,每节点恰一次(推进有效位为闸门) |
+| 节点推进 | 推进生效原语 `advance_node_effective` 尾段 `tick_effect_boundary`(kernel/cw_game_state.py;推进输入两路径同源同尾段 = ①节点边界终结动作上报 `report_node_advance`(trigger 封闭集 {settle_confirm, supply_confirm},观察态门)②观察锚定补推 `observe_node_anchor` 的 R>v/首锚定分支);同节点去重守卫在 inventory 内(kernel/cw_effect_inventory.py advance_node) | PLANE_START / NODE_ENTER / CONDITIONAL-N_NODES 型 | 节点类 counter +1,每节点恰一次(推进有效位为闸门) |
 | 动作执行落地 | 刷新 = 上报函数统一触发(`report_action_refresh_shop_param` → `record_refresh`,kernel/cw_action_report/refresh_shop.py;含刷新三计数入账 + `bump_key(CounterKey.REFRESH)`,2026-09-18 迁入裁决)/ 购买 `bump_key(CounterKey.BUY)`(cw_screen_buy_cards.py 落地门);均未落地不计数 | ON_REFRESH;BUY 计数键(返利系门槛的驱动源) | 动作类 counter +1 |
 | 跳过消耗 | `consume_use`(prep_actions.py:1512,跳过执行成功回执) | 次数类余量(免战牌) | uses 计数 +1(目标模型)/ 递减镜像(现表示法,§4) |
 | 升级标记 | `on_level_up`(prep_actions.py:1350) | LEVEL_UP | 事件标记(`_EVENT_LEVEL_UP`,下划线前缀与策略计数器键空间隔离,:124) |
@@ -213,12 +214,20 @@ W4 键级三分(游戏效果键→效果域/策略行为键→决策行/无消�
   族已同桥 wire**——按金现值逐条目评估:金 > 阈值每额外步长金 +1 次、至多封顶,金未读
   None 保守零授予)/`project_effect_capacity`(容量逻辑态直写;逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,真值以下一帧观察为准(观察赢))/`apply_board_rewrite`
   (板面重写:出售面逻辑写、替换面零逻辑写,归属单一源 = fields.md §5.3 两行)。
-- **条件族采样金窗**(节点边界发放时点迁移的申报面):`grant_effect_node_refresh_balance`
-  的条件判定族(本金充裕系)按效果推进段执行时点的 `gs.gold` 现值评估——位面过渡/BOSS
-  简报/弹窗族推进帧的观察不读金,采样金 = 上一读数沿用值(缺本战斗胜金,漂移 ±1~3 档,
-  申报接受:免费刷新次数与实际不符时实机可感知,采样窗精化挂效果域批 M3,差异清单在
-  node-derivation.md §3.7.2-M3);静态每节点族(加油站/搜打撤/双手狸等固定授予族)不受
-  影响;金未读该拍零授予不补发(语义见桥本体)。
+- **条件族采样金窗**:`grant_effect_node_refresh_balance` 的条件判定族(本金充裕
+  系)按效果推进段执行时点的 `gs.gold` 现值评估——推进挂节点边界终结动作上报
+  (settle_confirm/supply_confirm),动作帧的金 = 结算真值(结算观察链
+  `apply_settlement_cover` 先于「继续挑战」点击落容器)或补给屏现读,无旧观察推断
+  模型「推进帧不读金、沿用缺胜金旧值」的采样漂移面;静态每节点族(加油站/搜打撤/
+  双手狸等固定授予族)不涉金采样;金未读该拍零授予不补发(语义见桥本体)。
+- **每节点发放挂点与登记期建模**:每节点余额发放挂节点边界终结动作上报(经推进
+  生效原语尾段;锚定补推路径同源发放——补推同为真实节点进入,跳档不漏发)。拿卡
+  登记期的当节点发放按逐效果核查结论建模:**仅加油站**官方卡文带「现在」立即腿
+  (登记期 burst 发放,`free_refresh_burst`,经选卡登记点 `apply_effect_burst_grant`
+  直通);搜打撤/双手狸开键盘!/本金充裕族 = 次节点起,零登记期发放(发放时序
+  与游戏真值一致,结论单一源 = `docs/game/currency_war/research/
+  per_node_pick_node_grant.md`,证据分级 A 原文)。登记期发放「每效果×节点至多
+  一次」由结构保证(发放挂点唯一 + 一次拿卡单事件),不设去重状态。
 - **到期与尾款**:到期条目移除 = 尾款触发面;尾款金面走**观察覆盖兜底**,禁到期挂点
   logic 直写金币防双计(`advance_node` 契约,:234-236);确需单列逻辑写的建模者
   (如超发货币回流腿)按 impacts 条目申报接线。
@@ -346,6 +355,21 @@ W4 键级三分(游戏效果键→效果域/策略行为键→决策行/无消�
 - **推理链**:「可生效 2 次」= 次数余量 → 累计量 → counter;跳过机制本体由次数余量
   维度承载,不占改写载荷(spec 注释在案);登记挂点与消耗挂点解耦,登记面缺位的局
   零动作不虚构递减(§7.3 登记挂点纪律)。
+
+#### 加油站(200301)
+
+- **论断**:NODE_ENTER / while_held / ECONOMY;duties 全空(counter 不建);两腿
+  分载——「现在」立即腿 = **登记期 burst 发放**(`free_refresh_burst`,选卡登记点
+  `apply_effect_burst_grant` 直通 +1 次;+8 金即时腿 = `instant_gold`);持续腿 =
+  每节点 +1 次(`free_refresh_per_node`,经节点边界桥 `grant_effect_node_refresh_balance`)。
+- **证据**:规格 cw_investments.py(`free_refresh_burst=1` + `free_refresh_per_node=1`
+  + EffectSpec 条目);官方原文 cw_invest_data.py「现在及每次进入新节点时获得1次
+  免费刷新,立刻获得8金币。」
+- **推理链**:拿卡当节点是否即享每节点额度的逐效果核查(证据分级 A 原文)单一源 =
+  docs/game/currency_war/research/per_node_pick_node_grant.md——四效果中唯一带
+  「现在」立即腿者;同族对照(搜打撤无「现在」措辞)证明该措辞承载真实发放差异。
+  登记期发放「每效果×节点至多一次」由结构保证(发放挂点唯一 + 一次拿卡单事件,
+  同卡跨节点重复拿取每次各发 = 游戏真值)。
 
 ### 动作计数族
 
