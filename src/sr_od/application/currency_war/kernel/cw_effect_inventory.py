@@ -1206,8 +1206,8 @@ def settle_wrench_duplicate_gold(gs: GameState, *, frame: str = '') -> int:
 # (特权赋予卡拖角色腿的落码位:官方文「拖动到一个角色上使用,从角色已
 # 穿戴的进阶装备中选择一件变为特权装备」——选定后变换确定性(36 进阶 ↔
 # 36 特权后缀映射,:func:`privilege_counterpart`)→ 逻辑写;「选择」面 =
-# bot 决策/回执事实,归调用侧,本载体只管选定后的写端。执行分派入口 =
-# cw_affix_effects.apply_tool_execution_write(申报表驱动,免环落申报侧)。)
+# bot 决策/回执事实,归调用侧,本载体只管选定后的写端。执行分派入口随
+# 组合壳退役,接线候工具上报形态,现役观察收口。)
 
 
 def transform_worn_equip_to_privilege(gs: GameState, target: Unit,

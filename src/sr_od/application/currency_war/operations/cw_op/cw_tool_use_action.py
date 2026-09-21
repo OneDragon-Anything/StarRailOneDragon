@@ -6,7 +6,7 @@
 一个 op 类辖工具原子七类(R8 按消耗品各立词表类,机械半同构:owned
 网格内 icon → 目标拖曳;工具名解析表 ``_TOOL_NAME_BY_CLASS`` 随体迁)。
 注册表七行(每词表类一行)同指本 op,消费语义逐类一致。零消耗确认
-对拍(裁决 3:原 CwOpTools 三态对拍随原子化由观察承接)。"""
+对拍(裁决 3:消耗对拍由观察承接)。"""
 from __future__ import annotations
 
 import time

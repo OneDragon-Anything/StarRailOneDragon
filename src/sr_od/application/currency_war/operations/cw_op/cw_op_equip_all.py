@@ -139,9 +139,8 @@ def _owned_wearable_names(hits: list) -> list[str]:
 def get_equip_templates_cached(ctx: SrContext) -> dict[str, tuple[MatLike, tuple, np.ndarray]] | None:
     """加载 cw_equip SIFT 模板(缓存 ctx.cw_equip_templates,首次 load 后复用)。
 
-    模块级共享 helper(工具执行批 ADR-0532 整改:与 CwOpTools 的模板装载
-    同一单一源,禁两处各写一份装载逻辑);``CwOpEquipAll``/``CwOpTools``
-    同源消费。
+    模块级共享 helper(工具执行批 ADR-0532 整改:模板装载单一源,禁多处
+    各写一份装载逻辑);装备/工具执行面同源消费。
     """
     cached = getattr(ctx, 'cw_equip_templates', None)
     if cached is not None:

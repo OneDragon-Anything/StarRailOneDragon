@@ -42,10 +42,11 @@ data/affix_effects_data。)
 
 工具执行批(ADR-0532)增量——执行通道建成开臂:
 - ``TOOL_EXEC_CHANNEL_READY`` False→True(开臂判据 = UI 建档前置以既有
-  owned 网格建档满足 + cw_op_tools.CwOpTools 落码批交付,常量节注释);
-- 发射位 = mandate_v1 M7.5 工具消费(逐备战帧评估打 ``[cw!][tools]``
-  拒因分键,admitted 非空才发 RunTools,执行位闩 = mark_tools_pass_
-  executed);执行载体 = RunTools 组合动作(CwOpTools)。
+  owned 网格建档满足,常量节注释);
+- 发射位 = mandate_v1 工具消费(逐备战帧评估打 ``[cw!][tools]`` 拒因
+  分键,admitted 非空逐件发原子动作,执行位闩 = mark_tools_pass_
+  executed);执行载体 = 工具原子动作 op(CwActionToolUseOp,组合壳
+  RunTools 已退役)。
 """
 from __future__ import annotations
 
@@ -138,9 +139,8 @@ ZERO_WEAR_EXECUTION: str = 'execution'
 ZERO_WEAR_EXECUTION_PENDING: str = 'execution_pending'
 
 #: 执行链 stop_reason 全枚举(精确匹配行;18 号稿 §1.2 值域)。
-#: 字符串值 = 三类写入端字面量:装备 op 执行面(cw_op_equip_all:drag 落空/
-#: 画面非干净备战/装备计划失效)、工具 op(cw_op_tools:工具计划失效——
-#: 哨兵双挂点均不产生本字面量,消费面 = run_record/日志判读)、分发段
+#: 字符串值 = 两类写入端字面量:装备 op 执行面(cw_op_equip_all:drag 落空/
+#: 画面非干净备战/装备计划失效)、分发段
 #: 计划面(prep_actions _build_equip_wear_plan 的 empty_reason:pool_empty/
 #: 分配对全部拉黑,m7 主路径与 front_only 回退各一处写入)。哨兵覆盖仅
 #: 辖 m7 主路径:计划面经 _run_equip 空计划短路入哨兵,执行面三挂点
@@ -159,14 +159,6 @@ _ZERO_WEAR_EXECUTION_REASONS: frozenset[str] = frozenset({
     # execution 使哨兵台账直接指向执行链即查,不落 execution_pending
     # 待分诊兜底行(18 号稿 §1.2「新枚举值回表补行」纪律)。
     '装备计划失效(计划步件两次现读不可定位,交回重派重算)',
-    # 工具计划失效(写入端 = CwOpTools.STATUS_PLAN_STALE,ADR-0601 §4
-    # 具名常量):与装备侧计划失效同归域裁决——计划已产出且执行已开始
-    #(首件已消费),执行期网格 reflow 打空剩余计划坐标,恢复动作
-    #(交回分发层下一环重派重算)也走分发/执行链 → execution(18 号稿
-    # §1.2「新枚举值回表补行」纪律)。哨兵当前双挂点(装备 op 执行面/
-    # 分发段计划面)均不直接产生本字面量,先行登记保判读分键确定性
-    #(ADR-0601 §4 消费面 = run_record/日志判读),挂点扩面不漏行。
-    '工具计划失效(首件消费后 reflow,剩余计划作废)',
 })
 
 
@@ -565,8 +557,8 @@ def resolve_affix_priority_order(comp, deployed_rows: tuple[list, list],
 #:   同一建档(「区域-道具装备」D-40;col2 冶金炉 click 实锤),拖曳目标 =
 #:   同网格另一 icon(炉→死库存件 icon / 特权卡→key 对应进阶成品 icon),
 #:   无新画面 → 建档前置以既有 owned 网格建档满足;
-#: ②工具拖曳 op 落码批 = cw_op_tools.CwOpTools(判据→G1 准入→逐件 drag,
-#:   含 21 号稿 §3.2 工具消耗确认通道)。
+#: ②工具拖曳 op 落码 = 工具原子动作 op(CwActionToolUseOp,判据→G1 准入
+#:   →逐件原子发射;消耗确认对拍随组合壳退役,消费真值归观察)。
 #: 开臂后拒因分键仍分键可见:判据拒原样透传,准入拒仅在通道回关时出现
 #: (对照锁 sr-od-test test_cw_tools_exec_channel.py)。
 TOOL_EXEC_CHANNEL_READY: bool = True
