@@ -15,8 +15,11 @@
 代码注释所引节号以该篇为解析归宿);本目录自足,不依赖任何迭代过程件。
 
 上位裁定与 why(ADR 档案体系已按用户令整体退役,裁定 why 的归宿 = 本目录正本动机段 + git 历史)。
-**现行有效上位裁定三条**:①守卫族终版(节点域守卫族口径,见 [node-domain.md](node-domain.md) §4);
-②单字段双值结构(§2 设计理念);③字段层次终极版(观察层=原始读数/逻辑层=计算值,§2 第 1-2 条)。
+**现行有效上位裁定三条**:①节点推进动作上报化(触发模型换代:终结动作上报 +
+观察锚定,判定本体单一源 = [node-derivation.md](node-derivation.md) §3.3;旧节点域
+画面推断口径连同其守卫已退役);②单字段双值结构(§2 设计理念);③字段层次终极版
+(观察层=原始读数/逻辑层=计算值,§2 第 1-2 条;节点域专用锚定写口的直写改判见
+[node-derivation.md](node-derivation.md) §3.2-7)。
 承载这三条的记录机制 = [journal.md](journal.md)(三渠道写入口 observe/carry/write_prior + 自足快照变更账)。
 
 ## 2. 设计理念(六条)
@@ -79,10 +82,12 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
   以观察为真值源:派生漂移(环境卡星徽幽灵计数/未知身份零贡献/徽标 OCR 坏读)
   经观察覆盖采新收敛,落 `board_derived_adopt` 台账行不进安灯——「上阵单位集合」
   这一真不变量由行域自身失配面独立把守。观察侧仍按双源仲裁覆盖(观察赢辖)。
-- **节点生效序**:权威序字段的读口 = 生效序读口,语义=逻辑层现值与 run 内高水位
-  取大(公式体单一源见 [node-domain.md](node-domain.md) §3);消费面恒取逻辑层。
+- **节点生效序**:权威序字段的读口 = 生效序读口,语义=`node_ord` 现值与 run 内
+  高水位取大(公式体与消费纪律 = [node-domain.md](node-domain.md) §3);两态来源
+  语义(锚定态/推进态)单一源 = [node-derivation.md](node-derivation.md) §3.2-7。
 - **节点类型三源仲裁**:结算屏权威> 节点序列台账现读 > 帧标签 OCR
-  ([fields.md](fields.md) §3.2.1;仲裁细则单一源 = node-domain.md)。
+  ([fields.md](fields.md) §3.2.1;类型派生权威链与冲突留证单一源 =
+  [node-derivation.md](node-derivation.md) §3.3-5,指针 = [node-domain.md](node-domain.md) §7)。
 
 **容器字段投影完备性审计**:全部 Field 字段对「游戏侧变更是否可造成 observe 失配」
 的三分类注册面 = `kernel/cw_projection_audit.py`(`PROJECTION_AUDIT`;「无写端无规则」
@@ -126,8 +131,8 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | [fields.md](fields.md) | 字段级完整规格(原详设节号体系 §1-§8 + §9 推演内核帧映射对账):逐字段语义/写端/边界、决策 op 写入面、效果族写入归属、生命周期与治理面;代码注释所引节号的解析归宿 |
 | [journal.md](journal.md) | 记录机制:账本文件、三渠道封闭集与渠道签名、版本 id 与单版本事务、自足快照行、落盘与查询 |
 | [effect-domain.md](effect-domain.md) | 效果域:在场效果账本的内容语义(计数器模型/实例清单/分类词表/生命周期/逐效果规格) |
-| [node-domain.md](node-domain.md) | 节点域:字段双层、生效序读口与 hist 哨兵、守卫族、派生规则单一源引用 |
-| [node-derivation.md](node-derivation.md) | 节点推进判定方案(派生规则单一源持久家):四规则组本体/画面流转全景图/场景走查/实现位与载荷锚 |
+| [node-domain.md](node-domain.md) | 节点域指针篇:生效序读口与消费纪律、记录面分工、类型派生与链查询指针;判定本体单一源引用(禁复写) |
+| [node-derivation.md](node-derivation.md) | 节点推进判定方案(派生规则单一源持久家):终结动作上报+观察锚定判定本体/画面流转全景图/场景走查/退役申报 |
 | [strategy-env-impacts.md](strategy-env-impacts.md) | 投资策略/环境逐效果在 state 里的影响(已确认条目+候逐条确定占位清单) |
 | [chain-observation.md](chain-observation.md) | 链观察对接:基线链/现行链双源、diff 证据、与遥测账本的挂接 |
 | [retirement.md](retirement.md) | 旧 12 流退役逐流处置与消费方迁移清单 |

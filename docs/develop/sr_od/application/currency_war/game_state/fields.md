@@ -179,7 +179,8 @@ sig = logic_action/CwScreenPlaneIntel/货币战争-位面详情/compute,采集�
 必在键内)。
 **写端**:本屏节点条=台账权威现读;kind 走三源仲裁序——**结算屏权威>
 节点序列台账现读 > 帧标签 OCR**(结算屏条目见 §3.5.2);帧标签仅 battle/boss 两类
-稳定,采信时折 evidence。三源仲裁语义单一源 = [node-domain.md](node-domain.md)。
+稳定,采信时折 evidence。类型派生权威链与冲突留证单一源 =
+[node-derivation.md](node-derivation.md) §3.3-5(链查询接口 = [chain-observation.md](chain-observation.md))。
 
 #### 3.2.2 节点序列台账 node_path
 
@@ -1310,7 +1311,8 @@ carried 沿用(从未读过→None);③None 仅当从未读过——不是机制
 
 `resumed_match`(bool,原 match_facts 域成员,渠道③接管协议 `logic_hook`)已随
 容器字段清理批次退役(迭代 2026-09-20-node-advance-action-report T-8):历史读端 =
-漏斗派生弹窗腿的恢复局禁用分支,该腿退役后旗标零逻辑消费,属死重。退役面 =
+漏斗派生段的恢复局禁用分支,该分支随节点推进触发模型换代退役后旗标零逻辑
+消费,属死重。退役面 =
 Field 定义 + `cw_loop` 写点(`ResumeAttach`/`takeover_resumed` journal 行同灭)+
 投影审计行;match_facts 域版本 bump 5。**恢复检测本体不受影响**:`resume_candidate`
 判定/锁定臂/relaunch 残留结算屏处理(session 侧独立机制)与接管观察态失效
