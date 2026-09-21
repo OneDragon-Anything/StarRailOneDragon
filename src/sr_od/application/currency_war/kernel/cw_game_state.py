@@ -2871,10 +2871,11 @@ class GameState:
                         self, _chain_q.token, target_ord=_shop_target,
                         actor='derive_node_type',
                         trigger_screen=screen_name, seq=seq)
-        # —— 效果推进段(迁移迭代 design §2.1;管线尾段同临界区)。prep_frame 闸
-        # = 备战帧:金结算仅备战帧触发,0q/0p/弹窗推进帧递延(攻击 F1 错窗防护;
-        # 补给节点无备战帧,其轮首收入由下一备战帧观察直接捕获,用户裁定)。
-        tick_effect_boundary(self, prep_frame=(screen_name == SCREEN_PREP_FRAME))
+        # —— 效果推进段(迁移迭代 design §2.1;管线尾段同临界区)。历史
+        # prep_frame 闸随金结算调用点归零退役;生产接线现归推进生效原语
+        # (:func:`advance_node_effective`)尾段,此处为旧派生管线共存期
+        # 保留调用,切换批(3.5)随管线一并退役。
+        tick_effect_boundary(self)
 
     # —— 心跳观察者(§2.4 关键结构 2)——
 
@@ -3032,10 +3033,10 @@ def _node_key_for_ord(ordinal: int, kind: str) -> NodeKey:
                    kind=kind)
 
 
-def tick_effect_boundary(gs: GameState, *, prep_frame: bool) -> None:
+def tick_effect_boundary(gs: GameState) -> None:
     """效果推进段(迁移迭代 changes/2026-09-15-effect-ledger-self-advance
-    design §2.1 a-f;接线位 = :meth:`observe_screen_context` 尾段,本函数
-    独立可调供直测/sim)。
+    design §2.1 a-f;现接线位 = :func:`advance_node_effective` 尾段(迭代
+    2026-09-20-node-advance-action-report),本函数独立可调供直测/sim)。
 
     - 推进闸:effective None → 整段跳过(「未观察不当真进节点」守卫,禁虚耗
       余期/虚累余额);
@@ -3043,14 +3044,17 @@ def tick_effect_boundary(gs: GameState, *, prep_frame: bool) -> None:
       → 容量重锚;
     - 经济参数 = 容器直读 active_strategies(空/None → 聚合缺省);
     - 异常边界:吞 Exception 记 warning 不上抛(不毒化派生链)。
+
+    历史:prep_frame 形参(「金结算仅备战帧触发」闸)随
+    ``settle_node_boundary_gold`` 生产调用点归零退役,本迭代删除形参。
     """
     try:
-        _tick_effect_boundary_impl(gs, prep_frame=prep_frame)
+        _tick_effect_boundary_impl(gs)
     except Exception as e:   # noqa: BLE001  best-effort 不毒化派生链
         log.warning(f'[cw][effect] 效果推进段失败(不阻塞): {e}')
 
 
-def _tick_effect_boundary_impl(gs: GameState, *, prep_frame: bool) -> None:
+def _tick_effect_boundary_impl(gs: GameState) -> None:
     effective = effective_node_ord(gs)
     if effective is None:
         return
@@ -3062,6 +3066,140 @@ def _tick_effect_boundary_impl(gs: GameState, *, prep_frame: bool) -> None:
     if advanced:
         grant_effect_node_refresh_balance(gs, frame=frame)
     project_effect_capacity(gs)
+
+
+# ============================================================ 节点推进动作上报(迭代 2026-09-20-node-advance-action-report;design §2.2/§2.3)
+
+#: 动作推进 trigger 封闭集(design §2.3;集外显式炸错)。
+NODE_ADVANCE_TRIGGERS: frozenset[str] = frozenset({'settle_confirm', 'supply_confirm'})
+
+#: trigger → journal 行 actor(留证归因;现役 _validate_sig 只校 family,actor 为自由归因标识,攻击 R2)。
+_NODE_ADVANCE_ACTORS: dict[str, str] = {
+    'settle_confirm': 'CwOpSettleConfirm',
+    'supply_confirm': 'CwActionPickSupplyOp',
+}
+
+
+def advance_node_effective(gs: GameState, candidate: int, *,
+                           actor: str, sig: ChannelSig,
+                           source: FieldSource = 'logic') -> bool:
+    """推进生效原语:序号前进的唯一落账入口(design §2.2)。
+
+    序号前进的任何合法写点(动作上报/观察补推)都必须经本原语——账本
+    ``advance_node`` 去重是序相等判,序号前进不经效果尾段即永久漏该节点
+    每节点发放(攻击 F2①)。
+
+    - 去重守卫:candidate <= 生效序 → 零推进返回 False(同序幂等);生效序
+      None = 本 run 首建,任何正 candidate 放行(处置表 v=None 首锚定行);
+    - 写 node_ord:**source 由调用方定**——动作上报路径 = logic(推进未
+      确认态,观察态门语义的前提);锚定补推路径 = observation(观察采新即
+      确认态,否则补推后源态落 logic 会把下一次终结动作误挡一拍)。锚定
+      直写不经通用 observe()(R>v 与 logic 现值失配会误入观察覆盖失配
+      安灯三分流;节点域专用口先例 = :meth:`settle_truth`);
+    - hist 占位(单调水位)+ 效果推进尾段同临界区。
+    返回 True = 实际落账推进。
+    """
+    if source not in ('logic', 'observation'):
+        raise ValueError(f'推进原语 source 非法: {source!r}(仅 logic/observation)')
+    effective = effective_node_ord(gs)
+    if effective is not None and candidate <= effective:
+        return False
+    if source == 'logic':
+        gs.write_logic(gs.node_ord, candidate, produced_by=actor, sig=sig)
+    else:
+        gs._swap('node_ord', Field(value=candidate, source='observation'), sig=sig)
+    if gs.node_hist_ord is None or candidate > gs.node_hist_ord:
+        gs.node_hist_ord = candidate
+    tick_effect_boundary(gs)
+    return True
+
+
+def report_node_advance(gs: GameState, *, trigger: str,
+                        sig: ChannelSig | None = None) -> bool:
+    """终结动作上报推进(动作路径唯一入口,design §2.3)。
+
+    - 观察态门(design §2.2 **双条件**):node_ord value 在场 ∧ source ==
+      observation 才放行——只有已被观察确认的节点值可被动作推进,重复
+      上报/重试在结构上不可能。**value 守卫不可省(攻击 R1)**:Field 缺省
+      source='observation',新容器 = (None, 'observation'),只查 source 会在
+      开局/恢复局误放行且 candidate 在生效序 None 时无定义;
+    - 门挡 → obs_event arbitrate 留证零推进;
+    - candidate = 生效序 + 1(终结动作语义:上一节点结束进下一节点;位面
+      末节点由序号公式自然跨位面)→ 经推进生效原语落账(source=logic,
+      推进未确认态,等观察锚定);
+    - sig 缺省 = logic_action 族按 trigger actor 构造;显式传入须同族。
+    返回 True = 实际推进落账。
+    """
+    if trigger not in NODE_ADVANCE_TRIGGERS:
+        raise ValueError(f'推进 trigger 集外: {trigger!r}'
+                         f'(封闭集 = {sorted(NODE_ADVANCE_TRIGGERS)})')
+    actor = _NODE_ADVANCE_ACTORS[trigger]
+    if sig is None:
+        sig = ChannelSig(family='logic_action', actor=actor, mode='compute',
+                         group_id=f'act:{actor}@{gs.write_seq + 1}')
+    else:
+        _validate_sig(sig, ('logic_action',))
+    cur = gs.node_ord
+    if cur.value is None or cur.source != 'observation':
+        gs.note_obs_event(
+            'arbitrate', 'node_ord',
+            {'value': cur.value, 'source': cur.source, 'trigger': trigger},
+            verdict='观察态门挡(value 在场且 observation 锚定态才可动作推进)',
+            sig=ChannelSig(family='obs', actor=actor, mode='read',
+                           group_id=f'gate:{actor}@{gs.write_seq + 1}'))
+        return False
+    effective = effective_node_ord(gs)
+    if effective is None:
+        return False   # 不可达(value 在场 ⇒ 生效序在场;防御性保留)
+    return advance_node_effective(gs, effective + 1, actor=actor,
+                                  sig=sig, source='logic')
+
+
+def observe_node_anchor(gs: GameState, ordinal: int, *,
+                        trigger_screen: str, actor: str,
+                        sig: ChannelSig | None = None) -> str:
+    """观察锚定 helper(备战帧顶栏/补给屏节点条两写端共用;design §2.2)。
+
+    处置规则(R = 本帧读数,v = node_ord 现值):
+
+    - v = None → **first_anchor**:任何 R 经推进生效原语落账(observation
+      确认态;E4 开局建 1/恢复局重建);
+    - R > v → **advance**:采新经原语(observation;补推 = 漏上报自愈,
+      序号前进同帧拿到效果尾段);
+    - R == v → **reanchor**:直写同值(observation;logic 态此分支 = 动作
+      推进被观察确认翻锚定态,下一终结动作由此解锁);
+    - R < v → **stale_dropped**:倒退免疫,不写 + obs_event arbitrate 留证
+      (读数误读或幻影推进残余;绝对值坐标无累积误差,偏差有界一个观察
+      周期)。
+
+    写端不经通用 observe():R>v 与 logic 现值失配会误入观察覆盖失配安灯
+    三分流;本 helper 直写 Field(source='observation')(节点域专用口,先例
+    = :meth:`settle_truth`)。sig 缺省 = obs 族按宿主 op 登记名构造。
+    返回处置 token(first_anchor/advance/reanchor/stale_dropped)。
+    """
+    if sig is None:
+        sig = ChannelSig(family='obs', actor=actor, screen=trigger_screen,
+                         mode='read', group_id=f'anchor:{actor}@{gs.write_seq + 1}')
+    else:
+        _validate_sig(sig, ('obs',))
+    v = gs.node_ord.value
+    if v is None:
+        advance_node_effective(gs, ordinal, actor=actor, sig=sig,
+                               source='observation')
+        return 'first_anchor'
+    if ordinal > v:
+        advance_node_effective(gs, ordinal, actor=actor, sig=sig,
+                               source='observation')
+        return 'advance'
+    if ordinal == v:
+        gs._swap('node_ord', Field(value=v, source='observation'), sig=sig)
+        return 'reanchor'
+    gs.note_obs_event(
+        'arbitrate', 'node_ord',
+        {'reading': ordinal, 'current': v},
+        verdict='倒退读数丢弃留证(倒退免疫;R<v 不写)',
+        sig=sig)
+    return 'stale_dropped'
 
 
 def _write_derived_node_type(gs: GameState, kind: str, *, target_ord: int,
