@@ -7,21 +7,30 @@
 (`active_env` 归一 == 欢愉契约 → `gain_character(random.choice([火花, 开拓者·欢愉]),
 1, rand=True)`,evidence = `joy_conditional:<单位名>`);发射相零触发。
 `kernel/cw_gain_chain.py`——删除 `JOY_PROVISIONAL_KIND` 常量、`on_env_gained`
-欢愉契约翻来源分支与 provisional_mark effects 项,docstring 同步。**不含**:头号玩家
-两选项本体模型改动、sim 接线、comp 评估消费。
-**设计依据**:design.md §2.1-§2.4/§2.6
+欢愉契约翻来源分支与 provisional_mark effects 项,docstring 同步。
+**weaken 兜底档退役(裁定③)**:`kernel/cw_events.py`——`classify_planner_leg`
+关键词降级分支与 `PLANNER_LEG_WEAKEN` 常量删除(含弱化词未知名卡文 → unknown)、
+`decide_planner` 弱化档打分删除(两档制 = 升费档 > 装备档)、腿型词表注释同步;
+`kernel/cw_action_report/pick_planner.py` weaken 派发分支删除(终态兜底 reason 改
+`unrouted_leg_zero_write`);`operations/cw_op/cw_overlay_pick_action.py` 腿型注释
+同步。**不含**:头号玩家两选项本体模型改动、sim 接线、comp 评估消费。
+**设计依据**:design.md §2.1-§2.4/§2.6/§2.2-7(裁定③)
 **文件面**:`src/sr_od/application/currency_war/kernel/cw_action_report/pick_planner.py`、
 `src/sr_od/application/currency_war/kernel/cw_gain_chain.py`、
+`src/sr_od/application/currency_war/kernel/cw_events.py`、
+`src/sr_od/application/currency_war/operations/cw_op/cw_overlay_pick_action.py`、
 `sr-od-test/test/sr_od/application/currency_war/` 相关测试(test_cw_gain_chain/
 test_cw_yinlang_phase32 及新测试文件,随批申报)
 **依赖**:开工前核 tool-gain-report 在飞面(design §2.7)
 **优先级建议**:5
 **完成判据**:
 - 行为对照 design §2.2-§2.5:双臂通道(未闩=rand/置闩=logic)、在册判定、rng 注入
-  确定性、全腿型计数、发射相零触发、时序锁;
-- 撤闊:`on_env_gained` 欢愉契约仅 immediate 腿,provisional 行零发射(design §2.6);
+  确定性、三腿计数、发射相零触发、时序锁;
+- 撤闩:`on_env_gained` 欢愉契约仅 immediate 腿,provisional 行零发射(design §2.6);
+- weaken 退役锁(design §2.6):无名弱化卡文 → unknown、破解芯片仍 equip、打分
+  零弱化档、终态兜底 reason 更名;
 - 通用工程门:照 `sr-od-test/README.md`「提交」节(ruff + 受影响测试 + 相关全量)。
-**验收凭据形式**:测试名(rider 双臂/在册判定/撤闩断言)+ 全绿运行。
+**验收凭据形式**:测试名(rider 双臂/在册判定/撤闩/weaken 退役锁断言)+ 全绿运行。
 
 ## 末阶段:正本更新
 

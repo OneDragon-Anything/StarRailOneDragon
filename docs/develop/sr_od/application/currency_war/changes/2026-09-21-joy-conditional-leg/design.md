@@ -7,7 +7,9 @@
   定谳,`JOY_PROVISIONAL_KIND` 临时闩退役。
 - 用户裁定(2026-09-21):①模型逻辑 = 「银狼选择动作上报(证据闩防重)时,若欢愉契约
   在册 → `gain_character(随机[火花, 开拓者·欢愉], 1★, rand=True)`」;②本批先出迭代
-  设计,对抗审后实施。
+  设计,对抗审后实施;③**weaken 兜底档整体退役**——「没找到证据的就是不存在」:
+  头号玩家原文二分法(修改自身费用/获得妙妙小道具),weaken 分类无原文依据、
+  实机 185 jsonl 零出现(问询澄清 2026-09-21),分类器/打分/上报三处一并剔除。
 - 效果原文(`data/cw_invest_data.py:451`,id=1201,效果原文直读源):「获得
   【银狼LV.999】,她每次触发独立羁绊【头号玩家】选项时,获得【火花】或
   【开拓者·欢愉】。」
@@ -97,18 +99,24 @@
    翻来源分支(值不变 write_logic_rand 两域 + 标记行)与 GainOutcome 的
    `provisional_mark` effects 项;模块 docstring 失败安全/条件腿自述同步改写。
    撤除后 `on_env_gained` 欢愉契约仅走 chars_immediate 腿(银狼LV.999 入链)。
+7. **weaken 兜底档退役(裁定③)**:三处一并剔除——①`cw_events.py`
+   `classify_planner_leg` 关键词降级分支(「弱化/降低敌人」→ weaken)与
+   `PLANNER_LEG_WEAKEN` 常量:含弱化词且装备名锚未命中的卡文改落 **unknown**
+   (留证行,失败显影方向——静默零记账变响亮申报);②`decide_planner` 弱化档
+   打分(55 分常数)删除,打分两档制 = 升费档 > 装备档(含弱化词未知名卡文按
+   装备档回落);③`pick_planner.py` weaken 派发分支删除(终态兜底零写保留,
+   reason 改 `unrouted_leg_zero_write`,不再以 weaken 命名);④
+   `cw_overlay_pick_action.py` 腿型注释同步。破解芯片碰撞治理(装备域锚先行)
+   不受影响。
 
 ### 2.3 触发计数正确性(证据闩语义)
 
 - 落地相门(`evidence == EVIDENCE_OVERLAY_CLOSED`)即既有家族的每次弹窗恰一次
   语义(重入裁决出口「入口词不在 = overlay 已关」),rider 直接受益,零新闩;
-- **弹窗选项族与 weaken 档定性(2026-09-21 用户问询澄清)**:原文二分法 = 「修改
-  自身费用 / 获得妙妙小道具」两.option;代码的 weaken 档 =
-  **防御性兜底分类**(选项卡文含「弱化/降低敌人」且装备名锚未命中时降级入桶——
-  来源疑为妙妙小道具装备卡的卡文关键词,如破解芯片族;`classify_planner_leg`
-  关键词降级 `cw_events.py:975`),**无游戏原文依据、实机零出现**(185 jsonl 零
-  命中),非实证卡类。rider 计数不受影响:落地相 = 弹窗出现即触发,与卡类无关
-  ——原文二分法下该语义反而更干净;
+- **弹窗选项族与 weaken 档退役(2026-09-21 用户问询澄清 + 裁定③)**:原文二分法 =
+  「修改自身费用 / 获得妙妙小道具」;代码的 weaken 档 = 防御性兜底分类(选项卡文含
+  「弱化/降低敌人」且装备名锚未命中时降级入桶),无原文依据、实机零出现 → **随本批
+  整体退役**(§2.2-7)。rider 计数不受影响:落地相 = 弹窗出现即触发,与卡类无关;
 - 发射相(evidence 缺省)不触发 rider(零写);
 - rider 在腿型分派前执行,与腿型零耦合——但**排序上置于各腿之前、失败不阻塞
   各腿**(授予与选项应用是两条独立因果;gain_character 异常上抛语义不变,
@@ -135,6 +143,11 @@
    相关历史判读口径(以标记行识别欢愉契约局)改用 `joy_conditional` evidence 前缀;
 4. **journal 增量**:每次头号玩家触发且欢愉契约在册 +2~4 行(落位/合成,随合成
    级数);欢愉契约在册时旧闩的 -3 行(两翻面+一标记)相抵。
+5. **weaken 档退役申报(裁定③)**:①含弱化词且装备名未命中的卡文从「静默零记账」
+   变「unknown 留证行」(更响亮,失败显影方向);②`decide_planner` 对此类卡文从
+   55 分变装备档回落分——决策影响极小(升费卡通常 100 分占优,弱化卡文本无实机
+   出现记录);③`report_action_pick_planner_param` 终态兜底 reason 更名
+   `unrouted_leg_zero_write`。
 
 ### 2.6 测试面
 
@@ -142,8 +155,13 @@
   source=logic_rand;`gs.prep_anchored = True` 直赋后 → source=logic;
 - **在册判定**:active_env 空/其他环境 → 零授予;欢愉契约 → 恰一次授予;
 - **rng 注入**:同 seed 同单位;两候选均可达;
-- **全腿型计数**:equip/upgrade/unknown/weaken 四腿落地相均触发 rider(弹窗 =
-  触发语义);发射相零触发;
+- **全腿型计数**:落地相四类入口(equip/upgrade/unknown 及已退役 weaken 的历史
+  调用形态)之外,rider 触发以「落地相」为准——equip/upgrade/unknown 三腿均触发
+  rider(弹窗 = 触发语义);发射相零触发;
+- **weaken 退役锁**:`classify_planner_leg('使后续节点【弱化】')` → `('unknown','')`
+  (不再 weaken);含弱化词已知装备名(破解芯片)仍 → equip(碰撞治理不回退);
+  `decide_planner` 对无名弱化卡文零弱化档分;`report_action_pick_planner_param`
+  终态兜底 reason = `unrouted_leg_zero_write`;
 - **时序锁**:授予走获得链固定时序(落位 → 回调 → 合成);
 - **撤闩**:`on_env_gained` 欢愉契约仅 immediate 腿(零翻面/零标记行);
   `JOY_PROVISIONAL_KIND` 全仓(src)零引用(grep 断言经由台账面/源码禁扫纪律的
