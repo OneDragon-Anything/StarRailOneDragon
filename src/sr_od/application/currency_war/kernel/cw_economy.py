@@ -141,15 +141,23 @@ def sell_refund(star: int, cost: int) -> int:
     return max(refund, 0)
 
 
-def bench_char_cost(bc) -> int:
-    """备战角色的招募费(sell_refund / 经济决策用):char_id 已识别 → 查 CHARACTERS;未知 → 3(中费保守估)。
+def bench_char_cost(bc, gs: GameState | None = None) -> int:
+    """备战角色的招募费(sell_refund / 经济决策用):char_id 已识别 → 查
+    CHARACTERS;未知 → 3(中费保守估)。**银狼LV.999 档感知**(口述·权威
+    2026-09-21:升费后卖价按新费用档标准公式,无特殊口径):gs 给定时经
+    :func:`effective_cost` 取当前档;gs 缺省 = 注册表起始费(保底兼容存量
+    调用面——静态画像族与未迁移的估值注记;卖价/退款账实链已随批传 gs)。
 
     入参 = 容器单位(行域/bench unit 槽的 ``Unit``,duck 读 char_id;
     benchchar-retirement P4 容器形)。
     公共名(跨模块私有符号收敛:跨模块消费统一走本名;
     下划线旧名保留为别名,存量消费点不破)。"""
     c = CHARACTERS.get(bc.char_id) if getattr(bc, 'char_id', '') else None
-    return c.cost if c and c.cost else 3
+    if c is None or not c.cost:
+        return 3
+    if bc.char_id == _LV999_ID and gs is not None:
+        return effective_cost(gs, bc.char_id)
+    return c.cost
 
 
 _LV999_ID: str = '银狼LV.999'   # 规范名(单一源 = cw_chars 注册名;现役唯一档分支成员)

@@ -64,7 +64,7 @@ def report_action_sell_deployed_param(gs: GameState, param: Any, sig: ChannelSig
     _w(gs.front_row, front, 'proj_sell_deployed_front')
     _w(gs.back_row, back, 'proj_sell_deployed_back')
     refund = sell_refund(int(getattr(sold, 'star', 1) or 1),
-                         bench_char_cost(sold))
+                         bench_char_cost(sold, gs))
     g = gs.gold.value
     if g is not None:
         _w(gs.gold, int(g) + int(refund), 'proj_sell_deployed_gold')

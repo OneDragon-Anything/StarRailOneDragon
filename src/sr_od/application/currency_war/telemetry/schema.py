@@ -184,7 +184,7 @@ def salvageable_1star_value(state: GameState) -> int:
             continue
         if int(getattr(u, 'star', 1) or 1) != 1:
             continue
-        total += sell_refund(1, bench_char_cost(u))
+        total += sell_refund(1, bench_char_cost(u, state))
     return total
 
 

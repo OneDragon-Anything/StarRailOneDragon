@@ -795,7 +795,8 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
                    if s.kind == 'unit' and s.unit is not None] \
         if view is not None else []
     sold = list(front or []) + list(back or []) + bench_units
-    refund = sum(sell_refund(int(u.star), bench_char_cost(u)) for u in sold)
+    refund = sum(sell_refund(int(u.star), bench_char_cost(u, gs))
+                 for u in sold)
     # 出售域全读判据:front/back 均已读且 bench view 已读,退款公式的输入
     # (实际卖数)才完整——任一子域从未观察时 refund 只是已读面的部分值,
     # 归属判据确定性分支「确定性公式+已知输入」前提不成立

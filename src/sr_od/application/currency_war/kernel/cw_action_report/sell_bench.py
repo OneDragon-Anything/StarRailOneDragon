@@ -98,7 +98,7 @@ def report_action_sell_bench_param(gs: GameState, param: Any, sig: ChannelSig,
                                      else BENCH_CAPACITY_DEFAULT)),
        'proj_sell_bench')
     refund = sell_refund(int(getattr(sold, 'star', 1) or 1),
-                         bench_char_cost(sold))
+                         bench_char_cost(sold, gs))
     g = gs.gold.value
     if g is not None:
         _w(gs.gold, int(g) + int(refund), 'proj_sell_refund')
