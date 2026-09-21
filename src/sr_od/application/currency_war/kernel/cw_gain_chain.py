@@ -1,9 +1,10 @@
-"""货币战争 获得链(gain-chain):获得三原语 + 事件回调枚举 + 单级合成。
+"""货币战争 获得链(gain-chain):获得原语 + 事件回调枚举 + 单级合成。
 
 链式规范正本 = docs/develop/sr_od/application/currency_war/game_state/
 gain-chain.md(原语契约/时序/溢出落位/随机态纪律/失败安全/接入面现状)。
-首个接入面(投资环境落地相,``cw_action_report.pick_invest`` portal 支)
-消费本模块。
+接入面(双支):投资环境落地相(``cw_action_report.pick_invest_env``)+
+投资策略落地相(``cw_action_report.pick_invest_strategy``),均经
+``cw_action_report`` 上报函数消费本模块。
 
 链式过程语义:「获得」= 注册/落位 → 事件回调 → 3 合 1 升星判断 →
 升星产物重进获得角色(回调 → 升星判断 → …,无三连同名同星即终止)。回调
@@ -19,20 +20,31 @@ gain-chain.md(原语契约/时序/溢出落位/随机态纪律/失败安全/接�
 best-effort 边界只在登记/遥测申报腿内(失败 log + 缺陷留证、不阻塞);
 未观察(bench/equips)= bug 面:零写 + 留证不停机,根治归观察
 补全批;席满且溢出位被占 = 游戏行为未实证:零写 + 留证,禁猜。
+
+模块拆分(获得链模块拆文件批):效果内容(策略卡效果注册表 ``PICK_INVEST_
+EFFECTS`` + 骇客采样池 + 效果体)住 ``cw_gain_effects.py``——本模块模块级
+查表,效果体函数内惰性 import 本模块原语(单向破环,详设 = changes/
+2026-09-21-invest-landing-chain/details/gain-chain-file-split.md)。
 """
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, field, replace
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     EQUIP_ACQUIRE_CONSEQUENCES,
+    _portal_acquired_t,
+    apply_board_rewrite,
     register_portal_from_env,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     bench_place,
     deployed_indexed_to_rows,
     deployed_rows_to_indexed,
+)
+from sr_od.application.currency_war.kernel.cw_gain_effects import (
+    PICK_INVEST_EFFECTS,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     BenchSlot,
@@ -41,10 +53,12 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     Unit,
     _emit_defect,
+    apply_effect_burst_grant,
     bench_view_of_working,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_GIFTS,
+    STRATEGY_EFFECTS,
     normalize_invest_name,
 )
 
@@ -58,6 +72,11 @@ DEFECT_OVERFLOW_TAKEN: str = 'gain_chain_overflow_slot_taken'
 DEFECT_EQUIPS_UNOBSERVED: str = 'gain_chain_equips_unobserved'
 DEFECT_ADVISOR_DECL: str = 'gain_chain_advisor_decl'
 DEFECT_PORTAL_REGISTER: str = 'gain_chain_portal_register_failed'
+DEFECT_STRATEGY_REGISTER: str = 'gain_chain_strategy_register_failed'
+
+#: 无效载荷拒绝 kind(策略名归一后为空/'?'——零写 + 留证;无效输入拒绝,
+#: 非防重复保护)。策略屏迁移批新增,投资两屏立即上报契约配套。
+PICK_INVEST_INVALID_PAYLOAD: str = 'pick_invest_invalid_payload'
 
 #: 欢愉契约条件腿采证期临时翻来源闩的披露键 kind(自 pick_invest 迁入;
 #: 「条件腿标记面」:头号玩家触发无观察锚无采样
@@ -485,7 +504,84 @@ def gain_equipment(gs: GameState, item: str, *, rand: bool,
                        effects=effects, detail='')
 
 
-# ============================================================ 三枚举回调(gain-chain.md §3)
+def _node_frame(gs: GameState) -> str:
+    """链内 frame 字符串(p<plane>-r<round>;节点未观察 = 空——登记腿
+    evidence 用,与画面 op 三桥现行口径一致)。"""
+    _nd = gs.node.value
+    return (f'p{_nd.plane}-r{_nd.round_num}' if _nd is not None else '')
+
+
+def gain_invest_strategy(gs: GameState, session: object,
+                         strategy_name: str, *, rand: bool,
+                         sig: ChannelSig, rng: random.Random | None = None,
+                         producer: str = GAIN_CHAIN_PRODUCER) -> GainOutcome:
+    """获得投资策略(策略屏迁移批,gain-chain.md §2 四原语之一;三段式
+    对齐 :func:`gain_invest_env`):
+
+    0. **无效载荷拒绝(前置)**:归一后名为空/``'?'`` = 零写 + 缺陷留证
+       (``PICK_INVEST_INVALID_PAYLOAD``)——无效输入拒绝(零写 + 留证
+       纪律),非防重复保护;
+    1. **注册**:`gs.active_strategies` **按名字去重追加**(归一名已在
+       列表 → 跳写;持卡列表写入语义 = 数据卫生,裁定「增加持有的投资
+       策略时,按名字去重就行了」;跳写后登记/效果腿照常);
+    2. **效果账本登记**(best-effort:`session=None` = 跳过[局外/测试
+       形态],容器写照常):``STRATEGY_EFFECTS`` 归一名命中 →
+       ``effects.register_strategy`` + burst 桥 ``apply_effect_burst_grant``
+       + 板面重写桥 ``apply_board_rewrite``(自画面 op 三桥迁入;
+       acquired_t = 节点序快照);失败 log + 缺陷留证(``DEFECT_STRATEGY_
+       REGISTER``)、不阻塞;
+    3. **触发策略效果**:`on_strategy_gained`(查 ``PICK_INVEST_EFFECTS``
+       分派;未收录卡安静不写)。
+
+    rand 纪律:投资策略确认 = 确定性入口(False);效果体含采样(骇客
+    改件)→ 对其子链翻转 rand=True(§5)。``rng`` = 采样注入点(缺省
+    ``random.Random()`` 生成点在 :func:`on_strategy_gained` 内;sim 可
+    播种)。容器写腿零吞错;登记腿 best-effort。
+    """
+    canon = normalize_invest_name(str(strategy_name or ''))
+    if not canon or canon == '?':
+        _emit_defect(field_name='active_strategies',
+                     expected='有效投资策略名',
+                     actual=f'无效载荷:{strategy_name!r}',
+                     evidence='gain_invest_strategy', sig=sig,
+                     kind=PICK_INVEST_INVALID_PAYLOAD)
+        return GainOutcome(placed=False, landing='skipped', merge_levels=0,
+                           effects=(), detail='invalid_payload')
+    # ① 注册(按名字去重追加;跳写后登记/效果腿照常)
+    cur = list(gs.active_strategies.value or [])
+    write = gs.write_logic_rand if rand else gs.write_logic
+    if canon not in cur:
+        write(gs.active_strategies, cur + [canon], produced_by=producer,
+              evidence=f'gain_invest_strategy:{canon}', sig=sig)
+    # ② 效果账本登记(best-effort 腿;自画面 op 三桥迁入)
+    if session is not None:
+        try:
+            _spec = STRATEGY_EFFECTS.get(canon)
+            if _spec is not None:
+                _t = _portal_acquired_t(gs, session)
+                _frame = _node_frame(gs)
+                gs.effects.register_strategy(_spec, _t)
+                apply_effect_burst_grant(gs, _spec, frame=_frame)
+                _rw = apply_board_rewrite(gs, _spec, frame=_frame)
+                if _rw is not None:
+                    log.info('[cw-gain] 板面重写桥:%s(退款 %s/清空域 %s)',
+                             _rw.rewrite, _rw.refund_gold,
+                             ','.join(_rw.cleared_fields) or '无')
+                log.info('[cw-gain] 效果账本登记:%s(t=%s)', canon, _t)
+        except Exception as e:  # noqa: BLE001  登记腿 best-effort(gain-chain.md §6)
+            log.warning('[cw-gain] 策略登记腿失败(不阻塞):%s %s', canon, e)
+            _emit_defect(field_name='active_strategies',
+                         expected='效果账本登记成功',
+                         actual=f'登记腿异常:{e}',
+                         evidence=f'gain_invest_strategy:{canon}', sig=sig,
+                         kind=DEFECT_STRATEGY_REGISTER)
+    # ③ 触发策略效果
+    effects = on_strategy_gained(gs, canon, rand=rand, sig=sig, rng=rng)
+    return GainOutcome(placed=True, landing='skipped', merge_levels=0,
+                       effects=effects, detail='')
+
+
+# ============================================================ 枚举回调(gain-chain.md §3;现役四枚举)
 # (无注册表——用户裁定:回调函数体内枚举即收敛,不设注册机构。)
 
 
@@ -571,3 +667,19 @@ def on_equipment_gained(gs: GameState, item: str, *, rand: bool,
                    evidence=f'on_equipment_gained:{item}',
                    producer=GAIN_CHAIN_PRODUCER)
     return (f'equip_consequence:{name}',)
+
+
+def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
+                       sig: ChannelSig,
+                       rng: random.Random | None = None) -> tuple[str, ...]:
+    """「获得投资策略」触发型效果枚举(gain-chain.md §3;策略屏迁移批
+    新增,枚举即收敛无注册表):查 ``PICK_INVEST_EFFECTS``(效果内容住
+    ``cw_gain_effects.py``,本模块模块级查表)分派效果函数;未收录卡 =
+    查无效果安静不写,真值归观察覆盖。``rng`` = 采样注入(缺省
+    ``random.Random()`` 在本函数体内生成;效果体含采样 → 对其子链传
+    rand=True,§5)。"""
+    fn = PICK_INVEST_EFFECTS.get(normalize_invest_name(strategy_name))
+    if fn is None:
+        return ()
+    roll_rng = rng if rng is not None else random.Random()
+    return tuple(fn(gs, sig=sig, rng=roll_rng))
