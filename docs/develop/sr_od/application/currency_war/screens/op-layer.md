@@ -33,7 +33,7 @@
 - **循环无上限规范(用户裁定)**:框架不负责多轮循环的上限限制——决策动作 node 的循环与外循环轮次推进均不设迭代数上限(无防御帽、无兜底计数,健康循环永不因计数被截断);不收敛/死循环 = **策略实现 bug**,响亮暴露(挂起可观测),修策略根因。失败类出口(异常 fail、外循环 fail 熔断、未知画面兜底)不属于迭代上限。循环兜底不变量 = 1.4 恒可用终结。
 - **出口三语义**:决策动作 node 的循环只有三种出口——①**终结动作**(1.4,执行即本访问结束交回外循环);②**重入裁决成功**(动作已落地,补记录后交回);③**异常 fail**(策略异常/执行异常,错误传播交外循环,非防御上限)。备战域另有合法交回通道:策略器返回 `CwActionObsParam(scope='outer_loop')`(本帧无动作,交回外循环重观察;原 HoldFrame 收编,`kernel/cw_vocab.py::CwActionObsParam`)= round_success 交回外循环,不折算战替身;策略发射 `CwActionObsParam(scope='in_place')` 环内重观察见事件 overlay = `CwObsOverlayBail`(动作 op 抛出,决策循环捕获)交回外循环重分发(画面路由归外循环,环内不消化)。
 - **重入裁决留在决策动作 node 顶部**:「确认已发 → 下一轮锚不在 = 落地」是动作落地裁决,属循环出口判定,不回观察 node。chosen_* 类落地记录在此刻写(见 §2 动作事实边界)。
-- **显式读屏只在观察 node**:决策动作 node 迭代用 node runner 进 node 时给的 `last_screenshot`(`round_wait` 每轮新帧)。除观察 node 外,画面 op 内不调 `screenshot()`。**在册例外(动作通道)**:策略显式发射 `CwActionObsParam(scope='in_place')`(环内重观察)= 经注册表派发 `CwActionObsOp` → 宿主画面 op `reobserve_in_visit`(现役 = `CwScreenPrep`)重跑 heavy 观察链——漏斗直写容器即「重新观察上报」,决策环原地续跑;该通道是唯一的决策循环内读屏点,其余路径仍零读屏(通道细则 = [../flow/action_exec.md](../flow/action_exec.md) §3)。
+- **显式读屏只在观察 node**:决策动作 node 迭代用 node runner 进 node 时给的 `last_screenshot`(`round_wait` 每轮新帧)。除观察 node 外,画面 op 内不调 `screenshot()`。**在册例外只有两类**:①**(动作通道)**策略显式发射 `CwActionObsParam(scope='in_place')`(环内重观察)= 经注册表派发 `CwActionObsOp` → 宿主画面 op `reobserve_in_visit`(现役 = `CwScreenPrep`)重跑 heavy 观察链——漏斗直写容器即「重新观察上报」,决策环原地续跑(通道细则 = [../flow/action_exec.md](../flow/action_exec.md) §3);②**(终结臂留证读)**终结动作执行后、交回前的一次机械重读——零决策零判效,读数只作缺陷台账留证输入,不进决策、不判落地(落地仍归重入裁决/观察对账;现役 = `cw_screen_invest_env.py::CwScreenInvestEnv._decide_and_act` 刷新终结臂的刷后帧重读,依据 = 用户裁定 2026-09-14 刷新零效果留证 + unified-action-factory 批4 裁决3 迁观察侧)。新增读屏点必须先登记本条再落码;除上述两例外,其余路径零读屏。
 - **外循环形态不变**:画面识别分发、轮次推进、停机/遥测钩子([../flow/outer_loop.md](../flow/outer_loop.md))不随本规范改动。
 
 ### 1.2 动作 op 契约与动作粒度
@@ -94,7 +94,7 @@
 
 - **画面 op 基类/端口/段迹/登记注册表/决策帧假环境分支不存在**:画面 op 层无五段生命周期基类、无观察/动作适配器端口与装配点分流、无生命周期段迹、无 on_outcome 落地登记注册表、无决策帧观察证据注入分支——上述机制整体退役,任何一侧的重新出现即架构回潮。观察/决策两段职责由两 node 直接承载(§1),观察进容器由 report 接口承载(§2)。
 - **刷新计数记账不在画面 op 层**:`encounter_refresh_used`/`strategy_refresh_used` 的写端模型与「动作上报 → game state 扣减」改造归动作 op 侧;画面 op 只保留 `refresh_left` 观察读数(obs 字段)与门读容器计数的读端闸(>0 = 已用),不写计数。
-- **观察审计链留守**:依赖读帧的观察审计(备战羁绊显示对账、刷新留证)住画面 op 观察 node,消费 obs/ 工具箱识别产物;不迁 kernel、不进 report。
+- **观察审计链留守**:依赖读帧的观察审计住画面 op——备战羁绊显示对账住观察 node,投资环境刷新零效果留证住决策动作 node 刷新终结臂(其读屏 = §1.1 在册例外②);均消费 obs/ 工具箱识别产物,不迁 kernel、不进 report。
 - **策略判据面不在本层**:买/卖/升/刷数学归策略器(策略文档区);画面 op 只做容器零参读 + 动作编排放大。
 
 ## §5 观察解析工具箱(obs/)

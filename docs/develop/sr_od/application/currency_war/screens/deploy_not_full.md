@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0d:锚 = `货币战争-未达上限警告.标识-未达上限警告`(id_mark,**位置区分**判据:投资策略屏描述「能量上限」与「未达上限」共享子序列「上限」,全屏 LCS 会误匹配吞投资策略分支——area 位置不同即不命中)。分发 = 阶段一身份行([../flow/outer_loop.md](../flow/outer_loop.md) §2.2);建档 = `currency_war_deploy_not_full.yml`。
+- 阶段一身份分发(号制已退役,不引 0x):锚 = `货币战争-未达上限警告.标识-未达上限警告`(id_mark,**位置区分**判据:投资策略屏描述「能量上限」与「未达上限」共享子序列「上限」,全屏 LCS 会误匹配吞投资策略分支——area 位置不同即不命中)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2;建档 = `currency_war_deploy_not_full.yml`。
 
 ## 2. 画面形态声明
 
@@ -15,6 +15,12 @@
 轻观察:payload = `CwScreenDeployNotFullObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/deploy_not_full.py`);标识门在观察 node(miss → `round_fail` 交回外循环)。report = `report_screen_deploy_not_full_obs` 占位调用(本屏现役零容器写点,接口为统一形态占位;match/gs 缺席跳过)。零 GameState 写端。
 
 ## 4. 动作面
+
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| 无动作 op——确认链留守 op 内(`_confirm_and_dismiss`:勾「本局不再提示」+ 确认) | 画面 op 留守臂(`_confirm_and_dismiss`:勾 `货币战争-未达上限警告.勾选-本局不再提示`(`_overlay_confirm.py::safe_click`)+ 确认(`_overlay_confirm.py::emit_overlay_confirm`)+ 置位 `_confirm_pending`) | 观察侧 `report_screen_deploy_not_full_obs`(占位调用挂观察 node,本屏零容器写点;动作本体无自上报) | 否(非终结):确认后 `round_wait` 循环推进;落地由重入裁决判——锚不在 = 弹窗已关 → `round_success` 交回外循环(见 §5) |
 
 `_confirm_and_dismiss`:勾 `货币战争-未达上限警告.勾选-本局不再提示`(`_overlay_confirm.py::safe_click` 带 bug#1 缓解 + 0.3s)→ 确认(`_overlay_confirm.py::emit_overlay_confirm`,mouse_move 缓解 + success_wait=3.0)→ 置位 `_confirm_pending`(落地判定归下一轮重入裁决)。坐标 = screen_info 现取优先,**缺失才用兜底常量**(`CHECKBOX_NO_PROMPT(912,589)` / `BTN_CONFIRM(1159,653)`)——与「禁兜底坐标」一般红线不同的 as-built 例外,在此申报。
 

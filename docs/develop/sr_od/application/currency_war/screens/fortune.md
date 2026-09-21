@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0a3:**双 id_mark 门**——「货币战争-命运卜者强化.标识-命运卜者」∧「货币战争-命运卜者强化.标识-请选择强化效果」同帧命中;dispatch 带 on_fail_retry(失败消费重试池)。分发 = 阶段一身份行,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 阶段一身份分发(号制已退役,不引 0x):**双 id_mark 门**——「货币战争-命运卜者强化.标识-命运卜者」∧「货币战争-命运卜者强化.标识-请选择强化效果」同帧命中;dispatch 带 on_fail_retry(失败消费重试池)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
 
 ## 2. 画面形态声明
 
@@ -15,6 +15,12 @@
 观察 node = 三卡位 OCR 一次读(入口帧一次读,决策轮复用实例载体)。卡面读取 `_read_cards`:全图 OCR,文本带 y 290-410(卡文字带,避详情按钮),按 x 近邻分流到三卡槽(槽 x 常量数组,容差 190),同桶 join。观察 payload = `CwScreenFortuneObs`(`on_screen`/`options`/`screen`,住 `kernel/cw_screen_report/fortune.py`);report = `report_screen_fortune_obs` 候选写容器 `fortune_opts` 槽(无空门直写,空表照写;match/gs 缺席的局外兜底路径跳过)。
 
 ## 4. 动作面
+
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| `CwActionPickFortuneOp`(`CwActionPickFortuneParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:点卡定位点/裁决词「命运卜者」;点选与确认均在动作 op 内,确认钮 op 类体内自读「货币战争-命运卜者强化.按钮-确认选择」) | 自上报 `report_action_pick_fortune_param`(零写族单相:机械链发出后即全相,发射相意图遥测,容器零写等观察覆盖) | 否(非终结):发出后 `round_wait` 循环推进;落地由重入出口门判——OCR「命运卜者」不在 = overlay 已关 = `round_success` 交回外循环(见 §5) |
 
 决策动作 node 选卡+确认链(整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickFortuneOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx):
 

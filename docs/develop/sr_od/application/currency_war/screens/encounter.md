@@ -4,8 +4,8 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0c:id_mark 锚「货币战争-遭遇节点.标识-遭遇节点」(位置约束 area;全屏 LCS 判据已退役——卡标题 OCR 截断帧会 miss)。分发 = 阶段一身份行,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
-- 本屏的暗色锁定子态(遭遇锁定)另立 0m 分支(`CwScreenPrepLockedReturn`,见 §7)。
+- 阶段一身份分发(号制已退役,不引 0x):id_mark 锚「货币战争-遭遇节点.标识-遭遇节点」(位置约束 area;全屏 LCS 判据已退役——卡标题 OCR 截断帧会 miss)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 本屏的暗色锁定子态(遭遇锁定)另立锁定子态画面(`CwScreenPrepLockedReturn`,见 §7)。
 
 ## 2. 画面形态声明
 
@@ -21,6 +21,13 @@
 观察 payload = `CwScreenEncounterObs`(`options`/`refresh_left`/`screen`,住 `kernel/cw_screen_report/encounter.py`);report = `report_screen_encounter_obs` 候选写容器 `encounter` 域(EncounterPayload;空候选不写,闸在 report 内)。`refresh_left` 只是观察读数,report 不消费——刷新计数记账出辖动作侧。
 
 ## 4. 动作面
+
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| `CwActionPickEncounterOp`(`CwActionPickEncounterParam`) | 注册表工厂 `action_op_for`(env 只携宿主 `op`;卡位/确认钮由动作 op 内读建档 area,缺失兜底常量) | 自上报 `report_action_pick_encounter_param`(零写族:机械链发出后登记,容器零写) | 否(非终结):发出后 `round_wait` 循环推进;落地由重入裁决判——锚不在 = 补写 `chosen_encounter` + success 交回外循环(见 §5) |
+| 分支刷新(无注册表动作 op;`CwActionRefreshNodeOptionsParam` 仅策略建议载体) | 画面 op 留守臂(`_try_refresh`:同帧「剩余次数:N」文本中心锚定偏移 `mouse_move`+`click`) | 无自上报(刷后重读经 `report_screen_encounter_obs` 二次覆盖写,容器终值 = 刷后候选;计数写端出辖动作侧,本链零记账) | 否(不终结):留在本画面访问内——重读重选后照常走选卡确认链;锚读缺 = 空表失败安全,保留原候选照常选 |
 
 决策动作 node:重入裁决 → 零参决策 + 分支刷新链 → 点卡 + 确认:
 
@@ -66,7 +73,7 @@ pick = match.strategy.decide_encounter()(零参;候选读容器 encounter 槽)
 
 ## 7. 子态与 overlay
 
-- 暗色锁定子态(遭遇锁定):0m 分支 `operations/cw_screen/cw_screen_prep_locked_return.py::CwScreenPrepLockedReturn` 点右上返回按钮(此态下遭遇锚仍可透出命中,先分流防误派)。
+- 暗色锁定子态(遭遇锁定):`operations/cw_screen/cw_screen_prep_locked_return.py::CwScreenPrepLockedReturn` 点右上返回按钮(此态下遭遇锚仍可透出命中,先分流防误派)。
 - 「属性详情」面板误触发未建模独立处理:残留归下一帧重入自愈(族注 = [README.md](README.md) §5.5)。
 
 ## 8. 守卫与防线

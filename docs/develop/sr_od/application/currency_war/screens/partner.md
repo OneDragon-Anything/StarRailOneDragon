@@ -4,8 +4,8 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0a:id_mark 锚「货币战争-列车同行.标识-选择伙伴」(位置约束 area;全屏 LCS 判据已退役——「选择伙伴」与「请选择投资策略」共享「选择」子序列会误匹配)。
-- 分发 = 阶段一身份行;与装备选屏的历史碰撞(共享「请选择1个」副题位)由本屏整行副题锚消解,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 阶段一身份分发(号制已退役,不引 0x):id_mark 锚「货币战争-列车同行.标识-选择伙伴」(位置约束 area;全屏 LCS 判据已退役——「选择伙伴」与「请选择投资策略」共享「选择」子序列会误匹配)。
+- 与装备选屏的历史碰撞(共享「请选择1个」副题位)由本屏整行副题锚消解,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
 
 ## 2. 画面形态声明
 
@@ -22,6 +22,12 @@
 观察 payload = `CwScreenPartnerObs`(`on_screen`/`options`(PartnerOption idx+char_id)/`screen`,住 `kernel/cw_screen_report/partner.py`);report = `report_screen_partner_obs` 候选写容器 `partner_opts` 槽(空候选不写,闸在 report 内;match/gs 缺席的局外兜底路径跳过,决策走缺省支)。
 
 ## 4. 动作面
+
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| `CwActionPickPartnerOp`(`CwActionPickPartnerParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:未选中实证 `unselected`;点卡点/确认点经 `env.op` 消费决策半缓存,点选脉冲与确认脉冲均在动作 op 内,确认点 op 类体内经「货币战争-列车同行.按钮-确认选择」rect 约束 OCR 现读) | 自上报 `report_action_pick_partner_param`(零写族单相:确认点击发出后即全相,发射相意图遥测,容器零写等观察覆盖;确认点读缺 retry 旁路未发确认点击,不上报) | 否(非终结):发出后 `round_wait` 循环推进;落地由重入裁决判——「标识-选择伙伴」不在 = overlay 关 = `round_success` 交回外循环(见 §5) |
 
 脉冲链(每轮一脉冲;确认被拒守卫/零参决策/chosen 写端留守决策动作 node,「点选候选 → 确认」脉冲 + 自上报零写整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickPartnerOp`,派发 param 携真实选中 idx):
 

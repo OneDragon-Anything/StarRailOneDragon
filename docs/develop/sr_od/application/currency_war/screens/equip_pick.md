@@ -17,7 +17,13 @@
 
 ## 4. 动作面
 
-决策动作 node 选卡链(整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickEquipOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx):
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| `CwActionPickEquipOp`(`CwActionPickEquipParam`,携归一件名 `norm_item`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:点卡定位点;点卡即选无确认步,机械链全在动作 op 内) | 两相 `report_action_pick_equip_param`:发射相在动作 op(意图遥测,容器零写);落地相由本 op 重入出口门持 `EVIDENCE_OVERLAY_CLOSED` 调用(装备腿应用一次:入栏 + 获得后果链) | 否(非终结):发出后 `round_wait` 循环推进;落地由重入出口门判——「请选择」OCR 不在 = 落地,装备腿落地相应用一次后 `round_success` 交回外循环(出战按钮由主流程处理,见 §5) |
+
+决策动作 node 选卡链(整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickEquipOp` 派发,pick-op-unify 批;机械链+发射相自上报在动作 op 内,落地相自本 op 重入出口门,派发 param 携真实选中 idx):
 
 ```
 重入出口门(决策动作 node 顶部):_pick_pending 置位 → 「请选择」OCR(lcs 0.5)不在 =
@@ -43,7 +49,7 @@ target = (槽 x 常量[best], 卡名带 y 常量 280)→ 置 _pick_pending → �
 
 ## 6. 状态上报面
 
-本屏无 chosen_\* 写端、无到账登记(选择存证通道已退役;装备到账归下一帧 owned 观察覆盖)。候选观察:`report_screen_equip_pick_obs` 候选写容器 `equip_pick_opts` 槽(空表照写)。字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.5(「装备三选一」行,写端未接线申报)/ §4「事件选择」。
+本屏无 chosen_\* 写端(选择存证通道已退役);装备腿落地相 = 入栏 + 获得后果链(重入出口门持 `EVIDENCE_OVERLAY_CLOSED` 调 `report_action_pick_equip_param`,见 §4 对照表;装备区未观察态跳写等观察覆盖)。候选观察:`report_screen_equip_pick_obs` 候选写容器 `equip_pick_opts` 槽(空表照写)。字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.5(「装备三选一」行,写端未接线申报)/ §4「事件选择」。
 
 ## 7. 子态与 overlay
 

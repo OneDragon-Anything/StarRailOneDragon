@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-外循环分支 5:OCR「下一步」(默认 lcs;入口判定留外循环,与 `entry_ok` 同源同参);位置近外循环尾 = 兜底点击位([../flow/outer_loop.md](../flow/outer_loop.md) §2.2——0r 位面简报等先行分支已按各自画面锚接管,能落到本分支 = 该「下一步」不属于任何已建档画面档)。无画面档:`SCREEN_NAME`/`ENTRY_AREA` 空串 = 免锚,OCR 即入口。
+外循环分支 5:OCR「下一步」(默认 lcs;入口判定留外循环,与 `entry_ok` 同源同参);位置近外循环尾 = 兜底点击位([../flow/outer_loop.md](../flow/outer_loop.md) §2.2——0r 位面简报等先行分支已按各自画面锚接管,能落到本分支 = 该「下一步」不属于任何已建档画面档)。无画面档,入口信号 = 自有 OCR「下一步」判定(覆写形态,无 area 锚;无「免锚发出即 success」出口)。
 
 ## 2. 画面形态声明
 
@@ -15,6 +15,12 @@
 观察 node = `round_by_ocr('下一步')` → obs = `CwScreenNextButtonObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/next_button.py`;无 report 接口)。零写端。
 
 ## 4. 动作面
+
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| 无动作 op——单步推进留守 op 内(OCR 定位点击「下一步」) | 画面 op 留守臂(`act.progress_once`,`round_by_ocr_and_click`,success_wait=2) | 无 report 接口(推进型规范形态,[op-layer.md](op-layer.md) §3) | 是(推进后重入 OCR「下一步」不命中 = 已离开本画面 → round_success 交回;点击 OCR miss = round_fail 交回重判) |
 
 单动作 = `round_by_ocr_and_click('下一步', success_wait=2)`(入口与点击两次 OCR 扫描——申报:该帧型每局出现次数少,成本可接受;无验效)。
 

@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0i:id_mark 锚「货币战争-星徽秘典弹窗.标识-星徽秘典」(lcs 0.9);命中即接管,不放行备战分支。分发 = 阶段一身份行,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 阶段一身份分发(号制已退役,不引 0x):id_mark 锚「货币战争-星徽秘典弹窗.标识-星徽秘典」(lcs 0.9);命中即接管,不放行备战分支。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
 
 ## 2. 画面形态声明
 
@@ -15,6 +15,12 @@
 观察 node = 入口门(「标识-星徽秘典」)+ 卡阵营名一次读(每访问恰一次,决策轮复用实例载体);卡名读取 `_read_card_factions`:全屏 OCR,取「XX星徽」后缀文本(长度 > 2)→ [(阵营名, x 中心)] 左→右排序。观察 payload = `CwScreenBookcardObs`(`on_screen`/`options`/`screen`,住 `kernel/cw_screen_report/bookcard.py`);report = `report_screen_bookcard_obs` 候选写容器 `star_tome_opts` 槽(空候选不写,闸在 report 内;match/gs 缺席的局外兜底路径跳过)。
 
 ## 4. 动作面
+
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| `CwActionPickStarTomeOp`(`CwActionPickStarTomeParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:定位点,星徽卡 area OCR x 近邻锚) | 自上报 `report_action_pick_star_tome_param`(零写族,容器零写) | 否(非终结):发出后 `round_wait` 循环推进;落地由重入裁决判——「货币战争-星徽秘典弹窗.标识-星徽秘典」不在 = `_settle_picked_tome`(ConfirmTome 到账登记 + `chosen_tome` 写)+ success 交回外循环(见 §5) |
 
 决策动作 node 读卡+选卡+机械交回链(整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickStarTomeOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx):
 

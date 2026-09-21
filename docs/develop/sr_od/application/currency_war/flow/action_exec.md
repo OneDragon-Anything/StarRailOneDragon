@@ -32,7 +32,7 @@
 - **重观察通道(CwActionObs,scope 选口径)**:策略发射 `CwActionObsParam` = 请求新鲜观察,值域闭集 = `cw_vocab.OBS_SCOPES`。
   **scope='in_place'**(缺省)= 环内重观察:执行体 = 宿主画面 op `reobserve_in_visit`(现役唯一宿主 = `CwScreenPrep`)heavy 观察链重跑,漏斗直写容器 = 观察边界对账(「重新观察上报」),帧代次标 full(方向重估触发,同入口帧;贵段消费侧键守卫每 game-round 恰一次限频)后决策环**原地续跑**(不交回外循环,访问/段序号不重启);重观察见事件 overlay = `CwObsOverlayBail` 控制流异常交回外循环重分发(画面路由归外循环,环内不消化;捕获先例 = StopBrakeShortCircuit)。
   **scope='outer_loop'** = 交回外循环重新观察:决策环在 F3 之前**分支拦截**(不进执行器/动作注册表/续段 token/动作记录),round_success(wait=1.0) 交回,行为与原 HoldFrame 空发射帧逐字一致(用户裁定 2026-09-20 HoldFrame 收编删除;自旋防护 = 交回后归外循环 stall 防线)。
-  **读屏点规范的在册例外**:「循环内零读屏」自本通道起收窄——决策环内仅策略显式发射 Obs(in_place) 才触发读屏,其余路径仍零读屏。in_place 发射域无重观察能力(env.op 未接线)= AssertionError 响亮暴露(策略器 bug)。
+  **读屏点规范的在册例外**:「循环内零读屏」自本通道起收窄——决策环内决策环内在册读屏只有两类——①策略显式发射 Obs(in_place) 触发的重观察(本通道,在册例外①);②终结臂交回前机械留证读(零决策零判效,读数只进缺陷台账;现役 = 投资环境刷新臂刷后帧重读,正本 = [../screens/op-layer.md](../screens/op-layer.md) §1.1 在册例外②),其余路径仍零读屏。in_place 发射域无重观察能力(env.op 未接线)= AssertionError 响亮暴露(策略器 bug)。
 
 - 期望态记账(acct 族)在下一入口 heavy 帧消费对账(`_v2_post_frame_accounting`:拖动期望/买牌期望/经验/羁绊/装备期望),失配 = 纠偏/缺陷台账,零决策不重执行。
 - **无 fail-stop/恢复原语**:原「执行失败 → try_recovery 关弹层 → 交回」分支已随验证段废除批删除;overlay 残留的治理 = 外循环 0 系 overlay 分支(下一轮重识别自愈)。

@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0h:id_mark 锚「货币战争-祈愿试炼.标识-祈愿试炼」。分发 = 阶段一身份行(单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 阶段一身份分发(号制已退役,不引 0x):id_mark 锚「货币战争-祈愿试炼.标识-祈愿试炼」。(单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
 - 道具详情弹窗分支(0e3)以「非祈愿屏」排他让路(共用「聘用书」类文案时祈愿锚优先),排他判定留外循环。
 
 ## 2. 画面形态声明
@@ -16,6 +16,12 @@
 观察 node = 入口门(「标识-祈愿试炼」)+ objective 一次读(每访问恰一次,决策轮复用实例载体);objective 读取 `_read_objectives`:OCR 文本带 y 250-400,按 x 近邻分流到卡槽(槽 x 常量数组,容差 160),同桶 join 为各卡 objective 文本(候选卡数随节点变,槽常量覆盖 3 卡位)。观察 payload = `CwScreenWishTrialObs`(`on_screen`/`options`/`screen`,住 `kernel/cw_screen_report/wish_trial.py`);report = `report_screen_wish_trial_obs` 候选写容器 `wish_trial_opts` 槽(空桶照写;match/gs 缺席的局外兜底路径跳过)。
 
 ## 4. 动作面
+
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| `CwActionPickWishTrialOp`(`CwActionPickWishTrialParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:定位点) | 自上报 `report_action_pick_wish_trial_param`(零写族,容器零写) | 否(非终结):发出后 `round_wait` 循环推进;落地由重入裁决判——「货币战争-祈愿试炼.标识-祈愿试炼」不在 = 补写 `chosen_wish` + success 交回外循环(见 §5) |
 
 决策动作 node 选卡+确认链(整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickWishTrialOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx):
 

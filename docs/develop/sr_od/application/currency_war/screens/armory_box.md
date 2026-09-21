@@ -1,10 +1,10 @@
 # 武装箱说明弹窗(armory_box · 货币战争-武装箱弹窗)
 
-> 代码 = `operations/cw_screen/cw_screen_armory_box.py::CwScreenArmoryBox`。职责:「简易武装箱」类道具获得说明弹窗(0f)的一次访问——点 × 关闭(道具进背包)+ 重入观察裁决交回。开箱 = 备战箱槽 `OpenBox` 链路,四选一选卡 = `cw_screen_box_pick.py::CwScreenBoxPick`(0f2),均不在本 op。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_armory_box.py::CwScreenArmoryBox`。职责:「简易武装箱」类道具获得说明弹窗的一次访问——点 × 关闭(道具进背包)+ 重入观察裁决交回。开箱 = 备战箱槽 `OpenBox` 链路,四选一选卡 = `cw_screen_box_pick.py::CwScreenBoxPick`,均不在本 op。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 分发判定
 
-- 外循环分支 0f:锚 = `货币战争-武装箱弹窗.标识-简易武装箱`(id_mark;建档 = `currency_war_armory_box_dialog.yml`)。分发 = 阶段一身份行,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。弹窗叠在 3 选 1 屏或备战上,不关闭会挡死底层屏交互。
+- 阶段一身份分发(号制已退役,不引 0x):锚 = `货币战争-武装箱弹窗.标识-简易武装箱`(id_mark;建档 = `currency_war_armory_box_dialog.yml`)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。弹窗叠在 3 选 1 屏或备战上,不关闭会挡死底层屏交互。
 
 ## 2. 画面形态声明
 
@@ -16,11 +16,17 @@
 
 ## 4. 动作面
 
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| 无动作 op——单步推进留守 op 内(`_close_dialog` 点 × 关闭) | 画面 op 留守臂(`_close_dialog`:`area_center` 读 `货币战争-武装箱弹窗.按钮-关闭` center + `mouse_move`+`click`) | `report_screen_armory_box_obs`(占位零容器写点,观察 node 调用;动作自身无上报) | 是(重入裁决:点 × 已发 ∧ 标识锚不在 = 弹窗已关 → `round_success` 交回;锚在 = 点击未落地 `round_wait` 重点) |
+
 唯一动作 = 点 ×:`_close_dialog` 读 `货币战争-武装箱弹窗.按钮-关闭` center(`kernel/cw_obs_core.py::area_center`,缺失 = `round_fail`)→ `mouse_move`+`click`(bug#1 缓解)→ 固定 1s → 置位 `_click_pending`。弹窗内箱图标为展示图不可点(op 零消费;档案「按钮-开箱点击」为未消费定位区)。关闭不属 `kernel/cw_vocab.py::CW_ACTION_TYPES`(推进非动作)。
 
 ## 5. 终结与交回
 
-重入裁决:`_click_pending` 在 ∧ 标识 miss = 已关 → `round_success(wait=1.0)` 交回;标识仍在 = 点击未落地 → 重点(`round_wait` 循环推进,无防御上限)。交回后外循环全分支重判:0e/0s 投资策略/环境、1 备战、0f2 武装箱选择。
+重入裁决:`_click_pending` 在 ∧ 标识 miss = 已关 → `round_success(wait=1.0)` 交回;标识仍在 = 点击未落地 → 重点(`round_wait` 循环推进,无防御上限)。交回后外循环全分支重判:投资策略/投资环境身份臂、1 备战(在册段号)、武装箱选择身份臂。
 
 ## 6. 状态上报面
 

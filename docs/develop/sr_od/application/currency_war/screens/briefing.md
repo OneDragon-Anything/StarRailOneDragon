@@ -20,9 +20,16 @@
 - 位面序真值:`read_bosses`(「区域-首领行」)→ `clean_boss_names_by_lcs` LCS 清洗归一(boss_fit 消费端规范名);
 - 敌人难度:`read_briefing_enemy_difficulty`(「标识-敌人难度」→ `parse_enemy_difficulty`)。
 
-词缀效果采集段 `_collect_affix_effects`:逐词缀点采(center 点击 → tooltip 弹出等待 → 截图 → `read_affix_effect`)→ 对注册表 `data/affix_effects_data.py` 最新(`load_affix_effects_from_file`)比对 → **新名/不一致才** `save_affix_screenshot` + 收集写回(`write_affix_effects`;写回本轮内存不生效,下轮 import 生效);OCR 采不到即跳过;best-effort 失败不阻塞点「下一步」。观察上报即对账边界 = report 落容器(见 §6)。
+词缀效果采集段 `_collect_affix_effects`:逐词缀点采(center 点击 → tooltip 弹出等待 → 截图 → `read_affix_effect`)→ 对注册表 `data/affix_effects_data.py` 最新(`load_affix_effects_from_file`)比对 → **新名/不一致才** `save_affix_screenshot` + 收集写回(`write_affix_effects`;写回本轮内存不生效,下轮 import 生效);OCR 采不到即跳过;best-effort 失败不阻塞点「下一步」。观察 payload = `CwScreenBriefingObs`;观察上报即对账边界 = `report_screen_briefing_obs` 落容器(三闸在 report 内;字段语义见 §6)。
 
 ## 4. 动作面
+
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| 无注册表动作 op——词缀效果点采(观察侧采集臂) | 画面 op 留守臂(观察 node `_collect_affix_effects`:逐词缀 center 点击采 tooltip) | 无 report(采集写端 best-effort,见 §3) | 否(点采 tooltip 不终结;采集/登记失败不阻塞推进) |
+| 无动作 op——单步推进留守 op 内 | 画面 op 留守臂(决策动作 node `act`:`round_by_find_and_click_area` 点「货币战争-简报.按钮-下一步」) | 无自上报(观察上报 = `report_screen_briefing_obs` 落容器,观察 node 承载) | 是(点推进即终结):`round_wait` 机械交回循环推进,重入裁决标识不在 = `round_success`(wait=`BRIEFING_SETTLE_S`)交回外循环 |
 
 单动作 = 点「货币战争-简报.按钮-下一步」(`round_by_find_and_click_area`,success_wait=2)。交互时序:锚(本场对局首领)出现后 ~1s 动画完结为可点稳定时机(screen_flow_timing #1);固定时长完成承诺在出口等待(`BRIEFING_SETTLE_S`,常量单一源 = `operations/cw_screen/cw_flow_const.py`),点击本身无前缓冲。无已知交互陷阱。
 

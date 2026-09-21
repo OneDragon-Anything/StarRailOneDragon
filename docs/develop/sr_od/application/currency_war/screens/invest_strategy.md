@@ -29,6 +29,13 @@
 
 ## 4. 动作面
 
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| `CwActionPickInvestOp`(`CwActionPickInvestParam`,投资两屏共用注册行) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:定位点/确认钮/裁决词) | 自上报 `report_action_pick_invest_param` 发射相(意图遥测,容器零写);落地相由本 op 重入裁决出口(`_append_confirmed_strategy`)持 `EVIDENCE_OVERLAY_CLOSED` 调用 | 否(非终结):发出后 `round_wait` 循环推进;落地由重入裁决判——锚不在 = append 持卡 + success 交回外循环(见 §5) |
+| 逐卡刷新(无注册表动作 op;`CwActionRefreshInvestCardsParam` 仅策略建议载体) | 画面 op 留守臂(`_decide_and_act` 逐卡刷新终结分支:槽位「刷新次数N」文本锚定偏移 `safe_click`) | 无自上报(刷新计数写端出辖动作侧,画面 op 零记账;访问内零比对,刷后不重读) | **是(访问终结)**:点击 + 1.5s 动画窗后 `round_success` 即交回;外循环重进 = 入口重建 |
+
 决策动作 node 单决策体 `_decide_and_act`(零参:候选/帧/首帧 OCR 存底自观察轮 obs 载体):
 
 ```
@@ -69,7 +76,7 @@ names = opts 卡名;act = match.strategy.decide_invest_strategy()
 ## 6. 状态上报面
 
 - **持卡登记**(`_append_confirmed_strategy`,确认裁决出口):`session.active_strategies` 去重追加 + GameState `active_strategies` write_logic(局级累计);效果账本挂点 best-effort:`STRATEGY_EFFECTS` 命中 → `effects.register_strategy`(acquired_t = 节点序快照)+ burst 桥 `apply_effect_burst_grant` + 板面重写桥 `apply_board_rewrite`(出售面逻辑写/替换面零写留证)。
-- **刷新计数读端闸**:`strategy_refresh_used` 计数写端随画面 op 基类退役([op-layer.md](op-layer.md) §4 刷新计数出辖),刷新上报 `report_action_refresh_invest_cards_param` = 容器零写;闸 2 保留容器逐卡计数读端(键 = `kernel/cw_investments.py::normalize_invest_name` 归一,>0 = 已用),防重入主承重 = 闸 1 屏上余量现读(读缺 = 无授权失败安全)。
+- **刷新计数读端闸**:`strategy_refresh_used` 计数写端随画面 op 基类退役([op-layer.md](op-layer.md) §4 刷新计数出辖),刷新发射零自上报(零写族 `report_action_refresh_invest_cards_param` 现无调用方);闸 2 保留容器逐卡计数读端(键 = `kernel/cw_investments.py::normalize_invest_name` 归一,>0 = 已用),防重入主承重 = 闸 1 屏上余量现读(读缺 = 无授权失败安全)。
 - 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.4 / §4「投资选择」;效果账挂点 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §8(事件线选择非逻辑态通道)。
 
 ## 7. 子态与 overlay

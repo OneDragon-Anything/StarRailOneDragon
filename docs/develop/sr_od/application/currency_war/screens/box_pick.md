@@ -4,8 +4,8 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0f2:id_mark 锚「货币战争-备战-武装箱选择.标识-请选择」。入口链 = 备战访问内 `OpenBox` 点开启(**终结化**——开箱即交回外循环)→ 外循环按本画面分发本 op。分发 = 阶段一身份行(选卡画面盖备战,历史无身份行时误派备战 op ping-pong);单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
-- 与 0f(货币战争-武装箱弹窗,道具获得说明弹窗,`CwScreenArmoryBox` 只关弹窗)是兄弟画面不同职责:0f = 展示弹窗关闭,0f2 = 选卡画面。
+- 阶段一身份分发(号制已退役,不引 0x):id_mark 锚「货币战争-备战-武装箱选择.标识-请选择」。入口链 = 备战访问内 `OpenBox` 点开启(**终结化**——开箱即交回外循环)→ 外循环按本画面分发本 op(选卡画面盖备战,历史无身份行时误派备战 op ping-pong);单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 与货币战争-武装箱弹窗(道具获得说明弹窗,`CwScreenArmoryBox` 只关弹窗)是兄弟画面不同职责:前者 = 展示弹窗关闭,本屏 = 选卡画面。
 
 ## 2. 画面形态声明
 
@@ -16,6 +16,12 @@
 单次观察(观察 node):入口锚复验(分发即门,op 内机械复验防误派;「标识-请选择」miss = 非本画面 → fail 交回外循环重分发)→ 卡名读取 `_read_card_names`:「区域-卡名行」建档 rect 约束 OCR,2-8 字过滤,按 x 升序 → [(卡名, 卡 x 中心)]。观察 payload = `CwScreenBoxPickObs`(`on_screen`/`card_names`/`screen`,住 `kernel/cw_screen_report/box_pick.py`);report = `report_screen_box_pick_obs` 候选写容器 `box_card_names` 槽(两道闸过才写;match/gs 缺席的局外兜底路径跳过)。x 坐标留守本 op 不进容器(点击定位输入)。
 
 ## 4. 动作面
+
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| `CwActionPickBoxCardOp`(`CwActionPickBoxCardParam`,点卡即选注册行) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:定位点 = OCR x 中心 + 卡身 y 常量 290) | 自上报 `report_action_pick_box_card_param`(零写:发射相意图遥测,容器零写;无落地相——落地归下一帧观察覆盖) | **是(选卡即终结)**:点卡选中即确认(单步,无确认钮),动作 op 动画等待后旁路回传;画面 op 派发后 `round_success`(wait=`_OVERLAY_ANIM_WAIT_S`)即交回(动作 op 类属性 `terminal=False` 为执行模型标记,交回语义住画面 op) |
 
 ```
 names = 观察轮 obs 载体
@@ -52,7 +58,7 @@ card_point = (选中卡 x 中心, 卡身 y 常量 290)(点卡名带下方一点,
 
 ## 7. 子态与 overlay
 
-本屏无子态。同一武装箱域的两画面分工:0f 说明弹窗(关闭动作,非本 op)/ 0f2 选卡画面(本 op);建档中「装备卡-1..4」area 为画面元素档,现役点击坐标 = OCR x + 卡身 y 常量(区域-卡名行 rect 为读数单一源)。
+本屏无子态。同一武装箱域的两画面分工:说明弹窗(关闭动作,非本 op)/ 选卡画面(本 op);建档中「装备卡-1..4」area 为画面元素档,现役点击坐标 = OCR x + 卡身 y 常量(区域-卡名行 rect 为读数单一源)。
 
 ## 8. 守卫与防线
 
@@ -63,10 +69,10 @@ card_point = (选中卡 x 中心, 卡身 y 常量 290)(点卡名带下方一点,
 
 ## 9. 遥测与锁面
 
-- journal op 名 =「武装箱选择」(0f2 分发);op 内日志 tag = `[cw][boxpick]`(选中卡名/交回)。
+- journal op 名 =「武装箱选择」(阶段一身份分发);op 内日志 tag = `[cw][boxpick]`(选中卡名/交回)。
 - 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(box_pick 观察 report 接线/两道闸 skip report/点卡决策锁)、test_cw_unified_action_2a.py::test_pick_box_decision_fail_closed(fail-closed 决策契约行为锁 + 画面常量)。
 - game 侧知识:画面与机制 = [../../../../game/screens/currency_war_battle_prep_supply_box.md](../../../../../game/screens/currency_war_battle_prep_supply_box.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18。
 
 ## 开放设计注
 
-- 0f2 分发锚(「货币战争-备战-武装箱选择.标识-请选择」)未登记外循环分发锚预检表 `cw_loop.py::DISPATCH_AREA_ANCHORS`(iter1 可解析性预检覆盖缺该行,申报不自定案)。
+- 分发锚(「货币战争-备战-武装箱选择.标识-请选择」)未登记外循环分发锚预检表 `cw_loop.py::DISPATCH_AREA_ANCHORS`(iter1 可解析性预检覆盖缺该行,申报不自定案)。

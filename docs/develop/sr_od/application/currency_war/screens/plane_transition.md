@@ -17,6 +17,12 @@
 
 ## 4. 动作面
 
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| 无动作 op——单步推进留守 op 内 | 画面 op 留守臂(决策动作 node `act`:`area_center` 读「货币战争-位面过渡.区域-空白点击」center → mouse_move + click) | 无自上报(观察上报 = `report_screen_plane_transition_obs` 链写容器,观察 node 承载) | 是(点空白即终结):`round_wait` 机械交回循环推进,重入裁决提示不在 = `round_success`(wait=1.0)交回外循环重判 |
+
 单动作 = 点空白:`kernel/cw_obs_core.py::area_center('区域-空白点击', '货币战争-位面过渡')` → mouse_move 先行 + click(overlay 族同款点击时序)→ 固定短等(点击异步落地 + 过渡翻页动画)→ 置位。建档缺失 → `round_fail` 留证。
 
 ## 5. 终结与交回

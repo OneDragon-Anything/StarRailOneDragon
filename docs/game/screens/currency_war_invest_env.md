@@ -1,7 +1,7 @@
 ---
 screen_name: 货币战争-投资环境
 appears_in: [currency_war]
-last_updated: 2026-08-04
+last_updated: 2026-09-21
 source_image: screens/货币战争-投资环境/default.webp
 ---
 
@@ -13,7 +13,7 @@ source_image: screens/货币战争-投资环境/default.webp
 
 - **入口**:简报「下一步」→ 位面教程叠层(「点击空白处继续」点空白)→ 本屏。
 - **出口**:点一张卡选中 →「确认」→ 备战阶段(Plane 1 Round 1)。
-- 每个位面开始可能再出现(剩余次数 = 本局还可选几次)。
+- 开局(简报后)必弹一次;后续节点出现的是投资策略屏(两屏不同 handler);接管/恢复局可能重入本屏。
 
 ## 识别特征(稳定锚点)
 
@@ -37,7 +37,7 @@ source_image: screens/货币战争-投资环境/default.webp
   2. **特邀专家：银狼** — 首次得【银狼LV.999】时,银狼以专家顾问加入商店。(关键角色)
   3. **列车同行概念股** — 开局得【列车同行】角色 + 装备,列车同行刷新率提高。(阵营 buff)
 - **投资环境池**:游戏内总 83 / 解锁 68(D-68 数据银行核对),每场随机出 3。全集见代码 `src/sr_od/application/currency_war/kernel/cw_investments.py::INVESTMENT_ENVS`。
-- **剩余次数**:本局还可选次数(本场 = 1)。
+- **剩余次数**:环境重掷剩余预算——点刷新圆钮整组重掷 3 卡、每刷一次扣 1,读 0 = 刷新无授权(实机归档帧实证口径)。
 
 ## 识别快照
 
@@ -48,5 +48,5 @@ source_image: screens/货币战争-投资环境/default.webp
 
 - **选中 mechanics(2026-08-04 实测)**:3 卡各含角色立绘 + 装备图标;**默认无卡选中**。点**立绘 / 卡名**(y≈390)开角色详情不选中;点**描述区**(y≈450)才选中。故 op 用 OCR 卡名 center-x + 描述区 Y 拼 click 点(screen_info ``区域-卡牌描述行`` 给 Y)。
 - 归档:`screens/货币战争-投资环境/default.webp`。
-- screen_info:`currency_war_invest_env`(task#20)—— ``标识-投资环境`` / ``区域-卡牌描述行`` / ``按钮-确认``。
+- screen_info:`currency_war_invest_env`—— ``标识-投资环境`` / ``区域-卡牌描述行`` / ``按钮-确认`` / ``区域-剩余次数行``。
 - bug#1 mitigation:关键 click 前 mouse_move(零移动不被判 drag,否则 click 落空卡死超时)。

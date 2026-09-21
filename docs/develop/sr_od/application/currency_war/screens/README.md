@@ -93,14 +93,14 @@
 | 点晶矿(区域-奖励) | 晶矿飞行动画 ≤2s(`research/screen_flow_timing.md` #16) | `CollectOre`(批式:一次全点→等 2s→统一验证;席满让路门 = `strategies/impl/mandate_v1/entry.py` 席满探针段) | 备战期 | 非终结 |
 | 开补给箱(点备战栏箱位) | 开箱即腾席(武装箱 overlay) | `OpenBox`(点「开启」即交回;选卡弹窗由画面 op `CwScreenBoxPick` 闭环,非动作) | 备战期(实体面优先,`entry.py::emit` ①) | **访问终结** |
 | 开秘密典籍 | 典籍占备战席 1 槽 | `OpenTome`(选卡弹窗由画面 op `CwScreenBoxPick` 闭环,非动作) | 备战期(实体面优先,`entry.py::emit` ①) | 非终结 |
-| 查看详情(角色/装备详情浮层) | 游戏辅助功能(`data/gameplay.md`) | 推进弹窗族 `CwScreenRoleDetailOverlay` 等(1b/1d/1g 分支,空决策形态) | 无策略归属(推进为流程义务) | 关闭/点空白即终结 |
+| 查看详情(角色/装备详情浮层) | 游戏辅助功能(`data/gameplay.md`) | 推进弹窗族 `CwScreenRoleDetailOverlay` 等(阶段一身份分发,空决策形态) | 无策略归属(推进为流程义务) | 关闭/点空白即终结 |
 | 锁商店(跨节点保牌) | `research/economy.md` §2.1(整店级锁;官方机制) | **生产链路未建模**(建档已有「按钮-商店锁定」坐标备作将来) | 无 | — |
 
 ### 5.4 部署执行(备战画面内,无独立建档画面、无独立画面 op)与商店开画面(货币战争-备战-开商店)
 
-部署不是独立 screen_info 画面:部署 = 备战决策环动作(`CwActionDeployMoveParam` 原子序经 `CwActionDeployMoveOp` 在备战画面上拖拽;部署机画面 op 已退役,路径速查 = [deploy.md](deploy.md));`currency_war_deploy_not_full.yml`(未达上限警告,0d 分支)为部署被拒确认弹窗。商店开画面建档 = `currency_war_battle_prep_shop_open.yml`;文档 = [shop.md](shop.md)。
+部署不是独立 screen_info 画面:部署 = 备战决策环动作(`CwActionDeployMoveParam` 原子序经 `CwActionDeployMoveOp` 在备战画面上拖拽;部署机画面 op 已退役,路径速查 = [deploy.md](deploy.md));`currency_war_deploy_not_full.yml`(未达上限警告,阶段一身份分发)为部署被拒确认弹窗。商店开画面建档 = `currency_war_battle_prep_shop_open.yml`;文档 = [shop.md](shop.md)。
 
-商店开画面能力面:买牌(`CwActionBuyCardOp`)/刷新(`CwActionRefreshShopOp`,段终结)/买经验(能力面可用、策略面收缩)/卖备战(同前)/关商店(`CwActionCloseShopOp` + CwOpCloseShop,访问终结)/牌详情弹窗(0t,点 X 绝不点购买)/刷新概率表(0e2,概率条直读进 `refresh_probs` 为观察非动作)/锁商店(未建模)。策略面 = 商店期默认动作面仅 买/刷/关(判例 §7;23 号篇)。
+商店开画面能力面:买牌(`CwActionBuyCardOp`)/刷新(`CwActionRefreshShopOp`,段终结)/买经验(能力面可用、策略面收缩)/卖备战(同前)/关商店(`CwActionCloseShopOp` + CwOpCloseShop,访问终结)/牌详情弹窗(阶段一身份分发,点 X 绝不点购买)/刷新概率表(阶段一身份分发;概率条直读进 `refresh_probs` 为观察非动作)/锁商店(未建模)。策略面 = 商店期默认动作面仅 买/刷/关(判例 §7;23 号篇)。
 
 ### 5.5 事件单选族(overlay)
 
@@ -110,10 +110,10 @@
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
-| 选卡(N 选 1) | 各事件机制(`data/gameplay.md`/`research/economy.md` §9) | 各画面 op(分支序 0c/0e/0e1/0a 族/0h/0i/0k/0f) | 确认离开(overlay 消失)= 画面终结 |
+| 选卡(N 选 1) | 各事件机制(`data/gameplay.md`/`research/economy.md` §9) | 各画面 op(阶段一身份分发,号制已退役) | 确认离开(overlay 消失)= 画面终结 |
 | 逐卡/整屏刷新重掷 | 刷新后 ~2s 稳定(时序 #13/#19/#23) | 投资策略逐槽(`cw_screen_invest_strategy.py::_emit_refresh_click`)/ 遭遇(`cw_screen_encounter.py::_try_refresh`)/ 补给(`cw_screen_supply_node.py`「剩余次数」文本锚定);建议刷新 = `PickEvent.refresh`(`kernel/cw_events.py::decide_event`,P81;策略屏逐槽 = `PickEvent.refresh_slots`) | 投资策略逐卡刷新 = **本访问终结**(点一槽刷新圆钮即 pending+round_retry 交回,次轮重入重观察重决策)——与投资环境整组重掷同款;遭遇/补给刷新不终结(留在本画面访问内重读重选);确认离开才画面终结 |
-| 开书册卡(点备战席槽位「开启」→ 弹专家邀请函) | 书册卡 = 备战席占槽道具 | `cw_screen_expert_invite.py::open_card`(0k 处理链首节点;找书册卡/点开启/过渡帧等待,纯导航零决策) | 弹窗开成即链内转选卡(不终结外层访问) |
-| 返回备战/返回选择(暗色锁定子态) | 暗色蒙层态判别锚 = 右上操作按钮(screen_flow_timing #18) | `operations/cw_screen/cw_screen_prep_locked_return.py::CwScreenPrepLockedReturn`(0m;策略锁定/遭遇锁定两档参数化) | 点返回即终结 |
+| 开书册卡(点备战席槽位「开启」→ 弹专家邀请函) | 书册卡 = 备战席占槽道具 | `CwActionOpenBookcardOp`(备战决策环终结动作,`terminal=True`;发射位 = 策略器 entry ① prep 实体面卡片臂 `strategies/impl/mandate_v1/entry.py`)→ 弹窗由阶段一身份分发 `operations/cw_screen/cw_screen_expert_invite.py::CwScreenExpertInvite` 选卡 | 开卡即备战访问终结;弹窗选卡确认离开 = 弹窗访问终结 |
+| 返回备战/返回选择(暗色锁定子态) | 暗色蒙层态判别锚 = 右上操作按钮(screen_flow_timing #18) | `operations/cw_screen/cw_screen_prep_locked_return.py::CwScreenPrepLockedReturn`(阶段一身份分发;策略锁定/遭遇锁定两档参数化) | 点返回即终结 |
 | 关「属性详情」面板 | 点卡身上部误触发 | 未建模独立处理(点卡 = 机械单发);面板残留归下一帧重入自愈(重分发重走链/详情 overlay 族分支) | 面板关闭即随重入收敛 |
 | 盛会之星「请选择强化角色」伴随文案 | 该 area 与「按钮-确认选择」rect 重叠,系伴随文案非步骤 | 未建模独立处理(确认 = 纯机械单发);确认未落地残留归巨星节点循环重入自愈 | 确认推进即画面终结 |
 
@@ -127,7 +127,7 @@
 
 | 终结动作/条件 | 终结级别 | 语义 |
 |---|---|---|
-| 商店 RefreshShop | **段终结** | 刷新是唯一引入新事实的动作(新牌面),执行即本段 break;下一段入口观察重建期望态。visit 级刷新硬墙 = `cw_screen_buy_cards.py::MAX_REFRESH`(超墙终结集降级仅关店,`shop.md` §3) |
+| 商店 RefreshShop | **段终结** | 刷新是唯一引入新事实的动作(新牌面),执行即本段 break;下一段入口观察重建期望态。无 visit 级硬墙(无限刷新环 = 策略 bug,框架不兜底);现实出口 = spend_gate 政策闸拒/未观察跳过熔断(`shop.md` §5) |
 | 商店 CloseShop | **访问终结** | 恒可用终结 op(全函数「无动作可做」的表达);关店点击由编排壳 CwOpCloseShop 执行,节点探针收尾后交回外循环 |
 | 商店全 unknown 失读窗 | **入口观察停机** | 牌面含 unknown 槽(读链终判)→ 入口观察处 `stop_running` 框架截图留证,决策/购买不见残缺牌面;决策侧仅 CloseShop 收工为纵深第二线(`shop.md` §5,guards.md §3) |
 | 备战 StartBattle | **访问终结(唯一完成态)** | 出战 → 外循环置战斗窗口(备战→战斗→结算→回备战轮推进,`outer_loop.md` §4) |

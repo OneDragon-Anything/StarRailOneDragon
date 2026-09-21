@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-非独立分支:外循环 0s **链序第二段**(`CwScreenInvestEnv` → 本 op,用户裁定的特殊等待;两 op 两对 journal 行,首段轮次结果只记日志不分流,返回尾段结果——`cw_loop.py::CwLoop.loop` 0s 分支)。主判据锚 = 「货币战争-备战.标识-备战阶段」:该文本备战/开商店两档同址无画面判别力,此处只判「备战面板就绪」非画面分支,用途正当(代码注);**不据它做画面分发**(分发仍归外循环全分支)。
+非独立分支:外循环投资环境分支 **链序第二段**(`CwScreenInvestEnv` → 本 op,用户裁定的特殊等待;两 op 两对 journal 行,首段轮次结果只记日志不分流,返回尾段结果——链序代码锚 = `cw_loop.py::CwLoop.loop` 投资环境分支段)。主判据锚 = 「货币战争-备战.标识-备战阶段」:该文本备战/开商店两档同址无画面判别力,此处只判「备战面板就绪」非画面分支,用途正当(代码注);**不据它做画面分发**(分发仍归外循环全分支)。
 
 ## 2. 画面形态声明
 
@@ -15,6 +15,12 @@
 轮询单锚判定(观察 node 两早退:锚命中 / 超时);超时基 = `_first_seen_ts`(首见非就绪帧时钟起点)。obs = `CwScreenWaitOneOneObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/wait_one_one.py`;锚命中轮装载,轮询轮与超时轮不装载——锚判定外零读屏);report = `report_screen_wait_one_one_obs` 占位调用(本屏现役零容器写点,接口为统一形态占位;match/gs 缺席跳过)。零容器写端。
 
 ## 4. 动作面
+
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| 无动作 op——纯等待零推进(无任何点击;锚轮询留守 op 内) | 画面 op 留守臂(观察 node `observe` 轮询 `round_wait`;决策动作 node `act` 零动作 success 交回) | `report_screen_wait_one_one_obs` 占位调用(锚命中轮;现役零容器写点,统一形态占位) | 是(锚「货币战争-备战.标识-备战阶段」命中 → act round_success 交回;超时 ≥ `ONE_ONE_MAX_WAIT_S` → 存图留证 + round_fail 交回) |
 
 零动作(纯等待;轮询间隔 = `ONE_ONE_POLL_INTERVAL_S`,上界 = `ONE_ONE_MAX_WAIT_S`,常量单一源 = `operations/cw_screen/cw_flow_const.py`)。
 
@@ -38,5 +44,5 @@
 ## 9. 遥测与锁面
 
 - journal op 名 = 「等待1-1」;日志前缀 `[cw-flow-wait11]`。
-- 测试锁:两 node 行为锁 + 假时钟超时锁(锚命中 round_wait 轮询/超时留证 fail)= `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(代码注另引 `test_cw_flow_ops.py`,现状不在测试仓,同 [plane_transition.md](plane_transition.md) 开放设计注)。
+- 测试锁:两 node 行为锁 + 假时钟超时锁(锚命中 round_wait 轮询/超时留证 fail)= `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`。
 - game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #5/#29。

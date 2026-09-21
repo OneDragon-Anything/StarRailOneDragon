@@ -29,6 +29,8 @@
 
 ## 3. 观察面
 
+观察载体 = `CwScreenPlaneIntelObs`(`on_screen`/`screen`/`plane_bosses`/`enemy_affixes`,住 `kernel/cw_screen_report/plane_intel.py`),由「上报」node 组装;report = `report_screen_plane_intel_obs` 写门落容器(写门语义见 §6)。
+
 **恒全采位面1→2→3**(用户裁定 2026-09-20「先按能采处理」):
 
 - **三位面 boss**(每个识别 node 同体执行 `_recognize_current_plane`):点该位面卡(「按钮-位面卡1..3」;转移证据 = 详情条节点编号 OCR 位面段联动到目标位面)→ 点最右 boss 节点(位置先验「首领 = 位面最后节点」;`read_plane_detail_nodes` 动态定位节点圆,节点数随位面/投资策略变,不硬编码)→ 详情条类型名标签验「首领」(`read_detail_node_type_label`;非首领 = 位置先验失效,重试)→ 大图标 SIFT 对拍 boss_avatar 模板库(`_read_boss_big_icon`,「区域-boss大图标」~107px;`obs/cw_node_reader.py::match_boss_sift`;锁态小图 SIFT 特征塌缩认不出,大图标增熵破局)。
@@ -38,6 +40,19 @@
 - **敌人难度参考值**:`read_plane_detail_difficulty`(每个识别 node 同帧顺带读当位面值;node6 逐位面落账;生产难度主源 = 备战旗牌两级管线,本值仅参考)。
 
 ## 4. 动作面
+
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| 无注册表动作 op——识别/点开子步 node(入口门:非位面详情屏 = round_fail 存证;恒点「货币战争-位面详情.按钮-位面卡1」保证从位面1起采 + 单位面识别体) | 管线 node(识别位面1,start) | 无(读数暂挂实例属性 `_plane_bosses`/`_affixes`/`_detail_seqs`/`_difficulty_refs`,落写归「上报」node) | 否(管线子步;识别预算 3 耗尽 = op fail 交回) |
+| 无注册表动作 op——识别/点开子步 node(点「货币战争-位面详情.按钮-位面卡2」;转移证据 = 详情条节点编号位面段联动) | 管线 node(点开位面2) | 无(同上) | 否(管线子步;点开预算 2 耗尽 = op fail 交回) |
+| 无注册表动作 op——识别/点开子步 node(点 boss 节点圆 → 标签验「首领」→ 大图标 SIFT,同单位面识别体) | 管线 node(识别位面2) | 无(同上) | 否(管线子步;识别预算 3 耗尽 = op fail 交回) |
+| 无注册表动作 op——识别/点开子步 node(点「货币战争-位面详情.按钮-位面卡3」+ 联动证据) | 管线 node(点开位面3) | 无(同上) | 否(管线子步;点开预算 2 耗尽 = op fail 交回) |
+| 无注册表动作 op——识别/点开子步 node(同单位面识别体) | 管线 node(识别位面3) | 无(同上) | 否(管线子步;识别预算 3 耗尽 = op fail 交回) |
+| 无注册表动作 op——纯上报 node(零点击;组装 `CwScreenPlaneIntelObs`) | 管线 node(上报) | `report_screen_plane_intel_obs`(`plane_bosses` 已有真值不覆写 / `enemy_affixes` 幂等门)+ 台账/难度/词缀登记(session 通道,best-effort) | 是(管线走完 = 采集访问终结;round_success 交编排 `CwEntryPlaneIntel` 委派点,编排关闭位面详情后 success 才交回 `CwLoop.loop`;上报时无对局 session = round_fail 交回) |
+
+动作锚与转移证据明细(上表点击的落点级细节;含编排 op 的开/关点击,编排不在注册表动作域):
 
 | 动作 | 归属 | 锚 | 等待/转移证据 |
 |---|---|---|---|

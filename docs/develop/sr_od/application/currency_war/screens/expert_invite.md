@@ -4,8 +4,8 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0k:id_mark 锚「货币战争-备战-专家邀请函.标识-专家邀请函」;命中即接管(同 0i)。分发 = 阶段一身份行,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
-- 处理链分工:开卡半 = 备战词表 `OpenBookcard`(`kernel/cw_vocab.py::CwActionOpenBookcardParam` 在册;执行器 = `cw_open_bookcard_action.py::CwActionOpenBookcardOp`,发射位 = 备战环入口清场段 `cw_screen_prep.py::CwScreenPrep._clear_prep_cards`,开卡即交回)→ 弹窗由 0k 按画面分发本 op——**本 op 只辖弹窗已开后的选卡**,入口态单一 = 弹窗已开。
+- 阶段一身份分发(号制已退役,不引 0x):id_mark 锚「货币战争-备战-专家邀请函.标识-专家邀请函」;命中即接管。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 处理链分工:开卡半 = 备战词表 `OpenBookcard`(`kernel/cw_vocab.py::CwActionOpenBookcardParam` 在册;执行器 = `cw_open_bookcard_action.py::CwActionOpenBookcardOp`,终结动作 `terminal=True`;发射位 = 策略器 entry ① prep 实体面卡片臂 `strategies/impl/mandate_v1/entry.py`,开卡时机归策略实现管,备战观察不再入口代清;开卡即交回)→ 弹窗由阶段一身份分发本 op——**本 op 只辖弹窗已开后的选卡**,入口态单一 = 弹窗已开。
 
 ## 2. 画面形态声明
 
@@ -21,6 +21,12 @@
 观察 payload = `CwScreenExpertInviteObs`(`on_screen`/`card_bonds`/`board`/`screen`,住 `kernel/cw_screen_report/expert_invite.py`);report = `report_screen_expert_invite_obs` 载体写容器 `expert_invite` 槽(`ExpertInvitePayload(card_bonds, board)` 双输入打包,恒写;match/gs 缺席的局外兜底路径跳过)。
 
 ## 4. 动作面
+
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| `CwActionPickExpertInviteOp`(`CwActionPickExpertInviteParam`,idx=-1 = 现金为王语义) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:定位点,idx=-1 解析为「货币战争-备战-专家邀请函.卡-现金为王」area 中心) | 自上报 `report_action_pick_expert_invite_param`(零写族,容器零写) | 否(非终结):发出后 `round_wait` 循环推进;落地由重入裁决判——「货币战争-备战-专家邀请函.标识-专家邀请函」不在 = 补写 `chosen_expert`(仅卡分支)/ `ConfirmExpertCash` 到账登记(仅现金分支)+ success 交回外循环(见 §5) |
 
 决策动作 node 选卡链(整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickExpertInviteOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx,含 -1 现金为王语义):
 

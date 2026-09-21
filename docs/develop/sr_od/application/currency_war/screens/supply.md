@@ -4,12 +4,12 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0e1:id_mark 锚「货币战争-补给.标识-补给阶段」(位置区分 area,防「补给阶段」与「备战阶段」共享「阶段」误匹配)。分发 = 阶段一身份行,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 阶段一身份分发(号制已退役,不引 0x):id_mark 锚「货币战争-补给.标识-补给阶段」(位置区分 area,防「补给阶段」与「备战阶段」共享「阶段」误匹配)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
 - 补给是唯一无结算屏节点:op success 后交回外循环重判(无合成结算行)。
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。**committed-but-verifying 节点循环**形态,两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 节点完成门(`_in_node`:标识锚还在;已离开 = 节点完成 round_success 交回外循环)→ 选项一次读 → `report_screen_supply_node_obs` 落容器 `supply` → obs + 点卡定位点挂实例属性。决策动作 node = 顶部节点完成复检(每轮新帧)→ 零参决策 `match.strategy.decide_supply()`(候选自容器 `supply` 槽;缺省实现委托 `kernel/cw_events.py::decide_supply`,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E4)→ 单动作(刷新终结交回 ∨ 选卡确认链经 `CwActionPickSupplyOp` 派发,机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 现役值仅框架异常路径消费)。无独立落地登记面——`chosen_supply` 确认即写与刷新计数内联写留守决策体(见 §6)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。**committed-but-verifying 节点循环**形态,两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 节点完成门(`_in_node`:标识锚还在;已离开 = 节点完成 round_success 交回外循环)→ 选项一次读 → `report_screen_supply_node_obs` 落容器 `supply` → obs + 点卡定位点挂实例属性。决策动作 node = 顶部节点完成复检(每轮新帧)→ 零参决策 `match.strategy.decide_supply()`(候选自容器 `supply` 槽;缺省实现委托 `kernel/cw_events.py::decide_supply`,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E4)→ 单动作(刷新终结交回 ∨ 选卡确认链经 `CwActionPickSupplyOp` 派发,机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 现役值仅框架异常路径消费)。确认落地面 = 节点完成门证据闩应用一次(`_apply_supply_landing` → `report_action_pick_supply_param` 落地相:单位腿 + 装备后果腿);`chosen_supply` 确认即写与刷新计数内联写留守决策体(见 §6)。
 
 ## 3. 观察面
 
@@ -22,6 +22,13 @@
 观察 payload = `CwScreenSupplyNodeObs`(`in_node`/`options`/`screen`,住 `kernel/cw_screen_report/supply_node.py`);report = `report_screen_supply_node_obs` 摄入候选写容器 `supply` 域(空 = 读缺不写,闸在 report 内;match/gs 缺席的局外兜底路径跳过 report)。决策零参读容器槽。
 
 ## 4. 动作面
+
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| `CwActionPickSupplyOp`(`CwActionPickSupplyParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:卡身定位点/选定快照/选中下标) | 分步自上报 `report_action_pick_supply_param`:发射相(意图遥测,容器零写)+ 到账登记 `ConfirmSupply`(动作 op 确认收尾);落地相由本 op 节点完成门证据闩(`_apply_supply_landing`)持 `EVIDENCE_OVERLAY_CLOSED` 调用 | 否(非终结):发出后 `round_wait` 循环推进;落地由节点完成门复检判——标识不在 = 落地相应用 + success 交回外循环(见 §5) |
+| 刷新重掷(无注册表动作 op;`CwActionRefreshSupplyParam` 仅策略建议载体) | 画面 op 留守臂(`_do_action` 刷新分支:「文本-剩余次数」建档 rect 外扩 OCR 带锚定偏移 `mouse_move`+`click`) | 无自上报(发射即容器 `supply_refresh_used` 计数 +1,内联写留守决策体;锚读缺 = 零点击照常 +1) | **是(访问终结)**:点击 + 2s 动画窗后 `round_success` 即交回,外循环重进 = 入口重建;锚读缺例外 = `round_wait` 留守,下轮按非刷新重选;节点内至多刷 1 次 = 容器计数对照硬限制 |
 
 决策动作 node 单动作体 `_do_action`(零参:候选与点击点自观察轮实例载体消费):
 
@@ -45,13 +52,13 @@ pick = match.strategy.decide_supply()(零参;候选读容器 supply 槽)
        ConfirmSupply(owned += equip,动作 op 机械半)
 ```
 
-刷新轮不走选卡分支(选定快照保持 None;兜底点卡轮同样不带快照,决策帧照写但不带选择字段,读端按 None 分型)。选卡+确认+自上报(`report_action_pick_supply_param`,零写)整体经动作工厂(`cw_overlay_pick_action.py::CwActionPickSupplyOp`;派发 param 携真实选中 idx,到账登记 ConfirmSupply 在彼)。
+刷新轮不走选卡分支(选定快照保持 None;兜底点卡轮同样不带快照,决策帧照写但不带选择字段,读端按 None 分型)。选卡+确认+自上报整体经动作工厂(`cw_overlay_pick_action.py::CwActionPickSupplyOp`;自上报 `report_action_pick_supply_param` = 发射相意图遥测,落地相归节点完成门证据闩;派发 param 携真实选中 idx,到账登记 ConfirmSupply 在彼)。
 
 ## 5. 终结与交回
 
 | 条件 | 级别 | 交回落点 |
 |---|---|---|
-| observe 门 miss(标识消失) | **节点完成** | 出口验真(纯观察面;chosen_supply 已改确认即写,门处无写动作)→ round_success 交回外循环重判(补给无结算屏) |
+| 门 miss(标识消失;observe 首门 / act 每轮复检) | **节点完成** | 出口验真(纯观察面);act 门先落地相证据闩应用一次(`_apply_supply_landing`)→ round_success 交回外循环重判(补给无结算屏;`chosen_supply` 确认即写不在门) |
 | 刷新点击 | **终结动作** | round_success 交回外循环重进 = 入口重建(节点内至多刷 1 次由容器 `supply_refresh_used` 计数对照硬限制) |
 | 确认未落地 | 节点循环重入 | 下一轮决策动作 node 门复检仍在 → 重走(`round_wait` 循环推进,不烧节点重试预算,无防御上限) |
 

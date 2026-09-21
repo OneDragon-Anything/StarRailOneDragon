@@ -1,10 +1,10 @@
 # 商店卡牌详情弹窗(shop_card_detail · 货币战争-商店卡牌详情)
 
-> 代码 = `operations/cw_screen/cw_screen_shop_card_detail.py::CwScreenShopCardDetailPopup`。职责:采晶矿误触开的「角色 offer 购买页」弹窗(0t,中央角色大面板 + 底部五牌条 + 购买/角色详情双按钮 + 右上 X)的一次访问——点 X 关闭交回,**绝不点购买**。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_shop_card_detail.py::CwScreenShopCardDetailPopup`。职责:采晶矿误触开的「角色 offer 购买页」弹窗(中央角色大面板 + 底部五牌条 + 购买/角色详情双按钮 + 右上 X)的一次访问——点 X 关闭交回,**绝不点购买**。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 分发判定
 
-- 外循环分支 0t:双 id_mark 门——`货币战争-商店卡牌详情.按钮-购买` ∧ `货币战争-商店卡牌详情.按钮-角色详情`(弹窗前景独有锚,双锚全中才接管,单锚形态不放行;判据单一源 = `cw_loop.py::_shop_card_detail_anchor_hit`,`entry_ok` 同源同参;`ENTRY_AREA = '按钮-购买'` 仅供基类读面)。
+- 阶段一身份分发(号制已退役,不引 0x):双 id_mark 门——`货币战争-商店卡牌详情.按钮-购买` ∧ `货币战争-商店卡牌详情.按钮-角色详情`(弹窗前景独有锚,双锚全中才接管,单锚形态不放行;判据单一源 = `cw_loop.py::_shop_card_detail_anchor_hit`,`entry_ok` 同源同参)。
 - 分发 = 阶段一身份行(双 id_mark 门):弹窗暗色衬底遮蔽底层全部锚(开商店三锚/备战双锚在该衬底下不命中);禁取衬底透出的底层锚作判据。建档 = `currency_war_shop_card_detail.yml`。
 
 ## 2. 画面形态声明
@@ -16,6 +16,12 @@
 轻观察:观察 node = `entry_ok` 双 id_mark 门复判 → obs = `CwScreenShopCardDetailPopupObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/shop_card_detail.py`;无 report 接口)。零 GameState 写端(牌面/金等底层事实归 0n 商店访问入口观察)。
 
 ## 4. 动作面
+
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| 无动作 op——单步推进留守 op 内(`progress_once`:点「货币战争-商店卡牌详情.按钮-关闭」× 关闭,绝不点购买) | 画面 op 留守臂(`progress_once`:find_and_click 点建档中心,`success_wait=1.5`) | 无 report 接口(推进型规范形态,op-layer.md §3) | **是(推进即终结)**:点击后 `round_wait` 重入;重入裁决双锚均 miss = 已离开 → `round_success` 交回(见 §5);推进未落地 = `round_fail` 交回 |
 
 `progress_once` = `round_by_find_and_click_area(货币战争-商店卡牌详情.按钮-关闭, success_wait=1.5)`。X 复用大厅同族关闭模板(`cw_lobby_close`;备战右上数据统计按钮与 X 区重叠但模板实测零误配,对拍在案)。**语义红线:绝不点购买**——本画面唯一义务是关闭。
 

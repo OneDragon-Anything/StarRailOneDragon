@@ -16,6 +16,12 @@
 
 ## 4. 动作面
 
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| 无动作 op——单步推进留守 op 内(`progress_once` 点首件单发) | 画面 op 留守臂(`progress_once`:`area_center` 读 `货币战争-备战.按钮-简易装备首件` center + `click`,无 `mouse_move`) | 无 report 接口(推进型规范形态,op-layer.md §3) | 是(重入裁决:点首件已发 ∧ 「标识-简易装备」锚不在 = 已离开 → `round_success` 交回;锚在 = `round_wait` 再推进) |
+
 `progress_once` = 读 `货币战争-备战.按钮-简易装备首件` center(`kernel/cw_obs_core.py::area_center`;矩形中心即首件位)→ `click` 单发(原分支无 `mouse_move`,保持)。坐标缺失 = False → 基类 `round_fail`。点首件后游戏自动关 overlay。
 
 ## 5. 终结与交回

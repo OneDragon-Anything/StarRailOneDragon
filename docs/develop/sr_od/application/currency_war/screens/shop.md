@@ -12,7 +12,7 @@
 
 ## 2. 画面形态声明
 
-**决策循环形态**。决策入口 = 契约 `decide_shop_action`(`strategies/impl/mandate_v1/shop.py`;**全函数**:f(期望态) → 恰一个动作,「无动作可做」= CloseShop 恒可用终结;观察帧缺失即抛错)。段循环外层 `for _ in range(MAX_REFRESH + 1)`(刷新终结 = 下一段开始),内层决策循环 `while True`(防御帧帽 `SHOP_SEGMENT_ACTION_CAP=16`,超帽 RuntimeError 响亮暴露)。生产执行侧逐帧调用;sim 引擎/回放经 `decide_shop_screen` 驱动器消费(非契约成员)。
+**决策循环形态**。决策入口 = 契约 `decide_shop_action`(`strategies/impl/mandate_v1/shop.py`;**全函数**:f(期望态) → 恰一个动作,「无动作可做」= CloseShop 恒可用终结;观察帧缺失即抛错;终态零参口)。段循环外层 `while True`(刷新终结 = 下一段开始;刷新无次数上限——用户裁定:无限刷新环 = 策略实现 bug,框架不兜底),内层决策循环 `while True`(无防御帧帽——用户裁定:不收敛 = 策略实现 bug,响亮暴露,框架不兜底)。生产执行侧逐帧调用;sim 引擎/回放经 `decide_shop_screen` 驱动器消费(非契约成员)。
 
 ## 3. 观察面
 
@@ -23,25 +23,33 @@ read_game_state(phase=PHASE_PREP_SHOP_OPEN) 全量现读,漏斗容器直写(obs 
   产出 GameStateReadReceipt 回执)
 → 店开入口防抖(shop 域未入容器时有界重读 3×0.8s;仍缺 = 交决策前置门)
 → 首段帧代次标注 full(shop_frame_class;续段 none 保持首段值)
-→ node_type 台账回填(键 = 本帧 plane/round;查不到保持 None fail-open;
-  回填 = write_logic 台账权威值覆盖,下一备战帧真读观察赢)
-→ gold==0 救援(读 0 时重读 4 帧取首个 >0;结果留证,救回值经观察渠道覆盖写)
+→ 节点类型 = 派生管线「商店查现行链」直定(链缺位 = kind None fail-open;
+  本段无台账回填写端——logic 通道覆盖会吞观察对账,ADR-0587 滞后拷贝禁令)
+→ 免费刷新对账点(上段刷新已发标记消费:牌面已变 ∧ 金未扣 → 三值对比
+  单一源 refresh_board_changed_of 判定,存证 flag 不停机;判定收口在观察侧)
 → 店开帧预算披露覆写(gold 真值入链,overflow/budget 三预算字段)
-→ 播种期对账 guard_expected_vs_tracked(stage='seed';先对账分叉归因「播种/入口账」,
-  逻辑态直写后分叉才归「逻辑态模型」)
 ```
 
-观察写入 = ①观察态上报进 GameState 的观察边界;段内不比对、不重建(统一规范 = [op-layer.md](op-layer.md) §1.3;关键信息未观察由字段态值前置拦截,见 §5 全 unknown 窗)。
+观察写入 = ①观察态上报进 GameState 的观察边界;段内不比对、不重建(统一规范 = [op-layer.md](op-layer.md) §1.3;关键信息未观察由字段态值前置拦截,见 §5 全 unknown 窗)。画面 obs 类 = `CwScreenBuyCardsObs`(`kernel/cw_screen_report/buy_cards.py`,report 保持占位):观察 node 产入口回执同面镜像挂实例属性(供决策侧/测试消费),无容器摄入面——容器写端在观察漏斗 `read_game_state`。
 
 ## 4. 动作面
 
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| `CwActionBuyCardOp`(`CwActionBuyCardParam`) | 注册表工厂(`run_buy_waves` 执行位:`action_op_class_for` + `ShopExecEnv` 组装) | 自上报 `report_action_buy_card_param` 单点(简单落位与合成升星腿内聚) | 否(非终结):发出后落地门/回执行,决策循环续跑;执行未落地 = applied=false 回执行,期望态两侧都不动 |
+| `CwActionLevelUpOp`(`CwActionLevelUpShopParam`;备战域注册行同 op) | 注册表工厂(同上) | 自上报 `report_action_level_up_param` | 否(非终结):发出后决策循环续跑(clicks 序列 = 动作内部步骤,逐帧重组) |
+| `CwActionSellBenchOp`(`CwActionSellBenchParam`;注册行已更替备战域 op) | 注册表工厂(同上) | 自上报 `report_action_sell_bench_param` | 否(非终结):拖拽机械单发,发出即记账 |
+| `CwActionRefreshShopOp`(`CwActionRefreshShopParam`,段终结 terminal=True) | 注册表工厂(同上) | 自上报 `report_action_refresh_shop_param`(三计数触发与留证票随真值读在 op 内单口) | 否(非访问终结,段终结):execute 后本段 break,段循环下一迭代入口观察重建(「交回外循环重进」的物理载体);段间判定 did_refresh=False 才访问收工 |
+| `CwActionCloseShopOp`(`CwActionCloseShopParam`;execute 为 no-op,生产链不入行) | 决策循环拦截 break(未观察跳过同出口) + 编排壳 `CwOpCloseShop`(点「货币战争-备战-开商店.按钮-收起」→ 动画等待 → 重入裁决 round_wait) | 无自上报(机械回执 `note_action_receipt`;店族 payload 清场 = `_clear_shop_payload` leave_screen) | **是(访问终结)**:唯一常规离店;访问收工后编排壳节点探针,交回外循环 |
+| 无注册表动作 op——节点行探针(`probe_node_type`) | 画面 op 留守臂(关店后 clean 备战帧读节点行,访问尾段观测写点) | 无自上报(槽序表 `plane_node_table` 与台账按位合并写,纯观测零决策) | 否(非终结):失败不阻塞收尾,无决策消费 |
+
 ```
 while True(零读屏):
-  action = strategy.decide_shop_action(session, config)   # 恰一个动作,全函数
+  action = strategy.decide_shop_action()   # 恰一个动作,全函数(终态零参口)
   │    异常 → 留证后上抛
   ├─ CloseShop 终结 → break(关店点击由编排壳 CwOpCloseShop 承担)
-  ├─ RefreshShop ∧ ledger.total_refresh ≥ MAX_REFRESH → 硬墙跳过:
-  │    plan_truncated=True + refresh_skipped='max_cap'(可见化不停)→ break
   ├─ spend_gate(发射帧仲裁,缺省 None):拒 = 本动作不执行 + 本访问收工
   ├─ 守卫断言 guard_proposal_vs_expected(提案对象在期望态存在且未被消费,
   │    炸出 = 策略器算术 bug;防 bug 路栏,非控制流分支)
@@ -59,9 +67,8 @@ while True(零读屏):
   │    门保留为结构防线——未落地 ⇒ 两侧都不动;期望态推进 = op 自上报单点(终结跳写判断随 op 自辖)
   ├─ op 自上报(容器规则通道,纯计算零读屏):report_action_buy_card_param 单点
   │    (简单落位与合成升星腿内聚,买前快照三件组基点函数内第一时间取)直写容器
-  │    → guard_expected_vs_tracked 双账断言(满栏合成买双账同构豁免)
   段尾:CloseShop 终结不入行;刷新 = 段终结后本段即 break ⇒ 每刷独立成行
-段间判定:did_refresh=False → break(本段无刷新/硬墙 → 收工)
+段间判定:did_refresh=False → break(本段无刷新 → 收工)
 ```
 
 逐动作规格 = [../game_state/logic-updates/](../game_state/logic-updates/README.md)(buy-card / refresh-shop / close-shop / level-up 各篇)。
@@ -71,8 +78,10 @@ while True(零读屏):
 | 条件 | 语义 |
 |---|---|
 | **CloseShop 终结** | 策略器主动选关店(全函数「无动作可做」的表达)→ 本段收工。唯一常规离店条件 |
+| spend_gate 政策闸拒 | 受限访问仲裁拒 = 本动作不执行 + 本访问即刻收工(消费终止非跳过续试)→ 编排壳照常关店 |
+| 未观察跳过熔断 | tracked 未观察 → 策略恒可用终结 CloseShop = 零动作跳过(缺陷台账留痕);连续 `SHOP_UNOBSERVED_SKIP_LIMIT` 次 = round_fail 交兜底链 |
 | 全 unknown 窗 | 牌面含 unknown 槽(整帧 OCR/SIFT 失读窗)→ **入口观察即停**(见下行;决策入口前置门仅返回 CloseShop 为纵深第二线) |
-| 刷新硬墙 | visit 级 `total_refresh` ≥ MAX_REFRESH → 终结集降级仅关店(本轮当未刷新收工) |
+| 刷新无硬墙 | 刷新无次数上限(用户裁定:无限刷新环 = 策略实现 bug,框架不兜底);刷新终结 = 本段收工、下一段入口观察重建;段间 did_refresh=False 才收工 |
 | 未识别卡停机 | 每波入口观察回执落地即判:读链终判(内部易误判重观察后)仍含 unknown 槽(empty=确证空位不计)→ `stop_running(save_screenshot=True)` 框架截图留证 + round_fail——决策/购买不见残缺牌面(未识别不能降级带病跑;2026-09-16 迁移+框架化,防抖探针/flag 退役;细则 = [../flow/guards.md](../flow/guards.md) §3) |
 | 循环异常 | 上抛 → 编排层单元 aborted 关账,店不收(交上层重新识别) |
 
@@ -87,14 +96,14 @@ while True(零读屏):
 
 ## 7. 子态与 overlay
 
-- 商店卡牌详情弹窗:0t 分支(`CwScreenShopCardDetailPopup`,点 X 验消失,**绝不点购买**——买不买归商店域)。
-- 商店刷新概率表弹窗:0e2 分支(点 × 关);概率条直读进 `refresh_probs` = 观察非动作。
-- 暗色衬底弹窗遮蔽底层全部锚时,外循环 0 系弹窗族分支先行分流后才可能落到本画面分支。
+- 商店卡牌详情弹窗:阶段一身份分发(`CwScreenShopCardDetailPopup`,点 X 验消失,**绝不点购买**——买不买归商店域)。
+- 商店刷新概率表弹窗:阶段一身份分发(点 × 关);概率条直读进 `refresh_probs` = 观察非动作。
+- 暗色衬底弹窗遮蔽底层全部锚时,外循环弹窗族分支先行分流后才可能落到本画面分支。
 
 ## 8. 守卫与防线
 
 - 未识别卡停机(§5,入口观察即停;用户裁定:未识别不能降级带病跑,识别不到就是 bug)。
-- visit 级刷新硬墙 MAX_REFRESH(防「终结→重进→再刷新」外循环无进展);shop_visit_idle_gold 计数键(visit 语义)。
+- 刷新无硬墙(用户裁定:无限刷新环 = 策略实现 bug,框架不兜底;外循环无进展治理归 stall 防线);shop_visit_idle_gold 计数键(visit 语义)。
 - EV 买面席位门(满栏帧不提案,拒因分键 shop_ev_bench_wait;满栏合成买面 m2_merge_completion 提案不在门辖)。
 - 免费刷新 proc 留证:flag 不停机(免费不是失败)。
 

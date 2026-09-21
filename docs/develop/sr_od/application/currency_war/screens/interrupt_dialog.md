@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 外循环分支 1g:锚 = `货币战争-中断挑战弹窗.标识-中断挑战`(id_mark;分发 = 阶段一身份行,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。真模态:点遮罩无效,关闭只有 X 一条路;建档 = `currency_war_interrupt_dialog.yml`(「按钮-放弃并结算」「按钮-暂时离开」为在册定位区,op 零消费)。
+- 阶段一身份分发(号制已退役,不引 0x):锚 = `货币战争-中断挑战弹窗.标识-中断挑战`(id_mark;单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。真模态:点遮罩无效,关闭只有 X 一条路;建档 = `currency_war_interrupt_dialog.yml`(「按钮-放弃并结算」「按钮-暂时离开」为在册定位区,op 零消费)。
 
 ## 2. 画面形态声明
 
@@ -15,6 +15,12 @@
 轻观察:观察 node = `entry_ok` area 锚原语 → obs = `CwScreenInterruptDialogObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/interrupt_dialog.py`;无 report 接口)。零 GameState 写端——弹窗内「小队生命值」为 HP 真值快照,对账备用、暂不消费。
 
 ## 4. 动作面
+
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| 无动作 op——单步推进留守 op 内(`progress_once`:点 X 关闭) | 画面 op 留守臂(`progress_once`,单尝试合同点 `货币战争-中断挑战弹窗.按钮-关闭` + `park_cursor`) | 无 report 接口(推进型规范形态,[op-layer.md](op-layer.md) §3) | 是(重入裁决交回):点 X → `round_wait` 重入,「标识-中断挑战」锚不在 = 已离开本画面 → `round_success` 交回外循环(见 §5) |
 
 `progress_once` = `round_by_find_and_click_area(货币战争-中断挑战弹窗.按钮-关闭)`(单尝试合同:按钮不在〔旧帧/已自关〕不再原地新帧重找,False 交决策动作 node fail——新帧重试在 loop 级承载,外循环重派即新帧)。点击成功 → `park_cursor(after_wait=0.1)`(光标离场防污染下一帧)。刻意不用 ESC:X 永远安全,ESC 在面板已关时落备战会再弹本弹窗。
 

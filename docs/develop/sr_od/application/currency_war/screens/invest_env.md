@@ -4,8 +4,8 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0s:id_mark 锚「货币战争-投资环境.标识-投资环境」。开场 1-1 前弹一次(后局中只弹投资策略,两画面不同 handler);接管局重入此屏同分支兜底分流。
-- 链序:分发成功后外循环先跑本 op,再链 `CwScreenWaitOneOne`(等 1-1 备战锚就绪,两 op 两对 journal 行)——链序 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2 投资环境行。分发 = 阶段一身份行,单一源同 §2.2。
+- 阶段一身份分发(号制已退役,不引 0x):id_mark 锚「货币战争-投资环境.标识-投资环境」;处理器臂 = `cw_loop.py::CwLoop._dispatch_identity_screen`(`if name == '货币战争-投资环境'` 链),登记清单 = `cw_loop.py::CwLoop.CW_DISPATCH_SCREENS`。分发单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2(新增画面三件套:建档 + 处理器臂 + 登记清单)。开场 1-1 前弹一次(后局中事件节点只弹投资策略,两画面不同 handler);接管局重入此屏走同分支兜底分流。
+- 链序:分发成功后外循环先跑本 op,再链 `CwScreenWaitOneOne`(等 1-1 备战锚就绪,两 op 两对 journal 行);链序代码锚 = `cw_loop.py::CwLoop.loop` 投资环境分支段。
 
 ## 2. 画面形态声明
 
@@ -17,7 +17,14 @@
 
 ## 4. 动作面
 
-决策动作 node 单决策体 `_decide_and_act`(零参:候选/稳定帧自观察轮 obs 载体):
+**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+
+| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+|---|---|---|---|
+| `CwActionPickInvestOp`(`CwActionPickInvestParam`,投资两屏共用注册行) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:定位点/确认钮/裁决词) | 自上报 `report_action_pick_invest_param` 发射相(意图遥测,容器零写);落地相由本 op 重入裁决出口持 `EVIDENCE_OVERLAY_CLOSED` 调用 | 否(非终结):发出后 `round_wait` 循环推进;落地由重入裁决判——锚不在 = success 交回外循环(见 §5) |
+| 整组重掷刷新(无注册表动作 op;`CwActionRefreshInvestCardsParam` 仅策略建议载体) | 画面 op 留守臂(`_decide_and_act` 刷新终结分支:「剩余次数」文本锚定偏移 `safe_click`) | 无自上报(计数读数只作零效果留证,缺陷分键 `invest_env.refresh_no_effect`) | **是(访问终结)**:点击 + 动画窗 + 留证重读后 `round_success` 即交回;外循环重进 = 入口重建 |
+
+单决策体 `_decide_and_act`(零参:候选/稳定帧自观察轮 obs 载体):
 
 ```
 names = opts 卡名;未注册环境名逐个告警(该项 env_fit 走中性 fallback)
@@ -57,7 +64,7 @@ act = match.strategy.decide_invest_env()(零参,候选读容器 invest_env_opts 
 | 条件 | 级别 | 交回落点 |
 |---|---|---|
 | 整组刷新点击 | **访问终结** | round_success 交回外循环重进 = 入口重建,重进后重观察重分类 |
-| 确认点击 | 机械交回 | 重入确认裁决:锚不在 = success 交回外循环(0s 链尾接 `CwScreenWaitOneOne`) |
+| 确认点击 | 机械交回 | 重入确认裁决:锚不在 = success 交回外循环(本屏身份臂链尾接 `CwScreenWaitOneOne`) |
 | 入口锚 miss | op FAIL | 交回外循环按当前画面重分发 |
 
 刷新 = 唯一引入新事实的动作,终结交回语义 = [op-layer.md](op-layer.md) §1.4;「确认离开 = 画面终结」= [README.md](README.md) §6。
@@ -71,7 +78,7 @@ act = match.strategy.decide_invest_env()(零参,候选读容器 invest_env_opts 
 
 ## 7. 子态与 overlay
 
-本屏无子态、无 overlay 覆盖面。0s 分支链尾的「等待 1-1」不是本屏子态,是独立推进 op(`CwScreenWaitOneOne`)。
+本屏无子态、无 overlay 覆盖面。本屏分发链尾的「等待 1-1」不是本屏子态,是独立推进 op(`CwScreenWaitOneOne`)。
 
 ## 8. 守卫与防线
 
@@ -83,7 +90,7 @@ act = match.strategy.decide_invest_env()(零参,候选读容器 invest_env_opts 
 
 ## 9. 遥测与锁面
 
-- journal op 名 =「投资环境」(0s 链另有「等待 1-1」独立行);分支屏记号 `_note_branch_screen` 两写点;op 内日志 tag = `[cw-env]`(计数读数/options/chose/reason、刷新终结交回)。
+- journal op 名 =「投资环境」(本屏身份臂链另有「等待 1-1」独立行);分支屏记号 `_note_branch_screen` 两写点;op 内日志 tag = `[cw-env]`(计数读数/options/chose/reason、刷新终结交回)。
 - 缺陷分键 = `invest_env.refresh_no_effect`(record_defect L2 留证)。
 - 测试锁:两 node 行为锁 + 写入流对拍 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`(重入裁决×门组合/观察门 miss 早退与 report/active_env 选卡时点写)。
 - game 侧知识:画面与机制(环境 = 整局增益) = [../../../../game/screens/currency_war_invest_env.md](../../../../../game/screens/currency_war_invest_env.md);环境刷新判据 = `kernel/cw_events.py` 环境帧分支 + [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1。
