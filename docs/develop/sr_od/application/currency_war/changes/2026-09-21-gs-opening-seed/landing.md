@@ -39,7 +39,9 @@ logic_rand 不沿用,design §2.5 末条)。附:A 类字段定义注释补「开
 缓存单例支)。**不含**:其他消费点(pick_supply/装备后果桥)迁移(队列①另批)。
 **设计依据**:design.md §2.5/§2.6-1/2/3/§2.7/§2.8
 **文件面**:`src/sr_od/application/currency_war/kernel/cw_gain_chain.py`、
-`sr-od-test/test/sr_od/application/currency_war/test_cw_gain_chain.py`
+`sr-od-test/test/sr_od/application/currency_war/test_cw_gain_chain.py`、
+`sr-od-test/test/sr_od/application/currency_war/test_cw_yinlang_phase32.py`(收口行为
+变化的连带适配——投资两屏生产链序在锚定前,通道期望 logic→logic_rand;3.2 验收补记)
 **依赖**:3.1(与在飞 invest-landing-chain 批的文件次序在进度账本定序)
 **优先级建议**:5
 **完成判据**:

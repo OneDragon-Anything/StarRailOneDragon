@@ -182,6 +182,8 @@
   | 动作上报族 A 类目标若干(kernel/cw_action_report/) | 各动作域 | 锚定后动作,天然合规(登记备查) |
   | `cw_strategy_manager`(职级难度第二写端) | selected_difficulty(C 类不种) | 并入 `_absorb_selected_difficulty` 同行处置:种子不涉,行为不变 |
   | `cw_loop`(B 类安全网域直写) | node 等不种域 | 非裁决对象 |
+  | `cw_game_state._resync_board_delta`(行域派生散写) | board | 不收口:锚定前不可达(board 无观察基座早退)、派生随行域写;3.2 验收补录(r1 census grep 漏捕) |
+  | 欢愉契约临时翻面(`cw_gain_chain` on_env_gained 直写) | bench/equips | 不迁:无条件 rand 直写非选择点,迁移反破坏锚定后临时仪表 rand 留证语义(定谳) |
 
   (census 实码核验基线 = `reviews/3.1-r1.md` census 附项;清单外新写端 = 回修本表,禁静默。)
 - **carry 守卫收窄(封洗白通道)**:`carry()` 现守卫只查 `value is None`
