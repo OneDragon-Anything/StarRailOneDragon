@@ -13,7 +13,8 @@
 - 效果原文(`data/cw_invest_data.py:451`,id=1201,效果原文直读源):「获得
   【银狼LV.999】,她每次触发独立羁绊【头号玩家】选项时,获得【火花】或
   【开拓者·欢愉】。」
-- 状态:草案(r1 攻击 11 条处置完毕,候复审)
+- 状态:定稿(r1 11 条 + r2 5 条处置完毕;r3 独立复攻 0 阻断维持定稿,应修三条
+  已折入本稿)
 - 文档清单:无详设(单文档方案,本篇即完整设计)
 
 ## 1. 问题与动机
@@ -67,8 +68,12 @@
   如实入账;
 - sim 引擎对 planner 选择链的接线(rng 流键注入的 sim 侧消费)不在本批(报告
   函数 rng 注入缺省 None = 实机猜测语义,与骇客改件采样同约定);
-- 接管局局限如实申报(§2.6-4):接管局 `active_env` 无写端(C 类不种),条件腿
-  识别不可达,真值归观察覆盖;
+- **接管局限重定性(r3-3,gs-opening-seed 分诊核对)**:`active_env` 属 A 类
+  (种子 '',gs-opening-seed §2.2 A 表),非 C 类——原申报依据有误。真实边界:
+  bot **走过投资环境屏**时 `gain_invest_env` 照常写 `active_env`(cw_loop 画面分发
+  对该屏无开局/接管门),接管恰逢选卡画面则锚定后条件腿完全可达;接管**前**已选
+  欢愉契约(bot 未走过该屏)时 `active_env` 保持种子 '' → rider 不授予,真值归
+  观察覆盖。
 - **条件腿族面边界(核三申报)**:ENV_GIFTS `chars_conditional` 非空条目共 8 个
   环境(量子同频/公司/持续伤害/战技点/星核猎手/欢愉契约/命运圣杯/特邀专家:银狼,
   含 8+ 条件腿单位),同属「条件腿声明性数据无引擎」族——本批只建模欢愉契约,理由 =
@@ -91,15 +96,19 @@
    pick_invest_env 同构;cw_gain_chain 不反向 import action_report,零循环)。
    evidence = `joy_conditional:<单位名>`;producer 沿用 `_PLANNER_PRODUCER`。
    **调用点级 best-effort(显式裁定)**:rider 调用包 try/except——异常 log +
-   缺陷留证(`kind = 'joy_conditional_grant_failed'`)后照常继续腿型分派。except
+   缺陷留证(`kind = 'joy_conditional_grant_failed'`,字段 = expected
+   '条件腿授予成功'/actual 异常摘要/evidence `joy_conditional:<单位名>`,对齐
+   r2-5 处置方向)后照常继续腿型分派。except
    词表 = `except Exception`(noqa BLE001,先例 = cw_gain_chain.py:470/:585 同款
    形态)。理由 = 授予与选项应用是两条独立因果,授予失败不得拖垮选项应用;这是
    「链原语零吞错」纪律的**调用点级显式例外**(链内部照旧零吞错,与 §2.1/§2.4
    登记腿 best-effort 同族先例),随正本更新在 gain-chain.md §6 申报。
-2. **随机单位采样**:rng 注入先例同骇客改件(`roll_hacker_mod` 形态)——报告函数
-   新增 `rng: random.Random | None = None` 关键字参数,缺省 None = 实机未播种
-   (采样是猜测,sim 传流键 = 世界真值,同一上报函数两副面孔);`random.choice`
-   均匀二选一,披露键注释就地申报(均匀分布未实测,候校准)。
+2. **随机单位采样**:候选集单一源 = `cw_investments.ENV_GIFTS['欢愉契约'].
+   chars_conditional` 名集(结构化在册数据,**禁字面硬编码第二抄本**);rng 注入
+   先例同骇客改件(`roll_hacker_mod` 形态)——报告函数新增 `rng: random.Random |
+   None = None` 关键字参数,缺省 None = 实机未播种(采样是猜测,sim 传流键 = 世界
+   真值,同一上报函数两副面孔);`random.choice` 均匀二选一,披露键注释就地申报
+   (均匀分布未实测,候校准)。
 3. **rand 语义(按实码口径)**:授予体含采样(二选一)→ `rand=True`;`anchor_aware_write`
    的 rand 形参**优先于锚定状态**(`rand or not prep_anchored` 短路)——rand=True
    **全通道 logic_rand,锚定前后同通道**(采样纪律正参推论,gain-chain.md §5)。
@@ -120,13 +129,16 @@
    `classify_planner_leg` 关键词降级分支(「弱化/降低敌人」→ weaken)与
    `PLANNER_LEG_WEAKEN` 常量及腿型词表注释:含弱化词且装备名锚未命中的卡文改落
    **unknown**(留证行,失败显影方向——静默零记账变响亮申报);②`decide_planner`
-   弱化档打分(55 分常数)**及其 docstring 三层定序自述**删除,打分两档制 =
-   升费档 > 装备档(含弱化词未知名卡文按装备档回落);③`pick_planner.py` weaken
-   派发分支删除(终态兜底零写保留,reason 改 `unrouted_leg_zero_write`,不再以
-   weaken 命名)**+ 模块 docstring(:19-20)与函数 docstring(:67)的 weaken 字样
-   同步**;④`cw_overlay_pick_action.py` 腿型注释同步。破解芯片碰撞治理(装备域锚
-   先行)不受影响;退役判据 = 全仓(src)grep weaken 残留清零(sim 零消费已核;
-   changes/ 历史件与本迭代 attack.md 不在判据域)。
+   弱化档打分(55 分常数)**及其 docstring 三层定序自述删除——含散布在其余条目内的
+   弱化引用两处**(:852「落到弱化档之下」/:856「不跨域压弱化档」,随两档制改写一并
+   清除),打分两档制 = 升费档 > 装备档(含弱化词未知名卡文按装备档回落);③
+   `pick_planner.py` weaken 派发分支删除(终态兜底零写保留,reason 改
+   `unrouted_leg_zero_write`,不再以 weaken 命名)**+ 模块 docstring(:19-20)与
+   函数 docstring(:67)的 weaken 字样同步**;④`cw_overlay_pick_action.py` 腿型
+   注释同步。破解芯片碰撞治理(装备域锚先行)不受影响;退役判据 =
+   全仓(src)grep `weaken|弱化档` 残留清零(**判据词双语**——decide_planner 的
+   中文弱化引用对英文字面 grep 零辖域,r3-2;sim 零消费已核;changes/ 历史件与本
+   迭代 attack*.md 不在判据域)。
 
 ### 2.3 触发计数正确性(证据闩语义)
 
@@ -149,8 +161,10 @@
 
 ### 2.4 已知边界(如实申报)
 
-- **接管局**:active_env 接管局无写端(C 类不种,gs-opening-seed §2.2),条件腿
-  在接管段不可达——授予不入账,真值归观察覆盖;
+- **接管局(r3-3 重定性)**:`active_env` 属 A 类(种子 '',gs-opening-seed §2.2)。
+  bot 走过投资环境屏即照常写入(画面分发无开局/接管门)→ 锚定后条件腿可达;接管
+  **前**已选欢愉契约而 bot 未走过该屏 → `active_env` 保持种子 '' → rider 不授予,
+  真值归观察覆盖(残留局限窄化至此);
 - **3★5 费狼尊接管后**:弹窗是否停止 = 游戏行为未实证;若停止则触发自然归零,
   模型无需特判(op 不报 = 不授予);
 - **授予分布**:均匀二选一系原文「或」+ GiftGrant「随机获得」的建模口径,分布

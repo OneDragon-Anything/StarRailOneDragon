@@ -26,7 +26,8 @@
 **优先级建议**:5
 **完成判据**:
 - 行为对照 design §2.2-§2.5:通道语义(未闩=rand/置闩后 rand 授予**仍 = logic_rand**,
-  rand 形参优先于闩)、在册判定、rng 注入确定性、三腿计数、发射相零触发、时序锁;
+  rand 形参优先于闩)、在册判定、rng 注入确定性、三腿计数、发射相零触发、时序锁、
+  覆盖校准面 = 覆盖时落 `logic_rand_outcome` 行;
 - 撤闩:`on_env_gained` 欢愉契约仅 immediate 腿,provisional 行零发射(design §2.6);
 - weaken 退役锁(design §2.6):无名弱化卡文 → unknown、破解芯片仍 equip、打分
   零弱化档、终态兜底 reason 更名;
