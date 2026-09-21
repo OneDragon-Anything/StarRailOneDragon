@@ -61,6 +61,7 @@ from sr_od.application.currency_war.kernel.cw_action_report.zero_writes import (
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     game_state_from_ctx,
+    report_node_advance,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -211,8 +212,16 @@ class CwActionPickSupplyOp(SrOperation):
         op.ctx.controller.mouse_move(target)
         op.ctx.controller.click(target)
         time.sleep(0.6)
-        # 确认(supply 按钮-确认 area;T#103 area 化)
-        op.round_by_find_and_click_area(op.screenshot(), '货币战争-补给', '按钮-确认', success_wait=1.5)
+        # 确认(supply 按钮-确认 area;T#103 area 化)。转移证据 = 下一节点
+        # 备战锚(E11:补给确认 → 下一节点干净备战帧,无自动弹链)。
+        # 辖域契约修正案(迭代 2026-09-20-node-advance-action-report
+        # design §2.3 触发点 2):转移证据在本 op 的角色 = **上报时点门**
+        # (决定报不报),非执行验证——证据 miss 不上报、不重试、不恢复、
+        # 不判效,兜底 = 观察锚定补推(design §2.2);故不把 until 塞进
+        # 点击链(until_find_all 会驱节点 runner 轮询重试 = 验证编排,
+        # 与 op-layer §1.2「动作 op 禁验证」禁令相抵)。
+        confirm_result = op.round_by_find_and_click_area(
+            op.screenshot(), '货币战争-补给', '按钮-确认', success_wait=1.5)
         # 到账登记(§3.3 #18 ConfirmSupply):owned += 选中装备名(粗粒度
         # expected,单轮即回备战覆盖点实读清账;equip 未读到 = 无 item 不登记)。
         if match is not None and picked is not None and picked.get('equip'):
@@ -231,6 +240,13 @@ class CwActionPickSupplyOp(SrOperation):
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
+            # 节点推进上报(supply_confirm;时点门 = 备战锚单探在场的
+            # 转移证据,设计单一源 = design §2.3 触发点 2)。证据 miss =
+            # 不上报不重试(兜底 = 观察锚定补推;局外 gs 缺席同跳过)。
+            if (confirm_result.is_success and op.round_by_find_area(
+                    op.screenshot(), '货币战争-备战',
+                    '标识-备战阶段').is_success):
+                report_node_advance(gs, trigger='supply_confirm')
         # 选定事实现役归宿 = journal chosen 域 + 到账登记。
         return self.round_success('补给选择确认链已发')
 

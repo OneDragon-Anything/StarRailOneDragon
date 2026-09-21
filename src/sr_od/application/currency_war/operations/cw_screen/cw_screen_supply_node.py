@@ -27,7 +27,9 @@ cw_loop 合成 supply 遥测行消费(synthetic_supply 合成行)。
 T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点击点由 read_supply_options 按列返回。
 
 形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两段
-直继承 SrOperation。观察 node = 节点完成门(``_in_node``,miss = overlay 消失 /
+直继承 SrOperation。观察 node 另承载节点条锚定(顶部「备战阶段 X-Y」→
+``observe_node_anchor``;迭代 2026-09-20-node-advance-action-report
+design §2.3 触发点 2/§2.4 写端 2——补给「自动弹」形态的唯一锚定点)。观察 node = 节点完成门(``_in_node``,miss = overlay 消失 /
 进了下一节点 = 节点完成,success 交回外层)+ 选项一次读(每访问恰一次,与
 现役决策体读同帧等价,迁移不增加读屏)→ ``report_screen_supply_node_obs``
 落容器 ``supply``(空 = 读缺 CARD_BODY 兜底路径,闸在 report 内)→ obs 挂
@@ -55,7 +57,10 @@ from sr_od.application.currency_war.kernel.cw_action_report.pick_supply import (
     report_action_pick_supply_param,
 )
 from sr_od.application.currency_war.kernel.cw_events import normalize_equip_name
-from sr_od.application.currency_war.kernel.cw_game_state import ChannelSig
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
+    observe_node_anchor,
+)
 from sr_od.application.currency_war.kernel.cw_screen_report.supply_node import (
     CwScreenSupplyNodeObs,
     report_screen_supply_node_obs,
@@ -70,6 +75,11 @@ from sr_od.operations.sr_operation import SrOperation
 # 「剩余次数：N」正则(遭遇/投资屏 reader 同款形态,cw_node_obs._REMAIN_RE 族;
 # 全角/半角冒号都认,OCR 渲染不一)。
 _REMAIN_RE = re.compile(r'剩余次数\s*[：:]\s*(\d+)')
+
+# 补给屏顶部节点条「备战阶段 X-Y」读数正则(cw_observation.read_phase_round
+# 核心同款 "1-3" 形态;该 reader 绑备战屏 A_PHASE 区且带 last-known 缓存/
+# 单调守卫,补给屏锚定不经它——禁猜语义下读不得即跳过,不吃兜底值)。
+_NODE_BAR_RE = re.compile(r'(\d)\s*-\s*(\d)')
 
 
 class CwScreenSupplyNode(SrOperation):
@@ -139,6 +149,37 @@ class CwScreenSupplyNode(SrOperation):
                 return Point(int(mrl.max.center.x), int(mrl.max.center.y))
         return None
 
+    def _read_node_bar(self, screen) -> int | None:
+        """顶部节点条「备战阶段 X-Y」读数(视觉实证 V3:顶部节点条屏显,
+        备战屏 A_PHASE 识别区不含该位置,故本屏独立建档「标识-备战阶段」)。
+
+        OCR 带 = 建档 pc_rect 外扩余量(x ±30 / y ±15,与 _read_refresh_anchor
+        同款;crop_first=False 全帧识别按带过滤,防小框裁剪漏检)。
+        正则命中 + 值域内(plane∈1-3/round≤9,与 read_phase_round 值域守卫
+        同源——OCR 抓错源当 miss)→ 序号 (plane-1)*9+round;读不得/值域外
+        → None(调用方 = 跳过,禁猜)。纯读。
+        """
+        if screen is None:
+            return None
+        _area = self.ctx.screen_loader.get_area('货币战争-补给', '标识-备战阶段')
+        if _area is None or _area.pc_rect is None:
+            return None
+        _r = _area.pc_rect
+        _band = Rect(max(0, _r.x1 - 30), max(0, _r.y1 - 15),
+                     _r.x2 + 30, _r.y2 + 15)
+        ocr_map = self.ctx.ocr_service.get_ocr_result_map(
+            image=screen, rect=_band, color_range=None, crop_first=False,
+        )
+        for text, mrl in ocr_map.items():
+            if mrl.max is None:
+                continue
+            m = _NODE_BAR_RE.search(text)
+            if m:
+                plane, rnd = int(m.group(1)), int(m.group(2))
+                if 1 <= plane <= 3 and 1 <= rnd <= 9:
+                    return (plane - 1) * 9 + rnd
+        return None
+
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
         """节点完成门 + 选项一次读 → report 落容器。
@@ -158,6 +199,15 @@ class CwScreenSupplyNode(SrOperation):
                                     screen=screen)
         _match = getattr(self.ctx, 'cw_match', None)
         _gs = getattr(_match, 'gs', None) if _match is not None else None
+        # 节点条锚定(补给「自动弹」形态——结算确认直接弹补给屏,无备战帧
+        # 可锚——的唯一锚定点;divert 形态 = 备战帧已锚,本读数走处置规则表
+        # reanchor/stale_dropped 分支承接,design §2.2/§2.4 写端 2)。
+        # 读不得/局外 gs 缺席 = 跳过(禁猜;best-effort)。
+        _ordinal = self._read_node_bar(screen)
+        if _ordinal is not None and _gs is not None:
+            observe_node_anchor(_gs, _ordinal,
+                                trigger_screen='货币战争-补给',
+                                actor='CwScreenSupplyNode')
         if _gs is not None:
             report_screen_supply_node_obs(_gs, obs)
         self._obs = obs
