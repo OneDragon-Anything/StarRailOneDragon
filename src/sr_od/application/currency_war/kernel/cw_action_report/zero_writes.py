@@ -44,13 +44,11 @@ def report_action_open_box_param(gs: GameState, param: Any, sig: ChannelSig) -> 
     return _report_zero_write(gs, param, sig, 'zero_write(open_box)')
 
 
-
-# report_action_furnace_use_param / report_action_privilege_card_use_param /
-# report_action_wrench_use_param / report_action_precision_wrench_use_param /
-# report_action_staff_projector_use_param / report_action_perfect_projector_
-# use_param / report_action_lucky_token_use_param 已迁出零写族(tool-gain-
-# report 迭代:工具上报升格为容器写,机械执行直接上报写容器):分步实现
-# 正本 = 同包 tool_use(冶金炉采样池 sim 同源 + 投影仪走获得链);包级
+# 工具族七上报(report_action_furnace_use_param / report_action_privilege_card_
+# use_param / report_action_wrench_use_param / report_action_precision_wrench_
+# use_param / report_action_staff_projector_use_param / report_action_perfect_
+# projector_use_param / report_action_lucky_token_use_param)= 容器写形态,
+# 单一源 = 同包 tool_use(冶金炉采样池 sim 同源 + 投影仪走获得链);包级
 # ``__getattr__`` 命名规约解析具名模块先于本模块,直接 import 零写委托
 # 的旧消费面已随迁改直取具名模块。
 
