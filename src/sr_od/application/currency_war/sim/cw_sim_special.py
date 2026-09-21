@@ -3,12 +3,12 @@
 设计正本 = ``docs/develop/sr_od/application/currency_war/changes/
 2026-09-15-sim-redesign/design.md`` §2.2 M21、U26 第一期定稿口径:
 
-- **银狼LV.999**(注册表单条目 ``data/cw_chars.py``,起始 3 费):
-  升费口径 = 2星→4费、3星(5费线)→5费(U26 定稿口径,标注读数候
-  实机核对);**备战栏不升费**(拖上场才变费,gameplay「角色升星」
-  节)——有效费用 = 星级 × 上场态双输入;升费前商店只出基础费用档
-  = 池过滤器语义(注册表仅 3 费条目,4/5 费档不作为独立卡名存在,
-  池面天然只出 3 费档——无需额外过滤器,注册表现状即口径);
+- **银狼LV.999**(注册表单条目 ``data/cw_chars.py``,起始 3 费):当前
+  费用档 = 容器推演状态 ``gs.lv999_cost_tier``(读口唯一 =
+  ``kernel.cw_economy.effective_cost``;写端 = pick_planner 升费腿 /
+  deploy_move 上阵变费腿;2026-09-18 定谳:升费 = 变下一个费用档的
+  1 星)。池桶归属(商店发牌/效果授予采样空间)经 ``kernel.cw_pool``
+  档感知出口承接,本模块不再持有费用档派生口径;
 - 「我来当策划」二选一 overlay(升费 vs 其他)= 银狼首次升 2 星触发
   (有档触发,gameplay「角色升星」节)→ M22 planner 族(U14 已裁决
   纳入);引擎升星钩子在合成腿后消费触发判据,「首次」语义由引擎
@@ -18,8 +18,9 @@
   kernel 转移函数内,sim 侧只供查询口与测试锚);
 - 三星五费特效(≈无敌)= M13 战力特征,第一期随机输出面下无消费,
   挂披露;
-- 试用角色 = 账号未拥有、面板中等(``research/equipment_mechanics.md``
-  §7)——与自有同池同计数(U11),sim 无账号概念,无差异建模。
+- 试用角色 = 账号未拥有、面板中等(``docs/game/gameplay/currency_war.md``
+  「试用角色」行 :81)——与自有同池同计数,sim 无账号概念,无差异
+  建模。
 
 随机量与流键:无(全部确定性规则;「我来当策划」选项生成归 M22
 ``M21/planner``→``M22/planner`` 流)。
@@ -35,27 +36,8 @@ from sr_od.application.currency_war.data.cw_chars import (
 #: 「LV.999」后缀,与普通「银狼」4 费条目是两个角色)。
 SILVER_WOLF_ID: str = '银狼LV.999'
 
-#: 银狼升费口径表(U26:星级 → 有效费用;3星(5费线)→5费)。
-SILVER_WOLF_COST_BY_STAR: dict[int, int] = {1: 3, 2: 4, 3: 5}
-
 #: 三星五费特效披露键(M13 战力特征,第一期无消费面)。
 THREE_STAR_FIVE_COST_PENDING: str = 'three_star_five_cost_effect_pending_u26'
-
-
-def silver_wolf_effective_cost(char_id: str, star: int, *,
-                               on_front: bool) -> int | None:
-    """银狼有效费用(U26 口径;非银狼 → None 非本辖域)。
-
-    - 上场态(on_front=True):星级查表 1→3 / 2→4 / 3→5(升星拖上场
-      变费);
-    - 备战态:恒基础 3 费(备战栏不升费,gameplay「角色升星」节);
-      星级超表(非法态)按基础费保守回落。
-    """
-    if char_id != SILVER_WOLF_ID:
-        return None
-    if not on_front:
-        return SILVER_WOLF_COST_BY_STAR[1]
-    return SILVER_WOLF_COST_BY_STAR.get(max(1, min(3, int(star))), 3)
 
 
 def planner_overlay_due(char_id: str, star_before: int,

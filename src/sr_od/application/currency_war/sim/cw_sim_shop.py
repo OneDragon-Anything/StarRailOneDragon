@@ -39,8 +39,8 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     ShopPayload,
     ShopSlot,
 )
+from sr_od.application.currency_war.kernel.cw_pool import drawable_names
 from sr_od.application.currency_war.sim.cw_sim_base import obs_sig, sim_evidence
-from sr_od.application.currency_war.sim.cw_sim_pool import drawable_names
 
 #: 轮岗建模假设档披露键(1/5 均匀系假设,实机待核;随局披露面消费)。
 ROTATION_ASSUMPTION_DISCLOSURE: str = 'rotation_tier_assumed_uniform'
