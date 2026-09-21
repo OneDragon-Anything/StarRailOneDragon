@@ -164,9 +164,11 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'prev_node_spent': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='上节点花费位(§3.3.9,仅逻辑写)'),
-    'encounter_refresh_used': ProjectionAuditRow(
-        status=AUDIT_PROCESS_ONLY,
-        basis='节点屏刷新计数(on_outcome 发射型钩子,§3.4.1)'),
+    'encounter_refresh_left': ProjectionAuditRow(
+        status=AUDIT_WRITE_END,
+        basis='遭遇刷新剩余次数(屏上「剩余次数：N」观察真值;观察写端'
+              ' = report_screen_encounter_obs 摄入,读缺跳写;§3.4.1)'
+              ' + 观察覆盖'),
     'supply_refresh_left': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='补给刷新剩余次数(屏上「剩余次数：N」观察真值;观察写端'
@@ -273,10 +275,6 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'equip_pick_opts': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='选择族读面,零逻辑写端'),
-    'encounter_refreshed_in_visit': ProjectionAuditRow(
-        status=AUDIT_PROCESS_ONLY,
-        basis='刷新建议 per-visit 位(写 False/True 均 fail-loud),'
-              '无 OCR 读端'),
     # —— 十事件屏选择结果(bot 决策事实)——
     'chosen_encounter': ProjectionAuditRow(
         status=AUDIT_WRITE_END,

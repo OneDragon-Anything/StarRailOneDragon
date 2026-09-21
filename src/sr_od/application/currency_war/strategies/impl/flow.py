@@ -513,12 +513,13 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
 
     def decide_encounter(self) -> CwActionPickEncounterParam | CwActionRefreshNodeOptionsParam:
         """遭遇难度/词缀避开(终态零参口;候选 = ``gs.encounter`` payload)。
-        刷新旗标输入源 = ``gs.encounter_refreshed_in_visit`` per-visit 位
-        (details §2.3 读点声明;None 缺省 False = 第三方/测试直调口径;
-        禁误接累计计数 gs.encounter_refresh_used)。"""
+        刷新闸输入源 = ``gs.encounter_refresh_left`` 剩余语义观察真值(用户
+        裁定 2026-09-21,全域规范 = op-layer.md §1.4;剩余 ≤0 或 None =
+        已刷尽/未观察 → refresh_used=True,kernel 按原评分直接选卡)。"""
         options = self._require_slot_options(self.gs.encounter,
                                              'encounter').options
-        refresh_used = bool(self.gs.encounter_refreshed_in_visit.value or False)
+        _left = self.gs.encounter_refresh_left.value
+        refresh_used = not (_left is not None and int(_left) > 0)
         self._consume_prep_direction_frame()   # ADR-0583 入口内务
         pick = cw_events.decide_encounter(options, self.gs,
                                           self.state.target_comp, self.config,

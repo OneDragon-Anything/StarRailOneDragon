@@ -212,8 +212,9 @@ class MandateV1Strategy(CwFlowStrategy):
         历史 EV 候选核(mandate_v1/encounter.py)搁置让位、保留禁删;基线
         ``cw_events.decide_encounter`` 零触碰(其他策略核行为不变)。
         入口内务 = 备战帧代次消费(覆写不落基类实现,须自带)。
-        刷新旗标输入源 = ``gs.encounter_refreshed_in_visit`` per-visit 位
-        (details §2.3 读点声明,handler 写端;None 缺省 False)。
+        刷新闸输入源 = ``gs.encounter_refresh_left`` 剩余语义观察真值(用户
+        裁定 2026-09-21,全域规范 = op-layer.md §1.4;剩余 ≤0 或 None =
+        已刷尽/未观察 → refresh_used=True,判据按原评分直接选卡)。
         输出包装(终态契约 §2.2):刷新建议 = CwActionRefreshNodeOptionsParam,选卡 =
         CwActionPickEncounterParam(两型互斥单发)。
         """
@@ -224,8 +225,8 @@ class MandateV1Strategy(CwFlowStrategy):
                 'decide_encounter: gs.encounter payload 槽离屏'
                 '(None = 观察层失约,禁静默按空态决策)')
         options = payload.options
-        refresh_used = bool(self.gs.encounter_refreshed_in_visit.value
-                            or False)
+        _left = self.gs.encounter_refresh_left.value
+        refresh_used = not (_left is not None and int(_left) > 0)
         from sr_od.application.currency_war.kernel import (
             cw_encounter_selection,
         )

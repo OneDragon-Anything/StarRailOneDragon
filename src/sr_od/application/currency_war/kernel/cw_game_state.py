@@ -169,12 +169,13 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     # (refresh_counters 域已随 2026-09-18 用户裁决迁出容器:三字段住效果
     #  账本 ActiveEffectInventory(统一计算,写端 = 刷新上报函数),域版本
     #  面退役,考古走 git。)
-    'node_screen_refresh': 3,  # 节点屏刷新计数组(§3.4.1-§3.4.4;遭遇/补给/环境/策略逐卡)
+    'node_screen_refresh': 4,  # 节点屏刷新计数组(§3.4.1-§3.4.4;遭遇/补给/环境/策略逐卡)
+                               # 域版本 4 = encounter 侧换剩余语义(旧「已用」计数与
+                               # per-visit 位退役,新增
+                               # 顶层字段 encounter_refresh_left;迭代
+                               # changes/2026-09-21-event-refresh-unify-supply-pick 3.3);
                                # 域版本 3 = supply 侧换剩余语义(旧「已用」计数退役,
-                               # 新增顶层字段 supply_refresh_left;迭代
-                               # changes/2026-09-21-event-refresh-unify-supply-pick 3.2);
-                               # 域版本 2 = 新增顶层字段 encounter_refreshed_in_visit
-                               # (encounter 刷新建议 per-visit 位,终态契约)
+                               # 新增顶层字段 supply_refresh_left;同迭代 3.2)
     'invest_opts': 1,          # 投资双画面候选槽(§3.4 终态契约八新槽;str 原文名)
     'megastar_opts': 1,        # 盛会之星候选槽(list[MegastarOption],typed)
     'partner_opts': 1,         # 列车同行候选槽(list[PartnerOption],typed)
@@ -1776,7 +1777,6 @@ def seed_opening_state(gs: GameState) -> None:
     _seed(gs.enemy_affixes, [])
     _seed(gs.shop_refresh_cost, REFRESH_COST_BASE)
     _seed(gs.prev_node_spent, False)
-    _seed(gs.encounter_refresh_used, 0)
     _seed(gs.strategy_refresh_left, {})
 
 
@@ -2046,12 +2046,11 @@ class GameState:
     prev_node_spent: Field[bool] = field(default_factory=Field)      # 上节点是否花费(§3.3.9;存款回报条件输入,观察需求;开局种子底座=False 开局无花费)
 
     # —— 节点屏刷新计数组(§3.4.1-§3.4.4;渠道② logic_action,写入=仅逻辑)——
-    # 写端现状:**invest 两屏 + supply = 剩余语义**(用户裁定 2026-09-21:game
+    # 写端现状:**全域 = 剩余语义**(用户裁定 2026-09-21:game
     # state 就记录画面可观察的剩余次数——屏上数字即真值,观察写端逐访问
     # 覆盖,刷新后下帧观察直接给新真值,零动作侧记账):观察写端 = 各屏观察
-    # report 摄入 OCR 读数(读缺跳写,值留观察覆盖);encounter = 已用语义
-    # (在档欠账,剩余语义清偿归 encounter 批辖内)。
-    encounter_refresh_used: Field[int] = field(default_factory=Field)    # 遭遇刷新已用(§3.4.1;写端 = CwScreenEncounter on_outcome 发射型钩子;开局种子底座=0 未刷新过)
+    # report 摄入 OCR 读数(读缺跳写,值留观察覆盖)。
+    encounter_refresh_left: Field[int] = field(default_factory=Field)     # 遭遇刷新剩余次数(§3.4.1;屏上「剩余次数：N」观察真值,None=未观察;观察写端 = report_screen_encounter_obs 摄入,读缺跳写、逐访问覆盖,无开局种子;sim 无遭遇刷新执行面 = 无 sim 写端;原「已用」计数与 per-visit 位随剩余语义化退役,闸消费与写端全迁本字段,考古走 git)
     supply_refresh_left: Field[int] = field(default_factory=Field)       # 补给刷新剩余次数(§3.4.2;屏上「剩余次数：N」观察真值,None=未观察;观察写端 = report_screen_supply_node_obs 摄入,读缺跳写、逐访问覆盖,无开局种子;sim 写端 = cw_sim_engine 补给节点入口初始 left 与刷新递减;原「已用」计数字段随剩余语义化退役,闸消费与写端全迁本字段,考古走 git)
     env_refresh_left: Field[int] = field(default_factory=Field)          # 投资环境刷新剩余次数(§3.4.3;屏上「剩余次数：N」观察真值;观察写端 = report_screen_invest_env_obs 摄入,读缺跳写;原 env_refresh_used「已用」字段随剩余语义化改名退役——零写端在册,改名零消费断链)
     strategy_refresh_left: Field[dict[str, int]] = field(default_factory=Field)  # 投资策略逐卡刷新剩余次数(§3.4.4;键 = 注册表规范卡名 normalize_invest_name 归一后——效果注册表 STRATEGY_EFFECTS 即以规范名为键,观察写端 OCR 名经同一归一函数入键,免双坐标系换算;观察写端 = report_screen_invest_strategy_obs 摄入「刷新次数N」读数,读缺键跳写、已观察键覆盖)。原 strategy_refresh_used「已用」随剩余语义化改名退役(其注释自declared「on_outcome 发射型钩子」写端与全仓零写端现状矛盾,本批改名一并清除;闸消费口径 = 剩余 ≤0 = 尽;开局种子底座={} 无持卡,与键粒度增量写端协同)
@@ -2191,10 +2190,6 @@ class GameState:
     fortune_opts: Field[list[str] | None] = field(default_factory=Field)
     expert_invite: Field[ExpertInvitePayload | None] = field(default_factory=Field)
     equip_pick_opts: Field[list[str] | None] = field(default_factory=Field)
-    # encounter 刷新建议 per-visit 位(契约:写 False = 各决策路径首调前置,
-    # 写 True = 刷新发射同步直写,均 fail-loud;读侧 None 缺省 False;
-    # journal 归属 = write_logic 常规规则,不适用刷新计数组豁免类)
-    encounter_refreshed_in_visit: Field[bool] = field(default_factory=Field)
 
     # —— 十事件屏选择结果(§3.4/§4 事件选择:chosen_* 由选择 handler 单次逻辑写入)——
     chosen_encounter: Field[tuple[int, str] | None] = field(default_factory=Field)   # (难度档, 奖励文本)
