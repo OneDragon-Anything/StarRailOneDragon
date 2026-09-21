@@ -1,14 +1,14 @@
 """货币战争 星徽详情弹窗 op(空决策形态;ADR-0584,A8)。
 
-「XX星徽套组」详情面板(1d,采晶矿/装备操作误点开星徽图标)的处理迁移:
+「XX星徽套组」详情面板(采晶矿/装备操作误点开星徽图标)的处理迁移:
 点右上 X 关回备战,无验效。**刻意不用 ESC**(bug#2,原分支注释随迁,
 禁在 op 内「顺手统一」成 ESC):面板已关时 ESC 落备战弹「中断挑战」;
 X 是弹窗内坐标永远安全。背景:2026-08-17 M53 停机建档。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;
 推进型空决策骨架逐屏内联,无共享基类——模式一致即重复):观察 node =
-入口门(双锚其一:「标识-流派星徽」area 锚 ∨「标识-套组标题」,与外
-循环 1d 分发判定同源;miss 未发 = round_fail 交回外循环重判,「下一帧
+入口门(双锚其一:「标识-流派星徽」area 锚 ∨「标识-套组标题」——op 门 =
+OR,分发面 = 建档双 id_mark 组合 AND,本门比分发宽;miss 未发 = round_fail 交回外循环重判,「下一帧
 重判」是外循环职责)+ obs{on_screen} 挂实例属性(空决策形态无 report:
 本屏零容器写点,obs 类住 kernel/cw_screen_report/emblem_detail_popup.py,
 import 构造即可)。决策动作 node = 重入裁决顶部(点 X 已发 → 双锚 miss
@@ -36,7 +36,7 @@ class CwScreenEmblemDetailPopup(SrOperation):
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-星徽详情')
-        # 画面档名/主锚(与外循环 1d 分发判定同源;实例属性)
+        # 画面档名/主锚(实例属性)
         self._screen_name: str = '货币战争-星徽详情'
         self._entry_area: str = '标识-流派星徽'
         # 推进已发标志(验证废除形态):区分「首发锚 miss = 误分发 fail 交回」
@@ -46,7 +46,8 @@ class CwScreenEmblemDetailPopup(SrOperation):
         self._obs: CwScreenEmblemDetailPopupObs | None = None
 
     def entry_ok(self, screen: MatLike | None) -> bool:
-        """入口观察:双锚其一即接管(与外循环 1d 分发判定同源)。"""
+        """入口观察:双锚其一即接管(OR;分发 = 建档组合 AND,本门更宽
+        ——变体帧经兜底重判后的自愈面)。"""
         if self.round_by_find_area(screen, self._screen_name,
                                    self._entry_area,
                                    crop_first=False).is_success:

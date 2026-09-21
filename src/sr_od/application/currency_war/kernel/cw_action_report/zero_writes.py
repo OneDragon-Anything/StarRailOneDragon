@@ -153,6 +153,13 @@ def report_action_pick_expert_invite_param(gs: GameState, param: Any, sig: Chann
 
 
 
+# —— 刷新建议三动作(遭遇/补给/投资):参数类在册(CW_ACTION_TYPES)、
+#    生产发射面留守画面 op 刷新链,不经动作 op 自上报——本组函数零生产
+#    调用方,在场 = 命名规约完备锁对象(test_cw_action_report_contract
+#    遍历词表逐类断言「每动作恰一个上报函数」),禁当死代码删除。——
+
+
+
 def report_action_refresh_node_options_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """遭遇刷新建议上报:刷新链 = 同访问重决策,容器零写。"""
     return _report_zero_write(gs, param, sig, 'zero_write(refresh_node_options)')

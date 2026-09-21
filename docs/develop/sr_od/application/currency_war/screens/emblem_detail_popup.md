@@ -1,6 +1,6 @@
 # 星徽详情弹窗(emblem_detail_popup · 货币战争-星徽详情)
 
-> 代码 = `operations/cw_screen/cw_screen_emblem_detail_popup.py::CwScreenEmblemDetailPopup`。职责:「XX星徽套组」详情面板(1d,采晶矿/装备操作误点开星徽图标触发)的一次访问——点右上 X 关回备战。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_emblem_detail_popup.py::CwScreenEmblemDetailPopup`。职责:「XX星徽套组」详情面板(采晶矿/装备操作误点开星徽图标触发)的一次访问——点右上 X 关回备战。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 分发判定
 
