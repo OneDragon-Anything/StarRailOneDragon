@@ -1,14 +1,16 @@
 # 容器开局种子底座与锚定闩 落地
 
-## 3.1 种子底座 + 锚定闩(kernel)
+## 3.1 种子底座 + 锚定闩 + carry 收窄(kernel)
 
 **范围**:`kernel/cw_game_state.py` 新增 `seed_opening_state(gs)`(A 类字段逐一种子,
-design §2.2 A 表为准)并在 `game_state_of` 单例冷建点接线;新增非 Field 簿记位
-`prep_anchored` 与读口 `prep_anchored_of(session)`;`kernel/cw_reconcile.py` 在
-`tracked_account_observed=True` 写回成功点同点置闩。附:A 类字段定义注释补「开局
-种子底座」语义一句;§2.5 前置逻辑写端 grep 全量核查(锚定前可达的 logic_action 写端
-清单申报,发现第三处按同规则收口或申报豁免)。**不含**:获得链改动(3.2)、读口
-None 分支删除(不删,注释标注)。
+design §2.2 A 表为准;mode='compute'、journal 过滤键 `actor='GsOpeningSeed'`)并在
+`game_state_of` **两个缓存单例建支**冷建后接线(`session=None` 一次性支**不种**);
+新增非 Field 簿记位 `prep_anchored` 与读口 `prep_anchored_of(session)`(直构容器视同
+未锚定;测试置闩专口 = 直赋,design §2.4);`kernel/cw_reconcile.py` 在
+`tracked_account_observed=True` 写回成功点同点置闩;**carry 守卫收窄**(现值来源
+logic_rand 不沿用,design §2.5 末条)。附:A 类字段定义注释补「开局种子底座」语义
+一句;§2.5 census 穷举清单与实码核对(grep 全量 logic_action 写端,发现清单外即回修
+设计)。**不含**:获得链改动(3.2)、读口 None 分支删除(不删,注释标注)。
 **设计依据**:design.md §2.2(A/B/C 分诊表)/§2.3/§2.4/§2.5
 **文件面**:`src/sr_od/application/currency_war/kernel/cw_game_state.py`、
 `src/sr_od/application/currency_war/kernel/cw_reconcile.py`、
@@ -16,34 +18,35 @@ None 分支删除(不删,注释标注)。
 **依赖**:无
 **优先级建议**:5
 **完成判据**:
-- 行为对照 design §2.3/§2.4:冷建容器含全部 A 类种子(值/produced_by/evidence/mode
-  断言);B/C 类字段仍 None;`prep_anchored` 缺省 False;reconcile 写回成功点置闩;
-  直构 `GameState()` 路径不种(草稿容器行为不变);
-- 观察覆盖种子不产失配缺陷行(design §2.7);
-- 前置写端核查清单落 design §2.5 追记(或独立核查记录,随批提交);
-- 通用工程门:改文件 `ruff check` 通过;`uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"` 全绿。
-**验收凭据形式**:测试名(`test_cw_game_state*` 种子/闩新用例)+ 核查清单。
+- 行为对照 design §2.3/§2.4/§2.5:冷建容器含全部 A 类种子(值/produced_by/evidence/
+  mode 断言);B/C 类字段仍 None;`prep_anchored` 缺省 False;reconcile 写回成功点
+  置闩;`game_state_of(None)` 支与直构容器不种;carry 对 logic_rand 来源不沿用、
+  非 rand 来源存量行为不变;
+- 观察覆盖种子不进失配三分流,差异落 `logic_rand_outcome` 行(design §2.7);
+- census 核对清单随批提交(清单外写端 = 回修设计,禁自行拍板);
+- 通用工程门:照 `sr-od-test/README.md`「提交」节(ruff + 受影响测试 + 相关全量)。
+**验收凭据形式**:测试名(`test_cw_game_state*` 种子/闩/carry 新用例)+ census 清单。
 
 ## 3.2 获得链通道规则接线 + 缺陷 kind 退役
 
 **范围**:`kernel/cw_gain_chain.py` 新增 `_select_write(gs, rand)` 单一收口
-(未锚定 → 随机态,design §2.5),四处写选择(:294/:354/:430/:480 附近)全部改经
-收口;删除 `DEFECT_BENCH_UNOBSERVED`/`DEFECT_EQUIPS_UNOBSERVED` 常量与两处发射分支
-及对应 `detail` 档生产路径(bench/equips 在 A 类域不再 None;模块头失败安全自述同步);
-`sr-od-test` 的 `test_cw_gain_chain.py` 未观察用例改写为种子路径断言(未锚定 → 链写
-source=logic_rand + 观察覆盖静默 + GainOutcome 正常;锚定后 rand=False 走 logic、
-模拟失配可产缺陷行)。接管局同构断言(经 `game_state_of` 兜底路径)。**不含**:
-其他消费点(pick_supply/装备后果桥)迁移(队列①另批)。
-**设计依据**:design.md §2.5/§2.6-1/2/3/§2.7
+(未锚定 → 随机态,design §2.5),**全部写选择点改经收口(落地时 grep 计数为准,
+含在飞 invest-landing-chain 批新增原语——见 design §2.8 次序协调)**;删除
+`DEFECT_BENCH_UNOBSERVED`/`DEFECT_EQUIPS_UNOBSERVED` 常量与两处发射分支及对应
+`detail` 档生产路径(模块头失败安全自述同步);`sr-od-test` 的 `test_cw_gain_chain.py`
+未观察用例改写为种子路径断言,**rand 透传双臂用例随改**(直构未闩断言 logic_rand /
+置闩断言按形参,置闩 = 测试专口直赋,design §2.4)。接管局同构断言(经 `game_state_of`
+缓存单例支)。**不含**:其他消费点(pick_supply/装备后果桥)迁移(队列①另批)。
+**设计依据**:design.md §2.5/§2.6-1/2/3/§2.7/§2.8
 **文件面**:`src/sr_od/application/currency_war/kernel/cw_gain_chain.py`、
 `sr-od-test/test/sr_od/application/currency_war/test_cw_gain_chain.py`
-**依赖**:3.1
+**依赖**:3.1(与在飞 invest-landing-chain 批的文件次序在进度账本定序)
 **优先级建议**:5
 **完成判据**:
-- 行为对照 design §2.5/§2.6:未锚定期链写全走随机态且首观察零失配行;锚定后失配网
-  原样生效;两缺陷 kind 全仓零发射(grep 断言);
-- 通用工程门:同 3.1。
-**验收凭据形式**:测试名(`test_cw_gain_chain` 改写用例)。
+- 行为对照 design §2.5/§2.6:未锚定期链写全走随机态且首观察零三分流行;锚定后失配网
+  原样生效;两缺陷 kind 全仓零发射(grep 断言);grep 写选择计数 = 收口计数(清单随批);
+- 通用工程门:照 `sr-od-test/README.md`「提交」节(ruff + 受影响测试 + 相关全量)。
+**验收凭据形式**:测试名(`test_cw_gain_chain` 改写用例)+ 收口计数清单。
 
 ## 末阶段:正本更新
 
@@ -57,7 +60,10 @@ source=logic_rand + 观察覆盖静默 + GainOutcome 正常;锚定后 rand=False
 
 ## 正本更新清单
 
-- `game_state/fields.md`:§2(两态制)+ 新增「开局种子底座」小节 ← 3.1
+- `game_state/fields.md`:§2(两态制)+ 新增「开局种子底座」小节(含 rand 通道语义
+  例外立据:种子/未锚定期链写供直接消费,锚定后恢复「消费前重观察」纪律,design §2.6-8) ← 3.1
+- `game_state/fields.md`:§2.2 失读处置①(carry)守卫收窄语义(随机态来源不沿用) ← 3.1
+- `game_state/fields.md`:§3.1.6 相关行(hp 开局三写端时序:种子→先验→真读) ← 3.1
 - `game_state/fields.md`:§3.2.x A 类字段行(阵容/经济/溢出/环境/刷新计数组)种子语义 ← 3.1
 - `game_state/gain-chain.md`:§2.1/§2.3(通道规则提及)、§6(失败安全:未观察条目改写为种子+闩语义;缺陷 kind 词表退役) ← 3.2
 - `game_state/README.md`:两态制总述提及种子底座与锚定闩 ← 末阶段
