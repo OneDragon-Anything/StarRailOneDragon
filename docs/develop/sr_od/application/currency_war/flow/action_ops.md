@@ -129,7 +129,7 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 
 ### 4.6 词表在册、不经注册表分发的类(3 类)
 
-- `RefreshNodeOptions` / `RefreshSupply` / `RefreshInvestCards`:三刷新建议动作,走各画面既有点击链(遭遇刷新链/补给刷新链/投资逐卡刷新,是否真刷由 handler 按屏上剩余次数读数决定——遭遇/补给 = 已用计数 + 现读;投资两屏 = 剩余语义,观察 report 摄入)。(LevelUpShop 与 pick 12 类曾在本节名单,分别随注册表显式独立行与 pick-op-unify 批收编出列;HoldFrame 曾在册,2026-09-20 随 obs scope 口径收编删除。)
+- `RefreshNodeOptions` / `RefreshSupply` / `RefreshInvestCards`:三刷新建议动作,走各画面既有点击链(遭遇刷新链/补给刷新链/投资逐卡刷新)。**执行语义全域规范 = 刷新即终结交回外循环重观察 + 闸 = 剩余语义观察真值**(规范单一源 = [../screens/op-layer.md](../screens/op-layer.md) §1.4;现役遭遇链访问内重读重决策与遭遇/补给已用计数闸 = 在档欠账,迁移归迭代 2026-09-21-event-refresh-unify-supply-pick)。(LevelUpShop 与 pick 12 类曾在本节名单,分别随注册表显式独立行与 pick-op-unify 批收编出列;HoldFrame 曾在册,2026-09-20 随 obs scope 口径收编删除。)
 - (Obs `scope='outer_loop'` 口径同为分支拦截型、不经本表派发,但其词表类有注册行(§4.4 in_place 路径派发用),不属本节「无注册行」豁免面。)
 
 ### 4.7 层级区别:动作域之外的组合壳 / 画面 op(不进注册表,列出以划清「动作 op」边界)

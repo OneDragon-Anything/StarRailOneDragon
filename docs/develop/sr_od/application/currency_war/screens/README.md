@@ -111,7 +111,7 @@
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
 | 选卡(N 选 1) | 各事件机制(`data/gameplay.md`/`research/economy.md` §9) | 各画面 op(阶段一身份分发,号制已退役) | 确认离开(overlay 消失)= 画面终结 |
-| 逐卡/整屏刷新重掷 | 刷新后 ~2s 稳定(时序 #13/#19/#23) | 投资策略逐槽(观察 obs 携带逐卡余量 + `safe_click` 留守臂)/ 遭遇(`cw_screen_encounter.py::_try_refresh`)/ 补给(`cw_screen_supply_node.py`「剩余次数」文本锚定);建议刷新 = `PickEvent.refresh`(`kernel/cw_events.py::decide_event`,P81;策略屏逐槽 = `PickEvent.refresh_slots`) | 投资策略逐卡刷新 = **本访问终结**(点一槽刷新圆钮即 round_success 交回,外循环重进重观察重决策)——与投资环境整组重掷同款;遭遇/补给刷新不终结(留在本画面访问内重读重选);确认离开才画面终结 |
+| 逐卡/整屏刷新重掷 | 刷新后 ~2s 稳定(时序 #13/#19/#23) | 投资策略逐槽(观察 obs 携带逐卡余量 + `safe_click` 留守臂)/ 遭遇(`cw_screen_encounter.py::_try_refresh`)/ 补给(`cw_screen_supply_node.py`「剩余次数」文本锚定);建议刷新 = `PickEvent.refresh`(`kernel/cw_events.py::decide_event`,P81;策略屏逐槽 = `PickEvent.refresh_slots`) | 投资策略逐卡刷新 = **本访问终结**——与投资环境整组重掷、补给刷新(ADR-0517,点钮 + 2s 后 round_success 交回外循环重进 = 入口重建)同款;**刷新 = 终结为全域规范**(正本 = [op-layer.md](op-layer.md) §1.4),遭遇刷新现役访问内重读重决策 = 在档欠账,迁移归迭代 2026-09-21-event-refresh-unify-supply-pick;确认离开才画面终结 |
 | 开书册卡(点备战席槽位「开启」→ 弹专家邀请函) | 书册卡 = 备战席占槽道具 | `CwActionOpenBookcardOp`(备战决策环终结动作,`terminal=True`;发射位 = 策略器 entry ① prep 实体面卡片臂 `strategies/impl/mandate_v1/entry.py`)→ 弹窗由阶段一身份分发 `operations/cw_screen/cw_screen_expert_invite.py::CwScreenExpertInvite` 选卡 | 开卡即备战访问终结;弹窗选卡确认离开 = 弹窗访问终结 |
 | 返回备战/返回选择(暗色锁定子态) | 暗色蒙层态判别锚 = 右上操作按钮(screen_flow_timing #18) | `operations/cw_screen/cw_screen_prep_locked_return.py::CwScreenPrepLockedReturn`(阶段一身份分发;策略锁定/遭遇锁定两档参数化) | 点返回即终结 |
 | 关「属性详情」面板 | 点卡身上部误触发 | 未建模独立处理(点卡 = 机械单发);面板残留归下一帧重入自愈(重分发重走链/详情 overlay 族分支) | 面板关闭即随重入收敛 |
