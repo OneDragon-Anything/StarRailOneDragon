@@ -68,3 +68,9 @@
 - docs/develop/sr_od/application/currency_war/screens/prep.md:接管补采行(委派 CwEntryPlaneIntel;触发谓词;tries/done 字段退役;失败透传语义) ← 3.2
 - docs/develop/sr_od/application/currency_war/game_state/fields.md:plane_bosses/enemy_affixes 写点域改位面详情屏(sigs 按 design §2.3);takeover 两字段删除 ← 3.1/3.2
 - docs/game/screens/货币战争-位面详情.md:「徽章态」节勘误为纹章风头像渲染变体(证据 = fixture 帧 sr-od-test/screens/货币战争-位面详情/位面详情-纹章风头像-run30.png;频率统计保留;"本屏无身份信息"结论撤销);**行 4 source_image 帧清单同步(三帧 → 四帧)** ← 3.2(勘误文本依据 = design.md §2.5)
+- docs/develop/sr_od/application/currency_war/flow/session.md::84:迁移清册中 cw_takeover_collect_done/cw_takeover_tries 旧载体名清理(3.2 落地时发现,清单外补充) ← 3.2
+- skills/sr-od-currency-war-dev/references/runtime-ops.md::107:旧接管时序描述(start_plane 裁剪/位面N 记 None)更新为新管线语义(恒全采/响亮失败/编排单一源 CwEntryPlaneIntel) ← 3.2
+- docs/develop/sr_od/application/currency_war/screens/plane_detail.md::8:专用采集 op 行改新分工(识别 = CwScreenPlaneIntel 本屏 6 node 管线;打开/关闭转场 = CwEntryPlaneIntel 编排单一源)(末阶段点验补入)
+- docs/game/screens/货币战争-位面详情.md「automation 要读信息」节:enemy_affixes/enemy_difficulty 挂载表述改现语义(位面详情屏实采写门落容器,词缀幂等仅空时写;简报源保留;难度生产主源 = 备战旗牌管线)+「中途接管局补采主通道」改备战委派编排补采(真值跳过零点击直通);cw_briefing_obs 实现类名引用改语义描述(game 子树无实现类名)(末阶段点验补入)
+- docs/game/screens/货币战争-位面详情.md「关联」节:中途接管补采「进度树挂账」改已落地指向(develop 侧 screens/plane_intel.md)(末阶段点验补入)
+- docs/develop/sr_od/application/currency_war/game_state/README.md::112:match_facts 域行同步(takeover_collect_done/takeover_tries 删除,域版本标 3,与 fields.md 对齐)(末阶段点验补入)

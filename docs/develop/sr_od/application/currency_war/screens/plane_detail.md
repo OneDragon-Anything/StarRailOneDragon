@@ -5,7 +5,7 @@
 ## 1. 分发判定
 
 - 外循环分支 0a4:标题锚「货币战争-位面详情.标识-位面详情标题」;分发 = 阶段一身份行(单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。关不掉 → 包装 `on_fail_retry` 映射 round_retry(消费同一 retry 池)。
-- 本屏同档的**专用采集 op** = `CwScreenPlaneIntel`([plane_intel.md](plane_intel.md)):采集运行中自带详情识别与关闭,不经本分支;本分支只兜无采集语境的残留。
+- 本屏同档的专用识别 op = `CwScreenPlaneIntel`([plane_intel.md](plane_intel.md);本屏 6 node 管线,打开/关闭转场归编排单一源 `CwEntryPlaneIntel`,详见该篇):识别运行中不经本分支;本分支只兜无采集语境的残留。
 
 ## 2. 画面形态声明
 

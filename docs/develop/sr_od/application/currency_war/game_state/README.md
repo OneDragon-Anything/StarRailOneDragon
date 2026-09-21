@@ -109,7 +109,7 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | 画面 payload 域(shop/encounter/supply) | shop / encounter / supply(非当前画面=None) | ①观察 |
 | 选择结果域(event_choices) | chosen_encounter / chosen_supply / chosen_megastar / chosen_partner / chosen_wish / chosen_fortune / chosen_hack / chosen_expert / chosen_tome / chosen_equip | ②选择 handler 单次逻辑写 |
 | 结算域(settlement) | settlement(hp/streak/gold/level 结算真值)/ hp_floor_triggered(纯观察登记) | ①观察 |
-| 局级事实域(match_facts) | selected_difficulty / game_mode / enemy_difficulty / plane_bosses / enemy_affixes / active_env / active_strategies / board / resumed_match / takeover_collect_done / takeover_tries | ①观察+②动作+③中继+③接管协议(后三字段,渠道 logic_hook;域版本 2) |
+| 局级事实域(match_facts) | selected_difficulty / game_mode / enemy_difficulty / plane_bosses / enemy_affixes / active_env / active_strategies / board / resumed_match | ①观察+②动作+③中继+③接管协议(resumed_match,渠道 logic_hook;域版本 3) |
 | 轮内账域(round_ledger) | round_fresh_buys(值形状 `{'phase': tuple|None, 'names': list[str]}`) | ②动作(record_fresh_buy 单口写,sim/live 同口) |
 | 效果账本域(effects) | effects(ActiveEffectInventory 实例清单;非 Field 载体) | inventory 方法域(随快照行自带) |
 | 动作回执域(receipts) | receipts(滚动窗,容量常量 RECEIPTS_WINDOW_CAP) | ②动作 |
