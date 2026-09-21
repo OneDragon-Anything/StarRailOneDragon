@@ -29,10 +29,10 @@
 
 节点序前进的唯一动作入口 = kernel `report_node_advance(gs, *, trigger)`(kernel/cw_game_state.py;trigger 封闭集 = `{settle_confirm, supply_confirm}`,集外显式炸错)。两触发点:
 
-- **结算确认**(`cw_op/cw_op_settle_confirm.py::CwOpSettleConfirm`,画面框 op 形态、非动作注册表面):点击「继续挑战」(含长按兜底)→ 完成判据白名单全集命中(转移证据,单一源 helper `hit_settle_completion_anchor`,与 `CwScreenBattleWait` ③段出口判定共用)→ 上报 settle_confirm。结算读点/rounds_done 等结算链留宿主 CwScreenBattleWait;战败分支不进本 op 不推进。
-- **补给确认**(`cw_op/cw_overlay_pick_action.py::CwActionPickSupplyOp`):确认点击补 until 转移证据(下一节点备战锚)→ 在 `report_action_pick_supply_param` 调用点旁上报 supply_confirm。
+- **结算确认**(`cw_op/cw_op_settle_confirm.py::CwOpSettleConfirm`,画面框 op 形态、非动作注册表面):点击「继续挑战」(含长按兜底)→ **点击即上报** settle_confirm → 交回宿主。结算读点/rounds_done 等结算链留宿主 CwScreenBattleWait;战败分支不进本 op 不推进。
+- **补给确认**(`cw_op/cw_overlay_pick_action.py::CwActionPickSupplyOp`):点「确认」→ `report_action_pick_supply_param` + `report_node_advance(trigger='supply_confirm')` 直接双上报。
 
-**上报时点门(辖域契约)**:转移证据的角色 = 决定报不报,非执行验证——证据 miss = 不上报、不设重试编排,兜底归观察锚定(kernel `observe_node_anchor` 补推,锚定写端 = CwScreenPrep 备战顶栏 / CwScreenSupplyNode 补给屏节点条)。上报前置**观察态门**(kernel 内):`node_ord` value 在场 ∧ source=observation 双条件才放行,门挡 = obs_event 留证零推进;推进经生效原语 `advance_node_effective` 落账(candidate 去重守卫 + 效果推进尾段同临界区),重复上报/重试在结构上不可能。判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md) §3.3。
+**上报时点 = 点击即上报,观察态门为唯一门**(用户裁定 2026-09-21):动作 op 不做任何确认、不探下一画面锚、不等转移证据——无证据等待 ⇒「上报先于下一节点任何画面渲染」恒成立;推进落账前置**观察态门**(kernel 内):`node_ord` value 在场 ∧ source=observation 双条件才放行,门挡 = obs_event 留证零推进(重复上报/死点击重试报告在结构上零危害);兜底 = 观察锚定(kernel `observe_node_anchor` 补推,锚定写端 = CwScreenPrep 备战顶栏 / CwScreenSupplyNode 补给屏节点条)。推进经生效原语 `advance_node_effective` 落账(candidate 去重守卫 + 效果推进尾段同临界区)。判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md) §3.3。
 
 ## 3. 备战单动作消费
 

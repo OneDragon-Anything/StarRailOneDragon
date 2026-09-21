@@ -53,12 +53,12 @@
 
 **共用推进函数**（kernel，唯一动作推进口）：`report_node_advance(gs, *, trigger: str, sig: ChannelSig | None = None) -> None` = 观察态门（§2.2 双条件）→ candidate = `effective_node_ord + 1` → 推进生效原语（§2.2）。trigger 封闭集 = `{'settle_confirm', 'supply_confirm'}`（留证 actor 归因）；sig family = logic_action，actor = 触发 op 自由命名标识（攻击 R2 定谳：现役 `_validate_sig` 只校 family、不设 actor 注册闸，`REGISTERED_ACTORS` 机制已退役——journal 行归因用 actor 字符串，无注册面）。
 
-**触发点 1——结算确认动作 op（用户裁定④）**：新 op `CwOpSettleConfirm`（`operations/cw_op/cw_op_settle_confirm.py`；非策略动作面——不经动作注册表、无 CwAction param，命名与构造从画面框 op 惯例 `CwOpOpenShop/CwOpCloseShop`）。职责 = 点击「继续挑战」（含现役 M39 长按兜底重试策略，cw_screen_battle_wait.py 长按兜底专用点迁入）→ 等完成判据白名单命中（转移证据）→ `report_node_advance(trigger='settle_confirm')`。证据 miss = 不上报，长按兜底继续重试（现行为）。`CwScreenBattleWait` ②段（结算点击）改调本 op；③段白名单出口判定保留（幂等：已命中帧不重复点击）。战败分支不建 op、不推进（终局流转 E15，节点序止于终局）。
-**证据集同源条款（攻击 R3 定谳，封 E12 拆批缝）**：op 的转移证据集 = 完成判据白名单**全集**（备战系/补给/遭遇/投资策略/**强敌来袭**锚，与 `CwScreenBattleWait` ③段同一判定 helper），等待语义同 ③段（白名单命中即返，无独立短超时）。由此：boss 流中「证据 miss 而流转真实发生」不可达——流转发生 ⇒ 简报锚现身 ⇒ 白名单命中 ⇒ 上报先于 `CwScreenBossBriefing` 分派，hist 已推进至 boss 节点，简报类型直定目标恒正确（序号与类型经同锚同源归凑，等价旧模型 `_derive_node_boss_brief` 同批原子性）；证据 miss ⇒ 流转未发生（或锚识别失败——此时简报 op 同样不会被分派，类型直定无从触发，缝不存在）。
+**触发点 1——结算确认动作 op（用户裁定④）**：新 op `CwOpSettleConfirm`（`operations/cw_op/cw_op_settle_confirm.py`；非策略动作面——不经动作注册表、无 CwAction param，命名与构造从画面框 op 惯例 `CwOpOpenShop/CwOpCloseShop`）。职责 = 点击「继续挑战」（含现役 M39 长按兜底重试策略，cw_screen_battle_wait.py 长按兜底专用点迁入）→ 等完成判据白名单命中（转移证据）→ `report_node_advance(trigger='settle_confirm')`。证据 miss = 不上报，长按兜底继续重试（现行为）。`CwScreenBattleWait` ②段（结算点击）改调本 op；③段白名单出口判定保留（幂等：已命中帧不重复点击）。战败分支不建 op、不推进（终局流转 E15，节点序止于终局）。(※本段的证据等待/miss 语义已随 §2.9 修正作废——点击即上报,白名单判定回归宿主出口独用。)
+**证据集同源条款（攻击 R3 定谳，封 E12 拆批缝;已随 §2.9 修正作废）**：op 的转移证据集 = 完成判据白名单**全集**（备战系/补给/遭遇/投资策略/**强敌来袭**锚，与 `CwScreenBattleWait` ③段同一判定 helper），等待语义同 ③段（白名单命中即返，无独立短超时）。由此：boss 流中「证据 miss 而流转真实发生」不可达——流转发生 ⇒ 简报锚现身 ⇒ 白名单命中 ⇒ 上报先于 `CwScreenBossBriefing` 分派，hist 已推进至 boss 节点，简报类型直定目标恒正确（序号与类型经同锚同源归凑，等价旧模型 `_derive_node_boss_brief` 同批原子性）；证据 miss ⇒ 流转未发生（或锚识别失败——此时简报 op 同样不会被分派，类型直定无从触发，缝不存在）。
 锚定可用性边界（申报，机制表述随 R1 修正）：恢复局锁定臂（`cw_loop.py::locked_resume_sync_and_battle` 直出战）首次结算确认被 value 守卫挡（§2.2），由战后备战帧观察锚定补齐——绝对值坐标，无 skew。
 
-**触发点 2——补给确认**：`CwActionPickSupplyOp`（`cw_overlay_pick_action.py::CwActionPickSupplyOp`）确认链点击补转移证据（until = 下一节点备战锚，E11：补给确认 → 下一节点干净备战帧，无自动弹链）→ 现有 `report_action_pick_supply_param` 调用点旁增调 `report_node_advance(trigger='supply_confirm')`。证据 miss = 不上报（无重试编排，兜底 = 观察锚定补推 §2.2）。
-辖域契约修正案（攻击 F5）：转移证据在本 op 中的角色 = **上报时点门**（决定报不报），非执行验证（不重试、不恢复、不判效）——与 screens/op-layer.md §1.2「动作 op 禁做任何验证」的禁令（verify+retry 编排）不冲突但字面相抵，正本更新阶段在 §1.2 增补具名例外条款：「节点终结上报类动作 op 允许以转移证据作上报时点门；证据 miss 不上报不重试，兜底归观察锚定」。
+**触发点 2——补给确认**：`CwActionPickSupplyOp`（`cw_overlay_pick_action.py::CwActionPickSupplyOp`）确认链点击补转移证据（until = 下一节点备战锚，E11：补给确认 → 下一节点干净备战帧，无自动弹链）→ 现有 `report_action_pick_supply_param` 调用点旁增调 `report_node_advance(trigger='supply_confirm')`。证据 miss = 不上报（无重试编排，兜底 = 观察锚定补推 §2.2）。(※本段的证据门语义已随 §2.9 修正作废——点「确认」即双上报。)
+辖域契约修正案（攻击 F5;已随 §2.9 修正作废）转移证据在本 op 中的角色 = **上报时点门**（决定报不报），非执行验证（不重试、不恢复、不判效）——与 screens/op-layer.md §1.2「动作 op 禁做任何验证」的禁令（verify+retry 编排）不冲突但字面相抵，正本更新阶段在 §1.2 增补具名例外条款：「节点终结上报类动作 op 允许以转移证据作上报时点门；证据 miss 不上报不重试，兜底归观察锚定」。
 
 **报告时点语义**：两触发点均为「转移证据确认后」上报——逻辑态不领先游戏现实（幻影预防）；「先推进后选卡」结构性成立（确认点击先于下一节点一切弹窗与选卡，裁定 2 由因果序保证，不再依赖弹窗推断）。
 
@@ -102,9 +102,20 @@
 8. 效果发放触发面扩为两条推进路径（动作上报 + 观察锚定补推，均经推进生效原语 §2.2）——恢复局/锁定臂/证据 miss 自愈路径从「序号前进但不发放」变「当帧补齐发放」（攻击 F2① 申报）。
 9. 开局链五屏（简报/投资环境/等待1-1/BOSS简报/位面过渡）的上下文对写入随 `_note_branch_screen` 退役消失——journal 画像面变化，零逻辑消费（守卫族已亡、类型直定改挂画面 op 不依赖上下文域名）；入口链接上下文上报属可选后续，不在本迭代（攻击 F7 申报）。
 
+### 2.9 修正:去证据门(用户裁定 2026-09-21)
+
+**裁定(最高优先)**:动作 op 不做任何确认——**点了就是上报推进**;推进里只有 node_ord 为观察态(source==observation 且 value 在场)才落账(§2.2 双条件门不变,现为唯一门)。转移证据机制(探锚/等待/bail/补报)整体退役;§2.3 的「证据集同源条款」「上报时点门」与 §2.8 首条「双门并用」随本裁定作废。
+
+**为什么自洽**:
+- 无证据等待 ⇒「上报先于下一节点任何画面渲染」恒成立 ⇒ 原 R3 缝(证据 miss 后简报直定写错节点)结构性消失,非封堵;
+- 死点击自愈链:幻影上报(logic 态)→ 重试点击被观察态门挡(不重复记)→ 某次点击落地 → 备战帧读数 = hist → 等值 reanchor 翻锚定 → 下一节点解锁。最坏损失 = 幻影那次多 tick 一档发放(金额正确、时机略早、期间无消费方),用户已知悉接受;
+- 倒退免疫 / 等值 reanchor / 观察态门三机制保持不变。
+
+触发点 1 瘦身为:点「继续挑战」(保留 M39 长按兜底点击力学)→ `report_node_advance(trigger='settle_confirm')` → 返回;触发点 2 同理(点「确认」→ 双上报)。完成判据白名单(`SETTLE_COMPLETION_ANCHORS`)回归 `CwScreenBattleWait` ③段出口判定独用(状态机出口判据,非动作验证)。正本(op-layer §1.2 / action_exec §2.1 / node-derivation §3.3)同步按本裁定更新。
+
 ### 2.8 关键取舍
 
-- **观察态门 + 转移证据门双门并用** vs 单门：证据门防幻影（逻辑领先现实），源门防重复（结构不可能二推）——互补不冗余，均为用户裁定面（③ = 源门；证据门 = 项目 Operation 规范 §3「画面切换点击带 until 证据」的既有纪律延伸）。
+- **观察态门 + 转移证据门双门并用** vs 单门(已被 §2.9 修正作废:单观察态门为唯一门):证据门防幻影（逻辑领先现实），源门防重复（结构不可能二推）——互补不冗余，均为用户裁定面（③ = 源门；证据门 = 项目 Operation 规范 §3「画面切换点击带 until 证据」的既有纪律延伸）。
 - **observe 直写 node_ord** vs 保持 write_logic + 独立锚定水位位：直写免加状态位、source 语义即门输入；代价 = 推翻旧裁决（已申报 §2.7-7）。解析顶栏序号与解析 OCR 金价同类，归读数不归推算。
 - **倒退免疫保留** vs 观察赢回退：保留（R<v 一律丢弃留证）。观察赢回退会把单帧读数误读落成真值回退且无账本逆操作；免疫的最坏残余（幻影领先一档）有界且自愈（§2.2）。
 - **抽独立结算 op**（用户裁定④）vs battle_wait 内直调：形态与补给侧对称、M39 重试策略随 op 内聚；代价 = battle_wait ②段重构（状态机段边界小改，③段白名单判定提 helper 共用）。

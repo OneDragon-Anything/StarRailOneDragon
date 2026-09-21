@@ -83,6 +83,46 @@ if TYPE_CHECKING:
     )
 
 
+#: 结算完成判据白名单(③段出口判定单一源;语义 = 「已回备战系画面」的
+#: 到达判定(宽;面板就位判定由循环判定序承接)。位面简报不在切换链上
+#: (仅入场出现一次,用户裁决 2026-09-02),不列。BOSS简报锚 = 阵营徽记
+#: 模板(2026-09-16 从标题 OCR 锚换装,误读免疫)。(曾随结算确认 op 迁出
+#: 作证据集同源单一源,证据机制退役后迁回本文件独用——用户裁定
+#: 2026-09-21。)
+SETTLE_COMPLETION_ANCHORS: tuple[tuple[str, str], ...] = (
+    ('货币战争-备战', '备战标识-购买经验'),
+    ('货币战争-补给', '标识-补给阶段'),
+    ('货币战争-遭遇节点', '标识-遭遇节点'),
+    ('货币战争-投资策略', '标识-请选择投资策略'),
+    ('货币战争-BOSS简报', '标识-阵营徽记'),
+)
+
+
+def hit_settle_completion_anchor(op: SrOperation, screen) -> bool:
+    """结算完成判据白名单任一命中(③段出口判定;本模块单一源)。
+
+    备战用单锚(宽到达判定;「按钮-出战」双锚精判是循环备战分支的
+    职责,此处重复即双源)。BOSS简报锚 = 阵营徽记模板(OCR 误读免疫);
+    「强敌」片段判别为锚 miss 的兜底(判别单一源见
+    cw_screen_boss_briefing)——boss 帧完成判定交回循环阶段一身份接管。
+    位面过渡锚(boss 局每位面开始出现一次;boss 简报帧已在上方排他
+    ——共享文案不误判为本白名单项)。
+    """
+    for _scr, _area in SETTLE_COMPLETION_ANCHORS:
+        if op.round_by_find_area(screen, _scr, _area,
+                                 crop_first=False).is_success:
+            return True
+    from sr_od.application.currency_war.operations.cw_screen.cw_screen_boss_briefing import (
+        is_boss_briefing_texts,
+        read_ocr_texts,
+    )
+    _texts = read_ocr_texts(op.ctx, screen)
+    if is_boss_briefing_texts(_texts):
+        return True   # boss 简报帧(徽记模板锚 miss 的形态)→ 完成判定,交回循环阶段一身份接管
+    return op.round_by_ocr(screen, '点击空白处继续',
+                           lcs_percent=0.8).is_success
+
+
 def _write_settlement_observation(session: StrategySession,
                                   obs: RoundOutcome) -> None:
     """结算观察半直写(ADR-0583 §2.5:旧 on_round_end 观察段收编的单一写点)。
@@ -222,10 +262,10 @@ class CwScreenBattleWait(SrOperation):
     UNKNOWN_BAIL_N: ClassVar[int] = 10
     # 点空白区(加速战斗/关叠层;避开中央内容;随迁自 cw_loop.BLANK)
     BLANK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
-    # (M39 长按兜底专用点/停留阈值与结算点击、证据等待、推进上报一并
-    #  迁入 CwOpSettleConfirm,迭代 2026-09-20-node-advance-action-report
-    #  landing §3.2;本类仅保留结算链记(读点/_record_round_outcome/
-    #  rounds_done 计数,攻击 B2 归属界定)。)
+    # (M39 长按兜底专用点/停留阈值与结算点击、推进上报一并迁入
+    #  CwOpSettleConfirm(去证据门形态,用户裁定 2026-09-21);本类仅保留
+    #  结算链记(读点/_record_round_outcome/rounds_done 计数,攻击 B2
+    #  归属界定)与 ③段白名单出口判定。)
 
     def __init__(self, ctx: SrContext, st: SettlementState,
                  config: CurrencyWarConfig):
@@ -252,15 +292,12 @@ class CwScreenBattleWait(SrOperation):
     # 白名单语义 = 「已回备战系画面」的到达判定(宽;面板就位判定由循环
     # 判定序承接,不在本 op 承诺内——05-battle §1 架构修正条)。位面简报
     # 不在切换链上(仅入场出现一次,用户裁决 2026-09-02),不列。
-    # 判定本体迁出为共用 helper(结算确认 op 转移证据与本品出口同一源,
-    # design §2.3 证据集同源条款/攻击 R3;锚表见 cw_op_settle_confirm)。
+    # 判定本体 = 本模块 ``hit_settle_completion_anchor``(锚表见上方;
+    # 状态机出口判据,非动作验证)。
 
     def _hit_completion_anchor(self, screen) -> bool:
-        """完成判据白名单任一命中(纯判定,单一源委托;语义详见
-        :func:`cw_op_settle_confirm.hit_settle_completion_anchor`)。"""
-        from sr_od.application.currency_war.operations.cw_op.cw_op_settle_confirm import (
-            hit_settle_completion_anchor,
-        )
+        """完成判据白名单任一命中(纯判定;语义详见
+        :func:`hit_settle_completion_anchor`)。"""
         return hit_settle_completion_anchor(self, screen)
 
     def _cw_selection_write(self, session: StrategySession,
@@ -694,35 +731,9 @@ class CwScreenBattleWait(SrOperation):
 
         # ③出口 A:完成判据白名单任一命中 → 交回循环分发
         if self._hit_completion_anchor(screen):
-            # bail 残余封缝(T-2 reviewer 转交):白名单命中 ⇒ 必有上报尝试
-            # ——CwOpSettleConfirm bail(过渡帧双 miss 上界退出)后流转迟到
-            # (白名单锚后现身)时,本出口补 settle_confirm 上报,恢复
-            # 「白名单命中 ⇒ 必有上报」不变量(design §2.3 证据集同源条款:
-            # 上报先于简报 op 分派,hist 已推进,boss 类型直定目标恒正确)。
-            # 幂等:op 内已报则观察态门挡(零推进),双报告无害;局外/
-            # session 缺/异常 = best-effort 跳过。
-            self._report_settle_confirm_best_effort()
             log.info('[cw-bwait] 完成判据白名单命中 → 交回循环分发')
             return self.round_success('back_to_loop')
         return self._dispatch_frame(screen)
-
-    def _report_settle_confirm_best_effort(self) -> None:
-        """③段白名单命中出口的 settle_confirm 补报(best-effort;幂等 =
-        kernel 观察态门 + 推进原语去重)。"""
-        try:
-            _match = getattr(self.ctx, 'cw_match', None)
-            _session = getattr(_match, 'session', None) \
-                if _match is not None else None
-            if _session is None:
-                return
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                gs_of_ctx,
-                report_node_advance,
-            )
-            report_node_advance(gs_of_ctx(self.ctx, _session),
-                                trigger='settle_confirm')
-        except Exception as e:  # noqa: BLE001  上报 best-effort,不阻塞出口
-            log.debug(f'[cw-bwait] 白名单出口补报跳过: {e}')
 
     def _dispatch_frame(self, screen) -> OperationRoundResult:
         """分支链逐位转录体(旧 wait() 出口判定之后的分支序列平移,
@@ -752,10 +763,10 @@ class CwScreenBattleWait(SrOperation):
                 self._st.last_settle_fp = _fp
             time.sleep(0.2)
             # ②段改调结算确认动作 op(landing §3.2;随 op 迁移 = 点击/
-            # M39 长按兜底/证据等待/推进上报,上方读点与 rounds_done 计数
-            # 等结算链记留宿主,攻击 B2 归属界定)。子 op 内闭环到白名单
-            # 转移证据命中 + settle_confirm 上报;成功后回 wait() 顶走
-            # ③段白名单出口收口(幂等:已命中帧不重复点击)。
+            # M39 长按兜底/推进上报——去证据门形态,点击即上报,用户裁定
+            # 2026-09-21;上方读点与 rounds_done 计数等结算链记留宿主,
+            # 攻击 B2 归属界定)。op 交回后回 wait() 顶走 ③段白名单出口
+            # 收口(出口判定 = 状态机出口判据,非动作验证)。
             from sr_od.application.currency_war.operations.cw_op.cw_op_settle_confirm import (
                 CwOpSettleConfirm,
             )
@@ -765,7 +776,7 @@ class CwScreenBattleWait(SrOperation):
                 return self.round_wait(wait=1.0)
             log.warning('[cw!][bwait] 结算确认动作 op 失败:%s → bail 交主循环兜底',
                         _res.status)
-            return self.round_fail('结算确认转移等待失败,bail 交主循环兜底')
+            return self.round_fail('结算确认失败,bail 交主循环兜底')
 
         # ①段:失败结算页(分支 1f 随迁:模板组合门 + 进度符号闩 + 面板延迟门
         # + 页1 三项暂存 + 败局补录 + 翻页/点空白)

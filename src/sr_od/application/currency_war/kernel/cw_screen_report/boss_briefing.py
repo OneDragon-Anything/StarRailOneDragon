@@ -33,11 +33,11 @@ def report_screen_boss_briefing_obs(gs: GameState,
     """BOSS 简报屏观察上报:boss 类型直定(目标 = 现 hist;design §2.5 表,
    攻击 F4 迁移)。
 
-    - **直定前置同源守卫(攻击 R3 定谳,design §2.3 证据集同源条款)**:
-      简报 op 被分派 ⇔ 简报锚命中 ⇔ 结算确认转移证据集(白名单全集)命中
-      ⇒ hist 已被 settle_confirm 推进至 boss 节点——「hist 落后、类型写错
-      节点」结构性不可达。hist None(锚先于任何上报的假想形态)= 零写禁猜
-      (防御性保留);
+    - **直定前置守卫(去证据门形态,用户裁定 2026-09-21)**:结算确认
+      点击即上报(无证据等待)⇒ 上报先于下一节点任何画面渲染恒成立
+      ⇒ 简报 op 被分派时 hist 已被 settle_confirm 推进至 boss 节点
+      ——「hist 落后、类型写错节点」结构性不可达。hist None(锚先于
+      任何上报的假想形态)= 零写禁猜(防御性保留);
     - 序号推进半部已随旧腿退役:boss 节点序由结算确认上报推进,本口零
       node_ord 写;
     - 幂等:同 hist 重复上报走 _write_derived_node_type 冲突纪律(同节点

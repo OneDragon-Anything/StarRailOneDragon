@@ -243,9 +243,9 @@ SCREEN_SHOP_PANEL: str = '货币战争-备战-开商店'
 BATTLE_WAIT_CONTEXT: str = '货币战争-战斗等待'
 
 #: BOSS 简报画面标识(BOSS 类型直定的 trigger_screen;类型直定写端 =
-#: ``kernel/cw_screen_report/boss_briefing.py``,目标 = 现 hist——简报 op
-#: 被分派 ⇔ 结算确认证据集同源命中 ⇔ hist 已推进至 boss 节点,见该迭代
-#: design §2.5 表/§2.3 证据集同源条款)。
+#: ``kernel/cw_screen_report/boss_briefing.py``,目标 = 现 hist——去证据门
+#: 后上报先于下一节点任何画面渲染恒成立,简报 op 被分派 ⇒ hist 已被
+#: settle_confirm 推进至 boss 节点,用户裁定 2026-09-21)。
 SCREEN_BOSS_BRIEFING: str = '货币战争-BOSS简报'
 
 
