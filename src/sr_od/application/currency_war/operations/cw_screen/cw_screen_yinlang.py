@@ -23,16 +23,13 @@
 分发即门)→ 观察 node = 左右两卡 OCR 桶一次读(入口帧一次读,与现役决策
 体读同帧等价)→ ``report_screen_planner_obs`` 落容器 ``planner_opts``
 (恒写两卡,空桶照写)→ obs 挂实例属性进决策 node。决策动作 node =
-重入裁决顶部(入口词「我来当策划」不在 = overlay 已关 → success 交回)
-→ 决策从容器零参读(kernel 直调仅无 match 防御路径)→ 点卡+确认链经
-工厂 → round_wait 循环(不烧节点重试预算,无防御上限;确认未落地轮重走
-选卡+确认)。**效果腿证据闩**(银狼闭环 design §2.1①/③⑦):重入裁决
-出口「入口词不在 = 上轮确认已落地」即落地证据,效果腿在该时点经
-``report_action_pick_planner_param``(落地相,evidence=落地)应用一次
-(非 op 实例闩——动作 op 每派发新建实例不设防;发射相仅意图遥测,确认
-未落地重走不重复);两相上报宿主 = ``kernel/cw_action_report/
-pick_planner.py``(推广批已落,design §2.1⑤)。本屏无 chosen_* 写端(选择
-存证行已随删除波 1 退役);本屏 sim 腿 = 不适用(sim 无对应画面段,事件
+零参决策(kernel 直调仅无 match 防御路径)→ ``classify_planner_leg``
+腿型 → 组装 env → 选卡确认链派发即 ``round_success`` 终结交回外循环
+(迭代 2026-09-21-pick-planner-equip-immediate-report design §2.0/§2.1,
+action_ops.md §1 增补 2:动作 op 确认点击后立即上报完整效果腿,零重入
+裁决、零落地相补写面——确认未生效 = 代码 bug,overlay 残留由外循环按
+当前画面重识别重派)。本屏无 chosen_* 写端(选择存证行已随删除波 1
+退役);本屏 sim 腿 = 不适用(sim 无对应画面段,事件
 浮层族即时落定),等价判据主承重 = 实机在册行为锁
 (test_cw_screen_two_node_family 两 node 形态锁;接线/基建锁补档 =
 开放设计注,见 screens/planner.md §9)。
@@ -45,15 +42,8 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_action_report.pick_planner import (
-    EVIDENCE_OVERLAY_CLOSED,
-    report_action_pick_planner_param,
-)
 from sr_od.application.currency_war.kernel.cw_events import (
     classify_planner_leg,
-)
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    ChannelSig,
 )
 from sr_od.application.currency_war.kernel.cw_screen_report.planner import (
     CwScreenPlannerObs,
@@ -103,17 +93,6 @@ class CwScreenYinLang(SrOperation):
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-策划事件')
-        # 确认已发待重入裁决标志(验证废除形态):本屏分发即门(无 op 内入口
-        # 守卫),重入出口裁决见决策动作 node 顶部。
-        self._confirm_pending: bool = False
-        # 待落地腿型载荷 (leg_type, norm_item)(银狼闭环 design §2.1①):
-        # 派发时随决策半现算存本实例,重入裁决出口「overlay 已关」落地
-        # 证据到达时消费一次(apply_pick_planner_landing)并清空——确认
-        # 未落地重走不消费(证据未到),效果腿幂等由证据绑定保证。
-        self._pending_leg: tuple[str, str] | None = None
-        # 发射 param 存证(落地相载荷来源):重入裁决出口落地相复用,与
-        # _pending_leg 同生命周期(op 重建同丢 → design §2.2 重建边角申报)。
-        self._pick_param: object | None = None
         # 观察结果(观察 node 产物,决策动作 node 消费;options = 入口帧一次
         # 读,恒两元素 0=左卡/1=右卡)。
         self._obs: CwScreenPlannerObs | None = None
@@ -124,8 +103,8 @@ class CwScreenYinLang(SrOperation):
         详情钮避让 = rect 底缘上移 DETAIL_MARGIN_RATIO(相对几何,W952 返修
         ——绝对 y 常数对多布局不成立,见类属性注释)。两比例皆 rect 相对,
         布局再漂移时只更 yml rect,本方法零改;rect 缺失回退旧实证 rect。
-        确认钮动画/多步 overlay 零覆盖声明:本方法只产选中点,确认收尾的
-        交回语义 = 机械 round_wait(验证废除;重入裁决见决策动作 node 顶部)。
+        确认钮动画/多步 overlay 零覆盖声明:本方法只产选中点,确认链与
+        上报归动作 op,本 op 派发即终结交回外循环。
         """
         area = self.ctx.screen_loader.get_area(
             CwScreenYinLang.CARD_AREA_SCREEN,
@@ -138,11 +117,6 @@ class CwScreenYinLang(SrOperation):
         y = min(rect.y1 + int(rect.height * CwScreenYinLang.SELECT_Y_RATIO),
                 rect.y2 - int(rect.height * CwScreenYinLang.DETAIL_MARGIN_RATIO))
         return Point(rect.center.x, y)
-
-    def _match_gs(self):
-        """局容器单例读口(无局/局外兜底路径 = None,调用方零行为跳过)。"""
-        _match = getattr(self.ctx, 'cw_match', None)
-        return getattr(_match, 'gs', None) if _match is not None else None
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
@@ -194,32 +168,13 @@ class CwScreenYinLang(SrOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=5)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 零参决策 → 点卡+确认链经工厂 → round_wait。
+        """零参决策 → 腿型判定 → 组装 env → 派发即 ``round_success`` 终结。
 
-        重入裁决(观察驱动,M7 同化先例 + cw_entry_start 守卫先例):本屏
-        分发即门(无 op 内入口守卫),round_wait 重入不经外循环分发 →
-        顶部出口门补位:入口词不在 = overlay 已关(上轮确认已落地)→
-        效果腿按证据闩应用一次(apply_pick_planner_landing)后 success
-        交回外循环;在 = 重走选卡+确认(证据未到,效果腿不应用)。"""
-        if self._confirm_pending:
-            self._confirm_pending = False
-            if not self.round_by_ocr(self.last_screenshot, '我来当策划',
-                                     lcs_percent=0.5).is_success:
-                _leg = self._pending_leg
-                _pick = self._pick_param
-                self._pending_leg = None
-                self._pick_param = None
-                _mgs = self._match_gs()
-                if _leg is not None and _leg[0] and _mgs is not None:
-                    report_action_pick_planner_param(
-                        _mgs, _pick,
-                        leg_type=_leg[0], norm_item=_leg[1],
-                        sig=ChannelSig(family='logic_action',
-                                       actor='CwScreenYinLang',
-                                       mode='compute'),
-                        evidence=EVIDENCE_OVERLAY_CLOSED)
-                return self.round_success('策划事件已确认(重入观察裁决)',
-                                          wait=2.0)
+        动作 op ``CwActionPickPlannerOp`` 确认点击后立即上报完整效果腿
+        (单相即时上报,迭代 2026-09-21-pick-planner-equip-immediate-report
+        design §2.0/§2.1)——本 op 派发即终结交回外循环重观察,零重入
+        裁决轮、零证据闩(确认未生效 = 代码 bug,overlay 残留由外循环按
+        当前画面重识别重派)。"""
         options = self._obs.options if self._obs is not None else []
         # 策略层决策(W953 批1 接线:唯一入口=策略对象,handler 禁 kernel 直调;
         # 写槽已由 report 落容器 → 零参决策。kernel 直调仅保留无 match 防御
@@ -247,22 +202,20 @@ class CwScreenYinLang(SrOperation):
             pick = CwActionPickPlannerParam(idx=_kpick.idx, reason=_kpick.reason)
         target = self._card_point(pick.idx)
         # 腿型载荷(银狼闭环 design §2.1①):判定单源 = kernel
-        # classify_planner_leg(装备域优先);随 env 透传给 op 发射上报
-        # (意图遥测)+ 本实例待落地存证(重入裁决出口消费)。
+        # classify_planner_leg(装备域优先);随 env 透传给动作 op 上报
+        # (确认点击后立即写完整效果腿,单相即时上报)。
         _opt_text = (options[pick.idx].text
                      if 0 <= pick.idx < len(options) else '')
         leg_type, norm_item = classify_planner_leg(_opt_text)
-        self._pending_leg = (leg_type, norm_item)
-        self._pick_param = pick
         log.info('[cw][planner] 策划决策:%s → %s卡(%s) leg=%s/%s',
                  pick.reason, '左' if pick.idx == 0 else '右',
                  options[pick.idx].text[:24], leg_type, norm_item or '-')
         # 点卡选中 → 确认链经工厂(统一动作工厂批4:体迁
-        # ``cw_overlay_pick_action.PlannerPickOp``,方法级替身缝保留);
-        # 决策半(重入裁决/策略选卡)留守上方,派发实例 = 策略 pick 本体,
-        # 机械参数 target 经 env 传递。确认已发置位(_confirm_pending)在
-        # pick op 体内(确认发送时点),round_wait 推进循环(不烧节点重试
-        # 预算;确认未落地轮重走,无防御上限)。
+        # ``cw_overlay_pick_action.CwActionPickPlannerOp``,方法级替身缝保留);
+        # 决策半(策略选卡/腿型判定)留守上方,派发实例 = 策略 pick 本体,
+        # 机械参数 target 经 env 传递。派发即 round_success 终结交回外循环
+        # (效果腿已在动作 op 内即时上报;确认未生效 = 代码 bug,外循环
+        # 按当前画面重识别重派)。
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
@@ -272,4 +225,4 @@ class CwScreenYinLang(SrOperation):
         _env = OverlayPickExecEnv(op=self, target=target,
                                   leg_type=leg_type, norm_item=norm_item)
         action_op_for(pick, self.ctx, _env).execute()
-        return self.round_wait()
+        return self.round_success('策划选卡已派发(结果已即时上报)')

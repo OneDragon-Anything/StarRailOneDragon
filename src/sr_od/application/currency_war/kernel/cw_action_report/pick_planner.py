@@ -1,25 +1,24 @@
 """货币战争动作上报:银狼策划「我来当策划」选择(report_action_pick_planner_param)。
 
-**零写族迁出·两相形态**(推广批,承接 2026-09-18-yinlang-exclusive-loop
-design.md §2.1⑤;与 pick_invest 同构,用户定稿 = 每动作一文件分步更新):
-上报收敛自 ``zero_writes`` 占位(发射相)与画面 op 过渡位宿主
-(``cw_screen_yinlang.apply_pick_planner_landing``,已退役),按 ``evidence``
-分相:
+**即时单相上报**(迭代 2026-09-21-pick-planner-equip-immediate-report
+design §2.0/§2.1;用户裁定 2026-09-21 = action_ops.md §1 增补 2:动作 op
+点完就立即上报,按成功把结果写进 game state):``CwActionPickPlannerOp``
+确认点击后一口写完整效果逻辑态,无发射/落地两相、无证据闩。写序:
 
-- **发射相**(evidence 缺省,消费面 = ``CwActionPickPlannerOp`` 机械链发出后):
-  仅登记意图遥测(日志行;行级台账无「意图」行型,不强造——同 pick_invest
-  申报),容器零写——确认未落地重走不重复;
-- **落地相**(evidence = :data:`EVIDENCE_OVERLAY_CLOSED`,消费面 = 画面 op
-  ``CwScreenYinLang`` 重入裁决出口「入口词不在 = overlay 已关」):条件腿
-  rider(欢愉契约在册 → 随机授予,见 :func:`_grant_joy_conditional`)
-  先于腿型分派执行,随后腿型分派应用一次——
-  - **equip**:件名命中 → 装备入栏(write_logic)+ 获得后果链
-    (apply_equip_acquire_consequence);未解析 → 禁猜,equips 值不变翻
-    来源 + 留证行;
-  - **upgrade**:变换窗三态 + 档行(见 :func:`_apply_upgrade_transform`);
-  - **unknown**:零记账 + 留证行(含弱化词且装备锚未命中的卡文落此——
-    弱化兜底档已按原文二分法退役,静默零记账变响亮申报)。
-  其余未路由腿型 = 终态兜底零写(reason = ``unrouted_leg_zero_write``)。
+- **条件腿 rider**(:func:`_grant_joy_conditional`)先于腿型分派执行——
+  弹窗出现即触发,与选择哪条腿无关(授予失败不阻塞腿型分派);
+- **equip**:件名命中 → 装备入栏(write_logic)+ 获得后果链
+  (apply_equip_acquire_consequence);未解析 → 禁猜,equips 值不变翻
+  来源 + 留证行;
+- **upgrade**:变换窗三态 + 档行(见 :func:`_apply_upgrade_transform`);
+- **unknown**:零记账 + 留证行(含弱化词且装备锚未命中的卡文落此——
+  弱化兜底档已按原文二分法退役,静默零记账变响亮申报)。
+
+其余未路由腿型 = 终态兜底零写(reason = ``unrouted_leg_zero_write``)。
+
+确认未生效重派 → 效果腿重复应用的风险按增补 2 禁止清单第 4 条接受,
+不设防(升费腿二次上报走「零枚 → 留证零写」,档行不会 +1 两次)。
+效果腿的写语义单点 = 本函数(确认后无第二写边)。
 
 动作上报函数族拆分件(每动作一文件;族规约 = 包 ``cw_action_report.
 __init__`` docstring)。本包 → 容器单向依赖。
@@ -57,39 +56,25 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 _PLANNER_PRODUCER: str = 'CwActionPickPlannerParam'
 _LV999_ID: str = '银狼LV.999'   # 变换窗/级联/档行身份名(cw_chars 规范名)
 
-#: 落地相证据值(画面 op 重入裁决出口传参;非空即视为落地)。原自
-#: pick_invest import,该文件随投资两屏迁移批删除后就地自持(连带改动,
-#: 仅常量搬家;策划屏两相行为本身不动,迁移归后续批)。
-EVIDENCE_OVERLAY_CLOSED: str = 'overlay_closed'
-
-
 def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
                                      *, leg_type: str = '',
                                      norm_item: str = '',
-                                     evidence: str = '',
                                      rng: random.Random | None = None) -> LogicOutcome:
-    """银狼策划选择上报(两相;与 pick_invest 同构)。
+    """银狼策划选择上报(即时单相:确认点击后一口写完整效果逻辑态)。
 
-    - **发射相**(evidence 缺省):意图遥测日志行,容器零写;
-    - **落地相**(evidence = :data:`EVIDENCE_OVERLAY_CLOSED`):条件腿
-      rider 先于腿型分派执行(见 :func:`_grant_joy_conditional`);随后
-      腿型分派逐步应用,逐字段各落一行遥测(单次动作报告多次写遥测 =
-      预期行为):equip 入栏+后果链 / upgrade 变换窗三态+档行 /
-      unknown 零记账+留证 / 未路由腿型终态兜底零写;
+    写序 = 模块头:条件腿 rider(:func:`_grant_joy_conditional`)先于
+    腿型分派;随后腿型分派逐步应用,逐字段各落一行遥测(单次动作报告
+    多次写遥测 = 预期行为):equip 入栏+后果链 / upgrade 变换窗三态+档行
+    / unknown 零记账+留证 / 未路由腿型终态兜底零写。
+
     - ``leg_type``/``norm_item`` = 决策半腿型载荷(classify_planner_leg
-      产物,经 OverlayPickExecEnv 随发射透传、画面 op 实例存证至落地);
+      产物,经 OverlayPickExecEnv 随派发透传);
     - ``rng`` = 条件腿采样注入点(缺省 None = 实机未播种猜测语义,与
       骇客改件采样同约定;sim 传流键 = 世界真值);
-    - 出参 applied=True = 动作受理(拒分支走落地相内域守卫,不整批拒)。
+    - 出参 applied=True = 动作受理(拒分支走腿内域守卫,不整批拒)。
     """
     _validate_sig(sig, ('logic_action',))
-    if evidence != EVIDENCE_OVERLAY_CLOSED:
-        # 发射相:意图遥测(日志行;行级台账无意图行型,申报见模块头)。
-        log.info('[cw-pick-planner] 意图遥测:leg_type=%s norm_item=%s idx=%s'
-                 '(效果腿候证据闩)', leg_type or '?', norm_item or '',
-                 getattr(param, 'idx', '?'))
-        return LogicOutcome(applied=True, reason='intent_only')
-    # 条件腿 rider(落地相内、腿型分派之前):弹窗出现即触发,与选择
+    # 条件腿 rider(上报内、腿型分派之前):弹窗出现即触发,与选择
     # 哪条腿无关;授予失败不阻塞腿型分派(调用点级 best-effort)。
     _grant_joy_conditional(gs, sig, rng)
     if leg_type == PLANNER_LEG_EQUIP:
@@ -106,7 +91,7 @@ def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
 
 def _grant_joy_conditional(gs: GameState, sig: ChannelSig,
                            rng: random.Random | None) -> None:
-    """欢愉契约条件腿授予 rider(条件腿正式模型):落地相上报 = 头号玩家
+    """欢愉契约条件腿授予 rider(条件腿正式模型):planner 上报 = 头号玩家
     选项弹窗被处理的触发事件。``active_env`` 归一等于「欢愉契约」在册 →
     候选集取 ``ENV_GIFTS['欢愉契约'].chars_conditional`` 名集(结构化
     在册数据单一源)均匀采样一枚,``gain_character(1★, rand=True)`` 走
@@ -171,9 +156,10 @@ def _apply_equip_leg(gs: GameState, norm_item: str,
 
 def _apply_upgrade_transform(gs: GameState,
                              sig: ChannelSig) -> LogicOutcome:
-    """升费腿 = 变换窗三态 + 档行(design §2.2/§2.1③):前置硬校验对发射
+    """升费腿 = 变换窗三态 + 档行(design §2.2/§2.1③):前置硬校验对上报
     时容器观察态(bench ∪ front_row ∪ back_row 多重集)的 (银狼LV.999, 2★)
-    计数:
+    计数(单相时序等价论证 = design §2.0:确认点击到本调用之间容器零
+    写入,观察态与原落地相时点等值):
 
     - **现档 ≥ 5**(误走本腿:5 费升 2 星两选项皆装备,upgrade 不应出现;
       出现 = 识别或机制异常)→ 不写变换不写档,留证行

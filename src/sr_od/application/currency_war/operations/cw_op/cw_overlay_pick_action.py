@@ -16,12 +16,12 @@ cw_tool_use_action。
 「零上报例外登记」)**:本族每类 run 体在机械链(选中点击 → 确认点击)
 发出后直调自己的上报函数 ``report_action_pick_<snake>_param``
 (``kernel/cw_action_report``,零写族落 zero_writes)——与 buy_card 等
-其它动作 op 同一执行契约;上报发射相零写,容器写语义(chosen_*/Confirm*
-到账)仍由画面 op 原写点承载。银狼闭环迭代起三线例外:pick_invest /
-pick_equip / pick_supply = 分步实现(发射相仅意图遥测,落地相在画面 op
-重入裁决出口/节点完成门,证据闩语义);pick_planner 发射相 = 意图遥测
-(零容器写),效果腿同候证据闩。partner 确认点读缺的 retry 旁路分支未发
-确认点击,不上报。
+其它动作 op 同一执行契约。原「发射/落地两相」例外(invest/equip/
+supply/planner 的发射相意图遥测 + 画面 op 重入裁决出口落地相)已随
+投资两屏、供给、装备、策划各迁移批全域清偿(迭代 2026-09-21,用户
+裁定 = action_ops.md §1 增补 2):现役全族 = 机械链发出后立即一口写
+完整结果,容器写语义单点 = 各上报函数,零证据闩零重入裁决补写面。
+partner 确认点读缺的 retry 旁路分支未发确认点击,不上报。
 
 体迁纪律(零行为):各 op 类 run 体 = 现役 overlay act 确认链逐字迁移
 (接收者 ``self``→``env.op``、机械参数→env 字段两处归一,批4 已迁;
@@ -122,9 +122,9 @@ class OverlayPickExecEnv:
     消费本字段(循环推进按宿主自身形态返回 round_wait),保留作分派面
     需要逐结果路由时的旁路面。
     ``leg_type``/``norm_item`` = 银狼策划腿型载荷(银狼闭环 design
-    §2.1①;决策半经 ``classify_planner_leg`` 现算,随发射透传给上报函数
-    登记意图遥测;leg_type ∈ upgrade|equip|unknown,norm_item =
-    归一件名或空)。
+    §2.1①;决策半经 ``classify_planner_leg`` 现算,随派发透传给上报函数
+    ——确认点击后立即上报完整效果腿;leg_type ∈ upgrade|equip|unknown,
+    norm_item = 归一件名或空)。
     """
 
     op: SrOperation
@@ -370,8 +370,12 @@ class CwActionPickPlannerOp(SrOperation):
 
     点卡选中(避开卡内「详情」按钮区的选中点几何归决策半 ``_card_point``
     单一源)→ 确认机械交回(裁决词 = 全词「我来当策划」,r327 终审 E;
-    详情面板防御已拆,面板若真弹出归下一帧重入自愈——用户裁定
-    2026-09-14)。"""
+    详情面板防御已拆,面板若真弹出归下一帧外循环自愈——用户裁定
+    2026-09-14)。**即时上报**(action_ops.md §1 增补 2,迭代
+    2026-09-21-pick-planner-equip-immediate-report):确认点击后立即
+    一口写完整效果腿(equip 入栏+后果链 / upgrade 变换+档行 / unknown
+    留证 / unrouted 兜底零写),无发射/落地两相、无证据闩——确认未生效
+    = 代码 bug,overlay 残留由外循环按当前画面重识别重派。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False
@@ -386,7 +390,7 @@ class CwActionPickPlannerOp(SrOperation):
 
     @operation_node(name='pick_planner', is_start_node=True)
     def run(self) -> OperationRoundResult:
-        """机械执行(点卡 → 选中动画等待 → 确认;轮次结果经旁路回传)。"""
+        """机械执行(点卡 → 选中动画等待 → 确认)+ 立即上报完整结果。"""
         action = self.param
         env = self.env
         op = env.op
@@ -398,14 +402,13 @@ class CwActionPickPlannerOp(SrOperation):
         time.sleep(1.2)   # 等选中动画
         # 点卡 = 机械单发(用户裁定 2026-09-14:详情面板检测拆;用户定性
         # = 详情弹出 = 点错所致,该面归选中点几何治理,面板检测是症状侧
-        # 补丁)。面板若真弹出,后果归下一帧重入:本屏分发即门,外循环按当前画面
+        # 补丁)。面板若真弹出,后果归下一帧:本屏分发即门,外循环按当前画面
         # 重分派(详情 overlay 族分支/本 op 重走链)自愈。
-        # 4. 点确认+机械交回(r326/P1⑦ 防线语义由重入裁决+预算耗尽 bail
+        # 4. 点确认+机械交回(r326/P1⑦ 防线语义由外循环重识别+预算耗尽 bail
         # 承接,验关半拆除——用户裁定 2026-09-10:动作 op 禁验证)。
         # r327(终审 E):裁决词用全词「我来当策划」(入场锚同词,
         # cw_yinlang_star_up.yml:26 live-verified)——短词「策划」
         # 在艺术字漏读时可能假通过。
-        op._confirm_pending = True
         # 确认点主源 = 建档「按钮-骇入确认」中心(坐标单一真相源);area 缺失回退
         # 兜底常量(megastar/invest_env 同款派生 + 缺损兜底模式)。
         _confirm = (area_center(op.ctx, '按钮-骇入确认', CwScreenYinLang.CARD_AREA_SCREEN)
@@ -414,9 +417,9 @@ class CwActionPickPlannerOp(SrOperation):
             op, confirm_point=_confirm,
             entry_keyword='我来当策划', tag='cw-planner',
             press_time=op.CLICK_PRESS_TIME)
-        # 自上报(发射相:仅登记意图遥测,容器零写;效果腿在「overlay 已关」
-        # 落地证据应用一次,宿主 = 画面 op 重入裁决出口——银狼闭环
-        # design §2.1① 证据闩语义)。
+        # 立即自上报完整结果(design §2.0/§2.1 单相:确认点击后一口写
+        # 腿型分派效果——增补 2:点完即按成功上报,零判效零证据闩;
+        # leg_type/norm_item 经 env kwargs 形态保持)。
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_pick_planner_param(
@@ -424,7 +427,7 @@ class CwActionPickPlannerOp(SrOperation):
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'),
                 leg_type=env.leg_type, norm_item=env.norm_item)
-        return self.round_success('策划选择确认链已发(结果经旁路回传)')
+        return self.round_success('策划选择确认链已发(结果已即时上报)')
 
 
 class CwActionPickInvestOp(SrOperation):
