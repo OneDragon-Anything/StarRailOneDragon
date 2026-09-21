@@ -17,11 +17,14 @@ op 侧调用形态不变)。
   :func:`cw_gain_chain.gain_character` 统一时序(落位 → 回调 → 3 合 1
   升星判断 → 产物递归;复制触发三合一 = 口述·权威 2026-09-21);
 - **变异面不走链**:冶金炉/特权卡 = 原地替换数量不变,非获得——直写、
-  不触发获得回调(候实机采证;采证钩子 = 变异产物命中
-  ``EQUIP_ACQUIRE_CONSEQUENCES`` 键集落
-  ``furnace_mutate_consequence_candidate`` 留证行);
+  不触发获得回调(采证钩子 = 变异产物命中 ``EQUIP_ACQUIRE_CONSEQUENCES``
+  键集落 ``furnace_mutate_consequence_candidate`` 留证行;冶金炉作用域
+  白名单定谳后变异产物域(简易/进阶)与后果表成员(特殊/骇客)不相交,
+  该钩子对冶金炉为结构性不触发的哨兵);
 - **冶金炉采样池 v0** = ``cw_sim_equips.furnace_reroll`` 同源(同类别池
-  均匀、排除被变异件自身;两实现等价由对拍锁钉死,禁第二套口径);披露键
+  均匀、排除被变异件自身;两实现等价由对拍锁钉死,禁第二套口径)。
+  **作用域白名单**(口述·权威 2026-09-21):冶金炉只作用于简易/进阶,
+  特殊(银狼升星奖励专属 10 件在内)与骇客不可作用、亦不可产出;披露键
   :data:`FURNACE_MUTATE_POOL_ASSUMPTION_KEYS`;rng = pick_invest 关键字
   带缺省形态(缺省未播种 = 采样是猜测);
 - **失败安全**(沿 gain-chain §2.7 同款):目标单位未观察/漂移、桥零写
@@ -69,13 +72,20 @@ DEFECT_TARGET_UNIT_MISSING: str = 'tool_target_unit_missing'
 DEFECT_BRIDGE_ZERO_WRITE: str = 'tool_bridge_zero_write'
 DEFECT_TOKEN_NOT_ADMITTED: str = 'tool_token_not_admitted'
 DEFECT_MUTATE_CONSEQUENCE_CANDIDATE: str = 'furnace_mutate_consequence_candidate'
+DEFECT_MUTATE_OUT_OF_SCOPE_KEPT: str = 'furnace_mutate_out_of_scope_kept'
 
 #: 冶金炉采样池 v0 建模假设档披露键(pick_invest 先例形态):池语义 =
-#: 同类别均匀、排除自身,成员资格轴 = 注册表 category。已知边角:简易池
-#: 8 件 vs 实机 7 件(光能电池归属)在 game 侧待实测,在册待校准批。
+#: 同类别均匀、排除自身,成员资格轴 = 注册表 category(作用域白名单 =
+#: 口述·权威 2026-09-21,属定谳非假设)。已知边角:简易池 8 件 vs 实机
+#: 7 件(光能电池归属)在 game 侧待实测,在册待校准批。
 FURNACE_MUTATE_POOL_ASSUMPTION_KEYS: tuple[str, ...] = (
     'furnace_mutate_pool_v0_same_category',
 )
+
+#: 冶金炉作用域类别白名单(口述·权威 2026-09-21):仅简易/进阶可作用、
+#: 可产出;特殊(银狼升星奖励专属 10 件 = 9 特殊 + 1 骇客,实测与白名单
+#: 零交叠)与骇客不可作用、亦不可产出。
+FURNACE_MUTATE_CATEGORIES: frozenset[str] = frozenset({'简易', '进阶'})
 
 #: 模块级缺省 rng(rng=None 时取用;缺省未播种 = 实机采样是猜测,
 #: sim/live 同语义,真实度归观察对账;注入槽模式测试同种子可复现)。
@@ -87,10 +97,13 @@ _DEFAULT_RNG: random.Random = random.Random()
 def furnace_mutate_pool(item_name: str) -> list[str] | None:
     """冶金炉同类别变异池(采样池单一源对齐 sim
     ``cw_sim_equips.furnace_reroll``:同 category 池升序、排除被变异件
-    自身;成员资格轴 = 注册表 category)。目标件不在注册表 → None
-    (调用侧 fail-closed 禁猜);空池 → [](无同类别可替换件)。"""
+    自身)。**作用域白名单**(口述·权威 2026-09-21):目标与产物类别均须
+    ∈ ``FURNACE_MUTATE_CATEGORIES``(简易/进阶;特殊/骇客——含银狼升星
+    奖励专属 10 件——不可作用、亦不可产出)。目标件不在注册表或类别越
+    白名单 → None(调用侧 fail-closed 禁猜);空池 → [](无同类别可
+    替换件)。"""
     src = get_equip(item_name)
-    if src is None:
+    if src is None or src.category not in FURNACE_MUTATE_CATEGORIES:
         return None
     return sorted(name for name, e in EQUIPMENTS.items()
                   if e.category == src.category and name != item_name)
@@ -242,7 +255,9 @@ def _furnace_equip_leg(gs: GameState, param: Any, sig: ChannelSig,
 
 def _furnace_char_leg(gs: GameState, param: Any, sig: ChannelSig,
                       rng: random.Random) -> LogicOutcome:
-    """炉·拖角色腿:①equips 采样链 rand 合并写;②行域穿戴清空 logic 写。"""
+    """炉·拖角色腿:①equips 采样链 rand 合并写(白名单件采样替换,越
+    白名单穿戴件保留原样 + 聚合留证——其是否随动作消失未采证,v0 保留);
+    ②行域穿戴清空 logic 写(全拆,清空本身无随机)。"""
     unit = _resolve_row_unit(gs, param.row, param.slot)
     if unit is None:
         _defect_zero_write(sig, DEFECT_TARGET_UNIT_MISSING,
@@ -254,7 +269,15 @@ def _furnace_char_leg(gs: GameState, param: Any, sig: ChannelSig,
         return LogicOutcome(applied=True, reason='tool_target_unit_missing')
     worn = list(unit.equips or [])
     replacements: list[str] = []
+    mutated_worn: list[str] = []
+    kept_out_of_scope: list[str] = []
     for w in worn:
+        w_cat = getattr(get_equip(w), 'category', None)
+        if w_cat not in FURNACE_MUTATE_CATEGORIES:
+            # 作用域白名单(2026-09-21 定谳):非简易/进阶穿戴件不可变异
+            # → v0 保留原样(未采证),聚合留证不停机。
+            kept_out_of_scope.append(w)
+            continue
         new_item = furnace_mutate_sample(rng, w)
         if new_item is None:
             _defect_zero_write(sig, DEFECT_BRIDGE_ZERO_WRITE,
@@ -266,6 +289,14 @@ def _furnace_char_leg(gs: GameState, param: Any, sig: ChannelSig,
             return LogicOutcome(applied=True,
                                 reason='furnace_pool_unavailable')
         replacements.append(new_item)
+        mutated_worn.append(w)
+    if kept_out_of_scope:
+        _defect_zero_write(sig, DEFECT_MUTATE_OUT_OF_SCOPE_KEPT,
+                           field_name='equips',
+                           expected='穿戴件均属简易/进阶(白名单内)',
+                           actual=f'越白名单保留原样: {kept_out_of_scope}',
+                           evidence='tool_furnace_char',
+                           detail='out_of_scope_kept')
     inv = _equips_inv(gs)
     if inv is None:
         _defect_zero_write(sig, DEFECT_BRIDGE_ZERO_WRITE,
@@ -274,18 +305,21 @@ def _furnace_char_leg(gs: GameState, param: Any, sig: ChannelSig,
                            evidence='tool_furnace_char',
                            detail='equips_unobserved')
         return LogicOutcome(applied=True, reason='furnace_equips_unobserved')
-    # ①合并单笔 rand:移除工具 ∧ 移除全部穿戴 ∧ 追加各采样替换。
+    # ①合并单笔 rand:移除工具 ∧ 移除全部穿戴 ∧ 追加(白名单件采样替换 +
+    #   越白名单件原样保留)。
     new_inv = list(inv)
     _remove_one(new_inv, '冶金炉')
     for w in worn:
         _remove_one(new_inv, w)
     new_inv.extend(replacements)
+    new_inv.extend(kept_out_of_scope)
     ev = f'tool_furnace_char@{param.row}{param.slot}'
     gs.write_logic_rand(gs.equips, new_inv,
                         produced_by=TOOL_USE_REPORT_PRODUCER,
                         evidence=ev, sig=sig)
     _emit_consequence_candidates(gs, sig,
-                                 list(zip(worn, replacements, strict=True)),
+                                 list(zip(mutated_worn, replacements,
+                                          strict=True)),
                                  evidence='tool_furnace_char')
     # ②行域穿戴清空(确定面:清空本身无随机)。
     _write_row_equips_cleared(gs, param.row, unit, evidence=f'{ev}#unequip',
