@@ -149,9 +149,6 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'enemy_affixes': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='开局写定(简报/位面详情实采写门)+ 观察覆盖'),
-    'active_strategies': ProjectionAuditRow(
-        status=AUDIT_WRITE_END,
-        basis='选卡确认挂点登记 + 观察覆盖(持卡列表)'),
     'board': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
         basis='派生量:front_row/back_row 写端挂钩 _resync_board_delta'
@@ -173,12 +170,20 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'supply_refresh_used': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='节点屏刷新计数(§3.4.2)'),
-    'env_refresh_used': ProjectionAuditRow(
-        status=AUDIT_PROCESS_ONLY,
-        basis='节点屏刷新计数(§3.4.3,零写端申报不动)'),
-    'strategy_refresh_used': ProjectionAuditRow(
-        status=AUDIT_PROCESS_ONLY,
-        basis='节点屏刷新计数(§3.4.4,逐卡)'),
+    'env_refresh_left': ProjectionAuditRow(
+        status=AUDIT_WRITE_END,
+        basis='投资环境刷新剩余次数(屏上「剩余次数：N」观察真值;观察写端'
+              ' = report_screen_invest_env_obs 摄入,读缺跳写;§3.4.3)'
+              ' + 观察覆盖'),
+    'strategy_refresh_left': ProjectionAuditRow(
+        status=AUDIT_WRITE_END,
+        basis='投资策略逐卡刷新剩余次数(键 = 规范卡名;观察写端 = '
+              'report_screen_invest_strategy_obs 摄入「刷新次数N」,读缺键'
+              ' 跳写;§3.4.4) + 观察覆盖'),
+    'active_strategies': ProjectionAuditRow(
+        status=AUDIT_WRITE_END,
+        basis='动作落地获得链写(gain_invest_strategy:按名字去重追加)'
+              ' + 观察覆盖(持卡列表)'),
     'round_fresh_buys': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='轮内新鲜买入账(record_fresh_buy 单口),无 OCR 读端'),

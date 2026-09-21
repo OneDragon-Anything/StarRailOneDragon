@@ -750,18 +750,17 @@ class CwActionPickSupplyParam:
 
 
 @dataclass
-class CwActionPickInvestParam:
-    """投资选择(投资策略/投资环境两入口共用,替代 CwActionPickEventParam;逐卡刷新
-    建议另发 CwActionRefreshInvestCardsParam)。
+class CwActionPickInvestStrategyParam:
+    """投资策略屏选择(投资策略 3 选 1;投资环境屏 = CwActionPickInvestEnvParam)。
 
-    双屏分流载荷(银狼闭环迭代 design.md §2.3):``source`` = 发射屏别
-    ('strategy'=投资策略屏 / 'portal'=投资环境屏;''=未分流——上报只登记
-    意图,落地分派零动作);``norm_name`` = 选中卡归一规范名
+    拆类(用户裁定 2026-09-21:原两屏共用一词表类 + source 字符串运行时
+    分流是绕路,每屏一词表类,上报族「一类恰一具名函数」机械规约回归,
+    屏别分流靠类型)。``norm_name`` = 选中卡归一规范名
     (``normalize_invest_name``,OCR 原始名不静默改写由 handler 持有)。
-    上报分步语义:策略屏确认落地 → 入 ``gs.active_strategies`` + 效果
-    分派;portal 确认落地 → 只走效果分派,禁入持卡面(防 portal 卡污染
-    持卡经济聚合)。两字段不入动作实例键(归因载荷不改变动作身份,同
-    ``route_tag`` 先例)。
+    动作 op 点完确认**立即自上报完整结果**(写入 game state;用户裁定
+    「选择动作执行就按成功处理,没有选到就是代码 bug」,原分步上报废除)。
+    norm_name/route_tag 不入动作实例键(归因载荷不改变动作身份,同
+    route_tag 先例)。
     """
     idx: int
     # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
@@ -769,8 +768,22 @@ class CwActionPickInvestParam:
     #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
     #             重声明;``reason`` = 归因记录字段,''=未标)。
     reason: str = ''
-    source: str = field(default='', kw_only=True,
-                        metadata={'action_key_exclude': True})
+    norm_name: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
+
+
+@dataclass
+class CwActionPickInvestEnvParam:
+    """投资环境屏选择(投资环境 3 选 1;投资策略屏 = CwActionPickInvestStrategyParam)。
+
+    拆类与上报语义同 CwActionPickInvestStrategyParam:点完确认立即自
+    上报完整结果(获得投资环境 → gain_invest_env 整链)。
+    """
+    idx: int
+    # [索引定义] 坐标系: 同 CwActionPickInvestStrategyParam.idx。
+    reason: str = ''
     norm_name: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
     route_tag: str = field(default='', kw_only=True,
@@ -997,7 +1010,7 @@ CwAction = (
         CwActionOpenBookcardParam | CwActionWearEquipParam | CwActionFurnaceUseParam | CwActionPrivilegeCardUseParam |
         CwActionWrenchUseParam | CwActionPrecisionWrenchUseParam | CwActionStaffProjectorUseParam | CwActionPerfectProjectorUseParam |
         CwActionLuckyTokenUseParam | CwActionStartBattleParam | CwActionOpenShopParam | CwActionPickEventParam |
-        CwActionPickEncounterParam | CwActionPickSupplyParam | CwActionPickInvestParam | CwActionPickMegastarParam |
+        CwActionPickEncounterParam | CwActionPickSupplyParam | CwActionPickInvestStrategyParam | CwActionPickInvestEnvParam | CwActionPickMegastarParam |
         CwActionPickPartnerParam | CwActionPickPlannerParam | CwActionPickStarTomeParam | CwActionPickWishTrialParam |
         CwActionPickBoxCardParam | CwActionPickFortuneParam | CwActionPickExpertInviteParam | CwActionPickEquipParam |
         CwActionRefreshNodeOptionsParam | CwActionRefreshSupplyParam | CwActionRefreshInvestCardsParam |
@@ -1016,7 +1029,7 @@ CW_ACTION_TYPES: tuple = (
     CwActionOpenShopParam,
     # 选择族动作化(终态契约;decide 接线归终态切换批,本批纯落型;
     # CwActionPickFortuneParam/CwActionPickExpertInviteParam/CwActionPickEquipParam = 契约扩员 12→15 新增,普查迁移批 2)
-    CwActionPickEncounterParam, CwActionPickSupplyParam, CwActionPickInvestParam, CwActionPickMegastarParam, CwActionPickPartnerParam,
+    CwActionPickEncounterParam, CwActionPickSupplyParam, CwActionPickInvestStrategyParam, CwActionPickInvestEnvParam, CwActionPickMegastarParam, CwActionPickPartnerParam,
     CwActionPickPlannerParam, CwActionPickStarTomeParam, CwActionPickWishTrialParam, CwActionPickBoxCardParam,
     CwActionPickFortuneParam, CwActionPickExpertInviteParam, CwActionPickEquipParam,
     CwActionRefreshNodeOptionsParam, CwActionRefreshSupplyParam, CwActionRefreshInvestCardsParam,
@@ -1027,7 +1040,7 @@ CW_ACTION_TYPES: tuple = (
 #: 12→15 后十二个),供 handler 分派/注册完备锁遍历(三刷新动作走各自
 #: 既有点击链不入本表;Obs = 观察请求语义,不属选择族)。
 PICK_ACTION_TYPES: tuple = (
-    CwActionPickEncounterParam, CwActionPickSupplyParam, CwActionPickInvestParam, CwActionPickMegastarParam, CwActionPickPartnerParam,
+    CwActionPickEncounterParam, CwActionPickSupplyParam, CwActionPickInvestStrategyParam, CwActionPickInvestEnvParam, CwActionPickMegastarParam, CwActionPickPartnerParam,
     CwActionPickPlannerParam, CwActionPickStarTomeParam, CwActionPickWishTrialParam, CwActionPickBoxCardParam,
     CwActionPickFortuneParam, CwActionPickExpertInviteParam, CwActionPickEquipParam,
 )

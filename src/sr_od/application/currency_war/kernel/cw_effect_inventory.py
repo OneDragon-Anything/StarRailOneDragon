@@ -694,9 +694,10 @@ def _portal_acquired_t(gs: object, session: object) -> int | None:
 # 与 cw_game_state 的 apply_effect_burst_grant 等三桥同族,但宿主不在
 # cw_game_state——其模块头 import 本模块,桥落本侧可免模块级成环;
 # ChannelSig/BenchView 运行期函数内惰性取。挂点 = 选卡时点(设计 §3.2.3
-# 「效果写端(选卡时点、非 op)」),生产接线 = CwScreenInvestStrategy
-# ._append_confirmed_strategy 确认落地登记点(register_strategy/
-# apply_effect_burst_grant 同点)。)
+# 「效果写端(选卡时点、非 op)」),生产接线(投资两屏迁移批起)= 获得链
+# kernel/cw_gain_chain.py::gain_invest_strategy 登记腿(register_strategy/
+# apply_effect_burst_grant 同点);原 CwScreenInvestStrategy 画面 op 写点
+# 已随批删除。)
 
 
 @dataclass(frozen=True)

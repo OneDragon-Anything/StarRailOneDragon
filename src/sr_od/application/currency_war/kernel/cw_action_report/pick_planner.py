@@ -28,9 +28,6 @@ from dataclasses import replace
 from typing import Any
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_action_report.pick_invest import (
-    EVIDENCE_OVERLAY_CLOSED,
-)
 from sr_od.application.currency_war.kernel.cw_economy import effective_cost
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     apply_equip_acquire_consequence,
@@ -51,6 +48,11 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 
 _PLANNER_PRODUCER: str = 'CwActionPickPlannerParam'
 _LV999_ID: str = '银狼LV.999'   # 变换窗/级联/档行身份名(cw_chars 规范名)
+
+#: 落地相证据值(画面 op 重入裁决出口传参;非空即视为落地)。原自
+#: pick_invest import,该文件随投资两屏迁移批删除后就地自持(连带改动,
+#: 仅常量搬家;策划屏两相行为本身不动,迁移归后续批)。
+EVIDENCE_OVERLAY_CLOSED: str = 'overlay_closed'
 
 
 def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,

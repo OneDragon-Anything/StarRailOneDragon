@@ -45,10 +45,8 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_action_report.pick_invest import (
-    EVIDENCE_OVERLAY_CLOSED,
-)
 from sr_od.application.currency_war.kernel.cw_action_report.pick_planner import (
+    EVIDENCE_OVERLAY_CLOSED,
     report_action_pick_planner_param,
 )
 from sr_od.application.currency_war.kernel.cw_events import (

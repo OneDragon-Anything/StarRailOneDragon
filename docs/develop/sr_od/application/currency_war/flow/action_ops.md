@@ -8,6 +8,17 @@
 
 **用户裁定(增补)**:**不存在偶发丢失——动作未生效必有确定性根因,禁止以偶发结案**;安灯拦停的每个未生效都必须查到根因(如:装备角色专属约束/前置不满足/时序错误),修法落根因层。
 
+**用户裁定(增补 2,2026-09-21)**:**选择动作执行就一定按成功处理——动作 op 点完就立即上报,按成功把结果写进 game state。没有选到/动作没生效就是代码 bug:响亮暴露修根因,不在 bug 上做无畏的补丁操作。**
+
+禁止的写法(现有代码里还存在的 = 欠账,逐批改掉;禁新增):
+
+- **分两步上报**:点的时候只记一条日志,等确认真的生效了才补写结果(现役 pick_invest 的「发射相/落地相」就是这种);
+- **等下一轮看画面才补写**:点完不写结果,等下一轮重新截屏、看到弹窗没了,才把选择结果补进 game state;
+- **探下一个画面才上报**:先看看有没有跳到下一个画面,再决定上报;
+- **判重/防重复保护**:选择面绝不第二次给相同的牌(游戏事实),同一个选择不可能被上报两次——真上报了两次只可能是代码 bug,按 bug 修,不为它加防重复保护。
+
+写错了的最终纠正手段 = 下一帧重新读画面,以实际读到的为准;不是在动作层做事后确认。
+
 **归属说明(每类需求去哪一层)**:
 
 | 需求 | 归属层 |
@@ -38,7 +49,7 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 
 - **prep 域旁路字段** `env.detail` / `env.emitted`(`PrepExecEnv`):机械执行摘要 + 是否已发出;节点直调 `op.run()` 的 round 结果恒 success(单节点动作 op 零重试语义,框架循环机制归包络与交回面所有)。
 - **返回值在册例外**:在册例外仅 `CwActionStartBattleOp`(round 结果 = 点击序列已执行,找不到按钮/area 缺失 = False——未发出事实非判效,消费面 = 执行器 `last_launch_ok` 旁路 → `cw_loop` 战斗分支);`CwActionBuyCardOp` / `CwActionWearEquipOp` 均回恒 success,落地与否不是返回值语义,归观察侧对账(§2.1)。prep 域 `emitted=False` = 机械未发出事实(定位缺失/无空槽),非效果判定。
-- **pick 族旁路** `env.round_result`:轮次流转语义,不是动作成败回执;`operations/cw_screen/_overlay_confirm.py::emit_overlay_confirm` = 机械确认 + 固定等待 + 无条件 round_retry——不读屏判「是否生效」,落地与否由下一轮重入的入口观察裁决(重入时入口词不在 = 已离开本画面交回 success;仍在 = 重做确认,计节点 retry 预算)。
+- **pick 族旁路** `env.round_result`:轮次流转语义,不是动作成败回执;`operations/cw_screen/_overlay_confirm.py::emit_overlay_confirm` = 机械确认 + 固定等待 + 无条件 round_retry——不读屏判「是否生效」。**欠账标注(§1 增补 2)**:「落地与否由下一轮重入的入口观察裁决(入口词不在 = 已离开本画面交回 success;仍在 = 重做确认)」的现役写法 = 欠账,逐批改为「确认点完立即上报结果,本访问直接交回」;禁新增。
 - **落地登记注册表**(`operations/cw_screen/cw_screen_op_base.py` §6.4):单一发射口,发射即触发;逐件申报面 = `EMIT_TRIGGERED_DECLARED`(现役 2 件:encounter_refresh_used / strategy_refresh_used,随点击置位不等验效)。
 
 ## 3. 偏离清单
@@ -97,6 +108,8 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 | Obs | CwActionObsOp | `cw_obs_action.py` | 重观察动作,口径由 `scope` 选(值域闭集 = `cw_vocab.OBS_SCOPES`)。**scope='in_place'**(缺省)= 当前画面重新观察上报,不交回外循环:执行体 = 宿主画面 op `reobserve_in_visit`(现役唯一宿主 = 备战 CwScreenPrep)heavy 观察链重跑,漏斗直写容器 = 观察边界对账;零点击零拖拽;自上报 = 零写占位(容器更新通道 = 观察漏斗本体);非终结,执行后帧代次标 full(方向重估触发,同入口帧;贵段消费侧键守卫限频),决策环原地续跑。重观察见事件 overlay = 抛 `CwObsOverlayBail` 交回外循环重分发(捕获点 = 备战决策循环,画面路由归外循环)。**scope='outer_loop'** = 交回外循环重新观察:决策环在 F3 之前**分支拦截**(不经本表派发、不进执行器、不写动作记录,行为 = 原 HoldFrame 空发射帧收编,用户裁定 2026-09-20),注册行仅为完备锁在场 + in_place 路径派发用。发射域无重观察能力(env.op 未接线)= AssertionError 响亮暴露(策略器 bug)。发射条件 = 策略需要新鲜观察(in_place = 随机面/不确定面动作后要真值再决策;outer_loop = 本帧无动作,交回外循环重判/等待,自旋防护归外循环 stall 防线)。 |
 
 ### 4.5 事件线 pick 族(12 行;域 env = `OverlayPickExecEnv`,机械参数由各画面 op 决策半现算经 env 传入,op 类体内零决策)
+
+**欠账标注(§1 增补 2)**:PickInvest/PickPlanner/PickSupply/PickEquip 四行写的「先只记日志、等确认生效的证据再补写结果」分步上报 = 欠账,逐批改为「点完立即上报完整结果」;各行描述随后续迁移批更新,禁新增分步写法。
 
 | 词表类 | op 类 | 文件 | 说明 |
 |---|---|---|---|

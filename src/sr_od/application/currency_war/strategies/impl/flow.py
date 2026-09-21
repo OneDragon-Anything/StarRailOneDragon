@@ -58,7 +58,8 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPickEquipParam,
     CwActionPickExpertInviteParam,
     CwActionPickFortuneParam,
-    CwActionPickInvestParam,
+    CwActionPickInvestEnvParam,
+    CwActionPickInvestStrategyParam,
     CwActionPickMegastarParam,
     CwActionPickPartnerParam,
     CwActionPickPlannerParam,
@@ -416,19 +417,23 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 f'禁静默按空态决策;槽 = {slot_name})')
         return value
 
-    def decide_invest_strategy(self) -> CwActionPickInvestParam | CwActionRefreshInvestCardsParam:
+    def decide_invest_strategy(self) -> CwActionPickInvestStrategyParam | CwActionRefreshInvestCardsParam:
         """投资策略 3 选 1(终态零参口;候选 = ``gs.invest_strategy_opts``)。"""
         return self._decide_invest('strategy', self.gs.invest_strategy_opts,
-                                   'invest_strategy_opts')
+                                   'invest_strategy_opts',
+                                   CwActionPickInvestStrategyParam)
 
-    def decide_invest_env(self) -> CwActionPickInvestParam | CwActionRefreshInvestCardsParam:
+    def decide_invest_env(self) -> CwActionPickInvestEnvParam | CwActionRefreshInvestCardsParam:
         """投资环境 3 选 1(终态零参口;候选 = ``gs.invest_env_opts``)。"""
         return self._decide_invest('env', self.gs.invest_env_opts,
-                                   'invest_env_opts')
+                                   'invest_env_opts',
+                                   CwActionPickInvestEnvParam)
 
-    def _decide_invest(self, kind: str, slot: object,
-                       slot_name: str) -> CwActionPickInvestParam | CwActionRefreshInvestCardsParam:
+    def _decide_invest(self, kind: str, slot: object, slot_name: str,
+                       pick_param_cls: type) -> CwActionPickInvestStrategyParam | CwActionPickInvestEnvParam | CwActionRefreshInvestCardsParam:
         """投资策略/投资环境共用决策核(原 decide_invest 双相拆分)。
+        ``pick_param_cls`` = 屏别词表类(词表拆类后由各入口显式传入,
+        输出 = 该类实例)。
         P1 两 kind 同一实现(委托 ``decide_event``)。
         ADR-0597(用户裁定 2026-09-08「投资选卡优先经济、然后是终局阵容,
         不为过渡阵容服务」):对齐源 = D* 预期终局方向——本入口从意向状态解析
@@ -442,7 +447,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         承载,ADR-0597 §5.3)。
 
         输出包装(终态契约 §2.2 刷新建议动作化):kernel refresh_slots 非空
-        → ``CwActionRefreshInvestCardsParam(slots)``;否则 ``CwActionPickInvestParam(idx)``。三闸点击链
+        → ``CwActionRefreshInvestCardsParam(slots)``;否则 ``pick_param_cls(idx)``。三闸点击链
         留 handler——闸全败帧 handler 同访问再调本入口取选卡:同帧去重
         (scratch 键 = (kind, 候选元组))保证「建议帧首调发建议、紧随重调
         落选卡后键清」——重入访问(新候选/同候选)恢复首调语义,等价旧
@@ -487,7 +492,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 self.state.scratch[self._INVEST_ADVICE_MEMO_KEY] = memo_key
                 return CwActionRefreshInvestCardsParam(slots=tuple(pick.refresh_slots),
                                           reason=pick.reason)
-        return CwActionPickInvestParam(idx=pick.option_idx, reason=pick.reason)
+        return pick_param_cls(idx=pick.option_idx, reason=pick.reason)
 
     def decide_supply(self) -> CwActionPickSupplyParam | CwActionRefreshSupplyParam:
         """补给选装备/出钻(终态零参口;候选 = ``gs.supply`` payload)。

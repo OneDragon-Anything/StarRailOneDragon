@@ -34,7 +34,8 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPickEquipParam,
     CwActionPickExpertInviteParam,
     CwActionPickFortuneParam,
-    CwActionPickInvestParam,
+    CwActionPickInvestEnvParam,
+    CwActionPickInvestStrategyParam,
     CwActionPickMegastarParam,
     CwActionPickPartnerParam,
     CwActionPickPlannerParam,
@@ -155,16 +156,18 @@ class CwStrategy(ABC, Generic[_TState]):
         观察层失约,实现须抛错(禁静默按空态决策)。"""
 
     @abstractmethod
-    def decide_invest_strategy(self) -> CwActionPickInvestParam | CwActionRefreshInvestCardsParam:
+    def decide_invest_strategy(self) -> CwActionPickInvestStrategyParam | CwActionRefreshInvestCardsParam:
         """投资策略 3 选 1(原 decide_invest 双相拆分;候选读
         ``gs.invest_strategy_opts`` 槽,离屏 None = 观察层失约抛错)。
         刷新建议 = CwActionRefreshInvestCardsParam 动作(候选卡逐卡槽位);选卡 =
-        CwActionPickInvestParam(两型互斥输出)。"""
+        CwActionPickInvestStrategyParam(两型互斥输出;词表按屏拆类,
+        投资两屏迁移批)。"""
 
     @abstractmethod
-    def decide_invest_env(self) -> CwActionPickInvestParam | CwActionRefreshInvestCardsParam:
-        """投资环境 3 选 1(与策略相共用 CwActionPickInvestParam;候选读
-        ``gs.invest_env_opts`` 槽;刷新建议 = CwActionRefreshInvestCardsParam 整组槽)。"""
+    def decide_invest_env(self) -> CwActionPickInvestEnvParam | CwActionRefreshInvestCardsParam:
+        """投资环境 3 选 1(选卡 = CwActionPickInvestEnvParam,屏别独立
+        词表类;候选读 ``gs.invest_env_opts`` 槽;刷新建议 =
+        CwActionRefreshInvestCardsParam 整组槽)。"""
 
     @abstractmethod
     def decide_supply(self) -> CwActionPickSupplyParam | CwActionRefreshSupplyParam:

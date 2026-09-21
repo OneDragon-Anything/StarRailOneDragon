@@ -55,7 +55,8 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPickEquipParam,
     CwActionPickExpertInviteParam,
     CwActionPickFortuneParam,
-    CwActionPickInvestParam,
+    CwActionPickInvestEnvParam,
+    CwActionPickInvestStrategyParam,
     CwActionPickMegastarParam,
     CwActionPickPartnerParam,
     CwActionPickPlannerParam,
@@ -180,7 +181,8 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     CwActionPickMegastarParam: CwActionPickMegastarOp,
     CwActionPickPartnerParam: CwActionPickPartnerOp,
     CwActionPickPlannerParam: CwActionPickPlannerOp,
-    CwActionPickInvestParam: CwActionPickInvestOp,   # pick-op-unify 批收编(投资环境/策略两屏共用)
+    CwActionPickInvestEnvParam: CwActionPickInvestOp,   # 投资两屏拆类后两行同指一 op(机械链同构;上报按 param 类型分派,投资两屏迁移批)
+    CwActionPickInvestStrategyParam: CwActionPickInvestOp,
     CwActionPickFortuneParam: CwActionPickFortuneOp,   # pick-op-unify 批收编(T-3)
     CwActionPickWishTrialParam: CwActionPickWishTrialOp,   # pick-op-unify 批收编(T-3)
     CwActionPickStarTomeParam: CwActionPickStarTomeOp,   # pick-op-unify 批收编(T-4,点卡即选)

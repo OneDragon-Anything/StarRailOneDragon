@@ -41,8 +41,9 @@ def register_confirm_arrival(session: 'StrategySession | None', op: str, item: s
     - ConfirmSupply/ConfirmBox/ConfirmTome/ConfirmExpertCash(dict 形态
       现 apply_confirm_effect):owned += item / 现金为王 gold +4(推进宿主 =
       容器单例金账,写通道单一源在 cw_exec_state);
-    - ConfirmStrategy:本函数零写——active_strategies 本体追加由 handler
-      在确认成功后既有写点承担(cw_screen_invest_strategy);
+    - ConfirmStrategy:本函数零写——投资策略选择事实经动作落地获得链写
+      (动作 op 即时上报 → gain_invest_strategy,正本 = game_state/
+      gain-chain.md;原 handler 确认写点已随投资两屏迁移批删除);
     - ConfirmMegastar/ConfirmPartner:本函数零写——chosen_* 写端 = 各
       handler 的 ``GameState.write_logic``(选择落地即写,cw_screen_megastar
       /cw_screen_partner)。

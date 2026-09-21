@@ -1929,14 +1929,15 @@ class GameState:
     prev_node_spent: Field[bool] = field(default_factory=Field)      # 上节点是否花费(§3.3.9;存款回报条件输入,观察需求)
 
     # —— 节点屏刷新计数组(§3.4.1-§3.4.4;渠道② logic_action,写入=仅逻辑)——
-    # 写端现状:encounter/strategy = on_outcome 发射型钩子(发射即 +1,唯一
-    # 写点);supply = live CwScreenSupplyNode 刷新分支单点 + sim observe
-    # 通道(两源同域);**env_refresh_used = 零写端申报不动**(观察通道在册
-    # cw_node_obs「剩余次数」,字段位先申报禁静默,禁按字段值做决策)。
+    # 写端现状:encounter/supply = 已用语义,动作/刷新发射侧单点(+1,发射即
+    # 记,不等验效);**invest 两屏 = 剩余语义**(用户裁定 2026-09-21:game
+    # state 就记录画面可观察的剩余次数——屏上数字即真值,观察写端逐访问
+    # 覆盖,刷新后下帧观察直接给新真值,零动作侧记账):观察写端 = 各屏观察
+    # report 摄入 OCR 读数(读缺跳写,值留观察覆盖)。
     encounter_refresh_used: Field[int] = field(default_factory=Field)    # 遭遇刷新已用(§3.4.1;写端 = CwScreenEncounter on_outcome 发射型钩子)
     supply_refresh_used: Field[int] = field(default_factory=Field)       # 补给刷新已用(§3.4.2;live 写端 = CwScreenSupplyNode 刷新分支单点;「无布局局原生可刷」收窄待证)
-    env_refresh_used: Field[int] = field(default_factory=Field)          # 环境刷新已用(§3.4.3;观察通道在册 cw_node_obs「剩余次数」)
-    strategy_refresh_used: Field[dict[str, int]] = field(default_factory=Field)  # 投资策略逐卡刷新已用(§3.4.4;写端 = CwScreenInvestStrategy on_outcome 发射型钩子)。**键口径显式申报(迁移批次二)**:键 = 注册表规范卡名(normalize_invest_name 归一后;选名不选 spec.id 的理由 = 效果注册表 STRATEGY_EFFECTS 即以规范名为键,写端 OCR 名经同一归一函数入键,免双坐标系换算)。值域纪律:基线每卡 1 次、例外三族(银金彩环境+2/投资卡族=3/期货族=0/远见=0)以注册表官方全文为唯一口径,禁按基线做核对预期
+    env_refresh_left: Field[int] = field(default_factory=Field)          # 投资环境刷新剩余次数(§3.4.3;屏上「剩余次数：N」观察真值;观察写端 = report_screen_invest_env_obs 摄入,读缺跳写;原 env_refresh_used「已用」字段随剩余语义化改名退役——零写端在册,改名零消费断链)
+    strategy_refresh_left: Field[dict[str, int]] = field(default_factory=Field)  # 投资策略逐卡刷新剩余次数(§3.4.4;键 = 注册表规范卡名 normalize_invest_name 归一后——效果注册表 STRATEGY_EFFECTS 即以规范名为键,观察写端 OCR 名经同一归一函数入键,免双坐标系换算;观察写端 = report_screen_invest_strategy_obs 摄入「刷新次数N」读数,读缺键跳写、已观察键覆盖)。原 strategy_refresh_used「已用」随剩余语义化改名退役(其注释自declared「on_outcome 发射型钩子」写端与全仓零写端现状矛盾,本批改名一并清除;闸消费口径 = 剩余 ≤0 = 尽)
 
     # —— 轮内新鲜度账(「本轮已买」半边;渠道② logic_action,写入=仅逻辑)——
     # [索引定义] 值形状 = {'phase': (plane, round_num) | None,

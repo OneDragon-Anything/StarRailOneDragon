@@ -516,10 +516,11 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         payload=STRATEGY_ECONOMY['本金充裕+'], duties=DutyFlags(),
         notes='条件腿与本金充裕逐字同文(50/10/3);加强值=instant_gold 45'),
     # 加油站:官方「现在及每次进入新节点时获得1次免费刷新,立刻获得8金币」
-    # (cw_invest_data.py:112,id 200301)。入册使两腿经现行挂点生效:选卡
-    # 登记点(CwScreenInvestStrategy 确认落地)burst 桥发「现在」腿 +1;
-    # 节点边界桥(per-node 形态)发持续腿。拿卡当节点不重复发:登记晚于
-    # 本节点边界推进,advance_node 同节点去重位关闸。行为核查结论单一源 =
+    # (cw_invest_data.py:112,id 200301)。入册使两腿经现行挂点生效:获得链
+    # 登记腿(kernel/cw_gain_chain.py::gain_invest_strategy,投资两屏迁移批)
+    # burst 桥发「现在」腿 +1;节点边界桥(per-node 形态)发持续腿。拿卡
+    # 当节点不重复发:登记晚于本节点边界推进,advance_node 同节点去重位
+    # 关闸。行为核查结论单一源 =
     # docs/game/currency_war/research/per_node_pick_node_grant.md。
     '加油站': EffectSpec(
         id='200301', name='加油站', trigger=TriggerKind.NODE_ENTER,

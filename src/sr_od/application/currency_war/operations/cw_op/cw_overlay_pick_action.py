@@ -39,8 +39,11 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_action_report.pick_equip import (
     report_action_pick_equip_param,
 )
-from sr_od.application.currency_war.kernel.cw_action_report.pick_invest import (
-    report_action_pick_invest_param,
+from sr_od.application.currency_war.kernel.cw_action_report.pick_invest_env import (
+    report_action_pick_invest_env_param,
+)
+from sr_od.application.currency_war.kernel.cw_action_report.pick_invest_strategy import (
+    report_action_pick_invest_strategy_param,
 )
 from sr_od.application.currency_war.kernel.cw_action_report.pick_planner import (
     report_action_pick_planner_param,
@@ -70,7 +73,8 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPickEquipParam,
     CwActionPickExpertInviteParam,
     CwActionPickFortuneParam,
-    CwActionPickInvestParam,
+    CwActionPickInvestEnvParam,
+    CwActionPickInvestStrategyParam,
     CwActionPickMegastarParam,
     CwActionPickPartnerParam,
     CwActionPickPlannerParam,
@@ -430,20 +434,27 @@ class CwActionPickPlannerOp(SrOperation):
 
 
 class CwActionPickInvestOp(SrOperation):
-    """投资选择确认链(投资环境/投资策略两屏共用,pick-op-unify 批新建)。
+    """投资选择确认链(投资环境/投资策略两屏共用 op,注册表两行同指;
+    词表拆类后按 param 类型机械分派上报函数)。
 
-    两屏机械链同构:点选中位(safe_click bug#1 缓解)→ 固定等待 →
+    机械链同构:点选中位(safe_click bug#1 缓解)→ 固定等待 →
     确认(emit_overlay_confirm 机械交回)。屏间差异全部经 env 显式
     传入(定位点 = 决策半从各自建档 area 现算;确认钮中心 = 决策半
     从各自「按钮-确认」现取;裁决词 = '投资环境'/'投资策略'),op
-    类体内零决策零读屏。``active_env``/``active_strategies`` 及效果
-    登记/置闩等容器写留守画面 op 原写点(零行为)。"""
+    类体内零决策零读屏。
+
+    **即时上报**(action_ops.md §1 用户裁定增补 2):机械链发出后
+    立即按 param 类型自上报完整结果并写入 game state(策略 →
+    ``gain_invest_strategy`` 整链;环境 → ``gain_invest_env`` 整链);
+    无分步、无落地证据等待——确认未生效 = 代码 bug,归点击链可靠性
+    治理。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False
     terminal_wait = 0.0
 
-    def __init__(self, ctx: SrContext, param: CwActionPickInvestParam,
+    def __init__(self, ctx: SrContext,
+                 param: CwActionPickInvestStrategyParam | CwActionPickInvestEnvParam,
                  env: OverlayPickExecEnv):
         SrOperation.__init__(self, ctx, op_name='CwActionPickInvestOp',
                              need_check_game_win=False)
@@ -452,29 +463,34 @@ class CwActionPickInvestOp(SrOperation):
 
     @operation_node(name='pick_invest', is_start_node=True)
     def run(self) -> OperationRoundResult:
-        """机械执行(点卡选中 → 选中动画等待 → 确认;轮次结果经旁路回传)。"""
+        """机械执行(点卡选中 → 选中动画等待 → 确认)+ 立即上报完整结果。"""
         action = self.param
         env = self.env
         op = env.op
-        # 点卡选中(bug#1 缓解:click 前 mouse_move)→ 选中动画固定等待
-        #(环境屏 0.7s/策略屏同值,时序逐位保留)。
+        # 点卡选中(bug#1 缓解:click 前 mouse_move)→ 选中动画固定等待。
         safe_click(op, env.target, tag='cw-pick-invest')
         time.sleep(0.7)
-        # 确认 + 机械交回(验证废除:落地由下一轮重入裁决;裁决词 =
+        # 确认 + 机械交回(验证废除:不读屏判「overlay 关没关」;裁决词 =
         # 各屏入口标题,经 env.entry_keyword 传入)。
         env.round_result = emit_overlay_confirm(
             op, confirm_point=env.confirm,
             entry_keyword=env.entry_keyword, tag='cw-pick-invest')
-        # 自上报(发射相:仅登记意图遥测,容器零写;落地分步 = 双屏分流 +
-        # 效果分派,由两屏 handler 重入裁决出口持证据调用——银狼闭环
-        # design §2.3,pick_invest 迁出零写族)。
+        # 立即自上报完整结果(点完即写入 game state;session 与
+        # game_state_from_ctx 同源自 ctx 取,kernel 禁自取上下文条款的
+        # 调用方义务在此履行)。
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
-            report_action_pick_invest_param(
-                gs, action,
-                ChannelSig(family='logic_action',
-                           actor=type(self).__name__, mode='compute'))
-        return self.round_success('投资选择确认链已发(结果经旁路回传)')
+            _sig = ChannelSig(family='logic_action',
+                              actor=type(self).__name__, mode='compute')
+            _session = getattr(getattr(self.ctx, 'cw_match', None),
+                               'session', None)
+            if isinstance(action, CwActionPickInvestStrategyParam):
+                report_action_pick_invest_strategy_param(
+                    gs, action, _sig, session=_session)
+            else:
+                report_action_pick_invest_env_param(
+                    gs, action, _sig, session=_session)
+        return self.round_success('投资选择确认链已发(结果已即时上报)')
 
 
 class CwActionPickFortuneOp(SrOperation):

@@ -75,11 +75,13 @@ def report_action_pick_encounter_param(gs: GameState, param: Any, sig: ChannelSi
 
 
 # report_action_pick_invest_param / report_action_pick_equip_param /
-# report_action_pick_supply_param 已迁出零写族(银狼闭环迭代 design.md
-# §2.3 与 §2.2 确定性通道宿主迁移):分步实现正本 = 同包 pick_invest /
-# pick_equip / pick_supply(两相语义,效果腿绑「overlay 已关」落地证据
-# 闩);包级 ``__getattr__`` 命名规约解析具名模块先于本模块,直接 import
-# 零写委托的旧消费面已随迁改直取具名模块。
+# report_action_pick_supply_param 已迁出零写族:pick_equip / pick_supply
+# = 分步实现(同包具名模块;策划/补给/装备屏迁移归后续批);pick_invest
+# 已随投资两屏迁移批拆为 pick_invest_strategy / pick_invest_env(即时上报
+# 形态:机械链发出即按成功写完整结果,action_ops.md §1 增补 2;策略支整支
+# 走获得链 gain_invest_strategy,环境支走 gain_invest_env)。包级
+# ``__getattr__`` 命名规约解析具名模块先于本模块,直接 import 零写委托的
+# 旧消费面已随迁改直取具名模块。
 
 
 
