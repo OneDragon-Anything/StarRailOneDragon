@@ -23,13 +23,12 @@
 段直继承 SrOperation。本屏无 op 内入口门(入口判定归主循环 0 系分发双
 id_mark,分发即门)→ 观察 node = 三卡位 OCR 一次读(入口帧一次读,与现役
 决策体读同帧等价)→ ``report_screen_equip_pick_obs`` 落容器
-``equip_pick_opts`` → obs 挂实例属性进决策 node。决策动作 node = 重入裁决
-顶部(点击已发 → 「请选择」不在 = 落地 → 装备腿落地相按证据闩应用一次
-(零写族迁出批:上报 = report_action_pick_equip_param 两相语义,归一件名
-= normalize_equip_name 现算;银狼闭环 design §2.2 确定性通道)→ success
-交回)→ 决策从容器零参读 → 点卡 → round_wait 循环(不烧节点重试预算,无
-防御上限;选卡点击已发未落地轮重点选)。本屏无 chosen_* 写端(选择存证行
-已随删除波 1 退役);
+``equip_pick_opts`` → obs 挂实例属性进决策 node。决策动作 node = 零参
+决策 → 组装 param(idx + 注册表分层归一 norm_item)→ 选卡派发即
+``round_success`` 终结(迭代 2026-09-21-pick-planner-equip-immediate-report
+design §2.0/§2.1:动作 op 点卡后立即上报完整结果,零重入裁决、零落地相
+补写面——点卡未生效 = 代码 bug,overlay 残留由外循环按当前画面重识别
+重派)。本屏无 chosen_* 写端(选择存证已随删除波 1 退役)。
 本屏 sim 腿 = 不适用(sim 无对应画面段,事件浮层族即时落定),等价判据
 主承重 = 实机在册行为锁。
 """
@@ -40,12 +39,9 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_action_report.pick_equip import (
-    EVIDENCE_OVERLAY_CLOSED,
-    report_action_pick_equip_param,
+from sr_od.application.currency_war.kernel.cw_events import (
+    normalize_registry_equip_name,
 )
-from sr_od.application.currency_war.kernel.cw_events import normalize_equip_name
-from sr_od.application.currency_war.kernel.cw_game_state import ChannelSig
 from sr_od.application.currency_war.kernel.cw_screen_report.equip_pick import (
     CwScreenEquipPickObs,
     report_screen_equip_pick_obs,
@@ -69,14 +65,8 @@ class CwScreenEquipPick(SrOperation):
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-选择装备')
-        # 选卡点击已发待重入裁决标志(验证废除形态):本屏分发即门(无 op 内
-        # 入口守卫),重入出口裁决见决策动作 node 顶部。
-        self._pick_pending: bool = False
         # 观察结果(观察 node 产物,决策动作 node 消费;options = 入口帧一次读)。
         self._obs: CwScreenEquipPickObs | None = None
-        # 已派发选择载荷(装备腿落地相证据闩消费;类级缺省 None = 局外
-        # 桩替 __init__ 的兜底路径同样安全)。
-        self._pending_pick: CwActionPickEquipParam | None = None
 
     def _read_cards(self, screen) -> list[str]:
         ocr_map = self.ctx.ocr_service.get_ocr_result_map(
@@ -114,28 +104,12 @@ class CwScreenEquipPick(SrOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=5)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 零参决策 → 点卡 → round_wait 循环。
+        """零参决策 → 组装 param → 选卡派发即 ``round_success`` 终结。
 
-        重入裁决(观察驱动,M7 同化先例):本屏分发即门(无 op 内入口守卫),
-        round_wait 重入不经外循环分发 → 顶部出口门补位:「请选择」不在 =
-        overlay 已关(点卡即选已落地)→ 装备腿落地相按证据闩应用一次
-        (report_action_pick_equip_param;零写族迁出批,银狼闭环 design
-        §2.2 确定性通道)后 success 交回外循环(出战按钮由主流程处理);
-        在 = 重走选卡(重点选,证据未到效果腿不应用)。"""
-        if self._pick_pending:
-            self._pick_pending = False
-            if not self.round_by_ocr(self.last_screenshot, '请选择',
-                                     lcs_percent=0.5).is_success:
-                _param, self._pending_pick = self._pending_pick, None
-                _match = getattr(self.ctx, 'cw_match', None)
-                _gs = getattr(_match, 'gs', None) if _match is not None else None
-                if _param is not None and _gs is not None:
-                    report_action_pick_equip_param(
-                        _gs, _param,
-                        ChannelSig(family='logic_action',
-                                   actor='CwScreenEquipPick', mode='compute'),
-                        evidence=EVIDENCE_OVERLAY_CLOSED)
-                return self.round_success(status='装备选择完成(重入观察裁决)')
+        本屏点卡即选、无确认步(出战按钮由主流程处理);动作 op
+        ``CwActionPickEquipOp`` 点卡后立即上报完整结果(入栏 + 后果链)——
+        派发即终结交回外循环重观察,零重入裁决轮(增补 2:点卡未生效 =
+        代码 bug,overlay 残留由外循环按当前画面重识别重派)。"""
         texts = self._obs.options if self._obs is not None else []
         # 选卡判据(普查迁移批 2:单一源 = kernel decide_equip_overlay_pick;
         # 唯一入口 = 策略对象,handler 禁自拟打分与意向读,kernel 直调仅无
@@ -160,24 +134,21 @@ class CwScreenEquipPick(SrOperation):
             )
             best_i = decide_equip_overlay_pick(list(texts))
         target = Point(self.CARD_XS[best_i], self.CARD_Y)
-        # 选中件载荷(零写族迁出批,照 PickInvest 先例):归一件名 = 判定
-        # 单源 normalize_equip_name 现算,OCR 原始卡名不静默改写由 handler
-        # 持有;随发射进上报意图遥测 + 本实例待落地存证(重入裁决出口消费)。
+        # 选中件载荷:归一件名 = 注册表级分层归一
+        # ``normalize_registry_equip_name`` 现算(精确快道 → containment
+        # longest-first → 相似救援;多/零命中 = '' 禁猜,报告侧翻来源留证)
+        # ——本屏候选含泛用件,银狼 10 件锚对泛用件恒 ''(现状缺陷,注册表
+        # 级让泛用注册表件规范名入栏,与供给行 owned 形态统一)。
         _opt_text = texts[best_i] if 0 <= best_i < len(texts) else ''
-        _param = CwActionPickEquipParam(idx=best_i,
-                                        norm_item=normalize_equip_name(_opt_text))
-        self._pending_pick = _param
+        _param = CwActionPickEquipParam(
+            idx=best_i, norm_item=normalize_registry_equip_name(_opt_text))
         log.info('[cw-equip-pick] 装备选择:卡=%s → 选卡%d(%s) item=%s',
                  [t[:10] for t in texts], best_i + 1,
                  _opt_text[:16] or 'OCR空', _param.norm_item or '-')
         # 选卡链经工厂(pick-op-unify 批:点卡即选机械链迁入
         # ``CwActionPickEquipOp``,本 op 只决策;定位点决策半现算经 env
-        # 显式传入)。派发实例携真实选中下标(上报 param 即真实选择;
-        # 越界防御/策略异常 fallback = 0)。
-        # 单选即定(出战按钮由主流程处理);机械交回(验证废除):「请选择」
-        # 标题在不在由下一轮重入出口门裁决(本方法顶部)。round_wait 推进
-        # 循环(不烧节点重试预算;不落地轮重点选,无防御上限)。
-        self._pick_pending = True
+        # 显式传入)。派发实例携真实选中下标与归一件名(上报 param 即
+        # 真实选择;越界防御/策略异常 fallback = 0)。
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
@@ -186,4 +157,4 @@ class CwScreenEquipPick(SrOperation):
         )
         _env = OverlayPickExecEnv(op=self, idx=best_i, target=target)
         action_op_for(_param, self.ctx, _env).execute()
-        return self.round_wait(wait=1, status='装备选择点击已发,重入观察裁决')
+        return self.round_success('装备选卡已派发(结果已即时上报)')

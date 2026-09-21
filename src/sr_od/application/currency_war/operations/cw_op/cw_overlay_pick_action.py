@@ -580,8 +580,11 @@ class CwActionPickEquipOp(SrOperation):
     """选择装备三选一选卡链(pick-op-unify 批收编;点卡即选,无确认钮)。
 
     点卡(mouse_move+click bug#1 缓解;选中点 = 卡名带 x + 卡身 y,决策半
-    现算经 env 传入)→ 选中动画固定等待。本屏零 chosen 写端(选择存证已
-    退役),容器写零。落地判定归画面 op 重入裁决(「请选择」不在)。"""
+    现算经 env 传入)→ 选中动画固定等待。**即时上报**(action_ops.md §1
+    增补 2,迭代 2026-09-21-pick-planner-equip-immediate-report):点卡后
+    立即一口写完整效果逻辑态(装备入栏 + 获得后果链),无发射/落地两相、
+    无证据闩——点卡未生效 = 代码 bug,overlay 残留由外循环按当前画面
+    重识别重派。本屏零 chosen 写端(选择存证已退役)。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False
@@ -603,9 +606,9 @@ class CwActionPickEquipOp(SrOperation):
         op.ctx.controller.mouse_move(env.target)
         op.ctx.controller.click(env.target)
         time.sleep(1.2)
-        # 自上报(发射相:仅登记意图遥测,容器零写;装备腿落地相 = 入栏 +
-        # 获得后果链,宿主 = 画面 op 重入裁决出口证据闩——银狼闭环
-        # design §2.2,pick_equip 迁出零写族)。
+        # 立即自上报完整结果(design §2.0/§2.1 单相:点卡后一口写
+        # 装备入栏 + 获得后果链;norm_item 未解析 = 翻来源留证——
+        # 增补 2:点完即按成功上报,零判效零证据闩)。
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_pick_equip_param(
