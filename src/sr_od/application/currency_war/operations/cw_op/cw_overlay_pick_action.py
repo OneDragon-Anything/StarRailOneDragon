@@ -36,6 +36,9 @@ from typing import Any
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_action_report.pick_encounter import (
+    report_action_pick_encounter_param,
+)
 from sr_od.application.currency_war.kernel.cw_action_report.pick_equip import (
     report_action_pick_equip_param,
 )
@@ -53,7 +56,6 @@ from sr_od.application.currency_war.kernel.cw_action_report.pick_supply import (
 )
 from sr_od.application.currency_war.kernel.cw_action_report.zero_writes import (
     report_action_pick_box_card_param,
-    report_action_pick_encounter_param,
     report_action_pick_expert_invite_param,
     report_action_pick_fortune_param,
     report_action_pick_megastar_param,
@@ -177,7 +179,9 @@ class CwActionPickEncounterOp(SrOperation):
         # 标签 2 字,LCS 0.5<0.8 不误匹配;live 2026-08-15)。
         env.round_result = emit_overlay_confirm(op, confirm_point=select_btn,
                                                 entry_keyword='遭遇节点', lcs_percent=0.8, tag='cw-encounter')
-        # 自上报(机械链发出后;零写,契约面统一)。
+        # 发射即写(遭遇扩围批,用户裁定 2026-09-21):机械链发出后立即
+        # 写 chosen_encounter(值组装自容器 encounter payload 槽;暂态
+        # 假值窗由外循环重派覆盖自愈,兑现回调消费防线 = 兑现后清)。
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_pick_encounter_param(

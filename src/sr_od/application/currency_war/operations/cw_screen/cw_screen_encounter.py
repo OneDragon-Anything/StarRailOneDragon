@@ -19,9 +19,10 @@
   活锁方向安全:建议刷新 → 放行 → 终结(访问结束)∨ 拒绝 → 重调一次
   落选卡 → 确认链;两分支都终结访问或落选卡,``round_wait`` 循环面对
   刷新建议不再存在。
-  ⚠️ **触发源缺位挂账**:``read_encounter_options`` 的 affixes 恒空(卡面 UI 不显词缀,
-  词缀在未建档的「敌方信息覆盖层」里)→ decide_encounter 的全克判定当前恒不触发,
-  本执行链就绪但待词缀读数通道建立后才可能开火(设计约束)。
+  ⚠️ **词缀读数未接线**:``read_encounter_options`` 的 affixes 恒空(选项卡面
+  UI 不显词缀;词缀住「货币战争-敌人信息浮层」覆盖层——已建档,chips OCR
+  实测可读,读数通道就绪)→ decide_encounter 的全克判定当前恒不触发,
+  接线消费待后续批。
 
 ✅ Stage C2 已接:``decide_encounter``(按 comp 成型度选:未成型→低难保生存 /
   成型+词缀利→高难拿奖励 / 全分支克→刷新换批;用 pick.idx 选卡,**非默认选左**)。
@@ -32,21 +33,29 @@
   按钮-选择 均 conf≈0.999 命中。卡身 rect center 未单独实锤(历史实测点 (665,500)/(1288,550)
   保留作兜底;rect 覆盖同卡身带)。
 
-形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两段
-直继承 SrOperation。观察 node = 画面身份门(标识-遭遇节点,miss = round_fail
-交回外循环重判)+ 入口 2s 稳定期 + 稳定帧一次读(候选 + 剩余次数,同帧同源)
-→ ``report_screen_encounter_obs`` 落容器 ``encounter`` +
-``encounter_refresh_left``(空候选整函数早退不写含 left,闸在 report
-内;match/gs 缺席的局外兜底路径跳过 report)→ obs + 刷新文本锚点挂实例
-属性进决策 node。决策动作 node = 重入裁决顶部(确认已发 → 锚不在 =
-overlay 已关 = 选卡落地 → 此刻才写 ``chosen_encounter`` + success 交回;
-锚在 = 未落地 → 清标志重走)→ 零参决策(候选自容器槽)+ 刷新终结臂(
-点钮一次 + 2s → ``round_success`` 终结交回;闸拒绝 → 重调一次落选卡)
-→ 点卡 + 确认 → ``round_wait`` 循环推进(不烧节点重试预算;不收敛 =
-策略 bug 响亮暴露,无防御上限)。``chosen_encounter``
-= 动作事实边界,留守重入裁决点写(候选未读到 / 无策略会话 / 决策越界 =
-盲选 fallback 不写)。本屏 sim 腿 = 不适用(sim 引擎无遭遇决策段),等价
-判据主承重 = 实机在册行为锁。
+形态(迭代 2026-09-18-screen-op-flat-report;3.3 扩围修订 = 迭代
+2026-09-21-event-refresh-unify-supply-pick):观察 node + 决策动作 node
+两段直继承 SrOperation。观察 node = 画面身份门(标识-遭遇节点,miss =
+round_fail 交回外循环重判)→ 门命中即用 node runner 帧一次读(候选 +
+剩余次数,同帧同源;**入口 2s 稳定期已删**,用户裁定 2026-09-21:原
+「返回备战界面出现后 2s 才稳定」口径废弃,见 screen_flow_timing.md #23
+supersession 注;候选读缺的失败安全 = act 空候选零点击终结交回重读,
+禁盲选确认——选卡确认不可逆消耗本节点)→ ``report_screen_encounter_obs``
+落容器 ``encounter`` + ``encounter_refresh_left``(空候选整函数早退不写
+含 left,闸在 report 内;match/gs 缺席的局外兜底路径跳过 report)→ obs +
+刷新文本锚点挂实例属性进决策 node。决策动作 node = 零参决策(候选自
+容器槽)+ **派发即终结**(投资两屏/补给 3.1 同形态,重入裁决已退役):
+刷新 = 点钮一次 + 2s → ``round_success`` 终结交回 / 选卡 = 派发确认链
+(机械链 + ``chosen_encounter`` 即时上报在动作 op 内)→ ``round_success``
+终结交回 / 空候选或局外 = 零点击终结交回重读——三出口均终结访问,
+``round_wait`` 循环面对刷新建议不存在。确认未生效 = 代码 bug,overlay
+残留由外循环按当前画面重识别重派(修法 = 点击链可靠性)。
+``chosen_encounter`` 写端 = 动作侧即时上报(kernel/cw_action_report/
+pick_encounter.py,发射即写;确认未生效窗内为暂态意图值由重派覆盖自愈,
+奖励兑现回调的消费防线 = 兑现后清 chosen 单次消费,见 kernel/
+cw_encounter_selection.py::claim_encounter_reward)。sim 腿:刷新链不
+适用(sim 无遭遇刷新执行面,design §2.3 申报);遭遇选档决策有 sim
+消费段(M16),判据等价承重 = kernel 判据函数 + 实机在册行为锁。
 """
 import time
 from typing import TYPE_CHECKING, ClassVar
@@ -56,9 +65,6 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_events import (
-    EncounterOption,
-)
 from sr_od.application.currency_war.kernel.cw_screen_report.encounter import (
     CwScreenEncounterObs,
     report_screen_encounter_obs,
@@ -75,9 +81,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.strategies.impl.cw_strategy import (
-        StrategySession,
-    )
+    pass
 
 
 class CwScreenEncounter(SrOperation):
@@ -98,65 +102,29 @@ class CwScreenEncounter(SrOperation):
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-遭遇节点')
-        # 确认已发待重入裁决的选卡快照 (options, idx)——确认点击发出后置位,
-        # 下一轮决策动作 node 顶部由重入裁决查锚:锚不在 = overlay 已关(选卡
-        # 落地)→ 此刻才写 chosen_encounter(出口验真通过才写的落地记录语义,
-        # 时点由重入承载)。
-        self._confirm_pending: tuple[list[EncounterOption], int] | None = None
         # 观察结果(观察 node 产物,决策动作 node 消费;options 空 = 读缺)。
         self._obs: CwScreenEncounterObs | None = None
         # 刷新文本锚点(观察 node 产物;read_encounter_refresh_count 返回
         # 的「剩余次数:N」文本中心 (x,y);读缺 = None,刷新臂走闸拒绝面)。
         self._refresh_point: tuple[int, int] | None = None
 
-    def _record_chosen(self, session: 'StrategySession | None',
-                       options: list[EncounterOption], idx: int) -> None:
-        """选卡落地记录面:重入裁决出口写 ``chosen_encounter``(动作事实
-        边界:值在「确认已落地」重入观察后才可信,留守裁决点不进 report)。
-
-        守卫口径=事实落地选择记录:候选未读到 / 无策略
-        会话 / 决策越界 = 盲选 fallback,不写(None 保持「无记录」,防把
-        盲选固化成假值)。值 = (难度档, 奖励文本),奖励文本 = 选中卡奖励
-        带原文 join(未读到 = 空串;难度档恒为卡身份真值)。记录面失败不
-        阻塞本轮成功。"""
-        if session is None or not options or not (0 <= idx < len(options)):
-            return
-        try:
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                ChannelSig,
-                game_state_of,
-            )
-            _opt = options[idx]
-            _gs = game_state_of(session)
-            _gs.write_logic(_gs.chosen_encounter,
-                            (_opt.difficulty, '/'.join(_opt.rewards)),
-                            produced_by='CwScreenEncounter',
-                            sig=ChannelSig(family='logic_action',
-                                           actor='CwScreenEncounter',
-                                           mode='compute'))
-        except Exception as e:   # noqa: BLE001  记录面失败不阻塞
-            log.warning(f'[cw-encounter] chosen_encounter 记录失败(不阻塞): {e}')
-
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """画面身份门 + 稳定帧一次读 → report 落容器。
+        """画面身份门 + node runner 帧一次读 → report 落容器。
 
         门 miss = round_fail 早退交回外循环重判(现役首闸同 status)。
-        门后入口 2s 稳定期(用户口述口径
-        docs/game/currency_war/research/screen_flow_timing.md #23,
-        2026-09-02:遭遇节点右上「返回备战界面」出现后 2s 画面才稳定
-        ——入口帧可能在稳定期内,立即读难度卡有读缺风险)→ 重截稳定帧
-        → 候选 + 剩余次数一次读(同帧同源)→ ``report_screen_encounter_
-        obs`` 落容器 ``encounter`` + ``encounter_refresh_left``(空候选
-        不写,闸在 report 内)。"""
+        门命中即用 node runner 帧一次读(候选 + 剩余次数,同帧同源;
+        用户裁定 2026-09-21 入口 2s 稳定期删除,原时序口径见
+        screen_flow_timing.md #23 supersession 注;候选读缺的失败安全 =
+        act 空候选零点击终结交回重读)→ ``report_screen_encounter_obs``
+        落容器 ``encounter`` + ``encounter_refresh_left``(空候选不写,
+        闸在 report 内)。"""
         screen = self.last_screenshot
         # live 2026-08-15:改 id_mark area(标识-遭遇节点)—— OCR「遭遇其一」在截断帧(「遭遇其」)miss;
         # 独立屏实锤(返回备战界面右上,同补给/投资策略)。
         if not self.round_by_find_area(screen, CwScreenEncounter.SCREEN_NAME,
                                        '标识-遭遇节点', crop_first=False).is_success:
             return self.round_fail('非遭遇节点屏')
-        time.sleep(2.0)
-        screen = self.screenshot()
         _rd = read_encounter_refresh_count(self.ctx, screen)
         obs = CwScreenEncounterObs(
             options=read_encounter_options(self.ctx, screen),
@@ -173,81 +141,78 @@ class CwScreenEncounter(SrOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=10)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 零参决策 + 刷新终结臂 → 点卡 + 确认 → round_wait。
+        """零参决策 + 三出口派发即终结(重入裁决已退役)。
 
-        重入裁决(观察驱动,验证废除形态):上轮已发确认 → 本轮锚不在 =
-        overlay 已关(选卡落地)→ 补写 chosen_encounter + success 交回;
-        锚在 = 确认未落地 → 清标志重走(重选重确认)。循环推进 = round_wait
-        (不烧节点重试预算;不收敛 = 策略 bug 响亮暴露,无防御上限)。"""
-        if self._confirm_pending is not None:
-            _opts, _idx = self._confirm_pending
-            self._confirm_pending = None
-            if not self.round_by_find_area(
-                    self.last_screenshot, CwScreenEncounter.SCREEN_NAME,
-                    '标识-遭遇节点', crop_first=False).is_success:
-                self._record_chosen(
-                    self.ctx.cw_match.session if self.ctx.cw_match is not None else None,
-                    _opts, _idx)
-                return self.round_success('遭遇节点选卡已确认(重入观察裁决)',
-                                          wait=2.0)
+        出口三语义(op-layer §1.1 出口①,投资两屏/补给 3.1 同形态):
+        ①刷新 = 点钮一次 + 2s → round_success 终结交回;②选卡 = 派发
+        确认链(机械链 + chosen_encounter 即时上报在动作 op 内)→
+        round_success 终结交回;③空候选/局外 = 零点击终结交回重读
+        (attack3 X2:候选读缺禁盲选派发——选卡确认不可逆消耗本节点,
+        与刷新闸数据不一致分支同构)。确认未生效 = 代码 bug,overlay
+        残留由外循环按当前画面重识别重派;三出口均终结访问,无跨轮
+        循环载体。"""
         obs = self._obs
         options = obs.options if obs is not None else []
         match = self.ctx.cw_match
         idx, reason = 0, 'default(no-options/match)'
         act = None
-        if match is not None and options \
-                and getattr(match, 'gs', None) is not None:
-            gs = match.gs
-            # 刷新剩余闸读源 = 容器 encounter_refresh_left(观察轮 report
-            # 摄入的同帧读数;None = 未观察/读缺,≤0 = 已刷尽)。
-            _left = gs.encounter_refresh_left.value
+        if match is None or not options \
+                or getattr(match, 'gs', None) is None:
+            # 空候选/局外 = 零点击终结交回(重读由外循环重进承载)。
+            log.info('[cw-encounter] 不可决策(match=%s options=%d) '
+                     '→ 零点击终结交回重读', match is not None, len(options))
+            return self.round_success('候选读缺/局外,零点击终结交回重读',
+                                      wait=1.5)
+        gs = match.gs
+        # 刷新剩余闸读源 = 容器 encounter_refresh_left(观察轮 report
+        # 摄入的同帧读数;None = 未观察/读缺,≤0 = 已刷尽)。
+        _left = gs.encounter_refresh_left.value
+        act = match.strategy.decide_encounter()
+        if isinstance(act, CwActionRefreshNodeOptionsParam) \
+                and not (_left is not None and int(_left) > 0
+                         and self._refresh_point is not None):
+            # 对照闸拒绝(与 kernel 刷新闸同源同值;本面 = 读缺/锚点缺
+            # 不一致兜底)→ 重调一次决策按原评分选(单轮内有界)。
+            log.info('[cw-encounter] 建议刷新但剩余闸拒绝(left=%r)'
+                     ' → 重调按原评分选', _left)
             act = match.strategy.decide_encounter()
-            if isinstance(act, CwActionRefreshNodeOptionsParam) \
-                    and not (_left is not None and int(_left) > 0
-                             and self._refresh_point is not None):
-                # 对照闸拒绝(与 kernel 刷新闸同源同值;本面 = 读缺/锚点缺
-                # 不一致兜底)→ 重调一次决策按原评分选(单轮内有界)。
-                log.info('[cw-encounter] 建议刷新但剩余闸拒绝(left=%r)'
-                         ' → 重调按原评分选', _left)
-                act = match.strategy.decide_encounter()
-                if isinstance(act, CwActionRefreshNodeOptionsParam):
-                    # 重调仍建议刷新 = 闸数据不一致面,零点击终结交回
-                    #(外循环重进 = 入口重建重试观察,不空转本节点预算)。
-                    log.warning('[cw-encounter] 重调仍建议刷新(闸数据不一致)'
-                                ' → 零点击终结交回(外循环重进重试观察)')
-                    return self.round_success(
-                        '刷新闸数据不一致,零点击终结交回(外循环重进重建入口)',
-                        wait=1.5)
             if isinstance(act, CwActionRefreshNodeOptionsParam):
-                # 刷新 = 终结动作(op-layer.md §1.4):文本锚定点圆钮一次
-                # + 2s 固定等待 → round_success 终结交回。零重读、零二次
-                # 覆盖写、零重决策——新选项由外循环重进后的入口观察现读
-                # 承载。点偏/无布局 → 交回后重进重读,失败安全。
-                reason = act.reason
-                target = Point(
-                    self._refresh_point[0] + CwScreenEncounter._REFRESH_BTN_DX,
-                    self._refresh_point[1])
-                log.info('[cw-encounter] 建议刷新 → 圆钮@(%d,%d)(文本锚定)'
-                         ' 点钮一次后终结交回', target.x, target.y)
-                self.ctx.controller.mouse_move(target)   # bug#1 缓解
-                self.ctx.controller.click(target)
-                # 用户口述口径(#23,2026-09-02):遭遇屏刷新后 2s 画面稳定
-                # ——等满 2s 再交回(固定等待归产生动画的操作,非判效轮询;
-                # docs/game/currency_war/research/screen_flow_timing.md)。
-                time.sleep(2.0)
+                # 重调仍建议刷新 = 闸数据不一致面,零点击终结交回
+                #(外循环重进 = 入口重建重试观察,不空转本节点预算)。
+                log.warning('[cw-encounter] 重调仍建议刷新(闸数据不一致)'
+                            ' → 零点击终结交回(外循环重进重试观察)')
                 return self.round_success(
-                    '分支刷新已点,本访问终结交回(外循环重进重建入口)',
+                    '刷新闸数据不一致,零点击终结交回(外循环重进重建入口)',
                     wait=1.5)
-            if isinstance(act, CwActionPickEncounterParam):
-                if 0 <= act.idx < len(options):
-                    idx = act.idx
-                reason = act.reason
+        if isinstance(act, CwActionRefreshNodeOptionsParam):
+            # 刷新 = 终结动作(op-layer.md §1.4):文本锚定点圆钮一次
+            # + 2s 固定等待 → round_success 终结交回。零重读、零二次
+            # 覆盖写、零重决策——新选项由外循环重进后的入口观察现读
+            # 承载。点偏/无布局 → 交回后重进重读,失败安全。
+            reason = act.reason
+            target = Point(
+                self._refresh_point[0] + CwScreenEncounter._REFRESH_BTN_DX,
+                self._refresh_point[1])
+            log.info('[cw-encounter] 建议刷新 → 圆钮@(%d,%d)(文本锚定)'
+                     ' 点钮一次后终结交回', target.x, target.y)
+            self.ctx.controller.mouse_move(target)   # bug#1 缓解
+            self.ctx.controller.click(target)
+            # 用户口述口径(#23,2026-09-02):遭遇屏刷新后 2s 画面稳定
+            # ——等满 2s 再交回(固定等待归产生动画的操作,非判效轮询;
+            # docs/game/currency_war/research/screen_flow_timing.md)。
+            time.sleep(2.0)
+            return self.round_success(
+                '分支刷新已点,本访问终结交回(外循环重进重建入口)',
+                wait=1.5)
+        if isinstance(act, CwActionPickEncounterParam):
+            if 0 <= act.idx < len(options):
+                idx = act.idx
+            reason = act.reason
         log.info(f'[cw-encounter] options={[(o.difficulty, o.rewards) for o in options]} '
                  f'pick=idx{idx} {reason}')
-        # 确认已发 → pending 置位(落地判定归下一轮重入裁决)→ 确认链机械
-        # 交回(体迁 cw_overlay_pick_action.CwActionPickEncounterOp,工厂
-        # 3 参形态;验关轮次结果不消费,round_wait 推进循环)。
-        self._confirm_pending = (options, idx)
+        # 选卡 = 派发即终结:确认链(点卡选中 → 确认)机械半 + chosen_
+        # encounter 即时上报(发射即写)在动作 op 内,派发后本访问
+        # round_success 终结交回(落地判定归观察侧;重入裁决已退役)。
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
@@ -258,4 +223,5 @@ class CwScreenEncounter(SrOperation):
         # 派发实例 = 生效选中下标的规范实例(决策半钳位后的 idx;策略 pick
         # 缺席/越界时本实例即唯一载体——工厂按类型解析,机械参数随实例)。
         action_op_for(CwActionPickEncounterParam(idx=idx), self.ctx, env).execute()
-        return self.round_wait(wait=1)
+        return self.round_success('遭遇选卡确认链已派发,本访问终结交回',
+                                  wait=2.0)

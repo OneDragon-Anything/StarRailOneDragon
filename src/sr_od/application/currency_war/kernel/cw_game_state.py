@@ -2192,7 +2192,17 @@ class GameState:
     equip_pick_opts: Field[list[str] | None] = field(default_factory=Field)
 
     # —— 十事件屏选择结果(§3.4/§4 事件选择:chosen_* 由选择 handler 单次逻辑写入)——
+    # (遭遇例外,遭遇扩围批:chosen_encounter 写端 = 动作侧即时上报
+    #  kernel/cw_action_report/pick_encounter.py,发射即写;兑现后清,单次消费。)
     chosen_encounter: Field[tuple[int, str] | None] = field(default_factory=Field)   # (难度档, 奖励文本)
+    # 遭遇奖励兑现记录(遭遇扩围批;语义账面:最近一次伤害达标兑现的遭遇
+    # 所选值,单槽逐遭遇覆盖;写端 = 结算兑现回调 claim_encounter_reward
+    # (双证判遭遇 + progress_delta>0 单判),兑现即清 chosen_encounter;
+    # 无开局种子 None = 本局未兑现过,局终随容器销毁;sim 无遭遇结算回调
+    # 面 = 无 sim 写端;遥测 schema 接线候批,现役消费 = 容器读端 +
+    # 审计投影;数值不直写防双源——金币真值 = settle_truth 结算读数、
+    # 随机4费 = bench 观察)
+    encounter_reward_claimed: Field[tuple[int, str] | None] = field(default_factory=Field)
     chosen_supply: Field[tuple[str, str, bool] | None] = field(default_factory=Field)  # (角色, 装备, 有钻石)
     chosen_megastar: Field[str | None] = field(default_factory=Field)   # 盛会之星(§3.4.5)
     chosen_partner: Field[str | None] = field(default_factory=Field)    # 伙伴(候选阵营)

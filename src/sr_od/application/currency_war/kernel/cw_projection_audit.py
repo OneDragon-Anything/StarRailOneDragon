@@ -278,7 +278,13 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     # —— 十事件屏选择结果(bot 决策事实)——
     'chosen_encounter': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='选择 handler 单次逻辑写入 + 事件屏 chosen 观察(§3.4)'),
+        basis='选择族读面 + 动作侧发射即写(遭遇扩围批:写端迁 '
+              'cw_action_report/pick_encounter.py,发射即写;兑现后清)'),
+    'encounter_reward_claimed': ProjectionAuditRow(
+        status=AUDIT_WRITE_END,
+        basis='遭遇奖励兑现记录(结算兑现回调 claim_encounter_reward 写:'
+              '双证判遭遇 + progress_delta>0 单判,兑现即清 chosen_encounter'
+              ' 单次消费;遥测接线候批)'),
     'chosen_supply': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='补给选择结果(handler 写,无 chosen 观察读端)'),

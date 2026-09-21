@@ -454,3 +454,59 @@ def _lowest_idx(options: list[EncounterOption]) -> int:
     if not options:
         return 0
     return min(range(len(options)), key=lambda i: options[i].difficulty)
+
+
+# ===== 遭遇奖励兑现回调(结算确认链挂点;迭代 2026-09-21-event-refresh-
+# unify-supply-pick §2.4,attack3 处置后形态)=====
+
+def claim_encounter_reward(gs: GameState) -> str:
+    """遭遇奖励兑现(纯容器读零读屏;``CwOpSettleConfirm`` 确认点击后、
+    推进上报前调——语义顺序 = 先记账后推进,并防御下一备战帧观察早到
+    覆写 node 镜像;``report_node_advance`` 只推进 node_ord 不写镜像,
+    推进前后调对读值无差别)。
+
+    判据(design §2.4):
+    - 节点判遭遇 = ``gs.node`` 镜像(:func:`node_kind_of`,最近备战帧
+      观察的下一节点类型)== ``'encounter'``(英文 token);
+    - 达标 = 容器结算域 ``progress_delta > 0`` **单判**(机制依据 =
+      combat.md §3「遭遇奖励 = 伤害进度达标制,非清场制」;killed 不入
+      判据:结算链 killed 多为 progress 符号派生值 + hp 对比兜底腿在
+      达标制下语义未证);``None`` = 删失不兑现;
+    - ``chosen_encounter`` 在场 = 消费票。
+
+    兑现 = 写 ``encounter_reward_claimed``(所选 (难度档, 奖励文本),
+    单槽逐遭遇覆盖)**并随即清 ``chosen_encounter``(单次消费)**——
+    一并收口三条误兑现面:node 镜像残留(后续非遭遇局 chosen 恒空)、
+    驻留重入轮(重触发时 chosen 已空,天然幂等零闩)、结算覆盖
+    best-effort 失败的陈旧窗(上一场兑现已清 chosen;残余 = 本场覆盖
+    失败 ∧ 上一场同为遭遇 ∧ 本场 chosen 已写的低频组合,后果 = 语义
+    账面脏行非资金操作,如实申报不设额外防线)。
+
+    数值不直写(防双源):金币真值 = ``settle_truth`` 结算读数、随机
+    4费角色 = bench 观察(观察赢);本记录 = 语义账面(策略器收益对账/
+    单局复盘消费)。
+
+    Returns: 归因串('not-encounter'/'not-qualified'/'no-chosen'/
+    'claimed')。
+    """
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        ChannelSig,
+        node_kind_of,
+    )
+    if node_kind_of(gs) != 'encounter':
+        return 'not-encounter'
+    _st = gs.settlement.value
+    if _st is None or _st.progress_delta is None \
+            or int(_st.progress_delta) <= 0:
+        return 'not-qualified'
+    _chosen = gs.chosen_encounter.value
+    if not isinstance(_chosen, tuple) or not _chosen:
+        return 'no-chosen'
+    _sig = ChannelSig(family='logic_action',
+                      actor='CwOpSettleConfirm', mode='compute')
+    gs.write_logic(gs.encounter_reward_claimed,
+                   (int(_chosen[0]), str(_chosen[1])),
+                   produced_by='CwOpSettleConfirm', sig=_sig)
+    gs.write_logic(gs.chosen_encounter, None,
+                   produced_by='CwOpSettleConfirm', sig=_sig)
+    return 'claimed'

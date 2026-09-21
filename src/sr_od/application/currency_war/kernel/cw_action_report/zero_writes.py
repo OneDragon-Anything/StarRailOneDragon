@@ -67,21 +67,17 @@ def report_action_pick_event_param(gs: GameState, param: Any, sig: ChannelSig) -
     return _report_zero_write(gs, param, sig, 'zero_write(pick_event)')
 
 
-
-def report_action_pick_encounter_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """遭遇节点选择上报:选择事实 = 画面 handler 消费链,容器零写。"""
-    return _report_zero_write(gs, param, sig, 'zero_write(pick_encounter)')
-
-
-
 # report_action_pick_invest_param / report_action_pick_equip_param /
-# report_action_pick_supply_param 已迁出零写族:pick_equip / pick_supply
-# = 分步实现(同包具名模块;策划/补给/装备屏迁移归后续批);pick_invest
-# 已随投资两屏迁移批拆为 pick_invest_strategy / pick_invest_env(即时上报
-# 形态:机械链发出即按成功写完整结果,action_ops.md §1 增补 2;策略支整支
-# 走获得链 gain_invest_strategy,环境支走 gain_invest_env)。包级
-# ``__getattr__`` 命名规约解析具名模块先于本模块,直接 import 零写委托的
-# 旧消费面已随迁改直取具名模块。
+# report_action_pick_supply_param / report_action_pick_encounter_param
+# 已迁出零写族:pick_equip / pick_supply = 分步→即时实现(同包具名模块;
+# 策划屏迁移归后续批);pick_invest 已随投资两屏迁移批拆为
+# pick_invest_strategy / pick_invest_env(即时上报形态:机械链发出即按
+# 成功写完整结果,action_ops.md §1 增补 2;策略支整支走获得链
+# gain_invest_strategy,环境支走 gain_invest_env);pick_encounter 已随
+# 遭遇扩围批迁同包 pick_encounter.py(发射即写 chosen_encounter,选择事实 =
+# 动作执行时产生,用户裁定 2026-09-21)。包级 ``__getattr__`` 命名规约
+# 解析具名模块先于本模块,直接 import 零写委托的旧消费面已随迁改直取
+# 具名模块。
 
 
 

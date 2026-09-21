@@ -76,10 +76,34 @@ class CwOpSettleConfirm(SrOperation):
         return report_node_advance(gs_of_ctx(self.ctx, _session),
                                    trigger='settle_confirm')
 
+    def _claim_encounter_reward(self) -> None:
+        """遭遇奖励兑现回调(遭遇扩围批;best-effort:局外/session 缺跳过、
+        异常不炸主流程——兑现是语义账面,不阻塞结算推进)。判据与单次
+        消费语义 = ``cw_encounter_selection.claim_encounter_reward``。"""
+        _match = getattr(self.ctx, 'cw_match', None)
+        _session = getattr(_match, 'session', None) if _match is not None else None
+        if _session is None:
+            return
+        try:
+            from sr_od.application.currency_war.kernel.cw_encounter_selection import (
+                claim_encounter_reward,
+            )
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                gs_of_ctx,
+            )
+            _verdict = claim_encounter_reward(gs_of_ctx(self.ctx, _session))
+            if _verdict == 'claimed':
+                log.info('[cw-settle-confirm] 遭遇奖励已兑现'
+                         '(单次消费:chosen 已清)')
+            elif _verdict != 'not-encounter':
+                log.info('[cw-settle-confirm] 兑现未触发(%s)', _verdict)
+        except Exception as e:   # noqa: BLE001  兑现面不阻塞结算
+            log.info('[cw-settle-confirm] 兑现回调异常(不阻塞): %s', e)
+
     @operation_node(name='结算确认', is_start_node=True, node_max_retry_times=400)
     def confirm(self) -> OperationRoundResult:
-        """驻留轮:点「继续挑战」(M39 长按兜底)→ 点击即上报;按钮不在场
-        → 交回宿主(出口判定归宿主 ③段白名单)。"""
+        """驻留轮:点「继续挑战」(M39 长按兜底)→ 兑现回调 → 点击即上报;
+        按钮不在场 → 交回宿主(出口判定归宿主 ③段白名单)。"""
         if self.round_by_find_and_click_area(
                 self.screenshot(), '货币战争-结算', '按钮-继续挑战',
                 success_wait=1).is_success:
@@ -91,6 +115,11 @@ class CwOpSettleConfirm(SrOperation):
                     CwOpSettleConfirm.SETTLEMENT_NEXT, press_time=0.5)
                 self.park_cursor(after_wait=0.1)
                 self._stay = 0
+            # 遭遇奖励兑现(推进上报前调:语义顺序 = 先记账后推进;并防御
+            # 下一备战帧观察早到覆写 node 镜像——report_node_advance 只
+            # 推进 node_ord,镜像读值本身不随推进变。本局结算数据就绪性
+            # 由宿主 battle_wait ②段保证:读点先于本 op 派发)。
+            self._claim_encounter_reward()
             # 点击即上报(去证据门,用户裁定 2026-09-21):重复上报被
             # kernel 观察态门挡(零推进),死点击重试链自愈。
             _advanced = self._report_node_advance()
