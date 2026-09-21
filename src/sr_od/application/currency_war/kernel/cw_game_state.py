@@ -149,7 +149,9 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                             # + 新增基线链字段 node_path_baseline,链观察落地批 2026-09-16)
     'units': 1,             # front_row/back_row/bench/back_layout(§3.2.3-§3.2.7)
     'economy': 1,           # gold/level/xp/streak/hp/level_up_cost(§3.2.9-§3.2.13)
-    'match_facts': 3,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/board/恢复旗标(§3.1/§3.2.6/§3.2.14/§3.2.20;域版本 3 =
+    'match_facts': 4,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/board/恢复旗标(§3.1/§3.2.6/§3.2.14/§3.2.20;域版本 4 =
+                            # 新增 lv999_cost_tier 银狼LV.999 当前费用档(银狼升星记账批
+                            # 2026-09-20);域版本 3 =
                             # 接管补采计数/完成闩两字段退役——补采编排归
                             # CwEntryPlaneIntel,真值经写门落
                             # plane_bosses/enemy_affixes;域版本 2 = 接管/恢复字段迁入,
@@ -2127,6 +2129,15 @@ class GameState:
     chosen_expert: Field[str | None] = field(default_factory=Field)     # 专家邀请函
     chosen_tome: Field[str | None] = field(default_factory=Field)       # 星徽秘典弹窗卡名
     chosen_equip: Field[str | None] = field(default_factory=Field)      # 装备三选一(暂无画面建档)
+
+    # —— 特殊规则演化状态(纯逻辑态:无观察写端;写端 = 动作报告)——
+    # 银狼LV.999 当前费用档,值域 {3,4,5};写端 = pick_planner 升费腿 /
+    # deploy_move 上阵变费腿(仅此两个动作报告);读口唯一 =
+    # cw_economy.effective_cost;未观察(None)= 未触发任何变换,语义档 =
+    # 起始 3 费。同名即同档——全场同档,无 per-unit 维度(口述·权威
+    # 2026-09-18,记录处 = changes/2026-09-18-yinlang-exclusive-loop
+    # /design.md §2.0)。
+    lv999_cost_tier: Field[int] = field(default_factory=Field)
 
     # —— 结算(战斗后真值覆盖的数据源)——
     settlement: Field[Settlement | None] = field(default_factory=Field)

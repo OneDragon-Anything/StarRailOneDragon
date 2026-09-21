@@ -300,6 +300,10 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'chosen_equip': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='装备三选一结果(handler 写,暂无画面建档)'),
+    'lv999_cost_tier': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='银狼LV.999 当前费用档(动作报告写:升费腿/上阵变费腿;'
+              '读口 = cw_economy.effective_cost)'),
     # —— 结算 ——
     'settlement': ProjectionAuditRow(
         status=AUDIT_WRITE_END,

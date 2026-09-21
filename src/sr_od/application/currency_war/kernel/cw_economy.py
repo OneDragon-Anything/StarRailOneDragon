@@ -152,6 +152,33 @@ def bench_char_cost(bc) -> int:
     return c.cost if c and c.cost else 3
 
 
+_LV999_ID: str = '银狼LV.999'   # 规范名(单一源 = cw_chars 注册名;现役唯一档分支成员)
+
+
+def effective_cost(gs: GameState, char_id: str) -> int:
+    """角色**当前费用档**唯一读口(观察除数/账实结算/随机授予采样空间)。
+
+    - 银狼LV.999 → 容器档 ``gs.lv999_cost_tier.value``(纯逻辑态,写端 =
+      pick_planner 升费腿 / deploy_move 上阵变费腿);未观察(None = 未触发
+      任何变换)归约 3(开局档语义默认);
+    - 其余角色 → 注册表 ``CHARACTERS[char_id].cost``(静态);**未注册名 → 0**
+      (无费用语义,禁用于金额计算——与 :func:`bench_char_cost` 未知 → 3
+      「退款保守估」分野,两口径不互借);
+    - **语义双轨边界**:本口 = 当前费用档;静态画像族(低费集合/费用分布/
+      telemetry 特征)语义 = 起始费,直读注册表,永不经本口(双口径中间态
+      挂账清单见设计 §2.6 = changes/2026-09-20-yinlang-starup-accounting
+      /design.md);
+    - **档分支扩展位**:现役仅银狼LV.999;第二变费成员(飞光·映月:特殊
+      1 费景元随镜流星级 3/5 费,策略赋予型)接入时在本口扩展成员档表,
+      禁另起平行访问器。
+    """
+    if char_id == _LV999_ID:
+        tier = getattr(gs.lv999_cost_tier, 'value', None)
+        return tier if tier in (3, 4, 5) else 3
+    c = CHARACTERS.get(char_id)
+    return c.cost if c and c.cost else 0
+
+
 def effective_hp_threshold(gs: GameState) -> int:
     """实际保血阈值:selected_difficulty(职级)检测到且 ``DIFFICULTY_HP_TABLE``
     有对应键 → 取覆盖值;否则回退 ``HP_SAFE_THRESHOLD``(40)。容器版单一实现

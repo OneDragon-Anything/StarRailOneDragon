@@ -41,6 +41,7 @@ from sr_od.application.currency_war.data.cw_chars import get_char
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_economy import (
     XP_TO_NEXT_LEVEL,
+    effective_cost,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     get_node_ledger,
@@ -50,6 +51,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     NodeChain,
     ShopSlot,
     TokenCell,
+    game_state_from_ctx,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_BOARD,
@@ -1804,24 +1806,28 @@ def read_shop_card_cost(ctx: SrContext, screen: MatLike, slot: int) -> int | Non
     return _ocr_cost_digits(ctx, crop)
 
 
-def resolve_cost_star(badge_cost: int | None, roster_cost: int) -> tuple[int, int, str]:
-    """徽章读数 + roster 1星费 → ``(cost, star, cost_source)``(纯函数可单测)。
+def resolve_cost_star(badge_cost: int | None, base_cost: int) -> tuple[int, int, str]:
+    """徽章读数 + 1星基准费 → ``(cost, star, cost_source)``(纯函数可单测)。
 
-    语义(费用倍数体系,merge_mechanics §2.6;用户定稿:星级 = 读数 ÷ 原费):
-    - badge 缺失 / roster_cost≤0(名字未识别)→ roster 查表兜底,
+    语义(费用倍数体系 = 3^(星级−1):1★×1/2★×3/3★×9,merge_mechanics
+    §2.6;星级 = 读数 ÷ 基准费)。**基准费 = 当前费用档**——银狼LV.999
+    升费后档 ≠ 注册表起始费,调用方传
+    ``cw_economy.effective_cost``(设计 = changes/2026-09-20-yinlang-
+    starup-accounting/design.md §2.3;普通角色两值恒等,零行为差):
+    - badge 缺失 / base_cost≤0(名字未识别)→ 按基准费兜底,
       cost_source='roster_fallback';
-    - badge = roster_cost × 倍数,倍数 ∈ {1,3,9} → star 1/2/3,cost = 读数
+    - badge = base_cost × 倍数,倍数 ∈ {1,3,9} → star 1/2/3,cost = 读数
       (实付价真值;2/3星直出实锤由调用方 `[cw!]` 留证);
     - 倍数 ∉ {1,3,9}(含 ×27=4★ 超 CW 星级域、非整数倍 = 疑误读)→ 兜底
-      roster(按原费用记 1★),cost_source='roster_fallback',调用方留证。
+      基准费(按基准费记 1★),cost_source='roster_fallback',调用方留证。
     """
-    if badge_cost is None or roster_cost <= 0:
-        return roster_cost, 1, COST_SOURCE_ROSTER_FALLBACK
-    star = _SHOP_COST_MULT_TO_STAR.get(badge_cost // roster_cost) \
-        if badge_cost % roster_cost == 0 else None
+    if badge_cost is None or base_cost <= 0:
+        return base_cost, 1, COST_SOURCE_ROSTER_FALLBACK
+    star = _SHOP_COST_MULT_TO_STAR.get(badge_cost // base_cost) \
+        if badge_cost % base_cost == 0 else None
     if star is not None:
         return badge_cost, star, 'badge'
-    return roster_cost, 1, COST_SOURCE_ROSTER_FALLBACK
+    return base_cost, 1, COST_SOURCE_ROSTER_FALLBACK
 
 
 def _anchor_hit_full_ocr(full_ocr, area) -> bool:
@@ -1926,6 +1932,10 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
         from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
             record_defect,
         )
+        # 当前费用档读口(银狼LV.999 升费后商店费用除数):局外/无 match
+        # = None → 调用点回退注册表起始费(设计 = changes/2026-09-20-
+        # yinlang-starup-accounting/design.md §2.3 穿线定点)。
+        _gs = game_state_from_ctx(ctx)
         out: list[ShopSlot] = []
         for i in range(1, 6):
             rect = _area_rect(ctx, f'{A_SHOP_CARD_PREFIX}{i}',
@@ -1982,19 +1992,22 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
             name = resolve_char_name(avatar_id) if avatar_id else ''
             ch = get_char(name) if name else None
             # 费用信源(2星/3星直出闭环):画面费用徽章读数优先(两级读),
-            # 失读/倍数推不出 → roster 查表兜底并标 cost_source=
-            # 'roster_fallback';读数 ÷ roster 费 ∈ {1,3,9} → 星级 1/2/3。
+            # 失读/倍数推不出 → 基准费兜底并标 cost_source=
+            # 'roster_fallback';读数 ÷ 基准费 ∈ {1,3,9} → 星级 1/2/3。
+            # 基准费 = 当前费用档(银狼LV.999 升费后 ≠ 注册表起始费;
+            # 局外 None → 注册表起始费现役兜底)。
             _badge = read_shop_card_cost(ctx, scr, i)
             if ch is not None:
-                cost, star, cost_src = resolve_cost_star(_badge, ch.cost)
+                _base = effective_cost(_gs, name) if _gs is not None else ch.cost
+                cost, star, cost_src = resolve_cost_star(_badge, _base)
                 if _badge is not None and cost_src == COST_SOURCE_ROSTER_FALLBACK:
-                    if _badge == ch.cost * 27:
-                        log.warning('[cw!] 商店牌%d 费用读数=%s = roster 费 %s 的 27 倍(=4★,'
-                                    '超 CW 3★ 星级域)→ roster 兜底留证(复现即 gameplay 异常信号)',
-                                    i, _badge, ch.cost)
+                    if _badge == _base * 27:
+                        log.warning('[cw!] 商店牌%d 费用读数=%s = 基准费 %s 的 27 倍(=4★,'
+                                    '超 CW 3★ 星级域)→ 基准费兜底留证(复现即 gameplay 异常信号)',
+                                    i, _badge, _base)
                     else:
-                        log.warning('[cw!] 商店牌%d 费用读数=%s 非 roster 费 %s 的 1/3/9 倍'
-                                    '(疑误读)→ roster 兜底留证', i, _badge, ch.cost)
+                        log.warning('[cw!] 商店牌%d 费用读数=%s 非基准费 %s 的 1/3/9 倍'
+                                    '(疑误读)→ 基准费兜底留证', i, _badge, _base)
             else:
                 # 名字未识别:徽章可读时费用信徽章(实付价真值),星级保守 1。
                 if _badge is not None:
