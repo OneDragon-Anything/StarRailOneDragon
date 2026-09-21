@@ -59,6 +59,9 @@
 | `normalize_equip_name`（equip pick 组装点） | `cw_screen_equip_pick.py` | 换 `normalize_registry_equip_name`（T-1 已建）；`normalize_equip_name` 本体不动 |
 | `cw_overlay_pick_action.py` 模块头「三线例外」自述段 | 模块 docstring（pick_invest/pick_equip/pick_supply 分步自述——invest/supply 已迁，本批后全失真） | 3.2 随批改写为单相清零表述（attack2 F6；3.1 不动避免重复碰文件） |
 | `cw_vocab.py` CwActionPickSupplyParam.norm_item 注释 | `cw_vocab.py` :733 附近（T-1 遗留过期表述） | 3.1 顺手清（attack2 F7） |
+| `test_cw_unified_action_4.py` | `test_planner_pick_op_clicks_target_and_confirm`(:322-:340) 断言 `op._confirm_pending is True`（:333 桩/:339 断言）——锁的正是 3.2 要删的置位行 | 3.2 随批改写：删置位断言，点击链断言保留（attack5 A1） |
+| `test_cw_screen_two_node_family.py` | :348 断言引用 `_pick_pending` | 3.1 随批更新断言（attack5 A4） |
+| 两屏画面 op 模块/act docstring + `CwActionPickEquipOp` 类 docstring(:579-:584) + `OverlayPickExecEnv.leg_type/norm_item` 注释 | 两相叙述散布（多不带 `EVIDENCE_OVERLAY_CLOSED` 字面量，grep 罩不住） | 各自屏阶段随批机械改写，本行显式承接叙述面（attack5 A3） |
 | `test_cw_gain_chain.py`（joy rider 批带入） | import `EVIDENCE_OVERLAY_CLOSED`（自 pick_planner）+ 10 处 `evidence=` 调用（commit 14dd40977 随 rider 提交） | 3.2 随批机械改写（删 evidence kwarg，rider 行为锁仍归 joy 批）（attack3 F1） |
 
 ### 2.3 关键取舍（正本化时进动机段）

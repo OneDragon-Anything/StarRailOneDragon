@@ -17,9 +17,9 @@
 
 ## 3.2 骇入策划屏单相化（planner）
 
-**范围**：`kernel/cw_action_report/pick_planner.py` 单相化（删 `evidence` 参数与本文件 `EVIDENCE_OVERLAY_CLOSED`；一口写 = ⓪unknown 留证分支逐位保持（弱化词卡文落此——弱化兜底档已退役，`classify_planner_leg` 现役不产出 weaken，attack2 F5 实码口径）→ equip 腿 → upgrade 变换窗三态+档行，前置硬校验语义逐位保持 → unrouted 兜底零写逐位保持；**joy rider 挂点随单相调用点逐位保持迁移**，rider 腿行为锁归 joy 批验收面）；`CwActionPickPlannerOp.run` 确认点击后立即上报完整结果（leg_type/norm_item 经 env kwargs）、体内 `op._confirm_pending = True` 置位删除；`cw_overlay_pick_action.py` **模块头「三线例外」自述段**改写为单相清零表述（attack2 F6；3.1 未动此段，本批一并清）；`cw_screen_yinlang.py` 删 `_confirm_pending`/`_pending_leg`/`_pick_param`/重入裁决出口门、act 派发即 `round_success` 终结；`test_cw_gain_chain.py` 删 evidence kwarg 机械改写 10 处（attack3 F1，rider 行为锁断言保留）。**不含**：equip 屏（3.1 已清）；`classify_planner_leg` 语义。
+**范围**：`kernel/cw_action_report/pick_planner.py` 单相化（删 `evidence` 参数与本文件 `EVIDENCE_OVERLAY_CLOSED`；一口写 = ⓪unknown 留证分支逐位保持（弱化词卡文落此——弱化兜底档已退役，`classify_planner_leg` 现役不产出 weaken，attack2 F5 实码口径）→ equip 腿 → upgrade 变换窗三态+档行，前置硬校验语义逐位保持 → unrouted 兜底零写逐位保持；**joy rider 挂点随单相调用点逐位保持迁移**，rider 腿行为锁归 joy 批验收面）；`CwActionPickPlannerOp.run` 确认点击后立即上报完整结果（leg_type/norm_item 经 env kwargs）、体内 `op._confirm_pending = True` 置位删除；`cw_overlay_pick_action.py` **模块头「三线例外」自述段**改写为单相清零表述（attack2 F6；3.1 未动此段，本批一并清）；`cw_screen_yinlang.py` 删 `_confirm_pending`/`_pending_leg`/`_pick_param`/重入裁决出口门、act 派发即 `round_success` 终结；`test_cw_gain_chain.py` 删 evidence kwarg 机械改写 10 处（attack3 F1，rider 行为锁断言保留）；`test_cw_unified_action_4.py` 删 `op._confirm_pending is True` 置位断言（点击链断言保留，attack5 A1）。**不含**：equip 屏（3.1 已清）；`classify_planner_leg` 语义。
 **设计依据**：design.md §2.0（时序等价论证）、§2.1（planner）、§2.2 表、§2.3（取舍 1/3/4 + joy 协调申报）
-**文件面**：`src/sr_od/application/currency_war/kernel/cw_action_report/pick_planner.py`、`operations/cw_screen/cw_screen_yinlang.py`、`operations/cw_op/cw_overlay_pick_action.py`（CwActionPickPlannerOp 体 + 模块头例外自述段）、`sr-od-test/` 受影响测试（含 `test_cw_yinlang_phase32.py`、`test_cw_gain_chain.py`）
+**文件面**：`src/sr_od/application/currency_war/kernel/cw_action_report/pick_planner.py`、`operations/cw_screen/cw_screen_yinlang.py`、`operations/cw_op/cw_overlay_pick_action.py`（CwActionPickPlannerOp 体 + 模块头例外自述段）、`sr-od-test/` 受影响测试（含 `test_cw_yinlang_phase32.py`、`test_cw_gain_chain.py`、`test_cw_unified_action_4.py`）
 **依赖**：3.1（共享 `cw_overlay_pick_action.py` 防冲突串行）。joy rider 已提交（14dd40977）——原「joy 批先提交」前置已满足（attack3 F4）
 **优先级建议**：6
 **完成判据**：
@@ -45,6 +45,6 @@
 - `screens/README.md`：§5.5 单选族表（两行上报形态更新）← 3.1/3.2
 - `screens/planner.md`：全篇两相+重入裁决表述清除（**§2(:12)/§4/§5/§6(:55)/开放设计注(:76)** 五处；§1 无涉）← 3.2（attack2 F2）
 - `screens/equip_pick.md`：重入裁决/证据闩表述清除 ← 3.1
-- `game_state/logic-updates/pick-planner.md`：文件头(:3)/**§2 三行(:11 两相节头/:13 发射相 bullet/:17「weaken 零记账」行——weaken 已随 14dd40977 退役,该行现役即与代码不一致)**/§3(:23 _confirm_pending 步)/§5(:33 重入裁决)/§7(:41) 两相与证据闩表述清除 + :37「单一定义在 pick_invest」过期句修正（:14 无涉——attack3 F2 锚位勘误；attack4 F1 补 §2 三行）← 3.2
+- `game_state/logic-updates/pick-planner.md`：文件头(:3)/**§2 四行(:11 两相节头/:13 发射相 bullet/:14 落地相 bullet——evidence=EVIDENCE_OVERLAY_CLOSED + 重入裁决出口表述/:17「weaken 零记账」行——weaken 已随 14dd40977 退役,该行现役即与代码不一致)**/§3(:23 _confirm_pending 步)/§5(:33 重入裁决)/§7(:41) 两相与证据闩表述清除 + :37「单一定义在 pick_invest」过期句修正（attack3 F2 锚位勘误；attack4 F1 补 §2 三行；attack5 A2 收回「:14 无涉」误排并把 :14 入清除面）← 3.2
 - `screens/README.md` 补：§6(:138) 即时上报枚举更新（attack3 F6）← 3.1/3.2
-- 兜底：正本更新批内 `EVIDENCE_OVERLAY_CLOSED` 全域 grep（范围 = src + sr-od-test + docs 正本；豁免 = changes/ 历史工件）+「两相/落地相/发射相」在 action_ops §4.5 与 action_exec §2 的残留表述 ← 收尾
+- 兜底：正本更新批内 `EVIDENCE_OVERLAY_CLOSED` 全域 grep（范围 = src + sr-od-test + docs 正本；豁免 = changes/ 历史工件）+「两相/落地相/发射相」措辞 grep（范围 = src + sr-od-test + docs 正本，覆盖叙述面；豁免 = changes/ 历史工件）← 收尾
