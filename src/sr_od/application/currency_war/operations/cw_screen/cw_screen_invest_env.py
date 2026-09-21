@@ -34,12 +34,13 @@ board 无新鲜观察 → 该细化自然失效,定序主判据不依赖 board;�
 ``report_screen_invest_env_obs`` 落容器 ``invest_env_opts``(提名序列;names
 空 = OCR 未读得不写,闸在 report 内)+ 刷新计数 log 观察通道(遥测保留,
 与执行闸同源 reader 各司其职)→ obs 挂实例属性进决策 node。决策动作 node =
-重入裁决顶部(确认已发 → 锚不在 = overlay 已关 = 环境选择落地 → success
-交回;锚在 = 未落地 → 清标志重走)→ 零参决策(候选自容器槽)→ 环境刷新
-终结交回 / ``active_env`` 选卡时点写(点卡**前**,ADR-0598 投资两屏各自实证
-语义,禁与策略屏重入裁决出口 append 统一)→ portal 效果登记(active_env
-写入同址,best-effort)→ 台账变异窗 → 选卡+确认链经 ``CwActionPickInvestOp``
-派发(pick-op-unify 批机械链迁入动作 op)→ ``round_wait`` 循环
+重入裁决顶部(确认已发 → 锚不在 = overlay 已关 = 环境选择落地 → 落地相
+上报(经获得链 ``gain_invest_env`` 写 active_env + portal 登记,session
+显式传入)→ success 交回;锚在 = 未落地 → 清标志重走)→ 零参决策(候选自
+容器槽)→ 环境刷新终结交回 / 点最优卡底(选择事实零容器写,落地相经获得
+链,gain-chain design §2.5;ADR-0598 点卡前写退役)→ 台账变异窗 →
+选卡+确认链经 ``CwActionPickInvestOp`` 派发(pick-op-unify 批机械链迁入
+动作 op)→ ``round_wait`` 循环
 推进(不烧节点重试预算;不收敛 = 策略 bug 响亮暴露,无防御上限)。
 本屏 sim 腿 = 不适用(sim 端口适配器未建),等价判据主承重 = 实机在册
 行为锁。
@@ -225,9 +226,10 @@ class CwScreenInvestEnv(SrOperation):
         """重入裁决(顶部)→ 零参决策 → 环境刷新终结交回 / 选卡+确认 → round_wait。
 
         重入裁决(观察驱动,验证废除形态):上轮已发确认 → 本轮锚不在 =
-        overlay 已关(环境选择落地)→ portal 落地相效果分派一次(银狼闭环
-        design §2.3:欢愉契约等 portal 卡确认只走效果腿,禁入持卡面;
-        效果腿幂等 = 证据闩,确认未落地重走不重复)→ success 交回;锚在 =
+        overlay 已关(环境选择落地)→ 落地相上报一次(gain-chain design
+        §2.5:portal 支经获得链 gain_invest_env 写 active_env + 触发
+        on_env_gained 效果,禁入持卡面;幂等 = 证据闩,确认未落地重走
+        不重复)→ success 交回;锚在 =
         确认未落地 → 清标志重走。循环推进 = round_wait(不烧节点重试预算;
         不收敛 = 策略 bug 响亮暴露,无防御上限)。"""
         if self._confirm_pending is not None:
@@ -245,6 +247,8 @@ class CwScreenInvestEnv(SrOperation):
                         ChannelSig(family='logic_action',
                                    actor='CwScreenInvestEnv',
                                    mode='compute'),
+                        session=getattr(getattr(self.ctx, 'cw_match', None),
+                                        'session', None),
                         evidence=EVIDENCE_OVERLAY_CLOSED)
                 return self.round_success('投资环境已确认(重入观察裁决)', wait=2.0)
         obs = self._obs
@@ -256,9 +260,9 @@ class CwScreenInvestEnv(SrOperation):
                         screen: Any = None) -> OperationRoundResult:
         """决策+动作内聚体(决策面):decide_event/decide_invest 决策(空候选
         fallback 链)→ 环境刷新终结动作(refresh_slots 非空 ∧ 计数授权 →
-        点刷新后本访问即终结交回,链头注)→ ``active_env`` 选卡时点写(点卡
-        **前**,ADR-0598 投资两屏各自实证语义)→ portal 效果登记(active_env
-        写入同址,best-effort)→ 点最优卡底 → 台账变异窗 → 确认。
+        点刷新后本访问即终结交回,链头注)→ 点最优卡底(选择事实零容器写;
+        active_env 写与 portal 登记均迁获得链,落地相 = act 顶部重入裁决
+        出口上报)→ 台账变异窗 → 确认。
 
         ``screen`` = 观察段稳定帧(刷新计数现读的执行闸输入);缺省 None =
         旧调用形兼容(无帧 = 无授权,刷新链跳过,失败安全)——生产观察轮
@@ -356,37 +360,9 @@ class CwScreenInvestEnv(SrOperation):
         else:
             chosen, choose_x, reason = '?', 960, 'fallback(no-ocr)'
         log.info(f'[cw-env] options={names} chose={chosen!r}@x={choose_x} reason={reason}')
-        # 原 bug:chosen 只点不存 → env_fit 全 0.5 → T0 env 绑定静默失效。
-        # 终态契约 §B:session 份退役,直写 gs.active_env。
-        if match is not None and chosen != '?':
-            # GameState 写端(§3.4.3/§4 投资选择行):已选投资
-            # 环境=本屏写入、选完即关整局保留;单次逻辑写入(申报豁免:
-            # 选择落地无定型帧可核对,后果走观察覆盖)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                ChannelSig,
-            )
-            match.gs.write_logic(
-                match.gs.active_env, chosen,
-                produced_by='CwScreenInvestEnv',
-                sig=ChannelSig(family='logic_action',
-                               actor='CwScreenInvestEnv', mode='compute'))
-            # portal 登记端(invest-env 迭代设计 §2.4):active_env 写入
-            # 同址登记环境效果(source='portal');结构化条目 = 经济环境
-            # (cw_effect_inventory.ENV_PORTAL_EFFECTS),其余已知名 UnitBuffRef
-            # 占位(效果原文存档,G 组 notes 附 GiftGrant 摘要)。best-effort:
-            # 失败不阻塞确认链(effect-domain.md §7.3 登记面纪律,词缀源挂点
-            # 同式);幂等在登记体内。本登记零决策消费(经济判据接登记数据
-            # 归后续批,design.md §1.3-5)。
-            try:
-                from sr_od.application.currency_war.kernel.cw_effect_inventory import (
-                    register_portal_from_env,
-                )
-                _portal = register_portal_from_env(match.session, chosen)
-                if _portal is not None:
-                    log.info(f'[cw-env] portal 效果账本登记: {_portal.name}'
-                             f'({_portal.category.value})')
-            except Exception as e:   # noqa: BLE001  登记面失败不阻塞
-                log.warning(f'[cw-env] portal 效果账本登记失败(不阻塞): {e}')
+        # 选择事实零容器写(画面 op 只观察/决策/机械派发;active_env 写与
+        # portal 登记均迁获得链 gain_invest_env,落地相 = 重入裁决出口上报,
+        # gain-chain design §2.5;ADR-0598 点卡前写语义退役)。
         # 效果原文回流断供为裁定的接受后果,收编归宿 =
         # strategy_offer 画面 payload 域,候其落地批接线。
 

@@ -145,7 +145,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='位面 boss 名(简报读数/位面详情实采写门;开局写定恒稳族)'),
     'active_env': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='选卡确认挂点直写(active_env 写入)+ 观察覆盖'),
+        basis='动作落地相获得链写(gain_invest_env)+ 观察覆盖'),
     'enemy_affixes': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='开局写定(简报/位面详情实采写门)+ 观察覆盖'),
@@ -209,11 +209,13 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='浮层双义读面(§3.6.1),零逻辑写端'),
     'overflow_warning': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='观察每入口帧实读覆盖 + CwActionSellBenchParam 溢出腿 logic 直写 False'
+        basis='观察 + 获得链逻辑双写端(cw_gain_chain 溢出落位)'
+              ' + CwActionSellBenchParam 溢出腿 logic 直写 False'
               '(推算消亡,观察赢)'),
     'overflow_card': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='观察写端单一源 + 溢出腿入位消费直写(§3.2.20)'),
+        basis='观察 + 获得链逻辑双写端(cw_gain_chain 溢出落位直写身份)'
+              ' + 溢出腿入位消费直写(§3.2.20)'),
     # —— 画面附加域(payload 随画面重建)——
     'shop': ProjectionAuditRow(
         status=AUDIT_WRITE_END,

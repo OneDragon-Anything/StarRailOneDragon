@@ -1983,8 +1983,10 @@ class GameState:
     # [索引定义] overflow_warning:告警横幅「备战席已满」在场 = 存在未安置
     # 溢出角色(此刻出战点击被游戏忽略——launch_dead 三连停机实证;策略
     # 消费门 = mandate 溢出门,先卖腾位再出战)。取值时机 = 备战 heavy
-    # 观察每入口帧实读覆盖(两态制,观察赢);写入端单一源 = CwScreenPrep
-    # 观察写端(渠道①)。CwActionSellBenchParam 溢出腿(卖出自上报)落地
+    # 观察每入口帧实读覆盖(两态制,观察赢);写入端 = **双写端**(观察
+    # heavy 写端 CwScreenPrep 渠道① + 获得链逻辑写端 cw_gain_chain 席满
+    # 溢出落位直写 True;第二逻辑写端先例 = CwActionSellBenchParam 溢出
+    # 腿)。CwActionSellBenchParam 溢出腿(卖出自上报)落地
     # 后 logic 直写 False(推算消亡,下帧实读覆盖);落地同帧容器 bench
     # 回占入位卡 + 执行侧 tracked 主账对称吸收(session 在场;
     # 缺吸收 = 守卫播种期双账分叉实机停机)。
@@ -1993,7 +1995,9 @@ class GameState:
     # 1080p rect 1352,710-1465,805)上的角色身份。'' = 溢出位无卡或身份未
     # 识别(与 overflow_warning 配对解读:True ∧ '' = 有卡未识别);值语义
     # = CwActionSellBenchParam 溢出腿的入位对象身份(char_id;星级缺读按 1 兜底,下帧
-    # heavy 实读覆盖修正)。写入端单一源 = 同上观察写端;溢出腿落地后
+    # heavy 实读覆盖修正)。写入端 = **双写端**(观察 heavy 写端同上 +
+    # 获得链逻辑写端 cw_gain_chain 席满溢出落位直写身份;第二逻辑写端
+    # 先例 = 溢出腿);溢出腿落地后
     # logic 直写 ''(入位消费)。
     overflow_card: Field[str] = field(default_factory=Field)
 

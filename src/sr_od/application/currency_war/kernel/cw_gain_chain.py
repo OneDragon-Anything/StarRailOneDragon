@@ -1,8 +1,8 @@
 """货币战争 获得链(gain-chain):获得三原语 + 事件回调枚举 + 单级合成。
 
 设计 = docs/develop/sr_od/application/currency_war/changes/2026-09-21-gain-chain/
-design.md §2.1-2.4/§2.7(迭代定稿)。**零生产接线**:本模块 3.1 只立语义,
-任何现有调用点不改;首个接入面(投资环境落地相)归 3.2。
+design.md §2.1-2.4/§2.7(迭代定稿)。首个接入面(投资环境落地相,
+``cw_action_report.pick_invest`` portal 支)自 3.2 起消费本模块。
 
 链式过程语义(§2.1):「获得」= 注册/落位 → 事件回调 → 3 合 1 升星判断 →
 升星产物重进获得角色(回调 → 升星判断 → …,无三连同名同星即终止)。回调
@@ -57,6 +57,12 @@ DEFECT_OVERFLOW_TAKEN: str = 'gain_chain_overflow_slot_taken'
 DEFECT_EQUIPS_UNOBSERVED: str = 'gain_chain_equips_unobserved'
 DEFECT_ADVISOR_DECL: str = 'gain_chain_advisor_decl'
 DEFECT_PORTAL_REGISTER: str = 'gain_chain_portal_register_failed'
+
+#: 欢愉契约条件腿采证期临时翻来源闩的披露键 kind(自 pick_invest 迁入,
+#: gain-chain design §2.3-2「条件腿标记面」:头号玩家触发无观察锚无采样
+#: 模型,定谳前触发帧收口自愈留证不停局;**有界显式测量仪表,定谳后
+#: 必须撤**——残留 = 临时闩未撤的显式信号)。
+JOY_PROVISIONAL_KIND: str = 'joy_contract_provisional'
 
 
 @dataclass(frozen=True)
@@ -493,10 +499,10 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       一行(先例 = pick_invest hacker shop_pool decl);chars_immediate
       在 advisor 行仅作顾问身份输入,禁再入席;
     - 查无效果(表外环境)= 安静不写(裁定④),真值归观察覆盖。
-
-    【3.2 迁移预告】欢愉契约条件腿 provisional 翻来源闩随 3.2 迁入本
-    枚举(与 pick_invest 现役通道同步搬迁;3.1 不 import cw_action_report,
-    kernel 链对该包禁反向依赖)。
+    - 欢愉契约条件腿(头号玩家触发)标记面:bench/equips 值不变
+      ``write_logic_rand`` 翻来源 + 留证行 kind =
+      :data:`JOY_PROVISIONAL_KIND`(自 pick_invest 效果函数迁入,行为
+      逐位等价;临时测量仪表,定谳后撤闩换正式模型)。
     """
     _name = normalize_invest_name(env_name)
     grant = ENV_GIFTS.get(_name)
@@ -516,6 +522,23 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
                        evidence=f'on_env_gained:{_name}',
                        producer=GAIN_CHAIN_PRODUCER)
         effects.append(f'env_gift:{char}')
+    if _name == '欢愉契约':
+        # 条件腿(头号玩家触发)临时翻来源闩:值不变 write_logic_rand 翻
+        # bench/equips 两域 → 触发帧观察差异收口自愈留证不停局,多局拼
+        # 数据;定谳后必须撤(见 JOY_PROVISIONAL_KIND 声明)。
+        for dom in ('bench', 'equips'):
+            fld = gs.bench if dom == 'bench' else gs.equips
+            if fld.value is None:
+                continue
+            gs.write_logic_rand(fld, fld.value,
+                                produced_by=GAIN_CHAIN_PRODUCER,
+                                evidence='on_env_gained:欢愉契约#provisional',
+                                sig=sig)
+            effects.append(f'provisional_mark:{dom}')
+        _emit_defect(field_name='bench', expected='joy_conditional_pending',
+                     actual='joy_contract_provisional_flip',
+                     evidence='on_env_gained:欢愉契约#provisional', sig=sig,
+                     kind=JOY_PROVISIONAL_KIND)
     return tuple(effects)
 
 

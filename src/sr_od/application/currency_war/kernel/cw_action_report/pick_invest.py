@@ -12,12 +12,16 @@
   容器零写——确认未落地重走不重复;
 - **落地相**(evidence = :data:`EVIDENCE_OVERLAY_CLOSED`,消费面 = 两屏
   handler 重入裁决出口「入口锚不在 = overlay 已关」):应用一次——
-  第一步(仅策略屏)投资策略入 ``gs.active_strategies``(判重入表)+
-  遥测一行;第二步按归一卡名分派效果函数(:data:`PICK_INVEST_EFFECTS`,
-  容器写腿逐项落行);第三步随机腿走采样链逐步落行。
+  ``source='strategy'``(策略屏):第一步投资策略入 ``gs.active_strategies``
+  (判重入表)+ 遥测一行;第二步按归一卡名分派效果函数
+  (:data:`PICK_INVEST_EFFECTS`,容器写腿逐项落行);第三步随机腿走采样链
+  逐步落行。``source='portal'``(投资环境屏,投资环境确认 = 确定性入口):
+  整支走获得链 ``gain_invest_env``(active_env 注册 + portal 登记 +
+  ``on_env_gained`` 效果枚举,gain-chain design §2.5;``session`` 形参
+  显式传入,``None`` = 登记腿跳过[局外/测试形态])。
 
 **双屏分流(对抗审②)**:``param.source`` = 发射屏别('strategy'/'portal')
-——策略屏确认才入持卡面;portal 确认只走效果分派,禁入
+——策略屏确认才入持卡面;portal 确认走获得链(``gain_invest_env``),禁入
 ``active_strategies``(防 portal 卡污染持卡经济聚合)。与现役 handler
 确认三桥(STRATEGY_EFFECTS 经济聚合面 register_strategy/免费刷新
 burst/board_rewrite)职责分离:本注册表只辖容器写腿,经济聚合照旧走
@@ -36,6 +40,9 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     EQUIP_ACQUIRE_CONSEQUENCES,
     grant_bench_unit_cascade,
+)
+from sr_od.application.currency_war.kernel.cw_gain_chain import (
+    gain_invest_env,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
@@ -98,15 +105,6 @@ def roll_hacker_mod(rng: random.Random) -> str:
 #: 骇客专家:银狼 bench 腿的送出单位(卡文「获得专家顾问【银狼】」;
 #: 星级未标 = 1★ 同句式先验,确定面语义——先验错 = 响停修因非随机)。
 _HACKER_BENCH_GRANT: tuple[str, int] = ('银狼', 1)
-
-#: 欢愉契约 immediate 腿的送出单位(cw_investments.ENV_GIFTS 欢愉契约行
-#: chars_immediate 实证;1★ 口径同定谳 §2.2 数据拷贝仪Max 腿)。
-_JOY_IMMEDIATE_GRANT: tuple[str, int] = ('银狼LV.999', 1)
-
-#: 欢愉契约条件腿采证期临时翻来源闩的披露键 kind(design §2.7②:头号玩家
-#: 触发无观察锚无采样模型,3.1① 定谳前触发帧收口自愈留证不停局;
-#: **有界显式测量仪表,定谳后必须撤**——残留 = 临时闩未撤的显式信号)。
-JOY_PROVISIONAL_KIND: str = 'joy_contract_provisional'
 
 
 def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
@@ -173,43 +171,11 @@ def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
     return steps
 
 
-def _apply_effect_joy_contract(gs: GameState, *, sig: ChannelSig,
-                               rng: random.Random) -> list[str]:
-    """效果函数·欢愉契约(portal 卡参考实现;design §2.3/§2.7②)。
-
-    - **immediate 腿**(确定性):银狼LV.999 1★ 入席 + 级联(chars_
-      immediate 实证;正常推演);
-    - **条件腿**(头号玩家触发)= 采证期临时翻来源通道:bench/equips 值
-      不变翻来源(披露键 :data:`JOY_PROVISIONAL_KIND`)→ 触发帧观察差异
-      收口自愈留证不停局,多局拼数据;3.1① 定谳后撤闩换正式模型。
-    """
-    steps: list[str] = []
-    r = grant_bench_unit_cascade(gs, _JOY_IMMEDIATE_GRANT[0],
-                                 _JOY_IMMEDIATE_GRANT[1], rand=False,
-                                 evidence='pick_invest_joy_immediate',
-                                 producer=_PRODUCER, sig=sig)
-    steps.append(f'immediate:{_JOY_IMMEDIATE_GRANT[0]}'
-                 f'(placed={r.placed},merge={r.merge_steps})')
-    _ = rng   # 采样链归 3.3 正式建模;本批无随机腿(参数位保留接口一致)
-    for dom in ('bench', 'equips'):
-        fld = gs.bench if dom == 'bench' else gs.equips
-        if fld.value is None:
-            continue
-        gs.write_logic_rand(fld, fld.value, produced_by=_PRODUCER,
-                            evidence='pick_invest_joy_provisional', sig=sig)
-        steps.append(f'provisional_mark:{dom}')
-    _emit_defect(field_name='bench', expected='joy_conditional_pending',
-                 actual='joy_contract_provisional_flip',
-                 evidence='pick_invest_joy_provisional', sig=sig,
-                 kind=JOY_PROVISIONAL_KIND)
-    return steps
-
-
 PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '骇客专家:银狼': _apply_effect_hacker_wolf,
-    '欢愉契约': _apply_effect_joy_contract,
 }
-"""确认落地效果函数注册表(键 = 注册表规范名;与 STRATEGY_EFFECTS 职责
+"""确认落地效果函数注册表(键 = 注册表规范名;策略屏专用——portal 卡经
+策略屏不可达;与 STRATEGY_EFFECTS 职责
 分离声明见模块头)。未收录名 = 零效果分派(只走第一步/零写)。"""
 
 
@@ -224,16 +190,23 @@ def _canon_invest_name(name: str) -> str:
 
 def report_action_pick_invest_param(gs: GameState, param: Any, sig: ChannelSig,
                                     *, rng: random.Random | None = None,
+                                    session: object | None = None,
                                     evidence: str = '') -> LogicOutcome:
-    """投资确认上报(零写族迁出·分步实现;design §2.3 全表)。
+    """投资确认上报(零写族迁出·分步实现;design §2.3 全表 + gain-chain
+    design §2.5 portal 支接入)。
 
     - **发射相**(evidence 缺省):意图遥测(日志),容器零写;
-    - **落地相**(evidence = :data:`EVIDENCE_OVERLAY_CLOSED`):分步应用
-      ——第一步仅策略屏(source='strategy')入持卡面(判重,归一名)+
-      遥测一行;第二步效果分派(:data:`PICK_INVEST_EFFECTS`,未收录卡零
-      效果);第三步随机腿采样链。portal(source='portal')禁入持卡面。
-      source 缺省 ''(旧调用形态/未分流)= 零容器写,行为与迁移前一致;
-    - 出参 applied=True = 动作受理(拒分支走落地相内域守卫,不整批拒)。
+    - **落地相**(evidence = :data:`EVIDENCE_OVERLAY_CLOSED`):
+      portal(source='portal')整支走获得链 ``gain_invest_env``
+      (``rand=False``,投资环境确认 = 确定性入口;``session`` 由调用方
+      显式传入——kernel 禁自取上下文,``None`` = 登记腿跳过[局外/测试
+      形态],容器写照常);strategy(source='strategy')分步应用——第一步
+      入持卡面(判重,归一名)+ 遥测一行;第二步效果分派
+      (:data:`PICK_INVEST_EFFECTS`,未收录卡零效果);第三步随机腿采样
+      链。portal 禁入持卡面。source 缺省 ''(旧调用形态/未分流)= 零容器
+      写,行为与迁移前一致;
+    - 出参 applied=True = 动作受理(拒分支走落地相内域守卫,不整批拒);
+      portal 支 reason = ``'gain_chain_applied'``(获得链结果可辨形态)。
     """
     _validate_sig(sig, ('logic_action',))
     source = str(getattr(param, 'source', '') or '')
@@ -247,20 +220,29 @@ def report_action_pick_invest_param(gs: GameState, param: Any, sig: ChannelSig,
         return LogicOutcome(applied=True, reason='intent_only')
     if not source:
         return LogicOutcome(applied=True, reason='landing_unrouted')
+    if source == PICK_INVEST_SOURCE_PORTAL:
+        # portal 支(投资环境确认 = 确定性入口,gain-chain design §2.5):
+        # 整支走获得链——active_env 注册 + portal 登记(best-effort 腿在
+        # 链内)+ on_env_gained 效果枚举(表外环境安静不写)。canon 空防御
+        # = 零写 noop(选择事实缺名禁写,与策略支 `if canon` 守卫同构)。
+        if not canon:
+            return LogicOutcome(applied=True, reason='landing_noop')
+        gain_invest_env(gs, session, canon, rand=False, sig=sig)
+        log.info('[cw-pick-invest] portal 落地经获得链: name=%s', canon)
+        return LogicOutcome(applied=True, reason='gain_chain_applied')
     steps: list[str] = []
     held = False
-    if source == PICK_INVEST_SOURCE_STRATEGY:
-        # 第一步:持卡面(判重入表;归一名落表,经济聚合读面免二次归一)。
-        if canon:
-            cur = list(gs.active_strategies.value or [])
-            if canon not in cur:
-                gs.write_logic(gs.active_strategies, cur + [canon],
-                               produced_by=_PRODUCER,
-                               evidence='pick_invest_strategy_held', sig=sig)
-                held = True
-                steps.append('active_strategies+1')
-            else:
-                steps.append('active_strategies:dup_skip')
+    # 第一步:持卡面(判重入表;归一名落表,经济聚合读面免二次归一)。
+    if canon:
+        cur = list(gs.active_strategies.value or [])
+        if canon not in cur:
+            gs.write_logic(gs.active_strategies, cur + [canon],
+                           produced_by=_PRODUCER,
+                           evidence='pick_invest_strategy_held', sig=sig)
+            held = True
+            steps.append('active_strategies+1')
+        else:
+            steps.append('active_strategies:dup_skip')
     fn = PICK_INVEST_EFFECTS.get(canon)
     if fn is not None:
         steps.extend(fn(gs, sig=sig, rng=roll_rng))
