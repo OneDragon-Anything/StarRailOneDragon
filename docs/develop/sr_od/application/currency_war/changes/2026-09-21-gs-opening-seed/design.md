@@ -78,7 +78,7 @@
 | `bench` | 空槽位 `BenchView`(9 空槽,capacity 9) | 用户游戏知识(裁定④):容器建立时点(简报前)确无手牌——空底座在建立时点为**真值**;1-1 进入时「开局补给」赠送内容,细目候实机观察,其合并效应归观察覆盖。**强源三重在册**:`docs/game/currency_war/research/screen_flow_timing.md:70`(投资屏选完进 1-1 触发开局补给,给开局角色+晶矿)、sim-redesign design.md:474(u07u28:开局手牌来自开局补给独立发牌通道,不走商店)、`screens/wait_one_one.md`(等待该动画的 op)。sim 开局手牌写点 = 引擎起点(1-1 备战),与本种子不同时点,无冲突 |
 | `front_row`/`back_row` | 空行 | 布阵发生在备战阶段(游戏流程) |
 | `equips`/`occupied_equips`/`spheres` | 空 | 开局真值;补给含晶矿发生在 1-1 进入时点(screen_flow_timing #5),建立时点 spheres 为空、1-1 观察覆盖 |
-| `board` | (不直接写) | 经 front_row/back_row 种子走行域派生链自动落(`_write_logic_frame` 行域挂钩 `_resync_board_delta`),值 = 空派生;禁双写 |
+| `board` | (不直接写) | 经 front_row/back_row 种子走行域派生链承担(`_resync_board_delta`);**冷建时点无观察基座 → 派生跳过,board 保持 None、种子面零派生行**(实码行为,3.1 验收核实);board 首次落行 = 首个含派生基座的观察帧。禁双写 |
 | `gold` | 3 | 用户裁定,对齐 sim M01 `OPENING_GOLD`(`sim/cw_sim_opening.py:52`) |
 | `level` | 3 | 用户裁定;`XP_TO_NEXT_LEVEL` 表键一致(`cw_economy.py:51`);读口旧缺省 1,种子 3 更贴真值(§2.6-8) |
 | `xp` | (0, 4) | 用户裁定(L3 升级所需=4);表值一致(`XP_TO_NEXT_LEVEL[3]`) |
@@ -139,8 +139,8 @@
   mode 取封闭集现役值 `'compute'`(`LOGIC_MODES = ('compute',)`,cw_game_state.py:285)
   ——**journal 过滤键 = `actor='GsOpeningSeed'`**(mode 不扩词表)。通道语义 =
   Field 注释的「确定外壳」形态(确定值、未验证,观察覆盖差异预期内、不进失配三分流)。
-- **写序与派生行**:行域(front_row/back_row)先写,board 派生行随动自动落
-  (`evidence='proj_board_resync'`);journal 增量 = ≈23 行种子 + 1 行 board 派生
+- **写序与派生行**:行域(front_row/back_row)先写;board 派生在冷建时点无观察基座
+  跳过(实码行为,3.1 验收核实)——种子面零 board 行;journal 增量 = 23 行种子
   (§2.6-4)。
 - **hp 三写端时序**(§2.2 hp 行)照表实现,禁倒序。
 
@@ -176,15 +176,23 @@
   | 简报三写点(`cw_screen_report/briefing.py`) | enemy_affixes/plane_bosses/enemy_difficulty | 不收口:enemy_affixes 种子 [] 被直写覆写 = 预期(三读数一局恒定,覆写无信息损失);后两域不种 |
   | 位面详情写门(`cw_screen_report/plane_intel.py`) | plane_bosses/enemy_affixes | 不收口:幂等门/真值不覆写门与种子空值协同 = 今日行为;不种域不涉 |
   | always-rand 直写点(pick_supply/pick_planner/tool_use/collect_ore/pick_equip/cw_gain_effects 等,落地时 grep 为准) | 各自目标域 | 天然合规:直 rand 通道不经选择点,规则不辖,列名备查 |
+  | 效果账本桥写端群(`cw_effect_inventory` ≈12 处) | bench/行域/equips 等 A 类域 | 现役效果事件均在锚定后画面可达,天然合规;**3.2 复核前提「未锚定期无效果事件」**,若实码推翻按同规则收口 |
+  | `PrepActionExecutor` 2 处 | 执行随动域 | 锚定后窗口,天然合规(登记备查) |
+  | 动作上报族 A 类目标若干(kernel/cw_action_report/) | 各动作域 | 锚定后动作,天然合规(登记备查) |
+  | `cw_strategy_manager`(职级难度第二写端) | selected_difficulty(C 类不种) | 并入 `_absorb_selected_difficulty` 同行处置:种子不涉,行为不变 |
+  | `cw_loop`(B 类安全网域直写) | node 等不种域 | 非裁决对象 |
+
+  (census 实码核验基线 = `reviews/3.1-r1.md` census 附项;清单外新写端 = 回修本表,禁静默。)
 - **carry 守卫收窄(封洗白通道)**:`carry()` 现守卫只查 `value is None`
   (cw_game_state.py:2544),会把 logic_rand 种子原样换帧成 `source='carried'`
   (可信位),击穿 §8.8 假值防线(实证可达路径:接管局 shop-open 帧 hp 失读支)。收窄 =
   **现值来源为 logic_rand 时 carry 不沿用(返回不动)**——随机态种子/采样值不是
-  「上次好值」,失读时宁保持未验证态不洗白。**影响面矩阵**:carry 腿共 8 条
-  (gold/level/hp/enemy_difficulty/deploy_cap/streak/board/shop_refresh_cost);
-  现役 rand 写域 ∩ carry 目标域 = **{board}**(行域 rand 写经派生挂钩落 board)——
-  board 失读帧收窄后不再洗白 = **存量语义修正**(与 §2.6-3 合并申报);其余七腿与
-  现役 rand 写域零交点,行为不变。
+  「上次好值」,失读时宁保持未验证态不洗白。**影响面矩阵(3.1 验收按实码修订)**:carry
+  腿共 **11 条**(漏斗 gold/level/hp/enemy_difficulty/deploy_cap/streak/board/
+  shop_refresh_cost 八条 + `cw_screen_prep` 失读腿 bench/front_row/back_row 三条);
+  rand 写域 ∩ carry 目标域 = **{board, bench, front_row, back_row}**(board = 行域
+  rand 派生;阵容三域 = 种子/链写后现值即 logic_rand)——四域失读帧收窄后不再洗白 =
+  **存量语义修正**(与 §2.6-3 合并申报);其余七腿与现役 rand 写域零交点,行为不变。
 
 ### 2.6 行为变化申报
 
@@ -200,8 +208,9 @@
    值(今日 = None → 各守卫保守跳过),kernel 计算族按底座继续、错误由后续对账暴露;
    carry 收窄后随机态值不再被失读腿洗成可信 carried(§2.5,含存量语义修正申报)。
    减压面 = tracked 账独立于容器种子,商店门/执行闸安全网不受影响。
-4. **journal 增量**:每局开局 ≈23 行种子行 + 1 行 board 派生行(键
-   `actor='GsOpeningSeed'` 可过滤);首观察对种子≠真值字段逐字段落
+4. **journal 增量**:每局开局 23 行种子行(键
+   `actor='GsOpeningSeed'` 可过滤;board 冷建时点无观察基座零派生行,首观察帧起按
+   派生链正常落);首观察对种子≠真值字段逐字段落
    `logic_rand_outcome` 台账行(机制内行为,量级 ≈ 种子不命中字段数/局,归随机模型
    校准遥测面——判读时与采样链 outcome 行同面,勿当缺陷)。
 5. **gold「None=不可读」档消亡**(fields.md §3.2.9):种子后 gold 恒有值;漏斗 gold
