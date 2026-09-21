@@ -5,8 +5,8 @@
 
 ## 1. 分发判定
 
-- 外循环分支 0r:id_mark「货币战争-简报.标识-本场对局首领」(简报独有,建档 is_precise);接管局/开局序列重入首帧落此屏时兜底分流。
-- 分发 = 阶段一身份行(单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2(0q 位面过渡之后、0s 投资环境之前)。本屏无排他/穿透形态;「按钮-下一步」与外循环「下一步」兜底的 OCR 词形重叠由本屏身份先行接管消解(不复制外循环表)。
+- 外循环阶段一身份行命中(screen = 货币战争-简报):id_mark「货币战争-简报.标识-本场对局首领」(简报独有,建档 is_precise);接管局/开局序列重入首帧落此屏时兜底分流。
+- 分发 = 阶段一身份行(单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2;位面过渡身份行之后、投资环境身份行之前)。本屏无排他/穿透形态;「按钮-下一步」与外循环「下一步」兜底的 OCR 词形重叠由本屏身份先行接管消解(不复制外循环表)。
 
 ## 2. 画面形态声明
 
@@ -14,7 +14,7 @@
 
 ## 3. 观察面
 
-单帧三读(消费 `obs/cw_briefing_obs.py`):
+单帧三读(消费 `obs/cw_briefing_obs.py`;**每次进屏都重读**,无已读跳过守卫——三读数一局内恒定,重读成本 = 区域 OCR,自愈首次误读):
 
 - 词缀:`read_affixes_with_pos`(「区域-词缀行」OCR → 名 + center);
 - 位面序真值:`read_bosses`(「区域-首领行」)→ `clean_boss_names_by_lcs` LCS 清洗归一(boss_fit 消费端规范名);
@@ -34,13 +34,13 @@
 
 ## 6. 状态上报面
 
-容器直写(`report_screen_briefing_obs`,三字段分闸落容器;obs = `CwScreenBriefingObs`(`on_screen`/`enemy_affixes`/`plane_bosses`/`enemy_difficulty`/`screen`,住 `kernel/cw_screen_report/briefing.py`);session 份退役,gs 单一源):
+容器直写(`report_screen_briefing_obs`,三字段统一写语义;obs = `CwScreenBriefingObs`(`on_screen`/`enemy_affixes`/`plane_bosses`/`enemy_difficulty`/`screen`,住 `kernel/cw_screen_report/briefing.py`);session 份退役,gs 单一源)。三字段同口径:**读到非空恒覆写,读空跳过写**——读缺=跳过写项目口径(瞬时 OCR 失手不擦同局已读真值);三读数一局内恒定,覆写无信息损失;跨局残留由每局容器冷建/丢弃挡死,不靠本写点清场:
 
-- `gs.enemy_affixes`:幂等门「容器已有不重写」——幂等门辖「读+采」,容器已有词缀的重入轮不重读不重采(避免重复点采效果);
-- `gs.plane_bosses`:恒覆写(防上一局残留当本局真值),读空写 None;语义 = 位面序真值(boss_fit 消费端规范名,LCS 清洗归一);
-- `gs.enemy_difficulty`:仅 None 时写(恒稳开局基线,逐帧旗牌真读到达即覆盖)。
+- `gs.enemy_affixes` → mechanics_fit;
+- `gs.plane_bosses`:语义 = 位面序真值(boss_fit 消费端规范名,LCS 清洗归一);
+- `gs.enemy_difficulty`:恒稳开局基线(逐帧旗牌真读到达即覆盖)。
 
-下游链:`gs.enemy_affixes` → mechanics_fit。词缀运行时登记挂点:`kernel/cw_affix_effects.py::register_affixes_from_names`(留守观察侧,与读+采同一幂等守卫辖;命中结构化注册才入账本;best-effort)。无落地登记件(三字段容器直写 = 观察写端,非动作发射登记)。
+词缀效果采集/运行时登记挂点留守观察侧:每次进屏重读重采,点采对注册表 `data/affix_effects_data.py` 比对自身幂等(一致即跳过,无重复收集);登记 = `kernel/cw_affix_effects.py::register_affixes_from_names`(命中结构化注册才入账本;best-effort)。无落地登记件(三字段容器直写 = 观察写端,非动作发射登记)。
 
 ## 7. 子态与 overlay
 
@@ -48,7 +48,7 @@
 
 ## 8. 守卫与防线
 
-`node_max_retry_times=10` 现役值仅框架异常路径消费;幂等守卫防 retry 重跑同屏重复点采;采集/登记/首领读空全部 best-effort 或可见化(首领空读日志与「幂等跳过」可区分),零停机钩子。
+`node_max_retry_times=10` 现役值仅框架异常路径消费;点采对注册表比对自身幂等(重入轮重复点采无重复收集);采集/登记/首领读空全部 best-effort 或可见化(首领空读日志与读得覆写可区分),零停机钩子。
 
 ## 9. 遥测与锁面
 
