@@ -12,7 +12,7 @@
 
 1. **骇入策划屏（银狼）两相**：发射相 = `operations/cw_op/cw_overlay_pick_action.py::CwActionPickPlannerOp.run` 确认链发出后仅意图遥测（`kernel/cw_action_report/pick_planner.py` evidence 缺省分支，容器零写）；落地相 = 画面 op `operations/cw_screen/cw_screen_yinlang.py` act 顶部重入裁决出口（OCR「我来当策划」不在 = overlay 已关）消费 `_pending_leg`/`_pick_param` 证据闩，持 `EVIDENCE_OVERLAY_CLOSED` 调落地相（equip 腿入栏+后果链 / upgrade 变换窗三态+档行 / unknown 留证 / weaken 零写）。踩增补 2 禁止清单「等下一轮看画面才补写」+ 裁定正文「禁止做验证」（overlay 已关 = 确认已落地，是判效）。
 2. **选择装备屏两相**：发射相 = `CwActionPickEquipOp.run` 点卡后仅意图遥测（`kernel/cw_action_report/pick_equip.py` 同构）；落地相 = `operations/cw_screen/cw_screen_equip_pick.py` act 顶部重入裁决出口（OCR「请选择」不在）消费 `_pending_pick` 证据闩（归一件名入栏+后果链）。
-3. **同名常量三处自持**：`EVIDENCE_OVERLAY_CLOSED` 在 pick_planner.py / pick_equip.py 各自定义（原自 pick_invest import，该文件随投资两屏迁移批删除后就地自持）——供给行清偿后成为全仓仅剩的两处两相形态。
+3. **同名常量两处自持**：`EVIDENCE_OVERLAY_CLOSED` 在 pick_planner.py / pick_equip.py 各自定义（原自 pick_invest import，该文件随投资两屏迁移批删除后就地自持）——供给行清偿后成为全仓仅剩的两处两相形态。另有 docs 正本 `game_state/logic-updates/pick-planner.md` 与 `screens/planner.md` 残留分相表述/过期指针（正本更新批收口，见 landing 清单）。
 
 ### 1.2 根因归层
 
@@ -37,7 +37,7 @@
 
 - **选择装备屏（equip，先做——简单腿立复核）**：
   - `CwActionPickEquipOp.run` = 点卡（env.target）→ 固定等 1.2s → 立即上报（单相：`norm_item` 命中 → owned 入栏 + 获得后果链；'' = 未解析翻来源留证）→ `round_success` 终结。本屏点卡即选、无确认步。
-  - **归一升级（复用 T-1 已建入口）**：组装点 `normalize_equip_name`（银狼 10 件锚）换 `normalize_registry_equip_name`（注册表 158 名分层归一，T-1 已建）——本屏候选含泛用件（docstring「未锁态语义（仅泛用腿）」在册），10 件锚对泛用件恒 ''；注册表级让泛用注册表件规范名入栏，未命中 fail-closed 不写留证 + 观察覆盖自愈（与供给行同构）。`normalize_equip_name` 本体语义不动（银狼域其他消费面）。
+  - **归一升级（复用 T-1 已建入口）**：组装点 `normalize_equip_name`（银狼 10 件锚）换 `normalize_registry_equip_name`（注册表 158 名分层归一，T-1 已建）——本屏候选含泛用件（docstring「未锁态语义（仅泛用腿）」在册），10 件锚对泛用件恒 ''；注册表级让泛用注册表件规范名入栏，未命中 fail-closed 不写留证 + 观察覆盖自愈（与供给行同构）。`normalize_equip_name` 本体语义不动（银狼域其他消费面）。**注释连带**：`kernel/cw_vocab.py` `CwActionPickEquipParam.norm_item` 字段注释同步改写（T-1 模板注释连带先例）。
   - 画面 op：删 `_pick_pending`/`_pending_pick`/重入裁决出口门；act = 决策（越界/异常 fallback 第 1 张现状保持）→ 组装 param（idx + 注册表分层归一 norm_item）→ 派发 → `round_success` 终结。本屏零 chosen（选择存证已退役，docstring 在册）。
 - **骇入策划屏（planner，后做——复杂腿）**：
   - `CwActionPickPlannerOp.run` = 点卡（env.target，避开「详情」按钮区选中点照旧）→ 固定等 1.2s → 确认点击（`emit_overlay_confirm`，裁决词「我来当策划」照旧）→ 立即 `report_action_pick_planner_param(gs, action, sig, leg_type=env.leg_type, norm_item=env.norm_item)`（单相；leg_type/norm_item 经 env kwargs 形态保持——planner 载荷先例，不迁 param）→ `round_success` 终结。体内 `op._confirm_pending = True` 置位删除。
@@ -62,10 +62,11 @@
 - **两屏拆两阶段而非合并**：机械链不同（equip 点卡即选 / planner 有确认钮），独立验收粒度清晰；共享文件 `cw_overlay_pick_action.py` 串行批防冲突。
 - **equip 归一升级复用注册表分层入口而非保持银狼锚**：本屏候选含泛用件（在册），银狼锚恒 '' = 泛用件永不入栏（现状缺陷）；注册表级与供给行 owned 形态统一；未命中 fail-closed 同构。
 - **planner 载荷保持 env kwargs 不迁 param**：leg_type/norm_item 是腿型分类产物非卡选择本体，env 透传先例现役；迁 param 无消费收益。
-- **单相重复应用风险不设防**：增补 2 禁止清单第 4 条明文（确认未生效重派 = 代码 bug 域，禁判重保护）；upgrade 变换腿重复应用的后果（多升一次档）同域接受，响亮暴露修根因。
+- **单相重复应用风险不设防**：增补 2 禁止清单第 4 条明文（确认未生效重派 = 代码 bug 域，禁判重保护）。**upgrade 腿重复应用的真实后果（修正论据）**：首次应用已把 (银狼LV.999,2★) 变换为 1★，二次上报走「零枚 → 留证零写」分支（`planner_upgrade_source_missing`）——档行不会 +1 两次；真实后果 = 缺陷留证 + 逻辑态失配待观察对账，方向（接受不设防）不变。
+- **并行协调申报（joy-conditional-leg 在飞批）**：该批有挂 planner 落地相门（evidence 闩消费点）的在飞 rider（现盘 pick_planner.py 尚无该代码）。本批删 `evidence` 参数后该门退役，rider 落点需改挂单相上报调用点——由编排者与该批对齐落点，本批设计按「rider 随单相调用点重挂」申报。
 
 ## 3. 验收锚（行为级；验收凭据形式见 landing 各阶段）
 
 1. equip：点卡后（不等下一帧）容器即持 owned（规范名，含泛用件——注册表归一命中时）+ 后果链；画面 op 派发即终结（无重入裁决轮）；`pick_equip.py` 来源 `EVIDENCE_OVERLAY_CLOSED` 及其消费面零残留。
 2. planner：确认点击后（不等下一帧）容器即持对应腿效果——equip 腿入栏+后果链 / upgrade 变换（2★→1★）+ 档行 +1 + 级联 / unknown 留证 / weaken 零写；画面 op 派发即终结；`pick_planner.py` 来源 `EVIDENCE_OVERLAY_CLOSED` 及其消费面零残留。
-3. 全域两相欠账清零：`action_ops.md` §4.5 欠账段摘除后，全仓 grep `EVIDENCE_OVERLAY_CLOSED` 零命中（豁免 = 无——供给行已清，本批后应全域归零）。
+3. 全域两相欠账清零：`action_ops.md` §4.5 欠账段摘除后，`EVIDENCE_OVERLAY_CLOSED` 全域 grep 零命中（范围 = src + sr-od-test + docs 正本；豁免 = changes/ 历史工件）。

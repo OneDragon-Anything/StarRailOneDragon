@@ -5,13 +5,13 @@
 
 ## 3.1 选择装备屏单相化（equip 先行）
 
-**范围**：`kernel/cw_action_report/pick_equip.py` 单相化（删 `evidence` 参数与本文件 `EVIDENCE_OVERLAY_CLOSED`，一口写 owned 入栏+后果链，未解析翻来源留证语义保持）；`cw_screen_equip_pick.py` 组装点换 `normalize_registry_equip_name`（T-1 已建入口）、删 `_pick_pending`/`_pending_pick`/重入裁决出口门、act 派发即 `round_success` 终结；`CwActionPickEquipOp.run` 确认后（点卡后固定等 1.2s）立即上报完整结果。**不含**：planner 屏（3.2 辖内）。
+**范围**：`kernel/cw_action_report/pick_equip.py` 单相化（删 `evidence` 参数与本文件 `EVIDENCE_OVERLAY_CLOSED`，一口写 owned 入栏+后果链，未解析翻来源留证语义保持）；`cw_screen_equip_pick.py` 组装点换 `normalize_registry_equip_name`（T-1 已建入口）、删 `_pick_pending`/`_pending_pick`/重入裁决出口门、act 派发即 `round_success` 终结；`kernel/cw_vocab.py` `CwActionPickEquipParam.norm_item` 字段注释连带改写（归一换源）；`CwActionPickEquipOp.run` 确认后（点卡后固定等 1.2s）立即上报完整结果。**不含**：planner 屏（3.2 辖内）。
 **设计依据**：design.md §2.0、§2.1（equip）、§2.2 表、§2.3（取舍 1/2/4）
-**文件面**：`src/sr_od/application/currency_war/kernel/cw_action_report/pick_equip.py`、`operations/cw_screen/cw_screen_equip_pick.py`、`operations/cw_op/cw_overlay_pick_action.py`（仅 CwActionPickEquipOp 体）、`sr-od-test/` 受影响测试（含 `test_cw_pick_channels_t60.py` EQUIP_EVIDENCE 面）
+**文件面**：`src/sr_od/application/currency_war/kernel/cw_action_report/pick_equip.py`、`kernel/cw_vocab.py`（仅 norm_item 注释）、`operations/cw_screen/cw_screen_equip_pick.py`、`operations/cw_op/cw_overlay_pick_action.py`（仅 CwActionPickEquipOp 体）、`sr-od-test/` 受影响测试（含 `test_cw_pick_channels_t60.py` EQUIP_EVIDENCE 面）
 **依赖**：无
 **优先级建议**：7
 **完成判据**：
-- 行为对照 design.md §3 验收锚 1（行为锁：点卡后容器即持 owned 规范名+后果链，含泛用注册表件归一命中用例；派发即终结断言；pick_equip 来源 `EVIDENCE_OVERLAY_CLOSED` 零残留）
+- 行为对照 design.md §3 验收锚 1（行为锁：点卡后容器即持 owned 规范名+后果链，含泛用注册表件归一命中用例；派发即终结断言；pick_equip 来源 `EVIDENCE_OVERLAY_CLOSED` 零残留——范围 = src + sr-od-test + docs 正本，豁免 = changes/ 历史工件）
 - 通用工程门
 **验收凭据形式**：equip 单相行为锁测试（命中/未解析/泛用件三型）+ `test_cw_pick_channels_t60.py`/`test_cw_yinlang_phase32.py` 受影响面全绿
 
@@ -40,8 +40,9 @@
 ## 正本更新清单
 
 - `flow/action_ops.md`：§4.5（**欠账标注段整段摘除**——全域清零；PickPlanner/PickEquip 两行描述更新为单相即时上报）← 3.1/3.2
-- `screens/op-layer.md`：§1.1（重入裁决「仅限未迁移屏」清单收敛——yinlang/equip_pick 行迁出）、§1.2（欠账引用面复核清零）、§3（分型表 yinlang/equip_pick 行注：重入裁决退役改派发即终结）← 3.1/3.2
+- `screens/op-layer.md`：§1.2 欠账引用句更新（两相欠账清零）、§3 节点循环行注（yinlang/equip_pick 重入裁决退役改派发即终结）← 3.1/3.2
 - `screens/README.md`：§5.5 单选族表（两行上报形态更新）← 3.1/3.2
-- `screens/yinlang.md`（如存在该篇）：对应节更新 ← 3.2（正本更新批先核该篇在册性）
+- `screens/planner.md`：§1/§4/§5 全篇两相+重入裁决表述清除（单相化改写）← 3.2
 - `screens/equip_pick.md`：重入裁决/证据闩表述清除 ← 3.1
-- 兜底：正本更新批内全仓 grep `EVIDENCE_OVERLAY_CLOSED`（验收锚 3 口径，零豁免）+「两相/落地相/发射相」在 action_ops §4.5 的残留表述 ← 收尾
+- `game_state/logic-updates/pick-planner.md`：过期「单一定义在 pick_invest」句修正 + evidence 分相表述清除 ← 3.2
+- 兜底：正本更新批内 `EVIDENCE_OVERLAY_CLOSED` 全域 grep（范围 = src + sr-od-test + docs 正本；豁免 = changes/ 历史工件）+「两相/落地相/发射相」在 action_ops §4.5 的残留表述 ← 收尾
