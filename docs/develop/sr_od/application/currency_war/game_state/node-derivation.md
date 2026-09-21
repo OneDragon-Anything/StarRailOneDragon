@@ -128,7 +128,7 @@ trigger 封闭集 = {settle_confirm, supply_confirm});②**`advance_node_effecti
 | E11 | 补给确认 → 下一节点干净备战帧(无战斗无结算) | 备战双锚 | **supply 上报**(CwActionPickSupplyOp:确认点击 until = 下一节点备战锚作转移证据;证据 miss 不上报不重试,兜底归观察锚定) |
 | E12 | boss 段(边序:奖励关结算 → BOSS 简报(0p)→ 商店自动开(0n)→ boss 备战帧 → 出战 → boss 结算;实证 = screen_flow_timing.md #26「奖励关后 BOSS 关前」) | 「标识-阵营徽记」(模板锚)∨ 共享判别 | **settle 上报推进 (p,9)**(奖励关结算确认;证据集同源条款 = BOSS 简报锚 ∈ 完成判据白名单 → 流转发生 ⇒ 上报先于简报 op 分派 ⇒ hist 已在 boss 节点);BOSS 简报屏 = **类型直定屏**(CwScreenBossBriefing 观察 node 经 `_write_derived_node_type` 直定 boss 类型,目标 = 已推进 hist——锚命中 ⇒ 证据命中 ⇒ hist 已在位,错位形态结构性不可达),零序号推进;boss 备战帧 reanchor;boss 结算零触发(E6 同段内相位) |
 | E13 | boss 结算 → 位面过渡(0q)→ 下位面 2-1 画面 | 0q(:2192)→ 备战双锚或弹窗 | **settle 上报推进 (p+1,1)**(boss 结算确认;序号公式 9+1=10 自然跨位面,位面过渡屏零推进零锚定);下位面备战帧 reanchor(证据 miss 形态由锚定补推自愈) |
-| E14 | 恢复接管 → 首画面(备战帧/弹窗/战斗窗/锁定态) | 恢复检测(:1711)→ resumed_match 行 | 备战帧 → **锚定 first_anchor**(恢复重建);弹窗 → 零(弹窗腿已退役,无推断);锁定臂(直出战)→ 首次结算确认被观察态门 value 守卫挡,战后备战帧锚定补齐 |
+| E14 | 恢复接管 → 首画面(备战帧/弹窗/战斗窗/锁定态) | 恢复检测(:1711) | 备战帧 → **锚定 first_anchor**(恢复重建);弹窗 → 零(弹窗腿已退役,无推断);锁定臂(直出战)→ 首次结算确认被观察态门 value 守卫挡,战后备战帧锚定补齐 |
 | E15 | 终局:团灭/HP 归零 → 挑战失败屏 → 大厅(3c) | 「标识-挑战结束」/「标识-创业指南」(:3127/:3008) | 零(对局结束) |
 | E16 | 节点内插播 overlay 族(0a0/0a/0a2/0a3/0a4/0b 巨星/0d/0e2/0e3/0f 武装箱·消耗品/0g/0h 祈愿/0i/0k/0t/1b/1d/1g) | 各自 id_mark 锚(0 系序位全在备战双锚前) | 零(非节点边界标记,无推进无锚定) |
 | E17 | 暗色锁定返回(0m)→ 回 overlay | 「按钮-返回XX选择」(:2020-2024) | 零(重入;无推进面) |
@@ -319,7 +319,7 @@ per_node_pick_node_grant.md,效果域细则 = [effect-domain.md](effect-domain.m
 | `node_type` | battle/encounter/supply/reward/boss | 腿 A:主 = nodeseq current 槽(`read_node_sequence`+`read_node_type`),读缺 = 位面节点台账兜底,再缺 = None;腿 B:主 = 弹窗类型映射(遭遇屏→encounter/补给屏→supply;商店面板→台账,battle/boss 不可分;投资策略屏→台账),同一台账兜底,再缺 None(「按节点类型弹对应 overlay」currency_war_prep.md:32 为映射机制依据) |
 | `tick_status` | ticked(腿 A:tick 挂点已先行)/ pending(腿 B:候本节点备战帧 tick;消费侧按 status 分) | 触发腿(R3 恢复该字段) |
 | `tick_expired[]` | 到期移除效果 spec 名清单(腿 A 恒可得;腿 B 恒空=待 tick) | `advance_node` 返回 expired(:2301;「递减未到期」清单现役不产出,候 H2) |
-| `from_resume` | 恢复局首节点 = true | resumed_match 检测态(:1711) |
+| `from_resume` | 恢复局首节点 = true | 恢复检测确认点(cw_loop;容器旗标 resumed_match 已退役) |
 
 `effect_ref` 槽位恒空(§12.0 结构锁不变)。
 
@@ -395,7 +395,7 @@ per_node_pick_node_grant.md,效果域细则 = [effect-domain.md](effect-domain.m
 | **腿 B 弹窗族四分支** | 0c :1840-1844;0e :1868-1873;补给 :1877-1889;0n `_shop_open_anchors_hit` :2058-2081——命中即 return,序位全在备战双锚前 | PASS |
 | 战斗窗双入口 | :2982-2983;`_frame_in_battle_window` :3114-3135(腿 B prev_branch=战斗等待的来源分支) | PASS |
 | 0q/0s/0p/大厅/兜底 | :2192-2224;:2247-2270(链 WaitOneOne :2267-2270);:2169-2183;:3008;:3086 | PASS |
-| 恢复检测/resumed_match | :1702-1719;锁定探针 :2748-2782(腿 B 禁用判据=恢复检测态复用) | PASS |
+| 恢复检测 | :1702-1719;锁定探针 :2748-2782(腿 B 禁用判据=恢复检测态复用) | PASS |
 | 现役 node_enter 行(出节点) | cw_screen_battle_wait.py:365-368(原子切换实施纪律对象) | PASS |
 | read_phase_round 直读/缓存/守卫 | cw_observation.py:904-989(兜底 :986-989;单调 :957;值域 :952;reset :917-921)——腿 A 直读通道;腿 B「c==last」守卫的读数面 | PASS |
 | emit_anchor/幂等/登记表 | cw_anchor.py:294-375(幂等 :357-363;effect_ref :331-335);node_enter 行 :192-203(host=「画面分派点」——双腿语义兼容) | PASS |

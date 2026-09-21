@@ -148,8 +148,10 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                             # + 新增基线链字段 node_path_baseline,链观察落地批 2026-09-16)
     'units': 1,             # front_row/back_row/bench/back_layout(§3.2.3-§3.2.7)
     'economy': 1,           # gold/level/xp/streak/hp/level_up_cost(§3.2.9-§3.2.13)
-    'match_facts': 4,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/board/恢复旗标(§3.1/§3.2.6/§3.2.14/§3.2.20;域版本 4 =
-                            # 新增 lv999_cost_tier 银狼LV.999 当前费用档(银狼升星记账批
+    'match_facts': 5,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/board(§3.1/§3.2.6/§3.2.14/§3.2.20;域版本 5 =
+                            # 恢复局旗标 resumed_match 退役(零逻辑消费,读端已随
+                            # 弹窗腿退役;2026-09-20-node-advance-action-report T-8);
+                            # 域版本 4 = 新增 lv999_cost_tier 银狼LV.999 当前费用档(银狼升星记账批
                             # 2026-09-20);域版本 3 =
                             # 接管补采计数/完成闩两字段退役——补采编排归
                             # CwEntryPlaneIntel,真值经写门落
@@ -237,9 +239,7 @@ SCREEN_PREP_FRAME: str = '货币战争-备战'
 SCREEN_SHOP_PANEL: str = '货币战争-备战-开商店'
 
 #: 战斗/结算段内相位 token(观察阶段键 battle_or_transit 的上下文对标识;
-#: 段内多物理屏,观察阶段键无法细分到建档名,按分支级记录)。恢复局旗标
-#: (resumed_match)供其消费的弹窗腿禁用分支已随弹窗腿退役,本 token 现仅
-#: 承载上下文对画像。
+#: 段内多物理屏,观察阶段键无法细分到建档名,按分支级记录)。
 BATTLE_WAIT_CONTEXT: str = '货币战争-战斗等待'
 
 #: BOSS 简报画面标识(BOSS 类型直定的 trigger_screen;类型直定写端 =
@@ -1872,7 +1872,7 @@ class GameState:
     # 显式失效(接管/重置/账失效)后未锚定,值不可消费;True = 备战环
     # heavy 观察(observe_full → reconcile_tracking)屏幕真值写回成功 =
     # 已锚定)。取值时机 = 事件驱动(非逐帧)。写入端:False = cw_loop
-    # ._mark_session_resumed(接管检测确认点;重置/账失效类事件同口写);
+    # ._invalidate_tracked_on_takeover(接管检测确认点;重置/账失效类事件同口写);
     # True = kernel reconcile_tracking 的 bench 侧屏幕真值写回成功点
     #(唯一锚定写端;bench 读失败/双空读守卫/槽号健康门拒绝均不写 = 保持
     # 未观察)。消费面:策略商店门(flow.decide_shop_action,未观察 →
@@ -1905,16 +1905,6 @@ class GameState:
     selected_difficulty: Field[str] = field(default_factory=Field)   # 职级,开局写定恒稳(§3.1.1)
     game_mode: Field[str] = field(default_factory=Field)             # 对局类型:标准/超频博弈(§3.1.2;两屏无建档,接线前补档)
     enemy_difficulty: Field[int] = field(default_factory=Field)      # 非单调(§3.2.14)
-
-    # —— 恢复局旗标(渠道③接管协议 logic_hook,relay 契约同族先例)——
-    # 局级生命周期,新局新容器 = 天然缺省 None 恒假。
-    # [索引定义] resumed_match: True = 本局为恢复对局(新 match 但游戏在中局
-    # 续跑)——历史用途 = 弹窗腿在 hist 空时禁用不猜(防把恢复局首弹窗误推断
-    # 成开局节点 1);弹窗腿退役后保留为 journal 局画像事实(写入端单一源 =
-    # cw_loop 恢复检测两确认点,``_mark_session_resumed`` 单口;读端已随
-    # 弹窗腿退役,读值不落旗标——一次性会话语义,非消费即清)。
-    # None = 未写(正常新局恒假语义)。
-    resumed_match: Field[bool] = field(default_factory=Field)
 
     # —— 遭遇选档观测面(E-2 平级新结构;非 Settlement 域字段,准入注释见该域)——
     # 结算观测环:产结算屏节点的 RoundOutcome 消费子集,深度 10,同场去重合并,

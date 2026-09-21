@@ -958,15 +958,14 @@ class CwLoop(SrOperation):
         counters = getattr(strategy_state_of(session), 'cw4_counters', None)
         return dict(counters) if isinstance(counters, dict) else None
 
-    def _mark_session_resumed(self) -> None:
-        """恢复局旗标 → 容器 match_facts 域 Field(D2 live 接线;R1 缺口承接)。
+    def _invalidate_tracked_on_takeover(self) -> None:
+        """接管检测确认点 → 容器观察态失效(tracked_account_observed=False)。
 
         写点 = 恢复检测两确认点(战斗帧恢复检测/备战帧 resume_candidate
-        确认);历史读端 = 弹窗腿禁用分支,已随弹窗腿退役(迭代
-        2026-09-20-node-advance-action-report 切换批)——旗标现役语义 =
-        journal 局画像事实(恢复局形态判读锚),零逻辑消费。渠道③接管协议
-        (logic_hook,actor = ResumeAttach 登记名)。best-effort 不阻塞
-        分派;session 缺(局外/桩)静默跳过。
+        确认)。历史同口第二写端 = 恢复局旗标 resumed_match,已随零消费
+        退役(迭代 2026-09-20-node-advance-action-report T-8)——恢复检测
+        本体(resume_candidate 判定/锁定臂/relaunch 残留处理)不受影响。
+        best-effort 不阻塞分派;session 缺(局外/桩)静默跳过。
         """
         try:
             match = getattr(self.ctx, 'cw_match', None)
@@ -978,25 +977,20 @@ class CwLoop(SrOperation):
                 ChannelSig,
                 gs_of_ctx,
             )
-            _gs_resumed = gs_of_ctx(getattr(self, "ctx", None), session)
-            _gs_resumed.write_logic(
-                _gs_resumed.resumed_match, True,
-                produced_by='ResumeAttach', evidence='takeover_resumed',
-                sig=ChannelSig(family='logic_hook', actor='ResumeAttach',
-                               mode='compute'))
+            _gs = gs_of_ctx(getattr(self, "ctx", None), session)
             # T-268 观察态失效(接管):容器观察态字段写 False——tracked 主
             # 账值自本事件起不可消费,商店策略门(flow.decide_shop_action,
             # 判定单一源 = kernel tracked_unobserved)据此关店交回外循环,
             # 备战环 heavy 观察(reconcile_tracking 屏幕真值写回)置 True
             # 完成锚定后再进店;店内零原地重建。重置/账失效类事件出现时
             # 同口写 False(语义登记 = game state 字段注)。
-            _gs_resumed.write_logic(
-                _gs_resumed.tracked_account_observed, False,
+            _gs.write_logic(
+                _gs.tracked_account_observed, False,
                 produced_by='CwLoop', evidence='takeover_invalidation',
                 sig=ChannelSig(family='logic_action', actor='CwLoop',
                                mode='compute'))
-        except Exception as e:  # noqa: BLE001  旗标写入不阻塞分派
-            log.debug(f'[cw-loop] 恢复局旗标写入跳过: {e}')
+        except Exception as e:  # noqa: BLE001  失效写入不阻塞分派
+            log.debug(f'[cw-loop] 接管观察态失效写入跳过: {e}')
 
     def _dispatch_screen_op(
         self,
@@ -1691,8 +1685,8 @@ class CwLoop(SrOperation):
                 # A18(hook审计退役批(ADR-0466/0467/0469)):数据归属标记,只标不改行为 → [cw] 非 [cw!]
                 log.warning('[cw][loop] 恢复对局检测:新 match 但游戏在 P%s-r%s(上局残局,'
                             '本 run_id 数据含残局段)', _st0.plane, _st0.round_num)
-                self._mark_session_resumed()   # D2:恢复局旗标(弹窗腿禁用供给面)
-                # (恢复局形态现役证据 = 弹窗腿禁用旗标 + journal 派生行段界。)
+                self._invalidate_tracked_on_takeover()   # D2:接管置观察态失效
+                # (恢复局形态现役证据 = journal 派生行段界;容器旗标已随零消费退役。)
             # 接管局补采(boss+词缀)挂点 = 干净备战观察(W971 §2.1,CwScreenPrep
             # 环入口 gate 后稳定帧执行;稳定门退役后由备战观察承担)。
 
@@ -1805,7 +1799,7 @@ class CwLoop(SrOperation):
                 if not resume_candidate(self._is_new_match, _pr[0], _pr[1]):
                     self._cw_resume_candidate = False   # 1-1 正常新局,撤回候选
                 else:
-                    self._mark_session_resumed()   # D2:恢复局旗标(弹窗腿禁用供给面)
+                    self._invalidate_tracked_on_takeover()   # D2:接管置观察态失效
                     self.round_by_find_and_click_area(
                         screen, '货币战争-备战', '按钮-商店', success_wait=1.2)
                     _opened = self.round_by_find_area(

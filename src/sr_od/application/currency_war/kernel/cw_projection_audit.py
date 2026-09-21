@@ -139,10 +139,6 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'enemy_difficulty': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='非单调识别真值(§3.2.14),零逻辑写端'),
-    # —— 恢复旗标(bot 自有事实)——
-    'resumed_match': ProjectionAuditRow(
-        status=AUDIT_PROCESS_ONLY,
-        basis='恢复检测旗标(_mark_session_resumed 单口),无 OCR 读端'),
     # —— 局级观察面 ——
     'plane_bosses': ProjectionAuditRow(
         status=AUDIT_WRITE_END,

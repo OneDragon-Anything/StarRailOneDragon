@@ -1306,17 +1306,15 @@ carried 沿用(从未读过→None);③None 仅当从未读过——不是机制
 - 中继纪律:恢复局新 session 的五镜像字段停在默认值,中继把未知固化为正式值的路径
   被 §2.1 空值闸拦断(空白串同判空白;列表元组字典集合非空才中继)。
 
-### 6.4 接管恢复(resumed_match)
+### 6.4 接管恢复(resumed_match)——已退役(迭代 T-8)
 
-局级事实域(match_facts)成员,gs_schema 域版本 3;渠道 = ③接管协议 `logic_hook`
-(relay 契约同族)。语义单一源 = 字段定义注释(kernel/cw_game_state.py match_facts
-域组,带索引定义注):
-
-- `resumed_match`(bool):True = 本局为恢复对局(游戏在中局接管)。写端 =
-  `cw_loop._mark_session_resumed` 单口(接管检测确认点)。**消费端现状 = 零逻辑
-  消费**:历史读端 = 漏斗派生弹窗腿的恢复局禁用分支,该腿已随观察派生模型退役,
-  现役无任何逻辑消费点(仅遥测/审计画像面)。**退役候选挂账**:该旗标可随容器
-  字段清理批次退役;退役前保持现值与写端不动(代码退役自成批次,不随文档删)。
+`resumed_match`(bool,原 match_facts 域成员,渠道③接管协议 `logic_hook`)已随
+容器字段清理批次退役(迭代 2026-09-20-node-advance-action-report T-8):历史读端 =
+漏斗派生弹窗腿的恢复局禁用分支,该腿退役后旗标零逻辑消费,属死重。退役面 =
+Field 定义 + `cw_loop` 写点(`ResumeAttach`/`takeover_resumed` journal 行同灭)+
+投影审计行;match_facts 域版本 bump 5。**恢复检测本体不受影响**:`resume_candidate`
+判定/锁定臂/relaunch 残留结算屏处理(session 侧独立机制)与接管观察态失效
+(`tracked_account_observed=False`,原同口第二写端,现役)全部保留。考古走 git。
 
 接管补采无 gs 字段:补采编排 = `CwEntryPlaneIntel`,采集真值经位面详情屏写门落
 `plane_bosses`/`enemy_affixes`(§3.1.3);重复委派由编排的真值跳过门兜住。
