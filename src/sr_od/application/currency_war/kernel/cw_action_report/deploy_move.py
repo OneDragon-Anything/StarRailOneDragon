@@ -5,11 +5,11 @@
 写端留守 ``kernel/cw_game_state``,本包 → 容器单向依赖。
 语义正本 = 函数 docstring(自 cw_game_state 逐字迁移)。
 
-**上阵变换窗**(银狼闭环迭代 design.md §2.1A):落位腿对 =
-(银狼LV.999, 3★) 时,落场写**下一费用档的 1★**(角色固有升星升费:
-备战栏不升费、拖上场才触发;单位身份保持银狼LV.999,费用档升一级
-不建模——cost=起始费,多档待策略层需要时扩);其余单位恒等搬运
-零行为差。升费连锁(场上同名同星不变量)经常规级联覆盖
+**上阵变换窗**(银狼闭环迭代 design.md §2.1A + 银狼升星记账批 §2.5):落位腿对 =
+(银狼LV.999, 3★) 且现档 < 5 时,落场写**下一费用档的 1★**(角色固有升星升费:
+备战栏不升费、拖上场才触发;单位身份保持银狼LV.999)+ **档行**
+(``lv999_cost_tier`` 现档+1,牌库改变的容器表达);现档 = 5(费用封顶)恒等
+搬运。其余单位恒等搬运零行为差。升费连锁(场上同名同星不变量)经常规级联覆盖
 (:func:`cw_effect_inventory.merge_cascade_write` 正常推演——费用档
 不同时存在[口述·权威 2026-09-18],merge 分组键 (char_id, star)
 无跨档歧义)。
@@ -20,6 +20,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
+from sr_od.application.currency_war.kernel.cw_economy import effective_cost
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     merge_cascade_write,
 )
@@ -99,10 +100,14 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
     _mu = bench_slots[from_idx].unit
     # 开拓者形态归一先于槽位/星级改写(与 swap 同核;非开拓者原样返回)。
     moved = trailblazer_row_unit(replace(_mu, slot=to_slot), to_row)
-    # 上阵变换窗(design §2.1A):拖拽载荷唯一指定源(恰此一枚,无歧义)
-    # → 落场写下一费用档 1★(身份保持,槽位随拖拽落点,观察为真值)。
+    # 上阵变换窗(design §2.1A/§2.5):拖拽载荷唯一指定源(恰此一枚,无歧义)
+    # → 落场写下一费用档 1★(身份保持,槽位随拖拽落点,观察为真值);
+    # 现档 = 5(费用封顶,无下一档)恒等搬运[机制推断·实机候证,与「5 费
+    # 升 2 星两选项皆装备」同源口径]。
+    _tier_before = effective_cost(gs, _TRANSFORM_CHAR_ID)
     _transform = (moved.char_id == _TRANSFORM_CHAR_ID
-                  and moved.star == _TRANSFORM_STAR)
+                  and moved.star == _TRANSFORM_STAR
+                  and _tier_before < 5)
     if _transform:
         moved = replace(moved, star=_TRANSFORMED_STAR)
     scratch = list(dep_table)
@@ -121,6 +126,9 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
     _w(gs.front_row, front, 'proj_deploy_front')
     _w(gs.back_row, back, 'proj_deploy_back')
     if _transform:
+        # 档行(银狼升星记账批 §2.5):现档+1,牌库改变的容器表达——落行
+        # 时序 = 行域写后、级联前(与 planner 升费腿同约定,design §2.2)。
+        _w(gs.lv999_cost_tier, _tier_before + 1, 'deploy_upgrade_tier')
         # 升费连锁(场上同名同星不变量)经常规级联覆盖(正常推演,
         # 费用档不同时存在定谳)。
         merge_cascade_write(

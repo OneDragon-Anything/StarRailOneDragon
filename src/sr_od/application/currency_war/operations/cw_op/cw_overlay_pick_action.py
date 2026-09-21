@@ -42,6 +42,9 @@ from sr_od.application.currency_war.kernel.cw_action_report.pick_equip import (
 from sr_od.application.currency_war.kernel.cw_action_report.pick_invest import (
     report_action_pick_invest_param,
 )
+from sr_od.application.currency_war.kernel.cw_action_report.pick_planner import (
+    report_action_pick_planner_param,
+)
 from sr_od.application.currency_war.kernel.cw_action_report.pick_supply import (
     report_action_pick_supply_param,
 )
@@ -52,7 +55,6 @@ from sr_od.application.currency_war.kernel.cw_action_report.zero_writes import (
     report_action_pick_fortune_param,
     report_action_pick_megastar_param,
     report_action_pick_partner_param,
-    report_action_pick_planner_param,
     report_action_pick_star_tome_param,
     report_action_pick_wish_trial_param,
 )
