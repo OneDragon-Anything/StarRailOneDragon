@@ -69,11 +69,12 @@
   函数 rng 注入缺省 None = 实机猜测语义,与骇客改件采样同约定);
 - 接管局局限如实申报(§2.6-4):接管局 `active_env` 无写端(C 类不种),条件腿
   识别不可达,真值归观察覆盖;
-- **条件腿族面边界(核三申报)**:ENV_GIFTS `chars_conditional` 非空条目共 7 个
-  环境(量子同频/公司/持续伤害/战技点/星核猎手/欢愉契约/命运圣杯,含特邀专家:银狼),
-  同属「条件腿声明性数据无引擎」族——本批只建模欢愉契约,理由 = 唯一已落地的触发
-  观测面(planner 上报);其余环境触发事件(升星时/累计利息/晶矿计数/一役后/圣杯
-  试炼)均无观测面,逐件建模 vs 统一条件腿框架候族批裁决,禁逐件无声展开。
+- **条件腿族面边界(核三申报)**:ENV_GIFTS `chars_conditional` 非空条目共 8 个
+  环境(量子同频/公司/持续伤害/战技点/星核猎手/欢愉契约/命运圣杯/特邀专家:银狼,
+  含 8+ 条件腿单位),同属「条件腿声明性数据无引擎」族——本批只建模欢愉契约,理由 =
+  唯一已落地的触发观测面(planner 上报);其余环境触发事件(升星时/累计利息/晶矿
+  计数/一役后/圣杯试炼)均无观测面,逐件建模 vs 统一条件腿框架候族批裁决,禁逐件
+  无声展开。
 
 ## 2. 方案(完整设计)
 
@@ -90,10 +91,11 @@
    pick_invest_env 同构;cw_gain_chain 不反向 import action_report,零循环)。
    evidence = `joy_conditional:<单位名>`;producer 沿用 `_PLANNER_PRODUCER`。
    **调用点级 best-effort(显式裁定)**:rider 调用包 try/except——异常 log +
-   缺陷留证(`kind = 'joy_conditional_grant_failed'`)后照常继续腿型分派。理由 =
-   授予与选项应用是两条独立因果,授予失败不得拖垮选项应用;这是「链原语零吞错」
-   纪律的**调用点级显式例外**(链内部照旧零吞错,与 §2.1/§2.4 登记腿 best-effort
-   同族先例),随正本更新在 gain-chain.md §6 申报。
+   缺陷留证(`kind = 'joy_conditional_grant_failed'`)后照常继续腿型分派。except
+   词表 = `except Exception`(noqa BLE001,先例 = cw_gain_chain.py:470/:585 同款
+   形态)。理由 = 授予与选项应用是两条独立因果,授予失败不得拖垮选项应用;这是
+   「链原语零吞错」纪律的**调用点级显式例外**(链内部照旧零吞错,与 §2.1/§2.4
+   登记腿 best-effort 同族先例),随正本更新在 gain-chain.md §6 申报。
 2. **随机单位采样**:rng 注入先例同骇客改件(`roll_hacker_mod` 形态)——报告函数
    新增 `rng: random.Random | None = None` 关键字参数,缺省 None = 实机未播种
    (采样是猜测,sim 传流键 = 世界真值,同一上报函数两副面孔);`random.choice`
@@ -103,6 +105,8 @@
    **全通道 logic_rand,锚定前后同通道**(采样纪律正参推论,gain-chain.md §5)。
    可验证性如实申报:授予无失配网辖,校准面 = `logic_rand_outcome` 行(模型选中
    单位 vs 观察实见单位的成对数据)+ 观察覆盖;**不存在**「锚定后失配网」验证路径。
+   判读规约:outcome 行 expected/actual = 整槽表快照(非单位单值),判读做整表
+   diff(rand 通道既有噪声语义);
 4. **在册判定**:`normalize_invest_name(gs.active_env.value or '') == '欢愉契约'`
    (两侧归一,防形变);`active_env` 为空/其他环境 = 不授予。
 5. **落位**:走 `gain_character` 固定时序(落位 → 回调 → 单级合成/溢出落位)——
@@ -121,7 +125,8 @@
    派发分支删除(终态兜底零写保留,reason 改 `unrouted_leg_zero_write`,不再以
    weaken 命名)**+ 模块 docstring(:19-20)与函数 docstring(:67)的 weaken 字样
    同步**;④`cw_overlay_pick_action.py` 腿型注释同步。破解芯片碰撞治理(装备域锚
-   先行)不受影响;退役判据 = 全仓 grep weaken 残留清零(sim 零消费已核)。
+   先行)不受影响;退役判据 = 全仓(src)grep weaken 残留清零(sim 零消费已核;
+   changes/ 历史件与本迭代 attack.md 不在判据域)。
 
 ### 2.3 触发计数正确性(证据闩语义)
 

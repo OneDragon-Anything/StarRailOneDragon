@@ -25,8 +25,8 @@
 **依赖**:开工前核 tool-gain-report 在飞面(design §2.7)
 **优先级建议**:5
 **完成判据**:
-- 行为对照 design §2.2-§2.5:双臂通道(未闩=rand/置闩=logic)、在册判定、rng 注入
-  确定性、三腿计数、发射相零触发、时序锁;
+- 行为对照 design §2.2-§2.5:通道语义(未闩=rand/置闩后 rand 授予**仍 = logic_rand**,
+  rand 形参优先于闩)、在册判定、rng 注入确定性、三腿计数、发射相零触发、时序锁;
 - 撤闩:`on_env_gained` 欢愉契约仅 immediate 腿,provisional 行零发射(design §2.6);
 - weaken 退役锁(design §2.6):无名弱化卡文 → unknown、破解芯片仍 equip、打分
   零弱化档、终态兜底 reason 更名;
@@ -46,7 +46,7 @@
 ## 正本更新清单
 
 - `game_state/gain-chain.md`:§3 欢愉契约条件腿条目(临时闩标记面 → planner 触发
-  回调模型,临时闩退役) ← 3.1
+  回调模型,临时闩退役)+ §6(条件腿授予调用点级 best-effort 例外申报) ← 3.1
 - `screens/planner.md`:落地相记账段 weaken 字样(退役后三腿) ← 3.1
 - `game_state/logic-updates/pick-planner.md`:§分派表与记账段 weaken 条目 ← 3.1
 - `game_state/strategy-env-impacts.md`:欢愉契约行(若有;条件腿模型指针) ← 3.1(落地时核实该篇是否辖此面)
