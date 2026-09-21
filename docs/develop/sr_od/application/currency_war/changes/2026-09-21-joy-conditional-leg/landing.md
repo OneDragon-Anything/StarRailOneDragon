@@ -14,13 +14,14 @@
 `kernel/cw_action_report/pick_planner.py` weaken 派发分支删除(终态兜底 reason 改
 `unrouted_leg_zero_write`);`operations/cw_op/cw_overlay_pick_action.py` 腿型注释
 同步。**不含**:头号玩家两选项本体模型改动、sim 接线、comp 评估消费。
-**设计依据**:design.md §2.1-§2.4/§2.6/§2.2-7(裁定③)
+**设计依据**:design.md §2.1-§2.7(含 §2.5 行为变化申报、§2.7 相邻批在飞核查)
 **文件面**:`src/sr_od/application/currency_war/kernel/cw_action_report/pick_planner.py`、
 `src/sr_od/application/currency_war/kernel/cw_gain_chain.py`、
 `src/sr_od/application/currency_war/kernel/cw_events.py`、
 `src/sr_od/application/currency_war/operations/cw_op/cw_overlay_pick_action.py`、
-`sr-od-test/test/sr_od/application/currency_war/` 相关测试(test_cw_gain_chain/
-test_cw_yinlang_phase32 及新测试文件,随批申报)
+`sr-od-test/test/sr_od/application/currency_war/` 相关测试——`test_cw_yinlang_phase32.py`
+(joy 临时闩断言唯一面 :456-475/:23-24 改写)+ rider 新测试(`test_cw_gain_chain.py`
+归并或新文件,随批申报)
 **依赖**:开工前核 tool-gain-report 在飞面(design §2.7)
 **优先级建议**:5
 **完成判据**:
@@ -46,5 +47,7 @@ test_cw_yinlang_phase32 及新测试文件,随批申报)
 
 - `game_state/gain-chain.md`:§3 欢愉契约条件腿条目(临时闩标记面 → planner 触发
   回调模型,临时闩退役) ← 3.1
+- `screens/planner.md`:落地相记账段 weaken 字样(退役后三腿) ← 3.1
+- `game_state/logic-updates/pick-planner.md`:§分派表与记账段 weaken 条目 ← 3.1
 - `game_state/strategy-env-impacts.md`:欢愉契约行(若有;条件腿模型指针) ← 3.1(落地时核实该篇是否辖此面)
 - `docs/game/currency_war/research/`(若条件腿机制结论入册:证据分级随实测) ← 视 3.1 实测,候选项
