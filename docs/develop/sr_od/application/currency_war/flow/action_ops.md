@@ -10,6 +10,13 @@
 
 **用户裁定(增补 2,2026-09-21)**:**选择动作执行就一定按成功处理——动作 op 点完就立即上报,按成功把结果写进 game state。没有选到/动作没生效就是代码 bug:响亮暴露修根因,不在 bug 上做无畏的补丁操作。**
 
+**用户裁定(增补 3,2026-09-21)**:**动作 op 无论执行前还是执行后,都不做观察识别——这是规范,不是取舍。** 动作 op 的全部职责 = 定位点击/拖拽 + 固定等待 + 上报动作事实。禁止:执行前读屏留证(裁片/快照)、执行后读屏验证或落账(牌名/真值/转移证据)、以及一切以「读取画面状态」为目的的截图与识别。唯一允许的查找 = 点击/拖拽**目标定位**所需的元素查找(找钮/找卡/找槽——瞄准,不是观察)。画面状态的读取一律归观察域(画面 op 观察 node / 观察漏斗);动作只经上报函数声明事实,真值归下一帧观察。
+
+增补 3 的现役违例 = 欠账(逐批清除,禁新增):
+- `cw_buy_card_action.py` 买前裁片(执行前证据读)= 欠账;
+- `cw_refresh_shop_action.py` 刷前两口径/刷新钮真值/刷后牌名三处读(对账读)= 欠账;
+- `cw_start_battle_action.py` 出战后单帧弹窗识别(执行后转移面识别)= 欠账,清法候批。
+
 禁止的写法(现有代码里还存在的 = 欠账,逐批改掉;禁新增):
 
 - **分两步上报**:点的时候只记一条日志,等确认真的生效了才补写结果(现役 pick_invest 的「发射相/落地相」就是这种);
@@ -43,14 +50,14 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 
 ### 2.2 固定等待族(等待不是判效)
 
-动作后的等待全部是固定时长常量(等待归产生动画的操作):采晶矿 2s / 开箱 1.8s(`terminal_wait`)/ 开典籍、开书册卡 `_OVERLAY_ANIM_WAIT_S` / 刷新 1s(`REFRESH_CLICK_SETTLE_WAIT_S`)/ 卖出 1s / 工具拖拽后 1.5s / 部署拖后 2.0s(羁绊徽章动画)/ 出战弹窗 1s(`POST_CLICK_WAIT_S`)/ pick 确认 0.6–1.2s。无轮询、无「画面就位才算成功」判读;弹窗/画面是否就位交下一帧观察与外循环画面分支接住。
+动作后的等待全部是固定时长常量(等待归产生动画的操作):采晶矿 2s / 开箱 1.8s(`terminal_wait`)/ 开典籍、开书册卡 `_OVERLAY_ANIM_WAIT_S` / 刷新 1s(`REFRESH_CLICK_SETTLE_WAIT_S`)/ 卖出 1s / 工具拖拽后 1.5s / 部署拖后 2.0s(羁绊徽章动画)/ 出战弹窗 1s(`POST_CLICK_WAIT_S`)/ pick 确认 0.6–1.2s / 遭遇与补给刷新 2s(重掷动画覆盖,时序 #19/#23)。无轮询、无「画面就位才算成功」判读;弹窗/画面是否就位交下一帧观察与外循环画面分支接住。
 
 ### 2.3 上报通道(动作事实怎么出去)
 
 - **prep 域旁路字段** `env.detail` / `env.emitted`(`PrepExecEnv`):机械执行摘要 + 是否已发出;节点直调 `op.run()` 的 round 结果恒 success(单节点动作 op 零重试语义,框架循环机制归包络与交回面所有)。
 - **返回值在册例外**:在册例外仅 `CwActionStartBattleOp`(round 结果 = 点击序列已执行,找不到按钮/area 缺失 = False——未发出事实非判效,消费面 = 执行器 `last_launch_ok` 旁路 → `cw_loop` 战斗分支);`CwActionBuyCardOp` / `CwActionWearEquipOp` 均回恒 success,落地与否不是返回值语义,归观察侧对账(§2.1)。prep 域 `emitted=False` = 机械未发出事实(定位缺失/无空槽),非效果判定。
 - **pick 族旁路** `env.round_result`:轮次流转语义,不是动作成败回执;`operations/cw_screen/_overlay_confirm.py::emit_overlay_confirm` = 机械确认 + 固定等待 + 无条件 round_retry——不读屏判「是否生效」。**欠账标注(§1 增补 2)**:「落地与否由下一轮重入的入口观察裁决(入口词不在 = 已离开本画面交回 success;仍在 = 重做确认)」的现役写法 = 欠账,逐批改为「确认点完立即上报结果,本访问直接交回」;禁新增。
-- **落地登记注册表**:已随历史批次退役消失(`cw_screen_op_base` / `EMIT_TRIGGERED_DECLARED` 现为零符号,2026-09-21 清理);遭遇刷新已用计数写端 = 遭遇屏 on_outcome 发射型钩子(fields.md §3.4.1),投资两屏刷新计数已改剩余语义观察写端(§3.4.3/§3.4.4,观察 report 摄入)。
+- **落地登记注册表**:已随历史批次退役消失(`cw_screen_op_base` / `EMIT_TRIGGERED_DECLARED` 现为零符号,2026-09-21 清理);节点屏刷新计数全域 = 剩余语义观察写端(`encounter_refresh_left`/`supply_refresh_left`/`env_refresh_left`/`strategy_refresh_left`,各屏观察 report 摄入;遭遇/补给 sim 写端与补 sim 写面差异见 fields.md §3.4.1/§3.4.2;原 on_outcome 发射型钩子与 live +1 写点均已退役)。
 
 ## 3. 偏离清单
 
@@ -64,8 +71,8 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 
 | 词表类 | op 类 | 文件 | 说明 |
 |---|---|---|---|
-| BuyCard | CwActionBuyCardOp | `cw_buy_card_action.py` | 点买一张牌:槽号按期望态 payload 定长槽阵列解析(身份同一性优先,退化按 (name, star))→ screen_info「商店牌-N」中心点击;买前裁片纯留证(保留理由:「买了什么」的像素级证据随期望态带到对账点,零判效非验证);恒发出即记账(total_buy / spend_executed / bought_names + tracked 同步,满栏多买补差 k = `merge_buy_k`);落地与否归观察侧对账(§2.1)。参数 = `action.card`(ShopCard)。发射条件 = 商店决策面产 BuyCard(义务/策略买入)。 |
-| RefreshShop | CwActionRefreshShopOp | `cw_refresh_shop_action.py` | 刷新商店(终结动作):刷前落对账件(刷前金/牌名/待对账标记/期望,零比对)+ 刷新钮真值读(三态+免费剩余次数,best-effort)→ 点刷新钮 → 固定等待 1s(`REFRESH_CLICK_SETTLE_WAIT_S`;保留理由:等刷新动画收敛的时序等待,非判效)→ 刷价记账(实付恒基价口径)+ 刷后牌名集原样落账(只读不比,三值对比单一源在观察侧 `cw_shop_refresh_obs.refresh_board_changed_of`);「刷新是否生效」归观察侧对账,执行侧零重试。发射条件 = 商店决策产 RefreshShop(现役发射位 = 息线门 R1)。 |
+| BuyCard | CwActionBuyCardOp | `cw_buy_card_action.py` | 点买一张牌:槽号按期望态 payload 定长槽阵列解析(身份同一性优先,退化按 (name, star))→ screen_info「商店牌-N」中心点击;买前裁片纯留证 = **欠账(§1 增补 3 执行前证据读,清除随商店迭代)**;恒发出即记账(total_buy / spend_executed / bought_names + tracked 同步,满栏多买补差 k = `merge_buy_k`);落地与否归观察侧对账(§2.1)。参数 = `action.card`(ShopCard)。发射条件 = 商店决策面产 BuyCard(义务/策略买入)。 |
+| RefreshShop | CwActionRefreshShopOp | `cw_refresh_shop_action.py` | 刷新商店(终结动作):刷前落对账件(刷前金/牌名/待对账标记/期望,零比对)+ 刷新钮真值读(三态+免费剩余次数,best-effort)→ 点刷新钮 → 固定等待 1s(`REFRESH_CLICK_SETTLE_WAIT_S`;保留理由:等刷新动画收敛的时序等待,非判效)→ 刷价记账(实付恒基价口径)+ 刷后牌名集原样落账(只读不比,三值对比单一源在观察侧 `cw_shop_refresh_obs.refresh_board_changed_of`);「刷新是否生效」归观察侧对账,执行侧零重试。**[§1 增补 3 欠账:刷前现读/真值读/刷后落账清除随商店迭代,次数改 Field 观察锚定]**。发射条件 = 商店决策产 RefreshShop(现役发射位 = 息线门 R1)。 |
 | CloseShop | CwActionCloseShopOp | `cw_close_shop_action.py` | 关店恒可用终结 op:动作 op 内 no-op,关店点击由编排壳 `cw_op_close_shop.py::CwOpCloseShop` 承担。发射条件 = 商店决策无动作可做时主动选它终结本画面访问(全函数契约要求的恒可用终结)。 |
 
 ### 4.2 备战族(9 行 + 工具原子 7 行)
@@ -98,7 +105,7 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 
 | 词表类 | op 类 | 文件 | 说明 |
 |---|---|---|---|
-| StartBattle | CwActionStartBattleOp | `cw_start_battle_action.py` | 出战点击序列(终结动作,terminal_wait=3):找「按钮-出战」(备战+开商店两屏查,叠加帧兼容;免战子态查「按钮-跳过」同语义点它,子态经 `env.skip_substate` 上报)→ mouse_move + click → 固定等 1s → 单帧截图收口两类真弹窗(未达上限警告 = 勾选+确认;前台无角色 = 确认);零转移验证,交回外循环重判。round 结果 = 点击序列已执行(在册例外;找不到按钮/area 缺失 = False,经执行器 `last_launch_ok` 旁路)。机械执行后 op 自上报 `report_action_start_battle_param`(免战递减内聚)。发射条件 = 备战策略产 StartBattle(环出口,豁免屏蔽)。 |
+| StartBattle | CwActionStartBattleOp | `cw_start_battle_action.py` | 出战点击序列(终结动作,terminal_wait=3):找「按钮-出战」(备战+开商店两屏查,叠加帧兼容;免战子态查「按钮-跳过」同语义点它,子态经 `env.skip_substate` 上报)→ mouse_move + click → 固定等 1s → 单帧截图收口两类真弹窗(未达上限警告 = 勾选+确认;前台无角色 = 确认)**[§1 增补 3 欠账:执行后转移面识别,清法候批]**;零转移验证,交回外循环重判。round 结果 = 点击序列已执行(在册例外;找不到按钮/area 缺失 = False,经执行器 `last_launch_ok` 旁路)。机械执行后 op 自上报 `report_action_start_battle_param`(免战递减内聚)。发射条件 = 备战策略产 StartBattle(环出口,豁免屏蔽)。 |
 | OpenShop | CwActionOpenShopOp | `cw_open_shop_action.py` | 开店注册行 = terminal 承载行:执行抛 AssertionError(开店流程编排截流在 `cw_screen_prep._act_execute_default` → `_open_shop_phase`,可达即分派漏斗被绕过);类属性承载终结判定/等待(terminal=True,terminal_wait=1.0)。发射条件 = 备战策略产 OpenShop(restricted_spend 受限形态,消费在流程层编排)。 |
 
 ### 4.4 观察族(1 行)
@@ -109,12 +116,12 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 
 ### 4.5 事件线 pick 族(12 行;域 env = `OverlayPickExecEnv`,机械参数由各画面 op 决策半现算经 env 传入,op 类体内零决策)
 
-**欠账标注(§1 增补 2)**:PickPlanner/PickSupply/PickEquip 三行写的「先只记日志、等确认生效的证据再补写结果」分步上报 = 欠账,逐批改为「点完立即上报完整结果」(投资两屏已随迁移批改即时上报,欠账摘除);各行描述随后续迁移批更新,禁新增分步写法。
+**欠账标注(§1 增补 2)**:PickPlanner/PickEquip 两行写的「先只记日志、等确认生效的证据再补写结果」分步上报 = 欠账,逐批改为「点完立即上报完整结果」(投资两屏/补给/遭遇已随迁移批与事件屏统一迭代改即时上报,欠账摘除);各行描述随后续迁移批更新,禁新增分步写法。
 
 | 词表类 | op 类 | 文件 | 说明 |
 |---|---|---|---|
-| PickEncounter | CwActionPickEncounterOp | `cw_overlay_pick_action.py` | 遭遇节点选卡确认链:点遭遇卡(`idx`=0 左卡/其余右卡,area 缺失回退兜底常量)→ 固定等 0.8s → `emit_overlay_confirm` 机械确认(裁决词「遭遇节点」);无条件 round_retry,落地 = 下一轮重入入口观察裁决。发射条件 = overlay 决策半产 PickEncounter(idx = 候选下标)。 |
-| PickSupply | CwActionPickSupplyOp | `cw_overlay_pick_action.py` | 补给节点选卡确认链:`env.target` 点卡 → 固定等 0.6s → 点「按钮-确认」→ 到账登记(`register_confirm_arrival` → `apply_confirm_effect` ConfirmSupply:owned += 选中装备名,best-effort);刷新圆钮点击留守画面 op。发射条件 = 决策半产 PickSupply(env 带 target/picked 机械参数)。 |
+| PickEncounter | CwActionPickEncounterOp | `cw_overlay_pick_action.py` | 遭遇节点选卡确认链(事件屏统一迭代改即时上报):点遭遇卡(`idx`=0 左卡/其余右卡,area 缺失回退兜底常量)→ 固定等 0.8s → `emit_overlay_confirm` 机械确认(裁决词「遭遇节点」)→ **发射即写** `report_action_pick_encounter_param`(`kernel/cw_action_report/pick_encounter.py`:值组装 = 容器 `encounter` payload 槽所选卡,离屏/越界留证不写);派发即终结,落地归观察侧。发射条件 = overlay 决策半产 PickEncounter(idx = 候选下标)。 |
+| PickSupply | CwActionPickSupplyOp | `cw_overlay_pick_action.py` | 补给节点选卡确认链(即时单相,3.1):`env.target` 点卡 → 固定等 0.6s → 点「按钮-确认」→ **立即自上报完整结果** `report_action_pick_supply_param`(owned 规范名 + 单位腿 + 装备后果腿一口写)+ `report_node_advance(supply_confirm)`;派发即终结,确认未生效由外循环重识别重派;刷新圆钮点击留守画面 op。发射条件 = 决策半产 PickSupply(env 带 target/归一件名/角色名)。 |
 | PickMegastar | CwActionPickMegastarOp | `cw_overlay_pick_action.py` | 盛会之星确认链:点「按钮-确认选择」(area 缺失回退兜底常量)→ 固定等 0.9s;纯机械单发,确认未落地 = 下一帧重入裁决自愈(计节点 retry 预算)。发射条件 = 决策半产 PickMegastar(候选选中半留守画面 op)。 |
 | PickPartner | CwActionPickPartnerOp | `cw_overlay_pick_action.py` | 列车同行伙伴确认链:未选中实证(或首轮强制)下重点选候选(`env.op._pick_point`)→ 固定等 0.7s → OCR 找「确认选择」点击(找不到 = round_retry 上报,交框架轮次机制);脉冲计数与选中态宿主 = 画面 op。发射条件 = 决策半产 PickPartner。 |
 | PickPlanner | CwActionPickPlannerOp | `cw_overlay_pick_action.py` | 骇入策划确认链:`env.target` 点卡(避开卡内「详情」按钮区的选中点几何归决策半单一源)→ 固定等 1.2s → `emit_overlay_confirm` 机械确认(裁决词全词「我来当策划」);点卡 = 机械单发(无详情面板检测;面板若真弹出归下一帧重入自愈)。发射条件 = 决策半产 PickPlanner。上报 = 两相(`kernel/cw_action_report/pick_planner.py`,银狼升星记账批:发射相意图遥测零写;落地相 = 画面 op 重入裁决出口证据闩——装备腿入栏+后果链 / 升费腿变换窗三态+档行 `lv999_cost_tier`)。 |
@@ -129,7 +136,7 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 
 ### 4.6 词表在册、不经注册表分发的类(3 类)
 
-- `RefreshNodeOptions` / `RefreshSupply` / `RefreshInvestCards`:三刷新建议动作,走各画面既有点击链(遭遇刷新链/补给刷新链/投资逐卡刷新)。**执行语义全域规范 = 刷新即终结交回外循环重观察 + 闸 = 剩余语义观察真值**(规范单一源 = [../screens/op-layer.md](../screens/op-layer.md) §1.4;现役遭遇链访问内重读重决策与遭遇/补给已用计数闸 = 在档欠账,迁移归迭代 2026-09-21-event-refresh-unify-supply-pick)。(LevelUpShop 与 pick 12 类曾在本节名单,分别随注册表显式独立行与 pick-op-unify 批收编出列;HoldFrame 曾在册,2026-09-20 随 obs scope 口径收编删除。)
+- `RefreshNodeOptions` / `RefreshSupply` / `RefreshInvestCards`:三刷新建议动作,走各画面既有点击链(遭遇刷新终结臂/补给刷新终结臂/投资逐卡刷新)。**执行语义全域规范 = 刷新即终结交回外循环重观察 + 闸 = 剩余语义观察真值**(规范单一源 = [../screens/op-layer.md](../screens/op-layer.md) §1.4;遭遇/补给两链已随迭代 2026-09-21-event-refresh-unify-supply-pick 清偿,全链合规)。(LevelUpShop 与 pick 12 类曾在本节名单,分别随注册表显式独立行与 pick-op-unify 批收编出列;HoldFrame 曾在册,2026-09-20 随 obs scope 口径收编删除。)
 - (Obs `scope='outer_loop'` 口径同为分支拦截型、不经本表派发,但其词表类有注册行(§4.4 in_place 路径派发用),不属本节「无注册行」豁免面。)
 
 ### 4.7 层级区别:动作域之外的组合壳 / 画面 op(不进注册表,列出以划清「动作 op」边界)

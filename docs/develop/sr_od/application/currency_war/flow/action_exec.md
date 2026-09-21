@@ -29,8 +29,8 @@
 
 节点序前进的唯一动作入口 = kernel `report_node_advance(gs, *, trigger)`(kernel/cw_game_state.py;trigger 封闭集 = `{settle_confirm, supply_confirm}`,集外显式炸错)。两触发点:
 
-- **结算确认**(`cw_op/cw_op_settle_confirm.py::CwOpSettleConfirm`,画面框 op 形态、非动作注册表面):点击「继续挑战」(含长按兜底)→ **点击即上报** settle_confirm → 交回宿主。结算读点/rounds_done 等结算链留宿主 CwScreenBattleWait;战败分支不进本 op 不推进。
-- **补给确认**(`cw_op/cw_overlay_pick_action.py::CwActionPickSupplyOp`):点「确认」→ `report_action_pick_supply_param` + `report_node_advance(trigger='supply_confirm')` 直接双上报。
+- **结算确认**(`cw_op/cw_op_settle_confirm.py::CwOpSettleConfirm`,画面框 op 形态、非动作注册表面):点击「继续挑战」(含长按兜底)→ 遭遇奖励兑现回调(`kernel/cw_encounter_selection.py::claim_encounter_reward`,遭遇扩围批:双证判遭遇 + progress_delta>0 单判,兑现写 `encounter_reward_claimed` 并清 `chosen_encounter` 单次消费;推进上报前调,best-effort)→ **点击即上报** settle_confirm → 交回宿主。结算读点/rounds_done 等结算链留宿主 CwScreenBattleWait;战败分支不进本 op 不推进。
+- **补给确认**(`cw_op/cw_overlay_pick_action.py::CwActionPickSupplyOp`):点「确认」→ `report_action_pick_supply_param`(即时单相完整结果)+ `report_node_advance(trigger='supply_confirm')` 直接双上报。
 
 **上报时点 = 点击即上报(全动作通用契约)**(通用条款单一源 = [action_ops.md](action_ops.md) §1 增补 2,用户裁定 2026-09-21:选择动作执行按成功处理、点完立即上报写结果、禁事后判断、选择未生效 = 代码 bug 禁防护补丁;本节原 settle/supply 两触发点的「点击即上报」条款已升格为全动作通用,投资两屏 pick 上报随迁移批纳入):动作 op 不做任何确认、不探下一画面锚、不等转移证据——无证据等待 ⇒「上报先于下一节点任何画面渲染」恒成立;节点推进类上报前置**观察态门**(kernel 内):`node_ord` value 在场 ∧ source=observation 双条件才放行,门挡 = obs_event 留证零推进(重复上报/死点击重试报告在结构上零危害);兜底 = 观察锚定(kernel `observe_node_anchor` 补推,锚定写端 = CwScreenPrep 备战顶栏 / CwScreenSupplyNode 补给屏节点条)。推进经生效原语 `advance_node_effective` 落账(candidate 去重守卫 + 效果推进尾段同临界区)。判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md) §3.3。
 

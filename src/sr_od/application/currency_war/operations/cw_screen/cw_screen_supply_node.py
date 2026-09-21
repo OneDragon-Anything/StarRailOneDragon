@@ -338,7 +338,7 @@ class CwScreenSupplyNode(SrOperation):
             time.sleep(2.0)
             return True
         # 点卡选中 → 确认机械半经工厂(刷新圆钮机械点击留守上方——刷新链 =
-        # CwActionRefreshSupplyParam 建议的执行半,与遭遇屏 _try_refresh 同类,
+        # CwActionRefreshSupplyParam 建议的执行半,
         # pick execute 语义 = 点卡选中 → 确认)。派发实例携真实选中下标与
         # 开出内容载荷(上报 param 即真实选择+内容;动作 op 确认点击后
         # 立即一口写 owned/单位腿/后果腿;无 match 兜底路径同形派发,

@@ -1,24 +1,24 @@
 # 遭遇节点二选一(encounter · 货币战争-遭遇节点)
 
-> 代码 = `operations/cw_screen/cw_screen_encounter.py::CwScreenEncounter`(两 node 直继承 `SrOperation`)。职责:遭遇节点 overlay 一次访问——稳定帧观察(两卡难度/奖励 + 刷新剩余)→ `decide_encounter` 决策 →(按需)分支刷新(访问内重读重选,不终结)→ 点卡选中 + 点「选择」确认机械交回。路径根 = `src/sr_od/application/currency_war/`。建档 = `assets/game_data/screen_info/currency_war_encounter.yml`。
+> 代码 = `operations/cw_screen/cw_screen_encounter.py::CwScreenEncounter`(两 node 直继承 `SrOperation`)。职责:遭遇节点 overlay 一次访问——入口帧一次观察(两卡难度/奖励 + 刷新剩余次数)→ `decide_encounter` 决策 → 分支刷新(终结)或选卡确认链派发(派发即终结)→ 交回外循环。路径根 = `src/sr_od/application/currency_war/`。建档 = `assets/game_data/screen_info/currency_war_encounter.yml`。
 
 ## 1. 分发判定
 
-- 阶段一身份分发(号制已退役,不引 0x):id_mark 锚「货币战争-遭遇节点.标识-遭遇节点」(位置约束 area;全屏 LCS 判据已退役——卡标题 OCR 截断帧会 miss)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 阶段一身份分发(id_mark 锚「货币战争-遭遇节点.标识-遭遇节点」,位置约束 area;全屏 LCS 判据已退役——卡标题 OCR 截断帧会 miss)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
 - 本屏的暗色锁定子态(遭遇锁定)另立锁定子态画面(`CwScreenPrepLockedReturn`,见 §7)。
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1;带刷新链的最复杂代表屏):观察 node = 画面身份门(「标识-遭遇节点」,miss = round_fail 交回外循环重判)→ 入口 2s 稳定期 → 稳定帧一次读(候选 + 刷新剩余)→ `report_screen_encounter_obs` 落容器 `encounter` 域 → obs 挂实例属性。决策动作 node = 顶部重入裁决(见下)→ 零参决策 `match.strategy.decide_encounter()`(候选自容器 `encounter` 槽;双轨:基线核 = `kernel/cw_events.py::decide_encounter`「未成型→低难保生存 / 成型+词缀利→高难拿奖励 / 全克→刷新」;mandate_v1 核 = EV 判据 `strategies/impl/mandate_v1/encounter.py`,语义单一源 = 代码本体;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→(按需)分支刷新链(访问内重读重选,不终结)→ 选卡确认链经 `CwActionPickEncounterOp` 派发(机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=10` 现役值仅框架异常路径消费)。重入裁决一件(决策动作 node 顶部):确认 pending = 上轮已发确认的选卡快照 `(options, idx)` → 本轮入口锚不在 = overlay 已关(选卡落地)→ 补写 `chosen_encounter` + success;锚在 = 未落地 → 清标志重走。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 画面身份门(「标识-遭遇节点」,miss = round_fail 交回外循环重判)→ **门命中即用 node runner 帧一次读**(候选 + 剩余次数,同帧同源;原「入口 2s 稳定期」已删,用户裁定 2026-09-21,时序口径 supersession 见 [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #23;候选读缺的失败安全 = §4 空候选零点击终结)→ `report_screen_encounter_obs` 落容器 `encounter` 域 + `encounter_refresh_left`(摄入序照先例:options 空整函数早退不写含 left;match/gs 缺席的局外兜底路径跳过 report)→ obs 与刷新文本锚点挂实例属性。决策动作 node = 零参决策(候选自容器 `encounter` 槽;基线核 = `kernel/cw_events.py::decide_encounter`,mandate_v1 现役核 = `bridge.py` 覆写 → `kernel/cw_encounter_selection.py` E-2 判据单一源,历史 EV 核搁置让位保留禁删;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→ **三出口均终结访问**(派发即终结,重入裁决已退役;合同 = [op-layer.md](op-layer.md) §1.1 出口①,投资两屏/补给同形态):①刷新 = 点钮一次 + 2s → round_success 终结;②选卡 = 派发确认链(机械链 + chosen 即时上报在动作 op 内)→ round_success 终结;③空候选/局外 = 零点击终结交回重读。确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重识别重派(修法 = 点击链可靠性)。
 
 ## 3. 观察面
 
-入口单次观察(观察 node;决策循环用 node runner 新帧,op 内零重读屏)——`_observe_frame`:入口 2s 稳定期(右上「返回备战界面」出现后画面才稳定,时序口径 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #23)→ 重截 → 同一稳定帧一次读:
+入口单次观察(观察 node;决策循环不再读屏)——门命中即读,无稳定期等待:
 
-- 选项读取 `obs/cw_node_obs.py::read_encounter_options`:卡标题「遭遇其X」正则 → 难度档(「一」笔画细常漏读,无数字 = 难度 1);奖励带(y 600-695,排「奖励预览」标签)文本按 x 就近归卡;`affixes` 恒空(选项 UI 不显词缀,词缀在未建档的敌方信息覆盖层)——全克刷新判定因此当前恒不触发,执行链就绪待词缀读数通道建立。
-- 刷新剩余 `read_encounter_refresh_count`:OCR「剩余次数:N」(矩形带常量,全/半角冒号都认)→ `(剩余次数, 文本中心)`;读缺 = None(失败安全按无刷新)。
+- 选项读取 `obs/cw_node_obs.py::read_encounter_options`:卡标题「遭遇其X」正则 → 难度档(「一」笔画细常漏读,无数字 = 难度 1);奖励带(y 600-695,排「奖励预览」标签)文本按 x 就近归卡;`affixes` 恒空(选项卡面 UI 不显词缀,词缀住「货币战争-敌人信息浮层」覆盖层——已建档,chips OCR 实测可读,读数通道就绪,接线消费待后续批),全克刷新判定因此当前恒不触发。
+- 刷新剩余 `read_encounter_refresh_count`:OCR「剩余次数:N」(矩形带常量,全/半角冒号都认)→ `(剩余次数, 文本中心)`;读缺 = None(= 未观察,闸拒绝)。
 
-观察 payload = `CwScreenEncounterObs`(`options`/`refresh_left`/`screen`,住 `kernel/cw_screen_report/encounter.py`);report = `report_screen_encounter_obs` 候选写容器 `encounter` 域(EncounterPayload;空候选不写,闸在 report 内)。`refresh_left` 只是观察读数,report 不消费——刷新计数记账出辖动作侧。
+观察 payload = `CwScreenEncounterObs`(`options`/`refresh_left`/`screen`,住 `kernel/cw_screen_report/encounter.py`);report = `report_screen_encounter_obs`:候选写容器 `encounter` 域(EncounterPayload;空候选整函数早退不写含 left)+ **`refresh_left` 摄入 `encounter_refresh_left`**(剩余语义观察写端,读缺跳写、逐访问覆盖;None = 未观察 = 拒绝刷新)。
 
 ## 4. 动作面
 
@@ -26,66 +26,49 @@
 
 | 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| `CwActionPickEncounterOp`(`CwActionPickEncounterParam`) | 注册表工厂 `action_op_for`(env 只携宿主 `op`;卡位/确认钮由动作 op 内读建档 area,缺失兜底常量) | 自上报 `report_action_pick_encounter_param`(零写族:机械链发出后登记,容器零写) | 否(非终结):发出后 `round_wait` 循环推进;落地由重入裁决判——锚不在 = 补写 `chosen_encounter` + success 交回外循环(见 §5) |
-| 分支刷新(无注册表动作 op;`CwActionRefreshNodeOptionsParam` 仅策略建议载体) | 画面 op 留守臂(`_try_refresh`:同帧「剩余次数:N」文本中心锚定偏移 `mouse_move`+`click`) | 无自上报(刷后重读经 `report_screen_encounter_obs` 二次覆盖写,容器终值 = 刷后候选;计数写端出辖动作侧,本链零记账) | 否(不终结):留在本画面访问内——重读重选后照常走选卡确认链;锚读缺 = 空表失败安全,保留原候选照常选 |
+| `CwActionPickEncounterOp`(`CwActionPickEncounterParam`) | 注册表工厂 `action_op_for`(env 只携宿主 `op`;卡位/确认钮由动作 op 内读建档 area,缺失兜底常量) | **发射即写** `report_action_pick_encounter_param`(`kernel/cw_action_report/pick_encounter.py`:确认点击后立即写 `chosen_encounter`,值组装 = 容器 `encounter` payload 槽 `options[param.idx]`,离屏/越界 = 缺陷留证不写 fail-closed) | **是(派发即终结)**:发出后 round_success 终结交回外循环;落地判定归观察侧(overlay 残留由外循环重识别重派) |
+| 分支刷新(无注册表动作 op;`CwActionRefreshNodeOptionsParam` 仅策略建议载体) | 画面 op 留守臂(容器 `encounter_refresh_left` 闸 + 锚点对照闸 → 放行:同帧「剩余次数:N」文本中心锚定偏移 `_REFRESH_BTN_DX`(-100)`mouse_move`+`click` + 2s 固定等待) | 无自上报(刷新 = 终结交回,新选项由外循环重进后的入口观察现读承载,**访问内零重读零二次覆盖写零重决策**) | **是(终结)**:round_success 终结交回;闸拒绝(剩余 ≤0 或 None 或锚点缺)→ 零点击,重调一次决策按原评分选卡落②;重调仍建议刷新(闸数据不一致)→ 零点击终结交回 |
+| (空候选/局外,非动作) | — | — | **是**:零点击 round_success 终结交回重读(候选读缺禁盲选派发确认——选卡确认不可逆消耗本节点) |
 
-决策动作 node:重入裁决 → 零参决策 + 分支刷新链 → 点卡 + 确认:
-
-```
-pick = match.strategy.decide_encounter()(零参;候选读容器 encounter 槽)
-  → idx 取 pick.idx(按 pick.idx 选卡,非默认选左)
-├─ 分支刷新执行链(不终结;能力源 = 优势布局「分支刷新」,每局 1 次):
-│    pick.refresh ∧ 本局未用(容器 encounter_refresh_used 读端闸,>0 = 已用)
-│    ∧ refresh_left 现读 >0(读缺 = 无授权)
-│    → _try_refresh:同帧文本锚(「剩余次数:N」中心)+ 偏移 _REFRESH_BTN_DX(-100)
-│      → mouse_move + click → 固定等待 2s(重掷动画覆盖)
-│      → 重读选项(读缺 = 空表,保留原候选照常选)
-│      → report_screen_encounter_obs 二次覆盖写(容器终值 = 刷后候选)
-│    → 置 encounter_refreshed_in_visit 抑制位 → 重调决策按原评分选
-│      (「刷没刷成」不判:卡面未变时新观察 = 旧 options,重决策结果天然等价)
-└─ 确认链:置确认 pending → 派发 CwActionPickEncounterOp
-     (机械链在动作 op 内,op 内自上报 report_action_pick_encounter_param
-     零写;派发 param 携真实选中 idx)
-     → 点卡身选中(「遭遇卡-其一/其二」area center,
-       兜底常量 (665,500)/(1288,550))→ 0.8s → 点「选择」确认
-       (「按钮-选择」area center,兜底 (1082,898))→ emit_overlay_confirm
-       (机械交回零判效;落地判定归重入裁决)
-```
-
-交互陷阱:点卡身选中 → 点「选择」确认,**中间勿插空白点击**(会取消选中 → 死循环;防线 = 重入裁决);「选择」钮未选中卡时灰置禁用。确认链整体(点卡 + 确认 + 自上报)经动作工厂(`cw_overlay_pick_action.py::CwActionPickEncounterOp`,上报零写);刷新发射零登记件(计数写端出辖动作侧,本链只点钮不记账)。
+交互陷阱:点卡身选中 → 点「选择」确认,**中间勿插空白点击**(会取消选中 → 死循环);「选择」钮未选中卡时灰置禁用。确认链整体(点卡 + 确认 + 发射即写)经动作工厂(`cw_overlay_pick_action.py::CwActionPickEncounterOp`);刷新发射零记账(剩余次数 = 观察真值,无计数记账)。
 
 ## 5. 终结与交回
 
 | 条件 | 级别 | 交回落点 |
 |---|---|---|
-| 「选择」确认点击 | 机械交回 | 重入裁决:锚不在 = 补写 chosen + success 交回外循环重分发;锚在 = 重走(`round_wait` 循环推进,无防御上限) |
-| 分支刷新 | 不终结 | 留在本画面访问内:重读重选后照常走选卡确认 |
+| 选卡确认链派发 | **派发即终结** | round_success 交回外循环重分发;确认未生效 = overlay 残留由外循环重识别重派 |
+| 分支刷新点钮 | **终结** | 点钮 + 2s → round_success 交回;外循环重进 = 入口重建重观察 |
+| 空候选/局外/闸数据不一致 | **零点击终结** | round_success 交回重读(禁盲选、防空转) |
 | 入口锚 miss | op FAIL | 交回外循环按当前画面重分发 |
 
-遭遇刷新不终结 = [README.md](README.md) §5.5 刷新语义行;「确认离开 = 画面终结」= [README.md](README.md) §6。
+三出口均终结访问,`round_wait` 循环面对刷新建议不存在(活锁方向安全,design §2.0A 同构论证);`node_max_retry_times=10` 现役值仅框架异常路径消费。「确认离开 = 画面终结」= [README.md](README.md) §6。
 
 ## 6. 状态上报面
 
-- `chosen_encounter` write_logic(出口验真通过分支单次逻辑写入豁免;值 = (难度档, 奖励文本),值取决策所用候选同帧同源;候选未读到/越界 = 盲选 fallback 不写,None 保持「无记录」)。写点 = 重入裁决(标识不在 = 选卡落地)。
-- 候选观察:`report_screen_encounter_obs` 候选写容器 `encounter` 域(空候选不写);刷新链内的刷后重读 = 同形二次覆盖写。
-- `encounter_refresh_used`:刷新计数只读——写端出辖动作侧([op-layer.md](op-layer.md) §4),画面 op 零写点;读端闸 = 容器计数 >0(已用)。per-visit 位 `encounter_refreshed_in_visit` = 动作事实边界留守决策动作 node(前置段写 False、刷新建议处置后直写 True)。
-- 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.1 / §4「事件选择」;选择落地语义 = fields.md §4(默认不记预期值,后果走观察覆盖)。
+- 候选观察:`report_screen_encounter_obs` 写容器 `encounter` 域(空候选不写)+ `encounter_refresh_left`(剩余语义观察写端)。
+- `chosen_encounter`:写端 = **动作侧发射即写**(`kernel/cw_action_report/pick_encounter.py`,用户裁定 2026-09-21 遭遇例外改判,先例 = 投资域 chosen 迁获得链;值 = (难度档, 奖励文本),盲选/越界不写防假值固化;发射即写语义 = 意图记录,确认未生效窗内暂态假值由重派覆盖自愈);**兑现后清(单次消费,见下)**。
+- `encounter_reward_claimed`(顶层字段,`tuple[int, str] | None`):遭遇奖励兑现记录 = 最近一次伤害达标兑现的所选值,单槽逐遭遇覆盖。写端 = 结算兑现回调 `kernel/cw_encounter_selection.py::claim_encounter_reward`(挂点 = `CwOpSettleConfirm` 确认点击后、推进上报前):判遭遇 = 双证(node 镜像 token 'encounter' ∧ ring 尾行 node_type=='遭遇';原「结算行 note」载体不可实现,attack3 R1 定谳)∧ 达标 = `progress_delta > 0` 单判(遭遇奖励 = 伤害进度达标制非清场制,机制依据 = [../../../../game/currency_war/research/combat.md](../../../../../game/currency_war/research/combat.md) §3);兑现即清 `chosen_encounter`(单次消费:镜像残留/驻留重入/结算覆盖陈旧三面收口,天然幂等)。**数值不直写防双源**:金币真值 = `settle_truth` 结算读数、随机4费 = bench 观察(观察赢);兑现记录 = 语义账面(现役消费面 = 审计投影唯一,策略器收益对账读端挂账)。假阴性申报:双证存在同源面,镜像缺失遭遇局 fail-closed 漏兑现(方向安全)。
+- 刷新计数:`encounter_refresh_used` 已用计数与 `encounter_refreshed_in_visit` per-visit 位已退役(剩余语义化,迭代 2026-09-21-event-refresh-unify-supply-pick),闸 = `encounter_refresh_left` 剩余语义观察真值(kernel 闸与画面对照闸同读该字段)。
+- 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.1 / §4「事件选择」;选择落地语义 = fields.md §4。
 
 ## 7. 子态与 overlay
 
 - 暗色锁定子态(遭遇锁定):`operations/cw_screen/cw_screen_prep_locked_return.py::CwScreenPrepLockedReturn` 点右上返回按钮(此态下遭遇锚仍可透出命中,先分流防误派)。
 - 「属性详情」面板误触发未建模独立处理:残留归下一帧重入自愈(族注 = [README.md](README.md) §5.5)。
+- 「敌方信息」浮层(查看详情):已建档「货币战争-敌人信息浮层」,阶段一身份分发独立处理。
 
 ## 8. 守卫与防线
 
-- 刷新单次:容器计数读端闸(>0 = 已用)防「点偏未生效重入屏反复尝试」;计数写端出辖动作侧,画面 op 零写点;未用/无剩余/已用三态日志可见化。
-- 读缺失败安全:refresh_left 读缺 = 无授权;_try_refresh 传入帧读缺 = 空表照常选。
-- 验效废除:刷新后无条件重读、确认后零判效;未落地治理 = 重入裁决(`round_wait` 循环推进,无防御上限)。
+- 空候选防线:候选读缺 = 零点击终结交回重读,禁盲选派发(选卡确认不可逆消耗本节点)。
+- 刷新单次:闸 = `encounter_refresh_left` 剩余语义观察真值(≤0 或 None = 拒绝);拒绝 → 重调一次决策按原评分选(单轮内有界);重调仍建议刷新(闸数据不一致)→ 零点击终结交回。点偏/无布局时交回后重进重读,失败安全。
+- 兑现回调防误兑现:双证判遭遇 + 达标单判 + 兑现后清 chosen(单次消费);局外/session 缺 = 跳过;异常不阻塞结算(best-effort)。
+- 读缺失败安全:refresh_left 读缺 = None = 闸拒绝;候选读缺 = 零点击交回。
+- 验效废除:确认后零判效;刷新「刷没刷成」不判(点偏 = 重进重读);落地判定归观察侧。
 - 无本屏专属停机钩子;守卫总册 = [../flow/guards.md](../flow/guards.md)。
 
 ## 9. 遥测与锁面
 
-- journal op 名 =「遭遇节点」;op 内日志 tag = `[cw-encounter]`(options/pick/refreshed/reason、刷新圆钮坐标)。
-- chosen 记录面失败不阻塞(告警行)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens.py`(遭遇 + 盛会之星两 node 形态锁:门/round_wait/重入裁决 chosen/刷新链重读重决策重覆盖写)。
-- game 侧知识:画面与交互模型 = [../../../../game/screens/currency_war_encounter.md](../../../../../game/screens/currency_war_encounter.md);分支刷新机制(优势布局授予,每局 1 次)= [../../../../game/currency_war/data/advantage_layouts.md](../../../../../game/currency_war/data/advantage_layouts.md);难度/节点表 = [../../../../game/currency_war/data/competitors.md](../../../../../game/currency_war/data/competitors.md)。
+- journal op 名 =「遭遇节点」;op 内日志 tag = `[cw-encounter]`(options/pick/refresh、刷新圆钮坐标、零点击终结归因)。
+- 兑现回调归因串可见化:`[cw-settle-confirm]` 行(claimed/未触发归因)。
+- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens.py`(门/观察接线+left 摄入/派发即终结/空候选零点击/刷新终结恰一次/闸拒绝/闸不一致零点击/兑现回调七臂)+ `test_cw_screen_report_ports.py`(摄入序:空候选整函数早退含 left)+ `test_cw_game_state_consume.py`(chosen 记录面:report 直调真选/离屏/越界)。
+- game 侧知识:画面与交互模型 = [../../../../game/screens/currency_war_encounter.md](../../../../../game/screens/currency_war_encounter.md);分支刷新机制(优势布局授予,每局 1 次)= [../../../../game/currency_war/data/advantage_layouts.md](../../../../../game/currency_war/data/advantage_layouts.md);难度/节点表 = [../../../../game/currency_war/data/competitors.md](../../../../../game/currency_war/data/competitors.md);遭遇奖励达标制 = [../../../../game/currency_war/research/combat.md](../../../../../game/currency_war/research/combat.md) §3;时序口径(含 #23 supersession)= [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md)。
