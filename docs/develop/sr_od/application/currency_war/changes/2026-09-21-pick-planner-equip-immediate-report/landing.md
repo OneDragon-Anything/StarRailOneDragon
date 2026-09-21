@@ -11,7 +11,7 @@
 **依赖**：无
 **优先级建议**：7
 **完成判据**：
-- 行为对照 design.md §3 验收锚 1（行为锁：点卡后容器即持 owned 规范名+后果链，含泛用注册表件归一命中用例；派发即终结断言；pick_equip 来源 `EVIDENCE_OVERLAY_CLOSED` 零残留——范围 = src + sr-od-test + docs 正本，豁免 = changes/ 历史工件）
+- 行为对照 design.md §3 验收锚 1（行为锁：点卡后容器即持 owned 规范名+后果链，含泛用注册表件归一命中用例；派发即终结断言；pick_equip 来源 `EVIDENCE_OVERLAY_CLOSED` 零残留——范围 = src + sr-od-test；docs 正本面归末阶段正本更新批，attack6 N1 措辞勘误）
 - 通用工程门
 **验收凭据形式**：equip 单相行为锁测试（命中/未解析/泛用件三型）+ `test_cw_pick_channels_t60.py`/`test_cw_yinlang_phase32.py` 受影响面全绿
 
@@ -23,7 +23,7 @@
 **依赖**：3.1（共享 `cw_overlay_pick_action.py` 防冲突串行）。joy rider 已提交（14dd40977）——原「joy 批先提交」前置已满足（attack3 F4）
 **优先级建议**：6
 **完成判据**：
-- 行为对照 design.md §3 验收锚 2（行为锁：equip 腿命中入栏+后果链 / upgrade 变换+档行+级联 / unknown 留证[弱化词卡文落此] / unrouted 兜底零写——确认点击后容器即持；joy rider 挂点随调用点保持断言；派发即终结断言；planner 来源 `EVIDENCE_OVERLAY_CLOSED` 零残留）
+- 行为对照 design.md §3 验收锚 2（行为锁：equip 腿命中入栏+后果链 / upgrade 变换+档行+级联 / unknown 留证[弱化词卡文落此] / unrouted 兜底零写——确认点击后容器即持；joy rider 挂点随调用点保持断言；派发即终结断言；planner 来源 `EVIDENCE_OVERLAY_CLOSED` 零残留——范围 = src + sr-od-test；docs 正本面归末阶段正本更新批，attack6 N1 措辞勘误）
 - 通用工程门
 **验收凭据形式**：planner 单相行为锁测试（equip 腿/upgrade 三态/unknown 留证/unrouted 兜底四型 + joy rider 挂点保持断言）+ `test_cw_yinlang_phase32.py` 重写后全绿
 
