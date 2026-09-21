@@ -43,7 +43,7 @@
 **B. 补给 pick 即时上报形态（照投资两屏先例，`op-layer.md` §1.1 出口①「派发即终结」）**
 
 - `CwActionPickSupplyOp.run` = 点卡 → 0.6s → 点确认 → **立即** `report_action_pick_supply_param`（单相，一口写效果逻辑态）→ `report_node_advance(gs, trigger='supply_confirm')`（现状保持，点击即上报）→ `round_success` 终结交回。确认未生效 = 代码 bug，overlay 残留由外循环按当前画面重识别重派，修法 = 点击链可靠性（禁验证/重试补丁）。
-- **param 数据载体扩展**（report 一口写的输入完备性）：`kernel/cw_vocab.py::CwActionPickSupplyParam` 增 `raw_item: str = ''`（OCR 原始装备名）与 `has_diamond: bool = False`，均带 `action_key_exclude` metadata（`route_tag` 先例——归因载荷不改动作身份）；handler 选卡分支组装 param 时随 `char_name`/`norm_item` 同点现算（`read_supply_options` 产物的原始名与钻标记现处 handler 局部 `_opt`，组装点即其入载荷点）。`cw_vocab` 该 param docstring「OCR 原始名不静默改写由 handler 持有」句随之改写（原始名入 param 载荷，归一仍由 `norm_item` 承载）。
+- **param 数据载体扩展**（report 一口写的输入完备性）：`kernel/cw_vocab.py::CwActionPickSupplyParam` 增 `raw_item: str = ''`（OCR 原始装备名，`action_key_exclude` metadata，`route_tag` 先例——归因载荷不改动作身份）；handler 选卡分支组装 param 时随 `char_name`/`norm_item` 同点现算（原始名现处 handler 局部 `_opt`，组装点即其入载荷点）。**`has_diamond` 不入 param**：其唯一消费者 `chosen_supply` 三元组留守画面 op（本地 `_opt` 直供），入 param 即死载荷。`cw_vocab` 该 param docstring「OCR 原始名不静默改写由 handler 持有」句随之改写（原始名入 param 载荷，归一仍由 `norm_item` 承载）。
 - **report 函数单相化**：`kernel/cw_action_report/pick_supply.py` 删 `evidence` 参数与 `EVIDENCE_OVERLAY_CLOSED` 常量（**仅本文件的同名常量**；pick_equip/pick_planner 各自同名常量属彼辖不动）；一口写序 = ①`owned += raw_item`（OCR 原始装备名；空 = 不写，语义承现行 ConfirmSupply 到账边）②单位腿 `grant_bench_unit_cascade`（`char_name` 命中时）③装备后果腿 `apply_equip_acquire_consequence`（`norm_item` 命中时）；内容全未知/装备名未解析 → 现行翻来源留证语义逐位保持。
 - **chosen_supply 不进 report**：留守画面 op 选卡分支确认即写（现状写点、时机均已合规——`screens/op-layer.md` §2.2 动作事实边界硬规则零改动）。
 - **ConfirmSupply 到账边退役**：`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival` 的 ConfirmSupply 分支与 `kernel/cw_exec_state.py::apply_confirm_effect` 对应行删除（ConfirmBox/ConfirmTome/ConfirmExpertCash 不动）；pick op 内到账登记调用删除。
@@ -79,7 +79,7 @@
 - **chosen_supply 留守画面 op，不进 report**：`op-layer.md` §2.2 动作事实边界硬规则零改动；现状「确认即写」时机已合规（写点 = 选择点，点击链发射前），本迭代只清效果腿的两相形态，不迁选择事实写点。对比项：投资域 chosen 迁获得链是显式收窄条款（用户裁定），supply 无同款裁定则不扩豁免。
 - **效果腿进 report 函数，ConfirmSupply 到账边退役**：上报函数 = 该动作效果逻辑态写语义单点（`cw_action_report` 包 docstring 族规约）；两写点合并消双源。owned 名源 = OCR 原始名（与 Box/Tome 及装备域按名查找同名源，时序逐位保持，不用归一名防失配）。
 - **kernel 判据函数签名不动**（`refresh_used` 形参名保持）：`cw_events` 判据为 sim/生产共用面，签名稳定优先；语义换源收敛在上游闸一处。
-- **param 扩字段（raw_item/has_diamond）而非 env 传递**：char_name/norm_item 开出内容载荷先例已在 param（银狼闭环批），同族载荷同载体；`action_key_exclude` 保证动作身份不变。
+- **param 扩字段（raw_item）而非 env 传递**：char_name/norm_item 开出内容载荷先例已在 param（银狼闭环批），同族载荷同载体；`action_key_exclude` 保证动作身份不变。`has_diamond` 不扩——chosen_supply 留守 handler 后无 report 腿消费它（对抗审 F2 修法随 F3 选项②相应收窄）。
 
 ## 3. 验收锚（行为级；验收凭据形式见 landing 各阶段）
 
