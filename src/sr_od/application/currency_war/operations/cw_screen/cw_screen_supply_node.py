@@ -8,17 +8,16 @@
 动作(T#99 已接 decide_supply):``read_supply_options`` OCR 每列(角色+装备)→ ``decide_supply`` 按
 target_comp.key_equips 契合 + 装备通用价值选最优列 → 点该列卡身 + 确认。读不到选项 → CARD_BODY 兜底。
 钻(红/蓝=基本赢)视觉判定 + has_diamond 待补;刷新按钮实存(「剩余次数」文锚
-左侧圆钮,``_REFRESH_BTN_DX`` 文本锚定,decide_supply 规则 2「全无钻+刷新未用
-→刷新找钻」消费)。
+左侧圆钮,``_REFRESH_BTN_DX`` 文本锚定,decide_supply 规则 2「全无钻+刷新剩余
+>0 →刷新找钻」消费)。
 
-**ADR-0517 刷新 = 终结动作**:decide_supply 建议刷新 ∧「刷新未用」→ 点钮一次
+**ADR-0517 刷新 = 终结动作**:decide_supply 建议刷新 ∧ 剩余闸放行 → 点钮一次
 (点击后本动作即返回,op 交回外循环重进 = 入口重建,新装备面由重进后的
-入口观察现读承载——「节点内刷后重读再选」的循环形态与「终结→外循环重进
-→入口重建」语义连续)。节点内至多刷 1 次的硬限制由容器
-``supply_refresh_used`` 计数承载(>0 = 已用;发射即记不等验效,跨外环
-重建存活——carried 融合语义;**容器计数内联写留守决策体**,本屏无注册表
-登记件)。锚读缺 = 零点击 + 照常置位已用(流程收敛:零动作空转活锁防线,
-语义与旧码一致)。
+入口观察现读承载)。**刷新闸 = 剩余语义观察真值**(用户裁定 2026-09-21,
+全域规范 = ``op-layer.md`` §1.4):闸读源 = 容器 ``supply_refresh_left``
+(观察 node 同帧「剩余次数：N」读数经 report 摄入,读缺跳写);剩余 ≤0 或
+None = 拒绝 → 重调一次决策按原评分选(单轮内有界);锚读缺 → 容器留旧值
++ 无点击点 → 同拒绝面。原实例旗标/已用计数写点随剩余闸退役(考古走 git)。
 
 T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点击点由 read_supply_options 按列返回。
 
@@ -91,26 +90,27 @@ class CwScreenSupplyNode(SrOperation):
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-补给节点')
-        self._refresh_used = False   # 无 match 局外兜底实例态(生产读源 = 容器 supply_refresh_used 计数)
-        # 观察结果(观察 node 产物,决策动作 node 消费)与点卡定位点载体
-        # (obs 只载选项数据进容器;点击点 = 现役读链产物,经实例属性跨
-        # node 传递,决策轮不重读不重算)。
+        # 观察结果(观察 node 产物,决策动作 node 消费)与点卡/刷新钮定位点
+        # 载体(obs 只载选项数据进容器;点击点 = 现役读链产物,经实例属性
+        # 跨 node 传递,决策轮不重读不重算)。
         self._obs: CwScreenSupplyNodeObs | None = None
         self._sup_opts: list | None = None
+        self._refresh_point: Point | None = None
 
     def _in_node(self, screen) -> bool:
         # 还在补给屏 = 标识-补给阶段 area 命中(位置区分,非全屏 LCS:防「补给阶段」与「备战阶段」共享「阶段」误匹配)。
         return self.round_by_find_area(screen, '货币战争-补给', '标识-补给阶段', crop_first=False).is_success
 
-    def _read_refresh_anchor(self, screen) -> Point | None:
-        """「剩余次数：N」文本锚(刷新圆钮文本锚定用;遭遇屏
+    def _read_refresh_anchor(self, screen) -> tuple[int, Point] | None:
+        """「剩余次数：N」文本锚双出(剩余次数 + 文本中心点;遭遇屏
         ``read_encounter_refresh_count`` 同族形态)。
 
         OCR 带 = 建档「文本-剩余次数」pc_rect 外扩余量(x ±30 / y ±15,固定常量:
         防文字框与建档 rect 边缘相切时漏配;rect 单一真相源 = screen_info)。
         ``crop_first=False`` 全帧识别按带过滤(避开小框裁剪漏检)。
-        正则命中 → 文本中心;读不到 → None(调用方失败安全:零点击 + 照常
-        置位已用旗标)。纯读。
+        正则命中 → (N, 文本中心);读不到 → None(调用方失败安全:读数与
+        点击点同读同缺——count=None 进容器读缺跳写,point=None 走闸拒绝面)。
+        纯读;观察 node 调用一次,决策轮消费实例载体,零新增截图。
         """
         if screen is None:
             # 无帧(fake 渠道桩替读链环境):按锚读缺走失败安全,不喂 None 给
@@ -130,8 +130,10 @@ class CwScreenSupplyNode(SrOperation):
         for text, mrl in ocr_map.items():
             if mrl.max is None:
                 continue
-            if _REMAIN_RE.search(text):
-                return Point(int(mrl.max.center.x), int(mrl.max.center.y))
+            m = _REMAIN_RE.search(text)
+            if m:
+                return int(m.group(1)), Point(int(mrl.max.center.x),
+                                              int(mrl.max.center.y))
         return None
 
     def _read_node_bar(self, screen) -> int | None:
@@ -172,15 +174,21 @@ class CwScreenSupplyNode(SrOperation):
         门 miss = 已不在本节点画面(overlay 消失 / 进了下一节点)→ 节点
         完成,success 交还外层(出口验真 = 本门判定本身,纯观察面;
         chosen_supply 已改确认即写,门处无写动作)。在门内 → 选项一次读
-        → ``report_screen_supply_node_obs`` 落容器 ``supply``(空 = 读缺
-        CARD_BODY 兜底路径,不写,闸在 report 内;match/gs 缺席的局外
-        兜底路径跳过 report)→ obs + 点卡定位点挂实例属性。"""
+        + 刷新剩余次数同帧读(与选项同帧同源,零新增截图)→
+        ``report_screen_supply_node_obs`` 落容器 ``supply`` +
+        ``supply_refresh_left``(选项空 = 读缺 CARD_BODY 兜底路径,整函数
+        早退不写,闸在 report 内;match/gs 缺席的局外兜底路径跳过
+        report)→ obs + 点卡/刷新钮定位点挂实例属性。"""
         screen = self.last_screenshot
         if not self._in_node(screen):
             return self.round_success(f'{self.op_name} 节点完成(已离开本节点画面)')
         opts = read_supply_options(self.ctx, screen)
+        anchor = self._read_refresh_anchor(screen)
+        refresh_left = anchor[0] if anchor is not None else None
+        self._refresh_point = anchor[1] if anchor is not None else None
         obs = CwScreenSupplyNodeObs(in_node=True,
                                     options=[o for o, _pt in opts],
+                                    refresh_left=refresh_left,
                                     screen=screen)
         _match = getattr(self.ctx, 'cw_match', None)
         _gs = getattr(_match, 'gs', None) if _match is not None else None
@@ -221,21 +229,16 @@ class CwScreenSupplyNode(SrOperation):
         """决策 + 单动作体(零参:候选与点击点自观察轮实例载体消费)。
 
         T#99:``decide_supply`` 按 target_comp.key_equips 契合 + 装备通用价值
-        选(替代盲点 CARD_BODY);读不到选项 → CARD_BODY 兜底。刷新分支
-        点圆钮后终结交回;选卡分支点卡身 + 确认机械半经工厂(统一动作
-        工厂批4:体迁 ``cw_overlay_pick_action.CwActionPickSupplyOp``,
-        方法级替身缝保留),确认点击后动作 op 立即上报完整结果,派发即
-        终结。Returns: True = 动作已发(终结交回)。
+        选(替代盲点 CARD_BODY);读不到选项 → CARD_BODY 兜底。刷新分支 =
+        剩余闸放行(容器 ``supply_refresh_left`` >0 且锚点在位)才点圆钮,
+        点后 2s 终结交回;闸拒绝 → 重调一次决策按原评分选(单轮内有界)。
+        选卡分支点卡身 + 确认机械半经工厂(统一动作工厂批4:体迁
+        ``cw_overlay_pick_action.CwActionPickSupplyOp``,方法级替身缝保留),
+        确认点击后动作 op 立即上报完整结果,派发即终结。
+        Returns: True = 动作已发(终结交回)。
         """
         match = self.ctx.cw_match
         opts = self._sup_opts or []
-        # 刷新已用读源 = 容器 supply_refresh_used 计数(>0 = 已用)。无 match
-        # 退实例态(测试/离线路径;实例态在外环每次新建 op 下失效 = 仅局外
-        # 兜底,不承生产语义)。
-        if match is not None:
-            _refresh_used = int(match.gs.supply_refresh_used.value or 0) > 0
-        else:
-            _refresh_used = self._refresh_used
         target = CwScreenSupplyNode.CARD_BODY
         reason = 'no-options(CARD_BODY 兜底)'
         refresh_target = None
@@ -257,51 +260,42 @@ class CwScreenSupplyNode(SrOperation):
                 CwActionRefreshSupplyParam,
             )
             _gs = match.gs
+            # 刷新剩余闸读源 = 容器 supply_refresh_left(观察轮 report 摄入
+            # 的同帧读数;None = 未观察/读缺,≤0 = 已刷尽)。
+            _left = _gs.supply_refresh_left.value
             pick = match.strategy.decide_supply()
-            if isinstance(pick, CwActionRefreshSupplyParam) and not _refresh_used:
-                # 只刷一次(容器计数 >0 = 已用;kernel 刷新闸同源同值,本闸
-                # = handler 侧同口径保留)。
-                _anchor = self._read_refresh_anchor(self._obs.screen if self._obs is not None else None)
-                self._refresh_used = True
-                # live 刷新发射即容器计数 +1(发射即记不等验效——含下方锚
-                # 读缺零点击路径,同旗标置位时点;本点 = 决策体记录面留守
-                # 原位,本屏无注册表登记件,无双计面)。
-                try:
-                    from sr_od.application.currency_war.kernel.cw_game_state import (
-                        ChannelSig,
-                    )
-                    _gs_r = match.gs
-                    _gs_r.write_logic(
-                        _gs_r.supply_refresh_used,
-                        int(_gs_r.supply_refresh_used.value or 0) + 1,
-                        produced_by='CwScreenSupplyNode',
-                        evidence='refresh_click',
-                        sig=ChannelSig(family='logic_action',
-                                       actor='CwScreenSupplyNode',
-                                       mode='compute'))
-                except Exception as e:   # noqa: BLE001  记录面失败不阻塞节点动作
-                    log.warning(f'[cw-supply] 刷新计数记录失败(不阻塞): {e}')
+            if isinstance(pick, CwActionRefreshSupplyParam) \
+                    and not (_left is not None and int(_left) > 0
+                             and self._refresh_point is not None):
+                # 对照闸拒绝 → 重调一次决策按原评分选(单轮内有界;
+                # kernel 刷新闸同源同值,本面 = 读缺/锚点缺不一致兜底)。
+                pick = match.strategy.decide_supply()
+                if isinstance(pick, CwActionRefreshSupplyParam):
+                    # 重调仍建议刷新 = 闸数据不一致面,零点击终结交回
+                    #(外循环重进 = 入口重建重试观察,不空转本节点预算)。
+                    log.warning('[cw-supply] 建议刷新但剩余闸拒绝(left=%r)'
+                                ' → 零点击终结交回(外循环重进重试观察)',
+                                _left)
+                    return True
+            if isinstance(pick, CwActionRefreshSupplyParam):
+                # 剩余闸放行:点圆钮一次后终结交回(外循环重进 = 入口重建,
+                # 新装备面由重进后的入口观察现读承载,ADR-0517)。
+                refresh_target = Point(
+                    self._refresh_point.x + CwScreenSupplyNode._REFRESH_BTN_DX,
+                    self._refresh_point.y)
                 reason = pick.reason
-                if _anchor is None:
-                    # 文本锚读缺 → 零点击 + 照常置位已用(流程收敛语义与旧码一致:
-                    # 零点击不重掷,靠烧旗标让下轮照常选装;不烧旗标 =
-                    # 「建议刷新→锚读缺→零动作」每轮空转的活锁形态,fake
-                    # 渠道行为锁实证)。
-                    log.warning('[cw-supply] 建议刷新但「剩余次数」文本锚读缺 → '
-                                '零点击,照常置位已用(下轮按非刷新重选)')
-                    return False
-                refresh_target = Point(_anchor.x + CwScreenSupplyNode._REFRESH_BTN_DX,
-                                       _anchor.y)
             elif isinstance(pick, CwActionPickSupplyParam) and 0 <= pick.idx < len(opts):
                 target = opts[pick.idx][1]
                 reason = pick.reason
                 param_idx = pick.idx
-                # 选定快照(角色/装备/钻;refreshed=刷新是否已用)——选定
-                # 事实现场载荷,现役消费面 = 零(见上方组装点注释)。
+                # 选定快照(角色/装备/钻;refresh_left=容器剩余次数现值快照,
+                # 可 None——布尔键随计数闸消亡,left 供读端按剩余分型,无
+                # 「本局初始授予数」基线故携带而非推导,design §2.1)——
+                # 选定事实现场载荷,现役消费面 = 零(见上方组装点注释)。
                 _opt = opts[pick.idx][0]
                 picked = {'char': _opt.char, 'equip': _opt.equip,
                           'has_diamond': _opt.has_diamond,
-                          'refreshed': _refresh_used}
+                          'refresh_left': _left}
                 # 开出内容载荷(归一件名 = 注册表级分层归一
                 # ``normalize_registry_equip_name`` 现算:精确快道 →
                 # containment longest-first → 相似救援唯一命中;多/零命中
@@ -328,9 +322,9 @@ class CwScreenSupplyNode(SrOperation):
                                        mode='compute'))
                 except Exception as e:   # noqa: BLE001  记录面失败不阻塞节点动作
                     log.warning(f'[cw-supply] chosen_supply 记录失败(不阻塞): {e}')
-            log.info('[cw-supply] options=%s pick=%s %s click@(%d,%d)',
+            log.info('[cw-supply] options=%s pick=%s %s left=%s click@(%d,%d)',
                      [(o.char, o.equip, o.has_diamond) for o, _ in opts],
-                     type(pick).__name__, reason, target.x, target.y)
+                     type(pick).__name__, reason, _left, target.x, target.y)
         else:
             log.info('[cw-supply] opts=%d match=%s → CARD_BODY 兜底', len(opts), match is not None)
         # bug#1 缓解:click 前 mouse_move 到目标(零移动),防 before_screenshot 移光标 → click 落空。

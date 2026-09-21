@@ -525,12 +525,16 @@ class DecisionTrace:
     #  OLD_MIX_AUDIT §1.3;字段按历史数据只读口径保留,新数据恒 None。)
     # 补给轮决策行采集(观察层数据移交批):补给节点选卡确认后的合成
     # 决策帧(extra.phase='supply_pick')携带的选定快照——
-    # {char, equip, has_diamond, refreshed, options:[{char,equip,has_diamond}...],
-    # n_options},形状与 telemetry.state 暂存槽/set_last_supply_pick 一致
-    # (单一形状,不造第二套)。None=非补给帧/兜底点卡路径(决策帧照写,
-    # 读端按 None 分型)。此前决策行只有空壳快照,「补给选了什么/牌面给
-    # 了什么」要等 outcomes 合成行 join 才可读;平铺进决策行后单行自足。
-    # 可选末尾追加字段,旧记录缺省 None 不破坏 schema。
+    # {char, equip, has_diamond, refresh_left, options:[{char,equip,has_diamond}...],
+    # n_options}(迭代 2026-09-21-event-refresh-unify-supply-pick:布尔键
+    # refreshed 随计数闸退役——历史行该键按只读口径保留,判读端 .get
+    # 容忍;新行携 refresh_left = 容器 supply_refresh_left 现值快照,
+    # 可 None=未观察,供读端按剩余分型;无「本局初始授予数」基线,布尔
+    # 不可由 left 等价导出,故改携带而非推导)。None=非补给帧/兜底点卡
+    # 路径(决策帧照写,读端按 None 分型)。此前决策行只有空壳快照,
+    # 「补给选了什么/牌面给了什么」要等 outcomes 合成行 join 才可读;
+    # 平铺进决策行后单行自足。可选末尾追加字段,旧记录缺省 None 不破坏
+    # schema。
     supply_pick: dict[str, Any] | None = None
     # —— 决策时点挂起期望态快照(W971 期望态 infra 遥测批;**写入端已随
     # ADR-0651 两态制退役**:expected_state 条目表拆除,新数据恒 None——
@@ -640,10 +644,11 @@ class OutcomeRecord:
     # 简报词缀(session.briefing_affixes 快照,迁移审计 w244(git 历史) affix 分层缺口)。空=未采。
     enemy_affixes: list[str] = field(default_factory=list)
     # —— 迁移审计 w306(git 历史) 补给选择快照(仅 source='synthetic_supply' 行携带):补给节点选定+
-    # 确认时的 {char, equip, has_diamond, refreshed, gold}——choices/效果归因数据源
+    # 确认时的 {char, equip, has_diamond, refresh_left, gold}——choices/效果归因数据源
     # (治疗/装备生效判读原无法挂回补给轮;rounds 视图 P1 r5 全缺的语义补齐)。
-    # refreshed=该次确认前是否已刷新重掷(值源 = 容器 node_screen_refresh
-    # .supply_refresh_used 计数 >0 读点,CwScreenSupplyNode 选定快照随行);
+    # refresh_left=该次确认时点容器 supply_refresh_left 现值快照(可 None=未观察;
+    # 迭代 2026-09-21-event-refresh-unify-supply-pick 起布尔键 refreshed 退役,
+    # 历史行 refreshed 按只读口径保留,读端 .get 容忍);
     # gold=完成时点 last_state.gold(gold_readable=False 缺省不写,不冒认真值)。
     # W306c:options=[{char,equip,has_diamond}...] + n_options=实际识别列数
     # (动态探测,通常 4/augment 3-5,逐列内容不假定结构;漏读审计与对拍源)。

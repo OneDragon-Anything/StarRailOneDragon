@@ -565,6 +565,12 @@ class CwSimEngine:
             rng = stream_rng(eng.seed,
                              f'M18/opts/p{eng.plane}/r{eng.round_num}')
             eng.supply_opts = supply_options(rng)
+            # 补给节点入口写初始刷新剩余 = 1(sim 世界授予真值,与实机
+            # 「每补给节点授予一次免费刷新」等价;live 侧该值由屏上
+            # 「剩余次数：N」观察摄入)。
+            eng.gs.observe(eng.gs.supply_refresh_left, 1,
+                           evidence=sim_evidence('supply:refresh_left'),
+                           sig=obs_sig(group_id='sim:supply'))
             eng.phase = CwSimPhase.SUPPLY_PICK
             return
         if kind == 'encounter':
@@ -621,10 +627,12 @@ class CwSimEngine:
         if not isinstance(action, CwActionPickEventParam):
             return
         if action.refresh:
-            # 免费刷新一次(实机两步 decide_supply 语义;一次性)
-            used = int(eng.gs.supply_refresh_used.value or 0)
-            if used < 1:
-                eng.gs.observe(eng.gs.supply_refresh_used, used + 1,
+            # 免费刷新(剩余闸:left >0 才刷,刷后 left−1(≥0 截断);
+            # 实机两步 decide_supply 语义的 sim 等价面)
+            left = int(eng.gs.supply_refresh_left.value or 0)
+            if left > 0:
+                used = 1 - left   # 旧计数闸等价推导(保持 rng 流键稳定)
+                eng.gs.observe(eng.gs.supply_refresh_left, max(0, left - 1),
                                evidence=sim_evidence('supply:refresh'),
                                sig=obs_sig(group_id='sim:supply'))
                 rng = stream_rng(eng.seed,

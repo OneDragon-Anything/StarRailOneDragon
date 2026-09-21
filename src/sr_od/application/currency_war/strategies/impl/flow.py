@@ -496,11 +496,13 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
 
     def decide_supply(self) -> CwActionPickSupplyParam | CwActionRefreshSupplyParam:
         """补给选装备/出钻(终态零参口;候选 = ``gs.supply`` payload)。
-        刷新闸输入源 = ``gs.supply_refresh_used`` 容器计数派生(details §2.3,
-        与现调用方派生式逐字节相同)。"""
+        刷新闸输入源 = ``gs.supply_refresh_left`` 剩余语义观察真值(details
+        §2.3;剩余 ≤0 或 None = 已刷尽/未观察 → refresh_used=True,kernel
+        按原评分直接选卡)。"""
         options = self._require_slot_options(self.gs.supply,
                                              'supply').options
-        refresh_used = int(self.gs.supply_refresh_used.value or 0) > 0
+        _left = self.gs.supply_refresh_left.value
+        refresh_used = not (_left is not None and int(_left) > 0)
         self._consume_prep_direction_frame()   # ADR-0583 入口内务
         pick = cw_events.decide_supply(options, self.gs,
                                        self.state.target_comp, self.config,

@@ -167,9 +167,12 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'encounter_refresh_used': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='节点屏刷新计数(on_outcome 发射型钩子,§3.4.1)'),
-    'supply_refresh_used': ProjectionAuditRow(
-        status=AUDIT_PROCESS_ONLY,
-        basis='节点屏刷新计数(§3.4.2)'),
+    'supply_refresh_left': ProjectionAuditRow(
+        status=AUDIT_WRITE_END,
+        basis='补给刷新剩余次数(屏上「剩余次数：N」观察真值;观察写端'
+              ' = report_screen_supply_node_obs 摄入,读缺跳写;sim 写端'
+              ' = 补给节点入口初始 left 与刷新递减;§3.4.2)'
+              ' + 观察覆盖'),
     'env_refresh_left': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='投资环境刷新剩余次数(屏上「剩余次数：N」观察真值;观察写端'
