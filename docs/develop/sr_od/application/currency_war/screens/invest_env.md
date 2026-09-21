@@ -95,7 +95,7 @@ act = match.strategy.decide_invest_env()(零参,候选读容器 invest_env_opts 
 
 ## 9. 遥测与锁面
 
-- journal op 名 =「投资环境」(本屏身份臂链另有「等待 1-1」独立行);分支屏记号 `_note_branch_screen` 两写点;op 内日志 tag = `[cw-env]`(计数读数/options/chose/reason、刷新终结交回)。
+- journal op 名 =「投资环境」(本屏身份臂链另有「等待 1-1」独立行);op 内日志 tag = `[cw-env]`(计数读数/options/chose/reason、刷新终结交回)。
 - 缺陷分键 = `invest_env.refresh_no_effect`(record_defect L2 留证)。
 - 测试锁:两 node 行为锁 + 写入流对拍 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`(重入裁决×门组合/观察门 miss 早退与 report/active_env 选卡时点写)。
 - game 侧知识:画面与机制(环境 = 整局增益) = [../../../../game/screens/currency_war_invest_env.md](../../../../../game/screens/currency_war_invest_env.md);环境刷新判据 = `kernel/cw_events.py` 环境帧分支 + [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1。

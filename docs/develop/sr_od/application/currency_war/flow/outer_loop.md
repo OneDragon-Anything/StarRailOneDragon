@@ -109,7 +109,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 轮 = 一次"备战环 → 出战 → 战斗 → 结算"。推进信号：
 - 出战成功：`_battle_ts = monotonic()`（战斗窗口宽限计时起点，BATTLE_WATCH_GRACE_S=600 覆盖实测 4-5.5min 战斗）+ `_battle_wait_active=True`；
 - 结算：CwScreenBattleWait 完成判据白名单（备战双锚单锚宽判定命中即 success 交回）；`saw_settlement` → `_battle_ts=None`；
-- **节点推进（外循环零写点）**：序号前进唯一动作入口 = kernel `report_node_advance`——战斗节点终结 = `CwOpSettleConfirm` 转移证据（完成判据白名单命中）后上报 settle_confirm；补给节点终结 = `CwActionPickSupplyOp` 确认（until = 下一节点备战锚）后上报 supply_confirm。观察锚定 = 画面 op 观察 node（`CwScreenPrep` 备战顶栏 / `CwScreenSupplyNode` 补给屏节点条 → kernel `observe_node_anchor`）。历史分支写点（`_note_branch_screen` 五调用点）已退役，外循环与观察漏斗均不写推进域（判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md)）；
+- **节点推进（外循环零写点）**：序号前进唯一动作入口 = kernel `report_node_advance`——战斗节点终结 = `CwOpSettleConfirm` 转移证据（完成判据白名单命中）后上报 settle_confirm；补给节点终结 = `CwActionPickSupplyOp` 确认（until = 下一节点备战锚）后上报 supply_confirm。观察锚定 = 画面 op 观察 node（`CwScreenPrep` 备战顶栏 / `CwScreenSupplyNode` 补给屏节点条 → kernel `observe_node_anchor`）。历史开局链分支写点已整体退役，外循环与观察漏斗均不写推进域（判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md)）；
 - 轮计数 `_settle.rounds_done`（SettlementState，结算链收编；max_rounds 停点消费）；
 - 节点真值：节点行探针（`cw_screen_buy_cards.py::probe_node_type`，商店访问尾段挂点——`cw_screen_prep.visit_open_shop` 在 CwOpCloseShop 后调用）写槽序表/台账。
 

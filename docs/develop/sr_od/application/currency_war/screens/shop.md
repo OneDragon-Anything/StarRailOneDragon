@@ -23,7 +23,8 @@ read_game_state(phase=PHASE_PREP_SHOP_OPEN) 全量现读,漏斗容器直写(obs 
   产出 GameStateReadReceipt 回执)
 → 店开入口防抖(shop 域未入容器时有界重读 3×0.8s;仍缺 = 交决策前置门)
 → 首段帧代次标注 full(shop_frame_class;续段 none 保持首段值)
-→ 节点类型 = 派生管线「商店查现行链」直定(链缺位 = kind None fail-open;
+→ 节点类型 = 店开上下文查现行链直定(`chain_node_type`;链缺位/位越界/未辨 =
+  kind None 诚实缺位,零内建回落;
   本段无台账回填写端——logic 通道覆盖会吞观察对账,ADR-0587 滞后拷贝禁令)
 → 免费刷新对账点(上段刷新已发标记消费:牌面已变 ∧ 金未扣 → 三值对比
   单一源 refresh_board_changed_of 判定,存证 flag 不停机;判定收口在观察侧)
@@ -98,7 +99,7 @@ while True(零读屏):
 
 - 商店卡牌详情弹窗:阶段一身份分发(`CwScreenShopCardDetailPopup`,点 X 验消失,**绝不点购买**——买不买归商店域)。
 - 商店刷新概率表弹窗:阶段一身份分发(点 × 关);概率条直读进 `refresh_probs` = 观察非动作。
-- 暗色衬底弹窗遮蔽底层全部锚时,外循环弹窗族分支先行分流后才可能落到本画面分支。
+- 暗色衬底弹窗遮蔽底层全部锚时,外循环阶段一身份分发的弹窗分支先行分流,之后才可能落到本画面分支。
 
 ## 8. 守卫与防线
 
