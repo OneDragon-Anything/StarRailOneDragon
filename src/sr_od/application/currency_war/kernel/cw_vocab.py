@@ -572,11 +572,12 @@ class CwActionFurnaceUseParam:
     """冶金炉(R8 按消耗品各立类;双模式)。
 
     - target_kind='equip':拖装备 = 原地变异同类型随机(target =
-      装备库 owned 件,``item_name``;产物不可预知 → 随机面观察收口,
-      ``EQUIP_WRITE_SIDES['冶金炉']`` 负写端在册);
+      装备库 owned 件,``item_name``;上报 = rand 采样替换——同类别池
+      write_logic_rand 合并单笔写,采样池 = ``cw_sim_equips.furnace_reroll``
+      同源,写端 = ``cw_action_report.tool_use``);
     - target_kind='char':拖角色 = 全拆 + 每件变异随机(target =
-      角色槽位,``row``/``slot``;确定面 = 穿戴域 → 库存域全量迁移,
-      变异产物 = 随机面观察收口)。
+      角色槽位,``row``/``slot``;①equips 采样链 rand 合并写 + ②行域
+      穿戴清空 logic 写;变异面不走获得链不触发获得回调)。
     """
     target_kind: str    # 'equip' | 'char'(作用对象模式;值域封闭)
     item_name: str = ''  # target_kind='equip':装备库 owned 件名
@@ -592,10 +593,12 @@ class CwActionPrivilegeCardUseParam:
 
     - target_kind='equip'(库存腿,现役执行臂):确定变换 = target 件
       名替换为对应·特权名(映射单一源 = ``cw_effect_inventory.
-      privilege_counterpart``,写端 = ``transform_equip_to_privilege``);
-    - target_kind='char'(拖角色腿):该角色已穿进阶装备随机一件变
-      特权——「哪件被选」= 随机面 → 逻辑态只写工具 −1,选定后确定面
-      归观察收口(``transform_worn_equip_to_privilege`` 桥在册)。
+      privilege_counterpart``;上报 = equips 合并单笔写 = 移除工具 ∧
+      变换同笔,写端 = ``cw_action_report.tool_use``);
+    - target_kind='char'(拖角色腿):**fail-closed 不支持**(用户裁定
+      2026-09-21 按不能拖角色处理候实机测试)——上报侧收到 char 腿 =
+      零写留证(tool_privilege_worn_unsupported);判据面现役只产库存腿,
+      穿域桥 ``transform_worn_equip_to_privilege`` 留守。
     """
     target_kind: str    # 'equip' | 'char'(值域封闭,同 CwActionFurnaceUseParam)
     item_name: str = ''  # target_kind='equip':被变换的进阶成品件名
@@ -608,7 +611,8 @@ class CwActionPrivilegeCardUseParam:
 @dataclass
 class CwActionWrenchUseParam:
     """拆装扳手(R8):target = 角色槽位(取下该角色全部穿戴,装备归属
-    面回区);工具消耗品 −1(用后消失)。"""
+    面回区);工具消耗品 −1。上报 = 两笔 logic 合并写(equips = 移除工具
+    ∧ 追加穿戴件;行域穿戴清空),写端 = ``cw_action_report.tool_use``。"""
     row: str            # 见上方通用坐标系声明
     slot: int           # 画面物理槽位 1 基
     route_tag: str = field(default='', kw_only=True,
@@ -618,7 +622,8 @@ class CwActionWrenchUseParam:
 @dataclass
 class CwActionPrecisionWrenchUseParam:
     """精密拆装扳手(R8):target = 角色槽位(同 CwActionWrenchUseParam);无限次用,
-    工具库存面不递减(重复获得改 +1 金 = 贡献算术,获得回执窗在册)。"""
+    工具库存面不递减(上报两笔 logic 同扳手,equips 不移除工具;重复获得改
+    +1 金 = 贡献算术,获得回执窗在册)。"""
     row: str            # 见上方通用坐标系声明
     slot: int           # 画面物理槽位 1 基
     route_tag: str = field(default='', kw_only=True,
@@ -629,7 +634,11 @@ class CwActionPrecisionWrenchUseParam:
 class CwActionStaffProjectorUseParam:
     """员工投影仪(R8 投影仪按型号两类之一):target = 角色槽位
     (在备战席创造该角色 1 星复制);费用门 = 3 费及以下(门表单一源 =
-    ``cw_affix_effects`` 投影仪费用门行),门由发射位判据面辖。"""
+    ``cw_affix_effects`` 投影仪费用门行),门由发射位判据面辖。上报 =
+    复制走获得链 ``gain_character``(落位 → 回调 → 3 合 1 升星判断;
+    复制触发三合一 = 口述·权威 2026-09-21)+ equips 移除工具合并腿,
+    写端 = ``cw_action_report.tool_use``(费用门注册表现读前置查 =
+    防御纵深)。"""
     row: str            # 见上方通用坐标系声明
     slot: int           # 画面物理槽位 1 基
     route_tag: str = field(default='', kw_only=True,
@@ -639,7 +648,7 @@ class CwActionStaffProjectorUseParam:
 @dataclass
 class CwActionPerfectProjectorUseParam:
     """完美投影仪(R8 投影仪按型号两类之二):target = 角色槽位
-    (同 CwActionStaffProjectorUseParam 但无费用门)。"""
+    (同 CwActionStaffProjectorUseParam 但无费用门;上报同走获得链)。"""
     row: str            # 见上方通用坐标系声明
     slot: int           # 画面物理槽位 1 基
     route_tag: str = field(default='', kw_only=True,
@@ -654,6 +663,7 @@ class CwActionLuckyTokenUseParam:
     永不进准入(``cw_equip_env.evaluate_tool_actions`` rc_missing 拒因
     在册)——类随族立档 + 注册行,发射位禁无判据发射;判据面建模批
     补档(知识缺口登记 = ``flow/action-logic-state.md`` §7 好运令牌行)。
+    上报侧 = 零写留证(tool_token_not_admitted 注记,写端随 R9 判据批)。
     """
     row: str            # 见上方通用坐标系声明
     slot: int           # 画面物理槽位 1 基

@@ -1968,6 +1968,10 @@ class GameState:
     # 写端(与 equips 同点同环);未观察(None) = 识别域未就绪,M7 装备计划
     # 按 fail 门保守关(与旧黑板 None 语义同映射)。
     occupied_equips: Field[dict[str, list[str]]] = field(default_factory=Field)
+    # ⚠️ consumables = 死字段:现役零读端零写端(工具件实住 equips,
+    # 工具上报记账载体 = equips 合并写,不入本字段),fields.md §3.2.16
+    # 申报与现实不符——字段级清偿(退役/修正)归 fields 正本批,本批仅
+    # 不消费(tool-gain-report 迭代裁定)。
     consumables: Field[list[str]] = field(default_factory=Field)     # 消耗品库存(§3.2.16)
 
     # —— 晶矿(§3.2.8,不占席)——

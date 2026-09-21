@@ -1,7 +1,9 @@
 """工具消耗动作 op(CwActionToolUseOp)——动作 op 重组批③ 换壳(原
 ``ToolUseOp``,ActionOp ABC → 框架 SrOperation,design.md §1.1/§1.2)。
 机械执行后 **op 内直调自己的上报函数**(七工具参数共用机械半,上报 =
-各自零写函数,按 param 类型一行解析;design.md §1.2)。非终结。
+各自容器写函数,按 param 类型一行解析;design.md §1.2;tool-gain-report
+迭代起上报 = 机械执行直接上报写容器,容器写正本 =
+``kernel/cw_action_report/tool_use``)。非终结。
 
 一个 op 类辖工具原子七类(R8 按消耗品各立词表类,机械半同构:owned
 网格内 icon → 目标拖曳;工具名解析表 ``_TOOL_NAME_BY_CLASS`` 随体迁)。
@@ -16,7 +18,7 @@ from typing import TYPE_CHECKING, ClassVar
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_action_report.zero_writes import (
+from sr_od.application.currency_war.kernel.cw_action_report.tool_use import (
     report_action_furnace_use_param,
     report_action_lucky_token_use_param,
     report_action_perfect_projector_use_param,
@@ -90,8 +92,9 @@ class CwActionToolUseOp(SrOperation):
 
         源件 = 工具 icon(按注册名定位);目标 = equip 模式 owned 网格
         icon / char 模式角色槽位中心。零消耗确认对拍(裁决 3)——拖后固定
-        等待,消费真值 = 下一帧装备区读数;装备域容器腿 = 容器零写
-        (消费真值归观察,截断点独占发射帧零窗口,下一入口 heavy 覆盖)。
+        等待,消费真值 = 下一帧装备区读数;机械链发出后直调上报 =
+        机械执行直接上报写容器(tool_use 确定面 write_logic / 随机面
+        write_logic_rand 采样链,上报无条件不判成败)。
         """
         action: CwAction = self.param
         env = self.env
@@ -120,13 +123,14 @@ class CwActionToolUseOp(SrOperation):
                                    hold_time=0.5, duration=1.2)
         time.sleep(1.5)   # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
         ex._op.park_cursor(after_wait=0.1)
-        # —— 自上报(机械发出后;按 param 类型直调自己的零写上报)——
+        # —— 自上报(机械发出后;按 param 类型直调自己的上报函数,
+        # 机械执行直接上报写容器)——
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             self._REPORT_BY_CLASS[type(action)](
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
-        detail = f'{tool_name} → {tgt_desc} 拖曳已发(零对拍,消费归观察)'
+        detail = f'{tool_name} → {tgt_desc} 拖曳已发(上报已按成功写容器)'
         log.info(f'[cw][tool] {detail}')
         return self.round_success(detail)

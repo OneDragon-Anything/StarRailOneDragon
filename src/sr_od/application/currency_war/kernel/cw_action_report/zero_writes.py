@@ -5,6 +5,11 @@
 (无逐类专辖内容);命名规约完备锁照样逐类点验收口 = 包级
 ``__getattr__`` 未命中落本模块。语义正本 = 各函数 docstring
 (自 cw_game_state 逐字迁移)。
+
+工具原子七类(冶金炉/特权赋予卡/拆装扳手/精密拆装扳手/员工投影仪/
+完美投影仪/好运令牌)已迁出零写族:上报升格为容器写(机械执行直接
+上报写容器),分步实现正本 = 同包 ``tool_use``;包级 ``__getattr__``
+命名规约解析具名模块先于本模块。
 """
 
 from __future__ import annotations
@@ -40,45 +45,14 @@ def report_action_open_box_param(gs: GameState, param: Any, sig: ChannelSig) -> 
 
 
 
-def report_action_furnace_use_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """冶金炉上报:消耗/变换 = 视觉域逻辑态(容器零写,随机面观察收口)。"""
-    return _report_zero_write(gs, param, sig, 'zero_write(furnace_use)')
-
-
-
-def report_action_privilege_card_use_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """特权赋予卡上报:变换确定面归观察收口,容器零写(工具 −1 = 视觉域)。"""
-    return _report_zero_write(gs, param, sig, 'zero_write(privilege_card_use)')
-
-
-
-def report_action_wrench_use_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """拆装扳手上报:装备归属面回区 = 视觉域,容器零写。"""
-    return _report_zero_write(gs, param, sig, 'zero_write(wrench_use)')
-
-
-
-def report_action_precision_wrench_use_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """精密拆装扳手上报:同拆装扳手(无限次用),容器零写。"""
-    return _report_zero_write(gs, param, sig, 'zero_write(precision_wrench_use)')
-
-
-
-def report_action_staff_projector_use_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """员工投影仪上报:复制体出现 = 观察收口,容器零写。"""
-    return _report_zero_write(gs, param, sig, 'zero_write(staff_projector_use)')
-
-
-
-def report_action_perfect_projector_use_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """完美投影仪上报:同员工投影仪,容器零写。"""
-    return _report_zero_write(gs, param, sig, 'zero_write(perfect_projector_use)')
-
-
-
-def report_action_lucky_token_use_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """好运令牌上报:获得面 = 观察收口,容器零写。"""
-    return _report_zero_write(gs, param, sig, 'zero_write(lucky_token_use)')
+# report_action_furnace_use_param / report_action_privilege_card_use_param /
+# report_action_wrench_use_param / report_action_precision_wrench_use_param /
+# report_action_staff_projector_use_param / report_action_perfect_projector_
+# use_param / report_action_lucky_token_use_param 已迁出零写族(tool-gain-
+# report 迭代:工具上报升格为容器写,机械执行直接上报写容器):分步实现
+# 正本 = 同包 tool_use(冶金炉采样池 sim 同源 + 投影仪走获得链);包级
+# ``__getattr__`` 命名规约解析具名模块先于本模块,直接 import 零写委托
+# 的旧消费面已随迁改直取具名模块。
 
 
 

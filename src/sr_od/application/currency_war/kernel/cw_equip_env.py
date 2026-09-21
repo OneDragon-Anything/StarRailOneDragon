@@ -558,7 +558,8 @@ def resolve_affix_priority_order(comp, deployed_rows: tuple[list, list],
 #:   同网格另一 icon(炉→死库存件 icon / 特权卡→key 对应进阶成品 icon),
 #:   无新画面 → 建档前置以既有 owned 网格建档满足;
 #: ②工具拖曳 op 落码 = 工具原子动作 op(CwActionToolUseOp,判据→G1 准入
-#:   →逐件原子发射;消耗确认对拍随组合壳退役,消费真值归观察)。
+#:   →逐件原子发射;消耗确认对拍随组合壳退役,上报 = 机械执行直接上报写
+#:   容器,容器写正本 = cw_action_report/tool_use)。
 #: 开臂后拒因分键仍分键可见:判据拒原样透传,准入拒仅在通道回关时出现
 #: (对照锁 sr-od-test test_cw_tools_exec_channel.py)。
 TOOL_EXEC_CHANNEL_READY: bool = True
@@ -625,7 +626,9 @@ def evaluate_tool_actions(owned: list[str], comp) -> list[ToolAction]:
       选错整件报废,门 C)。
     - 特权赋予卡:key_equips 显式含特权件 ∧ 对应进阶成品在手(栏内拖法,
       精确控制配对)→ 放行;无特权目标 → 拒(in_demand 同族「留」语义,
-      分键用 in_demand)。
+      分键用 in_demand)。本判据面只产**库存腿**(target_kind='equip'):
+      拖角色腿从未发射(用户裁定 2026-09-21 按不能拖角色处理候实机,
+      上报侧收到 char 腿 = fail-closed 留证)。
     """
     from sr_od.application.currency_war.data.cw_equipment_data import (
         EQUIP_TOOL_CATEGORY,

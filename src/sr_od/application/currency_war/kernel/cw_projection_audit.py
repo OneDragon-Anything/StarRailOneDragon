@@ -185,7 +185,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     # —— 持久账本 ——
     'equips': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
-        basis='sell 回收/穿戴扣减/桥直写。已知缺口:投资卡随机装备授予'
+        basis='sell 回收/穿戴扣减/桥直写 + 工具动作上报写端(cw_action_'
+              'report/tool_use:消耗移除与效果同笔合并写,炉随机面 = '
+              'logic_rand 采样链)。已知缺口:投资卡随机装备授予'
               '现无写端无吸收(申报表族 2026-09-19 拆除待重设计),'
               '命中照真失配停'),
     'consumables': ProjectionAuditRow(

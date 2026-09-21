@@ -1002,9 +1002,11 @@ def spawn_equip_bench_unit(gs: GameState, char_id: str, star: int,
                            frame: str = '') -> bool:
     """桥·装备族单位入席腿(共享):把复制/发放单位落进备战席第一个空槽,
     write_logic 直写(确定性→逻辑写,归属判据确定性分支)。服务面 =
-    员工投影仪(拖拽回执,cost_gate=3)/完美投影仪(无门)/数据拷贝仪族
-    计数臂(成熟回执,无门)——登记面映射单一源 =
-    cw_affix_effects.EQUIP_WRITE_SIDES。(分身墨镜系获得发放腿已改辖
+    数据拷贝仪族计数臂(成熟回执,无门)——员工/完美投影仪消费已退役
+    (tool-gain-report 迭代:投影仪复制改走获得链
+    ``cw_gain_chain.gain_character`` 统一时序,登记面映射 =
+    cw_affix_effects.EQUIP_WRITE_SIDES report: 形;本桥留守只辖计数臂)。
+    (分身墨镜系获得发放腿已改辖
     apply_equip_acquire_consequence——获得后果全渠道统一,本桥不再服务
     该两行;数据拷贝仪Max 行保持本桥辖计数臂,其获得后果由后果函数按
     数据行统一辖,不经登记表双登记。)
@@ -1206,8 +1208,11 @@ def settle_wrench_duplicate_gold(gs: GameState, *, frame: str = '') -> int:
 # (特权赋予卡拖角色腿的落码位:官方文「拖动到一个角色上使用,从角色已
 # 穿戴的进阶装备中选择一件变为特权装备」——选定后变换确定性(36 进阶 ↔
 # 36 特权后缀映射,:func:`privilege_counterpart`)→ 逻辑写;「选择」面 =
-# bot 决策/回执事实,归调用侧,本载体只管选定后的写端。执行分派入口随
-# 组合壳退役,接线候工具上报形态,现役观察收口。)
+# bot 决策/回执事实,归调用侧,本载体只管选定后的写端。**本腿现役留守
+# 不接**(tool-gain-report 迭代:用户裁定 2026-09-21 特权卡按不能拖角色
+# 处理候实机测试,判据面只产库存腿、上报侧 char 腿 fail-closed 留证;
+# 实机证可拖即升格接线,本桥为既定写端)。库存腿的 live 写端 =
+# 工具上报合并单笔消费(cw_action_report/tool_use,映射桥同源)。)
 
 
 def transform_worn_equip_to_privilege(gs: GameState, target: Unit,
@@ -1357,6 +1362,10 @@ def settle_copy_machine_participation(gs: GameState, *,
 
 #: 获得后果表(件名 → (送出单位名, 星级);表外件 = 无获得后果声明,
 #: 后果函数零写零行为——好运令牌等非专属渠道同锚零差)。
+#: 协作注(tool-gain-report):冶金炉变异面不走获得链,但采样命中本表
+#: 键集 → 上报侧落 ``furnace_mutate_consequence_candidate`` 留证行,
+#: 供实机局判读比对「变异产物是否触发后果」——推翻「变异不触发」即把
+#: 炉变异产物升格 ``on_equipment_gained``。
 EQUIP_ACQUIRE_CONSEQUENCES: dict[str, tuple[str, int]] = {
     '分身墨镜': ('银狼', 1),
     '分身墨镜Max': ('银狼', 2),

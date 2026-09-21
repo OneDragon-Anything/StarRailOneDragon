@@ -8,15 +8,16 @@
 - 有容器写语义的动作 = 一动作一文件(文件名 = snake);
 - ``level_up_shop`` = level_up 同字段双类型别名,独立文件保持
   文件名均一;
+- 工具原子七类 = ``tool_use``(机械半同构一族一文件,容器写形态);
 - 零写动作族 = ``zero_writes``(策略统一,不逐类开文件);
 - 刷新执行计数组 ``record_refresh_execution`` 与刷新上报同文件
   (refresh_shop,语义同主)。
 
 依赖方向:本包 → cw_game_state(容器/渠道签名/值类型/读口),
 反向模块级零 import(懒加载惯例同 kernel 既有纪律)。
-``__getattr__`` = 命名规约 lazy 解析(模块名 = snake;未命中落
-``zero_writes``),包级直取合法;生产 op 直调面建议直接 import
-具名模块(文件归属显式)。
+``__getattr__`` = 命名规约 lazy 解析(模块名 = snake;未命中依次落
+``tool_use`` / ``zero_writes`` 族模块),包级直取合法;生产 op 直调面
+建议直接 import 具名模块(文件归属显式)。
 """
 
 # ============================================================ 动作上报接口(每动作一个具名函数)
@@ -42,16 +43,17 @@
 import importlib
 
 _ZERO_WRITE_MODULE = 'zero_writes'
+_TOOL_USE_MODULE = 'tool_use'
 
 
 
 def __getattr__(name: str):
     """命名规约 lazy 解析(``report_action_<snake>_param`` → 同名
-    模块;未命中落零写族模块)。ModuleNotFoundError 之外的导入
+    模块;未命中依次落工具族/零写族模块)。ModuleNotFoundError 之外的导入
     异常原样上抛(目标模块真实损坏必须响亮,禁吞)。"""
     if name.startswith('report_action_') and name.endswith('_param'):
         snake = name[len('report_action_'):-len('_param')]
-        for mod_name in (snake, _ZERO_WRITE_MODULE):
+        for mod_name in (snake, _TOOL_USE_MODULE, _ZERO_WRITE_MODULE):
             try:
                 mod = importlib.import_module(
                     f'{__name__}.{mod_name}')
