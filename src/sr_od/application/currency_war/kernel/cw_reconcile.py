@@ -436,6 +436,11 @@ def reconcile_tracking(session, bench: BenchView | None,
                 evidence='observation_anchor',
                 sig=ChannelSig(family='logic_action',
                                actor='CwReconcile', mode='compute'))
+            # 锚定闩同点置位(两闩同一成功条件,不新增判断分支):写回成功
+            # = 本局首次成功的备战 heavy 锚定已完成,未锚定期「容器逻辑写
+            # 走随机态」通道规则自此解除;写失败走 except = 两闩同不置位。
+            # 测试/直构域置闩 = 直赋专口,生产唯一置位写点 = 此处。
+            game_state_of(session).prep_anchored = True
         except Exception as _e:  # noqa: BLE001  观察态置位不阻断对账
             log.warning(f'[cw!][{source}] 观察态置位失败(不阻断): {_e}')
     if deployed is not None:

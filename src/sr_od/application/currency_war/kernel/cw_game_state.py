@@ -41,6 +41,14 @@ PendingEntry/confirm 转正/discard_expected)全套废除;逻辑态错误 =
 :meth:`GameState.logic_rand_fields`;跨动作污染经
 :meth:`GameState.any_logic_rand` 入口判定继承)。
 
+**开局种子底座与锚定闩**:局容器经 :func:`game_state_of` 缓存单例支冷建
+即以开局初值播种 A 类字段(:func:`seed_opening_state`,随机态通道——
+确定值外壳未验证,首观察静默覆盖,差异只落 ``logic_rand_outcome`` 台账
+行);:attr:`GameState.prep_anchored` = 锚定闩,首次备战 heavy 锚定成功
+置位(生产唯一写点 = reconcile 同点,粘性无复位),未锚定期容器逻辑写
+通道规则的解析读口 = :func:`prep_anchored_of`;carry 失读沿用对随机态
+来源不适用(随机态值不是「上次好值」,不洗白)。
+
 **单例宿主** = session 旁表(:func:`game_state_of`;同 ``cw_exec_state``
 旁表模式,弱引用表 + 桩面兜底)——session 对象 = 局身份,新局新 session
 即天然新建,符合「单例,每局新建」(§1/§6.2)。
@@ -1666,6 +1674,8 @@ def game_state_of(session: object, *,
       零成本);session=None 一次性空载体(局外,不缓存)不装配——装配是
       进程级副作用,不属一次性视图。缺省 None = 不装配(sim/测试/局外
       防御视图构造口径;生产注入漏斗 = establish_new_match)。
+    - 局容器单例冷建即含开局种子底座(:func:`seed_opening_state`,A 类
+      字段随机态通道;None 一次性支与直构容器不种)。
     """
     if isinstance(session, GameState):
         return session   # 终态契约 §2.6:本体直通(身份透传)
@@ -1678,6 +1688,7 @@ def game_state_of(session: object, *,
         if gs is None:
             _establish_singleton_journal(run_id_provider)
             gs = GameState(schema_version=GAME_STATE_SCHEMA_VERSION)
+            seed_opening_state(gs)   # 缓存单例冷建即含开局种子底座
             try:
                 setattr(session, _GS_ATTR, gs)
             except (AttributeError, TypeError):
@@ -1686,8 +1697,93 @@ def game_state_of(session: object, *,
     if gs is None:
         _establish_singleton_journal(run_id_provider)
         gs = GameState(schema_version=GAME_STATE_SCHEMA_VERSION)
+        seed_opening_state(gs)   # 缓存单例冷建即含开局种子底座
         _GS_BY_SESSION[session] = gs
     return gs
+
+
+# ============================================================ 开局种子底座与锚定闩
+
+#: 种子写入者身份(journal/台账过滤键单一源;判读与测试按本 actor 过滤
+#: 种子行)。
+_SEED_ACTOR: str = 'GsOpeningSeed'
+#: 种子写入 evidence 注记单一源。
+_SEED_EVIDENCE: str = 'seed:opening'
+#: 种子写入渠道签名单一构造(logic_action 族恒 compute)。
+_SEED_SIG: ChannelSig = ChannelSig(family='logic_action', actor=_SEED_ACTOR,
+                                   screen='', mode='compute')
+
+
+def seed_opening_state(gs: GameState) -> None:
+    """冷建局容器开局种子底座(唯一调用点 = :func:`game_state_of` 两个缓存
+    单例建支;session=None 一次性支与直构 :class:`GameState` 不种——测试/
+    sim 直构域依赖未写形态)。
+
+    A 类字段(阵容/经济/溢出/环境/刷新计数)冷建即设开局初值,经
+    :meth:`GameState.write_logic_rand` 落「随机态」通道——确定值外壳、未经
+    观察验证:后续首观察直接覆盖,差异只落 ``logic_rand_outcome`` 台账行
+    (不进失配三分流);决策可信位消费不认(先例 = hp 可信位只认
+    observation/carried)。种子值 = 容器建立时点的开局真值或基线,逐字段
+    语义见各字段注释「开局种子底座」;B/C 类字段(None 为设计语义或无
+    观察源)一个不种。写序契约:行域(front_row/back_row)先写,board
+    派生行经行域挂钩(:meth:`GameState._resync_board_delta`)随动自动落
+    ——种子空行零差且板未读无派生基座,种子面不产 board 行,禁双写。
+    """
+    # 常量引用单一源(函数级懒 import 防模块环,同本模块惯例)
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        REFRESH_COST_BASE,
+        XP_TO_NEXT_LEVEL,
+    )
+    from sr_od.application.currency_war.kernel.cw_opening_hp import (
+        OPENING_HP_BASE,
+    )
+    sig = _SEED_SIG
+
+    def _seed(target: Field, value: Any) -> None:
+        gs.write_logic_rand(target, value, produced_by=_SEED_ACTOR,
+                            evidence=_SEED_EVIDENCE, sig=sig)
+
+    # —— 行域先写(board 派生行随动自动落)——
+    _seed(gs.front_row, [])
+    _seed(gs.back_row, [])
+    # —— 阵容/装备/晶矿(空底座为建立时点真值;补给在 1-1 进入时点送达,
+    # 内容候实机观察,合并效应归观察覆盖)——
+    _seed(gs.bench, BenchView(
+        slots=[BenchSlot(kind='empty')] * BENCH_CAPACITY_DEFAULT,
+        capacity=BENCH_CAPACITY_DEFAULT))
+    _seed(gs.equips, [])
+    _seed(gs.occupied_equips, {})
+    _seed(gs.spheres, OreSight())
+    # —— 经济与成长(gold=3 对齐 sim 开局模型 M01 的 OPENING_GOLD;
+    # level=3 与升级表键一致,deploy_cap=level+财富宝钻数、开局宝钻 0;
+    # xp 需求查升级表单一源;hp 取遥测实证基线常量)——
+    _seed(gs.gold, 3)
+    _seed(gs.level, 3)
+    _seed(gs.xp, (0, XP_TO_NEXT_LEVEL[3]))
+    _seed(gs.hp, OPENING_HP_BASE)
+    _seed(gs.streak, 0)
+    _seed(gs.back_layout, 6)
+    _seed(gs.deploy_cap, 3)
+    # —— 溢出/环境/持卡/刷新计数(开局真值)——
+    _seed(gs.overflow_warning, False)
+    _seed(gs.overflow_card, '')
+    _seed(gs.active_env, '')
+    _seed(gs.active_strategies, [])
+    _seed(gs.enemy_affixes, [])
+    _seed(gs.shop_refresh_cost, REFRESH_COST_BASE)
+    _seed(gs.prev_node_spent, False)
+    _seed(gs.encounter_refresh_used, 0)
+    _seed(gs.supply_refresh_used, 0)
+    _seed(gs.strategy_refresh_left, {})
+
+
+def prep_anchored_of(session: object) -> bool:
+    """锚定闩读口(经 :func:`game_state_of` 解析,缺省 False;局外一次性
+    容器每调新建恒 False)。生产唯一置位写点 = reconcile_tracking 的
+    tracked_account_observed=True 写回成功点(两闩同点置位);测试/直构域
+    置闩专口 = 直接赋值 ``gs.prep_anchored = True``(声明为测试/直构域
+    专用,生产禁走)。"""
+    return bool(game_state_of(session).prep_anchored)
 
 
 def tracked_unobserved(session: object) -> bool:
@@ -1861,10 +1957,10 @@ class GameState:
     node_path_baseline: Field[NodeChain | None] = field(default_factory=Field)  # 基线链(链正本 §2/§3:位面入口写定,本位面内不被链读覆盖)
 
     # —— 单位域(含星级与装备)——
-    front_row: Field[list[Unit]] = field(default_factory=Field)  # 前排成员(§3.2.3)
-    back_row: Field[list[Unit]] = field(default_factory=Field)   # 后排成员(§3.2.4)
-    bench: Field[BenchView] = field(default_factory=Field)       # 备战席统一槽位视图(§3.2.5;capacity 随效果改写)
-    back_layout: Field[int] = field(default_factory=Field)       # 后台格数(值域 6-9:平常 6,宝钻/召唤物扩展,上限 9;6/7/8/9 四档均已交互建档——9 档凭据=cw_back_layout._LAYOUT_PREFIX 与 screen_info 后排9槽-1..9;>9 域外按 8 格超集运行+evidence superset 标记,§3.2.7)
+    front_row: Field[list[Unit]] = field(default_factory=Field)  # 前排成员(§3.2.3;开局种子底座冷建即空行,首观察覆盖)
+    back_row: Field[list[Unit]] = field(default_factory=Field)   # 后排成员(§3.2.4;开局种子底座冷建即空行,首观察覆盖)
+    bench: Field[BenchView] = field(default_factory=Field)       # 备战席统一槽位视图(§3.2.5;capacity 随效果改写;开局种子底座冷建即 9 空槽空视图——建立时点确无手牌,开局补给观察覆盖)
+    back_layout: Field[int] = field(default_factory=Field)       # 后台格数(值域 6-9:平常 6,宝钻/召唤物扩展,上限 9;6/7/8/9 四档均已交互建档——9 档凭据=cw_back_layout._LAYOUT_PREFIX 与 screen_info 后排9槽-1..9;>9 域外按 8 格超集运行+evidence superset 标记,§3.2.7;开局种子底座=6 平常基线)
     # [索引定义] tracked_account_observed = tracked 主账(bench+deployed 两
     # 面,同帧锚定)的观察状态(用户裁定「观察状态落 game state 字段,
     # 策略消费只走 game state」;三态语义:None = 从未写 = 缺省可信——正常
@@ -1882,11 +1978,11 @@ class GameState:
     tracked_account_observed: Field[bool] = field(default_factory=Field)
 
     # —— 经济与成长 ——
-    gold: Field[int] = field(default_factory=Field)              # None=不可读(§3.2.9)
-    level: Field[int] = field(default_factory=Field)             # 等级(§3.2.10;启发式兜底值禁入——非真读走 carried)
-    xp: Field[tuple[int, int]] = field(default_factory=Field)    # (当前级已攒, 升下一级所需)(§3.2.10;同文本两分量成对存)
-    streak: Field[int] = field(default_factory=Field)            # 带符号:正=连胜/负=连败(§3.2.12)
-    hp: Field[int] = field(default_factory=Field)                # 写入闸 §3.2.13:非真读帧不经 observe(§8.8 假值防线)
+    gold: Field[int] = field(default_factory=Field)              # None=不可读(§3.2.9;开局种子底座=开局基线值,种子后恒有值,该 None 档生产死化)
+    level: Field[int] = field(default_factory=Field)             # 等级(§3.2.10;启发式兜底值禁入——非真读走 carried;开局种子底座=开局基线级)
+    xp: Field[tuple[int, int]] = field(default_factory=Field)    # (当前级已攒, 升下一级所需)(§3.2.10;同文本两分量成对存;开局种子底座=(0, 当前级升级所需))
+    streak: Field[int] = field(default_factory=Field)            # 带符号:正=连胜/负=连败(§3.2.12;开局种子底座=0)
+    hp: Field[int] = field(default_factory=Field)                # 写入闸 §3.2.13:非真读帧不经 observe(§8.8 假值防线;开局种子底座=实证基线值,三写端时序 种子→先验→真读)
     level_up_cost: Field[int] = field(default_factory=Field)     # 单击买经验价(§3.2.11;None=未读到禁兜底)
     # [索引定义] deploy_cap = 部署容量识别真值(= level + 财富宝钻数,可叠加)。
     # 坐标系 = 「X/Y」指示的 Y 人数口径;取值时机 = 备战帧观察期快照(ADR-0420
@@ -1899,7 +1995,7 @@ class GameState:
     # (cw_back_layout);理论关系 back_layout ≈ 6+(cap−level) 仅域内成立,
     # 域外态(>9)back_layout 是 8 格超集,反推会把近似当真值,故不派生改双存。
     # 两域冲突走缺陷台账,不互改。
-    deploy_cap: Field[int] = field(default_factory=Field)
+    deploy_cap: Field[int] = field(default_factory=Field)        # 开局种子底座=与 level 种子一致(= level + 财富宝钻数,开局宝钻 0);识别真值观察覆盖
 
     # —— 局级事实 ——
     selected_difficulty: Field[str] = field(default_factory=Field)   # 职级,开局写定恒稳(§3.1.1)
@@ -1915,18 +2011,18 @@ class GameState:
     # 持久化挂账另行立项)。
     encounter_log: EncounterLog = field(default_factory=EncounterLog)
     plane_bosses: Field[list[str | None]] = field(default_factory=Field)  # 三位面 boss 名,保位 3 槽;None=简报源未读得(实采源恒全识别,识别失败响亮暴露不留 None)
-    active_env: Field[str | None] = field(default_factory=Field)     # 已选投资环境(§3.2.20/§3.4.3)
-    enemy_affixes: Field[list[str]] = field(default_factory=Field)   # 当前词缀名单(§3.1.3;≠投资环境)
-    active_strategies: Field[list[str]] = field(default_factory=Field)   # 持有投资策略名单(§3.4.4;品质锚挂建模批)
-    board: Field[dict[str, int]] = field(default_factory=Field)      # 上阵羁绊计数(§3.2.6;下档阈值=派生不存储)
-    shop_refresh_cost: Field[int] = field(default_factory=Field)     # 刷新费,动态(§3.3.4/ADR-0622 现场 OCR;免费帧不写,None≠0)
+    active_env: Field[str | None] = field(default_factory=Field)     # 已选投资环境(§3.2.20/§3.4.3;开局种子底座=''=未选择)
+    enemy_affixes: Field[list[str]] = field(default_factory=Field)   # 当前词缀名单(§3.1.3;≠投资环境;开局种子底座=[],简报/接管位面详情覆写)
+    active_strategies: Field[list[str]] = field(default_factory=Field)   # 持有投资策略名单(§3.4.4;品质锚挂建模批;开局种子底座=[]未持卡)
+    board: Field[dict[str, int]] = field(default_factory=Field)      # 上阵羁绊计数(§3.2.6;下档阈值=派生不存储;开局种子底座不直写,随行域空行种子派生,禁双写)
+    shop_refresh_cost: Field[int] = field(default_factory=Field)     # 刷新费,动态(§3.3.4/ADR-0622 现场 OCR;免费帧不写,None≠0;开局种子底座=刷新基价)
 
     # (商店刷新计数组三字段——free_refresh_balance/paid_refresh_count/
     #  total_refresh_count——已随 2026-09-18 用户裁决迁出容器,住效果账本
     #  ActiveEffectInventory(统一计算,写端 = 刷新上报函数;消费方 =
     #  env_economy 选卡评估/免费闸),考古走 git。prev_node_spent 不属
     #  迁出面,保留原位。)
-    prev_node_spent: Field[bool] = field(default_factory=Field)      # 上节点是否花费(§3.3.9;存款回报条件输入,观察需求)
+    prev_node_spent: Field[bool] = field(default_factory=Field)      # 上节点是否花费(§3.3.9;存款回报条件输入,观察需求;开局种子底座=False 开局无花费)
 
     # —— 节点屏刷新计数组(§3.4.1-§3.4.4;渠道② logic_action,写入=仅逻辑)——
     # 写端现状:encounter/supply = 已用语义,动作/刷新发射侧单点(+1,发射即
@@ -1934,10 +2030,10 @@ class GameState:
     # state 就记录画面可观察的剩余次数——屏上数字即真值,观察写端逐访问
     # 覆盖,刷新后下帧观察直接给新真值,零动作侧记账):观察写端 = 各屏观察
     # report 摄入 OCR 读数(读缺跳写,值留观察覆盖)。
-    encounter_refresh_used: Field[int] = field(default_factory=Field)    # 遭遇刷新已用(§3.4.1;写端 = CwScreenEncounter on_outcome 发射型钩子)
-    supply_refresh_used: Field[int] = field(default_factory=Field)       # 补给刷新已用(§3.4.2;live 写端 = CwScreenSupplyNode 刷新分支单点;「无布局局原生可刷」收窄待证)
+    encounter_refresh_used: Field[int] = field(default_factory=Field)    # 遭遇刷新已用(§3.4.1;写端 = CwScreenEncounter on_outcome 发射型钩子;开局种子底座=0 未刷新过)
+    supply_refresh_used: Field[int] = field(default_factory=Field)       # 补给刷新已用(§3.4.2;live 写端 = CwScreenSupplyNode 刷新分支单点;「无布局局原生可刷」收窄待证;开局种子底座=0 未刷新过)
     env_refresh_left: Field[int] = field(default_factory=Field)          # 投资环境刷新剩余次数(§3.4.3;屏上「剩余次数：N」观察真值;观察写端 = report_screen_invest_env_obs 摄入,读缺跳写;原 env_refresh_used「已用」字段随剩余语义化改名退役——零写端在册,改名零消费断链)
-    strategy_refresh_left: Field[dict[str, int]] = field(default_factory=Field)  # 投资策略逐卡刷新剩余次数(§3.4.4;键 = 注册表规范卡名 normalize_invest_name 归一后——效果注册表 STRATEGY_EFFECTS 即以规范名为键,观察写端 OCR 名经同一归一函数入键,免双坐标系换算;观察写端 = report_screen_invest_strategy_obs 摄入「刷新次数N」读数,读缺键跳写、已观察键覆盖)。原 strategy_refresh_used「已用」随剩余语义化改名退役(其注释自declared「on_outcome 发射型钩子」写端与全仓零写端现状矛盾,本批改名一并清除;闸消费口径 = 剩余 ≤0 = 尽)
+    strategy_refresh_left: Field[dict[str, int]] = field(default_factory=Field)  # 投资策略逐卡刷新剩余次数(§3.4.4;键 = 注册表规范卡名 normalize_invest_name 归一后——效果注册表 STRATEGY_EFFECTS 即以规范名为键,观察写端 OCR 名经同一归一函数入键,免双坐标系换算;观察写端 = report_screen_invest_strategy_obs 摄入「刷新次数N」读数,读缺键跳写、已观察键覆盖)。原 strategy_refresh_used「已用」随剩余语义化改名退役(其注释自declared「on_outcome 发射型钩子」写端与全仓零写端现状矛盾,本批改名一并清除;闸消费口径 = 剩余 ≤0 = 尽;开局种子底座={} 无持卡,与键粒度增量写端协同)
 
     # —— 轮内新鲜度账(「本轮已买」半边;渠道② logic_action,写入=仅逻辑)——
     # [索引定义] 值形状 = {'phase': (plane, round_num) | None,
@@ -1958,7 +2054,7 @@ class GameState:
     # uses「次数类余量(免战牌×2 等)」,同型躺平/节省工位;批次一骨架的
     # skip_battle_active/remaining 两 Field 已按正本归一移除,消费走
     # gs.effects 查询)。
-    equips: Field[list[str]] = field(default_factory=Field)          # 装备库存(§3.2.15)
+    equips: Field[list[str]] = field(default_factory=Field)          # 装备库存(§3.2.15;开局种子底座=[] 开局真值)
     # [索引定义] occupied_equips:已穿装备位置(装备域姊妹面,迭代
     # 2026-09-18-prep-obs-retirement 阶段 3.2 立域)。键坐标系 =
     # 'front:1'/'back:2' 形态字符串(row ∈ front|back,slot = 画面物理槽位
@@ -1968,7 +2064,7 @@ class GameState:
     # 每入口帧实读覆盖(两态制,观察赢);写入端单一源 = CwScreenPrep 观察
     # 写端(与 equips 同点同环);未观察(None) = 识别域未就绪,M7 装备计划
     # 按 fail 门保守关(与旧黑板 None 语义同映射)。
-    occupied_equips: Field[dict[str, list[str]]] = field(default_factory=Field)
+    occupied_equips: Field[dict[str, list[str]]] = field(default_factory=Field)  # 开局种子底座={} 开局真值(无穿戴),观察覆盖
     # ⚠️ consumables = 死字段:现役零读端零写端(工具件实住 equips,
     # 工具上报记账载体 = equips 合并写,不入本字段),fields.md §3.2.16
     # 申报与现实不符——字段级清偿(退役/修正)归 fields 正本批,本批仅
@@ -1978,7 +2074,7 @@ class GameState:
     # —— 晶矿(§3.2.8,不占席)——
     # 域名 spheres = 晶矿域既定名(本义即晶矿球,非旧名残留;2026-09-20
     # ore 改名收口裁定不辖容器域名,fields.md §3.2.8 声明)。
-    spheres: Field[OreSight] = field(default_factory=Field)
+    spheres: Field[OreSight] = field(default_factory=Field)      # 开局种子底座=空读面(晶矿补给在 1-1 进入时点送达,观察覆盖)
 
     # —— 交互状态 ——
     prep_substate: Field[str] = field(default_factory=Field)     # 分类子态四档(§3.2.17;恢复锁定=会话推断档,写端=接管协议 §6.3)
@@ -1995,7 +2091,7 @@ class GameState:
     # 后 logic 直写 False(推算消亡,下帧实读覆盖);落地同帧容器 bench
     # 回占入位卡 + 执行侧 tracked 主账对称吸收(session 在场;
     # 缺吸收 = 守卫播种期双账分叉实机停机)。
-    overflow_warning: Field[bool] = field(default_factory=Field)
+    overflow_warning: Field[bool] = field(default_factory=Field)     # 开局种子底座=False 无溢出(真值观察覆盖)
     # [索引定义] overflow_card:溢出位(固定停车位,建档 area「区域-溢出角色」,
     # 1080p rect 1352,710-1465,805)上的角色身份。'' = 溢出位无卡或身份未
     # 识别(与 overflow_warning 配对解读:True ∧ '' = 有卡未识别);值语义
@@ -2004,7 +2100,7 @@ class GameState:
     # 获得链逻辑写端 cw_gain_chain 席满溢出落位直写身份;第二逻辑写端
     # 先例 = 溢出腿);溢出腿落地后
     # logic 直写 ''(入位消费)。
-    overflow_card: Field[str] = field(default_factory=Field)
+    overflow_card: Field[str] = field(default_factory=Field)     # 开局种子底座='' 无溢出(真值观察覆盖)
 
     # —— tracked 主账簿记宿主 ——
     # [索引定义] tracked_books.bench = tracked 备战席槽位表(list[BenchSlot
@@ -2034,6 +2130,14 @@ class GameState:
     # 容器每局新建 = 天然清零。
     frame_class_prep: str = 'none'
     frame_class_shop: str = 'none'
+    # —— 锚定闩(非 Field 簿记;工程结构组单列申报)——
+    # 本局是否已完成首次成功的备战 heavy 锚定(屏幕真值写回成功)。过程信号
+    # 无观察赢仲裁,同 frame_class 先例不入 Field(无 journal 面语义;容器
+    # 每局新建 = 天然清零,粘性位无复位)。生产唯一置位写点 = kernel
+    # reconcile_tracking 写 tracked_account_observed=True 的同点(两闩同一
+    # 成功条件,写失败同不置位);测试/直构域专用置闩口 = 直接赋值 True。
+    # 读口 = prep_anchored_of(session),缺省 False。
+    prep_anchored: bool = False
 
     # —— 局级节点序列台账(非 Field 簿记,非域字段,工程结构组单列申报)——
     # [索引定义] 值 = :class:`PlaneNodeLedger`(本模块;seq_by_plane 键为
@@ -2541,8 +2645,11 @@ class GameState:
               sig: ChannelSig) -> None:
         """失读处置①(§2.2):沿用上次好值,evidence = carried:<来源帧>。
         字段从未读过(处置②机制性 None)→ 保持 None 不写(不换帧不产行
-        不占版本,§3.2.2 规则 4)。sig 必填(R5 W1,ADR-0634)。"""
-        if target.value is None:
+        不占版本,§3.2.2 规则 4)。现值来源为 logic_rand(逻辑随机态:开局
+        种子底座/采样值)→ 同样不沿用——随机态值不是「上次好值」,失读时
+        宁保持未验证态,禁被失读腿换帧洗成可信 carried(§8.8 假值防线)。
+        sig 必填(R5 W1,ADR-0634)。"""
+        if target.value is None or target.source == 'logic_rand':
             return
         _validate_sig(sig, ('obs',))
         name = self._field_name(target)
