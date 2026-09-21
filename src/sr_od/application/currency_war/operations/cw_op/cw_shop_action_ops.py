@@ -23,7 +23,7 @@ kernel 规则单一源,与序列驱动器同形;写语义由投影直锁钉
 tracked``(期望态 vs tracked 双账对拍)已随 T-268 退役(用户裁定·对账
 归属原则:对账 = 观察 vs 逻辑的双态比对,唯一合法时点 = 画面 op 上报
 观察数据进入 game state 的观察边界,由 kernel cw_reconcile 执行;规则
-文本 = flow/screen_op.md §2.3/§4)——逻辑态建模 bug 的检出归观察边界
+文本 = screens/op-layer.md §1.3)——逻辑态建模 bug 的检出归观察边界
 reconcile 纠漂显影(观察赢),op 层不再做双态比对。
 
 执行侧观测通道(ADR-0517 §执行侧观测通道去向,候选 a;T-192 判效

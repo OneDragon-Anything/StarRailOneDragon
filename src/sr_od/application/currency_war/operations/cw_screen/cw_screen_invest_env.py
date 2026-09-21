@@ -5,8 +5,9 @@ OCR 3 张投资环境卡名 → ``cw_events.decide_event`` 按事件白名单打
 + 确认。替代原"盲点中卡"(无策略)。
 
 环境刷新 = 终结动作(用户裁定 2026-09-14:刷新 = 唯一引入新事实的动作,
-须交回外循环重观察;结构语义 = flow/screen_op.md 决策 7 + §8.4 商店/补给
-刷新同款——期望态必须在新事实处重建,禁为刷新设计循环内重读机制):
+须交回外循环重观察;结构语义 = screens/op-layer.md §1.4(刷新 = 终结
+动作;商店/补给刷新同款)——期望态必须在新事实处重建,禁为刷新设计循环
+内重读机制):
 决策返回 ``refresh_slots`` 非空(kernel 侧环境刷新判据经 decide_invest
 产出)∧「剩余次数」计数现读授权 → 点刷新圆钮一次(文本锚定偏移)→
 动画窗固定等待(机械时序,非判效)→ 零效果缺陷留证对账 → 本访问即终结
@@ -16,12 +17,12 @@ OCR 3 张投资环境卡名 → ``cw_events.decide_event`` 按事件白名单打
 逐卡刷新),落地形态见 ``_decide_and_act`` 链头注。
 
 卡名按行过滤:标题「投资环境」在顶(y≈98)、卡名在中(y≈392)、描述在下(y≈432)、
-「确认」在底(y≈982);取 y≈392 行的短文本(2-6 字)即 3 张卡名,按 center-x 排序
+「确认」在底(y≈982);取 y≈392 行的短文本(2-8 字)即 3 张卡名,按 center-x 排序
 左→右。decide_event 仅用 ``state.board`` 做克制判定,投资环境常在开局/局内 overlay、
 board 不可读 → 传空 board stub(dot_punish 为次要细化,白名单主策略不依赖 board)。
 
 卡底 Y + 确认坐标进 screen_info(``currency_war_invest_env``):``区域-卡牌描述行``(给 Y)
-+ ``按钮-确认``(给 center),task#20 已完成;本 op 经 ``cw_obs_core.area_center`` 读,
++ ``按钮-确认``(给 center);本 op 经 ``cw_obs_core.area_center`` 读,
 缺失才用兜底常量。
 
 形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两段
@@ -83,7 +84,7 @@ class CwScreenInvestEnv(SrOperation):
     """投资环境 3 选 1:OCR 卡名 → decide_event 打分 → 点最优卡底 + 确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资环境'   # screen_info 画面(currency_war_invest_env.yml)
-    # 卡选中点击 Y:screen_info「区域-卡牌描述行」center.y(task#20);常量=screen_info 缺失兜底。
+    # 卡选中点击 Y:screen_info「区域-卡牌描述行」center.y;常量=screen_info 缺失兜底。
     # 实测(2026-08-04):立绘在卡顶 y≈100-400(点立绘/name y390 开角色详情,非选中);
     # **描述区 y≈450 才选中**(立绘下方);卡底 y700 无效。区别 invest_strategy(描述区 y545)。
     CARD_CLICK_Y: ClassVar[int] = 450   # 兜底;首选 area_center('区域-卡牌描述行')
@@ -95,7 +96,7 @@ class CwScreenInvestEnv(SrOperation):
     _EXCLUDE: ClassVar[set[str]] = {'投资环境', '攻略', '确认', '角色', '装备', '剩余次数：1'}
     # 变异窗宽限(秒):覆盖确认动画 + 节点行刷新重试窗;超时后三票校验恢复落账。
     ENV_GRACE_S: ClassVar[float] = 45.0
-    # 确认按钮:screen_info「按钮-确认」center(task#20);常量=兜底。
+    # 确认按钮:screen_info「按钮-确认」center;常量=兜底。
     CONFIRM: ClassVar[Point] = Point(1082, 982)   # 兜底;首选 area_center('按钮-确认')
     # ---- 环境刷新执行链常量(3.8;执行层时序/几何常量,非策略数值,
     # ADR-0529 先例)----
@@ -286,9 +287,9 @@ class CwScreenInvestEnv(SrOperation):
         if isinstance(act, CwActionRefreshInvestCardsParam):
             refresh_slots = act.slots
         # ===== 环境刷新 = 终结动作(用户裁定 2026-09-14:刷新 = 唯一引入
-        # 新事实的动作,须交回外循环重观察;结构语义 = flow/screen_op.md
-        # 决策 7 + §8.4 商店/补给刷新同款——期望态必须在新事实处重建,
-        # 禁为刷新设计循环内重读机制)=====
+        # 新事实的动作,须交回外循环重观察;结构语义 = screens/op-layer.md
+        # §1.4(刷新 = 终结动作;商店/补给刷新同款)——期望态必须在新事实处
+        # 重建,禁为刷新设计循环内重读机制)=====
         # 形态:refresh_slots 非空(kernel 侧环境刷新判据经 decide_invest
         # 产出,handler 禁直调 kernel 判据算刷新建议,策略侧锁 13 同款纪律)
         # ∧ 计数现读授权 → 点刷新圆钮一次(环境屏 = 整组重掷:单全局钮 +

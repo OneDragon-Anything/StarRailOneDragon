@@ -47,10 +47,10 @@ if TYPE_CHECKING:
         StrategySession,
     )
 
-#: 发射帧仲裁段段数帽(sim 侧;结构常量非策略值——与生产 run_buy_waves
-#: 访问段帽同构对齐:MAX_REFRESH=4 硬墙 + 1 段 = 5 段,每段以终结动作
-#: (刷新)收尾后重观察。kernel 桶禁 import operations,故在此以常量 +
-#: 派生注释对齐,两面漂移由本注释与 ADR-0566 对账申报辖。
+#: 发射帧仲裁段段数帽(sim 侧;结构常量非策略值,辖 sim 循环有界性)。
+#: 原对齐依据 = 生产 run_buy_waves 的 MAX_REFRESH 硬墙已删(生产段循环
+#: 现为无帽 while True,以终结动作收尾后重观察),本帽与生产不再对齐
+#: ——重审候 sim 基线批;两面漂移由本注释与 ADR-0566 对账申报辖。
 LAUNCH_ARBITRAGE_SEGMENT_CAP: int = 5
 
 #: 预算闸拒因键(单一面;调用侧计数消费,禁第二字面量)。

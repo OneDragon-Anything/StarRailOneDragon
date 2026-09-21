@@ -238,9 +238,9 @@ class CwActionPickSupplyOp(SrOperation):
 class CwActionPickMegastarOp(SrOperation):
     """盛会之星 pick 确认链(统一动作工厂批4 迁入)。
 
-    候选选中点击留守画面 op:候选选中半与 chosen_megastar 写端交错
-    (点击 → 写端 → 动画等待),写端属单次逻辑写入豁免面——确认机械半
-    收拢本类,候选半留守画面 op。"""
+    候选选中半迁入本类(pick-op-unify 批,``env.need_select`` 驱动,见
+    ``run``);``chosen_megastar`` 写端留守画面 op(单次逻辑写入豁免面,
+    派发前写)——确认机械半 = 确认钮单发。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False

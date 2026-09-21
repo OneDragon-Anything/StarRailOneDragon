@@ -1409,7 +1409,8 @@ class CwLoop(SrOperation):
             def _on_shop_card_detail(ok: bool, _res: Any) -> None:
                 log.info('[cw-loop] 商店卡牌详情弹窗 → 点X关闭(ok=%s)', ok)
 
-            # 关不掉 → on_fail_retry 映射 round_retry(「点了≠成了」由 op 内验效承载)
+            # 关不掉 → on_fail_retry 映射 round_retry(落地判定 = op 内重入裁决
+            # 与观察侧对账,非动作层验效——验证废除批)
             return self._dispatch_screen_op(
                 CwScreenShopCardDetailPopup(self.ctx), journal_name='商店卡牌详情',
                 frame_tag='overlay_shop_card_detail', wait=1.5,
@@ -1761,7 +1762,7 @@ class CwLoop(SrOperation):
 
         # 0e3. 道具详情弹窗(聘用书类;live 2026-08-15 M13 首遇):获得 3费聘用书 等道具后
         #      自动弹介绍 modal,道具名可变无固定身份 → 阶段一身份 miss。点 × 关;道具使用属 P4 工具域。
-        #      ⚠️ r31 死循环修(live 实锤 15min+):祈愿试炼选项名含「聘用书」→ 保留祈愿屏排除
+        #      ⚠️ 死循环防线(实机实锤:截胡死循环单次 15min+):祈愿试炼选项名含「聘用书」→ 保留祈愿屏排除
         #      作纵深(正常祈愿帧已被阶段一身份接住,此处防漏网)。
         if (self.round_by_ocr(screen, '聘用书', lcs_percent=0.8).is_success
                 and not self.round_by_find_area(screen, '货币战争-祈愿试炼', '标识-祈愿试炼',

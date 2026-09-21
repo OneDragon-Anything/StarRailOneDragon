@@ -106,7 +106,7 @@ class StopBrakeShortCircuit(RuntimeError):
 def row_area_centers(ctx: SrContext, prefix: str) -> list[Point]:
     """从 screen_info「货币战争-备战」读全部 prefix-N 区域中心(N 升序)。
 
-    同 CwScreenDeploy._row_centers 逻辑(读全不硬编码,后排 >6 时 screen_info 补区后自动跟上);
+    逐区现读、不硬编码(后排 >6 时 screen_info 补区后自动跟上);
     prep_actions 执行器 / cw_screen_prep 观察共用。
     """
     si = ctx.screen_loader.get_screen(SCREEN_NAME)
@@ -131,7 +131,7 @@ def sell_point(ctx: SrContext) -> Point:
 
     area 缺失 = 建档漂移/档案损坏 → RuntimeError 显式上抛(信息带 area
     名),禁回退硬编码坐标静默点击(坐标单一真相源)。消费面含
-    cw_op_deploy 卖 off-target 拖拽,落点直入 drag 原语 → None 不可流入,
+    卖上阵 off-target 拖拽,落点直入 drag 原语 → None 不可流入,
     直取 + 上抛是唯一兼容形态。
     """
     pt = area_center(ctx, '区域-出售区')
@@ -582,7 +582,7 @@ class PrepActionExecutor:
     # ===== 奖励域 =====
 
     def _collect_ore(self, action: CwActionCollectOreParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_collect_ore_action.CollectOreOp``,统一
+        """薄委托(体已迁 ``cw_collect_ore_action.CwActionCollectOreOp``,统一
         动作工厂批3 体迁 + 薄委托,替身缝保留;机械语义 docstring 随体)。"""
         return self._dispatch_action(action)
 
@@ -604,35 +604,35 @@ class PrepActionExecutor:
             return -1
 
     def _open_box(self, action: CwActionOpenBoxParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_open_box_action.OpenBoxOp``;批3 体迁 +
-        薄委托,替身缝保留)。终结动作(R7):交回等待 = OpenBoxOp.
+        """薄委托(体已迁 ``cw_open_box_action.CwActionOpenBoxOp``;批3 体迁 +
+        薄委托,替身缝保留)。终结动作(R7):交回等待 = CwActionOpenBoxOp.
         terminal_wait(与 _OVERLAY_ANIM_WAIT_S 等价,等价锁在册)。"""
         return self._dispatch_action(action)
 
     def _open_tome(self, action: CwActionOpenTomeParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_open_tome_action.OpenTomeOp``;批3 体迁 +
+        """薄委托(体已迁 ``cw_open_tome_action.CwActionOpenTomeOp``;批3 体迁 +
         薄委托,替身缝保留)。"""
         return self._dispatch_action(action)
 
     def _open_bookcard(self, action: CwActionOpenBookcardParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_open_bookcard_action.OpenBookcardOp``;批3
+        """薄委托(体已迁 ``cw_open_bookcard_action.CwActionOpenBookcardOp``;批3
         体迁 + 薄委托,替身缝保留——测试直调面沿此缝)。"""
         return self._dispatch_action(action)
 
     # ===== 席位域 =====
 
     def _sell_bench(self, action: CwActionSellBenchParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_prep_sell_bench_action.PrepSellBenchOp``;
+        """薄委托(体已迁 ``cw_prep_sell_bench_action.CwActionSellBenchOp``;
         批3 体迁 + 薄委托,替身缝保留)。"""
         return self._dispatch_action(action)
 
     def _sell_deployed(self, action: CwActionSellDeployedParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_sell_deployed_action.SellDeployedOp``;批3
+        """薄委托(体已迁 ``cw_sell_deployed_action.CwActionSellDeployedOp``;批3
         体迁 + 薄委托,替身缝保留)。"""
         return self._dispatch_action(action)
 
     def _deploy_move(self, action: CwActionDeployMoveParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_deploy_move_action.DeployMoveOp``;批3 体迁
+        """薄委托(体已迁 ``cw_deploy_move_action.CwActionDeployMoveOp``;批3 体迁
         + 薄委托,替身缝保留)。"""
         return self._dispatch_action(action)
 
@@ -691,7 +691,7 @@ class PrepActionExecutor:
         return Point(entry[1][0], entry[1][1]) if entry is not None else None
 
     def _wear_equip(self, action: CwActionWearEquipParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_wear_equip_action.WearEquipOp``;批3 体迁 +
+        """薄委托(体已迁 ``cw_wear_equip_action.CwActionWearEquipOp``;批3 体迁 +
         薄委托,替身缝保留)。"""
         return self._dispatch_action(action)
 
@@ -839,7 +839,7 @@ class PrepActionExecutor:
     # ===== 商店域 =====
 
     def _level_up(self, action: CwActionLevelUpParam | None = None) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_prep_level_up_action.PrepLevelUpOp``;批3
+        """薄委托(体已迁 ``cw_prep_level_up_action.CwActionLevelUpOp``;批3
         体迁 + 薄委托,替身缝保留)。
 
         ``action`` 形参 = 注册表分派载体(原签名无参——单击体不读动作
@@ -852,7 +852,7 @@ class PrepActionExecutor:
     # 本入口保留薄委托替身缝,返回序 (ok, detail)。
 
     def _start_battle(self) -> tuple[bool, str]:
-        """薄委托(体已迁 ``cw_start_battle_action.StartBattleOp``;批3
+        """薄委托(体已迁 ``cw_start_battle_action.CwActionStartBattleOp``;批3
         体迁 + 薄委托,替身缝保留)。"""
         detail, emitted = self._dispatch_action(CwActionStartBattleParam())
         return emitted, detail

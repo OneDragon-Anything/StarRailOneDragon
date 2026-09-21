@@ -267,7 +267,8 @@ class CwScreenPartner(SrOperation):
             self._pick_idx = idx
             log.info('[cw-partner] candidates=%s pick=idx%s %s', [o.char_id for o in options], idx, reason)
             # r358d(遥测接线):伙伴选择落容器(chosen_partner,gs 单一源
-            # ——终态契约 §B:session 份退役;选中确认后写)。
+            # ——终态契约 §B:session 份退役;点选前写——决策半派发前,
+            # 单次逻辑写入豁免面,与巨星 chosen_megastar 派发前写同款)。
             # chosen_* = 动作事实边界:留守选择点,不进 report。
             if match is not None and options and 0 <= idx < len(options) \
                     and getattr(match, 'gs', None) is not None:

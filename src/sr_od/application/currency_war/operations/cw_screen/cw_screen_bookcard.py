@@ -14,8 +14,9 @@ node。决策动作 node = 重入裁决顶部(选卡点击已发 → 弹窗不�
 round_wait 循环(不烧节点重试预算,无防御上限)。chosen_tome 与 ConfirmTome
 到账登记 = 重入裁决点留守(动作事实边界,不进 report;ConfirmTome 逻辑
 推进 = owned 本体直推);本屏 sim 腿 = 不适用(sim 无对应画面段,事件浮层
-族即时落定),等价判据主承重 = 实机在册行为锁(test_cw_fake_channels_
-outerloop 典籍通道真 op 锁 + test_cw_game_state_consume chosen_tome 锁)。
+族即时落定),等价判据主承重 = 实机在册行为锁(test_cw_game_state_consume chosen_tome 锁 +
+test_cw_screen_two_node_family 形态锁;典籍通道真 op 锁补档 =
+开放设计注,见 screens/bookcard.md §9)。
 """
 from typing import ClassVar
 
