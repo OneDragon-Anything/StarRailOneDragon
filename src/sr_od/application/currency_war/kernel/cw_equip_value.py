@@ -10,9 +10,10 @@
 - ``key_recipe_pairs`` / ``key_fit_names``:锁定阵容契合全集
   (成品 ∪ 材料对成员;key_fit_names 由 pairs 派生,单一推导);
 - ``equip_tier`` / ``pick_equipment``:通用选装入口(序数分档制,
-  design §2.2-§2.3;「候选全部为装备的多选一」场景禁第二套打分);
-- ``decide_equip_overlay_pick``:选择装备 overlay 三选一(OCR 自由文本
-  打分,普查迁移批 2 收编;与序数分档语义不可合一,见函数 docstring)。
+  design §2.2-§2.3;「候选全部为装备的多选一」场景禁第二套打分)。
+
+  (原第五件 ``decide_equip_overlay_pick`` = 选择装备 overlay 三选一判据
+  已随该屏误判退役删除——屏不存在,见外循环退役号 0a0。)
 
 档位语义(design §2.2/§2.3,零参数):
 - tier 3:key 直击且需求未满足(持有数_total < 需求件数);
@@ -206,48 +207,4 @@ def pick_equipment(names: list[str], *, key_equips: Sequence[str] = (),
         key = (tier, equip_generic_value(name))
         if best_key is None or key > best_key:
             best_i, best_key = i, key
-    return best_i
-
-
-# ===== 选择装备 overlay 三选一(decide_equip_overlay_pick;普查迁移批 2
-# ===== F-overlay-03 收编:自 cw_screen_equip_pick handler 打分逐位平移)=====
-
-#: 泛用增益关键词腿(逐位平移自 handler)。与 :data:`EQUIP_GENERIC_VALUE`
-#: 名键先验是两套不同源的泛用价值观——行为保持版保留关键词腿;两腿合并
-#: 消解属轻微行为变化,挂账迁移批 2 报告由编排者另裁,本函数不擅自合一。
-EQUIP_OVERLAY_GENERIC_KEYWORDS: tuple[str, ...] = ('伤害', '强度', '提高')
-
-
-def decide_equip_overlay_pick(texts: list[str], locked_comp: str = '') -> int:
-    """选择装备三选一 overlay → 应点选的卡下标(0 基;卡序 = handler OCR
-    分桶序;并列/全无命中 = 首卡)。
-
-    判据(行为保持版):已锁线 key_fit_names 子串命中 +100(压倒泛用腿);
-    未命中且含泛用增益关键词 +1.0;严格大于 argmax(并列取首卡)。
-
-    与 :func:`pick_equipment`(序数分档)语义不可合一,故新立函数:
-    ①输入形状 = OCR 卡名带自由文本(子串命中制)vs 精确注册表名;②泛用
-    腿 = 关键词 +1.0 vs 名键先验表。合一属轻微行为变化,挂账另裁。
-
-    locked_comp = 锁定阵容意向(策略入口自 ``self.state`` 取值注入,本
-    函数零状态读取);解析失败(注册表漂移)= 按未锁态仅泛用腿(保守向:
-    漏提权非错提权;与 supply-selection 迭代 S13 裁定一致——未锁态装备
-    选择不绑囤牌方向)。"""
-    key_equips: tuple[str, ...] = ()
-    if locked_comp:
-        from sr_od.application.currency_war.kernel.cw_comps import get_comp
-        comp = get_comp(locked_comp)
-        if comp is not None:
-            key_equips = tuple(sorted(key_fit_names(comp.key_equips or ())))
-    best_i, best_s = 0, -1.0
-    for i, t in enumerate(texts):
-        s = 0.0
-        for ke in key_equips:
-            if ke and ke in t:
-                s += 100.0
-                break
-        if s <= 0 and any(kw in t for kw in EQUIP_OVERLAY_GENERIC_KEYWORDS):
-            s = 1.0   # 泛用增益次之
-        if s > best_s:
-            best_i, best_s = i, s
     return best_i

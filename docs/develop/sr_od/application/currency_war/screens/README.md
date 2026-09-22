@@ -104,9 +104,9 @@
 
 ### 5.5 事件单选族(overlay)
 
-投资策略/补给/遭遇(货币战争-遭遇节点)/盛会之星/选择伙伴/选择装备/命运卜者(`cw_screen_fortune.py`)/银狼升星(`cw_screen_yinlang.py`)/祈愿试炼/星徽秘典四选一/专家邀请函/武装箱弹窗。决策 = pick 族九接口 + `decide_box_card`,规格 = strategy-docs 13 号篇。
+投资策略/补给/遭遇(货币战争-遭遇节点)/盛会之星/选择伙伴/命运卜者(`cw_screen_fortune.py`)/银狼升星(`cw_screen_yinlang.py`)/祈愿试炼/星徽秘典四选一/专家邀请函/武装箱弹窗。决策 = pick 族八接口 + `decide_box_card`,规格 = strategy-docs 13 号篇(原选择装备随该屏误判退役删除,2026-09-22)。
 
-**选卡动作执行载体(pick-op-unify 批起统一;事件屏统一批更新)**:13 屏的选卡动作 = 13 个 `CwActionPickXxxOp` 注册行(投资两屏拆类 = `CwActionPickInvestStrategyParam`/`CwActionPickInvestEnvParam` 两行同指一 op),画面 op 决策半只决策与组装机械参数,选中→确认(或点卡即选)机械链 + 自上报在动作 op 内。**上报形态 = 全族即时上报**(发射/落地两相与证据闩已全域清偿,迭代 2026-09-21,用户裁定 = [../flow/action_ops.md](../flow/action_ops.md) §1 增补 2):投资两屏选择事实+效果经获得链 `gain_invest_strategy`/`gain_invest_env` 记;补给一口写 owned+单位腿+后果腿(`kernel/cw_action_report/pick_supply.py`);遭遇发射即写 `chosen_encounter`(`kernel/cw_action_report/pick_encounter.py`);策划一口写腿型分派效果,条件腿 rider 先行,装备/升费腿含 `lv999_cost_tier` 档行(`kernel/cw_action_report/pick_planner.py`);装备一口写入栏+后果链(`kernel/cw_action_report/pick_equip.py`)——画面 op 零容器写、派发即终结交回,确认未生效由外循环重识别重派。契约正本 = [../flow/action_exec.md](../flow/action_exec.md) §2。
+**选卡动作执行载体(pick-op-unify 批起统一;事件屏统一批更新)**:12 屏的选卡动作 = 12 个 `CwActionPickXxxOp` 注册行(投资两屏拆类 = `CwActionPickInvestStrategyParam`/`CwActionPickInvestEnvParam` 两行同指一 op),画面 op 决策半只决策与组装机械参数,选中→确认(或点卡即选)机械链 + 自上报在动作 op 内。**上报形态 = 全族即时上报**(发射/落地两相与证据闩已全域清偿,迭代 2026-09-21,用户裁定 = [../flow/action_ops.md](../flow/action_ops.md) §1 增补 2):投资两屏选择事实+效果经获得链 `gain_invest_strategy`/`gain_invest_env` 记;补给一口写 owned+单位腿+后果腿(`kernel/cw_action_report/pick_supply.py`);遭遇发射即写 `chosen_encounter`(`kernel/cw_action_report/pick_encounter.py`);策划一口写腿型分派效果,条件腿 rider 先行,装备/升费腿含 `lv999_cost_tier` 档行(`kernel/cw_action_report/pick_planner.py`)——画面 op 零容器写、派发即终结交回,确认未生效由外循环重识别重派。契约正本 = [../flow/action_exec.md](../flow/action_exec.md) §2。
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
@@ -146,10 +146,10 @@
 - **SwapDeploy**:词表/容器逻辑态直写/sim 消费在役,生产执行器未接线——能力面按词表完备性保留。
 - **刷新不换牌面的场景**:节点内关店→重开不刷新(牌面持久);跨节点自动刷新全店(不继承)。判「是否刷新」以节点推进事件为锚(`research/economy.md` §2.1)。
 
-## 8. 文档索引(35 篇)
+## 8. 文档索引(34 篇)
 
 主链:[prep.md](prep.md)(备战)/ [shop.md](shop.md)(商店开画面)/ [battle_wait.md](battle_wait.md)(战斗等待·结算)。
-单选族:[invest_strategy.md](invest_strategy.md) / [invest_env.md](invest_env.md) / [encounter.md](encounter.md) / [supply.md](supply.md) / [megastar.md](megastar.md) / [partner.md](partner.md) / [equip_pick.md](equip_pick.md) / [fortune.md](fortune.md) / [planner.md](planner.md) / [wish_trial.md](wish_trial.md) / [bookcard.md](bookcard.md) / [expert_invite.md](expert_invite.md) / [box_pick.md](box_pick.md)。
+单选族:[invest_strategy.md](invest_strategy.md) / [invest_env.md](invest_env.md) / [encounter.md](encounter.md) / [supply.md](supply.md) / [megastar.md](megastar.md) / [partner.md](partner.md) / [fortune.md](fortune.md) / [planner.md](planner.md) / [wish_trial.md](wish_trial.md) / [bookcard.md](bookcard.md) / [expert_invite.md](expert_invite.md) / [box_pick.md](box_pick.md)。(原 [equip_pick.md](equip_pick.md) 随选择装备屏误判退役删除,2026-09-22。)
 简报与过场:[briefing.md](briefing.md) / [boss_briefing.md](boss_briefing.md) / [plane_transition.md](plane_transition.md) / [plane_detail.md](plane_detail.md) / [plane_intel.md](plane_intel.md) / [wait_one_one.md](wait_one_one.md) / [next_button.md](next_button.md)。
 弹窗与部署:[armory_box.md](armory_box.md) / [consumable_overlay.md](consumable_overlay.md) / [aha_equip_pick.md](aha_equip_pick.md) / [emblem_detail_popup.md](emblem_detail_popup.md) / [item_detail_popup.md](item_detail_popup.md) / [role_detail_overlay.md](role_detail_overlay.md) / [shop_card_detail.md](shop_card_detail.md) / [refresh_odds_popup.md](refresh_odds_popup.md) / [prep_locked_return.md](prep_locked_return.md) / [interrupt_dialog.md](interrupt_dialog.md) / [deploy.md](deploy.md) / [deploy_not_full.md](deploy_not_full.md)。
 

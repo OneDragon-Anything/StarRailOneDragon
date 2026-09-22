@@ -54,7 +54,7 @@ card_point = (选中卡 x 中心, 卡身 y 常量 290)(点卡名带下方一点,
 
 ## 6. 状态上报面
 
-本屏无 chosen_\* 写端、无到账登记(装备到账归下一帧 owned 观察覆盖)。候选观察:`report_screen_box_pick_obs` 候选写容器 `box_card_names` 槽(两道闸过才写)。字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.5(「装备三选一」与武装箱选择面同屏性待采证注)/ §4「事件选择」;效果账 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §2(显式不建模清单:OpenBox 箱体消耗在选卡确认)。
+本屏无 chosen_\* 写端、无到账登记(装备到账归下一帧 owned 观察覆盖)。候选观察:`report_screen_box_pick_obs` 候选写容器 `box_card_names` 槽(两道闸过才写)。字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.5 / §4「事件选择」;效果账 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §2(显式不建模清单:OpenBox 箱体消耗在选卡确认;原「装备三选一与武装箱同屏性待采证」候裁面随选择装备屏误判退役销项,2026-09-22)。
 
 ## 7. 子态与 overlay
 

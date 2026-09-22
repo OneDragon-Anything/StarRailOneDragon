@@ -38,9 +38,6 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_action_report.pick_encounter import (
     report_action_pick_encounter_param,
 )
-from sr_od.application.currency_war.kernel.cw_action_report.pick_equip import (
-    report_action_pick_equip_param,
-)
 from sr_od.application.currency_war.kernel.cw_action_report.pick_invest_env import (
     report_action_pick_invest_env_param,
 )
@@ -71,7 +68,6 @@ from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPickBoxCardParam,
     CwActionPickEncounterParam,
-    CwActionPickEquipParam,
     CwActionPickExpertInviteParam,
     CwActionPickFortuneParam,
     CwActionPickInvestEnvParam,
@@ -573,48 +569,6 @@ class CwActionPickWishTrialOp(SrOperation):
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
         return self.round_success('祈愿试炼确认链已发')
-
-
-class CwActionPickEquipOp(SrOperation):
-    """选择装备三选一选卡链(pick-op-unify 批收编;点卡即选,无确认钮)。
-
-    点卡(mouse_move+click bug#1 缓解;选中点 = 卡名带 x + 卡身 y,决策半
-    现算经 env 传入)→ 选中动画固定等待。**即时上报**(action_ops.md §1
-    增补 2):点卡后
-    立即一口写完整效果逻辑态(装备入栏 + 获得后果链),无发射/落地两相、
-    无证据闩——点卡未生效 = 代码 bug,overlay 残留由外循环按当前画面
-    重识别重派。本屏零 chosen 写端(选择存证已退役)。"""
-
-    #: 非终结动作(每类显式声明,无基类缺省)。
-    terminal = False
-    terminal_wait = 0.0
-
-    def __init__(self, ctx: SrContext, param: CwActionPickEquipParam,
-                 env: OverlayPickExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionPickEquipOp',
-                             need_check_game_win=False)
-        self.param = param
-        self.env = env
-
-    @operation_node(name='pick_equip', is_start_node=True)
-    def run(self) -> OperationRoundResult:
-        """机械执行(点卡即选 + 固定等待;轮次结果经旁路回传恒成功)。"""
-        action = self.param
-        env = self.env
-        op = env.op
-        op.ctx.controller.mouse_move(env.target)
-        op.ctx.controller.click(env.target)
-        time.sleep(1.2)
-        # 立即自上报完整结果(点卡后一口写
-        # 装备入栏 + 获得后果链;norm_item 未解析 = 翻来源留证——
-        # 增补 2:点完即按成功上报,零判效零证据闩)。
-        gs = game_state_from_ctx(self.ctx)
-        if gs is not None:
-            report_action_pick_equip_param(
-                gs, action,
-                ChannelSig(family='logic_action',
-                           actor=type(self).__name__, mode='compute'))
-        return self.round_success('装备选卡点击已发(结果经旁路回传)')
 
 
 class CwActionPickBoxCardOp(SrOperation):

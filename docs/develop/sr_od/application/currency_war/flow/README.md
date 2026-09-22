@@ -78,7 +78,7 @@
 |---|---|---|---|
 | decide_prep_screen(session, config) | 容器 game state 直读(game_state_of;迭代 2026-09-18-prep-obs-retirement 阶段 3.5 黑板退役,「观察先于决策」由画面 op 编排保证) | **恰一个动作**(CwAction),None 退役;重观察动作 = CwActionObsParam 两口径——scope='in_place' 环内重观察(宿主重观察上报后原地续决策)/ scope='outer_loop' 交回外循环重观察(承载原 HoldFrame 空发射语义,用户裁定 2026-09-20 HoldFrame 收编删除) | 空发射是合法通道;策略器异常/非法形状由消费端守卫拒绝(cw_screen_prep 决策循环 try/except:异常→本轮 fail 交外循环 retry 链;非 CwAction 返回→具名 fail 留证) |
 | `decide_shop_action(session, config)` [本批升格入 ABC] | **终态零参口**:决策输入 = 容器单例 `game_state_of(session)`(self.gs;写者 = 入口观察漏斗/动作自上报/sim 引擎)——形参仅为 ABC 形状保留,决策本体零消费 | **恰一个动作**,「无动作可做」= `CloseShop` 恒可用终结;生产执行侧 = 商店画面 op `CwScreenShop` 决策动作 node 单动作循环逐帧调用,契约核验挂本入口 | 决策本体 = `mandate_v1/shop.py`;容器 shop payload 离屏 = 观察层失约抛错 |
-| `decide_invest_env`/`decide_invest_strategy`/`decide_supply`/`decide_encounter`/`decide_megastar`/`decide_partner`/`decide_planner`/`decide_star_tome`/`decide_wish_trial`/`decide_box_card`/`decide_fortune`/`decide_expert_invite`/`decide_equip_pick`(pick 族 13) | 容器槽零参读(候选自各 `*_opts` 槽/payload 槽,写端 = 各画面 op 观察上报;离屏 None = 观察层失约抛错) | 恰一个动作:选卡 `CwActionPickXxxParam` ∨ 刷新建议动作(遭遇/补给/投资两屏),互斥单发 | 选项决策;动作编排归画面 op,不进序列契约辖内。决策规格 = `../strategy-docs/13_pick_family.md` |
+| `decide_invest_env`/`decide_invest_strategy`/`decide_supply`/`decide_encounter`/`decide_megastar`/`decide_partner`/`decide_planner`/`decide_star_tome`/`decide_wish_trial`/`decide_box_card`/`decide_fortune`/`decide_expert_invite`(pick 族 12;原 `decide_equip_pick` 随选择装备屏误判退役删除,2026-09-22) | 容器槽零参读(候选自各 `*_opts` 槽/payload 槽,写端 = 各画面 op 观察上报;离屏 None = 观察层失约抛错) | 恰一个动作:选卡 `CwActionPickXxxParam` ∨ 刷新建议动作(遭遇/补给/投资两屏),互斥单发 | 选项决策;动作编排归画面 op,不进序列契约辖内。决策规格 = `../strategy-docs/13_pick_family.md` |
 
 **非契约成员(实现层,不在 ABC 面)**:
 

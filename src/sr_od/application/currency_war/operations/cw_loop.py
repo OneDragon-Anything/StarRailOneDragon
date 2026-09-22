@@ -579,7 +579,7 @@ class CwLoop(SrOperation):
     #(按钮在普通节点 revisit 备战同样出现,#18 接线暂缓)、道具详情弹窗/
     #: 消耗品浮层/阿哈装备(无固定身份,阶段三特殊规则)。
     CW_DISPATCH_SCREENS: ClassVar[tuple[str, ...]] = (
-        '货币战争-选择装备', '货币战争-列车同行', '货币战争-银狼升星',
+        '货币战争-列车同行', '货币战争-银狼升星',
         '货币战争-命运卜者强化', '货币战争-位面详情', '货币战争-盛会之星',
         '货币战争-遭遇节点', '货币战争-未达上限警告', '货币战争-投资策略',
         '货币战争-补给', '货币战争-武装箱弹窗', '货币战争-备战-武装箱选择',
@@ -1069,16 +1069,6 @@ class CwLoop(SrOperation):
         臂间无顺序语义(键互斥)。新增画面 = 建档(语料两向验证)+ 本方法加臂
         + CW_DISPATCH_SCREENS 登记,三处缺一不可。
         """
-        if name == '货币战争-选择装备':
-            # 0a0. 选择装备 overlay。与列车同行由建档组合互斥(见 §1):
-            #      partner 建档加整行副题锚后两画面身份互斥(装备帧不再命中列车同行)。
-            from sr_od.application.currency_war.operations.cw_screen.cw_screen_equip_pick import (
-                CwScreenEquipPick,
-            )
-            return self._dispatch_screen_op(
-                CwScreenEquipPick(self.ctx), journal_name='选择装备',
-                frame_tag='overlay_equip_pick', wait=2)
-
         if name == '货币战争-列车同行':
             self._snap('choose_partner')   # 选人选项(立绘名)→ 后续建策略评估用
             return self._dispatch_screen_op(

@@ -903,30 +903,6 @@ class CwActionPickExpertInviteParam:
 
 
 @dataclass
-class CwActionPickEquipParam:
-    """选择装备三选一选择(契约扩员 12→15 新增;普查迁移批 2)。
-
-    选中件载荷(银狼闭环迭代 design.md §2.2 确定性通道·通道宿主迁移,
-    照 PickInvest 载荷扩展先例):``norm_item`` = 选中卡装备归一件名
-    (``normalize_registry_equip_name`` 注册表级分层归一,OCR 原始卡名
-    不静默改写由 handler 持有;'' = 未解析)。不入动作实例键(归因载荷
-    不改变动作身份,``route_tag`` 先例);动作 op 点卡后立即上报,装备腿
-    = 入栏 + 获得后果链,未解析 = 值不变翻来源留证(即时单相,
-    design §2.1)。
-    """
-    idx: int
-    # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
-    #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
-    #             取值时机 = 生成期快照(原 PickOption 基类契约,摊平后逐类
-    #             重声明;``reason`` = 归因记录字段,''=未标)。
-    reason: str = ''
-    norm_item: str = field(default='', kw_only=True,
-                           metadata={'action_key_exclude': True})
-    route_tag: str = field(default='', kw_only=True,
-                           metadata={'action_key_exclude': True})
-
-
-@dataclass
 class CwActionRefreshNodeOptionsParam:
     """遭遇节点刷新建议(替代 EncounterPick.refresh 旗标):策略建议点击
     节点刷新钮。encounter 刷新链 = 同访问重决策——发射本动作前须以重读
@@ -1016,7 +992,7 @@ CwAction = (
         CwActionLuckyTokenUseParam | CwActionStartBattleParam | CwActionOpenShopParam | CwActionPickEventParam |
         CwActionPickEncounterParam | CwActionPickSupplyParam | CwActionPickInvestStrategyParam | CwActionPickInvestEnvParam | CwActionPickMegastarParam |
         CwActionPickPartnerParam | CwActionPickPlannerParam | CwActionPickStarTomeParam | CwActionPickWishTrialParam |
-        CwActionPickBoxCardParam | CwActionPickFortuneParam | CwActionPickExpertInviteParam | CwActionPickEquipParam |
+        CwActionPickBoxCardParam | CwActionPickFortuneParam | CwActionPickExpertInviteParam |
         CwActionRefreshNodeOptionsParam | CwActionRefreshSupplyParam | CwActionRefreshInvestCardsParam |
         CwActionObsParam
 )
@@ -1032,21 +1008,24 @@ CW_ACTION_TYPES: tuple = (
     CwActionStartBattleParam,
     CwActionOpenShopParam,
     # 选择族动作化(终态契约;decide 接线归终态切换批,本批纯落型;
-    # CwActionPickFortuneParam/CwActionPickExpertInviteParam/CwActionPickEquipParam = 契约扩员 12→15 新增,普查迁移批 2)
+    # CwActionPickFortuneParam/CwActionPickExpertInviteParam = 契约扩员
+    # 新增,普查迁移批 2;原 CwActionPickEquipParam 同批新增,已随
+    # 选择装备屏误判退役删除——屏不存在,见外循环退役号 0a0)
     CwActionPickEncounterParam, CwActionPickSupplyParam, CwActionPickInvestStrategyParam, CwActionPickInvestEnvParam, CwActionPickMegastarParam, CwActionPickPartnerParam,
     CwActionPickPlannerParam, CwActionPickStarTomeParam, CwActionPickWishTrialParam, CwActionPickBoxCardParam,
-    CwActionPickFortuneParam, CwActionPickExpertInviteParam, CwActionPickEquipParam,
+    CwActionPickFortuneParam, CwActionPickExpertInviteParam,
     CwActionRefreshNodeOptionsParam, CwActionRefreshSupplyParam, CwActionRefreshInvestCardsParam,
     CwActionObsParam,
 )
 
-#: 选择族收敛单表(终态契约 §2.7):pick 子类型单表(9+3,契约扩员
-#: 12→15 后十二个),供 handler 分派/注册完备锁遍历(三刷新动作走各自
-#: 既有点击链不入本表;Obs = 观察请求语义,不属选择族)。
+#: 选择族收敛单表(终态契约 §2.7):pick 子类型单表(12 个;原 13 个,
+#: CwActionPickEquipParam 随选择装备屏误判退役删除),供 handler 分派/
+#: 注册完备锁遍历(三刷新动作走各自既有点击链不入本表;Obs = 观察请求
+#: 语义,不属选择族)。
 PICK_ACTION_TYPES: tuple = (
     CwActionPickEncounterParam, CwActionPickSupplyParam, CwActionPickInvestStrategyParam, CwActionPickInvestEnvParam, CwActionPickMegastarParam, CwActionPickPartnerParam,
     CwActionPickPlannerParam, CwActionPickStarTomeParam, CwActionPickWishTrialParam, CwActionPickBoxCardParam,
-    CwActionPickFortuneParam, CwActionPickExpertInviteParam, CwActionPickEquipParam,
+    CwActionPickFortuneParam, CwActionPickExpertInviteParam,
 )
 
 

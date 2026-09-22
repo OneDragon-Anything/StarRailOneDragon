@@ -31,7 +31,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
     CwActionPickBoxCardParam,
     CwActionPickEncounterParam,
-    CwActionPickEquipParam,
     CwActionPickExpertInviteParam,
     CwActionPickFortuneParam,
     CwActionPickInvestEnvParam,
@@ -80,9 +79,10 @@ class CwStrategy(ABC, Generic[_TState]):
       构造即唯一冷建口;``create_session``/``create_state`` 工厂退役。
     - **实例不跨局**:局容器弃置 = 实例连带回收(引导漏斗每局 instantiate);
       异常路径残留容器弃置守卫(:func:`discard_stale_match_container`)保留。
-    - **零参入口 15**:备战/商店/invest 双相/pick 族八屏 + 契约扩员三屏
-      (命运卜者强化/专家邀请函/选择装备;普查迁移批 2,动因 =
-      F-overlay-01/02/03)——决策输入一律 ``self.gs`` 自取,会话残余依赖
+    - **零参入口 14**:备战/商店/invest 双相/pick 族八屏 + 契约扩员两屏
+      (命运卜者强化/专家邀请函;普查迁移批 2,动因 =
+      F-overlay-01/02;原选择装备口随该屏误判退役删除)——决策输入一律
+      ``self.gs`` 自取,会话残余依赖
       由 §3.2/§3.3 重复账退役清偿。
     - **输出统一**:单一 ``CwAction``(选择族 per-screen 子类型 + 三刷新动作
       + 重观察 CwActionObsParam(scope='in_place' 环内 / 'outer_loop' 交回,
@@ -218,11 +218,6 @@ class CwStrategy(ABC, Generic[_TState]):
     def decide_expert_invite(self) -> CwActionPickExpertInviteParam:
         """专家邀请函选卡(候选读 ``gs.expert_invite`` 弹窗载体槽;
         idx = -1 表现金为王,值域扩展见 CwActionPickExpertInviteParam 注)。"""
-
-    @abstractmethod
-    def decide_equip_pick(self) -> CwActionPickEquipParam:
-        """选择装备三选一(候选读 ``gs.equip_pick_opts`` 槽,OCR 卡名带;
-        返回动作子类型)。"""
 
 
 @dataclass

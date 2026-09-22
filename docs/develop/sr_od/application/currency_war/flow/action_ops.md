@@ -131,7 +131,7 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 | PickStarTome | CwActionPickStarTomeOp | `cw_overlay_pick_action.py` | 星徽秘典(pick-op-unify 批收编,T-4,点卡即选):选中点击 + 动画等待,零确认步 → 自上报(零写)。 |
 | PickBoxCard | CwActionPickBoxCardOp | `cw_overlay_pick_action.py` | 武装箱(pick-op-unify 批收编,T-4,点卡即选):同上形态。 |
 | PickExpertInvite | CwActionPickExpertInviteOp | `cw_overlay_pick_action.py` | 专家邀请函(pick-op-unify 批收编,T-4,点卡即选):idx=-1 = 现金为王(点「卡-现金为王」区,非候选卡槽)。 |
-| PickEquip | CwActionPickEquipOp | `cw_overlay_pick_action.py` | 选择装备三选一(即时单相,点卡即选无确认步):`env.target` 点卡 → 固定等 1.2s → **立即自上报完整结果** `report_action_pick_equip_param`(`kernel/cw_action_report/pick_equip.py`:归一件名命中 = 装备入栏+获得后果链一口写;未解析 = equips 值不变翻来源+留证,禁猜;`norm_item` 由决策半经 `normalize_registry_equip_name` 归一现算);派发即终结,点卡未生效由外循环重识别重派。发射条件 = 决策半产 PickEquip。 |
+| PickEquip | ~~CwActionPickEquipOp~~ | — | **已退役**(2026-09-22 用户裁定:选择装备屏为古老时期误判、游戏内不存在——画面 op/动作 op/词表/上报函数全套删除;本行留名供旧档案对号)。 |
 
 ### 4.6 词表在册、不经注册表分发的类(3 类)
 

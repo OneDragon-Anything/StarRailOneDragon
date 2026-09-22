@@ -10,8 +10,8 @@
   game-round 恰一次 + 便宜派生视图段);
 - ``session.pending_round_outcomes`` 槽 = 观察半累积面(决策消费侧已退);
 - pick 族(decide_invest/supply/encounter/megastar/partner/planner/
-  star_tome/wish_trial/box_card + 契约扩员三口 fortune/expert_invite/
-  equip_pick,普查迁移批 2);
+  star_tome/wish_trial/box_card + 契约扩员两口 fortune/expert_invite,
+  普查迁移批 2;原 equip_pick 口随选择装备屏误判退役删除);
 - 商店序列兼容驱动器 decide_shop_screen 缺省实现(降格出 ABC,
   ADR-0583;sim/回放/序列锁消费,mandate 记账在其覆写)与商店单动作
   接口 decide_shop_action(ADR-0517,委托 mandate_v1/shop)。
@@ -29,7 +29,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel import cw_comps, cw_equip_value, cw_events
+from sr_od.application.currency_war.kernel import cw_comps, cw_events
 from sr_od.application.currency_war.kernel.cw_comps import get_comp
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
@@ -55,7 +55,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionCloseShopParam,
     CwActionPickBoxCardParam,
     CwActionPickEncounterParam,
-    CwActionPickEquipParam,
     CwActionPickExpertInviteParam,
     CwActionPickFortuneParam,
     CwActionPickInvestEnvParam,
@@ -699,7 +698,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             owned_spare=spare,
             owned_total=spare + worn))
 
-    # ===== 契约扩员 12→15 三入口(普查迁移批 2;F-overlay-01/02/03 判据
+    # ===== 契约扩员新入口(普查迁移批 2;F-overlay-01/02 判据
     # ===== 收编 kernel,本壳零打分实现,委托同构 decide_box_card 先例)=====
 
     def decide_fortune(self) -> CwActionPickFortuneParam:
@@ -725,20 +724,6 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         self._consume_prep_direction_frame()   # ADR-0583 入口内务
         return CwActionPickExpertInviteParam(idx=cw_events.choose_expert_index(
             list(payload.card_bonds), dict(payload.board)))
-
-    def decide_equip_pick(self) -> CwActionPickEquipParam:
-        """选择装备三选一(终态零参口;候选 = ``gs.equip_pick_opts``
-        OCR 卡名带;判据单一源 = kernel ``decide_equip_overlay_pick``,
-        key_fit 子串 +100 / 泛用关键词 +1.0,并列取首卡)。
-
-        locked_comp 意向读随判据迁策略侧(终态契约 §2.5 参数注入桶):
-        本入口自 ``self.state`` 取值注入 kernel,handler 零意向读。"""
-        texts = list(self._require_slot_options(self.gs.equip_pick_opts,
-                                                'equip_pick_opts'))
-        self._consume_prep_direction_frame()   # ADR-0583 入口内务
-        _ist = self._ensure_intention(self.state)
-        return CwActionPickEquipParam(idx=cw_equip_value.decide_equip_overlay_pick(
-            texts, locked_comp=_ist.locked_comp))
 
     def decide_shop_action(self) -> Action:
         """商店单动作决策接口(ADR-0517 决策 1/2/5;ADR-0583 升格入契约面;

@@ -52,7 +52,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPerfectProjectorUseParam,
     CwActionPickBoxCardParam,
     CwActionPickEncounterParam,
-    CwActionPickEquipParam,
     CwActionPickExpertInviteParam,
     CwActionPickFortuneParam,
     CwActionPickInvestEnvParam,
@@ -103,7 +102,6 @@ from sr_od.application.currency_war.operations.cw_op.cw_open_tome_action import 
 from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
     CwActionPickBoxCardOp,
     CwActionPickEncounterOp,
-    CwActionPickEquipOp,
     CwActionPickExpertInviteOp,
     CwActionPickFortuneOp,
     CwActionPickInvestOp,
@@ -188,7 +186,6 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     CwActionPickStarTomeParam: CwActionPickStarTomeOp,   # pick-op-unify 批收编(T-4,点卡即选)
     CwActionPickBoxCardParam: CwActionPickBoxCardOp,   # pick-op-unify 批收编(T-4,点卡即选)
     CwActionPickExpertInviteParam: CwActionPickExpertInviteOp,   # pick-op-unify 批收编(T-4,点卡即选)
-    CwActionPickEquipParam: CwActionPickEquipOp,   # pick-op-unify 批收编(T-4,点卡即选)
 }
 
 

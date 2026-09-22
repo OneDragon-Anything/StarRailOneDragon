@@ -185,7 +185,6 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'box_card_opts': 1,        # 武装箱候选槽(str)
     'fortune_opts': 1,         # 命运卜者强化候选槽(str;契约扩员 12→15)
     'expert_invite': 1,        # 专家邀请函选卡载体(ExpertInvitePayload;契约扩员 12→15)
-    'equip_pick_opts': 1,      # 选择装备候选槽(str;契约扩员 12→15)
     'inventory': 1,         # equips/consumables/免战牌(§3.2.15/§3.2.16/§3.2.19〔勘误:免战牌正本=effect_inventory.remaining_uses,§8.6-3——本域不含其字段〕)
     'spheres': 1,           # 晶矿(§3.2.8,不占席)
     'substate': 1,          # 分类子态/事件浮层(§3.2.17/§3.6.1)
@@ -232,7 +231,6 @@ _PAYLOAD_DOMAINS: dict[str, tuple[str, bool]] = {
     'box_card_names': ('货币战争-备战-武装箱选择', True),
     'fortune_opts': ('货币战争-命运卜者强化', True),
     'expert_invite': ('货币战争-备战-专家邀请函', True),
-    'equip_pick_opts': ('货币战争-选择装备', True),
 }
 
 
@@ -2217,11 +2215,11 @@ class GameState:
     star_tome_opts: Field[list[str] | None] = field(default_factory=Field)
     wish_trial_opts: Field[list[str] | None] = field(default_factory=Field)
     box_card_names: Field[list[str] | None] = field(default_factory=Field)
-    # —— 契约扩员 12→15 新槽(普查迁移批 2;写端 = 各画面 handler 写槽,
-    #    消费 = flow 三新零参入口 decide_fortune/expert_invite/equip_pick)——
+    # —— 契约扩员新槽(普查迁移批 2;写端 = 各画面 handler 写槽,
+    #    消费 = flow 新零参入口 decide_fortune/expert_invite;原
+    #    equip_pick_opts 槽随选择装备屏误判退役删除)——
     fortune_opts: Field[list[str] | None] = field(default_factory=Field)
     expert_invite: Field[ExpertInvitePayload | None] = field(default_factory=Field)
-    equip_pick_opts: Field[list[str] | None] = field(default_factory=Field)
 
     # —— 十事件屏选择结果(§3.4/§4 事件选择:chosen_* 由选择 handler 单次逻辑写入)——
     # (遭遇例外,遭遇扩围批:chosen_encounter 写端 = 动作侧即时上报

@@ -1,6 +1,6 @@
-# 13 pick 族薄判据（十三接口 + 事件面目录）
+# 13 pick 族薄判据（十二接口 + 事件面目录）
 
-> 本篇为新写薄篇：pick 族 = CwStrategy 的 13 个选项决策接口(全部在 ABC 契约面;2026-09 pick-op-unify 批随执行器收编补入 fortune/expert_invite/equip_pick 三入口,原 `decide_invest` 已双相拆分为 `decide_invest_env`/`decide_invest_strategy` 零参终态口)（`strategies/impl/cw_strategy.py` + `strategies/impl/flow.py` 实现反向 + `kernel/cw_events`/`kernel/cw_comps` 判据单源）。事件面目录（E1-E18）重排自原 `03_strategy_layer.md`(已删除) §4.9（E16-E18 = 2026-08-19 用户定调批次「全部 overlay 选卡接入策略模块」后补三接口，本批补录）；数学判据逐项状态登记沿用 [08_events.md](08_events.md)（该篇管"目录全量/数学全空"的落差，不动件）。
+> 本篇为新写薄篇：pick 族 = CwStrategy 的 12 个选项决策接口(全部在 ABC 契约面;2026-09 pick-op-unify 批随执行器收编补入 fortune/expert_invite 两入口,原 `decide_invest` 已双相拆分为 `decide_invest_env`/`decide_invest_strategy` 零参终态口;原第三口 `decide_equip_pick` 随选择装备屏误判退役删除,2026-09-22)（`strategies/impl/cw_strategy.py` + `strategies/impl/flow.py` 实现反向 + `kernel/cw_events`/`kernel/cw_comps` 判据单源）。事件面目录（E1-E18）重排自原 `03_strategy_layer.md`(已删除) §4.9（E16-E18 = 2026-08-19 用户定调批次「全部 overlay 选卡接入策略模块」后补接口，本批补录）；数学判据逐项状态登记沿用 [08_events.md](08_events.md)（该篇管"目录全量/数学全空"的落差，不动件）。
 > 动作编排（画面 op 怎么点卡）不在本篇 = `../flow/outer_loop.md` §2.2（0x 分支）；本篇只管"选项怎么选"。
 > 每项标注**判据状态**：有规格（判据可执行）/ 待 derive（判据立项锚见 08）。
 
@@ -26,7 +26,8 @@
 | `decide_box_card(names)` | E18（武装箱/节点弹窗四选一装备卡；2026-08-19 用户定调批次接入策略模块） | 薄壳：locked_comp 两态锚 + 三本库存账 → 共享机器 `pick_equipment`（kernel/cw_equip_value，序数分档：key 直击 > 近兑现 > 材料 > 通用；base = `equip_generic_value` 通用输出先验）；fallback idx=0 | **有规格**（armory-box-value 定稿；零新常数，数值维 = P42 挂账不变） |
 | `decide_fortune()` | 命运卜者强化三选一(pick-op-unify 批收编入契约面) | 委托 `cw_events.decide_fortune`（战力关键词权重 argmax;无匹配缺省首卡,handler 侧越界防御同落首卡） | **有规格**（关键词权重结构打分,语义单一源 = kernel 本体） |
 | `decide_expert_invite()` | E9（专家邀请函选卡;pick-op-unify 批收编入契约面） | 委托 `cw_events.choose_expert_index` 三级语义（在场浓度版,idx=-1 表金为王）;**行为分叉申报**：与 E9 在案规格（目标线成员优先 → 池浓度）分叉,已挂账独立行为变更(迁移批 2 报告),入口保持实码行为不擅自切规格 | **有规格**（实码行为;与在案规格的分叉已挂账申报） |
-| `decide_equip_pick()` | 装备三选一 overlay（选择装备;pick-op-unify 批收编入契约面） | 委托 `cw_equip_value.decide_equip_overlay_pick`（key_fit 子串 +100 / 泛用关键词 +1.0,并列取首卡;locked_comp 意向自策略器状态注入 kernel） | **有规格**（key_fit 优先结构打分,语义单一源 = kernel 本体） |
+
+(原 `decide_equip_pick()` = 选择装备三选一行,已随该屏误判退役删除,2026-09-22。)
 
 ## 2. 事件面目录 E1-E18（原 03 §4.9 收编 + 2026-08-19 用户定调批次后补三接口 E16-E18；判据状态详见 [08_events.md](08_events.md)）
 

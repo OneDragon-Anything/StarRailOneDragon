@@ -278,9 +278,6 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'expert_invite': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='邀请函 payload 读面(§3.4 契约扩员),零逻辑写端'),
-    'equip_pick_opts': ProjectionAuditRow(
-        status=AUDIT_OBSERVATION_ONLY,
-        basis='选择族读面,零逻辑写端'),
     # —— 十事件屏选择结果(bot 决策事实)——
     'chosen_encounter': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
