@@ -190,6 +190,7 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'box_card_opts': 1,        # 武装箱候选槽(str)
     'box_card_names_xy': 1,    # 武装箱选项坐标伴随域(键名随名字域 box_card_names;选择坐标观察上报,fields.md §3.4.5a)
     'fortune_opts': 1,         # 命运卜者强化候选槽(str;契约扩员 12→15)
+    'fortune_opts_xy': 1,      # 命运卜者强化选项坐标伴随域(选择坐标观察上报,fields.md §3.4.5a)
     'expert_invite': 2,        # 专家邀请函选卡载体(ExpertInvitePayload;域版本 2 =
                                # payload 扩选项坐标字段 card_points/cash_point
                                # (选择坐标观察上报,fields.md §3.4.5a);版本 1 =
@@ -246,6 +247,7 @@ _PAYLOAD_DOMAINS: dict[str, tuple[str, bool]] = {
     'box_card_names': ('货币战争-备战-武装箱选择', True),
     'box_card_names_xy': ('货币战争-备战-武装箱选择', True),
     'fortune_opts': ('货币战争-命运卜者强化', True),
+    'fortune_opts_xy': ('货币战争-命运卜者强化', True),
     'expert_invite': ('货币战争-备战-专家邀请函', True),
 }
 
@@ -2247,10 +2249,10 @@ class GameState:
     star_tome_opts: Field[list[str] | None] = field(default_factory=Field)
     wish_trial_opts: Field[list[str] | None] = field(default_factory=Field)
     box_card_names: Field[list[str] | None] = field(default_factory=Field)
-    # —— 选项坐标伴随域三槽(op-layer.md §1.1 选择坐标观察上报;fields.md
+    # —— 选项坐标伴随域四槽(op-layer.md §1.1 选择坐标观察上报;fields.md
     #    §3.4.5a;骨架先行落定义,写端接线随各屏坐标收敛逐批落地)——
-    # [索引定义] 三域同构,各伴随同名去 _xy 的名字域(star_tome_opts /
-    # wish_trial_opts / box_card_names):
+    # [索引定义] 四域同构,各伴随同名去 _xy 的名字域(star_tome_opts /
+    # wish_trial_opts / box_card_names / fortune_opts):
     # 键 = 名字域列表下标 idx(0 起,左→右画面物理序,与策略器输出下标、
     #   动作词表 param.idx 同一坐标系,零换算);
     # 取值时机 = 观察期快照(进访问入口观察帧的识别产物,与名字域同一次
@@ -2266,6 +2268,7 @@ class GameState:
     star_tome_opts_xy: Field[list[tuple[int, int]] | None] = field(default_factory=Field)
     wish_trial_opts_xy: Field[list[tuple[int, int]] | None] = field(default_factory=Field)
     box_card_names_xy: Field[list[tuple[int, int]] | None] = field(default_factory=Field)
+    fortune_opts_xy: Field[list[tuple[int, int]] | None] = field(default_factory=Field)
     # —— 契约扩员新槽(普查迁移批 2;写端 = 各画面 handler 写槽,
     #    消费 = flow 新零参入口 decide_fortune/expert_invite;原
     #    equip_pick_opts 槽随选择装备屏误判退役删除)——
@@ -2288,7 +2291,7 @@ class GameState:
     chosen_megastar: Field[str | None] = field(default_factory=Field)   # 盛会之星(§3.4.5)
     chosen_partner: Field[str | None] = field(default_factory=Field)    # 伙伴(候选阵营)
     chosen_wish: Field[str | None] = field(default_factory=Field)       # 祈愿试炼目标文本(档=货币战争-祈愿试炼,写端=cw_screen_wish_trial)
-    chosen_fortune: Field[str | None] = field(default_factory=Field)    # 命运卜者(暂无画面建档)
+    chosen_fortune: Field[str | None] = field(default_factory=Field)    # 命运卜者(建档在册 cw_fortune_picker.yml,缺三卡文本读区 = fields.md §3.4.5;写端未接线 = 先补档,fields.md §4)
     chosen_hack: Field[str | None] = field(default_factory=Field)       # 骇入策划(暂无画面建档)
     chosen_expert: Field[str | None] = field(default_factory=Field)     # 专家邀请函
     chosen_tome: Field[str | None] = field(default_factory=Field)       # 星徽秘典弹窗卡名

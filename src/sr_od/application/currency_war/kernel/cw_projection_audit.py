@@ -284,6 +284,10 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_OBSERVATION_ONLY,
         basis='选项坐标伴随域(fields.md §3.4.5a):与同名名字域同一次观察'
               '同帧同源写,零逻辑写端'),
+    'fortune_opts_xy': ProjectionAuditRow(
+        status=AUDIT_OBSERVATION_ONLY,
+        basis='选项坐标伴随域(fields.md §3.4.5a):与同名名字域同一次观察'
+              '同帧同源写,零逻辑写端'),
     'fortune_opts': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='选择族读面,零逻辑写端'),
@@ -314,7 +318,8 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='祈愿试炼选择结果(handler 写,无 chosen 观察读端)'),
     'chosen_fortune': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='命运卜者选择结果(handler 写,暂无画面建档)'),
+        basis='命运卜者选择结果(chosen 写端未接线 = fields.md §4 先补档,'
+              '无 chosen 观察读端;建档在册 cw_fortune_picker.yml)'),
     'chosen_hack': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='骇入策划选择结果(handler 写,暂无画面建档)'),
