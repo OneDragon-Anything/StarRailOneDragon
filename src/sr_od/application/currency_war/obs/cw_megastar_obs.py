@@ -62,10 +62,10 @@ CANDIDATE_BODY_Y: int = 333
 # 观察失败哨兵:reader 交叉验证裁决失败(SIFT 与 OCR 名不一致)时替代
 # 该候选 char_id 的标记,域外恒判 → 标准化门返回 None → observe node
 # round_fail。哨兵必要性:调用方 observe 的 fail 消息构造迭代候选列表
-# (禁触文件 ``cw_screen_megastar.py`` 现形),失败信号必须以列表形态过
-# 门,哨兵名 = 「OCR 名本身合法但被立绘反证」场景在列表形态下的最小
-# 失败载体(域外/重复场景自带域外原值,无需哨兵)。细节留证(双名各值)
-# 在 reader warn 日志。
+# (``cw_screen_megastar.py`` 现形),失败信号必须以列表形态过门,哨兵
+# 名 = 「OCR 名本身合法但被立绘反证」场景在列表形态下的最小失败载体
+# (域外/重复场景自带域外原值,无需哨兵)。细节留证(双名各值)在
+# reader warn 日志。
 READ_FAILED: str = '<观察失败>'
 
 # 候选立绘裁区(相对该卡标签中心;归档 fixture 未选择.webp 实测标定:
