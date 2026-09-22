@@ -131,6 +131,42 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
     return CwActionStartBattleParam()
 
 
+def launch_restricted_session_active(gs: GameState) -> bool:
+    """受限会话派生标记(armed ∧ 金超息线;发射帧受限消费的策略侧自限门,
+    迭代 changes/2026-09-21-shop-refresh-terminal 详设 §2.10)。
+
+    判定与 :func:`_launch_front_check` 前置发射位同源:armed 判定核 =
+    kernel ``readiness_launch_decision``(线成员/部署计划谓词注入同参,
+    单一源纪律同款),金超息线 = kernel ``in_launch_spend_zone``(禁内联
+    息线比较)。每帧现算零粘滞:不读不写任何段旗/缓存——「每武装段至多
+    一次」的段旗(cw4_launch_spend_visited)留守语义不受本标记辖,其写端
+    单一源仍 = _launch_front_check(mandate_state 字段注)。
+
+    消费点 = flow.decide_shop_action 受限会话自限(唯一提案产出后经
+    kernel ``launch_arbitration_gate`` 谓词检;拒 = 决策改发 CloseShop,
+    消费终止语义逐位平移,非改试次优——金出口族红线 5)。
+    """
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        gold_of,
+        in_launch_spend_zone,
+    )
+    from sr_od.application.currency_war.kernel.cw_launch_admission import (
+        readiness_launch_decision,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
+        has_deployable,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
+        line_members,
+    )
+    _decision = readiness_launch_decision(
+        gs, getattr(state_of(gs), 'target_comp', None), line_members=line_members,
+        deploy_plan_available_fn=has_deployable)
+    if not _decision.get('armed'):
+        return False
+    return in_launch_spend_zone(gold_of(gs), gs)
+
+
 class MandateV1Strategy(CwFlowStrategy):
     """新核(mandate_v1):三遍化决策序(证明→骨架→EV)+ 单动作循环发射。
 

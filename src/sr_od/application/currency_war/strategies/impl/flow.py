@@ -753,7 +753,15 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         观察帧缺失 = 观察层失约,抛错(禁静默按空态决策)。
         入口内务 = 帧代次消费(:meth:`_consume_shop_direction_frame`;
         方向刷新在决策读视图之前完成,ADR-0583 内化锚)。
-        """
+        受限会话自限(迭代 changes/2026-09-21-shop-refresh-terminal 详设
+        §2.10):决策本体产出唯一提案后,受限会话活跃帧(armed ∧ 金超息线
+        派生标记,每帧现算 = bridge.launch_restricted_session_active)经
+        kernel ``launch_arbitration_gate`` 谓词检(与 flow 闸同源同参,零
+        判定数学复制)——拒 = 决策改发 ``CwActionCloseShopParam``(消费
+        终止非改试次优,金出口族红线 5),受阻分键 ``launch_arbitrage_
+        gate_blocked`` 落策略器状态 cw4_counters;非受限会话帧现行为逐位
+        不变。生产单动作循环与 sim/replay 驱动器同经本口,两面同源自限
+        (kernel 模块头「两面共用判定核」拓扑)。"""
         from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
             shop,
         )
@@ -793,8 +801,33 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # 决策本体宿主 = gs(state_of(gs) → 同源接线策略器状态;
         # game_state_of(gs) 本体直通——经 self.state 传递会让 kernel 侧
         # game_state_of 解析到一次性空容器,禁)。
-        return shop.decide_shop_action(gs, gs, self.config,
-                                       registry=self.registry)
+        action = shop.decide_shop_action(gs, gs, self.config,
+                                         registry=self.registry)
+        # 发射帧受限消费·策略侧自限(详设 §2.10;flow 闸退役前的先行落地
+        # ——受限会话内自限先拦,闸永不触拒,行为与现役逐位一致)。标记
+        # 派生与谓词皆 kernel 单一源直调;金读 = 容器读口 gold_of,与 flow
+        # 闸闭包同帧同值(决策与检之间零动作,期望态无推进)。
+        from sr_od.application.currency_war.kernel.cw_launch_arbitrage import (
+            KEY_GATE_BLOCKS,
+            launch_arbitration_gate,
+        )
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.bridge import (
+            launch_restricted_session_active,
+        )
+        if not launch_restricted_session_active(gs):
+            return action   # 非受限会话帧:现行为逐位不变(零检零遥测)
+        _ok, _why = launch_arbitration_gate(action, gold_of(gs), gs)
+        if _ok:
+            return action
+        # 拒 = 消费终止:本动作不执行,决策改发 CloseShop 收访问(评估序
+        # 不变、不跳过高位改试低位 = 金出口族红线 5 逐位平移,非改试次优)。
+        # 受阻遥测分键 = kernel 常量(现役 flow 闸闭包同键写入 cw4_counters,
+        # run-1 两写点按动作互斥不自增;run-2 闸退役后本写点为唯一写点,
+        # 分键宿主随拒拍落 strategy_state,详设 §2.10)。
+        _ct = getattr(self.state, 'cw4_counters', None)
+        if isinstance(_ct, dict):
+            _ct[KEY_GATE_BLOCKS] = _ct.get(KEY_GATE_BLOCKS, 0) + 1
+        return CwActionCloseShopParam()
 
     def decide_shop_screen(self, session: StrategySession | None = None,
                            config: CurrencyWarConfig | None = None
