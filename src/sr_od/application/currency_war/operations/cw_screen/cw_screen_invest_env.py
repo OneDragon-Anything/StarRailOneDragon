@@ -370,7 +370,7 @@ class CwScreenInvestEnv(SrOperation):
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
-        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
             OverlayPickExecEnv,
         )
         _confirm = area_center(self.ctx, '按钮-确认', CwScreenInvestEnv.SCREEN_NAME) or CwScreenInvestEnv.CONFIRM

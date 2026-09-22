@@ -234,7 +234,7 @@ class CwScreenSupplyNode(SrOperation):
         剩余闸放行(容器 ``supply_refresh_left`` >0 且锚点在位)才点圆钮,
         点后 2s 终结交回;闸拒绝 → 重调一次决策按原评分选(单轮内有界)。
         选卡分支点卡身 + 确认机械半经工厂(统一动作工厂批4:体迁
-        ``cw_overlay_pick_action.CwActionPickSupplyOp``,方法级替身缝保留),
+        ``cw_pick_supply_action.CwActionPickSupplyOp``,方法级替身缝保留),
         确认点击后动作 op 立即上报完整结果,派发即终结。
         Returns: True = 动作已发(终结交回)。
         """
@@ -345,7 +345,7 @@ class CwScreenSupplyNode(SrOperation):
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
-        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
             OverlayPickExecEnv,
         )
         _env = OverlayPickExecEnv(op=self, match=match, idx=param_idx,

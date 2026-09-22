@@ -152,7 +152,7 @@ class CwScreenFortune(SrOperation):
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
-        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
             OverlayPickExecEnv,
         )
         _env = OverlayPickExecEnv(op=self, idx=best_i, target=target,

@@ -211,7 +211,7 @@ class CwScreenYinLang(SrOperation):
                  pick.reason, '左' if pick.idx == 0 else '右',
                  options[pick.idx].text[:24], leg_type, norm_item or '-')
         # 点卡选中 → 确认链经工厂(统一动作工厂批4:体迁
-        # ``cw_overlay_pick_action.CwActionPickPlannerOp``,方法级替身缝保留);
+        # ``cw_pick_planner_action.CwActionPickPlannerOp``,方法级替身缝保留);
         # 决策半(策略选卡/腿型判定)留守上方,派发实例 = 策略 pick 本体,
         # 机械参数 target 经 env 传递。派发即 round_success 终结交回外循环
         # (效果腿已在动作 op 内即时上报;确认未生效 = 代码 bug,外循环
@@ -219,7 +219,7 @@ class CwScreenYinLang(SrOperation):
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
-        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
             OverlayPickExecEnv,
         )
         _env = OverlayPickExecEnv(op=self, target=target,

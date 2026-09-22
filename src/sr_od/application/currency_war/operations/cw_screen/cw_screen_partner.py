@@ -294,7 +294,7 @@ class CwScreenPartner(SrOperation):
                 return self.round_fail('伙伴屏建档缺失:候选-卡区(禁裸坐标兜底)')
             self._pick_point = point
         # 「点选候选 → 确认」脉冲链经工厂(统一动作工厂批4:体迁
-        # ``cw_overlay_pick_action.PartnerPickOp``,方法级替身缝保留)。
+        # ``cw_pick_partner_action.CwActionPickPartnerOp``,方法级替身缝保留)。
         # 决策半(确认被拒守卫/点位解析/chosen 写端)留守上方;选中态标记
         # 与脉冲计数宿主仍是本 op,经 env.op 消费。派发实例携真实选中
         # 下标(上报 param 即真实选择;脉冲轮复用缓存 idx)。
@@ -306,7 +306,7 @@ class CwScreenPartner(SrOperation):
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
-        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_action import (
+        from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
             OverlayPickExecEnv,
         )
         _env = OverlayPickExecEnv(op=self, idx=self._pick_idx, unselected=unselected)

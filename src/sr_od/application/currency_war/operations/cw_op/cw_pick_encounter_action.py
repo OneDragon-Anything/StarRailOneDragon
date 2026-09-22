@@ -1,0 +1,85 @@
+"""遭遇节点 pick 确认链动作 op(:class:`CwActionPickEncounterOp` 单类
+文件,一 op 一文件 = op-layer.md :48;族契约与共享 env 见
+``cw_overlay_pick_env``)。
+
+机械语义:点卡选中(screen_info 坐标缺失走历史实测兜底常量)→ 确认
+机械交回;机械链发出后直调自上报单口
+``report_action_pick_encounter_param``(发射即写)。
+"""
+from __future__ import annotations
+
+import time
+
+from one_dragon.base.operation.operation_node import operation_node
+from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from sr_od.application.currency_war.kernel.cw_action_report.pick_encounter import (
+    report_action_pick_encounter_param,
+)
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
+    game_state_from_ctx,
+)
+from sr_od.application.currency_war.kernel.cw_obs_core import area_center
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwActionPickEncounterParam,
+)
+from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
+    OverlayPickExecEnv,
+)
+from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
+    emit_overlay_confirm,
+    safe_click,
+)
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_encounter import (
+    CwScreenEncounter,
+)
+from sr_od.context.sr_context import SrContext
+from sr_od.operations.sr_operation import SrOperation
+
+
+class CwActionPickEncounterOp(SrOperation):
+    """遭遇节点 pick 确认链(机械语义单一源,统一动作工厂批4 迁入)。
+
+    点卡选中(screen_info 坐标缺失走历史实测兜底常量)→ 确认机械交回
+    (验证废除:不读屏判「overlay 关没关」,落地由画面 op handle 顶部
+    重入裁决承载;docstring「插空白点击取消选中→死循环」风险的防线由
+    重入裁决 + 预算耗尽 bail 承接——机械语义单一源随体迁入本类)。"""
+
+    #: 非终结动作(每类显式声明,无基类缺省)。
+    terminal = False
+    terminal_wait = 0.0
+
+    def __init__(self, ctx: SrContext, param: CwActionPickEncounterParam,
+                 env: OverlayPickExecEnv):
+        SrOperation.__init__(self, ctx, op_name='CwActionPickEncounterOp',
+                             need_check_game_win=False)
+        self.param = param
+        self.env = env
+
+    @operation_node(name='pick_encounter', is_start_node=True)
+    def run(self) -> OperationRoundResult:
+        """机械执行;轮次结果经 ``env.round_result`` 旁路回传。"""
+        action = self.param
+        env = self.env
+        op = env.op
+        idx = action.idx
+        card_left = area_center(op.ctx, '遭遇卡-其一', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.CARD_LEFT
+        card_right = area_center(op.ctx, '遭遇卡-其二', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.CARD_RIGHT
+        select_btn = area_center(op.ctx, '按钮-选择', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.SELECT_BTN
+        card = card_left if idx == 0 else card_right
+        safe_click(op, card, tag='cw-encounter')
+        time.sleep(0.8)
+        # 选择确认机械交回(裁决词 = 标题「遭遇节点」,4 字 vs 备战「遭遇」
+        # 标签 2 字,LCS 0.5<0.8 不误匹配;live 2026-08-15)。
+        env.round_result = emit_overlay_confirm(op, confirm_point=select_btn,
+                                                entry_keyword='遭遇节点', lcs_percent=0.8, tag='cw-encounter')
+        # 发射即写(遭遇扩围批,用户裁定 2026-09-21):机械链发出后立即
+        # 写 chosen_encounter(值组装自容器 encounter payload 槽;暂态
+        # 假值窗由外循环重派覆盖自愈,兑现回调消费防线 = 兑现后清)。
+        gs = game_state_from_ctx(self.ctx)
+        if gs is not None:
+            report_action_pick_encounter_param(
+                gs, action,
+                ChannelSig(family='logic_action',
+                           actor=type(self).__name__, mode='compute'))
+        return self.round_success('遭遇选择确认链已发(结果经旁路回传)')
