@@ -4,9 +4,9 @@
 design.md §1.1/§1.2)。一 op 一文件。
 
 机械执行零判效(用户裁定「动作 op = 机械执行」,落地判定归观察侧
-reconcile 对账):点击后零像素验证,发出即记账。点击静默不生效属执行
-环境噪声,由下一入口 heavy 实读对账显影(shop+gold 失配 → 安灯停 →
-按真 bug 修),重试 = 决策循环按新观察自然重派。买前裁片 = 纯留证零判效。
+reconcile 对账):点击后零像素验证零读屏,发出即记账。点击静默不生效属
+执行环境噪声,由下一入口 heavy 实读对账显影(shop+gold 失配 → 安灯停 →
+按真 bug 修),重试 = 决策循环按新观察自然重派。
 """
 from __future__ import annotations
 
@@ -32,7 +32,6 @@ from sr_od.application.currency_war.kernel.cw_merge_simulate import merge_buy_k
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_SHOP_CARD_PREFIX,
     SHOP_SCREEN_NAME,
-    _area_rect,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
     strategy_state_of,
@@ -71,7 +70,6 @@ class CwActionBuyCardOp(SrOperation):
 
     @operation_node(name='buy_card', is_start_node=True)
     def run(self) -> OperationRoundResult:
-        from one_dragon.base.geometry.point import Point as _Pt
         action: CwActionBuyCardParam = self.param
         env = self.env
         op, match, ledger, state = env.op, env.match, env.ledger, env.state
@@ -109,25 +107,15 @@ class CwActionBuyCardOp(SrOperation):
         if _slot_no is None:
             # 兼容兜底:旧档/sim 构造牌的 slot 字段(退役过渡期保留)
             _slot_no = int(getattr(action.card, 'slot', 0) or 0)
-        if 1 <= _slot_no <= len(env.click_pts):
-            pt = env.click_pts[_slot_no - 1]
-        else:
-            pt = (_Pt(0, 288) if not env.click_pts else env.click_pts[0])
-        # 买前裁该片矩形拷贝(纯留证零判效:`w536_merge_expect/`「买了什么」
-        # 的像素级证据,随期望态带到对账点;一帧原则,必须 copy 防帧缓存
-        # 覆写)。
-        _card_crop = None
-        _frame = None
-        with contextlib.suppress(Exception):
-            _frame = op.screenshot()
-            for _i in range(1, 6):
-                _r = _area_rect(op.ctx,
-                                f'{A_SHOP_CARD_PREFIX}{_i}',
-                                SHOP_SCREEN_NAME)
-                if _r is not None and _r.x1 <= pt.x <= _r.x2:
-                    if _frame is not None:
-                        _card_crop = _frame[_r.y1:_r.y2, _r.x1:_r.x2].copy()
-                    break
+        if not (1 <= _slot_no <= len(env.click_pts)):
+            # 点位缺失/槽号越界 = 建档漂移或牌行失配,显式 round_fail
+            # (信息带 area 名,与 level_btn/refresh_btn 同款纪律),禁
+            # 兜底坐标静默点击(坐标单一真相源)。
+            return self.round_fail(
+                f'商店牌点位缺失/槽号越界:{A_SHOP_CARD_PREFIX}'
+                f'{_slot_no}({SHOP_SCREEN_NAME}),slot={_slot_no} '
+                f'click_pts={len(env.click_pts)},禁兜底点击')
+        pt = env.click_pts[_slot_no - 1]
         op.ctx.controller.click(pt)
         log.info(f'[cw-shop] Buy click slot={_slot_no} @({pt.x},{pt.y}) '
                  f'{action.card.faction}/{action.card.name}/'
@@ -190,8 +178,7 @@ class CwActionBuyCardOp(SrOperation):
             )
             ledger.buy_purchases.append(BuyPurchase(
                 name=action.card.name, star=action.card.star,
-                count=_cnt, unit_cost=action.card.cost or 0,
-                crop=_card_crop))
+                count=_cnt, unit_cost=action.card.cost or 0))
         # —— 自上报(机械发出后;design.md §1.1):k 取执行落地事实 ——
         _k = 1
         if action.card.name and ledger.buy_purchases:

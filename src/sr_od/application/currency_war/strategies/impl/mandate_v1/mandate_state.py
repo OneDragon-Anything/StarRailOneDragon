@@ -209,8 +209,8 @@ class StrategyState:
     # 的腾席拒绝无记忆重推导,把一次停摆事件逐帧放大成 N 个事件帧——
     # 缓存命中帧跳过扫描且事件键不增,恢复 P60 诚实停摆的事件粒度语义)=====
     # 段序号。构成:会话态单调递增 int;置位:各段入口 +1(商店 visit
-    # 开始[cw_op_buy_cards.run_buy_waves 入口=普通 visit 与发射帧仲裁段
-    # 共用同一入口 / bridge.decide_shop_screen 入口=sim/replay]、备战期
+    # 开始[商店画面 op 观察 node=普通 visit 与发射帧仲裁段共用同一入口 /
+    # bridge.decide_shop_screen 入口=sim/replay]、备战期
     # 开始[生产 prep 访问循环入口]);比较:只作相等比较、不作阈值,
     # 递增值不承载任何决策量。段 = 停摆结论的输入不变性区间;跨段残留
     # token/闩按序号不等自动失效(域切换=必过段入口,跨域伪命中被同一
@@ -223,7 +223,7 @@ class StrategyState:
     cw4_m2_stall_latch: tuple[bool, int] | None = None
     # 帧动作记录 token(载体单一源):None=无记录。写入端=动作执行/逻辑态直写
     # 层确认已执行后写 (动作型名 type().__name__, 当前段序号),物理写入
-    # 位三处:①生产商店循环(cw_op_buy_cards.run_buy_waves 执行位);
+    # 位三处:①生产商店循环(商店画面 op 决策动作 node 执行位);
     # ②sim-replay 驱动器(bridge.decide_shop_screen 逻辑态直写位);③生产 prep
     # 循环主环(cw_screen_prep 决策循环 CwActionOpenShopParam/执行器分支合流执行位)。
     # 调用方申报:备战期开店循环

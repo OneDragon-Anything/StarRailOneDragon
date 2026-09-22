@@ -69,7 +69,6 @@ class CwActionRefreshShopOp(SrOperation):
         _refresh_fee = state.shop_refresh_cost.value or REFRESH_COST_BASE
         ledger.spend_executed += _refresh_fee
         ledger.total_refresh += 1
-        ledger.did_refresh = True
         # 自上报 = 刷新计数统一触发 + Field 免费腿扣减 + payload 随机态
         # 采样(见模块头与上报函数 docstring)。free 传 None = 上报函数
         # Field 值判定;金账不喂(生产观察覆盖)。

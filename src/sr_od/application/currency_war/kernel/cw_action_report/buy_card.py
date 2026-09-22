@@ -51,6 +51,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
 
+    from one_dragon.utils.log_utils import log as _log
     from sr_od.application.currency_war.kernel.cw_economy import (
         card_cost,
     )
@@ -165,4 +166,13 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
                            mode='compute',
                            group_id=(f'act:{sig.actor}@'
                                      f'{gs.write_seq + 1}')))
+
+    # —— 购买回调腿(获取计算完时点):简单腿 + 合成连锁 + 升星腿全毕
+    #    后触发,计数归上报单点(live/sim 同源,消除落地门计数分叉);
+    #    满栏一击多买按实际张数 k 计 k 次。best-effort:记录面失败不阻塞
+    #    上报链(与旧落地门 bump 同纪律)。拒买(applied=False 早退)不触。
+    try:
+        gs.effects.on_buy(card, star, k)
+    except Exception as e:  # noqa: BLE001  记录面失败不阻塞
+        _log.warning(f'[cw-buy] 效果账本 on_buy 回调失败(不阻塞): {e}')
     return LogicOutcome(applied=True, bought_count=k)

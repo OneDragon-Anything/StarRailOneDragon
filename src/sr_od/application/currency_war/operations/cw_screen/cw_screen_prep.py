@@ -943,7 +943,7 @@ class CwScreenPrep(SrOperation):
         """CwActionOpenShopParam 动作的流程层编排。
 
         显式开店:open_shop(幂等,已开不点)→ visit_open_shop(商店访问
-        编排单一源:入口观察 → 商店单动作循环 run_buy_waves → CwOpCloseShop
+        编排单一源:入口观察 → 商店单动作循环 → 关店收编进商店画面 op
         → 节点探针)。受限访问(restricted_spend)在 _act_execute_default
         截流,不经本方法。波循环失败路径不开收(店留着交上层/外环重新识别)。
         """
@@ -1015,7 +1015,8 @@ class CwScreenPrep(SrOperation):
 
         语义 = 「从店已开状态进入」(单动作循环的入口形态):
         入口观察现读当前牌面重建期望态 → 策略器逐动作决策(买/卖/升/刷)
-        → CwActionCloseShopParam 终结收店交回。**不调 open_shop**——店已开由外循环
+        → CwActionCloseShopParam 终结收店交回(收店点击由商店画面 op
+        执行体承担)。**不调 open_shop**——店已开由外循环
         0n 三 id_mark 锚判定确认,直接跳过开店动作(比依赖 open_shop
         幂等性更进一步:已开连点都不发);「收不收」由策略器基于期望态
         决定(CwActionCloseShopParam = 商店画面 op 的一等终结动作),路由层不硬编码收起。
@@ -1023,9 +1024,9 @@ class CwScreenPrep(SrOperation):
         (访问内 hp 决策消费统一经 decision_hp 容器读口,显式开店路径与
         0n 路径同源。)
 
-        编排单一源归属:本方法 = 商店访问尾段(run_buy_waves → CwOpCloseShop
-        → 节点探针)的唯一编排点,显式开店路径与 0n 转交路径共用。节点探针
-        挂点 = CwOpCloseShop 完成后(店确定关的可靠时点;实现住商店域
+        编排单一源归属:本方法 = 商店访问尾段(商店画面 op run → 节点
+        探针)的唯一编排点,显式开店路径与 0n 转交路径共用。节点探针
+        挂点 = 商店画面 op 完成后(店确定关的可靠时点;实现住商店域
         ``cw_screen_buy_cards.probe_node_type``,本方法只持调用位)。
         失败路径不开收(店留着交上层重新识别,同 _open_shop_phase)。
         """
@@ -1037,9 +1038,6 @@ class CwScreenPrep(SrOperation):
         match = self._match()
         if match is None:
             return False, '无 cw_match(对局未初始化)'
-        from sr_od.application.currency_war.operations.cw_op.cw_op_close_shop import (
-            close_shop,
-        )
         from sr_od.application.currency_war.operations.cw_screen.cw_screen_buy_cards import (
             probe_node_type,
             run_buy_waves,
@@ -1048,10 +1046,6 @@ class CwScreenPrep(SrOperation):
         if _rr is not None or ledger is None:
             return (False, f'买牌循环未完成'
                     f'({_rr.status if _rr is not None else "无产出"})')
-        # 调用方不问成败:关店发出即过,不再验
-        # 「收起消失」——店关没关由下一帧观察侧对账(0n 三锚/备战双锚)
-        # 自然闭环,误入口时外循环 0n 重入商店访问幂等收起自愈。
-        _ = close_shop(self)
         probe_node_type(self)
         return True, '买牌访问完成'
 

@@ -56,10 +56,11 @@ if TYPE_CHECKING:
 
 @dataclass
 class ShopVisitLedger:
-    """商店访问执行账(旧 ``run_buy_waves`` 闭包计数器的具名化,ADR-0517)。
+    """商店访问执行账(旧访问循环闭包计数器的具名化,ADR-0517)。
 
-    ``refresh_first_action`` = 本访问段(两次刷新之间的段)此前零动作
-    (段级标志,由访问编排维护)。
+    消费面 = 执行回执 detail 汇总串与上报 executed 计数单一源
+    (``total_buy``/``total_xp_buy``/``total_refresh``;编排侧 zero-consume
+    分键同读此处)。
     """
 
     total_buy: int = 0
@@ -68,8 +69,6 @@ class ShopVisitLedger:
     total_sell: int = 0
     spend_executed: int = 0
     bought_names: list[str] = field(default_factory=list)
-    refresh_first_action: bool = True
-    did_refresh: bool = False
     # `w536_merge_expect/` 买牌期望态基座(单元尾计算消费):
     buy_purchases: list = field(default_factory=list)
 

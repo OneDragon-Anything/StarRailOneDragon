@@ -389,9 +389,10 @@ class CwActionCloseShopParam:
     单动作架构(ADR-0517)下「无动作可做」的表达 = 策略器主动选关店终结
     op,取代旧「空序列 = 决策完成」契约;全函数契约(决策 5)要求动作空间
     至少含一个恒可用终结(决策 6)——本类即商店画面的该终结。执行侧语义
-    = 本画面 op 结束、交回外循环(关店点击由编排壳 CwOpCloseShop 承担,
-    与旧「空序列触发关店」同一落点);``simulate`` 对其 no-op(期望态随
-    终结作废,由下一次入口观察重建)。
+    = 本画面 op 结束、交回外循环(关店点击由动作 op 执行体
+    CwActionCloseShopOp 真机械执行:找「按钮-收起」miss = 幂等已关,
+    命中 = 点击 + 固定等待 + leave_screen 清场上报);``simulate`` 对其
+    no-op(期望态随终结作废,由下一次入口观察重建)。
     """
     reason: str = ''   # 账本 reason(''=默认)
     route_tag: str = field(default='', kw_only=True,
@@ -675,12 +676,13 @@ class CwActionLuckyTokenUseParam:
 class CwActionOpenShopParam:
     """开商店意图(EnsureShop 意图退役后的承接形态)。
 
-    显式开店 → 流程层编排商店访问(open_shop 幂等开店 → 入口观察 →
-    decide_shop_action 逐动作循环 → CwOpCloseShop → 节点探针)。
+    显式开店 → 流程层编排商店访问(open_shop 幂等开店 → 商店画面 op:
+    入口观察 → decide_shop_action 逐动作循环,关店收编进 op → 节点探针)。
 
     restricted_spend=True:受限访问(发射帧仲裁意图,金出口族出口 B;
-    判定单一源 = 策略前置发射位经 kernel in_launch_spend_zone)→ 买波带
-    预算闸(花后金位跌破息线即拒)→ 关店,本帧不发射(次帧复判)。
+    判定单一源 = 策略前置发射位经 kernel in_launch_spend_zone)→ 访问内
+    花金 = 策略侧自限(决策入口经 kernel launch_arbitration_gate 谓词检)
+    → 关店,本帧不发射(次帧复判)。
     """
     restricted_spend: bool = False
     route_tag: str = field(default='', kw_only=True,

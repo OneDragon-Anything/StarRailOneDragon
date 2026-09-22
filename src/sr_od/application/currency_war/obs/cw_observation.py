@@ -2813,39 +2813,6 @@ def _phase_screen_context(phase: str | None, plane: int | None,
     return None   # fail-open 未知阶段:身份不猜不写
 
 
-# → 无法可靠选 deploy comp 卡 + pref 定位。pixel-diff(buy 前/后 bench 截图 diff)找新占槽 = bought 卡落点,
-BENCH_SLOT_DIFF_THRESHOLD: float = 10.0   # absdiff 均值阈值;新 char icon 显著 > 此(校准待实跑)
-
-
-def new_bench_slots(ctx: SrContext, before: MatLike, after: MatLike) -> list[int]:
-    """buy 前/后 bench 哪些物理槽(1..9)新被占(pixel-diff:新 char icon 出现 → 高 absdiff 均值)。
-
-    char→slot 感知根解。返回新占槽 idx 列表(**left-to-right 升序** = buy 顺序,因 bench 从左到右填)。
-    调用方(buy op)把本结果与同轮 bought 卡名(buy 顺序)zip → char→slot map。无需角色身份(纯像素,可靠)。
-    """
-    log.info('[cw-bench-diff] new_bench_slots CALLED')
-    si = ctx.screen_loader.get_screen('货币战争-备战')
-    if si is None:
-        return []
-    changed: list[int] = []
-    for i in range(1, 10):
-        area = next((a for a in si.area_list if a.area_name == f'备战栏-{i}'), None)
-        if area is None or area.pc_rect is None:
-            continue
-        _r = area.pc_rect   # Rect 对象(有 .x1/.y1/.x2/.y2 属性,非可迭代;旧 `x1,y1,x2,y2=pc_rect` 致 TypeError)
-        x1, y1, x2, y2 = _r.x1, _r.y1, _r.x2, _r.y2
-        b = before[y1:y2, x1:x2]
-        a = after[y1:y2, x1:x2]
-        if b.size == 0 or a.size == 0:
-            continue
-        diff = float(cv2.absdiff(b, a).mean())   # 新 icon → 多像素变化 → 高均值
-        if diff > 1.0:
-            log.info(f'[cw-bench-diff] slot{i} diff={diff:.1f}')
-        if diff > BENCH_SLOT_DIFF_THRESHOLD:
-            changed.append(i)
-    return changed   # 已 left-to-right(slot idx 升序,range 1..9)
-
-
 # ============================================================ 局终判定面(R5 W2;归层=遥测层)
 #
 # 对局结束识别的判定核心,唯一落点 = 本节(消费方 = 未来 cw_loop 收口写点/

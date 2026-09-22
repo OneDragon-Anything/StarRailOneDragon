@@ -394,6 +394,20 @@ class ActiveEffectInventory:
         """升级事件标记(挂点 = prep_actions._level_up 成功返回处)。"""
         self._events[_EVENT_LEVEL_UP] = self._events.get(_EVENT_LEVEL_UP, 0) + 1
 
+    def on_buy(self, card, star: int, k: int = 1) -> None:
+        """购买回调(形态镜像 on_level_up;挂点 = 买牌上报函数
+        report_action_buy_card_param 获取计算完时点——落位 + 合成连锁 +
+        升星腿全毕后触发,回调可见购买后的席面/升星事实;live 与 sim 同经
+        上报函数单口,两面同源)。
+
+        - 计数 = bump ``CounterKey.BUY``(返利族「每购 3 张 5 费」门槛面),
+          满栏合成一击多买按实际张数 k 计 k 次;
+        - ``card``/``star`` = 购买族效果分派预留位入参(现役零消费——
+          按触发类型过滤的触发谓词表未建模前,分派面不展开,与
+          :meth:`bump_key` 同款「只推进不解释」纪律)。
+        """
+        self.bump_key(CounterKey.BUY, n=max(1, int(k)))
+
     def on_battle_end(self) -> None:
         """战斗结算事件标记(生产挂点 = CwScreenBattleWait 结算观察写端
         _record_round_outcome 非 telemetry_only 分支——真实结算才标记,

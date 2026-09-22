@@ -27,7 +27,3 @@ class BuyPurchase:
     star: int
     count: int
     unit_cost: int
-    #: 买前商店帧中该牌的矩形裁片(numpy .copy(),~125KB/张;整帧被帧缓存
-    #: 复用覆写,必须拷贝;一帧原则:来自读牌时已截的帧,零新增截屏)。
-    #: 纯留证零判效:crop 只进 buy_purchases 遥测;落地事实 = tracked 同步。
-    crop: object = None

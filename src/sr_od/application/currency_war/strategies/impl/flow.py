@@ -780,10 +780,10 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # 未观察门(观察态落容器字段,策略消费只走 game state):tracked
         # 主账未按屏幕真值锚定(接管/重置/账失效事件后,备战环 heavy 观察
         # 尚未置位)时商店决策的关键输入(席面)不可信——返回恒可用终结
-        # CwActionCloseShopParam 交编排壳收店,外循环全分支重判自然落回备战节点,heavy
+        # CwActionCloseShopParam 交商店画面 op 执行收店,外循环全分支重判自然落回备战节点,heavy
         # 观察完成锚定后再进店;店内不做任何原地重建(读屏重建出口已退役)。
         # 判定单一源 = kernel cw_game_state.tracked_unobserved;跳过事件
-        # 留痕与连续跳过熔断在执行侧 run_buy_waves 的 CwActionCloseShopParam 出口。
+        # 留痕与连续跳过熔断在执行侧商店画面 op 的 CwActionCloseShopParam 出口。
         from sr_od.application.currency_war.kernel.cw_game_state import (
             tracked_unobserved,
         )

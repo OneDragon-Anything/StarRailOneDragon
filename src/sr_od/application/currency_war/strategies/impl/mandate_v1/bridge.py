@@ -15,7 +15,7 @@
 ``decide_shop_screen`` = 序列兼容驱动器(循环调 ``shop.decide_shop_action``
 单动作核,输入 = 容器单例
 ``game_state_of(session)``;生产执行侧入口 =
-``decide_shop_action``,由 cw_op_buy_cards.run_buy_waves 单动作循环消费)
+``decide_shop_action``,由商店画面 op 单动作循环消费)
 ——sim A/B 证明面=商店波(SIM_CONSUMPTION_MAP Q1)自此有行为载体。
 该驱动器自 ADR-0583 起降格出 ABC(基类缺省实现 = flow 层通用循环;
 本类覆写保留 mandate 特有记账:已买件名单/段序号/续段 token)。
@@ -132,23 +132,30 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
 
 
 def launch_restricted_session_active(gs: GameState) -> bool:
-    """受限会话派生标记(armed ∧ 金超息线;发射帧受限消费的策略侧自限门,
+    """受限会话派生标记(armed ∧ 金达息线;发射帧受限消费的策略侧自限门,
     迭代 changes/2026-09-21-shop-refresh-terminal 详设 §2.10)。
 
     判定与 :func:`_launch_front_check` 前置发射位同源:armed 判定核 =
     kernel ``readiness_launch_decision``(线成员/部署计划谓词注入同参,
-    单一源纪律同款),金超息线 = kernel ``in_launch_spend_zone``(禁内联
-    息线比较)。每帧现算零粘滞:不读不写任何段旗/缓存——「每武装段至多
-    一次」的段旗(cw4_launch_spend_visited)留守语义不受本标记辖,其写端
-    单一源仍 = _launch_front_check(mandate_state 字段注)。
+    单一源纪律同款),金判定 = kernel ``saturation_line`` 派生链直读
+    (禁字面量式)——**恰落线帧视为受限(gold >= g*)**:kernel 预算闸
+    在 gold == g* 帧拒一切正成本动作(花后必跌破 g*),派生标记对齐该
+    带内拒域,闸退役后同边界不失守;入段判定
+    (``in_launch_spend_zone`` 严格 >)随前置发射位现状不动,两判定
+    并存非复制(g* 单一源同链)。买断制语境(cap_resolved = 0)出辖
+    恒 False(同 in_launch_spend_zone 口径)。每帧现算零粘滞:不读不写
+    任何段旗/缓存——「每武装段至多一次」的段旗(cw4_launch_spend_visited)
+    留守语义不受本标记辖,其写端单一源仍 = _launch_front_check
+    (mandate_state 字段注)。
 
     消费点 = flow.decide_shop_action 受限会话自限(唯一提案产出后经
     kernel ``launch_arbitration_gate`` 谓词检;拒 = 决策改发 CloseShop,
     消费终止语义逐位平移,非改试次优——金出口族红线 5)。
     """
     from sr_od.application.currency_war.kernel.cw_economy import (
+        cap_resolved_of_session,
         gold_of,
-        in_launch_spend_zone,
+        saturation_line,
     )
     from sr_od.application.currency_war.kernel.cw_launch_admission import (
         readiness_launch_decision,
@@ -164,7 +171,10 @@ def launch_restricted_session_active(gs: GameState) -> bool:
         deploy_plan_available_fn=has_deployable)
     if not _decision.get('armed'):
         return False
-    return in_launch_spend_zone(gold_of(gs), gs)
+    cap = cap_resolved_of_session(gs)
+    if cap <= 0:
+        return False   # 买断制出辖(同 in_launch_spend_zone 口径)
+    return gold_of(gs) >= saturation_line(cap)
 
 
 class MandateV1Strategy(CwFlowStrategy):
@@ -278,7 +288,7 @@ class MandateV1Strategy(CwFlowStrategy):
         形参 = 兼容宿主(sim/回放/序列锁调用面照旧传),决策已零参化)。
 
         生产执行侧已改调 :meth:`decide_shop_action`(单动作循环,
-        ``cw_op_buy_cards.run_buy_waves``);本驱动器保留给 sim 引擎/回放/既有序列锁——
+        商店画面 op 决策动作 node);本驱动器保留给 sim 引擎/回放/既有序列锁——
         驱动 = 逐帧调单动作核 + 容器逻辑态直写推进期望态
         (上报函数族委托分支串;T-163 起零
         simulate 前瞻消费),终结动作(CwActionRefreshShopParam)截停
@@ -326,7 +336,7 @@ class MandateV1Strategy(CwFlowStrategy):
         # §2.5 impl 桶;与旧 state_of(session) 同一对象,§2.6 过渡桥)。
         self.state.cw4_visit_bought_names = []
         # T-82 段序号置位(sim/replay 商店 visit 入口;生产对应位 =
-        # cw_op_buy_cards.run_buy_waves 入口,sim 引擎发射帧仲裁段的商店
+        # 商店画面 op 观察 node,sim 引擎发射帧仲裁段的商店
         # 决策同样经本驱动器,一并推进):visit = 腾席拒绝结论的输入不
         # 变性段,入口 +1 使上一 visit/上一域残留 token/闩按序号不等失效。
         self.state.cw4_segment_serial += 1

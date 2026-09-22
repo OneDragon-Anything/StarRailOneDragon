@@ -237,10 +237,10 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     # —— 画面附加域(payload 随画面重建)——
     'shop': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='CwActionBuyCardParam payload 投影(proj_buy_payload)+ 关店机械口离屏'
-              '清场(CwOpCloseShop._clear_shop_payload → leave_screen;'
-              'report_action_close_shop_param 同口 = sim 路径)'
-              ';刷后牌面 = 续段重观察覆盖'),
+        basis='CwActionBuyCardParam payload 投影(proj_buy_payload)+ 关店执行位离屏'
+              '清场(CwActionCloseShopOp 自上报 report_action_close_shop_param'
+              ' → leave_screen;sim 委托分支同源)'
+              ';刷后牌面 = 随机态采样 + 重观察覆盖'),
     'encounter': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='遭遇屏 OCR 读入逻辑写(每 visit 重建,等值覆盖)'),

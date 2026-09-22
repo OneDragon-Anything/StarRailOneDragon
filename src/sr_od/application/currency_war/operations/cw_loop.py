@@ -460,17 +460,17 @@ def _launch_frame_arbitration(op) -> dict:
 
     **语义**:溢出段(g > g*,判定单一源 = kernel ``in_launch_spend_zone``
     与必花域共享 saturation_line 链)开一次受限商店访问 = open_shop →
-    ``run_buy_waves(spend_gate=预算闸闭包)`` → close_shop。消费对象与
-    评估序全部由 shop 出口族既有评估栈(策略器单动作核)裁决,闸只辖
-    「花后金位 ≥ g*」(P70 Δ息=0 形;花穿息线部分出辖 = p70 边界 1,
-    判定单一源 = ``kernel/cw_launch_arbitrage.launch_arbitration_gate``)
+    ``run_buy_waves(op, match)``(关店收编进商店画面 op)。消费对象与
+    评估序全部由 shop 出口族既有评估栈(策略器单动作核)裁决,花金政策
+    = 策略侧自限(决策入口提案后经 kernel
+    ``cw_launch_arbitrage.launch_arbitration_gate`` 谓词检,只辖
+    「花后金位 ≥ g*」P70 Δ息=0 形;花穿息线部分出辖 = p70 边界 1)
     ——不新造第二套评估语义(金出口族红线 1/5)。带内段(g ≤ g*)挂
     L1' 独立命题 fail-closed 不开店(证不出不花;带内帧计
     ``launch_arbitrage_inband_closed`` 分键,与「溢出帧零消费」可辨)。
 
-    **预算闸闭包读金口径** = 期望态容器现读(``game_state_of(session)``,
-    run_buy_waves 逐动作逻辑态直写)= 决策与闸同帧同值。后验跌破 g* 检测
-    (合并多买等逻辑态外成本)计 ``launch_arbitrage_cross_line``,正常恒 0。
+    后验跌破 g* 检测(合并多买等逻辑态外成本)计
+    ``launch_arbitrage_cross_line``,正常恒 0。
 
     返回报告 dict:``entered``(是否进入过商店访问——弃射豁免判定位)、
     ``zone``('overflow'/'inband')、``executed``(本帧消费动作数)、
@@ -505,9 +505,6 @@ def _launch_frame_arbitration(op) -> dict:
             PHASE_PREP_CLEAN,
             read_game_state,
         )
-        from sr_od.application.currency_war.operations.cw_op.cw_op_close_shop import (
-            close_shop,
-        )
         from sr_od.application.currency_war.operations.cw_op.cw_op_open_shop import (
             open_shop,
         )
@@ -518,7 +515,7 @@ def _launch_frame_arbitration(op) -> dict:
         session = match.session
         # 开店前干净备战全量读(关店帧 = hp 真读主路径):容器 hp 经漏斗
         # 直写刷新(评估栈血线消费门统一经 decision_hp 政策读口);金位
-        # 预判只作开店门,权威判定在访问内预算闸(入口观察含 gold 救援)。
+        # 预判只作开店门,访问内花金政策 = 策略侧自限(详设 §2.10)。
         # 读金口径 = 容器读口 gold_of(缺省 0 镜像,与原 ``int(... or 0)``
         # 兜底同型零行为差)。
         from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -556,28 +553,14 @@ def _launch_frame_arbitration(op) -> dict:
             return report
         report['entered'] = True
 
-        def _gate(action) -> tuple[bool, str]:
-            # 读金口径(W6 波 4 黑板容器化,设计件 §2.4-2):容器读口
-            # ``gold_of``(缺省 0 镜像,与原 ``int(... or 0)`` 兜底同型
-            # 零行为差;禁裸 gs.gold.value 引入 None 形态行为差)——黑板
-            # 槽退役后闸与决策同读容器,逐动作逻辑态回写经
-            # 上报函数族承接,同帧同值语义不变。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                game_state_of,
-                gold_of,
-            )
-            gold_now = gold_of(game_state_of(session))
-            ok, why = cw_launch_arbitrage.launch_arbitration_gate(
-                action, gold_now, _sess_hp)
-            if not ok:
-                report['gate_blocks'] += 1
-                _launch_arb_counter(op, cw_launch_arbitrage.KEY_GATE_BLOCKS)
-            return ok, why
-
+        # 受限消费政策已迁策略侧自限(迭代
+        # changes/2026-09-21-shop-refresh-terminal 详设 §2.10):决策入口
+        # 提案后经 kernel ``launch_arbitration_gate`` 谓词检,拒 = 决策改发
+        # CloseShop 收访问——本段访问 = 普通路径,零政策闭包。
         # (hp 决策消费统一经容器政策读口 decision_hp,门前真值由本入口
         # PHASE_PREP_CLEAN 读的漏斗直写承接,段间无战斗,值同源——覆盖回写
         # 是绕行,勿再引入。)
-        _rr, ledger = run_buy_waves(op, match, spend_gate=_gate)
+        _rr, ledger = run_buy_waves(op, match)
         if _rr is not None:
             # 访问失败路径不开收(店留着,与 prep 链同语义;典型 = 未识别卡
             # 停机钩子已置 stop_running——保画面待建档,禁关店/禁发射摧毁
@@ -587,7 +570,8 @@ def _launch_frame_arbitration(op) -> dict:
                        time.monotonic() - _arb_t0, 'fail', 'abort')
             _arb_t0 = None
             return report
-        _ = close_shop(op)   # B3 拆除:发出即过,不问成败(关店动作本身必发)
+        # 关店收编进商店画面 op(策略 CloseShop 终结动作 = 真点击离店),
+        # 编排壳代点退役。
         if ledger is not None:
             # 动作账消费 = 访问账本本体(迁移批 3.2:BuyCardsOutcome 退役,
             # run_buy_waves 产出载体 = ShopVisitLedger)。
@@ -609,9 +593,8 @@ def _launch_frame_arbitration(op) -> dict:
             _final_gold = _xa_gold_of(_xa_gs_of(session))
             if report['executed'] > 0 and _final_gold < g_star:
                 _launch_arb_counter(op, cw_launch_arbitrage.KEY_CROSS_LINE)
-        # 直调场景 close 的 is_success=False 来路已不存在(点击已发 = 机械 retry 语义,
-        # 幂等观察 success / 点击已发 retry;关没关由下一帧观察侧对账 0n
-        # 三锚/备战双锚自然闭环),出口行恒 ok。
+        # 访问交回即已收店(策略 CloseShop 终结动作 = 画面 op 内真点击;
+        # 关没关由下一帧观察侧对账 0n 三锚/备战双锚自然闭环),出口行恒 ok。
         _log_cw_op('发射帧仲裁商店访问', _arb_pos,
                    time.monotonic() - _arb_t0, 'ok')
         _arb_t0 = None
