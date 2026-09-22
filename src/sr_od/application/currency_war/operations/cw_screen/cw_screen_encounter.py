@@ -47,7 +47,7 @@ supersession 注;候选读缺的失败安全 = act 空候选零点击终结交�
 容器槽)+ **派发即终结**(投资两屏/补给 3.1 同形态,重入裁决已退役):
 刷新 = 点钮一次 + 2s → ``round_success`` 终结交回 / 选卡 = 派发确认链
 (机械链 + ``chosen_encounter`` 即时上报在动作 op 内)→ ``round_success``
-终结交回 / 空候选或局外 = 零点击终结交回重读——三出口均终结访问,
+终结交回 / 空候选 = 零点击终结交回重读——三出口均终结访问,
 ``round_wait`` 循环面对刷新建议不存在。确认未生效 = 代码 bug,overlay
 残留由外循环按当前画面重识别重派(修法 = 点击链可靠性)。
 ``chosen_encounter`` 写端 = 动作侧即时上报(kernel/cw_action_report/
@@ -144,7 +144,7 @@ class CwScreenEncounter(SrOperation):
         出口三语义(op-layer §1.1 出口①,投资两屏/补给 3.1 同形态):
         ①刷新 = 点钮一次 + 2s → round_success 终结交回;②选卡 = 派发
         确认链(机械链 + chosen_encounter 即时上报在动作 op 内)→
-        round_success 终结交回;③空候选/局外 = 零点击终结交回重读
+        round_success 终结交回;③空候选 = 零点击终结交回重读
         (attack3 X2:候选读缺禁盲选派发——选卡确认不可逆消耗本节点,
         与刷新闸数据不一致分支同构)。确认未生效 = 代码 bug,overlay
         残留由外循环按当前画面重识别重派;三出口均终结访问,无跨轮
@@ -153,14 +153,15 @@ class CwScreenEncounter(SrOperation):
         options = obs.options if obs is not None else []
         match = self.ctx.cw_match
         idx, reason = 0, 'default(no-options/match)'
-        act = None
-        if match is None or not options \
-                or getattr(match, 'gs', None) is None:
-            # 空候选/局外 = 零点击终结交回(重读由外循环重进承载)。
-            log.info('[cw-encounter] 不可决策(match=%s options=%d) '
-                     '→ 零点击终结交回重读', match is not None, len(options))
-            return self.round_success('候选读缺/局外,零点击终结交回重读',
+        if not options:
+            # 空候选 = 零点击终结交回(重读由外循环重进承载;禁盲选——
+            # 选卡确认不可逆消耗本节点)。
+            log.info('[cw-encounter] 候选读缺(options=%d)'
+                     ' → 零点击终结交回重读', len(options))
+            return self.round_success('候选读缺,零点击终结交回重读',
                                       wait=1.5)
+        # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
+        # §1.1):缺上下文沿正常链路在此失败即预期,禁回填此类单跑防御分支。
         gs = match.gs
         # 刷新剩余闸读源 = 容器 encounter_refresh_left(观察轮 report
         # 摄入的同帧读数;None = 未观察/读缺,≤0 = 已刷尽)。

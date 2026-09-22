@@ -31,7 +31,7 @@ names = opts 卡名;空候选 → round_fail 显式失败(零盲发,先于局外
   空候选 = OCR 读缺 bug 面,契约与局外无关)
 未注册环境名逐个告警(该项 env_fit 走中性 fallback)
 局外无 match(∨ gs 缺席)→ 零决策零点击 round_success 终结交回
-  (遭遇屏在册先例同款;画面 op 不产决策、不设兜底决策路径——正本 =
+  (画面 op 不产决策、不设兜底决策路径——正本 =
   op-layer.md §1.1「画面 op 不支持局外单独调用」;仅独立跑可达)
 act = match.strategy.decide_invest_env()(零参,输入 = 容器标准名
   invest_env_opts 槽——观察标准化门产出,值域 = 标准注册名)
@@ -81,7 +81,7 @@ act = match.strategy.decide_invest_env()(零参,输入 = 容器标准名
 | 选卡确认链派发 | **访问终结** | round_success 交回外循环重分发(本屏身份臂链尾接 `CwScreenWaitOneOne`;结果已即时上报写入;确认未生效 = 代码 bug,overlay 残留由外循环重识别重派) |
 | 观察转换失败(标准化门) | 显式失败 | round_fail 零写零上报,交回外循环重观察重读 |
 | 空候选/决策无有效输出 | 显式失败 | round_fail 交外循环(零盲发) |
-| 局外无 match(仅独立跑可达) | **访问终结** | round_success 零决策零点击交回(遭遇屏在册先例同款) |
+| 局外无 match(仅独立跑可达) | **访问终结** | round_success 零决策零点击交回(op-layer.md §1.1 局外单跑条款) |
 | 入口锚 miss | op FAIL | 交回外循环按当前画面重分发 |
 
 刷新 = 唯一引入新事实的动作,终结交回语义 = [op-layer.md](op-layer.md) §1.4;「确认离开 = 画面终结」= [README.md](README.md) §6。
