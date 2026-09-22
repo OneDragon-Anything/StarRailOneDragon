@@ -2,9 +2,9 @@
 """货币战争 投资策略 3 选 1 op(两 node 直继承 SrOperation)。
 
 观察 node = 入口锚复探窗(ADR-0529 有界自愈:复探窗内自愈、超窗
-round_retry 消耗观察 node 预算)→ visit 起点单点复位已随防重入宿主
-退役 → **一次读全**(3 张卡名 + 逐卡刷新剩余次数,零稳定帧等待——
-用户裁定 2026-09-21「不要 1s 稳定帧」;读缺自愈 = 复探窗/外循环重派)
+round_retry 消耗观察 node 预算)→ **一次读全**(3 张卡名 + 逐卡刷新
+剩余次数,零稳定帧等待——用户裁定 2026-09-21「不要 1s 稳定帧」;
+读缺自愈 = 复探窗/外循环重派)
 → ``report_screen_invest_strategy_obs`` 落容器(候选 ``invest_strategy_
 opts`` + 逐卡剩余 ``strategy_refresh_left`` 观察写端)→ obs 挂实例
 属性。决策动作 node = 零参决策(候选自容器槽;空候选/无有效输出 =
@@ -22,9 +22,9 @@ math_proofs P81)→ 返回 ``refresh_slots`` 非空 ∧ 逐槽余量闸(obs 携�
 + 容器 ``strategy_refresh_left`` 双闸,剩余 ≤0 = 尽)→ 文本锚定点刷新
 圆钮一次 → 固定等待(机械时序,非判效)→ 本访问即终结交回(外循环重进
 = 入口重建,新事实的观察与决策归重进的下一访问)。投资策略屏刷新是
-**逐卡刷新**(每卡独立按钮、独立计数,归档帧对实证)。验效双通道已拆除
-(用户裁定 2026-09-10;2026-09-14 收敛为零比对:访问内刷后不重读不比对
-不重决策)。计数 = 屏上剩余次数观察真值(用户裁定:game state 记录画面
+**逐卡刷新**(每卡独立按钮、独立计数,归档帧对实证)。访问内刷后零
+比对(刷后不重读不比对不重决策;正本 = flow/op-layer.md §1.4)。计数 =
+屏上剩余次数观察真值(用户裁定:game state 记录画面
 可观察的剩余次数),写端 = 观察 report 摄入,本 op 零计数写点。
 
 形态(投资两屏迁移批):观察一次读全 + 即时上报 + 终结交回;选择事实
@@ -46,10 +46,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.kernel.cw_comps import augment_affinity
-from sr_od.application.currency_war.kernel.cw_events import (
-    decide_event,
-    is_economy_engine,
-)
+from sr_od.application.currency_war.kernel.cw_events import is_economy_engine
 from sr_od.application.currency_war.kernel.cw_investments import (
     get_strategy,
     is_blood_economy,
@@ -105,23 +102,19 @@ class CwScreenInvestStrategy(SrOperation):
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资策略'   # screen_info 画面(currency_war_invest_strategy.yml)
     # 卡选中点击 Y:screen_info「区域-卡名行」center.y(=卡名选中行);常量=兜底。
-    # V4.4 实测(2026-08-05,↺ 推翻 I16「卡底 820 选中」):**点卡名(y≈474)选中**(白边 + 确认亮)。
-    # 实机点验:点中产阶级卡名(461,474) → 白边选中 → 点确认 → 推进备战 1-3(链路通)。
-    # I16「卡底 820 才选中」错 —— 820 是刷新区/卡底,点没选中 → handle 点 820 不选中 → loop 反复卡死投资策略
-    # (整局阻塞,实跑暴露)。旧 doc(2026-08-04「描述区 545 选中」/ I16「卡底 820」)均过时。
+    # 实机点验:点卡名(y≈474)→ 白边选中 → 确认亮 → 确认推进;点卡底/
+    # 描述区不选中 → 确认灰置 → 整局阻塞风险。
     CARD_CLICK_Y: ClassVar[int] = 474   # 兜底(卡名选中);首选 area_center('区域-卡名行')
     # 卡名行 center-y 过滤带(标题 y≈98 / 描述 y≈520+ / 刷新次数 y≈841 / 确认 y≈983)
     NAME_CY_LO: ClassVar[int] = 465
     NAME_CY_HI: ClassVar[int] = 505
     _EXCLUDE: ClassVar[set[str]] = {'请选择投资策略', '攻略', '返回备战界面', '图例', '确认', '刷新次数1'}
-    # 确认按钮:screen_info「按钮-确认」center(task#20);常量=兜底。
+    # 确认按钮:screen_info「按钮-确认」center;常量=兜底。
     CONFIRM: ClassVar[Point] = Point(978, 983)   # 兜底;首选 area_center('按钮-确认')
-    #: 入口锚复探窗(动画帧容忍,治本 20/21 局同型失败 2026-09-06 01:41:30 /
-    #: 02:22:28「返回状态 非投资策略屏」):投资策略节点首访时派发帧 → 本 op
-    #: 首帧之间落在「备战 → 金币过场动画 → overlay 淡入」过渡段(screen_flow_timing.md
-    #: #11),首帧采样可 miss「标识-请选择投资策略」;旧实现单探测 miss 即
-    #: round_fail(round_fail 不吃 node_max_retry_times,直接炸出整 op),外层
-    #: 重试才自愈但每次触发哨兵报警+退出。修法(复探=短窗+新截图):首探
+    #: 入口锚复探窗(动画帧容忍,治本 20/21 局同型失败「返回状态 非投资
+    #: 策略屏」):投资策略节点首访时派发帧 → 本 op 首帧之间落在
+    #: 「备战 → 金币过场动画 → overlay 淡入」过渡段(screen_flow_timing.md
+    #: #11),首帧采样可 miss「标识-请选择投资策略」。复探窗语义 = 首探
     #: miss → 短窗后新截图复探,窗口内命中即继续;超窗仍 miss 才 round_retry
     #: (防无限等真非目标屏)。决策记录 = ADR-0529。执行层时序常量,非策略数值。
     ENTRY_REPROBE_TIMES: ClassVar[int] = 4
@@ -183,8 +176,8 @@ class CwScreenInvestStrategy(SrOperation):
             screen = self.screenshot()
             hit = self._entry_anchor_hit(screen)
         # 末次复探结果必须消费:循环内 if 只判上一轮采样,最后一次采样的
-        # 命中若不在此返回,会被整体丢弃(三审 off-by-one:锚恰在窗口末拍
-        # 出现仍误报失败——恰是本复探窗要容忍的形态边缘)。
+        # 命中若不在此返回,会被整体丢弃(锚恰在窗口末拍出现仍会误报失败
+        # ——恰是本复探窗要容忍的形态边缘)。
         return hit
 
     def _observe_frame(self) -> CwScreenInvestStrategyObs:
@@ -243,7 +236,9 @@ class CwScreenInvestStrategy(SrOperation):
         """决策+动作内聚体(决策面):零参决策(候选自容器槽)→ 逐卡刷新
         终结动作(obs 余量闸 + 容器剩余口径双闸)→ 选卡确认链派发(动作
         op 内即时上报)→ round_success 终结交回。空候选/决策无有效输出 =
-        round_fail 显式失败(零盲发,裁定「没有选到就是代码 bug」)。"""
+        round_fail 显式失败(零盲发,裁定「没有选到就是代码 bug」);
+        局外无 match = 零决策零点击 round_success 终结交回(遭遇屏同款;
+        flow/README.md §1 决策控制分层铁律)。"""
 
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         opts = obs.options
@@ -255,32 +250,25 @@ class CwScreenInvestStrategy(SrOperation):
             # 自愈过渡帧,此态 = 真读缺)。
             return self.round_fail('投资策略候选 OCR 读缺(零盲发,显式失败)')
         match = self.ctx.cw_match
+        if match is None:
+            # 局外独立跑(无策略器可调)= 零决策零点击终结交回(遭遇屏
+            # 同款处置;决策控制分层铁律:画面 op 不产决策,局外兜底决策
+            # 路径废除——flow/README.md §1;op-layer.md §1.1 两件职责)。
+            log.info('[cw-strat] 局外无 match → 零决策零点击终结交回')
+            return self.round_success('局外无 match,零决策零点击终结交回',
+                                      wait=1.5)
         # 零参决策(写槽已由观察轮 report 落容器 invest_strategy_opts)。
         # 输出 = 单一 CwAction:CwActionRefreshInvestCardsParam(逐卡刷新
         # 建议)/ CwActionPickInvestStrategyParam(选卡)互斥单发。
-        act = None
+        act = match.strategy.decide_invest_strategy()
         refresh_slots: tuple[int, ...] = ()
-        if match is not None:
-            act = match.strategy.decide_invest_strategy()
-        else:
-            # 防御:无 match(局外独立跑)。decide_event 不读 hp/品质惩罚
-            #(唯一局面消费 = board.value or {},未观察等价空表)。显式跳过
-            # 刷新链(ADR-0600 §3.3 防御路径:局外防御帧零行为增量)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                GAME_STATE_SCHEMA_VERSION,
-                GameState,
-            )
-            _kpick = decide_event(names, config,
-                                  GameState(schema_version=GAME_STATE_SCHEMA_VERSION))
-            act = CwActionPickInvestStrategyParam(idx=_kpick.option_idx,
-                                                  reason=_kpick.reason)
         if isinstance(act, CwActionRefreshInvestCardsParam):
             refresh_slots = act.slots
 
         # ===== 逐卡刷新 = 终结动作(用户裁定 2026-09-14:点钮后本访问即
         # 终结交回,外循环重进后重观察重决策;闸门语义 = ADR-0600 §3.3
         # 逐卡预算;闸输入 = obs 携带 + 容器剩余口径,决策环零识别)=====
-        if refresh_slots and match is not None:
+        if refresh_slots:
             # 闸 2 读源 = 容器逐卡剩余(观察写端;键 = 规范卡名;≤0 = 尽;
             # 键缺失 = 该卡尚未观察过余量,由闸 1 现值裁决)。
             from sr_od.application.currency_war.kernel.cw_game_state import (
