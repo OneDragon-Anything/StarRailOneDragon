@@ -12,8 +12,8 @@
 - 正本更新:done(T-4,`147cc3c6b`;encounter.md/supply.md 全文重写 + README/op-layer/action_ops/action_exec/flow README/fields 同步 + 兜底死注释清;验收 = reviews/T-4-r1.md accept)
 
 ## 外溢挂账(后续批)
-- T-5:PickPlanner/PickEquip 两相上报清偿(wait;外溢另批)
-- T-6:「财富」装备模板采集补缺(wait;data-collection 批)
+- T-5:PickPlanner/PickEquip 两相上报清偿(dead;承接迭代 = [pick-planner-equip-immediate-report](../2026-09-21-pick-planner-equip-immediate-report/README.md) 全阶段 done)
+- T-6:「财富」系件查证（wait；**范围已重定**——实机遇到「财富」系件时通知编排者截图核图鉴。已核事实：当前赛季官方配置无「财富」本体；出处 = 游戏内数据银行图鉴采集；「财富(基础)/(强化)」模板在库且逐字节相同（同 art 变体）→ 本体即便出现也只是同族错名非消失，原「采集补缺」批作废。待查证：本体是图鉴合集母条目还是可获得件 + 效果三兄弟（10%+4金币/纯风味/10%）归属错位。人读详情 = 账本 T-6 note）
 - R5:策略器收益对账读端(encounter_reward_claimed 消费读端,外溢候选)
 - op-layer §3 标题「37」vs 正文「36」数字漂移(review 在册发现,归后续批)
 - 实机待验:遭遇分支刷新点击行为、未激活布局 UI 形态(game 侧 currency_war_encounter.md 在册)
