@@ -136,7 +136,7 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 | PickPartner | `env.op._pick_point`(宿主画面 op 属性;env 无 target) | 体内 `round_by_find_and_click_area`(按钮-确认选择) |
 | PickPlanner | `env.target` | 体内 `round_by_find_and_click_area`(按钮-骇入确认) |
 | PickInvestStrategy / PickInvestEnv | `env.idx` / `env.target` | 体内 `round_by_find_and_click_area`(按钮-确认,屏名按宿主屏类解析) |
-| PickFortune | `env.target` | 体内 `round_by_find_and_click_area`(按钮-确认选择) |
+| PickFortune | 容器 `fortune_opts_xy[param.idx]`(env op-only) | 体内 `round_by_find_and_click_area`(按钮-确认选择) |
 | PickWishTrial | `env.target` | 体内 `round_by_find_and_click_area`(按钮-确认选择) |
 | PickBoxCard / PickStarTome / PickExpertInvite | `env.target` | 无确认步(点卡即选) |
 
@@ -151,7 +151,7 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 | PickPlanner | CwActionPickPlannerOp | `cw_pick_planner_action.py` | 骇入策划确认链(即时单相):`env.target` 点卡(避开卡内「详情」按钮区的选中点几何归决策半单一源)→ 固定等 1.2s → 「按钮-骇入确认」area 查找点击确认(`round_by_find_and_click_area`,全族统一);点卡 = 机械单发(无详情面板检测;面板若真弹出归下一帧外循环重识别自愈)。**确认点击后立即自上报完整结果** `report_action_pick_planner_param`(`kernel/cw_action_report/pick_planner.py`:条件腿 rider 先行 → equip 腿入栏+后果链 / upgrade 变换窗三态+档行 `lv999_cost_tier` / unknown 留证 / unrouted 兜底零写,`leg_type`/`norm_item` 经 env 随派发透传);派发即终结,确认未生效由外循环重识别重派。发射条件 = 决策半产 PickPlanner。 |
 | PickInvestStrategy | CwActionPickInvestOp | `cw_pick_invest_action.py` | 投资策略屏选择行(投资两屏迁移批:词表拆类,与 PickInvestEnv 两行同指一 op,机械链同构):点选中位(`env.idx`/`env.target` 决策半现算)→ 固定等 0.7s → 点确认钮 → **立即自上报完整结果** `report_action_pick_invest_strategy_param`(session 自 ctx 取)→ 整支走获得链 `kernel/cw_gain_chain.py::gain_invest_strategy`(无效载荷拒绝 → active_strategies 按名字去重追加 → 效果账本登记腿 → `on_strategy_gained` 效果分派;出参 reason=`gain_chain_applied`)。 |
 | PickInvestEnv | CwActionPickInvestOp | `cw_pick_invest_action.py` | 投资环境屏选择行(同上共 op):点选中位 → 固定等 0.7s → 点确认钮 → **立即自上报完整结果** `report_action_pick_invest_env_param`(上报 = `param.idx`,名字自容器 `invest_env_opts` 标准名单一源按序号提供——观察层标准化门产出,规范 = op-layer.md §1.1;容器缺读/idx 越界 = 响亮失败)→ 整支走获得链 `gain_invest_env`(无效载荷拒绝 = 链内零写留证 `pick_invest_invalid_payload` → active_env 注册 + portal 登记 + `on_env_gained` 效果枚举;出参 reason=`gain_chain_applied`)。 |
-| PickFortune | CwActionPickFortuneOp | `cw_pick_fortune_action.py` | 命运卜者强化三选一(pick-op-unify 批收编,T-3):点卡(`env.target`)→ 「按钮-确认选择」area 查找点击确认(`round_by_find_and_click_area`,全族统一)→ 自上报(零写)。 |
+| PickFortune | CwActionPickFortuneOp | `cw_pick_fortune_action.py` | 命运卜者强化三选一(pick-op-unify 批收编,T-3;坐标随报收敛批改取点源):点卡(容器 `fortune_opts_xy[param.idx]`,缺 = 守卫断言)→ 「按钮-确认选择」area 查找点击确认(`round_by_find_and_click_area`,全族统一)→ 自上报(零写)。 |
 | PickWishTrial | CwActionPickWishTrialOp | `cw_pick_wish_trial_action.py` | 祈愿试炼(pick-op-unify 批收编,T-3):点卡(`env.target`)→ 点「按钮-确认选择」area 确认 → 自上报(零写)。 |
 | PickStarTome | CwActionPickStarTomeOp | `cw_pick_star_tome_action.py` | 星徽秘典(pick-op-unify 批收编,T-4,点卡即选):选中点击 + 动画等待,零确认步 → 自上报(零写)。 |
 | PickBoxCard | CwActionPickBoxCardOp | `cw_pick_box_card_action.py` | 武装箱(pick-op-unify 批收编,T-4,点卡即选):同上形态。 |
