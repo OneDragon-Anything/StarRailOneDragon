@@ -51,6 +51,7 @@
 
 - **合法性判定全部内化于策略器**(提议侧约束);执行侧只余**守卫断言**——防 bug 路栏而非控制流分支,非法返回 = 策略器 bug 响亮暴露(禁静默跳过或降级续跑)。现役守卫 = `operations/cw_op/cw_shop_action_ops.py::guard_proposal_vs_expected`(提案对象在期望态存在且未被消费——防策略器算术 bug,恒炸)。守卫登记(逐屏条目,新增屏随其批补录):
   - 命运卜者:`operations/cw_screen/cw_screen_fortune.py::CwScreenFortune.act` 决策出口——守卫⓪:无 match(局外)= 零决策零点击 round_success 终结交回(§1.1 :37);守卫①:decide_fortune 返回词表外/None = 具名 round_fail 零盲发(§1.1 出口③);守卫②:pick.idx 越界 = 守卫断言 AssertionError(本节)。
+  - 星徽秘典:`operations/cw_screen/cw_screen_bookcard.py::CwScreenBookcard.act` 决策出口——守卫⓪:无 match(局外)= 零决策零点击 round_success 终结交回(§1.1 局外单跑条款);守卫①:候选空 = 具名 round_fail 零盲发(§1.1 出口③);守卫②:decide_star_tome 返回词表外/None = 具名 round_fail 零盲发(§1.1 出口③);守卫③:pick.idx 越界 = 守卫断言 AssertionError(本节)。
 守卫零读屏。op 框架既有的重试/等待语义属 execute 执行实现层,不算第二道合法性门。
 - **对账唯一发生点 = 观察边界(硬规则)**:对账 = 观察 vs 逻辑的双态比对,唯一合法时点 = **观察数据经 report 进入 game state 的观察边界**(画面 op 观察 node / 动作自上报后的下一观察帧),由 game state 执行比对与仲裁(`kernel/cw_reconcile.py`;锚定机制属 game state 层内部实现);**其余任何状态/op 层不做双态比对,也不做店内原地重建**——动作级「发射即登记 + 下一帧对账」不属于双态比对(归观察侧闭环)。**摄入逻辑住屏文件**:该画面观察进容器的全部逻辑(写点/屏级门/派生/对账特判)住 kernel 屏文件(§2),op 层只组装 obs 并调用 report;依赖读帧的观察审计链(如备战羁绊显示核对)不迁 kernel,留守画面 op 观察 node(§2 辖域边界)。
 

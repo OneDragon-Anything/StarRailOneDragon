@@ -1,13 +1,13 @@
-"""开书册卡动作 op(CwActionOpenBookcardOp)——动作 op 重组批③ 换壳(原
-``OpenBookcardOp``,ActionOp ABC → 框架 SrOperation;机械执行后 **op 内
-直调自己的上报函数** ``report_action_open_bookcard_param``,零分派,
-design.md §1.1/§1.2;机械半本体 = R10/批2c 自 ``cw_screen_expert_invite.
-open_card`` 迁入执行器的形态)。
+"""开书册卡动作 op(CwActionOpenBookcardOp)——框架 ``SrOperation`` 直
+继承动作 op;机械执行后 **op 内直调自己的上报函数**
+``report_action_open_bookcard_param``,零分派(依据 = op-layer.md §1.2
+动作 op 契约);机械半 = ``find_bookcards`` 识别 → 点槽中心 → 固定动画
+等待(纯机械,识别单一源 = ``obs/cw_identity_obs.py::find_bookcards``)。
 
-终结动作(用户裁定 2026-09-19 开卡时机归策略器,发射位 = entry ①
-prep 实体面卡片臂;原非终结 + 画面 op 入口清场代交回通道撤销):点完
-开启即引入新事实(专家邀请函弹窗在场)→ 本动作终结交回外循环,弹窗由
-外循环 0k 分发 ``CwScreenExpertInvite`` 选卡。"""
+终结动作(开卡时机归策略器,发射位 = entry ① prep 实体面卡片臂,
+screens/README §5.5):点完开启即引入新事实(专家邀请函弹窗在场)→
+本动作终结交回外循环,弹窗由外循环按画面分发 ``CwScreenExpertInvite``
+选卡(分发判定单一源 = flow/outer_loop.md §2 阶段一身份分发)。"""
 from __future__ import annotations
 
 import time
@@ -33,14 +33,15 @@ if TYPE_CHECKING:
 
 class CwActionOpenBookcardOp(SrOperation):
     """开书册卡:``find_bookcards`` 识别 → 点槽中心 → 固定动画等待
-    (纯机械执行)。终结动作(用户裁定 2026-09-19 发射位迁策略器,
-    弹专家邀请函 = 新事实 → 终结交回,与 OpenBox R7 同构)。"""
+    (纯机械执行)。终结动作(发射位 = 策略器 entry ① prep 实体面卡片
+    臂,screens/README §5.5;弹专家邀请函 = 新事实 → 终结交回,与
+    OpenBox 终结化同构,规范锚 = op-layer.md §1.4)。"""
 
     #: 终结动作(专家邀请函弹窗在场 = 新事实,交回外循环重分发选卡)。
     terminal = True
 
     #: 交回等待 = 开卡动画等待值(与 prep_actions._OVERLAY_ANIM_WAIT_S
-    #: 逐字等价,漂移由等价锁暴露;原画面 op 交回等待同源)。
+    #: 逐字等价,漂移由等价锁暴露)。
     terminal_wait = 1.8
 
     def __init__(self, ctx: SrContext, param: CwActionOpenBookcardParam,
@@ -54,7 +55,7 @@ class CwActionOpenBookcardOp(SrOperation):
     def run(self) -> OperationRoundResult:
         """开书册卡:``find_bookcards`` 识别 → 点槽中心 → 固定动画等待。
 
-        点完开启本动作即交回——专家邀请函弹窗由外循环 0k 分发
+        点完开启本动作即交回——专家邀请函弹窗由外循环按画面分发
         ``CwScreenExpertInvite`` 选卡(选卡决策不在本执行链)。动画等待取
         家族常量 ``_OVERLAY_ANIM_WAIT_S``;弹窗就位与否交下一帧观察。识别
         按 ``action.slot`` 对位(slot=None = 首张);书册卡识别含
@@ -84,11 +85,12 @@ class CwActionOpenBookcardOp(SrOperation):
         slot, center = picked
         ex._ctx.controller.mouse_move(center)   # 防吞点击(同开箱/采晶矿口径)
         ex._ctx.controller.click(center)
-        # 固定动画等待(A3 纪律:等待归产生动画的操作;判效交下一帧观察)
+        # 固定动画等待(等待归产生动画的操作,固定等待族 =
+        # flow/action_ops.md §2.2;判效交下一帧观察)
         time.sleep(_OVERLAY_ANIM_WAIT_S)
         log.info(f'[cw][bookcard] 开书册卡槽{slot} → 点开启已发'
                  '(交回外循环,专家邀请函分发选卡)')
-        # —— 自上报(机械发出后;design.md §1.1):开卡腾席 ——
+        # —— 自上报(机械发出后;op-layer.md §1.2 动作 op 契约):开卡腾席 ——
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_open_bookcard_param(
