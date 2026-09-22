@@ -392,7 +392,7 @@ def launch_battle_unified(op, ctx, *, face: str) -> tuple[bool, str]:
 
 
 def _prep_anchors_hit(op, screen) -> bool:
-    """备战双锚命中判定(小helper,复用 0 系锚表同款两锚;禁判据外散写)。"""
+    """备战双锚命中判定(小helper,复用身份分发锚表同款两锚;禁判据外散写)。"""
     return (op.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验',
                                   crop_first=False).is_success
             and op.round_by_find_area(screen, '货币战争-备战', '按钮-出战',
@@ -502,9 +502,9 @@ def op_fail_redispatch_tick(prev_key: str | None, prev_n: int,
       「上情节残留计数毒化新情节」的假阳性面(跨情节必有其他 op 的 ok
       穿插,如 overlay 自愈后经备战/战斗环再回,计数不带病累加);
     - 同键 fail 累加;异键 fail = 粘滞对象已换,新情节从 1 起算
-      (0q 专用计数器「仅本分支语义」的推广)。
+      (原位面过渡误分发专用计数器「仅本分支语义」的推广)。
 
-    已知边界(如实申报):同一迭代内双 op 链交替 fail(0s 投资环境→
+    已知边界(如实申报):同一迭代内双 op 链交替 fail(「货币战争-投资环境」→
     等待1-1)两键各自计 1 不达限——该形态不属「同一 op 连续 fail」
     辖域,由两 op 内部预算 + 系统级哨兵(stall_watch/NODE-DWELL)承管。
     """
@@ -553,7 +553,7 @@ class CwLoop(SrOperation):
     #: → round_fail 显式停交上层,取代「fail → round_wait 零预算重派」
     #: 的无界空转(实锤形态 = 选择伙伴 15 连败,由 NODE-DWELL 900s 系统
     #: 哨兵兜住才停,2026-09-15 事故)。本网是全部分发分支(overlay/
-    #: 事件族/on_fail_retry 族)的唯一连续 fail 预算——原 0q 位面过渡
+    #: 事件族/on_fail_retry 族)的唯一连续 fail 预算——原位面过渡误分发守卫
     #: 误分发守卫(=3)与 prep streak 守卫(=5)已退役并入本网(阈值
     #: 同值平手,行为无差);链形透传分支(3c)不经本网(各有自身预算)。
     #: on_fail_retry 族原退路是消耗 400 节点重试池 ≈ 13min 同 op 空转。
@@ -566,10 +566,6 @@ class CwLoop(SrOperation):
     # 备战稳定门防护替身(W971 §2.6/03-prep §1):①逐动作回流程层确认画面
     # (overlay 弹出当步即见,转入 overlay op)②触发计算式追加等待
     # (03-prep §3 CwActionDeployMoveParam 行)③director 环入口清场+自动开店预收探针。
-
-    #: 0e 投资策略浮层分发复探窗口(N5 分发判别稳定化):首探测 miss 且
-    #: 备战双锚命中(浮层穿透形态)时,短窗后新截图复探一次。执行层时序
-    #: 常量(淡入动画期采样窗),非策略
 
     #: 主循环全部分支判定锚 ``画面名.area名``(分发预检枚举源)。
     #: 运行时画面加载只读 _od_merged.yml;分文件改名后 merged 漏再生时,分支
@@ -824,7 +820,7 @@ class CwLoop(SrOperation):
         :param on_fail_retry: True = op 失败映射 loop 级 round_retry(与既有
             分支内联 round_retry 消费同一 retry 池);False = 失败也 round_wait
         :param on_result: 守卫钩子回调 ``(ok, res) -> round | None``;返回
-            None = 走默认映射,返回 round 对象 = 覆盖默认返回(如 0q 超限
+            None = 走默认映射,返回 round 对象 = 覆盖默认返回(如外环 fail 预算超限
             round_fail)。调用点 = execute 之后、[cw-op] 行落点之前。
         :return: 分支的轮次结果
 
@@ -1076,7 +1072,7 @@ class CwLoop(SrOperation):
                 frame_tag='overlay_partner', wait=2)
 
         if name == '货币战争-银狼升星':
-            # 失败 round_retry(消费 retry 池,原 0a2 同语义)
+            # 失败 round_retry(消费 retry 池,原选择装备重试腿同语义)
             return self._dispatch_screen_op(
                 CwScreenYinLang(self.ctx), journal_name='策划事件',
                 frame_tag='overlay_planner', wait=2,
@@ -1220,7 +1216,7 @@ class CwLoop(SrOperation):
 
             def _frontless_confirm_step() -> OperationRoundResult:
                 # 出战域重设计(T-286):弹窗确认交回语义——点确认关弹窗,
-                # 零恢复动作(不重部署不补发射,原 0j 恢复链退役);交回
+                # 零恢复动作(不重部署不补发射,原前台无角色恢复链已退役);交回
                 # 外循环下一帧重判真实画面(备战 = 重走备战环决策;弹窗
                 # 残留 = 本分支再入确认,天然幂等)。「前台无角色」根因
                 # 处置归部署面决策,弹窗臂不自愈。
@@ -1305,7 +1301,7 @@ class CwLoop(SrOperation):
                          getattr(res, 'status', ''))
 
             # 链序保留(用户裁定特殊等待):环境 op → 等 1-1 备战锚 op;
-            # 两 op 两对 journal 行(0s 补行)。
+            # 两 op 两对 journal 行(投资环境补行)。
             self._dispatch_screen_op(
                 CwScreenInvestEnv(self.ctx), journal_name='投资环境',
                 frame_tag='flow_invest_env', wait=0, on_result=_on_invest_env)
@@ -1315,7 +1311,7 @@ class CwLoop(SrOperation):
                 on_result=_on_wait_one_one)
 
         if name == '货币战争-备战-角色详情':
-            # 右侧面板锚区与大面板帧独占(与 0t 双锚天然互斥);空白关+验效迁 op。
+            # 右侧面板锚区与大面板帧独占(与商店卡牌详情双锚天然互斥);空白关+验效迁 op。
             return self._dispatch_screen_op(
                 CwScreenRoleDetailOverlay(self.ctx), journal_name='详情弹窗',
                 frame_tag='overlay_role_detail', wait=1.5,
@@ -1439,7 +1435,7 @@ class CwLoop(SrOperation):
         # 名单,框架建档判定非手写锚),与退出路由③同一常量——两侧判定
         # 同源是防「loop 停↔退出重派」互踢死循环的硬前提。语义 = 可点门形
         # 退出的备战态(含免战)。已知边界:B 类浮层(选择伙伴等)在场时
-        # 全集识别返回其专属屏名 ∉ A 类 → 本停机位判否,交下方 0 系分支
+        # 全集识别返回其专属屏名 ∉ A 类 → 本停机位判否,交下方分发分支
         # 处理浮层,处理完屏名回 A 类才交还(互踢推演成立);开商店等已
         # 独立建档的备战子态同理由屏名区分。穿透双锚 _prep_anchors_hit
         # 已不用于本停机位(穿透语义会把「选择伙伴」帧误判干净备战立即
@@ -1546,7 +1542,7 @@ class CwLoop(SrOperation):
                 CwScreenAhaEquipPick(self.ctx), journal_name='阿哈装备选择',
                 frame_tag='overlay_aha_equip', wait=1.5)
 
-        # (原 0p/0q 误读兜底已退役,2026-09-16 裁定:未建档实证的故障形态
+        # (原 BOSS简报/位面过渡两处误读兜底已退役,2026-09-16 裁定:未建档实证的故障形态
         #  不作兜底理由——身份 miss 的真实帧走未知兜底停机留证,证据入库后
         #  再议加固;boss 帧排他保留在阶段一位面过渡身份臂。)
 
@@ -1559,7 +1555,7 @@ class CwLoop(SrOperation):
 
         # 1. 备战阶段 → 备战单轮 op(CwScreenPrep 单轮五段:观察→对账→决策→
         #    期望态→执行,交回本循环;W971 P3b 返工定稿:内环已拆,外循环是
-        #    唯一循环)。注:遭遇/选择伙伴 等 event overlay 已在 0 系分支处理。
+        #    唯一循环)。注:遭遇/选择伙伴 等 event overlay 已在阶段一身份分发处理。
         # 画面判定 = **双锚**(2026-08-26 用户定调「全面的 id mark」):「备战标识-购买经验」
         # (左下,conf 0.9999)+「按钮-出战」(右,跨 shop 开/关子态恒在;单锚在 overlay
         # 半开帧可从底层透出命中,prep.md §时序)。双锚同帧命中才认备战。
@@ -1627,7 +1623,7 @@ class CwLoop(SrOperation):
                 log.warning('[cw!][loop] 锁定模式出战未执行(%s)→ retry(保锁定)',
                             detail)
                 return self.round_retry(wait=2)
-            # 过渡门说明:0e 系分支(上方)先于本分支检查同截图同三元组(id_mark
+            # 过渡门说明:阶段一身份分发与阶段三特殊规则分支(上方)先于本分支检查同截图同三元组(id_mark
             # 位置判),OCR 按 id(image) 缓存 → 到达此处时 overlay 检查必全 False;
             # 稳定防线 = 上方子态稳定门(连续 3s,非同帧检查)。
             # 可控轮数:已跑完 max_rounds 轮 → 停备战屏(可 analyze board/star + star 钩子采样本),不跑备战单轮。
@@ -1637,7 +1633,7 @@ class CwLoop(SrOperation):
                 return self.round_success(
                     f'已跑 {self._settle.rounds_done} 轮停备战(达 max_rounds={self._max_rounds})')
             # 补给节点(nodeseq 当前节点类型=supply):出战不推进(无出战打怪,确认补给即完成节点进下回合,
-            # live 确认 2026-08-13)→ 点「返回补给阶段」进补给屏,下轮 Loop 0e 分支 CwScreenSupplyNode 选+确认。
+            # live 确认 2026-08-13)→ 点「返回补给阶段」进补给屏,下轮阶段一身份行「货币战争-补给」分发 CwScreenSupplyNode 选+确认。
             # ⚠️ 用 nodeseq 节点类型判,非「返回补给阶段」按钮 —— 该按钮 battle 节点也在(可 revisit),不可靠
             # (2026-08-13 实跑:1-6 battle 节点出战成功 + 也有该按钮)。nodeseq 读失败(非 clean 帧)→ 不 divert
             # (默认备战分支,保险不误判 battle 为 supply)。
@@ -1652,7 +1648,8 @@ class CwLoop(SrOperation):
             # 用户裁定 2026-09-19 开卡时机归策略实现管后该段撤销——识别
             # kind('bookcard')进容器 bench,开卡动作由策略器 entry ① 卡片臂
             # 发射(终结动作,交回语义不变);外循环只保留画面识别分派
-            #(书册卡弹窗选卡 = 本文件 0k 分支,先例不变)。
+            #(书册卡开出的专家邀请函弹窗选卡 = 阶段一身份行「货币战争-备战-专家邀请函」分发
+# CwScreenExpertInvite,分发判定单一源 = flow/outer_loop.md §2.2)。
             # (「试用角色揭示卡」= 动画帧误判的幻影机制,2026-09-19 定谳撤销,
             # 墓碑见 cw_identity_obs;勿再为它接线。)
             def _on_prep_round(ok: bool, res: Any) -> None:
@@ -1668,7 +1665,7 @@ class CwLoop(SrOperation):
                     self._battle_wait_active = True
                 # 环让位重入契约(W971 §2.9,实机 P1-r6 bail ping-pong 修复):
                 # director 返回(含环入口分诊交回/事件 overlay bail)后**必经本
-                # return → 下轮 loop 顶全分支重判**(0x overlay 分支先于备战双锚),
+                # return → 下轮 loop 顶全分支重判**(阶段一/阶段三 overlay 分支先于备战双锚),
                 # 不在同一迭代内直接回备战分支/环。日志留痕 = 重入可观测
                 #(此前 bail↔重派静默,排障无从分辨「没重判」vs「判了没接住」)。
                 log.info('[cw-loop] 备战环返回(success=%s status=%s)→ 交回顶层分发'

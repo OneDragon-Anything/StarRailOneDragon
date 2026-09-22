@@ -61,7 +61,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     # —— 节点族(观察覆盖,派生规则写端)——
     'node': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='派生规则四腿(备战解析/弹窗/0q/0p)write_logic + 两帧确认门'
+        basis='派生规则四腿(备战解析/弹窗/位面过渡/BOSS简报)write_logic + 两帧确认门'
               '(链正本 §2-4);商店查链目标 = 生效序与镜像最新者'
               '(_shop_panel_type_target,20260918-reconcile 第 11 例)+ '
               '类型直定倒退免疫(镜像序领先丢弃留证);观察每帧覆盖'),

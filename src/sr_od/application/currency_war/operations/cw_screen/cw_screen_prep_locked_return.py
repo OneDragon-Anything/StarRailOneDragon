@@ -1,6 +1,6 @@
 """货币战争 备战暗色锁定返回 op(空决策形态,A6)。
 
-备战「锁定」暗色子态族(0m)的处理迁移:点右上「返回XX选择」按钮回对应
+备战「锁定」暗色子态族的处理迁移:点右上「返回XX选择」按钮回对应
 overlay,无验效(回 overlay 由下轮外循环重判)。一份 op 类服务两个画面档
 (``货币战争-备战-策略锁定``/``货币战争-备战-遭遇锁定``),分发处传入命中
 的那对(带参构造先例 = ``CwScreenBattleWait(ctx, st, config)``)。
@@ -11,7 +11,7 @@ overlay,无验效(回 overlay 由下轮外循环重判)。一份 op 类服务两
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;
 推进型空决策骨架逐屏内联,无共享基类——模式一致即重复):观察 node =
-入口锚门(命中的返回按钮锚,与外循环 0m 分发判定同源同参;miss 未发 =
+入口锚门(命中的返回按钮锚,与外循环阶段一身份分发判定同源同参(分发判定单一源 = flow/outer_loop.md §2.2);miss 未发 =
 round_fail 交回外循环重判,「下一帧重判」是外循环职责)+ obs{on_screen}
 挂实例属性(空决策形态无 report:本屏零容器写点,obs 类住
 kernel/cw_screen_report/prep_locked_return.py,import 构造即可)。决策

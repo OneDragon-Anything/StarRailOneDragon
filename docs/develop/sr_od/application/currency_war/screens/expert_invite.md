@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(号制已退役,不引 0x):id_mark 锚「货币战争-备战-专家邀请函.标识-专家邀请函」;命中即接管。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 阶段一身份分发(号制已退役):id_mark 锚「货币战争-备战-专家邀请函.标识-专家邀请函」;命中即接管。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
 - 处理链分工:开卡半 = 备战词表 `OpenBookcard`(`kernel/cw_vocab.py::CwActionOpenBookcardParam` 在册;执行器 = `cw_open_bookcard_action.py::CwActionOpenBookcardOp`,终结动作 `terminal=True`;发射位 = 策略器 entry ① prep 实体面卡片臂 `strategies/impl/mandate_v1/entry.py`,开卡时机归策略实现管,备战观察不再入口代清;开卡即交回)→ 弹窗由阶段一身份分发本 op——**本 op 只辖弹窗已开后的选卡**,入口态单一 = 弹窗已开。
 
 ## 2. 画面形态声明

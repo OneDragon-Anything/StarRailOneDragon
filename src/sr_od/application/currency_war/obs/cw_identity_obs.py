@@ -881,7 +881,7 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
         # r100k:书册卡已建档(find_bookcards)进 _obj_slots → 本钩子不再拦它。
         # 书册卡开启语义已确认(2026-08-30 实机:点槽 → 「专家邀请函」五选一),
         # 原确认停机钩子退役,自动处理链见 operations/cw_screen/cw_screen_expert_invite.py
-        # (开卡发射位 = 策略器 entry ① 卡片臂 + loop 0k 弹窗分支接线)。
+        # (开卡发射位 = 策略器 entry ① 卡片臂 + 外循环阶段一身份行「货币战争-备战-专家邀请函」弹窗分发接线)。
         # 排除集单一源(部署伪槽修复批 ①):原内联段(find_* 族 ∪ 泛 TM 低阈
         # 扫描)整体迁入 bench_item_slots,本钩子消费模糊档(精确 ∪ 泛扫描,
         # 行为与原内联段等价);停机钩子其余段(面板守卫/帧态门/锚
@@ -1129,7 +1129,7 @@ _SUPPLY_BOX_TM_THR: float = 0.6
 _supply_box_gray: MatLike | None = None
 _supply_box_loaded: bool = False
 # 秘密典籍(2026-08-16 M45 建档,用户指导):投资策略「秘密典籍」给的道具,
-# 占备战席 1 槽(类补给箱);点两次(选中→开启)→ 星徽四选一(loop 0i 接管)。
+# 占备战席 1 槽(类补给箱);点两次(选中→开启)→ 星徽四选一(CwScreenBookcard 接管)。
 # 实机渲染 = 金色票券卡(票面星纹 + 底部「开启」钮),模板即自该实机真值帧
 # (sr-od-test/screens/货币战争-备战/shop_closed_lowhp.webp slot7)内窗裁剪;
 # 模板必须小于全部槽裁片(最小 111x131),否则 shape 守卫会跳过该槽(判盲)。
@@ -1283,7 +1283,7 @@ def find_tomes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int
     同时 ①典籍 TM ≥ 0.6 且 ②典籍分 > 箱分(同槽双模板对拍)。实测误检帧(补给箱槽):
     典籍 0.558/箱 0.926 —— 旧版 0.558<0.6 本就该拦,但光照/选中态可抬分,双条件保证
     箱永远不被认成典籍(0.926>0.558 互斥性强)。典籍点两次(选中→开启)→ 星徽四选一
-    弹窗(loop 0i 接管选卡)。
+    弹窗(CwScreenBookcard 接管选卡)。
     """
     tm = _get_tome_gray()
     bx = _get_supply_box_gray()

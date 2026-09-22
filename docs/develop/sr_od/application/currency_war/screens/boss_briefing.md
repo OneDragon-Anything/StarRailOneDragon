@@ -44,7 +44,7 @@
 
 ## 8. 守卫与防线
 
-`node_max_retry_times=8` 现役值仅框架异常路径消费;误分发防线在分发侧(0p 锚加固 + 阶段一位面过渡身份臂排他接管 + 0q 本屏 rect 判定/排他,见 §1)。原 0q 误分发型 fail streak 守卫(`PLANE_MISDISPATCH_LIMIT`)已退役,连续 fail 预算统一归外环通用网([../flow/guards.md](../flow/guards.md) §1)。
+`node_max_retry_times=8` 现役值仅框架异常路径消费;误分发防线在分发侧(本屏锚换装徽记模板 + 阶段一位面过渡身份臂 boss 判别排他接管,见 §1)。原 0q 误分发型 fail streak 守卫(`PLANE_MISDISPATCH_LIMIT`)已退役,连续 fail 预算统一归外环通用网([../flow/guards.md](../flow/guards.md) §1)。
 
 ## 9. 遥测与锁面
 

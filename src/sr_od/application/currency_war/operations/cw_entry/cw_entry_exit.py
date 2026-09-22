@@ -156,7 +156,7 @@ class CwEntryExit(SrOperation):
     @operation_node(name='委托对局循环', node_max_retry_times=10,
                     timeout_seconds=600)
     def delegate_loop(self) -> OperationRoundResult:
-        # CwLoop 复用其既有 0 系分发与停滞看门狗(单一出口,退出链不维护
+        # CwLoop 复用其既有身份分发与停滞看门狗(单一出口,退出链不维护
         # 第二张「屏名→op」映射表);stop_at_prep 停机位与路由③共用 A 类
         # 名单常量 → 两侧对「是否已到可交还态」结论恒一致,无互踢往返。
         res = CwLoop(self.ctx, stop_at_prep=True).execute()

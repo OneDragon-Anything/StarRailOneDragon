@@ -110,7 +110,7 @@ if TYPE_CHECKING:
 # _clear_entry_overlays;单一源仍是 ``cw_overlay_registry.derive_clearable()``
 # 派生桥接)=====
 #: 只收「无决策语义的弹窗/面板」——星徽秘典/补给已 decision 化(关闭即丢
-#: 决策内容,C1 红线),从清场集消失,改走 event_overlay bail → 0i 选卡 /
+#: 决策内容,C1 红线),从清场集消失,改走 event_overlay bail → 星徽秘典选卡(CwScreenBookcard)/
 #: CwScreenSupplyNode 消化;投资环境/投资策略/选择伙伴/盛会之星/祈愿试炼
 #: 等交互 overlay 同理,不进派生集。
 ENTRY_OVERLAY_CLOSE: dict[str, str] = {
@@ -634,7 +634,7 @@ class CwScreenPrep(SrOperation):
         # 决策入口(含经 overlay 防线反弹的 pick 子路径)。
         game_state_of(session).frame_class_prep = 'full'
         if obs.event_overlay is not None:
-            # overlay 在场 → 交回外循环重识别分发(无计数;对应 loop 0x 分支/op 接管)
+            # overlay 在场 → 交回外循环重识别分发(无计数;对应外循环 overlay 分发/op 接管)
             log.info(f'[cw][director] 事件 overlay({obs.event_overlay})→ 交回外循环分发')
             return self.round_success(f'事件overlay({obs.event_overlay})交回外循环分发', wait=0.8)
         # 接管局补采委派(挂点随观察段平移;编排单一源 =
@@ -799,7 +799,7 @@ class CwScreenPrep(SrOperation):
         if op_cls is CwActionOpenBookcardOp:
             # 开卡终结(用户裁定 2026-09-19 发射位迁策略器 entry ① 卡片臂,
             # 原画面 op 入口清场代交回通道撤销):弹专家邀请函 = 新事实 →
-            # 本访问交回,外循环 0k 分发 CwScreenExpertInvite 选卡。
+            # 本访问交回,外循环按画面分发 CwScreenExpertInvite 选卡(分发判定单一源 = flow/outer_loop.md §2.2)。
             return self.round_success(f'{key} ✓(交回:专家邀请函弹窗分发)',
                                       wait=op_cls.terminal_wait)
         raise AssertionError(

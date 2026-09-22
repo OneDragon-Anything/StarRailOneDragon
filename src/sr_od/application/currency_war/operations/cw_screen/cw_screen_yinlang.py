@@ -19,7 +19,7 @@
 不判不关,后果归下一帧重入(外循环按当前画面重分派自愈)。
 
 形态:观察 node + 决策动作 node 两
-段直继承 SrOperation。本屏无 op 内入口门(入口判定归主循环 0 系分发,
+段直继承 SrOperation。本屏无 op 内入口门(入口判定归主循环阶段一身份分发,
 分发即门)→ 观察 node = 左右两卡 OCR 桶一次读(入口帧一次读,与现役决策
 体读同帧等价)→ ``report_screen_planner_obs`` 落容器 ``planner_opts``
 (恒写两卡,空桶照写)→ obs 挂实例属性进决策 node。决策动作 node =

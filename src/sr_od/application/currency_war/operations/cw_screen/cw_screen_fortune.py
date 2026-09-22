@@ -15,7 +15,7 @@ x≈510/900/1290 / 确认 (1441-1543,584-615)。
 写槽 → 零参决策,handler 零打分实现。
 
 形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两
-段直继承 SrOperation。本屏无 op 内入口门(入口判定归主循环 0 系分发,
+段直继承 SrOperation。本屏无 op 内入口门(入口判定归主循环阶段一身份分发,
 分发即门)→ 观察 node = 三卡位 OCR 一次读 + 三卡点击坐标(入口帧一次读,
 与现役决策体读同帧等价;坐标 = area 主源 + 兜底)→
 ``report_screen_fortune_obs`` 双写容器 ``fortune_opts``/``fortune_opts_xy``

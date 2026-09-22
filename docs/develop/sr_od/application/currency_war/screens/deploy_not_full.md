@@ -1,10 +1,10 @@
 # 未达上限确认弹窗(deploy_not_full · 货币战争-未达上限警告)
 
-> 代码 = `operations/cw_screen/cw_screen_deploy_not_full.py::CwScreenDeployNotFull`(两 node 直继承 `SrOperation`)。职责:「可出战角色人数未达上限」确认弹窗(0d)的一次访问——勾「本局不再提示」+ 确认,解除 bench-full 警告对出战的阻塞。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_deploy_not_full.py::CwScreenDeployNotFull`(两 node 直继承 `SrOperation`)。职责:「可出战角色人数未达上限」确认弹窗的一次访问——勾「本局不再提示」+ 确认,解除 bench-full 警告对出战的阻塞。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 分发判定
 
-- 阶段一身份分发(号制已退役,不引 0x):锚 = `货币战争-未达上限警告.标识-未达上限警告`(id_mark,**位置区分**判据:投资策略屏描述「能量上限」与「未达上限」共享子序列「上限」,全屏 LCS 会误匹配吞投资策略分支——area 位置不同即不命中)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2;建档 = `currency_war_deploy_not_full.yml`。
+- 阶段一身份分发(号制已退役):锚 = `货币战争-未达上限警告.标识-未达上限警告`(id_mark,**位置区分**判据:投资策略屏描述「能量上限」与「未达上限」共享子序列「上限」,全屏 LCS 会误匹配吞投资策略分支——area 位置不同即不命中)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2;建档 = `currency_war_deploy_not_full.yml`。
 
 ## 2. 画面形态声明
 
@@ -35,7 +35,7 @@
 ## 7. 子态与 overlay
 
 - 本 op 自身即 overlay 处理件;命中即自处理,底层屏交回重判。
-- **同弹窗第二消费者**:出战链 `cw_op/cw_start_battle_action.py::CwActionStartBattleOp` 出战点击轮询段内嵌同款行为(勾选幂等 + 确认 + 轮询)——出战语境由出战链就地消化,不经 0d 分发;两处行为对齐为申报面,无单一源锁。
+- **同弹窗第二消费者**:出战链 `cw_op/cw_start_battle_action.py::CwActionStartBattleOp` 出战点击轮询段内嵌同款行为(勾选幂等 + 确认 + 轮询)——出战语境由出战链就地消化,不经外循环分发;两处行为对齐为申报面,无单一源锁。
 
 ## 8. 守卫与防线
 

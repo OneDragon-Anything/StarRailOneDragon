@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(号制已退役,不引 0x):锚 = `货币战争-商店刷新概率表.标识-刷新概率表`(id_mark;单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。不关闭会遮挡底层屏关键按钮(如出战),推进是流程义务。建档 = `currency_war_shop_refresh_odds.yml`。
+- 阶段一身份分发(号制已退役):锚 = `货币战争-商店刷新概率表.标识-刷新概率表`(id_mark;单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。不关闭会遮挡底层屏关键按钮(如出战),推进是流程义务。建档 = `currency_war_shop_refresh_odds.yml`。
 
 ## 2. 画面形态声明
 

@@ -87,7 +87,7 @@ action = strategy.decide_prep_screen(容器 game state 直读;
 
 - 子态「备战-开商店」:外循环 0n 分支转交商店访问(文档 = [shop.md](shop.md));环入口 `_try_collapse_open_shop` 收起探针兜底漏帧。
 - 暗色锁定子态(策略锁定/遭遇锁定):`CwScreenPrepLockedReturn` 点右上返回按钮(此态下备战双锚仍精准命中,不先分流会被当正常备战操作读暗牌)。
-- overlay 覆盖:全部 0 系 overlay 在外循环先行分流;观察段 `obs.event_overlay` 非空 = 交回重分发(双保险)。
+- overlay 覆盖:全部 overlay 在外循环先行分流;观察段 `obs.event_overlay` 非空 = 交回重分发(双保险)。
 
 ## 8. 守卫与防线
 

@@ -633,7 +633,7 @@ m1p 恒 None 的成因可辨),None = 非发射帧;C-A2 审计桶内分键
 |---|---|---|
 | 发射核拆分(C1 规格) | `launch_prepared_battle(op, ctx, *, sync_once)` 单一发射核(RunDeploy+StartBattle);两调用面:恢复局面面(闩辖+重试上限 3+放弃显影,原 R1 语义)与达标臂面(不过闩,每达标帧发射) | cw_loop.py |
 | 发射失败防线 | 达标臂发射连续失败 3 次 → 放弃短路回落守卫链 + `readiness_launch_giveup` 分键显影;成功即复位。**归类:执行层活性阈值(非决策闸门参数,不撞零调参门)** | cw_loop.py 备战分支 |
-| 浮层排除+面板 OCR 排除+新鲜屏态复验(第十五局实雷,as-built 已落库) | 投资策略等浮层在场 → 达标臂不发射(readiness_overlay_hold,探测复用 0 系分发锚表 + 遭遇 OCR 词「遭遇其」前缀,currency_war_encounter.md:22);执行时刻新鲜屏态复验(重截图复验备战双锚,非备战屏 → readiness_stale_screen 放弃发射不耗 C1 计数);发射失败连续 3 次回落守卫链(readiness_launch_giveup)。判别稳定化 N5 = 0e 分发层双信号+复探(outer_loop.md 0e 行) | cw_loop.py |
+| 浮层排除+面板 OCR 排除+新鲜屏态复验(第十五局实雷,as-built 已落库) | 投资策略等浮层在场 → 达标臂不发射(readiness_overlay_hold,探测复用身份分发锚表 + 遭遇 OCR 词「遭遇其」前缀,currency_war_encounter.md:22);执行时刻新鲜屏态复验(重截图复验备战双锚,非备战屏 → readiness_stale_screen 放弃发射不耗 C1 计数);发射失败连续 3 次回落守卫链(readiness_launch_giveup)。判别稳定化 N5 = 投资策略分发层双信号+复探(现役载体 = cw_screen_invest_strategy.py ENTRY_REPROBE_* 注) | cw_loop.py |
 | arm0_need 排除口径 | 纯 name 口径 = **执行层语义对齐**(check_seats 同名禁上阵 + cw_deploy_logic cid 去重实答);玩法机制定谳(同名异星可否同场)候实机帧证据,§8⑫ 挂账保留不收窄 | §4.2/predicates.py |
 | 出口③发射位接线(17 号稿 §7) | Φ_stall 四支(锁线布尔/D=∅/δ_board>0/g>s_reserve)∧ 垫件资格单一源(1★∧∉buy_members∧零重叠∧可全退)∧ 净成本≤1 金 → 垫件买入授权;发射位次 M6 后 EV 前;七分键零静默;负向锁(四支 fail 向形态)候补强轮 | shop.py/cw_deploy_logic |
 

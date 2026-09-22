@@ -227,7 +227,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 **确定面**：秘密典籍道具占备战席 1 槽（类补给箱；**获得时入席** = 投资策略「秘密典籍」的发放事件，属观察面非本动作）。本动作点槽两次（选中→开启）→ 典籍离席腾槽 + 星徽四选一 overlay 弹出；**容器腾席腿**（迭代阶段 3.5 进写口）：bench 槽 kind `'tome'` → `'empty'`（OpenTome 非终结，同 visit 后续帧晶矿谓词消费 bench 席空数存在真实窗口；陈旧提案 = 槽类型不符零写）。
 
-**随机面 / 观察面**：四选一卡面内容归观察；选卡决策 = 外循环 0i handler（板上阵营匹配），落地记录走 chosen_tome（§6 边界），本动作不选卡。
+**随机面 / 观察面**：四选一卡面内容归观察；选卡决策 = 星徽秘典画面 op CwScreenBookcard（板上阵营匹配），落地记录走 chosen_tome（§6 边界），本动作不选卡。
 
 **依据**：`kernel/cw_prep_actions.py::OpenTome`；`prep_actions.py::_open_tome`。
 

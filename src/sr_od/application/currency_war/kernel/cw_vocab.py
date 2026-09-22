@@ -519,10 +519,10 @@ class CwActionOpenBoxParam:
 
 @dataclass
 class CwActionOpenTomeParam:
-    """开秘密典籍(点槽两次:选中→开启 → 弹星徽四选一;开典籍即腾席+loop 0i 接管选卡)。
+    """开秘密典籍(点槽两次:选中→开启 → 弹星徽四选一;开典籍即腾席+外循环分发 CwScreenBookcard 接管选卡)。
 
     建档:投资策略「秘密典籍」给的红金典籍道具占备战席 1 槽(类补给箱);
-    选卡决策在 loop 0i handler(板上阵营匹配),本动作只负责把典籍点开。slot=None → 第一典籍。
+    选卡决策在 CwScreenBookcard(板上阵营匹配),本动作只负责把典籍点开。slot=None → 第一典籍。
     """
     slot: int | None = None
     route_tag: str = field(default='', kw_only=True,

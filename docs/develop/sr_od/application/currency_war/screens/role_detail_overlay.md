@@ -1,6 +1,6 @@
 # 角色详情浮层(role_detail_overlay · 货币战争-备战-角色详情)
 
-> 代码 = `operations/cw_screen/cw_screen_role_detail_overlay.py::CwScreenRoleDetailOverlay`。职责:点卡/点角色触发的详情弹窗(1b,可合成列表/角色详情两变体)的一次访问——点面板外空白关闭交回。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_role_detail_overlay.py::CwScreenRoleDetailOverlay`。职责:点卡/点角色触发的详情弹窗(可合成列表/角色详情两变体)的一次访问——点面板外空白关闭交回。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 分发判定
 

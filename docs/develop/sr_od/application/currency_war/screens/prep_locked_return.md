@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(号制已退役,不引 0x):两画面档参数化,锚对 = (`货币战争-备战-策略锁定`.按钮-返回投资策略选择)/(`货币战争-备战-遭遇锁定`.按钮-返回遭遇选择);命中哪对传哪对(`cw_loop.py` 策略锁定/遭遇锁定身份分支)。判据单一源 = `docs/game/currency_war/research/screen_flow_timing.md` #18(暗色态判别锚 = 右上操作按钮)。建档 = `currency_war_prep_strategy_lock.yml` / `currency_war_prep_encounter_lock.yml`。
+- 阶段一身份分发(号制已退役):两画面档参数化,锚对 = (`货币战争-备战-策略锁定`.按钮-返回投资策略选择)/(`货币战争-备战-遭遇锁定`.按钮-返回遭遇选择);命中哪对传哪对(`cw_loop.py` 策略锁定/遭遇锁定身份分支)。判据单一源 = `docs/game/currency_war/research/screen_flow_timing.md` #18(暗色态判别锚 = 右上操作按钮)。建档 = `currency_war_prep_strategy_lock.yml` / `currency_war_prep_encounter_lock.yml`。
 - **排他形态(本屏特有)**:此态下备战双锚(`货币战争-备战.备战标识-购买经验` ∧ `按钮-出战`)仍精准命中——不先分流会被当正常备战操作(读暗牌/暗 gold),本臂必须先于备战默认分支。
 
 ## 2. 画面形态声明
@@ -23,7 +23,7 @@
 |---|---|---|---|
 | 无动作 op——单步推进留守 op 内(`progress_once`:点「返回XX选择」按钮) | 画面 op 留守臂(`progress_once`,`round_by_find_and_click_area` 点返回按钮 + success_wait=1.5) | 无 report 接口(推进型规范形态,[op-layer.md](op-layer.md) §3) | 是(重入裁决交回):点返回 → `round_wait` 重入,构造传入的返回按钮锚不在 = 已离开本画面 → `round_success` 交回外循环(见 §5) |
 
-`progress_once` = `round_by_find_and_click_area(self._screen_name, self._entry_area, success_wait=1.5)`(点返回按钮后等转场动画再交回裁决)。目标 = 回对应 overlay,后续由 0e 系/0c 分支接管。
+`progress_once` = `round_by_find_and_click_area(self._screen_name, self._entry_area, success_wait=1.5)`(点返回按钮后等转场动画再交回裁决)。目标 = 回对应 overlay,后续由阶段一身份分发接管(投资策略/遭遇节点各身份行)。
 
 ## 5. 终结与交回
 

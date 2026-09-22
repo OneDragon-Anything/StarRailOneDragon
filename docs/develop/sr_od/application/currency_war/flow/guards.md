@@ -18,7 +18,7 @@
 - 触发 = loop 尾所有分支不命中（兜一切未知态，非点名某态的临时捕获；移除条件 = 该类未知态全部建档实际不可达，长期保留）。
 - 处置：每轮 1s 重试（`UNKNOWN_RETRY_WAIT_S=1`，恒定），连续 `UNKNOWN_FAIL_THRESHOLD=15` 轮耗尽 → round_fail 交框架失败（运行 FAILED 收口），日志 `[cw!]` 行 + 失败结果即信号。
 - 前置 bail = 战斗等待 op 自己的节点级预算（`cw_screen_battle_wait`，`UNKNOWN_BAIL_N=10` 轮未知 → op 截图留证 + round_fail bail 交回本兜底；不停机，兜底链裁决权留外循环）。
-- 处理流程：analyze_screen 离线判已建档命中 → 未命中按元素语义建档 + cw_loop 0x 分支加 handler → 重跑；战斗特效帧（OCR 乱码）**先确认非新画面**（analyze_screen 为准）才可调大阈值或加等待。画面被任何分支接走 → 计数自然复位。
+- 处理流程：analyze_screen 离线判已建档命中 → 未命中按元素语义建档 + cw_loop 阶段一身份分发接线(处理器臂 + CW_DISPATCH_SCREENS 登记,三处缺一不可) → 重跑；战斗特效帧（OCR 乱码）**先确认非新画面**（analyze_screen 为准）才可调大阈值或加等待。画面被任何分支接走 → 计数自然复位。
 
 ## 3. 商店未识别卡停机
 

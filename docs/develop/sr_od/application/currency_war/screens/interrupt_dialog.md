@@ -1,10 +1,10 @@
 # 中断挑战弹窗(interrupt_dialog · 货币战争-中断挑战弹窗)
 
-> 代码 = `operations/cw_screen/cw_screen_interrupt_dialog.py::CwScreenInterruptDialog`。职责:ESC 误按/误点左上角弹出的「是否中断挑战」真模态(1g)的一次访问——点右上 X 关闭继续对局。**语义红线:绝不点「放弃并结算」**(不可逆放弃进度),不点「暂时离开」(免中断对局)。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_interrupt_dialog.py::CwScreenInterruptDialog`。职责:ESC 误按/误点左上角弹出的「是否中断挑战」真模态的一次访问——点右上 X 关闭继续对局。**语义红线:绝不点「放弃并结算」**(不可逆放弃进度),不点「暂时离开」(免中断对局)。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 分发判定
 
-- 阶段一身份分发(号制已退役,不引 0x):锚 = `货币战争-中断挑战弹窗.标识-中断挑战`(id_mark;单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。真模态:点遮罩无效,关闭只有 X 一条路;建档 = `currency_war_interrupt_dialog.yml`(「按钮-放弃并结算」「按钮-暂时离开」为在册定位区,op 零消费)。
+- 阶段一身份分发(号制已退役):锚 = `货币战争-中断挑战弹窗.标识-中断挑战`(id_mark;单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。真模态:点遮罩无效,关闭只有 X 一条路;建档 = `currency_war_interrupt_dialog.yml`(「按钮-放弃并结算」「按钮-暂时离开」为在册定位区,op 零消费)。
 
 ## 2. 画面形态声明
 
@@ -26,7 +26,7 @@
 
 ## 5. 终结与交回
 
-推进已发 → `round_wait` 重入;重入 = 锚 miss = 已离开 → `success` 交回(无防御上限;分发行未挂 `on_fail_retry`,fail 走包装缺省映射——区别于 0t/1b 的 retry 池通道)。落点 = 备战(1 分支重判,对局继续)。
+推进已发 → `round_wait` 重入;重入 = 锚 miss = 已离开 → `success` 交回(无防御上限;分发行未挂 `on_fail_retry`,fail 走包装缺省映射——区别于商店卡牌详情/角色详情两屏的 retry 池通道)。落点 = 备战(1 分支重判,对局继续)。
 
 ## 6. 状态上报面
 

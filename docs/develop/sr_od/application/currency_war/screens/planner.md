@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(号制已退役,不引 0x):id_mark 锚「货币战争-银狼升星.标识-我来当策划」;dispatch 带 on_fail_retry。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 阶段一身份分发(号制已退役):id_mark 锚「货币战争-银狼升星.标识-我来当策划」;dispatch 带 on_fail_retry。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
 - 触发 = 银狼首次升 2 星(及 5 费升 2 星),非随机事件;机制 = [../../../../game/gameplay/currency_war.md](../../../../../game/gameplay/currency_war.md)「银狼我来当策划事件」节。
 
 ## 2. 画面形态声明

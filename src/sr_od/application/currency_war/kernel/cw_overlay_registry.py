@@ -184,7 +184,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         semantic=SEMANTIC_SYSTEM,
         handler_id='CwScreenBriefing',
         close_action=CLOSE_ACTION_HANDLE,
-        # P2/P3 开局位面简报(三 boss+词缀+下一步),0 系最前消化(全屏 OCR
+        # P2/P3 开局位面简报(三 boss+词缀+下一步),身份分发最前消化(全屏 OCR
         # 密集屏,头部 find_area 优先命中绕开全屏 OCR 依赖)
         dispatch_priority=1,
         recovery_exit=RECOVERY_CLOSE,
@@ -259,11 +259,11 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         dispatch_priority=17,
         recovery_exit=RECOVERY_CLOSE,
     ),
-    # 星徽秘典弹窗:decision 化(设计定案 5)——有选卡价值(0i 阵营匹配选卡),
+    # 星徽秘典弹窗:decision 化(设计定案 5)——有选卡价值(CwScreenBookcard 阵营匹配选卡),
     # 「关闭即丢决策内容」;closable=False ⇒ 不在清场派生集(环入口不再
-    # 一键关,改由 0i 选卡消化)。
+    # 一键关,改由 CwScreenBookcard 选卡消化)。
     # handler_id:CwScreenBookcard(原挂账 HandleStarTome 已清——秘典实现
-    # 经命名迁移落 CwScreenBookcard,0i 分发同源)。
+    # 经命名迁移落 CwScreenBookcard,注册表与身份分发同源)。
     OverlaySpec(
         screen_name='货币战争-星徽秘典弹窗',
         anchor_area='标识-星徽秘典',
@@ -311,11 +311,12 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         recovery_exit=RECOVERY_HANDLE,
     ),
     # 商店卡牌详情弹窗(实机事故建档,2026-09-08):奖励节点采晶矿误触
-    # 开的角色 offer 购买页(0e2 概率表/1d 星徽详情之后同族第三例)。语义
-    # display(买不买归商店域——0t 分支只点 X 关闭交回重判,店开时商店
+    # 开的角色 offer 购买页(商店刷新概率表/星徽详情之后同族第三例)。语义
+    # display(买不买归商店域——本屏分发臂只点 X 关闭交回重判,店开时商店
     # 访问路径接管购买,关闭不丢决策内容);closable=False ⇒ 不进清场
-    # 派生集(弹窗有主 = cw_loop 0t 分支,点 X 带验效,禁清场旁路双owner)。
-    # 双锚表达 0t 判据(购买 ∧ 角色详情,双 id_mark 同帧全中才派发);
+    # 派生集(弹窗有主 = 阶段一身份行「货币战争-商店卡牌详情」分发 CwScreenShopCardDetail,点 X 关闭交回重判,
+# 落地判定 = op 内重入裁决与观察侧对账,非动作层验效——验证废除批;禁清场旁路双owner)。
+    # 双锚表达本屏分发判据(购买 ∧ 角色详情,双 id_mark 同帧全中才派发);
     # close_area 按钮-关闭 = cw_lobby_close 同族模板。
     OverlaySpec(
         screen_name='货币战争-商店卡牌详情',

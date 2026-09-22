@@ -66,7 +66,7 @@ class CwScreenDeployNotFull(SrOperation):
         门 hit → obs 装载 + 占位 report(match/gs 缺席跳过)。"""
         screen = self.last_screenshot
         # 用 screen_info id_mark area(标识-未达上限警告)位置区分,非全屏 LCS:防「能量上限」(投资策略描述)
-        # 与「未达上限」共享「上限」(2/4=0.5)误匹配(见 cw_loop 0d)。area 位置不同 → 不命中。
+        # 与「未达上限」共享「上限」(2/4=0.5)误匹配(旧 0d 分支误匹配实证,退役对号 = flow/outer_loop.md §2.3)。area 位置不同 → 不命中。
         if not self.round_by_find_area(
                 screen, CwScreenDeployNotFull.SCREEN_NAME,
                 '标识-未达上限警告').is_success:

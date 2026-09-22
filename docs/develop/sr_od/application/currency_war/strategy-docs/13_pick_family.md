@@ -1,7 +1,7 @@
 # 13 pick 族薄判据（十二接口 + 事件面目录）
 
 > 本篇为新写薄篇：pick 族 = CwStrategy 的 12 个选项决策接口(全部在 ABC 契约面;2026-09 pick-op-unify 批随执行器收编补入 fortune/expert_invite 两入口,原 `decide_invest` 已双相拆分为 `decide_invest_env`/`decide_invest_strategy` 零参终态口;原第三口 `decide_equip_pick` 随选择装备屏误判退役删除,2026-09-22)（`strategies/impl/cw_strategy.py` + `strategies/impl/flow.py` 实现反向 + `kernel/cw_events`/`kernel/cw_comps` 判据单源）。事件面目录（E1-E18）重排自原 `03_strategy_layer.md`(已删除) §4.9（E16-E18 = 2026-08-19 用户定调批次「全部 overlay 选卡接入策略模块」后补接口，本批补录）；数学判据逐项状态登记沿用 [08_events.md](08_events.md)（该篇管"目录全量/数学全空"的落差，不动件）。
-> 动作编排（画面 op 怎么点卡）不在本篇 = `../flow/outer_loop.md` §2.2（0x 分支）；本篇只管"选项怎么选"。
+> 动作编排（画面 op 怎么点卡）不在本篇 = `../flow/outer_loop.md` §2.2（两阶段画面分发）；本篇只管"选项怎么选"。
 > 每项标注**判据状态**：有规格（判据可执行）/ 待 derive（判据立项锚见 08）。
 
 ## 0. 共同形态

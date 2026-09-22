@@ -44,7 +44,7 @@
   **读屏点规范的在册例外**:「循环内零读屏」自本通道起收窄——决策环内决策环内在册读屏只有两类——①策略显式发射 Obs(in_place) 触发的重观察(本通道,在册例外①);②终结臂交回前机械留证读(零决策零判效,读数只进缺陷台账;现役 = 投资环境刷新臂刷后帧重读,正本 = [../screens/op-layer.md](../screens/op-layer.md) §1.1 在册例外②),其余路径仍零读屏。in_place 发射域无重观察能力(env.op 未接线)= AssertionError 响亮暴露(策略器 bug)。
 
 - 期望态记账(acct 族)在下一入口 heavy 帧消费对账(`_v2_post_frame_accounting`:拖动期望/买牌期望/经验/羁绊/装备期望),失配 = 纠偏/缺陷台账,零决策不重执行。
-- **无 fail-stop/恢复原语**:原「执行失败 → try_recovery 关弹层 → 交回」分支已随验证段废除批删除;overlay 残留的治理 = 外循环 0 系 overlay 分支(下一轮重识别自愈)。
+- **无 fail-stop/恢复原语**:原「执行失败 → try_recovery 关弹层 → 交回」分支已随验证段废除批删除;overlay 残留的治理 = 外循环 overlay 分发分支(下一轮重识别自愈)。
 
 ## 4. 商店动作执行(一 op 一文件 `cw_op/cw_<action>_action.py`;注册表 `cw_action_registry.py`;守卫 `cw_shop_action_ops.py`)
 
