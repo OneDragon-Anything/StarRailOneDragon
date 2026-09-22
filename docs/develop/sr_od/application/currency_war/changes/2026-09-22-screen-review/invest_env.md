@@ -127,7 +127,7 @@
 **② 动作链收窄纯 idx**:
 
 - 派发处 `norm_name=normalize_invest_name(chosen)` 组装删除;
-- `kernel/cw_vocab.py` **仅投资环境** param 类的 `norm_name` 字段退役;投资**策略** param 类同字段**不随本批退役**——策略屏派发/上报/测试现役仍消费(删 = TypeError 选卡链崩),其退役与策略屏改造随 T-6 扩项批同批落地(§1.7④);
+- `kernel/cw_vocab.py` 字段退役**整体移出本批**(实施裁定 2026-09-22:该文件被并行批 staged 改动占用,同文件双批提交无法拆分;消费退役后字段 = 死字段零危害)——环境/策略两 param 类的 `norm_name` 字段**随 T-6 扩项批两类一起退役**(§1.7④);本批 = 消费退役:派发处不组装、上报不消费;
 - `kernel/cw_action_report/pick_invest_env.py`:`_canon_invest_name` 与 noop 分支删除;上报按 `param.idx` 从容器取标准名直传链;**容器缺读/idx 越界 = 响亮失败**(异常上抛,容器写腿零吞错同款——生产不可达:选卡链发生时观察必然已完成);reason 恒 `gain_chain_applied`(与 action_ops.md §4.5 行声明一致,`landing_noop` 私词消失);docstring 改「名字标准化契约 = 观察层(op-layer.md §1.1),本函数零名字转换」。
 
 **③ 链内无效载荷拒绝腿(防御纵深)**:
@@ -151,7 +151,7 @@ if not canon or canon == '?':
 
 **测试面**(用户已认同[2026-09-22],随本稿落地批实施):
 1. 观察标准化锁:候选含可转换名 → 容器存标准名(LCS 命中路径含内);候选含转换失败名(乱串/未注册)→ round_fail、零点击零写;两候选重复命中同一注册名 → round_fail;
-2. 动作纯 idx 上报锁:idx → 链收容器同序标准名;容器缺读/idx 越界 → 响亮失败;锁族指正——param 字段面锁 = `test_cw_action_report_contract.py`(参数冒烟锁遍历全部动作类型以裸容器调真上报函数,随「按 idx 取名」新契约改造:容器播种,或按「容器缺读 = 响亮失败」断言;**该文件必须列入落地批**,否则 F-4 落地冒烟锁必红),`test_cw_screen_report_ports.py` 实辖 obs 类/report 函数在场面、不辖 param 字段;环境类字段退役后字段面锁随行更新;
+2. 动作纯 idx 上报锁:idx → 链收容器同序标准名;容器缺读/idx 越界 → 响亮失败;锁族指正——param 字段面锁 = `test_cw_action_report_contract.py`(参数冒烟锁遍历全部动作类型以裸容器调真上报函数,随「按 idx 取名」新契约改造:容器播种,或按「容器缺读 = 响亮失败」断言;**该文件必须列入落地批**,否则 F-4 落地冒烟锁必红),`test_cw_screen_report_ports.py` 实辖 obs 类/report 函数在场面、不辖 param 字段;字段退役随 T-6 批(本批消费退役、字段保留为死字段,字段面锁零变化);
 3. 链拒绝锁:`test_cw_gain_chain.py` 增 env 支拒绝锁——`gain_invest_env(gs, None, '', rand=False, sig)` → `detail == 'invalid_payload'`、`active_env` 值不变、缺陷行 `pick_invest_invalid_payload`(策略支同形先例同文件);
 4. 局外 handback 锁:match=None + 非空候选 → round_success、点击记录为空、零派发零上报(§1.7①)。
 
@@ -219,7 +219,7 @@ if not canon or canon == '?':
 | `game_state/fields.md` | F-4(invest_env_opts 值域收敛标准注册名;具体节落地对账) | 正本语义更新 |
 | `kernel/cw_gain_chain.py` | F-4(步 0 guard + 注册写 canon + docstring)+ F-5(同段 docstring 卫生,一次成文) | 行为小变更 + 注释 |
 | `kernel/cw_action_report/pick_invest_env.py` | F-4(`_canon_invest_name`/noop 分支删除 + 纯 idx 取名直传链 + docstring)+ F-5(模块头拆分史,一次成文) | 行为小变更 + 注释 |
-| `kernel/cw_vocab.py` | F-4(**仅投资环境** param 类 `norm_name` 字段退役;策略类字段归 T-6 扩项批,§1.7④) | 契约收敛 |
+| (移出本批,随 T-6 扩项批)`kernel/cw_vocab.py` | F-4(环境/策略两 param 类 `norm_name` 字段一起退役;本批仅消费退役——实施裁定 2026-09-22,§1.7④) | 契约收敛(延后) |
 | `operations/cw_screen/cw_screen_invest_env.py` | F-4(观察层标准化门 + 局外 else 分支删除 + 派发处 norm_name 组装删除)+ F-5 注释卫生 | 行为变更 + 注释 |
 | `kernel/cw_screen_report/invest_env.py` | F-5 注释卫生 | 注释 |
 | (执行权 T-6 §2.5)`operations/cw_op/cw_overlay_pick_action.py` | F-5 登记面(§2.5,禁重复触碰) | 注释 |
