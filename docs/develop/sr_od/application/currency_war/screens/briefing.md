@@ -17,7 +17,7 @@
 单帧三读(消费 `obs/cw_briefing_obs.py`;**每次进屏都重读**,无已读跳过守卫——三读数一局内恒定,重读成本 = 区域 OCR,自愈首次误读):
 
 - 词缀:`read_affixes_with_pos`(「区域-词缀行」OCR → 名 + center);
-- 位面序真值:`read_bosses`(「区域-首领行」)→ `clean_boss_names_by_lcs` LCS 清洗归一(boss_fit 消费端规范名);
+- 位面序真值:`read_bosses`(「区域-首领行」)→ `clean_boss_names_by_lcs` 两段转换归一(boss_fit 消费端规范名;任一候选两段皆不中 = 转换失败,observe round_fail 零写零上报交回重观察,规范 = op-layer.md §1.1 观察标准化门);
 - 敌人难度:`read_briefing_enemy_difficulty`(「标识-敌人难度」→ `parse_enemy_difficulty`)。
 
 词缀效果采集段 `_collect_affix_effects`:逐词缀点采(center 点击 → tooltip 弹出等待 → 截图 → `read_affix_effect`)→ 对注册表 `data/affix_effects_data.py` 最新(`load_affix_effects_from_file`)比对 → **新名/不一致才** `save_affix_screenshot` + 收集写回(`write_affix_effects`;写回本轮内存不生效,下轮 import 生效);OCR 采不到即跳过;best-effort 失败不阻塞点「下一步」。观察 payload = `CwScreenBriefingObs`;观察上报即对账边界 = `report_screen_briefing_obs` 落容器(三闸在 report 内;字段语义见 §6)。
@@ -44,7 +44,7 @@
 容器直写(`report_screen_briefing_obs`,三字段统一写语义;obs = `CwScreenBriefingObs`(`on_screen`/`enemy_affixes`/`plane_bosses`/`enemy_difficulty`/`screen`,住 `kernel/cw_screen_report/briefing.py`);session 份退役,gs 单一源)。三字段同口径:**读到非空恒覆写,读空跳过写**——读缺=跳过写项目口径(瞬时 OCR 失手不擦同局已读真值);三读数一局内恒定,覆写无信息损失;跨局残留由每局容器冷建/丢弃挡死,不靠本写点清场:
 
 - `gs.enemy_affixes` → mechanics_fit;
-- `gs.plane_bosses`:语义 = 位面序真值(boss_fit 消费端规范名,LCS 清洗归一);
+- `gs.plane_bosses`:语义 = 位面序真值(boss_fit 消费端规范名,经 `clean_boss_names_by_lcs` 两段转换归一;任一候选转换失败 = 观察失败,round_fail 零写零上报交回重观察,规范 = op-layer.md §1.1 观察标准化门);
 - `gs.enemy_difficulty`:恒稳开局基线(逐帧旗牌真读到达即覆盖)。
 
 词缀效果采集/运行时登记挂点留守观察侧:每次进屏重读重采,点采对注册表 `data/affix_effects_data.py` 比对自身幂等(一致即跳过,无重复收集);登记 = `kernel/cw_affix_effects.py::register_affixes_from_names`(命中结构化注册才入账本;best-effort)。无落地登记件(三字段容器直写 = 观察写端,非动作发射登记)。
@@ -59,6 +59,6 @@
 
 ## 9. 遥测与锁面
 
-- journal op 名 = 「位面简报」;日志前缀 `[cw-flow-briefing]`。
+- journal op 名 = 「位面简报」;日志前缀全集:`[cw-flow-briefing]`(act 重入裁决 1 行)+ `[cw-briefing]`(词缀效果采集与账本登记,宿主 = `operations/cw_screen/cw_screen_briefing.py`)+ `[cw][briefing]` / `[cw!][briefing]`(注册表新增 / garbage 拒写 / divergent 不覆盖 / boss 读数两段转换未中,宿主 = `obs/cw_briefing_obs.py`);观察三读数日志(「简报词缀读得(观察)」/「简报首领读得(位面序…)」/「简报首领未读到…」/「简报敌人难度读得(观察)」)及 boss 两段归一失败 warning(「简报首领 boss 名两段归一失败…」,观察失败零写零上报交回重读)无前缀,检索键 = journal op 名 + 日志文本。
 - 测试锁:两 node 行为锁 + 写入流对拍 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`(简报观察门 miss 早退/report/三字段写语义对拍;`_collect_affix_effects` 以 monkeypatch 摘除点采)。
 - game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #1;画面档 = `assets/game_data/screen_info/currency_war_briefing.yml`。

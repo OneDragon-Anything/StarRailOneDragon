@@ -14,8 +14,10 @@
   (免模块级成环,与板面重写桥同宿主纪律);动作上报宿主 =
   kernel/cw_action_report/tool_use(工具动作机械执行直接上报写容器)。
 - **词缀运行时登记挂点共用体** ``register_affixes_from_names``:简报/位面详情
-  两读链的产出点经它入效果账本(生产调用方 = CwScreenBriefing._read_and_advance
-  开局首读 / CwScreenPlaneIntel 上报节点补采落点)。
+  两读链的产出点经它入效果账本(生产调用方 =
+  ``operations/cw_screen/cw_screen_briefing.py::CwScreenBriefing.observe``
+  词缀读链登记段,开局首读 / ``operations/cw_screen/cw_screen_plane_intel.py``
+  上报节点词缀登记段,接管局补采)。
 
 **边界**:
 - STRATEGY_EFFECTS 只产策略源(cw_investments overlay 头注,键空间/孤儿校验独立);

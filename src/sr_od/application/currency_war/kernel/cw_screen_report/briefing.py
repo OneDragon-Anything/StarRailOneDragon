@@ -29,7 +29,7 @@ class CwScreenBriefingObs:
     on_screen: bool = False
     #: 敌人词缀名单(OCR 原名;空 = 读缺,report 跳过写)。
     enemy_affixes: list[str] = field(default_factory=list)
-    #: 位面序 boss 名(LCS 清洗后;None = 读空,report 跳过写)。
+    #: 位面序 boss 名(两段转换归一后;None = 读空,report 跳过写)。
     plane_bosses: list[str] | None = None
     #: 敌人难度数值(简报「敌人难度N」;None = 读缺,report 跳过写)。
     enemy_difficulty: int | None = None
@@ -46,6 +46,8 @@ def report_screen_briefing_obs(gs: GameState, obs: CwScreenBriefingObs, *,
       首次误读;
     - 读空跳过写(读缺 = 跳过写项目口径):瞬时 OCR 失手不擦同局
       已读真值;跨局残留由每局容器冷建/丢弃挡死,不靠本写点清场。
+
+    转换失败 = 观察侧 round_fail,不进本写点(标准化留口,屏契约登记见 screens/briefing.md)。
     """
     if sig is None:
         # screen='' 沿原写点(简报三写点 sig 均带空画面标识,照抄现役原值)。

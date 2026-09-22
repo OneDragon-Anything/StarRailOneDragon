@@ -4,7 +4,8 @@
 + 点「下一步」,完成承诺 = 固定时长(BRIEFING_SETTLE_S,锚后 ~1s)。
 
 下游链路(不变):容器 ``enemy_affixes`` → mechanics_fit;
-``plane_bosses``(位面序真值)→ boss_fit。
+``plane_bosses``(位面序真值,字段正本 =
+``docs/develop/sr_od/application/currency_war/game_state/fields.md`` §3.1.3)→ boss_fit。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation):
 观察 node = 画面身份门(id_mark「标识-本场对局首领」,miss = round_fail
@@ -113,13 +114,21 @@ class CwScreenBriefing(SrOperation):
                         log.info('[cw-briefing] 词缀效果账本登记: %s', _reg)
                 except Exception as e:   # noqa: BLE001  登记面失败不阻塞
                     log.warning(f'[cw-briefing] 词缀效果账本登记失败(不阻塞): {e}')
-        # 位面序真值:每次进简报屏都重读;读得 → LCS 清洗归一(boss_fit
-        # 消费端规范名)→ report 恒覆写(自愈首次误读);读空 → report
-        # 跳过写(不擦同局已读真值)。
+        # 位面序真值:每次进简报屏都重读;读得 → 两段转换归一(boss_fit
+        # 消费端规范名;①精确命中/②LCS)→ report 恒覆写(自愈首次误读);
+        # 读空 → report 跳过写(不擦同局已读真值);归一失败(任一候选
+        # 两段皆不中)→ 观察失败 round_fail 零写零上报交回重观察
+        # (op-layer.md §1.1 观察标准化门;禁带病上报)。
         _bosses = read_bosses(self.ctx, screen)
         _cleaned = clean_boss_names_by_lcs(_bosses) if _bosses else None
+        if _bosses and _cleaned is None:
+            # 转换失败 = 观察失败:本轮早退,零写零上报(obs 不组装、
+            # report 不触发;外循环重观察重读)。
+            log.warning('简报首领 boss 名两段归一失败,观察失败交回重读(零写零上报): %s',
+                        _bosses)
+            return self.round_fail('boss 读数两段归一失败(①精确/②LCS 皆未中),零写零上报交回重观察')
         if _bosses:
-            log.info('简报首领读得(位面序,LCS 清洗后,观察): %s', _cleaned)
+            log.info('简报首领读得(位面序,两段转换归一后,观察): %s', _cleaned)
         else:
             # 空读也要可见(读空 = report 跳过写,与读得覆写可区分)。
             log.info('简报首领未读到(read_bosses 空:区域-首领行 OCR 无 4-8 字中文名)')

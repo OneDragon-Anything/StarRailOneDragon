@@ -1,13 +1,14 @@
 """敌人词缀 → 游戏原文效果注册表(数据层 ground truth)。
 
-**本文件由 HandleBriefing 运行时自动维护**(``cw_briefing_obs.write_affix_effects`` 采到**新**词缀 →
-写入;D-81 起**已存在词缀不再被 OCR 覆盖**——词缀效果是静态数据,现有值更可信,divergent 仅 log +
-截图待人工 review)。运行时写入**不影响已加载内存**(下游 mechanics_fit 用 import 时的旧值)
+**本文件由 ``write_affix_effects``(``obs/cw_briefing_obs.py``)运行时自动维护**,
+生产调用方 = ``CwScreenBriefing._collect_affix_effects``(采到**新**词缀 → 写入);
+**已存在词缀不再被 OCR 覆盖**——词缀效果是静态数据,现有值更可信,divergent 仅 log +
+截图待人工 review。运行时写入**不影响已加载内存**(下游 mechanics_fit 用 import 时的旧值)
 → **下轮启动重新 import 生效**。人工也可直接编辑本文件(校准/补全)。
 
 格式 = ``AFFIX_EFFECTS: dict[str, str] = {...}``(json 兼容,双引号)。词缀分类见 competitors.md。
 mechanics_fit 接线(词缀→tag→comp 克制评分)已在 cw_comps.AFFIX_MECHANIC_MAP + MECHANIC_COUNTERS/SYNERGIES
-落地(/55,接 comp_score W_MECH);本文件只采 effect 原文(ground truth,不参策略)。
+落地(接 ``comp_score`` W_MECH);本文件只采 effect 原文(ground truth,不参策略)。
 """
 from __future__ import annotations
 

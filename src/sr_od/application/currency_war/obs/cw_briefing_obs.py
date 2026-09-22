@@ -1,11 +1,13 @@
 """货币战争 简报屏观测(对局开始):敌人词缀 + 位面首领。
 
 简报屏(``货币战争-简报``)OCR reads:``read_affixes``/``read_bosses``/``read_affix_effect``
-+ 词缀效果采集落盘(``affix_effects_data.py`` 运行时自写,HandleBriefing 采到新词缀/不一致 → 写入)。
-下游:``state.enemy_affixes`` → ``mechanics_fit``(cw_comps);``state.bosses`` → ``boss_fit``。
++ 词缀效果采集落盘(``affix_effects_data.py`` 运行时自写,写端 = ``write_affix_effects``,
+生产调用方 = ``operations/cw_screen/cw_screen_briefing.py::CwScreenBriefing._collect_affix_effects``
+简报词缀点采链)。
+下游:容器 ``enemy_affixes`` → ``mechanics_fit``(cw_comps);``plane_bosses`` → ``boss_fit``
+(字段正本 = ``game_state/fields.md`` §3.1.3)。
 
-共享 helper(``_area_rect``/``_ocr``/``BRIEFING_SCREEN``)在 ``cw_obs_core``。本模块被
-``cw_observation`` re-export(向后兼容 ``from cw_observation import read_affixes``)。
+共享 helper(``_area_rect``/``_ocr``/``BRIEFING_SCREEN``)在 ``cw_obs_core``。
 """
 from __future__ import annotations
 
@@ -20,7 +22,7 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.utils.cv2_utils import save_image
 from one_dragon.utils.file_utils import get_project_root
 
-# W222 遥测缺口②同源:旧 ``logging.getLogger(__name__)`` 是无 handler 裸
+# 旧 ``logging.getLogger(__name__)`` 是无 handler 裸
 # logger(框架日志走命名 logger 'OneDragon',propagate=False 不经 root),
 # 本模块 warning/info(garbage 拒写/divergent 不覆盖/注册表新增)从未落地。
 from one_dragon.utils.log_utils import log as _log
@@ -37,7 +39,7 @@ def read_affixes_with_pos(ctx: SrContext, screen: MatLike) -> list[tuple[str, Po
 
     读简报「区域-词缀行」area OCR → 词缀文字(滤数字/符号/短噪声)+ 其 center。下游
     ``AFFIX_MECHANIC_MAP``(cw_comps)映射机制 tag;未知词缀透传(mechanics_fit 中性)。
-    读不到 / area 缺 → [](不覆盖 state.enemy_affixes)。
+    读不到 / area 缺 → [](不覆盖容器 ``enemy_affixes``)。
 
     OCR 名 vs competitors 数据名可能差(如 OCR「后台熄火」= competitors「前后台熄火」),
     透传原名,匹配在 AFFIX_MECHANIC_MAP(待实机校准补全,见 competitors.md 待确定)。
@@ -57,7 +59,7 @@ def read_affixes_with_pos(ctx: SrContext, screen: MatLike) -> list[tuple[str, Po
 def read_affixes(ctx: SrContext, screen: MatLike) -> list[str]:
     """简报词缀行 → 敌人词缀 OCR 原名列表(``read_affixes_with_pos`` 派生,只取名)。
 
-    保留 ``list[str]`` 签名兼容下游(session / state.enemy_affixes)。
+    保留 ``list[str]`` 签名兼容下游(``obs/recognizers/briefing_recognizer.py`` 简报识别器纯读复用)。
     需要 center 点词缀采效果 → 用 ``read_affixes_with_pos``。
     """
     return [name for name, _ in read_affixes_with_pos(ctx, screen)]
@@ -91,7 +93,7 @@ def parse_enemy_difficulty(texts: list[str]) -> int | None:
     """简报「敌人难度N」OCR → int(N;如 ``敌人难度108`` → 108;纯函数可单测)。
 
     整局基础敌人难度(影响 boss 血量 base×1.052^难度;docs/game/gameplay/currency_war.md §难度)。正则 ``敌人难度\\s*(\\d+)``
-    过滤词缀/首领等同屏文字。越界(>300)/无匹配 → None(state.enemy_difficulty 回退 None;3.5.2)。
+    过滤词缀/首领等同屏文字。越界(>300)/无匹配 → None(容器 ``enemy_difficulty`` 回退 None;3.5.2)。
     """
     for t in texts:
         m = re.search(r'敌人难度\s*(\d+)', t)
@@ -105,7 +107,7 @@ def parse_enemy_difficulty(texts: list[str]) -> int | None:
 def read_briefing_enemy_difficulty(ctx: SrContext, screen: MatLike) -> int | None:
     """简报「标识-敌人难度」area OCR → parse_enemy_difficulty → int(3.5.2)。
 
-    读不到 / area 缺 → None(state.enemy_difficulty 回退 None 或 session 值)。
+    读不到 / area 缺 → None(容器 ``enemy_difficulty`` 读缺跳写,保持现值)。
     """
     rect = _area_rect(ctx, '标识-敌人难度', BRIEFING_SCREEN)
     texts = [r.data for r in _ocr(ctx, screen, rect)]
@@ -119,11 +121,11 @@ def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
     不随难度变**(2026-08-05 攻略 + 官方确认;难度只改敌人强度/词缀,不改位面数)。
 
     简报屏 3 boss 横排卡片(立绘 + 阵营标签 + 名字);读「区域-首领行」area OCR → boss 名
-    (滤数字/符号/短噪声/「阵营」2 字 label)。**排列 = 位面序**(用户 2026-08-28 裁决:
-    的「排列≠位面序」结论系单条日志孤证误判,予以勘误——简报读数经 LCS 清洗后
-    按序写 ``session.briefing_bosses`` 作 ``plane_bosses`` 真值,消费链 boss_fit;勘误详见
-    文内勘误节)。``CwScreenPlaneIntel`` 位面详情实采保留为**接管场景重采**通道
-    (对局中内存丢失时补采)+ 对账真值源(勘误节)。
+    (滤数字/符号/短噪声/「阵营」2 字 label)。**排列 = 位面序真值**(「排列≠位面序」
+    系单条日志孤证误判,勿据此改排列语义;裁定语义正本 = ``game_state/fields.md``
+    §3.1.3;简报读数经 LCS 清洗后按序经 ``report_screen_briefing_obs`` 写容器
+    ``plane_bosses``,消费链 boss_fit)。``CwScreenPlaneIntel`` 位面详情实采保留为
+    **接管场景重采**通道(对局中内存丢失时补采)+ 对账真值源。
 
     读不到 / area 缺 → []。
 
@@ -143,33 +145,43 @@ def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
     return bosses
 
 
-#: boss 名 LCS 清洗参考表:取 boss_fit 消费端已有的规范 boss 名注册表
+#: boss 名两段转换参考表:取 boss_fit 消费端已有的规范 boss 名注册表
 #: (``cw_enemy_data.BOSS_MECHANICS`` 的 20 个规范公司名 key——``state.plane_bosses``
 #: 的下游消费者 ``boss_fit``/``cw_enemy_data.boss_tags`` 都按这套名字匹配)。
-#: 简报卡 boss 名可能是简称(如「造梦互动」vs 规范「造梦互动娱乐」)或 OCR 形变,
-#: LCS 相似匹配把读数归一到规范名;归一失败原样透传(防误配守卫,不硬猜)。
+#: 简报卡 boss 名可能是俗称/简称(如「电视机」vs 规范「造梦互动娱乐」)或 OCR 形变:
+#: ①俗称/简称经 ``cw_enemy_data.normalize_boss_name``(``BOSS_NICKNAMES`` 映射)
+#: 精确命中规范名;②不中再 LCS 相似匹配归一;任一读数两段皆不中 = 转换失败返回 None
+#: (op-layer.md §1.1 观察标准化门失败语义;禁原名透传带病上报)。
 _LCS_CLEAN_THRESHOLD: float = 0.5   # LCS 占规范名长度比例下限(项目 OCR 名匹配通用档,见 AGENTS「OCR 文本匹配与修复」)
 
 
-def clean_boss_names_by_lcs(names: list[str]) -> list[str]:
-    """简报 boss 读数逐个经 LCS 相似匹配归一到规范公司名(顺序原样保留 = 位面序)。
+def clean_boss_names_by_lcs(names: list[str]) -> list[str] | None:
+    """简报 boss 读数逐个经两段转换归一到规范公司名(顺序原样保留 = 位面序)。
 
     参考表 = ``cw_enemy_data.BOSS_MECHANICS`` key(见 :data:`_LCS_CLEAN_THRESHOLD` 上方说明)。
-    防误配守卫:LCS 占规范名长度比例 < 0.5 → 不归一,OCR 原名透传并留日志
-    (错归一比不归一危害大——按序真值直接进 boss_fit 评分)。输入已是规范名 → LCS=1.0 原样返回。
+    两段转换(op-layer.md §1.1):①俗称/简称经 ``cw_enemy_data.normalize_boss_name``
+    精确命中规范名(输入已是规范名 → ①段原样返回);②不中再 LCS 相似匹配。
+    失败语义:任一读数两段皆不中 = 转换失败 → 返回 None,调用方 ``observe``
+    据此 round_fail 零写零上报交回重观察(禁原名透传带病上报——错名直接进 boss_fit 评分)。
     """
     from one_dragon.utils.str_utils import find_best_match_by_lcs
-    from sr_od.application.currency_war.data.cw_enemy_data import BOSS_MECHANICS
+    from sr_od.application.currency_war.data.cw_enemy_data import (
+        BOSS_MECHANICS,
+        normalize_boss_name,
+    )
     refs: list[str] = list(BOSS_MECHANICS.keys())
     out: list[str] = []
     for name in names:
+        canon = normalize_boss_name(name)
+        if canon in BOSS_MECHANICS:
+            out.append(canon)   # ①段:俗称/简称/已规范名精确命中,不进失败分支
+            continue
         idx = find_best_match_by_lcs(name, refs, lcs_percent_threshold=_LCS_CLEAN_THRESHOLD)
-        if idx is None:
-            _log.warning('[cw!][briefing] boss 读数「%s」LCS 归一未过阈值 %.2f,原名透传',
+        if idx is None:         # ②段:LCS 未过阈值
+            _log.warning('[cw!][briefing] boss 读数「%s」两段转换未中(①精确/②LCS %.2f),转换失败',
                          name, _LCS_CLEAN_THRESHOLD)
-            out.append(name)
-        else:
-            out.append(refs[idx])
+            return None
+        out.append(refs[idx])
     return out
 
 
@@ -216,9 +228,8 @@ def load_affix_effects_from_file() -> dict[str, str]:
 
     对比目标 = 文件最新(跨轮 + 本轮内都准,避免重复写);下游用内存 import(本轮启动时旧值,
     **下轮重新 import 生效**)。解析用 **ast 静态提取**:定位 ``AFFIX_EFFECTS`` 赋值节点后
-    ``ast.literal_eval`` 只取字面量 —— **不执行文件内任何代码**(W266,替代原 exec 方案)。
-    人工手编容错:注释 / 空行 / 引号风格均不受影响;非字面量值或语法损坏 → 同旧 exec
-    异常口径返回 ``{}``。
+    ``ast.literal_eval`` 只取字面量 —— **不执行文件内任何代码**。
+    人工手编容错:注释 / 空行 / 引号风格均不受影响;非字面量值或语法损坏 → 返回 ``{}``。
     """
     if not _AFFIX_EFFECTS_PATH.exists():
         return {}
@@ -270,7 +281,7 @@ def _is_garbage_affix(name: str, effect: str) -> bool:
 def write_affix_effects(updates: dict[str, str]) -> bool:
     """把 ``updates`` 的**合格**词缀效果 merge 进 ``affix_effects_data.py`` 注册表。
 
-    写入策略(D-81 → ,治 OCR 污染 ground truth;详见该 ADR):
+    写入策略(治 OCR 污染 ground truth):
 
     - **garbage 守卫**:``_is_garbage_affix`` 拒(「下一步」按钮文字 / 空)→ 不写。
     - **existing 不覆盖**:词缀效果是**静态游戏数据**(不随对局变,每场只是选不同词缀,效果本身固定);
@@ -310,14 +321,15 @@ def write_affix_effects(updates: dict[str, str]) -> bool:
     content = (
         '"""敌人词缀 → 游戏原文效果注册表(数据层 ground truth)。\n'
         '\n'
-        '**本文件由 HandleBriefing 运行时自动维护**(``cw_briefing_obs.write_affix_effects`` 采到**新**词缀 →\n'
-        '写入;D-81 起**已存在词缀不再被 OCR 覆盖**——词缀效果是静态数据,现有值更可信,divergent 仅 log +\n'
-        '截图待人工 review)。运行时写入**不影响已加载内存**(下游 mechanics_fit 用 import 时的旧值)\n'
+        '**本文件由 ``write_affix_effects``(``obs/cw_briefing_obs.py``)运行时自动维护**,\n'
+        '生产调用方 = ``CwScreenBriefing._collect_affix_effects``(采到**新**词缀 → 写入);\n'
+        '**已存在词缀不再被 OCR 覆盖**——词缀效果是静态数据,现有值更可信,divergent 仅 log +\n'
+        '截图待人工 review。运行时写入**不影响已加载内存**(下游 mechanics_fit 用 import 时的旧值)\n'
         '→ **下轮启动重新 import 生效**。人工也可直接编辑本文件(校准/补全)。\n'
         '\n'
         '格式 = ``AFFIX_EFFECTS: dict[str, str] = {...}``(json 兼容,双引号)。词缀分类见 competitors.md。\n'
         'mechanics_fit 接线(词缀→tag→comp 克制评分)已在 cw_comps.AFFIX_MECHANIC_MAP + MECHANIC_COUNTERS/SYNERGIES\n'
-        '落地(/55,接 comp_score W_MECH);本文件只采 effect 原文(ground truth,不参策略)。\n'
+        '落地(接 ``comp_score`` W_MECH);本文件只采 effect 原文(ground truth,不参策略)。\n'
         '"""\n'
         'from __future__ import annotations\n\n'
         'AFFIX_EFFECTS: dict[str, str] = ' + json.dumps(current, ensure_ascii=False, indent=4) + '\n'

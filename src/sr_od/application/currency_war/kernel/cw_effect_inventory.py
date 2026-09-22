@@ -265,9 +265,10 @@ class ActiveEffectInventory:
         """词缀效果获得 → 入清单(source=affix;结构化注册 =
         kernel/cw_affix_effects.AFFIX_EFFECT_SPECS,spec.id = 词缀名)。
 
-        生产登记挂点已接线:简报读链(CwScreenBriefing._read_and_advance
-        开局首读)与位面详情补采通道(CwScreenPlaneIntel 上报节点)
-        经共用登记体 cw_affix_effects.register_affixes_from_names 调本方法
+        生产登记挂点已接线:简报读链(``operations/cw_screen/cw_screen_briefing.py``
+        ::CwScreenBriefing.observe 词缀读链登记段,开局首读)与位面详情补采通道
+        (``operations/cw_screen/cw_screen_plane_intel.py`` 上报节点词缀登记段,
+        接管局补采)经共用登记体 cw_affix_effects.register_affixes_from_names 调本方法
         (幂等 + 注册表命中才登记,best-effort 不阻塞读链主链)。词缀改写面
         写端仍一律观察覆盖兜底(写入归属单一源 = 各 spec.notes 与
         cw_affix_effects.EQUIP_REWRITE_DECLARATIONS 申报面);本方法承诺
@@ -412,7 +413,7 @@ class ActiveEffectInventory:
         """战斗结算事件标记(生产挂点 = CwScreenBattleWait 结算观察写端
         _record_round_outcome 非 telemetry_only 分支——真实结算才标记,
         败局页 telemetry-only 补录不标记,与 apply_settlement_cover 同口径;
-        原 on_round_end 候选宿主已随 删除)。"""
+        原 on_round_end 候选宿主已删除)。"""
         self._events[_EVENT_BATTLE_END] = self._events.get(_EVENT_BATTLE_END, 0) + 1
 
     def event_count(self, kind: str) -> int:

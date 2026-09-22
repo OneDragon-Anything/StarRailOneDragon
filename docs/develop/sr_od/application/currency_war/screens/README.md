@@ -66,7 +66,7 @@
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
-| 简报点「下一步」 | `research/screen_flow_timing.md` 时序 #1(首领出现 +1s 可点) | `operations/cw_screen/cw_screen_briefing.py::CwScreenBriefing`(阶段一身份行「货币战争-简报」);内嵌词缀效果采集段 `_collect_affix_effects`(逐词缀点采 OCR 效果,对注册表 `data/affix_effects_data.py` 比对,新名/不一致才截图收集;采集写端 best-effort,OCR 采不到即跳过) | 点推进即终结(空决策形态;点采 tooltip 不终结) |
+| 简报点「下一步」 | `research/screen_flow_timing.md` 时序 #1(首领出现 +1s 可点) | `operations/cw_screen/cw_screen_briefing.py::CwScreenBriefing`(阶段一身份行「货币战争-简报」);内嵌词缀效果采集段 `_collect_affix_effects`(逐词缀点采 OCR 效果,对注册表 `src/sr_od/application/currency_war/data/affix_effects_data.py` 比对(注册表住 src 树代码;本文头注 `data/X.md` 短路径约定仅辖 docs/game 侧,不辖 src 文件),新名/不一致才截图收集;采集写端 best-effort,OCR 采不到即跳过) | 点推进即终结(空决策形态;点采 tooltip 不终结) |
 | BOSS 简报点空白 | 同上 #26(「点击空白处继续」出现即可点) | `operations/cw_screen/cw_screen_boss_briefing.py::CwScreenBossBriefing`(阶段一身份行「货币战争-BOSS简报」;位面过渡身份帧含 boss 判别片段时排他接管);点掉后交回外循环重判——boss 战自动开打,商店不开(模块头 as-built 实证;game 侧口述时序 #14「自动开店」已废,见 [boss_briefing.md](boss_briefing.md) 开放设计注) | 点空白即终结 |
 | 位面过渡点空白 | 同上 #2 | `operations/cw_screen/cw_screen_plane_transition.py::CwScreenPlaneTransition`(阶段一身份行「货币战争-位面过渡」) | 点空白即终结 |
 
