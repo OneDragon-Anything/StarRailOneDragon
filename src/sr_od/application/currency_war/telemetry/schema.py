@@ -503,9 +503,9 @@ class DecisionTrace:
     # (位面 2 支出授权历史字段 sess_p2_auth_intercept/sess_p2_auth_water
     #  已删(ADR-0492 定谳清理链收尾:写端早已随机制删除,全域零读端);
     #  旧语料行该两键按缺键读 None,schema 兼容。)
-    # (支出门·买侧收门拒因枚举计数 sess_spend_gate_block 已随
-    #  spend_gate 开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT
-    #  §1.3;存量 runs.jsonl 判读脚本按缺键读 None。)
+    # (支出门·买侧收门拒因枚举计数键已随支出门开关族删除——旧方案清退批,
+    #  旧键名见清查报告 OLD_MIX_AUDIT §1.3;存量 runs.jsonl 判读脚本按
+    #  缺键读 None。)
     # 预算-回执契约·对账门声明(w921_rd_design DESIGN §1.1-C;
     # strategy_state_of(session).v3_posture_unfulfilled 透传):{auth_id, channel, reason,
     # channels, action}——授权未兑现帧的显式归档(reason=四枚举
@@ -776,7 +776,11 @@ class SpendUnitRecord:
     plan_truncated: bool = False     # True=plan 里有动作未尝试(至终结动作截断丢弃)——口径差非执行失败
     refresh_skipped: str | None = None  # 刷新被跳过的原因(数据行在册取值含 'max_cap',读端兼容;现无生产写入端);None=未跳过
     refresh_attempted: bool = False  # 本单元内至少点击过一次刷新
-    refresh_board_changed: bool | None = None  # 刷新点击后牌面是否已变(两帧一致门+牌名集对拍);None=未尝试/不可判
+    # 刷新点击后牌面是否已变(两帧一致门+牌名集对拍);None=未尝试/不可判。
+    # 现无生产写入端:唯一消费(安灯 free_refresh_proc 豁免判定输入)随
+    # proc 通道退役,函数本体 refresh_board_changed_of 已删(详设 §2.3
+    # grep 定夺);字段保留读存量行。
+    refresh_board_changed: bool | None = None
 
 
 

@@ -674,17 +674,17 @@ class CwActionLuckyTokenUseParam:
 
 @dataclass
 class CwActionOpenShopParam:
-    """开商店意图(EnsureShop 意图退役后的承接形态)。
+    """开商店意图(EnsureShop 意图退役后的承接形态;唯一普通形态)。
 
     显式开店 → 流程层编排商店访问(open_shop 幂等开店 → 商店画面 op:
-    入口观察 → decide_shop_action 逐动作循环,关店收编进 op → 节点探针)。
+    入口观察 → decide_shop_action 逐动作循环,关店收编进 op)。
 
-    restricted_spend=True:受限访问(发射帧仲裁意图,金出口族出口 B;
-    判定单一源 = 策略前置发射位经 kernel in_launch_spend_zone)→ 访问内
-    花金 = 策略侧自限(决策入口经 kernel launch_arbitration_gate 谓词检)
-    → 关店,本帧不发射(次帧复判)。
+    受限会话(armed ∧ 金超息线)同走本普通开店形态:前置发射位发射
+    普通开店动作,访问内消费 = 策略侧自限(flow.decide_shop_action 提案后
+    经 kernel launch_arbitration_gate 谓词检;迭代
+    changes/2026-09-21-shop-refresh-terminal 详设 §2.10)——受限访问标记
+    字段随发射帧仲裁段退役删除,本类 = 唯一开店动作形态。
     """
-    restricted_spend: bool = False
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 

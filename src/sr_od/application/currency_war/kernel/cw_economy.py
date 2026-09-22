@@ -349,10 +349,11 @@ def in_launch_spend_zone(gold: int, session: StrategySession | None) -> bool:
 
     **与必花域同 g* 不同域,禁并键**(DESIGN v1.1 §5;launch_gold_tradeoff
     §3 边界①同判):必花域辖「有动作决策点的 shop/备战帧」,本谓词辖
-    「发射帧仲裁段」(仲裁段插入后发射帧成为决策点;两域互斥 = 调用点
-    约定非结构保证,M-1 降级口径,新增消费点须回 DESIGN §5 对账表)。
-    消费点:cw_loop 发射帧仲裁段预判,直调本函数,禁内联 ``gold > g*``
-    字面量式。
+    「发射帧溢出段」(armed 帧发射前的受限访问入段判定;两域互斥 =
+    调用点约定非结构保证,M-1 降级口径,新增消费点须回 DESIGN §5 对账
+    表)。消费点:mandate_v1 前置发射位帧级金判定
+    (strategies/impl/mandate_v1/bridge._launch_front_check),直调本函数,
+    禁内联 ``gold > g*`` 字面量式。
     """
     cap = cap_resolved_of_session(session)
     if cap <= 0:

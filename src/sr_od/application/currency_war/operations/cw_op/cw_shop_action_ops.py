@@ -89,12 +89,6 @@ class ShopExecEnv:
     state: GameState
 
 
-def _container_cards(state: GameState) -> list:
-    """商店 payload 牌列表(容器;离屏 None = 空列表)。"""
-    payload = state.shop.value
-    return shop_payload_content_cards(payload)
-
-
 def _plane_of(state: GameState) -> int:
     from sr_od.application.currency_war.kernel.cw_game_state import plane_of
     return plane_of(state)

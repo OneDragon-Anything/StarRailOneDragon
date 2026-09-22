@@ -735,9 +735,9 @@ class DecisionV2Registry:
     line_switch_debias_delta: float = 0.15
     #: 当前线最短驻留轮 D_min(压振荡频率硬上限至 1/(2·D_min);DESIGN §③修订 3)
     line_switch_min_dwell: int = 2
-    # (release 帧活栈消费门开关 release_spend_gate_enabled 已随 ADR-0426
-    # 增补 D 第 4 态清理:开臂 A/B 结案,消费门恒接线,判据单一源=
-    # posture_release.spend_gate_active 读 strategy_state_of(session).v3_release。)
+    # (release 帧活栈消费门开关已随 ADR-0426 增补 D 第 4 态清理:开臂
+    # A/B 结案,消费门恒接线,判据单一源 = posture_release 消费门活值,
+    # 读 strategy_state_of(session).v3_release;旧开关/字段名见该 ADR。)
 
     # ===== P2 生存批:换线存活轮数门(C4) =====
     #: 设计决策=ADR-0426 增补 B(C3/C4 重设计裁决)+ADR-0429(C4 接线):

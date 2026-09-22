@@ -74,12 +74,14 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
       ``launch_quality_eval_error`` 后照常发射(fail-open 防死锁,
       ADR-0570 分界)——键单一源 = kernel cw_launch_admission 常量;
     - armed ∧ 帧级金判定 ``in_launch_spend_zone`` 命中(禁内联金息线
-      比较)→ 受限商店访问意图 ``CwActionOpenShopParam(restricted_spend=True)``;
+      比较)→ 受限商店访问意图 ``CwActionOpenShopParam()``(**普通开店
+      形态**;进出店 = 普通 OpenShop/0n 路径,访问内消费由策略侧自限
+      接管,详设 §2.10);
       **每武装段至多一次**(段旗 cw4_launch_spend_visited,失武装复位;
       复位后再武装仍命中允许新段再访);段内已访问 → 落无条件发射
       (旧形态「访问后照发」跨帧等价,金不回落无死循环);
-      **不经 S1 开店闩与 CwActionOpenShopParam 节流**(旧仲裁直调 open_shop 同形态,
-      空转防护 = 段旗);
+      **不经 S1 开店闩与 CwActionOpenShopParam 节流**(前置发射位短路
+      三遍编排,空转防护 = 段旗);
     - armed ∧ 未命中 → CwActionStartBattleParam 终点意图(词表现成);
     - 非 armed → 段旗复位,返回 None = 原三遍编排接管(非 armed 帧零变化)。
 
@@ -126,7 +128,7 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
     if in_launch_spend_zone(gold_of(gs), gs):
         if not _st.cw4_launch_spend_visited:
             _st.cw4_launch_spend_visited = True
-            return CwActionOpenShopParam(restricted_spend=True)
+            return CwActionOpenShopParam()   # 普通开店形态(详设 §2.10)
         # 段内已访问:落无条件发射
     return CwActionStartBattleParam()
 

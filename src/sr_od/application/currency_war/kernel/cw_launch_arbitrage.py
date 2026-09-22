@@ -3,7 +3,9 @@
 
 **治什么**:达标臂 armed(线成型)发射帧短路备战动作链(ADR-0557)后,
 金出口在发射帧整族不可达——sim/实机双证成型后金逐轮净积累(终局金中位
-96-196,boss 轮零动作)。本模块承载仲裁段的**判定语义单一源**:
+96-196,boss 轮零动作)。本模块承载受限消费政策的**判定语义单一源**
+(原 flow 层仲裁段随迭代 changes/2026-09-21-shop-refresh-terminal §2.10
+退役,消费位 = 策略决策入口自限):
 
 - 数学授权 = P70 发射帧溢出段支配(已证,proofs/
   p70-launch-frame-overflow-spend-dominance.md:发射帧窗内剩余备战决策
@@ -13,7 +15,7 @@
   fail-closed 证不出不花(与 P68 同构不同号禁并键,p70 单篇「带内段
   声明」段);
 - 花什么仍由 shop 出口族既有评估栈(策略器 decide_shop_action 单动作核)
-  按既有资格与评估序裁决,仲裁只提供「这帧有多少零息死仓金可花」——
+  按既有资格与评估序裁决,预算闸只提供「这帧有多少零息死仓金可花」——
   不新造第二套评估语义(金出口族 DESIGN v1.1 红线 1/红线 5)。
 
 **两面接线拓扑(防生产/sim 分叉三层,DESIGN v1.1 §3.2 载体)**:
@@ -22,10 +24,12 @@
    ``kernel/cw_economy`` 与必花域共享 g* 链;单动作预算闸
    :func:`launch_arbitration_gate`;分键名常量族);含全部
    ``launch_arbitrage_*`` 分键名,两面直调禁字面量散写。
-2. 位次契约单一源 = 「armed 判定通过 ∧ 闸通过(生产为浮层在场闸 +
-   ``_prep_anchors_hit`` 预检;sim 结构等价物恒真,盲区如实申报)∧
-   决策段/发射核之前」——生产调用点 = ``operations/cw_loop.py``
-   发射帧仲裁段;
+2. 位次契约:发射帧仲裁段(flow 层特殊路径)已随迭代
+   changes/2026-09-21-shop-refresh-terminal 详设 §2.10 退役——现役生产
+   消费点 = 策略决策入口自限(flow.decide_shop_action 唯一提案产出后经
+   :func:`launch_arbitration_gate` 谓词检,拒 = 决策改发 CloseShop 收
+   访问);``launch_arbitrage_*`` 分键族保留(sim 侧与存量 cw4_counters
+   判读面),生产写点现役仅 KEY_GATE_BLOCKS(策略侧受阻分键)。
    发射核本身零改动(生产发射调用面内部屏态复验保留
    作纵深防线)。
 3. 对账锚各守拓扑:N-1 三选一裁决(**如实降格**)= 生产侧遥测载体只有

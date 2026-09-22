@@ -3,12 +3,11 @@
 注册行 = terminal 承载行。
 
 **本 op 的执行在正常路径不可达**:CwActionOpenShopParam 的流程编排是画面
-op 流程职责(``cw_screen_prep._act_execute_default`` 截流 →
+op 流程职责(``cw_screen_prep._act_execute_default`` →
 ``_open_shop_phase``),按「流程编排留守」划分不进动作 op;注册行的用途 =
 终结判定/等待时长经注册表读类属性(terminal/terminal_wait)。可达(经
 注册表分派到本 op 执行)= 分派漏斗被绕过,AssertionError 响亮暴露防
-静默复活。restricted_spend 形态 = 动作字段承载,消费在流程层编排,与
-注册表无关。上报:不调(不可达路径,design.md §1.2「不调」行)。"""
+静默复活。上报:不调(不可达路径,design.md §1.2「不调」行)。"""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -48,6 +47,6 @@ class CwActionOpenShopOp(SrOperation):
     def run(self) -> OperationRoundResult:
         raise AssertionError(
             'CwActionOpenShopParam 不经动作 op 执行(流程层编排:cw_screen_prep.'
-            '_act_execute_default 截流 → _open_shop_phase);本注册行 = '
+            '_act_execute_default → _open_shop_phase);本注册行 = '
             'terminal 承载行,正常路径不可达,可达即分派漏斗被绕过'
             '(design.md unified-action-factory §2.4)')

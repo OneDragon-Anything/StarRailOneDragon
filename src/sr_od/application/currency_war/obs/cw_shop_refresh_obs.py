@@ -224,21 +224,3 @@ def read_shop_refresh_button(ctx: SrContext, screen: MatLike,
     return ShopRefreshButton(free=None, free_remaining=None,
                              price=price, affordable=None)
 
-
-def refresh_board_changed_of(pre_names: list[str],
-                             post_names: list[str]) -> bool | None:
-    """刷新牌面三值对比(观察侧单一源;裁决3 比对收口,统一动作工厂批4
-    自 RefreshShopOp.execute 内联式迁出——动作 op 内零比对,本函数即该
-    对比的唯一载体)。
-
-    三值口径与迁出前内联式逐字等价:任一侧空(整帧失读/买光全空位)=
-    ``None`` 不可判,不猜;否则 = 刷前/刷后具名牌名集不一致。
-    消费方 = 刷新回执 extra(安灯 ``free_refresh_proc`` 豁免判定输入,
-    telemetry/query 判读面)+ 入口观察对账点免费腿三腿判定
-    (cw_screen_buy_cards)。输入名集坐标系 = 同帧商店 content 具名牌名
-    列表(1080p 商店五槽读牌口径,写入端 = RefreshShopOp 刷前/刷后落账)。
-    """
-    if not pre_names or not post_names:
-        return None
-    return set(pre_names) != set(post_names)
-
