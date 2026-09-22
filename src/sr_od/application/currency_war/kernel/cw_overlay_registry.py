@@ -218,7 +218,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         dispatch_priority=14,
         recovery_exit=RECOVERY_CLOSE,
     ),
-    # 武装箱弹窗:四选一选卡有专属 handler(0f),但**也是现清场表成员**——
+    # 武装箱弹窗:四选一选卡有专属 handler(CwScreenArmoryBox),但**也是现清场表成员**——
     # 环入口清它 = 现行生产行为;语义归 system(非 decision)保两维现状:
     # bail 扫描集(= decision 条目)不加成员、清场派生集不减成员。
     # 「关闭即丢一次开箱选择」的取舍与补给同型,见补给条注释。
@@ -349,7 +349,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     ),
     # 消耗品详情浮层:「拖动到」只出现在消耗品详情 modal(天然独有
     # id_mark 候选),建档后单锚收编。
-    # ⚠️ 挂账(ESC 清零批元数据):下方 esc 双声明描述的 cw_loop 0f ESC 分支
+    # ⚠️ 挂账(ESC 清零批元数据):下方 esc 双声明描述的旧消耗品 ESC 分支
     # 已删除——现关层行为 = 分发 CwScreenConsumableOverlay 点同族「道具详情
     # 弹窗/按钮-关闭」×(× 同位 (1862,65))。条目未建档保持 inactive;
     # 建档批按该实作改声明并清 esc 值。
