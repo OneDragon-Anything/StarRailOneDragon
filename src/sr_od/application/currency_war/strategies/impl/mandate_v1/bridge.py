@@ -135,7 +135,7 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
 
 def launch_restricted_session_active(gs: GameState) -> bool:
     """受限会话派生标记(armed ∧ 金达息线;发射帧受限消费的策略侧自限门,
-    迭代 changes/2026-09-21-shop-refresh-terminal 详设 §2.10)。
+    分层依据 = flow/README.md §1 决策控制分层铁律)。
 
     判定与 :func:`_launch_front_check` 前置发射位同源:armed 判定核 =
     kernel ``readiness_launch_decision``(线成员/部署计划谓词注入同参,

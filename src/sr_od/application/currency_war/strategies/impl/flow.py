@@ -753,8 +753,8 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         观察帧缺失 = 观察层失约,抛错(禁静默按空态决策)。
         入口内务 = 帧代次消费(:meth:`_consume_shop_direction_frame`;
         方向刷新在决策读视图之前完成,ADR-0583 内化锚)。
-        受限会话自限(迭代 changes/2026-09-21-shop-refresh-terminal 详设
-        §2.10):决策本体产出唯一提案后,受限会话活跃帧(armed ∧ 金超息线
+        受限会话自限(分层依据 = flow/README.md §1 决策控制分层铁律):
+        决策本体产出唯一提案后,受限会话活跃帧(armed ∧ 金超息线
         派生标记,每帧现算 = bridge.launch_restricted_session_active)经
         kernel ``launch_arbitration_gate`` 谓词检(与 flow 闸同源同参,零
         判定数学复制)——拒 = 决策改发 ``CwActionCloseShopParam``(消费

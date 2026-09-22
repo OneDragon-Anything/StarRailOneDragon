@@ -681,8 +681,8 @@ class CwActionOpenShopParam:
 
     受限会话(armed ∧ 金超息线)同走本普通开店形态:前置发射位发射
     普通开店动作,访问内消费 = 策略侧自限(flow.decide_shop_action 提案后
-    经 kernel launch_arbitration_gate 谓词检;迭代
-    changes/2026-09-21-shop-refresh-terminal 详设 §2.10)——受限访问标记
+    经 kernel launch_arbitration_gate 谓词检;分层依据 = flow/README.md
+    §1 决策控制分层铁律)——受限访问标记
     字段随发射帧仲裁段退役删除,本类 = 唯一开店动作形态。
     """
     route_tag: str = field(default='', kw_only=True,
