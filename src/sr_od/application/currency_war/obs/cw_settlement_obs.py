@@ -3,7 +3,7 @@
 结算屏(战斗后「挑战结束/数据统计/继续挑战」)展示战后小队 HP「小队生命值<N>」+ 总伤害等
 (2026-08-05 实跑 OCR 确认形态:['挑战结束','战斗','小队生命值71i','数据统计','连胜×0','继续挑战'])。
 ``parse_settlement_hp`` 纯函数(可单测);``read_round_outcome`` OCR 全屏调它 → ``RoundOutcome``
-(结算观察半直写输入,ADR-0583;性能 trend 用)。node_type/comp_tag/plane/round 由调用方(loop)传入
+(结算观察半直写输入;性能 trend 用)。node_type/comp_tag/plane/round 由调用方(loop)传入
 (结算屏不暴露这些)。
 
 共享常量(HP_MIN/HP_MAX)在 ``cw_obs_core``。本模块被 ``cw_observation`` re-export。
@@ -31,7 +31,7 @@ from sr_od.context.sr_context import SrContext
 
 
 def parse_settlement_node_type(ocr_texts: list[str]) -> str | None:
-    """结算屏节点类型(纯函数;r366,ADR-0239)→ 中文标准词或 None。
+    """结算屏节点类型(纯函数;r366)→ 中文标准词或 None。
 
     权威源 = 结算屏自身头部:``挑战成功/挑战结束`` 后 1-4 个 token 内
     出现的类型词(奖励/战斗/遭遇/补给/首领)。实跑 token 形态(2026-08-22
@@ -530,16 +530,16 @@ def parse_settle_hp_anchor(ocr_texts: list[str]) -> bool:
 
 def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num: int,
                        comp_tag: str, node_type: str = '普通战斗'):
-    """结算屏 → ``RoundOutcome``(观测回路 P1.5;结算观察半直写输入,ADR-0583)。
+    """结算屏 → ``RoundOutcome``(观测回路 P1.5;结算观察半直写输入)。
 
     OCR 全屏 → ``parse_settlement_hp`` 得 hp_after;解析成功 hp_confidence=1.0(进 trend),失败 0.0
     (< ``HP_CONFIDENCE_THRESHOLD`` 不进 trend,防噪声)。plane/round_num/comp_tag 由调用方
-    (loop)传入。node_type:**结算屏自身解析优先**(r366/ADR-0239——局48 实锤
+    (loop)传入。node_type:**结算屏自身解析优先**(r366/——局48 实锤
     购买单元内关店通道零执行,node_type 生产链全死,传参恒回退普通战斗);
     解析不出再退调用方传入值(备战期 nodeseq 链,当前流下常 None→普通战斗)。
 
     ✅ 已接线(2026-08-07 起):CwScreenBattleWait._record_round_outcome 每轮胜结算屏调用 →
-    结算观察半直写(_write_settlement_observation,ADR-0583)→ performance.record
+    结算观察半直写(_write_settlement_observation)→ performance.record
     (outcomes 流行写入已随删除波 1 退役,观察半不受影响)。
     """
     from sr_od.application.currency_war.kernel.cw_performance import RoundOutcome
@@ -551,7 +551,7 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     # 面板就在结算屏本体右侧列,同一帧全图 OCR 即可解析(坐标在 items 里),
     # 无需点开子面板/额外截图。读不到(面板被遮/OCR 漏)→ None 保持旧锁。
     damage = parse_settlement_damage(_items)
-    # r366(ADR-0239):结算屏头部类型词 = 节点类型权威源(读时点=记录时点,
+    # r366:结算屏头部类型词 = 节点类型权威源(读时点=记录时点,
     # 零跨帧状态;首节点/备战流变化均免疫)。解析出即覆盖传参。
     # r366b(review B3):传参='boss'(cw_loop 专项 OCR '首领',证据更强)
     # 不被屏面解析降级覆盖——屏面误读'战斗'会把 boss 3.0 期望拉到 1.0。
@@ -596,5 +596,5 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
         damage_base=_panel['damage_base'],
         damage_unfinished_progress=_panel['damage_unfinished_progress'],
         damage_breakdown_visible=_panel['visible'],
-        heal_longline=_panel['heal_longline'],   # 补链:回血分量入遥测(ADR-0609)
+        heal_longline=_panel['heal_longline'],   # 补链:回血分量入遥测
     )

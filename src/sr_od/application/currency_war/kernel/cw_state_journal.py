@@ -1,20 +1,19 @@
 """统一 state 状态流水落盘(R5 W1 起无条件常开)。
 
 设计裁定正本 = ``docs/develop/sr_od/application/currency_war/decisions/0630-unified-state-journal.md``
-(ADR-0630,含修订节)+ ``docs/develop/sr_od/application/currency_war/decisions/0634-state-journal-always-on.md``
-(ADR-0634,影子双写推翻:journal 无条件常开,无开关无影子期;记录机制
+(含修订节)+ ``docs/develop/sr_od/application/currency_war/decisions/0634-state-journal-always-on.md``
+(影子双写推翻:journal 无条件常开,无开关无影子期;记录机制
 as-built 正本面 = ``docs/develop/sr_od/application/currency_war/game_state/journal.md``)。
 形态:流程侧唯一落盘流 ``state/journal.jsonl``,每次 state 写入一行,行 =
 改了什么 + 渠道签名 + 版本 id + **写入后完整 state 快照**——行行自足,
 查询直接读行(journal.md §1);无快照锚、无周期节奏、无对账自检、无前溯
-推导(v2 增量账+快照锚+对账自检整套随 v3 根本性纠正作废,禁回归,
-ADR-0630 裁定 1)。
+推导(v2 增量账+快照锚+对账自检整套随 v3 根本性纠正作废,禁回归)。
 
 落盘形态(journal.md §5):内存追加 + 规范化序列化,磁盘批量 flush(缓冲满
 阈值落盘)——同步关键路径零逐行 open/write;崩溃丢失窗 = 未 flush 尾部,该窗
 内时点无行 = 诚实缺失,无补建机制。
 
-常开语义(ADR-0634):本模块无开关,生产装配 = ``currency_war_app``
+常开语义:本模块无开关,生产装配 = ``currency_war_app``
 装配段无条件调 :func:`install_state_telemetry` + 局容器单例建立点兜底
 (:func:`ensure_journal_assembly`;生产调用方 = kernel/cw_game_state
 :func:`game_state_of` 建立路径——遥测装配 = game state 职责(用户
@@ -60,7 +59,7 @@ from one_dragon.utils.log_utils import log
 
 #: 缺省批量 flush 阈值(行数;崩溃丢失窗上限 = 阈值;量级对齐 journal.md §5
 #: 「批量 flush(阈值随实现批定)」——首版取 64,实测后随单局体积口径
-#: (ADR-0630 后果节 M1 三口径)耦合调)。
+#: (后果节 M1 三口径)耦合调)。
 DEFAULT_FLUSH_EVERY: int = 64
 
 #: 实机形态 run_id 正则(实机段分型判据;telemetry/state.start_run 铸造口径
@@ -406,8 +405,8 @@ def install_state_telemetry(path: Path | str | None = None, *,
                             run_id_provider: Callable[[], str] | None = None) -> StateJournal:
     """装配状态流水(幂等:重入先复位再装,防双槽叠加)。
 
-    - R5 W1 常开化(ADR-0634):本口无开关语义,生产 = currency_war_app
-      装配段无条件调用;影子双写/缺省关纪律已销案(ADR-0630 决策 6 被推翻);
+    - R5 W1 常开化:本口无开关语义,生产 = currency_war_app
+      装配段无条件调用;影子双写/缺省关纪律已销案(被推翻);
     - path = 流水落盘路径;None = 生产缺省 ``<live 根>/state/journal.jsonl``
       (§3.0 落盘根:与旧流同根,哨兵/装配路径习惯延续);
     - run_id_provider = run 归属读取函数(必传,生产 = telemetry 现读口;

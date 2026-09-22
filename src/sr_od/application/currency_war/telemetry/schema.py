@@ -78,7 +78,7 @@ def rho_shop_obs(shop: list, pair: str = '') -> dict[str, Any]:
 
 
 # ===== F7 / D_ε 判读面观察键(判前锁 v6 挂账行 7/11/13;键语义单一源=
-# 本文件键声明;清单与登记键节原文已删档,取回口径=ADR-0644)=====
+# 本文件键声明;清单与登记键节原文已删档,考古走 git 历史)=====
 # 本段是**判读面键名声明**(v6 text 行判据=键名在本文件可检索),
 # 非记录端接线:三键的行为面/计数端载体分别在 decision 层计数器与
 # audit/provisional.py 槽位(判读批只产建议事件,编排器/人工单点注入),
@@ -124,7 +124,7 @@ F7_EXEMPT_EMISSION: str = 'f7_exempt_emission'
   恒 0 实现漂移哨兵/默认姿态未覆盖帧凑息卖出计数/应急中间姿态开关,
   均非豁免发射计数(R59-1 分键纪律)。
 - 行为锚:豁免发射帧 `depsilon_advisor_violation` 不计而本键 +1
-  (原设计件测试位⑱(e),原文已删档,取回=ADR-0644);授权账追认判读报告含其频度/量级字段。
+  (原设计件测试位⑱(e),原文已删档,考古走 git 历史);授权账追认判读报告含其频度/量级字段。
 """
 
 F7_DEPSILON_OBS_KEYS: tuple[str, ...] = (
@@ -141,7 +141,7 @@ F7_CONTINGENCY_ARMED_EVENT_FIELDS: tuple[str, ...] = (
 )
 """f7_contingency_armed 置位/复位事件判前锁记录格式字段单一源
 (判前锁 v6 行 7「置位/复位事件进判前锁记录格式(门红事件 id+归因批
-id+时间戳)」;键节原文已删档,取回=ADR-0644)。
+id+时间戳)」;键节原文已删档,考古走 git 历史)。
 
 - 置位事件 = {gate_red_event_id[速率门∨有效性门],
   attribution_batch_id, ts};复位事件 = {结案结论, (a)-(d) 处置分支}
@@ -204,7 +204,7 @@ def terminal_state_summary(st: dict[str, Any] | None) -> dict[str, Any]:
       动作——可信度由档案逐轮 terminal_closure 区分(start_battle=执行后
       定型 / mid_prep=执行前末观察),本函数不判收口。
     - 坐标系:deployed_count = state.deployed 定长槽位表占用数(None 剔除,
-      ADR-0392 紧缩口径);bench_count = state.bench 槽位表占用数(ADR-0316);
+      紧缩口径);bench_count = state.bench 槽位表占用数;
       equips_worn = Σ deployed[].equips 件数(已穿上身);equips_owned =
       state.equips 件数(list/dict 均按元素数;未穿上身 owned 池)。
     - 输入是 serialize_state 产物 dict;缺键/非 dict 安全退化 0/空
@@ -291,7 +291,7 @@ def serialize_action(action: Action) -> dict[str, Any]:
 
 
 
-# ===== 动作计划理由溯源(统一state R4;ADR-0630 策略侧决策行动作计划
+# ===== 动作计划理由溯源(统一state R4;策略侧决策行动作计划
 # 逐项理由溯源,判据名持久索引)=====
 
 ACTION_REASON_SOURCE_KEYS: tuple[str, ...] = (
@@ -351,7 +351,7 @@ def p1_pair_label(ist: Any) -> str:
 
 
 def append_jsonl(path: Path | str, payload: dict[str, Any]) -> None:
-    """append 一行 JSON 到指定 .jsonl 文件(ADR-0273:兜底回填/常规写共用,不依赖 recorder 单例)。"""
+    """append 一行 JSON 到指定 .jsonl 文件(:兜底回填/常规写共用,不依赖 recorder 单例)。"""
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     with p.open('a', encoding='utf-8') as f:
@@ -376,9 +376,9 @@ class DecisionTrace:
     eval_breakdown: dict[str, float] = field(default_factory=dict)    # target comp 的特征分解
     actions: list[dict[str, Any]] = field(default_factory=list)       # action plan(每项带 __type__)
     hp: int | None = 0                            # 决策时 HP(冗余于 state,便于快速筛;r1 备战帧读失败=None 诚实未知——r1 血量固定但不恒 100,默认 100 兜底在 r1 是错误值,写入口径见 recorder.record_decision)
-    hp_readable: bool = True                      # hp 值来源可读位(True 可信度等同真读:①真读=OCR 备战 HP 区;②结算=结算屏经新鲜度门;False=读不到,ADR-0282/0491:hp=None 即无真值帧(沿用帧例外),100 兜底已废止)
+    hp_readable: bool = True                      # hp 值来源可读位(True 可信度等同真读:①真读=OCR 备战 HP 区;②结算=结算屏经新鲜度门;False=读不到,:hp=None 即无真值帧(沿用帧例外),100 兜底已废止)
     gold: int = 0                                 # 决策时 gold(冗余,便于 gold 轨迹)
-    gold_readable: bool = True                    # gold 真读到?(ADR-0282:cw_screen_prep「gold 不可信」日志升级为字段,对齐 hp_readable)
+    gold_readable: bool = True                    # gold 真读到?(:cw_screen_prep「gold 不可信」日志升级为字段,对齐 hp_readable)
     level_readable: bool = True                   # level 真读到?(对齐 hp_readable;False=纯 _expected_level 启发式兜底帧——「兜底 4」与「真读 4」判读可分;旧档案缺省 True=按现有判读处理)
     # —— live 观测扩容(strategy/05_observation;全部可选,回放/影子对齐)——
     active_strategies: list[str] = field(default_factory=list)   # 持卡(台账/效果解回放)
@@ -404,10 +404,10 @@ class DecisionTrace:
     v2_mode: str = ""                             # economy/war(滞回当前模式)
     v2_locked_line: str = ""                      # 锁定线 id(""=未锁)
     v2_bridge: str = ""                           # 当前桥线 id(""=无)
-    # (sess_v2_state v2 相位机元组(r359 回放忠实化采集,ADR-0231)已随
+    # (sess_v2_state v2 相位机元组(r359 回放忠实化采集)已随
     #  v2 退役链删除——生产写端 v2_state 恒 None、全域零读端;旧语料行
     #  该键按缺键读 None,schema 兼容。)
-    # —— 迁移审计 w114(git 历史)/ADR-0346 相位影子观测(经济循环总模型步①;零消费):
+    # —— 迁移审计 w114(git 历史)/相位影子观测(经济循环总模型步①;零消费):
     # phase(v2 相位机退役,无写端恒缺省)/form_ok(sim71 批死镜像处置后
     # 写端 = write_shop_mirrors 接 readiness_form_ok 板面现读;旧记录
     # 均为退役恒 False)。可选,旧记录缺省不破坏 schema。
@@ -419,28 +419,28 @@ class DecisionTrace:
     form_score: float = 0.0
     # B_t 板面目标线承重计数(form_score 替代披露口径;kernel
     # cw_deploy_logic.board_target_line_weight 单一源,禁第二实现)。
-    # 纯遥测观测面,不进判据(ADR-0353 纯遥测口径延续);旧记录缺省 0。
+    # 纯遥测观测面,不进判据(纯遥测口径延续);旧记录缺省 0。
     b_t: int = 0
-    # ADR-0343 成型停手态(层2 写;检查器豁免/判读锚点)——补挂
+    # 成型停手态(层2 写;检查器豁免/判读锚点)——补挂
     # DecisionTrace 字段:shop/cw_screen_prep 均已在 extra 传
     # 'formed_stop',但 recorder 映射缺失导致该键被静默丢弃
     # (迁移审计 w114(git 历史) 影子批接线时发现的既有缺口,随批补上;旧记录缺省 False)
     formed_stop: bool = False
-    # —— 迁移审计 w119(git 历史)/ADR-0347 授权依据 trace(经济循环总模型步②「切授权」):
+    # —— 迁移审计 w119(git 历史)/授权依据 trace(经济循环总模型步②「切授权」):
     # dp_posture=当轮 DP 日程表姿态 tag(存息/升级/D 预算;""=查询
     # 失败/default 栈)。EV 放行值在 decisions 行 log 的 ev_auth 键
     # (arbiter 执行 log)。可选,旧记录缺省不破坏 schema。
     dp_posture: str = ""
-    # ADR-0348 ↺:扑满节点识别(过热局 reward 帧;②b 观测/实机建档
+    # ↺:扑满节点识别(过热局 reward 帧;②b 观测/实机建档
     # 数据面——识别≠深花授权)。可选,旧记录缺省 False。
     piggy_reward: bool = False
     # —— 迁移审计 w146(git 历史) v3 意向状态(cw_intention.IntentionState 全量序列化;
-    # ADR-0336 后 v2_locked_line/v2_mode 恒空,锁定真值在此)——
+    # 后 v2_locked_line/v2_mode 恒空,锁定真值在此)——
     # None=无意向状态机(default 栈);dict 且 phase='unlocked'=有意向
     # 未锁;phase='locked' 时 locked_comp=锁定目标(COMP_LIBRARY 套名)。
     # 可选,旧记录缺省 None 不破坏 schema。
     v3_intention: dict[str, Any] | None = None
-    # —— `w224_handoff/`/ADR-0399 P2 承接快照(纯观测;plane>=2 本位面首帧
+    # —— `w224_handoff/`/P2 承接快照(纯观测;plane>=2 本位面首帧
     # decide_prep 入口算一次的七维向量+派生档位,decision_v2.handoff.
     # HandoffSnapshot.as_dict)。None=未进 P2/旧记录;仅 P2 首轮行非空。
     handoff: dict[str, Any] | None = None
@@ -466,15 +466,15 @@ class DecisionTrace:
     # 不同体(两键口径):本 schema 字段 = recorder 侧实机透传位,写入面已
     # 接回 terminal_release_bit 单一源(recorder.py;判据 =
     # sim/checks/segments.terminal_release_bit;设计 W659 v2 §5.1 R4;
-    # ADR-0469)。读实机豁免位读本字段。
+    # )。读实机豁免位读本字段。
     sess_terminal_release: bool | None = None
     # P1-a 末窗支出降格触发面:取值=本 record 调用时点按 state +
-    # DEFAULT_REGISTRY + match session(闩位含位面内触发闩,ADR-0469)
+    # DEFAULT_REGISTRY + match session(闩位含位面内触发闩)
     # 现算(生产 DecisionV2Strategy() 缺省即 DEFAULT_REGISTRY;sim A/B
     # 注入臂行不带此语义保证,判读按 strategy_id 分栈)。None=现算失败/
     # 依赖缺失。
     p1_downgrade_active: bool | None = None
-    # —— `w611_econ_cycle/` 储备/义务披露(经济循环总模型;ADR-0445 实机验证队列
+    # —— `w611_econ_cycle/` 储备/义务披露(经济循环总模型;实机验证队列
     # 「死时带金/闲置金」判读的帧级数据源;接出点同 `w603_telemetry_wiring/` 汇点)——
     # None/缺省 = 无 match 注册或 decide_prep 未跑(离线/测试/default 栈)。
     # 储备线 R*(=息线+窗口排程升级费;strategy_state_of(session).v3_reserve_cap 透传)。
@@ -484,24 +484,24 @@ class DecisionTrace:
     # 当轮 release 义务预算(金;0=无 release 帧或零预算结转帧)。
     sess_release_budget: int | None = None
     # 义务来源(''/'flip'/'crisis'/'third_path'/'reserve_admission'/
-    # 'must_spend';'crisis'=危机金出口臂 ADR-0503,判读兑换率分域勿漏
+    # 'must_spend';'crisis'=危机金出口臂 ,判读兑换率分域勿漏
     # 此值;'must_spend'=必花域帧写点新增值域——shop 必花域段
     # 帧内 last-wins,轮界清零在披露键戳(写端 = economy_cycle.
-    # disclose_budget),ADR-0571。现役 mandate_v1
+    # disclose_budget)。现役 mandate_v1
     # 只产 ''/'must_spend',其余值为历史来源,存量数据按旧口径读)。
     sess_release_reason: str | None = None
     # 当轮 release 帧实际消费(金;strategy_state_of(session).v3_release_spent 透传,每轮
     # 入口清零,清零承载 = 策略状态 v3_disclosure_key 键戳)。
-    # 口径(收窄申报,ADR-0571):首版只计**刷新实花**(记账位 =
+    # 口径(收窄申报):首版只计**刷新实花**(记账位 =
     # cw_op_buy_cards 执行回执位;决策帧值 = 轮内截至采样时点累计)——
     # 买牌/升级是否计入「全渠道义务实花」在 mandate_v1 语义下未经证明,
     # 裁决前收窄防虚高(宁窄勿虚;旧 authorize_release_refresh/
-    # _accrue_release_frame_spend 机制退役史与口径裁决归 ADR-0571)。
-    # ADR-0503 开臂判据②的「实花面分项账」数据源:危机帧兑换按本字段计,
+    # _accrue_release_frame_spend 机制退役史与口径裁决归 )。
+    # 开臂判据②的「实花面分项账」数据源:危机帧兑换按本字段计,
     # sess_release_budget 记账面(预算许可)不作兑现证据。
     sess_release_spent: int | None = None
     # (位面 2 支出授权历史字段 sess_p2_auth_intercept/sess_p2_auth_water
-    #  已删(ADR-0492 定谳清理链收尾:写端早已随机制删除,全域零读端);
+    #  已删(定谳清理链收尾:写端早已随机制删除,全域零读端);
     #  旧语料行该两键按缺键读 None,schema 兼容。)
     # (支出门·买侧收门拒因枚举计数键已随支出门开关族删除——旧方案清退批,
     #  旧键名见清查报告 OLD_MIX_AUDIT §1.3;存量 runs.jsonl 判读脚本按
@@ -514,7 +514,7 @@ class DecisionTrace:
     # 开臂判读主判据「授权未兑现帧占比」的数据源(判前预注册
     # .debug/temp/currency_war/w937_rd_batch1/PREREG.md)。
     posture_unfulfilled: dict[str, Any] | None = None
-    # (sess_pv_bench_block 已随件价值整机制删除,ADR-0497;存量 runs.jsonl
+    # (sess_pv_bench_block 已随件价值整机制删除;存量 runs.jsonl
     #  判读脚本如遇旧键按历史台账读,新数据不再写。)
     # —— w919 R-A 批1 方向重估决策面观测(纯观测零行为;设计=.debug/temp/
     # currency_war/w919_ra_obs/DESIGN.md 采集点2,P31 方向供给感知批1)——
@@ -537,7 +537,7 @@ class DecisionTrace:
     # schema。
     supply_pick: dict[str, Any] | None = None
     # —— 决策时点挂起期望态快照(W971 期望态 infra 遥测批;**写入端已随
-    # ADR-0651 两态制退役**:expected_state 条目表拆除,新数据恒 None——
+    # 两态制退役**:expected_state 条目表拆除,新数据恒 None——
     # 字段按历史数据只读口径保留,旧行读端分型不变)——
     # 历史快照语义 = record 调用时点执行侧期望态载体(已随两态制退役)的
     # 未确认条目摘要 [{path, value, produced_by, at_round, kind}]。读端三态:
@@ -560,14 +560,14 @@ class DecisionTrace:
     # None = 无 match 注册(离线/测试缺省);dict 且 node_type_next='' =
     # session 在场但台账未命中(不猜)。可选末尾追加字段,旧记录缺省 None。
     p26_prep_obs: dict[str, Any] | None = None
-    # —— 统一state R4 策略侧遥测演进(ADR-0630 策略侧 state_ref 版本钉;
+    # —— 统一state R4 策略侧遥测演进(策略侧 state_ref 版本钉;
     # 返工方案 A 钉读点 = 决策读取完成时点)——
     # 决策行关联流程侧账本版本钉:``state_ref = '{run_id}#{v}'``,v =
     # 「决策读取完成时点」的 ``kernel.cw_game_state.game_state_of(session)
     # .current_version()``(读口:读不写、不占版本)。捕获时点 = 段入口观察
     # 完成处(决策开始依据该 state 版本计算),由调用方捕获经
     # ``record_decision(state_ref_version=)`` 传入落钉——观察完成与行落盘
-    # 之间段内动作回执会推进版本,钉值不得漂移到落盘时点(ADR-0630 关联
+    # 之间段内动作回执会推进版本,钉值不得漂移到落盘时点(关联
     # 序:决策行钉版本 ≤ 其动作的落地行版本;观察与落盘间零写入交错的
     # 调用点,recorder 入口现读等价)。回溯语义 = 直接读该 run 记录流中
     # v 行的 state 字段(行行自足,零重放);行缺失(清理淘汰/崩溃丢失窗/
@@ -605,8 +605,8 @@ class OutcomeRecord:
     damage_base: int | None = None
     damage_unfinished_progress: int | None = None
     damage_breakdown_visible: bool = False
-    # —— 补链(ADR-0609):tooltip 第三行「长线作战」战斗回血分量(恒 ≥0,
-    # 实机常量 +2/场,ADR-0241 口述+连胜轨迹实证)。此前解析器已读但本 schema
+    # —— 补链:tooltip 第三行「长线作战」战斗回血分量(恒 ≥0,
+    # 实机常量 +2/场,口述+连胜轨迹实证)。此前解析器已读但本 schema
     # 缺字段 → 静默丢弃,L_node 判读「tooltip 幅度 = hp 链差 + 2」偏移只能靠
     # 猜。补齐后偏移可直接从行内验证:链差(净变化)= 掉血两分量 + heal_longline。
     # 可选字段追加(关键字序列化,位置无关),旧记录缺省 None 不破坏 schema
@@ -625,8 +625,8 @@ class OutcomeRecord:
     # (decisions 帧)。读端拿它做板深校准时按人次口径降权
     # (telemetry-reading「已知缺口」同一判据)。
     board_before: dict[str, int] = field(default_factory=dict)   # 战前 {阵营:人数}
-    bench_count: int = 0               # 战前 bench 数(板深第二维;ADR-0316 占用数口径)
-    # —— 迁移审计 w28(git 历史)(行来源标记,镜像 RunSummary.source/ADR-0273 惯例):''=结算屏真值行;
+    bench_count: int = 0               # 战前 bench 数(板深第二维;占用数口径)
+    # —— 迁移审计 w28(git 历史)(行来源标记,镜像 RunSummary.source/惯例):''=结算屏真值行;
     # 'recovered'=relaunch 残留结算屏(启动宽限内首见,round_num 已按屏面「X-Y」
     # 尽力校正,训练侧可剔);'synthetic_supply'=补给节点合成行(无结算屏节点的
     # 遥测补行,hp 用 last_state 快照非屏面真值)。
@@ -634,7 +634,7 @@ class OutcomeRecord:
     # —— 迁移审计 w253(git 历史) boss 身份采集(迁移审计 w244(git 历史) 数据缺口补齐)——
     # 位面序 boss 全量快照(3 元素保位;None=简报源未读得——实采源恒全识别,
     # 识别失败响亮暴露不留 None,**保位勿滤**:滤掉会让后续位面名字左移错位,
-    # 迁移审计 w221(git 历史)/ADR-0398)。
+    # 迁移审计 w221(git 历史)/)。
     # boss Δ 双峰归因的数据源(迁移审计 w244(git 历史) 结论④:schema 无 boss 身份→不可分层)。
     # 记录时点快照,行间可能因实采进度而异;旧记录无此字段(读取端 .get 容忍)。
     boss_names: list[str | None] | None = None
@@ -658,7 +658,7 @@ class OutcomeRecord:
     # (屏面真值/'recovered'/'synthetic_supply');'stopped'/'abandoned'=
     # 对局收口终局行(对局循环中止收口时补写,写点 = cw_loop._write_terminal_
     # outcome_row)。终局行 killed 语义切换为**对局级**:False = 对局终了时
-    # 通关击杀未达成(中止局可证未通关,ADR-0306 权威口径可判),**不是该轮
+    # 通关击杀未达成(中止局可证未通关,权威口径可判),**不是该轮
     # 战斗结算**(该轮战斗可能根本未打完);hp_after 恒 None、hp_confidence
     # 恒 0.0(不发任何 hp/战斗真值——Δ池配对按 hp_after=None 前置剔除、
     # hp 步进链按可信门退出,零新过滤)。可选字段追加(关键字序列化,位置
@@ -674,7 +674,7 @@ class RunSummary:
     ts: str = ""
     run_id: str = ""
     difficulty: str = ""
-    result: str = ""                # "win" / "loss" / "abandoned" / "stopped"(迁移审计 w75(git 历史):停止路径,ADR-0335)
+    result: str = ""                # "win" / "loss" / "abandoned" / "stopped"(迁移审计 w75(git 历史):停止路径)
     plane_reached: int = 0          # 到达的最高位面
     rounds_survived: int = 0
     final_hp: int = 0
@@ -685,7 +685,7 @@ class RunSummary:
     # —— live 观测扩容(strategy/05_observation)——
     death_window: str = ""          # 39 号免费窗口登记:""=竞争局 / "must_die" / "free"(局终判定)
     strategies_held: list[str] = field(default_factory=list)   # 终局持卡(台账回放)
-    # —— ADR-0273(批⑧ F2):行来源标记。''=正常终局/stop 路径写;'recovered'=
+    # —— (批⑧ F2):行来源标记。''=正常终局/stop 路径写;'recovered'=
     # 兜底回填(从 outcomes/decisions 重算,盖 FAIL/崩溃/重启杀局路径)。
     source: str = ""
     # —— 策略版本戳(match archive 二期②):本段 run 实际跑的代码版本,
@@ -730,7 +730,7 @@ class ExogenousEvent:
     # sell_income(迁移审计 w323(git 历史),遥测审计 G2)= 卖牌执行点实收回金(shop.py CwActionSellBenchParam
     # 执行分支,执行前后 gold 差——decisions 行的 actions 是执行前快照,
     # 实际回金只有执行点可知)。event_choice/sell_income 的结构化载荷在 choice
-    # (detail 只放一行人读摘要);hp_pay(ADR-0577)= 血购执行回执
+    # (detail 只放一行人读摘要);hp_pay= 血购执行回执
     # (prep_actions.record_hp_pay_event 两通道共用写点,粒度=击数),载荷在
     # choice:{plane/round_num/currency/hp_delta/mode/clicks/basis='modeled'};
     # **遥测禁入决策输入**(隔离申报同 ADR)。
@@ -771,7 +771,7 @@ class SpendUnitRecord:
     # 读端分类器记 unknown 不猜)。
     gold_close: int | None = None
     gold_close_trusted: bool = False
-    # 执行侧「计划≠尝试」可见化(ADR-0456;读端 join 面保留,现无生产
+    # 执行侧「计划≠尝试」可见化(读端 join 面保留,现无生产
     # 写入端,恒缺省 False)。
     plan_truncated: bool = False     # True=plan 里有动作未尝试(至终结动作截断丢弃)——口径差非执行失败
     refresh_skipped: str | None = None  # 刷新被跳过的原因(数据行在册取值含 'max_cap',读端兼容;现无生产写入端);None=未跳过
@@ -826,7 +826,7 @@ class DefectRecord:
 
 def bucket_card_texts(anchors: list[tuple[int, int]], items: list[tuple[str, int, int]],
                       y_min: int, y_max: int) -> dict[int, list[str]]:
-    """投资卡 OCR 文本按卡分桶(ADR-0132;纯函数可测)。
+    """投资卡 OCR 文本按卡分桶(纯函数可测)。
 
     anchors: [(card_idx, 锚点x)](卡名行 center-x);items: [(文本, cx, cy)] 全图 OCR 条目。
     每条 item 归 **x 最近**的锚点卡;y 不在 [y_min, y_max] 描述带 → 不归。

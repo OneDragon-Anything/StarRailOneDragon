@@ -54,7 +54,7 @@ DEFAULT_REPLAY_DIR: Path = LIVE_DIR
 # ===== 退役旧根(布局裁定前的落点;写端守卫拒写面)=====
 # 为什么升为常量:2026-09-07 22:20:52 实证——write_batch_ledger 的禁写
 # 守卫只锚当前生产根时,以旧根为 out_dir 的空批把历史三流整份截断
-# (事故对账与守卫裁决 = ADR-0586「单一源与守卫」节
+# (事故对账与守卫裁决
 # 及其 2026-09-07 22:20:52 空批截断记载)。退役根必须与生产根同级受守卫辖,直到旧根目录物理清除为止。
 #: 字面量按路径分段拼装(不写成可被墓碑扫描命中的连续串):本声明是
 #: 「否定式退役背书」,墓碑扫描辖的是回流写点,不是本声明本身。
@@ -118,7 +118,7 @@ def cw_shot_unique(image: MatLike, label: str) -> str | None:
         return None
 
 
-# 观测阶段上下文(ADR-0462 规范入口序列「先清场、再识别、后动作」):read_game_state
+# 观测阶段上下文(规范入口序列「先清场、再识别、后动作」):read_game_state
 # 按调用点传入的阶段键(prep_clean/prep_shop_open/battle_or_transit)置位,obs_conflict
 # 落证据行时带上(键 obs_phase)——噪声判定位的数据面:规范落地后 P0 清场期/overlay 期
 # 来源的冲突行应 ≈0(这些阶段整条备战识别链不跑,物理上无冲突可留证)。
@@ -188,7 +188,7 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
         rec = {'ts': datetime.datetime.now().isoformat(timespec='seconds'),
                'field': field, 'old': old, 'new': new, 'verdict': verdict, **ctx}
         if _OBS_PHASE:
-            rec['obs_phase'] = _OBS_PHASE   # ADR-0462 噪声判定位:冲突行按阶段分类
+            rec['obs_phase'] = _OBS_PHASE   # 噪声判定位:冲突行按阶段分类
         # 补 run_id 归属键(唯一汇点内部自取,调用方零改动;历史行无此键,
         # 读取端按「有键才过滤」容忍)。空串=局外冲突(进程首局前),不写假键。
         # run_id 读取经 kernel/cw_telemetry_exit 钩子位(零直依 telemetry)。
@@ -200,7 +200,7 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
         # 证据归宿 = 账本行型 2(obs_event;占版本内嵌当时 state)。供给槽
         # 缺省关(未装配/无会话)= 行不落——与账本自身「无 sink 拒写」语义
         # 一致;旁路缺陷台账行不受此门照常供给。渠道签名(§3.2.1 ①类属):
-        # actor = 本仲裁汇点,行内身份可对账(签名必填纪律 R5 W1,ADR-0634)。
+        # actor = 本仲裁汇点,行内身份可对账(签名必填纪律 R5 W1)。
         _gs = cw_telemetry_exit.obs_event_board()
         if _gs is not None:
             with contextlib.suppress(Exception):

@@ -87,7 +87,7 @@ def arm1_existence(deployed_count: int, bench_names: list[str],
 
     ①板满:``deployed_count == deploy_cap``——**cap 口径 = 当前可上阵数**
     (deploy_cap 真值链 / MandateFrame.deploy_cap:level+宝钻、封顶
-    = 4+back_max 动态真值〔GameState.back_layout,值域 10-13〕),非固定槽表常数 ``DEPLOYED_CAPACITY``(=10,ADR-0392 定长槽表
+    = 4+back_max 动态真值〔GameState.back_layout,值域 10-13〕),非固定槽表常数 ``DEPLOYED_CAPACITY``(=10,定长槽表
     的物理长度)。结论出处:2026-09-03 零刷新诊断批(ZERO_REFRESH_DIAG
     §4.2)实证 M3 升级门 13/13 波恒 False 的根因即此——旧条件拿 10 当
     板满阈值,而板面实际上板量受等级驱动 cap 约束(P1 期 3→5 量级),
@@ -98,7 +98,7 @@ def arm1_existence(deployed_count: int, bench_names: list[str],
     经 ensure_contract 前提 ``_arm1_cap_level_driven``(deploy_cap=None
     ⇒ 违例弃权)已不可达**(契约层弃权优先于函数内兜底,IMPL_ADV_R200
     OBS-3 收口);保留仅作函数局部完备性(直调/测试面),非生产语义。
-    cap>10 时按 10 封顶(本函数局部表示域钳制 = ADR-0392 十槽槽表面,
+    cap>10 时按 10 封顶(本函数局部表示域钳制 = 十槽槽表面,
     扩板另案;max_units 本体封顶已随 back_max 动态真值,本处不随)。
     ②③见下,不变。
     ②阵营相关等待件:bench 存在与当前板面(deployed∪bench 域成员性,
@@ -389,22 +389,21 @@ def bench_effect_qualified(name: str, ctx: BenchEffectContext) -> bool:
 
 def t5_p1_false(gold: int, spend: int, rounds: int, net_income: int,
                 cap_resolved: int) -> bool:
-    """T5 未锁线止血买的结构判据承重谓词(ADR-0556 §2/§4;p46 P1 谓词
+    """T5 未锁线止血买的结构判据承重谓词(/§4;p46 P1 谓词
     原式,判据 = loss_exact 现算,不按任何帧集清单)。
 
     ``L(g,c,R_全局,Ī,cap) == 0`` ⟺ P1 假 ⟺ 该帧出 p46 否决域(D =
     P1∧P2∧P3 恒假)——无需 E_rev、无需 V_deploy、无需 P2 分析,止血买
     的正当性由「占用集合基数严格扩 + 全额可退可逆 + 息账零损」三结构量
-    的支配论证独立承载(ADR-0556 §4;ADR-0288 仅作「有比没有强」接受
+    的支配论证独立承载(仅作「有比没有强」接受
     形态的在册先例,辖域限定同节)。判据全为注册表派生量,零 hp/胜率/
     掉血先验/板面评分消费——不在 00_framework §3 硬闸门辖域,无开关。
 
     ``net_income`` 形参 = 逐节点净收入 Ī 的现算值(调用方经
     cw_economy.net_income 供给;非 i_bar 常量,命名随 cw_economy
     docstring 术语口径)。边界:cap=0(买断制)局 L≡0 ⇒ 全帧 P1 假
-    ⇒ T5 全开,方向安全(ADR-0556 §2);P1 真帧(现算 L>0)结构层
-    不发射,落行为层挂起(V_deploy 候用户逐项授权,宪法硬闸,禁自裁;
-    ADR-0556 §7 挂账)。
+    ⇒ T5 全开,方向安全;P1 真帧(现算 L>0)结构层
+    不发射,落行为层挂起(V_deploy 候用户逐项授权,宪法硬闸,禁自裁)。
     """
     return loss_exact(gold, spend, rounds, net_income, cap_resolved) == 0
 

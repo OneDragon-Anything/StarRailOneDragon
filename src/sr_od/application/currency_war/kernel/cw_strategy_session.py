@@ -74,7 +74,7 @@ def strategy_state_of(session: StrategySession) -> object:
     承载——依赖矩阵禁 kernel→impl 边,策略状态内部结构对 kernel 不
     可见,消费面走 getattr)。
 
-    None 契约与调用方前提**(B4 收缩申报,ADR-0563「落位裁量」):
+    None 契约与调用方前提**(B4 收缩申报,「落位裁量」):
     None = 策略器状态未装配(裸构造 session 且工厂未注册 / 第三方策略
     未覆写 ``create_state``)。内置策略路径由 create_session 接线 +
     局容器 ``__post_init__`` 附着 + kernel 写路径
@@ -146,9 +146,9 @@ class StrategySession:
     #  语义:full = 入口主观察帧(方向重估全程);view = 派生帧(只刷视图);
     #  none = 逻辑态直写/续段/未持新观察。读后即清,消费 = flow 层
     #  _consume_*_direction_frame。)
-    # 结算观察累积槽(ADR-0583 §2.5:旧 on_round_end 拆两半的存活半)。观察层在
+    # 结算观察累积槽(:旧 on_round_end 拆两半的存活半)。观察层在
     # (终态契约 §B:pending_round_outcomes 槽已删——消费侧 drain 早在
-    #  04_survival_budget §7 #7/#8 退役(ADR-0638),本槽只写不读;结算
+    #  04_survival_budget §7 #7/#8 退役,本槽只写不读;结算
     #  真值归宿 = gs 结算覆盖写端 + performance.history。)
     # —— 策略器状态黑盒引用(session.md §3.1 裁决 1)——
     # 类型由实现包自定义(mandate_v1 = StrategyState,§8.6-6 改名归位);
@@ -156,5 +156,5 @@ class StrategySession:
     # 生命周期 = 一局,局终随 session 销毁)。第三方策略未覆写 create_state
     # → None(其策略器沿用惰性建模式;B4 兼容承诺的收缩口径 = 「缺省 None
     # 不炸构造与 create_session」,不承诺框架行为面读点容忍 None 态——
-    # None 契约与调用方前提见 strategy_state_of docstring/ADR-0563)。
+    # None 契约与调用方前提见 strategy_state_of docstring/)。
     strategy_state: object = None

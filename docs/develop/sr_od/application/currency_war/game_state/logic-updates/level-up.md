@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-点击「购买经验」按钮一次 = +`XP_PER_BUY` 经验、扣单击价金;经验攒满当前级门槛即升级、溢出结转(单击经验模型,ADR-0129)。两形态一词表、一注册行:注册行 = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`(词表摊平后 LevelUp/LevelUpShop 同字段双类型共用本 op,唯一活执行路径;`LevelUpShop` 经注册表独立行同解析本 op——商店屏升级意图与备战单击同构,升 N 击 = N 帧各发一次);原商店域 op 文件 `operations/cw_op/cw_level_up_action.py::LevelUpOp` = **已退役删除**(动作 op 重组批③注销登记,能力面语义由上报函数保留,判例见 screens/README §5)。词表 = `kernel/cw_vocab.py::CwActionLevelUpParam`(LevelUpShop = 同字段双类型 `CwActionLevelUpShopParam`)。
+点击「购买经验」按钮一次 = +`XP_PER_BUY` 经验、扣单击价金;经验攒满当前级门槛即升级、溢出结转(单击经验模型)。两形态一词表、一注册行:注册行 = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`(词表摊平后 LevelUp/LevelUpShop 同字段双类型共用本 op,唯一活执行路径;`LevelUpShop` 经注册表独立行同解析本 op——商店屏升级意图与备战单击同构,升 N 击 = N 帧各发一次);原商店域 op 文件 `operations/cw_op/cw_level_up_action.py::LevelUpOp` = **已退役删除**(动作 op 重组批③注销登记,能力面语义由上报函数保留,判例见 screens/README §5)。词表 = `kernel/cw_vocab.py::CwActionLevelUpParam`(LevelUpShop = 同字段双类型 `CwActionLevelUpShopParam`)。
 
 ## 2. 逻辑态域集
 

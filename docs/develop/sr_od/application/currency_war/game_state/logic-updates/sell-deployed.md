@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-把已上阵(前排/后排)的某个单位拖到出售区卖出,回收退款并腾出上阵位。v2 动作族成员:词表 + 容器逻辑态直写 + sim 消费在役,**商店 op 表未收录**(生产策略面归备战域)。执行载体 = `prep_actions.py::PrepActionExecutor._sell_deployed` 与部署面换血 `operations/cw_screen/cw_screen_deploy.py::_sell_offtarget_deployed`。词表 = `kernel/cw_vocab.py::CwActionSellDeployedParam`(`deployed_idx` = deployed 槽位表下标 0-9,0-3 前/4-9 后,ADR-0392)。
+把已上阵(前排/后排)的某个单位拖到出售区卖出,回收退款并腾出上阵位。v2 动作族成员:词表 + 容器逻辑态直写 + sim 消费在役,**商店 op 表未收录**(生产策略面归备战域)。执行载体 = `prep_actions.py::PrepActionExecutor._sell_deployed` 与部署面换血 `operations/cw_screen/cw_screen_deploy.py::_sell_offtarget_deployed`。词表 = `kernel/cw_vocab.py::CwActionSellDeployedParam`(`deployed_idx` = deployed 槽位表下标 0-9,0-3 前/4-9 后)。
 
 ## 2. 逻辑态域集
 
@@ -22,7 +22,7 @@
 
 ## 3. 确定面转移规则(逐条)
 
-1. deployed 该槽位清空(置 None **不移位**,ADR-0392;`deployed_idx` 跨动作组恒稳);
+1. deployed 该槽位清空(置 None **不移位**;`deployed_idx` 跨动作组恒稳);
 2. `gold += 退款`——退款公式与手续费口径与卖备战**同一条**(单一源 = `kernel/cw_economy.py::sell_refund` + `bench_char_cost`;`_SELL_MULT` 倍数 + star≥2 且 cost≥2 手续费 −1,cost=1 豁免);
 3. 装备全量回装备区(同卖备战第 3 条:口述·权威 + C6 守恒建模 + 缺口 G5 帧级证据未采);
 4. board **派生随写**:front_row/back_row 整表写触发行写端挂钩 `GameState._resync_board_delta` 自动增量重算(观察基座含面板真值的装备羁绊贡献,本次行写只施加单位多重集差——新增加其羁绊标签、移除减、减至 0 摘键;禁独立手写 board);上阵计数随 deployed 摘槽派生递减(无独立字段写);
@@ -35,7 +35,7 @@
 ## 5. 拒绝语义
 
 - 槽位越界 / 槽空:`applied=False, reason='deployed_idx_out_of_range:<idx>'`(上报函数守卫零写);
-- **期望失配 stale_proposal**:expect 非空且与槽内 `char_id` 不符 = `applied=False`(ADR-0317;expect 经 ADR-0392 降级为遥测观测字段,名不符仍是跨代际提案的拒绝信号);
+- **期望失配 stale_proposal**:expect 非空且与槽内 `char_id` 不符 = `applied=False`(expect 经 降级为遥测观测字段,名不符仍是跨代际提案的拒绝信号);
 - 执行器零判效:拖拽发出即职责完成,落地归观察 reconcile。
 
 ## 6. kernel 符号锚

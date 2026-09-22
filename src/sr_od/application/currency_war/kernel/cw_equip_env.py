@@ -15,17 +15,17 @@ data/affix_effects_data。)
 - ``apply_equip_env_variants``:EquipAll 唯一分配入口(签名保留,
   调用零改),现恒返回 ``cw_comps.equip_allocation`` 基分配。
 
-18 号稿落码批(ADR-0526)新增——装备穿戴释放判据面(策略侧单一源):
+18 号稿落码批新增——装备穿戴释放判据面(策略侧单一源):
 - ``resolve_wear_release``:释放判据表五行评估(18 号稿 §2.1),产出
   布尔释放位——**hold 触发权归策略侧**:执行层(CwOpEquipAll)只消费
   ``WearReleaseDecision.hold``,禁在执行层加第二套时机判断
-  (与 ADR-0461 裁定 3 同理由);
+  (与裁定 3 同理由);
 - ``classify_zero_wear_stop_reason``:零上身哨兵 stop_reason 辖域二分
   (18 号稿 §1.2:策略 by-design / 策略缺口 / 执行链 + 枚举外兜底行);
 - ``resolve_affix_priority_order``:词缀条件优先层求序(18 号稿 §3.2,
   限输出侧罚则族;载体 = data/affix_wear_semantics_data 结构化缓存)。
 
-21 号稿落码批(ADR-0531)新增——opening 窗口收窄 + 工具件消费判据面:
+21 号稿落码批新增——opening 窗口收窄 + 工具件消费判据面:
 - ``resolve_wear_release`` 扩展:O1 战斗前置释放门(§2.3 三门)+ 自由件
   谓词;row1(opening hold)从「无条件扣留」收窄为「三门全不中 ∧ 保留域
   命中才扣」,row2(committed)语义零改动(21 号稿 §2.3);
@@ -40,7 +40,7 @@ data/affix_effects_data。)
   其余 fail-closed 带拒因分键)+ G1 发射位准入(防第四个闩;
   ARCH_REFLECTION_3STALLS)。
 
-工具执行批(ADR-0532)增量——执行通道建成开臂:
+工具执行批增量——执行通道建成开臂:
 - ``TOOL_EXEC_CHANNEL_READY`` False→True(开臂判据 = UI 建档前置以既有
   owned 网格建档满足,常量节注释);
 - 发射位 = mandate_v1 工具消费(逐备战帧评估打 ``[cw!][tools]`` 拒因
@@ -115,9 +115,9 @@ def apply_equip_env_variants(signals: EquipEnvSignals,
     ``session``/``signals``/``hold_active`` 参数占位不再参与取值。)
     ``deployed_rows`` = 容器行域 ``(front_row, back_row)``,元素 = 容器
     ``Unit``(P4 容器形,直通 ``equip_allocation`` 同名参数)。
-    ``priority_order``(18 号稿 §3.2/§3.3,ADR-0526):词缀条件优先层
+    ``priority_order``(18 号稿 §3.2/§3.3):词缀条件优先层
     重排输入序,直通 ``equip_allocation`` 同名可选参数(缺省 None 零漂移);
-    决策/执行分层同 ADR-0461 裁定 3——序由策略侧 resolve_affix_priority_order
+    决策/执行分层同 裁定 3——序由策略侧 resolve_affix_priority_order
     产出,本入口只转发,禁内嵌评分。
     """
     from sr_od.application.currency_war.kernel.cw_comps import equip_allocation
@@ -126,7 +126,7 @@ def apply_equip_env_variants(signals: EquipEnvSignals,
     return base, []
 
 
-# ===== 18 号稿落码批(ADR-0526):穿戴释放判据面(策略侧单一源)=====
+# ===== 18 号稿落码批:穿戴释放判据面(策略侧单一源)=====
 
 #: 零上身哨兵 stop_reason 辖域二分(18 号稿 §1.2)四归域常量。
 ZERO_WEAR_STRATEGY_BY_DESIGN: str = 'strategy_by_design'
@@ -144,7 +144,7 @@ ZERO_WEAR_EXECUTION_PENDING: str = 'execution_pending'
 #: 计划面(prep_actions _build_equip_wear_plan 的 empty_reason:pool_empty/
 #: 分配对全部拉黑,m7 主路径与 front_only 回退各一处写入)。哨兵覆盖仅
 #: 辖 m7 主路径:计划面经 _run_equip 空计划短路入哨兵,执行面三挂点
-#: 均 _is_m7 条件,front_only 回退分支两侧均不挂哨兵(与 ADR-0601
+#: 均 _is_m7 条件,front_only 回退分支两侧均不挂哨兵(与
 #: §4-9 申报一致);新增行须与写入端常量逐字同步(kernel 不反向
 #: import operations,只复制入场)。
 _ZERO_WEAR_EXECUTION_REASONS: frozenset[str] = frozenset({
@@ -152,8 +152,7 @@ _ZERO_WEAR_EXECUTION_REASONS: frozenset[str] = frozenset({
     'pool_empty(无穿戴候选)',
     '分配对全部拉黑(drag 连败)',
     '画面非干净备战',
-    # 装备计划失效(写入端 = CwOpEquipAll.STATUS_PLAN_STALE,ADR-0601
-    # §3-C1/§4-9 具名常量):计划失效 = 本 pass 零穿戴已发生,归因在执行链
+    # 装备计划失效(写入端 = CwOpEquipAll.STATUS_PLAN_STALE 具名常量):计划失效 = 本 pass 零穿戴已发生,归因在执行链
     # ——策略侧已产出计划,计划步件被执行期状态漂移(robust 合成消耗/
     # 列 reflow)打空,恢复动作(交回重派重算)也走分发/执行链;归
     # execution 使哨兵台账直接指向执行链即查,不落 execution_pending
@@ -215,7 +214,7 @@ class WearReleaseDecision:
     """
 
     opening_hold: bool
-    """row1:P1 r≤2 ∧ 当前节点非战斗类(ADR-0257 R3 + ADR-0461 H3 收窄;
+    """row1:P1 r≤2 ∧ 当前节点非战斗类(R3 + 收窄;
     node_type 缺失维持 hold,观察缺失不改既有行为)。21 号稿收窄后本字段
     只表示「row1 帧域活跃」(逐件判定走 classify_item_hold),不再直接
     等于帧级扣留。"""
@@ -224,7 +223,7 @@ class WearReleaseDecision:
     (cw_intention.committed_from)∧ 0<form<COMMIT_FRAC ∧ 非双轨;
     未定型(双轨)帧扣留不激活,18 号稿 §2.1 方向声明)。"""
     rust_release: bool
-    """row4:库藏生锈在场豁免一切扣留(ADR-0461 H2②;registry
+    """row4:库藏生锈在场豁免一切扣留(registry
     rust_wear_release_enabled 门)。"""
     output_penalty_release: bool
     """row5:输出侧罚则词缀在场豁免已定型扣留(18 号稿 §2.1 新裁行;
@@ -235,7 +234,7 @@ class WearReleaseDecision:
     (保留域④唯一件除外,§2.5 有意行为变化)。"""
     node_type_unknown: bool = False
     """保留域⑤判据输入(21 号稿 §2.3):row1 帧域内 node_type 缺失
-    (ADR-0461 H3 既有 None 回查);仅 row1 帧域内有意义。"""
+    (既有 None 回查);仅 row1 帧域内有意义。"""
 
     @property
     def hold(self) -> bool:
@@ -369,12 +368,12 @@ def classify_item_hold(decision: WearReleaseDecision, item_name: str,
 
 def opening_hold_active(round_num: int | None, node_type: str | None,
                         battle_gate: bool, battle_nodes: frozenset[str]) -> bool:
-    """row1:opening hold(r388/ADR-0257 × ADR-0461 H3 收窄;自 cw_op_equip_all
+    """row1:opening hold(r388/× 收窄;自 cw_op_equip_all
     迁入策略侧,语义逐字不变)。
 
     - r388:开局轮(P1 r≤2)hold 无条件生效——key_equips 白名单来自
       target,target 真空(重启后首局)时白名单为空;旧判
-      ``tgt_comp is not None`` 会让 hold 全不生效(ADR-0257)。
+      ``tgt_comp is not None`` 会让 hold 全不生效。
     - H3 收窄:hold 仅当 r≤2 且当前节点非战斗类(战斗类名单 =
       registry.opening_hold_battle_nodes);r≤2 战斗类节点释放 =
       18 号稿 §2.1 row3(释放帧走 M7 既有分配序全量穿)。
@@ -405,7 +404,7 @@ def committed_hold_active(comp, form: float, committed: bool) -> bool:
 
 
 def rust_release_active(enemy_affixes: list[str] | None, gate: bool) -> bool:
-    """row4:库藏生锈豁免(ADR-0461 H2②;自 cw_op_equip_all 迁入策略侧,
+    """row4:库藏生锈豁免(自 cw_op_equip_all 迁入策略侧,
     语义逐字不变)。滞留边际代价在计件封顶(registry cap=10)内单调上升,
     压倒「攒给成型核心」的机会成本。"""
     if not gate:
@@ -475,7 +474,7 @@ def resolve_affix_priority_order(comp, deployed_rows: tuple[list, list],
 
     返回 ``equip_allocation(priority_order=...)`` 的重排输入序;None =
     词缀层不启用(无输出侧谓词词缀在场 / 谓词全满足 / comp 缺失),回落
-    基分配序(零重排)。纯函数;决策层产物,执行层禁内嵌评分(ADR-0461
+    基分配序(零重排)。纯函数;决策层产物,执行层禁内嵌评分(
     裁定 3 分层)。
     ``deployed_rows`` = 容器行域 ``(front_row, back_row)``,元素 = 容器
     ``Unit``(排归属由行承载,occupied 键 (row, 行内槽号))。
@@ -550,9 +549,9 @@ def resolve_affix_priority_order(comp, deployed_rows: tuple[list, list],
 # ===== 21 号稿 §3:工具件消费判据面(全量收编 10 号稿 §2.1,零改写)=====
 
 #: G1 发射位准入(21 号稿 §2.4-2/§3.2;流程:197 常驻锁,ARCH_REFLECTION_
-#: 3STALLS 防第四个闩;ADR-0531):工具动作是**新的执行动作类**,不骑 M7
+#: 3STALLS 防第四个闩):工具动作是**新的执行动作类**,不骑 M7
 #: 穿戴通道。
-#: 执行通道前置(开臂判据,两件均随 ADR-0532 工具执行批交付):
+#: 执行通道前置(开臂判据,两件均随工具执行批交付):
 #: ①UI 建档(工具 icon 拖曳交互)——工具 icon 在 owned 多列网格内,与穿戴类
 #:   同一建档(「区域-道具装备」D-40;col2 冶金炉 click 实锤),拖曳目标 =
 #:   同网格另一 icon(炉→死库存件 icon / 特权卡→key 对应进阶成品 icon),

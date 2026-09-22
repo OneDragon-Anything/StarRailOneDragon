@@ -11,7 +11,7 @@ target_comp.key_equips 契合 + 装备通用价值选最优列 → 点该列卡�
 左侧圆钮,``_REFRESH_BTN_DX`` 文本锚定,decide_supply 规则 2「全无钻+刷新剩余
 >0 →刷新找钻」消费)。
 
-**ADR-0517 刷新 = 终结动作**:decide_supply 建议刷新 ∧ 剩余闸放行 → 点钮一次
+**刷新 = 终结动作**:decide_supply 建议刷新 ∧ 剩余闸放行 → 点钮一次
 (点击后本动作即返回,op 交回外循环重进 = 入口重建,新装备面由重进后的
 入口观察现读承载)。**刷新闸 = 剩余语义观察真值**(用户裁定 2026-09-21,
 全域规范 = ``op-layer.md`` §1.4):闸读源 = 容器 ``supply_refresh_left``
@@ -278,7 +278,7 @@ class CwScreenSupplyNode(SrOperation):
                     return True
             if isinstance(pick, CwActionRefreshSupplyParam):
                 # 剩余闸放行:点圆钮一次后终结交回(外循环重进 = 入口重建,
-                # 新装备面由重进后的入口观察现读承载,ADR-0517)。
+                # 新装备面由重进后的入口观察现读承载)。
                 refresh_target = Point(
                     self._refresh_point.x + CwScreenSupplyNode._REFRESH_BTN_DX,
                     self._refresh_point.y)

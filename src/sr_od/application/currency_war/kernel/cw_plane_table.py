@@ -1,10 +1,10 @@
 """节点日程与标定表模块(纯常量/纯函数;零 DP、零 session 写端)。
 
-ADR-0465 起,本模块是生产路径消费的**真值/标定面**
+起,本模块是生产路径消费的**真值/标定面**
 的保留归属(D3 契约:真值消费者迁保留表函数模块,禁内联常量置换——
-``nodes_of_plane`` 是会话自适应真值(P1=9/P2=7/P3 进表自适应,ADR-0366),
+``nodes_of_plane`` 是会话自适应真值(P1=9/P2=7/P3 进表自适应),
 ``p_win_p2`` 是两态胜率函数(BLUEPRINT §3.1 N4 继续消费),内联任一处
-= ADR-0366 修掉的 P2 计 9 病灶成批回流)。日程感知 DP 规划器
+= 修掉的 P2 计 9 病灶成批回流)。日程感知 DP 规划器
 已按 BLUEPRINT §3 裁决退出生产路径,不在本模块。
 
 承载面(按消费面划定的最小集):
@@ -14,10 +14,10 @@ ADR-0465 起,本模块是生产路径消费的**真值/标定面**
   economy_cycle.upgrade_plan_fee 承担,本表只供次数);
 - 息封顶常量:GOLD_CAP_INTEREST(息闭式本体 = kernel cw_economy
   .interest 唯一源,DEFAULT_INTEREST_CAP 由其派生);
-- 损血先验表:HP_LOSS_MU(原 DP 模块 HP_LOSS_PRIOR 平移,ADR-0183
+- 损血先验表:HP_LOSS_MU(原 DP 模块 HP_LOSS_PRIOR 平移,
   统一的单一源,消费方=cw_first_passage 分布模型);
 - P2 两态胜率映射:p_win_p2(registry.p_win_p2_by_rung 分段线性,
-  阈值层与 ADR-0465 排程共用);
+  阈值层与 排程共用);
 - 概率峰值级查表:peak_refresh_level(目标费用档 → 峰值级,规则倡导审读 §1.3
   R4 排程判据的查表分量)。
 """
@@ -46,13 +46,13 @@ def _probe_books(session):
 NODES_PER_PLANE: int = 9
 TOTAL_NODES: int = NODES_PER_PLANE * 3
 GOLD_CAP_INTEREST: int = 50   # 息封顶(10 金 1 息、5 档封顶)
-XP_CLICK_COST_FLAT: int = 4   # 购买经验单击价先验(ADR-0129 实测 4-8 取下限;
+XP_CLICK_COST_FLAT: int = 4   # 购买经验单击价先验(实测 4-8 取下限;
 # 生产升级费走 economy_cycle.upgrade_plan_fee 的 OCR 现读,本值仅 level_cost 先验用)
 
 #: nodes_of_plane 表缺回退告警的一次性指纹(防每帧刷屏;同 [cw!] 可 grep 纪律)
 _NODES_OF_PLANE_WARNED: set[str] = set()
 
-# ===== 位面日程(槽序排布;ADR-0368) =====
+# ===== 位面日程(槽序排布) =====
 #: 日程先验:(位面1, 位面2, 位面3) 各自轮数。P1=9 结构已知;P2 真值 7
 #: 但以 session 表为准(生产自适应);P3 未知期保持 9 先验。
 DEFAULT_PLANE_LENGTHS: tuple[int, int, int] = (
@@ -86,14 +86,14 @@ def plane_end_slots(pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> frozenset[in
 
 
 def schedule_of(session) -> tuple[int, int, int]:
-    """位面日程真值(ADR-0368,单一源)。
+    """位面日程真值(单一源)。
 
     真值源 = ``session.plane_lengths_seen``(cw_screen_prep 每位面首帧随
     plane_node_table 记录的「本局已揭晓位面轮数」序列,P3 进表即自适应);
     未揭晓位面回退 ``PLANE_FALLBACK_PRIORS`` 逐面先验(9, 9, 9)——端点纪律
 对称化:未揭晓真值不可判,统一取语料分布上端(位面长度上限 9)。
     脏表守卫:每位面长度夹 [1, NODES_PER_PLANE]
-    (同 ADR-0366 超长脏表封顶语义)。duck-typed 读 session。
+    (同 超长脏表封顶语义)。duck-typed 读 session。
     """
     seen = _probe_books(session).plane_lengths_seen or []
     out = []
@@ -106,7 +106,7 @@ def schedule_of(session) -> tuple[int, int, int]:
 def node_t_of(session: object, plane: object, round_num: object) -> int | None:
     """hp 新鲜度门时基(全局节点号):前序位面**实际长度**和 + 位面内轮次。
 
-    长度源 = ``schedule_of(session)``(P1=9/P2=7/P3 进表自适应;ADR-0368
+    长度源 = ``schedule_of(session)``(P1=9/P2=7/P3 进表自适应;
     单一源)——替代表迁波曾内联的 ``(plane-1)*9`` 字面量(假设每位面 9
     节点,P2 真值 7 时 P3 段系统性偏大 +2,判读底稿中危项 1,与 total_remaining_nodes 恒 9 待修缺陷
     「禁写死 9」同型)。session 缺席(None/裸对象)或日程未揭晓 → 回退
@@ -126,7 +126,7 @@ def node_t_of(session: object, plane: object, round_num: object) -> int | None:
 
 
 def nodes_of_plane(session) -> int:
-    """本位面轮数真值(ADR-0366,单一源)。
+    """本位面轮数真值(单一源)。
 
     真值源 = ``session.plane_node_table``(开局帧实读槽序表,
     cw_screen_prep 每位面首帧写、位面内恒定):P1=9 槽、P2=7 槽(16 局
@@ -134,7 +134,7 @@ def nodes_of_plane(session) -> int:
     开局首帧前)→ 回退 ``NODES_PER_PLANE=9`` 先验并记一次性
     ``[cw!][plane_table]`` 告警(P3 真值未知期,回退事件即记档通道)。
 
-    P1 等价性:生产 P1 表恒 9 槽;sim P1 段不写表(ADR-0362 只在 P2
+    P1 等价性:生产 P1 表恒 9 槽;sim P1 段不写表(只在 P2
     进场写)→ 两路 P1 取值 ≡ 先验常量。duck-typed 读 session。
     """
     table = _probe_books(session).plane_node_table
@@ -153,7 +153,7 @@ def nodes_of_plane(session) -> int:
 
 # ===== 标定表/纯函数 =====
 
-# 板强 → 每战斗节点期望掉血先验基准表(ADR-0183 统一单一源;消费方
+# 板强 → 每战斗节点期望掉血先验基准表(统一单一源;消费方
 # = cw_first_passage 分布模型的 μ 侧。键=板强档 0-3)。
 HP_LOSS_MU: dict[int, float] = {0: 14.0, 1: 7.0, 2: 2.5, 3: 0.8}
 
@@ -205,7 +205,7 @@ def level_cost(level: int) -> int:
     return clicks_to_level(level) * XP_CLICK_COST_FLAT
 
 
-# (第二息实现 ``plane_table.interest`` 已删(ADR-0598 随批清理):与
+# (第二息实现 ``plane_table.interest`` 已删(随批清理):与
 #  kernel cw_economy.interest 同形双源、全仓零生产调用——息闭式唯一源
 #  = kernel cw_economy.interest(cap 参数化,消费 cap_resolved 链)。)
 

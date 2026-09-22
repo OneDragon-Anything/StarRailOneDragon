@@ -169,7 +169,7 @@ def r2_card_reserve(k_members: tuple[str, ...],
     实现,原 shop 模块私有实现提升至此——落点裁定 = 方案审 v2:ρ 依赖
     ``data/cw_chars.CHARACTERS`` 注册表与 ``refresh_prob`` 现读,属判据面,
     禁进 kernel 经济层破坏其输入纯度;P54 floor 与 P71-b 升级预算闸
-    (ADR-0560)的 ρ/Σ预留分量同源消费,禁第二实现)。
+    的 ρ/Σ预留分量同源消费,禁第二实现)。
 
     ⚠ 同名异义锚:本 ρ(P54「合格集最低费卡价」)与
     ``statefn/s_line.py`` 的 ``rho(delta_v_band, delta_v_pop, rounds)``
@@ -229,7 +229,7 @@ def all_channel_buy_exists(gold: int, g_star: int, cap_resolved: int,
 
     逐通道口径(出处):
     - dominance:``mandate.dominance_buy_eligible`` 直调(金>g* ∧ 席,
-      零第二实现)+ 结算线 ADR-0624 单一源 ``shop.check_settlement_line``
+      零第二实现)+ 结算线 单一源 ``shop.check_settlement_line``
       直调(最便宜 1★ 形态;落地审 H2 修:原内联 gold−1 ≥ g* 系第二
       实现,该谓词设立理由恰是防穿线判据漂移)——任一店产 1★ 线外件
       即触发,池非空故只查帧级资格;
@@ -261,7 +261,7 @@ def all_channel_buy_exists(gold: int, g_star: int, cap_resolved: int,
     )
 
     seat_ok = bench_free > 0 or seat_recoverable
-    # ① dominance 1★ 净 0(资格门单源直调 + 结算线 ADR-0624 单一源
+    # ① dominance 1★ 净 0(资格门单源直调 + 结算线 单一源
     # check_settlement_line 直调,最便宜 1★ 形态;落地审 H2 修)
     if mandate.dominance_buy_eligible(gold, bench_free, cap_resolved) \
             and check_settlement_line(gold, 1, g_star)[0]:

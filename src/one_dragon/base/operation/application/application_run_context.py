@@ -126,7 +126,7 @@ class ApplicationRunContext:
         self._window_mutex_guard: threading.Lock = threading.Lock()
         self._window_mutex_blocker: str | None = None
 
-        # 停机中断闩(ADR-0396):True = 本次运行被停止信号中断且尚未被消费。
+        # 停机中断闩:True = 本次运行被停止信号中断且尚未被消费。
         # 仅 stop_running 在「运行中/暂停中被停」时置位;start_running 清位;
         # 正常收口(finish_running / run_application 自然完成)不置位——
         # 区别于 is_context_stop(STOP 也是 idle 初始态,不能作停机中断判据,
@@ -359,12 +359,12 @@ class ApplicationRunContext:
 
     @property
     def is_stop_interrupted(self) -> bool:
-        """本次运行是否已被停止信号中断(停机守卫判据,ADR-0396)。
+        """本次运行是否已被停止信号中断(停机守卫判据)。
 
         与 ``is_context_stop`` 的区别:后者 STOP 也是 idle 初始态;本闩只在
         「运行中/暂停中被 stop_running 打断」后为 True,直到下一次
         ``start_running``。无显式消费入口——手动外部接管走
-        ``stop_guard.stop_guard_exemption`` 本地豁免(不清闩,ADR-0406;
+        ``stop_guard.stop_guard_exemption`` 本地豁免(不清闩;
         旧 consume_stop_interrupted 因在 run 收口期全局摘守卫已移除)。
         """
         return self._stop_interrupted
@@ -490,7 +490,7 @@ class ApplicationRunContext:
         try:
             if self.ctx.controller.init_before_context_run():
                 self.last_run_result = None
-                self._stop_interrupted = False  # 新运行开始,清停机中断闩(ADR-0396)
+                self._stop_interrupted = False  # 新运行开始,清停机中断闩
                 self._run_state = ApplicationRunContextStateEnum.RUNNING
                 self.event_bus.dispatch_event(
                     ApplicationRunContextStateEventEnum.START, self._run_state
@@ -521,7 +521,7 @@ class ApplicationRunContext:
                 仅在「运行中/暂停 → 停止」的收口转态拍一张(幂等重入不重复拍);
                 截图或落盘失败不拦截停机本身。
         """
-        # 「运行中/暂停中被停」才置停机中断闩(ADR-0396):idle 态的杂散 stop
+        # 「运行中/暂停中被停」才置停机中断闩:idle 态的杂散 stop
         # 不应把守卫留给后续(如 MCP 手动操作)。先读状态再收口(收口后恒 STOP)。
         was_live = self.is_context_running or self.is_context_pause
         result = self._create_run_result(RunFinishReason.STOPPED)
@@ -568,7 +568,7 @@ class ApplicationRunContext:
         与 ``stop_running`` 的唯一区别:不置 ``stop_interrupted`` 闩——
         backend op 槽 finally 的收口调用发生在运行自然完成后(执行流已停),
         不是用户/钩子停止,不应让停机守卫拦截后续显式外部操作
-        (如 MCP 手动点击的残局清理)。语义见 ADR-0396。
+        (如 MCP 手动点击的残局清理)。语义见 `stop_guard` 模块头。
         """
         was_live = self.is_context_running or self.is_context_pause
         result = self._create_run_result(RunFinishReason.STOPPED)
@@ -677,7 +677,7 @@ class ApplicationRunContext:
                 else RunFinishReason.FAILED
             )
         except StopRunInterrupted:
-            # 停机守卫在 controller 层拦截输入后穿透到这(ADR-0396):收口为
+            # 停机守卫在 controller 层拦截输入后穿透到这:收口为
             # 「已停止」而非执行异常;stop_source 来自先到的 stop_running。
             finish_reason = RunFinishReason.STOPPED
             log.info('应用 %s 被停机守卫中断', app_id)

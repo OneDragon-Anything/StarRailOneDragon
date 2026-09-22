@@ -12,7 +12,7 @@
 
 | 域 | 写 / 跳写 | 说明 |
 |---|---|---|
-| bench | 写 | 该槽 kind → `empty`(**不移位**,ADR-0316 槽位语义;跨动作组下标恒稳),**原生 `BenchView.slots` 直操**(容器原生形态,不经任何换形往返,BenchSlot kind 五分类在写口保形) |
+| bench | 写 | 该槽 kind → `empty`(**不移位**,槽位语义;跨动作组下标恒稳),**原生 `BenchView.slots` 直操**(容器原生形态,不经任何换形往返,BenchSlot kind 五分类在写口保形) |
 | gold | 写 | `gold += 退款`;gold 未读(None)= 域级跳写 |
 | equips | 写 | 被卖单位身上全部装备追加进 owned 库存(`sold.equips` 非空才写;原备战域缺口随双域腿统一补齐——历史「商店腿有/备战域留观察覆盖」的不对称消亡) |
 | overflow_card / overflow_warning | 条件写 | 溢出腿另写两旗标域(§3 第 5 条,容器状态条件域无关携带) |
@@ -27,7 +27,7 @@
 1. 备战席该槽位清空(kind → `empty` 不移位;槽位空/越界 = 陈旧提案拒,§5);
 2. `gold += 退款`,公式单一源 = `kernel/cw_economy.py::sell_refund`:退款 = 招募费(`bench_char_cost`,注册表单一源,未知按中位保守估)× 星级倍数表 `_SELL_MULT`(1★ 全额;2★/3★/4★ = 合成副本数同构倍数);**手续费口径**:star≥2 且 cost≥2 再 −1;cost=1 豁免(2★1费 卖出 = 全额倍数,live 实测定谳;3★2费 = +17 已 live 定谳,4★ 档仍未核 = 缺口 G3 剩余);
 3. **装备全量回装备区**(上报函数 C6 守恒腿):被卖单位身上全部装备(简易/进阶/核心不分)进 owned 装备库存——穿戴是可逆暂借(【口述·权威】`research/equipment_mechanics.md` §1;kernel 按 C6 装备守恒回收建模);
-4. 陈旧提案拒:expect 身份与槽内不符 = 零写(ADR-0317);
+4. 陈旧提案拒:expect 身份与槽内不符 = 零写;
 5. **溢出条件腿**(2026-09-15 实机建档,`docs/game/screens/currency_war_prep.md` 告警节):`overflow_warning` 在场(备战席满告警横幅 = 存在未安置溢出角色,此刻出战点击被游戏忽略)时,卖出语义补一条——**腾出槽当帧记溢出卡入位**(`bench[idx]` 槽 kind 回占为 `unit`(入位卡身份,星级缺读按 1 兜底);「卖 → 溢出卡自动入自由槽」是游戏侧行为,有溢出时席必满、自由槽恒唯一,落位无歧义)+ `overflow_card` 消费清空 + 旗标 logic 消亡(下帧实读覆盖)。入位对象身份缺读(`overflow_card` 空)= 跳过入位(槽留空等观察),卖出语义本体不受阻。**两账同帧**:容器腿(上报函数,入位卡回占槽位——席空数派生自然不 +1,腾出槽即刻回占)/ 执行侧 tracked 主账吸收(session 形参在场时,摘该槽 + 追加入位卡后经 `bench_from_compact` 重建槽位表——缺吸收 = 商店播种守卫双账分叉,实机 2-4 停机实证)。(原第三面「黑板帧镜像」随 `gs.prep_obs` 黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5,镜像语义由容器回占面全量承载。)
 
 ## 4. 随机面
@@ -37,7 +37,7 @@
 ## 5. 拒绝语义
 
 - 槽位越界 / 槽空:`LogicOutcome(applied=False, reason='bench_idx_out_of_range:<idx>')`,零容器写;
-- **期望失配 stale_proposal**:expect 非空且与槽内 `char_id` 不符 = `applied=False, reason='stale_proposal:<expect>!=<实际>'`,零写(ADR-0317;live 提案 expect 恒空不校验,校验面辖非空 expect 提案);
+- **期望失配 stale_proposal**:expect 非空且与槽内 `char_id` 不符 = `applied=False, reason='stale_proposal:<expect>!=<实际>'`,零写(live 提案 expect 恒空不校验,校验面辖非空 expect 提案);
 - 执行器零判效:拖拽发出即职责完成,落地事实归观察侧 reconcile;「拒买语义」在本动作不存在(卖出恒可用)。
 
 ## 6. kernel 符号锚

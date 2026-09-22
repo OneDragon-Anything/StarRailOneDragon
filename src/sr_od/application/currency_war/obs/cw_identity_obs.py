@@ -107,9 +107,9 @@ def ensure_portrait_templates(ctx: SrContext) -> AvatarTemplates | None:
 # 前排角色立绘底部有大量暗金衣服(V80-150)淹没金星,旧 V>80 把衣服抓成 area1279 大块致检测崩溃。
 _STAR_GOLD_LO: tuple[int, int, int] = (10, 40, 150)
 _STAR_GOLD_HI: tuple[int, int, int] = (45, 255, 255)
-# TM 匹配阈值(2026-08-13:0.45)。**根因实测(ADR-0116)**:第2星 TM val 系统性低于第1星(第1 0.62-0.69 / 第2
+# TM 匹配阈值(2026-08-13:0.45)。**根因实测**:第2星 TM val 系统性低于第1星(第1 0.62-0.69 / 第2
 # 0.45-0.58)—— 两星**紧贴遮挡**,第2星 mask 不完整 → val 偏低;各排一致(星尺寸 17-19px 跨排相同,**非缩放
-# 失配**,多模板 per 排无用,ADR-0116 实测推翻)。val 随紧贴程度变(后排-6 最紧 val~0.45 / 后排-3 0.51)。
+# 失配**,多模板 per 排无用,实测推翻)。val 随紧贴程度变(后排-6 最紧 val~0.45 / 后排-3 0.51)。
 # thresh 0.45 = **真第2星(≥0.45)与噪声装饰(<0.40)的分界**,非打地鼠补丁。验:立绘库 0/71 + 全 fixture
 # 无新 FP + 所有 2★ 槽读 2(0.40 才过数噪声,余量 ~0.05)。迭代史:0.55→0.50(后排-3)→0.45(后排-6)。
 _STAR_TM_THRESH: float = 0.45
@@ -142,9 +142,9 @@ def read_star(crop: MatLike) -> int:
     旧轮廓法对 **2 星紧贴**(连通成大域 area>600 上限漏)+ **前排衣服淹没**(area1279
     把金星淹没)结构性失效。TM 各星独立滑窗匹配,紧贴亦分,V>150 滤衣服让 mask 干净 —— 治本。
     验证(2026-08-13):立绘库 71 张 0 误判 + 各位置 2星(前排-3/后排-3/备战-4)读 2 + 三月七 2星 +
-    1星各槽稳读 1。**thresh 0.45(终值标定见 ADR-0116)**:第2星 TM val 系统性低于第1星(第1 0.62-0.69 / 第2 0.45-0.58)——
+    1星各槽稳读 1。**thresh 0.45**:第2星 TM val 系统性低于第1星(第1 0.62-0.69 / 第2 0.45-0.58)——
     两星**紧贴遮挡**致第2星 mask 不完整 → val 偏低;**各排星尺寸 17-19px 相同(非缩放失配,多模板 per 排实测无用,
-    ADR-0116 推翻该假设)**。val 随紧贴程度变(后排-6 最紧 ~0.45)。0.45 = 真第2星(≥0.45)与噪声(<0.40)分界。
+    推翻该假设)**。val 随紧贴程度变(后排-6 最紧 ~0.45)。0.45 = 真第2星(≥0.45)与噪声(<0.40)分界。
     验:立绘库 0/71 + 全 fixture 无新 FP + 所有 2★ 读 2(含各排边槽)。
     **circ 放宽(0.35→0.25)**:原 circ>0.35 太紧 —— 备战-9 边槽同颗金星 circ 渲染到 0.34 被误拒 → 2星读 1;
     放宽到 0.25(立绘库仍 0/71 + 全 fixture 无新 FP),备战-9 读回 2。
@@ -214,7 +214,7 @@ def read_star(crop: MatLike) -> int:
     return max(count, 1)
 
 
-# ===== 合成特效帧态门(W292/ADR-0420,W285 抽样批3)=====
+# ===== 合成特效帧态门(W292/,W285 抽样批3)=====
 # 病灶(W285 §三 star 层,抽样 2/2 采新帧全错):read_star 会采在 3合1 合成
 # 星爆动画/拖拽过渡窗内(特效遮挡第 2 星 → 读 1),对账侧「连续 2 次回退才采新」
 # 防抖会被**持续 ≥2 帧的动画窗**骗过(第 2 帧仍在窗内 → 假确认采新 1★ 毒化)。
@@ -261,7 +261,7 @@ _BANNER_RED_DOM_MIN: float = 0.06
 
 
 def is_merge_effect_frame(screen: MatLike | None) -> bool:
-    """合成特效帧态判定(W292/ADR-0420):当前帧是否处于 3合1 星爆动画/拖拽
+    """合成特效帧态判定(W292/):当前帧是否处于 3合1 星爆动画/拖拽
     合成过渡窗内 → True(read_star 读数不可信,消费方保旧)。
 
     判据 = 两签名任一命中(标定数字与边界见上方常量块注释):
@@ -325,12 +325,12 @@ def identify_slots(
         纯现场主档)才是同域信号**(真窗口实测强命中,空槽 0 假阳)。True 时:
         命中主档且该角色存在现场变体 → 拒(漏读走「未知」对账可见,好过跨域
         弱命中毒板面);命中变体键或纯现场主档角色(佩佩/狸猫对)→ 收。
-        例外(ADR-0452):主档内点 ≥ :data:`_LIVE_ONLY_PLAZA_STRONG` 时收 ——
+        例外:主档内点 ≥ :data:`_LIVE_ONLY_PLAZA_STRONG` 时收 ——
         跨域弱命中带实测上限 29(33 帧板面基准,空槽全库最高内点),强主档
         (如开拓者·欢愉 73 内点)远超弱带,按「有变体即拒」误杀。
         ⚠️ 变体必须真窗口采(旧错位残片变体会在正位帧上输给 plaza 主档 →
         live_only 假阴丢读,2026-08-26 万敌@s2 实证后已全量重采)。
-    :param center_gate: 部署排专用(ADR-0452,**位置感知识别**)。角色卡宽
+    :param center_gate: 部署排专用(**位置感知识别**)。角色卡宽
         (~170px) > 槽窗宽(~142px),槽裁片必然渗入邻卡边缘;同名邻窗双命中
         由既有幽灵去重吸收,**异名**渗漏(邻卡残条命中邻卡同款饰品)会以弱
         内点压过本窗真身。True 时改走中心归属门:每槽在**横向扩展窗**
@@ -439,7 +439,7 @@ def identify_slots(
 _GHOST_RATIO: float = 0.5
 
 #: 部署排识别门槛(identify_character min_inliers 覆盖值)。真窗口实测:空槽
-#: 全库最高 0 分(错位时代的 11-26 假阳带是窗口切到邻卡残影的伪影,ADR-0390),
+#: 全库最高 0 分(错位时代的 11-26 假阳带是窗口切到邻卡残影的伪影),
 #: 占用位命中 ≥30(变体强命中/plaza 主档跨域也能到 33)。15 取两者之间的
 #: 防御值(拦裁边残影/跨域弱命中),非紧标定;备战栏卡槽背景同样干净
 #: (真命中 35-57),保持默认 10 不抬高。
@@ -452,7 +452,7 @@ _DEPLOYED_MIN_INLIERS: int = 15
 #: 残片变体致 live_only 假阴,万敌@s2 丢读实证;已全量重采)。
 _DEPLOYED_LIVE_ONLY: bool = True
 
-#: 部署排中心归属门开关(ADR-0452;前置 = 卡宽>槽窗的渗漏几何事实,见
+#: 部署排中心归属门开关(前置 = 卡宽>槽窗的渗漏几何事实,见
 #: identify_slots center_gate 参数说明)。生产部署排恒开;备战栏/商店走旧路径。
 _DEPLOYED_CENTER_GATE: bool = True
 
@@ -461,7 +461,7 @@ _DEPLOYED_CENTER_GATE: bool = True
 _DEPLOYED_EXPAND_PAD: int = 35
 
 #: live_only 强主档例外门槛(内点)。跨域弱命中带实测上限 29(33 帧板面基准,
-#: 空槽全库最高内点;ADR-0452),真命中中位数 ~45 → 40 居中:高于弱带上限
+#: 空槽全库最高内点),真命中中位数 ~45 → 40 居中:高于弱带上限
 #: 11px,低于中位数;真命中 30-39 的变体角色仍被拒(漏读方向,对账可见)。
 _LIVE_ONLY_PLAZA_STRONG: int = 40
 
@@ -474,11 +474,11 @@ def _identify_center_gated(
     live_only: bool,
     has_variant: set[str] | None,
 ) -> tuple[MatLike, str | None, int]:
-    """部署排单槽中心归属识别(ADR-0452):扩展窗全库假设 → 槽核内认领 → 统一决策。
+    """部署排单槽中心归属识别:扩展窗全库假设 → 槽核内认领 → 统一决策。
 
     ① 横向扩展窗(``_DEPLOYED_EXPAND_PAD``,y 不扩 —— 渗漏只在 x 向;上下邻带
        是 HUD/场景,拉入徒增噪声);② :func:`identify_hypotheses` 全库假设;
-    ③ 双重位置门(ADR-0452):homography 投影模板中心 x 落在本槽核(原 rect)
+    ③ 双重位置门:homography 投影模板中心 x 落在本槽核(原 rect)
        内**且**裁决计**核内内点**(证据落点须在本槽)—— 邻卡渗漏假设的中心在
        邻槽核,几何出局;跨域噪声假设中心可能贴核边缘蹭进(佩佩局空槽
        忘归人 21 内点案),其证据大多在核外,核内计数不过阈值;
@@ -528,7 +528,7 @@ def _session_level(ctx: SrContext) -> int | None:
     """容器 level 读口(终态契约 §A:last_level_obs 单调链退役,单一源 =
     gs.level 覆盖/carried)→ 无 session/无值 → None。
 
-    布局选档的 level 源(ADR-0281:后排槽数由 level 驱动)。离线/无
+    布局选档的 level 源(:后排槽数由 level 驱动)。离线/无
     session 场景返 None(调用方退 6 槽基线)。**单一源可信门**(15 号稿
     §2.3/§6):启发式兜底帧的 level 值不参与——容器侧该门由喂入结构性
     满足(``read_game_state`` 仅 authoritative 帧观察写 level,兜底帧走
@@ -579,7 +579,7 @@ def read_deployed_rows(ctx: SrContext, screen: MatLike, templates: AvatarTemplat
     空槽 / 未识别 → 不进该排行列表(双行全空 = 失读,调用方走 carried,
     宁缺勿造)。排归属 = 本函数行参直接承载。
     用途:离线重建 / 漂移恢复(**不进 read_game_state**;见模块 docstring)。
-    布局选档 **cap 差公式 + CV 双通道**(ADR-0385,旧 level 驱动已废——run 26
+    布局选档 **cap 差公式 + CV 双通道**(旧 level 驱动已废——run 26
     lv8 无召唤物局按 8 格读板失真实证):select_back_layout 现读 read_deploy_cap
     (未传 level 时 session 等级链);读不到 → 6 槽基线。
     **布局未知态**(15 号稿 §3.2④):单帧未知 → 只返前排(跳过后排读,
@@ -612,7 +612,7 @@ def read_deployed_rows(ctx: SrContext, screen: MatLike, templates: AvatarTemplat
         back_slots = fallback_back_slots()
     else:
         back_slots = back_row_slot_rects_ctx(ctx, _lay['prefix']) or fallback_back_slots()
-    # 布局留证采集钩子(ADR-0385 决策 12,W209i 降级:原停机钩子废弃;
+    # 布局留证采集钩子(W209i 降级:原停机钩子废弃;
     # 2026-08-26 佩佩局 7 格坐标档已建档 → 钩子对 7 静默,只对未来**未建档**
     # 新档位(diff≥3 域外/CV 新观察)留证):
     # 触发 = 对账原始格数 n_raw 未建档(∉ _LAYOUT_PREFIX)→ **obs_conflict 留证
@@ -666,13 +666,13 @@ def read_deployed_rows(ctx: SrContext, screen: MatLike, templates: AvatarTemplat
                           min_inliers=_DEPLOYED_MIN_INLIERS,
                           live_only=_DEPLOYED_LIVE_ONLY,
                           center_gate=_DEPLOYED_CENTER_GATE)
-    # 系统单位恒最右布局自检(ADR-0281 件3):便宜的常设布局判别器,best-effort
+    # 系统单位恒最右布局自检:便宜的常设布局判别器,best-effort
     check_system_unit_layout(screen, back, back_slots, templates,
                              source='read_deployed_rows')
     return front, back
 
 
-# 系统单位布局自检:实测 x 与所选档右格中心的容差(px;ADR-0281 用户口述模型:
+# 系统单位布局自检:实测 x 与所选档右格中心的容差(px;用户口述模型:
 # 系统单位恒最右,差 >40 = 选错档)。40 < 半格宽 71,一个格位错(142)必超。
 _SYSTEM_UNIT_LAYOUT_TOL_PX: int = 40
 # 自检扫描带(x 带:覆盖 6/8 格全部布局 + 幻影时代的假想范围;y = 后排槽带)
@@ -713,7 +713,7 @@ def check_system_unit_layout(
     templates: AvatarTemplates,
     source: str = 'read_deployed_rows',
 ) -> None:
-    """系统单位恒最右布局自检(ADR-0281 件3,常设判别器)。
+    """系统单位恒最右布局自检(常设判别器)。
 
     模型(用户口述权威):狸猫(狸小虎/狸小龙)/佩佩类系统召唤单位恒占布局**最右
     槽位(们)**,布局格数变 → 其 x 跟着最右格移动。判别:后排读到系统单位
@@ -760,7 +760,7 @@ def check_system_unit_layout(
                     'layout_mismatch_by_system_unit', exp, round(x, 1), screen,
                     verdict=(f'留证-系统单位({cid})实测 x={x:.0f} 与所选档右格中心 '
                              f'{exp:.0f} 差>{_SYSTEM_UNIT_LAYOUT_TOL_PX}px → 布局选错档'
-                             f'(ADR-0281 恒最右模型);处理:核该局 level 与所用档,'
+                             f'(恒最右模型);处理:核该局 level 与所用档,'
                              f'交互实锤(拖角色/详情面板)后校正 screen_info 布局'),
                     source=source, char_id=cid)
                 return
@@ -884,7 +884,7 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
         # (开卡发射位 = 策略器 entry ① 卡片臂 + loop 0k 弹窗分支接线)。
         # 排除集单一源(部署伪槽修复批 ①):原内联段(find_* 族 ∪ 泛 TM 低阈
         # 扫描)整体迁入 bench_item_slots,本钩子消费模糊档(精确 ∪ 泛扫描,
-        # 行为与原内联段等价);停机钩子其余段(面板守卫/帧态门/ADR-0263 锚
+        # 行为与原内联段等价);停机钩子其余段(面板守卫/帧态门/锚
         # 排除/防抖)是停机判定语义,不进该函数、留在钩子内。
         _bench_slots9 = _ctx_slots(ctx, '备战栏', 9)
         _obj_slots = bench_item_slots(ctx, screen, fuzzy=True)
@@ -905,7 +905,7 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
                     _lg0.info('[cw-hook][summon] slot%s 占用未识别但帧非备战态'
                               '→ 跳过(过渡帧防误触)', _slot)
                     break
-                # ADR-0263 Revision 第三段(金币说明锚):右侧奖励/金币说明
+                # Revision 第三段(金币说明锚):右侧奖励/金币说明
                 # overlay 是 C 类无档案 overlay(无独立 screen 档案,进不了
                 # is_prep_like_frame 两段式的 UPPER_SCREENS)→ 停机前以锚 OCR
                 # 判定补充排除:overlay 开着时盖住备战栏右端,固定 slot rect
@@ -919,7 +919,7 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
                 if gold_info_overlay_open(ctx, screen):
                     from one_dragon.utils.log_utils import log as _lg1
                     _lg1.info('[cw-hook][summon] slot%s 占用未识别但金币说明'
-                              'overlay 开着 → 跳过(ADR-0263 rev 锚段)', _slot)
+                              'overlay 开着 → 跳过(rev 锚段)', _slot)
                     break
                 _shot = cw_shot_unique(screen, 'summon_unknown')
                 if _shot is not None and ctx.run_context is not None:

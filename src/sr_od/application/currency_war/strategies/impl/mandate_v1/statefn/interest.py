@@ -7,7 +7,7 @@ kernel,与 schedule_upgrade 下沉同款先例。NMF §2 「L(息档损失)」�
 唯一实现语义不变:双轨迹递推(基线守 g* 溢余即花 vs 花后守 g*),cap 按
 resolved 参数化(默认 5 / 息律投资 10 / 开源节流 9 / 买断制 0——覆写
 单一源 = aggregate_economy(session.active_strategies),解析口 =
-kernel cw_economy.cap_resolved_of_session,ADR-0598)。对拍锚 =
+kernel cw_economy.cap_resolved_of_session)。对拍锚 =
 ``tools/cw/proofs/p47_check.py`` 的 ``loss_exact``;税基单一源纪律 =
 P47 息账与 P51 存量清零账互不包含(NMF §6 第 4 条)。
 """

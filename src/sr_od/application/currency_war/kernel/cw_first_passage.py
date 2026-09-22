@@ -1,6 +1,6 @@
 """目标函数层 v0:首达生存概率 + 风险姿态三区律。
 
-**诊断**:全栈一致用「均值」计价(02 ΔE[生存]/04 悲观分位/ADR-0155 线性插值掉血),
+**诊断**:全栈一致用「均值」计价(02 ΔE[生存]/04 悲观分位/线性插值掉血),
 期望泛函在劣势局**方向性选错** —— 教学校验例:两线同 E[掉血]=20,HP=25 必活线 A 与 HP=15
 赌尾线 B 的正确选择相反;均值计价完全不区分,「血低→悲观」在必死边缘杀死唯一活路(右尾)。
 **K0 实证(本仓 telemetry)**:plane1 掉血 CV=0.62(n=203)、plane2 CV=0.40
@@ -14,14 +14,14 @@
   P(win) 对 hp 的导数(λ_hp 峰形)解出;
 - ``p_win_lambda(board_tier, hp, nodes_left)``:λ_hp = P(win|hp+1) − P(win|hp)(峰形曲线)。
 
-升级路径(ADR-0155 并轨 V2):本模块立出口 API 供消费端(salvage/计价/
+升级路径(并轨 V2):本模块立出口 API 供消费端(salvage/计价/
 evidence 门);换桶分布转移矩阵、D 牌 Bernoulli 赌局化、hp 残值补丁为
 后续扩展方向(K1-K3 判据)。
 """
 from __future__ import annotations
 
-# ⚖️ 单一源(ADR-0183 统一):掉血先验基准表持有者 = cw_plane_table
-# (ADR-0465 起 = 原 DP 标定面的保留归属,物理原语层,被 sim_env/economy 同源消费);
+# ⚖️ 单一源(统一):掉血先验基准表持有者 = cw_plane_table
+# (起 = 原 DP 标定面的保留归属,物理原语层,被 sim_env/economy 同源消费);
 # 本模块引用之并在此定义分布语义(CV/位面乘数)。
 from sr_od.application.currency_war.kernel.cw_plane_table import (
     HP_LOSS_MU,  # noqa: F401
@@ -55,7 +55,7 @@ def _p2_lcond_mix() -> float:
 def _loss_dist(board_tier: int, plane: int = 1) -> list[tuple[float, float]]:
     """单节点掉血分布(板强档 × 位面 → [(掉血量, 概率)] 三点离散:μ-σ/μ/μ+σ 截非负)。
 
-    μ 标定源合一(ADR-0440):P1 = HP_LOSS_MU 现档
+    μ 标定源合一:P1 = HP_LOSS_MU 现档
     (P1 零漂移,不走 P2 标定);P2+ = 两态同构 μ(tier)=(1−p(rung(tier)))
     ·L_cond_mix —— 胜率=registry.p_win_p2_by_rung(rung 坐标=board_tier
     0-3 钳 0-2,与 p_win 表 k3 折叠同口径),条件败面=registry.
@@ -133,7 +133,7 @@ def hp_floor(board_tier: int, nodes_left: int, target_pwin: float, plane: int = 
     """hp 地板反解(「手写门变模型定理」的核心出口):最小 hp 使 P(win) ≥ target_pwin。
 
     语义:给定板强/剩余日程/位面,「想以 ≥ target 的概率活到底」至少需要多少血 ——
-    保血阈值从手拍常数变生存曲线的导出量(ADR-0176)。
+    保血阈值从手拍常数变生存曲线的导出量。
     单次卷积 + CDF 扫描(P(win) 对 hp 单调);hp_cap 内无解 → 返回 hp_cap(无底可保)。
     """
     cdf = _survive_cdf(board_tier, nodes_left, plane, hp_cap)
@@ -145,7 +145,7 @@ def hp_floor(board_tier: int, nodes_left: int, target_pwin: float, plane: int = 
 
 def plane_hp_ratio(board_tier: int, nodes_left: int, target_pwin: float = 0.6,
                    plane: int = 2) -> float:
-    """位面阈值乘子(P_win 地板比;ADR-0176):hp_floor(plane) / hp_floor(P1)。
+    """位面阈值乘子(P_win 地板比):hp_floor(plane) / hp_floor(P1)。
 
     乘子从生存曲线解出,随板强/日程变化 —— 弱板长程的方差尾
     使所需缓冲超线性增长(ratio 高),强板短程近似线性(ratio 低)。内部用扩展 hp_cap=400
@@ -193,7 +193,7 @@ def posture_guidance(posture: str) -> str:
     }.get(posture, '')
 
 
-# ===== 集成接缝(供给方适配器;ADR-0170/0166)=====
+# ===== 集成接缝(供给方适配器)=====
 
 def board_tier_of(level: int, rb: float = 0.0) -> int:
     """等级(+刷牌加成)→ 板强档 0-3(HP_LOSS_MU 的键域;板强基线映射

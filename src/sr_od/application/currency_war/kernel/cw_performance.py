@@ -69,9 +69,9 @@ class RoundOutcome:
     # damage_breakdown_visible = tooltip 是否在场(False+两分量 None=不在场,
     # True+None=在场但解析失败,两态可分)。条不可见/面板不在场 → None。
     # heal_longline = tooltip 第三行「长线作战」(战斗回血,恒 ≥0;实机实证
-    # 常量 +2/场,ADR-0241 口述+80→82→84 连胜轨迹)——链差(净变化)含它、
+    # 常量 +2/场,口述+80→82→84 连胜轨迹)——链差(净变化)含它、
     # 两掉血分量不含,是「tooltip 幅度 = 链差 + 2」系统偏移的机制项
-    # (ADR-0609);此前解析器已读但 schema 缺字段被静默丢弃。
+    # ;此前解析器已读但 schema 缺字段被静默丢弃。
     progress_fill_ratio: float | None = None
     damage_base: int | None = None
     damage_unfinished_progress: int | None = None
@@ -259,7 +259,7 @@ def is_run_dead(gs: GameState, tracker: PerformanceTracker,
     桥调用),本行 hp 直读仅挂账期原样保留、行为零变化;重挂生产消费
     **必经政策层读口**——门后值 = kernel/cw_hp_policy.decision_hp
     (gs, session),可信位 = hp_decision_trusted_of(gs),禁按直读形态
-    旁路(消费同门,ADR-0583 §2.4)。
+    旁路(消费同门)。
     """
     trend = tracker.recent_hp_loss_trend(window=3)
     if trend is None:

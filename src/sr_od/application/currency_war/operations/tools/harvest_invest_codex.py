@@ -141,7 +141,7 @@ class HarvestInvestCodex(SrOperation):
         return False
 
     def _canon_name(self, raw: str, effect: str) -> str:
-        """OCR 名归一到注册表规范名(ADR-0138;艺术小字形变靠 LCS 相似匹配,非全等)。
+        """OCR 名归一到注册表规范名(艺术小字形变靠 LCS 相似匹配,非全等)。
 
         ``find_best_match_by_lcs``(框架 str_utils,与 round_by_ocr 同源)th=0.5;防误配双守卫:
         ① LCS 结果与 raw 长度差 ≤3(防「胜利，还」误配「返利」类短名偶合);
@@ -160,7 +160,7 @@ class HarvestInvestCodex(SrOperation):
         cand = names[idx]
         if abs(len(cand) - len(raw)) > 3:
             return raw
-        # 效果二次验证 = 相似度(非包含;ADR-0138:注册表效果与图鉴原文有措辞差时,包含式守卫
+        # 效果二次验证 = 相似度(非包含;:注册表效果与图鉴原文有措辞差时,包含式守卫
         # 会误杀正确映射 —— 实测「他们获得师徒」vs 注册表「获师徒羁绊」)。效果 LCS ≥0.5 即认名字对。
         if effect:
             import re
@@ -232,7 +232,7 @@ class HarvestInvestCodex(SrOperation):
                         if det is None:
                             continue
                         name_raw, eff, planes = det
-                        name = self._canon_name(name_raw, eff)   # ADR-0138:LCS 归一(全等必失配)
+                        name = self._canon_name(name_raw, eff)   # :LCS 归一(全等必失配)
                         if name in self.seen:
                             continue
                         self.seen.add(name)

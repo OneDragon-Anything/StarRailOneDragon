@@ -1,10 +1,10 @@
-"""货币战争 商店开态刷新钮标价/按钮态的现场 OCR 读取(ADR-0622)。
+"""货币战争 商店开态刷新钮标价/按钮态的现场 OCR 读取。
 
-字段语义与写端裁决 = ADR-0622 + 字段级规格正本 =
+字段级规格正本 =
 ``docs/develop/sr_od/application/currency_war/game_state/fields.md`` §3.3.4:刷新费 shop_refresh_cost 的值必须来自商店
 开态刷新钮标价的**现场读数**(识别失败=None,禁兜底改值;免费帧不写,None≠标价 0)。
-历史通道均不复活:面板徽标 OCR 读的是利息数值非刷价(ADR-0456,旁证 reader 在
-``cw_observation.read_shop_refresh_cost``);「刷新前后金币差倒推」已随 ADR-0622
+历史通道均不复活:面板徽标 OCR 读的是利息数值非刷价(旁证 reader 在
+``cw_observation.read_shop_refresh_cost``);「刷新前后金币差倒推」已随
 退役。本模块与徽标旁证 reader 的名字区分:**price=标价(本模块,写端权威)**,
 cost=徽标(cw_observation,旁证)。
 
@@ -72,7 +72,7 @@ def _parse_price_digit(texts: list[str]) -> int | None:
 
 
 def read_shop_refresh_price(ctx: SrContext, screen: MatLike) -> int | None:
-    """商店开态「刷新」圆钮标价现场读数(ADR-0622 字段写端;纯读)。
+    """商店开态「刷新」圆钮标价现场读数(字段写端;纯读)。
 
     :param screen: 商店开态整帧(RGB,controller 截图);None=测试注入态
       (mock ocr_service 不承载像素,仓内既有约定,同 ``cw_observation``)。

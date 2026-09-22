@@ -1,4 +1,4 @@
-"""observe_full:一次全面识别的组装层(ADR-0213 批次1)。
+"""observe_full:一次全面识别的组装层(批次1)。
 
 设计定案(方案 v4,五轮对抗 review 收敛):
 - 签名 ``observe_full(ctx, frame, *, tier, source)``——tier=

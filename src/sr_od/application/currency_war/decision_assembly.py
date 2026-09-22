@@ -26,7 +26,7 @@ def install_obs_ports() -> None:
     同点接通 kernel 侧合成特效帧态门(``cw_reconcile`` 注入槽,分包矩阵禁
     kernel→obs 直依;缺省关 = 门放行走既有连续 2 次确认防抖主干)。
 
-    (原「期望态留证 sink」expected_reconcile.jsonl 装配已随 ADR-0651
+    (原「期望态留证 sink」expected_reconcile.jsonl 装配已随
     两态制废除——覆盖点 diff 对账随条目表拆除,无 diff 行可落盘。)
     """
     from sr_od.application.currency_war.kernel.cw_reconcile import (

@@ -26,4 +26,4 @@
 
 ## 5. 依据
 
-[../action-logic-state.md](../action-logic-state.md) §3/§3A/§1.4(执行态跟踪账落点);`prep_actions.py` 模块头(执行器坐标系与「发出即职责完成」契约);`kernel/cw_action_report/` 包 `__init__` docstring(上报函数族规约与双域腿统一申报);`kernel/cw_exec_state.py` ADR-0316/ADR-0392 槽位语义注;[fields.md](../fields.md) §4.2(基础行为面);`research/merge_mechanics.md` §3(同名唯一恒成立);`research/equipment_mechanics.md` §1(穿着即合成/装备上限 3 件)。
+[../action-logic-state.md](../action-logic-state.md) §3/§3A/§1.4(执行态跟踪账落点);`prep_actions.py` 模块头(执行器坐标系与「发出即职责完成」契约);`kernel/cw_action_report/` 包 `__init__` docstring(上报函数族规约与双域腿统一申报);`kernel/cw_exec_state.py` /槽位语义注;[fields.md](../fields.md) §4.2(基础行为面);`research/merge_mechanics.md` §3(同名唯一恒成立);`research/equipment_mechanics.md` §1(穿着即合成/装备上限 3 件)。

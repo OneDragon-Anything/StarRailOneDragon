@@ -72,7 +72,7 @@ _SETTLE_DIFF_THRESHOLD: float = 2.0   # 稳帧判据:相邻两帧全图像素差
 def register_equip_worn(session, item_name: str, char_name: str,
                         row: str, slot: int,
                         produced_by: str = 'CwOpEquipAll') -> None:
-    """装备分布逻辑推进(两态制 ADR-0651;原 §3 B-6 行 M7 装备拖拽期望态)。
+    """装备分布逻辑推进(两态制 ;原 §3 B-6 行 M7 装备拖拽期望态)。
 
     拖拽发出即调(发出即登记,零比对形态:原「落点已验(CV-diff 判穿)
     后调」门随验穿拆除;实读帧照常覆盖,失配 = 推算 bug 留证修码):
@@ -115,9 +115,9 @@ def register_equip_worn(session, item_name: str, char_name: str,
 
 
 def _owned_wearable_names(hits: list) -> list[str]:
-    """read_equips 命中 → 穿戴类 owned 名单(工具类过滤;ADR-0358 搬运链写端)。
+    """read_equips 命中 → 穿戴类 owned 名单(工具类过滤;搬运链写端)。
 
-    与主流程 ``wearable`` 同过滤口径(非工具类即穿戴候选);ADR-0358 修法 A:owned
+    与主流程 ``wearable`` 同过滤口径(非工具类即穿戴候选);修法 A:owned
     持有面原先有读点、无写链,决策/遥测全盲(3,061 条 decisions 里 state.equips
     0 条非空)——本函数供 ``equip_all`` 写 ``session.last_owned_equips``。
     """
@@ -129,17 +129,17 @@ def _owned_wearable_names(hits: list) -> list[str]:
             and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
 
 
-# ===== hold 触发权归策略侧(ADR-0526 判据表;ADR-0601 §3-C1)=====
+# ===== hold 触发权归策略侧(判据表;C1)=====
 # hold/释放判据已整编迁移至 kernel/cw_equip_env(函数名清单与唯一消费位 =
 # prep_actions._build_equip_wear_plan 分发段);收窄后的逐件判定亦随求值块
-# 迁出(2026-09-09 批),本层零时机判断(与 ADR-0461 裁定 3 同理由),
+# 迁出(2026-09-09 批),本层零时机判断(与裁定 3 同理由),
 # 残留判据函数引用 = 违规回归(验收锁 test_cw_equip_plan_builder)。
 
 
 def get_equip_templates_cached(ctx: SrContext) -> dict[str, tuple[MatLike, tuple, np.ndarray]] | None:
     """加载 cw_equip SIFT 模板(缓存 ctx.cw_equip_templates,首次 load 后复用)。
 
-    模块级共享 helper(工具执行批 ADR-0532 整改:模板装载单一源,禁多处
+    模块级共享 helper(工具执行批 整改:模板装载单一源,禁多处
     各写一份装载逻辑);装备/工具执行面同源消费。
     """
     cached = getattr(ctx, 'cw_equip_templates', None)
@@ -202,7 +202,7 @@ def get_avatar_templates_cached(ctx: SrContext) -> AvatarTemplates | None:
 
 def record_zero_wear_defect(ctx: SrContext, equipped: int,
                             owned_names: list[str], stop_reason: str) -> None:
-    """零穿戴哨兵(W596/W593 方案②;纯观测,零行为变更;ADR-0601 §3-C1
+    """零穿戴哨兵(W596/W593 方案②;纯观测,零行为变更;C1
     起为**双挂点单一源**:op 执行面(拖拽落空/槽位坐标缺失/画面漂移)与
     分发段计划面(pool_empty/两 hold/分配方案空/分配对全部拉黑,经
     ``prep_actions._run_equip`` 空计划短路挂,equipped=0)。
@@ -212,7 +212,7 @@ def record_zero_wear_defect(ctx: SrContext, equipped: int,
     ``equip_zero_wear`` 一条(带 owned 名单、stop 原因与**辖域归域**;
     severity 走通道缺省 L2 观测,不停机)。病灶出处:局22(r3~r9 连续零
     穿戴无一报警,排查靠三段证据合围)——本哨兵让下次复发当轮可查台账归因。
-    round<3 不触发:r1~r2 开局 hold(ADR-0257)零穿戴是 by design。
+    round<3 不触发:r1~r2 开局 hold零穿戴是 by design。
     无 state(run 上下文缺失/离线)静默跳过。
     **辖域二分(18 号稿 §1.2)**:stop_reason 按归域分流裁定——
     strategy_by_design=策略 by-design(释放判据表解释);strategy_gap=
@@ -271,11 +271,11 @@ class CwOpEquipAll(SrOperation):
     """
 
     SCREEN_NAME: ClassVar[str] = '货币战争-备战'
-    # 失败状态具名常量(ADR-0601 §4;禁散字符串,判读侧可分键)——
+    # 失败状态具名常量(禁散字符串,判读侧可分键)——
     # 消费面 = run_record/日志判读与 prep_no_progress 停机留证归因。
     STATUS_SCREEN_DRIFTED: ClassVar[str] = \
         '画面漂移(批内非干净备战,执行环境失配)'
-    # 计划失效(ADR-0601 §3-C1;tools C3 同形):计划步件经首读+一次机械
+    # 计划失效(C1;tools C3 同形):计划步件经首读+一次机械
     # 现读重试仍不可定位(robust 合成消耗/列 reflow)→ round_fail 闩不置,
     # 下帧重派时分发段 _build_equip_wear_plan 对 fresh 帧重算 = 天然重算,
     # 保住期内穿戴极大性(合成产物当帧进入新计划)。
@@ -291,7 +291,7 @@ class CwOpEquipAll(SrOperation):
     FRONT_SLOT_COUNT: ClassVar[int] = _FRONT_SLOT_COUNT
 
     def __init__(self, ctx: SrContext, plan: list[EquipWearStep]):
-        """组合 op 构造(计划随指令下发;ADR-0601 §3-C1)。
+        """组合 op 构造(计划随指令下发;C1)。
 
         ``plan`` = 分发段 ``prep_actions._build_equip_wear_plan`` 产出的
         机械执行计划(EquipWearStep 列表),**必填无缺省**——缺计划无法
@@ -380,7 +380,7 @@ class CwOpEquipAll(SrOperation):
 
         排障修正:后排 area 前缀原硬编码「后排」(6 槽档),而占用读侧
         (M7 ``_row_specs``)与部署侧均走 ``select_back_layout`` 档位前缀
-        (「后排7槽」/「后排8槽」,ADR-0385)——布局非 6 槽时槽号→rect 错配
+        (「后排7槽」/「后排8槽」)——布局非 6 槽时槽号→rect 错配
         半个槽位,拖点落在邻槽(装备穿到别人身上/落空;复盘
         g_20260902_181254 A 条「back-3 拖点坐标可疑」的坐标侧根因)。
         修正 = 与占用读侧同源(布局选档单一入口);读档失败退 6 槽基线。
@@ -441,7 +441,7 @@ class CwOpEquipAll(SrOperation):
         tmpl_grays = self._get_tm_grays()
         if tmpl_grays is None:
             return self.round_fail('cw_equip TM grays 未加载(无法读槽位占位)')
-        # ===== 计划消费循环(ADR-0601 §3-C1:机械执行,禁二次求值)=====
+        # ===== 计划消费循环(C1:机械执行,禁二次求值)=====
         # 计划 = kernel/cw_equip_wear_plan 产出随构造下发(self.plan);
         # hold/释放/分配四 kernel 判据已随求值块迁出至 kernel 构造位——
         # 本文件对四名零字面引用(机械执行红线)。
@@ -467,7 +467,7 @@ class CwOpEquipAll(SrOperation):
             cur = self.screenshot()
             if self.check_and_update_current_screen(
                     cur, screen_name_list=[self.SCREEN_NAME]) != self.SCREEN_NAME:
-                # 执行断言(ADR-0601 §4 E2/E3;前置画面闸执行断言化裁定的
+                # 执行断言(E2/E3;前置画面闸执行断言化裁定的
                 # 批内延伸):批内画面漂移 = 执行环境失配,如实 round_fail
                 # 交回外循环重判,禁 break+success 把弃批记成假完成。
                 # 哨兵观测保留(纯观测零行为;stop_reason 串供分类域锁)。
@@ -479,7 +479,7 @@ class CwOpEquipAll(SrOperation):
                     CwOpEquipAll.STATUS_SCREEN_DRIFTED)
             hits = read_equips(cur, templates, equip_rect=equip_rect)
             _owned_last = [n for n, _, _ in hits]
-            # ADR-0358 修法 A 搬运链写端(W209g 断点②,ADR-0387 追加):
+            # 修法 A 搬运链写端(W209g 断点②,追加):
             # 写端**全量 hits**(工具进快照,采集层无权丢数据);每次现读
             # 都覆写(穿戴后 owned 减少,末次读=最新持有面)。主写端 =
             # 备战入口观察装配点(cw_screen_prep._observe heavy,P4 观察

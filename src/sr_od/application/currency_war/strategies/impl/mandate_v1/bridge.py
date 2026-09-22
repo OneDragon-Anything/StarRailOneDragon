@@ -10,16 +10,16 @@
   纯注册壳(``__module__`` 守卫要求壳类定义于本模块;生产路径职责分界 =
   画面 op 只做观察 + 调一个决策入口,**不加生产接线步**,R191 裁决)。
 
-商店线口径(步4b,STEP34_REPORT 裁量 #1 的接线兑现;ADR-0517 迁移批
+商店线口径(步4b,STEP34_REPORT 裁量 #1 的接线兑现;迁移批
 后形态):
 ``decide_shop_screen`` = 序列兼容驱动器(循环调 ``shop.decide_shop_action``
 单动作核,输入 = 容器单例
 ``game_state_of(session)``;生产执行侧入口 =
 ``decide_shop_action``,由商店画面 op 单动作循环消费)
 ——sim A/B 证明面=商店波(SIM_CONSUMPTION_MAP Q1)自此有行为载体。
-该驱动器自 ADR-0583 起降格出 ABC(基类缺省实现 = flow 层通用循环;
+该驱动器自 起降格出 ABC(基类缺省实现 = flow 层通用循环;
 本类覆写保留 mandate 特有记账:已买件名单/段序号/续段 token)。
-战略层方向重估自 ADR-0583 起内化进策略器(flow 层
+战略层方向重估自 起内化进策略器(flow 层
 ``_refresh_direction``,触发 = 黑板帧刷新代次标注)——旧「透传声明」
 (规格未给 cw4 战略层新形态,R189-1 ④-2 ②)随基类去策略专属语义
 一并消解,mandate 不再持有/覆写任何战略层直调面;换线权威 =
@@ -72,7 +72,7 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
     - 质量推迟帧(armed ∧ defer_by_quality)不发射,分键
       ``launch_quality_defer_frames``;评估异常帧分键
       ``launch_quality_eval_error`` 后照常发射(fail-open 防死锁,
-      ADR-0570 分界)——键单一源 = kernel cw_launch_admission 常量;
+      分界)——键单一源 = kernel cw_launch_admission 常量;
     - armed ∧ 帧级金判定 ``in_launch_spend_zone`` 命中(禁内联金息线
       比较)→ 受限商店访问意图 ``CwActionOpenShopParam()``(**普通开店
       形态**;进出店 = 普通 OpenShop/0n 路径,访问内消费由策略侧自限
@@ -183,7 +183,7 @@ class MandateV1Strategy(CwFlowStrategy):
     """新核(mandate_v1):三遍化决策序(证明→骨架→EV)+ 单动作循环发射。
 
     继承 ``CwFlowStrategy``(主流程驱动核,impl/flow.py)复用生命周期
-    冷建口、方向节拍内化刷新(ADR-0583)与 pick 族缺省实现(基线
+    冷建口、方向节拍内化刷新与 pick 族缺省实现(基线
     零改动);备战线决策与商店线驱动器被本类覆写为 cw4 形态
     (entry 三遍编排 / shop 商店波记账)。
     """
@@ -200,7 +200,7 @@ class MandateV1Strategy(CwFlowStrategy):
 
     def __init__(self, gs, config,
                  registry: DecisionV2Registry | None = None) -> None:
-        """核构造 + 标定注入(标定批 T-278/ADR-0639;终态契约 §2.1:gs/config
+        """核构造 + 标定注入(标定批 T-278/;终态契约 §2.1:gs/config
         透传基类构造注入)。
 
         ``calibration.apply()`` 幂等(只填 None 槽),把 Δ/ε₂ 标定值
@@ -228,7 +228,7 @@ class MandateV1Strategy(CwFlowStrategy):
         (方向刷新先于三遍编排)。管线宿主 = self.gs(state_of(gs) 经同源
         接线解析策略器状态;game_state_of(gs) 本体直通)。
         """
-        # 方向重估先于决策(触发 = 帧代次标注;ADR-0583 §3.3-①)
+        # 方向重估先于决策(触发 = 帧代次标注)
         self._consume_prep_direction_frame()
         # —— 前置发射位(达标臂的发射决策驻策略层)。armed 帧短路
         # 三遍编排;非 armed 帧 None = 原编排零变化。
@@ -286,7 +286,7 @@ class MandateV1Strategy(CwFlowStrategy):
 
     def decide_shop_screen(self, session: StrategySession | None = None,
                            config: CurrencyWarConfig | None = None) -> list:
-        """商店序列兼容驱动器(mandate 覆写;ADR-0517 迁移批 + ADR-0583 降格;
+        """商店序列兼容驱动器(mandate 覆写;迁移批 + 降格;
         形参 = 兼容宿主(sim/回放/序列锁调用面照旧传),决策已零参化)。
 
         生产执行侧已改调 :meth:`decide_shop_action`(单动作循环,
@@ -296,7 +296,7 @@ class MandateV1Strategy(CwFlowStrategy):
         simulate 前瞻消费),终结动作(CwActionRefreshShopParam)截停
         序列、CwActionCloseShopParam 收尾不入序列(与旧截断器的输出形态对齐)。与旧波
         批的输出等价是条件命题(波批逻辑态直写无残差时逐位一致;逻辑态残差史见
-        ADR-0517 §消灭的 bug 类)——帧级序列锁不预期保持绿,按锁纪律重推
+        §消灭的 bug 类)——帧级序列锁不预期保持绿,按锁纪律重推
         语义。观察帧缺失 = 观察层失约,抛错(禁静默按空态决策)。rng 中立。
         覆写存在理由 = mandate 特有记账(下方已买件/段序号/续段 token)。
         """
@@ -399,7 +399,7 @@ def decide_prep_frame(session: StrategySession, config: object,
         ev_arm = 'full'
     emitted = entry.emit(session, config,
                          ev_arm=ev_arm, registry=registry)
-    # route_tag 伴带透传(方案 v2.1 §3.3 通道载体主案,ADR-0596 收编):
+    # route_tag 伴带透传(方案 v2.1 §3.3 通道载体主案,收编):
     # 发射臂身份自 Emitted.reason 写入动作自带字段,消旧「actions 列表
     # 推导丢弃发射臂身份」的丢点。tag 定位 = 策略内部路由键(发射分支
     # 构造事实,非放行证据,T-153 治理立场对表);消费位唯一 = 备战域

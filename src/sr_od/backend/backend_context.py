@@ -307,7 +307,7 @@ class RunSlot:
                             self.app = op.op_name or op.__class__.__name__   # 优先 Operation.op_name(中文),空时类名
                         result = op.execute()
                     except StopRunInterrupted:
-                        # 停机守卫穿透到顶层(ADR-0396):收口「已停止」,终态计算
+                        # 停机守卫穿透到顶层:收口「已停止」,终态计算
                         # 按 '已停止' 前缀落 STOPPED,不误标执行异常。
                         result = OperationResult(success=False, status='已停止[guard]')
                     except Exception as e:  # noqa: BLE001 execute 抛异常也兜住,避免卡 RUNNING
@@ -317,11 +317,11 @@ class RunSlot:
                         failed_node = getattr(getattr(op, '_current_node', None), 'cn', None) if op is not None else None
                         with self._lock:
                             self.current_op = None
-                        # 正常收口而非 stop_running(ADR-0396):op 自然完成后清理运行态,
+                        # 正常收口而非 stop_running:op 自然完成后清理运行态,
                         # 不置停机中断闩——否则后续 MCP 手动操作(残局清理)会被守卫误拦。
                         run_context.finish_running()
         except StopRunInterrupted:
-            # 停机守卫穿透(ADR-0396,app 路径兜底:run_application 已收口,此为
+            # 停机守卫穿透(app 路径兜底:run_application 已收口,此为
             # refresh_config 等外层环节被拦的极端路径):不误标执行异常。
             result = OperationResult(success=False, status='已停止[guard]')
         except Exception as e:  # noqa: BLE001 兜底:refresh_config/run_application 等抛异常也固化,避免卡 RUNNING
@@ -1272,7 +1272,7 @@ class SrBackendContext:
         controller = self._ctx.controller
         if controller is None or not controller.is_game_window_ready:
             raise BackendNotReadyError('游戏窗口未就绪')
-        # 手动入口 = 停机后的显式外部接管:本地豁免不清全局停机闩(ADR-0406,
+        # 手动入口 = 停机后的显式外部接管:本地豁免不清全局停机闩(
         # 旧 consume 清闩会在 run 收口期摘守卫放幽灵输入)。豁免按线程隔离,
         # unwind 中的 run 线程输入仍被守卫拦截。
         with stop_guard_exemption():
@@ -1300,7 +1300,7 @@ class SrBackendContext:
         controller = self._ctx.controller
         if controller is None or not controller.is_game_window_ready:
             raise BackendNotReadyError('游戏窗口未就绪')
-        with stop_guard_exemption():  # 手动接管本地豁免,不清全局停机闩(ADR-0406)
+        with stop_guard_exemption():  # 手动接管本地豁免,不清全局停机闩
             controller.active_window()
             if press_time > 0:
                 # 走公开入口 btn_press(带停机守卫与后台模式处理),不直按 btn_controller
@@ -1330,7 +1330,7 @@ class SrBackendContext:
         controller = self._ctx.controller
         if controller is None or not controller.is_game_window_ready:
             raise BackendNotReadyError('游戏窗口未就绪')
-        with stop_guard_exemption():  # 手动接管本地豁免,不清全局停机闩(ADR-0406)
+        with stop_guard_exemption():  # 手动接管本地豁免,不清全局停机闩
             controller.active_window()
             controller.drag_to(Point(int(x2), int(y2)), start=Point(int(x1), int(y1)), duration=duration)
         return {'success': True, 'x1': int(x1), 'y1': int(y1), 'x2': int(x2), 'y2': int(y2), 'duration': duration}
@@ -1357,7 +1357,7 @@ class SrBackendContext:
         controller = self._ctx.controller
         if controller is None or not controller.is_game_window_ready:
             raise BackendNotReadyError('游戏窗口未就绪')
-        with stop_guard_exemption():  # 手动接管本地豁免,不清全局停机闩(ADR-0406)
+        with stop_guard_exemption():  # 手动接管本地豁免,不清全局停机闩
             use_cb = self._resolve_use_clipboard(use_clipboard)
             controller.active_window()
             if use_cb:

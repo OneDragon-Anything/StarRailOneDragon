@@ -69,8 +69,8 @@ class StrategyState:
     """
 
     # ===== 意向面(方向重估策略推导;局/轮;写者 = flow 层 _refresh_direction,
-    #       ADR-0583 内化——原 update_target 直调点收编进策略器决策入口)=====
-    target_comp: Comp | None = None   # 战略层目标阵容(方向刷新维护,ADR-0583)
+    #       内化——原 update_target 直调点收编进策略器决策入口)=====
+    target_comp: Comp | None = None   # 战略层目标阵容(方向刷新维护)
     # 弃 target 重选(防 commit 锁死不可达 target:方向刷新重选)。
     target_drought: int = 0
     # 待执行的部署意图(按 position_pref 决策落位)。
@@ -78,7 +78,7 @@ class StrategyState:
     # 过渡框架(仙舟/列车,''=未定):双轨期买/上/卖三侧的统一临时 target。
     transition_framework: str = ''
 
-    # ===== 定型面(ADR-0209 定型信号推导;局)=====
+    # ===== 定型面(定型信号推导;局)=====
     # CommitSignals(定型信号累积器;方向刷新首调时惰性建——
     # default_factory 会引环形导入,保留 None 惰性建模式)。
     commit_signals: object = None
@@ -106,7 +106,7 @@ class StrategyState:
     v3_blood_budget_rejects: int = 0
     v3_blood_budget_refresh_rejects: int = 0
 
-    # ===== P2 承接快照(ADR-0399;位面)=====
+    # ===== P2 承接快照(位面)=====
     v3_handoff: object = None
     v3_handoff_plane: int | None = None
 
@@ -122,16 +122,16 @@ class StrategyState:
 
     # ===== 相位与镜像(每轮重算;write_shop_mirrors 写)=====
     # 相位观测缺省 = ''(absence 语义;live 初值 'FORM' 由 create_session
-    # 唯一冷建口写入——ADR-0583 生命周期收编;
+    # 唯一冷建口写入——生命周期收编;
     # sim 直构 session 不经冷建口 → 恒 '',两条路径的旧读数各自保真)。
     v3_phase: str = ''
     v3_form_ok: bool = False         # 镜像现读写端(write_shop_mirrors/sim 发射帧)
     v3_b_t: int = 0                  # 板面目标线承重计数(每轮重算)
     v3_dp_posture: object = None     # DP 姿态轮缓存
     v3_mirror_key: tuple | None = None   # 镜像族轮键戳(单源=write_shop_mirrors)
-    v3_formed_stop: bool = False     # 成型停手(ADR-0343;行为面消费)
+    v3_formed_stop: bool = False     # 成型停手(行为面消费)
 
-    # ===== 补偿/稳态簿记(ADR-0326/0378;局)=====
+    # ===== 补偿/稳态簿记(局)=====
     v2_remedy_used: bool = False
     v2_steady_lv_used: bool = False
     v3_steady_lv_abandoned: int = 0
@@ -144,15 +144,14 @@ class StrategyState:
     v2_round_press_exempt: int = 0
     v2_round_press_copy: int = 0
 
-    # ===== 泄息指令与承接门(W332b/w227/ADR-0400/0403;轮)=====
+    # ===== 泄息指令与承接门(W332b/w227/;轮)=====
     v3_release: object = None
     v3_release_round: int | None = None
     # 义务实花披露(遥测键 sess_release_spent 透传源):写端=商店执行
     # 回执位(cw_op_buy_cards.accrue_release_spent,首版只计刷新实花,
-    # 「宁窄勿虚」口径申报归 ADR-0571),轮界清零承载=v3_disclosure_key
+    # 「宁窄勿虚」口径申报归 ),轮界清零承载=v3_disclosure_key
     # 键戳(economy_cycle.disclose_budget 写端);读端=recorder sess_*
     # 透传 + cw_decision_trace 披露族。披露面字段,禁决策判据消费
-    # (ADR-0571)。
     v3_release_spent: int = 0
     v3_handoff_gap: int = 0
     v3_handoff_hp_proj: int | None = None
@@ -166,15 +165,14 @@ class StrategyState:
     v3_alloc_frame: dict | None = None
     # 储备线披露(遥测键 sess_reserve_cap 透传源;写端=economy_cycle.
     # disclose_budget 每备战决策帧幂等覆写;读端=recorder sess_* 透传
-    # + cw_decision_trace 披露族。披露面字段,禁决策判据消费,
-    # ADR-0571)。
+    # + cw_decision_trace 披露族。披露面字段,禁决策判据消费
     v3_reserve_cap: int = 0
 
     # ===== 账外补充(实施批按 §6.1 收编的策略侧动态属性;产生者/消费
     # 面注释见原写入/读出点)=====
     # 储备溢余披露(遥测键 sess_reserve_overflow 透传源;写端=economy_
     # cycle.disclose_budget,读端=recorder sess_* 透传 + cw_decision_
-    # trace 披露族。披露面字段,禁决策判据消费,ADR-0571)。
+    # trace 披露族。披露面字段,禁决策判据消费)。
     v3_reserve_overflow: int = 0
     # 义务预算披露(遥测键 sess_release_budget 透传源;写端/读端同上)。
     v3_release_budget: int = 0
@@ -188,7 +186,7 @@ class StrategyState:
     # 当前 (plane, round) ⇒ v3_release_spent/v3_release_reason 清零并
     # 盖新戳。不复用 v3_release_round(W332b 泄息指令旧轮语义)。
     v3_disclosure_key: tuple[int, int] | None = None
-    # ADR-0348 ↺ 扑满节点识别标记(ADR-0580):写者
+    # ↺ 扑满节点识别标记:写者
     # = mandate_v1 奖励帧判定位(shop/mandate 两栈同值幂等写,值源 =
     # kernel.cw_reward_node.is_piggy_reward_frame);读面 = engine 轮快照
     # /telemetry schema piggy_reward。
@@ -202,7 +200,7 @@ class StrategyState:
     # 换线排除集(cw4 换线判据族读;proof/line_switch 消费)。
     drought_excluded: set = field(default_factory=set)
     # 息帽覆写单一源 = session.active_strategies 经 aggregate_economy
-    # 聚合(cw_economy.cap_resolved_of_session 消费;ADR-0598)。
+    # 聚合(cw_economy.cap_resolved_of_session 消费)。
 
     # ===== M2 停摆续段缓存(T-82 必花臂重试风暴;段标识/结论闩/帧动作
     # token 三载体;为什么需要 = 商店/备战帧循环对「输入不变 ⇒ 拒绝不变」
@@ -240,11 +238,11 @@ class StrategyState:
     # M1″ pending 臂(mandate 写,deploy 消费后清 None)。
     cw4_m1p_arm_pending: object = None
     # M1″ 计划载荷 pending(mandate 写,deploy 消费后清 None;T-279 R1/
-    # ADR-0640):{'sell': [victim 名], 'up': [上序名单],
+    # ):{'sell': [victim 名], 'up': [上序名单],
     # 'trans_domain': 计划时点转型域事实, 'occ': 计划时点板占用数}。
     # 消费面 = CwScreenDeploy 部署段(R1-a 直投核对 F2 名字级三点式 + R1-b
     # 域辖域钉定);载荷仅作核对与快路径准入,**不改卖出仲裁权**(卖谁
-    # 仍由执行侧现读仲裁,在册分工维持,ADR-0640 分工裁决)。
+    # 仍由执行侧现读仲裁,在册分工维持,分工裁决)。
     cw4_m1p_plan_pending: object = None
     # 必花域相位闩(同值重入防抖)。
     cw4_must_spend_phase: object = None
@@ -260,7 +258,7 @@ class StrategyState:
     cw4_stale_seen_rounds: dict = field(default_factory=dict)
     # 本次商店访问已买名单(bridge 清账/op 落账跨层共享)。
     cw4_visit_bought_names: list = field(default_factory=list)
-    # 统一发射登记簿(T-126 批 3;ADR-0585 §2/§3,P78 窗口段载体):
+    # 统一发射登记簿(T-126 批 3;/§3,P78 窗口段载体):
     # 名 → (买因, 登记轮),买因闭集 = sell_gate.LAUNCH_CAUSES。前身 =
     # T3 垫保簿(N3 闭环登记契约,名→轮 dict)——T3 簿与 ②(b) 压库簿
     # 完全合一(编者裁);属性名沿用旧簿:执行侧 cw_op_deploy 按鸭子
@@ -277,7 +275,7 @@ class StrategyState:
     #(close_on_sell/deploy/merge/round/switch)落 cw4_counters。
     cw4_fuel_filler_stall_buys: dict = field(default_factory=dict)
 
-    # ===== T-159 备战旗标状态机(方案 v2.1 §3.1 载体层级裁决,ADR-0596
+    # ===== T-159 备战旗标状态机(方案 v2.1 §3.1 载体层级裁决,
     # 收编:旗标语义域 = 跨画面访问的复查义务,必须比 visit 长、比对局短,
     # session 是唯一同时满足两界的现役层;全部键式,(位面, 轮次) 相等
     # 命中,节点推进自动失效,免战跳变/恢复局冷建零特判)=====
@@ -291,9 +289,9 @@ class StrategyState:
     # 现役仅 obligation 类置位(press/EV 席满属 discretionary,排除在
     # 重进之外,§5.3 [13])。
     # 在店快照 = 置位时点「在店的缺员 (名, 费用)」子集(T-161 F2,
-    # ADR-0599)。为什么置位时点快照而非臂时点现读:消费臂在备战域,
+    # )。为什么置位时点快照而非臂时点现读:消费臂在备战域,
     # obs 对 spec 无商店域的阶段把 state.shop 清空(「没牌」观测真值,
-    # ADR-0462),现读恒空 = 闭环被前件永久闷死(T-161 方案审 F2-1
+    # ),现读恒空 = 闭环被前件永久闷死(T-161 方案审 F2-1
     # 阻断级发现)。费用 = 卡面费用(游戏定义量,节点内不变)随置位
     # 快照;金不在快照里,臂时点现读——节点内金会变(晶矿入账/他臂
     # 卖出退金),快照金会把「可负担」错钉在置位时点、错杀 late-flip。

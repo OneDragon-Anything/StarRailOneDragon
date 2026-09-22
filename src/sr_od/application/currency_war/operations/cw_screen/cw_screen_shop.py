@@ -94,13 +94,13 @@ def _r1_retry_read_hp(read_fn) -> int | None:
 
 
 def sell_guard_ok(expected: str | None, live: str | None) -> bool:
-    """卖前对拍守卫(ADR-0329 件2 设计章2.5 轻守卫)。
+    """卖前对拍守卫(设计章2.5 轻守卫)。
 
     生成期快照 ``state.bench[idx].char_id``(期望名)vs 执行期实况
     ``tracked_bench_chars`` 现槽名——不符 = 槽位内容已被本循环前序动作消费
     (3合1 merge 删件/前笔卖出)→ 整笔跳过(stale_proposal,与 cw_state 拒绝
     语义同词)。两表同源于循环顶(``state.bench`` 按 tracked 下标直拷播种,
-    T-308/ADR-0646 S1),mid-loop 漂移必被抓。残余风险(不防「tracked 名字
+    T-308/S1),mid-loop 漂移必被抓。残余风险(不防「tracked 名字
     本身错」)= buy-OCR 误读,属既有跟踪保真度问题(迁移审计 w57(git 历史)
     F6),不在本批根治。
     """
@@ -129,7 +129,7 @@ def _shop_entry_read(op: SrOperation, match: 'CurrencyWarMatch',
     _entry_shot = op.screenshot()
     _entry = read_game_state(op.ctx, _entry_shot,
                              phase=PHASE_PREP_SHOP_OPEN,
-                             screen_name=SHOP_SCREEN_NAME)   # ADR-0462 开店动作期
+                             screen_name=SHOP_SCREEN_NAME)   # 开店动作期
     _unk = [i + 1 for i, s in enumerate(_entry.shop)
             if getattr(s, 'kind', '') == 'unknown']
     if _unk:
@@ -238,11 +238,11 @@ def apply_action_outcome(
 def accrue_release_spent(match: 'CurrencyWarMatch',
                          action: 'CwActionBuyCardParam | CwActionRefreshShopParam | CwActionSellBenchParam | CwActionLevelUpShopParam | CwActionCloseShopParam',
                          ok: bool) -> None:
-    """v3_release_spent 执行回执位记账(T-88 写点;裁决 = ADR-0571)。
+    """v3_release_spent 执行回执位记账(T-88 写点)。
 
     首版口径 = **只计刷新实花**(「宁窄勿虚」的遥测诚实性选择:买牌/
     升级是否计入「义务实花」全渠道口径在 mandate_v1 语义下未经证明,
-    混入会虚高——扩口径挂 ADR-0571 待裁)。刷新单通道前提:R1 = 今日
+    混入会虚高——扩口径挂 待裁)。刷新单通道前提:R1 = 今日
     唯一刷新发射点(kernel/cw_state.CwActionRefreshShopParam.reason 值域契约)。
     记账位语义 = 动作执行成功回执(本函数在 apply_action_outcome 之后
     调用),轮键 = 容器读口现读(迁移批 3.2:原入口帧 plane/round 形参
@@ -252,7 +252,7 @@ def accrue_release_spent(match: 'CurrencyWarMatch',
     本轮 prep 装配已跑)才累计——非 mandate_v1 栈(异型策略状态对象无
     键戳)或键戳过期帧不累计,防「spent>0 而预算三字段=None」的混合行
     形态(recorder「default 栈帧无写点 → None 语义」声明)。字段经防御
-    getattr 访问(披露面形态;ADR-0563 B4 收缩申报)。
+    getattr 访问(披露面形态;B4 收缩申报)。
     """
     from sr_od.application.currency_war.kernel.cw_vocab import (
         CwActionRefreshShopParam,
@@ -280,7 +280,7 @@ def note_shop_action_receipt(match: 'CurrencyWarMatch', action: 'Action', *,
     决策动作 node 的逐动作执行落地写点:每动作 op 一条 logic_action 行,
     发出即簿记非验证(M1③):applied = 动作 op 自身机械事实透传,零成败
     判定。CloseShop **不写**(「终结不入 decisions 行」契约;执行事实
-    回执由动作 op 自身承担)。journal 常开(ADR-0634)回执写入无条件,
+    回执由动作 op 自身承担)。journal 常开回执写入无条件,
     无局跳过在 kernel 口
     (:func:`~...kernel.cw_game_state.note_action_receipt`);
     best-effort 不阻塞循环。
@@ -465,7 +465,7 @@ class CwScreenShop(SrOperation):
         self._config = config
         # 牌位/升级/刷新中心从 screen_info 直取;area 缺失 = 建档漂移,显式
         # round_fail(信息带 area 名),禁兜底坐标静默点击(坐标单一真相源)。
-        # 方向视图由策略器决策入口内化刷新(帧代次标注触发,ADR-0583)。
+        # 方向视图由策略器决策入口内化刷新(帧代次标注触发)。
         self._click_pts = shop_card_click_points(self.ctx)
         self._level_btn = area_center(self.ctx, BUY_EXP_AREA)
         if self._level_btn is None:
@@ -508,7 +508,7 @@ class CwScreenShop(SrOperation):
         # 播种单一源 = tracked_bench_chars(带 star+merge,mutate/对账全程同步)。
         # 空 = bench 真空(全部署/合成清空的事实正确态),不回退任何残账——
         # 旧 tracked_bench 回退分支已退役:单动作架构下「首轮」场景由入口
-        # heavy 读屏重建(ADR-0517 决策 8,入口观察即对账);残账仅 CwActionBuyCardParam
+        # heavy 读屏重建(入口观察即对账);残账仅 CwActionBuyCardParam
         # 追加、无人清理,回退会复活陈旧名(实证 = 2026-09-05 CwActionOpenShopParam
         # 双账分叉事故,诊断档
         # .debug/temp/currency_war/20260905_openshop_fork_diag/report.md)。
@@ -532,11 +532,11 @@ class CwScreenShop(SrOperation):
         if not _entry.shop:
             log.info('[cw] 店开入口牌面空(买空/OCR 失读窗):离屏语义关断,'
                      '容器沿用现值牌面决策')
-        # 帧代次标注(ADR-0583 §3.4):每访问入口 = full(方向视图由
+        # 帧代次标注:每访问入口 = full(方向视图由
         # decide_shop_action 入口消费刷新;刷新后新访问 = 全新入口重估,
         # 限频由方向重算键守卫「每 game-round 恰一次」承载)。
         game_state_of(match.session).frame_class_shop = 'full'
-        # 店开观察帧披露覆写(T-88 双写第二写点;ADR-0571 §2.2):备战
+        # 店开观察帧披露覆写(T-88 双写第二写点):备战
         # 决策入口披露帧关店态 gold 过 F2 门不可得 ⇒ overflow/budget 在
         # prep 帧恒 0(金未采语义);此处店开帧 gold 为真值,经同一现算链
         # (economy_cycle.disclose_budget)覆写三预算字段
@@ -557,7 +557,7 @@ class CwScreenShop(SrOperation):
                         exc_info=True)
         # 本访问已买件(carried 融合:R2-N1 刚买件首卖偏好)访问级清零。
         strategy_state_of(match.session).cw4_visit_bought_names = []
-        # A2:target 由策略器状态管理(方向刷新写,ADR-0583 内化)。
+        # A2:target 由策略器状态管理(方向刷新写,内化)。
         _tc = getattr(strategy_state_of(match.session), 'target_comp', None)
         target_name = _tc.name if _tc is not None else ''
         _fp_v = _form_progress(_tc, match.session) if _tc is not None else -1.0

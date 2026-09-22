@@ -9,7 +9,7 @@
 ``区域-卡名行`` area + ``_ocr`` OCR + 正则筛选,**不碰** session / 全局。
 
 **刻意不产 rarity(品质)**:投资策略全量在 ``INVESTMENT_STRATEGIES``(``cw_investments``,
-plaza API base 335 条,ADR-0150),按 spec「不稳定字段不硬塞」v1 只产可靠的名列表;
+plaza API base 335 条),按 spec「不稳定字段不硬塞」v1 只产可靠的名列表;
 rarity 消费方可按名查注册表(需要时再加进 extras)。
 """
 from __future__ import annotations

@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
 def register_confirm_arrival(session: 'StrategySession | None', op: str, item: str,
                              produced_by: str = 'overlay_confirm') -> None:
-    """overlay 选卡确认逻辑推进(两态制 ADR-0651:推算值直接写 session 字段,
+    """overlay 选卡确认逻辑推进(两态制 :推算值直接写 session 字段,
     策略器立即可读;实读帧照常覆盖)。
 
     语义按 op 分道:

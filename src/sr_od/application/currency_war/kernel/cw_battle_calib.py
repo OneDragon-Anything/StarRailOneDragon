@@ -55,12 +55,12 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 
 
 def deployed_star_depth(gs: GameState) -> int:
-    """净星深 = 上场件 Σ(star−1)(全量口径,同 ADR-0399
+    """净星深 = 上场件 Σ(star−1)(全量口径,同
     HandoffSnapshot star_sum−deployed_n;纯 state 可算、生产/sim/
     离线回放三面同式)。
 
-    消费点:p2_form_key 星级分量(ADR-0401)与 **Δ池 boss 桶键**
-    (ADR-0404,替代 Σboard——修 3合1 升星使 Σboard −2/次键落
+    消费点:p2_form_key 星级分量与 **Δ池 boss 桶键**
+    (替代 Σboard——修 3合1 升星使 Σboard −2/次键落
     浅桶的方向冲突;净星深下 1★→2★ 合并键 +1 永不落浅桶,买 bench
     副本不扰动)。已知边界:2★→3★ 合并键 −1(3 副本 Σ(star−1)=3 →
     载体 2),仅当键恰为 3 的倍数时跨桶——高级合并当前语料零样本,
@@ -81,8 +81,8 @@ def _star_depth_from_rows(rows) -> int:
 
 
 def p2_form_key(gs: GameState, calib: P2CombatCalib) -> float:
-    """form=板面质量键(ADR-0377:engines+level 折算;
-    ADR-0401 扩展:+星级深度折算)。
+    """form=板面质量键(:engines+level 折算;
+    扩展:+星级深度折算)。
 
     engines = ``_settle_rung`` 同源(deployed 口径四体系达成数,0-4);
     P2 实测:deployed 口径与掉血对应最干净、板深无区分度。
@@ -137,7 +137,7 @@ def p2_combat_delta(gs: GameState, node: str, round_num: int,
 
 
 def node_win_p(node_type: str, round_num: int = 0) -> float:
-    """节点胜率单一取值口(ADR-0308;回退层胜负面)。
+    """节点胜率单一取值口(回退层胜负面)。
 
     (node, round) 实测组合优先(``NODE_WIN_P_LADDER``),缺组合退
     节点类型边际(``NODE_WIN_P_BY_TYPE``)。语料边界见常量注释:
@@ -153,7 +153,7 @@ def node_win_p(node_type: str, round_num: int = 0) -> float:
 
 def battle_delta(round_num: int, dir_round: int,
                  rng: random.Random) -> int:
-    """普通战斗 HP 变化(校准层回退;ADR-0308)。
+    """普通战斗 HP 变化(校准层回退)。
 
     胜负面 = 实机实测阶梯 ``node_win_p('battle', round_num)``
     (n=192;旧方向二元门控「已立→胜」废弃——胜率从未按节点实测,
@@ -183,11 +183,11 @@ def boss_delta(dir_round: int, rng: random.Random,
 
 
 def _settle_rung(gs: GameState) -> int:
-    """ADR-0279:结算时点成型度 rung(boss_settle_delta 与 battle/
-    encounter(v11,ADR-0407)Δ池 rung 分桶的采样键**单一源**)。
+    """:结算时点成型度 rung(boss_settle_delta 与 battle/
+    encounter(v11)Δ池 rung 分桶的采样键**单一源**)。
 
     口径 = _engines_count(四体系达成数:仙舟3/列车2/DOT2/希儿系),
-    输入 = **board 全集口径**(ADR-0312,口径统一源=_recount_board——对齐生产
+    输入 = **board 全集口径**(口径统一源=_recount_board——对齐生产
     outcomes board_before 的全集+星徽口径;旧 _board_factions_of 输入
     缺星徽贡献,星徽局 rung 系统性偏低落错桶)+上场名单(希儿系单卡判据)。
     """
@@ -201,11 +201,11 @@ def _settle_rung(gs: GameState) -> int:
 
 def boss_settle_delta(gs: GameState, dir_round: int,
                       rng: random.Random) -> int:
-    """ADR-0308:boss Δ池桶不可达时的回退结算(胜负面=实测阶梯)。
+    """:boss Δ池桶不可达时的回退结算(胜负面=实测阶梯)。
 
     胜 → ``BOSS_WIN_DELTA`` 小额(掷 ``node_win_p('boss', round)``,
     n=192 实测 0.05);负 → 旧 ``boss_delta`` 档(幅度层保留)。
-    旧 rung 条件胜率(ADR-0277/0306 的 0/0/0.25 + rung2 外推)已被
+    旧 rung 条件胜率(的 0/0/0.25 + rung2 外推)已被
     实测边际替换——语料是旧策略病局镜像,无条件性可标(成型度
     条件性等新策略语料,见 ``NODE_WIN_P_LADDER`` 注释)。
     仅当 ``live_delta_for`` 返 None(无可及桶)时由调用方使用;
@@ -218,8 +218,8 @@ def boss_settle_delta(gs: GameState, dir_round: int,
 
 def node_delta(node: str, round_num: int, dir_round: int,
                rng: random.Random, *, plane: int = 1) -> int:
-    """按节点类型的 HP 变化(分层;ADR-0292 起 reward/supply 的
-    **池回退档**——Δ池可及时结算侧优先池采样;ADR-0308 起战斗类
+    """按节点类型的 HP 变化(分层;起 reward/supply 的
+    **池回退档**——Δ池可及时结算侧优先池采样;起战斗类
     节点回退档胜负面 = 实机实测阶梯 ``node_win_p``):
     reward/supply 零战力要求 → 不掉血(回退档 +2 长线作战回血观测,
     池真值同分布);
@@ -228,7 +228,7 @@ def node_delta(node: str, round_num: int, dir_round: int,
     (档位不可观,均值近似);
     boss → 阶梯掷胜(0.05),胜 +2/负 boss 档。
 
-    plane≥2(ADR-0362):battle 回退档换 **P2 掉血带**——
+    plane≥2:battle 回退档换 **P2 掉血带**——
     胜率 P2_BATTLE_WIN_P(0.11)/负 -15~-17 均匀带(语料实证,
     P1 阶梯的 r3/r4 战斗胜率与幅度带都不辖 P2);encounter/boss
     沿用 P1 档+标注(P2 语料 3/2 行不足,池可及时优先池采样)。"""
@@ -243,7 +243,7 @@ def node_delta(node: str, round_num: int, dir_round: int,
             return BOSS_WIN_DELTA
         return boss_delta(dir_round, rng)
     if plane >= 2:
-        # ADR-0362:P2 battle 回退档(掉血带 15-17,语料实证)
+        # :P2 battle 回退档(掉血带 15-17,语料实证)
         if rng.random() < P2_BATTLE_WIN_P:
             return rng.choice(WIN_DELTAS)
         return -rng.randint(P2_LOSS_BAND[0], P2_LOSS_BAND[1])
@@ -259,7 +259,7 @@ def _board_factions_of(deployed) -> dict[str, int]:
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS as _CH
     out: dict[str, int] = {}
     for d in (deployed or []):
-        if d is None:   # ADR-0392 槽位表空槽
+        if d is None:   # 槽位表空槽
             continue
         cid = getattr(d, 'char_id', '') or ''
         ch = _CH.get(cid)
@@ -276,7 +276,7 @@ board_factions_of = _board_factions_of
 
 
 def _board_counts_of(deployed) -> dict[str, int]:
-    """board 全集计数(ADR-0312,口径统一)。
+    """board 全集计数(口径统一)。
 
     **= ``cw_state._recount_board`` 本体**(alias import,单一源)——
     「主阵营逐件累加」口径不可用:state.board 消费方(recipe 门/
@@ -384,7 +384,7 @@ def _battles_before_engines(res, target: int = 2) -> int | None:
 
 
 def _deployable_depth(gs: GameState) -> int:
-    """板深 = **Σboard(全集口径)**(ADR-0312,桶键统一)。
+    """板深 = **Σboard(全集口径)**(桶键统一)。
 
     池语料的板深 = decisions 行 state.board 求和(实机全集口径,双标签
     角色每人贡献 ≥2)——sim 采样键若用 ``min(level, len(deployed))``
@@ -395,8 +395,8 @@ def _deployable_depth(gs: GameState) -> int:
     「读 deployed 不数 bench」语义由 board=_recount_board
     (deployed 派生)间接保留。
     **辖域(v11 后)**:reward/supply 桶键与观测面(depth_trail/账本);
-    boss 桶键=净星深(ADR-0404,deployed_star_depth);encounter
-    桶键=rung(v11/ADR-0407,_settle_rung 同源;depth 键下期望伤害
+    boss 桶键=净星深(deployed_star_depth);encounter
+    桶键=rung(v11/,_settle_rung 同源;depth 键下期望伤害
     真平——P1 配对实证「主通道断裂」的 encounter 维由扩容+键查证裁决:
     板深维不可兑换,rung 维可辨)。
     """
@@ -404,7 +404,7 @@ def _deployable_depth(gs: GameState) -> int:
 
 
 def _roll_rotation(rng: random.Random, level: int) -> dict[int, float] | None:
-    """本备战期轮岗事件(ADR-0286;审计项 F4):概率 ROTATION_CHANCE 掷中 →
+    """本备战期轮岗事件(审计项 F4):概率 ROTATION_CHANCE 掷中 →
     随机一档(基线 0<p<0.5 才可能被翻倍)×2 → 完整概率表;
     未掷中/该等级无可翻倍档 → None(基线表,生产「未读到概率条」同态)。
 

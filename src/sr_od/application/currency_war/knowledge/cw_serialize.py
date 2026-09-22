@@ -41,7 +41,7 @@ def _to_jsonable(obj: Any) -> Any:
 def serialize_intention(ist: Any) -> dict[str, Any] | None:
     """v3 意向状态(IntentionState)→ JSON-safe dict(遥测判读供给)。
 
-    ADR-0336 后锁定真值在 ``strategy_state_of(session).v3_intention``,但 decisions 行
+    后锁定真值在 ``strategy_state_of(session).v3_intention``,但 decisions 行
     只有恒空的 v1 遗留键(``v2_locked_line``/``v2_mode``)——实机判读
     「锁定时点/锁定目标」不可读,只能日志考古。本序列化把意向状态机
     全量落遥测(「锁定目标改过渡配方」判读依赖它)。
@@ -53,7 +53,7 @@ def serialize_intention(ist: Any) -> dict[str, Any] | None:
       嵌套 LineTrack 同构)——IntentionState 字段演进时自动跟上,
       不改本函数。
 
-    **可变容器深拷贝(ADR-0378)**:dict/list 字段值经
+    **可变容器深拷贝**:dict/list 字段值经
     ``_to_jsonable`` 递归拷贝(嵌套 dataclass 走 asdict=深拷贝)——
     ``tracks: dict[str, LineTrack]`` 是**活引用**,旧版直接把引用
     落进账本行,session 后续轮原地改 LineTrack 会污染**已落账的
@@ -72,7 +72,7 @@ def serialize_intention(ist: Any) -> dict[str, Any] | None:
         elif is_dataclass(v):
             out[f.name] = _to_jsonable(v)
         elif isinstance(v, (dict, list)):
-            # `w194_p2line/`/ADR-0378:可变容器深拷贝落账(活引用污染防线,
+            # `w194_p2line/`/:可变容器深拷贝落账(活引用污染防线,
             # 见 docstring);tuple 不可变不辖(类型不漂移)
             out[f.name] = _to_jsonable(v)
         else:

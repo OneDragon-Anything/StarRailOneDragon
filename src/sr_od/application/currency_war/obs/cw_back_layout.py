@@ -1,4 +1,4 @@
-"""货币战争 **后排槽位布局**(双通道对账:公式 + CV 实测;ADR-0385,
+"""货币战争 **后排槽位布局**(双通道对账:公式 + CV 实测,
 2026-08-26 W209 事故响应批 + 同日口述双通道指令修订)。
 
 机制(用户口述权威,docs/game/currency_war/research/board_structure.md):
@@ -8,7 +8,7 @@
   cap 超过 level,差值即后台扩展量——diff 0 → 6 格基线;diff==1(钻石+1)
   → 7 格**已建档**(2026-08-26 佩佩局交互实锤+覆盖拖测;几何=**整排居中
   重排** 中心 534..1386,screen_info ``后排7槽-1..7``;居中勘误见
-  :data:`_LAYOUT_PREFIX` 注与 ADR-0390);diff 2 → 8 格(393-1529 带,
+  :data:`_LAYOUT_PREFIX` 注);diff 2 → 8 格(393-1529 带,
   狸猫局交互实拍,screen_info ``后排8槽-1..8``);diff≥3 → 裁决值 9,
   9 档**已交互建档**(2026-09-12 实机交互实锤:位面 1-3 lv4/cap7 局拖拽
   逐位落位吻合 + 槽 9 点击开浮窗,screen_info ``后排9槽-1..9``,
@@ -21,8 +21,8 @@
 **双通道对账**(口述指令 2026-08-26 追加,两通道都做):
 
 1. **公式通道**::func:`back_slots_from_cap_diff`「6+(cap−level)」——cap =
-   ``read_deploy_cap_debounced``(paddle 直读 + ADR-0286 域防抖:域外重读一帧,
-   仍域外拒信退基线,W218/ADR-0395 接线;显式传 cap 的调用方自担防抖),
+   ``read_deploy_cap_debounced``(paddle 直读 + 域防抖:域外重读一帧,
+   仍域外拒信退基线,W218/接线;显式传 cap 的调用方自担防抖),
    level = session 等级链(单调链防毒化)。
    「钻石局检测」由此消解(无需识别钻石图标,两 OCR 读数相减即扩展量)。
 2. **CV 通道**::func:`cv_back_slots` 画面实测——后排 y 带槽位存在性签名
@@ -42,19 +42,18 @@
    diff≥3 直读 9。**未建档新档位**(>9 域外/CV 新观察)→ 8 格超集运行
    (读全扩展带;拖到不存在格被游戏拒 = 廉价失败方向)+ 留证钩子
    (``cw_identity_obs.read_deployed_rows``,n_raw 未建档时 obs_conflict
-   留证+去重截图引导人工经 MCP 采集;ADR-0385 件①,7/9 格即按此流程
+   留证+去重截图引导人工经 MCP 采集,7/9 格即按此流程
    闭合后钩子自然静默)。旧「lv6=7 格待采」留证机器
    (note_pending_7slots/_PENDING_7SLOT_LEVELS)随 level 驱动模型作废清理
-   (ADR-0385 件②)。
 
-旧 level 驱动模型(ADR-0281「level≥7→8 格」)**归因错误**(其实证局狸猫局
+旧 level 驱动模型(「level≥7→8 格」)**归因错误**(其实证局狸猫局
 本身带召唤物=cap 差,不是 level),本模块勘误;level 只进 cap 板满门,
 不进布局选档。run 26(lv8 无召唤物局)按 8 格坐标拖不存在的 7/8 号格 +
 幻影空位把部署卡死在 bench = 崩坏根因①。
 
-**ADR-0281 复核结论(W292,W285 关键实拍 3 帧全部落在本模块公式上)**:
+**复核结论(W292,W285 关键实拍 3 帧全部落在本模块公式上)**:
 「lv6/lv7 → 7 格待采」假设 **死档确认,7 槽 levels 集 = ∅**(7 格档由
-cap 差驱动,diff==1,与 level 无关;ADR-0385 已落地,本复核补实拍证据):
+cap 差驱动,diff==1,与 level 无关;已落地,本复核补实拍证据):
 2a55bb42(lv6 cap6 diff0)后排实画 **6 格**、9d64caf0(lv6 cap8 diff2)
 实画 **8 格**、5dd027ab(lv7 cap7 diff0)实画 **6 格**——三帧无一落
 「level 驱动 7 格」预测,全部与 6+(cap−level) 自洽。37fa3b88(1-1)
@@ -76,7 +75,7 @@ cap 差驱动,diff==1,与 level 无关;ADR-0385 已落地,本复核补实拍证�
 
 单一真相源 = screen_info(6 槽 = ``后排-1..6``;7 槽 = ``后排7槽-1..7``;
 8 槽 = ``后排8槽-1..8``;9 槽 = ``后排9槽-1..9``)。
-旧 10/11 档是循环论证幻影(ADR-0281),禁再登记;「后排6槽-P2开局局」
+旧 10/11 档是循环论证幻影,禁再登记;「后排6槽-P2开局局」
 (改名前档案名:后排7槽-P2开局局,见 sr-od-test README_W535_RENAME.md)
 实拍帧经 CV 复核两端扩展位均为背景(旧 7 槽观察同属幻影,实为 6 格)。
 系统单位恒最右模型与布局自检(``cw_identity_obs.check_system_unit_layout``)
@@ -95,13 +94,13 @@ if TYPE_CHECKING:
 
 #: 槽数 → screen_info 布局前缀(6 槽 = 基线「后排-N」;7 槽 = 「后排7槽-N」;
 #: 8 槽 = 「后排8槽-N」;9 槽 = 「后排9槽-N」)。各族几何 = **整排居中重排**
-#: (排中心恒 960,pitch 142,ADR-0390),带随档对称扩展:
+#: (排中心恒 960,pitch 142),带随档对称扩展:
 #: 6 格 604..1316 / 7 格 534..1386 / 8 格 464..1458 / 9 格 392..1528(中心)、
 #: 321..1599(格带缘)——四档各自居中,不共享列位。**旧记「7 格=6 格右扩一格,
 #: 佩佩中心 1458」错位 +71px**(2026-08-26 勘误:点击面板交互实锤——点真
 #: 中心 534/1390 开详情,点旧记中心 604/746/1458 全无响应;占用台座扫峰
 #: 左缘 -70 校正后全落 534/818/1102/1386;万敌 246 覆盖拖测逐位验证)。
-#: ⚠️ 10/11 档是循环论证幻影(ADR-0281),禁登记;9 格 = 后台物理上限
+#: ⚠️ 10/11 档是循环论证幻影,禁登记;9 格 = 后台物理上限
 #: (用户口述真值),已交互建档(见下)。
 _LAYOUT_PREFIX: dict[int, str] = {
     6: '后排',
@@ -118,7 +117,7 @@ _BACK_SLOTS_BASE: int = 6
 #: 物扩展下后台最多 9 格)。历史修订:旧值 2(封顶 8 格超集)按上限 9 真值
 #: 勘误——diff>2 已有实拍实证(e4972b43:lv8 cap13 diff=5,后台真值 9 格,
 #: 与「线性外推 11」矛盾、与封顶 9 吻合);diff>2 的公式形状(召唤物修正项
-#: 与否,ADR-0385 件 10)仍待实机,**封顶 9 即用户确认的保守终态**。注意与
+#: 与否,0)仍待实机,**封顶 9 即用户确认的保守终态**。注意与
 #: ``cw_observation.DEPLOY_CAP_MAX_DIFF``(cap 采信域,域外走双帧一致门)
 #: 语义务异:那边管「cap 读数信不信」,这边管「格数裁决值封到几」。
 #: 裁决值与坐标档分离的残余适用面 = 未来新档(>9):坐标选档退 8 格超集
@@ -170,7 +169,7 @@ try:
 except Exception:   # noqa: BLE001  注册 best-effort(缺省关)
     _cws = None
 
-# ===== CV 通道:槽位存在性签名(ADR-0385 双通道件2) =====
+# ===== CV 通道:槽位存在性签名(双通道件2) =====
 
 #: 锚位(606/1031):帧可用性检查——三档几何下探针窗都落在格带上
 #: (6/8 格盖格心,7 格跨 1/2 号格交界),真备战帧必有槽签名;任一锚
@@ -187,7 +186,7 @@ _CV_SLOT_STD_MIN: float = 6.0
 #:
 #: 背景:左端探针固定在 x=464(**8 格档 1 号格的中心**,探针位不随档挪动),
 #: 裁 464±71 = [393,535] 窗算灰度 std(有格子/立绘 → 高,纯背景 → 近 0)。
-#: 三档**居中重排**(ADR-0390)后,同一个 [393,535] 窗在三种局里盖到的东西
+#: 三档**居中重排**后,同一个 [393,535] 窗在三种局里盖到的东西
 #: 完全不同:
 #:
 #: :``6 格``:真 1 号格在 [533,675],窗全在排外背景            → std ≤ 2.9
@@ -306,7 +305,7 @@ _CV_OUTER_XS: tuple[int, ...] = (357, 1564)
 
 
 def cv_back_slots(screen) -> int | None:
-    """CV 通道:实测当前帧后台格数(ADR-0385 双通道件2;占用态门三态探针
+    """CV 通道:实测当前帧后台格数(双通道件2;占用态门三态探针
     + 外缘 9 格判别)→ 6/7/8/9 | None(不可判)。
 
     方法:锚位门(606/1031)→ 外缘探针(357/1564,见 :data:`_CV_OUTER_XS`
@@ -375,7 +374,7 @@ def back_slots_from_cap_diff(diff: int) -> int:
 
     - diff < 0(cap<level 读错族,cw_screen_prep 另有 obs_conflict 留证)按 0;
     - diff > 3(域外)按 3 封顶(= 9 格上限)——diff>2 的公式形状(召唤物
-      修正项与否,ADR-0385 件 10 张力)待实机,封顶 9 即用户确认的保守
+      修正项与否,0 张力)待实机,封顶 9 即用户确认的保守
       终态(见 :data:`_CAP_DIFF_MAX` 注);
     - 裁决值即坐标档:9 档已交互建档(2026-09-12 实机实锤,见
       :data:`_LAYOUT_PREFIX` 注),diff≥3 直读 9;残余分离面 = 未来新档
@@ -388,7 +387,7 @@ def back_slots_from_cap_diff(diff: int) -> int:
     return _BACK_SLOTS_BASE + d
 
 
-#: **公式-历史实证张力(ADR-0385 件 10,待召唤物局数据解)**:唯一历史 8 格
+#: **公式-历史实证张力(0,待召唤物局数据解)**:唯一历史 8 格
 #: 实证(狸猫局 lv7 cap8/9 两帧同为 8 格)与公式 6+(8−7)=7 冲突。候选解释:
 #: ①召唤物加格不加 cap(公式需补召唤物项)/②当年 cap 读数有误/③召唤物局
 #: 两帧实为 cap9。批内不硬解:双通道对账天然覆盖(CV 为真值,公式不符 →
@@ -399,7 +398,7 @@ FORMULA_SUMMON_TENSION_NOTED: bool = True
 
 def note_channel_conflict(screen, formula_n: int, cv_n: int,
                           cap, level, source: str) -> None:
-    """双通道不一致留证(节流 300s/源;ADR-0385 对账语义件3)。
+    """双通道不一致留证(节流 300s/源;对账语义件3)。
 
     采 CV 值运行 + 留证两值(公式依赖的 cap/level OCR 读数可能错;CV 是画面
     真值)。best-effort 不抛。
@@ -413,7 +412,7 @@ def note_channel_conflict(screen, formula_n: int, cv_n: int,
         from sr_od.application.currency_war.kernel.cw_observe import obs_conflict
         obs_conflict(
             'back_layout_channel_conflict', formula_n, cv_n, screen,
-            verdict=('采 CV 实测值(画面事实>推导,ADR-0385 双通道对账);'
+            verdict=('采 CV 实测值(画面事实>推导,双通道对账);'
                      '公式值依赖的 cap/level OCR 读数疑有误——核对截图'
                      '「区域-部署数」X/Y 与等级,确认哪侧读错则修对应 reader;'
                      'CV 侧判据=槽位 std 签名,若画面被特效/overlay 污染也可能'
@@ -426,7 +425,7 @@ def note_channel_conflict(screen, formula_n: int, cv_n: int,
 def select_back_layout(ctx, screen, level: int | None = None,
                        cap: int | None = None,
                        level_trusted: bool | None = None) -> tuple[int | None, str]:
-    """布局选档单一入口(ADR-0385 双通道对账)→ ``(槽数, 布局前缀)``。
+    """布局选档单一入口(双通道对账)→ ``(槽数, 布局前缀)``。
 
     委托 :func:`resolve_back_slots`(详见其对账语义与各返回字段);
     消费方只需格数+前缀。停机钩子/留证消费 raw 字段请直调后者。
@@ -440,7 +439,7 @@ def select_back_layout(ctx, screen, level: int | None = None,
 
 
 def _cv_confirm_readings(ctx, screen, first_cv: int, formula_n: int) -> list[int | None]:
-    """W209h 防抖重读(ADR-0385 决策 11;run 27 停机事故:CV 瞬态假阳——
+    """W209h 防抖重读(run 27 停机事故:CV 瞬态假阳——
     特效/粒子把 1458 位单帧 std 顶到 6.5(阈值 6.0 擦线过,真槽 ≥10.5/
     背景 ≤2.9 之间无人带),公式 6 与 fixture 复测一致)。
 
@@ -579,7 +578,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
                        level: int | None = None,
                        cap: int | None = None,
                        level_trusted: bool | None = None) -> dict:
-    """双通道对账全量解析(ADR-0385;选档与钩子共用的单一判定源)→ dict:
+    """双通道对账全量解析(选档与钩子共用的单一判定源)→ dict:
 
     - ``formula_raw``/``formula_n``:公式裁决值(值域 {6..9},上限 9 =
       用户口述真值;9 档已建档直读,**残余分离面 = 未来新档 >9**:运行值
@@ -618,9 +617,9 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
             )
             level = _session_level(ctx)
         if cap is None:
-            # W218(ADR-0395):cap 瞬态误读(过渡帧旧值残影,run 27 型)会直接改
+            # W218:cap 瞬态误读(过渡帧旧值残影,run 27 型)会直接改
             # diff → 公式通道选错档(格数类高危点);改走 read_deploy_cap_debounced
-            # (ADR-0286 域防抖:域外重读一帧,仍域外 → None → 下方 diff=0 退 6 格
+            # (域防抖:域外重读一帧,仍域外 → None → 下方 diff=0 退 6 格
             # 基线,失败安全侧;level 未知时域不可判,退原直读语义)。
             from sr_od.application.currency_war.obs.cw_observation import (
                 read_deploy_cap_debounced,
@@ -722,7 +721,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
         log.info('[cw][layout] 公式弃权(level_trusted=False)→ CV 单源 %s 格',
                  cv_n)
     elif cv_n is not None and cv_n != formula_n:
-        # 对账不一致:CV 实测优先(画面事实>推导,ADR-0385)+ 留证两值
+        # 对账不一致:CV 实测优先(画面事实>推导)+ 留证两值
         note_channel_conflict(screen, formula_n, cv_n, cap, level,
                               'select_back_layout')
         # 分键(15 号稿批 C):记录函数单一源 = kernel.cw_telemetry_exit
@@ -818,7 +817,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
             _last_sel_log = _key
             from one_dragon.utils.log_utils import log
             log.info('[cw][layout] 后排选档: %d 格(公式 %s/cv %s;'
-                     'cap=%s lv=%s diff=%s;双通道对账 ADR-0385)',
+                     'cap=%s lv=%s diff=%s;双通道对账 )',
                      n, formula_n, cv_n, cap, level, diff)
     except Exception:   # noqa: BLE001
         pass
@@ -832,7 +831,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
 def back_row_slot_rects_ctx(ctx, prefix: str) -> list[tuple[int, Rect]]:
     """按布局前缀从 screen_info 枚举 ``[(slot_idx, rect), ...]``(N 升序至断档)。
 
-    前缀来自 :func:`select_back_layout`(ADR-0385 双通道选档);空档 → [](调用方
+    前缀来自 :func:`select_back_layout`(双通道选档);空档 → [](调用方
     退 :func:`fallback_back_slots` 基线)。**别在 6 槽坐标上外插**。
     """
     from sr_od.application.currency_war.obs.cw_identity_obs import _area_rect

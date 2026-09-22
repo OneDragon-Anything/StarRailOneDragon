@@ -1,6 +1,6 @@
 """统一 state 账本判读读面(R3-1 消费方迁移第一批:离线工具族读新账)。
 
-设计裁定正本 = ADR-0630(``docs/develop/sr_od/application/currency_war/decisions/
+设计裁定正本(
 0630-unified-state-journal.md``,后果节消费方迁移/M4 档案行;记录机制 as-built
 正本面 = ``docs/develop/sr_od/application/currency_war/game_state/journal.md`` §5/§7;设计
 工作稿存 .debug/temp 为易失档,禁作正本指针):判读/装配/策略回溯 = 按行
@@ -173,7 +173,7 @@ def row_kind(row: dict[str, Any]) -> str:
 
 def row_sig(row: dict[str, Any]) -> dict[str, Any]:
     """渠道签名(核心字段;缺位 = 空 dict——签名自 R5 W1 起写入必填
-    (ADR-0634),缺位只在旧期历史行/手工构造出现,读面不设门槛)。"""
+    ,缺位只在旧期历史行/手工构造出现,读面不设门槛)。"""
     sig = row.get('sig')
     return sig if isinstance(sig, dict) else {}
 

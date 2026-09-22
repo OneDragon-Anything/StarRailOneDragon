@@ -5,7 +5,7 @@ auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模�
 
 数据与设计依据(详 ``docs/develop/currency_war/strategy/02_comp.md`` +
 ``05_observation.md`` + ``docs/game/currency_war/data/plaza_meta.md``):
-- ``COMP_LIBRARY``:起步 roster(20 套;ADR-0152 plaza 784 篇高难帖校准)。
+- ``COMP_LIBRARY``:起步 roster(20 套;plaza 784 篇高难帖校准)。
   **两层架构**:``cw_plaza_comps.py``(gen_plaza_comps.py 生成)= base 事实层(实战频次/装备/节奏);
   本文件 COMP_LIBRARY = 手判层(strength/form_difficulty/level_plan 取舍)—— ``plaza_carry`` 字段
   是两层对拍锚点。覆盖易/中/难成型 + 各机制(含 debuff=buff 的燃血、augment 定义型的黑塔纪元)。
@@ -18,7 +18,7 @@ auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模�
 3. **COMP_LIBRARY 多维打分 + 运行时按场面选** —— 不锁死一套,按成型难度/boss/环境/词缀灵活选易成型又够强的。
 4. **经济统一论** —— 每 comp 自带 ``level_plan``(成型路线),驱动战术层花超额金(接法见 cw_economy 的经济效果拆分)。
 
-**核心/弹性羁绊二分(ADR-0152)**:``factions`` = 核心羁绊(成型判定);``flex_factions`` = 弹性次要
+**核心/弹性羁绊二分**:``factions`` = 核心羁绊(成型判定);``flex_factions`` = 弹性次要
 (plaza 实证「核心保证四列车即可,其他自由搭配」—— 板朝 flex 铺不罚,env/策略亲和照吃)。
 **augment 定义型 comp**(:``AUGMENT_COMP_AFFINITY``):黑塔纪元/飞光类棱彩策略拿到即近乎硬绑
 (镜像 ENV_COMP_AFFINITY;held_strategy_fit 消费)。**全局过渡池**(:``TRANSITION_POOL``):
@@ -92,7 +92,7 @@ class LevelGoal:
 class Comp:
     """一套目标阵容(meta 数据,V4.4 起步估值待实玩校准)。
 
-    核心/弹性羁绊二分(ADR-0152,plaza 784 篇实证「核心保证四列车即可,其他自由搭配」):
+    核心/弹性羁绊二分(plaza 784 篇实证「核心保证四列车即可,其他自由搭配」):
     ``factions`` = 核心羁绊(form_tiers 键 ⊆ 它;成型判定只看核心);``flex_factions`` = 弹性
     次要羁绊(不进 form_tiers,但板面朝它铺不被 board_alignment 罚、env/策略绑定照常亲和)。
     ``plaza_carry`` = cw_plaza_comps 聚类 carry 名(对拍锚点;空 = 无 n≥5 聚类对应)。
@@ -116,7 +116,7 @@ class Comp:
     char_positions: dict[str, str] = field(default_factory=dict)
     typical_form_round: int = 0  # 大致成型所需轮次(level_plan 粗估汇总)
     version_tag: str = "V4.4"    # 版本维护用
-    flex_factions: list[str] = field(default_factory=list)  # 弹性次要羁绊(ADR-0152;不进 form_tiers)
+    flex_factions: list[str] = field(default_factory=list)  # 弹性次要羁绊(不进 form_tiers)
     plaza_carry: str = ""        # plaza 实战聚类 carry 名(对拍锚,查 cw_plaza_comps.cluster_by_carry)
     # ⚖️ 位面强度维度:comp 在哪些位面乏力(被环境抽陀螺)。来源=攻略实证
     # (V4.0-4.4 难度攻略「DOT 队第二位面被抽陀螺」);消费端=maybe_pivot 信号 3
@@ -171,13 +171,13 @@ class Comp:
     部署例外规则**尚未实现**——消费点应为 decision_v2/candidates._deploy_candidates
     / scoring._deploy_pipeline,实现归后续策略批;本字段目前仅数据标注,零行为改动。"""
 
-    # ===== 形态端口(ADR-0613):OR 腿 + carry 在场条件 =====
+    # ===== 形态端口:OR 腿 + carry 在场条件 =====
     # 两字段缺省空 = 行为不变。生产写入方 = cw_intention.pair_target_comp
     # 希儿系对分支(P1 配方锁伪 comp)+ COMP_LIBRARY 静态套「希儿量子」
-    # (P2+ 锁线路径经 get_comp 消费静态条目,ADR-0621;档位单一源 =
+    # (P2+ 锁线路径经 get_comp 消费静态条目;档位单一源 =
     # SEELE_OR_LEGS/SEELE_CARRY_CHAR)。判定/进度唯一折法 = ``form_progress``
     # (单一源契约 fp=1.0 ⟺ 成型谓词),禁消费位绕过自写 AND/OR 内联判定
-    # (判据双源 = 批序 1 取代面,出处见 ADR-0613)。
+    # (判据双源 = 批序 1 取代面)。
     or_legs: list[tuple[str, int]] = field(default_factory=list)
     """OR 腿(析取档组):组内**任一** (羁绊, 档) 达成即该组算满——文档
     「凑到任一=成型,不设完全体门槛」(transition_combos.md:27 希儿系定义
@@ -259,7 +259,7 @@ MECHANIC_COUNTERS: dict[str, list[str]] = {
 MECHANIC_SYNERGIES: dict[str, list[str]] = {
     # 机制 tag → 它受利的 comp 机械属性(用户:debuff=buff)
     "反伤": ["燃血"],             # 正当防卫:反伤让燃血掉血 → 角斗场记录 → 伤害更高(万敌例,debuff=buff 典型)
-    # 观测对(ADR-0500):词缀方向真实(高费 +5%/低费 -5%,V4.4),但 mechanics_fit
+    # 观测对:词缀方向真实(高费 +5%/低费 -5%,V4.4),但 mechanics_fit
     # 最细步进 0.20 ≈ 20% 级战力差,±5% 差异打成 0.2 步进=离散 tag 系统性过反应 ×4,会把本该
     # 近中性的选型扰动成硬 flip。挂重审条件:①出现费用差异化幅度 ≥15% 的词条;②comp_score
     # 引入连续费用分布通道使粒度错配消失。届时阈值推导按「决策规则数学先行」补出处。
@@ -267,7 +267,7 @@ MECHANIC_SYNERGIES: dict[str, list[str]] = {
     "低费审美": ["低费队"],       # 低费审美:3 费及以下 +5%(V4.4)
     # ⚠️ 形单影只只建模了「免罚」半边:词条另一半 = 伤害 85%/60%/30% 落在**未激活羁绊方**
     # (1/2/3 个未激活羁绊的板,即未凑羁绊的队),该侧当前零载体零 counter 行——
-    # 未成型侧伤害倍率未建模,见 ADR-0500 与 w882 攻击报告(形单影只角度)。
+    # 未成型侧伤害倍率未建模,见 w882 攻击报告(形单影只角度)。
     # 机制后果:「单挂队」词汇不存在于携带词汇表,cw_events 避险判据(全 counter + fit<0.4
     # 刷新换批)对全表伤害量级最大的词缀反而永不触发。挂账:单挂队 tag 建模待聚类型判据批
     # (未激活羁绊数可从 factions/form_tiers 推导,但逐套判型需板面档位数据,另立批勿顺手打)。
@@ -286,7 +286,7 @@ AFFIX_MECHANIC_MAP: dict[str, str] = {
     "丢失幸运": "幸运削弱",
     "忽快忽慢": "速度抑制",
     "变宝为废": "装备依赖",
-    "紧急止血": "爆发机会",   # 保留透传(ADR-0500):tag「爆发速杀」无 comp 携带,
+    "紧急止血": "爆发机会",   # 保留透传:tag「爆发速杀」无 comp 携带,
     # 此行映射后求交恒空=零行为;重立时只需回补行。
     "高费审美": "高费审美", "低费审美": "低费审美",
     "形单影只": "成型羁绊利好",   # 未成型侧(-70% 落未激活羁绊方)未建模,见 MECHANIC_SYNERGIES 同 tag 注记
@@ -361,7 +361,7 @@ ENV_FACTION_MAP: dict[str, list[str]] = {
 ENV_COMP_AFFINITY: dict[str, dict[str, float]] = {
     # T0 env → {comp_name: 亲和权重} —— 拿到应近乎硬绑该 comp(research §10.3:env 是 run 内最大单一决策)
     "昼之半神概念股": {"昼神阿雅": 1.0},   # 送阿雅+鞋+刷新率 → 近乎硬绑昼神
-    # ↓ ADR-0152(plaza 784 篇 portal 频次校准):概念股/邀请 = 定向 comp 近硬绑;契约 = 中亲和
+    # ↓ (plaza 784 篇 portal 频次校准):概念股/邀请 = 定向 comp 近硬绑;契约 = 中亲和
     "列车同行概念股": {"列车同行": 1.0},          # plaza 环境榜 #2(120 篇)
     "列车同行邀请": {"列车同行": 0.9},            # plaza #6(87 篇)
     "银河学者概念股": {"大黑塔银河学者": 1.0},    # 送黑塔族 → 黑塔纪元/银河学者线
@@ -379,7 +379,7 @@ ENV_COMP_AFFINITY: dict[str, dict[str, float]] = {
     "贝洛伯格概念股": {"希儿量子": 0.7},
     "贝洛伯格邀请": {"希儿量子": 0.6},
 }
-# ADR-0152:augment 定义型 comp 绑定表(镜像 ENV_COMP_AFFINITY 机制;held_strategy_fit 消费)。
+# :augment 定义型 comp 绑定表(镜像 ENV_COMP_AFFINITY 机制;held_strategy_fit 消费)。
 # plaza 实证:这类 comp 的入口是「拿到棱彩策略」而非阵营成型 —— 黑塔纪元 35 篇整族围绕它构建。
 # 键 = 注册表策略名(canon);值 = {comp_name: 亲和 0..1}(1.0 = 拿到即近乎硬绑)。
 AUGMENT_COMP_AFFINITY: dict[str, dict[str, float]] = {
@@ -416,7 +416,7 @@ def augment_env_affinity(name: str) -> dict[str, float]:
     return ENV_COMP_AFFINITY.get(normalize_invest_name(name), {})
 
 
-# 全局过渡池(ADR-0152,按跨阶段存活率拆两级;plaza 784 篇 P(进终局|Early在场) 实证):
+# 全局过渡池(按跨阶段存活率拆两级;plaza 784 篇 P(进终局|Early在场) 实证):
 #   EARLY_CORE_POOL(存活 ≥0.8):「有体系牌来就拿下」—— 买了就是开局(期权重叠,不存在过渡浪费);
 #   TEMPO_POOL(存活 <0.45):纯保血打工(骨架件)—— 1星买卖近无损,毕业即卖(1-8 分界换血)。
 # 消费方:过渡工程(买入分级加权 + 卖出保留判定)—— 接线前是数据先验,勿删。
@@ -454,7 +454,7 @@ CORE_SINGLE_CARD_REGISTRY: dict[str, str] = {
 }
 
 
-# ===== 角色↔路线复用网络(ADR-0152「整体灵活」建模;plaza 实证)=====
+# ===== 角色↔路线复用网络(「整体灵活」建模;plaza 实证)=====
 # 方法论(用户 2026-08-16):角色池 75 个、plaza 聚类 29 个、羁绊组合 427 种 —— 多样性本身就是玩法。
 # 玩家在「角色→路线」复用网络上动态导航,不是「选一套 comp 配齐它」。三个消费点:
 #   ① 买牌:枢纽角色(跨路线复用度高)拿了不亏 —— plaza 终局枢纽:千冶·刃28条路线/瓦尔特26/符玄26/
@@ -529,13 +529,13 @@ V2_FAMILIES: tuple[str, ...] = (
 # 档位出处 = 文档定义行 transition_combos.md:27「希儿在场 ∧ (量子同频≥2 ∨
 # 贝洛伯格≥2),不设完全体门槛」(combo_methodology.md:133「凑到任一=成型」/
 # :143「放大器不需要最大档」);量 2 vs 量 3 的文档内部张力(combo_
-# methodology.md:133/170 写量 3)挂玩家确认(ADR-0613 同一挂账口径,不由
+# methodology.md:133/170 写量 3)挂玩家确认(同一挂账口径,不由
 # 落码批裁决),确认后改档动本常量(配对消费位随 import 自动跟随),
 # **另须同步第三表面** `_seele_system_support` 的 ÷2 分母(挂账指针 =
 # cw_intention._seele_system_support docstring「同步回改本式分母」节;
 # 公式体用字面量 2 不消费本常量,接线守卫钉不住,漏改=两端口档位漂移)。
 # carry = 同表行第一合取支「希儿在场」。
-# ⚠️ 单一源归属声明(ADR-0621):真源归位本文件(注册表数据层——静态套
+# ⚠️ 单一源归属声明:真源归位本文件(注册表数据层——静态套
 # 条目在 import 期消费,常量若留 cw_intention 会反向 import 成环)。
 # cw_intention 经顶部 import 消费本常量(re-import 别名,其形态端口注
 # 「禁再写本地第二份」),单一源接线由测试仓接线守卫钉死(对象身份 `is`,
@@ -551,7 +551,7 @@ COMP_LIBRARY: list[Comp] = [
         form_tiers={"列车同行": 4}, strength="S", form_difficulty="easy", early_power="高",
         # V4.4 权威评级(76807134):姬子·启行 = S 级真神;A850 挂机流(76824096):全程自动/不凹开局/适应任何负面环境 → bot 默认首选
         # 成型 8 人口:前台 姬子·启行+花火+瓦尔特+记忆主,后台 三月七+刻律德菈+千冶·刃+符玄/缇宝
-        # ADR-0152(plaza 784 篇校准):carry 274/在场 358 篇断层级第一;双分支 —— 护盾流(152 篇,姬子带
+        # (plaza 784 篇校准):carry 274/在场 358 篇断层级第一;双分支 —— 护盾流(152 篇,姬子带
         # 以牙还牙甲+砂金)/减益流(127 篇,冷笑话引擎+彦卿);flex_factions 全收(plaza 羁绊分布)。
         # 装备 top:风暴潮352/电锯190/以牙还牙甲116/冷笑话56 → 双风暴+电锯+以牙还牙(跨分支覆盖)。
         flex_factions=["护盾", "减益", "战技点", "量子同频", "盛会之星", "能量", "星间旅人"],
@@ -582,7 +582,7 @@ COMP_LIBRARY: list[Comp] = [
             3: LevelGoal("roll", target_cost=3, target_chars=["姬子·启行", "三月七"], star_goals={"三月七": 2}),
             4: LevelGoal("roll", target_cost=3, target_chars=["姬子·启行", "花火"]),
             5: LevelGoal("level_up"), 6: LevelGoal("level_up"),
-            # ADR-0128(阵容_列车同行:53):**停留 7 级猛 D 3星姬子**(3费 7 级概率
+            # (阵容_列车同行:53):**停留 7 级猛 D 3星姬子**(3费 7 级概率
             # 峰值 p=0.40)—— 旧 7=level_up 直冲 8 违背「核心概率级停留」人玩节奏。
             7: LevelGoal("roll", target_cost=3, target_chars=["姬子·启行", "三月七", "花火"],
                          star_goals={"姬子·启行": 3}),
@@ -600,7 +600,7 @@ COMP_LIBRARY: list[Comp] = [
         form_tiers={"命运圣杯": 3}, strength="S", form_difficulty="medium", early_power="中",
         # V4.4 评级(76807134):Archer 95 = S 级真神;攻略(76924524):高倍率九五核心+远坂凛+圣杯→+150%攻击+战技点
         # ⚠️ core_chars 用图鉴规范名:"Archer" 非"红A"(OCR/char_id 匹配靠 cw_chars.CHARACTERS 注册表)
-        # ADR-0152(plaza 62 篇):3星率 0.18(5费 carry 常驻 2 星);速升9级节奏为主
+        # (plaza 62 篇):3星率 0.18(5费 carry 常驻 2 星);速升9级节奏为主
         # 评审🔴(费用勘误):圣杯四人 = Archer 5费/Saber 3费/吉尔伽美什 2费/远坂凛 1费(注册表),
         # 旧注释「4 个 5 费成型难」错 —— 费用阶梯宽,成型难度主要在 Archer 本体。
         flex_factions=["战技点", "量子同频", "列车同行", "能量", "治疗", "盛会之星"],
@@ -690,8 +690,8 @@ COMP_LIBRARY: list[Comp] = [
         # 布洛妮娅/杰帕德/娜塔莎/佩拉(贝2 凑数+辅助);知更鸟/瓦尔特移出 core(P3 补位件,留 shared)。
         core_chars=["希儿", "花火", "符玄", "缇宝", "刻律德菈"],
         form_tiers={"量子同频": 4, "贝洛伯格": 2}, strength="A", form_difficulty="medium", early_power="高",
-        # 成型判据 = 文档 OR 口径(transition_combos.md:27,与 ADR-0613 的
-        # pair 物化路径同构,ADR-0621):form_tiers 双档由 OR 组**承接**
+        # 成型判据 = 文档 OR 口径(transition_combos.md:27,与 的
+        # pair 物化路径同构):form_tiers 双档由 OR 组**承接**
         # (同键档位不入 AND 账,折法见 form_progress),档位值保留作线键/
         # 完全体账单结构载体——囤货采购集/晋升候选/换线距离账等消费读其
         # 键面,清空即残(银狼/佩拉/桑博等放大器成员会掉出采购集)。
@@ -737,7 +737,7 @@ COMP_LIBRARY: list[Comp] = [
         form_tiers={"巡海游侠": 4, "减益": 4}, strength="A", form_difficulty="medium", early_power="低",
         # 巡海游侠档 = v2 教义「4」单点档(后排星级 1/3/6/12 倍放大;form_tiers_max=4)。
         # V4.4 评级(76807134):黄泉 = A 级;攻略(76826405):3游侠+4减益+3量子,2星乱破+3星不死途→280%增幅
-        # ADR-0152(plaza 50 篇校准):常驻 千冶·刃48/瓦尔特45/不死途45/乱破38/椒丘32 —— core 的「刃」
+        # (plaza 50 篇校准):常驻 千冶·刃48/瓦尔特45/不死途45/乱破38/椒丘32 —— core 的「刃」
         # 改「千冶·刃」(V4.4 实战常驻是千冶·刃,非本体刃);装备 top:电锯56/风暴潮28/光速螺旋桨26/永动机24。
         flex_factions=["击破", "治疗", "追击", "量子同频"],
         plaza_carry="黄泉",
@@ -769,7 +769,7 @@ COMP_LIBRARY: list[Comp] = [
     Comp(
         name="巡海击破", factions=["击破", "巡海游侠"], core_chars=["不死途", "波提欧", "乱破", "忘归人", "大丽花", "灵砂", "阮·梅"],
         form_tiers={"击破": 6, "巡海游侠": 4}, strength="A", form_difficulty="hard", early_power="中",
-        # ↺ 推翻「击破流萤」(ADR-0152,plaza 784 篇):V4.4 击破代表已换代 —— 流萤任一阶段在场仅 29 篇
+        # ↺ 推翻「击破流萤」(plaza 784 篇):V4.4 击破代表已换代 —— 流萤任一阶段在场仅 29 篇
         # (carry 聚类 n=8,7/8 击破形)。**锚=波提欧簇**(12 篇,击破12/巡海12 全击破形;不死途簇 n=14 的
         # 主体是减益板[减益13/巡海12/击破11 混合],不当击破锚)。常驻 忘归人12/大丽花11/灵砂11/乱破11/阮·梅10。
         # 装备:波提欧=虫洞掘进钻头16/光速螺旋桨9,不死途=反重力皮靴。
@@ -847,7 +847,7 @@ COMP_LIBRARY: list[Comp] = [
         # 62/68 Final 实证)。
         form_tiers={"欢愉": 3}, strength="A", form_difficulty="medium",
         early_power="高",
-        # ADR-0152 评审🔴(火花簇 25 篇):旧 factions[星间+量子] 0/25 达标 —— 实战分布 欢愉22/战技点21/
+        # 评审🔴(火花簇 25 篇):旧 factions[星间+量子] 0/25 达标 —— 实战分布 欢愉22/战技点21/
         # 星间21 并列,量子仅 flex 位 → 核心改 星间+欢愉(花火=欢愉阵营);core 补 开拓者·欢愉(20/25 在场,
         # 欢愉形态保留不换记忆)与银狼LV.999(17/25)。
         key_equips=["火力风暴潮", "高周波电锯", "碎星斩舰刀", "动能激发剑"],   # 花火1风暴潮+暴击刀;爻光三鞋
@@ -865,7 +865,7 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        # ADR-0152 新增(plaza 大族群补缺):银河学者+群攻族 —— 大黑塔 carry 38 篇 + 小黑塔 carry 26 篇。
+        # 新增(plaza 大族群补缺):银河学者+群攻族 —— 大黑塔 carry 38 篇 + 小黑塔 carry 26 篇。
         # **augment 定义型 comp**:35 篇带「黑塔纪元」(棱彩,216 张黑塔入商店+追击转圈)—— 拿到即玩
         # (AUGMENT_COMP_AFFINITY 近乎硬绑);无它时靠银河学者羁绊本身(星级总量成长)亦可成型,强度降档。
         # 黑塔纪元特型:备战席囤小黑塔(强度=小黑塔合计星级,「备战席放满越多越好」)—— bench 语义特例。
@@ -904,7 +904,7 @@ COMP_LIBRARY: list[Comp] = [
         form_tiers={"群攻": 3}, strength="B", form_difficulty="medium", early_power="低",
         # V4.4 评级(76807134):银枝 = B 级;攻略(77006068 直读纠正):V4.4 离能量,"轮椅通拐"(杨叔/主角/缇宝/花火/千冶刃+符玄)抬
         # 银枝(风暴潮+冷笑话)+翡翠(3群攻)+鸟(拉条加攻增伤+10%幸运);必须3星银枝;适合对群,对单大降
-        # ⚠️ ADR-0152(注册表对拍):银枝=**星间旅人** 2费,非贝洛伯格(24 篇银枝帖贝洛伯格激活 0 次)
+        # ⚠️ (注册表对拍):银枝=**星间旅人** 2费,非贝洛伯格(24 篇银枝帖贝洛伯格激活 0 次)
         # —— 核心只有群攻,星间旅人/公司/盛会之星(翡翠/知更鸟)是 flex。
         key_equips=["火力风暴潮", "冷笑话引擎", "绝对热量"], mechanic_attributes=["群攻", "成型羁绊队"],   # 成型羁绊队:群攻档乘区+大招驱动的羁绊协同型(w878)
         countered_by_bosses=[],   # 无 countered 数据:单体长战类非公司名,走 matchup 结构层
@@ -950,7 +950,7 @@ COMP_LIBRARY: list[Comp] = [
             {"替班者": "姬子·启行", "顶位": "白厄主C(搜不到白厄时)", "身份": "共享列车池,转姬子线=攻略明写预案;B 流领航员身份 1 星够(49% 在场沉淀)", "分岔点": "红绿灯词条/白厄到手"},
             {"替班者": "三月七", "顶位": "前排(与 星期日/开拓者 自 P2 直留终局)", "身份": "直留终局(不卖)", "分岔点": "无(全程)"},
         ],
-        # ADR-0152(plaza 校准):白厄 38 篇 carry 中 33 篇实际挂在列车同行(以牙还牙甲×93 断层第一,
+        # (plaza 校准):白厄 38 篇 carry 中 33 篇实际挂在列车同行(以牙还牙甲×93 断层第一,
         # 副三月七/姬子/星期日)—— 纯反甲白厄是小众硬流派;主流是列车护盾流的副 carry 位。
         flex_factions=["列车同行", "巡海游侠", "减益", "护盾"],
         plaza_carry="白厄",
@@ -967,7 +967,7 @@ COMP_LIBRARY: list[Comp] = [
         form_tiers={"欢愉": 5, "星核猎手": 2}, strength="B", form_difficulty="medium", early_power="中",
         # V4.4 评级(76807134):狼尊 = B 级;攻略(76832783 直读):5欢愉(最大利用阿哈装备),狼尊双风暴潮+爻光双鞋
         # 刃(星核猎手):刃+狼尊行动7次→狼尊释放欢愉技。强依赖鞋≥6;尽量不d全力升级;也作绯英早期过渡c
-        # ADR-0152 评审🔴(狼尊簇 68 篇对拍):本体刃仅 2/68,千冶·刃 36/68 → core 刃改千冶·刃(V4.4 实战常驻)。
+        # 评审🔴(狼尊簇 68 篇对拍):本体刃仅 2/68,千冶·刃 36/68 → core 刃改千冶·刃(V4.4 实战常驻)。
         key_equips=["火力风暴潮", "反重力皮靴", "反重力皮靴", "光速螺旋桨"], mechanic_attributes=["欢愉叠层", "成型羁绊队"],   # 成型羁绊队:欢愉 5-7 档乘区(w878)
         # ↑ v2 教义:银狼=风暴潮+
         #   **速度件**(升费链要行动),皮靴是速度载体;爻光本就是皮靴(攻略:爻光双鞋)
@@ -1002,7 +1002,7 @@ COMP_LIBRARY: list[Comp] = [
         name="昼神阿雅", factions=["昼之半神"], core_chars=["阿格莱雅", "风堇", "昔涟"],
         form_tiers={"昼之半神": 4}, strength="B", form_difficulty="hard", early_power="低",
         # V4.4 评级(76807134):阿雅 = B 级(试用难玩;需反重力皮靴×2+速度投资,V3.8 最轮椅→V4.4 降 B)。
-        # ADR-0152(plaza 8 篇 carry):装备 反重力皮靴×16 断层第一(「有鞋跟本输不了」);阿格莱雅 3星率
+        # (plaza 8 篇 carry):装备 反重力皮靴×16 断层第一(「有鞋跟本输不了」);阿格莱雅 3星率
         # 0.88;实战板多为 昼神4+量子3/能量+治疗混搭(flex 已收)。强帖(「80连胜焚决」/「小伊卡」)
         # use 均 0 且依赖本体/遗器/充能绳(M11)→ **保持 B**(评审🟡:升 A 依据不足,勿按万敌标准拔高)。
         key_equips=["反重力皮靴", "反重力皮靴", "白昼·光速螺旋桨", "火力风暴潮"],
@@ -1026,7 +1026,7 @@ COMP_LIBRARY: list[Comp] = [
         form_tiers={"追击": 3}, strength="B", form_difficulty="medium", early_power="低",
         # V4.4 合集(76807134)追击 B 级 = 飞霄-led(纯追击);攻略(76883466):飞霄天赋追击永久+6%增伤,≥3追击=300%倍率
         # 飞霄双风暴潮+鸟(3追击关键)+缇宝/不死途/刃;2星飞霄上9(3星锁血反降);追击转→5追击60%真伤
-        # ADR-0152 评审🔴(锚点对拍):飞霄 carry 仅 3 篇(<5 不在聚类)→ plaza_carry 置空;plaza 追击族
+        # 评审🔴(锚点对拍):飞霄 carry 仅 3 篇(<5 不在聚类)→ plaza_carry 置空;plaza 追击族
         # 真代表 = **那刻夏**(「5追击4昼之半神 后台主c之光」6444 use:「没鞋也没追击转别上那刻夏,
         # 至少得有其1」,装备优先级原文全序列)→ 补 core;追击簇 flex 常见 公司/昼之半神/群攻。
         key_equips=["火力风暴潮", "火力风暴潮", "永动机", "电磁弹射器"], mechanic_attributes=["追击", "成型羁绊队"],   # 成型羁绊队:追击档乘区(≥3追击=300%倍率,w878)
@@ -1049,7 +1049,7 @@ COMP_LIBRARY: list[Comp] = [
         # 燃血档 = v2 教义「4-6 档」(form_tiers_max=6 不变)。
         #   ⚠️ 行为面:form_progress 成型判定按燃血 4 判(意图内)。
         # V4.4 评级(76807134):万敌 = B 级;【debuff=buff 典型】反伤/AoE/持续伤害 利燃血;攻略(77056698)
-        # ↺ ADR-0152(plaza 40 篇校准)B→A:use 榜 #2(11.2w,「万敌无脑单挂A850 7人成型」);3星率 0.93
+        # ↺ (plaza 40 篇校准)B→A:use 榜 #2(11.2w,「万敌无脑单挂A850 7人成型」);3星率 0.93
         # 场最高;5级搜牌 26/40(1费 carry 5 级 D 标准节奏)。**form_tiers 校准(评审🔴4)**:旧 夜4+燃4
         # 仅 15% 帖达标 —— 榜首帖实跑 夜2+燃2(「7人成型」= 万敌+6弹性辅助;另一帖明言「夜神燃血也不
         # 要凑」)→ 降为 2+2(核心=万敌双标签引擎,其余 flex);千冶·刃 40/40 全勤补 core(旧漏)。
@@ -1093,7 +1093,7 @@ COMP_LIBRARY: list[Comp] = [
         # 卡芙卡3风暴潮(dot不吃幸运)+黑天鹅(鹅,2dot)+刃(2星核猎手)+刻律(复制战技连动)+鸟;需自己卡芙卡
         # ⚠️ 黄泉减益已拆独立(见上);本 comp=DoT 主派(卡芙卡/鹅/刃/桑博),P1强/P2乏力/P3需转,低费过渡保血权威
         weak_planes=(2,),   # 攻略实证 P2 被抽陀螺(难度攻略:47-48)——保命 pivot P2 不选它
-        # ADR-0152(plaza 卡芙卡 11/黑天鹅 11 篇校准):常驻 千冶·刃11/黑天鹅10/符玄9/瓦尔特8/海瑟音7
+        # (plaza 卡芙卡 11/黑天鹅 11 篇校准):常驻 千冶·刃11/黑天鹅10/符玄9/瓦尔特8/海瑟音7
         # (core 的「刃」改「千冶·刃」+补海瑟音);装备 风暴潮19/反重力皮靴8。
         key_equips=["火力风暴潮", "反重力皮靴", "蓄能帆", "光速螺旋桨"],
         # 慢速:DOT 叠层×引爆磨血胜利条件(final_dot_kafka),冻结族词条的慢热载体(w878)。
@@ -1122,7 +1122,7 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        # ADR-0152 新增(plaza 补缺):景元仙舟族 —— 景元 carry 16 + 彦卿 14 篇。
+        # 新增(plaza 补缺):景元仙舟族 —— 景元 carry 16 + 彦卿 14 篇。
         # **augment 强联动**:飞光·映月/传剑(各 8/5 篇,AUGMENT_COMP_AFFINITY 硬绑)—— 彦卿+景元师徒,
         # 拿到飞光 = 1费特殊景元+镜流强化;升星次序经济:「先 3星景元,否则镜流 3星后景元变 5费难刷」。
         name="景元仙舟", factions=["仙舟"], core_chars=["景元", "镜流", "彦卿", "符玄"],
@@ -1145,7 +1145,7 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        # ADR-0152 新增(plaza 补缺):专家桑博 DOT —— 33.3k use 帖(「专家老桑博,越用越有活」5级搜牌)。
+        # 新增(plaza 补缺):专家桑博 DOT —— 33.3k use 帖(「专家老桑博,越用越有活」5级搜牌)。
         # **env 定义型**:「开局必须刷专家邀请环境」(特邀专家:桑博)—— ENV_COMP_AFFINITY 近乎硬绑;
         # 无专家 env 时强度降档(退化为 DOT队 territory)。桑博本体贝洛伯格阵营(DoT 输出位)。
         # 节奏:1-6 搜桑博2星 → 2-3 前 3星桑博(装备越早越好)→ 存钱升8 搜海瑟音 → 瓦尔特必上。
@@ -1186,7 +1186,7 @@ def get_comp(name: str) -> Comp | None:
 def hp_charge_stack_chars() -> frozenset[str]:
     """``hp_charge_stack`` 型全局累积角色名全集(标注派生,单一源)。
 
-    消费点 = decision_v2.phase 兜底门豁免(ADR-0353):该型角色(万敌:受伤
+    消费点 = decision_v2.phase 兜底门豁免:该型角色(万敌:受伤
     充能+生命上限永久提高)的累积由**场上事件**驱动,上场即真实累积战力,
     与过渡体系同格;``cost_escalation`` 型(银狼)累积由购买驱动,不在此集
     (Comp.global_accumulators 字段 docstring 明示其不适用部署类例外)。
@@ -1335,13 +1335,13 @@ def form_progress(comp: Comp, gs: GameState) -> float:
     入参 = 容器视图(W6 决策面切统一容器;假想面板轻量桩只需提供
     ``board.value`` 属性,见调用点 _deploy_advances_form 鸭型位)。
 
-    OR 腿与 carry 条件折法(ADR-0613;OR 组承接键,ADR-0621;
+    OR 腿与 carry 条件折法(OR 组承接键;
     本函数 = 成型判据唯一折法,fp=1.0 ⟺ 成型谓词「form_tiers 未被承接档
     全档 ∧ or_legs 组任一满 ∧ required_deployed 全在板」的单一源契约):
     - ``or_legs`` 非空 → 折为**一条**虚拟腿,腿值 = 组内各腿进度的 max
       (「凑到任一=成型」的进度语义;半成品如 量1∨贝1 如实给 0.5,取
       最好腿非均值);
-    - **承接规则**(ADR-0621):``form_tiers`` 中与 OR 腿**同键**的档位
+    - **承接规则**:``form_tiers`` 中与 OR 腿**同键**的档位
       不计入 AND 账(该键的成型语义归 OR 组,分子分母同免——静态套
       希儿量子 form_tiers={量4,贝2} 全被 ``SEELE_OR_LEGS`` 承接,成型
       判据即文档 OR 口径;pair 伪 comp 两键集恒不相交,本规则对其逐位
@@ -1352,7 +1352,7 @@ def form_progress(comp: Comp, gs: GameState) -> float:
     旧序列化载体两态按「无 OR/carry 条件」解释,与空字段同值,不炸)。
     两字段缺省空(全注册表 comp)逐位同旧式均值。禁消费位绕过本函数
     自写 min(board,tier)≥tier 内联成型判定(判据双源;内联位清单与
-    取代声明见 ADR-0613)。
+    取代声明)。
     """
     if (not comp.form_tiers
             and not getattr(comp, 'or_legs', None)
@@ -1410,7 +1410,7 @@ def shop_supply(comp: Comp, gs: GameState) -> float:
     """comp 核心阵营的**本回合** shop 可得性 [0,1](shop-aware)。
 
     现仅用于 **drought bail 判定**(连续 N 回合 supply<1.0 → 弃不可达 target 重选;default 栈 drought bail 已退役,本函数保留为挂账层消费面),
-    **不再驱动 select_comp**(ADR-0092:select_comp 改用理论 acquirability_factor,刷新独立 → 观察/单回合
+    **不再驱动 select_comp**(:select_comp 改用理论 acquirability_factor,刷新独立 → 观察/单回合
     shop 无预测力)。保留本函数因 drought 需「本回合 shop 是否供得上核心」的实时观察。
 
     - 阵营在 **shop(本回合可买)** 出现 → **1.0**(本回合买得到核心牌 → drought 归 0)。
@@ -1527,10 +1527,10 @@ def boss_fit(comp: Comp, bosses: list[str | None]) -> float | None:
 def held_strategy_fit(comp: Comp, active_strategies: list[str]) -> float | None:
     """**已持有策略**契合(机会型 pivot 核心;用户「拿到适配策略主动转阵容」)。
 
-    每张持有策略的绑定(``strategy_bindings``,ADR-0134 派生)∩ comp(阵营/core 角色)命中 → 该策略
+    每张持有策略的绑定(``strategy_bindings``,派生)∩ comp(阵营/core 角色)命中 → 该策略
     对此 comp 加成。归一 0..1:0.5 中性(无策略/无命中),每命中 +0.25 封顶 1.0(星徽套组双命中
     = 三件套到手 → 1.0 满分,comp_score 显著抬 → select_comp/方向重估自然转向)。
-    **augment 定义型 comp(ADR-0152)**:命中 ``AUGMENT_COMP_AFFINITY``(黑塔纪元/飞光等)按亲和
+    **augment 定义型 comp**:命中 ``AUGMENT_COMP_AFFINITY``(黑塔纪元/飞光等)按亲和
     覆盖计分(0.5 + 0.5×affinity)—— 拿到黑塔纪元对大黑塔 comp 即 1.0,近乎硬绑(env_fit 同款语义)。
     无持有策略 → None(动态权重剔除,与 env_fit 同语义)。
     与 env_fit 的分工:env = 开局定向(选环境时 comp 未定);本函数 = **局中机会**(策略到手后
@@ -1552,7 +1552,7 @@ def held_strategy_fit(comp: Comp, active_strategies: list[str]) -> float | None:
             continue
         fs, cs = strategy_bindings(s)
         hits += len((fs & comp.all_factions) | (cs & set(comp.core_chars)))
-    # ADR-0152 评审🟡:两路取 max 非覆盖 —— 定义型 affinity(0.5+0.5a)与绑定命中(0.5+0.25h)
+    # 评审🟡:两路取 max 非覆盖 —— 定义型 affinity(0.5+0.5a)与绑定命中(0.5+0.25h)
     # 各自度量不同机会(方向定义 vs 成型加速),同策略双高时取大者不丢分;无命中无 affinity = 真实中性。
     hits_score = clamp(0.5 + 0.25 * hits, 0.0, 1.0) if hits > 0 else 0.5
     if best_affinity > 0:
@@ -1565,7 +1565,7 @@ def env_fit(comp: Comp, env: str) -> float | None:
 
     未选投资环境(env 空)→ **None**(动态权重剔除,治死重)。env 已选但不加成此 comp → 0.5
     (真实中性:env 在但不利好此 comp,有数据)。
-    ⚠️ ADR-0152 评审🔴2(T0 定向优先):env 在 affinity 表内时**非定向 comp 一律中性 0.5,不走
+    ⚠️ 评审🔴2(T0 定向优先):env 在 affinity 表内时**非定向 comp 一律中性 0.5,不走
     faction 匹配** —— 否则 flex 全集匹配 1.0 盖过定向 0.9/0.95(实测反转:仙舟概念股下绯英欢愉
     [flex含仙舟] 1.0 > 景元仙舟 0.95)。定向 env 的 faction 加成只服务**单位获取**(送卡/刷新率),
     不改 comp 方向;非定向 env(无 affinity 条目的)才走 faction 亲和。
@@ -1582,7 +1582,7 @@ def env_fit(comp: Comp, env: str) -> float | None:
         if affinity > 0:
             return clamp(0.5 + 0.5 * affinity, 0.0, 1.0)
         return 0.5   # T0 定向 env:非定向 comp 中性(防 flex 反转)
-    # R2-9: env 加成对应阵营(ADR-0152:弹性羁绊也吃 env 亲和 —— 姬子·启行减益流吃减益 env)
+    # R2-9: env 加成对应阵营(:弹性羁绊也吃 env 亲和 —— 姬子·启行减益流吃减益 env)
     boosted = ENV_FACTION_MAP.get(env, [])
     if boosted and any(f in comp.all_factions for f in boosted):
         return 1.0
@@ -1741,7 +1741,7 @@ def _board_alignment(comp: Comp, gs: GameState) -> float:
     if not comp.factions:
         return 1.0
     board = gs.board.value or {}
-    factions = comp.all_factions   # ADR-0152:弹性羁绊铺板不算 off-target(核心+弹性任一在板即支持)
+    factions = comp.all_factions   # :弹性羁绊铺板不算 off-target(核心+弹性任一在板即支持)
     if any(board.get(f, 0) >= 2 for f in factions):
         return 1.2   # deep-stack → boost
     if not board:
@@ -1754,7 +1754,7 @@ def _board_alignment(comp: Comp, gs: GameState) -> float:
 
 
 def _held_base_copies(gs: GameState) -> dict[str, int]:
-    """玩家持有的每角色**基础副本数**(牌池消耗 j;ADR-0110 acq 牌池感知用)。
+    """玩家持有的每角色**基础副本数**(牌池消耗 j;acq 牌池感知用)。
 
     bench + deployed 各单位按 star 折基础副本(3合1:1星=1 / 2星=3 / 3星=9 / 4星=27 张基础副本)。
     持有越多 → 牌池剩余该角色越少 → 越难再刷(牌库有限,用户根因)。
@@ -1791,7 +1791,7 @@ def select_comp_scored(gs: GameState, ctx: ScoreContext, config,
     返回 ``[(final_score, Comp)]`` 降序;top_n 截断。排序逻辑与 select_comp 完全
     同源(单一实现,select_comp 是本函数的投影)。
     """
-    held = _held_base_copies(gs)   # ADR-0110:acq 扣玩家持有副本(牌池有限)
+    held = _held_base_copies(gs)   # :acq 扣玩家持有副本(牌池有限)
     # 持有策略**绑定授予**的角色(星徽套组「获得1个【X】」)计入持有副本 —— 送卡 = 已持有,
     # acq 不按全牌池低估(机会型 pivot 的 acq 解锁;仅对本 comp 核心生效,他 comp 不吃这份加成)。
     _granted: dict[str, int] = {}
@@ -1820,11 +1820,11 @@ def select_comp_scored(gs: GameState, ctx: ScoreContext, config,
         # 中性 0.5 → ×1.0(不加不减)。加性 W_HELD 会被 acq/难度乘子稀释,乘子保证机会信号不被淹没。
         _hf = held_strategy_fit(comp, ctx.held_strategies)
         s *= 1.0 + 0.4 * ((_hf if _hf is not None else 0.5) - 0.5) * 2
-        # acquirability(ADR-0110 牌池感知):P(单次刷新≥1 张该角色),扣玩家持有副本(牌库有限,用户根因)。
+        # acquirability(牌池感知):P(单次刷新≥1 张该角色),扣玩家持有副本(牌库有限,用户根因)。
         # acq 收窄口径:0.5+0.5·acq —— acq 作次级 tiebreak(非主导,board 支持优先),
         # 防选「core 易刷但 board 不支持」的 comp → spread。牌池感知后范围 ~0.005-0.3 → 乘子 0.50-0.65。
         s *= (0.5 + 0.5 * acquirability_factor(comp.core_chars, level_of(gs), _h))
-        # 定义型 augment 近乎硬绑(ADR-0152):黑塔纪元类(affinity≥0.9)拿到即改写本局
+        # 定义型 augment 近乎硬绑:黑塔纪元类(affinity≥0.9)拿到即改写本局
         # —— ×1.5 压过板面对他 comp 的既有投入(实测:lv5 板{列车:2} 时 held ×1.4 不足以翻转
         # progress 0.45×0.5 的领先;M1 资源入口)。与 held 乘子叠乘(fit=1.0 时总 ~×2.1)。
         if any(augment_affinity(a).get(comp.name, 0.0) >= 0.9
@@ -1873,7 +1873,7 @@ EQUIP_CAPACITY: int = 3   # 每单位装备上限(below-avatar 最多 3 件,D-49
 
 def _pairing_guard_ok(worn_basics: dict[str, list[str]], char: str, basic: str,
                       key_set: set[str], core_set: set[str], rq: set[str]) -> bool:
-    """防误合成配对守卫的纯判定(ADR-0391 纪律 1 的两例外;单源判定)。
+    """防误合成配对守卫的纯判定(纪律 1 的两例外;单源判定)。
 
     ``equip_allocation`` 的内嵌 ``_pairing_ok`` 与 ``equip_alloc_empty_reason``
     (分配空归因)共用本函数,保证「分配语义」与「分配空诊断」永不漂移。
@@ -2072,7 +2072,7 @@ def equip_allocation(comp: Comp | None,
     P4 容器形)。comp=None → 全走 3(通用兜底)。纯函数(可离线测);
     CwOpEquipAll 消费。
 
-    ``priority_order``(18 号稿 §3.3 签名扩展,ADR-0526):可选分配优先序
+    ``priority_order``(18 号稿 §3.3 签名扩展):可选分配优先序
     (list[str],角色名);None(缺省)= 现行内部派生序,**零行为漂移**。
     语义 = 词缀条件优先层(§3.2)的唯一传入通道:序的每个成员在分配侧都
     被**吃满至容量**(凑满谓词;调用方 = 策略侧 resolve_affix_priority_order,
@@ -2085,7 +2085,7 @@ def equip_allocation(comp: Comp | None,
     fill-only——occupied 仅作容量扣减,不触碰任何已穿件(key 与否同判),
     任何重排都不可能取下已穿 key 件(装备无角色间直拖通道,10 号稿 §2.1.8)。
 
-    ADR-0265(穿戴可逆裁决):**穿戴是可逆操作**(卖角色全额返还装备)——穿着既不锁死
+    (穿戴可逆裁决):**穿戴是可逆操作**(卖角色全额返还装备)——穿着既不锁死
     合成路线(组件可取回)也不构成资源损耗(转移成本仅为操作摩擦),
     故无「合成保留组件禁入穿戴池」过滤。组件保护由两条真实依据的防线承担:
     ①合成锁线门(方向确定性才合成,反「压注未定方向」——不可逆的金/
@@ -2093,9 +2093,9 @@ def equip_allocation(comp: Comp | None,
     非预期合成不可逆消耗两件组件,无确认无回退)。
     **简易件默认穿**(编排者裁决:「简易件效果不大,穿不穿随策略定」→
     采纳默认穿):组件与进阶成品同池参与分配,期望收益由磨损标定仪持续
-    测量(ADR-0391 设计件:借实机/sim 对照测简易件穿戴的真实期望收益)。
+    测量(设计件:借实机/sim 对照测简易件穿戴的真实期望收益)。
 
-    ADR-0391(P14 期望模型接入,口述「穿着即合成/囤积/回收线」):两条新纪律——
+    (P14 期望模型接入,口述「穿着即合成/囤积/回收线」):两条新纪律——
     1. **防误合成配对守卫**(全 plane):同一角色身上不得出现互为配方的两件
        基础件,除非 ①配对产物 ∈ key_equips 且穿者是 core(=想要的配对,
        穿着触发合成即快路径),或 ②两件都是回收合格死库存且穿者非 core
@@ -2137,7 +2137,7 @@ def equip_allocation(comp: Comp | None,
                    for _rn, d in ds)
         capacity[n] = max(0, EQUIP_CAPACITY * len(ds) - used)
 
-    # ===== ADR-0391:防误合成守卫 + 回收去向(P14 定理 3/4)=====
+    # ===== :防误合成守卫 + 回收去向(P14 定理 3/4)=====
     from sr_od.application.currency_war.data.cw_synthesis import (
         RESERVED_COMPONENTS,
         recycle_qualified,
@@ -2203,7 +2203,7 @@ def equip_allocation(comp: Comp | None,
     if comp is not None and comp.key_equips:
         # 接收者顺序:priority_order(词缀优先层重排序)优先,缺省 = 内部派生序
         # (plaza_carry 优先,再 core_chars 顺序);只发给场上且容量 >0 者。
-        # key 件绑定裁决(18 号稿 §3.2,ADR-0526):谓词层只重排候选序,
+        # key 件绑定裁决(18 号稿 §3.2):谓词层只重排候选序,
         # 不改 key 件绑定——key 接收者在优先层下仍限于 carry∪core
         # (非 core 凑谓词只走通用件吃满)。
         if priority_order:
@@ -2223,7 +2223,7 @@ def equip_allocation(comp: Comp | None,
                 if capacity.get(r, 0) <= 0 or not pool:
                     break
                 if w in pool:
-                    # ADR-0391:key 豁免的基础件同样过配对守卫(防非预期合成)
+                    # :key 豁免的基础件同样过配对守卫(防非预期合成)
                     if _is_basic(w) and not _pairing_ok(r, w):
                         continue
                     if not _emblem_ok(r, w):
@@ -2250,7 +2250,7 @@ def equip_allocation(comp: Comp | None,
         _others = [(rn, d) for rn, d in _units
                    if getattr(d, 'char_id', '')
                    and d.char_id not in comp.core_chars]
-        # ADR-0391 死库存回收去向:先于 core 兜底抽取(防 core 盲吃死库存),
+        # 死库存回收去向:先于 core 兜底抽取(防 core 盲吃死库存),
         # 非 core 工具人每人至多 2 件(两件互为配对 → 游戏自动 2合1 =
         # 回收线有意触发;发不完留 owned 囤着)
         _dead = [e for e in pool if e in _rq]
@@ -2410,7 +2410,7 @@ def maybe_pivot(gs: GameState, ctx: ScoreContext, config, target: Comp | None,
     # 四条零共享核心线各推倒一次 → 板永不成型 → P1 全输过去。
     # 用户模型:P1 玩的 = 过渡框架(列车+仙舟)持续加深;终局线由贯穿件信号锁
     # (CommitSignals,方向重估定型路径);涌现/ceiling 分差在双轨期无信息量。
-    # target 变更路径收敛为:①CommitSignals 定型(ADR-0209)②drought 弃线重 select
+    # target 变更路径收敛为:①CommitSignals 定型②drought 弃线重 select
     # ③定义型 augment(贯穿件级资源信号,下方 _defining_new)④定型后信号 1/2 照常。
     # (易 comp 成型快 → 少掉血;实测出现过 easy/medium gap 0.097 卡 0.10 没转、
     # 慢成型持续掉血的案例;fewer 卡 + S 强的 easy comp 转了更快成型)。target 已成型不降(不弃已完成 comp)。
@@ -2439,7 +2439,7 @@ def maybe_pivot(gs: GameState, ctx: ScoreContext, config, target: Comp | None,
     # 桥调用),hp 读约束照旧:重挂生产消费**必经政策层读口**——门后值 =
     # kernel/cw_hp_policy.decision_hp(gs, session),可信位 =
     # hp_decision_trusted_of(gs),禁按下方直读形态旁路(消费同门,
-    # ADR-0583 §2.4)。本行直读仅挂账期原样保留,行为零变化。
+    # )。本行直读仅挂账期原样保留,行为零变化。
     _hp = gs.hp.value
     _committed_target = (target is not None and target_committed(target, gs))
     if _hp is not None and _hp < _pivot_hp:   # None=无真值:不触发保命 pivot(可信位门在决策侧)
@@ -2509,7 +2509,7 @@ def maybe_pivot(gs: GameState, ctx: ScoreContext, config, target: Comp | None,
     if target is None or best.name != target.name:
         _committed = target is not None and target_committed(target, gs)
         _losing = tracker is not None and target is not None and tracker.is_losing_streak(target.name)
-        # 定义型 augment 解锁 commit 锁(ADR-0152):黑塔纪元类(affinity≥0.9)到手 =
+        # 定义型 augment 解锁 commit 锁:黑塔纪元类(affinity≥0.9)到手 =
         # 局内最大机会事件(M1 资源入口),与 losing streak 同级解锁 —— 否则 commit 后 augment
         # 定义型 comp 永远进不来(中心卖点静默失效)。
         _defining_new = any(augment_affinity(a).get(best.name, 0.0) >= 0.9
@@ -2566,7 +2566,7 @@ def maybe_pivot(gs: GameState, ctx: ScoreContext, config, target: Comp | None,
             if _losing:
                 _required_gap *= 0.7
                 _tag += ' [viability losing]'
-            # ADR-0152 转型成本(复用网络):best 与 target 角色重合低 = 推翻重买 → 需更大 gap;
+            # 转型成本(复用网络):best 与 target 角色重合低 = 推翻重买 → 需更大 gap;
             # 重合高 = 换方向继续买(便宜)→ 降阈。乘子范围 0.8(overlap≥0.5)~ 1.3(overlap<0.1)。
             _overlap = pivot_overlap(target, best) if target is not None else 1.0
             _required_gap *= (0.8 if _overlap >= 0.5 else (1.3 if _overlap < 0.1 else 1.0))
@@ -2690,4 +2690,4 @@ def select_megastar(gs: GameState, target: Comp | None,
 
 # (select_megastar_enhance「强化角色」意向已随 megastar_enhance_enabled
 #  开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3;机制语义
-#  本就是待证假设(ADR-0482),证据链见原函数注释的 git 历史。)
+#  本就是待证假设,证据链见原函数注释的 git 历史。)

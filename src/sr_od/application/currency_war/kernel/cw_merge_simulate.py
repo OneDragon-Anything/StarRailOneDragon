@@ -58,7 +58,7 @@ class MergeStep:
 
     [定义注释] landing_kind/landing_slot = 升星产物的落点坐标系:
     'bench' 时 landing_slot = 物理槽位 1-9(最左合成);'deployed' 时
-    = deployed 槽位表下标 0-9(场上吸收,ADR-0392)。inherited_equips =
+    = deployed 槽位表下标 0-9(场上吸收)。inherited_equips =
     被消耗两只的装备全量(§4 规则 4,玩家定谳)。
     """
     name: str
@@ -343,7 +343,7 @@ def _merge_bench(bench: list[BenchSlot | None],
 
     P1 起容器原生形状(§2.3):bench = ``list[BenchSlot | None]`` /
     deployed = ``list[Unit | None]`` 下标槽表;素材摘除 = 置 None 腾槽
-    (ADR-0316/0392 保洞语义,合成载体留在原槽位);载体升星 = frozen
+    (保洞语义,合成载体留在原槽位);载体升星 = frozen
     replace 新构造(装备继承随之写回载体)。
 
     deployed=None(旧调用兼容)= 只看 bench(等价旧行为)。
@@ -402,13 +402,13 @@ def _merge_bench(bench: list[BenchSlot | None],
 
 def will_merge_on_buy(card: ShopCard, bench: list[BenchSlot | None],
                       deployed: list[Unit | None] | None = None) -> bool:
-    """买第 3 份同名同 1★ 即合成(S3/H3 口径,ADR-0325)。
+    """买第 3 份同名同 1★ 即合成(S3/H3 口径)。
 
     判据 = ``_merge_bench`` 分组键同口径:**同名同 1★ 计数(全场
     bench∪deployed)==2 且待买为 1★**——买后恰达 3 份触发合并。
     显式**不用星级加权**(1 个 2★ 加权 2 但同星计数=1,不合成交
     bench 净 +1;旧 candidates.will_merge 加权判据的误标例)。
-    消费点:candidates.will_merge(生成侧)。ADR-0453 起满栏
+    消费点:candidates.will_merge(生成侧)。起满栏
     购买门/执行侧(simulate)改走一般式 merge_buy_completes/merge_buy_k
     (k 可 >1);本函数保留 = k=1 特例的生成侧标记语义。
     """
@@ -466,7 +466,7 @@ def merge_material_reject_reason(name: str, star: int,
     恒为 c_excl=1(2/3 合成进度,差最后一张)——卖出即销毁距 2★
     差一张的确定性进度期权,fail-closed 不卖。辖星 = 1(升星链语义
     不在本守卫辖域;2★ 成件全场唯一,子谓词恒放行)。
-    设计出处:ADR-0558(合成素材拒入守卫,与部署侧 merge_material_guard
+    设计出处:(合成素材拒入守卫,与部署侧 merge_material_guard
     同键);案发对账 = g_20260906_081836 / g_20260906_095111 两局 P2r1
     (2/3 进度素材被燃料类资格卖断)。
     """
@@ -488,7 +488,7 @@ def merge_material_stale_names(bench: list[BenchSlot | None],
     排序 = 字母序去重(确定性计数,禁集合迭代序入账本)。
     「滞留」语义:对在场即 2/3 进度悬置;持续 N 轮计数仍增长 = N 轮
     未合成(合成后计数停止增长,轮差分归零)——轮级时长由消费端按
-    键差分判读,本函数只答「当前帧哪些名滞留」。设计出处:ADR-0558
+    键差分判读,本函数只答「当前帧哪些名滞留」。设计出处:
     §4 滞留显影欠账(G-B1 第四级)。
     """
     names = {ident[0] for _x, ident in _slots_iter(bench, deployed)
@@ -507,7 +507,7 @@ def count_merge_material_blocked(counters: dict, name: str,
     refund)/腾席环重试对同名重复触达均去重),跨帧滞留素材每次新触达
     仍计。去重载体 = ``dedup_names``(调用方按帧创建并传入;None =
     无去重的单评语境,测试/离线直调)。评估次数口径为已废弃的实装
-    偏差(ADR-0558 §4「拦截事件判读」被投影读/重试环污染的整改)。
+    偏差(「拦截事件判读」被投影读/重试环污染的整改)。
     """
     if dedup_names is not None:
         if name in dedup_names:
@@ -528,7 +528,7 @@ def merge_buy_k(name: str, star: int,
     (那由 ``merge_buy_completes`` 判);店内外身份计数共用
     ``same_star_count``/同键过滤,禁消费方各自手搓(双源漂移温床)。
 
-    消费点:candidates/arbiter 满栏购买门(ADR-0453)/simulate 满栏多买
+    消费点:candidates/arbiter 满栏购买门/simulate 满栏多买
     (执行侧)/shop.py 买入意图记录(执行账 k×单价)。
     """
     star_n = star or 1
@@ -545,11 +545,11 @@ def merge_buy_completes(name: str, star: int,
                         shop: list[ShopCard] | None = None) -> bool:
     """本次点击(买 k = ``merge_buy_k`` 张)是否恰好完成一次合成。
 
-    判据 = 同名同星计数(备战栏+场上)+ 本次购买 ≥ 3(ADR-0453 允许条件,
+    判据 = 同名同星计数(备战栏+场上)+ 本次购买 ≥ 3(允许条件,
     merge_mechanics §2.5);等价于 k == 3 − 已有数 mod 3。不满足 → 满栏
-    照旧拒买(ADR-0283 守卫语义保留为兜底)。
+    照旧拒买(守卫语义保留为兜底)。
 
-    own≥1 门(ADR-0619):own=0(全场 bench∪deployed
+    own≥1 门:own=0(全场 bench∪deployed
     无同名同星)时合成买不成立,按满栏非合成买拒收——merge_mechanics
     §2.5 的满栏例外以「已有素材/载体在场、买入可完成合成」为前提,
     own=0 时首张买入既无空槽落位、也无进行中的合成可完成,游戏侧该
@@ -575,12 +575,12 @@ def _apply_full_bench_merge_buy(bench: list[BenchSlot | None],
 
     调用语境 = ``bench_place`` 失败(bench 无空槽)后的满栏买入;前置 =
     该买完成一次合成(``merge_buy_completes``,不满足 = 满栏拒买,
-    ADR-0283 兜底)。应用 = k = ``merge_buy_k`` 张临时挂槽位表尾参与
+    兜底)。应用 = k = ``merge_buy_k`` 张临时挂槽位表尾参与
     ``_merge_bench``(3 合 1 是全场;own+k ≡ 0 mod 3,合成本身恒耗尽
     尾挂张),截回定长 9。载体落点语义依赖 own≥1:own=1/2 时合成组
     含场内张,载体落在 idx<9 或场上,截断不伤;own=0 域(全尾挂、
     载体落 idx9 必被截删)由 ``merge_buy_completes`` 的 own≥1 门排除
-    (ADR-0619)。返回应用张数 k;前置不满足返回 None(调用方
+    。返回应用张数 k;前置不满足返回 None(调用方
     据此 no-op)。
 
     双账同构依据(2026-09-09 05:52 运行局双响事故):满栏时游戏

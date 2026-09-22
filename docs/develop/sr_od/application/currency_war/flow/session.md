@@ -52,7 +52,7 @@
 | `star_pending_regression` | 识别防抖(合成动画窗确认) | star 真值采信 | 节点内 | 框架识别守卫 |
 | `briefing_affixes` / `briefing_bosses` / `selected_difficulty` / `enemy_difficulty` / `active_env` | 简报/入口屏/情报屏采集 | mechanics_fit/boss_fit/保血阈值 | 局 |  保位勿滤 |
 | ~~`prep_obs_frame`~~ | —— | —— | —— | **已退役删除**(迭代 2026-09-18-prep-obs-retirement 阶段 3.5):备战黑板帧宿主与 `gs.prep_obs` 槽一并删除,策略器唯读容器契约归位——备战决策读 = 容器单例 `game_state_of(session)` 全量直读;`PrepObservation` 瘦身为备战环 op 局部控制信号载体(shop_open/substate/event_overlay),不进 session |
-| `pending_round_outcomes` | 结算观察(结算点追加 RoundOutcome) | 遥测留档累积面 | 局 | ADR-0583 后批新增;消费半已随 ADR-0638 删,现为只写累积槽,候遥测清理批评估 |
+| `pending_round_outcomes` | 结算观察(结算点追加 RoundOutcome) | 遥测留档累积面 | 局 | 后批新增;消费半已随 删,现为只写累积槽,候遥测清理批评估 |
 
 > 帧代次标注槽 `prep_frame_class`/`shop_frame_class` 留 session(帧语义注记,非游戏事实):`shop_frame_class` 标注对象 = **最近一次商店域容器观察写点**(入口观察段喂入/续段重观察)——商店黑板槽 `shop_state_frame` 已随两态制收口退役删除,容器 = 商店决策读单源;`prep_frame_class` 标注对象 = 最近一次备战域容器观察写点(黑板帧宿主已退役,标注语义保留)。
 

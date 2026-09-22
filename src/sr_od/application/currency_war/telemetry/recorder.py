@@ -10,7 +10,7 @@ telemetry/query 只余纯函数单一源)。本模块保留:
 - TelemetryRecorder:进程级落盘根槽载体(replay_dir/enabled;测试经
   telemetry.state.set_recorder_replay_dir 换根,装配面语义不变)+ 缺陷
   台账写入(record_defect;保留专用流,候裁面见处置表 defect_ledger 行)。
-  (snapshot_expected_paths 挂起期望快照 helper 已随 ADR-0651 两态制
+  (snapshot_expected_paths 挂起期望快照 helper 已随 两态制
   退役删除——expected_state 条目表拆除无快照可取。)
 
 旧内存累积面(gold 轨迹/comps 序列/难度表)随 runs 流写入端一并退役——

@@ -1,4 +1,4 @@
-"""奖励节点经济纪律判据单一源(规则①②;ADR-0580)。
+"""奖励节点经济纪律判据单一源(规则①②)。
 
 裁定权威 = 用户账本 408 行(「1-1/1-2 等奖励关不需要战力:升级抑制、
 买卡压牌库优先」)+ [16] 勘误(原②「奖励节点买经验合法」已删除)。
@@ -6,7 +6,7 @@
 entry posture 授权链首位)与 ②(b) 帧型判据全部消费本模块的同一谓词,
 禁第二套帧型判定(D3)。
 
-两个失效方向各自按自身误判代价定,显式声明防混用(ADR-0580):
+两个失效方向各自按自身误判代价定,显式声明防混用:
 - node_type 不可辨(None)→ **抑制关(fail-open 不抑制)**。为什么:
   误拦升级 = 奖励帧人口停滞,误放 = 病灶复发一次;店开观察帧节点行
   被遮恒 None(cw_observation.py「prep_shop_open 节点行被遮」在案)是
@@ -33,7 +33,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 #: 全表内含该子串者仅此两行,其余命中在 PlazaAugment 表,不在名单源)。
 #: 派生式判据让版本重采自动跟上;失配方向(版本改词致漏派生)= 守卫
 #: 对过热局系统性关闭,代码内不可检测,已申报盲区(版本重采检查单
-#: 把 PLAZA_PORTALS 效果文本比对列入,ADR-0580)。
+#: 把 PLAZA_PORTALS 效果文本比对列入)。
 PIGGY_ENV_NAMES: frozenset[str] = frozenset(
     p.name for p in PLAZA_PORTALS if '奖励节点替换' in p.effect)
 

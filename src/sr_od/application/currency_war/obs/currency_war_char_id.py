@@ -59,7 +59,7 @@ def load_avatar_templates(avatar_dir: Path) -> AvatarTemplates:
     若同目录存在 ``mask.png``(官方库烘焙产物,alpha 二值掩码),SIFT 只在掩码区提特征
     (背景色不进描述子;ADR 见烘焙生成器 tools/cw/gen_plaza_chars.py)。无 mask 则全图(旧手采库兼容)。
 
-    **变体模板逐文件掩码**(2026-08-28,ADR-0452):变体 ``raw_<域>.png`` 优先读同目录
+    **变体模板逐文件掩码**(2026-08-28):变体 ``raw_<域>.png`` 优先读同目录
     ``mask_<域>.png``(如 ``raw_board.png`` ↔ ``mask_board.png``),缺失再退 ``mask.png``
     (形状须与该文件一致,不一致按无掩码)。根因:``mask.png`` 尺寸只配主档 ``raw.png``,
     变体形状必然失配 → 变体曾整体无掩码入库,卡框/角标等**跨卡恒定的 UI 铬特征**进描述子,
@@ -111,7 +111,7 @@ def _ransac_homography(skp, tkp, good: list) -> tuple[int, MatLike | None, list[
     """good 匹配的 RANSAC:返 (内点数, homography, 内点在 good 中的下标表)。
 
     内点数语义与旧 ``_ransac_inliers`` 一致(mask None → good 数,下标=全量)。
-    下标表供 ``identify_hypotheses`` 做核内内点计数(ADR-0452)。
+    下标表供 ``identify_hypotheses`` 做核内内点计数。
     """
     if len(good) < 4:
         return len(good), None, list(range(len(good)))
@@ -135,7 +135,7 @@ def ransac_locate_x(tkp, skp, good: list, tmpl_gray: MatLike, x_off: int = 0) ->
     与 ``_ransac_inliers`` 同向(query=模板 / train=场景);部分可见也能定位
     (homography 拟合整体变换,不依赖模板完整在画)。定位失败(匹配不足/homography
     奇异)→ None。``x_off`` = band 在全图中的 x 偏移(band 裁切定位用)。
-    用途:系统单位恒最右布局自检(ADR-0281,cw_identity_obs.check_system_unit_layout)。
+    用途:系统单位恒最右布局自检(cw_identity_obs.check_system_unit_layout)。
     """
     if len(good) < 8:
         return None
@@ -159,7 +159,7 @@ def identify_hypotheses(slot_img: MatLike, templates: AvatarTemplates,
 
     与 ``identify_character`` 的区别:不设 min_inliers/歧义比、不做两阶段剪枝 ——
     返回每个 good≥``min_good`` 模板的完整假设,供调用方做**位置感知裁决**
-    (部署排中心归属门,ADR-0452:邻卡渗漏假设的中心落在槽核外,凭内点数
+    (部署排中心归属门,:邻卡渗漏假设的中心落在槽核外,凭内点数
     无法与真身区分、凭几何一眼可判)。全扫描(无剪枝)是位置裁决的前提:
     被剪枝者可能是「渗漏高内点」假设,剪掉就丢失了它的几何证据。
     耗时:每模板一次 RANSAC(≤83 次/槽),部署排逐槽调用可接受。
@@ -168,7 +168,7 @@ def identify_hypotheses(slot_img: MatLike, templates: AvatarTemplates,
     :param core_range: 裁片坐标系 ``(x1, x2)``,**核内内点** = 场景点 x 落在该区间
         的 RANSAC 内点数(证据落点计数)。渗漏/跨域噪声假设的特征:中心可能
         蹭进核(如噪声中心贴核边缘),但**证据质量**大多落在核外 —— 裁决计
-        核内内点,双保险(ADR-0452 佩佩局空槽 忘归人 21 内点案)。
+        核内内点,双保险(佩佩局空槽 忘归人 21 内点案)。
     :return: 按内点降序;homography 奇异/模板退化者不进列表。
     """
     gray = cv2.cvtColor(slot_img, cv2.COLOR_RGB2GRAY)
@@ -185,7 +185,7 @@ def identify_hypotheses(slot_img: MatLike, templates: AvatarTemplates,
         inl, h_mat, inl_idxs = _ransac_homography(skp, tkp, good)
         if h_mat is None:
             continue
-        # 退化 homography 守卫(ADR-0452):RANSAC 可能把一片模板点映射到
+        # 退化 homography 守卫:RANSAC 可能把一片模板点映射到
         # 单个场景点(实测:佩佩局空槽 忘归人 21 内点中 19 点塌缩到同一
         # 场景坐标)—— 此时内点数与投影中心都是伪值。内点场景坐标去重后
         # 不足 ``_HYP_MIN_UNIQUE_INLIERS`` 个 → 无几何证据,丢弃。
@@ -256,8 +256,7 @@ def identify_character(
     if sdesc is None or len(skp) < 4:
         # 旧路径此况全模板返 0 → best=0 < min_inliers;等价直返
         return None, 0
-    # 两阶段惰性 RANSAC(2026-08-24 性能优化;决策语义与旧全扫逐位等价,
-    # ADR-0247):
+    # 两阶段惰性 RANSAC(2026-08-24 性能优化;决策语义与旧全扫逐位等价):
     # 阶段1 全模板 ratio-test good 数(免 RANSAC,knnMatch 是 BF 高效项);
     # 阶段2 按 good 降序惰性 RANSAC,剪枝 g ≤ best/ambiguity_ratio ——
     #   内点 ≤ good(RANSAC 只减不加),被剪者不可能超 best、也不可能
@@ -295,7 +294,7 @@ def _resolve_best(scores: list[tuple[str, int]], slot_img: MatLike,
                   return_key: bool) -> tuple[str | None, int]:
     """分数表 → 决策(阈值/歧义比/色相仲裁),identify_character 的决策尾段。
 
-    从 identify_character 抽出共用:部署排中心归属门(ADR-0452)先按几何筛候选,
+    从 identify_character 抽出共用:部署排中心归属门先按几何筛候选,
     再用**同一套**阈值/歧义语义定夺 —— 两路径决策语义单一源。
 
     :param scores: ``[(模板键, 分数)]``(内部降序排序,调用方无需预排)。

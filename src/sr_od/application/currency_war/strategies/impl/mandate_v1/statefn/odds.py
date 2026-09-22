@@ -61,9 +61,9 @@ def p_shop(level: int, cost: int, j: int = 0, taken_c: int = 0) -> float:
 
 def _collapse_window_threshold(omega: float | None) -> float:
     """塌缩带比值线 ω 解析(缺省 = DEFAULT_REGISTRY.omega_collapse_ratio,
-    ADR-0475 同源单一值;窗口判据 = 塌缩带比值锚)。
+    同源单一值;窗口判据 = 塌缩带比值锚)。
 
-    ω 处置申报【拟】:ω 是策略阈值参数,非游戏定义量——现值为 ADR-0475
+    ω 处置申报【拟】:ω 是策略阈值参数,非游戏定义量——现值为
     refresh_ev_budget 归零腿的复用值(未独立标定),登记待证形态、不扩
     辖域(判据输入全游戏定义量纪律不破:表值/峰值查表皆游戏定义量,
     ω 仅作窗口比值阈值);fail-closed 语义 = ω 越大窗口越窄。
@@ -79,7 +79,7 @@ def _collapse_window_threshold(omega: float | None) -> float:
 def tier_search_window(level: int, omega: float | None = None) -> frozenset[int]:
     """档级搜索窗口(档级消费位:压库/凑息/M6;P49 档匹配)。
 
-    判据(塌缩带重锚,承 ADR-0475 塌缩带归零线):费档 c 在搜索窗内
+    判据(塌缩带重锚,承 塌缩带归零线):费档 c 在搜索窗内
     ⟺ refresh_prob(level,c) ≥ ω×refresh_prob(峰值级(c),c)——等级现读
     REFRESH_PROB,峰值级 = cw_plane_table.peak_refresh_level 查表 argmax,
     ω 见 ``_collapse_window_threshold``。全游戏定义量(概率表 + 峰值查表

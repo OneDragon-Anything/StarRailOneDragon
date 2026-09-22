@@ -31,7 +31,7 @@ log = log_utils.log
 # ===== 模块级单例 + run_id 跟踪(ops 不改签名即可采集)=====
 # telemetry 是横切关注点,用模块级 recorder + current_run_id。run_id 铸造
 # 单点 = ensure_run_started(入口链在写任何开局遥测行前铸造,loop 侧认领,
-# ADR-0588)。退役后 run_id 的现役消费方 = journal 行归属(kernel
+# )。退役后 run_id 的现役消费方 = journal 行归属(kernel
 # run_id provider 注入面)与缺陷台账行归属。
 # 默认 enabled=True(用户 2026-08-03 要数据调优;写 .debug/ 不入 git,I/O <1ms 不影响备战实时)。
 _RECORDER: TelemetryRecorder | None = None
@@ -40,7 +40,7 @@ _CURRENT_RUN_ID: str = ""
 
 _CURRENT_DIFFICULTY: str = ""
 
-# ADR-0588:铸造时点的 match 容器引用 token。ensure_run_started 用「is 比较」
+# :铸造时点的 match 容器引用 token。ensure_run_started 用「is 比较」
 # 判当前 open run 是否属于这个物理对局(不用 id()——规避对象复活后 id 复用;
 # 强引用滞留一个死容器,内存代价可忽略)。None = 尚未铸造或铸造时无容器
 # (重启后中途进局,ctx.cw_match=None 直达投资屏的形态)。
@@ -91,7 +91,7 @@ def get_recorder() -> TelemetryRecorder:
 def start_run(difficulty: str = "") -> str:
     """开始一次 run:生成 run_id(时间戳)。返回 run_id。
 
-    ADR-0588:生产铸造统一经 :func:`ensure_run_started`(入口链在写任何
+    :生产铸造统一经 :func:`ensure_run_started`(入口链在写任何
     开局遥测行前调用;直调本函数仅存在于测试)。
 
     删除波 1:局起点两件旧流伴生面随写入端退役——①runs 兜底回填
@@ -115,7 +115,7 @@ def start_run(difficulty: str = "") -> str:
 
 
 def ensure_run_started(match: object, difficulty: str) -> str:
-    """幂等开局:写任何本局遥测行前确保有归属本局的 open run(ADR-0588)。
+    """幂等开局:写任何本局遥测行前确保有归属本局的 open run。
 
     门控三分支任一成立 → 经 start_run 铸新 run(本体零改动),并在其返回后
     自赋 _RUN_MATCH token(token 赋值在 ensure 内不进 start_run——保
@@ -131,7 +131,7 @@ def ensure_run_started(match: object, difficulty: str) -> str:
       重铸,防新局开局行盖进上次失败会话的悬空 run。
 
     「继续进度」恢复路径:入口不走铸造分支 → loop 侧 ensure 见 _RUN_CLOSED
-    铸新段 = 续段语义,与 ADR-0460 时代的担忧由本门控显式覆盖。
+    铸新段 = 续段语义,与 时代的担忧由本门控显式覆盖。
 
     生产铸造唯一调用点 = 本函数(cw_entry_start 简报/投资环境/投资策略三分
     支 + cw_loop __init__ 认领)。返回 open run_id。
@@ -158,14 +158,14 @@ def reset_run_state() -> None:
     """run 态簇的测试复位正规入口:清 _CURRENT_RUN_ID/_RUN_MATCH/_RUN_CLOSED
     /_CURRENT_DIFFICULTY 四件。
 
-    为什么收口成单点(ADR-0588 ensure 门消费簇 × 测试复位链缺口):三件套
+    为什么收口成单点(ensure 门消费簇 × 测试复位链缺口):三件套
     分散在三处生产写点(start_run 铸造 / ensure_run_started 赋 token /
     close_run 置收口位),测试侧逐件 monkeypatch 清单漏一件即留
     跨测试残留——实证:假局 harness 局终经生产收口位裸写
     _RUN_CLOSED=True,teardown 复位链不覆盖,后续未全簇桩化就直调
     ensure_run_started 的测试把「上局已收口」误判为真走重铸假分支(出处:
     .debug/temp/currency_war/attacks/three_review_20260908/三审报告-第二波.md
-    F1,**易失产物**待 ADR 回填;门控三分支语义见 ADR-0588)。
+    F1,**易失产物**待回填)。
 
     难度列入簇(出处:.debug/temp/currency_war/attacks/
     three_review_20260908/三审报告-第三波.md F3,**易失产物**待 ADR 回填;

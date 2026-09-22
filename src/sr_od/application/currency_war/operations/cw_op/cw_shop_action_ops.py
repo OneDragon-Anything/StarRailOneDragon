@@ -1,6 +1,6 @@
-"""商店单动作动作 op 集(ADR-0517 决策 3/10;flow 实施批)。
+"""商店单动作动作 op 集(/10;flow 实施批)。
 
-动作基类单方法(execute;原 execute+project 两方法契约(ADR-0517 决策 10)
+动作基类单方法(execute;原 execute+project 两方法契约
 的 project 半已删——T-163 纯规则路线裁定(用户 2026-09-12):策略与实机
 操作链零 simulate 前瞻消费,期望态推进改走容器逻辑态直写
 (上报函数族单点,kernel/cw_action_report;
@@ -10,7 +10,7 @@ kernel 规则单一源,与序列驱动器同形;写语义由投影直锁钉
 - ``execute(env)``:机械执行(点击/拖拽;op 框架既有的重试/等待语义
   在此层),无判断。
 
-**知识缺口申报(ADR-0517 决策 7 边界注;merge_mechanics 通篇未载)**:
+**知识缺口申报(边界注;merge_mechanics 通篇未载)**:
 非满栏常态时合成槽位买的一击张数无 research 记载——本实现取保守假设
 **一击一张**(kernel 规则面同判:常态单击单张,满栏例外按 merge_buy_k
 一击多张),规则模型误差由入口
@@ -56,7 +56,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class ShopVisitLedger:
-    """商店访问执行账(旧访问循环闭包计数器的具名化,ADR-0517)。
+    """商店访问执行账(旧访问循环闭包计数器的具名化)。
 
     消费面 = 执行回执 detail 汇总串与上报 executed 计数单一源
     (``total_buy``/``total_xp_buy``/``total_refresh``;编排侧 zero-consume
@@ -106,7 +106,7 @@ def _round_of(state: GameState) -> int:
 # ---------------------------------------------------------------------------
 
 def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
-    """proposal-vs-expected 断言(ADR-0517 §守卫两属 (i))。
+    """proposal-vs-expected 断言(§守卫两属 (i))。
 
     提案动作引用的对象在期望态中确实存在且未被消费——防策略器算术 bug
     (单动作循环下期望态每动作后即更新,此属天然成立;断言炸出 = 策略器
@@ -137,7 +137,7 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
                 f'[cw-shop][guard] CwActionBuyCardParam 提案牌不在期望态店中:'
                 f'name={_name!r} cost={action.card.cost} '
                 f'shop={[(c.name or "") for c in shop_payload_content_cards(_payload)]}'
-                '(策略器 bug:跨代际/已消费提案,ADR-0517 决策 9)')
+                '(策略器 bug:跨代际/已消费提案)')
         return
     if isinstance(action, CwActionSellBenchParam):
         _slots = bench_view_slots_of(state)
@@ -153,13 +153,13 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
                 f'[cw-shop][guard] CwActionSellBenchParam 提案指向空槽/越界:'
                 f'bench_idx={action.bench_idx} expect={action.expect!r} '
                 f'bench={[(_cid(s) if s is not None else None) for s in _slots]}'
-                '(策略器 bug:期望态无此对象,ADR-0517 决策 9)')
+                '(策略器 bug:期望态无此对象)')
         if action.expect and _cid(tgt) != action.expect:
             raise AssertionError(
                 f'[cw-shop][guard] CwActionSellBenchParam 名-槽不一致:'
                 f'idx={action.bench_idx} expect={action.expect!r} '
                 f'实际={_cid(tgt)!r}'
-                '(策略器 bug:跨代际提案,ADR-0517 决策 9)')
+                '(策略器 bug:跨代际提案)')
 
 
 # 商店单动作 op 族住动作文件:动作 op = CwActionXxxOp(SrOperation,批③

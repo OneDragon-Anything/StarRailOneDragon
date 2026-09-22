@@ -1,6 +1,6 @@
 """cw4 决策入口(entry 三遍编排 + 帧稳定截断发射器)。
 
-换核批 1 结构签名(R189-4;迁移序原文已删档,取回口径=ADR-0644):
+换核批 1 结构签名(R189-4;迁移序原文已删档,考古走 git 历史):
 
     def _emit(obs, session) -> list[CwAction]:
         actions += self._mandate_pass(obs, session)    # 骨架动作流,逐条 mandate=True
@@ -16,7 +16,7 @@ truncate_frame_stable 判 = 契约 v2 §3.2 备战线域 18 类逐类表(词表
 as-built 权威 = docs/develop/sr_od/application/currency_war/flow/action_exec.md §1——
 契约正本 CONTRACT_SERIES_DECISION.md 工作副本灭失(全仓零命中,
 .debug 不入 git),§1 即该词表行的首次文档落档,权威链重锚申报 =
-ADR-0585 §5 + flow/action_exec.md §1 正本)+ §3.3 fail-closed(词表外/无分类
++ flow/action_exec.md §1 正本)+ §3.3 fail-closed(词表外/无分类
 动作 ⇒ 截断 + 计数披露,禁静默丢弃)。发射器实现期增补条目须回契约
 改版,禁只改代码。R196 修复批(症5)对齐:CwActionCollectOreParam=条件判(末批
 可能掉箱 ⇒ 其后截断)、conditional 五类名-槽一致性复检(推不出即截断,
@@ -32,10 +32,10 @@ CwActionOpenShopParam 的典型帧)的塌缩出口发射会落在截断点之后
 权限划界,其追加面=发射
 组织面,执行序按依赖拓扑承载)。截断器丢弃尾动作一律计数
 ``emitter_post_truncation_dropped``(零静默披露;键写点=本模块计数器,
-登记节原文已删档,取回口径=ADR-0644)。
+登记节原文已删档,考古走 git 历史)。
 
 R197 修复批(症2)影子面声明:A/B 期换线权威 = decision_v2 意向状态机
-(方向重估经 flow 层方向刷新,ADR-0583 内化,两臂同源恒等);本模块
+(方向重估经 flow 层方向刷新,内化,两臂同源恒等);本模块
 ``switch.event`` 只登记
 回锁窗遥测与 switchline_event 计数,**不写 target_comp**——cw4 的
 should_switch/回锁窗/干旱计数全部为影子面(实装接线=过线后批)。
@@ -135,7 +135,7 @@ if TYPE_CHECKING:
 #: ev_arm 值域(R1-1:skeleton_only=臂① EV 发射面旁路;full=臂② 全开)
 EV_ARM_VALUES: tuple[str, ...] = ('skeleton_only', 'full')
 
-#: 晶矿内容占席颜色集(迁移 B 晶矿谓词第二腿的判定输入;ADR-0596 §4.9③)。
+#: 晶矿内容占席颜色集(迁移 B 晶矿谓词第二腿的判定输入)。
 #: CV 颜色域 = {'gold','blue','gray'}(cw_identity_obs 圆心 HSV 分类),
 #: 但「颜色 → 内容是否占席」的玩法机制面待实机实证——现役缺省 = 空集
 #(晶矿均按不占席,宁多收晶矿不误卖:点击失败可自愈、CwActionSellBenchParam 不可逆;
@@ -156,9 +156,9 @@ def _ore_bench_free(gs: GameState) -> int:
     return BENCH_CAPACITY if _free is None else max(0, int(_free))
 
 
-#: 席满让路门探针预算 K(预注册 = 1;ADR-0642;T-281 方案稿 §3.3,非自由调参):
+#: 席满让路门探针预算 K(预注册 = 1;T-281 方案稿 §3.3,非自由调参):
 #: K≥1 = 保留单次探针区分「机制性拒绝」vs「单帧偶发落空」,并对「席满全
-#: 阻断」建档注释假设保留最小实证敞口(色→内容映射未证,ADR-0596 §4.9③);
+#: 阻断」建档注释假设保留最小实证敞口(色→内容映射未证);
 #: K=2 无信息增益仅多 1 环延迟。零新拍定值:由
 #: 守卫常量与在册机制假设夹逼出可行域后取 1。
 ORE_DEFER_PROBE_K: int = 1
@@ -178,7 +178,7 @@ ORE_CLICK_BATCH_MAX_K: int = 3
 
 
 def _ore_progress_sig(gs: GameState) -> int:
-    """席满让路门成效计数签名((轮次, 席计数, 晶矿计数) 压缩整型;ADR-0642)。
+    """席满让路门成效计数签名((轮次, 席计数, 晶矿计数) 压缩整型)。
 
     载体 = 容器 gs(prep 链容器化段 1:签名切 gs)。轮次经
     ``round_num_of`` 读口——未观察帧缺省 1 镜像旧「state is None → 1」
@@ -186,7 +186,7 @@ def _ore_progress_sig(gs: GameState) -> int:
     三分量全部 gs 现成字段,零新识别;压缩进 int 保持 cw4_counters
     数值账本面(禁存 tuple/str)。装箱域:席/晶矿计数各 4 bit,>15 回绕 = 误判「有成效」
     → 多一环探针点击,良性偏置。噪声口径:刻意不采 raw gold(OCR 噪声
-    会误复位使门失效,ADR-0554 修订节 5 同源教训);晶矿计数经 Hough 检出
+    会误复位使门失效,同源教训);晶矿计数经 Hough 检出
     存在抖动,每次误变只多一环探针,无进展守卫(阈值 3)仍兜底。
     """
     _round = round_num_of(gs)
@@ -258,7 +258,7 @@ def truncate_frame_stable(actions: list[CwAction],
     继续发射;截断点 → 该动作作为序列最后一个动作发出;终点 → 序列
     终点(其后必须截断);unknown(词表外/无分类)→ fail-closed 截断
     + 计数披露(``emitter_unknown_action_truncated``;键登记单一源=
-    本写点,原 design_telemetry 键节已删档、取回口径=ADR-0644——
+    本写点,原 design_telemetry 键节已删档、考古走 git 历史——
     契约禁成遥测键第二登记源)。
 
     conditional 类的复检(R196 症5,契约 §3.2 依据列「名-槽一致性复检/
@@ -276,7 +276,7 @@ def truncate_frame_stable(actions: list[CwAction],
       掉箱,掉箱弹 overlay 不可静态预测)⇒ 其后截断(契约 §3.2
       CwActionCollectOreParam 行;末批截断系判型内语义,非失败,不计
       ``emitter_conditional_truncated``)。
-    - ``CwActionSellDeployedParam``:deployed 槽表下标恒稳(ADR-0392,卖出置 None
+    - ``CwActionSellDeployedParam``:deployed 槽表下标恒稳(卖出置 None
       不移位),序列内成立 ⇒ 可续。
 
     尾动作丢弃计数(R197 症1②):任一截断路径(词表外/复检失败/截断点/
@@ -332,7 +332,7 @@ def truncate_frame_stable(actions: list[CwAction],
                 if slots is not None:
                     slots.discard(a.bench_idx)
                 continue
-            # CwActionSellDeployedParam:deployed 槽表下标恒稳(ADR-0392),序列内成立
+            # CwActionSellDeployedParam:deployed 槽表下标恒稳,序列内成立
             out.append(a)
             continue
         out.append(a)
@@ -500,8 +500,8 @@ def emit(session: StrategySession,
     # 防陈旧门真/载荷空(空转)或批 5 删字段后 AttributeError。
     _sf_targets = ore_click_targets_of(gs)
     if _sf_targets:
-        # 席满让路门(T-297 落码;ADR-0642;方案正本 = T-281 修复方案稿
-        # v2.1,重写自 ADR-0596 §4.9③ 迁移 B 两腿谓词的收晶矿行为,结构
+        # 席满让路门(T-297 落码;方案正本 = T-281 修复方案稿
+        # v2.1,重写自 迁移 B 两腿谓词的收晶矿行为,结构
         # 保活面见下方死码块)。门显式条件化(方案 §3.2/B5):
         # - 格3 席自由(free>0):自愈形态(screen_flow_timing #16),
         #   行为等价——动作序列与状态迁移与改前一致,新增仅 streak 归零
@@ -554,8 +554,8 @@ def emit(session: StrategySession,
         if isinstance(_ct_sp, dict):
             _ct_sp['ore_defer_yield'] = \
                 _ct_sp.get('ore_defer_yield', 0) + 1
-        # 让路 fall-through:不发晶矿动作,落入下方常规步骤序(ADR-0642)。
-        # —— 旧谓词第二腿 + 腾席臂(迁移 B 原案;ADR-0596 §4.9③「结构
+        # 让路 fall-through:不发晶矿动作,落入下方常规步骤序。
+        # —— 旧谓词第二腿 + 腾席臂(迁移 B 原案;「结构
         # 保活」明文):**保留原位,当前不可达**(结构性死码,非退役)。
         # 触发条件 `_sf_occupied` 要求 SPHERE_OCCUPYING_COLORS 非空(见
         # 模块头:现役缺省空集 = 宁多收晶矿不误卖),整块不可达;备选A
@@ -591,7 +591,7 @@ def emit(session: StrategySession,
                 counters=state_of(session).cw4_counters,
                 dedup_names=set())
             if _sf_cands:
-                # 轮内卖出登记(泄金阶梯档 2 新鲜度排除写端,ADR-0604 §3;
+                # 轮内卖出登记(泄金阶梯档 2 新鲜度排除写端;
                 # 晶矿路径 M4 腾席与 prep/shop 域 M4 同口径——漏记 = 卖X 后同轮
                 # 压库买回 X 的净零自旋在该路径残余可达)。
                 _sf_c0 = mandate._slot_cid(_sf_cands[0])
@@ -686,7 +686,7 @@ def emit(session: StrategySession,
     switch = proof.should_switch(
         gs, session, config, registry, skeleton_only=skeleton_only)
     # 换线事件本帧只登记,K 变更下一备战期生效(R1-3):登记 = 撤线窗口
-    # 步进 + 换线遥测;K 翻转由方向重估(下帧决策入口)承载(ADR-0583)。
+    # 步进 + 换线遥测;K 翻转由方向重估(下帧决策入口)承载。
     # 【R197 症2 影子面声明(编排者裁=方案 a)】A/B 期 target_comp 权威
     # = decision_v2 意向状态机(经 flow 层方向刷新,两臂同源恒等);本
     # 登记只写回锁窗状态与计数,不写 target_comp——cw4 换线判据族
@@ -695,7 +695,7 @@ def emit(session: StrategySession,
         proof.register_eviction(session, getattr(k, 'name', ''))
         counters = state_of(session).cw4_counters
         counters['switchline_event'] = counters.get('switchline_event', 0) + 1
-    # 证据门影子评估(接线批 T-213/ADR-0637;R197 症2 影子面同族):
+    # 证据门影子评估(接线批 T-213/;R197 症2 影子面同族):
     # 输出只进 cw4_counters 分键,返回值不被消费做行为——封印期(Δ/ε₂/
     # V_ms/Δλ【拟】全 None)恒「不可评」诚实显影,绝不向骨架层渗漏为
     # 否决(NMF §6/§5.3);权威面切换候标定落地另案裁决批。
@@ -835,7 +835,7 @@ def emit(session: StrategySession,
     # 授权只量可上阵阵容;买入义务面口径 = buy_members(shop 域,含锁定
     # 采购集超集)——两口径分域 = 有意设计(编排者存-2 裁决:囤腿件走
     # 合成→上板,部署面只量可部署现量)。分层归属:transition_pair 维持
-    # ADR-0367 二级囤货(locked_buy_membership 已排除,不入部署/买入义务);
+    # 二级囤货(locked_buy_membership 已排除,不入部署/买入义务);
     # F3(全 2★ 旧线重锚)经编排者裁决驳回(前提事实错误:第十局板面为
     # 全 1★ 旧线;§9.5 单一源资格已覆盖该病例),全 2★ 形态另案观察。
     frame = mandate.MandateFrame(
@@ -856,7 +856,7 @@ def emit(session: StrategySession,
         # 溢出观察写端);缺读 None = 门关(fail-open 向常规决策,与 False
         # 同向——旗标只由真读横幅置位)。
         overflow_warning=bool(gs.overflow_warning.value))
-    # registry 下传骨架 pass(等级帽单一源,ADR-0565 收口 = ADR-0606:
+    # registry 下传骨架 pass(等级帽单一源,收口:
     # M3 链 lv9_stop/level_spend_blocked 消费注入表,与 ④′ 姿态对账
     # 同一注入链)。
     out: list[Emitted] = mandate.run_mandate(frame, session, state=gs,
@@ -892,7 +892,7 @@ def emit(session: StrategySession,
         if missing and contracts.ensure_contract(
                 ('sell', 'funding_support_sell'),
                 contracts.ContractCtx(gold=gold_of(gs)), _ct):
-            # 排除集 = 统一装配 A 全量形态(单一入口 sell_gate;ADR-0585,
+            # 排除集 = 统一装配 A 全量形态(单一入口 sell_gate,
             # 方案 v3 §2.9 新格 A):本位旧形态**空排除**——锁线宽集成员
             # (zero_overlap 只拦窄 k_members)可被 prep funding 卖 → shop
             # 域 M2 重买 = 义务换手;义务基座(锁线宽窄解析单点)∪ 静态
@@ -1058,7 +1058,7 @@ def _reconcile_posture_authorization(session: StrategySession,
         return None
     if any(isinstance(e.action, CwActionLevelUpParam) for e in emitted):
         return None
-    # T-115 规则① 消费位4(ADR-0580):奖励帧抑制授权面让位 = 显式降级,
+    # T-115 规则① 消费位4:奖励帧抑制授权面让位 = 显式降级,
     # 防奖励帧被「逐门定位未兑现原因」当故障链走(与 crisis_yield 修复
     # 前的噪声同型;范式 = 下方 crisis 让位三键结构,不另造让位机制)。
     # 位次钉死(方案 D2)= 授权链**首位**:先于危机让位与血闸镜像求值
@@ -1106,7 +1106,7 @@ def _reconcile_posture_authorization(session: StrategySession,
                  _hp, _plane, _round,
                  un['reason'])
         return un
-    # [40]② 血闸镜像(ADR-0578):发射位闸拒 → 授权面 crisis_yield 同款让位
+    # [40]② 血闸镜像:发射位闸拒 → 授权面 crisis_yield 同款让位
     # 语义(支付能力检查独立于停付线,不可被域/地板豁免;金本位恒 True 直通)。
     # kernel 闸波 2 已切容器签名(hp 经政策层读口);载体 = 置顶 gs 直传
     #(prep 链容器化段 1 消桥:旧帧经桥装箱面消亡,视图→桥→容器往返恒等)。
@@ -1162,7 +1162,7 @@ def _reconcile_posture_authorization(session: StrategySession,
         elif _gold < clicks * cost:
             reason = 'unaffordable'
         else:
-            # P72 (3) 全段预算闸镜像(ADR-0576;与 run_mandate M3 链
+            # P72 (3) 全段预算闸镜像(与 run_mandate M3 链
             # 同序同判据,复用判据本体禁第二实现):闸拒归因 = budget_gate
             # 族独立拒因,禁落 contract_other 兜底桶(prep 侧降级归因
             # 全错形态,方案审 B4)。cap_resolved 用 resolved 口径单一源。
@@ -1304,7 +1304,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
         _t3_protect = mandate.stall_protect_active(
             session, round_num_of(gs),
             counters=counters)
-        # 排除集 = 统一装配 A 全量形态(单一入口 sell_gate;ADR-0585,
+        # 排除集 = 统一装配 A 全量形态(单一入口 sell_gate,
         # 新格 A 同根格——与上方 skeleton_only 分支及店侧 funding 发射位
         # 三位同源,空排除形态在此闭死;批 3 窗口段生效)。
         _f_excl = sell_gate.sell_exclusions(

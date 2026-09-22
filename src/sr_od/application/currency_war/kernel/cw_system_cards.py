@@ -57,7 +57,7 @@ _WEIGHT_INTENT_ALIGNED: float = 0.5   # 意向同向 tie-break(非一票否决;�
 #   来牌——tie-break 只裁同分,不得翻越「来牌主判据」)
 _WEIGHT_AFFIX_LIKE: float = 1.5       # 词条吃:每条命中
 _WEIGHT_AFFIX_FEAR: float = -3.0      # 词条怕:每条命中(怕>吃,counter 警惕优先)
-# 激活所需件数(readiness 分母;ADR-0311 统一维度:「门槛低」=容易被先凑出,
+# 激活所需件数(readiness 分母;统一维度:「门槛低」=容易被先凑出,
 # 不是优先级特权——对所有卡统一生效,新羁绊加入零改动)
 _ACTIVATION_PIECES: dict[str, int] = {
     'xianzhou3': _XIANZHOU_TIER,      # 3
@@ -361,7 +361,7 @@ def _affix_weight(card: SystemCard, affixes: list[str]) -> float:
 
 def pick_card_combination(gs: GameState, intent: str | None = None,
                            affixes: list[str] | None = None) -> CombinationDecision:
-    """组合选择(p1_definition 组合规则 1-3;C2 冻结入口形状,权重草案级;ADR-0311)。
+    """组合选择(p1_definition 组合规则 1-3;C2 冻结入口形状,权重草案级)。
 
     - 主判据=来牌(``card_pieces``,哪系件先到)+ readiness 统一维度
       (``pieces / 激活所需件数``,对所有卡统一生效——门槛低的体系(DOT2=2 件)

@@ -140,7 +140,7 @@ class CwStrategy(ABC, Generic[_TState]):
         基类不感知具体字段)。生命周期 = 一局(实例不跨局 → 状态天然隔离)。"""
         return None
 
-    # ===== 分画面决策入口(ADR-0517 目标模型:op 的策略接触面 = 入口观察
+    # ===== 分画面决策入口(目标模型:op 的策略接触面 = 入口观察
     #       + 策略器单动作循环;入口按画面塑形,方向重估时机是实现私事)=====
 
     @abstractmethod
@@ -264,7 +264,7 @@ def set_obs_reset_hook(reset_phase_round_cache: Callable[[], None]) -> None:
 
 
 def discard_stale_match_container(ctx: SrContext, reason: str) -> bool:
-    """上一局残留的 match 容器在**新局开始信号**处丢弃(迁移审计 w289(git 历史)/ADR-0419)。
+    """上一局残留的 match 容器在**新局开始信号**处丢弃(迁移审计 w289(git 历史)/)。
 
     背景(迁移审计 w285(git 历史) 抽样判读):正常流程局终回大厅会置 ``ctx.cw_match = None``(cw_loop
     分支 3c),下一局 ``RunLoop.handle_init`` 见 None 新建 session —— 状态天然全新。但
@@ -287,7 +287,7 @@ def discard_stale_match_container(ctx: SrContext, reason: str) -> bool:
         return False
     from one_dragon.utils.log_utils import log as _log
     _log.warning('[cw-entry] 检测到上一局残留 match 容器(%s)→ 弃置,'
-                 '本局 session 全量重建(ADR-0419)', reason)
+                 '本局 session 全量重建', reason)
     ctx.cw_match = None
     if _RESET_PHASE_ROUND_CACHE is not None:
         _RESET_PHASE_ROUND_CACHE()

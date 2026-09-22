@@ -412,7 +412,7 @@ class ActiveEffectInventory:
         """战斗结算事件标记(生产挂点 = CwScreenBattleWait 结算观察写端
         _record_round_outcome 非 telemetry_only 分支——真实结算才标记,
         败局页 telemetry-only 补录不标记,与 apply_settlement_cover 同口径;
-        原 on_round_end 候选宿主已随 ADR-0583 删除)。"""
+        原 on_round_end 候选宿主已随 删除)。"""
         self._events[_EVENT_BATTLE_END] = self._events.get(_EVENT_BATTLE_END, 0) + 1
 
     def event_count(self, kind: str) -> int:
@@ -1159,7 +1159,7 @@ def settle_node_boundary_gold(
       写入(禁造假基座,板面重写桥金面同族先例);合计 0 同样跳过(无可
       入账增量,禁把观察金翻标成 logic,§2.1 来源标记到字段)。
     - **辖域排除**:到期尾款金(effect-domain.md §7.3 禁 logic 直写防双计)、
-      事件金、STRATEGY_ECONOMY 的 gold_per_node 族(ADR-0623 决策1
+      事件金、STRATEGY_ECONOMY 的 gold_per_node 族(
       「'invest' 键单列」)不在本载体——各自接线面另批;sim 收入路径
       不经本载体(sim 真值合成)。
     """

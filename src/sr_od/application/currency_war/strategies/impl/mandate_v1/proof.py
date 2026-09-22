@@ -1,5 +1,5 @@
 """cw4 证明层(线选择与终局)——换核批 1 落地(R189-1 ④-3 裁决四函数位;
-裁决原文已删档,取回口径=ADR-0644)。
+裁决原文已删档,考古走 git 历史)。
 
 规格单一源:
 - 证明层承载者=本模块四函数位(should_switch/证据门/stop_buy/signal_arm)
@@ -21,7 +21,7 @@
 
 计数载体:``state_of(session).cw4_counters``(dict,bridge 每局创建;键登记
 单一源=下方键清单与写点,原 design_telemetry 键节已删档,取回口径=
-ADR-0644——本模块产键:theta_unavailable(聚合)+
+——本模块产键:theta_unavailable(聚合)+
 theta_unavailable_theta/_d_min/_delta(成因分桶观察件;聚合与成因
 不同键防混计)/ switchline_skipped /
 switchline_exit_blocked / switchline_no_alt / switchline_no_target /
@@ -31,7 +31,7 @@ evidence_gate_evaluated / evidence_gate_sandwich_suff /
 evidence_gate_sandwich_band / evidence_gate_sandwich_below_nec /
 evidence_gate_sandwich_pathological / evidence_gate_unavailable(聚合)+
 evidence_gate_unavailable_<成因>(成因分桶观察件;接线批 T-213 影子
-评估键,ADR-0637——零行为面,键登记惯例=产键模块 docstring)。
+评估键,——零行为面,键登记惯例=产键模块 docstring)。
 """
 from __future__ import annotations
 
@@ -214,7 +214,7 @@ def resolve_switch_params() -> tuple[float, int, float] | None:
 @dataclass(frozen=True)
 class LockSandwichFrame:
     """锁线夹界帧(P76 §4.3/§4.4 各项的帧级数值载体;装配器 =
-    ``assemble_lock_frame``,接线批 T-213/ADR-0637)。
+    ``assemble_lock_frame``,接线批 T-213/)。
 
     字段坐标系(写入端 = 接线批装配器;取值时机 = 锁线评估帧现算):
     - ``e_p_next``:E[P′] 等待一帧后的期望完成概率(P38 同机,集中协议);
@@ -227,7 +227,7 @@ class LockSandwichFrame:
       (修正 4:按组合全集计则双计 ℓ* 件携带,压低阈值偏早锁);
     - ``d_death``:D = Δλ_death·(g+Φ) 死亡风险增量(P51 区间敞口口径,
       禁边际引用/禁 hp 价值换算;λ 挂【拟】);
-    - ``band_domain_ok``:ε₂ 带值辖域位(r1 返工,T-278/ADR-0639 修订):
+    - ``band_domain_ok``:ε₂ 带值辖域位(r1 返工,T-278/):
       装配帧 (max m, r_remaining) 全落标定网格域
       (``calibration.E2_DOMAIN_*``,注册表有界维)为 True;域外
       False ⇒ 门出 unavailable[e2_domain](P76 丙.4「带外不声明」
@@ -250,7 +250,7 @@ class LockSandwichFrame:
 def evidence_gate(missing: list[tuple[int, float]],
                   refresh_budget: int,
                   frame: LockSandwichFrame | None = None) -> tuple[bool, str]:
-    """证据门 P38(④-3 表第二行:新建;P76 §5.5 夹界形态重写,ADR-0628)。
+    """证据门 P38(④-3 表第二行:新建;P76 §5.5 夹界形态重写)。
 
     ``missing`` = [(缺口张数, 单张出现概率 q), ...](线距离分解,
     生产单一源 = ``line_missing_decomposition``);``refresh_budget`` =
@@ -278,7 +278,7 @@ def evidence_gate(missing: list[tuple[int, float]],
     Δ=V_C−V_F 与 ε₂ 走 provisional【拟】槽位(§7 #1:θ* 点值与数值门
     禁消费——None 期门输出「不可评」+成因分键,绝不向骨架层渗漏为否决,
     NMF §5.3)。丁.4 引理域 V_C>V_F:Δ≤0 系域外输入,同归不可评。
-    本门已接线(接线批 T-213/ADR-0637:entry 证明 pass 影子评估,输出只
+    本门已接线(接线批 T-213/:entry 证明 pass 影子评估,输出只
     进分键计数零行为面;P76 修正 5 的零调用点状态自此终结,权威面切换
     = 标定落地且门数值可评后的另案裁决批)。装配单一源 =
     ``assemble_lock_frame``。
@@ -302,7 +302,7 @@ def evidence_gate(missing: list[tuple[int, float]],
         # ε₂ 带值标定网格域外(装配端判定,calibration.E2_DOMAIN_*):
         # 带外不消费带值——静默欠覆盖会使 θ̂_suff 偏低、「P≥θ̂_suff ⇒
         # 锁不劣」保证失效(fail-open),故 fail-closed 归不可评
-        # (r1 返工,T-278/ADR-0639 修订;P76 丙.4「带外不声明」落码)。
+        # (r1 返工,T-278/;P76 丙.4「带外不声明」落码)。
         causes.append('e2_domain')
     delta = delta_calib.value if delta_calib is not None else None
     if delta is not None and delta <= 0:
@@ -392,8 +392,7 @@ def _missing_items(comp: Comp | None,
 def line_missing_decomposition(comp: Comp | None,
                                gs) -> list[tuple[int, float]]:
     """线缺口分解 [(缺口张数 m, 单槽命中概率 q)]——``evidence_gate``
-    输入单一源(接线批 T-213 前全仓无同形产物,T-124 审 Q2b 指认;
-    ADR-0637)。
+    输入单一源(接线批 T-213 前全仓无同形产物,T-124 审 Q2b 指认);
 
     件模型 = P38:form_tiers 逐档一项(段表登记批前现状口径,段表落地
     由该批泛化);m_t = max(0, need−held−shelf) **逐档 clamp**——完成
@@ -411,8 +410,8 @@ def line_missing_decomposition(comp: Comp | None,
 def assemble_lock_frame(gs, session: StrategySession,
                         ) -> tuple[list[tuple[int, float]], int,
                                    LockSandwichFrame]:
-    """证据门评估帧装配单一源(接线批 T-213/ADR-0637;试验数升级 =
-    标定批 T-278/ADR-0639 按 P38 ⑤层金位递推):返回
+    """证据门评估帧装配单一源(接线批 T-213/;试验数升级 =
+    标定批 T-278/按 P38 ⑤层金位递推):返回
     ``(missing, trials, frame)``。
 
     试验数口径(P38 ②层槽试验,docstring 钉死):``trials = SHOP_SLOTS
@@ -425,7 +424,7 @@ def assemble_lock_frame(gs, session: StrategySession,
     `p<th_nec` 恒假 ⇒ 实际落 sandwich_band,典型格(cost ≥ gain+
     ε₂·Δ)落 suff 截 0=无条件放行锁——「永不完成线的锁背书」属换线
     机器领地、P76 夹界模型外,禁靠截 0 语义默认放行:**P=0 域的
-    suff 放行显式裁决已列入装配批义务清单**(ADR-0639 §4)。刷新预算
+    suff 放行显式裁决已列入装配批义务清单**。刷新预算
     解耦语义不回归(P76 §5.5.2:本域耗尽的是购卡预算)。逐项口径与
     简化申报见 budget 模块 docstring(resolved 息帽泛化/升级金单步
     v1/不动点保守端)。
@@ -454,7 +453,7 @@ def assemble_lock_frame(gs, session: StrategySession,
     - ``d_death`` = None(Δλ_death 两协议板强路径差量挂 λ 连续模型
       【拟】P76 §7 #2;λ 表为 PL 键点值无协议差键)。
 
-    门可评前置(敞口更新,申报于 ADR-0637):Δ/ε₂ 注入(标定批
+    门可评前置(敞口更新,申报于 ):Δ/ε₂ 注入(标定批
     T-278 已落,``audit/calibration.apply``)**且** o_plus/d_death
     装配落地(值因子标定批之后续装配批)之前,门对一切缺口帧恒
     ``sandwich_unavailable``〔o_plus,d_death〕。
@@ -568,7 +567,7 @@ def assemble_lock_frame(gs, session: StrategySession,
 
 def evaluate_evidence_gate(gs, session: StrategySession,
                            ) -> tuple[bool, str] | None:
-    """证据门影子评估(接线批 T-213/ADR-0637;entry 证明 pass 每备战帧
+    """证据门影子评估(接线批 T-213/;entry 证明 pass 每备战帧
     消费)。返回 ``(ok, reason)`` 仅供测试/调试,调用方**不消费返回值
     做任何行为**。
 
@@ -654,7 +653,7 @@ def should_switch(gs, session: StrategySession,
     【R197 症2 影子面声明(编排者裁=方案 a,A/B 期换线共用基线权威)】
     本函数输出在 A/B 期为**影子面**:只发遥测(归因分键/switchline_
     event 计数)与登记回锁窗,**不写 target_comp**——K 翻转的生产载具
-    = decision_v2 意向状态机(ADR-0583 起内化为 flow 层方向刷新,
+    = decision_v2 意向状态机(起内化为 flow 层方向刷新,
     两臂同源恒等,臂间 diff 归因不含换线路径)。cw4 自有换线
     接线(事件→target_comp、drought→drought_excluded)=过线后批;
     禁删影子机(遥测持续供验证)。

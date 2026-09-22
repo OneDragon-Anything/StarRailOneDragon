@@ -149,14 +149,14 @@ def select_deployments(
     逐位不变):返回 (上场 bench 下标序, 留 bench 下标)。
 
     语义 = 散牌围栏/补档序/引擎对优先/cap 富余填空/点火首键+桶序/配方
-    底线门/板空保底(ADR-0130 系);唯一省略:SIFT 未识别(char_id 空)
+    底线门/板空保底(系);唯一省略:SIFT 未识别(char_id 空)
     照旧上——调用方传空 char_id 即走该分支。
     cap 语义 = 已 deployed 数 + 本轮上场数 ≤ cap。
 
-    ADR-0360 件3(deploy 围栏锁定键放行):``locked_factions`` = 锁定帧
+    (deploy 围栏锁定键放行):``locked_factions`` = 锁定帧
     体系键并入围栏放行集。
 
-    ADR-0564 配方底线门锁定线语境豁免:``recipe_floor_lock_exempt`` =
+    配方底线门锁定线语境豁免:``recipe_floor_lock_exempt`` =
     豁免武装位(单源 = ``cw_intention.locked_line_recipe_floor_conflict``);
     缺省 False = 门判定逐位同旧。
 
@@ -224,12 +224,12 @@ def select_deployments(
         if not cid:
             continue    # 未识别:照旧上(围栏无法判)
         f = bench_fac.get(i)
-        # 凑档降级(部署侧;ADR-0288):无目标件可上(tgt 空)时,
+        # 凑档降级(部署侧):无目标件可上(tgt 空)时,
         # 凑档件——board∪bench 主阵营计数 ≥2(含自身 = board 已有
         # ≥1,入后凑 2 档)——不被配方围栏拦:降级上场「有总比没有
         # 厉害」;tgt 非空时围栏照旧(降级件不挤目标件)。
         _bond_paired = f is not None and pair_counts.get(f, 0) >= 2
-        # ADR-0360 件3:锁定帧体系键按**全羁绊**匹配放行;未传锁定帧时
+        # :锁定帧体系键按**全羁绊**匹配放行;未传锁定帧时
         # 围栏行为与旧版逐位一致
         if f is not None and f not in DEPLOY_FENCE \
                 and not (_bonds_of(bench[i]) & set(locked_factions)) \
@@ -270,7 +270,7 @@ def select_deployments(
     ignite_rest = [i for i in rest
                    if ignition_gain(_bonds_of(bench[i]), deployed_fac) > 0]
     plain_rest = [i for i in rest if i not in ignite_rest]
-    # 锁定线核心优先桶(ADR-0323):意向锁定的线核心优先于过渡填充件。
+    # 锁定线核心优先桶:意向锁定的线核心优先于过渡填充件。
     # 非锁定局 target_cores 空 → 本桶恒空,序不变;「点火 >
     # 冗余 target」语义保留。
     _core_set = set(target_cores)
@@ -293,12 +293,12 @@ def select_deployments(
     # (cid 不在 deployed_cids)。3合1 素材留 bench(囤件语义不受影响)。
     up: list[int] = []
     _up_names: set[str] = set()
-    # 配方底线门(ADR-0261 裁决选项3 + ADR-0564 锁定线语境豁免;判定
+    # 配方底线门(裁决选项3 + 锁定线语境豁免;判定
     # 单一源 = ``recipe_floor_holds``):列车≥RECIPE_FLOOR_TRAIN_CAP 且
     # 仙舟<RECIPE_FLOOR_XZ_BASE → 列车件让位留 bench。锁定线语境
     # 豁免:豁免武装帧 ∧ 本帧无有效仙舟供给 → 门让位;
     # 供给保留条款不变。循环内逐件增量维护 ``_fac_run``
-    # (ADR-0261 裁决:每上一件按全羁绊口径 +1,不得用入参初始快照)。
+    # (裁决:每上一件按全羁绊口径 +1,不得用入参初始快照)。
     # 供给惰性:豁免武装帧才现算(供给谓词);``_up_names`` 随循环推进
     # → 同名拷贝本帧先上后不再计作供给(与去重语义一致)。
     _fac_run = dict(deployed_fac)
@@ -319,7 +319,7 @@ def select_deployments(
                 recipe_floor_lock_exempt,
                 xianzhou_supply_exists(bench, deployed_cids | _up_names)
                 if recipe_floor_lock_exempt else False):
-            held.append(i)   # 配方底线门(锁定线豁免见 ADR-0564)
+            held.append(i)   # 配方底线门
             reasons[i] = 'recipe_floor'
             continue
         up.append(i)
@@ -423,7 +423,7 @@ def has_deployable_reasoned(
     recipe_floor_lock_exempt: bool = False,
     required_names: frozenset[str] | set[str] = frozenset(),
 ) -> tuple[bool, dict[int, str]]:
-    """「是否存在可部署件」的带拒因形态(发射侧遥测载体;ADR-0564)。
+    """「是否存在可部署件」的带拒因形态(发射侧遥测载体)。
 
     = ``select_deployments_reasoned`` 的薄包装:返回 ``(bool(up),
     reasons)``——判空语义与 ``has_deployable`` 完全一致,reasons =

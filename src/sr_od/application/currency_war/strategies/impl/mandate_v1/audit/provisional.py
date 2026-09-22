@@ -1,5 +1,5 @@
 """【拟】未标定项 fail-closed 开关注册表(01_math_framework §6 第 3 形态;
-原 design_economy §E4.0 第 3 条已删档,取回口径=ADR-0644)。
+原 design_economy §E4.0 第 3 条已删档,考古走 git 历史)。
 
 静态登记 【拟】清单(批时快照)+ 换线/升档器后补槽位
 (θ/D_min/δ/χ/p_rec/血线阈值/N_crisis 等)。**计数口径单一声明(IMPL_ADV_R194
@@ -28,7 +28,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class CalibValue:
     """标定注入值(带 CI;端点选择随消费位走——组-端取端纪律,原 design_economy
-    §E4.1 组-端对照表已删档,取回口径=ADR-0644,注入不预取端)。``injected_form=True`` = 注入形态(非生产开闸口径)。"""
+    §E4.1 组-端对照表已删档,考古走 git 历史,注入不预取端)。``injected_form=True`` = 注入形态(非生产开闸口径)。"""
 
     value: float
     ci_lo: float | None = None
@@ -118,7 +118,7 @@ _SLOTS: dict[str, _Slot] = {
     'ENCOUNTER_G_GOLD': _Slot('E3 金币×2 金额观察值(历史判据稿 §3;P64 定谳'
                               '非机制常量、≥3 局定带门未过保持 None;与 DSTAT '
                               '槽双槽互锁)'),
-    # —— 锁线夹界槽位(math_proofs P76 §5.5 落码批,ADR-0628;规约态,
+    # —— 锁线夹界槽位(math_proofs P76 §5.5 落码批;规约态,
     # evidence_gate 全仓零消费点,接线批装配后才进决策路径)——
     # 完成溢价 Δ=V_C−V_F:P76 §7 #1 挂 V_ms【拟】同源单标定禁双源,标定批
     # 自 V_ms 交付;None 期 evidence_gate 夹界「不可评」+delta 成因分键
@@ -154,7 +154,7 @@ def is_none(name: str) -> bool:
     return get(name) is None
 
 
-# ===== 槽位值域守卫(T-214;标定批 ADR-0639)=====
+# ===== 槽位值域守卫(T-214;标定批 )=====
 # 位置论证:inject 系唯一开闸通道(provisional.py 头注),值域防线放
 # 消费位防不住其他槽位、放调用方防不住绕行——结构防线只能在通道本体
 # 做写入前校验(不合法拒绝)。未登记槽位 = 既有语义不变(无值域知识
@@ -195,7 +195,7 @@ def inject(name: str, value: CalibValue) -> None:
         violation = guard(value)
         if violation:
             raise ValueError(
-                f'槽位 {name} 值域守卫拒绝注入:{violation}(T-214/ADR-0639)')
+                f'槽位 {name} 值域守卫拒绝注入:{violation}(T-214/)')
     _VALUES[name] = value
 
 

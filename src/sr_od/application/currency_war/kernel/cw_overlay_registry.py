@@ -3,7 +3,7 @@
 每个 overlay 一条 :class:`OverlaySpec` 声明(识别锚/语义类/退场动作/派发序),
 五个消费面(P0 清场 / director bail / cw_loop 派发 / 退出恢复链 /
 UPPER_SCREENS 帧态门派生段)按字段派生消费,消灭「新增画面要手工同步多处」的
-结构性缺口(ADR-0269 病灶;设计单一源 = 设计收口终版五条定案)。
+结构性缺口(病灶;设计单一源 = 设计收口终版五条定案)。
 
 **切换状态**:注册表 + 一致性断言就绪;
 B 面(director bail 扫描,cw_screen_prep 事件 overlay 检测)已切换为消费
@@ -249,7 +249,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     # 本条 OverlaySpec 是分类/清场表成员(单锚=变体帧同样漏,如实申报);
     # 入口链守卫 = AND(防御面);op 内 entry_ok = 双锚其一(OR,接管面
     # 比分发宽,变体帧经兜底重判后的自愈面)。原「分发 OR/守卫 AND 有意
-    # 分叉」的调和前提已随分发收编建档组合 AND 失效(ADR-0607 历史读法
+    # 分叉」的调和前提已随分发收编建档组合 AND 失效(历史读法
     # 以本注为准)。
     OverlaySpec(
         screen_name='货币战争-星徽详情',

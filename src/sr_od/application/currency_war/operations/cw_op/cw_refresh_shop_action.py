@@ -62,7 +62,7 @@ class CwActionRefreshShopOp(SrOperation):
         log.info(f'[cw-shop] Refresh click @({env.refresh_btn.x},'
                  f'{env.refresh_btn.y})')
         time.sleep(REFRESH_CLICK_SETTLE_WAIT_S)
-        # 当次刷价进花销账(ADR-0456:实付恒基价;容器刷价在场用现值,
+        # 当次刷价进花销账(:实付恒基价;容器刷价在场用现值,
         # 未观察/0 = 回基价)。读数必须走 .value 读口——Field 直接进算术
         # = TypeError(实机 04:37 刷新首击即崩实证,店 env 容器化后此读
         # 点漏迁移)。

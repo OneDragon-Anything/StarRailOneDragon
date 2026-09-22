@@ -33,7 +33,7 @@
 
 **满栏例外腿(备战席满)**:
 
-- 满栏仍买得进**当且仅当**本次点击能完成一次合成(判据单一源 = `cw_merge_simulate.py::merge_buy_completes`,前提门 = 已有同名同星素材 own≥1;own=0 满栏域游戏拒买,ADR-0619/ADR-0283);
+- 满栏仍买得进**当且仅当**本次点击能完成一次合成(判据单一源 = `cw_merge_simulate.py::merge_buy_completes`,前提门 = 已有同名同星素材 own≥1;own=0 满栏域游戏拒买,/);
 - 一击多买张数 k = `cw_merge_simulate.py::merge_buy_k` = min(店内同名同星张数, 3 − 已有数 mod 3)(绝不多买,`research/merge_mechanics.md` §2.5);
 - k 张逐张原价扣金(总价 = k×单价)、店载荷下架 k 张同身份牌、合成腾槽(应用机器 = `cw_merge_simulate.py::_apply_full_bench_merge_buy`,逻辑态直写与 tracked 双账同构单一源);
 - 执行器张数回执 = `CwActionBuyCardOp` 现算 `merge_buy_k`,执行账补差 (k−1)×单价。
@@ -44,9 +44,9 @@
 
 ## 5. 拒绝语义
 
-- **满栏且合成不可达** = 游戏拒买:`LogicOutcome(applied=False, reason='bench_full')`,零容器写——金不扣、牌不下架(ADR-0283);
+- **满栏且合成不可达** = 游戏拒买:`LogicOutcome(applied=False, reason='bench_full')`,零容器写——金不扣、牌不下架;
 - 买牌无 expect 陈旧提案域(SellBench 族语义,本动作无此域);执行侧另有提案守卫 `cw_shop_action_ops.py::guard_proposal_vs_expected`(所购牌名须在期望态店中,防策略器跨代际提案);
-- 知识缺口 G1:非满栏一次点击恒买 1 张 = 框架推论未实测,闭合前按 k=1 记账,买后观察多张 → 对账纠偏 + 缺陷台账;G2:满栏连升(own=0)按拒买实现(ADR-0619 申报边界)。
+- 知识缺口 G1:非满栏一次点击恒买 1 张 = 框架推论未实测,闭合前按 k=1 记账,买后观察多张 → 对账纠偏 + 缺陷台账;G2:满栏连升(own=0)按拒买实现(申报边界)。
 
 ## 6. kernel 符号锚
 

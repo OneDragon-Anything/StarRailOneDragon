@@ -4,7 +4,7 @@
 + 点「下一步」,完成承诺 = 固定时长(BRIEFING_SETTLE_S,锚后 ~1s)。
 
 下游链路(不变):容器 ``enemy_affixes`` → mechanics_fit;
-``plane_bosses``(位面序真值,ADR-0397)→ boss_fit。
+``plane_bosses``(位面序真值)→ boss_fit。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation):
 观察 node = 画面身份门(id_mark「标识-本场对局首领」,miss = round_fail

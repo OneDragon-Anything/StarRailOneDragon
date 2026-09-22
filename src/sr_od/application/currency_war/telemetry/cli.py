@@ -45,7 +45,7 @@ def _query_source(args, replay_dir: Path) -> None:
     rows = _jq.read_journal(replay_dir)
     if not rows:
         print(f'(无统一 state 新账: {_jq.journal_path(replay_dir)} 不存在或为空'
-              '——journal 无条件常开(R5 W1/ADR-0634),空 = 本目录无对局产物'
+              '——journal 无条件常开(R5 W1/),空 = 本目录无对局产物'
               '或账本未随局产生)')
         return
     if args.recent:

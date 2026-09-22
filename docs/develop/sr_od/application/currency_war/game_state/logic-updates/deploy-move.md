@@ -61,4 +61,4 @@ DeployMove 转移语义单一源 = 上报函数(`report_action_deploy_move_param
 
 ## 9. 依据
 
-[../action-logic-state.md](../action-logic-state.md) §3/§3A/§1.4(tracked 主账落点);`kernel/cw_action_report/deploy_move.py` docstring(写域/守卫与上阵变换窗申报面);`kernel/cw_effect_inventory.py::merge_cascade_write` docstring(降级语义与行域载体);`GameState._resync_board_delta` 方法注(增量口径依据);`kernel/cw_exec_state.py` ADR-0316/ADR-0392 槽位语义注;`strategies/impl/mandate_v1/deploy_plan.py` 模块头(计划单一源口径);`research/merge_mechanics.md` §3(同名唯一恒成立);`research/screen_flow_timing.md` #10/#24。
+[../action-logic-state.md](../action-logic-state.md) §3/§3A/§1.4(tracked 主账落点);`kernel/cw_action_report/deploy_move.py` docstring(写域/守卫与上阵变换窗申报面);`kernel/cw_effect_inventory.py::merge_cascade_write` docstring(降级语义与行域载体);`GameState._resync_board_delta` 方法注(增量口径依据);`kernel/cw_exec_state.py` /槽位语义注;`strategies/impl/mandate_v1/deploy_plan.py` 模块头(计划单一源口径);`research/merge_mechanics.md` §3(同名唯一恒成立);`research/screen_flow_timing.md` #10/#24。

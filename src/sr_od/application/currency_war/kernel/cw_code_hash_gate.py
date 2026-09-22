@@ -1,25 +1,25 @@
-"""起局前置码哈希结构闸(ADR-0581):混合码事故(部署失败×7)的结构防线。
+"""起局前置码哈希结构闸:混合码事故(部署失败×7)的结构防线。
 
-设计口径/覆盖边界/豁免申报的持久单一源 = ADR-0581。
+设计口径/覆盖边界/豁免申报的持久单一源 = 本模块 docstring。
 
 语义(如实申报):闸比对「当前工作树文件内容」与「git HEAD 内容」,工作树 ≠ HEAD
 即拒绝起局——含义是「你即将运行的码 ≠ 已提交的码」。server 为常驻进程,其模块
 加载态 = import 时快照,进程内存不可回读;故以 sys.modules 中 currency_war 前缀
 模块的文件集合近似「server 实际使用的码面」,再逐文件做现盘内容 vs HEAD 内容
 哈希比对:在飞编辑/未提交批次存在时,磁盘与 HEAD 必然分叉,闸即拦截。
-覆盖边界(ADR-0581 §2.2):延迟加载模块起局时刻不在 sys.modules(实测覆盖 ≈43%
+覆盖边界:延迟加载模块起局时刻不在 sys.modules(实测覆盖 ≈43%
 包文件),闸是纪律防线不是完备机制,「在飞批禁起局」人工纪律不因此解除。
 
 豁免:已知合法不一致走默认豁免名单(锚定完整相对路径匹配,防同尾缀路径
 静默漏扫)。旧唯一在册豁免 `src/sr_od/application/currency_war/data/
-cw_delta_pool_data.py`(Δ池快照,由局终自动再生管线写入,ADR-0344)
+cw_delta_pool_data.py`(Δ池快照,由局终自动再生管线写入)
 已随 sim 重做删除面(sim-redesign design.md §2.4.1:Δ池生成器与消费
 面整删)一并移除,名单现为空——新增豁免须逐条给理由,禁宽豁免。
 
 零行为副作用:闸只拦起局并输出结构化不一致清单,不改任何游戏逻辑;可经
 `CurrencyWarConfig.code_hash_gate` 配置关闭(缺省开)。git 自身不可用
 (含 git 二进制缺失)按 fail-closed 处理(安全闸宁拦勿放),reason 如实申报;
-即 git 缺失 = 起局被拒,git 是起局硬依赖(ADR-0581 §2.4)。
+即 git 缺失 = 起局被拒,git 是起局硬依赖。
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ from one_dragon.utils.file_utils import get_project_root
 MODULE_PREFIX: str = 'sr_od.application.currency_war'
 
 # 默认豁免名单(锚定完整相对路径,仓库根相对——非后缀匹配:endswith 会让辖域内
-# 未来任何同尾缀路径静默漏扫,ADR-0581 §2.3)。旧唯一条目 Δ池快照
+# 未来任何同尾缀路径静默漏扫)。旧唯一条目 Δ池快照
 # (cw_delta_pool_data.py)已随 sim 重做删除面移除(其生成器/消费面
 # 同批删除,文件不存在后豁免条目即死路径登记),名单现为空。
 DEFAULT_EXEMPTION_PATHS: tuple[str, ...] = ()
@@ -83,7 +83,7 @@ def default_head_reader(repo_root: Path, rel: str) -> bytes | None:
     try:
         # LC_ALL=C 固定 git 报文语言:untracked 判据认英文报文子串,非英文 locale
         # 的报文本地化会让判据失配(失配去向是 fail-closed 拦截——安全不受损,
-        # 但「合法新文件」退化成硬拦,可用性受损;ADR-0581 §2.1)。
+        # 但「合法新文件」退化成硬拦,可用性受损)。
         _env = dict(os.environ)
         _env['LC_ALL'] = 'C'
         proc = subprocess.run(

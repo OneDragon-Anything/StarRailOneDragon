@@ -3,7 +3,7 @@
 本模块不承载跨调用状态——原执行层状态载体已整体退役,局内事实宿主 =
 GameState(kernel/cw_game_state.py)。现辖三类领域函数:
 
-- 确认族到账推进:``apply_confirm_effect``(两态制标准语义,ADR-0651;
+- 确认族到账推进:``apply_confirm_effect``(两态制标准语义;
   原 apply_op_effect 动作类分支随动作 op 重组批④ 收编 op 自上报后瘦身);
 - 槽位表领域模型:bench/deployed 槽位语义 helpers(benchchar-retirement
   P1 起容器原生:bench = ``BenchSlot | None`` 槽表、deployed = ``Unit | None``
@@ -164,17 +164,17 @@ def _apply_buy_card(session, action: dict, _eff) -> None:
 # ============================================================
 
 BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级变)
-# deployed 槽位语义(ADR-0392):定长 10 槽表——下标 0-3 = 前排槽 1-4、
+# deployed 槽位语义:定长 10 槽表——下标 0-3 = 前排槽 1-4、
 # 4-9 = 后排槽 1-6。后排实际格数 = 6 + (cap−level) 值域 6-9(cw_back_layout
-# 三信号裁决,ADR-0385;上限 9 = 用户口述,board_structure.md)——超过 6 的
-# 扩展格属画面布局域,不进本表示(表长恒 10;取舍与理由见 ADR-0392
-# 「后排布局档取舍」节,扩展格 7-9 的跟踪缺口在 9 档可达后常规化,扩板另案)。
+# 三信号裁决;上限 9 = 用户口述,board_structure.md)——超过 6 的
+# 扩展格属画面布局域,不进本表示(表长恒 10;取舍与理由,
+# 扩展格 7-9 的跟踪缺口在 9 档可达后常规化,扩板另案)。
 DEPLOYED_FRONT_CAPACITY: int = 4
 DEPLOYED_BACK_CAPACITY: int = 6
 DEPLOYED_CAPACITY: int = DEPLOYED_FRONT_CAPACITY + DEPLOYED_BACK_CAPACITY
 
 
-# ===== bench 槽位语义 helpers(ADR-0316;消费端唯一合法入口)=====
+# ===== bench 槽位语义 helpers(消费端唯一合法入口)=====
 
 
 def bench_slot_unit(slot: BenchSlot | None) -> Unit | None:
@@ -191,7 +191,7 @@ def bench_place(bench: list[BenchSlot | None], slot: BenchSlot) -> int | None:
     """放入首个空槽(买入落位语义);无空槽返回 None(=bench_full 拒)。
 
     容器原生形状(§2.1):元素 = ``BenchSlot | None``——None 洞(卖出/上阵
-    置 None 不移位,ADR-0316)与 ``kind='empty'`` 同为空槽。放置时归一
+    置 None 不移位)与 ``kind='empty'`` 同为空槽。放置时归一
     单位槽号信息位 ``slot.unit.slot = 下标+1``(物理槽位 1-9,frozen
     replace 新构造;非 unit kind 原样落槽)。
     """
@@ -213,8 +213,8 @@ def _slot_normalized_at(slot: BenchSlot, idx: int) -> BenchSlot:
 def bench_occupied_slot_nos(bench: list[BenchSlot | None]) -> list[int]:
     """占用槽号信息位集(槽号健康门输入;None 槽跳过)。
 
-    [索引定义] 值 = Unit.slot 信息位(1 基物理槽号,ADR-0316);
-    信息位恒为派生位,权威槽位 = 表下标(ADR-0605 §5.2)。"""
+    [索引定义] 值 = Unit.slot 信息位(1 基物理槽号);
+    信息位恒为派生位,权威槽位 = 表下标。"""
     return [slot.unit.slot for slot in (bench or [])
             if slot is not None and slot.kind == 'unit'
             and slot.unit is not None]
@@ -223,7 +223,7 @@ def bench_occupied_slot_nos(bench: list[BenchSlot | None]) -> list[int]:
 def bench_slots_healthy(slot_nos: list[int]) -> bool:
     """槽号健康不变量单一源:占用槽号唯一 ∧ 全在 1..BENCH_CAPACITY。
 
-    背景:SIFT 读/对账 churn 产生的槽号属无守卫数据(ADR-0646),
+    背景:SIFT 读/对账 churn 产生的槽号属无守卫数据,
     违者不得固化为槽位表。消费方 = 对账写回门(kernel/cw_reconcile)、
     tracked 写点显影(prep_actions)。"""
     return (all(isinstance(s, int) and 1 <= s <= BENCH_CAPACITY
@@ -231,7 +231,7 @@ def bench_slots_healthy(slot_nos: list[int]) -> bool:
             and len(set(slot_nos)) == len(slot_nos))
 
 
-# ===== deployed 槽位语义 helpers(ADR-0392;消费端唯一合法入口)=====
+# ===== deployed 槽位语义 helpers(消费端唯一合法入口)=====
 
 
 def deployed_slot_no(idx: int) -> int:
@@ -245,7 +245,7 @@ def deployed_row_slot(idx: int) -> tuple[str, int]:
     unified-action-factory 批2b 换算收口:容器下标 → 画面物理槽位的换算
     全仓仅此一处,消费方 = 执行器拖点定位/判读显示)。
 
-    [索引定义] idx = deployed 槽位表下标 0-9(ADR-0392;0-3 前/4-9 后);
+    [索引定义] idx = deployed 槽位表下标 0-9(0-3 前/4-9 后);
     返回 slot = 排内 1 基画面槽号(前排 1-4 / 后排 1-6)。
     """
     return ('front' if idx < DEPLOYED_FRONT_CAPACITY else 'back',
@@ -257,7 +257,7 @@ def deployed_idx_of(row: str, slot_no: int) -> int:
     与 :func:`deployed_row_slot` 互逆,tracked 同步物理↔下标换算收拢点)。
 
     [索引定义] row ∈ 'front'|'back';slot_no = 排内 1 基画面槽号;返回
-    槽位表下标(front: slot−1 / back: 4+slot−1,ADR-0392)。
+    槽位表下标(front: slot−1 / back: 4+slot−1)。
     """
     return (slot_no - 1 if row == 'front'
             else DEPLOYED_FRONT_CAPACITY + slot_no - 1)

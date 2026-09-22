@@ -27,7 +27,7 @@
 
 ## 2. 历史交互模型索引(供考古)
 
-拖拽机制验证(中心拖 + hold0,ADR-0120)、遮蔽哨发射前拦截、排位纠错、off-target 卖出腾位、deployed 双源仲裁留证、P24 残余补部署支配定理——判定单一源已全部收编 `kernel/cw_deploy_logic.py`(函数级对应关系见其模块头与各函数 docstring);执行编排与状态机的历史形态 = 本文件 git 历史(`operations/cw_screen/cw_screen_deploy.py`)。
+拖拽机制验证(中心拖 + hold0)、遮蔽哨发射前拦截、排位纠错、off-target 卖出腾位、deployed 双源仲裁留证、P24 残余补部署支配定理——判定单一源已全部收编 `kernel/cw_deploy_logic.py`(函数级对应关系见其模块头与各函数 docstring);执行编排与状态机的历史形态 = 本文件 git 历史(`operations/cw_screen/cw_screen_deploy.py`)。
 
 ## 3. 建档与坐标
 

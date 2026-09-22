@@ -4,7 +4,7 @@
 ``docs/game/currency_war/research/`` 知识树(过渡体系 → transitions.md 与
 transition_combos.md;位面演化定量 → stage_transitions.md;打法纪律 →
 user_playstyle.md)——**改本模块前先读并对表**,理解变更先改文档
-(防实现漂移);数据锚与决策史见 ADR-0209。
+(防实现漂移)。
 
 **问题**:select_comp 从最终 comp 选线 → P1 买「半成型最终线」(form 0.25-0.5)
 打不过玩家的「标准过渡包」(2 羁绊即成型)→ P1 后段战力崩 → boss 稳定损 30+。
@@ -17,7 +17,7 @@ user_playstyle.md)——**改本模块前先读并对表**,理解变更先改文
 - 过渡框架 = 仙舟 32% + 列车 29%(主流仅两种;DOT 为挂件形态 28%)
 
 **模型**:``TRANSITION_PACK`` = Early 高频纯过渡+贯穿牌的目标集合;
-Early 期判定(plane1 + 未定型)由消费方内联声明(框架启动变体已退役,ADR-0469)。
+Early 期判定(plane1 + 未定型)由消费方内联声明(框架启动变体已退役)。
 plan 的买牌/上阵在 Early 期以过渡包为 target(过渡包羁绊低费快成型),
 P1 末/P2 起切最终 comp(select_comp 照常,积累的贯穿牌无缝继承)。
 
@@ -151,7 +151,7 @@ SIGNAL_WEIGHTS: dict[str, float] = {
 
 
 class CommitSignals:
-    """选卡信号累积器(局级,挂 StrategySession;ADR-0209 接线残留的
+    """选卡信号累积器(局级,挂 StrategySession;接线残留的
     遥测载体,定型门退役后**无决策消费**)。
 
     各信号源到达时调 ``add``(源名 + 该源的 comp 分贡献),累积到每条线;

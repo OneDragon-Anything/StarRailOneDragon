@@ -33,12 +33,12 @@ from sr_od.operations.sr_operation import SrOperation
 
 @dataclass(frozen=True)
 class EntryPopupGuardSpec:
-    """入口链弹窗守卫参数行(一行 = 一个已建档弹窗的处置语义;ADR-0607)。
+    """入口链弹窗守卫参数行(一行 = 一个已建档弹窗的处置语义)。
 
     识别契约与画面档精准匹配同判据:identify 全锚同帧命中 = is_precise 同义,
-    守卫不发明第二套识别语义(ADR-0574 §2.1)。动作只用该弹窗自己建档的控件,
+    守卫不发明第二套识别语义。动作只用该弹窗自己建档的控件,
     零画面坐标进代码(坐标单一真相源在 screen_info)。循环语义统一 round_retry
-    (具名状态),禁 round_wait——框架对 WAIT 不计 retry 且归零计数(ADR-0574
+    (具名状态),禁 round_wait——框架对 WAIT 不计 retry 且归零计数(
     §2.2 实证),会无界空转。
     """
 
@@ -57,9 +57,9 @@ class EntryPopupGuardSpec:
 # 列车补给每日弹窗(建档 assets/game_data/screen_info/currency_war_train_supply.yml):
 # 领取类动作,无 X 关闭钮。点击目标 = 底部「文本-领取提示」——中央徽章区点击
 # 会命中徽章内下缘的星琼图标,「只开详情不领取」(S1 两次活体复现,S2 实证点
-# 提示区 (960,910) 一次领取成功且不开详情,ADR-0574 §5)。中央徽章 rect 以
+# 提示区 (960,910) 一次领取成功且不开详情)。中央徽章 rect 以
 # 「区域-中央徽章危险区」留档,仅供测试负向断言取坐标,生产代码永不点击。
-# 单锚 4 字 @0.75 强锚,天然满足锚强度分层(ADR-0574 §2.1)。
+# 单锚 4 字 @0.75 强锚,天然满足锚强度分层。
 _TRAIN_SUPPLY_GUARD = EntryPopupGuardSpec(
     screen_name='货币战争-列车补给弹窗',
     identify_area_names=('标识-列车补给',),
@@ -69,7 +69,7 @@ _TRAIN_SUPPLY_GUARD = EntryPopupGuardSpec(
 )
 
 # 星琼(稀有货币)详情弹窗(建档 assets/game_data/screen_info/currency_war_stellar_jade_detail.yml;
-# 2026-09-07 实机卡死事故,ADR-0574):模态压暗+模糊背景下入口链全部背景锚失明。
+# 2026-09-07 实机卡死事故):模态压暗+模糊背景下入口链全部背景锚失明。
 # 双锚 AND:「星琼」@0.5 管召回(2 字 @0.5 = 含任一字符即命中,全家族最弱配置,
 # 不可单锚触发)+「稀有货币」@0.75 管精度(4 字容 1 字形变);锚避开动态值
 # (「当前持有」数字变动不入锚)。关闭 = 弹窗右上角 X;禁键令,点空白关闭未
@@ -92,7 +92,7 @@ _JADE_DETAIL_GUARD = EntryPopupGuardSpec(
 # 路径,本守卫本质是防御面;对局内分发(阶段一身份)同组合,与本入口同向;
 # OR 接管面 = op 内 entry_ok(双锚其一)。
 # 原与「对局内 OR」的有意分叉声明已随分发收编建档组合 AND 失效
-# (调和声明见 ADR-0607,历史读法以本注为准)。
+# (历史读法以本注为准)。
 _STAR_BADGE_GUARD = EntryPopupGuardSpec(
     screen_name='货币战争-星徽详情',
     identify_area_names=('标识-套组标题', '标识-合成公式'),
@@ -101,11 +101,11 @@ _STAR_BADGE_GUARD = EntryPopupGuardSpec(
     wait_seconds=1.5,
 )
 
-# 注册表元组顺序 = 挂点执行序:supply 在 detail 族之前(领取优先,ADR-0574
-# §2.1 挂点约定;叠层语义:supply 弹窗被 detail 盖住时其背景锚 OCR 不命中,
+# 注册表元组顺序 = 挂点执行序:supply 在 detail 族之前(领取优先,
+# 挂点约定;叠层语义:supply 弹窗被 detail 盖住时其背景锚 OCR 不命中,
 # 自然让位给 detail,序位无害)。序位知识只住这一处数据;机械防线 = 测试仓
-# test_cw_screens_entry.py 的守卫序位锁(元组重排即红)。升级依据 = ADR-0574
-# §2.1 预约「第三个同族弹窗出现时升级为注册表」,由星徽落位触发(ADR-0607)。
+# test_cw_screens_entry.py 的守卫序位锁(元组重排即红)。升级依据:
+# 预约「第三个同族弹窗出现时升级为注册表」,由星徽落位触发。
 ENTRY_POPUP_GUARDS: tuple[EntryPopupGuardSpec, ...] = (
     _TRAIN_SUPPLY_GUARD,
     _JADE_DETAIL_GUARD,
@@ -121,7 +121,7 @@ def _handle_entry_popup_spec(
     点击后不原地断言成功——返回具名 round_retry,靠下一轮重观察裁决出口
     (「点了≠成了」在循环层兑现):下一轮弹窗锚不命中 = 关闭/领取落地,交下游
     既有分支;点击始终不落地 = 每圈耗 1 次节点预算,预算耗尽以 spec.retry_status
-    具名 FAIL(ADR-0574 §2.2 改形)。
+    具名 FAIL(改形)。
 
     op:Operation 基类(SrOperation/SrApplication 共同祖先,round_by_* 同源)。
     未命中返回 None;命中返回 round_retry(等关闭/领取动画回落)。
@@ -145,9 +145,9 @@ def try_handle_entry_popups(
 
     四挂点(app ``_enter_lobby`` 首节点 / ``cw_entry_enter.wait_lobby`` 纵深 /
     ``cw_entry_start.click_start`` / ``advance_to_prep`` 一切状态分支之前)收敛为
-    对本函数的单行调用;新成员 = 画面建档 + 注册表加一行,挂点零改动(ADR-0607;
-    升级依据 = ADR-0574 §2.1 预约的第三个同族弹窗)。模态弹窗盖场时背景锚全部
-    失明,守卫列于各节点一切既有分支之前(挂点契约,ADR-0574 §2.1)。
+    对本函数的单行调用;新成员 = 画面建档 + 注册表加一行,挂点零改动(
+    升级依据 = 预约的第三个同族弹窗)。模态弹窗盖场时背景锚全部
+    失明,守卫列于各节点一切既有分支之前(挂点契约)。
 
     op:Operation 基类(SrOperation/SrApplication 共同祖先,round_by_* 同源)。
     未命中返回 None(同帧 OCR 缓存下逐 spec 近零增量);命中返回具名 round_retry
@@ -166,9 +166,9 @@ def try_handle_train_supply_popup(
 
     唯一保留理由 = CW 之外的真实消费方 ``back_to_normal_world_plus``(通用
     「返回大世界」op 只管 supply;要不要也接 detail 族弹窗是独立决策,不入守卫
-    注册表批,ADR-0607 非目标)。CW 入口链挂点一律走 ``try_handle_entry_popups``;
+    注册表批,非目标)。CW 入口链挂点一律走 ``try_handle_entry_popups``;
     jade/badge 无 CW 外消费方,不设薄包装(零调用死代码兼第二测试面,会遮蔽
-    序位/收敛行为,ADR-0607)。
+    序位/收敛行为)。
     """
     return _handle_entry_popup_spec(op, screen, _TRAIN_SUPPLY_GUARD)
 
@@ -211,7 +211,7 @@ class CwEntryStart(SrOperation):
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='开始货币战争对局')
         self._advance_steps: int = 0
-        # 残留容器弃置去重(同一次入口链只报一次;ADR-0419)
+        # 残留容器弃置去重(同一次入口链只报一次)
         self._stale_discarded: bool = False
         # 大厅锚(「标识-创业指南」)连续命中轮数(残留大厅判定计数,执行期现读)
         self._lobby_anchor_rounds: int = 0
@@ -220,7 +220,7 @@ class CwEntryStart(SrOperation):
         self._residual_reentered: bool = False
 
     def _discard_stale_once(self, reason: str) -> None:
-        """新局确凿信号处弃置上一局残留 match 容器(ADR-0419)。
+        """新局确凿信号处弃置上一局残留 match 容器。
 
         难度确认/模式选择/简报三屏只在**无保存局的新局路径**出现(有保存局走
         「继续进度」直达,恢复的是同一物理对局 —— 此时旧容器合法续用,不弃)。
@@ -258,7 +258,7 @@ class CwEntryStart(SrOperation):
         if self._at_prep(screen):
             return self.round_success(CwEntryStart.STATUS_AT_PREP)
         # 入口链弹窗守卫(注册表统一入口,supply→jade→badge 序位见
-        # ENTRY_POPUP_GUARDS;ADR-0574/ADR-0607):模态弹窗盖住一切时
+        # ENTRY_POPUP_GUARDS;/):模态弹窗盖住一切时
         # 开始按钮同样失明,守卫先于本节点既有分支。
         popup = try_handle_entry_popups(self, screen)
         if popup is not None:
@@ -276,10 +276,10 @@ class CwEntryStart(SrOperation):
         screen = self.last_screenshot
         if self._at_prep(screen):
             return self.round_success(CwEntryStart.STATUS_AT_PREP)
-        # 入口链弹窗守卫(注册表统一入口;ADR-0574)先于一切状态分支:模态压暗+
+        # 入口链弹窗守卫(注册表统一入口)先于一切状态分支:模态压暗+
         # 模糊背景下大厅锚/前进按钮/教程提示全部失明,不接住则走兜底空烧预算。
         # 守卫轮在弹窗分支返回,不落入下方 _advance_steps 自增(弹窗消化不烧
-        # 60 步推进预算,序位约定,ADR-0574 §2.1)。
+        # 60 步推进预算,序位约定)。
         popup = try_handle_entry_popups(self, screen)
         if popup is not None:
             return popup
@@ -357,7 +357,7 @@ class CwEntryStart(SrOperation):
         # crop_first=False:全屏 OCR 后按 area.rect 过滤(小 area crop 易漏字,全屏 OCR 稳)。
         # 读本局职级(难度确认屏「标识-当前难度职级」→ ctx.cw_selected_difficulty 中转;切最高后 = A8)
         # → loop __init__ copy session → 策略层填 state → effective_hp_threshold D-32(3.5.1 接线)。
-        # ADR-0419:难度确认屏 = 新局确凿信号(不受 cw_selected_difficulty 门限),
+        # :难度确认屏 = 新局确凿信号(不受 cw_selected_difficulty 门限),
         # 见屏即弃置上一局残留 match 容器。
         if self.round_by_find_area(
                 screen, CwEntryStart.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
@@ -398,7 +398,7 @@ class CwEntryStart(SrOperation):
                 screen, CwEntryStart.MODE_SELECT_SCREEN, '按钮-进入标准博弈',
                 success_wait=2, crop_first=False).is_success:
             return self.round_wait(wait=1)
-        # 模式选择屏可见 = 新局确凿信号(ADR-0419;点击未中也不丢信号)
+        # 模式选择屏可见 = 新局确凿信号(点击未中也不丢信号)
         if self.round_by_find_area(
                 screen, CwEntryStart.MODE_SELECT_SCREEN, '按钮-进入标准博弈',
                 crop_first=False).is_success:
@@ -411,7 +411,7 @@ class CwEntryStart(SrOperation):
                 crop_first=False).is_success:
             self._discard_stale_once('到达简报屏=新局开始')
             self._establish_match_once()
-            # ADR-0588:简报锚 = 新局路径上第一个遥测生产分支,简报/开局选卡行
+            # :简报锚 = 新局路径上第一个遥测生产分支,简报/开局选卡行
             # 落盘前先铸造本局 run(行生而归本局;治冷启动首局零行 + 行盖上局
             # 戳)。难度已在前序难度确认回合读存。幂等;loop 侧同容器认领。
             state.ensure_run_started(self.ctx.cw_match,
@@ -426,7 +426,7 @@ class CwEntryStart(SrOperation):
         #    + 确认)。统一开局与主循环的投资环境处理(原 hardcoded
         #    盲点中卡 + 无策略,已下沉到 handler)。handler 内有 round_by_ocr('投资环境') 入口日志。
         if self.round_by_find_area(screen, '货币战争-投资环境', '标识-投资环境').is_success:
-            # ADR-0588:「选卡前铸造」硬保证——即使简报屏因转场被跳过,env 行
+            # :「选卡前铸造」硬保证——即使简报屏因转场被跳过,env 行
             # 落盘前必有归属本局的 open run(幂等,重复调用零成本)。
             state.ensure_run_started(self.ctx.cw_match,
                                      self.ctx.cw_selected_difficulty or '')
@@ -439,7 +439,7 @@ class CwEntryStart(SrOperation):
         #     内含打分(STRATEGY_BINDINGS)+确认;此前只在 prep 主循环内被调度。
         if self.round_by_find_area(screen, '货币战争-投资策略', '标识-请选择投资策略').is_success:
             _log.info('[cw-entry] 到达投资策略屏 → CwScreenInvestStrategy(3 选 1 + 确认)')
-            # ADR-0588:策略 kind 与 env 同一写端漏斗同一时序缺陷,环境屏被
+            # :策略 kind 与 env 同一写端漏斗同一时序缺陷,环境屏被
             # 跳过而策略屏直达时的兜底铸造(幂等)。
             state.ensure_run_started(self.ctx.cw_match,
                                      self.ctx.cw_selected_difficulty or '')

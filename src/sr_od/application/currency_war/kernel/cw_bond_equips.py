@@ -1,4 +1,4 @@
-"""货币战争 羁绊口径单一源(判断层,手维护;ADR-0312)。
+"""货币战争 羁绊口径单一源(判断层,手维护)。
 
 **board 口径的 per-unit 标签函数**——三处统计实机/派生/检查共用本函数,
 规则同源(一个函数):
@@ -8,7 +8,7 @@
   CwActionDeployMoveParam/事务/围栏后的 board 维护);
 - 检查镜像:``cw_sim_checks._board_agg_of_deployed_row``(账本行聚合)。
 
-口径分层(ADR-0312;sim-wiring.md「羁绊口径分层」节):
+口径分层(sim-wiring.md「羁绊口径分层」节):
 
 - **L1 纯羁绊全集**:factions + flows + independent(独立羁绊行与左面板
   同口径),开拓者按当前排归一形态(前排=记忆/后排=欢愉);
@@ -18,7 +18,7 @@
   (无条件,可双计)——装备贡献是面板真值的一部分(缺计会导致
   computed_vs_ocr 常态化误报 + 星徽局档位系统性低估);
 - L3 全战力(装备 props 强度/投资环境/档位效果数值)**不在本模块**,
-  归 win_model 迭代(ADR-0312 分层裁决)。
+  归 win_model 迭代(分层裁决)。
 """
 from __future__ import annotations
 
@@ -101,7 +101,7 @@ def equip_bond_grants(equip_name: str) -> tuple[str, ...]:
 
 
 def unit_bond_tags(bc, row: str | None = None) -> tuple[str, ...]:
-    """一个已上阵单位的羁绊标签**多集**(L1 全集 + L2 装备贡献;ADR-0312)。
+    """一个已上阵单位的羁绊标签**多集**(L1 全集 + L2 装备贡献)。
 
     - 角色:CHARACTERS 注册表 factions + flows + independent 全集;
       开拓者按排归一形态(前排=记忆/后排=欢愉,与 board_from_tracked
@@ -160,7 +160,7 @@ def _recount_board(deployed: list) -> dict[str, int]:
     """deployed 生命周期重算板面(动作 v2,契约包 C1):卖/换/事务后
     board 必须与 deployed 名单一致——本函数是 cw_state 侧的派生单一源。
 
-    口径(ADR-0312,W50 口径统一):**羁绊全集 + 星徽装备贡献**——
+    口径(W50 口径统一):**羁绊全集 + 星徽装备贡献**——
     factions+flows+independent,开拓者按排归一,装备羁绊(星徽/卡带)
     计入;与实机 ``board_from_tracked``(= 游戏左面板真值口径)同源,
     per-unit 标签函数单一源 = ``cw_bond_equips.unit_bond_tags``。
@@ -171,7 +171,7 @@ def _recount_board(deployed: list) -> dict[str, int]:
     from sr_od.application.currency_war.kernel.cw_bond_equips import unit_bond_tags
     out: dict[str, int] = {}
     for d in (deployed or []):
-        if d is None:   # ADR-0392 槽位表空槽
+        if d is None:   # 槽位表空槽
             continue
         tags = unit_bond_tags(d)
         if tags:

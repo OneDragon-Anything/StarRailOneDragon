@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 
 class CwActionOpenBoxOp(SrOperation):
-    """开箱:找箱槽 → 点「开启」→ 固定动画等待(纯机械执行,ADR-0601)。
+    """开箱:找箱槽 → 点「开启」→ 固定动画等待(纯机械执行)。
 
     选卡动作不在本执行链(R7 批 2a 定形):点完开启本动作即终结
     ——武装箱选择画面由外循环按画面分发独立画面 op(:mod:`cw_screen_box_pick`)

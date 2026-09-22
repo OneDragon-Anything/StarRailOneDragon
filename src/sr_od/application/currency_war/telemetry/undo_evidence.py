@@ -2,7 +2,7 @@
 record 模式,禁第二套机制)。
 
 在库分键:
-- ``sell_breaker_preserved``:W209/ADR-0386 卖出熔断撤销面(谁/为何/
+- ``sell_breaker_preserved``:W209/卖出熔断撤销面(谁/为何/
   保留了什么;写入点 = cw_op_deploy off-target 卖出通道的围栏保留分支);
 - ``drought_buy_no_reset``:干旱计数器买入不重置证据面(pair_drought
   重置单一源 = 商店可见性 _update_pair_drought,买入不重置——干旱解锁
@@ -25,7 +25,7 @@ from sr_od.application.currency_war.telemetry import defects
 
 def record_sell_breaker_preserved(*, char_id: str, reason: str,
                                    channel: str) -> None:
-    """W209/ADR-0386 卖出熔断撤销证据(谁/为何/保留了什么;L2 留证)。
+    """W209/卖出熔断撤销证据(谁/为何/保留了什么;L2 留证)。
 
     run 归属由 current_run_id 汇点自取(无需会话入参);
     :param char_id: 被熔断保留的单位(谁);
@@ -38,7 +38,7 @@ def record_sell_breaker_preserved(*, char_id: str, reason: str,
         observed=f'{char_id} 被 W209 熔断保留(拒因={reason})',
         refs=[{'stream': channel,
                'key': f'sell_breaker|{char_id}|{reason}'}],
-        note='撤销操作证据留存(W209/ADR-0386 振荡熔断撤销面)',
+        note='撤销操作证据留存(W209/振荡熔断撤销面)',
         gap_large=False, severity=defects.SEVERITY_L2_RECORD)
 
 

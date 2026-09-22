@@ -81,9 +81,8 @@ class CwScreenInvestEnv(SrOperation):
     ENV_GRACE_S: ClassVar[float] = 45.0
     # 确认按钮:screen_info「按钮-确认」center;常量=兜底。
     CONFIRM: ClassVar[Point] = Point(1082, 982)   # 兜底;首选 area_center('按钮-确认')
-    # ---- 环境刷新执行链常量(执行层时序/几何常量,非策略数值,
-    # ADR-0529 先例)----
-    # 刷新圆钮 = 「剩余次数」文本中心 + 固定偏移(文本锚定,ADR-0600 §3.4 先例
+    # ---- 环境刷新执行链常量(执行层时序/几何常量,非策略数值)----
+    # 刷新圆钮 = 「剩余次数」文本中心 + 固定偏移(文本锚定,先例
     # ——单帧证据不足判文本漂移形态,固定 area 不可行;遭遇屏/策略屏同款)。
     # 偏移实测收口(归档帧 sr-od-test/screens/货币战争-投资环境/default.webp
     # 亮像素簇质心:钮心 x≈671、计数文本中心 x≈772,y 同带 ≈983)→ dx ≈ −101。

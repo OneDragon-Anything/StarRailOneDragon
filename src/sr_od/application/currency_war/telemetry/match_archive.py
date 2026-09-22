@@ -127,14 +127,14 @@ log = log_utils.log
 #: 重装配旧档案该字段消失(裸 ``cw4_counters.jsonl`` 归档数据在盘可考古)。
 #: 先例 = endgame.match_final 键的不 bump 申报(本文件其注)。
 #: v8(C8 遥测缺陷批):loss_nodes 逐结算行化——一条目对一个掉血结算行
-#: (战斗腿口径;ADR-0567)。同轮「补给回血+战斗掉血」不再被轮级净额
+#: (战斗腿口径)。同轮「补给回血+战斗掉血」不再被轮级净额
 #: 抵减/整条漏记(实证 g_20260906_182456 p2r4:净额 −19 vs 战斗腿 −33);
 #: 单结算可信轮条目形状不变(同键同序),新增加法键 outcome_source/ts
 #: (回落条目取值契约见 _build_rounds docstring)。rounds 逐轮表零变化
 #: (仍单槽净额)。旧档案经 load_archive 版本检查自动重装配(loss_nodes
 #: 净额→战斗腿原地修复);旧不变量「loss_nodes 条目集 ≡
 #: {rounds.hp_delta<0 的轮}」自 v8 解除,分歧形态见 _build_rounds。
-#: v9(遥测数据病统一件,ADR-0577):hp 真值链的「事件模型」落地,
+#: v9(遥测数据病统一件):hp 真值链的「事件模型」落地,
 #: 四机制一次到位——①事件步进链:结算步进链扩为 hp 变化步进链,可信结算
 #: 行 ∪ hp_pay 事件行按 ts 全局交织走行,事件只推进游标不出条目;②段界
 #: 重锚:换段取该段恢复帧 hp 重锚两链游标,续段首槽 hp_delta 从「跨段净额」
@@ -145,7 +145,7 @@ log = log_utils.log
 #: 步进游标未到 0 → runs.final_hp=0 结构真值兜底出 hp_source='endgame_
 #: final' 条目。顶层新增加法列 hp_events(事件行显影)/hp_pay_defects
 #: (modeled 期望账 vs 结算真值偏差)。旧档案经版本检查自动重装配。
-#: v10(场上件离场逐件落账批,ADR-0605):+顶层 ``departures``(离场
+#: v10(场上件离场逐件落账批):+顶层 ``departures``(离场
 #: 事件派生列,装配端纯读派生、零新运行时写入)。缺口实锤(g_20260907_075840
 #: p1r1,Saber):执行期 deploy 换血卖出(CwScreenDeploy._sell_offtarget_deployed)
 #: 的逐件身份只在 log 行与匿名计数键(sell_offtarget_*),无遥测行——场上件
@@ -155,7 +155,7 @@ log = log_utils.log
 #: CwActionSellDeployedParam 槽位解析命中)/ merge_promoted(同名更高星在场=买牌合成链)/
 #: unexplained(= 换血卖出信号通道;感知纠噪也可能落入,判读并读 obs_conflicts)。
 #: 旧档案经 load_archive 版本检查自动重装配补齐。加法字段。
-#: v11(零结算段自标识批,ADR-0615):+段条目 ``settlement_gap``(装配端纯读
+#: v11(零结算段自标识批):+段条目 ``settlement_gap``(装配端纯读
 #: 派生;见 ``_settlement_gap``),并修 assign_games 决策独有段时序插位(见其
 #: docstring)。锚点病灶:段摘要 rounds_survived 取自收口时点 state.round_num
 #: (备战停滞段可带非零冻结值),「rounds_survived=N 且本段零 outcome 行」
@@ -166,7 +166,7 @@ log = log_utils.log
 #: 旧档案经 load_archive 版本检查自动重装配补齐。加法字段。
 #: v12(统一 state 消费方迁移批 R3-1,设计 §3.6.2 档案行「装配器 v12+:切片
 #: = 两文件」):+切片 ``state/journal.jsonl``(统一 state 新账,行行自足
-#: 快照行;写端 = kernel/cw_state_journal,无条件常开(R5 W1/ADR-0634)——
+#: 快照行;写端 = kernel/cw_state_journal,无条件常开(R5 W1/)——
 #: 新账在产物目录才入切片,缺席 = 空切片,判读可区分「无对局产物」与
 #: 「无行」)。加法切片,旧档案经 load_archive 版本检查自动重装配补齐;
 #: 设计清单的第二文件(策略侧决策行)候其落地批再加切片,防空引用。
@@ -210,7 +210,7 @@ _DERIVED_INPUT_FILES: tuple[str, ...] = (
 #: 实证 live journal 混有 sim fake 段)。
 _JOURNAL_RUN_ID_RE = re.compile(r'^run_[0-9]{8}_[0-9]{6}$')
 
-#: 终局结果的完结值域;非此值(如 'stopped')= abandoned(ADR-0235 口径:
+#: 终局结果的完结值域;非此值(如 'stopped')= abandoned(口径:
 #: 中断局也装配,标 abandoned 供判读分型)
 _TERMINAL_RESULTS: frozenset[str] = frozenset({'win', 'loss'})
 
@@ -257,7 +257,7 @@ def _settlement_gap(dec_rows: list[dict[str, Any]],
       (无判读价值);有任一 outcome 行(含 synthetic_supply/recovered/
       loss_page 来源)即视为「有结算记录」,不标注。收口终局行
       (source='terminal_closure' 收口行)**不入**该判定——它不是战斗
-      结算行,恰是「本段零场战斗走到结算屏」的证据行(ADR-0615 的
+      结算行,恰是「本段零场战斗走到结算屏」的证据行(的
       零结算语义):计它入「有结算记录」会让零结算停机段的终局行
       静默关闭本自标识(落地审建议采纳),判读者按协议读到的是
       「有 outcome 行的普通段」,零结算事实从此不可见。
@@ -358,7 +358,7 @@ def assign_games(replay_dir: Path | str) -> list[dict[str, Any]]:
     过滤 sim/测试段)+ outcomes 首现序 + decisions 独有段——journal 时代
     旧流恒空(删除波 1 停写),历史目录重装配走旧流段路径,新局全走
     journal 段路径;两源段按段首 ts 统一插位,去重(journal 段优先)。
-    时序插位(v11 修,ADR-0615):旧法把决策独有段排序后整体**补尾**,
+    时序插位(v11 修):旧法把决策独有段排序后整体**补尾**,
     续局归组「并入 games[-1]」无时序门 → 该段被错组到时间上晚于它的最后
     一局名下(实证:run_20260908_210431 曾被组到比其段末帧晚 8.5 小时的
     g_20260909_053235 名下,锚点档案 g_20260908_165445 静默丢段)。按段首
@@ -637,7 +637,7 @@ def _hp_entry(dec_frame: dict[str, Any] | None,
 
 
 def _settlement_hp_usable(row: dict[str, Any]) -> bool:
-    """结算行 hp 可否作步进链锚(v8 可信门;v9 合成行一律退出,ADR-0577)。
+    """结算行 hp 可否作步进链锚(v8 可信门;v9 合成行一律退出)。
 
     - 可信门 = query._outcome_hp_trusted 单一源:OCR miss 兜底行
       (hp_confidence<0.9,hp_after 落 0)不入链不推游标——伪值入链会伪造
@@ -736,7 +736,7 @@ def _hp_pay_events(exo_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-# ===== 离场事件派生列(v10,ADR-0605;装配端纯读) =====
+# ===== 离场事件派生列(v10;装配端纯读) =====
 
 #: 离场通道闭集(单一源;键语义见 _derive_departures docstring)
 DEPARTURE_CHANNELS: tuple[str, ...] = (
@@ -770,14 +770,14 @@ def _sell_deployed_target_names(frame: dict[str, Any]) -> set[str]:
     """帧动作里 CwActionSellDeployedParam 的卖出目标名集合(按同帧 deployed 解析槽位身份)。
 
     解析键 = 动作 ``deployed_idx``(= state.deployed 槽位表下标 0-9,
-    ADR-0392)——这是唯一能落帧的生产形状:全仓唯一构造点 = kernel
+    )——这是唯一能落帧的生产形状:全仓唯一构造点 = kernel
     cw_state.CwActionSellDeployedParam(cw_evolution 谷底回滚 / sim engine,序列化字段
     deployed_idx/income/reason/expect,无 row/slot);cw_prep_actions 的
     同名 row+slot 类零构造点、且策略辖外声明不发射(test_cw_shop_line
     辖外锁),不会出现在 decisions 帧。
 
     换算命中而非下标直取:serialize_state 落遥测的 deployed 是**紧缩
-    占用序**(ADR-0392,None 空槽剔除),帧内列表下标 ≠ 槽位表下标;
+    占用序**(None 空槽剔除),帧内列表下标 ≠ 槽位表下标;
     deployed_idx→(排,排内槽号) 是固定双射(0-3=前排 1-4,4-9=后排
     1-6,deployed_slot_no 单一源),条目级 position_pref/slot 信息位随
     序列化保留、落位写端按落位下标归一,按此对上。键缺失/越界 =
@@ -805,7 +805,7 @@ def _sell_deployed_target_names(frame: dict[str, Any]) -> set[str]:
 
 def _derive_departures(dec: list[dict[str, Any]],
                        segments: list[str]) -> list[dict[str, Any]]:
-    """顶层 ``departures`` 派生列(v10,ADR-0605;纯读,零运行时写入)。
+    """顶层 ``departures`` 派生列(v10;纯读,零运行时写入)。
 
     - 缺口与实锤:执行期 deploy 换血卖出(CwScreenDeploy._sell_offtarget_deployed)
       逐件身份只在 log 行与匿名计数键,无遥测行——复盘实证 g_20260907_075840
@@ -875,13 +875,13 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
     口径;form_score 已退役,历史数据只读透传)/ 证据链接 /
     战后终态(terminal,该轮最晚帧板面计数——与决策帧列并列的「执行后」快照)。
     败场节点(loss_nodes,v8 起)= hp 链上掉血的**结算行**(战斗腿口径;
-    ADR-0567);v9(ADR-0577)步进链升格为 **hp 变化事件步进链**:
+    );v9步进链升格为 **hp 变化事件步进链**:
 
     - 两链分工:rounds 链 = 轮级血面变化(单槽取末结算行,净额,无可信
       门——「本轮账面变化」的本职);步进链 = hp 变化走行,可信结算行
       (可信门,判据见 _settlement_hp_usable;v9 起合成行一律退出)∪
       hp_pay 事件行(批1 写点产物)按 **ts 全局交织**各成一步:结算步出
-      掉血条目,事件步只推进游标不出条目(保 ADR-0567「一条目=掉血结算
+      掉血条目,事件步只推进游标不出条目(保 「一条目=掉血结算
       行」口径纯度,新增加法来源 hp_source='endgame_final' 除外)。
     - 段界重锚(v9):跨段停机时游标不再携带前段值——走行遇换段(以及
       rounds 链到达续段首 key)取该段恢复帧 hp(_segment_resume_frame
@@ -890,11 +890,11 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
       unexplained_delta/consumed_by_chain,不进 loss_nodes)。恢复帧不可锚
       (缺帧/hp None/readable False)→ 不锚维持跨段携带(诚实退化)。
       续段首槽 hp_delta 语义从「跨段净额」变「段内变化」(读端可见口径
-      变化,跨局对照跨段槽位数字会变,ADR-0577 申报)。
+      变化,跨局对照跨段槽位数字会变,申报)。
     - 真值对账(v9,hp_pay 建模账):事件只作期望账;下一**可信结算行**
       与「游标(已含事件推进)」偏差≠0 → hp_pay_defects 落一行(留证不
       阻塞),游标照取结算值自愈——建模错账最多污染到下一结算并当场显影。
-    - 走行序(F5 三边界,ADR-0577):ts 单源 = 记录时点墙钟,排序键字符
+    - 走行序(F5 三边界):ts 单源 = 记录时点墙钟,排序键字符
       串比较;①同秒并列:事件物料前置拼接 + Python 稳定排序 → 同秒事件
       先于结算(备战先于战斗的物理先序),结算/回落保持 v8 遍历序(key
       升序、key 内 ts 稳定)= 单段局逐字节退化的技术前提;②缺 ts 行:
@@ -917,7 +917,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
       两链在「同轮可信行在前+不可信行在后」形态分叉:游标停可信行、轮槽
       取不可信末行,后续轮条目按游标计算(与 query_hp「伪值不推进链」同
       纪律,方向正确非回归);净额≥0 的轮因战斗腿<0 仍必有条目。判读侧
-      勿按旧直觉假设 loss_nodes ⊆ rounds 掉血轮(ADR-0567 §边界申报)。
+      勿按旧直觉假设 loss_nodes ⊆ rounds 掉血轮(§边界申报)。
     返回:(rounds, loss_nodes, boundaries, hp_pay_defects)。boundaries =
     {run_id: {unexplained_delta, consumed_by_chain}}(v9 段界重锚差显影)。
     """
@@ -930,7 +930,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
             keys.add((int(r.get('plane') or 1), int(r.get('round_num') or 0)))
         except (TypeError, ValueError):
             continue
-    # 同轮多结算行全保留(v8,ADR-0567):按 ts 升序遍历内逐行 append——
+    # 同轮多结算行全保留(v8):按 ts 升序遍历内逐行 append——
     # append 必须留在本排序遍历内,轮槽 [-1] 才与旧「后写覆盖」取到同一行
     # (rounds 表逐字节不变的技术前提),步进链也天然得 ts 序
     outs_by_key: dict[tuple[int, int], list[dict[str, Any]]] = {}
@@ -1118,7 +1118,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
             # 行 ts(帧来源取帧 ts);条目 ts 契约不变(帧来源 = None)。
             # 缺 ts 来源行 → 同 F5② 守卫不进链(ts 走行无位可置,v8 键位
             # 内联无此依赖;该轮条目丢失是缺 ts 数据的诚实代价)。
-            # 回落来源守卫(ADR-0577「合成行一律退出步进链」的回落侧补执):
+            # 回落来源守卫(「合成行一律退出步进链」的回落侧补执):
             # 来源行 = outcome 时同用 _settlement_hp_usable 判据(synthetic
             # 标记/conf 门一并辖),frame 来源用 _hp_entry 可信位(可读位)
             # ——不满足即同缺 ts 行走「不进链」通道,条目缺失 = 缺数据的
@@ -1188,7 +1188,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
                 step_prev = _rhp
                 pending_pay, pending_pay_n = 0, 0
         if it['_kind'] == 'event':
-            # 事件步:只推进游标不出条目(ADR-0567「一条目=掉血结算行」
+            # 事件步:只推进游标不出条目(「一条目=掉血结算行」
             # 纯度);游标未锚(None)时事件无基準不可推进也不进对账。
             if step_prev is not None:
                 step_prev += it['hp_delta']
@@ -1236,7 +1236,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
     # —— v9 终局腿(C-主,加法零新运行时写入):result='loss' 且步进游标
     # 未到 0 → runs.final_hp=0 结构保证真值兜底出死亡条目;游标已到 0(含
     # 回落路径到达)守卫不重复,win/abandoned 局零终局腿,游标 None(全程
-    # 无可锚行)无 delta 可算诚实跳过(ADR-0577)。
+    # 无可锚行)无 delta 可算诚实跳过。
     if (endgame_result == 'loss' and step_prev is not None
             and step_prev != 0 and keys):
         lk = max(keys)
@@ -1324,7 +1324,7 @@ def _resume_reconciliation(segments: list[str],
 def _merge_boundary_records(
         recon: list[dict[str, Any]],
         boundaries: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
-    """段界重锚差并入恢复态对账行(v9,ADR-0577):unexplained_delta =
+    """段界重锚差并入恢复态对账行(v9):unexplained_delta =
     resume − 重锚前游标(负 = 停机间隙真掉血),consumed_by_chain=True =
     该差已被重锚消费、不进 loss_nodes。无重锚差的续段行零新增键。"""
     for row in recon:
@@ -1401,7 +1401,7 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
         'end_ts': game.get('end_ts') or '',
         'archived_at': datetime.now().isoformat(timespec='seconds'),
         'continuity_note': continuity_note,
-        # 恢复态对账列(v6)+ 段界重锚差扩展字段(v9,ADR-0577):
+        # 恢复态对账列(v6)+ 段界重锚差扩展字段(v9):
         # boundaries 按 run_id 并入对应续段行(unexplained_delta/consumed_
         # by_chain),不进 loss_nodes——重锚差是「段界间隙变化」显影非战斗腿。
         'resume_reconciliation': _merge_boundary_records(
@@ -1412,7 +1412,7 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
         # 只及新局)与 modeled 期望账对账偏差列(v9 加法,留证不阻塞)
         'hp_events': _hp_pay_events(derived_rows.get('exogenous.jsonl') or []),
         'hp_pay_defects': hp_pay_defects,
-        # 离场事件派生列(v10 加法,ADR-0605;装配端纯读,旧档案重装配补齐):
+        # 离场事件派生列(v10 加法;装配端纯读,旧档案重装配补齐):
         # 执行期 deploy 换血卖出逐件落账缺口(075840 Saber 实锤)的判读面。
         'departures': _derive_departures(derived_rows.get('decisions.jsonl') or [],
                                          segments),

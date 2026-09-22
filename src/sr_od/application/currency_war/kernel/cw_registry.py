@@ -1,4 +1,4 @@
-"""决策框架 v2 注册表(ADR-0290 对抗修订③:剪枝显式化/全注册表化)。
+"""决策框架 v2 注册表(对抗修订③:剪枝显式化/全注册表化)。
 
 归属:core/kernel 桶(分包期 0b 自 decision_v2/registry.py 整文件下沉)——
 本文件零 sr_od 依赖、``DEFAULT_REGISTRY`` 纯常量实例、全仓无动态注册,
@@ -17,7 +17,7 @@ kernel 与 decision_v2 必须共享**同一** registry 实例(A/B 注入契约:�
 - 息律:[17][28](50 金息律 / P1 满息通关)进 interest_rule 约束;
 决策见 docs/develop/sr_od/application/currency_war/decisions/0291-decision-v2-skeleton.md。
 
-⚠️ 收入口径修正挂账(ADR-0439,sim 侧已落码):sim 败轮金 + 奖励轮
+⚠️ 收入口径修正挂账(sim 侧已落码):sim 败轮金 + 奖励轮
 成对修正使 P1 出口金约 +6.6 金/局(无反馈静态重放量化)——凡以 sim
 经济轨迹为输入的历史门结论(典型:粗模型 vs Δ池的 P2 进场率差恰在
 门界、零余量的门 1a)在新口径下须 regate(修正口径重跑基线臂)后才能
@@ -55,9 +55,9 @@ class DecisionV2Registry:
     #: 即合成——14号稿 §3.5 B6 口径回写,消解「星级加权」含糊;计数函数
     #: 单一源 = 全局面同名同星副本数,2★ 成件计 1 份不折算 1★)
     copies_cap: int = 3
-    #: copy_swap 守卫×目标件豁免开关(ADR-0303 落地;旧裁决曾取
+    #: copy_swap 守卫×目标件豁免开关(落地;旧裁决曾取
     #: 默认关=守卫直通无豁免——当时三窗小负且无主病灶前提;
-    #: **ADR-0438 开臂翻默认 True**:`w436_merge_exempt_ab/` A/B 在 ①豁免扩同批前提下,
+    #: **开臂翻默认 True**:`w436_merge_exempt_ab/` A/B 在 ①豁免扩同批前提下,
     #: 本开关相对单开 ① 臂第三张 offer 买率 +9.15pp(CI [2.31,15.76]
     #: 显著)、形态达标率 +3.0pp(方向正不显著)、守卫全净(真破息/
     #: hp0/bench 溢出/出口金)——`w431_generation_starve/` 定位的 r410 守卫 lv7-8 无臂接
@@ -65,18 +65,18 @@ class DecisionV2Registry:
     #: False=回退守卫直通(代码留作回退通道)。
     copy_swap_target_exempt: bool = True
     #: 非正分门 merge 完成豁免开关(第三张副本买候选 3合1 完成素材语义,
-    #: 决策 why=ADR-0438):True=arbiter 非正分门对 merge=True 的买候选
+    #: 决策 why 见行内申报):True=arbiter 非正分门对 merge=True 的买候选
     #: 放行进入约束链(豁免≠必买:金地板/copies_cap/bench 容量/息账
     #: 照常辖)。依据:第三张副本买入即合成 2★,收益方向由 P20 方向级
     #: (已证)承载而非板面差分——评分维
-    #(merge_progress 只计第 2 份,ADR-0340 边界)对它构造性零增量,
+    #(merge_progress 只计第 2 份,边界)对它构造性零增量,
     #: 非正分拒是评分零维测量伪影非 EV 判断;与既有 'copy' 标签 C 豁免
     #: 同型。按 (名,星) 分星计数的单一源 =
     #: ``cw_merge_simulate.same_star_count``(全局面同名同星)。
-    #: (`w242_star_directed/`/ADR-0405 C 项)同为「完成素材放行」语义对称,无条件于
+    #: (`w242_star_directed/`/C 项)同为「完成素材放行」语义对称,无条件于
     #: 末窗 gap(完成价值全程存在,不作定向授权)。仅辖 CwActionBuyCardParam
     #(synthesize 候选虽 merge=True 但不辖)。
-    #: 开臂裁决(ADR-0438,`w436_merge_exempt_ab/` A/B 兑现,CI 口径同 `w422_form_ab/`/`w429_dup_ab/`):第三张
+    #: 开臂裁决(`w436_merge_exempt_ab/` A/B 兑现,CI 口径同 `w422_form_ab/`/`w429_dup_ab/`):第三张
     #: offer 买率 off 53.93%→ex 83.52%(+29.6pp CI [21.1,38.9] 显著)/
     #: 形态达标率 31.00%→44.33%(+13.33pp CI [5.81,21.08] 显著)/
     #: core2≥1 进场率 +20.67pp 显著;守卫全净(真破息 +0.33pp 不显著/
@@ -91,9 +91,9 @@ class DecisionV2Registry:
     #: [32] carry_gate 腾位买的轮界(r≤7;r8-r9 终局段买入不影响结算)
     carry_gate_max_round: int = 7
 
-    # ===== 层4 补偿趟(迁移审计 w52(git 历史) 回连机制;ADR-0326)=====
+    # ===== 层4 补偿趟(迁移审计 w52(git 历史) 回连机制)=====
     #: 补偿辖的买侧标签(含
-    #: 'carry_gate'——ADR-0326 H1:该标签落「非核心目标件+bench 满+
+    #: 'carry_gate'——:该标签落「非核心目标件+bench 满+
     #: 早期轮」,与 v3_core_names 空窗下的目标件,金补偿路径对两种
     #: 标签都稳健;不为非目标件变现——只有更高优先级购买才配动用
     #: 压库资产;pair/copy/bond_fallback 凑数凑对类与 refresh/levelup
@@ -107,15 +107,15 @@ class DecisionV2Registry:
     #: 报警升级态 refresh 金不足是否纳入补偿(S2 残余;默认开)
     remedy_alarm_refresh: bool = True
 
-    # ===== S5 统一卖件弱序(迁移审计 w52(git 历史)/ADR-0327)=====
+    # ===== S5 统一卖件弱序(迁移审计 w52(git 历史)/)=====
     #: [22]③ 再遇窗口表(费级→再遇期望轮数)。实测锚两个:1费 11
     #: (7-15 中值)/ 5费 120(60-180 中值,7-8 级窗口);2-4费为锚点
     #: 间的**拟合经验值**——5费锚跨度 60-180 使中段既无实测也无可信
-    #: 参数化形式(非线性),标定接口=sim 校准域(ADR-0327)。消费方
+    #: 参数化形式(非线性),标定接口=sim 校准域。消费方
     #: sell_priority_key。
     remeet_window_rounds: dict[int, int] = field(default_factory=lambda: {
         1: 11, 2: 25, 3: 40, 4: 60, 5: 120})
-    #: W4 去向表派生的费级终局贯穿率(E→F 留存;ADR-0327):
+    #: W4 去向表派生的费级终局贯穿率(E→F 留存):
     #: 证据等级=**推断近似**——W4 报告(Q1)为逐角色值(贯穿层
     #: 2费 骨架 0.66-0.95 / 消耗品 1费 0.05,费级非严格单调),
     #: 此处取费级趋势近似(高费件终局留存低);sim 校准域。
@@ -131,8 +131,8 @@ class DecisionV2Registry:
     #: +EV 总账涌现,兜底局由 form_score 承接「人口别落后」观察;位面绝对基线
     #: {5,7,9} 是阵容无关的粗糙代理)
     filter_chain_order: tuple[str, ...] = ('emergency', 'mode')
-    #: 各层放行标签集(候选标签仅作过滤域标记,不携带优先级——ADR-0290)
-    #: 应急集内容修正(合流批 ADR-0303 并入):补 for_gold
+    #: 各层放行标签集(候选标签仅作过滤域标记,不携带优先级——)
+    #: 应急集内容修正(合流批 并入):补 for_gold
     #: (卖弱件)+levelup(升级)——应急态语义=战力买+卖弱件+升级,
     #: 旧窄集把两通道在应急态整体滤死(迁移审计批(可解释性遥测) F4);pair/copy/
     #: bond_fallback/synthesize 在应急态仍滤出(应急集保持窄)
@@ -148,7 +148,7 @@ class DecisionV2Registry:
         'bond_fallback', 'off_target', 'for_gold', 'free_bench',
         'levelup', 'refresh', 'deploy',
     })
-    #: war 标签集(`w126_b_arm/`/ADR-0349:refresh 进 war 集——「war 模式滤 refresh」
+    #: war 标签集(`w126_b_arm/`/:refresh 进 war 集——「war 模式滤 refresh」
     #: 废除,D 是一等花钱通道([17]「该D牌D牌」不因 war 覆盖态消失;
     #: 授权仍由 V_D 批口径评分+interest_rule EV 门辖,标签集只管在场)
     war_tags: frozenset[str] = frozenset({
@@ -167,7 +167,7 @@ class DecisionV2Registry:
     #: 保持处置梯度:40=报警加速、25=应急覆盖态清仓。
     emergency_hp: int = 25
 
-    # ===== 血预算停手·停升级线(设计件 12 §3.1/§2.3-P1-b;ADR-0448)=====
+    # ===== 血预算停手·停升级线(设计件 12 §3.1/§2.3-P1-b)=====
     #: 总开关:True=停升级门恒接线(P21 数学定谳:hp ≤ d·L_c 域内升级
     #: EV=−C−I 严格为负,与 β 标定无关——不是「待验证」的悬置开关);
     #: False=A/B 对照臂/回退锚(sim 配对经 registry 注入实现,与
@@ -183,7 +183,7 @@ class DecisionV2Registry:
     #: 的取样坐标;拟合单一源=vd_p1_loss_*,不另立数值)。
     p1_levelup_stop_rung: int = 2
 
-    # ===== 血预算停手·第二波(设计件 12 §2.3-P1-a/P1-c、§3.2;ADR-0451)=====
+    # ===== 血预算停手·第二波(设计件 12 §2.3-P1-a/P1-c、§3.2)=====
     #: P1 末窗期望预算线(设计件 12 §6 P1_EXIT_BLOOD_TARGET,推导 §2.2:
     #: 要求期望伤害 ≤ 进场血反解 w*=1−h/88,h=60 → w*=0.32 可达)。
     #: 语义=**期望预算线**——充分方向、非存活保证(`w524_audit_60line/` 对抗审计实测
@@ -204,14 +204,14 @@ class DecisionV2Registry:
     blood_budget_refresh_stop_enabled: bool = True
 
     # ===== 概率校准的刷新预算(提案面=.debug/temp/currency_war/
-    # ===== w645_proposal_v2/SPECS.md 提案 B-v2;决策 why=ADR-0475)=====
+    # ===== w645_proposal_v2/SPECS.md 提案 B-v2)=====
     #: 塌缩带归零线 ω:refresh_prob(当前级,目标费)/refresh_prob(峰值级,
     #: 目标费) < ω → 该帧刷新预算归零(refresh_ev_budget 合法 0 帧第三类)。
     #: 比值由 cw_shop_odds.REFRESH_PROB 表逐帧导出(概率单一址,与分配器
     #: Π_refresh 估计器同源互指,禁第二概率口径)。ω 是标定字段:初值 0.1
     #: 占位=「当前级单刷命中率不足峰值级十分之一」;标定网格 {0.05,0.1,0.2},
     #: 多臂同过判前锁死取最小者(最保守归零线,出处=SPECS B-v2 §3;
-    #: 首批双臂验证记录=ADR-0475)。归零的账=塌缩带留金弱占优纯烧
+    #: 首批双臂验证记录考古走 git 历史)。归零的账=塌缩带留金弱占优纯烧
     #(留金保留全部未来期权,烧金灭失),不需要息成本参与。
     omega_collapse_ratio: float = 0.1
     #: 有望帧帽真分位 q:帽 = ⌈−ln(1−q)·E_find⌉,E_find =
@@ -222,10 +222,10 @@ class DecisionV2Registry:
     #: 初值 0.8=保守档。j=0(零持有)时全部 (level,费档) 组合帽值 ≥39 > 6
     #: 刷帽=结构性不绑定;帽的实际绑定面=E_find=0 帧(owned≥k 目标已
     #: 集齐,或该级出不了该费档 p=0)——帽归零=搜索价值归零的如实账
-    #(第 4 份副本不可用/纯烧),sim 实测绑定集中于此(ADR-0475)。
+    #(第 4 份副本不可用/纯烧),sim 实测绑定集中于此。
     refresh_find_quantile: float = 0.8
 
-    # ===== 血预算停手·终止分支(P1「止损转支出」;设计 W659 v2 §0/§2;ADR-0469)=====
+    # ===== 血预算停手·终止分支(P1「止损转支出」;设计 W659 v2 §0/§2)=====
     #: 总开关:True=数学定谳恒接线口径(金零值引理+EV 对比式:守钱世界
     #: 存活概率上界 S0≤ε 时一切守钱资产期望被压没,释放当轮转化路径
     #: 严格占优——不是「待验证」的悬置开关;False=A/B 对照臂/回退锚,
@@ -237,12 +237,12 @@ class DecisionV2Registry:
     #: 下沿档(诚实带 [0.03,0.10],超保底部分≈0.36 金当量/帧,显式
     #: 接受)。**重标定挂账(§2.4)**:p_i 源 streak_floor_win_rate 为
     #: sim 档证据;Δp(piece)(停手窗买 1★ 件次战胜负面差分 n≥30)与
-    #: ε*(g) 随金自适应均未标定——落地后 ε 全带重推(ADR-0377 敏感
+    #: ε*(g) 随金自适应均未标定——落地后 ε 全带重推(敏感
     #: 性口径)。首批辖域 P1 only(谓词内 state.plane==1 硬门);
     #: P2 扩辖独立批,不消费 p2_cond_loss_table/p_win_p2_by_rung。
     terminal_survival_eps: float = 0.03
 
-    # ===== 成型停手纪律([13] 停手线;ADR-0343;迁移审计 w119(git 历史)/ADR-0347 收编)=====
+    # ===== 成型停手纪律([13] 停手线;迁移审计 w119(git 历史)/收编)=====
     #: 停手语义恒接线。
     #: 停手辖轮**全局下界**(迁移审计 w97(git 历史)/迁移审计 w105(git 历史) 晚买证据窗=r7-r9);实际辖轮=
     #: max(锁定线 typical_form_round, 此值)——comp 派生(迁移审计 w115(git 历史)-B1,
@@ -251,15 +251,15 @@ class DecisionV2Registry:
     # 等级不作为独立门槛——2026-08-25 用户裁决 Q2,等级通过上场完整性进入
     # form_ok 判定
 
-    # ===== 相位观测与授权(迁移审计 w114(git 历史)/ADR-0346 影子;迁移审计 w119(git 历史)/ADR-0347 切授权)=====
+    # ===== 相位观测与授权(迁移审计 w114(git 历史)/影子;迁移审计 w119(git 历史)/切授权)=====
     # 兜底门判据 = 板面真收敛到 ≥2 过渡体系,非分数可达性(用户判读原则
     # 2026-08-26「任何位面看阵容完成度」);form_score 降级纯遥测观测,不进判据
-    #: 兜底局(意向未锁)form_ok 的轮数下限(迁移审计 w119(git 历史)/ADR-0347 校准判据,迁移审计 w113(git 历史) §8-11):
+    #: 兜底局(意向未锁)form_ok 的轮数下限(迁移审计 w119(git 历史)/校准判据,迁移审计 w113(git 历史)):
     #: `w118_baseline/` 实测 A 臂兜底局 form_score≥0.5 在 r2-r3 即转真——1 过渡体系≠战力
     #: OK。结构门下保留(合取):即使两体系早凑齐,r5 前板面人口/星级仍薄,
     #: 保守留 FORM(地板 20 允许买牌强化,不亏)
     phase_fallback_min_round: int = 5
-    #: 兜底局 form_ok 的有效体系数下限(`w132_b_arm/`/ADR-0353):有效体系数 =
+    #: 兜底局 form_ok 的有效体系数下限(`w132_b_arm/`/):有效体系数 =
     #: ``_engines_count``(四体系单一源,deployed 口径)+ hp_charge_stack 型
     #: 全局累积角色豁免(上场 2★ 计 1,万敌;迁移审计 w127(git 历史) 字段消费)。取 2 =
     #: transition_combos 定稿「四体系两两组合=过渡成型,单体系点火≠成型」
@@ -269,12 +269,12 @@ class DecisionV2Registry:
     #: 只防收益端估乐观时花光本金;初值 20=沿用应急保底语义,**Q1 四档
     #: sim 对照(不设/10/20/30)待校准**)
     form_floor: int = 20
-    #: boss 破息窗 node_type 缺读兜底轮(迁移审计 w119(git 历史)/ADR-0347 统一口径:
+    #: boss 破息窗 node_type 缺读兜底轮(迁移审计 w119(git 历史)/统一口径:
     #: boss 窗主判据=节点图 node_type∈boss_round_node_types,轮数口径
     #: 全仓只留 discipline.boss_window_active 一处且仅作缺读兜底——
     #: P1 末节点恒为 boss 的节点图先验,r≥9 兜底)
     boss_window_fallback_round: int = 9
-    #: 扑满节点(奖励型战斗)单节点刷新豁免上限(迁移审计 w119(git 历史)/ADR-0348×迁移审计 w120(git 历史) P8
+    #: 扑满节点(奖励型战斗)单节点刷新豁免上限(迁移审计 w119(git 历史)/×迁移审计 w120(git 历史) P8
     #: 上限:凑羁绊支出 s≤0.277R,R 采集前保守取节点基础收入 6-9 金
     #: → s≤2 金=1 次刷新;**禁深花保血**——扑满不掉血,真损失=打不过
     #: 没奖励,轻投入凑羁绊刷伤害;R 真值采集后等比重标)
@@ -283,7 +283,7 @@ class DecisionV2Registry:
     # ===== 层3:板面查表评分(初版=档位×P3 + 息律 EV + H3 插值)=====
     #: 剩余战斗节点估计(V_D P1 收益侧的**缺省兜底**:plane_node_table
     #: 槽序表缺失/裸 session 时退此值;有表时由 ev.battles_left_plane
-    #: 逐轮推导,ADR-0425;层3 score_state 的 power 视界仍用本值)
+    #: 逐轮推导;层3 score_state 的 power 视界仍用本值)
     battles_left_est: float = 5.0
     #: 利息封顶档([17]:50 金息律,5 金/轮)
     interest_cap: int = 5
@@ -291,7 +291,7 @@ class DecisionV2Registry:
     interest_rounds: float = 5.0
     #: 档位分数部分(recipe 档 → 小数 rung 的插值系数;未标定)
     rung_frac_per_recipe_tier: float = 0.3
-    #: 买侧 C_interest 的回档折中视界(`w131_a2n_arm/`/ADR-0352):买候选跨息档的
+    #: 买侧 C_interest 的回档折中视界(`w131_a2n_arm/`/):买候选跨息档的
     #: C = 档数 × min(R跨位面, 此值)。依据:P6 回档账下界(破档后
     #: 1-2 轮回档,真实息损 1-3 金)与平面 R 上界(P5⑤,≈20-23)的
     #: 折中——买是一次性金→板面资产兑换,「停在低档到位面末」的
@@ -300,7 +300,7 @@ class DecisionV2Registry:
     #: (arbiter.interest_rule 的 CwActionBuyCardParam 分支);刷新(D)与升级平台账
     #: 保持平面 R 上界不动(P5⑤ 退化输出/平台语义)。
     interest_recovery_rounds: float = 3.0
-    # ===== `w154_p2d/`/ADR-0361 P2 段 V_D 修法(P11/P12 口径;常数归本层可 A/B 注入)=====
+    # ===== `w154_p2d/`/P2 段 V_D 修法(P11/P12 口径;常数归本层可 A/B 注入)=====
     #: P2 段 V_D 口径总开关:False=回 迁移审计 w153(git 历史) 前行为(窗二分=level_plan 互斥,
     #: 成本=批口径面值,收益=P1 骨架参数)——A/B 基线臂。P1 分支与开关无关
     #: (逐位不动,P1 sim 零漂移回归门)。
@@ -308,9 +308,9 @@ class DecisionV2Registry:
     #: P1 收益侧战斗期望掉血=条件败局伤害的线性拟合**截距**(遥测拟合:
     #: `w324_coarse_battle/` 战斗粗模型冻结语料 417 条战斗类差分,battle 节点败局伤害
     #: =截距+斜率×成型档,battle n=278/73 局聚类稳健、斜率 SE 1.25;
-    #: 拟合产物随粗模型语料归档(复现锚=ADR-0424);
+    #: 拟合产物随粗模型语料归档);
     #: 语义=「打了但输了」的伤害期望,与 V_D 收益式的 Δwin_rate 相配
-    #: ——无条件均值拟合会与胜率差双计,ADR-0425)
+    #: ——无条件均值拟合会与胜率差双计)
     vd_p1_loss_intercept: float = 11.32
     #: 同上**斜率**(每级成型档;遥测拟合,负号=成型越高败局伤害越低;
     #: rung 域 0-3,越界钳制在消费函数)
@@ -321,7 +321,7 @@ class DecisionV2Registry:
     #: 单列)——与胜率相乘不双计(math_proofs P15 口径命题);误用
     #: 无条件均值拟合(胜态混在均值里)会系统性低估。来源=`w324_coarse_battle/` 冻结
     #: 语料 417 条拟合产物 two_state_model(粗模型定稿、语料快照复现
-    #: 锚与对抗审计记录=ADR-0424);encounter=截距 24.32 +
+    #: 锚与对抗审计记录考古走 git 历史);encounter=截距 24.32 +
     #: 斜率(−4.53)×成型档(斜率 SE 2.41 显著);boss 斜率 CI 含 0 →
     #: 退常数 26.71(背测 sim −22.61 vs obs −25.82)。
     streak_floor_loss_damage: dict[str, tuple[float, float]] = field(
@@ -340,7 +340,7 @@ class DecisionV2Registry:
         })
     #: P2 掉血期望(P12 收益侧,**条件败局伤害**口径——与 Δwin_rate 相乘
     #: 不双计,P15 口径命题;=「打了但输了」的期望)。标定=P2 损血谱粗档
-    #: (冻结语料同 run 相邻行 hp 差分;标定叙述与精度声明=ADR-0426
+    #: (冻结语料同 run 相邻行 hp 差分;标定叙述与精度声明
     #: 增补 A):普通战斗桶 20.05(n=19;
     #: 桶内零损行=0,实测口径核验=条件伤害)。置信声明(`w371_recal_attack/` 审计 M3):
     #: SD 10.38,事件级 t95% CI [15.0, 25.1],run 级聚类 bootstrap CI
@@ -361,7 +361,7 @@ class DecisionV2Registry:
     #: 溢余金流动性影子价 ρ(P11:纯溢余段 C_dec 下界=0 后的期权项上界;
     #: P10① 携带溢价利息分量背书,`w151_p2/` 四局实证实现值≈0 → 起步 0)
     vd_p2_liquidity_rho: float = 0.0
-    #: P1 体系对缺件找牌通道总开关(`w170_p1_vd/`/ADR-0369):False=回 `w166_pair_guard/` 前行为
+    #: P1 体系对缺件找牌通道总开关(`w170_p1_vd/`/):False=回 `w166_pair_guard/` 前行为
     #: (P1 找牌只有 core 通道,level_plan 窗互斥逐位旧语义)——A/B 基线臂。
     #: True=P1 锁定帧(配方锁 p1_pair/①锁 transition_pair)缺件 ∧ 金≥
     #: interest_floor+刷价+买价([3] 单次预算前提)时,pair 缺件账参与
@@ -370,7 +370,7 @@ class DecisionV2Registry:
     #: 板深单位值(板深=可上阵件数,板面形态维之一,非单卡拆分;方向
     #: 原引数据源已清退禁引,现未锚定;数值骨架占位未标定)
     depth_unit_value: float = 2.0
-    #: 追级 EV 单位值(ADR-0290 层2 查表项「追级 EV」:等级→部署
+    #: 追级 EV 单位值(层2 查表项「追级 EV」:等级→部署
     #: cap→板深的期权价值;小数等级=level+xp 进度比,单击经验
     #: 即分数性推进;未标定)
     level_unit_value: float = 1.0
@@ -404,7 +404,7 @@ class DecisionV2Registry:
     #: 后 2★ 分差≈0 → 换阵卖 2★ 不罚分/凑合副本 ≈0 分(升星投资
     #: 系统性贬值)。0=关闭(A/B 基线臂)。
     core_star_unit: float = 3.0
-    #: 3合1 中间进度项单位值(迁移审计 w96(git 历史)/ADR-0340,[13] 副本凑合爬坡段:
+    #: 3合1 中间进度项单位值(迁移审计 w96(git 历史)/,[13] 副本凑合爬坡段:
     #: 目标件第 2 份 1★ 的期权显影)。core_star 只辖 star≥2,迁移审计 w93(git 历史)
     #: 断买根因①:第 2 份买入在 targets/eng_frac/core_star/rung
     #: 全维度零 delta → 「非正分」拒 → 金 59→90 溢出趴三轮
@@ -425,13 +425,13 @@ class DecisionV2Registry:
     #: 成型补充偏置的顶分上沿(原分 > 此值不加偏置——不叠加已正分买入,
     #: 防「高单位下进度件挤掉目标件」过冲)
     forming_bias_val_max: float = 0.5
-    # ===== ADR-0333 体系集中度(d2 意向批;候选层配方亲和) =====
+    # ===== 体系集中度(d2 意向批;候选层配方亲和) =====
     #: engine_seed 板面配方亲和过滤开关([20] 过渡是配方不是散买):
     #: True=板面已有未成型体系时,新体系引擎件不生成 engine_seed 候选
     #: (散买断,空窗/成型可开新);False=关闭(回 迁移审计 w70(git 历史) 行为,全引擎件
     #: 见即买)——A/B 通道,默认开。
     engine_affinity_enabled: bool = True
-    # ===== `w150_buy_lock/`/ADR-0359 买侧通道锁定目标约束(`w143_formation/` 补充判读通道半边)=====
+    # ===== `w150_buy_lock/`/买侧通道锁定目标约束(`w143_formation/` 补充判读通道半边)=====
     #: 总开关:False=回 `w145_recipe_lock/` 后行为(A/B 基线臂)。锁定帧
     #: (cw_intention.locked_buy_scope 非 None)时,off_lock_buy_tags 辖的
     #: 买通道候选中「目标件 ∉ 锁定目标体系集」者在层3评分减
@@ -453,7 +453,7 @@ class DecisionV2Registry:
     #: 零目标件买入;末轮买入无恢复轮次)。目标件+填充(bond_fallback,
     #: [31]④ 梯队)不辖。
     off_lock_final_fence_enabled: bool = True
-    # ===== `w155_evolve_lock/`/ADR-0361 evolve 换血事务锁定目标件保护(`w147_evolve/` 执行半边)=====
+    # ===== `w155_evolve_lock/`/evolve 换血事务锁定目标件保护(`w147_evolve/` 执行半边)=====
     #: 总开关:False=回 `w150_buy_lock/` 后行为(A/B 基线臂)。锁定帧
     #: (cw_intention.locked_faction_scope 非 None)时,演进提案
     #: (cw_evolution.propose_upgrades)中「目标体系 ∉ 锁定体系集」者在
@@ -465,23 +465,23 @@ class DecisionV2Registry:
     #: 让非锁定线提案在同轮竞争中让位锁定线;量级=一档
     #: _TIER_WEIGHT 的 3 倍,跨档压制单档优势)
     evolve_off_lock_penalty: float = 3.0
-    # ===== 迁移审计 w160(git 历史)/ADR-0363 S1 型成型后引擎丢失修法(两件独立 A/B 通道)=====
+    # ===== 迁移审计 w160(git 历史)/S1 型成型后引擎丢失修法(两件独立 A/B 通道)=====
     #: 件1·引擎下界守卫:False=回 `w155_evolve_lock/` 后行为(A/B 基线臂)。True 时
     #: execute_replacement 生成事务时,若事务净效果使过渡引擎数
     #: (cw_battle_calib._engines_count 口径)从 ≥2 跌破 2,被拆引擎体系的
     #: deployed 贡献件获得新线同级**留场资格**(不划进 old_line 下场)
-    #: ——语义「换血可以,拆引擎不行」(ADR-0360 件3 只保「不卖」
+    #: ——语义「换血可以,拆引擎不行」(只保「不卖」
     #: 不保「在场」,末轮无回场窗 → 永久丢失;迁移审计 w159(git 历史) §2:S1 局全部
     #: 37/37 通道=evolve_tx 整批下场)。护的是在场引擎贡献,不是库存。
     evolve_engine_guard_enabled: bool = True
     #: 件2·末轮演进冻结:True 时位面末窗(剩 ≤1 轮,round_num ≥
     #: NODES_PER_PLANE-1)演进换档(undeploy/sell 非空的拆板事务)
     #: 冻结不发射——纯加深(deploy-only)与填位照旧;与 `w150_buy_lock/`
-    #: final_fence(ADR-0359 买侧末轮围栏)语义对齐:末轮换档天然
+    #: final_fence(买侧末轮围栏)语义对齐:末轮换档天然
     #: 无回场窗,「加深收益 < 引擎丢失风险」在该窗口系统性为真
     #: (迁移审计 w159(git 历史) §1:r_loss 90% 落 r8-9)。
     evolve_final_freeze_enabled: bool = True
-    # ===== `w174_deploy/`/ADR-0371 引擎补完守卫(own-gap 修法)=====
+    # ===== `w174_deploy/`/引擎补完守卫(own-gap 修法)=====
     #: 总开关:False=回 `w170_p1_vd/` 后行为(A/B 基线臂)。True 时
     #: cw_evolution.evolution_step 在常规演进提案**之前**发补完事务:
     #: pair 体系(p1_pair ∪ transition_pair,含希儿系单卡判据)
@@ -490,17 +490,17 @@ class DecisionV2Registry:
     #: 换下最弱非保护件(保护=pair 成员/引擎件/锁定目标件/种子窗)。
     #: 修「拥有≥门槛却从未同时上场」(`w173_supply/`:8/11 never-2 局,件躺备战
     #: 席到局终;[20] 件上场才算配方,[13] 过渡成型≈过 P1)。末窗冻结
-    #: 豁免复核 = 净效果 pair on-board 与引擎数不减(ADR-0363 件2
+    #: 豁免复核 = 净效果 pair on-board 与引擎数不减(
     #: 防丢语义同向:补上不是拆)。
     evolve_engine_completion_enabled: bool = True
-    # ===== `w201_strand/`/ADR-0381 补完缺口 owned 口径(distinct;修②)=====
+    # ===== `w201_strand/`/补完缺口 owned 口径(distinct;修②)=====
     #: 补完事务缺口判定的 owned 计数口径:True=distinct 名单数——
     #: 同名副本是 3合1 升星素材非配方件([20] 配方=不同成员;board
     #: 同名唯一 → 副本永远不可上,全羁绊逐件计数会造出「永远填不满
     #: 的幻影缺口」,`w200_probe/`:227/276 补完轮轮空转);False=回 `w174_deploy/` 后
-    #: 全羁绊逐件计数(ADR-0371 首版口径)。
+    #: 全羁绊逐件计数(首版口径)。
     engine_complete_distinct_owned: bool = True
-    # ===== `w202_grade/`/ADR-0382 补完保护集分级(136 型构造闭死修法)=====
+    # ===== `w202_grade/`/补完保护集分级(136 型构造闭死修法)=====
     #: 补完事务 undeploy 常规候选枯竭(deployed 全保护,`w200_probe/` 136:
     #: 锁定线件+引擎件全覆,列车缺口 r6-r9 轮轮被选但 tx 永远建不出)
     #: 且缺口体系已连续被选 ≥4 轮(标定:门 2/3 有 benign→mal 坏翻转,
@@ -509,9 +509,9 @@ class DecisionV2Registry:
     #: 最可动)→ G1 未成型引擎件(下之不拆成型引擎)→ G2 已成型
     #: 引擎件/pair 成员/希儿系贡献件恒不可动。依据 [13] 过渡成型≈
     #: 过 P1(成型缺口=发令枪级)让位于 [23] 锁定线语义;False=回
-    #: ADR-0371/0381 后「不硬拆」。
+    #: 后「不硬拆」。
     engine_complete_grade_down: bool = True
-    # ===== `w179_gate/`/ADR-0372 P1 早期新件买入门(双条件窗:缺件密度 × 息档口径)=====
+    # ===== `w179_gate/`/P1 早期新件买入门(双条件窗:缺件密度 × 息档口径)=====
     #: 总开关:False=回 `w174_deploy/` 后行为(A/B 基线臂;FORM 相位地板对配方对
     #: 件买入照旧全拒)。True 时 arbiter.gold_floor 对满足窗的 CwActionBuyCardParam
     #: 放行「买入后同息档」的购买(窗语义见 discipline.p1_early_gate_open
@@ -563,8 +563,8 @@ class DecisionV2Registry:
 
     # ===== `w300_dup_ruling/` press 通道:目标外同名副本压库购买(5 参数,V-B3 全量
     # registry 化;arm0=默认值全关零漂移,armA=注入开启;A/B 结论落地后
-    # 按 ADR-0411 先例逐字段裁决去留;评分偏置两字段已随 ADR-0427 增补节
-    # 定谳清理)。设计规格与 A/B 兑现裁决=ADR-0427(v3 规格节与其谱系
+    # 按 先例逐字段裁决去留;评分偏置两字段已随 节
+    # 定谳清理)。设计规格与 A/B 兑现裁决(v3 规格节与其谱系
     # 记录见该 ADR;A/B 兑换统一裁决表(V-B4;锚定义=规格 §5.3,冲突处以本表为准):
     # | R1 | star≥2 升≥MDE ∧ 进场金/出口质量/经济卫生副锚均不劣 → 落码+ADR+三同步 |
     # | R2 | star≥2 持平(<MDE)∧ seg 真拦残留≤0.15 ∧ 其余锚不劣 → 落码
@@ -599,32 +599,32 @@ class DecisionV2Registry:
     press_exempt_round_cap: int = 2
 
 
-    # ===== `w227_handoff_gate/`/ADR-0400 P1 末窗承接门(设计件 08 §4.2 Phase 1)=====
+    # ===== `w227_handoff_gate/`/P1 末窗承接门(设计件 08 §4.2 Phase 1)=====
     #: EV 承接缺口项单位值(缺口 1 档 = 买侧 V 加此值;量级=forming_bias
     #: 同阶的保守下限——只放宽末窗破息买的 EV 授权,不触地板族/升级账/
-    #: 刷新口径(ADR-0352 D 平面 R 上界纪律不动))
+    #: 刷新口径(D 平面 R 上界纪律不动))
     handoff_ev_gap_bonus: float = 5.0
 
-    # ===== 迁移审计 w238(git 历史)/ADR-0403 承接门 hp 维 boss 投影(设计件 09 §3.1)=====
-    #: 投影无条件启用(转正裁决见 ADR-0411——量级问题非行为开关)。语义:
+    # ===== 迁移审计 w238(git 历史)/承接门 hp 维 boss 投影(设计件 09 §3.1)=====
+    #: 投影无条件启用(量级问题非行为开关)。语义:
     #: handoff_gate_gap 末窗投影的 hp 维由「当前 hp(boss 前)」换
     #: 「boss 后投影 hp」:
     #: hp_proj = hp + 2(r8 奖励胜,设计件 09 §1.1 五局恒 +2) −
     #: E[boss 伤害|净星深档](r9 无 +2;迁移审计 w240(git 历史) 起档键=净星深,
-    #: ADR-0404)。修标定口径错位(喂给
-    #: HANDOFF_HP_CUTS(boss 后真值标定,ADR-0399)的 hp 取 boss 前值
+    #: )。修标定口径错位(喂给
+    #: HANDOFF_HP_CUTS(boss 后真值标定)的 hp 取 boss 前值
     #: = hp 维系统性高估一档;设计件 09 §2)。
     #: E[boss 伤害|净星深档] 常数表(**正数=期望掉血量**;离线标定非
     #: 运行时预测)。标定源=Δ池 plane=1 boss 桶(**净星深键** = 上场件
-    #: Σ(star−1) 桶 min(sd//3,5)*3,迁移审计 w240(git 历史)/ADR-0404 替旧 Σboard 键——
+    #: Σ(star−1) 桶 min(sd//3,5)*3,迁移审计 w240(git 历史)/替旧 Σboard 键——
     #: 修 3合1 升星使 Σboard −2/次落浅桶而浅桶期望伤害更大、sim 判
     #: 「升星→boss 伤害↑」与 [27] 机制相反的方向冲突)地板删失行剔除
-    #: (hp_after∈{0,1}=下界非真值,ADR-0307 口径)后的桶均值:
+    #: (hp_after∈{0,1}=下界非真值,口径)后的桶均值:
     #: 2026-09-03 重标定 n=28 未删失/删失 21,**桶 0:n=28/27.57——
     #: P1 boss 语料净星深全落桶 0**(旧 Σboard 桶 9/12/15 的条件性
     #: 系键口径伪影:升星减件使强板落浅桶、浅桶均值被强板样本抬升
-    #: ——方向冲突的语料侧成因,ADR-0404)。
-    #: 标定口径与档键迁移裁决=ADR-0403/ADR-0404。**已知边界**:删失剔除使留存样本
+    #: ——方向冲突的语料侧成因)。
+    #: 标定口径与档键迁移裁决=行内申报(考古走 git 历史)。**已知边界**:删失剔除使留存样本
     #: 偏向「存活 boss 的局」(弱板真值伤害被低估);净星深≥3 的
     #: 深桶零样本——star_depth 条件性在当前语料下不可辨,常数表
     #: 实为无条件期望,语料攒厚后复验。
@@ -637,7 +637,7 @@ class DecisionV2Registry:
     #: 混合重标定;sim 批 outcomes 键位同构,恒 None=未建模)。
     #: 分布数字以本注释为单一源(2026-08-27 boss 伤害
     #: 分布重标定,离线标定产物随对局遥测语料归档);投影口径取 Q3 的
-    #: 前移耦合挂账=ADR-0418。
+    #: 前移耦合挂账=行内申报(考古走 git 历史)。
     handoff_boss_e_damage: dict[int, float] = field(default_factory=lambda: {
         0: 34.0,
     })
@@ -645,15 +645,15 @@ class DecisionV2Registry:
     handoff_boss_e_damage_default: float = 34.0
     #: r8 奖励节点胜 +2(设计件 09 §1.1:五局全部 r8→r9 恒 +2;hp 不可
     #: 回复下唯一正项)。触发语境 = P1 末窗;
-    #: r6/r7 投影少算后续节点期望伤害(偏乐观)的解耦挂账=ADR-0418
+    #: r6/r7 投影少算后续节点期望伤害(偏乐观)的解耦挂账
     #: (改行为代码须重跑 AB)
     handoff_boss_reward_bonus: int = 2
 
-    # ===== `w242_star_directed/`/ADR-0405 末窗星级定向授权(`w232_filler_star/` 挂账 C 项;设计件 08
+    # ===== `w242_star_directed/`/末窗星级定向授权(`w232_filler_star/` 挂账 C 项;设计件 08
     # §4.2 Phase 1b 星级投资方向)=====
     #: 末窗星级定向授权无条件启用:依据 = star 是 `w231_star_diag/`「评分结构性拒副本」病灶的
     #: 正解且 sim 无挤出(量级不足属参数调优非行为开关,裁决见
-    #: ADR-0411)。行为语义:
+    #: )。行为语义:
     #: P1 末窗承接缺口 gap>=1
     #: (handoff.handoff_gate_gap 单一源)对**同名副本买入**给定向授权
     #: ——candidates 层放行副本候选生成(r410 守卫+方向门,`w232_filler_star/` A/B
@@ -662,10 +662,10 @@ class DecisionV2Registry:
     #: interest_rule 的 handoff_ev_gap_bonus×gap(零新增数值通道/
     #: 防双计)**;地板族/copies_cap/r408 同轮守卫/bench 容量照常辖。
 
-    # ===== `w252_ma_directed_refresh/`/ADR-0409 M-A 定向 D 牌授权窗(`w249_core2_reach/` 诊断修法)=====
+    # ===== `w252_ma_directed_refresh/`/M-A 定向 D 牌授权窗(`w249_core2_reach/` 诊断修法)=====
     #: M-A 定向刷新无条件启用:依据 = M-A 是 `w249_core2_reach/`「策略从不支付搜索成本」
     #: 病灶的对症修法且方向为正(量的解锁归 cap 提升独立批,裁决见
-    #: ADR-0411)。行为语义:P1
+    #: )。行为语义:P1
     #: 末窗承接缺口 gap>0(handoff.handoff_gate_gap 单一源复用)**且**
     #: 存在追名 peak≥2 的目标件(锁定采购目标名集内某名 star 加权在
     #: 手副本 ∈[2,3),距 3合1 只差最后一张)时,向刷新(CwActionRefreshShopParam)
@@ -680,8 +680,8 @@ class DecisionV2Registry:
     #: 6-7 次;消耗计数 strategy_state_of(session).v3_dir_refresh_used,decide_prep 轮首
     #: 不重置——局级累计)。金消耗披露面:预算放行的每次刷新照付刷价,
     #: 金账户由 simulate 真值扣减,P1 末窗利息损失随 A/B 守门指标判读。
-    #: **本常量是非绑定约束(`w274_cap_batch/`/ADR-0413)**:合资格授权窗 = gap>0 ∧
-    #: P1 末窗(窗 {r6..r9},ADR-0418),
+    #: **本常量是非绑定约束(`w274_cap_batch/`/)**:合资格授权窗 = gap>0 ∧
+    #: P1 末窗(窗 {r6..r9}),
     #: per_round 2 ⇒ 窗内可行上限 8 次曾在本值 6 之上;`w275_knob_ab/` gr6 臂
     #: (n=200 同 seed 配对)dir 授权 339 次、cap 开始参与钳制(窗容量
     #: 8 > cap6),行为面为正(core2≥1 +6.7pt)——cap 是否重新 bind 的
@@ -689,11 +689,11 @@ class DecisionV2Registry:
     #: 留证:cap10/cap14 曾作为「第二跳吞吐量级」修复候选(迁移审计 w254(git 历史)-R 断点),
     #: 实验证明无效,勿重复试错。「加量」的有效旋钮是
     #: directed_refresh_per_round 与授权窗宽度,
-    #: 非 game_cap(见 ADR-0413 Considered Options)。
+    #: 非 game_cap。
     directed_refresh_game_cap: int = 6
 
     # ===== W332b 未成型期姿态:泄息通道(release)与换线判据参数 =====
-    #: 设计决策单一源=ADR-0426(谱系节含设计稿索引与两轮对抗修订记录)。**符号不稳参数一律默认值+标定接口,不拍死**:
+    #: 设计决策单一源=行内申报,考古走 git 历史。**符号不稳参数一律默认值+标定接口,不拍死**:
     #: k(hp)/Δhp/boss 税由 sim 批网格标定后锁值(DESIGN §⑥ EV 参数门)。
     #: 血量边际价值 k(hp) 报警带值(DESIGN §①:非标定设计参数;动机=语料 66 场
     #: P1 boss 战战后 hp≤3 占 43.9% → 末窗边际 hp 是生死价,线性折价 0.5 金/hp
@@ -714,7 +714,7 @@ class DecisionV2Registry:
     #: (git 历史:P2 boss n=90 均损 −21.63 vs P1 −19.54),
     #: 但 P2 槽位换数据的扰动未评估。激活挂账:待形态 A/B 开臂判据收口
     #: 后,与 sim 收入口径修正同批评估;重标定覆写只改本字段(单一源)。
-    #: ADR-0441:FLIP 末窗投影臂(posture_release)与 C1 投影安全带
+    #: :FLIP 末窗投影臂(posture_release)与 C1 投影安全带
     #: (filters)两消费点均已按位面取数;评估结论=暂不激活(plane 2
     #: 维持 34),复核触发条件见该 ADR。
     boss_tax_p75_by_plane: dict[int, float] = field(
@@ -735,17 +735,17 @@ class DecisionV2Registry:
     line_switch_debias_delta: float = 0.15
     #: 当前线最短驻留轮 D_min(压振荡频率硬上限至 1/(2·D_min);DESIGN §③修订 3)
     line_switch_min_dwell: int = 2
-    # (release 帧活栈消费门开关已随 ADR-0426 增补 D 第 4 态清理:开臂
+    # (release 帧活栈消费门开关已随 第 4 态清理:开臂
     # A/B 结案,消费门恒接线,判据单一源 = posture_release 消费门活值,
     # 读 strategy_state_of(session).v3_release;旧开关/字段名见该 ADR。)
 
     # ===== P2 生存批:换线存活轮数门(C4) =====
-    #: 设计决策=ADR-0426 增补 B(C3/C4 重设计裁决)+ADR-0429(C4 接线):
+    #: 设计决策(C3/C4 重设计裁决+C4 接线):
     #: C4 剩余节点序列逐节点投影/双源标定。
     #: 标定=双源重标定(死亡真源=实机对局台账局终行,
     #: hp≤1 不删失、hp_after=0 死亡行按 hp_before 全额入桶、不按置信度
     #: 过滤——旧删失口径「置信<1 剔除」系统性剔死亡局帧=反保守,已废;
-    #: 产物为双源标定台账(记录=ADR-0440 三表对齐节),双源互校:帧级合并均值 10.79 ∈
+    #: 产物为双源标定台账(记录=行内申报,考古走 git 历史),双源互校:帧级合并均值 10.79 ∈
     #: run 级聚类 bootstrap CI [6.7,10.97])。
     #: P2 节点损血表(节点型→**无条件期望损血**,正数)。
     #: ⚠️ 消费面声明:本表**不进任何行为公式**(两态决策层与阈值层 μ
@@ -755,12 +755,11 @@ class DecisionV2Registry:
     #: 0.000,对齐锁钉死)。这是 kind 坐标上的桶均值,不是 rung 阶梯,
     #: 与 p_win_p2_by_rung 的 rung 坐标不同——「同 rung 恒等式无条件=
     #: (1−p)·条件」在两表间不成立也不应成立:样本窗(迁移审计 w375(git 历史) 实机深层局
-    #: vs `w346_gate_validation/` sim Δ池)与坐标(kind 桶 vs rung)均不同,详 ADR-0440
-    #: 三表对齐节。
+    #: vs `w346_gate_validation/` sim Δ池)与坐标(kind 桶 vs rung)均不同,详见三表对齐节。
     #: 覆写=迁移审计 w375(git 历史) 双源重标定的无条件期望三档(normal 10.16/encounter
-    #: 12.00/boss 15.50,CI 记录=ADR-0440 三表对齐节;原「旧删失
+    #: 12.00/boss 15.50,CI 记录考古走 git 历史;原「旧删失
     #: 口径条件常数暂抄」20.05/16.67/26.71 随两态消费口径定稿退役,
-    #: 见 ADR-0440)。node_type 缺读兜底=normal(战斗节点频率最高档,
+    #: 。node_type 缺读兜底=normal(战斗节点频率最高档,
     #: 2/5 槽;触发宽度居中——三档中 encounter 最小、boss 最大,normal
     #: 兜底既非最紧也非最松)。reward 零损档承接奖励+补给零损日历轮。
     #: 边界声明:本表与 p2_cond_loss_table 是同一 迁移审计 w375(git 历史) 标定的两个
@@ -771,7 +770,7 @@ class DecisionV2Registry:
     #: 损血幅度唯一源,消费点=阈值层 cw_first_passage._loss_dist 投影
     #: 与两态胜率映射(cw_plane_table.p_win_p2)——E[损血|板强]=(1−p_win(rung))·本表)。
     #: 值=迁移审计 w375(git 历史) 双源重标定条件败面(normal 12.77/encounter 13.33/boss
-    #: 15.50,标定叙述见 p2_node_loss_table 段头与 ADR-0440):reward 零损档同上表(奖励/补给零损照走)。
+    #: 15.50,标定叙述见 p2_node_loss_table 段头):reward 零损档同上表(奖励/补给零损照走)。
     p2_cond_loss_table: dict[str, float] = field(default_factory=lambda: {
         'normal': 12.77, 'encounter': 13.33, 'boss': 15.50, 'reward': 0.0})
     #: P2 损血标定家族版本披露锚(第三维,与 cw_economy 收入口径版本
@@ -779,15 +778,15 @@ class DecisionV2Registry:
     #: 标定值/消费口径变动(p2_node_loss_table / p2_cond_loss_table /
     #: p_win_p2_by_rung / 两态递推形态)必须递增并随批重锁。sim 台账
     #: manifest 不承载本版本(cw_sim 禁触批,披露面=registry+锁,边界
-    #: 如实声明)。v1=迁移审计 w375(git 历史) 覆写+两态递推定稿(ADR-0440)。
+    #: 如实声明)。v1=迁移审计 w375(git 历史) 覆写+两态递推定稿。
     p2_loss_calib_version: int = 1
     #: C1 定向刷新存在性名集的「高费强件」费用下界(买侧不辖名单,
     #: 只辖刷新存在性名集;消费点=filters._refreshable_names)。来源=
     #: 对抗审计 A1-β 反例画像「4 费通用强件是最高 Δp/g 选项」(记录=
-    #: ADR-0426 挂账 2)+ sim 分
+    #: 挂账 2)+ sim 分
     #: rung 胜占比 0.34→0.65 单调(`w346_gate_validation/` 报告 §3.2 实证底座)=高费高星
     #: 战力优势。原批名 dying_band_high_cost_floor(C3 濒死带首用),
-    #: C3 已定谳清理(ADR-0426 增补节)后随批改中性名,取值与消费
+    #: C3 已定谳清理(节)后随批改中性名,取值与消费
     #: 语义不变。
     directed_refresh_high_cost_floor: int = 4
     # (C4 换线存活轮数门三参数族(line_switch_survival_gate_enabled/
@@ -806,7 +805,7 @@ class DecisionV2Registry:
     #: 数据核对 coarse 臂实为 0.8%/35.6%/31.9%(非单调、无 0.65),
     #: 单调序列只在 Δ池臂——两态模型前提「p 对成型度单调不减」
     #(REDESIGN §5 条 1)辖下取 Δ池档,本注释为准。
-    #: rung 取样坐标单一源=cw_battle_calib._settle_rung(与表坐标同源,ADR-0279
+    #: rung 取样坐标单一源=cw_battle_calib._settle_rung(与表坐标同源,
     #: 采样键;board 全集+星徽,deployed 域,0-4 钳到 0-2)。
     #: 证据等级=sim 档(单档 n≈900-2100,无实机 P2 分 rung 样本;
     #: 方向声明=低档 p_win 低估损血高估、存活轮数偏短、门偏紧)。
@@ -814,7 +813,7 @@ class DecisionV2Registry:
         0: 0.016, 1: 0.413, 2: 0.657})
 
     # ===== R3 撤销出口①意图证据(治 `w386_gate_energize/` BP1「门放行噪声换线」;
-    # 设计决策=ADR-0436;消费点=cw_intention.core_miss_n_required / _revoke_alt_evidence)=====
+    # 设计决策;消费点=cw_intention.core_miss_n_required / _revoke_alt_evidence)=====
     #: 证据组 A:「核心实际可达但连续 N_req 轮未现」的容忍概率 ε。
     #: 闭式 N_req(core,level)=⌈ln ε/ln(1−q)⌉,q=1−(1−r)^5,
     #: r=refresh_prob(level,cost)/DISTINCT_CARDS_PER_COST[cost](再遇
@@ -843,7 +842,7 @@ class DecisionV2Registry:
     #: < 5%——新口径下 5 的通过率低于名义 5%,门槛偏严,fail-closed
     #: 门的偏严方向即保守服役。
     #: 对照曲线(任一 v2 线含锁定线/全帧
-    #: 口径:f0(4)=3.68%→A_min=4)与逐帧明细的测量记录=ADR-0436
+    #: 口径:f0(4)=3.68%→A_min=4)与逐帧明细的测量记录=行内申报,考古走 git 历史
     #: (主口径取消费面一致的「异线 × P2+ 帧」)。
     #: **分辨力弱声明(设计 R3.1 预案)**:5% 点落在 ≥4 带=证据在本
     #: 牌池分辨力弱的形态,设计预案=如实降级回炉(证据组 A 单独撑或
@@ -863,9 +862,9 @@ class DecisionV2Registry:
         'bench_capacity',      # bench 9 槽(含本轮已采纳买)
         'copies_cap',          # 同名星级加权 ≤3 份
         'same_round_mutex',    # 同轮已买禁卖/已卖禁买(r408 族)
-        'blood_budget_stop',   # 血预算停手·停升级门(设计件 12;ADR-0448
+        'blood_budget_stop',   # 血预算停手·停升级门(设计件 12;
                                # ——授权通道前置拒付,与息线门独立谓词 AND)
-        'boss_levelup_ban',    # 升级 EV 总账门(名字历史遗留;迁移审计 w255(git 历史)/ADR-0410
+        'boss_levelup_ban',    # 升级 EV 总账门(名字历史遗留;迁移审计 w255(git 历史)/
                                # 起 boss 禁令臂已删,[32] 节点无关)
         'deploy_cap',          # 上阵数 ≤ max_units
     )
@@ -877,7 +876,7 @@ class DecisionV2Registry:
     #: ALL IN 窗 = 0(唯一清零路径,discipline 裁决视图注入)。
     #: A/B 常量注入面只留 interest_cap 一个旋钮(D3 验收判据)。
     interest_floor_override: int | None = None
-    #: boss 轮判定(node_type='boss';P1 r9 兜底同辖)。迁移审计 w255(git 历史)/ADR-0410:
+    #: boss 轮判定(node_type='boss';P1 r9 兜底同辖)。迁移审计 w255(git 历史)/:
     #: 消费面只剩 boss 窗地板/覆盖态语境(b 类保留)。
     boss_round_node_types: frozenset[str] = frozenset({'boss'})
     #: CwActionLevelUpParam 等级上限(封顶 10)
@@ -910,7 +909,7 @@ class DecisionV2Registry:
     #: →不入集=维持 hold(保守侧,不猜)。
     opening_hold_battle_nodes: frozenset[str] = frozenset(
         {'战斗', 'boss', '遭遇', '精英'})
-    #: H2① 数据层(ADR-0461 增补节):库藏生锈每件滞留的敌方增益份额与
+    #: H2① 数据层(节):库藏生锈每件滞留的敌方增益份额与
     #: 计件上限,语义出处=competitors.md:45(敌伤 +3%/敌减伤 −4%,最多
     #: 10 件,2026-08-28 游戏内实采)。**只承载账面单一源,无行为分支**——
     #: 第二波数学裁决(证明锁 test_cw_w607_h2o_verdict):每件滞留金当量
@@ -926,7 +925,7 @@ class DecisionV2Registry:
     rust_hoard_penalty_cap: int = 10
 
 
-    # ===== 完备性审计表(ADR-0290 对抗修订④)=====
+    # ===== 完备性审计表(对抗修订④)=====
     #: 资源维 × 回合态维矩阵;每格 = constraints 内的约束名,或
     #: ('none', 显式声明原因)。「无约束覆盖」必须显式声明,禁止空格。
     #: 检查项 decision_v2_arbiter_matrix 锁「无空格 + 约束名存在」。
@@ -940,7 +939,7 @@ class DecisionV2Registry:
             ('bench', 'emergency'): ('bench_capacity',),
             ('bench', 'mode'): ('bench_capacity',),
             # 血预算停手门只辖升级(全回合态生效——emergency 态内同样
-            # 拒,设计件 12 §5.3「不是第五种覆盖态」;ADR-0448)
+            # 拒,设计件 12 §5.3「不是第五种覆盖态」)
             ('slot', 'boss'): ('blood_budget_stop', 'boss_levelup_ban'),
             ('slot', 'emergency'): ('blood_budget_stop', 'bench_capacity'),
             ('slot', 'mode'): ('blood_budget_stop', 'deploy_cap'),
@@ -955,7 +954,7 @@ class DecisionV2Registry:
     def interest_floor(self) -> int:
         """息线单一源(D3 双源清偿,`w628_migration_b2/`):派生 = interest_cap × 10。
 
-        - 恒等式出处 = ADR-0463/`w611_econ_cycle/` §2.2(满息平台 = 封顶档 × 10 金);
+        - 恒等式出处 = `w611_econ_cycle/` §2.2(满息平台 = 封顶档 × 10 金);
           原独立字段 ``interest_floor``(=50)与派生式并存构成双源,标定
           批动 interest_cap 时两源分歧——本方法收编为唯一取值口;
         - 覆盖通道 = ``interest_floor_override``(仅纪律视图 ALL IN 清零,
@@ -968,7 +967,7 @@ class DecisionV2Registry:
         return self.interest_cap * 10
 
 
-# ===== hp 对账层下行守卫标定常量(ADR-0431;消费方 cw_reconcile.reconcile_hp)=====
+# ===== hp 对账层下行守卫标定常量(消费方 cw_reconcile.reconcile_hp)=====
 # 值单一源在注册表(项目惯例:数值不散落);cw_reconcile 属观察对账层,
 # 只读本模块常量,不进决策评分面。
 #: 单战损血谱 p100 上界,按节点型分档——loss 帧下行采信的幅度上界。

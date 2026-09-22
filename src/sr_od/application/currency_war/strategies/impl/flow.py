@@ -5,7 +5,7 @@
 
 - 生命周期收编后的唯一冷建口 create_session(策略器状态工厂接线 + live
   初值 v3_phase='FORM' 一并在此落位)与策略器状态工厂 create_state;
-- 方向节拍内化(:meth:`_refresh_direction`;ADR-0583:方向重估从流程侧
+- 方向节拍内化(:meth:`_refresh_direction`;:方向重估从流程侧
   ops 直调收进策略器,触发信号 = 黑板帧刷新代次标注,键守卫贵段每
   game-round 恰一次 + 便宜派生视图段);
 - ``session.pending_round_outcomes`` 槽 = 观察半累积面(决策消费侧已退);
@@ -13,8 +13,8 @@
   star_tome/wish_trial/box_card + 契约扩员两口 fortune/expert_invite,
   普查迁移批 2;原 equip_pick 口随选择装备屏误判退役删除);
 - 商店序列兼容驱动器 decide_shop_screen 缺省实现(降格出 ABC,
-  ADR-0583;sim/回放/序列锁消费,mandate 记账在其覆写)与商店单动作
-  接口 decide_shop_action(ADR-0517,委托 mandate_v1/shop)。
+  ;sim/回放/序列锁消费,mandate 记账在其覆写)与商店单动作
+  接口 decide_shop_action(委托 mandate_v1/shop)。
 
 - live 备战决策链 = cw_screen_prep → mandate_v1.bridge → entry.emit
   三遍编排。
@@ -202,11 +202,11 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
     # ===== 生命周期(终态契约 §2.1:状态 = 实例属性,构造即冷建)=====
 
     def _create_state(self) -> StrategyState:
-        """策略器状态对象工厂钩子实现(session.md §3.1/§5.1;ADR-0563 决策-2)。
+        """策略器状态对象工厂钩子实现(session.md §3.1/§5.1;决策-2)。
 
         每局冷建 StrategyState(本核即 mandate_v1 流程核;sim 初始相位注入
         经 ensure_strategy_state 构造入口,不经本钩子)。live 初值
-        v3_phase='FORM'(ADR-0583:原 on_match_start 的唯一非零缺省随
+        v3_phase='FORM'(:原 on_match_start 的唯一非零缺省随
         生命周期收编迁入冷建口)。
         """
         st = StrategyState()
@@ -238,7 +238,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         零第二实现)。``v3_phase`` 维持无写端退役缺省 ''(相位机已亡,
         无现读语义可接)。``v3_mirror_key`` 轮键戳照常盖章(键语义 =
         「本轮已写」,sim 引擎缺写守卫据此不重复触发)。纯遥测恢复:
-        两字段不进任何判据(ADR-0353「form_score 降级纯遥测观测,不进
+        两字段不进任何判据(「form_score 降级纯遥测观测,不进
         判据」口径由 B_t 延续),写者本身零行为面。
         已知边界(如实声明):生产侧商店观察帧若 board 未播种,
         form_progress 现读恒 False——该帧族的 form_ok 读数是「观察帧
@@ -274,7 +274,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             state, getattr(_ms, 'target_comp', None))
         _ms.v3_mirror_key = (_plane_of(state), _round_num_of(state))
 
-    # ===== 方向节拍内化(ADR-0583;原战略层 update_target 收编为策略器私有
+    # ===== 方向节拍内化(原战略层 update_target 收编为策略器私有
     #       刷新,触发信号 = 黑板帧刷新代次标注,非契约成员)=====
 
     def _ensure_intention(self, _ms) -> IntentionState:
@@ -287,7 +287,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
 
     def _refresh_direction(self, state: GameState,
                            _ms: StrategyState) -> None:
-        """方向重估全程(full 类帧入口;ADR-0583 §3.1)。
+        """方向重估全程(full 类帧入口)。
 
         键守卫贵段:``update_intention`` 状态机驱动 + 候选线评分遥测供数,
         每 game-round 恰一次(幂等键 = ``(plane, round_num)``,持有者 =
@@ -302,7 +302,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         key = (plane_of(state), round_num_of(state))
         if _ms.v3_intention_key != key:
             _ms.v3_intention_key = key
-            # ADR-0366:session 透传(plane_remaining_nodes 读本位面轮数真值);
+            # :session 透传(plane_remaining_nodes 读本位面轮数真值);
             # registry 透传(C4 存活轮数门在 v2 换线通道的判据注入,A/B 臂
             # 经构造参替换 registry 即可达;cw_intention 缺省 None=缺省表)
             _lg_pre_event = ist.last_event
@@ -317,27 +317,27 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
     def _refresh_direction_views(self, state: GameState,
                                  _ms: StrategyState) -> None:
         """派生视图刷新(便宜段;view 类帧入口只走本段,不触状态机——
-        ADR-0583 §3.2)。原 ``update_target`` 无守卫段逐字平移:get_comp
+        )。原 ``update_target`` 无守卫段逐字平移:get_comp
         解析 + P1 配方对物化 + ``target_comp``/``v3_core_names`` 写入 +
         意向事件日志。(状态宿主 = 显式 ``_ms`` 形参,同上。)"""
         ist = self._ensure_intention(_ms)
         comp = get_comp(ist.locked_comp) if ist.locked_comp else None
-        # `w578_target_comp_wire/`:P1 配方锁帧物化——ADR-0357 后 locked_comp 在配方锁局恒空,
+        # `w578_target_comp_wire/`:P1 配方锁帧物化——后 locked_comp 在配方锁局恒空,
         # state_of(session).target_comp 恒 None → 部署选人/评分管线/投资装备钩子等
         # 既有 target 消费者全盲(实机断链:引擎件躺 bench、散脸占板)。
         # 把已锁配方对物化为伪 comp(单一口径=cw_intention.pair_target_comp
         # docstring);①锁局 locked_comp 优先,本分支不辖;P2+/空对不物化
-        # (不越 ADR-0357 辖域)。
+        # (不越 辖域)。
         _plane_v = (plane_of(state) if isinstance(state, GameState)
                     else int(getattr(state, 'plane', 1) or 1))
         if comp is None and _plane_v == 1:
             # P1 目标不空窗(经济冻结批):配方对退场帧(p1_pair=() 空窗)
             # 不落 None——按 p1_early_pair 方向物化(单一源=
-            # cw_intention.p1_early_pair;ADR-0372 买入门同款读法:空窗期
+            # cw_intention.p1_early_pair;买入门同款读法:空窗期
             # 同样有方向,不该因为不够锁而没方向;实机局
             # g_20260904_042657 p1r7-r9 经济冻结根)。旧形态 None →
             # 消费者(部署/评分/准备域引擎)全盲,0 买 0 刷。
-            # **冻结语义衔接(ADR-0616 §2.2/§3.3 裁决①)**:F=True 帧
+            # **冻结语义衔接(/§3.3 裁决①)**:F=True 帧
             # update_intention 已把 p1_pair 钉在 frozen_pair(重派生抑制),
             # 本段首选取 ist.p1_pair 即物化冻结方向,冻结期方向零漂移;
             # 空窗帧的 early 面已并批在任纪律(同一夺席算子作用于无门槛
@@ -357,10 +357,10 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                      ist.phase, hoard.mode, ist.last_event)
         _ms.v3_last_intention_event = ist.last_event
 
-    # ===== 决策入口统一内务:黑板帧代次消费(ADR-0583 §3.2/§3.4)=====
+    # ===== 决策入口统一内务:黑板帧代次消费(/§3.4)=====
 
     def _consume_prep_direction_frame(self) -> None:
-        """备战黑板帧代次消费(备战入口与 pick 族入口共用;ADR-0583 §3.2 触发面)。
+        """备战黑板帧代次消费(备战入口与 pick 族入口共用;触发面)。
 
         帧 = full → :meth:`_refresh_direction` 全程(键新则状态机 + 评分遥测);
         帧 = view(破墙派生帧/finalize 买后暂存帧)→ 只刷派生视图;帧 = none
@@ -382,7 +382,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             log.warning('[cw!][strategy] 方向刷新异常(沿用旧方向): %s', e)
 
     def _consume_shop_direction_frame(self) -> None:
-        """商店黑板帧代次消费(decide_shop_action 入口;ADR-0583 §3.3-②)。
+        """商店黑板帧代次消费(decide_shop_action 入口)。
 
         visit 首段 full 帧 → 刷新(键同只刷视图,视图源 = 商店入口帧 state);
         续段 none 帧 → 保持首段值(= 旧 ``_target_seeded``「仅首段重估」语义)。
@@ -434,16 +434,15 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         ``pick_param_cls`` = 屏别词表类(词表拆类后由各入口显式传入,
         输出 = 该类实例)。
         P1 两 kind 同一实现(委托 ``decide_event``)。
-        ADR-0597(用户裁定 2026-09-08「投资选卡优先经济、然后是终局阵容,
+        (用户裁定 2026-09-08「投资选卡优先经济、然后是终局阵容,
         不为过渡阵容服务」):对齐源 = D* 预期终局方向——本入口从意向状态解析
         D*① 三参(locked_comp/demoted_endgame/evicted 同源于 ist)传 kernel,
         D*② 由 decide_event 内直算 detect_signals(单帧单读,§5.4);旧
         ``target_comp`` 对 invest kind 停止消费(P1 期它是过渡配方对物化的
         伪 comp,辖域错位;supply/encounter 等 pick 族消费面不变)。
-        ADR-0209(接线 1/6):选卡结果喂 CommitSignals(策略 2.0/环境 1.0 权重;
+        (接线 1/6):选卡结果喂 CommitSignals(策略 2.0/环境 1.0 权重;
         affinity 表把所选卡映射到 comp 分贡献)——**纯遥测保留,决策面零消费**
-        (投资源不参与证明自身的反自馈检查现状即合规 = D*② ①层排除
-        承载,ADR-0597 §5.3)。
+        (投资源不参与证明自身的反自馈检查现状即合规 = D*② ①层排除承载)。
 
         输出包装(终态契约 §2.2 刷新建议动作化):kernel refresh_slots 非空
         → ``CwActionRefreshInvestCardsParam(slots)``;否则 ``pick_param_cls(idx)``。三闸点击链
@@ -453,7 +452,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         CwActionPickEventParam 单返回「idx + refresh_slots 并载、闸败回退选卡」行为。
         """
         options = list(self._require_slot_options(slot, slot_name))
-        # 入口内务(ADR-0583 §3.2:pick 入口入触发面;消费最近一次备战黑板帧)
+        # 入口内务(:pick 入口入触发面;消费最近一次备战黑板帧)
         self._consume_prep_direction_frame()
         _ist = self._ensure_intention(self.state)
         pick = cw_events.decide_event(
@@ -502,7 +501,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                                              'supply').options
         _left = self.gs.supply_refresh_left.value
         refresh_used = not (_left is not None and int(_left) > 0)
-        self._consume_prep_direction_frame()   # ADR-0583 入口内务
+        self._consume_prep_direction_frame()   # 入口内务
         pick = cw_events.decide_supply(options, self.gs,
                                        self.state.target_comp, self.config,
                                        refresh_used)
@@ -519,7 +518,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                                              'encounter').options
         _left = self.gs.encounter_refresh_left.value
         refresh_used = not (_left is not None and int(_left) > 0)
-        self._consume_prep_direction_frame()   # ADR-0583 入口内务
+        self._consume_prep_direction_frame()   # 入口内务
         pick = cw_events.decide_encounter(options, self.gs,
                                           self.state.target_comp, self.config,
                                           refresh_used=refresh_used)
@@ -535,7 +534,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         空不可达(画面 op 守卫 fail 零盲发),本函数无缺省支。"""
         options = self._require_slot_options(self.gs.megastar_opts,
                                              'megastar_opts')
-        self._consume_prep_direction_frame()   # ADR-0583 入口内务
+        self._consume_prep_direction_frame()   # 入口内务
         available = [o.char_id for o in options if o.char_id]
         chosen_name = cw_comps.select_megastar(self.gs, self.state.target_comp, available)
         if chosen_name:
@@ -554,7 +553,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         ⚠️ OCR 未就绪(char_id 全空 → 命中恒失败 → idx=0 = 今天盲点 stage 立绘,随阶段5)。"""
         options = self._require_slot_options(self.gs.partner_opts,
                                              'partner_opts')
-        self._consume_prep_direction_frame()   # ADR-0583 入口内务
+        self._consume_prep_direction_frame()   # 入口内务
         wants: list[str] = list(getattr(self.config, 'character_build_around', []) or [])
         if self.state.target_comp is not None:
             wants += list(self.state.target_comp.core_chars)
@@ -571,7 +570,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         target_comp 决定银狼线加成。"""
         options = self._require_slot_options(self.gs.planner_opts,
                                              'planner_opts')
-        self._consume_prep_direction_frame()   # ADR-0583 入口内务
+        self._consume_prep_direction_frame()   # 入口内务
         pick = cw_events.decide_planner(options, self.gs, self.state.target_comp)
         return CwActionPickPlannerParam(idx=pick.idx, reason=pick.reason)
 
@@ -584,7 +583,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         ③当前配方框架阵营命中(双轨期过渡配方需要,+15)。无命中 fallback idx=0。"""
         options = self._require_slot_options(self.gs.star_tome_opts,
                                              'star_tome_opts')
-        self._consume_prep_direction_frame()   # ADR-0583 入口内务
+        self._consume_prep_direction_frame()   # 入口内务
         if not options:
             return CwActionPickStarTomeParam(idx=0)
         fw = getattr(self.state, 'transition_framework', '')
@@ -623,7 +622,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         (与 DP 攒息协同)+10;无信息 fallback idx=0。"""
         options = self._require_slot_options(self.gs.wish_trial_opts,
                                              'wish_trial_opts')
-        self._consume_prep_direction_frame()   # ADR-0583 入口内务
+        self._consume_prep_direction_frame()   # 入口内务
         if not options:
             return CwActionPickWishTrialParam(idx=0)
         _tgt_facs: set[str] = set()
@@ -661,7 +660,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         无信息 fallback idx=0(机器 names 空契约)。"""
         names = self._require_slot_options(self.gs.box_card_names,
                                            'box_card_names')
-        self._consume_prep_direction_frame()   # ADR-0583 入口内务
+        self._consume_prep_direction_frame()   # 入口内务
         if not names:
             return CwActionPickBoxCardParam(idx=0)
         _ist = self._ensure_intention(self.state)
@@ -709,7 +708,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         (``cw_screen_fortune.py::CwScreenFortune.act`` 决策出口守卫))。"""
         texts = list(self._require_slot_options(self.gs.fortune_opts,
                                                 'fortune_opts'))
-        self._consume_prep_direction_frame()   # ADR-0583 入口内务
+        self._consume_prep_direction_frame()   # 入口内务
         return CwActionPickFortuneParam(idx=cw_events.decide_fortune(texts))
 
     def decide_expert_invite(self) -> CwActionPickExpertInviteParam:
@@ -723,12 +722,12 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         入口保持实码行为、不擅自切规格。"""
         payload = self._require_slot_options(self.gs.expert_invite,
                                              'expert_invite')
-        self._consume_prep_direction_frame()   # ADR-0583 入口内务
+        self._consume_prep_direction_frame()   # 入口内务
         return CwActionPickExpertInviteParam(idx=cw_events.choose_expert_index(
             list(payload.card_bonds), dict(payload.board)))
 
     def decide_shop_action(self) -> Action:
-        """商店单动作决策接口(ADR-0517 决策 1/2/5;ADR-0583 升格入契约面;
+        """商店单动作决策接口(/2/5;升格入契约面;
         终态零参口 §2.1:决策输入一律 self.gs/self.state/self.config)。
 
         输入 = gs 容器(黑板契约容器化,设计件《商店黑板容器化方案》
@@ -740,7 +739,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         :meth:`decide_shop_screen` 驱动器(同核循环化)。
         观察帧缺失 = 观察层失约,抛错(禁静默按空态决策)。
         入口内务 = 帧代次消费(:meth:`_consume_shop_direction_frame`;
-        方向刷新在决策读视图之前完成,ADR-0583 内化锚)。
+        方向刷新在决策读视图之前完成,内化锚)。
         受限会话自限(分层依据 = flow/README.md §1 决策控制分层铁律):
         决策本体产出唯一提案后,受限会话活跃帧(armed ∧ 金超息线
         派生标记,每帧现算 = bridge.launch_restricted_session_active)经
@@ -779,7 +778,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             log.info('[cw][shop] tracked 未观察(待备战 heavy 观察锚定)'
                      '→ CwActionCloseShopParam 交回外循环重判')
             return CwActionCloseShopParam()
-        # 入口刷新先于镜像/决策(方向视图 = 本帧语境;ADR-0583 内化锚)
+        # 入口刷新先于镜像/决策(方向视图 = 本帧语境;内化锚)
         self._consume_shop_direction_frame()
         # v3_b_t 逐帧镜像写者(纯遥测,零行为面;口径与边界见
         # write_shop_mirrors docstring。旧 v3_form_score 已随口径
@@ -820,7 +819,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
     def decide_shop_screen(self, session: StrategySession | None = None,
                            config: CurrencyWarConfig | None = None
                            ) -> list[Action]:
-        """商店序列兼容驱动器(缺省实现;ADR-0583 降格出 ABC;形参 = 兼容宿主
+        """商店序列兼容驱动器(缺省实现;降格出 ABC;形参 = 兼容宿主
         (sim/回放/序列锁调用面照旧传),决策已零参化,本体不消费)。
 
         sim/回放/既有序列锁消费(生产执行侧走单动作循环):逐帧调

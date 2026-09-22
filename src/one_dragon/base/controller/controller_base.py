@@ -25,7 +25,7 @@ class ControllerBase:
         self.screenshot_history: list[ScreenshotWithTime] = []
         self.screenshot_alive_seconds: float = screenshot_alive_seconds  # 截图在内存的存活时间
         self.max_screenshot_cnt: int = max_screenshot_cnt  # 内存中最多保持的截图数量
-        # 停机守卫(ADR-0396):无参谓词,True=本次运行已被停止信号中断。
+        # 停机守卫:无参谓词,True=本次运行已被停止信号中断。
         # 由拥有 run_context 的一方接线(如 SrContext.init_controller 挂
         # run_context.is_stop_interrupted);None=未接线不拦(独立使用 controller)。
         self.stop_guard: Callable[[], bool] | None = None
@@ -35,7 +35,7 @@ class ControllerBase:
 
         所有会向游戏/桌面注入输入的公开入口(click/drag/btn/scroll/input/
         mouse_move 族)必须先调本方法——这是「停机后零游戏输入」的唯一收口点,
-        覆盖所有玩法与未来新增调用点(见 ADR-0396)。
+        覆盖所有玩法与未来新增调用点(语义见 `stop_guard` 模块头)。
         用 getattr 兜底:测试替身可能不经过本类 __init__。
         """
         check_stop_guard(getattr(self, 'stop_guard', None))

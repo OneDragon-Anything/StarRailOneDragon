@@ -1,4 +1,4 @@
-r"""经济循环总模型:储备制(R*/义务/通道容量)(ADR-0445)。
+r"""经济循环总模型:储备制(R*/义务/通道容量)。
 
 设计=唯一规格:`.debug/temp/currency_war/w471_economy_cycle/DESIGN.md`
 (W481 对抗审计修复项 A-1/A-2 内建)。核心语义:金账从「地板制」(只
@@ -7,7 +7,7 @@ r"""经济循环总模型:储备制(R*/义务/通道容量)(ADR-0445)。
 刷新/买牌)之一转成战力,义务 = max(既有臂义务, min(溢余, C_t))。
 
 - **R\* = 息线 + 窗口(≤3 轮)排程升级费**:息线(50)以内持有弱占优
-  (0.1/轮 无风险收益 vs 战力链 ≤0.012,ADR-0443 同一笔账反向使用);
+  (0.1/轮 无风险收益 vs 战力链 ≤0.012,同一笔账反向使用);
   排程升级是价格/时点已知的确定性转化,为其持金不是死钱。窗口 h =
   min(3, 到本位面末节点轮数)——h>3 的升级应即时执行而非长期储蓄。
   排程判据 = ``schedule_upgrade`` 确定性费用查表核(批 3 预算收权,
@@ -152,7 +152,7 @@ def _countable_buy_costs(gs: GameState, session: StrategySession | None,
 
     countable = ①当帧跨档完成件(买入后四体系达成数 +1)∪ ②3合1
     合成件(买入即 2★ 完成,价值在星级阶梯非板面差分)。原配对信号
-    (ADR-0446)退回后,跨档判定改本结构性口径——语义与 S1/S2 的
+    退回后,跨档判定改本结构性口径——语义与 S1/S2 的
     「当帧跨档」同一集合(信号判定的核心即此跨档事实)。
     """
     return _scan_shop_buy_accounts(gs, registry)[0]
@@ -177,7 +177,7 @@ def channel_capacity(gs: GameState, session: StrategySession,
     """C_t = 升级计划费 + 非期权可买账 + 刷价×刷新预算。
 
     刷新分量取 ``refresh_ev_budget`` 预算式(查表核单一址,预算收权
-    批 ADR-0465;合法 0 帧契约见该函数 docstring)。接缝符号懒 import
+    批 ;合法 0 帧契约见该函数 docstring)。接缝符号懒 import
     自 kernel 侧 cw_economy(局部别名绑定):monkeypatch 桩点重钉至
     cw_economy 符号后经属性访问动态解析,拦截语义不变。
     """
@@ -197,7 +197,7 @@ def overflow(gs: GameState, session: StrategySession) -> int:
 
     R* 单一源 = kernel cw_economy.reserve_cap(模块级 import:纯查表
     函数,无桩点契约;守息线分量已归一 session resolved 链,registry
-    旋钮不再辖本缝——ADR-0598)。"""
+    旋钮不再辖本缝——)。"""
     return max(0, gold_of(gs) - reserve_cap(gs, session))
 
 
@@ -244,7 +244,7 @@ def tier_truncated_spend(gold: int, want: int, essential: bool) -> int:
 def disclose_budget(state: Any, session: StrategySession,
                     registry: DecisionV2Registry | None = None) -> None:
     """预算现算 + 遥测披露面写点(合并体;T-88 决策环数据流断链修复,
-    裁决 = ADR-0571;算值直写披露字段)。
+    算值直写披露字段)。
 
     装配纪律(派生值不落 session)的立法目的 = 根治**决策输入**读跨帧
     旧共享态的污染类缺陷;本写点四字段 + 键戳是**遥测披露面**,不入
@@ -301,7 +301,7 @@ def disclose_budget(state: Any, session: StrategySession,
 def disclose_budget_at_shop_frame(state: Any, session: StrategySession,
                                   registry: DecisionV2Registry | None = None,
                                   ) -> None:
-    """店开观察帧披露覆写(T-88 双写语义第二写点;ADR-0571 §2.2)。
+    """店开观察帧披露覆写(T-88 双写语义第二写点)。
 
     备战决策入口披露帧处于关店态,F2 门(cw_screen_prep:gold 仅店开态
     可信,关店读空)使披露态 gold 不可得(缺省 0)⇒ overflow/obligation

@@ -1,4 +1,4 @@
-"""货币战争 经济 / 等级 / 节奏骨架模型(纯函数:金 / 经验 / 息 / 刷新成本,ADR-0131 EconomyEffect 消费 + 0129 单击经验模型 + 0142 重复性效果折算;node_plan 节点×等级节奏骨架,14 §2 —— 三层共享底层,economy/evaluate/plan 均消费)。
+"""货币战争 经济 / 等级 / 节奏骨架模型(纯函数:金 / 经验 / 息 / 刷新成本,EconomyEffect 消费 + 单击经验模型 + 重复性效果折算;node_plan 节点×等级节奏骨架,14 §2 —— 三层共享底层,economy/evaluate/plan 均消费)。
 """
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 # 3/4星推测同逻辑 🟡 待 hook 实机核 —— 拖卡到出售区看显示金额)。
 _SELL_MULT: dict[int, int] = {1: 1, 2: 3, 3: 9, 4: 27}   # 星级 → cost 倍数(3合1:1星1/2星3/3星9/4星27 张基础副本);sell_refund 对 star≥2 且 cost≥2 再 −1 手续费(cost=1 exempt,见 sell_refund)
 
-# 购买经验机制(ADR-0129;用户实测口述 2026-08-15,A5+;telemetry 多局 XP 分母 4/6/20/40 对拍一致):
+# 购买经验机制(用户实测口述 2026-08-15,A5+;telemetry 多局 XP 分母 4/6/20/40 对拍一致):
 # 「购买经验」每点一次 +XP_PER_BUY 经验、花小额金币(按钮实读 state.level_up_cost);经验攒够当前级
 # 门槛自动升级,溢出结转。等级门槛表(升下一级所需总经验):
 XP_PER_BUY: int = 4
@@ -61,7 +61,7 @@ def xp_apply_clicks(level: int, xp_cur: int, clicks: int,
                     xp_per_buy: int = XP_PER_BUY) -> tuple[int, int]:
     """N 次「购买经验」后的期望 (level, xp_cur)(纯函数;XP 期望态账本的推进算子)。
 
-    语义 = ADR-0129 单一源:每击 +xp_per_buy 经验;攒满当前级门槛即升级、
+    语义单一源:每击 +xp_per_buy 经验;攒满当前级门槛即升级、
     溢出结转(与 cw_state CwActionLevelUpParam 动作应用 / sim 轮末升级清零结转同规则)。
     封顶 MAX_PLAYER_LEVEL(10)级(live 与 sim 同语义:满级后购买经验
     无效,sim 动作面同消费本常量)。
@@ -103,7 +103,7 @@ def xp_clicks_to_level(level: int, xp_cur: int,
 # 相邻金差对账(只含 CwActionLevelUpParam+Refresh 的最小对账对)全部 = 2,不随金币/
 # 次数/等级变;invest_effects.md「刷新 45% 概率免费 → 期望刷价 1.1」隐含基价
 # 2(2×0.55=1.1)。右下角「文本-刷新金币数」rect 实际读到的是面板徽标
-# (数值 = min(gold//10,5) = 利息公式,非刷价;三流对拍定谳,ADR-0456)——
+# (数值 = min(gold//10,5) = 利息公式,非刷价;三流对拍定谳)——
 # 该 OCR 已退出 read_game_state 主链(cw_observation),决策/对账统一消费本常量。
 # 消费点沿用 ``or 2`` 兜底语义:字段恒为基价,兜底分支不再触发,零行为波及。
 REFRESH_COST_BASE: int = 2
@@ -133,7 +133,7 @@ def sell_refund(star: int, cost: int) -> int:
     - 🟡 cost≥2 的 −1(2★2费=5)+ 3/4星 仍用户记忆 / 推测,待多 cost live 核;cost=1 各星已定(全额退)。
       (置信度分层处置:卖面 refund 消费按保守端=下界组装(mult×c−fee_hi,fee_hi=1);
       live 核定通道=单局复盘协议检查项,sr-od-currency-war-dev skill;
-      原设计件 IMPL_FIX_LEMMAS/IMPL_DESIGN 已删档,取回口径=ADR-0644。)
+      原设计件 IMPL_FIX_LEMMAS/IMPL_DESIGN 已删档,考古走 git 历史)。
     """
     refund = max(cost, 1) * _SELL_MULT.get(star, 1)
     if star >= 2 and cost >= 2:
@@ -197,7 +197,7 @@ def effective_hp_threshold(gs: GameState) -> int:
     高难(A8)敌人更凶 → 阈值调高,更早弃息保血。阈值表是策略校准参数(代码常量,
     自 config 迁入 —— 用户对「A7 该在 52 血弃息」没有个人意见,不属用户偏好)。
 
-    ⚖️ ADR-0176(桥接拆除):P2+ 位面上浮不再用手写 ×1.25/×1.5(ADR-0174 桥),
+    ⚖️ (桥接拆除):P2+ 位面上浮不再用手写 ×1.25/×1.5(桥),
     改由 18 号首达生存模型解出 —— ``plane_hp_ratio``(hp_floor(P_win 地板比),随板强/剩余日程
     变化:强板 ratio→1 不盲目抬阈值,弱板长程 ratio 升高更早保血)。P1 分母恒等 → 对 base
     精确零漂移(M57 验证行为保持)。
@@ -232,13 +232,13 @@ INTEREST_WEIGHT: float = 4.0          # 每档(10金)利息的分(权重算账�
 
 
 STREAK_GOLD_TABLE: tuple[int, ...] = (1, 1, 2, 2, 2, 3, 4)
-"""连胜金实测真值表(索引=连胜数,越界取末值;49/49 样本,economy.md §10.1;ADR-0262)。
+"""连胜金实测真值表(索引=连胜数,越界取末值;49/49 样本,economy.md §10.1)。
 
 弹窗底部固定规则表,与对局状态无关:0-1→1 / 2-4→2 / 5→3 / 6+→4(末位即 6+ 档)。"""
 
 
 def streak_gold(streak: int) -> int:
-    """连胜奖励金(真值源=奖励弹窗 VLM 判读;表化 ADR-0262)。
+    """连胜奖励金(真值源=奖励弹窗 VLM 判读;表化 )。
 
     查 STREAK_GOLD_TABLE,越界(连胜 6+)取表尾。
     单一源:sim 收入模型(cw_sim)与决策 EV(decision_v2 经 sim/plan 共用)
@@ -258,7 +258,7 @@ def streak_gold(streak: int) -> int:
 DEFAULT_INTEREST_CAP: int = GOLD_CAP_INTEREST // 10
 
 #: cap 视界上确界(注册表 interest_cap 值域上界 10;消费位按 canonical
-#: 枚举表纪律——原 design_economy §E4.2 已删档,取回口径=ADR-0644——
+#: 枚举表纪律——原 design_economy §E4.2 已删档,考古走 git 历史——
 #: 一律消费 cap_sup 而非决策帧现值 cap_resolved(R63-1)。
 INTEREST_CAP_SUP: int = 10
 
@@ -276,7 +276,7 @@ def interest_cap_resolved(interest_cap_override: int | None = None) -> int:
     本函数只做归一,禁在判据侧内联 cap 字面量(E4.0 第 1 条)。
     **0 是有效覆写**(买断制 = 息通道改写,在册同判 cw_events
     is_economy_engine):判别只认 None,禁真值折叠——``override or 缺省``
-    形态会让买断制静默回 5(ADR-0598 最高危陷阱锁)。
+    形态会让买断制静默回 5(最高危陷阱锁)。
     """
     if interest_cap_override is None:
         return DEFAULT_INTEREST_CAP
@@ -287,8 +287,8 @@ def cap_resolved_of_session(session: StrategySession | None) -> int:
     """cap_resolved 现读(session resolved 链;息帽三源归一)。
 
     覆写单一源 = ``aggregate_economy(session.active_strategies).
-    interest_cap_override``(注册表派生、零新参数;ADR-0598 息帽死链
-    修复):已持投资策略聚合取 cap 覆写(并持取宽 = ADR-0131),未持
+    interest_cap_override``(注册表派生、零新参数;息帽死链
+    修复):已持投资策略聚合取 cap 覆写(并持取宽),未持
     息帽卡 → None → 回 DEFAULT_INTEREST_CAP;None/0 判别语义由
     :func:`interest_cap_resolved` 单点承载。两个写点 = 实机选卡 handler
     (cw_screen_invest_strategy,确认成功后 append)——本函数只读 session 级字段,
@@ -297,7 +297,7 @@ def cap_resolved_of_session(session: StrategySession | None) -> int:
     消费位 = 商店线 R1/R2 的 g* 装配(mandate._cap_of 重定向至此)、
     schedule_upgrade ② 前置息线、U_L 阈值检验的 loss_exact cap 参数、
     必花域/发射帧溢余段、registry 预算面守息线分量(reserve_cap 守息
-    线/换线可负担窗,ADR-0598 随批接线)——
+    线/换线可负担窗,随批接线)——
     共用本式,禁再内联 ``interest_cap×10`` 或 loss_exact 裸缺省 cap
     (息律投资 cap=10 局,裸缺省 5 会低估 C_int)。
 
@@ -340,7 +340,6 @@ def in_must_spend_zone(gold: int, session: StrategySession | None) -> bool:
 
 def in_launch_spend_zone(gold: int, session: StrategySession | None) -> bool:
     """发射帧溢出段判定(金出口族出口 B 触发面;金出口族 DESIGN v1.1 §3.2,
-    落码裁决 = ADR-0566)。
 
     = ``gold > saturation_line(cap_resolved_of_session(session))``——与
     :func:`in_must_spend_zone` 共享 g* 单一源(saturation_line 同链,
@@ -386,12 +385,12 @@ def loss_exact(gold: int, spend: int, rounds: int, net_income: int,
 def round_base_income(round_num: int) -> int:
     """基础奖励金的 **P1 规划投影**(round 单键形态;决策数学规划用)。
 
-    = ``reward_base_gold(1, round_num)`` 薄委托(ADR-0623 处置(①):
+    = ``reward_base_gold(1, round_num)`` 薄委托(处置(①):
     base 曲线实现单一源归 :func:`reward_base_gold`,本函数只剩「P1 键
     当全平面规划曲线」这一申报语义)。**规划近似申报**:决策数学没有
     plane 入参,取 P1 键当通用规划曲线——对 P2/P3 的 r1/r2 轮与真值
     有差(P2r1 真值 5,本投影返 3),差异归属=决策近似口径 vs 记账
-    口径,申报面见统一观察架构 §7.1 与 ADR-0623 决策2;等价性锁=
+    口径,申报面见统一观察架构 §7.1;等价性锁=
     sr-od-test test_cw_income_single_source(net_income 值域逐位不变)。
     """
     return reward_base_gold(1, round_num)
@@ -401,19 +400,19 @@ def net_income(round_num: int, streak_pre: int,
                lost_node_type: str | None = None) -> int:
     """逐节点净收入 Ī(NMF §2「Ī」行;R09 收入三表现算,非 i_bar 常量)。
 
-    **处置申报(统一观察架构方案审 F4-①,ADR-0623 决策2,裁决=委托改造
+    **处置申报(统一观察架构方案审 F4-①,裁决=委托改造
     +规划近似显式化)**:base/streak 分量已改为委托 T1a 单一源函数族
     (:func:`reward_base_gold` 的 P1 规划投影 + :func:`streak_gold`),
     消费点数值逐位不变(等价性锁在册)。
 
     - ``round_num``:日程轮号(1 基;开局两轮基础金折半段);
     - ``streak_pre``:**决策前相**连胜数(进轮连胜,奖励轮照发不动计数,
-      ADR-0439 引擎口径);
+      引擎口径);
     - ``lost_node_type``:上一轮若为败掉的战斗类节点,其败轮底金在本轮
       轮首补发(battle/encounter/boss → LOSS_GOLD_BY_NODE);非败轮接续
       传 None。**规划近似申报(两处)**:①本参数签名无 plane/round,败补
       只能取类型表底金做规划下界,与记账口径(:func:`loss_compensation_base`
-      平面感知键)的差异归属=决策近似,挂玩家确认(ADR-0623 决策3);
+      平面感知键)的差异归属=决策近似,挂玩家确认;
       ②现役 6 个决策消费点(mandate_v1 shop.py ×4 / encounter.py / 本模块
       loss_exact 前置)全部传 ``streak_pre=0, lost_node_type=None``——
       败补参数支当前零消费,近似不落值。
@@ -456,13 +455,13 @@ def loss_compensation_base(plane: int, round_num: int, node_type: str) -> int:
     口径取键)。
 
     〔口径冲突挂账·判别已执行〕:旧口径 = LOSS_GOLD_BY_NODE 类型表
-    {battle:2, encounter:4, boss:4}(ADR-0439 108 局差分)。仲裁实验
+    {battle:2, encounter:4, boss:4}(108 局差分)。仲裁实验
     (分桶重放,tools/cw/loss_comp_bucket_replay.py,146 局语料,
-    ADR-0623 决策3)**数据不足以定谳**:判别判据所需的 P1r1/r2 败局阶梯
+    )**数据不足以定谳**:判别判据所需的 P1r1/r2 败局阶梯
     样本在语料中不存在(低轮位 bot 恒胜),boss 桶 n=1;且标准节点序把
     「被败节点类型」与「下一节点类型」结构性绑定(battle→encounter→
     reward),差分窗内的类型差分与到账项差分不可分。记录模型**维持
-    玩家裁定口径**,待玩家确认(采集口径见 ADR-0623 决策3)。
+    玩家裁定口径**,待玩家确认)。
     """
     return reward_base_gold(plane, round_num)
 
@@ -527,7 +526,7 @@ def round_start_income(
     """轮首收入三支单一源(统一观察架构 §7-T1:同输入必同输出,禁第二份)。
 
     - 分支派发(与引擎 elif 序同构,supply→reward→败补→常规):
-      supply → base+息,连胜不动(补给轮连胜不动,ADR-0439 决策 2);
+      supply → base+息,连胜不动(补给轮连胜不动);
       reward → base+连胜×倍率+息(连胜照发含 counter0=1);当前为战斗
       类节点且 ``lost_node`` 在场 → 败补(base=补发基项+息,连胜取 0,
       win_reward_mult 不生效);其余 → 常规战斗胜轮(base+连胜×倍率+息)。
@@ -540,8 +539,8 @@ def round_start_income(
       =:func:`interest_cap_resolved`,禁调用方内联 cap 字面量)。
     - 值域注:奖励/常规轮的 base 经 :func:`reward_base_gold` 平面感知
       取键(P2r1/P3r1 单键误返 3 hazard 在此消灭);r8 位面大奖励
-      (ADR-0439 挂账,sim 少发 ~9)与事件金不在本函数辖域(触发面不同,
-      调用方单列)。**辖域排除(ADR-0623 决策1)**:gold_per_node/
+      (挂账,sim 少发 ~9)与事件金不在本函数辖域(触发面不同,
+      调用方单列)。**辖域排除**:gold_per_node/
       gold_per_boss_node/战斗表现条件类三轮首真实金分量(引擎 'invest'
       键单列)签名无槽位,承载方式(分量扩参 or 调用方聚合单列)随 T1b
       定;supply 支 base 取平面感知键=实现选择(正本只写「基础」;现节点
@@ -581,13 +580,13 @@ BASE_INCOME: int = 5
 #: 普通败轮残差众数 2(24/39)、遭遇 4(18/24)、boss 4(8/22,散布大置信中);
 #: 见 docs/develop/sr_od/application/currency_war/decisions/0439-sim-economy-income-caliber.md)。
 #: 独立常量、**不动 STREAK_GOLD_TABLE**:表是胜轮弹窗真值(streak≥1 域,
-#: ADR-0262 锁零触碰);败轮弹窗预期 1 与实发不符,走本表分支。
+#: 锁零触碰);败轮弹窗预期 1 与实发不符,走本表分支。
 LOSS_GOLD_BY_NODE: dict[str, int] = {'battle': 2, 'encounter': 4, 'boss': 4}
 
 #: 奖励节点基础收入查表(P1 实测:1-1=3 / 1-2=4,弹窗 VLM 判读 85/85 零散布;
 #: 其余轮与全部非奖励节点仍 BASE_INCOME 统一近似)。**与奖励轮 streak 分量成对**:
 #: BASE_INCOME=5 恰好盖住奖励轮照发的连胜金 table[0]=1——单独改 streak 不改本表
-#: 会让奖励轮多发 1(ADR-0439 成对约束)。
+#: 会让奖励轮多发 1(成对约束)。
 REWARD_BASE_GOLD_BY_ROUND: dict[int, int] = {1: 3, 2: 4}
 
 #: P1 之外各轮的基础奖励统一近似值(与 :data:`BASE_INCOME` 同源同值,禁在本
@@ -599,7 +598,7 @@ _REWARD_BASE_DEFAULT: int = BASE_INCOME
 #: 另一子系统,无对照版本)。
 #: 跨批次对比先核 manifest.economy_calib_version(局终指纹核对锚)。
 ECONOMY_CALIB_VERSION: int = 2
-#: v2(ADR-0447):事件金表按实机逐轮金轨迹反馈整定(状态分布校准总闸);
+#: v2:事件金表按实机逐轮金轨迹反馈整定(状态分布校准总闸);
 #: v1 旧表(晶矿残差近似)
 #: 批次与本版不可比,跨批对照须 economy_calib_version 一致。
 
@@ -607,7 +606,7 @@ ECONOMY_CALIB_VERSION: int = 2
 # > 牌 synergy 10 → bot 攒到 50(息引擎)+ 花超额买/升级 = 经济统一论(若只取 2.0,息 delta=10
 # = 牌 synergy 10 → bot 无差别 → 买不攒)。
 # streak 经济(C 杠杆 2;fixture 核实 2026-08-11 结算「连胜×N」前缀=方向 → streak 接线):
-# ⚖️ **单边**(ADR-0128 #1,2026-08-15:货币战争无连败补偿,vs TFT)——只计连胜方向,
+# ⚖️ **单边**(2026-08-15:货币战争无连败补偿,vs TFT)——只计连胜方向,
 # 连败 0 分(旧「对称取 magnitude」描述已废,行为自 0128 起就是单边)。
 STREAK_WEIGHT: float = 2.0            # 每档 streak 的经济分(占位,待实玩校准)
 
@@ -616,7 +615,7 @@ STREAK_CAP: int = 5                   # streak 经济封顶档(连胜金一般 �
 # streak 带符号(连胜 + / 连败 −,结算源 session.last_streak 方向可靠);连败 fold 半已由 HP-gating 覆盖(02 R2-4b)。
 # 「连胜 ≥2 破息」旧阈值常量已删(P43 §⑤ 处死名单:与已证破息-保息判据
 # 冲突的未核经验值;决策语义现由息线判据默认承载,激活腿 Δp 通道
-# 封锁——登记 = ADR-0599 §F3,math_proofs P43)。
+# 封锁——登记 = math_proofs P43)。
 
 # 连胜-保息抉择(攻略专题「连胜与卖血抉择」三变量模型,663 帖精读实证):
 # 攻略明文两分支 —— 已连胜→破息保连(#205「如果连胜就多D几个,利息保3」息档降到 30;
@@ -637,14 +636,14 @@ HP_DISTRESS_FRAC: float = 0.5
 LEVEL_WEIGHT: float = 6.0             # 每级(相对期望)的分。2026-08-04 提权(3→6):bot 不升等级
 
 
-# —— 购买经验决策 helper(ADR-0129;机制常量 XP_TO_NEXT_LEVEL/XP_PER_BUY 在 cw_state 单一源)——
+# —— 购买经验决策 helper(机制常量 XP_TO_NEXT_LEVEL/XP_PER_BUY 在 cw_state 单一源)——
 # ⚠️ 本接缝族签名已切 GameState(W6 波 4;波 2 落码申报的
 # 「本接缝族签名切换随 mandate_v1 装配面切换批同波贯通」兑现——见
 # refresh_ev_budget docstring 过渡注)。字段读统一经容器读口单一源
 # (kernel/cw_game_state 决策面公共读口),禁各消费点自写兜底。
 
 def _strategy_economy(gs: GameState) -> EconomyEffect:
-    """当前持有投资策略的聚合经济效果(ADR-0131;active_strategies → 数值效果,策略层算账)。"""
+    """当前持有投资策略的聚合经济效果(active_strategies → 数值效果,策略层算账)。"""
     return aggregate_economy(list(gs.active_strategies.value or []))
 
 
@@ -661,7 +660,7 @@ def refresh_cost_effective(refresh_count: int = 0,
     仍在 cw_invest_data。)
 
     消费切换(迁移批次二,§3.3.4 遗留消费面申报的搬迁归宿):``gs``
-    给定时刷价 = GameState.shop_refresh_cost 现场识别值(ADR-0622 观察通
+    给定时刷价 = GameState.shop_refresh_cost 现场识别值(观察通
     道,免费帧不写保证该域不出 0);None = 未读到 → **建模基价
     SHOP_REFRESH_COST 显式消费缺省**——原 ``or 2`` falsy 兜底形态的消灭
     形态:数值恒同,语义从「静默兜底」升为「声明式建模缺省」。
@@ -675,7 +674,7 @@ def refresh_cost_effective(refresh_count: int = 0,
 
 def xp_click_cost(gs: GameState) -> int:
     """一次「购买经验」单击花金(观察优先兜底逻辑,strategy-env-impacts §2
-    通用模式 1;ADR-0131;折扣语义修复正本 = ADR-0632;W6 波 4 切容器帧)。
+    通用模式 1;折扣语义修复正本=行内申报,考古走 git 历史;W6 波 4 切容器帧)。
 
     两支语义(来源凭 ``gs.level_up_cost`` 是否有值判别):
     - **显示价支**(OCR 实读):传入值为最近备战帧观察价,游戏侧已算好
@@ -727,12 +726,12 @@ def clicks_to_next_level(gs: GameState) -> int:
     return max(0, -(-(need - cur) // XP_PER_BUY))
 
 
-# ===== [40]② 血本位 XP 购买支付能力闸(ADR-0578;判据与模式解析单一源在
+# ===== [40]② 血本位 XP 购买支付能力闸(判据与模式解析单一源在
 # ===== kernel,prep 批入口与 cw4 三消费位同源消费)=====
 
 def blood_xp_full_clicks(level: int) -> int:
     """下一级**全量击数** = ⌈XP_TO_NEXT_LEVEL[level]/XP_PER_BUY⌉([40]② 裁定字面
-    「下一级血成本(⌈need/4⌉×6)」的击数项;ADR-0578 N1 拍板全量口径)。
+    「下一级血成本(⌈need/4⌉×6)」的击数项;N1 拍板全量口径)。
 
     - 全量口径先例 = ``cw_plane_table.clicks_to_level``(同式,xp 结转忽略);
       本函数与它的差异 = 权威表逐字(无 1/2 级 _XP_NEED 先验补全)。
@@ -754,7 +753,7 @@ def blood_xp_full_clicks(level: int) -> int:
 
 def blood_xp_gate(hp_trusted: int | None, hp_readable: bool,
                   level: int, cost: int) -> bool:
-    """[40]② 血本位 XP 购买支付能力闸(纯函数;ADR-0578)。
+    """[40]② 血本位 XP 购买支付能力闸(纯函数)。
 
     判据(裁定字面):血余额 ≥ 下一级血成本(⌈need/4⌉×6)才买经验,否则停。
     ``hp_trusted ≥ blood_xp_full_clicks(level) × cost``;返回 True=放行。
@@ -768,13 +767,13 @@ def blood_xp_gate(hp_trusted: int | None, hp_readable: bool,
       .blood_budget_levelup_blocked`` 同面同论证(误放=血线内追级,误拦=少
       升一级,非对称)。``hp_readable`` = 该帧 hp 决策可信位(调用方经
       ``cw_discipline_rules.hp_decision_trusted`` 解析后传入)。
-    - 本函数**禁读** hp_pay 遥测(ADR-0577 隔离申报):hp 输入 = 最近可信备战
+    - 本函数**禁读** hp_pay 遥测(隔离申报):hp 输入 = 最近可信备战
       帧值,与 P21 闸同一决策输入。
     """
     if not hp_readable:
         return False
     if hp_trusted is None:
-        # hp 无真值帧 fail-closed(ADR-0495 消费点对 None 一律保守):误放与
+        # hp 无真值帧 fail-closed(消费点对 None 一律保守):误放与
         # 误拦代价非对称,同 blood_budget_levelup_blocked 的 None 支。
         return False
     return hp_trusted >= blood_xp_full_clicks(level) * cost
@@ -783,14 +782,14 @@ def blood_xp_gate(hp_trusted: int | None, hp_readable: bool,
 def blood_xp_gate_for(gs: GameState | None,
                       session: StrategySession) -> bool:
     """血闸消费面适配(mode 解析 + 容器帧输入接线;prep 批入口与 cw4
-    三消费位共用,ADR-0578)。
+    三消费位共用)。
 
     - 金本位(session 无 active 血本位卡,``cw_investments.blood_xp_mode`` →
       None)→ True 直通:金模式升级零改动([40]② 辖域 = XP 购买通道的**血**
       支付形态)。
     - gs 缺席 → False fail-closed(与判据本体 None 支同论证)。
     - hp 消费 = 政策层读口 ``decision_hp`` 门后值 + ``hp_decision_trusted``
-      可信位(统一 state 迁移波 2 起单一读口,消费同门 ADR-0583 §2.4):
+      可信位(统一 state 迁移波 2 起单一读口,消费同门 ):
       与 P21 闸(``blood_budget_levelup_blocked``)同面同输入;店开态 hp
       结构性不可见时容器沿用最近备战帧可信值(P21 同帧正常工作,
       复盘 15 帧实证);level 取容器读口。
@@ -814,7 +813,7 @@ def blood_xp_gate_for(gs: GameState | None,
 
 
 #: 刷新基价【注】= 赋值别名,非第二源:正本 = ``cw_state.REFRESH_COST_BASE``
-#: (游戏定义真值:实付恒 2 金,不随金位/次数/等级变,ADR-0456 三流对账
+#: (游戏定义真值:实付恒 2 金,不随金位/次数/等级变,三流对账
 #: 定谳,出处注在彼处)。本名保留 = 存量消费面(proof/budget/本模块)零迁移;
 #: 改值只改 cw_state 正本,禁在此另写数值。
 SHOP_REFRESH_COST: int = REFRESH_COST_BASE
@@ -858,7 +857,7 @@ class NodeGoal:
     spend_mode: str             # saving/interest/level/hold/spend/allin/adaptive(§2.2 经济档位)
                                 # 'release' 不经本投影(帧级态):生产单一源=
                                 # decision_v2.posture_release 经 session 通道;
-                                # 本函数只产 level/adaptive/interest(ADR-0465)
+                                # 本函数只产 level/adaptive/interest
     action_focus: str = ""      # 描述辅(d_search/chase_star/rush_level;指导动作偏好,不直接驱评分)
     #: DP 授权的可刷次数上界(三方预算合并:随 NodeGoal 下传,消费侧与
     #: plan 层 _refresh_cap 合并——合并语义单一源=decision_v2.posture_release
@@ -870,9 +869,9 @@ class NodeGoal:
 
 
 # ⚖️(2026-08-18 用户定夺):旧 _DEFAULT_NODE_PLAN 区间表**已删**。
-# 历史:V4.4 先验表 → ADR-0126 用 11 局 bot live「校准」(P1末7/P2早8)→ 0126 被三重降级
-# (0127 H4 疑幽灵锚点/0129 等级观测污染/2026-08-18 单局相关≠基准)。ADR-0155 DP 影子接缝
-# 切流(ADR-0208)后 live 全部走 DP,该表只剩异常回退一条活路;失败面穷举(删除前评审)仅剩
+# 历史:V4.4 先验表 → 用 11 局 bot live「校准」(P1末7/P2早8)→ 0126 被三重降级
+# (0127 H4 疑幽灵锚点/0129 等级观测污染/2026-08-18 单局相关≠基准)。DP 影子接缝
+# 切流后 live 全部走 DP,该表只剩异常回退一条活路;失败面穷举(删除前评审)仅剩
 # MemoryError + 开发期注册表手误(运行时游戏数据不进台账链;未注册策略名静默跳过)→
 # **保留脏表回退比停机更危险**(静默掉回 0126 节奏 = 看着在跑实际在错)。删除;
 # DP 失败/越界 → _expected_level 平滑先验 + adaptive(V4.4 干净先验,非 0126 数值)。
@@ -884,7 +883,7 @@ def get_node_goal(plane: int, round_num: int, *,
                   gold: int | None = None, level: int | None = None, hp: int | None = None,
                   committed: bool = True,
                   strategies: list[str] | None = None) -> NodeGoal:
-    """查 (plane, round) → NodeGoal(ADR-0465:确定性预算核单一供给)。
+    """查 (plane, round) → NodeGoal(:确定性预算核单一供给)。
 
     姿态从预算收权核涌现(原 DP 解供给已退役,BLUEPRINT §3
     裁决;git 历史为 prior art):排程升级 → level/rush_level;刷新预算
@@ -910,7 +909,7 @@ def get_node_goal(plane: int, round_num: int, *,
         # session=None:nodes_of_plane 走缺表回退先验 9(一次性告警即记档)
         # → h=9−r 常 >0,R* 窗口分量在投影容器**照常储蓄**(预算收权攻击
         # 审读 F6b 纠偏:原注释「投影帧不储蓄」与实现不符;方向保守无害)。
-        # ⚠️ 结构性边界(ADR-0598 申报,不扩修):下行两接缝核以
+        # ⚠️ 结构性边界(申报,不扩修):下行两接缝核以
         # session=None 调用 → 息帽 resolved 链恒 DEFAULT(base cap),
         # 持息帽卡局的本投影判据按 base 口径——接缝无 session 入参
         # (标量投影形态,消费面 = entry 兼容调用,量级有界),扩修
@@ -931,9 +930,9 @@ def get_node_goal(plane: int, round_num: int, *,
     return NodeGoal(_expected_level(round_num, plane), "adaptive", "rush_level")
 
 
-# ⚖️(2026-08-18):旧 ADR-0155 影子接缝开关 HORIZON_SEAM_ACTIVE **已删**——切流(ADR-0208)
+# ⚖️(2026-08-18):旧 影子接缝开关 HORIZON_SEAM_ACTIVE **已删**——切流
 # 完成后 DP 是唯一姿态源(同一裁决连带删除 0126 区间回退表,见 get_node_goal 注释),开关无消费点。
-# 历史:切流依据(ADR-0208)= 160 局对拍「表 hold→DP level」P1 高金段系统性分歧 + 六局 P1
+# 历史:切流依据= 160 局对拍「表 hold→DP level」P1 高金段系统性分歧 + 六局 P1
 # boss 稳定损 20-36 血→P2 残血开局即崩。回滚方式 = revert 预算收权迁移提交。
 
 
@@ -1006,12 +1005,12 @@ def is_emergency(gs: GameState,
     """应急触发(绝对 HP 档简版;redesign §5.4 Phase A 口径)。
 
     单一源在本文件(kernel)。hp 消费 = 政策层读口 ``decision_hp``
-    门后值(统一 state 迁移波 2:消费同门 ADR-0583 §2.4,旧链由上游
+    门后值(统一 state 迁移波 2:消费同门 ,旧链由上游
     施门间接保证,读点显式施门后门幂等保证行为一致);``session``
     形参随波 2 签名切换补入(hp 消费函数统一持 session 装配结算锚,
     依据 = ``blood_budget_levelup_blocked(gs, session, registry)``
     同形态,禁函数内私有第二门)。None(无真值且窗外)= False 保守
-    (ADR-0495:应急带不误触发)。"""
+    (:应急带不误触发)。"""
 
     from sr_od.application.currency_war.kernel.cw_hp_policy import decision_hp
     hp = decision_hp(gs, session)
@@ -1033,7 +1032,7 @@ def _pop_slot_indicator(gs: GameState) -> bool:
     """ΔV_pop 指示项(P39 修订式):板满(cap 满)∧ bench 有 2★ 等待件。
 
     消费位 = schedule_upgrade ①臂 / _upgrade_ul_threshold_ok 翻转分量 /
-    mandate_v1 criteria/levelup._realize_chain_ready(P72 支A;ADR-0576)。
+    mandate_v1 criteria/levelup._realize_chain_ready(P72 支A)。
     (原「三副本有意复制、改谓词三处同改」纪律随 W6 波 4 签名切换收敛为
     本单一源——strategy 层消费位同批改委托,漂移风险由单源天然消解。)
     """
@@ -1076,7 +1075,7 @@ def _upgrade_ul_threshold_ok(gs: GameState,
     ①臂**有意复制**——两处是同一 P39 指示项在「检验内翻转分量」与
     「排程触发①」两个消费位的落点,语义单一源 = P39 修订式;改任一处
     须同步另一处(同步锚对:本函数 / schedule_upgrade ① 臂)。
-    第三消费位(ADR-0576):mandate_v1/criteria/levelup.
+    第三消费位:mandate_v1/criteria/levelup.
     ``_realize_chain_ready``(P72 支A 兑现链放行)消费同一指示项——三
     副本逐字一致,改谓词三处同改;三副本一致对拍锁候批(登记面申报,
     防漂移无锁位)。
@@ -1089,7 +1088,7 @@ def _upgrade_ul_threshold_ok(gs: GameState,
 
     # ΔV_pop 指示项(P39 修订式;与 schedule_upgrade ①臂谓词成同步锚对,
     # 见 docstring 末段——改谓词两处同改;第三消费位 = criteria/levelup.
-    # _realize_chain_ready(ADR-0576),三处同改)
+    # _realize_chain_ready,三处同改)
     if _pop_slot_indicator(gs):
         return True
 
@@ -1123,7 +1122,7 @@ def _upgrade_ul_threshold_ok(gs: GameState,
 
 def schedule_upgrade(gs: GameState, session: StrategySession,
                      registry: DecisionV2Registry | None = None) -> bool:
-    """排程升级判据(确定性费用查表核;蓝图 §3.4 R4 接缝,ADR-0465)。
+    """排程升级判据(确定性费用查表核;蓝图 §3.4 R4 接缝)。
 
     ``registry``:显式注入优先(A/B 注入面,P6 契约:同一调用链全部接缝
     必须传**同一个** registry 实例——economy_cycle.disclose_budget 单源
@@ -1146,7 +1145,7 @@ def schedule_upgrade(gs: GameState, session: StrategySession,
        立即部署,当轮兑现战力,为最高义务。**辖域 = 战斗帧**(2026-09-08
        奖励帧策略审查):「当轮兑现」的兑现对象是本帧的战斗,奖励帧
        无战斗 → 当帧升级与推迟到下一备战帧升级,2★ 的部署时点对下一场
-       战斗相同,本臂收益面在奖励帧不增益;奖励帧行为由 ADR-0580 规则①
+       战斗相同,本臂收益面在奖励帧不增益;奖励帧行为由规则①
        升级抑制先辖(抑制判据置于臂计算之前短路)。辖域注不改谓词本体
        (M3 消费位 = criteria/levelup._realize_chain_ready 同步锚对,
        同款辖域注见彼处);奖励帧政策的命题化归审查建议②命题批。
@@ -1284,7 +1283,7 @@ def _owned_core_copies(gs: GameState, core: str) -> int:
 def _omega_collapse_zeroed(gs: GameState, session: StrategySession,
                            registry: DecisionV2Registry,
                            target_cost: int) -> bool:
-    """塌缩带判据(概率校准刷新预算的归零腿;ADR-0475)。
+    """塌缩带判据(概率校准刷新预算的归零腿)。
 
     refresh_prob(state.level, target_cost) / refresh_prob(峰值级,
     target_cost) < registry.omega_collapse_ratio → 当前级对该目标费档
@@ -1313,7 +1312,7 @@ def _omega_collapse_zeroed(gs: GameState, session: StrategySession,
 def _find_budget_cap(gs: GameState, session: StrategySession,
                      registry: DecisionV2Registry, target_cost: int,
                      core: str) -> int:
-    """有望帧帽 ⌈−ln(1−q)·E_find⌉(概率校准刷新预算的帽腿;ADR-0475)。
+    """有望帧帽 ⌈−ln(1−q)·E_find⌉(概率校准刷新预算的帽腿)。
 
     E_find = expected_refreshes_for_card(level, target_cost,
     target_star=2, owned=j)——首次集齐目标牌所需刷数的有限池精确期望;
@@ -1336,21 +1335,21 @@ def _find_budget_cap(gs: GameState, session: StrategySession,
 
 def refresh_ev_budget(gs: GameState, session: StrategySession,
                       registry: DecisionV2Registry | None = None) -> int:
-    """刷新 EV 授权刷数(确定性预算式;蓝图 §3.4 R4 接缝,ADR-0465;
-    概率校准分量=ADR-0475)。
+    """刷新 EV 授权刷数(确定性预算式;蓝图 §3.4 R4 接缝;
+    概率校准分量=行内申报,考古走 git 历史)。
 
     ``registry``:显式注入优先(P6 契约,同 schedule_upgrade);缺省落
     _registry_of(session) → DEFAULT_REGISTRY。
     预算 = min(6, ⌊(g − R*)/刷价⌋, ⌈−ln(1−q)·E_find⌉)——只花溢余
     (规则倡导审读 §2-R3 预算式:刷新后仍守储备线;6 刷帽单一源
     = REFRESH_ROLL_CAP)∧ 有望帧帽按目标可寻性收紧。概率校准两腿
-    (ADR-0475,采纳自其预研提案 B-v2):塌缩带归零(纯金量式与目标可寻性无关的病灶修法;
+    (采纳自其预研提案 B-v2):塌缩带归零(纯金量式与目标可寻性无关的病灶修法;
     归零的账=塌缩带留金弱占优纯烧)+ 有望帧分位帽;**求值次序=先归零
     后帽**(ρ 归零与 min 帽取交即 0,数值良定);概率单一址=cw_shop_odds
     (与分配器 Π_refresh 估计器同源互指,禁第二概率口径)。
 
     合法 0 帧契约(预算收权迁移前预验尸 D2 契约,判前锁;**辖域=应急带**,
-    预算收权攻击审读 F1 收口;第三类=ADR-0475 扩类):
+    预算收权攻击审读 F1 收口;第三类=扩类):
     - ① 应急帧(``is_emergency`` 单一源,hp≤emergency_hp)→ 0:
       应激通道根本不产指令(release 让位结构,合并无从放大);
     - ② g ≤ R* 常态帧(息线以内/储备段持有,0.1/轮 真实收益)→ 0:这个 0
@@ -1359,13 +1358,13 @@ def refresh_ev_budget(gs: GameState, session: StrategySession,
     - ③ 塌缩带归零帧(锁定核解析帧 ∧ ``omega_collapse_ratio`` 判据为真;
       **例外注记:兜底链空帧归零判据恒 False,不属第三类**——D1「空帧
       不缩供给」契约优先)。
-    **血预算带(应急线以上,ADR-0448/0451)不在本函数辖域**:预算字段
+    **血预算带(应急线以上)不在本函数辖域**:预算字段
     依公式照发,停手由 arbiter 拒付层兜底(discipline.
     blood_budget_levelup_blocked 停升级 / blood_budget_refresh_blocked
     搜索型刷新停付)——防线在拒付层不在预算层;原「血预算帧→0」为
     虚标契约,已随预算收权攻击审读 F1 如实收窄(穿透锁=test_cw_w633_migration_b3)。
     定向刷新授权(directed_refresh_budget)是独立车道(arbiter E2,
-    1 次/轮),与本预算不相交、不合并;按 ADR-0475 该车道对塌缩判据
+    1 次/轮),与本预算不相交、不合并;按 该车道对塌缩判据
     **同判据辖**(含空帧豁免,两车道逐帧一致)——arbiter 接线点挂账:
     decision_v2 当时属在飞分包面禁触,接线留分包收口后补
     (判据单一址=本函数的 ``_omega_collapse_zeroed``,届时零新概率口径)。
@@ -1389,7 +1388,7 @@ def refresh_ev_budget(gs: GameState, session: StrategySession,
 def upgrade_plan_fee(gs: GameState) -> int:
     """下一级升级总费 = 到下一级单击数 × 单击价(取价委托 ``xp_click_cost``
     单一源:观察优先/兜底减折扣语义只存在一处,禁第二处独立折扣实现——
-    「同一语义两处实现」即互补单侧错漂移温床,正本 = ADR-0632)。"""
+    「同一语义两处实现」即互补单侧错漂移温床)。"""
     from sr_od.application.currency_war.kernel.cw_plane_table import (
         clicks_to_level,
     )
@@ -1411,11 +1410,11 @@ def reserve_cap(gs: GameState, session: StrategySession | None) -> int:
     窗口 h = min(3, 到本位面末节点轮数);只储蓄下一级费用——多级
     排程在逐帧重算下自愈(升级完成一轮后 R* 自然滚动到下一级;误差有界核算:
     误估最坏=一个升级费量级 ≤50 金,双向有界)。
-    排程判据单一址 = ``schedule_upgrade``(确定性查表核,ADR-0465 预算
+    排程判据单一址 = ``schedule_upgrade``(确定性查表核,预算
     收权;与 arbiter 授权/EV 授权 ② 臂共调同一函数,R4)。
 
     守息线分量 = ``saturation_line(cap_resolved_of_session(session))``
-    (session resolved 链单一源,与排程判据 ② 前置同链;ADR-0598 息帽
+    (session resolved 链单一源,与排程判据 ② 前置同链;息帽
     死链修复随批接线:旧 ``registry.interest_cap × 10`` 把策略息帽覆写
     挡在刷新授权车道外——买断制(cap=0)囤金经本车道部分存活,利息
     上调(cap=10)守息线被低估;归一方向 = 息帽三源归一同款)。

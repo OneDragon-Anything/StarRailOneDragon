@@ -64,7 +64,7 @@ class ContractCtx:
       (cw_intention.locked_buy_membership 返回物)。合法形态 = None
       (未锁帧/锁定解析空,消费位按未锁处置)或非空 frozenset(锁线态);
       其他对象 = 「字面量冒充解析结果」复发形态,违例。消费位 =
-      C1 核心卡通道契约(ADR-0569)。
+      C1 核心卡通道契约。
     """
 
     k_members: tuple[str, ...] | None = None
@@ -93,7 +93,7 @@ def _s_reserve_line_formed(ctx: ContractCtx) -> bool:
     k_members 空且系三臂判据评估产出的合法空(k_target=None ∧ 回退供给
     在场 ∧ 实解析空集 ∧ p2plus 带证据 source 齐备)时前提放行——该帧不
     存在「为目标线预留」语境,S 预留原始禁令对象(无目标语境恒量预留,
-    R196 同型)不成立;溢余带必花通道(dominance/EV,ADR-0528)按裁决②
+    R196 同型)不成立;溢余带必花通道(dominance/EV)按裁决②
     「必花域维持」不以本前提误伤,其自身带判据/候选门照旧辖。证据要件
     与 k_projection 契约同构(F-9 防御纵深:band='p2plus' ∧ source=
     three_arm 双核,无来源空不放行,两谓词判定一致);供给缺帧
@@ -122,7 +122,7 @@ def _gold_minus_reserve_ctx(ctx: ContractCtx) -> bool:
 
 
 def _budget_gate_ctx(ctx: ContractCtx) -> bool:
-    """P71-b 预算闸前提(ADR-0560):现读金与等级驱动 cap 在场。
+    """P71-b 预算闸前提:现读金与等级驱动 cap 在场。
 
     闸值分量 g* 依赖 cap_resolved(消费位传 cap_resolved_of_session
     口径)、闸比较依赖决策帧现读金——缺任一即语境未核验,弃权
@@ -201,7 +201,7 @@ def _k_projection_domain_full(ctx: ContractCtx) -> bool:
 
 
 def _core_channel_locked_ctx(ctx: ContractCtx) -> bool:
-    """C1 核心卡通道前提(ADR-0569):锁线态语境,可核验派生形态。
+    """C1 核心卡通道前提:锁线态语境,可核验派生形态。
 
     前提 = ctx.locked_buy_members 系 cw_intention.locked_buy_membership
     实解析物且非空(锁线态);None = 未锁帧,通道不评估(设计判据式
@@ -222,7 +222,7 @@ class Contract:
 
     precondition: Callable[[ContractCtx], bool] | None
     scope: str     # 辖域声明一句(该判据语境前提的适用面)
-    anchor: str    # 规格锚(现行文档节/引理号/符号名;历史 IMPL_DESIGN 节号已重锚,映射=ADR-0644)
+    anchor: str    # 规格锚(现行文档节/引理号/符号名;历史 IMPL_DESIGN 节号已重锚,映射考古走 git 历史)
 
 
 #: (模块, 函数) → Contract。键集与 criteria 全公开函数对拍(静态
@@ -255,7 +255,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '01_math_framework §3.3+interest.saturation_line(R70-1 参数化)'),
     ('levelup', 'spend_unified'): Contract(
         None, 'P48 整买纪律(M3 义务侧消费)',
-        'P48 命题+11_shop_decisions(D-BUYNOTE 修复池编号,原文=ADR-0644 取回)'),
+        'P48 命题+11_shop_decisions(D-BUYNOTE 修复池编号,原文考古走 git 历史)'),
     ('levelup', 'batch_form'): Contract(
         None, '批量成型判据(M3 义务侧消费)', '01_math_framework §3.3'),
     ('levelup', 'lv9_stop'): Contract(
@@ -274,14 +274,14 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         'g_20260904_054904 候选③+P21/P48 λ>0 段(discipline 单一源)'),
     ('levelup', 'pop_slot'): Contract(
         None, 'D-lv7 OPEN 检查点(满编+富金+候补升 cap)',
-        'D-lv7 修复池(原文=ADR-0644 取回;现行=本判据与决策迹)'),
+        'D-lv7 修复池(原文考古走 git 历史;现行=本判据与决策迹)'),
     ('levelup', 'levelup_budget_gate'): Contract(
         _budget_gate_ctx,
-        'P72 (3) 全段预算闸(ADR-0576;P71-b 溢余段形态全段化):前提='
+        'P72 (3) 全段预算闸(P71-b 溢余段形态全段化):前提='
         '现读金与等级驱动 cap 在场(息档 τ 与退化锚 g* 依赖 '
         'cap_resolved 口径,禁固定常数;ALL IN 豁免与支A 兑现链在'
         '判据体内自判,不另设前提)',
-        'p72-full-band-budget-gate §1+§2.5+ADR-0576'),
+        'p72-full-band-budget-gate §1+§2.5'),
     # —— criteria/refresh ——
     ('refresh', 'r0_stop'): Contract(
         None, 'R0 维持结构门(结构位,输入=店面快照+金,恒良定义)',
@@ -311,11 +311,11 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         'BYPASS_TABLE 对应行(结构不变式;R1-11)'),
     ('refresh', 'hard_node_reinforce_gate'): Contract(
         None, 'D-D 硬节点补强门(结构门,数值加权挂标定批)',
-        'D-D 修复池(原文=ADR-0644 取回;现行=本判据)'),
+        'D-D 修复池(原文考古走 git 历史;现行=本判据)'),
     ('refresh', 'r2_card_reserve'): Contract(
         None, 'R2 预算门 Σ预留卡价 ρ 公共单一源(注册表现读纯函数;'
-        'R2 门与 P71-b 预算闸同源消费,ADR-0560 提升批)',
-        'P54-r2-interest-floor §②+ADR-0560'),
+        'R2 门与 P71-b 预算闸同源消费,提升批)',
+        'P54-r2-interest-floor §②'),
     ('refresh', 'all_channel_buy_exists'): Contract(
         None, 'P92 全通道可实现买入集判定尺(R1 发射前存在性门;'
         'p40 R0-1 席满维在册语义落地,非新门——math_proofs P92 '
@@ -336,7 +336,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     ('equipment', 'endgame_context'): Contract(
         None, 'D-P3 修复池项 OPEN 挂账不变(定谳手段 = 实机 boss 掉血'
         '分布对拍,从未执行),复活须先「对拍定谳→三形态标注→落码」'
-        '全流程', 'D-P3 修复池(原文=ADR-0644 取回)'),
+        '全流程', 'D-P3 修复池(原文考古走 git 历史)'),
     # —— 第七面「换线」(proof 判据面函数位;影子面,前提核验随实装
     #    接线批落位——见模块 docstring 辖外声明)——
     ('proof', 'stop_buy'): Contract(
@@ -354,13 +354,13 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         'M2 前置支配买入(前提=目标线成型):R32-3 规格拦截对象列虽含 '
         'dominance_buy,其金位面实接线为结算线地板(shop.check_settlement_'
         'line,截断口径),与 s_reserve 可变现口径不同源不同面,'
-        '非 mandate.check_s_reserve 消费位(T-193;ADR-0624)',
+        '非 mandate.check_s_reserve 消费位(T-193)',
         'ZERO_REFRESH_DIAG §3 第 3 条+02_mandate_layer §4 ③'),
     ('mandate', 'core_single_card_buy_eligible'): Contract(
         _core_channel_locked_ctx,
         'C1 直通核心卡支配性支资格门:前提=锁线态(锁定采购集实解析在'
         '场;未锁帧通道不评估)',
-        '设计《直通核心卡信号层入口》§2 案A+§4 P25 行(ADR-0569)'),
+        '设计《直通核心卡信号层入口》§2 案A+§4 P25 行'),
     ('predicates', 'arm1_existence'): Contract(
         _arm1_cap_level_driven,
         'M3 触发信号:前提=deploy_cap 等级驱动口径(禁固定槽表常数)',
@@ -385,7 +385,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '证据的空集违例)',
         'SEEDS_EMPTY_LEDGER_DIAG §3/§4(2026-09-03 第三病灶裁定)'
         '+FIX_REVIEW_20260903 ②旧核缺口 1/2/3'
-        '+K 空窗回退规格补注(原 IMPL_DESIGN §4.2.2 R198b 标,ADR-0644)'
+        '+K 空窗回退规格补注(原 IMPL_DESIGN §4.2.2 R198b 标)'
         '+P86 证明批 §4.6(带维度非对称期待)'),
 }
 
@@ -396,7 +396,7 @@ def ensure_contract(fn_key: tuple[str, str], ctx: ContractCtx,
 
     返回 True=前提成立,判据照常求值/发射;False=前提不成立,该判据
     本帧**弃权** + ``criteria_contract_violation:<模块>.<函数>`` 计数
-    (键写点=本函数计数器,分键=判据名;登记节原文已删档,取回=ADR-0644)。
+    (键写点=本函数计数器,分键=判据名;登记节原文已删档,考古走 git 历史)。
 
     fail-closed 不抛异常不断局:键未登记(注册完备性缺口)与谓词异常
     均按违例处置(弃权+计数),由消费位跳过该判据本帧求值。

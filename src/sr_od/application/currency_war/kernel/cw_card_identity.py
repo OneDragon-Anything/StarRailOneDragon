@@ -1,9 +1,9 @@
-"""卡牌身份分层单一源(规则③④共用判据;ADR-0580)。
+"""卡牌身份分层单一源(规则③④共用判据)。
 
 同一「买入资格 × 卡牌身份」面上此前散布多套并列前件(M2 线内 /
 dominance 零重叠 / C1 锁线核心 / ③ registry 核心 / ④ 转线件)——本模块
 把「非线内身份」收拢为三分档单一源,新身份类需求只扩本 helper,不再加
-并列前件(ADR-0580「架构归并方向」节)。
+并列前件(「架构归并方向」节)。
 
 数据源(单一源,禁第二表):
 - registry_core 层 = ``kernel.cw_comps.CORE_SINGLE_CARD_REGISTRY``
@@ -46,7 +46,7 @@ def transition_release_names() -> frozenset[str]:
     为什么按档过滤而非取全表:drop 档(卡芙卡/椒丘/艾丝妲)= P1 末弃
     应急件,买入价值低(cw_line_facts.py 档位注释 + transition_score
     既有「预囤不囤 drop」取向同源);计算式候选(char_routes +
-    pivot_overlap)已否决——「可达」需相似度阈值 = 拍值(ADR-0580)。
+    pivot_overlap)已否决——「可达」需相似度阈值 = 拍值。
     TEMPO_POOL 是本集子集,不另并(cw_comps.py 两表包含关系在案)。
     """
     return frozenset(
@@ -55,7 +55,7 @@ def transition_release_names() -> frozenset[str]:
 
 
 def sell_hold_exclusion_names() -> frozenset[str]:
-    """凑息卖出资格集的静态持有类排除集(ADR-0580)。
+    """凑息卖出资格集的静态持有类排除集。
 
     集合 = CORE_SINGLE_CARD_REGISTRY ∪ transition_release_names()——
     ③④语义 = 持有,整类从凑息/筹资燃料资格排除,覆盖「已买待持有」
@@ -75,7 +75,7 @@ def is_engine_piece(name: str) -> bool:
     判据 = 角色注册表 factions∪flows 与引擎三阵营(ENGINE_FACTIONS,
     桥池 engine_bonds 派生)交集非空——与 ``cw_line_defs.classify_buy``
     的 ``'engine'`` 分支同判据;此前该谓词只在 sim/checks/selfcalc 有
-    一份实现(生产决策位无可直调单一源 = ADR-0625 候裁 5 申报缺口),
+    一份实现(生产决策位无可直调单一源),
     本函数补齐生产单一源,selfcalc 同名实现改为委托本函数(禁第二
     实现)。种子身份 = 本谓词 ∧ 购买时未持有(第二合取需购买史语境,
     由 sell_gate 种子登记簿在获取时点承载)。
@@ -100,7 +100,7 @@ def line_identity_tier(name: str, k_members: tuple[str, ...] = ()) -> str:
     ``TIER_UNRELATED`` 之一;两注册表对表即可判定,调用方先判线内
     (k_members/义务集)再消费本函数。
 
-    ``k_members`` 参数是**前向扩展位**(ADR-0580 架构归并申报):当前
+    ``k_members`` 参数是**前向扩展位**(架构归并申报):当前
     三分档判定不消费它——预留语义 = 未来若分档需要「相对目标线」的
     语境(如转线相关性随已持线变化)在此扩展,**禁**在调用侧另挂第六套
     并列判据;签名含参是为防实施者误以为调用侧补语境是新挂点。

@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-点击「按钮-出战」推进节点进入战斗——**转移动作**(备战访问终结·唯一完成态):只把画面从备战转移到战斗,不按游戏规则改写任何局内资源。词表 = `kernel/cw_vocab.py::CwActionStartBattleParam`(无字段 dataclass);执行 = 三路径(备战环/统一执行器/恢复局)经同一注册表分派到达 `operations/cw_op/cw_start_battle_action.py::CwActionStartBattleOp`(点击+弹窗确认,零判效零重发);**发射统一执行器** = `operations/cw_loop.py::launch_battle_unified`(屏态复验→浮层安全检查→部署原子序→出战点击链;face = armed/resume 两调用面);发射准入判据 = mandate_v1 前置发射位消费 kernel `readiness_launch_decision`(策略层宿主)。战斗窗置位 = 外循环既有口径(ADR-0250 驻留闩),置位通道 = 备战访问 op 的交回(`cw_loop.py::CwLoop.loop` 备战分支 `_on_prep_round` 回调):出战意图在 op 内经统一执行器落执行后,op 以终结出口 success 交回,外循环见 success 交回即置 `_battle_ts` + `_battle_wait_active`;非出战出口的 success 交回误置位由 CwScreenBattleWait 宽限等待与备战白名单锚兜底分流。
+点击「按钮-出战」推进节点进入战斗——**转移动作**(备战访问终结·唯一完成态):只把画面从备战转移到战斗,不按游戏规则改写任何局内资源。词表 = `kernel/cw_vocab.py::CwActionStartBattleParam`(无字段 dataclass);执行 = 三路径(备战环/统一执行器/恢复局)经同一注册表分派到达 `operations/cw_op/cw_start_battle_action.py::CwActionStartBattleOp`(点击+弹窗确认,零判效零重发);**发射统一执行器** = `operations/cw_loop.py::launch_battle_unified`(屏态复验→浮层安全检查→部署原子序→出战点击链;face = armed/resume 两调用面);发射准入判据 = mandate_v1 前置发射位消费 kernel `readiness_launch_decision`(策略层宿主)。战斗窗置位 = 外循环既有口径(驻留闩),置位通道 = 备战访问 op 的交回(`cw_loop.py::CwLoop.loop` 备战分支 `_on_prep_round` 回调):出战意图在 op 内经统一执行器落执行后,op 以终结出口 success 交回,外循环见 success 交回即置 `_battle_ts` + `_battle_wait_active`;非出战出口的 success 交回误置位由 CwScreenBattleWait 宽限等待与备战白名单锚兜底分流。
 
 ## 2. 逻辑态域集
 
@@ -28,7 +28,7 @@
 - 找不到出战/跳过按钮 = `emitted=False`(detail =「未执行:找不到按钮」,交上层处置;
 - area 缺失 = 确定性失败禁兜底坐标(detail =「area 缺失:<area 名>」,按序列未完成上报「未执行」交回);
 - 出战被拒弹窗(未达上限警告/前台无角色)= op 内点确认后完成交回;重部署归策略部署义务(下一备战帧自然提案),框架零恢复链。
-- W209j 刹车(ADR-0388):运行中被停 → `StopBrakeShortCircuit` 异常拒绝执行任何动作(停机非动作,不五回执行);
+- W209j 刹车:运行中被停 → `StopBrakeShortCircuit` 异常拒绝执行任何动作(停机非动作,不五回执行);
 - 容器零写语义下无 applied=False 拒绝形态(上报函数恒零容器写,`applied=True` 受理)。
 
 ## 6. kernel 符号锚

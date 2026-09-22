@@ -103,7 +103,7 @@ def combine_board_frame_gated(badge_ocr: dict[str, int],
     """board 阵营计数帧态门仲裁内核(标称类②画面事实优先 + 帧态门,§1 行 8)。
 
     - computed(tracked 身份全集)= 底座;badge_ocr(可视区徽标 OCR)= 画面
-      事实,分歧时备战帧覆写(W287 裁决翻转,ADR-0417);
+      事实,分歧时备战帧覆写(W287 裁决翻转);
     - 非备战帧/动画帧(``prep_like``/``board_honest`` 任一为假):双源皆不
       可信 → 不裁不覆保底座(W285 overlay 干扰 2/6 实证防新错);
     - badge 有 computed 无 = tracked 漏阵营(强信号),备战帧同样覆入。

@@ -6,7 +6,7 @@
 运行时元组 + ``action_key`` 幂等键函数同居此处;原族B 词表
 (kernel/cw_prep_actions,物理槽位 1 基)已随归一退役,该模块现仅承载
 备战观察视图 PrepObservation 与采晶矿挑选 kernel 纯函数。坐标系裁定 =
-容器槽位表下标(族A 口径,0 基;ADR-0316/0392)——发射面从容器槽位表
+容器槽位表下标(族A 口径,0 基)——发射面从容器槽位表
 读口直接取下标构造动作;物理槽位号仅存观察写入边与执行坐标边两边界
 (design.md §2.6 换算归属)。例外 = 坐标参数化机械动作(CwActionWearEquipParam/
 工具原子类):row/slot 字段按定义 = 画面物理排槽位 1 基(执行器拖点
@@ -28,10 +28,10 @@ benchchar-retirement P5 退役——帧↔容器映射契约正本(game_state/fi
 
 字段多由 sim 环境剧本/重放档案构造填充;未填(None/默认)时决策安全降级。
 
-**board 模型**(ADR-0312 口径统一):
+**board 模型**(口径统一):
 - ``board`` = 已上阵羁绊计数(**全集口径**:factions+flows+independent+星徽装备
   贡献,per-unit 单一源 = ``cw_bond_equips.unit_bond_tags``;观察真值 =
-  游戏左面板,观察侧双源仲裁 = ADR-0417;口径 = 羁绊全集,非主阵营单标签)。
+  游戏左面板,观察侧双源仲裁;口径 = 羁绊全集,非主阵营单标签)。
 - 容器 GameState 中 board = **派生量**(禁独立手写):front_row/back_row
   行写端挂钩 ``GameState._resync_board_delta`` 增量重算;派生漂移由观察
   覆盖采新(board_derived_adopt,安灯不响——派生量以观察为真值源)。
@@ -42,7 +42,7 @@ benchchar-retirement P5 退役——帧↔容器映射契约正本(game_state/fi
 - ``deployed`` = bot 自己跟踪的已上阵角色(含 char_id/star/站位),用于 char_quality 评估
   已上阵的优先角色 + 站位分流。两者在已知身份域一致(deployed 按羁绊全集聚合 == board)。
 - CwActionDeployMoveParam 更新 deployed(槽位落位 = 载荷 (to_row, to_slot)
-  直落,ADR-0392 坐标系;目标槽有人 = 交换交互);board 不随
+  直落,坐标系;目标槽有人 = 交换交互);board 不随
   CwActionDeployMoveParam 独立写(旧 ``_recount_board`` 写端已退役,容器侧随行写端挂钩重算)。
 - CwActionBuyCardParam 后做 3 合 1 升星(同名同星 ≥3 → 合并为 star+1)。
 """
@@ -111,7 +111,7 @@ class ShopCard:
     # 写入端 = read_shop_cards);0 = 未知(sim/replay 构造缺省)。
     # 语义:牌行是定长 5 格,payload 是紧凑列表(空槽跳过)而游戏买入后
     # 不压缩剩余卡位——紧凑下标 ≠ 物理槽位,执行点击必须按此槽号取
-    # 「商店牌-slot」坐标(布局双源同族,ADR-0646 bench 版的商店牌行对应)。
+    # 「商店牌-slot」坐标(布局双源同族,bench 版的商店牌行对应)。
     slot: int = 0
     faction: str = "?"   # 阵营(OCR);未知 "?"
     name: str = ""       # 角色名(OCR);未知 ""
@@ -138,7 +138,7 @@ class ShopCard:
 #   #            写入端: <发射点函数/模块>(仅 expect/锚定类防线字段必填)
 #
 # 坐标系(unified-action-factory 批2b 归一后单一):bench/deployed 域动作
-# 携**容器槽位表下标**(定长槽位表 ADR-0316/0392,下标恒稳——生成期索引 =
+# 携**容器槽位表下标**(定长槽位表 ,下标恒稳——生成期索引 =
 # 执行期索引);发射面从容器读口(bench_view_slots_of/deployed_rows_of 系)
 # 直接取下标构造动作。物理槽位号(Unit.slot / BenchSlot 内嵌 Unit.slot
 # 信息位,1 基)仅存两边界,
@@ -169,7 +169,7 @@ class CwActionBuyCardParam:
 class CwActionSellBenchParam:
     """bench 卖出动作。
 
-    [坐标系] bench_idx = bench 槽位表下标 0-8(ADR-0316 定长 9 槽)。
+    [坐标系] bench_idx = bench 槽位表下标 0-8(定长 9 槽)。
 
     sim↔生产账本 income 对齐:sim 侧卖出回金按
     ``cost`` 1:1(cw_sim L630);生产真值 = ``sell_refund(star, cost)``
@@ -178,11 +178,11 @@ class CwActionSellBenchParam:
     账本/经济对账消费;未传 = None(sim 与旧调用兼容,sim 侧仍按
     自己的 cost 口径执行,不读此字段——它是**记录**不是**指令**)。
 
-    ``expect``(ADR-0317 代际校验第三块,ADR-0326 §1.7 激活;''=不校验):
+    ``expect``(代际校验第三块,激活;''=不校验):
     提案生成时该槽位指向内容的期望名(char_id)——提案生成→应用之间
     槽位内容可能已变,应用时不符 → no-op + stale_proposal 语义
     (对齐 CwActionSellDeployedParam/CwActionSwapDeployParam 既有守卫形态)。
-    **防线写入端核查(ADR-0326 §1.7;N3② 勘误,ADR-0585 批 4)**:发射点
+    **防线写入端核查(N3② 勘误,批 4)**:发射点
     = mandate_v1/shop.py 卖出发射位(M2 腾席两处/凑息回拉/funding 变现
     /funding 兜底,逐位带 expect 写入;原「remediation 两补偿器」表述
     无实码对应,全仓 grep 仅本 docstring 自引用,锁面引用同勘误);
@@ -193,7 +193,7 @@ class CwActionSellBenchParam:
     expect+income 正锁)。
     """
     bench_idx: int
-    # [索引定义] 坐标系: bench 槽位表下标 0-8(ADR-0316 定长 9 槽,空槽 None)
+    # [索引定义] 坐标系: bench 槽位表下标 0-8(定长 9 槽,空槽 None)
     #             取值时机: 生成期=执行期(槽位表恒稳,卖出置 None 不移位)
     income: int | None = None   # 创建时预期回金(sell_refund 口径;None=未标)
     expect: str = ''           # 代际校验期望名(''=不校验,不符→拒绝)
@@ -205,7 +205,7 @@ class CwActionSellBenchParam:
     #                            孤儿豁免分支据此判定(豁免键集 =
     #                            SELL_BENCH_ORPHAN_REASONS,与发射登记门
     #                            分离的独立闭集)。
-    convert_reason: str = ''   # 转化类豁免分键(结构化证明键,ADR-0611):
+    convert_reason: str = ''   # 转化类豁免分键(结构化证明键):
     #                            值域收窄为本批两类放行键 ⊂
     #                            SELL_BENCH_CONVERT_REASONS 闭集——
     #                            fuel_victim_protect_demoted(M4 腾席被保
@@ -213,7 +213,7 @@ class CwActionSellBenchParam:
     #                            convert + funding_hold_liquidated(筹资
     #                            变现两键);仅放行位填写,''=未标恒不豁免。
     #                            line_switch_collapse 不入本字段:孤儿证明
-    #                            打标语义与豁免资格耦合留在 reason(ADR-0591
+    #                            打标语义与豁免资格耦合留在 reason(
     #                            §4,防窗口段回归洗白),检查器按键分工判定
     #                            (转化类读本字段/孤儿读 reason),迁移期不
     #                            并读零双源。
@@ -227,7 +227,7 @@ class CwActionSellBenchParam:
 # - funding_support_stall_convert: 支付变现通道卖出被保垫件(为骨架
 #   义务筹资,转化类,同上非自旋);
 # - funding_hold_liquidated: 支付变现兜底豁免卖出 ③④ 持有件(P78-5
-#   最后手段变现,ADR-0585;本键辖「持有件变现」非 T3 垫件转化,豁免
+#   最后手段变现;本键辖「持有件变现」非 T3 垫件转化,豁免
 #   理由同为非自旋——义务筹资的资产重组,凑息缺口偏好账不授同款豁免);
 # - line_switch_collapse: 线账闭合孤儿清算(P78-2a 账闭合事件「线账
 #   闭合」:K 支持度重排致义务成员出基座,登记账就地销账,其后通道按
@@ -235,12 +235,12 @@ class CwActionSellBenchParam:
 #   通道名(entry 换线塌缩出口)兼孤儿证明标记(方案审乙′:
 #   商店发射位仅在「本轮义务登记 ∧ 已出基座」证明在场时打标,授予
 #   必须伴随登记簿线账闭合事件,防窗口段回归洗白——证明载体与边界
-#   申报见 ADR-0591 §4)。
+#   申报)。
 # 四键只辖「卖出排除面/被保留集登记件」的帧;缺省 '' 恒不豁免
 # ——豁免面按分键收敛,禁全开(T3 同轮保留修复批设计约束;三键形态
-# = ADR-0585 批 3,N7 豁免面与分键同批消除误报窗口;三→四键 =
+# = 批 3,N7 豁免面与分键同批消除误报窗口;三→四键 =
 # 方案审零阻断放行的语义演进,出处 = 2026-09-08 同轮交互
-# 方案审 + ADR-0591)。
+# 方案审 + )。
 # 发射侧填充现状(两通道分键起):两类放行键(T3 末位牺牲/
 # funding 两键)经 CwActionSellBenchParam.convert_reason 结构化字段填充(值域收窄,
 # 见字段注);line_switch_collapse 仍在役于 reason(孤儿证明打标制 +
@@ -263,7 +263,7 @@ SELL_BENCH_CONVERT_REASONS: frozenset[str] = frozenset({
 # (unified-action-factory 批2b 自 kernel/cw_prep_actions 迁居,与
 # SELL_BENCH_CONVERT_REASONS 同居;来源语义与登记门不变。)
 SELL_BENCH_REASONS: frozenset[str] = frozenset({
-    'line_switch_collapse',     # 线账闭合孤儿清算(ADR-0591 证明打标制)
+    'line_switch_collapse',     # 线账闭合孤儿清算(证明打标制)
     'm4_fuel_sell',             # M4 腾席/压库溢出清位(腾席臂构造事实)
     'interest_prep',            # T-115 凑息卖出(金位缺口触发)
     'funding_support',          # 支付筹资卖出(义务买金币位保障)
@@ -273,9 +273,9 @@ SELL_BENCH_REASONS: frozenset[str] = frozenset({
 # 检查器孤儿豁免键集(同轮买后卖检查的孤儿清算豁免边;**与上方发射位
 # 值域登记门 SELL_BENCH_REASONS 分离的独立闭集**):两集当前同值
 # 但语义不同源——发射登记门的新增值不得静默放大豁免面(豁免面若随
-# 登记门生长即成振荡防空洞;同轮买卖振荡零容忍 = ADR-0267/0593 治理
+# 登记门生长即成振荡防空洞;同轮买卖振荡零容忍 = 治理
 # 立场)。当前值 = line_switch_collapse(线账闭合孤儿清算证明标记,
-# 授予须伴随登记簿线账闭合事件,ADR-0591 §4)。三消费位 = sim/checks
+# 授予须伴随登记簿线账闭合事件)。三消费位 = sim/checks
 # /ledger 的 check_no_same_round_buy_sell 与 check_oscillation_xp_cap、
 # sim/checks/suspects 的 d1_same_round_pair_review(检查器/复盘面同键
 # 集,禁借道发射登记门)。值漂移由 test_cw_sell_reason_matrix 暴露。
@@ -284,7 +284,7 @@ SELL_BENCH_ORPHAN_REASONS: frozenset[str] = frozenset({
 })
 
 
-# S1 清键白名单 route_tag 闭集(备战旗标状态机 ADR-0596 §3.3 路径 (i)
+# S1 清键白名单 route_tag 闭集(备战旗标状态机 路径 (i)
 # 卖出类;部署类由动作类型 CwActionDeployMoveParam 承载 = route_tag_of,不占本集)。
 # 宿主 = kernel 词表:值域闭集单一源——策略器清键路由(mandate_v1)与
 # 框架侧防御位误标检出(cw_screen_shop 的 s1_reset_mischannel
@@ -301,9 +301,9 @@ S1_RESET_ROUTE_TAGS: frozenset[str] = frozenset({
 
 @dataclass
 class CwActionLevelUpParam:
-    cost: int        # 本次「购买经验」单击花金(ADR-0129:一次点击 = +XP_PER_BUY 经验,非整级;凑够门槛才升级)
+    cost: int        # 本次「购买经验」单击花金(:一次点击 = +XP_PER_BUY 经验,非整级;凑够门槛才升级)
     auth_basis: str = ''
-    # 授权依据**记录**字段(非指令;ADR-0354):
+    # 授权依据**记录**字段(非指令):
     # 放行臂名('pop_slot'=①[33]人口位 / 'dp'=②DP 花费授权 /
     # 'static_ev'=③静态 EV 平台账;''=未过 ev.levelup_ev_authorized 的
     # 旧调用/未接线路径)。由 arbiter 升级门与 remediation 补偿臂在
@@ -340,7 +340,7 @@ class CwActionLevelUpShopParam:
 class CwActionDeployMoveParam:
     """bench → 上阵(排 + 排内槽;完整落位意图入载荷)。
 
-    [坐标系] bench_idx = bench 槽位表下标 0-8(ADR-0316 定长 9 槽);
+    [坐标系] bench_idx = bench 槽位表下标 0-8(定长 9 槽);
     落位 = (to_row, to_slot) 载荷直指——落位决策权归策略层,执行器与
     容器写侧按载荷直落,禁执行边现读首空位;下标换算单一源 =
     kernel ``deployed_idx_of``。拖拽语义 = 游戏规则:目标槽空 = 放置,
@@ -350,7 +350,7 @@ class CwActionDeployMoveParam:
     角色对象现取(simulate 的 CwActionDeployMoveParam 分支消费此字段)。
     """
     bench_idx: int
-    # [索引定义] 坐标系: bench 槽位表下标 0-8(ADR-0316;同 CwActionSellBenchParam.bench_idx)
+    # [索引定义] 坐标系: bench 槽位表下标 0-8(同 CwActionSellBenchParam.bench_idx)
     #             取值时机: 生成期=执行期(槽位表恒稳;simulate/mutate 按
     #             下标读槽并置 None)
     to_row: str      # "front" / "back"
@@ -384,9 +384,9 @@ class CwActionRefreshShopParam:
 
 @dataclass
 class CwActionCloseShopParam:
-    """关店终结动作(ADR-0517 决策 4/5/6:商店画面的恒可用终结 op)。
+    """关店终结动作(/5/6:商店画面的恒可用终结 op)。
 
-    单动作架构(ADR-0517)下「无动作可做」的表达 = 策略器主动选关店终结
+    单动作架构下「无动作可做」的表达 = 策略器主动选关店终结
     op,取代旧「空序列 = 决策完成」契约;全函数契约(决策 5)要求动作空间
     至少含一个恒可用终结(决策 6)——本类即商店画面的该终结。执行侧语义
     = 本画面 op 结束、交回外循环(关店点击由动作 op 执行体
@@ -403,9 +403,9 @@ class CwActionCloseShopParam:
 class CwActionPickEventParam:
     """选事件选项(投资环境/策略/遭遇/补给)。
 
-    refresh(重立判据,ADR-0600;旧「阈值建议」判据已退役,
-    现判据 = 零阈值结构存在性,推导与优势论证见 ADR-0600 §3.2 +
-    math_proofs P81,env kind 不启用见 ADR-0600 §2/§4):「建议刷新」布尔 =
+    refresh(重立判据;旧「阈值建议」判据已退役,
+    现判据 = 零阈值结构存在性,推导与优势论证见
+    math_proofs P81):「建议刷新」布尔 =
     ``refresh_slots`` 非空。**纯建议**——是否真刷由 handler 决定(逐槽计数
     现读 >0 才点;刷新失败/次数 0 → 照常选当前最优,失败安全 = 现状行为)。
 
@@ -425,7 +425,7 @@ class CwActionPickEventParam:
     # [索引定义] 坐标系: 策略屏逐卡刷新槽位下标(同 option_idx 坐标系:画面
     #             选项序左→右 0-2,与 handler 逐卡刷新钮/逐卡计数一一对应)
     #             取值时机: 生成期快照(kernel 帧级触发判定一次算出)
-    #             写入端: cw_events.decide_event(ADR-0600 §3.1;空元组 = 不建议;
+    #             写入端: cw_events.decide_event(空元组 = 不建议;
     #             环境屏恒空 = 执行不启用)。消费端 = CwScreenInvestStrategy
     #             槽序循环(逐槽计数现读闸 + 已发射槽集防重入)。
     route_tag: str = field(default='', kw_only=True,
@@ -436,17 +436,17 @@ class CwActionPickEventParam:
 class CwActionSellDeployedParam:
     """卖场上单位(deployed 生命周期开口;不再'只增不减')——契约包 C1。
 
-    [坐标系] deployed_idx = state.deployed **槽位表**下标 0-9(ADR-0392;
+    [坐标系] deployed_idx = state.deployed **槽位表**下标 0-9(
     front 0-3 / back 4-9,空槽 None,卖出置 None 不移位——索引跨动作组
     恒稳)。
     """
     deployed_idx: int
-    # [索引定义] 坐标系: deployed 槽位表下标 0-9(ADR-0392 定长 10 槽,空槽
+    # [索引定义] 坐标系: deployed 槽位表下标 0-9(定长 10 槽,空槽
     #             None)
     #             取值时机: 生成期=执行期(槽位表恒稳,卖出置 None 不移位)
     income: int | None = None  # 预期回金(sell_refund 口径;None=未标;记录非指令,同 CwActionSellBenchParam)
     reason: str = ''           # 账本 reason(如 'evict_replaced'/'plugin_recycle')
-    expect: str = ''           # 遥测观测字段(ADR-0392 降级:槽位恒稳后不再承担
+    expect: str = ''           # 遥测观测字段(降级:槽位恒稳后不再承担
                                # 拦截漂移职责,记录生成期期望名供判读对照;
                                # 校验保留——名不符仍是跨代际提案的拒绝信号)
     route_tag: str = field(default='', kw_only=True,
@@ -457,7 +457,7 @@ class CwActionSellDeployedParam:
 class CwActionSwapDeployParam:
     """bench ↔ deployed 换位(场上场下对调;装备随人走)——契约包 C1。
 
-    [坐标系] deployed_idx = state.deployed 槽位表下标 0-9(ADR-0392)/
+    [坐标系] deployed_idx = state.deployed 槽位表下标 0-9/
     bench_idx = bench 槽位表下标 0-8(两域均定长槽位表,索引恒稳)。
 
     装备随人走 = 换位移动单位对象本身(``equips`` 字段随对象迁移,
@@ -465,13 +465,13 @@ class CwActionSwapDeployParam:
     开拓者按目标排做形态归一(同 CwActionDeployMoveParam 语义,单一源)。
     """
     deployed_idx: int
-    # [索引定义] 坐标系: deployed 槽位表下标 0-9(ADR-0392,恒稳)
+    # [索引定义] 坐标系: deployed 槽位表下标 0-9(恒稳)
     bench_idx: int
-    # [索引定义] 坐标系: bench 槽位表下标 0-8(ADR-0316,恒稳)
+    # [索引定义] 坐标系: bench 槽位表下标 0-8(恒稳)
     #             取值时机(两者): 生成期=执行期(槽位表恒稳;expect_* 为
-    #             遥测观测字段,ADR-0392 降级——记录生成期期望名供判读)
+    #             遥测观测字段,降级——记录生成期期望名供判读)
     reason: str = ''
-    # 遥测观测字段(ADR-0392 降级的代际校验):跨轮登记的提案
+    # 遥测观测字段(降级的代际校验):跨轮登记的提案
     # 在槽位表下索引恒稳;名不符仍是跨代际换人提案的拒绝信号。
     expect_deployed: str = ''  # 期望下场者名
     expect_bench: str = ''     # 期望上场者名
@@ -493,8 +493,7 @@ Action = (CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam |
 # - 角色目标槽位 ``row``/``slot``:row ∈ 'front'|'back'(画面物理排);
 #   slot = 画面物理槽位 1 基(前排 1-4 / 后排 1-选档 N;非列表下标)。
 #   取值时机 = 生成期快照(发射位从备战观察/容器槽位表现读;同一 visit
-#   内 tracked 账随动,槽位跨动作组恒稳——置 None 不移位坐标系,
-#   ADR-0392)。
+#   内 tracked 账随动,槽位跨动作组恒稳——置 None 不移位坐标系);
 
 @dataclass
 class CwActionCollectOreParam:
@@ -1063,7 +1062,7 @@ def mutate_bench_deployed(bench: list,
     P1 起容器原生形状(benchchar-retirement §2.3):bench =
     ``list[BenchSlot | None]``(定长 9,None=洞,卖出/上阵置 None 不移位)/
     deployed = ``list[Unit | None]``(定长 10,下标 = deployed_idx 动作坐标
-    恒稳,排归属由下标派生,ADR-0392);入口防御性补 None 到定长(旧紧缩
+    恒稳,排归属由下标派生);入口防御性补 None 到定长(旧紧缩
     构造兼容,禁借迁移改索引语义)。
     CwActionLevelUpParam/CwActionRefreshShopParam/CwActionPickEventParam 不影响 bench/deployed → no-op。
 
@@ -1099,7 +1098,7 @@ def mutate_bench_deployed(bench: list,
             _apply_full_bench_merge_buy(bench, deployed, action.card, shop)
         _merge_bench(bench, deployed)   # 全场域(live tracking 与 simulate 同源)
     elif isinstance(action, CwActionSellBenchParam):
-        # ADR-0317 代际校验(与 simulate 同源):expect 非空且不符 →
+        # 代际校验(与 simulate 同源):expect 非空且不符 →
         # 陈旧提案 no-op(不移除)
         if 0 <= action.bench_idx < len(bench):
             _s = bench[action.bench_idx]
@@ -1148,7 +1147,7 @@ def mutate_bench_deployed(bench: list,
                 and (not action.expect
                      or deployed[action.deployed_idx].char_id == action.expect):
             deployed[action.deployed_idx] = None
-            # ADR-0392:置 None 不移位(deployed_idx 恒稳;陈旧提案=代际不符 no-op)
+            # :置 None 不移位(deployed_idx 恒稳;陈旧提案=代际不符 no-op)
     elif isinstance(action, CwActionSwapDeployParam):
         if 0 <= action.deployed_idx < len(deployed) \
                 and deployed[action.deployed_idx] is not None \

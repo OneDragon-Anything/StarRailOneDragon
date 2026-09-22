@@ -12,7 +12,7 @@ carried 语义(fields.md §2.1)承载;旧结算新鲜度门
 禁反向依赖策略实现层(策略层 ``strategies/impl/cw_strategy.gated_hp``
 已随锚退役删除,消费点改经本模块 :func:`decision_hp`)。
 
-**消费同门申报纪律**(承接 ADR-0583 §2.4):新增 hp 决策消费点要么经
+**消费同门申报纪律**(承接 ):新增 hp 决策消费点要么经
 :func:`decision_hp` / 上游门后值传递,要么登记豁免。豁免清单 = 记录面
 (journal 快照/遥测 recorder/局终写口)+ 写侧对账面(``cw_reconcile``)+
 帧→视图一次性装配面(过渡桥语义,现役存续面见登记集哨兵)+
@@ -50,10 +50,10 @@ def hp_decision_trusted_of(gs: GameState) -> bool:
     ``(gs.hp.source in ('observation', 'carried'))``。
 
     映射保序(旧口径 ``hp_readable or hp_trusted`` 在容器来源二分下恒等):
-    observation ⊆ 两支并集;carried 支 = 沿用真值帧放行语义(ADR-0428,
-    ADR-0431 同节点帧龄门收编后的容器形态);prior(开局先验,ADR-0559)/
-    logic(推算值)支两位皆 False = fail-closed(ADR-0448 血线谓词唯一
-    收口 / ADR-0495 None 保守)。``sig.quality['hp']`` 词表
+    observation ⊆ 两支并集;carried 支 = 沿用真值帧放行语义(
+    同节点帧龄门收编后的容器形态);prior(开局先验)/
+    logic(推算值)支两位皆 False = fail-closed(血线谓词唯一
+    收口 / None 保守)。``sig.quality['hp']`` 词表
     (real_read/prior/same_node_carried)保留为判读证据,不参与决策位。
     语义只在生产容器单例上成立——过渡桥/合成口产出的视图 hp source 恒
     observation(可信位恒 True,失真申报面在桥 docstring 与迁移方案)。

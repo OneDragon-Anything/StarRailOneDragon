@@ -1,4 +1,4 @@
-"""跨局分配层 v0(ADR-0170):RunAllocator Thompson 采样 + 必死局回收。
+"""跨局分配层 v0:RunAllocator Thompson 采样 + 必死局回收。
 
 **诊断**:所有已落组件都是**局内优化器**,没人回答「数据本身从哪来、分配对不对」
 ——bot 集中玩当前最强 comp → telemetry 窄分布 → 学习组件外推失真 → 更不敢选 = 死锁
@@ -139,7 +139,7 @@ class ThompsonAllocator:
 # MatchOutcome(docstring 点名消费语义 = 跨局分配器/runs summary)。
 # ============================================================
 
-# 动作集 v2(契约包 C1,步2)+ CwActionCloseShopParam 终结动作(ADR-0517 商店恒可用终结)
+# 动作集 v2(契约包 C1,步2)+ CwActionCloseShopParam 终结动作(商店恒可用终结)
 
 
 @dataclass
@@ -147,7 +147,7 @@ class MatchOutcome:
     """一局货币战争的终局结算(框架构造,局终收口消费:跨局分配器/runs summary;/§11.4)。
 
     ⚠️ 字段全默认 —— **P1 由 run loop 用 ``MatchOutcome()`` 桩构造**(生命周期
-    钩子随 ADR-0583 收编删除后,消费面 = cw_loop 局终分支,
+    钩子随 收编删除后,消费面 = cw_loop 局终分支,
     字段已被真实数据填充);**真实 outcome 填充(结算屏 OCR 读终局 HP/位面/轮次/通关)依赖结算屏
     OCR 探查(现 run loop 是「点空白加速 → 继续挑战」,未见独立结算屏)。
     """

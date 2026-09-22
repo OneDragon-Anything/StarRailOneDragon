@@ -100,7 +100,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 2. **恢复局（locked-resume）检测**：候选 = 新 match ∧ 首个备战相位 round>1；商店探针（点商店→验收起）区分锁定/未锁；锁定态跳过全部备战交互经统一执行器（face=resume，含屏态复验与浮层安全检查——防误触补齐）直接出战并置战斗窗，出战成功即解除（`cw_loop.py::locked_resume_sync_and_battle`）；
 3. 可控轮数：`max_rounds` 已跑满 → round_success 停备战屏（单/多轮验证）；
 4. 补给节点分流：nodeseq current=supply → 点"返回补给阶段"进补给屏（用节点类型判，非按钮——battle 节点也有该按钮）；
-5. 派发 `CwScreenPrep` 备战单轮（两 node:观察 node(heavy 观察+接管补采+审计留守)+ 决策动作 node（单动作决策循环）, [../screens/prep.md](../screens/prep.md)；环入口清场收编于观察段）。**交回契约置战斗窗**：出战意图由 op 内统一执行器 `launch_battle_unified`（face=armed）落执行，op 以终结出口 success 交回承载「本访问结束」；外循环 `_on_prep_round` 回调见 success 交回即置 `_battle_ts` + `_battle_wait_active`（ADR-0250；非出战出口的 success 交回误置位由 CwScreenBattleWait 宽限等待 + 备战白名单锚兜底分流）；
+5. 派发 `CwScreenPrep` 备战单轮（两 node:观察 node(heavy 观察+接管补采+审计留守)+ 决策动作 node（单动作决策循环）, [../screens/prep.md](../screens/prep.md)；环入口清场收编于观察段）。**交回契约置战斗窗**：出战意图由 op 内统一执行器 `launch_battle_unified`（face=armed）落执行，op 以终结出口 success 交回承载「本访问结束」；外循环 `_on_prep_round` 回调见 success 交回即置 `_battle_ts` + `_battle_wait_active`（非出战出口的 success 交回误置位由 CwScreenBattleWait 宽限等待 + 备战白名单锚兜底分流）；
 6. **环让位重入契约**：director 返回（含 overlay bail）后必经 return → 下轮 loop 顶全分支重判，不在同一迭代内直接回备战分支（`cw_loop.py::CwLoop.loop` 备战分支尾环让位段）。
 
 ## 4. 轮次推进

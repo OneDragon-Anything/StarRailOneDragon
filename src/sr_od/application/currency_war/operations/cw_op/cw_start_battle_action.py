@@ -149,7 +149,7 @@ class CwActionStartBattleOp(SrOperation):
         都没有 = 完成。返回机械摘要(detail;「area 缺失」前缀 = 弹窗
         确认点击未执行,调用方按序列未完成上报)。
 
-        勾选幂等依据 = M16 死循环根因修复(ADR-0136)同款行为:只点确认
+        勾选幂等依据 = M16 死循环根因修复同款行为:只点确认
         不勾「本局不再提示」→ 人口不足时每次出战都弹此窗;对齐
         CwScreenDeployNotFull 完整行为(勾选 → 确认)。
         """

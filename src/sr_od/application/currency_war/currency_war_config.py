@@ -79,7 +79,7 @@ class CurrencyWarConfig(YamlConfig):
                 "(新核 cw4);请把实例配置里的 strategy_id 改为合法值")
         self.strategy_id: str = strategy_id
         # ev_arm 臂位(R1-1;三臂 A/B 实验设计的 mandate_v1 臂内实验因子,
-        # 实验设计原文已删档,取回口径=ADR-0644——
+        # 实验设计原文已删档,考古走 git 历史——
         # skeleton_only=臂① EV 发射面旁路 / full=臂② 全开)。开发/实验
         # 字段(不进 GUI,仅 yml 调试);legacy 臂(decision_v2)不写该字段。
         ev_arm: str = self.get('ev_arm', 'full')
@@ -95,9 +95,9 @@ class CurrencyWarConfig(YamlConfig):
         self.max_rounds: int | None = int(_mr) if _mr not in (None, '', 0) else None
         # (简报 vs 实采对账开关键已随对账网退役删除——对账自比较无双源
         #  可比对,按零实效机制退役;yml 残留旧开关键无害,get() 不再读。)
-        # 起局前置码哈希结构闸(ADR-0581;混合码事故防线):工作树≠HEAD 拒绝
+        # 起局前置码哈希结构闸(混合码事故防线):工作树≠HEAD 拒绝
         # 起局。默认开 = 安全闸宁拦勿放;闸本体见 kernel/cw_code_hash_gate
-        # (豁免名单/口径申报单一源 = ADR-0581 与闸模块 docstring)。
+        # (豁免名单/口径申报单一源 = 闸模块 docstring)。
         self.code_hash_gate: bool = self.get('code_hash_gate', True)
         # journal 无条件常开(用户裁定「无开关」),装配段无条件武装
         # install_state_telemetry;yml 残留旧开关键无害,get() 不再读。

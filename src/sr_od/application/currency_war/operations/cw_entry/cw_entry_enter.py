@@ -70,7 +70,7 @@ class CwEntryEnter(SrOperation):
         screen = self.last_screenshot
 
         # 入口链弹窗守卫(注册表统一入口,supply→jade→badge 序位见
-        # cw_entry_start.ENTRY_POPUP_GUARDS;ADR-0574/ADR-0607):纵深挂点——
+        # cw_entry_start.ENTRY_POPUP_GUARDS;/):纵深挂点——
         # 弹窗可盖在指南页/朝露公馆入口任意一帧上,不接住则下方「前往参与」/
         # 大厅锚/F 分支全部落空 → 节点预算耗尽。
         popup = try_handle_entry_popups(self, screen)

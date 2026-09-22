@@ -40,7 +40,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     本函数内第一时间取——原落地门/两驱动器三处抄写收编单点)。
 
     满栏且合成不可达 = 游戏拒买(applied=False + reason='bench_full',
-    零写,ADR-0283)。k 来源:executed 给定 = 回执 k(live);None =
+    零写)。k 来源:executed 给定 = 回执 k(live);None =
     理想执行自算(简单腿 1,满栏从应用机器出)。语义源 = simulate
     BuyCard 分支,直锁 test_cw_transfer_golden / 锁 M1 钉住。
 

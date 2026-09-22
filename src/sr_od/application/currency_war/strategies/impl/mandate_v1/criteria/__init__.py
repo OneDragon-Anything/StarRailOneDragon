@@ -54,7 +54,7 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
         '状态函数', '不旁路', 'g*=10×cap_resolved 单一源重导出(R70-1)'),
     ('levelup', 'levelup_budget_gate'): (
         '门', '不旁路', 'P72 (3) 全段预算闸(p72-full-band-budget-gate'
-        '+ADR-0576;P71-b 溢余段形态全段化,M3 两域+L3 发射位消费,'
+        '+;P71-b 溢余段形态全段化,M3 两域+L3 发射位消费,'
         '义务侧量闸)'),
     # —— criteria/refresh(01_math_framework §3.4)——
     ('refresh', 'r0_stop'): (
@@ -69,7 +69,7 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
     ('refresh', 'r2_budget'): (
         '门', '旁路=门关闭', 'R5-4(预算门不批)'),
     ('refresh', 'r2_card_reserve'): (
-        '状态函数', '不旁路', 'P54 §② ρ 公共单一源(ADR-0560 提升批;'
+        '状态函数', '不旁路', 'P54 §② ρ 公共单一源(提升批;'
         'R2 门与 P71-b 闸同源消费)'),
     ('refresh', 'hard_node_reinforce_gate'): (
         '门', '旁路=门关闭', 'D-D(硬节点补强门,消费面 r1/candidates 均臂①旁路)'),

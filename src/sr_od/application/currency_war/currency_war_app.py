@@ -191,7 +191,7 @@ class CurrencyWarApp(SrApplication):
     def _enter_lobby(self) -> OperationRoundResult:
         screen = self.last_screenshot
         # 入口链弹窗守卫最先接(注册表统一入口,supply→jade→badge 序位见
-        # cw_entry_start.ENTRY_POPUP_GUARDS;ADR-0574/ADR-0607):弹窗盖在大世界
+        # cw_entry_start.ENTRY_POPUP_GUARDS;/):弹窗盖在大世界
         # 上,早于一切 CW 导航识别——模态压暗+模糊背景下 _recover 预检/_at_lobby/
         # _in_match 全部失明,不接住则 enter 链空烧预算。
         popup = try_handle_entry_popups(self, screen)
@@ -210,7 +210,7 @@ class CurrencyWarApp(SrApplication):
     @node_from(from_name='进入货币战争大厅')
     @operation_node(name='开始对局到备战阶段')
     def _start_match(self) -> OperationRoundResult:
-        # 起局前置码哈希结构闸(ADR-0581;混合码事故防线):工作树≠HEAD 的
+        # 起局前置码哈希结构闸(混合码事故防线):工作树≠HEAD 的
         # 码面不允许起局——run 记录会以本失败状态收尾,不一致清单进日志。
         # 闸关(config.code_hash_gate=False)时整段跳过。
         _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)

@@ -65,7 +65,7 @@ class CwScreenMegastar(SrOperation):
 
     节点完成门 = 「仍在巨星 overlay?」(标识-盛会之星);确认未落地 =
     下一帧门复检自愈(动作链 bug 归动作层修,不加验证段)。单动作确认
-    形态(关态稳定基线语义 = ADR-0264)。
+    形态(关态稳定基线语义)。
     """
 
     def __init__(self, ctx: SrContext):

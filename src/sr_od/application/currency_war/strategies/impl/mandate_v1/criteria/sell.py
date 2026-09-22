@@ -99,8 +99,8 @@ def line_switch_sell(old_line_members: tuple[str, ...],
     另有同名同星副本(2/3 合成进度素材),拒因键 ``merge_material_
     guard``(单一源 = ``cw_state.merge_material_reject_reason``,与
     部署侧同键)拒入塌缩对象集——换线不构成素材豁免(素材对换线后
-    板面仍可能是素材)。设计出处:ADR-0558。
-    拒因分键接线(D1 整改,ADR-0558 §3「全发射位显影」兑现:本通道
+    板面仍可能是素材)。设计出处:。
+    拒因分键接线(D1 整改,「全发射位显影」兑现:本通道
     曾静默 continue 无计数,接线枚举也不含本位):``counters`` 非 None
     时计数 ``merge_material_guard_blocked``;计数 = 事件口径(C1,同帧
     同名只计 1,去重载体 = ``dedup_names``,单一源 =
@@ -194,7 +194,7 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
     'p2_blood_floor' 与 P1 域 'blood_floor' 分键禁并(键族零交集,
     统一设计稿 §4-8)。
 
-    合成素材拒入守卫(G-S1,ADR-0558):候选与场上(state.deployed ∪ bench,含
+    合成素材拒入守卫(G-S1):候选与场上(state.deployed ∪ bench,含
     自身)另有同名同星副本 ⇒ 2/3 合成进度素材,拒因键
     ``merge_material_guard``(单一源 = ``cw_state.merge_material_
     reject_reason``,与部署侧同键)拒入资格集;拒因同键计数
@@ -327,7 +327,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
     燃料在场时先卖非保件,被保件仅兜底消费。defer 空集时排序键逐位
     等价旧 (star, slot) 序(零漂移)。
 
-    合成素材拒入守卫(G-S1,ADR-0558):候选与场上(state.deployed ∪ bench,含
+    合成素材拒入守卫(G-S1):候选与场上(state.deployed ∪ bench,含
     自身)另有同名同星副本 ⇒ 2/3 合成进度素材,拒因键
     ``merge_material_guard``(单一源 = ``cw_state.merge_material_
     reject_reason``,与部署侧同键)拒入资格集;``counters`` 非 None

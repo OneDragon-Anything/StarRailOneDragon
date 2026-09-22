@@ -89,7 +89,7 @@ def _ocr(ctx: SrContext, screen: MatLike, rect: Rect | None) -> list:
     return ctx.ocr_service.get_ocr_result_list(image=screen, rect=rect, crop_first=False)
 
 
-#: 非 overlay 上层屏残余段(ADR-0269 两段式第二段;设计终版定案 2):
+#: 非 overlay 上层屏残余段(两段式第二段;设计终版定案 2):
 #: 会盖备战底层 UI、但**不是 overlay 生命周期对象**的画面——无 handler、
 #: 无退场动作,注册表语义覆盖不到,显式保留 + 逐条 why 问责
 #: (防「整表派生」强迫僵尸 spec 进注册表;注册表一致性测试断言
@@ -105,7 +105,7 @@ UPPER_SCREENS_NON_OVERLAY: tuple[str, ...] = (
     # tooltip)同型穿透:唯一真值锚(装备推荐)只属角色详情大面板,两形态帧
     # 判不出角色详情 → 回落备战判定被放行(离线复跑实证:3 张真值帧
     # equip_detail_roller/synth_target/char_detail 锚 OCR 全空、prep-like=True;
-    # 画面档按形态拆分后此处同步扩容,与 ADR-0269 同手法)。
+    # 画面档按形态拆分后此处同步扩容,与 同手法)。
     '货币战争-备战-装备详情浮窗',
     '货币战争-备战-角色信息提示',
     # 赛前画面(对局外),非对局 overlay
@@ -123,7 +123,7 @@ UPPER_SCREENS: tuple[str, ...] = (
     derive_upper_screens() + UPPER_SCREENS_NON_OVERLAY
 )
 
-# 金币说明 overlay 锚(ADR-0263 Revision):C 类无档案 overlay(无独立 screen
+# 金币说明 overlay 锚(Revision):C 类无档案 overlay(无独立 screen
 # 档案,进不了 UPPER_SCREENS),保留锚 OCR 判定作为钩子帧态门的补充第三段
 # (证据帧 034f8ef3:标题锚「标识-金币说明」pc_rect (1000,370,1165,435))。
 _GOLD_INFO_ANCHOR_AREA: str = '标识-金币说明'
@@ -131,7 +131,7 @@ _GOLD_INFO_ANCHOR_TEXT: str = '金币说明'
 
 
 def is_prep_like_frame(ctx: SrContext, screen: MatLike) -> bool:
-    """帧态判据(ADR-0269 两段式):**先**遍历 ``UPPER_SCREENS`` 逐屏
+    """帧态判据(两段式):**先**遍历 ``UPPER_SCREENS`` 逐屏
     get_match_screen_name,任一命中 → False(上层画面在场 = 非备战帧;
     上层不排除时曾发生选择伙伴帧被放行误拖实锤);**全部未命中后**再判
     备战/开商店双屏(id_mark 体系,框架 screen_utils)→ True;过渡帧/结算/
@@ -161,7 +161,7 @@ def is_prep_like_frame(ctx: SrContext, screen: MatLike) -> bool:
 
 
 def gold_info_overlay_open(ctx: SrContext, screen: MatLike) -> bool:
-    """金币说明 overlay 在场判定(ADR-0263 Revision 第三段;锚 OCR,
+    """金币说明 overlay 在场判定(Revision 第三段;锚 OCR,
     全图 OCR 缓存复用)。C 类无档案 overlay:无独立 screen 档案进不了
     ``UPPER_SCREENS``,两段式天然看不见 → 钩子停机前以锚命中作补充排除。
     best-effort:锚 area 缺失/异常 → False(不拦,回落两段式)。

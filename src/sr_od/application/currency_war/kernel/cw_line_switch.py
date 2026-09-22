@@ -152,7 +152,7 @@ def e_rounds(comp: Comp, gs: GameState,
     「实测断供」归 drought bail 旁路,DESIGN §附4)。
 
     可负担窗的守息线 = session resolved 链单一源
-    (``saturation_line(cap_resolved_of_session(session))``,ADR-0598
+    (``saturation_line(cap_resolved_of_session(session))``
     随批接线:旧 ``reg.interest_floor()`` 不随持卡语境动——买断制局
     刷新可负担窗被 50 金地板压死,囤金经本车道部分存活);
     ``session=None``(无 session 调用形态/旧测试桩)退注册表派生值,
@@ -202,7 +202,7 @@ def switch_allowed(gs: GameState, session: StrategySession) -> bool:
 
     末窗=本位面末 3 轮(9 轮位面即 r≥7;7 轮位面 P2 即 r≥5)——末窗换线
     = 丢弃已成形板面战力追 0-progress 新线,且 D_min=2 驻留在末窗等价于
-    禁换;真值源=``cw_plane_table.nodes_of_plane``(位面轮数,ADR-0366)。
+    禁换;真值源=``cw_plane_table.nodes_of_plane``(位面轮数)。
     """
     from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
     return round_num_of(gs) <= nodes_of_plane(session) - 3
@@ -282,7 +282,7 @@ def best_alt_line(gs: GameState, session: StrategySession, config,
         shop_supply,
     )
     reg = registry or DEFAULT_REGISTRY
-    # 判据面防御 getattr(strategy_state_of None 契约,ADR-0563 B4 划分线):
+    # 判据面防御 getattr(strategy_state_of None 契约,B4 划分线):
     # 异型状态对象字段缺席退 ''(与下行 drought_excluded 防御形态同族)
     _tc = getattr(strategy_state_of(session), 'target_comp', None)
     cur_name = _tc.name if _tc is not None else ''

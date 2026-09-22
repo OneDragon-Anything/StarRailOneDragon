@@ -14,7 +14,7 @@
 | shop | **随机态腿写(`write_logic_rand`)** | 刷新上报在计数后经 kernel 发牌采样器 `kernel/cw_shop_deal.py::sample_shop_deal`(与 sim `deal_shop` 同一发牌代码)采 5 槽 payload,经 `write_logic_rand` 随机态专用通道写——实机上采样是猜测,observe 覆盖差异 = 预期内(落 `logic_rand_outcome` 台账,不进失配安灯),真值 = 下一入口观察(观察赢);level 缺读该腿跳写(概率表按级索引,宁缺勿造) |
 | free_refresh_left | 免费帧写(逻辑态) | 免费判定 = Field 值 > 0(入口观察锚定的剩余次数;None = 未观察 → 保守按付费,不扣 Field——次数是记账面非决策闸);免费帧 `write_logic` 扣减(max(0, left−1),下限 0) |
 | refresh_total / refresh_paid(效果账本) | 写(计数腿) | 容器写端 = 刷新上报函数经 `gs.effects.record_refresh` 单口(`kernel/cw_effect_inventory.py`);refresh_total 恒 +1,免费帧不动 refresh_paid(付费累计,长线利好阈值型,免费帧混入即毒化) |
-| shop_refresh_cost | **跳写** | 写端 = 现场 OCR 唯一(ADR-0622 观察通道);免费帧「免费」读数 None → 不落 0(付费域纯净性) |
+| shop_refresh_cost | **跳写** | 写端 = 现场 OCR 唯一(观察通道);免费帧「免费」读数 None → 不落 0(付费域纯净性) |
 
 ## 3. 确定面转移规则(逐条)
 

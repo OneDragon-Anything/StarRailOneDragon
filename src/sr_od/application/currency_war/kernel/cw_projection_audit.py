@@ -128,7 +128,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='识别真值(None=未读到禁兜底),零逻辑写端'),
     'deploy_cap': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
-        basis='识别口径真值(ADR-0420 双帧一致采信门),零逻辑写端'),
+        basis='识别口径真值(双帧一致采信门),零逻辑写端'),
     # —— 局级事实(开局写定恒稳族)——
     'selected_difficulty': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
@@ -153,11 +153,10 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_ABSORB_RULE,
         basis='派生量:front_row/back_row 写端挂钩 _resync_board_delta'
               ' 自动重算,禁独立手写 + 派生漂移观察覆盖采新'
-              '(board_derived_adopt,安灯不响);观察侧 badge OCR 双源仲裁'
-              '(ADR-0417)'),
+              '(board_derived_adopt,安灯不响);观察侧 badge OCR 双源仲裁'),
     'shop_refresh_cost': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
-        basis='刷新费现场 OCR(ADR-0622),零逻辑写端'),
+        basis='刷新费现场 OCR,零逻辑写端'),
     # (刷新计数组口径(2026-09-21 Field 化):免费刷新剩余次数升格容器
     #  字段 free_refresh_left(审计行见下方家族块);付费/全量两计数留
     #  效果账本 ActiveEffectInventory,审计面 = 账本自身测试面。)
@@ -339,7 +338,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     # —— 结算 ——
     'settlement': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='结算覆盖链真值(apply_settlement_cover,ADR-0282 消解后'
+        basis='结算覆盖链真值(apply_settlement_cover,消解后'
               ' hp 唯一真值入口)'),
     'hp_floor_triggered': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,

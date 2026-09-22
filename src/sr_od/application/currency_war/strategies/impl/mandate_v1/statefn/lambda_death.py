@@ -163,7 +163,7 @@ def lambda_ci(key: str | None) -> tuple[float, float] | None:
     仅 ``可消费`` 格返回端点;禁用/仅方向/空格/域外 → None(消费端 fail-closed)。
     消费纪律:端点随消费位分键(λ̄_detection/λ̄_gate 同端不同计数值域,R52-2/
     R55-1 定谳两端同取 CI 下端;卖面 V_power 系数取 CI 上端——组-端取端纪律,
-    原 design_economy §E4.1 组-端对照表已删档,取回口径=ADR-0644)。**本函数只供 statefn 层内部与已登记复合形态消费**,
+    原 design_economy §E4.1 组-端对照表已删档,考古走 git 历史)。**本函数只供 statefn 层内部与已登记复合形态消费**,
     判据模块禁自持端点构造 d̂(R19-3)。
     """
     c = cell(key)

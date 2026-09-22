@@ -289,7 +289,7 @@ class SrContext(OneDragonContext):
             standard_height=self.project_config.screen_standard_height
         )
         self.controller.set_window_title(self._get_win_title())
-        # 停机守卫接线(ADR-0396):controller 输入入口读 run_context 停机中断闩,
+        # 停机守卫接线:controller 输入入口读 run_context 停机中断闩,
         # 停机后任何游戏输入(click/drag/按键/滚轮/输入/移光标)前抛 StopRunInterrupted。
         # 注意挂谓词(lambda 延迟读属性)而非属性值(布尔不可调用)。
         _run_context = self.run_context

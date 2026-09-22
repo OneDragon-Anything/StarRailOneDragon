@@ -1,16 +1,16 @@
 """货币战争 投资策略 + 投资环境领域模型(meta 层,V4.4)。
 
-**两层架构(ADR-0150)**:
+**两层架构**:
 - **base 事实层** = ``cw_invest_data.py``(``tools/cw/gen_plaza_invest.py`` 从米游社攻略广场
   官方 API 生成,勿手编):名字/品质/效果全文,数字 id 稳定主键,投资策略 334 + 投资环境 83
   官方全量(游戏内数据银行同口径,米游社百科 doc 的 19 条版本漂移缺口就此补齐)。
 - **建模增量层** = 本文件手维护(API 给不了的人工建模):
-  - ``STRATEGY_ECONOMY``(ADR-0131 可数值化经济效果);
+  - ``STRATEGY_ECONOMY``(可数值化经济效果);
   - ``is_blood_economy``/``blood_xp_mode``(血本位判别与 XP 购买模式解析,
-    [40]① 选择回避 / [40]② 血闸共享判据,ADR-0578);
+    [40]① 选择回避 / [40]② 血闸共享判据);
   - ``ENV_CATEGORY``/``ENV_FACTION``(环境 7 类分类 + 阵营绑定,ENV_FACTION_MAP 派生源);
   - ``_MANUAL_EXTRAS``(plaza 不收的补遗条目);
-  - ``PICK_VALUE``/``ENV_PICK_VALUE``(ADR-0143/0144 选卡评估分;SURVIVAL_PICKS
+  - ``PICK_VALUE``/``ENV_PICK_VALUE``(选卡评估分;SURVIVAL_PICKS
     等事件面钩子已退役)。
 - **合并层**:base × overlay → 注册表,构建时做孤儿校验(overlay 引用了 base 没有的键 →
   import 即炸,防版本更新后静默失联)。
@@ -60,13 +60,13 @@ class InvestmentEnv:
     effect: str         # 效果原文(官方 API 全文)
     faction: str = ""   # 对应阵营(概念股/邀请 boosts 的羁绊;ENV_FACTION_MAP 派生用;无则 "")
     source: str = ""    # 溯源(plaza:<id> 或 content_id)
-    pick_value: int = 0  # 选卡价值基准分 0-100(ADR-0144;0=未评估)
+    pick_value: int = 0  # 选卡价值基准分 0-100(0=未评估)
     economy: EnvEconomyEffect | None = None  # 整局经济通道(白名单制;ENV_ECONOMY 构建期 replace 挂载,表外恒 None)
 
 
 @dataclass(frozen=True)
 class EconomyEffect:
-    """投资策略/环境的**可数值化经济效果**(ADR-0131;用户 2026-08-15:效果要直接转经济模型)。
+    """投资策略/环境的**可数值化经济效果**(用户 2026-08-15:效果要直接转经济模型)。
 
     只收能进策略层算账的效果(给金/免费刷新/利息/经验/连胜倍率);战力类(数值碾压/攻防一体等)
     不在此(走战力评估,不进经济)。全 0/None = 无经济效果。字段语义:
@@ -112,7 +112,7 @@ class EconomyEffect:
     gold_next_nodes_count: int = 0
     gold_per_level_up: int = 0
     gold_per_20hp_lost: int = 0
-    # —— v2 扩展(ADR-0205 全量调研;仅 API 文本明说的数值)——
+    # —— v2 扩展(全量调研;仅 API 文本明说的数值)——
     difficulty_delta: int = 0             # 静态难度 Δ(简单模式 −3 等;36 号账本消费)
     difficulty_per_streak: int = 0        # 动态难度(伟大征服:难度+连胜数)
     difficulty_node_types: tuple[str, ...] = ()   # Δ 限定节点型(难度修改器:遭遇+首领)
@@ -128,7 +128,7 @@ class EconomyEffect:
     hp_gold_swap: bool = False            # 不等价交换:交换 hp/gold(33 号 λ_hp 消费)
     gold_per_hp_lost_now: bool = False    # 星际和平保险:选卡时=已损血数金
     xp_instant: int = 0                   # 即时经验(伟大征服 12/气氛组+ 8/成长的快乐 4)
-    # —— 合成/出售触发族(ADR-0211 裁定;均为「正常成型路上
+    # —— 合成/出售触发族(裁定;均为「正常成型路上
     #     白得」的被动经济,选卡正常评估,不围绕改打法)——
     gold_per_2star2cost_merge: int = 0    # 砂里淘金:合 2星2费 得砂金(可卖 ≈ 现金)
     gold_per_3star_merge: int = 0         # 星星相印:每合 3 星 +金
@@ -154,7 +154,7 @@ class EconomyEffect:
 
 
 def is_blood_economy(eff: EconomyEffect | None) -> bool:
-    """血本位突变判别([40]①「主动选择=回避」的候选判据;ADR-0578)。
+    """血本位突变判别([40]①「主动选择=回避」的候选判据)。
 
     判据 = 效果把 HP 写进经济循环的字段:购经验币种切换(xp_buy_hp_cost)
     ∨ HP↔金互换(hp_gold_swap)。补偿型字段(gold_per_20hp_lost/
@@ -177,7 +177,7 @@ class EnvEconomyEffect:
     (无通道 = 全缺省)。估值单一入口 = ``cw_env_economy.env_economy_value``
     (A 类精确 + 估算参数 fail-closed;B/C 通道估值公式与参数归数据批)。
     **白名单制**:只收 ENV_ECONOMY 显式登记条目,禁从效果原文自动猜装
-    (防错装对账 = _validate_env_economy,ADR-0144 决策 3 六条点名)。
+    (防错装对账 = _validate_env_economy,六条点名)。
     字段语义(值全部 = cw_invest_data 效果原文直读):
     - gold_per_plane_start: 每位面开局金,元组下标 = 位面−1(增发货币 (6,8,12);
       晶矿→金兑现按自动开启建模——晶矿开启是玩家动作面,自动与否未实采
@@ -217,7 +217,7 @@ class GiftGrant:
     **所赠角色是否被候选终局阵容使用**(结构集合级,零数值零战力,开局静态可用;
     宪法 00_framework §1.1 禁战力建模,卖价残值对「送的人有没有人用」零判别力)。
     档位机器 = ``cw_comps.gift_hit_tier``;档位是定序实现常数非金流期望
-    (ADR-0524 定序/基数分账:(expected_gold, resolved) 契约装不下 66/60/54 档
+    (定序/基数分账:(expected_gold, resolved) 契约装不下 66/60/54 档
     语义),**不经经济入口**,消费位 = cw_events env 分支独立 max() 支(3.5 接线)。
     字段语义(值全部 = cw_invest_data 效果原文直读):
     - chars_immediate: 取环境当场发放的具名角色(效果原文「获得【X】」直读)
@@ -243,8 +243,8 @@ class InvestmentStrategy:
     rarity: str         # "棱彩"/"金"/"银"(官方 quality)
     effect: str         # 官方效果全文(plaza API)
     source: str = ""    # 溯源(plaza:<id> / content_id / codex_20260815)
-    economy: EconomyEffect | None = None   # 可数值化经济效果(ADR-0131);战力类 None
-    pick_value: int = 0    # 选卡价值基准分 0-100(ADR-0143;0=未评估回落品质先验)
+    economy: EconomyEffect | None = None   # 可数值化经济效果;战力类 None
+    pick_value: int = 0    # 选卡价值基准分 0-100(0=未评估回落品质先验)
 
 
 def _strat(name: str, rarity: str, effect: str, source: str = "",
@@ -252,7 +252,7 @@ def _strat(name: str, rarity: str, effect: str, source: str = "",
     return InvestmentStrategy(name=name, rarity=rarity, effect=effect, source=source, economy=economy)
 
 
-# ===== curated overlay:可数值化经济效果(ADR-0131;手维护,键=注册表规范名)=====
+# ===== curated overlay:可数值化经济效果(手维护,键=注册表规范名)=====
 # base(API)给不了的效果结构化;战力类不在此(走战力评估)。孤儿键 → 构建层报错。
 STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '高效决策': EconomyEffect(free_refresh_burst=9999),
@@ -268,7 +268,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '买断制': EconomyEffect(instant_gold=15, interest_cap_override=0, xp_per_node=4),
     '淘金客': EconomyEffect(xp_per_refresh=2),
     '伟大征服': EconomyEffect(win_reward_mult=3.0, difficulty_per_streak=1, xp_instant=12),
-    # ↑ 按 API 原文全额建模:×3 连胜奖励 + 敌人难度+N(N=连胜)+ +12XP(ADR-0205)
+    # ↑ 按 API 原文全额建模:×3 连胜奖励 + 敌人难度+N(N=连胜)+ +12XP
     '商业间谍': EconomyEffect(xp_buy_cost_discount=1),
     '返利+': EconomyEffect(instant_gold=6, gold_per_three_5cost=3),
     '采购专员·金': EconomyEffect(refresh_surprise_every=7),
@@ -317,7 +317,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '长期主义+': EconomyEffect(gold_next_nodes_amount=9, gold_next_nodes_count=3),
     '长期主义': EconomyEffect(gold_next_nodes_amount=7, gold_next_nodes_count=3),
     '大裁员': EconomyEffect(free_refresh_burst=5, sell_price_mult=2.0),
-    # ↑ 免费刷 + 卖价×2。5=已裁漂移,官方卡文=6(base 层 plaza:202101,权威序正本=ADR-0620):
+    # ↑ 免费刷 + 卖价×2。5=已裁漂移,官方卡文=6(base 层 plaza:202101):
     #   纠偏 5→6 是行为面变更,归建模批走方案审/落地审;改 6 前以 5 为现行行为,读值方禁自行 +1。
     '嘴硬': EconomyEffect(instant_gold=6),
     '秘密典籍+': EconomyEffect(instant_gold=12),
@@ -346,7 +346,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '溜佩佩': EconomyEffect(instant_gold=9),
     '溜佩佩+': EconomyEffect(instant_gold=15),
     '保险': EconomyEffect(gold_per_20hp_lost=5),
-    # —— v2 新建(ADR-0205 调研落地;API 文本明说的数值)——
+    # —— v2 新建(调研落地;API 文本明说的数值)——
     # 等级触发族
     '成长基金': EconomyEffect(gold_at_level=40, gold_at_level_target=9),
     '成长的快乐': EconomyEffect(xp_instant=4,
@@ -368,7 +368,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # C 类:难度交互(显数值;36 号账本消费)
     '简单模式': EconomyEffect(difficulty_delta=-3),
     '难度修改器': EconomyEffect(difficulty_delta=-4, difficulty_node_types=('遭遇', '首领')),
-    # 合成/出售触发族(ADR-0211:选卡照常评估)
+    # 合成/出售触发族(:选卡照常评估)
     '砂里淘金': EconomyEffect(gold_per_2star2cost_merge=2),
     # ↑ 合 2星2费 白得砂金(2费可卖 ≈2 金/张;阵容用得上则价值更高,经济侧按下界)
     '星星相印': EconomyEffect(gold_per_3star_merge=5),
@@ -572,7 +572,7 @@ _ENV_SUFFIX_DERIVED_NAMES: tuple[str, ...] = (
     '列车同行邀请', '昼之半神邀请', '夜之半神邀请', '追击邀请', '击破邀请', '群攻邀请',
     '能量邀请', '燃血邀请', '减益邀请', '持续伤害邀请', '量子同频邀请', '战技点邀请',
     '欢愉邀请', '命运圣杯邀请',
-    # 契约 7(阵营绑定 = 获赠该阵营角色,ADR-0151 补)
+    # 契约 7(阵营绑定 = 获赠该阵营角色,补)
     '星核猎手契约', '战技点契约', '公司契约', '持续伤害契约', '量子同频契约', '欢愉契约',
     '命运圣杯契约',
 )
@@ -627,7 +627,7 @@ _MANUAL_EXTRAS: list[InvestmentStrategy] = [
 ]
 
 
-# ===== 合并层:base(plaza API)× overlay → 注册表(ADR-0150)=====
+# ===== 合并层:base(plaza API)× overlay → 注册表=====
 def _build_strategies() -> dict[str, InvestmentStrategy]:
     """base 334 条 + 补遗 → 注册表;economy 从 overlay 挂;孤儿键报错。"""
     out: dict[str, InvestmentStrategy] = {}
@@ -713,7 +713,7 @@ def refresh_invest_active(state) -> bool:
 
     判据:任一持有投资策略的可数值化经济效果带刷新增益通道
     (免费刷新/每刷经验——淘金客/加油站/搜打撤族,与 operations.
-    buy_cards 免费刷新采证钩子同族判据)。消费面(ADR-0465 预算收权):
+    buy_cards 免费刷新采证钩子同族判据)。消费面(预算收权):
     ① ``economy_cycle.schedule_upgrade``——升级通道退役(sim 注入臂实证:
     CwActionLevelUpParam 退役是刷驱姿态行为的主驱动,预算式仅是语义显式化);
     ② ``ev.levelup_ev_basis``——升级授权链同步关闭(含人口位臂,
@@ -755,7 +755,7 @@ def is_known_env(name: str) -> bool:
 
 
 def economy_effect_of(name: str) -> EconomyEffect:
-    """单策略经济效果(无/未注册 → 全 0 EconomyEffect;ADR-0131)。
+    """单策略经济效果(无/未注册 → 全 0 EconomyEffect)。
 
     入参先归一(normalize_invest_name)——session.active_strategies 里的存量 OCR 原始名
     (如 `全都要•彩`)也走此入口,归一后经济效果不再静默丢(run_20260826_004527 缺陷链)。
@@ -765,12 +765,12 @@ def economy_effect_of(name: str) -> EconomyEffect:
 
 
 def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
-    """聚合多策略经济效果(ADR-0131):加法字段求和;interest_cap_override 取**最大**(更宽上限赢,
+    """聚合多策略经济效果:加法字段求和;interest_cap_override 取**最大**(更宽上限赢,
     买断制 0 单独持有时生效 —— 与其它利息策略并持时游戏取宽值,保守建模取 max 非 min);
     win_reward_mult 取**最大**(不叠乘)。
 
     五族枚举补全(分型登记形态;原 design_economy §E6 已删档,取回口径=
-    ADR-0644;前置缺陷 R83-1/R85-3):
+    ;前置缺陷 R83-1/R85-3):
     interest_flat_per_node / gold_at_node 族 / gold_at_level 族 /
     xp_click_discount_from_level 族此前在重建枚举中缺席,经 cw_economy
     聚合消费链静默丢值。分型语义=**数值字段加法求和 + 触发配对字段守卫
@@ -843,7 +843,7 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
     return eff
 
 
-# ===== curated overlay:策略语义绑定(ADR-0151,逐卡按效果含义手建模;↺ ADR-0134 文本扫描派生)=====
+# ===== curated overlay:策略语义绑定(逐卡按效果含义手建模;↺ 文本扫描派生)=====
 # 判据:**效果引用 comp 专属机制/召唤物/星徽/赠 key 角色 → 绑定;泛用数值(全队强度/给金/装备)→ 不绑**。
 # 文本扫描的两类噪声就此清除:战术义眼(泛用回能,误绑"能量")/生命之花祝福(泛用治疗强度,误绑"治疗")。
 # 消费:decide_event comp 匹配分 + cw_comps.held_strategy_fit(持卡影响 pivot)。
@@ -957,8 +957,8 @@ if _BINDINGS_ORPHANS:
 
 
 def strategy_bindings(strategy: InvestmentStrategy) -> tuple[frozenset[str], frozenset[str]]:
-    """策略的(阵营绑定, 角色绑定)—— 查 STRATEGY_BINDINGS 语义表(ADR-0151 逐卡手建模;
-    ↺ ADR-0134 的文本扫描派生已撤 —— 扫描有两类噪声:泛用效果顺带提及阵营误绑
+    """策略的(阵营绑定, 角色绑定)—— 查 STRATEGY_BINDINGS 语义表(逐卡手建模;
+    ↺ 的文本扫描派生已撤 —— 扫描有两类噪声:泛用效果顺带提及阵营误绑
     (战术义眼"恢复能量"≠能量队卡)/不可审不可纠;语义表可 dump 可逐条纠)。
 
     用于 decide_event 的 comp 匹配分 + cw_comps.held_strategy_fit(持卡影响 pivot)。
@@ -978,7 +978,7 @@ def blood_xp_mode(session) -> tuple[str, int] | None:
 
     单一源 = 注册表 STRATEGY_ECONOMY.xp_buy_hp_cost 派生(先例 =
     prep_actions.record_hp_pay_event 的 mode 判定;[40]② 血闸与遥测写点
-    经本助手同源消费,ADR-0578)。多卡命中取 active_strategies 序首个
+    经本助手同源消费)。多卡命中取 active_strategies 序首个
     (现版本游戏仅『奋斗协议』单卡在册;新血本位卡落地零改动)。
     入参先经 get_strategy 归一(session 存量 OCR 原始名不静默 miss)。
     """
@@ -992,12 +992,12 @@ def blood_xp_mode(session) -> tuple[str, int] | None:
             return name, int(s.economy.xp_buy_hp_cost)
     return None
 
-# ===== ADR-0143 选卡价值基准分(全量评估表派生)=====
+# ===== 选卡价值基准分(全量评估表派生)=====
 # 评估口径:value_class 七分类 + quantizable 三档 + pick_priority 0-100(读 effect 原文逐条判定;
 # 无上下文基准分,comp 匹配/HP 分档在 decide_event 消费侧调)。注册表 = plaza base 335,
-# 键经 canon 归一对齐(ADR-0150)。
-# **知识判据定序器声明(ADR-0524,16 号稿 §1.1)**:本表分值来自玩法研究/comp 知识
-# (ADR-0143 评估口径),非数学判据——形态 = 定序分:仅在本表(335 条策略)内选项间
+# 键经 canon 归一对齐。
+# **知识判据定序器声明(16 号稿 §1.1)**:本表分值来自玩法研究/comp 知识
+# (评估口径),非数学判据——形态 = 定序分:仅在本表(335 条策略)内选项间
 # 排大小有效;禁作为基数与其它分值族(comp-hit/augment/planner 等)做加减语义扩展。
 # 跨族交互仅保留 decide_event 的 max() 覆盖结构,禁新增「叠加进其它面判据」的消费点。
 # **层级归属声明(用户裁定:保留 kernel)**:本表与下文 ENV_PICK_VALUE/ENV_FACTION_MATCH_FLOOR
@@ -1335,7 +1335,7 @@ for _n, _v in PICK_VALUE.items():
 
 
 def resolve_strategy_canonical(name: str) -> str | None:
-    """候选名 → 投资策略注册表规范名(归一 + LCS 兜底;ADR-0578)。
+    """候选名 → 投资策略注册表规范名(归一 + LCS 兜底)。
 
     解析逻辑与 pick_value_of 原 LCS 路径逐字同源(阈值 0.6 + |Δlen|≤3,
     评审建议6:防未来新增短名/长名与现有卡高 LCS 借分;env 名的跨表污染
@@ -1355,7 +1355,7 @@ def resolve_strategy_canonical(name: str) -> str | None:
 
 
 def pick_value_of(name: str) -> int | None:
-    """选卡价值基准分(ADR-0143)。精确名优先;OCR 形变走 LCS 兜底
+    """选卡价值基准分。精确名优先;OCR 形变走 LCS 兜底
     (解析单一源 = ``resolve_strategy_canonical``);未评估(codex 新条目/
     完全未知)→ None(回落品质先验)。"""
     canonical = resolve_strategy_canonical(name)
@@ -1365,12 +1365,12 @@ def pick_value_of(name: str) -> int | None:
     return v if v > 0 else None
 
 
-# ===== ADR-0144 环境选卡价值基准分(83 条全量评估表派生)=====
-# 环境与策略结构倒挂(评估实证,ADR-0144):synergy 主导 47/83(阵营定向);无品质分级(全 '-')。
-# 经济类计数无评估口径持久出处(ADR-0620 §3),分类表口径见 ENV_CATEGORY(经济 15/83),两口径禁互替。
+# ===== 环境选卡价值基准分(83 条全量评估表派生)=====
+# 环境与策略结构倒挂(评估实证):synergy 主导 47/83(阵营定向);无品质分级(全 '-')。
+# 经济类计数无评估口径持久出处,分类表口径见 ENV_CATEGORY(经济 15/83),两口径禁互替。
 # 量化断层:yes-direct 仅 1 条(蓝海)—— 环境效果全是整局规则(费率覆写/分期/重复触发),EconomyEffect
-# 现有字段结构性装不下(EnvEconomyEffect 扩字段待后续);接线防一次性错装点名 6 条见 ADR-0144 决策 3。
-# **知识判据定序器声明(ADR-0524,16 号稿 §1.2)**:同 PICK_VALUE——分值仅在本表
+# 现有字段结构性装不下(EnvEconomyEffect 扩字段待后续);接线防一次性错装点名 6 条。
+# **知识判据定序器声明(16 号稿 §1.2)**:同 PICK_VALUE——分值仅在本表
 # (83 条环境)内选项间定序有效,禁作为基数与其它分值族加减;跨族仅 max() 覆盖。
 # 经济效果建模缺口(EnvEconomyEffect 扩字段)是升级为台账价值判据的真实卡点,
 # 随立项挂账归事件面命题批(08 E1/E2)。
@@ -1465,7 +1465,7 @@ if _ENV_PICK_ORPHANS:
 for _n, _v in ENV_PICK_VALUE.items():
     INVESTMENT_ENVS[_n] = replace(INVESTMENT_ENVS[_n], pick_value=_v)
 
-# 阵营定向类 comp 匹配定序门(ADR-0524 定形,16 号稿 §1.3):三档值 = category 间
+# 阵营定向类 comp 匹配定序门(定形,16 号稿 §1.3):三档值 = category 间
 # 定序档位(邀请 70 < 契约 72 < 概念股 78,评估实证序),非条件白名单的基数下限。
 # 承重语义 = 「faction ∩ target_comp.factions ⇒ 提到本 category 档位,压过全体 env
 # 裸分(上界 72)」;禁读作基数参与跨族加减。
@@ -1477,7 +1477,7 @@ ENV_FACTION_MATCH_FLOOR: dict[str, float] = {'概念股': 78.0, '邀请': 70.0, 
 # ===== 环境经济通道注册表(2026-09-12 invest-env 迭代,design.md §2.2.2;白名单制)=====
 # A 类精确四条 + B 类两条(长线利好/二手市场)+ C 类两条(经济过热/经济严重
 # 过热),design §2.2.1 通道分类全量。表外环境 economy 恒 None,禁从效果原文
-# 自动猜装(ADR-0144 决策 3 六条防错装对账 = _validate_env_economy);
+# 自动猜装(六条防错装对账 = _validate_env_economy);
 # 轮岗/人才下沉无通道可装 → 「待建模」显式在册(cw_env_economy.
 # ENV_ECONOMY_PENDING_MODELING,区别于漏登记,design §2.2.4)。
 # B/C 通道的估算参数(概率/期望/增益)在 cw_env_economy.ENV_ECONOMY_ESTIMATES,
@@ -1515,7 +1515,7 @@ def _validate_env_economy() -> None:
     """ENV_ECONOMY 构建校验(import 即炸):
 
     ① 孤儿键:键必须在 INVESTMENT_ENVS(沿 ENV_PICK_VALUE 先例,防版本更新
-    改名/移除后静默失联);② **ADR-0144 决策 3 六条防一次性错装逐条对账**——
+    改名/移除后静默失联);② **六条防一次性错装逐条对账**——
     点名六条(增发货币/成功经验/二手市场/长线利好/策略大师/劳务派遣合同)的
     效果全是分期/条件/触发形态,禁装成 gold_instant 单通道(一次性错装);
     劳务派遣合同(出售/合成触发金)现版本无对应通道字段,登记即错装 → 直接
@@ -1529,11 +1529,11 @@ def _validate_env_economy() -> None:
     for _n, _eff in ENV_ECONOMY.items():
         if _n in _anti_instant and _eff.gold_instant != 0:
             raise ValueError(
-                f"ENV_ECONOMY 防错装(ADR-0144 决策 3):{_n!r} 效果为分期/条件形态,"
+                f"ENV_ECONOMY 防错装:{_n!r} 效果为分期/条件形态,"
                 f"禁装 gold_instant={_eff.gold_instant}(一次性错装)")
     if '劳务派遣合同' in ENV_ECONOMY:
         raise ValueError(
-            "ENV_ECONOMY 防错装(ADR-0144 决策 3):劳务派遣合同(出售/合成触发金)"
+            "ENV_ECONOMY 防错装:劳务派遣合同(出售/合成触发金)"
             "无对应通道字段,禁以现有字段近似装表(专属字段建模后再收)")
     for _n, _eff in ENV_ECONOMY.items():
         if INVESTMENT_ENVS[_n].economy is not _eff:
@@ -1548,7 +1548,7 @@ _validate_env_economy()
 # ===== 环境送卡发放注册表(2026-09-12 invest-env 迭代;details/env-value-models.md §2.1)=====
 # 送卡型环境(契约 ×7 + 特邀专家 ×4)的具名发放登记,白名单制(表外环境一律无条目,
 # 禁从效果原文自动猜装,ENV_ECONOMY 同款纪律)。档位机器 = cw_comps.gift_hit_tier
-# (消费契约见其 docstring);档位是定序实现常数非金流期望(ADR-0524 定序/基数分账),
+# (消费契约见其 docstring);档位是定序实现常数非金流期望(定序/基数分账),
 # 不经经济入口,消费位 = cw_events env 分支独立 max() 支(3.5 接线)。
 # 逐条语义盘点与分档落点表 = details/env-value-models.md §2.1.1/§2.1.2;锁 = 测试仓
 # test_cw_env_gift.py(G1 分档表/G2 失格门构造/G8 互斥断言半边)。
@@ -1601,7 +1601,7 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     '特邀专家:桑博': GiftGrant(chars_immediate=('桑博',), advisor=True),
 }
 
-# 送卡档位 floor 常数(定序实现常数;ENV_FACTION_MATCH_FLOOR 同族先例,ADR-0524):
+# 送卡档位 floor 常数(定序实现常数;ENV_FACTION_MATCH_FLOOR 同族先例):
 # 值只承载档间定序与对既有域带的位次,禁读基数参与跨族加减。锚点推导(顺序即设计
 # 内容,值是实现载体,details/env-value-models.md §2.1.2 表):
 GIFT_FLOOR_CORE: int = 66           # > 58(契约裸分上界,战技点契约)∧ < 70(最低阵营
@@ -1656,7 +1656,7 @@ _validate_env_gifts()
 # + 序一致性检验,详设 §2.2.2)经数据批判定未过,维持 fail-closed(判定依据
 # = invest-env 迭代 layer-e-promotion-batch 详设,git 历史可溯);层 Q
 # (定序残域,池内挑卡
-# 与功能价值)= 环境裸分维持(ENV_PICK_VALUE 七条零改动,ADR-0144 知识评估
+# 与功能价值)= 环境裸分维持(ENV_PICK_VALUE 七条零改动,知识评估
 # 已对两半作过知识性净评),两层从不相加——max() 结构天然承载
 # 「层 E 有值时以域带参与、无值时裸分兜底」(总纲 design.md §2.3)。
 # 数量通道(联席额外三选一/银金彩刷新 +2)与 A 类策略大师同口径:策略域价值

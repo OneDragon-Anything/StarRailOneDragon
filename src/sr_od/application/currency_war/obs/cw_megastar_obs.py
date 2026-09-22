@@ -290,7 +290,7 @@ def _megastar_match_domain(gs: GameState | None) -> list[str]:
                           ('back', gs.back_row.value)):
         for unit in (row or []):
             if unit is None:
-                continue   # ADR-0392 槽位表空槽
+                continue   # 槽位表空槽
             equips = getattr(unit, 'equips', None) or []
             if not any(_MEGASTAR_FACTION in equip_bond_grants(eq)
                        for eq in equips):

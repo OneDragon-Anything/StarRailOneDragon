@@ -35,7 +35,7 @@ def recipe_tier(board: dict[str, int]) -> int:
     return sum(v for k, v in board.items() if k in RECIPE_FACTIONS)
 
 
-# ===== 板面体系集中度度量(ADR-0333;新 sim 指标先建后用) =====
+# ===== 板面体系集中度度量(新 sim 指标先建后用) =====
 # 语义单一源 = user_playstyle [20](过渡是配方不是散买):过渡配方=体系内
 # 加法(DOT2→仙舟3→列车2 混挂→列车4),每步都是配方件不是任意正分件。
 # 本组函数是 sim 过程指标的纯函数原语(输入 board dict,无状态,可单帧锁),
@@ -86,7 +86,7 @@ def recipe_char_names() -> frozenset[str]:
 
     判据口径:任一 faction 命中即入集(含 flows 命中但 factions 首位
     在外的边界名)——与供给链分析(同名集中度约束的数据依据,详见
-    ADR-0437)的 16 名口径一致:1 费×5、2 费×1、3 费×4、4 费×4、
+    )的 16 名口径一致:1 费×5、2 费×1、3 费×4、4 费×4、
     5 费×2。消费方=decision_v2.filters 的同名牌集中度判据。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS

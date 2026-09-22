@@ -1,7 +1,7 @@
 
 """货币战争 投资策略 3 选 1 op(两 node 直继承 SrOperation)。
 
-观察 node = 入口锚复探窗(ADR-0529 有界自愈:复探窗内自愈、超窗
+观察 node = 入口锚复探窗(有界自愈:复探窗内自愈、超窗
 round_retry 消耗观察 node 预算)→ **一次读全**(3 张卡名 + 逐卡刷新
 剩余次数,零稳定帧等待——用户裁定 2026-09-21「不要 1s 稳定帧」;
 读缺自愈 = 复探窗/外循环重派)
@@ -17,7 +17,7 @@ round_fail 显式失败交外循环重派,fallback 盲发路径废除——裁�
 增补 2 即时上报契约)。
 
 逐卡刷新 = 终结动作(用户裁定 2026-09-14,照投资环境屏同款形态):
-``decide_event`` 帧级触发(零阈值结构判据,推导见 ADR-0600 §3.2.2 +
+``decide_event`` 帧级触发(零阈值结构判据,推导见
 math_proofs P81)→ 返回 ``refresh_slots`` 非空 ∧ 逐槽余量闸(obs 携带
 + 容器 ``strategy_refresh_left`` 双闸,剩余 ≤0 = 尽)→ 文本锚定点刷新
 圆钮一次 → 固定等待(机械时序,非判效)→ 本访问即终结交回(外循环重进
@@ -73,7 +73,7 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 def _guard_classify(name: str, config) -> tuple[bool, bool, bool, bool]:
-    """刷新链逐步守卫的单名分类(ADR-0600 §3.3;D*-free,纯函数可单测)。
+    """刷新链逐步守卫的单名分类(D*-free,纯函数可单测)。
 
     返回 ``(exact, blood, forbidden, top)``:
     - exact = 策略注册表归一后精确命中(轴钉死:环境名/形变名 → False = 不可
@@ -116,17 +116,17 @@ class CwScreenInvestStrategy(SrOperation):
     #: 「备战 → 金币过场动画 → overlay 淡入」过渡段(screen_flow_timing.md
     #: #11),首帧采样可 miss「标识-请选择投资策略」。复探窗语义 = 首探
     #: miss → 短窗后新截图复探,窗口内命中即继续;超窗仍 miss 才 round_retry
-    #: (防无限等真非目标屏)。决策记录 = ADR-0529。执行层时序常量,非策略数值。
+    #: (防无限等真非目标屏)。执行层时序常量,非策略数值。
     ENTRY_REPROBE_TIMES: ClassVar[int] = 4
     ENTRY_REPROBE_WAIT_S: ClassVar[float] = 0.8
-    # 逐卡刷新圆钮 = 「刷新次数N」文本中心 + 固定偏移(ADR-0600 §3.4 文本锚定;
+    # 逐卡刷新圆钮 = 「刷新次数N」文本中心 + 固定偏移(文本锚定;
     # 单帧证据不足判文本漂移形态,固定 area 不可行——遭遇屏 _REFRESH_BTN_DX
     # 先例)。偏移实测收口(V7,归档帧 sr-od-test/screens/货币战争-投资策略/
     # default.webp CV 环亮像素质心):钮心 x≈{388,887,1386}、计数文本中心
     # x≈{477,975,1474}(y 同带 ≈855)→ dx ≈ −88。偏移错 → 刷新未命中,
     # 重读=原卡名集,重决策结果天然等价(能力退化非事故,复测即修)。
     _REFRESH_BTN_DX: ClassVar[int] = -88
-    # 刷新后等待(执行层时序常量,非策略数值,沿 ADR-0529 先例;screen_flow_timing
+    # 刷新后等待(执行层时序常量,非策略数值,沿 先例;screen_flow_timing
     # #13:刷新动画 ~1s,旧实现 1.5s 覆盖)。
     REFRESH_ANIM_WAIT_S: ClassVar[float] = 1.5
 
@@ -142,7 +142,7 @@ class CwScreenInvestStrategy(SrOperation):
         ocr_map = self.ctx.ocr_service.get_ocr_result_map(
             image=screen, rect=None, color_range=None, crop_first=False,
         )
-        self._ocr_map = ocr_map   # ADR-0132:采集复用(同一帧 OCR,不重跑)
+        self._ocr_map = ocr_map   # :采集复用(同一帧 OCR,不重跑)
         opts: list[tuple[str, int, int]] = []
         for text, mrl in ocr_map.items():
             if mrl.max is None:
@@ -185,7 +185,7 @@ class CwScreenInvestStrategy(SrOperation):
         2026-09-21);一次读全 = 卡名 OCR + 逐卡刷新剩余计数,同一帧读取,
         计数按 x 就近配对到槽(标准化转换住观察侧)。读缺 = 对应槽 None,
         由复探窗/外循环重派自愈;超窗 = entry_ok False(调用方 round_retry
-        有界自愈,ADR-0529)。"""
+        有界自愈)。"""
         if not self._ensure_entry_screen():
             return CwScreenInvestStrategyObs(entry_ok=False, options=[])
         screen = self.screenshot()
@@ -202,7 +202,7 @@ class CwScreenInvestStrategy(SrOperation):
 
     @operation_node(name='观察', is_start_node=True, node_max_retry_times=10)
     def observe(self) -> OperationRoundResult:
-        """入口锚复探窗(ADR-0529 有界自愈)+ 一次读全 → report 落容器。
+        """入口锚复探窗(有界自愈)+ 一次读全 → report 落容器。
 
         超窗走 round_retry 而非 round_fail(二次治本,2026-09-06
         04:16:38 实证复探窗 3.2s 仍不够覆盖个别过渡段):retry 消耗
@@ -246,7 +246,7 @@ class CwScreenInvestStrategy(SrOperation):
         if not names:
             # 空候选 = OCR 读缺 = bug 面:显式失败交外循环重观察重派
             #(原 fallback(no-ocr) 盲点屏中路径废除——用户裁定 2026-09-21
-            #「没有选到就是代码 bug,不做无畏补丁」;ADR-0529 复探窗已
+            #「没有选到就是代码 bug,不做无畏补丁」;复探窗已
             # 自愈过渡帧,此态 = 真读缺)。
             return self.round_fail('投资策略候选 OCR 读缺(零盲发,显式失败)')
         match = self.ctx.cw_match
@@ -266,7 +266,7 @@ class CwScreenInvestStrategy(SrOperation):
             refresh_slots = act.slots
 
         # ===== 逐卡刷新 = 终结动作(用户裁定 2026-09-14:点钮后本访问即
-        # 终结交回,外循环重进后重观察重决策;闸门语义 = ADR-0600 §3.3
+        # 终结交回,外循环重进后重观察重决策;闸门语义:
         # 逐卡预算;闸输入 = obs 携带 + 容器剩余口径,决策环零识别)=====
         if refresh_slots:
             # 闸 2 读源 = 容器逐卡剩余(观察写端;键 = 规范卡名;≤0 = 尽;
@@ -288,7 +288,7 @@ class CwScreenInvestStrategy(SrOperation):
                 _left = _left_map.get(normalize_invest_name(names[_i]))
                 if _left is not None and _left <= 0:
                     continue
-                # 闸 3:F2 唯一 L1 槽守卫(按当前名集现算,ADR-0600 §5)。
+                # 闸 3:F2 唯一 L1 槽守卫(按当前名集现算)。
                 _l1_now = [j for j, (_ex_flag, _b, _f, _t) in
                            enumerate(_guard_classify(n, config) for n in names)
                            if _ex_flag and not _b and not _f]

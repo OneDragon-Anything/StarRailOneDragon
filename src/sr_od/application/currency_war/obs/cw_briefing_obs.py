@@ -120,10 +120,10 @@ def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
 
     简报屏 3 boss 横排卡片(立绘 + 阵营标签 + 名字);读「区域-首领行」area OCR → boss 名
     (滤数字/符号/短噪声/「阵营」2 字 label)。**排列 = 位面序**(用户 2026-08-28 裁决:
-    ADR-0397 的「排列≠位面序」结论系单条日志孤证误判,予以勘误——简报读数经 LCS 清洗后
+    的「排列≠位面序」结论系单条日志孤证误判,予以勘误——简报读数经 LCS 清洗后
     按序写 ``session.briefing_bosses`` 作 ``plane_bosses`` 真值,消费链 boss_fit;勘误详见
-    ADR-0397 文内勘误节)。``CwScreenPlaneIntel`` 位面详情实采保留为**接管场景重采**通道
-    (对局中内存丢失时补采)+ 对账真值源(ADR-0397 勘误节)。
+    文内勘误节)。``CwScreenPlaneIntel`` 位面详情实采保留为**接管场景重采**通道
+    (对局中内存丢失时补采)+ 对账真值源(勘误节)。
 
     读不到 / area 缺 → []。
 
@@ -270,7 +270,7 @@ def _is_garbage_affix(name: str, effect: str) -> bool:
 def write_affix_effects(updates: dict[str, str]) -> bool:
     """把 ``updates`` 的**合格**词缀效果 merge 进 ``affix_effects_data.py`` 注册表。
 
-    写入策略(D-81 → ADR-0081,治 OCR 污染 ground truth;详见该 ADR):
+    写入策略(D-81 → ,治 OCR 污染 ground truth;详见该 ADR):
 
     - **garbage 守卫**:``_is_garbage_affix`` 拒(「下一步」按钮文字 / 空)→ 不写。
     - **existing 不覆盖**:词缀效果是**静态游戏数据**(不随对局变,每场只是选不同词缀,效果本身固定);

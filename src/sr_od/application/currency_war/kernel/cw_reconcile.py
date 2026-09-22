@@ -59,8 +59,8 @@ def is_merge_effect_window(screen: MatLike | None) -> bool:
 # tracked 主账 → 3★ 合成判断与 buy_expect 对账被污染(3★ 合成线整局
 # 未落地实证)。修法两层正交:
 # 1. **槽位锚定**:星级差逐槽判定,锚 = (域, 物理槽号) + 规范名同名——
-#    bench 权威槽位 = 槽位表下标+1(ADR-0605 §5.2 信息位为派生);
-#    deployed = 表下标经 deployed_row_slot 换 (排, 排内槽号)(ADR-0392)。
+#    bench 权威槽位 = 槽位表下标+1(信息位为派生);
+#    deployed = 表下标经 deployed_row_slot 换 (排, 排内槽号)。
 #    锚上身份变换(空槽落新单元/换人)= 单元更替事实,星级随身份直采。
 # 2. **两帧一致才采新**:锚上星读 ≠ tracked = 候选(保旧写账 + 抖动
 #    台账行 surface='star');连续两帧候选同值才采新(升/降同门,银狼
@@ -68,7 +68,7 @@ def is_merge_effect_window(screen: MatLike | None) -> bool:
 #    读侧未出现(部分缺读)或整帧双空读(守卫早退)即清除其候选——
 #    缺读 = 证据中断,两帧重计;候选跨缺读帧存活会把门击穿成「隔缺读
 #    帧两读一致即采新」的同值单帧假确认。合成特效窗内读数物理不可信:
-#    保旧且不登记候选、不确认(冻结非清零,帧态维 ADR-0420,与时间维
+#    保旧且不登记候选、不确认(冻结非清零,帧态维 ,与时间维
 #    两帧门正交)。
 # 候选态宿主 = 按局身份 session 的旁表(WeakKeyDictionary 主路,同
 # game_state_of 模式;新局新 session = 天然清零,无跨局串染面。GameState
@@ -119,8 +119,8 @@ def _tracked_identity(t) -> tuple[str, int, int] | None:
 def _bench_read_entries(view: BenchView | None) -> list[tuple]:
     """观察视图 → 门/签名用的读条目 ``[(anchor, char_id, star, unit|None)]``。
 
-    [索引定义] anchor = ('bench', 物理槽号 1 基)(星级门锚 = 物理槽,ADR-0605
-    §5.2 权威槽位 = 表下标、信息位为派生,下标+1 即槽号);占用槽按视图序
+    [索引定义] anchor = ('bench', 物理槽号 1 基)(星级门锚 = 物理槽,
+    权威槽位 = 表下标、信息位为派生,下标+1 即槽号);占用槽按视图序
     (下标升序)排列;占位件槽(kind ≠ unit/empty)char_id=''
     (门内走「无身份 → 清候选」分支)。"""
     if view is None:
@@ -268,7 +268,7 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
 
 
 def _old_equips_pools(old_list) -> dict[str, list[list[str]]]:
-    """旧 tracked 表的装备池(char_id → 按表序的 equips 队列;ADR-0387)。
+    """旧 tracked 表的装备池(char_id → 按表序的 equips 队列)。
 
     对账覆盖装备的历史病灶:对账写回若整批替换 tracked 主账(新读 equips=[]
     默认),动作链写入的装备在下次对账即被冲(希儿装备闪烁实证)。修法 =
@@ -287,7 +287,7 @@ def _old_equips_pools(old_list) -> dict[str, list[list[str]]]:
 
 
 def _continue_equips_bench(old_list, view: BenchView | None) -> BenchView | None:
-    """对账合并语义(ADR-0387)·bench 侧:旧 tracked equips 按 char_id 续接
+    """对账合并语义·bench 侧:旧 tracked equips 按 char_id 续接
     到新读视图的 unit 槽(frozen 形状 → replace 新构造)。
 
     新读自带的非空 equips(画面真值)优先保留不覆盖;旧有新无(角色离场)
@@ -309,7 +309,7 @@ def _continue_equips_bench(old_list, view: BenchView | None) -> BenchView | None
 
 
 def _continue_equips_rows(old_list, rows):
-    """对账合并语义(ADR-0387)·deployed 侧:旧 tracked equips 续接到新读
+    """对账合并语义·deployed 侧:旧 tracked equips 续接到新读
     行域(frozen replace)。续接结果只进 tracked 写回(容器行域观察写端
     恒空表,不造假值 —— 空读守卫边界申报)。"""
     if rows is None:
@@ -410,9 +410,9 @@ def reconcile_tracking(session, bench: BenchView | None,
     drifted = (old_b != new_b) or (old_d != new_d)
     if bench is not None:
         # P6 直产写回 = 视图槽表直落:占用槽(含占位件 kind)原样入 tracked,
-        # 空槽 → None 洞(ADR-0316 保洞)。占位件 kind 随读帧细分直达
+        # 空槽 → None 洞(保洞)。占位件 kind 随读帧细分直达
         # (P4 遗留「缺观察帧降级 supply_box」边界随直产消除)。槽号 =
-        # 下标+1 结构性健康(直产读链槽号来自建档 rect 枚举,ADR-0646
+        # 下标+1 结构性健康(直产读链槽号来自建档 rect 枚举,
         # 「无守卫槽号」面随形状消失,旧写回槽号健康门拒绝分支失去可达
         # 输入,随直产退役)。入口防御 pad 到定长(空视图 = 空读载体,
         # 定长输出契约保持)。
@@ -474,7 +474,7 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
 
     旧三层(保旧不写沿用/下行守卫/复现确认/帧龄门)随 session 防御锚
     (last_hp_real/last_hp_real_node/hp_suspect)退役删除——「上一真值」
-    职责由 gs.hp 结算覆盖写端 + carried 语义承载(该三层 = ADR-0282 hp
+    职责由 gs.hp 结算覆盖写端 + carried 语义承载(该三层 hp
     三层设计「读不到保旧沿用 last_hp_real」;ADR 档案目录已删,原文 =
     git 历史 docs/develop/currency_war/decisions/0282-hp-three-layers.md。
     定谳:结算观测 hp_after 与沿用锚的先后语义随退役消解——结算覆盖是
@@ -482,7 +482,7 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
     失读窗不再有锚补,实机识别失准走识别优化批)。
 
     保留两支:
-    - 开局初值表先验(ADR-0559):读不到 → 实证档先验(readable=False,
+    - 开局初值表先验:读不到 → 实证档先验(readable=False,
       真值帧到达即被覆盖);先验输入 briefing_*/enemy_difficulty 待 T-3
       重复账退役换源 gs 正本;
     - 真值帧直传(真值帧是物理读数,判读侧消费证据)。
@@ -494,11 +494,11 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
 
     Returns:
         (决策用 hp, 是否真读):真值帧=(新读, True);读不到=(先验或
-        None, False)——诚实未知(ADR-0491,不再 100 兜底)。
+        None, False)——诚实未知(不再 100 兜底)。
     """
     if new_hp is None:
-        # 开局全无真值 → 遥测实证的初值表先验(ADR-0559;实证档 A8/108:
-        # 基础 82、「开局不利」62;无实证档 → None 诚实未知,ADR-0491)。
+        # 开局全无真值 → 遥测实证的初值表先验(实证档 A8/108:
+        # 基础 82、「开局不利」62;无实证档 → None 诚实未知)。
         # 先验非真读,readable=False;真值帧到达即被观察覆盖。
         # (终态契约 §B:三先验输入全读容器——briefing 写端直入
         #  gs.enemy_affixes/selected_difficulty/enemy_difficulty。)
@@ -511,9 +511,9 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
         if prior is not None:
             log.info(f'[cw][{source}] hp 开局无真值 → 初值表先验 {prior}'
                      f'(词缀={sorted(set(game_state_of(session).enemy_affixes.value or []))};'
-                     f'ADR-0559,readable=False,真值帧到达即被覆盖)')
+                     f',readable=False,真值帧到达即被覆盖)')
             return prior, False
-        return None, False   # 无实证档(其他难度/未读到难度)→ None 诚实未知(ADR-0491)
+        return None, False   # 无实证档(其他难度/未读到难度)→ None 诚实未知
     return new_hp, True
 
 

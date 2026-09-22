@@ -283,5 +283,5 @@ def cluster_by_carry() -> dict[str, PlazaCarryCluster]:
 
 
 def early_transition_pool() -> dict[str, int]:
-    """Early(位面1)阶段单位频次 —— 全局过渡池先验(ADR-0149 消费)。"""
+    """Early(位面1)阶段单位频次 —— 全局过渡池先验(消费)。"""
     return dict(PLAZA_GLOBAL["early_units"])

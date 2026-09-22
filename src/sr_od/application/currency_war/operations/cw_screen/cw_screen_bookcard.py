@@ -186,7 +186,7 @@ class CwScreenBookcard(SrOperation):
                 ChannelSig,
                 game_state_of,
             )
-            # 渠道②签名(②类属 = op 类名;R5 W1 起必填,ADR-0634)
+            # 渠道②签名(②类属 = op 类名;R5 W1 起必填)
             game_state_of(_sess).write_logic(
                 game_state_of(_sess).chosen_tome,
                 pick_name,

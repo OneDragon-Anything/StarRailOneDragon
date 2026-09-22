@@ -3,7 +3,7 @@
 **正本入口** = ``docs/develop/sr_od/application/currency_war/game_state/README.md``(总纲);
 **字段级规格正本** = ``docs/develop/sr_od/application/currency_war/game_state/fields.md``
 (本文注释所引节号体系 §1-§8 的解析归宿)。
-GameState(正名前暂名 BoardState,ADR-0630 后果节+W8 候裁7)= 当前仍为真的局内已知事实快照:单例,每局新建,
+GameState(正名前暂名 BoardState,后果节+W8 候裁7)= 当前仍为真的局内已知事实快照:单例,每局新建,
 只描述「此刻」;画面 op 与决策 op 写,策略器读(设计 §1)。历史序列归遥测,
 不经本结构。
 
@@ -23,7 +23,7 @@ benchchar-retirement P5 退役——生产写入 = **引擎直写**(sim 引擎�
    哨兵用只增不减的写点序号 :attr:`GameState.write_seq`,不用标注现值。
 2. gs_schema——域粒度版本映射(缺域键 = 该域未建模,§3.7.1)。
 
-**两态直写**(ADR-0651,2026-09-11 用户裁定):字段来源只保留 observation
+**两态直写**(2026-09-11 用户裁定):字段来源只保留 observation
 与 logic 两种——逻辑推算值经 :meth:`GameState.write_logic` 直接写字段
 (source=logic,策略器立即可读),expect/confirm 两步机制(预期条目表/
 PendingEntry/confirm 转正/discard_expected)全套废除;逻辑态错误 =
@@ -56,7 +56,7 @@ PendingEntry/confirm 转正/discard_expected)全套废除;逻辑态错误 =
 
 **统一 state 遥测升级(R5 W1 常开化后形态)**:写入 API 全部带**必填**渠道签名
 (:class:`ChannelSig`,渠道族封闭集 obs/logic_action/logic_hook + 字段级
-质量元数据;R5 迁移规划 W1/ADR-0634,集内无空 actor 行);:attr:`GameState.write_seq`
+质量元数据;R5 迁移规划 W1,集内无空 actor 行);:attr:`GameState.write_seq`
 升格为**版本 id**(每次写入单调分配,不重不漏,:meth:`GameState.current_version`
 读口);每次写入落一行**自足状态流水**(行 = 改了什么 + 渠道签名 + 版本 id +
 写入后完整 state 快照,行行自足查询直接读——无快照锚/无对账自检/无前溯推导,
@@ -66,7 +66,7 @@ PendingEntry/confirm 转正/discard_expected)全套废除;逻辑态错误 =
 只钉 :func:`game_state_of` 建立路径,GameState 构造器零装配逻辑;无开关;
 行落盘另以 sink 在场与 run_id 在场为准,sink 缺席 = 行不落而写路径照常——
 记录被动,不改写路径语义)。新增**逻辑态
-派生域与画面上下文域**(ADR-0630 决策 1+修订节 2;字段面 as-built =
+派生域与画面上下文域**(字段面 as-built =
 ``docs/develop/sr_od/application/currency_war/game_state/node-domain.md`` §2):``prev_screen``/``current_screen``
 (①观察汇聚写)+ ``top_bar_raw``(顶栏原文,**观察层**,observe() 只落原始
 读数)+ ``node_ord``(**两态序键**,迭代 2026-09-20-node-advance-action-report:
@@ -402,7 +402,7 @@ _T = TypeVar('_T')
 @dataclass(frozen=True)
 class Field(Generic[_T]):
     """一个字段:值 + 来源 + 可选源注记。只存正式值——来源两态 + 随机扩展
-    (observation/logic,ADR-0651;logic_rand = 逻辑随机态,carried/prior =
+    (observation/logic;logic_rand = 逻辑随机态,carried/prior =
     obs 族来源子模,见 §2.1)。
 
     - observation = 亲眼看到的(识别结果/sim 真值合成,evidence 恒带标记);
@@ -437,7 +437,7 @@ class Unit:
 
     **阵营不存**(§3.2.3/§8.6-7):阵营是角色静态属性,由 char_id 查角色
     注册表(cw_chars)派生;唯一例外开拓者形态随排(前台=记忆/后台=欢愉),
-    由 char_id+当前排推导(ADR-0158)。禁在 Unit 另存阵营(防注册表双源)。
+    由 char_id+当前排推导。禁在 Unit 另存阵营(防注册表双源)。
     """
 
     char_id: str
@@ -445,7 +445,7 @@ class Unit:
     equips: list[str] = field(default_factory=list)
     # [索引定义] slot = 屏幕槽位号,行内 1 基(前排 1..4/后排 X 槽 1..N/
     # 备战栏 1..9,坐标 = screen_info 区域);与现役 deployed 容器 0 基下标
-    # (ADR-0392:0-3 前台/4-9 后台)的换算归迁移映射层(批次二)。
+    # (:0-3 前台/4-9 后台)的换算归迁移映射层(批次二)。
     # 取值时机 = 观察期快照。
     slot: int = 0
 
@@ -474,7 +474,7 @@ class BenchView:
     改写,默认恒 9;唯一临时改写 = 节省工位时限效果,§3.2.5)。
 
     槽位表按物理槽位 1..capacity 定位:slots[i] = 物理槽 i+1(0 基列表下标
-    ↔ 1 基屏幕槽位,与现役 ``cw_state.bench`` 下标语义同构,ADR-0316)。
+    ↔ 1 基屏幕槽位,与现役 ``cw_state.bench`` 下标语义同构)。
     席空数/席满判定 = 派生计算(:func:`bench_free_slots`/:func:`bench_is_full`),
     不入 schema(§8.8 字段准入③)。
     """
@@ -521,7 +521,7 @@ class ShopCard:
     """商店一张牌(§3.3.1)。
 
     升星预览不入存储——派生计算函数(bench/rows+注册表合成规则自算,
-    merge_mechanics §2.7 口径);✦ 读取器读数仅核对信号(ADR-0416 降级)。
+    merge_mechanics §2.7 口径);✦ 读取器读数仅核对信号(降级)。
     牌位点击坐标不入存储——坐标单一真相源 = screen_info「商店牌-N」区域
     (cw_obs_core.shop_card_click_points);入存储的是**槽号**(观察事实,
     见 slot 字段),执行侧按槽号从 screen_info 现取坐标。
@@ -543,7 +543,7 @@ class ShopCard:
     # 为什么必须入存储:payload 是紧凑列表(空槽跳过),而游戏买入后不压缩
     # 剩余卡位(牌行打洞)——紧凑下标 ≠ 物理槽位,执行点击按下标取固定槽
     # 坐标会落空槽框(实机局实证:「买牌点击不注册」根因;布局双源同族 =
-    # ADR-0646 bench 布局错位的商店牌行版)。
+    # bench 布局错位的商店牌行版)。
     slot: int = 0
 
 
@@ -555,7 +555,7 @@ class ShopSlot:
     unknown=应为内容但识别失败(必携缺陷台账,决策一律跳过)。
     物理槽位 = 数组下标 + 1(1 基,= screen_info「商店牌-N」序号);
     本类型无 slot 字段——定长数组下标即槽位,紧凑下标≠物理槽位的
-    历史病灶类(ADR-0646 同族)在本模型下结构性消失。
+    历史病灶类(同族)在本模型下结构性消失。
     与 BenchSlot(kind + unit|None)同构。
     """
 
@@ -653,7 +653,7 @@ class Settlement:
     xp: int | None = None
 
 
-# ============================================================ 局终域(§3.6.1 runs 收编载体;持久裁定锚 = ADR-0630 修订节)
+# ============================================================ 局终域(§3.6.1 runs 收编载体)
 
 #: 终局类型词表封闭集(retirement.md §2 runs 行:局终收口一行;收编映射 =
 #: 现役 runs result 词表 win/loss/stopped + 非完结/无收口行 = abnormal)。
@@ -774,7 +774,7 @@ class MatchFinal:
     duration_s: float | None = None
     backfilled: bool = False
     cw4_counters: dict[str, int] | None = None
-    # 策略行为观测计数局终聚合(R5 W4 键收编载体,ADR-0650;键全集登记
+    # 策略行为观测计数局终聚合(R5 W4 键收编载体;键全集登记
     # 底稿 = W4 逐键审计 256 字面+16 闭族+9 开放族,全部=策略行为键,零
     # 效果域键;键封闭性防线原由测试仓封闭锁承载,该锁随 09-13 有损清理
     # 删除且裁定(源码扫描形态)不恢复,防漂移归 review 与代码
@@ -894,7 +894,7 @@ def _emit_defect(*, field_name: str, expected: Any, actual: Any,
                  logic_evidence: str | None = None,
                  kind: str = 'observe_vs_logic_mismatch') -> None:
     """缺陷台账留证(§2.3 观察赢):观察覆盖 logic 值失配 = 推算 bug,
-    留证后修推算代码(ADR-0651;不做运行时挂账对账)。best-effort:
+    留证后修推算代码(不做运行时挂账对账)。best-effort:
     外送钩子异常不阻塞观察主链。抑制登记面见
     :data:`_MISMATCH_SUPPRESS_PREFIXES`(路由层
     :func:`_route_logic_mismatch` 与本发射口双重消费——吸收族
@@ -944,7 +944,7 @@ def _emit_defect(*, field_name: str, expected: Any, actual: Any,
 # ============================================================ 状态流水 sink(R1 §3.2.3)
 
 #: 状态流水外送钩子(进程内单槽;行落盘的在场门——journal 本体无条件常开
-#:(R5 W1/ADR-0634:无开关,生产装配 = currency_war_app 装配段 + 局容器
+#:(R5 W1/:无开关,生产装配 = currency_war_app 装配段 + 局容器
 #: 单例建立点兜底,见 :func:`game_state_of`),本槽
 #: 缺省 None 只表示「无落盘实例」(单元测试/工具环境),此时**写路径照常
 #:(Field 写入与版本分配不受影响),仅行不外送**——记录被动,不分支行为。
@@ -1160,7 +1160,7 @@ def note_action_receipt(gs: GameState, *, op: str, applied: bool,
       执行动作的 op 类名)+ group_id = ``act:<actor>@<seq>``(§3.2.1 ②
       组标识格式);sig.screen 恒 None(逻辑计算无画面),画面桶由回执
       记录 screen 字段承接(exec_events 词表);
-    - **常开化后的落盘语义**(R5 W1 影子闸折叠,ADR-0634):回执写入无条件
+    - **常开化后的落盘语义**(R5 W1 影子闸折叠):回执写入无条件
       (journal 常开,记录被动不分支);行落盘另以 sink 在场与 run_id 在场
       为准(无落盘实例/局外 = 行不落而回执域照常入账)。best-effort:异常
       不阻塞动作链(记录层故障不毒化执行)。
@@ -1188,7 +1188,7 @@ def note_action_receipt(gs: GameState, *, op: str, applied: bool,
 
 def _bridge_sig(gs: GameState) -> ChannelSig:
     """效果桥写入的渠道③签名(单一构造点;§3.2.1 ③组 id =
-    hook:<登记名>@<seq>;R5 W1 起签名必填,ADR-0634)。"""
+    hook:<登记名>@<seq>;R5 W1 起签名必填)。"""
     return ChannelSig(family='logic_hook', actor='EffectLedgerBridge',
                       mode='compute',
                       group_id=f'hook:EffectLedgerBridge@{gs.write_seq + 1}')
@@ -1415,15 +1415,15 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 
     - note = settlement 域行注记透传(行注记 = 结算事实的判读面;
       R5 W1 起承载旧 battle_done 外生行的「出节点」语义——接线点传
-      ``battle_done:<node_type>``,ADR-0634;hp/gold 等逐字段行不带注记);
+      ``battle_done:<node_type>``;hp/gold 等逐字段行不带注记);
     - 渠道签名(§3.2.1 ①类属 = 画面 op 类名):写端 = CwScreenBattleWait,
-      R5 W1 起签名必填,ADR-0634;
+      R5 W1 起签名必填;
     - **hp_after 写入序定谳**(现场证据 = 本写端 + reconcile_hp 现役形态):
       本口 = hp 的战局唯一结算真值入口,无条件观察覆盖(观察赢,仅调用方
-      置信度门)。旧 ADR-0282「读不到保旧沿用 last_hp_real」三层已随
+      置信度门)。旧 「读不到保旧沿用 last_hp_real」三层已随
       终态契约 §A 整体退役(ADR 档案目录已删,原文 = git 历史
       docs/develop/currency_war/decisions/0282-hp-three-layers.md),读侧
-      reconcile_hp 简化为「真值直传/开局先验(ADR-0559)/None 诚实未知」
+      reconcile_hp 简化为「真值直传/开局先验/None 诚实未知」
       ——不存在沿用锚遮蔽结算真值的先后序问题。唯一能与本覆盖失配的 =
       逻辑态推算写端(宝物加血,write_logic(gs.hp)),该失配按两态制
       §2.3 = 推算 bug 显影,非「保旧」。窗内消费(battle_wait killed
@@ -1574,7 +1574,7 @@ def bench_view_of_working(slots: list, capacity_view=None) -> BenchView:
     return BenchView(slots=out, capacity=cap)
 
 
-# ============================================================ 局终行写口(§3.6.1 runs 收编;ADR-0630 修订节)
+# ============================================================ 局终行写口(§3.6.1 runs 收编)
 
 #: 局终行落盘事件监听槽(复盘触发器挂点;缺省 None = 关,与缺陷/流水 sink
 #: 同构的「缺省关 + 启动点显式接通」纪律)。消费契约:接收一行事件 dict
@@ -1606,15 +1606,14 @@ def write_match_final(gs: GameState, *, final_type: str,
                       cw4_counters: dict[str, int] | None = None,
                       note: str = '') -> bool:
     """局终收口写口(局终域 **唯一写点**,渠道③ logic_hook 家族、
-    actor=MatchClose;§3.6.1 runs 收编载体,表 3-3 局终域③格;持久裁定锚
-    = ADR-0630 修订节)。
+    actor=MatchClose;§3.6.1 runs 收编载体,表 3-3 局终域③格)
 
     - **同版本原子**:终局类型 + 时点版本 id + 版本戳(code_commit/
       registry_fingerprint,模块级常量) + 终局快照 + 段级时长一次逻辑
       写入装配成单笔 :class:`MatchFinal` 载荷,经一次 ``_swap`` 落一行
       (行内全量 state = 终局快照,字段来源注记随快照行自带);
     - ``cw4_counters`` = 策略行为观测计数局终聚合(R5 W4 键收编载体,
-      ADR-0650;载体语义/None 与空 dict 分型见 :class:`MatchFinal` 字段
+      ;载体语义/None 与空 dict 分型见 :class:`MatchFinal` 字段
       注)。快照副本由调用方在收口时点现读传入,本写口不触策略容器;
     - **写前查重 = 段内幂等**(§3.6.2 终局防重读门 G12 收编,运行时控制面
       读口豁免类,载体 = 内存字段现读):本段已有终局行 → no-op 返 False;
@@ -1880,11 +1879,11 @@ class TrackedBooks:
 
     - ``bench`` = ``list[BenchSlot | None]``,定长 9:元素 BenchSlot 五分类
       (占位件 kind 三分类随形保留——本迁移根因即布尔压形的信息销毁);
-      None = 洞(卖出/上阵/合成消耗置 None 不移位,ADR-0316 保洞语义)。
+      None = 洞(卖出/上阵/合成消耗置 None 不移位,保洞语义)。
     - ``deployed`` = ``list[Unit | None]``,定长 10:**表下标 = deployed_idx
       动作坐标,恒稳**;排归属由下标派生(0-3 前排 / 4-9 后排),换算
       单一源 = ``cw_exec_state.deployed_row_slot``/``deployed_idx_of``
-      (ADR-0392 保洞语义不变,禁借迁移改索引语义)。
+      (保洞语义不变,禁借迁移改索引语义)。
 
     **执行侧簿记容器**:写端 = kernel reconcile_tracking(观察边界
     锚定写回)+ 动作随动同步(部署/卖出/溢出腿);**策略禁读**——观察
@@ -1990,7 +1989,7 @@ class PlaneNodeLedger:
     seq_source: dict[int, str] = field(default_factory=dict)
 
     #: 位面 → 位面详情底部明文「敌人难度 N」参考值。**只存参考**——生产难度
-    #: 主源 = 备战旗牌两级管线(ADR-0449),本字段供离线对拍/缺口排查。
+    #: 主源 = 备战旗牌两级管线,本字段供离线对拍/缺口排查。
     difficulty_ref: dict[int, int] = field(default_factory=dict)
 
     #: 投资环境变异窗豁免截止(time.monotonic 时刻;0.0 = 无窗)。窗内查表与
@@ -2058,7 +2057,7 @@ class GameState:
     hp: Field[int] = field(default_factory=Field)                # 写入闸 §3.2.13:非真读帧不经 observe(§8.8 假值防线;开局种子底座=实证基线值,三写端时序 种子→先验→真读)
     level_up_cost: Field[int] = field(default_factory=Field)     # 单击买经验价(§3.2.11;None=未读到禁兜底)
     # [索引定义] deploy_cap = 部署容量识别真值(= level + 财富宝钻数,可叠加)。
-    # 坐标系 = 「X/Y」指示的 Y 人数口径;取值时机 = 备战帧观察期快照(ADR-0420
+    # 坐标系 = 「X/Y」指示的 Y 人数口径;取值时机 = 备战帧观察期快照(
     # 双帧一致采信门输出,写端 = cw_observation.read_game_state spec 门
     # 'deploy_cap' 键,防抖核 = cw_observation._debounce_cap 单一源)。
     # W5 定谳入容器(W5-透传域建模方案 §2.3;推翻设计正本 §3.2.7「现场实时
@@ -2088,7 +2087,7 @@ class GameState:
     enemy_affixes: Field[list[str]] = field(default_factory=Field)   # 当前词缀名单(§3.1.3;≠投资环境;开局种子底座=[],简报/接管位面详情覆写)
     active_strategies: Field[list[str]] = field(default_factory=Field)   # 持有投资策略名单(§3.4.4;品质锚挂建模批;开局种子底座=[]未持卡)
     board: Field[dict[str, int]] = field(default_factory=Field)      # 上阵羁绊计数(§3.2.6;下档阈值=派生不存储;开局种子底座不直写,随行域空行种子派生,禁双写)
-    shop_refresh_cost: Field[int] = field(default_factory=Field)     # 刷新费,动态(§3.3.4/ADR-0622 现场 OCR;免费帧不写,None≠0;开局种子底座=刷新基价)
+    shop_refresh_cost: Field[int] = field(default_factory=Field)     # 刷新费,动态(§3.3.4/现场 OCR;免费帧不写,None≠0;开局种子底座=刷新基价)
 
     # (商店刷新计数组口径(2026-09-21 Field 化):免费刷新剩余次数升格容器
     #  字段 free_refresh_left(声明见下方 §1.4 家族块);付费/全量两计数留
@@ -2129,7 +2128,7 @@ class GameState:
     # cw_deploy_logic.record_fresh_buy 单口(渠道②动作上报,actor =
     # 'CwDeployLogic');读端 =
     # cw_deploy_logic.fresh_buys_of(换出守卫)+ fresh_buys_sell_face
-    #(L1 卖侧闩,fail-closed,ADR-0611 §3-1;写读单口不变)。
+    #(L1 卖侧闩,fail-closed;写读单口不变)。
     round_fresh_buys: Field[dict | None] = field(default_factory=Field)
 
     # —— 持久账本组(跨画面保留)——
@@ -2419,7 +2418,7 @@ class GameState:
 
         - sig = 显式渠道签名(必填;R5 W1 起 legacy 合成签名路径已随直迁
           裁定退役——影子期「缺位合成」过渡语义不复存在,行 actor 非空,
-          ADR-0634;调用方已过 :func:`_validate_sig` 渠道面校验);
+          ;调用方已过 :func:`_validate_sig` 渠道面校验);
         - note = 可选行注记(权威纠偏记录/battle_done 等结算事实语义)。
         """
         old = getattr(self, name)
@@ -2459,10 +2458,9 @@ class GameState:
           Field(行行自足,查询不分行型);
         - event 词表 = :data:`OBS_EVENT_EVENTS` 封闭集(arbitrate|miss|popup|chain_diff),
           集外显式炸错;
-        - 产生面 = 登记清单(非全量;obs_conflict 汇点收编已接——R5 W1/
-          ADR-0634);
+        - 产生面 = 登记清单(非全量;obs_conflict 汇点收编已接——R5 W1);
         - sig = 渠道①签名(观察证据属 obs 族;必填,R5 W1 起缺位合成路径
-          已退役,ADR-0634)。
+          已退役)。
         """
         _validate_sig(sig, ('obs',))
         if event not in OBS_EVENT_EVENTS:
@@ -2559,8 +2557,8 @@ class GameState:
           bug):只落 ``logic_rand_outcome`` 台账行留证(无告警无停机,
           随机模型校准遥测面;sim 证据行由 :func:`_emit_defect` 发射口
           抑制面兜底),覆盖照常 = 随机结果采新;
-        - sig = 渠道①签名(必填;R5 W1 起缺位合成路径已退役,ADR-0634);
-        - note = 可选行注记(结算事实等语义,ADR-0634 battle_done 收编)。
+        - sig = 渠道①签名(必填;R5 W1 起缺位合成路径已退役);
+        - note = 可选行注记(结算事实等语义,battle_done 收编)。
         """
         if value is None:
             raise ValueError('observe 不接受 None(§2.2:失读走 carry/'
@@ -2758,7 +2756,7 @@ class GameState:
         不占版本,§3.2.2 规则 4)。现值来源为 logic_rand(逻辑随机态:开局
         种子底座/采样值)→ 同样不沿用——随机态值不是「上次好值」,失读时
         宁保持未验证态,禁被失读腿换帧洗成可信 carried(§8.8 假值防线)。
-        sig 必填(R5 W1,ADR-0634)。"""
+        sig 必填(R5 W1)。"""
         if target.value is None or target.source == 'logic_rand':
             return
         _validate_sig(sig, ('obs',))
@@ -2796,14 +2794,14 @@ class GameState:
                     produced_by: str, evidence: str | None = None,
                     sig: ChannelSig,
                     note: str = '') -> None:
-        """逻辑直写(两态制标准写通道,ADR-0651):决策动作按游戏规则推算
+        """逻辑直写(两态制标准写通道):决策动作按游戏规则推算
         的预期效果**直接写入字段**(source=logic),策略器立即可读——
         「在观察态到来之前供决策使用」是逻辑态的全部职能。
         随机效果口径走 :meth:`write_logic_rand`(逻辑随机态,失配预期内),
         确定面仍走本口。
 
         - 历史「仅限显式申报豁免写端」的限制随 expect/confirm 两步机制
-          废除一并解除(ADR-0651):凡逻辑推算写入统一走本口,不再有
+          废除一并解除:凡逻辑推算写入统一走本口,不再有
           「记待核实预期→核对转正」的第二步;
         - 非免检通道:字段值之后仍受观察覆盖辖(§2.3 观察赢),推算与
           实读失配 = 推算代码 bug,缺陷台账留证后修推算代码——运行时
@@ -2812,7 +2810,7 @@ class GameState:
         - evidence = 可选来源注记(如刷新执行的轮键 refresh_exec@p1-r2);
         - sig = 渠道②③签名(必填;派生规则与流程 hook 系统的 ③ 写入走
           本同一口,family=logic_hook——写入口不感知触发机制,零接口预留;
-          R5 W1 起 legacy 合成已退役,ADR-0634);
+          R5 W1 起 legacy 合成已退役);
         - note = 可选行注记(权威纠偏记录等,§3.4.2)。
         """
         _validate_sig(sig, ('logic_action', 'logic_hook'))
@@ -2895,7 +2893,7 @@ class GameState:
           真值、持卡名单 [] 为假事实);恢复局新 session 的镜像字段停在
           空默认,靠本闸拒写,真值后到时字段仍未写过、可正常落;
         - sig = 渠道③签名(§3.2.4 relay 契约 family=logic_hook;必填,
-          R5 W1 起 legacy 合成已退役——ADR-0634)。
+          R5 W1 起 legacy 合成已退役——)。
         """
         if target.value is not None:
             return False
@@ -2962,7 +2960,7 @@ class GameState:
 
         - top_raw = 本帧顶栏原始文本(如「备战阶段 1-3」;观察层落点,缺读
           = None 不写禁猜);
-        - 写入无条件(journal 常开,R5 W1 影子闸折叠——ADR-0634;
+        - 写入无条件(journal 常开,R5 W1 影子闸折叠——;
           行落盘另以 sink 在场/run_id 在场为准,记录被动不分支写路径)。
         """
         if not screen_name:
@@ -3040,8 +3038,8 @@ def _derive_write(gs: GameState, target: Field, value: int | NodeKey, *,
 def effective_node_ord(gs: GameState) -> int | None:
     """生效序读口(派生计算,非存储字段;判定基准读口,非决策消费切换目标
     ——「node 逻辑态改读派生域」M4 工作项已作废:决策面现读容器 gs.node 镜像
-    合规,无切换义务,ADR-0630 修订节 2/正本消费面申报)
-    = max(node_ord 字段现值, node_hist_ord)——单字段双值结构(ADR-0630 修订
+    合规,无切换义务,/正本消费面申报)
+    = max(node_ord 字段现值, node_hist_ord)——单字段双值结构(
     节 2):字段现值 = 最近一次写入(锚定直写 observation / 推进 write_logic
     两态),hist =
     run 内已见最大值(跃迁去重键 ``(run_id, effective_ord)`` 载体);两者之
@@ -3640,7 +3638,7 @@ def back_capacity_of(gs: GameState) -> int:
 
 
 def deployed_count_of(gs: GameState) -> int:
-    """上阵占用数读口(容器原生,ADR-0392 占用数口径非 len):两行现值
+    """上阵占用数读口(容器原生,占用数口径非 len):两行现值
     单位计数(deployed_rows_of 缺行 = 空行缺省)。"""
     front, back = deployed_rows_of(gs)
     return len(front) + len(back)
@@ -3661,7 +3659,7 @@ def back_count_of(gs: GameState) -> int:
 
 def max_units_of(gs: GameState) -> int:
     """可上阵数容器版派生(波1 公共读口单一源):deploy_cap 真值(≥level
-    才采信,ADR-0286 防抖漏网兜底
+    才采信,防抖漏网兜底
     level)封顶 = 前排恒 4 + back_layout 动态真值(缺省 6 = 机制基线,
     值域 6-9;封顶域单一源 =
     :func:`back_capacity_of`)。"""
@@ -3682,7 +3680,7 @@ def scalar_projection_state(gold: int, level: int, hp: int, plane: int,
     服务「只有标量、无 session/无现成容器」的调用面。现役唯一消费 =
     ``cw_economy.get_node_goal`` 全参支。语义契约:
 
-    - **ADR-0598 结构性豁免不扩修**:投影判据链以 session=None 求值 →
+    - **结构性豁免不扩修**:投影判据链以 session=None 求值 →
       息帽 resolved 链恒 base 口径、节点日程走缺表回退先验——契约不变,
       扩修挂该调用面的 session 通道批;
     - **字段契约自辖于本 docstring**:

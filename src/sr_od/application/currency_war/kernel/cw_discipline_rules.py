@@ -2,7 +2,7 @@
 
 现役面 = 血预算停手/危机带判据族(平面末战判定/hp 可信位/ALL IN 辖域/
 P2 危机停付)+ 决策 hp 政策层读口 re-export。旧卖侧下界判据族
-(``sole_engine_sell_floor_plan`` 批量逐笔下界 ADR-0380、计数底座
+(``sole_engine_sell_floor_plan`` 批量逐笔下界 、计数底座
 ``_sell_floor_counts/_eval/_decrement``、星级加权计数
 ``star_weighted_copies``)已随 benchchar-retirement P5 帧签名清退删除
 ——全仓零调用核实(2026-09-20;其 decision_v2 消费面先期退役),
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 # 迁移波 2 起经 kernel 政策层 cw_hp_policy 单一读口:决策 hp 消费 =
 # decision_hp 门后值,可信位 = hp_decision_trusted 委托
 # hp_decision_trusted_of——kernel 决策分支禁旁路直读 gs.hp/state.hp,
-# 消费同门纪律承接 ADR-0583 §2.4)。
+# 消费同门纪律承接 )。
 
 from sr_od.application.currency_war.kernel.cw_hp_policy import (  # noqa: E402
     decision_hp,
@@ -49,7 +49,7 @@ def hp_decision_trusted(frame: GameState) -> bool:
       docstring)。
 
     同模块(及跨模块引用点)禁再手写双位判定(W393 A1.1 单一源纪律):
-    语义=ADR-0282 对账层「沿用真值帧放行 vs 兜底假值帧拒」(ADR-0428
+    语义=对账层「沿用真值帧放行 vs 兜底假值帧拒」(
     收紧口径)——prior/logic 支两位皆 False 不评估,carried 沿用帧放行。
     新增 hp 守卫消费点一律走容器形态本 helper 或政策层读口。
     """
@@ -66,7 +66,7 @@ def plane_last_battle(gs: GameState,
                       session: StrategySession | None) -> bool:
     """位面末最后一战([18]):当前节点=boss 且轮=位面节点数(真值源
     ``nodes_of_plane``——P2 boss@r7 判正;旧按 9 计 P2 永不触发,
-    ADR-0366 口径断层修复)。波 2 签名切容器:节点类型/轮次经容器读口
+    口径断层修复)。波 2 签名切容器:节点类型/轮次经容器读口
     (node_kind_of/round_num_of 镜像,桥视图 kind 空串 = 未识别忠实镜像
     同旧 `or ''`)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -81,22 +81,22 @@ def plane_last_battle(gs: GameState,
 
 def all_in_xp_domain_hit(gs: GameState, session: StrategySession | None,
                          registry: DecisionV2Registry) -> bool:
-    """ALL IN 窗 XP 类别过滤的辖域判据(ADR-0604 §4-F5;P21 域钉死)。
+    """ALL IN 窗 XP 类别过滤的辖域判据(F5;P21 域钉死)。
 
     = 位面末最后一战(``plane_last_battle`` 单一源,[18] 豁免窗)
     ∧ hp 真值可信(``hp_decision_trusted`` 单一源)
     ∧ 门后 hp ≤ 停升级线(复用 p1/p2_levelup_stop_hp 锚表,零新参数——
     「按下一节点型 L_c^stop 查表」的落码形态即在产停升级线同一线表,
-    禁另建第二套血线表;辖域口径差申报 = ADR-0604 §4-D1:在产线
+    禁另建第二套血线表;辖域口径差申报:在产线
     P1=11 不分节点型 vs 设计锚 12/15/30,重校债归重设计落码批)。
-    hp 消费 = 政策层读口 ``decision_hp`` 门后值(消费同门,ADR-0583
-    §2.4;旧链由上游 adapter 施门间接保证,波 2 起读点显式施门,门幂等
+    hp 消费 = 政策层读口 ``decision_hp`` 门后值(消费同门;
+    旧链由上游 adapter 施门间接保证,波 2 起读点显式施门,门幂等
     保证过渡期行为一致)。
 
     辖域语义:ALL IN 窗内支出按「当轮可上场」类别白名单过滤(档 0
     d=0 形态/档 1/让位卖出后部署;XP 升级类仅支A 兑现链形态合法),
     本谓词只辖「hp 落停升级线内」的帧——域外帧(hp>停线)不受过滤,
-    维持既有 [18] 全豁免(域外不动申报 = ADR-0604 §4-F5:批#2 s9 型
+    维持既有 [18] 全豁免(域外不动申报:批#2 s9 型
     hp=35 帧 8×CwActionLevelUpParam 在域外,过滤后不拦)。hp 不可信/None 帧 = 线内线外
     不可判 → False 不过滤([18]「末战花光是时机不是血线判断」豁免
     语义在不可信帧仍生效,与 blood_budget_levelup_blocked 的豁免序、
@@ -153,13 +153,13 @@ def p1_levelup_stop_hp(registry: DecisionV2Registry) -> int:
 def blood_budget_levelup_blocked(gs: GameState,
                                  session: StrategySession | None,
                                  registry: DecisionV2Registry) -> bool:
-    """血预算停手·停升级门(设计件 12 §3.1 P2 / §2.3-P1-b;ADR-0448)。
+    """血预算停手·停升级门(设计件 12 §3.1 P2 / §2.3-P1-b)。
 
     P21 已证:存活到账判据 h > d·L_c 在 h ≤ d·L_c 域内恒假 → 升级收益
     恒 0、EV=−C−I 严格为负,且敏感网格 (p,Δp,d,c) 全负域——结论与
     β 标定无关。备战帧门后 hp ≤ 停升级线(P1/P2 各自线)时拒绝购买经验。
-    hp 消费 = 政策层读口 ``decision_hp`` 门后值(消费同门,ADR-0583
-    §2.4;旧链由上游 adapter 施门间接保证,波 2 起读点显式施门,门幂等
+    hp 消费 = 政策层读口 ``decision_hp`` 门后值(消费同门;
+    旧链由上游 adapter 施门间接保证,波 2 起读点显式施门,门幂等
     保证过渡期行为一致)。
 
     接缝语义(设计件 12 §5.2/§5.3,实现形态裁决):
@@ -174,11 +174,11 @@ def blood_budget_levelup_blocked(gs: GameState,
     之后才兑现,同辖;拒付计数=strategy_state_of(session).v3_blood_budget_rejects,披露
     模式对齐 sim 执行层 level_cap_rejects)。
 
-    消费层可信位门(ADR-0448 血线谓词唯一收口,W580):
+    消费层可信位门(血线谓词唯一收口,W580):
     ``hp_decision_trusted`` 不过的帧(容器 source=prior/logic 支:开局
     先验帧/推算帧)fail-closed 按血线内处理(拒付升级)——线内升级
     EV=−C−I 严格负(本函数数学),证据缺失时禁令保持有效与误放的非对称
-    代价(误放=血线内追级,误拦=少升一级)同型于 ADR-0428 兜底假值帧拒
+    代价(误放=血线内追级,误拦=少升一级)同型于 兜底假值帧拒
     语义。不降姿态/不维持上次决策:谓词逐帧无状态且被三面共享,引入跨帧
     记忆=新状态机不成比例;只封 CwActionLevelUpParam 通道,买牌/刷新各有其门。置于
     ALL IN 豁免之后:豁免语义=「末战花光是时机不是血线判断」,在不可信
@@ -192,7 +192,7 @@ def blood_budget_levelup_blocked(gs: GameState,
         return True     # 不可信 hp 帧:fail-closed 按血线内处理(拒升级)
     hp = decision_hp(gs, session)
     if hp is None:
-        # hp 无真值帧 fail-closed(ADR-0495 消费点对 None 一律保守):
+        # hp 无真值帧 fail-closed(消费点对 None 一律保守):
         # 容器未写帧(值 None)会以缺省来源骗过上面的可信位门,但 hp=None
         # 时停升级线无法判「线内/线外」——误放(线内追级)与误拦(少升
         # 一级)代价非对称,按线内处理拒升级。
@@ -240,8 +240,8 @@ def p2_crisis_band(gs: GameState, session: StrategySession | None,
     - arbiter 危机买入闸门(``_crisis_buy_gate_open``):带内目标件
       买候选越过非正分门/息律门(P48 λ>0 段转化优先);
     - cw4 M3 危机让位(criteria/levelup.level_spend_blocked 危机支)。
-    hp 消费 = 政策层读口 ``decision_hp`` 门后值(消费同门,ADR-0583
-    §2.4;``session`` 形参随波 2 签名切换补入——hp 消费函数统一持
+    hp 消费 = 政策层读口 ``decision_hp`` 门后值(消费同门;
+    ``session`` 形参随波 2 签名切换补入——hp 消费函数统一持
     session 装配结算锚,与 blood_budget_levelup_blocked 同形态)。
     应急带(hp≤emergency_hp)不属本带语义管辖:应急覆盖态
     (层2 emergency_tags/危机囤金)自有一套处置,本谓词不重复触发

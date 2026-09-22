@@ -27,7 +27,7 @@
   金/装备库存/hp_max)不在本模块,归属单一源 = 各 spec 的 notes,仍观察
   覆盖兜底。
 - 开局不利不入 SPEC:其确定性写端已有专用载体 kernel/cw_opening_hp.opening_hp_prior
-  (_AFFIX_HP_DELTA,ADR-0559),再建 EffectSpec = −20 数值第二份(双源漂移),
+  (_AFFIX_HP_DELTA),再建 EffectSpec = −20 数值第二份(双源漂移),
   见 AFFIX_SPEC_EXEMPT。
 
 **防漂移锁**(sr-od-test test_cw_affix_spec_registry):谓词扫描命中集必须恰等于
@@ -105,9 +105,9 @@ AFFIX_EFFECT_SPECS: dict[str, EffectSpec] = {
 AFFIX_SPEC_EXEMPT: dict[str, str] = {
     # 开局不利:效果「游戏开始时,小队生命值减少20点」的确定性写端已有专用载体
     # kernel/cw_opening_hp.opening_hp_prior(_AFFIX_HP_DELTA['开局不利']=-20,
-    # ADR-0559 hp0_survey 实证档),经 cw_reconcile.reconcile_hp 开局分支消费;
+    # hp0_survey 实证档),经 cw_reconcile.reconcile_hp 开局分支消费;
     # 再建 EffectSpec = −20 数值第二份,禁。
-    '开局不利': '已有专用写端载体 cw_opening_hp._AFFIX_HP_DELTA(ADR-0559),禁第二份−20数值源',
+    '开局不利': '已有专用写端载体 cw_opening_hp._AFFIX_HP_DELTA,禁第二份−20数值源',
 }
 
 

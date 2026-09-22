@@ -50,7 +50,7 @@ DEFECT_GAP_LARGE_GOLD: int = 10
 #: 新字段原样落 surface,消费端按字符串聚合,枚举外值不炸)。R5 W1 依
 #: 迁移规划 obs_event 收编条目对齐调用点全集:deploy_paddle(部署 paddle
 #: 识别)与 back_layout_*/layout_mismatch 系(后排布局选档)补入——证据
-#: 行收编 journal 后 field 键仍沿本枚举聚合台账 surface(R5 W1/ADR-0634)。
+#: 行收编 journal 后 field 键仍沿本枚举聚合台账 surface(R5 W1/)。
 #: tracking/star(cw_reconcile 对账域)同为活键补入:surface 保持 field
 #: 同名——冲突值跨 bench|deployed 两侧(账面整体快照/跨侧角色星),归并
 #: 任一单侧域会错置漂移归因;补枚举前经兜底 `get(field, field)` 即落同名,

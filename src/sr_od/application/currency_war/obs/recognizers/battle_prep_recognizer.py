@@ -174,7 +174,7 @@ class BattlePrepRecognizer(ScreenRecognizer):
         # 读只产假 MISS 噪声 — 某模板 val 0.55-0.56,shot miss_slot5 实证无 icon)。
         phase0 = _read_phase_round_pure(ctx, image)
         level0 = read_level(ctx, image, phase0[0], phase0[1]) if phase0 else read_level(ctx, image, 0, 0)
-        # 后排装备槽按 cap 差公式选档(W209/ADR-0385 口述「后台格数=6+(cap−level)」;
+        # 后排装备槽按 cap 差公式选档(W209/口述「后台格数=6+(cap−level)」;
         # 旧 level 驱动已废)。已建档 6/7/8/9 直读,>9 域外保守 8 格超集(select_back_layout 内辖留证)。
         from sr_od.application.currency_war.obs.cw_back_layout import (
             select_back_layout as _sel_bl,
@@ -221,9 +221,9 @@ class BattlePrepRecognizer(ScreenRecognizer):
             owned_equips = _owned or None
         phase = phase0
         level = level0
-        # W209/ADR-0385:cap>level(宝钻/钻石叠加)不再只是经济信息——它直接编码
+        # W209/:cap>level(宝钻/钻石叠加)不再只是经济信息——它直接编码
         # 后排扩展量(口述公式 6+(cap−level)),布局选档已在函数头消费。
-        # r317(ADR-0213 批次2):read_hp 裸调用迁 read_hp_opt
+        # r317(批次2):read_hp 裸调用迁 read_hp_opt
         # (miss→None;与 director 同源——消掉「MCP 报 100 而
         # director gated=26」双真相)。extras 序列化 None→
         # 合法 null(backend json.dumps 预校验);extras_doc

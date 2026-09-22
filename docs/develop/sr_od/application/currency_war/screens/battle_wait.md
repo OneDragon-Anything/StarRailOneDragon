@@ -74,7 +74,7 @@
 
 ## 8. 守卫与防线
 
-- **出战宽限(ADR-0250 口径)**:`BATTLE_WATCH_GRACE_S` 内未见结算屏 = 战斗进行中合法静止,不进未知帧计数;关窗 = 见结算屏(`saw_settlement`)。`battle_ts` 由外循环注入。
+- **出战宽限(口径)**:`BATTLE_WATCH_GRACE_S` 内未见结算屏 = 战斗进行中合法静止,不进未知帧计数;关窗 = 见结算屏(`saw_settlement`)。`battle_ts` 由外循环注入。
 - 未知帧 bail 上界 `UNKNOWN_BAIL_N`(节点作用域预算;战斗特效长帧期已由宽限挡在计数外,本值只辖「结算后卡死」形态)。
 - 结算屏点击未生效的长按兜底(见 §4 分支表);同屏指纹防重(`last_settle_fp`/`last_loss_fp`);败局闩 `saw_defeat_settlement` 双证据(进度符号 neg,或面板负分量 ∧ t ≥ `SETTLE_DEFEAT_LATCH_MIN_T`——次级证据裁决 = `_defeat_latch_by_secondary`,节点真值键 = 容器 node 读口,fail-closed 不置闩);relaunch 残留结算屏判据宽限 `RELAUNCH_SETTLE_GRACE_S`。
 - 自动战斗检测连续命中计时(防单帧误判);开关动作后 wait 覆盖切换生效窗。

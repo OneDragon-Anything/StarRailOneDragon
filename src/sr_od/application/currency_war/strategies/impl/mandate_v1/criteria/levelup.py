@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 def lv9_stop(level: int, level_max: int) -> bool:
     """等级上限停(义务侧消费)。历史键名 'lv9_stop':cap=9 旧语义时代
     命名,现语义 =「等级达注册表 level_max 即拒发升级」——键串保留
-    不改名(改键牵连判读脚本与历史档案可比性,纯改名无收益,ADR-0565)。
+    不改名(改键牵连判读脚本与历史档案可比性,纯改名无收益)。
 
     单一源 = 注册表 ``level_max``(kernel/cw_registry.py,实机真值 10,
     与 cw_economy.xp_apply_clicks「封顶 10」live 机制语义同源);sim 侧
@@ -37,7 +37,7 @@ def lv9_stop(level: int, level_max: int) -> bool:
     ``level_max`` = 消费位传上下文注册表的 ``.level_max``(禁裸常数),
     **必填**:4 消费位(shop M3 批/shop 必花域 L3/mandate 备战 M3/
     entry posture 镜像)已全量接线,过渡缺省通道已随 mandate 接线拆除
-    (ADR-0565 §3 挂账收口 = ADR-0606);禁新消费位依赖缺省。
+    (挂账收口);禁新消费位依赖缺省。
     """
     return level >= level_max
 
@@ -139,7 +139,7 @@ def levelup_budget_gate(gs: GameState,
                         k_members: tuple[str, ...], bench: list,
                         deployed: list, clicks: int,
                         click_cost: int) -> tuple[bool, str]:
-    """P72 (3) 全段预算闸(ADR-0576):升级支出 s 的量闸(全段辖域)。
+    """P72 (3) 全段预算闸:升级支出 s 的量闸(全段辖域)。
 
     载体 = 容器 gs 单形态(prep 链容器化段 2;entry 姿态镜像/商店线
     两位/mandate 面消费恒直传 gs)。内部字段读经读口
@@ -172,7 +172,7 @@ def levelup_budget_gate(gs: GameState,
     - Σ预留 = 下帧窗口一张命中卡价——与 ρ 消费**同一函数同参**
       (P54 A2 单刷波粒度整数下界)。⚠ 两分量并存是语义角色差异,
       多数帧数值相同不是重复项、禁删一:ρ = 本轮升级后买卡臂对一张
-      命中卡的即时购买力;Σ预留 = 下帧窗口的购买力预留(ADR-0560
+      命中卡的即时购买力;Σ预留 = 下帧窗口的购买力预留(
       三分量声明承继,并存保判据式与证明同形)。
     等级过滤口径:ρ/Σ预留取当前级(闸在升级授权前评估,与 P54 floor
     同帧同等级);R1 形式二的 L* 目标级重估是刷新语境,不辖本闸。
@@ -185,7 +185,7 @@ def levelup_budget_gate(gs: GameState,
     判定(证明 §2.5 合取序,禁「(2) 豁免了 (3) 还拦」的分裂);
     ``session`` 参数即为其 nodes_of_plane 真值链新增。
 
-    ALL IN 豁免支收窄(泄金阶梯批,ADR-0604 §4-F5 豁免
+    ALL IN 豁免支收窄(泄金阶梯批,F5 豁免
     语义迁移申报行;指标 G=P21 域内非支A XP 支出=0):豁免的 XP 类
     通道按「当轮可上场」类别白名单过滤——hp 落停升级线内
     (``kernel.cw_discipline_rules.all_in_xp_domain_hit``,P21 域,
@@ -199,7 +199,7 @@ def levelup_budget_gate(gs: GameState,
     d≥1 类不成立(收益兑现主体已死亡概率辖域,P21),非推翻豁免
     本体——时机判断([18])保留,变的是类别结构。
 
-    保底金门(T-149,ADR-0603;``_guarantee_floor_holds`` 判据本体):
+    保底金门(T-149;``_guarantee_floor_holds`` 判据本体):
     ALL IN/支A 两豁免支的放行输出上追加第二条件「花后金 ≥ 1 息档」
     ——豁免支只有放行谓词没有花后下界时,可把金花穿到 0(0 金过 P1
     = 息通道死 + 购买力通道死,T-126 病理;缺口本体在豁免支结构,
@@ -211,7 +211,7 @@ def levelup_budget_gate(gs: GameState,
     最小绑定支配论证(扩档须先补第 2 档转化机会成本在册账,禁静默
     蠕升)。下界值单一源 = ``DEFAULT_REGISTRY.boss_floor``(**同值
     异据共享载体**:彼据 = release 泄息通道 P1 出口金生存边际
-    ADR-0426;此据 = 息通道非退化——两据独立在案,任一据修订必须过
+    ;此据 = 息通道非退化——两据独立在案,任一据修订必须过
     另一消费位重推,断言只锁同值不锁同据)。出辖三支(判据见
     ``_guarantee_floor_holds``):终局域(R_全局 查表判定,消费
     ``kernel.cw_plane_table.r_remaining`` 单一源禁自推位面数,01
@@ -235,12 +235,12 @@ def levelup_budget_gate(gs: GameState,
     机制(证明 §1 支A 姿态声明,沿 schedule_upgrade ①臂短路先例)。
     **辖域 = 战斗帧**(2026-09-08 奖励帧策略审查;schedule_upgrade ①臂
     同款辖域注的锚对位):「当帧可兑现」隐含帧上有战斗,奖励帧无战斗
-    → 本支收益面在奖励帧不适用,该帧由 ADR-0580 规则①抑制先辖
+    → 本支收益面在奖励帧不适用,该帧由 规则①抑制先辖
     (抑制判据在本闸求值之前短路,shop M3 消费位代码序承载)。本注只
     声明辖域,不收窄谓词本体——奖励帧支A豁免的命题化归审查建议②
     命题批,禁在本判据体上加帧型分支造第二套帧型判定。
 
-    ⚠ P39 接缝处置(落码批核对点 B,ADR-0576 §判据):(3b) 数值完备
+    ⚠ P39 接缝处置(落码批核对点 B):(3b) 数值完备
     账支(``ΔV_band ≥ s + L + 尖括号欠账``,C_realize=0 帧)**本批
     不落码**——math_proofs P39 明载 ΔV_band「窗口前提证伪的重锚
     ……禁单独作闸门」,该支在 C_realize=0 帧的收益侧承担项正是
@@ -258,19 +258,19 @@ def levelup_budget_gate(gs: GameState,
     推迟目标随金位上移但 g 越过 g* 后固定为 g*+ρ+Σ预留+U_L,存在
     不动点无「追着息档永远攒不够」的发散(证明 §1 收敛性,禁误读为
     移动靶)。常开无开关(证明已闭环,strategy-work §3 第 1 档);
-    pop_slot 升级臂不入闸(P71-a 是收益侧分域命题,ADR-0560 承继)。
+    pop_slot 升级臂不入闸(P71-a 是收益侧分域命题,承继)。
 
     返回 (可行, 拒因);拒因分键两键——``levelup_budget_gate_blocked``
     ((3a) 量闸,三处发射位共键)/``guarantee_floor_defer``(豁免支保底
-    门推迟,ADR-0603)——独立显影可归因,禁混键。s ≤ 0(无批可发)恒
+    门推迟)——独立显影可归因,禁混键。s ≤ 0(无批可发)恒
     可行:闸辖「升级支出的量」,不制造支出。
     """
     if clicks * click_cost <= 0:
         return True, ''
     if _plane_last_battle(gs, session):
-        # ALL IN 豁免支收窄(ADR-0604 §4-F5;辖域与支A 判据见 docstring):
+        # ALL IN 豁免支收窄(F5;辖域与支A 判据见 docstring):
         # P21 域内 ∧ 非支A 帧拒 XP;域外帧/支A 形态维持全豁免放行。
-        # 位次申报:本支先于 ADR-0603 保底金门——P21 域内 XP 类即便
+        # 位次申报:本支先于 保底金门——P21 域内 XP 类即便
         # 生存域/保底让位也拒(类别白名单仅支A)。
         from sr_od.application.currency_war.kernel.cw_discipline_rules import (
             all_in_xp_domain_hit,
@@ -285,7 +285,7 @@ def levelup_budget_gate(gs: GameState,
             return False, 'all_in_xp_category_filtered'
         if _guarantee_floor_holds(gs, session, gold, clicks, click_cost,
                                   cap_resolved):
-            return True, ''      # ALL IN 豁免(P72 §2.5;花后下界见上,ADR-0603)
+            return True, ''      # ALL IN 豁免(P72 §2.5;花后下界见上)
         return False, 'guarantee_floor_defer'
     if _realize_chain_ready(gs, bench, deployed):
         if _guarantee_floor_holds(gs, session, gold, clicks, click_cost,
@@ -308,7 +308,7 @@ def _guarantee_floor_holds(gs: GameState,
                            session: StrategySession | None,
                            gold: int, clicks: int, click_cost: int,
                            cap_resolved: int) -> bool:
-    """保底金门判据本体(T-149,ADR-0603):豁免支花后金下界,真 = 放行。
+    """保底金门判据本体(T-149):豁免支花后金下界,真 = 放行。
 
     出辖三支先行(任一真 = 不设下界,让位语义各有在册出处):
 
@@ -327,11 +327,11 @@ def _guarantee_floor_holds(gs: GameState,
       先例同款)。
 
     下界值 = ``DEFAULT_REGISTRY.boss_floor``(同值异据共享载体,据各
-    表):彼据 = release 泄息通道 P1 出口金生存边际(ADR-0426,
+    表):彼据 = release 泄息通道 P1 出口金生存边际(
     ``sim/checks/segments.py`` boss_floor 豁免同值消费);此据 = 息
     通道非退化判等式(见 levelup_budget_gate docstring 推导链)。
     两据独立在案——任一据修订(如生存边际重标)必须过另一消费位
-    重推,断言只锁同值不锁同据(ADR-0603 §同值异据声明/P83)。
+    重推,断言只锁同值不锁同据(§同值异据声明/P83)。
     模块私有:非判据面公开函数,不入契约/旁路枚举表(契约由
     levelup_budget_gate 键承载)。
     """
@@ -378,7 +378,7 @@ def _realize_chain_ready(gs: GameState, bench: list,
 
     C_realize ②支(部署面合格谓词,现役单一源 =
     ``strategies.impl.mandate_v1.deploy_plan.has_deployable_reasoned``,
-    P3 起kernel 不再持有选人/部署语义)随支B 挂账(ADR-0576 §判据):
+    P3 起kernel 不再持有选人/部署语义)随支B 挂账:
     谓词真源已在策略层,接线需闸+检查器双面重建部署语境,随
     C_realize 完整评价面批落码;早稿 pop_slot 放宽支系「融资腿」非
     合格判据(P72 §2.3 勘误锚承继)。
@@ -412,7 +412,7 @@ def level_spend_blocked(gs: GameState, session: StrategySession,
 
     ``registry`` = 上下文注册表(停付线字段 vd_p2_loss 族的单一源口径);
     三生产消费位(entry posture 镜像/shop M3/mandate 备战 M3)恒注入
-    (ADR-0565 同族泛化项收口 = ADR-0606),``None`` 回读缺省表 = 与
+    (同族泛化项收口),``None`` 回读缺省表 = 与
     entry/shop ``_reg`` 通道同款直调兼容约定,禁新消费位依赖缺省。
 
     两支,全部单一源判据,零新自由参数:

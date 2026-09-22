@@ -31,7 +31,7 @@ p1_pair, state_board_factions/state_deployed(sim 行轮末快照)},
   (引擎未建锁线态 = 没锁);档案行结构性无 v3_intention 键 = 无数据,
   不入分母(「无数据」与「未锁线」两种事实,混同会把档案伪影当行为信号)。
   **P1 配方对代理键(观测面专用,局表 p 标)**:locked_comp 空而同行
-  v3_intention.p1_pair 非空 = P1 配方锁活跃帧(ADR-0357:配方锁局
+  v3_intention.p1_pair 非空 = P1 配方锁活跃帧(:配方锁局
   locked_comp 恒空,引擎语义零改,本脚本只读遥测)——锁定目标代理 =
   配方对,④ 改按②同款判定并标 p。语义依据:P1 配方锁的锁定目标 =
   配方对(kernel/cw_intention.pair_target_comp 物化伪 comp),凑齐判定
@@ -344,9 +344,9 @@ def game_metrics(game: dict) -> dict:
         comp_done = 1 if _row_form_ok(last) else 0
     elif last.get('p1_pair'):
         # P1 配方对代理键(观测面专用;口径与语义依据见模块 docstring ④ 节):
-        # locked_comp 按 ADR-0357 在 P1 配方锁帧恒空,p1_pair 非空 = 配方锁
+        # locked_comp 按 在 P1 配方锁帧恒空,p1_pair 非空 = 配方锁
         # 活跃 → 锁定目标代理 = 配方对,完成判定按②同款行凑齐判定(该
-        # 帧族判据核即配方对物化方向)。只读遥测,ADR-0357 语义零改。
+        # 帧族判据核即配方对物化方向)。只读遥测,语义零改。
         comp_done = 1 if _row_form_ok(last) else 0
         proxy = True
     else:

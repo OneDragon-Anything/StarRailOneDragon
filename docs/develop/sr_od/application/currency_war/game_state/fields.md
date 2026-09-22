@@ -303,7 +303,7 @@ capacity_limit;当前注册表零条目携带=恒默认 9 幂等 no-op;**首批�
 跳过等观察首读);旧独立写端 `proj_board_recount`/`proj_deploy_board_incr`
 已退役。增量口径(非全量重算)防抹掉面板真值中容器行未建模的装备羁绊贡献
 (环境卡星徽穿戴只显于面板的形态,实机 2026-09-18 run_20260918_045918
-实证)。观察侧 = 聚合计算底座 + 本屏左面板 OCR 覆入(双源仲裁 ADR-0417)。
+实证)。观察侧 = 聚合计算底座 + 本屏左面板 OCR 覆入(双源仲裁 )。
 **对账语义(派生量 ≠ 独立字段)**:失配比对前置吸收面 `board_derived_adopt`
 ——`proj_board_resync` 写端的 board 失配落台账行采新、不进安灯,派生量以
 观察为真值源(三种已知漂移形态全是观察噪声/建模缺口类:星徽幽灵计数、
@@ -606,10 +606,10 @@ active_env 核对源。开局写端见 §3.4.3(多屏写入,本条=备战屏侧�
 - **配套裁定(同批)**:tracked 主账宿主 = `GameState.tracked_books`(容器非 Field
   簿记组,`TrackedBooks`;形状契约 = `bench` = `list[BenchSlot | None]` 定长 9
   (元素 = 容器同款 BenchSlot 五分类,占位件 kind 随形保留;None = 洞,卖出/上阵/
-  合成消耗置 None 不移位,ADR-0316 保洞语义)、`deployed` = `list[Unit | None]`
+  合成消耗置 None 不移位,保洞语义)、`deployed` = `list[Unit | None]`
   定长 10(**表下标 = deployed_idx 动作坐标,恒稳**;排归属由下标派生——0-3 前排/
   4-9 后排,换算单一源 = `cw_exec_state.deployed_row_slot`/`deployed_idx_of`,
-  ADR-0392);写端 = kernel `reconcile_tracking`(观察边界锚定写回)+ 动作随动同步,
+  );写端 = kernel `reconcile_tracking`(观察边界锚定写回)+ 动作随动同步,
   策略禁读(消费口 = `tracked_account_observed` + 席位视图)。执行侧不再另设
   tracked 载体(执行层状态类目已退役,git 历史可溯),`mandate_v1._tracking_view`
   (tracking 优先 + snapshot 静默回退)删除。

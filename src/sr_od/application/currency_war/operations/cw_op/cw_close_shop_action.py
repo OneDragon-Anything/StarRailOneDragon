@@ -29,7 +29,7 @@ def _note_receipt(op: SrOperation, applied: bool, reason: str) -> None:
     """关商店动作回执(receipts 域,渠道②,唯一写点 = kernel 口)。
 
     两出口全簿记:点击已发 = applied=true;幂等已关(无动作可发)=
-    applied=false + reason。发出即簿记非验证;journal 常开(ADR-0634)
+    applied=false + reason。发出即簿记非验证;journal 常开
     回执写入无条件,无局跳过在 kernel 口。
     """
     try:

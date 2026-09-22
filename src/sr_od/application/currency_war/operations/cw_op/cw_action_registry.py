@@ -223,7 +223,7 @@ def action_op_class_for_type(action_type: type) -> type[SrOperation]:
             return op_cls
     raise AssertionError(
         f'[cw-action][registry] 动作词表外类型:{action_type.__name__}'
-        '(ADR-0517 决策 9:非法返回 = 策略器 bug,禁静默跳过)')
+        '(:非法返回 = 策略器 bug,禁静默跳过)')
 
 
 def action_op_class_for(action: Action) -> type[SrOperation]:
@@ -232,14 +232,14 @@ def action_op_class_for(action: Action) -> type[SrOperation]:
     消费面 = 终结判定与 ``terminal``/``terminal_wait`` 类属性读取
     (消费点经注册表读类属性,禁消费点私表)与执行器/商店落地门的
     (ctx, param, env) 组装构造(design.md §1.3);行序语义同构造 helper。
-    词表外类型 AssertionError 响亮暴露(ADR-0517 决策 9 语义:非法返回
+    词表外类型 AssertionError 响亮暴露(语义:非法返回
     = 策略器 bug,禁静默跳过;文案中性,注册表现跨域共用)。"""
     for cls, op_cls in _REGISTRY.items():
         if isinstance(action, cls):
             return op_cls
     raise AssertionError(
         f'[cw-action][registry] 动作词表外类型:{type(action).__name__}'
-        '(ADR-0517 决策 9:非法返回 = 策略器 bug,禁静默跳过)')
+        '(:非法返回 = 策略器 bug,禁静默跳过)')
 
 
 def action_op_for(action: Action, ctx: SrContext, env: object) -> SrOperation:

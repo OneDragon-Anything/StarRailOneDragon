@@ -50,7 +50,7 @@ def establish_new_match(ctx: SrContext, config) -> bool:
     简报观察(CwScreenBriefing,P3)要**直写 session**,而简报屏先于 run loop 出现;
     session 不存在 = 观察无写目标。现把建立时机前移到入口链的新局确凿信号处
     (难度确认/模式选择/简报屏,``CwEntryStart`` 调用),与本模块
-    ``discard_stale_match_container``(ADR-0419 残留弃置)同址衔接:先弃置
+    ``discard_stale_match_container``(残留弃置)同址衔接:先弃置
     残留容器,再建立本局容器。
 
     - 已有容器(续跑/已建立)→ False 幂等直过(不覆盖,保手动逐轮延续语义);

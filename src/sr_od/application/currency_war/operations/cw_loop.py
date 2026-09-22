@@ -134,7 +134,7 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 def locked_resume_sync_and_battle(op, ctx):
-    """恢复局锁定直出战(ADR-0329)+ **首战前备战同步步**(裁定出处 =
+    """恢复局锁定直出战+ **首战前备战同步步**(裁定出处 =
     策略审查报告 .debug/temp/currency_war/20260905-093104-strategy-review/
     策略审查-第十二跳.md #7):恢复局分支原样跳过全部备战交互直接
     CwActionStartBattleParam,板面调整被跳过(实证:恢复局首战快照 board_before 为空
@@ -514,7 +514,7 @@ def op_fail_redispatch_tick(prev_key: str | None, prev_n: int,
 
 
 class _FnResult:
-    """零参可调用步骤的结果轻壳(ADR-0584 §2.3 的 0n 适配形,二选一之「轻壳」)。
+    """零参可调用步骤的结果轻壳(的 0n 适配形,二选一之「轻壳」)。
 
     ``CwScreenPrep.visit_open_shop`` 返回 ``(ok, detail)`` 元组,与画面 op
     ``execute()`` 的 OperationResult(.success/.status)契约不同;本壳统一读面
@@ -558,7 +558,7 @@ class CwLoop(SrOperation):
     #: 同值平手,行为无差);链形透传分支(3c)不经本网(各有自身预算)。
     #: on_fail_retry 族原退路是消耗 400 节点重试池 ≈ 13min 同 op 空转。
     OP_FAIL_REDISPATCH_LIMIT: ClassVar[int] = 5
-    #: 战斗窗口 watch 宽限(ADR-0250):出战后合法静止上限。实测战斗 4-5.5min
+    #: 战斗窗口 watch 宽限:出战后合法静止上限。实测战斗 4-5.5min
     #: (P1r9 boss 4min20s/P2r1 遭遇 5min20s),600s 覆盖余量后仍可哨兵真挂死。
     BATTLE_WATCH_GRACE_S: ClassVar[float] = 600.0
     # 结算真值现役归宿 = GameState settlement 域 apply_settlement_cover。
@@ -637,10 +637,10 @@ class CwLoop(SrOperation):
         # ``self._settle.battle_ts = self._battle_ts`` 直接访问未初始化属性
         # (第八局接管实证:stop 间隙游戏自走进战斗,再起局即崩循环)。
         self._battle_ts: float | None = None
-        # B4(ADR-0170):跨局分配器实例(进程级单例——后验跨局累积;失败安全:任何异常静默禁用)
+        # B4:跨局分配器实例(进程级单例——后验跨局累积;失败安全:任何异常静默禁用)
         self._allocator = _get_or_init_allocator(self.ctx)
         # 本局遥测 run_id(现役消费 = journal 行归属)。
-        # ADR-0588:铸造单点已前移到入口链(简报锚/投资屏分支,先于任何开局
+        # :铸造单点已前移到入口链(简报锚/投资屏分支,先于任何开局
         # 遥测行)——此处改「认领」:新局路径同容器 open run 已在,不重铸
         # (一段一 id);接管局/run_operation/恢复路径上 run 已收口(_RUN_CLOSED)
         # → 按 gate 重铸,等价旧「每次 loop 执行新 run_id」语义。
@@ -670,7 +670,7 @@ class CwLoop(SrOperation):
         # 每局清空 plane/round last-known-good(防跨局复用上局值;task#24)
         reset_phase_round_cache()
         # SrOperation 还没 last_screenshot(截图由 node runner 进 @operation_node 时给)→ 不能 read_game_state;
-        # 新局初值经 create_session 唯一冷建口承载(ADR-0583;见 _iter==1 分支)。跨步状态进 strategy_state_of(session).target_comp
+        # 新局初值经 create_session 唯一冷建口承载(见 _iter==1 分支)。跨步状态进 strategy_state_of(session).target_comp
         # (替代旧 BuyShopCards._target_comp class-attr hack,语义等价:每局新建已是现行为)。
         # 续跑支持(手动逐轮验证):cw_match 已存在(上轮 RunLoop 留下)→ 延用,不 new;否则 new(整局开始)。
         # 手动逐轮(max_rounds=1 反复 run_operation)靠此跨 run 延续 match state(target 稳定不每轮重选振荡)。
@@ -808,7 +808,7 @@ class CwLoop(SrOperation):
         on_fail_retry: bool = False,
         on_result: Callable[[bool, Any], OperationRoundResult | None] | None = None,
     ) -> OperationRoundResult:
-        """画面分支统一 dispatch 包装(ADR-0584 §2.3,外循环唯一新增结构)。
+        """画面分支统一 dispatch 包装(外循环唯一新增结构)。
 
         统一面 = 留证帧 + [cw-op] 主日志行 + 结果映射;分支特有守卫钩子
         走 ``on_result`` 调用点邻接闭包,**禁塞进本包装本体**(包装知晓分支
@@ -835,7 +835,7 @@ class CwLoop(SrOperation):
         以自身轮次结果短路(结构性先于本网);链形透传分支(3c)不经
         本网(各有自身预算)。
 
-        异常安全(ADR-0584 §5.2):``op`` 体或 ``on_result`` 抛异常时,补落
+        异常安全:``op`` 体或 ``on_result`` 抛异常时,补落
         outcome='error' 的 [cw-op] 行后原样上抛——异常语义归节点级重试链
         不变;结果映射(round_wait/retry)在日志行之后,映射段异常不产生
         双行。
@@ -873,7 +873,7 @@ class CwLoop(SrOperation):
             _log_cw_op(journal_name, _op_pos, time.monotonic() - _op_t0,
                        'ok' if ok else 'fail')
         except Exception as e:   # noqa: BLE001  出口行补发后原样上抛(异常
-        # 处理归节点级重试链,包装保 [cw-op] 行闭合;ADR-0584 §5.2)。
+        # 处理归节点级重试链,包装保 [cw-op] 行闭合)。
             _log_cw_op(journal_name, _op_pos, time.monotonic() - _op_t0,
                        'error', str(e)[:120])
             raise
@@ -1192,7 +1192,7 @@ class CwLoop(SrOperation):
                 wait=1.5, on_result=_on_prep_locked)
 
         if name == '货币战争-备战-开商店':
-            # 转交商店访问路径(ADR-0562):策略器逐动作决策 → CwActionCloseShopParam 终结收店。
+            # 转交商店访问路径:策略器逐动作决策 → CwActionCloseShopParam 终结收店。
             # 深度防御保留:达标臂浮层扫描与 CwScreenPrep 环入口守卫降级为单点兜底。
             _so_counters = getattr(strategy_state_of(
                 self.ctx.cw_match.session), 'cw4_counters', None)
@@ -1230,7 +1230,7 @@ class CwLoop(SrOperation):
                          _ok_pt.is_success)
                 return self.round_wait(wait=1.5)
 
-            # C1(ADR-0584 §1.3):准推进恢复链非纯推进画面——链形透传,
+            # C1:准推进恢复链非纯推进画面——链形透传,
             # 轮次结果即分支出口,包装只补 journal 行与留证帧。
             return self._dispatch_screen_op(
                 _frontless_confirm_step, journal_name='前台无角色确认',
@@ -1305,7 +1305,7 @@ class CwLoop(SrOperation):
                          getattr(res, 'status', ''))
 
             # 链序保留(用户裁定特殊等待):环境 op → 等 1-1 备战锚 op;
-            # 两 op 两对 journal 行(0s 补行,ADR-0584 §3.4)。
+            # 两 op 两对 journal 行(0s 补行)。
             self._dispatch_screen_op(
                 CwScreenInvestEnv(self.ctx), journal_name='投资环境',
                 frame_tag='flow_invest_env', wait=0, on_result=_on_invest_env)
@@ -1416,7 +1416,7 @@ class CwLoop(SrOperation):
                 self.ctx.cw_match = None
             return self.round_success('对局结束,回大厅')
 
-        # C2(ADR-0584 §1.3):收口面非推进画面,写端不随 op 化迁移;包装补
+        # C2:收口面非推进画面,写端不随 op 化迁移;包装补
         # op='回大厅收口' 行,链体零改(链形透传,轮次结果即分支出口)。
         return self._dispatch_screen_op(
             _lobby_return_step, journal_name='回大厅收口',
@@ -1465,9 +1465,9 @@ class CwLoop(SrOperation):
                     log.warning('[cw!][loop] 窗口失焦(输入静默丢风险)→ 主动激活')
                     _gw.active()
 
-        # 尽力而为 read_game_state(默认实现不读);**不做 hp 覆盖** —— hp 覆盖归观察终饰/策略器内化刷新(ADR-0583)。
+        # 尽力而为 read_game_state(默认实现不读);**不做 hp 覆盖** —— hp 覆盖归观察终饰/策略器内化刷新。
         if self._iter == 1 and self._is_new_match:
-            # ADR-0462:消费面只有 plane/round(恢复对局检测)。
+            # :消费面只有 plane/round(恢复对局检测)。
             # on_match_start 的冷建与
             # live 初值(v3_phase='FORM')由 create_session 唯一冷建口承载
             #(establish_new_match 进对局前移点/防御路径/回放三处同源)。
@@ -1478,7 +1478,7 @@ class CwLoop(SrOperation):
             # (迁移批 3.2:回执携带本帧 phase_round 原始读数,与旧帧字段
             # 同源同值——经容器读口会吃 kind 继承写,不用。)
             if _st0.round_num > 1 or _st0.plane > 1:
-                # A18(hook审计退役批(ADR-0466/0467/0469)):数据归属标记,只标不改行为 → [cw] 非 [cw!]
+                # A18(hook审计退役批):数据归属标记,只标不改行为 → [cw] 非 [cw!]
                 log.warning('[cw][loop] 恢复对局检测:新 match 但游戏在 P%s-r%s(上局残局,'
                             '本 run_id 数据含残局段)', _st0.plane, _st0.round_num)
                 self._invalidate_tracked_on_takeover()   # D2:接管置观察态失效
@@ -1620,7 +1620,7 @@ class CwLoop(SrOperation):
                 progressed, detail = locked_resume_sync_and_battle(self, self.ctx)
                 if progressed:
                     self._cw_locked_resume = locked_after_start_battle(progressed)
-                    self._battle_ts = time.monotonic()   # ADR-0250:战斗窗口开
+                    self._battle_ts = time.monotonic()   # 战斗窗口开
                     self._battle_wait_active = True   # 战斗窗口 → 下轮委托 CwScreenBattleWait
                     log.info('[cw-loop] 锁定恢复局 → 出战成功,锁解除(恢复正常循环)')
                     return self.round_wait(wait=3)
@@ -1658,7 +1658,7 @@ class CwLoop(SrOperation):
             def _on_prep_round(ok: bool, res: Any) -> None:
                 if ok:   # success 才是判据(OperationResult 无 __bool__,
                     # 裸 bool(fail) 为 True(实证过的坑))
-                    # ADR-0250:备战环经出战出口 → 战斗窗口开(watch 宽限计时起点)
+                    # :备战环经出战出口 → 战斗窗口开(watch 宽限计时起点)
                     self._battle_ts = time.monotonic()
                     # 环出口含出战 → 战斗窗口驻留闩置位(下轮委托 CwScreenBattleWait;
                     # 环入口分诊交回/bail 的返回由下轮重判自然分流——非出战返回帧
@@ -1691,10 +1691,10 @@ class CwLoop(SrOperation):
             self._settle.battle_ts = self._battle_ts
 
             def _on_battle_wait(ok: bool, res: Any) -> None:
-                # ADR-0250:op 内已见结算屏 → 战斗窗口关(watch 恢复)。
+                # :op 内已见结算屏 → 战斗窗口关(watch 恢复)。
                 # 出口归一:白名单命中/终局/bail 都清闩(窗口单元结束);bail 帧
                 # 交未知画面兜底链(超时兜底语义,裁决权留外循环)。
-                # 时序申报(ADR-0584 §2.3):闩清原在 journal exit 之后,现随
+                # 时序申报:闩清原在 journal exit 之后,现随
                 # 回调提前到 exit 前——journal exit 行不含闩状态、闩清只影响
                 # 下轮分发,该时序微差无观察面,收敛等价。
                 if self._settle.saw_settlement:
@@ -1710,7 +1710,7 @@ class CwLoop(SrOperation):
                          '(下轮全分支重判)', ok,
                          getattr(res, 'status', '') or '')
 
-            # settle 注入/窗口关/闩清 = 战斗宽限守卫域(ADR-0250),留外循环回调
+            # settle 注入/窗口关/闩清 = 战斗宽限守卫域,留外循环回调
             return self._dispatch_screen_op(
                 self._battle_wait, journal_name='战斗等待',
                 frame_tag='flow_battle_wait', wait=1.0, on_result=_on_battle_wait)
@@ -1724,7 +1724,7 @@ class CwLoop(SrOperation):
         # 此前钩子代码被 _allocator_update 插错位置卷进方法体(从未执行)→ loop 隐式返 None。
         return self._handle_unknown_fallback()
 
-    # ===== B4(ADR-0170):终局喂分配器(影子期:只记后验不改选臂;分级奖励+adherence) =====
+    # ===== B4:终局喂分配器(影子期:只记后验不改选臂;分级奖励+adherence) =====
     def _allocator_update(self, outcome: MatchOutcome) -> None:
         """终局 update:臂 = 终局 target_comp 名(adherence 近似 1;开局臂双列待 v1)。"""
         if self._allocator is None or self.ctx.cw_match is None:
@@ -1798,7 +1798,7 @@ class CwLoop(SrOperation):
         return self.round_retry(wait=CwLoop.UNKNOWN_RETRY_WAIT_S)
 
 
-# ===== B4(ADR-0170):跨局分配器进程级单例 + 终局 update =====
+# ===== B4:跨局分配器进程级单例 + 终局 update =====
 _ALLOCATOR = None          # 进程级(后验跨局累积;server 不重启跨局延续)
 
 

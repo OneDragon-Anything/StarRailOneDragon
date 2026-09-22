@@ -91,7 +91,7 @@ SHOP_OPEN_ANIM_S: float = 1.0
 
 
 class StopBrakeShortCircuit(RuntimeError):
-    """W209j 停机短路异常(ADR-0388 纵深防御第二层)。
+    """W209j 停机短路异常(纵深防御第二层)。
 
     语义 = 运行中被停 → 拒绝执行任何动作(run 27 实证:director 环在
     Deploy 钩子 stop_running 后仍发 CwActionStartBattleParam 点出战——环顶检查(第一层)
@@ -127,7 +127,7 @@ def row_area_centers(ctx: SrContext, prefix: str) -> list[Point]:
 
 def sell_point(ctx: SrContext) -> Point:
     """出售区落点(单一源):screen_info「货币战争-备战.区域-出售区」中心
-    (ADR-0329 W62 件2 落地;游戏机制 = 拖到左下区域即出售,无按钮)。
+    (W62 件2 落地;游戏机制 = 拖到左下区域即出售,无按钮)。
 
     area 缺失 = 建档漂移/档案损坏 → RuntimeError 显式上抛(信息带 area
     名),禁回退硬编码坐标静默点击(坐标单一真相源)。消费面含
@@ -153,7 +153,7 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> None:
     Args:
         op: 调用方 op(取 ctx.controller 操作)。
         ctx: SrContext。
-        bench_idx: 槽位下标 0-8(ADR-0316:列表下标 = 物理备战栏槽位 1-9 减一);
+        bench_idx: 槽位下标 0-8(:列表下标 = 物理备战栏槽位 1-9 减一);
             越界 = 调用方 bug,响亮上抛(守卫非判效)。
     """
     pts = row_area_centers(ctx, '备战栏')
@@ -361,7 +361,7 @@ class PrepActionExecutor:
         """机械执行一个动作(无返回;发出即职责完成,落地判定归
         观察侧 reconcile)。
 
-        ⚠️ W209j 刹车(ADR-0388,纵深防御第二层):运行中被停 → 拒绝
+        ⚠️ W209j 刹车(纵深防御第二层):运行中被停 → 拒绝
         执行任何动作(点击/拖拽/出战),抛 :class:`StopBrakeShortCircuit`
         停机短路(原回执 ``(False, '已停止')`` 通道随回执退役改异常;
         语义与触发判据不变,run 27 实证覆盖绕环路径)。调用方捕获后交回
@@ -373,7 +373,7 @@ class PrepActionExecutor:
         _rc = getattr(self._ctx, 'run_context', None)
         if _rc is not None and getattr(_rc, 'last_run_result', None) is not None:
             log.info('[cw][battle] 停机标志已设 → 拒绝执行 %s'
-                     '(W209j 刹车,ADR-0388)', type(action).__name__)
+                     '(W209j 刹车)', type(action).__name__)
             raise StopBrakeShortCircuit('已停止[W209j刹车]')
         # 执行点金差显影账每动作复位:上动作余量禁跨动作残留。
         # 落地门前捕获备战席占用(tracked 账现读):S1 路径 (ii) 翻正判读
@@ -455,7 +455,7 @@ class PrepActionExecutor:
           短路在本口之前抛出 = 执行被拒不产行——停机非动作);
         - ``extra`` = 执行面结构化字段透传(§3.2.1 质量词表执行面;
           含金动作的 ``gold_delta`` 执行点金差,见 _executed_gold_delta);
-        - journal 常开(R5 W1 影子闸折叠,ADR-0634)回执写入无条件;无局
+        - journal 常开(R5 W1 影子闸折叠)回执写入无条件;无局
           (session 缺)跳过;best-effort 不阻塞动作链。
         """
         try:
@@ -479,7 +479,7 @@ class PrepActionExecutor:
 
         [索引定义] CwActionSellBenchParam.bench_idx / CwActionSellDeployedParam.deployed_idx =
         容器槽位表下标 0 基(tracked 表 = 同构下标表,恒定长 9/10,
-        ADR-0316/0392)——按下标直接对位,零换算。取值时机 = execute()
+        )——按下标直接对位,零换算。取值时机 = execute()
         内 dispatch **前** tracked 账现读(卖出 handler 在 dispatch 内
         同步销账,dispatch 后按 tracked 复查恒落空);消费 = dispatch 后
         _executed_gold_delta 一次读用,不跨动作存活。P1 tracked 形状:
@@ -643,7 +643,7 @@ class PrepActionExecutor:
     def _equip_slot_drag_point(self, row: str, slot: int) -> Point | None:
         """(row, slot) → avatar 拖拽点(与 CwOpEquipAll._slot_drag_point 同式;
         前排 = 前排-N rect 中心 x + y1+21(D-36 校准),后排 = 布局选档前缀
-        (select_back_layout 单一入口,ADR-0385)同式派生)。缺失 → None
+        (select_back_layout 单一入口)同式派生)。缺失 → None
         (建档漂移,禁兜底坐标)。"""
         _si = self._ctx.screen_loader.get_screen(SCREEN_NAME)
         if _si is None:
@@ -743,7 +743,7 @@ class PrepActionExecutor:
         """卖出后备势跟踪同步(tracked 主账 = tracked_books.bench)。
 
         [索引定义] bench_idx = bench 槽位表下标 0-8(与动作字段同系);
-        摘除 = 按下标置 None(权威槽位 = 下标,定长 9 保洞契约 ADR-0316;
+        摘除 = 按下标置 None(权威槽位 = 下标,定长 9 保洞契约 ;
         旧紧凑重排会累积重复槽号——实机缺陷台账 slots=[1,3,4,5,6,7,8,9,9]
         等 4 局实证,保洞治本)。"""
         match = self._ctx.cw_match

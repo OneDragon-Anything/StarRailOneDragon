@@ -12,7 +12,7 @@
 
 **逻辑态**（本篇主题）= 一个动作 op 机械发出后，**不经观察**、只按已核实的游戏规则、从动作前容器状态**推算并直写**的预期状态。
 
-**两态制** = 容器——局内状态唯一快照 `kernel/cw_game_state.py::GameState`（下称「容器」）——的每个字段只保留两种值来源：**观察态**（画面读数，`observe()` 写入）与**逻辑态**（动作后推算，`write_logic()` 写入）；同帧冲突时**观察赢**（观察值覆盖逻辑推算值）。依据：`fields.md` §2.3/§2.5；架构裁定锚 = ADR-0651。**逻辑随机态扩展**（来源 `logic_rand`，`write_logic_rand()` 写入；**采样语义**）：效果随机的动作在上报函数真掷随机、按采样结果走完整确定性链逐步直写，全部容器写标随机态；观察覆盖差异预期内（`logic_rand_outcome` 台账行，不进失配三分流），**策略器消费前必须重观察**（查询口 = `logic_rand_fields()`）；详见 `fields.md` §2.1/§2.5 与 [logic-updates/collect-ore.md](logic-updates/collect-ore.md)（首个落地）。
+**两态制** = 容器——局内状态唯一快照 `kernel/cw_game_state.py::GameState`（下称「容器」）——的每个字段只保留两种值来源：**观察态**（画面读数，`observe` 写入）与**逻辑态**（动作后推算，`write_logic` 写入）；同帧冲突时**观察赢**（观察值覆盖逻辑推算值）。依据：`fields.md` §2.3/§2.5。**逻辑随机态扩展**（来源 `logic_rand`，`write_logic_rand` 写入；**采样语义**）：效果随机的动作在上报函数真掷随机、按采样结果走完整确定性链逐步直写，全部容器写标随机态；观察覆盖差异预期内（`logic_rand_outcome` 台账行，不进失配三分流），**策略器消费前必须重观察**（查询口 = `logic_rand_fields`）；详见 `fields.md` §2.1/§2.5 与 [logic-updates/collect-ore.md](logic-updates/collect-ore.md)（首个落地）。
 
 一句话读法：逻辑态回答「这一下点完，容器**应该**变成什么样」；下一帧观察回答「实际变成了什么样」；两者不等 = 逻辑态模型缺陷，走缺陷台账（不静默、不改道）。
 
@@ -83,7 +83,7 @@ op = `operations/cw_op/cw_buy_card_action.py::CwActionBuyCardOp`（非终结）�
    - 商店载荷：被买槽 kind 置 empty（**留空不紧缩**——买后右邻槽像素零变化实锤，`research/economy.md` §2.1；同 (name, star) 匹配槽对前 k 个置换，三态定长模型）；
    - **全场合成连锁**：买入后同名同星计数（备战∪场上，`same_star_count`）≥3 即升星，落点 = 场上那张的位置（装备/站位随之继承）或全在备战栏时最左一张的位置；连锁可多级（2★ 产物再凑 3 → 3★）；三只身上的装备**全部**继承到产物（`kernel/cw_merge_simulate.py::_merge_bench` 不动点循环；装备继承 = 玩家定谳，merge_simulate 模块头规则 4）；升星触发时 front_row/back_row 整表 + board 重算随写（值签名变化才写）。升星触发判定单一源 = `kernel/cw_game_state.py::detect_merge_upgrade`（同名最高星抬升）。
    - 买牌不产经验（XP 域零写；零购买子集反证，`research/xp-rules.md` §2）。
-2. **满栏例外腿（备战席满）**：满栏仍买得进当且仅当本次点击能完成一次合成（判据单一源 = `merge_buy_completes`，前提门 = 已有同名同星素材 ≥1；own=0 满栏域游戏拒买，ADR-0619/ADR-0283）。一击多买张数 k = `merge_buy_k` = min(店内同名同星张数, 3 − 已有数 mod 3)（绝不多买，`research/merge_mechanics.md` §2.5）；k 张逐张原价扣金（总价 = k×单价）、店载荷下架 k 张同身份牌、合成腾槽（应用机器 = `_apply_full_bench_merge_buy`，逻辑态直写与 tracked 双账同构单一源，T-182）。执行器张数回执 = `CwActionBuyCardOp` 的 `merge_buy_k` 现算，执行账补差 (k−1)×单价。
+2. **满栏例外腿（备战席满）**：满栏仍买得进当且仅当本次点击能完成一次合成（判据单一源 = `merge_buy_completes`，前提门 = 已有同名同星素材 ≥1；own=0 满栏域游戏拒买，/）。一击多买张数 k = `merge_buy_k` = min(店内同名同星张数, 3 − 已有数 mod 3)（绝不多买，`research/merge_mechanics.md` §2.5）；k 张逐张原价扣金（总价 = k×单价）、店载荷下架 k 张同身份牌、合成腾槽（应用机器 = `_apply_full_bench_merge_buy`，逻辑态直写与 tracked 双账同构单一源，T-182）。执行器张数回执 = `CwActionBuyCardOp` 的 `merge_buy_k` 现算，执行账补差 (k−1)×单价。
 
 **随机面**：商店直出 2★/3★ 的概率与出现（星级经费用徽章倍数反推，识别面不进逻辑态）；买入触发合成后画面上的升星动画（~1s，`research/screen_flow_timing.md` #8b）。
 
@@ -99,7 +99,7 @@ op = `operations/cw_op/cw_refresh_shop_action.py::CwActionRefreshShopOp`（**访
 
 **确定面**：
 
-- gold −= 实付刷新费。刷价真值 = 容器 `shop_refresh_cost`（备战帧现场 OCR，ADR-0622 观察通道；缺读 = 建模基价 `REFRESH_COST_BASE` 显式缺省，`kernel/cw_economy.py::refresh_cost_effective`）。免费帧（paid=0）金域不写（付费域纯净性，fields.md §3.3.4）。
+- gold −= 实付刷新费。刷价真值 = 容器 `shop_refresh_cost`（备战帧现场 OCR，观察通道；缺读 = 建模基价 `REFRESH_COST_BASE` 显式缺省，`kernel/cw_economy.py::refresh_cost_effective`）。免费帧（paid=0）金域不写（付费域纯净性，fields.md §3.3.4）。
 - 计数组（效果账本统一计算）：`refresh_total` 恒 +1；付费帧 `refresh_paid` +1(免费帧不进);免费余额扣减 = 容器字段 `free_refresh_left` Field 免费腿（写端 = 上报函数 `report_action_refresh_shop_param` 单口;fields.md 商店免费刷新节）。
 - 修饰腿（注册表口径）：免费刷新来源（概率事件 / 按节点免费额度）只影响实付金，不改「整店全换」;按刷产经验（淘金客，`xp_per_refresh`）效果声明在册,刷新侧经验 logic 写腿未接线（零写端）,经验真值归观察。
 
@@ -123,11 +123,11 @@ op = `operations/cw_op/cw_prep_sell_bench_action.py::CwActionSellBenchOp`（词�
 
 **确定面**：
 
-1. 备战席该槽位清空（kind → `empty` **不移位**，ADR-0316 槽位语义；跨动作组下标恒稳）；
+1. 备战席该槽位清空（kind → `empty` **不移位**，槽位语义；跨动作组下标恒稳）；
 2. gold += 退款，公式单一源 = `kernel/cw_economy.py::sell_refund`：退款 = 招募费（`bench_char_cost`，注册表单一源，未知按中位保守估）× 星级倍数表 `_SELL_MULT`（星级倍数 = 合成副本数结构：1★=全额，2★/3★/4★ = `star_base_copies` 同构倍数）；**手续费口径**：star≥2 且 cost≥2 再 −1；cost=1 豁免（2★1费 卖出=全额倍数，live 实测定谳，`sell_refund` 注 + `research/economy.md` §3）；3★/4★ 的手续费档 = 推测待 live 核（§7 G3）；
 3. **装备全量回装备区**：被卖单位身上的全部装备（简易/进阶/核心不分）进入 owned 装备库存——穿戴是可逆暂借（【口述·权威】`research/equipment_mechanics.md` §1「卖出角色=装备全量回装备区」；kernel 按 C6 装备守恒回收建模，`cw_vocab.py` 卖出分支注；实机帧级证据未采 = §7 G5）；equips 回收统一落上报函数（`report_action_sell_bench_param` C6 守恒腿——原「商店腿有/备战域缺口」的不对称随双域腿统一补齐）；
-4. 陈旧提案拒：expect 身份与槽内不符 = 零写（ADR-0317）。
-5. **溢出条件腿**（2026-09-15 实机建档 [prep.md 告警节](../../../../../game/screens/currency_war_prep.md)）：`overflow_warning` 在场（备战席满告警横幅 = 存在未安置溢出角色，此刻出战点击被游戏忽略）时，卖出语义补一条——**腾出槽当帧记溢出卡入位**（`bench[i] := 溢出卡`，「卖 → 溢出卡自动入自由槽」是游戏侧行为；有溢出时席必满、自由槽恒唯一，落位无歧义）+ `overflow_card` 消费清空 + 旗标 logic 消亡（下帧实读覆盖，两态制观察赢）。入位对象身份缺读（`overflow_card=''`）= 跳过入位（槽留空等观察），卖出语义本体不受阻；星级缺读按 1 兜底。容器字段 = `overflow_warning: bool` / `overflow_card: str`（观察写端 = `cw_screen_prep` 备战 heavy 溢出观察写端，渠道①）；策略消费门 = mandate 溢出门（flag 在场 → 本帧决策强收窄单动作 SellBench，禁发 StartBattle/冻结买面）。**两账同帧**：腿落地是跨账事件，容器腿（本写口，入位卡回占槽位——席空数派生自然不 +1，腾出槽即刻回占）/ 执行侧 tracked 主账吸收（本写口 `session` 形参在场时，摘该槽 + 追加入位卡按下标直写 tracked.bench——表下标权威，直写即同槽同位，ADR-0316 保洞语义不变；缺吸收 = 商店播种守卫 expected-vs-tracked 双账分叉，实机 2-4 停机实证）。（原第三面「黑板帧镜像」随 `gs.prep_obs` 黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5，镜像语义由容器回占面全量承载。）
+4. 陈旧提案拒：expect 身份与槽内不符 = 零写。
+5. **溢出条件腿**（2026-09-15 实机建档 [prep.md 告警节](../../../../../game/screens/currency_war_prep.md)）：`overflow_warning` 在场（备战席满告警横幅 = 存在未安置溢出角色，此刻出战点击被游戏忽略）时，卖出语义补一条——**腾出槽当帧记溢出卡入位**（`bench[i] := 溢出卡`，「卖 → 溢出卡自动入自由槽」是游戏侧行为；有溢出时席必满、自由槽恒唯一，落位无歧义）+ `overflow_card` 消费清空 + 旗标 logic 消亡（下帧实读覆盖，两态制观察赢）。入位对象身份缺读（`overflow_card=''`）= 跳过入位（槽留空等观察），卖出语义本体不受阻；星级缺读按 1 兜底。容器字段 = `overflow_warning: bool` / `overflow_card: str`（观察写端 = `cw_screen_prep` 备战 heavy 溢出观察写端，渠道①）；策略消费门 = mandate 溢出门（flag 在场 → 本帧决策强收窄单动作 SellBench，禁发 StartBattle/冻结买面）。**两账同帧**：腿落地是跨账事件，容器腿（本写口，入位卡回占槽位——席空数派生自然不 +1，腾出槽即刻回占）/ 执行侧 tracked 主账吸收（本写口 `session` 形参在场时，摘该槽 + 追加入位卡按下标直写 tracked.bench——表下标权威，直写即同槽同位，保洞语义不变；缺吸收 = 商店播种守卫 expected-vs-tracked 双账分叉，实机 2-4 停机实证）。（原第三面「黑板帧镜像」随 `gs.prep_obs` 黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5，镜像语义由容器回占面全量承载。）
 
 **随机面**：无（卖价修饰效果 = 大裁员/降本增效的卖价 ×2，其作用口径待实证 = §7 G4，缺口闭合前不写修饰腿）。
 
@@ -155,7 +155,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 **已整档退役**：词表行与 op 文件（`cw_comp_transaction_action.py`）删除，注册表模块头注销登记；前身上报载体 = 上报函数族拆分前的 `apply_shop_action_logic` CompTransaction 腿（已删除，考古归 git）。
 
-历史语义留档（供考古对照）：**拒 = 整批零写，应用后无半档残留**（C1 冻结不变量）；应用序 = 卖出 → 部署源清槽 → 下场（deployed 置 None + `bench_place` 放回）→ 上场（排/槽归一 + `deployed_place` 落槽）→ 填位（bench 源按后置槽位表解析；shop 源 = 买后即上）——顺序保证 bench 满时保留件不被静默丢弃（单位守恒，ADR-0380 件③）；汇总 gold = −fill_cost + income，携 income/fill_cost 出参。现行整档替换意图由策略器拆发原子动作序列承载。
+历史语义留档（供考古对照）：**拒 = 整批零写，应用后无半档残留**（C1 冻结不变量）；应用序 = 卖出 → 部署源清槽 → 下场（deployed 置 None + `bench_place` 放回）→ 上场（排/槽归一 + `deployed_place` 落槽）→ 填位（bench 源按后置槽位表解析；shop 源 = 买后即上）——顺序保证 bench 满时保留件不被静默丢弃（单位守恒）；汇总 gold = −fill_cost + income，携 income/fill_cost 出参。现行整档替换意图由策略器拆发原子动作序列承载。
 
 ### 2.7 词表完备性注：SellDeployed / SwapDeploy 的商店逻辑态直写腿
 
@@ -173,7 +173,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 **确定面**：
 
 1. 备战席 `from_slot` 槽位清空（kind → `empty` 不移位）；目标单位对象整体迁移（身份/星级/装备随人走），落 `to_row` 排的 `to_slot`（载荷 `(to_row, to_slot)` 直指——排内 1 基槽号经换算单一源 `deployed_idx_of` 定表下标；目标槽空 = 放置、有人 = 交换，被占位单位回源槽；`Unit.slot` 信息位随落位归一）；
-2. board 羁绊计数重算：按上场单位的羁绊标签全集（`unit_bond_tags`——星徽/卡带贡献在内；无标签回退阵营）随行写派生重算（行写端挂钩 `_resync_board_delta` 自动承载，ADR-0312 增量全集，防全量重算抹掉 OCR 真值）；
+2. board 羁绊计数重算：按上场单位的羁绊标签全集（`unit_bond_tags`——星徽/卡带贡献在内；无标签回退阵营）随行写派生重算（行写端挂钩 `_resync_board_delta` 自动承载，增量全集，防全量重算抹掉 OCR 真值）；
 3. 上阵计数 +1（= 部署空位 deploy_vacancy −1；heavy 帧重读校准）；
 4. 腾席链语境：`bench_idx` 常为开箱/开典籍腾出的槽（§3.4/§3.5 先行）。
 
@@ -187,7 +187,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 **确定面**：
 
-1. deployed 该槽位清空（置 None 不移位，ADR-0392）；
+1. deployed 该槽位清空（置 None 不移位）；
 2. gold += `sell_refund(star, bench_char_cost)`（退款公式与手续费口径 = §2.4 同一条，单一源相同）；
 3. 装备全量回装备区（同 §2.4 第 3 腿：口述·权威 + C6 守恒建模 + 缺口 G5；equips 回收统一进上报函数 `report_action_sell_deployed_param` 单点）；
 4. board 重算（`_recount_board`）；上阵计数 −1；
@@ -341,7 +341,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 | 编号 | 缺口 | 波及动作 | 在册处置（闭合前记账规则） | 补档方法 |
 |---|---|---|---|---|
 | G1 | 非满栏一击买牌张数（「恒 1 张」= 框架推论，零实测样本） | BuyCard | 按 k=1 记账；买后观察多张 → 对账纠偏 + 缺陷台账 | 实机局买牌动作行 × 备战席增量对账；或停机钩子采集「非满栏一击多张」帧 |
-| G2 | 满栏连升（own=0 基础星满栏连买 3 张触发合成；merge_mechanics §2.5「连升同理」自标低置信未亲见） | BuyCard（满栏例外腿） | `merge_buy_completes` own≥1 门按**拒买**实现（ADR-0619 申报边界）；若拖动对账网实证连升可行 → 回该单一源改门 | 满栏 + 商店 3 张同牌帧采集；对账层出现「拒买但画面买成」缺陷票即触发复测 |
+| G2 | 满栏连升（own=0 基础星满栏连买 3 张触发合成；merge_mechanics §2.5「连升同理」自标低置信未亲见） | BuyCard（满栏例外腿） | `merge_buy_completes` own≥1 门按**拒买**实现（申报边界）；若拖动对账网实证连升可行 → 回该单一源改门 | 满栏 + 商店 3 张同牌帧采集；对账层出现「拒买但画面买成」缺陷票即触发复测 |
 | G3 | sell_refund 3★/4★ 手续费精确值(−1 为推测) | SellBench / SellDeployed / CompTransaction | 退款消费按保守端(下界)组装;live 核定 = 单局复盘检查项 | 3★ 已 live 定谳(2026-09-15 详情面板实测:3★2费=+17=cost×9−1 ✓,1★/2★ 同场三点全中,详 economy.md §3——4★ 档仍未核,剩余缺口收敛到 4★) |
 | G4 | 卖价修饰 ×2（大裁员/降本增效）作用口径（净额 vs 基础价） | SellBench / SellDeployed | 不写修饰腿，退款按基础公式；实持效果局观察覆盖 | 持修饰效果局卖 2★ 看回金差 |
 | G5 | 卖带装角色装备去向（口述·权威 = 全量回区；实机帧级证据未采） | SellBench / SellDeployed / CompTransaction | 按 C6 装备守恒回收建模直写（在役）；对账层认「账面 2 组件 == 画面 1 进阶」类合法态 | 卖带装单位前后装备区逐格对拍（heavy 帧采集） |

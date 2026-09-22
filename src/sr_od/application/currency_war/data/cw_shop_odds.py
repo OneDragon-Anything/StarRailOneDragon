@@ -91,13 +91,13 @@ def boosted_cost_tier(observed: dict[int, float], level: int) -> int | None:
 
 
 # 轮岗事件概率:生产 20% 决策行(361/1806,replay 2026-08-24 批㉓ F4)带轮岗翻倍
-# 概率条真值 → sim 每备战期以本概率掷轮岗事件(ADR-0286;机制 = 投资环境轮岗
+# 概率条真值 → sim 每备战期以本概率掷轮岗事件(机制 = 投资环境轮岗
 # 每备战阶段随机翻倍一档费用概率,概率条直接印在商店上)。
 ROTATION_CHANCE: float = 0.2
 
 
 def rotation_probs(level: int, tier: int) -> dict[int, float] | None:
-    """轮岗翻倍 ``tier`` 档后的完整概率表(供 sim 抽店 / A-B 用;ADR-0286)。
+    """轮岗翻倍 ``tier`` 档后的完整概率表(供 sim 抽店 / A-B 用)。
 
     模型(与生产 parse_prob_bar 读到的概率条同构,基线某档 ×2):
     - 翻倍档 p' = 2p(锁:轮岗帧的档概率 = 基线×2);
@@ -196,7 +196,7 @@ def expected_refreshes_for_card(level: int, cost: int, target_star: int,
 def reencounter_window_frames(level: int, cost: int, held: int = 0) -> float:
     """该卡再遇窗(自然帧)= 1/P(≥1 张/帧)——P77 §1.4「再遇窗 1/q」同式
     (math_proofs/p77-shop-spot-availability-signal.md;消费位 = s_reserve
-    拒绝对价载体,shop.py ADR-0626)。
+    拒绝对价载体,shop.py )。
 
     q = 单次刷新 5 格出现至少 1 张该卡的概率,超几何精确算
     (``_refresh_dist`` k_need=1 的 P(0) 补);held = 已持有该卡基础副本数
@@ -217,21 +217,21 @@ def reencounter_window_frames(level: int, cost: int, held: int = 0) -> float:
 
 def acquirability_factor(core_chars: list[str], level: int,
                          held: dict[str, int] | None = None) -> float:
-    """comp 核心角色的**牌池感知**可得性 [0,1](select_comp 用;ADR-0110 牌池模型,补 ADR-0092 理论法)。
+    """comp 核心角色的**牌池感知**可得性 [0,1](select_comp 用;牌池模型,补 理论法)。
 
     P(单次刷新 5 格中至少出 1 张该角色)= 1 - P(0 张),用 ``_refresh_dist`` 精确超几何算:
     - P(出该费用)= refresh_prob(level, cost);M~B(5, p) 出该费用格数;
     - 给定 m 格该费用,出该角色 = 超几何(剩余该角色副本 a−j / 同费剩余总副本 v·a−j);
     - **j = 玩家已持有该角色的基础副本数**(1星1/2星3/3星9/4星27,3合1 折算)→ 持有越多,剩余越少,越难再刷
-      (牌库有限:买掉即减,用户根因;ADR-0109 副本数 27/9)。忽略 NPC 消耗(未知,保守:只扣自己持有的)。
+      (牌库有限:买掉即减,用户根因;副本数 27/9)。忽略 NPC 消耗(未知,保守:只扣自己持有的)。
     comp 取核心角色里**最低**(阵容受最稀卡限制)。
 
     :param held: {char_name: 已持基础副本数 j},默认 None=全 0(早期未持,纯满池理论)。
     :return: [0,1];p=0(该等级不出该费)→ 0;无识别角色 → 1.0(中性不降权)。
 
-    select_comp 用法:s *= (0.5 + 0.5 * acq)(ADR-0105:acq 作次级 tiebreak,非主导;牌池感知后范围收窄
+    select_comp 用法:s *= (0.5 + 0.5 * acq)(:acq 作次级 tiebreak,非主导;牌池感知后范围收窄
     至 ~0.005-0.3 → 乘子 0.50-0.65,仍提供「低费核心早期更易刷」的 tiebreak 区分)。
-    理论依据(ADR-0092):刷新概率独立 → 观察(shop 本回合/历史)无预测力,用理论 REFRESH_PROB + 牌池模型。
+    理论依据:刷新概率独立 → 观察(shop 本回合/历史)无预测力,用理论 REFRESH_PROB + 牌池模型。
     """
     held = held or {}
     probs: list[float] = []

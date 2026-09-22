@@ -43,7 +43,7 @@
 ## 6. 状态上报面
 
 - 候选观察:`report_screen_megastar_obs` 候选写容器 `megastar_opts` 槽(空候选不写;容器只存规范名——值域 = cw_chars「盛会之星」阵营派生规范名 ∪ 场上持「盛会之星星徽」的角色,观察标准化门 = 值域保证方,见 §3;选项结构含 xy = 观察期快照点击坐标,坐标单一真相源 = 观察上报,fields.md §3.4.5a B 类)。
-- `chosen_megastar` write_logic(点选前(派发前)写;gs 单一源(session 域无此写端);单次逻辑写入豁免——选择落地无定型帧,后果走观察覆盖;ADR-0651 两态制下无挂账登记环节)。
+- `chosen_megastar` write_logic(点选前(派发前)写;gs 单一源(session 域无此写端);单次逻辑写入豁免——选择落地无定型帧,后果走观察覆盖;两态制下无挂账登记环节)。
 - 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.5 / §4「事件选择」;效果账 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §8。
 
 ## 7. 子态与 overlay

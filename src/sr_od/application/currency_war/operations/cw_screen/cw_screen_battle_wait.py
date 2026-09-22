@@ -10,7 +10,7 @@
 结构判据(od-dev-write-operation「循环驱动玩法」):本 op = node-per-op 的
 **逻辑单元生命周期 owner**——战斗+结算是一个单元(开始=出战,结束=白名单锚/
 团灭终局),单元内多阶段(等待/页1 动画/结算页/败局链),节点作用域预算 =
-未知帧 bail 上界 + 出战宽限(ADR-0250)收编。外循环只回答「在不在战斗窗口」
+未知帧 bail 上界 + 出战宽限收编。外循环只回答「在不在战斗窗口」
 (驻留闩 + 帧锚双入口),不进单元内部分类。
 
 收编来源(cw_loop 分支随迁;语义逐条保真,遥测写端调用原样平移):
@@ -125,7 +125,7 @@ def hit_settle_completion_anchor(op: SrOperation, screen) -> bool:
 
 def _write_settlement_observation(session: StrategySession,
                                   obs: RoundOutcome) -> None:
-    """结算观察半直写(ADR-0583 §2.5:旧 on_round_end 观察段收编的单一写点)。
+    """结算观察半直写(:旧 on_round_end 观察段收编的单一写点)。
 
     现役 = performance.record(streak/hp/gold/level 真值链已由结算覆盖写端
     直入容器 gs:streak_after 带符号;终态契约 §B:last_streak session 份
@@ -211,7 +211,7 @@ class SettlementState:
     - first_settlement_seen / run_start_ts / is_new_match = relaunch 残留
       结算屏判据三件(迁移审计 w28;run_start_ts/is_new_match 由 RunLoop
       handle_init 注入);
-    - battle_ts = 出战时刻(RunLoop ADR-0250 战斗窗口开窗点注入;op 据此
+    - battle_ts = 出战时刻(RunLoop 战斗窗口开窗点注入;op 据此
       判「战斗进行中合法静止」宽限);
     - saw_settlement = 本窗口已见结算屏(RunLoop 据此关战斗 watch 宽限);
     - settled_battle_ts = 结算观测窗锚:最近一次「结算观测」行落点时点的
@@ -254,7 +254,7 @@ class CwScreenBattleWait(SrOperation):
     SETTLE_DEFEAT_LATCH_MIN_T: ClassVar[int] = 14
     #: relaunch 残留结算屏判据宽限(随迁自 cw_loop RELAUNCH_SETTLE_GRACE_S)。
     RELAUNCH_SETTLE_GRACE_S: ClassVar[float] = 30.0
-    #: 出战宽限(ADR-0250 随迁口径):战斗进行中合法静止,不进未知帧计数。
+    #: 出战宽限(随迁口径):战斗进行中合法静止,不进未知帧计数。
     BATTLE_WATCH_GRACE_S: ClassVar[float] = 600.0
     #: 未知帧 bail 上界(节点作用域预算;超限 = 留证 + bail 交主循环未知
     #: 画面分支,W971 05-battle §1 超时兜底)。战斗特效长帧期宽限已由
@@ -282,7 +282,7 @@ class CwScreenBattleWait(SrOperation):
     #(实现见自动战斗检测段)。
 
     def _in_battle_grace(self, now: float) -> bool:
-        """战斗进行中宽限判定(ADR-0250 随迁):未见过结算屏且出战未超
+        """战斗进行中宽限判定(随迁):未见过结算屏且出战未超
         宽限 → 合法静止,不进未知帧计数。"""
         return (not self._st.saw_settlement
                 and self._st.battle_ts is not None
@@ -359,18 +359,18 @@ class CwScreenBattleWait(SrOperation):
 
         (自 cw_loop._record_round_outcome 平移;方法级注释与判定链逐条
         保真,详见原处 git 历史。差异仅两处载体:循环态挂 SettlementState、
-        ADR-0250 窗口关由 saw_settlement 承载。)
-        **ADR-0583 拆两半**:策略生命周期钩子 on_round_end 删除后,本回路
+        窗口关由 saw_settlement 承载。)
+        **拆两半**:策略生命周期钩子 on_round_end 删除后,本回路
         直接承担观察半——结算真值观察(performance.record)在结算点即时
         直写(写点与原 on_round_end 同点同时序,performance.history 无缺行
         窗口);策略半(pending_round_outcomes 入槽)已随终态契约 §B 删
-        (消费侧 drain 退役,ADR-0638)。telemetry-only 面(败局页补录)
+        (消费侧 drain 退役)。telemetry-only 面(败局页补录)
         不写任何一侧。
         """
         if self.ctx.cw_match is None:
             return
         if not telemetry_only:
-            self._st.saw_settlement = True   # ADR-0250:见结算屏 → 窗口关
+            self._st.saw_settlement = True   # :见结算屏 → 窗口关
         _st = self._st
         # 残留判定与 telemetry_only 解耦(两路同源):判定值来自结算处理入口
         # 恰一次调用(首见副作用,环写位禁二次调用),1f/3b/胜局三路的残留行
@@ -431,7 +431,7 @@ class CwScreenBattleWait(SrOperation):
                             # 已退役,改指 journal (run_id,v) 锚。
                             refs=journal_refs(),
                             note='观测自检框架设计 §2.7;残留屏豁免')
-            # 披露面防御 getattr(strategy_state_of None 契约,ADR-0563 B4 划分线):
+            # 披露面防御 getattr(strategy_state_of None 契约,B4 划分线):
             # 异型状态对象字段缺席退 '?'(outcomes comp_tag 缺席语义,非行为面)
             _tc = getattr(strategy_state_of(_session), 'target_comp', None)
             _comp_tag = _tc.name if _tc is not None else '?'
@@ -493,7 +493,7 @@ class CwScreenBattleWait(SrOperation):
                                  '赢' if _obs.killed else '输')
                 _st.last_outcome_t = _now_t
             # 结算三项遥测页1 暂存合并(同 progress 合并法;暂存值优先于页2 同帧读数)
-            # heal_longline 同并入(ADR-0609:回血分量,页1 瞬窗才可见)
+            # heal_longline 同并入(回血分量,页1 瞬窗才可见)
             _st1 = _st.settle_page1_settle
             if _st1 and _st.settle_p1_battle_ts != _st.battle_ts:
                 _st1 = {}   # 异窗滞留即弃(跨场污染排除)
@@ -513,18 +513,18 @@ class CwScreenBattleWait(SrOperation):
             self._cw_selection_write(_session, _obs, _plane, _round, _node,
                                      residual=_residual)
             if not telemetry_only:
-                # —— 观察半直写(ADR-0583 §2.5;原 on_round_end 观察段逐行平移,
+                # —— 观察半直写(原 on_round_end 观察段逐行平移,
                 # 写点与原调用同点同时序;hp 结算锚已随终态契约 §A 退役)——
                 _write_settlement_observation(_session, _obs)
                 # (策略半入槽 pending_round_outcomes 已随终态契约 §B 删:
-                #  消费侧 drain 早在 ADR-0638 退役,结算真值归宿 = gs
+                #  消费侧 drain 早在 退役,结算真值归宿 = gs
                 #  settlement 覆盖 + performance.history。)
                 # 结算真值现役归宿 = GameState settlement
                 # 域 apply_settlement_cover(观察半直写链)。
                 if _obs.hp_confidence >= 0.9:
                     _st.last_outcome_hp = _obs.hp_after
                 # 结算屏真值覆盖(EXPECTED_STATE §2 原口径的观察半,两态制
-                # ADR-0651 后 = 纯观察直写:hp/gold/streak/level 全可信):
+                # 后 = 纯观察直写:hp/gold/streak/level 全可信):
                 # hp 真值链走结算观察直写→last_hp(上);gold/level/经验经
                 # apply_settlement_cover 直写容器(原 last_state 帧写半随
                 # last_state 链退役批删除,容器半为唯一宿主)。best-effort,
@@ -559,7 +559,7 @@ class CwScreenBattleWait(SrOperation):
                     # settlement 行注记带 battle_done:<节点类型> 语义——旧
                     # exogenous 'node_enter' 外生行的「出节点」半随删除波 1
                     # 退役后,其判读语义由本行承接(R5 迁移规划 W1 ⑤/
-                    # ADR-0634;同时点同载荷,行行自足快照更强)。
+                    # ;同时点同载荷,行行自足快照更强)。
                     from sr_od.application.currency_war.kernel.cw_game_state import (
                         apply_settlement_cover,
                         gs_of_ctx,
@@ -939,7 +939,7 @@ class CwScreenBattleWait(SrOperation):
             self.ctx.controller.click(CwScreenBattleWait.BLANK.center)
             return self.round_wait(wait=1.0)
 
-        # ①段:等待结算画面出现。战斗进行中 = 合法静止(ADR-0250 宽限)。
+        # ①段:等待结算画面出现。战斗进行中 = 合法静止(宽限)。
         if self._in_battle_grace(time.monotonic()):
             # 自动战斗检测(P4 挂账落地;2026-09-03 实机建档):「我方行动
             # 待操作」双锚(单攻+回复技能按钮)**连续 ~5s** 命中 = 自动未开

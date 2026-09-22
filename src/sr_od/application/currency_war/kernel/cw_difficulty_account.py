@@ -1,4 +1,4 @@
-"""难度账本与价值地图 v0(ADR-0199):记账恒等式 + 场合依赖定价。
+"""难度账本与价值地图 v0:记账恒等式 + 场合依赖定价。
 
 **现状**:OCR 读侧已通(``cw_observation.read_enemy_difficulty`` 旗牌两级管线,
 58 帧 fixture 对拍 41/41 有旗牌帧读对),本模块主体仍是**记账恒等式**(自持选择
@@ -53,7 +53,7 @@ class DifficultyAccount:
     @classmethod
     def from_strategies(cls, base: float, strategy_names: list[str],
                         streak: int = 0) -> DifficultyAccount:
-        """从持卡注册表建账(v2,ADR-0205 落地:EconomyEffect 难度字段)。
+        """从持卡注册表建账(v2,落地:EconomyEffect 难度字段)。
 
         difficulty_delta 进 augments(节点型限定暂并入静态——遭遇/首领限定建模
         挂 decide_encounter 消费批);difficulty_per_streak 走 streak 动态项。

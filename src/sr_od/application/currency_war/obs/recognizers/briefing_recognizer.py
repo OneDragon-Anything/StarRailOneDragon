@@ -48,7 +48,7 @@ class BriefingRecognizer(ScreenRecognizer):
     extras_doc: dict[str, str] = {
         'affixes': '敌人词缀 OCR 原名 list(读不到→[],不伪造)。仅名不含效果原文 —— '
                    'recognizer 纯读不 click,效果需消费方自查或走 affix_effects_data 注册表',
-        'bosses': '3 位面首领名 list(位面序真值,ADR-0397 勘误节;此处为 OCR 原名未清洗,'
+        'bosses': '3 位面首领名 list(位面序真值,勘误节;此处为 OCR 原名未清洗,'
                   'bot 链路经 clean_boss_names_by_lcs 归一;读不到→[])',
     }
 

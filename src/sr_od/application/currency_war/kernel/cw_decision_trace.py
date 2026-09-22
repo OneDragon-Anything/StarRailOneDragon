@@ -41,7 +41,7 @@
 (:data:`DISCLOSURE_FAMILY_CLOSED_LIST`,成员封闭清单)按消费需求逐批
 接线,未接线期不入行;退役面字段(§2.3)与派生列 refresh_trigger
 (定谳 C3,判读侧离线自同行 actions 派生)恒不入行。行内容只来自容器
-现读与调用方传入,禁读 journal / 决策行文件自身(§8-4,ADR-0577 写侧
+现读与调用方传入,禁读 journal / 决策行文件自身(§8-4,写侧
 延伸)。
 
 **缺省关与装配**(注入槽模式,同 ``cw_state_journal``/``set_defect_sink``

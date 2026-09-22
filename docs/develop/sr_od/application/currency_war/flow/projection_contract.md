@@ -24,10 +24,10 @@
 - `kernel/cw_game_state.py::GameState` 容器簿记：tracked 主账 = `tracked_books`
   （`TrackedBooks`，bench/deployed 两面槽位簿记；形状契约 = `bench` =
   `list[BenchSlot | None]` 定长 9（元素 = 容器同款 BenchSlot 五分类,kind 随形
-  保留;None = 洞,卖出/上阵/合成消耗置 None 不移位,ADR-0316 保洞）、
+  保留;None = 洞,卖出/上阵/合成消耗置 None 不移位,保洞）、
   `deployed` = `list[Unit | None]` 定长 10（表下标 = deployed_idx 恒稳,排归属
   由下标派生 0-3 前/4-9 后,换算单一源 = `cw_exec_state.deployed_row_slot`/
-  `deployed_idx_of`,ADR-0392）。执行层不再设
+  `deployed_idx_of`）。执行层不再设
   独立状态载体（执行层状态类目已退役，git 历史可溯）；失败记忆/期望态容器随类目
   退役删除。
 - 期望态路径寻址：期望态条目表已随期望账机制退役（`ExpectedEntry` 不存在），

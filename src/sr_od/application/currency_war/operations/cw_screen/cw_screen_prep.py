@@ -1076,7 +1076,7 @@ _NODE_ICON_SHOT_TS: dict[int, float] = {}
 
 
 def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
-    """开局帧槽序表的**每位面首帧**写入(ADR-0368)。
+    """开局帧槽序表的**每位面首帧**写入。
 
     write-once 守卫会使 P1 的 9 槽表整局滞留:进 P2 后 7 槽真值永不落盘 →
     nodes_of_plane / battles_left_p2 / 位面日程真值(cw_plane_table.schedule_of)
@@ -1213,7 +1213,7 @@ def _write_prep_node_chain(session: object, slots: list | None,
         report_screen_prep_obs(gs, CwScreenPrepObs(node_path_chain=_chain),
                                sig=sig)
         ledger = get_node_ledger(session)
-        # 台账写点·备战行源(遥测观测面;ADR-0609):读数按位合并进权威表
+        # 台账写点·备战行源(遥测观测面):读数按位合并进权威表
         # (槽 idx(0-based)= 该位面第 idx+1 轮,与台账 seq 下标同基)。合并
         # 语义(None 位保旧)下 past 槽 None 不覆盖历史非 None 读数。守卫
         # 随迁:轮位对齐门(检测圆漏检 → 槽枚举左移的错位帧拒写)+ 环境

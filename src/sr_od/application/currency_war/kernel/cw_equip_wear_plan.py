@@ -47,7 +47,7 @@ def _prioritize_wearable(
 
     comp 驱动穿戴(替 naive ``wearable[0]``);无 target / 无 key_equips
     → 原序(等价旧行为)。``key_equips`` 可含重复 → 按 multiplicity 消费
-    (命中的重复件也优先,但不超额)。决策见 ADR-0101。
+    (命中的重复件也优先,但不超额)。
     """
     if not key_equips:
         return wearable
@@ -65,7 +65,7 @@ def _prioritize_wearable(
 
 @dataclass(frozen=True)
 class EquipWearStep:
-    """单件穿戴计划步(计划随指令下发的契约载体;ADR-0601 §3-C1)。
+    """单件穿戴计划步(计划随指令下发的契约载体;C1)。
 
     产出位 = 分发段 ``_build_equip_wear_plan``(读备战入口观察产物
     PrepObservation,P4 观察接线后零读屏,由 kernel 判据单一源
@@ -90,7 +90,7 @@ class EquipWearStep:
 
 @dataclass(frozen=True)
 class EquipPlanBuild:
-    """装备穿戴计划产出(``_build_equip_wear_plan`` 返回载体;ADR-0601 §3-C1)。
+    """装备穿戴计划产出(``_build_equip_wear_plan`` 返回载体;C1)。
 
     - ``steps``: 机械执行计划(EquipWearStep 列表,产出期快照,pass 内恒稳);
     - ``empty_reason``: 计划空时的具名原因(字面量与今日 op 停手归因逐字
@@ -113,7 +113,7 @@ class EquipPlanBuild:
 
 def _build_equip_wear_plan(session: Any,
                            registry: Any = None) -> EquipPlanBuild:
-    """装备穿戴计划产出位(分发段;ADR-0601 §3-C1 计划随指令下发)。
+    """装备穿戴计划产出位(分发段;C1 计划随指令下发)。
 
     事实源 = **容器 game state 读口**(迭代 2026-09-18-prep-obs-retirement
     阶段 3.2 换源):owned ← ``gs.equips``、occupied ← ``gs.occupied_equips``
@@ -202,7 +202,7 @@ def _build_equip_wear_plan(session: Any,
     # ⚖️ 过渡期持有语义修正(r70 审计刀②):过渡期**穿给当前上场的 5 人**
     # ——key_equips 命中件照穿,非 key 散件穿给当前板面高战力者(carry 优先);
     # 「攒给成型核心」只在**已定型**(非双轨)且 form 低时保留。
-    # 装配源换源(ADR-0530 决策2 核销):执行侧装配源 =
+    # 装配源换源(核销):执行侧装配源 =
     # session 容器单例(备战帧观察写端同链刷新);容器与帧同帧同源
     # (同一备战观察),读口 = 容器公共读口单一源。
     _form = 0.0
@@ -222,13 +222,13 @@ def _build_equip_wear_plan(session: Any,
                       and _gs_c.node.value is not None) else False)   # 缺供给 = 双轨保守侧(D2)
     # r388(用户 live 质问「1-2 就乱装备」):开局轮(r≤2,奖励节点无战斗)
     # 穿装备零战斗变现;key_equips 命中件照穿,gen 散件攒到 r3 战斗轮再穿。
-    # R3 修正(ADR-0257):开局 hold 不再依赖 target 存在。
+    # R3 修正:开局 hold 不再依赖 target 存在。
     # hold 块换源:node 未观察镜像回 None。
     _hold_node = (_gs_c.node.value if _gs_c is not None else None)
     _round_now = (_hold_node.round_num
                   if (_hold_node is not None
                       and _hold_node.plane == 1) else None)
-    # ADR-0461:hold 收窄+生锈豁免,开关走策略 registry
+    # :hold 收窄+生锈豁免,开关走策略 registry
     # (DecisionV2Strategy 注入臂可达;default 栈无 registry 属性 → 缺省表
     # =全关,零漂移)。
     from sr_od.application.currency_war.kernel.cw_exec_state import ledger_node_type
@@ -258,7 +258,7 @@ def _build_equip_wear_plan(session: Any,
         build_equip_env_signals,
     )
     _equip_signals = build_equip_env_signals(_gs_c)
-    # 释放判据表(ADR-0526)+ 收窄(ADR-0531):row1(opening) 域扣留收窄为
+    # 释放判据表+ 收窄:row1(opening) 域扣留收窄为
     # 逐件判定(classify_item_hold),帧级 ``.hold`` 只辖 row2 域。
     _release = resolve_wear_release(
         _round_now, _node_type,
@@ -284,7 +284,7 @@ def _build_equip_wear_plan(session: Any,
                  _release.rust_release, _release.output_penalty_release,
                  _form)
     if _has_deployed:
-        # W209g 断点③语义保留:后排 occupied 采集随布局选档(ADR-0385/0387
+        # W209g 断点③语义保留:后排 occupied 采集随布局选档(
         # 双通道单一源)——本处只消费采集产物。
         occupied_m7: dict[tuple[str, int], list[str]] = occupied_all
         deployed_by_name: dict[str, list] = {}
@@ -303,7 +303,7 @@ def _build_equip_wear_plan(session: Any,
         wearable = [n for n in owned_names
                     if EQUIPMENTS.get(n) is not None
                     and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
-        # ADR-0391 λ 标定埋点(P14 假设表 λ 行「待遥测标定」的数据源):
+        # λ 标定埋点(P14 假设表 λ 行「待遥测标定」的数据源):
         # 每次派发记 owned 全量快照(含工具;每 pass 恰一次 = 每次派发至多
         # 调本函数一次)——离线 diff 相邻轮快照 = 各节点发放件数。
         # (换源:plane/round 取容器 node;未观察显 '?' 同旧缺帧形态)
@@ -353,7 +353,7 @@ def _build_equip_wear_plan(session: Any,
             return EquipPlanBuild(
                 empty_reason=_reason, branch='m7',
                 owned_wearable_names=wearable)
-        # ADR-0526 词缀条件优先层在**释放帧**重排(释放动作的次序)。
+        # 词缀条件优先层在**释放帧**重排(释放动作的次序)。
         _priority_order = resolve_affix_priority_order(
             _tgt_comp, deployed_rows,
             sorted(_equip_signals.enemy_affixes), occupied_m7)
@@ -397,7 +397,7 @@ def _build_equip_wear_plan(session: Any,
                                        row=_picked[0], slot=_picked[1]))
         return EquipPlanBuild(steps=steps, branch='m7',
                               owned_wearable_names=wearable)
-    # ===== front-only 回退分支(身份读失败 fallback;ADR-0101 key_equips
+    # ===== front-only 回退分支(身份读失败 fallback;key_equips
     # 优先;求值块自 op 整体搬迁,一并计划化不设豁免)=====
     # 前排已穿槽 = 入口观察产物 occupied_equips 的前排切片(键坐标系
     # 同采集层;原 read_row_equipped 现读退役)。
@@ -446,7 +446,7 @@ def _build_equip_wear_plan(session: Any,
         return EquipPlanBuild(empty_reason='pool_empty(无穿戴候选)',
                               branch='front_only',
                               owned_wearable_names=[])
-    # comp 驱动穿戴(ADR-0101):优先穿 target_comp.key_equips 命脉件。
+    # comp 驱动穿戴:优先穿 target_comp.key_equips 命脉件。
     _key_equips = (_tgt_comp.key_equips if _tgt_comp is not None else None)
     wearable = _prioritize_wearable(wearable, _key_equips)
     # 排序后候选 × 空槽序 zip(产出期快照;中途合成耗件 → 计划步定位

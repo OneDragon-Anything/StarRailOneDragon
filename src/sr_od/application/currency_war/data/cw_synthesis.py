@@ -75,7 +75,7 @@ GUANGNENG_CROSS_RECIPES: dict[str, tuple[str, str]] = {
 GUANGNENG_SELF_RECIPES: dict[str, str] = {
     _k: _v for _k, _v in _ALL_SELF_RECIPES.items() if _v == _GUANGNENG_BASE}
 
-# 合成保留组件集(ADR-0265;用户口述 [29]「定阵容前不浪费装备合成/穿着」):
+# 合成保留组件集(用户口述 [29]「定阵容前不浪费装备合成/穿着」):
 # 全部 8 件基础件。P1(plane==1)阶段这些组件**不入穿戴池**
 # (cw_comps.equip_allocation 消费本常量——单一源,别在装备层复制清单),
 # 留在 owned 待合成;合成路线不被过渡穿着锁死。
@@ -152,7 +152,7 @@ def expand_worn_products(worn: list[str]) -> list[str]:
     return out
 
 
-# ===== 装备策略接入(P14 期望模型的生产化;ADR-0391)=====
+# ===== 装备策略接入(P14 期望模型的生产化)=====
 # P14(docs/develop/sr_od/application/currency_war/proofs/p14-equipment-acquisition-ev.md)
 # 已证结论在此从证明脚本晋升为生产纯函数——装备分配准入/判读锚点消费;
 # 证明脚本与本文档共享图谱单一源(本模块),数值改动自动传导。
@@ -222,8 +222,8 @@ def plan_syntheses(
     """合成执行清单:「持有组件凑齐配方且成品属当前目标需求线」→ 合成。
 
     补合成执行链(W465 装备流分析定案的系统缺口:系统只囤组件从不执行
-    合成,ADR-0265 保留池的设计前提「组件留作合成」永不兑现 → P1 出口
-    裸装)。规则(口述 [29] 与 ADR-0265 语义不受影响——合成产物是进阶
+    合成,保留池的设计前提「组件留作合成」永不兑现 → P1 出口
+    裸装)。规则(口述 [29] 与 语义不受影响——合成产物是进阶
     成品,不是组件,不在 RESERVED_COMPONENTS,自然进入可穿池):
 
     - 需求 = ``key_equips``(计重复,当前目标 comp 需求线);不为目标
@@ -239,7 +239,7 @@ def plan_syntheses(
     **免费**建模;若实测确认耗金,经济侧在本函数的调用方补记账,不改本
     函数签名。
 
-    方向确定性门(用户裁决,叠加在 ADR-0265 保留池之上的兑现门,不放松
+    方向确定性门(用户裁决,叠加在 保留池之上的兑现门,不放松
     保留条件):需求线 = key_equips 本身即「方向已定」的载体——调用方
     必须在**意向已锁线**(或等价高置信状态)后才调用本函数;P1 FORM 期
     target_comp 易变,对着它合成=压注未定方向。候选成品逐个过隶属度门

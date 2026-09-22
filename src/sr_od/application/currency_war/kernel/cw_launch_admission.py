@@ -7,12 +7,12 @@ victim 资格单一源 = offtarget_sell_allowed fenced 臂全条件(判据语义
 见其 docstring,自 cw_op_deploy 迁出未改动);cw_op_deploy 保留同名
 re-export,既有消费路径(生产 deploy 卖出臂/测试)零迁移。
 
-armed 质量合取(ADR-0570):达标臂判据 = 配方完备(readiness_form_ok)
+armed 质量合取:达标臂判据 = 配方完备(readiness_form_ok)
 ∧(板面承重满额 ∨ 部署计划不可得 fail-open)——质量维只消费 B_t 通道
 承重结构派生量(目标线承重计数/槽位占用/部署计划存在性;承重判定 =
 comp 自家核准集 core∪shared ∪ 外部阵营视图,全机制定义量零自由参数),
 禁 2★ 计数/装备覆盖/强度评分直入(00 §1 禁战力建模 + P62 form_score
-饱和零信息已证);命题与判据资格 = ADR-0570。
+饱和零信息已证)。
 """
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 DEPLOY_FENCE: frozenset[str] = frozenset(_RECIPE | _ENGINE_FENCE)
 
 # 质量闸观测分键名(单一源;写点 = cw_loop 达标
-# 臂判定位,best-effort sink,ADR-0570 待标定①载体)——消费面禁
+# 臂判定位,best-effort sink,待标定①载体)——消费面禁
 # 字面量散写(三审07轮 C2),键名改这里即全链跟随。
 LAUNCH_QUALITY_DEFER_FRAMES_KEY: str = 'launch_quality_defer_frames'
 #: 质量评估异常帧分键(fail-open 显影;armed∧quality_eval_error 帧,
@@ -58,7 +58,7 @@ def offtarget_sell_allowed(char_id: str, bonds: set[str],
                            fenced_offline_sellable: bool = False,
                            protect_names: frozenset[str] = frozenset()
                            ) -> bool:
-    """W209/ADR-0386:off-target 卖出候选判据(纯函数,锁测试面)。
+    """W209/:off-target 卖出候选判据(纯函数,锁测试面)。
 
     run 26 实锤(崩坏根因②):P2 定型后 deploy 侧只按终局 ``target_comp`` 判
     off-target,把买/演进层仍在买入的引擎·配方体系件(仙舟三人组:藿藿×3/
@@ -67,7 +67,7 @@ def offtarget_sell_allowed(char_id: str, bonds: set[str],
     振荡熔断:**引擎/配方体系件(``DEPLOY_FENCE`` = RECIPE ∪ ENGINE,与散牌
     围栏同源)恒不卖**——deploy 自己都把它们当围栏件不许留 bench,卖出判定不得
     同源反向。真要换血走演进层显式 CwActionSellDeployedParam 原子序(有保护集分级,
-    ADR-0382;原 CompTransaction 事务载体已随批2b R3 删除),不归 deploy 的机会性腾位通道管。
+    ;原 CompTransaction 事务载体已随批2b R3 删除),不归 deploy 的机会性腾位通道管。
 
     换阵卖出义务臂(板满换阵死锁修复;第七局 r9 实证):
     ``fenced_offline_sellable=True`` 时,off-line 的引擎/配方件(**bonds ∌
@@ -85,7 +85,7 @@ def offtarget_sell_allowed(char_id: str, bonds: set[str],
         return False   # target 单位,保留
     if fenced_offline_sellable:
         return True    # 换阵卖出义务臂:off-line 引擎/配方件让位(线已成型)
-    # 引擎/配方体系件恒不卖(W209 振荡熔断,ADR-0386)
+    # 引擎/配方体系件恒不卖(W209 振荡熔断)
     return not (bonds & DEPLOY_FENCE)
 
 
@@ -115,7 +115,7 @@ def readiness_form_ok(gs: GameState | None, comp: Comp | None) -> bool:
     = comp/state 输入齐备 ∧ ``cw_comps.form_progress(comp, state) >= 1.0``
     ——配方腿语义与 v3_form_ok 镜像写端同式同源(禁各写端内联第二实现);
     消费面 = 镜像族写端(strategies.impl.flow.write_shop_mirrors)与
-    :func:`readiness_launch_decision` armed 的配方腿(ADR-0570 起 armed
+    :func:`readiness_launch_decision` armed 的配方腿(起 armed
     在本判据之上叠加质量合取,本函数自身语义零改)。
     """
     from sr_od.application.currency_war.kernel.cw_comps import form_progress
@@ -182,7 +182,7 @@ def readiness_form_ok_from_snapshot(state_snapshot: dict | None, *,
 def launch_board_quality_report(gs: GameState, comp: Comp, *,
                                 deploy_plan_available_fn: Callable[
                                     [...], bool]) -> dict:
-    """armed 质量维报告(ADR-0570;纯函数,配方完备帧调用)。
+    """armed 质量维报告(纯函数,配方完备帧调用)。
 
     质量判据(零自由参数,两端均机制定义量):
 
@@ -192,24 +192,24 @@ def launch_board_quality_report(gs: GameState, comp: Comp, *,
       comp 自家核心被误判线外恒推迟)或全羁绊(CHARACTERS 注册表
       factions∪flows)∩ ``comp.all_factions`` 非空
       的件数——comp 视图 = 核心∪弹性羁绊(cw_comps.all_factions,
-      ADR-0152 口径「弹性羁绊铺板不算 off-target」的板面判定同视图);
+      口径「弹性羁绊铺板不算 off-target」的板面判定同视图);
       未注册/未识别名按线外计(fail-closed:承重不认)。
     - ``occupied`` = 容器占用数(占用判定 = 元素非 None 计 1;P4 容器形,
       行域本身即紧凑占用序,含未识别占位单位)。承重计数 ≤ 占用数恒成立,
       判据下限取该平凡上界 ⇒
       ``load_bearing_full`` ⟺ 板面零线外件(线外 = 非核准 ∧ 视图外)。四体系线 comp
       该口径与披露 B_t(kernel ``board_target_line_weight``)同族同源
-      ——披露口径本体温测零改(ADR-0535),本报告附 ``b_t_disclosure``
+      ——披露口径本体温测零改,本报告附 ``b_t_disclosure``
       供判读对账。
     - ``deploy_plan_available`` = 注入的部署计划可入性谓词(单一源 =
       mandate_v1 deploy_plan.has_deployable;kernel 桶禁 strategies 直引,
       由调用方注入同一函数对象——依赖倒置契约同 line_members)。
 
-    fail-open 语义(ADR-0570 §判据):线外件在场但部署计划不可得 ⇒
-    质量目标不可达帧,降格为配方完备发射(「不可达不关闸」防死锁教义,
-    论证与出处 = ADR-0570 §判据/§Considered);推迟帧
+    fail-open 语义:线外件在场但部署计划不可得 ⇒
+    质量目标不可达帧,降格为配方完备发射(「不可达不关闸」防死锁教义);
+    推迟帧
     (``defer_by_quality``)必有部署动作在途(计划存在 ⇒ 下环
-    部署原子序推进换血/填板,P61 族承重单调收敛),金尽稳态由 ADR-0554
+    部署原子序推进换血/填板,P61 族承重单调收敛),金尽稳态由
     收益耗尽臂兜底(判据与 armed 零耦合)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
@@ -265,24 +265,24 @@ def readiness_launch_decision(gs: GameState, comp: Comp | None,
                               *, line_members: Callable[[Comp], set[str]],
                               deploy_plan_available_fn: Callable[
                                   [...], bool]) -> dict:
-    """达标臂判据核(单一源;sim 决策下沉两小批之①上收,裁决 = ADR-0557;
-    armed 质量合取 = ADR-0570)。
+    """达标臂判据核(单一源;sim 决策下沉两小批之①上收;
+    armed 质量合取见行内申报)。
 
     返回 dict:``armed``(发射判据成立 = 配方完备 ``readiness_form_ok``
     ∧〔板面承重满额 ∨ 部署计划不可得 fail-open〕,质量维定义与防死锁
-    语义见 :func:`launch_board_quality_report`/ADR-0570——配方腿阈值
+    语义见 :func:`launch_board_quality_report`/——配方腿阈值
     唯一面 = form_progress 语义,质量腿零自由参数)、``auth_basis``
     (触发臂名,与生产 LaunchBattle/CwActionLevelUpParam.auth_basis 观测同键名族)、
     ``admission``(armed 时的 G1 准入三元 = ``launch_admission_report``;
     best-effort:预估异常吞为 None——admission 仅观测位,消费门只读
-    armed,见 ADR-0557 §4)、``quality``(配方完备帧的质量维报告;
+    armed)、``quality``(配方完备帧的质量维报告;
     None = 配方不完备帧,或质量评估异常的 fail-open 帧——异常帧
-    armed 维持配方腿结果,防死锁优先,论证 = ADR-0570 §判据)、
+    armed 维持配方腿结果,防死锁优先)、
     ``quality_eval_error``(评估异常显影旗:True = quality=None 系
     异常 fail-open 而非配方不完备,消费面经
     ``LAUNCH_QUALITY_EVAL_ERROR_KEY`` 分键落盘,残量禁静默)。
 
-    消费面拓扑(裁决 = ADR-0557,方案三混合):实机 = operations/cw_loop
+    消费面拓扑(方案三混合):实机 = operations/cw_loop
     备战分支驱动执行(发射核 launch_prepared_battle 留 operations 不动);
     判据语义恰此处一份,
     禁任一消费面内联第二实现(布局守卫 + 测试单一源锁)。armed 关闸帧
@@ -306,9 +306,9 @@ def readiness_launch_decision(gs: GameState, comp: Comp | None,
             quality = launch_board_quality_report(
                 gs, comp, deploy_plan_available_fn=deploy_plan_available_fn)
         except Exception:   # noqa: BLE001  质量评估异常 fail-open(算不出
-            # 不关闸,防死锁优先;论证 = ADR-0570 §判据 fail-open 分界)
+            # 不关闸,防死锁优先)
             quality = None
-            # 异常显影旗(残量禁静默,ADR-0566 口径):quality=None 兼有
+            # 异常显影旗(残量禁静默,口径):quality=None 兼有
             # 「配方不完备」常态义,异常帧经本旗与消费面分键单义区分。
             quality_eval_error = True
         armed = True if quality is None else (
