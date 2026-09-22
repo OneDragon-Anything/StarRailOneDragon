@@ -1,6 +1,6 @@
 # 画面 op 层设计(op-layer · 行为规范 + 上报接口 + 形态分型 + 观察解析工具箱)
 
-> 本文 = 画面 op 层唯一设计正本:**§1 行为规范**(每个画面 op 必须表现成什么样,合同)、**§2 上报接口**(观察数据怎么进容器)、**§3 形态分型**(36 画面 op 的形态分类)、**§4 辖域边界**(本层不承载的机制)、**§5 观察解析工具箱**(obs/ 地图)、**§6 流程转点观测锚**(在库机制)。各画面的具体文档 = 同目录各篇(一画面一文档,索引 = [README.md](README.md))。代码锚 = `文件::符号名`(路径根 = `src/sr_od/application/currency_war/`)。
+> 本文 = 画面 op 层唯一设计正本:**§1 行为规范**(每个画面 op 必须表现成什么样,合同)、**§2 上报接口**(观察数据怎么进容器)、**§3 形态分型**(35 画面 op 的形态分类)、**§4 辖域边界**(本层不承载的机制)、**§5 观察解析工具箱**(obs/ 地图)、**§6 流程转点观测锚**(在库机制)。各画面的具体文档 = 同目录各篇(一画面一文档,索引 = [README.md](README.md))。代码锚 = `文件::符号名`(路径根 = `src/sr_od/application/currency_war/`)。
 > 术语:**逻辑态** = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态;真值以下一帧观察为准(观察赢)。**obs** = 一个画面一次观察的结果对象(类型化载荷);**report** = 该画面在 kernel 侧的上报函数,把 obs 写进容器。**GameState/记录模型** 字段级正本 = [../game_state/fields.md](../game_state/fields.md)——记录模型管「记什么」,本文管「谁在什么时机喂进去、决策怎么消费、动作怎么落回」;冲突以字段正本为准。
 
 ## §1 行为规范
@@ -65,7 +65,7 @@
 
 ### 1.5 形态判据
 
-- 画面 op 按观察/决策/上报三面的有无分型(全形态/多屏管线/节点循环/推进型空决策/驻留状态机/重型屏),判据与 36 屏分类总表 = §3。
+- 画面 op 按观察/决策/上报三面的有无分型(全形态/多屏管线/节点循环/推进型空决策/画面框 op/驻留状态机/重型屏),判据与 35 屏分类总表 = §3。
 
 ## §2 上报接口(kernel/cw_screen_report/)
 
@@ -84,20 +84,21 @@
 - **动作事实边界(硬规则)**:chosen_*(选择落地记录)与 per-visit 位留守画面 op——其值在「确认已落地」重入观察后才可信,记账随判定点走(重入裁决点/选择点),不进 report。**例外三腿(均为显式用户裁定迁移)**:①**投资域收窄条款(用户裁定 2026-09-21,投资两屏迁移批扩为双屏)**:投资环境/投资策略两屏的选择事实(active_env/active_strategies)经**动作落地获得链**记(动作 op 点完确认立即上报 → `kernel/cw_gain_chain.py::gain_invest_env`/`gain_invest_strategy` 写选择事实 + 赠卡入席/溢出落位/效果账本登记,正本 = [../game_state/gain-chain.md](../game_state/gain-chain.md));②**遭遇腿(事件屏刷新链统一迭代)**:`chosen_encounter` 写端 = 动作侧发射即写(`kernel/cw_action_report/pick_encounter.py`,值组装 = 容器 payload 槽;兑现后清 = 单次消费);③**补给即写**(确认即写留守画面 op 选卡分支,时点前置)。其余 chosen_*(巨星/伙伴/祈愿/星徽等)维持留守画面 op(迁移归后续批)。
 - **刷新计数出辖**:节点屏刷新计数全域 = 剩余语义观察写端——投资两屏 = `strategy_refresh_left`/`env_refresh_left`、补给 = `supply_refresh_left`、遭遇 = `encounter_refresh_left`(**均在各屏观察 report 内摄入,读缺跳写**,用户裁定 2026-09-21:game state 记录画面可观察的剩余次数);原「已用」计数(`*_refresh_used`)与遭遇 per-visit 位已退役。画面 op 决策环零计数识别、零计数写点。
 
-## §3 形态分型(36 画面 op)
+## §3 形态分型(35 画面 op)
 
-画面 op 共 34 个:`operations/cw_screen/` 33 类 + 商店框 1 类(`operations/cw_op/cw_op_open_shop.py::CwOpOpenShop`;`CwOpCloseShop` 编排壳已退役——关店执行位收编进动作 op `CwActionCloseShopOp` 真机械执行,见 §4 动作面。原 CwScreenEquipPick 随选择装备屏误判退役删除,2026-09-22)。分五型:
+画面 op 共 35 个:`operations/cw_screen/` 33 类 + 画面框 2 类(`operations/cw_op/cw_op_open_shop.py::CwOpOpenShop`、`operations/cw_op/cw_op_settle_confirm.py::CwOpSettleConfirm`;`CwOpCloseShop` 编排壳已退役——关店执行位收编进动作 op `CwActionCloseShopOp` 真机械执行,见 §4 动作面。原 CwScreenEquipPick 随选择装备屏误判退役删除,2026-09-22)。分七型:
 
 | 型 | 判据 | 屏清单 | report |
 |---|---|---|---|
 | **全形态** | 观察 node + 决策动作 node + report;决策动作 node 承载完整决策循环(重入裁决/分支刷新/确认链)——其中简报/BOSS 简报/位面过渡/等待 1-1/未达上限弹窗/简易武装箱六屏为**空决策变体**:决策动作 node = 重入裁决 + 固定推进,零策略器问询(与各屏文档「空决策形态」声明同义;归本型仅因两 node + report 齐备) | CwScreenEncounter(刷新终结臂 + 选卡派发即终结;遭遇扩围批)、CwScreenSupplyNode、CwScreenInvestStrategy、CwScreenInvestEnv、CwScreenBriefing、CwScreenBossBriefing、CwScreenWaitOneOne、CwScreenDeployNotFull、CwScreenPlaneTransition(链观察)、CwScreenBoxPick、CwScreenArmoryBox | 11 屏全设;其中 BossBriefing/WaitOneOne/DeployNotFull/ArmoryBox 现役零容器摄入面,接口为统一形态占位 |
 | **节点循环** | overlay 单选族:两 node,决策动作 node = 零参决策 + 选卡确认链派发(`CwActionPickXxxOp` 经注册表,机械链在动作 op 内,pick-op-unify 批);投资两屏/补给/遭遇/策划 = 派发即 `round_success` 终结(即时上报形态,零重入裁决),其余留守屏 `round_wait` 循环推进 | CwScreenMegastar(轻门 + 懒读先例:确认访问不重读候选;选中半迁入动作 op)、CwScreenPartner、CwScreenYinLang、CwScreenFortune、CwScreenWishTrial、CwScreenBookcard、CwScreenExpertInvite | 7 屏全设(候选写 `*_opts` 槽;原 CwScreenEquipPick 随选择装备屏误判退役删除,2026-09-22) |
-| **推进型空决策** | 无选择面无容器域:观察 node = 门判定;决策动作 node = 单步推进 + 重入裁决;**无 report 接口** | CwScreenNextButton、CwScreenPlaneDetail、CwScreenConsumableOverlay、CwScreenEmblemDetailPopup、CwScreenItemDetailPopup、CwScreenInterruptDialog、CwScreenRefreshOddsPopup、CwScreenRoleDetailOverlay、CwScreenShopCardDetail、CwScreenPrepLockedReturn、CwScreenAhaEquipPick(11)+ CwOpOpenShop(商店框,推进型只读/导航变体) | 无(obs 类只记入口裁决;完备锁断言函数不在场) |
+| **推进型空决策** | 无选择面无容器域:观察 node = 门判定;决策动作 node = 单步推进 + 重入裁决;**无 report 接口** | CwScreenNextButton、CwScreenPlaneDetail、CwScreenConsumableOverlay、CwScreenEmblemDetailPopup、CwScreenItemDetailPopup、CwScreenInterruptDialog、CwScreenRefreshOddsPopup、CwScreenRoleDetailOverlay、CwScreenShopCardDetail、CwScreenPrepLockedReturn、CwScreenAhaEquipPick(11) | 无(obs 类只记入口裁决;完备锁断言函数不在场) |
+| **画面框 op**(用户裁定 2026-09-22 入表) | 不入常规分发(无 CwAction param,不经动作注册表与画面分发漏斗)、随宿主流程构造直驱(生产路径 = 宿主画面 op 委托 `execute()`);形态各自在册 | CwOpOpenShop(推进型只读/导航两 node 变体;直调形态 `open_shop` 的读屏例外 = §1.1 例外③)、CwOpSettleConfirm(单 node 驻留,宿主 = `CwScreenBattleWait` ②段委托;推进上报 = `report_node_advance(trigger='settle_confirm')`,节点推进上报族例外 = §2.1)。(CwOpCloseShop 编排壳已退役——关店执行位收编进动作 op `CwActionCloseShopOp` 真机械执行,见本节尾退役注 2。) | 无(OpenShop = obs 只记入口裁决;SettleConfirm 推进上报走 `report_node_advance`,不经 report 接口) |
 | **驻留状态机**(用户裁定豁免两 node) | 内部 while 处理结算帧、逐轮分类;出口判定(大厅终局锚/完成白名单)与分支链的轮次耦合拆进两 node 会切开 | CwScreenBattleWait(单 node `wait()`;内部结算链 `_write_settlement_observation`/`apply_settlement_cover`/SettlementState 零改动) | report 占位(结算覆盖写端在结算域,非画面观察记账) |
 | **多屏管线**(用户裁定豁免两 node) | 单屏识别体的逐位面子步 = 显式 `node_from` 边图(识别/点开子步各自独立 node 与重试预算,逐子步验收);拆进两 node 会把子步序列塞回单 node 内部循环(退回不可逐屏验收的巨型节点);开/关转场(进屏/出屏)归编排 op,本形态不设决策动作 node | CwScreenPlaneIntel(6 node:识别位面1 → 点开位面2 → 识别位面2 → 点开位面3 → 识别位面3 → 上报;识别失败 = node 重试,耗尽 = op fail 响亮暴露;编排 = [plane_intel.md](plane_intel.md)) | report 设(`report_screen_plane_intel_obs`:`plane_bosses`/`enemy_affixes` 写门——已有真值不覆写/词缀幂等) |
 | **重型屏** | 观察 = 既有漏斗 + op 层散落写点收编;决策动作 = 无帽循环 | CwScreenPrep(观察 node = 环装配 + heavy 观察 + 接管补采委派(编排单一源 = `CwEntryPlaneIntel`,委派结果透传)+ 纯观察审计留守;决策动作 node = 单动作决策 `while True` 循环,无防御上限;可选域经 report 落容器)、CwScreenShop(观察 node = 兜底建核(独立单跑)+ 点击点位/升级钮/刷新钮 area 锚定 + 入口段 `_shop_entry_read` 含未识别卡停机闸 + 段首簿记(段序号/帧代次 full/预算披露/状态行/决策帧);决策动作 node = 单动作 round_wait 循环(容器零参决策 → 守卫 → 注册表派发 execute,含 CloseShop 真点击)→ 终结读注册表交回,循环内零读屏) | prep = 可选域(链域)report;shop = report 占位(容器写端在漏斗) |
 
-退役 1:`CwScreenDeploy`(部署机画面 op)已退役删除——部署 = 备战决策环动作(`CwActionDeployMoveParam` 原子序经 `CwActionDeployMoveOp` 机械执行 + `report_action_deploy_move_param` 自上报逻辑态),部署判定单一源驻 `kernel/cw_deploy_logic.py`,路径速查 = [deploy.md](deploy.md)。退役 2:`CwOpCloseShop`(关店编排壳)已退役删除——关店 = 决策动作 `CwActionCloseShopParam` 经注册表由 `CwActionCloseShopOp` 执行体真机械执行(见 [shop.md](shop.md) §4)。合计 11 + 8 + 11 + 1 + 1 + 2 = 34(cw_screen)+ 商店框 1 = 35。
+退役 1:`CwScreenDeploy`(部署机画面 op)已退役删除——部署 = 备战决策环动作(`CwActionDeployMoveParam` 原子序经 `CwActionDeployMoveOp` 机械执行 + `report_action_deploy_move_param` 自上报逻辑态),部署判定单一源驻 `kernel/cw_deploy_logic.py`,路径速查 = [deploy.md](deploy.md)。退役 2:`CwOpCloseShop`(关店编排壳)已退役删除——关店 = 决策动作 `CwActionCloseShopParam` 经注册表由 `CwActionCloseShopOp` 执行体真机械执行(见 [shop.md](shop.md) §4)。合计 11 + 7 + 11 + 1 + 1 + 2 = 33(cw_screen)+ 画面框 2 = 35。
 
 注(pick-op-unify 批 + 投资两屏拆类):单选族 13 屏的选卡动作全集收编为 13 个 pick 动作 op 行(投资两屏拆类后 = `CwActionPickInvestStrategyParam`/`CwActionPickInvestEnvParam` 两行同指 `CwActionPickInvestOp`,全节点循环/全形态单选屏经注册表派发),op 内 = 选中 → 确认(或点卡即选)→ 自上报(**有容器写的投资两屏/补给/遭遇/策划/装备 = 点完即写完整结果**,两相/证据闩全域清零;其余屏 = 零写占位上报);刷新链留守画面 op 留守臂,全域终结语义(§1.4)。
 

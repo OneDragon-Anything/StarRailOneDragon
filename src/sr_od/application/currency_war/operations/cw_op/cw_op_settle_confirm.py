@@ -104,8 +104,11 @@ class CwOpSettleConfirm(SrOperation):
     def confirm(self) -> OperationRoundResult:
         """驻留轮:点「继续挑战」(M39 长按兜底)→ 兑现回调 → 点击即上报;
         按钮不在场 → 交回宿主(出口判定归宿主 ③段白名单)。"""
+        # 帧 = node runner 轮首帧(last_screenshot;screenshot_before_round
+        # 缺省供帧,与 round_by_find_and_click_area 全仓画面 op 通行形态
+        # 一致,禁同轮二次现取——冗余读点清除,T-17 修法 A 同款)。
         if self.round_by_find_and_click_area(
-                self.screenshot(), '货币战争-结算', '按钮-继续挑战',
+                self.last_screenshot, '货币战争-结算', '按钮-继续挑战',
                 success_wait=1).is_success:
             self._stay += 1
             if self._stay >= CwOpSettleConfirm.SETTLE_STAY_LONG_PRESS:
