@@ -862,15 +862,16 @@ chosen_*。(原「装备三选一」行随选择装备屏误判退役删除,2026
 
 **字段登记**(实施批随域落,逐域一行):A 类伴随域 = `wish_trial_opts_xy` /
 `star_tome_opts_xy` / `box_card_names_xy` / `fortune_opts_xy`(命名随名字域本名,
-不强加 `_opts` 后缀);B 类 typed 选项结构扩 `xy: tuple[int, int] | None` =
+不强加 `_opts` 后缀)/ `invest_strategy_opts_xy` / `invest_env_opts_xy`(投资两屏,
+随其收敛批落);B 类 typed 选项结构扩 `xy: tuple[int, int] | None` =
 MegastarOption / PartnerOption / PlannerOption / EncounterOption / SupplyOption
 (补给列数动态 3-5,坐标列随选项集同序等长;partner 候选暂无建档区域 = 补档前
 恒 None 欠账态显式申报;encounter/supply 四家族成员随族级守卫批登记);C 类 payload
 扩字段 = `ExpertInvitePayload.card_points` + `cash_point`、`ShopPayload.card_points`
 (定长 5,下标 ↔ 物理槽 1-5)。
 **schema 登记**:A 类逐域新键入 `DEFAULT_GS_SCHEMA`;B 类 typed 扩 `xy` = 所属域值
-形状变更,域版本 bump 1→2(先例 = encounter/supply 域);C 类 payload 扩字段 = 域
-版本 bump(专家邀请函域/商店 payload 所属域)。
+形状变更,域版本自现值 bump 一档(encounter/supply 现值 2,xy 落地 = 2→3);C 类
+payload 扩字段 = 域版本 bump(专家邀请函域/商店 payload 所属域)。
 
 #### 3.4.6 圣杯任务
 
