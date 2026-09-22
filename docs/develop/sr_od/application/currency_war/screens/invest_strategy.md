@@ -37,22 +37,35 @@
 
 ```
 names = opts 卡名;空候选 → round_fail 显式失败(零盲发)
-act = match.strategy.decide_invest_strategy()
-  (零参,候选读容器 invest_strategy_opts 槽;
-   无 match 局外防御 = 裸空容器 decide_event,且显式跳过刷新链)
+match 判空:无 match 局外 = 零决策零点击 round_success 终结交回
+  (遭遇屏同款;生产对局分发恒有 match,该出口仅独立跑可达)
+act = match.strategy.decide_invest_strategy()(零参,候选读容器 invest_strategy_opts 槽)
 ├─ 逐卡刷新 = 终结动作(act.refresh_slots 非空):
 │    闸1 obs.refresh_slots 槽余量 >0(权威闸,读缺 = 无授权失败安全);
 │    闸2 容器 strategy_refresh_left 剩余口径对照(≤0 = 尽;键缺失由闸1裁决;
 │      观察写端每访问覆盖,与闸1同帧同值);
 │    闸3 唯一 L1 槽守卫(_guard_classify 现算:恰一个非血∧非禁槽 → 该槽不可刷)
-│    → 点「刷新次数N」文本锚 + 固定偏移 _REFRESH_BTN_DX(-88,safe_click)
+│    三闸全败(建议帧但无槽可执行)→ 同访问重调一次落选卡:
+│      策略侧同帧去重(scratch 键 = (kind, 候选元组):建议帧首调发建议、
+│      紧随重调落选卡,零选卡漂移;依据 = strategies/impl/flow.py::
+│      _decide_invest docstring、strategy-docs/13_pick_family.md §1 invest
+│      行「重决策仍经本入口」;重调发生在任何刷新执行之前、零新事实,
+│      不触 op-layer.md §1.4「禁重调决策」的刷新链禁令——在册形态非违例)
+│        重调返回选卡 → 落「选卡确认链」分支;
+│        重调仍返回刷新(策略器未实现去重 = bug 面)→ act=None
+│          → 汇入「决策无有效选卡输出」round_fail 显式失败(单次重调,
+│            零二次重调零循环,对照 encounter.md §4 同款申报口径)
+│    → 点「货币战争-投资策略.区域-刷新次数行」OCR 命中文本中心
+│      + 固定偏移 _REFRESH_BTN_DX(-88,safe_click)
 │    → 动画窗固定等待 1.5s(机械时序)→ round_success = 本访问终结交回
 │      (访问内零比对:刷后不重读不比对不重决策;新事实归重进访问重建)
 ├─ 决策无有效选卡输出 → round_fail 显式失败(零盲点)
 └─ 选卡确认链:派发 CwActionPickInvestOp
      (机械链在动作 op 内,点完确认立即上报完整结果;派发 param 携真实选中
-      idx + 归一名,定位点 = 「区域-卡名行」center[兜底常量] + 该卡 center-x,
-      确认钮 = 「按钮-确认」center[兜底常量],裁决词「投资策略」)
+      idx + 归一名,定位点 = 「货币战争-投资策略.区域-卡名行」center
+      (缺失兜底常量 CARD_CLICK_Y)+ 该卡 center-x,确认钮 =
+      「货币战争-投资策略.按钮-确认」center(缺失兜底常量 CONFIRM),
+      裁决词「投资策略」)
      → round_success = 本访问终结交回外循环
 ```
 
@@ -64,6 +77,8 @@ act = match.strategy.decide_invest_strategy()
 |---|---|---|
 | 逐卡刷新点击(点一槽即交) | **访问终结** | round_success 交回外循环重进 = 入口重建,重进后重观察重决策 |
 | 选卡确认链派发 | **访问终结** | round_success 交回外循环重分发(结果已即时上报写入;确认未生效 = 代码 bug,overlay 残留由外循环重识别重派,修法 = 点击链可靠性) |
+| 局外无 match(仅独立跑可达) | **访问终结** | round_success 交回(零决策零点击;画面 op 不产决策,flow/README §1 铁律) |
+| 三闸全败重调仍返回刷新 | 显式失败 | round_fail(「决策无有效输出」同出口;策略器同帧去重未实现的 bug 面响亮暴露,零二次重调) |
 | 空候选/决策无有效输出 | 显式失败 | round_fail 交外循环(零盲发,bug 面响亮暴露) |
 | 入口锚复探超窗 | 有界重试 | 观察 node round_retry 消耗其 `node_max_retry_times=10` 预算,超限 op FAIL 交外循环 |
 
@@ -86,6 +101,7 @@ act = match.strategy.decide_invest_strategy()
 - 刷新偏移错(文本锚漂移)→ 刷新未命中:重读 = 原卡名集、重决策结果天然等价(能力退化非事故);obs 余量权威闸防超刷。
 - 验效废除:访问内刷后零比对、确认后零判效;确认未生效 = 代码 bug(点击链治理),overlay 残留由外循环重识别重派(数据面零回滚零判重,action_ops.md §1 增补 2)。
 - 空候选/决策无有效输出 = round_fail 显式失败(零盲发,fallback 路径已废)。
+- 同帧去重契约(三闸全败重调):重调仍返回刷新 = 策略器未实现去重的 bug 面 →「决策无有效选卡输出」round_fail 显式失败;去重单一源 = 策略器(flow.py::_decide_invest scratch 键),画面 op 只重调一次、重调仍刷新即弃,零循环。
 - 未注册卡名告警(注册表数据缺口可见化,不阻塞)。
 - 守卫总册域(停机钩子/安灯/预算)不设本屏专属防线,细则 = [../flow/guards.md](../flow/guards.md)。
 
@@ -93,5 +109,5 @@ act = match.strategy.decide_invest_strategy()
 
 - journal op 名 =「投资策略」(dispatch 包装统一落 `[cw-op]` 主日志行);op 内日志 tag = `[cw-strat]`(options/chose/reason、槽位刷新终结交回);获得链侧 tag = `[cw-gain]`(效果账本登记/板面重写桥/策略落地分步)。
 - 缺陷面:登记腿失败 = `gain_chain_strategy_register_failed`;无效载荷 = `pick_invest_invalid_payload`(零盲发配套)。
-- 测试锁:两 node 行为锁 + 写入流对拍 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`(派发即终结+派发时点写入对拍/空候选零盲发/观察复探窗与 report 含 left 摄入/刷新终结交回);即时上报与去重链锁 = `test_cw_yinlang_phase32.py`(即时上报/无效载荷/去重/骇客链);动作 op 类型分派 = `test_cw_unified_action_4.py`。
+- 测试锁:两 node 行为锁 + 写入流对拍 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`(派发即终结+派发时点写入对拍/空候选零盲发/局外零决策交回/观察复探窗与 report 含 left 摄入/刷新终结交回);即时上报与去重链锁 = `test_cw_yinlang_phase32.py`(即时上报/无效载荷/去重/骇客链);获得链锁 = `test_cw_gain_chain.py`(gain_invest_strategy/gain_invest_env 链腿);动作 op 类型分派 = `test_cw_unified_action_4.py`。
 - game 侧知识:画面建档与交互 = [../../../../game/screens/currency_war_invest_strategy.md](../../../../../game/screens/currency_war_invest_strategy.md);刷新判据数学 = [../proofs/p81-invest-refresh-dominance.md](../proofs/p81-invest-refresh-dominance.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md)。
