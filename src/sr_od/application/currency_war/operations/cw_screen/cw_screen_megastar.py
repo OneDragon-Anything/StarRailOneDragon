@@ -42,7 +42,10 @@ from sr_od.application.currency_war.kernel.cw_screen_report.megastar import (
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
     strategy_state_of,
 )
-from sr_od.application.currency_war.obs.cw_node_obs import read_megastar_options
+from sr_od.application.currency_war.obs.cw_megastar_obs import (
+    read_megastar_options,
+    standardize_megastar_options,
+)
 from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
     CW_OVERLAY_SETTLE_S,
 )
@@ -111,19 +114,35 @@ class CwScreenMegastar(SrOperation):
         (含 ``_in_node`` 选中标记复位副作用,须在门内)。在门内 → 仅
         「本访问将选择」(未选中)才读候选;确认访问不重读(迁移不增加
         读屏)→ ``report_screen_megastar_obs`` 写 ``megastar_opts``
-        (空候选不写,闸在 report 内);match/gs 缺席的局外兜底路径跳过
-        report(决策走决策面防御分支,分支原样)。"""
+        (空候选不写,闸在 report 内);无 match/gs = 局外,零读屏零上
+        报交回(正本 = op-layer.md §1.1「画面 op 不支持局外单独调用」,
+        本屏特形 = 懒读先例屏零读延伸);名字标准化转换门住本 node 选中
+        半读链(规范 = 同节「观察标准化门」)。"""
         screen = self.last_screenshot
         if not self._in_node(screen):
             return self.round_success('巨星节点完成(已离开本节点画面)',
                                       wait=CW_OVERLAY_SETTLE_S)
         _match = self.ctx.cw_match
-        options = ([] if self._clicked_of(_match)
-                   else read_megastar_options(self.ctx, screen))
-        obs = CwScreenMegastarObs(in_node=True, options=options, screen=screen)
         _gs = getattr(_match, 'gs', None) if _match is not None else None
-        if _gs is not None:
-            report_screen_megastar_obs(_gs, obs)
+        if _gs is None:
+            # 局外(无对局上下文)= 零读屏零上报交回:决策必不发生时读
+            # 无消费方(懒读先例屏的结构延伸);终局出口 = act 局外交回臂。
+            return self.round_success('局外交回(无 match/gs;零读屏零上报)')
+        clicked = self._clicked_of(_match)
+        options = [] if clicked else read_megastar_options(self.ctx, screen)
+        if not clicked:
+            # 观察标准化门:候选名零转换禁入容器(op-layer.md §1.1);转换
+            # 失败 = 观察失败,零写零上报交回重观察重读(禁带病上报)。
+            standardized = standardize_megastar_options(options, _gs)
+            if standardized is None:
+                log.warning('[cw-megastar] 观察标准化门失败:候选转换不到'
+                            '规范名(零写零上报,交回重观察)')
+                return self.round_fail(
+                    f'[cw-megastar] 候选名标准化转换失败(零写零上报,交回'
+                    f'重观察):候选原值={[o.char_id for o in options]!r}')
+            options = standardized
+        obs = CwScreenMegastarObs(in_node=True, options=options, screen=screen)
+        report_screen_megastar_obs(_gs, obs)
         self._obs = obs
         return self.round_success()
 
@@ -139,6 +158,12 @@ class CwScreenMegastar(SrOperation):
         if not self._in_node(screen):
             return self.round_success('巨星节点完成(已离开本节点画面)',
                                       wait=CW_OVERLAY_SETTLE_S)
+        _match = self.ctx.cw_match
+        if _match is None or getattr(_match, 'gs', None) is None:
+            # 局外(无对局上下文)= 零决策零点击 round_success 终结交回;
+            # 判式宽度 = match/gs 双缺(对齐投资环境在飞双判;遭遇为含空候选
+            # 的三判特形,空候选臂本屏走守卫① fail 不折入——见取舍 1)
+            return self.round_success('局外交回(无 match/gs;零决策零点击)')
         self._do_action()
         return self.round_wait(wait=1.5)
 

@@ -1,4 +1,4 @@
-"""货币战争 **节点选项观测**:遭遇/补给/巨星/伙伴 overlay 截图 → ``EncounterOption`` 等
+"""货币战争 **节点选项观测**:遭遇/补给/伙伴 overlay 截图 → ``EncounterOption`` 等
 (喂 ``cw_events.decide_*`` / 策略 ``decide_encounter`` 等钩子)。
 
 与 ``cw_observation``(备战屏 reads)分模块:本模块只管**节点 overlay 的选项读取**(decide_* 的输入)。
@@ -18,7 +18,6 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
-    MegastarOption,
     SupplyOption,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
@@ -198,34 +197,6 @@ def pair_refresh_counts_to_slots(
         remaining.remove(best)
         out.append(counts[best])
     return out
-
-
-
-# 巨星候选标题「盛会之星一X先生/女士!」→ X = 角色名(花火/星期日…)。实测 OCR 核实(2026-08-07 cw_megastar)。
-# 先生/女士 + 全/半角叹号容错(OCR 渲染不一)。
-_MEGASTAR_RE = re.compile(r'盛会之星一(.+?)(先生|女士)[!！]?')
-
-
-def read_megastar_options(ctx: SrContext, screen: MatLike) -> list[MegastarOption]:
-    """OCR 巨星节点候选 → ``MegastarOption`` 列表(char_id 从「盛会之星一X先生/女士!」解析)。
-
-    巨星候选 = 盛会之星 bond(花火/星期日…)给全队 buff。按候选名 center-x 左→右排序 → ``idx``。
-    候选名位置 = 点击位置(实测 CwScreenMegastar 点 (822,333) 命中花火;名 = 卡身选中区)。decide_megastar
-    按 target.core_chars 选(含盛会之星 → 绑该角色;否则 buff 契合)。读不到 → [](handler 退默认 idx0)。
-    """
-    ocr_map = ctx.ocr_service.get_ocr_result_map(
-        image=screen, rect=None, color_range=None, crop_first=False,
-    )
-    cands: list[tuple[int, str]] = []   # (center_x, char_id)
-    for text, mrl in ocr_map.items():
-        if mrl.max is None:
-            continue
-        m = _MEGASTAR_RE.search(text)
-        if m is None:
-            continue
-        cands.append((mrl.max.center.x, m.group(1)))
-    cands.sort(key=lambda c: c[0])
-    return [MegastarOption(idx=i, char_id=name) for i, (_cx, name) in enumerate(cands)]
 
 
 # 补给选项 y 带。2026-08-26 多样本核对(66 帧存档离线 OCR 对拍)两种布局:
