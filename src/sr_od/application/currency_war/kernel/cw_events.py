@@ -761,14 +761,14 @@ def decide_supply(options: list[SupplyOption], gs: GameState,
     return SupplyPick(idx=best.idx, reason=f"equip={best.equip or '?'} key_fit={best.equip in key_equips}")
 
 
-# ===== 巨星节点(decide_megastar;✅ 已派发 run_megastar_node,按 target.core_chars 选;⚠️ 候选 char_id OCR 限时 fallback idx0)=====
+# ===== 巨星节点(decide_megastar;✅ 已派发 `cw_screen_megastar` 画面 op(候选标准化门 = op-layer.md §1.1,读缺 = 观察失败零盲发);本节点决策 = `decide_megastar`)=====
 
 @dataclass
 
 class MegastarOption:
-    """一个巨星候选(OCR/SIFT 读角色名,``read_megastar`` 阶段5;/§11.3.4⑥)。
+    """一个巨星候选(OCR 读角色名(``obs/cw_megastar_obs.py::read_megastar_options``);/§11.3.4⑥)。
 
-    char_id:候选角色名(空 = OCR 未就绪,匹配恒失败 → 默认 idx=0 = 今天盲点左候选)。
+    char_id:候选角色名(空 = 读缺(画面 op 观察失败 round_fail 零盲发);非空 = cw_chars 规范名(观察侧标准化门产出))。
     """
     idx: int
     char_id: str = ""

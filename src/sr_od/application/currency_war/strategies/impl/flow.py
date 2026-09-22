@@ -529,12 +529,11 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         return CwActionPickEncounterParam(idx=pick.idx, reason=pick.reason)
 
     def decide_megastar(self) -> CwActionPickMegastarParam:
-        """巨星选候选(终态零参口;候选 = ``gs.megastar_opts``):委托
-        ``cw_comps.select_megastar`` 拿角色名 → 名在 options 命中该 idx;否则 idx=0。
-        ⚠️ OCR 未就绪(char_id 全空 → 匹配恒失败 → idx=0 = 今天盲点左候选,随阶段5)。
-        (强化角色维度已随 megastar_enhance_enabled 开关族删除——旧方案
-        清退批,清查报告 OLD_MIX_AUDIT §1.3;MegastarPick.enhance_char_id
-        字段保留恒 None,兼容既有遥测/执行面读取。)"""
+        """巨星选候选(终态零参口;候选 = 容器 ``megastar_opts``,值域 =
+        标准化门保证的规范名,op-layer.md §1.1):委托
+        ``cw_comps.select_megastar`` 拿角色名 → 名在 options 命中该 idx。
+        非空候选恒命中(``select_megastar`` 选择序 + naive 层保证),候选
+        空不可达(画面 op 守卫 fail 零盲发),本函数无缺省支。"""
         options = self._require_slot_options(self.gs.megastar_opts,
                                              'megastar_opts')
         self._consume_prep_direction_frame()   # ADR-0583 入口内务
@@ -546,7 +545,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                     return CwActionPickMegastarParam(
                         idx=o.idx,
                         reason=f"select_megastar 命中 {chosen_name}")
-        return CwActionPickMegastarParam(idx=0, reason="fallback 左候选(OCR 未就绪,char_id 空)")
+        raise AssertionError(
+            'select_megastar 对非空候选恒返回成员(naive 层保证);'
+            '候选空不可达(画面侧守卫 fail)')
 
     def decide_partner(self) -> CwActionPickPartnerParam:
         """选择伙伴(终态零参口;候选 = ``gs.partner_opts``):优先

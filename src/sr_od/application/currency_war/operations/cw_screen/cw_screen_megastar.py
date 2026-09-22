@@ -17,6 +17,12 @@ round_wait 循环推进(不烧节点重试预算;不收敛 = 策略 bug 响亮�
 None-safe 通道,执行层不冷建)。本屏 sim 腿 = 不适用(sim 无对应画面段,
 事件浮层族即时落定),等价判据主承重 = 实机在册行为锁。
 
+出口语义(选中半访问):候选空 = 具名 round_fail 零盲发,返回词表外/
+None = 具名 round_fail,idx 越界 = 守卫断言 AssertionError——守卫均在
+派发前、零点击;无 match/gs = 局外交回(零决策零点击,正本形态);名字
+转换失败 = 观察层 round_fail(转换门 = ``obs/cw_megastar_obs.py`` 的
+``standardize_megastar_options``)。
+
 **玩法机制(米游社 wiki content/6239 + 实机日志/截图核实,2026-08-07)**:
 盛会之星 = 阵营羁绊;「巨星」= 选 1 名盛会之星角色当巨星,给全队独特 buff。
 触发 = 羁绊激活时弹出(非固定节点),一局可多次 → 选中标记不能跨节点保持。
@@ -41,6 +47,9 @@ from sr_od.application.currency_war.kernel.cw_screen_report.megastar import (
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
     strategy_state_of,
+)
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwActionPickMegastarParam,
 )
 from sr_od.application.currency_war.obs.cw_megastar_obs import (
     read_megastar_options,
@@ -153,7 +162,11 @@ class CwScreenMegastar(SrOperation):
 
         每轮 node runner 新帧复检节点完成门(round_wait 不计节点预算,
         不收敛 = 策略实现 bug 响亮暴露,无防御上限);确认未落地由下一轮
-        门复检自愈。"""
+        门复检自愈。出口语义(选中半访问):候选空 = 具名 round_fail 零
+        盲发,返回词表外/None = 具名 round_fail,idx 越界 = 守卫断言
+        AssertionError——守卫均在派发前、零点击;无 match/gs = 局外交回
+        (零决策零点击,正本形态);名字转换失败 = 观察层 round_fail
+        (标准化转换门住观察 node)。"""
         screen = self.last_screenshot
         if not self._in_node(screen):
             return self.round_success('巨星节点完成(已离开本节点画面)',
@@ -164,10 +177,12 @@ class CwScreenMegastar(SrOperation):
             # 判式宽度 = match/gs 双缺(对齐投资环境在飞双判;遭遇为含空候选
             # 的三判特形,空候选臂本屏走守卫① fail 不折入——见取舍 1)
             return self.round_success('局外交回(无 match/gs;零决策零点击)')
-        self._do_action()
+        _fail = self._do_action()
+        if _fail is not None:
+            return _fail
         return self.round_wait(wait=1.5)
 
-    def _do_action(self) -> None:
+    def _do_action(self) -> OperationRoundResult | None:
         """单动作体:决策 + chosen 写端留守 + 「选中 → 确认」链经工厂。
 
         pick-op-unify 批:候选选中点击迁入 ``CwActionPickMegastarOp``
@@ -180,20 +195,26 @@ class CwScreenMegastar(SrOperation):
         candidate = None
         if need_select:
             options = self._obs.options if self._obs is not None else []
-            idx = 0
-            if _match is not None and options:
-                # 零参决策(写槽已由 report 落容器 megastar_opts;决策
-                # 调用形态不变)。空候选/无 match = 缺省支(局外兜底分支原样)。
-                pick = _match.strategy.decide_megastar()
-                if 0 <= pick.idx < len(options):
-                    idx = pick.idx
-                log.info(f'[cw-megastar] candidates={[o.char_id for o in options]} pick=idx{idx} {pick.reason}')
-            else:
-                log.info(f'[cw-megastar] options={len(options)} match={_match is not None} → default idx0')
-            self._pick_idx = idx
+            # 守卫① 决策输入:候选空 = 具名 fail 零盲发(op-layer.md §1.1 出口③)。
+            if not options:
+                return self.round_fail(
+                    '[cw-megastar] 决策无有效输出零盲发(候选空 options=0)')
+            # 零参决策(写槽已由 report 落容器 megastar_opts;决策调用形态不变)。
+            # 守卫② 返回契约:词表外/None = 具名 fail 含原值留证(注解的运行期执行)。
+            pick = _match.strategy.decide_megastar()
+            if not isinstance(pick, CwActionPickMegastarParam):
+                return self.round_fail(
+                    f'decide_megastar 决策无有效输出(词表外/None): {pick!r}')
+            # 守卫③ 值域:越界 = 断言恒炸禁钳位(op-layer.md §1.3;断言臂经框架异常路径计节点预算)。
+            if not (0 <= pick.idx < len(options)):
+                raise AssertionError(
+                    f'[cw-megastar] pick idx 越界(策略器 bug,禁钳位): '
+                    f'idx={pick.idx} len(options)={len(options)} pick={pick!r}')
+            self._pick_idx = pick.idx
+            log.info(f'[cw-megastar] candidates={[o.char_id for o in options]} pick=idx{pick.idx} {pick.reason}')
             # 候选坐标从 screen_info 读(task#103 化债,W265);缺失走历史实测兜底常量。
             candidate = ((area_center(self.ctx, '候选-左', '货币战争-盛会之星') or CwScreenMegastar.CANDIDATE_LEFT)
-                         if idx == 0 else
+                         if self._pick_idx == 0 else
                          (area_center(self.ctx, '候选-右', '货币战争-盛会之星') or CwScreenMegastar.CANDIDATE_RIGHT))
             if _match is not None:
                 # 置位经 kernel strategy_state_of(None-safe 不冷建):状态
@@ -205,14 +226,13 @@ class CwScreenMegastar(SrOperation):
                 # r358d(遥测接线):巨星选择落容器(chosen_megastar,gs 单一源
                 # ——终态契约 §B:session 份退役;桩无 gs = 跳过写)。
                 # chosen_* = 动作事实边界:留守选择点,不进 report。
-                if options and 0 <= idx < len(options) \
-                        and getattr(_match, 'gs', None) is not None:
+                if getattr(_match, 'gs', None) is not None:
                     from sr_od.application.currency_war.kernel.cw_game_state import (
                         ChannelSig,
                     )
                     _match.gs.write_logic(
                         _match.gs.chosen_megastar,
-                        options[idx].char_id or '',
+                        options[pick.idx].char_id or '',
                         produced_by='CwScreenMegastar',
                         sig=ChannelSig(family='logic_action',
                                        actor='CwScreenMegastar',
@@ -220,9 +240,6 @@ class CwScreenMegastar(SrOperation):
         # 「选中(need_select)→ 确认」链经工厂(选中半迁入动作 op,本批;
         # 确认钮定位 = op 类体内自读 screen_info)。派发实例携真实选中
         # 下标(上报 param 即真实选择;确认轮复用缓存 idx)。
-        from sr_od.application.currency_war.kernel.cw_vocab import (
-            CwActionPickMegastarParam,
-        )
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
@@ -233,3 +250,4 @@ class CwScreenMegastar(SrOperation):
                                   target=candidate, need_select=need_select)
         action_op_for(CwActionPickMegastarParam(idx=self._pick_idx), self.ctx,
                       _env).execute()
+        return None
