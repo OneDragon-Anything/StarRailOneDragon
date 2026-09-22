@@ -274,7 +274,7 @@ empty = 空。unit/supply_box/tome/bookcard 占 1 槽、empty 不占
 - 逻辑写端(op,§4.2):OpenBox 开箱(箱槽→空/新内容);BuyCard 买牌(落位)与
   **合成升星逻辑态直写**(BuyCard 执行落地门 `detect_merge_upgrade` 检测同名最高星
   抬升 → `write_logic(gs.bench, 逻辑态推算 BenchView)`,两态制,下一备战帧实读覆盖);
-  RunDeploy 部署(备战席 −该牌);SellBench 卖备战席角色(−该牌)。
+  RunDeploy 部署(备战席 −该牌);SellBench 卖备战席角色(−该牌);PickSupply 补给单位腿(`grant_bench_unit_cascade` 入席 1★ + 合成级联,与商店购买同语义;`kernel/cw_action_report/pick_supply.py`)。
 - 效果写端:板面重写桥 `apply_board_rewrite` 全场出售面(人力重组/卖全场族,清空
   备战席+退款,§5.3;生产挂点=选卡登记点);效果改写源在册:乱成一锅粥/+(最左 6 槽
   逐节点重掷)、公司人才流动(最右 3 槽逐节点改写)、狸职手续(每 2 节点随机 1 狸
@@ -457,11 +457,11 @@ evidence 区分。旗牌通道=**弱**(stylized 数字 OCR 常空,两级放大�
   单笔 logic 写(移除工具 ∧ `privilege_counterpart` 替换)、拆装扳手/精密扳手 =
   两笔 logic(回区合并写 + 行域穿戴清空;精密扳手不递减)、员工/完美投影仪 =
   移除工具 + 复制走 `gain_character` 获得链,零写分支统一 `tool_*` 缺陷行留证);
-  SellBench 卖出角色(装备全量回区)。
+  SellBench 卖出角色(装备全量回区);PickSupply 补给即时获得腿(owned += 归一规范名 + 获得后果链 `apply_equip_acquire_consequence`,即时单相;`kernel/cw_action_report/pick_supply.py`)。
 - 效果改写源(§5.2 在册):回收计划/+(拆简易、节点后发简易入区);公司军火更新·
   银/金/彩(进节点物品栏全量变同品质);保险的装备效果(每损 20 血获随机简易入区);
   变宝为废(词缀,每位面首次合成进阶装备 50% 变垃圾袋——随机面观察收口,§5.3 词缀源)。
-补给/事件获得的装备不记预期值,经观察覆盖收口(§4.1 豁免)。
+补给获得的装备 = 即时预期值写(上行 PickSupply 腿,`flow/action_ops.md` §4.5 即时单相,账面恒归一规范名);遭遇等事件获得的装备不记预期值,经观察覆盖收口(§4.1 豁免)。
 
 #### 3.2.15b 已穿装备位置 occupied_equips
 
@@ -1067,9 +1067,9 @@ proc 留证(牌面已变 ∧ 金未扣 → 截图+flag,不停机)与刷新期望
 充裕条件腿已结构化经节点桥 wire,§3.3.6)或申报不记预期值。投资策略屏可刷新、选后
 自动开店。
 
-#### 事件选择(10 屏)
+#### 事件选择(9 屏)
 
-遭遇/补给/盛会之星/伙伴/祈愿试炼/命运卜者/骇入策划/专家邀请函/星徽秘典/装备三选一
+遭遇/盛会之星/伙伴/祈愿试炼/命运卜者/骇入策划/专家邀请函/星徽秘典/装备三选一
 的选择落地:**默认不记预期值**(选择瞬间画面即切,无定型帧可核对),后果走观察
 覆盖+缺陷台账;有显式到账登记的照登记——先例=专家邀请函屏「现金为王」兜底选项
 gold+4(**与投资策略卡「现金为王」撞名两实体、效果域不同:策略卡=出售全场+护盾;
@@ -1079,7 +1079,13 @@ gold+4(**与投资策略卡「现金为王」撞名两实体、效果域不同:�
 `kernel/cw_action_report/pick_encounter.py`,值组装 = 容器 `encounter` payload 槽
 所选卡,盲选/越界不写;发射即写 = 意图记录,确认未生效窗内暂态假值由外循环重派
 覆盖自愈;**兑现后清 = 单次消费**——遭遇战斗结算达标即写 `encounter_reward_claimed`
-并清 chosen,见 §3.4.1)。遭遇/补给刷新闸全域 = 剩余语义观察真值
+并清 chosen,见 §3.4.1)。**补给臂 = 即时单相效果写**(对齐遭遇臂的动作侧写形态;写端 =
+`kernel/cw_action_report/pick_supply.py`,确认点击后一口写,
+`flow/action_ops.md` §4.5 PickSupply 行):equips owned += 归一规范名 +
+bench 单位腿(`grant_bench_unit_cascade` 入席 1★+合成级联)+ 获得后果链
+(`apply_equip_acquire_consequence`);内容全未知/名未解析 = 受影响域值
+不变翻来源 + 缺陷留证(禁猜);选择落地 = `chosen_supply` 画面 op 确认即写
+(§3.4 头部口径;原「到账登记 ConfirmSupply」载体已退役,考古走 git)。遭遇/补给刷新闸全域 = 剩余语义观察真值
 (`encounter_refresh_left`/`supply_refresh_left`,§3.4.1/§3.4.2;已用计数退役)。
 
 #### 出战

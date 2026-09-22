@@ -291,7 +291,10 @@ def read_supply_options(ctx: SrContext, screen: MatLike) -> list[tuple[SupplyOpt
     布局:**列数动态探测**(通常 4 选 1;「全都要」类效果减 2 列、「人身意外险」类加补给
     阶段可增列,augment 改写下实测见 3-5 不等——历史 docstring 的「3 选 1」「实测 5」均为
     特例表述,勿写死),每列 = 角色名(y≈545)+ 装备名(y≈680),点卡身(y≈550)选中 +
-    右下「确认」。**无刷新按钮**(decide_supply 调用方传 ``refresh_used=True`` 跳过刷新逻辑)。
+    右下「确认」。**刷新圆钮实存**(「剩余次数」文本锚左侧固定偏移点击,宿主 = 画面 op
+    留守臂 ``cw_screen_supply_node.py``;本读链只读选项,不读刷新剩余——
+    剩余读数闸 = 容器 ``supply_refresh_left`` 剩余语义观察真值,由画面 op
+    观察 node 同帧读经 report 摄入,全域规范 = ``screens/op-layer.md`` §1.4)。
     钻识别双通道 ✅(2026-08-17):主 = SIFT(装备 icon 区 y600-760 扫三钻模板,装备图已采集);
     兜底 = 装备名精确匹配。
 

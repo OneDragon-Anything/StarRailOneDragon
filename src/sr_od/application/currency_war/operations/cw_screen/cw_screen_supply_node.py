@@ -21,16 +21,17 @@ None = 拒绝 → 重调一次决策按原评分选(单轮内有界);锚读缺 �
 
 T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点击点由 read_supply_options 按列返回。
 
-形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两段
+形态:观察 node + 决策动作 node 两段
 直继承 SrOperation。观察 node 另承载节点条锚定(顶部「备战阶段 X-Y」→
-``observe_node_anchor``;迭代 2026-09-20-node-advance-action-report
-design §2.3 触发点 2/§2.4 写端 2——补给「自动弹」形态的唯一锚定点)。观察 node = 节点完成门(``_in_node``,miss = overlay 消失 /
+``observe_node_anchor``;锚定写端在册 = `screens/op-layer.md` §2.1;
+节点条锚定四分支处置规则表正本 = `game_state/node-derivation.md`
+(E10 行)——补给「自动弹」形态的唯一锚定点)。观察 node = 节点完成门(``_in_node``,miss = overlay 消失 /
 进了下一节点 = 节点完成,success 交回外层)+ 选项一次读(每访问恰一次,与
 现役决策体读同帧等价,迁移不增加读屏)→ ``report_screen_supply_node_obs``
 落容器 ``supply``(空 = 读缺 CARD_BODY 兜底路径,闸在 report 内)→ obs 挂
 实例属性进决策 node。决策动作 node = 零参决策(候选自容器槽)→ 刷新终结
-交回 / 选卡派发即 ``round_success`` 终结(迭代
-2026-09-21-event-refresh-unify-supply-pick design §2.0B:动作 op 确认
+交回 / 选卡派发即 ``round_success`` 终结(派发即终结正本 =
+`screens/op-layer.md` §1.1、`flow/action_ops.md` §4.5:动作 op 确认
 点击后立即上报完整结果,零重入裁决、零落地相补写面——确认未生效 =
 代码 bug,overlay 残留由外循环按当前画面重识别重派)。``chosen_supply``
 = 确认即写特殊口径(选定中转暂存宿主已退役,直写是载体消亡后的唯一
@@ -194,7 +195,7 @@ class CwScreenSupplyNode(SrOperation):
         _gs = getattr(_match, 'gs', None) if _match is not None else None
         # 节点条锚定(补给「自动弹」形态——结算确认直接弹补给屏,无备战帧
         # 可锚——的唯一锚定点;divert 形态 = 备战帧已锚,本读数走处置规则表
-        # reanchor/stale_dropped 分支承接,design §2.2/§2.4 写端 2)。
+        # reanchor/stale_dropped 分支承接,处置规则表正本 = `game_state/node-derivation.md`(E10 行))。
         # 读不得/局外 gs 缺席 = 跳过(禁猜;best-effort)。
         _ordinal = self._read_node_bar(screen)
         if _ordinal is not None and _gs is not None:
@@ -215,8 +216,8 @@ class CwScreenSupplyNode(SrOperation):
         门 miss = 已离开本节点画面(分发身份安全网:确认链已发即离开 =
         节点完成)→ success 交还外层。动作两分支均终结本访问:刷新点钮后
         交回(外循环重进 = 入口重建);选卡经动作 op 确认点击后立即上报
-        完整结果,派发即 round_success 终结(迭代
-        2026-09-21-event-refresh-unify-supply-pick design §2.0B,零重入
+        完整结果,派发即 round_success 终结(正本 = `screens/op-layer.md`
+        §1.1、`flow/action_ops.md` §4.5,零重入
         裁决、零落地相补写面)。"""
         if not self._in_node(self.last_screenshot):
             return self.round_success(f'{self.op_name} 节点完成(已离开本节点画面)')
@@ -244,13 +245,11 @@ class CwScreenSupplyNode(SrOperation):
         refresh_target = None
         # 派发实例真实选中下标(上报 param 即真实选择;兜底/刷新轮 = 0 占位)。
         param_idx = 0
-        # 开出内容载荷(迭代 2026-09-21-event-refresh-unify-supply-pick:
-        # 空串 = 兜底点卡路径/装备名未解析——报告侧按「内容未知/未解析」
-        # 分型翻来源留证)。
+        # 开出内容载荷(空串 = 兜底点卡路径/装备名未解析——报告侧按「内容未知/未解析」分型翻来源留证)。
         picked_char = ''
         picked_norm_item = ''
         # 本轮选定快照(选定事实现场载荷;None=兜底点卡路径/刷新路径)。
-        # 现役消费面 = 零(design §2.1:选定事实现场载荷,遥测接线候批)。
+        # 现役消费面 = 零(选定事实现场载荷,遥测接线候批)。
         picked: dict | None = None
         if match is not None and opts:
             # 零参决策(写槽已由观察轮 report 落容器 supply;决策调用形态
@@ -290,7 +289,7 @@ class CwScreenSupplyNode(SrOperation):
                 param_idx = pick.idx
                 # 选定快照(角色/装备/钻;refresh_left=容器剩余次数现值快照,
                 # 可 None——布尔键随计数闸消亡,left 供读端按剩余分型,无
-                # 「本局初始授予数」基线故携带而非推导,design §2.1)——
+                # 「本局初始授予数」基线故携带而非推导)——
                 # 选定事实现场载荷,现役消费面 = 零(见上方组装点注释)。
                 _opt = opts[pick.idx][0]
                 picked = {'char': _opt.char, 'equip': _opt.equip,
@@ -342,7 +341,7 @@ class CwScreenSupplyNode(SrOperation):
         # pick execute 语义 = 点卡选中 → 确认)。派发实例携真实选中下标与
         # 开出内容载荷(上报 param 即真实选择+内容;动作 op 确认点击后
         # 立即一口写 owned/单位腿/后果腿;无 match 兜底路径同形派发,
-        # 内容空 = 报告侧内容未知分型)。派发即终结(design §2.0B)。
+        # 内容空 = 报告侧内容未知分型)。派发即终结。
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )

@@ -1,6 +1,6 @@
 """事件线 pick 动作 op 族(动作 op 重组批③ 换壳:原 ``EncounterPickOp``
-等 5 类,ActionOp ABC → 框架 SrOperation,构造 = (ctx, param, env),
-design.md §1.1/§1.2)。事件线意图词表(kernel/cw_events pick 五类)→
+等 5 类,ActionOp ABC → 框架 SrOperation,构造 = (ctx, param, env)。
+事件线意图词表(kernel/cw_events pick 五类)→
 overlay act 确认链 op 类,经 ``cw_action_registry.action_op_for`` 工厂
 分派——各 overlay 画面 op 的 act 段保持工厂分派,散在画面 op 内的点选+
 确认过程代码收拢为「意图类型 → 点击链」声明式(统一观察架构 §6.2)。
@@ -121,8 +121,8 @@ class OverlayPickExecEnv:
     round 结果恒成功不携带语义),op 类写;现行两 node 宿主画面 op 均不
     消费本字段(循环推进按宿主自身形态返回 round_wait),保留作分派面
     需要逐结果路由时的旁路面。
-    ``leg_type``/``norm_item`` = 银狼策划腿型载荷(银狼闭环 design
-    §2.1①;决策半经 ``classify_planner_leg`` 现算,随派发透传给上报函数
+    ``leg_type``/``norm_item`` = 银狼策划腿型载荷(决策半经
+    ``classify_planner_leg`` 现算,随派发透传给上报函数
     ——确认点击后立即上报完整效果腿;leg_type ∈ upgrade|equip|unknown,
     norm_item = 归一件名或空)。
     """
@@ -196,8 +196,8 @@ class CwActionPickSupplyOp(SrOperation):
 
     刷新圆钮机械点击留守画面 op(刷新链 = ``SupplyPick.refresh`` 决策的
     执行半)——pick execute 语义 = 点卡选中 → 确认,不含刷新臂。
-    **即时上报**(action_ops.md §1 增补 2,迭代 2026-09-21-event-refresh-
-    unify-supply-pick):确认点击后立即一口写全部效果逻辑态(owned 规范名
+    **即时上报**(契约单一源 = `flow/action_ops.md` §1 增补 2 与
+    §4.5 PickSupply 行):确认点击后立即一口写全部效果逻辑态(owned 规范名
     + 单位腿 + 装备后果腿),无到账登记、无落地证据闩——确认未生效 =
     代码 bug,overlay 残留由外循环按当前画面重识别重派。"""
 
@@ -228,7 +228,7 @@ class CwActionPickSupplyOp(SrOperation):
         # 随转移证据机制整体退役)。
         confirm_result = op.round_by_find_and_click_area(
             op.screenshot(), '货币战争-补给', '按钮-确认', success_wait=1.5)
-        # 立即自上报完整结果(design §2.0B 单相:owned += norm_item 规范名
+        # 立即自上报完整结果(单相:owned += norm_item 规范名
         # + 单位腿 + 装备后果腿;norm_item 未解析 = 翻来源留证)。
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
@@ -269,7 +269,7 @@ class CwActionPickMegastarOp(SrOperation):
         选中半(pick-op-unify 批自画面 op 迁入):``env.need_select`` 且
         ``env.target`` 在场 → 点候选选中 + 固定等待(原选中后 0.6s 动画窗,
         时序逐位保留)。``chosen_megastar`` 写端与选中旗标留守画面 op
-        (单次逻辑写入豁免面,派发前写——时序申报见迭代 design.md §2)。"""
+        (单次逻辑写入豁免面,派发前写)。"""
         action = self.param
         env = self.env
         op = env.op
@@ -371,8 +371,7 @@ class CwActionPickPlannerOp(SrOperation):
     点卡选中(避开卡内「详情」按钮区的选中点几何归决策半 ``_card_point``
     单一源)→ 确认机械交回(裁决词 = 全词「我来当策划」,r327 终审 E;
     详情面板防御已拆,面板若真弹出归下一帧外循环自愈——用户裁定
-    2026-09-14)。**即时上报**(action_ops.md §1 增补 2,迭代
-    2026-09-21-pick-planner-equip-immediate-report):确认点击后立即
+    2026-09-14)。**即时上报**(action_ops.md §1 增补 2):确认点击后立即
     一口写完整效果腿(equip 入栏+后果链 / upgrade 变换+档行 / unknown
     留证 / unrouted 兜底零写),无发射/落地两相、无证据闩——确认未生效
     = 代码 bug,overlay 残留由外循环按当前画面重识别重派。"""
@@ -417,7 +416,7 @@ class CwActionPickPlannerOp(SrOperation):
             op, confirm_point=_confirm,
             entry_keyword='我来当策划', tag='cw-planner',
             press_time=op.CLICK_PRESS_TIME)
-        # 立即自上报完整结果(design §2.0/§2.1 单相:确认点击后一口写
+        # 立即自上报完整结果(确认点击后一口写
         # 腿型分派效果——增补 2:点完即按成功上报,零判效零证据闩;
         # leg_type/norm_item 经 env kwargs 形态保持)。
         gs = game_state_from_ctx(self.ctx)
@@ -584,7 +583,7 @@ class CwActionPickEquipOp(SrOperation):
 
     点卡(mouse_move+click bug#1 缓解;选中点 = 卡名带 x + 卡身 y,决策半
     现算经 env 传入)→ 选中动画固定等待。**即时上报**(action_ops.md §1
-    增补 2,迭代 2026-09-21-pick-planner-equip-immediate-report):点卡后
+    增补 2):点卡后
     立即一口写完整效果逻辑态(装备入栏 + 获得后果链),无发射/落地两相、
     无证据闩——点卡未生效 = 代码 bug,overlay 残留由外循环按当前画面
     重识别重派。本屏零 chosen 写端(选择存证已退役)。"""
@@ -609,7 +608,7 @@ class CwActionPickEquipOp(SrOperation):
         op.ctx.controller.mouse_move(env.target)
         op.ctx.controller.click(env.target)
         time.sleep(1.2)
-        # 立即自上报完整结果(design §2.0/§2.1 单相:点卡后一口写
+        # 立即自上报完整结果(点卡后一口写
         # 装备入栏 + 获得后果链;norm_item 未解析 = 翻来源留证——
         # 增补 2:点完即按成功上报,零判效零证据闩)。
         gs = game_state_from_ctx(self.ctx)
