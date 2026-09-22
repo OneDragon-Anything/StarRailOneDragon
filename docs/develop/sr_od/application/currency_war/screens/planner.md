@@ -13,7 +13,7 @@
 
 ## 3. 观察面
 
-观察 node = 左右两卡 OCR 桶一次读(入口帧一次读,决策轮复用实例载体;恒两元素 0=左卡/1=右卡)。卡面读取 = 单次全图 OCR,文本归属 = **中心点落入建档两卡 rect**(`骇入选项-左卡/右卡`,坐标单一真相源回 yml;判定语义先例 = `_anchor_hit_full_ocr` 中心点同式;area 缺失回退旧实证 rect 兜底;捕获集变化申报 = 旧 y 带 [300,420] → 卡全域 rect,卡内文本全属该卡语义,classify 关键词匹配面不变)join 为 `PlannerOption(idx, text)`。观察 payload = `CwScreenPlannerObs`(`on_screen`/`options`/`screen`,住 `kernel/cw_screen_report/planner.py`);report = `report_screen_planner_obs` 候选写容器 `planner_opts` 槽(恒写,空桶照写)。
+观察 node = 左右两卡 OCR 桶一次读(入口帧一次读,决策轮复用实例载体;恒两元素 0=左卡/1=右卡)。卡面读取 = 单次全图 OCR,文本归属 = **中心点落入建档两卡 rect**(`骇入选项-左卡/右卡`,坐标单一真相源回 yml;判定语义先例 = `_anchor_hit_full_ocr` 中心点同式;卡位 area 缺失 = observe round_fail 交回重读,禁兜底 rect;捕获集变化申报 = 旧 y 带 [300,420] → 卡全域 rect,卡内文本全属该卡语义,classify 关键词匹配面不变)join 为 `PlannerOption(idx, text)`。观察 payload = `CwScreenPlannerObs`(`on_screen`/`options`/`screen`,住 `kernel/cw_screen_report/planner.py`);report = `report_screen_planner_obs` 候选写容器 `planner_opts` 槽(恒写,空桶照写)。
 
 ## 4. 动作面
 
@@ -29,11 +29,12 @@
 options = 观察轮 obs 载体 → decide_planner()(零参;候选读容器 planner_opts 槽)
 target = _card_point(idx):卡 area(「骇入选项-左卡/右卡」)rect 相对几何推导
   = 中心 x + 71% 高度(卡下半部选中),详情钮避让 clamp(底缘上移 11% 比例);
-  area 缺失回退旧实证 rect 常量
-→ mouse_move + click(press_time 0.15 常量,输入管线半死态短按下不采样的加固)
+  area 缺失 = act round_fail 零派发零点击交回重读(禁兜底坐标)
+→ 派发 CwActionPickPlannerOp(target 经 env;机械链在动作 op 内):
+  mouse_move + click(press_time 0.15 常量,输入管线半死态短按下不采样的加固)
   → 1.2s 等选中动画
-→ 确认:「按钮-骇入确认」center(建档 rect 中心,兜底常量)
-  → emit_overlay_confirm(裁决词「我来当策划」,press_time 同加固;机械交回零判效)
+→ 确认:「按钮-骇入确认」建档查找点击(round_by_find_and_click_area,全族统一;
+  area 缺失 = 显式失败交框架轮次,禁兜底坐标;机械交回零判效)
 → 动作 op 确认点击后即时自上报完整结果(单相一口写)→ 派发即 round_success 终结交回
 ```
 

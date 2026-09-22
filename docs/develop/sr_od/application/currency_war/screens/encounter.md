@@ -26,7 +26,7 @@
 
 | 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| `CwActionPickEncounterOp`(`CwActionPickEncounterParam`) | 注册表工厂 `action_op_for`(env 只携宿主 `op`;卡位/确认钮由动作 op 内读建档 area,缺失兜底常量) | **发射即写** `report_action_pick_encounter_param`(`kernel/cw_action_report/pick_encounter.py`:确认点击后立即写 `chosen_encounter`,值组装 = 容器 `encounter` payload 槽 `options[param.idx]`,离屏/越界 = 缺陷留证不写 fail-closed) | **是(派发即终结)**:发出后 round_success 终结交回外循环;落地判定归观察侧(overlay 残留由外循环重识别重派) |
+| `CwActionPickEncounterOp`(`CwActionPickEncounterParam`) | 注册表工厂 `action_op_for`(env 只携宿主 `op`;卡位由动作 op 内读建档 area(缺失 = 显式 round_fail 交回重读,禁兜底坐标),确认钮 = `round_by_find_and_click_area` 全族统一) | **发射即写** `report_action_pick_encounter_param`(`kernel/cw_action_report/pick_encounter.py`:确认点击后立即写 `chosen_encounter`,值组装 = 容器 `encounter` payload 槽 `options[param.idx]`,离屏/越界 = 缺陷留证不写 fail-closed) | **是(派发即终结)**:发出后 round_success 终结交回外循环;落地判定归观察侧(overlay 残留由外循环重识别重派) |
 | 分支刷新(无注册表动作 op;`CwActionRefreshNodeOptionsParam` 仅策略建议载体) | 画面 op 留守臂(容器 `encounter_refresh_left` 闸 + 锚点对照闸 → 放行:同帧「剩余次数:N」文本中心锚定偏移 `_REFRESH_BTN_DX`(-100)`mouse_move`+`click` + 2s 固定等待) | 无自上报(刷新 = 终结交回,新选项由外循环重进后的入口观察现读承载,**访问内零重读零二次覆盖写零重决策**) | **是(终结)**:round_success 终结交回;闸拒绝(剩余 ≤0 或 None 或锚点缺)→ 零点击,重调一次决策按原评分选卡落②;重调仍建议刷新(闸数据不一致)→ 零点击终结交回 |
 | (空候选,非动作) | — | — | **是**:零点击 round_success 终结交回重读(候选读缺禁盲选派发确认——选卡确认不可逆消耗本节点) |
 

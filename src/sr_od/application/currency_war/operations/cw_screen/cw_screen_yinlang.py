@@ -78,13 +78,9 @@ class CwScreenYinLang(SrOperation):
     SELECT_Y_RATIO: ClassVar[float] = 0.71
     # 详情钮避让 = **rect 底缘上移固定比例**:实帧
     # 详情钮带贴卡底(高 20-28px ≈ 卡高 8-10%,含余量取 11%)。绝对 y 常数对
-    # 多布局不成立(单帧耦合:弹窗整体下移 >46px 即被压回详情危险半区,
-    # legacy 兜底 478 会被压成 425 落 (755,400) 型危险带);相对几何下布局
-    # 再漂移恢复「只更 yml」承诺。clamp 语义 = 详情钮在其上方。
+    # 多布局不成立(单帧耦合:弹窗整体下移 >46px 即被压回详情危险半区);
+    # 相对几何下布局再漂移恢复「只更 yml」承诺。clamp 语义 = 详情钮在其上方。
     DETAIL_MARGIN_RATIO: ClassVar[float] = 0.11
-    # 旧实证 rect(area 缺失时兜底)。
-    _LEGACY_CARD_RECTS: ClassVar[tuple[tuple[int, int, int, int], ...]] = (
-        (500, 280, 980, 560), (1020, 280, 1500, 560))
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-策划事件')
@@ -92,23 +88,22 @@ class CwScreenYinLang(SrOperation):
         # 读,恒两元素 0=左卡/1=右卡)。
         self._obs: CwScreenPlannerObs | None = None
 
-    def _card_point(self, idx: int) -> Point:
+    def _card_point(self, idx: int) -> Point | None:
         """卡选中点击点 = area rect 相对几何推导(中心 x,71% 高度)。
 
         详情钮避让 = rect 底缘上移 DETAIL_MARGIN_RATIO(相对几何
         ——绝对 y 常数对多布局不成立,见类属性注释)。两比例皆 rect 相对,
-        布局再漂移时只更 yml rect,本方法零改;rect 缺失回退旧实证 rect。
-        确认钮动画/多步 overlay 零覆盖声明:本方法只产选中点,确认链与
-        上报归动作 op,本 op 派发即终结交回外循环。
+        布局再漂移时只更 yml rect,本方法零改。area 缺失 = 返回 None
+        (建档漂移,调用方显式 round_fail 交回重读,禁兜底坐标——
+        用户裁定 2026-09-22)。确认钮动画/多步 overlay 零覆盖声明:本方法
+        只产选中点,确认链与上报归动作 op,本 op 派发即终结交回外循环。
         """
         area = self.ctx.screen_loader.get_area(
             CwScreenYinLang.CARD_AREA_SCREEN,
             CwScreenYinLang.CARD_AREAS[idx])
-        if area is not None:
-            rect = area.pc_rect
-        else:
-            lx, ly, rx, ry = CwScreenYinLang._LEGACY_CARD_RECTS[idx]
-            rect = Rect(lx, ly, rx, ry)
+        if area is None or area.pc_rect is None:
+            return None
+        rect = area.pc_rect
         y = min(rect.y1 + int(rect.height * CwScreenYinLang.SELECT_Y_RATIO),
                 rect.y2 - int(rect.height * CwScreenYinLang.DETAIL_MARGIN_RATIO))
         return Point(rect.center.x, y)
@@ -121,20 +116,21 @@ class CwScreenYinLang(SrOperation):
         round_success 终结交回)。"""
         screen = self.last_screenshot
         # OCR 两卡区域文字:单次全图读(贵操作只算一次),文本归属 =
-        # 中心点落入建档两卡 rect(坐标单一真相源回 yml;判定语义 =
-        # 中心点,先例 _anchor_hit_full_ocr 同式;area 缺失回退旧实证
-        # rect。捕获集变化申报 = 旧 y 带 [300,420] → 卡全域 rect,卡内
-        # 文本全属该卡语义,classify 关键词匹配面不变)。
+        # 中心点落入建档两卡 rect(坐标单一真相源 = yml;判定语义 =
+        # 中心点,先例 _anchor_hit_full_ocr 同式)。卡位 area 缺失 =
+        # 显式 round_fail 交回重读(禁兜底 rect 静默降级——用户裁定
+        # 2026-09-22;捕获集 = 卡全域 rect,卡内文本全属该卡语义,
+        # classify 关键词匹配面不变)。
         _rects: list[Rect] = []
         for _area_name in self.CARD_AREAS:
             _area = self.ctx.screen_loader.get_area(
                 CwScreenYinLang.CARD_AREA_SCREEN, _area_name)
-            if _area is not None and _area.pc_rect is not None:
-                _rects.append(_area.pc_rect)
-            else:
-                _lx, _ly, _rx, _ry = CwScreenYinLang._LEGACY_CARD_RECTS[
-                    len(_rects)]
-                _rects.append(Rect(_lx, _ly, _rx, _ry))
+            if _area is None or _area.pc_rect is None:
+                return self.round_fail(
+                    f'卡位 area 缺失:{_area_name}'
+                    f'({CwScreenYinLang.CARD_AREA_SCREEN}),'
+                    '禁兜底 rect 交回重读')
+            _rects.append(_area.pc_rect)
         ocr_map = self.ctx.ocr_service.get_ocr_result_map(
             image=screen, rect=None, color_range=None, crop_first=False,
         )
@@ -198,6 +194,12 @@ class CwScreenYinLang(SrOperation):
                                     None)
             pick = CwActionPickPlannerParam(idx=_kpick.idx, reason=_kpick.reason)
         target = self._card_point(pick.idx)
+        if target is None:
+            # 点卡定位点不可派生 = 卡位建档漂移,显式失败交回重读
+            #(零派发零点击,禁兜底坐标;用户裁定 2026-09-22)。
+            return self.round_fail(
+                f'卡位 area 缺失:{CwScreenYinLang.CARD_AREAS[pick.idx]}'
+                f'({CwScreenYinLang.CARD_AREA_SCREEN}),禁兜底坐标交回重读')
         # 腿型载荷:判定单源 = kernel
         # classify_planner_leg(装备域优先);随 env 透传给动作 op 上报
         # (确认点击后立即写完整效果腿,单相即时上报)。

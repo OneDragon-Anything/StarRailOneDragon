@@ -2,7 +2,8 @@
 文件,一 op 一文件 = op-layer.md :48;族契约与共享 env 见
 ``cw_overlay_pick_env``)。
 
-机械语义:点卡选中(screen_info 坐标缺失走历史实测兜底常量)→ 确认
+机械语义:点卡选中(建档「遭遇卡-其一/其二」area 取点,缺失 = 显式
+round_fail 交回重读,禁兜底坐标)→ 确认
 机械交回;机械链发出后直调自上报单口
 ``report_action_pick_encounter_param``(发射即写)。
 """
@@ -39,10 +40,11 @@ from sr_od.operations.sr_operation import SrOperation
 class CwActionPickEncounterOp(SrOperation):
     """遭遇节点 pick 确认链(机械语义单一源,统一动作工厂批4 迁入)。
 
-    点卡选中(screen_info 坐标缺失走历史实测兜底常量)→ 确认机械交回
-    (验证废除:不读屏判「overlay 关没关」,落地由画面 op handle 顶部
-    重入裁决承载;docstring「插空白点击取消选中→死循环」风险的防线由
-    重入裁决 + 预算耗尽 bail 承接——机械语义单一源随体迁入本类)。"""
+    点卡选中(建档「遭遇卡-其一/其二」area 取点,缺失 = 显式 round_fail
+    交回重读,禁兜底坐标)→ 确认机械交回
+    (验证废除:不读屏判「overlay 关没关」,落地由外循环重识别重派承载;
+    「插空白点击取消选中→死循环」风险的防线 = 固定顺序确认链本身——
+    机械语义单一源随体迁入本类)。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False
@@ -62,9 +64,15 @@ class CwActionPickEncounterOp(SrOperation):
         env = self.env
         op = env.op
         idx = action.idx
-        card_left = area_center(op.ctx, '遭遇卡-其一', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.CARD_LEFT
-        card_right = area_center(op.ctx, '遭遇卡-其二', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.CARD_RIGHT
-        card = card_left if idx == 0 else card_right
+        card_area = '遭遇卡-其一' if idx == 0 else '遭遇卡-其二'
+        card = area_center(op.ctx, card_area, CwScreenEncounter.SCREEN_NAME)
+        if card is None:
+            # 卡位 area 缺失 = 建档漂移,显式失败交回重读(禁兜底坐标
+            # 静默点击;用户裁定 2026-09-22,action_ops.md §4.5 PickEncounter 行)。
+            env.round_result = self.round_fail(
+                f'遭遇卡 area 缺失:{card_area}'
+                f'({CwScreenEncounter.SCREEN_NAME}),禁兜底坐标交回重读')
+            return env.round_result
         safe_click(op, card, tag='cw-encounter')
         time.sleep(0.8)
         # 确认 = 建档「按钮-选择」查找点击(round_by_find_and_click_area 全族

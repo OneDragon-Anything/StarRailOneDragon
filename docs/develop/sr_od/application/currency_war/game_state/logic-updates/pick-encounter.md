@@ -16,9 +16,9 @@
 
 ## 3. 确定面转移规则(逐条)
 
-1. 点卡选中:卡位中心 = `kernel/cw_obs_core.py::area_center`('遭遇卡-其一'/'遭遇卡-其二',缺失兜底 `CwScreenEncounter.CARD_LEFT`/`CARD_RIGHT` 历史实测常量);`idx == 0` 点左卡否则右卡(`safe_click`);
+1. 点卡选中:卡位中心 = `kernel/cw_obs_core.py::area_center`('遭遇卡-其一'/'遭遇卡-其二';缺失 = 显式 round_fail 交回重读,禁兜底坐标);`idx == 0` 点左卡否则右卡(`safe_click`);
 2. 固定等待 0.8s;
-3. 确认机械交回 = `_overlay_confirm.emit_overlay_confirm`(确认点 = area_center('按钮-选择') or `SELECT_BTN`;裁决词 = 标题全词「遭遇节点」,4 字 vs 备战「遭遇」标签 2 字 LCS 不误匹配);轮次结果(末步 `round_*` 产物)经 `env.round_result` 旁路回传。
+3. 确认机械交回 = `round_by_find_and_click_area`(建档「按钮-选择」查找点击,全族统一;area 缺失 = 显式失败交框架轮次,禁兜底坐标);轮次结果(末步 `round_*` 产物)经 `env.round_result` 旁路回传。
 
 ## 4. 随机面
 
@@ -26,7 +26,7 @@
 
 ## 5. 拒绝语义
 
-零验证确认链:确认未落地(overlay 残留)不重试不判效——下一轮重入入口观察裁决(节点循环重走本链,「插空白点击取消选中」类风险的防线 = 重入裁决 + 预算耗尽 bail);screen_info 坐标缺失走兜底常量(本屏在册例外,其余坐标缺失 = 禁兜底)。
+零验证确认链:确认未落地(overlay 残留)不重试不判效——派发即终结,overlay 残留由外循环按当前画面重识别重派(修法 = 点击链可靠性);卡位 area 缺失 = 显式 round_fail 零点击(禁兜底坐标,坐标单一真相源 = 建档)。
 
 ## 6. kernel 符号锚
 

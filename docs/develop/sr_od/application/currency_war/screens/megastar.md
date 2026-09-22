@@ -26,7 +26,7 @@
 决策动作 node 单动作体 `_do_action`(零参:候选自观察轮 obs 载体):决策与写端留守 + 「选中 → 确认」链派发(`CwActionPickMegastarOp`;机械链在动作 op 内,pick-op-unify 批):
 
 1. **决策 + 写端留守**(仅当 `StrategyState.megastar_clicked` 为 False,经 kernel `strategy_state_of` 通道读写,状态缺席不冷建):`decide_megastar()` 零参决策(候选读容器 `megastar_opts` 槽)选 idx → 置位选中标记(局级,跨 re-dispatch 持久)→ `chosen_megastar` 写(容器 `game_state_of(match.session).write_logic`,点选前(派发前)写,写点 → 点选窗口内无读者;gs 单一源,session 域无此写端)→ 组 env(仅 `idx` + `need_select=True`,零坐标传参)→ 派发。
-2. **机械链(动作 op 内)**:`need_select` → 守卫断言(容器 `megastar_opts` 缺席/空、idx 越界、元素缺 xy = AssertionError 响亮暴露,禁控制流回退禁 screen_info 二次取点)→ 点候选(坐标 = 容器 `megastar_opts[idx].xy`,观察上报,按下标取;mouse_move + click)→ 0.6s → 点确认(`货币战争-盛会之星.按钮-确认选择` area center,兜底常量 `CwScreenMegastar.CONFIRM`)→ mouse_move + click → 0.9s → 自上报 `report_action_pick_megastar_param`(零写)。确认 = 纯机械单发(验证废除;「请选择强化角色」文本 = 确认钮旁伴随文案非第二画面步骤,未建模独立处理);确认未落地 overlay 残留 = 下一轮门复检自愈(门仍在 → 候选已选 → 机械单发确认再推进)。确认轮(已选中)只发确认(`need_select=False`,idx 复用决策轮缓存,不经容器取点)。
+2. **机械链(动作 op 内)**:`need_select` → 守卫断言(容器 `megastar_opts` 缺席/空、idx 越界、元素缺 xy = AssertionError 响亮暴露,禁控制流回退禁 screen_info 二次取点)→ 点候选(坐标 = 容器 `megastar_opts[idx].xy`,观察上报,按下标取;mouse_move + click)→ 0.6s → 点确认(建档「货币战争-盛会之星.按钮-确认选择」查找点击 `round_by_find_and_click_area`,全族统一;area 缺失 = 显式失败交框架轮次,禁兜底坐标)→ 0.9s → 自上报 `report_action_pick_megastar_param`(零写)。确认 = 纯机械单发(验证废除;「请选择强化角色」文本 = 确认钮旁伴随文案非第二画面步骤,未建模独立处理);确认未落地 overlay 残留 = 下一轮门复检自愈(门仍在 → 候选已选 → 机械单发确认再推进)。确认轮(已选中)只发确认(`need_select=False`,idx 复用决策轮缓存,不经容器取点)。
 
 ## 5. 终结与交回
 

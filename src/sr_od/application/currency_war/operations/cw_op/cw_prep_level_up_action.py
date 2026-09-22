@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
@@ -70,7 +69,13 @@ class CwActionLevelUpOp(SrOperation):
         from sr_od.application.currency_war.kernel.cw_economy import (
             xp_click_cost,
         )
-        btn = area_center(ex._ctx, '备战标识-购买经验') or Point(296, 860)
+        btn = area_center(ex._ctx, '备战标识-购买经验')
+        if btn is None:
+            # 按钮 area 缺失 = 建档漂移,显式失败交回重读(禁兜底坐标
+            # 静默点击;用户裁定 2026-09-22,action_ops.md §4.2 LevelUp 行)。
+            # round_fail 经执行缝 = emitted=False 未发出事实,下帧重派重读。
+            return self.round_fail(
+                '「备战标识-购买经验」area 缺失,禁兜底坐标交回重读')
         # 单击价容器读口(kernel 单一源,失读回退兜底价;与假环境执行缝同式)
         _price = XP_CLICK_COST_FALLBACK
         if session is not None:

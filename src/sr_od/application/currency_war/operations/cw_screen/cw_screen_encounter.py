@@ -88,10 +88,6 @@ class CwScreenEncounter(SrOperation):
     """遭遇节点二选一:decide_encounter 选卡(必要时先分支刷新)→ 点卡选中 + 选择确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-遭遇节点'   # screen_info 画面(currency_war_encounter.yml)
-    # 遭遇卡卡身中心。左卡=遭遇其一(难度低,金币×2);右卡=遭遇其四(难度高,随机4费角色×3)。
-    # 常量=screen_info 缺失兜底;首选 area_center('遭遇卡-其一/其二')。
-    CARD_LEFT: ClassVar[Point] = Point(665, 500)
-    CARD_RIGHT: ClassVar[Point] = Point(1288, 550)
     # 分支刷新圆钮 = 「剩余次数:N」文本左侧固定偏移。归档帧
     # sr-od-test/screens/货币战争-遭遇节点/default.webp CV 双法实测:圆钮 ≈(671,899)、
     # 文本锚中心 ≈(771,899) → 偏移 = -100px;偏移错 → 刷新未命中,终结交回后
