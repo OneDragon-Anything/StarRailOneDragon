@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 画面身份门(「标识-遭遇节点」,miss = round_fail 交回外循环重判)→ **门命中即用 node runner 帧一次读**(候选 + 剩余次数,同帧同源;原「入口 2s 稳定期」已删,用户裁定 2026-09-21,时序口径 supersession 见 [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #23;候选读缺的失败安全 = §4 空候选零点击终结)→ `report_screen_encounter_obs` 落容器 `encounter` 域 + `encounter_refresh_left`(摄入序照先例:options 空整函数早退不写含 left;match/gs 缺席的局外兜底路径跳过 report)→ obs 与刷新文本锚点挂实例属性。决策动作 node = 零参决策(候选自容器 `encounter` 槽;基线核 = `kernel/cw_events.py::decide_encounter`,mandate_v1 现役核 = `bridge.py` 覆写 → `kernel/cw_encounter_selection.py` E-2 判据单一源,历史 EV 核搁置让位保留禁删;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→ **三出口均终结访问**(派发即终结,重入裁决已退役;合同 = [op-layer.md](op-layer.md) §1.1 出口①,投资两屏/补给同形态):①刷新 = 点钮一次 + 2s → round_success 终结;②选卡 = 派发确认链(机械链 + chosen 即时上报在动作 op 内)→ round_success 终结;③空候选/局外 = 零点击终结交回重读。确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重识别重派(修法 = 点击链可靠性)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 画面身份门(「标识-遭遇节点」,miss = round_fail 交回外循环重判)→ **门命中即用 node runner 帧一次读**(候选 + 剩余次数,同帧同源;原「入口 2s 稳定期」已删,用户裁定 2026-09-21,时序口径 supersession 见 [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #23;候选读缺的失败安全 = §4 空候选零点击终结)→ `report_screen_encounter_obs` 落容器 `encounter` 域 + `encounter_refresh_left`(摄入序照先例:options 空整函数早退不写含 left;match/gs 缺席的局外兜底路径跳过 report)→ obs 与刷新文本锚点挂实例属性。决策动作 node = 零参决策(候选自容器 `encounter` 槽;基线核 = `kernel/cw_events.py::decide_encounter`,mandate_v1 现役核 = `bridge.py` 覆写 → `kernel/cw_encounter_selection.py` E-2 判据单一源,历史 EV 核搁置让位保留禁删;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→ **三出口均终结访问**(派发即终结,重入裁决已退役;合同 = [op-layer.md](op-layer.md) §1.1 出口①,投资两屏/补给同形态):①刷新 = 点钮一次 + 2s → round_success 终结;②选卡 = 派发确认链(机械链 + chosen 即时上报在动作 op 内)→ round_success 终结;③空候选 = 零点击终结交回重读。确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重识别重派(修法 = 点击链可靠性)。
 
 ## 3. 观察面
 
@@ -28,7 +28,7 @@
 |---|---|---|---|
 | `CwActionPickEncounterOp`(`CwActionPickEncounterParam`) | 注册表工厂 `action_op_for`(env 只携宿主 `op`;卡位/确认钮由动作 op 内读建档 area,缺失兜底常量) | **发射即写** `report_action_pick_encounter_param`(`kernel/cw_action_report/pick_encounter.py`:确认点击后立即写 `chosen_encounter`,值组装 = 容器 `encounter` payload 槽 `options[param.idx]`,离屏/越界 = 缺陷留证不写 fail-closed) | **是(派发即终结)**:发出后 round_success 终结交回外循环;落地判定归观察侧(overlay 残留由外循环重识别重派) |
 | 分支刷新(无注册表动作 op;`CwActionRefreshNodeOptionsParam` 仅策略建议载体) | 画面 op 留守臂(容器 `encounter_refresh_left` 闸 + 锚点对照闸 → 放行:同帧「剩余次数:N」文本中心锚定偏移 `_REFRESH_BTN_DX`(-100)`mouse_move`+`click` + 2s 固定等待) | 无自上报(刷新 = 终结交回,新选项由外循环重进后的入口观察现读承载,**访问内零重读零二次覆盖写零重决策**) | **是(终结)**:round_success 终结交回;闸拒绝(剩余 ≤0 或 None 或锚点缺)→ 零点击,重调一次决策按原评分选卡落②;重调仍建议刷新(闸数据不一致)→ 零点击终结交回 |
-| (空候选/局外,非动作) | — | — | **是**:零点击 round_success 终结交回重读(候选读缺禁盲选派发确认——选卡确认不可逆消耗本节点) |
+| (空候选,非动作) | — | — | **是**:零点击 round_success 终结交回重读(候选读缺禁盲选派发确认——选卡确认不可逆消耗本节点) |
 
 交互陷阱:点卡身选中 → 点「选择」确认,**中间勿插空白点击**(会取消选中 → 死循环);「选择」钮未选中卡时灰置禁用。确认链整体(点卡 + 确认 + 发射即写)经动作工厂(`cw_pick_encounter_action.py::CwActionPickEncounterOp`);刷新发射零记账(剩余次数 = 观察真值,无计数记账)。
 
@@ -38,7 +38,7 @@
 |---|---|---|
 | 选卡确认链派发 | **派发即终结** | round_success 交回外循环重分发;确认未生效 = overlay 残留由外循环重识别重派 |
 | 分支刷新点钮 | **终结** | 点钮 + 2s → round_success 交回;外循环重进 = 入口重建重观察 |
-| 空候选/局外/闸数据不一致 | **零点击终结** | round_success 交回重读(禁盲选、防空转) |
+| 空候选/闸数据不一致 | **零点击终结** | round_success 交回重读(禁盲选、防空转) |
 | 入口锚 miss | op FAIL | 交回外循环按当前画面重分发 |
 
 三出口均终结访问,`round_wait` 循环面对刷新建议不存在(活锁方向安全,design §2.0A 同构论证);`node_max_retry_times=10` 现役值仅框架异常路径消费。「确认离开 = 画面终结」= [README.md](README.md) §6。
