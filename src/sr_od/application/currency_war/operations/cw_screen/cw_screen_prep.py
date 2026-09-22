@@ -1040,18 +1040,18 @@ class CwScreenPrep(SrOperation):
         _visit_op = CwScreenShop(self.ctx)
         _rr = _visit_op.observe()
         if not _rr.is_success:
-            return False, f'买牌访问未完成({_rr.status})'
+            return False, f'商店访问未完成({_rr.status})'
         while True:
             _rr = _visit_op.act()
             if _rr.result == OperationRoundResultEnum.SUCCESS:
                 _led = _visit_op.ledger
-                return True, (f'买牌访问完成 买{_led.total_buy}张 '
+                return True, (f'商店访问完成 买{_led.total_buy}张 '
                               f'经验{_led.total_xp_buy}击 '
                               f'刷{_led.total_refresh}次 '
                               f'卖{_led.total_sell}张')
             if _rr.result == OperationRoundResultEnum.WAIT:
                 continue   # 非终结动作:round_wait 续循环(帧不消费)
-            return False, f'买牌访问未完成({_rr.status})'
+            return False, f'商店访问未完成({_rr.status})'
 
     def _v2_post_frame_accounting(self, obs: PrepObservation,
                                   session: StrategySession) -> None:

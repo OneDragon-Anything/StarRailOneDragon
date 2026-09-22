@@ -139,8 +139,8 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
     'buy_landed': AnchorSpec(
         anchor_id='buy_landed',
         trigger_type=ANCHOR_TRIGGER_LANDED,
-        host='on_outcome(CwActionBuyCardParam) 注册表件(现役登记件还在 cw_op_buy_cards'
-             ' 执行落地门)',
+        host='on_outcome(CwActionBuyCardParam) 注册表件(现役登记件在 '
+             'cw_buy_card_action.py 执行上报链)',
         carrier_kind='buy_landed',
         sim_domain='实机先行',
         evidence_required=False,
