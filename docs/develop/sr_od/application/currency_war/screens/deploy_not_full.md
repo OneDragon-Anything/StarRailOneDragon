@@ -1,6 +1,6 @@
 # 未达上限确认弹窗(deploy_not_full · 货币战争-未达上限警告)
 
-> 代码 = `operations/cw_screen/cw_screen_deploy_not_full.py::CwScreenDeployNotFull`(两 node 直继承 `SrOperation`)。职责:「可出战角色人数未达上限」确认弹窗的一次访问——勾「本局不再提示」+ 确认,解除 bench-full 警告对出战的阻塞。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_deploy_not_full.py::CwScreenDeployNotFull`(两 node 直继承 `SrOperation`)。职责:「可出战角色人数未达上限」确认弹窗的一次访问——勾「本局不再提示」+ 确认,解除未达上限警告对出战的阻塞。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 分发判定
 
@@ -43,4 +43,4 @@
 
 ## 9. 遥测与锁面
 
-- journal op 名 = 「未达上限确认」;frame_tag = `overlay_deploy_not_full`;dispatch wait=3(与确认收尾 success_wait 同口径);日志 tag `[cw-deploywarn]`。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(未达上限弹窗两 node 形态锁:观察门/重入裁决组合);建档 = `currency_war_deploy_not_full.yml`。
+- journal op 名 = 「未达上限确认」;frame_tag = `overlay_deploy_not_full`;dispatch wait=3(与确认收尾 success_wait 同口径);日志 tag `[cw-deploywarn]`。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(`test_reentry_arbitration_flag_gate_combination` = 重入裁决×门组合行为锁 act 侧两腿;`test_deploy_not_full_observe_gate_and_placeholder_report` = 观察门 miss 早退 / obs 装载 / 占位 report 接线恰一次与 gs 缺席跳过);建档 = `currency_war_deploy_not_full.yml`。

@@ -13,11 +13,11 @@ kernel report 的协同契约见该屏 kernel 屏文件)→ ``report_screen_plan
 transition_obs`` 写 ``node_path``/``node_path_baseline``(链防御在
 report 内;读+写整体 best-effort 抑制留守观察侧,不阻塞推进)→ obs 挂
 实例属性进决策 node。决策动作 node = 重入裁决顶部(点空白已发 → 提示
-不在 = 过渡完成 → success 交回(外循环 0q 的误分发计数只认 fail,完成
-路径必须 success);提示在 = 点击未落地 → 重点)→ 点空白推进 →
+不在 = 过渡完成 → success 交回(外环通用连续 fail 预算
+``cw_loop.py::CwLoop.OP_FAIL_REDISPATCH_LIMIT`` 只认 fail,完成路径必须
+success);提示在 = 点击未落地 → 重点)→ 点空白推进 →
 round_wait 循环(不烧节点重试预算;不收敛 = 动作 bug 响亮暴露,无防御
-上限)。原单 node 形态「pending 先行、miss fail 后置」位序随两 node 拆
-分自然消解(门在观察 node 先行,裁决住决策 node 顶部)。本屏 sim 腿 =
+上限)。门在观察 node 先行,裁决住决策动作 node 顶部。本屏 sim 腿 =
 不适用(sim 无对应画面段),等价判据主承重 = 实机在册行为锁 +
 sr-od-test 链观察锁(test_cw_transition_node_chain.py)。
 """
@@ -53,8 +53,7 @@ def _build_transition_chain(gs: GameState | None,
     fixture plane_1to2 实证),逐格:upcoming→hu/超阈 none;boss 末槽→
     sift,SIFT miss→none/None 禁回落 Hu(槽 Hu 距离系统性不可靠,
     cw_node_reader 在案)。行归属位面:开局判别 = 容器节点镜像与 hist 双缺
-    (旧 kernel 过渡腿「三源全缺禁猜」同款语义,腿已随动作上报化切换批
-    退役)= P1 入口;非开局 = 节点镜像 plane,
+    = P1 入口;非开局 = 节点镜像 plane,
     镜像缺失返回 None(行归属不可知,禁猜;report 内同门兜底);镜像在
     位面切换窗的滞后语义恰与「刚离开位面」同向。
     """

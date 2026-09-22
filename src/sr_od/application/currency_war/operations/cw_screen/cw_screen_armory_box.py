@@ -5,13 +5,9 @@
   一件获得。该道具使用后消失」),叠在 3 选 1 屏(投资策略/环境)或备战上;
 - 弹窗内**顶部箱图标是展示图不可点**((812,175)/(810,194)/(960,837) 三点全无反应);
 - 正确动作 = **点 × 关闭**弹窗(道具进背包,备战界面箱槽走 prep_actions 的
-  CwActionOpenBoxParam 开箱链路;选卡 = 武装箱选择画面 op ``cw_screen_box_pick``,
-  R7 批 2a);
+  CwActionOpenBoxParam 开箱链路;四选一选卡职责在独立画面 op
+  ``cw_screen_box_pick.py::CwScreenBoxPick``,本 op 只关弹窗);
 - 不关会挡死底层屏(M20 卡 19min/286 次 retry 实证)。
-
-⚠️ M19 建档时曾按「点箱图标开箱→四选一」建模——错误(展示图不可点);M20 实锤后改关闭模型。
-四选一选卡职责在独立画面 op(cw_screen_box_pick,CwScreenBoxPick;R7 批 2a 起替代
-原 CwActionPickBoxCardParam 备战动作形态),本 op 只关弹窗。
 
 形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两段
 直继承 SrOperation(轻屏统一形态)。观察 node = 标识门(id_mark「标识-简易
@@ -20,9 +16,7 @@
 为占位,match/gs 缺席跳过)→ obs 挂实例属性进决策 node。决策动作 node =
 重入裁决顶部(点 × 已发 → 锚不在 = 弹窗已关(道具进背包)→ success 交回;
 锚在 = 点击未落地 → 重点)→ 点 × 关闭 → ``round_wait`` 循环推进(不烧节点
-重试预算;不收敛 = 动作 bug 响亮暴露,无防御上限)。原单 node 形态的
-「pending 先行、miss fail 后置」位序随两 node 拆分自然消解(门在观察 node
-先行,裁决住决策 node 顶部)。本屏 sim 腿 = 不适用(sim 无对应画面段),
+重试预算;不收敛 = 动作 bug 响亮暴露,无防御上限)。本屏 sim 腿 = 不适用(sim 无对应画面段),
 等价判据主承重 = 实机在册行为锁。
 """
 import time

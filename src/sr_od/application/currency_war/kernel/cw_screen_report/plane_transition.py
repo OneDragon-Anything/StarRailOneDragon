@@ -26,7 +26,7 @@ class CwScreenPlaneTransitionObs:
     """位面过渡屏观察结果(摄入口 = :func:`report_screen_plane_transition_obs`)。
 
     ``chain`` = 过渡屏底部全亮行读数构造的链值(行读数与 TokenCell 构造
-    归观察侧,迁移批接线;None = 行空/读缺,report 不写,诚实缺位)。
+    归观察侧;None = 行空/读缺,report 不写,诚实缺位)。
     """
 
     on_screen: bool = False

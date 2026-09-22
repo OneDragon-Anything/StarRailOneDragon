@@ -87,7 +87,7 @@ class CwScreenBossBriefing(SrOperation):
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """横幅门 + obs{on_screen} → 占位 report 接线。
+        """横幅门 + obs{on_screen} → report 接线(boss 类型直定)。
 
         门判定:徽记模板锚「标识-阵营徽记」miss → 「强敌」片段判别兜底
         (``is_boss_briefing_texts``,判别单一源,**禁顺手复制判别逻辑**;

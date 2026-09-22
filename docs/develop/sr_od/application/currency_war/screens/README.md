@@ -104,7 +104,7 @@
 
 ### 5.5 事件单选族(overlay)
 
-投资策略/补给/遭遇(货币战争-遭遇节点)/盛会之星/选择伙伴/命运卜者(`cw_screen_fortune.py`)/银狼升星(`cw_screen_yinlang.py`)/祈愿试炼/星徽秘典四选一/专家邀请函/武装箱弹窗。决策 = pick 族八接口 + `decide_box_card`,规格 = strategy-docs 13 号篇(原选择装备随该屏误判退役删除,2026-09-22)。
+投资策略/补给/遭遇(货币战争-遭遇节点)/盛会之星/选择伙伴/命运卜者(`cw_screen_fortune.py`)/银狼升星(`cw_screen_yinlang.py`)/祈愿试炼/星徽秘典四选一/专家邀请函/武装箱选择(货币战争-备战-武装箱选择,`cw_screen_box_pick.py`)。决策 = pick 族八接口 + `decide_box_card`,规格 = strategy-docs 13 号篇(原选择装备随该屏误判退役删除,2026-09-22)。
 
 **选卡动作执行载体(pick-op-unify 批起统一;事件屏统一批更新)**:12 屏的选卡动作 = 12 个 `CwActionPickXxxOp` 注册行(投资两屏拆类 = `CwActionPickInvestStrategyParam`/`CwActionPickInvestEnvParam` 两行同指一 op),画面 op 决策半只决策与组装机械参数,选中→确认(或点卡即选)机械链 + 自上报在动作 op 内。**上报形态 = 全族即时上报**(发射/落地两相与证据闩已全域清偿,迭代 2026-09-21,用户裁定 = [../flow/action_ops.md](../flow/action_ops.md) §1 增补 2):投资两屏选择事实+效果经获得链 `gain_invest_strategy`/`gain_invest_env` 记;补给一口写 owned+单位腿+后果腿(`kernel/cw_action_report/pick_supply.py`);遭遇发射即写 `chosen_encounter`(`kernel/cw_action_report/pick_encounter.py`);策划一口写腿型分派效果,条件腿 rider 先行,装备/升费腿含 `lv999_cost_tier` 档行(`kernel/cw_action_report/pick_planner.py`)——画面 op 零容器写、派发即终结交回,确认未生效由外循环重识别重派。契约正本 = [../flow/action_exec.md](../flow/action_exec.md) §2。
 

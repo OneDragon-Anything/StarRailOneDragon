@@ -5,11 +5,11 @@
 ## 1. 分发判定
 
 - 分发 = **阶段一身份行(节点锚)**:双「位面」id_mark 全命中即派发本屏 op;身份臂含 boss 判别排他——帧含「强敌」片段(判别单一源 = `cw_screen_boss_briefing.py`)时接管派发 BOSS 简报,不派本屏 op(防 boss 帧位面锚可读时误派空 fail)。连续 fail 预算归外环通用网(`OP_FAIL_REDISPATCH_LIMIT`,[../flow/guards.md](../flow/guards.md) §1)。
-- 原 0q 误读兜底(提示 rect 派发)已退役(2026-09-16 裁定:未建档实证的故障形态不作兜底理由,见 [../flow/outer_loop.md](../flow/outer_loop.md) §2.3 退役记录)——节点锚 miss 的帧走未知兜底停机留证,证据入库后再议锚加固(节点盘模板化)。
+- 原 0q 误读兜底(提示 rect 派发)已退役(退役记录 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.3)——节点锚 miss 的帧走未知兜底停机留证,证据入库后再议锚加固(节点盘模板化)。
 
 ## 2. 画面形态声明
 
-**空决策形态**(纯推进 + 链观察)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 提示门(「提示-点击空白继续」,miss = round_fail 交回外循环重判)→ 底部全亮行读数构造链值 → `report_screen_plane_transition_obs` 落容器(node_path 离场快照双写,见 §6)→ obs 挂实例属性。决策动作 node = 顶部重入裁决(点空白已发 → 提示不在 = 过渡完成 → success;提示在 = 点击未落地 → 重点)→ 点空白推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 现役值仅框架异常路径消费)。裁决位序 = pending 先行、miss fail 后置(与未达上限弹窗的 miss 分支内序不同,各屏分支序语义各异,禁跨屏统一)。
+**空决策形态**(纯推进 + 链观察)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 提示门(「提示-点击空白继续」,miss = round_fail 交回外循环重判)→ 底部全亮行读数构造链值 → `report_screen_plane_transition_obs` 落容器(node_path 离场快照双写,见 §6)→ obs 挂实例属性。决策动作 node = 顶部重入裁决(点空白已发 → 提示不在 = 过渡完成 → success;提示在 = 点击未落地 → 重点)→ 点空白推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 现役值仅框架异常路径消费)。
 
 ## 3. 观察面
 

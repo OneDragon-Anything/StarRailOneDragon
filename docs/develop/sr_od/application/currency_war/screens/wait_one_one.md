@@ -8,7 +8,7 @@
 
 ## 2. 画面形态声明
 
-**空决策纯等待形态**。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 轮询主体——锚命中 → obs 装载 + 占位 report → success 进决策动作 node;超时 → 存图留证 + round_fail 交回;未就绪未超时 → `round_wait(ONE_ONE_POLL_INTERVAL_S)` 轮询(wait 语义不耗框架 retry 预算,轮询由固定超时兜底)。决策动作 node = 零动作 success 交回(纯等待型无推进动作)。`_monotonic` = 可测时钟模块级单点(测试换假时钟验超时)。
+**空决策纯等待形态**。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1;本屏 = 其在册就绪等待变体,观察 node 轮询为已登记形态非偏离):观察 node = 轮询主体——锚命中 → obs 装载 + 占位 report → success 进决策动作 node;超时 → 存图留证 + round_fail 交回;未就绪未超时 → `round_wait(ONE_ONE_POLL_INTERVAL_S)` 轮询(wait 语义不耗框架 retry 预算,轮询由固定超时兜底)。决策动作 node = 零动作 success 交回(纯等待型无推进动作)。`_monotonic` = 可测时钟模块级单点(测试换假时钟验超时)。
 
 ## 3. 观察面
 

@@ -1,10 +1,10 @@
 
 """货币战争 出战确认弹窗(「可出战角色人数未达上限」)处理 op(从主循环拆出)。
 
-勾「本局不再提示」+ 确认,解除 bench-full 警告阻塞出战。
+勾「本局不再提示」+ 确认,解除未达上限警告阻塞出战。
 
 勾选/确认坐标进 screen_info(``currency_war_deploy_not_full``):``勾选-本局不再提示`` +
-``按钮-确认``,task#20 已完成;本 op 经 ``cw_obs_core.area_center`` 读,缺失才用兜底常量。
+``按钮-确认``;本 op 经 ``cw_obs_core.area_center`` 读,缺失才用兜底常量。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation,
 轻屏统一形态):观察 node = 标识门(id_mark「标识-未达上限警告」,miss
@@ -14,11 +14,8 @@
 node = 重入裁决顶部(确认已发 → 锚不在 = 弹窗已关 → success 交回;锚在
 = 确认未落地 → 重做勾选确认)→ 勾「勾选-本局不再提示」safe_click+0.3s
 → 确认 emit_overlay_confirm → 置位 → round_wait 循环推进(不烧节点重试
-预算;不收敛 = 动作 bug 响亮暴露,无防御上限)。原单 node 形态「miss
-分支内先查 pending 后 fail」的裁决位序随两 node 拆分自然消解(门在观察
-node 先行,裁决住决策 node 顶部;判据红线 = id_mark「标识-未达上限警告」
-位置区分,防「能量上限」共享「上限」误匹配,原注释原位保留)。本屏
-sim 腿 = 不适用(sim 无对应画面段),等价判据主承重 = 实机在册行为锁
+预算;不收敛 = 动作 bug 响亮暴露,无防御上限)。本屏 sim 腿 = 不适用
+(sim 无对应画面段),等价判据主承重 = 实机在册行为锁
 (test_cw_obs_arch_closing_screens.py)。
 """
 import time
@@ -45,7 +42,7 @@ class CwScreenDeployNotFull(SrOperation):
     """出战人数未达上限弹窗:勾本局不再提示 + 确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-未达上限警告'   # screen_info 画面(currency_war_deploy_not_full.yml)
-    # 勾选/确认:screen_info center(task#20);常量=screen_info 缺失兜底。
+    # 勾选/确认:screen_info center;常量=screen_info 缺失兜底。
     CHECKBOX_NO_PROMPT: ClassVar[Point] = Point(912, 589)   # 兜底;首选 area_center('勾选-本局不再提示')
     BTN_CONFIRM: ClassVar[Point] = Point(1159, 653)          # 兜底;首选 area_center('按钮-确认')
 
@@ -106,8 +103,8 @@ class CwScreenDeployNotFull(SrOperation):
         safe_click(self, _check, tag='cw-deploywarn')
         time.sleep(0.3)
         # 确认 + 机械交回(验证废除:不读屏判「弹窗关没关」,落地由下一轮重入
-        # 入口观察裁决;锚仍在 = 重做一次)。原「点了就 success」
-        # 不观察 → 点击被吞/勾选未生效 flat-loop 防线由重入裁决承接。
+        # 入口观察裁决;锚仍在 = 重做一次)。勾选未生效的弹窗滞留 flat-loop
+        # 防线 = 重入裁决。
         self._confirm_pending = True
         emit_overlay_confirm(self, confirm_point=_confirm, entry_keyword='未达上限',
                              lcs_percent=0.8, success_wait=3.0, tag='cw-deploywarn')
