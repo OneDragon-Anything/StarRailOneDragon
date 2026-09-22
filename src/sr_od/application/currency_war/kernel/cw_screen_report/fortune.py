@@ -40,7 +40,8 @@ class CwScreenFortuneObs:
 
 def report_screen_fortune_obs(gs: GameState, obs: CwScreenFortuneObs, *,
                               sig: ChannelSig | None = None) -> None:
-    """命运卜者强化屏观察上报:三卡 OCR 写 ``fortune_opts``。
+    """命运卜者强化屏观察上报:三卡 OCR 写 ``fortune_opts``、三卡点击
+    坐标写 ``fortune_opts_xy``(同门双写,同序等长守卫在册)。
 
     写点锚 = cw_screen_fortune.py::``CwScreenFortune.observe``(观察 node;
     原写点无空门,直写——空表照写,防线逐位平移)。

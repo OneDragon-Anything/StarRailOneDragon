@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import time
 
+from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from sr_od.application.currency_war.kernel.cw_action_report.zero_writes import (
@@ -38,8 +39,9 @@ from sr_od.operations.sr_operation import SrOperation
 class CwActionPickFortuneOp(SrOperation):
     """命运卜者强化三选一确认链(pick-op-unify 批收编)。
 
-    点卡选中(safe_click bug#1 缓解;选中点 = 卡下半部避「详情」按钮区,
-    决策半从 OCR 桶现算经 env 传入)→ 选中动画固定等待 → 确认
+    点卡选中(safe_click bug#1 缓解;点卡坐标 = 按下标自容器
+    ``fortune_opts_xy`` 读〔坐标随报条款,缺/越界 = 守卫断言;选中几何
+    避「详情」按钮带归观察侧建档〕)→ 选中动画固定等待 → 确认
     (建档「按钮-确认选择」查找点击,全族统一;不带 until = 动作 op
     禁验证)。本屏零 chosen 写端(选择存证已退役),容器写零。"""
 
@@ -60,7 +62,17 @@ class CwActionPickFortuneOp(SrOperation):
         action = self.param
         env = self.env
         op = env.op
-        safe_click(op, env.target, tag='cw-pick-fortune')
+        param = self.param
+        _gs = game_state_from_ctx(self.ctx)
+        _pts = (_gs.fortune_opts_xy.value if _gs is not None else None) or []
+        assert _pts, (
+            '[cw-pick-fortune] 容器 fortune_opts_xy 缺席/空(观察上报缺失,禁'
+            f'坐标现算回退): idx={param.idx}')
+        assert 0 <= param.idx < len(_pts), (
+            f'[cw-pick-fortune] param.idx 越界容器坐标槽(策略器 bug): '
+            f'idx={param.idx} len={len(_pts)}')
+        pt = Point(*_pts[param.idx])
+        safe_click(op, pt, tag='cw-pick-fortune')
         time.sleep(1.2)
         # 确认 = 建档「按钮-确认选择」查找点击(round_by_find_and_click_area
         # 全族统一,用户裁定 2026-09-22;area 缺失 = 显式失败交框架轮次)。

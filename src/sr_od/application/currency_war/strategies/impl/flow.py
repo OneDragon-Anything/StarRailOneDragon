@@ -704,7 +704,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
     def decide_fortune(self) -> CwActionPickFortuneParam:
         """命运卜者强化三选一(终态零参口;候选 = ``gs.fortune_opts``
         OCR 卡文;判据单一源 = kernel ``decide_fortune`` 战力关键词权重
-        argmax,无匹配缺省首卡,handler 侧越界防御同落首卡)。"""
+        argmax,无匹配缺省首卡,handler 侧无越界兜底——返回词表外/None =
+        调用方具名 fail 零盲发,idx 越界 = 调用方守卫断言
+        (``cw_screen_fortune.py::CwScreenFortune.act`` 决策出口守卫))。"""
         texts = list(self._require_slot_options(self.gs.fortune_opts,
                                                 'fortune_opts'))
         self._consume_prep_direction_frame()   # ADR-0583 入口内务
