@@ -12,14 +12,13 @@ env 显式传入,op 类体内零决策零读决策输入。轮次结果(确认�
 恒成功(发出即职责完成),画面 op act 分派面读旁路字段。族先例 =
 cw_tool_use_action。
 
-**自上报统一(pick-op-unify 批,撤销 2026-09-18 动作 op 重组批 §1.1
-「零上报例外登记」)**:本族每类 run 体在机械链(选中点击 → 确认点击)
+**自上报统一(pick-op-unify 批)**:本族每类 run 体在机械链(选中点击 → 确认点击)
 发出后直调自己的上报函数 ``report_action_pick_<snake>_param``
 (``kernel/cw_action_report``,零写族落 zero_writes)——与 buy_card 等
 其它动作 op 同一执行契约。原「发射/落地两相」例外(invest/equip/
 supply/planner 的发射相意图遥测 + 画面 op 重入裁决出口落地相)已随
-投资两屏、供给、装备、策划各迁移批全域清偿(迭代 2026-09-21,用户
-裁定 = action_ops.md §1 增补 2):现役全族 = 机械链发出后立即一口写
+投资两屏、供给、装备、策划各迁移批全域清偿(用户裁定 = action_ops.md
+§1 增补 2):现役全族 = 机械链发出后立即一口写
 完整结果,容器写语义单点 = 各上报函数,零证据闩零重入裁决补写面。
 partner 确认点读缺的 retry 旁路分支未发确认点击,不上报。
 
@@ -278,7 +277,7 @@ class CwActionPickMegastarOp(SrOperation):
             op.ctx.controller.click(env.target)
             time.sleep(0.6)
         # confirm(确认钮纯机械单发;overlay 关否由下一帧重入裁决)。
-        # 确认钮中心从 screen_info 读(task#103 化债,W265);缺失兜底常量。
+        # 确认钮中心从 screen_info 读;缺失兜底常量。
         confirm = area_center(op.ctx, '按钮-确认选择', '货币战争-盛会之星') or CwScreenMegastar.CONFIRM
         op.ctx.controller.mouse_move(confirm)
         op.ctx.controller.click(confirm)
@@ -369,7 +368,7 @@ class CwActionPickPlannerOp(SrOperation):
     """银狼策划 pick 确认链(统一动作工厂批4 迁入)。
 
     点卡选中(避开卡内「详情」按钮区的选中点几何归决策半 ``_card_point``
-    单一源)→ 确认机械交回(裁决词 = 全词「我来当策划」,r327 终审 E;
+    单一源)→ 确认机械交回(裁决词 = 全词「我来当策划」;
     详情面板防御已拆,面板若真弹出归下一帧外循环自愈——用户裁定
     2026-09-14)。**即时上报**(action_ops.md §1 增补 2):确认点击后立即
     一口写完整效果腿(equip 入栏+后果链 / upgrade 变换+档行 / unknown
@@ -394,8 +393,8 @@ class CwActionPickPlannerOp(SrOperation):
         env = self.env
         op = env.op
         target = env.target
-        # 3. 点卡选中(⚠️ 避开卡内「详情」按钮区 x~880-950/y~420-450——局29 手动点
-        # (755,400) 触发详情面板的实证;点卡身上部 y=310)
+        # 3. 点卡选中(⚠️ 避开卡内「详情」按钮区 x~880-950/y~420-450——手动
+        # 点验 (755,400) 触发详情面板的实证;点卡身上部 y=310)
         op.ctx.controller.mouse_move(target)
         op.ctx.controller.click(target, press_time=op.CLICK_PRESS_TIME)
         time.sleep(1.2)   # 等选中动画
@@ -403,9 +402,9 @@ class CwActionPickPlannerOp(SrOperation):
         # = 详情弹出 = 点错所致,该面归选中点几何治理,面板检测是症状侧
         # 补丁)。面板若真弹出,后果归下一帧:本屏分发即门,外循环按当前画面
         # 重分派(详情 overlay 族分支/本 op 重走链)自愈。
-        # 4. 点确认+机械交回(r326/P1⑦ 防线语义由外循环重识别+预算耗尽 bail
+        # 4. 点确认+机械交回(防线语义由外循环重识别+预算耗尽 bail
         # 承接,验关半拆除——用户裁定 2026-09-10:动作 op 禁验证)。
-        # r327(终审 E):裁决词用全词「我来当策划」(入场锚同词,
+        # 裁决词用全词「我来当策划」(入场锚同词,
         # cw_yinlang_star_up.yml:26 live-verified)——短词「策划」
         # 在艺术字漏读时可能假通过。
         # 确认点主源 = 建档「按钮-骇入确认」中心(坐标单一真相源);area 缺失回退

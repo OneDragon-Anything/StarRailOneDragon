@@ -5,11 +5,7 @@
 发出后调用本函数,一次调用 = 完整结果写入——整支走获得链
 ``gain_invest_strategy``(无效载荷拒绝 → active_strategies 按名字去重
 追加 → 效果账本登记腿 → ``on_strategy_gained`` 效果分派,正本 =
-game_state/gain-chain.md)。
-
-自 ``pick_invest.py`` 拆分(投资两屏迁移批:两屏共用一词表类 + source
-字符串分流废除,每屏一词表类一上报函数;原「发射相意图遥测/落地相证据
-闩」分步上报随拆分废除)。本包 → 容器单向依赖。
+game_state/gain-chain.md)。本包 → 容器单向依赖。
 """
 from __future__ import annotations
 
