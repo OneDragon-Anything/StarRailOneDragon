@@ -181,14 +181,22 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'partner_opts': 1,         # 列车同行候选槽(list[PartnerOption],typed)
     'planner_opts': 1,         # 骇入策划候选槽(list[PlannerOption],typed)
     'star_tome_opts': 1,       # 星徽秘典候选槽(str)
+    'star_tome_opts_xy': 1,    # 星徽秘典选项坐标伴随域(选择坐标观察上报,fields.md §3.4.5a)
     'wish_trial_opts': 1,      # 祈愿试炼候选槽(str)
+    'wish_trial_opts_xy': 1,   # 祈愿试炼选项坐标伴随域(选择坐标观察上报,fields.md §3.4.5a)
     'box_card_opts': 1,        # 武装箱候选槽(str)
+    'box_card_names_xy': 1,    # 武装箱选项坐标伴随域(键名随名字域 box_card_names;选择坐标观察上报,fields.md §3.4.5a)
     'fortune_opts': 1,         # 命运卜者强化候选槽(str;契约扩员 12→15)
-    'expert_invite': 1,        # 专家邀请函选卡载体(ExpertInvitePayload;契约扩员 12→15)
+    'expert_invite': 2,        # 专家邀请函选卡载体(ExpertInvitePayload;域版本 2 =
+                               # payload 扩选项坐标字段 card_points/cash_point
+                               # (选择坐标观察上报,fields.md §3.4.5a);版本 1 =
+                               # 契约扩员 12→15)
     'inventory': 1,         # equips/consumables/免战牌(§3.2.15/§3.2.16/§3.2.19〔勘误:免战牌正本=effect_inventory.remaining_uses,§8.6-3——本域不含其字段〕)
     'spheres': 1,           # 晶矿(§3.2.8,不占席)
     'substate': 1,          # 分类子态/事件浮层(§3.2.17/§3.6.1)
-    'shop': 1,              # 商店开态 payload(§3.3)
+    'shop': 2,              # 商店开态 payload(§3.3;域版本 2 = ShopPayload 扩
+                            # 牌行点击坐标字段 card_points(选择坐标观察上报,
+                            # fields.md §3.3.1/§3.4.5a))
     'encounter': 2,         # 遭遇屏 payload(§3.4.1;域版本 2 = options 形状
                             # 升级 typed EncounterOption,终态契约)
     'supply': 2,            # 补给屏 payload(§3.4.2;域版本 2 = options 形状
@@ -216,7 +224,9 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
 #: 值 = (属屏, route_clearable) 二元组(终态契约路由清点:属屏 = 分发键
 #: 建档屏名;route_clearable=False = 挂点跳过,清点源独占)。`shop` 保留
 #: 映射内 False(leave_screen 域守卫依赖,清点由既有两处显式口独占);
-#: `prep_obs` 不入映射(语义豁免)。
+#: `prep_obs` 不入映射(语义豁免)。选项坐标伴随域(`*_opts_xy` 族 /
+#: payload 坐标字段,选择坐标观察上报 = fields.md §3.4.5a)与名字域同属屏、
+#: 同 route_clearable 在册——离屏清场坐标域与名字域同格,防跨屏携陈值。
 _PAYLOAD_DOMAINS: dict[str, tuple[str, bool]] = {
     'shop': ('货币战争-备战-开商店', False),
     'encounter': ('货币战争-遭遇节点', True),
@@ -227,8 +237,11 @@ _PAYLOAD_DOMAINS: dict[str, tuple[str, bool]] = {
     'partner_opts': ('货币战争-列车同行', True),
     'planner_opts': ('货币战争-银狼升星', True),
     'star_tome_opts': ('货币战争-星徽秘典弹窗', True),
+    'star_tome_opts_xy': ('货币战争-星徽秘典弹窗', True),
     'wish_trial_opts': ('货币战争-祈愿试炼', True),
+    'wish_trial_opts_xy': ('货币战争-祈愿试炼', True),
     'box_card_names': ('货币战争-备战-武装箱选择', True),
+    'box_card_names_xy': ('货币战争-备战-武装箱选择', True),
     'fortune_opts': ('货币战争-命运卜者强化', True),
     'expert_invite': ('货币战争-备战-专家邀请函', True),
 }
@@ -553,6 +566,13 @@ class ShopPayload:
     #: 买光 = [empty×5](合法真值,≠ None 离屏);unknown 槽决策一律跳过。
     cards: list[ShopSlot] = field(default_factory=list)
     refresh_probs: dict[int, float] = field(default_factory=dict)  # 费用档→概率(§3.3.2 契约)
+    # [索引定义] card_points = 牌行点击坐标,坐标系 = 数组下标 + 1 = 物理槽
+    # (1-5,与 ShopSlot 既有槽位坐标系同格;BuyCard 词表 slot(1 基)直接作
+    # 键零换算);取值时机 = 进店观察期快照,动作执行期恒稳。写入端 = 入口
+    # 观察上报(与 cards 同门一并写;op-layer.md §1.1 选择坐标观察上报,
+    # fields.md §3.3.1/§3.4.5a);上报接线未落地前 = 未观察 None;上报后
+    # 定长 5(与 cards 定长不变量对齐)。sim 无画面识别不建模,恒 None。
+    card_points: tuple[tuple[int, int], ...] | None = None
 
 
 def shop_payload_content_cards(payload: ShopPayload | None) -> list:
@@ -599,6 +619,15 @@ class ExpertInvitePayload:
     面板现读计数;读数失败 = {}(判据侧据此落现金为王兜底,语义复刻)。"""
     card_bonds: list[str | None] = field(default_factory=list)
     board: dict[str, int] = field(default_factory=dict)
+    # [索引定义] card_points = 四卡区点击坐标,坐标系 = 「卡-1..卡-4」区序
+    # (0 基下标 = card_bonds 同一卡下标坐标系,与选卡词表 param.idx 同序
+    # 零换算);取值时机 = 弹窗帧观察期快照(观察期 area 中心解析,动作执行
+    # 期恒稳)。写入端 = 专家邀请函观察上报(与 card_bonds 同门一并写;
+    # op-layer.md §1.1 选择坐标观察上报,fields.md §3.4.5a);cash_point =
+    # 词表特形 idx=-1(现金为王)的独立坐标,不进列表防 -1 负下标歧义。
+    # 二者 sim 无画面识别不建模恒 None;观察写端接线未落地前亦恒 None。
+    card_points: list[tuple[int, int]] | None = None
+    cash_point: tuple[int, int] | None = None
 
 
 @dataclass(frozen=True)
@@ -2215,6 +2244,25 @@ class GameState:
     star_tome_opts: Field[list[str] | None] = field(default_factory=Field)
     wish_trial_opts: Field[list[str] | None] = field(default_factory=Field)
     box_card_names: Field[list[str] | None] = field(default_factory=Field)
+    # —— 选项坐标伴随域三槽(op-layer.md §1.1 选择坐标观察上报;fields.md
+    #    §3.4.5a;骨架先行落定义,写端接线随各屏坐标收敛逐批落地)——
+    # [索引定义] 三域同构,各伴随同名去 _xy 的名字域(star_tome_opts /
+    # wish_trial_opts / box_card_names):
+    # 键 = 名字域列表下标 idx(0 起,左→右画面物理序,与策略器输出下标、
+    #   动作词表 param.idx 同一坐标系,零换算);
+    # 取值时机 = 观察期快照(进访问入口观察帧的识别产物,与名字域同一次
+    #   观察同帧同源;动作执行期恒稳,禁执行期现读现算);
+    # 值 = tuple[int, int](x, y,1080p 游戏空间;平铺元组 = 遥测 JSON 序列化
+    #   安全形);
+    # 写入端 = 观察 report 同门(与名字域同一次 report_screen_*_obs 调用、
+    #   同一写门一并写,坐标单一真相源 = 观察上报;同序等长由写端构造守卫
+    #   保证,读端不做长度调和;接线未落地前 = 恒未观察 None);
+    # 读端唯一 = 各域动作 op(按 idx 取点执行,缺席/越界 = 守卫断言);
+    # 失读/离屏语义与名字域同格(离屏清场经 _PAYLOAD_DOMAINS 在册);
+    # sim 无画面识别不建模,恒 None。
+    star_tome_opts_xy: Field[list[tuple[int, int]] | None] = field(default_factory=Field)
+    wish_trial_opts_xy: Field[list[tuple[int, int]] | None] = field(default_factory=Field)
+    box_card_names_xy: Field[list[tuple[int, int]] | None] = field(default_factory=Field)
     # —— 契约扩员新槽(普查迁移批 2;写端 = 各画面 handler 写槽,
     #    消费 = flow 新零参入口 decide_fortune/expert_invite;原
     #    equip_pick_opts 槽随选择装备屏误判退役删除)——
