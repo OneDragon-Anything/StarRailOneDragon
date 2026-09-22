@@ -26,11 +26,9 @@ tracked``(期望态 vs tracked 双账对拍)已随 T-268 退役(用户裁定·�
 文本 = screens/op-layer.md §1.3)——逻辑态建模 bug 的检出归观察边界
 reconcile 纠漂显影(观察赢),op 层不再做双态比对。
 
-执行侧观测通道(ADR-0517 §执行侧观测通道去向,候选 a;T-192 判效
-拆除后的保留面):卖回金实收遥测/牌面变化留证位(安灯 free_refresh_proc
-豁免判定输入)/免费刷新证据保留为 execute 实现层遥测,与决策读屏解耦
-(均观测职责,非决策输入;刷新有效性判效半已随 T-192 拆除,判效权归
-观察侧 reconcile)。
+执行侧零观测(action_ops §1 增补 3:动作 op 无论执行前后不做观察识别
+——机械执行 + 上报动作事实;画面事实的真值与对账归观察侧 reconcile,
+证据职能 = 下一入口观察)。
 """
 from __future__ import annotations
 
@@ -61,54 +59,19 @@ class ShopVisitLedger:
     """商店访问执行账(旧 ``run_buy_waves`` 闭包计数器的具名化,ADR-0517)。
 
     ``refresh_first_action`` = 本访问段(两次刷新之间的段)此前零动作
-    ——「仅刷新波」判定输入(``refresh_wave_is_refresh_only`` 单一判据,
-    刷前现读复用段顶整帧读的边界条件)。
+    (段级标志,由访问编排维护)。
     """
 
     total_buy: int = 0
     total_xp_buy: int = 0   # 买经验击数(单击=+4XP 非整级;真实升级=XP 过门槛,以读屏为准)
     total_refresh: int = 0
     total_sell: int = 0
-    total_sell_income: int = 0
-    total_sell_skip: int = 0
     spend_executed: int = 0
-    plan_truncated: bool = False
-    refresh_attempted: bool = False
-    # (refresh_board_changed 字段已随批4 比对收口退役:三值对比单一源 =
-    #  cw_shop_refresh_obs.refresh_board_changed_of,刷前/刷后名集原样
-    #  落账(refresh_pre_names/refresh_post_names),消费点现算,禁再
-    #  在动作 op 内预计算比对结果。)
     bought_names: list[str] = field(default_factory=list)
     refresh_first_action: bool = True
     did_refresh: bool = False
     # `w536_merge_expect/` 买牌期望态基座(单元尾计算消费):
     buy_purchases: list = field(default_factory=list)
-    # T-13 真值通道:刷前刷新钮按钮态 UI 读数(RefreshShopOp.execute 点击前
-    # 帧快照,一次刷新写一次;消费方 = cw_op_buy_cards.apply_action_outcome
-    # 免费闸)。None = 失读回退逻辑账(接线前保守形态),禁当 False。
-    refresh_free_truth: bool | None = None
-    # T-13 次数余量联动:免费态钮内剩余次数 UI 读数(同帧快照;消费方 =
-    # 刷新 op 与效果账本免费余额刷前值对票(留证票住 op),失配落
-    # 缺陷台账零决策)。
-    refresh_free_remaining_truth: int | None = None
-    # T-219 免费刷新对账三件(判定 = 对账类,比对收口在观察侧;动作 op
-    # 只写不比)。写入端 = RefreshShopOp.execute(刷新点击前现读,一次
-    # 刷新覆盖写一次);消费端 = run_buy_waves 段顶入口观察对账点(三腿
-    # 比对 + 存证),消费即清 pending。坐标系:refresh_pre_gold = 刷前一帧
-    # 游戏金币读数(仅刷新段 = 段顶整帧,连击段 = 点击前一帧;None =
-    # 失读,金腿不可判);refresh_pre_names = 同帧商店 content 具名牌名集
-    # (1080p 商店五槽读牌口径);生命周期 = 一次刷新恰一段(刷新为终结
-    # op,段间无其他动作覆盖字段)。
-    refresh_pre_gold: int | None = None
-    refresh_pre_names: list[str] = field(default_factory=list)
-    refresh_pending_reconcile: bool = False
-    # 刷后牌名集原样落账(批4 比对收口:动作 op 只读不比;三值对比单一
-    # 源 = cw_shop_refresh_obs.refresh_board_changed_of,消费方 = 刷新回执
-    # extra(安灯 free_refresh_proc 豁免判定输入)与入口观察对账点免费腿)。
-    # 坐标系:同帧商店 content 具名牌名列表(1080p 商店五槽读牌口径,与
-    # refresh_pre_names 同帧语义对侧);空表 = 刷后帧失读/全空位(对比
-    # 函数按 None 不可判处理,宁缺勿造)。生命周期 = 一次刷新恰一段。
-    refresh_post_names: list[str] = field(default_factory=list)
 
 
 @dataclass

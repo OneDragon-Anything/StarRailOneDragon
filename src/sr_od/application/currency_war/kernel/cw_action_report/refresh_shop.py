@@ -17,8 +17,9 @@
   = 该腿跳写(概率表按级索引,宁缺勿造)。干旱/供给族消费 observation
   only 是消费侧口径,本函数不管。
 
-金账 −实付仅 sim 喂 ``executed.refresh_paid`` 时写(生产不喂)。2026-09-18
-「终结跳写 payload 不写」裁决的 payload 半边随随机态腿收窄(金仍不写)。
+金账 −实付仅 sim 喂 ``executed.refresh_paid`` 时写(生产不喂)。
+终结跳写申报:金仍不写;刷后牌面 = ``write_logic_rand`` 随机态
+(2026-09-21 用户裁定,观察赢;真值 = 下一入口观察)。
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
 ``cw_action_report.__init__`` docstring)。容器、写入口与观察

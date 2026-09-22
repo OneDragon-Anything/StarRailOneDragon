@@ -771,10 +771,10 @@ class SpendUnitRecord:
     # 读端分类器记 unknown 不猜)。
     gold_close: int | None = None
     gold_close_trusted: bool = False
-    # 执行侧「计划≠尝试」可见化(`w577_refresh_fee_and_andon/`,ADR-0456):生产者 = shop.py 执行循环
-    #(经 set_unit_truncation 暂存、单元关闭落账时消费填充;未挂钩路径恒缺省)。
-    plan_truncated: bool = False     # True=plan 里有动作未尝试(硬墙跳过/至首个 CwActionRefreshShopParam 截断丢弃)——口径差非执行失败
-    refresh_skipped: str | None = None  # 刷新被跳过的原因('max_cap' = 已删 MAX_REFRESH 硬墙的历史取值,现无生产写入端);None=未跳过
+    # 执行侧「计划≠尝试」可见化(ADR-0456;读端 join 面保留,现无生产
+    # 写入端,恒缺省 False)。
+    plan_truncated: bool = False     # True=plan 里有动作未尝试(至终结动作截断丢弃)——口径差非执行失败
+    refresh_skipped: str | None = None  # 刷新被跳过的原因(数据行在册取值含 'max_cap',读端兼容;现无生产写入端);None=未跳过
     refresh_attempted: bool = False  # 本单元内至少点击过一次刷新
     refresh_board_changed: bool | None = None  # 刷新点击后牌面是否已变(两帧一致门+牌名集对拍);None=未尝试/不可判
 
