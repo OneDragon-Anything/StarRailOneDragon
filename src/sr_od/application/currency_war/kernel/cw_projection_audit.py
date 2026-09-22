@@ -272,6 +272,18 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'box_card_names': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='选择族读面,零逻辑写端'),
+    'star_tome_opts_xy': ProjectionAuditRow(
+        status=AUDIT_OBSERVATION_ONLY,
+        basis='选项坐标伴随域(fields.md §3.4.5a):与同名名字域同一次观察'
+              '同帧同源写,零逻辑写端'),
+    'wish_trial_opts_xy': ProjectionAuditRow(
+        status=AUDIT_OBSERVATION_ONLY,
+        basis='选项坐标伴随域(fields.md §3.4.5a):与同名名字域同一次观察'
+              '同帧同源写,零逻辑写端'),
+    'box_card_names_xy': ProjectionAuditRow(
+        status=AUDIT_OBSERVATION_ONLY,
+        basis='选项坐标伴随域(fields.md §3.4.5a):与同名名字域同一次观察'
+              '同帧同源写,零逻辑写端'),
     'fortune_opts': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='选择族读面,零逻辑写端'),
