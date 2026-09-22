@@ -13,7 +13,7 @@
 
 ## 3. 观察面
 
-观察 node = 左右两卡 OCR 桶一次读(入口帧一次读,决策轮复用实例载体;恒两元素 0=左卡/1=右卡)。卡面读取 = 单次全图 OCR,文本归属 = **中心点落入建档两卡 rect**(`骇入选项-左卡/右卡`,坐标单一真相源回 yml;判定语义先例 = `_anchor_hit_full_ocr` 中心点同式;area 缺失回退旧实证 rect 兜底;捕获集变化申报 = 旧 y 带 [300,420] → 卡全域 rect,卡内文本全属该卡语义,classify 关键词匹配面不变——银狼升星记账批 §2.4)join 为 `PlannerOption(idx, text)`。观察 payload = `CwScreenPlannerObs`(`on_screen`/`options`/`screen`,住 `kernel/cw_screen_report/planner.py`);report = `report_screen_planner_obs` 候选写容器 `planner_opts` 槽(恒写,空桶照写)。
+观察 node = 左右两卡 OCR 桶一次读(入口帧一次读,决策轮复用实例载体;恒两元素 0=左卡/1=右卡)。卡面读取 = 单次全图 OCR,文本归属 = **中心点落入建档两卡 rect**(`骇入选项-左卡/右卡`,坐标单一真相源回 yml;判定语义先例 = `_anchor_hit_full_ocr` 中心点同式;area 缺失回退旧实证 rect 兜底;捕获集变化申报 = 旧 y 带 [300,420] → 卡全域 rect,卡内文本全属该卡语义,classify 关键词匹配面不变)join 为 `PlannerOption(idx, text)`。观察 payload = `CwScreenPlannerObs`(`on_screen`/`options`/`screen`,住 `kernel/cw_screen_report/planner.py`);report = `report_screen_planner_obs` 候选写容器 `planner_opts` 槽(恒写,空桶照写)。
 
 ## 4. 动作面
 
@@ -72,4 +72,11 @@ target = _card_point(idx):卡 area(「骇入选项-左卡/右卡」)rect 相对�
 
 - chosen_hack 字段位仍无写端(单相上报写的是腿效果域,非选择存证;fields.md §3.4.5 申报不变)。
 - 选中点击高度比例(71%)为单次交互实证的经验值,半区归属的充分统计待补。
-- 观察捕获集变化(旧 y 带 → 卡全域 rect)的实机对拍候实机窗(银狼升星记账批 §2.4 申报)。
+- 观察捕获集变化(旧 y 带 → 卡全域 rect)的实机对拍候实机窗。
+- 选择坐标观察上报欠账(用户裁定 2026-09-22,op-layer.md §1.1 :35;全域/族级
+  登记 = action_ops.md §1 增补 5 与 §4.5 标题尾段,字段面 = fields.md §3.4.5a):
+  planner_opts 观察载荷现役零坐标(observe 组装 PlannerOption(idx, text)),
+  选中点几何住决策半(_card_point 避开详情钮的点位推导)经 env.target 传入
+  动作 op——收敛终态 = 坐标与归一化同次观察入容器(坐标单一真相源 = 观察
+  上报)、策略只出下标、动作 op 按 idx 从容器取点执行;收敛归 pick 族
+  族级批(与局外支收敛族级批同批)。

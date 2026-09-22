@@ -1,7 +1,7 @@
 """货币战争动作上报:银狼策划「我来当策划」选择(report_action_pick_planner_param)。
 
-**即时单相上报**(迭代 2026-09-21-pick-planner-equip-immediate-report
-design §2.0/§2.1;用户裁定 2026-09-21 = action_ops.md §1 增补 2:动作 op
+**即时单相上报**(行为正本 = `flow/action_ops.md` §4.5 PickPlanner 行;
+用户裁定 2026-09-21 = action_ops.md §1 增补 2:动作 op
 点完就立即上报,按成功把结果写进 game state):``CwActionPickPlannerOp``
 确认点击后一口写完整效果逻辑态,无发射/落地两相、无证据闩。写序:
 
@@ -129,7 +129,7 @@ def _grant_joy_conditional(gs: GameState, sig: ChannelSig,
 
 def _apply_equip_leg(gs: GameState, norm_item: str,
                      sig: ChannelSig) -> LogicOutcome:
-    """装备腿(确定性通道,design §2.1②):入栏 + 获得后果链。"""
+    """装备腿(确定性通道):入栏 + 获得后果链。"""
     if not norm_item:
         # 未解析:禁猜名,equips 值不变翻来源(collect_ore 步2 同款)+
         # 留证行——观察覆盖差异 = 预期内收口自愈。
@@ -156,9 +156,9 @@ def _apply_equip_leg(gs: GameState, norm_item: str,
 
 def _apply_upgrade_transform(gs: GameState,
                              sig: ChannelSig) -> LogicOutcome:
-    """升费腿 = 变换窗三态 + 档行(design §2.2/§2.1③):前置硬校验对上报
+    """升费腿 = 变换窗三态 + 档行:前置硬校验对上报
     时容器观察态(bench ∪ front_row ∪ back_row 多重集)的 (银狼LV.999, 2★)
-    计数(单相时序等价论证 = design §2.0:确认点击到本调用之间容器零
+    计数(单相时序等价论证:确认点击到本调用之间容器零
     写入,观察态与原落地相时点等值):
 
     - **现档 ≥ 5**(误走本腿:5 费升 2 星两选项皆装备,upgrade 不应出现;
@@ -176,7 +176,7 @@ def _apply_upgrade_transform(gs: GameState,
 
     费用档不建模于单位(档 = 容器 match 级字段 lv999_cost_tier,本腿即其
     写端);「新费档银狼刷进商店」连带腿 = 档行兼任(池桶归属随档迁移),
-    不另造申报行(设计 §2.2)。
+    不另造申报行。
     """
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         deployed_indexed_to_rows,
@@ -196,7 +196,7 @@ def _apply_upgrade_transform(gs: GameState,
                      sig=sig, kind='planner_upgrade_source_missing')
         return LogicOutcome(applied=False,
                             reason='upgrade_source_unobserved')
-    # 现档封顶闸(设计 §2.2):5 费档 upgrade 腿不期出现,出现即留证零写。
+    # 现档封顶闸:5 费档 upgrade 腿不期出现,出现即留证零写。
     tier = effective_cost(gs, _LV999_ID)
     if tier >= 5:
         _emit_defect(field_name='lv999_cost_tier',
@@ -205,7 +205,7 @@ def _apply_upgrade_transform(gs: GameState,
                      sig=sig, kind='planner_upgrade_tier_ceiling')
         return LogicOutcome(applied=False, reason='upgrade_tier_ceiling')
     # P1 容器原生工作副本:bench = BenchView 槽序、deployed = 行域下标
-    # 派生表(§2.1);元素 frozen,浅拷贝列表即快照(变换 = replace 新
+    # 派生表;元素 frozen,浅拷贝列表即快照(变换 = replace 新
     # 构造,零别名)。
     work_bench = list(view.slots) if view is not None else []
     work_dep = deployed_rows_to_indexed(front, back)
