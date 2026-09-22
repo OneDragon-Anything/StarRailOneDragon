@@ -236,10 +236,14 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         screen_name='货币战争-商店刷新概率表',
         anchor_area='标识-刷新概率表',
         semantic=SEMANTIC_DISPLAY,
-        # 不进清场派生集(非 closable,零行为前提);
-        # close_point 载荷供 cw_loop 0e2 / 恢复链复用
+        # 不进清场派生集(非 closable,零行为前提);现役关屏 = 分发画面 op
+        # CwScreenRefreshOddsPopup 点建档 area「货币战争-商店刷新概率表/
+        # 按钮-关闭概率表」(× 按钮,VLM 实测定位;坐标单一真相源 =
+        # screen_info,cw_loop 分发臂零本条载荷消费)
         close_action=CLOSE_ACTION_POINT,
-        # × 位置 VLM 定位(实测坐标);无关闭按钮 area
+        # 退出恢复链预留载荷(恢复链消费面未切注册表 = 模块头「声明 + 锁」;
+        # RECOVERY_CLOSE = 复用 close_action 载荷离屏):现零运行时消费,
+        # 值 = 上述建档 area 中心,非独立第二源
         close_point=(1501, 263),
         dispatch_priority=10,
         recovery_exit=RECOVERY_CLOSE,
@@ -314,8 +318,9 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     # 开的角色 offer 购买页(商店刷新概率表/星徽详情之后同族第三例)。语义
     # display(买不买归商店域——本屏分发臂只点 X 关闭交回重判,店开时商店
     # 访问路径接管购买,关闭不丢决策内容);closable=False ⇒ 不进清场
-    # 派生集(弹窗有主 = 阶段一身份行「货币战争-商店卡牌详情」分发 CwScreenShopCardDetail,点 X 关闭交回重判,
-# 落地判定 = op 内重入裁决与观察侧对账,非动作层验效——验证废除批;禁清场旁路双owner)。
+    # 派生集(弹窗有主 = 阶段一身份行「货币战争-商店卡牌详情」分发
+    # CwScreenShopCardDetailPopup,点 X 关闭交回重判,落地判定 = op 内
+    # 重入裁决与观察侧对账,非动作层验效——验证废除批;禁清场旁路双owner)。
     # 双锚表达本屏分发判据(购买 ∧ 角色详情,双 id_mark 同帧全中才派发);
     # close_area 按钮-关闭 = cw_lobby_close 同族模板。
     OverlaySpec(

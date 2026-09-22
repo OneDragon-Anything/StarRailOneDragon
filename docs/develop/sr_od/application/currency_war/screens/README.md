@@ -34,7 +34,7 @@
 ## 3. 形态分型(对照 37 屏)
 
 - 画面 op 统一形态 = **两 node 直继承 SrOperation**:观察 node = 门 + 显式读屏 + `CwScreenXxxObs` + `report_screen_<snake>_obs` 落容器;决策动作 node = 重入裁决 + 决策 + 动作,`round_wait` 循环推进、无防御上限。判据合同 = [op-layer.md](op-layer.md) §1。
-- 分型判据:入决策规范 ⇔ **选择面 ∧ 逻辑态账**(商店/备战);空决策形态 ⇔ 已建档分发画面且两者皆缺——纯推进为流程义务:观察 + 推进处理 + 交回外循环(新 op 单尝试,重试预算归外循环);单选族例外:有选择面但零逻辑态账(选卡/确认即终结,visit 内无后续决策消费逻辑态)。
+- 分型判据:入决策规范 ⇔ **选择面 ∧ 逻辑态账**(商店/备战);空决策形态 ⇔ **无选择面 ∧ 无逻辑态账**——纯推进为流程义务:观察 + 推进处理 + 交回外循环(新 op 单尝试,重试预算归外循环);建档与否非分型维度——本型成员含无画面档的兜底推进(前进按钮)与商店框 2 类(编排壳 op,非画面档成员);单选族例外:有选择面但零逻辑态账(选卡/确认即终结,visit 内无后续决策消费逻辑态)。
 - 五型 = 全形态 / 节点循环(overlay 单动作循环)/ 推进型空决策(无 report)/ 驻留状态机豁免(battle_wait,用户裁定)/ 重型屏(漏斗 + 无帽决策循环);逐屏分类与 report 有无总表 = [op-layer.md](op-layer.md) §3。
 
 ## 4. 动作词表与执行载体
@@ -62,13 +62,14 @@
 
 ## 5. 画面×动作矩阵(能力面)
 
-### 5.1 简报与过场(货币战争-简报 / 货币战争-BOSS简报 / 货币战争-位面过渡)
+### 5.1 简报与过场(货币战争-简报 / 货币战争-BOSS简报 / 货币战争-位面过渡 / 货币战争-位面详情)
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
 | 简报点「下一步」 | `research/screen_flow_timing.md` 时序 #1(首领出现 +1s 可点) | `operations/cw_screen/cw_screen_briefing.py::CwScreenBriefing`(阶段一身份行「货币战争-简报」);内嵌词缀效果采集段 `_collect_affix_effects`(逐词缀点采 OCR 效果,对注册表 `src/sr_od/application/currency_war/data/affix_effects_data.py` 比对(注册表住 src 树代码;本文头注 `data/X.md` 短路径约定仅辖 docs/game 侧,不辖 src 文件),新名/不一致才截图收集;采集写端 best-effort,OCR 采不到即跳过) | 点推进即终结(空决策形态;点采 tooltip 不终结) |
 | BOSS 简报点空白 | 同上 #26(「点击空白处继续」出现即可点) | `operations/cw_screen/cw_screen_boss_briefing.py::CwScreenBossBriefing`(阶段一身份行「货币战争-BOSS简报」;位面过渡身份帧含 boss 判别片段时排他接管);点掉后交回外循环重判——boss 战自动开打,商店不开(模块头 as-built 实证;game 侧口述时序 #14「自动开店」已废,见 [boss_briefing.md](boss_briefing.md) 开放设计注) | 点空白即终结 |
 | 位面过渡点空白 | 同上 #2 | `operations/cw_screen/cw_screen_plane_transition.py::CwScreenPlaneTransition`(阶段一身份行「货币战争-位面过渡」) | 点空白即终结 |
+| 位面详情点 X 关闭 | game 侧画面档 = docs/game/screens/货币战争-位面详情.md(检视浮层;用途见 research/plane_schedule_observed.md「位面详情画面」条) | `operations/cw_screen/cw_screen_plane_detail.py::CwScreenPlaneDetail`(阶段一身份行「货币战争-位面详情」,分发判定单一源 = flow/outer_loop.md §2.2;单篇动作清单 = [plane_detail.md](plane_detail.md) §4) | 点 X 即终结(空决策形态) |
 
 ### 5.2 投资环境(货币战争-投资环境)
 

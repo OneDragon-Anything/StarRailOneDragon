@@ -1,4 +1,4 @@
-"""货币战争 前进按钮 op(空决策形态,A10)。
+"""货币战争 前进按钮 op(空决策形态;合同正本 = docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 简报等画面的「下一步」前进按钮(分支 5)的处理迁移:OCR 找到即点,
 无验效,序位近外循环尾(兜底点击)。

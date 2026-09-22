@@ -4,7 +4,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(号制已退役):双 id_mark 门——`货币战争-商店卡牌详情.按钮-购买` ∧ `货币战争-商店卡牌详情.按钮-角色详情`(弹窗前景独有锚,双锚全中才接管,单锚形态不放行;判据单一源 = `cw_loop.py::_shop_card_detail_anchor_hit`,`entry_ok` 同源同参)。
+- 阶段一身份分发(号制已退役):双 id_mark 门——`货币战争-商店卡牌详情.按钮-购买` ∧ `货币战争-商店卡牌详情.按钮-角色详情`(弹窗前景独有锚,双锚全中才接管,单锚形态不放行;判定 = `screen_utils.is_target_screen` 对建档 id_mark 组合全命中,任一 miss 即不识别;分发判定单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2,本屏消费点 = `cw_loop.py::CwLoop._dispatch_identity_screen` 身份行 `if name == '货币战争-商店卡牌详情'` → 派发本 op;op 门 `entry_ok` 与分发判定同锚同逻辑——复判载体 = `cw_screen_shop_card_detail.py::CwScreenShopCardDetailPopup.entry_ok`,门语义见 §2)。
 - 分发 = 阶段一身份行(双 id_mark 门):弹窗暗色衬底遮蔽底层全部锚(开商店三锚/备战双锚在该衬底下不命中);禁取衬底透出的底层锚作判据。建档 = `currency_war_shop_card_detail.yml`。
 
 ## 2. 画面形态声明

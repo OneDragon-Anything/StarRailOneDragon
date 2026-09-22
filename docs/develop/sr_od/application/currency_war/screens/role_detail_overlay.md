@@ -4,12 +4,13 @@
 
 ## 1. 分发判定
 
-- 外循环分支 1b:双锚其一——`货币战争-备战-角色详情.按钮-装备推荐`(角色详情变体)∨ `货币战争-备战-角色详情.装备详情-合成公式`(可合成列表变体);判据单一源 = `cw_loop.py::_role_detail_anchor_hit`,`entry_ok` 与之同源同参。
-- 位置约束锚形态:两锚均在右侧面板锚区,与 0t 商店卡牌详情弹窗天然互斥(该弹窗底部按钮不在右侧锚区内)——全屏文本判据在本族不可用(与 0t 底部按钮文本全等共享)。分发 = 阶段一身份行,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。建档 = `currency_war_battle_prep_equip_detail.yml`。
+- 阶段一身份分发(号制已退役,不引 0x):双 id_mark 门——`货币战争-备战-角色详情.按钮-装备推荐` ∧ `货币战争-备战-角色详情.备战标识-购买经验`(建档仅此两 area 挂 `id_mark: true`,判定 = `screen_utils.is_target_screen` 对建档 id_mark 组合全命中,任一 miss 即不识别;分发判定单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2,本屏消费点 = `cw_loop.py::CwLoop._dispatch_identity_screen` 身份行 `if name == '货币战争-备战-角色详情'` → 派发本 op)。「备战标识-购买经验」为底层备战底部条锚(阶段二备战双锚成员,outer_loop.md §2.2):本浮层为右侧面板、不遮底部条,底层锚透出可命中——与 0t「暗色衬底全遮蔽、禁取底层锚」形态相反(shop_card_detail.md §1)。
+- op 门覆写申报:本 op 入口观察 `entry_ok` = `按钮-装备推荐` ∨ `装备详情-合成公式`(OR,两半区 = 角色详情/可合成列表两弹窗变体锚)。与分发门宽窄关系:同帧蕴含分发门全中 ⇒ op 门必真(`按钮-装备推荐` 为两门共用锚),反向不成立——`装备详情-合成公式` 半区不在分发判据内。op 门职责 = 分发后新帧的入口复判与重入裁决(见 §2),不构成分发判据;分发后新帧可能两锚均失(弹窗已关的过渡帧)→ op 门 miss = `round_fail` 交回外循环重判。
+- 位置约束锚形态:两弹窗变体锚(`按钮-装备推荐`/`装备详情-合成公式`,即 op 门锚集)均在右侧面板锚区,与 0t 商店卡牌详情弹窗天然互斥(该弹窗底部按钮不在右侧锚区内)——全屏文本判据在本族不可用(与 0t 底部按钮文本全等共享)。建档 = `currency_war_battle_prep_equip_detail.yml`。
 
 ## 2. 画面形态声明
 
-**空决策形态**(纯推进)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(`entry_ok` 双锚其一复判,与分发判定同源同参;miss = round_fail 交回外循环重判)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部重入裁决(推进已发 → 双锚均 miss = 已离开本画面 → success 交回)→ 点空白关闭单次推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 现役值仅框架异常路径消费)。空决策形态无 report 接口。
+**空决策形态**(纯推进)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(`entry_ok` 双锚其一复判(门语义与分发门宽窄申报见 §1);miss = round_fail 交回外循环重判)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部重入裁决(推进已发 → 双锚均 miss = 已离开本画面 → success 交回)→ 点空白关闭单次推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 现役值仅框架异常路径消费)。空决策形态无 report 接口。
 
 ## 3. 观察面
 

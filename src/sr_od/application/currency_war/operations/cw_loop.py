@@ -454,42 +454,6 @@ def _shop_open_anchors_hit(op, screen) -> bool:
                                       crop_first=False).is_success)
 
 
-def _shop_card_detail_anchor_hit(op, screen) -> bool:
-    """商店卡牌详情弹窗双 id_mark 锚判定(0t 分支判据单一源,T-163 建档)。
-
-    锚集 = 「按钮-购买」+「按钮-角色详情」(画面档 currency_war_shop_card_
-    detail.yml,id_mark 均取弹窗前景独有元素;禁取衬底透出的底层锚——弹窗
-    暗色衬底遮蔽底层屏档全部锚,T-163 实证:开商店三锚/备战双锚在该衬底
-    下 OCR 全灭,锚必须挂在弹窗自己的前景上)。双锚全中才接管,单锚形态
-    (其他带购买按钮的弹窗)不放行。
-    """
-    return (op.round_by_find_area(screen, '货币战争-商店卡牌详情',
-                                  '按钮-购买',
-                                  crop_first=False).is_success
-            and op.round_by_find_area(screen, '货币战争-商店卡牌详情',
-                                      '按钮-角色详情',
-                                      crop_first=False).is_success)
-
-
-def _role_detail_anchor_hit(op, screen) -> bool:
-    """详情弹窗双锚其一判定(1b 分支判据单一源,T-163 锚化)。
-
-    锚集 = 「按钮-装备推荐」(角色详情变体,归档 fixture 4/4 命中)∨
-    「装备详情-合成公式」(可合成列表变体,该变体 fixture 命中),同档
-    currency_war_battle_prep_equip_detail.yml。取代旧全屏 OCR「可合成列表」
-    ∨「角色详情」(lcs 0.8):全屏「角色详情」与商店卡牌详情弹窗底部按钮
-    (x560-930)全等共享(LCS 1.0,收紧无济于事)→ T-163 弹窗被 1b 垄断
-    26 分钟——outer_loop.md §2.1「优先 area 化」的存量欠账清偿,位置约束
-    天然区分两变体。
-    """
-    return (op.round_by_find_area(screen, '货币战争-备战-角色详情',
-                                  '按钮-装备推荐',
-                                  crop_first=False).is_success
-            or op.round_by_find_area(screen, '货币战争-备战-角色详情',
-                                     '装备详情-合成公式',
-                                     crop_first=False).is_success)
-
-
 def op_fail_redispatch_tick(prev_key: str | None, prev_n: int,
                             key: str, ok: bool) -> tuple[str | None, int]:
     """外环 op 连续 fail 计数纯函数(T-266;计数语义 = 同值累加/异值归一,
@@ -1526,7 +1490,7 @@ class CwLoop(SrOperation):
                 frame_tag='overlay_item_detail', wait=1.5,
                 on_result=_on_item_detail)
 
-        # 0f'. 消耗品详情浮层 → ESC 关。获消耗品奖励后游戏自动弹介绍 modal,遮挡底层屏。
+        # 0f'. 消耗品详情浮层 → 点同族「道具详情弹窗/按钮-关闭」× 关(「不用 ESC」理由随 op)。获消耗品奖励后游戏自动弹介绍 modal,遮挡底层屏。
         #      签名「消耗品」(类型 label) AND 「拖动到」(拖动使用说明——只出现在消耗品
         #      详情 modal,备战底部消耗品栏无)→ 双条件精确不误匹配。
         if (self.round_by_ocr(screen, '消耗品', lcs_percent=0.9).is_success

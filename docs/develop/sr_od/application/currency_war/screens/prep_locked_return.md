@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**空决策形态**(纯推进)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1;画面档/入口锚经构造参数覆写):观察 node = 入口锚门(构造传入的返回按钮,与分发判定同源同参;miss = round_fail 交回外循环重判)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部重入裁决(推进已发 → 锚不在 = 已离开本画面 → success 交回)→ 点返回按钮单次推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 现役值仅框架异常路径消费)。空决策形态无 report 接口。
+**空决策形态**(纯推进)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1;画面档/入口锚经构造参数覆写,**构造两形态**:area 锚形态 = 默认形态,生产现役——分发恒传具体锚(`cw_loop.py` 策略锁定/遭遇锁定身份分支);空 area 构造 = 免锚形态,休眠变体、现役零调用点):观察 node = 入口锚门(构造传入的返回按钮,与分发判定同源同参;miss = round_fail 交回外循环重判;免锚形态恒过——缺省缺位语义)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部重入裁决(推进已发 → 锚不在 = 已离开本画面 → success 交回;免锚形态无「已离开」观察信号,裁决不可达)→ 点返回按钮单次推进 → 锚形态 `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 现役值仅框架异常路径消费),免锚形态发出即 `round_success` 终结(原无验效出口,有界性归外循环重派/分发)。空决策形态无 report 接口。
 
 ## 3. 观察面
 
@@ -21,13 +21,20 @@
 
 | 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| 无动作 op——单步推进留守 op 内(`progress_once`:点「返回XX选择」按钮) | 画面 op 留守臂(`progress_once`,`round_by_find_and_click_area` 点返回按钮 + success_wait=1.5) | 无 report 接口(推进型规范形态,[op-layer.md](op-layer.md) §3) | 是(重入裁决交回):点返回 → `round_wait` 重入,构造传入的返回按钮锚不在 = 已离开本画面 → `round_success` 交回外循环(见 §5) |
+| 无动作 op——单步推进留守 op 内(`progress_once`:点「返回XX选择」按钮) | 画面 op 留守臂(`progress_once`,`round_by_find_and_click_area` 点返回按钮 + success_wait=1.5) | 无 report 接口(推进型规范形态,[op-layer.md](op-layer.md) §3) | 是(锚形态 = 重入裁决交回:点返回 → `round_wait` 重入,构造传入的返回按钮锚不在 = 已离开本画面 → `round_success` 交回;推进未落地 = `round_fail` 交回;免锚形态 = 发出即 `round_success` 交回,休眠变体)(见 §5) |
 
 `progress_once` = `round_by_find_and_click_area(self._screen_name, self._entry_area, success_wait=1.5)`(点返回按钮后等转场动画再交回裁决)。目标 = 回对应 overlay,后续由阶段一身份分发接管(投资策略/遭遇节点各身份行)。
 
 ## 5. 终结与交回
 
-推进已发 → `round_wait` 重入;重入 = 锚 miss = 已离开 → `success` 交回(无防御上限)。落点 = 对应 overlay(策略选择/遭遇节点分支接管)。
+| 出口条件 | 级别 | 交回落点 |
+|---|---|---|
+| 入口锚门 miss(首发锚 miss = 误分发/过渡帧) | 显式失败 | `round_fail` 交回外循环重判(「下一帧重判」是外循环职责) |
+| 推进未落地(`progress_once` False:返回按钮查找/点击未成功) | 显式失败 | `round_fail` 交回外循环(如实交回,不静默续推) |
+| 锚形态:推进已发 → 重入锚 miss = 已离开本画面 | 画面终结 | `round_success` 交回外循环(重入裁决出口) |
+| 免锚形态:推进已发即交回(休眠变体,现役零调用点) | 画面终结 | `round_success` 即刻交回(无「已离开」观察信号,发出即终结;有界性归外循环重派/分发) |
+
+落点 = 对应 overlay(策略选择/遭遇节点分支接管)。锚形态循环无防御上限。
 
 ## 6. 状态上报面
 
