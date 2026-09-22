@@ -3,7 +3,7 @@
 ## 0. 元信息
 
 - 迭代目标:货币战争全画面规范符合性审查(2026-09-22-screen-review)·只设计不落码,待用户裁决
-- 状态:F-4/§1.7① 已裁决待落地(用户裁决 2026-09-22:F-4 按观察标准化门修订——规范条已先行入正本 op-layer.md §1.1;局外分支按删除方向收敛,规范条同批入正本);F-2 补测与整体落地批准仍待用户表态(对抗轨迹:r1 未收敛 6 条→修订→r2 未收敛 3 条→修订→r3 未收敛 1 条低→修订→r4 收敛 0 条)
+- 状态:F-4/§1.7① 已裁决待落地(用户裁决 2026-09-22:F-4 按观察标准化门修订——规范条已先行入正本 op-layer.md §1.1;局外分支按删除方向收敛,规范条同批入正本);修订后经无前提对抗审(高1中3低5,#1-#8 采纳修订:字段退役拆分仅环境类/碰撞边界入正本/contract 冒烟锁登记/判据直调型 T-37 登记/归一单一源/死码清单等),实体修法方向与代码锚全部核实成立;F-2 补测与整体落地批准仍待用户表态(对抗轨迹:r1 未收敛 6 条→修订→r2 未收敛 3 条→修订→r3 未收敛 1 条低→修订→r4 收敛 0 条)
 - 发现源:`.debug/progress/2026-09-22-cw-screen-review/reports/T-7-r1.md`(F-1..F-6;总判定「有问题(高0 中3 低3)」)。涉事代码与代码内文档以仓库现状为真值逐处核读(含对审查报告命中点的复核);本文定位一律符号锚 / 文档节号 + 内容引文(行号仅定位辅助,随代码漂移)。文档路径根 = `docs/develop/sr_od/application/currency_war/`,代码路径根 = `src/sr_od/application/currency_war/`(下文反引号短路径均相对此两根,同迭代设计稿以裸文件名引用)。
 - 真值基线 = 本稿撰写时点工作树;落地批动笔前若代码/正本已再变,以落地时点现状重新对账后再动笔,禁按本文过期症状照稿落地(与 T-1/T-3/T-6 稿同款条款)。
 - 修法性质:F-1/F-2/F-6 = 文档语义更新;F-3 = 改判非偏差·销项(零修法,§2.3);F-5 = 注释清理;F-4 = 观察标准化门落地 + 动作链收窄纯 idx + 链内防御纵深(用户裁决 2026-09-22 修订扩项,行为变化申报见 §2.4)+ 局外分支删除(§1.7① 裁决并入)。除 F-4/局外删除外全部零行为变化。
@@ -55,7 +55,7 @@
 
 ### 1.7 同族联动面与跨稿冲突登记(不立修法,提请裁决)
 
-1. **局外防御分支归属冲突(已裁决终结,用户裁定 2026-09-22)**:原分歧 = 本报告 §3.6 判「无 match 局外防御 = 裸空容器 decide_event」在册合规(依据 = 屏文档 §4 自申报 + 投资策略孪生屏同构)vs T-6 稿 §1.1 对孪生屏同款判**流程层违例**(依据 = 决策控制分层铁律 + op-layer.md §1.1,屏文档 as-built 自申报不等于正本背书)。用户裁决:**不支持单独调用具体画面 op 进行调试,相关支持代码不做,规范入正本**——局外分支的独立跑选卡价值不成立,删除方向(T-6 方向①)为唯一解,冲突终结。规范条已入 op-layer.md §1.1「画面 op 不支持局外单独调用」(2026-09-22);T-37 登记改记「已裁决,族内按删除方向收敛」(祈愿/巨星/伙伴/卜者/星徽等纯常量盲发型局外支按同口径归各族稿/T-37 收敛,禁两屏两态)。**本稿修法(并入落地批)**:`operations/cw_screen/cw_screen_invest_env.py::_decide_and_act` 局外 else 分支整段删除(含内嵌 `GameState`/`GAME_STATE_SCHEMA_VERSION` 局部 import)、match 判空提前为早退出口(置于空候选检查之后——空候选 = OCR 读缺 bug 面,契约与局外无关)→ 零决策零点击 round_success 终结交回(遭遇屏在册先例同款);刷新臂守卫 `and match is not None` 死码化删除;`screens/invest_env.md` §4 伪代码行与 §5 终结表同步;补一锁(match=None + 非空候选 → round_success、点击记录为空,T-6 稿 handback 锁同构)。
+1. **局外防御分支归属冲突(已裁决终结,用户裁定 2026-09-22)**:原分歧 = 本报告 §3.6 判「无 match 局外防御 = 裸空容器 decide_event」在册合规(依据 = 屏文档 §4 自申报 + 投资策略孪生屏同构)vs T-6 稿 §1.1 对孪生屏同款判**流程层违例**(依据 = 决策控制分层铁律 + op-layer.md §1.1,屏文档 as-built 自申报不等于正本背书)。用户裁决:**不支持单独调用具体画面 op 进行调试,相关支持代码不做,规范入正本**——局外分支的独立跑选卡价值不成立,删除方向(T-6 方向①)为唯一解,冲突终结。规范条已入 op-layer.md §1.1「画面 op 不支持局外单独调用」(2026-09-22);T-37 登记改记「已裁决,族内按删除方向收敛」(祈愿/巨星/伙伴/卜者/星徽等纯常量盲发型局外支按同口径归各族稿/T-37 收敛,禁两屏两态)。**本稿修法(并入落地批)**:`operations/cw_screen/cw_screen_invest_env.py::_decide_and_act` 局外 else 分支整段删除(含内嵌 `GameState`/`GAME_STATE_SCHEMA_VERSION` 局部 import,及随 else 死码化的函数头 `config = CurrencyWarConfig(...)` 构造与文件级 `decide_event`/`CurrencyWarConfig` import——现仅 else 分支消费)、match 判空(∨ `match.gs` 缺席,对齐遭遇屏先例宽度 `cw_screen_encounter.py` 局外支三判)提前为早退出口(置于空候选检查之后——空候选 = OCR 读缺 bug 面,契约与局外无关)→ 零决策零点击 round_success 终结交回(遭遇屏在册先例同款);刷新臂守卫 `and match is not None` 死码化删除;`screens/invest_env.md` §4 伪代码行与 §5 终结表同步;补一锁(match=None + 非空候选 → round_success、点击记录为空,T-6 稿 handback 锁同构)。**判据直调型局外支去向登记(T-37)**:T-9 装备稿保留的 kernel 判据直调型局外支,与本正本新规范条「不设任何兜底决策路径」的字面相容性候 T-37 裁(或按正本字面同归删除方向);wish_trial.md §2.2 族级判据建议中「判据直调支可豁免保留」的一半随本裁决失效,失效对账随 T-37——防 T-37 对账时正本规范条与在册稿建议两口令来源冲突。
 2. **族面形态标签统一裁决面(F-3 销项后的唯一残留)**:F-3 经词义定谳与在册判例核改判非偏差(§2.3),invest_env/invest_strategy/encounter/supply 各屏 §2 现状均判读合规、零改写义务;「全族画面篇 §2 是否统一前置分类层」= 用户裁决面,**唯一落点 = T-37 汇总登记并由其指派施工稿**(原「invest_strategy §2 补分类层归 T-6 稿增补」指针撤销——T-6 修订版全文无此施工项,指针落空);词义定谳(§2.3 判读框架)为该裁决的判读输入。
 3. **共享文件一次成文**:`cw_overlay_pick_action.py` 的 F-5 命中面执行权 = T-6 §2.5(其清单 + 全文件扫描 + T-3 §2.6 准则已覆盖本报告点名各点:L227 T# / L282 task#+W / L342 日期+rN / 模块头批史);两稿禁重复触碰同段,先落者为准、后落者按落地时点现状对账销项。
 4. **观察标准化门族面收敛(本稿升格产出的全域义务)**:观察标准化已入正本规范(op-layer.md §1.1「观察标准化门」,用户裁定 2026-09-22),投资环境屏随本稿落地批首个收敛。①投资策略屏孪生同构改造(观察层标准化 + `norm_name` 载荷退役 + `kernel/cw_action_report/pick_invest_strategy.py` 同款纯 idx 收窄 + `cw_vocab.py` 同字段退役)= **T-6 稿扩项**,随 T-37 登记移交,两屏修法口径必须一致;②其余名字类观察屏(角色/装备/事件选项等)的存量收敛 = 各屏审查批/T-37 汇总分配;规范已立、新增禁令即日生效(禁新增未标准化直报)。
@@ -118,7 +118,7 @@
 
 `operations/cw_screen/cw_screen_invest_env.py` 观察链(`_read_options` 候选读出后、组装 obs 前)新增转换步骤,**逐候选**两段:
 
-1. 形变归一:`normalize_invest_name`(形变族自动作侧迁入复用,含全角冒号 `'：'`→半角——原「全角冒号归一保留 report 层」取舍随裁决作废,标准化全族统一住观察侧);
+1. 形变归一:`normalize_invest_name` **单一源**(其 `'：'`→`':'` 全角冒号形变**并入函数本体**——原「形变族 `_INVEST_SEP_VARIANTS` 不含全角冒号、冒号归一由 `_canon_invest_name` 另行承担」的拆分形态随本修法收敛,观察侧/链侧归一自然同源;连带收益 = 策略支步 0 拒绝腿同获冒号族覆盖,原「冒号形变穿透策略支拒绝腿」缝隙一并治愈;现役调用方入参全为已归一名或应归一名,零行为影响);
 2. 注册表匹配:归一结果精确命中注册表 → 标准名;不中 → LCS 相似匹配(`one_dragon.utils.str_utils::find_best_match_by_lcs(word, 注册表名集, 阈值)`,阈值常量住代码)→ 命中 = 标准名;
 3. 两段皆不中 = 转换失败。
 
@@ -127,8 +127,8 @@
 **② 动作链收窄纯 idx**:
 
 - 派发处 `norm_name=normalize_invest_name(chosen)` 组装删除;
-- `kernel/cw_vocab.py` 投资 环境/策略两 param 类的 `norm_name` 字段退役(孪生同步义务见 §1.7④);
-- `kernel/cw_action_report/pick_invest_env.py`:`_canon_invest_name` 与 noop 分支删除;上报按 `param.idx` 从容器取标准名直传链;reason 恒 `gain_chain_applied`(与 action_ops.md §4.5 行声明一致,`landing_noop` 私词消失);docstring 改「名字标准化契约 = 观察层(op-layer.md §1.1),本函数零名字转换」。
+- `kernel/cw_vocab.py` **仅投资环境** param 类的 `norm_name` 字段退役;投资**策略** param 类同字段**不随本批退役**——策略屏派发/上报/测试现役仍消费(删 = TypeError 选卡链崩),其退役与策略屏改造随 T-6 扩项批同批落地(§1.7④);
+- `kernel/cw_action_report/pick_invest_env.py`:`_canon_invest_name` 与 noop 分支删除;上报按 `param.idx` 从容器取标准名直传链;**容器缺读/idx 越界 = 响亮失败**(异常上抛,容器写腿零吞错同款——生产不可达:选卡链发生时观察必然已完成);reason 恒 `gain_chain_applied`(与 action_ops.md §4.5 行声明一致,`landing_noop` 私词消失);docstring 改「名字标准化契约 = 观察层(op-layer.md §1.1),本函数零名字转换」。
 
 **③ 链内无效载荷拒绝腿(防御纵深)**:
 
@@ -151,7 +151,7 @@ if not canon or canon == '?':
 
 **测试面**(待用户认同后落地):
 1. 观察标准化锁:候选含可转换名 → 容器存标准名(LCS 命中路径含内);候选含转换失败名(乱串/未注册)→ round_fail、零点击零写;两候选重复命中同一注册名 → round_fail;
-2. 动作纯 idx 上报锁:idx → 链收容器同序标准名;`norm_name` 字段退役后 ports 完备锁随字段表更新;
+2. 动作纯 idx 上报锁:idx → 链收容器同序标准名;容器缺读/idx 越界 → 响亮失败;锁族指正——param 字段面锁 = `test_cw_action_report_contract.py`(参数冒烟锁遍历全部动作类型以裸容器调真上报函数,随「按 idx 取名」新契约改造:容器播种,或按「容器缺读 = 响亮失败」断言;**该文件必须列入落地批**,否则 F-4 落地冒烟锁必红),`test_cw_screen_report_ports.py` 实辖 obs 类/report 函数在场面、不辖 param 字段;环境类字段退役后字段面锁随行更新;
 3. 链拒绝锁:`test_cw_gain_chain.py` 增 env 支拒绝锁——`gain_invest_env(gs, None, '', rand=False, sig)` → `detail == 'invalid_payload'`、`active_env` 值不变、缺陷行 `pick_invest_invalid_payload`(策略支同形先例同文件);
 4. 局外 handback 锁:match=None + 非空候选 → round_success、点击记录为空、零派发零上报(§1.7①)。
 
@@ -213,17 +213,17 @@ if not canon or canon == '?':
 | 文件 | 修法点位 | 性质 |
 |---|---|---|
 | `screens/op-layer.md` | §1.1 规范条两枚(观察标准化门 + 画面 op 不支持局外单独调用,**用户裁决 2026-09-22 已先行入正本**) | 正本规范(已入,落地批核对引用即可) |
-| `screens/invest_env.md` | F-1(§4/§6)+ F-2(§9)+ F-6(全篇状态清理)+ F-4(§3 观察段/§4 决策输入/§5 终结表/§6 括注) | 画面篇 as-built |
+| `screens/invest_env.md` | F-1(§4/§6)+ F-2(§9)+ F-6(全篇状态清理)+ F-4(§3 观察段/§4 决策输入/§5 终结表/§6 括注)+ §1.7①(§4 伪代码局外行 / §5 终结表局外交回行) | 画面篇 as-built |
 | `game_state/gain-chain.md` | F-4(§2.1 步 0 + 同节「无条件注册」尾段收敛 + §6 尾句) | 正本语义更新 |
 | `flow/action_ops.md` | F-4(§4.5 PickInvestEnv 行补拒绝腿 + 标准化门/纯 idx 语义) | 正本登记 |
 | `game_state/fields.md` | F-4(invest_env_opts 值域收敛标准注册名;具体节落地对账) | 正本语义更新 |
 | `kernel/cw_gain_chain.py` | F-4(步 0 guard + 注册写 canon + docstring)+ F-5(同段 docstring 卫生,一次成文) | 行为小变更 + 注释 |
 | `kernel/cw_action_report/pick_invest_env.py` | F-4(`_canon_invest_name`/noop 分支删除 + 纯 idx 取名直传链 + docstring)+ F-5(模块头拆分史,一次成文) | 行为小变更 + 注释 |
-| `kernel/cw_vocab.py` | F-4(投资环境/策略两 param 类 `norm_name` 字段退役;孪生同步见 §1.7④) | 契约收敛 |
+| `kernel/cw_vocab.py` | F-4(**仅投资环境** param 类 `norm_name` 字段退役;策略类字段归 T-6 扩项批,§1.7④) | 契约收敛 |
 | `operations/cw_screen/cw_screen_invest_env.py` | F-4(观察层标准化门 + 局外 else 分支删除 + 派发处 norm_name 组装删除)+ F-5 注释卫生 | 行为变更 + 注释 |
 | `kernel/cw_screen_report/invest_env.py` | F-5 注释卫生 | 注释 |
 | (执行权 T-6 §2.5)`operations/cw_op/cw_overlay_pick_action.py` | F-5 登记面(§2.5,禁重复触碰) | 注释 |
-| (待用户认同)`sr-od-test/.../test_cw_obs_arch_phase_screens.py`、`test_cw_screen_report_ports.py` | F-2 补测(§2.2 三条)+ F-4 观察标准化锁/纯 idx 上报锁/handback 锁(§2.4 测试面 1/2/4) | 测试 |
+| (待用户认同)`sr-od-test/.../test_cw_obs_arch_phase_screens.py`、`test_cw_screen_report_ports.py`、`test_cw_action_report_contract.py` | F-2 补测(§2.2 三条)+ F-4 观察标准化锁/纯 idx 上报锁(含 contract 冒烟锁改造)/handback 锁(§2.4 测试面 1/2/4) | 测试 |
 | (待用户认同)`sr-od-test/.../test_cw_gain_chain.py` | F-4 env 拒绝锁(§2.4 测试面 3) | 测试 |
 | (登记面,不落本稿)全族画面篇 §2 标签统一裁决面(T-37 汇总裁决并指派施工稿;含 invest_strategy.md §2,判例同款覆盖)、gain-chain.md §8 自身 changes/ 引用(正本禁引面残留,归正本维护)、T-6 稿孪生扩项(投资策略屏观察标准化 + norm_name 退役,§1.7④)、其余名字类观察屏标准化收敛分配 | §1.7①②④ / §2.5 | 登记面 |
 
