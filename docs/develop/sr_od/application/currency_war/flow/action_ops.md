@@ -16,9 +16,9 @@
 - `cw_start_battle_action.py` 出战后单帧弹窗识别(执行后转移面识别)= 欠账,清法候批。
 - (商店域两笔前欠——`cw_buy_card_action.py` 买前裁片、`cw_refresh_shop_action.py` 刷前两口径/刷新钮真值/刷后牌名三处读——已清偿,现役商店动作 op 全链零读屏。)
 
-**用户裁定(增补 4,2026-09-22)**:**每个动作 op 单独一个文件——`operations/cw_op/` 下一个动作 op 类 = 一个独立文件,命名沿单文件动作 op 惯例 `cw_<action>_action.py`。** 捆绑多 op 的存量文件(pick 族 `cw_overlay_pick_action.py` 等)= 欠账,拆分随收敛批执行(注册表/完备锁/上报函数引用随拆同批调整);禁新增捆绑文件。
+**用户裁定(增补 4,2026-09-22)**:**每个动作 op 单独一个文件——`operations/cw_op/` 下一个动作 op 类 = 一个独立文件。** 命名细则:`<action>` = op 类名 snake 化(`CwActionPickXxxOp` → `cw_pick_xxx_action.py`,与上报侧 `kernel/cw_action_report/<action>.py` 一动作一文件对称);备战域保留域前缀惯例(`cw_prep_*_action.py`);一类多词表行(注册表两行同指一 op)随 op 类单文件落。捆绑多 op 的存量文件(pick 族 `cw_overlay_pick_action.py` 等)= 欠账,拆分随收敛批执行(注册表/完备锁/上报函数引用随拆同批调整);禁新增捆绑文件。
 
-**用户裁定(增补 5,2026-09-22)**:**选择类动作 op 的点击坐标从 game state 按下标获取——策略侧只输出下标(idx),动作 op 按 `param.idx` 从容器选项槽取该选项的点击坐标执行;坐标由观察上报写入(规范单一源 = screens/op-layer.md §1.1「选择坐标观察上报」)。** 画面 op 决策半现算机械坐标经 env 传参的旧形态(如 `OverlayPickExecEnv.target`)= 欠账,随收敛批退役;禁新增第二坐标源。
+**用户裁定(增补 5,2026-09-22)**:**选择类动作 op 的点击坐标从 game state 按下标获取——策略侧只输出下标(idx),动作 op 按 `param.idx` 从容器选项槽取该选项的点击坐标执行;坐标由观察上报写入(规范单一源 = screens/op-layer.md §1.1「选择坐标观察上报」)。** 键特形:专家邀请函词表 `idx = -1`(现金为王)→ 独立 `cash_point` 字段显式分支(禁负下标直取列表——Python 负下标回环 = 静默错点最后一卡);商店域键 = 物理槽 slot(BuyCard 词表无 idx,槽 1 基)。坐标域缺席/下标越界/元素缺坐标 = 守卫断言 AssertionError 响亮暴露,禁控制流分支、禁回退。画面 op 决策半现算机械坐标经 env 传参的旧形态(如 `OverlayPickExecEnv.target`)= 欠账,随收敛批退役;禁新增第二坐标源。
 
 禁止的写法(现有代码里还存在的 = 欠账,逐批改掉;禁新增):
 
@@ -117,14 +117,14 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 |---|---|---|---|
 | Obs | CwActionObsOp | `cw_obs_action.py` | 重观察动作,口径由 `scope` 选(值域闭集 = `cw_vocab.OBS_SCOPES`)。**scope='in_place'**(缺省)= 当前画面重新观察上报,不交回外循环:执行体 = 宿主画面 op `reobserve_in_visit`(现役唯一宿主 = 备战 CwScreenPrep)heavy 观察链重跑,漏斗直写容器 = 观察边界对账;零点击零拖拽;自上报 = 零写占位(容器更新通道 = 观察漏斗本体);非终结,执行后帧代次标 full(方向重估触发,同入口帧;贵段消费侧键守卫限频),决策环原地续跑。重观察见事件 overlay = 抛 `CwObsOverlayBail` 交回外循环重分发(捕获点 = 备战决策循环,画面路由归外循环)。**scope='outer_loop'** = 交回外循环重新观察:决策环在 F3 之前**分支拦截**(不经本表派发、不进执行器、不写动作记录,行为 = 原 HoldFrame 空发射帧收编,用户裁定 2026-09-20),注册行仅为完备锁在场 + in_place 路径派发用。发射域无重观察能力(env.op 未接线)= AssertionError 响亮暴露(策略器 bug)。发射条件 = 策略需要新鲜观察(in_place = 随机面/不确定面动作后要真值再决策;outer_loop = 本帧无动作,交回外循环重判/等待,自旋防护归外循环 stall 防线)。 |
 
-### 4.5 事件线 pick 族(12 行;域 env = `OverlayPickExecEnv`,机械参数由各画面 op 决策半现算经 env 传入,op 类体内零决策)
+### 4.5 事件线 pick 族(12 行;域 env = `OverlayPickExecEnv`,机械参数由各画面 op 决策半现算经 env 传入,op 类体内零决策)。**坐标源欠账(§1 增补 5,用户裁定 2026-09-22)**:全族现役点击坐标 = 决策半现算经 `env.target`,逐屏收敛到「观察上报入容器坐标伴随域(§3.4.5a)、动作 op 按 idx 自取」;收敛完成前 `env.target` 为合法过渡形态,禁新增第二坐标源(欠账登记先例 = StartBattle 行增补 3)。
 
 **上报形态 = 全族即时上报**(§1 增补 2;有容器写的各屏 = 投资两屏/补给/遭遇/策划/装备,点完确认或点卡即选后立即按成功写完整结果;其余屏 = 零写占位上报):发射/落地两相与证据闩形态已全域清偿,零重入裁决补写面,禁新增分步写法。
 
 | 词表类 | op 类 | 文件 | 说明 |
 |---|---|---|---|
 | PickEncounter | CwActionPickEncounterOp | `cw_overlay_pick_action.py` | 遭遇节点选卡确认链(事件屏统一迭代改即时上报):点遭遇卡(`idx`=0 左卡/其余右卡,area 缺失回退兜底常量)→ 固定等 0.8s → `emit_overlay_confirm` 机械确认(裁决词「遭遇节点」)→ **发射即写** `report_action_pick_encounter_param`(`kernel/cw_action_report/pick_encounter.py`:值组装 = 容器 `encounter` payload 槽所选卡,离屏/越界留证不写);派发即终结,落地归观察侧。发射条件 = overlay 决策半产 PickEncounter(idx = 候选下标)。 |
-| PickSupply | CwActionPickSupplyOp | `cw_overlay_pick_action.py` | 补给节点选卡确认链(即时单相,3.1):`env.target` 点卡 → 固定等 0.6s → 点「按钮-确认」→ **立即自上报完整结果** `report_action_pick_supply_param`(owned 规范名 + 单位腿 + 装备后果腿一口写)+ `report_node_advance(supply_confirm)`;派发即终结,确认未生效由外循环重识别重派;刷新圆钮点击留守画面 op。发射条件 = 决策半产 PickSupply(env 带 target/归一件名/角色名)。 |
+| PickSupply | CwActionPickSupplyOp | `cw_overlay_pick_action.py` | 补给节点选卡确认链(即时单相,3.1):`env.target` 点卡 → 固定等 0.6s → 点「按钮-确认」→ **立即自上报完整结果** `report_action_pick_supply_param`(owned 规范名 + 单位腿 + 装备后果腿一口写)+ `report_node_advance(supply_confirm)`;派发即终结,确认未生效由外循环重识别重派;刷新圆钮点击留守画面 op。发射条件 = 决策半产 PickSupply(param 携归一件名/角色名;`env.target` 坐标现算 = §1 增补 5 欠账形态)。 |
 | PickMegastar | CwActionPickMegastarOp | `cw_overlay_pick_action.py` | 盛会之星「选中 → 确认」链(`env.need_select` 驱动:True = 先点 `env.target` 候选选中 + 固定等 0.6s;False = 跳过选中直发确认)→ 点「按钮-确认选择」(area 缺失回退兜底常量)→ 固定等 0.9s;纯机械单发,确认未落地 = 下一帧门复检自愈(宿主 `round_wait` 循环推进,不烧节点重试预算)。发射条件 = 决策半产 PickMegastar(选中半迁入本 op;`chosen_megastar` 写端与选中旗标留守画面 op,派发前写)。 |
 | PickPartner | CwActionPickPartnerOp | `cw_overlay_pick_action.py` | 列车同行伙伴确认链:未选中实证(或首轮强制)下重点选候选(`env.op._pick_point`)→ 固定等 0.7s → OCR 找「确认选择」点击(找不到 = round_retry 上报,交框架轮次机制);脉冲计数与选中态宿主 = 画面 op。发射条件 = 决策半产 PickPartner。 |
 | PickPlanner | CwActionPickPlannerOp | `cw_overlay_pick_action.py` | 骇入策划确认链(即时单相):`env.target` 点卡(避开卡内「详情」按钮区的选中点几何归决策半单一源)→ 固定等 1.2s → `emit_overlay_confirm` 机械确认(裁决词全词「我来当策划」);点卡 = 机械单发(无详情面板检测;面板若真弹出归下一帧外循环重识别自愈)。**确认点击后立即自上报完整结果** `report_action_pick_planner_param`(`kernel/cw_action_report/pick_planner.py`:条件腿 rider 先行 → equip 腿入栏+后果链 / upgrade 变换窗三态+档行 `lv999_cost_tier` / unknown 留证 / unrouted 兜底零写,`leg_type`/`norm_item` 经 env 随派发透传);派发即终结,确认未生效由外循环重识别重派。发射条件 = 决策半产 PickPlanner。 |

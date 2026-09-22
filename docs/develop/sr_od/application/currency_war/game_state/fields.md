@@ -635,7 +635,11 @@ exclusive-loop/design.md §2.0;equipment_mechanics §7 待实测项由本字段+
 内容但识别失败,必携缺陷台账,决策一律跳过)。**None 仅离屏**:payload
 缺席 = 不在商店画面(等价 leave_screen);空牌面 ≠ 离屏(失读窗沿用现值,
 禁清 None)。**槽位坐标系:数组下标 +1 = 物理槽**;点击坐标单一真相源 =
-screen_info「商店牌-N」区域(不入存储)。**升星预览 = 派生计算不入存储**
+观察上报(op-layer.md §1.1 选择坐标观察上报条款,用户裁定 2026-09-22)——
+入口观察一并上报 `ShopPayload.card_points`(定长 5,下标 ↔ 物理槽 1-5),
+BuyCard 动作 op 按 slot 自容器取点执行;原「screen_info「商店牌-N」区域
+现取不入存储」形态(`ShopCard` 类注、`cw_buy_card_action` 现取链)随收敛批
+退役,收敛前为欠账形态。**升星预览 = 派生计算不入存储**
 (bench/rows+注册表合成规则自算;已建的 ✦ 观察读取器降级为核对信号、不作
 写入端——✦ 高帧系统性漏读)。
 **写端**:商店帧观察覆盖(逐槽三态判定;**定长不变量** = 产出恒 5 槽);
@@ -733,6 +737,10 @@ effective_refresh_prob:键在且 >0 直用、≤0/缺键退基线表——**契�
 > star_tome_opts(星徽秘典)/box_card_names(武装箱
 > 选卡)/expert_invite(专家邀请函,`ExpertInvitePayload` 双输入打包;
 > 原 equip_pick_opts 选择装备槽随该屏误判退役删除,2026-09-22)。
+> 选项坐标伴随域(`*_opts_xy` 族 / typed 选项 `xy` 字段 / payload 坐标字段)=
+> 选择坐标观察上报落容器载体,总声明与契约见 §3.4.5a(规范 =
+> [../screens/op-layer.md](../screens/op-layer.md) §1.1,用户裁定 2026-09-22;
+> 存量逐域落坐标 = 欠账,逐批收敛,禁新增无坐标直报)。
 
 #### 3.4.1 遭遇屏
 
@@ -831,6 +839,33 @@ effective_refresh_prob:键在且 >0 直用、≤0/缺键退基线表——**契�
 弹窗=卡名(专档在册)。各屏选卡写入
 chosen_*。(原「装备三选一」行随选择装备屏误判退役删除,2026-09-22;
 「装备三选一与武装箱选择面同屏性待采证」候裁面随之销项。)
+
+#### 3.4.5a 选项坐标域(`*_opts_xy` 族 / typed `xy` / payload 坐标字段;选择坐标观察上报)
+
+**语义**:各候选/选项域(§3.4.5)的**坐标伴随域**——键 = 对应名字域/词表下标(单选
+族 = `idx` 0 起左→右;专家邀请函 = `idx 0..3` + 词表特形 `-1`(现金为王)→ 独立
+`cash_point`,禁负下标直取列表;商店牌行 = 物理槽 slot 1 基);值 =
+`tuple[int, int]`(x, y,1080p 游戏空间,JSON 序列化安全形)。**坐标单一真相源 =
+观察上报**(op-layer.md §1.1 选择坐标观察上报,用户裁定 2026-09-22):归一化转换
+与坐标解析在**同一次观察**完成、经**同一** `report_screen_<snake>_obs` 调用与同一
+写门一并落容器(任一候选转换失败 = 名字与坐标**同进退**,零写零上报交回重观察);
+失读/离屏语义与名字域同格。**取值时机 = 观察期快照**(进访问入口观察帧识别产物,
+动作执行期恒稳);**读端唯一 = 该域动作 op**(按 idx/slot 取点执行),缺席/越界/
+元素缺坐标 = 守卫断言 AssertionError 响亮暴露——禁动作/上报层坐标现算、禁
+screen_info 二次取点回退(禁第二坐标源);决策半坐标组装(`OverlayPickExecEnv.target`
+链)随逐屏收敛退役。写端构造守卫保证坐标域与名字域同序等长(不等长 = 观察 bug
+响亮暴露)。**辖域边界**:本族辖「选项/候选」点击坐标(判据 = 坐标是否随本次观察
+读到什么变化);静态控件锚(确认钮/刷新钮等)= screen_info area 执行期现取现状
+维持,不入本族。**sim 分界**:sim 无画面识别,本族不建模,值恒 None。
+
+**字段登记**(实施批随域落,逐域一行):A 类伴随域 = `wish_trial_opts_xy` /
+`star_tome_opts_xy` / `box_card_names_xy` / `fortune_opts_xy`(命名随名字域本名,
+不强加 `_opts` 后缀);B 类 typed 选项结构扩 `xy: tuple[int, int] | None` =
+MegastarOption / PartnerOption / PlannerOption(partner 候选暂无建档区域 = 补档前
+恒 None 欠账态显式申报);C 类 payload 扩字段 = `ExpertInvitePayload.card_points` +
+`cash_point`、`ShopPayload.card_points`(定长 5,下标 ↔ 物理槽 1-5)。
+**schema 登记**:A 类逐域新键入 `DEFAULT_GS_SCHEMA`;C 类 payload 扩字段 = 域版本
+bump(专家邀请函域/商店 payload 所属域)。
 
 #### 3.4.6 圣杯任务
 
