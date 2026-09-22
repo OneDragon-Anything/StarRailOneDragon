@@ -14,12 +14,12 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 def _note_receipt(op: SrOperation, applied: bool, reason: str) -> None:
-    """开商店动作回执(R2 §3.2.5;渠道②,唯一写点 = kernel 口)。
+    """开商店动作回执(唯一写点 = kernel 口 `note_action_receipt`)。
 
     三出口全簿记:点击已发 = applied=true;幂等已开(无动作可发)/入口
     观察失败(动作没发出)= applied=false + reason——失败可见性(exec_events
-    收编)。发出即簿记非验证(不读屏核验);journal 常开回执
-    写入无条件,无局跳过在 kernel 口。
+    收编)。发出即簿记非验证(不读屏核验);journal 常开(语义申报 =
+    `kernel/cw_state_journal.py` 模块头)回执写入无条件,无局跳过在 kernel 口。
     """
     try:
         from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -38,30 +38,30 @@ def _note_receipt(op: SrOperation, applied: bool, reason: str) -> None:
 
 
 def _open_shop_already_open(op: SrOperation) -> OperationRoundResult:
-    """幂等已开出口构造(单一构造点;观察 node 门命中与动作 node 重入
-    裁决共用):applied=false 回执(无动作可发)+ success;禁第二份
-    (总纲契约 1 共享零转录)。"""
+    """幂等已开出口构造(单一构造点;观察 node 门命中、动作 node 重入
+    裁决与直调形态共用):applied=false 回执(无动作可发)+ success;
+    同语义出口禁第二处构造(单一构造点防多份转录漂移)。"""
     _note_receipt(op, False, '商店已开(幂等入口观察,无动作可发)')
     return op.round_success('商店已开')
 
 
 def open_shop(op: SrOperation) -> OperationRoundResult:
-    """开商店原子核心(W970 批 A 契约 §4.2 ``CwOpOpenShop``;幂等开店)。
+    """开商店原子核心(`CwOpOpenShop`/编排壳直调两形态共用;幂等开店)。
 
     ``op`` = 宿主 op(编排壳直调时传壳自身,复用其 round_by_* 判定与
     测试替身桩;本文件 ``CwOpOpenShop`` 独立跑时经其两 node 形态驱动)。
 
     幂等入口观察:已开(「按钮-收起」可见)→ 直接成功——自动开店场景
-    点击落空不判负(W970 §4.2 F7),重入轮由本观察裁决出口。未开 → 点
+    点击落空不判负,重入轮由本观察裁决出口。未开 → 点
     「按钮-商店」→ park_cursor → 固定等待 ``SHOP_OPEN_ANIM_S``(用户口述
     定值:干净的备战里打开商店等 1 秒就够,操作完成自等动画)→
     **机械交回**(验证废除,用户裁定 2026-09-10:动作 op 只管机械执行
-    禁止验证;M1③ 发出即职责完成,调用方不问成败)——不再验「收起出现」,
+    禁止验证;发出即职责完成,调用方不问成败)——不验「收起出现」,
     店开没开由下一轮重入幂等观察 / 下一帧观察侧对账(0n 三锚/备战帧读
     互斥)自然闭环。找不到商店/收起按钮 = 入口观察失败(动作没发出)→
     fail 如实交回。
 
-    R2:三出口各落一条动作回执(見 :func:`_note_receipt`;幂等已开 =
+    三出口各落一条动作回执(见 :func:`_note_receipt`;幂等已开 =
     无动作可发的 applied=false 事实,非成败判定)。
     """
     if op.round_by_find_area(op.screenshot(), SHOP_SCREEN_NAME,
@@ -73,7 +73,7 @@ def open_shop(op: SrOperation) -> OperationRoundResult:
         # 「点击已发」的机械 retry 区分,直调消费面按 is_success 分流)。
         _note_receipt(op, False, '找不到商店/收起按钮')
         return op.round_fail('找不到商店/收起按钮')
-    # 点击后 park:光标停在「按钮-商店」上会污染后继读屏(审计 P0 同型)
+    # 点击后 park:光标停在「按钮-商店」上会污染后继读屏
     op.park_cursor()
     time.sleep(SHOP_OPEN_ANIM_S)
     _note_receipt(op, True, '')
@@ -81,7 +81,7 @@ def open_shop(op: SrOperation) -> OperationRoundResult:
 
 
 class CwOpOpenShop(SrOperation):
-    """货币战争-备战 → 备战-开商店 原子 op(W970 批 A;推进型两 node 形态)。
+    """货币战争-备战 → 备战-开商店 原子 op(推进型两 node 形态)。
 
     生产路径由编排壳直调 :func:`open_shop`(宿主 op 复用);本类为独立
     可跑壳(流程层接管后成为编排单元的机械开店臂)。
@@ -127,11 +127,11 @@ class CwOpOpenShop(SrOperation):
                                    '按钮-收起').is_success:
             return _open_shop_already_open(self)
         if not self.round_by_find_and_click_area(
-                self.screenshot(), '货币战争-备战', '按钮-商店').is_success:
+                self.last_screenshot, '货币战争-备战', '按钮-商店').is_success:
             # 入口观察失败 = 动作没发出(职责未完成)→ fail 如实交回。
             _note_receipt(self, False, '找不到商店/收起按钮')
             return self.round_fail('找不到商店/收起按钮')
-        # 点击后 park:光标停在「按钮-商店」上会污染后继读屏(审计 P0 同型)
+        # 点击后 park:光标停在「按钮-商店」上会污染后继读屏
         self.park_cursor()
         time.sleep(SHOP_OPEN_ANIM_S)
         _note_receipt(self, True, '')
