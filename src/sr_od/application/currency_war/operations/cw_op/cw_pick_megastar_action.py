@@ -87,7 +87,7 @@ class CwActionPickMegastarOp(SrOperation):
             time.sleep(0.6)
         # 确认 = 建档「按钮-确认选择」查找点击(round_by_find_and_click_area
         # 全族统一,用户裁定 2026-09-22;不带 until = 动作 op 禁验证;area
-        # 缺失 = 显式失败交框架轮次,兜底常量 CONFIRM 随批退役)。
+        # 缺失 = 显式失败交框架轮次)。
         # overlay 关否由下一帧重入裁决。
         env.round_result = op.round_by_find_and_click_area(
             op.screenshot(), '货币战争-盛会之星', '按钮-确认选择',

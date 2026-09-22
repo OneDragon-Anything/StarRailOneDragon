@@ -30,9 +30,9 @@ dispatch 是 OCR 反应式(主循环 0b 检测「盛会之星」就接)→ 不�
 文本 = 确认钮旁伴随文案,禁据它判步。候选点击坐标 = 观察上报随选项
 一并落容器 ``megastar_opts[idx].xy``(选择坐标观察上报,规范 =
 op-layer.md §1.1;动作 op 按下标自容器取点,本 op 零坐标现算;候选
-兜底常量宿主 = ``obs/cw_megastar_obs.py``)。确认钮 = 静态控件锚:
-screen_info ``currency_war_megastar.按钮-确认选择`` + 兜底常量
-``CwScreenMegastar.CONFIRM``(动作 op 内现取)。
+兜底常量宿主 = ``obs/cw_megastar_obs.py``)。确认钮 = 建档
+``currency_war_megastar.按钮-确认选择``(动作 op 执行体
+``round_by_find_and_click_area`` 查找点击,全族统一)。
 """
 
 from one_dragon.base.operation.operation_edge import node_from
