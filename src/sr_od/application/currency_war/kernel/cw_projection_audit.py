@@ -158,12 +158,18 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'shop_refresh_cost': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='刷新费现场 OCR(ADR-0622),零逻辑写端'),
-    # (刷新计数组三行——free_refresh_balance/paid_refresh_count/
-    #  total_refresh_count——已随 2026-09-18 迁入裁决移出容器,审计面
-    #  随域退役;账本侧审计 = 效果账本自身测试面。)
+    # (刷新计数组口径(2026-09-21 Field 化):免费刷新剩余次数升格容器
+    #  字段 free_refresh_left(审计行见下方家族块);付费/全量两计数留
+    #  效果账本 ActiveEffectInventory,审计面 = 账本自身测试面。)
     'prev_node_spent': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='上节点花费位(§3.3.9,仅逻辑写)'),
+    'free_refresh_left': ProjectionAuditRow(
+        status=AUDIT_WRITE_END,
+        basis='商店免费刷新剩余次数(屏上「免费刷新 N」观察真值;观察写端'
+              ' = 入口观察漏斗刷新钮三态锚定,免费态锚次数/付费域锚 0/判不出'
+              '跳写)+ 动作扣减/两发放桥 logic 直写(观察覆盖失配走 Field'
+              ' 既有安灯)'),
     'encounter_refresh_left': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='遭遇刷新剩余次数(屏上「剩余次数：N」观察真值;观察写端'

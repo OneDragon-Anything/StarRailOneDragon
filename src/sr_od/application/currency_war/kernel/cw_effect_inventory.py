@@ -227,10 +227,11 @@ class ActiveEffectInventory:
         self.equip_progress: dict[tuple[str, str], int] = {}
         # 刷新计数组(2026-09-18 用户裁决:自 GameState Fields 迁入效果
         # 账本统一计算;写端 = 刷新上报函数 report_action_refresh_shop_param
-        # 统一触发,消费方 = env_economy 选卡评估通道 + 免费闸):
+        # 统一触发,消费方 = env_economy 选卡评估通道 + 免费闸;
+        # 2026-09-21 Field 化:免费刷新剩余次数升格容器字段
+        # gs.free_refresh_left 自本账本迁出,两计数留守):
         self.refresh_total: int = 0           # 全量累计(免费+付费)
         self.refresh_paid: int = 0            # 付费累计(长线利好阈值型)
-        self.free_refresh_balance: int = 0    # 免费刷新余额(效果发放 +/刷新执行 −)
 
     # —— 登记端 ——
     @staticmethod
@@ -429,37 +430,24 @@ class ActiveEffectInventory:
             e.counters[key] = e.counters.get(key, 0) + n
 
     def record_refresh(self, free: bool) -> None:
-        """刷新执行计数统一入账(2026-09-18 用户裁决:GameState 刷新三字段
-        迁入效果账本,此处统一计算;触发点 = 刷新上报函数
+        """刷新执行计数统一入账(触发点 = 刷新上报函数
         report_action_refresh_shop_param,生产 = 刷新 op 自上报,sim = 委托
         串直调,落地门零重复触发)。
 
-        行为口径(原 record_refresh_execution 逐位平移):
+        行为口径(2026-09-21 Field 化收窄:免费余额腿迁容器字段
+        ``gs.free_refresh_left``,扣减由上报函数 write_logic 承载;本方法
+        只留两计数累计,``free`` 形参保留 = 调用方判定语义不变):
         - refresh_total 恒 +1(付费+免费全量);
         - free=True(免费帧):**不动** refresh_paid(付费累计,长线利好
-          阈值型「花费金币进行30次刷新」的计数载体,免费帧混入即毒化)并
-          消耗免费余额(free_refresh_balance −1,下限 0);
+          阈值型「花费金币进行30次刷新」的计数载体,免费帧混入即毒化);
         - free=False:refresh_paid +1;
         - 同帧推进按策略触发计数(bump_key(CounterKey.REFRESH),采购专员
           族门槛面)——「一次刷新,账本一处入账」。
-
-        free 判定输入 = 调用方(刷前按钮态 UI 真值优先,失读回退余额>0;
-        余额未建模局恒 paid 的保守形态由调用方承载)。
         """
         self.refresh_total += 1
         self.bump_key(CounterKey.REFRESH)
-        if free:
-            self.free_refresh_balance = max(self.free_refresh_balance - 1, 0)
-        else:
+        if not free:
             self.refresh_paid += 1
-
-    def grant_free_refreshes(self, n: int) -> None:
-        """免费刷新余额发放(效果发放端:选卡 burst 族/每节点族/条件族,
-        发放桥 apply_effect_burst_grant / grant_effect_node_refresh_balance
-        统一出口)。n 非正数 = no-op。"""
-        if n <= 0:
-            return
-        self.free_refresh_balance += n
 
     def equip_progress_of(self, equip_name: str, wearer: str) -> int:
         """装备效果进度读口(侧栏键 = (装备名, 装备者 char_id))。无记录 = 0

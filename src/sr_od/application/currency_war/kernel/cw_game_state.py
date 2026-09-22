@@ -1165,26 +1165,34 @@ def _bridge_sig(gs: GameState) -> ChannelSig:
 def apply_effect_burst_grant(gs: GameState, spec: Any, *,
                              frame: str = '') -> None:
     """桥·burst 形态(选卡一次性):登记时点把效果声明的免费刷新额度一次
-    性累加进余额(§3.3.5 burst 族:免费午餐 11/及时雨 4/固定理财即时段 2
-    等;载体 = payload.free_refresh_burst)。只在本挂点累加一次——「一次性」
-    语义由登记时点单次调用承载,其余挂点不得重复调本函数。
+    性累加进免费刷新剩余次数(§3.3.5 burst 族:免费午餐 11/及时雨 4/固定
+    理财即时段 2 等;载体 = payload.free_refresh_burst)。只在本挂点累加
+    一次——「一次性」语义由登记时点单次调用承载,其余挂点不得重复调本
+    函数。
 
     采样点 = 选卡登记挂点(CwScreenInvestStrategy 确认落地,登记成功后
-    紧随调用);记账 = 效果账本(2026-09-18 迁入裁决:免费余额住
-    ActiveEffectInventory,经 grant_free_refreshes 统一出口)。额度 0 或
-    payload 无此字段(如 BattlefieldEffect 族)= no-op。
+    紧随调用);记账 = 容器字段 ``gs.free_refresh_left`` write_logic 逻辑
+    直写(2026-09-21 Field 化:免费次数升格容器字段,观察锚定/动作扣减/
+    发放登记三写端同格;None 基 = 0 起算——开局无免费次数 = 机制真值,
+    发放即首次落值)。额度 0 或 payload 无此字段(如 BattlefieldEffect
+    族)= no-op(零 Field 行)。
     """
     n = int(getattr(getattr(spec, 'payload', None), 'free_refresh_burst', 0) or 0)
     if n <= 0:
         return
     _ev = f'effect_burst@{frame}' if frame else 'effect_burst'
-    gs.effects.grant_free_refreshes(n)
+    left = gs.free_refresh_left.value
+    gs.write_logic(gs.free_refresh_left, (0 if left is None else int(left)) + n,
+                   produced_by=(f'EffectLedgerBridge:'
+                                f'{getattr(spec, "name", "") or "unknown"}'),
+                   evidence=_ev, sig=_bridge_sig(gs))
 
 
 def grant_effect_node_refresh_balance(gs: GameState, *,
                                       frame: str = '') -> None:
     """桥·per_node + 条件判定形态(每节点发放):节点边界一次,把全部在场
-    条目声明的每节点免费刷新额度累加进余额(§3.3.5-§3.3.6)。载体两族:
+    条目声明的每节点免费刷新额度累加进免费刷新剩余次数(§3.3.5-§3.3.6)。
+    载体两族:
 
     - **静态每节点**:EconomyEffect.free_refresh_per_node(加油站/搜打撤=1)
       + BattlefieldEffect.free_refresh_on_node_enter(双手狸开键盘!=2),
@@ -1199,26 +1207,38 @@ def grant_effect_node_refresh_balance(gs: GameState, *,
     采样点 = 节点 tick 挂点(cw_loop 备战分支),**仅在 advance_node 返回
     advanced=True 时调用**(每节点恰一次,重复调用即双计;条件形态与静态
     形态同闸门——授予量随当拍金现值变化,触发时点恒为节点边界一次);
-    记账 = 效果账本(2026-09-18 迁入裁决)。静态活载体 = 双手狸(2/节点);
-    条件活载体 = 本金充裕/+(50/10/3)。固定理财位面开始段(PLANE_START)不
-    属本形态,未建模挂账不改本桥。
+    记账 = 容器字段 ``gs.free_refresh_left`` write_logic 逻辑直写(2026-09-21
+    Field 化:免费次数升格容器字段,观察锚定/动作扣减/发放登记三写端同格;
+    None 基 = 0 起算,开局无免费次数 = 机制真值)。静态活载体 = 双手狸
+    (2/节点);条件活载体 = 本金充裕/+(50/10/3)。固定理财位面开始段
+    (PLANE_START)不属本形态,未建模挂账不改本桥。
     """
     per_node = 0
+    srcs: list[str] = []
     gold = gs.gold.value
     for e in gs.effects.entries:
         payload = e.spec.payload
-        per_node += int(getattr(payload, 'free_refresh_per_node', 0) or 0)
-        per_node += int(getattr(payload, 'free_refresh_on_node_enter', 0) or 0)
+        n_e = int(getattr(payload, 'free_refresh_per_node', 0) or 0)
+        n_e += int(getattr(payload, 'free_refresh_on_node_enter', 0) or 0)
         above = int(getattr(payload, 'free_refresh_cond_gold_above', 0) or 0)
         step = int(getattr(payload, 'free_refresh_cond_gold_step', 0) or 0)
         cap = int(getattr(payload, 'free_refresh_cond_cap', 0) or 0)
         if above > 0 and step > 0 and cap > 0 and gold is not None:
             surplus = int(gold) - above
             if surplus > 0:
-                per_node += min(surplus // step, cap)
+                n_e += min(surplus // step, cap)
+        if n_e > 0:
+            per_node += n_e
+            srcs.append(e.spec.name)
     if per_node <= 0:
         return
-    gs.effects.grant_free_refreshes(per_node)
+    left = gs.free_refresh_left.value
+    gs.write_logic(gs.free_refresh_left,
+                   (0 if left is None else int(left)) + per_node,
+                   produced_by=('EffectLedgerBridge:' + '+'.join(srcs))
+                   if srcs else 'EffectLedgerBridge',
+                   evidence=f'effect_node@{frame}' if frame else 'effect_node',
+                   sig=_bridge_sig(gs))
 
 
 def project_effect_capacity(gs: GameState) -> None:
@@ -2038,11 +2058,9 @@ class GameState:
     board: Field[dict[str, int]] = field(default_factory=Field)      # 上阵羁绊计数(§3.2.6;下档阈值=派生不存储;开局种子底座不直写,随行域空行种子派生,禁双写)
     shop_refresh_cost: Field[int] = field(default_factory=Field)     # 刷新费,动态(§3.3.4/ADR-0622 现场 OCR;免费帧不写,None≠0;开局种子底座=刷新基价)
 
-    # (商店刷新计数组三字段——free_refresh_balance/paid_refresh_count/
-    #  total_refresh_count——已随 2026-09-18 用户裁决迁出容器,住效果账本
-    #  ActiveEffectInventory(统一计算,写端 = 刷新上报函数;消费方 =
-    #  env_economy 选卡评估/免费闸),考古走 git。prev_node_spent 不属
-    #  迁出面,保留原位。)
+    # (商店刷新计数组口径(2026-09-21 Field 化):免费刷新剩余次数升格容器
+    #  字段 free_refresh_left(声明见下方 §1.4 家族块);付费/全量两计数留
+    #  效果账本 ActiveEffectInventory 累计。考古走 git。)
     prev_node_spent: Field[bool] = field(default_factory=Field)      # 上节点是否花费(§3.3.9;存款回报条件输入,观察需求;开局种子底座=False 开局无花费)
 
     # —— 节点屏刷新计数组(§3.4.1-§3.4.4;渠道② logic_action,写入=仅逻辑)——
@@ -2054,6 +2072,20 @@ class GameState:
     supply_refresh_left: Field[int] = field(default_factory=Field)       # 补给刷新剩余次数(§3.4.2;屏上「剩余次数：N」观察真值,None=未观察;观察写端 = report_screen_supply_node_obs 摄入,读缺跳写、逐访问覆盖,无开局种子;sim 写端 = cw_sim_engine 补给节点入口初始 left 与刷新递减;原「已用」计数字段随剩余语义化退役,闸消费与写端全迁本字段,考古走 git)
     env_refresh_left: Field[int] = field(default_factory=Field)          # 投资环境刷新剩余次数(§3.4.3;屏上「剩余次数：N」观察真值;观察写端 = report_screen_invest_env_obs 摄入,读缺跳写;原 env_refresh_used「已用」字段随剩余语义化改名退役——零写端在册,改名零消费断链)
     strategy_refresh_left: Field[dict[str, int]] = field(default_factory=Field)  # 投资策略逐卡刷新剩余次数(§3.4.4;键 = 注册表规范卡名 normalize_invest_name 归一后——效果注册表 STRATEGY_EFFECTS 即以规范名为键,观察写端 OCR 名经同一归一函数入键,免双坐标系换算;观察写端 = report_screen_invest_strategy_obs 摄入「刷新次数N」读数,读缺键跳写、已观察键覆盖)。原 strategy_refresh_used「已用」随剩余语义化改名退役(其注释自declared「on_outcome 发射型钩子」写端与全仓零写端现状矛盾,本批改名一并清除;闸消费口径 = 剩余 ≤0 = 尽;开局种子底座={} 无持卡,与键粒度增量写端协同)
+
+    # (商店免费刷新剩余次数 = op-layer §1.4 ``*_refresh_left`` 剩余语义
+    #  家族的商店域接入(用户裁定 2026-09-21 Field 化:免费刷新次数是画面
+    #  可观察的剩余次数,自效果账本 int 升格容器字段——「观察锚定 + 动作
+    #  扣减 + 发放登记」三写端同格)。三写端:①观察锚定 = 入口观察漏斗
+    #  商店开态段刷新钮三态(免费态锚次数/付费域锚 0/整帧判不出跳写,
+    #  obs/cw_observation);②动作扣减 = 刷新上报函数
+    #  report_action_refresh_shop_param(未观察 None = 保守按付费不扣减
+    #  ——次数是记账面非决策闸);③发放登记 = 两桥
+    #  apply_effect_burst_grant / grant_effect_node_refresh_balance
+    #  (None 基 = 0 起算,开局无免费次数 = 机制真值)。失配对账 = Field
+    #  机制白送(observe 覆盖 logic 失配走既有 cw_mismatch_policy 安灯,
+    #  零手写台账)。)
+    free_refresh_left: Field[int] = field(default_factory=Field)         # 商店免费刷新剩余次数(屏上「免费刷新 N」观察真值,None=未观察保守按付费)
 
     # —— 轮内新鲜度账(「本轮已买」半边;渠道② logic_action,写入=仅逻辑)——
     # [索引定义] 值形状 = {'phase': (plane, round_num) | None,

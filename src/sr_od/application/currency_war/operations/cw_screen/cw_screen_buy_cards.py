@@ -47,9 +47,6 @@ from sr_od.application.currency_war.obs.cw_observation import (
     read_gold_opt,  # noqa: F401  模块属性路由:cw_shop_action_ops 经本模块名取读函数(替身缝)
     read_shop_cards,  # noqa: F401  替身缝:测试经本模块名桩读链(非本文件运行时消费)
 )
-from sr_od.application.currency_war.obs.cw_shop_refresh_obs import (
-    refresh_board_changed_of,
-)
 from sr_od.application.currency_war.operations.decision_frame_hooks import (
     save_decision_frame,
 )
@@ -102,96 +99,6 @@ def sell_guard_ok(expected: str | None, live: str | None) -> bool:
     F6),不在本批根治。
     """
     return bool(expected) and live is not None and live == expected
-
-
-# 牌名集三值对比单一源 = cw_shop_refresh_obs.refresh_board_changed_of
-# (消费点 = 刷新回执 extra 与本文件入口观察对账点);判效权归观察侧
-# reconcile。
-
-
-def _shop_entry_names(shop: list) -> list[str]:
-    """入口回执 shop 域 → content 具名牌名集(两路径形态兼容)。
-
-    读路径条目 = 槽包装(kind/card);容器紧缩路径(``_entry_receipt_from_
-    container``)= 裸 card(缺 kind 视作 content,该路径本就只产 content)。
-    """
-    names: list[str] = []
-    for _s in shop or []:
-        _kind = getattr(_s, 'kind', 'content')
-        _name = getattr(getattr(_s, 'card', _s), 'name', '') or ''
-        if _kind == 'content' and _name:
-            names.append(_name)
-    return names
-
-
-def _record_free_refresh_proc(op: SrOperation, ledger: 'ShopVisitLedger', *,
-                              pre_gold: int, gold_after: int,
-                              pre_names: list[str], post_names: list[str],
-                              plane: int, round_num: int) -> None:
-    """免费刷新 proc 留证(ADR-0456 通道;对账类判定,宿主 = 入口观察
-    对账点)。
-
-    比对收口纪律(T-219 裁定):判定随对账走不随动作走——三腿比对
-    (上段刷新已发 ∧ 金未扣 ∧ 牌面已变)在对账点评完才进本函数,函数体
-    只做存证(截图+flag+log),零决策零改道;免费来源的频率汇总与处置
-    归 flag 消费方。通道归属 = 观察侧对账点(按比对收口纪律维护),
-    非独立的常驻承诺。
-    """
-    from datetime import datetime as _dt
-
-    from one_dragon.utils.file_utils import get_project_root
-    from sr_od.application.currency_war.telemetry import state as _cw_tel
-    _free_shot = op.save_screenshot(prefix='free_refresh_proc')
-    _flag_p = get_project_root() / '.debug' / 'temp' \
-        / 'cw_free_refresh_proc.flag'
-    _flag_p.parent.mkdir(parents=True, exist_ok=True)
-    _flag_p.write_text(
-        'FREE-REFRESH-PROC: 免费刷新实机正证据(非停机,bot 照常跑)\n'
-        f'run={_cw_tel.current_run_id()} '
-        f'plane={plane} round={round_num} '
-        f'wave={ledger.total_refresh} '
-        f'ts={_dt.now().isoformat(timespec="seconds")}\n'
-        f'前后牌面: {sorted(pre_names or [])} -> {sorted(post_names or [])}\n'
-        f'gold: 前={pre_gold} 后={gold_after}(未扣=免费)\n'
-        f'截图: {_free_shot}\n'
-        '处理: 汇总频率判免费来源(棱 45%/策略类/未知),确认后删本 flag;'
-        '通道住观察侧对账点(比对收口纪律)。\n',
-        encoding='utf-8')
-    log.warning(
-        '[cw!][shop] 免费刷新 proc:牌面已变 金未扣(前=%s 后=%s)'
-        '→ 留证不停 flag=cw_free_refresh_proc.flag',
-        pre_gold, gold_after)
-
-
-def _reconcile_refresh_pending(op: SrOperation, ledger: 'ShopVisitLedger',
-                               entry: GameStateReadReceipt) -> None:
-    """免费刷新对账点(对账类判定收口,宿主 = 入口观察;T-219 裁定 +
-    统一动作工厂批4 比对收口扩展)。上段刷新已发
-    (ledger.refresh_pending_reconcile,写入端 = RefreshShopOp.execute)
-    → 免费腿零决策判定:
-
-    - 免费腿:金未扣(入口金 = 刷前金)∧ 牌面已变——三值对比单一源 =
-      ``cw_shop_refresh_obs.refresh_board_changed_of``(刷前/刷后名集由
-      RefreshShopOp 落账,批4 自动作 op 迁出)→ 存证(截图+flag+log)。
-
-    失读/不满足 = 静默放行(宁缺勿造);标记消费即清(清点在调用
-    方),生命周期 = 一次刷新恰一段(刷新为终结 op,段间无其他动作覆盖
-    字段)。判定值源同帧化申报:免费腿牌面判定与存证 post_names 同取
-    入口观察帧(迁出前 = 点击后现读与入口读两窗口;刷新为终结 op,段间
-    无写面,两读恒同板面)。
-    """
-    _entry_names = _shop_entry_names(entry.shop)
-    if (refresh_board_changed_of(ledger.refresh_pre_names, _entry_names) is True
-            and ledger.refresh_pre_gold is not None
-            and entry.gold == ledger.refresh_pre_gold):
-        with contextlib.suppress(Exception):
-            _record_free_refresh_proc(
-                op, ledger,
-                pre_gold=ledger.refresh_pre_gold,
-                gold_after=entry.gold,
-                pre_names=ledger.refresh_pre_names,
-                post_names=_entry_names,
-                plane=entry.plane, round_num=entry.round_num)
 
 
 # 买牌动画(卡牌飞行)收敛等待:首采无新槽后重采前的延迟秒数。
@@ -410,10 +317,10 @@ def apply_action_outcome(
             game_state_of(match.session).effects.bump_key(CounterKey.BUY)
         except Exception as e:   # noqa: BLE001  记录面失败不阻塞
             log.warning(f'[cw-buy] 效果账本 BUY 计数失败(不阻塞): {e}')
-    # 刷新侧保留面已随 2026-09-18 迁入裁决清空:三计数(效果账本统一计算)
-    # 由刷新 op 自上报经上报函数单口触发(sink 吸收路径 = 接收侧补触发),
-    # 真值↔账本分歧/次数联动两张留证票随真值读搬进刷新 op(点击前同帧
-    # 口径)。本门刷新侧零代码。
+    # 刷新侧本门零代码:计数与免费腿扣减 = 刷新 op 自上报经上报函数单口
+    # (付费/全量计数经效果账本 record_refresh;免费腿 = 容器字段
+    # free_refresh_left Field 判定扣减,payload 随机态 = write_logic_rand
+    # 采样——见 cw_action_report/refresh_shop)。
     # (容器逻辑态直写块已随动作 op 重组批③ 删除:非终结动作的期望态
     #  推进 = op 自上报单点(apply_shop_action_logic/apply_shop_merge_leg
     #  调用面退役,双记防线 = 本删除);终结动作跳写语义由 op 自辖。
@@ -714,15 +621,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             if _stop is not None:
                 return (_stop, None)
         save_decision_frame(op, 'shop_entry', _entry_shot)   # 识别完成点原始帧留证(牌面仲裁基准;每段一帧,刷新重观察同点覆盖)
-        # 免费刷新对账点(T-219 裁定:对账类判定收口在观察态写入的对账
-        # 点,动作 op 内不做;批4 比对收口扩展 = 两腿判定迁宿主
-        # ``_reconcile_refresh_pending``——免费腿三值单一源在观察侧模块,
-        # 期望腿缺陷台账承接,零决策零改道)。任一腿失读/不满足 = 静默
-        # 放行(宁缺勿造);标记消费即清,生命周期 = 一次刷新恰一段
-        #(刷新为终结 op,段间无其他动作覆盖)。
-        if ledger.refresh_pending_reconcile:
-            _reconcile_refresh_pending(op, ledger, _entry)
-            ledger.refresh_pending_reconcile = False
+        # (免费刷新的事实可见性宿主 = 容器字段 free_refresh_left 的观察
+        #  锚定失配安灯 + 效果账本计数:入口锚定写端 = 观察漏斗 shop-open
+        #  段刷新钮三态;本文件无金/牌面快照比对对账件。)
         # (hp 三件组覆盖随黑板帧退役删除——迁移批 3.2,波 4 步 4 同款结论:
         #  容器 hp 由备战帧观察/结算既有写端承接,消费统一经 decision_hp,
         #  覆盖回写 = 绕行;传参链同批移除。)
@@ -900,21 +801,12 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             # 执行落地回执(R2 回执域,逐动作 op 一条 logic_action 行):
             # applied = 动作 op 自身机械事实(round 成功态;未落地 = False
             # + 摘要),发出即簿记非验证——本行零新增读屏零成败判定。
-            # (迁移批 3.2 安灯换轨:发射行附 serialize_action 同 schema
-            #  动作载荷 = 安灯动作序列源;刷新行附 refresh 留证半边的
-            #  牌面变化位——free_refresh_proc 豁免判定输入。批4 比对收口:
-            #  三值对比单一源 = cw_shop_refresh_obs.refresh_board_changed_
-            #  of,刷前/刷后名集由刷新 op 落账,此处按单一源现算,
-            #  行值与迁出前 execute 预算式逐位同值。)
-            _rcpt_extra = (
-                {'refresh_board_changed':
-                 refresh_board_changed_of(ledger.refresh_pre_names,
-                                          ledger.refresh_post_names)}
-                if isinstance(action, CwActionRefreshShopParam) else None)
+            # (刷新行 refresh_board_changed 位已随 proc 通道退役:唯一消费
+            #  = 安灯 free_refresh_proc 豁免判定输入,免费刷新事实可见性改
+            #  由 Field 锚定失配安灯承接,2026-09-21 Field 化。)
             note_shop_action_receipt(
                 match, action, applied=bool(_ok),
-                reason='' if _ok else f'执行未落地({_op_cls.__name__})',
-                extra=_rcpt_extra)
+                reason='' if _ok else f'执行未落地({_op_cls.__name__})')
             apply_action_outcome(action, _ok, _cur, match,
                                  ledger, visit_actions)
             # T-82 续段 token 写入(生产商店循环执行位):动作确认已执行

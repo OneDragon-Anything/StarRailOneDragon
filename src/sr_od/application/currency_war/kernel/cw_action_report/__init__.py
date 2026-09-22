@@ -10,8 +10,9 @@
   文件名均一;
 - 工具原子七类 = ``tool_use``(机械半同构一族一文件,容器写形态);
 - 零写动作族 = ``zero_writes``(策略统一,不逐类开文件);
-- 刷新执行计数组 ``record_refresh_execution`` 与刷新上报同文件
-  (refresh_shop,语义同主)。
+- 刷新上报 = refresh_shop(计数腿:付费/全量两计数经效果账本
+  ``record_refresh`` 单口,免费腿 = 容器字段 free_refresh_left 判定扣减,
+  payload 随机态 = kernel 采样器 write_logic_rand)。
 
 依赖方向:本包 → cw_game_state(容器/渠道签名/值类型/读口),
 反向模块级零 import(懒加载惯例同 kernel 既有纪律)。

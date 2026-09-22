@@ -2700,6 +2700,18 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                 _btn = read_shop_refresh_button(
                     ctx, screen,
                     gold=(int(gold_val) if gold_readable else None))
+                # 免费刷新次数观察锚定(2026-09-21 Field 化,三写端之观察
+                # 写端):复用本现役调用产物,零新增读屏。双态口径:免费态
+                # 锚次数;付费域(锚未中∧标价读出,含耗尽/灰态,游戏规则
+                # ⇒ 免费余量恒 0)锚 0;整帧判不出(free=None)跳写,免费
+                # 态次数失读同跳写(宁缺勿造,读缺值留观察覆盖)。失配对账
+                # = Field 机制白送:observe 覆盖 logic(动作扣减/发放登记)
+                # 失配走既有 cw_mismatch_policy 安灯,零手写台账。
+                if _btn.free is True and _btn.free_remaining is not None:
+                    gs.observe(gs.free_refresh_left, int(_btn.free_remaining),
+                               sig=_sig_read)
+                elif _btn.free is False:
+                    gs.observe(gs.free_refresh_left, 0, sig=_sig_read)
                 if _btn.free is not True and _btn.price is not None:
                     gs.observe(gs.shop_refresh_cost, int(_btn.price), sig=_sig_read)
                 else:
