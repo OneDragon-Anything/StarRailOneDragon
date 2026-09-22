@@ -95,21 +95,21 @@ op = `operations/cw_op/cw_buy_card_action.py::CwActionBuyCardOp`（非终结）�
 
 ### 2.2 RefreshShop（刷新商店）
 
-op = `operations/cw_op/cw_refresh_shop_action.py::CwActionRefreshShopOp`（**段终结**：刷新是唯一引入新事实的动作，执行即本段结束，下一段入口观察重建期望态）。
+op = `operations/cw_op/cw_refresh_shop_action.py::CwActionRefreshShopOp`（**访问终结**：刷新是唯一引入新事实的动作，执行即本访问结束交回外循环，下一访问入口观察重建期望态）。
 
 **确定面**：
 
 - gold −= 实付刷新费。刷价真值 = 容器 `shop_refresh_cost`（备战帧现场 OCR，ADR-0622 观察通道；缺读 = 建模基价 `REFRESH_COST_BASE` 显式缺省，`kernel/cw_economy.py::refresh_cost_effective`）。免费帧（paid=0）金域不写（付费域纯净性，fields.md §3.3.4）。
-- 计数组（效果账本统一计算，2026-09-18 迁入裁决）：`refresh_total` 恒 +1；付费帧 `refresh_paid` +1；免费帧扣 `free_refresh_balance`（下限 0）且 paid 不进；写端 = 上报函数 `report_action_refresh_shop_param`（刷新 op 自上报统一触发；fields.md §3.3.6-8 迁出申报）。
-- 修饰腿（注册表口径）：免费刷新来源（概率事件 / 按节点免费额度）只影响实付金，不改「整店全换」；按刷产经验（淘金客，`xp_per_refresh`）= 经验域 logic 写（fields.md §4.2 修饰段）。
+- 计数组（效果账本统一计算）：`refresh_total` 恒 +1；付费帧 `refresh_paid` +1(免费帧不进);免费余额扣减 = 容器字段 `free_refresh_left` Field 免费腿（写端 = 上报函数 `report_action_refresh_shop_param` 单口;fields.md 商店免费刷新节）。
+- 修饰腿（注册表口径）：免费刷新来源（概率事件 / 按节点免费额度）只影响实付金，不改「整店全换」;按刷产经验（淘金客，`xp_per_refresh`）效果声明在册,刷新侧经验 logic 写腿未接线（零写端）,经验真值归观察。
 
-**随机面**：刷新后的牌面 = 整店 5 槽全换（非逐槽补空，实机实锤 `research/economy.md` §2.1）→ **店载荷失效，新牌面归下一段入口观察**；容器 shop payload 本动作不写（随机面域级跳写，新牌面留观察覆盖）。UI 陷阱在册：面板右下「刷新金币数」区域实际印的是利息徽标不是刷价（三流对拍定谳，`REFRESH_COST_BASE` 注）。
+**随机面**：刷新后的牌面 = 整店 5 槽全换（非逐槽补空，实机实锤 `research/economy.md` §2.1）→ **随机态腿写**：上报函数经 kernel 发牌采样器采样后走 `write_logic_rand` 随机态通道写商店载荷（观察覆盖差异 = 预期内,真值 = 下一入口观察）。UI 陷阱在册：面板右下「刷新金币数」区域实际印的是利息徽标不是刷价（三流对拍定谳，`REFRESH_COST_BASE` 注）。
 
-**依据**：`research/economy.md` §2/§2.1；`kernel/cw_economy.py::REFRESH_COST_BASE`/`refresh_cost_effective`；`fields.md` §4.2 RefreshShop；[shop.md](../screens/shop.md) §5（visit 级刷新硬墙）。
+**依据**：`research/economy.md` §2/§2.1；`kernel/cw_economy.py::REFRESH_COST_BASE`；`fields.md` 商店免费刷新节；[shop.md](../screens/shop.md) §5（刷新 = 访问终结）。
 
 ### 2.3 CloseShop（关商店）
 
-op = `operations/cw_op/cw_close_shop_action.py::CwActionCloseShopOp`（动作 op 内 no-op，关店点击由编排壳 `operations/cw_op/cw_op_close_shop.py::CwOpCloseShop` 承担；**访问终结**，恒可用）。
+op = `operations/cw_op/cw_close_shop_action.py::CwActionCloseShopOp`（执行位 = 真机械点击「按钮-收起」+ 幂等已关出口 + 自上报清场;原编排壳 `CwOpCloseShop` 已随执行位收编退役删除;**访问终结**，恒可用）。
 
 **确定面**：shop 域**结构离屏**（上报函数 `report_action_close_shop_param` = `leave_screen(bs.shop)`，载荷语义失效）；其余域零写。**关店本身不改牌面事实**：节点内关店→重开不刷新（牌面持久），跨节点才自动刷新全店（`research/economy.md` §2.1）——牌面去留由节点推进事件锚定，不由本动作推算。
 

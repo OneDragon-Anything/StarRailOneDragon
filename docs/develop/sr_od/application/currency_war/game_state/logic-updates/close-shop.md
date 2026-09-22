@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-收起商店面板回备战画面。**访问终结**动作、恒可用终结(全函数契约「无动作可做」的表达 = 策略器主动选关店)。op 载体 = `operations/cw_op/cw_close_shop_action.py::CwActionCloseShopOp`(`terminal=True`,动作 op 内 no-op);关店点击由编排壳 `operations/cw_op/cw_op_close_shop.py::CwOpCloseShop`(`close_shop`)承担。词表 = `kernel/cw_vocab.py::CwActionCloseShopParam`。
+收起商店面板回备战画面。**访问终结**动作、恒可用终结(全函数契约「无动作可做」的表达 = 策略器主动选关店)。op 载体 = `operations/cw_op/cw_close_shop_action.py::CwActionCloseShopOp`(`terminal=True`,执行位 = 真机械点击「按钮-收起」+ 幂等已关出口 + 自上报清场;终态契约「终结不入 decisions 行」,执行事实回执由动作 op 自身承担)。词表 = `kernel/cw_vocab.py::CwActionCloseShopParam`。
 
 ## 2. 逻辑态域集
 
@@ -13,13 +13,13 @@
 | shop | 上报函数写(结构离屏),生产跳写 | 上报函数腿 = `leave_screen(bs.shop)`(载荷语义失效;离屏写渠道 = obs 族,actor 沿逻辑态直写签名转造);**生产落地门对终结动作整体跳写**——牌面/gold 真值由下一段入口观察重建 |
 | 其余全部域 | 跳写 | 关店本身不改任何局内资源事实 |
 
-回执域(`receipts`):编排壳两出口各落一条(`kernel/cw_game_state.py::note_action_receipt` 唯一写点)——点击已发 = applied=true;幂等已关(「按钮-收起」不在)= applied=false + reason(无动作可发)。
+回执域(`receipts`):动作 op 执行体两出口各落一条(`kernel/cw_game_state.py::note_action_receipt` 唯一写点)——点击已发 = applied=true;幂等已关(「按钮-收起」不在)= applied=false + reason(无动作可发)。
 
 ## 3. 确定面转移规则(逐条)
 
 1. shop 域结构离屏(上报函数 `report_action_close_shop_param` = `leave_screen`;`bs.shop.value` 非 None 才写);
 2. **关店本身不改牌面事实**:节点内关店→重开**不刷新**(牌面持久),跨节点才自动刷新全店(`research/economy.md` §2.1)——牌面去留由节点推进事件锚定,不由本动作推算;
-3. 编排壳机械序:幂等入口观察(「收起」不在 = 店已关,直接成功)→ 点「按钮-收起」→ 固定等待 `SHOP_CLOSE_ANIM_S`(收起过场 ~1s,`research/screen_flow_timing.md` #15)→ 机械交回(零验证,收起消失与否由下一轮重入幂等观察/下一帧观察裁决)。
+3. 执行体机械序:幂等入口观察(「收起」不在 = 店已关,直接成功)→ 点「按钮-收起」→ 固定等待 `SHOP_CLOSE_ANIM_S`(收起过场 ~1s,`research/screen_flow_timing.md` #15)→ 机械交回(零验证,收起消失与否归下一帧观察;点击未生效 = 外循环 0n 重分发自然重派,重派即重试)。
 
 ## 4. 随机面
 
@@ -31,7 +31,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_action_report/close_shop.py::report_action_close_shop_param`(`leave_screen`)/ `note_action_receipt`;`operations/cw_op/cw_op_close_shop.py::close_shop` / `CwOpCloseShop`;终结语义总表 = [screens/README](../../screens/README.md) §4。
+`kernel/cw_action_report/close_shop.py::report_action_close_shop_param`(`leave_screen`)/ `note_action_receipt`;`operations/cw_op/cw_close_shop_action.py::CwActionCloseShopOp`(执行体;原编排壳 `cw_op_close_shop.py::CwOpCloseShop` 已随执行位收编退役删除);终结语义总表 = [screens/README](../../screens/README.md) §4。
 
 ## 7. 语义验证(终结作废契约)
 

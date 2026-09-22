@@ -1,6 +1,6 @@
 # 守卫总册（guards）
 
-> 反向规格化来源 = `operations/cw_loop.py` + `operations/cw_screen/cw_screen_prep.py` + `operations/cw_screen/cw_screen_buy_cards.py` + `obs/cw_identity_obs.py` + `kernel/cw_mismatch_policy.py` 的守卫/停机/降级段。职责：识别域与执行面的停机/留证防线。对局状态推进的监测不在框架——停滞判读 = 事件哨兵 `skills/sr-od-currency-war-dev/scripts/cw_sentinel.py`(v5.2:STALL 同特征零推进/LOOP 签名循环/NODE-DWELL 相位滞留/SILENCE 沉默,只留证不停机)。路径根 = `src/sr_od/application/currency_war/`。
+> 反向规格化来源 = `operations/cw_loop.py` + `operations/cw_screen/cw_screen_prep.py` + `operations/cw_screen/cw_screen_shop.py` + `obs/cw_identity_obs.py` + `kernel/cw_mismatch_policy.py` 的守卫/停机/降级段。职责：识别域与执行面的停机/留证防线。对局状态推进的监测不在框架——停滞判读 = 事件哨兵 `skills/sr-od-currency-war-dev/scripts/cw_sentinel.py`(v5.2:STALL 同特征零推进/LOOP 签名循环/NODE-DWELL 相位滞留/SILENCE 沉默,只留证不停机)。路径根 = `src/sr_od/application/currency_war/`。
 > 分工判据（od-dev-stop-hooks）：**采集哨兵不停机**（bot 可能只是慢）；**停机钩子保画面**（`stop_running(reason=..., save_screenshot=True)` 一行——框架自动截图 + `[stop]` 日志行即现场事实；钩子不写 flag 文件，处理流程知识归本篇）。
 
 ## 1. 外环连续 fail 重派网（通用网）
@@ -22,7 +22,7 @@
 
 ## 3. 商店未识别卡停机
 
-位置 = 商店画面 op **观察 node 入口段**（`cw_screen_buy_cards.py::CwScreenBuyCards.observe` 调 `_shop_entry_read`，回执落地即判）。判据 = 读链终判（`read_shop_cards` 内部易误判重观察之后）仍含 unknown 槽 → `stop_running(save_screenshot=True)` 框架截图留证（`[stop]` 日志行）+ round_fail——观察落地即停，决策/购买不见残缺牌面。**不能降级带病跑**（未识别卡按非 target 跳过 = 决策在残缺牌面上做 + 错过新内容建档窗口；用户 2026-08-24 裁决接受阻断代价）。决策侧 unknown 窗收窄（花钱禁发射、仅 CloseShop，`mandate_v1/shop.py`）保留为纵深第二线。
+位置 = 商店画面 op **观察 node 入口观察段**(`cw_screen_shop.py::CwScreenShop.observe` 调 `_shop_entry_read`,回执落地即判;入口 = 单次读零防抖——读缺交决策前置门响亮失败,禁重读等待)。判据 = 读链终判(`read_shop_cards` 内部易误判重观察之后)仍含 unknown 槽 → `stop_running(save_screenshot=True)` 框架截图留证(`[stop]` 日志行)+ round_fail——观察落地即停,决策/购买不见残缺牌面。**不能降级带病跑**(未识别卡按非 target 跳过 = 决策在残缺牌面上做 + 错过新内容建档窗口;用户 2026-08-24 裁决接受阻断代价)。决策侧 unknown 窗收窄(花钱禁发射、仅 CloseShop,`mandate_v1/shop.py`)保留为纵深第二线。
 处理流程：对 `[stop]` 截图跑 analyze_screen + 离线 SIFT 对拍（真实 rect 商店牌-1..5）确认真未知 → 新卡建档（screen_info/立绘库）→ 重启 server 重跑。
 
 ## 4. 召唤物/物品未识别停机（`obs/cw_identity_obs.py`）
@@ -48,4 +48,4 @@
 | 空部署计划 | 部署计划单一源 = `mandate_v1/deploy_plan.py::deploy_plan_moves`(选人 `select_deployments`),空计划不产动作 | 空计划 ✓ = 假成功形态(计划单一源空不提案为唯一防线;停顿监测归哨兵) |
 | 增量态构造 fail-closed | 金失读/tracked 空 → 回退全量 read_game_state | 空 tracked 真空/丢跟踪不可区分，不造值 |
 | 期望态对账不一致 | 落缺陷台账留证，**不纠漂不重执行** | 对账是观测不是决策；纠漂需先归因 |
-| 免费刷新 proc | `cw_free_refresh_proc.flag` 留证**不停机**（唯一的现役 flag,对账防线非停机钩子） | 免费不是失败 |
+| 免费刷新次数失配 | 观察锚定覆盖逻辑态(动作扣减/发放登记)失配 → 观察对账安灯(`cw_mismatch_policy` 三分流后真失配停机,同 §6 机制);免费刷新的事实可见性 = 该安灯 + 效果账本计数,零手写对账台账 | 次数 = 画面可观察的剩余次数(`gs.free_refresh_left` Field),观察赢自愈 |

@@ -111,14 +111,14 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 - 结算：CwScreenBattleWait 完成判据白名单（备战双锚单锚宽判定命中即 success 交回）；`saw_settlement` → `_battle_ts=None`；
 - **节点推进（外循环零写点）**：序号前进唯一动作入口 = kernel `report_node_advance`——战斗节点终结 = `CwOpSettleConfirm` 转移证据（完成判据白名单命中）后上报 settle_confirm；补给节点终结 = `CwActionPickSupplyOp` 确认（until = 下一节点备战锚）后上报 supply_confirm。观察锚定 = 画面 op 观察 node（`CwScreenPrep` 备战顶栏 / `CwScreenSupplyNode` 补给屏节点条 → kernel `observe_node_anchor`）。历史开局链分支写点已整体退役，外循环与观察漏斗均不写推进域（判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md)）；
 - 轮计数 `_settle.rounds_done`（SettlementState，结算链收编；max_rounds 停点消费）；
-- 节点真值：节点行探针（`cw_screen_buy_cards.py::probe_node_type`，商店访问尾段挂点——`cw_screen_prep.visit_open_shop` 在 CwOpCloseShop 后调用）写槽序表/台账。
+- 节点真值：节点行观察归备战观察域——备战入口 heavy 观察消费位（`cw_screen_prep.py::_write_prep_node_chain`，识别复用 `observe_full` 现役 `read_node_sequence` 调用）写槽序表/台账（[../screens/prep.md](../screens/prep.md) §3）。
 
 ## 5. 停机与遥测钩子
 
 | 钩子 | 内容 | 载体 |
 |---|---|---|
 | run 收口 | `after_operation_done` 全路径必达;`close_run` 零落盘,置跨局 run_id 重铸位;局终元数据归宿 = GameState 局终域 match_final 行 | `cw_loop.py::CwLoop.after_operation_done` |
-| op 调用流 | **全分支 dispatch 包装统一落**：`_dispatch_screen_op` 每次分发在出口落一行主日志 `[cw-op]` 行（`op=<名> plane=<位面> round=<轮次> dur=<秒>s outcome=<ok|fail|error>`，0n='商店访问'/1='备战'/3c='回大厅收口'…；只落出口行，dur = 单调钟差）+ 决策帧留证（frame_tag）；异常路径补落 outcome='error' 的行后上抛；仲裁触发商店访问为包装外唯一补行点（op='发射帧仲裁商店访问'，三载体口径见 session.md 载体表）；op_journal 流已随 2026-09-15 用户裁定退役，存量档案双键切片只读 | server 主日志（`.log/mcp_server.log` / `.debug/sr_od_mcp/main_server.log`）+ `decision_frames/` |
+| op 调用流 | **全分支 dispatch 包装统一落**：`_dispatch_screen_op` 每次分发在出口落一行主日志 `[cw-op]` 行（`op=<名> plane=<位面> round=<轮次> dur=<秒>s outcome=<ok|fail|error>`，0n='商店访问'/1='备战'/3c='回大厅收口'…；只落出口行，dur = 单调钟差）+ 决策帧留证（frame_tag）；异常路径补落 outcome='error' 的行后上抛；op_journal 流已随 2026-09-15 用户裁定退役，存量档案双键切片只读 | server 主日志（`.log/mcp_server.log` / `.debug/sr_od_mcp/main_server.log`）+ `decision_frames/` |
 | 局终正常收口（3c） | 假局守卫 + 假 win 守卫（plane==3 精确 ∧ 非死局）+ 局终域 match_final 行 + `close_run` + 对局存档装配 + match 清空 | `cw_loop.py::对局循环分支 3c（局终正常收口）` |
 | 跨局分配器 | ThompsonAllocator 进程级单例，plaza 份额先验；终局 update（臂 = comp→plaza_carry 归一；影子期只记后验） | `cw_loop.py::ThompsonAllocator 单例与终局 update` |
 | 关键点快照 `_snap` | 选人/事件屏 debug 截图 + 全量 OCR 日志（验证后去掉；非关键路径 best-effort） | `cw_loop.py::CwLoop._snap` |

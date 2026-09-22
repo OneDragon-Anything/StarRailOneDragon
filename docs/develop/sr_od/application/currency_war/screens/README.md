@@ -35,7 +35,7 @@
 
 - 画面 op 统一形态 = **两 node 直继承 SrOperation**:观察 node = 门 + 显式读屏 + `CwScreenXxxObs` + `report_screen_<snake>_obs` 落容器;决策动作 node = 重入裁决 + 决策 + 动作,`round_wait` 循环推进、无防御上限。判据合同 = [op-layer.md](op-layer.md) §1。
 - 分型判据:入决策规范 ⇔ **选择面 ∧ 逻辑态账**(商店/备战);空决策形态 ⇔ 已建档分发画面且两者皆缺——纯推进为流程义务:观察 + 推进处理 + 交回外循环(新 op 单尝试,重试预算归外循环);单选族例外:有选择面但零逻辑态账(选卡/确认即终结,visit 内无后续决策消费逻辑态)。
-- 五型 = 全形态 / 节点循环(overlay 单动作循环)/ 推进型空决策(无 report)/ 驻留状态机豁免(battle_wait,用户裁定)/ 重型屏(漏斗+波循环);逐屏分类与 report 有无总表 = [op-layer.md](op-layer.md) §3。
+- 五型 = 全形态 / 节点循环(overlay 单动作循环)/ 推进型空决策(无 report)/ 驻留状态机豁免(battle_wait,用户裁定)/ 重型屏(漏斗 + 无帽决策循环);逐屏分类与 report 有无总表 = [op-layer.md](op-layer.md) §3。
 
 ## 4. 动作词表与执行载体
 
@@ -44,8 +44,8 @@
 | 动作族 | 词表(`kernel/cw_vocab.py`) | 执行载体 | 终结性 |
 |---|---|---|---|
 | BuyCard(买牌) | `CwActionBuyCardParam` | `operations/cw_op/cw_buy_card_action.py::CwActionBuyCardOp` | 非终结 |
-| RefreshShop(刷新) | `CwActionRefreshShopParam` | `cw_refresh_shop_action.py::CwActionRefreshShopOp` | **段终结**(§6) |
-| CloseShop(关商店) | `CwActionCloseShopParam` | `cw_close_shop_action.py::CwActionCloseShopOp`(关店点击由编排壳 `cw_op_close_shop.py::CwOpCloseShop` 承担) | **访问终结**(§6) |
+| RefreshShop(刷新) | `CwActionRefreshShopParam` | `cw_refresh_shop_action.py::CwActionRefreshShopOp` | **访问终结**(§6) |
+| CloseShop(关商店) | `CwActionCloseShopParam` | `cw_close_shop_action.py::CwActionCloseShopOp`(执行位 = 真机械点击「收起」+ 幂等已关出口 + 清场上报) | **访问终结**(§6) |
 | SellBench(卖备战) | `CwActionSellBenchParam` | `cw_prep_sell_bench_action.py::CwActionSellBenchOp`(词表摊平后商店/备战共用单一注册行;原商店域文件 `cw_sell_bench_action.py` 已退役删除) | 非终结 |
 | LevelUp(买经验) | `CwActionLevelUpParam`(`CwActionLevelUpShopParam` 同字段双类型,显式独立行同备战 op,单击) | 注册行 = `cw_prep_level_up_action.py::CwActionLevelUpOp`;原商店域 `cw_level_up_action.py` 已退役删除 | 非终结 |
 | SellDeployed(卖上阵) | `CwActionSellDeployedParam` | `cw_sell_deployed_action.py::CwActionSellDeployedOp`(换血判定单一源 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`) | 非终结 |
@@ -88,7 +88,7 @@
 | 卖备战(拖备战栏→区域-出售区) | 卖出退金(`research/economy.md` §3;单一源 `kernel/cw_economy.py::sell_refund`) | `CwActionSellBenchOp`(注册行)+ `prep_actions.py::drag_bench_to_sell` | 备战期:腾位(M4)/凑息/筹资/换线塌缩(22 号篇) | 非终结 |
 | 卖上阵(拖上阵位→出售区) | 同上 | `CwActionSellDeployedOp`(换血判定单一源 = `swap_sell_exclusion_reason`) | 备战期/部署期换血(24 号篇) | 非终结 |
 | 买经验(点「备战标识-购买经验」) | 4 金/击=+4 经验,升级=过门槛表(`research/xp-rules.md` §2;表值 = `kernel/cw_economy.py::XP_TO_NEXT_LEVEL`) | `CwActionLevelUpOp` 备战连点 | 备战期(22 号篇;商店期收缩后的唯一买经验期) | 非终结 |
-| 开商店(点「按钮-商店」) | 商店每节点自动刷新 1 次(`data/gameplay.md`) | `OpenShop`;编排 = `cw_screen_prep.py` 商店访问段(文档 = [shop.md](shop.md)) | 备战期(进商店访问的唯一入口动作) | **备战环终结**:执行 = 商店访问编排(open_shop → 入口观察 → 单动作循环 → 收店 → 节点探针),完成后交回外循环重识别 |
+| 开商店(点「按钮-商店」) | 商店每节点自动刷新 1 次(`data/gameplay.md`) | `OpenShop`;编排 = `cw_screen_prep.py` 商店访问段(文档 = [shop.md](shop.md)) | 备战期(进商店访问的唯一入口动作) | **备战环终结**:执行 = 商店访问编排(open_shop → 商店画面 op 两 node 访问 → 收店),完成后交回外循环重识别 |
 | 出战(点「按钮-出战」) | 未在行动值内取胜扣血(`data/gameplay.md`) | `CwActionStartBattleOp`;发射意图 = mandate_v1 前置发射位(判据 = `kernel/cw_launch_admission.py::readiness_launch_decision`);执行 = 统一执行器 `operations/cw_loop.py::launch_battle_unified` | 备战期出口(唯一完成态) | **备战访问终结**:交回外循环战斗分支 |
 | 点晶矿(区域-奖励) | 晶矿飞行动画 ≤2s(`research/screen_flow_timing.md` #16) | `CollectOre`(批式:一次全点→等 2s→统一验证;席满让路门 = `strategies/impl/mandate_v1/entry.py` 席满探针段) | 备战期 | 非终结 |
 | 开补给箱(点备战栏箱位) | 开箱即腾席(武装箱 overlay) | `OpenBox`(点「开启」即交回;选卡弹窗由画面 op `CwScreenBoxPick` 闭环,非动作) | 备战期(实体面优先,`entry.py::emit` ①) | **访问终结** |
@@ -100,7 +100,7 @@
 
 部署不是独立 screen_info 画面:部署 = 备战决策环动作(`CwActionDeployMoveParam` 原子序经 `CwActionDeployMoveOp` 在备战画面上拖拽;部署机画面 op 已退役,路径速查 = [deploy.md](deploy.md));`currency_war_deploy_not_full.yml`(未达上限警告,阶段一身份分发)为部署被拒确认弹窗。商店开画面建档 = `currency_war_battle_prep_shop_open.yml`;文档 = [shop.md](shop.md)。
 
-商店开画面能力面:买牌(`CwActionBuyCardOp`)/刷新(`CwActionRefreshShopOp`,段终结)/买经验(能力面可用、策略面收缩)/卖备战(同前)/关商店(`CwActionCloseShopOp` + CwOpCloseShop,访问终结)/牌详情弹窗(阶段一身份分发,点 X 绝不点购买)/刷新概率表(阶段一身份分发;概率条直读进 `refresh_probs` 为观察非动作)/锁商店(未建模)。策略面 = 商店期默认动作面仅 买/刷/关(判例 §7;23 号篇)。
+商店开画面能力面:买牌(`CwActionBuyCardOp`)/刷新(`CwActionRefreshShopOp`,访问终结)/买经验(能力面登记;商店域执行链**未接线**——词表/上报在役,商店 `ShopExecEnv` 无执行器端口,策略面收缩至备战期)/卖备战(同前,商店域**未接线**)/关商店(`CwActionCloseShopOp` 执行位真点击,访问终结)/牌详情弹窗(阶段一身份分发,点 X 绝不点购买)/刷新概率表(阶段一身份分发;概率条直读进 `refresh_probs` 为观察非动作)/锁商店(未建模)。策略面 = 商店期默认动作面仅 买/刷/关(判例 §7;23 号篇)。
 
 ### 5.5 事件单选族(overlay)
 
@@ -127,8 +127,8 @@
 
 | 终结动作/条件 | 终结级别 | 语义 |
 |---|---|---|
-| 商店 RefreshShop | **段终结** | 刷新是唯一引入新事实的动作(新牌面),执行即本段 break;下一段入口观察重建期望态。无 visit 级硬墙(无限刷新环 = 策略 bug,框架不兜底);现实出口 = spend_gate 政策闸拒/未观察跳过熔断(`shop.md` §5) |
-| 商店 CloseShop | **访问终结** | 恒可用终结 op(全函数「无动作可做」的表达);关店点击由编排壳 CwOpCloseShop 执行,节点探针收尾后交回外循环 |
+| 商店 RefreshShop | **访问终结** | 刷新是唯一引入新事实的动作(新牌面),执行即本访问结束交回外循环;重进 = 0n 重分发 + 入口观察重建期望态。无 visit 级硬墙(无限刷新环 = 策略 bug,框架不兜底);现实出口 = 未观察跳过熔断(`shop.md` §5) |
+| 商店 CloseShop | **访问终结** | 恒可用终结 op(全函数「无动作可做」的表达);执行位 = 动作 op `CwActionCloseShopOp` 真机械点击(幂等已关出口),交回外循环 |
 | 商店全 unknown 失读窗 | **入口观察停机** | 牌面含 unknown 槽(读链终判)→ 入口观察处 `stop_running` 框架截图留证,决策/购买不见残缺牌面;决策侧仅 CloseShop 收工为纵深第二线(`shop.md` §5,guards.md §3) |
 | 备战 StartBattle | **访问终结(唯一完成态)** | 出战 → 外循环置战斗窗口(备战→战斗→结算→回备战轮推进,`outer_loop.md` §4) |
 | 备战 OpenShop | 备战环终结 | 交商店访问编排(显式开店)或回外循环重识别(读数开店) |

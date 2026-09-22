@@ -50,7 +50,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_action_report/buy_card.py::report_action_buy_card_param`(简单落位与升星腿内聚)/ `kernel/cw_game_state.py::detect_merge_upgrade`;`kernel/cw_merge_simulate.py::merge_buy_k` / `merge_buy_completes` / `_merge_bench` / `_apply_full_bench_merge_buy` / `same_star_count`;`kernel/cw_economy.py::card_cost`;`kernel/cw_exec_state.py::bench_place`;落地门 = `operations/cw_screen/cw_screen_buy_cards.py::apply_action_outcome`(计数与显影保留面)。
+`kernel/cw_action_report/buy_card.py::report_action_buy_card_param`(简单落位与升星腿内聚;获取计算完时点触发 `gs.effects.on_buy` 购买回调)/ `kernel/cw_game_state.py::detect_merge_upgrade`;`kernel/cw_merge_simulate.py::merge_buy_k` / `merge_buy_completes` / `_merge_bench` / `_apply_full_bench_merge_buy` / `same_star_count`;`kernel/cw_economy.py::card_cost`;`kernel/cw_exec_state.py::bench_place`;落地门 = `operations/cw_screen/cw_screen_shop.py::apply_action_outcome`(计数与显影保留面;BUY 计数已迁上报函数 on_buy 回调单点)。
 
 ## 7. 语义验证(M1 直锁)
 

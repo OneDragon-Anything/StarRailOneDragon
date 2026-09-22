@@ -88,7 +88,7 @@ level_readable / gold_readable / board_readable / bench_readable)一律
 | level_up_cost | 不写;升级花费载体 = 动作 cost(策略侧 xp_click_cost 真值优先),sim 容器无真值 → 恒落兜底常量 | 花费敏感结论失真申报在案(sim-design §4.1) |
 | selected_difficulty | 不写(恒未读) | 阈值回退口径 |
 | enemy_affixes / plane_bosses / enemy_difficulty / game_mode | 不写(简报层未建) | 难度/boss 敏感面零变化(sim-design §2.3 #9) |
-| 商店刷新计数组(free_refresh_balance/paid_refresh_count/total_refresh_count/prev_node_spent) | 不写(注入局免费刷额度在引擎本地按持卡重算) | 长线利好/二手市场计数类决策消费在 sim 走缺省 |
+| 商店免费刷新余量与计数(free_refresh_left / refresh_paid / refresh_total / prev_node_spent) | free_refresh_left 经两发放桥与刷新上报函数同写端(sim 容器即模拟 gs;刷价读 Field,免费额度先行);paid/total 两计数留效果账本;prev_node_spent 不写 | 长线利好/二手市场计数类决策消费在 sim 走缺省 |
 | 节点屏刷新计数组(encounter/supply/env/strategy_refresh_used) | 不写 | 遭遇/补给刷新策略域 sim 不可测 |
 
 ## 羁绊口径分层(board 统计语义单一源声明)

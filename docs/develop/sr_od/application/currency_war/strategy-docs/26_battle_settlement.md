@@ -5,7 +5,7 @@
 
 ## 1. 策略思路/算法概述
 
-- **出战标准**(战斗期入口,判据落在备战期末):发射决策 = mandate_v1 前置发射位(2026-09-16 迁移;判定核 = `kernel/cw_launch_admission.py::readiness_launch_decision` 配方完备门槛 + 板面承重质量维;质量推迟帧不发射分键显影);溢出段 → 受限商店访问**意图**(`OpenShop(restricted_spend=True)`,预算闸拒因 = 花后金位跌破息线),执行 = 备战访问 op 内仲裁单元(`operations/cw_loop.py::_launch_frame_arbitration`,第三载体 `[cw-op]` 行口径不变);发射执行 = 统一执行器 `operations/cw_loop.py::launch_battle_unified`(屏态复验→浮层安全检查→部署原子序→出战点击链)。
+- **出战标准**(战斗期入口,判据落在备战期末):发射决策 = mandate_v1 前置发射位(判定核 = `kernel/cw_launch_admission.py::readiness_launch_decision` 配方完备门槛 + 板面承重质量维;质量推迟帧不发射分键显影);溢出段 → 商店访问意图(`CwActionOpenShopParam` 普通开店形态)——访问内消费由**策略侧自限**(`flow.py::decide_shop_action` 读受限会话派生标记 `bridge.launch_restricted_session_active`(armed ∧ 金达息线)经 kernel 谓词 `cw_launch_arbitrage.launch_arbitration_gate` 检,拒 = 改发 CloseShop 收访问;段旗每武装段至多一次受限访问);发射执行 = 统一执行器 `operations/cw_loop.py::launch_battle_unified`(屏态复验→浮层安全检查→部署原子序→出战点击链)。
 - **战斗**:自动进行(auto-battler,`docs/game/currency_war/data/gameplay.md`),bot 无决策动作——等待 + 结算探针(`operations/cw_screen/cw_screen_battle_wait.py` 三段式)。
 - **结算读数供数**:结算屏三项(收入明细/连胜/利息)数值单一源 = `kernel/cw_economy.py` 注册表(机制与凭据 = `docs/game/currency_war/research/economy.md` §10/§11,本篇不复制);hp 真值链 = 结算读点经新鲜度门(`strategies/impl/cw_strategy.py::gated_hp`)覆盖现读;掉血结构 = P15(消费授权见 04 §7 表 #2)。
 - **连败/血线响应**:非独立战斗期决策——全部折算进备战/商店判据(血预算停追级线 = [22_prep_screen.md](22_prep_screen.md) §1;危机刷新不变式 P36-a = [23_shop_screen.md](23_shop_screen.md) §1;升档器血线硬地板 = 00 号篇 §4)。败局收入补发口径 = economy.md §11(玩家裁定),供数不进策略判据本体。

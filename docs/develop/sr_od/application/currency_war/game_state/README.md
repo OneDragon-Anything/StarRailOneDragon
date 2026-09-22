@@ -110,7 +110,7 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | 派生域(derivation) | top_bar_raw(观察层)/ node_ord(逻辑层)/ prev_screen / current_screen / node_hist_ord(哨兵) | ①观察+③派生(见 node-domain.md §2-§3) |
 | 单位域(units) | front_row / back_row / bench(BenchView)/ back_layout / deploy_cap | ①观察+②动作+③效果桥 |
 | 经济域(economy) | gold / hp / level / xp / streak / level_up_cost / shop_refresh_cost | ①观察+②动作 |
-| 商店刷新计数域(refresh_counters) | 三计数已迁出容器住效果账本(2026-09-18,写端=刷新上报函数);prev_node_spent 保留容器(economy 面) | ②动作+③效果桥 |
+| 商店刷新计数域(refresh_counters) | 免费刷新剩余次数 = 容器字段 free_refresh_left(Field,剩余语义,三写端同格);付费/全量两计数住效果账本(写端=刷新上报函数);prev_node_spent 保留容器(economy 面) | ①观察+②动作+③效果桥 |
 | 节点屏刷新计数域(node_screen_refresh) | env_refresh_left / strategy_refresh_left(逐卡,键 = 注册表规范卡名)/ encounter_refresh_left / supply_refresh_left(四字段均剩余语义:屏显「剩余次数」观察真值;旧 `*_refresh_used` 已用计数字段已退役,考古走 git) | ①观察(各屏观察 report 摄入,读缺跳写、None = 未观察 = 拒绝;encounter 写端 = `report_screen_encounter_obs`)+ sim 写端(仅 supply_refresh_left;遭遇/投资两屏无 sim 刷新执行面;逐字段规格 = fields.md §3.4.1–§3.4.4) |
 | 持久账本域(inventory) | equips / consumables(免战牌载体归一入效果账本,不在本域) | ①观察+②动作 |
 | 晶矿域(spheres) | spheres | ①观察 |

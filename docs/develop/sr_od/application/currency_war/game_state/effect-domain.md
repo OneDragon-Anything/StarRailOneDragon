@@ -203,7 +203,7 @@ W4 键级三分(游戏效果键→效果域/策略行为键→决策行/无消�
 | 事件类 | 事件源(实码挂点) | 辖触发面 | 计数语义 |
 |---|---|---|---|
 | 节点推进 | 推进生效原语 `advance_node_effective` 尾段 `tick_effect_boundary`(kernel/cw_game_state.py;推进输入两路径同源同尾段 = ①节点边界终结动作上报 `report_node_advance`(trigger 封闭集 {settle_confirm, supply_confirm},观察态门)②观察锚定补推 `observe_node_anchor` 的 R>v/首锚定分支);同节点去重守卫在 inventory 内(kernel/cw_effect_inventory.py advance_node) | PLANE_START / NODE_ENTER / CONDITIONAL-N_NODES 型 | 节点类 counter +1,每节点恰一次(推进有效位为闸门) |
-| 动作执行落地 | 刷新 = 上报函数统一触发(`report_action_refresh_shop_param` → `record_refresh`,kernel/cw_action_report/refresh_shop.py;含刷新三计数入账 + `bump_key(CounterKey.REFRESH)`,2026-09-18 迁入裁决)/ 购买 `bump_key(CounterKey.BUY)`(cw_screen_buy_cards.py 落地门);均未落地不计数 | ON_REFRESH;BUY 计数键(返利系门槛的驱动源) | 动作类 counter +1 |
+| 动作执行落地 | 刷新 = 上报函数统一触发(`report_action_refresh_shop_param` → `record_refresh`,kernel/cw_action_report/refresh_shop.py;含刷新两计数入账 + `bump_key(CounterKey.REFRESH)`)/ 购买 = 买牌上报函数内获取计算完时点回调 `gs.effects.on_buy`(kernel/cw_action_report/buy_card.py;bump CounterKey.BUY + 购买族效果分派,满栏一击多买按实际张数 k 计 k 次,live/sim 同源);均未落地不计数 | ON_REFRESH;BUY 计数键(返利系门槛的驱动源) | 动作类 counter +1 |
 | 跳过消耗 | `consume_use`(prep_actions.py:1512,跳过执行成功回执) | 次数类余量(免战牌) | uses 计数 +1(目标模型)/ 递减镜像(现表示法,§4) |
 | 升级标记 | `on_level_up`(prep_actions.py:1350) | LEVEL_UP | 事件标记(`_EVENT_LEVEL_UP`,下划线前缀与策略计数器键空间隔离,:124) |
 | 选卡落地 | `register_strategy`(operations/cw_screen/cw_screen_invest_strategy.py:440;免战牌同点自动登记 :416-440)+ burst 桥 `apply_effect_burst_grant`(:448)+ 板面重写桥 `apply_board_rewrite`(同点紧随) | INSTANT | 登记入清单 + 一次性发放 |

@@ -35,7 +35,7 @@
 │   字段）已删（考古走 git 历史）;pick 族 13 接口与冷建/结算   │
 │   收编仍由 flow.py 中间 ABC 承载│
 ├─ 动作执行（kernel/cw_vocab.py 词表 + prep_actions.py 执行器│
-│ + cw_screen_buy_cards.py 循环壳 + cw_action_registry.py 单一注册表  │
+│ + cw_screen_shop.py 商店画面 op 两 node + cw_action_registry.py 单一注册表  │
 │ + kernel/cw_action_report/ 上报函数族（每动作一个具名上报接口）│
 │  (cw_<action>_action.py 一 op 一文件,CwActionXxxOp(SrOperation);│
 │  守卫 cw_shop_action_ops.py)）──────┤
@@ -47,6 +47,8 @@
 ```
 
 分层判据：**外层循环管"现在是哪个画面、交给谁"；画面指挥管"一次访问内观察→决策→执行的编排"；策略步进管"给一帧期望态提什么动作"（骨架 + 委托 mandate_v1 判据,单动作选择序）；动作执行管"一个动作怎么落地（机械发出、零判效;落地判定归观察侧对账,见 [../screens/op-layer.md](../screens/op-layer.md) §1）"**。节点推进喂入 = **动作上报 + 画面 op 锚定**：战斗/补给节点终结动作 op 上报（kernel `report_node_advance`，trigger 封闭集 {settle_confirm, supply_confirm}）+ 画面 op 观察锚定（`CwScreenPrep` 备战顶栏 / `CwScreenSupplyNode` 节点条 → kernel `observe_node_anchor`）；观察漏斗与外循环分支写点不写推进域（判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md)）。策略判据（买/卖/升/刷的数学）一律不在本目录，见 `../strategy-docs/11_shop_decisions.md` 等篇。
+
+**用户裁定（2026-09-21,决策控制分层铁律）**：凡用于**控制决策行为**的闸门与判断——政策闸、发射闸、花金/消费限制、动作值域过滤——必须在**策略侧**实现（策略器决策时自限,会话状态存 StrategyState）；**流程侧（外循环 / 画面 op / 动作执行）禁止任何形式的决策闸门与政策判断**。流程侧的合法判断面仅限：画面识别与路由（外循环本职）、防 bug 守卫断言（非控制流）、失败治理与停机（失败出口非决策控制）。决策的值域与节拍永远由策略器在决策时决定——流程侧出现「需要判断该不该放某个动作过」= 分层错误,修法 = 迁策略侧（单一源 = 本条;各篇 op/action 文档引用以指针为准）。
 
 ## 2. 策略↔流程契约(吸收原 strategy-docs/09_architecture.md;意向层重塑拆分)
 
@@ -75,7 +77,7 @@
 | 接口 | 输入 | 返回 | 语义 |
 |---|---|---|---|
 | decide_prep_screen(session, config) | 容器 game state 直读(game_state_of;迭代 2026-09-18-prep-obs-retirement 阶段 3.5 黑板退役,「观察先于决策」由画面 op 编排保证) | **恰一个动作**(CwAction),None 退役;重观察动作 = CwActionObsParam 两口径——scope='in_place' 环内重观察(宿主重观察上报后原地续决策)/ scope='outer_loop' 交回外循环重观察(承载原 HoldFrame 空发射语义,用户裁定 2026-09-20 HoldFrame 收编删除) | 空发射是合法通道;策略器异常/非法形状由消费端守卫拒绝(cw_screen_prep 决策循环 try/except:异常→本轮 fail 交外循环 retry 链;非 CwAction 返回→具名 fail 留证) |
-| `decide_shop_action(session, config)` [本批升格入 ABC] | `session.shop_state_frame`(期望态;写者 = 入口观察段/单动作逻辑态直写步/sim 引擎) | **恰一个动作**,「无动作可做」= `CloseShop` 恒可用终结;生产执行侧单动作循环逐帧调用(`run_buy_waves`),契约核验挂本入口 | 决策本体 = `mandate_v1/shop.py`;观察帧缺失即抛错 |
+| `decide_shop_action(session, config)` [本批升格入 ABC] | **终态零参口**:决策输入 = 容器单例 `game_state_of(session)`(self.gs;写者 = 入口观察漏斗/动作自上报/sim 引擎)——形参仅为 ABC 形状保留,决策本体零消费 | **恰一个动作**,「无动作可做」= `CloseShop` 恒可用终结;生产执行侧 = 商店画面 op `CwScreenShop` 决策动作 node 单动作循环逐帧调用,契约核验挂本入口 | 决策本体 = `mandate_v1/shop.py`;容器 shop payload 离屏 = 观察层失约抛错 |
 | `decide_invest_env`/`decide_invest_strategy`/`decide_supply`/`decide_encounter`/`decide_megastar`/`decide_partner`/`decide_planner`/`decide_star_tome`/`decide_wish_trial`/`decide_box_card`/`decide_fortune`/`decide_expert_invite`/`decide_equip_pick`(pick 族 13) | 容器槽零参读(候选自各 `*_opts` 槽/payload 槽,写端 = 各画面 op 观察上报;离屏 None = 观察层失约抛错) | 恰一个动作:选卡 `CwActionPickXxxParam` ∨ 刷新建议动作(遭遇/补给/投资两屏),互斥单发 | 选项决策;动作编排归画面 op,不进序列契约辖内。决策规格 = `../strategy-docs/13_pick_family.md` |
 
 **非契约成员(实现层,不在 ABC 面)**:
@@ -130,7 +132,7 @@
 | 守卫 | 触发 | 动作 | 载体 |
 |---|---|---|---|
 | 未知画面兜底 | 连续 15 轮全分支不命中（每轮 1s 重试） | round_fail 交框架失败 | `cw_loop.py::CwLoop._handle_unknown_fallback` |
-| 商店未识别卡停机 | 入口观察回执含 unknown 槽（读链终判） | stop_running 框架截图留证 + round_fail | `cw_screen_buy_cards.py::CwScreenBuyCards.observe`（`_shop_entry_read` 入口段） |
+| 商店未识别卡停机 | 入口观察回执含 unknown 槽（读链终判） | stop_running 框架截图留证 + round_fail | `cw_screen_shop.py::CwScreenShop.observe`（`_shop_entry_read` 入口段） |
 | 外环连续 fail 重派网 | 同一分发 op 连续 fail 5（ok 清零） | round_fail 显式停交上层 | `cw_loop.py::CwLoop.OP_FAIL_REDISPATCH_LIMIT`（`_dispatch_screen_op`） |
 
 ## 5. 入口链（enter/start）与弹窗守卫族

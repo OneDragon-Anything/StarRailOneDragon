@@ -594,7 +594,7 @@ active_env 核对源。开局写端见 §3.4.3(多屏写入,本条=备战屏侧�
 - **消费端**:策略商店门(`flow.decide_shop_action`,判定单一源 = 本模块
   `tracked_unobserved`)——未观察 → 返回恒可用终结 `CloseShop` 交回外循环,
   备战环 heavy 观察锚定后再进店;执行侧跳过留痕/连续跳过熔断
-  (`cw_screen_buy_cards`,分键 `shop_skipped_unobserved`/`..._stop`)。
+  (`cw_screen_shop`,分键 `shop_skipped_unobserved`/`..._stop`)。
 - **配套裁定(同批)**:tracked 主账宿主 = `GameState.tracked_books`(容器非 Field
   簿记组,`TrackedBooks`;形状契约 = `bench` = `list[BenchSlot | None]` 定长 9
   (元素 = 容器同款 BenchSlot 五分类,占位件 kind 随形保留;None = 洞,卖出/上阵/
@@ -689,17 +689,10 @@ effective_refresh_prob:键在且 >0 直用、≤0/缺键退基线表——**契�
   step 金 +1 次、至多 cap(50/10/3);已结构化入注册表(STRATEGY_EFFECTS 两条
   EffectSpec),经节点桥 `grant_effect_node_refresh_balance` 按金现值评估自动生效。
 
-#### 3.3.6-3.3.8 刷新三计数(已迁出容器)
+#### 3.3.6-3.3.8 刷新计数与免费余额载体
 
-`free_refresh_balance`/`paid_refresh_count`/`total_refresh_count` 已随 2026-09-18
-用户裁决迁出容器,住**效果账本** `ActiveEffectInventory`
-(`free_refresh_balance`/`refresh_paid`/`refresh_total`,统一计算)。写端 = 刷新
-上报函数 `report_action_refresh_shop_param` 单口(生产 = 刷新 op 自上报,sink 吸收
-路径 = 接收侧补触发);效果发放端 = 桥 `apply_effect_burst_grant`/
-`grant_effect_node_refresh_balance` → `grant_free_refreshes` 统一出口。消费方 =
-选卡评估(`cw_env_economy` 通道5,全量/付费阈值)+ 免费闸 + 按策略触发面
-(`CounterKey.REFRESH`,采购专员族)。免费判定输入 = 刷前按钮态 UI 真值优先,
-失读回退账本余额>0(保守形态同迁移前)。域版本面退役,考古走 git。
+免费刷新剩余次数 = 容器字段 `free_refresh_left`（Field，剩余语义，「观察锚定 + 动作扣减 + 发放登记」三写端同格）：观察锚定 = 入口观察漏斗 shop-open 段刷新钮三态（免费态锚次数/付费域锚 0/判不出跳写）；动作扣减 = 刷新上报函数 `report_action_refresh_shop_param`（None = 未观察保守按付费，不扣 Field）；发放登记 = 桥 `apply_effect_burst_grant`/`grant_effect_node_refresh_balance`（None 基 = 0 起算，开局无免费次数 = 机制真值）。失配对账 = Field 既有失配安灯（observe 覆盖 logic 失配停机，零手写台账）。
+付费/全量两计数住**效果账本** `ActiveEffectInventory`（`refresh_paid`/`refresh_total`）。写端 = 刷新上报函数 `report_action_refresh_shop_param` 单口（生产 = 刷新 op 自上报）。消费方 = 选卡评估（`cw_env_economy` 通道5，全量/付费阈值）+ 按策略触发面（`CounterKey.REFRESH`，采购专员族）。原效果账本 `free_refresh_balance` 字段与 `grant_free_refreshes` 出口已随 Field 化退役，考古走 git。
 
 #### 3.3.9 条件性免费发放与每节点自动刷新
 
@@ -983,22 +976,21 @@ sim-记录分叉,修正随 sim 建模批)。布局修饰未建模:玩家裁定�
 
 #### RefreshShop 刷新
 
-**基础行为**:商店牌行全换(新事实,由下一段入口观察重建)· 金币 −刷新费。
-**机械发出,判效权归观察侧 reconcile**(刷新 = 终结 op,执行即本段结束;
-执行侧零「是否生效」判定、零重试)。牌名集前后对比仅作留证遥测与安灯豁免
-判定输入(refresh_board_changed 三值;任一侧空 = 不可判不猜);免费刷新
-proc 留证(牌面已变 ∧ 金未扣 → 截图+flag,不停机)与刷新期望对账(零决策
-记账)在执行实现层照常。不存「刷新后牌名集」字段(shop 域由下一入口观察
-覆盖,快照属 op 局部变量——准入③)。
+**基础行为**:商店牌行全换(新事实,由下一访问入口观察重建)· 金币 −刷新费。
+**机械发出,判效权归观察侧对账**(刷新 = 终结 op,执行即本访问结束交回外循环;
+执行侧零「是否生效」判定、零读屏、零重试)。牌面随机态 = 上报函数经 kernel
+发牌采样器采样后走 `write_logic_rand` 通道写(observe 覆盖差异 = 预期内,
+落 `logic_rand_outcome` 台账不进失配安灯;真值 = 下一入口观察,观察赢)。
 **边界**:免费来源按 §3.3.5–§3.3.9 分族口径引用;免费帧刷费不写。**修饰**:按刷产
-经验——淘金客 xp_per_refresh=2(经验等级 logic 写端)。
-**刷新执行事实组行为口径**(2026-09-18 迁入裁决):计数 = 效果账本统一计算
+经验——淘金客 xp_per_refresh=2(效果声明在册,刷新侧经验 logic 写腿未接线,
+零写端,经验真值归观察)。
+**刷新执行事实组行为口径**(计数 = 效果账本统一计算
 (`ActiveEffectInventory.record_refresh`;写端 = 刷新上报函数
-`report_action_refresh_shop_param` 单口,生产 = 刷新 op 自上报,sink 吸收路径 =
-接收侧补触发)——refresh_total 恒 +1;**免费帧闸 = 不进 refresh_paid**(付费域
-纯净性;免费判定输入 = 显式 free 真值优先,回退账本余额>0),免费帧同时消耗余额
-(下限 0)。刷价字段不写(写端=现场 OCR 唯一,§3.3.4)。**每节点自动刷新不进
-计数组**(§3.3.9 单列基础行为事实)。
+`report_action_refresh_shop_param` 单口,生产 = 刷新 op 自上报)——refresh_total
+恒 +1;**免费帧闸 = 不进 refresh_paid**(付费域纯净性;免费判定输入 = 显式 free
+真值优先,回退 Field 值 `free_refresh_left.value > 0`,None = 未观察保守按付费
+不扣 Field),免费帧同时经 Field 免费腿扣减(下限 0)。刷价字段不写(写端=现场
+OCR 唯一,§3.3.4)。**每节点自动刷新不进计数组**(§3.3.9 单列基础行为事实)。
 
 #### RunEquip 装备
 

@@ -13,9 +13,8 @@
 **用户裁定(增补 3,2026-09-21)**:**动作 op 无论执行前还是执行后,都不做观察识别——这是规范,不是取舍。** 动作 op 的全部职责 = 定位点击/拖拽 + 固定等待 + 上报动作事实。禁止:执行前读屏留证(裁片/快照)、执行后读屏验证或落账(牌名/真值/转移证据)、以及一切以「读取画面状态」为目的的截图与识别。唯一允许的查找 = 点击/拖拽**目标定位**所需的元素查找(找钮/找卡/找槽——瞄准,不是观察)。画面状态的读取一律归观察域(画面 op 观察 node / 观察漏斗);动作只经上报函数声明事实,真值归下一帧观察。
 
 增补 3 的现役违例 = 欠账(逐批清除,禁新增):
-- `cw_buy_card_action.py` 买前裁片(执行前证据读)= 欠账;
-- `cw_refresh_shop_action.py` 刷前两口径/刷新钮真值/刷后牌名三处读(对账读)= 欠账;
 - `cw_start_battle_action.py` 出战后单帧弹窗识别(执行后转移面识别)= 欠账,清法候批。
+- (商店域两笔前欠——`cw_buy_card_action.py` 买前裁片、`cw_refresh_shop_action.py` 刷前两口径/刷新钮真值/刷后牌名三处读——已清偿,现役商店动作 op 全链零读屏。)
 
 禁止的写法(现有代码里还存在的 = 欠账,逐批改掉;禁新增):
 
@@ -71,9 +70,9 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 
 | 词表类 | op 类 | 文件 | 说明 |
 |---|---|---|---|
-| BuyCard | CwActionBuyCardOp | `cw_buy_card_action.py` | 点买一张牌:槽号按期望态 payload 定长槽阵列解析(身份同一性优先,退化按 (name, star))→ screen_info「商店牌-N」中心点击;买前裁片纯留证 = **欠账(§1 增补 3 执行前证据读,清除随商店迭代)**;恒发出即记账(total_buy / spend_executed / bought_names + tracked 同步,满栏多买补差 k = `merge_buy_k`);落地与否归观察侧对账(§2.1)。参数 = `action.card`(ShopCard)。发射条件 = 商店决策面产 BuyCard(义务/策略买入)。 |
-| RefreshShop | CwActionRefreshShopOp | `cw_refresh_shop_action.py` | 刷新商店(终结动作):刷前落对账件(刷前金/牌名/待对账标记/期望,零比对)+ 刷新钮真值读(三态+免费剩余次数,best-effort)→ 点刷新钮 → 固定等待 1s(`REFRESH_CLICK_SETTLE_WAIT_S`;保留理由:等刷新动画收敛的时序等待,非判效)→ 刷价记账(实付恒基价口径)+ 刷后牌名集原样落账(只读不比,三值对比单一源在观察侧 `cw_shop_refresh_obs.refresh_board_changed_of`);「刷新是否生效」归观察侧对账,执行侧零重试。**[§1 增补 3 欠账:刷前现读/真值读/刷后落账清除随商店迭代,次数改 Field 观察锚定]**。发射条件 = 商店决策产 RefreshShop(现役发射位 = 息线门 R1)。 |
-| CloseShop | CwActionCloseShopOp | `cw_close_shop_action.py` | 关店恒可用终结 op:动作 op 内 no-op,关店点击由编排壳 `cw_op_close_shop.py::CwOpCloseShop` 承担。发射条件 = 商店决策无动作可做时主动选它终结本画面访问(全函数契约要求的恒可用终结)。 |
+| BuyCard | CwActionBuyCardOp | `cw_buy_card_action.py` | 点买一张牌:槽号按期望态 payload 定长槽阵列解析(身份同一性优先,退化按 (name, star))→ screen_info「商店牌-N」中心点击(点位缺失/槽号越界 = 显式 round_fail,禁兜底坐标静默点击);恒发出即记账(total_buy / spend_executed / bought_names + tracked 同步,满栏多买补差 k = `merge_buy_k`);落地与否归观察侧对账(§2.1)。参数 = `action.card`(ShopCard)。发射条件 = 商店决策面产 BuyCard(义务/策略买入)。 |
+| RefreshShop | CwActionRefreshShopOp | `cw_refresh_shop_action.py` | 刷新商店(终结动作,真交回外循环重进 = 入口观察重建牌面):点刷新钮 → 固定等待 1s(`REFRESH_CLICK_SETTLE_WAIT_S`;等待不是判效)→ 刷价记账(容器刷价现值读口,失读回基价常量)→ 自上报 `report_action_refresh_shop_param` 单口三腿(计数触发 `record_refresh` paid/total;免费腿 = `gs.free_refresh_left` Field 值判定与扣减,None = 未观察保守按付费——次数是记账面非决策闸;随机态腿 = kernel 采样器 `cw_shop_deal.sample_shop_deal` 经 `write_logic_rand` 写牌面随机态,observe 覆盖差异 = 预期内不进失配安灯)。体内零读屏零验证(§1 增补 3 合规);「刷新是否生效」归观察侧对账,执行侧零重试。发射条件 = 商店决策产 RefreshShop(现役发射位 = 息线门 R1)。 |
+| CloseShop | CwActionCloseShopOp | `cw_close_shop_action.py` | 关店恒可用终结 op:执行位 = 帧上找「按钮-收起」真点击(miss = 店已关,幂等出口)+ 固定等待 + 自上报 `report_action_close_shop_param` 清场;零转移验证(点击未生效 = 外循环重分发自然重派)。发射条件 = 商店决策无动作可做时主动选它终结本画面访问(全函数契约要求的恒可用终结)。 |
 
 ### 4.2 备战族(9 行 + 工具原子 7 行)
 
@@ -106,7 +105,7 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 | 词表类 | op 类 | 文件 | 说明 |
 |---|---|---|---|
 | StartBattle | CwActionStartBattleOp | `cw_start_battle_action.py` | 出战点击序列(终结动作,terminal_wait=3):找「按钮-出战」(备战+开商店两屏查,叠加帧兼容;免战子态查「按钮-跳过」同语义点它,子态经 `env.skip_substate` 上报)→ mouse_move + click → 固定等 1s → 单帧截图收口两类真弹窗(未达上限警告 = 勾选+确认;前台无角色 = 确认)**[§1 增补 3 欠账:执行后转移面识别,清法候批]**;零转移验证,交回外循环重判。round 结果 = 点击序列已执行(在册例外;找不到按钮/area 缺失 = False,经执行器 `last_launch_ok` 旁路)。机械执行后 op 自上报 `report_action_start_battle_param`(免战递减内聚)。发射条件 = 备战策略产 StartBattle(环出口,豁免屏蔽)。 |
-| OpenShop | CwActionOpenShopOp | `cw_open_shop_action.py` | 开店注册行 = terminal 承载行:执行抛 AssertionError(开店流程编排截流在 `cw_screen_prep._act_execute_default` → `_open_shop_phase`,可达即分派漏斗被绕过);类属性承载终结判定/等待(terminal=True,terminal_wait=1.0)。发射条件 = 备战策略产 OpenShop(restricted_spend 受限形态,消费在流程层编排)。 |
+| OpenShop | CwActionOpenShopOp | `cw_open_shop_action.py` | 开店注册行 = terminal 承载行:执行抛 AssertionError(开店流程编排截流在 `cw_screen_prep._act_execute_default` → `_open_shop_phase`,可达即分派漏斗被绕过);类属性承载终结判定/等待(terminal=True,terminal_wait=1.0)。开店 = 唯一普通形态(无受限变体;受限会话进出店同走本路径,访问内消费由策略决策入口自限)。发射条件 = 备战策略产 OpenShop(进商店访问的唯一入口动作)。 |
 
 ### 4.4 观察族(1 行)
 
@@ -142,7 +141,7 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 ### 4.7 层级区别:动作域之外的组合壳 / 画面 op(不进注册表,列出以划清「动作 op」边界)
 
 - `CwScreenDeploy`(部署机画面 op)**已退役删除**——部署 = 备战决策环动作:`CwActionDeployMoveParam` 原子序由 mandate 发射位逐帧现算,经 `CwActionDeployMoveOp` 机械拖拽 + 自上报 `report_action_deploy_move_param` 推进部署逻辑态(路径速查 = [../screens/deploy.md](../screens/deploy.md));落地事实归备战环入口观察对账。
-- `CwOpCloseShop`(`operations/cw_op/cw_op_close_shop.py`):关店编排壳——CloseShop 动作的关店点击承担者(`CwActionCloseShopOp` 本体 no-op)。
-- `_open_shop_phase`(`operations/cw_screen/cw_screen_prep.py`):开店编排——OpenShop 动作的流程层执行半(机械开店 `open_shop` → `visit_open_shop` 访问编排;restricted_spend 受限形态在 `_act_execute_default` 截流不经本壳);回执 `(progressed, detail)` 中 progressed = 访问完成事实(非动作成败回执)。
-- `run_buy_waves`(`operations/cw_screen/cw_screen_buy_cards.py`):商店买波编排——`CwActionBuyCardOp` 发射循环 + 逐动作回执簿记(`_ok` = 发出事实透传非判效,发出即记账);期望态推进 = op 自上报单点(原「容器逻辑态直写块」已随动作 op 重组删除 = 双记防线);段尾买牌落位 pixel-diff 对拍留证保留在观察侧(零决策零改道,失败不停不重试,对账语义见 §2.1)。
+- `CwOpCloseShop`(`operations/cw_op/cw_op_close_shop.py`)**已退役删除**——关店执行位收编进动作 op `CwActionCloseShopOp` 真机械执行(幂等已关出口 + 清场上报;编排壳的「拦截 + no-op + 代点」旧形随商店访问两 node 化消亡,见 [../screens/shop.md](../screens/shop.md) §4)。
+- `_open_shop_phase`(`operations/cw_screen/cw_screen_prep.py`):开店编排——OpenShop 动作的流程层执行半(机械开店 `open_shop` → `visit_open_shop` 商店画面 op 直驱;开店 = 唯一普通形态,无受限变体);回执 `(完成事实, detail)` 中完成事实 = 商店访问完整收工(非动作成败回执)。
+- `run_buy_waves`(`operations/cw_screen/cw_screen_shop.py` 前身文件)**已退役删除**——商店访问 = 画面 op 两 node 规范形态(`CwScreenShop`:观察 node 恰一次 + 决策动作 node round_wait 单动作循环,全动作统一路径零特例拦截;规范正本 = [../screens/shop.md](../screens/shop.md) §2/§4);段机器(波循环/段间判定/段尾对账)随伪终结刷新一并消亡。
 - `PrepActionExecutor`(`prep_actions.py`):备战域执行器——备战动作 op 体迁后的替身缝宿主(原方法薄委托);`PrepExecEnv` 定义处。
