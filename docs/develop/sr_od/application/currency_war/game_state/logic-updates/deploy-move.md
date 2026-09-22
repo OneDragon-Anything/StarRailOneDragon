@@ -33,7 +33,7 @@
 4. **开拓者形态归一挂容器写口**:开拓者按目标排换形态(char_id 随排切换,board 计数不再错账)= 上报函数内 `cw_exec_state.trailblazer_row_unit`(归一核单一源 = `trailblazer_row_identity`,与 swap 上报同源——换排 = 命途切换,deploy/swap 两上报统一归一口);tracked 侧同核(`cw_vocab.py::mutate_bench_deployed` DeployMove 分支);
 5. **同名同星已在场拒**(恒成立约束「场上同名同星 ≤1」,`research/merge_mechanics.md` §3):守卫挂 tracked 同步口 `mutate_bench_deployed` DeployMove 分支 `board_unique_key` 同名唯一性判定(W43 裁决 1,与 sim 同源)——同名唯一键命中即整体不迁移;
 6. **board 派生增量口径**:board 现值为 None(板未读过)跳过等观察首读;否则对本次行写做单位多重集差(键 = `_rows_unit_key`)——新增单位逐个加其羁绊标签(`_row_unit_tags` → `kernel/cw_bond_equips.py::unit_bond_tags`,星徽/卡带贡献在内)、移除单位逐个减、减至 0 摘键;观察基座的装备羁绊真值保留(禁全量重算抹基座);未知身份(注册表外/OCR 误读)零贡献,禁 faction 兜底(Unit 不存阵营防注册表双源);
-7. **机械执行**(零判效,发出即记账):源拖点 = `bench_idx` 备战栏 area 序直取(容器下标 = area 序,零换算)→ 落点 = 载荷槽对应排 area 序 `to_slot - 1`(落位意图全部在载荷,执行边零现读零决定)→ `_drag`(DragCwChar 中心拖 + 失焦守卫)→ 固定等待 2s 徽章动画(`research/screen_flow_timing.md` #10)→ 触发型 overlay 快查(「货币战争-盛会之星」标识锚,命中 = detail 标注,批尾 heavy 的 event_overlay 检测交外环 handler)→ `_track_move_deployed`;
+7. **机械执行**(零判效,发出即记账):源拖点 = `bench_idx` 备战栏 area 序直取(容器下标 = area 序,零换算)→ 落点 = 载荷槽对应排 area 序 `to_slot - 1`(落位意图全部在载荷,执行边零现读零决定)→ `_drag`(DragCwChar 中心拖 + 失焦守卫)→ 固定等待 2s 徽章动画(`research/screen_flow_timing.md` #10)→ `_track_move_deployed`;
 8. **执行器拒绝通道**:载荷槽越出画面槽位数 = 未发出(round_fail,陈旧载荷观察重派)。
 
 ## 4. 随机面
