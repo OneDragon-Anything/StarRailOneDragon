@@ -42,6 +42,9 @@ def report_screen_megastar_obs(gs: GameState, obs: CwScreenMegastarObs, *,
     node 摄入)。懒读保真:obs.options 仅「本访问将选择」时由观察
     侧填充,空 = 本访问未读候选,不写(原写点「读得才写」闸逐位平移);
     ``chosen_megastar`` 留守选择点(动作事实边界)。
+    选项含 ``xy``(观察期快照,点击坐标 1080p 游戏空间;选择坐标观察
+    上报 = op-layer.md §1.1,同一次观察与名字一并入容器)——本上报整
+    载荷直写零字段剥离,动作 op 按 idx 取 ``megastar_opts[idx].xy`` 用。
     """
     if sig is None:
         sig = ChannelSig(family='logic_action',

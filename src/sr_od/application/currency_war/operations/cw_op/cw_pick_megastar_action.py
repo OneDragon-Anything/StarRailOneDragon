@@ -2,13 +2,16 @@
 文件,一 op 一文件 = op-layer.md :48;族契约与共享 env 见
 ``cw_overlay_pick_env``)。
 
-机械语义:``env.need_select`` 驱动的选中半(点候选)→ 确认钮单发;
-机械链发出后直调自上报单口 ``report_action_pick_megastar_param``。
+机械语义:``env.need_select`` 驱动的选中半(点候选——点击坐标 = 容器
+``megastar_opts[idx].xy``,观察上报,按下标取;选择坐标观察上报规范 =
+op-layer.md §1.1 + action_ops.md §1 增补 5)→ 确认钮单发;机械链发出后
+直调自上报单口 ``report_action_pick_megastar_param``。
 """
 from __future__ import annotations
 
 import time
 
+from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from sr_od.application.currency_war.kernel.cw_action_report.zero_writes import (
@@ -54,16 +57,35 @@ class CwActionPickMegastarOp(SrOperation):
     def run(self) -> OperationRoundResult:
         """机械执行(选中半[need_select] → 确认钮单发 + 固定等待;零判效)。
 
-        选中半(pick-op-unify 批自画面 op 迁入):``env.need_select`` 且
-        ``env.target`` 在场 → 点候选选中 + 固定等待(原选中后 0.6s 动画窗,
-        时序逐位保留)。``chosen_megastar`` 写端与选中旗标留守画面 op
-        (单次逻辑写入豁免面,派发前写)。"""
+        选中半(pick-op-unify 批自画面 op 迁入;选择坐标观察上报收敛批
+        改容器取点):``env.need_select`` → 点候选选中 + 固定等待(原选
+        中后 0.6s 动画窗,时序逐位保留)。点击坐标 = 容器
+        ``megastar_opts[env.idx].xy``(观察上报,按下标取;坐标单一真相
+        源 = 观察上报,本 op 零坐标现算、零 screen_info 二次取点)。
+        ``chosen_megastar`` 写端与选中旗标留守画面 op(单次逻辑写入豁免
+        面,派发前写)。"""
         action = self.param
         env = self.env
         op = env.op
-        if env.need_select and env.target is not None:
-            op.ctx.controller.mouse_move(env.target)
-            op.ctx.controller.click(env.target)
+        if env.need_select:
+            # 选中半取点守卫(防 bug 路栏,非控制流):容器缺席/下标越界/
+            # 元素缺坐标 = 观察上报链或策略器 bug,AssertionError 响亮
+            # 暴露——禁静默跳过选中(旧 target None 消极臂退役)、禁坐标
+            # 现算回退(action_ops.md §1 增补 5;op-layer.md §1.3)。
+            _gs = game_state_from_ctx(self.ctx)
+            _opts = (_gs.megastar_opts.value if _gs is not None else None) or []
+            assert _opts, (
+                '[cw-pick-megastar] 容器 megastar_opts 缺席/空(观察上报'
+                f'缺失,禁坐标现算回退): idx={env.idx}')
+            assert 0 <= env.idx < len(_opts), (
+                f'[cw-pick-megastar] env.idx 越界容器选项槽(策略器 bug): '
+                f'idx={env.idx} len={len(_opts)}')
+            assert _opts[env.idx].xy is not None, (
+                '[cw-pick-megastar] 容器选项缺 xy(观察上报未产坐标,禁'
+                f'二次取点): idx={env.idx} opt={_opts[env.idx]!r}')
+            pt = Point(*_opts[env.idx].xy)
+            op.ctx.controller.mouse_move(pt)
+            op.ctx.controller.click(pt)
             time.sleep(0.6)
         # confirm(确认钮纯机械单发;overlay 关否由下一帧重入裁决)。
         # 确认钮中心从 screen_info 读;缺失兜底常量。

@@ -34,13 +34,15 @@ class OverlayPickExecEnv:
 
     公共字段 ``op``/``match``/``config`` + 域字段 = 决策半产物(机械参数,
     构造时显式传入,op 类体内不自算):``idx`` = 生效选中下标(决策半
-    钳位后)、``target`` = 点卡定位点、``picked`` = 选定快照(到账登记
+    钳位后)、``target`` = 点卡定位点(退役中——选择坐标观察上报收敛,
+    已收敛屏停喂;全族收敛后删字段)、``picked`` = 选定快照(到账登记
     输入)、``unselected`` = 未选中提示在场实证。
     ``confirm`` = 确认钮中心(决策半从 screen_info 现取;None = 点卡即选
     族无确认步);``entry_keyword`` = 确认裁决词(emit_overlay_confirm
     消费,仅日志与调用方重入裁决对照);``need_select`` = 选中半开关
-    (巨星迁入半:True = 先点 ``target`` 候选选中再确认;False = 跳过
-    选中直发确认)。
+    (True = 先点候选选中再确认,点击坐标各 op 自取——巨星 = 容器
+    ``megastar_opts[idx].xy``(选择坐标观察上报收敛),其余过渡期屏 =
+    ``target``;False = 跳过选中直发确认)。
     ``round_result`` = 旁路回传(确认链末步 ``round_*`` 产物;op 自身
     round 结果恒成功不携带语义),op 类写;现行两 node 宿主画面 op 均不
     消费本字段(循环推进按宿主自身形态返回 round_wait),保留作分派面
@@ -56,7 +58,9 @@ class OverlayPickExecEnv:
     config: object = None     # 公共面(pick 确认链零 config 消费)
     idx: int = 0              # [索引定义] 坐标系: 决策半候选列表下标(0 起);
     #             取值时机: 决策半现算快照(钳位后生效值,执行期恒稳)
-    target: Any = None        # Point|None 点卡定位点(决策半从 screen_info/OCR 现算)
+    target: Any = None        # 退役中(选择坐标观察上报收敛,已收敛屏停喂;
+    #             全族收敛后删字段;其余屏过渡期在用)——历史语义:Point|None
+    #             点卡定位点(决策半从 screen_info/OCR 现算)
     confirm: Any = None       # Point|None 确认钮中心(决策半现取;None=点卡即选)
     entry_keyword: str = ''   # 确认裁决词(emit_overlay_confirm;仅日志/重入对照)
     need_select: bool = False  # True = 先点 target 选中再确认(巨星选中半)

@@ -13,7 +13,7 @@
 
 ## 3. 观察面
 
-观察 node = 节点完成门(含选中标记复位副作用,须在门内)+ 候选懒读(仅「本访问将选择」即未选中时读;确认访问不重读候选;`obs/cw_megastar_obs.py::read_megastar_options`:候选标题「盛会之星一X先生/女士!」正则解析角色名,先生/女士与全/半角叹号容错,按 center-x 左→右排序;本函数只报读数,零转换)。**名字标准化转换门**住观察侧:选中半读链逐候选三判转换(归一精确 → 域内 LCS 兜底 → 歧义边距拒判),任一候选失败或 ≥2 候选命中同一规范名 = 观察失败,observe round_fail 零写零上报交回重观察;匹配域 = cw_chars「盛会之星」阵营派生规范名 ∪ 场上持「盛会之星星徽」的角色(规范 = op-layer.md §1.1「观察标准化门」)。无 match/gs = 局外交回,零读屏零上报(懒读先例屏特形延伸,见 §2/§5)。观察 payload = `CwScreenMegastarObs`(`in_node`/`options`/`screen`,住 `kernel/cw_screen_report/megastar.py`);report = `report_screen_megastar_obs` 候选写容器 `megastar_opts` 槽(空候选不写,闸在 report 内)。决策零参读容器槽。
+观察 node = 节点完成门(含选中标记复位副作用,须在门内)+ 候选懒读(仅「本访问将选择」即未选中时读;确认访问不重读候选;`obs/cw_megastar_obs.py::read_megastar_options`:候选标题「盛会之星一X先生/女士!」正则解析角色名,先生/女士与全/半角叹号容错,按 center-x 左→右排序;候选点击坐标同一次观察一并解析——idx 0 = 左候选、其余 = 右候选,取 screen_info「候选-左」/「候选-右」area 中心,area 缺失回退本文件兜底常量 `CANDIDATE_LEFT`/`CANDIDATE_RIGHT`,产 `tuple[int, int]`(1080p 游戏空间,观察期快照);本函数只报读数,零转换)。**名字标准化转换门**住观察侧:选中半读链逐候选三判转换(归一精确 → 域内 LCS 兜底 → 歧义边距拒判),任一候选失败或 ≥2 候选命中同一规范名 = 观察失败,observe round_fail 零写零上报交回重观察;匹配域 = cw_chars「盛会之星」阵营派生规范名 ∪ 场上持「盛会之星星徽」的角色(规范 = op-layer.md §1.1「观察标准化门」);标准化转换只动名字,`idx`/`xy` 原值携带(选择坐标观察上报 = op-layer.md §1.1,名字与坐标同进退)。无 match/gs = 局外交回,零读屏零上报(懒读先例屏特形延伸,见 §2/§5)。观察 payload = `CwScreenMegastarObs`(`in_node`/`options`/`screen`,住 `kernel/cw_screen_report/megastar.py`);report = `report_screen_megastar_obs` 候选写容器 `megastar_opts` 槽(空候选不写,闸在 report 内;选项含 xy,整载荷直写零字段剥离)。决策零参读容器槽。
 
 ## 4. 动作面
 
@@ -21,12 +21,12 @@
 
 | 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| `CwActionPickMegastarOp`(`CwActionPickMegastarParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:候选定位点 + `need_select` 选中半开关;选中点击与确认点击均在动作 op 内,确认钮 op 类体内自读「货币战争-盛会之星.按钮-确认选择」) | 自上报 `report_action_pick_megastar_param`(零写族单相:机械链发出后即全相,发射相意图遥测,容器零写等观察覆盖) | 否(非终结):发出后 `round_wait` 循环推进;落地由决策动作 node 顶部门复检判——「标识-盛会之星」不在 = 节点完成 `round_success` 交回外循环(见 §5) |
+| `CwActionPickMegastarOp`(`CwActionPickMegastarParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv` idx-only:仅 `idx` + `need_select` 选中半开关,零坐标传参;候选点击坐标 = 动作 op 内自容器 `megastar_opts[idx].xy` 取,选择坐标观察上报收敛) | 自上报 `report_action_pick_megastar_param`(零写族单相:机械链发出后即全相,发射相意图遥测,容器零写等观察覆盖) | 否(非终结):发出后 `round_wait` 循环推进;落地由决策动作 node 顶部门复检判——「标识-盛会之星」不在 = 节点完成 `round_success` 交回外循环(见 §5) |
 
 决策动作 node 单动作体 `_do_action`(零参:候选自观察轮 obs 载体):决策与写端留守 + 「选中 → 确认」链派发(`CwActionPickMegastarOp`;机械链在动作 op 内,pick-op-unify 批):
 
-1. **决策 + 写端留守**(仅当 `StrategyState.megastar_clicked` 为 False,经 kernel `strategy_state_of` 通道读写,状态缺席不冷建):`decide_megastar()` 零参决策(候选读容器 `megastar_opts` 槽)选 idx → 置位选中标记(局级,跨 re-dispatch 持久)→ `chosen_megastar` 写(容器 `game_state_of(match.session).write_logic`,点选前(派发前)写,写点 → 点选窗口内无读者;gs 单一源,session 域无此写端)→ 组 env(候选位 = 「货币战争-盛会之星.候选-左」/「候选-右」area center,兜底常量 `CwScreenMegastar.CANDIDATE_LEFT/CANDIDATE_RIGHT` + `need_select=True`)→ 派发。
-2. **机械链(动作 op 内)**:`need_select` → 点候选(mouse_move + click)→ 0.6s → 点确认(`货币战争-盛会之星.按钮-确认选择` area center,兜底常量 `CwScreenMegastar.CONFIRM`)→ mouse_move + click → 0.9s → 自上报 `report_action_pick_megastar_param`(零写)。确认 = 纯机械单发(验证废除;「请选择强化角色」文本 = 确认钮旁伴随文案非第二画面步骤,未建模独立处理);确认未落地 overlay 残留 = 下一轮门复检自愈(门仍在 → 候选已选 → 机械单发确认再推进)。确认轮(已选中)只发确认(`need_select=False`,idx 复用决策轮缓存)。
+1. **决策 + 写端留守**(仅当 `StrategyState.megastar_clicked` 为 False,经 kernel `strategy_state_of` 通道读写,状态缺席不冷建):`decide_megastar()` 零参决策(候选读容器 `megastar_opts` 槽)选 idx → 置位选中标记(局级,跨 re-dispatch 持久)→ `chosen_megastar` 写(容器 `game_state_of(match.session).write_logic`,点选前(派发前)写,写点 → 点选窗口内无读者;gs 单一源,session 域无此写端)→ 组 env(仅 `idx` + `need_select=True`,零坐标传参)→ 派发。
+2. **机械链(动作 op 内)**:`need_select` → 守卫断言(容器 `megastar_opts` 缺席/空、idx 越界、元素缺 xy = AssertionError 响亮暴露,禁控制流回退禁 screen_info 二次取点)→ 点候选(坐标 = 容器 `megastar_opts[idx].xy`,观察上报,按下标取;mouse_move + click)→ 0.6s → 点确认(`货币战争-盛会之星.按钮-确认选择` area center,兜底常量 `CwScreenMegastar.CONFIRM`)→ mouse_move + click → 0.9s → 自上报 `report_action_pick_megastar_param`(零写)。确认 = 纯机械单发(验证废除;「请选择强化角色」文本 = 确认钮旁伴随文案非第二画面步骤,未建模独立处理);确认未落地 overlay 残留 = 下一轮门复检自愈(门仍在 → 候选已选 → 机械单发确认再推进)。确认轮(已选中)只发确认(`need_select=False`,idx 复用决策轮缓存,不经容器取点)。
 
 ## 5. 终结与交回
 
@@ -42,7 +42,7 @@
 
 ## 6. 状态上报面
 
-- 候选观察:`report_screen_megastar_obs` 候选写容器 `megastar_opts` 槽(空候选不写;容器只存规范名——值域 = cw_chars「盛会之星」阵营派生规范名 ∪ 场上持「盛会之星星徽」的角色,观察标准化门 = 值域保证方,见 §3)。
+- 候选观察:`report_screen_megastar_obs` 候选写容器 `megastar_opts` 槽(空候选不写;容器只存规范名——值域 = cw_chars「盛会之星」阵营派生规范名 ∪ 场上持「盛会之星星徽」的角色,观察标准化门 = 值域保证方,见 §3;选项结构含 xy = 观察期快照点击坐标,坐标单一真相源 = 观察上报,fields.md §3.4.5a B 类)。
 - `chosen_megastar` write_logic(点选前(派发前)写;gs 单一源(session 域无此写端);单次逻辑写入豁免——选择落地无定型帧,后果走观察覆盖;ADR-0651 两态制下无挂账登记环节)。
 - 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.5 / §4「事件选择」;效果账 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §8。
 

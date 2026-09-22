@@ -769,9 +769,15 @@ class MegastarOption:
     """一个巨星候选(OCR 读角色名(``obs/cw_megastar_obs.py::read_megastar_options``);/§11.3.4⑥)。
 
     char_id:候选角色名(空 = 读缺(画面 op 观察失败 round_fail 零盲发);非空 = cw_chars 规范名(观察侧标准化门产出))。
+    xy:该候选的点击坐标 ``tuple[int, int]``(x, y,1080p 游戏空间;
+    观察期快照 = 进访问入口观察帧识别产物,动作执行期恒稳;None = 未观察)。
+    坐标单一真相源 = 观察上报(规范 = screens/op-layer.md §1.1「选择坐标
+    观察上报」+ game_state/fields.md §3.4.5a B 类):动作 op 按 ``idx``
+    自容器 ``megastar_opts[idx].xy`` 取点执行,动作/上报层零坐标现算。
     """
     idx: int
     char_id: str = ""
+    xy: tuple[int, int] | None = None
 
 
 @dataclass

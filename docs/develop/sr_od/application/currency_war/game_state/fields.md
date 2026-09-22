@@ -732,7 +732,8 @@ effective_refresh_prob:键在且 >0 直用、≤0/缺键退基线表——**契�
 > encounter/supply = payload 附加域(§3.4.1/§3.4.2);invest_env_opts/invest_strategy_opts
 > (§3.4.3/§3.4.4);单选族 = megastar_opts(盛会之星;值域 = cw_chars
 > 「盛会之星」阵营派生规范名 ∪ 场上持「盛会之星星徽」的角色,保证方 =
-> 观察标准化门,写端 = `report_screen_megastar_obs`)/partner_opts(列车同行)/
+> 观察标准化门,写端 = `report_screen_megastar_obs`;选项结构含
+> xy = 观察期快照点击坐标,§3.4.5a B 类,MegastarOption)/partner_opts(列车同行)/
 > planner_opts(骇入策划)/fortune_opts(命运卜者)/wish_trial_opts(祈愿试炼)/
 > star_tome_opts(星徽秘典)/box_card_names(武装箱
 > 选卡)/expert_invite(专家邀请函,`ExpertInvitePayload` 双输入打包;

@@ -177,7 +177,10 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                # 域版本 3 = supply 侧换剩余语义(旧「已用」计数退役,
                                # 新增顶层字段 supply_refresh_left;同迭代 3.2)
     'invest_opts': 1,          # 投资双画面候选槽(§3.4 终态契约八新槽;str 原文名)
-    'megastar_opts': 1,        # 盛会之星候选槽(list[MegastarOption],typed)
+    'megastar_opts': 2,        # 盛会之星候选槽(list[MegastarOption],typed)
+                               # 域版本 2 = MegastarOption 扩 xy 点击坐标
+                               # 字段(选择坐标观察上报,fields.md §3.4.5a
+                               # B 类 typed 域版本 bump 契约)
     'partner_opts': 1,         # 列车同行候选槽(list[PartnerOption],typed)
     'planner_opts': 1,         # 骇入策划候选槽(list[PlannerOption],typed)
     'star_tome_opts': 1,       # 星徽秘典候选槽(str)

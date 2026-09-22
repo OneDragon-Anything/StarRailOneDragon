@@ -9,6 +9,10 @@
 「一屏一解析器」,同 ``cw_briefing_obs.py``/``cw_settlement_obs.py`` 惯例;
 生产消费方唯一 = ``operations/cw_screen/cw_screen_megastar.py``(observe
 node 选中半读链)。
+
+候选点击坐标随本读链一并观察上报(规范 = op-layer.md §1.1「选择坐标
+观察上报」):本文件 = 候选兜底常量宿主(坐标生产半住观察域),动作 op
+按 ``idx`` 自容器 ``megastar_opts[idx].xy`` 取点,零坐标现算。
 """
 from __future__ import annotations
 
@@ -17,6 +21,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cv2.typing import MatLike
 
+from one_dragon.base.geometry.point import Point
 from one_dragon.utils.str_utils import longest_common_subsequence_length
 from sr_od.application.currency_war.data.cw_chars import (
     CHARACTERS,
@@ -25,6 +30,7 @@ from sr_od.application.currency_war.data.cw_chars import (
 )
 from sr_od.application.currency_war.kernel.cw_bond_equips import equip_bond_grants
 from sr_od.application.currency_war.kernel.cw_events import MegastarOption
+from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
@@ -34,16 +40,27 @@ if TYPE_CHECKING:
 # 先生/女士 + 全/半角叹号容错(OCR 渲染不一)。
 _MEGASTAR_RE = re.compile(r'盛会之星一(.+?)(先生|女士)[!！]?')
 
+# 左候选(花火)位 —— 实机 bot 点 (822,333) 已选中花火(金边);名位置 = 卡身选中区。
+# 常量 = screen_info 缺失兜底;首选 area_center('候选-左')。
+CANDIDATE_LEFT: Point = Point(822, 333)
+# 右候选(星期日)位 —— OCR 名 @x1061 y334(cw_megastar 实测 2026-08-07);同 y。
+# 常量 = 兜底;首选 area_center('候选-右')。
+CANDIDATE_RIGHT: Point = Point(1061, 333)
+
 
 def read_megastar_options(ctx: SrContext, screen: MatLike) -> list[MegastarOption]:
     """OCR 巨星节点候选 → ``MegastarOption`` 列表(char_id 从「盛会之星一X先生/女士!」解析)。
 
     巨星候选 = 盛会之星 bond(花火/星期日…)给全队 buff。按候选名 center-x 左→右排序 → ``idx``。
-    候选名位置 = 点击位置(实测 CwScreenMegastar 点 (822,333) 命中花火;名 = 卡身选中区)。decide_megastar
-    按 target.core_chars 选(含盛会之星 → 绑该角色;否则 buff 契合)。本函数只报读数
-    (原始 OCR 名,零转换),读不到 → []。标准化契约 = 观察侧转换门(调用方
-    observe 调 ``standardize_megastar_options``;规范 = op-layer.md §1.1
-    「观察标准化门」),转换失败 = 观察失败 round_fail 零写零上报。
+    候选点击坐标随观察一并上报(选择坐标观察上报,规范 = op-layer.md §1.1):
+    idx 0 = 左候选、其余 = 右候选(本屏左右各一候选的两候选布局),取值 =
+    screen_info ``currency_war_megastar`` 的「候选-左」/「候选-右」area 中心,
+    area 缺失回退本文件兜底常量 ``CANDIDATE_LEFT``/``CANDIDATE_RIGHT``;产出
+    ``tuple[int, int]``(1080p 游戏空间)。decide_megastar 按 target.core_chars
+    选(含盛会之星 → 绑该角色;否则 buff 契合)。本函数只报读数(原始 OCR
+    名,零转换),读不到 → []。标准化契约 = 观察侧转换门(调用方 observe 调
+    ``standardize_megastar_options``;规范 = op-layer.md §1.1「观察标准化
+    门」),转换失败 = 观察失败 round_fail 零写零上报。
     """
     ocr_map = ctx.ocr_service.get_ocr_result_map(
         image=screen, rect=None, color_range=None, crop_first=False,
@@ -57,7 +74,15 @@ def read_megastar_options(ctx: SrContext, screen: MatLike) -> list[MegastarOptio
             continue
         cands.append((mrl.max.center.x, m.group(1)))
     cands.sort(key=lambda c: c[0])
-    return [MegastarOption(idx=i, char_id=name) for i, (_cx, name) in enumerate(cands)]
+    options: list[MegastarOption] = []
+    for i, (_cx, name) in enumerate(cands):
+        area_pt = (area_center(ctx, '候选-左', '货币战争-盛会之星') if i == 0
+                   else area_center(ctx, '候选-右', '货币战争-盛会之星'))
+        fallback = CANDIDATE_LEFT if i == 0 else CANDIDATE_RIGHT
+        pt = area_pt if area_pt is not None else fallback
+        options.append(MegastarOption(idx=i, char_id=name,
+                                      xy=(int(pt.x), int(pt.y))))
+    return options
 
 
 # ===== 观察标准化门(候选名 → 规范名;规范 = op-layer.md §1.1)=====
@@ -179,9 +204,10 @@ def standardize_megastar_options(
     不足以区分)→ 返回 None:调用方 observe node round_fail 整函数早退,
     零写容器零上报零点击,交外循环重观察重读(禁带病上报;瞬时误读下轮
     新帧自愈,持续误读 = 连续 fail 至外环重派网响亮停,逼修数据)。成功
-    返回新 ``MegastarOption`` 列表(char_id = 规范名,``idx`` 原值保留——
-    动作参数纯序号,容器 ``megastar_opts`` 值域自此 = 规范名)。纯读零
-    副作用。"""
+    返回新 ``MegastarOption`` 列表(char_id = 规范名,``idx``/``xy`` 原
+    值保留——动作参数纯序号 + 观察上报坐标,转换只动名字、坐标原样携带
+    (选择坐标观察上报同进退,规范 = op-layer.md §1.1),容器
+    ``megastar_opts`` 值域自此 = 规范名 + 观察期坐标)。纯读零副作用。"""
     domain = _megastar_match_domain(gs)
     domain_set = set(domain)
     resolved: list[MegastarOption] = []
@@ -193,5 +219,5 @@ def standardize_megastar_options(
         if not canon or canon in seen:
             return None
         seen.add(canon)
-        resolved.append(MegastarOption(idx=o.idx, char_id=canon))
+        resolved.append(MegastarOption(idx=o.idx, char_id=canon, xy=o.xy))
     return resolved

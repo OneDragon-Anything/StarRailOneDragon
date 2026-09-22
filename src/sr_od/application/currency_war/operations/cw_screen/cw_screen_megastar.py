@@ -27,8 +27,12 @@ None = 具名 round_fail,idx 越界 = 守卫断言 AssertionError——守卫均
 dispatch 是 OCR 反应式(主循环 0b 检测「盛会之星」就接)→ 不管何时弹都接得住。
 本节点 = 「选巨星候选 → 确认」,确认 = 纯机械单发(用户裁定 2026-09-14):
 确认未落地归下一帧重入裁决,节点循环单确认自愈;「请选择强化角色」
-文本 = 确认钮旁伴随文案,禁据它判步。候选坐标经 screen_info
-``currency_war_megastar``(候选-左/右 + 按钮-确认选择);缺失用兜底常量。
+文本 = 确认钮旁伴随文案,禁据它判步。候选点击坐标 = 观察上报随选项
+一并落容器 ``megastar_opts[idx].xy``(选择坐标观察上报,规范 =
+op-layer.md §1.1;动作 op 按下标自容器取点,本 op 零坐标现算;候选
+兜底常量宿主 = ``obs/cw_megastar_obs.py``)。确认钮 = 静态控件锚:
+screen_info ``currency_war_megastar.按钮-确认选择`` + 兜底常量
+``CwScreenMegastar.CONFIRM``(动作 op 内现取)。
 """
 from typing import ClassVar
 
@@ -37,7 +41,6 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_screen_report.megastar import (
     CwScreenMegastarObs,
     report_screen_megastar_obs,
@@ -67,14 +70,9 @@ class CwScreenMegastar(SrOperation):
     形态(关态稳定基线语义 = ADR-0264)。
     """
 
-    # 左候选(花火)位 —— 实机 bot 点 (822,333) 已选中花火(金边);名位置 = 卡身选中区。
-    # 常量=screen_info 缺失兜底;首选 area_center('候选-左')。
-    CANDIDATE_LEFT: ClassVar[Point] = Point(822, 333)
-    # 右候选(星期日)位 —— OCR 名 @x1061 y334(cw_megastar 实测 2026-08-07);同 y。
-    # 常量=兜底;首选 area_center('候选-右')。
-    CANDIDATE_RIGHT: ClassVar[Point] = Point(1061, 333)
     # 「确认选择」钮中心(OCR 确认选择 x1442y548;钮中心 ~1490,560)。常量=兜底;
-    # 首选 area_center('按钮-确认选择')。
+    # 首选 area_center('按钮-确认选择')。确认钮 = 静态控件锚(非选项集
+    # 构成数据,选择坐标观察上报辖域外),动作 op 内现取。
     CONFIRM: ClassVar[Point] = Point(1490, 560)
 
     def __init__(self, ctx: SrContext):
@@ -189,7 +187,6 @@ class CwScreenMegastar(SrOperation):
         窗口内无读者)。确认轮(已选中)只发确认。"""
         _match = self.ctx.cw_match
         need_select = not self._clicked_of(_match)
-        candidate = None
         if need_select:
             options = self._obs.options if self._obs is not None else []
             # 守卫① 决策输入:候选空 = 具名 fail 零盲发(op-layer.md §1.1 出口③)。
@@ -209,10 +206,6 @@ class CwScreenMegastar(SrOperation):
                     f'idx={pick.idx} len(options)={len(options)} pick={pick!r}')
             self._pick_idx = pick.idx
             log.info(f'[cw-megastar] candidates={[o.char_id for o in options]} pick=idx{pick.idx} {pick.reason}')
-            # 候选坐标从 screen_info 读(坐标单一真相源);缺失走类内兜底常量。
-            candidate = ((area_center(self.ctx, '候选-左', '货币战争-盛会之星') or CwScreenMegastar.CANDIDATE_LEFT)
-                         if self._pick_idx == 0 else
-                         (area_center(self.ctx, '候选-右', '货币战争-盛会之星') or CwScreenMegastar.CANDIDATE_RIGHT))
             if _match is not None:
                 # 置位经 kernel strategy_state_of(None-safe 不冷建):状态
                 # 对象缺席跳过写(局级:跨 re-dispatch 持久,session.md
@@ -235,8 +228,10 @@ class CwScreenMegastar(SrOperation):
                                        actor='CwScreenMegastar',
                                        mode='compute'))
         # 「选中(need_select)→ 确认」链经工厂(选中半迁入动作 op;
-        # 确认钮定位 = op 类体内自读 screen_info)。派发实例携真实选中
-        # 下标(上报 param 即真实选择;确认轮复用缓存 idx)。
+        # 候选点击坐标 = 动作 op 内自容器 megastar_opts[idx].xy 取,选择
+        # 坐标观察上报收敛;确认钮定位 = op 类体内自读 screen_info)。
+        # 派发实例携真实选中下标(env idx-only,零坐标传参;上报 param
+        # 即真实选择;确认轮复用缓存 idx)。
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
@@ -244,7 +239,7 @@ class CwScreenMegastar(SrOperation):
             OverlayPickExecEnv,
         )
         _env = OverlayPickExecEnv(op=self, idx=self._pick_idx,
-                                  target=candidate, need_select=need_select)
+                                  need_select=need_select)
         action_op_for(CwActionPickMegastarParam(idx=self._pick_idx), self.ctx,
                       _env).execute()
         return None
