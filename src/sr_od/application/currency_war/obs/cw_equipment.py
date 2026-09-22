@@ -720,8 +720,7 @@ def _select_equipped_layout(
 def ensure_equip_tm_templates(ctx: SrContext) -> dict[str, MatLike] | None:
     """确保 ctx 缓存 cw_equip TM 模板(98px grays);返 ``grays`` 或 None(目录缺)。
 
-    首次 load 缓存 ``ctx.cw_equip_tm_grays``;后续读缓存。recognizer 装备识别的 templates 加载点
-    (装备区模板由 ``equip_all._get_templates`` 另加载,不冲突)。
+    首次 load 缓存 ``ctx.cw_equip_tm_grays``;后续读缓存。recognizer 装备识别的 templates 加载点。
 
     **并发安全**:幂等(同值重 load 无害);只缓存只读资源(非 session/游戏状态),与运行中 operation 不竞争。
     """

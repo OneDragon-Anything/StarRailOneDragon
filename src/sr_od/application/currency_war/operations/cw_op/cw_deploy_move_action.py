@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING
 
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_action_report.deploy_move import (
     report_action_deploy_move_param,
 )
@@ -81,18 +80,6 @@ class CwActionDeployMoveOp(SrOperation):
         # heavy 观察打在徽章动画帧上(SIFT/对账读脏,「对账纠漂」日志
         # 噪声源之一)。按「都等 2s」简单方案落(批尾/中间的区分不做)。
         time.sleep(2.0)
-        # 用户口述口径(#24,2026-09-02):羁绊达标触发的 overlay(盛会之星
-        # 等)在徽章动画后再 ~2s 才弹出——固定等待覆盖不住。执行端等待后
-        # 快查一次触发型 overlay 锚(模板毫秒级),命中 → detail 标注(拖拽
-        # 本身已发出);批尾 heavy 的 event_overlay 检测将看到它并 bail 交
-        # 外环 handler——防「decide 的下一步动作打在 overlay 上」。清单
-        # 可扩(圣杯/银狼升星等实测出现时加锚)。
-        _post = ex._op.screenshot()
-        _overlay = ex._op.round_by_find_area(
-            _post, '货币战争-盛会之星', '标识-盛会之星',
-            crop_first=False).is_success
-        if _overlay:
-            log.info('[cw][deploy] 拖后检出盛会之星 overlay(羁绊达标触发)')
         # 发出即记账:拖拽发出即 tracked 按载荷落位记账(机械执行零判效;
         # 载荷槽 = 拖点,与容器写侧同源)。
         ex._track_move_deployed(action.bench_idx, row, slot_no)
@@ -103,8 +90,6 @@ class CwActionDeployMoveOp(SrOperation):
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
-        if _overlay:
-            return self.round_success('部署已发,盛会之星 overlay 弹出(外环接管)')
         return self.round_success(
             f'部署槽{action.bench_idx + 1}→{row}{slot_no} ✓'
             '(发出即记账,落地归观察对账)')

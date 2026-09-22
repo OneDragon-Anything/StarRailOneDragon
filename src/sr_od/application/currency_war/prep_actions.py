@@ -88,6 +88,12 @@ SHOP_CLOSE_ANIM_S: float = 1.0
 #: 里打开商店,只要等 1 秒就够了」。开态判定由下一帧观察侧 0n 三锚承载。
 #: 自动开店场景不经此处——cw_loop 备战分支按「备战阶段」识别)。
 SHOP_OPEN_ANIM_S: float = 1.0
+#: 穿戴拖前固定等待(等备战面板/上件 reflow 动画收尾,非判效)。取值 =
+#: 被替换的稳帧轮询典型检测档 0.3s 向上取整(与 pick 确认 0.6-1.2s 固定
+#: 等待族同量级);后随动作的动画由拖后固定等待覆盖,极端 reflow 未收尾
+#: 致按压抓空 = 未发出形态,由下一入口观察对账显影 + 决策环自然重派
+#: (按「不存在偶发丢失」纪律查根因调常量,禁恢复轮询)。
+PREP_DRAG_SETTLE_WAIT_S: float = 0.5
 
 
 class StopBrakeShortCircuit(RuntimeError):
@@ -280,9 +286,8 @@ class PrepActionExecutor:
 
         两层:① 统一词表白名单(review M-4 —— 未知类型走参数非法路径拒绝,
         不进 execute 的验证失败/fail 循环;元组单一源 = cw_vocab
-        CW_ACTION_TYPES);② 静态可判参数(槽位越界/row 枚举)。动态前置
-        (晶矿是否存在/overlay 是否开)由 execute 的完成验证覆盖(验证失败
-        路径,非参数非法路径)。席位域动作坐标系 = 容器槽位表下标 0 基
+        CW_ACTION_TYPES);② 静态可判参数(槽位越界/row 枚举)。席位域
+        动作坐标系 = 容器槽位表下标 0 基
         (词表模块头声明);机械动作 row/slot = 画面物理槽位 1 基。
         """
         if not isinstance(action, CW_ACTION_TYPES):
@@ -637,13 +642,13 @@ class PrepActionExecutor:
         return self._dispatch_action(action)
 
     # ===== 装备/工具原子域(R2 穿戴 / R8 工具按消耗品各立类;机械原语
-    #       _equip_slot_drag_point/_owned_grid_locate/_wait_stable_frame
+    #       _equip_slot_drag_point/_owned_grid_locate
     #       留守本 runner,体迁 op 经 env.executor 消费)=====
 
     def _equip_slot_drag_point(self, row: str, slot: int) -> Point | None:
-        """(row, slot) → avatar 拖拽点(与 CwOpEquipAll._slot_drag_point 同式;
-        前排 = 前排-N rect 中心 x + y1+21(D-36 校准),后排 = 布局选档前缀
-        (select_back_layout 单一入口)同式派生)。缺失 → None
+        """(row, slot) → avatar 拖拽点(与同文件拖点派生式同构:rect 中心
+        x + y1+21;前排 = 前排-N rect 中心 x + y1+21(D-36 校准),后排 =
+        布局选档前缀(select_back_layout 单一入口)同式派生)。缺失 → None
         (建档漂移,禁兜底坐标)。"""
         _si = self._ctx.screen_loader.get_screen(SCREEN_NAME)
         if _si is None:
@@ -675,11 +680,11 @@ class PrepActionExecutor:
 
         名字定位是唯一稳锚(网格 reflow 使快照坐标失真);miss → None
         (调用方按「计划失效」未发出通道处理,下帧重派重算)。"""
-        from sr_od.application.currency_war.obs.cw_equipment import read_equips
-        from sr_od.application.currency_war.operations.cw_op.cw_op_equip_all import (
-            get_equip_templates_cached,
+        from sr_od.application.currency_war.obs.cw_equipment import (
+            ensure_equip_sift_templates,
+            read_equips,
         )
-        templates = get_equip_templates_cached(self._ctx)
+        templates = ensure_equip_sift_templates(self._ctx)
         if templates is None:
             return None
         rect = _area_rect(self._ctx, '区域-道具装备', SCREEN_NAME)
@@ -699,23 +704,6 @@ class PrepActionExecutor:
         """薄委托(体已迁 ``cw_tool_use_action.ToolUseOp``,工具原子七类
         共用;批3 体迁 + 薄委托,替身缝保留)。"""
         return self._dispatch_action(action)
-
-    def _wait_stable_frame(self, interval: float = 0.3,
-                           budget_s: float = 1.2) -> None:
-        """拖前稳帧确认(与 CwOpEquipAll._wait_stable_frame 同式同参):
-        等相邻两帧全图像素差均值 < 阈值(画面动画收尾)再拖。输入条件化
-        等待,非判效;预算耗尽仍未稳 → 放行(落空由观察重派兜底)。"""
-        deadline = time.time() + budget_s
-        import numpy as np
-
-        prev = self._op.screenshot()
-        while time.time() < deadline:
-            time.sleep(interval)
-            cur = self._op.screenshot()
-            diff = float(np.abs(prev.astype('int16') - cur.astype('int16')).mean())
-            if diff < 2.0:
-                return
-            prev = cur
 
     def _drag(self, src: Point, dst: Point) -> None:
         """统一拖拽原语(DragCwChar.drag_char:中心拖+hold0;机械执行,

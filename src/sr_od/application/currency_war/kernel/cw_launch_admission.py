@@ -338,10 +338,10 @@ def launch_admission_report(gs: GameState, comp: Comp, *,
     victim)。
 
     victim 资格单一源 = offtarget_sell_allowed fenced 臂全条件(off-line
-    ∧ 围栏 ∧ 非保护域,保护域 = core∪shared∪替班者),与执行侧
-    _sell_offtarget_deployed 同款;**不附 1★ 全退门**——执行侧 swap 卖出
-    无退款资格前置,提案侧多一道门只会造成 victim_missing 误显影。
-    提案侧预估基于期望态现读;执行时刻以 CwScreenDeploy 现读重建为准。
+    ∧ 围栏 ∧ 非保护域,保护域 = core∪shared∪替班者)。**不附 1★ 全退门**——
+    换血卖出无退款资格前置,提案侧多一道门只会造成 victim_missing 误显影。
+    提案侧预估基于期望态现读;执行时刻机械单发零现读,落地归观察对账
+    (预估与执行间无现读重建面)。
     三元不全/victim 缺失**只显影不拦截**(出战优先;准入是观测面,
     非第二道闸)。
 

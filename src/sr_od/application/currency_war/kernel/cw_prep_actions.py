@@ -70,15 +70,16 @@ class PrepObservation:
 
     **宿主降级申报**:本类已不再是策略器输入——名单/装备/占用/晶矿全部
     容器域承载,策略器唯读容器契约归位;本帧仅承载**控制信号与识别
-    元信息**(观察链/op 内部消费,不进 gs、不进 session):
+    元信息**(观察链/op 内部消费,不进 gs、不进 session;另挂观察链内部
+    存续对拍轻字段 ``front_occupied``/``back_occupied``:``deployed_count``
+    双源对拍消费,方法内即弃,不进 gs/session/report):
     - ``shop_open``:观察链门参数(F2 gold 可信派生/卡池票门);
     - ``substate``:observe_full 可读性标注(对账/日志判读);
     - ``event_overlay``:bail 控制信号(交回外循环分发)。
 
     状态类字段(bench_chars/deployed_chars/装备三路/spheres/boxes/tomes/
-    free_bench_slots/deploy_vacancy 族/front_occupied/back_occupied/
-    front_size/state_gold_trusted/P1P5 恒空字段)已随黑板退役删除——
-    去向表见迭代详设 obs-retirement §阶段 3.5。
+    free_bench_slots/deploy_vacancy 族/front_size/state_gold_trusted/P1P5
+    恒空字段)已随黑板退役删除——去向表见迭代详设 obs-retirement §阶段 3.5。
     """
     substate: dict = field(default_factory=dict)   # observe_full 可读性(对账/日志)
     shop_open: bool = False             # 锚点「按钮-收起」可见(观察链门参数)

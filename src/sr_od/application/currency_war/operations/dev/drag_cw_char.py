@@ -6,8 +6,8 @@
    (settle:框架截图前把光标移角落,紧接 drag 落空,先 settle 到源)→ ``drag_to(hold_time=0`` **按下即移**
    即拾取,2026-08-13 实测)→ ``mouse_move`` 羁绊面板区释放光标(防 drag 锁残留致后续 drag 落空)。
    **机械执行零判效**(阶段三判效拆除,总纲阶段三族2):原「验源槽像素 diff + retry 3 次」
-   随拆除退役——发出即职责完成,落地事实归下一帧入口观察 reconcile 对账;deploy(``CwScreenDeploy``)/
-   sell(``_sell_offtarget_deployed`` / ``drag_bench_to_sell``)/ 本 op 都走它
+   随拆除退役——发出即职责完成,落地事实归下一帧入口观察 reconcile 对账;deploy(``CwActionDeployMoveOp``)/
+   穿戴工具原子(prep_actions 机械原语经统一拖拽原语)/ sell(``drag_bench_to_sell``)/ 本 op 都走它
    —— **全仓角色拖拽机制单一源**(不再各处散落 drag_to + avatar 偏移)。
 
 2. ``DragCwChar``(op,开发 / 测试用):``run_operation`` 按 ``(from_row, from_idx) → (to_row, to_idx)`` 拖,

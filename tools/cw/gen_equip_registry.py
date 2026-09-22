@@ -402,9 +402,9 @@ def _eq(name: str, category: str, effect: str, stacking: bool, source: str = "",
 EQUIP_TOOL_CATEGORY: str = '工具'
 """注册表装备分类学里的「工具」类名(不可 drag 穿戴,只能拖到装备/角色上
 消耗使用)。分类全集单一源 = 本文件 ``Equipment.category`` 字段注释;
-穿戴类过滤的策略侧消费 = mandate_v1.mandate(发射门①谓词)、执行侧
-消费 = cw_op_equip_all(工具不进 drag 穿戴循环)——双方均 import 本常量,
-禁再写本地平行定义。"""
+消费 = kernel 判据面(`cw_equip_wear_plan` 穿戴候选过滤,import 本常量)
+与执行边定位读(`prep_actions._owned_grid_locate`,全库模板按名定位);
+工具消费 = `CwActionToolUseOp`;禁再写本地平行定义。"""
 
 
 # ===== EQUIPMENTS 全量注册表(__TOTAL__ 件;__COUNTS__)=====

@@ -887,7 +887,8 @@ class DecisionV2Registry:
     # ===== `w607_affix_consumption/` 词缀消费面三开关(`w628_migration_b2/` 清偿)=====
     # 设计单一源=设计件「词缀消费面」(.debug/temp/currency_war/w607_affix_consumption/DESIGN.md
     # §3);词条语义出处见 cw_comps.STRONG_ENV_MECHS / RUST_AFFIX_NAME 注释;
-    # H2②/H3 读端在 operations/cw_op/cw_op_equip_all.py。
+    # H2②/H3 读端 = kernel 判据消费位(`cw_equip_wear_plan._build_equip_wear_plan`
+    # 判据链);原执行器读端已随装备组合壳退役。
     #: H1 环境判据的最小生效轮(位面内轮次,1-based;防位面切换首帧词缀窗口
     #: 误判的观察期)。简报词缀在位面切换即读得(cw_loop 位面简报分支),
     #: 无窗口误判实证,默认 1=判据全程在辖;如实机判读发现位面首帧词缀滞后,

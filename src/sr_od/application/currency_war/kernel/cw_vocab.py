@@ -512,7 +512,7 @@ class CwActionCollectOreParam:
 @dataclass
 class CwActionOpenBoxParam:
     """开补给箱(点「开启」→ 弹武装箱 overlay;开箱即腾席)。slot=None → 第一箱。"""
-    slot: int | None = None
+    slot: int | None = None   # [索引定义] slot = 备战栏画面物理槽位 1 基(area 序,坐标参数化机械动作族同系,screens README §4 二分);取值时机 = 发射期快照(决策半按观察 bench kind 槽位现算);None = 首个该类槽位
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 
@@ -524,7 +524,7 @@ class CwActionOpenTomeParam:
     建档:投资策略「秘密典籍」给的红金典籍道具占备战席 1 槽(类补给箱);
     选卡决策在 CwScreenBookcard(板上阵营匹配),本动作只负责把典籍点开。slot=None → 第一典籍。
     """
-    slot: int | None = None
+    slot: int | None = None   # [索引定义] slot = 备战栏画面物理槽位 1 基(area 序,坐标参数化机械动作族同系,screens README §4 二分);取值时机 = 发射期快照(决策半按观察 bench kind 槽位现算);None = 首个该类槽位
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 
@@ -543,7 +543,7 @@ class CwActionOpenBookcardParam:
     代发」已按用户裁定 2026-09-19 撤销——开卡时机归策略实现管)。
     终结动作(弹专家邀请函 = 引入新事实,交回外循环重观察)。slot=None → 第一张书册卡。
     """
-    slot: int | None = None
+    slot: int | None = None   # [索引定义] slot = 备战栏画面物理槽位 1 基(area 序,坐标参数化机械动作族同系,screens README §4 二分);取值时机 = 发射期快照(决策半按观察 bench kind 槽位现算);None = 首个该类槽位
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 
@@ -974,11 +974,6 @@ class CwActionObsParam:
 # (HoldFrame 已删除,用户裁定 2026-09-20:空发射帧通道收编进
 #  CwActionObsParam(scope='outer_loop'),两观察口径统一为一个动作类型;
 #  历史形态考古走 git 历史。)
-    reason: str = ''
-    route_tag: str = field(default='', kw_only=True,
-                           metadata={'action_key_exclude': True})
-
-
 
 # 动作类型总和(union 类型别名,**非基类**;继承基类已摊平,每动作一个
 # 独立 dataclass。本名仅为既有 ``CwAction`` 注解面与 ``isinstance(x,

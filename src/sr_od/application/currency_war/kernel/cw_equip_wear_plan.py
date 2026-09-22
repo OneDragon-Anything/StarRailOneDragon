@@ -4,8 +4,10 @@
 unified-action-factory §2.6「穿装备:计划构造 = 现役 _build_equip_wear_plan
 自执行器模块迁 kernel,决策侧逐帧现算」):计划单一源随发射位上移,
 组合壳(RunEquip→CwOpEquipAll)退役后发射位直接消费同一构造函数,
-无第二源。机械执行半(定位/拖拽)留守 ``operations/cw_op/
-cw_op_equip_all.py``;``EquipWearStep`` 及拉黑/排序纯 helper 一并迁入
+无第二源。机械执行半现役宿主 = ``cw_wear_equip_action.py::
+CwActionWearEquipOp`` + ``prep_actions.py`` 机械原语
+(``_equip_slot_drag_point``/``_owned_grid_locate``);
+``EquipWearStep`` 及拉黑/排序纯 helper 一并迁入
 (kernel 不得依 operations——依赖方向倒置是本次迁居的另一半动机)。
 
 **边界申报(批 2a)**:``_build_equip_wear_plan(session,
@@ -25,8 +27,8 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import (
     strategy_state_of,
 )
 
-#: 前排槽位数(= screen_info 前排-1..4;deploy 侧同容量;原
-#: CwOpEquipAll.FRONT_SLOT_COUNT 迁居,计划面消费)。
+#: 前排槽位数(= screen_info 前排-1..4;deploy 侧同容量;自
+#: 备战执行器模块迁居(考古归 git),计划面消费)。
 FRONT_SLOT_COUNT: int = 4
 
 
@@ -69,7 +71,7 @@ class EquipWearStep:
 
     产出位 = 分发段 ``_build_equip_wear_plan``(读备战入口观察产物
     PrepObservation,P4 观察接线后零读屏,由 kernel 判据单一源
-    求值),随 ``CwOpEquipAll.__init__(ctx, plan)`` 构造下发;op 对计划
+    求值),发射位逐步产 ``CwActionWearEquipParam``;op 对计划
     只做机械执行(定位/拖拽/报告),禁二次求值。2a 原子通路:本步同时
     是 ``CwActionWearEquipParam`` 动作的构造源(发射位逐步产原子动作)。
 
@@ -94,15 +96,15 @@ class EquipPlanBuild:
 
     - ``steps``: 机械执行计划(EquipWearStep 列表,产出期快照,pass 内恒稳);
     - ``empty_reason``: 计划空时的具名原因(字面量与今日 op 停手归因逐字
-      相等——``classify_zero_wear_stop_reason`` 词表与分键锁零漂移);
+      相等;字面量消费面 = 遥测分键计数,无分类器依赖);
       非空计划时为 ''(发射契约 NOOP 形态的产生位);
     - ``fail_reason``: 资源前置缺失原因(模板/tm_grays/rect None → 走本
       通道 ok=False 闩不置,同今日 op round_fail 同形);非空时 steps=[] 且
       不与 empty_reason 并用;
     - ``branch``: 'm7'(M7 角色级分配)| 'front_only'(身份读失败回退;
       空计划 NOOP 不挂哨兵,与今日该分支无哨兵覆盖一致);
-    - ``owned_wearable_names``: 本帧可穿名单(零穿戴哨兵双挂点之计划面输入;
-      哨兵内部再做工具类过滤,幂等)。
+    - ``owned_wearable_names``: 计划面产出的本帧可穿名单快照,测试锁消费
+      (零穿戴哨兵已随装备组合壳退役,工具类过滤归 kernel 判据面)。
     """
     steps: list = field(default_factory=list)
     empty_reason: str = ''
@@ -134,8 +136,8 @@ def _build_equip_wear_plan(session: Any,
     (kernel 判据零改动)。
 
     op 侧四 kernel 判据(resolve_wear_release/classify_item_hold/
-    apply_equip_env_variants/resolve_affix_priority_order)在
-    cw_op_equip_all.py 零引用(机械执行红线)。W880 装备环境信号
+    apply_equip_env_variants/resolve_affix_priority_order):
+    执行器侧对四判据零引用(机械执行红线)。W880 装备环境信号
     「构造点唯一」契约维持:唯一构造点 = 本函数。
 
     失读通道(契约保真位,与 empty_reason 合法稳态禁并用):黑板帧缺失 /

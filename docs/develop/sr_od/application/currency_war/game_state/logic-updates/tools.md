@@ -16,13 +16,13 @@
 | `PerfectProjectorUse` | 完美投影仪 | `row` + `slot` |
 | `LuckyTokenUse` | 好运令牌 | `row` + `slot` |
 
-工具名解析表 = `CwActionToolUseOp._TOOL_NAME_BY_CLASS`(注册名 = icon 定位锚,与装备注册表同名)。七类均在 `cw_vocab.py::Action` 联合外(零容器动作转移语义)。
+工具名解析表 = `CwActionToolUseOp._TOOL_NAME_BY_CLASS`(注册名 = icon 定位锚,与装备注册表同名)。七类均在册(词表 union 与 `CW_ACTION_TYPES` 白名单皆在,注册表七行同指 `CwActionToolUseOp`)。
 
 ## 2. 逻辑态域集
 
-容器 GameState `equips` 域**合法零写**(零写族申报 = `zero_writes.py::report_action_<snake>_param` 七函数集中承载——消费真值归观察,截断点独占发射帧零窗口,下一入口 heavy 装备区实读覆盖)。本族写账 = **执行写端**单面,写端归属申报单一源 = `kernel/cw_affix_effects.py::EQUIP_WRITE_SIDES`(逐件恰一个落码写端,值词表四形 bridge:/contribution:/op:/observation):
+容器 GameState `equips` 域**有写**:消耗移除与效果腿同域**合并单笔**(确定面 `write_logic`/随机面 `write_logic_rand`,禁拆两笔);获得走 `gain_character` 获得链(投影仪复制);变异面不走链(冶金炉变异产物随机归观察);零写分支统一留证 `tool_*`。写端正本 = `kernel/cw_action_report/tool_use.py` 七具名上报函数(`_REPORT_BY_CLASS` 按 param 类型解析,一族一文件先例),逐类语义与采样口径以函数 docstring 为正本。效果写端桥引用:`EQUIP_WRITE_SIDES` 登记面与效果桥四函数(`transform_equip_to_privilege`/`spawn_equip_bench_unit`/`grant_equip_item`/`settle_wrench_duplicate_gold`,均在役)——申报各工具腿的效果写端流向与组合收口(逐件恰一个落码写端,值词表四形 bridge:/contribution:/op:/observation):
 
-| 工具(腿)| 执行写端(`apply_tool_execution_write` 分派)|
+| 工具(腿)| 效果写端(``EQUIP_WRITE_SIDES`` 申报;效果桥/收口引用)|
 |---|---|
 | 冶金炉·equip | 负写端 `observation`(变异产物随机归观察)|
 | 冶金炉·char | 变异产物随机归观察 |
@@ -38,8 +38,8 @@
 
 1. **机械执行**(七类同构):源件 = 工具 icon 按注册名定位(`PrepActionExecutor._owned_grid_locate`,名字唯一稳锚)→ 目标 = equip 模式 owned 网格目标件 / char 模式角色槽位中心(`row`/`slot` 直取)→ mouse_move + drag_to → park_cursor;拖后固定等待(异步落地等待,非判效)——零消耗确认对拍,消费真值 = 下一帧装备区读数;
 2. **截断类**:首件消费后网格 reflow → 工具原子发射帧独占,后续网格目标动作下帧重评;
-3. **执行写端分派** = `kernel/cw_affix_effects.py::apply_tool_execution_write`(工具族七件拖拽/使用回执统一入口):bridge 形逐腿执行(入席/入区/库存特权化/穿域特权化),op 形与负写端(observation)零写留证,contribution 形零写并指回组合收口(节点边界窗 `settle_node_boundary_gold` / 获得回执窗 `settle_wrench_duplicate_gold`,机理见 [op-effects.md](op-effects.md) §4);入参契约:入席腿缺 `target_cost` = 调用错(缺费用会假过门,禁缺省放行),非进阶类别传入特权化/入区腿 = 调用错显式炸;
-4. **基础行为不在执行写端口**:消耗品 −1、目标件消失、穿戴域迁移等 op 基础行为 = **容器零写**(合法零写集申报;黑板帧面直写腿已随 `gs.prep_obs` 黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5),执行写端口只管**效果**写端;消费真值 = 下一入口 heavy 装备区读数覆盖(截断点独占发射帧零窗口);
+3. **上报写端** = `kernel/cw_action_report/tool_use.py` 七具名上报函数(`_REPORT_BY_CLASS` 按 param 类型解析,op 机械执行后直调自己的上报函数):容器 `equips` 合并单笔写(消耗移除与效果腿同笔,禁拆两笔);获得腿(投影仪复制)走 `gain_character` 获得链,变异面(冶金炉)不走链随机归观察;效果写端桥/组合收口引用 = §2 表(节点边界窗 `settle_node_boundary_gold` / 获得回执窗 `settle_wrench_duplicate_gold`,机理见 [op-effects.md](op-effects.md) §4);入席腿缺 `target_cost` = 调用错(缺费用会假过门,禁缺省放行),非进阶类别传入特权化/入区腿 = 调用错显式炸;
+4. **基础行为与效果同笔容器写**:消耗品 −1、目标件消失、穿戴域迁移等 op 基础行为与效果腿**合并单笔**容器 `equips` 写(黑板帧面直写腿已随 `gs.prep_obs` 黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5);消费真值 = 下一入口 heavy 装备区读数覆盖(截断点独占发射帧零窗口);
 5. **判据准入** = `kernel/cw_equip_env.py::evaluate_tool_actions` → `admitted_tool_actions`(G1 准入,发射位禁第二套时机判断):冶金炉/特权赋予卡 = 判据准入放行(原子类发射);扳手/精密扳手/员工投影仪/完美投影仪/好运令牌 = 判据面 fail-closed,发射位禁无判据发射(投影仪/令牌的 kernel 写端桥已备,接线 = 桥调用)。
 
 ## 4. 随机面
@@ -55,7 +55,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py` 七词表类(`CwAction<Tool>UseParam`);`kernel/cw_action_report/zero_writes.py`(七类零写上报函数);`kernel/cw_affix_effects.py::EQUIP_WRITE_SIDES` / `apply_tool_execution_write` / `_TOOL_SPAWN_COST_GATE` / `EQUIP_REWRITE_DECLARATIONS`;`kernel/cw_effect_inventory.py::privilege_counterpart` / `transform_equip_to_privilege` / `transform_worn_equip_to_privilege` / `spawn_equip_bench_unit` / `grant_equip_item` / `STAFF_PROJECTOR_COST_GATE` / `settle_wrench_duplicate_gold`;`kernel/cw_equip_env.py::evaluate_tool_actions` / `admitted_tool_actions`;`prep_actions.py::PrepActionExecutor._use_tool` / `_owned_grid_locate`;`operations/cw_op/cw_tool_use_action.py::CwActionToolUseOp`(`_TOOL_NAME_BY_CLASS`)。
+`kernel/cw_vocab.py` 七词表类(`CwAction<Tool>UseParam`);`kernel/cw_action_report/tool_use.py`(七具名上报函数 + `_REPORT_BY_CLASS`,写端正本);`kernel/cw_affix_effects.py::EQUIP_WRITE_SIDES` / `_TOOL_SPAWN_COST_GATE` / `EQUIP_REWRITE_DECLARATIONS`;`kernel/cw_effect_inventory.py::privilege_counterpart` / `transform_equip_to_privilege` / `transform_worn_equip_to_privilege` / `spawn_equip_bench_unit` / `grant_equip_item` / `STAFF_PROJECTOR_COST_GATE` / `settle_wrench_duplicate_gold`;`kernel/cw_equip_env.py::evaluate_tool_actions` / `admitted_tool_actions`;`prep_actions.py::PrepActionExecutor._use_tool` / `_owned_grid_locate`;`operations/cw_op/cw_tool_use_action.py::CwActionToolUseOp`(`_TOOL_NAME_BY_CLASS`)。
 
 ## 7. 语义验证
 
@@ -67,4 +67,4 @@
 
 ## 9. 依据
 
-`kernel/cw_affix_effects.py::apply_tool_execution_write` docstring(四形分派与入参契约)与 `_validate_equip_write_sides`(防漂移锁);`kernel/cw_effect_inventory.py` 写端桥段(窗口独占性分形判据);`operations/cw_tool_use_action.py` 模块头(一类辖七行);[fields.md](../fields.md) §4.2 RunTools 行/ §5.3(效果族归属四选一);[op-effects.md](op-effects.md) §4(写端桥机理);`research/equipment_mechanics.md` §5(工具 7 件全量)。
+`kernel/cw_affix_effects.py` `_validate_equip_write_sides`(防漂移锁)与 `EQUIP_WRITE_SIDES`(效果写端桥申报);`kernel/cw_action_report/tool_use.py` 模块头(上报写端正本:合并单笔/获得走链/变异面不走链/零写留证);`kernel/cw_effect_inventory.py` 写端桥段(窗口独占性分形判据);`operations/cw_tool_use_action.py` 模块头(一类辖七行);[fields.md](../fields.md) §4.2 RunTools 行/ §5.3(效果族归属四选一);[op-effects.md](op-effects.md) §4(写端桥机理);`research/equipment_mechanics.md` §5(工具 7 件全量)。

@@ -1284,7 +1284,9 @@ def _read_deploy_paddle(ctx: SrContext, screen: MatLike,
 def read_deployed_count(ctx: SrContext, screen: MatLike) -> int | None:
     """舞台上方中央「X/Y」指示 → X(已部署角色数);读不到 → None。
 
-    CwScreenDeploy 用它定位**空位**:d(cap_remaining)+ e(offset)依赖它;读不到 → fallback
+    现役消费面 = 备战观察装配环(``cw_screen_prep.py`` cap 段)与后排
+    布局选档(``obs/cw_back_layout.py``):d(cap_remaining)+ e(offset)
+    依赖它;读不到 → fallback
     → 部分 churn。实现见 ``_read_deploy_paddle``(同时给 cap Y,见 ``read_deploy_cap``)。
     """
     return _read_deploy_paddle(ctx, screen)[0]
@@ -1297,7 +1299,7 @@ def read_deploy_cap(ctx: SrContext, screen: MatLike,
     实机 **cap=level+宝钻数**(D-53 实测核正:无加成时 5 fixture 跨 lv3/4/5/7,Y 恒=level)。
     财富宝钻 +1 团队槽且**可叠加**(官方「拥有即+1 无论穿戴」,局38 r2 实证 cap5/lv3;
     详见 ``_read_deploy_paddle`` docstring)。
-    CwScreenDeploy 应用本 Y 非 level 估 cap_remaining。读不到 → 退 level 估(fallback;cap=level 故 fallback 仍准)。
+    现役消费面 = 备战观察装配环 cap 段应用本 Y 非 level 估 cap_remaining。读不到 → 退 level 估(fallback;cap=level 故 fallback 仍准)。
     旧注「cap≠level(lv4-5 3/3、lv6 5/5)」自主推进期错数据,已废。reader 实现细节/根因见 ``_read_deploy_paddle``。
     ``level`` 提供时参与解析层约束验证(y≥level,cap 只增不减),不改变返回契约。
     """
@@ -2234,7 +2236,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     hp 读不到 → ``reconcile_hp`` 对账(终态契约 §A:开局先验 或
     None 诚实未知;的沿用 last_hp_real/兜底 100 两层均已退役,
     结算覆盖 = hp 唯一真值入口)。v1 不读 bench/deployed 身份(buy 决策靠 board+shop+gold;
-    deploy 走 CwScreenDeploy);席位域观察写端 = 备战装配环(通道声明见下
+    部署 = DeployMove 原子序(备战决策环动作));席位域观察写端 = 备战装配环(通道声明见下
     容器直写块注),本漏斗不写。
     """
     from sr_od.application.currency_war.kernel import cw_observe as _obs_mod

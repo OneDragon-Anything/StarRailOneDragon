@@ -1849,8 +1849,10 @@ def run_mandate(frame: MandateFrame,
     # 复用 select_deployments 判 up 非空——底线留置件不作上序候选,
     # 零新启发式)。发射载体 = RunDeploy(条件续类,entry.
     # classify_frame_stability,不触发截断、不受 M7 发射序回排辖);
-    # 卖谁由执行侧 CwScreenDeploy 卖出臂现读仲裁(发射=存在性,执行=逐件;
-    # 执行侧同吃义务集∪新鲜度排除,swap_sell_exclusion_reason 单一判定)。
+    # 卖谁 = 发射位按同一判定集现算逐件产 CwActionSellDeployedParam +
+    # CwActionDeployMoveParam 原子(发射=判定+存在性;机械执行侧
+    # CwActionSellDeployedOp 零仲裁零现读,swap_sell_exclusion_reason
+    # 单一判定,义务集∪新鲜度排除发射侧同吃)。
     # 同帧 CwActionLevelUpParam 抑制(m1p_defer_levelup):升级开新 vacancy,下帧
     # M1′ 以零卖出成本接管——卖出不可逆 > 等一帧。
     # 发射位门(state_of(session).cw4_m1p_seam_verified):装配两侧(发射⇔执行)
@@ -1863,9 +1865,10 @@ def run_mandate(frame: MandateFrame,
     # 推进羁绊进度的替补成员」门,redeploy_cost_gate_defer 显影;成型/基座臂
     # 不辖(§2.3 不动)。
     # m1p 执行侧分键载体帧级复位(无条件,pending 只活一个决策帧):
-    # 本帧发射位有 m1p 换血时在发射处置为 plan.arm,消费点 =
-    # CwScreenDeploy.deploy 卖出臂(读后即清)。非 m1p 帧恒 None ⇒ 执行侧
-    # 卖出计 regular 键,零漂移。无条件复位防「m1p 帧后接 M1 帧(下方
+    # 本帧发射位有 m1p 换血时在发射处置为 plan.arm;原消费点 = 部署机
+    # 卖出臂(读后即清)已随部署机退役——现役零读端,归因分键悬空
+    # (在册申报 = projection_contract.md §4.3)。非 m1p 帧恒 None。
+    # 无条件复位防「m1p 帧后接 M1 帧(下方
     # 块被跳过)且执行未及消费」的跨帧残留误归因。计划载荷
     # (cw4_m1p_plan_pending,T-279 R1)同帧级同宿复组。
     state_of(session).cw4_m1p_arm_pending = None
@@ -2040,8 +2043,7 @@ def run_mandate(frame: MandateFrame,
                               row=_step.row, slot=_step.slot),
                     True, 'm7_equip_transfer'))
             if not _build.steps:
-                # 空计划具名 NOOP(合法稳态;哨兵计划面挂点随分发段迁 kernel
-                # 构造位,零穿戴哨兵执行面在 CwOpEquipAll)。
+                # 空计划具名 NOOP(合法稳态)。
                 _count('equip_plan_empty_noop')
 
     # M7.5 工具消费发射位已物理移出本执行器(T-159 迁移 C,审 A1 主案):

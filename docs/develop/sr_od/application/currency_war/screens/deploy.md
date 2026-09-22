@@ -16,7 +16,8 @@
 
 | 环节 | 单一源 |
 |---|---|
-| 部署选人/围栏/排序/底线门 | `kernel/cw_deploy_logic.py`(`select_deployments_reasoned`/`recipe_floor_holds`/`select_swap_plan`/`residual_fill_plan`) |
+| 部署选人/排路由/槽位计划 | `strategies/impl/mandate_v1/deploy_plan.py`(`select_deployments_reasoned`/`deploy_row_pref`/`deploy_slot_plans`/`deploy_plan_moves`) |
+| 围栏常量与共用判定谓词 | `kernel/cw_deploy_logic.py`(`recipe_floor_holds`/`select_swap_plan`/`residual_fill_plan`) |
 | 动作词表 | `kernel/cw_vocab.py::CwActionDeployMoveParam`(槽位表下标 0 基) |
 | 拖拽执行 | `operations/cw_op/cw_deploy_move_action.py::CwActionDeployMoveOp`(原语 = `operations/dev/drag_cw_char.py::DragCwChar.drag_char`,中心拖 + hold0) |
 | 部署逻辑态 | `kernel/cw_action_report/deploy_move.py::report_action_deploy_move_param`(bench→deployed 槽位平移 + board 维护) |

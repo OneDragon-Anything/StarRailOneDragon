@@ -25,6 +25,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     game_state_from_ctx,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionWearEquipParam
+from sr_od.application.currency_war.prep_actions import PREP_DRAG_SETTLE_WAIT_S
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -50,7 +51,7 @@ class CwActionWearEquipOp(SrOperation):
     def run(self) -> OperationRoundResult:
         """穿装备单步。
 
-        流程 = 稳帧确认(动画收尾输入条件化等待,非判效)→ owned 网格
+        流程 = 固定等待 `PREP_DRAG_SETTLE_WAIT_S`(非判效)→ owned 网格
         按名定位源件 → 单次拖拽。机械执行零判效:发出即记账,拖后零读屏
         零落地判定;拖拽静默不生效由下一入口观察对账显影,重派重算 =
         决策循环按新观察自然承接。
@@ -71,7 +72,7 @@ class CwActionWearEquipOp(SrOperation):
             return self.round_fail(
                 f'owned 网格未定位到 {action.item_name}'
                 '(模板库缺失/计划失效,下帧重派重算)')
-        ex._wait_stable_frame()
+        time.sleep(PREP_DRAG_SETTLE_WAIT_S)   # 拖前固定等待(非判效)
         ex._ctx.controller.mouse_move(start)   # 防吞点击(截图前移光标)
         time.sleep(0.2)
         ex._ctx.controller.drag_to(start=start, end=target,

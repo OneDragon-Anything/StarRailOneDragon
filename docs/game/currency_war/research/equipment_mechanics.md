@@ -220,7 +220,7 @@ equips 实读失配触发安灯停局(即 run_075416 的死法)。
 
 - **冶金炉(取下并转化)**:期望收益 = 「死库存价值 vs 目标命中概率 × 装备价值 ÷ 3 件/次吞吐」——数学模型已在 P14 定理 2/Q2 生产化(`docs/develop/sr_od/application/currency_war/proofs/p14-equipment-acquisition-ev.md`;生产函数 `cw_synthesis.recycle_qualified`/`component_demand`,`cw_synthesis.py:131-168`)。判据:回收合格 ⟺ 该基础件不是任何目标进阶的组件;炉子不追缺件(E[炉次→首中] 按 p50 口径:k=3 角色用法=几何真值 1/q≈12.3-3.4 炉;36/m 仅 k=1 单件线性口径)。**到货随机 → 有炉才考虑刷什么,不规划攒炉时机**【口述·权威】。用炉刷出的新件若暂无用,处置遵循 [22] 囤件语义(有用先囤、囤多才排优先级)而非立即抛售——但注意刷动作本身销毁原库存,「刷完再囤」必须先过 [22]④ 凑息账口径之外的持有价值判(目标需求向量差集,`hoard_gaps`,`cw_synthesis.py:171-193`)。
 - **扳手(取下全部)**:纯移位零损耗(转自已有装备价值不打折)。使用门槛只有「被拆角色不再需要这些装备」:过渡阵容退场时输出装备原样转移;持有精密扳手时扳手免费无限,取下成本≈0,倾向宽用。
-- **通用前置**【代码实锤,现状描述】:执行侧对工具**零操作**(equip_all 过滤 category='工具' 不拖不消,`cw_op_equip_all.py:45` `_TOOL_CATEGORIES` 与 `:49-57` 写端同过滤;owned 快照不含工具,`equip_all.py:518-521` 注释)——工具使用目前只有人工/plaza 层面,自动化消费为策略设计件待办(挂策略池行)。
+- **通用前置**【代码实锤,现役描述】:工具过滤单一源 = kernel 判据面(穿戴候选过滤 category='工具' 不拖不消,`kernel/cw_equip_wear_plan.py` `_TOOL_CATEGORIES` 同过滤)——工具自动化消费已在役(`CwActionToolUseOp` 七类 + `kernel/cw_equip_env.evaluate_tool_actions` 准入),工具使用时机/优先级仍为策略设计件待办(挂策略池行)。
 
 ### 无用装备回收流水线(冶金炉主战场)
 

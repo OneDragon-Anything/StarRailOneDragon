@@ -18,11 +18,11 @@
 
 ## 3. 词表完备性注:SwapDeploy(上阵↔备战对调;非注册行)
 
-词表 + 容器逻辑态直写 + sim 消费在役,**生产执行器未接线**(备战域部署换位经部署机拖拽承载);**不经注册表分发**,不在 [README.md](README.md) 注册行映射内。逻辑态规则(规则在册,供接线/sim 消费):deployed 下标 `d_idx` 与 bench 下标 `b_idx` **原槽对调**(置空不移位坐标系);上场者继承下场者的排(含开拓者形态归一,归一核 = `cw_exec_state.trailblazer_row_identity` 与 deploy/swap 上报同源),`Unit.slot` 信息位重写;board 派生随写(front/back rows 行写挂钩 `_resync_board_delta`,本腿禁手写);拒绝 = 同名同星已在场其余位(`duplicate_on_board`)/ expect 双侧失配(陈旧提案)/槽空越界。装备随人走(对象迁移)。kernel 锚 = `kernel/cw_action_report/swap_deploy.py::report_action_swap_deploy_param`、`kernel/cw_vocab.py::mutate_bench_deployed` SwapDeploy 分支(W43 裁决 1/2 代际校验 + 同名唯一性)。
+词表 + 容器逻辑态直写 + sim 消费在役,**生产执行器未接线**(备战域部署换位 = DeployMove 原子序,部署机画面 op 已退役);**不经注册表分发**,不在 [README.md](README.md) 注册行映射内。逻辑态规则(规则在册,供接线/sim 消费):deployed 下标 `d_idx` 与 bench 下标 `b_idx` **原槽对调**(置空不移位坐标系);上场者继承下场者的排(含开拓者形态归一,归一核 = `cw_exec_state.trailblazer_row_identity` 与 deploy/swap 上报同源),`Unit.slot` 信息位重写;board 派生随写(front/back rows 行写挂钩 `_resync_board_delta`,本腿禁手写);拒绝 = 同名同星已在场其余位(`duplicate_on_board`)/ expect 双侧失配(陈旧提案)/槽空越界。装备随人走(对象迁移)。kernel 锚 = `kernel/cw_action_report/swap_deploy.py::report_action_swap_deploy_param`、`kernel/cw_vocab.py::mutate_bench_deployed` SwapDeploy 分支(W43 裁决 1/2 代际校验 + 同名唯一性)。
 
 ## 4. 边界(逐动作逻辑态专篇索引)
 
-备战域注册行逐动作专篇:[sell-bench.md](sell-bench.md) / [sell-deployed.md](sell-deployed.md) / [level-up.md](level-up.md) / [deploy-move.md](deploy-move.md) / [wear-equip.md](wear-equip.md) / [collect-ore.md](collect-ore.md) / [open-box.md](open-box.md) / [open-tome.md](open-tome.md) / [open-bookcard.md](open-bookcard.md) / [tools.md](tools.md);转场与事件线:[start-battle.md](start-battle.md) / [open-shop.md](open-shop.md) / pick 族五篇(pick-*.md)。全集映射(26 注册行)见 [README.md](README.md)。
+备战域注册行逐动作专篇:[sell-bench.md](sell-bench.md) / [sell-deployed.md](sell-deployed.md) / [level-up.md](level-up.md) / [deploy-move.md](deploy-move.md) / [wear-equip.md](wear-equip.md) / [collect-ore.md](collect-ore.md) / [open-box.md](open-box.md) / [open-tome.md](open-tome.md) / [open-bookcard.md](open-bookcard.md) / [tools.md](tools.md);转场与事件线:[start-battle.md](start-battle.md) / [open-shop.md](open-shop.md) / pick 族专篇五篇(其余行缺档,见 [README.md](README.md) 索引)。全集映射见 [README.md](README.md)(计数以注册表现值为准)。
 
 ## 5. 依据
 

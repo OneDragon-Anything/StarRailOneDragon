@@ -17,11 +17,9 @@ data/affix_effects_data。)
 
 18 号稿落码批新增——装备穿戴释放判据面(策略侧单一源):
 - ``resolve_wear_release``:释放判据表五行评估(18 号稿 §2.1),产出
-  布尔释放位——**hold 触发权归策略侧**:执行层(CwOpEquipAll)只消费
+  布尔释放位——**hold 触发权归策略侧**:执行层只消费
   ``WearReleaseDecision.hold``,禁在执行层加第二套时机判断
   (与裁定 3 同理由);
-- ``classify_zero_wear_stop_reason``:零上身哨兵 stop_reason 辖域二分
-  (18 号稿 §1.2:策略 by-design / 策略缺口 / 执行链 + 枚举外兜底行);
 - ``resolve_affix_priority_order``:词缀条件优先层求序(18 号稿 §3.2,
   限输出侧罚则族;载体 = data/affix_wear_semantics_data 结构化缓存)。
 
@@ -32,9 +30,6 @@ data/affix_effects_data。)
 - ``classify_item_hold``:逐件扣留判定(B1 伴生:帧级布尔无法表达
   「自由件穿+key 扣留」混合态,消费位改件级输出);求值序 = O3 豁免 →
   O1/O2 释放门 → 保留域①-⑤ → 清单外一律释放(§2.3);
-- ``classify_zero_wear_stop_reason`` 新增 opening(row1) 域分键
-  ``strategy_by_design_opening``(§5 遥测分键,row1/row2 预期相反
-  无分键则锚不可判读);
 - ``evaluate_tool_actions``/``admitted_tool_actions``:工具件消费判据
   (全量收编 10 号稿 §2.1 三道门,本批只落冷启动分支 = 炉准入+扳手闸,
   其余 fail-closed 带拒因分键)+ G1 发射位准入(防第四个闩;
@@ -127,68 +122,6 @@ def apply_equip_env_variants(signals: EquipEnvSignals,
 
 
 # ===== 18 号稿落码批:穿戴释放判据面(策略侧单一源)=====
-
-#: 零上身哨兵 stop_reason 辖域二分(18 号稿 §1.2)四归域常量。
-ZERO_WEAR_STRATEGY_BY_DESIGN: str = 'strategy_by_design'
-#: opening(row1) 域分键(21 号稿 §5 遥测分键):row1 帧域「分配方案空/
-#: 过渡期hold」帧数趋零与保留域「committed hold 不回归」对同一帧族预期
-#: 相反,无分键则 O2 实机锚不可判读(v3,B3)。
-ZERO_WEAR_STRATEGY_BY_DESIGN_OPENING: str = 'strategy_by_design_opening'
-ZERO_WEAR_STRATEGY_GAP: str = 'strategy_gap'
-ZERO_WEAR_EXECUTION: str = 'execution'
-ZERO_WEAR_EXECUTION_PENDING: str = 'execution_pending'
-
-#: 执行链 stop_reason 全枚举(精确匹配行;18 号稿 §1.2 值域)。
-#: 字符串值 = 两类写入端字面量:装备 op 执行面(cw_op_equip_all:drag 落空/
-#: 画面非干净备战/装备计划失效)、分发段
-#: 计划面(prep_actions _build_equip_wear_plan 的 empty_reason:pool_empty/
-#: 分配对全部拉黑,m7 主路径与 front_only 回退各一处写入)。哨兵覆盖仅
-#: 辖 m7 主路径:计划面经 _run_equip 空计划短路入哨兵,执行面三挂点
-#: 均 _is_m7 条件,front_only 回退分支两侧均不挂哨兵(与
-#: §4-9 申报一致);新增行须与写入端常量逐字同步(kernel 不反向
-#: import operations,只复制入场)。
-_ZERO_WEAR_EXECUTION_REASONS: frozenset[str] = frozenset({
-    'drag 落空(失败继续)',
-    'pool_empty(无穿戴候选)',
-    '分配对全部拉黑(drag 连败)',
-    '画面非干净备战',
-    # 装备计划失效(写入端 = CwOpEquipAll.STATUS_PLAN_STALE 具名常量):计划失效 = 本 pass 零穿戴已发生,归因在执行链
-    # ——策略侧已产出计划,计划步件被执行期状态漂移(robust 合成消耗/
-    # 列 reflow)打空,恢复动作(交回重派重算)也走分发/执行链;归
-    # execution 使哨兵台账直接指向执行链即查,不落 execution_pending
-    # 待分诊兜底行(18 号稿 §1.2「新枚举值回表补行」纪律)。
-    '装备计划失效(计划步件两次现读不可定位,交回重派重算)',
-})
-
-
-def classify_zero_wear_stop_reason(stop_reason: str) -> str:
-    """零上身哨兵 stop_reason → 辖域归域(纯函数;18 号稿 §1.2 二分表)。
-
-    归域:
-    - ``strategy_by_design``:过渡期/opening hold 命中(策略 by-design,
-      由 18 号稿 §2.1 释放判据表解释,非执行缺陷);
-    - ``strategy_by_design_opening``:opening(row1) 域分键(21 号稿 §5,
-      写入端 = ``opening_hold(row1):...`` 前缀;row1/row2 预期相反须分键);
-    - ``strategy_gap``:分配方案空(策略语义缺口,归词缀条件优先层
-      (§3)与工具消费空缺评估);
-    - ``execution``:执行链(drag 落空 / pool_empty / 分配对全部拉黑 /
-      槽位坐标缺失 / 画面非干净备战 / 装备计划失效 / 工具计划失效);
-    - ``execution_pending``:**兜底行**——枚举外的一切 stop_reason(含
-      空串 stall)暂归执行链待分诊;新枚举值出现时回 18 号稿 §1.2 补行。
-    """
-    s = stop_reason or ''
-    if s.startswith('opening_hold'):   # 21 号稿 §5:row1 域分键(新写入端)
-        return ZERO_WEAR_STRATEGY_BY_DESIGN_OPENING
-    if s.startswith('过渡期hold'):     # row2(committed)旧写入端字面量
-        return ZERO_WEAR_STRATEGY_BY_DESIGN
-    if s.startswith('分配方案空'):
-        return ZERO_WEAR_STRATEGY_GAP
-    if s in _ZERO_WEAR_EXECUTION_REASONS:
-        return ZERO_WEAR_EXECUTION
-    if s.endswith('槽位坐标缺失'):
-        return ZERO_WEAR_EXECUTION
-    return ZERO_WEAR_EXECUTION_PENDING
-
 
 @dataclass(frozen=True)
 class WearReleaseDecision:
@@ -368,8 +301,8 @@ def classify_item_hold(decision: WearReleaseDecision, item_name: str,
 
 def opening_hold_active(round_num: int | None, node_type: str | None,
                         battle_gate: bool, battle_nodes: frozenset[str]) -> bool:
-    """row1:opening hold(r388/× 收窄;自 cw_op_equip_all
-    迁入策略侧,语义逐字不变)。
+    """row1:opening hold(r388/× 收窄;自备战执行器模块迁入,
+    语义逐字不变;考古归 git)。
 
     - r388:开局轮(P1 r≤2)hold 无条件生效——key_equips 白名单来自
       target,target 真空(重启后首局)时白名单为空;旧判
@@ -390,8 +323,8 @@ def opening_hold_active(round_num: int | None, node_type: str | None,
 
 
 def committed_hold_active(comp, form: float, committed: bool) -> bool:
-    """row2:已定型扣留(r70 过渡持有语义;自 cw_op_equip_all 迁入策略侧)。
-
+    """row2:已定型扣留(r70 过渡持有语义;自备战执行器模块迁入,
+    语义逐字不变;考古归 git)。
     激活 = target 在(comp 非 None,form 的载体)∧ 0<form<COMMIT_FRAC
     ∧ committed(权威 = ``cw_intention.committed_from``:位面 2 起恒定型
     ∨ 意向已锁 ∨ P1 配对线非空;缺供给 = False 保守侧 = 双轨)。
@@ -404,8 +337,8 @@ def committed_hold_active(comp, form: float, committed: bool) -> bool:
 
 
 def rust_release_active(enemy_affixes: list[str] | None, gate: bool) -> bool:
-    """row4:库藏生锈豁免(自 cw_op_equip_all 迁入策略侧,
-    语义逐字不变)。滞留边际代价在计件封顶(registry cap=10)内单调上升,
+    """row4:库藏生锈豁免(自备战执行器模块迁入,
+    语义逐字不变;考古归 git)。滞留边际代价在计件封顶(registry cap=10)内单调上升,
     压倒「攒给成型核心」的机会成本。"""
     if not gate:
         return False

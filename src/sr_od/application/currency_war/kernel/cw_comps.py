@@ -2070,7 +2070,7 @@ def equip_allocation(comp: Comp | None,
     ``deployed_rows`` = 容器行域 ``(front_row, back_row)``,元素 = 容器
     ``Unit``(char_id/slot 行内槽号,排归属由行承载——benchchar-retirement
     P4 容器形)。comp=None → 全走 3(通用兜底)。纯函数(可离线测);
-    CwOpEquipAll 消费。
+    消费面 = `kernel/cw_equip_env.py`(判据求值位)。
 
     ``priority_order``(18 号稿 §3.3 签名扩展):可选分配优先序
     (list[str],角色名);None(缺省)= 现行内部派生序,**零行为漂移**。

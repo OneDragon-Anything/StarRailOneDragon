@@ -21,8 +21,8 @@ HTTP 消费方直接读用,不必自己 OCR / 看图。
 (frozen replace 新构造;备战席无 below icon→bench unit equips 恒 [])。
 
 ⚠️ **可靠性标注**:立绘库 ``currency_war/portrait_plaza``(官方 plaza 烘焙)实测可用 —— D-22(2026-08-09,
-手采库时代)有角色槽 6/6 命中空槽不误;切 plaza 库时 A/B 对拍持平(14 vs 15,一致 13);2026-08-16
-M34 live(CwOpEquipAll 身份)通过。消费方据该字段时仍知其 SIFT 来源(非 OCR),供智能体交叉验证而非盲信
+手采库时代)有角色槽 6/6 命中空槽不误;切 plaza 库时 A/B 对拍持平(14 vs 15,一致 13);实机对局实证:
+plaza 烘焙立绘库经备战执行面身份链 live 验证通过(该执行面已退役,考古归 git)。消费方据该字段时仍知其 SIFT 来源(非 OCR),供智能体交叉验证而非盲信
 (证据链见 ``currency_war_char_id`` docstring)。
 """
 from __future__ import annotations

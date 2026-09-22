@@ -52,7 +52,8 @@
 | SwapDeploy(上阵↔备战对调) | `CwActionSwapDeployParam` | 未接线(词表+上报函数/sim 消费在役;词表完备性保留) | 非终结 |
 | DeployMove(部署) | `CwActionDeployMoveParam` | `cw_deploy_move_action.py::CwActionDeployMoveOp`(bench→上阵单步拖拽,发射位逐帧现算) | 非终结 |
 | 领取类(开箱) | `CwActionOpenBoxParam` | `cw_open_box_action.py::CwActionOpenBoxOp` | **访问终结**(§6) |
-| 领取类 | `CwActionCollectOreParam`/`CwActionOpenTomeParam`/`CwActionOpenBookcardParam` | 同名 `_action.py` op(`cw_open_tome_action.py` 等) | 非终结 |
+| 领取类 | `CwActionCollectOreParam`/`CwActionOpenTomeParam` | 同名 `_action.py` op(`cw_open_tome_action.py` 等) | 非终结 |
+| 领取类(开书册卡) | `CwActionOpenBookcardParam` | 同名 `_action.py` op(`cw_open_bookcard_action.py`) | **访问终结**(§6) |
 | 穿戴/工具 | `CwActionWearEquipParam`/`CwActionFurnaceUseParam`/`CwActionPrivilegeCardUseParam`/`CwActionWrenchUseParam`/`CwActionPrecisionWrenchUseParam`/`CwActionStaffProjectorUseParam`/`CwActionPerfectProjectorUseParam`/`CwActionLuckyTokenUseParam` | `cw_wear_equip_action.py::CwActionWearEquipOp`/`cw_tool_use_action.py::CwActionToolUseOp` | 非终结 |
 | 转场 | `CwActionOpenShopParam`/`CwActionStartBattleParam` | `cw_open_shop_action.py::CwActionOpenShopOp`(terminal 承载行,执行抛,正常路径不可达)/`cw_start_battle_action.py::CwActionStartBattleOp`(返回值在册例外) | 备战环终结/备战访问终结 |
 
@@ -94,7 +95,7 @@
 | 买经验(点「备战标识-购买经验」) | 4 金/击=+4 经验,升级=过门槛表(`research/xp-rules.md` §2;表值 = `kernel/cw_economy.py::XP_TO_NEXT_LEVEL`) | `CwActionLevelUpOp` 备战连点 | 备战期(22 号篇;商店期收缩后的唯一买经验期) | 非终结 |
 | 开商店(点「按钮-商店」) | 商店每节点自动刷新 1 次(`data/gameplay.md`) | `OpenShop`;编排 = `cw_screen_prep.py` 商店访问段(文档 = [shop.md](shop.md)) | 备战期(进商店访问的唯一入口动作) | **备战环终结**:执行 = 商店访问编排(open_shop → 商店画面 op 两 node 访问 → 收店),完成后交回外循环重识别 |
 | 出战(点「按钮-出战」) | 未在行动值内取胜扣血(`data/gameplay.md`) | `CwActionStartBattleOp`;发射意图 = mandate_v1 前置发射位(判据 = `kernel/cw_launch_admission.py::readiness_launch_decision`);执行 = 统一执行器 `operations/cw_loop.py::launch_battle_unified` | 备战期出口(唯一完成态) | **备战访问终结**:交回外循环战斗分支 |
-| 点晶矿(区域-奖励) | 晶矿飞行动画 ≤2s(`research/screen_flow_timing.md` #16) | `CollectOre`(批式:一次全点→等 2s→统一验证;席满让路门 = `strategies/impl/mandate_v1/entry.py` 席满探针段) | 备战期 | 非终结 |
+| 点晶矿(区域-奖励) | 晶矿飞行动画 ≤2s(`research/screen_flow_timing.md` #16) | `CollectOre`(批式:一次全点→固定等待 2s→自上报交回;席满未点开的晶矿由下一帧观察回补;席满让路门 = `strategies/impl/mandate_v1/entry.py` 席满探针段) | 备战期 | 非终结 |
 | 开补给箱(点备战栏箱位) | 开箱即腾席(武装箱 overlay) | `OpenBox`(点「开启」即交回;选卡弹窗由画面 op `CwScreenBoxPick` 闭环、武装箱获得说明弹窗由 `CwScreenArmoryBox` 点 × 关闭,均非动作) | 备战期(实体面优先,`entry.py::emit` ①) | **访问终结** |
 | 开秘密典籍 | 典籍占备战席 1 槽 | `OpenTome`(选卡弹窗由画面 op `CwScreenBoxPick` 闭环,非动作) | 备战期(实体面优先,`entry.py::emit` ①) | 非终结 |
 | 查看详情(角色/装备详情浮层) | 游戏辅助功能(`data/gameplay.md`) | 推进型弹窗 `CwScreenRoleDetailOverlay` 等(阶段一身份分发,空决策形态) | 无策略归属(推进为流程义务) | 关闭/点空白即终结 |
@@ -140,6 +141,7 @@
 | 备战 StartBattle | **访问终结(唯一完成态)** | 出战 → 外循环置战斗窗口(备战→战斗→结算→回备战轮推进,`outer_loop.md` §4) |
 | 备战 OpenShop | 备战环终结 | 交商店访问编排(显式开店)或回外循环重识别(读数开店) |
 | 备战 OpenBox | **访问终结** | 点「开启」即交回外循环重观察;武装箱选择画面由外循环按画面分发独立画面 op 选卡([box_pick.md](box_pick.md)),选卡动作不经备战决策循环 |
+| 备战 OpenBookcard | **访问终结** | 开卡 = 专家邀请函弹窗在场 = 新事实,交回外循环按该画面分发选卡(`terminal_wait=1.8`;发射位 = 策略器 entry ① prep 实体面卡片臂) |
 | 备战 overlay 检出 | 环中止 | 弹层/事件在场 → 交回外循环分支 handler |
 | 备战无动作(None) | 合法交回 | None = 本帧无动作,交回外循环重观察(商店域无此通道,该通道已由 CloseShop 终结取代) |
 | 单选族确认离开 | 画面终结 | overlay 消失即节点完成(补给节点无结算屏);投资两屏/补给/遭遇/策划/装备 = **派发确认链(或点卡即选)即 round_success 终结交回**(即时上报形态,确认未生效由外循环重识别重派) |

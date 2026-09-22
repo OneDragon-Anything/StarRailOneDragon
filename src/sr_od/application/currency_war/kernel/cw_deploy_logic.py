@@ -386,7 +386,9 @@ def residual_fill_plan(held: list, front_empty: list, back_empty: list,
                        deployed_cids: set, cap: int | None,
                        deployed_count: int) -> list[tuple[int, str, int]]:
     """P24 残余补部署计划(纯函数,可离线直测;判据单一源 = 本函数,
-    CwScreenDeploy 侧同名函数仅转发适配器,仿彼处 r288_hold_now 先例)。
+    消费面 = 发射面谓词(mandate m1p 换血臂 ``select_swap_plan`` 调用面),
+    机械执行侧 ``CwActionSellDeployedOp`` 不消费本函数;原部署机侧同名
+    转发适配器已随部署机退役,考古归 git)。
 
     主排序循环结束后空槽仍存在(cap 未满)且散牌留置(``held``)非空时,
     对留置散牌生成补部署计划。判据 = P24 残余补部署支配定理
@@ -644,12 +646,10 @@ def swap_yield_contribution(target_factions: frozenset[str] | set[str],
 
 # ===== 板满换阵补部署计划(M1″ 发射面谓词;与 select_deployments 同族)=====
 # 语义出处:(board-full swap redeploy)。
-# 结构:发射侧(mandate M1″)与执行侧(CwScreenDeploy 卖出臂)**同函数、
-# 同一装配契约**(assemble_swap_plan_inputs),但输入源两侧分轨——发射
-# = 决策帧黑板,执行 = last_state + SIFT(装配源契约钉死为执行侧卖出
-# 决策实际消费的快照链,禁另起第三路);两侧输入的逐字段对齐由 seam
-# 核对批兑现(cw4_m1p_seam_verified 唯一写点),对齐证据是开闸前置
-# 义务——「同谓词 ∧ 同输入快照 ⇒ 发射⇔执行可开出卖序」是条件式不变式
+# 结构:消费面 = 发射面(mandate M1″ 换血臂)单一——assemble_swap_plan_inputs
+# 同一装配契约,输入源 = 决策帧黑板;机械执行侧 CwActionSellDeployedOp
+# 不消费本函数(机械单发零现读,原执行侧卖出臂输入轨已随部署机退役);
+# 发射输入的逐字段装配契约由装配单一源钉死,禁另起第三路。
 # 拒因键(闭集):cap_unreadable / membership_unreadable / input_missing
 # (弃权三键,计划空)+ 逐件拒因 fenced_arm_closed / target_keep /
 # protected / buy_membership / fresh_buy / post_sell_held。
@@ -919,8 +919,10 @@ def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
                                ) -> str:
     """卖出 victim 的单一判定(逐件;+ 转型臂同位扩展)。
 
-    消费面 = 发射面谓词(select_swap_plan)与执行侧卖出臂(CwScreenDeploy
-    `_sell_offtarget_deployed`)——卖出通道统一排除辖域 + **逐件可卖性**
+    消费面 = 发射面谓词(mandate m1p 换血臂 ``select_swap_plan`` 调用面);
+    机械执行侧 ``CwActionSellDeployedOp`` 不消费本函数(执行侧现役零调用,
+    原部署机卖出臂消费面已随部署机退役)——卖出通道统一排除辖域 +
+    **逐件可卖性**
     的唯一交汇点(内聚声明:守恒门/合成素材守卫/
     SWAP_TRANSITION_ARM_ENABLED 的消费点全部落回本函数或其唯一调用链,
     新资格族语义只在此实现一次,发射⇔执行资格自动同值,禁分轨态)。
@@ -936,7 +938,7 @@ def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
       见该分支注)。fenced 件可卖性 =
       ``fenced_on ∨ 转型臂资格``——基座/成型臂经
       ``offtarget_sell_allowed`` 参数化接入(本体零修改,守恒门参数化
-      喂 fenced 布尔);转型臂拒因逐件显影,执行侧卖出仲裁同吃本函数
+      喂 fenced 布尔);转型臂拒因逐件显影
       (:放行参数逐件形态,禁退化标量 fenced_on)。
       扩展:锁线转型域(``_swap_transition_domain``)内经
       键集收窄释放的 candidate 无论 fenced 与否统一落转型臂资格族
@@ -1136,17 +1138,16 @@ class SwapPlanContext:
     #: mandate_v1 deploy_plan ``_deploy_plan_inputs`` 同源同值)。消费面 = select_swap_plan
     #: 卖后上序(必需件首桶,使「卖了换血后」的首个空位优先落必需件——
     #: 不穿则换血腾出的位仍会被普通成员按旧序占走)、
-    #: ``swap_sell_exclusion_reason`` 的板满换入臂,与执行侧卖出后补部署
-    #: 重 derive 的同名穿参(cw_screen_deploy R1-b 回落臂;发射⇔执行
-    #: 同源第三路)。
+    #: ``swap_sell_exclusion_reason`` 的板满换入臂;执行侧卖出后补部署
+    #: 重 derive 已随部署机退役,现役归 m1p 发射臂逐件产原子 + 环内重 derive。
     required_names: frozenset[str] = frozenset()
 
 
 # ===== 换阵可兑现谓词(F1 单一源;发射-执行接缝合拢)=====
 # 语义出处:无方向幻影部署软卡死事故。
-# 为什么存在:发射面(select_swap_plan)与执行面(CwScreenDeploy 卖出臂两门)
-# 对「这场换阵能否兑现」判定不同源时,发射面会发出执行面必然空转的
-# RunDeploy(2026-09-08 实机软卡死 run_20260908_210431:无方向态
+# 为什么存在:发射面(select_swap_plan)与执行面(原部署机卖出臂两门,
+# 已随部署机退役)对「这场换阵能否兑现」判定不同源时,发射面会发出执行面
+# 必然空转的 RunDeploy(2026-09-08 实机软卡死 run_20260908_210431:无方向态
 # 发射 53 次幻影部署,执行 0 次真实换阵,交替活锁 15 分钟)——本谓词是
 # 「发射⇔执行同谓词」的单一实现,两面各消费其合取支,禁任一面自写
 # 第二份口径。支出出口总图防双改清单的共享单点对账持久家(推导考古走 git 历史)
@@ -1255,7 +1256,8 @@ def swap_realizable(ctx: SwapPlanContext | None, *,
       蕴含,预判只会把逐件显影挤成单键;门③由 victim 扫描自然承载
       (逐件同判 swap_sell_exclusion_reason,扫描空即计划空,语义等价
       且逐件拒因保留显影);
-    - 执行面(CwScreenDeploy 卖出臂两门)消费本函数与合取②计数;
+    - 执行面(原部署机卖出臂两门)已随部署机退役,现役零执行侧消费——
+      机械执行 = `CwActionSellDeployedOp` 逐件原子,资格判定全部前移发射面;
     - sim 镜像经 select_swap_plan 自动继承。
 
     :returns: (ok, why)。why ∈ SWAP_REALIZABLE_WHY(拒因闭集)或 ''
@@ -1320,9 +1322,10 @@ def evolution_swap_arm_trigger(membership: frozenset[str] | None,
 
     最小等效通道的准入面:「锁线转型域 ∧ 板满 ∧ bench 有在册线件待上」
     (修向「板满∧bench有locked线core→发射卖线外件上core事务」
-    的准入三元)。三面消费(装配级缺省计算 = 发射面 mandate M1″ 与
-    sim 引擎;执行侧 CwScreenDeploy 卖出臂经本函数用 SIFT 现读 bench 域
-    重算覆写)——同函数同谓词,发射⇔执行资格自动同值,禁分轨态
+    的准入三元)。两面消费(装配级缺省计算 = 发射面 mandate M1″ 与
+    sim 引擎;原执行侧 SIFT 现读重算覆写轨已随部署机退役,机械执行侧
+    `CwActionSellDeployedOp` 不消费本函数)——同函数同谓词,消费面资格
+    自动同值,禁分轨态
     (同款纪律)。
 
     各腿单一源与 fail-closed:

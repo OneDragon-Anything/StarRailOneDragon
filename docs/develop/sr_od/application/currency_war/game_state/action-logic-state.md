@@ -38,7 +38,7 @@
 
 ### 1.3 kernel 单一源指针纪律
 
-- **规则已实现**：本篇只写语义 + 指向 kernel 函数（符号锚）；数值只写常量名，不复制数值（值的单一源在代码）。本篇被指对象：`kernel/cw_merge_simulate.py::merge_buy_k` / `merge_buy_completes` / `_merge_bench` / `_apply_full_bench_merge_buy` / `same_star_count`；`kernel/cw_economy.py::sell_refund` / `bench_char_cost` / `xp_apply_clicks` / `xp_click_cost` / `clicks_to_next_level` / `blood_xp_full_clicks`；`kernel/cw_action_report/` 上报函数族（每动作一文件 `report_action_<snake>_param`，零写族 `zero_writes.py`；刷新计数组 `record_refresh_execution` 与刷新上报同文件）与 `kernel/cw_game_state.py::detect_merge_upgrade`；`kernel/cw_vocab.py::mutate_bench_deployed`；`kernel/cw_exec_state.py::apply_confirm_effect`（dict 确认族）；`kernel/cw_affix_effects.py::apply_tool_execution_write`（及登记表 `EQUIP_WRITE_SIDES`）；`kernel/cw_effect_inventory.py::spawn_equip_bench_unit` / `grant_equip_item` / `transform_equip_to_privilege` / `transform_worn_equip_to_privilege`。
+- **规则已实现**：本篇只写语义 + 指向 kernel 函数（符号锚）；数值只写常量名，不复制数值（值的单一源在代码）。本篇被指对象：`kernel/cw_merge_simulate.py::merge_buy_k` / `merge_buy_completes` / `_merge_bench` / `_apply_full_bench_merge_buy` / `same_star_count`；`kernel/cw_economy.py::sell_refund` / `bench_char_cost` / `xp_apply_clicks` / `xp_click_cost` / `clicks_to_next_level` / `blood_xp_full_clicks`；`kernel/cw_action_report/` 上报函数族（每动作一文件 `report_action_<snake>_param`，零写族 `zero_writes.py`；刷新计数组 `record_refresh_execution` 与刷新上报同文件）与 `kernel/cw_game_state.py::detect_merge_upgrade`；`kernel/cw_vocab.py::mutate_bench_deployed`；`kernel/cw_exec_state.py::apply_confirm_effect`（dict 确认族）；上报写端 = `kernel/cw_action_report/tool_use.py` 七具名上报函数（工具七类容器直写；登记表 `EQUIP_WRITE_SIDES` 保留）；`kernel/cw_effect_inventory.py::spawn_equip_bench_unit` / `grant_equip_item` / `transform_equip_to_privilege` / `transform_worn_equip_to_privilege`。
 - **规则未实现**（无 kernel 落码写口）：**本篇该节即实现规格**——实现时按本节规则落码，不另立规格文档。
 - 同一规则多载体若漂移，以 kernel 单一源为准修齐（`kernel/cw_merge_simulate.py` 模块头注）。
 
@@ -296,7 +296,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 - **库存腿**（拖到一件进阶装备 icon）：**确定性变换** = 该件名替换为对应 ·特权 装备名（映射 = `kernel/cw_effect_inventory.py::privilege_counterpart`，进阶↔特权全量双射由测试锁钉死）；写端 = `transform_equip_to_privilege`（库存中该名单件替换，数量守恒）。零写分支：库存未观察 / 无此件 → 跳写留观察。
 - **穿域腿**（拖到角色）：该角色已穿**进阶**装备随机一件变特权——「哪件被选」= 随机面 → 即使执行接线，逻辑态只写**选定后确定面**（选定件 → 特权名，桥 = `transform_worn_equip_to_privilege`）；游戏自选形态归观察收口。现役执行臂只消费库存腿。
-- 依据：`EQUIP_REWRITE_DECLARATIONS['特权赋予卡']`；`kernel/cw_affix_effects.py::apply_tool_execution_write` 特权化双腿段。
+- 依据：`EQUIP_REWRITE_DECLARATIONS['特权赋予卡']`；上报写端 = `kernel/cw_action_report/tool_use.py` 七具名上报函数（特权化双腿段 = `report_action_privilege_card_use_param`）。
 
 ### 4.3 拆装扳手（角色目标·档 2 未接）
 

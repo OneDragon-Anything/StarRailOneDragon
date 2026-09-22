@@ -12,13 +12,13 @@
 
 **决策循环形态**。决策入口 = 契约 `strategies/impl/cw_strategy.py::CwStrategy.decide_prep_screen`(决策输入 = **容器 game state 直读**,零黑板——备战黑板帧已随迭代 2026-09-18-prep-obs-retirement 阶段 3.5 退役);实现链 = `strategies/impl/mandate_v1/bridge.py::decide_prep_screen`:方向代次消费 → **前置发射位 `bridge.py::_launch_front_check`**(发射决策宿主;armed 帧短路三遍编排,直接产商店访问意图(OpenShop 普通开店形态)或 `StartBattle` 终点意图)→ 预算遥测披露(`economy_cycle.disclose_budget`,非 armed 短路帧才到达)→ `bridge.py::decide_prep_frame`(三遍编排,内调 `entry.py::emit` + 帧稳定截断)。
 
-`entry.emit` 编排序(与代码体一致):①prep 实体面(容器 bench kind 分派:bookcard→OpenBookcard / supply_box→OpenBox / tome→OpenTome,书册卡臂 = 用户裁定 2026-09-19 开卡时机归策略器,终结动作;晶矿容器域→席满让路门:席自由(free>0)照常 CollectOre,席满(free==0)按 `entry.ORE_DEFER_PROBE_K` 单探针后让路 fall-through 落后续步骤序)→ ①′ wanted 闭环消费臂(名单输入 = 容器读口派生)→ ②证明 pass(信号臂/K/stop_flag/线级状态机/换线)→ ②′ 工具消费发射位 → ③升档器求值位 → ④骨架 pass(M1-M7,`mandate.py`,板满可行性门前置)→ ⑤EV pass(criteria,臂①旁路)→ ⑥无动作 ⇒ StartBattle(备战环正常出口;armed 帧的 StartBattle 与受限访问意图由前置发射位短路本序直接产,见上方决策链)。动作词表 = emit/adapter 自有映射(`adapter.py::_OP_SPECS`),输出恰一个动作(`CwAction`;空发射 = CwActionObsParam scope='outer_loop' 交回外循环重观察——原 HoldFrame 收编,用户裁定 2026-09-20)。
+`entry.emit` 编排序(与代码体一致):①prep 实体面(容器 bench kind 分派:bookcard→OpenBookcard / supply_box→OpenBox / tome→OpenTome,书册卡臂 = 开卡时机归策略器,终结动作;晶矿容器域→席满让路门:席自由(free>0)照常 CollectOre,席满(free==0)按 `entry.ORE_DEFER_PROBE_K` 单探针后让路 fall-through 落后续步骤序)→ ①′ wanted 闭环消费臂(名单输入 = 容器读口派生)→ ②证明 pass(信号臂/K/stop_flag/线级状态机/换线)→ ②′ 工具消费发射位 → ③升档器求值位 → ④骨架 pass(M1-M7,`mandate.py`,板满可行性门前置)→ ⑤EV pass(criteria,臂①旁路)→ ⑥无动作 ⇒ StartBattle(备战环正常出口;armed 帧的 StartBattle 与受限访问意图由前置发射位短路本序直接产,见上方决策链)。动作词表 = emit/adapter 自有映射(`adapter.py::_OP_SPECS`),输出恰一个动作(`CwAction`;空发射 = CwActionObsParam scope='outer_loop' 交回外循环重观察)。
 
 ## 3. 观察面
 
 入口单次 heavy;唯一决策读屏点 = 入口对账(统一规范 = [op-layer.md](op-layer.md) §1.3):
 
-- **环入口序列**:`_clear_entry_overlays`(残留模态一键关,清场注册表 `ENTRY_OVERLAY_CLOSE`)→ `_try_collapse_open_shop`(开商店态收起探针;店开着则走 0n/商店访问路径)→ `_observe(heavy=True)` → 帧代次标注 `gs.frame_class_prep='full'` → `obs.event_overlay` 非空即交回外循环重分发(不计数)→ 接管补采委派 `_delegate_plane_intel_if_needed`(触发谓词 = 容器无位面真值 `not gs.plane_bosses.value`;「节点条可读」守卫 = 半开帧不委派、等下轮免费重判;编排单一源 = `CwEntryPlaneIntel`([plane_intel.md](plane_intel.md)),委派结果透传——成功 = round_success 交回外循环重识别,失败 = round_fail 走外循环既有失败链,无自带计数/放弃分支)。书册卡不在入口代清(用户裁定 2026-09-19 开卡时机归策略器):识别 kind('bookcard')由观察读链识别期定 kind(``_bench_item_kind_by_slot``)进容器 bench,开卡动作由策略器 entry ① 卡片臂发射(终结动作,交回语义不变)。(幻影墓碑:「试用角色揭示卡」= 备战栏动画帧误判,2026-09-19 定谳撤销,墓碑 = `cw_identity_obs` 模块内注,禁再建模。)
+- **环入口序列**:`_clear_entry_overlays`(残留模态一键关,清场注册表 `ENTRY_OVERLAY_CLOSE`)→ `_try_collapse_open_shop`(开商店态收起探针;店开着则走 0n/商店访问路径)→ `_observe(heavy=True)` → 帧代次标注 `gs.frame_class_prep='full'` → `obs.event_overlay` 非空即交回外循环重分发(不计数)→ 接管补采委派 `_delegate_plane_intel_if_needed`(触发谓词 = 容器无位面真值 `not gs.plane_bosses.value`;「节点条可读」守卫 = 半开帧不委派、等下轮免费重判;编排单一源 = `CwEntryPlaneIntel`([plane_intel.md](plane_intel.md)),委派结果透传——成功 = round_success 交回外循环重识别,失败 = round_fail 走外循环既有失败链,无自带计数/放弃分支)。书册卡不在入口代清(开卡时机归策略器):识别 kind('bookcard')由观察读链识别期定 kind(``_bench_item_kind_by_slot``)进容器 bench,开卡动作由策略器 entry ① 卡片臂发射(终结动作,交回语义不变)。(幻影墓碑:「试用角色揭示卡」= 备战栏动画帧误判,禁再建模;墓碑 = `cw_identity_obs` 模块内注。)
 - **heavy 观察消费 obs 解析工具箱**:SIFT 身份(bench/deployed)+ GameState 全量(读漏斗 `obs/cw_observation.py::read_game_state` 容器直写,观察渠道含 carry/prior/leave_screen/relay)+ cap 读取 + 装备域三路(`obs/cw_observe_full.py::observe_full` 组装单一源:owned 件名池全量/occupied 已穿明细/后排布局选档);光标 parking 先行(防 OCR/SIFT 污染)。观察产物 = **容器 game state 直写**(CwScreenPrep 观察装配点,渠道①:bench 含箱/典籍 kind 细分/deployed/equips/occupied_equips/spheres 载荷坐标/node_chain);`PrepObservation` 局部对象仅载控制信号(shop_open/substate/event_overlay),不进 gs、不进 session、不再是策略器输入(黑板已退役,迭代 2026-09-18-prep-obs-retirement 阶段 3.5)。
 - **节点行观察消费位**(`cw_screen_prep.py::_write_prep_node_chain`,备战 heavy 观察链同帧同点):节点行识别**零新增**——`cw_observe_full.py::observe_full` 现役 `read_node_sequence` 调用回传 slots,写点接线在本消费位依次落:未识别图标采集(300s 时间窗防抖;screen 缺席跳写)、槽序表 `store_plane_table`(按位面首帧写,含 `plane_lengths_seen`)、节点台账按位合并(`ledger_update_plane` 'prep_row' 源;守卫 = 轮位对齐门 current idx == round_num−1 + 环境宽限窗关)。触发面 = 每次备战入口 heavy 观察(识别复用现役调用,零新增读屏);读器自带非 clean 备战帧空转守卫(返回空即跳过等下轮)。链语义正本 = [../game_state/chain-observation.md](../game_state/chain-observation.md) §3。
 - **对账边界**:本屏观察写入 = ①观察态上报进 GameState 的观察边界,对账唯一发生点在此——动作落地判定 = 容器逻辑态直写 + 本帧观察覆盖(观察赢),观察侧失配记缺陷台账;容器侧比对与仲裁 = `kernel/cw_reconcile.py`(锚定/槽号健康不变量/bench 写回);本帧定型时另跑纯观察审计族 `_v2_post_frame_accounting`(羁绊显示,零决策)。
@@ -62,18 +62,18 @@ action = strategy.decide_prep_screen(容器 game state 直读;
     CwActionObs(in_place) = 'full':访问内重观察 = 新观察写点,方向重估触发同入口帧)
 ```
 
-- **重观察通道(CwActionObs,scope 选口径)**:`scope='in_place'` → 注册表派发 `CwActionObsOp` → 宿主 `reobserve_in_visit()` heavy 观察链重跑(漏斗直写容器 = 重新观察上报),帧代次标 full 后**决策环原地续跑**(不交回外循环,访问/段序号不重启);重观察见事件 overlay = `CwObsOverlayBail` 抛出、决策循环捕获交回外循环重分发。`scope='outer_loop'` → 决策环 F3 之前拦截交回外循环重观察(不进执行器/动作记录;原 HoldFrame 空发射帧收编,用户裁定 2026-09-20)。通道细则单一源 = [../flow/action_exec.md](../flow/action_exec.md) §3。
+- **重观察通道(CwActionObs,scope 选口径)**:`scope='in_place'` → 注册表派发 `CwActionObsOp` → 宿主 `reobserve_in_visit()` heavy 观察链重跑(漏斗直写容器 = 重新观察上报),帧代次标 full 后**决策环原地续跑**(不交回外循环,访问/段序号不重启);重观察见事件 overlay = `CwObsOverlayBail` 抛出、决策循环捕获交回外循环重分发。`scope='outer_loop'` → 决策环 F3 之前拦截交回外循环重观察(不进执行器/动作记录;原 HoldFrame 空发射帧收编)。通道细则单一源 = [../flow/action_exec.md](../flow/action_exec.md) §3。
 
 - **动作全集**(备战域):OpenBox/OpenTome/OpenBookcard/CollectOre/DeployMove/SellBench/SellDeployed/WearEquip/LevelUp/OpenShop/StartBattle/Obs(环内重观察,零点击零拖拽;通道细则 = 上方「环内重观察通道」行)(组合壳 RunDeploy/RunEquip/RunTools 已随统一词表退役:部署 = DeployMove 原子序发射位逐帧现算,穿戴 = WearEquip 原子,工具 = 工具原子类经 `CwActionToolUseOp`)。词表单一源 = `kernel/cw_vocab.py::CW_ACTION_TYPES`;注册表 = `operations/cw_op/cw_action_registry.py`(SellBench/LevelUp 注册行 = 备战域 op)。
-- **逻辑态直写覆盖**(上报函数族申报):有容器写语义动作 = SellBench/SellDeployed/DeployMove/LevelUp/CollectOre/OpenTome/OpenBookcard(各一上报函数,op 自上报单点);零写族 = OpenBox(终结化)/WearEquip/工具原子七类/事件线 pick 族集中在 `zero_writes.py`(消费真值归观察,截断点独占发射帧零窗口)。规则全集正本 = [../game_state/action-logic-state.md](../game_state/action-logic-state.md) + [../game_state/logic-updates/](../game_state/logic-updates/README.md)。
+- **逻辑态直写覆盖**(上报函数族申报):有容器写语义动作 = SellBench/SellDeployed/DeployMove/LevelUp/CollectOre/OpenTome/OpenBookcard/**WearEquip(容器 equips 写 owned−1 + tracked 目标 +1)**/工具原子七类(容器直写,正本 = `tool_use.py`)(各一上报函数,op 自上报单点);零写族 = OpenBox(终结化)/OpenShop/事件线 pick 族集中 `zero_writes.py`(消费真值归观察,截断点独占发射帧零窗口)。规则全集正本 = [../game_state/action-logic-state.md](../game_state/action-logic-state.md) + [../game_state/logic-updates/](../game_state/logic-updates/README.md)。
 - 段序号置位:访问入口 `strategy_state.cw4_segment_serial += 1`(访问 = 腾席拒绝结论的输入不变性段;上一访问/上一域残留的续段 token/结论闩按序号不等自动失效)。
-- 执行要点(交互陷阱):拖拽类 = 统一拖拽原语机械单发(确认 settle → hold 短拖 → 光标 parking,零判效零重试);CollectOre 批式一次全点 → 等 2s → 统一验证;LevelUp 逐帧单击至升满一级(发射面 cost = `xp_click_cost` 现算装载,失读回退 `kernel/cw_economy.py::XP_CLICK_COST_FALLBACK`)。细则 = [../flow/action_exec.md](../flow/action_exec.md)。
+- 执行要点(交互陷阱):拖拽类 = 统一拖拽原语机械单发(确认 settle → hold 短拖 → 光标 parking,零判效零重试);CollectOre 批式一次全点 → 固定等待 2s 等飞行动画 → 自上报交回;席满未点开的晶矿由下一帧观察回补;LevelUp 逐帧单击至升满一级(发射面 cost = `xp_click_cost` 现算装载,失读回退 `kernel/cw_economy.py::XP_CLICK_COST_FALLBACK`)。细则 = [../flow/action_exec.md](../flow/action_exec.md)。
 
 ## 5. 终结与交回
 
 - **StartBattle = 唯一完成态**:发射即终结交回外循环,外循环置战斗窗口(`_battle_ts` 置位 + `_battle_wait_active`,下轮战斗等待分支接管;`outer_loop.md` §4)。
 - **OpenShop = 备战环终结**:执行 = 流程层商店访问编排(`_open_shop_phase` → open_shop 幂等开店 → `visit_open_shop`);开店 = 唯一普通形态,受限会话进出店同走本路径,访问内消费由策略侧自限。访问完成后经终结出口交回外循环(文档 = [shop.md](shop.md))。
-- **OpenBookcard = 终结**(2026-09-19 卡片臂策略器化):开卡即引入新事实(专家邀请函弹窗在场),交回外循环重观察;原备战环入口清场代发通道撤销,发射位 = 策略器 entry ① 卡片臂。
+- **OpenBookcard = 终结**:开卡即引入新事实(专家邀请函弹窗在场),交回外循环重观察;原备战环入口清场代发通道撤销,发射位 = 策略器 entry ① 卡片臂。
 - **OpenBox = 终结**(终结化):开箱即引入新事实(武装箱选择画面出现),交回外循环按该画面分发选卡 op;等待时长 = 注册表 `CwActionOpenBoxOp.terminal_wait`。
 - HoldFrame 通道(已收编 = CwActionObsParam scope='outer_loop',本帧无动作合法交回重观察)/ overlay 交回 / 终结动作;CwActionObs(in_place) 执行见事件 overlay = `CwObsOverlayBail` 交回重分发(画面路由归外循环);决策循环无防御上限(不收敛 = 逻辑态或策略 bug,响亮暴露,交回外循环由 stall 防线接管,不静默续跑)。
 - 环让位重入契约:本 op 返回后外循环必经 return → 下轮 loop 顶全分支重判,不在同一迭代内直接回备战分支。
@@ -91,11 +91,11 @@ action = strategy.decide_prep_screen(容器 game state 直读;
 
 ## 8. 守卫与防线
 
-- 安灯面已退役(原执行失败安灯,2026-09-16 裁定:动作 op 机械执行后无成败判定输入,未建档实证的故障形态不作兜底理由;细则 = [../flow/guards.md](../flow/guards.md))。
-- 停机钩子 = [临时段·特殊投资策略商店停机钩子](`_spec_invest_shop_stop_hook`,挂点 = `visit_open_shop` 首部;用户 2026-09-10 指令临时捕获,采够删整段)——非备战环守卫,商店访问编排域。
+- 安灯面已退役(原执行失败安灯:动作 op 机械执行后无成败判定输入,未建档实证的故障形态不作兜底理由;细则 = [../flow/guards.md](../flow/guards.md))。
+- 停机钩子 = [临时段·特殊投资策略商店停机钩子](`_spec_invest_shop_stop_hook`,挂点 = `visit_open_shop` 首部;临时段·采够删整段)——非备战环守卫,商店访问编排域。
 
 ## 9. 遥测与锁面
 
 - journal op 名 = 「备战」(dispatch 包装统一落 `[cw-op]` 主日志行);0n 分键 branch_shop_open_hit / branch_shop_open_visit_ok / branch_shop_open_visit_fail;发射域分键 deploy_emit_* / deploy_exec_*;板满拒因 = cw4_counters `deploy_cap_full`(帧级去重,迭代阶段 3.1)。
-- 测试锁:生命周期段迹锁、词表覆盖锁(写口两集)、部署 cap 板满门三锁等,锁面 = `sr-od-test/test/sr_od/application/currency_war/`(test_cw_deploy_cap_gate.py / test_cw_unified_action_2a.py 等;原黑板帧代次写点集契约锁随黑板退役删除)。
+- 测试锁:词表覆盖锁(写口两集)、部署 cap 板满门与 prep 节点链专锁等,锁面 = `sr-od-test/test/sr_od/application/currency_war/`(test_cw_deploy_cap_gate.py / test_cw_unified_action_2a.py / test_cw_prep_node_chain.py 等;原黑板帧代次写点集契约锁随黑板退役删除)。
 - game 侧知识:过渡体系/战斗机制 = [../../../../game/currency_war/research/README.md](../../../../../game/currency_war/research/README.md);画面建档 = `assets/game_data/screen_info/currency_war_battle_prep.yml`。

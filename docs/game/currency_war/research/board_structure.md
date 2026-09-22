@@ -89,6 +89,6 @@
   **2026-09-05 修订**:不一致分支升级为占用一致性仲裁(paddle 计数−前排
   占用=后排期望,逐档中心占用最近者胜;CV 端点探针在占用帧结构性高估
   一格,探针干扰在案;已建档才仲裁,失读/并列退采 CV 旧规);
-- `cw_screen_deploy.py` 布局选档 / `cw_observation.read_deployed_chars` 槽位读取
-  (均已改经 `select_back_layout` 双通道入口);
+- 布局选档 = `obs/cw_back_layout.py::select_back_layout` / 槽位读取 = `cw_observation` 现役读口
+  (双通道入口);部署机画面 op 已退役删除;
 - 判读一局时的板面口径(几人上场/几格空位的真值基准)。

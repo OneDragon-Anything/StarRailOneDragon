@@ -103,7 +103,7 @@
 |---|---|
 | `cw_action_registry.py` | 动作注册表单一源(`action_op_for`/`action_op_class_for` 全动作唯一注册点;终结判定读 op 类 `terminal`/`terminal_wait` 属性)。动作 op 无共享基类:各 op 独立直继承框架 `SrOperation`,执行后 op 内自上报 |
 | `cw_buy_card_action.py` / `cw_close_shop_action.py` / `cw_prep_sell_bench_action.py` / `cw_prep_level_up_action.py` / `cw_refresh_shop_action.py` | 买牌/关店/卖备战/升级/刷新执行器(卖备战/升级两类 = 商店/备战共用词表单一注册行,注册行指备战 op) |
-| `cw_op_open_shop.py` / `cw_op_equip_all.py` / `cw_op_sell_off_target.py` / `cw_op_tools.py` | 开商店/装备全穿/定向清场/工具执行器 |
+| `cw_op_open_shop.py` / `cw_wear_equip_action.py` / `cw_tool_use_action.py` + `prep_actions.py` 机械原语 | 开商店/装备穿戴/工具执行器(装备/工具 = 动作原子 `CwActionWearEquipOp`/`CwActionToolUseOp` + `prep_actions.py` 机械原语 `_equip_slot_drag_point`/`_owned_grid_locate`) |
 | `cw_shop_action_ops.py` | 商店单动作 op 集 + 守卫断言 `guard_proposal_vs_expected`(提案动作在期望态中须存在且未被消费,非法返回响亮暴露) |
 
 ## 五、策略层(strategies/impl/mandate_v1)
