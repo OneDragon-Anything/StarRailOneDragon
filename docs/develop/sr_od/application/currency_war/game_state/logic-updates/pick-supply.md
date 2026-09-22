@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-补给节点弹窗点选一个候选并确认,选中内容(角色/装备)随确认即时入账。词表 = `kernel/cw_vocab.py::CwActionPickSupplyParam`(字段:`idx` = 画面候选下标 0 起(payload 槽 options 列表序)、`reason` = 归因记录字段、`char_name` = 选中列角色名('' = 列无角色/兜底点卡路径)、`norm_item` = 选中列装备归一规范名('' = 未解析;`kernel/cw_events.py::normalize_registry_equip_name` 分层归一现算:精确快道 → containment longest-first → 相似救援唯一命中))。op 载体 = `operations/cw_op/cw_overlay_pick_action.py::CwActionPickSupplyOp`(域 env = `OverlayPickExecEnv`;发射位 = `CwScreenSupplyNode._do_action` 经注册表工厂 `action_op_for` 派发)。
+补给节点弹窗点选一个候选并确认,选中内容(角色/装备)随确认即时入账。词表 = `kernel/cw_vocab.py::CwActionPickSupplyParam`(字段:`idx` = 画面候选下标 0 起(payload 槽 options 列表序)、`reason` = 归因记录字段、`char_name` = 选中列角色名('' = 列无角色/兜底点卡路径)、`norm_item` = 选中列装备归一规范名('' = 未解析;`kernel/cw_events.py::normalize_registry_equip_name` 分层归一现算:精确快道 → containment longest-first → 相似救援唯一命中))。op 载体 = `operations/cw_op/cw_pick_supply_action.py::CwActionPickSupplyOp`(域 env = `OverlayPickExecEnv`;发射位 = `CwScreenSupplyNode._do_action` 经注册表工厂 `action_op_for` 派发)。
 
 ## 2. 逻辑态域集
 
@@ -33,7 +33,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::CwActionPickSupplyParam`;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickSupplyOp` / `OverlayPickExecEnv`;`kernel/cw_action_report/pick_supply.py::report_action_pick_supply_param`(写语义单点);`kernel/cw_effect_inventory.py::grant_bench_unit_cascade` / `apply_equip_acquire_consequence`;`kernel/cw_events.py::normalize_registry_equip_name`(归一件名现算);`kernel/cw_game_state.py::chosen_supply` / `report_node_advance`;`operations/cw_screen/cw_screen_supply_node.py::CwScreenSupplyNode`(确认即写写点/发射位)。
+`kernel/cw_vocab.py::CwActionPickSupplyParam`;`operations/cw_op/cw_pick_supply_action.py::CwActionPickSupplyOp` / `cw_overlay_pick_env.py::OverlayPickExecEnv`;`kernel/cw_action_report/pick_supply.py::report_action_pick_supply_param`(写语义单点);`kernel/cw_effect_inventory.py::grant_bench_unit_cascade` / `apply_equip_acquire_consequence`;`kernel/cw_events.py::normalize_registry_equip_name`(归一件名现算);`kernel/cw_game_state.py::chosen_supply` / `report_node_advance`;`operations/cw_screen/cw_screen_supply_node.py::CwScreenSupplyNode`(确认即写写点/发射位)。
 
 ## 7. 语义验证
 
@@ -45,4 +45,4 @@
 
 ## 9. 依据
 
-`kernel/cw_action_report/pick_supply.py` 模块头(写序/腿型/留证分型);`operations/cw_op/cw_overlay_pick_action.py::CwActionPickSupplyOp` docstring 与 run 体(刷新臂留守/即时上报/推进旁调);[flow/action_ops.md](../../flow/action_ops.md) §4.5(PickSupply 行)与 §1 增补 2;[../fields.md](../fields.md) §3.2.15/§3.2.5(效果腿)/§3.4 头部(chosen 确认即写)/§4「事件选择」补给臂;[../../screens/supply.md](../../screens/supply.md) §4/§6(画面 op 侧契约)。
+`kernel/cw_action_report/pick_supply.py` 模块头(写序/腿型/留证分型);`operations/cw_op/cw_pick_supply_action.py::CwActionPickSupplyOp` docstring 与 run 体(刷新臂留守/即时上报/推进旁调);[flow/action_ops.md](../../flow/action_ops.md) §4.5(PickSupply 行)与 §1 增补 2;[../fields.md](../fields.md) §3.2.15/§3.2.5(效果腿)/§3.4 头部(chosen 确认即写)/§4「事件选择」补给臂;[../../screens/supply.md](../../screens/supply.md) §4/§6(画面 op 侧契约)。

@@ -22,7 +22,7 @@
 |---|---|---|---|
 | `CwActionPickStarTomeOp`(`CwActionPickStarTomeParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:定位点,星徽卡 area OCR x 近邻锚) | 自上报 `report_action_pick_star_tome_param`(零写族,容器零写) | 否(非终结):发出后 `round_wait` 循环推进;落地由重入裁决判——「货币战争-星徽秘典弹窗.标识-星徽秘典」不在 = `_settle_picked_tome`(ConfirmTome 到账登记 + `chosen_tome` 写)+ success 交回外循环(见 §5) |
 
-决策动作 node 读卡+选卡+机械交回链(整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickStarTomeOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx):
+决策动作 node 读卡+选卡+机械交回链(整体经动作工厂 `cw_pick_star_tome_action.py::CwActionPickStarTomeOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx):
 
 ```
 cards = 观察轮实例载体 → idx = decide_star_tome()(零参;候选读容器 star_tome_opts 槽)

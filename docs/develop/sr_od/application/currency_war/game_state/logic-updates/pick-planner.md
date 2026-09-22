@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-银狼「我来当策划」二选一(画面 货币战争-银狼升星)点卡选中并确认。词表 = `kernel/cw_vocab.py::CwActionPickPlannerParam`(`PickOption` 子类:字段 `idx` = 候选下标 0 起、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_overlay_pick_action.py::CwActionPickPlannerOp`(体迁自 `cw_screen_yinlang.py::CwScreenYinLang._handle_overlay` 点卡确认尾段,替身缝 = 方法级桩保留;域 env = `OverlayPickExecEnv`)。
+银狼「我来当策划」二选一(画面 货币战争-银狼升星)点卡选中并确认。词表 = `kernel/cw_vocab.py::CwActionPickPlannerParam`(`PickOption` 子类:字段 `idx` = 候选下标 0 起、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_pick_planner_action.py::CwActionPickPlannerOp`(体迁自 `cw_screen_yinlang.py::CwScreenYinLang._handle_overlay` 点卡确认尾段,替身缝 = 方法级桩保留;域 env = `OverlayPickExecEnv`)。
 
 ## 2. 逻辑态域集
 
@@ -35,7 +35,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::CwActionPickPlannerParam` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickPlannerOp` / `OverlayPickExecEnv`;`operations/cw_screen/_overlay_confirm.py::emit_overlay_confirm`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_action_report/pick_planner.py::report_action_pick_planner_param`(即时单相:条件腿 rider 先行 + 腿型分派一口写);`kernel/cw_economy.py::effective_cost`(现档读口);`kernel/cw_game_state.py::lv999_cost_tier`(档字段,写端 = 本腿 + deploy_move 上阵变费腿)。
+`kernel/cw_vocab.py::CwActionPickPlannerParam` / `PickOption`;`operations/cw_op/cw_pick_planner_action.py::CwActionPickPlannerOp` / `cw_overlay_pick_env.py::OverlayPickExecEnv`;`operations/cw_screen/_overlay_confirm.py::emit_overlay_confirm`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_action_report/pick_planner.py::report_action_pick_planner_param`(即时单相:条件腿 rider 先行 + 腿型分派一口写);`kernel/cw_economy.py::effective_cost`(现档读口);`kernel/cw_game_state.py::lv999_cost_tier`(档字段,写端 = 本腿 + deploy_move 上阵变费腿)。
 
 ## 7. 语义验证
 
@@ -47,4 +47,4 @@
 
 ## 9. 依据
 
-`operations/cw_op/cw_overlay_pick_action.py::CwActionPickPlannerOp` docstring(点卡几何/裁决词全词/面板防御拆除/即时单相上报);`kernel/cw_action_report/pick_planner.py` 模块头(单相写序:条件腿 rider 先行/equip/upgrade 三态/unknown 留证/unrouted 兜底);[flow/action_ops.md](../../flow/action_ops.md) §4.5(pick 族行);[fields.md](../fields.md) §3.4(事件选择域组;lv999_cost_tier 字段节)。
+`operations/cw_op/cw_pick_planner_action.py::CwActionPickPlannerOp` docstring(点卡几何/裁决词全词/面板防御拆除/即时单相上报);`kernel/cw_action_report/pick_planner.py` 模块头(单相写序:条件腿 rider 先行/equip/upgrade 三态/unknown 留证/unrouted 兜底);[flow/action_ops.md](../../flow/action_ops.md) §4.5(pick 族行);[fields.md](../fields.md) §3.4(事件选择域组;lv999_cost_tier 字段节)。

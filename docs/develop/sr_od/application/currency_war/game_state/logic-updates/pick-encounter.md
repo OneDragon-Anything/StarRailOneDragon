@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-遭遇节点弹窗点选一张遭遇卡并确认。词表 = `kernel/cw_vocab.py::CwActionPickEncounterParam`(`PickOption` 子类:字段 `idx` = 画面候选卡位下标 0 起(左→右)、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_overlay_pick_action.py::CwActionPickEncounterOp`(体迁自 `cw_screen_encounter.py::CwScreenEncounter._confirm_default`,替身缝 = 原方法薄委托保留;域 env = `OverlayPickExecEnv`)。
+遭遇节点弹窗点选一张遭遇卡并确认。词表 = `kernel/cw_vocab.py::CwActionPickEncounterParam`(`PickOption` 子类:字段 `idx` = 画面候选卡位下标 0 起(左→右)、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_pick_encounter_action.py::CwActionPickEncounterOp`(体迁自 `cw_screen_encounter.py::CwScreenEncounter._confirm_default`,替身缝 = 原方法薄委托保留;域 env = `OverlayPickExecEnv`)。
 
 ## 2. 逻辑态域集
 
@@ -30,7 +30,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::CwActionPickEncounterParam` / `PickOption`;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickEncounterOp` / `OverlayPickExecEnv`;`operations/cw_screen/_overlay_confirm.py::safe_click` / `emit_overlay_confirm`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_game_state.py::chosen_encounter`;`operations/cw_screen/cw_screen_encounter.py::CwScreenEncounter`(替身缝/写点)。
+`kernel/cw_vocab.py::CwActionPickEncounterParam` / `PickOption`;`operations/cw_op/cw_pick_encounter_action.py::CwActionPickEncounterOp` / `cw_overlay_pick_env.py::OverlayPickExecEnv`;`operations/cw_screen/_overlay_confirm.py::safe_click` / `emit_overlay_confirm`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_game_state.py::chosen_encounter`;`operations/cw_screen/cw_screen_encounter.py::CwScreenEncounter`(替身缝/写点)。
 
 ## 7. 语义验证
 
@@ -42,4 +42,4 @@
 
 ## 9. 依据
 
-`operations/cw_op/cw_overlay_pick_action.py` 模块头(体迁纪律/域 env 契约)与 `CwActionPickEncounterOp` docstring;[flow/action_ops.md](../../flow/action_ops.md) §4.4(pick 族行);[fields.md](../fields.md) §3.4(事件选择域组)。
+`operations/cw_op/cw_pick_encounter_action.py` 模块头(体迁纪律)与 `cw_overlay_pick_env.py`(域 env 契约)与 `CwActionPickEncounterOp` docstring;[flow/action_ops.md](../../flow/action_ops.md) §4.4(pick 族行);[fields.md](../fields.md) §3.4(事件选择域组)。

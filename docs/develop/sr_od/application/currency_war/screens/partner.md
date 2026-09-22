@@ -29,7 +29,7 @@
 |---|---|---|---|
 | `CwActionPickPartnerOp`(`CwActionPickPartnerParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:未选中实证 `unselected`;点卡点/确认点经 `env.op` 消费决策半缓存,点选脉冲与确认脉冲均在动作 op 内,确认点 op 类体内经「货币战争-列车同行.按钮-确认选择」rect 约束 OCR 现读) | 自上报 `report_action_pick_partner_param`(零写族单相:确认点击发出后即全相,发射相意图遥测,容器零写等观察覆盖;确认点读缺 retry 旁路未发确认点击,不上报) | 否(非终结):发出后 `round_wait` 循环推进;落地由重入裁决判——「标识-选择伙伴」不在 = overlay 关 = `round_success` 交回外循环(见 §5) |
 
-脉冲链(每轮一脉冲;确认被拒守卫/零参决策/chosen 写端留守决策动作 node,「点选候选 → 确认」脉冲 + 自上报零写整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickPartnerOp`,派发 param 携真实选中 idx):
+脉冲链(每轮一脉冲;确认被拒守卫/零参决策/chosen 写端留守决策动作 node,「点选候选 → 确认」脉冲 + 自上报零写整体经动作工厂 `cw_pick_partner_action.py::CwActionPickPartnerOp`,派发 param 携真实选中 idx):
 
 ```
 1. 未选中提示在场 ∧ 脉冲计数 ≥ CONFIRM_REJECT_MAX(4) → 显式 round_fail

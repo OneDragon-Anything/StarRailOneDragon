@@ -22,7 +22,7 @@
 |---|---|---|---|
 | `CwActionPickFortuneOp`(`CwActionPickFortuneParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:点卡定位点/裁决词「命运卜者」;点选与确认均在动作 op 内,确认钮 op 类体内自读「货币战争-命运卜者强化.按钮-确认选择」) | 自上报 `report_action_pick_fortune_param`(零写族单相:机械链发出后即全相,发射相意图遥测,容器零写等观察覆盖) | 否(非终结):发出后 `round_wait` 循环推进;落地由重入出口门判——OCR「命运卜者」不在 = overlay 已关 = `round_success` 交回外循环(见 §5) |
 
-决策动作 node 选卡+确认链(整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickFortuneOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx):
+决策动作 node 选卡+确认链(整体经动作工厂 `cw_pick_fortune_action.py::CwActionPickFortuneOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx):
 
 ```
 重入出口门(决策动作 node 顶部):_confirm_pending 置位 → OCR「命运卜者」(lcs 0.5)不在 =

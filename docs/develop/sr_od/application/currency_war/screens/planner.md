@@ -23,7 +23,7 @@
 |---|---|---|---|
 | `CwActionPickPlannerOp`(`CwActionPickPlannerParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:选中点/`leg_type`/`norm_item` 载荷) | 即时单相 `report_action_pick_planner_param`(动作 op 确认点击后一口写,宿主 = `kernel/cw_action_report/pick_planner.py`:条件腿 rider 先行 → 装备腿入栏+获得后果链 / 升费腿变换窗三态+`lv999_cost_tier` 档行 / unknown 留证 / unrouted 兜底零写) | 是(派发即终结):点卡+确认链发出并上报后 `round_success` 终结交回;确认未生效由外循环重识别重派(见 §5) |
 
-决策动作 node 选卡+确认链(点卡+确认+即时自上报整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickPlannerOp`,派发 param 携真实选中 idx;决策半留守):
+决策动作 node 选卡+确认链(点卡+确认+即时自上报整体经动作工厂 `cw_pick_planner_action.py::CwActionPickPlannerOp`,派发 param 携真实选中 idx;决策半留守):
 
 ```
 options = 观察轮 obs 载体 → decide_planner()(零参;候选读容器 planner_opts 槽)

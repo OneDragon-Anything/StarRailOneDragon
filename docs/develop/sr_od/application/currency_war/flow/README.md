@@ -42,7 +42,7 @@
 │ 机械发出（零判效;round 成功态 = 发出事实）→ op 内直调自己的   │
 │ 上报函数（容器写单点;写语义逐动作各异）;终结判定 = 注册表 op   │
 │ 类 terminal 属性;事件线 pick 族 12 op 全在注册表              │
-│（cw_overlay_pick_action.py;pick-op-unify 批收编）  │
+│（cw_pick_xxx_action.py 一 op 一文件;pick-op-unify 批收编）  │
 └────────────────────────────────────────────────────────────────┘
 ```
 

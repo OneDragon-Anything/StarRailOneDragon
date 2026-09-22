@@ -51,7 +51,7 @@ pick = match.strategy.decide_supply()(零参;候选读容器 supply 槽)
        success_wait 1.5)→ 动作 op 即时单相上报完整结果 + supply_confirm 推进
 ```
 
-选定快照 `picked`(角色/装备/钻 + `refresh_left` 容器现值快照)= 选定事实现场载荷,现役消费面 = 零(遥测接线候批);刷新轮/兜底点卡轮不带快照。选卡+确认+即时上报整体经动作工厂(`cw_overlay_pick_action.py::CwActionPickSupplyOp`;归一件名 = 注册表级分层归一 `normalize_registry_equip_name` 现算:精确快道 → containment longest-first → 相似救援唯一命中,多/零命中 = '' 禁猜翻来源留证)。
+选定快照 `picked`(角色/装备/钻 + `refresh_left` 容器现值快照)= 选定事实现场载荷,现役消费面 = 零(遥测接线候批);刷新轮/兜底点卡轮不带快照。选卡+确认+即时上报整体经动作工厂(`cw_pick_supply_action.py::CwActionPickSupplyOp`;归一件名 = 注册表级分层归一 `normalize_registry_equip_name` 现算:精确快道 → containment longest-first → 相似救援唯一命中,多/零命中 = '' 禁猜翻来源留证)。
 
 ## 5. 终结与交回
 

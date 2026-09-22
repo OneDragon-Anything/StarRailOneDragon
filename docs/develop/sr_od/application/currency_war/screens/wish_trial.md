@@ -23,7 +23,7 @@
 |---|---|---|---|
 | `CwActionPickWishTrialOp`(`CwActionPickWishTrialParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:定位点) | 自上报 `report_action_pick_wish_trial_param`(零写族,容器零写) | 否(非终结):发出后 `round_wait` 循环推进;落地由重入裁决判——「货币战争-祈愿试炼.标识-祈愿试炼」不在 = 补写 `chosen_wish` + success 交回外循环(见 §5) |
 
-决策动作 node 选卡+确认链(整体经动作工厂 `cw_overlay_pick_action.py::CwActionPickWishTrialOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx):
+决策动作 node 选卡+确认链(整体经动作工厂 `cw_pick_wish_trial_action.py::CwActionPickWishTrialOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx):
 
 ```
 objs = 观察轮 obs 载体 → idx = decide_wish_trial()(零参;候选读容器 wish_trial_opts 槽)
