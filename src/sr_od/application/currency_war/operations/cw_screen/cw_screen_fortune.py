@@ -153,8 +153,7 @@ class CwScreenFortune(SrOperation):
         from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
             OverlayPickExecEnv,
         )
-        _env = OverlayPickExecEnv(op=self, idx=best_i, target=target,
-                                  entry_keyword='命运卜者')
+        _env = OverlayPickExecEnv(op=self, idx=best_i, target=target)
         action_op_for(CwActionPickFortuneParam(idx=best_i), self.ctx,
                       _env).execute()
         return self.round_wait()

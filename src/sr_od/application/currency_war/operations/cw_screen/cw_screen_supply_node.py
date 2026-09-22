@@ -233,8 +233,8 @@ class CwScreenSupplyNode(SrOperation):
         选(替代盲点 CARD_BODY);读不到选项 → CARD_BODY 兜底。刷新分支 =
         剩余闸放行(容器 ``supply_refresh_left`` >0 且锚点在位)才点圆钮,
         点后 2s 终结交回;闸拒绝 → 重调一次决策按原评分选(单轮内有界)。
-        选卡分支点卡身 + 确认机械半经工厂(统一动作工厂批4:体迁
-        ``cw_pick_supply_action.CwActionPickSupplyOp``,方法级替身缝保留),
+        选卡分支点卡身 + 确认机械半经工厂(注册表 ``action_op_for`` 派发
+        ``cw_pick_supply_action.CwActionPickSupplyOp``,替身缝 = 工厂派发调用点),
         确认点击后动作 op 立即上报完整结果,派发即终结。
         Returns: True = 动作已发(终结交回)。
         """

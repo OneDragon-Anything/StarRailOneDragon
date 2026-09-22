@@ -41,8 +41,7 @@ class OverlayPickExecEnv:
     钳位后)、``target`` = 点卡定位点(退役中——选择坐标观察上报收敛,
     已收敛屏停喂;全族收敛后删字段)、``picked`` = 选定快照(到账登记
     输入)、``unselected`` = 未选中提示在场实证。
-    ``entry_keyword`` = 确认裁决词组装面(投资两屏/卜者发射位组装;确认链
-    统一 ``round_by_find_and_click_area`` 后 run 体现役未消费,退役候清);``need_select`` = 选中半开关
+    ``need_select`` = 选中半开关
     (True = 先点候选选中再确认,点击坐标各 op 自取——巨星 = 容器
     ``megastar_opts[param.idx].xy``(选择坐标观察上报收敛),其余过渡期屏 =
     ``target``;False = 跳过选中直发确认)。
@@ -67,7 +66,6 @@ class OverlayPickExecEnv:
     target: Any = None        # 退役中(选择坐标观察上报收敛,已收敛屏停喂;
     #             全族收敛后删字段;其余屏过渡期在用)——历史语义:Point|None
     #             点卡定位点(决策半从 screen_info/OCR 现算)
-    entry_keyword: str = ''   # 确认裁决词组装面(投资两屏/卜者;run 体现役未消费)
     need_select: bool = False  # True = 先点候选选中再确认(巨星选中半;
     #             点击坐标取源见类 docstring need_select 句)
     picked: dict | None = None

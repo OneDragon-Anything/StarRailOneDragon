@@ -341,8 +341,7 @@ class CwScreenInvestStrategy(SrOperation):
         from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
             OverlayPickExecEnv,
         )
-        _env = OverlayPickExecEnv(op=self, idx=pick_idx, target=target,
-                                  entry_keyword='投资策略')
+        _env = OverlayPickExecEnv(op=self, idx=pick_idx, target=target)
         action_op_for(CwActionPickInvestStrategyParam(
             idx=pick_idx, norm_name=normalize_invest_name(chosen)), self.ctx,
             _env).execute()

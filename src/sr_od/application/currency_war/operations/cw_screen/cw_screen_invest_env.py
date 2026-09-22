@@ -375,8 +375,7 @@ class CwScreenInvestEnv(SrOperation):
         )
         # 确认钮不进 env(确认查找 = 动作 op 执行体 round_by_find_and_click_area
         # 全族统一,用户裁定 2026-09-22;env.confirm 变体随批退役)。
-        _env = OverlayPickExecEnv(op=self, idx=pick_idx, target=target,
-                                  entry_keyword='投资环境')
+        _env = OverlayPickExecEnv(op=self, idx=pick_idx, target=target)
         action_op_for(CwActionPickInvestEnvParam(idx=pick_idx, reason=reason),
                       self.ctx, _env).execute()
         # 本访问终结:结果已由动作 op 即时上报写入 game state(active_env
