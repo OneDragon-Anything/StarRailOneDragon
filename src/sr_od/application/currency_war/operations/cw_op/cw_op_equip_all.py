@@ -60,7 +60,7 @@ from sr_od.operations.sr_operation import SrOperation
 # 类名单一源 = cw_equipment_data.EQUIP_TOOL_CATEGORY(与策略侧同源,原本地
 # 平行定义 _TOOL_CATEGORIES 已收编)。
 
-# ===== bug#1 drag 落空根治参数(replay/defect_ledger.jsonl drag 条目实证)=====
+# ===== drag 落空根治参数(replay/defect_ledger.jsonl drag 条目实证)=====
 # 拖前稳帧确认保留(拖前输入条件化,非判效);补救链(坐标现读重定位 +
 # 按压/移动参数逐档升级)随 CV-diff 判效半退役——无落地信号即无重试判据,
 # 落空由下一入口观察重派(重算计划 = 天然重试)。

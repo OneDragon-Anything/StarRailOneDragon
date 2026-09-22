@@ -1,14 +1,14 @@
 """货币战争 商店刷新概率表弹窗 op(空决策形态,A2)。
 
-采晶矿误触开后遮出战按钮的实机事故补分支(0e2)的处理迁移:点 × 关闭,
+采晶矿误触开后遮出战按钮的实机事故补分支(商店刷新概率表)的处理迁移:点 × 关闭,
 无验效(关闭确认由下轮外循环重判承接)。× 坐标已 area 化
 (``货币战争-商店刷新概率表``/``按钮-关闭概率表``,矩形中心 = 原 Point
-(1501,263),坐标单一真相源);``mouse_move`` 先行保留(bug#1 缓解:
+(1501,263),坐标单一真相源);``mouse_move`` 先行保留(防吞点击:
 恢复原语同坐标点击曾落空,原分支注释)。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;
 推进型空决策骨架逐屏内联,无共享基类——模式一致即重复):观察 node =
-入口锚门(「标识-刷新概率表」,与外循环 0e2 分发判定同源同参;miss 未发
+入口锚门(「标识-刷新概率表」,与阶段一身份分发判定同源同参(分发判定单一源 = flow/outer_loop.md §2.2);miss 未发
 = round_fail 交回外循环重判,「下一帧重判」是外循环职责)+ obs{
 on_screen} 挂实例属性(空决策形态无 report:本屏零容器写点,obs 类住
 kernel/cw_screen_report/refresh_odds_popup.py,import 构造即可)。决策
@@ -32,13 +32,13 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class CwScreenRefreshOddsPopup(SrOperation):
-    """商店刷新概率表弹窗:点 × 关闭(mouse_move bug#1 缓解保留)。"""
+    """商店刷新概率表弹窗:点 × 关闭(mouse_move 防吞点击保留)。"""
 
     CLOSE_AREA = '按钮-关闭概率表'
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-商店刷新概率表')
-        # 画面档名/入口锚(与外循环 0e2 分发判定同源同参;实例属性)
+        # 画面档名/入口锚(与阶段一身份分发判定同源同参;实例属性)
         self._screen_name: str = '货币战争-商店刷新概率表'
         self._entry_area: str = '标识-刷新概率表'
         # 推进已发标志(验证废除形态):区分「首发锚 miss = 误分发 fail 交回」
@@ -90,7 +90,7 @@ class CwScreenRefreshOddsPopup(SrOperation):
     def progress_once(self) -> bool:
         """推进处理:读「按钮-关闭概率表」center → mouse_move+click
         (缺失 = False 如实交回;建档缺失场景分发锚预检会先炸,此处兜不
-        命中;mouse_move bug#1 缓解保留)。"""
+        命中;mouse_move 防吞点击保留)。"""
         close = area_center(self.ctx, self.CLOSE_AREA, self._screen_name)
         if close is None:
             return False

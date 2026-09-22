@@ -49,4 +49,4 @@ source_image: screens/货币战争-投资环境/default.webp
 - **选中 mechanics(2026-08-04 实测)**:3 卡各含角色立绘 + 装备图标;**默认无卡选中**。点**立绘 / 卡名**(y≈390)开角色详情不选中;点**描述区**(y≈450)才选中。故 op 用 OCR 卡名 center-x + 描述区 Y 拼 click 点(screen_info ``区域-卡牌描述行`` 给 Y)。
 - 归档:`screens/货币战争-投资环境/default.webp`。
 - screen_info:`currency_war_invest_env`—— ``标识-投资环境`` / ``区域-卡牌描述行`` / ``按钮-确认`` / ``区域-剩余次数行``。
-- bug#1 mitigation:关键 click 前 mouse_move(零移动不被判 drag,否则 click 落空卡死超时)。
+- 关键点击防吞:关键 click 前 mouse_move(零移动不被判 drag,否则 click 落空卡死超时)。

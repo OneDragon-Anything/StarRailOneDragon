@@ -213,7 +213,7 @@ class CwScreenPartner(SrOperation):
            选择点)定同一点位;
         3. 提示在场(含重入轮)= 未选中实证 → 点候选卡(单选语义重点
            已选卡无反选面;提示不在 = 不重点选,防未知选中呈现被扰动);
-        4. 点确认(bug#1 缓解 = mouse_move + click);确认是否落地由下一轮
+        4. 点确认(mouse_move 防吞点击 + click);确认是否落地由下一轮
            重入裁决,不原地判选中态。"""
         screen = self.last_screenshot
         if self._confirm_pending:

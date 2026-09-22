@@ -107,7 +107,7 @@ class CwScreenDeployNotFull(SrOperation):
         time.sleep(0.3)
         # 确认 + 机械交回(验证废除:不读屏判「弹窗关没关」,落地由下一轮重入
         # 入口观察裁决;锚仍在 = 重做一次)。原「点了就 success」
-        # 不观察 → bug#1/勾选未生效 flat-loop 防线由重入裁决承接。
+        # 不观察 → 点击被吞/勾选未生效 flat-loop 防线由重入裁决承接。
         self._confirm_pending = True
         emit_overlay_confirm(self, confirm_point=_confirm, entry_keyword='未达上限',
                              lcs_percent=0.8, success_wait=3.0, tag='cw-deploywarn')

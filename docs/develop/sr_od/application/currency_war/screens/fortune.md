@@ -33,7 +33,7 @@ texts = 观察轮 obs 载体 → decide_fortune()(零参;候选读容器 fortune
 守卫②:pick.idx 越界 [0, 3) → AssertionError(禁钳位)
 → 置 _confirm_pending → 派发(env 仅携 op;env.target/idx 停传)
   (动作 op 内:target = 容器 fortune_opts_xy[pick.idx](坐标随报条款;缺 = 守卫断言)
-   → target safe_click[bug#1 缓解] → 1.2s
+   → target safe_click(防吞点击) → 1.2s
    → 确认:「按钮-确认选择」area 查找点击(round_by_find_and_click_area,全族统一;零判效)
    → 自上报 report_action_pick_fortune_param)
 ```

@@ -31,7 +31,7 @@ from sr_od.operations.sr_operation import SrOperation
 class CwActionPickWishTrialOp(SrOperation):
     """祈愿试炼确认链(pick-op-unify 批收编)。
 
-    点试炼卡身选中(bug#1 缓解,选中点 = 建档卡位决策半现算)→ 选中
+    点试炼卡身选中(防吞点击,选中点 = 建档卡位决策半现算)→ 选中
     动画固定等待 → 确认(「按钮-确认选择」area 位置点击,success_wait
     =1.5,现役形态逐位迁移;本屏独有检测在前,不与伙伴/巨星的
     「确认选择」撞)。``chosen_wish`` = 重入裁决出口写,留守画面 op。"""
@@ -53,7 +53,7 @@ class CwActionPickWishTrialOp(SrOperation):
         action = self.param
         env = self.env
         op = env.op
-        # 点卡选中(bug#1 缓解:mouse_move 先,零移动落 click)。
+        # 点卡选中(防吞点击:mouse_move 先,零移动落 click)。
         op.ctx.controller.mouse_move(env.target)
         op.ctx.controller.click(env.target)
         time.sleep(1.0)

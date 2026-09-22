@@ -126,8 +126,8 @@ class CwScreenInvestStrategy(SrOperation):
     # x≈{477,975,1474}(y 同带 ≈855)→ dx ≈ −88。偏移错 → 刷新未命中,
     # 重读=原卡名集,重决策结果天然等价(能力退化非事故,复测即修)。
     _REFRESH_BTN_DX: ClassVar[int] = -88
-    # 刷新后等待(执行层时序常量,非策略数值,沿 先例;screen_flow_timing
-    # #13:刷新动画 ~1s,旧实现 1.5s 覆盖)。
+    # 刷新后等待(执行层时序常量,非策略数值;screen_flow_timing
+    # #13:刷新动画 ~1s,等待 1.5s 覆盖)。
     REFRESH_ANIM_WAIT_S: ClassVar[float] = 1.5
 
     def __init__(self, ctx: SrContext):
@@ -156,7 +156,7 @@ class CwScreenInvestStrategy(SrOperation):
 
     def _entry_anchor_hit(self, screen: MatLike) -> bool:
         """入口锚探测:screen_info id_mark「标识-请选择投资策略」命中(与
-        cw_loop 0e 分发 / cw_entry 2b 分支同锚同源)。"""
+        外循环阶段一身份分发 / cw_entry 2b 分支同锚同源)。"""
         return self.round_by_find_area(
             screen, CwScreenInvestStrategy.SCREEN_NAME, '标识-请选择投资策略',
         ).is_success
@@ -295,7 +295,7 @@ class CwScreenInvestStrategy(SrOperation):
                 if _l1_now == [_i]:
                     continue
                 # 点钮:该槽「刷新次数N」文本中心 + 偏移(safe_click 带
-                # bug#1 mouse_move 缓解,遭遇屏同款)。
+                # mouse_move 防吞点击,遭遇屏同款)。
                 _tx, _ty = _hit[1], _hit[2]
                 safe_click(self, Point(_tx + CwScreenInvestStrategy._REFRESH_BTN_DX, _ty),
                            tag='cw-strat')

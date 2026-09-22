@@ -30,7 +30,7 @@ cards = 观察轮实例载体 → idx = decide_star_tome()(零参;候选读容�
 target = _card_point(idx, faction_x):「星徽卡-1..4」area 中心;
   OCR x 已知时取 x 近邻 area(防 area 序与画面序错位);任一 area 缺失 = round_fail
   (禁裸坐标兜底)→ 置选卡 pending → 派发
-  (动作 op 内:target safe_click[bug#1 缓解]→ 1.0s
+  (动作 op 内:target safe_click(防吞点击)→ 1.0s
    → 自上报 report_action_pick_star_tome_param)
   (机械交回零判效;弹窗关没关由下一轮重入裁决)
 ```

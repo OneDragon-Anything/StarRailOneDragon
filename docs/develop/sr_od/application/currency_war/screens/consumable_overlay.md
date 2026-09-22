@@ -22,7 +22,7 @@
 |---|---|---|---|
 | 无动作 op——单步推进留守 op 内(`progress_once` 点 × 关闭) | 画面 op 留守臂(`progress_once`:`area_center` 读 `货币战争-道具详情弹窗.按钮-关闭` center + `mouse_move`+`click`) | 无 report 接口(推进型规范形态,op-layer.md §3) | 是(重入裁决:点 × 已发 ∧ 双 OCR 均不命中 = 已离开 → `round_success` 交回;命中 = `round_wait` 再推进) |
 
-`progress_once` = 读 `货币战争-道具详情弹窗.按钮-关闭` center(消耗品 modal 与聘用书 modal 同为道具详情弹窗家族,× 同位,借道同族档案)→ `mouse_move`+`click`(bug#1 缓解,与 `cw_screen_item_detail_popup.py::CwScreenItemDetailPopup` 同式)。坐标缺失 = False → 决策动作 node `round_fail`。刻意不用 ESC:× 永远安全,ESC 在 modal 已自关时落备战会误弹「中断挑战」。
+`progress_once` = 读 `货币战争-道具详情弹窗.按钮-关闭` center(消耗品 modal 与聘用书 modal 同为道具详情弹窗家族,× 同位,借道同族档案)→ `mouse_move`+`click`(防吞点击,与 `cw_screen_item_detail_popup.py::CwScreenItemDetailPopup` 同式)。坐标缺失 = False → 决策动作 node `round_fail`。刻意不用 ESC:× 永远安全,ESC 在 modal 已自关时落备战会误弹「中断挑战」。
 
 ## 5. 终结与交回
 

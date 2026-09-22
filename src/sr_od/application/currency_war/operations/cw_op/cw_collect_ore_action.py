@@ -58,7 +58,7 @@ class CwActionCollectOreOp(SrOperation):
         ex = env.executor
         for _x, _y in action.points:
             center = Point(_x, _y)
-            ex._ctx.controller.mouse_move(center)   # bug#1 缓解
+            ex._ctx.controller.mouse_move(center)   # 防吞点击(截图前移光标)
             ex._ctx.controller.click(center)
             ex._op.park_cursor(after_wait=0.1)
         # 用户口径:飞行动画最长 ~2s → 等满(固定等待归产生动画的操作)

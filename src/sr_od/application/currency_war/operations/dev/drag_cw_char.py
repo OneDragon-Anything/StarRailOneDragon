@@ -3,7 +3,7 @@
 本模块提供两层:
 
 1. ``DragCwChar.drag_char``(静态原语,**生产共用**):中心拖一个角色 ``src → dst`` —— ``mouse_move`` 源
-   (bug#1 settle:框架截图前把光标移角落,紧接 drag 落空,先 settle 到源)→ ``drag_to(hold_time=0`` **按下即移**
+   (settle:框架截图前把光标移角落,紧接 drag 落空,先 settle 到源)→ ``drag_to(hold_time=0`` **按下即移**
    即拾取,2026-08-13 实测)→ ``mouse_move`` 羁绊面板区释放光标(防 drag 锁残留致后续 drag 落空)。
    **机械执行零判效**(阶段三判效拆除,总纲阶段三族2):原「验源槽像素 diff + retry 3 次」
    随拆除退役——发出即职责完成,落地事实归下一帧入口观察 reconcile 对账;deploy(``CwScreenDeploy``)/
@@ -117,14 +117,14 @@ class DragCwChar(SrOperation):
         落地事实归下一帧入口观察 reconcile 对账)。
 
         机制(2026-08-13 实测,推翻旧 avatar 假设):整张卡可拖,中心拖 + 按下即移(hold_time=0)即拾取。
-        流程:``mouse_move`` 源(bug#1 settle,防截图移光标后紧接 drag 落空)→ ``drag_to(hold_time=0)``
+        流程:``mouse_move`` 源(settle,防截图移光标后紧接 drag 落空)→ ``drag_to(hold_time=0)``
         → ``mouse_move`` 羁绊面板区释放光标(防 drag 锁残留致后续 drag 落空)。
 
         Args:
             op: 调用方 op(取 ``op.ctx.controller`` 操作)。
             src / dst: 源 / 目标槽中心(1080p)。
         """
-        op.ctx.controller.mouse_move(src)                 # bug#1 settle(先到源)
+        op.ctx.controller.mouse_move(src)                 # settle(先到源)
         time.sleep(0.2)
         op.ctx.controller.drag_to(start=src, end=dst, duration=1.0, hold_time=0.0)
         time.sleep(0.5)

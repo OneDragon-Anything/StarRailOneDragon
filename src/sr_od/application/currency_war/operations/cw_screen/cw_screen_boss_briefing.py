@@ -47,7 +47,7 @@ from sr_od.operations.sr_operation import SrOperation
 # boss 简报与位面过渡**共享「点击空白处继续」交互文案**(共享文案不作判据,
 # od-dev-screen-onboarding「判别锚必须是画面专属特征」);而旧锚
 # 「标识-强敌来袭」(OCR+LCS)被误读形态击穿——一局全帧 OCR 把「强敌来袭」
-# 读成「强敌米」(来袭→米)→ 0p 不接管 → 0q 位面过渡误分发 → fail 循环。
+# 读成「强敌米」(来袭→米)→ BOSS 简报旧锚不接管 → 位面过渡误分发 → fail 循环。
 # 判别单一源 = 「强敌」二字高区分片段,op 内锚兜底 /
 # CwScreenBattleWait 完成白名单 / loop 阶段一位面过渡身份分支排他
 # 三处消费同源。
@@ -126,7 +126,7 @@ class CwScreenBossBriefing(SrOperation):
         if blank is None:
             return self.round_fail('BOSS 简报缺「区域-空白点击」建档')
         log.info('[cw-flow-boss] 强敌来袭横幅命中 → 点空白 (%s,%s)', blank.x, blank.y)
-        # bug#1 缓解(mouse_move 先,overlay 族同款)
+        # 防吞点击(mouse_move 先,overlay 族同款)
         self.ctx.controller.mouse_move(blank)
         self.ctx.controller.click(blank)
         time.sleep(1.0)   # click 异步落地 + 横幅退场动画

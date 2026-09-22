@@ -117,7 +117,7 @@ class CwActionToolUseOp(SrOperation):
             pts = ex._front_pts if action.row == 'front' else ex._back_pts
             end = pts[action.slot - 1]
             tgt_desc = f'{action.row}-{action.slot}'
-        ex._ctx.controller.mouse_move(start)   # bug#1 缓解
+        ex._ctx.controller.mouse_move(start)   # 防吞点击(截图前移光标)
         time.sleep(0.2)
         ex._ctx.controller.drag_to(start=start, end=end,
                                    hold_time=0.5, duration=1.2)

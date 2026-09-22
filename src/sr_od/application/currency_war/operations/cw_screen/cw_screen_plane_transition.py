@@ -147,7 +147,7 @@ class CwScreenPlaneTransition(SrOperation):
         if blank is None:
             return self.round_fail('位面过渡缺「区域-空白点击」建档')
         log.info('[cw-flow-plane] 过渡提示命中 → 点空白 (%s,%s)', blank.x, blank.y)
-        # bug#1 缓解(mouse_move 先,overlay 族同款)
+        # 防吞点击(mouse_move 先,overlay 族同款)
         self.ctx.controller.mouse_move(blank)
         self.ctx.controller.click(blank)
         time.sleep(1.0)   # click 异步落地 + 过渡翻页动画

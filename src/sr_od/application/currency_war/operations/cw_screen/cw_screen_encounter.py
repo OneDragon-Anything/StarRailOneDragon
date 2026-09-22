@@ -194,7 +194,7 @@ class CwScreenEncounter(SrOperation):
                 self._refresh_point[1])
             log.info('[cw-encounter] 建议刷新 → 圆钮@(%d,%d)(文本锚定)'
                      ' 点钮一次后终结交回', target.x, target.y)
-            self.ctx.controller.mouse_move(target)   # bug#1 缓解
+            self.ctx.controller.mouse_move(target)   # 防吞点击(截图前移光标)
             self.ctx.controller.click(target)
             # 用户口述口径(#23,2026-09-02):遭遇屏刷新后 2s 画面稳定
             # ——等满 2s 再交回(固定等待归产生动画的操作,非判效轮询;

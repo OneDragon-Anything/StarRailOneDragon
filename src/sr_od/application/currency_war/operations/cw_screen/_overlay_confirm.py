@@ -79,7 +79,7 @@ def find_text_center(op: SrOperation, text: str) -> Point | None:
 
 
 def safe_click(op: SrOperation, point: Point, *, tag: str = 'cw-overlay') -> None:
-    """bug#1 缓解点击:click 前 ``mouse_move``(零移动),防 ``before_screenshot`` 移光标 → click 落空。
+    """防吞点击:click 前 ``mouse_move``(零移动),防 ``before_screenshot`` 移光标 → click 落空。
 
     给选项选中点击(卡身/候选/勾选)用。确认点击走 ``emit_overlay_confirm``(已含 mouse_move)。
     """
@@ -93,12 +93,12 @@ def emit_overlay_confirm(
     confirm_wait: float = 1.0, success_wait: float = 2.0, tag: str = 'cw-overlay',
     press_time: float = 0.1,
 ) -> OperationRoundResult:
-    """点确认按钮(bug#1 ``mouse_move`` 缓解)+ 固定等待,机械交回 ``round_retry``。
+    """点确认按钮(``mouse_move`` 防吞点击)+ 固定等待,机械交回 ``round_retry``。
 
     验证废除形态(用户裁定 2026-09-10,替换原 ``confirm_and_verify`` 的
     「点后重截验入口词消失」判效半):
 
-    - 确认点击带 ``mouse_move``(bug#1 缓解,partner reset 根因同类)。
+    - 确认点击带 ``mouse_move``(防吞点击,partner reset 根因同类)。
     - ``press_time``:按下时长;默认 0.1(框架默认)。输入管线半死态短按下
       可能不被采样(prep_actions 出战重发 0.15 人工解锁实证),需要者显式传入。
     - 确认后固定等待 ``confirm_wait``(确认关闭动画,固定时长口径)→ 无条件

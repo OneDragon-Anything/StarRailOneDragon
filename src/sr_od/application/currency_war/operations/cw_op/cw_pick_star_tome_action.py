@@ -2,7 +2,7 @@
 文件,一 op 一文件 = op-layer.md :48;族契约与共享 env 见
 ``cw_overlay_pick_env``)。
 
-机械语义:点卡即选(safe_click bug#1 缓解)+ 选中动画固定等待,零确认
+机械语义:点卡即选(safe_click 防吞点击)+ 选中动画固定等待,零确认
 步;机械链发出后直调自上报单口
 ``report_action_pick_star_tome_param``。
 """
@@ -35,7 +35,7 @@ from sr_od.operations.sr_operation import SrOperation
 class CwActionPickStarTomeOp(SrOperation):
     """星徽秘典四选一选卡链(pick-op-unify 批收编;点卡即选,弹窗自关)。
 
-    点卡(safe_click bug#1 缓解;选中点 = 建档「星徽卡-N」近邻匹配,决策半
+    点卡(safe_click 防吞点击;选中点 = 建档「星徽卡-N」近邻匹配,决策半
     现算经 env 传入)→ 选中动画固定等待。``chosen_tome``/ConfirmTome 到账
     登记留守画面 op 重入裁决出口(动作事实边界),本 op 容器写零。"""
 

@@ -34,7 +34,7 @@ idx = _decide_card_index(决策动作 node):
   局外 = kernel pick_equipment(机器空键)
 card_point = (选中卡 x 中心, 卡身 y 常量 290)(点卡名带下方一点,避「查看详情」按钮)
 → 派发 CwActionPickBoxCardOp(动作 op 内:target mouse_move + click
-  [bug#1 缓解]→ 点卡选中即确认[单步]→ 固定动画等待
+  (防吞点击)→ 点卡选中即确认[单步]→ 固定动画等待
   [_OVERLAY_ANIM_WAIT_S = prep_actions overlay 动画等待常量]
   → 自上报 report_action_pick_box_card_param;派发 param 携真实选中 idx)
 → round_success(选卡即终结,交回外循环)

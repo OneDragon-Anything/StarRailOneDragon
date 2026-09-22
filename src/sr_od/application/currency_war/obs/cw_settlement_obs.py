@@ -49,7 +49,7 @@ def parse_settlement_node_type(ocr_texts: list[str]) -> str | None:
                  if '挑战成功' in t or '挑战结束' in t), None)
     if _hdr is None:
         return None
-    # r366b(review B1):窗口扩到 hdr 自身(OCR 把头部与类型词粘成
+    # 窗口扩到 hdr 自身(OCR 把头部与类型词粘成
     # '挑战成功战斗' 的形态)+ 带前缀形态匹配(emoji/词缀 '👩首领')。
     # 前缀白名单(而非长度门——'基础奖励' 4 字也过长度门,实测误中):
     # 允许 = 头部词本身(粘着)与 ≤1 个装饰字符(emoji/点号);修饰词
@@ -553,7 +553,7 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     damage = parse_settlement_damage(_items)
     # r366:结算屏头部类型词 = 节点类型权威源(读时点=记录时点,
     # 零跨帧状态;首节点/备战流变化均免疫)。解析出即覆盖传参。
-    # r366b(review B3):传参='boss'(cw_loop 专项 OCR '首领',证据更强)
+    # 传参='boss'(cw_loop 专项 OCR '首领',证据更强)
     # 不被屏面解析降级覆盖——屏面误读'战斗'会把 boss 3.0 期望拉到 1.0。
     _st_node = parse_settlement_node_type(ocr_texts)
     if (_st_node is not None and _st_node != node_type

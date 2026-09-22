@@ -326,7 +326,7 @@ class CwScreenSupplyNode(SrOperation):
                      type(pick).__name__, reason, _left, target.x, target.y)
         else:
             log.info('[cw-supply] opts=%d match=%s → CARD_BODY 兜底', len(opts), match is not None)
-        # bug#1 缓解:click 前 mouse_move 到目标(零移动),防 before_screenshot 移光标 → click 落空。
+        # 防吞点击:click 前 mouse_move 到目标(零移动),防 before_screenshot 移光标 → click 落空。
         if refresh_target is not None:
             self.ctx.controller.mouse_move(refresh_target)
             self.ctx.controller.click(refresh_target)

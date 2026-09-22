@@ -39,7 +39,7 @@ from sr_od.operations.sr_operation import SrOperation
 class CwActionPickFortuneOp(SrOperation):
     """命运卜者强化三选一确认链(pick-op-unify 批收编)。
 
-    点卡选中(safe_click bug#1 缓解;点卡坐标 = 按下标自容器
+    点卡选中(safe_click 防吞点击;点卡坐标 = 按下标自容器
     ``fortune_opts_xy`` 读〔坐标随报条款,缺/越界 = 守卫断言;选中几何
     避「详情」按钮带归观察侧建档〕)→ 选中动画固定等待 → 确认
     (建档「按钮-确认选择」查找点击,全族统一;不带 until = 动作 op

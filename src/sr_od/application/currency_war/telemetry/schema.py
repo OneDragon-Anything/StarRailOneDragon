@@ -724,8 +724,8 @@ class ExogenousEvent:
     ts: str = ""
     run_id: str = ""
     round_num: int = 0
-    kind: str = ""                  # node_enter/popup/briefing/event_choice/level_up(r378b 收敛到
-    # 有生产者的值:前三种见 22/31 号预案;event_choice(迁移审计 w312(git 历史),遥测审计 G1)=
+    kind: str = ""                  # node_enter/popup/briefing/event_choice/level_up(收敛到
+    # 有生产者的值,git 历史):前三种见 22/31 号预案;event_choice(迁移审计 w312(git 历史),遥测审计 G1)=
     # overlay 选项选择族(遭遇/巨星/伙伴/策划/命运卜者/装备选卡/祈愿)统一 kind;
     # sell_income(迁移审计 w323(git 历史),遥测审计 G2)= 卖牌执行点实收回金(shop.py CwActionSellBenchParam
     # 执行分支,执行前后 gold 差——decisions 行的 actions 是执行前快照,

@@ -333,7 +333,7 @@ class CwEntryStart(SrOperation):
         if self._advance_steps > CwEntryStart.MAX_ADVANCE_STEPS:
             return self.round_fail(status='推进到备战阶段超时')
 
-        # 0) 详情弹窗(点卡触发的"可合成列表")→ 点面板外空白关(与外循环 1b 的
+        # 0) 详情弹窗(点卡触发的"可合成列表")→ 点面板外空白关(与外循环角色详情弹窗臂同款,
         #    CwScreenRoleDetailOverlay 同弹窗同修;旧按 ESC:浮窗已自关时 ESC 落
         #    备战会误弹「中断挑战」bug#2,空白点在弹窗未开时是无害空点)。
         #    ⚠️ 待实机核:该 overlay 帧上「区域-空白关闭」坐标未实机复点

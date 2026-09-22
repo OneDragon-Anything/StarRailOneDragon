@@ -22,7 +22,7 @@
 |---|---|---|---|
 | 无动作 op——单步推进留守 op 内(`progress_once`:点「货币战争-商店刷新概率表.按钮-关闭概率表」× 关闭) | 画面 op 留守臂(`progress_once`:area 读 center → `mouse_move`+`click`) | 无 report 接口(推进型规范形态,op-layer.md §3) | **是(推进即终结)**:点击后 `round_wait` 重入;重入裁决锚 miss = 已离开 → `round_success` 交回(见 §5);推进未落地 = `round_fail` 交回 |
 
-`progress_once` = 读 `货币战争-商店刷新概率表.按钮-关闭概率表` center(`kernel/cw_obs_core.py::area_center`;× 已 area 化,坐标单一真相源)→ `mouse_move`+`click`(mouse_move 必带:恢复原语同坐标点击曾落空,bug#1 缓解保留)。坐标缺失 = False → 决策动作 node `round_fail`(建档缺失时分发锚预检先行报缺,此处为兜底防线)。
+`progress_once` = 读 `货币战争-商店刷新概率表.按钮-关闭概率表` center(`kernel/cw_obs_core.py::area_center`;× 已 area 化,坐标单一真相源)→ `mouse_move`+`click`(mouse_move 必带:恢复原语同坐标点击曾落空,防吞点击保留)。坐标缺失 = False → 决策动作 node `round_fail`(建档缺失时分发锚预检先行报缺,此处为兜底防线)。
 
 ## 5. 终结与交回
 

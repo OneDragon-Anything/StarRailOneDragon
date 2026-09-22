@@ -36,7 +36,7 @@ source_image: screens/货币战争-未达上限警告/default.webp
 
 ## 备注
 
-- **bug#1 mitigation**:关键 click 前 mouse_move(零移动不被判 drag,否则弹窗不消 stall)。
+- **关键点击防吞**:关键 click 前 mouse_move(零移动不被判 drag,否则弹窗不消 stall)。
 - 归档:`screens/货币战争-未达上限警告/default.webp`。
 - screen_info:`currency_war_deploy_not_full`(task#20)。
 - ⚠️ **图源注意**:.debug/images/`cw_megastar_*.png` **文件名误标**,实为本弹窗(非巨星屏)。真正巨星屏未干净捕获(见 `.debug/temp/currency_war/screen_coords_inventory.md`)。

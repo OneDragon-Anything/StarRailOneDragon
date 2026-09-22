@@ -86,7 +86,7 @@ class CwActionOpenBoxOp(SrOperation):
             picked = matched
         slot, center = picked
         open_point = Point(center.x, center.y + self.BOX_OPEN_DY)
-        ex._ctx.controller.mouse_move(open_point)   # bug#1 缓解
+        ex._ctx.controller.mouse_move(open_point)   # 防吞点击(截图前移光标)
         ex._ctx.controller.click(open_point)
         # 固定动画等待(原轮询判效半拆除,A3;值取原轮询上界)
         time.sleep(_OVERLAY_ANIM_WAIT_S)

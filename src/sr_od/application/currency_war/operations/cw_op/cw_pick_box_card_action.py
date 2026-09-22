@@ -31,7 +31,7 @@ from sr_od.operations.sr_operation import SrOperation
 class CwActionPickBoxCardOp(SrOperation):
     """武装箱四选一选卡链(pick-op-unify 批收编;点卡选中即确认,单步)。
 
-    点卡(mouse_move+click bug#1 缓解;点击点 = 卡名带下方 y=290 避
+    点卡(mouse_move+click 防吞点击;点击点 = 卡名带下方 y=290 避
     「查看详情」按钮,决策半现算经 env 传入)→ overlay 动画固定等待
     (``_OVERLAY_ANIM_WAIT_S``,与开箱终结交回等待同源)。选卡即终结 =
     画面 op 派发后 round_success 交回(落地归下一帧观察);本 op 零

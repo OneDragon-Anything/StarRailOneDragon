@@ -15,7 +15,7 @@ obs{on_screen} 挂实例属性(空决策形态无 report:本屏零容器写点,o
 住 kernel/cw_screen_report/item_detail_popup.py,import 构造即可)。
 决策动作 node = 重入裁决顶部(点 × 已发 → 门 miss = 已离开本画面 →
 success 交回——出口 = 入口观察的合法重判,非动作层判效;在 = 再推进)
-→ area 读「按钮-关闭」+ mouse_move+click 单次推进(bug#1 缓解保留)→
+→ area 读「按钮-关闭」+ mouse_move+click 单次推进(防吞点击保留)→
 round_wait 循环(不烧节点重试预算,不收敛 = 动作 bug 响亮暴露,无防御
 上限;「推进动作未落地」= round_fail 如实交回)。本类入口信号 = 自有
 OCR 排他判定(覆写形态),重入裁决有观察信号可用,无「免锚发出即
@@ -90,7 +90,7 @@ class CwScreenItemDetailPopup(SrOperation):
     def progress_once(self) -> bool:
         """推进处理:读「按钮-关闭」center → mouse_move+click(缺失 =
         False 如实交回;× 位于 (1862,65) 原 VLM 定位已 area 化,mouse_move
-        bug#1 缓解保留)。"""
+        防吞点击保留)。"""
         close = area_center(self.ctx, self.CLOSE_AREA, self._screen_name)
         if close is None:
             return False

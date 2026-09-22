@@ -22,7 +22,7 @@
 |---|---|---|---|
 | 无动作 op——单步推进留守 op 内(`_close_dialog` 点 × 关闭) | 画面 op 留守臂(`_close_dialog`:`area_center` 读 `货币战争-武装箱弹窗.按钮-关闭` center + `mouse_move`+`click`) | `report_screen_armory_box_obs`(占位零容器写点,观察 node 调用;动作自身无上报) | 是(重入裁决:点 × 已发 ∧ 标识锚不在 = 弹窗已关 → `round_success` 交回;锚在 = 点击未落地 `round_wait` 重点) |
 
-唯一动作 = 点 ×:`_close_dialog` 读 `货币战争-武装箱弹窗.按钮-关闭` center(`kernel/cw_obs_core.py::area_center`,缺失 = `round_fail`)→ `mouse_move`+`click`(bug#1 缓解)→ 固定 1s → 置位 `_click_pending`。弹窗内箱图标为展示图不可点(op 零消费;档案「按钮-开箱点击」为未消费定位区)。关闭不属 `kernel/cw_vocab.py::CW_ACTION_TYPES`(推进非动作)。
+唯一动作 = 点 ×:`_close_dialog` 读 `货币战争-武装箱弹窗.按钮-关闭` center(`kernel/cw_obs_core.py::area_center`,缺失 = `round_fail`)→ `mouse_move`+`click`(防吞点击)→ 固定 1s → 置位 `_click_pending`。弹窗内箱图标为展示图不可点(op 零消费;档案「按钮-开箱点击」为未消费定位区)。关闭不属 `kernel/cw_vocab.py::CW_ACTION_TYPES`(推进非动作)。
 
 ## 5. 终结与交回
 

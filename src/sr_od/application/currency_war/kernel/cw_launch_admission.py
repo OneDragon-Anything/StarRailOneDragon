@@ -222,7 +222,7 @@ def launch_board_quality_report(gs: GameState, comp: Comp, *,
     view = set(getattr(comp, 'all_factions', None) or [])
     # 自家核准集 = comp 成员名单(core∪shared),注册表制裁的结构量——
     # 空羁绊单卡(白厄)与视图外 shared 件(不死途/布洛妮娅/刃)经此
-    # 计入承重,防自家核心被误判线外致该线 armed 恒推迟(落地审 F1)。
+    # 计入承重,防自家核心被误判线外致该线 armed 恒推迟。
     sanctioned = (set(getattr(comp, 'core_chars', None) or [])
                   | set(getattr(comp, 'shared_chars', None) or []))
     line_weight = 0

@@ -72,7 +72,7 @@ class CwActionWearEquipOp(SrOperation):
                 f'owned 网格未定位到 {action.item_name}'
                 '(模板库缺失/计划失效,下帧重派重算)')
         ex._wait_stable_frame()
-        ex._ctx.controller.mouse_move(start)   # bug#1 缓解
+        ex._ctx.controller.mouse_move(start)   # 防吞点击(截图前移光标)
         time.sleep(0.2)
         ex._ctx.controller.drag_to(start=start, end=target,
                                    hold_time=0.5, duration=1.5)

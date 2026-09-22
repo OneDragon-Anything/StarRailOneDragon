@@ -11,7 +11,7 @@
 | `CwActionPickInvestStrategyParam` | 投资策略 | `idx`(候选槽位下标,0 基,坐标系 = 对应 payload 槽 options 列表下标,生成期快照)+ `reason`(归因记录,`''`=未标)+ `norm_name`(选中卡归一规范名,`normalize_invest_name`;OCR 原始名不静默改写由 handler 持有)+ `route_tag`(后两者不入动作实例键)|
 | `CwActionPickInvestEnvParam` | 投资环境 | 同上 |
 
-- op 载体 = `operations/cw_op/cw_pick_invest_action.py::CwActionPickInvestOp`(非终结;机械链同构:点选中(safe_click bug#1 缓解)→ 0.7s 选中动画等待 → 确认(`emit_overlay_confirm` 机械交回)。屏间差异全部经 `OverlayPickExecEnv` 显式传入——定位点/确认钮中心/裁决词(`'投资策略'`/`'投资环境'`),op 类体内零决策零读屏。
+- op 载体 = `operations/cw_op/cw_pick_invest_action.py::CwActionPickInvestOp`(非终结;机械链同构:点选中(safe_click 防吞点击)→ 0.7s 选中动画等待 → 确认(`emit_overlay_confirm` 机械交回)。屏间差异全部经 `OverlayPickExecEnv` 显式传入——定位点/确认钮中心/裁决词(`'投资策略'`/`'投资环境'`),op 类体内零决策零读屏。
 - 注册两行(`operations/cw_op/cw_action_registry.py`):两 param 类型同指 `CwActionPickInvestOp`,上报按 param 类型机械分派。
 - 发射位 = 投资策略/投资环境两画面 op 决策半经注册表工厂 `action_op_for` 派发(画面篇 = [../../screens/invest_strategy.md](../../screens/invest_strategy.md) §4,环境屏同构)。
 

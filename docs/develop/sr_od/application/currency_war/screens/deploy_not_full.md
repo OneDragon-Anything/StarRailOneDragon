@@ -22,7 +22,7 @@
 |---|---|---|---|
 | 无动作 op——确认链留守 op 内(`_confirm_and_dismiss`:勾「本局不再提示」+ 确认) | 画面 op 留守臂(`_confirm_and_dismiss`:勾 `货币战争-未达上限警告.勾选-本局不再提示`(`_overlay_confirm.py::safe_click`)+ 确认(`_overlay_confirm.py::emit_overlay_confirm`)+ 置位 `_confirm_pending`) | 观察侧 `report_screen_deploy_not_full_obs`(占位调用挂观察 node,本屏零容器写点;动作本体无自上报) | 否(非终结):确认后 `round_wait` 循环推进;落地由重入裁决判——锚不在 = 弹窗已关 → `round_success` 交回外循环(见 §5) |
 
-`_confirm_and_dismiss`:勾 `货币战争-未达上限警告.勾选-本局不再提示`(`_overlay_confirm.py::safe_click` 带 bug#1 缓解 + 0.3s)→ 确认(`_overlay_confirm.py::emit_overlay_confirm`,mouse_move 缓解 + success_wait=3.0)→ 置位 `_confirm_pending`(落地判定归下一轮重入裁决)。坐标 = screen_info 现取优先,**缺失才用兜底常量**(`CHECKBOX_NO_PROMPT(912,589)` / `BTN_CONFIRM(1159,653)`)——与「禁兜底坐标」一般红线不同的 as-built 例外,在此申报。
+`_confirm_and_dismiss`:勾 `货币战争-未达上限警告.勾选-本局不再提示`(`_overlay_confirm.py::safe_click` 带防吞点击 + 0.3s)→ 确认(`_overlay_confirm.py::emit_overlay_confirm`,mouse_move 缓解 + success_wait=3.0)→ 置位 `_confirm_pending`(落地判定归下一轮重入裁决)。坐标 = screen_info 现取优先,**缺失才用兜底常量**(`CHECKBOX_NO_PROMPT(912,589)` / `BTN_CONFIRM(1159,653)`)——与「禁兜底坐标」一般红线不同的 as-built 例外,在此申报。
 
 ## 5. 终结与交回
 

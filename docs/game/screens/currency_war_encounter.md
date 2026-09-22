@@ -48,7 +48,7 @@ source_image: screens/货币战争-遭遇节点/default.webp
 
 ⚠️ **两步之间不要插任何点击**:旧实现插了一个「空白点击 (960,540)」想关详情,实际会**取消选中** → 「选择」时无选中 → 不推进 → 死循环(plane1 round6 后卡死 7 分钟,OCR 反复见同一屏,根因)。点卡身是「选中」不是「开详情」,无需关。
 
-bug#1 缓解:关键 click 前 `mouse_move`(零移动 click 不被框架 before_screenshot 判成拖拽)。
+防吞点击:关键 click 前 `mouse_move`(零移动 click 不被框架 before_screenshot 判成拖拽)。
 
 ### 穷举交互验证(2026-08-11,补建档漏的 onboarding §4)
 

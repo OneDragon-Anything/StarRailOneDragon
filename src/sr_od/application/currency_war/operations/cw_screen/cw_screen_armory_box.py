@@ -100,7 +100,7 @@ class CwScreenArmoryBox(SrOperation):
         if _pt is None:
             return self.round_fail('武装箱弹窗缺「按钮-关闭」坐标')
         log.info(f'[cw-armbox] 关闭说明弹窗({_pt.x},{_pt.y})(道具入背包;开箱走备战箱槽)')
-        self.ctx.controller.mouse_move(_pt)   # bug#1 缓解
+        self.ctx.controller.mouse_move(_pt)   # 防吞点击(截图前移光标)
         self.ctx.controller.click(_pt)
         time.sleep(1.0)
         # 机械交回(验证废除):弹窗消失与否由下一轮重入观察裁决(act 顶部)。

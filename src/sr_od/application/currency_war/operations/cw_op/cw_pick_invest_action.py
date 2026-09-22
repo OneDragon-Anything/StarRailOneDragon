@@ -41,7 +41,7 @@ class CwActionPickInvestOp(SrOperation):
     """投资选择确认链(投资环境/投资策略两屏共用 op,注册表两行同指;
     词表拆类后按 param 类型机械分派上报函数)。
 
-    机械链同构:点选中位(safe_click bug#1 缓解)→ 固定等待 →
+    机械链同构:点选中位(safe_click 防吞点击)→ 固定等待 →
     确认(建档「按钮-确认」查找点击,确认钮查找全族统一 =
     ``round_by_find_and_click_area``;不带 until = 动作 op 禁验证)。
     屏间差异全部经 env 显式传入(定位点 = 决策半从各自建档 area 现算;
@@ -72,7 +72,7 @@ class CwActionPickInvestOp(SrOperation):
         action = self.param
         env = self.env
         op = env.op
-        # 点卡选中(bug#1 缓解:click 前 mouse_move)→ 选中动画固定等待。
+        # 点卡选中(防吞点击:click 前 mouse_move)→ 选中动画固定等待。
         safe_click(op, env.target, tag='cw-pick-invest')
         time.sleep(0.7)
         # 确认 = 建档「按钮-确认」查找点击(round_by_find_and_click_area

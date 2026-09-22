@@ -78,7 +78,7 @@ class CwActionLevelUpOp(SrOperation):
                 game_state_of,
             )
             _price = xp_click_cost(game_state_of(session))
-        ex._ctx.controller.mouse_move(btn)   # bug#1 缓解(review M-5)
+        ex._ctx.controller.mouse_move(btn)   # 防吞点击(review M-5)
         ex._ctx.controller.click(btn)
         # 光标 parking(审计 P0,2026-08-16 = M38 level 毒化注入点):按钮距等级显示区 18px,
         # 点击后光标压住 Lv.N 区 → 下帧 OCR 读错(4 毒化 3 位面的链头)。park 后再继续。

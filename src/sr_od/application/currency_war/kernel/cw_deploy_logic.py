@@ -542,7 +542,7 @@ def locked_redeploy_target_keys(
     is_tgt(``select_deployments``)/ ``_bench_is_target`` /
     ``post_sell_offline`` 底线——禁任何消费位各自内联第二份收窄
     (双源 = 五面视图分裂,方案 §3.1 读法反例存档)。消费辖域 = 锁线
-    **转型域**(落地审 F1 修订):转型域外(未锁帧/锁线成型帧 fp≥1.00)
+    **转型域**(收窄修订):转型域外(未锁帧/锁线成型帧 fp≥1.00)
     不消费本函数,键集逐位同旧 all_factions 全量,成型臂语义照旧
     零行为差。
     """
@@ -576,7 +576,7 @@ def _swap_transition_domain_of(armed: bool, locked: bool,
 
     = 转型臂开 ∧ locked ∧ fp<1.00 ∧ 板满(触发谓词)。
     fp 缺读不算已武装(缺读帧按 「两臂同弃权」口径显影)。
-    收窄辖域钉本域(落地审 F1 修订):锁线∧成型帧
+    收窄辖域钉本域:锁线∧成型帧
     (fp≥1.00)键集回全量——否则成型帧释放件经成型臂绕过资格族
     (star_guard/P41②/守恒门),与「成型臂语义照旧」声明矛盾。"""
     return (armed and locked and fp is not None and fp < 1.00
@@ -1528,7 +1528,7 @@ def assemble_swap_plan_inputs(
         if transition_domain is None else bool(transition_domain)
     if _domain:
         # 锁线**转型域**装配级键集收窄(读法 D;
-        # 辖域钉转型域 = 落地审 F1 修订:锁线∧成型帧(fp≥1.00)键集回全量,
+        # 辖域钉转型域修订:锁线∧成型帧(fp≥1.00)键集回全量,
         # 成型臂释放件不经收窄绕过资格族)。收窄只发生在本装配函数(单一
         # 源),产物同喂五个消费位(offtarget-②/宽口径 target 归因/
         # select_deployments is_tgt/_bench_is_target/post_sell_offline

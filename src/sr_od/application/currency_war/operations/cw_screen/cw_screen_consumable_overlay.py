@@ -20,7 +20,7 @@ UI 弹窗卡死。签名「消耗品」(类型 label) AND 「拖动到」(拖动
 构造即可)。决策动作 node = 重入裁决顶部(点 × 已发 → 双签名 miss =
 已离开本画面 → success 交回——出口 = 入口观察的合法重判,非动作层
 判效;在 = 再推进)→ area 读「按钮-关闭」+ mouse_move+click 单次推进
-(同 CwScreenItemDetailPopup,同族 modal 的 bug#1 缓解保留)→
+(同 CwScreenItemDetailPopup,同族 modal 的防吞点击保留)→
 round_wait 循环(不烧节点重试预算,不收敛 = 动作 bug 响亮暴露,无防御
 上限;「推进动作未落地」= round_fail 如实交回)。本类入口信号 = 自有
 双 OCR 判定(覆写形态),重入裁决有观察信号可用,无「免锚发出即
@@ -91,8 +91,8 @@ class CwScreenConsumableOverlay(SrOperation):
 
     def progress_once(self) -> bool:
         """推进处理:读「按钮-关闭」center → mouse_move+click(缺失 =
-        False 如实交回;mouse_move 同 CwScreenItemDetailPopup 的 bug#1
-        缓解保留)。"""
+        False 如实交回;mouse_move 同 CwScreenItemDetailPopup 的
+        防吞点击保留)。"""
         _close = area_center(self.ctx, self.CLOSE_AREA, self.CLOSE_SCREEN)
         if _close is None:
             return False

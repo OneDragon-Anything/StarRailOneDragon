@@ -22,7 +22,7 @@
 |---|---|---|---|
 | 无动作 op——单步推进留守 op 内(`progress_once`:点「货币战争-道具详情弹窗.按钮-关闭」× 关闭) | 画面 op 留守臂(`progress_once`:area 读 center → `mouse_move`+`click`) | 无 report 接口(推进型规范形态,op-layer.md §3) | **是(推进即终结)**:点击后 `round_wait` 重入;重入裁决 OCR∧排他不命中 = 已离开 → `round_success` 交回(见 §5);推进未落地 = `round_fail` 交回 |
 
-`progress_once` = 读 `货币战争-道具详情弹窗.按钮-关闭` center(`kernel/cw_obs_core.py::area_center`)→ `mouse_move`+`click`(bug#1 缓解)。坐标缺失 = False → 决策动作 node `round_fail`。
+`progress_once` = 读 `货币战争-道具详情弹窗.按钮-关闭` center(`kernel/cw_obs_core.py::area_center`)→ `mouse_move`+`click`(防吞点击)。坐标缺失 = False → 决策动作 node `round_fail`。
 
 ## 5. 终结与交回
 

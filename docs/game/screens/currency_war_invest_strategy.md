@@ -50,4 +50,4 @@ source_image: screens/货币战争-投资策略/default.webp
 - **选中 mechanics(2026-08-04 实测)**:默认无卡选中;点**卡名**(y≈474)开详情不选中(曾致卡死 18min);点**描述区**(y≈545)才选中。op 用 OCR 卡名 center-x + 描述区 Y 拼 click(screen_info ``区域-卡牌描述行`` 给 Y)。
 - 归档:`screens/货币战争-投资策略/default.webp`。
 - screen_info:`currency_war_invest_strategy`(task#20)—— ``标识-请选择投资策略`` / ``区域-卡牌描述行`` / ``按钮-确认``。
-- bug#1 mitigation:关键 click 前 mouse_move(零移动不被判 drag)。
+- 关键点击防吞:关键 click 前 mouse_move(零移动不被判 drag)。

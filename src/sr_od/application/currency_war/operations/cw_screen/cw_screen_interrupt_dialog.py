@@ -1,6 +1,6 @@
 """货币战争 中断挑战 dialog op(空决策形态,A9)。
 
-ESC 误按/误点左上角弹出的「是否中断挑战」真模态(1g,历史 3 次实锤;
+ESC 误按/误点左上角弹出的「是否中断挑战」真模态(历史 3 次实锤;
 2026-08-17 建档替原停机钩子)的处理迁移:点右上 X 关回备战,单尝试合同
 (验证废除批拆 op 内新帧重试:C10——X 不在(旧帧)的重试由外循环重派
 承载,重派即新帧)。**刻意不用 ESC**(bug#2,原分支注释随迁,
@@ -15,7 +15,7 @@ exogenous popup 行随 op 迁移(r378b 测量链 review B1:误触弹窗是外生
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;
 推进型空决策骨架逐屏内联,无共享基类——模式一致即重复):观察 node =
-入口锚门(「标识-中断挑战」,与外循环 1g 分发判定同源同参;miss 未发 =
+入口锚门(「标识-中断挑战」,与阶段一身份分发判定同源同参,分发判定单一源 = flow/outer_loop.md §2.2;miss 未发 =
 round_fail 交回外循环重判,「下一帧重判」是外循环职责)+ obs{on_screen}
 挂实例属性(空决策形态无 report:本屏零容器写点,obs 类住
 kernel/cw_screen_report/interrupt_dialog.py,import 构造即可)。决策动作
@@ -42,7 +42,7 @@ class CwScreenInterruptDialog(SrOperation):
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-中断挑战弹窗')
-        # 画面档名/入口锚(与外循环 1g 分发判定同源同参;实例属性)
+        # 画面档名/入口锚(与阶段一身份分发判定同源同参;实例属性)
         self._screen_name: str = '货币战争-中断挑战弹窗'
         self._entry_area: str = '标识-中断挑战'
         # 推进已发标志(验证废除形态):区分「首发锚 miss = 误分发 fail 交回」
