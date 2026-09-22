@@ -889,7 +889,8 @@ class CwActionPickExpertInviteParam:
 
     [索引定义] idx 取值域扩展:0..3 = 候选卡区下标(卡-1..卡-4);
     **-1 = 现金为王**(经济兜底,非候选卡槽下标;kernel
-    ``choose_expert_index`` 契约原样,handler 据此点「卡-现金为王」区)。
+    ``choose_expert_index`` 契约原样;动作 op 据此取容器 ``cash_point``
+    点「卡-现金为王」区,op-layer.md §1.1 :35 坐标单一真相源 = 观察上报)。
     """
     idx: int
     # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
