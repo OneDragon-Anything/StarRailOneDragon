@@ -1,6 +1,6 @@
 # 盛会之星选巨星(megastar · 货币战争-盛会之星)
 
-> 代码 = `operations/cw_screen/cw_screen_megastar.py::CwScreenMegastar`(两 node 直继承 `SrOperation`)。职责:盛会之星 overlay 一次访问——候选立绘 OCR → `decide_megastar` 选巨星 → 点候选 + 确认;**节点完成模型 = 标识门复检**(overlay 消失才完成)。路径根 = `src/sr_od/application/currency_war/`。建档 = `assets/game_data/screen_info/currency_war_megastar.yml`。
+> 代码 = `operations/cw_screen/cw_screen_megastar.py::CwScreenMegastar`(两 node 直继承 `SrOperation`)。职责:盛会之星 overlay 一次访问——候选检测(弹窗标签带限定 OCR 定卡 + 逐卡立绘 SIFT 交叉验证,见 §3)→ `decide_megastar` 选巨星 → 点候选 + 确认;**节点完成模型 = 标识门复检**(overlay 消失才完成)。路径根 = `src/sr_od/application/currency_war/`。建档 = `assets/game_data/screen_info/currency_war_megastar.yml`。
 
 ## 1. 分发判定
 
@@ -13,7 +13,7 @@
 
 ## 3. 观察面
 
-观察 node = 节点完成门(含选中标记复位副作用,须在门内)+ 候选懒读(仅「本访问将选择」即未选中时读;确认访问不重读候选;`obs/cw_megastar_obs.py::read_megastar_options`:候选标题「盛会之星一X先生/女士!」正则解析角色名,先生/女士与全/半角叹号容错,按 center-x 左→右排序;候选点击坐标同一次观察一并解析——idx 0 = 左候选、其余 = 右候选,取 screen_info「候选-左」/「候选-右」area 中心,area 缺失回退本文件兜底常量 `CANDIDATE_LEFT`/`CANDIDATE_RIGHT`,产 `tuple[int, int]`(1080p 游戏空间,观察期快照);本函数只报读数,零转换)。**名字标准化转换门**住观察侧:选中半读链逐候选三判转换(归一精确 → 域内 LCS 兜底 → 歧义边距拒判),任一候选失败或 ≥2 候选命中同一规范名 = 观察失败,observe round_fail 零写零上报交回重观察;匹配域 = cw_chars「盛会之星」阵营派生规范名 ∪ 场上持「盛会之星星徽」的角色(规范 = op-layer.md §1.1「观察标准化门」);标准化转换只动名字,`idx`/`xy` 原值携带(选择坐标观察上报 = op-layer.md §1.1,名字与坐标同进退)。无 match/gs = 局外交回,零读屏零上报(懒读先例屏特形延伸,见 §2/§5)。观察 payload = `CwScreenMegastarObs`(`in_node`/`options`/`screen`,住 `kernel/cw_screen_report/megastar.py`);report = `report_screen_megastar_obs` 候选写容器 `megastar_opts` 槽(空候选不写,闸在 report 内;选项含 xy,整载荷直写零字段剥离)。决策零参读容器槽。
+观察 node = 节点完成门(含选中标记复位副作用,须在门内)+ 候选懒读(仅「本访问将选择」即未选中时读;确认访问不重读候选;`obs/cw_megastar_obs.py::read_megastar_options`:候选检测 = **弹窗标签带限定 OCR 定卡**——screen_info「候选标签带」area rect 限定 OCR,正则「盛会之星一X先生/女士!」(先生/女士与全/半角叹号容错)逐命中,N = 命中数(候选数 1..N = 场上盛会之星角色数含持星徽者,不恒 2),每命中得标签中心 x + 原始名;**逐卡立绘 SIFT 交叉验证**——按卡身相对几何(代码常量 `_PORTRAIT_Y1`/`_PORTRAIT_Y2`/`_PORTRAIT_HALF_W`,归档 fixture 实测标定)裁立绘区,SIFT 立绘库(`ctx.cw_portrait_templates` 缓存,按 `cw_identity_obs.ensure_portrait_templates` 生产惯例加载)识别;裁决 = SIFT 命中且与 OCR 名(经双源域标准化转换)一致 → 用之 / 不一致 = 识别质量不足以区分 → 置 `READ_FAILED` 哨兵 / SIFT 未命中 → OCR 转换名承重(库缺新角色不硬依赖)/ OCR 名转换失败 → 原值过门;产出 `MegastarOption(idx, char_id=标准名, xy)` 按标签中心 x 左→右排 idx)。候选点击坐标同一次观察一并解析——**xy = (该卡标签中心 x, 在册卡身线 y = `CANDIDATE_BODY_Y`)**,每卡自带,零枚举映射(旧「候选-左/右」两槽 idx 枚举映射模型已退役——单候选/部分读时名字与点击位错位,坐标随卡自带后该缺陷类灭绝;`tuple[int, int]` 1080p 游戏空间,观察期快照)。**失败裁决门**(名字标准化转换门)住观察侧:reader 产标准名,`standardize_megastar_options` 承载失败裁决——`READ_FAILED` 哨兵 / 域外原值 / ≥2 候选命中同一规范名 / LCS 近分边距拒判 = 观察失败,observe round_fail 零写零上报交回重观察(fail 消息迭代候选列表,原值/哨兵自然留证);匹配域 = cw_chars「盛会之星」阵营派生规范名 ∪ 场上持「盛会之星星徽」的角色(规范 = op-layer.md §1.1「观察标准化门」);标准化转换只动名字,`idx`/`xy` 原值携带(选择坐标观察上报 = op-layer.md §1.1,名字与坐标同进退)。无 match/gs = 局外交回,零读屏零上报(懒读先例屏特形延伸,见 §2/§5)。观察 payload = `CwScreenMegastarObs`(`in_node`/`options`/`screen`,住 `kernel/cw_screen_report/megastar.py`);report = `report_screen_megastar_obs` 候选写容器 `megastar_opts` 槽(空候选不写,闸在 report 内;选项含 xy,整载荷直写零字段剥离)。决策零参读容器槽。
 
 ## 4. 动作面
 
@@ -57,10 +57,10 @@
 - 确认纯机械单发(残留自愈归重入裁决);无本屏专属停机钩子([../flow/guards.md](../flow/guards.md))。
 - 决策输入守卫:选中半访问候选空 = 具名 round_fail 零盲发(op-layer.md §1.1 出口③;屏内缺省支盲选 idx0 形态已退役)。
 - 返回契约守卫:`decide_megastar` 返回词表外/None = 具名 round_fail 含原值留证;idx 越界 = 守卫断言 AssertionError(op-layer.md §1.3,禁钳位;静默钳 0 形态已退役)。
-- 观察标准化门:候选名转换失败/重复命中/歧义边距拒判 = 观察 round_fail 零写零上报(op-layer.md §1.1「观察标准化门」,见 §3)。
+- 观察标准化门:候选名转换失败(域外原值)/`READ_FAILED` 哨兵(SIFT 交叉验证反证)/重复命中/歧义边距拒判 = 观察 round_fail 零写零上报(op-layer.md §1.1「观察标准化门」,见 §3)。
 
 ## 9. 遥测与锁面
 
 - journal op 名 =「巨星强化」;op 内日志 tag = `[cw-megastar]`(candidates/pick/reason)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens.py`(遭遇 + 盛会之星两 node 形态锁:门完成/懒读跳过/重派不重触发选中[派发 `env.need_select` 断言]/门 miss 复位/缺席态不冷建;巨星守卫与标准化锁:`test_megastar_out_of_match_zero_read_and_return` 局外交回零读屏、`test_megastar_empty_options_fail_not_blindfire` 候选空 fail 零盲发、`test_megastar_out_of_range_idx_asserts_before_click` 越界断言零点击、`test_megastar_observe_standardizes_options_with_dual_source_domain` 标准化命中双源域、`test_megastar_observe_standardize_failure_fails_clean` 转换失败零写零上报、`test_megastar_observe_standardize_ambiguity_rejected` 重复命中/边距拒判、`test_megastar_lcs_tie_resolves_domain_first` LCS 同分取域序首)、test_cw_unified_action_4.py(巨星 op 机械链行为锁)、test_cw_runnode_retire.py(旧节点基类退役等价)。
+- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens.py`(遭遇 + 盛会之星两 node 形态锁:门完成/懒读跳过/重派不重触发选中[派发 `env.need_select` 断言]/门 miss 复位/缺席态不冷建;巨星守卫与标准化锁:`test_megastar_out_of_match_zero_read_and_return` 局外交回零读屏、`test_megastar_empty_options_fail_not_blindfire` 候选空 fail 零盲发、`test_megastar_out_of_range_idx_asserts_before_click` 越界断言零点击、`test_megastar_observe_standardizes_options_with_dual_source_domain` 标准化命中双源域、`test_megastar_observe_standardize_failure_fails_clean` 转换失败零写零上报、`test_megastar_observe_standardize_ambiguity_rejected` 重复命中/边距拒判、`test_megastar_lcs_tie_resolves_domain_first` LCS 同分取域序首;候选检测重做批锁:`test_megastar_read_fixture_full_chain` 归档 fixture 全链(标签带 OCR 定卡 + SIFT 交叉真跑)、`test_megastar_read_partial_hit_uses_own_xy` 部分读 xy 随卡自带(F3 灭绝锁)、`test_megastar_read_sift_cross_validate` SIFT 交叉裁决四臂、`test_megastar_read_failure_round_fails_clean` 失败信号过门 round_fail、`test_megastar_observe_reports_xy_and_standardize_passthrough` xy 透传落容器)、test_cw_unified_action_4.py(巨星 op 机械链行为锁)、test_cw_runnode_retire.py(旧节点基类退役等价)。
 - game 侧知识:机制(巨星 = 阵营羁绊选 1 角色给全队 buff) = [../../../../game/screens/currency_war_megastar.md](../../../../../game/screens/currency_war_megastar.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1。

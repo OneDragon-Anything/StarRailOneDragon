@@ -1,27 +1,36 @@
-"""货币战争 盛会之星观察域单一文件 = reader + standardizer:
+"""货币战争 盛会之星观察域单一文件 = reader + 标准化门(二次裁决门):
 
-- ``read_megastar_options`` = OCR 读巨星候选(原始 OCR 名,零转换,只报读数);
-- ``standardize_megastar_options`` = 观察标准化门(候选名 → cw_chars 规范名;
-  规范 = ``screens/op-layer.md`` §1.1「观察标准化门」,家族形态镜像投资环境
-  屏 ``cw_screen_invest_env`` 的观察标准化门)。
+- ``read_megastar_options`` = 巨星候选检测(检测模型正本 =
+  ``screens/megastar.md`` §3):弹窗标签带限定 OCR 定卡(命中数 = 候选
+  数 1..N,各得位置 + 原始名)→ 逐卡立绘 SIFT 交叉验证身份 → 裁决产
+  ``MegastarOption(idx, char_id=规范名, xy)``;
+- ``standardize_megastar_options`` = 观察标准化门(reader 已产规范名,
+  本函数承载失败裁决;规范 = ``screens/op-layer.md`` §1.1「观察标准化
+  门」,家族形态镜像投资环境屏 ``cw_screen_invest_env`` 的观察标准化门)。
 
-巨星观察自 ``cw_node_obs.py`` 迁入独立文件:正本 op-layer.md §5 卷首
-「一屏一解析器」,同 ``cw_briefing_obs.py``/``cw_settlement_obs.py`` 惯例;
 生产消费方唯一 = ``operations/cw_screen/cw_screen_megastar.py``(observe
-node 选中半读链)。
+node 选中半读链)。失败语义:reader 任一候选观察失败(SIFT 与 OCR 身份
+不一致 → ``READ_FAILED`` 哨兵 / OCR 名转换失败 → 域外原值保留 / 重复
+命中)以列表形态过 ``standardize_megastar_options`` 门 → 返回 ``None``
+→ observe node round_fail 零写零上报交回重观察(现役机制,调用方零改;
+失败信号不走 None 直返——调用方 fail 消息构造迭代候选列表留证)。
 
 候选点击坐标随本读链一并观察上报(规范 = op-layer.md §1.1「选择坐标
-观察上报」):本文件 = 候选兜底常量宿主(坐标生产半住观察域),动作 op
-按 ``idx`` 自容器 ``megastar_opts[idx].xy`` 取点,零坐标现算。
+观察上报」):xy = (该卡标签中心 x, 在册卡身线 y),每卡自带,动作 op
+按 ``idx`` 自容器 ``megastar_opts[idx].xy`` 取点,零坐标现算。旧
+「候选-左/右」两槽左右映射模型(idx 枚举序 → 固定槽位常量)已退役
+——单候选/部分读时名字与点击位错位(两槽模型把 idx0 恒映射左槽,
+候选只出现在右槽时点错卡),坐标随卡自带后该缺陷类整体灭绝。
 """
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from typing import TYPE_CHECKING, ClassVar
 
 from cv2.typing import MatLike
 
-from one_dragon.base.geometry.point import Point
+from one_dragon.utils.log_utils import log
 from one_dragon.utils.str_utils import longest_common_subsequence_length
 from sr_od.application.currency_war.data.cw_chars import (
     CHARACTERS,
@@ -30,7 +39,7 @@ from sr_od.application.currency_war.data.cw_chars import (
 )
 from sr_od.application.currency_war.kernel.cw_bond_equips import equip_bond_grants
 from sr_od.application.currency_war.kernel.cw_events import MegastarOption
-from sr_od.application.currency_war.kernel.cw_obs_core import area_center
+from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
@@ -40,52 +49,157 @@ if TYPE_CHECKING:
 # 先生/女士 + 全/半角叹号容错(OCR 渲染不一)。
 _MEGASTAR_RE = re.compile(r'盛会之星一(.+?)(先生|女士)[!！]?')
 
-# 左候选(花火)位 —— 实机 bot 点 (822,333) 已选中花火(金边);名位置 = 卡身选中区。
-# 常量 = screen_info 缺失兜底;首选 area_center('候选-左')。
-CANDIDATE_LEFT: Point = Point(822, 333)
-# 右候选(星期日)位 —— OCR 名 @x1061 y334(cw_megastar 实测 2026-08-07);同 y。
-# 常量 = 兜底;首选 area_center('候选-右')。
-CANDIDATE_RIGHT: Point = Point(1061, 333)
+_MEGASTAR_SCREEN: str = '货币战争-盛会之星'
+# 标签带 area(OCR 限定 rect;归档 fixture sr-od-test/screens/货币战争-
+# 盛会之星/未选择.webp 实测标定:标签文本带 y333-356,rect 取 y300-380
+# 弹窗全宽,容纳 N>2 候选的更宽分布)。
+_LABEL_BAND_AREA: str = '候选标签带'
+
+# 在册卡身线 y(实机 bot 点 (822,333) 命中候选卡金边选中,2026-08-07
+# cw_megastar 实测)。候选点击 y 恒此值;x = 该卡标签中心 x,每卡自带。
+CANDIDATE_BODY_Y: int = 333
+
+# 观察失败哨兵:reader 交叉验证裁决失败(SIFT 与 OCR 名不一致)时替代
+# 该候选 char_id 的标记,域外恒判 → 标准化门返回 None → observe node
+# round_fail。哨兵必要性:调用方 observe 的 fail 消息构造迭代候选列表
+# (禁触文件 ``cw_screen_megastar.py`` 现形),失败信号必须以列表形态过
+# 门,哨兵名 = 「OCR 名本身合法但被立绘反证」场景在列表形态下的最小
+# 失败载体(域外/重复场景自带域外原值,无需哨兵)。细节留证(双名各值)
+# 在 reader warn 日志。
+READ_FAILED: str = '<观察失败>'
+
+# 候选立绘裁区(相对该卡标签中心;归档 fixture 未选择.webp 实测标定:
+# 卡身立绘 y ≈ 170-305,标签中心 x ± 65 完全落卡身内,卡框宽 ≈ 215px)。
+_PORTRAIT_Y1: int = 170
+_PORTRAIT_Y2: int = 305
+_PORTRAIT_HALF_W: int = 65
+
+IdentifyFn = Callable[[MatLike], str | None]
+"""立绘身份识别注入点:(候选立绘裁片 RGB)→ 货币战争规范名;``None`` =
+未命中(SIFT 通道无产出,OCR 转换名承重)。测试经 ``identify`` 形参注入
+桩,禁 monkeypatch 私有。"""
 
 
-def read_megastar_options(ctx: SrContext, screen: MatLike) -> list[MegastarOption]:
-    """OCR 巨星节点候选 → ``MegastarOption`` 列表(char_id 从「盛会之星一X先生/女士!」解析)。
+def _default_identify(ctx: SrContext) -> IdentifyFn:
+    """生产识别函数:SIFT 立绘库 × ``identify_character`` → 规范名。
 
-    巨星候选 = 盛会之星 bond(花火/星期日…)给全队 buff。按候选名 center-x 左→右排序 → ``idx``。
-    候选点击坐标随观察一并上报(选择坐标观察上报,规范 = op-layer.md §1.1):
-    idx 0 = 左候选、其余 = 右候选(本屏左右各一候选的两候选布局),取值 =
-    screen_info ``currency_war_megastar`` 的「候选-左」/「候选-右」area 中心,
-    area 缺失回退本文件兜底常量 ``CANDIDATE_LEFT``/``CANDIDATE_RIGHT``;产出
-    ``tuple[int, int]``(1080p 游戏空间)。decide_megastar 按 target.core_chars
-    选(含盛会之星 → 绑该角色;否则 buff 契合)。本函数只报读数(原始 OCR
-    名,零转换),读不到 → []。标准化契约 = 观察侧转换门(调用方 observe 调
-    ``standardize_megastar_options``;规范 = op-layer.md §1.1「观察标准化
-    门」),转换失败 = 观察失败 round_fail 零写零上报。
+    模板经 ``ctx.cw_portrait_templates`` 缓存,缺则按生产惯例加载
+    (``cw_identity_obs.ensure_portrait_templates``,与 deploy/bench/shop
+    SIFT 共用同一缓存)。库目录缺失 = SIFT 通道全程未命中(OCR 转换名
+    承重,不硬依赖库;warn 留证)。
     """
-    ocr_map = ctx.ocr_service.get_ocr_result_map(
-        image=screen, rect=None, color_range=None, crop_first=False,
+    from sr_od.application.currency_war.obs.currency_war_char_id import (
+        identify_character,
     )
-    cands: list[tuple[int, str]] = []   # (center_x, char_id)
+    from sr_od.application.currency_war.obs.cw_identity_obs import (
+        ensure_portrait_templates,
+        resolve_char_name,
+    )
+
+    templates = ensure_portrait_templates(ctx)
+    if templates is None:
+        log.warning('[cw-megastar] 立绘 SIFT 模板库缺失:识别通道全程未命中,'
+                    '候选身份由 OCR 转换名承重')
+        return lambda _crop: None
+
+    def _identify(crop: MatLike) -> str | None:
+        avatar_id, _inliers = identify_character(crop, templates)
+        return resolve_char_name(avatar_id) if avatar_id else None
+
+    return _identify
+
+
+def read_megastar_options(
+        ctx: SrContext, screen: MatLike,
+        *, identify: IdentifyFn | None = None,
+) -> list[MegastarOption]:
+    """巨星候选检测 → ``MegastarOption`` 列表(char_id = 规范名)。
+
+    检测模型(正本 = screens/megastar.md §3,逐条落):
+    ① **弹窗标签带限定 OCR 定卡**:标签带 area「候选标签带」rect 限定
+       OCR → 正则「盛会之星一X先生/女士」逐命中 → N = 命中数,每 hit
+       得(标签中心 x, 原始名 X)。全屏扫已退役(全屏扫会把屏上其它
+       「盛会之星」字样卷入,且旧实现的坐标按枚举序硬映射左右槽)。
+    ② **逐卡立绘 SIFT 交叉验证**:每 hit 按卡身相对几何裁立绘区 → SIFT
+       立绘库识别 → 裁决:SIFT 命中且与 OCR 名(经双源域标准化转换)
+       一致 → 用之;不一致 = 识别质量不足以区分 → 该候选 char_id 置
+       ``READ_FAILED`` 哨兵(整函数观察失败信号,见 return);SIFT 未命中
+       → OCR 转换名承重(库缺新角色不硬依赖);OCR 名转换失败 → 原值
+       保留过门(标准化门既有判法判域外失败)。
+    ③ **xy = (该卡标签中心 x, 卡身线)**:y = ``CANDIDATE_BODY_Y`` 在册
+       实测卡身线,x 随卡标签中心,每卡自带坐标,无枚举映射。
+    ④ **输出序**:按标签中心 x 左→右 = idx 0..N-1(与词表/策略下标同系)。
+
+    :param identify: 立绘身份识别注入点(``IdentifyFn``;None = 生产 SIFT
+        链)。测试桩经此注入,禁 monkeypatch 私有。
+    :return: 候选列表(按 x 左→右,xy 每卡自带)。失败信号 = 列表内含
+        ``READ_FAILED`` 哨兵 ∨ 域外原值(调用方 observe 经
+        ``standardize_megastar_options`` 门判失败 → round_fail 零写零
+        上报交回重观察;fail 消息构造迭代本列表,原值/哨兵自然留证)。
+        空列表 = 合法空读(标签带零命中,上游按候选空语义处理)。
+        纯读零副作用。
+    """
+    band = _area_rect(ctx, _LABEL_BAND_AREA, _MEGASTAR_SCREEN)
+    if band is None:
+        # 建档漂移(标签带 area 缺失)= 确定性失败,空读语义(可自愈)
+        # 不适用 → 哨兵列表交门响亮停。
+        log.warning(f'[cw-megastar] 标签带 area {_LABEL_BAND_AREA!r} 缺失'
+                    '(建档漂移?),观察失败')
+        return [MegastarOption(idx=0, char_id=READ_FAILED, xy=None)]
+    ocr_map = ctx.ocr_service.get_ocr_result_map(
+        image=screen, rect=band, color_range=None, crop_first=False,
+    )
+    hits: list[tuple[float, str]] = []   # (标签中心 x, 原始名 X)
     for text, mrl in ocr_map.items():
         if mrl.max is None:
             continue
         m = _MEGASTAR_RE.search(text)
         if m is None:
             continue
-        cands.append((mrl.max.center.x, m.group(1)))
-    cands.sort(key=lambda c: c[0])
+        hits.append((mrl.max.center.x, m.group(1)))
+    hits.sort(key=lambda h: h[0])
+    if not hits:
+        return []
+    # 双源匹配域(星徽动态域,现契约):gs 经 ctx 自取(生产调用点 observe
+    # 已先做局外守卫,读链只在有 gs 时进入;局外直调 = 静态域 only)。
+    match = getattr(ctx, 'cw_match', None)
+    gs = getattr(match, 'gs', None) if match is not None else None
+    domain = _megastar_match_domain(gs)
+    domain_set = set(domain)
+    if identify is None:
+        identify = _default_identify(ctx)
     options: list[MegastarOption] = []
-    for i, (_cx, name) in enumerate(cands):
-        area_pt = (area_center(ctx, '候选-左', '货币战争-盛会之星') if i == 0
-                   else area_center(ctx, '候选-右', '货币战争-盛会之星'))
-        fallback = CANDIDATE_LEFT if i == 0 else CANDIDATE_RIGHT
-        pt = area_pt if area_pt is not None else fallback
-        options.append(MegastarOption(idx=i, char_id=name,
-                                      xy=(int(pt.x), int(pt.y))))
+    for cx, raw in hits:
+        norm = _normalize_char_name(raw)
+        canon_ocr = (norm if norm in domain_set
+                     else _MegastarGate._lcs_resolve(norm, domain))
+        if not canon_ocr:
+            # OCR 名域外 = 标准化门既有判法的失败:原值留列表过门
+            # (门判域外 → None → round_fail,fail 消息含原值留证),
+            # 无需 SIFT 反证(已必失败,省裁片识别算力)。
+            log.warning(f'[cw-megastar] 候选 OCR 名标准化失败:{raw!r}'
+                        '(域外名,过门判观察失败)')
+            options.append(MegastarOption(idx=len(options), char_id=raw,
+                                          xy=(int(cx), CANDIDATE_BODY_Y)))
+            continue
+        # 立绘裁区:画面内边界钳制(标签带建档保证 cx 在弹窗内,钳制防
+        # 手改 rect 后负切片回卷)。
+        x1 = max(0, int(cx) - _PORTRAIT_HALF_W)
+        x2 = min(int(screen.shape[1]), x1 + 2 * _PORTRAIT_HALF_W)
+        crop = screen[_PORTRAIT_Y1:_PORTRAIT_Y2, x1:x2]
+        char_id = canon_ocr
+        sift_name = identify(crop)
+        if sift_name is not None and sift_name != canon_ocr:
+            log.warning(f'[cw-megastar] 立绘 SIFT 与 OCR 名不一致:'
+                        f'OCR={canon_ocr!r} SIFT={sift_name!r}'
+                        '(识别质量不足以区分,置失败哨兵交门判观察失败)')
+            char_id = READ_FAILED
+        options.append(MegastarOption(idx=len(options), char_id=char_id,
+                                      xy=(int(cx), CANDIDATE_BODY_Y)))
     return options
 
 
-# ===== 观察标准化门(候选名 → 规范名;规范 = op-layer.md §1.1)=====
+# ===== 观察标准化门(二次裁决门;规范 = op-layer.md §1.1)=====
 
 # 巨星匹配域的阵营名(cw_chars 注册表 faction 字段值;成员表单一源 = 注册表,
 # 禁手抄——注册表版本更新域自动跟进,缺新成员 = 转换失败响亮停逼修数据)。
@@ -192,27 +306,31 @@ def _megastar_match_domain(gs: GameState | None) -> list[str]:
 def standardize_megastar_options(
         options: list[MegastarOption],
         gs: GameState | None) -> list[MegastarOption] | None:
-    """观察标准化门(op-layer.md §1.1;``read_megastar_options`` 读出后、
-    组装 obs 前逐候选三判转换):匹配域 = 屏合法候选域(双源并集,见
-    ``_megastar_match_domain``)。逐候选:①形变归一(``_normalize_char_
-    name``)后域内精确命中 → 标准名;②不中 → 域内 LCS 评分兜底 → 过
-    阈值命中 = 标准名;③歧义边距拒判:最高/次高分差 <
-    ``_MegastarGate.MEGASTAR_LCS_AMBIGUITY_MARGIN`` = 域内歧义不可分辨
-    → 转换失败。
+    """观察标准化门(op-layer.md §1.1;二次裁决门)。
 
-    判失败集 = 任一候选①②③皆不中 ∨ ≥2 候选命中同一规范名(识别质量
-    不足以区分)→ 返回 None:调用方 observe node round_fail 整函数早退,
-    零写容器零上报零点击,交外循环重观察重读(禁带病上报;瞬时误读下轮
-    新帧自愈,持续误读 = 连续 fail 至外环重派网响亮停,逼修数据)。成功
-    返回新 ``MegastarOption`` 列表(char_id = 规范名,``idx``/``xy`` 原
-    值保留——动作参数纯序号 + 观察上报坐标,转换只动名字、坐标原样携带
-    (选择坐标观察上报同进退,规范 = op-layer.md §1.1),容器
-    ``megastar_opts`` 值域自此 = 规范名 + 观察期坐标)。纯读零副作用。"""
+    ``read_megastar_options`` 已在检测流程内完成标准化(折叠语义:双源
+    域转换门 = SIFT 名/OCR 名都须在域内,域外失败)。本函数承载失败裁决:
+    逐候选三判(①形变归一后域内精确命中 → 标准名;②不中 → 域内 LCS
+    评分兜底;③最高/次高分差 < ``_MegastarGate.MEGASTAR_LCS_AMBIGUITY_
+    MARGIN`` = 边距拒判)外加失败载体两判——候选 char_id =
+    ``READ_FAILED`` 哨兵(reader 交叉验证反证失败)∨ ≥2 候选命中同一
+    规范名(识别质量不足以区分)→ 返回 None。reader 已转换的规范名 ∈
+    域内精确命中,幂等透传(防御性二次门语义不变)。
+
+    判失败 → 返回 None:调用方 observe node round_fail 整函数早退,零写
+    容器零上报零点击,交外循环重观察重读(禁带病上报;瞬时误读下轮新
+    帧自愈,持续误读 = 连续 fail 至外环重派网响亮停,逼修数据;fail 消
+    息迭代候选列表,原值/哨兵自然留证)。成功返回新 ``MegastarOption``
+    列表(char_id = 规范名,``idx``/``xy`` 原值保留——动作参数纯序号 +
+    观察上报坐标,转换只动名字、坐标原样携带(选择坐标观察上报同进退,
+    规范 = op-layer.md §1.1))。纯读零副作用。"""
     domain = _megastar_match_domain(gs)
     domain_set = set(domain)
     resolved: list[MegastarOption] = []
     seen: set[str] = set()
     for o in options:
+        if o.char_id == READ_FAILED:
+            return None   # reader 交叉验证反证失败(哨兵,细节在 reader warn)
         norm = _normalize_char_name(o.char_id)
         canon = (norm if norm in domain_set
                  else _MegastarGate._lcs_resolve(norm, domain))
