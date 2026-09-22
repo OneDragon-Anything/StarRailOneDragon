@@ -795,14 +795,22 @@ class MegastarPick:
     enhance_char_id: str | None = None
 
 
-# ===== 选择伙伴节点(decide_partner;✅ 已派发 cw_screen_partner;⚠️ 候选只立绘 char_id=label→多 idx0,真接需 SIFT 立绘)=====
+# ===== 选择伙伴节点(decide_partner;宿主 = operations/cw_screen/cw_screen_partner.py;候选真身 = SIFT 立绘识别,识别失败回落 label 流派名)=====
 
 @dataclass
 
 class PartnerOption:
-    """一个伙伴候选(OCR/SIFT 读角色名,``read_partner`` 阶段5;/§11.3.4⑦)。
+    """一个伙伴候选(角色名 = SIFT 真身识别产物,识别失败回落 label 流派名;
+    生产读端 = 画面 op 观察 node 一次读,cw_screen_partner.py::observe)。
 
-    char_id:候选角色名(空 = OCR 未就绪 → 默认 idx=0 = 今天盲点 stage 立绘)。
+    [索引定义] idx:坐标系 = 画面物理候选位序(左→右)0 基,与
+    ``CwScreenPartnerObs.options``/容器 ``partner_opts`` 槽同一候选列表;
+    取值时机 = 观察 node 入口帧一次读快照,访问内恒稳。
+    char_id:候选角色名(空 = 识别未命中回落失败/读缺;识别失败回落
+    流派名/空 = op-layer.md §1.1 :34 转换失败欠账形态,收敛方向 = 观察
+    失败 round_fail 零写零上报;屏级转换成功性边界由 screens/partner.md
+    登记,含多候选同名同判);缺省选卡语义单一源 = 策略器 ``decide_partner``
+    (strategy-docs/13_pick_family.md §1 E6)。
     """
     idx: int
     char_id: str = ""
@@ -811,7 +819,12 @@ class PartnerOption:
 @dataclass
 
 class PartnerPick:
-    """decide_partner 返回:选第几个候选 + 原因。"""
+    """kernel 时代伙伴选卡返回载体,已被 ``cw_vocab.CwActionPickPartnerParam``
+    替代(替代关系在册 = cw_vocab 该类 docstring);现役仅 ``EVENT_PICK_TYPES``
+    登记在场(登记面,零生产零消费)。
+
+    [索引定义] idx:历史语义 = 候选列表下标 0 基(登记面保留,现役零消费)。
+    """
     idx: int
     reason: str = ""
 

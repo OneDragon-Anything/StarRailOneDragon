@@ -12,7 +12,7 @@
 
 - **现状症状**:`operations/cw_screen/cw_screen_partner.py::CwScreenPartner.act` 首轮决策块两条违规路径——①`idx = pick.idx if 0 <= pick.idx < len(cands) else 0`:决策返回 idx 越界被**静默钳到 0** 续跑(流程侧值域改写 + 静默降级;该行无注释自述、无正本在册背书);②`if match is not None and options:` 为假时策略器不被调用,以常量 `idx = 0` + `reason = 'no-candidates(fallback)'` 盲选派发——候选空(options 空 ⇔ cands 空,obs options 由 cands enumerate 生成)虽被块尾 `round_fail('伙伴屏无候选…')` 显式拦截(零盲发,报告 §3.3 正面面),但 **match 缺席 ∧ 候选非空 = 真盲发路径**(局外直跑即落此支)。`decide` 返回 None/异型 → `pick.idx` AttributeError = 异常出口响亮(合规,但诊断面只有类型名不指因)。
 - **根因归层(根源两问)**:根在**流程层**——决策出口兜底残留:`idx=0` 常量盲选 = 流程侧默认决策,钳位句 = 流程侧值域改写。决策控制分层铁律(flow/README.md §1)已把「动作值域过滤」划归策略侧、禁流程侧任何决策闸门与政策判断;op-layer.md §1.1 出口③(决策无有效输出 = 异常 fail,零盲发)、§1.3(非法返回 = 策略器 bug 响亮暴露,**禁静默跳过或降级续跑**)反向禁止。现役策略实现(`strategies/impl/flow.py::decide_partner`,idx 恒取自 options)契约上不越界,该路径 bug 才可达——但正本恰规定该情形必须响亮暴露。同族家族模式又一例(遭遇 T-4 / 盛会之星 T-8 / 选择装备 T-9 / 卜者 T-12 / 祈愿 T-13 均已判同族违规;跨稿计数口径不一,族级全集与计数归 T-37 对账,→ §2.2 家族联动面);本稿删兜底、换守卫,修根非症状。
-- **解决到哪**:首轮决策块改三守卫(决策输入具名 fail 零盲发 / 返回契约具名 fail / idx 值域守卫断言恒炸),删默认 idx、钳位句与块尾重复 fail;`chosen_partner` 写端守卫条件随守卫简化;`screens/partner.md` as-built 申报守卫出口;行为锁桩面(`cw_match=None` 驱动)随守卫语义换 match 桩(断言面不变)。
+- **解决到哪**:首轮决策块改三守卫(决策输入守卫(候选空具名 fail / match 缺席 :36 round_success 终结交回) / 返回契约具名 fail / idx 值域守卫断言恒炸),删默认 idx、钳位句与块尾重复 fail;`chosen_partner` 写端守卫条件随守卫简化;`screens/partner.md` as-built 申报守卫出口;行为锁桩面(`cw_match=None` 驱动)随守卫语义换 match 桩(断言面不变)。
 - **明确不解决**:重入裁决 / 确认被拒守卫 / CONFIRM_REJECT_MAX 有界防线(在册一致面,报告 §3.3——失败治理出口,非决策闸);建档缺失 fail(「候选-卡区」,坐标单一真相源,一致面);策略侧 `decide_partner` 的 idx=0 缺省实现与「OCR 未就绪」告示(策略域,strategy-docs/13_pick_family.md §1 E6 在册,T-8 稿同口径不扩);兄弟屏同族面(→ §2.2,归口 T-37);报告 §4 无法核对面(实机验证归运行期)。
 
 ### F-2 chosen_partner 写时点:正本两说 + 同族分裂(中)
@@ -67,14 +67,14 @@
 cands = self._cands
 options = self._obs.options if self._obs is not None else []
 match = self.ctx.cw_match
-# 守卫①(决策输入,op-layer §1.1 出口③ 零盲发,两臂均零点击零派发):
-# 候选空 = 在册显式失败上移至决策前;match 缺席 = 局外语境无策略器
-# 可问,决策面无兜底(原常量 idx0 盲选派发退役)。
+# 守卫①(决策输入,两臂零点击零派发):候选空 = 在册显式失败(留守
+# round_fail);match 缺席 = 局外,零决策零点击 round_success 终结
+# 交回(op-layer.md §1.1 :36,遭遇屏先例同款;原常量 idx0 盲选派发退役)。
 if not options:
     return self.round_fail('伙伴屏无候选(OCR 未命中候选标签),禁兜底盲点')
 if match is None:
-    return self.round_fail(
-        '[cw-partner] 决策无有效输出零盲发(match=None,局外语境)')
+    return self.round_success(
+        '[cw-partner] 局外无 match,零决策零点击终结交回(:36)')
 # 守卫②(返回契约,op-layer §1.3):None/词表外 = 策略器 bug 具名
 # fail 留证(原 AttributeError 异常出口子径收编,消息含原值)。
 pick = match.strategy.decide_partner()
@@ -112,25 +112,25 @@ self._pick_point = point
 
 3. 删除面:常量 `idx = 0` / `reason = 'no-candidates(fallback)'` / 钳位三元 / `if match is not None and options:` 条件支 / chosen 写端四条件(`if match is not None and options and 0 <= idx < len(options) and getattr(match, 'gs', None) is not None:` → 守卫①③承载后仅剩 gs 判空)/ 块尾 `if not cands or not (0 <= idx < len(cands)): round_fail('伙伴屏无候选…')` 整块(两半分别由守卫①/③承载,失败语义单点化;显式失败语义不回退——仍零点击零盲发,文案沿用)。
 4. 保留面:重入裁决顶部 / 确认被拒守卫 / 派发 `action_op_for(CwActionPickPartnerParam(idx=self._pick_idx), self.ctx, _env).execute()` 两轮同形(重入轮无策略调用,守卫③保证决策轮 `_pick_idx == pick.idx`,重建非钳位载体);`self._pick_idx` [索引定义] 注释现款维持。派发段前注**不属保留面**——「统一动作工厂批4:体迁 ``PartnerPickOp``,方法级替身缝保留」含批名变更史 + 死符号指针(现类 = `CwActionPickPartnerOp`,替身缝已随注册表直派消解),随本施工一并改写(§2.6 F-5 站点④)。
-5. docstring 同步:模块 docstring 决策动作 node 描述在「确认被拒守卫(……)」后补「+ 决策出口三守卫(输入 / 返回契约 / 值域,op-layer §1.1 出口③ / §1.3)」;act docstring 步 2「首轮决策一次……」后补「守卫①②③(候选空 / match 缺席 = 具名 fail;返回 None·词表外 = 具名 fail 含原值;越界 = AssertionError)先于决策与写端,零点击」。
-6. 配套注释面:`observe` docstring 尾「(决策走决策面缺省支,分支原样)」随 F-1 退役 → 「(report 跳写 = 容器写闸,与决策无关;决策面无局外兜底,守卫见 act)」。
+5. docstring 同步:模块 docstring 决策动作 node 描述在「确认被拒守卫(……)」后补「+ 决策出口三守卫(输入:候选空 fail / match 缺席 :36 round_success 交回 / 返回契约 / 值域,op-layer.md §1.1 :36·出口③ / §1.3)」;act docstring 步 2「首轮决策一次……」后补「守卫①②③(候选空 = 具名 fail;match 缺席 = 零决策零点击 round_success 终结交回,op-layer.md §1.1 :36;返回 None·词表外 = 具名 fail 含原值;越界 = AssertionError)先于决策与写端,零点击」。
+6. 配套注释面:`observe` docstring 尾「(决策走决策面缺省支,分支原样)」随 F-1 退役 → 「(report 跳写 = 容器写闸,与决策无关;决策面无局外兜底——无 match = 零决策零点击 round_success 终结交回(op-layer.md §1.1 :36),守卫见 act)」。
 
-**落点语义**(机制方向依据 = `one_dragon/base/operation/operation.py` 实文:仅 RETRY 计 `node_retry_times`、其余状态清零且 FAIL 直落 `op_fail`;节点体在 try/except 内,异常被收口为 `round_retry('异常')` + 留证截图):守卫①②(round_fail)= **直落 op fail 交外循环,零节点预算消耗**(一次即终,非计预算路径);候选空 = 瞬时 OCR 失读由外环 fail 重派网获得新帧自愈、持续失读有界响亮停(`cw_loop.py::CwLoop`,行为锁 = `test_cw_loop_op_fail_redispatch_cap.py`);守卫③(AssertionError)= **经框架节点异常收口**(`round_retry('异常')` + 留证截图)沿 RETRY 计节点预算 node_max_retry_times=10,确定性 bug 每轮必炸、预算内有界响亮终止(耗尽 = op fail)。
+**落点语义**(机制方向依据 = `one_dragon/base/operation/operation.py` 实文:仅 RETRY 计 `node_retry_times`、其余状态清零且 FAIL 直落 `op_fail`;节点体在 try/except 内,异常被收口为 `round_retry('异常')` + 留证截图):守卫①候选空臂、守卫②(round_fail)= **直落 op fail 交外循环,零节点预算消耗**(一次即终,非计预算路径);候选空 = 瞬时 OCR 失读由外环 fail 重派网获得新帧自愈、持续失读有界响亮停(`cw_loop.py::CwLoop`,行为锁 = `test_cw_loop_op_fail_redispatch_cap.py`);守卫① match 缺席臂(round_success)= 零决策零点击终结交回外循环重分发(op-layer.md §1.1 :36,零预算消费);守卫③(AssertionError)= **经框架节点异常收口**(`round_retry('异常')` + 留证截图)沿 RETRY 计节点预算 node_max_retry_times=10,确定性 bug 每轮必炸、预算内有界响亮终止(耗尽 = op fail)。
 
 **文档面**(`screens/partner.md` as-built):
 
-- §2 形态声明:在「……否则 idx=0,规格 = 13_pick_family.md §1 E6)」后插「;决策出口三守卫:候选空 = 具名 round_fail 零盲发(「伙伴屏无候选」在册文案上移至决策前)、match 缺席 = 具名 round_fail(决策面无局外兜底)、返回 None/词表外 = 具名 round_fail(含原值)、idx 越界 = 守卫断言 AssertionError 禁钳位(op-layer.md §1.1 出口③/§1.3;均在派发前零点击)」。
-- §3 观察面尾句:「match/gs 缺席的局外兜底路径跳过,决策走缺省支」→「match/gs 缺席的局外路径跳过 report——report 跳写 = 容器写闸,与决策无关;决策面无局外兜底,无 match = 决策无有效输出走守卫 fail,见 §2」。
-- §4 脉冲链步 2 行首插守卫行(候选空 / match 缺席 / 返回词表外·None = round_fail,越界 = AssertionError,均先于决策与写端零点击);步 3 删「无候选……」半句(已上移至步 2 守卫,文案不变),保留「建档缺失……」半句。
-- §5 终结表补一行:「| 决策出口守卫(候选空/match 缺席/返回词表外·None/idx 越界) | 守卫 fail(op FAIL) | round_fail(含原值,直落零预算)/ 框架异常路径(留证截图 + node_max_retry_times=10 预算耗尽,守卫③)交回外循环;连续 fail 由外环 fail 重派网兜底(cw_loop.py::CwLoop) |」。
-- §8 守卫与防线补两条 + 退役申报:「决策输入守卫:候选空/无 match = 具名 round_fail 零盲发(原「常量 idx0 盲选派发」退役;无候选在册文案保留)」「返回契约与值域守卫:返回 None/词表外 = 具名 round_fail;pick idx 越界 = 守卫断言 AssertionError(原「静默钳 0」退役)」。
+- §2 形态声明:在「……否则 idx=0,规格 = 13_pick_family.md §1 E6)」后插「;决策出口三守卫:候选空 = 具名 round_fail 零盲发(「伙伴屏无候选」在册文案上移至决策前)、match 缺席 = 零决策零点击 round_success 终结交回(op-layer.md §1.1 :36,遭遇屏先例同款)、返回 None/词表外 = 具名 round_fail(含原值)、idx 越界 = 守卫断言 AssertionError 禁钳位(op-layer.md §1.1 :36/出口③/§1.3;均在派发前零点击)」。
+- §3 观察面尾句:「match/gs 缺席的局外兜底路径跳过,决策走缺省支」→「match/gs 缺席的局外路径跳过 report——report 跳写 = 容器写闸,与决策无关;决策面无局外兜底,无 match = 零决策零点击 round_success 终结交回(op-layer.md §1.1 :36),见 §2」。
+- §4 脉冲链步 2 行首插守卫行(候选空 / 返回词表外·None = round_fail;match 缺席 = round_success 零决策零点击终结交回,op-layer.md §1.1 :36;越界 = AssertionError——均先于决策与写端零点击);步 3 删「无候选……」半句(已上移至步 2 守卫,文案不变),保留「建档缺失……」半句。
+- §5 终结表补两行:「| 决策出口守卫(候选空/返回词表外·None/idx 越界) | 守卫 fail(op FAIL) | round_fail(含原值,直落零预算)/ 框架异常路径(留证截图 + node_max_retry_times=10 预算耗尽,守卫③)交回外循环;连续 fail 由外环 fail 重派网兜底(cw_loop.py::CwLoop) |」「| 局外无 match(op-layer.md §1.1 :36) | round_success 终结交回 | 零决策零点击,交回外循环重分发(遭遇屏先例同款) |」。
+- §8 守卫与防线补两条 + 退役申报:「决策输入守卫:候选空 = 具名 round_fail 零盲发(无候选在册文案保留);局外无 match = 零决策零点击 round_success 终结交回(op-layer.md §1.1 :36,遭遇屏先例同款;原「常量 idx0 盲选派发」退役)」「返回契约与值域守卫:返回 None/词表外 = 具名 round_fail;pick idx 越界 = 守卫断言 AssertionError(原「静默钳 0」退役)」。
 - §9 遥测与锁面:测试锁清单补守卫两锁(`test_cw_screen_two_node_family.py` 伙伴臂:输入守卫锁 / 返回契约+值域锁)与选选流序锁桩面变更(cw_match 桩)申报。
 
 **测试面**(施工义务,守卫落地即红的面必须同批改):
 
 - `test_cw_partner_select_confirm_flow.py::_make_watched_op`:现款 `monkeypatch.setattr(test_context, 'cw_match', None)`(文件头注自述「cw_match=None(idx0 兜底,决策质量不在锁范围)」)正踩守卫① match 缺席臂——改为 match 桩:`SimpleNamespace(strategy=SimpleNamespace(decide_partner=lambda: CwActionPickPartnerParam(idx=0, reason='stub')))`(真词表类型,守卫②同款);桩无 `gs` 属性 → chosen 写端经 `getattr(match, 'gs', None)` 跳过,两锁零容器断言不受影响。文件头注该半句改「cw_match 桩(decide_partner 恒 idx=0;决策质量不在锁范围,守卫面锁 = test_cw_screen_two_node_family 伙伴臂)」。**两条锁断言面不变**(idx=0 桩 → 首候选点位;点位几何断言与候选带矩形同源,与 idx 数值无关;点位稳定性断言与 idx 无关)——桩面随行为语义同步,非放宽断言。
 - `test_cw_screen_two_node_family.py` 伙伴臂补两锁(装配同 `_OBS_ROWS['partner']` 读链桩两元 + 门桩放行 + `action_op_for` 派发捕获桩,同文件装备 / 祈愿锁同款;fail 臂经 `_run_node(test_context, op, op.act)` 断言 round_fail,越界臂经 `op.act()` 直调 + `pytest.raises(AssertionError)`):
-  - 锁①输入守卫:空候选臂(`_read_candidates` 桩改返 [])与 match 缺席臂(`cw_match=None` + 读链桩两元)→ round_fail、派发桩零调用(两臂合一锁)。
+  - 锁①输入守卫(拆两臂,出口断言分形随 :36):候选空臂(`_read_candidates` 桩改返 [])→ round_fail「伙伴屏无候选」、派发桩零调用;match 缺席臂(`cw_match=None` + 读链桩两元,同 `_run_node` 驱动)→ round_success(消息含「零决策零点击终结交回」)、派发桩零调用零点击——两臂分开断言,禁合并出口断言。
   - 锁②返回契约 + 值域:None/异型臂(`decide_partner=lambda: SimpleNamespace(idx=0)`)→ round_fail 含「词表外」;越界臂(`_make_match(session, decide_partner=lambda: CwActionPickPartnerParam(idx=5, reason='stub'))`,候选两元)→ AssertionError、零派发。
 - 冲突核查:伙伴现役锁面 = 观察 / 门锁(`_OBS_ROWS` / `_GATE_ROWS`,不触 act 决策)+ 选选两行为锁(桩面已列)+ pick op 直驱锁(`test_cw_unified_action_4.py`,env 桩驱动不触画面 op 守卫)+ 外环重派锁(`_ScriptedOp` 桩)——除已列桩面外零波及。
 
@@ -139,13 +139,13 @@ self._pick_point = point
 1. **守卫①拆两臂保在册文案**(vs 巨星稿合并单守卫):「伙伴屏无候选」显式失败为审查在册正面面(报告 §3.3),且候选空(瞬时 OCR 失读,重派自愈)与 match 缺席(环境异常)病因与处置不同,分支消息可判读;语义与合并单守卫等价(均 = 输入具名 fail 零盲发),族级对账按同义处理(→ §2.2 归 T-37 裁是否归一拼写)。
 2. **守卫②收编 AttributeError 子径**:现款异常出口响亮但消息无策略器语义;具名 fail 含原值留证(巨星稿取舍同款),零诊断损失。
 3. **派发保持重建形态**(vs 直发策略产实例):重入轮无策略调用,直发仅首轮可行;守卫③已保证缓存 == 策略产值,重建无值域改写(巨星稿取舍 3 同款;族级对账按「直发 vs 重建 = 屏形态差异,非守卫分歧」记录)。
-4. **match 缺席语义变化显式申报**:局外直跑 / MCP 手动由「盲发 idx0」变「fail 零盲发」——正本条款(§1.1 出口③)明文要求;现役伙伴两行为锁正踩该路径,桩面义务已列(与巨星「现役测试无一锁 match-None 路径」不同,伙伴必须同批改桩)。
+4. **match 缺席语义变化显式申报**:局外直跑 / MCP 手动由「盲发 idx0」变「零决策零点击 round_success 终结交回」——正本条款(op-layer.md §1.1 :36)明文要求(原具名 fail 终态与「§1.1 出口③」引据随 :36 改写——match 缺席是局外语境,非「决策无有效输出」);现役伙伴两行为锁正踩该路径,桩面义务已列(与巨星「现役测试无一锁 match-None 路径」不同,伙伴必须同批改桩)。
 5. **块尾无候选 fail 删除**(vs 原位保留):守卫①上移后原位判永假,双落点必漂移;失败语义单点化,文案与零盲发语义不变。
 
 ### 2.2 F-1 家族联动面:pick 族决策出口家族模式
 
 - **模式认定**:「idx 越界静默钳位 + 决策无有效输出盲选 idx0」——已判同族违规六屏:遭遇(T-4,encounter.md)/ 盛会之星(T-8,megastar.md)/ 选择装备(T-9,equip_pick.md)/ 本屏(T-11)/ 卜者(T-12,报告已出判违规、设计稿在途)/ 祈愿(T-13,报告已出判违规「盲选 idx0 回退 + 静默钳位 + 吞策略响亮失败」、设计稿在途);跨稿记法不一(T-8 修订版记 6 件 / T-12 自述第 4 件)——**成员清单与计数为成稿时点快照,族级全集与计数以 T-37 汇总时最新报告 / 设计稿目录为准**(megastar.md 修订版 §2.2 同款免责),本稿不以任一计数为对账基线。同结构已核销成员:银狼(T-10,报告 §3 明判无此结构——`CARD_AREAS[idx]` 直接异常响亮)、投资两屏(T-6/T-7,isinstance + 值域 round_fail 在册)、补给(T-5,机械兜底点守卫在册)。
-- **族级统一修法**(与三稿同构,本稿 §2.1 已落):①决策输入守卫(空候选 / 无策略器 = 具名 fail 零盲发;屏内在册特形出口以正本申报为准——遭遇「空候选 = 零点击终结交回重读」、本稿「伙伴屏无候选」文案沿用);②返回契约守卫(None / 词表外 = 具名 fail 含原值);③值域守卫(idx 越界 = 守卫断言恒炸,禁钳位);④删全部默认 idx / 钳位句 / 兜底支;⑤守卫均在派发前零点击;⑥**不建共享守卫函数**(各屏词表类型 / 界源 / 日志 tag 不同,内联 2-3 行,先例 = encounter.md §2.1)。
+- **族级统一修法**(与三稿同构,本稿 §2.1 已落):①决策输入守卫(空候选 = 具名 fail 零盲发,留守;无策略器(局外 match 缺席)= 零决策零点击 round_success 终结交回,op-layer.md §1.1 :36;屏内在册特形出口以正本申报为准——遭遇「空候选 = 零点击终结交回重读」、本稿「伙伴屏无候选」文案沿用);②返回契约守卫(None / 词表外 = 具名 fail 含原值);③值域守卫(idx 越界 = 守卫断言恒炸,禁钳位);④删全部默认 idx / 钳位句 / 兜底支;⑤守卫均在派发前零点击;⑥**不建共享守卫函数**(各屏词表类型 / 界源 / 日志 tag 不同,内联 2-3 行,先例 = encounter.md §2.1)。
 - **已知兄弟屏清单**:遭遇 = 本目录 encounter.md(T-4,对抗触顶待裁决)/ 盛会之星 = megastar.md(T-8,修订版)/ 选择装备 = equip_pick.md(T-9,修订版)/ 卜者、祈愿 = 报告已出、设计稿在途(T-12/T-13)/ 本屏 = partner.md(T-11)/ 银狼 = T-10 报告明判合规(非同族成员,清单列已核销);在途 = 星徽(T-14)/ 专家邀请函(T-15)/ 武装箱(T-16)审查未出,同族可能扩员——清单为快照,全集归 T-37。
 - **归口 T-37 裁决面**:①是否合并为一次族级实施批(统一守卫形态 / 共享测试锁模板 / 一次对抗;各稿独立可实施,合并时以统一口径为准);②守卫①拼写归一(巨星合并单守卫 vs 本稿两臂保在册文案,语义等价);③共享面 `cw_overlay_pick_action.py::OverlayPickExecEnv.idx` 字段注释「(钳位后生效值)」陈旧措辞随族级批一次改净(equip_pick.md §2.2 已挂同一面,本稿同挂不独立改——伙伴派发同用该 env 字段,单屏改必致共享注与未修屏临时不一致);④op-layer.md §1.3 守卫在册登记 = **无条件默认动作,非开放裁决**:本稿落地批正本更新阶段必登记本屏三条守卫出口(输入 / 返回契约 / 值域)入 §1.3 守卫清单(现文仅 `guard_proposal_vs_expected` 单例枚举;先例 = equip_pick.md §2.2 归口② 同款)——T-37 仅裁族级合并实施时是否把逐屏条目改写为族级统一条目,不存在无人登记路径(§2.8 正本文档行已列落点)。
 
@@ -169,7 +169,7 @@ self._pick_point = point
 | 站点 | 现文 | 目标文本 |
 |---|---|---|
 | 段头注 | `# ===== 选择伙伴节点(decide_partner;✅ 已派发 cw_screen_partner;⚠️ 候选只立绘 char_id=label→多 idx0,真接需 SIFT 立绘)=====` | `# ===== 选择伙伴节点(decide_partner;宿主 = operations/cw_screen/cw_screen_partner.py;候选真身 = SIFT 立绘识别,识别失败回落 label 流派名)=====` |
-| `PartnerOption` docstring | `"""一个伙伴候选(OCR/SIFT 读角色名,``read_partner`` 阶段5;/§11.3.4⑦)。`<br><br>`char_id:候选角色名(空 = OCR 未就绪 → 默认 idx=0 = 今天盲点 stage 立绘)。`<br>`"""` | `"""一个伙伴候选(角色名 = SIFT 真身识别产物,识别失败回落 label 流派名;`<br>`生产读端 = 画面 op 观察 node 一次读,cw_screen_partner.py::observe)。`<br><br>`[索引定义] idx:坐标系 = 画面物理候选位序(左→右)0 基,与`<br>` ``CwScreenPartnerObs.options``/容器 ``partner_opts`` 槽同一候选列表;`<br>` 取值时机 = 观察 node 入口帧一次读快照,访问内恒稳。`<br>`char_id:候选角色名(空 = 识别未命中回落失败/读缺);缺省选卡语义`<br>`单一源 = 策略器 ``decide_partner``(strategy-docs/13_pick_family.md §1 E6)。`<br>`"""` |
+| `PartnerOption` docstring | `"""一个伙伴候选(OCR/SIFT 读角色名,``read_partner`` 阶段5;/§11.3.4⑦)。`<br><br>`char_id:候选角色名(空 = OCR 未就绪 → 默认 idx=0 = 今天盲点 stage 立绘)。`<br>`"""` | `"""一个伙伴候选(角色名 = SIFT 真身识别产物,识别失败回落 label 流派名;`<br>`生产读端 = 画面 op 观察 node 一次读,cw_screen_partner.py::observe)。`<br><br>`[索引定义] idx:坐标系 = 画面物理候选位序(左→右)0 基,与`<br>` ``CwScreenPartnerObs.options``/容器 ``partner_opts`` 槽同一候选列表;`<br>` 取值时机 = 观察 node 入口帧一次读快照,访问内恒稳。`<br>`char_id:候选角色名(空 = 识别未命中回落失败/读缺;识别失败回落`<br>`流派名/空 = op-layer.md §1.1 :34 转换失败欠账形态,收敛方向 = 观察`<br>`失败 round_fail 零写零上报;屏级转换成功性边界由 screens/partner.md`<br>`登记,含多候选同名同判);缺省选卡语义单一源 = 策略器 ``decide_partner```<br>`(strategy-docs/13_pick_family.md §1 E6)。`<br>`"""` |
 | `PartnerPick` docstring | `"""decide_partner 返回:选第几个候选 + 原因。"""` | `"""kernel 时代伙伴选卡返回载体,已被 ``cw_vocab.CwActionPickPartnerParam```<br>`替代(替代关系在册 = cw_vocab 该类 docstring);现役仅 ``EVENT_PICK_TYPES```<br>`登记在场(登记面,零生产零消费)。`<br><br>`[索引定义] idx:历史语义 = 候选列表下标 0 基(登记面保留,现役零消费)。`<br>`"""` |
 
 依据:SIFT 接线现款(`_identify_portraits` 三分支);E6 规格在册(13_pick_family.md §1 决策表 E6 行);[索引定义] 同款先例(`cw_screen_report/partner.py::CwScreenPartnerObs` docstring、cw_vocab 各 Pick 字段注);AGENTS §8 索引字段条款(坐标系 + 取值时机,防线字段注明消费端)。
@@ -193,7 +193,7 @@ self._pick_point = point
 
 - **行为变更(仅 F-1)**:`cw_screen_partner.py`(守卫 / 删兜底 / 注释 / docstring);`sr-od-test/…/test_cw_partner_select_confirm_flow.py`(桩面 cw_match 桩 + 头注半句);`sr-od-test/…/test_cw_screen_two_node_family.py`(伙伴臂补两锁)。
 - **代码内文档(零行为)**:`kernel/cw_events.py`(F-4 三站点);`cw_overlay_pick_action.py::CwActionPickPartnerOp` 类体内注(F-5 站点③;`cw_screen_partner.py` 注释面随 F-1 同文件施工,含 F-5 站点②④)。
-- **正本文档(零行为)**:`game_state/fields.md`(§3.4 导语 F-2 + §3.4.5 F-3);`screens/op-layer.md`(§1.1 括注 F-2 + §1.3 守卫出口登记 F-1,落地批正本更新阶段无条件执行 = §2.2 ④);`screens/partner.md`(§2/§3/§4/§5/§6/§8/§9:F-1 as-built + F-3 §3 + F-6 §4 + F-2 §6)。
+- **正本文档(零行为)**:`game_state/fields.md`(§3.4 导语 F-2 + §3.4.5 F-3);`screens/op-layer.md`(§1.1 括注 F-2 + §1.3 守卫出口登记 F-1,落地批正本更新阶段无条件执行 = §2.2 ④);`screens/partner.md`(§2/§3/§4/§5/§6/§8/§9:F-1 as-built + F-3 §3 + F-6 §4 + F-2 §6;**+ §3 观察面登记 :34 转换成功性边界(char_id 识别失败回落流派名/空 = 转换失败欠账形态,收敛方向 = 观察失败 round_fail 零写零上报;含多候选命中同一注册名同判)+ §6 chosen 行 char_id 值语义随注——本稿 §3 增补④,op-layer.md §1.1 :34「边界由屏契约登记」义务,落地批无条件执行)**。
 - **跨稿共享面(本稿不独立施工)**:fields.md §3.4 导语为**三方同句认领**(T-8 = megastar.md §2.4 枚举半边 / T-9 = equip_pick.md §2.3 例外括注 / T-11 = 本稿骨架句,详 = §2.3 ①)——合并落行 = 含 T-9 例外括注并入后的合并句,文本归 T-37 对账;`OverlayPickExecEnv.idx` 字段注释「(钳位后生效值)」挂 T-37 族级批(§2.2 ③);`cw_overlay_pick_action.py` 模块头段归 encounter.md §2.3(T-37 在册),本稿只动 PickPartnerOp 类体内注。
 - **其余文件零触碰**:策略侧(`flow.py::decide_partner` 告示不扩)、祈愿 / 星徽写时点、sim 腿、`zero_writes.py` 本体、建档资产(yml)。
 

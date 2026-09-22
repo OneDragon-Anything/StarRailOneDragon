@@ -6,9 +6,6 @@
 # overlay 关闭完成门(推进信号 = 标识消失,不依赖任何未实锤的选中态呈现);
 # 未选中态正判定 = 建档「提示-请选择强化角色」区域命中(置灰伴随文案)。
 
-# r104(2026-08-20):SIFT 立绘识别接入(portrait_plaza 库)——候选真身喂 decide_partner,
-# core_chars 匹配真正生效(此前 label 流派名恒不命中 → 恒 idx=0 最左盲点)。
-
 """货币战争 选择伙伴 overlay 处理 op(从主循环拆出)。
 
 「选择伙伴」overlay 会挡住出战 → stall。OCR 候选阵营标签定位候选 → SIFT 立绘识别
@@ -21,7 +18,9 @@
 入口帧一次读,与现役决策体读同帧等价)→ ``report_screen_partner_obs`` 落
 容器 ``partner_opts``(空候选不写,闸在 report 内)→ obs 挂实例属性进决策
 node。决策动作 node = 重入裁决顶部(确认已发 → 标识不在 = overlay 已关
-→ success 交回)→ 确认被拒守卫(未选中提示在场 × 脉冲上限 = 显式 fail)+
+→ success 交回)→ 确认被拒守卫(未选中提示在场 × 脉冲上限 = 显式 fail)
++ 决策出口三守卫(输入:候选空 fail / match 缺席 :36 round_success 交回 /
+返回契约 / 值域,op-layer.md §1.1 :36·出口③ / §1.3)→
 首轮决策一次定同一点位(chosen_partner = 选择点单次逻辑写入留守,动作事实
 边界不进 report)→ 「点选候选 → 确认」脉冲链经工厂 → round_wait 循环。
 本屏 sim 腿 = 不适用(sim 无对应画面段,事件浮层族即时落定),等价判据
@@ -41,6 +40,7 @@ from sr_od.application.currency_war.kernel.cw_screen_report.partner import (
     CwScreenPartnerObs,
     report_screen_partner_obs,
 )
+from sr_od.application.currency_war.kernel.cw_vocab import CwActionPickPartnerParam
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -178,8 +178,9 @@ class CwScreenPartner(SrOperation):
         门 miss = round_fail 早退(与现役首闸同 status,交回外循环重判)。
         门后候选一次读(OCR + SIFT 真身识别,失败回落 label 名)→
         ``report_screen_partner_obs``(空候选不写,闸在 report 内);
-        match/gs 缺席的局外兜底路径跳过 report(决策走决策面缺省支,
-        分支原样)。"""
+        match/gs 缺席的局外兜底路径跳过 report(report 跳写 = 容器写闸,
+        与决策无关;决策面无局外兜底——无 match = 零决策零点击
+        round_success 终结交回(op-layer.md §1.1 :36),守卫见 act)。"""
         screen = self.last_screenshot
         if not self.round_by_find_area(screen, '货币战争-列车同行', '标识-选择伙伴').is_success:
             return self.round_fail('非选择伙伴屏')
@@ -210,7 +211,10 @@ class CwScreenPartner(SrOperation):
         1. 未选中提示在场(置灰实锤)∧ 脉冲已达上限 → 显式 fail(确认被拒
            形态有界重试,禁原样无限重试);
         2. 首轮决策一次(零参 decide,写槽已由 report 落容器;chosen 留守
-           选择点)定同一点位;
+           选择点)定同一点位;守卫①②③(候选空 = 具名 fail;match 缺席 =
+           零决策零点击 round_success 终结交回,op-layer.md §1.1 :36;返回
+           None·词表外 = 具名 fail 含原值;越界 = AssertionError)先于决策
+           与写端,零点击;
         3. 提示在场(含重入轮)= 未选中实证 → 点候选卡(单选语义重点
            已选卡无反选面;提示不在 = 不重点选,防未知选中呈现被扰动);
         4. 点确认(mouse_move 防吞点击 + click);确认是否落地由下一轮
@@ -232,53 +236,56 @@ class CwScreenPartner(SrOperation):
             cands = self._cands
             options = self._obs.options if self._obs is not None else []
             match = self.ctx.cw_match
-            idx = 0
-            reason = 'no-candidates(fallback)'
-            if match is not None and options:
-                # 零参决策(写槽已由 report 落容器 partner_opts;决策调用
-                # 形态不变)。
-                pick = match.strategy.decide_partner()
-                idx = pick.idx if 0 <= pick.idx < len(cands) else 0
-                reason = pick.reason
-            self._pick_idx = idx
-            log.info('[cw-partner] candidates=%s pick=idx%s %s', [o.char_id for o in options], idx, reason)
-            # r358d(遥测接线):伙伴选择落容器(chosen_partner,gs 单一源
-            # ——终态契约 §B:session 份退役;点选前写——决策半派发前,
-            # 单次逻辑写入豁免面,与巨星 chosen_megastar 派发前写同款)。
-            # chosen_* = 动作事实边界:留守选择点,不进 report。
-            if match is not None and options and 0 <= idx < len(options) \
-                    and getattr(match, 'gs', None) is not None:
-                # GameState 写端(单次逻辑写入,申报豁免)。
+            # 守卫①(决策输入,两臂零点击零派发):候选空 = 在册显式失败(留守
+            # round_fail);match 缺席 = 局外,零决策零点击 round_success 终结
+            # 交回(op-layer.md §1.1 :36,遭遇屏先例同款;原常量 idx0 盲选派发退役)。
+            if not options:
+                return self.round_fail('伙伴屏无候选(OCR 未命中候选标签),禁兜底盲点')
+            if match is None:
+                return self.round_success(
+                    '[cw-partner] 局外无 match,零决策零点击终结交回(:36)')
+            # 守卫②(返回契约,op-layer §1.3):None/词表外 = 策略器 bug 具名
+            # fail 留证(原 AttributeError 异常出口子径收编,消息含原值)。
+            pick = match.strategy.decide_partner()
+            if not isinstance(pick, CwActionPickPartnerParam):
+                return self.round_fail(
+                    f'decide_partner 决策无有效输出(词表外/None): {pick!r}')
+            # 守卫③(值域,op-layer §1.3 守卫断言):越界 = 恒炸,禁钳位。
+            # 界 = len(cands)(点击目标数组;options 与 cands 恒等长——obs options
+            # 由 cands enumerate 生成,observe/_identify_portraits 三分支恒返
+            # len==len(cands))。
+            if not (0 <= pick.idx < len(cands)):
+                raise AssertionError(
+                    f'[cw-partner] pick idx 越界(策略器 bug,禁钳位): '
+                    f'idx={pick.idx} len(cands)={len(cands)} pick={pick!r}')
+            self._pick_idx = pick.idx
+            log.info('[cw-partner] candidates=%s pick=idx%s %s',
+                     [o.char_id for o in options], pick.idx, pick.reason)
+            # 伙伴选择落容器 chosen_partner(gs 单一源,session 域无此写端;守卫
+            # ①③已保证 options 非空且 idx 在界;点选前写 = 选择点,单次逻辑写入
+            # 豁免面,与巨星 chosen_megastar 派发前写同款;fields.md §3.4 导语
+            # 判定点在册)。
+            if getattr(match, 'gs', None) is not None:
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     ChannelSig,
                 )
                 match.gs.write_logic(
                     match.gs.chosen_partner,
-                    options[idx].char_id or '',
+                    options[self._pick_idx].char_id or '',
                     produced_by='CwScreenPartner',
                     sig=ChannelSig(family='logic_action',
                                    actor='CwScreenPartner', mode='compute'))
-            if not cands or not (0 <= idx < len(cands)):
-                # 无候选(OCR 未命中任何候选标签)= 无可依据的选中点 →
-                # 显式失败交外环重判,禁兜底盲点中央坐标(该点可能落在候选
-                # 间隙点空,静默重入空转;坐标单一真相源)。
-                return self.round_fail('伙伴屏无候选(OCR 未命中候选标签),禁兜底盲点')
-            point = self._pick_point_for(cands[idx])
+            point = self._pick_point_for(cands[self._pick_idx])
             if point is None:
-                # 建档缺失(候选-卡区 area 不在)= 无建档依据的选中点 →
-                # 显式失败(坐标单一真相源,禁裸坐标兜底;补档走 MCP 工具)。
                 return self.round_fail('伙伴屏建档缺失:候选-卡区(禁裸坐标兜底)')
             self._pick_point = point
-        # 「点选候选 → 确认」脉冲链经工厂(统一动作工厂批4:体迁
-        # ``cw_pick_partner_action.CwActionPickPartnerOp``,方法级替身缝保留)。
+        # 「点选候选 → 确认」脉冲链经注册表工厂派发(``cw_pick_partner_action.py::
+        # CwActionPickPartnerOp``,机械链 + 自上报在动作 op 内)。
         # 决策半(确认被拒守卫/点位解析/chosen 写端)留守上方;选中态标记
         # 与脉冲计数宿主仍是本 op,经 env.op 消费。派发实例携真实选中
         # 下标(上报 param 即真实选择;脉冲轮复用缓存 idx)。
         # round_wait 推进循环(不烧节点重试预算;确认未落地轮重走脉冲,
         # 有界防线 = CONFIRM_REJECT_MAX)。
-        from sr_od.application.currency_war.kernel.cw_vocab import (
-            CwActionPickPartnerParam,
-        )
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
