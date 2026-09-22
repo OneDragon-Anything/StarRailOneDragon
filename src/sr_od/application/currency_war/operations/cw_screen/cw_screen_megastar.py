@@ -34,9 +34,7 @@ op-layer.md §1.1;动作 op 按下标自容器取点,本 op 零坐标现算;候�
 screen_info ``currency_war_megastar.按钮-确认选择`` + 兜底常量
 ``CwScreenMegastar.CONFIRM``(动作 op 内现取)。
 """
-from typing import ClassVar
 
-from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -69,11 +67,6 @@ class CwScreenMegastar(SrOperation):
     下一帧门复检自愈(动作链 bug 归动作层修,不加验证段)。单动作确认
     形态(关态稳定基线语义 = ADR-0264)。
     """
-
-    # 「确认选择」钮中心(OCR 确认选择 x1442y548;钮中心 ~1490,560)。常量=兜底;
-    # 首选 area_center('按钮-确认选择')。确认钮 = 静态控件锚(非选项集
-    # 构成数据,选择坐标观察上报辖域外),动作 op 内现取。
-    CONFIRM: ClassVar[Point] = Point(1490, 560)
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-巨星节点')
@@ -228,17 +221,18 @@ class CwScreenMegastar(SrOperation):
                                        actor='CwScreenMegastar',
                                        mode='compute'))
         # 「选中(need_select)→ 确认」链经工厂(选中半迁入动作 op;
-        # 候选点击坐标 = 动作 op 内自容器 megastar_opts[idx].xy 取,选择
-        # 坐标观察上报收敛;确认钮定位 = op 类体内自读 screen_info)。
-        # 派发实例携真实选中下标(env idx-only,零坐标传参;上报 param
-        # 即真实选择;确认轮复用缓存 idx)。
+        # 候选点击坐标 = 动作 op 内自容器 megastar_opts[param.idx].xy 取,
+        # 选择坐标观察上报收敛;确认钮 = 动作 op 执行体 round_by_find_and_click_area
+        # 查找点击,全族统一)。
+        # 派发:上报 param 携真实选中下标(取点/取名键单一源);env 零机械
+        # 下标零坐标传参(env.idx 已退役停喂);确认轮复用缓存 idx。
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
         from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
             OverlayPickExecEnv,
         )
-        _env = OverlayPickExecEnv(op=self, idx=self._pick_idx,
+        _env = OverlayPickExecEnv(op=self,
                                   need_select=need_select)
         action_op_for(CwActionPickMegastarParam(idx=self._pick_idx), self.ctx,
                       _env).execute()

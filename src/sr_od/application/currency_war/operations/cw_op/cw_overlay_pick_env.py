@@ -3,9 +3,11 @@
 一 op 一文件(op-layer.md :48)拆分后,本模块只承载 pick 族共享的
 ``OverlayPickExecEnv``;各动作 op 类各自单文件
 ``operations/cw_op/cw_pick_<snake>_action.py``(snake 与上报侧
-``kernel/cw_action_report/pick_<snake>.py`` 对称)。域 env = 结构化包,
-构造时显式传入;机械参数(定位点/选定快照/未选中实证/确认钮定位)由
-各画面 op 决策半现算后经 env 显式传入,op 类体内零决策零读决策输入。
+``kernel/cw_action_report/pick_<snake>.py`` 对称)。域 env = :class:`OverlayPickExecEnv`
+(结构化包,构造时传入);机械参数辖域(申报单一源 = flow/action_ops.md
+§4.5 段首)= 选卡定位 + 域载荷经 env 传入;确认钮不属机械参数,由本 op
+执行体瞄准查找(action_ops.md §1 增补 3 在册例外)。op 类体内零决策零读
+决策输入(决策 = 选中哪个与腿型载荷,瞄准定位查找非决策)。
 
 **自上报统一**:pick 族每类 run 体在机械链(选中点击 → 确认点击)发出
 后直调自己的上报函数 ``report_action_pick_<snake>_param``
@@ -32,16 +34,17 @@ from sr_od.operations.sr_operation import SrOperation
 class OverlayPickExecEnv:
     """事件线 pick 域执行环境(统一动作工厂批4 起;pick-op-unify 批扩字段)。
 
-    公共字段 ``op``/``match``/``config`` + 域字段 = 决策半产物(机械参数,
-    构造时显式传入,op 类体内不自算):``idx`` = 生效选中下标(决策半
+    公共字段 ``op``/``match``/``config`` + 域字段 = 机械参数(选卡定位/域载荷 =
+    决策半产物,构造时显式传入;确认钮 = 本 op 执行体 ``round_by_find_and_click_area``
+    查找点击,不入 env——机械参数辖域申报单一源 = ``flow/action_ops.md``
+    §4.5 段首,本模块头同文转抄):``idx`` = 生效选中下标(决策半
     钳位后)、``target`` = 点卡定位点(退役中——选择坐标观察上报收敛,
     已收敛屏停喂;全族收敛后删字段)、``picked`` = 选定快照(到账登记
     输入)、``unselected`` = 未选中提示在场实证。
-    ``confirm`` = 确认钮中心(决策半从 screen_info 现取;None = 点卡即选
-    族无确认步);``entry_keyword`` = 确认裁决词(emit_overlay_confirm
-    消费,仅日志与调用方重入裁决对照);``need_select`` = 选中半开关
+    ``entry_keyword`` = 确认裁决词组装面(投资两屏/卜者发射位组装;确认链
+    统一 ``round_by_find_and_click_area`` 后 run 体现役未消费,退役候清);``need_select`` = 选中半开关
     (True = 先点候选选中再确认,点击坐标各 op 自取——巨星 = 容器
-    ``megastar_opts[idx].xy``(选择坐标观察上报收敛),其余过渡期屏 =
+    ``megastar_opts[param.idx].xy``(选择坐标观察上报收敛),其余过渡期屏 =
     ``target``;False = 跳过选中直发确认)。
     ``round_result`` = 旁路回传(确认链末步 ``round_*`` 产物;op 自身
     round 结果恒成功不携带语义),op 类写;现行两 node 宿主画面 op 均不
@@ -56,14 +59,17 @@ class OverlayPickExecEnv:
     op: SrOperation
     match: object = None      # CurrencyWarMatch(避免运行时导入环,注解宽松)
     config: object = None     # 公共面(pick 确认链零 config 消费)
-    idx: int = 0              # [索引定义] 坐标系: 决策半候选列表下标(0 起);
-    #             取值时机: 决策半现算快照(钳位后生效值,执行期恒稳)
+    idx: int | None = None    # [索引定义] 退役中(选择坐标观察上报收敛:
+    #             取点/取名键单一源 = ``param.idx``,已收敛屏停喂本字段;
+    #             全族收敛后删)。历史语义: 决策半候选列表下标(0 起,钳位
+    #             后生效值)——钳位随守卫化退役后与 param.idx 恒等,镜像
+    #             语义消失;其余过渡期屏仍在喂仍在读
     target: Any = None        # 退役中(选择坐标观察上报收敛,已收敛屏停喂;
     #             全族收敛后删字段;其余屏过渡期在用)——历史语义:Point|None
     #             点卡定位点(决策半从 screen_info/OCR 现算)
-    confirm: Any = None       # Point|None 确认钮中心(决策半现取;None=点卡即选)
-    entry_keyword: str = ''   # 确认裁决词(emit_overlay_confirm;仅日志/重入对照)
-    need_select: bool = False  # True = 先点 target 选中再确认(巨星选中半)
+    entry_keyword: str = ''   # 确认裁决词组装面(投资两屏/卜者;run 体现役未消费)
+    need_select: bool = False  # True = 先点候选选中再确认(巨星选中半;
+    #             点击坐标取源见类 docstring need_select 句)
     picked: dict | None = None
     unselected: bool = False
     leg_type: str = ''        # 策划腿型载荷(decision 半 classify_planner_leg 产物)
