@@ -1,7 +1,6 @@
 """货币战争 位面情报采集 op(位面详情屏纯识别,6 node 管线)。
 
-职责:在「货币战争-位面详情」屏恒全采三位面情报(用户裁定"先按能采
-处理",原"只采当前及之后"裁决退役):
+职责:在「货币战争-位面详情」屏恒全采三位面情报:
 - **三位面 boss**:每识别 node 点该位面卡 → ``read_plane_detail_nodes``
   动态定位 boss 节点(最右,位置先验)→ 详情条类型名标签验「首领」→
   大图标 SIFT 对拍 boss_avatar 模板库(锁态小图 SIFT 特征塌缩认不出,
@@ -340,7 +339,7 @@ class CwScreenPlaneIntel(SrOperation):
         # 词缀效果账本登记(上报后登记;接管局这是词缀登记唯一活源——
         # 简报侧登记挂点在接管局不运行)。命中结构化注册才入账本,登记
         # 体按在册条目幂等(补采重跑不双登记;登记面纪律 =
-        # effect-domain.md §7.3)。
+        # effect-domain.md §7.6 词缀源节)。
         if self._affixes:
             with contextlib.suppress(Exception):
                 from sr_od.application.currency_war.kernel.cw_affix_effects import (
