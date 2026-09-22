@@ -26,10 +26,10 @@ bench/equips 未观察(None)= 开局种子底座下生产不可达(局容器缓�
 单例冷建即种):直构/sim 域保留拒落档零写,无缺陷发射;席满且溢出位
 被占 = 游戏行为未实证:零写 + 留证,禁猜。
 
-模块拆分(获得链模块拆文件批):效果内容(策略卡效果注册表 ``PICK_INVEST_
-EFFECTS`` + 骇客采样池 + 效果体)住 ``cw_gain_effects.py``——本模块模块级
-查表,效果体函数内惰性 import 本模块原语(单向破环,详设 = changes/
-2026-09-21-invest-landing-chain/details/gain-chain-file-split.md)。
+模块拆分:效果内容(策略卡效果注册表 ``PICK_INVEST_EFFECTS`` + 骇客采样池
++ 效果体)住 ``cw_gain_effects.py``——本模块模块级查表,效果体函数内
+惰性 import 本模块原语(单向破环);拆分契约正本 = gain-chain.md §8
+(模块拆分段)。
 """
 from __future__ import annotations
 
@@ -74,22 +74,23 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 GAIN_CHAIN_PRODUCER: str = 'CwGainChain'
 
 #: 缺陷留证 kind 词表(_emit_defect 台账行分键;留证不停机,gain-chain.md §6)。
-#: 未观察两 kind(bench/equips)已随开局种子底座与锚定闩批退役——生产
-#: 不可达,拒落档零写无缺陷发射(gain-chain.md §6 词表同步收敛)。
+#: 未观察两 kind(bench/equips)现役生产不可达:开局种子底座下生产链路
+#: 阵容/装备域不再有 None,拒落档零写无缺陷发射(词表退役申报正本 =
+#: gain-chain.md §6)。
 DEFECT_OVERFLOW_TAKEN: str = 'gain_chain_overflow_slot_taken'
 DEFECT_ADVISOR_DECL: str = 'gain_chain_advisor_decl'
 DEFECT_PORTAL_REGISTER: str = 'gain_chain_portal_register_failed'
 DEFECT_STRATEGY_REGISTER: str = 'gain_chain_strategy_register_failed'
 
-#: 无效载荷拒绝 kind(策略名归一后为空/'?'——零写 + 留证;无效输入拒绝,
-#: 非防重复保护)。策略屏迁移批新增,投资两屏立即上报契约配套。
+#: 无效载荷拒绝 kind(策略/环境名归一后为空/'?'——零写 + 留证;无效输入
+#: 拒绝,非防重复保护;正本 = gain-chain.md §2.4-0/§2.1-0)。
 PICK_INVEST_INVALID_PAYLOAD: str = 'pick_invest_invalid_payload'
 
 
 @dataclass(frozen=True)
 class GainOutcome:
     """获得链原语出参(三原语共用;留证/测试用、零决策消费,沿
-    ``BenchGrantResult`` 先例 cw_effect_inventory.py:1442)。
+    ``cw_effect_inventory.py::BenchGrantResult`` 先例)。
 
     [字段定义] landing 取值:'bench' = 落备战槽 / 'overflow' = 溢出位 /
     'skipped' = 未落席(环境/装备原语无席位语义,与拒落路径共用此档)。
@@ -448,18 +449,31 @@ def _gain_character_core(gs: GameState, name: str, star: int, *, rand: bool,
 def gain_invest_env(gs: GameState, session: object, env_name: str, *,
                     rand: bool, sig: ChannelSig,
                     producer: str = GAIN_CHAIN_PRODUCER) -> GainOutcome:
-    """获得投资环境:①注册 = active_env 逻辑写(active_env 注册在动作落地相
-    获得链——原点卡前写退役,用户裁定 2026-09-21,正本 = game_state/
-    gain-chain.md;新写端新名不沿用旧名伪装连续);
-    ②效果账本登记(best-effort:失败 log + 留证不阻塞;session=None
-    = 登记腿跳过、容器写照常,与 report 函数 session 缺省语义同构);
-    ③触发环境效果(on_env_gained)。
+    """获得投资环境(gain-chain.md §2.1):
+
+    0. **无效载荷拒绝(前置)**:归一后名为空/``'?'`` = 零写 + 缺陷留证
+       (``PICK_INVEST_INVALID_PAYLOAD``)——无效输入拒绝(零写 + 留证
+       纪律),非防重复保护;
+    1. **注册** = ``active_env`` 逻辑写(写端署名 = producer;选择事实
+       产生在动作执行时,契约 = gain-chain.md §2.1;写值 = 归一后名);
+    2. **效果账本登记**(best-effort:失败 log + 留证不阻塞;session=None
+       = 登记腿跳过、容器写照常,与 report 函数 session 缺省语义同构);
+    3. **触发环境效果**(on_env_gained)。
 
     容器写腿零吞错:写/回调效果腿异常上抛。
     """
+    canon = normalize_invest_name(str(env_name or ''))
+    if not canon or canon == '?':
+        _emit_defect(field_name='active_env',
+                     expected='有效投资环境名',
+                     actual=f'无效载荷:{env_name!r}',
+                     evidence='gain_invest_env', sig=sig,
+                     kind=PICK_INVEST_INVALID_PAYLOAD)
+        return GainOutcome(placed=False, landing='skipped', merge_levels=0,
+                           effects=(), detail='invalid_payload')
     write = _select_write(gs, rand)
-    write(gs.active_env, env_name, produced_by=producer,
-          evidence=f'gain_invest_env:{env_name}', sig=sig)
+    write(gs.active_env, canon, produced_by=producer,
+          evidence=f'gain_invest_env:{canon}', sig=sig)
     if session is not None:
         try:
             register_portal_from_env(session, env_name)
@@ -525,7 +539,7 @@ def gain_invest_strategy(gs: GameState, session: object,
                          strategy_name: str, *, rand: bool,
                          sig: ChannelSig, rng: random.Random | None = None,
                          producer: str = GAIN_CHAIN_PRODUCER) -> GainOutcome:
-    """获得投资策略(策略屏迁移批,gain-chain.md §2 四原语之一;三段式
+    """获得投资策略(gain-chain.md §2 四原语之一;三段式
     对齐 :func:`gain_invest_env`):
 
     0. **无效载荷拒绝(前置)**:归一后名为空/``'?'`` = 零写 + 缺陷留证
@@ -537,8 +551,8 @@ def gain_invest_strategy(gs: GameState, session: object,
     2. **效果账本登记**(best-effort:`session=None` = 跳过[局外/测试
        形态],容器写照常):``STRATEGY_EFFECTS`` 归一名命中 →
        ``effects.register_strategy`` + burst 桥 ``apply_effect_burst_grant``
-       + 板面重写桥 ``apply_board_rewrite``(自画面 op 三桥迁入;
-       acquired_t = 节点序快照);失败 log + 缺陷留证(``DEFECT_STRATEGY_
+       + 板面重写桥 ``apply_board_rewrite``
+       (acquired_t = 节点序快照);失败 log + 缺陷留证(``DEFECT_STRATEGY_
        REGISTER``)、不阻塞;
     3. **触发策略效果**:`on_strategy_gained`(查 ``PICK_INVEST_EFFECTS``
        分派;未收录卡安静不写)。
@@ -563,7 +577,7 @@ def gain_invest_strategy(gs: GameState, session: object,
     if canon not in cur:
         write(gs.active_strategies, cur + [canon], produced_by=producer,
               evidence=f'gain_invest_strategy:{canon}', sig=sig)
-    # ② 效果账本登记(best-effort 腿;自画面 op 三桥迁入)
+    # ② 效果账本登记(best-effort 腿)
     if session is not None:
         try:
             _spec = STRATEGY_EFFECTS.get(canon)
@@ -601,11 +615,12 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
 
     - ``ENV_GIFTS`` 命中 → **先按 advisor 分道,两道互斥**:advisor=False
       (契约,直接送卡)→ chars_immediate 逐个 ``gain_character(char, 1★)``
-      (星级未标 = 1★ 同句式先例,先验错 = 响停修因非随机,锚
-      pick_invest.py 骇客 bench 腿同款口径);advisor=True(特邀专家,
-      顾问入商店)→ **不入席**——容器无商店池字段,身份只进遥测申报
-      一行(先例 = pick_invest hacker shop_pool decl);chars_immediate
-      在 advisor 行仅作顾问身份输入,禁再入席;
+      (1★ 先验同句式先例:骇客效果体同族,现役 =
+      ``cw_gain_effects.py::PICK_INVEST_EFFECTS``;先验错 = 响停修因非
+      随机);advisor=True(特邀专家,顾问入商店)→ **不入席**——容器无
+      商店池字段,身份只进遥测申报一行(先例 = advisor 申报行同族,正本
+      = gain-chain.md §3 advisor 条);chars_immediate 在 advisor 行仅作
+      顾问身份输入,禁再入席;
     - 查无效果(表外环境)= 安静不写(用户裁定),真值归观察覆盖。
       (欢愉契约条件腿不在本枚举:其正式模型 = 银狼策划选择上报落地相的
       条件腿 rider,住 ``cw_action_report.pick_planner``,触发事件 =
@@ -664,8 +679,8 @@ def on_equipment_gained(gs: GameState, item: str, *, rand: bool,
 def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
                        sig: ChannelSig,
                        rng: random.Random | None = None) -> tuple[str, ...]:
-    """「获得投资策略」触发型效果枚举(gain-chain.md §3;策略屏迁移批
-    新增,枚举即收敛无注册表):查 ``PICK_INVEST_EFFECTS``(效果内容住
+    """「获得投资策略」触发型效果枚举(gain-chain.md §3;枚举即收敛
+    无注册表):查 ``PICK_INVEST_EFFECTS``(效果内容住
     ``cw_gain_effects.py``,本模块模块级查表)分派效果函数;未收录卡 =
     查无效果安静不写,真值归观察覆盖。``rng`` = 采样注入(缺省
     ``random.Random()`` 在本函数体内生成;效果体含采样 → 对其子链传

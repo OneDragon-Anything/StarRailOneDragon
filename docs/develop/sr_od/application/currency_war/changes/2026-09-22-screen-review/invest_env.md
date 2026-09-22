@@ -122,7 +122,7 @@
 2. 注册表匹配:归一结果精确命中注册表 → 标准名;不中 → LCS 相似匹配(`one_dragon.utils.str_utils::find_best_match_by_lcs(word, 注册表名集, 阈值)`,阈值常量住代码)→ 命中 = 标准名;
 3. 两段皆不中 = 转换失败。
 
-**任一候选转换失败 = 观察 node round_fail 整函数早退**:零写容器、零上报,交外循环重观察重读(与空候选零盲发同判法)。容器 `invest_env_opts` 值域自此收敛为标准注册名(契约登记 = fields.md invest_env_opts 节 + 本屏 §3/§6)。**匹配歧义边界**:两候选命中同一注册名 = 识别质量不足以区分,同判观察失败(卡面与注册表一一对应,重名命中 = 必有误读)。
+**任一候选转换失败 = 观察 node round_fail 整函数早退**:零写容器、零上报,交外循环重观察重读(与空候选零盲发同判法)。容器 `invest_env_opts` 值域自此收敛为标准注册名(契约登记 = fields.md invest_env_opts 节 + 本屏 §3/§6)。**匹配歧义边界**:两候选命中同一注册名 = 识别质量不足以区分,同判观察失败(卡面与注册表一一对应,重名命中 = 必有误读)。**③歧义拒判(实施批增设,门 1 对抗审实测反馈)**:LCS 兜底命中取前二分,**分差过近(常量 `ENV_LCS_AMBIGUITY_MARGIN`,带定义注释)= 注册表内歧义不可分辨 = 同判转换失败**——堵共享词素族跨名误中的静默错标准化通道(实测 ≥9 例:「击口概念股」对击破/追击概念股同分 0.8 跨名互串);0.75 阈值本身挡不住该族(论证边界修订),歧义拒判为必需防线;残余风险(分差内真歧义被判失败 = 多一轮重读)随 screens/invest_env.md §3 登记。**④门 2 反例登记(后续批)**:短名⊂长名前缀形态残余误标准化通道实测在册——「经济口重过热」(「经济严重过热」1 字误读)对 4 字短名「经济过热」LCS 4/4 = 1.0 满分、对 6 字真名 5/6 ≈ 0.833,分差 0.167 恰过 0.15 门 = 静默错归一(全注册表 83 名单字替换扫描唯一 CROSS-HIT;两卡同屏时被同名拒判第二防线兜住,仅单屏 + 恰此误读可达)。方向与已登记残余(误拒)相反,系 margin 参数分辨力边界非实现错误;后续批可选根治 = 满分命中( LCS = 短名全长)∧ 更长名次高 → 警惕特判,或 margin 上调权衡误拒率;screens/invest_env.md §3 残余风险表述随该批一并收敛。
 
 **② 动作链收窄纯 idx**:
 
@@ -223,7 +223,7 @@ if not canon or canon == '?':
 | `operations/cw_screen/cw_screen_invest_env.py` | F-4(观察层标准化门 + 局外 else 分支删除 + 派发处 norm_name 组装删除)+ F-5 注释卫生 | 行为变更 + 注释 |
 | `kernel/cw_screen_report/invest_env.py` | F-5 注释卫生 | 注释 |
 | (执行权 T-6 §2.5)`operations/cw_op/cw_overlay_pick_action.py` | F-5 登记面(§2.5,禁重复触碰) | 注释 |
-| (已认同随落地批)`sr-od-test/.../test_cw_obs_arch_phase_screens.py`、`test_cw_screen_report_ports.py`、`test_cw_action_report_contract.py` | F-2 补测(§2.2 三条)+ F-4 观察标准化锁/纯 idx 上报锁(含 contract 冒烟锁改造)/handback 锁(§2.4 测试面 1/2/4) | 测试 |
+| (已认同随落地批)`sr-od-test/.../test_cw_obs_arch_phase_screens.py`、`test_cw_screen_report_ports.py`、`test_cw_action_report_contract.py`、`test_cw_yinlang_phase32.py`(批 1 实施发现的稿面外消费点:三处直调上报传 norm_name,随纯 idx 契约播种容器适配,断言语义不变——门 1 对抗审核实等价) | F-2 补测(§2.2 三条)+ F-4 观察标准化锁(含歧义拒判锁)/纯 idx 上报锁(含 contract 冒烟锁改造 + 容器缺读/越界响亮失败锁)/handback 锁(§2.4 测试面 1/2/4) | 测试 |
 | (已认同随落地批)`sr-od-test/.../test_cw_gain_chain.py` | F-4 env 拒绝锁(§2.4 测试面 3) | 测试 |
 | (登记面,不落本稿)全族画面篇 §2 标签统一裁决面(T-37 汇总裁决并指派施工稿;含 invest_strategy.md §2,判例同款覆盖)、gain-chain.md §8 自身 changes/ 引用(正本禁引面残留,归正本维护)、T-6 稿孪生扩项(投资策略屏观察标准化 + norm_name 退役,§1.7④)、其余名字类观察屏标准化收敛分配 | §1.7①②④ / §2.5 | 登记面 |
 

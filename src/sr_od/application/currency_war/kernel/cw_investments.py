@@ -686,15 +686,22 @@ _INVEST_SEP_VARIANTS = (         # OCR 误读形变族 → 一律归一到 U+00B
     '∙',   # U+2219 bullet operator
     '・',  # U+30FB 片假名中点
 )
+# 全角冒号形变:注册表规范冒号 = 半角 `:`(如 特邀专家:银狼/决议:娱乐星球),
+# OCR 误读全角 `：`;正规名含全角冒号 **0 条** → 归一不撞真名(无歧义性同上)。
+_INVEST_COLON_CANON = ':'
+_INVEST_COLON_VARIANT = '：'
 
 
 def normalize_invest_name(name: str) -> str:
     """投资策略/环境名 OCR 形变归一(仅无歧义分隔符映射,不碰其它语义符号)。
 
+    形变族两支:分隔符 bullet 族 → U+00B7;全角冒号 `：` → 半角 `:`。
     所有按名查找注册表的入口(get_strategy/get_env/economy_effect_of/
     pick_value_of/is_known_env/env_faction)在查找前先归一入参——消费点统一受益,
     不逐 call site 改;写入端(采集/telemetry/session 存量名)保持原样。
     """
+    if _INVEST_COLON_VARIANT in name:
+        name = name.replace(_INVEST_COLON_VARIANT, _INVEST_COLON_CANON)
     for v in _INVEST_SEP_VARIANTS:
         if v in name:
             name = name.replace(v, _INVEST_SEP_CANON)

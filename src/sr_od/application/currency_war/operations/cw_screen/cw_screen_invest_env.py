@@ -2,29 +2,34 @@
 """货币战争 投资环境 3 选 1 op(两 node 直继承 SrOperation)。
 
 观察 node = 入口门(标识-投资环境,miss = round_fail 交回外循环重判)
-→ **一次读全**(3 张环境卡名 + 全局刷新剩余次数,零稳定帧等待——用户
-裁定 2026-09-21「不要 1s 稳定帧」)→ ``report_screen_invest_env_obs``
-落容器(候选 ``invest_env_opts`` + ``env_refresh_left`` 观察写端)→ obs
-挂实例属性。决策动作 node = 零参决策(候选自容器槽;空候选/无有效输出
-= round_fail 显式失败,零盲发)→ 环境帧刷新判据可发整组重掷(终结交回)
-∨ 点**最优**卡底 + 确认链经 ``CwActionPickInvestOp`` 派发(词表 =
-CwActionPickInvestEnvParam 屏别独立类)→ **round_success 终结交回**
-(选完即交回外循环,用户裁定;确认未生效 = 代码 bug,overlay 残留由
-外循环按当前画面重识别重派,修法 = 点击链可靠性——action_ops.md §1
-增补 2 即时上报契约)。
+→ **一次读全**(3 张环境卡名 + 全局刷新剩余次数,零稳定帧等待一次读
+全)→ 观察标准化门(逐候选两段转换:形变归一精确匹配 → LCS 相似匹配
+兜底;任一候选转换失败 ∨ 两候选命中同一注册名 = round_fail 零写零
+上报,交外循环重观察——规范 = screens/op-layer.md §1.1)→
+``report_screen_invest_env_obs`` 落容器(候选 ``invest_env_opts`` 值域 =
+标准注册名 + ``env_refresh_left`` 观察写端)→ obs 挂实例属性。决策动作
+node = 零参决策(候选自容器槽;空候选/无有效输出 = round_fail 显式失
+败,零盲发 = op-layer.md §1.1 + action_ops.md §1 增补 2)→ 环境帧刷新
+判据可发整组重掷(终结交回)∨ 点**最优**卡底 + 确认链经
+``CwActionPickInvestOp`` 派发(上报纯 idx,名字自容器标准名单一源)→
+**round_success 终结交回**(选完即交回 = op-layer.md §1.1;确认未生效
+= 代码 bug,overlay 残留由外循环按当前画面重识别重派,修法 = 点击链
+可靠性——action_ops.md §1 增补 2 即时上报契约)。
 
-环境刷新 = 终结动作(用户裁定 2026-09-14:刷新 = 唯一引入新事实的动作,
-须交回外循环重观察;结构语义 = screens/op-layer.md §1.4):决策返回
-``refresh_slots`` 非空 ∧ 剩余次数授权(obs 携带 + 容器 ``env_refresh_
-left``)→ 点刷新圆钮一次(文本锚定偏移)→ 动画窗固定等待 → 零效果缺陷
-留证对账 → 本访问即终结交回。
+环境刷新 = 终结动作(刷新 = 唯一引入新事实的动作,须交回外循环重观察;
+结构语义 = screens/op-layer.md §1.4):决策返回 ``refresh_slots`` 非空 ∧
+剩余次数授权(obs 携带 + 容器 ``env_refresh_left``)→ 点刷新圆钮一次
+(文本锚定偏移)→ 动画窗固定等待 → 零效果缺陷留证对账 → 本访问即终结
+交回。
 
 选择事实(active_env)经动作落地链写:动作 op 确认后立即自上报 →
 ``gain_invest_env`` 整链(active_env 注册 + portal 登记 + on_env_gained
 效果枚举,正本 = game_state/gain-chain.md);画面 op 零选择写点。计数 =
-屏上剩余次数观察真值(用户裁定),写端 = 观察 report 摄入。
-本屏 sim 腿 = 不适用(sim 端口适配器未建),等价判据主承重 = 实机在册
-行为锁。
+屏上剩余次数观察真值(屏上数字即真值,正本 = game_state/fields.md
+§3.4.3),写端 = 观察 report 摄入。局外无 match = 零决策零点击
+round_success 终结交回(遭遇屏在册先例同款;画面 op 不产决策、不支持
+局外单独调用——op-layer.md §1.1)。本屏 sim 腿 = 不适用(sim 端口
+适配器未建),等价判据主承重 = 实机在册行为锁。
 """
 import time
 from typing import ClassVar
@@ -34,9 +39,9 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.kernel.cw_events import decide_event
+from one_dragon.utils.str_utils import longest_common_subsequence_length
 from sr_od.application.currency_war.kernel.cw_investments import (
+    INVESTMENT_ENVS,
     is_known_env,
     normalize_invest_name,
 )
@@ -58,15 +63,16 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class CwScreenInvestEnv(SrOperation):
-    """投资环境 3 选 1:OCR 卡名 → decide_event 打分 → 点最优卡底 + 确认。"""
+    """投资环境 3 选 1:零参决策(候选自容器槽,策略器 ``decide_invest_env``;
+    判据 kernel ``decide_event``)→ 刷新终结臂 ∨ 选卡确认链派发。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资环境'   # screen_info 画面(currency_war_invest_env.yml)
     # 卡选中点击 Y:screen_info「区域-卡牌描述行」center.y;常量=screen_info 缺失兜底。
-    # 实测(2026-08-04):立绘在卡顶 y≈100-400(点立绘/name y390 开角色详情,非选中);
+    # 实机点验:立绘在卡顶 y≈100-400(点立绘/卡名 y390 不选中且开角色详情);
     # **描述区 y≈450 才选中**(立绘下方);卡底 y700 无效。区别 invest_strategy(描述区 y545)。
     CARD_CLICK_Y: ClassVar[int] = 450   # 兜底;首选 area_center('区域-卡牌描述行')
     # 卡名行 center-y 过滤带(排除标题 y≈98 / 描述 y≈419+ / 确认 y≈982)。
-    # 卡名 y 随立绘变(实机见过 375-378 / 392),放宽 [360,410] 容变;原 [378,408] 漏 y<378 的卡名。
+    # 卡名 y 随立绘漂移(实机见过 375-378 / 392),带宽 [360,410] 覆盖实测漂移域。
     NAME_CY_LO: ClassVar[int] = 360
     NAME_CY_HI: ClassVar[int] = 410
     # 非卡名(同 y 行可能误入或已知 UI 文本)
@@ -75,7 +81,7 @@ class CwScreenInvestEnv(SrOperation):
     ENV_GRACE_S: ClassVar[float] = 45.0
     # 确认按钮:screen_info「按钮-确认」center;常量=兜底。
     CONFIRM: ClassVar[Point] = Point(1082, 982)   # 兜底;首选 area_center('按钮-确认')
-    # ---- 环境刷新执行链常量(3.8;执行层时序/几何常量,非策略数值,
+    # ---- 环境刷新执行链常量(执行层时序/几何常量,非策略数值,
     # ADR-0529 先例)----
     # 刷新圆钮 = 「剩余次数」文本中心 + 固定偏移(文本锚定,ADR-0600 §3.4 先例
     # ——单帧证据不足判文本漂移形态,固定 area 不可行;遭遇屏/策略屏同款)。
@@ -87,13 +93,27 @@ class CwScreenInvestEnv(SrOperation):
     _REFRESH_BTN_DX: ClassVar[int] = -101
     # 刷新后等待(整组重掷动画覆盖;沿策略屏 REFRESH_ANIM_WAIT_S 同值先例)。
     REFRESH_ANIM_WAIT_S: ClassVar[float] = 1.5
+    # 观察标准化门 LCS 兜底阈值(op-layer.md §1.1 第二段;坐标系 = 归一候选
+    # 与注册表名的最长公共子序列长度 / 注册表名长度):0.75 = 4 字卡名容
+    # 1 字 OCR 误读(3/4),更长名更宽——识别质量下限,非唯一防线:0.75
+    # 挡不住共享词素族跨名借分(如「XX概念股」族单字误读可对两名同分
+    # 0.8),该族必需防线 = 分差拒判(下常量);残余风险 = 分差内真歧义
+    # 被判失败,多一轮重读(已定稿登记)。
+    ENV_LCS_THRESHOLD: ClassVar[float] = 0.75
+    # 歧义拒判分差(与阈值同量纲的 LCS/注册表名长度分数;判据 = 过阈值的
+    # 最高分与次高分之差):低于本差 = 注册表内歧义不可分辨 → 转换失败
+    #(实机形态:「击口概念股」对击破/追击概念股同分 0.8——卡面与注册表
+    # 一一对应,近分 = 必有误读,禁猜)。0.15 = 真命中最小分辨差下探留
+    # 裕度(5 字共享词素族 1 字误读 0.8 与后缀借分 3/5 = 0.6 差 0.2);
+    # 同分/近分一律拒判交回重观察。
+    ENV_LCS_AMBIGUITY_MARGIN: ClassVar[float] = 0.15
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-投资环境')
-        # 刷新零效果留证证据(批4 比对收口:刷新臂只读不比,读数原样
-        # 携带——元组 = (刷前计数, 刷前名集, 刷后计数, 刷后名集);
-        # 消费点 = 刷新臂终结交回出口 ``_reconcile_refresh_no_effect``,
-        # 消费即清;None = 无待评证据)。
+        # 刷新零效果留证证据(刷新臂只读不比,读数原样携带——
+        # 元组 = (刷前计数, 刷前名集, 刷后计数, 刷后名集);
+        # 消费点 = 刷新臂终结交回出口 ``_reconcile_refresh_no_effect``
+        # 对账,消费即清;None = 无待评证据)。
         self._refresh_evidence: tuple[int, list[str],
                                       list, list[tuple[str, int]]] | None = None
         # 观察结果(观察 node 产物,决策动作 node 消费)。
@@ -115,8 +135,54 @@ class CwScreenInvestEnv(SrOperation):
         opts.sort(key=lambda t: t[1])
         return opts
 
+    def _standardize_options(
+            self, opts: list[tuple[str, int]]) -> list[tuple[str, int]] | None:
+        """观察标准化门(op-layer.md §1.1;``_read_options`` 读出后、组装
+        obs 前逐候选两段转换):①形变归一(``normalize_invest_name`` 单一源)
+        精确命中注册表 → 标准名;②不中再 LCS 相似匹配(阈值 =
+        ``ENV_LCS_THRESHOLD`` ∧ 最高分与次高分差 ≥
+        ``ENV_LCS_AMBIGUITY_MARGIN``——分差过近 = 注册表内歧义不可分辨);
+        两段皆不中 ∨ 歧义 = 转换失败。
+
+        任一候选转换失败 ∨ 两候选命中同一注册名(选项互斥屏,卡面与注册
+        表一一对应,重复名 = 必有误读)= 识别质量不足以区分 → 返回 None:
+        观察 node round_fail 整函数早退,零写容器零上报,交外循环重观察
+        重读。容器 ``invest_env_opts`` 值域自此 = 标准注册名。"""
+        registry = list(INVESTMENT_ENVS)
+        resolved: list[tuple[str, int]] = []
+        seen: set[str] = set()
+        for name, x in opts:
+            canon = normalize_invest_name(name)
+            if canon not in INVESTMENT_ENVS:
+                canon = self._lcs_resolve(canon, registry)
+            if not canon or canon in seen:
+                return None
+            seen.add(canon)
+            resolved.append((canon, x))
+        return resolved
+
+    @classmethod
+    def _lcs_resolve(cls, canon: str, registry: list[str]) -> str:
+        """LCS 兜底解析(阈值过滤 + 次高分歧义拒判):评分 = LCS 长度 /
+        注册表名长度(与 ``find_best_match_by_lcs`` 同式,同分取注册表序
+        首个);无过阈值命中 ∨ 最高/次高分差 < ``ENV_LCS_AMBIGUITY_MARGIN``
+        → 返回 ''(转换失败),否则返回最高分标准名。"""
+        scored: list[tuple[float, str]] = []
+        for reg_name in registry:
+            pct = (longest_common_subsequence_length(canon, reg_name)
+                   / len(reg_name))
+            if pct >= CwScreenInvestEnv.ENV_LCS_THRESHOLD:
+                scored.append((pct, reg_name))
+        if not scored:
+            return ''
+        scored.sort(key=lambda t: t[0], reverse=True)   # 稳定排序:同分保注册表序
+        if (len(scored) > 1 and scored[0][0] - scored[1][0]
+                < CwScreenInvestEnv.ENV_LCS_AMBIGUITY_MARGIN):
+            return ''
+        return scored[0][1]
+
     def _match_gs(self):
-        """局容器单例读口(无局/局外兜底路径 = None,调用方零行为跳过)。"""
+        """局容器单例读口(无局/局外交回路径 = None,调用方零行为跳过)。"""
         _match = getattr(self.ctx, 'cw_match', None)
         return getattr(_match, 'gs', None) if _match is not None else None
 
@@ -146,7 +212,7 @@ class CwScreenInvestEnv(SrOperation):
                 verdict='留证-刷新零效果(零决策)',
                 reader_source='cw_screen_invest_env',
                 note='执行侧判效已拆(判效归一),仅机械留证;'
-                     '比对宿主 = 刷新臂终结交回出口(批4 比对收口)',
+                     '比对宿主 = 刷新臂终结交回出口对账,消费即清',
                 gap_large=False,
                 severity=cw_defects.SEVERITY_L2_RECORD)
         except Exception:   # noqa: BLE001  留证不阻塞交回
@@ -154,12 +220,14 @@ class CwScreenInvestEnv(SrOperation):
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """入口门 + 一次读全 → report 落容器。
+        """入口门 + 一次读全 + 观察标准化门 → report 落容器。
 
         门 miss = round_fail 早退交回外循环重判(现役首闸同 status)。
-        零稳定帧等待(用户裁定 2026-09-21);一次读全 = 环境卡名 + 全局
-        刷新剩余计数,同一帧读取。门后 report 摄入(候选 + env_refresh_
-        left,match/gs 缺席的局外兜底路径跳过 report)。"""
+        零稳定帧等待;一次读全 = 环境卡名 + 全局刷新剩余计数,同一帧
+        读取。标准化门任一候选转换失败(含两候选命中同名)= round_fail
+        整函数早退,零写容器零上报(op-layer.md §1.1)。门后 report 摄入
+        (候选 + env_refresh_left,match/gs 缺席的局外交回路径跳过
+        report)。"""
         screen = self.last_screenshot
         _hit = self.round_by_find_area(screen, CwScreenInvestEnv.SCREEN_NAME,
                                        '标识-投资环境').is_success
@@ -168,9 +236,14 @@ class CwScreenInvestEnv(SrOperation):
             return self.round_fail('非投资环境屏')
         screen = self.screenshot()
         counts = read_invest_refresh_counts(self.ctx, screen, 'env')
+        opts = self._standardize_options(self._read_options(screen))
+        if opts is None:
+            log.warning('[cw-env] 观察标准化门失败:候选转换不到标准注册名'
+                        '(零写零上报,交回重观察)')
+            return self.round_fail('投资环境候选标准化失败(零写零上报,交回重观察)')
         obs = CwScreenInvestEnvObs(
             hit=True,
-            options=self._read_options(screen),
+            options=opts,
             refresh=(counts[0] if counts else None),
             screen=screen)
         _match = getattr(self.ctx, 'cw_match', None)
@@ -185,61 +258,58 @@ class CwScreenInvestEnv(SrOperation):
     def act(self) -> OperationRoundResult:
         """零参决策 → 环境刷新终结交回 / 选卡+确认后立即终结 → round_success。
 
-        选卡链派发后本访问即终结交回外循环(选完即交回,用户裁定
-        2026-09-21;确认未生效 = 代码 bug,overlay 残留由外循环按当前
-        画面重识别重派,修法 = 点击链可靠性,action_ops.md §1 增补 2)。"""
+        选卡链派发后本访问即终结交回外循环(选完即交回 = op-layer.md
+        §1.1;确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重
+        识别重派,修法 = 点击链可靠性,action_ops.md §1 增补 2)。"""
         obs = self._obs
         return self._decide_and_act(obs)
 
     def _decide_and_act(self, obs: CwScreenInvestEnvObs) -> OperationRoundResult:
-        """决策+动作内聚体(决策面):零参决策(候选自容器槽;空候选 =
-        round_fail 显式失败,零盲发)→ 环境刷新终结动作(obs 余量授权 +
+        """决策+动作内聚体(决策面):零参决策(候选自容器槽,观察标准化
+        门已保证值域 = 标准注册名)→ 环境刷新终结动作(obs 余量授权 +
         容器 env_refresh_left)→ 点最优卡底 → 确认链派发(动作 op 内
-        即时上报)→ round_success 终结交回。"""
+        即时上报)→ round_success 终结交回。空候选/决策无有效输出 =
+        round_fail 显式失败(零盲发 = op-layer.md §1.1 + action_ops.md
+        §1 增补 2「没有选到就是代码 bug」);局外无 match = 零决策零点击
+        round_success 终结交回(遭遇屏在册先例同款,op-layer.md §1.1)。"""
 
-        config = CurrencyWarConfig(self.ctx.current_instance_idx)
         opts = obs.options
         names = [n for n, _ in opts]
         if not names:
             # 空候选 = OCR 读缺 = bug 面:显式失败交外循环重观察重派
-            #(零盲发,用户裁定 2026-09-21「没有选到就是代码 bug」)。
+            #(零盲发,契约与局外无关,先于局外出口)。
             return self.round_fail('投资环境候选 OCR 读缺(零盲发,显式失败)')
         for _n in names:
             if not is_known_env(_n):
                 log.warning(f'[cw-env] 投资环境名不在注册表(数据缺口): {_n!r} → 该项 env_fit 走中性 fallback')
         match = self.ctx.cw_match
-        # 零参决策(写槽已由观察轮 report 落容器 invest_env_opts)。
-        # 输出 = 单一 CwAction:CwActionRefreshInvestCardsParam(整组刷新
-        # 建议)/ CwActionPickInvestEnvParam(选卡)互斥单发。
-        act = None
+        if match is None or getattr(match, 'gs', None) is None:
+            # 局外(无对局上下文)= 零决策零点击 round_success 终结交回
+            #(遭遇屏在册先例同款;决策控制分层铁律:画面 op 不产决策,
+            #不设兜底决策路径——op-layer.md §1.1)。
+            log.info('[cw-env] 局外无 match → 零决策零点击终结交回')
+            return self.round_success('局外无 match,零决策零点击终结交回',
+                                      wait=1.5)
+        # 零参决策(写槽已由观察轮 report 落容器 invest_env_opts;候选 =
+        # 标准注册名)。输出 = 单一 CwAction:CwActionRefreshInvestCardsParam
+        #(整组刷新建议)/ CwActionPickInvestEnvParam(选卡)互斥单发。
+        act = match.strategy.decide_invest_env()
         refresh_slots: tuple[int, ...] = ()
-        if match is not None:
-            act = match.strategy.decide_invest_env()
-        else:
-            # 防御:无 match(局外独立跑)——防御空容器直喂(容器签名)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                GAME_STATE_SCHEMA_VERSION,
-                GameState,
-            )
-            _kpick = decide_event(names, config,
-                                  GameState(schema_version=GAME_STATE_SCHEMA_VERSION))
-            act = CwActionPickInvestEnvParam(idx=_kpick.option_idx,
-                                             reason=_kpick.reason)
         if isinstance(act, CwActionRefreshInvestCardsParam):
             refresh_slots = act.slots
-        # ===== 环境刷新 = 终结动作(用户裁定 2026-09-14:刷新 = 唯一引入
-        # 新事实的动作,须交回外循环重观察;环境屏 = 整组重掷:单全局钮 +
-        # 单计数。闸输入 = obs.refresh(同帧一次读全,决策环零识别)+
-        # 容器 env_refresh_left;读缺 = 无授权失败安全)=====
-        if refresh_slots and match is not None and obs.refresh is not None:
+        # ===== 环境刷新 = 终结动作(刷新 = 唯一引入新事实的动作,须交回
+        # 外循环重观察;环境屏 = 整组重掷:单全局钮 + 单计数。闸输入 =
+        # obs.refresh(同帧一次读全,决策环零识别)+ 容器 env_refresh_left;
+        # 读缺 = 无授权失败安全)=====
+        if refresh_slots and obs.refresh is not None:
             _budget, _tx, _ty = obs.refresh
             # 闸:容器剩余口径对照(≤0 = 尽;键缺失由 obs 现值裁决)。
             _mgs = self._match_gs()
             _left = (_mgs.env_refresh_left.value
                      if _mgs is not None else None)
             if _budget > 0 and not (_left is not None and _left <= 0):
-                # 点钮:「剩余次数」文本中心 + 固定偏移(safe_click 带
-                # bug#1 mouse_move 缓解)。
+                # 点钮:「剩余次数」文本中心 + 固定偏移(safe_click 自带
+                # mouse_move 缓解)。
                 safe_click(self,
                            Point(_tx + CwScreenInvestEnv._REFRESH_BTN_DX, _ty),
                            tag='cw-env')
@@ -306,9 +376,8 @@ class CwScreenInvestEnv(SrOperation):
         _confirm = area_center(self.ctx, '按钮-确认', CwScreenInvestEnv.SCREEN_NAME) or CwScreenInvestEnv.CONFIRM
         _env = OverlayPickExecEnv(op=self, idx=pick_idx, target=target,
                                   confirm=_confirm, entry_keyword='投资环境')
-        action_op_for(CwActionPickInvestEnvParam(
-            idx=pick_idx, norm_name=normalize_invest_name(chosen)), self.ctx,
-            _env).execute()
+        action_op_for(CwActionPickInvestEnvParam(idx=pick_idx, reason=reason),
+                      self.ctx, _env).execute()
         # 本访问终结:结果已由动作 op 即时上报写入 game state(active_env
         # 注册 + 赠卡效果;确认未生效 = 代码 bug,见类 docstring)。
         return self.round_success(f'{chosen} 已派发(结果即时上报)', wait=2.0)

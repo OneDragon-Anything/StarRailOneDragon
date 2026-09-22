@@ -47,12 +47,13 @@ def report_screen_invest_env_obs(gs: GameState, obs: CwScreenInvestEnvObs, *,
                                  sig: ChannelSig | None = None) -> None:
     """投资环境屏观察上报:环境名写 ``invest_env_opts`` + 全局刷新剩余
     次数写 ``env_refresh_left``(观察写端;读缺跳写——屏上数字即真值,
-    用户裁定 2026-09-21)。
+    正本 = game_state/fields.md §3.4.3 / screens/op-layer.md §1.4 剩余
+    语义写端)。
 
     写点锚 = cw_screen_invest_env.py::``CwScreenInvestEnv.observe``(观察
     node 摄入)。选择事实不在本 report(active_env 经动作落地链获得链写,
-    正本 = game_state/gain-chain.md)。names 空 = OCR 未读得,不写(原
-    写点「读得才写」闸逐位平移)。
+    正本 = game_state/gain-chain.md)。names 空 = OCR 未读得,整函数早退
+    不写(含 env_refresh_left,摄入序 = 候选先于计数)。
     """
     if sig is None:
         sig = ChannelSig(family='logic_action',

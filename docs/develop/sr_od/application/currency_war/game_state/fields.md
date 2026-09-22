@@ -768,7 +768,12 @@ effective_refresh_prob:键在且 >0 直用、≤0/缺键退基线表——**契�
 
 #### 3.4.3 投资环境屏
 
-- 候选三卡 / 刷新剩余。
+- 候选三卡(`invest_env_opts`,值域 = 投资环境**标准注册名**——观察层标准化门
+  产出:逐候选形变归一精确命中注册表 → LCS 相似匹配兜底;任一候选转换失败 ∨
+  两候选命中同一注册名 ∨ LCS 近分(最高/次高分差过近,margin 常量
+  `ENV_LCS_AMBIGUITY_MARGIN`)= 歧义拒判 → 观察失败交回重观察,零脏值入
+  容器;规范 = [../screens/op-layer.md](../screens/op-layer.md) §1.1,屏契约 =
+  [../screens/invest_env.md](../screens/invest_env.md) §3)/ 刷新剩余。
 - **环境刷新剩余次数**(`env_refresh_left`,原 `env_refresh_used`「已用」
   字段随剩余语义化改名退役,投资两屏迁移批):屏上「剩余次数：N」的
   观察真值——用户裁定 2026-09-21:game state 记录画面可观察的剩余次数,
