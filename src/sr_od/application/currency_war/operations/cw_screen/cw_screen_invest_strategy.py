@@ -109,8 +109,6 @@ class CwScreenInvestStrategy(SrOperation):
     NAME_CY_LO: ClassVar[int] = 465
     NAME_CY_HI: ClassVar[int] = 505
     _EXCLUDE: ClassVar[set[str]] = {'请选择投资策略', '攻略', '返回备战界面', '图例', '确认', '刷新次数1'}
-    # 确认按钮:screen_info「按钮-确认」center;常量=兜底。
-    CONFIRM: ClassVar[Point] = Point(978, 983)   # 兜底;首选 area_center('按钮-确认')
     #: 入口锚复探窗(动画帧容忍,治本 20/21 局同型失败「返回状态 非投资
     #: 策略屏」):投资策略节点首访时派发帧 → 本 op 首帧之间落在
     #: 「备战 → 金币过场动画 → overlay 淡入」过渡段(screen_flow_timing.md

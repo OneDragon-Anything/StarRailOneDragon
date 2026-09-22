@@ -64,7 +64,7 @@ act = match.strategy.decide_invest_strategy()(零参,候选读容器 invest_stra
      (机械链在动作 op 内,点完确认立即上报完整结果;派发 param 携真实选中
       idx + 归一名,定位点 = 「货币战争-投资策略.区域-卡名行」center
       (缺失兜底常量 CARD_CLICK_Y)+ 该卡 center-x,确认钮 =
-      「货币战争-投资策略.按钮-确认」center(缺失兜底常量 CONFIRM),
+      「货币战争-投资策略.按钮-确认」建档查找点击(动作 op 内,全族统一),
       裁决词「投资策略」)
      → round_success = 本访问终结交回外循环
 ```
