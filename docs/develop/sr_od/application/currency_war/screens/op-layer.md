@@ -120,8 +120,9 @@
 | `cw_faction_obs.py` | 羁绊面板显示侧识别 + 与计算侧羁绊计数对账 |
 | `cw_back_layout.py` | 后排槽位布局(公式 + CV 实测双通道对账) |
 | `cw_equipment.py` | 装备视觉识别(手维护) |
-| `cw_node_obs.py` | 节点选项观测(遭遇/补给/巨星/伙伴 → 类型化 Option) |
+| `cw_node_obs.py` | 节点选项观测(遭遇/补给/伙伴 → 类型化 Option) |
 | `cw_node_reader.py` | 节点行类型识别(纯 CV;`read_node_sequence` 包装接入) |
+| `cw_megastar_obs.py` | 巨星观察域:候选读数 + 标准化转换门(规范 = §1.1「观察标准化门」) |
 | `cw_briefing_obs.py` | 简报屏观测(敌人词缀 + 位面首领) |
 | `cw_settlement_obs.py` | 结算屏观测(战后小队 HP) |
 | `cw_shop_refresh_obs.py` | 商店刷新钮标价/按钮态现场 OCR |

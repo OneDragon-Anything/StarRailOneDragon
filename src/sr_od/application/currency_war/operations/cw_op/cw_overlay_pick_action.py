@@ -282,16 +282,14 @@ class CwActionPickMegastarOp(SrOperation):
         op.ctx.controller.mouse_move(confirm)
         op.ctx.controller.click(confirm)
         time.sleep(0.9)
-        # 确认 = 纯机械单发(用户裁定 2026-09-14:step2 安全网拆除)。
-        # 「请选择强化角色」文本 = 确认钮旁伴随文案(建档证据更正
-        # 2026-09-14,巨星调研已证同款误读,非第二画面步骤),禁据它判步。
+        # 确认 = 纯机械单发(用户裁定 2026-09-14):「请选择强化角色」
+        # 文本 = 确认钮旁伴随文案,禁据它判步。
         # 确认未落地 overlay 残留 =
         # 下一帧重入裁决自愈:节点循环读「仍在巨星 overlay?」(标识锚仍
         # 命中)→ 重走本方法 → 候选已选 → 机械单发确认再推进
-        # (计 node_max_retry_times 预算)。
-        # (原「到账登记」ConfirmMegastar 块已随 ADR-0651 两态制废除:
-        #  chosen_megastar 写端 = 候选选中时点的 session 写 + write_logic
-        #  直写(画面 op 候选分支),无挂账登记环节。)
+        # (宿主 round_wait 循环推进,不烧节点重试预算)。
+        # chosen_megastar 写端留守画面 op(动作事实边界,派发前写 =
+        # 选择点),无挂账登记环节。
         # 自上报(机械链发出后;零写,契约面统一)。
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:

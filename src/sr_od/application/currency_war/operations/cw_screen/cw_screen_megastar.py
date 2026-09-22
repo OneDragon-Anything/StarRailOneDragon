@@ -1,7 +1,5 @@
-"""货币战争 盛会之星画面 op(NAMING 迁移:原 overlay 族文件收敛为巨星单画面 op)。
-
-其余 overlay 已按 NAMING §2 迁独立 cw_screen_*.py(委托壳溶解:入口门由
-主循环 0 系分支承担,处理本体 = 各画面 op 真身);本文件仅存巨星内联实现。
+"""盛会之星画面 op(事件 overlay 族一画面一文件 = ``cw_screen_*.py``,
+本文件 = 巨星;入口门由主循环身份分发承担,处理本体 = 画面 op 真身)。
 
 形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两段
 直继承 SrOperation。观察 node = 节点完成门(``_in_node``,miss = round_success
@@ -27,10 +25,9 @@ None = 具名 round_fail,idx 越界 = 守卫断言 AssertionError——守卫均
 盛会之星 = 阵营羁绊;「巨星」= 选 1 名盛会之星角色当巨星,给全队独特 buff。
 触发 = 羁绊激活时弹出(非固定节点),一局可多次 → 选中标记不能跨节点保持。
 dispatch 是 OCR 反应式(主循环 0b 检测「盛会之星」就接)→ 不管何时弹都接得住。
-本节点 = 「选巨星候选 → 确认」,确认 = 纯机械单发(用户裁定 2026-09-14:
-「罕见残留再 confirm」安全网拆除)——「请选择强化角色」文本 = 确认钮旁
-伴随文案(建档证据更正,曾误读为可选第二画面),确认未落地归下一帧
-重入裁决,节点循环单确认自愈。候选坐标经 screen_info
+本节点 = 「选巨星候选 → 确认」,确认 = 纯机械单发(用户裁定 2026-09-14):
+确认未落地归下一帧重入裁决,节点循环单确认自愈;「请选择强化角色」
+文本 = 确认钮旁伴随文案,禁据它判步。候选坐标经 screen_info
 ``currency_war_megastar``(候选-左/右 + 按钮-确认选择);缺失用兜底常量。
 """
 from typing import ClassVar
@@ -66,8 +63,8 @@ class CwScreenMegastar(SrOperation):
     """盛会之星:候选立绘 → decide_megastar 选巨星 + 确认(旧巨星节点执行器内联)。
 
     节点完成门 = 「仍在巨星 overlay?」(标识-盛会之星);确认未落地 =
-    下一帧门复检自愈(动作链 bug 归动作层修,不加验证段)。committed-but-
-    verifying 单动作形态与 ADR-0264 关态稳定基线预置语义沿旧节点循环平移。
+    下一帧门复检自愈(动作链 bug 归动作层修,不加验证段)。单动作确认
+    形态(关态稳定基线语义 = ADR-0264)。
     """
 
     # 左候选(花火)位 —— 实机 bot 点 (822,333) 已选中花火(金边);名位置 = 卡身选中区。
@@ -91,8 +88,8 @@ class CwScreenMegastar(SrOperation):
         self._pick_idx: int = 0
 
     def _in_node(self, screen) -> bool:
-        # 巨星 overlay:盛会之星标题在(用 screen_info 标题 area 位置区分,非全屏 LCS)。原用「确认选择
-        # AND NOT 选择伙伴」(lcs 0.7 防共享「选择」误匹配)—— 改用 megastar 独有标题「盛会之星」更直接。
+        # 巨星 overlay = 「盛会之星」独有标题(标题 area 位置区分,非全屏
+        # LCS,防多屏共享词误匹配)。
         still_in = self.round_by_find_area(screen, '货币战争-盛会之星', '标识-盛会之星', crop_first=False).is_success
         # megastar 一局可能多次(每次持有盛会之星角色触发,见类 docstring),flag 不能跨节点保持 True。
         # 节点完成即复位:经 kernel strategy_state_of None-safe 通道,状态
@@ -175,7 +172,8 @@ class CwScreenMegastar(SrOperation):
         if _match is None or getattr(_match, 'gs', None) is None:
             # 局外(无对局上下文)= 零决策零点击 round_success 终结交回;
             # 判式宽度 = match/gs 双缺(对齐投资环境在飞双判;遭遇为含空候选
-            # 的三判特形,空候选臂本屏走守卫① fail 不折入——见取舍 1)
+            # 的三判特形,空候选臂本屏走守卫① fail 不折入;正本 = screens/
+            # op-layer.md §1.1「画面 op 不支持局外单独调用」)
             return self.round_success('局外交回(无 match/gs;零决策零点击)')
         _fail = self._do_action()
         if _fail is not None:
@@ -185,11 +183,10 @@ class CwScreenMegastar(SrOperation):
     def _do_action(self) -> OperationRoundResult | None:
         """单动作体:决策 + chosen 写端留守 + 「选中 → 确认」链经工厂。
 
-        pick-op-unify 批:候选选中点击迁入 ``CwActionPickMegastarOp``
-        (``env.need_select`` 驱动),本方法只决策与写端——``chosen_
-        megastar`` 写端与选中旗标留守(单次逻辑写入豁免面;派发前写,
-        原写点原 actor,时序申报 = 自「点选后」平移至「点选前」,窗口内
-        无读者,迭代 design.md §2)。确认轮(已选中)只发确认。"""
+        候选选中点击在 ``CwActionPickMegastarOp``(``env.need_select``
+        驱动),本方法只决策与写端——``chosen_megastar`` 写端与选中
+        旗标留守(单次逻辑写入豁免面;派发前写 = 选择点,写点 → 点选
+        窗口内无读者)。确认轮(已选中)只发确认。"""
         _match = self.ctx.cw_match
         need_select = not self._clicked_of(_match)
         candidate = None
@@ -212,7 +209,7 @@ class CwScreenMegastar(SrOperation):
                     f'idx={pick.idx} len(options)={len(options)} pick={pick!r}')
             self._pick_idx = pick.idx
             log.info(f'[cw-megastar] candidates={[o.char_id for o in options]} pick=idx{pick.idx} {pick.reason}')
-            # 候选坐标从 screen_info 读(task#103 化债,W265);缺失走历史实测兜底常量。
+            # 候选坐标从 screen_info 读(坐标单一真相源);缺失走类内兜底常量。
             candidate = ((area_center(self.ctx, '候选-左', '货币战争-盛会之星') or CwScreenMegastar.CANDIDATE_LEFT)
                          if self._pick_idx == 0 else
                          (area_center(self.ctx, '候选-右', '货币战争-盛会之星') or CwScreenMegastar.CANDIDATE_RIGHT))
@@ -223,9 +220,9 @@ class CwScreenMegastar(SrOperation):
                 _st = strategy_state_of(_match.session)
                 if _st is not None:
                     _st.megastar_clicked = True
-                # r358d(遥测接线):巨星选择落容器(chosen_megastar,gs 单一源
-                # ——终态契约 §B:session 份退役;桩无 gs = 跳过写)。
-                # chosen_* = 动作事实边界:留守选择点,不进 report。
+                # 巨星选择落容器 chosen_megastar(gs 单一源,session 域无此
+                # 写端;桩无 gs = 跳过写)。chosen_* = 动作事实边界:留守
+                # 选择点,不进 report。
                 if getattr(_match, 'gs', None) is not None:
                     from sr_od.application.currency_war.kernel.cw_game_state import (
                         ChannelSig,
@@ -237,7 +234,7 @@ class CwScreenMegastar(SrOperation):
                         sig=ChannelSig(family='logic_action',
                                        actor='CwScreenMegastar',
                                        mode='compute'))
-        # 「选中(need_select)→ 确认」链经工厂(选中半迁入动作 op,本批;
+        # 「选中(need_select)→ 确认」链经工厂(选中半迁入动作 op;
         # 确认钮定位 = op 类体内自读 screen_info)。派发实例携真实选中
         # 下标(上报 param 即真实选择;确认轮复用缓存 idx)。
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (

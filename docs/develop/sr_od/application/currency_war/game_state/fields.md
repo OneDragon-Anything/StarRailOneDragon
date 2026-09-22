@@ -712,8 +712,12 @@ effective_refresh_prob:键在且 >0 直用、≤0/缺键退基线表——**契�
 > 结果 chosen_*(动作事实边界:留守画面 op 写,随判定点走——投资两屏经**动作落地
 > 获得链**写、补给经**画面 op 选卡分支确认即写**、遭遇经**动作侧发射即写**
 > (遭遇扩围批:写端 = `kernel/cw_action_report/pick_encounter.py`,兑现后清,
-> 单次消费;投资域收窄条款先例,显式用户裁定迁移)、其余屏 = 重入裁决点单次
-> 逻辑写入;观察覆盖负责画面态,chosen 负责选择事实)。选择落地统一见 §4
+> 单次消费;投资域收窄条款先例,显式用户裁定迁移)、其余屏随判定点走单次
+> 逻辑写入(判定点二元 = screens/op-layer.md §2.2):**盛会之星 = 选择点**
+> (决策动作 node 派发前写,与 screens/megastar.md §6 同口径)、伙伴 =
+> 选择点(`cw_screen_partner.py` 自申报双处在册)、其余屏 = 重入裁决点
+> (逐屏核正归各屏审查批/T-37,头注不再整体绑单一判定点);观察覆盖负责
+> 画面态,chosen 负责选择事实)。选择落地统一见 §4
 > 「事件选择」。刷新闸口径全域规范 = 屏显「剩余次数」观察真值,禁已用推算
 > (规范单一源 = [../screens/op-layer.md](../screens/op-layer.md) §1.4;
 > 遭遇/补给的已用计数字段已随剩余语义化退役,归迭代
@@ -722,7 +726,9 @@ effective_refresh_prob:键在且 >0 直用、≤0/缺键退基线表——**契�
 > 候选/选项结构的容器域(观察上报落点,逐屏一域;写端 = `kernel/cw_screen_report/`
 > 的 `report_screen_<snake>_obs`,逐域空读闸见各 report 函数 docstring):
 > encounter/supply = payload 附加域(§3.4.1/§3.4.2);invest_env_opts/invest_strategy_opts
-> (§3.4.3/§3.4.4);单选族 = megastar_opts(盛会之星)/partner_opts(列车同行)/
+> (§3.4.3/§3.4.4);单选族 = megastar_opts(盛会之星;值域 = cw_chars
+> 「盛会之星」阵营派生规范名 ∪ 场上持「盛会之星星徽」的角色,保证方 =
+> 观察标准化门,写端 = `report_screen_megastar_obs`)/partner_opts(列车同行)/
 > planner_opts(骇入策划)/fortune_opts(命运卜者)/wish_trial_opts(祈愿试炼)/
 > star_tome_opts(星徽秘典)/equip_pick_opts(选择装备)/box_card_names(武装箱
 > 选卡)/expert_invite(专家邀请函,`ExpertInvitePayload` 双输入打包)。
