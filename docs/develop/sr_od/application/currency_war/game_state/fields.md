@@ -842,30 +842,35 @@ chosen_*。(原「装备三选一」行随选择装备屏误判退役删除,2026
 
 #### 3.4.5a 选项坐标域(`*_opts_xy` 族 / typed `xy` / payload 坐标字段;选择坐标观察上报)
 
-**语义**:各候选/选项域(§3.4.5)的**坐标伴随域**——键 = 对应名字域/词表下标(单选
+**语义**:各候选/选项域(§3.4.1–§3.4.5)的**坐标伴随域**——键 = 对应名字域/词表下标(单选
 族 = `idx` 0 起左→右;专家邀请函 = `idx 0..3` + 词表特形 `-1`(现金为王)→ 独立
 `cash_point`,禁负下标直取列表;商店牌行 = 物理槽 slot 1 基);值 =
 `tuple[int, int]`(x, y,1080p 游戏空间,JSON 序列化安全形)。**坐标单一真相源 =
 观察上报**(op-layer.md §1.1 选择坐标观察上报,用户裁定 2026-09-22):归一化转换
-与坐标解析在**同一次观察**完成、经**同一** `report_screen_<snake>_obs` 调用与同一
-写门一并落容器(任一候选转换失败 = 名字与坐标**同进退**,零写零上报交回重观察);
-失读/离屏语义与名字域同格。**取值时机 = 观察期快照**(进访问入口观察帧识别产物,
-动作执行期恒稳);**读端唯一 = 该域动作 op**(按 idx/slot 取点执行),缺席/越界/
-元素缺坐标 = 守卫断言 AssertionError 响亮暴露——禁动作/上报层坐标现算、禁
-screen_info 二次取点回退(禁第二坐标源);决策半坐标组装(`OverlayPickExecEnv.target`
-链)随逐屏收敛退役。写端构造守卫保证坐标域与名字域同序等长(不等长 = 观察 bug
-响亮暴露)。**辖域边界**:本族辖「选项/候选」点击坐标(判据 = 坐标是否随本次观察
-读到什么变化);静态控件锚(确认钮/刷新钮等)= screen_info area 执行期现取现状
-维持,不入本族。**sim 分界**:sim 无画面识别,本族不建模,值恒 None。
+与坐标解析在**同一次观察**完成、经**同一写门**一并落容器(任一候选转换失败 = 名字
+与坐标**同进退**,零写零上报交回重观察);失读/离屏语义与名字域同格。**写门宿主
+例外(商店域)**:shop payload 写端 = `read_game_state` 漏斗(op-layer §2.2 漏斗
+边界在册,`report_screen_shop_obs` 为占位)——商店坐标由漏斗入口观察段一并写入,
+占位函数不重复承接。**取值时机 = 观察期快照**(进访问入口观察帧识别产物,动作执行
+期恒稳);**读端唯一 = 该域动作 op**(按 idx/slot 取点执行),缺席/越界/元素缺坐标 =
+守卫断言 AssertionError 响亮暴露——禁动作/上报层坐标现算、禁 screen_info 二次取点
+回退(禁第二坐标源);决策半坐标组装(`OverlayPickExecEnv.target` 链)随逐屏收敛
+退役。写端构造守卫保证坐标域与名字域同序等长(不等长 = 观察 bug 响亮暴露)。
+**辖域边界**:本族辖「选项/候选」点击坐标(判据 = 坐标是否为本次观察读到的选项集的
+构成数据,固定槽位域同辖);静态控件锚(确认钮/刷新钮等)= screen_info area 执行期
+现取现状维持,不入本族。**sim 分界**:sim 无画面识别,本族不建模,值恒 None。
 
 **字段登记**(实施批随域落,逐域一行):A 类伴随域 = `wish_trial_opts_xy` /
 `star_tome_opts_xy` / `box_card_names_xy` / `fortune_opts_xy`(命名随名字域本名,
 不强加 `_opts` 后缀);B 类 typed 选项结构扩 `xy: tuple[int, int] | None` =
-MegastarOption / PartnerOption / PlannerOption(partner 候选暂无建档区域 = 补档前
-恒 None 欠账态显式申报);C 类 payload 扩字段 = `ExpertInvitePayload.card_points` +
-`cash_point`、`ShopPayload.card_points`(定长 5,下标 ↔ 物理槽 1-5)。
-**schema 登记**:A 类逐域新键入 `DEFAULT_GS_SCHEMA`;C 类 payload 扩字段 = 域版本
-bump(专家邀请函域/商店 payload 所属域)。
+MegastarOption / PartnerOption / PlannerOption / EncounterOption / SupplyOption
+(补给列数动态 3-5,坐标列随选项集同序等长;partner 候选暂无建档区域 = 补档前
+恒 None 欠账态显式申报;encounter/supply 四家族成员随族级守卫批登记);C 类 payload
+扩字段 = `ExpertInvitePayload.card_points` + `cash_point`、`ShopPayload.card_points`
+(定长 5,下标 ↔ 物理槽 1-5)。
+**schema 登记**:A 类逐域新键入 `DEFAULT_GS_SCHEMA`;B 类 typed 扩 `xy` = 所属域值
+形状变更,域版本 bump 1→2(先例 = encounter/supply 域);C 类 payload 扩字段 = 域
+版本 bump(专家邀请函域/商店 payload 所属域)。
 
 #### 3.4.6 圣杯任务
 
