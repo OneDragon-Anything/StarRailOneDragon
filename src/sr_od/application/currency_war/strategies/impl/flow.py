@@ -614,8 +614,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         return CwActionPickStarTomeParam(idx=best_i)
 
     def decide_wish_trial(self) -> CwActionPickWishTrialParam:
-        """祈愿试炼选卡(终态零参口;候选 = ``gs.wish_trial_opts``;r104 接入
-        策略模块;原固定第1张)。
+        """祈愿试炼选卡(终态零参口;候选 = ``gs.wish_trial_opts``)。
 
         options = 各卡 objective 文字(OCR)。打分:①金币类(直接经济,阵容无关
         稳妥)+25;②target/框架阵营相关词命中 +20;③「刷新/购买」类操作向
