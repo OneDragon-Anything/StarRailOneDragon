@@ -9,11 +9,11 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;选卡即终结,单步无确认)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 两道闸(入口锚复验,分发即门 op 内机械复验防误派;OCR 卡名空 = 未发出通道)→ 任一 miss = round_fail 交回外循环重派(重观察语境禁猜,禁盲点首卡;report 不调,容器不进盲值)→ `report_screen_box_pick_obs` 落容器 `box_card_names` 槽 → obs + OCR 坐标挂实例属性。决策动作 node = 选卡决策 → 选卡链经 `CwActionPickBoxCardOp` 派发(点卡选中即确认 + 动画等待迁入动作 op,pick-op-unify 批)→ round_success 交回(选卡落地由下一帧观察覆盖;op 内零重试轮,重试预算归外循环重分发;`node_max_retry_times=5` 现役值仅框架异常路径消费)。零参决策 `match.strategy.decide_box_card()`(候选自容器槽;局内 fail-closed:异常留证完整栈后显式上抛 / 返回越界索引同上抛——两者都禁无声回落内联打分,策略 bug 禁永久遮蔽;局外防御 = kernel 机器空键纯通用排序;薄壳语义:locked_comp 两态锚 + 三本库存账 → 共享机器 `kernel/cw_equip_value.py::pick_equipment` 序数分档,key 直击 > 近兑现 > 材料 > 通用,base = 通用输出先验;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;选卡即终结,单步无确认)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 两道闸(入口锚复验,分发即门 op 内机械复验防误派;OCR 卡名空 = 未发出通道)→ 任一 miss = round_fail 交回外循环重派(重观察语境禁猜,禁盲点首卡;report 不调,容器不进盲值)→ 观察标准化门 + 坐标解点 → `report_screen_box_pick_obs` 同门双写 `box_card_names` / `box_card_names_xy` 槽 → obs + 标准化读数挂实例属性。决策动作 node = 局外门(match 缺席 = 零决策零点击 round_success 终结交回,op-layer.md §1.1 局外单跑条款,遭遇屏先例同款,无兜底决策)→ 选卡决策 → 选卡链经 `CwActionPickBoxCardOp` 派发(点卡选中即确认 + 动画等待 + 自上报住动作 op,契约 = [../flow/action_exec.md](../flow/action_exec.md) §2;点击坐标 = 观察上报容器 `box_card_names_xy`(op-layer.md §1.1 :35,动作 op 按下标自取))→ round_success 交回(选卡落地由下一帧观察覆盖;op 内零重试轮,重试预算归外循环重分发;`node_max_retry_times=5` 现役值仅框架异常路径消费)。零参决策 `match.strategy.decide_box_card()`(候选自容器槽;局内 fail-closed:异常留证完整栈后显式上抛 / 返回越界索引同上抛——两者都禁无声回落内联打分,策略 bug 禁永久遮蔽;薄壳语义:locked_comp 两态锚 + 三本库存账 → 共享机器 `kernel/cw_equip_value.py::pick_equipment` 序数分档,key 直击 > 近兑现 > 材料 > 通用,base = 通用输出先验;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18)。
 
 ## 3. 观察面
 
-单次观察(观察 node):入口锚复验(分发即门,op 内机械复验防误派;「标识-请选择」miss = 非本画面 → fail 交回外循环重分发)→ 卡名读取 `_read_card_names`:「区域-卡名行」建档 rect 约束 OCR,2-8 字过滤,按 x 升序 → [(卡名, 卡 x 中心)]。观察 payload = `CwScreenBoxPickObs`(`on_screen`/`card_names`/`screen`,住 `kernel/cw_screen_report/box_pick.py`);report = `report_screen_box_pick_obs` 候选写容器 `box_card_names` 槽(两道闸过才写;match/gs 缺席的局外兜底路径跳过)。x 坐标留守本 op 不进容器(点击定位输入)。
+单次观察(观察 node):入口锚复验(分发即门,op 内机械复验防误派;「标识-请选择」miss = 非本画面 → fail 交回外循环重分发)→ 卡名读取 `_read_card_names`:「区域-卡名行」建档 rect 约束 OCR,2-8 字过滤,按 x 升序 → [(卡名, 卡 x 中心)]。观察 payload = `CwScreenBoxPickObs`(`on_screen`/`card_names`/`points`/`screen`,住 `kernel/cw_screen_report/box_pick.py`);report = `report_screen_box_pick_obs` 同门双写容器 `box_card_names` / `box_card_names_xy` 槽(两道闸过才写;桩无 gs(有 match)跳过写、决策照走)。卡名读数经装备注册表两段转换后上报(转换失败 = 观察失败,round_fail 零写零上报交回重读);重复名合法(四卡可能同名,同装备多张),逐候选独立归一,不适用「多候选命中同一注册名 = 转换失败」互斥判。坐标与标准名一并入容器 `box_card_names_xy`(观察期解点:候选 x + 卡身 y 常量避让几何、同门双写),转换失败名字坐标同进退(op-layer.md §1.1 :35)。
 
 ## 4. 动作面
 
@@ -21,20 +21,25 @@
 
 | 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| `CwActionPickBoxCardOp`(`CwActionPickBoxCardParam`,点卡即选注册行) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:定位点 = OCR x 中心 + 卡身 y 常量 290) | 自上报 `report_action_pick_box_card_param`(零写:发射相意图遥测,容器零写;无落地相——落地归下一帧观察覆盖) | **是(选卡即终结)**:点卡选中即确认(单步,无确认钮),动作 op 动画等待后旁路回传;画面 op 派发后 `round_success`(wait=`_OVERLAY_ANIM_WAIT_S`)即交回(动作 op 类属性 `terminal=False` 为执行模型标记,交回语义住画面 op) |
+| `CwActionPickBoxCardOp`(`CwActionPickBoxCardParam`,点卡即选注册行) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`(idx-only);点击坐标 = 容器 `box_card_names_xy[idx]`(观察期按 OCR x 中心 + 卡身 y 常量 290 解出上报),动作 op 按下标自取,缺席/越界 = 守卫断言) | 自上报 `report_action_pick_box_card_param`(零写占位上报,容器零写;选择落地真值归下一帧观察覆盖) | **是(选卡即终结)**:点卡选中即确认(单步,无确认钮),动作 op 动画等待后旁路回传;画面 op 派发后 `round_success`(wait=`_OVERLAY_ANIM_WAIT_S`)即交回(动作 op 类属性 `terminal=False` 为执行模型标记,交回语义住画面 op) |
 
 ```
-names = 观察轮 obs 载体
+names = 观察轮 obs 载体(标准注册名,经装备注册表两段转换标准化)
   → 空 = round_fail(OCR 未读卡名(变体字型/动画帧)= 未发出通道交回外循环
     重派,重观察语境禁猜;禁「盲点首卡」兜底——选错不可逆;闸在观察 node)
+  → 转换失败 = round_fail(观察失败,零写零上报交回重读;重复名合法,
+    逐候选独立归一)
 idx = _decide_card_index(决策动作 node):
   局内 = decide_box_card()(零参;候选读容器 box_card_names 槽;
     fail-closed:异常留证完整栈后显式上抛 / 返回越界索引
     同上抛——两者都禁无声回落内联打分,策略 bug 禁永久遮蔽)
-  局外 = kernel pick_equipment(机器空键)
-card_point = (选中卡 x 中心, 卡身 y 常量 290)(点卡名带下方一点,避「查看详情」按钮)
-→ 派发 CwActionPickBoxCardOp(动作 op 内:target mouse_move + click
-  (防吞点击)→ 点卡选中即确认[单步]→ 固定动画等待
+  局外(match 缺席)= 零决策零点击 round_success 终结交回
+    (op-layer.md §1.1 局外单跑条款;遭遇屏先例同款)
+坐标 = 容器 box_card_names_xy[idx](动作 op 内取;观察期按
+  选中卡 x 中心 + 卡身 y 常量 290 解出上报,点卡名带下方一点,
+  避「查看详情」按钮)→
+→ 派发 CwActionPickBoxCardOp(动作 op 内:mouse_move + click
+  → 点卡选中即确认[单步]→ 固定动画等待
   [_OVERLAY_ANIM_WAIT_S = prep_actions overlay 动画等待常量]
   → 自上报 report_action_pick_box_card_param;派发 param 携真实选中 idx)
 → round_success(选卡即终结,交回外循环)
@@ -47,32 +52,29 @@ card_point = (选中卡 x 中心, 卡身 y 常量 290)(点卡名带下方一点,
 | 条件 | 级别 | 交回落点 |
 |---|---|---|
 | 点卡成功 | **选卡即终结** | round_success 交回外循环(选卡落地由下一帧观察覆盖;与 `OpenBox` 终结化交回等待同源) |
-| 入口锚 miss / OCR 未读卡名 | op FAIL | 交回外循环按当前画面重分发(重派重观察) |
+| 入口锚 miss / OCR 未读卡名 / 卡名标准化失败 | op FAIL | 交回外循环按当前画面重分发(重派重观察) |
 | 决策契约违约 | 异常上抛 | fail-closed(留证后上抛,禁回落) |
 
 「确认离开 = 画面终结」= [README.md](README.md) §6(本屏确认 = 点卡本身);`node_max_retry_times=5` 现役值仅框架异常路径消费。
 
 ## 6. 状态上报面
 
-本屏无 chosen_\* 写端、无到账登记(装备到账归下一帧 owned 观察覆盖)。候选观察:`report_screen_box_pick_obs` 候选写容器 `box_card_names` 槽(两道闸过才写)。字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.5 / §4「事件选择」;效果账 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §2(显式不建模清单:OpenBox 箱体消耗在选卡确认;原「装备三选一与武装箱同屏性待采证」候裁面随选择装备屏误判退役销项,2026-09-22)。
+本屏无 chosen_\* 写端、无到账登记(装备到账归下一帧 owned 观察覆盖)。候选观察:`report_screen_box_pick_obs` 同门双写容器 `box_card_names` / `box_card_names_xy` 槽(两道闸过才写)。字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.5 / §3.4.5a / §4「事件选择」;效果账 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §2(显式不建模清单:OpenBox 箱体消耗在选卡确认;原「装备三选一与武装箱同屏性待采证」候裁面随选择装备屏误判退役销项,2026-09-22)。
 
 ## 7. 子态与 overlay
 
-本屏无子态。同一武装箱域的两画面分工:说明弹窗(关闭动作,非本 op)/ 选卡画面(本 op);建档中「装备卡-1..4」area 为画面元素档,现役点击坐标 = OCR x + 卡身 y 常量(区域-卡名行 rect 为读数单一源)。
+本屏无子态。同一武装箱域的两画面分工:说明弹窗(关闭动作,非本 op)/ 选卡画面(本 op);建档中「装备卡-1..4」area 为画面元素档,现役点击坐标 = 容器 `box_card_names_xy`(观察期自 OCR x + 卡身 y 常量解出上报;「区域-卡名行」rect 为读数单一源)。
 
 ## 8. 守卫与防线
 
 - 决策 fail-closed 契约:策略异常/越界索引 = 留证后上抛,禁无声回落内联打分(策略 bug 禁遮蔽;行为锁在册)。
 - OCR 未读卡名 = 未发出通道 fail 交回重派(选错不可逆,禁盲点兜底)。
-- 点击 y 避让「查看详情」按钮带(几何防线)。
+- 观察标准化门:卡名经装备注册表两段转换,任一候选转换失败 = fail 零写零上报交回重读(禁带病上报;重复名合法,逐候选独立归一)。
+- 点击 y 避让「查看详情」按钮带(几何防线,解点住观察侧)。
 - 无本屏专属停机钩子;守卫总册 = [../flow/guards.md](../flow/guards.md)。
 
 ## 9. 遥测与锁面
 
 - journal op 名 =「武装箱选择」(阶段一身份分发);op 内日志 tag = `[cw][boxpick]`(选中卡名/交回)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(box_pick 观察 report 接线/两道闸 skip report/点卡决策锁)、test_cw_unified_action_2a.py::test_pick_box_decision_fail_closed(fail-closed 决策契约行为锁 + 画面常量)。
+- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(box_pick 观察 report 接线/两道闸 skip report/点卡决策/局外出口/标准化门锁)、test_cw_unified_action_2a.py::test_pick_box_decision_fail_closed(fail-closed 决策契约行为锁 + 画面常量)、test_cw_screen_report_ports.py(box_pick 同门双写/等长守卫)、test_cw_unified_action_4.py(动作 op 自容器取点锁)。
 - game 侧知识:画面与机制 = [../../../../game/screens/currency_war_battle_prep_supply_box.md](../../../../../game/screens/currency_war_battle_prep_supply_box.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18。
-
-## 开放设计注
-
-- 分发锚(「货币战争-备战-武装箱选择.标识-请选择」)未登记外循环分发锚预检表 `cw_loop.py::DISPATCH_AREA_ANCHORS`(iter1 可解析性预检覆盖缺该行,申报不自定案)。

@@ -187,7 +187,7 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'star_tome_opts_xy': 1,    # 星徽秘典选项坐标伴随域(选择坐标观察上报,fields.md §3.4.5a)
     'wish_trial_opts': 1,      # 祈愿试炼候选槽(str)
     'wish_trial_opts_xy': 1,   # 祈愿试炼选项坐标伴随域(选择坐标观察上报,fields.md §3.4.5a)
-    'box_card_opts': 1,        # 武装箱候选槽(str)
+    'box_card_names': 1,       # 武装箱候选槽(str)
     'box_card_names_xy': 1,    # 武装箱选项坐标伴随域(键名随名字域 box_card_names;选择坐标观察上报,fields.md §3.4.5a)
     'fortune_opts': 1,         # 命运卜者强化候选槽(str;契约扩员 12→15)
     'fortune_opts_xy': 1,      # 命运卜者强化选项坐标伴随域(选择坐标观察上报,fields.md §3.4.5a)
