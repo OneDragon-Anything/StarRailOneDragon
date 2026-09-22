@@ -73,14 +73,13 @@ class CwActionBuyCardOp(SrOperation):
         action: CwActionBuyCardParam = self.param
         env = self.env
         op, match, ledger, state = env.op, env.match, env.ledger, env.state
-        # 点击定位 = 牌自带物理槽号 slot(读链写入)→ screen_info
-        # 「商店牌-N」现取(W6 波 4 双 ShopCard 归一:容器牌无 x 坐标,
-        # 坐标单一真相源 = screen_info,设计件 §2.5-5)。身份匹配优先
-        # 同一性(action 由决策核自 payload 产出),退化按 (name, star)
-        # ——匹配下标仅作槽号缺失时的兜底锚,见下方点击解析。
-        # 槽号主源 = payload 定长槽阵列位置(三态模型:数组下标+1 =
-        # 物理槽;身份同一性优先,退化 (name, star));card.slot 兼容
-        # 字段降为最后兜底(退役面审计)。
+        # 点击定位解析恰两档 = 契约(action_exec.md §4 / action_ops.md
+        # §4.1 同口径):①payload 定长槽阵列身份同一性(action 由决策核自
+        # payload 产出,`is` 匹配)②(name, star) 退化。槽号主源 = payload
+        # 定长槽阵列位置(三态模型:数组下标+1 = 物理槽)。card.slot 旧档
+        # 字段兜底已删:静默兜底把「payload 无此牌」的提案数据 bug 掩盖成
+        # 错槽点击,显式失败促数据修正(错槽根因家族 = 布局双源:旧档
+        # 下标 ≠ 物理槽位)。
         _slot_no_matched = None
         _payload = state.shop.value
         _slots = (_payload.cards if _payload is not None else [])
@@ -96,25 +95,28 @@ class CwActionBuyCardOp(SrOperation):
                         and int(_s.card.star or 1) == int(action.card.star or 1):
                     _slot_no_matched = _i + 1
                     break
-        # 点击坐标 = 牌自带实测槽位(观察期读链写入的物理槽号)→ screen_info
-        # 「商店牌-N」中心。紧凑下标只在牌行满列期与物理槽位等价:游戏买入
-        # 后不压缩剩余卡位(牌行打洞),紧凑列表全体下标偏离物理槽位,按下标
-        # 取固定槽坐标 = 点击落空槽框(实机局实证:1 槽空、卡在 2-5 槽时恒打
-        # 1 槽框,「买牌点击不注册」根因;布局双源同族 = bench 布局
-        # 错位的商店牌行版)。槽号缺省(0 = sim/离线构造、修复前旧档)退回
-        # 紧凑下标映射(旧行为)。
+        # 点击坐标 = payload 槽号 → screen_info「商店牌-N」中心。紧凑下标
+        # 只在牌行满列期与物理槽位等价:游戏买入后不压缩剩余卡位(牌行
+        # 打洞),紧凑列表全体下标偏离物理槽位,按下标取固定槽坐标 = 点击
+        # 落空槽框(实机局实证:1 槽空、卡在 2-5 槽时恒打 1 槽框,「买牌
+        # 点击不注册」根因;布局双源同族 = bench 布局错位的商店牌行版)。
         _slot_no = _slot_no_matched
         if _slot_no is None:
-            # 兼容兜底:旧档/sim 构造牌的 slot 字段(退役过渡期保留)
-            _slot_no = int(getattr(action.card, 'slot', 0) or 0)
-        if not (1 <= _slot_no <= len(env.click_pts)):
-            # 点位缺失/槽号越界 = 建档漂移或牌行失配,显式 round_fail
-            # (信息带 area 名,与 level_btn/refresh_btn 同款纪律),禁
-            # 兜底坐标静默点击(坐标单一真相源)。
+            # 槽解析失败(①②双未命中)= payload 无此牌,提案数据 bug
+            # 响亮暴露:round_fail = 未发出事实(action_ops.md §2.1),
+            # 零动作级重试,决策循环按下一帧观察自然重派。
             return self.round_fail(
-                f'商店牌点位缺失/槽号越界:{A_SHOP_CARD_PREFIX}'
+                '商店牌槽解析失败:slot_no=None'
+                '(身份未命中 ∧ (name,star) 未命中),禁兜底点击')
+        if not (1 <= _slot_no <= len(env.click_pts)):
+            # 槽号越界/点位缺失 = 槽号-点表不一致(建档漂移/数据漂移上游
+            # 显影),显式 round_fail(信息带 area 名,与 level_btn/refresh_btn
+            # 同款纪律),禁兜底坐标静默点击(坐标单一真相源)。
+            return self.round_fail(
+                f'商店牌槽号越界/点位缺失:{A_SHOP_CARD_PREFIX}'
                 f'{_slot_no}({SHOP_SCREEN_NAME}),slot={_slot_no} '
-                f'click_pts={len(env.click_pts)},禁兜底点击')
+                f'click_pts={len(env.click_pts)}(槽号-点表不一致),'
+                f'禁兜底点击')
         pt = env.click_pts[_slot_no - 1]
         op.ctx.controller.click(pt)
         log.info(f'[cw-shop] Buy click slot={_slot_no} @({pt.x},{pt.y}) '

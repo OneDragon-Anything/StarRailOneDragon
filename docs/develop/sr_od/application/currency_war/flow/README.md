@@ -16,7 +16,7 @@
 │ 轮次推进（备战环 → 出战 → 战斗等待 → 结算 → 回备战）            │
 │ 节点推进 = 终结动作上报（settle/supply_confirm）+ 画面 op 锚定   │
 │ 停机/遥测钩子（守卫、runs summary、分配器、对局存档）           │
-├─ 画面指挥(37 画面 op,每屏独立类直继承 SrOperation,两 node 形态)──┤
+├─ 画面指挥(35 画面 op,每屏独立类直继承 SrOperation,两 node 形态)──┤
 │ 观察 node:门 → 显式读屏(唯一读屏点)→ CwScreenXxxObs →          │
 │   report_screen_*_obs 落容器(kernel/cw_screen_report/ 每屏一文件)│
 │ 决策动作 node:重入裁决 → 决策(容器零参读;空发射 = Obs outer 口径)│

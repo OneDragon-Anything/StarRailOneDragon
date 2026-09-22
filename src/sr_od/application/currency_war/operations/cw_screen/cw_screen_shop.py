@@ -467,6 +467,18 @@ class CwScreenShop(SrOperation):
         # round_fail(信息带 area 名),禁兜底坐标静默点击(坐标单一真相源)。
         # 方向视图由策略器决策入口内化刷新(帧代次标注触发)。
         self._click_pts = shop_card_click_points(self.ctx)
+        if len(self._click_pts) < 5:
+            # 商店牌行 = 定长 5 槽结构,不存在合法的少于 5 槽形态;
+            # shop_card_click_points 对缺失槽静默缩短列表,部分缺失下按位
+            # 取点 = 错槽 → 访问不开始(fail fast):逐槽复查收缺失 area 名,
+            # 形态与升级钮/刷新钮行一致(失败治理出口,非决策闸:建档漂移
+            # 是环境事实,报告失败交修档)。
+            _miss_cards = [f'商店牌-{i}' for i in range(1, 6)
+                           if area_center(self.ctx, f'商店牌-{i}',
+                                          SHOP_SCREEN_NAME) is None]
+            return self.round_fail(
+                f'area 缺失:{",".join(_miss_cards)}({SHOP_SCREEN_NAME}),'
+                f'禁兜底点击')
         self._level_btn = area_center(self.ctx, BUY_EXP_AREA)
         if self._level_btn is None:
             return self.round_fail(

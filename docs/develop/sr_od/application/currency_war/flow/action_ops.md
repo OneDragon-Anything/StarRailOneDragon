@@ -58,7 +58,7 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 ### 2.3 上报通道(动作事实怎么出去)
 
 - **prep 域旁路字段** `env.detail` / `env.emitted`(`PrepExecEnv`):机械执行摘要 + 是否已发出;节点直调 `op.run()` 的 round 结果恒 success(单节点动作 op 零重试语义,框架循环机制归包络与交回面所有)。
-- **返回值在册例外**:在册例外仅 `CwActionStartBattleOp`(round 结果 = 点击序列已执行,找不到按钮/area 缺失 = False——未发出事实非判效,消费面 = 执行器 `last_launch_ok` 旁路 → `cw_loop` 战斗分支);`CwActionBuyCardOp` / `CwActionWearEquipOp` 均回恒 success,落地与否不是返回值语义,归观察侧对账(§2.1)。prep 域 `emitted=False` = 机械未发出事实(定位缺失/无空槽),非效果判定。
+- **返回值在册例外**:在册例外仅 `CwActionStartBattleOp`(round 结果 = 点击序列已执行,找不到按钮/area 缺失 = False——未发出事实非判效,消费面 = 执行器 `last_launch_ok` 旁路 → `cw_loop` 战斗分支);`CwActionBuyCardOp` 定位缺失(点位缺失/槽解析失败/槽号越界)= round_fail 未发出事实,round 结果成功态仍 = 发出事实(与 action_exec.md §2 失败通道句对齐);`CwActionWearEquipOp` 回恒 success,落地与否不是返回值语义,归观察侧对账(§2.1)。prep 域 `emitted=False` = 机械未发出事实(定位缺失/无空槽),非效果判定。
 - **pick 族旁路** `env.round_result`:轮次流转语义,不是动作成败回执;`operations/cw_screen/_overlay_confirm.py::emit_overlay_confirm` = 机械确认 + 固定等待 + 无条件 round_retry——不读屏判「是否生效」。**欠账标注(§1 增补 2)**:「落地与否由下一轮重入的入口观察裁决(入口词不在 = 已离开本画面交回 success;仍在 = 重做确认)」的现役写法 = 欠账,逐批改为「确认点完立即上报结果,本访问直接交回」;禁新增。
 - **落地登记注册表**:已随历史批次退役消失(`cw_screen_op_base` / `EMIT_TRIGGERED_DECLARED` 现为零符号,2026-09-21 清理);节点屏刷新计数全域 = 剩余语义观察写端(`encounter_refresh_left`/`supply_refresh_left`/`env_refresh_left`/`strategy_refresh_left`,各屏观察 report 摄入;遭遇/补给 sim 写端与补 sim 写面差异见 fields.md §3.4.1/§3.4.2;原 on_outcome 发射型钩子与 live +1 写点均已退役)。
 

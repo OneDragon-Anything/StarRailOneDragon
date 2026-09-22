@@ -156,11 +156,12 @@ class CwScreenPrep(SrOperation):
         # = 经验期望账本推进(CwActionLevelUpParam/CwActionOpenShopParam 两通道),随
         # 期望账拆除退役——「未落地不计数」防线
         # 由逻辑态直写(买经验自上报)与观察覆盖
-        # 承接。执行器内
-        # 登记件(刷新计数组免费闸 record_refresh_execution、免战牌
-        # consume_use,现役接线点 = cw_op_buy_cards 执行落地门/kernel
-        # apply_op_effect 上报路径)留守执行器(该执行链为双路径共链,
-        # 迁移即生产行为变化;免费闸/随点击置位等语义以现役位置逐字保绿)。
+        # 承接。免战牌额度递减现役接线点 = 出战上报路径(上报时经
+        # kernel 效果账本 consume_use 扣减);刷新免费闸计数现役 =
+        # 效果账本 `record_refresh` 单口,经刷新上报函数触发
+        # (kernel/cw_effect_inventory.py::record_refresh);商店域执行
+        # 链接线点 = 动作 op 自上报(BUY 计数 = 上报函数 on_buy 回调
+        # 单点,刷新 = report_action_refresh_shop_param 单口)。
 
     # ===== 观察(只由现成 reader 产出)=====
 
@@ -763,8 +764,8 @@ class CwScreenPrep(SrOperation):
                 'full' if isinstance(action, CwActionObsParam) else 'none')
 
     # ===== 已锁语义的现役载体位置:bench 空集守卫/合成特效窗门在
-    # _observe 识别链内,免费闸/免战牌在执行器内,同节点去重在
-    # cw_loop 备战分支挂点 =====
+    # _observe 识别链内,免战牌次数递减在出战上报路径(start_battle
+    # 上报时 consume_use),同节点去重在 cw_loop 备战分支挂点 =====
 
     def _terminal_exit(self, action: CwAction, key: str,
                        op_cls: type[SrOperation]) -> OperationRoundResult:

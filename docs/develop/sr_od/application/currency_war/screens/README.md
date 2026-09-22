@@ -1,7 +1,7 @@
 # 画面 op 层(screens/ · 一画面一文档)
 
 > 本目录 = 画面 op 层设计正本:**每个画面 op 一篇**,写「这个画面做什么观察、能发哪些动作 op、哪些动作终结交回外循环」。代码根 = `src/sr_od/application/currency_war/operations/cw_screen/`(一画面一文件)+ `obs/`(观察解析工具箱)+ `kernel/cw_screen_report/`(每画面观察上报:obs 类 + report 函数一文件);符号锚 = `文件::符号名`(行号随代码漂移,不作定位依据)。
-> 分工分界:分发判定(两阶段身份分发)的单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2(本目录各篇只写画面特有的排他/穿透形态与身份锚说明);画面 op 统一规范(两 node 形态/round_wait 循环/终结 op/期望态生命周期/对账边界/report 上报接口)= [op-layer.md](op-layer.md);逐屏形态分类总表(37 屏)= [op-layer.md](op-layer.md) §3;动作执行契约 = [../flow/action_exec.md](../flow/action_exec.md)。
+> 分工分界:分发判定(两阶段身份分发)的单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2(本目录各篇只写画面特有的排他/穿透形态与身份锚说明);画面 op 统一规范(两 node 形态/round_wait 循环/终结 op/期望态生命周期/对账边界/report 上报接口)= [op-layer.md](op-layer.md);逐屏形态分类总表(35 屏)= [op-layer.md](op-layer.md) §3;动作执行契约 = [../flow/action_exec.md](../flow/action_exec.md)。
 > 术语:逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态;真值以下一帧观察为准(观察赢)。
 > 路径缩写约定:本文反引号短路径 `research/X.md`/`data/X.md` 等 = `docs/game/currency_war/` 下对应文件(非 src 树);game 侧文档同理指向本仓 docs/。
 
@@ -31,7 +31,7 @@
 
 纪律:as-built 无状态(事故史/裁定日期不进正文);坐标一律 `画面名.area名`;分发判定不复制外循环表。
 
-## 3. 形态分型(对照 37 屏)
+## 3. 形态分型(对照 35 屏)
 
 - 画面 op 统一形态 = **两 node 直继承 SrOperation**:观察 node = 门 + 显式读屏 + `CwScreenXxxObs` + `report_screen_<snake>_obs` 落容器;决策动作 node = 重入裁决 + 决策 + 动作,`round_wait` 循环推进、无防御上限。判据合同 = [op-layer.md](op-layer.md) §1。
 - 分型判据:入决策规范 ⇔ **选择面 ∧ 逻辑态账**(商店/备战);空决策形态 ⇔ **无选择面 ∧ 无逻辑态账**——纯推进为流程义务:观察 + 推进处理 + 交回外循环(新 op 单尝试,重试预算归外循环);建档与否非分型维度——本型成员含无画面档的兜底推进(前进按钮)与商店框 2 类(编排壳 op,非画面档成员);单选族例外:有选择面但零逻辑态账(选卡/确认即终结,visit 内无后续决策消费逻辑态)。
