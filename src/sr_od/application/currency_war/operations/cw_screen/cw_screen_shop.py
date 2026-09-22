@@ -13,7 +13,7 @@
 生产调用点(0n 转交与显式开店同口 ``cw_screen_prep.visit_open_shop``、
 ``run_operation`` 单跑)构造本类并节点函数直驱(不经框架 execute 循环,
 决策循环轮间零截图)。出参交接契约(详设 §2.2):失败判定 = 轮结果
-``is_success``;执行账 = 实例 :attr:`CwScreenBuyCards.ledger`(run 完成
+``is_success``;执行账 = 实例 :attr:`CwScreenShop.ledger`(run 完成
 后有效)。节点行观察已归备战观察域(详设 §2.8,宿主 =
 ``cw_screen_prep._write_prep_node_chain``),商店域零探针。
 """
@@ -40,8 +40,8 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     area_center,
     shop_card_click_points,
 )
-from sr_od.application.currency_war.kernel.cw_screen_report.buy_cards import (
-    CwScreenBuyCardsObs,
+from sr_od.application.currency_war.kernel.cw_screen_report.shop import (
+    CwScreenShopObs,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
     strategy_state_of,
@@ -308,7 +308,7 @@ def note_shop_action_receipt(match: 'CurrencyWarMatch', action: 'Action', *,
         note_action_receipt(
             game_state_of(session), op=type(action).__name__,
             applied=bool(applied), reason=reason, screen=SHOP_SCREEN_NAME,
-            actor='CwScreenBuyCards', extra=_extra)
+            actor='CwScreenShop', extra=_extra)
     except Exception as e:  # noqa: BLE001  回执失败不阻塞循环
         log.warning('[cw][receipt] 商店动作回执写入失败(不阻塞): %s', e)
 
@@ -386,7 +386,7 @@ def _note_shop_skip_unobserved(op: SrOperation,
     return None
 
 
-class CwScreenBuyCards(SrOperation):
+class CwScreenShop(SrOperation):
     """货币战争商店画面 op(两 node 规范形态)。
 
     生产两路(外循环 0n 转交与备战显式开店同口 ``visit_open_shop``、
@@ -418,7 +418,7 @@ class CwScreenBuyCards(SrOperation):
     """
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-买牌')
+        SrOperation.__init__(self, ctx, op_name='货币战争-商店')
         from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
             ShopVisitLedger,
         )
@@ -429,7 +429,7 @@ class CwScreenBuyCards(SrOperation):
         # 观察 node 产物:入口回执镜像(obs,决策侧/测试消费面)、入口
         # 回执本体(落地门 defects 留证基准)与每访问一次的装配
         # (config/点击点位/升级钮/刷新钮/动作累积),决策动作 node 消费。
-        self._obs: CwScreenBuyCardsObs | None = None
+        self._obs: CwScreenShopObs | None = None
         self._entry: GameStateReadReceipt | None = None
         self._config: Any = None
         self._click_pts: list = []
@@ -483,7 +483,7 @@ class CwScreenBuyCards(SrOperation):
         _entry, _entry_shot, _stop = _shop_entry_read(self, match)
         if _stop is not None:
             return _stop
-        self._obs = CwScreenBuyCardsObs(
+        self._obs = CwScreenShopObs(
             gold=_entry.gold, gold_readable=_entry.gold_readable,
             hp=_entry.hp, hp_readable=_entry.hp_readable,
             hp_trusted=_entry.hp_trusted,

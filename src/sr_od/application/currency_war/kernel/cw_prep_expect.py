@@ -2,7 +2,7 @@
 
 现役唯一存活导出 = ``BuyPurchase``:商店买入点(cw_buy_card_action)逐击
 记录的购买意图,随单元账本(cw_shop_action_ops BuyLedger)供给
-cw_screen_buy_cards 的满栏多买张数读取与执行事实面。
+cw_screen_shop 的满栏多买张数读取与执行事实面。
 
 历史注:本模块曾承载拖动/买牌/经验/装备四通道的期望态对账纯函数与
 材料通用性估值表;期望态对账随对账归一(动作上报经上报函数族

@@ -822,7 +822,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 而牌面含 unknown(整帧 OCR/SIFT 失读窗)→ 花钱动作(CwActionBuyCardParam/
     # CwActionRefreshShopParam/CwActionLevelUpParam)一律禁发射(烧金在失读牌面上、刷后重观察多半
     # 仍失读,不猜),终结集降级为仅 CwActionCloseShopParam。主防线 = 商店 op 入口观察
-    # 即停(cw_screen_buy_cards 入口观察处,2026-09-16 迁移:观察落地即停,
+    # 即停(cw_screen_shop 入口观察处,2026-09-16 迁移:观察落地即停,
     # 决策/购买不见残缺牌面)——本门为纵深第二线(unknown 绕过 op 停机
     # 入容器时兜底);真买空([empty×5])不受影响。
     _payload_u = gs.shop.value

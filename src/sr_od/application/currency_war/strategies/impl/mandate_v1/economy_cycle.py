@@ -252,7 +252,7 @@ def disclose_budget(state: Any, session: StrategySession,
     禁决策消费(语义锚 = mandate_state.py 披露字段注释与守卫锁
     test_cw_budget_disclosure;禁令防线 = review 与代码规范:禁读约束
     已申报于本包模块 docstring)。写端只有本函数与商店执行回执位
-    (operations/cw_screen/cw_screen_buy_cards.accrue_release_spent,
+    (operations/cw_screen/cw_screen_shop.accrue_release_spent,
     只累计 spent);读端 = recorder sess_* 透传(telemetry/schema.py
     sess_reserve_cap 族)+ cw_decision_trace 披露族封闭清单
     (kernel/cw_decision_trace.py)。

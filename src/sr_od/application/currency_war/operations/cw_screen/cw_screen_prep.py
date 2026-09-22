@@ -1014,7 +1014,7 @@ class CwScreenPrep(SrOperation):
         0n 路径同源。)
 
         编排单一源归属:本方法 = 商店画面 op 驱动的唯一编排点,显式开店
-        路径与 0n 转交路径共用。驱动 = 构造 :class:`CwScreenBuyCards`
+        路径与 0n 转交路径共用。驱动 = 构造 :class:`CwScreenShop`
         (两 node 规范形态)节点函数直驱(观察 node 恰一次 → 决策动作
         node round_wait 循环至终结;不经框架 execute 循环——轮间零截图,
         决策循环零读屏纪律)。出参交接契约(详设 §2.2):失败判定 =
@@ -1034,10 +1034,10 @@ class CwScreenPrep(SrOperation):
         from one_dragon.base.operation.operation_round_result import (
             OperationRoundResultEnum,
         )
-        from sr_od.application.currency_war.operations.cw_screen.cw_screen_buy_cards import (
-            CwScreenBuyCards,
+        from sr_od.application.currency_war.operations.cw_screen.cw_screen_shop import (
+            CwScreenShop,
         )
-        _visit_op = CwScreenBuyCards(self.ctx)
+        _visit_op = CwScreenShop(self.ctx)
         _rr = _visit_op.observe()
         if not _rr.is_success:
             return False, f'买牌访问未完成({_rr.status})'
@@ -1144,7 +1144,7 @@ def _write_prep_node_chain(session: object, slots: list | None,
     ``read_node_sequence`` 调用回传 slots——识别零新增;director 侧写容器,
     组装层单写者原则只回传 slots)。节点行观察已自商店域归位本消费位
     (迭代 2026-09-21-shop-refresh-terminal 详设 §2.8:原宿主 = 商店访问
-    尾探针 ``cw_screen_buy_cards.probe_node_type``,随其退役整体迁入,
+    尾探针 ``cw_screen_shop.probe_node_type``,随其退役整体迁入,
     守卫逐位随迁;触发面 = 每次备战入口 heavy 观察,覆盖 ≥ 现役仅商店尾
     触发):同帧同点依次落——
     - 未识别图标采集(300s 防抖;``screen`` 缺席 = 跳过,离线/测试零 IO);
