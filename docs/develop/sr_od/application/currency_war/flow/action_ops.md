@@ -117,20 +117,41 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 |---|---|---|---|
 | Obs | CwActionObsOp | `cw_obs_action.py` | 重观察动作,口径由 `scope` 选(值域闭集 = `cw_vocab.OBS_SCOPES`)。**scope='in_place'**(缺省)= 当前画面重新观察上报,不交回外循环:执行体 = 宿主画面 op `reobserve_in_visit`(现役唯一宿主 = 备战 CwScreenPrep)heavy 观察链重跑,漏斗直写容器 = 观察边界对账;零点击零拖拽;自上报 = 零写占位(容器更新通道 = 观察漏斗本体);非终结,执行后帧代次标 full(方向重估触发,同入口帧;贵段消费侧键守卫限频),决策环原地续跑。重观察见事件 overlay = 抛 `CwObsOverlayBail` 交回外循环重分发(捕获点 = 备战决策循环,画面路由归外循环)。**scope='outer_loop'** = 交回外循环重新观察:决策环在 F3 之前**分支拦截**(不经本表派发、不进执行器、不写动作记录,行为 = 原 HoldFrame 空发射帧收编,用户裁定 2026-09-20),注册行仅为完备锁在场 + in_place 路径派发用。发射域无重观察能力(env.op 未接线)= AssertionError 响亮暴露(策略器 bug)。发射条件 = 策略需要新鲜观察(in_place = 随机面/不确定面动作后要真值再决策;outer_loop = 本帧无动作,交回外循环重判/等待,自旋防护归外循环 stall 防线)。 |
 
-### 4.5 事件线 pick 族(12 行;域 env = `OverlayPickExecEnv`,机械参数由各画面 op 决策半现算经 env 传入,op 类体内零决策)。**坐标源欠账(§1 增补 5,用户裁定 2026-09-22)**:全族现役坐标源形态不一——多数 = 决策半现算经 `env.target`,遭遇 = 动作 op 内 area 现取 + 兜底常量,伙伴 = `env.op._pick_point` 决策半现取——逐屏收敛到「观察上报入容器坐标伴随域(fields.md §3.4.5a)、动作 op 按 idx 自取」;收敛完成前现形态为合法过渡,禁新增第二坐标源(欠账登记先例 = StartBattle 行增补 3)。
+### 4.5 事件线 pick 族(12 行;域 env = `OverlayPickExecEnv`;机械参数辖域见段首申报,op 类体内零决策)。**坐标源欠账(§1 增补 5,用户裁定 2026-09-22)**:全族现役坐标源形态不一——多数 = 决策半现算经 `env.target`,遭遇 = 动作 op 内 area 现取 + 兜底常量,伙伴 = `env.op._pick_point` 决策半现取——逐屏收敛到「观察上报入容器坐标伴随域(fields.md §3.4.5a)、动作 op 按 idx 自取」;收敛完成前现形态为合法过渡,禁新增第二坐标源(欠账登记先例 = StartBattle 行增补 3)。
+
+**机械参数辖域(as-built;申报单一源)**:
+
+- 辖域 = 选卡定位 + 域载荷,经 env 传入;确认钮不属机械参数 env 传入范围——确认查找与点击 = 动作 op 执行体 `round_by_find_and_click_area`(全族统一,用户裁定 2026-09-22;§1 增补 3「瞄准」在册唯一允许查找;area 缺失 = 显式 round_fail,禁兜底坐标静默点击);投资两屏 `env.confirm` 变体随同批退役。
+- 选卡定位 = `env.target`(决策半现算,过渡期屏;已收敛屏 = 动作 op 按 idx 自容器坐标伴随域取点,巨星先行);例外两行:PickEncounter = op 体内 `area_center` 候选卡 or 兜底常量、PickPartner = 宿主属性经 `env.op`。选卡定位坐标欠账 = 标题行尾段(§1 增补 5,观察上报收敛),此处不重复。
+- 域载荷逐行 = `idx`(10 行 = 全族除 PickEncounter/PickPlanner)/`need_select`(巨星)/`leg_type`+`norm_item`(策划)/`unselected`(伙伴)/`match`+`picked`(补给)/`entry_keyword`(投资两屏/卜者组装而 run 体现役未消费);PickEncounter 组装 = 零域字段。(件名归一现役在决策半与动作上报层 = op-layer.md §1.1 :34 欠账,收敛终态 = 观察侧转换、动作上报只携 idx,逐批收敛禁新增)
+- 「op 类体内零决策」= 零选择/零腿型判定(全在决策半),瞄准定位查找非决策。逐行落点 = 各行动作列/对照表。
+
+逐行 as-built 对照(段首附表,与各行动作列互查):
+
+| 行 | 选中定位源 | 确认钮源 |
+|---|---|---|
+| PickEncounter | 体内 `area_center`(遭遇卡-其一/其二)or 兜底常量(env 组装 = op-only) | 体内 `round_by_find_and_click_area`(按钮-选择) |
+| PickSupply | `env.target` | 体内 `round_by_find_and_click_area`(按钮-确认) |
+| PickMegastar | 容器 `megastar_opts[idx].xy`(env idx-only;`need_select` 开关经 env) | 体内 `round_by_find_and_click_area`(按钮-确认选择) |
+| PickPartner | `env.op._pick_point`(宿主画面 op 属性;env 无 target) | 体内 `round_by_find_and_click_area`(按钮-确认选择) |
+| PickPlanner | `env.target` | 体内 `round_by_find_and_click_area`(按钮-骇入确认) |
+| PickInvestStrategy / PickInvestEnv | `env.idx` / `env.target` | 体内 `round_by_find_and_click_area`(按钮-确认,屏名按宿主屏类解析) |
+| PickFortune | `env.target` | 体内 `round_by_find_and_click_area`(按钮-确认选择) |
+| PickWishTrial | `env.target` | 体内 `round_by_find_and_click_area`(按钮-确认选择) |
+| PickBoxCard / PickStarTome / PickExpertInvite | `env.target` | 无确认步(点卡即选) |
 
 **上报形态 = 全族即时上报**(§1 增补 2;有容器写的各屏 = 投资两屏/补给/遭遇/策划/装备,点完确认或点卡即选后立即按成功写完整结果;其余屏 = 零写占位上报):发射/落地两相与证据闩形态已全域清偿,零重入裁决补写面,禁新增分步写法。
 
 | 词表类 | op 类 | 文件 | 说明 |
 |---|---|---|---|
-| PickEncounter | CwActionPickEncounterOp | `cw_pick_encounter_action.py` | 遭遇节点选卡确认链(事件屏统一迭代改即时上报):点遭遇卡(`idx`=0 左卡/其余右卡,area 缺失回退兜底常量)→ 固定等 0.8s → `emit_overlay_confirm` 机械确认(裁决词「遭遇节点」)→ **发射即写** `report_action_pick_encounter_param`(`kernel/cw_action_report/pick_encounter.py`:值组装 = 容器 `encounter` payload 槽所选卡,离屏/越界留证不写);派发即终结,落地归观察侧。发射条件 = overlay 决策半产 PickEncounter(idx = 候选下标)。 |
+| PickEncounter | CwActionPickEncounterOp | `cw_pick_encounter_action.py` | 遭遇节点选卡确认链(事件屏统一迭代改即时上报):点遭遇卡(`idx`=0 左卡/其余右卡,area 缺失回退兜底常量)→ 固定等 0.8s → 「按钮-选择」area 查找点击确认(`round_by_find_and_click_area`,全族统一)→ **发射即写** `report_action_pick_encounter_param`(`kernel/cw_action_report/pick_encounter.py`:值组装 = 容器 `encounter` payload 槽所选卡,离屏/越界留证不写);派发即终结,落地归观察侧。发射条件 = overlay 决策半产 PickEncounter(idx = 候选下标)。 |
 | PickSupply | CwActionPickSupplyOp | `cw_pick_supply_action.py` | 补给节点选卡确认链(即时单相,3.1):`env.target` 点卡 → 固定等 0.6s → 点「按钮-确认」→ **立即自上报完整结果** `report_action_pick_supply_param`(owned 规范名 + 单位腿 + 装备后果腿一口写)+ `report_node_advance(supply_confirm)`;派发即终结,确认未生效由外循环重识别重派;刷新圆钮点击留守画面 op。发射条件 = 决策半产 PickSupply(param 携归一件名/角色名;`env.target` 坐标现算 = §1 增补 5 欠账形态)。 |
-| PickMegastar | CwActionPickMegastarOp | `cw_pick_megastar_action.py` | 盛会之星「选中 → 确认」链(`env.need_select` 驱动:True = 先点 `env.target` 候选选中 + 固定等 0.6s;False = 跳过选中直发确认)→ 点「按钮-确认选择」(area 缺失回退兜底常量)→ 固定等 0.9s;纯机械单发,确认未落地 = 下一帧门复检自愈(宿主 `round_wait` 循环推进,不烧节点重试预算)。发射条件 = 决策半产 PickMegastar(选中半迁入本 op;`chosen_megastar` 写端与选中旗标留守画面 op,派发前写)。 |
-| PickPartner | CwActionPickPartnerOp | `cw_pick_partner_action.py` | 列车同行伙伴确认链:未选中实证(或首轮强制)下重点选候选(`env.op._pick_point`)→ 固定等 0.7s → OCR 找「确认选择」点击(找不到 = round_retry 上报,交框架轮次机制);脉冲计数与选中态宿主 = 画面 op。发射条件 = 决策半产 PickPartner。 |
-| PickPlanner | CwActionPickPlannerOp | `cw_pick_planner_action.py` | 骇入策划确认链(即时单相):`env.target` 点卡(避开卡内「详情」按钮区的选中点几何归决策半单一源)→ 固定等 1.2s → `emit_overlay_confirm` 机械确认(裁决词全词「我来当策划」);点卡 = 机械单发(无详情面板检测;面板若真弹出归下一帧外循环重识别自愈)。**确认点击后立即自上报完整结果** `report_action_pick_planner_param`(`kernel/cw_action_report/pick_planner.py`:条件腿 rider 先行 → equip 腿入栏+后果链 / upgrade 变换窗三态+档行 `lv999_cost_tier` / unknown 留证 / unrouted 兜底零写,`leg_type`/`norm_item` 经 env 随派发透传);派发即终结,确认未生效由外循环重识别重派。发射条件 = 决策半产 PickPlanner。 |
+| PickMegastar | CwActionPickMegastarOp | `cw_pick_megastar_action.py` | 盛会之星「选中 → 确认」链(`env.need_select` 驱动:True = 先点 `env.target` 候选选中 + 固定等 0.6s;False = 跳过选中直发确认)→ 「按钮-确认选择」area 查找点击确认(`round_by_find_and_click_area`,全族统一)→ 固定等 0.9s;纯机械单发,确认未落地 = 下一帧门复检自愈(宿主 `round_wait` 循环推进,不烧节点重试预算)。发射条件 = 决策半产 PickMegastar(选中半迁入本 op;`chosen_megastar` 写端与选中旗标留守画面 op,派发前写)。 |
+| PickPartner | CwActionPickPartnerOp | `cw_pick_partner_action.py` | 列车同行伙伴确认链:未选中实证(或首轮强制)下重点选候选(`env.op._pick_point`)→ 固定等 0.7s → 「按钮-确认选择」area 查找点击确认(`round_by_find_and_click_area`,全族统一;找不到 = round_retry 上报,交框架轮次机制);脉冲计数与选中态宿主 = 画面 op。发射条件 = 决策半产 PickPartner。 |
+| PickPlanner | CwActionPickPlannerOp | `cw_pick_planner_action.py` | 骇入策划确认链(即时单相):`env.target` 点卡(避开卡内「详情」按钮区的选中点几何归决策半单一源)→ 固定等 1.2s → 「按钮-骇入确认」area 查找点击确认(`round_by_find_and_click_area`,全族统一);点卡 = 机械单发(无详情面板检测;面板若真弹出归下一帧外循环重识别自愈)。**确认点击后立即自上报完整结果** `report_action_pick_planner_param`(`kernel/cw_action_report/pick_planner.py`:条件腿 rider 先行 → equip 腿入栏+后果链 / upgrade 变换窗三态+档行 `lv999_cost_tier` / unknown 留证 / unrouted 兜底零写,`leg_type`/`norm_item` 经 env 随派发透传);派发即终结,确认未生效由外循环重识别重派。发射条件 = 决策半产 PickPlanner。 |
 | PickInvestStrategy | CwActionPickInvestOp | `cw_pick_invest_action.py` | 投资策略屏选择行(投资两屏迁移批:词表拆类,与 PickInvestEnv 两行同指一 op,机械链同构):点选中位(`env.idx`/`env.target` 决策半现算)→ 固定等 0.7s → 点确认钮 → **立即自上报完整结果** `report_action_pick_invest_strategy_param`(session 自 ctx 取)→ 整支走获得链 `kernel/cw_gain_chain.py::gain_invest_strategy`(无效载荷拒绝 → active_strategies 按名字去重追加 → 效果账本登记腿 → `on_strategy_gained` 效果分派;出参 reason=`gain_chain_applied`)。 |
 | PickInvestEnv | CwActionPickInvestOp | `cw_pick_invest_action.py` | 投资环境屏选择行(同上共 op):点选中位 → 固定等 0.7s → 点确认钮 → **立即自上报完整结果** `report_action_pick_invest_env_param`(上报 = `param.idx`,名字自容器 `invest_env_opts` 标准名单一源按序号提供——观察层标准化门产出,规范 = op-layer.md §1.1;容器缺读/idx 越界 = 响亮失败)→ 整支走获得链 `gain_invest_env`(无效载荷拒绝 = 链内零写留证 `pick_invest_invalid_payload` → active_env 注册 + portal 登记 + `on_env_gained` 效果枚举;出参 reason=`gain_chain_applied`)。 |
-| PickFortune | CwActionPickFortuneOp | `cw_pick_fortune_action.py` | 命运卜者强化三选一(pick-op-unify 批收编,T-3):点卡(`env.target`)→ 点确认钮(建档缺失臂兜底常量)→ 自上报(零写)。 |
+| PickFortune | CwActionPickFortuneOp | `cw_pick_fortune_action.py` | 命运卜者强化三选一(pick-op-unify 批收编,T-3):点卡(`env.target`)→ 「按钮-确认选择」area 查找点击确认(`round_by_find_and_click_area`,全族统一)→ 自上报(零写)。 |
 | PickWishTrial | CwActionPickWishTrialOp | `cw_pick_wish_trial_action.py` | 祈愿试炼(pick-op-unify 批收编,T-3):点卡(`env.target`)→ 点「按钮-确认选择」area 确认 → 自上报(零写)。 |
 | PickStarTome | CwActionPickStarTomeOp | `cw_pick_star_tome_action.py` | 星徽秘典(pick-op-unify 批收编,T-4,点卡即选):选中点击 + 动画等待,零确认步 → 自上报(零写)。 |
 | PickBoxCard | CwActionPickBoxCardOp | `cw_pick_box_card_action.py` | 武装箱(pick-op-unify 批收编,T-4,点卡即选):同上形态。 |

@@ -92,8 +92,6 @@ class CwScreenEncounter(SrOperation):
     # 常量=screen_info 缺失兜底;首选 area_center('遭遇卡-其一/其二')。
     CARD_LEFT: ClassVar[Point] = Point(665, 500)
     CARD_RIGHT: ClassVar[Point] = Point(1288, 550)
-    # 底部「选择」按钮中心(未选中卡时灰置禁用,选中后才可点)。常量=兜底;首选 area_center('按钮-选择')。
-    SELECT_BTN: ClassVar[Point] = Point(1082, 898)
     # 分支刷新圆钮 = 「剩余次数:N」文本左侧固定偏移。归档帧
     # sr-od-test/screens/货币战争-遭遇节点/default.webp CV 双法实测:圆钮 ≈(671,899)、
     # 文本锚中心 ≈(771,899) → 偏移 = -100px;偏移错 → 刷新未命中,终结交回后

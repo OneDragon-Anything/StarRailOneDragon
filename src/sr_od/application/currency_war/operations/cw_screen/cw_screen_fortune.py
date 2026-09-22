@@ -56,9 +56,6 @@ class CwScreenFortune(SrOperation):
     CARD_Y: ClassVar[int] = 480
     TEXT_Y_LO: ClassVar[int] = 290
     TEXT_Y_HI: ClassVar[int] = 410
-    # 确认按钮兜底常量(首选 area_center('按钮-确认选择'):建档 cw_fortune_picker.yml
-    # rect (1420,575,1560,625) 中心 (1490,600),与本常量同按钮差 1px;同策划事件坐标族)
-    CONFIRM: ClassVar[Point] = Point(1491, 600)
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-命运卜者强化')
@@ -144,7 +141,8 @@ class CwScreenFortune(SrOperation):
                  [t[:12] for t in texts], best_i + 1, texts[best_i][:20] or 'OCR空')
         # 选卡+确认链经工厂(pick-op-unify 批:机械链迁入
         # ``CwActionPickFortuneOp``,本 op 只决策;定位点决策半现算经 env
-        # 显式传入,确认钮定位 = op 类体内自读 screen_info)。派发实例携
+        # 显式传入,确认钮 = 动作 op 执行体 round_by_find_and_click_area
+        # 查找点击,全族统一)。派发实例携
         # 真实选中下标(上报 param 即真实选择;fallback/越界 = 0)。
         # round_wait 推进循环(不烧节点重试预算;确认未落地轮重走,无防御
         # 上限)。

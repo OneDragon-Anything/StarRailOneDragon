@@ -2,9 +2,9 @@
 文件,一 op 一文件 = op-layer.md :48;族契约与共享 env 见
 ``cw_overlay_pick_env``)。
 
-机械语义:点卡选中 → 确认(emit_overlay_confirm 机械交回,裁决词 =
-全词「我来当策划」);确认点击后立即自上报完整效果腿
-(``report_action_pick_planner_param``,leg_type/norm_item 经 env 透传)。
+机械语义:点卡选中 → 确认(建档「按钮-骇入确认」查找点击,确认钮查找
+全族统一 = ``round_by_find_and_click_area``);确认点击后立即自上报完整
+效果腿(``report_action_pick_planner_param``,leg_type/norm_item 经 env 透传)。
 """
 from __future__ import annotations
 
@@ -19,15 +19,11 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     game_state_from_ctx,
 )
-from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPickPlannerParam,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
     OverlayPickExecEnv,
-)
-from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-    emit_overlay_confirm,
 )
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_yinlang import (
     CwScreenYinLang,
@@ -40,8 +36,8 @@ class CwActionPickPlannerOp(SrOperation):
     """银狼策划 pick 确认链(统一动作工厂批4 迁入)。
 
     点卡选中(避开卡内「详情」按钮区的选中点几何归决策半 ``_card_point``
-    单一源)→ 确认机械交回(裁决词 = 全词「我来当策划」;
-    详情面板防御已拆,面板若真弹出归下一帧外循环自愈——用户裁定
+    单一源)→ 确认(建档「按钮-骇入确认」查找点击,全族统一;详情面板
+    防御已拆,面板若真弹出归下一帧外循环自愈——用户裁定
     2026-09-14)。**即时上报**(action_ops.md §1 增补 2):确认点击后立即
     一口写完整效果腿(equip 入栏+后果链 / upgrade 变换+档行 / unknown
     留证 / unrouted 兜底零写),无发射/落地两相、无证据闩——确认未生效
@@ -74,19 +70,14 @@ class CwActionPickPlannerOp(SrOperation):
         # = 详情弹出 = 点错所致,该面归选中点几何治理,面板检测是症状侧
         # 补丁)。面板若真弹出,后果归下一帧:本屏分发即门,外循环按当前画面
         # 重分派(详情 overlay 族分支/本 op 重走链)自愈。
-        # 4. 点确认+机械交回(防线语义由外循环重识别+预算耗尽 bail
-        # 承接,验关半拆除——用户裁定 2026-09-10:动作 op 禁验证)。
-        # 裁决词用全词「我来当策划」(入场锚同词,
-        # cw_yinlang_star_up.yml:26 live-verified)——短词「策划」
-        # 在艺术字漏读时可能假通过。
-        # 确认点主源 = 建档「按钮-骇入确认」中心(坐标单一真相源);area 缺失回退
-        # 兜底常量(megastar/invest_env 同款派生 + 缺损兜底模式)。
-        _confirm = (area_center(op.ctx, '按钮-骇入确认', CwScreenYinLang.CARD_AREA_SCREEN)
-                    or CwScreenYinLang.CONFIRM)
-        env.round_result = emit_overlay_confirm(
-            op, confirm_point=_confirm,
-            entry_keyword='我来当策划', tag='cw-planner',
-            press_time=op.CLICK_PRESS_TIME)
+        # 4. 点确认 = 建档「按钮-骇入确认」查找点击(round_by_find_and_click_area
+        # 全族统一,用户裁定 2026-09-22;不带 until = 动作 op 禁验证——防线
+        # 语义由外循环重识别+预算耗尽 bail 承接,验关半拆除——用户裁定
+        # 2026-09-10;area 缺失 = 显式失败交框架轮次,兜底常量 CONFIRM 随批
+        # 退役)。
+        env.round_result = op.round_by_find_and_click_area(
+            op.screenshot(), CwScreenYinLang.CARD_AREA_SCREEN, '按钮-骇入确认',
+            success_wait=1.0)
         # 立即自上报完整结果(确认点击后一口写
         # 腿型分派效果——增补 2:点完即按成功上报,零判效零证据闩;
         # leg_type/norm_item 经 env kwargs 形态保持)。

@@ -373,9 +373,10 @@ class CwScreenInvestEnv(SrOperation):
         from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
             OverlayPickExecEnv,
         )
-        _confirm = area_center(self.ctx, '按钮-确认', CwScreenInvestEnv.SCREEN_NAME) or CwScreenInvestEnv.CONFIRM
+        # 确认钮不进 env(确认查找 = 动作 op 执行体 round_by_find_and_click_area
+        # 全族统一,用户裁定 2026-09-22;env.confirm 变体随批退役)。
         _env = OverlayPickExecEnv(op=self, idx=pick_idx, target=target,
-                                  confirm=_confirm, entry_keyword='投资环境')
+                                  entry_keyword='投资环境')
         action_op_for(CwActionPickInvestEnvParam(idx=pick_idx, reason=reason),
                       self.ctx, _env).execute()
         # 本访问终结:结果已由动作 op 即时上报写入 game state(active_env

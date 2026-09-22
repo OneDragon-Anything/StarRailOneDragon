@@ -66,15 +66,17 @@ class CwActionPickPartnerOp(SrOperation):
             time.sleep(0.7)
             log.info('[cw-partner] 点选候选 %s(未选中提示在场=%s)',
                      op._pick_point, unselected)
-        # bug#1 吞(before_screenshot 移光标)→ overlay 不关 flat-loop(2026-08-06 r6 stall;手动 click 即关)。
-        confirm = op._find_text_center(op.screenshot(), '确认选择')
-        if confirm is None:
-            log.info('[cw-partner] 未找到 确认选择 → round_retry')
-            env.round_result = op.round_retry(wait=1)
+        # 确认 = 建档「按钮-确认选择」查找点击(round_by_find_and_click_area
+        # 全族统一,用户裁定 2026-09-22;OCR 找钮退役——screen_info 在册
+        # 即查,读缺 = round_retry 交框架轮次,禁兜底静默点击)。读缺分支
+        # 未发确认点击,不上报(retry 旁路语义,见模块头)。
+        confirm_result = op.round_by_find_and_click_area(
+            op.screenshot(), '货币战争-列车同行', '按钮-确认选择',
+            success_wait=1.0, retry_wait=1)
+        if not confirm_result.is_success:
+            log.info('[cw-partner] 未找到 按钮-确认选择 → round_retry')
+            env.round_result = confirm_result
             return self.round_success('确认点未找到(重试经旁路回传)')
-        op.ctx.controller.mouse_move(confirm)
-        op.ctx.controller.click(confirm)
-        time.sleep(1.0)
         op._confirm_pulses += 1
         # 确认 = 单屏单选的一次确认(用户澄清+建档证据更正 2026-09-14):
         # 本屏无第二画面、无「选强化目标」步——点选→确认 → 重入裁决即完。

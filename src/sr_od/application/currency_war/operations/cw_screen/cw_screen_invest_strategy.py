@@ -330,11 +330,11 @@ class CwScreenInvestStrategy(SrOperation):
 
         # 点最优卡的**卡名**选中(Y 从 screen_info「区域-卡名行」center 读;
         # 缺失兜底 CARD_CLICK_Y)+ 确认链经工厂派发(机械链 + 即时上报在
-        # 动作 op 内:定位点/确认钮中心决策半现算经 env 显式传入)。
+        # 动作 op 内:定位点决策半现算经 env 显式传入;确认钮 = 动作 op
+        # 执行体 round_by_find_and_click_area 查找点击,全族统一)。
         _sel = area_center(self.ctx, '区域-卡名行', CwScreenInvestStrategy.SCREEN_NAME)
         _click_y = _sel.y if _sel is not None else CwScreenInvestStrategy.CARD_CLICK_Y
         target = Point(choose_x, _click_y)
-        _confirm = area_center(self.ctx, '按钮-确认', CwScreenInvestStrategy.SCREEN_NAME) or CwScreenInvestStrategy.CONFIRM
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )
@@ -342,7 +342,7 @@ class CwScreenInvestStrategy(SrOperation):
             OverlayPickExecEnv,
         )
         _env = OverlayPickExecEnv(op=self, idx=pick_idx, target=target,
-                                  confirm=_confirm, entry_keyword='投资策略')
+                                  entry_keyword='投资策略')
         action_op_for(CwActionPickInvestStrategyParam(
             idx=pick_idx, norm_name=normalize_invest_name(chosen)), self.ctx,
             _env).execute()

@@ -31,7 +31,6 @@ from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import 
     OverlayPickExecEnv,
 )
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-    emit_overlay_confirm,
     safe_click,
 )
 from sr_od.context.sr_context import SrContext
@@ -43,10 +42,11 @@ class CwActionPickInvestOp(SrOperation):
     词表拆类后按 param 类型机械分派上报函数)。
 
     机械链同构:点选中位(safe_click bug#1 缓解)→ 固定等待 →
-    确认(emit_overlay_confirm 机械交回)。屏间差异全部经 env 显式
-    传入(定位点 = 决策半从各自建档 area 现算;确认钮中心 = 决策半
-    从各自「按钮-确认」现取;裁决词 = '投资环境'/'投资策略'),op
-    类体内零决策零读屏。
+    确认(建档「按钮-确认」查找点击,确认钮查找全族统一 =
+    ``round_by_find_and_click_area``;不带 until = 动作 op 禁验证)。
+    屏间差异全部经 env 显式传入(定位点 = 决策半从各自建档 area 现算;
+    裁决词 = '投资环境'/'投资策略' 组装面),op 类体内零决策(瞄准定位
+    查找非决策,屏名按宿主 ``env.op`` 屏类解析)。
 
     **即时上报**(action_ops.md §1 用户裁定增补 2):机械链发出后
     立即按 param 类型自上报完整结果并写入 game state(策略 →
@@ -75,11 +75,12 @@ class CwActionPickInvestOp(SrOperation):
         # 点卡选中(bug#1 缓解:click 前 mouse_move)→ 选中动画固定等待。
         safe_click(op, env.target, tag='cw-pick-invest')
         time.sleep(0.7)
-        # 确认 + 机械交回(验证废除:不读屏判「overlay 关没关」;裁决词 =
-        # 各屏入口标题,经 env.entry_keyword 传入)。
-        env.round_result = emit_overlay_confirm(
-            op, confirm_point=env.confirm,
-            entry_keyword=env.entry_keyword, tag='cw-pick-invest')
+        # 确认 = 建档「按钮-确认」查找点击(round_by_find_and_click_area
+        # 全族统一,用户裁定 2026-09-22;确认钮经 env 传入的变体退役——
+        # 确认钮不属机械参数,屏名按宿主 env.op 屏类解析,两屏 area 同名)。
+        env.round_result = op.round_by_find_and_click_area(
+            op.screenshot(), type(op).SCREEN_NAME, '按钮-确认',
+            success_wait=1.0)
         # 立即自上报完整结果(点完即写入 game state;session 与
         # game_state_from_ctx 同源自 ctx 取,kernel 禁自取上下文条款的
         # 调用方义务在此履行)。

@@ -27,7 +27,6 @@ from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import 
     OverlayPickExecEnv,
 )
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-    emit_overlay_confirm,
     safe_click,
 )
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_encounter import (
@@ -65,14 +64,15 @@ class CwActionPickEncounterOp(SrOperation):
         idx = action.idx
         card_left = area_center(op.ctx, '遭遇卡-其一', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.CARD_LEFT
         card_right = area_center(op.ctx, '遭遇卡-其二', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.CARD_RIGHT
-        select_btn = area_center(op.ctx, '按钮-选择', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.SELECT_BTN
         card = card_left if idx == 0 else card_right
         safe_click(op, card, tag='cw-encounter')
         time.sleep(0.8)
-        # 选择确认机械交回(裁决词 = 标题「遭遇节点」,4 字 vs 备战「遭遇」
-        # 标签 2 字,LCS 0.5<0.8 不误匹配;live 2026-08-15)。
-        env.round_result = emit_overlay_confirm(op, confirm_point=select_btn,
-                                                entry_keyword='遭遇节点', lcs_percent=0.8, tag='cw-encounter')
+        # 确认 = 建档「按钮-选择」查找点击(round_by_find_and_click_area 全族
+        # 统一,用户裁定 2026-09-22;不带 until = 动作 op 禁验证;area 缺失
+        # = 显式失败交框架轮次)。
+        env.round_result = op.round_by_find_and_click_area(
+            op.screenshot(), CwScreenEncounter.SCREEN_NAME, '按钮-选择',
+            success_wait=1.0)
         # 发射即写(遭遇扩围批,用户裁定 2026-09-21):机械链发出后立即
         # 写 chosen_encounter(值组装自容器 encounter payload 槽;暂态
         # 假值窗由外循环重派覆盖自愈,兑现回调消费防线 = 兑现后清)。
