@@ -286,14 +286,12 @@ def refresh_wave_is_refresh_only(actions: list) -> bool:
 def _shop_entry_read(op: SrOperation, match: 'CurrencyWarMatch',
                      ) -> tuple[GameStateReadReceipt | None, Any,
                                 OperationRoundResult | None]:
-    """商店入口观察读半部(段顶唯一读屏点的读+防抖+停机闸三段;
+    """商店入口观察读半部(段顶唯一读屏点的读+停机闸两段;
     生产读屏路径与观察 node 共用单一实现,零第二转录)。
 
     - read_game_state 直连(漏斗容器直写 + 原生回执);
-    - 店开入口防抖:开店转场/淡入帧可令收起锚 miss → shop payload 未入
-      容器(fresh 容器无上一牌面可沿用,decide 前置门即炸——实机买光店
-      五败定谳),有界重读(3 × 0.8s)直至 shop 入容器;仍缺 = 真离屏/
-      持续失读,交由决策前置门大声失败(禁静默空态);
+    - 单次读零防抖(用户裁定:店开防抖没必要——开店转场帧读缺交决策
+      前置门响亮失败,禁重读等待);
     - 商店未识别卡停机(2026-09-16 迁移+框架化,用户裁定「识别不到就是
       bug」):判据 = 读链终判(read_shop_cards 内部易误判重观察之后)仍含
       unknown 槽;处置 = stop_running(框架截图留证 + [stop] 日志行)+
@@ -308,17 +306,6 @@ def _shop_entry_read(op: SrOperation, match: 'CurrencyWarMatch',
     _entry = read_game_state(op.ctx, _entry_shot,
                              phase=PHASE_PREP_SHOP_OPEN,
                              screen_name=SHOP_SCREEN_NAME)   # ADR-0462 开店动作期
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        game_state_of as _gs_of_debounce,
-    )
-    for _attempt in range(3):
-        if _gs_of_debounce(match.session).shop.value is not None:
-            break
-        time.sleep(0.8)
-        _entry_shot = op.screenshot()
-        _entry = read_game_state(op.ctx, _entry_shot,
-                                 phase=PHASE_PREP_SHOP_OPEN,
-                                 screen_name=SHOP_SCREEN_NAME)
     _unk = [i + 1 for i, s in enumerate(_entry.shop)
             if getattr(s, 'kind', '') == 'unknown']
     if _unk:
@@ -599,7 +586,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
 
     ``pre_entry``(缺省 None = 既有行为零漂移):CwScreenBuyCards 观察 node
     已完成的段顶入口观察 ``(回执, 帧引用)``,首段复用不重读(迁移不增加
-    读屏;防抖与未识别卡停机闸已在观察 node 过闸);缺省 None = 段顶照旧
+    读屏;未识别卡停机闸已在观察 node 过闸);缺省 None = 段顶照旧
     现读(生产编排壳直调路径,行为逐位不变)。
 
     一次画面访问 = 轮「入口观察 + 逐动作决策循环」(ADR-0517 决策 1):
@@ -712,7 +699,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                              # 首段入口观察已由观察 node 完成时本段 park+读半在彼处,同样跳过)
         if _pre is not None:
             # 首段:入口观察已由 CwScreenBuyCards 观察 node 完成(_shop_entry_
-            # read:防抖与停机闸已过)——本段复用其回执,不重读(迁移不增加
+            # read:停机闸已过)——本段复用其回执,不重读(迁移不增加
             # 读屏);段头其余簿记照常。
             _entry, _entry_shot = _pre
             _pre = None
@@ -722,7 +709,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             op.park_cursor(after_wait=0.1)
             # ---- 入口观察(ADR-0517 决策 1/8:唯一读屏点,即对账)----
             # (观察源端口分支已随画面 op 基类退役删除:read_game_state
-            #  直连 = 唯一路径,读+防抖+停机闸三段单一实现 = _shop_entry_read。)
+            #  直连 = 唯一路径,读+停机闸两段单一实现 = _shop_entry_read。)
             _entry, _entry_shot, _stop = _shop_entry_read(op, match)
             if _stop is not None:
                 return (_stop, None)
@@ -1257,7 +1244,7 @@ class CwScreenBuyCards(SrOperation):
     hp 三件组传参链随黑板帧退役删除)。
 
     两 node 形态:观察 node = ①入口段(park + 入口观察 read_game_state
-    直连 + 店开防抖 3×0.8s + 未识别卡停机闸,读+防抖+闸三段单一实现 =
+    直连 + 未识别卡停机闸,读+闸两段单一实现 =
     :func:`_shop_entry_read`)→ CwScreenBuyCardsObs(入口回执同面镜像,
     挂实例属性供决策侧/测试消费;无容器摄入面——容器写端在观察漏斗,
     report 保持占位);决策动作 node = 波循环(:func:`run_buy_waves` 内核:
@@ -1277,9 +1264,9 @@ class CwScreenBuyCards(SrOperation):
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """①入口段:park + 入口观察 + 店开防抖 + 未识别卡停机闸。
+        """①入口段:park + 入口观察 + 未识别卡停机闸。
 
-        无对局(独立单跑)= 入口观察的防抖/停机闸需容器宿主(match
+        无对局(独立单跑)= 入口观察的停机闸需容器宿主(match
         .session)→ 空 obs 交决策动作 node,:func:`run_buy_waves` 兜底建核
         后段顶照旧现读(与旧单节点形态同序,行为零差)。"""
         match = getattr(self.ctx, 'cw_match', None)
