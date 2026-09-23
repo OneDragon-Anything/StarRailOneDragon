@@ -58,7 +58,7 @@
 
 ### 事件线 pick 族(12 行,按现役两档分型)
 
-分型依据 = `cw_action_registry.py` pick 族注册行现值 + `kernel/cw_action_report/` 各上报模块头 + `cw_overlay_pick_action.py` op docstring;分型成员判值以落码时点代码现值为准(迁移批落地前后盘面不同,禁沿用快照档成员)。现役**无分步两相行**(`flow/action_ops.md` §4.5 现文已申报「全族即时上报……两相与证据闩形态已全域清偿」)。
+分型依据 = `cw_action_registry.py` pick 族注册行现值 + `kernel/cw_action_report/` 各上报模块头 + `cw_overlay_pick_env.py` 族契约模块头与各 `cw_pick_<snake>_action.py` op docstring;分型成员判值以落码时点代码现值为准(迁移批落地前后盘面不同,禁沿用快照档成员)。现役**无分步两相行**(`flow/action_ops.md` §4.5 现文已申报「全族即时上报……两相与证据闩形态已全域清偿」)。
 
 **即时单相(5 行)**:
 

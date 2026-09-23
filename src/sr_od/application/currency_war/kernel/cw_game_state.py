@@ -1921,8 +1921,9 @@ class NodeBooks:
     每位面首帧重写时更新);plane_lengths_seen = 已揭晓位面长度序列
     (下标 i = 第 i+1 位面,进表即自适应)。取值时机 = cw_screen_prep
     每位面首帧采集写入(store_plane_table,唯一写端);读端 =
-    kernel/cw_plane_table(经 game_state_of 桥)。局级生命周期
-    (新局新容器 = 天然清零)。
+    kernel/cw_plane_table(经 game_state_of 桥)+ predicates.py
+    (mandate_v1 前窗谓词直读)+ cw_screen_battle_wait.py(L681
+    前置读者)。局级生命周期(新局新容器 = 天然清零)。
     """
 
     plane_node_table: list[str] | None = None

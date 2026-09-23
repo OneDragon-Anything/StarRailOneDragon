@@ -57,6 +57,7 @@
   - 星徽秘典:`operations/cw_screen/cw_screen_bookcard.py::CwScreenBookcard.act` 决策出口——守卫①:候选空 = 具名 round_fail 零盲发(§1.1 出口③);守卫②:decide_star_tome 返回词表外/None = 具名 round_fail 零盲发(§1.1 出口③);守卫③:pick.idx 越界 = 守卫断言 AssertionError(本节)。
   - 专家邀请函:`operations/cw_screen/cw_screen_expert_invite.py::CwScreenExpertInvite.act` 决策出口——守卫①:decide_expert_invite 返回词表外/None = 具名 round_fail 零盲发(§1.1 出口③);守卫②:pick.idx 域外 = 守卫断言 AssertionError(本节;词表特形值域 0..3 ∨ -1,-1 = 现金为王放行,域外负值禁并入现金分支)。
   - 选择伙伴(列车同行):`operations/cw_screen/cw_screen_partner.py::CwScreenPartner.act` 决策出口——守卫①:候选空 = 具名 round_fail 零盲发(§1.1 出口③);守卫②:decide_partner 返回词表外/None = 具名 round_fail 零盲发(§1.1 出口③);守卫③:pick.idx 越界 = 守卫断言 AssertionError(本节)。
+  - 遭遇节点二选一:`operations/cw_screen/cw_screen_encounter.py::CwScreenEncounter.act` 决策出口——守卫①:decide_encounter 返回词表外/None = 具名 round_fail 零盲发(§1.1 出口③);守卫②:pick.idx 越界 = 守卫断言 AssertionError(本节)。
 守卫零读屏。op 框架既有的重试/等待语义属 execute 执行实现层,不算第二道合法性门。
 - **对账唯一发生点 = 观察边界(硬规则)**:对账 = 观察 vs 逻辑的双态比对,唯一合法时点 = **观察数据经 report 进入 game state 的观察边界**(画面 op 观察 node / 动作自上报后的下一观察帧),由 game state 执行比对与仲裁(`kernel/cw_reconcile.py`;锚定机制属 game state 层内部实现);**其余任何状态/op 层不做双态比对,也不做店内原地重建**——动作级「发射即登记 + 下一帧对账」不属于双态比对(归观察侧闭环)。**摄入逻辑住屏文件**:该画面观察进容器的全部逻辑(写点/屏级门/派生/对账特判)住 kernel 屏文件(§2),op 层只组装 obs 并调用 report;依赖读帧的观察审计链(如备战羁绊显示核对)不迁 kernel,留守画面 op 观察 node(§2 辖域边界)。
 
