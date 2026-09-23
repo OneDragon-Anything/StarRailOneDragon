@@ -408,12 +408,20 @@ def decide_prep_frame(session: StrategySession, config: object,
     for _e in emitted:
         _e.action.route_tag = _e.reason
     actions = [e.action for e in emitted]
-    # 复检语境 = 生成期占用容器下标集(容器 kind 口直取,统一词表坐标系;
-    # P4 容器形:占席条目枚举下标 = 槽位下标)
+    # 复检语境 = 生成期占用**槽位表下标集**(动作参数坐标系,单一源 =
+    # kernel cw_vocab 坐标契约节:bench_idx = 定长 9 槽表下标,空槽保洞
+    # 不移位)。取法 = bench_view_slots_of 全槽表逐位 + slot_occupies
+    # kind 谓词——禁用 bench_entries_of(紧缩序)枚举下标代替:备战席
+    # 前部有洞时紧缩枚举下标 ≠ 槽位表下标,复检错杀合法引用(占用槽
+    # 被判空),发射被截空后世界不变 → 备战环「本帧无动作」活锁(sim
+    # 多种子实证:非验收 seed 首局 P1r1 凑息臂卖后部槽被错杀至看门狗;
+    # 实机同链路同受害)。语义与 P4 翻形前一致({全槽表枚举 | 槽非空})。
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_entries_of,
+        bench_view_slots_of,
         game_state_of,
+        slot_occupies,
     )
-    bench_slots = set(range(len(bench_entries_of(game_state_of(session)))))
+    bench_slots = {i for i, s in enumerate(bench_view_slots_of(game_state_of(session)))
+                   if s is not None and slot_occupies(s.kind)}
     return entry.truncate_frame_stable(actions, session,
                                        bench_slots=bench_slots)
