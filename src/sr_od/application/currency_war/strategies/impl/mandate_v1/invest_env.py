@@ -32,9 +32,10 @@ design §2.8)= 排除出候选。
 ——动作包装(CwActionPickInvestEnvParam/CwActionRefreshInvestCardsParam)
 留 flow(flow ``_decide_invest`` kind='env' 分支,2026-09-23 迁移迭代 3.2
 接线,与 kernel env 轴删除面同 commit 原子切换);:func:`decide_pick` =
-同一评分基线的纯选卡口(flow 同帧去重 memo 命中后的落选卡入口,sim 复用
-同吃)。kernel 侧旧 env 评估机器(裸分/送卡档/阵营 floor/经济域带/环境帧
-刷新判据)已随 3.2 删除面退役,本文件是投资环境选卡评序的唯一单一源。
+同一评分基线的纯选卡口(flow 同帧去重 memo 命中后的落选卡入口;为 sim
+复用预留)。kernel 侧旧 env 评估机器(裸分/送卡档/阵营 floor/经济域带/
+环境帧刷新判据)已随 3.2 删除面退役,本文件是投资环境选卡评序的唯一
+单一源。
 """
 from __future__ import annotations
 
@@ -347,7 +348,8 @@ def decide_pick(options: list[str], gs: GameState, locked_comp: str,
     独立成口的原因:decide 是纯函数,flow 同帧去重 memo 命中(handler
     刷新闸全败后的重调,design §2.9「建议帧首调发建议、紧随重调落选卡」)
     时再调 decide 仍返建议——落选卡走本口,同一评分基线保证零选卡漂移。
-    sim 复用同吃本口。
+    为 sim 复用预留(sim 投资面 = offer 采样 + inject_choices 直写容器,
+    现不经 decide_invest_env)。
     """
     env_priority = list(getattr(config, 'env_priority', []) or [])
     env_forbid = list(getattr(config, 'env_forbid', []) or [])
