@@ -214,7 +214,7 @@ class EnvEconomyEffect:
 
 @dataclass(frozen=True)
 class GiftGrant:
-    """投资环境的**具名发放**结构(送卡型估值;2026-09-12 invest-env 迭代,
+    """投资环境的**具名发放**结构(送卡/送道具估值;2026-09-12 invest-env 迭代,
     details/env-value-models.md §2.1.3;InvestmentEnv 同区 schema)。
 
     发放按「取环境当场到手(即时)」与「满足条件后到手(条件)」两分——估值只对
@@ -229,6 +229,10 @@ class GiftGrant:
     - chars_conditional: (角色, 条件描述原文摘要)二元组——注释性字段,不进判据
       (可读性 + 实采对账用);不可具名的随机发放(如战技点契约「随机战技点
       羁绊角色」)不入本字段,只随条件摘要留档
+    - items_immediate: 取环境当场发放的具名道具,数量 = 元素重复次数(效果原文
+      「获得N个【X】」直读)。道具非角色非装备,无 gain_* 原语与容器承载字段
+      (容器 Field 归 sim 统一容器字段判据辖域),消费端只产效果串 + 遥测申报;
+      首条 = 火药味(开局 2 个简易武装箱)
     - advisor: True=专家顾问入商店语义(特邀专家;创造一个可购买的购买选项,
       需再花店价且占购买预算,价值严格低于同档白得——资产账/可得性账分立,
       详设 §2.1.2 规则 2);False=直接送卡(契约,白得资产)
@@ -237,6 +241,7 @@ class GiftGrant:
     """
     chars_immediate: tuple[str, ...] = ()
     chars_conditional: tuple[tuple[str, str], ...] = ()
+    items_immediate: tuple[str, ...] = ()
     advisor: bool = False
     sell_value_note: str = ''
 
@@ -1457,16 +1462,17 @@ for _n, _eff in ENV_ECONOMY.items():
 _validate_env_economy()
 
 
-# ===== 环境送卡发放注册表(2026-09-12 invest-env 迭代;details/env-value-models.md §2.1)=====
-# 送卡型环境(契约 ×7 + 特邀专家 ×4)的具名发放登记,白名单制(表外环境一律无条目,
-# 禁从效果原文自动猜装,ENV_ECONOMY 同款纪律)。档位机器 = cw_comps.gift_hit_tier
-# (消费契约见其 docstring);档位是定序实现常数非金流期望(定序/基数分账),
-# 不经经济入口,消费位 = cw_events env 分支独立 max() 支(3.5 接线)。
+# ===== 环境具名发放注册表(2026-09-12 invest-env 迭代;details/env-value-models.md §2.1)=====
+# 送卡型环境(契约 ×7 + 特邀专家 ×4)与道具型环境(火药味)的具名发放登记,白名单制
+# (表外环境一律无条目,禁从效果原文自动猜装,ENV_ECONOMY 同款纪律)。档位机器 =
+# cw_comps.gift_hit_tier(消费契约见其 docstring);档位是定序实现常数非金流期望
+# (定序/基数分账),不经经济入口,消费位 = cw_events env 分支独立 max() 支(3.5 接线)。
 # 逐条语义盘点与分档落点表 = details/env-value-models.md §2.1.1/§2.1.2;锁 = 测试仓
 # test_cw_env_gift.py(G1 分档表/G2 失格门构造/G8 互斥断言半边)。
 ENV_GIFTS: dict[str, GiftGrant] = {
     # 效果原文对账 id(cw_invest_data.PLAZA_PORTALS):量子同频 125/公司 126/持续伤害 127/
     # 战技点 128/星核猎手 129/欢愉 1201/命运圣杯 1202/特邀专家 141/142/143/148
+    # 道具型:火药味 101
     '量子同频契约': GiftGrant(chars_conditional=(
         ('符玄', '花火和缇宝升星时随机获得【符玄】或【希儿】'),
         ('希儿', '花火和缇宝升星时随机获得【符玄】或【希儿】'),
@@ -1511,6 +1517,11 @@ ENV_GIFTS: dict[str, GiftGrant] = {
         ('银狼', '首次获得【银狼LV.999】时,顾问入商店'),
     ), advisor=True),
     '特邀专家:桑博': GiftGrant(chars_immediate=('桑博',), advisor=True),
+    # 道具通道首条(id 101 效果原文「开局时获得2个简易武装箱」直读;数量 =
+    # 元素重复次数)。道具 = 占席待开箱,非角色非经济,档位机器恒 off(不进
+    # 打分);消费 = on_env_gained 效果串 + 遥测申报(容器承载字段归 sim
+    # 统一容器字段判据辖域,现缺省不写)
+    '火药味': GiftGrant(items_immediate=('简易武装箱', '简易武装箱')),
 }
 
 # (GIFT_FLOOR_CORE/SHARED/ADVISOR_CORE 已删除,2026-09-23 迁移迭代 3.2:
@@ -1523,8 +1534,8 @@ def _validate_env_gifts() -> None:
 
     ① 孤儿键:键必须在 INVESTMENT_ENVS(沿 ENV_ECONOMY 先例,防版本更新改名/
     移除后静默失联);② 角色名漂移:发放角色(即时∪条件)必须在 CHARACTER_ROSTER
-    (版本漂移不静默,与孤儿键同批校验);③ 空发放集条目拒绝(既无即时又无条件
-    = 数据残缺,档位机器恒判 off,会把登记笔误放大成失格门误杀);④
+    (版本漂移不静默,与孤儿键同批校验);③ 空发放集条目拒绝(即时角色/条件角色/
+    即时道具全空 = 数据残缺,档位机器恒判 off,会把登记笔误放大成失格门误杀);④
     ``set(ENV_GIFTS) ∩ set(ENV_ECONOMY) = ∅``——单一环境只落一个估值结构,防
     双通道叠加(∩ ENV_POOL_REWRITE 半边由 3.6 品质改写建表时收全)。
     """
@@ -1538,8 +1549,10 @@ def _validate_env_gifts() -> None:
         if _drift:
             raise ValueError(
                 f"ENV_GIFTS 角色名漂移({_name!r} 注册表无此人,版本改名?):{_drift}")
-        if not _grant.chars_immediate and not _grant.chars_conditional:
-            raise ValueError(f"ENV_GIFTS 空发放集:{_name!r} 既无即时又无条件发放,数据残缺")
+        if not _grant.chars_immediate and not _grant.chars_conditional \
+                and not _grant.items_immediate:
+            raise ValueError(
+                f"ENV_GIFTS 空发放集:{_name!r} 即时角色/条件角色/即时道具全空,数据残缺")
     _overlap = set(ENV_GIFTS) & set(ENV_ECONOMY)
     if _overlap:
         raise ValueError(

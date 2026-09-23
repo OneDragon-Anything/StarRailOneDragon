@@ -80,6 +80,7 @@ GAIN_CHAIN_PRODUCER: str = 'CwGainChain'
 #: gain-chain.md §6)。
 DEFECT_OVERFLOW_TAKEN: str = 'gain_chain_overflow_slot_taken'
 DEFECT_ADVISOR_DECL: str = 'gain_chain_advisor_decl'
+DEFECT_ITEM_DECL: str = 'gain_chain_item_decl'
 DEFECT_PORTAL_REGISTER: str = 'gain_chain_portal_register_failed'
 DEFECT_STRATEGY_REGISTER: str = 'gain_chain_strategy_register_failed'
 
@@ -625,6 +626,10 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
     - **环境即时金腿**(世界规则,注册表结构化通道):环境经济
       ``economy.gold_instant`` 非零 → gold 直加(两执行面同源;旧 sim
       引擎私有腿随驱动反转退役,规则落本链为单一源);
+    - **道具通道**(``items_immediate``,如火药味的简易武装箱):道具 =
+      占席待开箱,非角色非装备,无 gain_* 原语与容器承载字段(容器 Field
+      归 sim 统一容器字段判据辖域)→ 只产效果串 ``item_gift:<名>`` +
+      遥测申报一行,开箱链由外循环画面分发承接(武装箱选择画面独立建档);
     - 查无效果(表外环境)= 安静不写(用户裁定),真值归观察覆盖。
       (欢愉契约条件腿不在本枚举:其正式模型 = 银狼策划选择上报落地相的
       条件腿 rider,住 ``cw_action_report.pick_planner``,触发事件 =
@@ -655,6 +660,14 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
                        evidence=f'on_env_gained:{_name}',
                        producer=GAIN_CHAIN_PRODUCER)
         effects.append(f'env_gift:{char}')
+    for item in grant.items_immediate:
+        # 道具无容器承载字段(容器 Field 归 sim 统一容器字段判据辖域),
+        # 申报行与 advisor 申报同型(best-effort 留证,不停机不告警)
+        _emit_defect(field_name='bench', expected=None,
+                     actual=f'{item} 已发放(道具通道申报,占席待开箱)',
+                     evidence=f'on_env_gained:{_name}', sig=sig,
+                     kind=DEFECT_ITEM_DECL)
+        effects.append(f'item_gift:{item}')
     return tuple(effects)
 
 

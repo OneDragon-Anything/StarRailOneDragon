@@ -122,6 +122,11 @@ merge_simulate 终态」——禁第二套语义。merge_simulate 是一次到�
   - `advisor=True`(特邀专家,顾问入商店):**不入席**——容器无商店池字段,身份
     只进遥测申报一行(`kind = DEFECT_ADVISOR_DECL`);`chars_immediate` 在 advisor
     行仅作顾问身份输入。
+  - **道具通道**(`items_immediate`,与 advisor 道无关、可叠加):道具 = 占席
+    待开箱,非角色非装备,无 gain_* 原语与容器承载字段(容器 Field 归 sim 统一
+    容器字段判据辖域)→ 每道具一效果串 `item_gift:<名>`(数量 = 元素重复次数)+
+    遥测申报一行(`kind = DEFECT_ITEM_DECL`);开箱链由外循环画面分发承接
+    (武装箱选择画面独立建档)。首条 = 火药味(id 101,开局 2 个简易武装箱)。
   - 欢愉契约条件腿**不在本枚举**:正式模型 = 银狼策划选择上报落地相的条件腿
     rider(`kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`,
     头号玩家选项触发 + 欢愉契约在册 → `gain_character`(火花/开拓者·欢愉随机
