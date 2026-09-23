@@ -30,6 +30,7 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     BRIEFING_SCREEN,
     _area_rect,
     _ocr,
+    lcs_resolve_strict,
 )
 from sr_od.context.sr_context import SrContext
 
@@ -150,9 +151,15 @@ def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
 #: 的下游消费者 ``boss_fit``/``cw_enemy_data.boss_tags`` 都按这套名字匹配)。
 #: 简报卡 boss 名可能是俗称/简称(如「电视机」vs 规范「造梦互动娱乐」)或 OCR 形变:
 #: ①俗称/简称经 ``cw_enemy_data.normalize_boss_name``(``BOSS_NICKNAMES`` 映射)
-#: 精确命中规范名;②不中再 LCS 相似匹配归一;任一读数两段皆不中 = 转换失败返回 None
+#: 精确命中规范名;②不中再 LCS 相似匹配归一(次高分差拒判,同 op-layer
+#: §1.1 全族统一);任一读数两段皆不中或歧义 = 转换失败返回 None
 #: (op-layer.md §1.1 观察标准化门失败语义;禁原名透传带病上报)。
 _LCS_CLEAN_THRESHOLD: float = 0.5   # LCS 占规范名长度比例下限(项目 OCR 名匹配通用档,见 AGENTS「OCR 文本匹配与修复」)
+#: LCS 歧义拒判分差(与阈值同量纲;过阈值的最高分与次高分之差低于本值
+#: = 注册表内歧义不可分辨 → 转换失败,禁直接取最高分):注册表含共享
+#: 词素族(造梦兄弟影业/造梦互动娱乐),近分必有误读禁猜;取值同投资
+#: 环境屏先例 0.15。
+_LCS_CLEAN_AMBIGUITY_MARGIN: float = 0.15
 
 
 def clean_boss_names_by_lcs(names: list[str]) -> list[str] | None:
@@ -160,11 +167,12 @@ def clean_boss_names_by_lcs(names: list[str]) -> list[str] | None:
 
     参考表 = ``cw_enemy_data.BOSS_MECHANICS`` key(见 :data:`_LCS_CLEAN_THRESHOLD` 上方说明)。
     两段转换(op-layer.md §1.1):①俗称/简称经 ``cw_enemy_data.normalize_boss_name``
-    精确命中规范名(输入已是规范名 → ①段原样返回);②不中再 LCS 相似匹配。
-    失败语义:任一读数两段皆不中 = 转换失败 → 返回 None,调用方 ``observe``
-    据此 round_fail 零写零上报交回重观察(禁原名透传带病上报——错名直接进 boss_fit 评分)。
+    精确命中规范名(输入已是规范名 → ①段原样返回);②不中再 LCS 相似
+    匹配(``lcs_resolve_strict``,阈值过滤 + 次高分差拒判)。
+    失败语义:任一读数两段皆不中 ∨ LCS 近分歧义 = 转换失败 → 返回 None,
+    调用方 ``observe`` 据此 round_fail 零写零上报交回重观察(禁原名透传
+    带病上报——错名直接进 boss_fit 评分)。
     """
-    from one_dragon.utils.str_utils import find_best_match_by_lcs
     from sr_od.application.currency_war.data.cw_enemy_data import (
         BOSS_MECHANICS,
         normalize_boss_name,
@@ -176,12 +184,16 @@ def clean_boss_names_by_lcs(names: list[str]) -> list[str] | None:
         if canon in BOSS_MECHANICS:
             out.append(canon)   # ①段:俗称/简称/已规范名精确命中,不进失败分支
             continue
-        idx = find_best_match_by_lcs(name, refs, lcs_percent_threshold=_LCS_CLEAN_THRESHOLD)
-        if idx is None:         # ②段:LCS 未过阈值
-            _log.warning('[cw!][briefing] boss 读数「%s」两段转换未中(①精确/②LCS %.2f),转换失败',
+        canon = lcs_resolve_strict(
+            name, refs,
+            threshold=_LCS_CLEAN_THRESHOLD,
+            ambiguity_margin=_LCS_CLEAN_AMBIGUITY_MARGIN)
+        if not canon:           # ②段:LCS 未过阈值 ∨ 近分歧义
+            _log.warning('[cw!][briefing] boss 读数「%s」两段转换未中'
+                         '(①精确未中/②LCS %.2f 未过阈或近分歧义),转换失败',
                          name, _LCS_CLEAN_THRESHOLD)
             return None
-        out.append(refs[idx])
+        out.append(canon)
     return out
 
 

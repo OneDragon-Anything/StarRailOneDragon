@@ -16,6 +16,7 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
+from one_dragon.utils.str_utils import longest_common_subsequence_length
 from sr_od.application.currency_war.kernel.cw_overlay_registry import (
     derive_upper_screens,
 )
@@ -64,6 +65,39 @@ def area_center(ctx: SrContext, name: str, screen_name: str = SCREEN_NAME) -> Po
     """
     rect = _area_rect(ctx, name, screen_name)
     return rect.center if rect is not None else None
+
+
+def lcs_resolve_strict(word: str, registry: list[str], threshold: float,
+                       ambiguity_margin: float) -> str:
+    """LCS 相似解析(观察标准化门第二段域级单一实现;规范 =
+    ``screens/op-layer.md`` §1.1 观察标准化门):逐注册表名算分
+    (LCS 长度 / 注册表名长度,与 ``find_best_match_by_lcs`` 同式)→
+    过阈值入榜 → **次高分差拒判**——最高分与次高分差值不足
+    ``ambiguity_margin`` = 注册表内歧义不可分辨 = 转换失败(禁直接取
+    最高分;先例 = 投资环境屏实机「击口概念股」对击破/追击概念股同分
+    0.8,卡面与注册表一一对应,近分必有误读);否则返回最高分标准名。
+    无过阈值命中同样返回 ''(转换失败)。
+
+    稳定排序:同分保注册表序(确定性不随遍历序漂移)。阈值与分差
+    常量住各屏(取值随注册表名长/误读形态校准),本函数只承载判法。
+
+    为什么不用 ``find_best_match_by_lcs``:其单返回值表达不了「最高 /
+    次高分差」判据,歧义时会静默取最高分(用户裁定 2026-09-22 全族
+    统一拒判)。
+    """
+    scored: list[tuple[float, str]] = []
+    for reg_name in registry:
+        pct = (longest_common_subsequence_length(word, reg_name)
+               / len(reg_name))
+        if pct >= threshold:
+            scored.append((pct, reg_name))
+    if not scored:
+        return ''
+    scored.sort(key=lambda t: t[0], reverse=True)   # 稳定排序:同分保注册表序
+    if (len(scored) > 1 and scored[0][0] - scored[1][0]
+            < ambiguity_margin):
+        return ''
+    return scored[0][1]
 
 
 def shop_card_click_points(ctx: SrContext) -> list[Point]:

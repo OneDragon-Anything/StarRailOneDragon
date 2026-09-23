@@ -39,13 +39,15 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from one_dragon.utils.str_utils import longest_common_subsequence_length
 from sr_od.application.currency_war.kernel.cw_investments import (
     INVESTMENT_ENVS,
     is_known_env,
     normalize_invest_name,
 )
-from sr_od.application.currency_war.kernel.cw_obs_core import area_center
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    area_center,
+    lcs_resolve_strict,
+)
 from sr_od.application.currency_war.kernel.cw_screen_report.invest_env import (
     CwScreenInvestEnvObs,
     report_screen_invest_env_obs,
@@ -160,23 +162,16 @@ class CwScreenInvestEnv(SrOperation):
 
     @classmethod
     def _lcs_resolve(cls, canon: str, registry: list[str]) -> str:
-        """LCS 兜底解析(阈值过滤 + 次高分歧义拒判):评分 = LCS 长度 /
-        注册表名长度(与 ``find_best_match_by_lcs`` 同式,同分取注册表序
-        首个);无过阈值命中 ∨ 最高/次高分差 < ``ENV_LCS_AMBIGUITY_MARGIN``
-        → 返回 ''(转换失败),否则返回最高分标准名。"""
-        scored: list[tuple[float, str]] = []
-        for reg_name in registry:
-            pct = (longest_common_subsequence_length(canon, reg_name)
-                   / len(reg_name))
-            if pct >= CwScreenInvestEnv.ENV_LCS_THRESHOLD:
-                scored.append((pct, reg_name))
-        if not scored:
-            return ''
-        scored.sort(key=lambda t: t[0], reverse=True)   # 稳定排序:同分保注册表序
-        if (len(scored) > 1 and scored[0][0] - scored[1][0]
-                < CwScreenInvestEnv.ENV_LCS_AMBIGUITY_MARGIN):
-            return ''
-        return scored[0][1]
+        """LCS 兜底解析(阈值过滤 + 次高分歧义拒判;本屏是全族统一先例,
+        判法实现已收敛为域级单一源 = ``cw_obs_core.lcs_resolve_strict``,
+        本方法只绑屏常量——评分 = LCS 长度 / 注册表名长度,同分取注册
+        表序首个;无过阈值命中 ∨ 最高/次高分差 <
+        ``ENV_LCS_AMBIGUITY_MARGIN`` → 返回 ''(转换失败),否则返回最
+        高分标准名)。"""
+        return lcs_resolve_strict(
+            canon, registry,
+            threshold=CwScreenInvestEnv.ENV_LCS_THRESHOLD,
+            ambiguity_margin=CwScreenInvestEnv.ENV_LCS_AMBIGUITY_MARGIN)
 
     def _match_gs(self):
         """局容器单例读口(读缺 = None,调用方按无授权失败安全处理)。"""

@@ -30,8 +30,9 @@ miss 未发 = round_fail 交回外循环按画面重分发)+ OCR 卡名行读数
 过滤,x 升序;空 = 变体字型/动画帧读缺 = 未发出通道 round_fail 交回
 外循环重派,禁盲点首卡兜底——选错不可逆,读数闸属观察处理)→ 观察
 标准化门(卡名经装备注册表两段转换:形变归一精确命中 → LCS 相似匹配,
-阈值常量住代码;任一候选转换失败 = 观察失败 round_fail 零写零上报交回
-重读,名字与坐标同进退;重复名合法逐候选独立归一——屏契约 =
+阈值常量住代码 + 次高分差拒判(最高分未明显高于次高分 = 歧义 = 转换
+失败,禁直接取最高分);任一候选转换失败 = 观察失败 round_fail 零写
+零上报交回重读,名字与坐标同进退;重复名合法逐候选独立归一——屏契约 =
 ``screens/box_pick.md`` §3)+ 坐标解点(候选 x + CARD_Y 避让几何,观察
 期一次解出)→ ``CwScreenBoxPickObs`` → ``report_screen_box_pick_obs``
 写槽 ``box_card_names`` / ``box_card_names_xy`` 落容器(「写槽以本访问
@@ -53,12 +54,15 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from one_dragon.utils.str_utils import find_best_match_by_lcs
 from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENT_ROSTER
 from sr_od.application.currency_war.kernel.cw_events import (
     normalize_registry_equip_name,
 )
-from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect, _ocr
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    _area_rect,
+    _ocr,
+    lcs_resolve_strict,
+)
 from sr_od.application.currency_war.kernel.cw_screen_report.box_pick import (
     CwScreenBoxPickObs,
     report_screen_box_pick_obs,
@@ -78,6 +82,13 @@ _EQUIP_ROSTER_LIST: list[str] = sorted(EQUIPMENT_ROSTER)
 #: 同装备名归一相似层门槛 = kernel/cw_events ``_EQUIP_NORM_LCS_FLOOR``,
 #: 段一唯一命中与段二最高分同门槛——降阈值 = 放行低质错配,选错不可逆)。
 _EQUIP_LCS_THRESHOLD: float = 0.75
+
+#: 观察标准化门第二段歧义拒判分差(与阈值同量纲;判据 = 过阈值的最高
+#: 分与次高分之差,低于本差 = 注册表内歧义不可分辨 → 转换失败,禁直接
+#: 取最高分):共享词素族阈值挡不住跨名借分,近分必有误读——实机先例
+#: = 投资环境屏「击口概念股」对击破/追击概念股同分 0.8;取值同屏先例
+#: 0.15(真命中最小分辨差留裕度)。
+_EQUIP_LCS_AMBIGUITY_MARGIN: float = 0.15
 
 
 class CwScreenBoxPick(SrOperation):
@@ -192,9 +203,11 @@ class CwScreenBoxPick(SrOperation):
         读出后、组装 obs 前逐候选两段转换——①形变归一
         (``normalize_registry_equip_name`` 注册表分层归一单一源,产出必
         为注册名)精确命中;②不中(归一返回 '')再 LCS 相似匹配
-        (``find_best_match_by_lcs``,阈值 = ``_EQUIP_LCS_THRESHOLD``)取
-        最高分;两段皆不中 = 转换失败,返回 None(调用方 round_fail 整
-        函数早退,零写零上报交回重读)。
+        (``lcs_resolve_strict``,阈值 = ``_EQUIP_LCS_THRESHOLD`` ∧ 最高
+        分与次高分差 ≥ ``_EQUIP_LCS_AMBIGUITY_MARGIN``——分差过近 =
+        注册表内歧义不可分辨,禁直接取最高分);两段皆不中 ∨ 歧义 =
+        转换失败,返回 None(调用方 round_fail 整函数早退,零写零上报
+        交回重读)。
 
         四卡可能同名(同装备多张)= 重复名合法观察面:逐候选独立归一,
         不适用「多候选命中同一注册名 = 转换失败」互斥判(该判辖选项
@@ -203,10 +216,10 @@ class CwScreenBoxPick(SrOperation):
         for name, x in cards:
             canon = normalize_registry_equip_name(name)
             if canon not in EQUIPMENT_ROSTER:
-                best = find_best_match_by_lcs(
+                canon = lcs_resolve_strict(
                     name, _EQUIP_ROSTER_LIST,
-                    lcs_percent_threshold=_EQUIP_LCS_THRESHOLD)
-                canon = _EQUIP_ROSTER_LIST[best] if best is not None else ''
+                    threshold=_EQUIP_LCS_THRESHOLD,
+                    ambiguity_margin=_EQUIP_LCS_AMBIGUITY_MARGIN)
             if not canon:
                 return None
             resolved.append((canon, x))

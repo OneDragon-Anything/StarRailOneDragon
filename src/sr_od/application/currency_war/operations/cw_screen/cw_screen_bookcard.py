@@ -8,8 +8,9 @@ OCR 卡名 → decide_star_tome 选卡(点卡即选,弹窗自关);入口 id_mark
 段直继承 SrOperation。观察 node = 入口门(标识-星徽秘典,miss = round_fail
 交回外循环重判)+ 卡阵营名一次读(全屏 OCR「X星徽」去后缀,x 升序;入口帧
 一次读,与现役决策体读同帧等价)→ 观察标准化门(阵营名经 FACTIONS 注册表
-两段转换:精确命中 → LCS 相似;任一候选转换失败/多候选命中同一注册名 =
-观察失败 round_fail 零写零上报交回重读,op-layer.md §1.1 观察标准化门)+
+两段转换:精确命中 → LCS 相似 + 次高分差拒判;任一候选转换失败/歧义/
+多候选命中同一注册名 = 观察失败 round_fail 零写零上报交回重读,
+op-layer.md §1.1 观察标准化门)+
 候选点解算(点 = OCR x 中心 + x 近邻「星徽卡-N」建档中心 y;任一建档缺失
 = 观察失败 round_fail 双域零写)→ ``report_screen_bookcard_obs`` 落容器
 ``star_tome_opts`` / ``star_tome_opts_xy``(空候选不写,闸在 report 内,
@@ -37,9 +38,11 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from one_dragon.utils.str_utils import find_best_match_by_lcs
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
-from sr_od.application.currency_war.kernel.cw_obs_core import area_center
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    area_center,
+    lcs_resolve_strict,
+)
 from sr_od.application.currency_war.kernel.cw_screen_report.bookcard import (
     CwScreenBookcardObs,
     report_screen_bookcard_obs,
@@ -61,6 +64,13 @@ _FACTION_NAMES: list[str] = sorted(FACTIONS)
 #: 装备名收敛批门槛 = 0.75——阵营名「昼之半神/夜之半神」仅一字差,降阈值
 #: = 放行邻项错配,点卡即选不可逆)。
 _FACTION_LCS_THRESHOLD: float = 0.75
+
+#: 观察标准化门第二段歧义拒判分差(与阈值同量纲;判据 = 过阈值的最高
+#: 分与次高分之差,低于本差 = 注册表内歧义不可分辨 → 转换失败,禁直接
+#: 取最高分):「昼之半神/夜之半神」共享词素族,单字误读可对两名同分
+#: 0.75(阈值为横杆),近分必有误读禁猜——点卡即选不可逆;取值同投资
+#: 环境屏先例 0.15。
+_FACTION_LCS_AMBIGUITY_MARGIN: float = 0.15
 
 
 class CwScreenBookcard(SrOperation):
@@ -108,8 +118,10 @@ class CwScreenBookcard(SrOperation):
         """观察标准化门(op-layer.md §1.1 观察标准化门):``_read_card_factions``
         读出后、组装 obs 前逐候选两段转换——①形变归一(去「星徽」后缀 +
         空白剥离,读链既有)后精确命中 ``data/cw_factions.py::FACTIONS``;
-        ②不中再 LCS 相似(``find_best_match_by_lcs``,阈值 =
-        ``_FACTION_LCS_THRESHOLD``);两段皆不中 = 转换失败,返回 None
+        ②不中再 LCS 相似(``lcs_resolve_strict``,阈值 =
+        ``_FACTION_LCS_THRESHOLD`` ∧ 最高分与次高分差 ≥
+        ``_FACTION_LCS_AMBIGUITY_MARGIN``——分差过近 = 注册表内歧义不可
+        分辨,禁直接取最高分);两段皆不中 ∨ 歧义 = 转换失败,返回 None
         (调用方 round_fail 整函数早退,零写零上报交回重读,禁带病上报)。
 
         星徽四选一为选项互斥屏:多候选命中同一注册名 = 识别质量不足以
@@ -120,10 +132,10 @@ class CwScreenBookcard(SrOperation):
         for name, x in cards:
             canon = name if name in FACTIONS else ''
             if not canon:
-                best = find_best_match_by_lcs(
+                canon = lcs_resolve_strict(
                     name, _FACTION_NAMES,
-                    lcs_percent_threshold=_FACTION_LCS_THRESHOLD)
-                canon = _FACTION_NAMES[best] if best is not None else ''
+                    threshold=_FACTION_LCS_THRESHOLD,
+                    ambiguity_margin=_FACTION_LCS_AMBIGUITY_MARGIN)
             if not canon:
                 return None
             resolved.append((canon, x))

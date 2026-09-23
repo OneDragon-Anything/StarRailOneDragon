@@ -31,7 +31,6 @@ from typing import TYPE_CHECKING, ClassVar
 from cv2.typing import MatLike
 
 from one_dragon.utils.log_utils import log
-from one_dragon.utils.str_utils import longest_common_subsequence_length
 from sr_od.application.currency_war.data.cw_chars import (
     CHARACTERS,
     chars_by_faction,
@@ -39,7 +38,10 @@ from sr_od.application.currency_war.data.cw_chars import (
 )
 from sr_od.application.currency_war.kernel.cw_bond_equips import equip_bond_grants
 from sr_od.application.currency_war.kernel.cw_events import MegastarOption
-from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    _area_rect,
+    lcs_resolve_strict,
+)
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
@@ -207,13 +209,13 @@ _MEGASTAR_FACTION: str = '盛会之星'
 
 
 class _MegastarGate:
-    """巨星候选名转换的常量与 LCS 兜底评分(标准化门第②③判宿主)。
+    """巨星候选名转换的常量与 LCS 兜底解析(标准化门第②③判宿主)。
 
     阈值/边距 = 投资环境屏观察标准化门同族起步值(命名对齐
     ``CwScreenInvestEnv.ENV_LCS_THRESHOLD``/``ENV_LCS_AMBIGUITY_MARGIN``),
-    随实测误读样本校准,单一源住本类。评分原语 = 手写循环逐名算分,禁
-    ``find_best_match_by_lcs``:后者只返回唯一下标、无次高分,歧义边距腿
-    (第③判)经它不可实现。
+    随实测误读样本校准,单一源住本类。评分判法实现 = 域级单一源
+    ``cw_obs_core.lcs_resolve_strict``(阈值过滤 + 次高分差拒判,全族
+    统一;本类只绑巨星匹配域常量)——原手写循环镜像副本随批退役。
     """
 
     # LCS 兜底过阈值线(归一候选对域名的 LCS 长度 / 域名长度;同族 0.75
@@ -226,23 +228,15 @@ class _MegastarGate:
 
     @classmethod
     def _lcs_resolve(cls, name: str, domain: list[str]) -> str:
-        """LCS 兜底解析(镜像投资环境 ``_lcs_resolve`` 实形):域内逐名
-        算分,过阈值入榜;稳定排序同分保域序(固定序,平分取序首 = 确定
-        性);无过阈值命中 ∨ 最高/次高分差 < ``MEGASTAR_LCS_AMBIGUITY_
-        MARGIN`` → 返回 ''(转换失败),否则返回最高分规范名。"""
-        scored: list[tuple[float, str]] = []
-        for reg_name in domain:
-            pct = (longest_common_subsequence_length(name, reg_name)
-                   / len(reg_name))
-            if pct >= cls.MEGASTAR_LCS_THRESHOLD:
-                scored.append((pct, reg_name))
-        if not scored:
-            return ''
-        scored.sort(key=lambda t: t[0], reverse=True)   # 稳定排序:同分保域序
-        if (len(scored) > 1 and scored[0][0] - scored[1][0]
-                < cls.MEGASTAR_LCS_AMBIGUITY_MARGIN):
-            return ''
-        return scored[0][1]
+        """LCS 兜底解析(判法单一源 = ``cw_obs_core.lcs_resolve_strict``,
+        本方法只绑本类常量):域内逐名算分,过阈值入榜;稳定排序同分保
+        域序(固定序,平分取序首 = 确定性);无过阈值命中 ∨ 最高/次高
+        分差 < ``MEGASTAR_LCS_AMBIGUITY_MARGIN`` → 返回 ''(转换失败),
+        否则返回最高分规范名。"""
+        return lcs_resolve_strict(
+            name, domain,
+            threshold=cls.MEGASTAR_LCS_THRESHOLD,
+            ambiguity_margin=cls.MEGASTAR_LCS_AMBIGUITY_MARGIN)
 
 
 def _normalize_char_name(name: str) -> str:
