@@ -1817,9 +1817,8 @@ def run_mandate(frame: MandateFrame,
                                         else:
                                             _arm_tag = 'must_spend'
                                             _count('must_spend_l3_prep_trigger')
-                                        # cost/auth_basis 分键装载(unified-action-
-                                        # factory 批2b 类合并翻转,design.md §2.6
-                                        # 定案③口径):cost = kernel xp_click_cost
+                                        # cost/auth_basis 分键装载(类合并
+                                        # 后口径):cost = kernel xp_click_cost
                                         # 现算(上方已算,失读函数内回退兜底);
                                         # auth_basis = 发射臂放行名分键(记录非指令,
                                         # action_key_exclude 不入幂等键)。
@@ -2018,8 +2017,8 @@ def run_mandate(frame: MandateFrame,
     # 装备动作放行判定 = 变换可能性两件套:
     # ①可穿存在性(m7_wearable_exists):owned 快照里有注册表已登记且非
     #   工具类的件。快照源 = 决策帧 owned_equips(P4 观察接线,T-171)。
-    # ②备战期闩(cw4_m7_equipped_phase)**随原子化退役**(批 2a 裁定,
-    #   依据 = design.md §2.6「计划构造 kernel 化 + 决策侧逐帧现算」):
+    # ②备战期闩(cw4_m7_equipped_phase)**随原子化退役**(依据 =
+    #   计划构造 kernel 化 + 决策侧逐帧现算):
     #   逐帧现算形态下发射面天然收敛——每件 CwActionWearEquipParam 执行后逻辑态
     #   (owned 摘件)落黑板,计划随帧收缩至空;同 phase 一次闩与「逐件
     #   序」互斥(闩在首件后挡死余件)。0 穿重发环(2026-09-03 组合壳

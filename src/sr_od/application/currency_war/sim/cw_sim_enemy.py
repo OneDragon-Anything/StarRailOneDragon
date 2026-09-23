@@ -1,7 +1,7 @@
 """sim 重做·敌人难度派生与 boss 名单(M19/M20)。
 
-设计正本 = ``docs/develop/sr_od/application/currency_war/changes/
-2026-09-15-sim-redesign/design.md`` §2.2 M19/M20,U25/U02 第一期口径:
+设计正本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
+(§2.2 敌人侧)第一期口径:
 
 - **M19**:难度账 = 纯派生函数(构成公式已定谳成分直接实现);基础
   难度逐节点曲线 = 候实机数据(补采前基础分量按 None 披露,禁插值;

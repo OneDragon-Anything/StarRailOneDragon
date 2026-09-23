@@ -1,7 +1,7 @@
 """买经验动作 op(CwActionLevelUpOp)——动作 op 重组批③ 换壳(原
 ``PrepLevelUpOp``,ActionOp ABC → 框架 SrOperation;机械执行后 **op 内
-直调自己的上报函数** ``report_action_level_up_param``,零分派,design.md
-§1.1/§1.2)。R6 定案④逐帧单击形态。非终结。
+直调自己的上报函数** ``report_action_level_up_param``,零分派,op-layer.md
+§1.2 动作 op 契约)。逐帧单击形态。非终结。
 
 命名申报:``CwActionLevelUpParam``/``CwActionLevelUpShopParam`` 同字段双
 类型共用本 op(注册表两行同指,上报 = 同一函数;原商店域
@@ -53,7 +53,7 @@ class CwActionLevelUpOp(CwOperation):
     def run(self) -> OperationRoundResult:
         """买经验单击(R6 逐帧单击形态:找钮 → 单击 → 固定等待)。
 
-        执行器授权面全删(design.md unified-action-factory §2.6 粒度定案):
+        执行器授权面全删(粒度定案:发射面逐击现算):
         授权击数推导/血闸整级授权/逐击金地板全部上移发射位(kernel
         ``clicks_to_next_level`` 现算击数 > 0 = 每帧发射前置)。升 N 击 =
         N 帧(决策循环逐帧重组,单击形态)。
@@ -100,7 +100,7 @@ class CwActionLevelUpOp(CwOperation):
                 game_state_of(session).effects.on_level_up()
         except Exception as e:   # noqa: BLE001  观测失败不阻塞对局
             log.warning('[cw][levelup] effect inventory 挂点失败(不阻塞): %s', e)
-        # —— 自上报(机械发出后;design.md §1.1):单击击数自算 = 1 ——
+        # —— 自上报(机械发出后;op-layer.md §1.2):单击击数自算 = 1 ——
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_level_up_param(

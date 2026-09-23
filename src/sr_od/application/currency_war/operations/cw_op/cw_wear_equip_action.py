@@ -1,7 +1,7 @@
 """穿装备动作 op(CwActionWearEquipOp)——动作 op 重组批③ 换壳(原
 ``WearEquipOp``,ActionOp ABC → 框架 SrOperation;机械执行后 **op 内
 直调自己的上报函数** ``report_action_wear_equip_param``,零分派,
-design.md §1.1/§1.2)。CwActionWearEquipParam 原子通路机械半(R2)。
+op-layer.md §1.2 动作 op 契约)。组合壳溶解后的原子通路机械半。
 非终结。
 
 机械执行零判效(用户裁定「动作 op = 机械执行」,落地判定归观察侧
@@ -85,7 +85,7 @@ class CwActionWearEquipOp(CwOperation):
             # 成功(直连旁路 port 检查,flow-seam §2);自上报照走
             pass
         ex._op.park_cursor(after_wait=0.1)
-        # —— 自上报(机械发出后;design.md §1.1)——
+        # —— 自上报(机械发出后;op-layer.md §1.2)——
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_wear_equip_param(

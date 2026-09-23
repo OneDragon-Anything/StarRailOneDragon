@@ -3,12 +3,13 @@
 ``action_op_class_for_type`` = 词表**类**级查询(注册完备锁消费口),
 ``action_op_for`` = 构造helper(ctx + param + env 组装新壳 op)。
 
-**op 形态(批③ design.md §1.1;sim 统一批换父)**:动作 op =
+**op 形态(sim 统一批换父)**:动作 op =
 ``CwActionXxxOp``,继承 CW 操作基类 ``CwOperation``
 (operations/cw_operation_base;原 ``ActionOp`` ABC 删除),构造
 签名 = ``(ctx, param, env)``,域依赖经 env 结构化传入(``PrepExecEnv``/
 ``ShopExecEnv``/``OverlayPickExecEnv``);op 内机械执行后直调自己的上报
-函数(design.md §1.2 映射表)。
+函数(映射单一源 = ``kernel/cw_action_report`` 同名上报函数,
+op-layer.md §1.2)。
 
 **收编状态**:商店域五行首批在册;备战域批3 收编在册;事件线 pick 族
 批4 收编在册。注册完备锁(测试 = sr-od-test test_cw_unified_action_4)
@@ -232,7 +233,8 @@ def action_op_class_for(action: Action) -> type[SrOperation]:
 
     消费面 = 终结判定与 ``terminal``/``terminal_wait`` 类属性读取
     (消费点经注册表读类属性,禁消费点私表)与执行器/商店落地门的
-    (ctx, param, env) 组装构造(design.md §1.3);行序语义同构造 helper。
+    (ctx, param, env) 组装构造(op 形态正本 = action_ops.md §1);
+    行序语义同构造 helper。
     词表外类型 AssertionError 响亮暴露(语义:非法返回
     = 策略器 bug,禁静默跳过;文案中性,注册表现跨域共用)。"""
     for cls, op_cls in _REGISTRY.items():
@@ -248,7 +250,7 @@ def action_op_for(action: Action, ctx: SrContext, env: object) -> SrOperation:
     (ctx, param, env) 组装,批③ 新壳构造签名)。
 
     消费面 = overlay act 段(经工厂分派保持「意图类型 → 点击链」单一
-    映射);执行器/商店落地门按 design.md §1.3 直接走
+    映射);执行器/商店落地门按 op 形态正本(action_ops.md §1)直接走
     ``action_op_class_for(action)(ctx, action, env=...)``。env 形参 =
     域执行环境结构化包(运行时不检查,项目既有风格)。词表外类型
     AssertionError 响亮暴露(语义同上)。"""

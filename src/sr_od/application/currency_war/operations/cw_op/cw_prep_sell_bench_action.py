@@ -1,7 +1,7 @@
 """卖备战席角色动作 op(CwActionSellBenchOp)——动作 op 重组批③ 换壳
 (原 ``PrepSellBenchOp``,ActionOp ABC → 框架 SrOperation;机械执行后
 **op 内直调自己的上报函数** ``report_action_sell_bench_param``,零分派,
-design.md §1.1/§1.2)。非终结。
+op-layer.md §1.2 动作 op 契约)。非终结。
 
 命名申报:词表类 ``CwActionSellBenchParam`` 全框架唯一活执行路径 = 本 op
 (原商店域 ``cw_sell_bench_action.SellBenchOp`` 生产不可达,随批③文件
@@ -33,7 +33,7 @@ class CwActionSellBenchOp(CwOperation):
     """卖备战槽角色:drag 槽中心 → 出售区(``drag_bench_to_sell`` 单一源;
     机械执行,源槽像素验重试拆除)。非终结。
 
-    自上报(design.md §1.1):机械发出后直调上报函数,session 透传
+    自上报(op-layer.md §1.2):机械发出后直调上报函数,session 透传
     (溢出腿 tracked 对称吸收)。
     """
 
@@ -67,7 +67,7 @@ class CwActionSellBenchOp(CwOperation):
         # 用户口述口径(screen_flow_timing.md #21,2026-09-02):卖出金币
         # 动画很快,等 1s 足够——批尾观察前补这段,防读到金币动画帧。
         time.sleep(1.0)
-        # —— 自上报(机械发出后;design.md §1.1)——
+        # —— 自上报(机械发出后;op-layer.md §1.2)——
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_sell_bench_param(

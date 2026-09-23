@@ -1,7 +1,7 @@
 """卖上阵角色动作 op(CwActionSellDeployedOp)——动作 op 重组批③ 换壳
 (原 ``SellDeployedOp``,ActionOp ABC → 框架 SrOperation;机械执行后
 **op 内直调自己的上报函数** ``report_action_sell_deployed_param``,零分派,
-design.md §1.1/§1.2)。非终结。"""
+op-layer.md §1.2 动作 op 契约)。非终结。"""
 from __future__ import annotations
 
 import time
@@ -60,7 +60,7 @@ class CwActionSellDeployedOp(CwOperation):
         ex._drag(src, sell_point(ex._ctx))
         ex._track_remove_deployed(row, slot_no)
         time.sleep(1.0)   # 用户口述口径 #21:卖出动画 1s
-        # —— 自上报(机械发出后;design.md §1.1):装备回收/退款单点 ——
+        # —— 自上报(机械发出后;op-layer.md §1.2):装备回收/退款单点 ——
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_sell_deployed_param(

@@ -176,11 +176,9 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     #  面退役,考古走 git。)
     'node_screen_refresh': 4,  # 节点屏刷新计数组(§3.4.1-§3.4.4;遭遇/补给/环境/策略逐卡)
                                # 域版本 4 = encounter 侧换剩余语义(旧「已用」计数与
-                               # per-visit 位退役,新增
-                               # 顶层字段 encounter_refresh_left;迭代
-                               # changes/2026-09-21-event-refresh-unify-supply-pick 3.3);
+                               # per-visit 位退役,新增顶层字段 encounter_refresh_left);
                                # 域版本 3 = supply 侧换剩余语义(旧「已用」计数退役,
-                               # 新增顶层字段 supply_refresh_left;同迭代 3.2)
+                               # 新增顶层字段 supply_refresh_left)
     'invest_opts': 1,          # 投资双画面候选槽(§3.4 终态契约八新槽;str 原文名)
     'megastar_opts': 2,        # 盛会之星候选槽(list[MegastarOption],typed)
                                # 域版本 2 = MegastarOption 扩 xy 点击坐标
@@ -876,8 +874,8 @@ def _route_logic_mismatch(*, field_name: str, expected: Any, actual: Any,
        台账直接返回(现役抑制语义);
     3. 真失配 → 缺陷行 + ``[cw!]`` 告警 + 安灯钩子(槽缺省关)。
 
-    覆盖照常(观察赢),本函数只管留证与处置;处置序设计取舍见迭代
-    design.md §2.3。"""
+    覆盖照常(观察赢),本函数只管留证与处置;处置序设计取舍见
+    game_state/README.md 观察对账与安灯节。"""
     entry = lookup_mismatch_exempt(sig.screen, field_name, logic_evidence)
     if entry is not None:
         _emit_defect(field_name=field_name, expected=expected, actual=actual,
@@ -2345,9 +2343,7 @@ class GameState:
     # 银狼LV.999 当前费用档,值域 {3,4,5};写端 = pick_planner 升费腿 /
     # deploy_move 上阵变费腿(仅此两个动作报告);读口唯一 =
     # cw_economy.effective_cost;未观察(None)= 未触发任何变换,语义档 =
-    # 起始 3 费。同名即同档——全场同档,无 per-unit 维度(口述·权威
-    # 2026-09-18,记录处 = changes/2026-09-18-yinlang-exclusive-loop
-    # /design.md §2.0)。
+    # 起始 3 费。同名即同档——全场同档,无 per-unit 维度。
     lv999_cost_tier: Field[int] = field(default_factory=Field)
 
     # —— 结算(战斗后真值覆盖的数据源)——
@@ -3130,9 +3126,8 @@ def _node_key_for_ord(ordinal: int, kind: str) -> NodeKey:
 
 
 def tick_effect_boundary(gs: GameState) -> None:
-    """效果推进段(迁移迭代 changes/2026-09-15-effect-ledger-self-advance
-    design §2.1 a-f;现接线位 = :func:`advance_node_effective` 尾段(迭代
-    2026-09-20-node-advance-action-report),本函数独立可调供直测/sim)。
+    """效果推进段(现接线位 = :func:`advance_node_effective` 尾段,
+    本函数独立可调供直测/sim)。
 
     - 推进闸:effective None → 整段跳过(「未观察不当真进节点」守卫,禁虚耗
       余期/虚累余额);

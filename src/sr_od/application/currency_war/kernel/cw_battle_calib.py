@@ -1,15 +1,15 @@
-"""货币战争战斗校准与板面聚合函数族(自 cw_sim.py 下沉;DESIGN §3.3-②/§4.3;
+"""货币战争战斗校准与板面聚合函数族(自 cw_sim.py 下沉;
 等价锚=同 seed 决策序列既有锁面)。
 
-下沉闭包 = DESIGN §4.3「校准+聚合族」:回退层胜负面(node_win_p/
+下沉闭包「校准+聚合族」:回退层胜负面(node_win_p/
 battle_delta/boss_delta/boss_settle_delta/node_delta)、结算成型度键
 (_settle_rung/deployed_star_depth)、P2 参数化存活层(p2_* 族,注入
 P2CombatCalib)、板面聚合族(_board_factions_of/_board_counts_of/
 _engines_count/_transition_formed/_first_*_round/
 _battles_before_engines/_deployable_depth/_roll_rotation)。
 
-sim 重做删除面收口(sim-redesign design.md §2.4.1/§2.4.4):节点序列
-采样 sample_node_sequence(U19:42 局零反例,序列用地面真值表)与
+sim 重做删除面收口(考古归 git):节点序列
+采样 sample_node_sequence(42 局零反例,序列用地面真值表)与
 方向观测判据 _direction_established/_target_comp_label(判据本属
 策略器;删时 src/测试仓已零消费方)随裁定删除——kernel 只留特征
 函数;节点序列真值 = sim/cw_sim_plane_schedule.py。

@@ -45,8 +45,8 @@ def lv9_stop(level: int, level_max: int) -> bool:
 def xp_ledger_stop(xp_progress: tuple[int, int] | None,
                    level_max: int) -> bool:
     """XP 期望账本升级停判据(lv9_stop 的轮内盲区补位,与 lv9_stop
-    同位合取消费;语义锚 = design.md unified-action-factory §2.6
-    CwActionLevelUpParam 定案④「推进算子单一源 = xp_apply_clicks」)。
+    同位合取消费;语义锚 = 推进算子单一源 ``kernel/cw_economy.
+    xp_apply_clicks``)。
 
     为什么需要(病灶实测):商店域逻辑态直写只写 xp 元组不写 level
     域(升档等观察覆盖,kernel/cw_action_report 上报函数族

@@ -1,7 +1,9 @@
 """工具消耗动作 op(CwActionToolUseOp)——动作 op 重组批③ 换壳(原
-``ToolUseOp``,ActionOp ABC → 框架 SrOperation,design.md §1.1/§1.2)。
+``ToolUseOp``,ActionOp ABC → 框架 SrOperation,op-layer.md §1.2 动作
+op 契约)。
 机械执行后 **op 内直调自己的上报函数**(七工具参数共用机械半,上报 =
-各自容器写函数,按 param 类型一行解析;design.md §1.2;tool-gain-report
+各自容器写函数,按 param 类型一行解析;零分派语义 = op-layer.md §1.2;
+tool-gain-report
 迭代起上报 = 机械执行直接上报写容器,容器写正本 =
 ``kernel/cw_action_report/tool_use``)。非终结。
 
@@ -69,7 +71,7 @@ class CwActionToolUseOp(CwOperation):
     }
 
     #: 工具词表类 → 自身上报函数(每动作一个具名接口;op 组装后按自身
-    #: param 类型一行解析,零分派语义 = 直调自己的上报,design.md §1.2)。
+    #: param 类型一行解析,零分派语义 = 直调自己的上报,op-layer.md §1.2)。
     _REPORT_BY_CLASS: ClassVar[dict[type, Callable]] = {
         CwActionFurnaceUseParam: report_action_furnace_use_param,
         CwActionPrivilegeCardUseParam: report_action_privilege_card_use_param,

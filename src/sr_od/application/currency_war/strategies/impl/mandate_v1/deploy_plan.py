@@ -1,7 +1,6 @@
 """部署计划策略层单一源(mandate_v1;落位决策权归策略实现)。
 
-设计依据 = docs/develop/sr_od/application/currency_war/changes/
-2026-09-20-benchchar-retirement/design.md §2.2(落位决策权归策略层):
+设计原则(落位决策权归策略层):
 **谁上场、去哪一排、落哪个槽,全部由本模块决定;框架(执行链/写侧)
 在落位上零决定**——选人/排路由/槽位选择的本模块单一源见下。
 
@@ -10,7 +9,7 @@
 - 排路由(:func:`deploy_row_pref`,三级):comp 站位覆盖(``Comp.char_
   positions`` 字段契约「comp 特定站位要求,覆盖命途默认」)> 注册表
   ``get_char(char_id).position_pref()`` 派生 > back 兜底——旧链路备战
-  候选恒按后排、注册表偏好被丢弃的行为变化申报项(design §2.2 申报 1)
+  候选恒按后排、注册表偏好被丢弃的行为变化申报项
   在此落地;
 - 前排保证(kernel 规则随迁):pref=back ∧ 前排全空(出战硬要求前排有
   角色)时队列后方真 front 候选先提,无 front 候选才强转当前件;

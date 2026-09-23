@@ -21,7 +21,7 @@ class CwEntryEnter(CwOperation):
     → 关一次性弹窗(「点击空白处关闭」类 / 版本公告轮播,见 wait_lobby)→ 货币战争大厅。
 
     repo guide_data / screen_info 尚无货币战争,故 TAB 用现有「星际和平指南-TAB-旷宇纷争」area,
-    其余用 OCR 点击(非 GuideTransport)。详见 .debug/temp/currency_war/design.md。
+    其余用 OCR 点击(非 GuideTransport)。
     """
 
     # 点空白关闭「点击空白处关闭」类弹窗的区域(避开中央内容)

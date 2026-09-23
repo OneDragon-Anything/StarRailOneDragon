@@ -1,8 +1,7 @@
 """统一观察对账·失配处置策略(豁免注册表 + 安灯钩子槽)。
 
 **正本指针** = ``docs/develop/sr_od/application/currency_war/game_state/README.md``
-(观察对账与安灯节;迭代设计 =
-``docs/develop/sr_od/application/currency_war/changes/2026-09-16-unified-obs-reconcile/design.md``)。
+(观察对账与安灯节)。
 
 失配 = ``GameState.observe()`` 观察覆盖 logic 值不一致(逻辑态被实读证伪
 = bug:此前观察态错 / 逻辑推算代码错),处置三分流住在观察写入口

@@ -18,7 +18,7 @@ kernel/cw_vocab,坐标系裁定见其模块头);本执行器 = **执行坐标边
 机械动作(CwActionWearEquipParam/工具原子类/CwActionOpenBoxParam/CwActionOpenTomeParam/CwActionOpenBookcardParam)的
 row/slot 字段 = 画面物理排槽位 1 基(动作参数定义,拖点直取 area,
 不经换算)。
-统一动作工厂批3 收编(design.md unified-action-factory §2.4):动作级
+统一动作工厂收编:动作级
 机械执行体已逐字迁入 ``operations/cw_op/`` 备战 op 类(一 op 一文件),
 分派改查单一注册表 ``action_op_for``(_dispatch_action);本模块保留
 runner 包络(W209j 刹车/执行点金差/回执登记/validate 与机械原语)与
@@ -229,7 +229,7 @@ def _expose_unhealthy_tracked_slots(tracked: list) -> None:
 
 @dataclass
 class PrepExecEnv:
-    """备战动作 op 执行环境(动作 op 重组批③;design.md §1.1 env 条款)。
+    """备战动作 op 执行环境(域依赖结构化包)。
 
     域依赖结构化包,op 构造时传入(原 execute 时刻注入改为构造时)。
     ``executor`` = 备战 runner 包络引用(坐标槽位表/机械原语/tracked 账
@@ -415,7 +415,8 @@ class PrepActionExecutor:
         if isinstance(action, CwActionStartBattleParam):
             # 出战点击事实(出战域重设计,T-286):真执行链 = 注册表分派
             # CwActionStartBattleOp 点击序列,round 结果成功态即发出事实
-            # (round_fail = 找不到按钮/area 缺失,design.md §1.1);
+            # (round_fail = 找不到按钮/area 缺失,在册例外 =
+            # action_ops.md §2.3);
             # 执行缝(假环境)不经真分派 = applied 真值(F11 双轨申报)。
             self.last_launch_ok = emitted
         if emitted:
@@ -448,7 +449,7 @@ class PrepActionExecutor:
             except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
                 log.warning('[cw][s1-route] 清键门失败(不阻塞): %s', e)
         # (动作逻辑效果推进已随动作 op 重组批③ 收编进各 op 自上报
-        #  (op 内直调自己的上报函数,design.md §1.1):原执行器
+        #  (op 内直调自己的上报函数,op-layer.md §1.2):原执行器
         #  apply_op_effect 调用删除 = 双记防线——op 已写,本处再写即双记。)
         log.info('[cw][exec] %s → %s', type(action).__name__,
                  detail or '(无摘要)')
@@ -564,9 +565,9 @@ class PrepActionExecutor:
         return 0
 
     def _dispatch_action(self, action: CwAction) -> tuple[str, bool]:
-        """动作分派(动作 op 重组批③:经注册表类级解析 + (ctx, param,
+        """动作分派(经注册表类级解析 + (ctx, param,
         env) 组装新壳 op ``CwActionXxxOp(SrOperation)``,执行取 round
-        结果;design.md §1.3)。
+        结果;op 形态正本 = flow/action_ops.md §1)。
 
         返回 ``(机械执行摘要, 是否实际发出)``。emitted = round 结果成功态
         (``round_success`` = 已发出;``round_fail`` = 定位失败等未发出

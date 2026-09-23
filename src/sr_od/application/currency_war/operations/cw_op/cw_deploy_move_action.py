@@ -1,7 +1,7 @@
 """部署动作 op(CwActionDeployMoveOp)——动作 op 重组批③ 换壳(原
 ``DeployMoveOp``,ActionOp ABC → 框架 SrOperation;机械执行后 **op 内
 直调自己的上报函数** ``report_action_deploy_move_param``,零分派,
-design.md §1.1/§1.2)。bench → 上阵单步拖拽(腾席链专用)。非终结。
+op-layer.md §1.2 动作 op 契约)。bench → 上阵单步拖拽(腾席链专用)。非终结。
 
 机械执行零判效(用户裁定「动作 op = 机械执行」,落地判定归观察侧
 reconcile 对账):拖后不做像素验证。拖拽静默不生效属执行环境噪声,由
@@ -83,7 +83,7 @@ class CwActionDeployMoveOp(CwOperation):
         # 发出即记账:拖拽发出即 tracked 按载荷落位记账(机械执行零判效;
         # 载荷槽 = 拖点,与容器写侧同源)。
         ex._track_move_deployed(action.bench_idx, row, slot_no)
-        # —— 自上报(机械发出后;design.md §1.1)——
+        # —— 自上报(机械发出后;op-layer.md §1.2)——
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_deploy_move_param(

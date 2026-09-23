@@ -795,7 +795,7 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
     return PlannerPick(idx=best_idx, reason=best_reason or '全部未识别,兜底左卡')
 
 
-# ===== 银狼策划腿型判定单源(记账分类器;银狼闭环迭代 design.md §2.1①)=====
+# ===== 银狼策划腿型判定单源(记账分类器)=====
 # 职责边界:本分类器只答「这张卡落在哪条记账腿」(动作上报记账用),与
 # :func:`decide_planner` 的选卡打分关键词是两套语义——决策打分词表(升费
 # 优先级等)表达「选哪个」,本分类词表表达「选中后怎么记账」,二者

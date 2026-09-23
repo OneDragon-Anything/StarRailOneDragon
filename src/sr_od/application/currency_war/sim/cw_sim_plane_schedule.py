@@ -1,7 +1,7 @@
 """sim 重做·位面结构与节点序列(M03)。
 
-设计正本 = ``docs/develop/sr_od/application/currency_war/changes/
-2026-09-15-sim-redesign/design.md`` §2.2 M03 / U19 定稿口径:
+设计正本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
+(§3.3 位面过渡/节点序列)现役口径:
 
 - P1 = 9 节点、P2 = 7 节点,序列 = 默认环境地面真值表
   (``docs/game/currency_war/research/plane_schedule_observed.md``,

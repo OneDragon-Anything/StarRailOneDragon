@@ -1,5 +1,5 @@
 """刷新商店动作 op(CwActionRefreshShopOp)——动作 op 重组批③ 换壳
-(ActionOp ABC → 框架 SrOperation;design.md §1.1/§1.2)。一 op 一文件。
+(ActionOp ABC → 框架 SrOperation;op-layer.md §1.2 动作 op 契约)。一 op 一文件。
 
 **终结跳写申报**:金仍不写;刷后牌面 = ``write_logic_rand`` 随机态
 (2026-09-21 用户裁定,观察赢;真值 = 下一入口观察)。**刷新计数由本

@@ -1,7 +1,7 @@
 """sim 重做·特殊角色规则(M21)。
 
-设计正本 = ``docs/develop/sr_od/application/currency_war/changes/
-2026-09-15-sim-redesign/design.md`` §2.2 M21、U26 第一期定稿口径:
+设计正本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
+(§2.2 特殊角色判据)第一期定稿口径:
 
 - **银狼LV.999**(注册表单条目 ``data/cw_chars.py``,起始 3 费):当前
   费用档 = 容器推演状态 ``gs.lv999_cost_tier``(读口唯一 =

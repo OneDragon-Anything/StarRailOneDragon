@@ -1,7 +1,7 @@
 """买牌动作 op(CwActionBuyCardOp)——动作 op 重组批③ 换壳
 (ActionOp ABC → 框架 SrOperation,构造 = (ctx, param, env);机械执行后
 **op 内直调自己的上报函数** `report_action_buy_card_param`,零分派,
-design.md §1.1/§1.2)。一 op 一文件。
+op-layer.md §1.2 动作 op 契约)。一 op 一文件。
 
 机械执行零判效(用户裁定「动作 op = 机械执行」,落地判定归观察侧
 reconcile 对账):点击后零像素验证零读屏,发出即记账。点击静默不生效属
@@ -52,13 +52,13 @@ class CwActionBuyCardOp(CwOperation):
     """买一张 = 一个动作 op(满栏例外下一击多张仍一个 op,张数由游戏
     规则定、上报按 merge_buy_k 计——方案 A 补裁)。
 
-    自上报(design.md §1.1):机械发出后直调
+    自上报(op-layer.md §1.2):机械发出后直调
     ``report_action_buy_card_param``,executed.bought_count 直接取
     ``ledger.buy_purchases[-1]``(执行落地事实,单一源);出参
     LogicOutcome 忽略(live 调用点忽略出参 = 行为零变化)。
     """
 
-    #: 非终结动作(每类显式声明,无基类缺省;design.md §1.1)。
+    #: 非终结动作(每类显式声明,无基类缺省;op-layer.md §1.2)。
     terminal = False
     terminal_wait = 0.0
 
@@ -183,7 +183,7 @@ class CwActionBuyCardOp(CwOperation):
             ledger.buy_purchases.append(BuyPurchase(
                 name=action.card.name, star=action.card.star,
                 count=_cnt, unit_cost=action.card.cost or 0))
-        # —— 自上报(机械发出后;design.md §1.1):k 取执行落地事实 ——
+        # —— 自上报(机械发出后;op-layer.md §1.2):k 取执行落地事实 ——
         _k = 1
         if action.card.name and ledger.buy_purchases:
             _k = max(1, int(ledger.buy_purchases[-1].count or 1))

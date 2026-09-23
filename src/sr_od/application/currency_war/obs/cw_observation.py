@@ -1814,8 +1814,7 @@ def resolve_cost_star(badge_cost: int | None, base_cost: int) -> tuple[int, int,
     语义(费用倍数体系 = 3^(星级−1):1★×1/2★×3/3★×9,merge_mechanics
     §2.6;星级 = 读数 ÷ 基准费)。**基准费 = 当前费用档**——银狼LV.999
     升费后档 ≠ 注册表起始费,调用方传
-    ``cw_economy.effective_cost``(设计 = changes/2026-09-20-yinlang-
-    starup-accounting/design.md §2.3;普通角色两值恒等,零行为差):
+    ``cw_economy.effective_cost``(唯一读口;普通角色两值恒等,零行为差):
     - badge 缺失 / base_cost≤0(名字未识别)→ 按基准费兜底,
       cost_source='roster_fallback';
     - badge = base_cost × 倍数,倍数 ∈ {1,3,9} → star 1/2/3,cost = 读数
@@ -1935,8 +1934,8 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
             record_defect,
         )
         # 当前费用档读口(银狼LV.999 升费后商店费用除数):局外/无 match
-        # = None → 调用点回退注册表起始费(设计 = changes/2026-09-20-
-        # yinlang-starup-accounting/design.md §2.3 穿线定点)。
+        # = None → 调用点回退注册表起始费(读口唯一 = cw_economy.
+        # effective_cost)。
         _gs = game_state_from_ctx(ctx)
         out: list[ShopSlot] = []
         for i in range(1, 6):

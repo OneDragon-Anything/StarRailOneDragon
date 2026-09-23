@@ -8,7 +8,7 @@
 备战观察视图 PrepObservation 与采晶矿挑选 kernel 纯函数。坐标系裁定 =
 容器槽位表下标(族A 口径,0 基)——发射面从容器槽位表
 读口直接取下标构造动作;物理槽位号仅存观察写入边与执行坐标边两边界
-(design.md §2.6 换算归属)。例外 = 坐标参数化机械动作(CwActionWearEquipParam/
+(物理槽位→槽位表下标换算归执行边纯函数)。例外 = 坐标参数化机械动作(CwActionWearEquipParam/
 工具原子类):row/slot 字段按定义 = 画面物理排槽位 1 基(执行器拖点
 直取画面 area;字段注释逐类声明)。
 
@@ -532,8 +532,8 @@ class CwActionOpenTomeParam:
 class CwActionOpenBookcardParam:
     """开书册卡(点槽「开启」→ 弹专家邀请函五选一;开卡即腾席)。
 
-    书册卡 = 备战席占槽道具(与补给箱/秘密典籍并列第三件;R10 归位备战
-    词表,与 CwActionOpenBoxParam/CwActionOpenTomeParam 同签名,design.md §2.6 R10)。选卡决策不在
+    书册卡 = 备战席占槽道具(与补给箱/秘密典籍并列第三件;与
+    CwActionOpenBoxParam/CwActionOpenTomeParam 同签名)。选卡决策不在
     本执行链——点完开启本动作即交回,专家邀请函弹窗由外循环按画面分发
     ``CwScreenExpertInvite`` 选卡(选卡决策单一源 = kernel
     ``cw_events.choose_expert_index``,普查迁移批 2 自画面 op 迁入)。
@@ -727,8 +727,7 @@ class CwActionPickEncounterParam:
 class CwActionPickSupplyParam:
     """补给节点选择(替代 SupplyPick;刷新建议另发 CwActionRefreshSupplyParam)。
 
-    开出内容载荷(银狼闭环迭代 design.md §2.2 确定性通道·通道宿主迁移,
-    照 PickInvest 载荷扩展先例):``char_name`` = 选中列角色名
+    开出内容载荷(确定性通道,照 PickInvest 载荷扩展先例):``char_name`` = 选中列角色名
     (read_supply_options roster 校验产物;'' = 列无角色/兜底点卡路径);
     ``norm_item`` = 选中列装备归一件名(``normalize_registry_equip_name``
     注册表级分层归一,OCR 原始名不静默改写由 handler 持有;'' = 未解析)。

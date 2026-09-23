@@ -1,8 +1,7 @@
-"""货币战争 装备穿戴计划构造(kernel 桶;R2 组合壳溶解的原子通路件)。
+"""货币战争 装备穿戴计划构造(kernel 桶;组合壳溶解的原子通路件)。
 
-本模块自执行器模块 ``prep_actions.py`` 迁居(design.md
-unified-action-factory §2.6「穿装备:计划构造 = 现役 _build_equip_wear_plan
-自执行器模块迁 kernel,决策侧逐帧现算」):计划单一源随发射位上移,
+本模块自执行器模块 ``prep_actions.py`` 迁居(穿装备计划构造随发射位
+上移 kernel,决策侧逐帧现算):计划单一源随发射位上移,
 组合壳(RunEquip→CwOpEquipAll)退役后发射位直接消费同一构造函数,
 无第二源。机械执行半现役宿主 = ``cw_wear_equip_action.py::
 CwActionWearEquipOp`` + ``prep_actions.py`` 机械原语

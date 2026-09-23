@@ -173,7 +173,7 @@ def is_blood_economy(eff: EconomyEffect | None) -> bool:
 
 @dataclass(frozen=True)
 class EnvEconomyEffect:
-    """投资环境的**整局经济通道**结构(2026-09-12 invest-env 迭代,design.md §2.2.2)。
+    """投资环境的**整局经济通道**结构。
 
     区别于 EconomyEffect 的 per-node/一次性形态:环境效果是整局规则改写
     (位面开局分期/条件触发/费率覆写),字段按通道语义设计,全部带缺省值
@@ -186,12 +186,12 @@ class EnvEconomyEffect:
     字段语义(值全部 = cw_invest_data 效果原文直读):
     - gold_per_plane_start: 每位面开局金,元组下标 = 位面−1(增发货币 (6,8,12);
       晶矿→金兑现按自动开启建模——晶矿开启是玩家动作面,自动与否未实采
-      (战技点契约「打开20个晶矿后」为存在玩家动作的佐证),design.md §2.2.1
-      假设登记;证非自动则 bot 具备开矿动作前该通道 fail-closed)
+      (战技点契约「打开20个晶矿后」为存在玩家动作的佐证),假设在册
+      登记;证非自动则 bot 具备开矿动作前该通道 fail-closed)
     - gold_instant: 获得时一次性金(蓝海 6;随机环境期望不计——选卡时未知
-      且分布含未入模者,design §2.6 取舍)
+      且分布含未入模者,取舍在册)
     - xp_after_level: (等级, 节点数, 每节点XP)(成功经验 (8,3,12);「升 8
-      必然发生」假设显式登记(design §2.2.1,发展优先战略下 lv8 标配),
+      必然发生」假设显式登记(发展优先战略下 lv8 标配),
       证伪改条件概率)
     - gold_per_strategy_coef: 每取一张策略 +coef×取卡前已持有数(策略大师 2;
       3-5 节点额外策略不计——策略域价值非经济通道,design §2.2.1)
@@ -1390,12 +1390,12 @@ def pick_value_of(name: str) -> int | None:
 # 零消费方。策略卡 335 条 PICK_VALUE 不在本删除面。)
 
 
-# ===== 环境经济通道注册表(2026-09-12 invest-env 迭代,design.md §2.2.2;白名单制)=====
+# ===== 环境经济通道注册表(白名单制)=====
 # A 类精确四条 + B 类两条(长线利好/二手市场)+ C 类两条(经济过热/经济严重
-# 过热),design §2.2.1 通道分类全量。表外环境 economy 恒 None,禁从效果原文
+# 过热),通道分类全量。表外环境 economy 恒 None,禁从效果原文
 # 自动猜装(六条防错装对账 = _validate_env_economy);
 # 轮岗/人才下沉无通道可装 → 「待建模」显式在册(策略层 env_economy.
-# ENV_ECONOMY_PENDING_MODELING,区别于漏登记,design §2.2.4)。
+# ENV_ECONOMY_PENDING_MODELING,区别于漏登记)。
 # B/C 通道的估算参数(概率/期望/增益)在策略层 env_economy.ENV_ECONOMY_
 # ESTIMATES(gold_after_refreshes 通道已改拍值注册,参数随迁退役),
 # 本表只落游戏定义结构值。

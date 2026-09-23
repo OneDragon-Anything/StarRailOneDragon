@@ -65,7 +65,7 @@ class CurrencyWarApp(SrApplication):
     从任何态(大世界 / 大厅 / 备战 / 事件 / 战斗 / 结算)重跑 app 都能 resume,不卡 entry。
 
     naive 策略 + 购买经验升等级,实测赢下位面 1、打完整两位面局(输位面 2 boss)。
-    打赢更高难度需 Strategy 精修(羁绊/经济/deploy 智能化,见 design.md)。
+    打赢更高难度需 Strategy 精修(羁绊/经济/deploy 智能化)。
     """
 
     STATUS_AT_LOBBY: ClassVar[str] = CwEntryEnter.STATUS_AT_LOBBY

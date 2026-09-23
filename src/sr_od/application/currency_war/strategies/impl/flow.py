@@ -449,7 +449,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         把所选卡映射到 comp 分贡献)——**纯遥测保留,决策面零消费**
         (投资源不参与证明自身的反自馈检查现状即合规 = D*② ①层排除承载)。
         env 侧喂入已随环境轴迁移删除(augment_affinity 对 env 名恒 miss
-        = 死代码,迁移迭代 design.md §2.10)。
+        = 死代码)。
 
         输出包装(终态契约 §2.2 刷新建议动作化):刷新建议 →
         ``CwActionRefreshInvestCardsParam``;否则 ``pick_param_cls(idx)``。
@@ -503,13 +503,12 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
     def _decide_invest_env_frame(self, options: list, pick_param_cls: type,
                                  ist: IntentionState,
                                  ) -> CwActionPickInvestEnvParam | CwActionRefreshInvestCardsParam:
-        """投资环境轴决策(策略层单一源 = ``invest_env.decide``;2026-09-23
-        迁移迭代 3.2 接线,design §2.9):纯值出口在此包装动作词表,
+        """投资环境轴决策(策略层单一源 = ``invest_env.decide``;判据正本
+        = strategy-docs/28_invest_env_screen.md):纯值出口在此包装动作词表,
         op handler 与观察写槽零改动。
         同帧去重 memo 语义不变(键同策略轴结构 = (kind, 候选元组)):
         建议帧首调发建议——环境屏 = 整组重掷(单全局钮,handler 只消费
-        slots 真值哨兵,迁移迭代 design.md §2.7 输出契约),slots = 全帧
-        槽位;紧随重调落选卡——decide 是纯函数,再调仍返建议,落选卡走
+        slots 真值哨兵,输出契约 = slots 全帧槽位);紧随重调落选卡——decide 是纯函数,再调仍返建议,落选卡走
         :func:`invest_env.decide_pick` 同一评分基线,零选卡漂移。"""
         out = invest_env.decide(
             options, self.gs,

@@ -1,7 +1,7 @@
 """开补给箱动作 op(CwActionOpenBoxOp)——动作 op 重组批③ 换壳(原
 ``OpenBoxOp``,ActionOp ABC → 框架 SrOperation;机械执行后 **op 内直调
 自己的上报函数** ``report_action_open_box_param``(零写族),零分派,
-design.md §1.1/§1.2)。
+op-layer.md §1.2 动作 op 契约)。
 
 终结动作(R7 批2a 终结化):点完「开启」本动作即交回外循环,武装箱选择
 画面由外循环按画面分发独立画面 op 选卡。terminal_wait = 开箱动画等待,
@@ -95,7 +95,7 @@ class CwActionOpenBoxOp(CwOperation):
         time.sleep(_OVERLAY_ANIM_WAIT_S)
         log.info(f'[cw][box] 开箱槽{slot} → 点开启已发(交回外循环,武装箱'
                  '选择画面分发选卡)')
-        # —— 自上报(机械发出后;零写族,design.md §1.2)——
+        # —— 自上报(机械发出后;零写族,op-layer.md §1.2)——
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_open_box_param(

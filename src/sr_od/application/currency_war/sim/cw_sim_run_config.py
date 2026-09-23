@@ -1,9 +1,9 @@
 """sim 重做·单局运行配置(局级输入,M01 正典字段清单)。
 
-设计正本 = ``docs/develop/sr_od/application/currency_war/changes/
-2026-09-15-sim-redesign/design.md`` §2.2 M01:开局参数是**局级输入**,
-由调用方给定,sim 内不猜开局条件分布;本 dataclass = 全稿唯一的字段
-清单汇总面(M02/M20/U21/U27 一律引用此处,不再各自加字段)。
+设计正本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
+(§1.2 局级输入):开局参数是**局级输入**,由调用方给定,sim 内不猜开局
+条件分布;本 dataclass = 全稿唯一的字段清单汇总面(各域模块一律引用
+此处,不再各自加字段)。
 
 字段定案出处:
 - 环境在场 = U07④ 已裁决的必填输入,缺省 False = 无环境支路

@@ -1,8 +1,7 @@
 """货币战争动作上报:点晶矿(report_action_collect_ore_param)。
 
-**逻辑随机态首个落地动作**(logic-rand-sampling 迭代;设计正本 =
-``docs/develop/sr_od/application/currency_war/changes/
-2026-09-20-logic-rand-sampling/design.md`` §2.4):
+**逻辑随机态首个落地动作**(容器随机写语义单一源 =
+:meth:`GameState.write_logic_rand`):
 
 - **逐点顺序推演**:载荷为批式坐标列表,逐点独立守卫/独立采样/独立
   逐步写(每步一行,同组 group_id,evidence 带点序 ``#ore<k>``);

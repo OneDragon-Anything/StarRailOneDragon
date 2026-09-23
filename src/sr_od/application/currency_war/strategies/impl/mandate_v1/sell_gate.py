@@ -615,9 +615,8 @@ def seed_exclusions(session: StrategySession,
     return frozenset(reg)
 
 
-# ===== 持久获取账与死库存对退出判据(T-253;G-S1 退出通道设计
-# docs/develop/sr_od/application/currency_war/changes/2026-09-15-gs1-exit-channel/
-# design.md §2.0/§2.1.5,数学论证 = proofs P96)=====
+# ===== 持久获取账与死库存对退出判据(G-S1 退出通道;数学论证 =
+# proofs/p96-dead-pair-exit-dominance-n3.md)=====
 
 
 #: 持久获取账的 StrategyState 载体属性名({名: (位面, 最新获取轮)})。

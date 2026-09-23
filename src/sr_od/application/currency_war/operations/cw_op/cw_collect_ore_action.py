@@ -1,7 +1,7 @@
 """点晶矿动作 op(CwActionCollectOreOp)——动作 op 重组批③ 换壳
 (原 ``CollectOreOp``,ActionOp ABC → 框架 SrOperation;机械执行后
 **op 内直调自己的上报函数** ``report_action_collect_ore_param``,零分派,
-design.md §1.1/§1.2)。R4 改形定形:载荷 = kernel ``select_ore_clicks``
+op-layer.md §1.2 动作 op 契约)。载荷 = kernel ``select_ore_clicks``
 产出的有序点击列,本 op 纯机械逐个点。非终结。"""
 from __future__ import annotations
 
@@ -65,7 +65,7 @@ class CwActionCollectOreOp(CwOperation):
             ex._op.park_cursor(after_wait=0.1)
         # 用户口径:飞行动画最长 ~2s → 等满(固定等待归产生动画的操作)
         time.sleep(2.0)
-        # —— 自上报(机械发出后;design.md §1.1):摘晶矿 + 收入待吸收窗 ——
+        # —— 自上报(机械发出后;op-layer.md §1.2):摘晶矿 + 收入待吸收窗 ——
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_collect_ore_param(

@@ -1,9 +1,7 @@
 """货币战争 获得效果面(cw_gain_effects):策略卡「获得时效果」的注册表 +
 效果函数体 + 骇客改件采样池。
 
-拆分归属(获得链模块拆文件批,详设 = docs/develop/sr_od/application/
-currency_war/changes/2026-09-21-invest-landing-chain/details/
-gain-chain-file-split.md):本模块 = **效果内容**(表 + 采样池 + 效果体),
+拆分归属:本模块 = **效果内容**(表 + 采样池 + 效果体),
 过程语义(链原语/合成/回调枚举)住 ``cw_gain_chain.py``。import 方向 =
 链模块模块级 import 本模块的 ``PICK_INVEST_EFFECTS``(查表);本模块的
 效果体**函数内惰性** import 链原语(运行时解析破环——两模块任一加载序

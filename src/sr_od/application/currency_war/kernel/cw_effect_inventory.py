@@ -157,7 +157,7 @@ class CounterKey:
 # 辖域:策略源=选卡登记(register_strategy);词缀源=敌人词缀改写源,结构化
 # 注册=kernel/cw_affix_effects.AFFIX_EFFECT_SPECS(register_affix 登记);
 # 环境源=投资环境辖域,结构化条目=ENV_PORTAL_EFFECTS(经济环境)+未入模
-# 占位(register_portal_from_env 登记,design.md §2.4)。
+# 占位(register_portal_from_env 登记,登记面纪律 = game_state/effect-domain.md §7.3)。
 SOURCE_STRATEGY: str = 'strategy'
 SOURCE_PORTAL: str = 'portal'
 SOURCE_AFFIX: str = 'affix'
@@ -185,7 +185,7 @@ class ActiveEffect:
     source: str                # 取值=SOURCE_* 词表('strategy'/'portal'/'affix');
                                # strategy=策略源,affix=词缀源(登记端 register_affix),
                                # portal=环境源(登记端 register_portal_from_env,
-                               # 结构化条目=ENV_PORTAL_EFFECTS,design.md §2.4)
+                               # 结构化条目=ENV_PORTAL_EFFECTS)
     acquired_t: int | None     # 登记时点;节点序 = (plane-1)*9+round,**基 1**;
                                # 登记期快照(与 cw_loop _now_t 同式)
     remaining_nodes: int | None  # N_NODES 类余期;**自然数计数非索引**;None=不限;
@@ -285,7 +285,7 @@ class ActiveEffectInventory:
         (余期播种/推进/到期共用同一套挂点逻辑)。
 
         生产登记挂点 = CwScreenInvestEnv._decide_and_act 确认链
-        (active_env 写入同址,invest-env 迭代 design.md §2.4;best-effort
+        (active_env 写入同址;best-effort
         失败不阻塞确认链,effect-domain.md §7.3 登记面纪律同词缀源)。
         """
         return self._register(spec, SOURCE_PORTAL, acquired_t)
@@ -485,15 +485,15 @@ class ActiveEffectInventory:
 
 
 # ============================================================ portal 登记端(环境源)
-# (投资环境确认落地的效果登记,invest-env 迭代 design.md §2.4;生产挂点 =
+# (投资环境确认落地的效果登记;生产挂点 =
 # CwScreenInvestEnv._decide_and_act 确认链,active_env 写入同址,best-effort
 # 不阻塞确认链。结构化条目 = 经济环境(ENV_ECONOMY 命中),payload 复用
 # ENV_ECONOMY 表内同一实例(单一源,不复制数值——与 STRATEGY_EFFECTS payload
 # 引 STRATEGY_ECONOMY 同实例的纪律同款);未入模环境登记 UnitBuffRef 占位
 # (效果原文存档,可见性优先,bot 零响应),G 组(ENV_GIFTS)占位 notes 附
-# GiftGrant 摘要(详设 env-value-models.md §2.3)。查询口 = inventory 现有
+# GiftGrant 摘要。查询口 = inventory 现有
 # 遍历(by_source/by_category/first);本登记端零决策消费——经济判据接登记
-# 数据归后续批(design.md §1.3-5)。
+# 数据归后续批。
 #
 # **表为什么是惰性构建函数而非模块级常量**:payload 需 cw_investments 真类
 # 实例,而 cw_investments 模块头反向 import 本模块(payload 类型面),模块级
@@ -628,7 +628,7 @@ def _portal_placeholder_spec(env_name: str) -> EffectSpec | None:
         _notes = ('未入模占位(效果原文存档,bot 零响应;详设 env-value-models.md §2.3);'
                   + ' '.join(_parts))
     else:
-        _notes = '未入模占位(效果原文存档,bot 零响应;design.md §2.4)'
+        _notes = '未入模占位(效果原文存档,bot 零响应)'
     _pid = (_env.source.split(':', 1)[1]
             if _env.source.startswith('plaza:') else _env.source)
     return EffectSpec(
@@ -638,7 +638,7 @@ def _portal_placeholder_spec(env_name: str) -> EffectSpec | None:
 
 
 def register_portal_from_env(session: object, env_name: str) -> EffectSpec | None:
-    """投资环境确认落地 → portal 源登记(design.md §2.4 登记端共用体;
+    """投资环境确认落地 → portal 源登记(登记端共用体;
     形态先例 = cw_affix_effects.register_affixes_from_names 词缀源共用体)。
 
     - **结构化命中**:归一名 ∈ :func:`env_portal_effects`(经济环境)→ 该
@@ -1361,7 +1361,7 @@ def settle_copy_machine_participation(gs: GameState, *,
 
 
 # ============================================================ 装备获得后果应用(全渠道统一)
-# (银狼闭环迭代 design.md §2.2:送角色腿建模为装备数据行的获得后果——
+# (送角色腿建模为装备数据行的获得后果——
 # 获得分身墨镜/分身墨镜Max/数据拷贝仪Max 时,赠送的银狼族单位直接进备战
 # 席,效果与商店购买完全一致(可触发合成/升星)。后果应用函数 = 全渠道
 # 装备入栏的统一后置钩子:确定性通道(获得时件名已知)随 write_logic 入栏

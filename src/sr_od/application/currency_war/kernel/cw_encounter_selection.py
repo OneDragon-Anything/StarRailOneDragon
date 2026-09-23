@@ -1,7 +1,8 @@
 """货币战争 遭遇选档判定核(E-2 暗装落码)。
 
-设计正本 = docs/develop/sr_od/application/currency_war/changes/
-2026-09-12-encounter-selection/details/encounter-criterion-spec.md(对抗审定稿)。
+判据正本 = 本模块常量区与判读函数(登记见
+strategy-docs/04_survival_budget.md 裁定 9 行「判据正本 = 本模块」;
+迭代详设已随过程区清理退役,git 历史可溯)。
 本模块 = 遭遇分支选档的现役单一源;历史 EV 候选核
 (strategies/impl/mandate_v1/encounter.py)已搁置让位、保留禁删。
 

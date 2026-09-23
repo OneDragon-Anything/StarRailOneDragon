@@ -201,7 +201,7 @@ def apply_action_outcome(
     未落地(_ok=False,如执行侧检出购买未生效)⇒ **两侧都不动**:不写逻辑态、
     不入「已买」集(防检出帧名污染 prefer_names/churn/P60,应修-2)。
     容器逻辑态直写已随动作 op 重组批③ 收编进各 op 自上报(op 内直调
-    自己的上报函数,design.md §1.3)——原非终结直写块(apply_shop_action_
+    自己的上报函数,op-layer.md §1.2)——原非终结直写块(apply_shop_action_
     logic + 合成升星腿)删除 = 双记防线;终结跳写判断随 op 自辖不再需要。
     本门保留面:卖出 route-tag 泄漏显影。(效果账本 BUY 计数已迁买牌
     上报函数获取计算完时点的 ``gs.effects.on_buy`` 回调单点——live/sim

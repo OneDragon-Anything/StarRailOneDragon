@@ -1,7 +1,7 @@
 """sim 重做·战斗结算模型(M12/M13/M14,第一期:随机胜负 + 随机扣血)。
 
-设计正本 = ``docs/develop/sr_od/application/currency_war/changes/
-2026-09-15-sim-redesign/design.md`` §2.2 M12/M13/M14,U01/U03 已裁决:
+设计正本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
+(§2.2 战斗结算/§8.2 未建模申报)第一期口径:
 
 - **U01 第一期定案**:战斗输出 = 纯随机面,不消费任何板面/战力/敌人
   特征——胜负 = 均匀伯努利(P(win)=0.5);败局扣血 = 整数均匀采样,

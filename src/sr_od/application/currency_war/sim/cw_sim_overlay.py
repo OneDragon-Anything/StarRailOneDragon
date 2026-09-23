@@ -1,7 +1,7 @@
 """sim 重做·事件 overlay 族(M22,统一队列 + 三元组框架)。
 
-设计正本 = ``docs/develop/sr_od/application/currency_war/changes/
-2026-09-15-sim-redesign/design.md`` §2.2 M22、U14 已裁决:
+设计正本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
+(§4 overlay 事实触发层)现役口径:
 
 - 事件弹窗族(巨星强化/伙伴/专家邀请函/Fate 试炼/阿哈/骇入策划/
   「我来当策划」)**纳入建模范围**,不做「不自发触发」的搁置处置;

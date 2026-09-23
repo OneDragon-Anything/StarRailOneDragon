@@ -23,7 +23,7 @@ supply/encounter/box/晶矿面板)→ 容器各 opts 槽(经 ``cw_screen_report`
    点击):简报下一步 / BOSS 简报点空白 / 位面过渡点空白 / 补给刷新 /
    开店。经端口 ``click_answer`` 感知。
 
-**节点推进序列**(自旧引擎 M 序列平移):写 ``gs.node`` → 轮首收入
+**节点推进序列**(模块号流键坐标系):写 ``gs.node`` → 轮首收入
 (kernel ``round_start_income`` 三分支,U04 败补消费容器 ``pending_loss``)
 → 位面开局环境金(kernel ``INVESTMENT_ENVS``)→ 商店自动全刷(整店锁
 跳过)→ overlay 队列检查 → offer 日程检查(U07 固定轮次 + 联席决策)
@@ -193,7 +193,7 @@ PREP_SUB_ORE: str = 'ore'                    # 晶矿子态(奖励节点,gs.sphe
 PREP_SUB_WAIT_ONE_ONE: str = 'wait_one_one'  # 开局补给动画等待变体(瞬时)
 
 # ============================================================ 收入规则件
-# (自旧引擎收入模块平移,语义零改;kernel round_start_income 三分支
+# (kernel round_start_income 三分支
 #  单一源消费不变。)
 
 
@@ -278,7 +278,7 @@ def streak_signed_after(streak_signed: int, *, node_type: str,
 
 
 # ============================================================ 经验规则件
-# (自旧引擎动作模块平移;节点经验在节点推进时入账。)
+# (节点经验在节点推进时入账。)
 
 
 #: 节点基础经验表(依据 docs/game/currency_war/research/xp-rules.md;
@@ -340,7 +340,7 @@ def apply_node_xp(gs: GameState, *, node_type: str) -> int:
 
 
 # ============================================================ 商店发牌件
-# (自旧引擎商店模块平移;发牌算法本体 = kernel cw_shop_deal 单一源。)
+# (发牌算法本体 = kernel cw_shop_deal 单一源。)
 
 
 #: 轮岗建模假设档披露键(1/5 均匀系假设,实机待核;随局披露面消费)。
@@ -378,7 +378,7 @@ def deal_shop(gs: GameState, rng: random.Random, *, level: int,
 
 
 # ============================================================ offer 采样件
-# (自旧引擎 offer 模块平移;品质覆写名单常量位 = kernel cw_investments。)
+# (品质覆写名单常量位 = kernel cw_investments。)
 
 
 #: 策略 offer 固定日程(U07① 已裁决;(plane, round_num) 对;P3r2 随
@@ -479,7 +479,7 @@ def quality_rewrite_hit(active_env: str | None) -> bool:
 
 
 # ============================================================ 节点事件件
-# (自旧引擎节点模块平移:选项生成保留;apply_*_pick 动作腿退役——
+# (选项生成保留;apply_*_pick 动作腿退役——
 #  pick 动作走 op → 上报函数族获得链,与实机同构。)
 
 
@@ -586,8 +586,8 @@ def supply_options(rng: random.Random) -> tuple[SupplyOption, ...]:
 
 
 # ============================================================ 披露键群
-# (恒在册声明面,随局结果 unmodeled 输出;装备三键自旧引擎装备模块迁居
-#  ——动作腿退役后键义不变:发放空表/特权投影仪/炉拖角色模式仍未建模。)
+# (恒在册声明面,随局结果 unmodeled 输出;装备三键键义
+#  ——动作腿退役后不变:发放空表/特权投影仪/炉拖角色模式仍未建模。)
 
 #: 环境结构化经济通道披露键(M02:两位面金通道已结构化,其余候效果批)。
 DISCLOSURE_ENV_CHANNELS: str = 'env_economy_channels_pending_m02'
@@ -664,8 +664,8 @@ _UNPRESENTED_OVERLAY_ANCHORS: dict[str, frozenset[str]] = {
 
 @dataclass(frozen=True)
 class SimRunResult:
-    """局结果面(消费方 = 运行器断言;纯结果无评判;自旧引擎 RunResult
-    平移,位面/轮次读容器节点键)。"""
+    """局结果面(消费方 = 运行器断言;纯结果无评判;
+    位面/轮次读容器节点键)。"""
 
     final_hp: int
     plane_reached: int

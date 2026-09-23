@@ -1426,9 +1426,11 @@ effect_inventory 等级日程(逻辑写端候选)。
 ——出售面精确可算、保留逻辑写(实现=板面重写桥 `apply_board_rewrite` 出售面分支,
 生产挂点=选卡登记点;从未观察字段跳过、零退款禁翻标金来源、bench 容量保留);随后
 发 2★3费×1 + 2★2费×2 + 2★1费×2 进席——发牌面随机、**不建逻辑写**,进席落位走观察
-覆盖(桥不造单位)。**sim 语义申报**:本桥不接 sim——sim 引擎直写容器
-(引擎工作态即本容器,无独立局面表示,§9),策略桥只服务实机记录链;sim
-若建模此二卡,改动面 = sim 引擎自身的事件写入面,与策略桥无交集。出售
+覆盖(桥不造单位)。**sim 语义申报(现值)**:本桥 live/sim 同链——
+选卡登记挂点在获得链上(`report_action_pick_invest_*` →
+`cw_gain_chain` → `apply_board_rewrite`),驱动反转后 sim 经同一流程
+消费同一段桥代码,无独立第三写面;sim 候选供给面是否覆盖此二卡 =
+保真度申报面(维护义务 = sim-design §8.2),不改变桥语义。出售
 金腿无 STRATEGY_ECONOMY 条目(spec 注释自注缺口)。
 
 #### 卖全场族(大裁员/降本增效/现金为王——出售面)
@@ -1657,23 +1659,32 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
 
 ## 9. 与 sim 的表示分界
 
-sim 无独立局面表示:引擎(`sim/cw_sim_engine.py`)内部工作态即本容器,
-写容器一律走渠道签名写入口(渠道族封闭集 obs/logic_action/logic_hook,
-§2/journal.md §6),读容器走决策面公共读口族与 Field 直读——策略与引擎
-决策谓词在容器读口上消费。不存在「容器 ↔ 中间帧」映射层(原推演内核帧
-及其合成口已退役,考古归 git 历史)。逐域接线底账(哪些渠道、什么事件写
-哪个域)= [../sim/sim-wiring.md](../sim/sim-wiring.md),本篇不复写。
+sim 无独立局面表示:sim 与 live 同一容器类型同一份单例
+(`kernel/cw_game_state.game_state_of(session)`;后端世界真值写 obs 渠道,
+动作效果经动作 op 直调上报函数族走 logic_action 渠道),写容器一律走
+渠道签名写入口(渠道族封闭集 obs/logic_action/logic_hook,
+§2/journal.md §6),读容器走决策面公共读口族与 Field 直读——策略与
+后端决策谓词在容器读口上消费。不存在「容器 ↔ 中间帧」映射层(原推演
+内核帧及其合成口已退役,考古归 git 历史)。逐域接线底账(哪些渠道、
+什么事件写哪个域)= [../sim/sim-wiring.md](../sim/sim-wiring.md),
+本篇不复写。
 
-- **动作转移语义单点**:sim 与实机共用上报函数族(`cw_sim_actions.
-  apply_player_action` 逐动作委托,§8),无第二份转移语义。
+- **动作转移语义单点**:sim 与实机同一段动作 op 代码直调同一上报函数族
+  (`kernel/cw_action_report/report_action_<snake>_param`;后端零私有
+  动作转移语义,sim-design §2.3/§6.1),无第二份转移语义。
 - **容器快照与回执**:`full_state_snapshot`/`restore_state_snapshot`
   往返服务离线判读与回放;动作执行回执 = `receipts` 域(唯一写点 =
-  `note_action_receipt`),sim 侧账本转录(SimResult/sim ledger)与
-  receipts 互不写入。
-- **sim 不建模域(记录模型扩面,设计事实非缺陷)**:node_path /
-  game_mode / node_screen_refresh / consumables / spheres / substate /
-  event_overlay / event_choices(chosen_×10)/ settlement /
-  hp_floor_triggered / prev_screen / current_screen / top_bar_raw /
-  node_ord / receipts / match_final / encounter / supply——环境剧本不产
-  这些事实;encounter/supply 两 payload 域在 sim 写入面恒离屏
-  (§2.2 payload 离屏例外)。
+  `note_action_receipt`);sim 无第二账本(容器统一 state 流水 =
+  `kernel/cw_state_journal`,live/sim 同构,sim-design §9)。
+- **sim 无写点域(在册挂账,候接线评估项裁决)**:旧「环境剧本不产
+  这些事实」的封闭域清单已随驱动反转失效——现役 sim 写面按腿分三类
+  (世界腿/动作腿/呈现腿,sim-wiring §一),呈现腿与动作腿写面与实机
+  同构;经 sim-wiring 逐域表核对,game_mode / spheres / substate /
+  event_overlay / event_choices(chosen_×10)/ prev_screen /
+  current_screen / hp_floor_triggered / encounter / supply 等域现经
+  生成器呈现腿或动作腿写入,不再属「sim 不产」(node_screen_refresh
+  为部分接入:补给刷新剩余有呈现写点,余诚实缺位,sim-wiring §五)。
+  现仍无 sim 写点登记的域 = node_path / consumables / settlement /
+  top_bar_raw / node_ord / receipts / match_final,逐域最终归属
+  (建模边界 vs 接线缺口)以 sim-wiring 逐域表为准并候接线评估项
+  裁决;本节不再维护封闭枚举,防与逐域底账双源漂移。

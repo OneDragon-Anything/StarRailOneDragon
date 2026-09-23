@@ -1,7 +1,7 @@
 """货币战争动作上报:工具原子七类容器写(report_action_*_use_param 七函数)。
 
 **机械执行直接上报**(用户裁定 2026-09-21,正本 =
-changes/2026-09-21-tool-gain-report/design.md §2.0):动作 op = 机械执行
+flow/action_ops.md §1 增补 2):动作 op = 机械执行
 不判成败,上报**无条件按成功写容器**——确定面
 :meth:`GameState.write_logic`、随机面(效果含采样):
 :meth:`GameState.write_logic_rand` 采样链。「失败」不是本层概念,容器与

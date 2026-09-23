@@ -5,7 +5,7 @@ op 只管「点击出战和弹窗」,零策略语义、零转移验证——流�
 动作 op 重组批③ 换壳(原 ``StartBattleOp``,ActionOp ABC → 框架
 SrOperation;机械执行后 **op 内直调自己的上报函数**
 ``report_action_start_battle_param``,跳过子态事实随上报携带——免战牌
-递减语义 = 上报时,design.md §1.1/§1.2)。执行序(单一语义;备战环 /
+递减语义 = 上报时,op-layer.md §1.2 动作 op 契约)。执行序(单一语义;备战环 /
 达标臂发射核 ``launch_prepared_battle`` / 恢复局锁定直出战三路径经同一
 注册表分派到达本 op,禁各写一套点击段):
   1. 找按钮「按钮-出战」(备战 + 开商店两屏查;叠加帧现状逻辑)——
@@ -21,7 +21,8 @@ SrOperation;机械执行后 **op 内直调自己的上报函数**
 
 **round 结果契约**(原基类在册例外收编):``execute()`` 的成功态 =
 **点击序列已执行**(找不到按钮 / area 缺失 = round_fail 未发出),消费面
-= runner 包络 ``last_launch_ok`` 旁路(round 结果映射,design.md §1.1)。
+= runner 包络 ``last_launch_ok`` 旁路(round 结果映射,在册例外 =
+action_ops.md §2.3)。
 旧发射家族(6×0.5s 转移轮询 / 备战标识消失验证 / POST_LAUNCH_BLOCKERS
 拦截弹窗守卫 / 重发长按下 / 失焦守卫 / launch_dead 连败停机)随出战域
 重设计整删:op 不判效,交回后画面状态由外循环下一帧重判。
