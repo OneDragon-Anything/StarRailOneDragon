@@ -27,6 +27,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionLevelUpParam
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
@@ -83,8 +84,10 @@ class CwActionLevelUpOp(CwOperation):
                 game_state_of,
             )
             _price = xp_click_cost(game_state_of(session))
-        ex._ctx.controller.mouse_move(btn)   # 防吞点击(review M-5)
-        ex._ctx.controller.click(btn)
+        if cw_sim_ports.mechanical_io_allowed():
+            ex._ctx.controller.mouse_move(btn)   # 防吞点击(review M-5)
+            ex._ctx.controller.click(btn)
+        # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
         # 光标 parking(审计 P0,2026-08-16 = M38 level 毒化注入点):按钮距等级显示区 18px,
         # 点击后光标压住 Lv.N 区 → 下帧 OCR 读错(4 毒化 3 位面的链头)。park 后再继续。
         ex._op.park_cursor(before_wait=0.3, after_wait=0.15)

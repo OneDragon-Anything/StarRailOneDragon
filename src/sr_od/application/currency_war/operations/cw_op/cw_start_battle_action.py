@@ -46,6 +46,7 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     area_center,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
@@ -123,8 +124,10 @@ class CwActionStartBattleOp(CwOperation):
                 f'area 缺失:{btn_area}({SCREEN_NAME}),禁兜底坐标')
         skip_substate = btn_area == '按钮-跳过'
         env.skip_substate = skip_substate   # 回执 extra 留证消费(runner 包络)
-        ex._ctx.controller.mouse_move(btn)
-        ex._ctx.controller.click(btn)
+        if cw_sim_ports.mechanical_io_allowed():
+            ex._ctx.controller.mouse_move(btn)
+            ex._ctx.controller.click(btn)
+        # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
         time.sleep(self.POST_CLICK_WAIT_S)
         detail = self._settle_post_click_popup(ex)
         if detail.startswith('area 缺失'):

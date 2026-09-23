@@ -27,6 +27,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionWearEquipParam
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.prep_actions import PREP_DRAG_SETTLE_WAIT_S
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
@@ -67,17 +68,22 @@ class CwActionWearEquipOp(CwOperation):
             return self.round_fail(
                 f'装备槽位坐标缺失:{action.row}-{action.slot}'
                 '(建档漂移,禁兜底坐标)')
-        start = ex._owned_grid_locate(action.item_name)
-        if start is None:
-            return self.round_fail(
-                f'owned 网格未定位到 {action.item_name}'
-                '(模板库缺失/计划失效,下帧重派重算)')
-        time.sleep(PREP_DRAG_SETTLE_WAIT_S)   # 拖前固定等待(非判效)
-        ex._ctx.controller.mouse_move(start)   # 防吞点击(截图前移光标)
-        time.sleep(0.2)
-        ex._ctx.controller.drag_to(start=start, end=target,
-                                   hold_time=0.5, duration=1.5)
-        time.sleep(1.5)   # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
+        if cw_sim_ports.mechanical_io_allowed():
+            start = ex._owned_grid_locate(action.item_name)
+            if start is None:
+                return self.round_fail(
+                    f'owned 网格未定位到 {action.item_name}'
+                    '(模板库缺失/计划失效,下帧重派重算)')
+            time.sleep(PREP_DRAG_SETTLE_WAIT_S)   # 拖前固定等待(非判效)
+            ex._ctx.controller.mouse_move(start)   # 防吞点击(截图前移光标)
+            time.sleep(0.2)
+            ex._ctx.controller.drag_to(start=start, end=target,
+                                       hold_time=0.5, duration=1.5)
+            time.sleep(1.5)   # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
+        else:
+            # sim:owned 网格定位属帧识别域(sentinel 无读),机械拖拽静默
+            # 成功(直连旁路 port 检查,flow-seam §2);自上报照走
+            pass
         ex._op.park_cursor(after_wait=0.1)
         # —— 自上报(机械发出后;design.md §1.1)——
         gs = game_state_from_ctx(self.ctx)

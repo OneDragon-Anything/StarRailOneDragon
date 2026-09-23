@@ -27,6 +27,7 @@ from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import 
     OverlayPickExecEnv,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 
@@ -61,8 +62,10 @@ class CwActionPickPartnerOp(CwOperation):
             # 未选中实证(或首轮强制)→ 点候选卡选中。y 由建档「候选-卡区」
             # 带中心锚定:旧 offset「label cy-60」实点落在立绘底边下方卡体
             # 死区(几何根源见 ``_pick_point_for`` 注)。
-            op.ctx.controller.mouse_move(op._pick_point)
-            op.ctx.controller.click(op._pick_point)
+            if cw_sim_ports.mechanical_io_allowed():
+                op.ctx.controller.mouse_move(op._pick_point)
+                op.ctx.controller.click(op._pick_point)
+            # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
             time.sleep(0.7)
             log.info('[cw-partner] 点选候选 %s(未选中提示在场=%s)',
                      op._pick_point, unselected)

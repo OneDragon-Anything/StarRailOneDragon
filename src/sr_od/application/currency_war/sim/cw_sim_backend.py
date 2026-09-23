@@ -177,8 +177,16 @@ SCREEN_BOX: str = '货币战争-备战-武装箱选择'
 SCREEN_EXPERT: str = '货币战争-备战-专家邀请函'
 SCREEN_MEGASTAR: str = '货币战争-盛会之星'
 SCREEN_PLANNER: str = '货币战争-银狼升星'
-#: 战斗窗口呈现屏(sim 结算瞬时完成;战斗等待动画窗属实机时间维)
-SCREEN_SETTLE: str = '货币战争-战斗结算'
+#: 战斗窗口呈现屏(sim 结算瞬时完成;战斗等待动画窗属实机时间维)。
+#: 档名取流程消费面 = 「货币战争-结算」(currency_war_settlement.yml,
+#: 「按钮-继续挑战」宿主屏):结算后流程经 CwScreenBattleWait 结算分支
+#: + CwOpSettleConfirm 点击推进(3.4 联调裁决:T-2 初版取
+#: 「货币战争-战斗结算」与流程消费锚错位,推进链不可达)。
+SCREEN_SETTLE: str = '货币战争-结算'
+#: 局终呈现屏(done 后终态;死亡/第一期辖域尽头两源共用)。呈现即可达
+#: 流程终局链(CwScreenBattleWait ③B terminal_lobby → 主循环 3c 收口)。
+#: 非金路径档名(无生成器):呈现 ≠ 观察,observe 该档名按未注册响错。
+SCREEN_LOBBY: str = '货币战争-大厅'
 
 #: 备战子态载荷值(备战档第二元;'' = 常规备战)
 PREP_SUB_ORE: str = 'ore'                    # 晶矿子态(奖励节点,gs.spheres 面板在场)
@@ -645,6 +653,14 @@ _MODAL_SCREENS: frozenset[str] = frozenset({
     SCREEN_MEGASTAR, SCREEN_PLANNER, SCREEN_SHOP,
 })
 
+#: sim 不可呈现浮层的「在场锚」(画面档 → 锚 area 集;3.4 联调 visible
+#: area 级细化)。这些锚门控同屏上的分支分派(如备战帧的阿哈装备选择
+#: 浮层检测):画面档匹配语义会把它们误答真 → 备战帧被浮层分支抢走。
+#: sim 不建模该浮层 → 锚恒不可见 = 世界真值(呈现态查询语义)。
+_UNPRESENTED_OVERLAY_ANCHORS: dict[str, frozenset[str]] = {
+    SCREEN_PREP: frozenset({'标识-简易装备'}),
+}
+
 
 @dataclass(frozen=True)
 class SimRunResult:
@@ -706,6 +722,9 @@ class SimBackend:
     _settled_key: tuple[int, int] | None = field(init=False, default=None)
     #: 已进窗的节点线性序(节点推进重入幂等守卫)。
     _entered_ord: int = field(init=False, default=0)
+    #: 已收口节点窗口的线性序(None = 尚无;窗口前段幂等守卫,
+    #: :meth:`_begin_node_window`)。
+    _window_begun_ord: int | None = field(init=False, default=None)
     _steps: int = field(init=False, default=0)
 
     def __post_init__(self) -> None:
@@ -775,11 +794,15 @@ class SimBackend:
         """until / 门可见性问询。
 
         3.2 语义 = 画面档匹配(问询屏 == 当前呈现屏;模态屏族在场时
-        底层屏区域不可见);area 级可见性(子态/浮层细分)归金路径生成
-        器批的状态机可见性细化。等待变体(wait_one_one)在问询时立即
-        完成(sim 世界瞬时呈现,动画无时间维)。"""
+        底层屏区域不可见)。3.4 联调细化 = 不可呈现浮层的在场锚恒
+        False(:data:`_UNPRESENTED_OVERLAY_ANCHORS`,呈现态查询语义)。
+        等待变体(wait_one_one)在问询时立即完成(sim 世界瞬时呈现,
+        动画无时间维)。"""
         self._maybe_finish_wait()
-        return screen_name == self._screen
+        if screen_name != self._screen:
+            return False
+        return area_name not in _UNPRESENTED_OVERLAY_ANCHORS.get(
+            screen_name, ())
 
     def click_answer(self, op, screen_name: str, area_name: str,
                      until_find_all, until_not_find_all):
@@ -1145,8 +1168,17 @@ class SimBackend:
 
     def _begin_node_window(self) -> None:
         """节点窗口序列(收入 → 环境金 → 商店全刷 → overlay → offer →
-        节点屏呈现;位面过渡点空白与直进节点共用本收口)。"""
+        节点屏呈现;位面过渡点空白与直进节点共用本收口)。
+
+        幂等守卫(3.4 联调裁决①):窗口前段(轮首收入/环境金/发牌)对
+        同一节点只执行一次——位面过渡点击重放(同点位二次 click_answer)
+        会二次进入本收口,无双发守卫则窗口前段收入/发牌双写(发牌覆盖
+        同值无感、收入是真双账)。守卫键 = 节点线性序。"""
         plane, r = self._node_pos()
+        ordinal = self._node_ordinal(plane, r)
+        if self._window_begun_ord == ordinal:
+            return
+        self._window_begun_ord = ordinal
         kind = node_sequence_of(plane)[r - 1]
         # 轮首收入(M04;败补挂账按 kernel 分支序消费——supply/reward
         # 轮不消费,败态跨轮保留至下一战斗轮;连胜 = 容器带符号派生读)
@@ -1391,7 +1423,13 @@ class SimBackend:
     # ---------------------------------------------------------- 局结果面
 
     def _game_over(self) -> None:
+        """局终(死亡/第一期辖域尽头;重入安全)。终态呈现 = 大厅屏:
+        流程经 CwScreenBattleWait 终局锚(③B terminal_lobby)→ 主循环
+        3c 收口,与实机「终局结算 → 返回货币战争 → 大厅」的消费链同形
+        (sim 结算瞬时,直达终点)。"""
         self.done = True
+        self._screen = SCREEN_LOBBY
+        self._sub = ''
 
     def _hp_trail_append(self) -> None:
         hp = self.gs.hp.value
@@ -1419,17 +1457,40 @@ class SimBackend:
 
 
 def install_backend(backend: SimBackend) -> None:
-    """装配 sim 后端(端口槽 + kernel 事件钩子订阅单点)。
+    """装配 sim 后端(端口槽 + kernel 事件钩子订阅 + 动作腿 rng 提供槽
+    单点)。
 
     调用方(运行器/测试)负责 teardown 必卸(:func:`uninstall_backend`);
-    端口槽单装配纪律由 ``cw_sim_ports`` 锁(重复安装 raise)。"""
+    端口槽单装配纪律由 ``cw_sim_ports`` 锁(重复安装 raise)。
+
+    动作腿 rng 注入(3.4 联调接线;T-2 偏差申报的归属点):流程侧动作
+    op → 上报函数族的采样腿(rng=None 回退)经
+    ``cw_action_report.set_action_rng_provider`` 拿流键 rng——键形
+    ``action/<tool>/<序号>``,序号 = 本装配内调用序(动作序列确定性
+    ⟹ 采样链确定性);实机缺省 None = 未播种口径零变化。
+    """
+    import itertools
+
+    from sr_od.application.currency_war.kernel.cw_action_report import (
+        set_action_rng_provider,
+    )
+
+    seq = itertools.count()
+    set_action_rng_provider(
+        lambda tool: stream_rng(backend.seed, f'action/{tool}/{next(seq)}'))
     cw_sim_ports.install_sim_backend(backend)
     set_transition_event_sink(backend.on_transition_event)
     set_fact_event_sink(backend.on_fact_event)
 
 
 def uninstall_backend() -> None:
-    """卸载 sim 后端(端口槽 + 两事件 sink 复位;幂等)。"""
+    """卸载 sim 后端(端口槽 + 两事件 sink + 动作腿 rng 提供槽复位;
+    幂等)。"""
+    from sr_od.application.currency_war.kernel.cw_action_report import (
+        set_action_rng_provider,
+    )
+
+    set_action_rng_provider(None)
     set_transition_event_sink(None)
     set_fact_event_sink(None)
     cw_sim_ports.uninstall_sim_backend()

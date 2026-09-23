@@ -27,6 +27,7 @@ from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import 
     OverlayPickExecEnv,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 
@@ -58,8 +59,10 @@ class CwActionPickSupplyOp(CwOperation):
         env = self.env
         op = env.op
         target = env.target
-        op.ctx.controller.mouse_move(target)
-        op.ctx.controller.click(target)
+        if cw_sim_ports.mechanical_io_allowed():
+            op.ctx.controller.mouse_move(target)
+            op.ctx.controller.click(target)
+        # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
         time.sleep(0.6)
         # 确认(supply 按钮-确认 area;T#103 area 化)。点击即上报推进
         # (去证据门,用户裁定 2026-09-21:动作 op 不做任何确认——点了

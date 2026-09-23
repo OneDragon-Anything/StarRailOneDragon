@@ -158,8 +158,10 @@ class CwScreenPlaneTransition(CwOperation):
             return self.round_fail('位面过渡缺「区域-空白点击」建档')
         log.info('[cw-flow-plane] 过渡提示命中 → 点空白 (%s,%s)', blank.x, blank.y)
         # 防吞点击(mouse_move 先,overlay 族同款)
-        self.ctx.controller.mouse_move(blank)
-        self.ctx.controller.click(blank)
+        if cw_sim_ports.mechanical_io_allowed():
+            self.ctx.controller.mouse_move(blank)
+            self.ctx.controller.click(blank)
+        # else sim:机械腿静默成功(点击源转移由后端 click_answer 承载)
         time.sleep(1.0)   # click 异步落地 + 过渡翻页动画
         # 机械交回(验证废除):提示消失与否由下一轮重入观察裁决(act 顶部)。
         self._click_pending = True

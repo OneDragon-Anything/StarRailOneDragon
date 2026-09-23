@@ -194,6 +194,12 @@ class CwScreenEncounter(CwOperation):
                     '刷新闸数据不一致,零点击终结交回(外循环重进重建入口)',
                     wait=1.5)
         if isinstance(act, CwActionRefreshNodeOptionsParam):
+            if not cw_sim_ports.mechanical_io_allowed():
+                # sim:遭遇刷新圆钮 = 实机画面文本锚定域(live 读,sim 无帧
+                # 识别面)→ 零点击终结交回;重进后按同选项重判(剩余闸读
+                # encounter_refresh_left = sim 未建模呈现面,刷新建议被闸拒)
+                return self.round_success(
+                    '遭遇刷新(sim 无机械锚)零点击终结交回', wait=1.5)
             # 刷新 = 终结动作(op-layer.md §1.4):文本锚定点圆钮一次
             # + 2s 固定等待 → round_success 终结交回。零重读、零二次
             # 覆盖写、零重决策——新选项由外循环重进后的入口观察现读

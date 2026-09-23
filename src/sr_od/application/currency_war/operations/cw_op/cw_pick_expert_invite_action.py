@@ -28,6 +28,7 @@ from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import 
     OverlayPickExecEnv,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 
@@ -80,8 +81,10 @@ class CwActionPickExpertInviteOp(CwOperation):
                     f'card_points 缺席/下标越界(观察上报欠供,禁现算回退): '
                     f'idx={action.idx} pts={payload.card_points!r}')
             pt = Point(*payload.card_points[action.idx])
-        op.ctx.controller.mouse_move(pt)
-        op.ctx.controller.click(pt)
+        if cw_sim_ports.mechanical_io_allowed():
+            op.ctx.controller.mouse_move(pt)
+            op.ctx.controller.click(pt)
+        # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
         time.sleep(1.2)   # 选卡 → 弹窗关闭动画窗
         # 自上报(机械链发出后;零写,契约面统一)。
         if gs is not None:

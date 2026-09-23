@@ -26,6 +26,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionOpenBoxParam
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
@@ -86,8 +87,10 @@ class CwActionOpenBoxOp(CwOperation):
             picked = matched
         slot, center = picked
         open_point = Point(center.x, center.y + self.BOX_OPEN_DY)
-        ex._ctx.controller.mouse_move(open_point)   # 防吞点击(截图前移光标)
-        ex._ctx.controller.click(open_point)
+        if cw_sim_ports.mechanical_io_allowed():
+            ex._ctx.controller.mouse_move(open_point)   # 防吞点击(截图前移光标)
+            ex._ctx.controller.click(open_point)
+        # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
         # 固定动画等待(原轮询判效半拆除,A3;值取原轮询上界)
         time.sleep(_OVERLAY_ANIM_WAIT_S)
         log.info(f'[cw][box] 开箱槽{slot} → 点开启已发(交回外循环,武装箱'

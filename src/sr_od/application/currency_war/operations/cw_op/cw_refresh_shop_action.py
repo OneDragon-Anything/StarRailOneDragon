@@ -22,6 +22,7 @@ from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
     ShopExecEnv,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 # 刷新点击后固定等待(重掷动画收敛):固定时长即收的时长常量,与买牌
@@ -58,7 +59,8 @@ class CwActionRefreshShopOp(CwOperation):
         env = self.env
         op, _match, ledger, state = (env.op, env.match, env.ledger,
                                      env.state)
-        op.ctx.controller.click(env.refresh_btn)
+        if cw_sim_ports.mechanical_io_allowed():
+            op.ctx.controller.click(env.refresh_btn)
         log.info(f'[cw-shop] Refresh click @({env.refresh_btn.x},'
                  f'{env.refresh_btn.y})')
         time.sleep(REFRESH_CLICK_SETTLE_WAIT_S)

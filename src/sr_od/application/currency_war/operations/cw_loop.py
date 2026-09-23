@@ -128,6 +128,7 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_yinlang impor
 from sr_od.application.currency_war.operations.decision_frame_hooks import (
     save_decision_frame,
 )
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.application.currency_war.strategies.impl.cw_strategy import StrategySession
 from sr_od.application.currency_war.telemetry import state
 from sr_od.context.sr_context import SrContext
@@ -327,8 +328,12 @@ def _launch_overlay_gate(op, ctx, screen) -> str | None:
     ``None`` = 无浮层。"""
     _overlay_screens = [s for s in CwLoop.CW_DISPATCH_SCREENS
                         if s != '货币战争-备战']
-    _match = get_match_screen_name(ctx, screen,
-                                   screen_name_list=_overlay_screens)
+    # 身份读点改道(sim 装配后 = 状态机答口;模态在场的 sim 真值即
+    # 当前呈现屏 ∈ 清单;未装配 = 原识别链零行为变化):
+    _match = cw_sim_ports.sim_or_live_identity(
+        _overlay_screens,
+        lambda: get_match_screen_name(ctx, screen,
+                                      screen_name_list=_overlay_screens))
     _ov_hit = _match if isinstance(_match, str) and _match else None
     if _ov_hit is None and op.round_by_ocr(
             screen, '遭遇其', lcs_percent=0.9).is_success:
@@ -1464,8 +1469,14 @@ class CwLoop(CwOperation):
         #(其按钮在普通战斗节点 revisit 备战同样出现,#18 接线暂缓裁定的延续)、
         # 道具详情弹窗(道具名可变无固定身份)/消耗品浮层/阿哈装备(无独立
         # 画面档)→ 三者走阶段三特殊规则。
-        _match_name = get_match_screen_name(
-            self.ctx, screen, screen_name_list=self.CW_DISPATCH_SCREENS)
+        # 画面身份读点改道(sim 统一 3.4 接线):sim 装配后身份 = 后端
+        # 状态机唯一答口 ``screen_identity()``(哨兵帧无识别面,实机
+        # get_match_screen_name 在 sim 不可用);未装配 = 原识别链零行为
+        # 变化(flow-seam 附录 A.2「sim 画面身份归 screen_identity」)。
+        _match_name = cw_sim_ports.sim_or_live_identity(
+            self.CW_DISPATCH_SCREENS,
+            lambda: get_match_screen_name(
+                self.ctx, screen, screen_name_list=self.CW_DISPATCH_SCREENS))
         # 路由点陈旧清点(终态契约 landing §3.1):识别产出后、身份分发前,
         # 复用当轮识别结果;语义三定义见 _route_clear_stale_payloads。
         self._route_clear_stale_payloads(_match_name)

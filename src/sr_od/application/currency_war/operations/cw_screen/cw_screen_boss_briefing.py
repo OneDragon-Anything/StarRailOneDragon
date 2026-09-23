@@ -138,7 +138,9 @@ class CwScreenBossBriefing(CwOperation):
             return self.round_fail('BOSS 简报缺「区域-空白点击」建档')
         log.info('[cw-flow-boss] 强敌来袭横幅命中 → 点空白 (%s,%s)', blank.x, blank.y)
         # 防吞点击(mouse_move 先,overlay 族同款)
-        self.ctx.controller.mouse_move(blank)
-        self.ctx.controller.click(blank)
+        if cw_sim_ports.mechanical_io_allowed():
+            self.ctx.controller.mouse_move(blank)
+            self.ctx.controller.click(blank)
+        # else sim:机械腿静默成功(点击源转移由后端 click_answer 承载)
         time.sleep(1.0)   # click 异步落地 + 横幅退场动画
         return self.round_success('点空白已发,交回外循环重判')

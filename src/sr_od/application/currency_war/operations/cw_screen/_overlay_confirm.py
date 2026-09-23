@@ -32,6 +32,9 @@ from typing import TYPE_CHECKING
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.sim.cw_sim_ports import (
+    mechanical_io_allowed,
+)
 from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
@@ -92,6 +95,10 @@ def safe_click(op: SrOperation, point: Point, *, tag: str = 'cw-overlay') -> Non
     给选项选中点击(卡身/候选/勾选)用。确认点击走 ``emit_overlay_confirm``(已含 mouse_move)。
     """
     log.info(f'[{tag}] safe_click {point}')
+    if not mechanical_io_allowed():
+        # sim:机械腿静默成功,世界反应由调用方紧随的上报承接
+        #(直连旁路 port 检查,flow-seam §2)
+        return
     op.ctx.controller.mouse_move(point)
     op.ctx.controller.click(point)
 
@@ -118,8 +125,9 @@ def emit_overlay_confirm(
       防 26 分钟超时事故形态)。
     """
     log.info(f'[{tag}] emit_confirm@{confirm_point} (entry_keyword={entry_keyword!r})')
-    op.ctx.controller.mouse_move(confirm_point)
-    op.ctx.controller.click(confirm_point, press_time=press_time)
+    if mechanical_io_allowed():
+        op.ctx.controller.mouse_move(confirm_point)
+        op.ctx.controller.click(confirm_point, press_time=press_time)
     time.sleep(confirm_wait)
     # 机械交回(观察驱动):下一轮重入由调用方节点顶部入口观察裁决出口
     #(不在 = 已关 → success 交回;在 = 重做确认,计节点预算)。

@@ -91,7 +91,10 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
     # write_logic_rand 写随机态。level 缺读跳写(概率表按级索引)。
     _level = gs.level.value
     if _level is not None:
-        roll_rng = rng if rng is not None else random.Random()
+        from sr_od.application.currency_war.kernel.cw_action_report import (
+            action_sampling_rng,
+        )
+        roll_rng = action_sampling_rng('refresh_shop', rng)
         payload = sample_shop_deal(gs, roll_rng, level=int(_level))
         gs.write_logic_rand(gs.shop, payload, produced_by=_PRODUCER,
                             evidence='refresh_random_sample', sig=_grp_sig)

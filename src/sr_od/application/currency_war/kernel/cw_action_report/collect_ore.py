@@ -77,7 +77,10 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     工作表元素即容器 BenchSlot,占位件 kind 原样保留,零降级路径)。
     """
     _validate_sig(sig, ('logic_action',))
-    roll_rng = rng if rng is not None else random.Random()
+    from sr_od.application.currency_war.kernel.cw_action_report import (
+        action_sampling_rng,
+    )
+    roll_rng = action_sampling_rng('collect_ore', rng)
 
     view = gs.spheres.value
     if view is None:

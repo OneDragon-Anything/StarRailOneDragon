@@ -53,5 +53,10 @@ def report_action_pick_invest_strategy_param(
     """
     _validate_sig(sig, ('logic_action',))
     canon = _canon_invest_name(str(getattr(param, 'norm_name', '') or ''))
-    gain_invest_strategy(gs, session, canon, rand=False, sig=sig, rng=rng)
+    from sr_od.application.currency_war.kernel.cw_action_report import (
+        action_sampling_rng,
+    )
+    gain_invest_strategy(
+        gs, session, canon, rand=False, sig=sig,
+        rng=action_sampling_rng('pick_invest_strategy', rng))
     return LogicOutcome(applied=True, reason='gain_chain_applied')

@@ -32,6 +32,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 
@@ -114,8 +115,9 @@ class CwOpSettleConfirm(CwOperation):
             if self._stay >= CwOpSettleConfirm.SETTLE_STAY_LONG_PRESS:
                 log.info('[cw-settle-confirm] 结算屏停留 %s 轮(点击未生效)'
                          '→ 长按 (960,898) 兜底推进', self._stay)
-                self.ctx.controller.click(
-                    CwOpSettleConfirm.SETTLEMENT_NEXT, press_time=0.5)
+                if cw_sim_ports.mechanical_io_allowed():
+                    self.ctx.controller.click(
+                        CwOpSettleConfirm.SETTLEMENT_NEXT, press_time=0.5)
                 self.park_cursor(after_wait=0.1)
                 self._stay = 0
             # 遭遇奖励兑现(推进上报前调:语义顺序 = 先记账后推进;并防御

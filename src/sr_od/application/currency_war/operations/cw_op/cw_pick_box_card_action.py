@@ -26,6 +26,7 @@ from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import 
     OverlayPickExecEnv,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 
@@ -70,8 +71,10 @@ class CwActionPickBoxCardOp(CwOperation):
                 f'box_card_names_xy 坐标域缺席/下标越界(观察上报欠供,'
                 f'禁现算回退): idx={self.param.idx} pts={pts!r}')
         pt = Point(*pts[self.param.idx])
-        op.ctx.controller.mouse_move(pt)
-        op.ctx.controller.click(pt)
+        if cw_sim_ports.mechanical_io_allowed():
+            op.ctx.controller.mouse_move(pt)
+            op.ctx.controller.click(pt)
+        # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
         # 固定动画等待(来源写死 = 现役 overlay 动画等待常量)。
         time.sleep(_OVERLAY_ANIM_WAIT_S)
         # 自上报(机械链发出后;零写,契约面统一)。

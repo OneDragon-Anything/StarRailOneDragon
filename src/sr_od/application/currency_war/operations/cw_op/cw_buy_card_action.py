@@ -44,6 +44,7 @@ from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
     ShopExecEnv,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 
@@ -118,7 +119,8 @@ class CwActionBuyCardOp(CwOperation):
                 f'click_pts={len(env.click_pts)}(槽号-点表不一致),'
                 f'禁兜底点击')
         pt = env.click_pts[_slot_no - 1]
-        op.ctx.controller.click(pt)
+        if cw_sim_ports.mechanical_io_allowed():
+            op.ctx.controller.click(pt)
         log.info(f'[cw-shop] Buy click slot={_slot_no} @({pt.x},{pt.y}) '
                  f'{action.card.faction}/{action.card.name}/'
                  f'{action.card.cost}')

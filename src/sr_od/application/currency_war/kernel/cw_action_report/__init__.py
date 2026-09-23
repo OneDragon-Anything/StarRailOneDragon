@@ -42,9 +42,55 @@
 # 域级跳写纪律不变:gold/xp/level 未读(None)该域跳写,值留观察覆盖。
 
 import importlib
+import random
+from collections.abc import Callable
 
 _ZERO_WRITE_MODULE = 'zero_writes'
 _TOOL_USE_MODULE = 'tool_use'
+
+
+# ============================================================ 动作腿采样 rng 提供槽
+# (sim 统一迭代 3.4 运行器装配缝;T-2 偏差申报的注入点归属。
+#  实机缺省 None = 采样未播种口径零变化——上报函数 ``rng=None`` 回退
+#  自掷随机(采样是猜测);sim 装配后由运行器经本槽注入流键 rng
+#  (采样即世界真值,全程确定性)。先例 = ``cw_event_hooks`` 事件槽
+#  「模块级槽 + 缺省关 + 装配点显式接通」。)
+
+_ACTION_RNG_PROVIDER: Callable[[str], random.Random] | None = None
+
+
+def set_action_rng_provider(
+        fn: Callable[[str], random.Random] | None) -> None:
+    """注入动作腿采样 rng 提供者(注入槽模式,None = 关,缺省态)。
+
+    ``fn(tool) -> random.Random``:``tool`` = 采样腿具名键(如
+    'collect_ore'/'refresh_shop'),每次采样调用取一个新 rng,调用方
+    (sim 装配方)负责键序确定性。
+    """
+    global _ACTION_RNG_PROVIDER
+    _ACTION_RNG_PROVIDER = fn
+
+
+def provided_action_rng(tool: str) -> random.Random | None:
+    """取动作腿采样注入 rng(未装配 = None,调用方回退自掷)。"""
+    return None if _ACTION_RNG_PROVIDER is None \
+        else _ACTION_RNG_PROVIDER(tool)
+
+
+def action_sampling_rng(tool: str, rng: random.Random | None,
+                        _fallback: random.Random | None = None
+                        ) -> random.Random:
+    """上报函数采样 rng 统一解析口(显式传入 > 注入槽 > 缺省回退)。
+
+    ``_fallback`` = 模块自持的历史缺省(如 tool_use 的共享实例);None =
+    现掷 ``random.Random()``(实机未播种口径)。
+    """
+    if rng is not None:
+        return rng
+    injected = provided_action_rng(tool)
+    if injected is not None:
+        return injected
+    return _fallback if _fallback is not None else random.Random()
 
 
 

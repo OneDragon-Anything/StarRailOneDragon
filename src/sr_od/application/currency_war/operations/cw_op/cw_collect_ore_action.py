@@ -21,6 +21,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionCollectOreParam
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
@@ -58,8 +59,9 @@ class CwActionCollectOreOp(CwOperation):
         ex = env.executor
         for _x, _y in action.points:
             center = Point(_x, _y)
-            ex._ctx.controller.mouse_move(center)   # 防吞点击(截图前移光标)
-            ex._ctx.controller.click(center)
+            if cw_sim_ports.mechanical_io_allowed():
+                ex._ctx.controller.mouse_move(center)   # 防吞点击(截图前移光标)
+                ex._ctx.controller.click(center)
             ex._op.park_cursor(after_wait=0.1)
         # 用户口径:飞行动画最长 ~2s → 等满(固定等待归产生动画的操作)
         time.sleep(2.0)

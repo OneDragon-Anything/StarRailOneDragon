@@ -28,6 +28,7 @@ from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import 
     OverlayPickExecEnv,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 
@@ -82,8 +83,10 @@ class CwActionPickMegastarOp(CwOperation):
                 '[cw-pick-megastar] 容器选项缺 xy(观察上报未产坐标,禁'
                 f'二次取点): idx={param.idx} opt={_opts[param.idx]!r}')
             pt = Point(*_opts[param.idx].xy)
-            op.ctx.controller.mouse_move(pt)
-            op.ctx.controller.click(pt)
+            if cw_sim_ports.mechanical_io_allowed():
+                op.ctx.controller.mouse_move(pt)
+                op.ctx.controller.click(pt)
+            # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
             time.sleep(0.6)
         # 确认 = 建档「按钮-确认选择」查找点击(round_by_find_and_click_area
         # 全族统一,用户裁定 2026-09-22;不带 until = 动作 op 禁验证;area

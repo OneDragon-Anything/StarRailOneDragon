@@ -42,6 +42,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionWrenchUseParam,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
@@ -100,28 +101,36 @@ class CwActionToolUseOp(CwOperation):
         env = self.env
         ex = env.executor
         tool_name = self._TOOL_NAME_BY_CLASS[type(action)]
-        start = ex._owned_grid_locate(tool_name)
-        if start is None:
-            return self.round_fail(
-                f'owned 网格未定位到工具 {tool_name}'
-                '(模板库缺失/已消耗,下帧重派)')
-        if getattr(action, 'target_kind', 'char') == 'equip':
-            tgt_name = getattr(action, 'item_name', '')
-            end = ex._owned_grid_locate(tgt_name)
-            if end is None:
+        if cw_sim_ports.mechanical_io_allowed():
+            start = ex._owned_grid_locate(tool_name)
+            if start is None:
                 return self.round_fail(
-                    f'owned 网格未定位到目标件 {tgt_name}'
-                    '(合成消耗/reflow,下帧重派)')
-            tgt_desc = tgt_name
+                    f'owned 网格未定位到工具 {tool_name}'
+                    '(模板库缺失/已消耗,下帧重派)')
+            if getattr(action, 'target_kind', 'char') == 'equip':
+                tgt_name = getattr(action, 'item_name', '')
+                end = ex._owned_grid_locate(tgt_name)
+                if end is None:
+                    return self.round_fail(
+                        f'owned 网格未定位到目标件 {tgt_name}'
+                        '(合成消耗/reflow,下帧重派)')
+                tgt_desc = tgt_name
+            else:
+                pts = ex._front_pts if action.row == 'front' else ex._back_pts
+                end = pts[action.slot - 1]
+                tgt_desc = f'{action.row}-{action.slot}'
+            ex._ctx.controller.mouse_move(start)   # 防吞点击(截图前移光标)
+            time.sleep(0.2)
+            ex._ctx.controller.drag_to(start=start, end=end,
+                                       hold_time=0.5, duration=1.2)
+            time.sleep(1.5)   # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
         else:
-            pts = ex._front_pts if action.row == 'front' else ex._back_pts
-            end = pts[action.slot - 1]
-            tgt_desc = f'{action.row}-{action.slot}'
-        ex._ctx.controller.mouse_move(start)   # 防吞点击(截图前移光标)
-        time.sleep(0.2)
-        ex._ctx.controller.drag_to(start=start, end=end,
-                                   hold_time=0.5, duration=1.2)
-        time.sleep(1.5)   # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
+            # sim:owned 网格定位属帧识别域(sentinel 无读),机械拖拽静默
+            # 成功(直连旁路 port 检查,flow-seam §2);自上报照走
+            if getattr(action, 'target_kind', 'char') == 'equip':
+                tgt_desc = getattr(action, 'item_name', '')
+            else:
+                tgt_desc = f'{action.row}-{action.slot}'
         ex._op.park_cursor(after_wait=0.1)
         # —— 自上报(机械发出后;按 param 类型直调自己的上报函数,
         # 机械执行直接上报写容器)——

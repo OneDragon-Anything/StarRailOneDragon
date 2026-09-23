@@ -20,6 +20,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionOpenTomeParam
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
@@ -66,10 +67,12 @@ class CwActionOpenTomeOp(CwOperation):
                     f'槽{action.slot} 无典籍(实读 {tomes})')
             picked = matched
         slot, center = picked
-        ex._ctx.controller.mouse_move(center)   # 防吞点击(截图前移光标)
-        ex._ctx.controller.click(center)        # 第一次:选中
-        time.sleep(1.0)
-        ex._ctx.controller.click(center)        # 第二次:开启
+        if cw_sim_ports.mechanical_io_allowed():
+            ex._ctx.controller.mouse_move(center)   # 防吞点击(截图前移光标)
+            ex._ctx.controller.click(center)        # 第一次:选中
+            time.sleep(1.0)
+            ex._ctx.controller.click(center)        # 第二次:开启
+        # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
         # 固定动画等待(原轮询判效半拆除,A3)
         time.sleep(_OVERLAY_ANIM_WAIT_S)
         log.info(f'[cw][tome] 开典籍槽{slot} → 点两次已发(选卡交 CwScreenBookcard)')

@@ -1720,6 +1720,27 @@ def gs_of_ctx(ctx: object, session: object) -> GameState:
     return game_state_of(session)
 
 
+def bind_session_container(session: object, gs: GameState) -> None:
+    """显式绑定局容器单例(装配口;sim 统一迭代 3.4 运行器缝)。
+
+    sim 后端(SimBackend)组合持有世界容器,流程侧两条取口——
+    :func:`gs_of_ctx`(优先 ``ctx.cw_match.gs`` 持有引用)与
+    :func:`game_state_from_ctx` → :func:`game_state_of`(session 旁表)
+    ——必须同一实例,否则动作上报写进旁表懒建的「第二容器」而策略器
+    读后端容器,世界分裂。本口把后端容器注册为该 session 的单例真值,
+    两条取口同源。生产实机路径不经本口(establish_new_match 漏斗建支
+    即注册);装配方(运行器/测试)负责 session 生命周期同弃。
+
+    重复绑定不同容器 = 装配错误,响亮(绑定后单例取口不再懒建,静默
+    覆盖会把已运行的世界换掉)。
+    """
+    existing = _GS_BY_SESSION.get(session)
+    if existing is not None and existing is not gs:
+        raise RuntimeError(
+            '局容器单例重复绑定且实例不同(装配错误;禁静默换世界)')
+    _GS_BY_SESSION[session] = gs
+
+
 def game_state_of(session: object, *,
                   run_id_provider: Callable[[], str] | None = None) -> GameState:
     """GameState 单例访问口(session 旁表;弱引用表 + 桩面兜底)。

@@ -29,6 +29,7 @@ from sr_od.application.currency_war.operations.cw_operation_base import CwOperat
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_yinlang import (
     CwScreenYinLang,
 )
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 
@@ -63,8 +64,10 @@ class CwActionPickPlannerOp(CwOperation):
         target = env.target
         # 3. 点卡选中(⚠️ 避开卡内「详情」按钮区 x~880-950/y~420-450——手动
         # 点验 (755,400) 触发详情面板的实证;点卡身上部 y=310)
-        op.ctx.controller.mouse_move(target)
-        op.ctx.controller.click(target, press_time=op.CLICK_PRESS_TIME)
+        if cw_sim_ports.mechanical_io_allowed():
+            op.ctx.controller.mouse_move(target)
+            op.ctx.controller.click(target, press_time=op.CLICK_PRESS_TIME)
+        # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
         time.sleep(1.2)   # 等选中动画
         # 点卡 = 机械单发(用户裁定 2026-09-14:详情面板检测拆;用户定性
         # = 详情弹出 = 点错所致,该面归选中点几何治理,面板检测是症状侧

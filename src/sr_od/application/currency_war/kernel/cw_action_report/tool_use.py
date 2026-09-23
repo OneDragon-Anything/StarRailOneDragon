@@ -195,7 +195,10 @@ def report_action_furnace_use_param(gs: GameState, param: Any, sig: ChannelSig,
     rng,实机缺省未播种 = 采样是猜测,sim 传流键 = 采样即世界真值)。
     """
     _validate_sig(sig, ('logic_action',))
-    roll_rng = rng if rng is not None else _DEFAULT_RNG
+    from sr_od.application.currency_war.kernel.cw_action_report import (
+        action_sampling_rng,
+    )
+    roll_rng = action_sampling_rng('furnace_use', rng, _fallback=_DEFAULT_RNG)
     if param.target_kind == 'equip':
         return _furnace_equip_leg(gs, param, sig, roll_rng)
     if param.target_kind == 'char':

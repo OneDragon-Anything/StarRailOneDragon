@@ -138,6 +138,34 @@ def sim_or_live_observation(screen_name: str,
     return live_read()
 
 
+def sim_or_live_identity(screen_names: tuple[str, ...] | list[str],
+                         live_read: Callable[[], str | None]) -> str | None:
+    """画面身份读点改道 helper(外循环阶段一身份分发的接线原语)。
+
+    语义与 :func:`sim_or_live_observation` 同族:装了后端 →
+    ``screen_identity()``(画面状态机唯一答口,flow-seam 附录 A.2
+    「sim 画面身份归 screen_identity」),且仅当档名 ∈ 调用方清单时返回
+    (清单外 = None,交回调用方默认分支——与实机 ``get_match_screen_name``
+    的清单过滤语义同形,备战双锚默认分支因此不受影响);未装配 → 执行
+    ``live_read()`` 原识别链,实机路径零行为变化。
+    """
+    if _BACKEND is not None:
+        name = _BACKEND.screen_identity()
+        return name if name in screen_names else None
+    return live_read()
+
+
+def mechanical_io_allowed() -> bool:
+    """机械 IO 腿(直连 controller 点击/拖拽)当前是否可达。
+
+    实机(未装配)True;sim 装配后 False——机械腿静默跳过,动作的
+    世界反应由紧随的自上报(上报函数族)承接(flow-seam 详设 §2
+    直连旁路 port 检查口,与各旁路文件逐点守卫同用;漏改路径仍由
+    运行器 controller 桩兜底触碰即炸)。
+    """
+    return _BACKEND is None
+
+
 def click_answer(
     op: Operation,
     screen_name: str,

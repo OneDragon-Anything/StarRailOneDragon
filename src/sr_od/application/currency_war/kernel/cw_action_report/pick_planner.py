@@ -117,7 +117,10 @@ def _grant_joy_conditional(gs: GameState, sig: ChannelSig,
         return
     candidates = [name for name, _text
                   in ENV_GIFTS['欢愉契约'].chars_conditional]
-    pick_rng = rng if rng is not None else random.Random()
+    from sr_od.application.currency_war.kernel.cw_action_report import (
+        action_sampling_rng,
+    )
+    pick_rng = action_sampling_rng('pick_planner', rng)
     unit = pick_rng.choice(candidates)
     try:
         gain_character(gs, unit, 1, rand=True,
