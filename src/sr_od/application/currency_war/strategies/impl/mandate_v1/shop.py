@@ -1187,9 +1187,9 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 前窗 = P1 首个战斗节点前窗(节点表查表定义,01 §8-1 位面参数化);
     # 零成型 = 四体系激活档全 0(per-体系谓词,engines_count 合计标量
     # 禁用口径)。表缺 = 前窗行为 fail-closed 不发生(现行为),分键显影。
-    _front_window = predicates.front_window_frame(gs, session)
+    _front_window = predicates.front_window_frame(gs)
     if (gs.node.value.plane if gs.node.value is not None else None) == 1 \
-            and not predicates.front_window_table_ready(session):
+            and not predicates.front_window_table_ready(gs):
         _count('p90_front_table_missing')
     _zw_armed = False
     if _front_window and predicates.zero_form_frame(deployed):

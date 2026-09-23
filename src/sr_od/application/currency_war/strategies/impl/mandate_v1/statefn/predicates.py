@@ -420,24 +420,25 @@ _FRONT_NONCOMBAT_NODES: frozenset[str] = frozenset(
     {'reward', 'supply', '奖励', '补给'})
 
 
-def front_window_table_ready(session) -> bool:
+def front_window_table_ready(gs: GameState) -> bool:
     """前窗查表前提探针(front_window_frame 的表在场半边;调用方用于
     「P1 帧但表缺」的零静默分键,避免调用侧复刻锚定逻辑)。"""
-    return (getattr(session, 'plane_node_table_plane', None) == 1
-            and bool(getattr(session, 'plane_node_table', None)))
+    return (gs.node_books.plane_node_table_plane == 1
+            and bool(gs.node_books.plane_node_table))
 
 
-def front_window_frame(state: GameState, session) -> bool:
+def front_window_frame(state: GameState) -> bool:
     """P1 前窗备战帧谓词(v3 面①;位面参数化 = 节点表查表定义,禁位面
     字面量,01 §8-1)。
 
     语义 = plane==1 ∧ 当前轮 ≤ 首个战斗节点槽位(前窗 = 首战前窗,含
     首战备战帧——v3 面①(b)「r3 备战帧上」的 r3 即查表产物,P1 众数
-    表下 = 第 3 轮)。节点表单一源 = ``session.plane_node_table``
-    (开局帧实读槽序,cw_screen_prep.store_plane_table 每位面首帧写 /
-    sim engine P1 段同构写);位面锚 = ``plane_node_table_plane``(防
-    旧表滞留跨位面误读);战斗性判定 = 槽词不在 ``_FRONT_NONCOMBAT_
-    NODES`` 零战斗词集(中英并集,出处见常量注)。
+    表下 = 第 3 轮)。节点表单一源 = ``gs.node_books.plane_node_table``
+    (开局帧实读槽序;唯一写端 = cw_screen_prep.store_plane_table 每
+    位面首帧写,读端同源先例 = cw_plane_table.nodes_of_plane);位面
+    锚 = ``node_books.plane_node_table_plane``(防旧表滞留跨位面误
+    读);战斗性判定 = 槽词不在 ``_FRONT_NONCOMBAT_NODES`` 零战斗词集
+    (中英并集,出处见常量注)。
 
     fail-closed 边界:表缺/锚不符 ⇒ False(前窗行为不发生 = 现行为),
     调用方分键 ``p90_front_table_missing`` 显影;表全为零战斗词(脏表,
@@ -448,9 +449,10 @@ def front_window_frame(state: GameState, session) -> bool:
     round_num = round_num_of(state)
     if plane != 1:
         return False
-    if getattr(session, 'plane_node_table_plane', None) != 1:
+    node_books = state.node_books
+    if node_books.plane_node_table_plane != 1:
         return False
-    table = getattr(session, 'plane_node_table', None) or []
+    table = node_books.plane_node_table or []
     first_battle_idx: int | None = None
     for i, node in enumerate(table):
         if str(node).strip() not in _FRONT_NONCOMBAT_NODES:
