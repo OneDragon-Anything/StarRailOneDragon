@@ -44,7 +44,7 @@
 | 22 | [22_prep_screen.md](22_prep_screen.md) | 备战画面策略面：收缩后动作清单(含商店期移入的卖备战/买经验)+ 判据指针(判据本体 = 10/02/04/18) |
 | 23 | [23_shop_screen.md](23_shop_screen.md) | 商店开画面策略面：买/刷/关收缩动作面 + 满席腾位链 + 能力/策略判例(判据本体 = 11) |
 | 24 | [24_deploy_segment.md](24_deploy_segment.md) | 部署执行段策略面：选人围栏/换血卖出/残余补部署(判据本体 = 10 §1/02 §7) |
-| 25 | [25_event_overlays.md](25_event_overlays.md) | 事件面画面(投资环境/投资策略/单选族)策略：选卡 + 刷新建议(判据本体 = 13/08) |
+| 25 | [25_event_overlays.md](25_event_overlays.md) | 事件面画面(投资策略/单选族)策略：选卡 + 刷新建议(判据本体 = 13/08;投资环境已拆 28) |
 | 26 | [26_battle_settlement.md](26_battle_settlement.md) | 战斗与结算期策略面：出战标准/结算读数供数/无战斗期独立决策申报(判据本体 = 04) |
 | 27 | [27_transit_screens.md](27_transit_screens.md) | 过场与推进型画面(简报/BOSS简报/位面过渡/回大厅)：无策略决策面申报 |
 | 28 | [28_invest_env_screen.md](28_invest_env_screen.md) | 投资环境画面策略面：统一加法标尺(现金+方向+赠卡+立场+转向轴)、刷新三态、排除规则(决策本体 = strategies/impl/mandate_v1/invest_env.py) |

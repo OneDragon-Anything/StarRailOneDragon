@@ -1555,7 +1555,9 @@ _validate_env_gifts()
 # 与功能价值)= 零现金分维持(原 ENV_PICK_VALUE 已随 3.2 删除面退役,
 # 现金通道 fail-closed 即无值;知识评估
 # 已对两半作过知识性净评),两层从不相加——
-# 「层 E 有值时以现金分参与、无值时零兜底」(总纲 design.md §2.3)。
+# 「层 E 有值时以现金分参与、无值时零兜底」,取两层各自标尺下结果的较优
+# 呈现(标尺语义正本 = strategy-docs/28_invest_env_screen.md;层 E 语义
+# = 策略层 env_economy._pool_rewrite_value docstring)。
 # 数量通道(联席额外三选一/银金彩刷新 +2)与 A 类策略大师同口径:策略域价值
 # 不折金不进层 E,消费端零改动,字段只登记事实(详设 §2.2.4)。
 # 锁 = 测试仓 test_cw_env_pool_rewrite.py(Q1-Q6)。

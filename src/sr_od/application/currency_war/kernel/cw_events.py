@@ -288,7 +288,8 @@ def decide_event(options: list[str], config, gs: GameState,
         _env = get_env(opt)   # 提前查 env 表(防跨表污染,见下 eval-lcs/惩罚两处守卫)
         _pv = None if _env is not None else pick_value_of(opt)
         # ↑ 跨表污染守卫:83 env 名中 29 个会 LCS 误中策略名(全量扫描实测:列车同行概念股→
-        # 列车同行星徽28/增发货币→超发货币55 等)——env 名走 env 分支评分,不进策略 LCS 兜底。
+        # 列车同行星徽28/增发货币→超发货币55 等)——env 名不进策略评序(env 评序
+        # 已迁策略层 invest_env),LCS 兜底对 env 名跳过。
         # (评审🔴3a)augment 定义型 comp:黑塔纪元/飞光等拿到即改写本局玩法(216 张黑塔
         # 入商店/师徒变身)—— 支配性优先序(定形,16 号稿 §1.4):定义型命中优先于
         # 一切常规评估项(S2 域带/S3 对齐 110/升费 100/steering +30 之上),仅低于用户 forbid;120 是
@@ -411,8 +412,8 @@ def decide_event(options: list[str], config, gs: GameState,
     refresh_slots: tuple[int, ...] = ()
     if len(options) == 3 and all(_cand_exact):
         # 全 env 帧守卫(零 kind 参,decide_event 签名不变):三选项全部精确命中
-        # 环境注册表(get_env 同源查表)→ env 帧,走下方环境判据分支,不进本策略
-        # 判据。策略∩环境注册表精确/归一后双 ∅(直调在案),all(_cand_exact) 已
+        # 环境注册表(get_env 同源查表)= env 帧 → 不进本策略判据(env 判据已迁
+        # 策略层 invest_env)。策略∩环境注册表精确/归一后双 ∅(直调在案),all(_cand_exact) 已
         # 蕴含非 env 帧,本守卫只防注册表交叉演化;即使误判,后果方向 = 漏刷
         # (保守向,失败安全)。
         _env_frame = all(get_env(o) is not None for o in options)

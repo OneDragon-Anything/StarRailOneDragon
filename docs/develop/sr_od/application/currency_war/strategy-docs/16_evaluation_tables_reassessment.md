@@ -21,23 +21,22 @@
 ### 1.1 PICK_VALUE（选卡价值基准分，335 条，`cw_investments.py:798`）
 
 - **判定：保留·改形（知识判据定序器 + 立项挂账）。**
-- 消费点（活）：`pick_value_of`（:1127，含 LCS 形变兜底）→ `decide_event`（cw_events.py:108/125-135）→ 接线面 `cw_screen_invest_strategy.py:105` / `cw_screen_invest_env.py:112` / `strategies/impl/flow.py:286`（sim 栈同源消费）。全链在产。
+- 消费点（活）：`pick_value_of`（:1127，含 LCS 形变兜底）→ `decide_event`（cw_events.py:108/125-135）→ 接线面 `cw_screen_invest_strategy.py:105` / `cw_screen_invest_env.py:112` / `strategies/impl/flow.py:286`（sim 栈同源消费）。全链在产。（括注 2026-09-23 迁移 3.2:env 接线面两锚已失效——投资环境屏消费迁策略层 invest_env,不读 PICK_VALUE;策略轴锚仍在产。）
 - 依据：①必选面（投资策略 3 选 1，UI 强制），退役无替代判据承接——品质先验回落（1.6 表）幅值本身已被经验分退役裁定 C9/C12 判「序到分映射无推导」，退到品质先验是退化不是清账；②分值结构 = 读 effect 原文逐条人工判定的 comp 知识结晶（评估口径 value_class 七分类 + pick_priority），属 13 号篇知识判据面，与宪法第一条「经验拟合不得作决策依据」的张力以**显式降格**消解：分数声明为知识判据的定序载体，非数学判据的基数输入；③消费臂 v4.2.2 不辖本面（§0.3），无取代关系。
 - 改形内容（规格，落码归执行批）：①表头注释补三形态声明——「知识判据定序分：仅在同表（335 条策略）内选项间定序有效；禁作为基数与其它分值族做加减语义扩展」；②跨族交互仅保留现行 `max()` 覆盖结构（comp-hit/augment/steering），禁新增「叠加进其它面判据」的消费点；③立项挂账 = 08 E1/E2「台账价值挂 P38 ⑤层参数化」待 derive 行补 owner（事件面命题批）+ 期限（一个对局周期，01 §6 三要素 3）。
 - 孤儿键校验（:1115-1119）与 LCS 守卫（0144b 跨表污染、|Δlen|≤3）为防错结构，随表保留。
 
-### 1.2 ENV_PICK_VALUE（环境选卡基准分，83 条，`cw_investments.py:1148`）
+### 1.2 ENV_PICK_VALUE（环境选卡基准分，83 条，原 `cw_investments.py:1148`）
 
-- **判定：保留·改形（同 1.1；另挂经济效果建模缺口）。**
-- 消费点（活）：`decide_event` env 分支（cw_events.py:140-142），接线面同 1.1（cw_screen_invest_env）。
-- 依据：同 1.1（必选面 + 知识判据 + 消费臂不辖）。附加依据：自注「环境效果全是整局规则，EconomyEffect 现有字段结构性装不下（EnvEconomyEffect 扩字段待后续）」——该建模缺口是本表无法升级为台账价值判据的真实卡点，随立项挂账一并登记（归事件面命题批，非本批）。
+- **判定：退役（2026-09-23 invest-env 策略层迁移迭代 3.2 删除面；原「保留·改形」裁定作废归档）。**
+- 依据：①宪法五所有权迁移——环境选卡评序 = 衍生打分，整体迁策略层统一加法标尺（`strategies/impl/mandate_v1/invest_env.py`，正本 = [28_invest_env_screen.md](28_invest_env_screen.md)）；②价值替代 = 阈值刷新环境（长线利好/二手市场）按 P97 预算口径拍值注册（策略层 `env_economy._GOLD_AFTER_REFRESHES_FIXED`，锚 = `../proofs/p97-refresh-budget.md` §7），知识评估分裸分承载面退役；③消费点已死：`decide_event` env 分支随轴删除（cw_events 现只辖投资策略轴）。原必选面前提由新标尺承接（三选一仍必选，判据 = 28 号稿四组件），属有承接退役，非裸退。
+- 同批删除面：ENV_FACTION_MATCH_FLOOR（§1.3）、GIFT_FLOOR_CORE/SHARED/ADVISOR_CORE（送卡档 floor；档→分映射现役 = 策略层 `gift_value.GIFT_TIER_SCORE` + `ADVISOR_DISCOUNT`，档位机器 `cw_comps.gift_hit_tier` 留 kernel 在产）。
+- 原「经济效果建模缺口」挂账的现役承接 = 策略层 `env_economy`（ENV_ECONOMY_PENDING_MODELING + 估算注册表，fail-closed）。
 
-### 1.3 ENV_FACTION_MATCH_FLOOR（阵营匹配条件分下限 {概念股 78, 邀请 70, 契约 72}，`cw_investments.py:1241`）
+### 1.3 ENV_FACTION_MATCH_FLOOR（阵营匹配条件分下限 {概念股 78, 邀请 70, 契约 72}，原 `cw_investments.py:1241`）
 
-- **判定：改形（匹配优先定序门）。**
-- 消费点（活）：cw_events.py:143-146（env.faction ∩ target_comp.factions 时 score 提到 floor）。
-- 依据：结构方向有出处——「阵营定向环境对目标阵营 comp 价值更高」= 注册表结构事实（env.faction 字段）+ 评估实证（synergy 主导 47/83）；三档幅值无推导。消费的是 `target_comp.factions`（证明层单一供给），与消费臂链路对齐无分叉。
-- 改形内容：声明为「阵营命中 ⇒ 提到该 category 档位」的**定序门**——三档值是 category 间的定序档位（邀请 < 契约 < 概念股，评估实证序），floor 相对全体 env 裸分（上界 72）的「匹配压过不匹配」位次关系是承重语义；禁读作基数。default 70.0 兜底档（cw_events.py:144 `.get(_env.category, 70.0)`）随声明一并保留。
+- **判定：退役（2026-09-23 invest-env 策略层迁移迭代 3.2 删除面；原「改形」裁定作废归档）。**
+- 依据：消费点已死（`decide_event` env floor 支随轴迁移删除）。「阵营定向环境对目标阵营价值更高」的结构方向由策略层方向分承载（`line_value`：环境阵营 ∩ 候选线集 → 线强度档分 `LINE_STRENGTH_SCORE`，正本 = 28 号稿 §2），category 间定序档位常数不再需要。
 
 ### 1.4 augment 定义型 120（`decide_event` 中 `score = max(score, 120.0)`，cw_events.py:113-115）
 
@@ -89,8 +88,9 @@
 | 表 | 在产消费锚（grep 复核 2026-09-05） |
 |---|---|
 | PICK_VALUE | cw_events.py:108,125-135；cw_investments.py:798,1127；cw_screen_invest_strategy.py:105；cw_screen_invest_env.py:112；flow.py:286 |
-| ENV_PICK_VALUE | cw_events.py:140-142；cw_investments.py:1148,1236-1237 |
-| ENV_FACTION_MATCH_FLOOR | cw_events.py:144-146；flow.py:282（docstring 声明） |
+| ENV_PICK_VALUE | **已退役（2026-09-23 迁移 3.2）**：原锚 cw_events.py env 分支（已删）、cw_investments.py ENV_PICK_VALUE（已删）；现役判据 = strategies/impl/mandate_v1/invest_env.py（28 号稿） |
+| ENV_FACTION_MATCH_FLOOR | **已退役（2026-09-23 迁移 3.2）**：原锚 cw_events.py env floor 支（已删）；现役承载 = 策略层 line_value（28 号稿 §2） |
+| GIFT_FLOOR_* | **已退役（2026-09-23 迁移 3.2）**：原锚 cw_events.py 送卡档 max() 支（已删）；现役承载 = 策略层 gift_value（GIFT_TIER_SCORE/ADVISOR_DISCOUNT；档位机器 cw_comps.gift_hit_tier 留 kernel 在产） |
 | augment 120 | cw_events.py:113-115；AUGMENT_COMP_AFFINITY 共用面 cw_comps.py:1305,1600-1603,2091-2111 |
 | comp-hit 45N+20 | cw_events.py:117-122 |
 | 品质先验回落 | cw_events.py:97,128-130 |
