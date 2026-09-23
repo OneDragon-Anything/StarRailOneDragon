@@ -19,8 +19,8 @@
 容器 ``partner_opts``(空候选不写,闸在 report 内)→ obs 挂实例属性进决策
 node。决策动作 node = 重入裁决顶部(确认已发 → 标识不在 = overlay 已关
 → success 交回)→ 确认被拒守卫(未选中提示在场 × 脉冲上限 = 显式 fail)
-+ 决策出口三守卫(输入:候选空 fail / match 缺席 :36 round_success 交回 /
-返回契约 / 值域,op-layer.md §1.1 :36·出口③ / §1.3)→
++ 决策出口守卫(输入:候选空 fail / 返回契约 / 值域,op-layer.md §1.1
+出口③ / §1.3;无 match 局外不设早退支,用户裁决 2026-09-22 全族删门)→
 首轮决策一次定同一点位(chosen_partner = 选择点单次逻辑写入留守,动作事实
 边界不进 report)→ 「点选候选 → 确认」脉冲链经工厂 → round_wait 循环。
 本屏 sim 腿 = 不适用(sim 无对应画面段,事件浮层族即时落定),等价判据
@@ -179,8 +179,8 @@ class CwScreenPartner(SrOperation):
         门后候选一次读(OCR + SIFT 真身识别,失败回落 label 名)→
         ``report_screen_partner_obs``(空候选不写,闸在 report 内);
         match/gs 缺席的局外兜底路径跳过 report(report 跳写 = 容器写闸,
-        与决策无关;决策面无局外兜底——无 match = 零决策零点击
-        round_success 终结交回(op-layer.md §1.1 :36),守卫见 act)。"""
+        与决策无关;无 match 局外不设早退支,用户裁决 2026-09-22 全族
+        删门)。"""
         screen = self.last_screenshot
         if not self.round_by_find_area(screen, '货币战争-列车同行', '标识-选择伙伴').is_success:
             return self.round_fail('非选择伙伴屏')
@@ -211,10 +211,10 @@ class CwScreenPartner(SrOperation):
         1. 未选中提示在场(置灰实锤)∧ 脉冲已达上限 → 显式 fail(确认被拒
            形态有界重试,禁原样无限重试);
         2. 首轮决策一次(零参 decide,写槽已由 report 落容器;chosen 留守
-           选择点)定同一点位;守卫①②③(候选空 = 具名 fail;match 缺席 =
-           零决策零点击 round_success 终结交回,op-layer.md §1.1 :36;返回
+           选择点)定同一点位;守卫①②③(候选空 = 具名 fail;返回
            None·词表外 = 具名 fail 含原值;越界 = AssertionError)先于决策
-           与写端,零点击;
+           与写端,零点击;无 match 局外不设早退支(用户裁决 2026-09-22
+           全族删门);
         3. 提示在场(含重入轮)= 未选中实证 → 点候选卡(单选语义重点
            已选卡无反选面;提示不在 = 不重点选,防未知选中呈现被扰动);
         4. 点确认(mouse_move 防吞点击 + click);确认是否落地由下一轮
@@ -236,14 +236,13 @@ class CwScreenPartner(SrOperation):
             cands = self._cands
             options = self._obs.options if self._obs is not None else []
             match = self.ctx.cw_match
-            # 守卫①(决策输入,两臂零点击零派发):候选空 = 在册显式失败(留守
-            # round_fail);match 缺席 = 局外,零决策零点击 round_success 终结
-            # 交回(op-layer.md §1.1 :36,遭遇屏先例同款;原常量 idx0 盲选派发退役)。
+            # 守卫①(决策输入,零点击零派发):候选空 = 在册显式失败(留守
+            # round_fail;原常量 idx0 盲选派发退役)。
             if not options:
                 return self.round_fail('伙伴屏无候选(OCR 未命中候选标签),禁兜底盲点')
-            if match is None:
-                return self.round_success(
-                    '[cw-partner] 局外无 match,零决策零点击终结交回(:36)')
+            # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
+            # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+            # 在此失败即预期,禁回填此类单跑防御分支。
             # 守卫②(返回契约,op-layer §1.3):None/词表外 = 策略器 bug 具名
             # fail 留证(原 AttributeError 异常出口子径收编,消息含原值)。
             pick = match.strategy.decide_partner()

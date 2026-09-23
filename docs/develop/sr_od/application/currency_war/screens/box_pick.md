@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;选卡即终结,单步无确认)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 两道闸(入口锚复验,分发即门 op 内机械复验防误派;OCR 卡名空 = 未发出通道)→ 任一 miss = round_fail 交回外循环重派(重观察语境禁猜,禁盲点首卡;report 不调,容器不进盲值)→ 观察标准化门 + 坐标解点 → `report_screen_box_pick_obs` 同门双写 `box_card_names` / `box_card_names_xy` 槽 → obs + 标准化读数挂实例属性。决策动作 node = 局外门(match 缺席 = 零决策零点击 round_success 终结交回,op-layer.md §1.1 局外单跑条款,遭遇屏先例同款,无兜底决策)→ 选卡决策 → 选卡链经 `CwActionPickBoxCardOp` 派发(点卡选中即确认 + 动画等待 + 自上报住动作 op,契约 = [../flow/action_exec.md](../flow/action_exec.md) §2;点击坐标 = 观察上报容器 `box_card_names_xy`(op-layer.md §1.1 :35,动作 op 按下标自取))→ round_success 交回(选卡落地由下一帧观察覆盖;op 内零重试轮,重试预算归外循环重分发;`node_max_retry_times=5` 现役值仅框架异常路径消费)。零参决策 `match.strategy.decide_box_card()`(候选自容器槽;局内 fail-closed:异常留证完整栈后显式上抛 / 返回越界索引同上抛——两者都禁无声回落内联打分,策略 bug 禁永久遮蔽;薄壳语义:locked_comp 两态锚 + 三本库存账 → 共享机器 `kernel/cw_equip_value.py::pick_equipment` 序数分档,key 直击 > 近兑现 > 材料 > 通用,base = 通用输出先验;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;选卡即终结,单步无确认)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 两道闸(入口锚复验,分发即门 op 内机械复验防误派;OCR 卡名空 = 未发出通道)→ 任一 miss = round_fail 交回外循环重派(重观察语境禁猜,禁盲点首卡;report 不调,容器不进盲值)→ 观察标准化门 + 坐标解点 → `report_screen_box_pick_obs` 同门双写 `box_card_names` / `box_card_names_xy` 槽 → obs + 标准化读数挂实例属性。决策动作 node = 选卡决策(无 match 局外不设早退支,用户裁决 2026-09-22 全族删门)→ 选卡链经 `CwActionPickBoxCardOp` 派发(点卡选中即确认 + 动画等待 + 自上报住动作 op,契约 = [../flow/action_exec.md](../flow/action_exec.md) §2;点击坐标 = 观察上报容器 `box_card_names_xy`(op-layer.md §1.1 :35,动作 op 按下标自取))→ round_success 交回(选卡落地由下一帧观察覆盖;op 内零重试轮,重试预算归外循环重分发;`node_max_retry_times=5` 现役值仅框架异常路径消费)。零参决策 `match.strategy.decide_box_card()`(候选自容器槽;局内 fail-closed:异常留证完整栈后显式上抛 / 返回越界索引同上抛——两者都禁无声回落内联打分,策略 bug 禁永久遮蔽;薄壳语义:locked_comp 两态锚 + 三本库存账 → 共享机器 `kernel/cw_equip_value.py::pick_equipment` 序数分档,key 直击 > 近兑现 > 材料 > 通用,base = 通用输出先验;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18)。
 
 ## 3. 观察面
 
@@ -33,8 +33,8 @@ idx = _decide_card_index(决策动作 node):
   局内 = decide_box_card()(零参;候选读容器 box_card_names 槽;
     fail-closed:异常留证完整栈后显式上抛 / 返回越界索引
     同上抛——两者都禁无声回落内联打分,策略 bug 禁永久遮蔽)
-  局外(match 缺席)= 零决策零点击 round_success 终结交回
-    (op-layer.md §1.1 局外单跑条款;遭遇屏先例同款)
+  (无 match 局外不设早退支——单跑缺上下文沿正常链路失败即预期;
+    用户裁决 2026-09-22 全族删门)
 坐标 = 容器 box_card_names_xy[idx](动作 op 内取;观察期按
   选中卡 x 中心 + 卡身 y 常量 290 解出上报,点卡名带下方一点,
   避「查看详情」按钮)→
@@ -76,5 +76,5 @@ idx = _decide_card_index(决策动作 node):
 ## 9. 遥测与锁面
 
 - journal op 名 =「武装箱选择」(阶段一身份分发);op 内日志 tag = `[cw][boxpick]`(选中卡名/交回)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(box_pick 观察 report 接线/两道闸 skip report/点卡决策/局外出口/标准化门锁)、test_cw_unified_action_2a.py::test_pick_box_decision_fail_closed(fail-closed 决策契约行为锁 + 画面常量)、test_cw_screen_report_ports.py(box_pick 同门双写/等长守卫)、test_cw_unified_action_4.py(动作 op 自容器取点锁)。
+- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(box_pick 观察 report 接线/两道闸 skip report/点卡决策/局外无早退支自然失败/标准化门锁)、test_cw_unified_action_2a.py::test_pick_box_decision_fail_closed(fail-closed 决策契约行为锁 + 画面常量)、test_cw_screen_report_ports.py(box_pick 同门双写/等长守卫)、test_cw_unified_action_4.py(动作 op 自容器取点锁)。
 - game 侧知识:画面与机制 = [../../../../game/screens/currency_war_battle_prep_supply_box.md](../../../../../game/screens/currency_war_battle_prep_supply_box.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18。

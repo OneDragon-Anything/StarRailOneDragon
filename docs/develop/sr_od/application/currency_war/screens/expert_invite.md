@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 弹窗在场门(「标识-专家邀请函」,miss = round_fail 交回外循环重识别自愈)→ 弹窗载体一次读(板面 + 卡羁绊 + 选卡坐标解算)→ `report_screen_expert_invite_obs` 落容器 `expert_invite` 槽 → obs 挂实例属性。决策动作 node = 顶部重入裁决(选卡 pending = 上轮已发的 `(idx, card_bonds)` 快照;弹窗不在 = 选卡落地 → 补写 chosen_expert + 现金分支到账登记 + success;弹窗在 = 未落地 → 重走)→ 零参决策 `match.strategy.decide_expert_invite()`(候选自容器槽;判据单一源 = kernel `cw_events.py::choose_expert_index`,羁绊同线优先兜底现金为王,判据见 §4)。屏内无兜底:决策返回 None/词表外 = 具名 round_fail 零盲发交外循环(op-layer.md §1.1 出口③,消息含原值);idx 域外(词表值域 0..3 ∨ -1)= 守卫断言 AssertionError(op-layer.md §1.3,禁静默并入现金分支);策略异常自然传播(含离屏失约 ValueError);两守卫均在派发前、零点击;选卡派发 = 策略产 `CwActionPickExpertInviteParam` 直发,流程侧零值域改写;无 match = 零决策零点击 round_success 终结交回(op-layer.md §1.1 局外单跑条款,先例 = `cw_screen_encounter.py::CwScreenEncounter.act`)。选卡链经 `CwActionPickExpertInviteOp` 派发(直发策略产实例;点卡即选机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=6` 现役值仅框架异常路径消费)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 弹窗在场门(「标识-专家邀请函」,miss = round_fail 交回外循环重识别自愈)→ 弹窗载体一次读(板面 + 卡羁绊 + 选卡坐标解算)→ `report_screen_expert_invite_obs` 落容器 `expert_invite` 槽 → obs 挂实例属性。决策动作 node = 顶部重入裁决(选卡 pending = 上轮已发的 `(idx, card_bonds)` 快照;弹窗不在 = 选卡落地 → 补写 chosen_expert + 现金分支到账登记 + success;弹窗在 = 未落地 → 重走)→ 零参决策 `match.strategy.decide_expert_invite()`(候选自容器槽;判据单一源 = kernel `cw_events.py::choose_expert_index`,羁绊同线优先兜底现金为王,判据见 §4)。屏内无兜底:决策返回 None/词表外 = 具名 round_fail 零盲发交外循环(op-layer.md §1.1 出口③,消息含原值);idx 域外(词表值域 0..3 ∨ -1)= 守卫断言 AssertionError(op-layer.md §1.3,禁静默并入现金分支);策略异常自然传播(含离屏失约 ValueError);两守卫均在派发前、零点击;选卡派发 = 策略产 `CwActionPickExpertInviteParam` 直发,流程侧零值域改写;无 match 局外不设早退支(用户裁决 2026-09-22 全族删门)。选卡链经 `CwActionPickExpertInviteOp` 派发(直发策略产实例;点卡即选机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=6` 现役值仅框架异常路径消费)。
 
 ## 3. 观察面
 
@@ -29,7 +29,7 @@
 
 | 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| `CwActionPickExpertInviteOp`(`CwActionPickExpertInviteParam`,idx=-1 = 现金为王语义) | 注册表工厂 `action_op_for`(派发实例 = 策略产 `CwActionPickExpertInviteParam`,两守卫后直发;无 match = 局外零决策零点击 round_success 终结交回,无派发;`OverlayPickExecEnv` = idx-only,零 target——坐标由动作 op 自容器 `expert_invite.card_points[idx]` ∨ `cash_point`(idx=-1)取,[op-layer.md](op-layer.md) §1.1 :35,缺席/越界 = 守卫断言) | 自上报 `report_action_pick_expert_invite_param`(零写族,容器零写) | 否(非终结):发出后 `round_wait` 循环推进;落地由重入裁决判——「货币战争-备战-专家邀请函.标识-专家邀请函」不在 = 补写 `chosen_expert`(仅卡分支)/ `ConfirmExpertCash` 到账登记(仅现金分支)+ success 交回外循环(见 §5) |
+| `CwActionPickExpertInviteOp`(`CwActionPickExpertInviteParam`,idx=-1 = 现金为王语义) | 注册表工厂 `action_op_for`(派发实例 = 策略产 `CwActionPickExpertInviteParam`,两守卫后直发;无 match 局外不设早退支——用户裁决 2026-09-22 全族删门,无派发;`OverlayPickExecEnv` = idx-only,零 target——坐标由动作 op 自容器 `expert_invite.card_points[idx]` ∨ `cash_point`(idx=-1)取,[op-layer.md](op-layer.md) §1.1 :35,缺席/越界 = 守卫断言) | 自上报 `report_action_pick_expert_invite_param`(零写族,容器零写) | 否(非终结):发出后 `round_wait` 循环推进;落地由重入裁决判——「货币战争-备战-专家邀请函.标识-专家邀请函」不在 = 补写 `chosen_expert`(仅卡分支)/ `ConfirmExpertCash` 到账登记(仅现金分支)+ success 交回外循环(见 §5) |
 
 决策动作 node 选卡链(整体经动作工厂 `cw_pick_expert_invite_action.py::CwActionPickExpertInviteOp` 派发,pick-op-unify 批;机械链+自上报零写在动作 op 内;派发 = 直发策略产 `CwActionPickExpertInviteParam` 实例,含 -1 现金为王语义):
 
@@ -62,7 +62,7 @@ pick = decide_expert_invite()(零参;候选读容器 expert_invite 槽;
 | 重入裁决弹窗在(点击未落地) | 节点循环重入 | 重走选卡(`round_wait` 循环推进,不烧节点重试预算,无防御上限) |
 | 入口门弹窗未现 | op FAIL | 交回外循环按下一帧画面重分发(自愈;开卡缺位归备战词表 OpenBookcard 链) |
 | 决策无有效输出(返回词表外/None)/ idx 域外 / 策略异常 | 守卫 fail(op FAIL / 异常上抛) | round_fail(含原值)交回外循环 / 框架异常路径(留证截图 + `node_max_retry_times=6` 预算耗尽)fail;连续 fail 由外环 fail 重派网兜底([flow/README.md](../flow/README.md) §4) |
-| 无 match(局外) | 零决策零点击 round_success 终结交回(op-layer §1.1 局外单跑条款) | success 终结访问,交回外循环重进重读(先例 = `cw_screen_encounter.py::CwScreenEncounter.act`) |
+| 无 match(局外) | 不设早退支(op-layer §1.1;用户裁决 2026-09-22 全族删门) | 未支持用法:单跑缺上下文沿正常链路自然失败,局内不达此态 |
 
 「确认离开 = 画面终结」= [README.md](README.md) §6。
 
@@ -89,5 +89,5 @@ pick = decide_expert_invite()(零参;候选读容器 expert_invite 槽;
 ## 9. 遥测与锁面
 
 - journal op 名 =「专家邀请函」;op 内日志 tag = `[cw-bookcard]`(board/卡羁绊/选卡描述)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(节点循环族两 node 形态锁:观察上报容器含坐标域/入口门 miss fail)、test_cw_unified_action_2c.py(决策出口守卫锁组 `test_expert_invite_decision_*`:返回契约/值域/异常传播/正路两态/局外终结 + report 双写同门等长守卫锁)、test_cw_unified_action_4.py(expert 容器双源取点与缺席/越界守卫二态锁)、test_cw_game_state_consume.py(chosen_expert 接线锁);`choose_expert_index` 纯函数行为锁同仓。代码注引的接线锁(test_cw_node_screens)已不在册(开放设计注)。
+- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(节点循环族两 node 形态锁:观察上报容器含坐标域/入口门 miss fail)、test_cw_unified_action_2c.py(决策出口守卫锁组 `test_expert_invite_decision_*`:返回契约/值域/异常传播/正路两态/局外无早退支自然失败 + report 双写同门等长守卫锁)、test_cw_unified_action_4.py(expert 容器双源取点与缺席/越界守卫二态锁)、test_cw_game_state_consume.py(chosen_expert 接线锁);`choose_expert_index` 纯函数行为锁同仓。代码注引的接线锁(test_cw_node_screens)已不在册(开放设计注)。
 - game 侧知识:画面与书册卡机制 = [../../../../game/screens/currency_war_expert_invitation.md](../../../../../game/screens/currency_war_expert_invitation.md)。

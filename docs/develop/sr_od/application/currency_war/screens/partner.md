@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(「标识-选择伙伴」,miss = round_fail 交回外循环重判)→ 候选一次读 → `report_screen_partner_obs` 落容器 `partner_opts` 槽 → obs + 候选坐标挂实例属性。决策动作 node = 顶部重入裁决(确认 pending:标识不在 = overlay 关 = 链完结 → success;标识在 = 重走脉冲)→ 零参决策 `match.strategy.decide_partner()`(候选自容器槽;缺省实现优先 `config.character_build_around`/`target.core_chars` 命中,否则 idx=0,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E6);决策出口三守卫:候选空 = 具名 round_fail 零盲发(「伙伴屏无候选」在册文案上移至决策前)、match 缺席 = 零决策零点击 round_success 终结交回(op-layer.md §1.1 :36,遭遇屏先例同款)、返回 None/词表外 = 具名 round_fail(含原值)、idx 越界 = 守卫断言 AssertionError 禁钳位(op-layer.md §1.1 :36/出口③/§1.3;均在派发前零点击)→ 「点选候选 → 确认」脉冲链经 `CwActionPickPartnerOp` 派发(机械链+自上报在动作 op 内,pick-op-unify 批;确认点读缺旁路不上报)→ `round_wait` 循环(无防御上限;`node_max_retry_times=10` 现役值仅框架异常路径消费,有界防线 = CONFIRM_REJECT_MAX,见 §8)。chosen_partner 留守选择点,不进 report。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(「标识-选择伙伴」,miss = round_fail 交回外循环重判)→ 候选一次读 → `report_screen_partner_obs` 落容器 `partner_opts` 槽 → obs + 候选坐标挂实例属性。决策动作 node = 顶部重入裁决(确认 pending:标识不在 = overlay 关 = 链完结 → success;标识在 = 重走脉冲)→ 零参决策 `match.strategy.decide_partner()`(候选自容器槽;缺省实现优先 `config.character_build_around`/`target.core_chars` 命中,否则 idx=0,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E6);决策出口守卫:候选空 = 具名 round_fail 零盲发(「伙伴屏无候选」在册文案上移至决策前)、返回 None/词表外 = 具名 round_fail(含原值)、idx 越界 = 守卫断言 AssertionError 禁钳位(出口③/§1.3;均在派发前零点击);无 match 局外不设早退支(用户裁决 2026-09-22 全族删门)→ 「点选候选 → 确认」脉冲链经 `CwActionPickPartnerOp` 派发(机械链+自上报在动作 op 内,pick-op-unify 批;确认点读缺旁路不上报)→ `round_wait` 循环(无防御上限;`node_max_retry_times=10` 现役值仅框架异常路径消费,有界防线 = CONFIRM_REJECT_MAX,见 §8)。chosen_partner 留守选择点,不进 report。
 
 ## 3. 观察面
 
@@ -20,7 +20,7 @@
 - 转换成功性边界(op-layer.md §1.1 :34「屏契约登记」义务):`char_id` = SIFT 真身识别产物,**识别失败回落 label 流派名/空 = 转换失败欠账形态**(:34 要求任一候选转换失败 = 观察失败 round_fail 早退、零写零上报;现役回落为既有语义,无新增未标准化直报面),收敛方向 = 观察失败 round_fail 零写零上报;多候选命中同一注册名(选项互斥屏)= 同判转换失败;
 - 未选中态正判定 `_unselected_hint_present`:建档「提示-请选择强化角色」区域命中(确认钮置灰态伴随文案,区域约束 OCR 无全屏 LCS 误匹配面)。选中态呈现零实拍,**选中与否不作读数判定**(推进语义由脉冲 + 完成门承载)。
 
-观察 payload = `CwScreenPartnerObs`(`on_screen`/`options`(PartnerOption idx+char_id)/`screen`,住 `kernel/cw_screen_report/partner.py`);report = `report_screen_partner_obs` 候选写容器 `partner_opts` 槽(空候选不写,闸在 report 内;match/gs 缺席的局外路径跳过 report——report 跳写 = 容器写闸,与决策无关;决策面无局外兜底,无 match = 零决策零点击 round_success 终结交回(op-layer.md §1.1 :36),见 §2)。
+观察 payload = `CwScreenPartnerObs`(`on_screen`/`options`(PartnerOption idx+char_id)/`screen`,住 `kernel/cw_screen_report/partner.py`);report = `report_screen_partner_obs` 候选写容器 `partner_opts` 槽(空候选不写,闸在 report 内;match/gs 缺席的局外路径跳过 report——report 跳写 = 容器写闸,与决策无关;无 match 局外不设早退支,用户裁决 2026-09-22 全族删门,见 §2)。
 
 ## 4. 动作面
 
@@ -36,9 +36,9 @@
 1. 未选中提示在场 ∧ 脉冲计数 ≥ CONFIRM_REJECT_MAX(4) → 显式 round_fail
    (确认被拒形态有界重试:未选中提示持续在场 = 确认钮置灰被游戏拒,
     先于无界循环给出精确失败原因)
-2. 守卫先行(候选空 / 返回词表外·None = round_fail;match 缺席 =
-   round_success 零决策零点击终结交回,op-layer.md §1.1 :36;越界 =
-   AssertionError——均先于决策与写端零点击)→ 首轮决策一次
+2. 守卫先行(候选空 / 返回词表外·None = round_fail;越界 =
+   AssertionError——均先于决策与写端零点击;无 match 局外不设早退支,
+   用户裁决 2026-09-22 全族删门)→ 首轮决策一次
    (缓存同一点位防跨轮决策抖动换候选):
    candidates → SIFT char_ids → decide_partner()(零参,候选读容器
    partner_opts 槽)→ _pick_point(x = 候选 label 中心,y = 「候选-卡区」
@@ -61,7 +61,7 @@
 | 确认被拒(未选中提示持续在场达上限) | op FAIL | 显式失败交外环重判 |
 | 入口锚 miss | op FAIL | 交回外循环重分发 |
 | 决策出口守卫(候选空/返回词表外·None/idx 越界) | 守卫 fail(op FAIL) | round_fail(含原值,直落零预算)/ 框架异常路径(留证截图 + node_max_retry_times=10 预算耗尽,守卫③)交回外循环;连续 fail 由外环 fail 重派网兜底(cw_loop.py::CwLoop) |
-| 局外无 match(op-layer.md §1.1 :36) | round_success 终结交回 | 零决策零点击,交回外循环重分发(遭遇屏先例同款) |
+| 局外无 match | 不设早退支(op-layer.md §1.1;用户裁决 2026-09-22 全族删门) | 未支持用法:单跑缺上下文沿正常链路自然失败,局内不达此态 |
 
 「确认离开 = 画面终结」= [README.md](README.md) §6;`node_max_retry_times=10` 现役值仅框架异常路径消费,循环推进 = `round_wait`,有界防线 = CONFIRM_REJECT_MAX。
 
@@ -78,7 +78,7 @@
 ## 8. 守卫与防线
 
 - `CONFIRM_REJECT_MAX=4` 确认被拒防线(置灰确认被游戏拒的形态显式失败,禁原样无限重试)。
-- 决策输入守卫:候选空 = 具名 round_fail 零盲发(无候选在册文案保留);局外无 match = 零决策零点击 round_success 终结交回(op-layer.md §1.1 :36,遭遇屏先例同款;原「常量 idx0 盲选派发」退役)。
+- 决策输入守卫:候选空 = 具名 round_fail 零盲发(无候选在册文案保留;原「常量 idx0 盲选派发」退役)。无 match 局外不设早退支(op-layer.md §1.1;用户裁决 2026-09-22 全族删门)。
 - 返回契约与值域守卫:返回 None/词表外 = 具名 round_fail;pick idx 越界 = 守卫断言 AssertionError(原「静默钳 0」退役)。
 - 候选选中几何:y 由「候选-卡区」建档带中心锚定(布局漂移可经建档对账暴露;禁裸坐标兜底)。
 - 决策单次缓存(`_pick_point`)防重入轮决策抖动换候选。
@@ -87,5 +87,5 @@
 ## 9. 遥测与锁面
 
 - journal op 名 =「选择伙伴」;op 内日志 tag = `[cw-partner]`(candidates/pick/点选点/确认被拒)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(节点循环族两 node 形态锁:观察上报容器/入口门 miss fail/容器零参决策 + round_wait;决策出口守卫两锁——伙伴臂输入守卫锁:候选空 fail / 局外 round_success 两臂分开断言,返回契约+值域锁)、test_cw_partner_select_confirm_flow.py(选选流序 + 确认被拒有界重试锁;桩面 = cw_match 桩,decide_partner 恒 idx=0——守卫面锁归 two_node_family 伙伴臂,选选流序断言面不变)。
+- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(节点循环族两 node 形态锁:观察上报容器/入口门 miss fail/容器零参决策 + round_wait;决策出口守卫两锁——伙伴臂输入守卫锁:候选空 fail / 局外无早退支自然失败两臂分开断言,返回契约+值域锁)、test_cw_partner_select_confirm_flow.py(选选流序 + 确认被拒有界重试锁;桩面 = cw_match 桩,decide_partner 恒 idx=0——守卫面锁归 two_node_family 伙伴臂,选选流序断言面不变)。
 - game 侧知识:画面与交互更正 = [../../../../game/screens/currency_war_choose_partner.md](../../../../../game/screens/currency_war_choose_partner.md)。

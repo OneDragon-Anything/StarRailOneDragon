@@ -17,8 +17,9 @@ None-safe 通道,执行层不冷建)。本屏 sim 腿 = 不适用(sim 无对应�
 
 出口语义(选中半访问):候选空 = 具名 round_fail 零盲发,返回词表外/
 None = 具名 round_fail,idx 越界 = 守卫断言 AssertionError——守卫均在
-派发前、零点击;无 match/gs = 局外交回(零决策零点击,正本形态);名字
-转换失败 = 观察层 round_fail(转换门 = ``obs/cw_megastar_obs.py`` 的
+派发前、零点击;无 match/gs 局外不设早退支(单跑缺上下文沿正常链路
+失败即预期;用户裁决 2026-09-22 全族删门);名字转换失败 = 观察层
+round_fail(转换门 = ``obs/cw_megastar_obs.py`` 的
 ``standardize_megastar_options``)。
 
 **玩法机制(米游社 wiki content/6239 + 实机日志/截图核实,2026-08-07)**:
@@ -111,20 +112,19 @@ class CwScreenMegastar(SrOperation):
         (含 ``_in_node`` 选中标记复位副作用,须在门内)。在门内 → 仅
         「本访问将选择」(未选中)才读候选;确认访问不重读(迁移不增加
         读屏)→ ``report_screen_megastar_obs`` 写 ``megastar_opts``
-        (空候选不写,闸在 report 内);无 match/gs = 局外,零读屏零上
-        报交回(正本 = op-layer.md §1.1「画面 op 不支持局外单独调用」,
-        本屏特形 = 懒读先例屏零读延伸);名字标准化转换门住本 node 选中
-        半读链(规范 = 同节「观察标准化门」)。"""
+        (空候选不写,闸在 report 内);无 match/gs 局外不设早退支——
+        单跑缺上下文沿正常链路失败即预期(用户裁决 2026-09-22 全族删
+        门);名字标准化转换门住本 node 选中半读链(规范 = 同节
+        「观察标准化门」)。"""
         screen = self.last_screenshot
         if not self._in_node(screen):
             return self.round_success('巨星节点完成(已离开本节点画面)',
                                       wait=CW_OVERLAY_SETTLE_S)
         _match = self.ctx.cw_match
         _gs = getattr(_match, 'gs', None) if _match is not None else None
-        if _gs is None:
-            # 局外(无对局上下文)= 零读屏零上报交回:决策必不发生时读
-            # 无消费方(懒读先例屏的结构延伸);终局出口 = act 局外交回臂。
-            return self.round_success('局外交回(无 match/gs;零读屏零上报)')
+        # 无 match/gs 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
+        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        # 在此失败即预期,禁回填此类单跑防御分支。
         clicked = self._clicked_of(_match)
         options = [] if clicked else read_megastar_options(self.ctx, screen)
         if not clicked:
@@ -152,20 +152,16 @@ class CwScreenMegastar(SrOperation):
         不收敛 = 策略实现 bug 响亮暴露,无防御上限);确认未落地由下一轮
         门复检自愈。出口语义(选中半访问):候选空 = 具名 round_fail 零
         盲发,返回词表外/None = 具名 round_fail,idx 越界 = 守卫断言
-        AssertionError——守卫均在派发前、零点击;无 match/gs = 局外交回
-        (零决策零点击,正本形态);名字转换失败 = 观察层 round_fail
-        (标准化转换门住观察 node)。"""
+        AssertionError——守卫均在派发前、零点击;无 match/gs 局外不设
+        早退支(用户裁决 2026-09-22 全族删门);名字转换失败 = 观察层
+        round_fail(标准化转换门住观察 node)。"""
         screen = self.last_screenshot
         if not self._in_node(screen):
             return self.round_success('巨星节点完成(已离开本节点画面)',
                                       wait=CW_OVERLAY_SETTLE_S)
-        _match = self.ctx.cw_match
-        if _match is None or getattr(_match, 'gs', None) is None:
-            # 局外(无对局上下文)= 零决策零点击 round_success 终结交回;
-            # 判式宽度 = match/gs 双缺(对齐投资环境在飞双判;遭遇为含空候选
-            # 的三判特形,空候选臂本屏走守卫① fail 不折入;正本 = screens/
-            # op-layer.md §1.1「画面 op 不支持局外单独调用」)
-            return self.round_success('局外交回(无 match/gs;零决策零点击)')
+        # 无 match/gs 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
+        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        # 在此失败即预期,禁回填此类单跑防御分支。
         _fail = self._do_action()
         if _fail is not None:
             return _fail

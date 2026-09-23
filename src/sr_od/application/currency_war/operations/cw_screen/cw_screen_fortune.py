@@ -21,9 +21,9 @@ x≈510/900/1290 / 确认 (1441-1543,584-615)。
 ``report_screen_fortune_obs`` 双写容器 ``fortune_opts``/``fortune_opts_xy``
 (无空门,空表照写)→ obs 挂实例属性进决策 node。决策动作 node = 重入裁决
 顶部(入口词「命运卜者」不在 = overlay 已关 → success 交回)→ 决策从容器
-零参读;无 match = 零决策零点击 round_success 终结交回(op-layer.md §1.1
-:37)→ 两守卫(返回词表外/None = 具名 round_fail 零盲发;idx 越界 = 守卫
-断言 AssertionError;策略异常自然传播)→ 选卡+确认链经
+零参读;无 match 局外不设早退支(用户裁决 2026-09-22 全族删门)→ 两守卫
+(返回词表外/None = 具名 round_fail 零盲发;idx 越界 = 守卫断言
+AssertionError;策略异常自然传播)→ 选卡+确认链经
 ``CwActionPickFortuneOp`` 派发(pick-op-unify 批机械链迁入动作 op)→
 round_wait 循环(不烧节点重试预算,无防御上限;确认未落地轮重走)。
 本屏无 chosen_* 写端(fields.md §4「事件选择」在册:写端未接线 = 先补档;
@@ -97,8 +97,7 @@ class CwScreenFortune(SrOperation):
         """三卡位 OCR 一次读 + 三卡点击坐标 → report 双写容器
         ``fortune_opts``/``fortune_opts_xy``(无空门,空表照写;match/gs
         缺席的局外路径跳过 report——report 跳写 = 容器写闸,与决策无关;
-        决策面无局外兜底,无 match = 零决策零点击 round_success 终结交回
-        (op-layer.md §1.1 :37,遭遇屏先例同款),守卫见 act)。"""
+        无 match 局外不设早退支,用户裁决 2026-09-22 全族删门)。"""
         screen = self.last_screenshot
         options = self._read_cards(screen)
         option_points: list[tuple[int, int]] = []
@@ -135,9 +134,9 @@ class CwScreenFortune(SrOperation):
         overlay 已关(上轮确认已落地)→ success 交回外循环;在 = 重走
         选卡+确认。
 
-        决策出口守卫:无 match = 零决策零点击 round_success 终结交回
-        (op-layer.md §1.1 :37,遭遇屏先例同款);决策返回词表外/None =
-        具名 round_fail 零盲发;idx 越界 = 守卫断言 AssertionError;策略
+        决策出口守卫:无 match 局外不设早退支(用户裁决 2026-09-22 全族
+        删门);决策返回词表外/None = 具名 round_fail 零盲发;idx 越界 =
+        守卫断言 AssertionError;策略
         异常自然传播(离屏失约 ValueError 不再被吞)——守卫均在派发前、
         零点击;派发 env 仅携 op,点击坐标 = 动作 op 自容器读(坐标随报
         条款)。"""
@@ -149,12 +148,9 @@ class CwScreenFortune(SrOperation):
                                           wait=2.0)
         texts = self._obs.options if self._obs is not None else []
         _match = getattr(self.ctx, 'cw_match', None)
-        # 守卫⓪(局外,op-layer.md §1.1 :37):无 match = 零决策零点击
-        # round_success 终结交回(遭遇屏先例同款);kernel 直调兜底派发退役
-        # ——「此类支持代码不做」,不设任何兜底决策路径。
-        if _match is None:
-            return self.round_success(
-                '[cw][fortune] 局外无 match,零决策零点击终结交回(op-layer §1.1 :37)')
+        # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
+        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        # 在此失败即预期,禁回填此类单跑防御分支。
         pick = _match.strategy.decide_fortune()
         # 守卫①(返回契约):词表外/None = 决策无有效输出,具名 fail 零盲发
         # (op-layer.md §1.1 出口③);消息含原值 repr = 留证。

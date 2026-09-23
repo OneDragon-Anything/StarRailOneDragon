@@ -5,9 +5,8 @@
 §2.2);武装箱选卡不属备战动作词表(单选族例外:选卡即终结,判据 =
 ``screens/README.md`` §3)。链路:备战环 ``CwActionOpenBoxParam`` 点开启
 (**终结化**——开箱即交回)→ 外循环按本画面分发本 op → OCR 卡名 →
-选卡决策(局内策略 ``decide_box_card`` 契约面;局外 = 零决策零点击
-``round_success`` 终结交回,op-layer.md §1.1 局外单跑条款、遭遇屏先例
-同款,禁兜底决策路径)→ 点卡 → 固定动画等待 → **选卡即终结交回**
+选卡决策(局内策略 ``decide_box_card`` 契约面;无 match 局外不设早退
+支,用户裁决 2026-09-22 全族删门)→ 点卡 → 固定动画等待 → **选卡即终结交回**
 (选卡落地由下一帧观察覆盖)。
 
 决策分层纪律:打分只住机器——策略契约 ``decide_box_card``
@@ -16,9 +15,9 @@
 是仅有的两处决策面,本 op 禁第二打分实现;``decide_box_card`` 异常留证
 (完整栈)后显式上抛、返回越界索引同 fail-closed 上抛——两者都禁无声
 回落内联打分(策略 bug 禁遮蔽;正本 = ``flow/README.md`` §1 决策控制
-分层铁律 + ``screens/op-layer.md`` §1.1 出口三语义)。局外(无 match)=
-零决策零点击 ``round_success`` 终结交回(op-layer.md §1.1「画面 op 不
-支持局外单独调用」;遭遇屏先例同款),本 op 不设任何兜底决策路径;
+分层铁律 + ``screens/op-layer.md`` §1.1 出口三语义)。无 match 局外
+不设早退支(op-layer.md §1.1「画面 op 不支持局外单独调用」;用户裁决
+2026-09-22 全族删门),本 op 不设任何兜底决策路径;
 ``pick_equipment`` 打分单一源留守策略器 ``decide_box_card`` 消费(策略
 器自限域)。
 
@@ -37,12 +36,10 @@ miss 未发 = round_fail 交回外循环按画面重分发)+ OCR 卡名行读数
 期一次解出)→ ``CwScreenBoxPickObs`` → ``report_screen_box_pick_obs``
 写槽 ``box_card_names`` / ``box_card_names_xy`` 落容器(「写槽以本访问
 将决策为前提」由门 + 非空闸保证,桩无 gs(有 match)→ 跳过写、决策
-照走;局外(match 缺席)= act 局外门终结)。obs 读数(名 + x)与坐标
+照走)。obs 读数(名 + x)与坐标
 一并上报入容器(同门双写,坐标单一真相源 = 观察上报,op-layer.md
-§1.1 :35);决策动作 node 零坐标现算。决策动作 node = 局外门(match
-缺席 = 零决策零点击 ``round_success`` 终结交回;op-layer.md §1.1 局外
-单跑条款)→ 选卡决策(``_decide_card_index`` 局内专用,fail-closed
-契约)→ 选卡链经 ``CwActionPickBoxCardOp`` 派发(点卡选中即确认 +
+§1.1 :35);决策动作 node 零坐标现算。决策动作 node = 选卡决策
+(``_decide_card_index`` 局内专用,fail-closed 契约)→ 选卡链经 ``CwActionPickBoxCardOp`` 派发(点卡选中即确认 +
 动画等待 + 自上报住动作 op,机械链契约 = ``flow/action_exec.md`` §2;
 点击坐标 = 容器 ``box_card_names_xy[idx]`` 动作 op 自取)→ 选卡即终结
 交回(单选族例外,判据 = ``screens/README.md`` §3;选卡落地由下一帧
@@ -141,7 +138,7 @@ class CwScreenBoxPick(SrOperation):
         if _gs is not None:
             # 写槽调用(report 落容器:同访问覆盖写,写点前提「本访问将
             # 决策」由两道闸保证;桩无 gs(有 match)→ 跳过写,决策照走;
-            # 局外(match 缺席)= act 局外门终结;名字与坐标同门双写)。
+            # 名字与坐标同门双写)。
             report_screen_box_pick_obs(_gs, obs)
         self._obs = obs
         return self.round_success()
@@ -154,19 +151,12 @@ class CwScreenBoxPick(SrOperation):
         点卡选中即确认 + 动画等待 + 自上报住 ``CwActionPickBoxCardOp``
         (机械链契约 = flow/action_exec.md §2;点击坐标 = 容器
         ``box_card_names_xy[idx]`` 动作 op 自取,选卡落地归下一帧观察
-        覆盖);本 op 只决策(局内;fail-closed 契约)与交回;局外
-        (match 缺席)= 零决策零点击 round_success 终结交回(op-layer.md
-        §1.1 局外单跑条款,遭遇屏先例同款)。派发实例携真实选中下标
-        (上报 param 即真实选择)。"""
-        match = self.ctx.cw_match
-        if match is None:
-            # 局外(无对局)= 零决策零点击 round_success 终结交回
-            # (op-layer.md §1.1「画面 op 不支持局外单独调用」;遭遇屏
-            # 先例同款,禁兜底决策路径)。观察 node 的 report 已因 gs
-            # 缺席跳过、容器零写;外循环重进 = 重观察重派。
-            log.info('[cw][boxpick] 局外(无对局)→ 零决策零点击终结交回')
-            return self.round_success('局外(无对局),零决策零点击终结交回',
-                                      wait=1.5)
+        覆盖);本 op 只决策(局内;fail-closed 契约)与交回;无 match
+        局外不设早退支(op-layer.md §1.1;用户裁决 2026-09-22 全族删门)。
+        派发实例携真实选中下标(上报 param 即真实选择)。"""
+        # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
+        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        # 在此失败即预期,禁回填此类单跑防御分支。
         idx = self._decide_card_index([n for n, _ in self._cards])
         chosen = self._cards[idx][0]
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
@@ -226,8 +216,8 @@ class CwScreenBoxPick(SrOperation):
         """选卡决策(局内专用;容器写归观察 node 的
         ``report_screen_box_pick_obs`` 调用,本方法只决策):策略契约
         ``decide_box_card``(fail-closed:异常留证上抛/越界上抛,禁
-        无声回落)。局外出口住 act 顶部(零决策零点击终结交回),本
-        方法无兜底臂(op-layer.md §1.1 局外单跑条款;遭遇屏先例同款)。"""
+        无声回落)。无 match 局外不设早退支(op-layer.md §1.1;用户
+        裁决 2026-09-22 全族删门),本方法无兜底臂。"""
         try:
             idx = self.ctx.cw_match.strategy.decide_box_card().idx
         except Exception:   # noqa: BLE001  留证后显式上抛,禁无声回落

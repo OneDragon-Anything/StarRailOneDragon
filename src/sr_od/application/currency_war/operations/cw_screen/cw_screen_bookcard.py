@@ -16,9 +16,9 @@ OCR 卡名 → decide_star_tome 选卡(点卡即选,弹窗自关);入口 id_mark
 双域一体,同门同写,op-layer.md §1.1 :35)→ obs 挂实例属性进决策 node。
 决策动作 node = 重入裁决顶部(选卡点击已发 → 弹窗不在 = 选卡落地 → 此刻
 才写 chosen_tome + 到账登记 + success 交回;在 = 点击未落地 → 清标志重走
-重选)→ 决策出口守卫(match 缺席局外 = 零决策零点击 round_success 终结
-交回[op-layer.md §1.1 局外单跑条款];候选空/返回 None/词表外 = 具名 fail
-零盲发[出口③];idx 越界 = 守卫断言[§1.3])→ 决策从容器零参读 → 点卡
+重选)→ 决策出口守卫(无 match 局外不设早退支,用户裁决 2026-09-22
+全族删门;候选空/返回 None/词表外 = 具名 fail 零盲发[出口③];idx 越界
+= 守卫断言[§1.3])→ 决策从容器零参读 → 点卡
 (坐标 = 动作 op 自容器 ``star_tome_opts_xy`` 按 idx 取,op-layer.md §1.1
 :35)→ round_wait 循环(不烧节点重试预算,无防御上限)。chosen_tome 与
 ConfirmTome 到账登记 = 重入裁决点留守(动作事实边界,不进 report;
@@ -68,10 +68,9 @@ class CwScreenBookcard(SrOperation):
 
     决策面 = 策略器零参决策(打分:target 阵营/board 已有/配方框架;单一
     源 = ``strategies/impl/flow.py::decide_star_tome``),本 op 零选卡倾向
-    判断——决策出口守卫:match 缺席(局外)= 零决策零点击 round_success
-    终结交回(op-layer.md §1.1 局外单跑条款,遭遇屏先例同款);候选空/
-    返回 None/词表外 = 具名 fail 零盲发(出口③);pick idx 越界 = 守卫
-    断言(§1.3)。选卡坐标 = 动作 op 自容器 ``star_tome_opts_xy`` 按 idx
+    判断——决策出口守卫:无 match 局外不设早退支(用户裁决 2026-09-22
+    全族删门);候选空/返回 None/词表外 = 具名 fail 零盲发(出口③);
+    pick idx 越界 = 守卫断言(§1.3)。选卡坐标 = 动作 op 自容器 ``star_tome_opts_xy`` 按 idx
     取(坐标单一真相源 = 观察上报,op-layer.md §1.1 :35)。
     """
 
@@ -161,10 +160,9 @@ class CwScreenBookcard(SrOperation):
         (任一「星徽卡-N」建档缺失 = 观察失败 round_fail 早退、双域零写)
         → ``report_screen_bookcard_obs`` 同门双写容器 ``star_tome_opts`` /
         ``star_tome_opts_xy``(空候选不写,闸在 report 内,双域一体);
-        match/gs 缺席的局外兜底路径跳过 report(决策动作 node:无 match =
-        局外零决策零点击 round_success 终结交回[op-layer §1.1 局外单跑
-        条款];候选空 = 具名 fail 零盲发;report 局外豁免面与决策出口
-        互不辖)。"""
+        match/gs 缺席的局外兜底路径跳过 report(候选空 = 具名 fail 零
+        盲发;report 局外豁免面与决策出口互不辖;无 match 局外不设早退
+        支,用户裁决 2026-09-22 全族删门)。"""
         screen = self.last_screenshot
         if not self.round_by_find_area(
                 screen, self.SCREEN_NAME, self.MARK_AREA, crop_first=False).is_success:
@@ -200,14 +198,14 @@ class CwScreenBookcard(SrOperation):
         选卡落地 → 补写 chosen_tome + 到账登记 + success 交回;弹窗仍在 =
         点击未落地 → 重走(重读重选)。
 
-        决策出口守卫(次序:match 缺席局外终结臂 → 候选空臂 → 返回契约
-        → 值域;各臂与守卫均在任何点击之前——派发即点卡、弹窗自关,选择
-        不可逆,必须派发前拦):match 缺席(局外)= 零决策零点击 round_success
-        终结交回(op-layer.md §1.1 局外单跑条款,遭遇屏先例同款),不设
-        任何兜底决策路径——原「盲点卡 1」退役申报;候选空 = 具名 fail 零
-        盲发(出口③);返回 None/词表外 = 具名 fail 零盲发(出口③,消息
-        含原值);idx 越界 = 守卫断言 AssertionError(op-layer.md §1.3,
-        禁钳位——原「静默钳 0」退役申报)。"""
+        决策出口守卫(次序:候选空臂 → 返回契约 → 值域;各守卫均在任何
+        点击之前——派发即点卡、弹窗自关,选择不可逆,必须派发前拦):
+        无 match 局外不设早退支(op-layer.md §1.1;用户裁决 2026-09-22
+        全族删门),单跑缺上下文沿正常链路失败即预期——原「盲点卡 1」
+        退役申报;候选空 = 具名 fail 零盲发(出口③);返回 None/词表外
+        = 具名 fail 零盲发(出口③,消息含原值);idx 越界 = 守卫断言
+        AssertionError(op-layer.md §1.3,禁钳位——原「静默钳 0」退役
+        申报)。"""
         if self._pick_pending is not None:
             _p = self._pick_pending
             self._pick_pending = None
@@ -218,17 +216,14 @@ class CwScreenBookcard(SrOperation):
                 return self.round_success('星徽秘典选卡完成(重入观察裁决)',
                                           wait=CW_OVERLAY_SETTLE_S)
         cards = self._cards
-        # 决策出口守卫(四行:次序 = match 缺席局外终结臂 → 候选空臂 →
-        # 返回契约 → 值域;均在任何点击之前):match 缺席(局外)=
-        # round_success 终结交回(op-layer.md §1.1 局外单跑条款)/候选空
-        # = 具名 fail 零盲发(op-layer.md §1.1 出口③)/返回 None/词表外
-        # = 具名 fail 零盲发(出口③)/idx 越界 = 守卫断言(op-layer.md
-        # §1.3)。
+        # 决策出口守卫(次序 = 候选空臂 → 返回契约 → 值域;均在任何点击
+        # 之前):候选空 = 具名 fail 零盲发(op-layer.md §1.1 出口③)/
+        # 返回 None/词表外 = 具名 fail 零盲发(出口③)/idx 越界 = 守卫
+        # 断言(op-layer.md §1.3)。
         _match = getattr(self.ctx, 'cw_match', None)
-        if _match is None:
-            return self.round_success(
-                '局外无 match,零决策零点击终结交回'
-                '(op-layer.md §1.1 局外单跑条款)')
+        # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
+        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        # 在此失败即预期,禁回填此类单跑防御分支。
         if not cards:
             return self.round_fail(
                 f'决策无有效输出零盲发(候选={len(cards)})')

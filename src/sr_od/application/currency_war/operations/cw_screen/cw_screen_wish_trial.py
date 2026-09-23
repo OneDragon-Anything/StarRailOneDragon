@@ -14,9 +14,8 @@
 ``wish_trial_opts_xy``(无空门,空桶照写,同门双写,op-layer.md §1.1 :35)
 → obs 挂实例属性进决策 node。决策动作 node = 重入裁决顶部(确认已发 →
 标识不在 = overlay 已关 → 此刻才写 chosen_wish + success 交回;在 = 确认未
-落地 → 清标志重走)→ 决策出口守卫:match 缺席(局外)= 零决策零点击
-round_success 终结交回(op-layer.md §1.1 局外单跑条款,遭遇屏先例同款);
-返回 None/词表外 = 具名 round_fail 零盲发;idx 越界 = 守卫断言
+落地 → 清标志重走)→ 决策出口守卫:无 match 局外不设早退支(用户裁决
+2026-09-22 全族删门);返回 None/词表外 = 具名 round_fail 零盲发;idx 越界 = 守卫断言
 AssertionError;策略异常自然传播——守卫均在派发前、零点击 → 决策从容器
 零参读 → 选卡+确认链经 ``CwActionPickWishTrialOp`` 派发(pick-op-unify 批
 机械链迁入动作 op,env 仅携 op;点击坐标 = 动作 op 自容器
@@ -91,9 +90,8 @@ class CwScreenWishTrial(SrOperation):
         ``CARD_XS``、y = 卡身 ``CARD_Y``)→ ``report_screen_wish_trial_obs``
         同门双写容器 ``wish_trial_opts`` / ``wish_trial_opts_xy``
         (op-layer.md §1.1 :35 坐标单一真相源 = 观察上报;无空门,空桶照写);
-        match/gs 缺席的局外路径跳过 report(决策面无局外兜底:无 match =
-        零决策零点击 round_success 终结交回,op-layer.md §1.1 局外单跑
-        条款,守卫见 act)。"""
+        match/gs 缺席的局外路径跳过 report(report 跳写 = 容器写闸;
+        无 match 局外不设早退支,用户裁决 2026-09-22 全族删门)。"""
         screen = self.last_screenshot
         if not self.round_by_find_area(screen, '货币战争-祈愿试炼', '标识-祈愿试炼').is_success:
             return self.round_fail('非祈愿试炼屏')
@@ -121,9 +119,9 @@ class CwScreenWishTrial(SrOperation):
         已关(选卡落地)→ 此刻才写 chosen_wish + success 交回;标识在 =
         确认未落地 → 清标志重走(重读重选)。
 
-        决策出口守卫(op-layer.md §1.1/§1.3):match 缺席(局外)= 零决策
-        零点击 round_success 终结交回(局外单跑条款,遭遇屏先例同款);
-        返回 None/词表外 = 具名 round_fail 零盲发(出口③);idx 越界 =
+        决策出口守卫(op-layer.md §1.1/§1.3):无 match 局外不设早退支
+        (用户裁决 2026-09-22 全族删门);返回 None/词表外 = 具名
+        round_fail 零盲发(出口③);idx 越界 =
         守卫断言 AssertionError;策略异常自然传播(离屏失约 ValueError 不
         再被吞)——守卫均在派发前、零点击。派发 = 策略产实例直发,env 仅
         携 op(点击坐标 = 动作 op 自容器 ``wish_trial_opts_xy`` 按 idx 取,
@@ -139,18 +137,14 @@ class CwScreenWishTrial(SrOperation):
                                           wait=2)
         objs = self._obs.options if self._obs is not None else []
         # 决策出口守卫(次序:先输入、后返回契约、再值域;均在任何点击
-        # 之前——派发即发出不可逆点击链,必须派发前拦):match 缺席(局外)
-        # = 零决策零点击 round_success 终结交回(op-layer.md §1.1 局外单跑
-        # 条款,遭遇屏先例同款),不设任何兜底决策路径——原「盲发首卡」
-        # 退役申报;返回 None/词表外 = 具名 fail 零盲发(op-layer.md §1.1
-        # 出口③);idx 越界 = 守卫断言(op-layer.md §1.3);策略异常自然
-        # 传播(离屏失约 ValueError 不再被吞);空候选 = 策略侧自主决策
-        # (策略器返回 idx=0),非兜底。
+        # 之前——派发即发出不可逆点击链,必须派发前拦):返回 None/词表外
+        # = 具名 fail 零盲发(op-layer.md §1.1 出口③);idx 越界 = 守卫
+        # 断言(op-layer.md §1.3);策略异常自然传播(离屏失约 ValueError
+        # 不再被吞);空候选 = 策略侧自主决策(策略器返回 idx=0),非兜底。
         _match = getattr(self.ctx, 'cw_match', None)
-        if _match is None:
-            return self.round_success(
-                '[cw-wish] 局外无 match,零决策零点击终结交回'
-                '(op-layer.md §1.1 局外单跑条款)')
+        # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
+        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        # 在此失败即预期,禁回填此类单跑防御分支。
         pick = _match.strategy.decide_wish_trial()
         if not isinstance(pick, CwActionPickWishTrialParam):
             return self.round_fail(

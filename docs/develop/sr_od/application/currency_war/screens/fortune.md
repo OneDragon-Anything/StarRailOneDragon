@@ -8,11 +8,11 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1);**分发即门**(无 op 内入口守卫):观察 node = 三卡位 OCR 一次读 + 三卡点击坐标 → `report_screen_fortune_obs` 双写容器 `fortune_opts`/`fortune_opts_xy` 槽(空表照写)→ obs 挂实例属性;决策动作 node = 顶部重入出口门(确认已发 → OCR「命运卜者」不在 = overlay 已关 → success 交回)→ 零参决策 `match.strategy.decide_fortune()`(候选自容器槽;判据单一源 = kernel `cw_events.py::decide_fortune` 战力关键词加权,唯一入口 = 策略对象,handler 禁自拟打分;事件面判据目录 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §2)。屏内无兜底:决策返回词表外/None = 具名 round_fail 零盲发交外循环(op-layer.md §1.1 出口③);idx 越界 = 守卫断言 AssertionError、策略异常自然传播(含离屏失约 ValueError,op-layer.md §1.3);两守卫均在派发前零点击,fail 出口非循环出口、非防御上限;选卡派发 = 策略产 `CwActionPickFortuneParam` 直发,流程侧零值域改写;无 match(局外)= 零决策零点击 round_success 终结交回(op-layer.md §1.1 :37,遭遇屏先例同款);点击坐标 = 动作 op 自容器 `fortune_opts_xy` 读(坐标随报条款)。选卡确认链经 `CwActionPickFortuneOp` 派发(机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=5` 现役值仅框架异常路径消费)。无 chosen_* 写端。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1);**分发即门**(无 op 内入口守卫):观察 node = 三卡位 OCR 一次读 + 三卡点击坐标 → `report_screen_fortune_obs` 双写容器 `fortune_opts`/`fortune_opts_xy` 槽(空表照写)→ obs 挂实例属性;决策动作 node = 顶部重入出口门(确认已发 → OCR「命运卜者」不在 = overlay 已关 → success 交回)→ 零参决策 `match.strategy.decide_fortune()`(候选自容器槽;判据单一源 = kernel `cw_events.py::decide_fortune` 战力关键词加权,唯一入口 = 策略对象,handler 禁自拟打分;事件面判据目录 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §2)。屏内无兜底:决策返回词表外/None = 具名 round_fail 零盲发交外循环(op-layer.md §1.1 出口③);idx 越界 = 守卫断言 AssertionError、策略异常自然传播(含离屏失约 ValueError,op-layer.md §1.3);两守卫均在派发前零点击,fail 出口非循环出口、非防御上限;选卡派发 = 策略产 `CwActionPickFortuneParam` 直发,流程侧零值域改写;无 match 局外不设早退支(用户裁决 2026-09-22 全族删门);点击坐标 = 动作 op 自容器 `fortune_opts_xy` 读(坐标随报条款)。选卡确认链经 `CwActionPickFortuneOp` 派发(机械链+自上报在动作 op 内,pick-op-unify 批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=5` 现役值仅框架异常路径消费)。无 chosen_* 写端。
 
 ## 3. 观察面
 
-观察 node = 三卡位 OCR 一次读(入口帧一次读,决策轮复用实例载体)。卡面读取 `_read_cards`:全图 OCR,文本带 y 290-410(卡文字带,避详情按钮),按 x 近邻分流到三卡槽(槽 x 常量数组,容差 190),同桶 join。观察 payload = `CwScreenFortuneObs`(`on_screen`/`options`/`option_points`/`screen`,住 `kernel/cw_screen_report/fortune.py`);report = `report_screen_fortune_obs` 候选写容器 `fortune_opts` 槽(无空门直写,空表照写;match/gs 缺席的局外路径跳过 report——report 跳写 = 容器写闸,与决策无关;决策面无局外兜底,无 match = 零决策零点击 round_success 终结交回(op-layer.md §1.1 :37),见 §2)。观察同步上报三卡点击坐标(建档「卡-强化1/2/3」area 主源 + 兜底常量,空读照报;坐标随报条款)。
+观察 node = 三卡位 OCR 一次读(入口帧一次读,决策轮复用实例载体)。卡面读取 `_read_cards`:全图 OCR,文本带 y 290-410(卡文字带,避详情按钮),按 x 近邻分流到三卡槽(槽 x 常量数组,容差 190),同桶 join。观察 payload = `CwScreenFortuneObs`(`on_screen`/`options`/`option_points`/`screen`,住 `kernel/cw_screen_report/fortune.py`);report = `report_screen_fortune_obs` 候选写容器 `fortune_opts` 槽(无空门直写,空表照写;match/gs 缺席的局外路径跳过 report——report 跳写 = 容器写闸,与决策无关;无 match 局外不设早退支,用户裁决 2026-09-22 全族删门,见 §2)。观察同步上报三卡点击坐标(建档「卡-强化1/2/3」area 主源 + 兜底常量,空读照报;坐标随报条款)。
 
 ## 4. 动作面
 
@@ -27,7 +27,7 @@
 ```
 重入出口门(决策动作 node 顶部):_confirm_pending 置位 → OCR「命运卜者」(lcs 0.5)不在 =
   overlay 已关(上轮确认已落地)→ success 交回外循环;在 = 重走选卡+确认
-局外守卫⓪:无 match → 零决策零点击 round_success 终结交回(op-layer.md §1.1 :37)
+局外:无 match 局外不设早退支——单跑缺上下文沿正常链路失败即预期(用户裁决 2026-09-22 全族删门)
 texts = 观察轮 obs 载体 → decide_fortune()(零参;候选读容器 fortune_opts 槽)
 守卫①:pick 非 `CwActionPickFortuneParam`(None/词表外)→ round_fail(含原值)零盲发
 守卫②:pick.idx 越界 [0, 3) → AssertionError(禁钳位)
@@ -45,7 +45,7 @@ texts = 观察轮 obs 载体 → decide_fortune()(零参;候选读容器 fortune
 | 重入出口门「命运卜者」不在 | **画面终结** | round_success 交回外循环重分发 |
 | 出口门在(确认未落地) | 节点循环重入 | 重走选卡+确认(`round_wait` 循环推进,不烧节点重试预算,无防御上限) |
 | 决策无有效输出/返回词表外/idx 越界/策略异常 | 守卫 fail(op FAIL) | round_fail(含原值)/ 框架异常路径(留证截图 + node_max_retry_times=5 预算耗尽)交回外循环;连续 fail 由外环 fail 重派网兜底(flow/README §4) |
-| 局外无 match(op-layer.md §1.1 :37) | round_success 终结交回 | 零决策零点击,交回外循环重分发(遭遇屏先例同款) |
+| 局外无 match | 不设早退支(op-layer.md §1.1;用户裁决 2026-09-22 全族删门) | 未支持用法:单跑缺上下文沿正常链路自然失败,局内不达此态 |
 
 「确认离开 = 画面终结」= [README.md](README.md) §6。
 

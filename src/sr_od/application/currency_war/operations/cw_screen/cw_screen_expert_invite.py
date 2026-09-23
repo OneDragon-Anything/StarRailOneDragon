@@ -37,8 +37,8 @@ card_bonds/board/card_points/cash_point 四字段同门一并上报,op-layer.md
 裁决顶部(选卡点击已发 → 弹窗不在 = 选卡落地 → 此刻才写 chosen_expert +
 现金为王到账登记 + success 交回;在 = 点击未落地 → 清标志重走)→ 决策从
 容器零参读(两守卫:返回词表外/None = 具名 fail 零盲发;idx 域外 = 守卫
-断言;策略异常自然传播;无 match = 局外零决策零点击 round_success 终结
-交回,op-layer.md §1.1 局外单跑条款)→ 点选 → round_wait 循环(不烧节点
+断言;策略异常自然传播;无 match 局外不设早退支,用户裁决 2026-09-22
+全族删门)→ 点选 → round_wait 循环(不烧节点
 重试预算,无防御上限)。chosen_expert 与
 ConfirmExpertCash 到账登记 = 重入裁决点留守(动作事实边界,不进 report;
 ConfirmExpertCash 逻辑推进 = gold +4 直推);本屏 sim 腿 = 不适用(sim 无
@@ -138,8 +138,8 @@ class CwScreenExpertInvite(SrOperation):
         门后载体一次读(板面读数失败 = {} 的现金为王兜底语义原样携带;四卡
         区中心与现金为王点观察期解算,坐标随 payload 同门一并上报,
         op-layer.md §1.1 :35)→ ``report_screen_expert_invite_obs``;match/gs
-        缺席的局外兜底路径跳过 report(决策面无局外兜底:无 match = 零决策
-        零点击 round_success 终结交回,op-layer.md §1.1 局外单跑条款)。"""
+        缺席的局外兜底路径跳过 report(无 match 局外不设早退支,用户裁决
+        2026-09-22 全族删门)。"""
         screen = self.last_screenshot
         if not self.round_by_find_area(
                 screen, INVITE_SCREEN, INVITE_MARK_AREA,
@@ -208,35 +208,29 @@ class CwScreenExpertInvite(SrOperation):
         board = obs.board if obs is not None else {}
         card_bonds = (list(obs.card_bonds) if obs is not None else [])
         # 选卡判据(单一源 = kernel choose_expert_index,经策略器消费容器
-        # expert_invite 槽;唯一入口 = 策略对象,handler 零自拟判据;无
-        # match = 局外零决策零点击 round_success 终结交回[op-layer.md §1.1
-        # 局外单跑条款])。写槽已由 report 落容器 → 零参决策。
+        # expert_invite 槽;唯一入口 = 策略对象,handler 零自拟判据)。
+        # 写槽已由 report 落容器 → 零参决策。
         _match = getattr(self.ctx, 'cw_match', None)
-        if _match is not None:
-            pick = _match.strategy.decide_expert_invite()
-            # 守卫①(返回契约):词表外/None = 决策无有效输出,具名 fail
-            # 零盲发(op-layer.md §1.1 出口③);消息含原值 repr = 留证。
-            if not isinstance(pick, CwActionPickExpertInviteParam):
-                return self.round_fail(
-                    f'[cw-bookcard] decide_expert_invite 决策无有效输出'
-                    f'(词表外/None): {pick!r}')
-            # 守卫②(值域):词表值域 = 0..3 ∨ -1(-1 = 现金为王);域外 =
-            # 策略器 bug,守卫断言响亮暴露,禁静默并入现金分支
-            # (op-layer.md §1.3)。
-            if not (pick.idx == -1 or 0 <= pick.idx < len(CARD_AREAS)):
-                raise AssertionError(
-                    f'[cw-bookcard] pick idx 域外(策略器 bug,禁并入现金分支): '
-                    f'idx={pick.idx} 值域=0..{len(CARD_AREAS) - 1}∨-1 '
-                    f'pick={pick!r}')
-            idx = pick.idx
-            _param = pick
-        else:
-            # 无 match(局外)= 零决策零点击 round_success 终结交回
-            # (op-layer.md §1.1 局外单跑条款,遭遇屏先例同款;kernel 直调
-            # 兜底支随局外单跑条款退役,不设任何兜底决策路径)。
-            return self.round_success(
-                '[cw-bookcard] 局外无 match,零决策零点击终结交回'
-                '(op-layer.md §1.1 局外单跑条款)')
+        # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
+        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        # 在此失败即预期,禁回填此类单跑防御分支。
+        pick = _match.strategy.decide_expert_invite()
+        # 守卫①(返回契约):词表外/None = 决策无有效输出,具名 fail
+        # 零盲发(op-layer.md §1.1 出口③);消息含原值 repr = 留证。
+        if not isinstance(pick, CwActionPickExpertInviteParam):
+            return self.round_fail(
+                f'[cw-bookcard] decide_expert_invite 决策无有效输出'
+                f'(词表外/None): {pick!r}')
+        # 守卫②(值域):词表值域 = 0..3 ∨ -1(-1 = 现金为王);域外 =
+        # 策略器 bug,守卫断言响亮暴露,禁静默并入现金分支
+        # (op-layer.md §1.3)。
+        if not (pick.idx == -1 or 0 <= pick.idx < len(CARD_AREAS)):
+            raise AssertionError(
+                f'[cw-bookcard] pick idx 域外(策略器 bug,禁并入现金分支): '
+                f'idx={pick.idx} 值域=0..{len(CARD_AREAS) - 1}∨-1 '
+                f'pick={pick!r}')
+        idx = pick.idx
+        _param = pick
         pick_desc = ('现金为王(经济兜底)' if idx == -1
                      else f'卡{idx + 1}(羁绊={card_bonds[idx]})')
         # 坐标不在此取(op-layer.md §1.1 :35,坐标单一真相源 = 观察上报,

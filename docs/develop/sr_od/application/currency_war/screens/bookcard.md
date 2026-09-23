@@ -8,7 +8,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(「标识-星徽秘典」,miss = round_fail 交回外循环重判)→ 卡阵营名一次读(经 FACTIONS 注册表两段转换标准化门)→ `report_screen_bookcard_obs` 落容器 `star_tome_opts` / `star_tome_opts_xy`(同门双写)→ obs 挂实例属性。决策动作 node = 顶部重入裁决(选卡 pending = 上轮已发选卡的星徽名;弹窗不在 = 选卡落地 → 此刻才写 chosen_tome + 到账登记 + success;弹窗在 = 点击未落地 → 重走重选,不留幻影登记)→ 零参决策 `match.strategy.decide_star_tome()`(候选自容器槽;打分:target 阵营命中 / board 已有阵营 / 配方框架阵营命中,权重 = `strategies/impl/pick_bias.py::PICK_BIAS` tome_* 常量,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E17)。决策出口守卫:决策无有效输出(候选空/返回 None/词表外)= 具名 round_fail 零盲发(op-layer §1.1 出口③,消息含原值);无 match(局外)= 零决策零点击 round_success 终结交回(op-layer §1.1 局外单跑条款);pick idx 越界 = 守卫断言 AssertionError(op-layer §1.3,禁钳位);各臂与守卫均在派发前、零点击;选卡派发 = 策略产实例直发(无重建无钳位,流程侧零值域改写)。选卡链经 `CwActionPickStarTomeOp` 派发(点卡即选机械链+自上报在动作 op 内;选卡坐标 = 动作 op 自容器 `star_tome_opts_xy` 按 idx 取)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=5` 现役值仅框架异常路径消费)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(「标识-星徽秘典」,miss = round_fail 交回外循环重判)→ 卡阵营名一次读(经 FACTIONS 注册表两段转换标准化门)→ `report_screen_bookcard_obs` 落容器 `star_tome_opts` / `star_tome_opts_xy`(同门双写)→ obs 挂实例属性。决策动作 node = 顶部重入裁决(选卡 pending = 上轮已发选卡的星徽名;弹窗不在 = 选卡落地 → 此刻才写 chosen_tome + 到账登记 + success;弹窗在 = 点击未落地 → 重走重选,不留幻影登记)→ 零参决策 `match.strategy.decide_star_tome()`(候选自容器槽;打分:target 阵营命中 / board 已有阵营 / 配方框架阵营命中,权重 = `strategies/impl/pick_bias.py::PICK_BIAS` tome_* 常量,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E17)。决策出口守卫:决策无有效输出(候选空/返回 None/词表外)= 具名 round_fail 零盲发(op-layer §1.1 出口③,消息含原值);无 match 局外不设早退支(用户裁决 2026-09-22 全族删门);pick idx 越界 = 守卫断言 AssertionError(op-layer §1.3,禁钳位);各臂与守卫均在派发前、零点击;选卡派发 = 策略产实例直发(无重建无钳位,流程侧零值域改写)。选卡链经 `CwActionPickStarTomeOp` 派发(点卡即选机械链+自上报在动作 op 内;选卡坐标 = 动作 op 自容器 `star_tome_opts_xy` 按 idx 取)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=5` 现役值仅框架异常路径消费)。
 
 ## 3. 观察面
 
@@ -26,8 +26,9 @@
 
 ```
 cards = 观察轮实例载体(标准化注册名)→ 零参决策 decide_star_tome()(候选读容器 star_tome_opts 槽)
-  (无 match = 零决策零点击 round_success 终结交回[op-layer §1.1 局外单跑条款];
-   cards 空 / 返回词表外 = 守卫 fail 零盲发;idx 越界 = 守卫断言)
+  (无 match 局外不设早退支——单跑缺上下文沿正常链路失败即预期,
+   用户裁决 2026-09-22 全族删门;cards 空 / 返回词表外 = 守卫 fail
+   零盲发;idx 越界 = 守卫断言)
 坐标 = 容器 star_tome_opts_xy[pick.idx](动作 op 内取;缺席 = 守卫断言,op-layer §1.1 :35)
   → 置选卡 pending → 派发
   (动作 op 内:自容器取点 safe_click(防吞点击)→ 1.0s
@@ -43,7 +44,7 @@ cards = 观察轮实例载体(标准化注册名)→ 零参决策 decide_star_to
 |---|---|---|
 | 重入裁决弹窗不在(选卡落地) | **画面终结** | `_settle_picked_tome`(到账登记 + chosen_tome 写)→ round_success(wait = `CW_OVERLAY_SETTLE_S`)交回外循环重分发 |
 | 重入裁决弹窗在(点击未落地) | 节点循环重入 | 重走重选(`round_wait` 循环推进,不烧节点重试预算,无防御上限) |
-| 无 match(局外) | 零决策零点击 round_success 终结交回(op-layer §1.1 局外单跑条款) | success 终结访问,交回外循环重进重读(先例 = cw_screen_encounter.py::CwScreenEncounter.act) |
+| 无 match(局外) | 不设早退支(op-layer §1.1;用户裁决 2026-09-22 全族删门) | 未支持用法:单跑缺上下文沿正常链路自然失败,局内不达此态 |
 | 决策无有效输出(候选空/返回词表外)/ pick idx 越界 | 守卫 fail(op FAIL) | round_fail(含原值)交回外循环 / 框架异常路径(round_retry + 留证截图,计 node_max_retry_times=5 预算)耗尽 fail;连续 fail 由外环重派网兜底(flow/README §4) |
 | 入口锚 miss | op FAIL | 交回外循环重分发 |
 | 星徽卡-N 建档缺失(观察侧解点) | 观察失败(op FAIL) | 观察失败 round_fail 早退、`star_tome_opts` / `star_tome_opts_xy` 双域零写,交回外循环重分发;act 段零几何,无决策半建档出口 |
@@ -63,7 +64,7 @@ cards = 观察轮实例载体(标准化注册名)→ 零参决策 decide_star_to
 
 ## 8. 守卫与防线
 
-- ①决策输入守卫:match 缺席(局外)= 零决策零点击 round_success 终结交回(op-layer.md §1.1 局外单跑条款)——原「cards 空 / 无 match = idx 0 fallback」的无 match 半边退役申报;候选空 = 具名 round_fail 零盲发(op-layer §1.1 出口③)——原句候选空半边退役申报。
+- ①决策输入守卫:无 match 局外不设早退支(op-layer.md §1.1;用户裁决 2026-09-22 全族删门)——原「cards 空 / 无 match = idx 0 fallback」的无 match 半边退役申报;候选空 = 具名 round_fail 零盲发(op-layer §1.1 出口③)——原句候选空半边退役申报。
 - ②返回契约与值域守卫:None/词表外 = 具名 round_fail(消息含原值)、idx 越界 = 守卫断言 AssertionError(op-layer.md §1.3,禁钳位)——原「静默钳 0」退役申报。
 - ③坐标域:选卡坐标 = 容器 `star_tome_opts_xy`(与候选名域 `star_tome_opts` 同序等长)——观察上报与名字域同门一并入容器(op-layer.md §1.1 :35,坐标单一真相源 = 观察上报),动作 op 按 idx 自容器取点,缺席/越界 = 守卫断言零点击,禁回退 `env.target`/screen_info 现取(禁第二坐标源);坐标失读语义与名字域同格(已有正式值失读 = carried,从未读过 = None);确认钮等静态控件锚 = screen_info area 现取,不入坐标域。
 - ④观察标准化门:阵营名经 FACTIONS 注册表两段转换,任一候选转换失败/多候选命中同一注册名 = 观察失败 round_fail 早退、双域零写(转换成功性边界登记见 §3)。
@@ -75,5 +76,5 @@ cards = 观察轮实例载体(标准化注册名)→ 零参决策 decide_star_to
 ## 9. 遥测与锁面
 
 - journal op 名 =「星徽秘典」;op 内日志 tag = `[cw-flow-bookcard]`(候选/选中/idx)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(bookcard 臂:观察双域上报锁/观察失败三态零写锁[标准化失败·同名同判·建档缺失]/守卫四锁——①a 无 match 局外 round_success、①b 候选空 fail、②返回契约 fail、③越界断言)、test_cw_unified_action_4.py(StarTome 容器取点锁:容器值点击/缺席·越界断言零点击)、test_cw_screen_report_ports.py(report 同门双写/等长守卫/空桩双域门)、test_cw_game_state_consume.py(chosen_tome 接线锁)。代码注引的典籍通道锁(test_cw_fake_channels_outerloop)已不在册(开放设计注)。
+- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(bookcard 臂:观察双域上报锁/观察失败三态零写锁[标准化失败·同名同判·建档缺失]/守卫四锁——①a 无 match 局外不设早退支(自然失败)、①b 候选空 fail、②返回契约 fail、③越界断言)、test_cw_unified_action_4.py(StarTome 容器取点锁:容器值点击/缺席·越界断言零点击)、test_cw_screen_report_ports.py(report 同门双写/等长守卫/空桩双域门)、test_cw_game_state_consume.py(chosen_tome 接线锁)。代码注引的典籍通道锁(test_cw_fake_channels_outerloop)已不在册(开放设计注)。
 - game 侧知识:画面与机制(星徽 = 阵营徽记装备) = [../../../../game/screens/currency_war_star_tome_popup.md](../../../../../game/screens/currency_war_star_tome_popup.md)。
