@@ -1000,10 +1000,10 @@ def blood_xp_mode(session) -> tuple[str, int] | None:
 # (评估口径),非数学判据——形态 = 定序分:仅在本表(335 条策略)内选项间
 # 排大小有效;禁作为基数与其它分值族(comp-hit/augment/planner 等)做加减语义扩展。
 # 跨族交互仅保留 decide_event 的 max() 覆盖结构,禁新增「叠加进其它面判据」的消费点。
-# **层级归属声明(用户裁定:保留 kernel)**:本表与下文 ENV_PICK_VALUE/ENV_FACTION_MATCH_FLOOR
-# 及其消费核 decide_event,承载的是**内置默认策略器(mandate_v1 → CwFlowStrategy.decide_invest
-# 委托)的评估观点**,不是框架中立事实;第三方策略插件自带 decide_invest 实现时不消费本表。
-# 保留在 kernel = 延续判据单源现状(sim/回放经 strat.decide_invest 同链消费),语义以本声明为准。
+# (原「层级归属声明(用户裁定:保留 kernel)」已删除,2026-09-23 迁移迭代 3.2:
+# 该声明辖的 ENV_PICK_VALUE/ENV_FACTION_MATCH_FLOOR 及 env 轴消费核已迁/退役,
+# 被宪法五「衍生估值归策略层」取代;策略卡本表仍属 kernel 投资策略轴,
+# 环境轴归属正本 = strategies/impl/mandate_v1/invest_env.py 模块头。)
 # 立项挂账:升级为台账价值判据(ΔP̂ 完成概率增量参数化)归事件面命题批(08 E1/E2)。
 PICK_VALUE: dict[str, int] = {
     "鲜血阶梯": 75,
@@ -1365,113 +1365,10 @@ def pick_value_of(name: str) -> int | None:
     return v if v > 0 else None
 
 
-# ===== 环境选卡价值基准分(83 条全量评估表派生)=====
-# 环境与策略结构倒挂(评估实证):synergy 主导 47/83(阵营定向);无品质分级(全 '-')。
-# 经济类计数无评估口径持久出处,分类表口径见 ENV_CATEGORY(经济 15/83),两口径禁互替。
-# 量化断层:yes-direct 仅 1 条(蓝海)—— 环境效果全是整局规则(费率覆写/分期/重复触发),EconomyEffect
-# 现有字段结构性装不下(EnvEconomyEffect 扩字段待后续);接线防一次性错装点名 6 条。
-# **知识判据定序器声明(16 号稿 §1.2)**:同 PICK_VALUE——分值仅在本表
-# (83 条环境)内选项间定序有效,禁作为基数与其它分值族加减;跨族仅 max() 覆盖。
-# 经济效果建模缺口(EnvEconomyEffect 扩字段)是升级为台账价值判据的真实卡点,
-# 随立项挂账归事件面命题批(08 E1/E2)。
-ENV_PICK_VALUE: dict[str, int] = {
-    "追击概念股": 52,
-    "击破概念股": 50,
-    "群攻概念股": 44,
-    "能量概念股": 44,
-    "燃血概念股": 50,
-    "减益概念股": 48,
-    "战技点概念股": 46,
-    "仙舟概念股": 48,
-    "贝洛伯格概念股": 38,
-    "狼狩概念股": 40,
-    "星间旅人概念股": 40,
-    "银河学者概念股": 44,
-    "列车同行概念股": 44,
-    "昼之半神概念股": 44,
-    "夜之半神概念股": 48,
-    "仙舟邀请": 30,
-    "贝洛伯格邀请": 30,
-    "狼狩邀请": 30,
-    "盛会之星邀请": 30,
-    "星间旅人邀请": 30,
-    "银河学者邀请": 30,
-    "列车同行邀请": 30,
-    "昼之半神邀请": 30,
-    "夜之半神邀请": 30,
-    "追击邀请": 30,
-    "击破邀请": 30,
-    "群攻邀请": 30,
-    "能量邀请": 30,
-    "燃血邀请": 30,
-    "减益邀请": 30,
-    "持续伤害邀请": 30,
-    "量子同频邀请": 30,
-    "战技点邀请": 30,
-    "欢愉邀请": 30,
-    "命运圣杯邀请": 32,
-    "星核猎手契约": 52,
-    "战技点契约": 58,
-    "公司契约": 48,
-    "持续伤害契约": 48,
-    "量子同频契约": 45,
-    "欢愉契约": 42,
-    "命运圣杯契约": 52,
-    "黄金时代": 55,
-    "白银时代": 35,
-    "彩虹时代": 72,
-    "头彩": 55,
-    "尾彩": 52,
-    "银·金·彩": 62,
-    "经济过热": 55,
-    "经济严重过热": 58,
-    "增发货币": 48,
-    "过剩经费": 52,
-    "人身意外险": 48,
-    "长线利好": 65,
-    "二手市场": 45,
-    "蓝海": 38,
-    "深井角斗场": 42,
-    "火药味": 28,
-    "特权阶级": 38,
-    "人才引进": 36,
-    "成功经验": 36,
-    "红钻贵族": 38,
-    "蓝钻贵族": 38,
-    "人才下沉": 48,
-    "联席决策": 50,
-    "轮岗": 42,
-    "劳务派遣合同": 52,
-    "战争边疆": 35,
-    "粗星佩佩": 45,
-    "三星佩佩": 42,
-    "敌后破坏": 46,
-    "进化算法": 70,
-    "策略大师": 64,
-    "人才储备": 48,
-    "战力飙升": 42,
-    "战力提升": 38,
-    "专家研讨会": 34,
-    "特邀专家:银狼": 30,
-    "特邀专家:加拉赫": 42,
-    "特邀专家:停云": 38,
-    "特邀专家:桑博": 35,
-    "命运礼物": 40,
-    "英雄登场": 32,
-}
-_ENV_PICK_ORPHANS: list[str] = [n for n in ENV_PICK_VALUE if n not in INVESTMENT_ENVS]
-if _ENV_PICK_ORPHANS:
-    raise ValueError(f"ENV_PICK_VALUE 孤儿键(注册表无此环境?):{_ENV_PICK_ORPHANS}")
-for _n, _v in ENV_PICK_VALUE.items():
-    INVESTMENT_ENVS[_n] = replace(INVESTMENT_ENVS[_n], pick_value=_v)
-
-# 阵营定向类 comp 匹配定序门(定形,16 号稿 §1.3):三档值 = category 间
-# 定序档位(邀请 70 < 契约 72 < 概念股 78,评估实证序),非条件白名单的基数下限。
-# 承重语义 = 「faction ∩ target_comp.factions ⇒ 提到本 category 档位,压过全体 env
-# 裸分(上界 72)」;禁读作基数参与跨族加减。
-ENV_FACTION_MATCH_FLOOR: dict[str, float] = {'概念股': 78.0, '邀请': 70.0, '契约': 72.0}
-# (旧 ENV_SURVIVAL_BONUS = {白银时代 15, 敌后破坏 15, 人身意外险 10} 已退役
-# 2026-09-04,「未证即退役」裁定:低血环境钩子保守缺省 0,消费分支同批删除。)
+# (ENV_PICK_VALUE 环境条目 83 条与 ENV_FACTION_MATCH_FLOOR 已删除,2026-09-23
+# 迁移迭代 3.2:环境选卡评序迁策略层统一加法标尺,消费核 = strategies/impl/
+# mandate_v1/invest_env.py;InvestmentEnv.pick_value 字段保留但恒缺省 0,
+# 零消费方。策略卡 335 条 PICK_VALUE 不在本删除面。)
 
 
 # ===== 环境经济通道注册表(2026-09-12 invest-env 迭代,design.md §2.2.2;白名单制)=====
@@ -1601,17 +1498,9 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     '特邀专家:桑博': GiftGrant(chars_immediate=('桑博',), advisor=True),
 }
 
-# 送卡档位 floor 常数(定序实现常数;ENV_FACTION_MATCH_FLOOR 同族先例):
-# 值只承载档间定序与对既有域带的位次,禁读基数参与跨族加减。锚点推导(顺序即设计
-# 内容,值是实现载体,details/env-value-models.md §2.1.2 表):
-GIFT_FLOOR_CORE: int = 66           # > 58(契约裸分上界,战技点契约)∧ < 70(最低阵营
-                                    #   floor,邀请)∧ ≤ 72(env 裸分上界,彩虹时代)
-GIFT_FLOOR_SHARED: int = 60         # < CORE ∧ > 58(同上锚);只作演化结构位(当前无落地条目)
-GIFT_FLOOR_ADVISOR_CORE: int = 54   # < SHARED(付费期权 < 白得,同档位类)∧ > 52(结构可比
-                                    #   簇上界,过剩经费/劳务派遣合同)∧ < 55(头彩:单取卡
-                                    #   品质升级的结构档让位其知识评估分)
-# advisor shared/transition、条件降档后非 core/shared 无 floor(维持裸分;特邀专家:
-# 停云/加拉赫/银狼全落此,floor 表行 4)——无常数,消费支按 gift_hit_tier 消费契约分流。
+# (GIFT_FLOOR_CORE/SHARED/ADVISOR_CORE 已删除,2026-09-23 迁移迭代 3.2:
+# 送卡档的「档→分」映射与 advisor 折减迁策略层 gift_value(design §2.6 表 2),
+# floor 定序常数随消费核 decide_event env 分支一并退役。)
 
 
 def _validate_env_gifts() -> None:

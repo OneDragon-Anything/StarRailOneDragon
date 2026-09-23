@@ -14,16 +14,10 @@ from sr_od.application.currency_war.data.cw_equipment_wear_rules_data import (
 )
 from sr_od.application.currency_war.kernel.cw_comps import (
     augment_affinity,
-    candidate_faction_universe,
     form_progress,
     get_comp,
-    gift_hit_tier,
     mechanics_fit,
     merged_mechanic_tables,
-)
-from sr_od.application.currency_war.kernel.cw_env_economy import (
-    ECON_VALUE_NORM,
-    env_economy_value,
 )
 from sr_od.application.currency_war.kernel.cw_equip_value import (
     equip_generic_value,
@@ -40,11 +34,6 @@ from sr_od.application.currency_war.kernel.cw_intention import (
     detect_signals,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
-    ENV_FACTION_MATCH_FLOOR,
-    ENV_GIFTS,
-    GIFT_FLOOR_ADVISOR_CORE,
-    GIFT_FLOOR_CORE,
-    GIFT_FLOOR_SHARED,
     EconomyEffect,
     get_env,
     get_strategy,
@@ -273,9 +262,6 @@ def decide_event(options: list[str], config, gs: GameState,
     # 「K 活读数轮内重排」病灶在消费面结构性不可发生。
     _d_facs, _d_chars, _d_src = _invest_d_star(
         gs, locked_comp, demoted_endgame, evicted)
-    # 候选全集单帧单读(与 D* 快照同款纪律):env 分支全集门的派生输入,
-    # 循环外一次派生,帧内禁重读。
-    _universe = candidate_faction_universe(evicted)
 
     best_idx, best_score = 0, -1.0
     best_reason = ''
@@ -291,16 +277,10 @@ def decide_event(options: list[str], config, gs: GameState,
     # 评分错只排错序、刷新错会弃掉真顶级卡,不对称风险取严)/ s1 = 定义型档
     # / engine = S2 经济引擎档 / align_n = S3 对齐档 N。消费序安全依赖(G8):
     # 只在帧级触发(三卡全精确分类)前提下消费——先判帧级闸、后取分类。
-    # env 三件(3.5 环境刷新判据同款纪律):env = 环境注册表精确命中(env
-    # 帧级闸)/ env_off = 全集门失格(零价值槽判定;非 env 槽恒 False)/
-    # pri = user-priority 命中(零价值槽豁免:用户点名保选的集外槽不刷)。
     _cand_exact: list[bool] = []
     _cand_s1: list[bool] = []
     _cand_engine: list[bool] = []
     _cand_align_n: list[int] = []
-    _cand_env: list[bool] = []
-    _cand_env_off: list[bool] = []
-    _cand_pri: list[bool] = []
     for i, opt in enumerate(options):
         score = 0.0
         reason = 'eval'
@@ -367,82 +347,9 @@ def decide_event(options: list[str], config, gs: GameState,
         elif _pv is not None and float(_pv) > score:
             # 精确名 miss 但 LCS 命中评估表(OCR 形变)→ 裸评估分(comp/economy 修饰不可靠)
             score, reason = float(_pv), 'eval-lcs'
-        # (环境侧评估分):env 名不在策略注册表(原恒 0 分 → fallback 恒选第一张);
-        # 基准分 + 阵营定向条件分(概念股/邀请/契约 faction ∈ D*_factions——
-        # 换源:floor 与 comp-hit 同批从过渡对换 D*,预裁③;D*=∅ 不触)。
-        # OCR 形变的 env 名(如 尾彩•变体)不进策略 LCS(上方 _env 精确查 miss 时仍可能污染 ——
-        # 但 OCR 只出现在 handler 层归一名后才进决策,形变 env 名实际不达此处;守卫以精确查为准)。
-        if _st is None and _env is not None:
-            # 候选全集门(形态 B;用户裁定 2026-09-12「我们有对应的终局阵容定义,
-            # 才选对应的投资环境」):faction 非空 ∧ faction ∉ 候选终局阵容全集
-            # → 跳过裸分支,分数维持 0(env 无品质字段、品质回落域在策略分支内,
-            # env 本就无回落——落 0 即天然垫底,零新常量);faction 空(时代/经济/
-            # 规则/随机送角色等阵容无关型)恒放行。
-            _env_in_universe = (not _env.faction) or (_env.faction in _universe)
-            if _env_in_universe:
-                if _env.pick_value > 0 and float(_env.pick_value) > score:
-                    score, reason = float(_env.pick_value), 'env-eval'
-                # 送卡静态档 max() 支(invest-env 迭代 3.5;details/
-                # env-value-models.md §2.1.3 消费位,分派映射 = 禁二次推导的
-                # 单一源契约,见 ``cw_comps.gift_hit_tier`` docstring 消费契约):
-                # 白得契约全员集外 → 失格 0(tier='off' ∧ 非 advisor ∧ 即时集
-                # 非空;advisor off = 不买无浪费、条件降档落底 = 未到手,均维持
-                # 裸分);命中档有 floor 常数 → max 提档(core/shared/advisor-core,
-                # advisor 由 grant.advisor 换族)。归因串仅观测,不进检查器白名单
-                # (C1→D4 口径,裁定见 sim/checks/suspects.py 模块头)。
-                _grant = ENV_GIFTS.get(_env.name)
-                if _grant is not None:
-                    _tier = gift_hit_tier(_grant, evicted)
-                    if (_tier == 'off' and not _grant.advisor
-                            and bool(_grant.chars_immediate)):
-                        score = 0.0
-                        reason = 'env-gift-off-universe'
-                    elif (not _grant.advisor and _tier == 'core'
-                            and score < GIFT_FLOOR_CORE):
-                        score, reason = float(GIFT_FLOOR_CORE), 'gift-core'
-                    elif (not _grant.advisor and _tier == 'shared'
-                            and score < GIFT_FLOOR_SHARED):
-                        score, reason = float(GIFT_FLOOR_SHARED), 'gift-shared'
-                    elif (_grant.advisor and _tier == 'core'
-                            and score < GIFT_FLOOR_ADVISOR_CORE):
-                        score, reason = (float(GIFT_FLOOR_ADVISOR_CORE),
-                                         'advisor-core')
-                    # 其余(advisor 的 shared/transition/off、条件降档后非
-                    # core/shared)无 floor 维持裸分(即时空 ∧ 条件全集外的
-                    # 推论支同落此——条件发放未到手,off 只是不提档)。
-                # 经济域带 max() 支(invest-env 迭代 3.5;design.md §2.3 门 4,
-                # 用户裁定「优先经济」的环境轴载体):整局金等价期望 resolved
-                # ∧ > 0 才进带(缺参/CI 不闭合 fail-closed → 消费端按无经济
-                # 通道处理,退裸分);域带常量复用策略卡 S2(三选一帧同质,
-                # F9 已证不同帧不同场竞争,共享域带 = 跨轴同序零新常数),
-                # 期望按 ECON_VALUE_NORM 归一带内(带内序 monotone,定序
-                # 实现常数,禁读基数)。经济入模环境全部 faction 空(design
-                # §2.2.1 注),与本分支上方全集门结构性无交集。
-                if _env.economy is not None:
-                    _econ_gold, _econ_ok = env_economy_value(_env.name, gs)
-                    if _econ_ok and _econ_gold > 0:
-                        _band = ECON_ENGINE_BAND_BASE + ECON_ENGINE_BAND_SPAN * (
-                            min(_econ_gold, ECON_VALUE_NORM) / ECON_VALUE_NORM)
-                        if _band > score:
-                            score, reason = _band, 'env-econ'
-            else:
-                # 失格归因串(全无用帧胜出时可见);仅观测归因,不进任何
-                # 检查器白名单(C1→D4 口径,裁定见 sim/checks/suspects.py 模块头)。floor 不受门辖:
-                # D* ⊆ 全集恒成立(锁线 comp 与 evicted 互斥/信号已按 evicted
-                # 过滤),阵营 floor 永不为全集外 faction 触发,无交叉处理。
-                reason = 'env-off-universe'
-            if _env.faction and _env.faction in _d_facs:
-                # 阵营匹配定序门(定形,16 号稿 §1.3):三档值 = category 间
-                # 定序档位(邀请 70 < 契约 72 < 概念股 78,评估实证序),承重语义 =
-                # 「匹配 ⇒ 提到本 category 档位、压过全体 env 裸分(上界 72)」,
-                # 禁读作基数。default 70.0 = 兜底档(未知 category)。
-                _floor = ENV_FACTION_MATCH_FLOOR.get(_env.category, 70.0)
-                if _floor > score:
-                    # 归因串 = D* 来源级(align-locked=①锁线/
-                    # align-signal=②资产信号;仅观测归因)。
-                    score = _floor
-                    reason = ('align-locked' if _d_src == 'locked'
-                              else 'align-signal')
+        # (投资环境轴已迁策略层 strategies/impl/mandate_v1/invest_env.py,
+        # 2026-09-23 迁移迭代 3.2 原子切换;flow kind='env' 分支直调策略层,
+        # 本函数只辖投资策略帧。)
         # 用户转向轴(develop config.md §3):投资策略/环境 priority 软加分 + forbid 重罚。
         # 选项归属:env 注册表命中走 env 轴,其余(策略/未注册)走 strategy 轴 —— env 名经 handler
         # 归一后才进决策,未注册项按事件主流(投资策略)处理。子串匹配与白名单一致(OCR 容错)。
@@ -466,10 +373,6 @@ def decide_event(options: list[str], config, gs: GameState,
         _cand_s1.append(bool(_aug))
         _cand_engine.append(_is_engine)
         _cand_align_n.append(_comp_hit)
-        _cand_env.append(_st is None and _env is not None)
-        _cand_env_off.append(_st is None and _env is not None
-                             and not _env_in_universe)
-        _cand_pri.append(_pri_hit)
         if score > best_score:
             best_score, best_idx, best_reason = score, i, reason
     # [40]① 血本位回避·三态触发序(裁定「主动选择=不选」):
@@ -550,26 +453,8 @@ def decide_event(options: list[str], config, gs: GameState,
                     if len(_refresh_l1) == 1 and _refresh_l1[0] in _action:
                         _action.remove(_refresh_l1[0])
                     refresh_slots = tuple(_action)
-    elif len(options) == 3 and all(_cand_env):
-        # ===== 环境帧刷新判据(invest-env 迭代 3.5,design.md §2.8;取代
-        # 「env 帧恒不刷」规则——既有在册行为的翻转,启用
-        # 前置「环境侧顶级类建模」由经济域带/送卡档接线满足)=====
-        # 帧级门:候选恰 3 ∧ 全部精确命中环境注册表(all(_cand_env));未注册名
-        # 形变帧两轴闸都不触发 → 刷新集恒空(fail-closed,同 G7 轴:
-        # 评分错只排错序、刷新错会弃掉真顶级卡,不对称风险取严)。
-        # 槽级动作集(design §2.8 分类,零自由参数):
-        # - 零价值 = 全集门失格 ∧ 未被 user-priority 命中 → 恒可刷(弱占优:
-        #   当前增益无消费方价值 0,替换样本任一环境价值 ≥ 0 且 P(>0) 显著,
-        #   免费刷新 = 白弃改善期权不刷才亏);
-        # - 被禁 = user-forbid 命中 → 恒可刷(优先于顶级保护,P5② 同构:
-        #   被禁者永不被选,保护无对象);
-        # - 顶级(经济域带 resolved ∨ 阵营 floor 命中)与其余(全集内裸分槽,
-        #   含送卡档与 unresolved 经济槽——后者基数化挂账 design §2.8)→
-        #   不入动作集即「保护不刷」,无需显式顶级分类(动作集 = 零价值 ∪ 被禁,
-        #   补集自然承载保护面)。
-        refresh_slots = tuple(
-            j for j in range(3)
-            if _cand_forbid[j] or (_cand_env_off[j] and not _cand_pri[j]))
+    # (环境帧刷新判据已迁策略层 invest_env.decide 的刷新三态,2026-09-23
+    # 迁移迭代 3.2 原子切换;flow kind='env' 分支直调策略层。)
     if refresh_slots:
         # 归因后缀仅观测归因,不进任何检查器白名单(C1→D4 迁移
         # 兼容口径,沿投资选卡归因串先例;裁定见 sim/checks/suspects.py 模块头)。

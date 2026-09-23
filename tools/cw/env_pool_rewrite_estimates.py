@@ -121,7 +121,8 @@ _QUALITY_PICK_SOURCES = frozenset({
 #: 严重过热 ×1)同源;采样面裁定「148 总/140 普通」的「普通」即非扑满局。
 _PIGGY_ENVS = frozenset({'经济过热', '经济严重过热'})
 
-#: v1 在册 H_1 参照值(cw_env_economy._STRAT_PICK_HORIZONS 现值;对拍用)
+#: v1 在册 H_1 参照值(策略层 env_economy._STRAT_PICK_HORIZONS 现值 =
+#: strategies/impl/mandate_v1/env_economy.py;对拍用)
 _V1_H1_REF = 24
 
 #: 品质递增方向(准入门第 2 条基准:棱彩 > 金 > 银)

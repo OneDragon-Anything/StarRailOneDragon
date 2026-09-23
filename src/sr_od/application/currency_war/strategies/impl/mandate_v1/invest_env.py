@@ -30,8 +30,11 @@ design §2.8)= 排除出候选。
 输出契约(design §2.9)::func:`decide` 返回纯值 dataclass
 (:class:`InvestEnvDecision` / :class:`RefreshSuggestion`),不含动作词表
 ——动作包装(CwActionPickInvestEnvParam/CwActionRefreshInvestCardsParam)
-留 flow。本文件随迁移迭代 3.1 落地,阶段内零调用方(flow 接线 = 3.2,
-与 kernel 删除面同一 commit 原子切换,新旧不并存)。
+留 flow(flow ``_decide_invest`` kind='env' 分支,2026-09-23 迁移迭代 3.2
+接线,与 kernel env 轴删除面同 commit 原子切换);:func:`decide_pick` =
+同一评分基线的纯选卡口(flow 同帧去重 memo 命中后的落选卡入口,sim 复用
+同吃)。kernel 侧旧 env 评估机器(裸分/送卡档/阵营 floor/经济域带/环境帧
+刷新判据)已随 3.2 删除面退役,本文件是投资环境选卡评序的唯一单一源。
 """
 from __future__ import annotations
 
@@ -289,6 +292,75 @@ REFRESH_THRESHOLD: float = _derive_refresh_threshold()
 
 # ===== 决策入口(design §2.9)=====
 
+def _score_frame(options: list[str], gs: GameState, locked_comp: str,
+                 demoted_endgame: bool, evicted: frozenset[str],
+                 env_priority: list[str],
+                 env_forbid: list[str]) -> tuple[list[float], list[float],
+                                                 list[tuple[float, float, float, float]],
+                                                 list[bool]]:
+    """帧评分一次(选卡/刷新两入口共享,禁二次评分;板面 DoT/减益计数
+    循环外单帧单读,沿旧机器纪律):
+    返回 (总分含转向轴, 转向加分, 四组件, 排除标记)。"""
+    board = gs.board.value or {}
+    on_dot = sum(board.get(_f, 0) for _f in ('持续伤害', '减益')) \
+        >= BOARD_DOT_COUNT_THRESHOLD
+    scores: list[float] = []
+    steers: list[float] = []
+    components: list[tuple[float, float, float, float]] = []
+    excluded: list[bool] = []
+    for _opt in options:
+        _cash, _dir, _gift, _stance = _components(
+            _opt, gs, locked_comp, demoted_endgame, evicted)
+        _steer = STEERING_PRIORITY_BONUS if any(
+            _p in _opt for _p in env_priority) else 0.0
+        _excluded = any(_p in _opt for _p in env_forbid) \
+            or (on_dot and _counters_dot(_opt))
+        scores.append(_cash + _dir + _gift + _stance + _steer)
+        steers.append(_steer)
+        components.append((_cash, _dir, _gift, _stance))
+        excluded.append(_excluded)
+    return scores, steers, components, excluded
+
+
+def _pick_decision(scores: list[float], steers: list[float],
+                   components: list[tuple[float, float, float, float]],
+                   excluded: list[bool]) -> InvestEnvDecision:
+    """评分帧 → 选卡决策(argmax 取最高,平分取先;全排除退化帧沿旧
+    kernel decide_event 全禁帧行为取全体 argmax 最不负分者——design §2.2
+    argmax 语义在该帧的延展,reason 标 all-excluded-fallback 供判读)。"""
+    best_idx = _argmax_first(scores, excluded)
+    if best_idx < 0:
+        best_idx = _argmax_first(scores, [])
+        return InvestEnvDecision(
+            idx=best_idx,
+            reason='all-excluded-fallback '
+                   + _breakdown(best_idx, scores, steers, components))
+    return InvestEnvDecision(
+        idx=best_idx, reason=_breakdown(best_idx, scores, steers, components))
+
+
+def decide_pick(options: list[str], gs: GameState, locked_comp: str,
+                demoted_endgame: bool, evicted: frozenset[str] | set[str],
+                config: CurrencyWarConfig) -> InvestEnvDecision:
+    """纯选卡决策(无刷新判据;与 :func:`decide` 同一评分基线)。
+
+    独立成口的原因:decide 是纯函数,flow 同帧去重 memo 命中(handler
+    刷新闸全败后的重调,design §2.9「建议帧首调发建议、紧随重调落选卡」)
+    时再调 decide 仍返建议——落选卡走本口,同一评分基线保证零选卡漂移。
+    sim 复用同吃本口。
+    """
+    env_priority = list(getattr(config, 'env_priority', []) or [])
+    env_forbid = list(getattr(config, 'env_forbid', []) or [])
+    if not options:
+        # 空候选帧(观察层失约形态;旧 kernel decide_event 同输入返回
+        # option_idx=0 的退化行为,本函数镜像防炸,不引入新语义)
+        return InvestEnvDecision(idx=0, reason='empty-frame: 无候选退化')
+    scores, steers, components, excluded = _score_frame(
+        options, gs, locked_comp, demoted_endgame, frozenset(evicted),
+        env_priority, env_forbid)
+    return _pick_decision(scores, steers, components, excluded)
+
+
 def decide(options: list[str], gs: GameState, locked_comp: str,
            demoted_endgame: bool, evicted: frozenset[str] | set[str],
            config: CurrencyWarConfig) -> InvestEnvDecision | RefreshSuggestion:
@@ -309,41 +381,11 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
         # 空候选帧(观察层失约形态;旧 kernel decide_event 同输入返回
         # option_idx=0 的退化行为,本函数镜像防炸,不引入新语义)
         return InvestEnvDecision(idx=0, reason='empty-frame: 无候选退化')
-    evicted = frozenset(evicted)
-    # 板面 DoT/减益计数单帧单读(评分循环外取一次快照,沿旧机器纪律)
-    board = gs.board.value or {}
-    on_dot = sum(board.get(_f, 0) for _f in ('持续伤害', '减益')) \
-        >= BOARD_DOT_COUNT_THRESHOLD
-
-    scores: list[float] = []
-    steers: list[float] = []
-    components: list[tuple[float, float, float, float]] = []
-    excluded: list[bool] = []
-    for _opt in options:
-        _cash, _dir, _gift, _stance = _components(
-            _opt, gs, locked_comp, demoted_endgame, evicted)
-        _steer = STEERING_PRIORITY_BONUS if any(
-            _p in _opt for _p in env_priority) else 0.0
-        _excluded = any(_p in _opt for _p in env_forbid) \
-            or (on_dot and _counters_dot(_opt))
-        scores.append(_cash + _dir + _gift + _stance + _steer)
-        steers.append(_steer)
-        components.append((_cash, _dir, _gift, _stance))
-        excluded.append(_excluded)
-
-    best_idx = _argmax_first(scores, excluded)
-    if best_idx < 0:
-        # 全排除退化帧(禁选/自拆台覆盖全体):排除规则失去选择面,沿旧
-        # 机器退化行为取全体 argmax 最不负分者(kernel decide_event 全禁帧
-        # 现状退化);design §2.2 的 argmax 语义在此帧的延展,非独立拍值。
-        best_idx = _argmax_first(scores, [])
-        best_reason = ('all-excluded-fallback '
-                       + _breakdown(best_idx, scores, steers, components))
-    else:
-        best_reason = _breakdown(best_idx, scores, steers, components)
-
+    scores, steers, components, excluded = _score_frame(
+        options, gs, locked_comp, demoted_endgame, frozenset(evicted),
+        env_priority, env_forbid)
     forbidden_slot = any(excluded)
-    if forbidden_slot or scores[best_idx] < REFRESH_THRESHOLD:
+    if forbidden_slot or max(scores) < REFRESH_THRESHOLD:
         # 次数闸 = gs.env_refresh_left ≥ 1(design §2.7)。Field 读数 None
         # = 观察写端读缺跳写(未观察到剩余次数),次数 ≥ 1 无法确证 →
         # 不建议刷(保守向:漏一次建议优于虚发动作;handler 侧 obs.refresh
@@ -353,9 +395,9 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
             if forbidden_slot:
                 return RefreshSuggestion(reason='refresh: 禁选槽存在')
             return RefreshSuggestion(
-                reason=f'refresh: 帧最好总分 {scores[best_idx]:.0f}'
+                reason=f'refresh: 帧最好总分 {max(scores):.0f}'
                        f' < 阈值 {REFRESH_THRESHOLD:.1f}')
-    return InvestEnvDecision(idx=best_idx, reason=best_reason)
+    return _pick_decision(scores, steers, components, excluded)
 
 
 def _argmax_first(scores: list[float],
