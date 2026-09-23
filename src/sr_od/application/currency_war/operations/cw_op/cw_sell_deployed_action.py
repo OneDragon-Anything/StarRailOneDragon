@@ -20,14 +20,14 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     game_state_from_ctx,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionSellDeployedParam
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
 
-class CwActionSellDeployedOp(SrOperation):
+class CwActionSellDeployedOp(CwOperation):
     """卖上阵角色:drag 排槽中心 → 出售区(落点经 ``sell_point`` 单一源)。
     非终结。"""
 
@@ -37,7 +37,7 @@ class CwActionSellDeployedOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionSellDeployedParam,
                  env: PrepExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionSellDeployedOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionSellDeployedOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

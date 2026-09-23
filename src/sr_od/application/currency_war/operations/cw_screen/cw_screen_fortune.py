@@ -45,11 +45,11 @@ from sr_od.application.currency_war.kernel.cw_screen_report.fortune import (
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPickFortuneParam,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenFortune(SrOperation):
+class CwScreenFortune(CwOperation):
     """命运卜者强化三选一:OCR 卡文字 → 文本策略选卡 → 确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-命运卜者强化'   # screen_info 画面(cw_fortune_picker.yml)
@@ -66,7 +66,7 @@ class CwScreenFortune(SrOperation):
     TEXT_Y_HI: ClassVar[int] = 410
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-命运卜者强化')
+        CwOperation.__init__(self, ctx, op_name='货币战争-命运卜者强化')
         # 确认已发待重入裁决标志(验证废除形态):本屏分发即门(无 op 内入口
         # 守卫),重入出口裁决区分「首发 miss」与「重入 miss(= overlay 已关
         # → success 交回)」,见决策动作 node 顶部。

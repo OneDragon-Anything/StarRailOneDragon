@@ -30,14 +30,14 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
     OverlayPickExecEnv,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     safe_click,
 )
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwActionPickInvestOp(SrOperation):
+class CwActionPickInvestOp(CwOperation):
     """投资选择确认链(投资环境/投资策略两屏共用 op,注册表两行同指;
     词表拆类后按 param 类型机械分派上报函数)。
 
@@ -61,7 +61,7 @@ class CwActionPickInvestOp(SrOperation):
     def __init__(self, ctx: SrContext,
                  param: CwActionPickInvestStrategyParam | CwActionPickInvestEnvParam,
                  env: OverlayPickExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionPickInvestOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionPickInvestOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

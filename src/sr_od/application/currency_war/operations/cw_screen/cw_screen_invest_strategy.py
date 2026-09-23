@@ -65,11 +65,11 @@ from sr_od.application.currency_war.obs.cw_node_obs import (
     pair_refresh_counts_to_slots,
     read_invest_refresh_counts,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     safe_click,
 )
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
 def _guard_classify(name: str, config) -> tuple[bool, bool, bool, bool]:
@@ -97,7 +97,7 @@ def _guard_classify(name: str, config) -> tuple[bool, bool, bool, bool]:
     return True, blood, forbidden, top
 
 
-class CwScreenInvestStrategy(SrOperation):
+class CwScreenInvestStrategy(CwOperation):
     """投资策略 3 选 1:OCR 卡名 → decide_invest 决策 → (按需逐卡刷新)→ 点最优卡 + 确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资策略'   # screen_info 画面(currency_war_invest_strategy.yml)
@@ -129,7 +129,7 @@ class CwScreenInvestStrategy(SrOperation):
     REFRESH_ANIM_WAIT_S: ClassVar[float] = 1.5
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-投资策略')
+        CwOperation.__init__(self, ctx, op_name='货币战争-投资策略')
         self._ocr_map: dict | None = None   # _read_options 存全图 OCR(采集复用,零额外 OCR)
         # 观察结果(观察 node 产物,决策动作 node 消费;entry_ok False = 复探
         # 超窗,观察轮 round_retry 不装载)。

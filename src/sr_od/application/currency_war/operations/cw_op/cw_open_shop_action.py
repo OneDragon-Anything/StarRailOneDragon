@@ -15,14 +15,14 @@ from typing import TYPE_CHECKING
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionOpenShopParam
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
 
-class CwActionOpenShopOp(SrOperation):
+class CwActionOpenShopOp(CwOperation):
     """开店(注册行 = terminal 承载行;执行抛 AssertionError)。
 
     终结动作:开店切商店画面(非帧稳定)→ 本备战访问终结,交回外循环
@@ -38,7 +38,7 @@ class CwActionOpenShopOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionOpenShopParam,
                  env: PrepExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionOpenShopOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionOpenShopOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

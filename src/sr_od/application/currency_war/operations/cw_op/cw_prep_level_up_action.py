@@ -26,14 +26,14 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionLevelUpParam
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
 
-class CwActionLevelUpOp(SrOperation):
+class CwActionLevelUpOp(CwOperation):
     """买经验(R6 逐帧单击形态:找钮 → 单击 → 固定等待,零授权零计数)。
     非终结。"""
 
@@ -43,7 +43,7 @@ class CwActionLevelUpOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionLevelUpParam,
                  env: PrepExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionLevelUpOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionLevelUpOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

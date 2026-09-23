@@ -33,15 +33,15 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from sr_od.application.currency_war.kernel.cw_screen_report.interrupt_dialog import (
     CwScreenInterruptDialogObs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenInterruptDialog(SrOperation):
+class CwScreenInterruptDialog(CwOperation):
     """中断挑战 dialog:点右上 X 关闭(失败新帧重试),绝不点放弃并结算。"""
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-中断挑战弹窗')
+        CwOperation.__init__(self, ctx, op_name='货币战争-中断挑战弹窗')
         # 画面档名/入口锚(与阶段一身份分发判定同源同参;实例属性)
         self._screen_name: str = '货币战争-中断挑战弹窗'
         self._entry_area: str = '标识-中断挑战'

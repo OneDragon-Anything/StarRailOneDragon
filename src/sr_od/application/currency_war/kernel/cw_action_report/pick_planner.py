@@ -35,6 +35,9 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     apply_equip_acquire_consequence,
     merge_cascade_write,
 )
+from sr_od.application.currency_war.kernel.cw_event_hooks import (
+    transition_event_on_applied,
+)
 from sr_od.application.currency_war.kernel.cw_events import (
     PLANNER_LEG_EQUIP,
     PLANNER_LEG_UNKNOWN,
@@ -56,6 +59,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 _PLANNER_PRODUCER: str = 'CwActionPickPlannerParam'
 _LV999_ID: str = '银狼LV.999'   # 变换窗/级联/档行身份名(cw_chars 规范名)
 
+@transition_event_on_applied('pick_planner')
 def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
                                      *, leg_type: str = '',
                                      norm_item: str = '',

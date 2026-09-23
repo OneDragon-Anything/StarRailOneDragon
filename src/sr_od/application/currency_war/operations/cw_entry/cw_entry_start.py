@@ -20,6 +20,7 @@ from sr_od.application.currency_war.kernel.cw_entry_policy import (
     difficulty_entry_intent,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_briefing import (
     CwScreenBriefing,
 )
@@ -28,7 +29,6 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_invest_env im
 )
 from sr_od.application.currency_war.telemetry import state
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
 @dataclass(frozen=True)
@@ -173,7 +173,7 @@ def try_handle_train_supply_popup(
     return _handle_entry_popup_spec(op, screen, _TRAIN_SUPPLY_GUARD)
 
 
-class CwEntryStart(SrOperation):
+class CwEntryStart(CwOperation):
     """从货币战争大厅开始/恢复一局,推进到「备战阶段」。
 
     统一用「点前进按钮直到备战」循环,兼容两条路径的所有中间画面:
@@ -209,7 +209,7 @@ class CwEntryStart(SrOperation):
     LOBBY_RESIDUAL_CONFIRM_ROUNDS: ClassVar[int] = 2
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='开始货币战争对局')
+        CwOperation.__init__(self, ctx, op_name='开始货币战争对局')
         self._advance_steps: int = 0
         # 残留容器弃置去重(同一次入口链只报一次)
         self._stale_discarded: bool = False

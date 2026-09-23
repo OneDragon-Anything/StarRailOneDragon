@@ -21,8 +21,8 @@ from sr_od.application.currency_war.kernel.cw_vocab import CwActionRefreshShopPa
 from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
     ShopExecEnv,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 # 刷新点击后固定等待(重掷动画收敛):固定时长即收的时长常量,与买牌
 # 点击后固定 sleep 同风格。等待不是判效——牌面/金真值判读不在动作内
@@ -30,7 +30,7 @@ from sr_od.operations.sr_operation import SrOperation
 REFRESH_CLICK_SETTLE_WAIT_S: float = 1.0
 
 
-class CwActionRefreshShopOp(SrOperation):
+class CwActionRefreshShopOp(CwOperation):
     """刷新 = 终结 op(唯一引入新事实的动作,期望态必须在新事实处重建
     ——终结后交回外循环,下一段入口重观察)。
 
@@ -48,7 +48,7 @@ class CwActionRefreshShopOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionRefreshShopParam,
                  env: ShopExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionRefreshShopOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionRefreshShopOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

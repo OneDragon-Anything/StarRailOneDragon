@@ -31,8 +31,8 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     game_state_from_ctx,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionObsParam
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
@@ -49,7 +49,7 @@ class CwObsOverlayBail(RuntimeError):
         self.overlay_tag = overlay_tag
 
 
-class CwActionObsOp(SrOperation):
+class CwActionObsOp(CwOperation):
     """环内重观察:宿主 heavy 观察链重跑(漏斗直写容器 = 上报),
     零点击零拖拽;落地/对账语义 = 观察边界本体(观察赢)。非终结。"""
 
@@ -59,7 +59,7 @@ class CwActionObsOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionObsParam,
                  env: PrepExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionObsOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionObsOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

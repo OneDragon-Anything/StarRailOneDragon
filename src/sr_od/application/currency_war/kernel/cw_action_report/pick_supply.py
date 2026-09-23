@@ -32,6 +32,9 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     apply_equip_acquire_consequence,
     grant_bench_unit_cascade,
 )
+from sr_od.application.currency_war.kernel.cw_event_hooks import (
+    transition_event_on_applied,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     GameState,
@@ -47,6 +50,7 @@ _PRODUCER: str = 'CwActionPickSupplyParam'
 _SUPPLY_GRANT_STAR: int = 1
 
 
+@transition_event_on_applied('pick_supply')
 def report_action_pick_supply_param(gs: GameState, param: Any,
                                     sig: ChannelSig) -> LogicOutcome:
     """补给节点选择上报(即时单相:确认点击后一口写全部效果逻辑态)。

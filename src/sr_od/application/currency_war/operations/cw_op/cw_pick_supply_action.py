@@ -26,11 +26,11 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
     OverlayPickExecEnv,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwActionPickSupplyOp(SrOperation):
+class CwActionPickSupplyOp(CwOperation):
     """补给节点 pick 确认链(统一动作工厂批4 迁入)。
 
     刷新圆钮机械点击留守画面 op(刷新链 = ``SupplyPick.refresh`` 决策的
@@ -46,7 +46,7 @@ class CwActionPickSupplyOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionPickSupplyParam,
                  env: OverlayPickExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionPickSupplyOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionPickSupplyOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

@@ -58,8 +58,8 @@ from sr_od.application.currency_war.kernel.cw_screen_report.expert_invite import
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPickExpertInviteParam,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 #: 专家邀请函弹窗画面(assets/game_data/screen_info/currency_war_expert_invitation.yml)
 INVITE_SCREEN: str = '货币战争-备战-专家邀请函'
@@ -110,7 +110,7 @@ def _resolve_card_bonds(ctx: SrContext, screen, card_area: str) -> str | None:
     return None
 
 
-class CwScreenExpertInvite(SrOperation):
+class CwScreenExpertInvite(CwOperation):
     """专家邀请函弹窗选卡(默认策略)→ 验弹窗关(收案)。
 
     入口态单一 = 弹窗已开(外循环阶段一身份分发,分发判定单一源 =
@@ -119,7 +119,7 @@ class CwScreenExpertInvite(SrOperation):
     """
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-书册卡处理')
+        CwOperation.__init__(self, ctx, op_name='货币战争-书册卡处理')
         # 选卡点击已发待重入裁决的 (idx, card_bonds)(验证废除形态):
         # 重入裁决由决策动作 node 顶部承载(弹窗不在 = 选卡落地)→ 此刻才写
         # chosen_expert + 到账登记;弹窗仍在 = 点击未落地 → 重走。

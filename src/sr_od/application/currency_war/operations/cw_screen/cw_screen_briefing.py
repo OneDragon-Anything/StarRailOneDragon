@@ -47,14 +47,14 @@ from sr_od.application.currency_war.obs.cw_briefing_obs import (
     save_affix_screenshot,
     write_affix_effects,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
     BRIEFING_SETTLE_S,
 )
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenBriefing(SrOperation):
+class CwScreenBriefing(CwOperation):
     """简报:识别简报 → 读词缀/boss/难度(report 落容器)+ 词缀效果采集 → 点下一步(重入裁决交回)。"""
 
     #: screen_info 画面(currency_war_briefing.yml):id_mark 标识-本场对局首领
@@ -63,7 +63,7 @@ class CwScreenBriefing(SrOperation):
     MARK_AREA: ClassVar[str] = '标识-本场对局首领'
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-简报(开局序列)')
+        CwOperation.__init__(self, ctx, op_name='货币战争-简报(开局序列)')
         # 「下一步」已发待重入裁决标志:重入裁决住决策动作 node 顶部——
         # 标识不在 = 已离开简报(过渡完成)→ success 交回;标识在 =
         # 点击未落地 → 重点。

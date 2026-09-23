@@ -22,14 +22,14 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     game_state_from_ctx,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionSellBenchParam
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
 
-class CwActionSellBenchOp(SrOperation):
+class CwActionSellBenchOp(CwOperation):
     """卖备战槽角色:drag 槽中心 → 出售区(``drag_bench_to_sell`` 单一源;
     机械执行,源槽像素验重试拆除)。非终结。
 
@@ -43,7 +43,7 @@ class CwActionSellBenchOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionSellBenchParam,
                  env: PrepExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionSellBenchOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionSellBenchOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

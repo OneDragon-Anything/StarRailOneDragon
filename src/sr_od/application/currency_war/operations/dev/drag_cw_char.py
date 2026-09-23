@@ -31,6 +31,7 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -38,7 +39,7 @@ from sr_od.operations.sr_operation import SrOperation
 _ROWS: dict[str, str] = {'front': '前排', 'back': '后排', 'bench': '备战栏'}
 
 
-class DragCwChar(SrOperation):
+class DragCwChar(CwOperation):
     """货币战争 拖动角色(通用,槽位输入;开发 / 测试用)+ 统一拖拽原语 ``drag_char``。
 
     ``run_operation`` 调用例::
@@ -65,7 +66,7 @@ class DragCwChar(SrOperation):
                 screen_info「后排-1..6」不够 → 调用方传运行时检测到的实际后排槽中心(含 7+ 槽)。
                 ``None`` → 用 screen_info 后排-N(基准 6)。
         """
-        SrOperation.__init__(self, ctx, op_name='货币战争-拖动角色')
+        CwOperation.__init__(self, ctx, op_name='货币战争-拖动角色')
         self.from_row: str = from_row
         self.from_idx: int = from_idx
         self.to_row: str = to_row

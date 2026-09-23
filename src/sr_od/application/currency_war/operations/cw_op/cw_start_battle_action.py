@@ -45,14 +45,14 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     SCREEN_NAME,
     area_center,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
 
-class CwActionStartBattleOp(SrOperation):
+class CwActionStartBattleOp(CwOperation):
     """出战点击(点击出战/跳过 → 弹窗确认 → 自上报交回;语义见模块头)。
 
     终结动作:发出即本备战访问终结(交回外循环战斗分支);终结等待 =
@@ -72,7 +72,7 @@ class CwActionStartBattleOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: object,
                  env: PrepExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionStartBattleOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionStartBattleOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

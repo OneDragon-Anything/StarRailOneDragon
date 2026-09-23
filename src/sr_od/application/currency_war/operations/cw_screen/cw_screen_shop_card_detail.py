@@ -41,15 +41,15 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from sr_od.application.currency_war.kernel.cw_screen_report.shop_card_detail import (
     CwScreenShopCardDetailPopupObs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenShopCardDetailPopup(SrOperation):
+class CwScreenShopCardDetailPopup(CwOperation):
     """商店卡牌详情弹窗:双 id_mark 锚入口,点 X → 重入裁决交回(验证废除)。"""
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-商店卡牌详情')
+        CwOperation.__init__(self, ctx, op_name='货币战争-商店卡牌详情')
         # 画面档名(双锚与 × 所在建档;实例属性)
         self._screen_name: str = '货币战争-商店卡牌详情'
         # 推进已发标志(验证废除形态):区分「首发锚 miss = 误分发 fail 交回」

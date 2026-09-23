@@ -22,14 +22,14 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     game_state_from_ctx,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionDeployMoveParam
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
 
-class CwActionDeployMoveOp(SrOperation):
+class CwActionDeployMoveOp(CwOperation):
     """bench → 上阵单步拖拽(腾席链专用;统一词表 CwActionDeployMoveParam)。
     非终结。"""
 
@@ -39,7 +39,7 @@ class CwActionDeployMoveOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionDeployMoveParam,
                  env: PrepExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionDeployMoveOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionDeployMoveOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

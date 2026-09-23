@@ -43,11 +43,11 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
     ShopExecEnv,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwActionBuyCardOp(SrOperation):
+class CwActionBuyCardOp(CwOperation):
     """买一张 = 一个动作 op(满栏例外下一击多张仍一个 op,张数由游戏
     规则定、上报按 merge_buy_k 计——方案 A 补裁)。
 
@@ -63,7 +63,7 @@ class CwActionBuyCardOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionBuyCardParam,
                  env: ShopExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionBuyCardOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionBuyCardOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

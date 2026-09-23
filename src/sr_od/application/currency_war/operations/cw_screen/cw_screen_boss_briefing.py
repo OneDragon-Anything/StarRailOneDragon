@@ -11,7 +11,7 @@ boss 节点前弹「强敌来袭」简报横幅:识别阵营徽记模板锚「�
 观察,SIFT 双空读)误落备战分支反复空转 598s(SENTINEL-STALL)——分支
 必须**先于备战双锚**。
 
-形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation,
+形态(画面 op 两段式:观察 node → 决策动作 node,继承 CwOperation,
 轻屏统一形态):观察 node = 横幅门(徽记模板锚 miss → 「强敌」片段判别
 兜底;不在 = 已推进 → 早退 success 交回外循环重判,obs 不装载)+ 门内
 obs{on_screen} → ``report_screen_boss_briefing_obs``(boss 类型直定写端,
@@ -39,8 +39,8 @@ from sr_od.application.currency_war.kernel.cw_screen_report.boss_briefing import
     CwScreenBossBriefingObs,
     report_screen_boss_briefing_obs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 # ===== 两画面判别单一源 =====
 #
@@ -69,7 +69,7 @@ def read_ocr_texts(ctx, screen) -> list[str]:
         image=screen, rect=None, color_range=None, crop_first=False)]
 
 
-class CwScreenBossBriefing(SrOperation):
+class CwScreenBossBriefing(CwOperation):
     """BOSS 简报:识别「强敌来袭」→ 点空白 → 交回外循环重判。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-BOSS简报'
@@ -81,7 +81,7 @@ class CwScreenBossBriefing(SrOperation):
     BLANK_AREA: ClassVar[str] = '区域-空白点击'
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-BOSS简报')
+        CwOperation.__init__(self, ctx, op_name='货币战争-BOSS简报')
         # 观察结果(观察 node 产物;门早退轮不装载)。
         self._obs: CwScreenBossBriefingObs | None = None
 

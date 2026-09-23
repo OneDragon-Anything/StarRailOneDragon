@@ -41,11 +41,11 @@ from sr_od.application.currency_war.kernel.cw_screen_report.partner import (
     report_screen_partner_obs,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionPickPartnerParam
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenPartner(SrOperation):
+class CwScreenPartner(CwOperation):
     """选择伙伴 overlay:OCR 候选 → decide_partner 选 → 「点选候选→确认」脉冲 → 标识消失 = 完成。"""
 
     # 候选阵营标签行 y 过滤带(候选 label 在 y~362;排除标题 64 / 指令 130 / 详情 445 / 确认 582)。
@@ -66,7 +66,7 @@ class CwScreenPartner(SrOperation):
     _EXCLUDE: ClassVar[set[str]] = {'选择伙伴', '攻略', '确认选择', '详情', '角色', '装备'}
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-列车同行')
+        CwOperation.__init__(self, ctx, op_name='货币战争-列车同行')
         # 确认已发待重入裁决标志(验证废除形态):重入裁决见决策动作 node
         # 顶部(两步链的最终确认也置位,标识不在 = overlay 关 = 链完结;
         # 置位在 pick op 体内 = 确认发送时点)。

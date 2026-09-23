@@ -31,17 +31,17 @@ from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_screen_report.aha_equip_pick import (
     CwScreenAhaEquipPickObs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenAhaEquipPick(SrOperation):
+class CwScreenAhaEquipPick(CwOperation):
     """阿哈装备选择:点第 1 装备(固定策略申报,见模块头)。"""
 
     FIRST_EQUIP_AREA = '按钮-简易装备首件'
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-阿哈装备选择')
+        CwOperation.__init__(self, ctx, op_name='货币战争-阿哈装备选择')
         # 画面档名/入口锚(与外循环 0g 分发判定同源同参;实例属性)
         self._screen_name: str = '货币战争-备战'
         self._entry_area: str = '标识-简易装备'

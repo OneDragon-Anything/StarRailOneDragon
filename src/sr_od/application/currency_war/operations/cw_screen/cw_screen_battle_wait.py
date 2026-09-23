@@ -65,6 +65,7 @@ from sr_od.application.currency_war.obs.cw_settlement_obs import (
     read_settle_damage_breakdown,
     settle_page1_progress_sign,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.telemetry import defects
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -232,7 +233,7 @@ class SettlementState:
     settled_battle_ts: float | None = None
 
 
-class CwScreenBattleWait(SrOperation):
+class CwScreenBattleWait(CwOperation):
     """战斗等待 op:等结算 → 结算处理 → 白名单完成判据 / 团灭终局分叉。"""
 
     #: 结算页1 掉血说明 tooltip 渲染延迟门:面板进页 ~2-4s 才出现;门语义
@@ -258,7 +259,7 @@ class CwScreenBattleWait(SrOperation):
 
     def __init__(self, ctx: SrContext, st: SettlementState,
                  config: CurrencyWarConfig):
-        SrOperation.__init__(self, ctx, op_name='货币战争-战斗等待')
+        CwOperation.__init__(self, ctx, op_name='货币战争-战斗等待')
         self._st = st
         self._cw_config = config
         self._unknown_streak: int = 0

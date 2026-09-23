@@ -13,6 +13,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from sr_od.application.currency_war.kernel.cw_event_hooks import (
+    transition_event_on_applied,
+)
 from sr_od.application.currency_war.kernel.cw_gain_chain import (
     gain_invest_env,
 )
@@ -24,6 +27,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 
 
+@transition_event_on_applied('pick_invest_env')
 def report_action_pick_invest_env_param(
         gs: GameState, param: Any, sig: ChannelSig, *,
         session: object | None = None) -> LogicOutcome:

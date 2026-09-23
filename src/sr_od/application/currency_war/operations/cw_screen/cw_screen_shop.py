@@ -51,6 +51,7 @@ from sr_od.application.currency_war.obs.cw_observation import (
     GameStateReadReceipt,
     read_game_state,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.operations.decision_frame_hooks import (
     save_decision_frame,
 )
@@ -386,7 +387,7 @@ def _note_shop_skip_unobserved(op: SrOperation,
     return None
 
 
-class CwScreenShop(SrOperation):
+class CwScreenShop(CwOperation):
     """货币战争商店画面 op(两 node 规范形态)。
 
     生产两路(外循环 0n 转交与备战显式开店同口 ``visit_open_shop``、
@@ -418,7 +419,7 @@ class CwScreenShop(SrOperation):
     """
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-商店')
+        CwOperation.__init__(self, ctx, op_name='货币战争-商店')
         from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
             ShopVisitLedger,
         )

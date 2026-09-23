@@ -27,11 +27,11 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
     OverlayPickExecEnv,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwActionPickExpertInviteOp(SrOperation):
+class CwActionPickExpertInviteOp(CwOperation):
     """专家邀请函选卡链(pick-op-unify 批收编;点卡即选,无确认钮)。
 
     点选(点击点 = 容器 ``expert_invite.card_points[idx]`` ∨ ``cash_point``
@@ -46,7 +46,7 @@ class CwActionPickExpertInviteOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionPickExpertInviteParam,
                  env: OverlayPickExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionPickExpertInviteOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionPickExpertInviteOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

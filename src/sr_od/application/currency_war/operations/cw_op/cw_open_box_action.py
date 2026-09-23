@@ -25,14 +25,14 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     game_state_from_ctx,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionOpenBoxParam
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
 
-class CwActionOpenBoxOp(SrOperation):
+class CwActionOpenBoxOp(CwOperation):
     """开箱:找箱槽 → 点「开启」→ 固定动画等待(纯机械执行)。
 
     选卡动作不在本执行链(R7 批 2a 定形):点完开启本动作即终结
@@ -56,7 +56,7 @@ class CwActionOpenBoxOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionOpenBoxParam,
                  env: PrepExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionOpenBoxOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionOpenBoxOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

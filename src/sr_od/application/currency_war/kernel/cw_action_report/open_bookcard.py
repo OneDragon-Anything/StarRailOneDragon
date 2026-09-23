@@ -10,6 +10,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from sr_od.application.currency_war.kernel.cw_event_hooks import (
+    transition_event_on_applied,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     BenchSlot,
     BenchView,
@@ -21,11 +24,13 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 
 
+@transition_event_on_applied('open_bookcard')
 def report_action_open_bookcard_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """开书册卡上报:bench 槽位 kind → empty(开卡即腾席)。槽 kind 门 =
     ``'bookcard'``(kind 细分批:书册卡槽不再统一降级 supply_box,容器
     bench kind 细分 = 'bookcard' 单一口径);槽不存在/类型不符 =
-    applied=False 零写。"""
+    applied=False 零写。applied 出口广播转移事件 open_bookcard(专家
+    邀请函弹窗出现;kernel/cw_event_hooks 封闭集)。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
 

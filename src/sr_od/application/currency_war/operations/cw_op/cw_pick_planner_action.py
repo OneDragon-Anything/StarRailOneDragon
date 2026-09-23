@@ -25,14 +25,14 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
     OverlayPickExecEnv,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_yinlang import (
     CwScreenYinLang,
 )
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwActionPickPlannerOp(SrOperation):
+class CwActionPickPlannerOp(CwOperation):
     """银狼策划 pick 确认链(统一动作工厂批4 迁入)。
 
     点卡选中(避开卡内「详情」按钮区的选中点几何归决策半 ``_card_point``
@@ -49,7 +49,7 @@ class CwActionPickPlannerOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionPickPlannerParam,
                  env: OverlayPickExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionPickPlannerOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionPickPlannerOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

@@ -20,6 +20,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import CwActionCloseShopPara
 from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
     ShopExecEnv,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.prep_actions import SHOP_CLOSE_ANIM_S
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -47,7 +48,7 @@ def _note_receipt(op: SrOperation, applied: bool, reason: str) -> None:
         log.warning('[cw][receipt] 关商店回执写入失败(不阻塞): %s', e)
 
 
-class CwActionCloseShopOp(SrOperation):
+class CwActionCloseShopOp(CwOperation):
     """关店 = 恒可用终结动作 op(恒可用终结不变量 = screens/op-layer.md
     §1.4;终结集总表 = screens/README.md §6):执行即本画面访问结束、
     交回外循环。"""
@@ -59,7 +60,7 @@ class CwActionCloseShopOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionCloseShopParam,
                  env: ShopExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionCloseShopOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionCloseShopOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

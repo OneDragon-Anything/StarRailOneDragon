@@ -52,8 +52,8 @@ from sr_od.application.currency_war.kernel.cw_screen_report.plane_intel import (
     CwScreenPlaneIntelObs,
     report_screen_plane_intel_obs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 _log = logging.getLogger(__name__)
 
@@ -67,14 +67,14 @@ _PLANE_SWITCH_WAIT_S: float = 2.0
 _BOSS_CLICK_WAIT_S: float = 1.5
 
 
-class CwScreenPlaneIntel(SrOperation):
+class CwScreenPlaneIntel(CwOperation):
     """位面详情纯识别(6 node 管线;接管局补采识别本体,编排归
     CwEntryPlaneIntel)。"""
 
     SCREEN_NAME: ClassVar[str] = _PD_SCREEN
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-位面情报采集')
+        CwOperation.__init__(self, ctx, op_name='货币战争-位面情报采集')
         # 三位面 boss 身份(3 槽保位;识别 node 只落非 None 值,失败即 op
         # 级响亮失败——到上报节点时三槽恒全有值,容器侧 None 槽语义 =
         # 简报源未读得,不由本 op 产生)。

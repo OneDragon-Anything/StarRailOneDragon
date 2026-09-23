@@ -8,6 +8,7 @@ from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
 from sr_od.application.currency_war.kernel.cw_screen_report.open_shop import (
     CwOpOpenShopObs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.prep_actions import SHOP_OPEN_ANIM_S
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -80,7 +81,7 @@ def open_shop(op: SrOperation) -> OperationRoundResult:
     return op.round_retry('开商店点击已发,重入观察裁决', wait=1)
 
 
-class CwOpOpenShop(SrOperation):
+class CwOpOpenShop(CwOperation):
     """货币战争-备战 → 备战-开商店 原子 op(推进型两 node 形态)。
 
     生产路径由编排壳直调 :func:`open_shop`(宿主 op 复用);本类为独立
@@ -102,7 +103,7 @@ class CwOpOpenShop(SrOperation):
     """
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-开商店')
+        CwOperation.__init__(self, ctx, op_name='货币战争-开商店')
         # 观察结果(观察 node 产物,决策动作 node/测试消费;无 report)。
         self._obs: CwOpOpenShopObs | None = None
 

@@ -19,14 +19,14 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     game_state_from_ctx,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionOpenTomeParam
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
 
-class CwActionOpenTomeOp(SrOperation):
+class CwActionOpenTomeOp(CwOperation):
     """开秘密典籍:点槽两次(选中→开启)→ 固定动画等待。非终结。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
@@ -35,7 +35,7 @@ class CwActionOpenTomeOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionOpenTomeParam,
                  env: PrepExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionOpenTomeOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionOpenTomeOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

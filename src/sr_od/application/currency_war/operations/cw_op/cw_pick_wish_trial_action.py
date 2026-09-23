@@ -25,11 +25,11 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
     OverlayPickExecEnv,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwActionPickWishTrialOp(SrOperation):
+class CwActionPickWishTrialOp(CwOperation):
     """祈愿试炼确认链(pick-op-unify 批收编)。
 
     点试炼卡身选中(防吞点击,选中点 = 动作 op 自容器
@@ -45,7 +45,7 @@ class CwActionPickWishTrialOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionPickWishTrialParam,
                  env: OverlayPickExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionPickWishTrialOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionPickWishTrialOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

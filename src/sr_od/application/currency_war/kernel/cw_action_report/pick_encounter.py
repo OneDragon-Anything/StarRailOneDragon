@@ -21,6 +21,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from sr_od.application.currency_war.kernel.cw_event_hooks import (
+    transition_event_on_applied,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     GameState,
@@ -32,12 +35,15 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 _PRODUCER: str = 'CwActionPickEncounterOp'
 
 
+@transition_event_on_applied('pick_encounter')
 def report_action_pick_encounter_param(gs: GameState, param: Any,
                                        sig: ChannelSig) -> LogicOutcome:
     """遭遇节点选择上报(发射即写:确认点击后立即写 ``chosen_encounter``)。
 
     值 = payload 槽所选卡 ``(难度档, 奖励文本 join)``;槽离屏 / idx 越界
     = 缺陷留证不写(fail-closed)。出参 applied=False = 留证未写(非拒绝)。
+    applied 出口广播转移事件 pick_encounter(overlay 消失回底层屏;
+    kernel/cw_event_hooks 封闭集)。
     """
     _validate_sig(sig, ('logic_action',))
     payload = gs.encounter.value

@@ -8,13 +8,13 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.operations.cw_entry.cw_entry_start import (
     try_handle_entry_popups,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
 from sr_od.interastral_peace_guide.guid_choose_tab import GuideChooseTab
 from sr_od.interastral_peace_guide.open_guide import GuideOpen
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwEntryEnter(SrOperation):
+class CwEntryEnter(CwOperation):
     """从大世界进入「货币战争」大厅(入口流程 M1)。
 
     路径:打开指南(星际和平指南)→ 旷宇纷争 TAB → (货币战争分类默认选中)→ 前往参与
@@ -32,7 +32,7 @@ class CwEntryEnter(SrOperation):
     STATUS_AT_LOBBY: ClassVar[str] = '已在货币战争大厅'
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='进入货币战争')
+        CwOperation.__init__(self, ctx, op_name='进入货币战争')
 
     @operation_node(name='打开指南', is_start_node=True)
     def open_guide(self) -> OperationRoundResult:

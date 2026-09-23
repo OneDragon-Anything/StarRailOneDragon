@@ -33,8 +33,8 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from sr_od.application.currency_war.kernel.cw_game_state import (
     gs_of_ctx,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 _log = logging.getLogger(__name__)
 
@@ -53,14 +53,14 @@ _CLOSE_WAIT_S: float = 1.5
 _GATE_PASS_STATUS: str = '门通过(session 在、画面合法、无位面真值)'
 
 
-class CwEntryPlaneIntel(SrOperation):
+class CwEntryPlaneIntel(CwOperation):
     """接管补采编排:门 → 打开位面详情 → 委派实采 → 关闭(独立调起入口)。"""
 
     STATUS_DONE: ClassVar[str] = '接管补采完成(位面真值已落容器)'
     STATUS_SKIP: ClassVar[str] = '容器已有位面真值,跳过补采'
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-接管补采位面情报')
+        CwOperation.__init__(self, ctx, op_name='货币战争-接管补采位面情报')
 
     def _session(self) -> object | None:
         """当前对局 session(cw_match 为 None = 不在对局中)。"""

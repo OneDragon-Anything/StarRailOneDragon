@@ -37,8 +37,8 @@ from sr_od.application.currency_war.cw_screen_state import (
     get_in_match_screen_name,
 )
 from sr_od.application.currency_war.operations.cw_loop import CwLoop
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 #: 路由状态常量(边匹配键;route 节点 SUCCESS 携带,边按状态精确跳转)
 ST_PREP: str = '备战'
@@ -58,7 +58,7 @@ ST_ENEMY_INFO: str = '敌人信息浮层'
 BATTLE_STREAK_ENTER: int = 4
 
 
-class CwEntryExit(SrOperation):
+class CwEntryExit(CwOperation):
     """放弃当前货币战争对局,返回大厅(退局调度器)。"""
 
     STATUS_AT_LOBBY: ClassVar[str] = '已返回货币战争大厅'
@@ -83,7 +83,7 @@ class CwEntryExit(SrOperation):
     ENEMY_INFO_SCREEN: ClassVar[str] = '货币战争-敌人信息浮层'
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='退出货币战争对局')
+        CwOperation.__init__(self, ctx, op_name='退出货币战争对局')
         self._miss_streak: int = 0
 
     # ---- 节点1:画面路由(循环;唯一识别中枢) ----

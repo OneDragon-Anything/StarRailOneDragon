@@ -10,6 +10,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from sr_od.application.currency_war.kernel.cw_event_hooks import (
+    emit_fact_event,
+)
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     deployed_indexed_to_rows,
     deployed_rows_to_indexed,
@@ -155,8 +158,9 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     scratch_md = list(pre_dep)
     mutate_bench_deployed_local(scratch_mb, scratch_md, param,
                                 shop=pre_shop)
-    if detect_merge_upgrade(_NS(bench=pre_bench, deployed=pre_dep),
-                            _NS(bench=scratch_mb, deployed=scratch_md)):
+    _star_up = detect_merge_upgrade(_NS(bench=pre_bench, deployed=pre_dep),
+                                    _NS(bench=scratch_mb, deployed=scratch_md))
+    if _star_up:
         gs.write_logic(gs.bench,
                        bench_view_of_working(scratch_mb, _pre_view),
                        produced_by='CwActionBuyCardParam',
@@ -175,4 +179,9 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         gs.effects.on_buy(card, star, k)
     except Exception as e:  # noqa: BLE001  记录面失败不阻塞
         _log.warning(f'[cw-buy] 效果账本 on_buy 回调失败(不阻塞): {e}')
+    # 事实事件:板面组成变化(买牌合成落地)+ 升星事件(合成升星发生时;
+    # overlay 触发层消费,缺省关零开销)
+    emit_fact_event('board_changed', {'actor': sig.actor})
+    if _star_up:
+        emit_fact_event('star_up', {'actor': sig.actor, 'card': name})
     return LogicOutcome(applied=True, bought_count=k)

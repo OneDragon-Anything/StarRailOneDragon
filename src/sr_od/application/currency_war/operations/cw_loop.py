@@ -32,6 +32,7 @@ from sr_od.application.currency_war.obs.cw_resume_lock import (
     probe_resolve,
     resume_candidate,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_aha_equip_pick import (
     CwScreenAhaEquipPick,
 )
@@ -130,7 +131,6 @@ from sr_od.application.currency_war.operations.decision_frame_hooks import (
 from sr_od.application.currency_war.strategies.impl.cw_strategy import StrategySession
 from sr_od.application.currency_war.telemetry import state
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
 def locked_resume_sync_and_battle(op, ctx):
@@ -491,7 +491,7 @@ class _FnResult:
         self.status: str = status
 
 
-class CwLoop(SrOperation):
+class CwLoop(CwOperation):
     """货币战争 对局内主循环:反复「备战单轮 + 轮间过渡」直到对局结束 / 超时。
 
     每轮分发(两阶段形态,as-built =
@@ -573,7 +573,7 @@ class CwLoop(SrOperation):
 
     def __init__(self, ctx: SrContext, max_rounds: int | None = None,
                  stop_at_prep: bool = False):
-        SrOperation.__init__(self, ctx, op_name='货币战争-对局循环')
+        CwOperation.__init__(self, ctx, op_name='货币战争-对局循环')
         self._iter: int = 0
         # run 收口:中止/卡死/停机局不走 3c 回大厅,收口由
         # ``after_operation_done`` 钩子补置(成功/失败/停止全路径必达,

@@ -50,11 +50,11 @@ from sr_od.application.currency_war.kernel.cw_screen_report.bookcard import (
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPickStarTomeParam,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
     CW_OVERLAY_SETTLE_S,
 )
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 #: FACTIONS 注册表键集定序列表(观察标准化门第二段 LCS 兜底的遍历域;
 #: sorted 定序保证同分取注册表序首个,确定性不随 dict 迭代序漂移)。
@@ -73,7 +73,7 @@ _FACTION_LCS_THRESHOLD: float = 0.75
 _FACTION_LCS_AMBIGUITY_MARGIN: float = 0.15
 
 
-class CwScreenBookcard(SrOperation):
+class CwScreenBookcard(CwOperation):
     """星徽秘典四选一:OCR 卡名 → decide_star_tome 选卡(点卡即选,弹窗自关)。
 
     决策面 = 策略器零参决策(打分:target 阵营/board 已有/配方框架;单一
@@ -89,7 +89,7 @@ class CwScreenBookcard(SrOperation):
     CARD_AREAS: ClassVar[tuple[str, ...]] = ('星徽卡-1', '星徽卡-2', '星徽卡-3', '星徽卡-4')
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-星徽秘典')
+        CwOperation.__init__(self, ctx, op_name='货币战争-星徽秘典')
         # 选卡点击已发待重入裁决的星徽名(验证废除形态):重入裁决由决策
         # 动作 node 顶部承载(弹窗不在 = 选卡落地)→ 此刻才写 chosen_tome
         # + 到账登记;弹窗仍在 = 点击未落地 → 重走重选(不留幻影登记)。

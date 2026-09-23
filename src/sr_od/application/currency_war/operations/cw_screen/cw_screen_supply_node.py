@@ -60,8 +60,8 @@ from sr_od.application.currency_war.kernel.cw_screen_report.supply_node import (
     report_screen_supply_node_obs,
 )
 from sr_od.application.currency_war.obs.cw_node_obs import read_supply_options
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 # 「剩余次数：N」正则(遭遇/投资屏 reader 同款形态,cw_node_obs._REMAIN_RE 族;
 # 全角/半角冒号都认,OCR 渲染不一)。
@@ -73,7 +73,7 @@ _REMAIN_RE = re.compile(r'剩余次数\s*[：:]\s*(\d+)')
 _NODE_BAR_RE = re.compile(r'(\d)\s*-\s*(\d)')
 
 
-class CwScreenSupplyNode(SrOperation):
+class CwScreenSupplyNode(CwOperation):
     """补给节点:点卡身选中 + 确认,overlay 消失(门 miss)= 节点完成。"""
 
     CARD_BODY: ClassVar[Point] = Point(900, 550)  # 补给卡 body 不开对话(沿用 HandleSupply)
@@ -90,7 +90,7 @@ class CwScreenSupplyNode(SrOperation):
     _REFRESH_TEXT_AREA: ClassVar[str] = '文本-剩余次数'
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-补给节点')
+        CwOperation.__init__(self, ctx, op_name='货币战争-补给节点')
         # 观察结果(观察 node 产物,决策动作 node 消费)与点卡/刷新钮定位点
         # 载体(obs 只载选项数据进容器;点击点 = 现役读链产物,经实例属性
         # 跨 node 传递,决策轮不重读不重算)。

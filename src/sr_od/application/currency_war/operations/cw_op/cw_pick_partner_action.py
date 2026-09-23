@@ -26,11 +26,11 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
     OverlayPickExecEnv,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwActionPickPartnerOp(SrOperation):
+class CwActionPickPartnerOp(CwOperation):
     """选择伙伴 pick 确认链(统一动作工厂批4 迁入)。
 
     「点选候选 → 确认」脉冲链整体迁入(未选中实证下重点选,单选语义
@@ -45,7 +45,7 @@ class CwActionPickPartnerOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionPickPartnerParam,
                  env: OverlayPickExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionPickPartnerOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionPickPartnerOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

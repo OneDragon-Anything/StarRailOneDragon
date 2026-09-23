@@ -26,6 +26,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
     OverlayPickExecEnv,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     safe_click,
 )
@@ -33,10 +34,9 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_fortune impor
     CwScreenFortune,
 )
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwActionPickFortuneOp(SrOperation):
+class CwActionPickFortuneOp(CwOperation):
     """命运卜者强化三选一确认链(pick-op-unify 批收编)。
 
     点卡选中(safe_click 防吞点击;点卡坐标 = 按下标自容器
@@ -51,7 +51,7 @@ class CwActionPickFortuneOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionPickFortuneParam,
                  env: OverlayPickExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionPickFortuneOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionPickFortuneOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

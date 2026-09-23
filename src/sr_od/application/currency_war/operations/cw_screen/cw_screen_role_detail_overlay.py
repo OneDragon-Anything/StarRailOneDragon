@@ -40,11 +40,11 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from sr_od.application.currency_war.kernel.cw_screen_report.role_detail_overlay import (
     CwScreenRoleDetailOverlayObs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenRoleDetailOverlay(SrOperation):
+class CwScreenRoleDetailOverlay(CwOperation):
     """详情弹窗:双锚其一(装备推荐/合成公式)命中,点面板外空白关+重入裁决交回。"""
 
     #: 关闭点击位:备战前后排之间的真空白(面板外,两 overlay 家族共用)
@@ -52,7 +52,7 @@ class CwScreenRoleDetailOverlay(SrOperation):
     BLANK_AREA = '区域-空白关闭'
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-详情弹窗')
+        CwOperation.__init__(self, ctx, op_name='货币战争-详情弹窗')
         # 画面档名(双锚所在建档,与外循环身份分发同画面档;实例属性)
         self._screen_name: str = '货币战争-备战-角色详情'
         # 推进已发标志(验证废除形态):区分「首发锚 miss = 误分发 fail 交回」

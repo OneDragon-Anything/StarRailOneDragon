@@ -24,6 +24,9 @@ from sr_od.application.currency_war.kernel.cw_economy import effective_cost
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     merge_cascade_write,
 )
+from sr_od.application.currency_war.kernel.cw_event_hooks import (
+    emit_fact_event,
+)
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     deployed_idx_of,
     deployed_indexed_to_rows,
@@ -136,4 +139,6 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
             rand=False, evidence='proj_deploy_lv999_merge',
             producer='CwActionDeployMoveParam', sig=_grp_sig,
             orig_view=_bview)
+    # 事实事件:板面组成变化(deploy 落地;overlay 触发层消费,缺省关零开销)
+    emit_fact_event('board_changed', {'actor': sig.actor})
     return LogicOutcome(applied=True)

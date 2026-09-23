@@ -25,11 +25,11 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
     OverlayPickExecEnv,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwActionPickBoxCardOp(SrOperation):
+class CwActionPickBoxCardOp(CwOperation):
     """武装箱四选一选卡链(pick-op-unify 批收编;点卡选中即确认,单步)。
 
     点卡(mouse_move+click;点击点 = 容器 ``box_card_names_xy[idx]``——
@@ -45,7 +45,7 @@ class CwActionPickBoxCardOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionPickBoxCardParam,
                  env: OverlayPickExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionPickBoxCardOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionPickBoxCardOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

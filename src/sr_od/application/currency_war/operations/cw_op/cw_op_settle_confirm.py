@@ -31,11 +31,11 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwOpSettleConfirm(SrOperation):
+class CwOpSettleConfirm(CwOperation):
     """货币战争-结算确认 原子动作 op(点击 + 长按兜底 + 推进上报;
     去证据门形态 = 点击即上报)。
 
@@ -55,7 +55,7 @@ class CwOpSettleConfirm(SrOperation):
     SETTLEMENT_NEXT: ClassVar[Point] = Point(960, 898)
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-结算确认')
+        CwOperation.__init__(self, ctx, op_name='货币战争-结算确认')
         # 结算屏停留计数(长按兜底触发器;单次 execute 内跨轮累积,
         # 长按后归零)
         self._stay: int = 0

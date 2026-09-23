@@ -27,11 +27,11 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
     OverlayPickExecEnv,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwActionPickMegastarOp(SrOperation):
+class CwActionPickMegastarOp(CwOperation):
     """盛会之星 pick 确认链(统一动作工厂批4 迁入)。
 
     候选选中半迁入本类(pick-op-unify 批,``env.need_select`` 驱动,见
@@ -44,7 +44,7 @@ class CwActionPickMegastarOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionPickMegastarParam,
                  env: OverlayPickExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionPickMegastarOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionPickMegastarOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

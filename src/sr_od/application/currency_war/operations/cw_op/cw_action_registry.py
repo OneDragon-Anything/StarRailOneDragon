@@ -3,8 +3,9 @@
 ``action_op_class_for_type`` = 词表**类**级查询(注册完备锁消费口),
 ``action_op_for`` = 构造helper(ctx + param + env 组装新壳 op)。
 
-**op 形态(批③,design.md §1.1)**:动作 op = ``CwActionXxxOp``,继承
-框架 ``SrOperation``(禁自建 op 基类——原 ``ActionOp`` ABC 删除),构造
+**op 形态(批③ design.md §1.1;sim 统一批换父)**:动作 op =
+``CwActionXxxOp``,继承 CW 操作基类 ``CwOperation``
+(operations/cw_operation_base;原 ``ActionOp`` ABC 删除),构造
 签名 = ``(ctx, param, env)``,域依赖经 env 结构化传入(``PrepExecEnv``/
 ``ShopExecEnv``/``OverlayPickExecEnv``);op 内机械执行后直调自己的上报
 函数(design.md §1.2 映射表)。

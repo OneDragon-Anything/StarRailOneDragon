@@ -12,6 +12,9 @@ from __future__ import annotations
 import random
 from typing import Any
 
+from sr_od.application.currency_war.kernel.cw_event_hooks import (
+    transition_event_on_applied,
+)
 from sr_od.application.currency_war.kernel.cw_gain_chain import (
     gain_invest_strategy,
 )
@@ -32,6 +35,7 @@ def _canon_invest_name(name: str) -> str:
     return normalize_invest_name((name or '').replace('：', ':'))
 
 
+@transition_event_on_applied('pick_invest_strategy')
 def report_action_pick_invest_strategy_param(
         gs: GameState, param: Any, sig: ChannelSig, *,
         rng: random.Random | None = None,

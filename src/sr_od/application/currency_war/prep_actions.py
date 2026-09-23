@@ -162,6 +162,13 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> None:
         bench_idx: 槽位下标 0-8(:列表下标 = 物理备战栏槽位 1-9 减一);
             越界 = 调用方 bug,响亮上抛(守卫非判效)。
     """
+    from sr_od.application.currency_war.sim.cw_sim_ports import (
+        sim_backend_installed,
+    )
+    if sim_backend_installed():
+        # sim 模式:机械腿(焦点守卫+真实拖拽)静默成功,自上报照走
+        # (直连 controller 旁路 port 检查;落位事实由后端世界承接)
+        return
     pts = row_area_centers(ctx, '备战栏')
     if not (0 <= bench_idx < len(pts)):
         raise AssertionError(
@@ -713,6 +720,13 @@ class PrepActionExecutor:
         拖拽输入静默丢(r9 实证同机制:截图正常/输入丢/连环「源槽未变」假失败),
         拖前验焦点,失焦先激活。
         """
+        from sr_od.application.currency_war.sim.cw_sim_ports import (
+            sim_backend_installed,
+        )
+        if sim_backend_installed():
+            # sim 模式:机械腿静默成功,自上报照走(直连 controller 旁路
+            # port 检查;部署/卖上阵落位事实由后端世界承接)
+            return
         from sr_od.application.currency_war.operations.dev.drag_cw_char import (
             DragCwChar,
         )

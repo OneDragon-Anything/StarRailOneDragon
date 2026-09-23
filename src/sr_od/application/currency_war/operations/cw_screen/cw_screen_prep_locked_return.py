@@ -31,17 +31,17 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from sr_od.application.currency_war.kernel.cw_screen_report.prep_locked_return import (
     CwScreenPrepLockedReturnObs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenPrepLockedReturn(SrOperation):
+class CwScreenPrepLockedReturn(CwOperation):
     """备战暗色锁定子态:点「返回XX选择」按钮(画面档参数化)。"""
 
     def __init__(self, ctx: SrContext, screen_name: str, area_name: str):
         """:param screen_name: 命中的画面档(策略锁定/遭遇锁定二选一)
         :param area_name: 该画面的返回按钮锚(入口与点击同锚)"""
-        SrOperation.__init__(self, ctx, op_name='货币战争-备战暗色锁定')
+        CwOperation.__init__(self, ctx, op_name='货币战争-备战暗色锁定')
         # 画面档名/返回按钮锚(构造参数化,入口与点击同锚)
         self._screen_name: str = screen_name
         self._entry_area: str = area_name

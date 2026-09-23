@@ -27,15 +27,15 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from sr_od.application.currency_war.kernel.cw_screen_report.plane_detail import (
     CwScreenPlaneDetailObs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenPlaneDetail(SrOperation):
+class CwScreenPlaneDetail(CwOperation):
     """位面详情:点「按钮-关闭位面详情」→ 重入观察裁决交回(验证废除)。"""
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-位面详情')
+        CwOperation.__init__(self, ctx, op_name='货币战争-位面详情')
         # 画面档名/入口锚(与外循环 0a4 分发判定同源同参;实例属性,
         # 参数化屏先例 = 备战暗色锁定的带参构造)
         self._screen_name: str = '货币战争-位面详情'

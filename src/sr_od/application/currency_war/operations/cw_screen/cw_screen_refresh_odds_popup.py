@@ -27,17 +27,17 @@ from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_screen_report.refresh_odds_popup import (
     CwScreenRefreshOddsPopupObs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenRefreshOddsPopup(SrOperation):
+class CwScreenRefreshOddsPopup(CwOperation):
     """商店刷新概率表弹窗:点 × 关闭(mouse_move 防吞点击保留)。"""
 
     CLOSE_AREA = '按钮-关闭概率表'
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-商店刷新概率表')
+        CwOperation.__init__(self, ctx, op_name='货币战争-商店刷新概率表')
         # 画面档名/入口锚(与阶段一身份分发判定同源同参;实例属性)
         self._screen_name: str = '货币战争-商店刷新概率表'
         self._entry_area: str = '标识-刷新概率表'

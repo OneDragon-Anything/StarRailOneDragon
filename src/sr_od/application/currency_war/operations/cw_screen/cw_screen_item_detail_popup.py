@@ -31,17 +31,17 @@ from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_screen_report.item_detail_popup import (
     CwScreenItemDetailPopupObs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenItemDetailPopup(SrOperation):
+class CwScreenItemDetailPopup(CwOperation):
     """道具详情弹窗:点 × 关闭;入口 = OCR「聘用书」∧ 非祈愿屏。"""
 
     CLOSE_AREA = '按钮-关闭'
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-道具详情弹窗')
+        CwOperation.__init__(self, ctx, op_name='货币战争-道具详情弹窗')
         # 画面档名(× 控件所在建档;实例属性)
         self._screen_name: str = '货币战争-道具详情弹窗'
         # 推进已发标志(验证废除形态):区分「首发 miss = 误分发 fail 交回」

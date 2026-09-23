@@ -16,6 +16,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from sr_od.application.currency_war.kernel.cw_event_hooks import (
+    transition_event_on_applied,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     GameState,
@@ -38,9 +41,11 @@ def _report_zero_write(gs: GameState, param: Any, sig: ChannelSig,
 
 
 
+@transition_event_on_applied('open_box')
 def report_action_open_box_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """开补给箱上报:开箱即腾席但占席事实归下一入口 heavy 实读(R7
-    终结化零窗口),容器零写。"""
+    终结化零窗口),容器零写。applied 出口广播转移事件 open_box
+    (武装箱选择画面出现;kernel/cw_event_hooks 封闭集)。"""
     return _report_zero_write(gs, param, sig, 'zero_write(open_box)')
 
 
@@ -81,42 +86,49 @@ def report_action_pick_event_param(gs: GameState, param: Any, sig: ChannelSig) -
 
 
 
+@transition_event_on_applied('pick_megastar')
 def report_action_pick_megastar_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """盛会之星选择上报:容器零写。"""
     return _report_zero_write(gs, param, sig, 'zero_write(pick_megastar)')
 
 
 
+@transition_event_on_applied('pick_partner')
 def report_action_pick_partner_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """列车同行伙伴选择上报:容器零写。"""
     return _report_zero_write(gs, param, sig, 'zero_write(pick_partner)')
 
 
 
+@transition_event_on_applied('pick_star_tome')
 def report_action_pick_star_tome_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """星徽秘典选择上报:容器零写。"""
     return _report_zero_write(gs, param, sig, 'zero_write(pick_star_tome)')
 
 
 
+@transition_event_on_applied('pick_wish_trial')
 def report_action_pick_wish_trial_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """祈愿试炼选择上报:容器零写。"""
     return _report_zero_write(gs, param, sig, 'zero_write(pick_wish_trial)')
 
 
 
+@transition_event_on_applied('pick_box_card')
 def report_action_pick_box_card_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """武装箱选择上报:容器零写。"""
     return _report_zero_write(gs, param, sig, 'zero_write(pick_box_card)')
 
 
 
+@transition_event_on_applied('pick_fortune')
 def report_action_pick_fortune_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """命运卜者强化三选一上报:容器零写。"""
     return _report_zero_write(gs, param, sig, 'zero_write(pick_fortune)')
 
 
 
+@transition_event_on_applied('pick_expert_invite')
 def report_action_pick_expert_invite_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """专家邀请函选卡上报:容器零写(现金为王回金 = dict 确认族通道)。"""
     return _report_zero_write(gs, param, sig, 'zero_write(pick_expert_invite)')

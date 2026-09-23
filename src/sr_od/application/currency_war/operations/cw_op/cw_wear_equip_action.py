@@ -25,15 +25,15 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     game_state_from_ctx,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionWearEquipParam
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.prep_actions import PREP_DRAG_SETTLE_WAIT_S
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
 
-class CwActionWearEquipOp(SrOperation):
+class CwActionWearEquipOp(CwOperation):
     """穿装备单步(CwActionWearEquipParam 原子通路机械半)。非终结。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
@@ -42,7 +42,7 @@ class CwActionWearEquipOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionWearEquipParam,
                  env: PrepExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionWearEquipOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionWearEquipOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

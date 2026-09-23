@@ -70,9 +70,9 @@ from sr_od.application.currency_war.kernel.cw_screen_report.box_pick import (
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPickBoxCardParam,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.prep_actions import _OVERLAY_ANIM_WAIT_S
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 #: 装备注册表键集定序列表(观察标准化门第二段 LCS 兜底的遍历域;
 #: sorted 定序保证同分取注册表序首个,确定性不随 frozenset 迭代序漂移)。
@@ -91,7 +91,7 @@ _EQUIP_LCS_THRESHOLD: float = 0.75
 _EQUIP_LCS_AMBIGUITY_MARGIN: float = 0.15
 
 
-class CwScreenBoxPick(SrOperation):
+class CwScreenBoxPick(CwOperation):
     """武装箱 4 选 1 选卡画面 op(选卡即终结;单选族例外,判据 = screens/README.md §3)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-备战-武装箱选择'
@@ -99,7 +99,7 @@ class CwScreenBoxPick(SrOperation):
     CARD_Y: ClassVar[int] = 290
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name=CwScreenBoxPick.SCREEN_NAME)
+        CwOperation.__init__(self, ctx, op_name=CwScreenBoxPick.SCREEN_NAME)
         # 观察结果(观察 node 产物,决策动作 node 消费)。
         self._obs: CwScreenBoxPickObs | None = None
         # 标准化读数 [(标准注册名, 卡 x 中心), ...](x 升序;卡名与坐标

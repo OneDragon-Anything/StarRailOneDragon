@@ -27,15 +27,15 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from sr_od.application.currency_war.kernel.cw_screen_report.emblem_detail_popup import (
     CwScreenEmblemDetailPopupObs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenEmblemDetailPopup(SrOperation):
+class CwScreenEmblemDetailPopup(CwOperation):
     """星徽详情弹窗:双锚入口其一,点「按钮-关闭」(不用 ESC,见模块头)。"""
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-星徽详情')
+        CwOperation.__init__(self, ctx, op_name='货币战争-星徽详情')
         # 画面档名/主锚(实例属性)
         self._screen_name: str = '货币战争-星徽详情'
         self._entry_area: str = '标识-流派星徽'

@@ -41,8 +41,8 @@ from sr_od.application.currency_war.kernel.cw_screen_report.plane_transition imp
 )
 from sr_od.application.currency_war.obs.cw_node_reader import HU_DIST_UNRECOGNIZED
 from sr_od.application.currency_war.obs.cw_observation import read_node_sequence
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
 def _build_transition_chain(gs: GameState | None,
@@ -79,7 +79,7 @@ def _build_transition_chain(gs: GameState | None,
     return NodeChain(plane=plane, seq=cells)
 
 
-class CwScreenPlaneTransition(SrOperation):
+class CwScreenPlaneTransition(CwOperation):
     """位面过渡:识别「点击空白处继续」→ 点空白 → 重入观察裁决交回(验证废除)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-位面过渡'
@@ -87,7 +87,7 @@ class CwScreenPlaneTransition(SrOperation):
     BLANK_AREA: ClassVar[str] = '区域-空白点击'
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-位面过渡')
+        CwOperation.__init__(self, ctx, op_name='货币战争-位面过渡')
         # 点空白已发待重入裁决标志(验证废除形态):重入裁决住决策动作
         # node 顶部——提示不在 + 已发 = 过渡完成 → success 交回;提示在 =
         # 点击未落地 → 重点。

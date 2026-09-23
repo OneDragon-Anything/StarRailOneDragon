@@ -80,14 +80,14 @@ from sr_od.application.currency_war.obs.cw_node_obs import (
     read_encounter_options,
     read_encounter_refresh_count,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     pass
 
 
-class CwScreenEncounter(SrOperation):
+class CwScreenEncounter(CwOperation):
     """遭遇节点二选一:decide_encounter 选卡(必要时先分支刷新)→ 点卡选中 + 选择确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-遭遇节点'   # screen_info 画面(currency_war_encounter.yml)
@@ -98,7 +98,7 @@ class CwScreenEncounter(SrOperation):
     _REFRESH_BTN_DX: ClassVar[int] = -100
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-遭遇节点')
+        CwOperation.__init__(self, ctx, op_name='货币战争-遭遇节点')
         # 观察结果(观察 node 产物,决策动作 node 消费;options 空 = 读缺)。
         self._obs: CwScreenEncounterObs | None = None
         # 刷新文本锚点(观察 node 产物;read_encounter_refresh_count 返回

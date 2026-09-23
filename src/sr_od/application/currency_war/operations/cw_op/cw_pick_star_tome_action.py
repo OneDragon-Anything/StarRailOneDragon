@@ -26,14 +26,14 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
     OverlayPickExecEnv,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     safe_click,
 )
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwActionPickStarTomeOp(SrOperation):
+class CwActionPickStarTomeOp(CwOperation):
     """星徽秘典四选一选卡链(pick-op-unify 批收编;点卡即选,弹窗自关)。
 
     点卡(safe_click 防吞点击;点击点 = 容器 ``star_tome_opts_xy[idx]``——
@@ -48,7 +48,7 @@ class CwActionPickStarTomeOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionPickStarTomeParam,
                  env: OverlayPickExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionPickStarTomeOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionPickStarTomeOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

@@ -57,5 +57,10 @@ def report_action_wear_equip_param(gs: GameState, param: Any, sig: ChannelSig,
                 equips=list(getattr(dep[idx], 'equips', None) or [])
                 + [param.item_name])
             _books.deployed = dep
+    # 事实事件:板面组成变化(wear 落地;overlay 触发层消费,缺省关零开销)
+    from sr_od.application.currency_war.kernel.cw_event_hooks import (
+        emit_fact_event,
+    )
+    emit_fact_event('board_changed', {'actor': sig.actor})
     return LogicOutcome(applied=True)
 

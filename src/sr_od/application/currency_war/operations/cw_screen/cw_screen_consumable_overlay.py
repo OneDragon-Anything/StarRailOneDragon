@@ -35,11 +35,11 @@ from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_screen_report.consumable_overlay import (
     CwScreenConsumableOverlayObs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenConsumableOverlay(SrOperation):
+class CwScreenConsumableOverlay(CwOperation):
     """消耗品详情浮层:双 OCR 条件入口,点右上 × 关闭。"""
 
     #: 关闭控件:同族「道具详情弹窗」的右上 ×(道具详情弹窗家族共用)
@@ -47,7 +47,7 @@ class CwScreenConsumableOverlay(SrOperation):
     CLOSE_AREA = '按钮-关闭'
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-消耗品浮层')
+        CwOperation.__init__(self, ctx, op_name='货币战争-消耗品浮层')
         # 推进已发标志(验证废除形态):区分「首发 miss = 误分发 fail 交回」
         # 与「重入 miss = 已离开本画面 success 交回」(实例级,单 op 生命周期)。
         self._advanced_once: bool = False

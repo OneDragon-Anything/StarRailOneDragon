@@ -38,11 +38,11 @@ from sr_od.application.currency_war.kernel.cw_screen_report.wish_trial import (
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPickWishTrialParam,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenWishTrial(SrOperation):
+class CwScreenWishTrial(CwOperation):
     """祈愿试炼 overlay:OCR objective → decide_wish_trial 策略选卡 → 确认。"""
 
     # 卡位不建 screen_info area(op-layer.md §1.1 :35 辖域判据:选项点击
@@ -57,7 +57,7 @@ class CwScreenWishTrial(SrOperation):
     TEXT_Y_HI: ClassVar[int] = 400
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-祈愿试炼')
+        CwOperation.__init__(self, ctx, op_name='货币战争-祈愿试炼')
         # 确认已发待重入裁决的选卡 (objs, pick_idx) 快照(验证废除形态,
         # 照星徽款/遭遇款 pending+重入裁决;用户裁定 2026-09-14 验关残留修):
         # 确认点击发出后置位,下一轮重入由入口观察裁决——标识不在 = overlay

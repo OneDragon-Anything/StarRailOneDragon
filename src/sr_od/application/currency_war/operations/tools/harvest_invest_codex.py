@@ -20,7 +20,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from one_dragon.utils.str_utils import find_best_match_by_lcs
-from sr_od.operations.sr_operation import SrOperation
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 
 if TYPE_CHECKING:
     from sr_od.context.sr_context import SrContext
@@ -33,11 +33,11 @@ SCROLL_TO = Point(500, 520)
 OUT_DIR = get_project_root() / '.debug/temp/currency_war'
 
 
-class HarvestInvestCodex(SrOperation):
+class HarvestInvestCodex(CwOperation):
     """采当前图鉴页(策略或环境);kind 只影响输出文件名。**从顶部开始**(回顶+验证)。"""
 
     def __init__(self, ctx: SrContext, kind: str = 'strategies'):
-        SrOperation.__init__(self, ctx, op_name=f'采投资图鉴-{kind}',
+        CwOperation.__init__(self, ctx, op_name=f'采投资图鉴-{kind}',
                              need_check_game_win=False)
         self.kind: str = kind
         self.out = OUT_DIR / f'codex_{kind}.jsonl'

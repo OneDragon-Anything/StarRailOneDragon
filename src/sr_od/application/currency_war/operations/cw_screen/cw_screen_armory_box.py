@@ -31,17 +31,17 @@ from sr_od.application.currency_war.kernel.cw_screen_report.armory_box import (
     CwScreenArmoryBoxObs,
     report_screen_armory_box_obs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenArmoryBox(SrOperation):
+class CwScreenArmoryBox(CwOperation):
     """道具获得说明弹窗:点 × 关闭 + 重入观察裁决交回(验证废除)。"""
 
     DIALOG_SCREEN: ClassVar[str] = '货币战争-武装箱弹窗'
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-武装箱弹窗')
+        CwOperation.__init__(self, ctx, op_name='货币战争-武装箱弹窗')
         # 点 × 已发待重入裁决标志(验证废除形态):锚不在 + 已发 = 弹窗已关
         #(道具进背包)→ success 交回;锚在 = 点击未落地 → 重点。
         self._click_pending: bool = False

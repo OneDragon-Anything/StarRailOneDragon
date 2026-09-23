@@ -54,14 +54,14 @@ from sr_od.application.currency_war.obs.cw_megastar_obs import (
     read_megastar_options,
     standardize_megastar_options,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
     CW_OVERLAY_SETTLE_S,
 )
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenMegastar(SrOperation):
+class CwScreenMegastar(CwOperation):
     """盛会之星:候选立绘 → decide_megastar 选巨星 + 确认(旧巨星节点执行器内联)。
 
     节点完成门 = 「仍在巨星 overlay?」(标识-盛会之星);确认未落地 =
@@ -70,7 +70,7 @@ class CwScreenMegastar(SrOperation):
     """
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-巨星节点')
+        CwOperation.__init__(self, ctx, op_name='货币战争-巨星节点')
         # 观察结果(观察 node 产物,决策动作 node 消费;options 懒读门槛见
         # ``observe`` 注:仅「本访问将选择」即未选中时填充)。
         self._obs: CwScreenMegastarObs | None = None

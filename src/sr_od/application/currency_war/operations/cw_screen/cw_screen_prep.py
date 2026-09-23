@@ -90,6 +90,7 @@ from sr_od.application.currency_war.operations.cw_op.cw_open_shop_action import 
 from sr_od.application.currency_war.operations.cw_op.cw_start_battle_action import (
     CwActionStartBattleOp,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.prep_actions import (
     PrepActionExecutor,
     StopBrakeShortCircuit,
@@ -139,7 +140,7 @@ def faction_display_ok_debug_line(row_count: int, ocr_skip_count: int,
             + f' computed_missing={computed_missing_count}')
 
 
-class CwScreenPrep(SrOperation):
+class CwScreenPrep(CwOperation):
     """备战决策环(两 node 形态):观察 node(环装配前置 + 清场 + heavy
     观察 → CwScreenPrepObs 可选域 report 落容器 + 事件 overlay 早退 +
     接管补采委派 + 纯观察审计族)→ 决策动作 node(单动作决策循环整体:
@@ -149,7 +150,7 @@ class CwScreenPrep(SrOperation):
     """
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-备战决策环')
+        CwOperation.__init__(self, ctx, op_name='货币战争-备战决策环')
         self._executor: PrepActionExecutor | None = None
         self._bench_pts = []                        # screen_info 槽位中心(首步惰性读)
         # on_outcome 落地登记注册表随画面 op 基类退役:本 op 级登记件原两件

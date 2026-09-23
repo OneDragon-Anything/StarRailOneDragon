@@ -27,6 +27,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import (
     OverlayPickExecEnv,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     safe_click,
 )
@@ -34,10 +35,9 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_encounter imp
     CwScreenEncounter,
 )
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwActionPickEncounterOp(SrOperation):
+class CwActionPickEncounterOp(CwOperation):
     """遭遇节点 pick 确认链(机械语义单一源,统一动作工厂批4 迁入)。
 
     点卡选中(建档「遭遇卡-其一/其二」area 取点,缺失 = 显式 round_fail
@@ -52,7 +52,7 @@ class CwActionPickEncounterOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionPickEncounterParam,
                  env: OverlayPickExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionPickEncounterOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionPickEncounterOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

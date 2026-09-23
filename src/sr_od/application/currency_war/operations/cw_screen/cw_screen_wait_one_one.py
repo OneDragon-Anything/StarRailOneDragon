@@ -30,12 +30,12 @@ from sr_od.application.currency_war.kernel.cw_screen_report.wait_one_one import 
     CwScreenWaitOneOneObs,
     report_screen_wait_one_one_obs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
     ONE_ONE_MAX_WAIT_S,
     ONE_ONE_POLL_INTERVAL_S,
 )
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
 def _monotonic() -> float:
@@ -43,14 +43,14 @@ def _monotonic() -> float:
     return time.monotonic()
 
 
-class CwScreenWaitOneOne(SrOperation):
+class CwScreenWaitOneOne(CwOperation):
     """等待 1-1 备战就绪:轮询「备战阶段」锚;超上界留证 fail 交循环。"""
 
     PREP_SCREEN: ClassVar[str] = '货币战争-备战'
     PREP_ANCHOR: ClassVar[str] = '标识-备战阶段'
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-等待1-1备战')
+        CwOperation.__init__(self, ctx, op_name='货币战争-等待1-1备战')
         self._first_seen_ts: float | None = None   # 首见非就绪帧的时钟起点(超时兜底基)
         # 观察结果(观察 node 产物;锚命中轮装载)。
         self._obs: CwScreenWaitOneOneObs | None = None

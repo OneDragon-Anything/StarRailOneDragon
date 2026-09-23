@@ -3203,8 +3203,15 @@ def report_node_advance(gs: GameState, *, trigger: str,
     effective = effective_node_ord(gs)
     if effective is None:
         return False   # 不可达(value 在场 ⇒ 生效序在场;防御性保留)
-    return advance_node_effective(gs, effective + 1, actor=actor,
-                                  sig=sig, source='logic')
+    advanced = advance_node_effective(gs, effective + 1, actor=actor,
+                                      sig=sig, source='logic')
+    if advanced:
+        # 转移事件广播(trigger ∈ 封闭集;sim 后端订阅消费,缺省关零开销)
+        from sr_od.application.currency_war.kernel.cw_event_hooks import (
+            emit_transition_event,
+        )
+        emit_transition_event(trigger, {'actor': actor})
+    return advanced
 
 
 def observe_node_anchor(gs: GameState, ordinal: int, *,

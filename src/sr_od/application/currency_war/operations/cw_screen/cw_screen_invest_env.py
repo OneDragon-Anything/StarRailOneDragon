@@ -57,14 +57,14 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionRefreshInvestCardsParam,
 )
 from sr_od.application.currency_war.obs.cw_node_obs import read_invest_refresh_counts
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     safe_click,
 )
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenInvestEnv(SrOperation):
+class CwScreenInvestEnv(CwOperation):
     """投资环境 3 选 1:零参决策(候选自容器槽,策略器 ``decide_invest_env``;
     判据 kernel ``decide_event``)→ 刷新终结臂 ∨ 选卡确认链派发。"""
 
@@ -108,7 +108,7 @@ class CwScreenInvestEnv(SrOperation):
     ENV_LCS_AMBIGUITY_MARGIN: ClassVar[float] = 0.15
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-投资环境')
+        CwOperation.__init__(self, ctx, op_name='货币战争-投资环境')
         # 刷新零效果留证证据(刷新臂只读不比,读数原样携带——
         # 元组 = (刷前计数, 刷前名集, 刷后计数, 刷后名集);
         # 消费点 = 刷新臂终结交回出口 ``_reconcile_refresh_no_effect``

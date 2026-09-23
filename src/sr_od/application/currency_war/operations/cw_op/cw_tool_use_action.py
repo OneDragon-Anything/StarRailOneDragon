@@ -41,14 +41,14 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionStaffProjectorUseParam,
     CwActionWrenchUseParam,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
 
-class CwActionToolUseOp(SrOperation):
+class CwActionToolUseOp(CwOperation):
     """工具消耗单步(七类共用机械半:owned 网格内 icon → 目标拖曳)。
     非终结。"""
 
@@ -81,7 +81,7 @@ class CwActionToolUseOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwAction,
                  env: PrepExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionToolUseOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionToolUseOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env

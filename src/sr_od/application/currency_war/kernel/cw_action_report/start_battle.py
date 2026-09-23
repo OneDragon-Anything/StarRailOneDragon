@@ -11,6 +11,9 @@ from __future__ import annotations
 from typing import Any
 
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_event_hooks import (
+    transition_event_on_applied,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     GameState,
@@ -20,12 +23,15 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 
 
+@transition_event_on_applied('start_battle')
 def report_action_start_battle_param(gs: GameState, param: Any, sig: ChannelSig,
                                      session: object = None,
                                      skip_substate: bool = False) -> LogicOutcome:
     """出战上报:hp/gold/streak 由结算屏观察覆盖接管,唯一逻辑推进 =
     免战牌跳过递减(上报时递减,非「验证落地后」;标记由出战 op 上报,
-    递减 best-effort,未登记 → consume_use 返 None 零动作)。"""
+    递减 best-effort,未登记 → consume_use 返 None 零动作)。
+    applied 出口广播转移事件 start_battle(交回外循环战斗分支;
+    kernel/cw_event_hooks 封闭集)。"""
     _validate_sig(sig, ('logic_action',))
     if skip_substate and session is not None:
         from sr_od.application.currency_war.kernel.cw_investments import (

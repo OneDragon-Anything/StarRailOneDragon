@@ -48,11 +48,11 @@ from sr_od.application.currency_war.kernel.cw_screen_report.planner import (
     CwScreenPlannerObs,
     report_screen_planner_obs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenYinLang(SrOperation):
+class CwScreenYinLang(CwOperation):
     """银狼 2 星奖励画面(用户 2026-08-31 定名;弹窗标题「我来当策划」,银狼升
     2★ 时触发——非随机事件):OCR 两卡 → 策略选卡 → 确认 → 关详情面板。
     两选项=扑满病毒(敌人变扑满)vs 升费卡(升费腿 = 变为下一个费用档的
@@ -82,7 +82,7 @@ class CwScreenYinLang(SrOperation):
     DETAIL_MARGIN_RATIO: ClassVar[float] = 0.11
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-策划事件')
+        CwOperation.__init__(self, ctx, op_name='货币战争-策划事件')
         # 观察结果(观察 node 产物,决策动作 node 消费;options = 入口帧一次
         # 读,恒两元素 0=左卡/1=右卡)。
         self._obs: CwScreenPlannerObs | None = None

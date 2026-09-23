@@ -6,7 +6,7 @@
 勾选/确认坐标进 screen_info(``currency_war_deploy_not_full``):``勾选-本局不再提示`` +
 ``按钮-确认``;本 op 经 ``cw_obs_core.area_center`` 读,缺失才用兜底常量。
 
-形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation,
+形态(画面 op 两段式:观察 node → 决策动作 node,继承 CwOperation,
 轻屏统一形态):观察 node = 标识门(id_mark「标识-未达上限警告」,miss
 未发 = round_fail 交编排壳按步分流)+ 门内 obs{on_screen} → 调占位
 ``report_screen_deploy_not_full_obs``(统一形态;本屏现役零容器写点,
@@ -30,15 +30,15 @@ from sr_od.application.currency_war.kernel.cw_screen_report.deploy_not_full impo
     CwScreenDeployNotFullObs,
     report_screen_deploy_not_full_obs,
 )
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     emit_overlay_confirm,
     safe_click,
 )
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenDeployNotFull(SrOperation):
+class CwScreenDeployNotFull(CwOperation):
     """出战人数未达上限弹窗:勾本局不再提示 + 确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-未达上限警告'   # screen_info 画面(currency_war_deploy_not_full.yml)
@@ -47,7 +47,7 @@ class CwScreenDeployNotFull(SrOperation):
     BTN_CONFIRM: ClassVar[Point] = Point(1159, 653)          # 兜底;首选 area_center('按钮-确认')
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-未达上限确认')
+        CwOperation.__init__(self, ctx, op_name='货币战争-未达上限确认')
         # 确认已发待重入裁决标志(单 op 生命周期):区分「首发锚 miss = 误分发
         # fail 交回」与「重入锚 miss = 弹窗已关 success 交回」(验证废除形态:
         # 用户裁定 2026-09-10 动作 op 禁验证,落地由下一轮重入入口观察裁决)。

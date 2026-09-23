@@ -24,14 +24,14 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     game_state_from_ctx,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionOpenBookcardParam
+from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
 
-class CwActionOpenBookcardOp(SrOperation):
+class CwActionOpenBookcardOp(CwOperation):
     """开书册卡:``find_bookcards`` 识别 → 点槽中心 → 固定动画等待
     (纯机械执行)。终结动作(发射位 = 策略器 entry ① prep 实体面卡片
     臂,screens/README §5.5;弹专家邀请函 = 新事实 → 终结交回,与
@@ -46,7 +46,7 @@ class CwActionOpenBookcardOp(SrOperation):
 
     def __init__(self, ctx: SrContext, param: CwActionOpenBookcardParam,
                  env: PrepExecEnv):
-        SrOperation.__init__(self, ctx, op_name='CwActionOpenBookcardOp',
+        CwOperation.__init__(self, ctx, op_name='CwActionOpenBookcardOp',
                              need_check_game_win=False)
         self.param = param
         self.env = env
