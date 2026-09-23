@@ -70,7 +70,7 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 - **按钮-投资环境**(顶部中,~958,140):点弹**投资环境详情 overlay**(当前局投资环境:名 + 效果,如「策略大师:获取投资策略时获(2×已拥有策略数)金币;3-5 节点额外获 1 策略」),**留在备战非跳画面**,关闭=点别处消失。**= bot 策略 input**(投资环境效果影响决策)—— ⚠️ **reader 缺口:投资环境效果未读**(关键 reader 节未列;`active_strategies` 也在未接)。
 - **惊喜盒(Surprise Box)** @ ~(1395,235):中部偏右的礼盒(沙漏 + 倒计时数字,如「12 节点」)。**倒计时型奖励,自动开启**(装惊喜道具,倒计时结束自动开),**非点击领取** —— 点击只弹 tooltip(「惊喜盒 / 打开倒计时:12 节点 / 自动开启」),ESC 关回备战。bot 无需动作(自动开);纯信息元素。(live 建档补,之前漏。)
 - **奖励球 (=晶矿;区域-奖励 面板内,2026-08-14 live 建档)**:通关 **奖励节点**后面板出现球形奖励 (1-8 清关后见 1 大金球 + 5 蓝球 + 2 灰球;球色疑=晶矿档位,黄晶矿工策略提「低一档晶矿」)。 **点球即开启,内容即时入账**:金币/装备直接加 (owned_equips 可验,员工投影仪/以太钻头实测); **角色或补给箱落备战席占 1 槽**。⚠️ **备战席满时球点不动**(球可能给角色/箱都要占席;1-9 槽1箱+槽2-9共 8 角色=满,剩 5 球点不动实锤)→ 开箱/腾席优先于点球。识别 = `read_ore_sights`(cw_identity_obs, **HoughCircles** —— 颜色分割不可行:蓝球与面板背景 HSV 几乎同值[蓝 H111-113 vs 背景 H119-120]无分离度;圆检测对点阵背景 0 误报),颜色分类圆心 HSV (金/灰/蓝);已接 `extras.reward_spheres`(元素 {color,cx,cy,r});fixture 4 态 (8/5/4/空)+ 测试 4 过。⚠️ 输入必须 **RGB**(框架 read_image 返 RGB,BGR2HSV 会红/蓝 H 错位 → gold 分类全挂,实测教训)。⚠️ **未验边界 (用户提示,等场景)**:owned 装备很多时溢出覆盖奖励区 (多列左溢遮球)→ 球识别可能漏/误,待该场景截图验证 + 定防护。
-- **补给箱(奖励球掉落,落备战席槽位)**:手提箱 icon + 「开启」文字 + 蓝底(与角色立绘/空槽视觉区分大)。点槽位「开启」→ 开箱得内容 + 腾槽。识别 = TM 模板 `assets/template/currency_war/supply/补给箱.png`(分离度:箱槽 0.93-1.0 vs 角色槽 ≤0.242;**选中态光效降至 0.65-0.69 → 阈值 0.6**);reader `read_supply_boxes`(cw_identity_obs,纯 CV 逐槽 TM → [(slot_idx, 开启 center)]),已接 `battle_prep_recognizer.extras.supply_boxes`。**交互(2026-08-14 实测)**:箱**可拖换槽**(与角色槽交换);**点箱身=选中**(蓝光效,非开箱),点空白取消选中;开箱动作待测(疑点「开启」文字区/再点选中箱)。
+- **简易武装箱 (奖励球掉落/投资策略所给,落备战席槽位)**:银灰手提箱 icon + 选中态「开启」文字 + 蓝底 (与角色立绘/空槽视觉区分大)。名称权威 = 开启后 overlay 标题「简易武装箱·请选择1个」(四件简易装备四选一);旧名「补给箱」系早期误定已废。点槽位「开启」→ 开箱得内容 + 腾槽。识别 = TM 模板 `assets/template/currency_war/supply/简易武装箱.png`(箱体本体裁片,不含「开启」钮字;分离度:箱槽 0.93-1.0 vs 角色槽 ≤0.242; **选中态光效降至 0.65-0.69 → 阈值 0.6**);reader `read_armory_boxes`(cw_identity_obs,纯 CV 逐槽 TM → [(slot_idx, 开启 center)]),已接 `battle_prep_recognizer.extras.armory_boxes`。 **交互 (2026-08-14 实测)**:箱 **可拖换槽**(与角色槽交换); **点箱身=选中**(蓝光效,非开箱),点空白取消选中;开箱动作待测 (疑点「开启」文字区/再点选中箱)。
 - **节点行 / node_path**(顶部一排 ~9 个节点图标,连线成进度路径):每节点图标示类型(宝箱=奖励 / 交叉剑=战斗 / 购物袋=补给 / 角色头像=boss 等),状态色(金=已过 / 红=当前 / 黑=未到)。bot 可读后续节点序列(战略信息:知将到什么)。纯图标无文字 → 需节点类型图标库。(live 建档补,之前漏。)
   - **三态视觉判据(2026-08-17 补档;63 张误报样本实证,判态实现 `cw_node_reader.classify_node_row`)**:
     - **过去(past)= 图标整体变暗**(HSV 低饱和低亮;非变色——S 降入未来区间交叠,**HSV 单特征分不开过去/未来**,V 79-99 vs 87-88 交叠,曾致 63 张误报);
@@ -99,7 +99,7 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 
 **视觉身份层(SIFT/TM,`cw_identity_obs`)**:
 - bench/deployed 角色身份(`read_bench_chars` / `read_deployed_chars`):裁 screen_info 槽位(前排/后排/备战栏)→ SIFT 对 `character_avatar` 脸近景库 → 规范名。脸近景库对备战半身立绘强命中;与 bot 跟踪(buy/deploy 推演)互补,作离线重建 / 漂移恢复旁路(不进 read_game_state)。
-- **补给箱槽位**(`read_supply_boxes`,2026-08-14):奖励球掉箱落备战席 → TM 匹配 `cw_supply/补给箱.png` → [(slot, 开启 center)]。已进 recognizer `extras.supply_boxes`(开箱 op 用)。
+- **简易武装箱槽位**(`read_armory_boxes`,2026-08-14):奖励球掉箱落备战席 → TM 匹配 `cw_supply/简易武装箱.png` → [(slot, 开启 center)]。已进 recognizer `extras.armory_boxes`(开箱 op 用)。
 
 **未接(需图标库 或 bot 跟踪)**:
 - `Unit.equips`(角色身上装备,纯图标)、`inventory.available_equips`(区域-道具装备)、`node_path`(顶部节点行图标序列)、**投资环境效果**(按钮-投资环境 overlay,策略 input;live 验 2026-08-11)。~~`active_strategies`~~ → **已接**(2026-08-14:`cw_screen_invest_strategy` 选时写 session,非读图标;备战右面板图标纯显示)。

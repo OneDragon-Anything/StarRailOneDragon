@@ -14,7 +14,7 @@
 
 ## 3. 确定面转移规则(逐条)
 
-1. `read_supply_boxes` 识别在席箱(识别域 = screen_info 单一源,禁兜底坐标);
+1. `read_armory_boxes` 识别在席箱 (识别域 = screen_info 单一源,禁兜底坐标);
 2. 点目标槽「开启」(槽中心 + `BOX_OPEN_DY=41` 偏移)→ 固定动画等待(`terminal_wait=1.8s`,等待归产生动画的操作)→ 机械交回外循环;
 3. 后续选卡 = 武装箱选择画面 op(`operations/cw_screen/cw_screen_box_pick.py`)分发:卡名集 logic 写入 `box_card_names` 候选槽(actor = CwScreenBoxPick,同访问覆盖写)→ 策略契约 `decide_box_card` 现算选卡(fail-closed)→ 选卡即终结交回;
 4. **到账**:选中装备进 owned 库存无独立逻辑写端,真值归下一帧装备区读数观察覆盖;确认到账登记面 = `operations/cw_screen/_overlay_confirm.py::register_confirm_arrival` → `apply_confirm_effect` dict `ConfirmBox` 分支(owned +1)——分支在册,现役登记发射位核对 = ConfirmSupply(补给选卡)/ConfirmTome(星徽秘典)/ConfirmExpertCash(专家邀请函),ConfirmBox 暂无在役发射点(武装箱链现走 `box_card_names` 写槽 + 观察覆盖,登记面为确认通道预留)。

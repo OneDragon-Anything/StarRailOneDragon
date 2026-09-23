@@ -47,11 +47,11 @@ from sr_od.application.currency_war.obs.cw_equipment import (
 )
 from sr_od.application.currency_war.obs.cw_identity_obs import (
     ensure_portrait_templates,
+    read_armory_boxes,
     read_bench_view,
     read_deployed_rows,
     read_ore_sights,
     read_row_equipped,
-    read_supply_boxes,
 )
 from sr_od.application.currency_war.obs.cw_observation import (
     read_board,
@@ -117,7 +117,7 @@ class _BattlePrepState:
     back_line: list[Unit] | None   # 后排 Unit 行(同上)
     bench: BenchView | None        # 备战席容器视图(read_bench_view SIFT 直产;slots=9 槽 BenchSlot,占位物品 kind 细分;备战席无 below icon→unit equips 恒 [];空读→None)
     owned_equips: list[dict] | None      # 右侧 owned 装备栏(read_equips SIFT;元素 {name,category,cx,cy,inliers};category 工具/特殊=消耗品,其余简易/进阶/...=装备;空→None;templates 未加载→None)
-    supply_boxes: list[dict] | None      # 备战栏补给箱槽位(read_supply_boxes TM;元素 {slot,cx,cy};晶矿开箱掉箱占席,点「开启」腾槽;空→None;2026-08-14 首见机制)
+    armory_boxes: list[dict] | None      # 备战栏简易武装箱槽位(read_armory_boxes TM;元素 {slot,cx,cy};晶矿开箱掉箱占席,点「开启」腾槽;空→None;2026-08-14 首见机制)
     reward_ores: list[dict] | None    # 奖励面板晶矿(read_ore_sights HoughCircles;元素 {color,cx,cy,r};color gold/blue/gray;采晶矿开启入账,角色/箱占席;空→None;2026-08-14 首见机制)
 
 
@@ -148,7 +148,7 @@ class BattlePrepRecognizer(ScreenRecognizer):
         'owned_equips': '右侧 owned 装备栏 list(read_equips SIFT;元素 {name,category,cx,cy,inliers};'
                         'category 工具/特殊=消耗品,其余简易/进阶/特权/星徽/白昼/命运/骇客=装备;'
                         'cx/cy=1080p 原图绝对坐标(点该坐标开对应物品详情);空→None;templates 未加载→None)',
-        'supply_boxes': '备战栏补给箱 list(read_supply_boxes TM;元素 {slot,cx,cy},cx/cy=开启按钮中心'
+        'armory_boxes': '备战栏简易武装箱 list(read_armory_boxes TM;元素 {slot,cx,cy},cx/cy=开启按钮中心'
                         '(点它开箱腾席);奖励球(晶矿)开启可能掉箱占 1 备战席槽;空→None',
         'reward_ores': '奖励面板晶矿 list(read_ore_sights HoughCircles;元素 {color,cx,cy,r},'
                           'color=gold/blue/gray,cx/cy=采晶矿坐标;通关奖励节点后出现;席满点不动(先开箱腾席);空→None',
@@ -241,8 +241,8 @@ class BattlePrepRecognizer(ScreenRecognizer):
             back_line=back_line,
             bench=bench,
             owned_equips=owned_equips,
-            supply_boxes=([
-                {'slot': idx, 'cx': p.x, 'cy': p.y} for idx, p in read_supply_boxes(ctx, image)
+            armory_boxes=([
+                {'slot': idx, 'cx': p.x, 'cy': p.y} for idx, p in read_armory_boxes(ctx, image)
             ] or None),
             reward_ores=([
                 {'color': c, 'cx': p.x, 'cy': p.y, 'r': r} for c, p, r in read_ore_sights(ctx, image)

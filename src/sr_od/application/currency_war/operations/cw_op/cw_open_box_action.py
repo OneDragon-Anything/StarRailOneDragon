@@ -68,21 +68,21 @@ class CwActionOpenBoxOp(CwOperation):
         env = self.env
         ex = env.executor
         from sr_od.application.currency_war.obs.cw_identity_obs import (
-            read_supply_boxes,
+            read_armory_boxes,
         )
         from sr_od.application.currency_war.prep_actions import (
             _OVERLAY_ANIM_WAIT_S,
         )
         screen = ex._op.screenshot()
-        boxes = read_supply_boxes(ex._ctx, screen)
+        boxes = read_armory_boxes(ex._ctx, screen)
         if not boxes:
-            return self.round_fail('无补给箱')
+            return self.round_fail('无简易武装箱')
         picked = boxes[0]
         if action.slot is not None:
             matched = next((b for b in boxes if b[0] == action.slot), None)
             if matched is None:
                 return self.round_fail(
-                    f'槽{action.slot} 无补给箱(实读 {boxes})')
+                    f'槽{action.slot} 无简易武装箱(实读 {boxes})')
             picked = matched
         slot, center = picked
         open_point = Point(center.x, center.y + self.BOX_OPEN_DY)

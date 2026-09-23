@@ -771,7 +771,7 @@ def check_system_unit_layout(
 def read_bench_view(ctx: SrContext, screen: MatLike, templates: AvatarTemplates) -> BenchView | None:
     """备战栏(9 槽)SIFT 读链直产容器视图(P6)→ :class:`BenchView` | None。
 
-    SIFT 命中(角色槽)与已建档占槽物品(箱/典籍/书册卡,kind 识别期细分)
+    SIFT 命中(角色槽)与已建档占槽物品(箱/秘典/书册卡,kind 识别期细分)
     合成为定长 9 槽视图。**零占用 = 失读非全空**(P2-1 纪律,空集守卫
     驻本读链):overlay 残留/动画帧/
     识别退化都会产空读 → 返 None,调用方走 carried(宁缺勿造),禁把
@@ -791,7 +791,7 @@ def _bench_item_kind_by_slot(ctx: SrContext, screen: MatLike) -> dict[int, str]:
     为什么读链必须自含:占位物品同样占备战席 1 槽(补给晶矿掉箱实机语义),
     漏记 = 席满帧被当成有空位,策略照幻影空位发买牌、游戏侧全部拒买且金
     不动(实机局:采晶矿奖励「开启」箱补满末槽后 3 张连发全拒)。识别面 =
-    精确识别族(find_supply_boxes 补给箱/简易武装箱 ∪ find_tomes 秘密典籍
+    精确识别族(find_armory_boxes 简易武装箱 ∪ find_tomes 星徽秘典
     ∪ find_bookcards 书册卡,与旧 ``bench_item_slots`` 精确档同族同档);
     泛扫描档不入账,留召唤物停机钩子兜未建档变体。
 
@@ -801,7 +801,7 @@ def _bench_item_kind_by_slot(ctx: SrContext, screen: MatLike) -> dict[int, str]:
     3.5):boxes → tomes 覆盖 → bookcards 覆盖(同槽多命中后写者胜)。
     """
     slots9 = _ctx_slots(ctx, '备战栏', 9)
-    kind: dict[int, str] = {int(s): 'supply_box' for s, _p in find_supply_boxes(screen, slots9)}
+    kind: dict[int, str] = {int(s): 'supply_box' for s, _p in find_armory_boxes(screen, slots9)}
     kind.update({int(s): 'tome' for s, _p in find_tomes(screen, slots9)})
     kind.update({int(s): 'bookcard' for s, _p in find_bookcards(screen, slots9)})
     return kind
@@ -877,7 +877,7 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
         # r100j 修正(用户纠偏:商店开态**不**挤压备战席;slot1「开启」=占槽物品的
         # 开启按钮,非购买经验 UI)。撤掉昨天的商店开态静默跳过(它掩盖真问题:
         # 真召唤物在商店开时占槽也永远发现不了)。真根因 = 该占槽物品是箱/卡包的
-        # **变体渲染**,find_supply_boxes/find_tomes/宽松互斥全没认出 → 漏到本钩子。
+        # **变体渲染**,find_armory_boxes/find_tomes/宽松互斥全没认出 → 漏到本钩子。
         # r100k:书册卡已建档(find_bookcards)进 _obj_slots → 本钩子不再拦它。
         # 书册卡开启语义已确认(2026-08-30 实机:点槽 → 「专家邀请函」五选一),
         # 原确认停机钩子退役,自动处理链见 operations/cw_screen/cw_screen_expert_invite.py
@@ -1117,33 +1117,42 @@ def read_bench_view_tiered(session, ctx: SrContext, screen: MatLike,
     return _bench_view_of(hits, _bench_item_kind_by_slot(ctx, screen))
 
 
-# ===== 补给箱识别(备战栏槽位;2026-08-14 首见实机) =====
+# ===== 简易武装箱识别(备战栏槽位;2026-08-14 首见实机;2026-09-23 模板治本) =====
 # 奖励节点清关后右侧面板出「奖励球」(=晶矿,factions 晶矿条目:开启后可能获金币/角色/装备/稀有物品)。采晶矿开启:
-# 内容即时入账(金币/装备),或掉「补给箱」**落备战席占 1 槽**(箱子手提箱 icon + 「开启」文字 + 蓝底,
-# 点它开箱 → 腾槽 + 得内容)。备战席满时晶矿点不动(晶矿可能给角色/箱,都要占席)→ **开箱优先于采晶矿**。
+# 内容即时入账(金币/装备),或掉箱**落备战席占 1 槽**,点它开箱 → 腾槽 + 得内容。
+# 备战席满时晶矿点不动(晶矿可能给角色/箱,都要占席)→ **开箱优先于采晶矿**。
+# 道具真名 = **简易武装箱**,名称权威 = 开启后 overlay 标题「简易武装箱·请选择1个」(四件简易装备四选一;
+# 实机帧 .debug/currency_war/evidence/20260912_t15_t13_t18/t18_box_face_armory_choice_4equips.png)。
+# 旧名「补给箱」系早期无视觉建档误定,用户定谳废弃(2026-09-23):银灰箱只有一种,晶矿掉落与
+# 投资策略(军火贸易/火药味等)所给同渲染同链,槽位识别层不分来源;占席 kind='supply_box' 为历史代号保留。
 # 箱子是固定 UI icon → 灰度 TM 足够(SIFT 无必要);分离度(2026-08-14 实测):箱槽 1.0 vs 角色槽 ≤0.242。
+# 模板 = 实机真值帧箱体本体裁片(90x80,**不含「开启」钮字**——按钮为所有槽位通用 UI,入模即噪声;
+# 旧模板含钮字被同批评掉)。TM 自检:源帧 1.0 / 相邻时刻帧 0.997 / 空槽 0.258 / 旧「补给箱」模板区域 0.955(同渲染实锤)。
 # ⚠️ 拖动后选中态(蓝光效环)降 TM 至 ~0.65-0.69(2026-08-14 拖动实测;点空白取消选中 → 0.931 恢复,跨槽位稳)
 # → 阈值取 0.6:覆盖选中态,噪声槽 0.242 仍有 ~2.4× 分离。bench 满判定:箱占席但非角色,read_bench_view 角色位读不到
 # → 硬信号以「备战席已满」OCR 为准。
 _SUPPLY_BOX_TM_THR: float = 0.6
-_supply_box_gray: MatLike | None = None
-_supply_box_loaded: bool = False
-# 秘密典籍(2026-08-16 M45 建档,用户指导):投资策略「秘密典籍」给的道具,
-# 占备战席 1 槽(类补给箱);点两次(选中→开启)→ 星徽四选一(CwScreenBookcard 接管)。
-# 实机渲染 = 金色票券卡(票面星纹 + 底部「开启」钮),模板即自该实机真值帧
-# (sr-od-test/screens/货币战争-备战/shop_closed_lowhp.webp slot7)内窗裁剪;
-# 模板必须小于全部槽裁片(最小 111x131),否则 shape 守卫会跳过该槽(判盲)。
-# 互斥判定:典籍命中需典籍分 > 箱分(同槽双模板对拍,防箱被认成典籍)。
-_tome_gray: MatLike | None = None
-_tome_loaded: bool = False
+_armory_box_gray: MatLike | None = None
+_armory_box_loaded: bool = False
+# 星徽秘典(2026-08-16 M45 建档,用户指导):投资策略「秘密典籍」所给道具,
+# 占备战席 1 槽;点两次(选中→开启)→ 星徽四选一(CwScreenBookcard 接管)。
+# 名称权威 = 开启后 overlay(星徽四选一弹窗);真名「星徽秘典」,旧称「秘密典籍/典籍」系以策略卡代称,已正名。
+# 双渲染注册表(同链不同外观,TM 互斥 0.125,槽位层都须认出):
+# - 星徽秘典_金.png = 金色票券卡(票面星纹),源帧 sr-od-test/screens/货币战争-备战/shop_closed_lowhp.webp slot7 内窗;
+# - 星徽秘典_红.png = 红金封面星徽书,源帧 sr-od-test/screens/货币战争-武装箱/r256_summon_42d15804.png slot3(用户定谳星徽秘典;
+#   曾被早期建档误标「简易武装箱」,2026-09-23 看图更正——简易武装箱实为银灰箱,见上节)。
+# 模板均为箱体/书体本体裁片,无「开启」钮字;尺寸 < 全部槽裁片(最小 111x131),防 shape 守卫判盲。
+# 互斥判定:秘典命中需秘典分 > 箱分(同槽双模板对拍,防箱被认成秘典)。
+_star_tome_grays: list[MatLike] | None = None
+_star_tome_loaded: bool = False
 # 书册卡(r100k 建档,2026-08-20):青蓝卡片+白色书册/文件夹 icon+底部「开启」,
-# 占备战席 1 槽。四帧实测 TM 0.975-1.0(模板=停机帧 slot1 裁剪);与典籍/补给箱
+# 占备战席 1 槽。四帧实测 TM 0.975-1.0(模板=停机帧 slot1 裁剪);与秘典/武装箱
 # 互撞 0.505/0.462(分离度足够)。开启语义已确认(2026-08-30 实机:点槽 →
 # 「专家邀请函」五选一,选后专家入商店;处理链 = cw_screen_expert_invite.py)。模板名
 # 「书册卡_未知」为历史占位,改名需同步 _get_bookcard_gray 路径与测试锁,暂保留。
 _bookcard_gray: MatLike | None = None
 _bookcard_loaded: bool = False
-_BOOKCARD_TM_THR: float = 0.75   # 自身帧 0.975+,留选中态余量;vs 典籍 0.505 分离充足
+_BOOKCARD_TM_THR: float = 0.75   # 自身帧 0.975+,留选中态余量;vs 秘典 0.505 分离充足
 
 # shape 守卫观测器:槽裁片小于模板尺寸时 matchTemplate 无法进行,守卫跳过该槽。
 # 历史:113x134 整槽尺寸模板在 111x131 的小槽上被守卫静默跳过 = 该槽对此物品判盲
@@ -1163,18 +1172,22 @@ def _note_shape_skip(where: str, idx: int, crop_h: int, crop_w: int,
         f'跳过匹配(累计{_shape_guard_skip_count}次;模板尺寸应小于全部槽裁片)')
 
 
-def _get_tome_gray() -> MatLike | None:
-    """加载秘密典籍模板灰度图(模块级缓存;``assets/template/currency_war/supply/秘密典籍.png`` 缺 → None)。
+def _get_star_tome_grays() -> list[MatLike]:
+    """加载星徽秘典双渲染模板灰度图(模块级缓存;缺文件的渲染跳过,全缺 → 空表)。
 
     ⚠️ 换模板文件需重启 server(module 级缓存;与节点模板/yml 同型坑)。
     """
-    global _tome_gray, _tome_loaded
-    if not _tome_loaded:
-        _tome_loaded = True
-        p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'supply' / '秘密典籍.png'
-        img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
-        _tome_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
-    return _tome_gray
+    global _star_tome_grays, _star_tome_loaded
+    if not _star_tome_loaded:
+        _star_tome_loaded = True
+        grays: list[MatLike] = []
+        for name in ('星徽秘典_金.png', '星徽秘典_红.png'):
+            p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'supply' / name
+            img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
+            if img is not None:
+                grays.append(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY))
+        _star_tome_grays = grays
+    return _star_tome_grays
 
 
 def _get_bookcard_gray() -> MatLike | None:
@@ -1195,7 +1208,7 @@ def _get_bookcard_gray() -> MatLike | None:
 def find_bookcards(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int, Point]]:
     """纯 CV 核心:槽位内 TM 匹配书册卡(r100k 建档)→ ``[(slot_idx, center)]``。
 
-    自身帧 0.975+,阈值 0.75(选中态余量);典籍/箱互撞 ≤0.505 不需互斥。
+    自身帧 0.975+,阈值 0.75(选中态余量);秘典/箱互撞 ≤0.505 不需互斥。
     """
     tm = _get_bookcard_gray()
     if tm is None:
@@ -1214,79 +1227,25 @@ def find_bookcards(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple
     return out
 
 
-def _get_supply_box_gray() -> MatLike | None:
-    """加载补给箱模板灰度图(模块级缓存;``assets/template/currency_war/supply/补给箱.png`` 缺 → None)。"""
-    global _supply_box_gray, _supply_box_loaded
-    if not _supply_box_loaded:
-        _supply_box_loaded = True
-        p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'supply' / '补给箱.png'
-        img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
-        _supply_box_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
-    return _supply_box_gray
-
-
-_crate_gray: MatLike | None = None
-_crate_loaded: bool = False
-
-
-def _get_crate_gray() -> MatLike | None:
-    """加载简易武装箱模板灰度图(r256;军火贸易类投资策略给的占槽物品,
-    summon_stop_hook 首捕建档——证据 summon_unknown__42d15804.png,
-    红卡金星+开启钮;与补给箱模板互斥 0.45)。"""
-    global _crate_gray, _crate_loaded
-    if not _crate_loaded:
-        _crate_loaded = True
+def _get_armory_box_gray() -> MatLike | None:
+    """加载简易武装箱模板灰度图(模块级缓存;``assets/template/currency_war/supply/简易武装箱.png`` 缺 → None)。"""
+    global _armory_box_gray, _armory_box_loaded
+    if not _armory_box_loaded:
+        _armory_box_loaded = True
         p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'supply' / '简易武装箱.png'
         img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
-        _crate_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
-    return _crate_gray
+        _armory_box_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
+    return _armory_box_gray
 
 
-def find_supply_boxes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int, Point]]:
-    """纯 CV 核心:槽位 rect 列表内 TM 匹配可开启物品箱
-    (补给箱 + 简易武装箱 r256)→ ``[(slot_idx, 槽 center)]``(点「开启」用)。
+def find_armory_boxes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int, Point]]:
+    """纯 CV 核心:槽位 rect 列表内 TM 匹配简易武装箱 → ``[(slot_idx, 槽 center)]``(点「开启」用)。
 
-    模板 ~97x118 < 槽 rect ~113x134 → 逐槽 matchTemplate。空槽/角色槽远低于阈值不命中。
+    历史名 find_supply_boxes(「补给箱」)已废,语义 = 简易武装箱(名称权威见区块注释)。
+    模板 90x80 < 槽 rect ~113x134 → 逐槽 matchTemplate。空槽/角色槽远低于阈值不命中。
     可离线硬编码 rect 测(同 ``identify_slots`` 分层约定)。
     """
-    tms = [t for t in (_get_supply_box_gray(), _get_crate_gray())
-           if t is not None]
-    if not tms:
-        return []
-    gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
-    out: list[tuple[int, Point]] = []
-    for idx, rect in slots:
-        crop = gray[rect.y1:rect.y2, rect.x1:rect.x2]
-        best = 0.0
-        for tm in tms:
-            if crop.shape[0] < tm.shape[0] or crop.shape[1] < tm.shape[1]:
-                _note_shape_skip('find_supply_boxes', idx, crop.shape[0], crop.shape[1],
-                                 tm.shape[0], tm.shape[1])
-                continue
-            r = cv2.matchTemplate(crop, tm, cv2.TM_CCOEFF_NORMED)
-            _, mx, _, _ = cv2.minMaxLoc(r)
-            best = max(best, mx)
-        if best >= _SUPPLY_BOX_TM_THR:
-            out.append((idx, Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)))
-    return out
-
-
-def read_supply_boxes(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]]:
-    """备战栏补给箱(``备战栏-1..9``)→ ``[(slot_idx, 开启 center)]``(开箱 op 用;2026-08-14 首见机制)。"""
-    return find_supply_boxes(screen, _ctx_slots(ctx, '备战栏', 9))
-
-
-def find_tomes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int, Point]]:
-    """纯 CV 核心:槽位 rect 内 TM 匹配秘密典籍 → ``[(slot_idx, 槽 center)]``(点开启用)。
-
-    与 ``find_supply_boxes`` 同法,外加**互斥判定**(r11 修,M55 P2 活锁根因):典籍命中需
-    同时 ①典籍 TM ≥ 0.6 且 ②典籍分 > 箱分(同槽双模板对拍)。实测误检帧(补给箱槽):
-    典籍 0.558/箱 0.926 —— 旧版 0.558<0.6 本就该拦,但光照/选中态可抬分,双条件保证
-    箱永远不被认成典籍(0.926>0.558 互斥性强)。典籍点两次(选中→开启)→ 星徽四选一
-    弹窗(CwScreenBookcard 接管选卡)。
-    """
-    tm = _get_tome_gray()
-    bx = _get_supply_box_gray()
+    tm = _get_armory_box_gray()
     if tm is None:
         return []
     gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
@@ -1294,31 +1253,67 @@ def find_tomes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int
     for idx, rect in slots:
         crop = gray[rect.y1:rect.y2, rect.x1:rect.x2]
         if crop.shape[0] < tm.shape[0] or crop.shape[1] < tm.shape[1]:
-            _note_shape_skip('find_tomes', idx, crop.shape[0], crop.shape[1],
+            _note_shape_skip('find_armory_boxes', idx, crop.shape[0], crop.shape[1],
                              tm.shape[0], tm.shape[1])
             continue
         r = cv2.matchTemplate(crop, tm, cv2.TM_CCOEFF_NORMED)
-        tome_score = cv2.minMaxLoc(r)[1]
+        if cv2.minMaxLoc(r)[1] >= _SUPPLY_BOX_TM_THR:
+            out.append((idx, Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)))
+    return out
+
+
+def read_armory_boxes(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]]:
+    """备战栏简易武装箱(``备战栏-1..9``)→ ``[(slot_idx, 开启 center)]``(开箱 op 用;2026-08-14 首见机制)。"""
+    return find_armory_boxes(screen, _ctx_slots(ctx, '备战栏', 9))
+
+
+def find_tomes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int, Point]]:
+    """纯 CV 核心:槽位 rect 内 TM 匹配星徽秘典(双渲染取最高分)→ ``[(slot_idx, 槽 center)]``(点开启用)。
+
+    与 ``find_armory_boxes`` 同法,外加**互斥判定**(r11 修,M55 P2 活锁根因):秘典命中需
+    同时 ①秘典 TM ≥ 0.6 且 ②秘典分 > 箱分(同槽双模板对拍)。实测误检帧(武装箱槽):
+    秘典 0.558/箱 0.926 —— 旧版 0.558<0.6 本就该拦,但光照/选中态可抬分,双条件保证
+    箱永远不被认成秘典(0.926>0.558 互斥性强)。秘典点两次(选中→开启)→ 星徽四选一
+    弹窗(CwScreenBookcard 接管选卡)。双渲染注册表见区块注释(金票券/红星书)。
+    """
+    tms = _get_star_tome_grays()
+    bx = _get_armory_box_gray()
+    if not tms:
+        return []
+    gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
+    out: list[tuple[int, Point]] = []
+    for idx, rect in slots:
+        crop = gray[rect.y1:rect.y2, rect.x1:rect.x2]
+        usable = [t for t in tms
+                  if crop.shape[0] >= t.shape[0] and crop.shape[1] >= t.shape[1]]
+        if not usable:
+            _note_shape_skip('find_tomes', idx, crop.shape[0], crop.shape[1],
+                             tms[0].shape[0], tms[0].shape[1])
+            continue
+        tome_score = 0.0
+        for t in usable:
+            tome_score = max(tome_score, cv2.minMaxLoc(
+                cv2.matchTemplate(crop, t, cv2.TM_CCOEFF_NORMED))[1])
         if tome_score < _SUPPLY_BOX_TM_THR:
             continue
         if bx is not None and bx.shape[0] <= crop.shape[0] and bx.shape[1] <= crop.shape[1]:
             rb = cv2.matchTemplate(crop, bx, cv2.TM_CCOEFF_NORMED)
             box_score = cv2.minMaxLoc(rb)[1]
-            if box_score >= tome_score:   # 箱分更高 = 这是箱不是典籍
-                # r15 review 留证(选中态真典籍余量薄 0.06-0.14):拒绝时记双分数——若真典籍被
+            if box_score >= tome_score:   # 箱分更高 = 这是箱不是秘典
+                # r15 review 留证(选中态真秘典余量薄 0.06-0.14):拒绝时记双分数——若真秘典被
                 # 选中态光效不对称抬升箱分误拒(delta<0.15 时),日志可见即可闭环(margin/取消选中复读)。
                 if tome_score - box_score < 0.15:
                     from one_dragon.utils import log_utils
                     log_utils.log.info(
                         f'[cw!][find_tomes] 槽{idx} 互斥拒绝(余量薄): '
-                        f'tome={tome_score:.3f} box={box_score:.3f}(选中态真典疑?采到即修)')
+                        f'tome={tome_score:.3f} box={box_score:.3f}(选中态真秘典疑?采到即修)')
                 continue
         out.append((idx, Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)))
     return out
 
 
 def read_tomes(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]]:
-    """备战栏秘密典籍(``备战栏-1..9``)→ ``[(slot_idx, center)]``(点两次开启 → 星徽四选一)。"""
+    """备战栏星徽秘典(``备战栏-1..9``)→ ``[(slot_idx, center)]``(点两次开启 → 星徽四选一)。"""
     return find_tomes(screen, _ctx_slots(ctx, '备战栏', 9))
 
 
@@ -1348,8 +1343,8 @@ def bench_item_slots(ctx: SrContext, screen: MatLike, *, fuzzy: bool) -> set[int
     (调用方持帧自洽,跨帧失效)。
 
     **双置信档**(方案 A1:两处消费的置信要求不同,禁止一个全集合两处共用):
-    - 精确档(``fuzzy=False``)= find_supply_boxes(补给箱/简易武装箱)
-      ∪ find_tomes(秘密典籍)∪ find_bookcards(书册卡)。部署面**只许**
+    - 精确档(``fuzzy=False``)= find_armory_boxes(简易武装箱)
+      ∪ find_tomes(星徽秘典)∪ find_bookcards(书册卡)。部署面**只许**
       消费本档:泛扫描是模糊判据,真角色
       立绘在极端帧可能弱匹配过阈 → 部署面误排真角色 = 战力真空(贵方向,
       r60 同型),比伪槽白拖更贵。
@@ -1360,15 +1355,15 @@ def bench_item_slots(ctx: SrContext, screen: MatLike, *, fuzzy: bool) -> set[int
     :param fuzzy: True = 精确 ∪ 泛扫描(钩子档);False = 仅精确识别族(部署档)。
     """
     slots9 = _ctx_slots(ctx, '备战栏', 9)
-    out: set[int] = {i for i, _p in find_supply_boxes(screen, slots9)}
+    out: set[int] = {i for i, _p in find_armory_boxes(screen, slots9)}
     out |= {i for i, _p in find_tomes(screen, slots9)}
     out |= {i for i, _p in find_bookcards(screen, slots9)}
     if fuzzy:
         # 泛 TM 低阈扫描(原 read_bench_view 前身内联段逐行搬移,判定零变化):
         # 兜已知形态全部漏认的低分渲染物品变体(r100j:卡包变体 TM 0.54 漏检型)。
-        _item_tms = [t for t in (_get_supply_box_gray(), _get_crate_gray())
+        _item_tms = [t for t in (_get_armory_box_gray(),)
                      if t is not None]
-        _tm_g = _get_tome_gray()
+        _tm_gs = _get_star_tome_grays()
         if _item_tms:
             _gray_full = cv2.cvtColor(screen, cv2.COLOR_RGB2GRAY)
             for _i, _rect in slots9:
@@ -1383,9 +1378,11 @@ def bench_item_slots(ctx: SrContext, screen: MatLike, *, fuzzy: bool) -> set[int
                         cv2.matchTemplate(_c, _it, cv2.TM_CCOEFF_NORMED))[1])
                 if _gs <= 0.45:
                     continue
-                _ts = (cv2.minMaxLoc(cv2.matchTemplate(_c, _tm_g, cv2.TM_CCOEFF_NORMED))[1]
-                       if (_tm_g is not None and _c.shape[0] >= _tm_g.shape[0]
-                           and _c.shape[1] >= _tm_g.shape[1]) else 0.0)
+                _ts = 0.0
+                for _t in _tm_gs:
+                    if _c.shape[0] >= _t.shape[0] and _c.shape[1] >= _t.shape[1]:
+                        _ts = max(_ts, cv2.minMaxLoc(
+                            cv2.matchTemplate(_c, _t, cv2.TM_CCOEFF_NORMED))[1])
                 if _gs >= _ts:
                     out.add(_i)   # 箱/卡包/武装箱类物件(低分渲染),排除
     return out
@@ -1394,7 +1391,7 @@ def bench_item_slots(ctx: SrContext, screen: MatLike, *, fuzzy: bool) -> set[int
 # ===== 晶矿识别(奖励节点清关后 区域-奖励 面板;2026-08-14 live 建档) =====
 # 球 = 晶矿(factions 球条目:开启后可能获金币/角色/装备/稀有物品)。通关奖励节点后备战右侧
 # 面板出现晶矿形奖励(实测 1-8 清关:1 大金晶矿[r~44] + 5 蓝晶矿[r~32] + 2 灰晶矿[r~18])。采晶矿即开启:
-# 金币/装备即时入账;角色/补给箱落备战席占槽;**备战席满时晶矿点不动**(先开箱腾席再采晶矿)。
+# 金币/装备即时入账;角色/简易武装箱落备战席占槽;**备战席满时晶矿点不动**(先开箱腾席再采晶矿)。
 #
 # 检测 = HoughCircles(颜色分割不可行:**背景与蓝晶矿 HSV 几乎同值** —— 实测 蓝晶矿 H111-113 S195-209
 # V253-255 vs 背景 H119-120 S172-175 V224-225,mask 无分离度)。晶矿是圆形发光体,背景是点阵纹理
@@ -1537,7 +1534,7 @@ def find_ore_sights(screen: MatLike, panel_rect: Rect) -> list[tuple[str, Point,
     """纯 CV 核心:奖励面板内 HoughCircles 检晶矿 → ``[(颜色, center, radius)]``(采晶矿用)。
 
     颜色 = 'gold' | 'blue' | 'gray'(圆心 HSV 分类;gold=高价值晶矿)。radius 可辅助优先级
-    (金晶矿大)。可离线硬编码 rect 测(同 ``find_supply_boxes`` 分层约定)。
+    (金晶矿大)。可离线硬编码 rect 测(同 ``find_armory_boxes`` 分层约定)。
 
     **幻检交叉验证**(三道门,标定与依据见常量块注释):纹理(圆内 Canny
     边缘占比)+ 亮度(圆内 V 均值)+ 半径带 —— 面板内非晶矿实体(礼盒蝴蝶结
