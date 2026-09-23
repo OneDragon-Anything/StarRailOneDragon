@@ -96,6 +96,7 @@ from sr_od.application.currency_war.prep_actions import (
     StopBrakeShortCircuit,
     row_area_centers,
 )
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -631,7 +632,13 @@ class CwScreenPrep(CwOperation):
         # —— 数据观察:清场 + 开商店合法态收起(读互斥:hp 关态可读)→ heavy 全量观察写 session
         self._clear_entry_overlays()
         self._try_collapse_open_shop()
-        obs = self._observe(heavy=True)
+        # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
+        #(CwScreenPrepObs 屏契约整包,控制信号在 ``.prep``);否则原 heavy
+        # 读链。取控制信号视图一行归一:live 产物 = PrepObservation 本体
+        #(无 .prep 属性,getattr 原样返回),sim 产物取其 ``.prep`` 域。
+        _screen_obs = cw_sim_ports.sim_or_live_observation(
+            '货币战争-备战', lambda: self._observe(heavy=True))
+        obs = getattr(_screen_obs, 'prep', _screen_obs)
         # 帧代次标注:入口 heavy 主观察帧 = full;消费归
         # 决策入口(含经 overlay 防线反弹的 pick 子路径)。
         game_state_of(session).frame_class_prep = 'full'

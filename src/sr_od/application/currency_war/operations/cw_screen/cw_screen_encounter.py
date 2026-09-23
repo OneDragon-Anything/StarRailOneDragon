@@ -81,6 +81,7 @@ from sr_od.application.currency_war.obs.cw_node_obs import (
     read_encounter_refresh_count,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
@@ -122,6 +123,16 @@ class CwScreenEncounter(CwOperation):
         if not self.round_by_find_area(screen, CwScreenEncounter.SCREEN_NAME,
                                        '标识-遭遇节点', crop_first=False).is_success:
             return self.round_fail('非遭遇节点屏')
+        # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
+        #(经同名 report 落容器);否则执行原读链(候选 + 剩余次数同帧一次读)。
+        obs = cw_sim_ports.sim_or_live_observation(
+            CwScreenEncounter.SCREEN_NAME, self._observe_live)
+        self._obs = obs
+        return self.round_success()
+
+    def _observe_live(self) -> CwScreenEncounterObs:
+        """live 观察读链(读屏点改道原样迁移;sim 生成器产物不走本链)。"""
+        screen = self.last_screenshot
         _rd = read_encounter_refresh_count(self.ctx, screen)
         obs = CwScreenEncounterObs(
             options=read_encounter_options(self.ctx, screen),
@@ -132,8 +143,7 @@ class CwScreenEncounter(CwOperation):
         _gs = getattr(_match, 'gs', None) if _match is not None else None
         if _gs is not None:
             report_screen_encounter_obs(_gs, obs)
-        self._obs = obs
-        return self.round_success()
+        return obs
 
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=10)

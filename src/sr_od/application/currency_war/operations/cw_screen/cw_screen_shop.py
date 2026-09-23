@@ -55,6 +55,7 @@ from sr_od.application.currency_war.operations.cw_operation_base import CwOperat
 from sr_od.application.currency_war.operations.decision_frame_hooks import (
     save_decision_frame,
 )
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.application.currency_war.telemetry import defects
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -430,8 +431,10 @@ class CwScreenShop(CwOperation):
         # 观察 node 产物:入口回执镜像(obs,决策侧/测试消费面)、入口
         # 回执本体(落地门 defects 留证基准)与每访问一次的装配
         # (config/点击点位/升级钮/刷新钮/动作累积),决策动作 node 消费。
+        # (sim 统一 3.3 改道后两载合一:obs 与回执位同为 CwScreenShopObs
+        #  ——入口回执同面镜像,字段名逐位同源。)
         self._obs: CwScreenShopObs | None = None
-        self._entry: GameStateReadReceipt | None = None
+        self._entry: GameStateReadReceipt | CwScreenShopObs | None = None
         self._config: Any = None
         self._click_pts: list = []
         self._level_btn: Any = None
@@ -493,19 +496,17 @@ class CwScreenShop(CwOperation):
         time.sleep(0.3)
         self.park_cursor(after_wait=0.1)
         # ---- 入口观察(唯一读屏点,即对账)----
-        _entry, _entry_shot, _stop = _shop_entry_read(self, match)
-        if _stop is not None:
-            return _stop
-        self._obs = CwScreenShopObs(
-            gold=_entry.gold, gold_readable=_entry.gold_readable,
-            hp=_entry.hp, hp_readable=_entry.hp_readable,
-            hp_trusted=_entry.hp_trusted,
-            level=_entry.level, level_readable=_entry.level_readable,
-            plane=_entry.plane, round_num=_entry.round_num,
-            node_type=_entry.node_type, board=dict(_entry.board or {}),
-            shop=list(_entry.shop or []), screen=_entry_shot)
-        self._entry = _entry
-        save_decision_frame(self, 'shop_entry', _entry_shot)   # 识别完成点原始帧留证(牌面仲裁基准;每访问一帧)
+        # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
+        #(CwScreenShopObs = 入口回执同面镜像,经同名 report 落容器);
+        # 否则原入口读链(读漏斗 + 停机闸)。live 停机闸早退形态原样交回。
+        obs = cw_sim_ports.sim_or_live_observation(
+            SHOP_SCREEN_NAME, lambda: self._entry_read_live(match))
+        if isinstance(obs, OperationRoundResult):
+            return obs
+        self._obs = obs
+        # 回执位承载 = obs 本体(CwScreenShopObs 与入口回执逐字段同源镜像;
+        # 后段簿记/日志/落地门只读该值域面,两模式同径)。
+        self._entry = obs
         # (免费刷新的事实可见性宿主 = 容器字段 free_refresh_left 的观察
         #  锚定失配安灯 + 效果账本计数:入口锚定写端 = 观察漏斗 shop-open
         #  段刷新钮三态(漏斗自带,本 op 零额外调用);本文件无金/牌面
@@ -542,7 +543,7 @@ class CwScreenShop(CwOperation):
         if _tb_rows:
             log.info(f'[cw] tracked_bench_chars='
                      f'{_tb_rows}(播种取消,仅日志显影)')
-        if not _entry.shop:
+        if not self._entry.shop:
             log.info('[cw] 店开入口牌面空(买空/OCR 失读窗):离屏语义关断,'
                      '容器沿用现值牌面决策')
         # 帧代次标注:每访问入口 = full(方向视图由
@@ -582,9 +583,11 @@ class CwScreenShop(CwOperation):
         _gs_row = match.gs if match.gs is not None else game_state_of(match.session)
         _node = node_kind_of(_gs_row) or '?'
         _next = '?'
-        log.info(f'[cw] state gold={_entry.gold} hp={_entry.hp} lv={_entry.level} '
-                 f'plane={_entry.plane} round={_entry.round_num} node={_node} '
-                 f'next={_next} board={_entry.board} '
+        log.info(f'[cw] state gold={self._entry.gold} hp={self._entry.hp} '
+                 f'lv={self._entry.level} '
+                 f'plane={self._entry.plane} round={self._entry.round_num} '
+                 f'node={_node} '
+                 f'next={_next} board={self._entry.board} '
                  f'target={target_name!r} fp={_fp_v:.2f} '
                  f'bench={len(bench_entries_of(game_state_of(match.session)))}')
         self._visit_actions = []
@@ -593,6 +596,28 @@ class CwScreenShop(CwOperation):
         # 跳过留痕/熔断见 :func:`_note_shop_skip_unobserved`;连续跳过计数
         # 复位在访问终结出口。
         return self.round_success()
+
+    def _entry_read_live(self,
+                         match) -> 'CwScreenShopObs | OperationRoundResult':
+        """live 入口观察链(读屏点改道原样迁移;sim 生成器产物不走本链)。
+
+        读漏斗(read_game_state 容器直写)+ 停机闸(未识别卡 stop_running +
+        round_fail,stop 形态原样交回调用 node)→ obs 镜像 + 原始帧留证。
+        返回的 CwScreenShopObs 与入口回执逐字段同源(shop.py 模块头
+        「同面镜像」),调用 node 以之同时承载 ``self._entry`` 回执位。"""
+        _entry, _entry_shot, _stop = _shop_entry_read(self, match)
+        if _stop is not None:
+            return _stop
+        # 识别完成点原始帧留证(牌面仲裁基准;每访问一帧)。
+        save_decision_frame(self, 'shop_entry', _entry_shot)
+        return CwScreenShopObs(
+            gold=_entry.gold, gold_readable=_entry.gold_readable,
+            hp=_entry.hp, hp_readable=_entry.hp_readable,
+            hp_trusted=_entry.hp_trusted,
+            level=_entry.level, level_readable=_entry.level_readable,
+            plane=_entry.plane, round_num=_entry.round_num,
+            node_type=_entry.node_type, board=dict(_entry.board or {}),
+            shop=list(_entry.shop or []), screen=_entry_shot)
 
     @node_from(from_name='观察')
     @operation_node(name='决策动作')

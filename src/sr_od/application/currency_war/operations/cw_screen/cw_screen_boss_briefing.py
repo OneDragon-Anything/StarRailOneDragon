@@ -40,6 +40,7 @@ from sr_od.application.currency_war.kernel.cw_screen_report.boss_briefing import
     report_screen_boss_briefing_obs,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 # ===== 两画面判别单一源 =====
@@ -108,13 +109,23 @@ class CwScreenBossBriefing(CwOperation):
             # 横幅已退 = 点空白已生效推进 → 直接交回外循环重判。
             log.info('[cw-flow-boss] 横幅已退(点空白已生效)→ 交回外循环重判')
             return self.round_success('BOSS 简报推进完成,交回外循环重判')
-        obs = CwScreenBossBriefingObs(on_screen=True, screen=screen)
+        # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
+        #(经同名 report 落容器,boss 类型直定);否则原读链(obs 装载 +
+        # report 接线)。
+        obs = cw_sim_ports.sim_or_live_observation(
+            CwScreenBossBriefing.SCREEN_NAME, self._observe_live)
+        self._obs = obs
+        return self.round_success()
+
+    def _observe_live(self) -> CwScreenBossBriefingObs:
+        """live 观察读链(读屏点改道原样迁移;sim 生成器产物不走本链)。"""
+        obs = CwScreenBossBriefingObs(on_screen=True,
+                                      screen=self.last_screenshot)
         _match = getattr(self.ctx, 'cw_match', None)
         _gs = getattr(_match, 'gs', None) if _match is not None else None
         if _gs is not None:
             report_screen_boss_briefing_obs(_gs, obs)
-        self._obs = obs
-        return self.round_success()
+        return obs
 
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=8)

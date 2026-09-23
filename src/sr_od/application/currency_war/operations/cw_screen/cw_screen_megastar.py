@@ -58,6 +58,7 @@ from sr_od.application.currency_war.operations.cw_operation_base import CwOperat
 from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
     CW_OVERLAY_SETTLE_S,
 )
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 
@@ -120,6 +121,19 @@ class CwScreenMegastar(CwOperation):
         if not self._in_node(screen):
             return self.round_success('巨星节点完成(已离开本节点画面)',
                                       wait=CW_OVERLAY_SETTLE_S)
+        # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
+        #(经同名 report 落容器);否则原读链(懒读 + 标准化门 + 上报)。
+        # live 读链早退形态(候选名标准化失败 round_fail)原样交回。
+        obs = cw_sim_ports.sim_or_live_observation(
+            '货币战争-盛会之星', self._observe_live)
+        if isinstance(obs, OperationRoundResult):
+            return obs
+        self._obs = obs
+        return self.round_success()
+
+    def _observe_live(self) -> 'CwScreenMegastarObs | OperationRoundResult':
+        """live 观察读链(读屏点改道原样迁移;sim 生成器产物不走本链)。"""
+        screen = self.last_screenshot
         _match = self.ctx.cw_match
         _gs = getattr(_match, 'gs', None) if _match is not None else None
         # 无 match/gs 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
@@ -140,8 +154,7 @@ class CwScreenMegastar(CwOperation):
             options = standardized
         obs = CwScreenMegastarObs(in_node=True, options=options, screen=screen)
         report_screen_megastar_obs(_gs, obs)
-        self._obs = obs
-        return self.round_success()
+        return obs
 
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=8)

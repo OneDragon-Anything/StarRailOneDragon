@@ -61,6 +61,7 @@ from sr_od.application.currency_war.operations.cw_operation_base import CwOperat
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     safe_click,
 )
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 
@@ -226,6 +227,21 @@ class CwScreenInvestEnv(CwOperation):
         log.info(f'[cw-env] enter find_area(标识-投资环境)={_hit}')
         if not _hit:
             return self.round_fail('非投资环境屏')
+        # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
+        #(经同名 report 落容器);否则执行原读链。live 读链早退形态(候选
+        # 标准化失败 round_fail)原样交回。
+        obs = cw_sim_ports.sim_or_live_observation(
+            CwScreenInvestEnv.SCREEN_NAME, self._observe_live)
+        if isinstance(obs, OperationRoundResult):
+            return obs
+        self._obs = obs
+        return self.round_success()
+
+    def _observe_live(self) -> 'CwScreenInvestEnvObs | OperationRoundResult':
+        """live 观察读链(读屏点改道原样迁移;sim 生成器产物不走本链)。
+
+        一次读全 + 观察标准化门(失败 = round_fail 早退,零写零上报交回
+        重观察)+ report 落容器。"""
         screen = self.screenshot()
         counts = read_invest_refresh_counts(self.ctx, screen, 'env')
         opts = self._standardize_options(self._read_options(screen))
@@ -242,8 +258,7 @@ class CwScreenInvestEnv(CwOperation):
         _gs = getattr(_match, 'gs', None) if _match is not None else None
         if _gs is not None:
             report_screen_invest_env_obs(_gs, obs)
-        self._obs = obs
-        return self.round_success()
+        return obs
 
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=10)

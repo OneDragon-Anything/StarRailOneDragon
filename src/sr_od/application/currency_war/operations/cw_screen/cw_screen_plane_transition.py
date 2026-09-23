@@ -42,6 +42,7 @@ from sr_od.application.currency_war.kernel.cw_screen_report.plane_transition imp
 from sr_od.application.currency_war.obs.cw_node_reader import HU_DIST_UNRECOGNIZED
 from sr_od.application.currency_war.obs.cw_observation import read_node_sequence
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 
@@ -110,6 +111,17 @@ class CwScreenPlaneTransition(CwOperation):
                 screen, CwScreenPlaneTransition.SCREEN_NAME,
                 CwScreenPlaneTransition.PROMPT_AREA, crop_first=False).is_success:
             return self.round_fail('位面过渡提示未出现')
+        # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
+        #(链值诚实缺位,经同名 report 落容器);否则原读链(底部全亮行
+        # 读数构造链值)。
+        obs = cw_sim_ports.sim_or_live_observation(
+            CwScreenPlaneTransition.SCREEN_NAME, self._observe_live)
+        self._obs = obs
+        return self.round_success()
+
+    def _observe_live(self) -> CwScreenPlaneTransitionObs:
+        """live 观察读链(读屏点改道原样迁移;sim 生成器产物不走本链)。"""
+        screen = self.last_screenshot
         _match = getattr(self.ctx, 'cw_match', None)
         _gs = getattr(_match, 'gs', None) if _match is not None else None
         _chain: NodeChain | None = None
@@ -122,8 +134,7 @@ class CwScreenPlaneTransition(CwOperation):
         if _gs is not None:
             with contextlib.suppress(Exception):
                 report_screen_plane_transition_obs(_gs, obs)
-        self._obs = obs
-        return self.round_success()
+        return obs
 
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=8)

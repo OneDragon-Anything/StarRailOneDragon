@@ -49,6 +49,7 @@ from sr_od.application.currency_war.kernel.cw_screen_report.planner import (
     report_screen_planner_obs,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 
@@ -110,7 +111,20 @@ class CwScreenYinLang(CwOperation):
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
         """左右两卡 OCR 桶一次读 → report 落容器(恒写两卡,空桶照写;
-        match/gs 缺席的局外兜底路径跳过 report)。"""
+        match/gs 缺席的局外兜底路径跳过 report)。
+
+        读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
+        (经同名 report 落容器);否则原读链。live 读链早退形态(卡位 area
+        缺失 round_fail)原样交回。"""
+        obs = cw_sim_ports.sim_or_live_observation(
+            '货币战争-银狼升星', self._observe_live)
+        if isinstance(obs, OperationRoundResult):
+            return obs
+        self._obs = obs
+        return self.round_success()
+
+    def _observe_live(self) -> 'CwScreenPlannerObs | OperationRoundResult':
+        """live 观察读链(读屏点改道原样迁移;sim 生成器产物不走本链)。"""
         screen = self.last_screenshot
         # OCR 两卡区域文字:单次全图读(贵操作只算一次),文本归属 =
         # 中心点落入建档两卡 rect(坐标单一真相源 = yml;判定语义 =
@@ -151,8 +165,7 @@ class CwScreenYinLang(CwOperation):
         _gs = getattr(_match, 'gs', None) if _match is not None else None
         if _gs is not None:
             report_screen_planner_obs(_gs, obs)
-        self._obs = obs
-        return self.round_success()
+        return obs
 
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=5)

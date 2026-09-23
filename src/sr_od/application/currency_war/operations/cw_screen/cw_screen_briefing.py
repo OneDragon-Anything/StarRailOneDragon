@@ -51,6 +51,7 @@ from sr_od.application.currency_war.operations.cw_operation_base import CwOperat
 from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
     BRIEFING_SETTLE_S,
 )
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 
@@ -87,6 +88,23 @@ class CwScreenBriefing(CwOperation):
                 screen, CwScreenBriefing.SCREEN_NAME, CwScreenBriefing.MARK_AREA,
                 crop_first=False).is_success:
             return self.round_fail('非简报屏')
+        # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
+        #(经同名 report 落容器);否则执行原读链。live 读链早退形态(boss
+        # 两段归一失败 round_fail)原样交回。
+        obs = cw_sim_ports.sim_or_live_observation(
+            CwScreenBriefing.SCREEN_NAME, self._observe_live)
+        if isinstance(obs, OperationRoundResult):
+            return obs
+        self._obs = obs
+        return self.round_success()
+
+    def _observe_live(self) -> 'CwScreenBriefingObs | OperationRoundResult':
+        """live 观察读链(读屏点改道原样迁移;sim 生成器产物不走本链)。
+
+        三读数一次读 + 词缀效果点采 + report 落容器;boss 读数两段归一
+        失败 = round_fail 早退(零写零上报交回重观察),由调用 node 原样
+        交回。"""
+        screen = self.last_screenshot
         _match = getattr(self.ctx, 'cw_match', None)
         _gs = getattr(_match, 'gs', None) if _match is not None else None
         # 敌人词缀(名+center,mechanics_fit 输入):每次进简报屏都重读重采。
@@ -145,8 +163,7 @@ class CwScreenBriefing(CwOperation):
             screen=screen)
         if _gs is not None:
             report_screen_briefing_obs(_gs, obs)
-        self._obs = obs
-        return self.round_success()
+        return obs
 
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=10)

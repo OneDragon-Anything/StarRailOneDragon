@@ -758,15 +758,18 @@ class SimBackend:
         return self._screen
 
     def observe(self, screen_name: str) -> object:
-        """生成器直出该屏观察产物。
+        """生成器直出该屏观察产物(注册表分派)。
 
-        生成器注册表归金路径生成器批(flow-seam §3:注册表键 = 档名,
-        未注册呈现 = 响错防静默失真);本批 backend 直驱测试读容器,
-        观察腿不可用 = 具名响错。"""
-        raise NotImplementedError(
-            f'sim 观察生成器未注册: {screen_name!r}'
-            '(金路径生成器批落地前,sim 观察腿不可用;backend 直驱测试'
-            '读容器 GameState)')
+        注册表 = ``sim/cw_sim_obs_gen``(键 = screen_info 档名;金路径 13
+        档,同档名子态由该档名生成器按状态机子态内部分派)。产物经同名
+        ``report_screen_*`` 落容器(写通道铁律,单一源在 report 消费端)。
+        未注册屏呈现 = :class:`LookupError` 具名响错(防静默失真,
+        flow-seam §3 锁)。惰性导入注册表:注册表反向引用本模块档名
+        常量,模块级互引成环。"""
+        from sr_od.application.currency_war.sim.cw_sim_obs_gen import (
+            observe_screen,
+        )
+        return observe_screen(self, screen_name)
 
     def visible(self, screen_name: str, area_name: str) -> bool:
         """until / 门可见性问询。

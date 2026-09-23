@@ -61,6 +61,7 @@ from sr_od.application.currency_war.kernel.cw_screen_report.supply_node import (
 )
 from sr_od.application.currency_war.obs.cw_node_obs import read_supply_options
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 # 「剩余次数：N」正则(遭遇/投资屏 reader 同款形态,cw_node_obs._REMAIN_RE 族;
@@ -183,6 +184,16 @@ class CwScreenSupplyNode(CwOperation):
         screen = self.last_screenshot
         if not self._in_node(screen):
             return self.round_success(f'{self.op_name} 节点完成(已离开本节点画面)')
+        # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
+        #(经同名 report 落容器);否则执行原读链(选项 + 刷新锚同帧一次读)。
+        obs = cw_sim_ports.sim_or_live_observation(
+            '货币战争-补给', self._observe_live)
+        self._obs = obs
+        return self.round_success()
+
+    def _observe_live(self) -> CwScreenSupplyNodeObs:
+        """live 观察读链(读屏点改道原样迁移;sim 生成器产物不走本链)。"""
+        screen = self.last_screenshot
         opts = read_supply_options(self.ctx, screen)
         anchor = self._read_refresh_anchor(screen)
         refresh_left = anchor[0] if anchor is not None else None
@@ -204,9 +215,8 @@ class CwScreenSupplyNode(CwOperation):
                                 actor='CwScreenSupplyNode')
         if _gs is not None:
             report_screen_supply_node_obs(_gs, obs)
-        self._obs = obs
         self._sup_opts = list(opts)
-        return self.round_success()
+        return obs
 
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=8)

@@ -69,6 +69,7 @@ from sr_od.application.currency_war.operations.cw_operation_base import CwOperat
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     safe_click,
 )
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 
@@ -208,8 +209,13 @@ class CwScreenInvestStrategy(CwOperation):
         round_fail 会炸出整 op 并触发哨兵报警退出(20-22 局实证
         每次 fail 一次哨兵退出)。在窗 → 一次读全 → ``report_screen_
         invest_strategy_obs`` 落容器(候选 + 逐卡剩余,match/gs 缺席的
-        局外兜底路径跳过 report)→ obs 挂实例属性。"""
-        obs = self._observe_frame()
+        局外兜底路径跳过 report)→ obs 挂实例属性。
+
+        读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
+        (entry_ok 恒真,经同名 report 落容器);否则原读链
+        (``_observe_frame``,入口锚复探窗 + 一次读全)。"""
+        obs = cw_sim_ports.sim_or_live_observation(
+            CwScreenInvestStrategy.SCREEN_NAME, self._observe_frame)
         if not obs.entry_ok:
             return self.round_retry('投资策略屏未稳定,复探超窗重试')
         _match = getattr(self.ctx, 'cw_match', None)

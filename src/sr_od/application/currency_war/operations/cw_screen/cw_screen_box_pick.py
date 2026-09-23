@@ -72,6 +72,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.prep_actions import _OVERLAY_ANIM_WAIT_S
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 #: 装备注册表键集定序列表(观察标准化门第二段 LCS 兜底的遍历域;
@@ -124,6 +125,27 @@ class CwScreenBoxPick(CwOperation):
                 screen, CwScreenBoxPick.SCREEN_NAME, '标识-请选择',
                 crop_first=False).is_success:
             return self.round_fail('非武装箱选择画面(标识-请选择 miss)')
+        # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
+        #(经同名 report 落容器);否则原读链。live 读链早退形态(读空闸/
+        # 标准化门 round_fail)原样交回。
+        obs = cw_sim_ports.sim_or_live_observation(
+            CwScreenBoxPick.SCREEN_NAME, self._observe_live)
+        if isinstance(obs, OperationRoundResult):
+            return obs
+        self._obs = obs
+        # 卡名-x 配对自 obs 统一派生(两模式同径;live 原读链内赋值随改道
+        # 迁移。坐标域 y 分量仅供动作 op 点卡避让,本配对只留 x)。
+        self._cards = [(n, x)
+                       for n, (x, _y) in zip(obs.card_names, obs.points,
+                                             strict=False)]
+        return self.round_success()
+
+    def _observe_live(self) -> 'CwScreenBoxPickObs | OperationRoundResult':
+        """live 观察读链(读屏点改道原样迁移;sim 生成器产物不走本链)。
+
+        OCR 卡名行 → 两道闸(读空/标准化,失败 = round_fail 早退零写零
+        上报交回重派)→ 坐标解点 → report 落容器。"""
+        screen = self.last_screenshot
         cards = self._read_card_names(screen)
         if not cards:
             # OCR 未读卡名(变体字型/动画帧)= 未发出通道:交回外循环
@@ -139,7 +161,6 @@ class CwScreenBoxPick(CwOperation):
             return self.round_fail('卡名标准化失败(零写零上报,交回重观察)')
         # 坐标解点(观察期一次解出;y = CARD_Y 卡名带下方避让几何)。
         points = [(x, CwScreenBoxPick.CARD_Y) for _, x in cards]
-        self._cards = cards
         obs = CwScreenBoxPickObs(on_screen=True,
                                  card_names=[n for n, _ in cards],
                                  points=points,
@@ -151,8 +172,7 @@ class CwScreenBoxPick(CwOperation):
             # 决策」由两道闸保证;桩无 gs(有 match)→ 跳过写,决策照走;
             # 名字与坐标同门双写)。
             report_screen_box_pick_obs(_gs, obs)
-        self._obs = obs
-        return self.round_success()
+        return obs
 
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=5)
