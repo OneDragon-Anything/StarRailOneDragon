@@ -79,6 +79,8 @@
 
 ### A.3 直连 `controller` 旁路清点（86 处，分组归宿）
 
+> 口径：一处 = CW 应用树内一行 `ctx.controller.` 直连调用；复核 = 对 `src/sr_od/application/currency_war/**.py`（排除 `__pycache__`）跑 `Select-String -Pattern 'ctx\.controller\.'` 计行数（2026-09-23 实测 = 86）。
+
 | 组 | 文件 | 归宿 |
 |---|---|---|
 | 拖拽腿（焦点守卫 + `DragCwChar`） | `prep_actions.py::drag_bench_to_sell` / `PrepActionExecutor._drag` | **本批 port 检查**：installed → 机械腿静默成功，自上报照走 |
