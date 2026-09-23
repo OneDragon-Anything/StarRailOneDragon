@@ -1,22 +1,22 @@
-"""赠卡价值(mandate_v1 共用模块;投资环境策略层迁移迭代 design.md §2.5)。
+"""赠卡价值(mandate_v1 共用模块;设计正本 = strategy-docs/
+28_invest_env_screen.md §2 赠卡分行)。
 
 两个口径:
 - **具名赠卡**(契约 ×7 + 特邀专家 ×4,登记 = ``cw_investments.ENV_GIFTS``
   留 kernel):档位判定复用 kernel ``cw_comps.gift_hit_tier``(角色在候选套
   中的身份档 = 机制事实判定,按宪法五判据线留 kernel;本模块只做「档→分」
-  映射 = 策略立场,design §2.6 表 2)。advisor(付费顾问期权,特邀专家)
-  按同档分 × :data:`ADVISOR_DISCOUNT`(「付费期权 < 白得」语义,承载旧
-  ``GIFT_FLOOR_ADVISOR_CORE < GIFT_FLOOR_CORE`` 的序);赠卡失格删除:
+  映射 = 策略立场,:data:`GIFT_TIER_SCORE`)。advisor(付费顾问期权,特邀
+  专家)按同档分 × :data:`ADVISOR_DISCOUNT`(「付费期权 < 白得」语义——
+  顾问需再花店价且占购买预算,价值严格低于同档白得);赠卡失格删除:
   白得卡全员集外 → 赠卡分自然 0,**不再把整环境清零**(旧
-  ``env-gift-off-universe`` 整体失格规则删除,环境其余成分照常计分,
-  design §2.5)。
+  ``env-gift-off-universe`` 整体失格规则随迁移删除,环境其余成分照常计分)。
 - **随机阵营赠卡**(概念股「获得【某阵营】角色」):该阵营注册成员
   (``cw_chars.chars_by_faction``)在未排除候选阵容名单
   (core∪shared∪transition)中出现者的档位分**算术平均**(随机发放取无偏
-  期望;具名发放取最高档的口径差异 = 确定性赠卡承重面,沿旧机器
-  details/env-value-models.md §2.1.2 规则①,非双重标准);无成员在册 → 0。
+  期望;具名发放取最高档的口径差异 = 确定性赠卡承重面,沿旧机器规则①,
+  非双重标准);无成员在册 → 0。
 
-复用预留(design §2.9):投资策略屏迁移批直接复用具名/随机两口径,
+复用预留(28 号稿 §5):投资策略屏迁移批直接复用具名/随机两口径,
 接口本批一次定形。
 """
 from __future__ import annotations
@@ -28,7 +28,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     GiftGrant,
 )
 
-#: 赠卡档分(design §2.6 表 2;【拍】形态,初值经落地 3.1 裁决窗过目):
+#: 赠卡档分(28 号稿 §2;【拍】形态,初值经迁移迭代落地裁决窗过目):
 #: - core = 50:白得一条 A 线核心 ≈ 半条 A 线方向分量级;
 #: - shared = 20:常用成员;
 #: - transition = 5:打工件;
@@ -43,17 +43,17 @@ GIFT_TIER_SCORE: dict[str, float] = {
 }
 
 #: advisor 折减(同档分 × 0.5;「付费期权 < 白得」——顾问需再花店价且占
-#: 购买预算,价值严格低于同档白得,design §2.5/§2.6 表 2 注)。
+#: 购买预算,价值严格低于同档白得,28 号稿 §2)。
 ADVISOR_DISCOUNT: float = 0.5
 
 
 def named_gift_value(env_name: str,
                      evicted: frozenset[str] | set[str]) -> float:
-    """具名赠卡分(ENV_GIFTS 在册环境;design §2.5 具名口径)。
+    """具名赠卡分(ENV_GIFTS 在册环境;具名口径见 28 号稿 §2)。
 
     档位 = kernel ``gift_hit_tier``(即时集取最高档、条件集降一档的机器
-    事实,evicted 传导免费获得);档→分映射见表 2;advisor 再乘
-    ADVISOR_DISCOUNT。非 ENV_GIFTS 环境 → 0(无具名发放)。
+    事实,evicted 传导免费获得);档→分映射见 :data:`GIFT_TIER_SCORE`;
+    advisor 再乘 ADVISOR_DISCOUNT。非 ENV_GIFTS 环境 → 0(无具名发放)。
     """
     grant = ENV_GIFTS.get(env_name)
     if grant is None:
@@ -66,7 +66,7 @@ def named_gift_value(env_name: str,
 
 def random_faction_gift_value(faction: str,
                               evicted: frozenset[str] | set[str]) -> float:
-    """随机阵营赠卡分(概念股「获得【某阵营】角色」;design §2.5 随机口径)。
+    """随机阵营赠卡分(概念股「获得【某阵营】角色」;随机口径见 28 号稿 §2)。
 
     成员档位判定 = 对单角色合成 ``GiftGrant(chars_immediate=(名,))`` 调
     kernel ``gift_hit_tier``——单角色即时发放的命中档即该角色的最高身份档,

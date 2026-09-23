@@ -1,33 +1,34 @@
 """投资环境画面策略(mandate_v1;宪法六「一画面一策略文件」首批兑现)。
 
-设计依据 = docs/develop/sr_od/application/currency_war/changes/
-2026-09-23-invest-env-strategy-migration/design.md §2.2/§2.6/§2.7/§2.8/§2.9
-(下称 design §);评分模型 = 「统一加法标尺」——单位 = 分,**1 分 :=
-1 金等价**(归一化约定,非语义拍值;XP 折算沿 env_economy.XP_GOLD_RATE
-承载),取代旧 kernel 的多标尺层次压制(裸分/送卡档/阵营 floor/经济域带
-各标尺不可比,全靠层次常数定先后——迁移动机,design §1)。
+设计正本 = strategy-docs/28_invest_env_screen.md(本文件是其代码承载面,
+「下称 28 号稿」,节号即该篇节号);评分模型 = 「统一加法标尺」——单位 =
+分,**1 分 := 1 金等价**(归一化约定,非语义拍值;XP 折算沿
+env_economy.XP_GOLD_RATE 承载),取代旧 kernel 的多标尺层次压制(裸分/
+送卡档/阵营 floor/经济域带各标尺不可比,全靠层次常数定先后——迁移动机,
+考古走 git 历史)。
 
-总分公式(design §2.2)::
+总分公式(28 号稿 §1)::
 
     总分 = 现金分 + 方向分 + 赠卡分 + 立场分 + 转向轴加分
 
 - 现金分 = env_economy.env_economy_value(resolved ∧ > 0 才计,fail-closed
   恒 0);
-- 方向分 = line_value.line_value(概念股/邀请;design §2.4);
-- 赠卡分 = gift_value 具名口径(ENV_GIFTS)+ 概念股随机阵营口径(design §2.5);
-- 立场分 = :data:`STANCE_SCORE`(design §2.6 表 3,【拍】形态,每行带理由;
+- 方向分 = line_value.line_value(概念股/邀请;28 号稿 §2 方向分行);
+- 赠卡分 = gift_value 具名口径(ENV_GIFTS)+ 概念股随机阵营口径(28 号稿
+  §2 赠卡分行);
+- 立场分 = :data:`STANCE_SCORE`(【拍】形态,每行带理由;
   宪法五:策略立场归策略层,合法性来自裁定本身);
 - 转向轴 = user-priority + :data:`STEERING_PRIORITY_BONUS`(软偏好,立场
   系数,压不过 S 线方向分 = 「用户点名是偏好不是支配」);user-forbid =
-  排除出候选(design §2.8)。
+  排除出候选(28 号稿 §3)。
 
 argmax 取最高,平分取先。禁选(env_forbid 命中)与自拆台(:func:`_counters_dot`,
-design §2.8)= 排除出候选。
+28 号稿 §3)= 排除出候选。
 
-刷新判据(design §2.7):建议刷 = 帧内存在禁选槽 ∨ 帧最好总分 <
+刷新判据(28 号稿 §4):建议刷 = 帧内存在禁选槽 ∨ 帧最好总分 <
 :data:`REFRESH_THRESHOLD`;次数闸 = ``gs.env_refresh_left ≥ 1``。
 
-输出契约(design §2.9)::func:`decide` 返回纯值 dataclass
+输出契约(28 号稿 §4)::func:`decide` 返回纯值 dataclass
 (:class:`InvestEnvDecision` / :class:`RefreshSuggestion`),不含动作词表
 ——动作包装(CwActionPickInvestEnvParam/CwActionRefreshInvestCardsParam)
 留 flow(flow ``_decide_invest`` kind='env' 分支,2026-09-23 迁移迭代 3.2
@@ -73,7 +74,7 @@ if TYPE_CHECKING:
     )
 
 
-# ===== 输出契约(design §2.9:纯值 dataclass,不含动作词表)=====
+# ===== 输出契约(28 号稿 §4:纯值 dataclass,不含动作词表)=====
 
 @dataclass(frozen=True)
 class InvestEnvDecision:
@@ -90,13 +91,13 @@ class InvestEnvDecision:
 class RefreshSuggestion:
     """刷新建议(动作包装 CwActionRefreshInvestCardsParam 留 flow;
     handler 的 obs.refresh 现读闸 + 容器 env_refresh_left 对照闸原样,
-    op 层零改动,design §2.7 输出契约)。"""
+    op 层零改动,28 号稿 §4 输出契约)。"""
     reason: str
 
 
-# ===== 转向轴与自拆台(design §2.8)=====
+# ===== 转向轴与自拆台(28 号稿 §3)=====
 
-#: user-priority 软偏好分(固定偏好分,立场系数;design §2.8——软偏好,
+#: user-priority 软偏好分(固定偏好分,立场系数;28 号稿 §3——软偏好,
 #: 压不过 S 线方向分 100,「用户点名是偏好不是支配」)。
 STEERING_PRIORITY_BONUS: float = 30.0
 
@@ -107,12 +108,12 @@ BOARD_DOT_COUNT_THRESHOLD: int = 2
 #: 本策略阵容的机械属性面(与 kernel ``MECHANIC_COUNTERS`` 值域对齐):
 #: 板面以 DoT/减益为主派时,克制这些机制的候选 = 自拆台,排除。
 #: 集合本身是策略侧立场(「我们在玩什么」);「某选项是否克制某机制」
-#: 的事实判定 = kernel 表(design §2.8)。
+#: 的事实判定 = kernel 表(28 号稿 §3)。
 _DOT_PUNISHED_MECHS: frozenset[str] = frozenset({'DoT', '减益'})
 
 
 def _counters_dot(opt: str) -> bool:
-    """选项名是否克制 DoT/减益主派(事实判定,kernel 表调用;design §2.8)。
+    """选项名是否克制 DoT/减益主派(事实判定,kernel 表调用;28 号稿 §3)。
 
     选项名 → ``AFFIX_MECHANIC_MAP`` 机制 tag → ``MECHANIC_COUNTERS`` 克制
     属性,与旧 kernel ``_opt_counters_dot`` 同构(子串包含匹配保留 OCR
@@ -125,7 +126,7 @@ def _counters_dot(opt: str) -> bool:
     return False
 
 
-# ===== 立场分表(design §2.6 表 3;【拍】形态,每行带理由)=====
+# ===== 立场分表(28 号稿 §2 立场分行;【拍】形态,每行带理由)=====
 
 @dataclass(frozen=True)
 class StanceRow:
@@ -139,7 +140,7 @@ class StanceRow:
     reason: str
 
 
-#: 环境立场分表(design §2.6 表 3 全量):仅登记「无机械成分」环境
+#: 环境立场分表(28 号稿 §2 立场分行 全量):仅登记「无机械成分」环境
 #: (判定 = 无阵营 ∧ 不在 ENV_GIFTS ∧ 不在 ENV_ECONOMY——这些环境的
 #: 价值不含任何可推导成分,纯立场)+ 表 3 点名的零值机械环境(经济过热/
 #: 经济严重过热,C 类通道零有效估计时现金分 fail-closed=0,补参后自动进
@@ -193,12 +194,12 @@ STANCE_SCORE: dict[str, StanceRow] = {
 _STANCE_ZERO = StanceRow(0.0, '表外环境立场恒 0')
 
 
-# ===== 构建期校验(import 即炸;design §2.9)=====
+# ===== 构建期校验(import 即炸;28 号稿 §2)=====
 
 def _validate_stance_coverage() -> None:
     """立场表覆盖校验:无机械成分条目必须在表;表键必须真实在册。
 
-    - 无机械成分判定(design §2.9)= 无阵营 ∧ 不在 ENV_GIFTS ∧ 不在
+    - 无机械成分判定(28 号稿 §2 立场分行)= 无阵营 ∧ 不在 ENV_GIFTS ∧ 不在
       ENV_ECONOMY:这些环境的价值不含任何可推导成分,立场表是唯一分值
       载体,缺行 = 环境静默零分 → import 即炸(注册表演化防线,沿
       ENV_ECONOMY/ENV_GIFTS 孤儿键校验先例);
@@ -217,7 +218,7 @@ def _validate_stance_coverage() -> None:
 
 def _validate_coefficient_tables() -> None:
     """系数表键完备校验:线强度档分覆盖阵容库全部强度档;赠卡档分覆盖
-    档位机器全部四档(design §2.9;缺键 = 对应线/卡静默零分 → import 即炸)。"""
+    档位机器全部四档(28 号稿 §2 赠卡分行;缺键 = 对应线/卡静默零分 → import 即炸)。"""
     _lib_tiers = {c.strength for c in COMP_LIBRARY}
     _missing_line = _lib_tiers - set(LINE_STRENGTH_SCORE)
     if _missing_line:
@@ -234,18 +235,18 @@ _validate_stance_coverage()
 _validate_coefficient_tables()
 
 
-# ===== 总分组件(design §2.2 加法公式)=====
+# ===== 总分组件(28 号稿 §1 加法公式)=====
 
 def _components(name: str, gs: GameState, locked_comp: str,
                 demoted_endgame: bool,
                 evicted: frozenset[str]) -> tuple[float, float, float, float]:
     """单环境四组件 (现金, 方向, 赠卡, 立场);未注册名 → 全 0(OCR 形变)。
 
-    - 现金分:resolved ∧ > 0 才计,fail-closed 恒 0(design §2.2/§2.3);
-    - 方向分适用面 = 概念股/邀请(design §2.4);契约/特邀专家只计赠卡;
+    - 现金分:resolved ∧ > 0 才计,fail-closed 恒 0(28 号稿 §1/§2);
+    - 方向分适用面 = 概念股/邀请(28 号稿 §2 方向分行);契约/特邀专家只计赠卡;
     - 概念股额外加随机阵营赠卡分(「白得该阵营角色」;「找牌概率提高」
-      「初始简易装备」v1 不计 = 申报低估向,design §2.4);
-    - 立场分:表行缺省 0(表外环境立场不入表,design §2.6 表 3)。
+      「初始简易装备」v1 不计 = 申报低估向,28 号稿 §2 方向分行);
+    - 立场分:表行缺省 0(表外环境立场不入表,28 号稿 §2 立场分行)。
     """
     cash, resolved = env_economy_value(name, gs)
     cash_v = cash if (resolved and cash > 0) else 0.0
@@ -267,7 +268,7 @@ def option_total(name: str, gs: GameState,
     """单环境总分 = 现金 + 方向 + 赠卡 + 立场(不含转向轴)。
 
     转向轴(priority/forbid)是用户本局配置,不入本函数——刷新阈值的
-    构建期派生(全 83 条均值,design §2.7)与运行时评分共用同一无轴基线,
+    构建期派生(全 83 条均值,28 号稿 §4)与运行时评分共用同一无轴基线,
     保证「阈值 = 同一口径的均值」。
     """
     _cash, _dir, _gift, _stance = _components(
@@ -276,7 +277,7 @@ def option_total(name: str, gs: GameState,
 
 
 #: 刷新阈值 = 全部 83 条环境总分的均值,构建期由注册表+系数+立场表派生为
-#: 常量(单一源 = 表,不手维护数字;表改则阈值自动随动,design §2.7)。
+#: 常量(单一源 = 表,不手维护数字;表改则阈值自动随动,28 号稿 §4)。
 #: 依据:重掷免费,重掷后帧最好的期望 ≥ 单抽期望 = 全表均值(实际
 #: E[max of 3] > 均值,取均值 = 保守向,不高估重掷收益)。不取「下三分之一
 #: 分位」——立场 0 值条目多,分位阈值会沉到 0 附近令判据失效,均值对 0 值
@@ -291,7 +292,7 @@ def _derive_refresh_threshold() -> float:
 REFRESH_THRESHOLD: float = _derive_refresh_threshold()
 
 
-# ===== 决策入口(design §2.9)=====
+# ===== 决策入口(28 号稿 §4)=====
 
 def _score_frame(options: list[str], gs: GameState, locked_comp: str,
                  demoted_endgame: bool, evicted: frozenset[str],
@@ -327,7 +328,7 @@ def _pick_decision(scores: list[float], steers: list[float],
                    components: list[tuple[float, float, float, float]],
                    excluded: list[bool]) -> InvestEnvDecision:
     """评分帧 → 选卡决策(argmax 取最高,平分取先;全排除退化帧沿旧
-    kernel decide_event 全禁帧行为取全体 argmax 最不负分者——design §2.2
+    kernel decide_event 全禁帧行为取全体 argmax 最不负分者——28 号稿 §1
     argmax 语义在该帧的延展,reason 标 all-excluded-fallback 供判读)。"""
     best_idx = _argmax_first(scores, excluded)
     if best_idx < 0:
@@ -346,7 +347,7 @@ def decide_pick(options: list[str], gs: GameState, locked_comp: str,
     """纯选卡决策(无刷新判据;与 :func:`decide` 同一评分基线)。
 
     独立成口的原因:decide 是纯函数,flow 同帧去重 memo 命中(handler
-    刷新闸全败后的重调,design §2.9「建议帧首调发建议、紧随重调落选卡」)
+    刷新闸全败后的重调,28 号稿 §4「建议帧首调发建议、紧随重调落选卡」)
     时再调 decide 仍返建议——落选卡走本口,同一评分基线保证零选卡漂移。
     为 sim 复用预留(sim 投资面 = offer 采样 + inject_choices 直写容器,
     现不经 decide_invest_env)。
@@ -366,7 +367,7 @@ def decide_pick(options: list[str], gs: GameState, locked_comp: str,
 def decide(options: list[str], gs: GameState, locked_comp: str,
            demoted_endgame: bool, evicted: frozenset[str] | set[str],
            config: CurrencyWarConfig) -> InvestEnvDecision | RefreshSuggestion:
-    """投资环境 3 选 1 决策(纯值出口;flow 包装动作词表,design §2.9)。
+    """投资环境 3 选 1 决策(纯值出口;flow 包装动作词表,28 号稿 §4)。
 
     - options = 屏上候选名列表(容器序);locked_comp/demoted_endgame/
       evicted 与现役 kernel 调用的三参同源(flow 意向状态直通,design
@@ -388,7 +389,7 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
         env_priority, env_forbid)
     forbidden_slot = any(excluded)
     if forbidden_slot or max(scores) < REFRESH_THRESHOLD:
-        # 次数闸 = gs.env_refresh_left ≥ 1(design §2.7)。Field 读数 None
+        # 次数闸 = gs.env_refresh_left ≥ 1(28 号稿 §4)。Field 读数 None
         # = 观察写端读缺跳写(未观察到剩余次数),次数 ≥ 1 无法确证 →
         # 不建议刷(保守向:漏一次建议优于虚发动作;handler 侧 obs.refresh
         # 现读闸 + 容器对照闸原样,建议刷最终仍由 handler 双闸裁定)。
@@ -404,7 +405,7 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
 
 def _argmax_first(scores: list[float],
                   excluded: list[bool]) -> int:
-    """argmax 取最高,平分取先(design §2.2);excluded 槽不入竞争。
+    """argmax 取最高,平分取先(28 号稿 §1);excluded 槽不入竞争。
 
     全部被排除 → 返回 -1(调用方决定退化路径)。
     """

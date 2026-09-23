@@ -4,11 +4,10 @@
 **策略层的衍生估值**——把 ``cw_investments.ENV_ECONOMY`` 的整局经济通道
 折成金等价期望。kernel 侧只留游戏原始真值:``cw_investments.ENV_ECONOMY``
 (通道结构 = 游戏效果原文的结构化,【注】)与 ``ENV_ECONOMY_PENDING_
-MODELING`` 留 kernel 不迁(迁移依据 = docs/develop/sr_od/application/
-currency_war/changes/2026-09-23-invest-env-strategy-migration/design.md
-§2.3,下称 design §)。
+MODELING`` 留 kernel 不迁。语义正本 = strategy-docs/28_invest_env_screen.md
+§2 现金分行;迁移批的删除面对照考古走 git 历史。
 
-迁入改造(design §2.3,迁移迭代 3.1):
+迁入改造(迁移迭代 3.1):
 - 删 ``ECON_VALUE_NORM`` 域带归一:现金分直接按金等价计,不再进 111-119
   带;治理校验随之删除「域带上界越界」项(无域带则该项无语义);
 - ``gold_after_refreshes`` 系(长线利好/二手市场)不走运行时条件腿——
@@ -21,7 +20,7 @@ currency_war/changes/2026-09-23-invest-env-strategy-migration/design.md
 
 职责:经济通道折成**金等价期望** ``(expected_gold, resolved)``——
 resolved=False = fail-closed(未入模/估算参数缺失/CI 方向不闭合/剩余期望
-为 0),消费端按无经济通道处理(design §2.2:``resolved ∧ expected_gold
+为 0),消费端按无经济通道处理(28 号稿 §1:``resolved ∧ expected_gold
 > 0`` 才计现金分;fail-closed 恒返 (0.0, False),半值禁出,防消费端误读)。
 
 **剩余价值口径**(沿原 kernel 模块):从 gs 当前位面/轮次起算到局终——
@@ -56,7 +55,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import GameState
 
-# XP↔金兑换率(用户裁定 2026-09-08 暂定 1:1;design §2.2 统一标尺锚——
+# XP↔金兑换率(用户裁定 2026-09-08 暂定 1:1;28 号稿 §1 统一标尺锚——
 # 「1 分 := 1 金等价」的 XP 侧承载。定谳推翻改这一处,按「未证即退役」
 # 处置该折算)
 XP_GOLD_RATE: float = 1.0
@@ -92,16 +91,16 @@ _REWARD_SLOTS: tuple[tuple[int, int], ...] = ((1, 1), (1, 2), (1, 8), (2, 6))
 # 取卡时点定案 = sim-redesign design.md U07 固定轮次)。
 # 基线取卡基数 = 本表长度【推·效果原文序数】(details/env-value-models.md
 # §2.2.2:头彩点名「第一个投资策略」/尾彩点名「第三个投资策略」→ 固定取卡集
-# 基数 3;策略大师/联席的 3-5 节点「额外」取卡不计——策略域价值非经济通道,
-# design §2.2.1)。
+# 基数 3;策略大师/联席的 3-5 节点「额外」取卡不计——策略域价值非经济
+# 通道,不入本折算)。
 # 原 kernel 模块「位面节点表中的投资策略节点序」承载面 = 本表:节点行注册表
 # (cw_node_reader 战斗/补给/遭遇/奖励四模板 + boss 位置判)无 invest 槽型
 # ——取卡是绑定节点进入的 overlay 事件,不在节点行圆槽内,禁伪装节点表
 # 直读;本表即「取卡结构」单一源,演化(实采定位)只改此处。
 _STRATEGY_PICK_PLANES: tuple[int, ...] = (1, 1, 2)
 
-# ===== gold_after_refreshes 拍值注册(design §2.3;用户裁定 2026-09-23
-# 「证明归证明,实现拍平价」)=====
+# ===== gold_after_refreshes 拍值注册(28 号稿 §2 现金分行;用户裁定
+# 2026-09-23「证明归证明,实现拍平价」)=====
 # 键 = 环境注册表规范名,值 = 无条件计的金等价价值。可达性已由 P97 证明确
 # 立,不读局内刷新计数(gs.effects.refresh_total/refresh_paid 不消费)、
 # 不做按阵容预算分支(唯一例外阵容景元仙舟按拍值平摊 = 「拍一个价值」
@@ -162,7 +161,7 @@ ENV_ECONOMY_ESTIMATES: dict[str, EconomyEstimate] = {
 ENV_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # 刷新概率结构翻倍:概率面已在 cw_shop_odds 在册,金等价参数化缺失
     '轮岗': '刷新概率结构翻倍(概率面 cw_shop_odds 在册);金等价参数化缺失',
-    # 商店 2 星概率提升:需先查证 2★ 商店价结构,未查证不入(design §2.2.1)
+    # 商店 2 星概率提升:需先查证 2★ 商店价结构,未查证不入(查证前禁装通道)
     '人才下沉': '商店 2 星概率提升;需先查证 2★ 商店价结构,未查证不入',
 }
 
@@ -232,7 +231,8 @@ def _remaining_reward_nodes(cur_plane: int, cur_round: int) -> float | None:
 
 
 def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
-    """环境经济通道金等价期望(单一入口;签名与原 kernel 模块一致,design §2.9)。
+    """环境经济通道金等价期望(单一入口;签名与原 kernel 模块一致,
+    复用预留见 28 号稿 §5)。
 
     返回 ``(expected_gold, resolved)``;resolved=False = fail-closed
     (未入模 / 估算参数缺失 / CI 方向不闭合 / 剩余期望为 0),消费端按无
@@ -242,7 +242,7 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     §2.2.5):name ∈ ENV_POOL_REWRITE → :func:`_pool_rewrite_value`(层 E
     ΔV 公式,读 STRAT_POOL_ECON_MEANS/OFFER_QUALITY_DIST,任一缺参
     fail-closed,v1 恒然——受限通道 μ_E 非单调,层 E 转正须过准入门后落参);
-    其余 name → 下方 A/B/拍值/C 通道公式。单一入口契约不变(design §2.9
+    其余 name → 下方 A/B/拍值/C 通道公式。单一入口契约不变(28 号稿 §5
     复用预留:投资策略屏迁移批现金流卡直接复用本函数);
     ENV_ECONOMY 与 ENV_POOL_REWRITE 构建期互斥(一个 name 至多落一个估值
     结构,cw_investments._validate_env_pool_rewrite 收全)。
@@ -258,7 +258,7 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
       取卡序(已持有数起、基线取卡基数止),P(k) = 取卡所在位面的可达权
       (_STRATEGY_PICK_PLANES 结构表);
     - gold_after_refreshes(拍值):按 :data:`_GOLD_AFTER_REFRESHES_FIXED`
-      无条件计(design §2.3;P97 §7 消费契约——不读 gs.effects 刷新计数、
+      无条件计(28 号稿 §2 现金分行;P97 §7 消费契约——不读 gs.effects 刷新计数、
       不消费 refresh_p/refresh_after 估算参数,刷价节省项已并入拍值);
       拍值表缺登记(新 gold_after_refreshes 环境漏拍)= fail-closed,
       防静默按 0 计入;
@@ -317,7 +317,7 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
                 continue
             _gain = eff.gold_per_strategy_coef * (_k - 1)
             _acc((_gain * _w[0], _gain * _w[1], _gain * _w[2]))
-    # 通道 5:刷新阈值返金(拍值注册,无条件计;design §2.3/P97 §7 消费契约
+    # 通道 5:刷新阈值返金(拍值注册,无条件计;28 号稿 §2/P97 §7 消费契约
     # 见 env_economy_value docstring)
     if eff.gold_after_refreshes is not None:
         _fixed = _GOLD_AFTER_REFRESHES_FIXED.get(env.name)
@@ -345,13 +345,13 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
 
 
 def _validate_estimates_governance() -> None:
-    """估算治理构建校验(import 即炸;design §2.3 迁入改造后保留两项):
+    """估算治理构建校验(import 即炸;迁移迭代 3.1 迁入改造后保留两项):
 
     ① C 类哨兵条目必须有变体键映射(漏映射 = 参数查询恒 miss,通道静默
     fail-closed 变哑炮);② 「待建模」在册环境必须真实存在(∈
     INVESTMENT_ENVS)且不与 ENV_ECONOMY 双登记(单一环境只落一个估值口径)。
     (原「ECON_VALUE_NORM 域带上界越界」项随域带归一删除——现金分直接按
-    金等价计,无上界语义可守,design §2.3。)
+    金等价计,无上界语义可守。)
     """
     from sr_od.application.currency_war.kernel.cw_investments import (
         ENV_ECONOMY,
@@ -435,7 +435,7 @@ def _pool_rewrite_value(name: str, gs: GameState) -> tuple[float, bool]:
       [μ_R.lo − base.hi, μ_R.hi − base.lo];多项 picks 端点相加(同号区间
       相加精确);
     - 方向门:CI 任一端点 ≤ 0 → (0.0, False)(与 A/B/C 通道同门;消费端
-      design §2.2 再加 expected_gold > 0——白银时代即使转正也因 ΔV ≤ 0
+      28 号稿 §1 再加 expected_gold > 0——白银时代即使转正也因 ΔV ≤ 0
       落回零现金分,方向自洽)。
 
     gs 参数:层 E v1 用全局先验视界(_STRAT_PICK_HORIZONS),不做剩余口径
