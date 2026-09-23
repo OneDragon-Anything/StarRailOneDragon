@@ -48,8 +48,11 @@ supersession 注;候选读缺的失败安全 = act 空候选零点击终结交�
 刷新 = 点钮一次 + 2s → ``round_success`` 终结交回 / 选卡 = 派发确认链
 (机械链 + ``chosen_encounter`` 即时上报在动作 op 内)→ ``round_success``
 终结交回 / 空候选 = 零点击终结交回重读——三出口均终结访问,
-``round_wait`` 循环面对刷新建议不存在。确认未生效 = 代码 bug,overlay
-残留由外循环按当前画面重识别重派(修法 = 点击链可靠性)。
+``round_wait`` 循环面对刷新建议不存在。决策返回词表外/None = 具名
+round_fail 零盲发;pick idx 越界 = 守卫断言 AssertionError;两守卫均在
+派发前、零点击(口径 = ``screens/encounter.md`` §2)。确认未生效 =
+代码 bug,overlay 残留由外循环按当前画面重识别重派(修法 = 点击链
+可靠性)。
 ``chosen_encounter`` 写端 = 动作侧即时上报(kernel/cw_action_report/
 pick_encounter.py,发射即写;确认未生效窗内为暂态意图值由重派覆盖自愈,
 奖励兑现回调的消费防线 = 兑现后清 chosen 单次消费,见 kernel/
@@ -142,13 +145,14 @@ class CwScreenEncounter(SrOperation):
         确认链(机械链 + chosen_encounter 即时上报在动作 op 内)→
         round_success 终结交回;③空候选 = 零点击终结交回重读
         (attack3 X2:候选读缺禁盲选派发——选卡确认不可逆消耗本节点,
-        与刷新闸数据不一致分支同构)。确认未生效 = 代码 bug,overlay
+        与刷新闸数据不一致分支同构)。决策返回词表外/None = 具名
+        round_fail 零盲发;pick idx 越界 = 守卫断言 AssertionError;
+        两守卫均在派发前、零点击。确认未生效 = 代码 bug,overlay
         残留由外循环按当前画面重识别重派;三出口均终结访问,无跨轮
         循环载体。"""
         obs = self._obs
         options = obs.options if obs is not None else []
         match = self.ctx.cw_match
-        idx, reason = 0, 'default(no-options/match)'
         if not options:
             # 空候选 = 零点击终结交回(重读由外循环重进承载;禁盲选——
             # 选卡确认不可逆消耗本节点)。
@@ -184,7 +188,6 @@ class CwScreenEncounter(SrOperation):
             # + 2s 固定等待 → round_success 终结交回。零重读、零二次
             # 覆盖写、零重决策——新选项由外循环重进后的入口观察现读
             # 承载。点偏/无布局 → 交回后重进重读,失败安全。
-            reason = act.reason
             target = Point(
                 self._refresh_point[0] + CwScreenEncounter._REFRESH_BTN_DX,
                 self._refresh_point[1])
@@ -199,12 +202,21 @@ class CwScreenEncounter(SrOperation):
             return self.round_success(
                 '分支刷新已点,本访问终结交回(外循环重进重建入口)',
                 wait=1.5)
-        if isinstance(act, CwActionPickEncounterParam):
-            if 0 <= act.idx < len(options):
-                idx = act.idx
-            reason = act.reason
+        # 守卫①(返回契约,op-layer.md §1.1 出口③):决策无有效输出
+        #(词表外/None)= 具名 fail 零盲发;消息含策略器原值 repr = 留证
+        #(不另加独立日志行,round_fail 消息经框架节点状态日志落盘)。
+        if not isinstance(act, CwActionPickEncounterParam):
+            return self.round_fail(
+                f'decide_encounter 决策无有效输出(词表外/None): {act!r}')
+        # 守卫②(值域,op-layer.md §1.3):idx 越界 = 策略器 bug,守卫断言
+        # 响亮暴露,禁钳位——动作 op 执行即发出点击链,越界放行会确认
+        # 错卡(不可逆),必须拦在派发前。
+        if not (0 <= act.idx < len(options)):
+            raise AssertionError(
+                f'[cw-encounter] pick idx 越界(策略器 bug,禁钳位): '
+                f'idx={act.idx} len(options)={len(options)} act={act!r}')
         log.info(f'[cw-encounter] options={[(o.difficulty, o.rewards) for o in options]} '
-                 f'pick=idx{idx} {reason}')
+                 f'pick=idx{act.idx} {act.reason}')
         # 选卡 = 派发即终结:确认链(点卡选中 → 确认)机械半 + chosen_
         # encounter 即时上报(发射即写)在动作 op 内,派发后本访问
         # round_success 终结交回(落地判定归观察侧;重入裁决已退役)。
@@ -215,8 +227,10 @@ class CwScreenEncounter(SrOperation):
             OverlayPickExecEnv,
         )
         env = OverlayPickExecEnv(op=self)
-        # 派发实例 = 生效选中下标的规范实例(决策半钳位后的 idx;策略 pick
-        # 缺席/越界时本实例即唯一载体——工厂按类型解析,机械参数随实例)。
-        action_op_for(CwActionPickEncounterParam(idx=idx), self.ctx, env).execute()
+        # 直发策略产实例(无重建无钳位,idx/reason 单一源 = 策略产值,
+        # 流程侧零值域改写):词表外/None = 具名 fail 零盲发(守卫①),
+        # idx 越界 = 守卫断言(守卫②),两守卫均在派发前、零点击;
+        # 空候选零点击终结交回为另一条合规路径。
+        action_op_for(act, self.ctx, env).execute()
         return self.round_success('遭遇选卡确认链已派发,本访问终结交回',
                                   wait=2.0)

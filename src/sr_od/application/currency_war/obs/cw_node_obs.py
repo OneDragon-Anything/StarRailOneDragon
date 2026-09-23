@@ -38,7 +38,8 @@ def read_encounter_options(ctx: SrContext, screen: MatLike) -> list[EncounterOpt
 
     遭遇**选项 UI 不显词缀**(词缀战后才显;design 08 的 affix 分支对此屏 N/A)→ ``affixes=[]``。
     按 title center-x 左→右排序 → ``idx``。decide_encounter 用 difficulty + comp 成型度选(formed→高难度拿好奖励,
-    未成型→低难度保生存)。读不到 title(OCR 漏/非遭遇屏)→ 返 [](handler 退默认 idx0)。
+    未成型→低难度保生存)。读不到 title(OCR 漏/非遭遇屏)→ 返 [](画面 op act 空候选零点击 round_success
+    终结交回重读,禁盲选派发——选卡确认不可逆消耗本节点;screens/encounter.md §4/§8)。
     """
     ocr_map = ctx.ocr_service.get_ocr_result_map(
         image=screen, rect=None, color_range=None, crop_first=False,

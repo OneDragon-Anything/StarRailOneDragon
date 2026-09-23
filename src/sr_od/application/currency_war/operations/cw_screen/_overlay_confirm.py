@@ -15,6 +15,14 @@ overlay 关没关由调用方节点下一轮重入的入口观察裁决——重
 仍在 = 基于新观察重做确认动作(计 ``node_max_retry_times`` 预算,耗尽 FAIL
 bail = 有界终止单)。success/retry = 轮次流转语义,非动作成败回执。
 
+分型注(现役消费面):``emit_overlay_confirm`` 现役唯一消费方 = 未达上限
+(``cw_screen_deploy_not_full``,重入裁决出口语义承载者——上段「下一轮重入
+的入口观察裁决」仅此形态在用);已迁移屏(即时上报 + 派发即终结:遭遇/
+补给/策划/投资两屏)确认钮 = 动作 op 体内 ``round_by_find_and_click_area``
+查找点击,产物经 ``OverlayPickExecEnv.round_result`` 旁路回传且宿主不消费,
+不经本模块;``safe_click`` = 选项选中点击通用件(选中半在用,不涉确认
+收尾语义)。
+
 注:仅收尾「确认 + 机械交回」。选项**选中**的点击(卡身/候选/勾选)各 handler
 用 ``safe_click`` 带 bug#1 缓解即可;确认统一走 ``emit_overlay_confirm``。
 """
