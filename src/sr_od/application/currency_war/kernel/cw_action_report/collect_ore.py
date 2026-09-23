@@ -111,8 +111,8 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
         gs.write_logic_rand(target, value, produced_by=_PRODUCER,
                             evidence=evidence, sig=_grp_sig)
 
-    # 工作态(元素 frozen,浅拷贝列表即与容器帧断开写入别名;引擎
-    # replace 新构造零就地变异)
+    # 工作态(元素 frozen,浅拷贝列表即与容器帧断开写入别名;写回 =
+    # replace 新构造,零就地变异)
     remaining = list(view.points)
     work_bench = list(orig_bench.slots)
     work_dep = deployed_rows_to_indexed(gs.front_row.value, gs.back_row.value)

@@ -1322,8 +1322,8 @@ def evolution_swap_arm_trigger(membership: frozenset[str] | None,
 
     最小等效通道的准入面:「锁线转型域 ∧ 板满 ∧ bench 有在册线件待上」
     (修向「板满∧bench有locked线core→发射卖线外件上core事务」
-    的准入三元)。两面消费(装配级缺省计算 = 发射面 mandate M1″ 与
-    sim 引擎;原执行侧 SIFT 现读重算覆写轨已随部署机退役,机械执行侧
+    的准入三元)。两面消费(装配级缺省计算 = 发射面 mandate M1″,sim 与
+    实机同链共用;原执行侧 SIFT 现读重算覆写轨已随部署机退役,机械执行侧
     `CwActionSellDeployedOp` 不消费本函数)——同函数同谓词,消费面资格
     自动同值,禁分轨态
     (同款纪律)。
@@ -1378,8 +1378,8 @@ def assemble_swap_plan_inputs(
     装配源契约(对抗收口方案钉死原话,last_state 链退役批
     措辞更新)= 执行侧卖出决策实际消费的快照链,不用 PrepObservation
     另起一路:board/fp 消费调用方传入的 ``state``(执行侧/发射侧/sim
-    引擎三方均传容器单例 game_state_of——装配源换源把执行侧从
-    旧滞后帧链切容器,sim 侧引擎直写容器);deployed/
+    后端三方均传容器单例 game_state_of——装配源换源把执行侧从
+    旧滞后帧链切容器,sim 侧后端经同一容器直写);deployed/
     bench 消费调用方现读(执行侧 = SIFT 读面,发射侧 = PrepObservation
     帧)。派生逻辑(target 视图双轨口径/fenced 臂/义务排除集/保护域)全在
     本函数,两侧禁自写第二份。两侧输入的逐字段对齐由 seam 核对批兑现

@@ -31,22 +31,22 @@ class RunConfig:
     #: None = 调用方未给定(开局 HP 查表即报错索样本)。
     enemy_difficulty: int | None
     #: 敌人词缀名单(简报 OCR 原名;开局 HP 修正查表键,「开局不利」
-    #: 恒 −20 由 kernel/cw_opening_hp 单一承载,词缀引擎禁再实现)。
+    #: 恒 −20 由 kernel/cw_opening_hp 单一承载,词缀采样腿禁再实现)。
     #: **override 语义**(词缀入 seed 后):缺省 () = 常规局由 sim 后端
     #: reset 按 ``reset/affixes`` 流键采样(池 = affix_effects_data 注册表
     #: 键集);非空 = 定向测试定词缀(跳过采样直用)。开局 HP 修正仍按
     #: 本名单查表(override 或采样结果同一消费面)。
     enemy_affixes: tuple[str, ...] = ()
     #: 对局类型(标准博弈/超频博弈;U27 定稿口径:sim 首版辖域 = 标准博弈,
-    #: 非标准值在引擎入口显式拒,不在本配置层猜差异)。
+    #: 非标准值在 sim 后端构造期显式拒,不在本配置层猜差异)。
     game_mode: str = '标准博弈'
     #: 投资环境在场(U07④ 必填输入)。False = 无环境支路,entry 跳过
-    #: 环境屏;True = 开局环境 offer 由 M02 引擎按机制采样。
+    #: 环境屏;True = 开局环境 offer 由 sim 后端按机制采样。
     env_present: bool = False
     #: boss 名单覆盖(U02:三位面 boss 名,下标 = 位面−1;元素 None =
     #: 该位面按内置表)。None = 全部用 sim 内置逐位面 boss 表。
     boss_roster_override: tuple[str | None, str | None, str | None] | None = None
-    #: 位面强化词(U21 预留,首版不建模;非 None 时引擎披露未建模)。
+    #: 位面强化词(U21 预留,首版不建模;非 None 时后端披露未建模)。
     plane_reinforce: str | None = None
     #: 优势布局(U27 预留,首版不建模)。
     advantage_layout: str | None = None

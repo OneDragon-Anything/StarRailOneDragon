@@ -243,7 +243,7 @@ def decide_event(options: list[str], config, gs: GameState,
     对账);归因串 ``econ-engine``/``align×N`` 为 批新增
     (env 轴归因串 env-off-universe/env-econ/gift-core/gift-shared/
     advisor-core/env-gift-off-universe 随轴迁移退役)同口径:全部仅观测归因,
-    不进任何检查器白名单(C1→D4 迁移兼容,裁定见 sim/checks/suspects.py 模块头)。
+    不进任何检查器白名单(检查器面已随自驱动引擎退役拆除,考古归 git)。
     """
     strategy_priority = list(getattr(config, 'strategy_priority', []) or [])
     strategy_forbid = list(getattr(config, 'strategy_forbid', []) or [])
@@ -457,8 +457,8 @@ def decide_event(options: list[str], config, gs: GameState,
     # (环境帧刷新判据已迁策略层 invest_env.decide 的刷新三态,2026-09-23
     # 迁移迭代 3.2 原子切换;flow kind='env' 分支直调策略层。)
     if refresh_slots:
-        # 归因后缀仅观测归因,不进任何检查器白名单(C1→D4 迁移
-        # 兼容口径,沿投资选卡归因串先例;裁定见 sim/checks/suspects.py 模块头)。
+        # 归因后缀仅观测归因,不进任何检查器白名单(沿投资选卡归因串
+        # 先例;检查器面已随自驱动引擎退役拆除,考古归 git)。
         best_reason = f'{best_reason}+refresh-suggest'
     return CwActionPickEventParam(option_idx=best_idx, refresh=bool(refresh_slots),
                      refresh_slots=refresh_slots,

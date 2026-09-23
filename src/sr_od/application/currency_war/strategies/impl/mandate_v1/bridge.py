@@ -15,16 +15,16 @@
 ``decide_shop_screen`` = 序列兼容驱动器(循环调 ``shop.decide_shop_action``
 单动作核,输入 = 容器单例
 ``game_state_of(session)``;生产执行侧入口 =
-``decide_shop_action``,由商店画面 op 单动作循环消费)
-——sim A/B 证明面=商店波(SIM_CONSUMPTION_MAP Q1)自此有行为载体。
+``decide_shop_action``,由商店画面 op 单动作循环消费)。
 该驱动器自 起降格出 ABC(基类缺省实现 = flow 层通用循环;
 本类覆写保留 mandate 特有记账:已买件名单/段序号/续段 token)。
 战略层方向重估自 起内化进策略器(flow 层
 ``_refresh_direction``,触发 = 黑板帧刷新代次标注)——旧「透传声明」
 (规格未给 cw4 战略层新形态,R189-1 ④-2 ②)随基类去策略专属语义
 一并消解,mandate 不再持有/覆写任何战略层直调面;换线权威 =
-意向状态机(方向判据在 decide_prep_screen 三遍内承载,影子面声明见
-sim/ab_core_swap.py 模块 docstring 与 mandate_v1/proof.py)。
+意向状态机(方向判据在 decide_prep_screen 三遍内承载,换线出口
+申报面见 mandate_v1/proof.py;原 ab_core_swap 模块 docstring 影子面
+载体已随自驱动引擎退役)。
 """
 from __future__ import annotations
 
@@ -290,10 +290,9 @@ class MandateV1Strategy(CwFlowStrategy):
         形参 = 兼容宿主(sim/回放/序列锁调用面照旧传),决策已零参化)。
 
         生产执行侧已改调 :meth:`decide_shop_action`(单动作循环,
-        商店画面 op 决策动作 node);本驱动器保留给 sim 引擎/回放/既有序列锁——
+        商店画面 op 决策动作 node);本驱动器保留给回放/既有序列锁——
         驱动 = 逐帧调单动作核 + 容器逻辑态直写推进期望态
-        (上报函数族委托分支串;T-163 起零
-        simulate 前瞻消费),终结动作(CwActionRefreshShopParam)截停
+        (逐动作直调上报函数族),终结动作(CwActionRefreshShopParam)截停
         序列、CwActionCloseShopParam 收尾不入序列(与旧截断器的输出形态对齐)。与旧波
         批的输出等价是条件命题(波批逻辑态直写无残差时逐位一致;逻辑态残差史见
         §消灭的 bug 类)——帧级序列锁不预期保持绿,按锁纪律重推
@@ -337,9 +336,8 @@ class MandateV1Strategy(CwFlowStrategy):
         # 内登记,与生产执行侧同一载体)。状态宿主 = self.state(终态契约
         # §2.5 impl 桶;与旧 state_of(session) 同一对象,§2.6 过渡桥)。
         self.state.cw4_visit_bought_names = []
-        # T-82 段序号置位(sim/replay 商店 visit 入口;生产对应位 =
-        # 商店画面 op 观察 node,sim 引擎发射帧仲裁段的商店
-        # 决策同样经本驱动器,一并推进):visit = 腾席拒绝结论的输入不
+        # T-82 段序号置位(驱动器商店 visit 入口;生产对应位 =
+        # 商店画面 op 观察 node,一并推进):visit = 腾席拒绝结论的输入不
         # 变性段,入口 +1 使上一 visit/上一域残留 token/闩按序号不等失效。
         self.state.cw4_segment_serial += 1
         out: list = []
@@ -350,8 +348,8 @@ class MandateV1Strategy(CwFlowStrategy):
             if isinstance(a, (cw_state.CwActionBuyCardParam,)):
                 self.state.cw4_visit_bought_names.append(a.card.name or '')
             out.append(a)
-            # T-82 续段 token 写入(sim/replay 驱动器位):驱动器采纳并
-            # append = 动作确认执行(终结 op 由引擎执行后重观察,其执行
+            # T-82 续段 token 写入(驱动器位):驱动器采纳并
+            # append = 动作确认执行(终结 op 由消费侧执行后重观察,其执行
             # 不触停摆结论输入);策略器入口读后即清,下一帧据其判定 M2
             # 停摆续段缓存命中。
             self.state.cw4_frame_action_record = (
@@ -359,8 +357,8 @@ class MandateV1Strategy(CwFlowStrategy):
             if isinstance(a, cw_state.CwActionRefreshShopParam):
                 return out      # 终结 op:序列到止(重观察语境;原
                 # CompTransaction 邻接终结已随批2b R3 删除)
-            # 期望态推进 = 逐动作直调上报函数(引擎入口委托分支串,
-            # design.md §2;单动作核逐帧恰一动作 = 击数恒 1)。
+            # 期望态推进 = 逐动作直调上报函数(上报函数族分支,
+            # 单动作核逐帧恰一动作 = 击数恒 1)。
             if isinstance(a, cw_state.CwActionBuyCardParam):
                 report_action_buy_card_param(gs, a, _sig)
             elif isinstance(a, cw_state.CwActionSellBenchParam):

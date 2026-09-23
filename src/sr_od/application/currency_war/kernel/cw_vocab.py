@@ -1,4 +1,4 @@
-"""货币战争 统一动作词表 + sim 推演内核机制面。
+"""货币战争 统一动作词表 + 期望态推进机制面。
 
 **统一词表(unified-action-factory 批2b 归一)**:全仓动作单一坐标系、
 单一真相源 = 本模块。动作类型总和别名 ``CwAction``(union,非基类——
@@ -13,7 +13,7 @@
 直取画面 area;字段注释逐类声明)。
 
 **局面表示单一载体 = 容器 GameState**(kernel/cw_game_state,实机真值
-记录模型):sim 引擎/实机操作链/策略决策同吃容器,域写入 = 观察链漏斗
+记录模型):sim 后端/实机操作链/策略决策同吃容器,域写入 = 观察链漏斗
 或逻辑态直写(上报函数族)。旧推演内核帧及其帧→容器合成口已随
 benchchar-retirement P5 退役——帧↔容器映射契约正本(game_state/fields.md
 §9)随帧失去载体;测试种子 = 测试仓 builder 直写容器域(与观察链同写入口)。
@@ -26,7 +26,7 @@ benchchar-retirement P5 退役——帧↔容器映射契约正本(game_state/fi
   (容器读,纯规则分支),期望态推进 = 容器逻辑态直写
   (上报函数族,合成升星腿内聚 buy_card 上报)。
 
-字段多由 sim 环境剧本/重放档案构造填充;未填(None/默认)时决策安全降级。
+字段多由测试构造/重放档案填充;未填(None/默认)时决策安全降级。
 
 **board 模型**(口径统一):
 - ``board`` = 已上阵羁绊计数(**全集口径**:factions+flows+independent+星徽装备
@@ -38,7 +38,7 @@ benchchar-retirement P5 退役——帧↔容器映射契约正本(game_state/fi
   未知身份单位(注册表外/OCR 误读)在容器派生路径**零贡献**(Unit 不存
   阵营,禁 faction 双源),其面板羁绊经观察覆盖采新入账;
   ``cw_bond_equips._recount_board`` 的 faction 兜底归其 faction 字段
-  载体(装备授予/sim 代理面),非容器路径口径。
+  载体(装备授予/sim 后端板面基座刷新),非容器路径口径。
 - ``deployed`` = bot 自己跟踪的已上阵角色(含 char_id/star/站位),用于 char_quality 评估
   已上阵的优先角色 + 站位分流。两者在已知身份域一致(deployed 按羁绊全集聚合 == board)。
 - CwActionDeployMoveParam 更新 deployed(槽位落位 = 载荷 (to_row, to_slot)
@@ -126,7 +126,7 @@ class ShopCard:
     cost_source: str = 'roster'
 
 
-# ===== 统一词表(动作类全集;sim 引擎推进/执行链逻辑态直写/守卫消费) =====
+# ===== 统一词表(动作类全集;动作 op 直调上报函数推进/守卫消费) =====
 #
 # ── 索引字段定义约定(本族一切 idx/slot/index 字段的单一源;AGENTS.md 硬约束
 #    「索引/槽位字段必须带定义注释」的正文展开)──────────────────────────
@@ -201,10 +201,10 @@ class CwActionSellBenchParam:
     #                            ''=未标,缺省形态)。承重值 = SELL_BENCH_REASONS
     #                            通道键(r9 争金归因证据层:失败/压线局的卖出
     #                            通道占比是归因下钻的直接证据;纯归因);
-    #                            line_switch_collapse 兼孤儿证明标记,检查器
-    #                            孤儿豁免分支据此判定(豁免键集 =
-    #                            SELL_BENCH_ORPHAN_REASONS,与发射登记门
-    #                            分离的独立闭集)。
+    #                            line_switch_collapse 兼孤儿证明标记
+    #                            (豁免键集 = SELL_BENCH_ORPHAN_REASONS,
+    #                            与发射登记门分离的独立闭集;原检查器
+    #                            豁免消费面已随自驱动引擎退役)。
     convert_reason: str = ''   # 转化类豁免分键(结构化证明键):
     #                            值域收窄为本批两类放行键 ⊂
     #                            SELL_BENCH_CONVERT_REASONS 闭集——
@@ -275,10 +275,9 @@ SELL_BENCH_REASONS: frozenset[str] = frozenset({
 # 但语义不同源——发射登记门的新增值不得静默放大豁免面(豁免面若随
 # 登记门生长即成振荡防空洞;同轮买卖振荡零容忍 = 治理
 # 立场)。当前值 = line_switch_collapse(线账闭合孤儿清算证明标记,
-# 授予须伴随登记簿线账闭合事件)。三消费位 = sim/checks
-# /ledger 的 check_no_same_round_buy_sell 与 check_oscillation_xp_cap、
-# sim/checks/suspects 的 d1_same_round_pair_review(检查器/复盘面同键
-# 集,禁借道发射登记门)。值漂移由 test_cw_sell_reason_matrix 暴露。
+# 授予须伴随登记簿线账闭合事件)。原三消费位(sim/checks/ledger 与
+# sim/checks/suspects 检查器/复盘面同键集)已随自驱动引擎退役拆除,
+# 考古归 git——闭集保留为孤儿证明标记值域登记,禁借道发射登记门。
 SELL_BENCH_ORPHAN_REASONS: frozenset[str] = frozenset({
     'line_switch_collapse',
 })
@@ -376,7 +375,7 @@ class CwActionRefreshShopParam:
     # - 'r1'                 = 息线门 R1(域外常规承诺账);
     # - 'must_spend_r1_yielded' = 必花域内 R1 切分线(核算账降排序
     #   yielded 支);
-    # - '' = 旧调用/未标(引擎 obs 归 'other' 桶)。
+    # - '' = 未标(缺省;原引擎 obs 'other' 桶归类已随引擎退役)。
     reason: str = ''
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
@@ -391,8 +390,8 @@ class CwActionCloseShopParam:
     至少含一个恒可用终结(决策 6)——本类即商店画面的该终结。执行侧语义
     = 本画面 op 结束、交回外循环(关店点击由动作 op 执行体
     CwActionCloseShopOp 真机械执行:找「按钮-收起」miss = 幂等已关,
-    命中 = 点击 + 固定等待 + leave_screen 清场上报);``simulate`` 对其
-    no-op(期望态随终结作废,由下一次入口观察重建)。
+    命中 = 点击 + 固定等待 + leave_screen 清场上报);期望态随终结作废,
+    由下一次入口观察重建(原单步应用器 ``simulate`` 已随其退役删除)。
     """
     reason: str = ''   # 账本 reason(''=默认)
     route_tag: str = field(default='', kw_only=True,
@@ -411,8 +410,8 @@ class CwActionPickEventParam:
 
     终态契约 §2.2 策略词表退役:策略 12 入口产出 = per-screen Pick 子类
     (选卡)+ 三刷新动作(刷新建议),本类**不再由策略器发射**;现役
-    居民 = kernel ``decide_event`` 纯函数返回载体 + sim 既有脚本动作
-    (引擎零策略构造,§2.7 申报)。
+    居民 = kernel ``decide_event`` 纯函数返回载体(live 与 sim 同链消费;
+    原引擎脚本动作构造面已随自驱动引擎退役)。
     """
     option_idx: int
     # [索引定义] 坐标系: 事件选项列表下标(画面选项序,左→右 0 起;

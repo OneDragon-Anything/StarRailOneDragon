@@ -74,10 +74,8 @@ def is_engine_piece(name: str) -> bool:
 
     判据 = 角色注册表 factions∪flows 与引擎三阵营(ENGINE_FACTIONS,
     桥池 engine_bonds 派生)交集非空——与 ``cw_line_defs.classify_buy``
-    的 ``'engine'`` 分支同判据;此前该谓词只在 sim/checks/selfcalc 有
-    一份实现(生产决策位无可直调单一源),
-    本函数补齐生产单一源,selfcalc 同名实现改为委托本函数(禁第二
-    实现)。种子身份 = 本谓词 ∧ 购买时未持有(第二合取需购买史语境,
+    的 ``'engine'`` 分支同判据;本函数 = 生产决策位可直调的单一源
+    (禁第二实现)。种子身份 = 本谓词 ∧ 购买时未持有(第二合取需购买史语境,
     由 sell_gate 种子登记簿在获取时点承载)。
 
     import 边申报:cw_line_defs 头部迁移挂账的「勿新增消费」明示对象

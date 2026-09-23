@@ -27,17 +27,20 @@ flow/README.md §1 决策控制分层铁律):
    铁律:决策闸门必须在策略侧,见 flow/README.md §1)——现役生产
    消费点 = 策略决策入口自限(flow.decide_shop_action 唯一提案产出后经
    :func:`launch_arbitration_gate` 谓词检,拒 = 决策改发 CloseShop 收
-   访问);``launch_arbitrage_*`` 分键族保留(sim 侧与存量 cw4_counters
-   判读面),生产写点现役仅 KEY_GATE_BLOCKS(策略侧受阻分键)。
+   访问);``launch_arbitrage_*`` 分键族保留(存量 cw4_counters 判读面
+   读用;sim 与实机同链,无独立写点),生产写点现役仅 KEY_GATE_BLOCKS
+   (策略侧受阻分键)。
    发射核本身零改动(生产发射调用面内部屏态复验保留
    作纵深防线)。
 3. 对账锚各守拓扑:N-1 三选一裁决(**如实降格**)= 生产侧遥测载体只有
    局终快照 ``cw4_counters``,无逐轮粒度 ⇒ 生产侧「闸命中帧仲裁零消费」
-   互斥读数降格为**总量弱对账**;sim 侧逐帧强断言(哨兵
-   ``sim/checks/launch.py``,「决策段零执行 ∧ 仲裁段外零消费」)。
+   互斥读数降格为**总量弱对账**;原 sim 侧逐帧强断言(哨兵
+   ``sim/checks/launch.py``,「决策段零执行 ∧ 仲裁段外零消费」)已随
+   自驱动引擎退役拆除,考古归 git。
 
 **执行皮肤不在本模块**:消费动作的执行/逻辑态直写是两面各自的循环体
-(生产 = 商店画面 op 单动作循环既有守卫链;sim = 引擎动作转录),与
+(生产 = 商店画面 op 单动作循环既有守卫链;sim 与实机同一段动作 op
+执行链),与
 「发射核 launch_prepared_battle 留 operations 不动」同判据(两面差异全部
 属执行/观测皮肤,判定语义恰此处一份——cw_launch_admission 同款先例)。
 """

@@ -55,9 +55,9 @@ _SLOTS: dict[str, _Slot] = {
     'V_GAP': _Slot('#2b V_gap【拟·未标定】;值消费端已随 V̄ 链退役清零'
                    '(R1 门改形式二可负担性,判据本体='
                    'criteria/refresh.r1_commitment_account,无标定槽位依赖);'
-                   'None 性消费端仅剩 sim 判前锁注入态守卫(ab_core_swap '
-                   'v6 行 17)——注入只翻转守卫读数、不开任何行为面;'
-                   '槽位保留登记(史料披露用)'),
+                   'None 性消费端(sim 判前锁注入态守卫,ab_core_swap '
+                   'v6 行 17)已随自驱动引擎退役——现无任何行为面消费,'
+                   '注入零效果;槽位保留登记(史料披露用)'),
     'W_POP': _Slot('#3 w 人口位战力当量(臂一只用 w>0,不需精确值)'),
     'RHO_IMPUTE': _Slot('#4 ρ 摊派口径(A7);均匀摊保守首版'),
     'NBAR_ESTIMATOR': _Slot('#5 n̄ 估计器(实估,误差二阶 A3)'),

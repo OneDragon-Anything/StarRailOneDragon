@@ -91,8 +91,8 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state imp
 
 # 卖出排除仲裁单一源(T-126):装配 A 与发射登记 API 本体在
 # sell_gate;本模块保留兼容再出口(sell_hold_exclusions 凑息身份段——
-# 测试/外部引用零断链;T3 垫保簿 stall_buys_* 三函数 shim——sim 引擎
-# 经本模块 import,签名零断链)。消费位已批 3 全量迁移 sell_exclusions
+# 测试/外部引用零断链;T3 垫保簿 stall_buys_* 三函数 shim,签名零断链)。
+# 消费位已批 3 全量迁移 sell_exclusions
 # (窗口段 API)。冗余别名 = 刻意再出口(PEP 484 re-export 形态)。
 from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import (
     consume_on_sell,

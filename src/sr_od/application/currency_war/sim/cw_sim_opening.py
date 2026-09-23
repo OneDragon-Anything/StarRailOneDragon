@@ -4,7 +4,7 @@
 2026-09-15-sim-redesign/design.md`` §2.2 M01 / U15 / U28 已裁决口径:
 
 - 开局 HP = ``kernel/cw_opening_hp.opening_hp_prior`` 查表(唯一单一
-  承载方;「开局不利」恒 −20 内嵌于该表,词缀引擎禁再实现 HP 类修正,
+  承载方;「开局不利」恒 −20 内嵌于该表,词缀采样腿禁再实现 HP 类修正,
   R5 折入定案);无实证档(非 A8/108)**报错索样本,不外推**(U15);
 - 开局经济 = 金 3 / 等级 3 / deploy_cap 3(u07u28 报告 §③,两独立源
   一致;旧「金 5」为开局帧读数偏差已废,U28);
@@ -14,7 +14,7 @@
   于全池均匀;开局补给通道真实名单分布候实机数据,U28 候实机数据行);
 - 开局备战席写入 = M06 派生池不变量(剩余 = 固定 − held)的**首个写端**,
   先于任何商店发牌(held 由容器 bench/deployed 星级派生,M06);
-- 不属本模块:环境 offer(RunConfig.env_present 为真时由 M02 引擎采样)。
+- 不属本模块:环境 offer(RunConfig.env_present 为真时由 sim 后端采样)。
 """
 from __future__ import annotations
 

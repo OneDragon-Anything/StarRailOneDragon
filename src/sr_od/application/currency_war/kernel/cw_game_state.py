@@ -8,10 +8,11 @@ GameState(正名前暂名 BoardState,后果节+W8 候裁7)= 当前仍为真的�
 不经本结构。
 
 **局面表示单一载体**(benchchar-retirement P5 起):本容器 = 实机真值
-记录模型(只记录实机会产生的已知事实),sim 引擎/实机操作链/策略决策
+记录模型(只记录实机会产生的已知事实),sim 后端/实机操作链/策略决策
 同吃容器。旧推演内核帧与帧→容器合成口已随
-benchchar-retirement P5 退役——生产写入 = **引擎直写**(sim 引擎内部
-工作态即本容器,经渠道签名写入口落字,渠道族封闭集见下文遥测段);
+benchchar-retirement P5 退役——生产写入 = **写入口直写**(sim 世界腿
+obs 写点与动作腿 logic_action 上报函数族,统一经渠道签名写入口落字,
+渠道族封闭集见下文遥测段);
 测试种子 = 测试仓 builder 直写容器域(与观察链同写入口)。逐字段映射
 对账正本(game_state/fields.md §9)随帧通道退役失去载体,P8 正本清理
 承接。字段准入按设计 §8.8 治理三件:派生量(席空数/席满判定/board
@@ -817,10 +818,10 @@ def consume_defect_sink() -> list[dict]:
 #: 观察覆盖 logic 失配告警的抑制登记面(裁定 A/裁定 4 申报表
 #: 的代码化):evidence 命中前缀的失配缺陷**不落 buffer 不告警**。
 #: 语义:sim 链自身的对账差异归 sim 质量面,不进生产缺陷台账——
-#: 'sim:engine' = sim 引擎外部事件写(obs 族)覆盖动作逻辑态直写是 sim
-#: 建模的结构形态,事件注入(收入/结算/回声)对逻辑态的推进不是「推算
-#: bug」,留证无判读价值;xp 即时结转(逻辑态直写)vs sim 轮末延迟结转
-#: (引擎账本)= 申报差异(裁定 4 明点)。'sim:synthesized' = 合成口/
+#: 'sim:engine' = sim 后端世界腿外部事件写(obs 族)覆盖动作逻辑态直写
+#: 是 sim 建模的结构形态,事件注入(收入/结算/回声)对逻辑态的推进不是
+#: 「推算 bug」,留证无判读价值;xp 即时结转(逻辑态直写)vs sim 轮末
+#: 延迟结转(后端世界腿)= 申报差异(裁定 4 明点)。'sim:synthesized' = 合成口/
 #: 喂入口真值合成的同性质差异(生产台账曾混入约 18.6 万行,迭代
 #: 2026-09-16-unified-obs-reconcile 并列入表分流)。生产实机链零 sim
 #: 前缀写点,抑制面对实机失配零触达。
@@ -1070,13 +1071,13 @@ def cost_source_group(cost_source: str) -> str:
 # (双 ShopCard 映射):唯一容器类型 =
 # :class:`ShopCard`(本模块);帧版(cw_vocab 侧同名类,带点击坐标 x)是
 # 观测/执行域卡(OCR 产物带点击坐标,黑板帧链自持 x)
-# 兼 sim 机制卡,**随推演内核收编长期并存**——两类型并存为长期形态,
-# **转换只许在本节两个映射函数发生**(喂入面/合成口/消费视图/合成引擎
+# ——两类型并存为长期形态,
+# **转换只许在本节两个映射函数发生**(喂入面/消费视图
 # 统一经此,禁散落内联转换——双源漂移温床)。本节 = kernel 内帧版类型的
 # 唯一合法引用面(静态锁辖域,测试锁 test_cw_w5_* 守)。
 
 def shop_card_to_container(card) -> ShopCard:
-    """旧容器牌 → 容器牌(喂入口/sim 合成口的值构造单一源)。
+    """旧容器牌 → 容器牌(喂入口的值构造单一源)。
 
     字段映射(name/faction/cost/star/cost_source)原值透传不折叠;
     x 是旧版独有的执行域字段,容器不入存储(坐标单一真相源 = screen_info);
@@ -1093,7 +1094,7 @@ def shop_card_to_container(card) -> ShopCard:
 
 
 def shop_cards_to_legacy(cards: list[ShopCard]) -> list:
-    """容器牌列表 → 旧容器牌列表(消费视图/合成引擎边界的值构造单一源)。
+    """容器牌列表 → 旧容器牌列表(消费视图边界的值构造单一源)。
 
     - 五记录字段(name/faction/cost/star/cost_source)自容器透传;
     - ``slot``(物理槽号)自容器透传(执行/点击域事实,click_pts 按
@@ -1487,9 +1488,9 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #:   (``max_units_of`` 经读口跟随,消费位零改动)。域级跳写对 =
 #:   (level, xp) 同进退:任一未读则推进对整体跳写,禁缺省 1 参与
 #:   推进计算。
-#: - 扩面依据:单一转移函数 = sim 引擎动作应用的唯一形态(裁定 A:
-#:   logic_action 族,与 live 同函数同渠道),域覆盖须对齐 simulate
-#:   对应分支的字段转移全集。
+#: - 扩面依据:动作逻辑态直写单一源 = 上报函数族(裁定 A:
+#:   logic_action 族,与 live 同函数同渠道),域覆盖须对齐其字段转移
+#:   全集。
 SHOP_PROJECTION_DOMAINS: tuple[str, ...] = (
     'gold', 'bench', 'shop', 'xp', 'level',
     'front_row', 'back_row', 'board', 'equips')
@@ -1500,10 +1501,11 @@ class LogicOutcome:
     """动作状态应用的显式结果出参(转移函数单源化;详设 §3
     「转移结果通道」)。
 
-    拒绝判定由腿内既有判定填充(simulate 对应分支的拒绝语义逐腿平移:
-    stale_proposal / 满栏非合成拒买 / 同名拒上),
-    拒绝 = applied=False + reason + **零容器写**;引擎侧拒绝账本转录读出参
-    驱动,禁在引擎自判拒绝(§2.1 单一源红线)。live 调用点忽略本出参
+    拒绝判定由腿内既有判定填充(stale_proposal / 满栏非合成拒买 /
+    同名拒上),
+    拒绝 = applied=False + reason + **零容器写**;拒绝结论唯一出口 =
+    本出参(transition 事件广播按 applied 位触发,kernel/cw_event_hooks),
+    调用侧禁自判拒绝(§2.1 单一源红线)。live 调用点忽略本出参
     (返回值不接 = 行为零变化)。
 
     - bought_count = CwActionBuyCardParam 实际应用张数的权威回声(两路径恒填充:
@@ -1563,7 +1565,7 @@ def mutate_bench_deployed_local(bench, deployed, action,
 
 
 def bench_view_of_working(slots: list, capacity_view=None) -> BenchView:
-    """工作槽表(list[BenchSlot | None],merge/落位引擎工作副本,可能含
+    """工作槽表(list[BenchSlot | None],merge/落位计算的工作副本,可能含
     None 洞)→ BenchView 记录形状(§3.2.5):None → ``kind='empty'`` 归一 +
     右侧 pad 到容量。容器写侧构造单一源(P1;占位件 kind 原样透传——
     工作表元素即容器 BenchSlot,零中间形)。``capacity_view`` = BenchView

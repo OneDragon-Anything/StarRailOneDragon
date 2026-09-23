@@ -20,10 +20,10 @@
   从 boss 机制注册表全池逐位面采样,``RunConfig.boss_roster_override``
   局级输入优先;普通节点敌人逐只构成不建模(第一期随机输出面无
   消费)。词缀列表 = 局级输入(RunConfig);「开局不利」恒 −20 HP 由
-  M01 ``cw_opening_hp`` 单一承载(词缀引擎禁再实现任何 HP 类修正,
+  M01 ``cw_opening_hp`` 单一承载(词缀采样腿禁再实现任何 HP 类修正,
   R5 折入定案);词缀对战斗数值面的影响随第一期随机输出面无消费。
 
-随机流键(引擎侧装配):boss 逐位面采样 ``M20/boss/{plane}``。
+随机流键(后端侧装配):boss 逐位面采样 ``M20/boss/{plane}``。
 """
 from __future__ import annotations
 

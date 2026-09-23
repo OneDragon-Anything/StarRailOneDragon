@@ -18,7 +18,7 @@
   (保底位 = 容器 ``hp_floor_triggered``,全局机制);再次归零 → 局终;
   HP 跨位面继承不重置。
 
-随机流键(引擎侧装配):``M13/{plane}/{round}``(胜负掷点 + 扣血/进度
+随机流键(后端侧装配):``M13/{plane}/{round}``(胜负掷点 + 扣血/进度
 采样同流依序消耗)。
 """
 from __future__ import annotations

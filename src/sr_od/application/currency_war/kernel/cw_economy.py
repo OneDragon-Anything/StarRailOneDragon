@@ -406,7 +406,7 @@ def net_income(round_num: int, streak_pre: int,
 
     - ``round_num``:日程轮号(1 基;开局两轮基础金折半段);
     - ``streak_pre``:**决策前相**连胜数(进轮连胜,奖励轮照发不动计数,
-      引擎口径);
+      kernel 记账口径);
     - ``lost_node_type``:上一轮若为败掉的战斗类节点,其败轮底金在本轮
       轮首补发(battle/encounter/boss → LOSS_GOLD_BY_NODE);非败轮接续
       传 None。**规划近似申报(两处)**:①本参数签名无 plane/round,败补
@@ -423,8 +423,8 @@ def net_income(round_num: int, streak_pre: int,
 
 
 # ===== T1a 轮首收入三支·kernel 单一源函数族(统一观察架构 §7-T1/T2 搬迁任务的 =====
-# ===== kernel 半部;正本语义=GameState 设计 §4.2 轮首收入行。引擎收入段与 =====
-# ===== 实机 live 写端改调本函数族)=====
+# ===== kernel 半部;正本语义=GameState 设计 §4.2 轮首收入行。实机写端与 =====
+# ===== sim 后端包装(cw_sim_backend.apply_round_start_income)均调本函数族)=====
 
 
 def reward_base_gold(plane: int, round_num: int) -> int:
@@ -469,7 +469,7 @@ def loss_compensation_base(plane: int, round_num: int, node_type: str) -> int:
 class LostNodeRef:
     """被败战斗节点的引用(败补分支的取键输入)。
 
-    ``node_type`` = 引擎 token(battle/encounter/boss,与
+    ``node_type`` = 节点类型 token(battle/encounter/boss,与
     :data:`LOSS_GOLD_BY_NODE` 键同域);坐标系=节点序列台账
     (plane+round_num,跨位面 round 重启)。由调用方在战斗结算段构造:
     仅当上一战斗类节点败(delta<=0)且败态未被消费时传入。
@@ -486,8 +486,8 @@ class RoundStartIncome:
 
     ``branch``:supply/reward/loss_comp/combat 四值——supply=补给轮
     (连胜不动)、reward=奖励轮(连胜照发×倍率)、loss_comp=败补(连胜
-    取 0)、combat=常规战斗胜轮(连胜照发×倍率)。分支派发序与引擎
-    elif 序一致(supply→reward→败补→常规,GameState 设计 §4.2 行选择
+    取 0)、combat=常规战斗胜轮(连胜照发×倍率)。分支派发序
+    (supply→reward→败补→常规,GameState 设计 §4.2 行选择
     优先级;奖励/补给轮不发 LOSS_GOLD)。
     """
 
@@ -498,7 +498,7 @@ class RoundStartIncome:
     total: int           # 三分量之和
 
     def as_dict(self) -> dict[str, int | str]:
-        """账本行形态(sim 收入段 dict 行与实机遥测行共用的投影)。"""
+        """账本行形态(sim 后端收入腿 dict 行与实机遥测行共用的投影)。"""
         return {'branch': self.branch, 'base': self.base,
                 'interest': self.interest, 'streak': self.streak,
                 'total': self.total}
@@ -510,8 +510,8 @@ def _streak_component(streak: int, win_reward_mult: float) -> int:
     倍率单一源 = 注册表 STRATEGY_ECONOMY.win_reward_mult(聚合取最大
     不叠乘,cw_investments.aggregate_economy);在册唯一非 1 值=伟大征服
     3.0。**含奖励轮**(GameState 设计 §4.1:win_reward_mult 施于连胜
-    分量含奖励轮,消持卡局奖励轮系统性少计——修复 sim 零消费挂账的
-    kernel 半部,引擎侧消费=T1b)。
+    分量含奖励轮,消持卡局奖励轮系统性少计;sim 侧消费 =
+    cw_sim_backend.apply_round_start_income 包装,生产双端同源)。
     """
     return int(round(streak_gold(streak) * win_reward_mult))
 
@@ -524,7 +524,7 @@ def round_start_income(
         interest_cap: int | None = None) -> RoundStartIncome:
     """轮首收入三支单一源(统一观察架构 §7-T1:同输入必同输出,禁第二份)。
 
-    - 分支派发(与引擎 elif 序同构,supply→reward→败补→常规):
+    - 分支派发(supply→reward→败补→常规):
       supply → base+息,连胜不动(补给轮连胜不动);
       reward → base+连胜×倍率+息(连胜照发含 counter0=1);当前为战斗
       类节点且 ``lost_node`` 在场 → 败补(base=补发基项+息,连胜取 0,

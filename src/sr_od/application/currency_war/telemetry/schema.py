@@ -85,7 +85,8 @@ def rho_shop_obs(shop: list, pair: str = '') -> dict[str, Any]:
 # 判读器与本文件只消费键名与语义,禁自造第二语义。
 
 F7_CONTINGENCY_ARMED: str = 'f7_contingency_armed'
-"""F7 应急中间姿态独立分键(判前锁 v6 行 7,行判据=ab_core_swap._v6_row_specs)。
+"""F7 应急中间姿态独立分键(判前锁 v6 行 7;原行判据载体
+ab_core_swap._v6_row_specs 已随自驱动引擎退役,考古归 git)。
 
 - 语义:应急期 F7 恢复需求的行为耦合开关——置位=「验收级门红事件
   [速率门∨有效性门] ∧ 归因批未结案」的机械判据,归因结案自动复位;
@@ -462,11 +463,11 @@ class DecisionTrace:
     # 血预算停手·搜索型刷新停付拒付计数(strategy_state_of(session).v3_blood_budget_refresh_rejects
     # 透传;写入端=arbiter refresh 收尾,局首清零)。
     sess_blood_budget_refresh_rejects: int | None = None
-    # 血预算停手·终止分支决策位。⚠️ 与 sim 账本行键 terminal_release 同名
-    # 不同体(两键口径):本 schema 字段 = recorder 侧实机透传位,写入面已
-    # 接回 terminal_release_bit 单一源(recorder.py;判据 =
-    # sim/checks/segments.terminal_release_bit;设计 W659 v2 §5.1 R4;
-    # )。读实机豁免位读本字段。
+    # 血预算停手·终止分支决策位。⚠️ 与旧 sim 账本行键 terminal_release
+    # 同名不同体(该账本已随自驱动引擎退役):本 schema 字段 = recorder
+    # 侧实机透传位,写入面已接回 terminal_release_bit 单一源(recorder.py;
+    # 原判据载体 sim/checks/segments.terminal_release_bit 随引擎退役,
+    # 考古归 git;设计 W659 v2 §5.1 R4)。读实机豁免位读本字段。
     sess_terminal_release: bool | None = None
     # P1-a 末窗支出降格触发面:取值=本 record 调用时点按 state +
     # DEFAULT_REGISTRY + match session(闩位含位面内触发闩)

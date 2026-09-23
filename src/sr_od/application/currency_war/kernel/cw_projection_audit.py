@@ -250,7 +250,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_WRITE_END,
         basis='CwActionBuyCardParam payload 投影(proj_buy_payload)+ 关店执行位离屏'
               '清场(CwActionCloseShopOp 自上报 report_action_close_shop_param'
-              ' → leave_screen;sim 委托分支同源)'
+              ' → leave_screen;sim 与实机同一动作 op)'
               ';刷后牌面 = 随机态采样 + 重观察覆盖'),
     'encounter': ProjectionAuditRow(
         status=AUDIT_WRITE_END,

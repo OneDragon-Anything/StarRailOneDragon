@@ -259,7 +259,7 @@ def readiness_admission_report(state, comp) -> dict:
 
     实现单一源 = ``kernel.cw_launch_admission.launch_admission_report``
     (发射面观测批迁出:sim 桶不可依 app 桶——包依赖矩阵 LEGAL_EDGES,
-    纯判据入 kernel 后 sim 引擎/cw_loop/测试三方共用;线成员谓词由本
+    纯判据入 kernel 后 sim 后端/cw_loop/测试三方共用;线成员谓词由本
     调用面注入同一单一源,禁各面自写第二实现)。判据语义、三元口径与
     **帧对齐说明**(预估源 = 容器单例 game_state_of,T-146 装配源迁移
     ——旧 last_state 滞后帧+过渡桥装箱退役;单例与滞后帧同为备战观察

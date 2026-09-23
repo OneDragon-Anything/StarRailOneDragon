@@ -6,14 +6,14 @@ CwActionLevelUpShopParam)收缩至备战期决策(策略归属 = strategy-docs 2
 腾位/筹资/凑息动机的「先卖后做」由跨段状态 substrate 承载(函数尾
 声明),本模块零卖射零升级射。
 
-SIM_CONSUMPTION_MAP Q1:sim A/B 证明面 = 商店经济决策(买/刷/事务)
-——本模块是 mandate_v1 商店线的决策本体,唯一输入 =
+本模块是 mandate_v1 商店线的决策本体,唯一输入 =
 容器单例 `game_state_of(session)`
-(GameState,写者=商店入口观察段/单动作逻辑态直写)。
+(GameState,写者=商店入口观察段/单动作逻辑态直写;live 与 sim
+同一决策本体同链消费,零第二输入面)。
 
 商店单动作形态(前身份 = 波批 decide_shop_wave,迁移批改型):
 
-1. 方向(证明面投影):K = ``state_of(session).target_comp``(方向重估产物,
+1. 方向:K = ``state_of(session).target_comp``(方向重估产物,
    写者 = flow 层方向刷新)、stop_flag = proof.stop_buy、D-A45 干旱计数器;
    **K 空窗回退(2026-09-03 第三病灶修复;FIX_REVIEW_20260903 R3 扩域
    至三带)**:target_comp 为 None 时按带回退(单一源 cw_intention,禁
@@ -38,7 +38,8 @@ R197 防线重定位(§现行代码映射;防线存在前提 = 波批多动作�
 同槽去重(症3)/名-槽复检(症4①)/CwActionLevelUpParam 归一化(症4②)不再在发射侧
 截断,proposal-vs-expected 断言在执行侧承接。
 
-rng 中立:本模块零 rng 消费(SIM_CONSUMPTION_MAP ③-5 会话流派生契约);
+rng 中立:本模块零 rng 消费(会话流派生契约;sim 流键纪律禁策略器读
+sim 流,sim-design.md §7);
 registry 属性经 bridge 自带(Q3 坑位①)。
 
 计数键(state_of(session).cw4_counters;键登记单一源=本清单与写点,原
@@ -880,13 +881,13 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         执行层买入应用即自动合成 2★,登记的 1★ 副本离场(件离场闭合)
         ——发射位先销旧账,且不为本笔开账(1★ 即刻离场,press 账的
         资产对象不存在)。接线位申报:方案 v3 §3.1 理想位 = 执行层合成
-        事务应用位(商店动作 op 买入应用位/sim 引擎);单动作
+        事务应用位(商店动作 op 买入应用位,sim 与实机同链);单动作
         契约下发射位检出与执行层应用等价(动作被无条件采纳执行),
         事务 fill 残余形态载体已随批2b R3 删除(轮界销 ≤1 轮兜底语义随原子序列重表达消亡;V2-05 有界性
         申报)。
 
         sim 边界(申报,三审 F2 回填):上述等价性前提 =
-        生产单动作循环;sim/replay 序列驱动形态下引擎两个作废通道
+        生产单动作循环;回放/序列驱动形态下驱动器侧两个作废通道
         (仲裁预算闸拒/事务 fill 后陈旧 CwActionBuyCardParam 作废重决策)可作废
         已发射动作,而本发射位 consume_on_merge 已销账(同轮卖回保护
         缺口)、register_launch 已开账(≤1 轮滞留,轮界销兜底)——

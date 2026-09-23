@@ -755,13 +755,13 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     标记到字段)。bench 清空保留现容量(节省工位类容量改写归容量逻辑态
     直写桥辖域,两桥互不越界)。
 
-    **sim 语义申报(适用性/对齐)**:本桥不接 sim——sim 的 GameState 全量
-    由 sim 引擎真值直写(evidence 恒
-    sim:synthesized),若在 sim 侧调本桥,logic 值立即被下一段真值写覆盖且
-    与引擎事实不一致(sim 引擎不执行出售/重写)。sim 若建模这两卡的板面
+    **sim 语义申报(适用性/对齐)**:本桥不接 sim——sim 世界事实由后端
+    世界腿真值直写(evidence `sim:` 族,`cw_sim_base.SIM_EVIDENCE_PREFIX`),
+    现役 sim 对这两卡零板面建模(选卡仅记名+经济腿),本桥在 sim 侧
+    零触达,属 sim 模型既有边界(未建模申报面 = sim-design §8.2)。
+    sim 若建模这两卡的板面
     后果,改动面 = sim 真值域(卖全场+退款+发牌),经同写入口自动
-    以 observation 落记录——效果在真值层生效,记录层不插 logic 补丁。现役
-    sim 对这两卡零板面建模(选卡仅记名+经济腿),属 sim 模型既有边界。
+    以 observation 落记录——效果在真值层生效,记录层不插 logic 补丁。
 
     **未知语义值 = 保守 no-op + 留证**(禁猜):新板面重写卡入册时须同步
     扩本桥归属分支,防注册表声明了语义而写端静默丢。

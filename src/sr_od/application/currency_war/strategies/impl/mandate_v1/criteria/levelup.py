@@ -29,10 +29,10 @@ def lv9_stop(level: int, level_max: int) -> bool:
     不改名(改键牵连判读脚本与历史档案可比性,纯改名无收益)。
 
     单一源 = 注册表 ``level_max``(kernel/cw_registry.py,实机真值 10,
-    与 cw_economy.xp_apply_clicks「封顶 10」live 机制语义同源);sim 侧
-    经 ``sim_decision_registry`` 注入视图(=9)保持建模冻结,策略零
-    感知、sim 行为零漂移。⚠ 与同文件 ``cap_resolved``(利息上限)毫无
-    数值或语义关联,禁接错源。
+    与 cw_economy.xp_apply_clicks「封顶 10」live 机制语义同源);sim 与
+    live 同一规则核共享本单一源(原 ``sim_decision_registry`` 注入视图
+    已随自驱动引擎退役,考古归 git)。⚠ 与同文件 ``cap_resolved``(利息
+    上限)毫无数值或语义关联,禁接错源。
 
     ``level_max`` = 消费位传上下文注册表的 ``.level_max``(禁裸常数),
     **必填**:4 消费位(shop M3 批/shop 必花域 L3/mandate 备战 M3/
@@ -327,11 +327,11 @@ def _guarantee_floor_holds(gs: GameState,
       先例同款)。
 
     下界值 = ``DEFAULT_REGISTRY.boss_floor``(同值异据共享载体,据各
-    表):彼据 = release 泄息通道 P1 出口金生存边际(
-    ``sim/checks/segments.py`` boss_floor 豁免同值消费);此据 = 息
-    通道非退化判等式(见 levelup_budget_gate docstring 推导链)。
-    两据独立在案——任一据修订(如生存边际重标)必须过另一消费位
-    重推,断言只锁同值不锁同据(§同值异据声明/P83)。
+    表):此据 = 息通道非退化判等式(见 levelup_budget_gate docstring
+    推导链);彼据 = release 泄息通道 P1 出口金生存边际(原消费位
+    ``sim/checks/segments.py`` boss_floor 豁免)已随自驱动引擎退役
+    拆除,考古归 git——同值锁保留,彼据侧修订重推义务随其消费位退役
+    灭失(§同值异据声明/P83)。
     模块私有:非判据面公开函数,不入契约/旁路枚举表(契约由
     levelup_budget_gate 键承载)。
     """

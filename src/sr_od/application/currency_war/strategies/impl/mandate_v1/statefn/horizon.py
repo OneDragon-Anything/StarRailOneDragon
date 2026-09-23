@@ -2,7 +2,8 @@
 
 单一源纪律(R3-2 定理 L-R3-2;位面轮次单一源):长度唯一真值源 = 生产
 ``cw_plane_table.schedule_of(session)``(session 表真值,P3 进表自适应、脏表
-夹 [1,9];sim 引擎同源喂 plane_lengths_seen,两路共用同一消费函数)。
+夹 [1,9];sim 经同一条备战观察链喂 plane_lengths_seen,两路共用同一
+消费函数)。
 **本层禁新建任何长度常量**——PLANE_LENGTHS_TRUTH 冻结元组形态已处死
 (它是 TOTAL_NODES=27 病灶的复发形态);未揭晓位面回退直接引
 ``cw_plane_table.PLANE_FALLBACK_PRIORS``(保守上端语义,R46-1)。

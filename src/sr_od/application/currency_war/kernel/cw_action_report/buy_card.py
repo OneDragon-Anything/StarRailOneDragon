@@ -44,8 +44,8 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
 
     满栏且合成不可达 = 游戏拒买(applied=False + reason='bench_full',
     零写)。k 来源:executed 给定 = 回执 k(live);None =
-    理想执行自算(简单腿 1,满栏从应用机器出)。语义源 = simulate
-    BuyCard 分支,直锁 test_cw_transfer_golden / 锁 M1 钉住。
+    理想执行自算(简单腿 1,满栏从应用机器出)。语义直锁
+    test_cw_transfer_golden / 锁 M1 钉住。
 
     P1 容器原生(benchchar-retirement §3.2):bench 工作副本 = BenchView
     槽序(元素即容器 BenchSlot)、deployed 工作副本 = 行域下标派生表

@@ -11,8 +11,8 @@
 - pick 族(decide_invest/supply/encounter/megastar/partner/planner/
   star_tome/wish_trial/box_card + 契约扩员两口 fortune/expert_invite,
   普查迁移批 2;原 equip_pick 口随选择装备屏误判退役删除);
-- 商店序列兼容驱动器 decide_shop_screen 缺省实现(降格出 ABC,
-  ;sim/回放/序列锁消费,mandate 记账在其覆写)与商店单动作
+- 商店序列兼容驱动器 decide_shop_screen 缺省实现(降格出 ABC;
+  回放/序列锁消费,mandate 记账在其覆写)与商店单动作
   接口 decide_shop_action(委托 mandate_v1/shop)。
 
 - live 备战决策链 = cw_screen_prep → mandate_v1.bridge → entry.emit
@@ -239,7 +239,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         ``cw_launch_admission.readiness_form_ok``(与发射 armed 同式,
         零第二实现)。``v3_phase`` 维持无写端退役缺省 ''(相位机已亡,
         无现读语义可接)。``v3_mirror_key`` 轮键戳照常盖章(键语义 =
-        「本轮已写」,sim 引擎缺写守卫据此不重复触发)。纯遥测恢复:
+        「本轮已写」,重复写守卫据此不重复触发)。纯遥测恢复:
         两字段不进任何判据(「form_score 降级纯遥测观测,不进
         判据」口径由 B_t 延续),写者本身零行为面。
         已知边界(如实声明):生产侧商店观察帧若 board 未播种,
@@ -773,7 +773,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         终态零参口 §2.1:决策输入一律 self.gs/self.state/self.config)。
 
         输入 = gs 容器(黑板契约容器化,设计件《商店黑板容器化方案》
-        §2.2-1:入口观察/单动作逻辑态直写/sim 引擎写);输出 = **恰一个
+        §2.2-1:入口观察/单动作逻辑态直写/世界写点);输出 = **恰一个
         动作**,全函数永不 None——「无动作可做」由 ``CwActionCloseShopParam`` 恒可用
         终结表达(决策 5/6)。决策本体 = ``mandate_v1/shop.
         decide_shop_action``(选择序 = 决策本体候选扫描序,逐帧恰取一个
@@ -789,7 +789,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         判定数学复制)——拒 = 决策改发 ``CwActionCloseShopParam``(消费
         终止非改试次优,金出口族红线 5),受阻分键 ``launch_arbitrage_
         gate_blocked`` 落策略器状态 cw4_counters;非受限会话帧现行为逐位
-        不变。生产单动作循环与 sim/replay 驱动器同经本口,两面同源自限
+        不变。生产单动作循环与回放/序列驱动器同经本口,两面同源自限
         (kernel 模块头「两面共用判定核」拓扑)。"""
         from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
             shop,
@@ -825,7 +825,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # v3_b_t 逐帧镜像写者(纯遥测,零行为面;口径与边界见
         # write_shop_mirrors docstring。旧 v3_form_score 已随口径
         # 替换退役,历史账本只读)。写位 = 决策核入口 = 生产单
-        # 动作循环与 sim decide_shop_screen 驱动器共同必经点。
+        # 动作循环与序列驱动器(decide_shop_screen)共同必经点。
         self.write_shop_mirrors(gs, self.state)
         # 决策本体宿主 = gs(state_of(gs) → 同源接线策略器状态;
         # game_state_of(gs) 本体直通——经 self.state 传递会让 kernel 侧
@@ -862,9 +862,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                            config: CurrencyWarConfig | None = None
                            ) -> list[Action]:
         """商店序列兼容驱动器(缺省实现;降格出 ABC;形参 = 兼容宿主
-        (sim/回放/序列锁调用面照旧传),决策已零参化,本体不消费)。
+        (回放/序列锁调用面照旧传),决策已零参化,本体不消费)。
 
-        sim/回放/既有序列锁消费(生产执行侧走单动作循环):逐帧调
+        回放/既有序列锁消费(生产执行侧走单动作循环):逐帧调
         :meth:`decide_shop_action`(单动作核,帧代次消费在核入口)+ 逐动作
         直调上报函数推进期望态(kernel/cw_action_report 函数族;零
         simulate 前瞻消费),终结动作(CwActionRefreshShopParam)截停、
@@ -907,7 +907,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                           group_id=f'act:CwFlowStrategy@{gs.write_seq + 1}')
 
         def _report(a) -> None:
-            """引擎入口委托分支串(design.md §2;离线驱动无落地门,k 判据
+            """逐动作直调上报函数(上报函数族分支;离线驱动无落地门,k 判据
             与生产执行侧 merge_buy_k 同源派生,禁按动作对象预估的第二实现)。"""
             if isinstance(a, cw_state.CwActionBuyCardParam):
                 # 满席才评多买(容器 kind 口逐槽占用;与旧「槽表全占用」

@@ -13,9 +13,10 @@
    禁静默用账——卖错装的件 = 替换方案一次敲定的直接错误输入);
 2. ``equips_ledger_multiset`` / ``assert_ledger_conserved``:动作前后的装备守恒
    对账(assigned = bench+deployed 各 char 的 equips;pool = ``state.equips``;
-   装备只随人走/卖出回收,动作前后多重集必须相等)。挂点 = ``cw_state.simulate``
-   的 CwActionBuyCardParam/CwActionSellBenchParam/CwActionSellDeployedParam/CwActionSwapDeployParam 分支后(原 CompTransaction 分支随批2b R3 删除)
-   (mismatch 记 action_log,checks/遥测可见,不静默)。
+   装备只随人走/卖出回收,动作前后多重集必须相等)。原挂点 = 旧引擎
+   ``cw_state.simulate`` 动作分支,已随自驱动引擎退役拆除(考古归
+   git);函数保留为对账契约载体(现役 src 零调用方,测试/回放可用),
+   mismatch 记 action_log 不静默。
 
 **演进引擎 v1 不消费 bench 装备**(契约包六矛盾 leader 裁决):替换决策按
 角色身份+羁绊档判断,装备只随人走——本模块只做记账+对账,**不进决策**。
