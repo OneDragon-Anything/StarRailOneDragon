@@ -29,8 +29,8 @@ def report_action_close_shop_param(gs: GameState, param: Any, sig: ChannelSig) -
     kernel/cw_event_hooks 封闭集)。
 
     消费面 = ``CwActionCloseShopOp`` 执行体自上报(幂等已关/点击已发两
-    出口同调,关店时点清场);sim 委托分支同源
-    (sim/cw_sim_actions.py::apply_player_action)。"""
+    出口同调,关店时点清场);sim 后端消费 = 转移事件订阅交回备战
+    (sim/cw_sim_backend.on_transition_event)。"""
     _validate_sig(sig, ('logic_action',))
     if gs.shop.value is not None:
         _off_sig = ChannelSig(family='obs', actor=sig.actor,

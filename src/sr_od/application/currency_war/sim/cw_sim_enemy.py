@@ -7,7 +7,7 @@
   难度逐节点曲线 = 候实机数据(补采前基础分量按 None 披露,禁插值;
   U25 定稿口径:「局级输入档 + 已定谳修正项」)。已定谳成分:
   - 投资策略品质加成 白0/金3/彩6 每持 1 个(``research/economy.md`` §9);
-  - 遭遇等级加成 0/10/20/30(sim ``cw_sim_nodes.ENCOUNTER_TIER_BONUS``
+  - 遭遇等级加成 0/10/20/30(本模块 ``ENCOUNTER_TIER_BONUS``
     同表单一源);
   - 特殊加成:伟大征服 +当前连胜数(注册表 ``difficulty_per_streak``)
     + 圣杯试炼 +30(定谳数值;激活态随 fate overlay 占位未建模,
@@ -37,12 +37,14 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     get_strategy,
     normalize_invest_name,
 )
-from sr_od.application.currency_war.sim.cw_sim_nodes import (
-    ENCOUNTER_TIER_BONUS,
-)
 
 #: 品质加成表(白0/金3/彩6 每持 1 个;economy.md §9 定谳;银=白档 0)。
 QUALITY_DIFFICULTY_BONUS: dict[str, int] = {'银': 0, '金': 3, '棱彩': 6}
+
+#: 遭遇等级加成四档真值(其一0/其二10/其三20/其四30;economy.md §9 定谳;
+#: 归宿 = 难度账域(本模块,与加成消费同域);遭遇选项生成与难度派生
+#: 两面同表单一源)。
+ENCOUNTER_TIER_BONUS: tuple[int, ...] = (0, 10, 20, 30)
 
 #: 圣杯试炼特殊加成真值(economy.md §9 定谳 +30;激活态 = fate overlay
 #: 占位面,首版恒未激活——披露键见 :data:`HOLY_GRAIL_PENDING`)。

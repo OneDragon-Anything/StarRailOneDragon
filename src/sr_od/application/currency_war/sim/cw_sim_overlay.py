@@ -24,9 +24,9 @@
   结构);激活门槛/奖励数值无档 → 占位披露;
 - aha/hack/planner:选项类型 kernel 在册(Megastar/Partner/Planner
   Option);planner 二选一 = gameplay「角色升星」节有档(银狼首次升
-  2 星触发,M21 挂钩)——触发由引擎升星钩子入队,非自发采样。
+  2 星触发,M21 挂钩)——触发由 sim 后端事实事件评估器入队(cw_sim_backend._evaluate_planner),非自发采样。
 
-随机流键(引擎侧装配):逐 overlay 独立子键 ``M22/{name}/...``。
+随机流键(后端侧装配):逐 overlay 独立子键 ``M22/{name}/...``。
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ from collections.abc import Iterator
 from sr_od.application.currency_war.kernel.cw_game_state import GameState
 from sr_od.application.currency_war.sim.cw_sim_base import obs_sig, sim_evidence
 
-#: overlay 族在册名(队列 kind 合法值;与相位 ``overlay_kind`` 同域)。
+#: overlay 族在册名(队列 kind 合法值;overlay 呈现态在册名)。
 OVERLAY_KINDS: frozenset[str] = frozenset({
     'megastar', 'partner', 'expert', 'fate', 'aha', 'hack', 'planner',
 })
@@ -72,8 +72,8 @@ TRIPLE_OPTION_COUNT: int = 3
 
 
 class OverlayQueue:
-    """统一 overlay 事件队列(触发入队 → 相位逐个呈现 → 选卡裁决 →
-    效果应用;sim 引擎唯一 overlay 呈现通道)。
+    """统一 overlay 事件队列(触发入队 → 状态机模态呈现 → 选卡裁决 →
+    效果应用;sim 后端唯一 overlay 呈现通道)。
 
     队列序 = 入队序(同帧多 overlay 按触发序逐个呈现;实机弹窗栈序
     无档,入队序占位,候实机对账)。占位触发面(零载族)不经本队列
@@ -91,12 +91,12 @@ class OverlayQueue:
         self._pending.append(kind)
 
     def push_planner(self) -> None:
-        """「我来当策划」入队(M21 有档触发:银狼首次升 2 星;引擎
-        升星钩子调用)。"""
+        """「我来当策划」入队(M21 有档触发:银狼首次升 2 星;后端
+        事实事件评估器调用)。"""
         self.push('planner')
 
     def peek(self) -> str | None:
-        """队首 overlay 名(空队 = None;引擎据此决定是否进相位)。"""
+        """队首 overlay 名(空队 = None;后端状态机据此决定模态呈现)。"""
         return self._pending[0] if self._pending else None
 
     def pop(self) -> str:
@@ -113,7 +113,7 @@ class OverlayQueue:
 
 
 def pending_disclosure_items(kind: str) -> tuple[str, ...]:
-    """该 overlay 的占位面清单项(引擎披露面消费;按族前缀过滤)。"""
+    """该 overlay 的占位面清单项(后端披露面消费;按族前缀过滤)。"""
     return tuple(item for item in OVERLAY_PENDING_ITEMS
                  if item.split('_', 1)[0] == kind)
 

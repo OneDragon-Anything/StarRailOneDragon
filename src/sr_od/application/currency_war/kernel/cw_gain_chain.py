@@ -65,6 +65,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_GIFTS,
+    INVESTMENT_ENVS,
     STRATEGY_EFFECTS,
     normalize_invest_name,
 )
@@ -621,12 +622,22 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       商店池字段,身份只进遥测申报一行(先例 = advisor 申报行同族,正本
       = gain-chain.md §3 advisor 条);chars_immediate 在 advisor 行仅作
       顾问身份输入,禁再入席;
+    - **环境即时金腿**(世界规则,注册表结构化通道):环境经济
+      ``economy.gold_instant`` 非零 → gold 直加(两执行面同源;旧 sim
+      引擎私有腿随驱动反转退役,规则落本链为单一源);
     - 查无效果(表外环境)= 安静不写(用户裁定),真值归观察覆盖。
       (欢愉契约条件腿不在本枚举:其正式模型 = 银狼策划选择上报落地相的
       条件腿 rider,住 ``cw_action_report.pick_planner``,触发事件 =
       头号玩家选项弹窗被处理。)
     """
     _name = normalize_invest_name(env_name)
+    _env = INVESTMENT_ENVS.get(_name)
+    _eff = _env.economy if _env is not None else None
+    if _eff is not None and _eff.gold_instant:
+        write = _select_write(gs, rand)
+        write(gs.gold, int(gs.gold.value or 0) + int(_eff.gold_instant),
+              produced_by=GAIN_CHAIN_PRODUCER,
+              evidence=f'on_env_gained:instant_gold:{_name}', sig=sig)
     grant = ENV_GIFTS.get(_name)
     if grant is None:
         return ()

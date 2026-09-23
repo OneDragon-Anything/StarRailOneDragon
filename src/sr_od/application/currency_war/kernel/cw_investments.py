@@ -672,6 +672,15 @@ INVESTMENT_ENVS: dict[str, InvestmentEnv] = _build_envs()
 _validate_strategy_effects()
 
 
+#: 品质覆写族环境在册名(注册表 id110/111/112/123/124/135):选中后改写
+#: 后续 offer 品质分布的环境集合。游戏事实名单(单一源 = 本常量位,随
+#: 注册表演进);效果建模批消费,当前命中面只作披露判据
+#: (披露键 = 'invest_quality_rewrite_envs_pending')。
+QUALITY_REWRITE_ENV_NAMES: frozenset[str] = frozenset({
+    '彩虹时代', '黄金时代', '白银时代', '头彩', '尾彩', '银·金·彩',
+})
+
+
 # ===== 派生:ENV_FACTION_MAP(投资环境 → 加成阵营;从 INVESTMENT_ENVS 派生,单一真相源)=====
 # ===== OCR 分隔符归一(查找边界单一源;AGENTS.md「OCR 文本匹配与修复」②无歧义形变先规范化)=====
 # 实机缺陷链(run_20260826_004527):OCR 把间隔号 `·`(U+00B7)误读为圆点 `•`(U+2022)——

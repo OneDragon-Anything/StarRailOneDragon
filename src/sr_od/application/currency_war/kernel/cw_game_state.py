@@ -99,6 +99,10 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    # LostNodeRef 宿主 = cw_economy(其运行时 import 本模块,反向即循环;
+    # pending_loss 字段类型面 TYPE_CHECKING 承载)
+    from sr_od.application.currency_war.kernel.cw_economy import LostNodeRef
+
     # 选项类宿主 = cw_events(其模块级 import 本模块,反向 import 即循环;
     # 终态契约契约 g:TYPE_CHECKING 承载,运行时零依赖)
     from sr_od.application.currency_war.kernel.cw_events import (
@@ -2055,6 +2059,14 @@ class GameState:
     level: Field[int] = field(default_factory=Field)             # 等级(§3.2.10;启发式兜底值禁入——非真读走 carried;开局种子底座=开局基线级)
     xp: Field[tuple[int, int]] = field(default_factory=Field)    # (当前级已攒, 升下一级所需)(§3.2.10;同文本两分量成对存;开局种子底座=(0, 当前级升级所需))
     streak: Field[int] = field(default_factory=Field)            # 带符号:正=连胜/负=连败(§3.2.12;开局种子底座=0)
+    # [索引定义] pending_loss = 败态挂账(上一败掉的战斗类节点引用,单挂账)。
+    # 坐标系 = LostNodeRef(plane 1 基位面, round_num 位面内 1 基轮, node_type
+    # 节点词表);取值时机 = 战斗结算失败腿写入、轮首收入败补支(U04 口径)
+    # 消费后清回 None——非 supply/reward 节点消费,败态跨轮保留至下一战斗轮
+    # (kernel round_start_income 分支序)。None = 无挂账。写端(sim 世界) =
+    # sim/cw_sim_backend 结算失败腿;实机可观察(结算屏败局)影响玩法(败补金),
+    # 按容器字段判据入容器。
+    pending_loss: Field[LostNodeRef | None] = field(default_factory=Field)
     hp: Field[int] = field(default_factory=Field)                # 写入闸 §3.2.13:非真读帧不经 observe(§8.8 假值防线;开局种子底座=实证基线值,三写端时序 种子→先验→真读)
     level_up_cost: Field[int] = field(default_factory=Field)     # 单击买经验价(§3.2.11;None=未读到禁兜底)
     # [索引定义] deploy_cap = 部署容量识别真值(= level + 财富宝钻数,可叠加)。
@@ -2089,6 +2101,14 @@ class GameState:
     active_strategies: Field[list[str]] = field(default_factory=Field)   # 持有投资策略名单(§3.4.4;品质锚挂建模批;开局种子底座=[]未持卡)
     board: Field[dict[str, int]] = field(default_factory=Field)      # 上阵羁绊计数(§3.2.6;下档阈值=派生不存储;开局种子底座不直写,随行域空行种子派生,禁双写)
     shop_refresh_cost: Field[int] = field(default_factory=Field)     # 刷新费,动态(§3.3.4/现场 OCR;免费帧不写,None≠0;开局种子底座=刷新基价)
+    # [字段定义] shop_locked = 整店锁(锁定后节点切换不自动全刷)。取值时机 =
+    # 恒稳局级事实;sim 写端 = 恒 False(v1 裁定:动作词表无锁通道,首版恒
+    # 解锁,字段先行占位;None 视读 = 未锁)。实机写端候实机补档(锁图标观察)。
+    shop_locked: Field[bool] = field(default_factory=Field)
+    # [字段定义] diamond_count = 宝钻计数(UI 可见局内货币;补给带钻选项等
+    # 通道获取)。取值时机 = 获取事件后累计;None = 未观察。sim 写端 =
+    # sim/cw_sim_backend 补给带钻腿;实机写端候实机补档。
+    diamond_count: Field[int] = field(default_factory=Field)
 
     # (商店刷新计数组口径(2026-09-21 Field 化):免费刷新剩余次数升格容器
     #  字段 free_refresh_left(声明见下方 §1.4 家族块);付费/全量两计数留
@@ -2101,7 +2121,7 @@ class GameState:
     # 覆盖,刷新后下帧观察直接给新真值,零动作侧记账):观察写端 = 各屏观察
     # report 摄入 OCR 读数(读缺跳写,值留观察覆盖)。
     encounter_refresh_left: Field[int] = field(default_factory=Field)     # 遭遇刷新剩余次数(§3.4.1;屏上「剩余次数：N」观察真值,None=未观察;观察写端 = report_screen_encounter_obs 摄入,读缺跳写、逐访问覆盖,无开局种子;sim 无遭遇刷新执行面 = 无 sim 写端;原「已用」计数与 per-visit 位随剩余语义化退役,闸消费与写端全迁本字段,考古走 git)
-    supply_refresh_left: Field[int] = field(default_factory=Field)       # 补给刷新剩余次数(§3.4.2;屏上「剩余次数：N」观察真值,None=未观察;观察写端 = report_screen_supply_node_obs 摄入,读缺跳写、逐访问覆盖,无开局种子;sim 写端 = cw_sim_engine 补给节点入口初始 left 与刷新递减;原「已用」计数字段随剩余语义化退役,闸消费与写端全迁本字段,考古走 git)
+    supply_refresh_left: Field[int] = field(default_factory=Field)       # 补给刷新剩余次数(§3.4.2;屏上「剩余次数：N」观察真值,None=未观察;观察写端 = report_screen_supply_node_obs 摄入,读缺跳写、逐访问覆盖,无开局种子;sim 写端 = cw_sim_backend 补给节点入口初始 left 与刷新递减;原「已用」计数字段随剩余语义化退役,闸消费与写端全迁本字段,考古走 git)
     env_refresh_left: Field[int] = field(default_factory=Field)          # 投资环境刷新剩余次数(§3.4.3;屏上「剩余次数：N」观察真值;观察写端 = report_screen_invest_env_obs 摄入,读缺跳写;原 env_refresh_used「已用」字段随剩余语义化改名退役——零写端在册,改名零消费断链)
     strategy_refresh_left: Field[dict[str, int]] = field(default_factory=Field)  # 投资策略逐卡刷新剩余次数(§3.4.4;键 = 注册表规范卡名 normalize_invest_name 归一后——效果注册表 STRATEGY_EFFECTS 即以规范名为键,观察写端 OCR 名经同一归一函数入键,免双坐标系换算;观察写端 = report_screen_invest_strategy_obs 摄入「刷新次数N」读数,读缺键跳写、已观察键覆盖)。原 strategy_refresh_used「已用」随剩余语义化改名退役(其注释自declared「on_outcome 发射型钩子」写端与全仓零写端现状矛盾,本批改名一并清除;闸消费口径 = 剩余 ≤0 = 尽;开局种子底座={} 无持卡,与键粒度增量写端协同)
 
@@ -3212,6 +3232,19 @@ def report_node_advance(gs: GameState, *, trigger: str,
         )
         emit_transition_event(trigger, {'actor': actor})
     return advanced
+
+
+def clear_pending_loss(gs: GameState, *, sig: ChannelSig) -> None:
+    """败态挂账消费清账(pending_loss 域专用写口)。
+
+    轮首收入败补支(U04 口径)消费后挂账清回 None——None 写 = 挂账
+    结构性清空(消费事实)非失读,不经通用 observe/write_logic 的
+    None 闸(§2.2「禁清正式值」辖的是失读形态);域专用直写口先例 =
+    节点域 :func:`observe_node_anchor` 的 _swap 直写。消费判据
+    (非 supply/reward 节点才消费)归调用方,本口只做清账。"""
+    gs._swap('pending_loss',
+             Field(value=None, source='logic', evidence='loss:consumed'),
+             sig=sig)
 
 
 def observe_node_anchor(gs: GameState, ordinal: int, *,

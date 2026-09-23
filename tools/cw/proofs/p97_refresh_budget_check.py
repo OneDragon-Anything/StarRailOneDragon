@@ -48,7 +48,7 @@ NODE_SCHEDULE: list[tuple[int, int, str]] = (
          'battle', 'battle', 'battle', 'boss'])]
 )
 
-#: 节点经验表(M08,依据 xp-rules.md;sim/cw_sim_actions.py:81 同源)
+#: 节点经验表(M08,依据 xp-rules.md;sim/cw_sim_backend.py NODE_XP_BY_TYPE 同源)
 NODE_XP: dict[str, int] = {
     'battle': 2, 'encounter': 2, 'reward': 2, 'supply': 0, 'boss': 12,
 }
@@ -56,7 +56,7 @@ NODE_XP: dict[str, int] = {
 #: 效率折扣(用户裁定 2026-09-23:0.8,【拟】,实机可校准)
 ETA: float = 0.8
 
-#: 开局态(u07u28 定案:sim/cw_sim_action... cw_sim_opening OPENING_GOLD/LEVEL)
+#: 开局态(u07u28 定案:sim/cw_sim_opening OPENING_GOLD/LEVEL 同源)
 OPENING_GOLD: int = 3
 OPENING_LEVEL: int = 3
 
@@ -145,7 +145,7 @@ def main() -> int:
     assert income_eta1 > income > 0, 'η 折扣方向'
     assert any(g >= 50 for g in golds_eta1[:7]), 'η=1 下前 7 轮内满息'
 
-    print('\n— 逐阵容预算(目标等级 = level_plan 顶格;η={})—'.format(ETA))
+    print(f'\n— 逐阵容预算(目标等级 = level_plan 顶格;η={ETA})—')
     header = (f'{"阵容":<10}{"强度":<4}{"目标级":<5}{"购置":<6}'
               f'{"升级":<6}{"预算":<6}{"刷新次数":<8}{"≥30":<4}{"≥20"}')
     print(header)

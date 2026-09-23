@@ -31,7 +31,11 @@ class RunConfig:
     #: None = 调用方未给定(开局 HP 查表即报错索样本)。
     enemy_difficulty: int | None
     #: 敌人词缀名单(简报 OCR 原名;开局 HP 修正查表键,「开局不利」
-    #: 恒 −20 由 kernel/cw_opening_hp 单一承载,M20 词缀引擎禁再实现)。
+    #: 恒 −20 由 kernel/cw_opening_hp 单一承载,词缀引擎禁再实现)。
+    #: **override 语义**(词缀入 seed 后):缺省 () = 常规局由 sim 后端
+    #: reset 按 ``reset/affixes`` 流键采样(池 = affix_effects_data 注册表
+    #: 键集);非空 = 定向测试定词缀(跳过采样直用)。开局 HP 修正仍按
+    #: 本名单查表(override 或采样结果同一消费面)。
     enemy_affixes: tuple[str, ...] = ()
     #: 对局类型(标准博弈/超频博弈;U27 定稿口径:sim 首版辖域 = 标准博弈,
     #: 非标准值在引擎入口显式拒,不在本配置层猜差异)。

@@ -15,8 +15,8 @@ sink;3.2 消费):
   sell / wear 落地后)、升星事件;广播点 = 对应上报函数写后。
 
 模块级槽 + 缺省关(None = 零开销直返)+ 装配点显式接通,先例 =
-``cw_game_state.set_defect_sink``。实机缺省关 = 零行为变化;旧引擎
-(sim/cw_sim_engine 自驱动路径)不接 sink,广播对旧链零触达。
+``cw_game_state.set_defect_sink``。实机缺省关 = 零行为变化;sim 后端
+订阅点 = ``sim/cw_sim_backend.install_backend``(装配即接通,卸载复位)。
 
 依赖方向:本模块零 kernel 内部依赖(事件形状自足),供上报函数族与
 容器上报单向 import,禁反向(防 import 环)。

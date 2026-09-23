@@ -119,6 +119,18 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_OBSERVATION_ONLY,
         basis='纯观察读面(结算带符号 vs 备战 magnitude 双源留证),'
               '零逻辑写端'),
+    'pending_loss': ProjectionAuditRow(
+        status=AUDIT_WRITE_END,
+        basis='败态挂账(战斗结算失败腿写,轮首收入败补支消费即清;'
+              'sim 写端 = sim/cw_sim_backend;实机写端候结算屏败局观察)'),
+    'shop_locked': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='整店锁(字段先行占位:动作词表无锁通道,首版恒解锁;'
+              '实机写端候实机补档)'),
+    'diamond_count': ProjectionAuditRow(
+        status=AUDIT_WRITE_END,
+        basis='宝钻计数(UI 可见;补给带钻选项授予写端 = sim 后端;'
+              '实机写端候实机补档)'),
     'hp': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='结算覆盖 apply_settlement_cover(唯一真值入口)+ 宝物加血'

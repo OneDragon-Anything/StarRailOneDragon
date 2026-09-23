@@ -349,8 +349,6 @@ def decide_pick(options: list[str], gs: GameState, locked_comp: str,
     独立成口的原因:decide 是纯函数,flow 同帧去重 memo 命中(handler
     刷新闸全败后的重调,28 号稿 §4「建议帧首调发建议、紧随重调落选卡」)
     时再调 decide 仍返建议——落选卡走本口,同一评分基线保证零选卡漂移。
-    为 sim 复用预留(sim 投资面 = offer 采样 + inject_choices 直写容器,
-    现不经 decide_invest_env)。
     """
     env_priority = list(getattr(config, 'env_priority', []) or [])
     env_forbid = list(getattr(config, 'env_forbid', []) or [])

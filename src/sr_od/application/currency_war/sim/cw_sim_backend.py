@@ -1,0 +1,1413 @@
+"""sim 游戏后端 SimBackend(驱动反转;世界本体 + 画面状态机 + overlay 触发层)。
+
+真流程(外层循环 + 画面 op + 动作 op + 策略器)当驱动者,本后端 = sim 世界:
+组合持有 :class:`GameState`(禁子类——Field 通道与裸属性两套状态纪律
+不得混于一体,决策输入形状不随运行模式漂移),自持实机不可观察的簿记
+(采样去重集/overlay 队列/一次性标志/局结果面)。一实例一局。
+
+**字段收敛判据**(容器一份,禁第三形态):实机可观察/影响玩法的世界事实
+→ 容器 Field;生成器采样簿记 → 本后端私有。旧引擎 ``_Eng`` 三处双账
+全部消灭:``plane``/``round_num`` → ``gs.node``;相位载荷(options/
+supply/encounter/box/晶矿面板)→ 容器各 opts 槽(经 ``cw_screen_report``
+同名上报函数送达,与实机观察同一条写通道,本后端不私持副本);
+``streak_unsigned`` → 容器带符号连胜派生读 ``max(signed, 0)``。
+
+**画面状态机**:状态 = (screen_info 档名, 子态载荷)。转移源两类:
+1. **上报事件钩子**(kernel ``cw_event_hooks`` 转移事件,封闭集):
+   settle_confirm/supply_confirm(经 ``report_node_advance``)→ 节点推进;
+   start_battle → 战斗窗口(结算瞬时完成,呈现结算页);pick 族确认 →
+   模态交回(交回目标权威源 = ``screens/`` 各篇终结/交回表);开箱动作
+   落地 → 武装箱选择画面。转移事件重入幂等(同一终结动作重复上报不
+   二次推进,逐 handler 显式守卫)。
+2. **点击源**(flow-seam 附录 B 边界登记:不入 kernel 事件集的推进型
+   点击):简报下一步 / BOSS 简报点空白 / 位面过渡点空白 / 补给刷新 /
+   开店。经端口 ``click_answer`` 感知。
+
+**节点推进序列**(自旧引擎 M 序列平移):写 ``gs.node`` → 轮首收入
+(kernel ``round_start_income`` 三分支,U04 败补消费容器 ``pending_loss``)
+→ 位面开局环境金(kernel ``INVESTMENT_ENVS``)→ 商店自动全刷(整店锁
+跳过)→ overlay 队列检查 → offer 日程检查(U07 固定轮次 + 联席决策)
+→ 按节点类型呈现对应屏(battle/reward → 备战档,reward = 晶矿子态;
+supply → 补给;encounter → 遭遇节点;boss → BOSS 简报)。节点经验在
+节点推进时入账(NODE_XP_BY_TYPE 表原样);连胜转移在战斗结算后。
+
+**overlay 触发层**(事实触发):世界事实事件(kernel 事实事件 sink)→
+评估器 → :class:`OverlayQueue` 入队 → 模态呈现(压住底层画面,选完
+交回)。一期目录:巨星(盛会之星羁绊跨层,消费 board_changed)、
+planner(银狼首次升 2 星,消费 star_up)、开箱(动作触发,走转移事件)。
+其余族(partner/expert/fate/aha/hack)触发条件实机零档 → 评估器缺位 =
+不入队(数据缺口非架构豁免,补档后逐个落)。
+
+**确定性**:后端自有采样全部由 seed 派生(:func:`stream_rng` 流键,
+键形沿用旧引擎模块号坐标系);动作腿采样(炉/骇客改件/晶矿/刷新)
+经上报函数族 rng 形参,注入点在流程装配缝(运行器批)。
+
+**装配**::func:`install_backend` = 端口槽装配 + kernel 事件钩子订阅
+(转移/事实两类 sink);:func:`uninstall_backend` 幂等复位。测试
+teardown 必卸(端口槽与事件 sink 均为进程全局)。
+"""
+from __future__ import annotations
+
+import random
+from dataclasses import dataclass, field, replace
+
+from sr_od.application.currency_war.data.affix_effects_data import (
+    AFFIX_EFFECTS,
+)
+from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.data.cw_shop_odds import REFRESH_PROB
+from sr_od.application.currency_war.data.cw_synthesis import SYNTHESIS_BASES
+from sr_od.application.currency_war.kernel.cw_battle_calib import (
+    roll_rotation_per_stage,
+)
+from sr_od.application.currency_war.kernel.cw_economy import (
+    XP_TO_NEXT_LEVEL,
+    LostNodeRef,
+    RoundStartIncome,
+    round_start_income,
+)
+from sr_od.application.currency_war.kernel.cw_event_hooks import (
+    FactEvent,
+    TransitionEvent,
+    set_fact_event_sink,
+    set_transition_event_sink,
+)
+from sr_od.application.currency_war.kernel.cw_events import (
+    EncounterOption,
+    MegastarOption,
+    SupplyOption,
+)
+from sr_od.application.currency_war.kernel.cw_gain_chain import (
+    gain_equipment,
+)
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GAME_STATE_SCHEMA_VERSION,
+    GameState,
+    NodeKey,
+    OreSight,
+    _row_unit_tags,
+    clear_pending_loss,
+    effective_node_ord,
+    node_kind_of,
+    observe_node_anchor,
+    seed_opening_state,
+)
+from sr_od.application.currency_war.kernel.cw_investments import (
+    INVESTMENT_ENVS,
+    INVESTMENT_STRATEGIES,
+    QUALITY_REWRITE_ENV_NAMES,
+    aggregate_economy,
+    normalize_invest_name,
+)
+from sr_od.application.currency_war.kernel.cw_reward_node import (
+    PIGGY_ENV_NAMES,
+)
+from sr_od.application.currency_war.kernel.cw_screen_report.box_pick import (
+    CwScreenBoxPickObs,
+    report_screen_box_pick_obs,
+)
+from sr_od.application.currency_war.kernel.cw_screen_report.encounter import (
+    CwScreenEncounterObs,
+    report_screen_encounter_obs,
+)
+from sr_od.application.currency_war.kernel.cw_screen_report.invest_env import (
+    CwScreenInvestEnvObs,
+    report_screen_invest_env_obs,
+)
+from sr_od.application.currency_war.kernel.cw_screen_report.invest_strategy import (
+    CwScreenInvestStrategyObs,
+    report_screen_invest_strategy_obs,
+)
+from sr_od.application.currency_war.kernel.cw_screen_report.megastar import (
+    CwScreenMegastarObs,
+    report_screen_megastar_obs,
+)
+from sr_od.application.currency_war.kernel.cw_screen_report.supply_node import (
+    CwScreenSupplyNodeObs,
+    report_screen_supply_node_obs,
+)
+from sr_od.application.currency_war.kernel.cw_shop_deal import sample_shop_deal
+from sr_od.application.currency_war.sim import cw_sim_ports
+from sr_od.application.currency_war.sim.cw_sim_base import (
+    logic_sig,
+    obs_sig,
+    sim_evidence,
+)
+from sr_od.application.currency_war.sim.cw_sim_battle import (
+    SIM_BATTLE_FACE,
+    apply_hp_outcome,
+    settle_battle,
+)
+from sr_od.application.currency_war.sim.cw_sim_enemy import (
+    BOSS_DEDUP_PENDING,
+    DIFFICULTY_BASE_PENDING_U25,
+    HOLY_GRAIL_PENDING,
+    resolve_plane_bosses,
+)
+from sr_od.application.currency_war.sim.cw_sim_opening import apply_opening
+from sr_od.application.currency_war.sim.cw_sim_overlay import (
+    OVERLAY_PARAM_PENDING,
+    OverlayQueue,
+)
+from sr_od.application.currency_war.sim.cw_sim_plane_schedule import (
+    node_sequence_of,
+)
+from sr_od.application.currency_war.sim.cw_sim_run_config import RunConfig
+from sr_od.application.currency_war.sim.cw_sim_special import (
+    SILVER_WOLF_ID,
+    planner_overlay_due,
+)
+from sr_od.application.currency_war.sim.cw_sim_streams import stream_rng
+
+# ============================================================ 画面档名常量
+# (screen_info 对局屏档名,权威 = assets/game_data/screen_info 各建档;
+#  状态机状态首元。子态不设独立档名:晶矿子态 / wait_one_one 变体 =
+#  备战档载荷,键形裁决归金路径生成器批。)
+
+SCREEN_PREP: str = '货币战争-备战'
+SCREEN_SHOP: str = '货币战争-备战-开商店'
+SCREEN_BRIEFING: str = '货币战争-简报'
+SCREEN_INVEST_ENV: str = '货币战争-投资环境'
+SCREEN_INVEST_STRATEGY: str = '货币战争-投资策略'
+SCREEN_SUPPLY: str = '货币战争-补给'
+SCREEN_ENCOUNTER: str = '货币战争-遭遇节点'
+SCREEN_BOSS_BRIEFING: str = '货币战争-BOSS简报'
+SCREEN_PLANE_TRANSITION: str = '货币战争-位面过渡'
+SCREEN_BOX: str = '货币战争-备战-武装箱选择'
+SCREEN_EXPERT: str = '货币战争-备战-专家邀请函'
+SCREEN_MEGASTAR: str = '货币战争-盛会之星'
+SCREEN_PLANNER: str = '货币战争-银狼升星'
+#: 战斗窗口呈现屏(sim 结算瞬时完成;战斗等待动画窗属实机时间维)
+SCREEN_SETTLE: str = '货币战争-战斗结算'
+
+#: 备战子态载荷值(备战档第二元;'' = 常规备战)
+PREP_SUB_ORE: str = 'ore'                    # 晶矿子态(奖励节点,gs.spheres 面板在场)
+PREP_SUB_WAIT_ONE_ONE: str = 'wait_one_one'  # 开局补给动画等待变体(瞬时)
+
+# ============================================================ 收入规则件
+# (自旧引擎收入模块平移,语义零改;kernel round_start_income 三分支
+#  单一源消费不变。)
+
+
+#: 战斗类节点词表(连胜转移与败态归宿的判据域;补给/奖励轮不动连胜;
+#: 奖励节点结算走战斗框架但收入分支仍为 reward)。
+COMBAT_NODE_TYPES: frozenset[str] = frozenset({'battle', 'encounter', 'boss'})
+
+#: 非战斗收入分支节点词表(分支优先级:supply/reward 先于败补,kernel
+#: 分支序;败态在这些轮保留待下一战斗轮消费)。
+INCOME_BRANCH_NODE_TYPES: frozenset[str] = frozenset({'supply', 'reward'})
+
+
+@dataclass(frozen=True)
+class IncomeApplied:
+    """轮首收入应用回声(账面分解 + 落账后金;局内披露/判读消费)。"""
+
+    row: RoundStartIncome
+    gold_before: int
+    gold_after: int
+
+
+def income_modifiers_of(gs: GameState) -> tuple[float, int, int | None]:
+    """持卡聚合的收入修饰 ``(win_reward_mult, interest_flat, cap_override)``。
+
+    单一源 = ``aggregate_economy``(倍率取最大不叠乘/flat 求和/cap 取宽;
+    cap None = 无覆写,由 ``interest_cap_resolved`` 归一链回默认)。
+    """
+    eff = aggregate_economy(list(gs.active_strategies.value or []))
+    return eff.win_reward_mult, eff.interest_flat_per_node, \
+        eff.interest_cap_override
+
+
+def apply_round_start_income(gs: GameState, *, plane: int, round_num: int,
+                             node_type: str, streak: int,
+                             pending_loss: LostNodeRef | None = None,
+                             ) -> IncomeApplied:
+    """轮首收入结算并 obs 写金(节点推进序列调用一次)。
+
+    - ``streak`` = 收入侧无符号连胜计数(进轮连胜;派生读 = 容器带符号
+      取 ``max(signed, 0)``,禁第二账);
+    - ``pending_loss`` = 上一败掉的战斗类节点引用(单挂账,容器
+      ``gs.pending_loss``):非 supply/reward 节点传入触发 kernel 败补支
+      (U04 口径);supply/reward 轮不传(败态跨轮保留,仅下一战斗轮
+      消费——与 kernel 分支序一致);消费后清回 None 由调用方负责。
+    """
+    mult, flat, cap = income_modifiers_of(gs)
+    gold_before = int(gs.gold.value or 0)
+    effective_loss = (pending_loss
+                      if node_type not in INCOME_BRANCH_NODE_TYPES else None)
+    row = round_start_income(
+        plane, round_num, node_type, gold_before, streak,
+        lost_node=effective_loss, win_reward_mult=mult,
+        interest_flat=flat, interest_cap=cap)
+    gold_after = gold_before + row.total
+    tag = f'income:p{plane}r{round_num}'
+    gs.observe(gs.gold, gold_after, evidence=sim_evidence(tag),
+               sig=obs_sig(group_id=f'sim:{tag}'))
+    return IncomeApplied(row=row, gold_before=gold_before,
+                         gold_after=gold_after)
+
+
+def streak_income_after(streak: int, *, node_type: str,
+                        won: bool) -> int:
+    """收入侧无符号连胜计数转移(战斗类胜 +1/败归零;奖励/补给不动)。
+
+    保留口 = 纯函数判读/测试对账;后端运行面用容器带符号派生,不再持
+    第二账。"""
+    if node_type not in COMBAT_NODE_TYPES:
+        return streak
+    return streak + 1 if won else 0
+
+
+def streak_signed_after(streak_signed: int, *, node_type: str,
+                        won: bool) -> int:
+    """容器带符号连胜转移(连胜 +/连败 −;战斗类胜 +1/败取负向计数;
+    奖励/补给轮不动;与旧引擎逐位同式)。"""
+    if node_type not in COMBAT_NODE_TYPES:
+        return streak_signed
+    if won:
+        return streak_signed + 1 if streak_signed > 0 else 1
+    return streak_signed - 1 if streak_signed < 0 else -1
+
+
+# ============================================================ 经验规则件
+# (自旧引擎动作模块平移;节点经验在节点推进时入账。)
+
+
+#: 节点基础经验表(依据 docs/game/currency_war/research/xp-rules.md;
+#: BOSS +12 = U17 定稿口径,构成/改道候实机数据,披露键在册)。
+NODE_XP_BY_TYPE: dict[str, int] = {
+    'battle': 2,
+    'reward': 2,
+    'encounter': 2,
+    'supply': 0,
+    'boss': 12,
+}
+
+#: U17 余项披露键(BOSS +12 构成/P3 低难度经验/改道类,候实机数据)。
+NODE_XP_PENDING_U17: str = 'node_xp_pending_u17'
+
+
+def xp_apply_amount(level: int, xp_cur: int, amount: int) -> tuple[int, int]:
+    """任意经验量推进 ``(level, xp_cur)``(升级结转与 ``xp_apply_clicks``
+    单一源同式:攒满门槛即升级、溢出结转;cap = ``MAX_PLAYER_LEVEL``,
+    满级零推进——lv10 分母未定,按 U18 口径不再累计)。
+
+    通用量版理由:节点基础经验含非单击倍数(+2/+12),无法折成
+    「购买经验击数」走既有算子。
+    """
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        MAX_PLAYER_LEVEL,
+    )
+    if amount <= 0 or level >= MAX_PLAYER_LEVEL:
+        return level, xp_cur
+    cur = xp_cur + amount
+    while level < MAX_PLAYER_LEVEL:
+        need = XP_TO_NEXT_LEVEL.get(level, 4)
+        if cur < need:
+            break
+        cur -= need
+        level += 1
+    return level, cur
+
+
+def apply_node_xp(gs: GameState, *, node_type: str) -> int:
+    """节点结算基础经验入账(补给 +0 = 表内显式档)。
+
+    写容器 xp = (当前级已攒, 升下一级所需);集外节点型 = 0 经验不入账
+    (词表漂移在调用方暴露)。返回本节点实际入账经验量。
+    """
+    amount = NODE_XP_BY_TYPE.get(node_type, 0)
+    if amount <= 0:
+        return 0
+    xp_field = gs.xp.value
+    level_field = gs.level.value
+    if xp_field is None or level_field is None:
+        return 0
+    level, cur = xp_apply_amount(int(level_field), int(xp_field[0]), amount)
+    need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
+    sig = obs_sig(group_id='sim:xp')
+    gs.observe(gs.level, level, evidence=sim_evidence('xp:node'), sig=sig)
+    gs.observe(gs.xp, (cur, need), evidence=sim_evidence('xp:node'), sig=sig)
+    return amount
+
+
+# ============================================================ 商店发牌件
+# (自旧引擎商店模块平移;发牌算法本体 = kernel cw_shop_deal 单一源。)
+
+
+#: 轮岗建模假设档披露键(1/5 均匀系假设,实机待核;随局披露面消费)。
+ROTATION_ASSUMPTION_DISCLOSURE: str = 'rotation_tier_assumed_uniform'
+
+#: 轮岗环境在册名(每备战阶段重掷翻倍档;kernel roll_rotation_per_stage)。
+ROTATION_ENV_NAME: str = '轮岗'
+
+
+def effective_deal_probs(level: int, rng: random.Random, *,
+                         rotation_on: bool) -> dict[int, float]:
+    """本备战期发牌概率表(基线 = ``REFRESH_PROB[level]``;轮岗环境在场
+    = 每阶段重掷翻倍档)。"""
+    if not rotation_on:
+        return dict(REFRESH_PROB.get(level, {}))
+    rolled = roll_rotation_per_stage(rng, level)
+    return dict(rolled) if rolled is not None \
+        else dict(REFRESH_PROB.get(level, {}))
+
+
+def deal_shop(gs: GameState, rng: random.Random, *, level: int,
+              probs: dict[int, float] | None = None,
+              extra_experts: dict[str, int] | None = None,
+              tag: str = 'shop:deal') -> None:
+    """整店发牌并写容器商店载荷(obs 渠道;节点切换自动全刷写点)。
+
+    发牌算法本体 = kernel ``cw_shop_deal.sample_shop_deal``(两执行面
+    同源单一实现;sim 侧采样即世界真值)。名集空 → 槽留空(定长 5 槽
+    三态模型的 empty 槽)。
+    """
+    payload = sample_shop_deal(gs, rng, level=level, probs=probs,
+                               extra_experts=extra_experts)
+    gs.observe(gs.shop, payload, evidence=sim_evidence(tag),
+               sig=obs_sig(group_id=f'sim:{tag}'))
+
+
+# ============================================================ offer 采样件
+# (自旧引擎 offer 模块平移;品质覆写名单常量位 = kernel cw_investments。)
+
+
+#: 策略 offer 固定日程(U07① 已裁决;(plane, round_num) 对;P3r2 随
+#: P3 辖域自然延后生效)。
+INVEST_OFFER_SCHEDULE: tuple[tuple[int, int], ...] = ((1, 3), (2, 2), (3, 2))
+
+#: 联席决策环境注册表规范名(id122;效果原文「在2-6节点进行一次额外的
+#: 投资策略三选一」)。
+JOINT_DECISION_ENV_NAME: str = '联席决策'
+
+#: 联席决策额外策略选卡槽(机制文档口径挂 2-6;样本未命中候实机对账)。
+JOINT_DECISION_EXTRA_SLOT: tuple[int, int] = (2, 6)
+
+#: 单次 offer 候选张数(画面语义三选一;环境屏同构占位,U08)。
+OFFER_CANDIDATES: int = 3
+
+#: 品质掷点分布(显式常量参数,候实机数据回填;首版三档均匀 = 中性
+#: 占位非实证,随局披露键见 :data:`QUALITY_DISTRIBUTION_DISCLOSURE`)。
+QUALITY_DISTRIBUTION: tuple[tuple[str, float], ...] = (
+    ('银', 1.0 / 3.0), ('金', 1.0 / 3.0), ('棱彩', 1.0 / 3.0),
+)
+
+#: 品质分布占位披露键(均匀占位非实证;候实机回填后移除)。
+QUALITY_DISTRIBUTION_DISCLOSURE: str = 'invest_quality_distribution_uniform_pending'
+
+#: 环境品质维度缺失披露键(PlazaPortal 无 rarity 注册,品质掷点不适用)。
+ENV_QUALITY_DISCLOSURE: str = 'env_quality_not_registered'
+
+#: 品质覆写族未建模披露键(名单单一源 = kernel QUALITY_REWRITE_ENV_NAMES)。
+QUALITY_REWRITE_ENVS_PENDING: str = 'invest_quality_rewrite_envs_pending'
+
+#: 离群触发点未建模披露键(U07① ~1-2% 触发源未归因,不作机制建模)。
+OFFER_OUTLIER_DISCLOSURE: str = 'invest_offer_outlier_triggers_unmodeled'
+
+
+def offer_slots(plane: int, round_num: int,
+                active_env: str | None) -> bool:
+    """该 (plane, round_num) 是否存在策略 offer 槽。
+
+    固定日程(U07①)∨ 联席决策额外槽(id122 挂 2-6;环境按容器
+    ``active_env`` 现值判定)。环境名不可辨(None/空)→ 仅按固定日程。
+    """
+    key = (int(plane), int(round_num))
+    if key in INVEST_OFFER_SCHEDULE:
+        return True
+    return (key == JOINT_DECISION_EXTRA_SLOT
+            and (active_env or '') == JOINT_DECISION_ENV_NAME)
+
+
+def _roll_quality(rng: random.Random) -> str:
+    """品质掷点(按 :data:`QUALITY_DISTRIBUTION` 加权;概率质量恒和 1)。"""
+    qualities = [q for q, _ in QUALITY_DISTRIBUTION]
+    weights = [w for _, w in QUALITY_DISTRIBUTION]
+    return rng.choices(qualities, weights=weights, k=1)[0]
+
+
+def sample_strategy_offer(rng: random.Random, excluded: set[str],
+                          ) -> tuple[str, ...]:
+    """策略 offer 候选生成(U07③:先掷品质 → 该品质池均匀取 1;
+    offer 内去重 + 排除已出选项 = 全程不重复)。
+
+    ``excluded`` = 本局已出过的全部选项名(后端持有的累计集,调用方
+    须把返回值并入)。某品质池被排除集吃光 → 该候选回退全池(排除后)
+    取;全池亦空 → 候选数不足如实少发(防御性声明,正常局不可达)。
+    """
+    banned = set(excluded)
+    picks: list[str] = []
+    for _ in range(OFFER_CANDIDATES):
+        quality = _roll_quality(rng)
+        pool = [n for n, s in INVESTMENT_STRATEGIES.items()
+                if s.rarity == quality and n not in banned]
+        if not pool:
+            pool = [n for n in INVESTMENT_STRATEGIES if n not in banned]
+        if not pool:
+            break
+        name = pool[rng.randrange(len(pool))]
+        picks.append(name)
+        banned.add(name)
+    return tuple(picks)
+
+
+def sample_env_offer(rng: random.Random, excluded: set[str],
+                     ) -> tuple[str, ...]:
+    """环境 offer 候选生成(U08 与 U07 同构;环境无品质注册 → 排除后
+    全池均匀,品质掷点不适用)。"""
+    banned = set(excluded)
+    pool = sorted(n for n in INVESTMENT_ENVS if n not in banned)
+    if not pool:
+        return ()
+    k = min(OFFER_CANDIDATES, len(pool))
+    return tuple(rng.sample(pool, k))
+
+
+def quality_rewrite_hit(active_env: str | None) -> bool:
+    """当前环境是否命中品质覆写族(披露判据;首版不建模,命中即按
+    :data:`QUALITY_REWRITE_ENVS_PENDING` 披露)。"""
+    return (active_env or '') in QUALITY_REWRITE_ENV_NAMES
+
+
+# ============================================================ 节点事件件
+# (自旧引擎节点模块平移:选项生成保留;apply_*_pick 动作腿退役——
+#  pick 动作走 op → 上报函数族获得链,与实机同构。)
+
+
+#: 遭遇档位数(U22 占位:实机四档旁证 + 加成表四档定谳)。
+ENCOUNTER_TIER_COUNT: int = 4
+
+#: 遭遇奖励包金占位(U22)。
+ENCOUNTER_REWARD_GOLD_PLACEHOLDER: int = 20
+
+#: 遭遇占位参数披露键(U22)。
+ENCOUNTER_PARAMS_PENDING_U22: str = 'encounter_tier_params_pending_u22'
+
+#: 晶矿面板单例锚(U23:实测 1-8 清关样本 1 大金晶矿+5 蓝晶矿+2 灰晶矿)。
+REWARD_ORE_PANEL_ANCHOR: tuple[tuple[str, int], ...] = (
+    ('金', 1), ('蓝', 5), ('灰', 2),
+)
+
+#: 逐色档内容占位(U23 无档:金=金币 30/蓝=装备 1 件/灰=金币 5)。
+REWARD_ORE_CONTENT_PLACEHOLDER: dict[str, tuple[str, int]] = {
+    '金': ('gold', 30),
+    '蓝': ('equip', 1),
+    '灰': ('gold', 5),
+}
+
+#: 晶矿内容占位披露键(U23)。
+ORE_CONTENT_PENDING_U23: str = 'ore_content_pending_u23'
+
+#: 箱候选数(4 选 1,U23 画面语义)。
+BOX_CANDIDATES: int = 4
+
+#: 箱内容池占位披露键(U24 箱内容池候实机数据,占位 = 8 基础件均匀)。
+BOX_POOL_PENDING_U24: str = 'box_pool_pending_u24'
+
+#: 补给选项数(3 选 1,画面语义)。
+SUPPLY_OPTION_COUNT: int = 3
+
+#: 带钻槽位分布占位披露键(U24)。
+SUPPLY_DIAMOND_SLOT_PENDING: str = 'supply_diamond_slot_pending_u24'
+
+#: 扑满不掉血豁免披露键(M17:扑满关不掉血,gameplay「节点类型×战力
+#: 要求」节;M14 豁免位由后端结算腿承载)。
+PIGGY_NO_HP_LOSS: str = 'piggy_node_no_hp_loss_u01_face'
+
+
+def encounter_options() -> tuple[EncounterOption, ...]:
+    """遭遇档位集生成(M16;首版固定四档集,奖励包占位文本随披露)。
+
+    ``EncounterOption.difficulty`` 坐标系 = kernel 档位序 1 基(1=易..
+    4=难);idx = 档位集 0 基下标(策略器输出同域)。实机档位含敌人
+    词缀构成不建模(第一期随机输出面无消费)。
+    """
+    return tuple(
+        EncounterOption(idx=i, difficulty=i + 1,
+                        rewards=[f'金+{ENCOUNTER_REWARD_GOLD_PLACEHOLDER}'
+                                 f'(占位,{ENCOUNTER_PARAMS_PENDING_U22})'])
+        for i in range(ENCOUNTER_TIER_COUNT))
+
+
+def is_piggy_node(gs: GameState) -> bool:
+    """当前奖励节点是否被扑满环境替换(单一源 = ``PIGGY_ENV_NAMES`` ×
+    容器 ``active_env``;非奖励节点恒 False)。"""
+    return (str(node_kind_of(gs) or '') == 'reward'
+            and str(gs.active_env.value or '') in PIGGY_ENV_NAMES)
+
+
+def reward_ore_points() -> tuple[tuple[str, int, int, int], ...]:
+    """晶矿面板点集(U23 单例锚展开;晶矿序 = 色档序内先大后小)。
+
+    [索引定义] 元素 = ``(色档, x, y, r)``(OreSight.points 元素同形);
+    (x, y) = sim 世界合成坐标,无画面语义,仅作晶矿身份键(点晶矿
+    上报按坐标求交,容器 spheres 点集即真值)。内容占位随局披露
+    :data:`ORE_CONTENT_PENDING_U23`;内容采样走 kernel
+    ``report_action_collect_ore_param``(流键 rng 注入),本面板只载
+    「有哪些晶矿」。
+    """
+    points: list[tuple[str, int, int, int]] = []
+    i = 0
+    for color, count in REWARD_ORE_PANEL_ANCHOR:
+        for _ in range(count):
+            i += 1
+            points.append((color, i * 10, 10, 10))
+    return tuple(points)
+
+
+def box_options() -> tuple[str, ...]:
+    """补给箱 4 选 1 装备候选(U24 箱内容池候实机数据,占位 = 8 基础件
+    取前 4 定序;箱生成随机性候实机数据,首版固定候选集)。"""
+    return tuple(sorted(SYNTHESIS_BASES)[:BOX_CANDIDATES])
+
+
+def supply_options(rng: random.Random) -> tuple[SupplyOption, ...]:
+    """补给 3 选项采样(M18:8 基础件池均匀取 3 + 带钻槽均匀占位)。
+
+    ``SupplyOption.char`` 恒空(补给 = 装备选);idx = 选项 0 基下标。
+    offer 内不重名(不放回采样)。
+    """
+    pool = sorted(SYNTHESIS_BASES)
+    equips = rng.sample(pool, min(SUPPLY_OPTION_COUNT, len(pool)))
+    diamond_slot = rng.randrange(len(equips))
+    return tuple(
+        SupplyOption(idx=i, char='', equip=name,
+                     has_diamond=(i == diamond_slot))
+        for i, name in enumerate(equips))
+
+
+# ============================================================ 披露键群
+# (恒在册声明面,随局结果 unmodeled 输出;装备三键自旧引擎装备模块迁居
+#  ——动作腿退役后键义不变:发放空表/特权投影仪/炉拖角色模式仍未建模。)
+
+#: 环境结构化经济通道披露键(M02:两位面金通道已结构化,其余候效果批)。
+DISCLOSURE_ENV_CHANNELS: str = 'env_economy_channels_pending_m02'
+
+#: 开箱自发触发披露键(U23:首版无自发开箱,箱 = 备战席箱件开箱动作)。
+DISCLOSURE_BOX_TRIGGER: str = 'box_spawn_trigger_pending_u23'
+
+#: planner 选卡效果披露键(升费腿效果由 pick_planner 上报承载;其余
+#: 选项效果面候效果批)。
+DISCLOSURE_PLANNER_EFFECT: str = 'planner_pick_effect_pending_u26'
+
+#: 整店锁披露键(裁定②:动作词表无锁通道,首版恒解锁 + 披露,字段先行)。
+DISCLOSURE_SHOP_LOCK: str = 'shop_lock_sim_engine_state'
+
+#: P3 未观测披露键(U19:P3 进场即局终)。
+DISCLOSURE_P3_UNOBSERVED: str = 'p3_unobserved'
+
+#: lv10 满级零累计披露键(裁定③:cap 分母未定,满级经验不再累计)。
+DISCLOSURE_LV10_XP: str = 'level_cap_xp_denominator_none'
+
+#: U24 装备三披露键(发放空表/工具效果面/炉拖角色模式)。
+UNMODELED_GRANTS: str = 'unmodeled_grants'
+TOOL_EFFECTS_PENDING: str = 'tool_effects_pending_m10'
+FURNACE_CHAR_MODE_PENDING: str = 'furnace_char_mode_pending_m10'
+
+#: 词缀采样占位披露键(reset/affixes 流键采样:池 = affix_effects_data
+#: 注册表键集,张数/分布占位候实机补档)。
+DISCLOSURE_AFFIX_SAMPLE: str = 'reset_affixes_sample_placeholder'
+
+#: 全程披露常量表(恒在册,与采样值无关的声明面)。
+_BASE_DISCLOSURES: dict[str, object] = {
+    SIM_BATTLE_FACE: 'random_win_p0.5_hp_loss_uniform_[23,70]',
+    QUALITY_DISTRIBUTION_DISCLOSURE: 'uniform_1/3_each_placeholder',
+    ENV_QUALITY_DISCLOSURE: 'env_pool_uniform_no_quality_axis',
+    OFFER_OUTLIER_DISCLOSURE: 'u07_outlier_1-2pct_not_modeled',
+    ENCOUNTER_PARAMS_PENDING_U22: 'count4_gold20_equip0_fixed_set',
+    DIFFICULTY_BASE_PENDING_U25: 'base_curve_none_no_interpolation',
+    HOLY_GRAIL_PENDING: 'activation_pending_u14',
+    BOSS_DEDUP_PENDING: 'with_replacement_per_plane',
+    ROTATION_ASSUMPTION_DISCLOSURE: 'tier_uniform_1of5_assumed',
+    DISCLOSURE_SHOP_LOCK: 'field_first_no_action_channel_v1_unlocked',
+    DISCLOSURE_LV10_XP: 'cap10_zero_accumulate_u18',
+    DISCLOSURE_ENV_CHANNELS: 'structured_two_of_env_economy',
+    DISCLOSURE_BOX_TRIGGER: 'no_spontaneous_box_first_phase',
+    UNMODELED_GRANTS: 'u24_grant_table_empty_first_phase',
+    TOOL_EFFECTS_PENDING: 'privilege_projector_token_unmodeled',
+    FURNACE_CHAR_MODE_PENDING: 'furnace_drag_char_mode_unmodeled',
+    NODE_XP_PENDING_U17: 'boss_xp12_composition_pending',
+    PIGGY_NO_HP_LOSS: 'piggy_node_no_hp_loss_exempt',
+    DISCLOSURE_AFFIX_SAMPLE: 'pool3_uniform_placeholder',
+    OVERLAY_PARAM_PENDING: 'm22_placeholder_options',
+}
+
+#: 单局驱动步上限(防流程死循环;正常局 < 2000 动作)。
+MAX_STEPS: int = 5000
+
+#: 开局词缀采样张数(占位:实机简报词缀张数分布候实机补档)。
+AFFIX_SAMPLE_COUNT: int = 3
+
+#: 模态屏族(选卡/弹窗呈现态; dismiss 事件交回底层屏)。
+_MODAL_SCREENS: frozenset[str] = frozenset({
+    SCREEN_INVEST_ENV, SCREEN_INVEST_STRATEGY, SCREEN_BOX, SCREEN_EXPERT,
+    SCREEN_MEGASTAR, SCREEN_PLANNER, SCREEN_SHOP,
+})
+
+
+@dataclass(frozen=True)
+class SimRunResult:
+    """局结果面(消费方 = 运行器断言;纯结果无评判;自旧引擎 RunResult
+    平移,位面/轮次读容器节点键)。"""
+
+    final_hp: int
+    plane_reached: int
+    rounds: tuple[int, int]
+    hp_trail: tuple[int, ...]
+    unmodeled: dict[str, object]
+
+
+@dataclass
+class SimBackend:
+    """sim 游戏后端(一实例一局;端口协议实现 + 画面状态机 + 世界规则件)。
+
+    构造即 reset(开局序列:词缀/boss 名单采样并写容器 → 简报屏 →
+    (env_present)投资环境屏 → wait_one_one → P1r1 对应屏);运行面 =
+    端口五口 + kernel 事件钩子订阅,世界推进全部由流程驱动(动作腿 =
+    op → 上报函数族,本后端零私有动作语义)。
+    """
+
+    #: 局级输入(确定性锚;词缀入 seed 后此字段语义 = override 见下)。
+    seed: int
+    cfg: RunConfig
+    #: 世界容器(组合,唯一一份)。
+    gs: GameState = field(init=False)
+    # —— 画面状态机(私有;状态 = 档名 + 子态) ——
+    _screen: str = field(init=False, default='')
+    _sub: str = field(init=False, default='')
+    #: 模态交回目标(呈现模态时的底层屏;None = 无挂起交回)。
+    _return_screen: str | None = field(init=False, default=None)
+    _return_sub: str = field(init=False, default='')
+    #: 节点窗口已推进但节点屏未呈现(offer/overlay 让路时置位)。
+    _node_screen_pending: bool = field(init=False, default=False)
+    # —— 采样簿记(实机不可观察,后端私有) ——
+    excluded_invest: set[str] = field(default_factory=set)
+    excluded_env: set[str] = field(default_factory=set)
+    overlay_queue: OverlayQueue = field(default_factory=OverlayQueue)
+    #: 「我来当策划」已触发位(首次语义,一次性标志)。
+    planner_fired: bool = field(default=False)
+    #: planner 判据的升星前快照(star_up 事件无动作前视图,后端逐事件
+    #: 维护全域银狼最高星基线;1→2 跨越判据 = planner_overlay_due)。
+    planner_seen_star: int = field(default=0)
+    #: 巨星羁绊已触发层数(跨层入队判据的已消费水位;0 = 未触发)。
+    megastar_fired_tier: int = field(default=0)
+    #: 武装箱待授予候选下标(装备卡点击源记录;pick_box_card 落地消费)。
+    _box_pick_pending: int | None = field(init=False, default=None)
+    # —— 局结果面(消费方 = 运行器断言) ——
+    hp_trail: list[int] = field(default_factory=list)
+    disclosures: dict[str, object] = field(default_factory=dict)
+    done: bool = field(init=False, default=False)
+    #: 已完成结算的节点键(重入幂等守卫;战斗结算每节点恰一次)。
+    _settled_key: tuple[int, int] | None = field(init=False, default=None)
+    #: 已进窗的节点线性序(节点推进重入幂等守卫)。
+    _entered_ord: int = field(init=False, default=0)
+    _steps: int = field(init=False, default=0)
+
+    def __post_init__(self) -> None:
+        if self.cfg.game_mode != '标准博弈':
+            raise ValueError(
+                f'对局类型 {self.cfg.game_mode!r} 不在首版辖域'
+                '(sim 首版 = 标准博弈;非标准值显式拒,不猜差异)')
+        self.disclosures.update(_BASE_DISCLOSURES)
+        # 词缀入 seed(流键 reset/affixes):RunConfig.enemy_affixes 降级
+        # override(定向测试定词缀用);常规局按注册表键集采样。
+        affixes = tuple(self.cfg.enemy_affixes) \
+            or self._sample_affixes(self.seed)
+        cfg = replace(self.cfg, enemy_affixes=affixes)
+        self.gs = GameState(schema_version=GAME_STATE_SCHEMA_VERSION)
+        # 开局种子底座(与实机局容器冷建即种同契约:获得链/上报函数族的
+        # 拒落档门以底座在场为前提;seed 值 = 常量基线,apply_opening 随后
+        # 以 obs 真值覆盖,确定性不受影响)。
+        seed_opening_state(self.gs)
+        apply_opening(self.gs, cfg, stream_rng(self.seed, 'M01/opening_hand'))
+        bosses = resolve_plane_bosses(cfg.boss_roster_override,
+                                      stream_rng(self.seed, 'M20/boss'))
+        self.gs.observe(self.gs.plane_bosses, list(bosses),
+                        evidence=sim_evidence('boss:roster'),
+                        sig=obs_sig(group_id='sim:boss'))
+        self.gs.observe(self.gs.shop_locked, False,
+                        evidence=sim_evidence('shop_lock:v1_unlocked'),
+                        sig=obs_sig(group_id='sim:shop'))
+        self.gs.observe(self.gs.diamond_count, 0,
+                        evidence=sim_evidence('diamond:opening'),
+                        sig=obs_sig(group_id='sim:diamond'))
+        self._hp_trail_append()
+        # 初始序列:简报屏(词缀 + boss 载荷已写容器;env 屏在简报下一步
+        # 之后呈现,权威源 = screens/briefing.md 进入链)。
+        self._screen = SCREEN_BRIEFING
+
+    # ---------------------------------------------------------- 初始序列
+
+    def _sample_affixes(self, seed: int) -> tuple[str, ...]:
+        """开局词缀采样(流键 ``reset/affixes``;池 = affix_effects_data
+        注册表键集均匀无放回;张数/分布占位,披露键恒在册)。"""
+        rng = stream_rng(seed, 'reset/affixes')
+        pool = sorted(AFFIX_EFFECTS)
+        return tuple(rng.sample(pool, min(AFFIX_SAMPLE_COUNT, len(pool))))
+
+    # ---------------------------------------------------------- 端口五口
+
+    def screen_identity(self) -> str:
+        """当前画面 screen_info 档名(状态机唯一答口)。"""
+        self._maybe_finish_wait()
+        return self._screen
+
+    def observe(self, screen_name: str) -> object:
+        """生成器直出该屏观察产物。
+
+        生成器注册表归金路径生成器批(flow-seam §3:注册表键 = 档名,
+        未注册呈现 = 响错防静默失真);本批 backend 直驱测试读容器,
+        观察腿不可用 = 具名响错。"""
+        raise NotImplementedError(
+            f'sim 观察生成器未注册: {screen_name!r}'
+            '(金路径生成器批落地前,sim 观察腿不可用;backend 直驱测试'
+            '读容器 GameState)')
+
+    def visible(self, screen_name: str, area_name: str) -> bool:
+        """until / 门可见性问询。
+
+        3.2 语义 = 画面档匹配(问询屏 == 当前呈现屏;模态屏族在场时
+        底层屏区域不可见);area 级可见性(子态/浮层细分)归金路径生成
+        器批的状态机可见性细化。等待变体(wait_one_one)在问询时立即
+        完成(sim 世界瞬时呈现,动画无时间维)。"""
+        self._maybe_finish_wait()
+        return screen_name == self._screen
+
+    def click_answer(self, op, screen_name: str, area_name: str,
+                     until_find_all, until_not_find_all):
+        """sim 点击应答:先处理点击源(状态机转移),再出实机同形
+        round 结果(机械镜 = :func:`cw_sim_ports.mirror_click_answer`;
+        until 问询经 :meth:`visible` 取转移后真值)。"""
+        self._maybe_finish_wait()
+        self._handle_click_source(screen_name, area_name)
+        self._tick()
+        return cw_sim_ports.mirror_click_answer(
+            op, screen_name, area_name, until_find_all, until_not_find_all)
+
+    # ---------------------------------------------------------- 点击源
+
+    def _handle_click_source(self, screen_name: str, area_name: str) -> None:
+        """点击源分派(不入 kernel 事件集的推进型点击;逐 case =
+        flow-seam 附录 B 边界登记面)。"""
+        if screen_name == SCREEN_BRIEFING and area_name == '按钮-下一步':
+            self._advance_briefing()
+        elif screen_name == SCREEN_BOSS_BRIEFING \
+                and area_name == '区域-空白点击':
+            self._resolve_battle()
+        elif screen_name == SCREEN_PLANE_TRANSITION \
+                and area_name == '区域-空白点击':
+            self._begin_node_window()
+        elif screen_name == SCREEN_SUPPLY and area_name == '文本-剩余次数':
+            self._supply_refresh()
+        elif screen_name == SCREEN_BOX and area_name.startswith('装备卡-'):
+            self._record_box_click(area_name)
+        elif screen_name == SCREEN_PREP and area_name == '按钮-商店':
+            self._open_shop()
+
+    def _advance_briefing(self) -> None:
+        """简报下一步:env_present 且未定局 → 投资环境屏(M02 采样);
+        否则 → wait_one_one 变体。"""
+        if self.done:
+            return
+        if self.cfg.env_present and not (self.gs.active_env.value or ''):
+            if self._screen != SCREEN_INVEST_ENV:
+                rng = stream_rng(self.seed, 'M02/env-offer')
+                opts = sample_env_offer(rng, self.excluded_env)
+                self._present_modal(SCREEN_INVEST_ENV)
+                report_screen_invest_env_obs(self.gs, CwScreenInvestEnvObs(
+                    hit=True,
+                    options=[(n, (i + 1) * 10) for i, n in enumerate(opts)],
+                    refresh=None))
+            return
+        self._enter_wait_one_one()
+
+    def _enter_wait_one_one(self) -> None:
+        """wait_one_one 变体(开局补给动画等待;sim 瞬时呈现,下次问询
+        即完成进 P1r1)。"""
+        self._screen = SCREEN_PREP
+        self._sub = PREP_SUB_WAIT_ONE_ONE
+
+    def _maybe_finish_wait(self) -> None:
+        """等待变体惰性完成(任何问询/点击时点动画已完成 → 进 P1r1)。"""
+        if self._sub == PREP_SUB_WAIT_ONE_ONE and not self.done:
+            self._sub = ''
+            self._enter_node_window(1, 1)
+
+    def _supply_refresh(self) -> None:
+        """补给免费刷新(点击源;剩余闸:left>0 才刷,刷后 left−1;选项
+        重掷流键与旧引擎计数闸等价推导一致)。"""
+        left = self.gs.supply_refresh_left.value
+        if left is None or int(left) <= 0:
+            return
+        plane, r = self._node_pos()
+        used = 1 - int(left)   # 旧计数闸等价推导(保持流键稳定)
+        self.gs.observe(self.gs.supply_refresh_left, max(0, int(left) - 1),
+                        evidence=sim_evidence('supply:refresh'),
+                        sig=obs_sig(group_id='sim:supply'))
+        rng = stream_rng(self.seed,
+                         f'M18/opts/p{plane}/r{r}/refresh{used + 1}')
+        opts = supply_options(rng)
+        report_screen_supply_node_obs(self.gs, CwScreenSupplyNodeObs(
+            in_node=True, options=list(opts), refresh_left=None))
+
+    def _record_box_click(self, area_name: str) -> None:
+        """武装箱候选点击记录(装备卡-N 建档序 = box_card_names 下标;
+        授予在 pick_box_card 落地事件消费)。"""
+        try:
+            idx = int(area_name.rsplit('-', 1)[1]) - 1
+        except (IndexError, ValueError):
+            return
+        self._box_pick_pending = idx
+
+    def _open_shop(self) -> None:
+        """开店点击源(备战 → 开商店态;close_shop 转移事件交回)。"""
+        if self._screen == SCREEN_PREP:
+            self._present_modal(SCREEN_SHOP)
+
+    # ---------------------------------------------------------- 事件钩子
+
+    def on_transition_event(self, event: TransitionEvent) -> None:
+        """转移事件订阅(kernel 事件钩子槽;封闭集逐成员分派)。"""
+        if self.done:
+            return
+        self._tick()
+        kind = event.kind
+        if kind in ('settle_confirm', 'supply_confirm'):
+            self._on_node_advance()
+        elif kind == 'start_battle':
+            self._resolve_battle()
+        elif kind == 'pick_encounter':
+            # 派发即终结:选档落地 → 该遭遇战结算 → 结算页
+            self._resolve_battle()
+        elif kind == 'pick_supply':
+            self._on_supply_picked()
+        elif kind == 'pick_invest_env':
+            self._on_invest_picked(opening=True)
+        elif kind == 'pick_invest_strategy':
+            self._on_invest_picked(opening=False)
+        elif kind == 'open_box':
+            self._on_open_box()
+        elif kind == 'open_bookcard':
+            self._present_modal(SCREEN_EXPERT)
+        elif kind == 'pick_box_card':
+            self._on_box_picked()
+        elif kind == 'pick_megastar':
+            self._on_overlay_picked('megastar')
+        elif kind == 'pick_planner':
+            self._on_overlay_picked('planner')
+        elif kind in ('pick_partner', 'pick_fortune', 'pick_wish_trial',
+                      'pick_star_tome', 'pick_expert_invite'):
+            # 零档族/书册卡:评估器缺位 → 呈现态才可能收到;幂等交回
+            self._dismiss_modal()
+        elif kind == 'close_shop':
+            self._dismiss_modal()
+
+    def on_fact_event(self, event: FactEvent) -> None:
+        """事实事件订阅(overlay 触发层评估器消费 + 板面真值基座刷新)。"""
+        if self.done:
+            return
+        if event.kind == 'board_changed':
+            self._evaluate_megastar()
+        elif event.kind == 'star_up':
+            self._evaluate_planner(event)
+        self._refresh_board()
+        self._present_pending_overlay()
+
+    # ------------------------------------------------ 转移事件 handler 群
+
+    def _on_node_advance(self) -> None:
+        """节点推进(终结动作上报触发;kernel report_node_advance 已做
+        观察态门与同序去重,本层再守线性序 = 转移事件重入幂等)。"""
+        eff = effective_node_ord(self.gs)
+        if eff is None or eff <= self._entered_ord:
+            return
+        # 节点经验在节点推进时入账(被离开节点的类型;首推进无前节点)
+        prev = self.gs.node.value
+        if prev is not None:
+            apply_node_xp(self.gs, node_type=prev.kind)
+        if eff > sum(len(node_sequence_of(p)) for p in (1, 2)):
+            # P2 末 = 第一期辖域尽头;P3 进场即局终(p3_unobserved)
+            self.disclosures[DISCLOSURE_P3_UNOBSERVED] = \
+                'enter_p3_game_over_u19'
+            self._game_over()
+            return
+        plane, r = self._ordinal_to_node(eff)
+        self._entered_ord = eff
+        self._enter_node_window(plane, r)
+
+    def _on_supply_picked(self) -> None:
+        """补给选定落地:带钻选项给宝钻(世界事实写容器 diamond_count;
+        钻信息 = 容器 chosen_supply 现值,确认即写端 = 补给画面 op)。"""
+        chosen = self.gs.chosen_supply.value
+        if chosen is not None and bool(chosen[2]):
+            cur = int(self.gs.diamond_count.value or 0)
+            self.gs.observe(self.gs.diamond_count, cur + 1,
+                            evidence=sim_evidence('supply:diamond'),
+                            sig=obs_sig(group_id='sim:diamond'))
+        self.disclosures.setdefault(SUPPLY_DIAMOND_SLOT_PENDING,
+                                    'uniform_slot')
+
+    def _on_invest_picked(self, *, opening: bool) -> None:
+        """投资选卡落地(效果 = kernel 获得链,经 report_action_pick_*
+        已写容器;本层交回 + 去重集累计,排除集读容器 opts 现值)。"""
+        opts = (self.gs.invest_env_opts.value if opening
+                else self.gs.invest_strategy_opts.value) or []
+        (self.excluded_env if opening else self.excluded_invest).update(opts)
+        self._after_modal_pick(opening=opening)
+
+    def _on_open_box(self) -> None:
+        """开箱动作落地 → 武装箱选择画面(候选 = 占位固定集;候选写入
+        走 report_screen_box_pick_obs 同名通道)。"""
+        if self._screen == SCREEN_BOX:
+            return   # 重入幂等:候选已在场
+        self._box_pick_pending = None
+        self.disclosures.setdefault(BOX_POOL_PENDING_U24, 'bases4')
+        cands = list(box_options())
+        self._present_modal(SCREEN_BOX)
+        report_screen_box_pick_obs(self.gs, CwScreenBoxPickObs(
+            on_screen=True, card_names=cands,
+            points=[((i + 1) * 10, 10) for i in range(len(cands))]))
+
+    def _on_box_picked(self) -> None:
+        """武装箱选定落地:选中装备走获得链入栏(kernel 单一时序,含
+        获得后果回调);候选点击缺记录 = 世界不可辨,披露不猜。"""
+        idx = self._box_pick_pending
+        self._box_pick_pending = None
+        if idx is not None:
+            names = self.gs.box_card_names.value or []
+            if 0 <= idx < len(names):
+                gain_equipment(self.gs, names[idx], rand=False,
+                               sig=logic_sig(group_id='act:sim@box'),
+                               evidence='sim:box_pick',
+                               producer='SimBackend')
+            else:
+                self.disclosures.setdefault(BOX_POOL_PENDING_U24,
+                                            'pick_idx_out_of_range')
+        else:
+            self.disclosures.setdefault(BOX_POOL_PENDING_U24,
+                                        'pick_card_unrecorded')
+        self._dismiss_modal()
+
+    def _on_overlay_picked(self, kind: str) -> None:
+        """overlay 选定落地(评估器目录族):效果腿归各自上报/效果批
+        (megastar chosen = 决策面写端;planner 腿 = pick_planner 上报),
+        本层出队 + 模态交回。"""
+        if self.overlay_queue.peek() == kind:
+            self.overlay_queue.pop()
+        if kind == 'planner':
+            self.disclosures[DISCLOSURE_PLANNER_EFFECT] = 'picked:report_leg'
+        self._dismiss_modal()
+        self._present_pending_overlay()
+
+    # ---------------------------------------------------------- 状态机
+
+    def _present_modal(self, screen_name: str) -> None:
+        """模态呈现(压住底层画面;交回目标 = 当前屏,选完交回)。"""
+        if self._screen == screen_name:
+            return
+        self._return_screen = self._screen
+        self._return_sub = self._sub
+        self._screen = screen_name
+
+    def _dismiss_modal(self) -> None:
+        """模态交回(幂等:无挂起交回 = 原地不动;节点屏让路位优先)。"""
+        if self._node_screen_pending:
+            self._node_screen_pending = False
+            self._return_screen = None
+            self._return_sub = ''
+            self._present_node_screen()
+            return
+        ret = self._return_screen
+        if ret is None:
+            return
+        ret_sub = self._return_sub
+        self._return_screen = None
+        self._return_sub = ''
+        self._screen = ret
+        self._sub = ret_sub
+
+    def _after_modal_pick(self, *, opening: bool) -> None:
+        """选卡族模态交回(投资双支共用):开局环境态(节点未进窗)→
+        wait_one_one;其余 = 模态交回(节点屏让路位优先)。"""
+        if opening and self.gs.node.value is None:
+            self._return_screen = None
+            self._enter_wait_one_one()
+            return
+        self._dismiss_modal()
+
+    def _present_pending_overlay(self) -> None:
+        """overlay 队列检查(空 = 直返;底层非模态屏才压上,防模态叠模态)。"""
+        kind = self.overlay_queue.peek()
+        if kind is None:
+            return
+        if self._screen in _MODAL_SCREENS:
+            return
+        self._return_screen = self._screen
+        self._return_sub = self._sub
+        if kind == 'megastar':
+            self._screen = SCREEN_MEGASTAR
+            self._present_megastar_options()
+        elif kind == 'planner':
+            self._screen = SCREEN_PLANNER
+        else:
+            # 零档族占位队列项不入呈现(评估器缺位 = 不入队,防御面)
+            self._return_screen = None
+            self._return_sub = ''
+            self.overlay_queue.pop()
+            self.disclosures.setdefault(OVERLAY_PARAM_PENDING,
+                                        'unpresentable_kind')
+
+    def _present_megastar_options(self) -> None:
+        """巨星候选写容器(候选 = 场上盛会之星角色,含持星徽贡献;选项
+        坐标 = sim 合成坐标,身份键无画面语义)。"""
+        cands: list[MegastarOption] = []
+        for row_field, row_name in ((self.gs.front_row, 'front_row'),
+                                    (self.gs.back_row, 'back_row')):
+            for unit in (row_field.value or []):
+                if unit is None:
+                    continue
+                if '盛会之星' in _row_unit_tags(unit, row_name):
+                    cands.append(MegastarOption(
+                        idx=len(cands), char_id=unit.char_id,
+                        xy=((len(cands) + 1) * 10, 10)))
+        report_screen_megastar_obs(self.gs, CwScreenMegastarObs(
+            in_node=True, options=cands))
+
+    def _ordinal_to_node(self, ordinal: int) -> tuple[int, int]:
+        """节点线性序 → (位面, 轮)(P1=9/P2=7 地面真值;超界在调用方
+        先行拦截为局终)。"""
+        acc = 0
+        for plane in (1, 2):
+            length = len(node_sequence_of(plane))
+            if ordinal <= acc + length:
+                return plane, ordinal - acc
+            acc += length
+        raise ValueError(f'节点线性序 {ordinal} 超出第一期辖域(P1+P2)')
+
+    def _node_pos(self) -> tuple[int, int]:
+        """当前节点 (位面, 轮)(gs.node 现值;未进窗 = (1, 1) 防御面)。"""
+        node = self.gs.node.value
+        if node is None:
+            return 1, 1
+        return node.plane, node.round_num
+
+    def _enter_node_window(self, plane: int, round_num: int) -> None:
+        """进节点(序列平移:写 gs.node + 节点序观察锚定;位面首 = 位面
+        过渡屏,其余序列在 _begin_node_window 收口)。"""
+        seq = node_sequence_of(plane)
+        kind = seq[round_num - 1]
+        ordinal = self._node_ordinal(plane, round_num)
+        self.gs.observe(self.gs.node,
+                        NodeKey(plane=plane, round_num=round_num, kind=kind),
+                        evidence=sim_evidence(f'node:p{plane}r{round_num}'),
+                        sig=obs_sig(group_id='sim:node'))
+        # 节点序锚定(sim 写端 = 世界呈现节点,与实机「备战帧顶栏/补给屏
+        # 节点条」观察锚定同口;终结动作推进的观察态门以此为前提)。
+        observe_node_anchor(self.gs, ordinal,
+                            trigger_screen=self._screen_for_node(kind),
+                            actor='SimBackend')
+        self._node_screen_pending = False
+        if plane > 1 and round_num == 1:
+            # 位面过渡(U20:全继承无重置;点空白后收口节点窗口)
+            self._screen = SCREEN_PLANE_TRANSITION
+            self._sub = ''
+            self._node_screen_pending = True
+            return
+        self._begin_node_window()
+
+    @staticmethod
+    def _screen_for_node(kind: str) -> str:
+        """节点类型 → 呈现屏档名(_present_node_screen 同一映射,锚定
+        trigger_screen 消费)。"""
+        return {'supply': SCREEN_SUPPLY, 'encounter': SCREEN_ENCOUNTER,
+                'boss': SCREEN_BOSS_BRIEFING}.get(kind, SCREEN_PREP)
+
+    def _node_ordinal(self, plane: int, round_num: int) -> int:
+        """(位面, 轮) → 节点线性序(P1=9/P2=7;观察锚定与守卫消费)。"""
+        acc = 0
+        for p in (1, 2):
+            length = len(node_sequence_of(p))
+            if p == plane:
+                return acc + round_num
+            acc += length
+        raise ValueError(f'位面 {plane} 超出第一期辖域(P1+P2)')
+
+    def _begin_node_window(self) -> None:
+        """节点窗口序列(收入 → 环境金 → 商店全刷 → overlay → offer →
+        节点屏呈现;位面过渡点空白与直进节点共用本收口)。"""
+        plane, r = self._node_pos()
+        kind = node_sequence_of(plane)[r - 1]
+        # 轮首收入(M04;败补挂账按 kernel 分支序消费——supply/reward
+        # 轮不消费,败态跨轮保留至下一战斗轮;连胜 = 容器带符号派生读)
+        pending = self.gs.pending_loss.value
+        apply_round_start_income(
+            self.gs, plane=plane, round_num=r, node_type=kind,
+            streak=max(int(self.gs.streak.value or 0), 0),
+            pending_loss=pending)
+        if kind not in INCOME_BRANCH_NODE_TYPES and pending is not None:
+            clear_pending_loss(self.gs,
+                               sig=obs_sig(group_id='sim:loss'))
+        # 位面开局环境金(M02 结构化通道:gold_per_plane_start)
+        self._apply_env_plane_gold(plane)
+        # 商店全刷(M05:节点切换自动全刷;整店锁跳过——裁定②)
+        if not bool(self.gs.shop_locked.value):
+            rotation_on = (str(self.gs.active_env.value or '')
+                           == ROTATION_ENV_NAME)
+            rng = stream_rng(self.seed, f'M05/deal/p{plane}/r{r}')
+            probs = effective_deal_probs(
+                int(self.gs.level.value or 3),
+                stream_rng(self.seed, f'M05/rotation/p{plane}/r{r}'),
+                rotation_on=rotation_on)
+            deal_shop(self.gs, rng, level=int(self.gs.level.value or 3),
+                      probs=probs, tag=f'shop:deal:p{plane}r{r}')
+        self._node_screen_pending = True
+        # overlay 队列检查(旧引擎收尾序:overlay 先于 offer)
+        if self.overlay_queue.peek() is not None:
+            self._present_pending_overlay()
+            return
+        # offer 日程(M11/U07:固定轮次 + 联席决策,生效于本节点备战窗)
+        active_env = self.gs.active_env.value
+        if offer_slots(plane, r, active_env):
+            if quality_rewrite_hit(str(active_env or '')):
+                self.disclosures[QUALITY_REWRITE_ENVS_PENDING] = \
+                    str(active_env)
+            rng = stream_rng(self.seed, f'M11/offer/p{plane}/r{r}')
+            opts = sample_strategy_offer(rng, self.excluded_invest)
+            self._screen = SCREEN_INVEST_STRATEGY
+            self._sub = ''
+            report_screen_invest_strategy_obs(self.gs,
+                                              CwScreenInvestStrategyObs(
+                                                  entry_ok=True,
+                                                  options=[
+                                                      (n, (i + 1) * 10, 10)
+                                                      for i, n in
+                                                      enumerate(opts)],
+                                                  refresh_slots=[]))
+            return
+        self._present_node_screen()
+
+    def _present_node_screen(self) -> None:
+        """按节点类型呈现对应屏(battle/reward → 备战档,reward = 晶矿
+        子态;supply → 补给;encounter → 遭遇节点;boss → BOSS 简报)。"""
+        self._node_screen_pending = False
+        plane, r = self._node_pos()
+        kind = node_sequence_of(plane)[r - 1]
+        if kind == 'supply':
+            rng = stream_rng(self.seed, f'M18/opts/p{plane}/r{r}')
+            opts = supply_options(rng)
+            report_screen_supply_node_obs(self.gs, CwScreenSupplyNodeObs(
+                in_node=True, options=list(opts), refresh_left=1))
+            self._screen = SCREEN_SUPPLY
+            self._sub = ''
+            return
+        if kind == 'encounter':
+            report_screen_encounter_obs(self.gs, CwScreenEncounterObs(
+                options=list(encounter_options()), refresh_left=None))
+            self._screen = SCREEN_ENCOUNTER
+            self._sub = ''
+            return
+        if kind == 'boss':
+            self._screen = SCREEN_BOSS_BRIEFING
+            self._sub = ''
+            return
+        # battle / reward → 备战档(晶矿子态:奖励节点面板写容器 spheres)
+        if kind == 'reward':
+            self.disclosures.setdefault(ORE_CONTENT_PENDING_U23,
+                                        'gold30_equip1_gold5_placeholder')
+            points = reward_ore_points()
+            self.gs.observe(self.gs.spheres, OreSight(
+                count=len(points),
+                colors=tuple(dict.fromkeys(p[0] for p in points)),
+                points=points),
+                evidence=sim_evidence(f'ores:p{plane}r{r}'),
+                sig=obs_sig(group_id='sim:ores'))
+            self._screen = SCREEN_PREP
+            self._sub = PREP_SUB_ORE
+            return
+        self._screen = SCREEN_PREP
+        self._sub = ''
+
+    def _apply_env_plane_gold(self, plane: int) -> None:
+        """环境结构化经济通道(M02:已结构化子集直接生效——位面开局金
+        通道;其余通道挂披露,效果批建模)。"""
+        env_name = normalize_invest_name(str(self.gs.active_env.value or ''))
+        env = INVESTMENT_ENVS.get(env_name)
+        eff = env.economy if env is not None else None
+        if eff is None:
+            return
+        golds = eff.gold_per_plane_start
+        if plane_entry_gold := (golds[plane - 1] if 0 < plane <= len(golds)
+                                else 0):
+            after = int(self.gs.gold.value or 0) + plane_entry_gold
+            self.gs.observe(self.gs.gold, after,
+                            evidence=sim_evidence(f'env:plane_gold:p{plane}'),
+                            sig=obs_sig(group_id='sim:env'))
+
+    # ---------------------------------------------------------- 结算腿
+
+    def _resolve_battle(self) -> None:
+        """coarse 战斗结算(随机输出面;start_battle/pick_encounter/
+        BOSS 简报点空白三源共用;重入幂等守卫 = 已结算节点键)。"""
+        node = self.gs.node.value
+        if node is None:
+            return
+        key = (node.plane, node.round_num)
+        if self._settled_key == key:
+            return
+        self._settled_key = key
+        kind = node.kind
+        rng = stream_rng(self.seed, f'M13/{node.plane}/{node.round_num}')
+        outcome = settle_battle(rng, plane=node.plane,
+                                round_num=node.round_num)
+        if is_piggy_node(self.gs) and outcome.hp_delta < 0:
+            # 扑满不掉血豁免(M17:扑满关有战力要求、不掉血)
+            outcome = replace(outcome, hp_delta=0)
+        _floor, dead = apply_hp_outcome(self.gs, outcome)
+        self._hp_trail_append()
+        if dead:
+            self._game_over()
+            return
+        # 连胜转移(M15:容器带符号;败态挂账 M04,消费归下一战斗轮轮首)
+        won = outcome.won
+        signed = streak_signed_after(int(self.gs.streak.value or 0),
+                                     node_type=kind, won=won)
+        self.gs.observe(self.gs.streak, signed,
+                        evidence=sim_evidence(
+                            f'streak:p{node.plane}r{node.round_num}'),
+                        sig=obs_sig(group_id='sim:streak'))
+        if not won and kind in COMBAT_NODE_TYPES:
+            self.gs.observe(self.gs.pending_loss,
+                            LostNodeRef(plane=node.plane,
+                                        round_num=node.round_num,
+                                        node_type=kind),
+                            evidence=sim_evidence('loss:pending'),
+                            sig=obs_sig(group_id='sim:loss'))
+        self._screen = SCREEN_SETTLE
+        self._sub = ''
+
+    # ---------------------------------------------------------- 触发评估
+
+    def _evaluate_megastar(self) -> None:
+        """巨星评估器(盛会之星羁绊跨层入队;阈值语义源 =
+        data/cw_factions.py tiers,玩法语义 = 羁绊激活时弹出,一局可
+        多次——逐层一次性水位去重)。计数 = 板面真值(容器行全量重算,
+        与 :meth:`_refresh_board` 同一计算;事实事件发射点的 board 派生
+        值滞后于 obs 通道行写,真值扫描免漂移)。"""
+        count = self._board_truth().get('盛会之星', 0)
+        if count <= 0:
+            return
+        tiers = FACTIONS['盛会之星'].tiers
+        tier_idx = sum(1 for t in tiers if count >= t)
+        if tier_idx > self.megastar_fired_tier:
+            self.megastar_fired_tier = tier_idx
+            self.overlay_queue.push('megastar')
+
+    def _evaluate_planner(self, event: FactEvent) -> None:
+        """planner 评估器(银狼首次升达 2 星;判据单一源 =
+        cw_sim_special.planner_overlay_due,「首次」语义 = 一次性标志;
+        star_up 事件携带合成卡名,升星前视图 = 后端逐事件维护的基线)。"""
+        card = str(event.detail.get('card', '') or '')
+        if self.planner_fired or card != SILVER_WOLF_ID:
+            self.planner_seen_star = max(self.planner_seen_star,
+                                         self._silver_wolf_max_star())
+            return
+        cur = self._silver_wolf_max_star()
+        if planner_overlay_due(SILVER_WOLF_ID, self.planner_seen_star, cur):
+            self.planner_fired = True
+            self.overlay_queue.push('planner')
+        self.planner_seen_star = cur
+
+    def _silver_wolf_max_star(self) -> int:
+        """全板面银狼最高星级(备战席+前台+后台;kernel 合成产物落点 =
+        场上同名位,扫描必须全域;无银狼 → 0)。"""
+        stars: list[int] = []
+        bench_view = self.gs.bench.value
+        if bench_view is not None:
+            stars += [int(s.unit.star) for s in bench_view.slots
+                      if s is not None and s.kind == 'unit'
+                      and s.unit is not None
+                      and s.unit.char_id == SILVER_WOLF_ID]
+        for row in (self.gs.front_row.value, self.gs.back_row.value):
+            stars += [int(u.star) for u in (row or [])
+                      if u is not None and u.char_id == SILVER_WOLF_ID]
+        return max(stars, default=0)
+
+    # ---------------------------------------------------------- 板面基座
+
+    def _board_truth(self) -> dict[str, int]:
+        """板面羁绊计数真值(容器行全量重算;标签单一源 = kernel
+        ``_row_unit_tags``,与 :meth:`_refresh_board` 同一计算)。"""
+        truth: dict[str, int] = {}
+        for row_field, row_name in ((self.gs.front_row, 'front_row'),
+                                    (self.gs.back_row, 'back_row')):
+            for unit in (row_field.value or []):
+                if unit is None:
+                    continue
+                for tag in _row_unit_tags(unit, row_name):
+                    truth[tag] = truth.get(tag, 0) + 1
+        return truth
+
+    def _refresh_board(self) -> None:
+        """板面真值观察(与实机「每备战帧面板观察」同契约)。
+
+        sim 是板面真值唯一持有者,kernel board 为派生量且基座未读时
+        派生挂钩跳过——后端在事实事件后全量重算真值观察 board(等值
+        零写):承担派生基座首读 + obs 通道行写(装备腿等不经
+        write_logic 挂钩的写)后的漂移覆盖;失配经容器吸收面
+        (``_absorb_board_derived``,sim 证据前缀命中抑制面)观察赢采新。
+        """
+        gs = self.gs
+        truth = self._board_truth()
+        plane, r = self._node_pos()
+        if gs.board.value is not None and gs.board.value == truth:
+            return
+        gs.observe(gs.board, truth,
+                   evidence=sim_evidence(f'board:p{plane}r{r}'),
+                   sig=obs_sig(group_id='sim:board'))
+
+    # ---------------------------------------------------------- 局结果面
+
+    def _game_over(self) -> None:
+        self.done = True
+
+    def _hp_trail_append(self) -> None:
+        hp = self.gs.hp.value
+        if hp is not None:
+            self.hp_trail.append(int(hp))
+
+    def _tick(self) -> None:
+        """驱动步计数(超上限 = 流程死循环响亮暴露)。"""
+        self._steps += 1
+        if self._steps > MAX_STEPS:
+            raise RuntimeError(
+                f'超过单局驱动步上限 {MAX_STEPS}(流程疑似死循环)')
+
+    def result(self) -> SimRunResult:
+        """局结果面(终局后消费;局中调用 = 各分量现值快照)。"""
+        node = self.gs.node.value
+        plane = node.plane if node is not None else 1
+        round_num = node.round_num if node is not None else 1
+        return SimRunResult(
+            final_hp=int(self.gs.hp.value or 0),
+            plane_reached=plane,
+            rounds=(plane, round_num),
+            hp_trail=tuple(self.hp_trail),
+            unmodeled=dict(self.disclosures))
+
+
+def install_backend(backend: SimBackend) -> None:
+    """装配 sim 后端(端口槽 + kernel 事件钩子订阅单点)。
+
+    调用方(运行器/测试)负责 teardown 必卸(:func:`uninstall_backend`);
+    端口槽单装配纪律由 ``cw_sim_ports`` 锁(重复安装 raise)。"""
+    cw_sim_ports.install_sim_backend(backend)
+    set_transition_event_sink(backend.on_transition_event)
+    set_fact_event_sink(backend.on_fact_event)
+
+
+def uninstall_backend() -> None:
+    """卸载 sim 后端(端口槽 + 两事件 sink 复位;幂等)。"""
+    set_transition_event_sink(None)
+    set_fact_event_sink(None)
+    cw_sim_ports.uninstall_sim_backend()
