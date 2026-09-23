@@ -8,7 +8,6 @@
 - 方向节拍内化(:meth:`_refresh_direction`;:方向重估从流程侧
   ops 直调收进策略器,触发信号 = 黑板帧刷新代次标注,键守卫贵段每
   game-round 恰一次 + 便宜派生视图段);
-- ``session.pending_round_outcomes`` 槽 = 观察半累积面(决策消费侧已退);
 - pick 族(decide_invest/supply/encounter/megastar/partner/planner/
   star_tome/wish_trial/box_card + 契约扩员两口 fortune/expert_invite,
   普查迁移批 2;原 equip_pick 口随选择装备屏误判退役删除);

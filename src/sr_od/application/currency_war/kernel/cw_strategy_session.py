@@ -146,10 +146,8 @@ class StrategySession:
     #  语义:full = 入口主观察帧(方向重估全程);view = 派生帧(只刷视图);
     #  none = 逻辑态直写/续段/未持新观察。读后即清,消费 = flow 层
     #  _consume_*_direction_frame。)
-    # 结算观察累积槽(:旧 on_round_end 拆两半的存活半)。观察层在
-    # (终态契约 §B:pending_round_outcomes 槽已删——消费侧 drain 早在
-    #  04_survival_budget §7 #7/#8 退役,本槽只写不读;结算
-    #  真值归宿 = gs 结算覆盖写端 + performance.history。)
+    # pending_round_outcomes 槽已随消费侧 drain 退役整删——结算真值
+    # 归宿 = gs 结算覆盖写端(apply_settlement_cover)+ performance.history。
     # —— 策略器状态黑盒引用(session.md §3.1 裁决 1)——
     # 类型由实现包自定义(mandate_v1 = StrategyState,§8.6-6 改名归位);
     # 框架经 create_state 工厂按局冷建、只搬运引用不识内部(所有权归策略器;

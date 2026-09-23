@@ -88,7 +88,7 @@ def plane_end_slots(pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> frozenset[in
 def schedule_of(session) -> tuple[int, int, int]:
     """位面日程真值(单一源)。
 
-    真值源 = ``session.plane_lengths_seen``(cw_screen_prep 每位面首帧随
+    真值源 = ``gs.node_books.plane_lengths_seen``(cw_screen_prep 每位面首帧随
     plane_node_table 记录的「本局已揭晓位面轮数」序列,P3 进表即自适应);
     未揭晓位面回退 ``PLANE_FALLBACK_PRIORS`` 逐面先验(9, 9, 9)——端点纪律
 对称化:未揭晓真值不可判,统一取语料分布上端(位面长度上限 9)。
@@ -104,20 +104,20 @@ def schedule_of(session) -> tuple[int, int, int]:
 
 
 def node_t_of(session: object, plane: object, round_num: object) -> int | None:
-    """hp 新鲜度门时基(全局节点号):前序位面**实际长度**和 + 位面内轮次。
+    """全局节点号(battle_wait killed hp 对比兜底轮次邻接门的时基):
+    前序位面**实际长度**和 + 位面内轮次。
 
     长度源 = ``schedule_of(session)``(P1=9/P2=7/P3 进表自适应;
-    单一源)——替代表迁波曾内联的 ``(plane-1)*9`` 字面量(假设每位面 9
-    节点,P2 真值 7 时 P3 段系统性偏大 +2,判读底稿中危项 1,与 total_remaining_nodes 恒 9 待修缺陷
-    「禁写死 9」同型)。session 缺席(None/裸对象)或日程未揭晓 → 回退
+    单一源)——替代内联 ``(plane-1)*9`` 字面量(位面真值可短于 9,
+    字面量使后位面段系统性偏大)。session 缺席(None/裸对象)或日程未揭晓 → 回退
     ``PLANE_FALLBACK_PRIORS``=(9,9,9),该态下取值与旧字面量逐位相同
     (迁移期等价口径,sim/裸 session 零行为差)。plane/round 缺效(None/0)
     → None = 门恒等支(与各消费位旧守卫同型)。
 
-    **同式契约**:hp 新鲜度门的 now_t 产出位(决策读口)与结算锚写点
-    (``cw_screen_battle_wait`` 的 ``session.last_hp_t``)必须同经本函数
-    派生,禁单侧改式(单侧改式 = gap 判域静默漂移,契约正文见
-    ``cw_hp_policy.apply_hp_freshness_gate`` 时基契约节)。
+    **同式契约**:全局节点号 t 的同源派生纪律——凡 t 语义消费必经本函数
+    派生,禁单侧改式(单侧改式 = 轮次邻接门判域静默漂移;现役生产
+    消费点 = ``cw_screen_battle_wait._record_round_outcome`` 的 killed
+    hp 对比兜底)。
     """
     if not plane or not round_num:
         return None
@@ -128,7 +128,7 @@ def node_t_of(session: object, plane: object, round_num: object) -> int | None:
 def nodes_of_plane(session) -> int:
     """本位面轮数真值(单一源)。
 
-    真值源 = ``session.plane_node_table``(开局帧实读槽序表,
+    真值源 = ``gs.node_books.plane_node_table``(开局帧实读槽序表,
     cw_screen_prep 每位面首帧写、位面内恒定):P1=9 槽、P2=7 槽(16 局
     语料实证)、P3 首局进表即自适应。表缺(裸 session/None/sim P1 段/
     开局首帧前)→ 回退 ``NODES_PER_PLANE=9`` 先验并记一次性

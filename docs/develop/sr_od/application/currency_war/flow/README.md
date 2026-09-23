@@ -84,10 +84,10 @@
 
 - `decide_shop_screen`(flow 层缺省驱动器 + bridge 覆写)——**序列兼容驱动器**:逐帧调 `decide_shop_action` + 逐动作直调上报函数推进期望态(kernel/cw_action_report 函数族,引擎入口委托分支串;快照三件组与升星腿内聚买牌上报;此后零 `cw_state.simulate` 前瞻消费),终结动作截停、CloseShop 收尾不入序列。sim 引擎/回放/既有序列锁消费;生产执行侧不走(单动作循环)。mandate 覆写保留特有记账(已买件/段序号/续段 token)。
 - `_refresh_direction`/`_refresh_direction_views`(flow 层私有)——**方向节拍内化**:键守卫贵段(`update_intention` 状态机 + 候选评分遥测)每 game-round 恰一次 + 便宜派生视图段;触发信号 = GameState 非 Field 双槽帧代次标注(`gs.frame_class_prep`/`gs.frame_class_shop` ∈ full/view/none,写点 = 备战/商店域观察装配点与决策环直写,读者 = 决策入口方向节拍,读后即清;驱动器不写帧类槽)。
-- ~~`_drain_pending_round_outcomes`(flow 层私有)~~——**已删(退役批)**:结算策略半惰性加工(掉血三臂/node_type 回落/谷底回滚登记)经方案批复核为零行为死链(登记臂前置零写端/三臂零决策消费端),04_survival_budget §7 #7/#8 裁决落地删除;`session.pending_round_outcomes` 槽保留为观察半累积面。
+- ~~`_drain_pending_round_outcomes`(flow 层私有)~~——**已删(退役批)**:结算策略半惰性加工(掉血三臂/node_type 回落/谷底回滚登记)经方案批复核为零行为死链(登记臂前置零写端/三臂零决策消费端),04_survival_budget §7 #7/#8 裁决落地删除;槽连同写半已整删,现不存在(`StrategySession` 无该字段,全树零写点零读点);结算真值现役归宿 = `kernel/cw_game_state.py::apply_settlement_cover` 容器覆盖 + `performance.history`。
 - `write_shop_mirrors`(遥测镜像写者)。
 
-注(生命周期):旧 `on_match_start/on_match_end` 删除(职责归 create_session 唯一冷建口/局终收口);旧 `on_round_end` 拆两半——观察半(performance.record/last_streak/last_hp 过置信门/last_hp_t)= battle_wait 结算点**即时直写**(`cw_screen_battle_wait._write_settlement_observation` 单一写点),策略半原经 `session.pending_round_outcomes` 待加工槽惰性 drain——**该消费半已随退役批删除,槽保留为只写不读的观察累积面**。旧 `decide_prep_action` 薄委托已删(P5 挂账兑现)。
+注(生命周期):旧 `on_match_start/on_match_end` 删除(职责归 create_session 唯一冷建口/局终收口);旧 `on_round_end` 拆两半——观察半 = battle_wait 结算点**即时直写**(`cw_screen_battle_wait._write_settlement_observation` 单一写点 → `performance.record`;同点过 hp 置信门更新 `SettlementState.last_outcome_hp`),策略半(`session.pending_round_outcomes` 待加工槽惰性 drain)已随消费侧退役**整删——槽与写半均不存在**。旧 `decide_prep_action` 薄委托已删(git 历史可溯)。
 
 **序列语义(历史注——波批时代的冻结条款,反向自旧 `cw_strategy.py` 与旧 `cw_screen_prep.py` 序列消费段)**【本节为**历史契约**:整波返回/帧稳定截断/空批终止语义已由终结动作与单动作循环取代([../screens/op-layer.md](../screens/op-layer.md) §1),本节仅作旧序列锁与历史 ADR 的解读钥匙;其中 fail-stop/恢复原语条款已随验证段废除批退役,现行控制流 = 终结动作 + 机械执行零判效】:
 - **帧稳定域**(历史):序列内第 i+1 个动作不得依赖第 i 个动作执行后的新观察;发射时逐动作判"执行后画面状态能否静态推出",推不出即截断——截断器已退役,截断点语义由终结动作吸收;流程侧保守口径(每动作落地后 heavy 重观察)已由「入口单次 heavy + 逐动作逻辑态直写」取代。OpenShop/StartBattle 现为终结动作。
@@ -102,7 +102,7 @@
 
 - **依赖方向**：实现包 → 知识层/数学层/执行层单向；分包依赖矩阵禁 decision→obs 直依（obs 读口经 app 桶装配点 `install_obs_ports()` 注入）；决策本体 = 纯函数（bridge.decide_prep_frame，决策输入 = obs（黑板）+ session 容器直读）。
 - **装配点**：黑板单一写端纪律保持；`_RESET_PHASE_ROUND_CACHE` 注入槽（缺省关）+ `discard_stale_match_container`（异常路径残留容器弃置——session 全量重建 by construction）。
-- **gated_hp**（结算 HP 新鲜度门，单一实现的 helper，符号锚见代码）：结算真值仅在可信窗口内覆盖现读——观测质量门，非决策输入（`../strategy-docs/04_survival_budget.md` §7 表 #6）。
+- **决策 hp 读口与可信位**（hp 决策消费面统一读口）：统一读口 = `kernel/cw_hp_policy.py::decision_hp`（gs.hp 直读）——『上一真值』由结算覆盖写端 + carried 语义承载（`../game_state/fields.md` §2.1）；可信位另经 `kernel/cw_hp_policy.py::hp_decision_trusted_of`（`gs.hp.source ∈ {observation, carried}`，prior/logic fail-closed），禁与本口混写双位判定；新增 hp 决策消费点必经读口或登记豁免（消费同门申报纪律 = `kernel/cw_hp_policy.py` 模块头）。原『gated_hp 结算 HP 新鲜度门』（可信窗覆盖现读）已删除，失读窗不再有锚补，识别失准走识别优化批（git 历史可溯）。
 - **sim 消费面注记**:sim 消费 decide_shop_screen 驱动器(方向重估经驱动器内单动作入口消费 full 帧触发)——sim A/B 的证明面 = 商店波经济决策;prep 屏编排域在 sim 无实体真值源,其正确性防线 = 契约锁 + 实机,不在 sim A/B 辖内。
 
 ### 2.4 换核与 A/B(现状口径)

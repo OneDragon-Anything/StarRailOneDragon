@@ -612,7 +612,9 @@ STREAK_WEIGHT: float = 2.0            # 每档 streak 的经济分(占位,待实
 
 STREAK_CAP: int = 5                   # streak 经济封顶档(连胜金一般 ≤5 档)
 
-# streak 带符号(连胜 + / 连败 −,结算源 session.last_streak 方向可靠);连败 fold 半已由 HP-gating 覆盖(02 R2-4b)。
+# streak 带符号(连胜 + / 连败 −);真值归宿 = gs.streak 结算覆盖写端
+# (kernel/cw_game_state.py::apply_settlement_cover 的 streak_after,
+# 写点 = battle_wait 结算观测),经济/观察消费读容器。
 # 「连胜 ≥2 破息」旧阈值常量已删(P43 §⑤ 处死名单:与已证破息-保息判据
 # 冲突的未核经验值;决策语义现由息线判据默认承载,激活腿 Δp 通道
 # 封锁——登记 = math_proofs P43)。
