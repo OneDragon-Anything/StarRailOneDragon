@@ -77,12 +77,12 @@
 | 接口 | 输入 | 返回 | 语义 |
 |---|---|---|---|
 | decide_prep_screen(session, config) | 容器 game state 直读(game_state_of;迭代 2026-09-18-prep-obs-retirement 阶段 3.5 黑板退役,「观察先于决策」由画面 op 编排保证) | **恰一个动作**(CwAction),None 退役;重观察动作 = CwActionObsParam 两口径——scope='in_place' 环内重观察(宿主重观察上报后原地续决策)/ scope='outer_loop' 交回外循环重观察(承载原 HoldFrame 空发射语义,用户裁定 2026-09-20 HoldFrame 收编删除) | 空发射是合法通道;策略器异常/非法形状由消费端守卫拒绝(cw_screen_prep 决策循环 try/except:异常→本轮 fail 交外循环 retry 链;非 CwAction 返回→具名 fail 留证) |
-| `decide_shop_action(session, config)` [本批升格入 ABC] | **终态零参口**:决策输入 = 容器单例 `game_state_of(session)`(self.gs;写者 = 入口观察漏斗/动作自上报/sim 引擎)——形参仅为 ABC 形状保留,决策本体零消费 | **恰一个动作**,「无动作可做」= `CloseShop` 恒可用终结;生产执行侧 = 商店画面 op `CwScreenShop` 决策动作 node 单动作循环逐帧调用,契约核验挂本入口 | 决策本体 = `mandate_v1/shop.py`;容器 shop payload 离屏 = 观察层失约抛错 |
+| `decide_shop_action(session, config)` [本批升格入 ABC] | **终态零参口**:决策输入 = 容器单例 `game_state_of(session)`(self.gs;写者 = 入口观察漏斗/动作自上报（sim 内观察腿走同一上报通道，生成器直出产物）)——形参仅为 ABC 形状保留,决策本体零消费 | **恰一个动作**,「无动作可做」= `CloseShop` 恒可用终结;生产执行侧 = 商店画面 op `CwScreenShop` 决策动作 node 单动作循环逐帧调用,契约核验挂本入口 | 决策本体 = `mandate_v1/shop.py`;容器 shop payload 离屏 = 观察层失约抛错 |
 | `decide_invest_env`/`decide_invest_strategy`/`decide_supply`/`decide_encounter`/`decide_megastar`/`decide_partner`/`decide_planner`/`decide_star_tome`/`decide_wish_trial`/`decide_box_card`/`decide_fortune`/`decide_expert_invite`(pick 族 12;原 `decide_equip_pick` 随选择装备屏误判退役删除,2026-09-22) | 容器槽零参读(候选自各 `*_opts` 槽/payload 槽,写端 = 各画面 op 观察上报;离屏 None = 观察层失约抛错) | 恰一个动作:选卡 `CwActionPickXxxParam` ∨ 刷新建议动作(遭遇/补给/投资两屏),互斥单发 | 选项决策;动作编排归画面 op,不进序列契约辖内。决策规格 = `../strategy-docs/13_pick_family.md` |
 
 **非契约成员(实现层,不在 ABC 面)**:
 
-- `decide_shop_screen`(flow 层缺省驱动器 + bridge 覆写)——**序列兼容驱动器**:逐帧调 `decide_shop_action` + 逐动作直调上报函数推进期望态(kernel/cw_action_report 函数族,引擎入口委托分支串;快照三件组与升星腿内聚买牌上报;此后零 `cw_state.simulate` 前瞻消费),终结动作截停、CloseShop 收尾不入序列。sim 引擎/回放/既有序列锁消费;生产执行侧不走(单动作循环)。mandate 覆写保留特有记账(已买件/段序号/续段 token)。
+- `decide_shop_screen`(flow 层缺省驱动器 + bridge 覆写)——**序列兼容驱动器**:逐帧调 `decide_shop_action` + 逐动作直调上报函数推进期望态(kernel/cw_action_report 函数族,引擎入口委托分支串;快照三件组与升星腿内聚买牌上报;此后零 `cw_state.simulate` 前瞻消费),终结动作截停、CloseShop 收尾不入序列。回放/既有序列锁消费；生产执行侧不走（单动作循环），sim 亦不走（sim 经真流程消费单动作接口 `decide_shop_action`）。mandate 覆写保留特有记账(已买件/段序号/续段 token)。
 - `_refresh_direction`/`_refresh_direction_views`(flow 层私有)——**方向节拍内化**:键守卫贵段(`update_intention` 状态机 + 候选评分遥测)每 game-round 恰一次 + 便宜派生视图段;触发信号 = GameState 非 Field 双槽帧代次标注(`gs.frame_class_prep`/`gs.frame_class_shop` ∈ full/view/none,写点 = 备战/商店域观察装配点与决策环直写,读者 = 决策入口方向节拍,读后即清;驱动器不写帧类槽)。
 - ~~`_drain_pending_round_outcomes`(flow 层私有)~~——**已删(退役批)**:结算策略半惰性加工(掉血三臂/node_type 回落/谷底回滚登记)经方案批复核为零行为死链(登记臂前置零写端/三臂零决策消费端),04_survival_budget §7 #7/#8 裁决落地删除;槽连同写半已整删,现不存在(`StrategySession` 无该字段,全树零写点零读点);结算真值现役归宿 = `kernel/cw_game_state.py::apply_settlement_cover` 容器覆盖 + `performance.history`。
 - `write_shop_mirrors`(遥测镜像写者)。
@@ -103,13 +103,13 @@
 - **依赖方向**：实现包 → 知识层/数学层/执行层单向；分包依赖矩阵禁 decision→obs 直依（obs 读口经 app 桶装配点 `install_obs_ports()` 注入）；决策本体 = 纯函数（bridge.decide_prep_frame，决策输入 = obs（黑板）+ session 容器直读）。
 - **装配点**：黑板单一写端纪律保持；`_RESET_PHASE_ROUND_CACHE` 注入槽（缺省关）+ `discard_stale_match_container`（异常路径残留容器弃置——session 全量重建 by construction）。
 - **决策 hp 读口与可信位**（hp 决策消费面统一读口）：统一读口 = `kernel/cw_hp_policy.py::decision_hp`（gs.hp 直读）——『上一真值』由结算覆盖写端 + carried 语义承载（`../game_state/fields.md` §2.1）；可信位另经 `kernel/cw_hp_policy.py::hp_decision_trusted_of`（`gs.hp.source ∈ {observation, carried}`，prior/logic fail-closed），禁与本口混写双位判定；新增 hp 决策消费点必经读口或登记豁免（消费同门申报纪律 = `kernel/cw_hp_policy.py` 模块头）。原『gated_hp 结算 HP 新鲜度门』（可信窗覆盖现读）已删除，失读窗不再有锚补，识别失准走识别优化批（git 历史可溯）。
-- **sim 消费面注记**:sim 消费 decide_shop_screen 驱动器(方向重估经驱动器内单动作入口消费 full 帧触发)——sim A/B 的证明面 = 商店波经济决策;prep 屏编排域在 sim 无实体真值源,其正确性防线 = 契约锁 + 实机,不在 sim A/B 辖内。
+- **sim 消费面注记**:sim = 游戏后端（`sim/cw_sim_backend.py::SimBackend`，驱动反转——真流程当驱动者，世界在后端）：本节四层全图（外层循环 + 画面 op + 动作 op + 策略器）装上后端即在 sim 世界跑一局，**全决策面 sim 可达**（备战编排/商店/事件单选族消费同一套决策代码）；批量运行与 A/B 不在 sim 本体内（边界单一源 = [../sim/sim-design.md](../sim/sim-design.md) §8.3）；战斗结算随机输出面等校准缺口的判读限制单一源 = sim-design §8.2 申报清单。
 
 ### 2.4 换核与 A/B(现状口径)
 
 - **注册面封闭集 = {mandate_v1}**(decision_v2 基线臂已随旧决策包删除终结);换核机制 = config 切 `strategy_id`(最小面),不改流程侧分发。
 - 旧三臂 A/B 结构已终结;跨策略 A/B 的判据框架(判前锁/强制披露/遥测分栈)随 sim 重设计批重立(git 可溯)。
-- **归因域限定**:sim 引擎唯一决策入口 = 商店决策面(prep 面 sim 不可达),结论不得外推为全决策面处理效应。
+- **归因域限定**:全决策面 sim 可达（SimBackend 真流程驱动，商店决策面独占的旧限定已不成立）；结论外推限制由保真度分层承载——sim-design §8.2 申报面（战斗随机输出面等校准层与 sim-only 差异面）上的读数不得作策略效应证据，真代码层/机制层读数可外推。
 
 ### 2.5 无状态策略与 session / 策略器状态
 

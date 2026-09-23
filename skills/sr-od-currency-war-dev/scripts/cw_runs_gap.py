@@ -25,9 +25,9 @@ T-77 落地)。本版武装/重建改**尾窗回读**(常量 TAIL_BYTES,缺省 3
   实机段形态 = ``run_`` + 8 位日期 + ``_`` + 6 位时刻(正则 ``^run_[0-9]{8}_[0-9]{6}``
   锚定,telemetry/state.start_run 铸造口径);
   journal 是多写者单文件(sim 批 fake_/sim_ 段、harness 短 id 段与实机段
-  交错追加),不过滤则 sim 段写入会污染「有局/停更」判据——隔离前缀约定
-  = sim/cw_delta_pool_gen.QUARANTINED_RUN_PREFIXES,哨兵侧按正选实机段
-  实现(白名单形态而非黑名单前缀:新写者形态未知时默认不采信,保守)。
+  交错追加),不过滤则 sim 段写入会污染「有局/停更」判据——段隔离 =
+  正选实机段形态(kernel/cw_state_journal.REAL_RUN_ID_RE 同源判据),
+  哨兵侧按正选实现(白名单形态而非黑名单前缀:新写者形态未知时默认不采信,保守)。
 - 「runs.jsonl 缺行 = 结算流断」→「实机段无 match_final 收口行」。runs 流
   已消亡,runs 的 journal 收编载体 = 局终域 match_final 行(kernel/
   cw_board_state.write_match_final,一段一行,局终收口时落)。报警词保留
@@ -73,8 +73,8 @@ JOURNAL = Path(os.environ.get(
 # 与 REP 缺省同根取 _DEFAULT_REP,防两份字面量漂移)。
 LIVE_JOURNAL = _DEFAULT_REP / 'state' / 'journal.jsonl'
 # 实机段形态(telemetry/state.start_run 铸造口径 run_%Y%m%d_%H%M%S);
-# fake_/sim_ 段与 harness 短 id 段一律不采信(隔离约定 =
-# sim/cw_delta_pool_gen.QUARANTINED_RUN_PREFIXES,这里按正选实现)。
+# fake_/sim_ 段与 harness 短 id 段一律不采信(同源判据 =
+# kernel/cw_state_journal.REAL_RUN_ID_RE,这里按正选实现)。
 RUN_ID_RE = re.compile(os.environ.get('CW_RUNSGAP_RUN_RE', r'^run_\d{8}_\d{6}$'))
 # 武装/重建尾窗回读字节量(v3.1,T-77):替代 v3 整账读——现役账面 251.6MB
 # 实测整账读 ~2.9s 且随体积线性涨;尾读后武装成本恒定 ~O(TAIL_BYTES)。

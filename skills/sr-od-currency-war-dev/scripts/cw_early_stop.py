@@ -81,8 +81,8 @@ IDLE_NOTE_SEC = 1800     # watch 中无新行的提醒阈值(打印不退出)
 
 GOLD_TH = int(os.environ.get('CW_EARLYSTOP_GOLD_TH', '50'))  # [28] 位面1节奏基准
 # 实机段形态(telemetry/state.start_run 铸造口径 run_%Y%m%d_%H%M%S);
-# fake_/sim_ 段与 harness 短 id 段不采信(隔离约定 =
-# sim/cw_delta_pool_gen.QUARANTINED_RUN_PREFIXES,三件哨兵同口径)。
+# fake_/sim_ 段与 harness 短 id 段不采信(同源判据 =
+# kernel/cw_state_journal.REAL_RUN_ID_RE,三件哨兵同口径)。
 RUN_ID_RE = re.compile(os.environ.get('CW_EARLYSTOP_RUN_RE', r'^run_\d{8}_\d{6}$'))
 
 
@@ -104,7 +104,7 @@ def _parse(line: str):
     """journal 行 → (run_id, plane, hp, streak, gold);非实机段/坏行返回 None。
 
     journal 是多写者单文件:sim 批 fake_/sim_ 段与 harness 短 id 段同流交错
-    (隔离约定 = sim/cw_delta_pool_gen.QUARANTINED_RUN_PREFIXES),只认实机
+    (同源判据 = kernel/cw_state_journal.REAL_RUN_ID_RE),只认实机
     段形态 run_%Y%m%d_%H%M%S(telemetry/state.start_run 铸造口径)。坏行
     逐行跳过 = journal.md §5 宽容消费契约。字段从行内 state.values 快照取
     (journal.md §4 自足快照行),缺字段返 None(调用方按「无数据」处理)。"""

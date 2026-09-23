@@ -1,12 +1,11 @@
-"""kernel 事件钩子槽(事件钩子契约;sim 统一迭代 design.md §2)。
+"""kernel 事件钩子槽(事件钩子契约,正本 = docs/develop/sr_od/application/
+currency_war/sim/sim-design.md §6.3)。
 
 经本槽广播两类事件,订阅方 = sim 后端(install_sim_backend 装配时接通
-sink;3.2 消费):
+sink):
 
 - **转移事件**(:class:`TransitionEvent`)——引发画面转移的动作落地,
-  具名封闭集 :data:`TRANSITION_EVENT_KINDS`(盘点方法与成员依据 =
-  docs/develop/sr_od/application/currency_war/changes/2026-09-23-
-  sim-backend-unification/details/flow-seam.md 附录 B:以
+  具名封闭集 :data:`TRANSITION_EVENT_KINDS`(盘点方法:以
   ``cw_action_registry`` 注册表全量动作为底集,按 ``screens/`` 各篇 §5
   终结/交回表筛「落地引发画面转移」者);广播点 = 对应上报函数 applied
   落地出口。
@@ -50,8 +49,8 @@ class FactEvent:
     detail: dict = field(default_factory=dict)
 
 
-#: 转移事件封闭集(成员与依据 = flow-seam 详设附录 B;emit 时集外
-#: ValueError 响亮,防广播点漂移出集)。逐成员 = 动作上报落地名:
+#: 转移事件封闭集(成员 = 注册表底集 × screens/ 各篇终结/交回表盘点;emit 时
+#: 集外 ValueError 响亮,防广播点漂移出集)。逐成员 = 动作上报落地名:
 #: settle/supply_confirm = 终结动作节点推进(``NODE_ADVANCE_TRIGGERS``);
 #: start_battle = 出战(交回外循环战斗分支);pick_* = 事件单选族 12 屏
 #: 选卡确认(overlay 消失回底层屏);open_box = 开箱(武装箱选择画面
@@ -140,7 +139,7 @@ def transition_event_on_applied(kind: str) -> Callable:
 
     覆盖上报函数全部 applied 出口(多出口函数免逐 return 接线,新增
     出口自动入广播面);applied=False(拒绝/留证未写)= 零广播。
-    广播时点 = 上报函数写后、返回调用方前(design 事件钩子契约)。
+    广播时点 = 上报函数写后、返回调用方前(事件钩子契约)。
     ``outcome.applied`` 鸭子读取(不 import LogicOutcome,防 kernel 内
     import 环)。
     """

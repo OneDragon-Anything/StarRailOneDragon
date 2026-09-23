@@ -35,7 +35,7 @@
 - 状态 = `(screen_name, 载荷)`；`screen_name` ∈ screen_info 对局屏档名（权威 = 各画面建档，`cw_screen_state.CW_IN_MATCH_PREFIX` 域）。
 - **转移源两类**：
   1. **上报事件钩子**（总纲事件钩子契约）：终结动作族（start_battle → 战斗等待；settle_confirm / supply_confirm 经 `report_node_advance` → 节点推进）；pick 族确认 → 画面交回（交回目标权威源 = `screens/` 各篇 §5 终结/交回表）；开箱动作落地 → 箱面。转移事件重入幂等（同一终结动作重复上报不二次推进）。
-  2. **节点推进序列**（平移旧引擎 M 序列，`cw_sim_engine.py` 引擎头注）：写 `gs.node` → 轮首收入（kernel `round_start_income` 三分支：常规/补给·奖励/败补 U04）→ 位面开局环境金 → 商店自动全刷（整店锁跳过）→ offer 日程检查（U07 固定轮次 + 联席决策）→ overlay 队列检查 → 按节点类型呈现对应屏（prep / supply / encounter / boss；reward 节点 = 备战档晶矿子态，键形裁决 = `details/flow-seam.md` §3）。
+  2. **节点推进序列**（平移旧引擎 M 序列，`cw_sim_engine.py` 引擎头注）：写 `gs.node` → 轮首收入（kernel `round_start_income` 三分支：常规/补给·奖励/败补 U04）→ 位面开局环境金 → 商店自动全刷（整店锁跳过）→ overlay 队列检查 → offer 日程检查（U07 固定轮次 + 联席决策；overlay 让路选定后复走本检查，让路不吞 offer 槽）→ 按节点类型呈现对应屏（prep / supply / encounter / boss；reward 节点 = 备战档晶矿子态，键形裁决 = `details/flow-seam.md` §3）。
 - 节点经验在节点推进时入账（`apply_node_xp` 平移，NODE_XP_BY_TYPE 表原样）；连胜转移（`streak_income_after` / `streak_signed_after` 平移）在战斗结算后。
 - **初始序列**（reset）：词缀/boss 名单采样并写容器（`gs.plane_bosses` 等）→ 简报屏（词缀 + boss 载荷）→（`env_present` = 真）投资环境屏 → wait_one_one → P1r1 对应屏。进入/退出条件权威源 = `screens/` 各篇；P3 进场即局终（现役 `p3_unobserved` 口径）。
 - until 语义：点击腿返回 `round_wait` 后，下一轮 until 问询 = 状态机可见性——上报已同步转移画面，故下一轮即为转移后真值（与实机「观察赢」同形，语义不降级）。

@@ -63,7 +63,7 @@
 | v5 | STALL 推进语义修复(无操作成功≠推进)+ 节点滞留 NODE-DWELL + 词汇审计(见下) | 2026-09-03 1-1 卡死段实机日志回放标定 |
 | v5.1 | HIT 分级(关键即退/一般驻留续侦+纪元内同因去重+证据文件)+ 游标恒锚尾不变量(武装/轮转/漂移一律从当前尾起扫,水位文件退役为纯活性心跳) | 2026-09-09 01:13-01:14 脏纪元三连自退实证(死亡实例留新鲜小值水位被信任=重放向量,哨兵逐格啃完脏纪元期间全盲)+ 2026-09-08 70min 补位空窗实证(HIT 即退纯损) |
 | v5.3 | 备战环空转 PREP-SPIN(备战行持续 ∧ 零实质推进 ≥ 600s → 报警;心跳采样退役后的观察断流检测承接) | 心跳采样删除裁定(2026-09-15);效果账本自推进迁移迭代设计 3.3 哨兵交接;采样窗精化挂效果域批 M3 |
-| v5.2 | 活跃局判定数据源切 journal(_run_ended 重写:尾实机段 match_final 收口+行 ts 新鲜;runs/outcomes/decisions 三流写入端已随删除波 1 停写,旧判定链武装即误判「已终局」);实机段形态过滤(run_%Y%m%d_%H%M%S,fake_/sim_/harness 段不采信——journal 多写者单文件新形态) | T-257(删除波 1 落地审新立项);journal 行结构=kernel/cw_board_state._swap/write_match_final,段隔离约定=sim/cw_delta_pool_gen.QUARANTINED_RUN_PREFIXES |
+| v5.2 | 活跃局判定数据源切 journal(_run_ended 重写:尾实机段 match_final 收口+行 ts 新鲜;runs/outcomes/decisions 三流写入端已随删除波 1 停写,旧判定链武装即误判「已终局」);实机段形态过滤(run_%Y%m%d_%H%M%S,fake_/sim_/harness 段不采信——journal 多写者单文件新形态) | T-257(删除波 1 落地审新立项);journal 行结构=kernel/cw_board_state._swap/write_match_final,段隔离=正选实机段形态(kernel/cw_state_journal.REAL_RUN_ID_RE 同源判据) |
 | v5.4 | 实质推进①退役(plan 行非零动作计数):流程侧商店访问摘要行形已删,「CwActionOpenShopParam → ✓ 商店访问完成」一律不计推进;判据收敛 = composite/state-round/进位面/采晶矿 | 访问完成行不带动作数,零动作空转与真买牌行形不可分,数完成行 = 1-1 卡死「全零也算推进」病灶复活;真买牌经过轮(state 行变化)入 state 信号 |
 
 ## 词汇审计(v5,对照流程侧代码与 .log/mcp_server.log 全文 grep)
@@ -195,8 +195,8 @@ JOURNAL_JSONL = Path(os.environ.get(
 # 会被非实机段写入污染。
 JOURNAL_FRESH_SEC = int(os.environ.get('CW_SENTINEL_JOURNAL_FRESH', 600))
 # 实机段形态(telemetry/state.start_run 铸造口径 run_%Y%m%d_%H%M%S);
-# fake_/sim_ 段与 harness 短 id 段不采信(隔离约定 =
-# sim/cw_delta_pool_gen.QUARANTINED_RUN_PREFIXES,三件哨兵同口径)。
+# fake_/sim_ 段与 harness 短 id 段不采信(同源判据 =
+# kernel/cw_state_journal.REAL_RUN_ID_RE,三件哨兵同口径)。
 RUN_ID_RE = re.compile(os.environ.get('CW_SENTINEL_RUN_RE', r'^run_\d{8}_\d{6}$'))
 # _run_ended() 每次调用的尾读字节量:只需覆盖「尾实机段的收口行」
 # (match_final 局终才落=段尾),不追段首。缺省 4MB:真实 journal 实测(2026-09-11)
