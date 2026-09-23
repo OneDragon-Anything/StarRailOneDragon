@@ -1145,11 +1145,14 @@ _armory_box_loaded: bool = False
 # 互斥判定:秘典命中需秘典分 > 箱分(同槽双模板对拍,防箱被认成秘典)。
 _star_tome_grays: list[MatLike] | None = None
 _star_tome_loaded: bool = False
-# 书册卡(r100k 建档,2026-08-20):青蓝卡片+白色书册/文件夹 icon+底部「开启」,
-# 占备战席 1 槽。四帧实测 TM 0.975-1.0(模板=停机帧 slot1 裁剪);与秘典/武装箱
-# 互撞 0.505/0.462(分离度足够)。开启语义已确认(2026-08-30 实机:点槽 →
-# 「专家邀请函」五选一,选后专家入商店;处理链 = cw_screen_expert_invite.py)。模板名
-# 「书册卡_未知」为历史占位,改名需同步 _get_bookcard_gray 路径与测试锁,暂保留。
+# 专家邀请函(r100k 建档,2026-08-20;2026-09-23 正名+重裁):青蓝卡片+白色书册 icon,
+# 占备战席 1 槽。真名 = **专家邀请函**,名称权威 = 开启后 overlay 标题「专家邀请函·请选择1个
+# 专家顾问,该角色在选择后同步加入商店」(sr-od-test/screens/货币战争-备战-专家邀请函/弹窗.webp;
+# 官方效果文本旁证:「专家研讨会:获得1个【专家邀请函】和1个【简易武装箱】」);旧称「书册卡」
+# 系外观绰号,代码代号(find_bookcards/kind='bookcard')保留。点槽 → 邀请函五选一,选后专家
+# 入商店;处理链 = cw_screen_expert_invite.py。模板 2026-09-23 重裁 = 旧真值内窗去底部「开启」
+# 钮字(86x97;钮字为占槽道具通用 UI,入模即噪声)。TM 自检:源内窗 1.0 / shop 帧全槽最高
+# 0.656(金票券槽,阈值 0.75 下余量 0.094)/ t18 帧全槽 ≤0.486。原「书册卡_未知」名废。
 _bookcard_gray: MatLike | None = None
 _bookcard_loaded: bool = False
 _BOOKCARD_TM_THR: float = 0.75   # 自身帧 0.975+,留选中态余量;vs 秘典 0.505 分离充足
@@ -1191,22 +1194,23 @@ def _get_star_tome_grays() -> list[MatLike]:
 
 
 def _get_bookcard_gray() -> MatLike | None:
-    """加载书册卡模板灰度图(r100k;``assets/template/currency_war/supply/书册卡_未知.png``)。
+    """加载专家邀请函模板灰度图(r100k;``assets/template/currency_war/supply/专家邀请函.png``)。
 
-    模板 = 建档帧 slot1 真值裁片的中心内窗(97x118,< 全部槽裁片,防 shape 守卫判盲;
-    渲染同源)。无实机重放帧,阈值 0.75 的自身命中维持建档时实测(0.975+)背书。
+    模板 = 旧真值内窗(停机帧 slot1)裁去底部「开启」钮字后的卡片本体(86x97,
+    < 全部槽裁片,防 shape 守卫判盲;渲染同源)。无实机重放帧,阈值 0.75 的自身
+    命中维持建档时实测(0.975+)背书。
     """
     global _bookcard_gray, _bookcard_loaded
     if not _bookcard_loaded:
         _bookcard_loaded = True
-        p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'supply' / '书册卡_未知.png'
+        p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'supply' / '专家邀请函.png'
         img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
         _bookcard_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
     return _bookcard_gray
 
 
 def find_bookcards(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int, Point]]:
-    """纯 CV 核心:槽位内 TM 匹配书册卡(r100k 建档)→ ``[(slot_idx, center)]``。
+    """纯 CV 核心:槽位内 TM 匹配专家邀请函(旧称书册卡,r100k 建档)→ ``[(slot_idx, center)]``。
 
     自身帧 0.975+,阈值 0.75(选中态余量);秘典/箱互撞 ≤0.505 不需互斥。
     """

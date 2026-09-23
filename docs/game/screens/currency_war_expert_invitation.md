@@ -38,4 +38,4 @@ source_image: screens/货币战争-备战-专家邀请函/弹窗.webp
 ## 识别快照
 
 - fixture:`screens/货币战争-备战-专家邀请函/弹窗.webp`(2026-08-30 1-9 实拍,佩拉/刃/银狼/停云+现金为王五选一)。
-- 书册卡道具本体(备战席槽):模板 `assets/template/currency_war/supply/书册卡_未知.png`(开启语义已确认为本弹窗入口,模板名保留「_未知」后缀待下批统一改 `书册卡.png`——改名需同步 `_get_bookcard_gray` 路径与测试锁,本批未动)。
+- 专家邀请函道具本体(备战席槽,旧称「书册卡」系外观绰号已正名):模板 `assets/template/currency_war/supply/专家邀请函.png`(2026-09-23 重裁为卡片本体裁片,无「开启」钮字)。

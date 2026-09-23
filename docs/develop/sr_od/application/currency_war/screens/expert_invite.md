@@ -75,7 +75,7 @@ pick = decide_expert_invite()(零参;候选读容器 expert_invite 槽;
 
 ## 7. 子态与 overlay
 
-本屏无子态。书册卡本体(备战席占槽道具,模板 = `assets/template/currency_war/supply/书册卡_未知.png`,识别 = `obs/cw_identity_obs.py::find_bookcards`)属备战画面域,非本屏子态。
+本屏无子态。专家邀请函道具本体(备战席占槽道具,旧称书册卡;模板 = `assets/template/currency_war/supply/专家邀请函.png`,识别 = `obs/cw_identity_obs.py::find_bookcards`)属备战画面域,非本屏子态。
 
 ## 8. 守卫与防线
 
