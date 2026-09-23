@@ -1,4 +1,9 @@
-"""货币战争 事件节点决策:投资策略/环境 3 选 1(decide_event;pick_value)+ 遭遇(decide_encounter)+ 补给(decide_supply)+ 巨星/伙伴选项类型。
+"""货币战争 事件节点决策:投资策略三选一(decide_event;pick_value)+ 遭遇(decide_encounter)+ 补给(decide_supply)+ 巨星/伙伴选项类型。
+
+投资环境选卡评序不在本模块(宪法五:衍生估值/评序归策略层):2026-09-23
+迁移迭代 3.2 起 env 帧由 flow kind='env' 分支直调策略层
+``strategies/impl/mandate_v1/invest_env.py::decide``(设计正本 =
+strategy-docs/28_invest_env_screen.md);本模块只辖投资策略轴。
 """
 from __future__ import annotations
 
@@ -188,7 +193,7 @@ def _opt_counters_dot(opt: str) -> bool:
 def decide_event(options: list[str], config, gs: GameState,
                  locked_comp: str = '', demoted_endgame: bool = False,
                  evicted: frozenset[str] | set[str] = frozenset()) -> CwActionPickEventParam:
-    """事件选项打分(投资策略/环境 3 选 1;判据重构)。
+    """事件选项打分(投资策略三选一;投资环境轴已迁策略层)。
 
     分值来源优先级表(每项只在**高于当前分**时覆盖;语义;
     定序改形:各分值族只承载同族定序语义,跨族仅保留 max() 覆盖
@@ -207,31 +212,25 @@ def decide_event(options: list[str], config, gs: GameState,
        归一带内(monotone,定序实现常数)
     4. S3 终局对齐族(信号源 = D*,换源重构):comp 命中 45×N+20 =
        选项绑定∩D* 绑定集(N 单调定序语义与 45/20 常数沿 /
-       16 号稿 §1.5 现状保留);env 阵营 floor(三档 = category 定序档位
-       邀请 70<契约 72<概念股 78,禁读基数)触发条件 =
-       _env.faction ∈ D*_factions(预裁③:floor 与 comp-hit 同批换源)。
-       D*=∅(冷启动/降格帧)→ 全体 N=0、floor 不触,候选自然落 S2/S4
+       16 号稿 §1.5 现状保留)。
+       D*=∅(冷启动/降格帧)→ 全体 N=0,候选自然落 S2/S4
     5. S4 常规评估层(现状保留):策略评估分 pick_value(12-75,
-       知识判据定序器)/ env 裸分(全集门前置——faction 非空 ∧ ∉
-       候选终局阵容全集的环境跳过本支,失格归因 ``env-off-universe`` 仅观测)/
+       知识判据定序器)/
        eval-lcs(策略 OCR 形变裸分,
        **env 名跳过**——0144b 守卫,83 env 名 29 个 LCS 误中策略名)/
        品质回落(纯字典序,零拍值):仅未评估卡可达,主键=品质序
        (棱彩>金>银,游戏定义),次键=economy 效果有无;回落域整体
        压低于评估分域(评估分有知识判据依据,回落只是「未评估时别全盲」)
-    env 分支内机制按 invest-env 迭代 design.md §2.3 汇合次序组合(单一真源,
-    max() 覆盖定序):全集门 → 裸分(env-eval)→ 送卡静态档(ENV_GIFTS 命中:
-    gift-core 66/gift-shared 60/advisor-core 54,消费契约 =
-    ``cw_comps.gift_hit_tier`` docstring;发卡角色全集外 → 0,
-    env-gift-off-universe)→ 经济域带(env_economy_value resolved ∧ > 0 →
-    S2 同款 111-119 带,归一 = ECON_VALUE_NORM,归因 env-econ)→ 阵营 floor
-    → steering。值域链:裸分 0-72 ⊇ 送卡档 54-66 < floor 70-78 < 域带
-    111-119——「静态结构证据 < 动态对齐 < 真金流」。
+    **投资环境轴已迁策略层**(2026-09-23 迁移迭代 3.2 原子切换):env 帧
+    由 flow kind='env' 分支直调 ``strategies/impl/mandate_v1/invest_env.
+    decide``(统一加法标尺:现金+方向+赠卡+立场+转向轴;设计正本 =
+    strategy-docs/28_invest_env_screen.md)。本函数只辖投资策略帧;
+    env 优先级/禁用词表仍在此消费(转向轴选轴逻辑保持原状,env 名按
+    env 轴词表处理 = 未注册项按事件主流处理口径的既有语义)。
     叠加项(全部之后):机制克制惩罚(-100 档,MECHANIC_COUNTERS 单一源)/
     用户转向轴(策略/环境 priority +30 soft、forbid −10000 hard−,config.md §3)。
-    未注册非 env = 0 分。刷新判据见函数尾刷新判据段。
-    刷新判据双轴:环境帧 = invest-env 迭代 §2.8
-    (3.5 接线,取代「env 帧恒不刷」规则——行为翻转在册申报)。
+    未注册项 = 0 分。刷新判据见函数尾刷新判据段(策略帧 P81;环境帧
+    刷新判据随轴迁移,现驻 invest_env.decide 刷新三态)。
 
     **裁定回避(集合级排除,非分值族;[40]①「主动选择=回避」)**:
     血本位候选(判据 = ``cw_investments.is_blood_economy``,注册表派生零名单)
@@ -241,10 +240,9 @@ def decide_event(options: list[str], config, gs: GameState,
     拍值,且给血计分触 [40]③ 定价禁域。血卡排位于「可入选非血卡」
     之后、「被禁非血卡」之前(user-forbid「有替代永不选」的血卡替代在 ② 兑现)。
     S2 谓词与血本位字段零交集(四族闭集不含 hp_gold_swap/xp_buy_hp_cost,
-    对账);归因串 ``econ-engine``/``align×N``/``align-locked``/
-    ``align-signal`` 为 批新增,env 轴 ``env-off-universe``(全集门)/
-    ``env-econ``/``gift-core``/``gift-shared``/``advisor-core``/
-    ``env-gift-off-universe``(invest-env 3.5)同口径:全部仅观测归因,
+    对账);归因串 ``econ-engine``/``align×N`` 为 批新增
+    (env 轴归因串 env-off-universe/env-econ/gift-core/gift-shared/
+    advisor-core/env-gift-off-universe 随轴迁移退役)同口径:全部仅观测归因,
     不进任何检查器白名单(C1→D4 迁移兼容,裁定见 sim/checks/suspects.py 模块头)。
     """
     strategy_priority = list(getattr(config, 'strategy_priority', []) or [])
@@ -260,7 +258,9 @@ def decide_event(options: list[str], config, gs: GameState,
     _rarity_lex_rank: dict[str, int] = {'银': 0, '金': 1, '棱彩': 2}
     # D* 单帧单读:每决策帧现算一次快照,帧内不重读——
     # 「K 活读数轮内重排」病灶在消费面结构性不可发生。
-    _d_facs, _d_chars, _d_src = _invest_d_star(
+    # (source 元素随 env 阵营 floor 归因分支迁策略层失去消费方,保留
+    # _invest_d_star 三元组契约,绑定收 _。)
+    _d_facs, _d_chars, _ = _invest_d_star(
         gs, locked_comp, demoted_endgame, evicted)
 
     best_idx, best_score = 0, -1.0

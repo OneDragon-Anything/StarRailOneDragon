@@ -1242,22 +1242,14 @@ def gift_hit_tier(grant: GiftGrant, evicted: frozenset[str] | set[str] = frozens
     实现详设三规则(全部定序,零数值;details/env-value-models.md §2.1.2):
     ① 即时优先——即时集非空取其最优档,不看条件集(确定性赠卡是估值承重面);
     ② 条件降档——即时集为空取条件集最优档降一档(core→shared→transition→off);
-    ③ advisor 族切换由调用方做(同一套档位判定,floor 族 G/A 之差见
-    ``cw_investments.GIFT_FLOOR_*`` 锚点注;本函数不读 advisor)。
+    ③ advisor 族切换由调用方做(同一套档位判定;本函数不读 advisor)。
 
-    消费契约(3.5 阶段 cw_events env 分支送卡档 max() 支按此映射,禁二次推导):
-    - tier=='off' ∧ 非 advisor ∧ chars_immediate 非空 → 失格 0(归因
-      env-gift-off-universe;白得卡全员三名单皆不在 = 纯浪费,全集门同款失格);
-    - tier=='core'/'shared' ∧ 非 advisor → max(score, GIFT_FLOOR_CORE/SHARED);
-    - tier=='core' ∧ advisor → max(score, GIFT_FLOOR_ADVISOR_CORE);
-    - 其余(advisor 的 shared/transition/off、条件降档后非 core/shared)→ 无 floor
-      维持裸分(顾问是购买选项,off 只是不买、无浪费;条件发放未到手,同上)。
-    当前注册表下 11 条无一触发失格(逐条直调核验 = 详设 §2.1.1/§2.1.2 表;
-    门是 COMP_LIBRARY 演化时的结构性保障,不是现修行为)。
-
-    evicted 传导免费获得:候选套收窄 → 档随之下调或失格(详设 §2.1.4-5 直调例:
-    持续伤害契约排除三 DOT 套 → 椒丘落 transition → 裸分维持,失格门不咬
-    transition 命中;宿主套再被排除才整条 'off')。
+    消费位(2026-09-23 迁移迭代 3.2 起)= 策略层
+    ``strategies/impl/mandate_v1/gift_value.py``(档→分映射 GIFT_TIER_SCORE
+    与 advisor 折减在彼处;本函数只产档,禁消费侧二次推导档位)。
+    evicted 传导免费获得:候选套收窄 → 档随之下调或失格(详设 §2.1.4-5
+    直调例:持续伤害契约排除三 DOT 套 → 椒丘落 transition;宿主套再被
+    排除才整条 'off')。
     """
     if grant.chars_immediate:
         return max((_char_gift_tier(ch, evicted) for ch in grant.chars_immediate),

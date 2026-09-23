@@ -47,6 +47,7 @@
 | 25 | [25_event_overlays.md](25_event_overlays.md) | 事件面画面(投资环境/投资策略/单选族)策略：选卡 + 刷新建议(判据本体 = 13/08) |
 | 26 | [26_battle_settlement.md](26_battle_settlement.md) | 战斗与结算期策略面：出战标准/结算读数供数/无战斗期独立决策申报(判据本体 = 04) |
 | 27 | [27_transit_screens.md](27_transit_screens.md) | 过场与推进型画面(简报/BOSS简报/位面过渡/回大厅)：无策略决策面申报 |
+| 28 | [28_invest_env_screen.md](28_invest_env_screen.md) | 投资环境画面策略面：统一加法标尺(现金+方向+赠卡+立场+转向轴)、刷新三态、排除规则(决策本体 = strategies/impl/mandate_v1/invest_env.py) |
 
 （原 03/05/06/09 已按决策点重排删除：03/05/06 拆入 10-13；09 架构篇整体迁 `../flow/README.md` §2——策略↔流程契约。）
 

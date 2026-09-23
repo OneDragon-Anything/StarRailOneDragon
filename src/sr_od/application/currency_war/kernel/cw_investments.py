@@ -10,8 +10,11 @@
     [40]① 选择回避 / [40]② 血闸共享判据);
   - ``ENV_CATEGORY``/``ENV_FACTION``(环境 7 类分类 + 阵营绑定,ENV_FACTION_MAP 派生源);
   - ``_MANUAL_EXTRAS``(plaza 不收的补遗条目);
-  - ``PICK_VALUE``/``ENV_PICK_VALUE``(选卡评估分;SURVIVAL_PICKS
-    等事件面钩子已退役)。
+  - ``PICK_VALUE``(投资策略选卡评估分 335 条;SURVIVAL_PICKS
+    等事件面钩子已退役;原 ``ENV_PICK_VALUE`` 环境条目随 2026-09-23
+    迁移迭代 3.2 删除——环境选卡评序迁策略层,消费核 =
+    ``strategies/impl/mandate_v1/invest_env.py``,正本 =
+    strategy-docs/28_invest_env_screen.md)。
 - **合并层**:base × overlay → 注册表,构建时做孤儿校验(overlay 引用了 base 没有的键 →
   import 即炸,防版本更新后静默失联)。
 
@@ -60,7 +63,7 @@ class InvestmentEnv:
     effect: str         # 效果原文(官方 API 全文)
     faction: str = ""   # 对应阵营(概念股/邀请 boosts 的羁绊;ENV_FACTION_MAP 派生用;无则 "")
     source: str = ""    # 溯源(plaza:<id> 或 content_id)
-    pick_value: int = 0  # 选卡价值基准分 0-100(0=未评估)
+    pick_value: int = 0  # (遗迹位,恒缺省 0:选卡评序迁策略层 invest_env 后无写端无消费,字段保留防 schema 破坏)
     economy: EnvEconomyEffect | None = None  # 整局经济通道(白名单制;ENV_ECONOMY 构建期 replace 挂载,表外恒 None)
 
 
@@ -174,8 +177,10 @@ class EnvEconomyEffect:
 
     区别于 EconomyEffect 的 per-node/一次性形态:环境效果是整局规则改写
     (位面开局分期/条件触发/费率覆写),字段按通道语义设计,全部带缺省值
-    (无通道 = 全缺省)。估值单一入口 = ``cw_env_economy.env_economy_value``
-    (A 类精确 + 估算参数 fail-closed;B/C 通道估值公式与参数归数据批)。
+    (无通道 = 全缺省)。估值单一入口 = 策略层
+    ``strategies/impl/mandate_v1/env_economy.env_economy_value``
+    (2026-09-23 迁移迭代 3.2 起估值模块驻策略层;A 类精确 + 估算参数
+    fail-closed + gold_after_refreshes 拍值注册)。
     **白名单制**:只收 ENV_ECONOMY 显式登记条目,禁从效果原文自动猜装
     (防错装对账 = _validate_env_economy,六条点名)。
     字段语义(值全部 = cw_invest_data 效果原文直读):
@@ -195,8 +200,8 @@ class EnvEconomyEffect:
     - refresh_cost_after: (刷新阈值, 新成本)(长线利好 (30,1);基价 2 为游戏定义)
     - reward_node_bonus: C 类通道在场哨兵(1.0 = 通道在,经济过热/经济严重
       过热;每奖励节点期望增益真值+CI 在估算注册表,按环境变体分键——
-      cw_env_economy._REWARD_BONUS_VARIANTS;非零而缺变体映射 = 登记笔误,
-      构建校验炸出)
+      策略层 env_economy._REWARD_BONUS_VARIANTS;非零而缺变体映射 = 登记
+      笔误,构建校验炸出)
     """
     gold_per_plane_start: tuple[int, ...] = ()
     gold_instant: int = 0
@@ -1375,9 +1380,10 @@ def pick_value_of(name: str) -> int | None:
 # A 类精确四条 + B 类两条(长线利好/二手市场)+ C 类两条(经济过热/经济严重
 # 过热),design §2.2.1 通道分类全量。表外环境 economy 恒 None,禁从效果原文
 # 自动猜装(六条防错装对账 = _validate_env_economy);
-# 轮岗/人才下沉无通道可装 → 「待建模」显式在册(cw_env_economy.
+# 轮岗/人才下沉无通道可装 → 「待建模」显式在册(策略层 env_economy.
 # ENV_ECONOMY_PENDING_MODELING,区别于漏登记,design §2.2.4)。
-# B/C 通道的估算参数(概率/期望/增益)在 cw_env_economy.ENV_ECONOMY_ESTIMATES,
+# B/C 通道的估算参数(概率/期望/增益)在策略层 env_economy.ENV_ECONOMY_
+# ESTIMATES(gold_after_refreshes 通道已改拍值注册,参数随迁退役),
 # 本表只落游戏定义结构值。
 #: C 类通道在场哨兵(字段语义见 EnvEconomyEffect.reward_node_bonus;每奖励
 #: 节点期望增益真值+CI 在估算注册表,按环境变体分键,非本字段)
@@ -1388,7 +1394,7 @@ ENV_ECONOMY: dict[str, EnvEconomyEffect] = {
     # 开局额外 +6 金(id 113;随机环境期望不计,design §2.6 取舍)
     '蓝海': EnvEconomyEffect(gold_instant=6),
     # 升 8 级后 3 节点各 +12XP(id 138)= 36XP;×1:1 折金等价
-    # (cw_env_economy.XP_GOLD_RATE 用户裁定暂定;「升 8 必然发生」假设在册)
+    # (策略层 env_economy.XP_GOLD_RATE 用户裁定暂定;「升 8 必然发生」假设在册)
     '成功经验': EnvEconomyEffect(xp_after_level=(8, 3, 12)),
     # 每取一张策略 +2×已持有数(id 147);3-5 节点额外策略不计(策略域价值)
     '策略大师': EnvEconomyEffect(gold_per_strategy_coef=2),
@@ -1411,7 +1417,7 @@ ENV_ECONOMY: dict[str, EnvEconomyEffect] = {
 def _validate_env_economy() -> None:
     """ENV_ECONOMY 构建校验(import 即炸):
 
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(沿 ENV_PICK_VALUE 先例,防版本更新
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新
     改名/移除后静默失联);② **六条防一次性错装逐条对账**——
     点名六条(增发货币/成功经验/二手市场/长线利好/策略大师/劳务派遣合同)的
     效果全是分期/条件/触发形态,禁装成 gold_instant 单通道(一次性错装);
@@ -1539,15 +1545,17 @@ _validate_env_gifts()
 # 品质改写型环境(时代 ×3 + 头彩/尾彩 + 银·金·彩 + 联席决策,恰 7 条)的池改写
 # 事实登记。表外环境一律无条目,禁从效果原文自动猜装(ENV_ECONOMY/ENV_GIFTS
 # 同款纪律)。两型两层拆分(详设 §2.2.2):层 E(基数,改写后取卡金流期望抬升
-# ΔV)经 env_economy_value 单一入口分派(cw_env_economy._pool_rewrite_value),
+# ΔV)经 env_economy_value 单一入口分派(策略层 env_economy._pool_rewrite_
+# value,2026-09-23 迁移迭代 3.2 起驻策略层),
 # 当前态恒 fail-closed——受限通道 μ_E 不随品质单调(银 3.31 > 金 2.42 实测),
-# 直接入域带会产出「白银时代>黄金时代」噪声序;层 E 转正准入门(全通道重算
+# 直接入现金分会产出「白银时代>黄金时代」噪声序;层 E 转正准入门(全通道重算
 # + 序一致性检验,详设 §2.2.2)经数据批判定未过,维持 fail-closed(判定依据
 # = invest-env 迭代 layer-e-promotion-batch 详设,git 历史可溯);层 Q
 # (定序残域,池内挑卡
-# 与功能价值)= 环境裸分维持(ENV_PICK_VALUE 七条零改动,知识评估
-# 已对两半作过知识性净评),两层从不相加——max() 结构天然承载
-# 「层 E 有值时以域带参与、无值时裸分兜底」(总纲 design.md §2.3)。
+# 与功能价值)= 零现金分维持(原 ENV_PICK_VALUE 已随 3.2 删除面退役,
+# 现金通道 fail-closed 即无值;知识评估
+# 已对两半作过知识性净评),两层从不相加——
+# 「层 E 有值时以现金分参与、无值时零兜底」(总纲 design.md §2.3)。
 # 数量通道(联席额外三选一/银金彩刷新 +2)与 A 类策略大师同口径:策略域价值
 # 不折金不进层 E,消费端零改动,字段只登记事实(详设 §2.2.4)。
 # 锁 = 测试仓 test_cw_env_pool_rewrite.py(Q1-Q6)。
