@@ -1539,8 +1539,8 @@ class ShopActionExecuted:
     levelup_clicks: int | None = None
     #: CwActionRefreshShopParam 实付刷新费(免费帧 = 0 → gold 不写,fields.md §3.3.4)。
     #: 现役喂入方 = sim/replay 驱动器(flow/bridge decide_shop_screen,按
-    #: 动作 cost 派生);生产落地门(cw_op_buy_cards.apply_action_outcome)
-    #: **暂不喂本字段**——商店线 CwActionRefreshShopParam 是终结 op,生产逻辑态直写门对终结
+    #: 动作 cost 派生);生产侧刷新上报链(cw_action_report/refresh_shop,
+    #: 金腿未喂不写)**暂不喂本字段**——商店线 CwActionRefreshShopParam 是终结 op,生产逻辑态直写门对终结
     #: 动作整体跳写(期望态按下段入口重观察作废,终结不写逻辑态为申报过渡
     #: 语义),单接本字段不可达;接线(含终结直写语义改)与 receipts 接线
     #: 同批评估(批首清单候选,波 5 sim 反转时裁决)。

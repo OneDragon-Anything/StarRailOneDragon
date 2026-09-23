@@ -90,7 +90,7 @@ class StrategyState:
     focus_factions: set[str] = field(default_factory=set)
 
     # ===== 相位面(v2 决策层相位元组;A2 改判迁出——活读端 =
-    # cw_op_buy_cards decisions 行,活写端 = sim 初始相位注入)=====
+    # 商店执行回执 decisions 行(写点 = cw_screen_shop),活写端 = sim 初始相位注入)=====
     v2_state: tuple | None = None
     locked_line: str | None = None                     # 锁定线 id(None=未锁)
     bridge_id: str | None = None                       # 当前桥线 id(None=无)
@@ -148,7 +148,7 @@ class StrategyState:
     v3_release: object = None
     v3_release_round: int | None = None
     # 义务实花披露(遥测键 sess_release_spent 透传源):写端=商店执行
-    # 回执位(cw_op_buy_cards.accrue_release_spent,首版只计刷新实花,
+    # 回执位(cw_screen_shop.accrue_release_spent,首版只计刷新实花,
     # 「宁窄勿虚」口径申报归 ),轮界清零承载=v3_disclosure_key
     # 键戳(economy_cycle.disclose_budget 写端);读端=recorder sess_*
     # 透传 + cw_decision_trace 披露族。披露面字段,禁决策判据消费

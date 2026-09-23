@@ -493,7 +493,7 @@ class DecisionTrace:
     # 当轮 release 帧实际消费(金;strategy_state_of(session).v3_release_spent 透传,每轮
     # 入口清零,清零承载 = 策略状态 v3_disclosure_key 键戳)。
     # 口径(收窄申报):首版只计**刷新实花**(记账位 =
-    # cw_op_buy_cards 执行回执位;决策帧值 = 轮内截至采样时点累计)——
+    # cw_screen_shop 执行回执位 accrue_release_spent;决策帧值 = 轮内截至采样时点累计)——
     # 买牌/升级是否计入「全渠道义务实花」在 mandate_v1 语义下未经证明,
     # 裁决前收窄防虚高(宁窄勿虚;旧 authorize_release_refresh/
     # _accrue_release_frame_spend 机制退役史与口径裁决归 )。

@@ -880,7 +880,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         执行层买入应用即自动合成 2★,登记的 1★ 副本离场(件离场闭合)
         ——发射位先销旧账,且不为本笔开账(1★ 即刻离场,press 账的
         资产对象不存在)。接线位申报:方案 v3 §3.1 理想位 = 执行层合成
-        事务应用位(cw_op_buy_cards/sim 引擎,本批文件面禁碰);单动作
+        事务应用位(商店动作 op 买入应用位/sim 引擎);单动作
         契约下发射位检出与执行层应用等价(动作被无条件采纳执行),
         事务 fill 残余形态载体已随批2b R3 删除(轮界销 ≤1 轮兜底语义随原子序列重表达消亡;V2-05 有界性
         申报)。
@@ -1841,7 +1841,8 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     #(knowledge/cw_line_facts.TRANSITION_PACK 档∈{carry,partial};drop 档
     # 不放行;禁消费 kernel/cw_transition 迁移副本——其内明令勿新增消费)。
     # 时间辖域(L2)= 未定型期:定型权威 = cw_intention.committed_from
-    #(唯一读端,消费先例 cw_op_buy_cards 装配段),定型后放行收窄 =
+    #(唯一读端;消费先例 = 已退役买牌执行器 cw_op_buy_cards 装配段,
+    # 考古归 git),定型后放行收窄 =
     # TRANSITION_PACK「P1 过渡包」语义直接推论;P2 换线场景 = 显式不辖
     #(方案悬而未决节请裁,实施者无裁量)。硬闸继承 = 席/金/1★ 全额退
     # refund_full_star_ok(2★ 转线件买入价值未证,本批不放开)。

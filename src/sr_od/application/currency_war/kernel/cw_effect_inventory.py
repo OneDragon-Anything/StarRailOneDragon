@@ -201,7 +201,8 @@ class ActiveEffectInventory:
     GameState.effects,session 无独立字段——历史兼容读口 property 已撤,
     写读直经 game_state_of(session).effects,载体归一防双账本):选卡登记 = CwScreenInvestStrategy 确认落地(免战牌同点
     自动登记);节点 tick = cw_loop 备战分支(进节点边界);计数 bump =
-    cw_op_buy_cards 执行落地门(刷新/购买);跳过递减 = kernel
+    动作上报链(购买 = cw_action_report/buy_card 的 on_buy 回调,刷新 =
+    cw_action_report/refresh_shop 经 record_refresh 单口);跳过递减 = kernel
     出战 op 自上报(report_action_start_battle_param;批④ 前身 = cw_exec_state.apply_op_effect)
     runner 包络上报,上报时递减——出战域重设计 T-286);升级标记 =
     prep_actions._level_up
