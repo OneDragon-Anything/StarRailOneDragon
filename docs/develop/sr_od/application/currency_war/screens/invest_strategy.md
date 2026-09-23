@@ -37,8 +37,8 @@
 
 ```
 names = opts 卡名;空候选 → round_fail 显式失败(零盲发)
-match 判空:无 match 局外 = 零决策零点击 round_success 终结交回
-  (遭遇屏同款;生产对局分发恒有 match,该出口仅独立跑可达)
+(无 match 局外不设早退支——单跑缺上下文沿正常链路失败即预期;
+  用户裁决 2026-09-22 全族删门,禁回填此类单跑防御分支)
 act = match.strategy.decide_invest_strategy()(零参,候选读容器 invest_strategy_opts 槽)
 ├─ 逐卡刷新 = 终结动作(act.refresh_slots 非空):
 │    闸1 obs.refresh_slots 槽余量 >0(权威闸,读缺 = 无授权失败安全);
@@ -77,7 +77,6 @@ act = match.strategy.decide_invest_strategy()(零参,候选读容器 invest_stra
 |---|---|---|
 | 逐卡刷新点击(点一槽即交) | **访问终结** | round_success 交回外循环重进 = 入口重建,重进后重观察重决策 |
 | 选卡确认链派发 | **访问终结** | round_success 交回外循环重分发(结果已即时上报写入;确认未生效 = 代码 bug,overlay 残留由外循环重识别重派,修法 = 点击链可靠性) |
-| 局外无 match(仅独立跑可达) | **访问终结** | round_success 交回(零决策零点击;画面 op 不产决策,flow/README §1 铁律) |
 | 三闸全败重调仍返回刷新 | 显式失败 | round_fail(「决策无有效输出」同出口;策略器同帧去重未实现的 bug 面响亮暴露,零二次重调) |
 | 空候选/决策无有效输出 | 显式失败 | round_fail 交外循环(零盲发,bug 面响亮暴露) |
 | 入口锚复探超窗 | 有界重试 | 观察 node round_retry 消耗其 `node_max_retry_times=10` 预算,超限 op FAIL 交外循环 |
@@ -109,5 +108,5 @@ act = match.strategy.decide_invest_strategy()(零参,候选读容器 invest_stra
 
 - journal op 名 =「投资策略」(dispatch 包装统一落 `[cw-op]` 主日志行);op 内日志 tag = `[cw-strat]`(options/chose/reason、槽位刷新终结交回);获得链侧 tag = `[cw-gain]`(效果账本登记/板面重写桥/策略落地分步)。
 - 缺陷面:登记腿失败 = `gain_chain_strategy_register_failed`;无效载荷 = `pick_invest_invalid_payload`(零盲发配套)。
-- 测试锁:两 node 行为锁 + 写入流对拍 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`(派发即终结+派发时点写入对拍/空候选零盲发/局外零决策交回/观察复探窗与 report 含 left 摄入/刷新终结交回);即时上报与去重链锁 = `test_cw_yinlang_phase32.py`(即时上报/无效载荷/去重/骇客链);获得链锁 = `test_cw_gain_chain.py`(gain_invest_strategy/gain_invest_env 链腿);动作 op 类型分派 = `test_cw_unified_action_4.py`。
+- 测试锁:两 node 行为锁 + 写入流对拍 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`(派发即终结+派发时点写入对拍/空候选零盲发/无 match 局外无早退支沿正常链路失败/观察复探窗与 report 含 left 摄入/刷新终结交回);即时上报与去重链锁 = `test_cw_yinlang_phase32.py`(即时上报/无效载荷/去重/骇客链);获得链锁 = `test_cw_gain_chain.py`(gain_invest_strategy/gain_invest_env 链腿);动作 op 类型分派 = `test_cw_unified_action_4.py`。
 - game 侧知识:画面建档与交互 = [../../../../game/screens/currency_war_invest_strategy.md](../../../../../game/screens/currency_war_invest_strategy.md);刷新判据数学 = [../proofs/p81-invest-refresh-dominance.md](../proofs/p81-invest-refresh-dominance.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md)。

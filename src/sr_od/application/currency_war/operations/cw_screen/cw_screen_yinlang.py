@@ -23,8 +23,7 @@
 分发即门)→ 观察 node = 左右两卡 OCR 桶一次读(入口帧一次读,与现役决策
 体读同帧等价)→ ``report_screen_planner_obs`` 落容器 ``planner_opts``
 (恒写两卡,空桶照写)→ obs 挂实例属性进决策 node。决策动作 node =
-零参决策(kernel 直调局外支 = op-layer.md §1.1 :37 违规欠账,归族级批
-收敛)→ ``classify_planner_leg``
+零参决策 → ``classify_planner_leg``
 腿型 → 组装 env → 选卡确认链派发即 ``round_success`` 终结交回外循环
 (``flow/action_ops.md`` §1 增补 2 与 §4.5 PickPlanner 行:动作 op 确认
 点击后立即上报完整效果腿,零重入裁决、零落地相补写面——确认未生效 =
@@ -111,9 +110,7 @@ class CwScreenYinLang(SrOperation):
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
         """左右两卡 OCR 桶一次读 → report 落容器(恒写两卡,空桶照写;
-        match/gs 缺席的局外兜底路径跳过 report,决策走 kernel 直调防御
-        分支 = op-layer.md §1.1 :37 违规欠账,归族级批改零决策零点击
-        round_success 终结交回)。"""
+        match/gs 缺席的局外兜底路径跳过 report)。"""
         screen = self.last_screenshot
         # OCR 两卡区域文字:单次全图读(贵操作只算一次),文本归属 =
         # 中心点落入建档两卡 rect(坐标单一真相源 = yml;判定语义 =
@@ -170,29 +167,10 @@ class CwScreenYinLang(SrOperation):
         options = self._obs.options if self._obs is not None else []
         # 策略层决策(唯一入口 = 策略对象,handler 禁 kernel 直调——决策
         # 控制分层铁律,flow/README.md §1;写槽已由 report 落容器 → 零参
-        # 决策。kernel 直调局外支 = op-layer.md §1.1 :37 违规欠账,归族级
-        # 批改零决策零点击 round_success 终结交回)。
-        _match = getattr(self.ctx, 'cw_match', None)
-        if _match is not None:
-            pick = _match.strategy.decide_planner()
-        else:
-            from sr_od.application.currency_war.kernel.cw_events import decide_planner
-
-            # 换源(登记集消点):防御视图 = 裸容器(全域未观察空视图;
-            # decide_planner 局面消费面未观察态 = 空视图口径)。
-            # kernel 返回值包装动作子类型
-            # (kernel 纯函数零触碰,包装归入口/防御路径)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                GAME_STATE_SCHEMA_VERSION,
-                GameState,
-            )
-            from sr_od.application.currency_war.kernel.cw_vocab import (
-                CwActionPickPlannerParam,
-            )
-            _kpick = decide_planner(list(options),
-                                    GameState(schema_version=GAME_STATE_SCHEMA_VERSION),
-                                    None)
-            pick = CwActionPickPlannerParam(idx=_kpick.idx, reason=_kpick.reason)
+        # 决策)。无 match 局外兜底决策支已删(用户裁决 2026-09-22 全族
+        # 删门,op-layer.md §1.1「画面 op 不支持局外单独调用」):单跑缺
+        # 上下文沿正常链路失败即预期,禁回填此类兜底分支。
+        pick = self.ctx.cw_match.strategy.decide_planner()
         target = self._card_point(pick.idx)
         if target is None:
             # 点卡定位点不可派生 = 卡位建档漂移,显式失败交回重读

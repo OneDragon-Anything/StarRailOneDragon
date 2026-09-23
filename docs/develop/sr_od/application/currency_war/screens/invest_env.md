@@ -27,12 +27,11 @@
 单决策体 `_decide_and_act`(零参,输入 = 观察轮 obs 载体):
 
 ```
-names = opts 卡名;空候选 → round_fail 显式失败(零盲发,先于局外出口——
-  空候选 = OCR 读缺 bug 面,契约与局外无关)
+names = opts 卡名;空候选 → round_fail 显式失败(零盲发——
+  空候选 = OCR 读缺 bug 面,显式失败契约)
 未注册环境名逐个告警(该项 env_fit 走中性 fallback)
-局外无 match(∨ gs 缺席)→ 零决策零点击 round_success 终结交回
-  (画面 op 不产决策、不设兜底决策路径——正本 =
-  op-layer.md §1.1「画面 op 不支持局外单独调用」;仅独立跑可达)
+(无 match 局外不设早退支——单跑缺上下文沿正常链路失败即预期;
+  用户裁决 2026-09-22 全族删门,禁回填此类单跑防御分支)
 act = match.strategy.decide_invest_env()(零参,输入 = 容器标准名
   invest_env_opts 槽——观察标准化门产出,值域 = 标准注册名)
 ├─ 整组重掷刷新 = 终结动作(与策略屏不同构:单全局钮 + 单全局计数):
@@ -81,7 +80,6 @@ act = match.strategy.decide_invest_env()(零参,输入 = 容器标准名
 | 选卡确认链派发 | **访问终结** | round_success 交回外循环重分发(本屏身份臂链尾接 `CwScreenWaitOneOne`;结果已即时上报写入;确认未生效 = 代码 bug,overlay 残留由外循环重识别重派) |
 | 观察转换失败(标准化门) | 显式失败 | round_fail 零写零上报,交回外循环重观察重读 |
 | 空候选/决策无有效输出 | 显式失败 | round_fail 交外循环(零盲发) |
-| 局外无 match(仅独立跑可达) | **访问终结** | round_success 零决策零点击交回(op-layer.md §1.1 局外单跑条款) |
 | 入口锚 miss | op FAIL | 交回外循环按当前画面重分发 |
 
 刷新 = 唯一引入新事实的动作,终结交回语义 = [op-layer.md](op-layer.md) §1.4;「确认离开 = 画面终结」= [README.md](README.md) §6。
@@ -123,5 +121,5 @@ act = match.strategy.decide_invest_env()(零参,输入 = 容器标准名
 
 - journal op 名 =「投资环境」(本屏身份臂链另有「等待 1-1」独立行);op 内日志 tag = `[cw-env]`(计数读数/options/chose/reason、刷新终结交回)。
 - 缺陷分键 = `invest_env.refresh_no_effect`(record_defect L2 留证)。
-- 测试锁(逐项与测试实存对齐;测试仓根 = `sr-od-test/test/sr_od/application/currency_war/`):观察门 miss 早退 + 候选一次读落容器 `invest_env_opts` + obs 挂实例属性 = `test_cw_obs_arch_phase_screens.py::test_invest_env_observe_gate_and_report`;观察标准化门(可转换名 → 容器/obs 标准名,含归一精确与 LCS 兜底命中路径[「彩虹吋代」不过严回归锚];转换失败乱串 / 两候选命中同一注册名 / LCS 近分歧义[「击口概念股」双真名近分] → round_fail 零写零上报) = 同文件 `test_invest_env_observe_standardization_gate`;`env_refresh_left` 观察写端双腿(计数读得值写入 / 读缺跳写) = 同文件 `test_invest_env_refresh_left_observed_write` + `test_cw_screen_report_ports.py`(`_case_invest_env` 值与来源锁、空桩摄入序 `invest_env` 行:候选空整函数早退不写含 left);空候选零盲发 = `test_cw_obs_arch_phase_screens.py::test_invest_env_empty_opts_fail_not_blindfire`;派发即终结 + 派发时点写入对拍(active_env 已写) = `test_cw_obs_arch_phase_screens.py::test_invest_env_active_env_written_at_dispatch`;局外无 match = 零决策零点击 round_success 终结交回 = `test_cw_obs_arch_phase_screens.py::test_invest_env_no_match_zero_decision_handback`;机械链与 param 类型分派 + 即时上报接线 = `test_cw_unified_action_4.py::test_invest_pick_op_clicks_target_confirms_and_self_reports`;刷新零效果对账留证(缺陷分键 `invest_env.refresh_no_effect`) = `test_cw_unified_action_4.py::test_invest_env_refresh_no_effect_reconcile_records_defect`;portal 链与防污染(容器播种承载纯 idx 取名) = `test_cw_yinlang_phase32.py::test_invest_portal_landing_no_card_pollution`(ENV_GIFTS 全量发放 = 同文件 `test_invest_portal_env_gifts_full_access`);纯 idx 上报契约(名字自容器标准名单一源按序号提供,容器缺读/idx 越界 = 响亮失败)锁面 = `test_cw_action_report_contract.py` param 冒烟锁(invest_env 行随按 idx 取名契约播种容器承载)+ `test_cw_yinlang_phase32.py` portal 锁(idx → 链收容器同序标准名);链内无效载荷拒绝(detail=`invalid_payload` / active_env 零写 / 缺陷行 `pick_invest_invalid_payload`) = `test_cw_gain_chain.py::test_gain_invest_env_invalid_payload_zero_write`;命名/sig/写入域完备锁 = `test_cw_screen_report_ports.py`。
+- 测试锁(逐项与测试实存对齐;测试仓根 = `sr-od-test/test/sr_od/application/currency_war/`):观察门 miss 早退 + 候选一次读落容器 `invest_env_opts` + obs 挂实例属性 = `test_cw_obs_arch_phase_screens.py::test_invest_env_observe_gate_and_report`;观察标准化门(可转换名 → 容器/obs 标准名,含归一精确与 LCS 兜底命中路径[「彩虹吋代」不过严回归锚];转换失败乱串 / 两候选命中同一注册名 / LCS 近分歧义[「击口概念股」双真名近分] → round_fail 零写零上报) = 同文件 `test_invest_env_observe_standardization_gate`;`env_refresh_left` 观察写端双腿(计数读得值写入 / 读缺跳写) = 同文件 `test_invest_env_refresh_left_observed_write` + `test_cw_screen_report_ports.py`(`_case_invest_env` 值与来源锁、空桩摄入序 `invest_env` 行:候选空整函数早退不写含 left);空候选零盲发 = `test_cw_obs_arch_phase_screens.py::test_invest_env_empty_opts_fail_not_blindfire`;派发即终结 + 派发时点写入对拍(active_env 已写) = `test_cw_obs_arch_phase_screens.py::test_invest_env_active_env_written_at_dispatch`;无 match 局外不设早退支 = 单跑缺上下文沿正常链路失败(AttributeError,零派发零点击) = `test_cw_obs_arch_phase_screens.py::test_invest_env_out_of_match_no_early_exit_normal_chain`;机械链与 param 类型分派 + 即时上报接线 = `test_cw_unified_action_4.py::test_invest_pick_op_clicks_target_confirms_and_self_reports`;刷新零效果对账留证(缺陷分键 `invest_env.refresh_no_effect`) = `test_cw_unified_action_4.py::test_invest_env_refresh_no_effect_reconcile_records_defect`;portal 链与防污染(容器播种承载纯 idx 取名) = `test_cw_yinlang_phase32.py::test_invest_portal_landing_no_card_pollution`(ENV_GIFTS 全量发放 = 同文件 `test_invest_portal_env_gifts_full_access`);纯 idx 上报契约(名字自容器标准名单一源按序号提供,容器缺读/idx 越界 = 响亮失败)锁面 = `test_cw_action_report_contract.py` param 冒烟锁(invest_env 行随按 idx 取名契约播种容器承载)+ `test_cw_yinlang_phase32.py` portal 锁(idx → 链收容器同序标准名);链内无效载荷拒绝(detail=`invalid_payload` / active_env 零写 / 缺陷行 `pick_invest_invalid_payload`) = `test_cw_gain_chain.py::test_gain_invest_env_invalid_payload_zero_write`;命名/sig/写入域完备锁 = `test_cw_screen_report_ports.py`。
 - game 侧知识:画面与机制(环境 = 整局增益) = [../../../../game/screens/currency_war_invest_env.md](../../../../../game/screens/currency_war_invest_env.md);环境刷新判据 = `kernel/cw_events.py` 环境帧分支 + [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1。

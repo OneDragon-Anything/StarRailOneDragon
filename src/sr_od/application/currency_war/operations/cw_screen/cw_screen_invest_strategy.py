@@ -235,8 +235,8 @@ class CwScreenInvestStrategy(SrOperation):
         终结动作(obs 余量闸 + 容器剩余口径双闸)→ 选卡确认链派发(动作
         op 内即时上报)→ round_success 终结交回。空候选/决策无有效输出 =
         round_fail 显式失败(零盲发,裁定「没有选到就是代码 bug」);
-        局外无 match = 零决策零点击 round_success 终结交回(遭遇屏同款;
-        flow/README.md §1 决策控制分层铁律)。"""
+        无 match 局外不设早退支(画面 op 不支持局外单独调用——
+        op-layer.md §1.1;用户裁决 2026-09-22 全族删门)。"""
 
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         opts = obs.options
@@ -248,13 +248,9 @@ class CwScreenInvestStrategy(SrOperation):
             # 自愈过渡帧,此态 = 真读缺)。
             return self.round_fail('投资策略候选 OCR 读缺(零盲发,显式失败)')
         match = self.ctx.cw_match
-        if match is None:
-            # 局外独立跑(无策略器可调)= 零决策零点击终结交回(遭遇屏
-            # 同款处置;决策控制分层铁律:画面 op 不产决策,局外兜底决策
-            # 路径废除——flow/README.md §1;op-layer.md §1.1 两件职责)。
-            log.info('[cw-strat] 局外无 match → 零决策零点击终结交回')
-            return self.round_success('局外无 match,零决策零点击终结交回',
-                                      wait=1.5)
+        # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
+        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        # 在此失败即预期,禁回填此类单跑防御分支。
         # 零参决策(写槽已由观察轮 report 落容器 invest_strategy_opts)。
         # 输出 = 单一 CwAction:CwActionRefreshInvestCardsParam(逐卡刷新
         # 建议)/ CwActionPickInvestStrategyParam(选卡)互斥单发。

@@ -26,9 +26,9 @@ node = 零参决策(候选自容器槽;空候选/无有效输出 = round_fail �
 ``gain_invest_env`` 整链(active_env 注册 + portal 登记 + on_env_gained
 效果枚举,正本 = game_state/gain-chain.md);画面 op 零选择写点。计数 =
 屏上剩余次数观察真值(屏上数字即真值,正本 = game_state/fields.md
-§3.4.3),写端 = 观察 report 摄入。局外无 match = 零决策零点击
-round_success 终结交回(遭遇屏在册先例同款;画面 op 不产决策、不支持
-局外单独调用——op-layer.md §1.1)。本屏 sim 腿 = 不适用(sim 端口
+§3.4.3),写端 = 观察 report 摄入。无 match 局外不设早退支(画面 op
+不支持局外单独调用——op-layer.md §1.1;用户裁决 2026-09-22 全族删门)。
+本屏 sim 腿 = 不适用(sim 端口
 适配器未建),等价判据主承重 = 实机在册行为锁。
 """
 import time
@@ -179,7 +179,7 @@ class CwScreenInvestEnv(SrOperation):
         return scored[0][1]
 
     def _match_gs(self):
-        """局容器单例读口(无局/局外交回路径 = None,调用方零行为跳过)。"""
+        """局容器单例读口(读缺 = None,调用方按无授权失败安全处理)。"""
         _match = getattr(self.ctx, 'cw_match', None)
         return getattr(_match, 'gs', None) if _match is not None else None
 
@@ -223,7 +223,7 @@ class CwScreenInvestEnv(SrOperation):
         零稳定帧等待;一次读全 = 环境卡名 + 全局刷新剩余计数,同一帧
         读取。标准化门任一候选转换失败(含两候选命中同名)= round_fail
         整函数早退,零写容器零上报(op-layer.md §1.1)。门后 report 摄入
-        (候选 + env_refresh_left,match/gs 缺席的局外交回路径跳过
+        (候选 + env_refresh_left,match/gs 缺席的局外兜底路径跳过
         report)。"""
         screen = self.last_screenshot
         _hit = self.round_by_find_area(screen, CwScreenInvestEnv.SCREEN_NAME,
@@ -267,26 +267,23 @@ class CwScreenInvestEnv(SrOperation):
         容器 env_refresh_left)→ 点最优卡底 → 确认链派发(动作 op 内
         即时上报)→ round_success 终结交回。空候选/决策无有效输出 =
         round_fail 显式失败(零盲发 = op-layer.md §1.1 + action_ops.md
-        §1 增补 2「没有选到就是代码 bug」);局外无 match = 零决策零点击
-        round_success 终结交回(遭遇屏在册先例同款,op-layer.md §1.1)。"""
+        §1 增补 2「没有选到就是代码 bug」);无 match 局外不设早退支
+        (画面 op 不支持局外单独调用——op-layer.md §1.1;用户裁决
+        2026-09-22 全族删门)。"""
 
         opts = obs.options
         names = [n for n, _ in opts]
         if not names:
             # 空候选 = OCR 读缺 = bug 面:显式失败交外循环重观察重派
-            #(零盲发,契约与局外无关,先于局外出口)。
+            #(零盲发,显式失败契约)。
             return self.round_fail('投资环境候选 OCR 读缺(零盲发,显式失败)')
         for _n in names:
             if not is_known_env(_n):
                 log.warning(f'[cw-env] 投资环境名不在注册表(数据缺口): {_n!r} → 该项 env_fit 走中性 fallback')
         match = self.ctx.cw_match
-        if match is None or getattr(match, 'gs', None) is None:
-            # 局外(无对局上下文)= 零决策零点击 round_success 终结交回
-            #(遭遇屏在册先例同款;决策控制分层铁律:画面 op 不产决策,
-            #不设兜底决策路径——op-layer.md §1.1)。
-            log.info('[cw-env] 局外无 match → 零决策零点击终结交回')
-            return self.round_success('局外无 match,零决策零点击终结交回',
-                                      wait=1.5)
+        # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
+        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        # 在此失败即预期,禁回填此类单跑防御分支。
         # 零参决策(写槽已由观察轮 report 落容器 invest_env_opts;候选 =
         # 标准注册名)。输出 = 单一 CwAction:CwActionRefreshInvestCardsParam
         #(整组刷新建议)/ CwActionPickInvestEnvParam(选卡)互斥单发。
