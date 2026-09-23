@@ -48,7 +48,7 @@
 
 | 落点 | 宿主 | 写口（符号锚） | 消费方 |
 |---|---|---|---|
-| 容器逻辑态直写 | `GameState` 字段（渠道 family='logic_action'） | 上报函数族 `kernel/cw_action_report/<snake>.py::report_action_<snake>_param`（每动作一函数、双域腿统一；快照与升星腿内聚于买牌函数单点；备战金账与库存腿内聚于各函数 `session` 形参面；零写族 = `zero_writes.py`；dict 确认族 = `apply_confirm_effect`） | 动作 op 机械执行后直调自己的上报函数；商店序列驱动器（`bridge.py::decide_shop_screen`）与 sim 引擎入口（`cw_sim_actions.apply_player_action`）逐动作直调；观察赢修正 |
+| 容器逻辑态直写 | `GameState` 字段（渠道 family='logic_action'） | 上报函数族 `kernel/cw_action_report/<snake>.py::report_action_<snake>_param`（每动作一函数、双域腿统一；快照与升星腿内聚于买牌函数单点；备战金账与库存腿内聚于各函数 `session` 形参面；零写族 = `zero_writes.py`；dict 确认族 = `apply_confirm_effect`） | 动作 op 机械执行后直调自己的上报函数（sim 与实机同一段 op 代码同口直调——驱动反转后无独立引擎委托入口，旧 `cw_sim_actions.apply_player_action` 委托串已随自驱动引擎退役）；商店序列驱动器（`bridge.py::decide_shop_screen`，回放/既有序列锁消费面）逐动作直调；观察赢修正 |
 | tracked 主账随动账 | `GameState.tracked_books`（`TrackedBooks` 容器簿记,bench 定长 9 保洞 / deployed 定长 10 下标恒稳） | `mutate_bench_deployed` + 执行器 tracked 同步分支（`prep_actions.py::PrepActionExecutor._track_remove_bench` / `_track_remove_deployed` / `_track_move_deployed`） | 执行侧随动账;双账比对已退役（2026-09-15,对账唯一发生点 = 观察边界,见 screen_op §2.3/§4） |
 
 (sim 整帧副本单步应用器 `simulate` 及其宿主推演帧已随 sim 帧通道退役删除——sim 与实机共用容器逻辑态直写落点（首行）,考古归 git;语义验证 = M1 直锁(`test_cw_shop_projection_logic`)。)

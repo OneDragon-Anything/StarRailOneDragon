@@ -12,7 +12,7 @@
 
 ## 2. 画面形态声明
 
-**决策循环形态(两 node 画面 op;决策动作 node = round_wait 单动作循环)**。生产两路(外循环 0n 转交与显式开店同口 `visit_open_shop`、`run_operation` 单跑)构造 `CwScreenShop` 并节点函数直驱(观察 node 恰一次 → 决策动作 node 循环至终结;不经框架 execute 循环——决策循环轮间零截图)。决策入口 = 契约 `decide_shop_action`(`strategies/impl/mandate_v1/shop.py`;**全函数**:f(期望态) → 恰一个动作,「无动作可做」= CloseShop 恒可用终结;观察帧缺失即抛错;终态零参口)。全动作统一路径零特例拦截零闸(§4);终结动作(RefreshShop/CloseShop)= 本访问结束交回外循环——外循环 0n 重分发 → 新访问入口观察重建牌面 → 策略逐帧再决策,「刷后买不买/刷不刷」由策略在下一访问自然表达。刷新无次数上限——用户裁定:无限刷新环 = 策略实现 bug,框架不兜底(暴露面 = 外部停滞哨兵);决策循环无防御帧帽——用户裁定:不收敛 = 策略实现 bug,响亮暴露。sim 引擎/回放经 `decide_shop_screen` 驱动器消费(非契约成员,同经 `decide_shop_action` 单动作核)。
+**决策循环形态(两 node 画面 op;决策动作 node = round_wait 单动作循环)**。生产两路(外循环 0n 转交与显式开店同口 `visit_open_shop`、`run_operation` 单跑)构造 `CwScreenShop` 并节点函数直驱(观察 node 恰一次 → 决策动作 node 循环至终结;不经框架 execute 循环——决策循环轮间零截图)。决策入口 = 契约 `decide_shop_action`(`strategies/impl/mandate_v1/shop.py`;**全函数**:f(期望态) → 恰一个动作,「无动作可做」= CloseShop 恒可用终结;观察帧缺失即抛错;终态零参口)。全动作统一路径零特例拦截零闸(§4);终结动作(RefreshShop/CloseShop)= 本访问结束交回外循环——外循环 0n 重分发 → 新访问入口观察重建牌面 → 策略逐帧再决策,「刷后买不买/刷不刷」由策略在下一访问自然表达。刷新无次数上限——用户裁定:无限刷新环 = 策略实现 bug,框架不兜底(暴露面 = 外部停滞哨兵);决策循环无防御帧帽——用户裁定:不收敛 = 策略实现 bug,响亮暴露。回放经 `decide_shop_screen` 驱动器消费(非契约成员,同经 `decide_shop_action` 单动作核);sim 经真流程消费同一单动作接口(驱动反转,无独立引擎直调面)。
 
 出参交接契约:失败判定 = 轮结果 `is_success`(False = 未识别卡停机/未观察熔断的 round_fail);执行账 = `op.ledger`(`ShopVisitLedger`,run 完成后有效,`total_buy`/`total_xp_buy`/`total_refresh` 为上报 executed 计数单一源)。
 

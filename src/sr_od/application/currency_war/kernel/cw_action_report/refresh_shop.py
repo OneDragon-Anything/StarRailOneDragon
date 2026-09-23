@@ -4,7 +4,8 @@
 
 - **计数腿**:付费/全量两计数经 ``gs.effects.record_refresh`` 单口触发
   (2026-09-18 迁入裁决;免费余额半随 Field 化迁出,账本只留 paid/total
-  累计)。生产 = 刷新 op 自上报,sim = 委托串直调,落地门零重复触发。
+  累计)。生产 = 刷新 op 自上报,sim 与生产同一段 op 代码同口自上报,落地门
+  零重复触发。
 - **免费腿扣减**:免费刷新剩余次数住容器字段 ``gs.free_refresh_left``
   (Field 化:观察锚定/动作扣减/发放登记三写端同格),免费帧经
   ``write_logic`` 扣减。free 判定 = Field 值 > 0;None(未观察)= 保守
@@ -17,7 +18,8 @@
   = 该腿跳写(概率表按级索引,宁缺勿造)。干旱/供给族消费 observation
   only 是消费侧口径,本函数不管。
 
-金账 −实付仅 sim 喂 ``executed.refresh_paid`` 时写(生产不喂)。
+金账 −实付仅 ``executed.refresh_paid`` 喂入时写(现役零生产喂入方:生产
+op 不喂,sim 与生产同一段 op 代码同不喂;显式喂入为保留的申报差异参数通道)。
 终结跳写申报:金仍不写;刷后牌面 = ``write_logic_rand`` 随机态
 (2026-09-21 用户裁定,观察赢;真值 = 下一入口观察)。
 
@@ -53,7 +55,7 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
       free=True 不进 paid(付费累计,长线利好阈值型,免费帧混入即毒化);
       free=False refresh_paid +1;同帧 bump 按策略触发计数
       (CounterKey.REFRESH,采购专员族门槛面)。
-    - free 判定输入 = 显式 ``free`` 优先(sim 免费刷额度先行自喂),None
+    - free 判定输入 = 显式 ``free`` 优先(喂入口保留,现役调用方恒 None),None
       回退 Field 值判定(``gs.free_refresh_left.value > 0``;入口观察锚定
       的剩余次数;None = 未观察 → 保守按 paid,不扣 Field)。
     - 免费腿扣减 = ``write_logic(gs.free_refresh_left, max(0, left−1))``
@@ -62,8 +64,8 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
       (evidence='refresh_random_sample';观察覆盖差异 = logic_rand_outcome
       台账,非失配)。
     - 金账:仅 ``executed.refresh_paid`` 在场时写(−实付;免费帧 0 不写)
-      ——生产 op 不喂,sim 引擎显式喂(实付金含免费刷注入等引擎差异,不可
-      自算)。``applied`` 恒 True:计数即职责完成,调用方仅在动作实际发出
+      ——生产 op 不喂(实付金含免费刷注入等差异,不可自算),sim 与生产
+      同一段 op 代码同不喂。``applied`` 恒 True:计数即职责完成,调用方仅在动作实际发出
       后进本口(未落地不计数)。
     """
     _validate_sig(sig, ('logic_action',))

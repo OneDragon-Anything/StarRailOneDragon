@@ -659,6 +659,6 @@ m1p 恒 None 的成因可辨),None = 非发射帧;C-A2 审计桶内分键
 | `launch_arbitrage_precheck_skip`(KEY_PRECHECK_SKIP) | 同上(仲裁单元内 `_prep_anchors_hit` 预检保留——预检只作仲裁段的门) | 预检未随达标臂拆除退役,写点照旧 |
 | `launch_arbitrage_abandoned_launch`(KEY_ABANDONED_LAUNCH) | 无写点 | 旧写点 = 达标臂弃射路径 defect 分键(仲裁已消费、发射核屏态复验未过的弃射显影),随达标臂分支拆除消失;键定义保留,现无生产写点,拟退役归后续遥测清理批 |
 | `readiness_stale_screen`/`readiness_overlay_hold`/`deploy_swap_no_victim` | 统一执行器 `launch_battle_unified` 内部段(屏态复验/浮层安全检查/G1 预估显影) | armed/resume 两调用面同保(浮层检查对 resume 面为防误触补齐) |
-| `LAUNCH_QUALITY_EVAL_ERROR_KEY`/`LAUNCH_QUALITY_DEFER_FRAMES_KEY` | 策略前置发射位 `bridge._launch_front_check` | 写点自 cw_loop 达标臂判定位迁策略;sim 侧 engine_p1 写点不变 |
+| `LAUNCH_QUALITY_EVAL_ERROR_KEY`/`LAUNCH_QUALITY_DEFER_FRAMES_KEY` | 策略前置发射位 `bridge._launch_front_check` | 写点自 cw_loop 达标臂判定位迁策略;原 sim 侧 engine_p1 写点随旧引擎退役消解(现役 = 策略前置发射位单面写点) |
 | `readiness_launch_fail`/`readiness_launch_giveup` | 无写点 | 随达标臂分支消亡(达标臂发射失败记账与三连败回落守卫链结构一并退役;活性防线现役 = dispatch 包装通用失败重派网,guards.md §2) |
 | `launch_arbitrage_gate_blocked`(KEY_GATE_BLOCKS) | **策略决策入口自限**(`flow.py::decide_shop_action`:受限会话活跃帧提案过 kernel 谓词检被拒时写入 cw4_counters) | 仲裁段宿主形态已随商店访问两 node 化迭代退役(上注「受限消费迁策略侧申报」);本键为该族现役唯一生产写点,拒拍落策略器状态(现役 = 表首行 `_launch_frame_arbitration` 宿主申报的历史形态);`launch_arbitrage_frames`/`inband_closed`/`zero_consume`/`cross_line`/`open_failed`/`precheck_skip` 各键现无生产写点,键定义保留(sim 侧消费面与存量 cw4_counters 判读面) |

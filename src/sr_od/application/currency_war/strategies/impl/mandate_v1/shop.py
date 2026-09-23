@@ -67,8 +67,8 @@ yield / hub_option_reject_{merge_material,seats,interest,unaffordable}
 unaffordable_strict,unaffordable_fundable}:no_fuel 桶现辖「席满停摆
 全形态」——卖备战收缩至备战期后(判例 = screens-actions-capability §5),
 席满表达 = 关店交回(腾位链:关店→备战卖→重开),不再有 seat_swap
-卖射键(sim 判红检测器 sim/checks/ledger.check_core_ruling_seat_violation
-的 seen 帧必落 ≥1 出口键判据由 no_fuel 桶承接)+
+卖射键(seen 帧必落 ≥1 出口键闭集判据由 no_fuel 桶承接;登记正本 =
+strategy-docs/11_shop_decisions.md 出口键行)+
 core_numeric_fail_closed 尾键收窄(席满停摆帧不再共火,for-else 语义)
 + dead_gold_press_bench_full_gate(②(b) 外门席满支静默显影,B2 移位案)。
 
@@ -1683,7 +1683,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 卖 1 张即止,下一决策迭代原臂原判据买入;无合法 victim = 诚实
     # 停摆(no_fuel 显影)。锁线腿资格门席位维已下放循环内(mandate.
     # core_single_card_buy_eligible 收窄为锁线态单判)。出口键闭集 =
-    # seen 帧必落 ≥1(sim 判红检测器判据,sim/checks/ledger.py)。
+    # seen 帧必落 ≥1(登记正本 = strategy-docs/11_shop_decisions.md 出口键行)。
     # ---- C1/④ 席满共享判定件(T-271 收缩后)----
     # victim 面唯一入口(金闸双桶探测消费):排除集 = 统一装配 A 全量
     # 形态(单一入口 sell_gate,channel='m4_fuel';候选 =

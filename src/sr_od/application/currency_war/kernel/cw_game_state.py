@@ -1529,8 +1529,9 @@ class ShopActionExecuted:
     动作本轮不写逻辑态,等观察覆盖。
 
     **Optional 语义(详设 §3 修订)**:executed 整体可缺省
-    (None = 理想执行)——live 传执行回执(参数化不变);sim 引擎传
-    None,函数自算执行期决定量(CwActionBuyCardParam k 自算,满栏合成买 k 从
+    (None = 理想执行)——live 与 sim 同一段动作 op 代码传执行回执
+    (bought_count 由动作 op 现算喂入;参数化不变);None = 自算执行期
+    决定量(CwActionBuyCardParam k 自算,满栏合成买 k 从
     :func:`_apply_full_bench_merge_buy` 应用面出)。executed 只辖 k 等
     决定量**来源**,不辖应用面位置——合成连锁/满栏合成买的应用两路径
     同在转移函数内(单源本义)。executed 与自算值的关系核对归调用方

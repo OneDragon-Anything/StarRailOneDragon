@@ -145,8 +145,9 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 
 ## 5. 边界与姊妹文档
 
-- **sim 表示分界**:sim 无独立局面表示——引擎内部工作态即本容器,生产写入 =
-  sim 引擎直写本容器(渠道签名写入口,渠道族封闭集见 §3);不存在「容器 ↔
+- **sim 表示分界**:sim 与 live 同一容器类型、同一份单例(`game_state_of(session)`)
+  ——后端世界真值写 obs 渠道,动作效果经动作 op 上报函数族走 logic_action 渠道
+  (渠道签名写入口,渠道族封闭集见 §3);不存在「容器 ↔
   中间帧」映射层(原推演内核帧及其合成口已随帧通道退役,考古归 git 历史)。
   表示分界与接线底账 = [fields.md](fields.md) §9 与 [../sim/sim-wiring.md](../sim/sim-wiring.md)。
 - **字段级规格**=[fields.md](fields.md)(本目录分篇,正本)——字段清单/决策 op

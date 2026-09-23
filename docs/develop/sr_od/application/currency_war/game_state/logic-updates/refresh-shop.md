@@ -10,7 +10,7 @@
 
 | 域 | 写 / 跳写 | 说明 |
 |---|---|---|
-| gold | 上报函数腿写,生产跳写 | 上报函数:`gold −= 实付刷新费`(仅 `executed.refresh_paid` 在场时写;生产 op 不喂——实付金含免费刷注入等引擎差异不可自算,sim 引擎显式喂并申报差异) |
+| gold | 上报函数腿写,生产跳写 | 上报函数:`gold −= 实付刷新费`(仅 `executed.refresh_paid` 在场时写;生产 op 不喂——实付金含免费刷注入等差异不可自算,sim 与生产同一段 op 代码同不喂;显式喂入为上报函数保留的申报差异参数通道,现役零生产喂入方) |
 | shop | **随机态腿写(`write_logic_rand`)** | 刷新上报在计数后经 kernel 发牌采样器 `kernel/cw_shop_deal.py::sample_shop_deal`(与 sim `deal_shop` 同一发牌代码)采 5 槽 payload,经 `write_logic_rand` 随机态专用通道写——实机上采样是猜测,observe 覆盖差异 = 预期内(落 `logic_rand_outcome` 台账,不进失配安灯),真值 = 下一入口观察(观察赢);level 缺读该腿跳写(概率表按级索引,宁缺勿造) |
 | free_refresh_left | 免费帧写(逻辑态) | 免费判定 = Field 值 > 0(入口观察锚定的剩余次数;None = 未观察 → 保守按付费,不扣 Field——次数是记账面非决策闸);免费帧 `write_logic` 扣减(max(0, left−1),下限 0) |
 | refresh_total / refresh_paid(效果账本) | 写(计数腿) | 容器写端 = 刷新上报函数经 `gs.effects.record_refresh` 单口(`kernel/cw_effect_inventory.py`);refresh_total 恒 +1,免费帧不动 refresh_paid(付费累计,长线利好阈值型,免费帧混入即毒化) |
@@ -18,10 +18,10 @@
 
 ## 3. 确定面转移规则(逐条)
 
-1. **免费腿**(Field 扣减):free 判定输入 = 显式 `free` 优先(sim 免费刷额度先行自喂),None 回退 Field 值判定;免费帧经 `write_logic(gs.free_refresh_left, max(0, left−1))` 扣减(produced_by/evidence 留证)。免费刷新的事实可见性 = Field 既有失配安灯(观察锚定覆盖动作扣减失配即停机)——零手写对账台账;
+1. **免费腿**(Field 扣减):free 判定输入 = 显式 `free` 优先(喂入口保留,现役调用方恒 None),None 回退 Field 值判定;免费帧经 `write_logic(gs.free_refresh_left, max(0, left−1))` 扣减(produced_by/evidence 留证)。免费刷新的事实可见性 = Field 既有失配安灯(观察锚定覆盖动作扣减失配即停机)——零手写对账台账;
 2. **计数腿**(`record_refresh` 单口,未落地不计数):refresh_total 恒 +1;免费帧 refresh_paid 不写;同帧推进按策略触发计数(`bump_key(CounterKey.REFRESH)`,采购专员族门槛面)——「一次刷新,账本一处入账」;
 3. **随机态腿**:采样器按 `REFRESH_PROB[level]` 费用档加权掷点 + 档内可进店名集均匀抽(`data/cw_shop_odds.py` 注册表;剩余牌库派生 = `kernel/cw_pool.py::drawable_names`),逐槽独立、允许重复同名;sim 与实机走同一发牌代码(两执行面同源,详见 [../../flow/projection_contract.md](../../flow/projection_contract.md) §3.6);
-4. **金腿**(仅 sim):`gold −= executed.refresh_paid`(免费帧 0 不写)。
+4. **金腿**(条件腿):`gold −= executed.refresh_paid`(免费帧 0 不写;现役生产与 sim 同跳写,喂入通道保留)。
 
 ## 4. 随机面
 

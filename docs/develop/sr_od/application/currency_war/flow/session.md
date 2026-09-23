@@ -78,7 +78,7 @@
 | `v3_handoff` / `v3_handoff_plane` | P2 承接快照(策略计算) | decide_prep | 位面 | MandateState |
 | `v3_posture_unfulfilled` | 仲裁帧级重算(策略) | 对账门遥测 | 帧 | MandateState |
 | `cw4_counters`(动态属性,非 dataclass 字段) | 策略行为观测分键(mandate_v1/encounter/shop/entry 多点写) | decisions 行、cw4_counters.jsonl 局终快照、sim 轮差分账本、A/B 披露 | 局 | MandateState;**遥测消费线必须随迁保持可读**(§5.4) |
-| `v2_state` / `locked_line` / `bridge_id` | 决策层相位元组/锁线/桥线(初版误判退役;对抗审查 A2 改判——**活读端** = cw_screen_buy_cards.py:658-662 直接属性访问入 decisions 行,**活写端** = sim/engine_p1.py:672/701,见 §5.6) | decisions 行遥测 | 局 | MandateState.相位面(sim 初始相位改经状态构造,§5.6) |
+| `v2_state` / `locked_line` / `bridge_id` | 决策层相位元组/锁线/桥线(初版误判退役;对抗审查 A2 改判——**活读端** = cw_screen_buy_cards.py:658-662 直接属性访问入 decisions 行;**原活写端** = 旧引擎 engine_p1.py:672/701,已随引擎退役消解,见 §5.6 as-built 注) | decisions 行遥测 | 局 | MandateState.相位面(sim 初始相位改经状态构造,§5.6) |
 | `memory`(dict) | 策略 scratch | 策略临时变量 | 局 | **随切换直接消解**(§6.3,用户裁定) |
 
 ### 2.4 执行层状态——迁出至执行侧载体(16 项;as-built 实际落点 22 具名 = 16 清册 + 账外第二波 6:`last_prep_action_sig`/`_supply_detour_done`/`cw_prep_pending_accts`/`cw_takeover_collect_done`/`cw_takeover_tries`(此两名已退役删除——现行接管补采无 gs 字段,真值经位面详情屏写门落容器)/`cw4_swap_arm_on`,见 「落位裁量」节)
@@ -113,12 +113,12 @@
 
 | 组 | 属性(逐个) | 产生者/消费面备注 |
 |---|---|---|
-| 相位与镜像(每轮重算) | `v3_phase` / `v3_form_ok` / `v3_b_t` / `v3_dp_posture` / `v3_mirror_key` | write_shop_mirrors 每轮写;`v3_form_ok` 有 sim 直写点(engine_p1.py:1098,§5.6) |
+| 相位与镜像(每轮重算) | `v3_phase` / `v3_form_ok` / `v3_b_t` / `v3_dp_posture` / `v3_mirror_key` | write_shop_mirrors 每轮写;`v3_form_ok` 原有 sim 直写点(engine_p1.py:1098,已随引擎退役消解,§5.6) |
 | 成型停手 | `v3_formed_stop` | ;**行为面消费** = cw_screen_prep.py:2173 决策豁免联动 + cw_screen_buy_cards.py:639 入 decisions 行(非纯遥测) |
 | 补偿/稳态簿记 | `v2_remedy_used` / `v2_steady_lv_used` / `v3_steady_lv_abandoned` / `v3_remedy_abandoned` |  跨局清零计数 |
 | 轮笔数披露 | `v2_round_refreshes` / `v2_round_p1_early` / `v2_round_p2_core` / `v2_round_press_exempt` / `v2_round_press_copy` | 遥测判读面(journal/局档案) |
 | 泄息指令与承接门 | `v3_release` / `v3_release_round` / `v3_release_spent` / `v3_handoff_gap` / `v3_handoff_hp_proj` | W332b/w227;`v3_release_spent`/`v3_reserve_cap` 是遥测透传源(telemetry/schema.py:424/433、recorder.py:241/250) |
-| 消费侧惰性建 | `v3_registry`(A/B 注册表注入通道,cw_economy.py:662 消费)/ `v3_dir_refresh_used`(刷新消耗计数,cw_registry.py:836)/ `v3_alloc_frame`(DP 姿态轮帧缓存,engine_p1.py:961/1267)/ `v3_reserve_cap`(储备线披露,engine_p1.py:1300) | 惰性建模式迁 MandateState 具名字段(缺省值即现惰性初值) |
+| 消费侧惰性建 | `v3_registry`(A/B 注册表注入通道,cw_economy.py:662 消费)/ `v3_dir_refresh_used`(刷新消耗计数,cw_registry.py:836)/ `v3_alloc_frame`(DP 姿态轮帧缓存;原引擎消费锚已随退役消解)/ `v3_reserve_cap`(储备线披露;原引擎消费锚已随退役消解) | 惰性建模式迁 MandateState 具名字段(缺省值即现惰性初值) |
 
 **遥测承诺精确化(消解「session 只剩 30 项」与「遥测 schema 零改」的表面矛盾)**:§6.1 迁移清单**扩大到全部 104 项**(含本节 24 个动态属性);遥测承诺收窄为——**decisions/schema/jsonl 的序列化 schema 与格式零改,但全部数据源读点改为经访问函数抽自 MandateState**。session 字段数与遥测 schema 本就无蕴含关系(动态属性从来不进 asdict,遥测可见性从来全靠显式读点),初版「schema 零改」表述未点明该依赖链,此处显式化(对抗审查 C1 采纳)。
 
@@ -161,13 +161,13 @@
 
 ### 3.4 与 sim 侧策略实例生命周期的对齐
 
-**现状(对抗审查 A3 修正,初版前提与现状相反)**:sim 引擎**不经** `create_session`——三处裸构造:`sim/engine_p1.py:670`、`:699`(`sess = session or StrategySession(rng=random.Random(...))`,session 参数为注入通道)、`sim/engine_p2.py:132-133`(注释明言禁裸构造的 OS 熵默认入 sim);且 sim **现状就直写策略字段**:`engine_p1.py:672`/`:701`(`sess.v2_state = ('economy', ...)`,给决策层喂初始相位)、`:1098`(`sess.v3_form_ok = True`,镜像逻辑态写);create_session 的 sim 侧唯一消费方 = `sim/cw_replay.py:195`(回放工具,非引擎主路径)。sim 另对 `v3_intention`/`cw4_counters`/`v3_dir_refresh_used`/`v3_alloc_frame`/`v3_reserve_cap` 广域只读(engine_p1.py:930/1158/1264-1300/2103/2248/2422 等)。
+**现状(as-built)**:本节设计时点的对齐对象——旧自驱动引擎的三处裸构造(`sim/engine_p1.py`/`sim/engine_p2.py`)、策略字段直写(`v2_state` 初始相位/`v3_form_ok` 镜像写)与「`create_session` 的 sim 侧消费仅回放工具」前提——已随旧引擎整体退役失去对象(考古走 git)。**对齐裁决由驱动反转 by-construction 承接**(正本 = [../sim/sim-design.md](../sim/sim-design.md) §1):sim 与实机同一条流程链(外层循环 + 画面 op + 动作 op + 策略器,装后端即 sim 跑一局),三条裁决的现役形态:
 
-对齐裁决(**sim 侧有实质改造,「零改动」断言撤回**):
-1. **构造**:三处裸构造改经统一 sim 侧构建口(候选 = 引擎入参接被测策略的 create_session/state 工厂,或 sim 内薄 helper 调工厂),保证 sim/live 状态生命周期同源;`session` 注入参数通道保留(回放/进场态复用 session 时,`strategy_state` 为 None 的处理 = 由该口惰性走工厂补建,禁留 None 进决策)。
-2. **写点**:`v2_state` 初始相位(672/701)改经 MandateState **构造参数/初始化入口**(初始相位是策略状态的合法初始化输入,不再事后 setattr);`v3_form_ok` 写点(1098)属镜像逻辑态写面——sim 与 live 共享同一镜像函数(write_shop_mirrors 等价),写经状态对象,禁裸 setattr。
-   > 术语注(首次出现):逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态;真值以下一帧观察为准(观察赢)。
-3. **读点**:全部 getattr 消费改经访问函数(与 live 同一口),读取口径逐字节一致。
+1. **构造**:`create_session` 唯一冷建口 live/sim 同链,无 sim 专有构建口;策略器状态生命周期同源 by construction。
+2. **写点**:状态迁 MandateState 后无引擎直写面——初始相位经状态构造,镜像写经 live/sim 共享镜像函数,禁裸 setattr。
+3. **读点**:全部消费经访问函数(与 live 同一口),读取口径逐字节一致。
+
+回放工具(`sim/cw_replay.py`)保留直构 session + 状态同源接线的工具面(非引擎路径)。
 
 ## 4. 目标态结构(双态)
 
@@ -190,7 +190,7 @@ StrategySession(104 项混装:              StrategySession(30 项:观察 28 + �
 
 - `cw_strategy_manager.py`:`create_session` 增「调用实现包状态工厂」一步(ABC 工厂接口 `create_state(config) -> object`,非 abstract)。
 - **第三方插件兼容条款**(对抗审查 B4 采纳):CwStrategy 是 plugins/currency_war_strategies 的参赛入口契约,新增 **abstract** 钩子会让所有存量第三方策略实例化后调 create_session 即 TypeError。裁决:`create_state` 定义为 **ABC 非 abstract 钩子,基类缺省实现返回 None**——存量第三方策略零破坏(None 态 = 策略器可沿用惰性建模式,与现状 cw_intention.py:1695-1702 惰性建同构);mandate_v1 覆写返回 MandateState。不做插件契约版本化(非 abstract 缺省已消除破坏面,版本化属过度设计)。
-  **B4 承诺收缩申报(as-built,「落位裁量」节同文)**:「零破坏」收缩为「缺省 None **不炸策略构造与 create_session**」;**不承诺**框架行为面读点(ops 主链决策输入等)容忍 `strategy_state=None`——第三方策略未覆写 create_state 且无工厂注册时状态恒 None,进入行为面读点 = AttributeError 显式炸错(mis-assembly 信号,优于静默产 None 假数据)。判据/披露面(kernel 判据、遥测披露键)维持防御 getattr 形态(异型状态对象字段缺席退缺省)。两形态划分与 None 契约单一源 = `strategy_state_of` docstring。附带工厂契约:`create_state(config)` 的 config **可忽略、可为 None**(sim 注入桩面传 None,工厂实现禁读 config 取值)。
+  **B4 承诺收缩申报(as-built,「落位裁量」节同文)**:「零破坏」收缩为「缺省 None **不炸策略构造与 create_session**」;**不承诺**框架行为面读点(ops 主链决策输入等)容忍 `strategy_state=None`——第三方策略未覆写 create_state 且无工厂注册时状态恒 None,进入行为面读点 = AttributeError 显式炸错(mis-assembly 信号,优于静默产 None 假数据)。判据/披露面(kernel 判据、遥测披露键)维持防御 getattr 形态(异型状态对象字段缺席退缺省)。两形态划分与 None 契约单一源 = `strategy_state_of` docstring。附带工厂契约:`create_state(config)` 的 config **可忽略、可为 None**(工厂实现禁读 config 取值;原「sim 注入桩面」消费例已随旧引擎退役消解)。
 - **create_session 直调点两处纳入改造面**(对抗审查 B2-6 补):`sim/cw_replay.py:195` 与 `operations/cw_screen/cw_screen_buy_cards.py:497` 绕过 StrategyManager 直调 `strat.create_session(config)`——两处的状态工厂语义随 §5.1 钩子自动生效(直调的就是 ABC 方法),核对项 = 直调后 session.strategy_state 非 None。
 - 注册壳 `mandate_v1_strategy.py`:零判据纪律不变;仅透传工厂。
 
@@ -207,7 +207,7 @@ StrategySession(104 项混装:              StrategySession(30 项:观察 28 + �
 ### 5.4 序列化与遥测(decisions 行 / cw4_counters.jsonl / shop_snapshots / match_archive)
 
 - decisions 行的 `v3_intention`/`sess_commit_scores` 字段(cw_screen_buy_cards.py:623-666、cw_serialize.serialize_intention):**schema 零改**,数据源从 session 字段改为经访问函数抽自 MandateState——遥测跨版本可比性保住。
-- `cw4_counters` 局终快照链(cw_loop:384/879/1356 → match_archive.record_cw4_counters_* → cw4_counters.jsonl → ab_core_swap 披露抽取):读点全改经访问函数;**sim 轮差分账本(engine_p1.py:1038-2358)同步换读点**。这是切换批最容易漏的断流点(动态属性 grep 不易枚举全),实施批须以「session 上除观察/设施外的 getattr 兜底全部清零」为完成判据。
+- `cw4_counters` 局终快照链(cw_loop:384/879/1356 → match_archive.record_cw4_counters_* → cw4_counters.jsonl → ab_core_swap 披露抽取):读点全改经访问函数;**sim 轮差分账本(engine_p1.py:1038-2358)同步换读点**。这是切换批最容易漏的断流点(动态属性 grep 不易枚举全),实施批须以「session 上除观察/设施外的 getattr 兜底全部清零」为完成判据。(as-built:上述 jsonl 流与 ab_core_swap 披露面已随流载体退役批收敛为局终聚合 `MatchFinal.cw4_counters`,原引擎轮差分账本随旧引擎退役消解。)
 - **shop_snapshots 流**(对抗审查 B2-1 补):`telemetry/recorder.py:820` 读 `session.v3_intention`(best-effort suppress,漏改 = 静默缺失)——换访问函数,并**纳入 6.2-2 对照面**(shop_snapshots 的 rho_obs 与 decisions 同 seed 对照)。
 - **动态属性透传源**(对抗审查 A1 联动):`v3_reserve_cap`/`v3_release_spent`(telemetry/schema.py:424/433、recorder.py:241/250 `_w611_int` 读 session 动态属性)——换读自 MandateState,schema 字段零改。
 - match_archive 的 decision_detail(v3_intention 帧,match_archive.py:416):同上换源。
@@ -220,19 +220,19 @@ StrategySession(104 项混装:              StrategySession(30 项:观察 28 + �
 - 执行层读策略状态的既有点换访问函数(对抗审查 B2-2/3 补):`cw_op_deploy.py:1014`(读 v3_intention 取 locked_fac)、`cw_shop_action_ops.py:362`(读 cw4_counters)、`:395`(读 v3_intention)——执行层读策略状态的合法通道 = 访问函数,逐点改。
 - `star_regression_count` 随停机钩子退役删除,不迁移;`megastar_candidate_clicked` 按 §2.4 定案落 `ctx.cw_match` 级局容器。(defer_count/bail_reason_counts 已随 DeferSpheres/BailToOuter 词表退役整体删除,不迁移。)
 
-### 5.6 sim 引擎
+### 5.6 sim 侧(as-built:旧引擎退役后零专有改造面)
 
-见 §3.4:**「零改动」断言撤回**——sim 侧实质改造点(对抗审查 A3 补齐,全部在切换批范围内):
+见 §3.4:设计时点的五类 sim 改造点(对抗审查 A3 补齐)已随自驱动引擎整体退役失去对象——驱动反转后 sim 与实机同一条流程链,原「改状态通道」的改造面由架构收敛消解:
 
-| 改造点 | 现状锚点 | 改法 |
-|---|---|---|
-| 裸构造 ×3 | engine_p1.py:670、:699;engine_p2.py:132-133 | 统一 sim 侧构建口走被测策略工厂;session 注入通道保留,None 时惰性走工厂补建 strategy_state |
-| 策略字段直写 ×3 | engine_p1.py:672/701(`v2_state` 初始相位)、:1098(`v3_form_ok` 镜像逻辑态写) | 前者改 MandateState 构造参数;后者改 sim/live 共享镜像函数写状态对象,禁裸 setattr |
-| 广域只读点 | engine_p1.py:930/1158/1264-1300/2103/2248/2422(`v3_intention`/`cw4_counters`/`v3_dir_refresh_used`/`v3_alloc_frame`/`v3_reserve_cap`) | 全部换访问函数(与 live 同口) |
-| cw4_counters 轮差分 | engine_p1.py:1038-1108/2192-2198/2355-2360 | 读点同上换;差分口径不变 |
-| create_session 直调 | cw_replay.py:195(回放工具) | 随 §5.1 钩子自动生效,核对 strategy_state 非 None |
+| 原改造点 | 现役形态 |
+|---|---|
+| 裸构造 ×3(旧 engine_p1/engine_p2 锚) | 消亡——`create_session` 唯一冷建口 live/sim 同链(§3.4) |
+| 策略字段直写 ×3(`v2_state`/`v3_form_ok`) | 消亡——状态迁 MandateState 后无引擎直写面;初始相位经状态构造,镜像写经共享镜像函数 |
+| 广域只读点(`v3_intention`/`cw4_counters`/`v3_dir_refresh_used`/`v3_alloc_frame`/`v3_reserve_cap`) | 消亡——读写同口 = 访问函数,live/sim 同一读链 |
+| cw4_counters 轮差分 | 消亡——原引擎轮差分账本随退役拆除;计数同源累计,消费 = 局终聚合 `MatchFinal.cw4_counters`(§5.4 as-built 注) |
+| create_session 直调 | 仅回放工具(`sim/cw_replay.py`)保留工具面直构 |
 
-sim 决策逻辑与判据本体零改动(改的是状态通道,不改决策语义)。
+sim 决策逻辑与判据本体零改动——as-built 后 sim 亦无专有状态通道,决策语义与状态通道均与实机同构。
 
 ## 6. 迁移方案:一次性原子切换(用户 2026-09-06 裁定)
 
@@ -265,5 +265,5 @@ sim 决策逻辑与判据本体零改动(改的是状态通道,不改决策语�
 2. **遥测断流**:`cw4_counters`/`v3_intention`/`v3_reserve_cap`/`v3_release_spent` 等序列化读点散布 sim/telemetry/operations 三域(§5.4),漏一处 = 该域数据静默缺失(非炸错)。缓解 = grep 完成判据(6.2-3)+ 决策帧与 shop_snapshots 逐字节对照(6.2-2)。
 3. **执行层迁出改变了防重入/失败计数的宿主生命周期**:落点若选错(如挂 op 实例而 op 每访问重建),计数提前清零,防线失效——§2.4 每字段标注了原生命周期,实施批逐字段核对落点生命周期 ≥ 原生命周期(`megastar_candidate_clicked` 已按 B1 定案局容器,不留裁量空间)。
 4. **退役字段的静默/炸错双形态**(对抗审查 A2 升级):直接属性访问的残余读点(cw_screen_buy_cards.py:658-660 类)删除即首商店帧 AttributeError;`cw_replay.py:152` 对 `dual_track_phase` 的 setattr 删字段后**不炸但静默丢恢复语义**——两类都在 §2.5 前置动作 + 6.2-3 全字段 grep 判据辖内,无「已核」标签兜底。
-5. **sim 改造面失真**(对抗审查 A3 撤回「零改动」后显式化):三构造点/三写点/五类只读点任一漏改 = sim 起跑即崩(构造)或状态通道口径分叉(读写),后者会被 6.2-2 同 seed 对照抓;构造类崩溃首局即暴露,风险在排查成本非隐蔽性。
+5. **sim 改造面失真**(对抗审查 A3 撤回「零改动」后显式化):三构造点/三写点/五类只读点任一漏改 = sim 起跑即崩(构造)或状态通道口径分叉(读写),后者会被 6.2-2 同 seed 对照抓;构造类崩溃首局即暴露,风险在排查成本非隐蔽性。(as-built:切换批已落地,旧引擎退役后 sim 与实机同链路、无专有改造面,该风险面消解。)
 6. **kernel 判据层换访问函数引入 import 方向问题**:访问函数落点须不造 kernel→impl 断环边(候选 = kernel 内薄读口 `strategy_state_of(session)` + TYPE_CHECKING 收窄,实施批裁);kernel 对执行层字段的读写签名重构(§5.5 cw_reconcile/cw_expected_state)同此判。

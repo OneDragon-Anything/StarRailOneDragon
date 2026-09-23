@@ -17,7 +17,7 @@
 | 执行面 | 契约形态 |
 |---|---|
 | 动作 op(`cw_op/cw_<action>_action.py`,单节点 op;注册表 `action_op_class_for` 类级解析 + `(ctx, param, env)` 组装,节点函数直调) | 机械执行(点击/拖拽)→ **op 内直调自己的上报函数**(上报 = `kernel/cw_action_report/report_action_<snake>_param`,每动作一个具名接口;容器逻辑态写入单点);round 结果成功态 = 发出事实(失败 = 定位落空等未发出通道,`round_fail` 零重试交回) |
-| 上报函数族(`kernel/cw_action_report/`) | 每动作恰一个具名函数 = 该动作的容器写语义单点(命名机械可推导,完备锁 = test_cw_action_report_contract);分派只允许 op 直调与引擎入口(sim/回放)的委托分支串;终结跳写(refresh/close 生产不写)与零写族策略声明在包 `__init__` |
+| 上报函数族(`kernel/cw_action_report/`) | 每动作恰一个具名函数 = 该动作的容器写语义单点(命名机械可推导,完备锁 = test_cw_action_report_contract);分派只允许 op 直调与商店序列驱动器(回放/既有序列锁消费)直调;终结跳写(refresh/close 生产不写)与零写族策略声明在包 `__init__` |
 | 画面 op 级状态(各画面 op 的具名轮次状态,判读侧分键) | 具名成功/失败状态——这是画面 op 的轮次结果语义,不是动作回执(部署机历史 STATUS 族已随其退役消失) |
 | 商店编排(`_open_shop_phase` → `visit_open_shop`) | `(完成事实, detail)`:完成事实 = 商店访问完整收工(开→访问→收店),失败路径店开态交回 |
 

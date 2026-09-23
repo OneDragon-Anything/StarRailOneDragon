@@ -82,7 +82,7 @@
 
 **非契约成员(实现层,不在 ABC 面)**:
 
-- `decide_shop_screen`(flow 层缺省驱动器 + bridge 覆写)——**序列兼容驱动器**:逐帧调 `decide_shop_action` + 逐动作直调上报函数推进期望态(kernel/cw_action_report 函数族,引擎入口委托分支串;快照三件组与升星腿内聚买牌上报;此后零 `cw_state.simulate` 前瞻消费),终结动作截停、CloseShop 收尾不入序列。回放/既有序列锁消费；生产执行侧不走（单动作循环），sim 亦不走（sim 经真流程消费单动作接口 `decide_shop_action`）。mandate 覆写保留特有记账(已买件/段序号/续段 token)。
+- `decide_shop_screen`(flow 层缺省驱动器 + bridge 覆写)——**序列兼容驱动器**:逐帧调 `decide_shop_action` + 逐动作直调上报函数推进期望态(kernel/cw_action_report 函数族;快照三件组与升星腿内聚买牌上报),终结动作截停、CloseShop 收尾不入序列。回放/既有序列锁消费；生产执行侧不走（单动作循环），sim 亦不走（sim 经真流程消费单动作接口 `decide_shop_action`）。mandate 覆写保留特有记账(已买件/段序号/续段 token)。
 - `_refresh_direction`/`_refresh_direction_views`(flow 层私有)——**方向节拍内化**:键守卫贵段(`update_intention` 状态机 + 候选评分遥测)每 game-round 恰一次 + 便宜派生视图段;触发信号 = GameState 非 Field 双槽帧代次标注(`gs.frame_class_prep`/`gs.frame_class_shop` ∈ full/view/none,写点 = 备战/商店域观察装配点与决策环直写,读者 = 决策入口方向节拍,读后即清;驱动器不写帧类槽)。
 - ~~`_drain_pending_round_outcomes`(flow 层私有)~~——**已删(退役批)**:结算策略半惰性加工(掉血三臂/node_type 回落/谷底回滚登记)经方案批复核为零行为死链(登记臂前置零写端/三臂零决策消费端),04_survival_budget §7 #7/#8 裁决落地删除;槽连同写半已整删,现不存在(`StrategySession` 无该字段,全树零写点零读点);结算真值现役归宿 = `kernel/cw_game_state.py::apply_settlement_cover` 容器覆盖 + `performance.history`。
 - `write_shop_mirrors`(遥测镜像写者)。
