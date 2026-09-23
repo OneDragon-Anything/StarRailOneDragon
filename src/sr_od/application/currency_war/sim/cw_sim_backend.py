@@ -679,8 +679,12 @@ class SimBackend:
     #: 模态交回目标(呈现模态时的底层屏;None = 无挂起交回)。
     _return_screen: str | None = field(init=False, default=None)
     _return_sub: str = field(init=False, default='')
-    #: 节点窗口已推进但节点屏未呈现(offer/overlay 让路时置位)。
-    _node_screen_pending: bool = field(init=False, default=False)
+    #: 节点窗口让路恢复位('' = 无挂起):overlay/offer 呈现压住节点屏
+    #: 时的续跑点。'offer' = 让路结束复走 offer 检查;'node' = offer 屏
+    #: 交回后直出节点屏。让路不吞 offer 槽(权威序 = 旧引擎实测收尾
+    #: 检查序 overlay → offer → 下一节点,overlay 选定复走 offer 检查;
+    #: U07 固定日程生效于本节点备战窗口前)。
+    _window_resume: str = field(init=False, default='')
     # —— 采样簿记(实机不可观察,后端私有) ——
     excluded_invest: set[str] = field(default_factory=set)
     excluded_env: set[str] = field(default_factory=set)
@@ -1011,12 +1015,16 @@ class SimBackend:
         self._screen = screen_name
 
     def _dismiss_modal(self) -> None:
-        """模态交回(幂等:无挂起交回 = 原地不动;节点屏让路位优先)。"""
-        if self._node_screen_pending:
-            self._node_screen_pending = False
+        """模态交回(幂等:无挂起交回 = 原地不动;节点窗让路恢复位优先)。"""
+        resume = self._window_resume
+        if resume:
+            self._window_resume = ''
             self._return_screen = None
             self._return_sub = ''
-            self._present_node_screen()
+            if resume == 'node':
+                self._present_node_screen()
+            else:
+                self._present_offer_or_node_screen()
             return
         ret = self._return_screen
         if ret is None:
@@ -1029,7 +1037,7 @@ class SimBackend:
 
     def _after_modal_pick(self, *, opening: bool) -> None:
         """选卡族模态交回(投资双支共用):开局环境态(节点未进窗)→
-        wait_one_one;其余 = 模态交回(节点屏让路位优先)。"""
+        wait_one_one;其余 = 模态交回(节点窗让路恢复位优先)。"""
         if opening and self.gs.node.value is None:
             self._return_screen = None
             self._enter_wait_one_one()
@@ -1107,12 +1115,11 @@ class SimBackend:
         observe_node_anchor(self.gs, ordinal,
                             trigger_screen=self._screen_for_node(kind),
                             actor='SimBackend')
-        self._node_screen_pending = False
+        self._window_resume = ''
         if plane > 1 and round_num == 1:
             # 位面过渡(U20:全继承无重置;点空白后收口节点窗口)
             self._screen = SCREEN_PLANE_TRANSITION
             self._sub = ''
-            self._node_screen_pending = True
             return
         self._begin_node_window()
 
@@ -1161,12 +1168,23 @@ class SimBackend:
                 rotation_on=rotation_on)
             deal_shop(self.gs, rng, level=int(self.gs.level.value or 3),
                       probs=probs, tag=f'shop:deal:p{plane}r{r}')
-        self._node_screen_pending = True
-        # overlay 队列检查(旧引擎收尾序:overlay 先于 offer)
+        # overlay 队列检查(旧引擎收尾序:overlay 先于 offer;呈现压住
+        # 节点屏,选定经 _dismiss_modal 恢复位复走 offer 检查——让路
+        # 不吞 offer 槽)
         if self.overlay_queue.peek() is not None:
+            self._window_resume = 'offer'
             self._present_pending_overlay()
             return
-        # offer 日程(M11/U07:固定轮次 + 联席决策,生效于本节点备战窗)
+        self._present_offer_or_node_screen()
+
+    def _present_offer_or_node_screen(self) -> None:
+        """offer 日程检查 → 节点屏呈现(节点窗口让路恢复序)。
+
+        权威序 = 旧引擎实测:overlay 选定后复走节点窗 offer 检查
+        (收尾检查序 overlay → offer → 下一节点),U07 固定日程生效于
+        本节点备战窗口前——overlay 让路不吞 offer 槽;窗口前段(收入/
+        环境金/商店全刷)已在本窗起点执行,恢复不重入。"""
+        plane, r = self._node_pos()
         active_env = self.gs.active_env.value
         if offer_slots(plane, r, active_env):
             if quality_rewrite_hit(str(active_env or '')):
@@ -1174,6 +1192,7 @@ class SimBackend:
                     str(active_env)
             rng = stream_rng(self.seed, f'M11/offer/p{plane}/r{r}')
             opts = sample_strategy_offer(rng, self.excluded_invest)
+            self._window_resume = 'node'
             self._screen = SCREEN_INVEST_STRATEGY
             self._sub = ''
             report_screen_invest_strategy_obs(self.gs,
@@ -1190,7 +1209,7 @@ class SimBackend:
     def _present_node_screen(self) -> None:
         """按节点类型呈现对应屏(battle/reward → 备战档,reward = 晶矿
         子态;supply → 补给;encounter → 遭遇节点;boss → BOSS 简报)。"""
-        self._node_screen_pending = False
+        self._window_resume = ''
         plane, r = self._node_pos()
         kind = node_sequence_of(plane)[r - 1]
         if kind == 'supply':

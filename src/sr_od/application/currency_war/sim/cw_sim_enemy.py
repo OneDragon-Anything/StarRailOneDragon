@@ -42,8 +42,9 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 QUALITY_DIFFICULTY_BONUS: dict[str, int] = {'银': 0, '金': 3, '棱彩': 6}
 
 #: 遭遇等级加成四档真值(其一0/其二10/其三20/其四30;economy.md §9 定谳;
-#: 归宿 = 难度账域(本模块,与加成消费同域);遭遇选项生成与难度派生
-#: 两面同表单一源)。
+#: 归宿 = 难度账域(本模块,与加成消费同域);单一消费面 = 难度派生
+#: ``difficulty_of``——遭遇选项生成面不读本表,档数走 backend
+#: ``encounter_options`` 独立常量)。
 ENCOUNTER_TIER_BONUS: tuple[int, ...] = (0, 10, 20, 30)
 
 #: 圣杯试炼特殊加成真值(economy.md §9 定谳 +30;激活态 = fate overlay
