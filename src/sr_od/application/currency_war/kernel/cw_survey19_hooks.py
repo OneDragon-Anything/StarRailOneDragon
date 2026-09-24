@@ -1,11 +1,13 @@
-"""二轮扫描落地件:P9 遭遇接难度账本 + P1 狼狩穿戴纪律 + P8 补给重刷判据。
+"""二轮扫描落地件:P9 遭遇接难度账本 + P1 狼狩穿戴纪律。
 
-三件均为纯函数决策件(离线可测);执行侧接线(equip_all/run_supply_node/
+两件均为纯函数决策件(离线可测);执行侧接线(equip_all/
 cw_screen_encounter)由调用方接入。用户修正裁定:
 - P1:装备是**可循环资源**(卖出回收/扳手拆)——不为狼狩牺牲合成规划;纪律只有一条:
   别让装备躺在物品栏(穿了才产经验,物品栏 0 经验);
-- P8:补给重刷 = 免费重采样权,「未出钻 → 刷」;
 - P9:难度增减的场合依赖(大胜 0/边际峰值/无解 0)进遭遇档位选择。
+
+(P8 补给重刷判据已删:三支语义与补给选卡决策重复,决策本体单一源 =
+策略层 ``strategies/impl/mandate_v1/supply.py``;考古走 git 历史。)
 """
 from __future__ import annotations
 
@@ -41,16 +43,3 @@ def wear_discipline_alert(inventory_equips: list[str],
             'hunt_xp_loss_per_battle': xp_loss_per_battle,
             'alert': overflow > 0,
             'note': '狼狩:物品栏件 0 经验,穿着每战 +1(进阶+2);拆装重组间隙最小化'}
-
-
-def supply_reroll_decision(any_option_has_diamond: bool,
-                           reroll_used: bool) -> str:
-    """P8:补给重刷判据(免费重采样权)。
-
-    出钻 → 选;未出钻且可刷 → 刷(重掷钻概率);刷过仍无 → 按价值正常选。
-    """
-    if any_option_has_diamond:
-        return 'pick_diamond'
-    if not reroll_used:
-        return 'reroll'
-    return 'pick_best'

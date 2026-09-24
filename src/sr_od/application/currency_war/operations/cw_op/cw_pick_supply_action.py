@@ -34,8 +34,9 @@ from sr_od.context.sr_context import SrContext
 class CwActionPickSupplyOp(CwOperation):
     """补给节点 pick 确认链(统一动作工厂批4 迁入)。
 
-    刷新圆钮机械点击留守画面 op(刷新链 = ``SupplyPick.refresh`` 决策的
-    执行半)——pick execute 语义 = 点卡选中 → 确认,不含刷新臂。
+    刷新圆钮机械点击留守画面 op(刷新链 = 刷新建议动作
+    ``CwActionRefreshSupplyParam`` 的执行半)——pick execute 语义 =
+    点卡选中 → 确认,不含刷新臂。
     **即时上报**(契约单一源 = `flow/action_ops.md` §1 增补 2 与
     §4.5 PickSupply 行):确认点击后立即一口写全部效果逻辑态(owned 规范名
     + 单位腿 + 装备后果腿),无到账登记、无落地证据闩——确认未生效 =

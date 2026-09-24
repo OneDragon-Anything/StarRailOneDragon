@@ -1,6 +1,8 @@
-"""货币战争 事件/节点族 kernel 决策:遭遇(decide_encounter)+ 补给(decide_supply)
+"""货币战争 事件/节点族 kernel 决策:遭遇(decide_encounter)
 + 巨星/伙伴选项载体 + 银狼策划/命运卜者/专家邀请函判据 + 装备名归一——
-删除面收口后本模块 = 遭遇/补给/planner 等剩余画面决策。
+删除面收口后本模块 = 遭遇/planner 等剩余画面决策。补给选卡决策不在本
+模块(宪法五:决策本体归策略层 = ``strategies/impl/mandate_v1/supply.py``
+;本模块仅留观察载荷契约 ``SupplyOption``)。
 
 投资两屏选卡评序不在本模块(宪法五:衍生估值/评序归策略层):投资环境轴
 = ``strategies/impl/mandate_v1/invest_env.py``(判据正本 = strategy-docs
@@ -154,15 +156,20 @@ def decide_encounter(options: list[EncounterOption], gs: GameState,
 
 
 
-# ===== 补给节点(decide_supply,design 07/08)。✅ 已接 run_supply_node + read_supply_options =====
+# ===== 补给节点(决策本体已迁策略层 ``strategies/impl/mandate_v1/supply.py``
+# (宪法五);本段仅留观察载荷契约 ``SupplyOption``,消费方 = obs 写端
+# ``read_supply_options``/容器 ``gs.supply``/观察上报/sim 占位/策略层)=====
 
 @dataclass
 
 class SupplyOption:
     """一个补给选项:角色 + 装备 + 是否带钻(OCR/视觉读,``read_supply_options`` 阶段5)。
 
-    has_diamond:带红/蓝钻(视觉判定;钻 = 拿到基本赢,碾压一切)。
-    equip:装备名(OCR;``key_equips`` 契合 + 通用价值排序用)。
+    观察载荷契约(与策略无关的游戏事实载体,形状五方引用;决策语义单一
+    源 = 策略层 supply.py,宪法五)。
+    has_diamond:装备位带三钻之一(红钻/蓝钻/财富宝钻;SIFT 主通道 + 文本
+    兜底双通道,检测集单一源 = ``cw_node_obs.DIAMOND_EQUIP_NAMES``)。
+    equip:装备名(OCR 原文,未归一)。
     """
     idx: int
     char: str = ""
@@ -170,55 +177,10 @@ class SupplyOption:
     has_diamond: bool = False
 
 
-@dataclass
-
-class SupplyPick:
-    """decide_supply 返回:选哪个 + 是否刷新找钻。"""
-    idx: int
-    refresh: bool = False
-    reason: str = ""
-
-
-
 def _equip_value(equip: str) -> int:
     """装备通用价值(0=未知/无;共享机器单一源,表本体已迁
     ``cw_equip_value.EQUIP_GENERIC_VALUE``,值零变化)。"""
     return equip_generic_value(equip)
-
-
-
-def decide_supply(options: list[SupplyOption], gs: GameState,
-                  target_comp: Comp | None, config, refresh_used: bool = False) -> SupplyPick:
-    """补给节点选装备 + 是否刷新(纯逻辑,design 07/08)。✅ 已接:``run_supply_node`` 调本函数 +
-    ``read_supply_options``(cw_node_obs,OCR 每列角色+装备)。
-
-    决策(comp 相关 + 钻优先):
-    1. **带钻**(红/蓝)→ 选它(拿到基本赢,碾压)。
-    2. **全无钻 + 刷新未用** → **刷新找钻**(钻价值远超装备)。
-    3. **刷新已用 / 有钻** → 按 ``target_comp.key_equips`` 契合(命脉级,+10 碾压)+ 通用装备价值
-       (鞋>电池>花)选。
-    """
-    if not options:
-        return SupplyPick(idx=0, reason="no-options")
-    # 1) 带钻 → 选第一个带钻的(基本赢)
-    diamond = [o for o in options if o.has_diamond]
-    if diamond:
-        return SupplyPick(idx=diamond[0].idx, reason="带钻(基本赢)")
-    # 2) 全无钻 + 刷新未用 → 刷新找钻
-    if not refresh_used:
-        return SupplyPick(idx=options[0].idx, refresh=True, reason="无钻,刷新找钻")
-    # 3) 刷新已用 → key_equips 契合(命脉,+10)+ 通用装备价值
-    key_equips = set(target_comp.key_equips) if target_comp is not None else set()
-
-    def _score(o: SupplyOption) -> int:
-        s = _equip_value(o.equip)
-        if o.equip in key_equips:
-            s += 10   # 契合 target_comp 命脉装备(碾压通用价值)
-        return s
-
-    scored = sorted(options, key=_score, reverse=True)
-    best = scored[0]
-    return SupplyPick(idx=best.idx, reason=f"equip={best.equip or '?'} key_fit={best.equip in key_equips}")
 
 
 # ===== 巨星节点(decide_megastar;✅ 已派发 `cw_screen_megastar` 画面 op(候选标准化门 = op-layer.md §1.1,读缺 = 观察失败零盲发);本节点决策 = `decide_megastar`)=====
@@ -574,8 +536,8 @@ def choose_expert_index(card_bonds: list[str | None],
 #: 事件线 kernel pick 全类(kernel ``decide_*`` 纯函数返回载体;策略入口
 #: 负责包装成词表动作子类型——kernel 判据零触碰,§2.2)。
 EVENT_PICK_TYPES: tuple = (
-    EncounterPick, SupplyPick, MegastarPick, PartnerPick, PlannerPick,
+    EncounterPick, MegastarPick, PartnerPick, PlannerPick,
 )
 
 #: pick 族类型联合(kernel 侧注解用;运行时零消费)。
-EventPick = EncounterPick | SupplyPick | MegastarPick | PartnerPick | PlannerPick
+EventPick = EncounterPick | MegastarPick | PartnerPick | PlannerPick

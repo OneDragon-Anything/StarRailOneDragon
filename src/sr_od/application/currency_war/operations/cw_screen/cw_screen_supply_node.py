@@ -5,19 +5,21 @@
 加补给阶段可增列,augment 改写下实测 3-5 不等——历史「3 选 1」「实测 5」均为特例表述,
 列数以 read_supply_options 实际识别为准,禁写死)。
 
-动作(T#99 已接 decide_supply):``read_supply_options`` OCR 每列(角色+装备)→ ``decide_supply`` 按
-target_comp.key_equips 契合 + 装备通用价值选最优列 → 点该列卡身 + 确认。读不到选项 → CARD_BODY 兜底。
-钻(红/蓝=基本赢)视觉判定 + has_diamond 待补;刷新按钮实存(「剩余次数」文锚
-左侧圆钮,``_REFRESH_BTN_DX`` 文本锚定,decide_supply 规则 2「全无钻+刷新剩余
->0 →刷新找钻」消费)。
+动作:``read_supply_options`` OCR 每列(角色+装备)→ 策略层决策
+(``match.strategy.decide_supply()``,判据单一源 =
+``strategies/impl/mandate_v1/supply.py`` 三级字典序:钻>终局角色>装备;
+三级全空才刷,次数闸内嵌 decide)→ 点该列卡身 + 确认。读不到选项 →
+CARD_BODY 兜底。钻(红/蓝/财富宝钻)视觉判定(SIFT 主通道 + 文本兜底);
+刷新按钮实存(「剩余次数」文锚左侧圆钮,``_REFRESH_BTN_DX`` 文本锚定)。
 
-**刷新 = 终结动作**:decide_supply 建议刷新 ∧ 剩余闸放行 → 点钮一次
+**刷新 = 终结动作**:decide_supply 建议刷新 ∧ 对照闸放行 → 点钮一次
 (点击后本动作即返回,op 交回外循环重进 = 入口重建,新装备面由重进后的
-入口观察现读承载)。**刷新闸 = 剩余语义观察真值**(用户裁定 2026-09-21,
+入口观察现读承载)。**对照闸 = 剩余语义观察真值**(用户裁定 2026-09-21,
 全域规范 = ``op-layer.md`` §1.4):闸读源 = 容器 ``supply_refresh_left``
-(观察 node 同帧「剩余次数：N」读数经 report 摄入,读缺跳写);剩余 ≤0 或
-None = 拒绝 → 重调一次决策按原评分选(单轮内有界);锚读缺 → 容器留旧值
-+ 无点击点 → 同拒绝面。原实例旗标/已用计数写点随剩余闸退役(考古走 git)。
+(观察 node 同帧「剩余次数：N」读数经 report 摄入,读缺跳写);判据侧
+次数闸已内嵌 decide(仅剩余 ≥1 才可能返刷新建议),本面 = 对照兜底——
+锚读缺(无点击点)时重调一次(纯函数同输出仍建议刷)→ 零点击终结交回。
+原实例旗标/已用计数写点随剩余闸退役(考古走 git)。
 
 T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点击点由 read_supply_options 按列返回。
 
@@ -36,7 +38,8 @@ T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点�
 代码 bug,overlay 残留由外循环按当前画面重识别重派)。``chosen_supply``
 = 确认即写特殊口径(选定中转暂存宿主已退役,直写是载体消亡后的唯一
 形态)留守决策体真选分支,派发前写(``op-layer.md`` §2.2 动作事实边界
-硬规则);本屏 sim 腿 = 引擎补给决策段已在但 sim 接线未接,等价判据
+硬规则);本屏 sim 腿 = 观察腿在产(生成器产物经同名 report 落容器)、
+决策腿未接(sim 局 act 恒走 CARD_BODY 兜底),等价判据
 主承重 = 实机在册行为锁。
 """
 import re
@@ -239,10 +242,12 @@ class CwScreenSupplyNode(CwOperation):
     def _do_action(self) -> bool:
         """决策 + 单动作体(零参:候选与点击点自观察轮实例载体消费)。
 
-        T#99:``decide_supply`` 按 target_comp.key_equips 契合 + 装备通用价值
-        选(替代盲点 CARD_BODY);读不到选项 → CARD_BODY 兜底。刷新分支 =
-        剩余闸放行(容器 ``supply_refresh_left`` >0 且锚点在位)才点圆钮,
-        点后 2s 终结交回;闸拒绝 → 重调一次决策按原评分选(单轮内有界)。
+        决策 = 策略层单一源(``match.strategy.decide_supply()`` →
+        ``strategies/impl/mandate_v1/supply.py`` 三级字典序);读不到选项
+        → CARD_BODY 兜底。刷新分支 = 剩余对照闸放行(容器
+        ``supply_refresh_left`` >0 且锚点在位)才点圆钮,点后 2s 终结交回;
+        建议刷但对照闸拒绝 → 重调一次(纯函数同输入同输出仍建议刷)→
+        零点击终结交回。
         选卡分支点卡身 + 确认机械半经工厂(注册表 ``action_op_for`` 派发
         ``cw_pick_supply_action.CwActionPickSupplyOp``,替身缝 = 工厂派发调用点),
         确认点击后动作 op 立即上报完整结果,派发即终结。
@@ -269,18 +274,18 @@ class CwScreenSupplyNode(CwOperation):
                 CwActionRefreshSupplyParam,
             )
             _gs = match.gs
-            # 刷新剩余闸读源 = 容器 supply_refresh_left(观察轮 report 摄入
+            # 剩余对照闸读源 = 容器 supply_refresh_left(观察轮 report 摄入
             # 的同帧读数;None = 未观察/读缺,≤0 = 已刷尽)。
             _left = _gs.supply_refresh_left.value
             pick = match.strategy.decide_supply()
             if isinstance(pick, CwActionRefreshSupplyParam) \
                     and not (_left is not None and int(_left) > 0
                              and self._refresh_point is not None):
-                # 对照闸拒绝 → 重调一次决策按原评分选(单轮内有界;
-                # kernel 刷新闸同源同值,本面 = 读缺/锚点缺不一致兜底)。
+                # 对照闸拒绝 → 重调一次(判据侧次数闸已内嵌 decide,同输入
+                # 同输出仍建议刷;本面 = 读缺/锚点缺对照兜底)。
                 pick = match.strategy.decide_supply()
                 if isinstance(pick, CwActionRefreshSupplyParam):
-                    # 重调仍建议刷新 = 闸数据不一致面,零点击终结交回
+                    # 重调仍建议刷新 = 刷新锚点缺失面,零点击终结交回
                     #(外循环重进 = 入口重建重试观察,不空转本节点预算)。
                     log.warning('[cw-supply] 建议刷新但剩余闸拒绝(left=%r)'
                                 ' → 零点击终结交回(外循环重进重试观察)',

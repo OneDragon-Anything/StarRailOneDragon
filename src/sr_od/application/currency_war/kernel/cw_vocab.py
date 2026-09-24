@@ -725,7 +725,8 @@ class CwActionPickEncounterParam:
 
 @dataclass
 class CwActionPickSupplyParam:
-    """补给节点选择(替代 SupplyPick;刷新建议另发 CwActionRefreshSupplyParam)。
+    """补给节点选择(策略层载体 = ``strategies/impl/mandate_v1/supply.py``
+    ``SupplyDecision`` 的动作包装;刷新建议另发 CwActionRefreshSupplyParam)。
 
     开出内容载荷(确定性通道,照 PickInvest 载荷扩展先例):``char_name`` = 选中列角色名
     (read_supply_options roster 校验产物;'' = 列无角色/兜底点卡路径);
@@ -912,7 +913,8 @@ class CwActionRefreshNodeOptionsParam:
 
 @dataclass
 class CwActionRefreshSupplyParam:
-    """补给节点刷新建议(替代 SupplyPick.refresh 旗标):supply 刷新链 =
+    """补给节点刷新建议(策略层载体 = ``strategies/impl/mandate_v1/supply.py``
+    ``SupplyRefreshSuggestion`` 的动作包装):supply 刷新链 =
     发射后交回重入型(重入访问走常规写槽→决策起点链)。"""
     reason: str = ''
     route_tag: str = field(default='', kw_only=True,

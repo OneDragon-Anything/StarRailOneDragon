@@ -75,6 +75,7 @@ from sr_od.application.currency_war.strategies.impl.cw_strategy import (
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
     invest_env,
     invest_strategy,
+    supply,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     StrategyState,
@@ -449,7 +450,8 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         不为过渡阵容服务」):两轴对齐源均 = 意向状态 D*① 三参
         (locked_comp/demoted_endgame/evicted 同源 ist)传入策略层;旧
         ``target_comp`` 对 invest kind 不消费(P1 期它是过渡配方对物化的
-        伪 comp,辖域错位;supply/encounter 等 pick 族消费面不变)。
+        伪 comp,辖域错位;encounter 等 pick 族消费面不变,supply 已随
+        补给画面策略迁移同源改挂 ist——解析后传 comp 对象)。
         选卡结果喂 CommitSignals——**建议帧跳过喂入、选卡帧保留**(喂入
         面申报见 :meth:`_feed_invest_strategy_signals`;env 侧喂入已随环境
         轴迁移删除)。
@@ -566,20 +568,28 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
 
     def decide_supply(self) -> CwActionPickSupplyParam | CwActionRefreshSupplyParam:
         """补给选装备/出钻(终态零参口;候选 = ``gs.supply`` payload)。
-        刷新闸输入源 = ``gs.supply_refresh_left`` 剩余语义观察真值(details
-        §2.3;剩余 ≤0 或 None = 已刷尽/未观察 → refresh_used=True,kernel
-        按原评分直接选卡)。"""
+        判据单一源 = 策略层 ``supply.decide``(三级字典序 钻>终局角色>
+        装备 + 刷新「三级全空才刷」,次数闸内嵌 decide;纯值出口在此包装
+        动作词表,op handler 与观察写槽零改动)。意向解析照 invest 兄弟
+        入口同源 ist:locked_comp 套名经 get_comp 解析(空串 = 未锁 None
+        无告警,解析失败 None + 告警哨兵,decide_box_card 同款)、
+        demoted_endgame 直通。"""
         options = self._require_slot_options(self.gs.supply,
                                              'supply').options
-        _left = self.gs.supply_refresh_left.value
-        refresh_used = not (_left is not None and int(_left) > 0)
         self._consume_prep_direction_frame()   # 入口内务
-        pick = cw_events.decide_supply(options, self.gs,
-                                       self.state.target_comp, self.config,
-                                       refresh_used)
-        if pick.refresh:
-            return CwActionRefreshSupplyParam(reason=pick.reason)
-        return CwActionPickSupplyParam(idx=pick.idx, reason=pick.reason)
+        _ist = self._ensure_intention(self.state)
+        locked_comp = None
+        if _ist.locked_comp:
+            locked_comp = get_comp(_ist.locked_comp)
+            if locked_comp is None:
+                # 注册表漂移:按未锁口径选卡(保守向——漏提权非错提权)
+                log.warning('[cw!][supply] locked_comp 解析失败(%s),'
+                            '按未锁口径选卡', _ist.locked_comp)
+        out = supply.decide(options, self.gs, locked_comp,
+                            _ist.demoted_endgame)
+        if isinstance(out, supply.SupplyRefreshSuggestion):
+            return CwActionRefreshSupplyParam(reason=out.reason)
+        return CwActionPickSupplyParam(idx=out.idx, reason=out.reason)
 
     def decide_encounter(self) -> CwActionPickEncounterParam | CwActionRefreshNodeOptionsParam:
         """遭遇难度/词缀避开(终态零参口;候选 = ``gs.encounter`` payload)。
