@@ -263,7 +263,7 @@ def reward_tier(text: str) -> int:
     from sr_od.application.currency_war.data.cw_equipment_data import (
         EQUIPMENT_ROSTER,
     )
-    from sr_od.application.currency_war.obs.cw_node_obs import (
+    from sr_od.application.currency_war.kernel.cw_obs_core import (
         DIAMOND_EQUIP_NAMES,
     )
     t = (text or '').strip()

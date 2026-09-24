@@ -20,7 +20,10 @@ from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
     SupplyOption,
 )
-from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    DIAMOND_EQUIP_NAMES,
+    _area_rect,
+)
 from sr_od.context.sr_context import SrContext
 
 # 遭遇卡标题「遭遇其X」→ X 中文数字 → 难度档(其一=1 易 … 其六=6);decide_encounter 按难度选。
@@ -210,10 +213,9 @@ _SUPPLY_CHAR_Y: tuple[int, int] = (500, 600)
 _SUPPLY_EQUIP_Y: tuple[int, int] = (640, 780)
 _SUPPLY_CARD_CLICK_Y: int = 550   # 卡身选中 y(沿用 CwScreenSupplyNode.CARD_BODY;点卡身不开对话直接选中)
 _SUPPLY_COL_X_TOL: int = 150      # 角色-装备同列 x 容差(配对用)
-# 钻装备名集合(文本兜底;主通道 = SIFT——用户 2026-08-17:装备图已采集,SIFT 稳,
-# OCR 艺术字有形变史,钻价值极高,漏判丢钻/误判浪费刷新,代价不对称)。
-# 财富宝钻同类高价值。「红钻/蓝钻」补给角色穿戴出现,advantage「钻石闪耀」同源。
-DIAMOND_EQUIP_NAMES: frozenset[str] = frozenset({'红钻', '蓝钻', '财富宝钻'})
+# 钻装备名检测集单一源 = kernel/cw_obs_core.DIAMOND_EQUIP_NAMES(游戏装备
+# 真值,读数域共用)。本模块消费 = 补给钻识别文本兜底(_equip_is_diamond)
+# 与 SIFT 模板筛(_sift_detect_diamonds);主通道 = SIFT 的实证依据见后者。
 
 
 def _equip_is_diamond(equip_name: str) -> bool:

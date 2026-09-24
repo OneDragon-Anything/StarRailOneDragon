@@ -43,6 +43,12 @@ LEVEL_MIN, LEVEL_MAX = 1, 10
 # 简报屏(对局开始,词缀/首领读取;非备战)
 BRIEFING_SCREEN: str = '货币战争-简报'
 
+# 钻装备名集合(游戏装备真值,读数域共用):obs 补给钻识别(obs/cw_node_obs
+# 文本兜底 + SIFT 模板筛)与策略层奖励 tiebreak 同源消费。手维护非生成,
+# 勿迁 data/cw_equipment_data——该文件由 tools/cw/gen_equip_registry.py
+# 整文件覆写,手加常量重跑即蒸发;注册表内三钻无标志字段可派生。
+DIAMOND_EQUIP_NAMES: frozenset[str] = frozenset({'红钻', '蓝钻', '财富宝钻'})
+
 
 def _area_rect(ctx: SrContext, name: str, screen_name: str = SCREEN_NAME) -> Rect | None:
     """从 screen_info 取 area 的 pc_rect(Rect);screen/area 缺失 → None。
