@@ -19,8 +19,7 @@ supply/encounter/box/晶矿面板)→ 容器各 opts 槽(经 ``cw_screen_report`
    3.3 起 18 转移动作全量在表)——node_advance → 节点推进、
    battle_resolve → 战斗结算、选卡族/箱 → 各世界过程、``''`` → 纯
    画面转移;推进后按 ``decl.next_screen`` 等值对账画面档
-   (:meth:`_reconcile_next_screen`)。kernel 转移事件半部机制本体
-   (sink 订阅/空 :meth:`on_transition_event`)保留至 3.4 退役批。
+   (:meth:`_reconcile_next_screen`)。
 2. **点击源**(flow-seam 附录 B 边界登记:不入 kernel 事件集的推进型
    点击):简报下一步 / BOSS 简报点空白 / 位面过渡点空白 / 补给刷新 /
    开店。经端口 ``click_answer`` 感知。
@@ -45,9 +44,9 @@ planner(银狼首次升 2 星,消费 star_up)、开箱(动作触发,走 open_box
 键形沿用旧引擎模块号坐标系);动作腿采样(炉/骇客改件/晶矿/刷新)
 经上报函数族 rng 形参,注入点在流程装配缝(运行器批)。
 
-**装配**::func:`install_backend` = 端口槽装配 + kernel 事件钩子订阅
-(转移/事实两类 sink);:func:`uninstall_backend` 幂等复位。测试
-teardown 必卸(端口槽与事件 sink 均为进程全局)。
+**装配**::func:`install_backend` = 端口槽装配 + kernel 事实事件 sink
+订阅;:func:`uninstall_backend` 幂等复位。测试 teardown 必卸(端口槽
+与事件 sink 均为进程全局)。
 """
 from __future__ import annotations
 
@@ -71,9 +70,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
 )
 from sr_od.application.currency_war.kernel.cw_event_hooks import (
     FactEvent,
-    TransitionEvent,
     set_fact_event_sink,
-    set_transition_event_sink,
 )
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
@@ -716,8 +713,8 @@ class SimBackend:
 
     构造即 reset(开局序列:词缀/boss 名单采样并写容器 → 简报屏 →
     (env_present)投资环境屏 → wait_one_one → P1r1 对应屏);运行面 =
-    端口六口 + kernel 事件钩子订阅,世界推进全部由流程驱动(动作腿 =
-    op → 上报函数族,本后端零私有动作语义)。
+    端口六口 + kernel 事实事件 sink 订阅,世界推进全部由流程驱动
+    (动作腿 = op → 上报函数族,本后端零私有动作语义)。
     """
 
     #: 局级输入(确定性锚;词缀入 seed 后此字段语义 = override 见下)。
@@ -938,18 +935,6 @@ class SimBackend:
 
     # ---------------------------------------------------------- 事件钩子
 
-    def on_transition_event(self, event: TransitionEvent) -> None:
-        """转移事件订阅(kernel 事件钩子槽;机制本体保留至 3.4 退役批)。
-
-        声明化迭代单动作单轨:3.3 起 18 动作事件 case 全部摘净——世界
-        推进唯一驱动 = :meth:`advance`,同 kind 事件若再达(遗留广播点)
-        静默丢弃;sink 订阅(:func:`install_backend`)随机制本体在役至
-        3.4 一并删除。
-        """
-        if self.done:
-            return
-        self._tick()
-
     def on_fact_event(self, event: FactEvent) -> None:
         """事实事件订阅(overlay 触发层评估器消费 + 板面真值基座刷新)。"""
         if self.done:
@@ -968,11 +953,11 @@ class SimBackend:
         design.md §2.2 契约 5 + 详设 world-decl.md §3)。
 
         按 ``decl.trigger`` 分派推进(键集单一源 =
-        :data:`ADVANCE_TRIGGER_KINDS`,集外值 ValueError 响亮——与现行
-        转移事件封闭集同等防线,构造点漂移 = 接线 bug 禁静默),完成后
-        :meth:`_reconcile_next_screen` 等值对账画面档。case 体自
-        ``on_transition_event`` 对应 case 平移(内部逻辑不变,单动作
-        单轨;3.3 起 18 动作全量在表);``trigger=''`` = 纯画面转移,
+        :data:`ADVANCE_TRIGGER_KINDS`,集外值 ValueError 响亮——
+        构造点漂移 = 接线 bug 禁静默),完成后
+        :meth:`_reconcile_next_screen` 等值对账画面档。世界推进唯一
+        驱动 = 本方法(单动作单轨;18 转移动作全量在表);
+        ``trigger=''`` = 纯画面转移,
         零专属过程——专家邀请函档 = ``_present_modal`` 呈现(open_bookcard
         腾席写端在其上报,本层只呈现),其余 = ``_dismiss_modal`` 幂等
         交回(节点窗让路恢复位语义保留)。入口先消费
@@ -1590,8 +1575,8 @@ class SimBackend:
 
 
 def install_backend(backend: SimBackend) -> None:
-    """装配 sim 后端(端口槽 + kernel 事件钩子订阅 + 动作腿 rng 提供槽
-    单点)。
+    """装配 sim 后端(端口槽 + kernel 事实事件 sink 订阅 + 动作腿 rng
+    提供槽单点)。
 
     调用方(运行器/测试)负责 teardown 必卸(:func:`uninstall_backend`);
     端口槽单装配纪律由 ``cw_sim_ports`` 锁(重复安装 raise)。
@@ -1612,18 +1597,16 @@ def install_backend(backend: SimBackend) -> None:
     set_action_rng_provider(
         lambda tool: stream_rng(backend.seed, f'action/{tool}/{next(seq)}'))
     cw_sim_ports.install_sim_backend(backend)
-    set_transition_event_sink(backend.on_transition_event)
     set_fact_event_sink(backend.on_fact_event)
 
 
 def uninstall_backend() -> None:
-    """卸载 sim 后端(端口槽 + 两事件 sink + 动作腿 rng 提供槽复位;
+    """卸载 sim 后端(端口槽 + 事实事件 sink + 动作腿 rng 提供槽复位;
     幂等)。"""
     from sr_od.application.currency_war.kernel.cw_action_report import (
         set_action_rng_provider,
     )
 
     set_action_rng_provider(None)
-    set_transition_event_sink(None)
     set_fact_event_sink(None)
     cw_sim_ports.uninstall_sim_backend()
