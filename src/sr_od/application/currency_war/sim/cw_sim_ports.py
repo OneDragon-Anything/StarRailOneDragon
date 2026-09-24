@@ -7,7 +7,7 @@ sim 重构为「游戏后端」(SimBackend)后,流程侧与后端的全部替换
 ``decision_assembly.install_obs_ports`` 家族「模块级槽 + 缺省关 + 装配点
 显式接通」;装配点 = sim 运行器(测试仓 harness 与未来实跑入口)。
 
-端口五口(薄协议,签名不随屏数增长):
+端口六口(薄协议,签名不随屏数增长):
 - ``screen_identity()`` —— 后端画面状态机答当前 screen_info 档名;
 - ``observe(screen_name)`` —— 生成器直出该屏 ``CwScreenXxxObs`` 形状产物
   (消费方 = 画面 op 读屏点,产物必须经 ``cw_screen_report`` 同名上报函数
@@ -17,7 +17,10 @@ sim 重构为「游戏后端」(SimBackend)后,流程侧与后端的全部替换
 - ``click_answer(op, screen_name, area_name, until_find_all, until_not_find_all)``
   —— sim 点击应答:后端先按点击处理画面状态机转移,再出实机同形 round
   结果(机械镜 = :func:`mirror_click_answer`);
-- ``visible(screen_name, area_name)`` —— until / 门可见性问询。
+- ``visible(screen_name, area_name)`` —— until / 门可见性问询;
+- ``declare_world(decl)`` —— 动作后果声明喂入(声明化主通道):未装配
+  = no-op(实机零开销零行为变化),装配后 = 后端 ``advance(decl)``;
+  ``decl is None``(非转移动作,无声明可喂)本层直返。
 
 依赖方向:本模块不 import kernel/operations/后端本体(后端对象经装配槽
 注入,鸭子类型);``SimBackendProtocol`` 只做类型面文档,不做运行时检查。
@@ -32,6 +35,7 @@ if TYPE_CHECKING:
     from one_dragon.base.operation.operation_round_result import (
         OperationRoundResult,
     )
+    from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
 
 class SimBackendProtocol(Protocol):
@@ -62,6 +66,12 @@ class SimBackendProtocol(Protocol):
         until_not_find_all: list[tuple[str, str]] | None,
     ) -> OperationRoundResult:
         """sim 点击应答(契约见 :func:`mirror_click_answer`)。"""
+        ...
+
+    def advance(self, decl: WorldDecl) -> None:
+        """声明驱动推进(按 ``decl.trigger`` 分派世界过程/画面呈现,完成后
+        按 ``decl.next_screen`` 等值对账;动作后果声明化迭代总纲
+        design.md §2.2 契约 5)。"""
         ...
 
 
@@ -176,6 +186,19 @@ def click_answer(
     """sim 点击应答(委托装配后端;契约 = :func:`mirror_click_answer`)。"""
     return _require_backend().click_answer(
         op, screen_name, area_name, until_find_all, until_not_find_all)
+
+
+def declare_world(decl: WorldDecl | None) -> None:
+    """动作后果声明喂入(声明化主通道;动作后果声明化迭代总纲
+    design.md §2.2 契约 3)。
+
+    未装配 = no-op(实机零开销零行为变化——与 ``sim_or_live_*`` 族
+    同型的缺省关纪律);装配后 = ``_BACKEND.advance(decl)``;
+    ``decl is None``(非转移动作,上报出口恒 None)本层直返,不触后端。
+    """
+    if _BACKEND is None or decl is None:
+        return
+    _BACKEND.advance(decl)
 
 
 def mirror_click_answer(

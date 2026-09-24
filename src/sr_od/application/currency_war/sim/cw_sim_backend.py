@@ -127,6 +127,7 @@ from sr_od.application.currency_war.kernel.cw_screen_report.supply_node import (
     report_screen_supply_node_obs,
 )
 from sr_od.application.currency_war.kernel.cw_shop_deal import sample_shop_deal
+from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.application.currency_war.sim.cw_sim_base import (
     logic_sig,
@@ -674,13 +675,36 @@ class SimRunResult:
     unmodeled: dict[str, object]
 
 
+# ============================================================ 声明驱动推进
+# (动作后果声明 WorldDecl 的 advance 分派;设计件 = 动作后果声明化迭代
+#  总纲 design.md §2.2 契约 5 + 详设 details/world-decl.md §3。与现行
+#  转移事件分派并存至退役批:单动作单轨,advance 只承载已迁移动作的
+#  trigger,同一动作任一时刻只有一条驱动路径。)
+
+#: advance 分派表键集(``trigger`` 封闭集代码单一源;权威表 = 详设
+#: world-decl.md §3,值零新词沿用现役动作名)。``''`` = 纯画面转移,
+#: 恒合法(backend 只按 ``next_screen`` 推进,零专属过程);3.1 = 骨架
+#: 空集,9 类(node_advance / battle_resolve / open_box / pick_box_card /
+#: pick_megastar / pick_planner / pick_supply / pick_invest_env /
+#: pick_invest_strategy)随迁移批增量填充。
+ADVANCE_TRIGGER_KINDS: frozenset[str] = frozenset({''})
+
+#: 对账豁免场景集(建模内合法失配 = 最上层呈现屏 ≠ 底层稳态画面,
+#: 断言延后至稳态;3.1 立常量位,场景判定接线随迁移批):
+#: ① overlay 队列命中(``_window_resume='offer'`` +
+#:    ``_present_pending_overlay`` 呈现巨星/planner 等);
+#: ② offer 日程命中(呈现投资策略屏);
+#: ③ 节点窗让路期间选卡族经 ``_dismiss_modal`` 恢复(offer 屏/节点屏)。
+RECONCILE_EXEMPT_KINDS: frozenset[str] = frozenset()
+
+
 @dataclass
 class SimBackend:
     """sim 游戏后端(一实例一局;端口协议实现 + 画面状态机 + 世界规则件)。
 
     构造即 reset(开局序列:词缀/boss 名单采样并写容器 → 简报屏 →
     (env_present)投资环境屏 → wait_one_one → P1r1 对应屏);运行面 =
-    端口五口 + kernel 事件钩子订阅,世界推进全部由流程驱动(动作腿 =
+    端口六口 + kernel 事件钩子订阅,世界推进全部由流程驱动(动作腿 =
     op → 上报函数族,本后端零私有动作语义)。
     """
 
@@ -943,6 +967,48 @@ class SimBackend:
             self._evaluate_planner(event)
         self._refresh_board()
         self._present_pending_overlay()
+
+    # ------------------------------------------------------ 声明驱动推进
+
+    def advance(self, decl: WorldDecl) -> None:
+        """按声明推进世界(声明化主入口;动作后果声明化迭代总纲
+        design.md §2.2 契约 5 + 详设 world-decl.md §3)。
+
+        按 ``decl.trigger`` 分派推进(键集单一源 =
+        :data:`ADVANCE_TRIGGER_KINDS`,集外值 ValueError 响亮——与现行
+        转移事件封闭集同等防线,构造点漂移 = 接线 bug 禁静默),完成后
+        :meth:`_reconcile_next_screen` 等值对账画面档。case 体随迁移批
+        自 ``on_transition_event`` 对应 case 平移(内部逻辑不变,单动作
+        单轨);``trigger=''`` = 纯画面转移,零专属过程。
+        """
+        if self.done:
+            return
+        self._tick()
+        if decl.trigger not in ADVANCE_TRIGGER_KINDS:
+            raise ValueError(
+                f'trigger {decl.trigger!r} 不在 advance 分派表键集 '
+                f'{sorted(ADVANCE_TRIGGER_KINDS)}(构造点漂移 = 接线 bug,'
+                '禁静默)')
+        # case 分派结构位:3.1 = 骨架,现无 case;各 trigger 的推进过程
+        # 随迁移批平移(分派表 = 详设 world-decl.md §3)。
+        self._reconcile_next_screen(decl)
+
+    def _reconcile_next_screen(self, decl: WorldDecl) -> None:
+        """推进完成后 ``next_screen`` 等值对账(详设 world-decl.md §3
+        对账面;3.1 骨架,断言接线随首批 case 迁移落地)。
+
+        断言对象 = 状态机**底层稳态画面**(让路恢复位消费完、overlay
+        队列弹完后的落点屏),对 ``next_screen`` 非空串声明等值断言;
+        建模内合法失配场景集 = :data:`RECONCILE_EXEMPT_KINDS`(豁免内
+        断言延后至稳态)。局终载体(``next_screen=''``):``done`` 为真
+        ∧ 呈现 :data:`SCREEN_LOBBY`(``_game_over`` 现役呈现)——非字面
+        等值空串。断言不等且不在豁免集 = 缺陷留证(disclosures /
+        defect sink)不停机——声明与状态机漂移的早期警报。
+        """
+        if decl.next_screen == '':
+            # 局终断言载体位(判定式见 docstring,随迁移批接线)。
+            return
+        # 稳态等值断言位(豁免集判定随迁移批接线)。
 
     # ------------------------------------------------ 转移事件 handler 群
 

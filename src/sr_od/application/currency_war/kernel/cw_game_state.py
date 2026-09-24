@@ -139,6 +139,7 @@ from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 from sr_od.application.currency_war.kernel.cw_state_journal import (
     ensure_journal_assembly,
 )
+from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
 if TYPE_CHECKING:
     pass
@@ -1518,6 +1519,11 @@ class LogicOutcome:
     income: int | None = None
     fill_cost: int | None = None
     bought_count: int | None = None
+    #: 动作后果声明(转移类动作 ``applied=True`` 出口必构造;拒绝/未发出
+    #: = None,对齐现行「applied=False 零广播」语义;schema 与消费面 =
+    #: kernel/cw_world_decl.py,构造义务契约 = 动作后果声明化迭代总纲
+    #: design.md §2.2 契约 2)。缺省 None = 既有全量构造点零改动兼容。
+    world_decl: WorldDecl | None = None
 
 
 @dataclass(frozen=True)
