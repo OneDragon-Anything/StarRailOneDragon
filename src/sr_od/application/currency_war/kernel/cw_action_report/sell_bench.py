@@ -26,8 +26,10 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 def report_action_sell_bench_param(gs: GameState, param: Any, sig: ChannelSig,
                                    session: object = None) -> LogicOutcome:
     """卖备战席上报:bench 该槽置 empty + gold +退款 + 装备回收
-    (C6 守恒)+ 溢出腿(overflow_warning 在场时腾出槽当帧记溢出卡入位,
-    容器状态条件域无关;session 在场时同帧对称吸收执行侧 tracked 主账)。
+    (C6 守恒)+ 溢出腿(overflow_warning 在场时腾出槽当帧记溢出件入位,
+    容器状态条件域无关;身份两分 = 角色入 unit 槽件 / 占席道具入
+    supply_box 槽件,判据 = ``cw_investments.BENCH_ITEM_NAMES``;
+    session 在场时同帧对称吸收执行侧 tracked 主账)。
 
     槽位空/占位件非 unit/越界 = 陈旧提案,applied=False 零写(等观察
     覆盖);expect 非空且名不符 = stale_proposal 拒绝(live 提案恒 ''
@@ -66,17 +68,25 @@ def report_action_sell_bench_param(gs: GameState, param: Any, sig: ChannelSig,
                     f'!={sold.char_id}'))
     bench_slots[idx] = BenchSlot(kind='empty')
     # 溢出腿:席满溢出态(overflow_warning 在场)下卖牌,腾出槽当帧记
-    # 溢出卡入位(游戏侧行为,prep.md 告警节实机建档;入位对象星级缺读
-    # 1 兜底,下帧 heavy 实读覆盖修正,两态制观察赢)。
+    # 溢出件入位(游戏侧行为,prep.md 告警节实机建档;占席道具与角色同款
+    # 溢出语义,2026-09-24 用户确认——道具身份落 supply_box 槽件,禁造假
+    # 角色;入位角色星级缺读 1 兜底,下帧 heavy 实读覆盖修正,两态制观察赢)。
     _ov_warn = gs.overflow_warning.value
     _ov_id = gs.overflow_card.value
     if _ov_warn and _ov_id:
-        bench_slots[idx] = BenchSlot(
-            kind='unit', unit=Unit(char_id=_ov_id, star=1, equips=[],
-                                   slot=idx + 1))
+        from sr_od.application.currency_war.kernel.cw_investments import (
+            BENCH_ITEM_NAMES,
+        )
+        if _ov_id in BENCH_ITEM_NAMES:
+            _absorb: BenchSlot = BenchSlot(kind='supply_box')
+        else:
+            _absorb = BenchSlot(
+                kind='unit', unit=Unit(char_id=_ov_id, star=1, equips=[],
+                                       slot=idx + 1))
+        bench_slots[idx] = _absorb
         _w(gs.overflow_card, '', 'proj_overflow_absorbed')
         _w(gs.overflow_warning, False, 'proj_overflow_cleared')
-        # 执行侧 tracked 对称吸收:入位卡同帧记进执行主账(P1 tracked
+        # 执行侧 tracked 对称吸收:入位件同帧记进执行主账(P1 tracked
         # 形状 = list[BenchSlot | None] 定长 9,按下标直写;原「摘槽号
         # 幂等 + 槽表重建」腿的信息位寻址随形退役——
         # 表下标权威,直写即同槽同位,保洞语义不变)。
@@ -88,9 +98,7 @@ def report_action_sell_bench_param(gs: GameState, param: Any, sig: ChannelSig,
             _tracked = list(_books.bench or [])
             while len(_tracked) < BENCH_CAPACITY:
                 _tracked.append(None)
-            _tracked[idx] = BenchSlot(
-                kind='unit', unit=Unit(char_id=_ov_id, star=1,
-                                       slot=idx + 1))
+            _tracked[idx] = _absorb
             _books.bench = _tracked
     _w(gs.bench, BenchView(slots=bench_slots,
                            capacity=(_bview.capacity

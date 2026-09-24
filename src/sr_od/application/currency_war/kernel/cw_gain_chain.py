@@ -64,6 +64,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     bench_view_of_working,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
+    BENCH_ITEM_NAMES,
     ENV_GIFTS,
     INVESTMENT_ENVS,
     STRATEGY_EFFECTS,
@@ -80,7 +81,6 @@ GAIN_CHAIN_PRODUCER: str = 'CwGainChain'
 #: gain-chain.md §6)。
 DEFECT_OVERFLOW_TAKEN: str = 'gain_chain_overflow_slot_taken'
 DEFECT_ADVISOR_DECL: str = 'gain_chain_advisor_decl'
-DEFECT_ITEM_DECL: str = 'gain_chain_item_decl'
 DEFECT_PORTAL_REGISTER: str = 'gain_chain_portal_register_failed'
 DEFECT_STRATEGY_REGISTER: str = 'gain_chain_strategy_register_failed'
 
@@ -308,7 +308,12 @@ def _build_pool(gs: GameState,
                                                   gs.back_row.value),
                      ovf=[], orig_view=orig_view)
     card = str(gs.overflow_card.value or '')
-    if card:
+    if card in BENCH_ITEM_NAMES:
+        # 占席道具身份(实机真值:道具与角色同款溢出语义)→ 惰性槽件,
+        # 禁造 Unit 假身份进合成素材组(词表单一源 = cw_investments.py::
+        # BENCH_ITEM_NAMES)
+        pool.ovf.append(BenchSlot(kind='supply_box'))
+    elif card:
         pool.ovf.append(BenchSlot(kind='unit', unit=Unit(
             char_id=card, star=int(ovf_star) if ovf_star is not None else 1)))
     pool.ovf_name = card
@@ -613,25 +618,41 @@ def gain_invest_strategy(gs: GameState, session: object,
 
 def _place_bench_item(gs: GameState, item: str, *, rand: bool,
                       evidence: str, sig: ChannelSig) -> bool:
-    """占席道具(武装箱系)落备战席空槽(送卡落席同构:_build_pool/
-    bench_place/_select_write 序;槽件 = ``BenchSlot(kind='supply_box')``,
-    双端同一获得链——sim 世界写入即容器写)。席满 = 零写 + 道具通道申报
-    留证(实机席满时道具行为未实证,禁猜,真值归观察覆盖;gain-chain.md
-    §6 同款)。返回是否落席。"""
+    """占席道具(武装箱系)落位(角色落位同构:_build_pool/bench_place/
+    _select_write 序;槽件 = ``BenchSlot(kind='supply_box')``,双端同一
+    获得链——sim 世界写入即容器写)。席满 → 溢出落位(实机真值 2026-09-24
+    用户确认:道具与角色同款——落溢出席并阻断进入战斗;两字段直写,身份 =
+    道具名,消费方按 BENCH_ITEM_NAMES 判 kind);溢出位已被占 → 零写 +
+    留证禁猜(与角色腿同款,gain-chain.md §6)。返回是否落位(备战槽或
+    溢出位)。"""
     if gs.bench.value is None:
         return False
     pool = _build_pool(gs, None)
     assert pool is not None   # bench 已判非 None,构建恒有池
     write = _select_write(gs, rand)
     slot = BenchSlot(kind='supply_box')
-    if bench_place(pool.bench, slot) is None:
-        _emit_defect(field_name='bench', expected='空槽可落(开局获得)',
-                     actual=f'席满,{item} 未落席(实机席满行为未实证)',
-                     evidence=evidence, sig=sig, kind=DEFECT_ITEM_DECL)
+    if bench_place(pool.bench, slot) is not None:
+        write(gs.bench, bench_view_of_working(pool.bench, pool.orig_view),
+              produced_by=GAIN_CHAIN_PRODUCER, evidence=f'{evidence}#place',
+              sig=sig)
+        return True
+    if _overflow_occupied(gs):
+        # 溢出位已被占(席满 + 溢出位再溢出):游戏行为未实证 → 零写 +
+        # 留证,禁猜(角色腿同款,gain-chain.md §6)
+        _emit_defect(field_name='overflow_card',
+                     expected='溢出位空(可落第二次溢出)',
+                     actual=f'溢出位已被占(card={gs.overflow_card.value!r},'
+                            f'warning={gs.overflow_warning.value}),'
+                            f'{item} 未落位',
+                     evidence=evidence, sig=sig,
+                     kind=DEFECT_OVERFLOW_TAKEN)
         return False
-    write(gs.bench, bench_view_of_working(pool.bench, pool.orig_view),
-          produced_by=GAIN_CHAIN_PRODUCER, evidence=f'{evidence}#place',
-          sig=sig)
+    # 席满 → 溢出落位(两字段各一行,同 evidence 同 sig;道具无升星语义,
+    # 不进合成判断)
+    write(gs.overflow_warning, True, produced_by=GAIN_CHAIN_PRODUCER,
+          evidence=f'{evidence}#place', sig=sig)
+    write(gs.overflow_card, item, produced_by=GAIN_CHAIN_PRODUCER,
+          evidence=f'{evidence}#place', sig=sig)
     return True
 
 
@@ -651,11 +672,12 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       ``economy.gold_instant`` 非零 → gold 直加(两执行面同源;旧 sim
       引擎私有腿随驱动反转退役,规则落本链为单一源);
     - **道具通道**(``items_immediate``,如火药味的简易武装箱):道具 =
-      占席待开箱,非角色非装备 → 落席写入(送卡落席同构:备战空槽放
+      占席待开箱,非角色非装备 → 落位写入(角色落位同构:备战空槽放
       ``BenchSlot(kind='supply_box')``,双端同一获得链,sim 世界写入即
-      容器写);席满 = 零写 + 遥测申报留证(实机席满行为未实证,禁猜);
-      效果串 ``item_gift:<名>`` 恒登记(数量 = 元素重复次数),开箱链由
-      外循环画面分发承接(武装箱选择画面独立建档);
+      容器写);席满 = 溢出落位(实机真值:道具与角色同款——落溢出席并
+      阻断进入战斗;溢出位被占 = 零写留证,helper 内);效果串
+      ``item_gift:<名>`` 恒登记(数量 = 元素重复次数),开箱链由外循环
+      画面分发承接(武装箱选择画面独立建档);
     - 查无效果(表外环境)= 安静不写(用户裁定),真值归观察覆盖。
       (欢愉契约条件腿不在本枚举:其正式模型 = 银狼策划选择上报落地相的
       条件腿 rider,住 ``cw_action_report.pick_planner``,触发事件 =
@@ -687,9 +709,9 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
                        producer=GAIN_CHAIN_PRODUCER)
         effects.append(f'env_gift:{char}')
     for item in grant.items_immediate:
-        # 落席 = 送卡落席同构(_build_pool/bench_place/write 序;双端同一
-        # 获得链,sim 世界写入即容器写)。席满 = 零写 + 申报留证(helper 内);
-        # 效果串恒登记(发放事实,与落席成败解耦)
+        # 落位 = 角色落位同构(_build_pool/bench_place/write 序;席满 →
+        # 溢出落位,溢出位被占 = 零写留证,helper 内);效果串恒登记
+        #(发放事实,与落位成败解耦)
         _place_bench_item(gs, item, rand=rand,
                           evidence=f'on_env_gained:{_name}', sig=sig)
         effects.append(f'item_gift:{item}')

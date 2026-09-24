@@ -123,10 +123,12 @@ merge_simulate 终态」——禁第二套语义。merge_simulate 是一次到�
     只进遥测申报一行(`kind = DEFECT_ADVISOR_DECL`);`chars_immediate` 在 advisor
     行仅作顾问身份输入。
   - **道具通道**(`items_immediate`,与 advisor 道无关、可叠加):道具 = 占席
-    待开箱,非角色非装备 → 落席写入(送卡落席同构:备战空槽放
+    待开箱,非角色非装备 → 落位写入(角色落位同构:备战空槽放
     `BenchSlot(kind='supply_box')`,双端同一获得链——sim 世界写入即容器写);
-    席满 = 零写 + 每道具一遥测申报留证(`kind = DEFECT_ITEM_DECL`;实机席满
-    行为未实证,禁猜,真值归观察覆盖);效果串 `item_gift:<名>`(数量 =
+    席满 = 溢出落位(实机真值:道具与角色同款——落溢出席并阻断进入战斗,
+    `overflow_warning=True` + `overflow_card=道具名` 两字段直写,见 §4);
+    溢出位被占 = 零写 + 每道具一遥测申报留证(`kind =
+    DEFECT_OVERFLOW_TAKEN`,与角色腿同款);效果串 `item_gift:<名>`(数量 =
     元素重复次数)恒登记,开箱链由外循环画面分发承接(武装箱选择画面独立
     建档)。首条 = 火药味(id 101,开局 2 个简易武装箱)。
   - 欢愉契约条件腿**不在本枚举**:正式模型 = 银狼策划选择上报落地相的条件腿
@@ -147,20 +149,28 @@ merge_simulate 终态」——禁第二套语义。merge_simulate 是一次到�
 
 ## 4. 溢出落位规则(双写端)
 
-备战席满时新获得角色无处落 → 溢出落位,写 `overflow_warning=True` +
-`overflow_card=name`(两字段各一行,同 evidence 同 sig 同组):
+备战席满时新获得件无处落 → 溢出落位(角色与占席道具同款,2026-09-24 实机
+真值用户确认——道具同样落溢出席并阻断进入战斗),写 `overflow_warning=True`
++ `overflow_card=身份串`(角色 = char_id,道具 = 道具名;两字段各一行,
+同 evidence 同 sig 同组):
 
 - **双写端声明**:两字段由「观察写端单一源」扩为**双写端**——观察 heavy 写端
   (备战溢出观察)+ 获得链逻辑写端(席满溢出落位直写);第二逻辑写端先例 = 卖牌
   溢出腿(`kernel/cw_action_report/sell_bench.py`)。与容器字段注释、
   `kernel/cw_projection_audit.py` 对账 basis 行一致,字段语义正本 = fields.md
   §3.2.21。
+- **身份两分判 kind**:溢出位身份串的消费方(合成池构建 `_build_pool` /
+  卖牌溢出腿入位)按 `cw_investments.BENCH_ITEM_NAMES` 判 `BenchSlot`
+  kind——命中 = `supply_box` 惰性槽件(禁造 Unit 假身份进合成素材组),
+  未命中 = 角色。词表来源 = 两张 GiftGrant 授予表的 `items_immediate`;
+  效果体内联发放的道具登记时须显式并入该表。
 - **星级链记**:星级不入容器字段(overflow_card 只存身份串);链内工作池自记本次
   授予的星级(升星判断用链记真值)——写入即知真值,不依赖观察兜底口径。观察来源
   的溢出卡星级缺读按 1 兜底(现行口径,fields.md §3.2.21)。
 - **溢出位被占**(链内连环授予第二次溢出):游戏行为未实证 → 零写 + 缺陷台账留证
   (`kind = DEFECT_OVERFLOW_TAKEN`),禁猜。
 - 溢出件被合成消费/腾槽归位 → 溢出位腾空,两字段成对清写(False + '')。
+  道具件不入素材组(无升星语义),只参与腾槽归位。
 
 ## 5. 随机态参数纪律
 

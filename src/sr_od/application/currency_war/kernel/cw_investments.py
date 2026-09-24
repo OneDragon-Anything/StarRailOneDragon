@@ -1450,6 +1450,19 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '招财狗': GiftGrant(chars_immediate=('佩佩',)),
 }
 
+# ===== 占席道具词表(溢出位身份的 kind 判定单一源)=====
+# 实机真值(2026-09-24 用户确认):占席道具与角色同款溢出语义——席满落溢出
+# 席并阻断进入战斗。溢出位身份串(overflow_card)因此有两分:角色 char_id /
+# 占席道具名,消费方按本表判 BenchSlot kind:
+# - cw_gain_chain._build_pool:道具身份禁造 Unit 假身份进合成素材组;
+# - cw_action_report.sell_bench 溢出腿:卖牌腾槽入位按同判据落 supply_box。
+# 词表来源 = 两张 GiftGrant 授予表(ENV_GIFTS/STRATEGY_GRANTS)的
+# items_immediate,新增授予登记自动覆盖;效果体内联发放的道具(不经
+# GiftGrant 表)登记时须显式并入本表,防身份误判成角色。
+BENCH_ITEM_NAMES: frozenset[str] = frozenset(
+    item for _grant in (*ENV_GIFTS.values(), *STRATEGY_GRANTS.values())
+    for item in _grant.items_immediate)
+
 # 反扫候选闭集防线的排除/假阳性白名单(逐条记因;键必须在注册表):
 # - 愚者恶作剧:概率变形发放(2/4 费卡概率变为【花火】/【火花】),无「获得」
 #   字样,非直读发放;

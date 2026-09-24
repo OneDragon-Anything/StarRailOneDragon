@@ -238,12 +238,13 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='浮层双义读面(§3.6.1),零逻辑写端'),
     'overflow_warning': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='观察 + 获得链逻辑双写端(cw_gain_chain 溢出落位)'
-              ' + CwActionSellBenchParam 溢出腿 logic 直写 False'
+        basis='观察 + 获得链逻辑双写端(cw_gain_chain 溢出落位,角色/占席'
+              '道具同款)+ CwActionSellBenchParam 溢出腿 logic 直写 False'
               '(推算消亡,观察赢)'),
     'overflow_card': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='观察 + 获得链逻辑双写端(cw_gain_chain 溢出落位直写身份)'
+        basis='观察 + 获得链逻辑双写端(cw_gain_chain 溢出落位直写身份,'
+              '角色 char_id/占席道具名两分,BENCH_ITEM_NAMES 判 kind)'
               ' + 溢出腿入位消费直写(§3.2.20)'),
     # —— 画面附加域(payload 随画面重建)——
     'shop': ProjectionAuditRow(
