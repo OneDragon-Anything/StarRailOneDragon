@@ -163,7 +163,7 @@
 
 sim = 游戏本体的单局模拟器（「游戏后端」）：给定局级输入，按游戏规则推演一局的容器状态演化，对流程的动作与画面请求产出应答。驱动反转 = 根本裁决：真流程（外层循环 + 画面 op + 动作 op + 策略器）当驱动者，装上后端即在同一套流程代码里跑 sim 世界；与 live 共用同一容器（`GameState` 单例）、同一规则核（kernel/data）与同一写通道（上报函数族），动作拒绝语义在上报函数腿内，后端不自判拒绝。策略效果的批量评估/A/B/统计工具不在 sim 本体内（现不存在，sim-design §8.3），决策回放为 sim 之上的独立工具。
 
-世界后端本体 = `cw_sim_backend.py::SimBackend`（dataclass 组合持有容器 + 后端私有运行时，一实例一局：画面状态机/世界规则件编排/事件接线/局结果面，结构正本 = sim-design §2-§4）。按域分模块（均以 `cw_sim_` 前缀命名）：
+世界后端本体 = `cw_sim_backend.py::SimBackend`（dataclass 组合持有容器 + 后端私有运行时，一实例一局：画面状态机/世界规则件编排/事件接线/局结果面，结构正本 = sim-design §2-§4）。按域分模块（除节点日程真值表住 kernel 外，均以 `cw_sim_` 前缀命名）：
 
 | 域 | 模块 | 负责 |
 |---|---|---|
@@ -174,7 +174,7 @@ sim = 游戏本体的单局模拟器（「游戏后端」）：给定局级输�
 | 接缝 | `cw_sim_ports.py` | 端口五口（画面身份/观察/读点改道/点击应答与可见性；缺省 None = 纯实机零行为变化） |
 | 接缝 | `cw_sim_obs_gen.py` | 观察生成器注册表（screen_info 档名 → Obs 产物，经同名上报函数落容器；非金路径屏响错） |
 | 游戏系统 | `cw_sim_opening.py` | 对局开局种子（`apply_opening`） |
-| 游戏系统 | `cw_sim_plane_schedule.py` | 位面结构与节点序列（P1/P2 节点日程地面真值表） |
+| 节点日程 | `kernel/cw_node_schedule.py`（kernel 纯数据件） | 位面节点序列真值表（P1/P2 节点日程地面真值表；`node_advance` 声明 `next_screen` 的推导权威源，sim 后端同源 import——契约 = sim-design §6.3） |
 | 游戏系统 | `cw_sim_battle.py` | 战斗结算随机输出面（胜负/扣血采样）+ `apply_hp_outcome` 局终判定 |
 | 游戏系统 | `cw_sim_enemy.py` | 敌人难度派生与 boss 名单 |
 | 游戏系统 | `cw_sim_overlay.py` | overlay 事实触发层队列（`OverlayQueue`/`OVERLAY_KINDS`；评估器 = 后端事件处理方法） |

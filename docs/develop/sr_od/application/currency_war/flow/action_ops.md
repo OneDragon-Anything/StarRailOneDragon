@@ -41,6 +41,8 @@
 
 op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框架 `SrOperation`(原 `cw_action_base.py::ActionOp` ABC 已删除),构造签名 = `(ctx, param, env)`,域依赖经 env 结构化传入(`PrepExecEnv`/`ShopExecEnv`/`OverlayPickExecEnv`);op 内机械执行后**直调自己的上报函数**(`kernel/cw_action_report/report_action_<snake>_param`,容器逻辑态单点;发出即职责完成;返回值在册例外与旁路字段语义见本文件 §2.3)。
 
+**转移动作后果声明与喂入(as-built)**:「转移动作」= 落地后世界画面/进程前进的动作(全集 18,声明终值表 = §4.8)。转移类上报函数在 `applied=True` 出口构造后果声明 `WorldDecl`(`kernel/cw_world_decl.py`:两维 = `next_screen` 动作后确定的下一画面 screen_info 档名,`''` = 无画面/局终;`trigger` 推进分派类别,`''` = 纯画面转移;载体 = `LogicOutcome.world_decl`,拒绝/未发出出口 = None),动作 op 在自上报出口紧跟一行 `cw_sim_ports.declare_world(outcome.world_decl)` 喂入——一次动作多支上报 = 每支上报出口各自紧跟一行(现役唯一多支 = 补给:pick 腿 + 节点推进腿),round 结果 `data` 携带最后一份声明;非转移动作 `world_decl` 恒 None,无喂入行。喂入行与机械执行同判,op 侧零分支:实机(端口未装)= no-op,sim(装配后)= 驱动后端按 `trigger` 分派推进;sim 消费与对账契约正本 = [../sim/sim-design.md](../sim/sim-design.md) §6.3。
+
 ## 2. 边界澄清(什么属于申报,什么属于验证)
 
 ### 2.1 动作未生效的治理链(现行为模型申报)
@@ -170,3 +172,30 @@ op 形态(动作 op 重组批③ as-built):动作 op = `CwActionXxxOp`,继承框
 - `_open_shop_phase`(`operations/cw_screen/cw_screen_prep.py`):开店编排——OpenShop 动作的流程层执行半(机械开店 `open_shop` → `visit_open_shop` 商店画面 op 直驱;开店 = 唯一普通形态,无受限变体);回执 `(完成事实, detail)` 中完成事实 = 商店访问完整收工(非动作成败回执)。
 - `run_buy_waves`(`operations/cw_screen/cw_screen_shop.py` 前身文件)**已退役删除**——商店访问 = 画面 op 两 node 规范形态(`CwScreenShop`:观察 node 恰一次 + 决策动作 node round_wait 单动作循环,全动作统一路径零特例拦截;规范正本 = [../screens/shop.md](../screens/shop.md) §2/§4);段机器(波循环/段间判定/段尾对账)随伪终结刷新一并消亡。
 - `PrepActionExecutor`(`prep_actions.py`):备战域执行器——备战动作 op 体迁后的替身缝宿主(原方法薄委托);`PrepExecEnv` 定义处。
+
+### 4.8 转移动作后果声明终表(18 动作)
+
+喂入契约 = §1「转移动作后果声明与喂入」。`trigger` = sim 后端推进分派类别(封闭集单一源 = `sim/cw_sim_backend.py::ADVANCE_TRIGGER_KINDS`;`''` = 纯画面转移,sim 仅按 `next_screen` 推进画面,零专属过程);`next_screen` = 声明的下一画面 screen_info 档名。声明列终值(上报落点 = 声明构造处,op 落点 = 喂入行所在动作 op):
+
+| # | 动作 | 上报落点 | op 落点(`operations/cw_op/`) | trigger | next_screen |
+|---|---|---|---|---|---|
+| 1 | settle_confirm | `kernel/cw_game_state.py::report_node_advance` | `cw_op_settle_confirm.py` | `node_advance` | 节点序推导(见表下规则) |
+| 2 | supply_confirm | 同上(同函数按确认来源参数分) | `cw_pick_supply_action.py` | `node_advance` | 同上 |
+| 3 | StartBattle | `cw_action_report/start_battle.py` | `cw_start_battle_action.py` | `battle_resolve` | 货币战争-结算 |
+| 4 | PickEncounter | `cw_action_report/pick_encounter.py` | `cw_pick_encounter_action.py` | `battle_resolve` | 货币战争-结算 |
+| 5 | OpenBox | `cw_action_report/zero_writes.py` | `cw_open_box_action.py` | `open_box` | 货币战争-备战-武装箱选择 |
+| 6 | OpenBookcard | `cw_action_report/open_bookcard.py` | `cw_open_bookcard_action.py` | `''` | 货币战争-备战-专家邀请函 |
+| 7 | PickInvestEnv | `cw_action_report/pick_invest_env.py` | `cw_pick_invest_action.py`(与 #8 两行同指一 op) | `pick_invest_env` | 货币战争-备战 |
+| 8 | PickInvestStrategy | `cw_action_report/pick_invest_strategy.py` | 同上 | `pick_invest_strategy` | 货币战争-备战 |
+| 9 | PickBoxCard | `cw_action_report/zero_writes.py` | `cw_pick_box_card_action.py` | `pick_box_card` | 货币战争-备战 |
+| 10 | PickMegastar | `cw_action_report/zero_writes.py` | `cw_pick_megastar_action.py` | `pick_megastar` | 货币战争-备战 |
+| 11 | PickPlanner | `cw_action_report/pick_planner.py` | `cw_pick_planner_action.py` | `pick_planner` | 货币战争-备战 |
+| 12 | PickSupply | `cw_action_report/pick_supply.py` | `cw_pick_supply_action.py` | `pick_supply` | 货币战争-补给 |
+| 13 | PickPartner | `cw_action_report/zero_writes.py` | `cw_pick_partner_action.py` | `''` | 货币战争-备战 |
+| 14 | PickFortune | `cw_action_report/zero_writes.py` | `cw_pick_fortune_action.py` | `''` | 货币战争-备战 |
+| 15 | PickWishTrial | `cw_action_report/zero_writes.py` | `cw_pick_wish_trial_action.py` | `''` | 货币战争-备战 |
+| 16 | PickStarTome | `cw_action_report/zero_writes.py` | `cw_pick_star_tome_action.py` | `''` | 货币战争-备战 |
+| 17 | PickExpertInvite | `cw_action_report/zero_writes.py` | `cw_pick_expert_invite_action.py` | `''` | 货币战争-备战 |
+| 18 | CloseShop | `cw_action_report/close_shop.py` | `cw_close_shop_action.py` | `''` | 货币战争-备战 |
+
+`node_advance` 两行(#1/#2)的 `next_screen` 非固定值:由上报函数按 kernel 节点日程真值表(`kernel/cw_node_schedule.py`)+ 生效序 `effective_node_ord` 推导——超真值表总长 = `''`(局终);位面切换轮 = `货币战争-位面过渡`;其余按新节点类型映射(battle/reward→备战、supply→补给、encounter→遭遇节点、boss→BOSS 简报)。#12 补给 = 现役唯一单 op 多支上报:pick 腿声明(#12)先喂,节点推进腿声明(#2)后喂,round `data` 携带后者。纯转移类(#6/#13-#18)选卡/关店的容器写端全在其上报函数内(腾席/零写占位/离屏),后端只按 `next_screen` 幂等交回。

@@ -86,21 +86,21 @@ readable/trusted 位恒按真值填（`cw_sim_obs_gen.py::gen_shop`），消费�
 | 节点屏刷新剩余呈现 | 呈现腿诚实缺位为主（环境逐卡刷新剩余/遭遇刷新剩余等生成器产缺位值，report 按「缺不写」防御语义跳写；补给刷新剩余由呈现写点给初值、刷新动作腿同实机递减） | 刷新类决策域以代码当期实现为准逐键判读 |
 | 战斗随机输出面 / 扣血分量 / P3 / overlay 余族 / 词缀张数分布等 | 未建模申报清单单一源 = [sim-design.md](sim-design.md) §8.2（本表不复写） | 逐键披露挡外推 |
 
-## 六、事件接线（后端订阅面）
+## 六、事件接线（后端订阅面 + 声明喂入）
 
-kernel 事件钩子槽（`kernel/cw_event_hooks.py`，缺省关）→ `install_backend`
-装配即接通两类 sink：
+装配（`sim/cw_sim_backend.py::install_backend`）= 端口槽 + 事实事件 sink +
+动作腿 rng 提供槽三槽；卸载（`uninstall_backend`）幂等复位：
 
-- **转移事件**（封闭集 `TRANSITION_EVENT_KINDS`，广播点 = 对应上报函数
-  applied 出口）→ `SimBackend.on_transition_event`：终结动作族 → 节点
-  推进/战斗结算；pick 族 → 模态交回；开箱落地 → 武装箱画面。
-- **事实事件**（`FACT_EVENT_KINDS`）→ `SimBackend.on_fact_event`：
-  `board_changed` → 巨星评估器 + 板面真值刷新；`star_up` → planner
-  评估器；两类消费后统一做 overlay 待呈现检查。
-
-封闭集成员与逐成员广播点（上报函数级）的盘点口径 = `cw_action_registry`
-注册表底集 × `screens/` 各篇 §5 终结/交回表，代码层单一源 =
-`cw_event_hooks.TRANSITION_EVENT_KINDS`。
+- **端口槽**：`cw_sim_ports.install_sim_backend`（进程内单装配）。转移类
+  动作后果不经订阅通道——转移动作 op 自上报出口一行
+  `cw_sim_ports.declare_world(outcome.world_decl)` 直喂（未装配 = no-op，
+  实机零行为变化），后端 `SimBackend.advance` 按 `decl.trigger` 分派世界
+  过程/画面呈现并按 `decl.next_screen` 等值对账（契约正本 =
+  [sim-design.md](sim-design.md) §6.3；18 转移动作的声明终值 =
+  [../flow/action_ops.md](../flow/action_ops.md) §4.8）。
+- **事实事件 sink**：`kernel/cw_event_hooks.set_fact_event_sink`（缺省关）→
+  `SimBackend.on_fact_event`：`board_changed` → 巨星评估器 + 板面真值刷新；
+  `star_up` → planner 评估器；消费后统一做 overlay 待呈现检查。
 
 ## 羁绊口径分层（board 统计语义单一源声明）
 
