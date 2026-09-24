@@ -25,7 +25,7 @@ trigger='settle_confirm')`` → 返回。
 """
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
@@ -34,6 +34,12 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        LogicOutcome,
+    )
+    from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
 
 class CwOpSettleConfirm(CwOperation):
@@ -61,15 +67,18 @@ class CwOpSettleConfirm(CwOperation):
         # 长按后归零)
         self._stay: int = 0
 
-    def _report_node_advance(self) -> bool:
+    def _report_node_advance(self) -> LogicOutcome | None:
         """settle_confirm 上报(容器获取参照宿主 gs 获取方式:session
-        旁表;局外/session 缺 = 跳过上报 best-effort,不炸主流程)。"""
+        旁表;局外/session 缺 = 跳过上报 best-effort,返回 None 不炸
+        主流程)。返回 LogicOutcome(``applied`` = 推进落账位;声明随
+        ``world_decl``,签名改形申报 = 动作后果声明化详设 world-decl.md
+        §1 D1)。"""
         _match = getattr(self.ctx, 'cw_match', None)
         _session = getattr(_match, 'session', None) if _match is not None else None
         if _session is None:
             log.info('[cw-settle-confirm] 局外/session 缺 → 跳过推进上报'
                      '(best-effort)')
-            return False
+            return None
         from sr_od.application.currency_war.kernel.cw_game_state import (
             gs_of_ctx,
             report_node_advance,
@@ -127,10 +136,17 @@ class CwOpSettleConfirm(CwOperation):
             self._claim_encounter_reward()
             # 点击即上报(去证据门):重复上报被
             # kernel 观察态门挡(零推进),死点击重试链自愈。
-            _advanced = self._report_node_advance()
+            # 上报后一行声明喂入(动作后果声明化喂入契约 = design.md
+            # §2.2 契约 3;实机端口未装 = no-op,sim 装配后驱动后端
+            # node_advance);round 结果 data 携带声明(journal 记账面)。
+            outcome = self._report_node_advance()
+            world_decl: WorldDecl | None = (
+                outcome.world_decl if outcome is not None else None)
+            cw_sim_ports.declare_world(world_decl)
             log.info('[cw-settle-confirm] 继续挑战点击已发 → settle_confirm '
-                     '上报(advanced=%s)', _advanced)
-            return self.round_wait(wait=1.0)
+                     '上报(advanced=%s)',
+                     outcome.applied if outcome is not None else False)
+            return self.round_wait(wait=1.0, data=world_decl)
         # 按钮不在场:流转已发生(或过渡帧)→ 交回宿主;宿主 ③段白名单
         # 出口收口,miss 则下轮重判/重分派。
         return self.round_success('结算确认点击已发,交回宿主出口判定')

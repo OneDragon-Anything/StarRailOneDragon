@@ -131,6 +131,10 @@ from sr_od.application.currency_war.kernel.cw_mismatch_policy import (
     fire_reconcile_andon,
     lookup_mismatch_exempt,
 )
+from sr_od.application.currency_war.kernel.cw_node_schedule import (
+    node_pos_of,
+    node_sequence_of,
+)
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 
 # 同桶直调(kernel→kernel 合法;遥测装配 = game state 初始化职责,用户
@@ -280,6 +284,11 @@ BATTLE_WAIT_CONTEXT: str = '货币战争-战斗等待'
 #: 后上报先于下一节点任何画面渲染恒成立,简报 op 被分派 ⇒ hist 已被
 #: settle_confirm 推进至 boss 节点,用户裁定 2026-09-21)。
 SCREEN_BOSS_BRIEFING: str = '货币战争-BOSS简报'
+
+#: 结算屏画面标识(动作后果声明 ``next_screen`` 值;档名权威 =
+#: currency_war_settlement.yml,与 sim 后端呈现屏同档名,声明化迭代
+#: 对照表 #3/#4)。kernel 侧消费 = 出战/遭遇上报的声明构造。
+SCREEN_SETTLE: str = '货币战争-结算'
 
 
 def node_ordinal_of(plane: int, round_num: int) -> int:
@@ -3177,6 +3186,47 @@ _NODE_ADVANCE_ACTORS: dict[str, str] = {
     'supply_confirm': 'CwActionPickSupplyOp',
 }
 
+#: node_advance 声明的推进分派类别(详设 world-decl.md §2 表 #1/#2;
+#: 值零新词沿用归并过程名,封闭集单一源 = sim 后端 advance 分派表键集)。
+_NODE_ADVANCE_DECL_TRIGGER: str = 'node_advance'
+
+#: 位面切换优先的下一画面(推导规则第三步;档名权威 = screen_info 建档,
+#: 与 sim 后端呈现屏同档名)。
+_NODE_PLANE_TRANSITION_SCREEN: str = '货币战争-位面过渡'
+
+#: 节点类型 → 下一画面档名映射(推导规则第四步;与 sim 后端
+#: ``_screen_for_node`` 同映射,battle/reward 归备战档;对照锁逐值钉死)。
+_NODE_KIND_NEXT_SCREENS: dict[str, str] = {
+    'supply': '货币战争-补给',
+    'encounter': '货币战争-遭遇节点',
+    'boss': SCREEN_BOSS_BRIEFING,
+    'battle': SCREEN_PREP_FRAME,
+    'reward': SCREEN_PREP_FRAME,
+}
+
+
+def _node_advance_next_screen(gs: GameState) -> str:
+    """node_advance 声明的 ``next_screen`` 推导(详设 world-decl.md §2
+    推导规则;构造时点 = 推进落账**后**,``node_ord`` 已是新节点序)。
+
+    规则序:eff 新序 → 超真值表总长 = 局终('';P3 未建模,交回照常,
+    外循环走结束链)→ 变长累加反解 (位面, 轮) → 位面切换优先 →
+    节点类型映射。推导权威源 = kernel 节点日程真值表
+    (:mod:`cw_node_schedule`)+ :func:`effective_node_ord`;**禁读容器
+    ``gs.node`` 作推导口**——它是观察镜像,写端(观察漏斗/类型派生/
+    sim backend)都在本构造点之后,此处读到的恒是旧节点。
+    """
+    eff = effective_node_ord(gs)
+    if eff is None:
+        return ''   # 不可达(构造点保证 eff 在场;防御性诚实缺省)
+    total = sum(len(node_sequence_of(p)) for p in (1, 2))
+    if eff > total:
+        return ''
+    plane, round_num = node_pos_of(eff)
+    if plane > 1 and round_num == 1:
+        return _NODE_PLANE_TRANSITION_SCREEN
+    return _NODE_KIND_NEXT_SCREENS[node_sequence_of(plane)[round_num - 1]]
+
 
 def advance_node_effective(gs: GameState, candidate: int, *,
                            actor: str, sig: ChannelSig,
@@ -3213,7 +3263,7 @@ def advance_node_effective(gs: GameState, candidate: int, *,
 
 
 def report_node_advance(gs: GameState, *, trigger: str,
-                        sig: ChannelSig | None = None) -> bool:
+                        sig: ChannelSig | None = None) -> LogicOutcome:
     """终结动作上报推进(动作路径唯一入口,design §2.3)。
 
     - 观察态门(design §2.2 **双条件**):node_ord value 在场 ∧ source ==
@@ -3226,7 +3276,12 @@ def report_node_advance(gs: GameState, *, trigger: str,
       末节点由序号公式自然跨位面)→ 经推进生效原语落账(source=logic,
       推进未确认态,等观察锚定);
     - sig 缺省 = logic_action 族按 trigger actor 构造;显式传入须同族。
-    返回 True = 实际推进落账。
+
+    返回 :class:`LogicOutcome`(``applied`` = 实际推进落账位;构造义务 =
+    动作后果声明化迭代 design.md §2.2 契约 2):落账出口随附
+    ``world_decl``(trigger = ``node_advance``,``next_screen`` 按
+    :func:`_node_advance_next_screen` 推导);门挡/零推进出口 =
+    ``applied=False`` 且声明 ``None``(对齐「applied=False 零声明」)。
     """
     if trigger not in NODE_ADVANCE_TRIGGERS:
         raise ValueError(f'推进 trigger 集外: {trigger!r}'
@@ -3245,19 +3300,19 @@ def report_node_advance(gs: GameState, *, trigger: str,
             verdict='观察态门挡(value 在场且 observation 锚定态才可动作推进)',
             sig=ChannelSig(family='obs', actor=actor, mode='read',
                            group_id=f'gate:{actor}@{gs.write_seq + 1}'))
-        return False
+        return LogicOutcome(applied=False, reason='observation_gate_blocked')
     effective = effective_node_ord(gs)
     if effective is None:
-        return False   # 不可达(value 在场 ⇒ 生效序在场;防御性保留)
+        # 不可达(value 在场 ⇒ 生效序在场;防御性保留)
+        return LogicOutcome(applied=False, reason='no_effective_ord')
     advanced = advance_node_effective(gs, effective + 1, actor=actor,
                                       sig=sig, source='logic')
-    if advanced:
-        # 转移事件广播(trigger ∈ 封闭集;sim 后端订阅消费,缺省关零开销)
-        from sr_od.application.currency_war.kernel.cw_event_hooks import (
-            emit_transition_event,
-        )
-        emit_transition_event(trigger, {'actor': actor})
-    return advanced
+    if not advanced:
+        return LogicOutcome(applied=False, reason='advance_deduped')
+    return LogicOutcome(
+        applied=True, reason=f'node_ord→{effective + 1}',
+        world_decl=WorldDecl(next_screen=_node_advance_next_screen(gs),
+                             trigger=_NODE_ADVANCE_DECL_TRIGGER))
 
 
 def clear_pending_loss(gs: GameState, *, sig: ChannelSig) -> None:

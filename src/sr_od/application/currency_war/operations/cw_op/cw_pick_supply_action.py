@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import time
+from typing import TYPE_CHECKING
 
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -29,6 +30,9 @@ from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import 
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
 
 class CwActionPickSupplyOp(CwOperation):
@@ -73,15 +77,26 @@ class CwActionPickSupplyOp(CwOperation):
             op.screenshot(), '货币战争-补给', '按钮-确认', success_wait=1.5)
         # 立即自上报完整结果(单相:owned += norm_item 规范名
         # + 单位腿 + 装备后果腿;norm_item 未解析 = 翻来源留证)。
+        # 一次执行两支上报、每支出口各自紧跟一行喂入(A2 多支并喂契约 =
+        # 详设 world-decl.md §4);round data 携带最后一份(node_advance,
+        # 终结转移),先前声明仅经端口喂入不随 data 重复。
+        world_decl: WorldDecl | None = None
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
-            report_action_pick_supply_param(
+            # 支 1:pick_supply 宝钻腿上报(拒/未发出出口声明 None →
+            # 喂入端口层 no-op;声明契约 = 详设 world-decl.md §2 表 #12)。
+            pick_outcome = report_action_pick_supply_param(
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
-            # 节点推进上报(supply_confirm):确认点击落地即上报,重复上报
+            cw_sim_ports.declare_world(pick_outcome.world_decl)
+            # 支 2:节点推进上报(supply_confirm):确认点击落地即上报,重复上报
             # 被 kernel 观察态门结构性挡;局外 gs 缺席同跳过(best-effort)。
             if confirm_result.is_success:
-                report_node_advance(gs, trigger='supply_confirm')
+                advance_outcome = report_node_advance(
+                    gs, trigger='supply_confirm')
+                world_decl = advance_outcome.world_decl
+                cw_sim_ports.declare_world(world_decl)
         # 选定事实现役归宿 = journal chosen 域(handler 派发前写)。
-        return self.round_success('补给选择确认链已发(结果已即时上报)')
+        return self.round_success('补给选择确认链已发(结果已即时上报)',
+                                  data=world_decl)

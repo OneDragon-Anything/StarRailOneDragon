@@ -16,34 +16,42 @@
 
 动作上报函数族拆分件(每动作一文件;族规约 = 包 ``cw_action_report.
 __init__`` docstring)。本包 → 容器单向依赖。
+
+**后果声明**(动作后果声明化迭代,详设 world-decl.md §2 表 #4):applied
+出口构造 ``WorldDecl``(trigger = ``battle_resolve``;``next_screen`` =
+结算屏——遭遇「派发即终结」选档落地即该遭遇战结算,权威 =
+screens/encounter.md §5 + sim ``pick_encounter → _resolve_battle``),
+转移事件广播随本动作单轨切换摘除。
 """
 from __future__ import annotations
 
 from typing import Any
 
-from sr_od.application.currency_war.kernel.cw_event_hooks import (
-    transition_event_on_applied,
-)
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    SCREEN_SETTLE,
     ChannelSig,
     GameState,
     LogicOutcome,
     _emit_defect,
     _validate_sig,
 )
+from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
 _PRODUCER: str = 'CwActionPickEncounterOp'
 
+#: 遭遇声明的推进分派类别(详设 §2 表 #4;封闭集单一源 = sim 后端
+#: advance 分派表键集,值零新词沿用归并过程名)。
+_DECL_TRIGGER: str = 'battle_resolve'
 
-@transition_event_on_applied('pick_encounter')
+
 def report_action_pick_encounter_param(gs: GameState, param: Any,
                                        sig: ChannelSig) -> LogicOutcome:
     """遭遇节点选择上报(发射即写:确认点击后立即写 ``chosen_encounter``)。
 
     值 = payload 槽所选卡 ``(难度档, 奖励文本 join)``;槽离屏 / idx 越界
     = 缺陷留证不写(fail-closed)。出参 applied=False = 留证未写(非拒绝)。
-    applied 出口广播转移事件 pick_encounter(overlay 消失回底层屏;
-    kernel/cw_event_hooks 封闭集)。
+    applied 出口构造后果声明(battle_resolve;喂入与消费面 =
+    ``cw_sim_ports.declare_world`` / sim 后端 advance)。
     """
     _validate_sig(sig, ('logic_action',))
     payload = gs.encounter.value
@@ -62,4 +70,7 @@ def report_action_pick_encounter_param(gs: GameState, param: Any,
     gs.write_logic(gs.chosen_encounter,
                    (int(_opt.difficulty), '/'.join(_opt.rewards)),
                    produced_by=_PRODUCER, sig=sig)
-    return LogicOutcome(applied=True, reason='chosen_written')
+    return LogicOutcome(
+        applied=True, reason='chosen_written',
+        world_decl=WorldDecl(next_screen=SCREEN_SETTLE,
+                             trigger=_DECL_TRIGGER))

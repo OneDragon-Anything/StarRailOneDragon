@@ -111,7 +111,7 @@ def sim_backend_installed() -> bool:
 
 
 def _require_backend() -> SimBackendProtocol:
-    """取装配槽;未装配 = AssertionError 响亮(端口五口只在 sim 分支可达,
+    """取装配槽;未装配 = AssertionError 响亮(端口六口只在 sim 分支可达,
     未装配即触达 = 接线 bug,禁静默回落实机)。"""
     if _BACKEND is None:
         raise AssertionError(

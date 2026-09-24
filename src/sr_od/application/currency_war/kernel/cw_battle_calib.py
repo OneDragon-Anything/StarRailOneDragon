@@ -12,7 +12,7 @@ sim 重做删除面收口(考古归 git):节点序列
 采样 sample_node_sequence(42 局零反例,序列用地面真值表)与
 方向观测判据 _direction_established/_target_comp_label(判据本属
 策略器;删时 src/测试仓已零消费方)随裁定删除——kernel 只留特征
-函数;节点序列真值 = sim/cw_sim_plane_schedule.py。
+函数;节点序列真值 = kernel/cw_node_schedule.py。
 
 下沉理由:decision_v2(scoring/candidates/handoff/phase)与 cw_evolution/
 cw_line_switch 以函数消费本族,留 sim 桶成 decision→sim / kernel→sim

@@ -1,4 +1,4 @@
-"""sim 重做·位面结构与节点序列(M03)。
+"""货币战争节点日程真值表(kernel 纯数据件;零依赖)。
 
 设计正本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
 (§3.3 位面过渡/节点序列)现役口径:
@@ -10,6 +10,11 @@
   按 U19 删除(42 局零反例强证据优先,变异位存在性候实机数据);
 - P3 无完整观测 → 补采前 P3 **不运行**:进场即 game_over 并披露
   ``p3_unobserved``(U19;禁设回退先验,禁插值)。
+
+**模块归属**:真值表住 kernel(依赖方向架构锁:``node_advance`` 声明的
+``next_screen`` 推导权威源 = 本表 + ``effective_node_ord``,推导在
+``report_node_advance``(kernel),kernel 禁 import sim
+(``cw_deploy_logic`` 在册);sim 后端同源 import 本表。
 """
 from __future__ import annotations
 
@@ -50,6 +55,23 @@ def node_sequence_of(plane: int) -> tuple[str, ...]:
             f'位面 {plane} 节点序列无完整观测(p3_unobserved;补采归实机批,'
             '重做设计稿 §2.2 M03/U19:禁回退先验)')
     return seq
+
+
+def node_pos_of(ordinal: int) -> tuple[int, int]:
+    """节点线性序 → (位面, 轮次)(1 基;按真值表变长累加反解)。
+
+    与 sim 后端 ``_ordinal_to_node`` 同型实现(变长累加,非固定位面长度
+    ——固定 9 仅在 P1=9 时与变长重合,非通用前提);超界(位面 3 等)
+    = :class:`P3UnobservedError` 响亮,调用方先行拦截局终。"""
+    acc = 0
+    for plane in sorted(PLANE_NODE_TABLES):
+        length = len(PLANE_NODE_TABLES[plane])
+        if ordinal <= acc + length:
+            return plane, ordinal - acc
+        acc += length
+    raise P3UnobservedError(
+        f'节点线性序 {ordinal} 超出真值表辖域(P1+P2;P3 未观测,'
+        '调用方须先行拦截为局终)')
 
 
 def validate_sequences() -> None:

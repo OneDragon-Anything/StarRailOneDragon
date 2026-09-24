@@ -51,6 +51,7 @@ from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
 
@@ -135,18 +136,23 @@ class CwActionStartBattleOp(CwOperation):
             log.warning('[cw!][battle] %s', detail)
             return self.round_fail(detail)
         # —— 自上报(机械发出后;跳过子态事实携带,免战递减 = 上报时)——
+        # 上报后一行声明喂入(动作后果声明化喂入契约 = design.md §2.2
+        # 契约 3;实机端口未装 = no-op,sim 装配后驱动后端 battle_resolve)。
+        world_decl: WorldDecl | None = None
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
-            report_action_start_battle_param(
+            outcome = report_action_start_battle_param(
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'),
                 session=getattr(getattr(self.ctx, 'cw_match', None),
                                 'session', None),
                 skip_substate=skip_substate)
+            world_decl = outcome.world_decl
+            cw_sim_ports.declare_world(world_decl)
         log.info('[cw][battle] %s%s → 交回外循环', detail,
                  '(跳过子态)' if skip_substate else '')
-        return self.round_success(detail)
+        return self.round_success(detail, data=world_decl)
 
     def _settle_post_click_popup(self, ex) -> str:
         """出战点击后的弹窗收口(步 4,单帧截图判定):两类真弹窗点确认,

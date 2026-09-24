@@ -34,6 +34,7 @@ from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_encounter import (
     CwScreenEncounter,
 )
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 
@@ -84,10 +85,17 @@ class CwActionPickEncounterOp(CwOperation):
         # 发射即写(遭遇扩围批,用户裁定 2026-09-21):机械链发出后立即
         # 写 chosen_encounter(值组装自容器 encounter payload 槽;暂态
         # 假值窗由外循环重派覆盖自愈,兑现回调消费防线 = 兑现后清)。
+        # 上报后一行声明喂入(动作后果声明化喂入契约 = design.md §2.2
+        # 契约 3;实机端口未装 = no-op,sim 装配后驱动后端 battle_resolve
+        # ——遭遇「派发即终结」选档落地即结算)。
+        world_decl = None
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
-            report_action_pick_encounter_param(
+            outcome = report_action_pick_encounter_param(
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
-        return self.round_success('遭遇选择确认链已发(结果经旁路回传)')
+            world_decl = outcome.world_decl
+            cw_sim_ports.declare_world(world_decl)
+        return self.round_success('遭遇选择确认链已发(结果经旁路回传)',
+                                  data=world_decl)
