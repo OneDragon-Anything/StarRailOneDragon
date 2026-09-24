@@ -1,6 +1,6 @@
 # 13 pick 族薄判据（十二接口 + 事件面目录）
 
-> 本篇为新写薄篇：pick 族 = CwStrategy 的 12 个选项决策接口(全部在 ABC 契约面;2026-09 pick-op-unify 批随执行器收编补入 fortune/expert_invite 两入口,原 `decide_invest` 已双相拆分为 `decide_invest_env`/`decide_invest_strategy` 零参终态口;原第三口 `decide_equip_pick` 随选择装备屏误判退役删除,2026-09-22)（`strategies/impl/cw_strategy.py` + `strategies/impl/flow.py` 实现反向;判据单源分轴:投资策略等 = `kernel/cw_events`/`kernel/cw_comps`,投资环境 = 策略层 `strategies/impl/mandate_v1/invest_env.py`,2026-09-23 迁移迭代起,正本 = 28 号稿）。事件面目录（E1-E18）重排自原 `03_strategy_layer.md`(已删除) §4.9（E16-E18 = 2026-08-19 用户定调批次「全部 overlay 选卡接入策略模块」后补接口，本批补录）；数学判据逐项状态登记沿用 [08_events.md](08_events.md)（该篇管"目录全量/数学全空"的落差，不动件）。
+> 本篇为新写薄篇：pick 族 = CwStrategy 的 12 个选项决策接口(全部在 ABC 契约面;2026-09 pick-op-unify 批随执行器收编补入 fortune/expert_invite 两入口,原 `decide_invest` 已双相拆分为 `decide_invest_env`/`decide_invest_strategy` 零参终态口;原第三口 `decide_equip_pick` 随选择装备屏误判退役删除,2026-09-22)（`strategies/impl/cw_strategy.py` + `strategies/impl/flow.py` 实现反向;判据单源分轴:投资策略 = 策略层 `strategies/impl/mandate_v1/invest_strategy.py`(正本 = 29 号稿),投资环境 = 策略层 `strategies/impl/mandate_v1/invest_env.py`(正本 = 28 号稿),其余 pick 族 = `kernel/cw_events`/`kernel/cw_comps`;跨画面共用判据单一源 = 本篇 §4,代码 = `strategies/impl/mandate_v1/pick_common.py`）。事件面目录（E1-E18）重排自原 `03_strategy_layer.md`(已删除) §4.9（E16-E18 = 2026-08-19 用户定调批次「全部 overlay 选卡接入策略模块」后补接口，本批补录）；数学判据逐项状态登记沿用 [08_events.md](08_events.md)（该篇管"目录全量/数学全空"的落差，不动件）。
 > 动作编排（画面 op 怎么点卡）不在本篇 = `../flow/outer_loop.md` §2.2（两阶段画面分发）；本篇只管"选项怎么选"。
 > 每项标注**判据状态**：有规格（判据可执行）/ 待 derive（判据立项锚见 08）。
 
@@ -16,7 +16,7 @@
 | 接口 | 事件面 | 判据（现行规格） | 判据状态 |
 |---|---|---|---|
 | `decide_invest_env` | E1(投资环境三选一) | **策略层单一源** = `strategies/impl/mandate_v1/invest_env.py::decide / decide_pick`(2026-09-23 迁移迭代 3.2 接线;kernel env 轴已删,flow kind='env' 分支直调,纯值出口在 flow 包装动作词表)。统一加法标尺:总分 = 现金 + 方向 + 赠卡 + 立场 + 转向轴,argmax 取最高平分取先;禁选/自拆台排除出候选;刷新三态(排除槽 ∨ 帧最好总分低于全表均值阈值 `REFRESH_THRESHOLD`,次数闸 `env_refresh_left ≥1`)。**判据本体与全部语义 = [28_invest_env_screen.md](28_invest_env_screen.md),本行不复制**。旧 S1-S4 域带语境(定义型 120/经济引擎档 111-119/阵营 floor 70-78/env 裸分 0-72)已随迁移退役,不再辖本接口 | **有规格**(标尺与系数/立场表 = design §2.2-§2.6 定稿,裁决窗过目;现金 B 类拍值锚 = P97 `../proofs/p97-refresh-budget.md` §7;策略期权/刷新期权 = P81 语义由纯值刷新判据承载) |
-| `decide_invest_strategy` | E2(投资策略三选一,可刷新) | 委托 `cw_events.decide_event`(新定序结构;用户裁定 2026-09-08「优先经济,然后是终局阵容」):S1 定义型 120 > S2 经济引擎档(持续通道字段闭集存在性谓词,域带 111-119,档内 PICK_VALUE 定序)> S3 终局对齐族(comp-hit 45×N+20,对齐对象 = D* 预期终局方向——flow 从意向状态解析 locked_comp/demoted_endgame/evicted 传参,D*② kernel 直算 detect_signals;不再消费过渡对 target_comp)> S4 常规评估;血本位集合排除与 steering 轴原样;选卡结果喂 CommitSignals(纯遥测保留,决策面零消费)。**刷新建议(重立,P81)**:帧级触发(候选恰 3 ∧ 全精确分类 ∧ 无 S1/S2 ∧ max_N≠1)→ `PickEvent.refresh_slots` 逐槽动作集 → handler 逐卡刷新执行链(计数现读闸+唯一 L1 守卫+重决策仍经本入口) | **有规格**(知识判据;16 号稿 §1 评估表重估批定形);数学判据:台账价值挂 P38 ⑤层参数化待 derive(08 E2 行);**刷新期权已立 = P81(条件结构命题,零自由参数;事件面刷新免费 → P40 可负担性恒真,P81 承载其 R0「合格集」语义的事件面形态,与 P40 语义一致非双源——P40 本体辖商店刷新费用账不变;权威 = P81 本篇与 math_proofs P81 行)**;评分框架 = [11_shop_decisions.md](11_shop_decisions.md) §8 |
+| `decide_invest_strategy` | E2(投资策略三选一,可刷新) | **策略层单一源** = `strategies/impl/mandate_v1/invest_strategy.py::decide / decide_pick`(flow kind='strategy' 分支直调,纯值出口在 flow 包装动作词表;2026-09-08 用户裁定「优先经济,然后是终局阵容,不为过渡阵容服务」——对齐源 = 意向状态三参 locked_comp/demoted_endgame/evicted,flow 直通)。统一加法标尺:总分 = 现金 + 方向 + 赠卡 + 立场 + 转向轴,argmax 取最高平分取先;禁选/自拆台排除出候选 + 血本位三态序 + 定义型分区(§4 共用判据辖转向轴与自拆台);刷新判据 = 帧级门 + 槽级动作集(逐槽动作元组,P81)。**判据本体与全部语义 = [29_invest_strategy_screen.md](29_invest_strategy_screen.md),本行不复制**。旧 kernel 八族 max() 压制定序(S1-S4 域带)与 `cw_events.decide_event`/`PICK_VALUE` 评估表已退役,不再辖本接口 | **有规格**(标尺与系数/立场表 = 29 号稿;台账价值 = 08 E2 行待 derive);数学判据:**刷新期权已立 = P81(条件结构命题,零自由参数;事件面刷新免费 → P40 可负担性恒真,权威 = p81 单篇换基增补节与 math_proofs P81 行;P40 本体辖商店刷新费用账不变)**;评分框架对照 = [11_shop_decisions.md](11_shop_decisions.md) §8 |
 | `decide_supply(options)` | E4（补给选装备/出钻 + 重刷 1 次） | 委托 `cw_events.decide_supply`（options + target_comp）；OCR 未就绪默认委托 | **有规格**（知识判据：选项价值 vs 目标线组件/成品需求，equipment_mechanics；[9]）；数学待 derive（08 E4：组件缺口 = P42 hoard_gaps 参数化） |
 | `decide_encounter(options)` | E3（遭遇难度/词缀避开，可刷 1 次） | **双轨**：基线核 = 委托 `cw_events.decide_encounter`（未成型→低难保生存 / 成型+词缀利→高难拿奖励 / 全克→刷新换批）；mandate_v1 核 = E3 EV 判据 `mandate_v1/encounter.py`（EV(b)=V_r−Δλ_death·G_loss，奖励子型分立 + λ label 四态接死 fail 向选低难 + 刷新肢条件化非免费期权；现态双 provisional 槽 None 期恒 fail 向低难、零刷新建议，语义单一源 = 该代码本体） | **有规格**（基线=知识判据，M13/competitors 节点表；mandate_v1=EV 数学判据，语义单一源 = encounter.py 代码）；08 E3 锚「收益侧挂 P26 同构」已由 mandate_v1 轨承载 |
 | `decide_megastar(options)` | E7（巨星/盛会之星） | 委托 `cw_comps.select_megastar`（state + target_comp + 候选名）命中该 idx；无缺省支——非空候选恒命中(select_megastar 选择序 + naive 层保证),候选空/名字转换失败已在画面 op 侧守卫 fail 零盲发(op-layer.md §1.1 观察标准化门) | **有规格**（comp 知识：comp 引擎 × 乘区关系，M14）；数学面 = 知识判据面（08 E7：不立数学，登记为知识判据面） |
@@ -35,7 +35,7 @@
 | # | 决策点 | 出现时机 | 决策机制（现有语义） | 知识/数学来源 |
 |---|---|---|---|---|
 | E1 | 投资环境三选一 | 固定节点，整局增益 | 统一加法标尺四组件(现金/方向/赠卡/立场)+ 转向轴;刷新三态——决策本体与语义单一源 = [28_invest_env_screen.md](28_invest_env_screen.md)(§1 `decide_invest_env` 行) | design §2.2-§2.6(迁移迭代);P97(刷新环境拍值锚);P81(刷新期权语义) |
-| E2 | 投资策略三选一（可刷新） | 固定节点 | 同 E1 + 刷新的期权价值 | invest_effects 批5；A3 信号分层 |
+| E2 | 投资策略三选一（可刷新） | 固定节点 | 统一加法标尺 + 血本位三态 + 定义型分区 + 逐卡刷新——决策本体与语义单一源 = [29_invest_strategy_screen.md](29_invest_strategy_screen.md)（§1 `decide_invest_strategy` 行） | invest_effects 批5；刷新期权 = P81 |
 | E3 | 遭遇分支难度/奖励（可刷 1 次） | 遭遇节点前 | 经济权衡：难度=奖励量 vs 当前成型强度；未成型选最低 | M13；competitors 节点表 |
 | E4 | 补给选择+重刷（1 次） | 补给节点 | 选项价值 vs 目标线组件/成品需求 | equipment_mechanics；[9] |
 | E5 | 圣杯试炼接取（二选一）与任务生命周期 | 圣杯羁绊 2F-5F | 奖励偏好序（Archer>金币>星徽）+ 激活等级门槛检查 + 完成后件可卖 | combo_methodology；invest_effects §0.1 |
@@ -62,4 +62,13 @@
 - 事件判据禁自带数值（宪法第 4 条）；"奖励偏好序"类知识判据须标注知识来源，不得伪装为推导。
 - 供给三缺未补前，对应事件的实现 = 保守跳过 + 计数披露，禁猜测分类（与契约 fail-closed 同款纪律）。
 - 一切"环境/突变改变机制输入"经 resolved input 原则消费（[11_shop_decisions.md](11_shop_decisions.md) §8）；战力族/资产发放族不进经济 resolved。
+
+## 4. 共用判据（跨画面单一源，代码 = `strategies/impl/mandate_v1/pick_common.py`）
+
+pick 族内多画面共用的用户转向轴与自拆台判据归本节单一源（宪法六「共用判据显式抽离」——文档面归判据本体篇、代码面归共用模块；画面篇只留指针，禁复制语义）：
+
+- **用户转向轴**：`STEERING_PRIORITY_BONUS`(priority 子串命中软加分,立场系数——「用户点名是偏好不是支配」)。消费画面 = 投资环境(§1 `decide_invest_env` 行,指针 = 28 号稿 §3)与投资策略(§1 `decide_invest_strategy` 行,指针 = 29 号稿 §2.4)。
+- **自拆台排除**：`BOARD_DOT_COUNT_THRESHOLD`(板面 持续伤害+减益 计数阈值)+ `counters_dot`(克制 DoT/减益判定;「是否克制」是 kernel 机制表事实判定,「排除它」是策略)。消费画面同上(28 号稿 §3 / 29 号稿 §3);排除语义细则(辖域护栏/血卡上位防线)随各画面篇。
+
+画面文件 → 共用模块单向依赖,禁画面文件互相 import;新增共用判据先落本节与 `pick_common.py`,再由画面篇引用。
 

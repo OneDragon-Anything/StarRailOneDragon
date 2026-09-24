@@ -24,10 +24,14 @@
 
 ## 3. 排除与转向轴(交互规则)
 
+> **共用判据单一源** = [13_pick_family.md](13_pick_family.md) §4(代码 = `strategies/impl/mandate_v1/pick_common.py`)——转向轴常数与自拆台阈值为投资环境/投资策略两画面共用,语义细则归彼处,本节只记本屏落点;禁止在本篇复制第二份语义(宪法六:双源即违例)。
+
 - **禁选**:config `env_forbid` 子串命中 → 排除出候选。
 - **自拆台**:板面 持续伤害+减益 计数 ≥ `BOARD_DOT_COUNT_THRESHOLD` 时,克制 DoT/减益的候选排除(机制归一调 kernel `AFFIX_MECHANIC_MAP`/`MECHANIC_COUNTERS`——「是否克制」是事实判定留 kernel;「排除它」是策略,在画面文件)。
 - **priority**:`env_priority` 子串命中 → 加 `STEERING_PRIORITY_BONUS`(固定偏好分,软偏好——压不过 S 线方向分,「用户点名是偏好不是支配」)。
-- **全排除退化帧**(三候选全被排除):沿旧机器全禁帧退化行为取全体 argmax 最不负分者,归因串以 `all-excluded-fallback` 开头(判读面唯一标识)。
+- **全排除退化帧**(三候选全被排除):对全体候选(含被禁)取 argmax 最不负分者,归因串以 `all-excluded-fallback` 开头(判读面唯一标识)。
+
+> 注:旧 kernel 全禁帧的代码体实况 = 冻结槽 0(全禁帧分数恒更低、strict 比较恒假),「全体 argmax」从未是 kernel 行为;本件 argmax 语义是本篇 §1 加法标尺在退化帧的延展实现。
 
 ## 4. 刷新判据
 
@@ -38,4 +42,8 @@
 
 ## 5. 共用模块复用预留
 
-`line_value`(锁线/先验/降格三形态)、`gift_value`(具名/随机两口径)、`env_economy.env_economy_value`(签名不变)为投资策略屏迁移批预留(现金流卡直接复用 env_economy 与 gift_value);第二策略出现时再评估是否提升为跨策略共用包。
+投资策略画面已消费本批共用件(其正本 = [29_invest_strategy_screen.md](29_invest_strategy_screen.md)),复用落点三句:
+
+- **策略卡现金分** = 策略层新入口 `strategy_economy.strategy_economy_value`(消费 kernel `EconomyEffect` per-node/一次性通道)——与本屏 `env_economy_value`(消费 `EnvEconomyEffect` 整局规则改写通道)公式分立,不复用同一入口;
+- **共用件提升形态** = mandate_v1 包内共用模块 `pick_common`(转向轴/自拆台单一源,文档面 = 13 号稿 §4),非跨策略包——跨策略共用待第二策略实现出现时再评估;
+- **赠卡口径** = 策略屏走 kernel `STRATEGY_GRANTS` + `gift_value.grant_gift_value` 新口——非本屏 `named_gift_value`/`random_faction_gift_value` 现役具名/随机两口径;两屏共用面 = 档→分映射(`GIFT_TIER_SCORE`/`ADVISOR_DISCOUNT`)与 `line_value_best` 三形态判定内层入口。

@@ -21,7 +21,7 @@
 ### 1.1 PICK_VALUE（选卡价值基准分，335 条，`cw_investments.py:798`）
 
 - **判定：保留·改形（知识判据定序器 + 立项挂账）。**
-- 消费点（活）：`pick_value_of`（:1127，含 LCS 形变兜底）→ `decide_event`（cw_events.py:108/125-135）→ 接线面 `cw_screen_invest_strategy.py:105` / `cw_screen_invest_env.py:112` / `strategies/impl/flow.py:286`（sim 栈同源消费）。全链在产。（括注 2026-09-23 迁移 3.2:env 接线面两锚已失效——投资环境屏消费迁策略层 invest_env,不读 PICK_VALUE;策略轴锚仍在产。）
+- 消费点（活）：`pick_value_of`（:1127，含 LCS 形变兜底）→ `decide_event`（cw_events.py:108/125-135）→ 接线面 `cw_screen_invest_strategy.py:105` / `cw_screen_invest_env.py:112` / `strategies/impl/flow.py:286`（sim 栈同源消费）。全链在产。（括注 2026-09-23 迁移 3.2:env 接线面两锚已失效——投资环境屏消费迁策略层 invest_env,不读 PICK_VALUE;策略轴锚亦随投资策略屏迁移退役,全链已死——现行承载见 §6 版本变更记录。）
 - 依据：①必选面（投资策略 3 选 1，UI 强制），退役无替代判据承接——品质先验回落（1.6 表）幅值本身已被经验分退役裁定 C9/C12 判「序到分映射无推导」，退到品质先验是退化不是清账；②分值结构 = 读 effect 原文逐条人工判定的 comp 知识结晶（评估口径 value_class 七分类 + pick_priority），属 13 号篇知识判据面，与宪法第一条「经验拟合不得作决策依据」的张力以**显式降格**消解：分数声明为知识判据的定序载体，非数学判据的基数输入；③消费臂 v4.2.2 不辖本面（§0.3），无取代关系。
 - 改形内容（规格，落码归执行批）：①表头注释补三形态声明——「知识判据定序分：仅在同表（335 条策略）内选项间定序有效；禁作为基数与其它分值族做加减语义扩展」；②跨族交互仅保留现行 `max()` 覆盖结构（comp-hit/augment/steering），禁新增「叠加进其它面判据」的消费点；③立项挂账 = 08 E1/E2「台账价值挂 P38 ⑤层参数化」待 derive 行补 owner（事件面命题批）+ 期限（一个对局周期，01 §6 三要素 3）。
 - 孤儿键校验（:1115-1119）与 LCS 守卫（0144b 跨表污染、|Δlen|≤3）为防错结构，随表保留。
@@ -80,14 +80,14 @@
 
 - **定位**:0524 定序框架的**增量**(新分值族 S2 + S3 换源),非新交互形态;max() 覆盖结构不变、禁加减叠加纪律照旧。
 - **S2 经济引擎档**:持续通道字段闭集存在性谓词(`is_economy_engine`,`kernel/cw_events.py`),域带 111-119(整带压本篇 1.5 comp-hit 上界 110、低于 1.4 augment 120);档内序复用 1.1 PICK_VALUE 定序器线性归一带内。一次性金/期权/难度/血本位族不入(F3 结构界:时点触发一律不入);直算命中 38 条与方案申报数对账。
-- **S3 对齐源换 D*(用户裁定 2026-09-08「投资选卡优先经济、然后是终局阵容,不为过渡阵容服务」)**:1.3 ENV_FACTION_MATCH_FLOOR 与 1.5 comp-hit 45×N+20 的定序语义(category 档位/N 单调序数)不变,**交集对象**由过渡对 target_comp 换 D* 预期终局方向(①锁线单判 + detect_signals ②③④ 资产信号级联,五门过滤裁决与反自证①层排除;本篇上文 1.3/1.5 行文按当时现状留档,现行以 为准)。
-- 落码与验证 = ;方案正本 = `.debug/temp/currency_war/attacks/t155_invest_redesign/方案.md`(v2.2)。
+- **S3 对齐源换 D*(用户裁定 2026-09-08「投资选卡优先经济、然后是终局阵容,不为过渡阵容服务」)**:1.3 ENV_FACTION_MATCH_FLOOR 与 1.5 comp-hit 45×N+20 的定序语义(category 档位/N 单调序数)不变,**交集对象**由过渡对 target_comp 换 D* 预期终局方向(①锁线单判 + detect_signals ②③④ 资产信号级联,五门过滤裁决与反自证①层排除;本篇上文 1.3/1.5 行文按当时现状留档,现行以 29 号稿为准)。
+- 落码与验证 = 投资策略屏策略层迁移(现行态见 §6 版本变更记录与 29 号稿);方案正本 = `.debug/temp/currency_war/attacks/t155_invest_redesign/方案.md`(v2.2)。
 
 ## 2. 消费点 grep 对账汇总（判定依据的锚清单）
 
 | 表 | 在产消费锚（grep 复核 2026-09-05） |
 |---|---|
-| PICK_VALUE | cw_events.py:108,125-135；cw_investments.py:798,1127；cw_screen_invest_strategy.py:105；cw_screen_invest_env.py:112；flow.py:286 |
+| PICK_VALUE | **已退役（2026-09-23 迁移，见 §6）**：原锚 cw_events.py:108,125-135；cw_investments.py:798,1127；cw_screen_invest_strategy.py:105；cw_screen_invest_env.py:112；flow.py:286（均已死）；现役承载 = 策略层 invest_strategy 组件分（29 号稿） |
 | ENV_PICK_VALUE | **已退役（2026-09-23 迁移 3.2）**：原锚 cw_events.py env 分支（已删）、cw_investments.py ENV_PICK_VALUE（已删）；现役判据 = strategies/impl/mandate_v1/invest_env.py（28 号稿） |
 | ENV_FACTION_MATCH_FLOOR | **已退役（2026-09-23 迁移 3.2）**：原锚 cw_events.py env floor 支（已删）；现役承载 = 策略层 line_value（28 号稿 §2） |
 | GIFT_FLOOR_* | **已退役（2026-09-23 迁移 3.2）**：原锚 cw_events.py 送卡档 max() 支（已删）；现役承载 = 策略层 gift_value（GIFT_TIER_SCORE/ADVISOR_DISCOUNT；档位机器 cw_comps.gift_hit_tier 留 kernel 在产） |
@@ -119,3 +119,7 @@
 
 - 本篇不修改 00/01/13 既有正文（14 号稿 §8 同款纪律：既有篇目修订归入册批）；需登记的修订 = ①13 号篇 §1 `decide_invest`/`decide_planner` 行的判据状态列补「评估表重估批定形：知识判据定序器（16 号稿 §1）」注；②01 §4 事件决策行的「待 derive」归属补 owner 申报——两项随本篇生效一并提请入册批执行。
 - 本篇自身生效方式：规格层文档，无行为变更；各改形项的行为落码须逐项过无前提对抗循环 + 测试重锚（strategy-work §6）后方可 commit。
+
+## 6. 版本变更记录
+
+- **v2（投资策略屏策略层迁移收口）**：策略轴项 **§1.1（PICK_VALUE）/§1.4（augment 定义型 120）/§1.5（comp-hit 45×N+20）/§1.6（品质先验回落 50/30/10 + economy +20）/§1.9（S2 经济引擎档 + S3 对齐源换 D*）与 §1.8 表「STEERING ±30/−10000（用户转向轴）」行**的评序承载面被投资策略屏迁移取代——kernel `decide_event` 策略轴与 `PICK_VALUE` 表退役,现行承载 = 策略层 `strategies/impl/mandate_v1/invest_strategy.py`(统一加法标尺 + 结构分区 + 平分裁决键),正本 = [29_invest_strategy_screen.md](29_invest_strategy_screen.md);转向轴常数现役单一源 = 策略层 `pick_common.STEERING_PRIORITY_BONUS`,forbid 改集合排除出候选(分值化禁选退役,`STEERING_FORBID_PENALTY` 不复存在);§1.4 支配性优先/§1.5 N 单调序/§1.6 品质序字典序的定序语义由新标尺的结构分区与平分裁决键承接,原 kernel 形态「保留·改形」裁定作废归档。§1.2/§1.3（env 轴项）已由投资环境屏迁移批收口标退役（§1 正文照录）。§1 各节正文 = 规格层历史行,不改写;现行态以本节与 29 号稿为准。
