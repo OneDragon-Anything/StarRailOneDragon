@@ -176,7 +176,8 @@ class CwStrategy(ABC, Generic[_TState]):
 
     @abstractmethod
     def decide_encounter(self) -> CwActionPickEncounterParam | CwActionRefreshNodeOptionsParam:
-        """遭遇难度选(候选读 ``gs.encounter`` payload 槽;刷新建议 =
+        """遭遇选档(候选读 ``gs.encounter`` payload 槽;判据单一源 =
+        策略层 ``mandate_v1/encounter_pick.decide``;刷新建议 =
         CwActionRefreshNodeOptionsParam 动作,非布尔位)。"""
 
     @abstractmethod

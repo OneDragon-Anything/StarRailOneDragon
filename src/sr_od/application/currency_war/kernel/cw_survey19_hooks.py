@@ -1,27 +1,13 @@
-"""二轮扫描落地件:P9 遭遇接难度账本 + P1 狼狩穿戴纪律。
+"""二轮扫描落地件:P1 狼狩穿戴纪律(单件模块)。
 
-两件均为纯函数决策件(离线可测);执行侧接线(equip_all/
-cw_screen_encounter)由调用方接入。用户修正裁定:
-- P1:装备是**可循环资源**(卖出回收/扳手拆)——不为狼狩牺牲合成规划;纪律只有一条:
-  别让装备躺在物品栏(穿了才产经验,物品栏 0 经验);
-- P9:难度增减的场合依赖(大胜 0/边际峰值/无解 0)进遭遇档位选择。
+纯函数决策件(离线可测);执行侧接线(equip_all)由调用方接入。用户修正
+裁定:装备是**可循环资源**(卖出回收/扳手拆)——不为狼狩牺牲合成规划;
+纪律只有一条:别让装备躺在物品栏(穿了才产经验,物品栏 0 经验)。
 
 (补给重刷判据不在本模块:单一源 = 策略层
 ``strategies/impl/mandate_v1/supply.py``。)
 """
 from __future__ import annotations
-
-from sr_od.application.currency_war.kernel.cw_difficulty_account import marginal_value
-
-
-def encounter_tier_score(d_now: float, tier_delta: int, gap: float,
-                         plane: int) -> float:
-    """P9:遭遇节点难度档评分 = marginal_value 包装(36 号账本三态+P1 尖峰+地板/溢出守卫)。
-
-    档位候选各算一次,取最高;负 delta(压难度)在边际局(P1 尤甚)得高分——
-    替代 08 号线性归一的局部选择。
-    """
-    return marginal_value(d_now, float(tier_delta), gap, plane=plane)
 
 
 def wear_discipline_alert(inventory_equips: list[str],

@@ -411,7 +411,7 @@ def net_income(round_num: int, streak_pre: int,
       传 None。**规划近似申报(两处)**:①本参数签名无 plane/round,败补
       只能取类型表底金做规划下界,与记账口径(:func:`loss_compensation_base`
       平面感知键)的差异归属=决策近似,挂玩家确认;
-      ②现役 6 个决策消费点(mandate_v1 shop.py ×4 / encounter.py / 本模块
+      ②现役 5 个决策消费点(mandate_v1 shop.py ×4 / 本模块
       loss_exact 前置)全部传 ``streak_pre=0, lost_node_type=None``——
       败补参数支当前零消费,近似不落值。
     """

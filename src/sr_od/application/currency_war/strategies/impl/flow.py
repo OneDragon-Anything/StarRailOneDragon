@@ -73,6 +73,7 @@ from sr_od.application.currency_war.strategies.impl.cw_strategy import (
     StrategySession,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+    encounter_pick,
     invest_env,
     invest_strategy,
     supply,
@@ -401,8 +402,8 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         else:
             self._refresh_direction_views(self.gs, self.state)
 
-    # ===== pick 族(事件/选卡决策;判据单源 = 策略层 mandate_v1(投资两屏)
-    # ===== / kernel cw_events/cw_comps(其余画面))=====
+    # ===== pick 族(事件/选卡决策;判据单源 = 策略层 mandate_v1(投资两屏
+    # ===== /遭遇) / kernel cw_events/cw_comps(其余画面))=====
     # 终态契约 §2.1/§2.2:入口零参(候选 = gs payload 槽;离屏 None =
     # 观察层失约抛错,details §2.1 三分语义),输出 = 单一 CwAction——
     # 选卡 = per-screen 子类型,刷新建议 = 三刷新动作(与选卡互斥单发,
@@ -592,21 +593,21 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         return CwActionPickSupplyParam(idx=out.idx, reason=out.reason)
 
     def decide_encounter(self) -> CwActionPickEncounterParam | CwActionRefreshNodeOptionsParam:
-        """遭遇难度/词缀避开(终态零参口;候选 = ``gs.encounter`` payload)。
-        刷新闸输入源 = ``gs.encounter_refresh_left`` 剩余语义观察真值(用户
-        裁定 2026-09-21,全域规范 = op-layer.md §1.4;剩余 ≤0 或 None =
-        已刷尽/未观察 → refresh_used=True,kernel 按原评分直接选卡)。"""
+        """遭遇选档/分支刷新(终态零参口;候选 = ``gs.encounter`` payload)。
+        判据单一源 = 策略层 ``encounter_pick.decide``(能力态直通形:κ_S
+        三态 + 经验档层 + 奖励序数 tiebreak + 刷新阀;判据正本 =
+        strategy-docs/31 号稿);刷新次数闸内嵌 decide(读
+        ``gs.encounter_refresh_left`` 剩余语义,用户裁定 2026-09-21,
+        全域规范 = op-layer.md §1.4;None = 未观察 → 不可刷 fail-closed),
+        不设 refresh_used 预计算。纯值出口在此包装动作词表,op handler
+        与观察写槽零改动(照 decide_supply 先例)。"""
         options = self._require_slot_options(self.gs.encounter,
                                              'encounter').options
-        _left = self.gs.encounter_refresh_left.value
-        refresh_used = not (_left is not None and int(_left) > 0)
         self._consume_prep_direction_frame()   # 入口内务
-        pick = cw_events.decide_encounter(options, self.gs,
-                                          self.state.target_comp, self.config,
-                                          refresh_used=refresh_used)
-        if pick.refresh:
-            return CwActionRefreshNodeOptionsParam(reason=pick.reason)
-        return CwActionPickEncounterParam(idx=pick.idx, reason=pick.reason)
+        out = encounter_pick.decide(options, self.gs)
+        if isinstance(out, encounter_pick.EncounterRefreshSuggestion):
+            return CwActionRefreshNodeOptionsParam(reason=out.reason)
+        return CwActionPickEncounterParam(idx=out.idx, reason=out.reason)
 
     def decide_megastar(self) -> CwActionPickMegastarParam:
         """巨星选候选(终态零参口;候选 = 容器 ``megastar_opts``,值域 =

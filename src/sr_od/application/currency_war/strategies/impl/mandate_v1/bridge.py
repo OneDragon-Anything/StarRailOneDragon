@@ -30,17 +30,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_events import (
-    EncounterPick,
-)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
     CwActionObsParam,
-    CwActionPickEncounterParam,
-    CwActionRefreshNodeOptionsParam,
 )
 from sr_od.application.currency_war.strategies.impl.flow import (
     CwFlowStrategy,
@@ -248,41 +243,6 @@ class MandateV1Strategy(CwFlowStrategy):
         actions = decide_prep_frame(self.gs, self.config,
                                     registry=self.registry)
         return actions[0] if actions else CwActionObsParam(scope='outer_loop')
-
-    def decide_encounter(self) -> CwActionPickEncounterParam | CwActionRefreshNodeOptionsParam:
-        """遭遇分支选卡(终态零参口;候选 = ``gs.encounter`` payload):E-2
-        判据落码(kernel/cw_encounter_selection.py 单一源)。
-
-        暗装优先(fail-closed):三常量/两组定谳未就绪 → 恒最低档 + 零刷新,
-        reason 带门诊断(e3-simple 归因串,D_enc 口读值与 live 判别子随行
-        ——E-3 配对采集通道)。窗口读源 = GameState 结算观测环(E-2 平级
-        新结构);同档并列次序 = tiebreak 映射(钻>装备>金币>末档)。
-        历史 EV 候选核(mandate_v1/encounter.py)搁置让位、保留禁删;基线
-        ``cw_events.decide_encounter`` 零触碰(其他策略核行为不变)。
-        入口内务 = 备战帧代次消费(覆写不落基类实现,须自带)。
-        刷新闸输入源 = ``gs.encounter_refresh_left`` 剩余语义观察真值(用户
-        裁定 2026-09-21,全域规范 = op-layer.md §1.4;剩余 ≤0 或 None =
-        已刷尽/未观察 → refresh_used=True,判据按原评分直接选卡)。
-        输出包装(终态契约 §2.2):刷新建议 = CwActionRefreshNodeOptionsParam,选卡 =
-        CwActionPickEncounterParam(两型互斥单发)。
-        """
-        self._consume_prep_direction_frame()
-        payload = self.gs.encounter.value
-        if payload is None:
-            raise ValueError(
-                'decide_encounter: gs.encounter payload 槽离屏'
-                '(None = 观察层失约,禁静默按空态决策)')
-        options = payload.options
-        _left = self.gs.encounter_refresh_left.value
-        refresh_used = not (_left is not None and int(_left) > 0)
-        from sr_od.application.currency_war.kernel import (
-            cw_encounter_selection,
-        )
-        pick: EncounterPick = cw_encounter_selection.decide_encounter(
-            options, self.gs, refresh_used=refresh_used)
-        if pick.refresh:
-            return CwActionRefreshNodeOptionsParam(reason=pick.reason)
-        return CwActionPickEncounterParam(idx=pick.idx, reason=pick.reason)
 
     def decide_shop_screen(self, session: StrategySession | None = None,
                            config: CurrencyWarConfig | None = None) -> list:

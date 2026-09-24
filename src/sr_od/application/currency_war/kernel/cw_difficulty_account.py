@@ -55,9 +55,15 @@ class DifficultyAccount:
                         streak: int = 0) -> DifficultyAccount:
         """从持卡注册表建账(v2,落地:EconomyEffect 难度字段)。
 
-        difficulty_delta 进 augments(节点型限定暂并入静态——遭遇/首领限定建模
-        挂 decide_encounter 消费批);difficulty_per_streak 走 streak 动态项。
-        品质通胀(API 无数值)不建。
+        difficulty_delta 进 augments(节点型限定暂并入静态);
+        difficulty_per_streak 走 streak 动态项。品质通胀(API 无数值)不建。
+
+        孤儿态登记(迭代 2026-09-24-encounter-screen-strategy-migration
+        design §2.7):本模块 ``marginal_value`` 的唯一消费链(原 kernel
+        遭遇难度档评分)已随遭遇判据迁策略层退役——``marginal_value``/
+        ``DifficultyAccount`` 现全仓零生产消费(孤儿态;物理删除归后续
+        清理批,``GROWTH_PER_STREAK`` 有 sim 活消费,按符号逐个处置,
+        禁整模块删)。
         """
         from sr_od.application.currency_war.kernel.cw_investments import get_strategy
         acc = cls(base=base, streak=streak)

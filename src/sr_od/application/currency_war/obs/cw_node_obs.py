@@ -1,5 +1,6 @@
 """货币战争 **节点选项观测**:遭遇/补给/伙伴 overlay 截图 → ``EncounterOption`` 等
-(喂 ``cw_events.decide_*`` / 策略 ``decide_encounter`` 等钩子)。
+(候选经画面 op report 落容器 payload;决策消费 = 策略层 ``mandate_v1``
+各画面 ``decide`` 与 kernel ``decide_planner`` 等剩余钩子)。
 
 与 ``cw_observation``(备战屏 reads)分模块:本模块只管**节点 overlay 的选项读取**(decide_* 的输入)。
 决策接线 audit(2026-08-07,``.debug/temp/currency_war/decision_wiring_audit.md``):这些 decide_*
@@ -26,7 +27,8 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
 )
 from sr_od.context.sr_context import SrContext
 
-# 遭遇卡标题「遭遇其X」→ X 中文数字 → 难度档(其一=1 易 … 其六=6);decide_encounter 按难度选。
+# 遭遇卡标题「遭遇其X」→ X 中文数字 → 难度档(其一=1 … 其六=6;
+# 难度轴消费 = 策略层 encounter_pick 能力态/经验档层判据)。
 # ⚠️ 「一」笔画细,paddle OCR 常**漏读**(左卡=易卡=其一,OCR 成「遭遇其」无数字,实机 baseline 核实
 # 2026-08-07)→ 数字设**可选**:无数字 → 默认难度 1(即漏了「一」的易卡)。其四(四 笔画清)读得稳。
 _CN_NUM: dict[str, int] = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6}
@@ -40,8 +42,11 @@ def read_encounter_options(ctx: SrContext, screen: MatLike) -> list[EncounterOpt
     """OCR 遭遇屏两张(或多)卡 → ``EncounterOption`` 列表(difficulty 从标题其X;reward 从奖励带)。
 
     遭遇**选项 UI 不显词缀**(词缀战后才显;design 08 的 affix 分支对此屏 N/A)→ ``affixes=[]``。
-    按 title center-x 左→右排序 → ``idx``。decide_encounter 用 difficulty + comp 成型度选(formed→高难度拿好奖励,
-    未成型→低难度保生存)。读不到 title(OCR 漏/非遭遇屏)→ 返 [](画面 op act 空候选零点击 round_success
+    按 title center-x 左→右排序 → ``idx``。决策消费 = 策略层
+    ``mandate_v1/encounter_pick.decide``(能力态直通形:κ_S 三态 + 经验
+    档层 + 奖励 tiebreak;不消费 comp 成型度——判据语义正本 =
+    strategy-docs/31 号稿)。读不到 title(OCR 漏/非遭遇屏)→ 返 []
+    (画面 op act 空候选零点击 round_success
     终结交回重读,禁盲选派发——选卡确认不可逆消耗本节点;screens/encounter.md §4/§8)。
     """
     ocr_map = ctx.ocr_service.get_ocr_result_map(

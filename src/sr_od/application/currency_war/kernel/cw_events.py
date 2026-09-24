@@ -1,8 +1,9 @@
-"""货币战争 事件/节点族 kernel 决策:遭遇(decide_encounter)
-+ 巨星/伙伴选项载体 + 银狼策划/命运卜者/专家邀请函判据 + 装备名归一——
-删除面收口后本模块 = 遭遇/planner 等剩余画面决策。补给选卡决策不在本
-模块(宪法五:决策本体归策略层 = ``strategies/impl/mandate_v1/supply.py``
-;本模块仅留观察载荷契约 ``SupplyOption``)。
+"""货币战争 事件/节点族 kernel 决策:巨星/伙伴选项载体 + 银狼策划/
+命运卜者/专家邀请函判据 + 装备名归一——本模块 = planner 等剩余画面
+决策 + 观察载荷契约。遭遇与补给选卡决策不在本模块(宪法五:决策本体
+归策略层 = ``strategies/impl/mandate_v1/encounter_pick.py`` /
+``strategies/impl/mandate_v1/supply.py``;本模块仅留观察载荷契约
+``EncounterOption``/``SupplyOption``)。
 
 投资两屏选卡评序不在本模块(宪法五:衍生估值/评序归策略层):投资环境轴
 = ``strategies/impl/mandate_v1/invest_env.py``(判据正本 = strategy-docs
@@ -21,138 +22,41 @@ from sr_od.application.currency_war.data.cw_equipment_data import (
 from sr_od.application.currency_war.data.cw_equipment_wear_rules_data import (
     ITEM_WEAR_GATES,
 )
-from sr_od.application.currency_war.kernel.cw_comps import (
-    form_progress,
-    mechanics_fit,
-    merged_mechanic_tables,
-)
 from sr_od.application.currency_war.kernel.cw_equip_value import (
     equip_generic_value,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     bench_units_of,
-    deployed_count_of,
     deployed_rows_of,
-    max_units_of,
-    plane_of,
 )
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_comps import Comp
 
-# ===== 遭遇节点(decide_encounter;design 08)。✅ 已接:``CwScreenEncounter`` 调本函数 +
-# ``read_encounter_options``(cw_node_obs,OCR 卡标题「遭遇其X」→ difficulty)。affix 分支 N/A
-# (选项 UI 不显词缀,战后才显)。=====
-# 设计注:boss 克制是 comp-vs-boss 机制级(走 boss_fit/
-# comp.countered_by_bosses + 机制建模),非阵营级——不做阵营降权。
+# ===== 遭遇节点观察载荷契约(选档决策本体已迁策略层
+# ``strategies/impl/mandate_v1/encounter_pick.py``,宪法五;本段仅留观察
+# 载荷契约,消费方 = obs 写端 ``read_encounter_options``/容器
+# ``gs.encounter``/观察上报/sim 占位/策略层)=====
 
 @dataclass
 
 class EncounterOption:
     """一个遭遇分支:难度档 + 敌人词缀 + 奖励(OCR 读,``read_encounter_options`` 阶段5)。
 
-    difficulty:难度档 1=易/2=中/3=难(越高奖励越好但敌人越凶)。
-    affixes:敌人词缀 OCR 原名(经 ``AFFIX_MECHANIC_MAP`` → 机制 tag,再 ``mechanics_fit`` 判 comp 克/利)。
-    rewards:奖励(钻/装备/金币;带钻最优,详 design 08 / cw_comps MECHANIC 表)。
+    观察载荷契约(与策略无关的游戏事实载体;决策语义单一源 = 策略层
+    ``encounter_pick.py``)。
+    difficulty:难度档 1-6(画面标题「遭遇其X」派生,OCR 漏读「一」→ 1;
+    越高敌人越强、奖励越好)。
+    affixes:敌人词缀 OCR 原名(经 ``AFFIX_MECHANIC_MAP`` → 机制 tag;
+    选项 UI 不显词缀、战后才显——现役写端恒空列表,死输入申报在册)。
+    rewards:奖励(钻/装备/金币;偏好序消费 = 策略层 encounter_pick
+    reward_tier 档序)。
     """
     idx: int
     difficulty: int = 1
     affixes: list[str] = field(default_factory=list)
     rewards: list[str] = field(default_factory=list)
-
-
-@dataclass
-
-class EncounterPick:
-    """decide_encounter 返回:选哪个分支 + 是否刷新避开。"""
-    idx: int
-    refresh: bool = False
-    reason: str = ""
-
-
-
-def _option_mechanics(option: EncounterOption, target_comp: Comp | None) -> float:
-    """该分支词缀对 target_comp 的契合(``mechanics_fit`` 0..1;<0.4 克、>0.5 利 debuff=buff)。
-
-    无 target_comp / 无词缀信号(mechanics_fit 返 None)→ 中性 0.5(纯按难度选,不触发刷新)。
-    """
-    if target_comp is None:
-        return 0.5
-    affix_map, _, _ = merged_mechanic_tables()
-    mechs = {affix_map.get(a, a) for a in option.affixes}
-    fit = mechanics_fit(target_comp, mechs)
-    return fit if fit is not None else 0.5
-
-
-def _reward_value(rewards: list[str]) -> float:
-    """奖励文本 → 价值分(恒中性 0.5)。
-
-    奖励稀有度序(棱彩>金>银)是游戏定义,但序到分的映射无推导;
-    保守缺省 = 恒中性:遭遇选档不因奖励文本冒险(P3 tiebreak 项随之恒定)。
-    reason 回显只会打 0.50,无任何稀有度信号,判读勿据此归因。
-    """
-    return 0.5
-
-
-
-def decide_encounter(options: list[EncounterOption], gs: GameState,
-                     target_comp: Comp | None, config, refresh_used: bool = False) -> EncounterPick:
-    """遭遇节点选难度档 + 是否刷新(纯逻辑,design 08)。✅ 已接:``CwScreenEncounter`` 调本函数 +
-    ``read_encounter_options``(cw_node_obs,OCR 卡标题「遭遇其X」→ difficulty)。affix 分支 N/A
-    (选项 UI 不显词缀,战后才显)。
-
-    决策(观测驱动 + comp 相关,debuff=buff):
-    1. **未成型**(deployed 不足 / target 成型度低)→ 偏低难度(生存优先)。
-    2. **词缀按 comp 判**(``mechanics_fit``):全分支都克 comp + 刷新未用 → **刷新换批**避开;
-       存在不克的分支 → 选最利 comp 的。
-    3. **成型 + 词缀利 comp**(debuff=buff)→ 挑高难度拿奖励(奖励权重随成型度)。
-    4. 刷新已用 → 不再刷,按 1-3 选最优分支。
-
-    config 预留(未来对策装备映射 / 偏好;当前未用)。
-    """
-    if not options:
-        return EncounterPick(idx=0, reason="no-options")
-    mechs = [_option_mechanics(o, target_comp) for o in options]
-    form = (form_progress(target_comp, gs)
-            if target_comp is not None else 0.5)
-    formed = form >= 0.4 and deployed_count_of(gs) >= max(2, max_units_of(gs) // 2)
-
-    # 全分支词缀都克 comp(mechanics_fit < 0.4)+ 刷新未用 → 刷新换批(避开高危)
-    if not refresh_used and target_comp is not None and all(m < 0.4 for m in mechs):
-        return EncounterPick(idx=options[0].idx, refresh=True,
-                             reason=f"全分支词缀克 comp(mech_max={max(mechs):.2f}),刷新换批")
-
-    # 评分:词缀契合(利 comp 加分)+ 难度档定价(P9 接难度账本:场合三态替代固定 ±0.3)
-    def _score(o: EncounterOption, m: float) -> float:
-        from sr_od.application.currency_war.kernel.cw_survey19_hooks import (
-            encounter_tier_score,
-        )
-        s = m
-        # 0..1 clamp(难度 1→0、3→1;「其四」=4 越界 1.5 → 钳回)
-        diff_norm = min(max((o.difficulty - 1) / 2.0, 0.0), 1.0)
-        # 奖励价值(用户指路;OCR 奖励带已读)——与难度联动:
-        # 只有「敢难」时奖励差才兑现,不敢难时好奖励也白搭(不独立加分)
-        rv = _reward_value(o.rewards)
-        if plane_of(gs) == 3:
-            # :P3 永避高难遭遇(一次 -70 血无回报,成型也不赌)。
-            s -= 0.5 * diff_norm
-            s -= 0.1 * (1.0 - rv)   # P3 不为奖励冒险,仅轻微 tiebreak
-        else:
-            # P9(用户口径「阵容足够强才敢难」):压 −2 档价值作风险计——
-            # 碾压(form≥0.9,gap≤−36,bell→0)敢难白拿;其余保守保血。
-            gap = (0.4 - form) * 60
-            press_v = encounter_tier_score(d_now=100.0, tier_delta=-2,
-                                           gap=gap, plane=plane_of(gs))
-            dare = press_v < 0.05
-            s += (0.3 + 0.2 * (rv - 0.5)) * diff_norm if dare else -0.3 * diff_norm
-        return s
-
-    scored = sorted(zip(options, mechs, strict=True), key=lambda om: _score(om[0], om[1]), reverse=True)
-    best_o, best_m = scored[0]
-    return EncounterPick(idx=best_o.idx, refresh=False,
-                          reason=(f"mech={best_m:.2f} formed={formed} diff={best_o.difficulty} "
-                                  f"reward={_reward_value(best_o.rewards):.2f}"))
 
 
 
@@ -168,7 +72,8 @@ class SupplyOption:
     观察载荷契约(与策略无关的游戏事实载体,形状五方引用;决策语义单一
     源 = 策略层 supply.py,宪法五)。
     has_diamond:装备位带三钻之一(红钻/蓝钻/财富宝钻;SIFT 主通道 + 文本
-    兜底双通道,检测集单一源 = ``cw_node_obs.DIAMOND_EQUIP_NAMES``)。
+    兜底双通道,检测集单一源 =
+    ``kernel/cw_obs_core.DIAMOND_EQUIP_NAMES``)。
     equip:装备名(OCR 原文,未归一)。
     """
     idx: int
@@ -536,8 +441,8 @@ def choose_expert_index(card_bonds: list[str | None],
 #: 事件线 kernel pick 全类(kernel ``decide_*`` 纯函数返回载体;策略入口
 #: 负责包装成词表动作子类型——kernel 判据零触碰,§2.2)。
 EVENT_PICK_TYPES: tuple = (
-    EncounterPick, MegastarPick, PartnerPick, PlannerPick,
+    MegastarPick, PartnerPick, PlannerPick,
 )
 
 #: pick 族类型联合(kernel 侧注解用;运行时零消费)。
-EventPick = EncounterPick | MegastarPick | PartnerPick | PlannerPick
+EventPick = MegastarPick | PartnerPick | PlannerPick

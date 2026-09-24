@@ -712,7 +712,9 @@ class CwActionStartBattleParam:
 
 @dataclass
 class CwActionPickEncounterParam:
-    """遭遇节点选择(替代 EncounterPick;刷新建议另发 CwActionRefreshNodeOptionsParam)。"""
+    """遭遇节点选择(策略层载体 =
+    ``strategies/impl/mandate_v1/encounter_pick.py`` ``EncounterPickDecision``
+    的动作包装;刷新建议另发 CwActionRefreshNodeOptionsParam)。"""
     idx: int
     # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
     #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
@@ -903,7 +905,9 @@ class CwActionPickExpertInviteParam:
 
 @dataclass
 class CwActionRefreshNodeOptionsParam:
-    """遭遇节点刷新建议(替代 EncounterPick.refresh 旗标):策略建议点击
+    """遭遇节点刷新建议(策略层载体 =
+    ``strategies/impl/mandate_v1/encounter_pick.py``
+    ``EncounterRefreshSuggestion`` 的动作包装):策略建议点击
     节点刷新钮。encounter 刷新链 = 同访问重决策——发射本动作前须以重读
     产物覆盖写槽再决策(刷新链分屏形态申报,禁沿用旧槽内容)。"""
     reason: str = ''

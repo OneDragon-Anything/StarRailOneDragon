@@ -6,27 +6,29 @@
   点卡身(选中)→ 点选择(确认),**中间不要插空白点击**(会取消选中 → 死循环)。
 
 ✅ 分支刷新执行链(刷新 = 终结动作,用户裁定 2026-09-21,全域规范 =
-  ``op-layer.md`` §1.4):``decide_encounter`` 建议刷新(全分支词缀克
-  comp 时)∧ 剩余闸放行 → 文本锚定点刷新圆钮一次 + 2s 固定等待 →
-  ``round_success`` 终结交回外循环 → 重进 = 入口重建(新选项由入口观察
-  现读承载)。**访问内零重读、零二次覆盖写、零重决策、零新增读屏点**。
-  分支刷新能力 = 优势布局「分支刷新」授予(每局 1 次重置两卡难度/奖励;
-  bwiki 优势布局表)。**刷新闸 = 剩余语义观察真值**(同裁定):闸读源 =
-  容器 ``node_screen_refresh.encounter_refresh_left``(观察 node 同帧
-  「剩余次数:N」读数经 report 摄入,读缺跳写);剩余 ≤0 或 None =
-  拒绝 → 重调一次决策按原评分选(单轮内有界)。原 per-visit 位与「已用」
-  计数读闸随剩余闸退役(考古走 git)。
-  活锁方向安全:建议刷新 → 放行 → 终结(访问结束)∨ 拒绝 → 重调一次
-  落选卡 → 确认链;两分支都终结访问或落选卡,``round_wait`` 循环面对
-  刷新建议不再存在。
-  ⚠️ **词缀读数未接线**:``read_encounter_options`` 的 affixes 恒空(选项卡面
-  UI 不显词缀;词缀住「货币战争-敌人信息浮层」覆盖层——已建档,chips OCR
-  实测可读,读数通道就绪)→ decide_encounter 的全克判定当前恒不触发,
-  接线消费待后续批。
+  ``op-layer.md`` §1.4):``decide_encounter`` 建议刷新(策略层刷新阀:
+  可及集空帧,次数闸内嵌 decide)∧ 对照闸放行 → 文本锚定点刷新圆钮一次
+  + 2s 固定等待 → ``round_success`` 终结交回外循环 → 重进 = 入口重建
+  (新选项由入口观察现读承载)。**访问内零重读、零二次覆盖写、零重决策、
+  零新增读屏点**。分支刷新能力 = 优势布局「分支刷新」授予(每局 1 次重置
+  两卡难度/奖励;bwiki 优势布局表)。**对照闸 = 剩余语义观察真值**(同
+  裁定):闸读源 = 容器 ``node_screen_refresh.encounter_refresh_left``
+  (观察 node 同帧「剩余次数:N」读数经 report 摄入,读缺跳写)。原
+  per-visit 位与「已用」计数读闸随剩余闸退役(考古走 git)。
+  收敛语义(**防线**,迭代 2026-09-24-encounter-screen-strategy-migration
+  §2.5):建议刷 ∧ 刷新圆钮锚读缺 → 重调一次(纯函数同输入同输出仍建议
+  刷)→ ``round_fail`` 交回——失败计入外循环 ``OP_FAIL_REDISPATCH_LIMIT``
+  (零点击 round_success 交回不计数,外循环对锚持续读缺无防护,故落防线,
+  有界收敛;持续重现 = OCR 读缺,回观察批);拒绝帧(剩余 ≤0/None)
+  decide 闸内嵌直接落选卡,不进刷新分支。
+  ⚠️ **词缀读数未接线**:``read_encounter_options`` 的 affixes 恒空(选项
+  卡面 UI 不显词缀;词缀住「货币战争-敌人信息浮层」覆盖层——已建档,
+  chips OCR 实测可读,读数通道就绪;死输入申报在册)。
 
-✅ Stage C2 已接:``decide_encounter``(按 comp 成型度选:未成型→低难保生存 /
-  成型+词缀利→高难拿奖励 / 全分支克→刷新换批;用 pick.idx 选卡,**非默认选左**)。
-  ⚠️ affix 避开分支 N/A(选项 UI 不显词缀,战后才显)。
+✅ 判据接线:``decide_encounter`` = 策略层单一源
+  ``strategies/impl/mandate_v1/encounter_pick.py``(能力态直通形:κ_S
+  三态 + 经验档层 + 奖励序数 tiebreak + 刷新阀;判据语义正本 =
+  strategy-docs/31 号稿;用 pick.idx 选卡,**非默认选左**)。
 坐标(screen_info 化债):卡身/选择经 ``cw_obs_core.area_center`` 读 screen_info
   ``currency_war_encounter``(``遭遇卡-其一/其二`` + ``按钮-选择``);缺失才用兜底常量。
   档案帧回验:sr-od-test/screens/货币战争-遭遇节点/default.webp 上 标识-遭遇节点 /
@@ -48,7 +50,9 @@ supersession 注;候选读缺的失败安全 = act 空候选零点击终结交�
 刷新 = 点钮一次 + 2s → ``round_success`` 终结交回 / 选卡 = 派发确认链
 (机械链 + ``chosen_encounter`` 即时上报在动作 op 内)→ ``round_success``
 终结交回 / 空候选 = 零点击终结交回重读——三出口均终结访问,
-``round_wait`` 循环面对刷新建议不存在。决策返回词表外/None = 具名
+``round_wait`` 循环面对刷新建议不存在。防线出口(§2.5):建议刷 ∧ 锚
+读缺重调仍建议刷 → ``round_fail`` 交回(计入外循环重派上限,有界收敛)。
+决策返回词表外/None = 具名
 round_fail 零盲发;pick idx 越界 = 守卫断言 AssertionError;两守卫均在
 派发前、零点击(口径 = ``screens/encounter.md`` §2)。确认未生效 =
 代码 bug,overlay 残留由外循环按当前画面重识别重派(修法 = 点击链
@@ -148,18 +152,22 @@ class CwScreenEncounter(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=10)
     def act(self) -> OperationRoundResult:
-        """零参决策 + 三出口派发即终结(重入裁决已退役)。
+        """零参决策 + 出口派发即终结(重入裁决已退役)。
 
-        出口三语义(op-layer §1.1 出口①,投资两屏/补给 3.1 同形态):
+        出口语义(op-layer §1.1 出口①,投资两屏/补给 3.1 同形态):
         ①刷新 = 点钮一次 + 2s → round_success 终结交回;②选卡 = 派发
         确认链(机械链 + chosen_encounter 即时上报在动作 op 内)→
         round_success 终结交回;③空候选 = 零点击终结交回重读
-        (attack3 X2:候选读缺禁盲选派发——选卡确认不可逆消耗本节点,
-        与刷新闸数据不一致分支同构)。决策返回词表外/None = 具名
+        (attack3 X2:候选读缺禁盲选派发——选卡确认不可逆消耗本节点)。
+        防线出口(迭代 2026-09-24-encounter-screen-strategy-migration
+        §2.5):建议刷 ∧ 刷新圆钮锚读缺 → 重调一次(纯函数同输入同输出
+        仍建议刷)→ round_fail 交回,失败计入外循环
+        OP_FAIL_REDISPATCH_LIMIT(零点击 round_success 交回不计数且清零
+        计数窗——外循环对「锚持续读缺 ∧ 建议刷恒成立」无防护,故落防线;
+        持续重现 = OCR 读缺,回观察批)。决策返回词表外/None = 具名
         round_fail 零盲发;pick idx 越界 = 守卫断言 AssertionError;
         两守卫均在派发前、零点击。确认未生效 = 代码 bug,overlay
-        残留由外循环按当前画面重识别重派;三出口均终结访问,无跨轮
-        循环载体。"""
+        残留由外循环按当前画面重识别重派。"""
         obs = self._obs
         options = obs.options if obs is not None else []
         match = self.ctx.cw_match
@@ -180,19 +188,21 @@ class CwScreenEncounter(CwOperation):
         if isinstance(act, CwActionRefreshNodeOptionsParam) \
                 and not (_left is not None and int(_left) > 0
                          and self._refresh_point is not None):
-            # 对照闸拒绝(与 kernel 刷新闸同源同值;本面 = 读缺/锚点缺
-            # 不一致兜底)→ 重调一次决策按原评分选(单轮内有界)。
-            log.info('[cw-encounter] 建议刷新但剩余闸拒绝(left=%r)'
-                     ' → 重调按原评分选', _left)
+            # 对照闸拒绝兜底(判据侧次数闸已内嵌 decide——剩余读缺帧
+            # decide 不返建议,不会进本分支;活面 = 刷新圆钮锚读缺)。
+            # 重调一次决策(纯函数同输入同输出)。
+            log.info('[cw-encounter] 建议刷新但对照闸拒绝(left=%r)'
+                     ' → 重调一次决策', _left)
             act = match.strategy.decide_encounter()
             if isinstance(act, CwActionRefreshNodeOptionsParam):
-                # 重调仍建议刷新 = 闸数据不一致面,零点击终结交回
-                #(外循环重进 = 入口重建重试观察,不空转本节点预算)。
-                log.warning('[cw-encounter] 重调仍建议刷新(闸数据不一致)'
-                            ' → 零点击终结交回(外循环重进重试观察)')
-                return self.round_success(
-                    '刷新闸数据不一致,零点击终结交回(外循环重进重建入口)',
-                    wait=1.5)
+                # 防线(design §2.5):重调仍返刷新建议 ∧ 刷新锚读缺 =
+                # 无界重进循环面——round_fail 交回,失败计入外循环
+                # OP_FAIL_REDISPATCH_LIMIT(零点击 round_success 交回不
+                # 计数且清零计数窗,外循环对该循环无防护),有界收敛。
+                log.warning('[cw-encounter] 重调仍建议刷新(刷新锚读缺,'
+                            'left=%r) → round_fail 交回(计入重派上限)',
+                            _left)
+                return self.round_fail('刷新锚点读缺,交回重读')
         if isinstance(act, CwActionRefreshNodeOptionsParam):
             if not cw_sim_ports.mechanical_io_allowed():
                 # sim:遭遇刷新圆钮 = 实机画面文本锚定域(live 读,sim 无帧

@@ -11,9 +11,9 @@ docs/develop/sr_od/application/currency_war/changes/
 
 本文件 = 遭遇判据线载体(宪法五:换一套策略实现会要不同的值/序,故判据
 值/序随本体驻策略层):立场常量区(【拍】登记)、fill 双定谳槽、
-reward_tier 档序、三态表均在本文件。生产接线状态:现役核仍 =
-kernel/cw_encounter_selection.decide_encounter(恒暗装形态),本文件经
-迁移批 3.2 原子切换后接管(landing.md §3.2)。
+reward_tier 档序、三态表均在本文件。生产接线 = flow.decide_encounter
+直调本文件 :func:`decide`(kernel 侧判据面已同批迁出删除;迁移批
+2026-09-24-encounter-screen-strategy-migration 原子切换)。
 
 窗口口径 = 结算观测环最近 2 个普通战斗行(普战口径;奖励/遭遇/boss 行
 不入窗,design §2.2 候选 A 定谳)。刷新闸内嵌:读

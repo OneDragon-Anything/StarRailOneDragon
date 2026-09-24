@@ -9,7 +9,7 @@
   多张带钻 → 依次进第 2/3 级比出一张)。依据:财富宝钻 effect「团队规模
   上限+1,无论是否被角色穿戴…」、红钻/蓝钻 = 星徽合成材料
   (cw_equipment_data 装备注册表);检测集单一源 =
-  ``cw_node_obs.DIAMOND_EQUIP_NAMES``(红钻/蓝钻/财富宝钻)。
+  ``kernel/cw_obs_core.DIAMOND_EQUIP_NAMES``(红钻/蓝钻/财富宝钻)。
 - 第 2 级 终局角色:激活 = ``locked_comp`` 非 None ∧ 非降格帧(用户
   裁定「想要的角色只为终局考虑,不按过渡阵容选」)。名单 =
   ``Comp.core_chars ∪ shared_chars``(不含 transition_chars——过渡成员
