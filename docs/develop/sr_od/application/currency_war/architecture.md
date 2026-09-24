@@ -171,7 +171,7 @@ sim = 游戏本体的单局模拟器（「游戏后端」）：给定局级输�
 | 基座 | `cw_sim_base.py` | 容器写入签名/证据标签共用面（`sim:engine:` 前缀），不含游戏规则 |
 | 基座 | `cw_sim_streams.py` | 随机流键子流（按模块号+局内坐标派生独立子流，模块间不共享 rng） |
 | 基座 | `cw_sim_run_config.py` | 单局运行配置 `RunConfig`（开局参数正典字段清单唯一汇总面） |
-| 接缝 | `cw_sim_ports.py` | 端口五口（画面身份/观察/读点改道/点击应答与可见性；缺省 None = 纯实机零行为变化） |
+| 接缝 | `cw_sim_ports.py` | 端口六口（画面身份/观察/读点改道/点击应答与可见性/声明喂入 `declare_world`；缺省 None = 纯实机零行为变化） |
 | 接缝 | `cw_sim_obs_gen.py` | 观察生成器注册表（screen_info 档名 → Obs 产物，经同名上报函数落容器；非金路径屏响错） |
 | 游戏系统 | `cw_sim_opening.py` | 对局开局种子（`apply_opening`） |
 | 节点日程 | `kernel/cw_node_schedule.py`（kernel 纯数据件） | 位面节点序列真值表（P1/P2 节点日程地面真值表；`node_advance` 声明 `next_screen` 的推导权威源，sim 后端同源 import——契约 = sim-design §6.3） |

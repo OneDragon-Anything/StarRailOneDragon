@@ -84,8 +84,8 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 ### 3.2 转移源两类
 
-1. **上报事件钩子**（kernel `cw_event_hooks` 转移事件，具名封闭集 `TRANSITION_EVENT_KINDS`；封闭集成员与逐成员广播点见盘点口径：以 `operations/cw_op/cw_action_registry.py` 注册表（`_REGISTRY`，词表→op 单一注册面）全量动作为底集，按 `docs/develop/sr_od/application/currency_war/screens/` 各篇 §5 终结/交回表筛「落地引发画面转移」者）：终结动作族（settle_confirm/supply_confirm 经 kernel `report_node_advance` → 节点推进；start_battle → 战斗结算 → 结算页）、pick 族确认 → 模态交回、开箱动作落地 → 武装箱画面。转移事件**重入幂等**（同一终结动作重复上报不二次推进；kernel 观察态门之外，后端逐 handler 显式守卫）。
-2. **点击源**（不入 kernel 事件集的推进型点击，经端口 `click_answer` 感知）：简报下一步、BOSS 简报点空白、位面过渡点空白、补给刷新、开店。这些点击的转移语义权威源 = `docs/develop/sr_od/application/currency_war/screens/` 各篇终结/交回表（不入 kernel 事件集的边界登记与封闭集盘点同源）。
+1. **动作后果声明**（kernel `cw_world_decl.WorldDecl`，契约正本 = §6.3）：转移动作 op 经端口 `cw_sim_ports.declare_world` 喂入 `SimBackend.advance`，按 `decl.trigger` 分派世界过程/画面呈现、完成后按 `decl.next_screen` 等值对账。18 转移动作全量声明驱动：settle_confirm/supply_confirm（经 kernel `report_node_advance`）→ 节点推进；start_battle/pick_encounter → 战斗结算 → 结算页；开箱动作落地 → 武装箱画面 + 候选生成；pick 族 → 模态交回/选卡世界过程；纯转移类（开书册卡/关店/零写选卡族）→ 按 `next_screen` 推进画面。同一终结动作重复上报不二次推进 = kernel 观察态门（重复上报零推进）+ 后端逐 handler 幂等守卫。
+2. **点击源**（不经声明通道的推进型点击，经端口 `click_answer` 感知）：简报下一步、BOSS 简报点空白、位面过渡点空白、补给刷新、开店。这些点击的转移语义权威源 = `docs/develop/sr_od/application/currency_war/screens/` 各篇终结/交回表。
 
 ### 3.3 节点窗口序列
 
@@ -124,7 +124,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 ### 4.2 目录
 
-- **开箱**：动作触发——开箱动作落地（转移事件）→ 武装箱画面 + 候选生成（候选写入走 `report_screen_box_pick_obs` 同名通道）。
+- **开箱**：动作触发——开箱动作落地（`open_box` 声明，§6.3）→ 武装箱画面 + 候选生成（候选写入走 `report_screen_box_pick_obs` 同名通道）。
 - **巨星（盛会之星）**：事实触发——消费 `board_changed` 事实事件评估盛会之星羁绊计数，跨层（阈值语义源 = `data/cw_factions.py` tiers）→ 入队；已触发水位 = `megastar_fired_tier` 逐层一次性去重，一局可多次。
 - **planner（银狼首次升 2 星）**：事实触发——消费 `star_up` 事实事件；判据单一源 = `cw_sim_special.planner_overlay_due`，「首次」语义 = 一次性标志 `planner_fired`，升星前视图 = 后端逐事件维护的全域银狼最高星基线。
 - **其余族（partner / expert / fate / aha / hack）**：触发条件实机零档 → 评估器缺位 = 不入队（占位披露键 `OVERLAY_PARAM_PENDING` 族）。这是**数据缺口不是架构豁免**：补档后逐个落评估器，架构面（评估器接口/队列/呈现/交回）零改动。
@@ -163,13 +163,14 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 ### 6.2 端口模块（接口契约唯一载体）
 
-`sim/cw_sim_ports.py`——模块级装配槽 + 端口函数；缺省 `None` = 纯实机、零行为变化。端口五口（薄协议，签名不随屏数增长）：
+`sim/cw_sim_ports.py`——模块级装配槽 + 端口函数；缺省 `None` = 纯实机、零行为变化。端口六口（薄协议，签名不随屏数增长）：
 
 - `screen_identity()`：后端画面状态机答当前 screen_info 档名。
 - `observe(screen_name)`：生成器直出该屏 `CwScreenXxxObs` 形状产物；消费方必须经同名上报函数落容器。
 - `sim_or_live_observation(screen_name, live_read)`：读屏点改道 helper（装了后端 → `observe`，否则原读链）；逐屏显式读屏点一行机械接线，是观察腿唯一的 op 触点。
 - `sim_or_live_identity(screen_names, live_read)`：画面身份读点改道 helper（外循环阶段一身份分发；档名 ∈ 调用方清单才返回）。
 - `click_answer(...)` / `visible(...)`：sim 点击应答（后端先按点击处理状态机转移，再出实机同形 round 结果，机械镜 = `cw_sim_ports.mirror_click_answer`）与 until/门可见性问询。
+- `declare_world(decl)`：动作后果声明喂入——转移动作 op 自上报出口直调；未装配 = no-op（实机零行为变化），装配后 = 后端 `advance(decl)`，`decl is None` 本层直返（契约正本 = §6.3）。
 
 装配纪律：`install_sim_backend` 进程内单装配（重复安装 raise）、`uninstall_sim_backend` 幂等、测试 teardown 必卸（模块槽是进程全局，残留跨测试泄漏）。`mechanical_io_allowed()` = 机械 IO 腿（直连 controller 点击/拖拽）可达性检查口。
 
@@ -199,7 +200,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 ### 6.6 装配点
 
-`sim/cw_sim_backend.install_backend(backend)`：端口槽装配 + kernel 两事件 sink 订阅 + 动作腿 rng 提供槽注入（§2.3）；`uninstall_backend()` 幂等复位三槽。装配点 = sim 运行器（测试仓 harness）；生产实跑入口当前不存在（§8.3）。
+`sim/cw_sim_backend.install_backend(backend)`：端口槽装配 + kernel 事实事件 sink 订阅（转移后果不经订阅，走声明喂入 = §6.2 `declare_world`）+ 动作腿 rng 提供槽注入（§2.3）；`uninstall_backend()` 幂等复位三槽。装配点 = sim 运行器（测试仓 harness）；生产实跑入口当前不存在（§8.3）。
 
 ## 7. 随机性纪律
 
