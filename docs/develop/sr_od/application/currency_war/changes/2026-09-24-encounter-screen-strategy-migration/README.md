@@ -11,7 +11,7 @@
 - 正本更新:清零（31 号稿新建 + 25/13/08/04/README + 两画面文档；01 号稿 §6 闸门位立场值修订随裁定补落）
 
 ## 遗留挂账（后续批，登记备查）
-- architecture.md:144 模块地图行过期（cw_events/cw_encounter_selection 判据均已迁策略层）→ CW 正本维护小批（与 25 号稿银狼升星行缺项、screens/encounter.md 两处 game 侧链接显示文本 cosmetic 一并）。
+- ~~architecture.md:144 模块地图行过期~~ **已顺手收口**（模块地图行改写 + 策略层判据模块指针；与 25 号稿银狼升星行缺项、screens/encounter.md 两处 game 侧链接显示文本 cosmetic 一并归 CW 正本维护小批）。
 - 补给孪生面防线（cw_screen_supply_node 重调分支同款循环面）→ 归补给域/op-layer §1.4 全域条款批（31 号稿挂账在册）。
 - 实机验证前置：MCP server 重启（改码生效；避开对局运行期）。
 
