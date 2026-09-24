@@ -272,7 +272,7 @@ def interest_cap_resolved(interest_cap_override: int | None = None) -> int:
     override=None(默认局/未持息帽卡)→ DEFAULT_INTEREST_CAP;注册表
     覆写值(开源节流 9/利息上调 10/买断制 0)由调用方经聚合链传入——
     本函数只做归一,禁在判据侧内联 cap 字面量(E4.0 第 1 条)。
-    **0 是有效覆写**(买断制 = 息通道改写,在册同判 cw_events
+    **0 是有效覆写**(买断制 = 息通道改写,在册同判 kernel/cw_investments
     is_economy_engine):判别只认 None,禁真值折叠——``override or 缺省``
     形态会让买断制静默回 5(最高危陷阱锁)。
     """

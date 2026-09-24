@@ -1,11 +1,11 @@
 """货币战争 事件/节点族 kernel 决策:遭遇(decide_encounter)+ 补给(decide_supply)
-+ 巨星/伙伴选项载体 + 银狼策划/命运卜者/专家邀请函判据 + 装备名归一。
++ 巨星/伙伴选项载体 + 银狼策划/命运卜者/专家邀请函判据 + 装备名归一——
+删除面收口后本模块 = 遭遇/补给/planner 等剩余画面决策。
 
 投资两屏选卡评序不在本模块(宪法五:衍生估值/评序归策略层):投资环境轴
-与投资策略轴分别随 2026-09-23 两批迁移迭代接线至策略层
-``strategies/impl/mandate_v1/``(env = invest_env.py,策略 = invest_strategy.py,
-flow 按 kind 分派,判据正本归 strategy-docs 各画面篇);旧 ``decide_event``
-策略轴与 ``PICK_VALUE`` 评估表已随批退役(考古走 git 历史)。
+= ``strategies/impl/mandate_v1/invest_env.py``(判据正本 = strategy-docs
+28 号稿),投资策略轴 = ``strategies/impl/mandate_v1/invest_strategy.py``
+(判据正本 = strategy-docs 29 号稿),flow 按 kind 分派。
 """
 from __future__ import annotations
 

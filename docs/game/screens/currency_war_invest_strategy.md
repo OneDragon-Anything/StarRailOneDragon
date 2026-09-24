@@ -31,7 +31,7 @@ source_image: screens/货币战争-投资策略/default.webp
 
 ## 关键数据(策略相关)
 
-> bot 已接 ``decide_event``(``cw_screen_invest_strategy``):OCR 3 卡名 → 按事件白名单打分 → 点最优卡 + 确认(2026-08-04)。overlay 时 board 不可读 → 空 board stub。
+> bot 已接(``cw_screen_invest_strategy``):OCR 3 卡名 → 策略层策略器打分(`strategies/impl/mandate_v1/invest_strategy.py`,系统侧设计正本 = `docs/develop/sr_od/application/currency_war/strategy-docs/29_invest_strategy_screen.md`)→ 点最优卡 + 确认。overlay 时 board 不可读 → 空 board stub。
 
 - **3 选项(本场实例)**:
   1. **幸运星祝福** — 得【幸运星】;小队 +15% 幸运一击率 + 5% 速度。

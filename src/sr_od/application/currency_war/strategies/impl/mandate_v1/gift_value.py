@@ -16,7 +16,7 @@
   期望;具名发放取最高档的口径差异 = 确定性赠卡承重面,沿旧机器规则①,
   非双重标准);无成员在册 → 0。
 
-复用预留(投资策略屏迁移批 design §2.5):策略屏赠卡**不走**本文件
+复用契约(29 号稿 §2.3):策略屏赠卡**不走**本文件
 具名/随机两现役口径——策略卡具名发放走 kernel ``STRATEGY_GRANTS`` +
 :data:`grant_gift_value` 新口(GiftGrant 直驱,登记表差异在调用方);
 两屏共用面 = 档→分映射(:data:`GIFT_TIER_SCORE`)与 advisor 折减主体。
@@ -30,7 +30,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     GiftGrant,
 )
 
-#: 赠卡档分(28 号稿 §2;【拍】形态,初值经迁移迭代落地裁决窗过目):
+#: 赠卡档分(28 号稿 §2;【拍】形态,初值经用户裁定窗过目):
 #: - core = 50:白得一条 A 线核心 ≈ 半条 A 线方向分量级;
 #: - shared = 20:常用成员;
 #: - transition = 5:打工件;

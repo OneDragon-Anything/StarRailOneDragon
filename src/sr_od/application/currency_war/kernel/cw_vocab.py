@@ -400,20 +400,17 @@ class CwActionCloseShopParam:
 
 @dataclass
 class CwActionPickEventParam:
-    """选事件选项(投资环境/策略/遭遇/补给)。
+    """选事件选项(遭遇/补给等事件面单选;投资两屏 = 屏别独立词表类)。
 
-    refresh(重立判据;旧「阈值建议」判据已退役,
-    现判据 = 零阈值结构存在性,推导与优势论证见
-    math_proofs P81):「建议刷新」布尔 =
-    ``refresh_slots`` 非空。**纯建议**——是否真刷由 handler 决定(逐槽计数
-    现读 >0 才点;刷新失败/次数 0 → 照常选当前最优,失败安全 = 现状行为)。
+    refresh: 「建议刷新」布尔 = ``refresh_slots`` 非空。判据 = 零阈值
+    结构存在性,推导与优势论证见 math_proofs P81。**纯建议**——是否真刷
+    由 handler 决定(逐槽计数现读 >0 才点;刷新失败/次数 0 → 照常选当前
+    最优,失败安全 = 现状行为)。
 
-    终态契约 §2.2 策略词表退役:策略 12 入口产出 = per-screen Pick 子类
-    (选卡)+ 三刷新动作(刷新建议),本类**不再由策略器发射**;kernel
-    生产端 ``decide_event`` 亦已随投资策略屏迁移批退役——本类保留本体
-    (退役申报),现役身份 = 词表 CwAction union 成员 + ``cw_action_report``
-    上报通道函数的参数载体(生产端零;残留面 = 词表 union 成员 + 上报
-    通道 + 注释级提及)。
+    现役身份 = 词表 CwAction union 成员 + ``cw_action_report`` 上报通道
+    函数 ``report_action_pick_event_param`` 的参数载体——策略器发射面 =
+    per-screen Pick 子类(选卡)+ ``CwActionRefreshInvestCardsParam``
+    (刷新建议),不经本类。
     """
     option_idx: int
     # [索引定义] 坐标系: 事件选项列表下标(画面选项序,左→右 0 起;
@@ -425,10 +422,11 @@ class CwActionPickEventParam:
     refresh_slots: tuple[int, ...] = ()
     # [索引定义] 坐标系: 策略屏逐卡刷新槽位下标(同 option_idx 坐标系:画面
     #             选项序左→右 0-2,与 handler 逐卡刷新钮/逐卡计数一一对应)
-    #             取值时机: 生成期快照(kernel 帧级触发判定一次算出)
-    #             写入端: cw_events.decide_event(空元组 = 不建议;
-    #             环境屏恒空 = 执行不启用)。消费端 = CwScreenInvestStrategy
-    #             槽序循环(逐槽计数现读闸 + 已发射槽集防重入)。
+    #             取值时机: 生成期快照(决策期帧级触发判定一次算出)
+    #             写入端: 无现役生产端(投资刷新建议载体 =
+    #             ``CwActionRefreshInvestCardsParam``);字段随本体保留。
+    #             逐卡刷新消费契约参考 = CwScreenInvestStrategy 槽序循环
+    #             (逐槽计数现读闸 + 已发射槽集防重入)。
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 
@@ -923,8 +921,10 @@ class CwActionRefreshSupplyParam:
 
 @dataclass
 class CwActionRefreshInvestCardsParam:
-    """投资逐卡刷新建议(替代 CwActionPickEventParam.refresh_slots):**纯建议**——
+    """投资逐卡刷新建议(投资两屏刷新动作载体;**纯建议**)——
     是否真刷由 handler 决定(逐槽计数现读 >0 才点,失败安全 = 现状)。
+    判据来源:策略屏 = 策略层 invest_strategy 刷新动作集(29 号稿 §4);
+    环境屏 = invest_env 刷新三态(28 号稿 §4,slots = 全帧槽位哨兵)。
 
     [索引定义] slots = 待刷新投资卡槽位序号集,坐标系 = 投资界面卡槽
                 物理排位(0 基);取值时机 = 生成期快照。三闸点击链

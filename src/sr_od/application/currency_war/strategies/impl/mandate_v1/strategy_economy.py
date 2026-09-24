@@ -1,11 +1,11 @@
-"""策略卡经济通道金等价折算(mandate_v1 共用模块;投资策略屏迁移批新增)。
+"""策略卡经济通道金等价折算(mandate_v1 共用模块;投资策略屏现金分承载面)。
 
-设计正本 = changes/2026-09-23-invest-strategy-screen-migration/design.md
-§2.3(下称「本批 design」);复用契约形态与折算约定沿 env 批
+设计正本 = strategy-docs/29_invest_strategy_screen.md §2.1(下称
+「29 号稿」);复用契约形态与折算约定沿 env 批
 env_economy.py——``(值, resolved)`` 返回、fail-closed 门、
 :data:`XP_GOLD_RATE` 语义同源,但**通道公式分立**:
 ``EnvEconomyEffect``(整局规则改写)与本模块消费的 ``EconomyEffect``
-(per-node/一次性流)字段空间不同构,公式不可共享(本批 design §2.1)。
+(per-node/一次性流)字段空间不同构,公式不可共享(29 号稿 §2.1)。
 
 归属(宪法五:框架层只留游戏原始真值,衍生估值归策略层):kernel 侧只留
 游戏原始真值 ``cw_investments.STRATEGY_ECONOMY``(通道结构 = 游戏效果
@@ -25,18 +25,18 @@ kernel ``cw_plane_table.schedule_of`` 位面实际长度,消费符号单一源 =
 statefn/horizon.py import 重定向复用,禁新写第三实现);未揭晓位面沿其
 ``PLANE_FALLBACK_PRIORS=(9,9,9)`` 结构先验回退(端点纪律结构先验,注册
 表明文排除统计估计——非【拟】,不另设「不可得」判定;单一源现役语义
-原样消费)。**口径偏差申报**(本批 design §2.3 原文申报,如实保留):
+原样消费)。**口径偏差申报**(29 号稿 §2.1 原文申报,如实保留):
 ``r_global`` 含当前节点,而「进入新节点给金/XP」类通道语义不含已进入的
 当前节点——原样消费 = per-node 通道系统性 +1 节点偏差(同向偏高,量级
 ≤ 单节点流值);boss 通道同族偏高(当前节点即位面末槽时多计一笔已发放
-boss 金)。取上端 = 现金分计分偏高已知并申报(申报 1「净值得分偏高」),
+boss 金)。取上端 = 现金分计分偏高已知并申报(29 号稿 §2.1 口径申报行),
 非防低估。**禁消费** ``total_remaining_nodes`` 恒按 9/位面计的口径
 (01_math_framework §5 状态函数表 R_全局 行:已登记待修缺陷)。
 
 **待建模通道**(v1 fail-closed = 0,建模落地自动进现金分):见
 :data:`STRATEGY_ECONOMY_PENDING_MODELING` 与字段分类的「待建模」集
 (刷新族/时点大额族/XP 折扣族/轨迹倍率族/合成与购买触发族/血补偿族/
-息 cap 覆写/升级流——分类依据与本批 design §2.3 逐通道对应)。
+息 cap 覆写/升级流——分类依据与29 号稿 §2.1 逐通道对应)。
 
 **不计分通道**(结构登记、永不为分):血本位分区辖(xp_buy_hp_cost/
 hp_gold_swap,invest_strategy 结构分区辖)、难度族(难度→价值需战力
@@ -69,7 +69,7 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import GameState
 
 # ===== 字段分类(45 字段三分;单一源 = 三集合,构建校验兜底)=====
-# 分类判据与本批 design §2.3 逐通道对应:「计分」= v1 落地通道公式可算;
+# 分类判据与29 号稿 §2.1 逐通道对应:「计分」= v1 落地通道公式可算;
 # 「待建模」= 有字段腿但价值模型缺(fail-closed = 0,建模落地自动进);
 # 「不计」= 结构登记永不为分。字段分类校验辖「有字段腿」;卡级登记
 # (PENDING_MODELING)辖「无字段腿 ∪ 字段在册未挂值腿」,两辖域不重叠。
@@ -89,7 +89,7 @@ _CASH_SCORED_FIELDS: frozenset[str] = frozenset({
     'xp_per_node', 'xp_instant',
 })
 
-#: 待建模通道字段(v1 fail-closed = 0;逐字段建模缺口与本批 design §2.3
+#: 待建模通道字段(v1 fail-closed = 0;逐字段建模缺口与29 号稿 §2.1
 #: 通道清单一一对应):
 #: - 息 cap 覆写:interest_cap_override(金轨线依赖);
 #: - 升级流:gold_per_level_up(E[剩余升级次数] = P58 期望等级日程,
@@ -315,7 +315,7 @@ def _validate_field_classification() -> None:
 
 
 def _validate_pending_modeling_registry() -> None:
-    """卡级待建模登记校验(断言集合按本批 design §2.3 定死,防「兜底」
+    """卡级待建模登记校验(断言集合按 29 号稿 §2.1 定死,防「兜底」
     写成恒真断言):
 
     ① 键 = 注册表规范名(孤儿即炸);② 值非空(描述腿清单);
@@ -323,8 +323,8 @@ def _validate_pending_modeling_registry() -> None:
     (现仅孪生素数——全默认卡不入字段分类校验视野,唯卡级登记可辖);
     ④ 按辖域规则派生的登记卡闭集必须在册(直调 5 张:固定理财/固定理财+/
     孪生素数/狸财经狸/超发货币——前两者兼「字段在册未挂值」腿,后三者
-    兼「无字段」腿)。混合卡的腿级明细不可自动验证,靠行为申报 7 清单
-    人工对账兜底(对账记录归迁移迭代 3.1 凭据)。"""
+    兼「无字段」腿)。混合卡的腿级明细不可自动验证,靠行为申报清单
+    (29 号稿 §2.1)人工对账兜底。"""
     for _name in STRATEGY_ECONOMY_PENDING_MODELING:
         if _name not in INVESTMENT_STRATEGIES:
             raise ValueError(f"待建模在册孤儿键(注册表无此卡):{_name!r}")

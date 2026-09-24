@@ -1246,7 +1246,8 @@ def grant_effect_node_refresh_balance(gs: GameState, *,
     Field 化:免费次数升格容器字段,观察锚定/动作扣减/发放登记三写端同格;
     None 基 = 0 起算,开局无免费次数 = 机制真值)。静态活载体 = 双手狸
     (2/节点);条件活载体 = 本金充裕/+(50/10/3)。固定理财位面开始段
-    (PLANE_START)不属本形态,未建模挂账不改本桥。
+    (PLANE_START)不属本形态——该未建模腿的单一登记点 =
+    ``cw_investments.STRATEGY_ECONOMY_PENDING_MODELING``,本桥不另记。
     """
     per_node = 0
     srcs: list[str] = []

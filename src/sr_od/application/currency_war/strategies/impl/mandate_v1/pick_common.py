@@ -1,11 +1,11 @@
-"""pick 族两画面共用判据(mandate_v1 共用模块;投资策略屏迁移批新增)。
+"""pick 族两画面共用判据(mandate_v1 共用模块)。
 
 宪法六「共用判据显式抽离」(strategy-docs/00_framework.md §1 第 6 条):
 投资环境屏(invest_env.py)与投资策略屏(invest_strategy.py)共用的用户
 转向轴常数与自拆台判据在此单一源;画面文件 → 共用模块单向依赖,禁画面
-文件互相 import。设计正本 = 28 号稿 §3(环境屏)与本批 design §2.6-§2.7
-(策略屏);共用语义单一源归宿 = 13 号稿增补共用判据节(迁移迭代 3.3
-落地,本模块是其代码承载面)。
+文件互相 import。设计正本 = 28 号稿 §3(环境屏)与 29 号稿 §2.4/§3
+(策略屏);共用语义文档单一源 = strategy-docs/13_pick_family.md §4
+(共用判据节,本模块是其代码承载面)。
 
 承载面:
 - 转向轴:``STEERING_PRIORITY_BONUS``(user-priority 软偏好 +30,立场

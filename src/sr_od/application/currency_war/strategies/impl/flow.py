@@ -438,12 +438,13 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         ``pick_param_cls`` = 屏别词表类(词表拆类后由各入口显式传入,
         输出 = 该类实例)。
         两轴判据单一源均在策略层(kind 分派;宪法五「衍生估值/评序归
-        策略层」;意向解析留 flow,与 kernel 时代三参同源直通):
+        策略层」;意向解析留 flow,三参同源直通):
         - env → ``invest_env.decide``/``decide_pick``
-          (:meth:`_decide_invest_env_frame`);
+          (:meth:`_decide_invest_env_frame`;判据正本 = strategy-docs
+          28 号稿);
         - strategy → ``invest_strategy.decide``/``decide_pick``
-          (:meth:`_decide_invest_strategy_frame`;2026-09-23 投资策略屏迁移批
-          3.2 原子接线,旧 kernel ``decide_event`` 单口同批退役)。
+          (:meth:`_decide_invest_strategy_frame`;判据正本 =
+          strategy-docs/29_invest_strategy_screen.md)。
         (用户裁定 2026-09-08「投资选卡优先经济、然后是终局阵容,
         不为过渡阵容服务」):两轴对齐源均 = 意向状态 D*① 三参
         (locked_comp/demoted_endgame/evicted 同源 ist)传入策略层;旧
@@ -506,10 +507,10 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
     def _feed_invest_strategy_signals(self, options: list) -> None:
         """所选帧对各线的 affinity → comp 分贡献(策略 2.0 权重;纯遥测,
         决策面零消费——投资源不参与证明自身的反自馈检查现状即合规)。
-        喂入面申报(投资策略屏迁移批 landing 3.2):建议帧跳过喂入——
+        喂入面申报(29 号稿 §4 遥测条款):建议帧跳过喂入——
         常规建议帧被帧级门拦定义型 → affinity 键喂入恒空,跳过即零漂移;
-        E-豁免角例外 = 被禁定义型卡不拦建议帧,该帧旧机会喂入非空
-        affinity,新机跳过 = 纯遥测漂移(决策面零消费、罕见角,如实申报)。
+        E-豁免角例外 = 被禁定义型卡不拦建议帧,该帧会喂入非空
+        affinity,跳过 = 纯遥测漂移(决策面零消费、罕见角,如实申报)。
         best-effort:信号喂入失败不影响决策。"""
         try:
             from sr_od.application.currency_war.kernel.cw_comps import augment_affinity

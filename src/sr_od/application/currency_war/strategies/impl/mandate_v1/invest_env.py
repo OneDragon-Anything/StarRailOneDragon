@@ -31,12 +31,11 @@ argmax 取最高,平分取先。禁选(env_forbid 命中)与自拆台(:func:`_co
 输出契约(28 号稿 §4)::func:`decide` 返回纯值 dataclass
 (:class:`InvestEnvDecision` / :class:`RefreshSuggestion`),不含动作词表
 ——动作包装(CwActionPickInvestEnvParam/CwActionRefreshInvestCardsParam)
-留 flow(flow ``_decide_invest`` kind='env' 分支,2026-09-23 迁移迭代 3.2
-接线,与 kernel env 轴删除面同 commit 原子切换);:func:`decide_pick` =
+留 flow(flow ``_decide_invest`` kind='env' 分支);:func:`decide_pick` =
 同一评分基线的纯选卡口(flow 同帧去重 memo 命中后的落选卡入口;为 sim
-复用预留)。kernel 侧旧 env 评估机器(裸分/送卡档/阵营 floor/经济域带/
-环境帧刷新判据)已随 3.2 删除面退役,本文件是投资环境选卡评序的唯一
-单一源。
+复用预留)。本文件是投资环境选卡评序的单一源(flow 直调;
+kernel 侧 env 评估机器(裸分/送卡档/阵营 floor/经济域带/环境帧刷新判据)
+不复存在,考古走 git 历史)。
 """
 from __future__ import annotations
 
@@ -100,8 +99,7 @@ class RefreshSuggestion:
 
 # ===== 转向轴与自拆台(28 号稿 §3;共用单一源 = pick_common)=====
 
-# 两屏共用判据已显式抽离共用模块(宪法六「共用判据显式抽离」;投资策略
-# 屏迁移批新增 pick_common,本文件原私有副本改薄委托,env 行为零变化):
+# 两屏共用判据已显式抽离共用模块(宪法六「共用判据显式抽离」):
 # 转向轴常数与自拆台阈值/克制判定单一源 = mandate_v1/pick_common.py,
 # 下方名字 = 该模块 re-export(本文件内引用与既有测试/判读面零改名)。
 
@@ -113,8 +111,7 @@ class StanceRow:
     """立场分表行。
 
     score = 立场分(统一标尺上的量,分差有含义——「分值思维」,design
-    §2.2 加法合法前提);reason = 裁定理由(表的裁决记录,落地 3.1
-    裁决窗过目 = 验收凭据)。
+    §2.2 加法合法前提);reason = 裁定理由(表的裁决记录,经用户裁定窗过目)。
     """
     score: float
     reason: str
@@ -144,7 +141,7 @@ STANCE_SCORE: dict[str, StanceRow] = {
     '轮岗': StanceRow(0.0, '待建模在册维持(金等价参数化缺失);建模落地自动进现金分'),
     '人才下沉': StanceRow(0.0, '待建模在册维持(2★ 商店价结构未查证);建模落地自动进现金分'),
     # —— 强度类立场(宪法一确认义务:涉强度效果按硬闸门义务用户过目后
-    # 生效;确认动作 = 落地 3.1 裁决窗对表 1-3 过目)——
+    # 生效;确认动作 = 用户裁定窗对表 1-3 过目)——
     '进化算法': StanceRow(40.0, '每节点叠 4% 强度+2% 减伤,成长型;宪法一禁强度建模,纯立场。量级锚:20 节点累积接近一条 A 线方向分的量级'),
     # —— 数量/结构通道(策略域不折金,立场承载)——
     '联席决策': StanceRow(25.0, '2-6 额外一次投资策略三选一(数量通道,策略域不折金)'),
@@ -262,7 +259,7 @@ def option_total(name: str, gs: GameState,
 #: E[max of 3] > 均值,取均值 = 保守向,不高估重掷收益)。不取「下三分之一
 #: 分位」——立场 0 值条目多,分位阈值会沉到 0 附近令判据失效,均值对 0 值
 #: 堆积稳健。派生用裸 GameState 桩(schema_version=1,node 未写 = 开局帧,
-#: 桩形模式沿 kernel/cw_env_economy 治理校验先例)。
+#: 桩形模式沿同批治理校验先例)。
 def _derive_refresh_threshold() -> float:
     """全注册表无轴总分的均值(构建期一次)。"""
     _gs = GameState(schema_version=1)
@@ -307,9 +304,9 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
 def _pick_decision(scores: list[float], steers: list[float],
                    components: list[tuple[float, float, float, float]],
                    excluded: list[bool]) -> InvestEnvDecision:
-    """评分帧 → 选卡决策(argmax 取最高,平分取先;全排除退化帧沿旧
-    kernel decide_event 全禁帧行为取全体 argmax 最不负分者——28 号稿 §1
-    argmax 语义在该帧的延展,reason 标 all-excluded-fallback 供判读)。"""
+    """评分帧 → 选卡决策(argmax 取最高,平分取先;全排除退化帧对全体
+    候选(含被禁)取 argmax 最不负分者——28 号稿 §3 退化帧形态,reason
+    标 all-excluded-fallback 供判读)。"""
     best_idx = _argmax_first(scores, excluded)
     if best_idx < 0:
         best_idx = _argmax_first(scores, [])
@@ -348,8 +345,8 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
     """投资环境 3 选 1 决策(纯值出口;flow 包装动作词表,28 号稿 §4)。
 
     - options = 屏上候选名列表(容器序);locked_comp/demoted_endgame/
-      evicted 与现役 kernel 调用的三参同源(flow 意向状态直通,design
-      §2.9「意向解析留 flow」);
+      evicted = 意向状态三参同源直通(flow 解析后传入,28 号稿 §2.9
+      「意向解析留 flow」);
     - 禁选(env_forbid 命中,子串匹配与白名单一致)与自拆台(板面
       持续伤害+减益 ≥ 2 时克制 DoT/减益的候选)= 排除出候选;
     - 建议刷 = 排除槽存在 ∨ 帧最好总分 < REFRESH_THRESHOLD,且次数闸

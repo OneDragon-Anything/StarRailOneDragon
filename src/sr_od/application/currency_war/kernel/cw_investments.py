@@ -10,11 +10,11 @@
     [40]① 选择回避 / [40]② 血闸共享判据);
   - ``ENV_CATEGORY``/``ENV_FACTION``(环境 7 类分类 + 阵营绑定,ENV_FACTION_MAP 派生源);
   - ``_MANUAL_EXTRAS``(plaza 不收的补遗条目);
-  - ``PICK_VALUE``(投资策略选卡评估分 335 条;SURVIVAL_PICKS
-    等事件面钩子已退役;原 ``ENV_PICK_VALUE`` 环境条目随 2026-09-23
-    迁移迭代 3.2 删除——环境选卡评序迁策略层,消费核 =
-    ``strategies/impl/mandate_v1/invest_env.py``,正本 =
-    strategy-docs/28_invest_env_screen.md)。
+  - ``STRATEGY_GRANTS``(策略卡具名发放登记,机制事实留 kernel;「档→分」
+    映射 = 策略层 gift_value,消费核 = ``strategies/impl/mandate_v1/
+    invest_strategy.py``,正本 = strategy-docs/29_invest_strategy_screen.md)。
+  两屏选卡评序不在本文件(宪法五:衍生打分归策略层,正本 = strategy-docs
+  28/29 号稿)。
 - **合并层**:base × overlay → 注册表,构建时做孤儿校验(overlay 引用了 base 没有的键 →
   import 即炸,防版本更新后静默失联)。
 
@@ -24,9 +24,9 @@
 **用途**:
 - ``InvestmentEnv``(概念股/邀请/契约/时代/经济/规则/专家):**带 faction 字段** —— 概念股/
   邀请/命运圣杯契约对应哪个阵营是派生 ENV_FACTION_MAP 的单一真相源。
-- ``InvestmentStrategy``(局内 3 选 1):pick_value 评估与用户转向轴(config strategy/env priority/forbid)的规范名来源。
+- ``InvestmentStrategy``(局内 3 选 1):策略层组件分评序(29 号稿)与用户转向轴(config strategy priority/forbid)的规范名来源。
 - 键约定:canon 归一名(半角冒号/逗号、`·`、拉丁数字),与 OCR 精确匹配层一致;
-  OCR 形变(全角标点/剎刹)走 pick_value_of 的 LCS 兜底。
+  OCR 形变(全角标点/剎刹)走 ``resolve_strategy_canonical`` 的 LCS 兜底。
 
 **为什么建模**(用户 2026-08-03):核心实体建正规 model 类 + 注册表(可查询/校验/派生),非散 dict。
 
@@ -171,9 +171,8 @@ def is_blood_economy(eff: EconomyEffect | None) -> bool:
     return eff.xp_buy_hp_cost > 0 or eff.hp_gold_swap
 
 
-# ===== 持续通道引擎判别(投资策略屏迁移批 3.2 自 cw_events 迁入;P81
-# ===== 换基重演必答②终裁 = ②类留驻 kernel,proofs/p81-invest-refresh-
-# ===== dominance.md §7.2)=====
+# ===== 持续通道引擎判别(②类判据留驻 kernel 的划界依据 =
+# proofs/p81-invest-refresh-dominance.md §7.2)=====
 
 # 「引擎 vs 一次性」的界 = 效果原文持续/一次性**结构事实**(宪法五②类:
 # 换一套策略实现,同一张卡的引擎/一次性判定不会不同),零幅度拍值。消费方
@@ -247,7 +246,7 @@ def is_economy_engine(economy: EconomyEffect | None) -> bool:
 
 
 def _validate_engine_channel_closure() -> None:
-    """引擎字段闭集完备校验(迁移批 3.2 伴随义务,P81 §7.2 依据二:
+    """引擎字段闭集完备校验(P81 §7.2 依据二:
     闭集新字段默认不入闭集 = 静默判「一次性」,治理上劣于孤儿校验——
     构建期炸成可见)。三分类 = 引擎单字段/引擎配对/显式排除:
     ① 并集恰覆盖 EconomyEffect 全字段(新字段未分类即炸);
@@ -287,7 +286,7 @@ class EnvEconomyEffect:
     (位面开局分期/条件触发/费率覆写),字段按通道语义设计,全部带缺省值
     (无通道 = 全缺省)。估值单一入口 = 策略层
     ``strategies/impl/mandate_v1/env_economy.env_economy_value``
-    (2026-09-23 迁移迭代 3.2 起估值模块驻策略层;A 类精确 + 估算参数
+    (估值模块驻策略层;A 类精确 + 估算参数
     fail-closed + gold_after_refreshes 拍值注册)。
     **白名单制**:只收 ENV_ECONOMY 显式登记条目,禁从效果原文自动猜装
     (防错装对账 = _validate_env_economy,六条点名)。
@@ -331,7 +330,9 @@ class GiftGrant:
     宪法 00_framework §1.1 禁战力建模,卖价残值对「送的人有没有人用」零判别力)。
     档位机器 = ``cw_comps.gift_hit_tier``;档位是定序实现常数非金流期望
     (定序/基数分账:(expected_gold, resolved) 契约装不下 66/60/54 档
-    语义),**不经经济入口**,消费位 = cw_events env 分支独立 max() 支(3.5 接线)。
+    语义),**不经经济入口**,消费位 = 策略层 gift_value
+    (gift_hit_tier 包装三口 = named_gift_value/random_faction_gift_value/
+    grant_gift_value;28 号稿 §2 与 29 号稿 §2.3)。
     字段语义(值全部 = cw_invest_data 效果原文直读):
     - chars_immediate: 取环境当场发放的具名角色(效果原文「获得【X】」直读)
     - chars_conditional: (角色, 条件描述原文摘要)二元组——注释性字段,不进判据
@@ -634,7 +635,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         notes='条件腿与本金充裕逐字同文(50/10/3);加强值=instant_gold 45'),
     # 加油站:官方「现在及每次进入新节点时获得1次免费刷新,立刻获得8金币」
     # (cw_invest_data.py:112,id 200301)。入册使两腿经现行挂点生效:获得链
-    # 登记腿(kernel/cw_gain_chain.py::gain_invest_strategy,投资两屏迁移批)
+    # 登记腿(kernel/cw_gain_chain.py::gain_invest_strategy)
     # burst 桥发「现在」腿 +1;节点边界桥(per-node 形态)发持续腿。拿卡
     # 当节点不重复发:登记晚于本节点边界推进,advance_node 同节点去重位
     # 关闸。行为核查结论单一源 =
@@ -798,7 +799,7 @@ QUALITY_REWRITE_ENV_NAMES: frozenset[str] = frozenset({
 # 实机缺陷链(run_20260826_004527):OCR 把间隔号 `·`(U+00B7)误读为圆点 `•`(U+2022)——
 # cw_screen_invest_strategy L216 告警 `'全都要•彩'` 注册表 miss → 原始 OCR 名 append 进
 # session.active_strategies → cw_economy 按名聚合经济效果精确查 miss → **策略经济效果被
-# 静默丢弃**(真金影响);cw_events 品质查同样先吃 miss。
+# 静默丢弃**(真金影响)。
 # 先例:cw_chars_data L5「规范名:• 已统一为·」(数据层手改);本函数是查找层归一
 # (注册表数据不动,原采集路径保留原始 OCR 名不改——原始证据不碰;采集行
 # 已随 invest_cards 流写入端退役删除,归一口径照旧辖查表面)。
@@ -823,7 +824,7 @@ def normalize_invest_name(name: str) -> str:
 
     形变族两支:分隔符 bullet 族 → U+00B7;全角冒号 `：` → 半角 `:`。
     所有按名查找注册表的入口(get_strategy/get_env/economy_effect_of/
-    pick_value_of/is_known_env/env_faction)在查找前先归一入参——消费点统一受益,
+    is_known_env/env_faction/resolve_strategy_canonical)在查找前先归一入参——消费点统一受益,
     不逐 call site 改;写入端(采集/telemetry/session 存量名)保持原样。
     """
     if _INVEST_COLON_VARIANT in name:
@@ -969,10 +970,13 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
     return eff
 
 
-# ===== curated overlay:策略语义绑定(逐卡按效果含义手建模;↺ 文本扫描派生)=====
+# ===== curated overlay:策略语义绑定(逐卡按效果含义手建模)=====
 # 判据:**效果引用 comp 专属机制/召唤物/星徽/赠 key 角色 → 绑定;泛用数值(全队强度/给金/装备)→ 不绑**。
-# 文本扫描的两类噪声就此清除:战术义眼(泛用回能,误绑"能量")/生命之花祝福(泛用治疗强度,误绑"治疗")。
-# 消费:decide_event comp 匹配分 + cw_comps.held_strategy_fit(持卡影响 pivot)。
+# 为何逐卡手建模而非文本扫描:扫描有两类噪声——泛用效果顺带提及阵营误绑
+# (战术义眼"恢复能量"≠能量队卡)/生命之花祝福(泛用治疗强度,误绑"治疗"),
+# 且不可审不可纠;语义表可 dump 可逐条纠。
+# 消费:策略层方向分触线集(strategies/impl/mandate_v1/invest_strategy)
+# + cw_comps.held_strategy_fit(持卡影响 pivot)。
 # 维护:版本更新重跑 gen_plaza_invest.py → diff 报告对「效果变」条目提示 → 回本表重审对应键。
 _STRATEGY_BINDINGS_EXPLICIT: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     # —— 星徽单件(金):阵营星徽 + 阵营 key 角色 ——
@@ -1084,18 +1088,19 @@ if _BINDINGS_ORPHANS:
 
 def strategy_bindings(strategy: InvestmentStrategy) -> tuple[frozenset[str], frozenset[str]]:
     """策略的(阵营绑定, 角色绑定)—— 查 STRATEGY_BINDINGS 语义表(逐卡手建模;
-    ↺ 的文本扫描派生已撤 —— 扫描有两类噪声:泛用效果顺带提及阵营误绑
+    文本扫描派生不采用——扫描有两类噪声:泛用效果顺带提及阵营误绑
     (战术义眼"恢复能量"≠能量队卡)/不可审不可纠;语义表可 dump 可逐条纠)。
 
-    用于 decide_event 的 comp 匹配分 + cw_comps.held_strategy_fit(持卡影响 pivot)。
-    未建模卡 → 空绑定(匹配分 0,回落评估分/品质先验;新 API 卡待 diff 提示后建模)。
+    用于策略层方向分触线集(strategies/impl/mandate_v1/invest_strategy)
+    + cw_comps.held_strategy_fit(持卡影响 pivot)。
+    未建模卡 → 空绑定(方向分 0;新 API 卡待 diff 提示后建模)。
     """
     return STRATEGY_BINDINGS.get(strategy.name, (frozenset(), frozenset()))
 
 
 def get_strategy(name: str) -> InvestmentStrategy | None:
-    """按规范名取 InvestmentStrategy;无则 None(注册表已全量 335,miss = OCR 形变,走 pick_value_of 的 LCS;
-    入参先经 normalize_invest_name 归一分隔符形变,如 `全都要•彩`→`全都要·彩`,run_20260826_004527)。"""
+    """按规范名取 InvestmentStrategy;无则 None(注册表已全量 335,miss = OCR 形变,消费侧走 resolve_strategy_canonical 的 LCS 兜底;
+    入参先经 normalize_invest_name 归一分隔符形变,如 `全都要•彩`→`全都要·彩`)。"""
     return INVESTMENT_STRATEGIES.get(normalize_invest_name(name))
 
 
@@ -1122,11 +1127,11 @@ def blood_xp_mode(session) -> tuple[str, int] | None:
 def resolve_strategy_canonical(name: str) -> str | None:
     """候选名 → 投资策略注册表规范名(归一 + LCS 兜底)。
 
-    解析逻辑与 pick_value_of 原 LCS 路径逐字同源(阈值 0.6 + |Δlen|≤3,
-    评审建议6:防未来新增短名/长名与现有卡高 LCS 借分;env 名的跨表污染
-    由 cw_events 守卫另行拦截,此处只管策略表内部)。消费面:pick_value_of
-    (评估分)与 decide_event 候选级血本位分类(评估表未命中的形变名也要
-    能分类,[40]① 排除支辖域)。
+    LCS 兜底 = 阈值 0.6 + |Δlen|≤3(防未来新增短名/长名与现有卡高 LCS
+    借分);env 名的跨表污染由调用侧 get_env 防御拦截(消费位 = 策略层
+    invest_strategy env 名防御,此处只管策略表内部)。
+    消费面:策略层组件查表与候选级血本位分类(形变名经此解析后入评分;
+    刷新分类只认精确命中,LCS 结果不入分类——fail-closed)。
     """
     name = normalize_invest_name(name)
     if name in INVESTMENT_STRATEGIES:
@@ -1215,7 +1220,8 @@ _validate_env_economy()
 # 送卡型环境(契约 ×7 + 特邀专家 ×4)与道具型环境(火药味)的具名发放登记,白名单制
 # (表外环境一律无条目,禁从效果原文自动猜装,ENV_ECONOMY 同款纪律)。档位机器 =
 # cw_comps.gift_hit_tier(消费契约见其 docstring);档位是定序实现常数非金流期望
-# (定序/基数分账),不经经济入口,消费位 = cw_events env 分支独立 max() 支(3.5 接线)。
+# (定序/基数分账),不经经济入口,消费位 = 策略层 gift_value
+# (gift_hit_tier 包装;28 号稿 §2 与 29 号稿 §2.3)。
 # 逐条语义盘点与分档落点表 = details/env-value-models.md §2.1.1/§2.1.2;锁 = 测试仓
 # test_cw_env_gift.py(G1 分档表/G2 失格门构造/G8 互斥断言半边)。
 ENV_GIFTS: dict[str, GiftGrant] = {
@@ -1273,9 +1279,10 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     '火药味': GiftGrant(items_immediate=('简易武装箱', '简易武装箱')),
 }
 
-# (GIFT_FLOOR_CORE/SHARED/ADVISOR_CORE 已删除,2026-09-23 迁移迭代 3.2:
-# 送卡档的「档→分」映射与 advisor 折减迁策略层 gift_value(design §2.6 表 2),
-# floor 定序常数随消费核 decide_event env 分支一并退役。)
+# (送卡「档→分」映射与 advisor 折减 = 策略层 gift_value
+# (GIFT_TIER_SCORE/ADVISOR_DISCOUNT,消费位 = invest_env/invest_strategy),
+# 本文件不留分值常数——宪法五,衍生打分归策略层;floor 定序形态随
+# 消费核退役,考古走 git 历史。)
 
 
 def _validate_env_gifts() -> None:
@@ -1311,17 +1318,17 @@ def _validate_env_gifts() -> None:
 _validate_env_gifts()
 
 
-# ===== 策略卡具名发放登记表(投资策略屏迁移批新增;白名单制)=====
+# ===== 策略卡具名发放登记表(白名单制)=====
 # 底册 = 双母体对账(83 条):①STRATEGY_BINDINGS 角色绑定条目 ∩ 「获得…直读」
 # 形态机械预筛(68 条白得 + 11 条顾问);②全表效果文本反扫(「获得…roster 名」)
 # 补网 4 条(龙虎兄弟狸/佩佩驾到/艾丝妲的猛犬!/招财狗——无角色绑定的直读
 # 发放,佩佩 ∈ CHARACTER_ROSTER)。发放角色归属 = 效果原文机制事实,宪法五
 # 第②类判据留 kernel(与 ENV_GIFTS 留 kernel 同判据);「档→分」映射与
 # advisor 折减 = 策略层 gift_value.grant_gift_value(消费位 =
-# strategies/impl/mandate_v1/invest_strategy.py)。逐卡对账记录(即时/条件
-# 分档与效果原文时点短语引文、排除清单记因)= 迁移迭代 3.1 验收凭据,
-# changes/2026-09-23-invest-strategy-screen-migration/strategy-grants-
-# reconciliation.md。键 = 注册表规范名(canon),与 INVESTMENT_STRATEGIES 同键空间。
+# strategies/impl/mandate_v1/invest_strategy.py)。逐条登记判据(「获得…
+# 角色名」直读才入册、顾问型 advisor=True、即时/条件分档 = 效果原文时点
+# 语义;roster-外目标与空名发放自动排除)= 29 号稿 §2.3;键 = 注册表规范
+# 名(canon),与 INVESTMENT_STRATEGIES 同键空间。
 STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # —— 顾问型 11 条(advisor=True,付费期权沿 ×0.5 折减)——
     # 效果原文 = 「获得专家顾问【X】,并使其在本局游戏中加入商店」,与
@@ -1528,15 +1535,14 @@ _validate_strategy_grants()
 # 事实登记。表外环境一律无条目,禁从效果原文自动猜装(ENV_ECONOMY/ENV_GIFTS
 # 同款纪律)。两型两层拆分(详设 §2.2.2):层 E(基数,改写后取卡金流期望抬升
 # ΔV)经 env_economy_value 单一入口分派(策略层 env_economy._pool_rewrite_
-# value,2026-09-23 迁移迭代 3.2 起驻策略层),
+# value 驻策略层),
 # 当前态恒 fail-closed——受限通道 μ_E 不随品质单调(银 3.31 > 金 2.42 实测),
 # 直接入现金分会产出「白银时代>黄金时代」噪声序;层 E 转正准入门(全通道重算
 # + 序一致性检验,详设 §2.2.2)经数据批判定未过,维持 fail-closed(判定依据
 # = invest-env 迭代 layer-e-promotion-batch 详设,git 历史可溯);层 Q
 # (定序残域,池内挑卡
-# 与功能价值)= 零现金分维持(原 ENV_PICK_VALUE 已随 3.2 删除面退役,
-# 现金通道 fail-closed 即无值;知识评估
-# 已对两半作过知识性净评),两层从不相加——
+# 与功能价值)= 零现金分维持(现金通道 fail-closed 即无值;
+# 知识评估已对两半作过知识性净评),两层从不相加——
 # 「层 E 有值时以现金分参与、无值时零兜底」,取两层各自标尺下结果的较优
 # 呈现(标尺语义正本 = strategy-docs/28_invest_env_screen.md;层 E 语义
 # = 策略层 env_economy._pool_rewrite_value docstring)。

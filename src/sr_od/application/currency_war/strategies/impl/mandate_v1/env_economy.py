@@ -243,10 +243,10 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     §2.2.5):name ∈ ENV_POOL_REWRITE → :func:`_pool_rewrite_value`(层 E
     ΔV 公式,读 STRAT_POOL_ECON_MEANS/OFFER_QUALITY_DIST,任一缺参
     fail-closed,v1 恒然——受限通道 μ_E 非单调,层 E 转正须过准入门后落参);
-    其余 name → 下方 A/B/拍值/C 通道公式。单一入口契约不变(28 号稿 §5
-    复用预留订正:策略卡现金分**不走**本函数——策略屏现金流卡走策略层
+    其余 name → 下方 A/B/拍值/C 通道公式。单一入口契约不变(策略卡现金分
+    **不走**本函数——策略屏现金流卡走策略层
     ``strategy_economy.strategy_economy_value`` 新入口,通道公式分立,
-    契约形态与折算约定复用;投资策略屏迁移批 design §2.1);
+    契约形态与折算约定复用;28 号稿 §5 与 29 号稿 §2.1);
     ENV_ECONOMY 与 ENV_POOL_REWRITE 构建期互斥(一个 name 至多落一个估值
     结构,cw_investments._validate_env_pool_rewrite 收全)。
 

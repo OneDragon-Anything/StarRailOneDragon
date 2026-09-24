@@ -17,8 +17,8 @@ round_fail 显式失败交外循环重派,fallback 盲发路径废除——裁�
 增补 2 即时上报契约)。
 
 逐卡刷新 = 终结动作(用户裁定 2026-09-14,照投资环境屏同款形态):
-``decide_event`` 帧级触发(零阈值结构判据,推导见
-math_proofs P81)→ 返回 ``refresh_slots`` 非空 ∧ 逐槽余量闸(obs 携带
+策略层刷新判据(``invest_strategy.decide`` 帧级门 + 槽级动作集,推导见
+math_proofs P81)→ 返回刷新建议非空 ∧ 逐槽余量闸(obs 携带
 + 容器 ``strategy_refresh_left`` 双闸,剩余 ≤0 = 尽)→ 文本锚定点刷新
 圆钮一次 → 固定等待(机械时序,非判效)→ 本访问即终结交回(外循环重进
 = 入口重建,新事实的观察与决策归重进的下一访问)。投资策略屏刷新是
@@ -31,8 +31,9 @@ math_proofs P81)→ 返回 ``refresh_slots`` 非空 ∧ 逐槽余量闸(obs 携�
 (active_strategies)经动作落地链写(动作 op 立即自上报 → gain_invest_
 strategy 整链:无效载荷拒绝/持卡面按名字去重/效果账本登记腿/on_strategy_
 gained 效果分派,正本 = game_state/gain-chain.md),画面 op 零选择写点。
-本屏 sim 腿 = 不适用(sim 端口适配器未建),等价判据主承重 = 实机在册
-行为锁。
+本屏 sim 腿 = 可见(sim 后端呈现本屏,读屏点经 ``sim_or_live_observation``
+改道生成器产物),判据/策略层改动属 sim 可 A/B 面(A/B 批跑通道现缺,
+候补挂账),行为承重 = 实机在册行为锁。
 """
 import time
 from typing import ClassVar

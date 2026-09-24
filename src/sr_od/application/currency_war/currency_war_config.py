@@ -32,7 +32,8 @@ DEFAULT_CHARACTER_PRIORITY: list[str] = [
 # 非阵营级。
 
 # 注:「净化身心克 DoT/减益」类游戏客观数据不进配置(配置=用户偏好单一职责)——
-# 单一源在 cw_comps.MECHANIC_COUNTERS(经 AFFIX_MECHANIC_MAP 归一),cw_events decide_event 消费。
+# 单一源在 cw_comps.MECHANIC_COUNTERS(经 AFFIX_MECHANIC_MAP 归一),消费 = 策略层
+# pick_common.counters_dot(两屏选卡自拆台排除)。
 # 保血阈值/难度阶梯单一源 = 代码常量 kernel/cw_economy.py 的
 # HP_SAFE_THRESHOLD / DIFFICULTY_HP_TABLE。配置面单一源:
 # docs/develop/sr_od/application/currency_war/config.md。
@@ -53,14 +54,14 @@ class CurrencyWarConfig(YamlConfig):
         self.character_priority: list[str] = self.get('character_priority', DEFAULT_CHARACTER_PRIORITY)
         # 用户转向轴(config.md §3,用户 2026-08-17 确认全四类实体×三档):forbid 硬过滤 +
         # build_around 必含(cw_comps._passes_steering 读)+ priority 软加分(_priority_boost /
-        # decide_event)。默认空 = 纯自适应。GUI setting card 待加(当前 yml 可改)。
+        # 两屏选卡策略器)。默认空 = 纯自适应。GUI setting card 待加(当前 yml 可改)。
         self.character_forbid: list[str] = self.get('character_forbid', [])
         self.character_build_around: list[str] = self.get('character_build_around', [])
         self.faction_forbid: list[str] = self.get('faction_forbid', [])
         # faction_build_around:必含阵营(成就局需要特定阵容,如 8减益 → ['减益'];
         # 多个 = 全部必含,all() 语义 —— 与角色轴 any() 不同:多羁绊成就要求同时在场)。
         self.faction_build_around: list[str] = self.get('faction_build_around', [])
-        # 投资策略/环境轴(decide_event 消费:priority 加分/forbid 重罚;env 命中走 env 注册表归一)。
+        # 投资策略/环境轴(两屏选卡策略器消费:strategy_priority 软加分/strategy_forbid 集合排除)。
         self.strategy_priority: list[str] = self.get('strategy_priority', [])
         self.strategy_forbid: list[str] = self.get('strategy_forbid', [])
         self.env_priority: list[str] = self.get('env_priority', [])

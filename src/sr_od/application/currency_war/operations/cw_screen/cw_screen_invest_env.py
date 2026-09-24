@@ -67,7 +67,7 @@ from sr_od.context.sr_context import SrContext
 
 class CwScreenInvestEnv(CwOperation):
     """投资环境 3 选 1:零参决策(候选自容器槽,策略器 ``decide_invest_env``;
-    判据 kernel ``decide_event``)→ 刷新终结臂 ∨ 选卡确认链派发。"""
+    判据 = 策略层 ``invest_env``(28 号稿))→ 刷新终结臂 ∨ 选卡确认链派发。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资环境'   # screen_info 画面(currency_war_invest_env.yml)
     # 卡选中点击 Y:screen_info「区域-卡牌描述行」center.y;常量=screen_info 缺失兜底。

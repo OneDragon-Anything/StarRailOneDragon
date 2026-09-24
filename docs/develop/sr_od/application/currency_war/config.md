@@ -46,9 +46,11 @@
   `faction_build_around` 用 **all() 语义**(多个必含 = 全部在场,多羁绊成就要求),与角色轴 any() 刻意不同。
 - **必含轴保留**:成就局常需「一定用某阵容」,「优先」表达不了「一定」。
 - 消费端落点:comp 侧 `_passes_steering` 硬过滤 + `_priority_boost` 软加分
-  (select_comp);选卡侧 `decide_event` 打分环加 priority `STEERING_PRIORITY_BONUS` /
-  forbid `STEERING_FORBID_PENALTY`(常量在 cw_events;策略走策略轴、
-  env 注册表命中走环境轴;子串匹配 OCR 容错;全被禁 → 分数落刷新阈值下自然建议刷新兜底)。
+  (select_comp);选卡侧 = 两屏策略层策略器(投资策略 = `invest_strategy`,
+  正本 29 号稿;投资环境 = `invest_env`,正本 28 号稿)消费 priority
+  `STEERING_PRIORITY_BONUS`(常量在 mandate_v1/pick_common,两屏共用)/
+  forbid = 排除出候选(不走分值;子串匹配 OCR 容错;全被禁帧 = 全体候选
+  退化 argmax 最不负分,策略屏另有血本位三态兜底)。
 - 预设(§3.2)打包这些轴,不自建平行评分。
 
 ### 3.2 预设(画像 2 的一键入口,后续做)

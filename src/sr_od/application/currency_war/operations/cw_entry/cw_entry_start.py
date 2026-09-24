@@ -422,9 +422,9 @@ class CwEntryStart(CwOperation):
         # 1b) 「继续进度」(恢复保存局弹窗,暂无 screen_info)→ ocr;4 字独有,LCS 风险低
         if self.round_by_ocr_and_click(screen, '继续进度', success_wait=2).is_success:
             return self.round_wait(wait=1)
-        # 2) 投资环境 3 选 1 → CwScreenInvestEnv(OCR 3 卡名 + decide_event 白名单打分 + 点最优卡底
-        #    + 确认)。统一开局与主循环的投资环境处理(原 hardcoded
-        #    盲点中卡 + 无策略,已下沉到 handler)。handler 内有 round_by_ocr('投资环境') 入口日志。
+        # 2) 投资环境 3 选 1 → CwScreenInvestEnv(OCR 3 卡名 + 策略层投资环境策略器打分 + 点最优卡底
+        #    + 确认)。统一开局与主循环的投资环境处理(处理逻辑在 handler)。
+        #    handler 内有 round_by_ocr('投资环境') 入口日志。
         if self.round_by_find_area(screen, '货币战争-投资环境', '标识-投资环境').is_success:
             # :「选卡前铸造」硬保证——即使简报屏因转场被跳过,env 行
             # 落盘前必有归属本局的 open run(幂等,重复调用零成本)。

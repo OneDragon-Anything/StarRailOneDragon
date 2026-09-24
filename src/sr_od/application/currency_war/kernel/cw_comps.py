@@ -245,7 +245,7 @@ MECHANIC_COUNTERS: dict[str, list[str]] = {
     # 机制 tag → 它克制的 comp 机械属性
     "反伤": ["高频低单次"],        # 正当防卫:克高频低单次(反甲白厄式)
     "冻结": ["慢速", "战技点依赖"],  # 极速制冷/坠入陷阱/冷冻冬眠:克慢速 + 战技点消耗队
-    "净化": ["DoT", "减益"],       # 净化身心:克 DoT/减益主派(cw_events decide_event 消费,机制注册表单一源)
+    "净化": ["DoT", "减益"],       # 净化身心:克 DoT/减益主派(消费 = 策略层 pick_common.counters_dot 自拆台排除,机制注册表单一源)
     "掉血削上限": ["燃血"],        # 永久创伤:克燃血(掉血→减上限双损)⚠️ 燃血的反例 counter
     "治疗削弱": ["治疗护盾"],      # 重症难题:克治疗/护盾主坦队
     "幸运削弱": ["幸运一击"],      # 丢失幸运:克幸运一击/群攻(知更鸟)
@@ -1199,9 +1199,8 @@ def hp_charge_stack_chars() -> frozenset[str]:
     )
 
 
-# (candidate_faction_universe/candidate_char_universe 已删除,2026-09-23
-# 迁移迭代 3.2:前者唯一消费方 = decide_event env 全集门(该轴已迁策略层
-# invest_env 方向分候选线集),后者定义即零消费孤儿;「送卡所赠角色是否被
+# (本文件不含 candidate_faction_universe/candidate_char_universe:
+# 环境屏候选线集 = 策略层 invest_env 方向分构造侧求值;「送卡所赠角色是否被
 # 候选套使用」的成员判定单一源 = ``gift_hit_tier`` 档位机器,消费位 =
 # 策略层 strategies/impl/mandate_v1/gift_value.py。)
 
@@ -1414,9 +1413,9 @@ def mechanics_fit(comp: Comp, mechanics: set[str],
     """机制契合(comp 相关,双向 0..1):命中 counter(克这 comp)→ 降;命中 synergy(利这 comp)→ 升。
 
     ⚠️ comp 驱动(用户 debuff=buff):同一词缀对不同 comp 方向相反。经 comp.mechanic_attributes
-    查全局 MECHANIC_COUNTERS/SYNERGIES 判(数据驱动,comp 不必逐词缀列举;W875 补全包
-    子集经 merged_mechanic_tables 按开关并表,全关=基表零漂移;W878 复活包 tag 载体经
-    effective_mechanic_attributes 按开关滤除,全关=原属性集零漂移)。
+    查全局 MECHANIC_COUNTERS/SYNERGIES 判(数据驱动,comp 不必逐词缀列举;表源 =
+    merged_mechanic_tables 基表直通;生效属性 = effective_mechanic_attributes——
+    退役 tag 经 ``_W878_RETIRED_TAGS`` 单一滤除口无条件滤除)。
     无机制信息(无敌人词缀 / comp 无生效机械属性)→ **None**(动态权重剔除,治死重)。
     典型:万敌[燃血] + 反伤 → synergy 升(debuff=buff);阿雅[速度依赖] + 禁速 → counter 降。
     """
@@ -1540,7 +1539,7 @@ def strength_base(comp: Comp) -> float:
 def current_enemy_mechanics(gs: GameState,
                             registry: DecisionV2Registry | None = None) -> set[str]:
     """当前敌人机制 tag 集合(从容器 enemy_affixes 域经 AFFIX_MECHANIC_MAP 映射;未知词缀原样透传;
-    W875 补全包词缀经 merged_mechanic_tables 按开关并表,全关=基表零漂移)。"""
+    表源 = merged_mechanic_tables 基表直通)。"""
     affix_map, _, _ = merged_mechanic_tables(registry)
     return {affix_map.get(a, a) for a in (gs.enemy_affixes.value or [])}
 

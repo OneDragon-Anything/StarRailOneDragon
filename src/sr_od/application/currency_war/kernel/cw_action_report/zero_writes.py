@@ -67,7 +67,7 @@ def report_action_open_shop_param(gs: GameState, param: Any, sig: ChannelSig) ->
 
 
 def report_action_pick_event_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """选事件选项上报(kernel decide_event 返回载体 + sim 脚本动作;
+    """选事件选项上报(CwActionPickEventParam 参数载体 + sim 脚本动作;
     策略器不发射),容器零写。"""
     return _report_zero_write(gs, param, sig, 'zero_write(pick_event)')
 
