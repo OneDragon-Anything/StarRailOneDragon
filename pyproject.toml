@@ -38,6 +38,8 @@ dev = [
     # record_screen(dev-only MCP 录屏 tool)依赖;后端经 `--group dev` 启动时可用。
     "imageio-ffmpeg>=0.6.0",
     "pytest-xdist>=3.8.0",
+    # 单条测试最大耗时看门狗，防死循环拖死全量（阈值见 [tool.pytest.ini_options] timeout 注释）
+    "pytest-timeout>=2.3.1",
 ]
 
 [tool.uv]
@@ -130,3 +132,9 @@ reportMissingModuleSource = "none"
 # (取代 CI 的 PYTHONPATH=src env 和测试文件里手动的 sys.path.insert)
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+# 单条用例最大耗时（秒）：超时视为死循环。thread 方法 = dump 全线程栈后杀整个测试进程
+# （Windows 无 SIGALRM，只能 thread；xdist 下同样只支持 thread）。
+# 阈值依据 sr-od-test/README.md 单条成本：目标 <0.5s、慢桶 ≥2s，60s 只兜死循环不误伤正常用例。
+# 个别确需长跑的用例用 @pytest.mark.timeout(N) 单独放宽；临时调整用命令行 --timeout。
+timeout = 60
+timeout_method = "thread"
