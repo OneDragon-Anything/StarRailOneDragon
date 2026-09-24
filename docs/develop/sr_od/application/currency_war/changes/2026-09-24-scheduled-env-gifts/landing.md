@@ -13,13 +13,16 @@
 ['match_facts']` 5→6 带注记,`seed_opening_state` 同步);`on_env_gained`
 scheduled 入队支 + 效果串 `item_scheduled:<名>@<节点键>`;新原语
 `discharge_due_item_grants`(design.md §2.3 契约逐条);cw_projection_audit
-`pending_item_grants` 行。**不含**:sim 挂点(3.2)、画面/overlay(3.3)、
-正本文档(末阶段)。
+`pending_item_grants` 行(PROJECTION_AUDIT 登记,design.md §2.2 对账申报)+
+人读镜像同步
+`.debug/progress/2026-09-16-strategy-terminal-contract/projection-audit.md`。
+**不含**:sim 挂点(3.2)、画面/overlay(3.3)、正本文档(末阶段)。
 **设计依据**:design.md §2.1/§2.2/§2.3
 **文件面**:src/sr_od/application/currency_war/kernel/cw_investments.py、
 kernel/cw_gain_chain.py、kernel/cw_game_state.py、kernel/cw_projection_audit.py;
 sr-od-test/test/sr_od/application/currency_war/test_cw_gain_chain.py、
-test_cw_game_state_opening_seed.py
+test_cw_game_state_opening_seed.py;
+.debug/progress/2026-09-16-strategy-terminal-contract/projection-audit.md
 **依赖**:无
 **优先级建议**:5
 **完成判据**:
@@ -35,6 +38,8 @@ test_cw_game_state_opening_seed.py
 - 校验:坏节点键 / 道具名 ∈ CHARACTER_ROSTER / 四通道全空 → ValueError
   (注入 + 直调 _validate_env_gifts,沿孤儿键测试惯用法)
 - 种子:opening-seed 测试 _A_SEEDED 含 pending_item_grants 且冷建值 []
+- 对账:PROJECTION_AUDIT 含 pending_item_grants 行(process_only)且人读镜像
+  同步(行集与代码表一致)
 - §12 通用工程门
 **验收凭据形式**:test_cw_gain_chain.py 新用例组 + test_cw_game_state_opening_seed.py
 全绿;ruff 干净
@@ -59,34 +64,42 @@ sr-od-test/test/sr_od/application/currency_war/test_cw_sim_backend.py
 - §12 通用工程门
 **验收凭据形式**:新 sim 用例 + 既有 sim 用例全绿
 
-## 3.3 武装箱弹窗识别锚泛化(品名 → 族名)
+## 3.3 武装箱开箱链路泛化(弹窗锚泛化 + 选卡读数闸放宽)
 
-**范围**:design.md §2.6 四处同锚改动:①画面档 area 改名/改 text(经 MCP
+**范围**:①design.md §2.6 四处同锚改动:画面档 area 改名/改 text(经 MCP
 `upsert_screen_area` 新建 `标识-武装箱`(rect [830,150,1000,200],text 武装箱,
-id_mark)+ `delete_screen_area` 删旧,**禁手编 yml**);②overlay 注册表
-anchor_area;③CwScreenArmoryBox 两处锚引用与 docstring;④
-_IN_MATCH_KEYWORDS 关键词。**不含**:特权/进阶箱备战槽模板(T-421 待实机)、
-选卡 op 改动(零改动认定,design.md §2.7)。
-**设计依据**:design.md §2.6
+id_mark)+ `delete_screen_area` 删旧,**禁手编 yml**);overlay 注册表
+anchor_area;CwScreenArmoryBox 两处锚引用与 docstring;
+_IN_MATCH_KEYWORDS 关键词。②design.md §2.7 读数闸放宽:
+cw_screen_box_pick.py `_read_card_names` 上限改注册表最长名长度派生
+(`_CARD_NAME_LEN_MAX`),9 字特权名经闸存活;归一化两段与决策面不动。
+**不含**:特权/进阶箱备战槽模板(T-421 待实机)。
+**设计依据**:design.md §2.6/§2.7
 **文件面**:assets/game_data/screen_info/currency_war_armory_box_dialog.yml
 (MCP 写);src/sr_od/application/currency_war/kernel/cw_overlay_registry.py、
-operations/cw_screen/cw_screen_armory_box.py、currency_war_app.py;
-sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py
+operations/cw_screen/cw_screen_armory_box.py、
+operations/cw_screen/cw_screen_box_pick.py、currency_war_app.py;
+sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py、
+test_cw_screen_progression_inline.py
 **依赖**:无(与 3.1/3.2 并行可)
 **优先级建议**:5
 **完成判据**:
 - 既有弹窗 op 用例全绿(锚名同步后的用例面)
+- 新用例:9 字名(如「战场进化手册·特权」)经读数闸存活且归一精确命中;
+  `_CARD_NAME_LEN_MAX` 与注册表最长名一致(防手抄常数)
 - 全仓 grep `标识-简易武装箱` 零残留(src + assets);
   `_IN_MATCH_KEYWORDS` 无 `简易武装箱`
 - 合并缓存生效:upsert/delete 后 analyze_screen 或加载路径无旧 area 引用报错
 - §12 通用工程门
-**验收凭据形式**:test_cw_obs_arch_closing_screens.py 全绿 + grep 清零凭据;
-特权标题实机对照 = 首遇项,不入判据
+**验收凭据形式**:test_cw_obs_arch_closing_screens.py +
+test_cw_screen_progression_inline.py 全绿 + grep 清零凭据;
+特权标题/9 字名实机对照 = 首遇项,不入判据
 
 ## 末阶段:正本更新
 
 **范围**:按「正本更新清单」逐条更新正本 + invest-effects-calc 进度树收口
-(T-3 行终态凭据、T-421 范围注记、迭代 README 进度)。
+(checklist T-3 行终态凭据;T-421 为 dag 账本任务(wait,非 checklist 行),
+其范围收窄经该任务后续流转 why 携带,账本不新增行;迭代 README 进度)。
 **设计依据**:本文件「正本更新清单」节
 **文件面**:清单所列正本文档;.debug/progress/2026-09-23-invest-effects-calc/
 **依赖**:3.1、3.2、3.3
@@ -100,7 +113,8 @@ sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.
   §3.2 新增 pending_item_grants 节(语义/写端声明/entry 形;取舍 1 进动机段)
   ← 阶段 3.1
 - docs/develop/sr_od/application/currency_war/game_state/gain-chain.md:
-  §3 道具通道补 scheduled 支与效果串;新增 discharge 原语小节(挂点/幂等边界)
+  §3 道具通道补 scheduled 支与效果串;新增 discharge 原语小节(挂点/幂等边界);
+  §4 身份两分 bullet 的词表来源句改「items_immediate ∪ items_scheduled」
   ← 阶段 3.1/3.2
 - src/sr_od/application/currency_war/kernel/cw_investments.py:
   ENV_GIFTS scheduled 首条注释与 BENCH_ITEM_NAMES 词表注释核对
@@ -108,7 +122,8 @@ sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.
 - docs/game/currency_war/research/invest_effects.md:通道计数/形态描述受影响处
   ← 阶段 3.1
 - .debug/progress/2026-09-23-invest-effects-calc/checklist.md:
-  T-3 行收口(终态凭据 + commit 指针)、T-421 行注记(特权弹窗部分由本迭代
-  消化,余备战槽模板待实机)← 末阶段
+  T-3 行收口(终态凭据 + commit 指针)← 末阶段
+  (T-421 = dag.jsonl 账本任务,checklist 无该行;其范围收窄——特权弹窗部分
+  由本迭代消化、余备战槽模板待实机——经该任务后续流转 why 携带)
 - .debug/progress/2026-09-23-invest-effects-calc/README.md:依赖/关联迭代注记
   ← 末阶段
