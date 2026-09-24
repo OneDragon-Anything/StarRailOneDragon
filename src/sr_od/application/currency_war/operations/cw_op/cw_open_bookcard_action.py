@@ -94,10 +94,16 @@ class CwActionOpenBookcardOp(CwOperation):
         log.info(f'[cw][bookcard] 开书册卡槽{slot} → 点开启已发'
                  '(交回外循环,专家邀请函分发选卡)')
         # —— 自上报(机械发出后;op-layer.md §1.2 动作 op 契约):开卡腾席 ——
+        # 上报后一行声明喂入(动作后果声明化喂入契约 = design.md §2.2
+        # 契约 3;实机端口未装 = no-op,sim 装配后驱动后端纯转移分支呈现
+        # 专家邀请函);round data 携带声明(journal 记账面)。
+        world_decl = None
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
-            report_action_open_bookcard_param(
+            outcome = report_action_open_bookcard_param(
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
-        return self.round_success(f'开书册卡槽{slot}')
+            world_decl = outcome.world_decl
+            cw_sim_ports.declare_world(world_decl)
+        return self.round_success(f'开书册卡槽{slot}', data=world_decl)

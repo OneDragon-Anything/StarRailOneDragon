@@ -12,19 +12,16 @@ supply/encounter/box/晶矿面板)→ 容器各 opts 槽(经 ``cw_screen_report`
 同名上报函数送达,与实机观察同一条写通道,本后端不私持副本);
 ``streak_unsigned`` → 容器带符号连胜派生读 ``max(signed, 0)``。
 
-**画面状态机**:状态 = (screen_info 档名, 子态载荷)。转移源三类:
-1. **上报事件钩子**(kernel ``cw_event_hooks`` 转移事件,封闭集;迁移
-   未完动作在役至声明化迭代 3.3/3.4 退役):pick 族确认 → 模态交回
-   (交回目标权威源 = ``screens/`` 各篇终结/交回表);开箱动作落地 →
-   武装箱选择画面。转移事件重入幂等(同一终结动作重复上报不二次推进,
-   逐 handler 显式守卫)。
-2. **动作后果声明**(声明化迭代主通道):动作 op 经
+**画面状态机**:状态 = (screen_info 档名, 子态载荷)。转移源两类:
+1. **动作后果声明**(声明化迭代主通道):动作 op 经
    ``cw_sim_ports.declare_world`` 喂入 :meth:`advance`,按
-   ``decl.trigger`` 分派(键集单一源 = :data:`ADVANCE_TRIGGER_KINDS`;
-   已迁动作的事件 case 同步摘除,单动作单轨)——node_advance → 节点推进、
-   battle_resolve → 战斗结算;推进后按 ``decl.next_screen`` 等值对账
-   画面档(:meth:`_reconcile_next_screen`)。
-3. **点击源**(flow-seam 附录 B 边界登记:不入 kernel 事件集的推进型
+   ``decl.trigger`` 分派(键集单一源 = :data:`ADVANCE_TRIGGER_KINDS`,
+   3.3 起 18 转移动作全量在表)——node_advance → 节点推进、
+   battle_resolve → 战斗结算、选卡族/箱 → 各世界过程、``''`` → 纯
+   画面转移;推进后按 ``decl.next_screen`` 等值对账画面档
+   (:meth:`_reconcile_next_screen`)。kernel 转移事件半部机制本体
+   (sink 订阅/空 :meth:`on_transition_event`)保留至 3.4 退役批。
+2. **点击源**(flow-seam 附录 B 边界登记:不入 kernel 事件集的推进型
    点击):简报下一步 / BOSS 简报点空白 / 位面过渡点空白 / 补给刷新 /
    开店。经端口 ``click_answer`` 感知。
 
@@ -39,7 +36,8 @@ supply → 补给;encounter → 遭遇节点;boss → BOSS 简报)。节点经�
 **overlay 触发层**(事实触发):世界事实事件(kernel 事实事件 sink)→
 评估器 → :class:`OverlayQueue` 入队 → 模态呈现(压住底层画面,选完
 交回)。一期目录:巨星(盛会之星羁绊跨层,消费 board_changed)、
-planner(银狼首次升 2 星,消费 star_up)、开箱(动作触发,走转移事件)。
+planner(银狼首次升 2 星,消费 star_up)、开箱(动作触发,走 open_box
+声明)。
 其余族(partner/expert/fate/aha/hack)触发条件实机零档 → 评估器缺位 =
 不入队(数据缺口非架构豁免,补档后逐个落)。
 
@@ -688,12 +686,13 @@ class SimRunResult:
 
 #: advance 分派表键集(``trigger`` 封闭集代码单一源;权威表 = 详设
 #: world-decl.md §3,值零新词沿用现役动作名)。``''`` = 纯画面转移,
-#: 恒合法(backend 只按 ``next_screen`` 推进,零专属过程);3.2 起填充
-#: node_advance / battle_resolve,余 7 类(open_box / pick_box_card /
-#: pick_megastar / pick_planner / pick_supply / pick_invest_env /
-#: pick_invest_strategy)随 3.3 增量填充。
-ADVANCE_TRIGGER_KINDS: frozenset[str] = frozenset(
-    {'', 'node_advance', 'battle_resolve'})
+#: 恒合法(backend 只按 ``next_screen`` 推进,零专属过程);3.3 起 9 类
+#: 过程 + 纯转移全量收齐,18 转移动作声明驱动全覆盖。
+ADVANCE_TRIGGER_KINDS: frozenset[str] = frozenset({
+    '', 'node_advance', 'battle_resolve', 'open_box', 'pick_box_card',
+    'pick_megastar', 'pick_planner', 'pick_supply', 'pick_invest_env',
+    'pick_invest_strategy',
+})
 
 #: 对账豁免场景键集(建模内合法失配 = 最上层呈现屏 ≠ 底层稳态画面,
 #: 断言延后至稳态;场景判定 = :meth:`SimBackend._reconcile_exempt_reason`):
@@ -933,46 +932,23 @@ class SimBackend:
         self._box_pick_pending = idx
 
     def _open_shop(self) -> None:
-        """开店点击源(备战 → 开商店态;close_shop 转移事件交回)。"""
+        """开店点击源(备战 → 开商店态;close_shop 声明交回)。"""
         if self._screen == SCREEN_PREP:
             self._present_modal(SCREEN_SHOP)
 
     # ---------------------------------------------------------- 事件钩子
 
     def on_transition_event(self, event: TransitionEvent) -> None:
-        """转移事件订阅(kernel 事件钩子槽;迁移未完动作的事件半部)。
+        """转移事件订阅(kernel 事件钩子槽;机制本体保留至 3.4 退役批)。
 
-        声明化迭代单动作单轨:3.2 已迁四动作(settle_confirm/supply_confirm
-        → node_advance 声明,start_battle/pick_encounter → battle_resolve
-        声明)的事件 case 摘除——同 kind 事件若再达(遗留广播点)静默丢弃,
-        推进唯一驱动 = :meth:`advance`;余 14 kind 事件在役至 3.3/3.4。
+        声明化迭代单动作单轨:3.3 起 18 动作事件 case 全部摘净——世界
+        推进唯一驱动 = :meth:`advance`,同 kind 事件若再达(遗留广播点)
+        静默丢弃;sink 订阅(:func:`install_backend`)随机制本体在役至
+        3.4 一并删除。
         """
         if self.done:
             return
         self._tick()
-        kind = event.kind
-        if kind == 'pick_supply':
-            self._on_supply_picked()
-        elif kind == 'pick_invest_env':
-            self._on_invest_picked(opening=True)
-        elif kind == 'pick_invest_strategy':
-            self._on_invest_picked(opening=False)
-        elif kind == 'open_box':
-            self._on_open_box()
-        elif kind == 'open_bookcard':
-            self._present_modal(SCREEN_EXPERT)
-        elif kind == 'pick_box_card':
-            self._on_box_picked()
-        elif kind == 'pick_megastar':
-            self._on_overlay_picked('megastar')
-        elif kind == 'pick_planner':
-            self._on_overlay_picked('planner')
-        elif kind in ('pick_partner', 'pick_fortune', 'pick_wish_trial',
-                      'pick_star_tome', 'pick_expert_invite'):
-            # 零档族/书册卡:评估器缺位 → 呈现态才可能收到;幂等交回
-            self._dismiss_modal()
-        elif kind == 'close_shop':
-            self._dismiss_modal()
 
     def on_fact_event(self, event: FactEvent) -> None:
         """事实事件订阅(overlay 触发层评估器消费 + 板面真值基座刷新)。"""
@@ -996,7 +972,10 @@ class SimBackend:
         转移事件封闭集同等防线,构造点漂移 = 接线 bug 禁静默),完成后
         :meth:`_reconcile_next_screen` 等值对账画面档。case 体自
         ``on_transition_event`` 对应 case 平移(内部逻辑不变,单动作
-        单轨);``trigger=''`` = 纯画面转移,零专属过程。入口先消费
+        单轨;3.3 起 18 动作全量在表);``trigger=''`` = 纯画面转移,
+        零专属过程——专家邀请函档 = ``_present_modal`` 呈现(open_bookcard
+        腾席写端在其上报,本层只呈现),其余 = ``_dismiss_modal`` 幂等
+        交回(节点窗让路恢复位语义保留)。入口先消费
         :attr:`_pending_reconcile`(豁免场景延后的对账在稳态补验)。
         """
         if self.done:
@@ -1012,6 +991,28 @@ class SimBackend:
             self._on_node_advance()
         elif decl.trigger == 'battle_resolve':
             self._resolve_battle()
+        elif decl.trigger == 'open_box':
+            self._on_open_box()
+        elif decl.trigger == 'pick_box_card':
+            self._on_box_picked()
+        elif decl.trigger == 'pick_megastar':
+            self._on_overlay_picked('megastar')
+        elif decl.trigger == 'pick_planner':
+            self._on_overlay_picked('planner')
+        elif decl.trigger == 'pick_supply':
+            self._on_supply_picked()
+        elif decl.trigger == 'pick_invest_env':
+            self._on_invest_picked(opening=True)
+        elif decl.trigger == 'pick_invest_strategy':
+            self._on_invest_picked(opening=False)
+        elif decl.trigger == '':
+            # 纯转移(详设 §3 '' 行):按 next_screen 二分——专家邀请函
+            # 档 = 模态呈现;其余纯转移动作(零档选卡族/关店)交回落点
+            # 恒备战 → 幂等交回(底层稳态由 _reconcile_next_screen 对账)。
+            if decl.next_screen == SCREEN_EXPERT:
+                self._present_modal(SCREEN_EXPERT)
+            else:
+                self._dismiss_modal()
         self._reconcile_next_screen(decl)
 
     def _reconcile_exempt_reason(self) -> str:

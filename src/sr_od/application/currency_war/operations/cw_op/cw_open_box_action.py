@@ -96,10 +96,16 @@ class CwActionOpenBoxOp(CwOperation):
         log.info(f'[cw][box] 开箱槽{slot} → 点开启已发(交回外循环,武装箱'
                  '选择画面分发选卡)')
         # —— 自上报(机械发出后;零写族,op-layer.md §1.2)——
+        # 上报后一行声明喂入(动作后果声明化喂入契约 = design.md §2.2
+        # 契约 3;实机端口未装 = no-op,sim 装配后驱动后端 open_box);
+        # round data 携带声明(journal 记账面)。
+        world_decl = None
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
-            report_action_open_box_param(
+            outcome = report_action_open_box_param(
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
-        return self.round_success(f'开箱槽{slot}')
+            world_decl = outcome.world_decl
+            cw_sim_ports.declare_world(world_decl)
+        return self.round_success(f'开箱槽{slot}', data=world_decl)

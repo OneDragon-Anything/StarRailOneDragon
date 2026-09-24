@@ -83,12 +83,19 @@ class CwActionPickPlannerOp(CwOperation):
             success_wait=1.0)
         # 立即自上报完整结果(确认点击后一口写
         # 腿型分派效果——增补 2:点完即按成功上报,零判效零证据闩;
-        # leg_type/norm_item 经 env kwargs 形态保持)。
+        # leg_type/norm_item 经 env kwargs 形态保持)。上报后一行声明
+        # 喂入(动作后果声明化喂入契约 = design.md §2.2 契约 3;实机
+        # 端口未装 = no-op,sim 装配后驱动后端 pick_planner 出队+交回);
+        # round data 携带声明(journal 记账面)。
+        world_decl = None
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
-            report_action_pick_planner_param(
+            outcome = report_action_pick_planner_param(
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'),
                 leg_type=env.leg_type, norm_item=env.norm_item)
-        return self.round_success('策划选择确认链已发(结果已即时上报)')
+            world_decl = outcome.world_decl
+            cw_sim_ports.declare_world(world_decl)
+        return self.round_success('策划选择确认链已发(结果已即时上报)',
+                                  data=world_decl)

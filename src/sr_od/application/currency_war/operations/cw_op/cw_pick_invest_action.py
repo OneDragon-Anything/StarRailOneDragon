@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import time
+from typing import TYPE_CHECKING
 
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -34,7 +35,11 @@ from sr_od.application.currency_war.operations.cw_operation_base import CwOperat
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     safe_click,
 )
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
 
 class CwActionPickInvestOp(CwOperation):
@@ -83,7 +88,12 @@ class CwActionPickInvestOp(CwOperation):
             success_wait=1.0)
         # 立即自上报完整结果(点完即写入 game state;session 与
         # game_state_from_ctx 同源自 ctx 取,kernel 禁自取上下文条款的
-        # 调用方义务在此履行)。
+        # 调用方义务在此履行)。投资两屏同指一 op、上报出口各构造各喂
+        # (动作后果声明化详设 world-decl.md §4 喂入落点):上报后一行
+        # 声明喂入(design.md §2.2 契约 3;实机端口未装 = no-op,sim
+        # 装配后驱动后端 pick_invest_env/strategy 排除集累计+交回);
+        # round data 携带声明(journal 记账面)。
+        world_decl: WorldDecl | None = None
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             _sig = ChannelSig(family='logic_action',
@@ -91,9 +101,12 @@ class CwActionPickInvestOp(CwOperation):
             _session = getattr(getattr(self.ctx, 'cw_match', None),
                                'session', None)
             if isinstance(action, CwActionPickInvestStrategyParam):
-                report_action_pick_invest_strategy_param(
+                outcome = report_action_pick_invest_strategy_param(
                     gs, action, _sig, session=_session)
             else:
-                report_action_pick_invest_env_param(
+                outcome = report_action_pick_invest_env_param(
                     gs, action, _sig, session=_session)
-        return self.round_success('投资选择确认链已发(结果已即时上报)')
+            world_decl = outcome.world_decl
+            cw_sim_ports.declare_world(world_decl)
+        return self.round_success('投资选择确认链已发(结果已即时上报)',
+                                  data=world_decl)

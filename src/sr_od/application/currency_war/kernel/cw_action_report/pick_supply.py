@@ -20,6 +20,11 @@
 
 装备入栏/后果腿的写语义单点 = 本函数(补给确认无第二写边)。
 
+**后果声明**(动作后果声明化详设 world-decl.md §2 表 #12):applied 出口
+构造 ``WorldDecl``(trigger = ``pick_supply``;``next_screen`` = 补给屏
+——选卡后画面本瞬间不变,随后到的 node_advance 声明才切走),转移事件
+广播随本动作单轨切换摘除。
+
 动作上报函数族拆分件(每动作一文件;族规约 = 包 ``cw_action_report.
 __init__`` docstring)。本包 → 容器单向依赖。
 """
@@ -32,9 +37,6 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     apply_equip_acquire_consequence,
     grant_bench_unit_cascade,
 )
-from sr_od.application.currency_war.kernel.cw_event_hooks import (
-    transition_event_on_applied,
-)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     GameState,
@@ -42,6 +44,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     _emit_defect,
     _validate_sig,
 )
+from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
 _PRODUCER: str = 'CwActionPickSupplyParam'
 
@@ -49,15 +52,24 @@ _PRODUCER: str = 'CwActionPickSupplyParam'
 #: 声明见模块头;错 = 确定面失配响停修因)。
 _SUPPLY_GRANT_STAR: int = 1
 
+#: 补给声明的推进分派类别(详设 §2 表 #12;封闭集单一源 = sim 后端
+#: advance 分派表键集,值零新词沿用现役动作名)。
+_DECL_TRIGGER: str = 'pick_supply'
 
-@transition_event_on_applied('pick_supply')
+#: 补给声明(宝钻写归 backend ``_on_supply_picked`` 读容器现值,本上报
+#: 零写;next_screen 权威 = screen_info 补给档 + sim ``_on_supply_picked``
+#: 零画面写停留)。
+_DECL: WorldDecl = WorldDecl(next_screen='货币战争-补给',
+                             trigger=_DECL_TRIGGER)
+
+
 def report_action_pick_supply_param(gs: GameState, param: Any,
                                     sig: ChannelSig) -> LogicOutcome:
     """补给节点选择上报(即时单相:确认点击后一口写全部效果逻辑态)。
 
     写序 = 模块头 ①内容全未知翻来源留证 / ②单位腿 / ③装备腿(owned
     += 规范名 + 获得后果链;norm_item 未解析 = 翻来源留证)。出参
-    applied=True = 动作受理。
+    applied=True = 动作受理,出口构造后果声明(:data:`_DECL`)。
     """
     _validate_sig(sig, ('logic_action',))
     char_name = str(getattr(param, 'char_name', '') or '')
@@ -75,7 +87,8 @@ def report_action_pick_supply_param(gs: GameState, param: Any,
                      actual='unresolved', evidence='pick_supply_landing',
                      sig=sig, kind='pick_supply_content_unresolved')
         log.info('[cw-pick-supply] 上报(内容未知): %s', '; '.join(steps))
-        return LogicOutcome(applied=True, reason='content_unresolved')
+        return LogicOutcome(applied=True, reason='content_unresolved',
+                            world_decl=_DECL)
     if char_name:
         r = grant_bench_unit_cascade(gs, char_name, _SUPPLY_GRANT_STAR,
                                      rand=False, evidence='pick_supply_char',
@@ -108,4 +121,5 @@ def report_action_pick_supply_param(gs: GameState, param: Any,
                      sig=sig, kind='pick_supply_name_unresolved')
     log.info('[cw-pick-supply] 上报(char=%s item=%s): %s', char_name, item,
              '; '.join(steps) or 'no-leg')
-    return LogicOutcome(applied=True, reason='landing_applied')
+    return LogicOutcome(applied=True, reason='landing_applied',
+                        world_decl=_DECL)

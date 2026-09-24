@@ -103,11 +103,17 @@ class CwActionPickMegastarOp(CwOperation):
         # (宿主 round_wait 循环推进,不烧节点重试预算)。
         # chosen_megastar 写端留守画面 op(动作事实边界,派发前写 =
         # 选择点),无挂账登记环节。
-        # 自上报(机械链发出后;零写,契约面统一)。
+        # 自上报(机械链发出后;零写,契约面统一)。上报后一行声明喂入
+        # (动作后果声明化喂入契约 = design.md §2.2 契约 3;实机端口未装
+        # = no-op,sim 装配后驱动后端 pick_megastar 出队+交回);round
+        # data 携带声明(journal 记账面)。
+        world_decl = None
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
-            report_action_pick_megastar_param(
+            outcome = report_action_pick_megastar_param(
                 gs, param,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
-        return self.round_success('盛会之星确认已发')
+            world_decl = outcome.world_decl
+            cw_sim_ports.declare_world(world_decl)
+        return self.round_success('盛会之星确认已发', data=world_decl)

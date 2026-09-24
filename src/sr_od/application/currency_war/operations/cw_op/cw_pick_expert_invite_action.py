@@ -86,10 +86,17 @@ class CwActionPickExpertInviteOp(CwOperation):
             op.ctx.controller.click(pt)
         # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
         time.sleep(1.2)   # 选卡 → 弹窗关闭动画窗
-        # 自上报(机械链发出后;零写,契约面统一)。
+        # 自上报(机械链发出后;零写,契约面统一)。上报后一行声明喂入
+        # (动作后果声明化喂入契约 = design.md §2.2 契约 3;实机端口未装
+        # = no-op,sim 装配后驱动后端纯转移分支交回);round data 携带
+        # 声明(journal 记账面)。
+        world_decl = None
         if gs is not None:
-            report_action_pick_expert_invite_param(
+            outcome = report_action_pick_expert_invite_param(
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
-        return self.round_success('邀请函选卡点击已发(结果经旁路回传)')
+            world_decl = outcome.world_decl
+            cw_sim_ports.declare_world(world_decl)
+        return self.round_success('邀请函选卡点击已发(结果经旁路回传)',
+                                  data=world_decl)

@@ -86,12 +86,18 @@ class CwActionPickPartnerOp(CwOperation):
         # retry 轮重复确认零副作用(置灰态被游戏拒绝,无确认穿透风险)。
         op._confirm_pending = True
         # 自上报(确认点击发出后;零写,契约面统一。读缺旁路分支未发
-        # 确认点击,不上报——见模块头)。
+        # 确认点击,不上报不喂——见模块头)。上报后一行声明喂入(动作
+        # 后果声明化喂入契约 = design.md §2.2 契约 3;实机端口未装 =
+        # no-op,sim 装配后驱动后端纯转移分支交回);round data 携带声明。
+        world_decl = None
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
-            report_action_pick_partner_param(
+            outcome = report_action_pick_partner_param(
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
+            world_decl = outcome.world_decl
+            cw_sim_ports.declare_world(world_decl)
         env.round_result = op.round_retry(wait=1)
-        return self.round_success('伙伴选择确认脉冲已发(重入裁决承接)')
+        return self.round_success('伙伴选择确认脉冲已发(重入裁决承接)',
+                                  data=world_decl)

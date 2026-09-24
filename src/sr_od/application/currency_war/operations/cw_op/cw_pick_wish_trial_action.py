@@ -80,10 +80,16 @@ class CwActionPickWishTrialOp(CwOperation):
         env.round_result = op.round_by_find_and_click_area(
             op.screenshot(), '货币战争-祈愿试炼', '按钮-确认选择',
             success_wait=1.5)
-        # 自上报(机械链发出后;零写,契约面统一)。
+        # 自上报(机械链发出后;零写,契约面统一)。上报后一行声明喂入
+        # (动作后果声明化喂入契约 = design.md §2.2 契约 3;实机端口未装
+        # = no-op,sim 装配后驱动后端纯转移分支交回);round data 携带
+        # 声明(journal 记账面)。
+        world_decl = None
         if gs is not None:
-            report_action_pick_wish_trial_param(
+            outcome = report_action_pick_wish_trial_param(
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
-        return self.round_success('祈愿试炼确认链已发')
+            world_decl = outcome.world_decl
+            cw_sim_ports.declare_world(world_decl)
+        return self.round_success('祈愿试炼确认链已发', data=world_decl)

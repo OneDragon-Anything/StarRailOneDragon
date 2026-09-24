@@ -77,10 +77,17 @@ class CwActionPickBoxCardOp(CwOperation):
         # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
         # 固定动画等待(来源写死 = 现役 overlay 动画等待常量)。
         time.sleep(_OVERLAY_ANIM_WAIT_S)
-        # 自上报(机械链发出后;零写,契约面统一)。
+        # 自上报(机械链发出后;零写,契约面统一)。上报后一行声明喂入
+        # (动作后果声明化喂入契约 = design.md §2.2 契约 3;实机端口未装
+        # = no-op,sim 装配后驱动后端 pick_box_card 入栏+交回);round
+        # data 携带声明(journal 记账面)。
+        world_decl = None
         if gs is not None:
-            report_action_pick_box_card_param(
+            outcome = report_action_pick_box_card_param(
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
-        return self.round_success('武装箱选卡点击已发(结果经旁路回传)')
+            world_decl = outcome.world_decl
+            cw_sim_ports.declare_world(world_decl)
+        return self.round_success('武装箱选卡点击已发(结果经旁路回传)',
+                                  data=world_decl)
