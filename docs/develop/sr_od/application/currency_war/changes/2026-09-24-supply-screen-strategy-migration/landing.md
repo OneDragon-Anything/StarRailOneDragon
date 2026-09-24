@@ -26,7 +26,7 @@
 **验收凭据形式**：grep 输出 + `uv run ruff check <改动文件>` + 受影响测试全量（L1 快速集）
 
 ## 3.3 文档拆分（30 号稿 + 指针更新）
-**范围**：新建 `strategy-docs/30_supply_screen.md`；`25_event_overlays.md` 头注/§1 prose/§2 动作清单表行移除补给；`13_pick_family.md` §1 `decide_supply` 行与 §2 E4 目录行改指单一源；`strategy-docs/README.md` §2 分篇表增 30 行 + `:54` 阅读导航句「18-27」→「18-30」改述；`08_events.md` E4 行「现有语义」格整体替换（design §2.7 口径）；`16_evaluation_tables_reassessment.md` 改形挂账行销账 + 死引用替锚；三份画面文档去陈旧（`screens/supply.md` 委托指针与重调语义、`docs/game/screens/currency_war_supply.md` 与 `docs/game/screens/货币战争-补给.md` 算法描述）。跨批协调纪律（design §2.7 末条）：落批时重读共享文档当前态，行号锚以实址为准。
+**范围**：新建 `strategy-docs/30_supply_screen.md`；`25_event_overlays.md` 头注/§1 prose/§2 动作清单表行移除补给；`13_pick_family.md` §1 `decide_supply` 行与 §2 E4 目录行改指单一源；`strategy-docs/README.md` §2 分篇表增 30 行 + `:54` 阅读导航句「18-29」→「18-30」改述（落批前 = 18-29，29 批 `9cce56962` 已改）；`08_events.md` E4 行「现有语义」格整体替换（design §2.7 口径）；`16_evaluation_tables_reassessment.md` 改形挂账行销账 + 死引用替锚；三份画面文档去陈旧（`screens/supply.md` 委托指针与重调语义、`docs/game/screens/currency_war_supply.md` 与 `docs/game/screens/货币战争-补给.md` 算法描述）。跨批协调纪律（design §2.7 末条）：落批时重读共享文档当前态，行号锚以实址为准。
 **设计依据**：design.md §2.7
 **文件面**：`strategy-docs/30_supply_screen.md`（新）、`strategy-docs/25_event_overlays.md`、`strategy-docs/13_pick_family.md`、`strategy-docs/README.md`、`strategy-docs/08_events.md`、`strategy-docs/16_evaluation_tables_reassessment.md`、`docs/develop/sr_od/application/currency_war/screens/supply.md`、`docs/game/screens/currency_war_supply.md`、`docs/game/screens/货币战争-补给.md`
 **依赖**：3.1、3.2（文档须与落码后的实态一致）
