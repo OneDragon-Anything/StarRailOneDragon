@@ -611,6 +611,30 @@ def gain_invest_strategy(gs: GameState, session: object,
 # (无注册表——用户裁定:回调函数体内枚举即收敛,不设注册机构。)
 
 
+def _place_bench_item(gs: GameState, item: str, *, rand: bool,
+                      evidence: str, sig: ChannelSig) -> bool:
+    """占席道具(武装箱系)落备战席空槽(送卡落席同构:_build_pool/
+    bench_place/_select_write 序;槽件 = ``BenchSlot(kind='supply_box')``,
+    双端同一获得链——sim 世界写入即容器写)。席满 = 零写 + 道具通道申报
+    留证(实机席满时道具行为未实证,禁猜,真值归观察覆盖;gain-chain.md
+    §6 同款)。返回是否落席。"""
+    if gs.bench.value is None:
+        return False
+    pool = _build_pool(gs, None)
+    assert pool is not None   # bench 已判非 None,构建恒有池
+    write = _select_write(gs, rand)
+    slot = BenchSlot(kind='supply_box')
+    if bench_place(pool.bench, slot) is None:
+        _emit_defect(field_name='bench', expected='空槽可落(开局获得)',
+                     actual=f'席满,{item} 未落席(实机席满行为未实证)',
+                     evidence=evidence, sig=sig, kind=DEFECT_ITEM_DECL)
+        return False
+    write(gs.bench, bench_view_of_working(pool.bench, pool.orig_view),
+          produced_by=GAIN_CHAIN_PRODUCER, evidence=f'{evidence}#place',
+          sig=sig)
+    return True
+
+
 def on_env_gained(gs: GameState, session: object, env_name: str, *,
                   rand: bool, sig: ChannelSig) -> tuple[str, ...]:
     """「获得投资环境」触发型效果枚举(gain-chain.md §3)。
@@ -627,9 +651,11 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       ``economy.gold_instant`` 非零 → gold 直加(两执行面同源;旧 sim
       引擎私有腿随驱动反转退役,规则落本链为单一源);
     - **道具通道**(``items_immediate``,如火药味的简易武装箱):道具 =
-      占席待开箱,非角色非装备,无 gain_* 原语与容器承载字段(容器 Field
-      归 sim 统一容器字段判据辖域)→ 只产效果串 ``item_gift:<名>`` +
-      遥测申报一行,开箱链由外循环画面分发承接(武装箱选择画面独立建档);
+      占席待开箱,非角色非装备 → 落席写入(送卡落席同构:备战空槽放
+      ``BenchSlot(kind='supply_box')``,双端同一获得链,sim 世界写入即
+      容器写);席满 = 零写 + 遥测申报留证(实机席满行为未实证,禁猜);
+      效果串 ``item_gift:<名>`` 恒登记(数量 = 元素重复次数),开箱链由
+      外循环画面分发承接(武装箱选择画面独立建档);
     - 查无效果(表外环境)= 安静不写(用户裁定),真值归观察覆盖。
       (欢愉契约条件腿不在本枚举:其正式模型 = 银狼策划选择上报落地相的
       条件腿 rider,住 ``cw_action_report.pick_planner``,触发事件 =
@@ -661,12 +687,11 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
                        producer=GAIN_CHAIN_PRODUCER)
         effects.append(f'env_gift:{char}')
     for item in grant.items_immediate:
-        # 道具无容器承载字段(容器 Field 归 sim 统一容器字段判据辖域),
-        # 申报行与 advisor 申报同型(best-effort 留证,不停机不告警)
-        _emit_defect(field_name='bench', expected=None,
-                     actual=f'{item} 已发放(道具通道申报,占席待开箱)',
-                     evidence=f'on_env_gained:{_name}', sig=sig,
-                     kind=DEFECT_ITEM_DECL)
+        # 落席 = 送卡落席同构(_build_pool/bench_place/write 序;双端同一
+        # 获得链,sim 世界写入即容器写)。席满 = 零写 + 申报留证(helper 内);
+        # 效果串恒登记(发放事实,与落席成败解耦)
+        _place_bench_item(gs, item, rand=rand,
+                          evidence=f'on_env_gained:{_name}', sig=sig)
         effects.append(f'item_gift:{item}')
     return tuple(effects)
 
