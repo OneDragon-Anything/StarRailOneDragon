@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。**派发即终结形态**(投资两屏/遭遇同族,合同 = [op-layer.md](op-layer.md) §1.1),两 node 直继承 `SrOperation`:观察 node = 节点完成门(`_in_node`:标识锚还在;已离开 = 节点完成 round_success 交回外循环)→ 选项一次读 + 刷新剩余读数 → `report_screen_supply_node_obs` 落容器 `supply` + `supply_refresh_left` → obs + 点卡定位点/刷新锚点挂实例属性。决策动作 node = 顶部节点完成复检(每轮新帧,分发身份安全网)→ 零参决策 `match.strategy.decide_supply()`(候选自容器 `supply` 槽;缺省实现委托 `kernel/cw_events.py::decide_supply`,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E4)→ 单动作(刷新终结交回 ∨ 选卡确认链经 `CwActionPickSupplyOp` 派发即 round_success 终结,机械链 + **即时单相上报**在动作 op 内)。确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重识别重派(零重入裁决、零落地相补写面)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。**派发即终结形态**(投资两屏/遭遇同族,合同 = [op-layer.md](op-layer.md) §1.1),两 node 直继承 `SrOperation`:观察 node = 节点完成门(`_in_node`:标识锚还在;已离开 = 节点完成 round_success 交回外循环)→ 选项一次读 + 刷新剩余读数 → `report_screen_supply_node_obs` 落容器 `supply` + `supply_refresh_left` → obs + 点卡定位点/刷新锚点挂实例属性。决策动作 node = 顶部节点完成复检(每轮新帧,分发身份安全网)→ 零参决策 `match.strategy.decide_supply()`(候选自容器 `supply` 槽;**判据单一源 = 策略层 `strategies/impl/mandate_v1/supply.py::decide`**(三级字典序 + 刷新判据,语义正本 = [../strategy-docs/30_supply_screen.md](../strategy-docs/30_supply_screen.md);flow 零参口包装动作词表),pick 族接口规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E4 行)→ 单动作(刷新终结交回 ∨ 选卡确认链经 `CwActionPickSupplyOp` 派发即 round_success 终结,机械链 + **即时单相上报**在动作 op 内)。确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重识别重派(零重入裁决、零落地相补写面)。
 
 ## 3. 观察面
 
@@ -30,15 +30,15 @@
 | 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
 | `CwActionPickSupplyOp`(`CwActionPickSupplyParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:卡身定位点/归一件名/角色名/选中下标) | **即时单相自上报** `report_action_pick_supply_param`(确认点击后一口写 owned 规范名 + 单位腿 `grant_bench_unit_cascade` + 装备后果腿 `apply_equip_acquire_consequence`;内容全未知/名未解析 = 翻来源留证禁猜)+ 节点推进 `report_node_advance(supply_confirm)`(确认点击落地即上报,重复上报被 kernel 观察态门挡) | **是(派发即终结)**:发出后 round_success 终结交回外循环;确认未生效由外循环重识别重派 |
-| 刷新重掷(无注册表动作 op;`CwActionRefreshSupplyParam` 仅策略建议载体) | 画面 op 留守臂(容器 `supply_refresh_left` 剩余闸 + 锚点对照闸放行:「文本-剩余次数」锚定偏移 `mouse_move`+`click`) | 无自上报(刷新 = 终结交回,新装备面由外循环重进后的入口观察现读承载) | **是(终结)**:点钮 + 2s 动画窗后 round_success 交回;闸拒绝(剩余 ≤0 或 None 或锚点缺)→ 零点击,重调一次决策按原评分选;重调仍建议刷新(闸数据不一致)→ 零点击终结交回 |
+| 刷新重掷(无注册表动作 op;`CwActionRefreshSupplyParam` 仅策略建议载体) | 画面 op 留守臂(容器 `supply_refresh_left` 剩余闸 + 锚点对照闸放行:「文本-剩余次数」锚定偏移 `mouse_move`+`click`) | 无自上报(刷新 = 终结交回,新装备面由外循环重进后的入口观察现读承载) | **是(终结)**:点钮 + 2s 动画窗后 round_success 交回;判据侧次数闸内嵌 decide(仅剩余 ≥1 才可能返刷新建议);建议刷但对照闸拒绝(现役仅锚点缺一种触发面)→ 重调一次(纯函数同输入同输出仍建议刷)→ 零点击终结交回 |
 
 决策动作 node 单动作体 `_do_action`(零参:候选与点击点自观察轮实例载体消费):
 
 ```
 opts = 观察轮实例载体;_left = 容器 supply_refresh_left(观察轮 report 摄入)
 pick = match.strategy.decide_supply()(零参;候选读容器 supply 槽)
-├─ 闸拒绝(pick.refresh ∧ (left ≤0 ∨ None ∨ 锚点缺))→ 重调一次按原评分选;
-│    重调仍建议刷新 = 闸数据不一致 → 零点击终结交回(外循环重进重试观察)
+├─ 建议刷但对照闸拒绝(锚点缺;left ≤0/None 帧 decide 闸内嵌不会返建议)
+│    → 重调一次(纯函数同输入同输出仍建议刷)→ 零点击终结交回(外循环重进重试观察)
 ├─ 刷新形态(终结动作):pick.refresh ∧ 闸放行 →
 │    文本锚点 + 偏移 _REFRESH_BTN_DX(-100)点圆钮一次 → 固定等待 2s
 │    (重掷动画覆盖)→ 动作已发,round_success 终结交回
@@ -60,7 +60,7 @@ pick = match.strategy.decide_supply()(零参;候选读容器 supply 槽)
 | 门 miss(标识消失;observe 首门 / act 每轮复检) | **节点完成** | 纯观察出口验真 → round_success 交回外循环重判(补给无结算屏) |
 | 刷新点击 | **终结动作** | round_success 交回外循环重进 = 入口重建(闸 = 容器 `supply_refresh_left` 剩余语义真值) |
 | 选卡确认链派发 | **派发即终结** | round_success 交回外循环;确认未生效由外循环重识别重派 |
-| 闸数据不一致(重调仍建议刷新) | 零点击终结 | round_success 交回外循环重进重试观察(防每轮空转烧尽节点预算) |
+| 刷新锚点缺失(建议刷 ∧ 重调仍建议刷) | 零点击终结 | round_success 交回外循环重进重试观察(防每轮空转烧尽节点预算) |
 
 ## 6. 状态上报面
 
@@ -77,7 +77,7 @@ pick = match.strategy.decide_supply()(零参;候选读容器 supply 槽)
 
 ## 8. 守卫与防线
 
-- 刷新单次:闸 = 容器 `supply_refresh_left` 剩余语义观察真值(≤0 或 None = 拒绝;读缺 = 少刷一次机会非卡死面,活锁方向安全);拒绝 → 重调一次落选卡;重调仍建议刷新 → 零点击终结交回(防「建议刷新→锚读缺→零动作」每轮空转烧尽节点预算)。
+- 刷新单次:双闸 = 判据侧次数闸内嵌 decide(`gs.supply_refresh_left` ≥1 才可能返建议,None fail-closed)+ op 侧对照闸(容器剩余语义观察真值 ∧ 刷新锚点在位;读缺 = 少刷一次机会非卡死面,活锁方向安全);建议刷但对照闸拒绝(现役仅锚点缺一种触发面)→ 重调一次(纯函数同输入同输出仍建议刷)→ 零点击终结交回(防「建议刷新→锚读缺→零动作」每轮空转烧尽节点预算)。
 - 出口验真:节点完成 = 标识消失(位置 area,非全屏 LCS);派发即终结形态下循环面已消(刷新终结/选卡终结/节点完成三出口)。
 - 兜底点卡 CARD_BODY 仅在无选项/无 match 时使用;有选项而决策越界 = target 保持兜底点(有界重试兜底,非盲选禁令屏)。
 - 无本屏专属停机钩子;守卫总册 = [../flow/guards.md](../flow/guards.md)。
@@ -85,7 +85,7 @@ pick = match.strategy.decide_supply()(零参;候选读容器 supply 槽)
 ## 9. 遥测与锁面
 
 - journal op 名 =「货币战争-补给节点」;op 内日志 tag = `[cw-supply]`(options/pick/click、闸拒绝告警、闸不一致零点击告警、chosen 记录失败告警)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/` 下 test_cw_obs_arch_event_screens_step3.py(supply 两 node 行为锁:chosen 确认即写/刷新终结)、test_cw_runnode_retire.py(旧节点基类退役等价)、test_cw_game_state_consume.py(chosen_supply 接线)、刷新闸行为锁(剩余 1 点钮恰一次终结/0 与 None 零点击按原评分选)、sim 补给刷新段测试(初始 left=1 与 left−1 截断)。
+- 测试锁:`sr-od-test/test/sr_od/application/currency_war/` 下 test_cw_obs_arch_event_screens_step3.py(supply 两 node 行为锁:chosen 确认即写/刷新终结)、test_cw_runnode_retire.py(旧节点基类退役等价)、test_cw_game_state_consume.py(chosen_supply 接线)、刷新对照闸行为锁(剩余 1 点钮恰一次终结/0 与 None 对照闸拒绝零点击——行为断言保留;生产面「建议刷 ∧ 对照闸拒绝」现役仅锚点缺一种触发面,次数闸内嵌 decide 后旧「按原评分选」叙述过期,过期注记在该锁 docstring)、sim 补给刷新段测试(初始 left=1 与 left−1 截断)。
 - game 侧知识:画面与机制(动态列数/钻) = [../../../../game/screens/currency_war_supply.md](../../../../../game/screens/currency_war_supply.md);装备价值 = [../../../../game/currency_war/research/equipment_mechanics.md](../../../../../game/currency_war/research/equipment_mechanics.md)。
 
 ## 开放设计注
