@@ -16,8 +16,10 @@
   期望;具名发放取最高档的口径差异 = 确定性赠卡承重面,沿旧机器规则①,
   非双重标准);无成员在册 → 0。
 
-复用预留(28 号稿 §5):投资策略屏迁移批直接复用具名/随机两口径,
-接口本批一次定形。
+复用预留(投资策略屏迁移批 design §2.5):策略屏赠卡**不走**本文件
+具名/随机两现役口径——策略卡具名发放走 kernel ``STRATEGY_GRANTS`` +
+:data:`grant_gift_value` 新口(GiftGrant 直驱,登记表差异在调用方);
+两屏共用面 = 档→分映射(:data:`GIFT_TIER_SCORE`)与 advisor 折减主体。
 """
 from __future__ import annotations
 
@@ -47,21 +49,30 @@ GIFT_TIER_SCORE: dict[str, float] = {
 ADVISOR_DISCOUNT: float = 0.5
 
 
-def named_gift_value(env_name: str,
+def grant_gift_value(grant: GiftGrant,
                      evicted: frozenset[str] | set[str]) -> float:
-    """具名赠卡分(ENV_GIFTS 在册环境;具名口径见 28 号稿 §2)。
+    """GiftGrant 直驱赠卡分(档→分映射 + advisor 折减主体;策略屏迁移批
+    抽层——kernel ``STRATEGY_GRANTS`` 消费口,与具名口径同一机器)。
 
     档位 = kernel ``gift_hit_tier``(即时集取最高档、条件集降一档的机器
     事实,evicted 传导免费获得);档→分映射见 :data:`GIFT_TIER_SCORE`;
-    advisor 再乘 ADVISOR_DISCOUNT。非 ENV_GIFTS 环境 → 0(无具名发放)。
-    """
-    grant = ENV_GIFTS.get(env_name)
-    if grant is None:
-        return 0.0
+    advisor 再乘 ADVISOR_DISCOUNT。"""
     score = GIFT_TIER_SCORE[gift_hit_tier(grant, evicted)]
     if grant.advisor:
         score *= ADVISOR_DISCOUNT
     return score
+
+
+def named_gift_value(env_name: str,
+                     evicted: frozenset[str] | set[str]) -> float:
+    """具名赠卡分(ENV_GIFTS 在册环境;具名口径见 28 号稿 §2)。
+
+    = :func:`grant_gift_value` 的 ENV_GIFTS 查表薄委托(查无 → 0,无具名
+    发放);非 ENV_GIFTS 环境 → 0。"""
+    grant = ENV_GIFTS.get(env_name)
+    if grant is None:
+        return 0.0
+    return grant_gift_value(grant, evicted)
 
 
 def random_faction_gift_value(faction: str,

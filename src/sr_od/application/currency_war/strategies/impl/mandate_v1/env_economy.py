@@ -2,10 +2,11 @@
 
 归属(宪法五:框架层只留游戏原始真值,衍生估值归策略层):本模块承载
 **策略层的衍生估值**——把 ``cw_investments.ENV_ECONOMY`` 的整局经济通道
-折成金等价期望。kernel 侧只留游戏原始真值:``cw_investments.ENV_ECONOMY``
-(通道结构 = 游戏效果原文的结构化,【注】)与 ``ENV_ECONOMY_PENDING_
-MODELING`` 留 kernel 不迁。语义正本 = strategy-docs/28_invest_env_screen.md
-§2 现金分行;迁移批的删除面对照考古走 git 历史。
+折成金等价期望。kernel 侧只留游戏原始真值 ``cw_investments.ENV_ECONOMY``
+(通道结构 = 游戏效果原文的结构化,【注】);``ENV_ECONOMY_PENDING_
+MODELING`` 亦驻本模块(下方「待建模」在册段)——「留 kernel 不迁」系
+早期过时表述,以代码体为准。语义正本 = strategy-docs/28_invest_env_
+screen.md §2 现金分行;迁移批的删除面对照考古走 git 历史。
 
 迁入改造(迁移迭代 3.1):
 - 删 ``ECON_VALUE_NORM`` 域带归一:现金分直接按金等价计,不再进 111-119
@@ -243,7 +244,9 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     ΔV 公式,读 STRAT_POOL_ECON_MEANS/OFFER_QUALITY_DIST,任一缺参
     fail-closed,v1 恒然——受限通道 μ_E 非单调,层 E 转正须过准入门后落参);
     其余 name → 下方 A/B/拍值/C 通道公式。单一入口契约不变(28 号稿 §5
-    复用预留:投资策略屏迁移批现金流卡直接复用本函数);
+    复用预留订正:策略卡现金分**不走**本函数——策略屏现金流卡走策略层
+    ``strategy_economy.strategy_economy_value`` 新入口,通道公式分立,
+    契约形态与折算约定复用;投资策略屏迁移批 design §2.1);
     ENV_ECONOMY 与 ENV_POOL_REWRITE 构建期互斥(一个 name 至多落一个估值
     结构,cw_investments._validate_env_pool_rewrite 收全)。
 

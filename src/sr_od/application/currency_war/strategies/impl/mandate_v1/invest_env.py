@@ -43,11 +43,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_comps import (
-    AFFIX_MECHANIC_MAP,
-    COMP_LIBRARY,
-    MECHANIC_COUNTERS,
-)
+from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
 from sr_od.application.currency_war.kernel.cw_game_state import GameState
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_ECONOMY,
@@ -66,6 +62,13 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.gift_value import
 from sr_od.application.currency_war.strategies.impl.mandate_v1.line_value import (
     LINE_STRENGTH_SCORE,
     line_value,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.pick_common import (
+    BOARD_DOT_COUNT_THRESHOLD,
+    STEERING_PRIORITY_BONUS,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.pick_common import (
+    counters_dot as _counters_dot,
 )
 
 if TYPE_CHECKING:
@@ -95,35 +98,12 @@ class RefreshSuggestion:
     reason: str
 
 
-# ===== 转向轴与自拆台(28 号稿 §3)=====
+# ===== 转向轴与自拆台(28 号稿 §3;共用单一源 = pick_common)=====
 
-#: user-priority 软偏好分(固定偏好分,立场系数;28 号稿 §3——软偏好,
-#: 压不过 S 线方向分 100,「用户点名是偏好不是支配」)。
-STEERING_PRIORITY_BONUS: float = 30.0
-
-#: 自拆台板面阈值:上阵羁绊计数中 持续伤害+减益 ≥ 2(沿旧口径
-#: kernel/cw_events.py decide_event on_dot;板面 = gs.board 现读)。
-BOARD_DOT_COUNT_THRESHOLD: int = 2
-
-#: 本策略阵容的机械属性面(与 kernel ``MECHANIC_COUNTERS`` 值域对齐):
-#: 板面以 DoT/减益为主派时,克制这些机制的候选 = 自拆台,排除。
-#: 集合本身是策略侧立场(「我们在玩什么」);「某选项是否克制某机制」
-#: 的事实判定 = kernel 表(28 号稿 §3)。
-_DOT_PUNISHED_MECHS: frozenset[str] = frozenset({'DoT', '减益'})
-
-
-def _counters_dot(opt: str) -> bool:
-    """选项名是否克制 DoT/减益主派(事实判定,kernel 表调用;28 号稿 §3)。
-
-    选项名 → ``AFFIX_MECHANIC_MAP`` 机制 tag → ``MECHANIC_COUNTERS`` 克制
-    属性,与旧 kernel ``_opt_counters_dot`` 同构(子串包含匹配保留 OCR
-    容错语义;未知名不命中 = 不排除)。
-    """
-    for affix, tag in AFFIX_MECHANIC_MAP.items():
-        if affix in opt and not _DOT_PUNISHED_MECHS.isdisjoint(
-                MECHANIC_COUNTERS.get(tag, ())):
-            return True
-    return False
+# 两屏共用判据已显式抽离共用模块(宪法六「共用判据显式抽离」;投资策略
+# 屏迁移批新增 pick_common,本文件原私有副本改薄委托,env 行为零变化):
+# 转向轴常数与自拆台阈值/克制判定单一源 = mandate_v1/pick_common.py,
+# 下方名字 = 该模块 re-export(本文件内引用与既有测试/判读面零改名)。
 
 
 # ===== 立场分表(28 号稿 §2 立场分行;【拍】形态,每行带理由)=====
