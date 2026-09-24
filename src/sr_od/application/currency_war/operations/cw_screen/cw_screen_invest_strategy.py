@@ -46,10 +46,10 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.kernel.cw_comps import augment_affinity
-from sr_od.application.currency_war.kernel.cw_events import is_economy_engine
 from sr_od.application.currency_war.kernel.cw_investments import (
     get_strategy,
     is_blood_economy,
+    is_economy_engine,
     normalize_invest_name,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center

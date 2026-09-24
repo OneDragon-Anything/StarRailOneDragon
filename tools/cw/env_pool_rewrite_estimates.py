@@ -728,11 +728,6 @@ def main() -> None:
     print('\n=== 品质子池 ===')
     for q in _QUALITY_ORDER:
         print(f'  {q}: |S|={len(pools[q])}')
-    pv_med: dict[str, float | None] = {}
-    for q in _QUALITY_ORDER:
-        vals = sorted(s.pick_value for s in pools[q] if s.pick_value > 0)
-        pv_med[q] = statistics.median(vals) if vals else None
-    print(f'  pick_value 非零中位序: {pv_med}(详设引 彩45/金35/银32)')
 
     def pool_card_values(h: int, restricted: bool) -> dict[str, list[float]]:
         """品质子池逐卡全通道值(μ 与成对差值 CI 共用的底层样本)。"""
@@ -800,7 +795,6 @@ def main() -> None:
                 _verdict = ('显著>0' if _lo > 0
                             else ('显著<0' if _hi < 0 else '含 0(不可分辨)'))
                 print(f'    μ({_a})−μ({_b}): [{_lo:+.4f}, {_hi:+.4f}] → {_verdict}')
-        print(f'  pick_value 中位序辅助证据: {pv_med}')
 
     # ---- π_offer,k ----
     print('\n=== π_offer,k(全部帧行;归一 = 未解析按三品质摊入) ===')

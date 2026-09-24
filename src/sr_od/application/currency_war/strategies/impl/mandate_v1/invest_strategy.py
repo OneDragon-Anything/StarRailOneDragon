@@ -34,9 +34,9 @@ steering +30/forbid −10000/克制 −100 各标尺靠常数位置定先后—�
 不含动作词表)——动作包装(CwActionPickInvestStrategyParam/
 CwActionRefreshInvestCardsParam)留 flow(3.2 原子接线);:func:`decide_pick`
 = 同一评分基线的纯选卡口,永不建议刷(flow 同帧去重 memo 命中后的落选卡
-入口;为 sim 复用预留)。本文件新增后**零调用**(3.1 纯新增,新旧并存,
-flow 仍走 kernel ``decide_event``;3.2 切换后本文件是投资策略选卡评序的
-唯一单一源)。
+入口;为 sim 复用预留)。2026-09-23 迁移批 3.2 起本文件是投资策略选卡评序
+的唯一单一源(flow 原子接线直调,kernel ``decide_event`` 策略轴同批退役;
+3.1 纯新增期与旧机并存的过渡态已终结)。
 """
 from __future__ import annotations
 
@@ -49,7 +49,6 @@ from sr_od.application.currency_war.kernel.cw_comps import (
     augment_affinity,
     get_comp,
 )
-from sr_od.application.currency_war.kernel.cw_events import is_economy_engine
 from sr_od.application.currency_war.kernel.cw_game_state import GameState
 from sr_od.application.currency_war.kernel.cw_investments import (
     INVESTMENT_STRATEGIES,
@@ -59,6 +58,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     get_env,
     get_strategy,
     is_blood_economy,
+    is_economy_engine,
     normalize_invest_name,
     resolve_strategy_canonical,
 )
@@ -83,10 +83,6 @@ if TYPE_CHECKING:
         CurrencyWarConfig,
     )
 
-
-# is_economy_engine 暂从原位 cw_events import(3.1 边界:不动 kernel 现有
-# 符号消费);迁位(默认 = kernel/cw_investments,候 P81 换基重演必答②
-# 终裁)随 3.2 原子切换,本文件 import 同批重指。
 
 # ===== 输出契约(本批 design §2.10:纯值 dataclass,不含动作词表)=====
 

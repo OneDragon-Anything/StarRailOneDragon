@@ -68,22 +68,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.horizon i
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import GameState
 
-# ===== 当前(位面, 轮次)解析(沿 env 屏先例退化口径)=====
-
-
-def _current_plane_round(gs: GameState) -> tuple[int, int]:
-    """当前(位面, 轮次);gs 节点位置未写 → 退化 (1, 1)。
-
-    位置缺失帧(开局取卡桩形,node 未写)沿 env 屏
-    env_economy._current_plane_round 同款先例退化局首口径;剩余口径的
-    局首退化 = 全局期望。该分支行为由单测锁(位置缺失帧退化断言)。
-    """
-    node = gs.node.value
-    if node is None:
-        return (1, 1)
-    return (int(node.plane), int(node.round_num))
-
-
 # ===== 字段分类(45 字段三分;单一源 = 三集合,构建校验兜底)=====
 # 分类判据与本批 design §2.3 逐通道对应:「计分」= v1 落地通道公式可算;
 # 「待建模」= 有字段腿但价值模型缺(fail-closed = 0,建模落地自动进);

@@ -74,6 +74,7 @@ from sr_od.application.currency_war.strategies.impl.cw_strategy import (
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
     invest_env,
+    invest_strategy,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     StrategyState,
@@ -399,7 +400,8 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         else:
             self._refresh_direction_views(self.gs, self.state)
 
-    # ===== pick 族(事件/选卡决策;判据单源 = kernel cw_events/cw_comps)=====
+    # ===== pick 族(事件/选卡决策;判据单源 = 策略层 mandate_v1(投资两屏)
+    # ===== / kernel cw_events/cw_comps(其余画面))=====
     # 终态契约 §2.1/§2.2:入口零参(候选 = gs payload 槽;离屏 None =
     # 观察层失约抛错,details §2.1 三分语义),输出 = 单一 CwAction——
     # 选卡 = per-screen 子类型,刷新建议 = 三刷新动作(与选卡互斥单发,
@@ -435,28 +437,27 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         """投资策略/投资环境共用决策核(原 decide_invest 双相拆分)。
         ``pick_param_cls`` = 屏别词表类(词表拆类后由各入口显式传入,
         输出 = 该类实例)。
-        投资策略轴(仍走 kernel ``decide_event``);投资环境轴迁策略层
-        :func:`invest_env.decide`(2026-09-23 迁移迭代 3.2 接线,design
-        §2.9;意向解析留 flow,与 kernel 时代三参同源)。
+        两轴判据单一源均在策略层(kind 分派;宪法五「衍生估值/评序归
+        策略层」;意向解析留 flow,与 kernel 时代三参同源直通):
+        - env → ``invest_env.decide``/``decide_pick``
+          (:meth:`_decide_invest_env_frame`);
+        - strategy → ``invest_strategy.decide``/``decide_pick``
+          (:meth:`_decide_invest_strategy_frame`;2026-09-23 投资策略屏迁移批
+          3.2 原子接线,旧 kernel ``decide_event`` 单口同批退役)。
         (用户裁定 2026-09-08「投资选卡优先经济、然后是终局阵容,
-        不为过渡阵容服务」):策略轴对齐源 = D* 预期终局方向——本入口从
-        意向状态解析 D*① 三参(locked_comp/demoted_endgame/evicted 同源于
-        ist)传 kernel,D*② 由 decide_event 内直算 detect_signals(单帧
-        单读,§5.4);旧 ``target_comp`` 对 invest kind 停止消费(P1 期它是
-        过渡配方对物化的伪 comp,辖域错位;supply/encounter 等 pick 族
-        消费面不变)。
-        (接线 1/6):选卡结果喂 CommitSignals(策略 2.0 权重;affinity 表
-        把所选卡映射到 comp 分贡献)——**纯遥测保留,决策面零消费**
-        (投资源不参与证明自身的反自馈检查现状即合规 = D*② ①层排除承载)。
-        env 侧喂入已随环境轴迁移删除(augment_affinity 对 env 名恒 miss
-        = 死代码)。
-
-        输出包装(终态契约 §2.2 刷新建议动作化):刷新建议 →
-        ``CwActionRefreshInvestCardsParam``;否则 ``pick_param_cls(idx)``。
+        不为过渡阵容服务」):两轴对齐源均 = 意向状态 D*① 三参
+        (locked_comp/demoted_endgame/evicted 同源 ist)传入策略层;旧
+        ``target_comp`` 对 invest kind 不消费(P1 期它是过渡配方对物化的
+        伪 comp,辖域错位;supply/encounter 等 pick 族消费面不变)。
+        选卡结果喂 CommitSignals——**建议帧跳过喂入、选卡帧保留**(喂入
+        面申报见 :meth:`_feed_invest_strategy_signals`;env 侧喂入已随环境
+        轴迁移删除)。
         三闸点击链留 handler——闸全败帧 handler 同访问再调本入口取选卡:
         同帧去重 memo(scratch 键 = (kind, 候选元组))保证「建议帧首调发
         建议、紧随重调落选卡后键清」——重入访问(新候选/同候选)恢复首调
-        语义。
+        语义。memo 命中的落选卡改调策略层 ``decide_pick`` 纯选卡口(decide
+        是纯函数,重调仍返建议;缺此口则建议帧三闸全败时 op round_fail,
+        现实可达路径)。
         """
         options = list(self._require_slot_options(slot, slot_name))
         # 入口内务(:pick 入口入触发面;消费最近一次备战黑板帧)
@@ -464,13 +465,52 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         _ist = self._ensure_intention(self.state)
         if kind == 'env':
             return self._decide_invest_env_frame(options, pick_param_cls, _ist)
-        pick = cw_events.decide_event(
-            options, self.config, self.gs,
-            locked_comp=_ist.locked_comp,
-            demoted_endgame=_ist.demoted_endgame,
-            evicted=frozenset(_ist.evicted),
-        )
-        # 信号喂入:所选卡对各线的 affinity → comp 分贡献(策略轴保留)
+        return self._decide_invest_strategy_frame(options, pick_param_cls, _ist)
+
+    def _decide_invest_strategy_frame(self, options: list, pick_param_cls: type,
+                                      ist: IntentionState,
+                                      ) -> CwActionPickInvestStrategyParam | CwActionRefreshInvestCardsParam:
+        """投资策略轴决策(策略层单一源 = ``invest_strategy.decide``;判据
+        正本 = strategy-docs 投资策略画面篇):纯值出口在此包装动作词表,
+        op handler 与观察写槽零改动。同帧去重 memo 语义与 env 侧同构
+        (键 = (kind, 候选元组)):建议帧首调发逐卡刷新建议(slots = 策略层
+        动作集,与选卡互斥——旧 kernel 单口非互斥返回的语义分界),紧随
+        重调落选卡走 :func:`invest_strategy.decide_pick` 同一评分基线,
+        零选卡漂移。"""
+        out = invest_strategy.decide(
+            options, self.gs,
+            locked_comp=ist.locked_comp,
+            demoted_endgame=ist.demoted_endgame,
+            evicted=frozenset(ist.evicted),
+            config=self.config)
+        memo_key = ('strategy', tuple(options))
+        if isinstance(out, invest_strategy.StrategyRefreshSuggestion):
+            if self.state.scratch.get(self._INVEST_ADVICE_MEMO_KEY) == memo_key:
+                # 同帧重调(handler 三闸全败回退)= 建议已发,落选卡并清键
+                #(键清 = 下一访问恢复首调建议语义)。
+                self.state.scratch.pop(self._INVEST_ADVICE_MEMO_KEY, None)
+                out = invest_strategy.decide_pick(
+                    options, self.gs,
+                    locked_comp=ist.locked_comp,
+                    demoted_endgame=ist.demoted_endgame,
+                    evicted=frozenset(ist.evicted),
+                    config=self.config)
+            else:
+                self.state.scratch[self._INVEST_ADVICE_MEMO_KEY] = memo_key
+                return CwActionRefreshInvestCardsParam(slots=tuple(out.slots),
+                                                       reason=out.reason)
+        # 选卡结果喂 CommitSignals(条件活遥测;建议帧不落此段)。
+        self._feed_invest_strategy_signals(options)
+        return pick_param_cls(idx=out.idx, reason=out.reason)
+
+    def _feed_invest_strategy_signals(self, options: list) -> None:
+        """所选帧对各线的 affinity → comp 分贡献(策略 2.0 权重;纯遥测,
+        决策面零消费——投资源不参与证明自身的反自馈检查现状即合规)。
+        喂入面申报(投资策略屏迁移批 landing 3.2):建议帧跳过喂入——
+        常规建议帧被帧级门拦定义型 → affinity 键喂入恒空,跳过即零漂移;
+        E-豁免角例外 = 被禁定义型卡不拦建议帧,该帧旧机会喂入非空
+        affinity,新机跳过 = 纯遥测漂移(决策面零消费、罕见角,如实申报)。
+        best-effort:信号喂入失败不影响决策。"""
         try:
             from sr_od.application.currency_war.kernel.cw_comps import augment_affinity
             scores: dict[str, float] = {}
@@ -488,17 +528,6 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 _cs.add('invest_strategy', scores)
         except Exception:   # noqa: BLE001  信号喂入 best-effort
             pass
-        memo_key = (kind, tuple(options))
-        if pick.refresh_slots:
-            if self.state.scratch.get(self._INVEST_ADVICE_MEMO_KEY) == memo_key:
-                # 同帧重调(handler 三闸全败回退)= 建议已发,落选卡并清键
-                #(键清 = 下一访问恢复首调建议语义)。
-                self.state.scratch.pop(self._INVEST_ADVICE_MEMO_KEY, None)
-            else:
-                self.state.scratch[self._INVEST_ADVICE_MEMO_KEY] = memo_key
-                return CwActionRefreshInvestCardsParam(slots=tuple(pick.refresh_slots),
-                                          reason=pick.reason)
-        return pick_param_cls(idx=pick.option_idx, reason=pick.reason)
 
     def _decide_invest_env_frame(self, options: list, pick_param_cls: type,
                                  ist: IntentionState,

@@ -35,7 +35,7 @@
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, fields, replace
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER
 from sr_od.application.currency_war.data.cw_invest_data import (
@@ -171,6 +171,114 @@ def is_blood_economy(eff: EconomyEffect | None) -> bool:
     return eff.xp_buy_hp_cost > 0 or eff.hp_gold_swap
 
 
+# ===== 持续通道引擎判别(投资策略屏迁移批 3.2 自 cw_events 迁入;P81
+# ===== 换基重演必答②终裁 = ②类留驻 kernel,proofs/p81-invest-refresh-
+# ===== dominance.md §7.2)=====
+
+# 「引擎 vs 一次性」的界 = 效果原文持续/一次性**结构事实**(宪法五②类:
+# 换一套策略实现,同一张卡的引擎/一次性判定不会不同),零幅度拍值。消费方
+# = 策略层刷新判据的帧级顶级类(strategies/impl/mandate_v1/invest_strategy.
+# py)与 op 层观测位;kernel 驻留依据 = P81 §7.2 依据一/三(判据线优先于
+# 消费方定位;与 STRATEGY_BINDINGS 援 ENV_FACTION 先例同族对账)。
+
+#: 引擎单字段通道:(字段, 默认值)——非默认即通道存在;四族 = 利息(含
+#: cap 覆写)/持续金流/刷新/经验。``interest_cap_override`` 默认 None,
+#: 非 None 即覆写(0 也是有效覆写 = 息通道改写,如买断制 cap=0)。
+_ENGINE_CHANNEL_SINGLE_FIELDS: tuple[tuple[str, float | None], ...] = (
+    ('gold_per_node', 0), ('gold_per_boss_node', 0),
+    ('gold_per_level_up', 0), ('gold_per_three_5cost', 0),
+    ('gold_per_2star2cost_merge', 0), ('gold_per_3star_merge', 0),
+    ('interest_flat_per_node', 0), ('interest_cap_override', None),
+    ('win_reward_mult', 1.0), ('sell_price_mult', 1.0),
+    ('free_refresh_per_node', 0), ('free_refresh_burst', 0),
+    ('refresh_surprise_every', 0), ('refresh_per_compose', 0),
+    ('refresh_free_chance', 0.0), ('refresh_shop_rewrite_every_3cost', 0),
+    ('xp_per_refresh', 0), ('xp_per_node', 0), ('xp_buy_cost_discount', 0),
+    ('xp_instant', 0),
+)
+#: 引擎配对字段通道:效果语义两半齐备才存在(「接下来 count 次每次
+#: amount」/「level 起单击减金」)——任一半缺省 = 通道不存在。
+_ENGINE_CHANNEL_PAIR_FIELDS: tuple[tuple[str, str], ...] = (
+    ('gold_next_nodes_amount', 'gold_next_nodes_count'),
+    ('xp_click_discount_from_level', 'xp_click_discount_from_level_at'),
+)
+#: 显式排除字段(判据 =「一次性/结构登记,不构成持续通道」的**显式负
+#: 集合**,逐组带划界依据;与 strategy_economy 字段三分分类的交集说明:
+#: 本桶跨其「计分/待建模/不计」三类——划分轴不同,这边答「是否持续
+#: 通道」,那边答「现金通道怎么算」):
+_ENGINE_CHANNEL_EXCLUDED_FIELDS: frozenset[str] = frozenset({
+    # 一次性金族(当场/时点大额,无持续语义)
+    'instant_gold', 'gold_at_node', 'gold_at_node_offset',
+    'gold_at_level', 'gold_at_level_target',
+    # 条件刷新三元组(本金充裕系):条件窗口内逐节点补刷,旧闭集裁决
+    # 不入引擎族(非无条件持续通道),沿旧闭集原样划界
+    'free_refresh_cond_gold_above', 'free_refresh_cond_gold_step',
+    'free_refresh_cond_cap',
+    # 补偿型(损血/上限损耗换算,不构成收入通道)
+    'gold_per_20hp_lost', 'gold_per_hp_lost_now',
+    'hp_max_loss_pct_of_loss', 'hp_max_loss_cap_pct',
+    # 血本位族(另由 is_blood_economy 集合排除辖,不入引擎判定)
+    'hp_gold_swap', 'xp_buy_hp_cost',
+    # 难度/期权族(难度→价值需战力建模;远见品质改写系期权)
+    'difficulty_delta', 'difficulty_per_streak', 'difficulty_node_types',
+    'future_quality_upgrade', 'difficulty_inflation_exempt',
+    # 负向结构登记(成本/加价,无正通道)
+    'xp_click_surcharge_from_level', 'xp_click_surcharge_from_level_at',
+})
+
+
+def is_economy_engine(economy: EconomyEffect | None) -> bool:
+    """持续通道引擎谓词(策略层刷新判据帧级顶级类的 kernel 判据源)。
+
+    结构事实判据(存在性,非幅度):命中任意持续通道字段即真,字段值不
+    参与任何定序。与血本位排除族零交集(两族字段不相交,对账声明见
+    ``_ENGINE_CHANNEL_EXCLUDED_FIELDS`` 分组注)。新增 EconomyEffect 字段
+    未显式落三分类 → :func:`_validate_engine_channel_closure` import 即炸
+    (静默判「一次性」的治理缺口前置可见)。"""
+    if economy is None:
+        return False
+    for name, default in _ENGINE_CHANNEL_SINGLE_FIELDS:
+        if getattr(economy, name) != default:
+            return True
+    for amt, cnt in _ENGINE_CHANNEL_PAIR_FIELDS:
+        if getattr(economy, amt) != 0 and getattr(economy, cnt) != 0:
+            return True
+    return False
+
+
+def _validate_engine_channel_closure() -> None:
+    """引擎字段闭集完备校验(迁移批 3.2 伴随义务,P81 §7.2 依据二:
+    闭集新字段默认不入闭集 = 静默判「一次性」,治理上劣于孤儿校验——
+    构建期炸成可见)。三分类 = 引擎单字段/引擎配对/显式排除:
+    ① 并集恰覆盖 EconomyEffect 全字段(新字段未分类即炸);
+    ② 三桶两两互斥(单一定义 = 唯一归属);
+    ③ 单字段默认值与 dataclass 缺省一致(防 (字段, 默认) 对写错 →
+       谓词恒触发/永不触发的静默失真)。"""
+    _defaults = EconomyEffect()
+    _all = {f.name for f in fields(EconomyEffect)}
+    _single = {n for n, _d in _ENGINE_CHANNEL_SINGLE_FIELDS}
+    _pair = {n for amt, cnt in _ENGINE_CHANNEL_PAIR_FIELDS for n in (amt, cnt)}
+    _excluded = set(_ENGINE_CHANNEL_EXCLUDED_FIELDS)
+    _missing = _all - _single - _pair - _excluded
+    if _missing:
+        raise ValueError(
+            f"引擎字段闭集缺位(EconomyEffect 新字段未入三分类,"
+            f"默认静默判一次性):{sorted(_missing)}")
+    _overlap = (_single & _pair) | (_single & _excluded) | (_pair & _excluded)
+    if _overlap:
+        raise ValueError(f"引擎字段闭集双归属(三分类互斥破):{sorted(_overlap)}")
+    _bad_default = [(n, d, getattr(_defaults, n))
+                    for n, d in _ENGINE_CHANNEL_SINGLE_FIELDS
+                    if getattr(_defaults, n) != d]
+    if _bad_default:
+        raise ValueError(
+            f"引擎单字段默认值与 EconomyEffect 缺省不一致(闭集登记失真):"
+            f"{_bad_default}")
+
+
+_validate_engine_channel_closure()
+
+
 @dataclass(frozen=True)
 class EnvEconomyEffect:
     """投资环境的**整局经济通道**结构。
@@ -254,7 +362,6 @@ class InvestmentStrategy:
     effect: str         # 官方效果全文(plaza API)
     source: str = ""    # 溯源(plaza:<id> / content_id / codex_20260815)
     economy: EconomyEffect | None = None   # 可数值化经济效果;战力类 None
-    pick_value: int = 0    # 选卡价值基准分 0-100(0=未评估回落品质先验)
 
 
 def _strat(name: str, rarity: str, effect: str, source: str = "",
@@ -1011,347 +1118,6 @@ def blood_xp_mode(session) -> tuple[str, int] | None:
             return name, int(s.economy.xp_buy_hp_cost)
     return None
 
-# ===== 选卡价值基准分(全量评估表派生)=====
-# 评估口径:value_class 七分类 + quantizable 三档 + pick_priority 0-100(读 effect 原文逐条判定;
-# 无上下文基准分,comp 匹配/HP 分档在 decide_event 消费侧调)。注册表 = plaza base 335,
-# 键经 canon 归一对齐。
-# **知识判据定序器声明(16 号稿 §1.1)**:本表分值来自玩法研究/comp 知识
-# (评估口径),非数学判据——形态 = 定序分:仅在本表(335 条策略)内选项间
-# 排大小有效;禁作为基数与其它分值族(comp-hit/augment/planner 等)做加减语义扩展。
-# 跨族交互仅保留 decide_event 的 max() 覆盖结构,禁新增「叠加进其它面判据」的消费点。
-# (原「层级归属声明(用户裁定:保留 kernel)」已删除,2026-09-23 迁移迭代 3.2:
-# 该声明辖的 ENV_PICK_VALUE/ENV_FACTION_MATCH_FLOOR 及 env 轴消费核已迁/退役,
-# 被宪法五「衍生估值归策略层」取代;策略卡本表仍属 kernel 投资策略轴,
-# 环境轴归属正本 = strategies/impl/mandate_v1/invest_env.py 模块头。)
-# 立项挂账:升级为台账价值判据(ΔP̂ 完成概率增量参数化)归事件面命题批(08 E1/E2)。
-PICK_VALUE: dict[str, int] = {
-    "鲜血阶梯": 75,
-    "打通上下游·彩": 72,
-    "远见": 70,
-    "利息上调": 68,
-    "高效决策": 65,
-    "开源节流": 65,
-    "藏一手": 65,
-    "价值投资·彩": 62,
-    "及时雨": 62,
-    "全都要·彩": 60,
-    "榜样的力量·彩": 60,
-    "采购专员·彩": 58,
-    "加油站": 58,
-    "野蛮成长": 58,
-    "后勤超响应": 58,
-    "本金充裕+": 58,
-    "钻石恒永久": 58,
-    "三五成群": 56,
-    "本金充裕": 55,
-    "商业间谍": 55,
-    "搜打撤": 55,
-    "本姑娘就是罗刹": 55,
-    "万箭齐发": 55,
-    "战术义眼++": 55,
-    "金币大使叽米": 55,
-    "概率事件": 55,
-    "爆仓": 55,
-    "全都要·金": 55,
-    "超发货币": 55,
-    "买断制": 52,
-    "采购专员·金": 52,
-    "幸运闪避EX": 52,
-    "战术义眼+": 52,
-    "财富就是力量": 52,
-    "幸运之子": 52,
-    "团队力量·金": 52,
-    "打通上下游·金": 52,
-    "淘金客": 50,
-    "分解万物": 50,
-    "保守派": 50,
-    "更快,更幸运": 50,
-    "星徽大使叽米": 50,
-    "战术义眼": 50,
-    "和平手枪祝福": 50,
-    "折叠小刀祝福": 50,
-    "OOTD·金": 50,
-    "中产阶级": 50,
-    "免战牌": 50,
-    "免费午餐": 50,
-    "定期福利": 48,
-    "摸个鱼吧III": 48,
-    "黄金投资": 48,
-    "爆晶矿·彩": 48,
-    "黄金垃圾": 48,
-    "量产型装甲祝福": 48,
-    "成本控制": 48,
-    "打人就打脸·金": 48,
-    "长期主义+": 48,
-    "彩虹期货+": 48,
-    "全都要·银": 48,
-    "生命之花祝福": 46,
-    "伟大征服": 45,
-    "基本保障": 45,
-    "乱成一锅粥+": 45,
-    "调饮专家:加拉赫": 45,
-    "军备供应链": 45,
-    "复印件": 45,
-    "武装突入": 45,
-    "奋斗协议": 45,
-    "节节高升": 45,
-    "装备方案A": 45,
-    "终身学习": 45,
-    "节假日礼盒": 45,
-    "被动收入": 45,
-    "装备方案B": 45,
-    "手枪发烧友": 45,
-    "入职礼包": 45,
-    "独家代言": 45,
-    "超光速提拔": 45,
-    "偶像经济": 45,
-    "广聚天下英才": 45,
-    "幸运星祝福": 45,
-    "四费晋升": 45,
-    "星级压制": 45,
-    "长期主义": 45,
-    "彩虹期货": 45,
-    "价值投资·金": 45,
-    "榜样的力量·金": 45,
-    "三三三": 45,
-    "前段发力": 45,
-    "固定理财+": 45,
-    "人海战术": 45,
-    "特战资金+": 45,
-    "全员晋升": 45,
-    "乱成一锅粥": 42,
-    "着眼当下": 42,
-    "琼玉专家:青雀": 42,
-    "佩佩驾到": 42,
-    "公司严选": 42,
-    "愚者恶作剧": 42,
-    "摸个鱼吧II": 42,
-    "专家招募+": 42,
-    "星魂升华": 42,
-    "延迟收益": 42,
-    "爆晶矿·金": 42,
-    "固定理财": 42,
-    "四费援军": 42,
-    "难度修改器": 42,
-    "完美进化": 40,
-    "快请专家·彩": 40,
-    "贸易专家:停云": 40,
-    "优势火力论": 40,
-    "星际和平保险": 40,
-    "控制规模": 40,
-    "彩虹矿+": 40,
-    "佩佩客串": 40,
-    "好运令牌·彩": 40,
-    "潜行专家:貊泽": 40,
-    "退化": 40,
-    "摸个鱼吧I": 40,
-    "五百强": 40,
-    "小复制+": 40,
-    "孪生素数": 40,
-    "绕口令": 40,
-    "嘴硬": 40,
-    "这么大的钻石": 40,
-    "秘密典籍+": 40,
-    "成长的快乐": 40,
-    "胜利,还是胜利": 40,
-    "打捞人才库+": 40,
-    "存款回报": 40,
-    "特战资金": 40,
-    "团队力量·银": 40,
-    "当头一棒": 40,
-    "简单模式": 40,
-    "脱颖而出": 38,
-    "公司军火更新·彩": 38,
-    "精密拆装·彩": 38,
-    "大扩招": 38,
-    "幸运中的幸运": 38,
-    "大裁员": 38,
-    "幸运喷雾": 38,
-    "市场干预": 38,
-    "爆晶矿·银": 38,
-    "完美开局": 38,
-    "返利+": 35,
-    "数值碾压": 35,
-    "攻防一体": 35,
-    "融合召唤": 35,
-    "轮回不止": 35,
-    "武器批发商": 35,
-    "客制化服务": 35,
-    "天降救兵": 35,
-    "晋升名额": 35,
-    "彩虹矿": 35,
-    "停云顾问": 35,
-    "加拉赫顾问": 35,
-    "骇客专家:银狼": 35,
-    "按劳分配": 35,
-    "专家招募": 35,
-    "人才济济": 35,
-    "降本增效": 35,
-    "不要小看我们的羁绊": 35,
-    "市场活力": 35,
-    "小复制": 35,
-    "星变": 35,
-    "独狼": 35,
-    "秘密典籍": 35,
-    "升级锅炉": 35,
-    "经验就是财富": 35,
-    "二极管": 35,
-    "打捞人才库": 35,
-    "三费援军": 35,
-    "经验到账": 35,
-    "返利": 35,
-    "成长基金": 35,
-    "合并同类项": 35,
-    "健康充值": 35,
-    "正能量": 35,
-    "基层贡献": 35,
-    "燃起来了": 33,
-    "超充站": 33,
-    "月光宝盒": 33,
-    "赞美太阳": 33,
-    "梦境大舞台": 33,
-    "装备党": 33,
-    "人在旅途": 33,
-    "读博深造": 33,
-    "快请专家·金": 32,
-    "如有神助": 32,
-    "阿哈大悦": 32,
-    "人才空洞": 32,
-    "量子力学": 32,
-    "双人舞": 32,
-    "全武行": 32,
-    "免费升舱": 32,
-    "黄金期货+": 32,
-    "以战养战": 32,
-    "武力刷新": 32,
-    "武装支援+": 32,
-    "招聘资金+": 32,
-    "溜佩佩+": 32,
-    "保险": 32,
-    "应援团": 32,
-    "榜样的力量·银": 32,
-    "定点爆破": 30,
-    "羁绊的力量": 30,
-    "双龙会": 30,
-    "白衣伙伴": 30,
-    "临时工合约": 30,
-    "贝洛伯格星徽套组": 30,
-    "银河学者星徽套组": 30,
-    "列车同行星徽套组": 30,
-    "盛会之星星徽套组": 30,
-    "昼之半神星徽套组": 30,
-    "夜之半神星徽套组": 30,
-    "追击星徽套组": 30,
-    "狼狩星徽套组": 30,
-    "仙舟星徽套组": 30,
-    "星间旅人星徽套组": 30,
-    "追击星徽套组(二)": 30,
-    "击破星徽套组": 30,
-    "群攻星徽套组": 30,
-    "能量星徽套组": 30,
-    "治疗星徽套组": 30,
-    "燃血星徽套组": 30,
-    "减益星徽套组": 30,
-    "持续伤害星徽套组": 30,
-    "量子同频星徽套组": 30,
-    "护盾星徽套组": 30,
-    "战技点星徽套组": 30,
-    "迷之旅人": 30,
-    "好运来": 30,
-    "白银投资": 30,
-    "剩余价值": 30,
-    "空仓+": 30,
-    "钢铁美学": 30,
-    "枪在手+": 30,
-    "市场混乱": 30,
-    "现金为王": 30,
-    "精密拆装·金": 30,
-    "蓝钻闪耀": 30,
-    "红钻闪耀": 30,
-    "回收计划+": 30,
-    "公司军火更新·金": 30,
-    "借力打力": 30,
-    "黄金期货": 30,
-    "全队的希望": 30,
-    "尾款交付": 30,
-    "军火贸易+": 30,
-    "人力重组": 30,
-    "溜佩佩": 30,
-    "招财狗": 30,
-    "自由市场": 30,
-    "效率员工奖": 30,
-    "盗用身份": 28,
-    "创伤小组": 28,
-    "回收计划": 28,
-    "银河学者星徽": 28,
-    "仙舟星徽": 28,
-    "列车同行星徽": 28,
-    "夜之半神星徽": 28,
-    "昼之半神星徽": 28,
-    "盛会之星星徽": 28,
-    "击破星徽": 28,
-    "能量星徽": 28,
-    "治疗星徽": 28,
-    "燃血星徽": 28,
-    "群攻星徽": 28,
-    "追击星徽": 28,
-    "狼狩星徽": 28,
-    "星间旅人星徽": 28,
-    "贝洛伯格星徽": 28,
-    "减益星徽": 28,
-    "持续伤害星徽": 28,
-    "量子同频星徽": 28,
-    "护盾星徽": 28,
-    "战技点星徽": 28,
-    "欢愉星徽": 28,
-    "是钻石总会发光": 28,
-    "二费援军": 28,
-    "人才激励+": 28,
-    "招聘资金": 28,
-    "买彩票+": 28,
-    "军火贸易": 26,
-    "决议:娱乐星球": 25,
-    "黄晶矿工": 25,
-    "孪生姵姵": 25,
-    "空仓": 25,
-    "砂里淘金": 25,
-    "枪在手": 25,
-    "风暴骑士": 25,
-    "好运令牌·金": 25,
-    "无害垃圾": 25,
-    "规模效应": 25,
-    "人才激励": 25,
-    "公司人才流动": 25,
-    "扩充团队": 25,
-    "武装支援": 25,
-    "气氛组+": 25,
-    "买彩票": 25,
-    "公司军火更新·银": 25,
-    "许诺特权": 25,
-    "钻石商人": 25,
-    "好运令牌·银": 25,
-    "多元化团队": 22,
-    "躺平": 22,
-    "无伤通关": 22,
-    "精密拆装·银": 22,
-    "不等价交换": 20,
-    "节省工位": 20,
-    "气氛组": 20,
-    "赌神·银": 20,
-    "先亏后盈": 18,
-    "恢复生机": 12,
-}
-_PICK_ORPHANS: list[str] = [n for n in PICK_VALUE if n not in INVESTMENT_STRATEGIES]
-if _PICK_ORPHANS:
-    raise ValueError(f"PICK_VALUE 孤儿键(注册表无此卡,版本更新?):{_PICK_ORPHANS}")
-for _n, _v in PICK_VALUE.items():
-    INVESTMENT_STRATEGIES[_n] = replace(INVESTMENT_STRATEGIES[_n], pick_value=_v)
-
-# (事件面经验加减分族已退役 2026-09-04,「未证即退役」裁定,保守缺省 0:
-# - SURVIVAL_PICKS(HP<40 生存类策略集,decide_event 低血 +15 钩子);
-# - EQUIP_FLOW_PICKS(P2 断崖装备流策略集,decide_event plane≥2 +25 钩子,
-#   11 局实锤经验拟合——辖域与幅度双未证,重立须按板面装备存量观测参数化。)
-
 
 def resolve_strategy_canonical(name: str) -> str | None:
     """候选名 → 投资策略注册表规范名(归一 + LCS 兜底)。
@@ -1371,23 +1137,6 @@ def resolve_strategy_canonical(name: str) -> str | None:
     if idx is not None and abs(len(names[idx]) - len(name)) <= 3:
         return names[idx]
     return None
-
-
-def pick_value_of(name: str) -> int | None:
-    """选卡价值基准分。精确名优先;OCR 形变走 LCS 兜底
-    (解析单一源 = ``resolve_strategy_canonical``);未评估(codex 新条目/
-    完全未知)→ None(回落品质先验)。"""
-    canonical = resolve_strategy_canonical(name)
-    if canonical is None:
-        return None
-    v = INVESTMENT_STRATEGIES[canonical].pick_value
-    return v if v > 0 else None
-
-
-# (ENV_PICK_VALUE 环境条目 83 条与 ENV_FACTION_MATCH_FLOOR 已删除,2026-09-23
-# 迁移迭代 3.2:环境选卡评序迁策略层统一加法标尺,消费核 = strategies/impl/
-# mandate_v1/invest_env.py;InvestmentEnv.pick_value 字段保留但恒缺省 0,
-# 零消费方。策略卡 335 条 PICK_VALUE 不在本删除面。)
 
 
 # ===== 环境经济通道注册表(白名单制)=====
