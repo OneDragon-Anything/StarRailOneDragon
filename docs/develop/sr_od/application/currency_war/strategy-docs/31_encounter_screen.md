@@ -46,7 +46,7 @@ decide(options, gs)
 | 恰一胜(另一场 = 败局或删失) | `边缘` |
 | 两场全败 / 双删失 / 一败一删失 | `不足` |
 
-- **fill 分支**(恰一胜、另一场为败局时):用败局侧进度填充率给能力态降档——仅在进度条双定谳槽 `PROGRESS_BAR_DIRECTION`/`BAR_SEMANTICS` 注入定谳后激活(注入位 = `encounter_pick.apply_calibration`,合法键 = fill 双键);未定谳期不激活,fill 只走删失分支(照旧 fail-closed)。删失优先于 fill:另一场为删失时整场按删失计,不读填充率。
+- **fill 分支**(恰一胜、另一场为败局时):用败局侧进度填充率给能力态降档——仅在进度条双定谳槽 `PROGRESS_BAR_DIRECTION`/`BAR_SEMANTICS` 注入定谳后激活(注入位 = `encounter_pick.apply_calibration`,合法键 = fill 双键);未定谳期该分支不激活(fail-closed 照旧)。删失优先于 fill:另一场为删失时整场按删失计,不读填充率。
 - `不足` → 可及集空 → 刷新阀(因词 `kappa-不足`)。
 
 ### 2.3 可及集(cap 过滤在前;其五/六经验档层)
