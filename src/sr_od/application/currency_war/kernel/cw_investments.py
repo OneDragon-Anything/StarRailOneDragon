@@ -1562,6 +1562,217 @@ def _validate_env_gifts() -> None:
 _validate_env_gifts()
 
 
+# ===== 策略卡具名发放登记表(投资策略屏迁移批新增;白名单制)=====
+# 底册 = 双母体对账(83 条):①STRATEGY_BINDINGS 角色绑定条目 ∩ 「获得…直读」
+# 形态机械预筛(68 条白得 + 11 条顾问);②全表效果文本反扫(「获得…roster 名」)
+# 补网 4 条(龙虎兄弟狸/佩佩驾到/艾丝妲的猛犬!/招财狗——无角色绑定的直读
+# 发放,佩佩 ∈ CHARACTER_ROSTER)。发放角色归属 = 效果原文机制事实,宪法五
+# 第②类判据留 kernel(与 ENV_GIFTS 留 kernel 同判据);「档→分」映射与
+# advisor 折减 = 策略层 gift_value.grant_gift_value(消费位 =
+# strategies/impl/mandate_v1/invest_strategy.py)。逐卡对账记录(即时/条件
+# 分档与效果原文时点短语引文、排除清单记因)= 迁移迭代 3.1 验收凭据,
+# changes/2026-09-23-invest-strategy-screen-migration/strategy-grants-
+# reconciliation.md。键 = 注册表规范名(canon),与 INVESTMENT_STRATEGIES 同键空间。
+STRATEGY_GRANTS: dict[str, GiftGrant] = {
+    # —— 顾问型 11 条(advisor=True,付费期权沿 ×0.5 折减)——
+    # 效果原文 = 「获得专家顾问【X】,并使其在本局游戏中加入商店」,与
+    # env 批特邀专家完全同构的付费购买期权语义
+    '停云顾问': GiftGrant(chars_immediate=('停云',), advisor=True),
+    '加拉赫顾问': GiftGrant(chars_immediate=('加拉赫',), advisor=True),
+    '战术专家:佩拉': GiftGrant(chars_immediate=('佩拉',), advisor=True),
+    '潜行专家:貊泽': GiftGrant(chars_immediate=('貊泽',), advisor=True),
+    '琼玉专家:青雀': GiftGrant(chars_immediate=('青雀',), advisor=True),
+    '调饮专家:加拉赫': GiftGrant(chars_immediate=('加拉赫',), advisor=True),
+    '贸易专家:停云': GiftGrant(chars_immediate=('停云',), advisor=True),
+    '锻冶专家:刃': GiftGrant(chars_immediate=('刃',), advisor=True),
+    '领航专家:姬子': GiftGrant(chars_immediate=('姬子',), advisor=True),
+    '骇客专家:银狼': GiftGrant(chars_immediate=('银狼',), advisor=True),
+    '摸个鱼吧I': GiftGrant(chars_immediate=('青雀',), advisor=True),
+    # —— 白得型 72 条(绑定母体 68 + 反扫补网 4)——
+    # 星徽单件族(金):「获得1个【X星徽】,和1个【角色】」即时直读
+    '仙舟星徽': GiftGrant(chars_immediate=('藿藿',)),
+    '减益星徽': GiftGrant(chars_immediate=('黄泉',)),
+    '击破星徽': GiftGrant(chars_immediate=('阮·梅',)),
+    '列车同行星徽': GiftGrant(chars_immediate=('丹恒·饮月',)),
+    '命运圣杯星徽': GiftGrant(chars_immediate=('远坂凛',)),
+    '夜之半神星徽': GiftGrant(chars_immediate=('万敌',)),
+    '战技点星徽': GiftGrant(chars_immediate=('丹恒·饮月',)),
+    '护盾星徽': GiftGrant(chars_immediate=('砂金',)),
+    '持续伤害星徽': GiftGrant(chars_immediate=('卡芙卡',)),
+    '星间旅人星徽': GiftGrant(chars_immediate=('银枝',)),
+    '昼之半神星徽': GiftGrant(chars_immediate=('风堇',)),
+    '欢愉星徽': GiftGrant(chars_immediate=('绯英',)),
+    '治疗星徽': GiftGrant(chars_immediate=('风堇',)),
+    '燃血星徽': GiftGrant(chars_immediate=('万敌',)),
+    '狼狩星徽': GiftGrant(chars_immediate=('椒丘',)),
+    '盛会之星星徽': GiftGrant(chars_immediate=('花火',)),
+    '群攻星徽': GiftGrant(chars_immediate=('翡翠',)),
+    '能量星徽': GiftGrant(chars_immediate=('星期日',)),
+    '追击星徽': GiftGrant(chars_immediate=('飞霄',)),
+    '量子同频星徽': GiftGrant(chars_immediate=('希儿',)),
+    '贝洛伯格星徽': GiftGrant(chars_immediate=('希儿',)),
+    '银河学者星徽': GiftGrant(chars_immediate=('艾丝妲',)),
+    # 星徽套组族(棱彩):「获得1个【X星徽】,和1个【角色】,以及1个【装备】」
+    '仙舟星徽套组': GiftGrant(chars_immediate=('藿藿',)),
+    '减益星徽套组': GiftGrant(chars_immediate=('黄泉',)),
+    '击破星徽套组': GiftGrant(chars_immediate=('阮·梅',)),
+    '列车同行星徽套组': GiftGrant(chars_immediate=('丹恒·饮月',)),
+    '夜之半神星徽套组': GiftGrant(chars_immediate=('万敌',)),
+    '战技点星徽套组': GiftGrant(chars_immediate=('丹恒·饮月',)),
+    '护盾星徽套组': GiftGrant(chars_immediate=('砂金',)),
+    '持续伤害星徽套组': GiftGrant(chars_immediate=('卡芙卡',)),
+    '星间旅人星徽套组': GiftGrant(chars_immediate=('银枝',)),
+    '昼之半神星徽套组': GiftGrant(chars_immediate=('风堇',)),
+    '治疗星徽套组': GiftGrant(chars_immediate=('风堇',)),
+    '燃血星徽套组': GiftGrant(chars_immediate=('万敌',)),
+    '狼狩星徽套组': GiftGrant(chars_immediate=('椒丘',)),
+    '盛会之星星徽套组': GiftGrant(chars_immediate=('花火',)),
+    '群攻星徽套组': GiftGrant(chars_immediate=('翡翠',)),
+    '能量星徽套组': GiftGrant(chars_immediate=('星期日',)),
+    '追击星徽套组': GiftGrant(chars_immediate=('飞霄',)),
+    '追击星徽套组(二)': GiftGrant(chars_immediate=('飞霄',)),
+    '量子同频星徽套组': GiftGrant(chars_immediate=('希儿',)),
+    '贝洛伯格星徽套组': GiftGrant(chars_immediate=('希儿',)),
+    '银河学者星徽套组': GiftGrant(chars_immediate=('艾丝妲',)),
+    # comp 专属机制强化族:「获得…【角色】」即时直读
+    '人在旅途': GiftGrant(chars_immediate=('绯英', '银枝')),
+    '借力打力': GiftGrant(chars_immediate=('黑塔', '缇宝')),
+    '偶像经济': GiftGrant(chars_immediate=('火花',)),
+    '双人舞': GiftGrant(chars_immediate=('千冶·刃', '卡芙卡')),
+    '双龙会': GiftGrant(chars_immediate=('丹恒·腾荒', '丹恒·饮月')),
+    '梦境大舞台': GiftGrant(chars_immediate=('花火',)),
+    '月光宝盒': GiftGrant(chars_immediate=('赛飞儿', '万敌')),
+    '摸个鱼吧II': GiftGrant(chars_immediate=('青雀',)),
+    '摸个鱼吧III': GiftGrant(chars_immediate=('青雀',)),
+    '燃起来了': GiftGrant(chars_immediate=('万敌', '千冶·刃')),
+    '赞美太阳': GiftGrant(chars_immediate=('那刻夏',)),
+    '装备党': GiftGrant(chars_immediate=('椒丘', '飞霄')),
+    '读博深造': GiftGrant(chars_immediate=('艾丝妲', '阮·梅')),
+    '超充站': GiftGrant(chars_immediate=('阿格莱雅', '藿藿')),
+    '量子力学': GiftGrant(chars_immediate=('希儿',)),
+    '钢铁美学': GiftGrant(chars_immediate=('希儿',)),
+    # 兼即时腿与条件腿(条件腿 = 「获得3星【黑塔】时获得【大黑塔】」再得);
+    # 216 张【黑塔】入商店系可购买供给非发放,不入册
+    '黑塔纪元': GiftGrant(
+        chars_immediate=('大黑塔',),
+        chars_conditional=(('大黑塔', '你获得3星【黑塔】时获得【大黑塔】'),),
+    ),
+    # 本姑娘就是罗刹:首句「获得2星【三月七】」即时;「化身【罗刹】」系
+    # 变身机制非发放,不入册
+    '本姑娘就是罗刹': GiftGrant(chars_immediate=('三月七',)),
+    # 白衣伙伴:「获得【白厄】」即时 +「3个节点后获得【星期日】」条件
+    '白衣伙伴': GiftGrant(
+        chars_immediate=('白厄',),
+        chars_conditional=(('星期日', '3个节点后获得'),),
+    ),
+    # 盗用身份:「进入第二位面的首领节点时」条件发放【火花】;「1个【开拓者】」
+    # 腿开拓者 ∉ CHARACTER_ROSTER 排除
+    '盗用身份': GiftGrant(
+        chars_conditional=(('火花', '进入第二位面的首领节点时'),),
+    ),
+    # 砂里淘金:「合成2星2费角色时」条件发放
+    '砂里淘金': GiftGrant(
+        chars_conditional=(('砂金', '合成2星2费角色时'),),
+    ),
+    # 迷之旅人:两腿均条件(激活4巡海游侠时 2星黄泉/下一奖励节点 波提欧)
+    '迷之旅人': GiftGrant(
+        chars_conditional=(
+            ('黄泉', '激活4巡海游侠时获得2星黄泉'),
+            ('波提欧', '进入下一个奖励节点时'),
+        ),
+    ),
+    # 轮回不止:「获得【白厄】」即时;「进入第二/三位面时再获得一次」系
+    # 同角色重复发放腿,角色集不变不入条件集
+    '轮回不止': GiftGrant(chars_immediate=('白厄',)),
+    # 飞光双件:「获得【彦卿】和【景元】」/「获得【镜流】和特殊的1费【景元】」
+    '飞光·传剑': GiftGrant(chars_immediate=('彦卿', '景元')),
+    '飞光·映月': GiftGrant(chars_immediate=('镜流', '景元')),
+    # —— 反扫补网 4 条(无角色绑定的「获得…」直读发放)——
+    '龙虎兄弟狸': GiftGrant(chars_immediate=('狸小龙', '狸小虎')),
+    '佩佩驾到': GiftGrant(chars_immediate=('佩佩',)),
+    '艾丝妲的猛犬！': GiftGrant(chars_immediate=('佩佩',)),
+    '招财狗': GiftGrant(chars_immediate=('佩佩',)),
+}
+
+# 反扫候选闭集防线的排除/假阳性白名单(逐条记因;键必须在注册表):
+# - 愚者恶作剧:概率变形发放(2/4 费卡概率变为【花火】/【火花】),无「获得」
+#   字样,非直读发放;
+# - 快请专家·金/彩:「获得1个【】/2个【】」空名不可具名(注册键各自独立);
+# - 孪生姵姵:发放对象「姵姵」∉ CHARACTER_ROSTER(反扫命中的「佩佩」系
+#   「和你的佩佩一模一样」对比句非发放);
+# - 溜佩佩/溜佩佩+:「…佩佩会在你的后排逛街」系效果实现发放但无「获得」
+#   直读引导(反扫窗口命中的「获得9/15金币」 govern 金币非佩佩)。
+# 統一排除口径辖未来同类:roster-外目标与空名发放天然不产反扫命中,自动
+# 排除不逐条记因;本白名单只收现存例外。
+_STRATEGY_GRANTS_SCAN_EXCLUSIONS: dict[str, str] = {
+    '愚者恶作剧': '概率变形发放、无「获得」字样',
+    '快请专家·金': '「获得1个【】」空名不可具名',
+    '快请专家·彩': '「获得2个【】」空名不可具名',
+    '孪生姵姵': '发放对象姵姵不在 CHARACTER_ROSTER',
+    '溜佩佩': '实发放但非「获得」引导(佩佩逛街句)',
+    '溜佩佩+': '实发放但非「获得」引导(佩佩逛街句)',
+}
+
+
+def _scan_strategy_grant_candidates(window: int = 30) -> set[str]:
+    """机械反扫:效果文本中「获得」后 window 字内出现 CHARACTER_ROSTER 名的
+    全部策略卡名(候选闭集防线的数据面;window=30 覆盖「获得1个携带着3个
+    永久附着星徽的【佩佩】」类长修饰直读形态)。"""
+    hits: set[str] = set()
+    for _name, _st in INVESTMENT_STRATEGIES.items():
+        _start = 0
+        while True:
+            _idx = _st.effect.find('获得', _start)
+            if _idx < 0:
+                break
+            _seg = _st.effect[_idx + len('获得'): _idx + len('获得') + window]
+            if any(_c in _seg for _c in CHARACTER_ROSTER):
+                hits.add(_name)
+                break
+            _start = _idx + 1
+    return hits
+
+
+def _validate_strategy_grants() -> None:
+    """STRATEGY_GRANTS 构建校验(import 即炸;沿 _validate_env_gifts 先例):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后静默
+    失联);② 角色名漂移:发放角色(即时∪条件)必须在 CHARACTER_ROSTER;
+    ③ 空发放集拒绝(即时角色/条件角色全空 = 登记笔误,档位机器恒判 off);
+    ④ **反扫候选闭集防线**:机械反扫(「获得…roster 名」全表命中)候选集
+    ⊆ STRATEGY_GRANTS ∪ 排除/假阳性白名单——新增「获得」直读发放卡漏登记
+    即炸;白名单键孤儿同样炸(防记因指向已删卡后防线空转)。
+    """
+    orphans = [n for n in STRATEGY_GRANTS if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(f"STRATEGY_GRANTS 孤儿键(base 无此卡?):{sorted(orphans)}")
+    for _name, _grant in STRATEGY_GRANTS.items():
+        _drift = [c for c in (*_grant.chars_immediate,
+                              *(c for c, _note in _grant.chars_conditional))
+                  if c not in CHARACTER_ROSTER]
+        if _drift:
+            raise ValueError(
+                f"STRATEGY_GRANTS 角色名漂移({_name!r} 注册表无此人,版本改名?):{_drift}")
+        if not _grant.chars_immediate and not _grant.chars_conditional:
+            raise ValueError(
+                f"STRATEGY_GRANTS 空发放集:{_name!r} 即时角色/条件角色全空,数据残缺")
+    _wl_orphans = [n for n in _STRATEGY_GRANTS_SCAN_EXCLUSIONS
+                   if n not in INVESTMENT_STRATEGIES]
+    if _wl_orphans:
+        raise ValueError(
+            f"STRATEGY_GRANTS 反扫白名单孤儿键(注册表无此卡):{_wl_orphans}")
+    _candidates = _scan_strategy_grant_candidates()
+    _covered = set(STRATEGY_GRANTS) | set(_STRATEGY_GRANTS_SCAN_EXCLUSIONS)
+    _leaks = _candidates - _covered
+    if _leaks:
+        raise ValueError(
+            f"STRATEGY_GRANTS 反扫闭集破口(「获得…角色名」直读发放候选未登记"
+            f"也未记因排除,新增发放卡漏登记?):{sorted(_leaks)}")
+
+
+_validate_strategy_grants()
+
+
 # ===== 环境品质改写注册表(2026-09-12 invest-env 迭代 3.6;
 # details/env-value-models.md §2.2;白名单制)=====
 # 品质改写型环境(时代 ×3 + 头彩/尾彩 + 银·金·彩 + 联席决策,恰 7 条)的池改写
