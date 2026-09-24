@@ -58,6 +58,7 @@ from sr_od.application.currency_war.kernel.cw_equip_value import (
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
+    Unit,
     bench_units_of,
     deployed_rows_of,
 )
@@ -181,8 +182,8 @@ def _all_tier_zero(options: list[SupplyOption], gs: GameState,
                for o in options)
 
 
-def _can_merge_star(char: str, gs: GameState, bench: list,
-                    deployed: list) -> bool:
+def _can_merge_star(char: str, gs: GameState, bench: list[Unit],
+                    deployed: tuple[Unit, ...]) -> bool:
     """能凑星 = 选入该角色后与全场(上阵行域 ∪ 备战席)同名 1★ 恰成
     3 张(合成 2★)。deployed 须为行域展平的扁平 Unit 序列——(front,
     back) 二元组直传会被条目身份协议 fail-closed 静默跳过 = 上阵域漏计。

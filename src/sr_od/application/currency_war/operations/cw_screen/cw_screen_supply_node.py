@@ -282,7 +282,7 @@ class CwScreenSupplyNode(CwOperation):
                     and not (_left is not None and int(_left) > 0
                              and self._refresh_point is not None):
                 # 对照闸拒绝 → 重调一次(判据侧次数闸已内嵌 decide,同输入
-                # 同输出仍建议刷;本面 = 读缺/锚点缺对照兜底)。
+                # 同输出仍建议刷;本面 = 刷新锚点缺失对照兜底)。
                 pick = match.strategy.decide_supply()
                 if isinstance(pick, CwActionRefreshSupplyParam):
                     # 重调仍建议刷新 = 刷新锚点缺失面,零点击终结交回

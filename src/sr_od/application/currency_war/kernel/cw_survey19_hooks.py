@@ -6,8 +6,8 @@ cw_screen_encounter)由调用方接入。用户修正裁定:
   别让装备躺在物品栏(穿了才产经验,物品栏 0 经验);
 - P9:难度增减的场合依赖(大胜 0/边际峰值/无解 0)进遭遇档位选择。
 
-(P8 补给重刷判据已删:三支语义与补给选卡决策重复,决策本体单一源 =
-策略层 ``strategies/impl/mandate_v1/supply.py``;考古走 git 历史。)
+(补给重刷判据不在本模块:单一源 = 策略层
+``strategies/impl/mandate_v1/supply.py``。)
 """
 from __future__ import annotations
 
