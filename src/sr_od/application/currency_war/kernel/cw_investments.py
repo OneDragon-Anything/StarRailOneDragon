@@ -1356,14 +1356,16 @@ _validate_env_gifts()
 
 
 # ===== 策略卡具名发放登记表(白名单制)=====
-# 底册 = 双母体对账(83 条):①STRATEGY_BINDINGS 角色绑定条目 ∩ 「获得…直读」
+# 底册 = 双母体对账(86 条):①STRATEGY_BINDINGS 角色绑定条目 ∩ 「获得…直读」
 # 形态机械预筛(68 条白得 + 11 条顾问);②全表效果文本反扫(「获得…roster 名」)
 # 补网 4 条(龙虎兄弟狸/佩佩驾到/艾丝妲的猛犬!/招财狗——无角色绑定的直读
-# 发放,佩佩 ∈ CHARACTER_ROSTER)。发放角色归属 = 效果原文机制事实,宪法五
+# 发放,佩佩 ∈ CHARACTER_ROSTER);③箱腿 3 条(战术义眼++/保守派/快请专家·彩,
+# 「获得…【进阶武装箱】」占席道具直读,迭代 2026-09-24-advanced-armory-box)。
+# 发放角色归属 = 效果原文机制事实,宪法五
 # 第②类判据留 kernel(与 ENV_GIFTS 留 kernel 同判据);「档→分」映射与
 # advisor 折减 = 策略层 gift_value.grant_gift_value(消费位 =
 # strategies/impl/mandate_v1/invest_strategy.py)。逐条登记判据(「获得…
-# 角色名」直读才入册、顾问型 advisor=True、即时/条件分档 = 效果原文时点
+# 角色名/占席道具」直读才入册、顾问型 advisor=True、即时/条件分档 = 效果原文时点
 # 语义;roster-外目标与空名发放自动排除)= 29 号稿 §2.3;键 = 注册表规范
 # 名(canon),与 INVESTMENT_STRATEGIES 同键空间。
 STRATEGY_GRANTS: dict[str, GiftGrant] = {
@@ -1485,6 +1487,17 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '佩佩驾到': GiftGrant(chars_immediate=('佩佩',)),
     '艾丝妲的猛犬！': GiftGrant(chars_immediate=('佩佩',)),
     '招财狗': GiftGrant(chars_immediate=('佩佩',)),
+    # —— 箱腿型 3 条(占席道具发放;效果原文对账 id = cw_invest_data.
+    # PLAZA_AUGMENTS:战术义眼++ 350403/保守派 351501/快请专家·彩 360201;
+    # 「获得1个/一件【进阶武装箱】」直读,数量 = 元素重复次数)——
+    # 三卡的战斗被动腿(战术义眼++能量恢复/保守派伤害减免/快请专家·彩能量
+    # 恢复)非「获得时点」效果,不属 GiftGrant 登记辖域(归策略效果建模批);
+    # 快请专家·彩只登记箱腿:好运令牌非占席道具(入 items 会错进
+    # BENCH_ITEM_NAMES 被当占席道具,归消耗品域)、「获得2个【】」空括号腿
+    # 数据源缺口禁猜——两腿查无登记即安静不写,真值归实机/数据源勘误。
+    '战术义眼++': GiftGrant(items_immediate=('进阶武装箱',)),
+    '保守派': GiftGrant(items_immediate=('进阶武装箱',)),
+    '快请专家·彩': GiftGrant(items_immediate=('进阶武装箱',)),
 }
 
 # ===== 占席道具词表(溢出位身份的 kind 判定单一源)=====
@@ -1547,8 +1560,10 @@ def _validate_strategy_grants() -> None:
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后静默
     失联);② 角色名漂移:发放角色(即时∪条件)必须在 CHARACTER_ROSTER;
-    ③ 空发放集拒绝(即时角色/条件角色全空 = 登记笔误,档位机器恒判 off);
-    ④ **反扫候选闭集防线**:机械反扫(「获得…roster 名」全表命中)候选集
+    ③ 空发放集拒绝(即时角色/条件角色/即时道具/定时道具四通道全空 = 登记
+    笔误,档位机器恒判 off;items 两通道沿 _validate_env_gifts 同款并入——
+    箱腿条目 chars 两通道空而 items_immediate 非空,合法);④ **反扫候选
+    闭集防线**:机械反扫(「获得…roster 名」全表命中)候选集
     ⊆ STRATEGY_GRANTS ∪ 排除/假阳性白名单——新增「获得」直读发放卡漏登记
     即炸;白名单键孤儿同样炸(防记因指向已删卡后防线空转)。
     """
@@ -1562,9 +1577,11 @@ def _validate_strategy_grants() -> None:
         if _drift:
             raise ValueError(
                 f"STRATEGY_GRANTS 角色名漂移({_name!r} 注册表无此人,版本改名?):{_drift}")
-        if not _grant.chars_immediate and not _grant.chars_conditional:
+        if not _grant.chars_immediate and not _grant.chars_conditional \
+                and not _grant.items_immediate and not _grant.items_scheduled:
             raise ValueError(
-                f"STRATEGY_GRANTS 空发放集:{_name!r} 即时角色/条件角色全空,数据残缺")
+                f"STRATEGY_GRANTS 空发放集:{_name!r} 即时角色/条件角色/"
+                f"即时道具/定时道具全空,数据残缺")
     _wl_orphans = [n for n in _STRATEGY_GRANTS_SCAN_EXCLUSIONS
                    if n not in INVESTMENT_STRATEGIES]
     if _wl_orphans:

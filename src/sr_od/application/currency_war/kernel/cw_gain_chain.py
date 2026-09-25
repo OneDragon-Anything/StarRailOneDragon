@@ -535,6 +535,24 @@ def gain_equipment(gs: GameState, item: str, *, rand: bool,
                        effects=effects, detail='')
 
 
+def gain_bench_item(gs: GameState, item: str, *, rand: bool,
+                    sig: ChannelSig, evidence: str,
+                    producer: str = GAIN_CHAIN_PRODUCER) -> bool:
+    """获得占席道具(占席道具公开发放口;命名沿 gain_character/gain_equipment
+    系):落位语义全部复用 :func:`_place_bench_item`(备战空槽 → 席满
+    溢出落位 → 溢出位被占零写留证,2026-09-24 道具落位语义)。返回是否
+    落位(备战槽或溢出位)。``rand=False`` = 确定发放(策略箱腿/环境发放
+    同约定,gain-chain.md §5);``producer`` 缺省 = 链缺省署名。
+
+    公开动机(kernel 策略发放面补「占席道具」形态,迭代
+    2026-09-24-advanced-armory-box design §2.2):本原语公开前效果体
+    (cw_gain_effects)无占席道具发放口可消费——骇客卡 bench 腿走
+    gain_character,道具腿无对应入口。
+    """
+    return _place_bench_item(gs, item, rand=rand, evidence=evidence,
+                             sig=sig, producer=producer)
+
+
 def _node_frame(gs: GameState) -> str:
     """链内 frame 字符串(p<plane>-r<round>;节点未观察 = 空——登记腿
     evidence 用,与画面 op 三桥现行口径一致)。"""
@@ -617,14 +635,16 @@ def gain_invest_strategy(gs: GameState, session: object,
 
 
 def _place_bench_item(gs: GameState, item: str, *, rand: bool,
-                      evidence: str, sig: ChannelSig) -> bool:
+                      evidence: str, sig: ChannelSig,
+                      producer: str = GAIN_CHAIN_PRODUCER) -> bool:
     """占席道具(武装箱系)落位(角色落位同构:_build_pool/bench_place/
     _select_write 序;槽件 = ``BenchSlot(kind='supply_box')``,双端同一
     获得链——sim 世界写入即容器写)。席满 → 溢出落位(实机真值 2026-09-24
     用户确认:道具与角色同款——落溢出席并阻断进入战斗;两字段直写,身份 =
     道具名,消费方按 BENCH_ITEM_NAMES 判 kind);溢出位已被占 → 零写 +
     留证禁猜(与角色腿同款,gain-chain.md §6)。返回是否落位(备战槽或
-    溢出位)。"""
+    溢出位)。``producer`` = 写端署名(缺省 = 链缺省,环境通道现役调用点
+    不传即行为不变;策略效果体经公开口 :func:`gain_bench_item` 透传)。"""
     if gs.bench.value is None:
         return False
     pool = _build_pool(gs, None)
@@ -633,7 +653,7 @@ def _place_bench_item(gs: GameState, item: str, *, rand: bool,
     slot = BenchSlot(kind='supply_box')
     if bench_place(pool.bench, slot) is not None:
         write(gs.bench, bench_view_of_working(pool.bench, pool.orig_view),
-              produced_by=GAIN_CHAIN_PRODUCER, evidence=f'{evidence}#place',
+              produced_by=producer, evidence=f'{evidence}#place',
               sig=sig)
         return True
     if _overflow_occupied(gs):
@@ -649,9 +669,9 @@ def _place_bench_item(gs: GameState, item: str, *, rand: bool,
         return False
     # 席满 → 溢出落位(两字段各一行,同 evidence 同 sig;道具无升星语义,
     # 不进合成判断)
-    write(gs.overflow_warning, True, produced_by=GAIN_CHAIN_PRODUCER,
+    write(gs.overflow_warning, True, produced_by=producer,
           evidence=f'{evidence}#place', sig=sig)
-    write(gs.overflow_card, item, produced_by=GAIN_CHAIN_PRODUCER,
+    write(gs.overflow_card, item, produced_by=producer,
           evidence=f'{evidence}#place', sig=sig)
     return True
 
