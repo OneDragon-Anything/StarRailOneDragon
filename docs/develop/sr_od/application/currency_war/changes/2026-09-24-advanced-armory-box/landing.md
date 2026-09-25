@@ -16,7 +16,8 @@ producer 形参化,现调用点行为不变)+ §2.3(PICK_INVEST_EFFECTS 三条�
 **文件面**:src/sr_od/application/currency_war/kernel/cw_investments.py、
 kernel/cw_gain_chain.py、kernel/cw_gain_effects.py;
 sr-od-test/test/sr_od/application/currency_war/test_cw_gain_chain.py、
-test_cw_invest_strategy.py
+test_cw_invest_strategy.py、test_cw_yinlang_phase32.py(T-1 交付时发现的
+同族机械同步:策略效果注册表键集锁「单行」→ 四键,编排者授权 2026-09-24)
 **依赖**:无
 **优先级建议**:5
 **完成判据**:
