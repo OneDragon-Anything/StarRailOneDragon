@@ -20,13 +20,14 @@
 - **不管**:溢出善后(腾位/卖牌归策略溢出面,链只如实记账);效果数据表的内容建模
   (数据表 = 游戏数据映射,见 §3)。
 
-## 2. 原语契约(现役五原语)
+## 2. 原语契约(现役六原语)
 
-五个公开入口(kernel/cw_gain_chain.py;效果内容住 ``cw_gain_effects.py``,
+六个公开入口(kernel/cw_gain_chain.py;效果内容住 ``cw_gain_effects.py``,
 拆分 = 投资两屏迁移批,详见 §8),全部带 `rand: bool` 必带入参(纪律见 §5)
 与 `sig: ChannelSig`(链内所有容器写共享链入口 sig,同组遥测;evidence 加
 `#place`/`#mergeN`/`#equip` 后缀区分写步)。出参:四个获得原语统一 =
-`GainOutcome`(见 §2.6);到点发放原语 = 效果串元组(见 §2.7)。
+`GainOutcome`(见 §2.6);到点发放原语 = 效果串元组(见 §2.7);占席道具
+发放原语 = 落位成败布尔(见 §2.8)。
 
 ### 2.1 获得投资环境 gain_invest_env
 
@@ -135,6 +136,23 @@ sig: ChannelSig) -> tuple[str, ...]`——环境定时道具通道(§3 道具通
 - **实机局不接本原语**:队列登记后保持原样,备战真值由观察覆盖
   (fields.md §3.2.24)。
 
+### 2.8 获得占席道具 gain_bench_item
+
+`gain_bench_item(gs, item, *, rand, sig, evidence, producer=GAIN_CHAIN_PRODUCER)`
+(占席道具公开发放口,命名沿 gain_character/gain_equipment 系):实现 = 模块
+私有落位原语 `_place_bench_item` 加 `producer` 形参后的公开薄包装,落位语义
+全部复用——备战空槽落 `BenchSlot(kind='supply_box')` → 席满溢出落位(§4,
+道具与角色同款)→ 溢出位被占零写 + 留证(§6);bench 未观察 = 拒落零写
+(§2.2 同款档)。返回落位成败布尔(备战槽或溢出位均算落位)。
+`rand=False` = 确定发放(策略箱腿/环境发放同约定,§5)。
+
+消费面:效果域效果体经本口发放占席道具(§3 on_strategy_gained 箱腿三卡),
+链内其余道具落位调用点(on_env_gained 即时道具通道 / §2.7 到点发放)走
+`_place_bench_item` 同一语义核心。公开动机 = 策略发放面补「占席道具」形态:
+效果体与链模块双向破环约束下(§8 模块拆分),效果体此前无占席道具发放口——
+骇客卡 bench 腿走 `gain_character`(角色),道具腿无对应入口,公开薄包装即
+最小口;`producer` 缺省 = 链缺省署名,既有调用点不传即行为不变。
+
 ## 3. 枚举回调(现役四枚举;枚举即收敛,无注册表)
 
 回调 = kernel 内枚举函数,**不设注册机构**(用户裁定:函数体内枚举即收敛,新效果
@@ -175,9 +193,18 @@ sig: ChannelSig) -> tuple[str, ...]`——环境定时道具通道(§3 道具通
   注册表)→ 命中 → `gain_character`(表值星级;确定发放 → rand 原样透传)。
 - **on_strategy_gained(gs, strategy_name, *, rand, sig, rng=None)**(策略屏迁移批
   新增):查 ``cw_gain_effects.py::PICK_INVEST_EFFECTS``(策略卡获得效果注册表,
-  键 = 注册表规范名;现役单行「骇客专家:银狼」)→ 命中 → 效果体执行(链序 =
-  狼腿 `gain_character` + 商店池遥测申报行 + 改件 `gain_equipment(rand=True)`
-  采样入栏,改件后果经 `on_equipment_gained` 回调);未收录卡安静不写。
+  键 = 注册表规范名;现役 = 骇客专家:银狼 与 箱腿三卡 战术义眼++/保守派/
+  快请专家·彩)→ 命中 → 效果体执行。骇客卡链序 = 狼腿 `gain_character` +
+  商店池遥测申报行 + 改件 `gain_equipment(rand=True)` 采样入栏(改件后果经
+  `on_equipment_gained` 回调)。箱腿三卡 = 获得时点占席道具发放:效果体消费
+  `gain_bench_item`(§2.8;确定发放 → rand=False,效果串
+  `box_grant:<道具名>(placed=<是否落位>)`),发放名单单一源 =
+  cw_gain_effects `_STRATEGY_BOX_GRANTS`(卡规范名 → 道具名;与登记面镜像
+  `cw_investments.STRATEGY_GRANTS` 三卡 `items_immediate` 逐对相等,
+  一致性锁测试)。三卡的战斗被动腿(能量恢复/伤害减免)非「获得时点」效果,
+  不在效果体(获得时点容器写腿辖域外);快请专家·彩的好运令牌腿(非占席
+  道具,消耗品域)与空括号腿(数据源缺口禁猜)同不在。未建模申报归
+  [strategy-env-impacts.md](strategy-env-impacts.md) §3;未收录卡安静不写。
 
 ## 4. 溢出落位规则(双写端)
 
@@ -207,7 +234,7 @@ sig: ChannelSig) -> tuple[str, ...]`——环境定时道具通道(§3 道具通
 
 ## 5. 随机态参数纪律
 
-五原语与四回调均带 `rand: bool` 必带入参,逐函数入参、递归透传:
+六原语与四回调均带 `rand: bool` 必带入参,逐函数入参、递归透传:
 
 - 链入口按自身性质定初值(投资环境/投资策略确认 = 确定性入口,False);
 - 递归调用点按**该效果自身性质**传参:效果体含采样 → 对其发起的子链传 `rand=True`;
