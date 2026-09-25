@@ -206,6 +206,11 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_WRITE_END,
         basis='动作落地获得链写(gain_invest_strategy:按名字去重追加)'
               ' + 观察覆盖(持卡列表)'),
+    'pending_item_grants': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='定时道具发放队列(唯一逻辑写端 = 获得链:on_env_gained 登记'
+              '入队 / discharge_due_item_grants 到点消费回写),队列 = 卡文'
+              '推算知识,无观察读端'),
     'round_fresh_buys': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='轮内新鲜买入账(record_fresh_buy 单口),无 OCR 读端'),

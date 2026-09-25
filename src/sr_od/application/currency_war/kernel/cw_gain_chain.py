@@ -671,13 +671,16 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
     - **环境即时金腿**(世界规则,注册表结构化通道):环境经济
       ``economy.gold_instant`` 非零 → gold 直加(两执行面同源;旧 sim
       引擎私有腿随驱动反转退役,规则落本链为单一源);
-    - **道具通道**(``items_immediate``,如火药味的简易武装箱):道具 =
-      占席待开箱,非角色非装备 → 落位写入(角色落位同构:备战空槽放
+    - **道具通道**(``items_immediate`` + ``items_scheduled``):道具 =
+      占席待开箱,非角色非装备。即时支:落位写入(角色落位同构:备战空槽放
       ``BenchSlot(kind='supply_box')``,双端同一获得链,sim 世界写入即
       容器写);席满 = 溢出落位(实机真值:道具与角色同款——落溢出席并
       阻断进入战斗;溢出位被占 = 零写留证,helper 内);效果串
       ``item_gift:<名>`` 恒登记(数量 = 元素重复次数),开箱链由外循环
-      画面分发承接(武装箱选择画面独立建档);
+      画面分发承接(武装箱选择画面独立建档)。定时支:逐项入容器队列
+      ``pending_item_grants``(一次 write 回写整表,登记不落席),效果串
+      ``item_scheduled:<名>@<节点键>``(数量 = 元素重复次数,发放事实
+      登记与即时通道同阶),到点发放 = :func:`discharge_due_item_grants`;
     - 查无效果(表外环境)= 安静不写(用户裁定),真值归观察覆盖。
       (欢愉契约条件腿不在本枚举:其正式模型 = 银狼策划选择上报落地相的
       条件腿 rider,住 ``cw_action_report.pick_planner``,触发事件 =
@@ -715,6 +718,57 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
         _place_bench_item(gs, item, rand=rand,
                           evidence=f'on_env_gained:{_name}', sig=sig)
         effects.append(f'item_gift:{item}')
+    if grant.items_scheduled:
+        # 定时支:登记不落席,入队待到点(一次 write 回写整表;entry 形见
+        # cw_game_state.pending_item_grants 注)。节点键格式 import 期已闸
+        #(cw_investments._validate_env_gifts),此处直解析。
+        queued = list(gs.pending_item_grants.value or [])
+        for _node_key, _item in grant.items_scheduled:
+            _plane_s, _round_s = _node_key.split('-')
+            queued.append({'env': _name, 'plane': int(_plane_s),
+                           'round_num': int(_round_s), 'item': _item})
+            effects.append(f'item_scheduled:{_item}@{_node_key}')
+        write = _select_write(gs, rand)
+        write(gs.pending_item_grants, queued, produced_by=GAIN_CHAIN_PRODUCER,
+              evidence=f'on_env_gained:{_name}', sig=sig)
+    return tuple(effects)
+
+
+def discharge_due_item_grants(gs: GameState, *, plane: int, round_num: int,
+                              rand: bool, sig: ChannelSig) -> tuple[str, ...]:
+    """定时道具到点发放原语(环境定时发放通道;与 on_env_gained 同区):
+    读 ``pending_item_grants`` 现值,按 (plane, round_num) 分割命中/保留,
+    命中项逐个 ``_place_bench_item`` 落位(备战空槽 → 席满溢出落位 → 溢出位
+    被占零写留证,复用即时通道同款道具落位语义),命中非空才一次 write 回写
+    保留队列。返回效果串(每命中项 ``item_gift:<名>``,与落位成败解耦,
+    即时通道同阶)。
+
+    - rand 语义:环境发放 = 确定发放,调用方传 ``rand=False``(gain-chain.md
+      §5;写通道仍经 :func:`_select_write` 单一收口);
+    - 零吞错:落位异常上抛(gain-chain.md §6),队列回写收尾;生产挂点
+      (sim 进节点收口)无重入面 = 无幂等需求,未来实机挂点接线时按其
+      重入面另评(迭代 2026-09-24-scheduled-env-gifts design §2.3);
+    - 实机局不接本原语(同迭代 design §2.5 不对称申报):队列登记后保持
+      原样,备战真值由观察覆盖。
+    """
+    due: list[dict] = []
+    keep: list[dict] = []
+    for entry in list(gs.pending_item_grants.value or []):
+        if int(entry['plane']) == plane and int(entry['round_num']) == round_num:
+            due.append(entry)
+        else:
+            keep.append(entry)
+    effects: list[str] = []
+    for entry in due:
+        _place_bench_item(gs, str(entry['item']), rand=rand,
+                          evidence=f'discharge_due_item_grants:'
+                                   f'p{plane}-r{round_num}', sig=sig)
+        effects.append(f"item_gift:{entry['item']}")
+    if due:
+        write = _select_write(gs, rand)
+        write(gs.pending_item_grants, keep, produced_by=GAIN_CHAIN_PRODUCER,
+              evidence=f'discharge_due_item_grants:p{plane}-r{round_num}',
+              sig=sig)
     return tuple(effects)
 
 

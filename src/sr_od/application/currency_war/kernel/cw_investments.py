@@ -35,6 +35,7 @@
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, fields, replace
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER
@@ -342,6 +343,13 @@ class GiftGrant:
       「获得N个【X】」直读)。道具非角色非装备,无 gain_* 原语与容器承载字段
       (容器 Field 归 sim 统一容器字段判据辖域),消费端只产效果串 + 遥测申报;
       首条 = 火药味(开局 2 个简易武装箱)
+    - items_scheduled: (节点键, 道具名)二元组序列——指定「位-轮」节点发放的
+      定时道具(迭代 2026-09-24-scheduled-env-gifts;「位面开始」= 该位面
+      第 1 节点,权威先例 = 位面开局环境金 gold_per_plane_start 落
+      (plane, 1) 节点窗)。数量 = 元素重复次数(与 items_immediate 同约定);
+      登记不落席:入容器队列 pending_item_grants,到点经
+      discharge_due_item_grants 发放(环境发放 = 确定发放)。首例 =
+      特权阶级(效果原文「第二位面开始时,获得1个特权武装箱。」)
     - advisor: True=专家顾问入商店语义(特邀专家;创造一个可购买的购买选项,
       需再花店价且占购买预算,价值严格低于同档白得——资产账/可得性账分立,
       详设 §2.1.2 规则 2);False=直接送卡(契约,白得资产)
@@ -351,8 +359,15 @@ class GiftGrant:
     chars_immediate: tuple[str, ...] = ()
     chars_conditional: tuple[tuple[str, str], ...] = ()
     items_immediate: tuple[str, ...] = ()
+    items_scheduled: tuple[tuple[str, str], ...] = ()
     advisor: bool = False
     sell_value_note: str = ''
+
+
+#: ``items_scheduled`` 节点键格式('位-轮';位面 1 基 1-3,位面内轮 1 基
+#: 1-9)。格式校验(_validate_env_gifts)与入队解析(on_env_gained)共消费
+#: 本单一源,禁第二抄本。
+_SCHEDULED_NODE_KEY_RE: re.Pattern[str] = re.compile(r'^[1-3]-[1-9]$')
 
 
 @dataclass(frozen=True)
@@ -1277,6 +1292,14 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 打分);消费 = on_env_gained 效果串 + 遥测申报(容器承载字段归 sim
     # 统一容器字段判据辖域,现缺省不写)
     '火药味': GiftGrant(items_immediate=('简易武装箱', '简易武装箱')),
+    # 定时通道首例(id 102 效果原文「第二位面开始时,获得1个特权武装箱。」
+    # 直读):「位面开始」= 该位面第 1 节点(节点键 '2-1';先例 = 位面开局
+    # 环境金 gold_per_plane_start 落 (plane, 1) 节点窗)。登记不落席:入容器
+    # 队列 pending_item_grants,到点经 discharge_due_item_grants 发放
+    # (环境发放 = 确定发放;生产挂点 = sim 进节点收口,实机不接——队列登记
+    # 后保持原样,备战真值归观察覆盖,迭代 2026-09-24-scheduled-env-gifts
+    # design §2.5 不对称申报)
+    '特权阶级': GiftGrant(items_scheduled=(('2-1', '特权武装箱'),)),
 }
 
 # (送卡「档→分」映射与 advisor 折减 = 策略层 gift_value
@@ -1291,9 +1314,13 @@ def _validate_env_gifts() -> None:
     ① 孤儿键:键必须在 INVESTMENT_ENVS(沿 ENV_ECONOMY 先例,防版本更新改名/
     移除后静默失联);② 角色名漂移:发放角色(即时∪条件)必须在 CHARACTER_ROSTER
     (版本漂移不静默,与孤儿键同批校验);③ 空发放集条目拒绝(即时角色/条件角色/
-    即时道具全空 = 数据残缺,档位机器恒判 off,会把登记笔误放大成失格门误杀);④
-    ``set(ENV_GIFTS) ∩ set(ENV_ECONOMY) = ∅``——单一环境只落一个估值结构,防
-    双通道叠加(∩ ENV_POOL_REWRITE 半边由 3.6 品质改写建表时收全)。
+    即时道具/定时道具全空 = 数据残缺,档位机器恒判 off,会把登记笔误放大成失格门
+    误杀);④ ``set(ENV_GIFTS) ∩ set(ENV_ECONOMY) = ∅``——单一环境只落一个估值
+    结构,防双通道叠加(∩ ENV_POOL_REWRITE 半边由 3.6 品质改写建表时收全);⑤
+    定时通道两防呆(迭代 2026-09-24-scheduled-env-gifts):节点键格式 '位-轮'
+    (坏键 = on_env_gained 入队解析必炸的脏数据,import 拒收)、定时道具名禁
+    ∈ CHARACTER_ROSTER(道具/角色通道串行防呆,道具名混入角色注册表会在
+    发放侧造假身份)。
     """
     orphans = [n for n in ENV_GIFTS if n not in INVESTMENT_ENVS]
     if orphans:
@@ -1305,10 +1332,20 @@ def _validate_env_gifts() -> None:
         if _drift:
             raise ValueError(
                 f"ENV_GIFTS 角色名漂移({_name!r} 注册表无此人,版本改名?):{_drift}")
+        for _node_key, _item in _grant.items_scheduled:
+            if not _SCHEDULED_NODE_KEY_RE.fullmatch(_node_key):
+                raise ValueError(
+                    f"ENV_GIFTS 定时节点键格式({_name!r}):{_node_key!r} "
+                    f"非 '位-轮'(位面1-3/位面内轮1-9)")
+            if _item in CHARACTER_ROSTER:
+                raise ValueError(
+                    f"ENV_GIFTS 定时道具名进角色注册表({_name!r}):"
+                    f"{_item!r}(道具/角色通道串行防呆)")
         if not _grant.chars_immediate and not _grant.chars_conditional \
-                and not _grant.items_immediate:
+                and not _grant.items_immediate and not _grant.items_scheduled:
             raise ValueError(
-                f"ENV_GIFTS 空发放集:{_name!r} 即时角色/条件角色/即时道具全空,数据残缺")
+                f"ENV_GIFTS 空发放集:{_name!r} 即时角色/条件角色/即时道具/"
+                f"定时道具全空,数据残缺")
     _overlap = set(ENV_GIFTS) & set(ENV_ECONOMY)
     if _overlap:
         raise ValueError(
@@ -1457,11 +1494,14 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
 # - cw_gain_chain._build_pool:道具身份禁造 Unit 假身份进合成素材组;
 # - cw_action_report.sell_bench 溢出腿:卖牌腾槽入位按同判据落 supply_box。
 # 词表来源 = 两张 GiftGrant 授予表(ENV_GIFTS/STRATEGY_GRANTS)的
-# items_immediate,新增授予登记自动覆盖;效果体内联发放的道具(不经
-# GiftGrant 表)登记时须显式并入本表,防身份误判成角色。
+# items_immediate ∪ items_scheduled 道具名——定时道具同为占席道具,身份
+# kind 判定同面(缺派生会把「特权武装箱」当角色,假角色进合成素材组,
+# _build_pool / sell_bench 溢出腿),新增授予登记自动覆盖;效果体内联发放的
+# 道具(不经 GiftGrant 表)登记时须显式并入本表,防身份误判成角色。
 BENCH_ITEM_NAMES: frozenset[str] = frozenset(
     item for _grant in (*ENV_GIFTS.values(), *STRATEGY_GRANTS.values())
-    for item in _grant.items_immediate)
+    for item in (*_grant.items_immediate,
+                 *(item for _node_key, item in _grant.items_scheduled)))
 
 # 反扫候选闭集防线的排除/假阳性白名单(逐条记因;键必须在注册表):
 # - 愚者恶作剧:概率变形发放(2/4 费卡概率变为【花火】/【火花】),无「获得」

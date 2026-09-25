@@ -167,7 +167,10 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                             # + 新增基线链字段 node_path_baseline,链观察落地批 2026-09-16)
     'units': 1,             # front_row/back_row/bench/back_layout(§3.2.3-§3.2.7)
     'economy': 1,           # gold/level/xp/streak/hp/level_up_cost(§3.2.9-§3.2.13)
-    'match_facts': 5,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/board(§3.1/§3.2.6/§3.2.14/§3.2.20;域版本 5 =
+    'match_facts': 6,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/定时道具队列/board
+                            # (§3.1/§3.2.6/§3.2.14/§3.2.20;域版本 6 = 新增
+                            # pending_item_grants 定时道具发放队列(迭代
+                            # 2026-09-24-scheduled-env-gifts);域版本 5 =
                             # 恢复局旗标 resumed_match 退役(零逻辑消费,读端已随
                             # 弹窗腿退役;2026-09-20-node-advance-action-report T-8);
                             # 域版本 4 = 新增 lv999_cost_tier 银狼LV.999 当前费用档(银狼升星记账批
@@ -1867,6 +1870,7 @@ def seed_opening_state(gs: GameState) -> None:
     _seed(gs.overflow_card, '')
     _seed(gs.active_env, '')
     _seed(gs.active_strategies, [])
+    _seed(gs.pending_item_grants, [])
     _seed(gs.enemy_affixes, [])
     _seed(gs.shop_refresh_cost, REFRESH_COST_BASE)
     _seed(gs.prev_node_spent, False)
@@ -2137,6 +2141,17 @@ class GameState:
     active_env: Field[str | None] = field(default_factory=Field)     # 已选投资环境(§3.2.20/§3.4.3;开局种子底座=''=未选择)
     enemy_affixes: Field[list[str]] = field(default_factory=Field)   # 当前词缀名单(§3.1.3;≠投资环境;开局种子底座=[],简报/接管位面详情覆写)
     active_strategies: Field[list[str]] = field(default_factory=Field)   # 持有投资策略名单(§3.4.4;品质锚挂建模批;开局种子底座=[]未持卡)
+    # [索引定义] pending_item_grants = 已登记、未到点发放的定时道具队列(环境
+    # 定时发放通道,迭代 2026-09-24-scheduled-env-gifts)。entry 形 =
+    # {'env': 登记来源环境名, 'plane': 位面(1 基), 'round_num': 位面内轮
+    # (1 基,与 node 域 plane/round_num 同坐标系), 'item': 道具名};
+    # plane/round_num = 入队期从登记节点键 '位-轮' 解析好的目标节点,取值时机 =
+    # 入队期快照(解析失败形态由登记表 import 校验拒收,容器内恒合法)。
+    # 写端声明:唯一逻辑写端 = 获得链(on_env_gained 登记入队 /
+    # discharge_due_item_grants 到点消费回写),无观察写端——队列是卡文推算
+    # 知识,游戏 UI 无「待发放列表」可读;实机局不消费(队列登记后保持原样,
+    # 备战真值归观察覆盖)。开局种子底座 = [](A 类)。
+    pending_item_grants: Field[list[dict]] = field(default_factory=Field)
     board: Field[dict[str, int]] = field(default_factory=Field)      # 上阵羁绊计数(§3.2.6;下档阈值=派生不存储;开局种子底座不直写,随行域空行种子派生,禁双写)
     shop_refresh_cost: Field[int] = field(default_factory=Field)     # 刷新费,动态(§3.3.4/现场 OCR;免费帧不写,None≠0;开局种子底座=刷新基价)
     # [字段定义] shop_locked = 整店锁(锁定后节点切换不自动全刷)。取值时机 =
