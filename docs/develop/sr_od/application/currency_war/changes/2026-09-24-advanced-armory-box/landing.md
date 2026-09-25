@@ -44,7 +44,9 @@ L1 全量数字;ruff 干净
 
 **范围**:design §2.4——test_cw_sim_backend.py 新用例:offer 注入三卡之一
 (沿 test_strategy_pick_chain_burst_gold 惯用法)→ pick → bench
-`supply_box`×1 + `pending_item_grants` 不受扰(立即发放不经队列)。**不含**:
+`supply_box`×1 + `pending_item_grants` 不受扰(立即发放不经队列)。
+勘误(T-2 验收留痕):实现为「三卡一次注入、pick 其一」,较本行字面更严
+(恰 1 断言因此兼证「另两卡不误分派」),判受留痕不改行为。**不含**:
 kernel 改动(全部在 3.1)。
 **设计依据**:design.md §2.4
 **文件面**:sr-od-test/test/sr_od/application/currency_war/test_cw_sim_backend.py
