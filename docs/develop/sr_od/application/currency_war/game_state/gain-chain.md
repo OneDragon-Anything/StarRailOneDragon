@@ -261,6 +261,4 @@ pick_supply 等旧通道(策略屏效果腿已随投资两屏迁移批改走链�
   等待;确认未生效 = 代码 bug(点击链可靠性治理)。
 - **模块拆分**:链过程语义(原语/合成/枚举回调骨架)住 `kernel/cw_gain_chain.py`;
   效果内容(`PICK_INVEST_EFFECTS` + 骇客采样池 + 效果体)住 `kernel/
-  cw_gain_effects.py`(链模块级查表,效果体函数内惰性 import 链原语破环;
-  拆分详设 = changes/2026-09-21-invest-landing-chain/details/
-  gain-chain-file-split.md)。
+  cw_gain_effects.py`(链模块级查表,效果体函数内惰性 import 链原语破环)。
