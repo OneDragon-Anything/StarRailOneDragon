@@ -70,6 +70,9 @@ class ChallengeOrnamentExtraction(SrOperation):
         self.battle_success_times: int = 0
         """战斗胜利的次数"""
 
+        self.fight_retry_times: int = 0
+        """开战失败(攻击未命中进战)的重试次数"""
+
         return None
 
     @node_from(from_name='等待退出', status='重新选择次数')
@@ -219,6 +222,7 @@ class ChallengeOrnamentExtraction(SrOperation):
         return self.round_by_find_area(screen, '大世界', '角色图标', retry_wait=1)
 
     @node_from(from_name='等待副本加载')
+    @node_from(from_name='进入战斗', status='开战失败 重新走位')
     @operation_node(name='向红点移动')
     def move_by_red(self) -> OperationRoundResult:
         """
@@ -230,8 +234,20 @@ class ChallengeOrnamentExtraction(SrOperation):
     @node_from(from_name='向红点移动')
     @operation_node(name='进入战斗')
     def start_fight(self) -> OperationRoundResult:
+        """
+        开战(上秘技后攻击进战)。攻击落空(仍在大世界)时不再原地连按——
+        原地重按大概率继续落空(2026-09-25 一条龙实证:4 次攻击全部
+        「未进入战斗」后整体失败,本局 0/3 体力未消耗),正确闭环是
+        重新索敌走位一次再开战——停点与敌人实际站位有偏差时,重走位
+        即可命中。限重试 1 次(共 2 次开战机会),超过仍有界失败交上层。
+        """
         op = StartFightForElite(self.ctx, skip_point_check=True, skip_resurrection_check=True)
-        return self.round_by_op_result(op.execute())
+        op_result = op.execute()
+        if not op_result.success:
+            self.fight_retry_times += 1
+            if self.fight_retry_times <= 1:
+                return self.round_success('开战失败 重新走位')
+        return self.round_by_op_result(op_result)
 
     @node_from(from_name='进入战斗')
     @node_from(from_name='处理战斗结果', status='再来一次按钮')
