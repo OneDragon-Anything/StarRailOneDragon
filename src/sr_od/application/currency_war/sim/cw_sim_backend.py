@@ -78,6 +78,7 @@ from sr_od.application.currency_war.kernel.cw_events import (
     SupplyOption,
 )
 from sr_od.application.currency_war.kernel.cw_gain_chain import (
+    discharge_due_item_grants,
     gain_equipment,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -1310,6 +1311,14 @@ class SimBackend:
                                sig=obs_sig(group_id='sim:loss'))
         # 位面开局环境金(M02 结构化通道:gold_per_plane_start)
         self._apply_env_plane_gold(plane)
+        # 环境定时道具到点发放(迭代 2026-09-24-scheduled-env-gifts
+        # design §2.4):本收口在窗口幂等守卫内,且位面过渡点空白与直进
+        # 节点共用——「第 N 位面开始时」类发放即落在该位面 1 号节点窗
+        # 打开时点(位面过渡屏被点掉时),窗口重放不双发;环境发放为
+        # 确定发放 → rand=False(gain-chain.md §5),组名沿 sim:env 与
+        # 环境金同窗。
+        discharge_due_item_grants(self.gs, plane=plane, round_num=r,
+                                  rand=False, sig=logic_sig('sim:env'))
         # 商店全刷(M05:节点切换自动全刷;整店锁跳过——裁定②)
         if not bool(self.gs.shop_locked.value):
             rotation_on = (str(self.gs.active_env.value or '')
