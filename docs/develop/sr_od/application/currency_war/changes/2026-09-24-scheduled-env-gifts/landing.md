@@ -121,6 +121,9 @@ test_cw_screen_progression_inline.py 全绿 + grep 清零凭据;
   (注释随代码批已写,本阶段只核对不重写)← 阶段 3.1
 - docs/game/currency_war/research/invest_effects.md:通道计数/形态描述受影响处
   ← 阶段 3.1
+- docs/develop/sr_od/application/currency_war/screens/armory_box.md:
+  弹窗识别锚名引用同步(旧锚 `标识-简易武装箱` 2 处,T-3 交付时发现)
+  ← 阶段 3.3
 - .debug/progress/2026-09-23-invest-effects-calc/checklist.md:
   T-3 行收口(终态凭据 + commit 指针)← 末阶段
   (T-421 = dag.jsonl 账本任务,checklist 无该行;其范围收窄——特权弹窗部分
