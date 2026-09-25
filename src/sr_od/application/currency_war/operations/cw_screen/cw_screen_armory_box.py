@@ -1,8 +1,9 @@
-"""货币战争 道具获得弹窗 op(「简易武装箱」类说明弹窗;2026-08-15 M19 首见停机建档,M20 实锤机制)。
+"""货币战争 道具获得弹窗 op(武装箱族说明弹窗;2026-08-15 M19 首见停机建档,M20 实锤机制)。
 
 机制(M20 17:37-18:05 实证,3 候选点击坐标全无反应 + × 关闭露底层屏):
-- 弹窗 = **获得道具时的说明弹窗**(标题「简易武装箱」+ 说明「点击后开启…从四件简易装备中选择
-  一件获得。该道具使用后消失」),叠在 3 选 1 屏(投资策略/环境)或备战上;
+- 弹窗 = **获得道具时的说明弹窗**(首证品名「简易武装箱」+ 说明「点击后开启…从四件简易装备中选择
+  一件获得。该道具使用后消失」;特权武装箱等异品名弹窗同布局,说明文案差异
+  不入识别,画面身份由标题承担),叠在 3 选 1 屏(投资策略/环境)或备战上;
 - 弹窗内**顶部箱图标是展示图不可点**((812,175)/(810,194)/(960,837) 三点全无反应);
 - 正确动作 = **点 × 关闭**弹窗(道具进背包,备战界面箱槽走 prep_actions 的
   CwActionOpenBoxParam 开箱链路;四选一选卡职责在独立画面 op
@@ -10,8 +11,9 @@
 - 不关会挡死底层屏(M20 卡 19min/286 次 retry 实证)。
 
 形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两段
-直继承 SrOperation(轻屏统一形态)。观察 node = 标识门(id_mark「标识-简易
-武装箱」,miss 未发 = round_fail 交编排壳按步分流)+ obs{on_screen} → 调
+直继承 SrOperation(轻屏统一形态)。观察 node = 标识门(id_mark「标识-武装箱」
+族名锚,单档泛化覆盖简易/特权弹窗族;miss 未发 = round_fail 交编排壳按步
+分流)+ obs{on_screen} → 调
 占位 ``report_screen_armory_box_obs``(统一形态;本屏现役零容器写点,接口
 为占位,match/gs 缺席跳过)→ obs 挂实例属性进决策 node。决策动作 node =
 重入裁决顶部(点 × 已发 → 锚不在 = 弹窗已关(道具进背包)→ success 交回;
@@ -57,7 +59,7 @@ class CwScreenArmoryBox(CwOperation):
         现役零容器写点,接口为统一形态占位;match/gs 缺席跳过)。"""
         screen = self.last_screenshot
         _hit = self.round_by_find_area(
-            screen, CwScreenArmoryBox.DIALOG_SCREEN, '标识-简易武装箱', crop_first=False).is_success
+            screen, CwScreenArmoryBox.DIALOG_SCREEN, '标识-武装箱', crop_first=False).is_success
         if not _hit:
             return self.round_fail('非武装箱弹窗')
         obs = CwScreenArmoryBoxObs(on_screen=True, screen=screen)
@@ -81,7 +83,7 @@ class CwScreenArmoryBox(CwOperation):
             self._click_pending = False
             if not self.round_by_find_area(
                     self.last_screenshot, CwScreenArmoryBox.DIALOG_SCREEN,
-                    '标识-简易武装箱', crop_first=False).is_success:
+                    '标识-武装箱', crop_first=False).is_success:
                 log.info('[cw-armbox] 弹窗已关(重入观察裁决,底层屏交还 loop)')
                 return self.round_success(wait=1.0)
         return self._close_dialog()

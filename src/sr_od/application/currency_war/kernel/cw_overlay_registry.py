@@ -222,9 +222,12 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     # 环入口清它 = 现行生产行为;语义归 system(非 decision)保两维现状:
     # bail 扫描集(= decision 条目)不加成员、清场派生集不减成员。
     # 「关闭即丢一次开箱选择」的取舍与补给同型,见补给条注释。
+    # 锚 = 族名「武装箱」(非品名):单档泛化覆盖 简易/特权(进阶 T-421 同锚
+    # 直达)弹窗族——LCS 判定分母 = 登记文本长度,text='武装箱' 对「简易武装箱」
+    # 与「特权武装箱」标题均满配命中;品名锚对异品名标题只余巧合命中,禁回退。
     OverlaySpec(
         screen_name='货币战争-武装箱弹窗',
-        anchor_area='标识-简易武装箱',
+        anchor_area='标识-武装箱',
         semantic=SEMANTIC_SYSTEM,
         handler_id='CwScreenArmoryBox',
         closable=True,

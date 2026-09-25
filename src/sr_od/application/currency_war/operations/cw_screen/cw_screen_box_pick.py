@@ -26,8 +26,11 @@
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation):
 观察 node = 入口锚复验(「标识-请选择」,分发即门,op 内机械复验防误派;
-miss 未发 = round_fail 交回外循环按画面重分发)+ OCR 卡名行读数(2-8 字
-过滤,x 升序;空 = 变体字型/动画帧读缺 = 未发出通道 round_fail 交回
+miss 未发 = round_fail 交回外循环按画面重分发)+ OCR 卡名行读数(读数闸
+下限 2 字,上限 = 装备注册表最长名派生 ``_CARD_NAME_LEN_MAX``——9 字
+特权名如「战场进化手册·特权」可达,旧 8 字手抄上限先于归一化确定性
+静默丢弃 9 字名 = 四选一缩三选一;x 升序;空 = 变体字型/动画帧读缺 = 未
+发出通道 round_fail 交回
 外循环重派,禁盲点首卡兜底——选错不可逆,读数闸属观察处理)→ 观察
 标准化门(卡名经装备注册表两段转换:形变归一精确命中 → LCS 相似匹配,
 阈值常量住代码 + 次高分差拒判(最高分未明显高于次高分 = 歧义 = 转换
@@ -78,6 +81,13 @@ from sr_od.context.sr_context import SrContext
 #: 装备注册表键集定序列表(观察标准化门第二段 LCS 兜底的遍历域;
 #: sorted 定序保证同分取注册表序首个,确定性不随 frozenset 迭代序漂移)。
 _EQUIP_ROSTER_LIST: list[str] = sorted(EQUIPMENT_ROSTER)
+
+#: OCR 卡名行读数闸上限(坐标系 = 装备注册表最长名长度,派生式禁手抄
+#: 常数——新更长注册名自动跟上;下限 2 滤 OCR 单字噪声):读数闸先于
+#: 归一化,手抄 8 字上限曾把 9 字特权名(如「战场进化手册·特权」,
+#: cw_equipment_data.py 特权组)确定性静默丢弃 = 四选一缩三选一,策略在
+#: 残缺候选集上照常选卡(非响亮暴露)。
+_CARD_NAME_LEN_MAX: int = max(len(n) for n in _EQUIP_ROSTER_LIST)
 
 #: 观察标准化门第二段 LCS 相似阈值(LCS 占比,相对注册表名长度;取值
 #: 同装备名归一相似层门槛 = kernel/cw_events ``_EQUIP_NORM_LCS_FLOOR``,
@@ -206,13 +216,14 @@ class CwScreenBoxPick(CwOperation):
             wait=_OVERLAY_ANIM_WAIT_S)
 
     def _read_card_names(self, screen: MatLike) -> list[tuple[str, int]]:
-        """OCR 卡名行 → [(卡名, 卡 x 中心)] 按 x 升序(2-8 字过滤,与原
-        执行器读卡半逐位同式;识别域 = screen_info 区域-卡名行单一源)。"""
+        """OCR 卡名行 → [(卡名, 卡 x 中心)] 按 x 升序(读数闸:下限 2 字
+        滤 OCR 单字噪声,上限 = 注册表最长名 ``_CARD_NAME_LEN_MAX`` 派生,
+        9 字特权名可达;识别域 = screen_info 区域-卡名行单一源)。"""
         rect = _area_rect(self.ctx, '区域-卡名行', CwScreenBoxPick.SCREEN_NAME)
         names: list[tuple[str, int]] = []
         if rect is not None:
             for r in _ocr(self.ctx, screen, rect):
-                if 2 <= len(r.data) <= 8:
+                if 2 <= len(r.data) <= _CARD_NAME_LEN_MAX:
                     names.append((r.data, r.center.x))
         names.sort(key=lambda t: t[1])
         return names
