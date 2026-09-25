@@ -20,12 +20,13 @@
 - **不管**:溢出善后(腾位/卖牌归策略溢出面,链只如实记账);效果数据表的内容建模
   (数据表 = 游戏数据映射,见 §3)。
 
-## 2. 原语契约(现役四原语)
+## 2. 原语契约(现役五原语)
 
-四个公开入口(kernel/cw_gain_chain.py;效果内容住 ``cw_gain_effects.py``,
+五个公开入口(kernel/cw_gain_chain.py;效果内容住 ``cw_gain_effects.py``,
 拆分 = 投资两屏迁移批,详见 §8),全部带 `rand: bool` 必带入参(纪律见 §5)
 与 `sig: ChannelSig`(链内所有容器写共享链入口 sig,同组遥测;evidence 加
-`#place`/`#mergeN`/`#equip` 后缀区分写步)。出参统一 = `GainOutcome`(见 §2.6)。
+`#place`/`#mergeN`/`#equip` 后缀区分写步)。出参:四个获得原语统一 =
+`GainOutcome`(见 §2.6);到点发放原语 = 效果串元组(见 §2.7)。
 
 ### 2.1 获得投资环境 gain_invest_env
 
@@ -110,27 +111,58 @@ merge_simulate 终态」——禁第二套语义。merge_simulate 是一次到�
 新增 `'invalid_payload'` = 无效载荷拒绝)。
 留证与测试用,零决策消费。
 
+### 2.7 定时道具到点发放 discharge_due_item_grants
+
+`discharge_due_item_grants(gs, *, plane: int, round_num: int, rand: bool,
+sig: ChannelSig) -> tuple[str, ...]`——环境定时道具通道(§3 道具通道定时支)的
+到点发放原语:读 `pending_item_grants` 现值,按 (plane, round_num) 分割命中/
+保留;命中项逐个 `_place_bench_item` 落位(备战空槽 → 席满溢出落位 → 溢出位被占
+零写留证,复用即时通道同款道具落位语义);命中非空才一次 write 回写保留队列。
+返回效果串 = 每命中项 `item_gift:<名>`(与落位成败解耦,与即时通道同阶)。
+
+- **挂点**:sim `SimBackend._begin_node_window` 内、位面开局环境金
+  `_apply_env_plane_gold` 之后——「第 N 位面开始时」类发放落在该位面 1 号节点窗
+  打开时点(位面过渡屏被点掉、节点窗真正打开;位面过渡点空白与直进节点共用本
+  收口),与 `gold_per_plane_start` 同窗;sig 组名沿 `sim:env`。
+- **幂等边界(双保险)**:①生产挂点在 sim 窗口幂等守卫内(`_window_begun_ord`
+  对同一节点只放行一次,位面过渡点击重放不双发);②队列本身天然幂等——命中项
+  发放即出队,重放调用查无命中、零写零效果。原语自身无幂等闸:生产挂点无重入面,
+  未来实机挂点接线时按其重入面另评。
+- **rand 语义**:环境发放 = 确定发放,调用方传 `rand=False`(§5;写通道仍走
+  择道口单一收口)。
+- **零吞错与次序**:落位异常上抛(§6),队列回写收尾——先逐项落位、后回写发放后
+  的保留队列,异常时队列不丢账。
+- **实机局不接本原语**:队列登记后保持原样,备战真值由观察覆盖
+  (fields.md §3.2.24)。
+
 ## 3. 枚举回调(现役四枚举;枚举即收敛,无注册表)
 
 回调 = kernel 内枚举函数,**不设注册机构**(用户裁定:函数体内枚举即收敛,新效果
 核实后在函数内加分支)。查无效果 = 安静不写,真值归观察覆盖。
 
 - **on_env_gained(gs, session, env_name, *, rand, sig)**:查 `cw_investments.py::
-  ENV_GIFTS`(投资环境 → 即时发放数据表)。命中后**先按 advisor 分道,两道互斥**:
+  ENV_GIFTS`(投资环境 → 具名发放数据表,即时与定时两通道)。命中后**先按
+  advisor 分道,两道互斥**:
   - `advisor=False`(契约类,直接送卡):`chars_immediate` 逐个 `gain_character
     (char, 1★)`(星级未标 = 1★ 先验;确定发放 → rand 原样透传);
   - `advisor=True`(特邀专家,顾问入商店):**不入席**——容器无商店池字段,身份
     只进遥测申报一行(`kind = DEFECT_ADVISOR_DECL`);`chars_immediate` 在 advisor
     行仅作顾问身份输入。
-  - **道具通道**(`items_immediate`,与 advisor 道无关、可叠加):道具 = 占席
-    待开箱,非角色非装备 → 落位写入(角色落位同构:备战空槽放
-    `BenchSlot(kind='supply_box')`,双端同一获得链——sim 世界写入即容器写);
-    席满 = 溢出落位(实机真值:道具与角色同款——落溢出席并阻断进入战斗,
-    `overflow_warning=True` + `overflow_card=道具名` 两字段直写,见 §4);
-    溢出位被占 = 零写 + 每道具一遥测申报留证(`kind =
-    DEFECT_OVERFLOW_TAKEN`,与角色腿同款);效果串 `item_gift:<名>`(数量 =
-    元素重复次数)恒登记,开箱链由外循环画面分发承接(武装箱选择画面独立
-    建档)。首条 = 火药味(id 101,开局 2 个简易武装箱)。
+  - **道具通道**(`items_immediate` + `items_scheduled`,与 advisor 道无关、
+    可叠加):道具 = 占席待开箱,非角色非装备。**即时支**(`items_immediate`):
+    落位写入(角色落位同构:备战空槽放 `BenchSlot(kind='supply_box')`,双端
+    同一获得链——sim 世界写入即容器写);席满 = 溢出落位(实机真值:道具与角色
+    同款——落溢出席并阻断进入战斗,`overflow_warning=True` + `overflow_card=
+    道具名` 两字段直写,见 §4);溢出位被占 = 零写 + 每道具一遥测申报留证
+    (`kind = DEFECT_OVERFLOW_TAKEN`,与角色腿同款);效果串 `item_gift:<名>`
+    (数量 = 元素重复次数)恒登记,开箱链由外循环画面分发承接(武装箱选择画面
+    独立建档)。首条 = 火药味(id 101,开局 2 个简易武装箱)。**定时支**
+    (`items_scheduled`):登记不落席——(节点键, 道具名)逐项解析入容器队列
+    `pending_item_grants`(fields.md §3.2.24;一次 write 回写整表),效果串
+    `item_scheduled:<名>@<节点键>`(如 `item_scheduled:特权武装箱@2-1`,
+    数量 = 元素重复次数,发放事实登记与即时通道同阶),到点发放 =
+    `discharge_due_item_grants`(§2.7)。首例 = 特权阶级(id 102,第二位面
+    开始时获得 1 个特权武装箱)。
   - 欢愉契约条件腿**不在本枚举**:正式模型 = 银狼策划选择上报落地相的条件腿
     rider(`kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`,
     头号玩家选项触发 + 欢愉契约在册 → `gain_character`(火花/开拓者·欢愉随机
@@ -162,7 +194,8 @@ merge_simulate 终态」——禁第二套语义。merge_simulate 是一次到�
 - **身份两分判 kind**:溢出位身份串的消费方(合成池构建 `_build_pool` /
   卖牌溢出腿入位)按 `cw_investments.BENCH_ITEM_NAMES` 判 `BenchSlot`
   kind——命中 = `supply_box` 惰性槽件(禁造 Unit 假身份进合成素材组),
-  未命中 = 角色。词表来源 = 两张 GiftGrant 授予表的 `items_immediate`;
+  未命中 = 角色。词表来源 = 两张 GiftGrant 授予表的 `items_immediate` ∪
+  `items_scheduled`(定时道具同为占席道具,身份 kind 判定同面);
   效果体内联发放的道具登记时须显式并入该表。
 - **星级链记**:星级不入容器字段(overflow_card 只存身份串);链内工作池自记本次
   授予的星级(升星判断用链记真值)——写入即知真值,不依赖观察兜底口径。观察来源
@@ -174,7 +207,7 @@ merge_simulate 终态」——禁第二套语义。merge_simulate 是一次到�
 
 ## 5. 随机态参数纪律
 
-四原语与四回调均带 `rand: bool` 必带入参,逐函数入参、递归透传:
+五原语与四回调均带 `rand: bool` 必带入参,逐函数入参、递归透传:
 
 - 链入口按自身性质定初值(投资环境/投资策略确认 = 确定性入口,False);
 - 递归调用点按**该效果自身性质**传参:效果体含采样 → 对其发起的子链传 `rand=True`;

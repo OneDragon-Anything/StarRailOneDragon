@@ -4,11 +4,11 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(号制已退役):锚 = `货币战争-武装箱弹窗.标识-简易武装箱`(id_mark;建档 = `currency_war_armory_box_dialog.yml`)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。弹窗叠在 3 选 1 屏或备战上,不关闭会挡死底层屏交互。
+- 阶段一身份分发(号制已退役):锚 = `货币战争-武装箱弹窗.标识-武装箱`(id_mark;建档 = `currency_war_armory_box_dialog.yml`)。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。弹窗叠在 3 选 1 屏或备战上,不关闭会挡死底层屏交互。
 
 ## 2. 画面形态声明
 
-**空决策形态**(无选择面 ∧ 无逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 标识门(「标识-简易武装箱」,miss = round_fail 交回外循环)→ obs{on_screen} + 占位 report 调用 → obs 挂实例属性;决策动作 node = 顶部重入裁决(点 × 已发 → 锚不在 = 弹窗已关 → success 交回;锚在 = 点击未落地 → 重点)→ `_close_dialog` 点 × 单动作体 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 现役值仅框架异常路径消费)。
+**空决策形态**(无选择面 ∧ 无逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 标识门(「标识-武装箱」,miss = round_fail 交回外循环)→ obs{on_screen} + 占位 report 调用 → obs 挂实例属性;决策动作 node = 顶部重入裁决(点 × 已发 → 锚不在 = 弹窗已关 → success 交回;锚在 = 点击未落地 → 重点)→ `_close_dialog` 点 × 单动作体 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 现役值仅框架异常路径消费)。
 
 ## 3. 观察面
 

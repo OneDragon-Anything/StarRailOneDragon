@@ -116,8 +116,8 @@ carried、不受本硬边界辖;在屏失读不写、沿用旧值,在屏与否�
 `GsOpeningSeed`/`seed:opening`,journal 过滤键 = sig.actor):阵容域(空
 bench/front_row/back_row/equips/occupied_equips/spheres)、经济域(gold 3/level 3/
 xp (0,4)/hp 82/streak 0/back_layout 6/deploy_cap 3/刷新计数 0/strategy_refresh_left
-{})、局级事实域(active_env ''/active_strategies []/enemy_affixes []/overflow
-False/''/prev_node_spent False)。种子值依据逐字段申报面见迭代设计;hp 实证域 =
+{})、局级事实域(active_env ''/active_strategies []/pending_item_grants []/
+enemy_affixes []/overflow False/''/prev_node_spent False)。种子值依据逐字段申报面见迭代设计;hp 实证域 =
 A8/难度108(§3.1.6 三写端时序)。node 族/payload 域/事件选择域/tracked 账等
 **不种**——None 在这些字段上是设计语义(离屏/未选择/未锚定闩本体)。
 
@@ -630,6 +630,35 @@ docstring)。机制依据:「下一个费用档的 1 星」升费腿定谳 + 同
 exclusive-loop/design.md §2.0;equipment_mechanics §7 待实测项由本字段+
 商店观察对账清偿)。设计正本 = changes/2026-09-20-yinlang-starup-accounting
 /design.md §2.1。
+
+#### 3.2.24 定时道具发放队列 pending_item_grants
+
+**语义**:已登记、未到点发放的**占席道具队列**——投资环境承诺「第 X 位面第 Y
+节点时获得 N 个道具」类效果,登记时点不落席,道具排队到点才发放。entry 形 =
+`{'env': 登记来源环境名, 'plane': 位面(1 基), 'round_num': 位面内轮(1 基,
+与 node 域 plane/round_num 同坐标系), 'item': 道具名}`;plane/round_num =
+入队期从登记节点键 `'位-轮'` 解析好的目标节点(节点键格式由登记表 import 校验
+拒收,容器内恒合法),取值时机 = 入队期快照。env = 登记来源(对账溯源用),
+不参与到点判定。
+
+**写端**:唯一逻辑写端 = 获得链——登记入队 = `on_env_gained` 定时支
+(`items_scheduled` 逐项入队,一次 write 回写整表),到点消费回写 =
+`discharge_due_item_grants`(命中项落位后一次 write 回写保留队列);**无观察
+写端**——队列是卡文推算知识,游戏 UI 无「待发放列表」可读。链式契约正本 =
+[gain-chain.md](gain-chain.md) §2.7/§3。**实机局不消费**:队列登记后保持原样,
+备战真值由 heavy 观察覆盖;sim 世界在进节点收口消费(挂点 = `SimBackend.
+_begin_node_window`,位面开局环境金之后)。
+
+**开局种子**:[](冷建即持空队列,与 active_env 同批)。
+
+**域归属**:`match_facts`(与 active_env/active_strategies 同域;新增字段随
+`DEFAULT_GS_SCHEMA['match_facts']` 版本注记,§3.7.1)。
+
+**为什么是容器队列、不是效果账本条目**:效果账本(effect_inventory,§5.1)辖
+「持续型效果的进展状态」——计数器模型(还剩几节点/计数到几),各字段靠共享挂点
+推进;「指定节点到点一次性发放」与计数器模型不同构,硬塞进去要把一次性发放伪装成
+一条持续效果再挂到期钩子。队列字段直白:一行 = 一件待发放道具,入队与清空就是
+完整生命周期,可独立验收。
 
 ### 3.3 商店开态(覆盖在备战画面之上)
 
