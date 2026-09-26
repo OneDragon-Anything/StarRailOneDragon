@@ -59,7 +59,9 @@ class SimUniRunRouteBaseV2(SrOperation):
         self.previous_angle: float = 0  # 之前的朝向 识别到目标时应该记录下来 后续可以在这个方向附近找下一个目标
         self.turn_direction_when_nothing: int = 1  # 没有目标时候的转动方向 正数向右 负数向左
         self.detect_move_timeout_times: int = 0  # 识别移动的超时失败次数
-        self.check_next_entry_knn: float = 0.5  # 特征匹配下层入口的阈值 越小精度越高
+        # 0.6 实证标定(2026-09-26 事件层失败现场帧):入口在侧前方+文字标签遮挡时
+        # 匹配距离略超 0.5(24 圈全空),0.6 恰好命中且 0.6/0.7 区间无误报,0.8 起出假匹配
+        self.check_next_entry_knn: float = 0.6  # 特征匹配下层入口的阈值 越小精度越高
         self.detect_entry: bool = False  # 识别到入口 只有yolo识别的才认可
         self.next_entry_direction: int = -1  # 下层入口的方向 1=右边 -1=左边
         self.move_to_next_fail_times: int = 0  # 向下层移动失败的次数
