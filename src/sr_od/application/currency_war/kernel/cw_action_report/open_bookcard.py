@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    SCREEN_PREP_FRAME,
     BenchSlot,
     BenchView,
     ChannelSig,
@@ -27,7 +28,10 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
 #: 开书册卡声明(纯转移;封闭集单一源 = sim 后端 advance 分派表键集)。
-_DECL: WorldDecl = WorldDecl(next_screen='货币战争-备战-专家邀请函',
+# overlay-trigger 3.4(S6 声明改底层屏):专家邀请函画面的出现事实改由
+# 登记(kind = expert_invite,上报内 register)承载,声明 next_screen
+# 语义回归备战底屏(流转移 = 开卡即腾席后回备战,弹窗出现走登记分发)。
+_DECL: WorldDecl = WorldDecl(next_screen=SCREEN_PREP_FRAME,
                              trigger='')
 
 

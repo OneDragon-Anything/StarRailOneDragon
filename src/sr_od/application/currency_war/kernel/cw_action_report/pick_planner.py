@@ -94,6 +94,12 @@ def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
     - 出参 applied=True = 动作受理(拒分支走腿内域守卫,不整批拒)。
     """
     _validate_sig(sig, ('logic_action',))
+    # overlay-trigger 3.4(精确消费):选卡动作消费同 kind 登记
+    # (两世界同一行代码;register-consume.md「实机消费·生命周期」)。
+    from sr_od.application.currency_war.kernel.cw_overlay_register import (
+        consume_screen_change,
+    )
+    consume_screen_change(gs, 'planner')
     # 条件腿 rider(上报内、腿型分派之前):弹窗出现即触发,与选择
     # 哪条腿无关;授予失败不阻塞腿型分派(调用点级 best-effort)。
     _grant_joy_conditional(gs, sig, rng)
