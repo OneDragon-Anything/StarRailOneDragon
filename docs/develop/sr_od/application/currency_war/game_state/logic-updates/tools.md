@@ -39,7 +39,7 @@
 1. **机械执行**(七类同构):源件 = 工具 icon 按注册名定位(`PrepActionExecutor._owned_grid_locate`,名字唯一稳锚)→ 目标 = equip 模式 owned 网格目标件 / char 模式角色槽位中心(`row`/`slot` 直取)→ mouse_move + drag_to → park_cursor;拖后固定等待(异步落地等待,非判效)——零消耗确认对拍,消费真值 = 下一帧装备区读数;
 2. **截断类**:首件消费后网格 reflow → 工具原子发射帧独占,后续网格目标动作下帧重评;
 3. **上报写端** = `kernel/cw_action_report/tool_use.py` 七具名上报函数(`_REPORT_BY_CLASS` 按 param 类型解析,op 机械执行后直调自己的上报函数):容器 `equips` 合并单笔写(消耗移除与效果腿同笔,禁拆两笔);获得腿(投影仪复制)走 `gain_character` 获得链,变异面(冶金炉)不走链随机归观察;效果写端桥/组合收口引用 = §2 表(节点边界窗 `settle_node_boundary_gold` / 获得回执窗 `settle_wrench_duplicate_gold`,机理见 [op-effects.md](op-effects.md) §4);入席腿缺 `target_cost` = 调用错(缺费用会假过门,禁缺省放行),非进阶类别传入特权化/入区腿 = 调用错显式炸;
-4. **基础行为与效果同笔容器写**:消耗品 −1、目标件消失、穿戴域迁移等 op 基础行为与效果腿**合并单笔**容器 `equips` 写(黑板帧面直写腿已随 `gs.prep_obs` 黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5);消费真值 = 下一入口 heavy 装备区读数覆盖(截断点独占发射帧零窗口);
+4. **基础行为与效果同笔容器写**:消耗品 −1、目标件消失、穿戴域迁移等 op 基础行为与效果腿**合并单笔**容器 `equips` 写(黑板帧面直写腿已随 `gs.prep_obs` 黑板退役删除——黑板帧退役);消费真值 = 下一入口 heavy 装备区读数覆盖(截断点独占发射帧零窗口);
 5. **判据准入** = `kernel/cw_equip_env.py::evaluate_tool_actions` → `admitted_tool_actions`(G1 准入,发射位禁第二套时机判断):冶金炉/特权赋予卡 = 判据准入放行(原子类发射);扳手/精密扳手/员工投影仪/完美投影仪/好运令牌 = 判据面 fail-closed,发射位禁无判据发射(投影仪/令牌的 kernel 写端桥已备,接线 = 桥调用)。
 
 ## 4. 随机面

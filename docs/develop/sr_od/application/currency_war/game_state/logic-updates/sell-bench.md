@@ -20,7 +20,7 @@
 
 守卫 = 空槽/**占位件**(kind ≠ 'unit')/越界零写——占位件无卖出语义(sell_gate 占位恒拒防线同口径);expect 代际校验统一携带(非空 expect 失配 = 陈旧提案拒,live 提案恒 '' 零行为)。
 
-**效果账面(申报:执行缝无金腿)**:卖出回金的容器唯一写点 = 上报函数(按 `sell_refund` 直写金账)——原聚合口 `apply_op_effect` 的 SellBench 分支已随「统一观察对账迭代 2026-09-16 归因批」退役(执行缝 + 投影双腿各记一次 +refund,实读倒挂 −2 实证);执行缝现只算执行点金差 `_executed_gold_delta` 进回执 extra 留证,**不经它直推容器金账**。
+**效果账面(申报:执行缝无金腿)**:卖出回金的容器唯一写点 = 上报函数(按 `sell_refund` 直写金账)——原聚合口 `apply_op_effect` 的 SellBench 分支已退役(旧执行缝 + 投影双腿各记一次 +refund 形态,实读倒挂 −2 实证);执行缝现只算执行点金差 `_executed_gold_delta` 进回执 extra 留证,**不经它直推容器金账**。
 
 ## 3. 确定面转移规则(逐条)
 
@@ -28,7 +28,7 @@
 2. `gold += 退款`,公式单一源 = `kernel/cw_economy.py::sell_refund`:退款 = 招募费(`bench_char_cost`,注册表单一源,未知按中位保守估)× 星级倍数表 `_SELL_MULT`(1★ 全额;2★/3★/4★ = 合成副本数同构倍数);**手续费口径**:star≥2 且 cost≥2 再 −1;cost=1 豁免(2★1费 卖出 = 全额倍数,live 实测定谳;3★2费 = +17 已 live 定谳,4★ 档仍未核 = 缺口 G3 剩余);
 3. **装备全量回装备区**(上报函数 C6 守恒腿):被卖单位身上全部装备(简易/进阶/核心不分)进 owned 装备库存——穿戴是可逆暂借(【口述·权威】`research/equipment_mechanics.md` §1;kernel 按 C6 装备守恒回收建模);
 4. 陈旧提案拒:expect 身份与槽内不符 = 零写;
-5. **溢出条件腿**(2026-09-15 实机建档,`docs/game/screens/currency_war_prep.md` 告警节):`overflow_warning` 在场(备战席满告警横幅 = 存在未安置溢出角色,此刻出战点击被游戏忽略)时,卖出语义补一条——**腾出槽当帧记溢出卡入位**(`bench[idx]` 槽 kind 回占为 `unit`(入位卡身份,星级缺读按 1 兜底);「卖 → 溢出卡自动入自由槽」是游戏侧行为,有溢出时席必满、自由槽恒唯一,落位无歧义)+ `overflow_card` 消费清空 + 旗标 logic 消亡(下帧实读覆盖)。入位对象身份缺读(`overflow_card` 空)= 跳过入位(槽留空等观察),卖出语义本体不受阻。**两账同帧**:容器腿(上报函数,入位卡回占槽位——席空数派生自然不 +1,腾出槽即刻回占)/ 执行侧 tracked 主账吸收(session 形参在场时,摘该槽 + 追加入位卡后经 `bench_from_compact` 重建槽位表——缺吸收 = 商店播种守卫双账分叉,实机 2-4 停机实证)。(原第三面「黑板帧镜像」随 `gs.prep_obs` 黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5,镜像语义由容器回占面全量承载。)
+5. **溢出条件腿**(2026-09-15 实机建档,`docs/game/screens/currency_war_prep.md` 告警节):`overflow_warning` 在场(备战席满告警横幅 = 存在未安置溢出角色,此刻出战点击被游戏忽略)时,卖出语义补一条——**腾出槽当帧记溢出卡入位**(`bench[idx]` 槽 kind 回占为 `unit`(入位卡身份,星级缺读按 1 兜底);「卖 → 溢出卡自动入自由槽」是游戏侧行为,有溢出时席必满、自由槽恒唯一,落位无歧义)+ `overflow_card` 消费清空 + 旗标 logic 消亡(下帧实读覆盖)。入位对象身份缺读(`overflow_card` 空)= 跳过入位(槽留空等观察),卖出语义本体不受阻。**单账同帧**:入位卡回占槽位由上报函数直接落主域 bench(席空数派生自然不 +1,腾出槽即刻回占);无平行随动账(执行侧吸收腿与黑板帧镜像均已退役,镜像语义由容器回占面承载)。
 
 ## 4. 随机面
 
@@ -42,7 +42,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_action_report/sell_bench.py::report_action_sell_bench_param`(双域统一单点,原生 `BenchView.slots` 直操);`kernel/cw_economy.py::sell_refund` / `bench_char_cost` / `_SELL_MULT`;`kernel/cw_vocab.py::mutate_bench_deployed`(SellBench 分支,tracked 同步);`prep_actions.py::PrepActionExecutor._sell_bench` / `_track_remove_bench` / `_executed_gold_delta`(金差仅回执留证) / `drag_bench_to_sell`。
+`kernel/cw_action_report/sell_bench.py::report_action_sell_bench_param`(双域统一单点,原生 `BenchView.slots` 直操);`kernel/cw_economy.py::sell_refund` / `bench_char_cost` / `_SELL_MULT`;`kernel/cw_vocab.py::mutate_bench_deployed`(SellBench 分支,tracked 同步);`prep_actions.py::PrepActionExecutor._sell_bench` / 上报直写主域 / `_executed_gold_delta`(金差仅回执留证) / `drag_bench_to_sell`。
 
 ## 7. 语义验证(M1 直锁)
 

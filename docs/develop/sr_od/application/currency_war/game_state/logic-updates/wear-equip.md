@@ -12,14 +12,14 @@
 
 | 账 | 写端 | 内容 |
 |---|---|---|
-| tracked(执行账)| op 自上报 `kernel/cw_action_report/wear_equip.py::report_action_wear_equip_param`(session 形参在场时执行;op 零 game state 直写)| owned 库存 −1 件(`gs.equips` write_logic,evidence `owned[<件>] -1(穿戴)`;owned 无此件 = 只跳该侧)+ tracked 目标角色 equips +1(物理 (row, slot) → `deployed_idx_of` 换算)|
+| tracked(执行账)| op 自上报 `kernel/cw_action_report/wear_equip.py::report_action_wear_equip_param`(session 形参在场时执行;op 零 game state 直写)| owned 库存 −1 件(`gs.equips` write_logic,evidence `owned[<件>] -1(穿戴)`;owned 无此件 = 只跳该侧)+ tracked 目标角色 equips +1(物理 (row, slot) → 内联换算)|
 
-落地真值(穿没穿)= 观察写入边对账(下一入口装备区读数覆盖)。**零窗口申报**:WearEquip = 截断点(独占发射帧),发出即 visit 结束 → 下一入口 heavy 装备区实读覆盖,无同 visit 后续帧消费。(原「视觉域黑板帧摘件腿」随 `gs.prep_obs` 黑板退役删除——迭代 2026-09-18-prep-obs-retirement 阶段 3.5。)
+落地真值(穿没穿)= 观察写入边对账(下一入口装备区读数覆盖)。**零窗口申报**:WearEquip = 截断点(独占发射帧),发出即 visit 结束 → 下一入口 heavy 装备区实读覆盖,无同 visit 后续帧消费。(原「视觉域黑板帧摘件腿」随 `gs.prep_obs` 黑板退役删除——黑板帧退役。)
 
 ## 3. 确定面转移规则(逐条)
 
 1. **机械执行**:目标拖点 = `PrepActionExecutor._equip_slot_drag_point(row, slot)`(前排 = 「前排-N」rect 中心 x、y1+21(D-36 校准);后排 = 布局选档 `obs/cw_back_layout.py::select_back_layout` 同式派生;缺失 = None 禁兜底坐标)→ 源件 = owned 网格按名定位 `_owned_grid_locate(item_name)`(名字定位是唯一稳锚,网格 reflow 使快照坐标失真)→ 固定等待 `PREP_DRAG_SETTLE_WAIT_S`(等备战面板/上件 reflow 动画收尾,非判效)→ mouse_move + drag_to + park_cursor;
-2. **tracked 双侧**(上报函数 `report_action_wear_equip_param`):owned 侧 = `gs.equips` 现读-摘件-回写;tracked 侧 = dep[idx].equips 追加(目标槽位表下标 = `deployed_idx_of(row, slot)`,槽位空 = 跳过;session 缺席 = tracked 腿跳过);角色装备上限 = `kernel/cw_comps.py::EQUIP_CAPACITY`(计划面容量扣减消费);
+2. **tracked 双侧**(上报函数 `report_action_wear_equip_param`):owned 侧 = `gs.equips` 现读-摘件-回写;目标角色 equips 追加(槽位表下标 = 排内槽号内联换算,槽位空 = 跳过);角色装备上限 = `kernel/cw_comps.py::EQUIP_CAPACITY`(计划面容量扣减消费);
 3. **零比对出生**:动作 op 内零 CV-diff 验穿——穿没穿归观察写入边对账;原 avatar-slot CV-diff 验穿面已删除(机械执行零判效纪律),考古归 git;
 4. **穿着即合成**(在册建模裁定):两件可合成组件穿到同一角色 = 自动合成;**不记合成预期值**([fields.md](../fields.md) §4.1 豁免)——该豁免是建模裁定,不是知识缺口;后果走观察覆盖 + 缺陷台账。
 
@@ -36,7 +36,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::CwActionWearEquipParam`;`kernel/cw_action_report/wear_equip.py::report_action_wear_equip_param`(tracked 腿)/ `deployed_idx_of`;`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan` / `EquipWearStep`(四路输入容器读口,迭代阶段 3.2 换源);`kernel/cw_comps.py::EQUIP_CAPACITY`;`prep_actions.py::PrepActionExecutor._wear_equip` / `_owned_grid_locate` / `_equip_slot_drag_point` / `PREP_DRAG_SETTLE_WAIT_S`;`operations/cw_op/cw_wear_equip_action.py::CwActionWearEquipOp`;`obs/cw_back_layout.py::select_back_layout`。
+`kernel/cw_vocab.py::CwActionWearEquipParam`;`kernel/cw_action_report/wear_equip.py::report_action_wear_equip_param`(tracked 腿)/ 内联换算;`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan` / `EquipWearStep`(四路输入容器读口,迭代阶段 3.2 换源);`kernel/cw_comps.py::EQUIP_CAPACITY`;`prep_actions.py::PrepActionExecutor._wear_equip` / `_owned_grid_locate` / `_equip_slot_drag_point` / `PREP_DRAG_SETTLE_WAIT_S`;`operations/cw_op/cw_wear_equip_action.py::CwActionWearEquipOp`;`obs/cw_back_layout.py::select_back_layout`。
 
 ## 7. 语义验证
 

@@ -241,8 +241,8 @@ node_path 现读=权威写端**(`prep_row`;P2/P3 基线回填 = `prep_row_first`
 **语义**:上阵成员统一槽位视图(载体 = `DeployedView`):`front_slots[i]` =
 前排物理槽 i+1(定长 4)/ `back_slots[j]` = 后排物理槽 j+1(**动态容量 6-9**,
 上限常量 `DEPLOYED_BACK_CAPACITY_MAX`——后排格数随布局档扩展,扩展格进视图,
-扩容落位 = `deployed_view_of_hits`;仅定长 10 下标工作表按容量截断,工作表桥 =
-`deployed_view_of_hits`/`deployed_indexed_of_view`),成员 = Unit
+扩容落位 = `deployed_view_of_hits`(观察构造器,按命中行构视图);定长 10 下标工作表
+与视图互转的工作表桥 = `deployed_indexed_of_view`/`deployed_view_of_indexed`),成员 = Unit
 (角色 char_id、星级、装备;**槽位不存**——位置 = 所在子表下标纯派生,排归属
 0-3 前排/4-9 后排,排内槽号换算 = 执行侧内联算术 + `cw_back_layout.py` 布局档)。
 **阵营不是 Unit 的存储字段**——阵营是角色的静态属性,由
@@ -382,7 +382,7 @@ sim 合成口同域直写。
 #### 3.2.8 晶矿 spheres
 
 数量/颜色——交互机会信号,不占席(§3.2.5)。席满时奖励无法落位的拦截判据归 op
-写入策略(§4 CollectOre)。**载荷坐标**(黑板帧退役时扩充):`OreSight.points` = `(color, x, y, r)` 平铺元组——晶矿为自由
+写入策略(§4 CollectOre)。**载荷坐标**:`OreSight.points` = `(color, x, y, r)` 平铺元组——晶矿为自由
 位置识别物无槽号,像素坐标必须随识别进容器(坐标单一真相源纪律;点击列由 kernel
 `ore_click_targets_of` 还原消费)。**写端** = CwScreenPrep 备战入口 heavy
 观察上报(空读照写 count=0 防残留假晶矿;两帧持存防抖留观察链);**逻辑写端** =
@@ -492,9 +492,9 @@ evidence 区分。旗牌通道=**弱**(stylized 数字 OCR 常空,两级放大�
 **写端**(完整清单):观察=本屏道具区覆盖;逻辑(op,§4.2)=RunTools 用工具(拆装
 扳手 −1;精密拆装扳手不消耗、重复获得折 +1 金走金币字段);自动行为=惊喜盒倒计时
 到点自动开启(无 op 参与);补给/事件获得的消耗品经观察覆盖收口(§4.1 豁免)。
-**清偿指针(tool-gain-report 迭代核实时点)**:本字段 = **死字段**——现役零读端
+**清偿指针(核实时点):本字段 = **死字段**——现役零读端
 零写端(工具件实住 equips,工具上报记账载体 = equips 合并写,本字段申报与现实
-不符);字段级清偿(退役/修正申报)归 fields 正本批,工具面不入本字段。
+不符);字段级清偿归 fields 正本批,工具面不入本字段。
 
 #### 3.2.17 分类子态 prep_substate
 
@@ -773,12 +773,12 @@ effective_refresh_prob:键在且 >0 直用、≤0/缺键退基线表——**契�
 > 逻辑写入(判定点二元 = screens/op-layer.md §2.2):**盛会之星 = 选择点**
 > (决策动作 node 派发前写,与 screens/megastar.md §6 同口径)、伙伴 =
 > 选择点(`cw_screen_partner.py` 自申报双处在册)、其余屏 = 重入裁决点
-> (逐屏核正归各屏审查批/T-37,头注不再整体绑单一判定点);观察覆盖负责
+> (逐屏核正归各屏审查批,头注不再整体绑单一判定点);观察覆盖负责
 > 画面态,chosen 负责选择事实)。选择落地统一见 §4
 > 「事件选择」。刷新闸口径全域规范 = 屏显「剩余次数」观察真值,禁已用推算
 > (规范单一源 = [../screens/op-layer.md](../screens/op-layer.md) §1.4;
-> 遭遇/补给的已用计数字段已随剩余语义化退役,归迭代
-> 2026-09-21-event-refresh-unify-supply-pick §3.4.1/§3.4.2)。
+> 遭遇/补给的已用计数字段已随剩余语义化退役,规范单一源 =
+> [../screens/op-layer.md](../screens/op-layer.md) §1.4)。
 >
 > 候选/选项结构的容器域(观察上报落点,逐屏一域;写端 = `kernel/cw_screen_report/`
 > 的 `report_screen_<snake>_obs`,逐域空读闸见各 report 函数 docstring):

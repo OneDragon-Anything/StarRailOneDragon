@@ -2,7 +2,7 @@
 
 > 画面 = 货币战争-投资环境(开局/固定节点的整局增益三选一,可整组刷新重掷);**能力面** = [../screens/README.md](../screens/README.md) §5.2/§5.5。本篇 = 该画面的**策略面**(宪法六「一画面一策略文件、一画面一策略文档」首批兑现,2026-09-23 迁移迭代)。
 > 决策本体 = `strategies/impl/mandate_v1/invest_env.py::decide / decide_pick`(纯值出口);共用模块同目录 `line_value.py`(方向分)/ `gift_value.py`(赠卡分)/ `env_economy.py`(现金分);动作包装与同帧去重 = `strategies/impl/flow.py::_decide_invest` kind='env' 分支;画面 op = `operations/cw_screen/cw_screen_invest_env.py`(整组重掷终结交回)。判据本体引用不重复,数值单一源在代码(本篇只写常量名)。
-> 行为对照基线与迁移动机 = 迁移迭代 `../changes/2026-09-23-invest-env-strategy-migration/design.md`(注:`changes/` 是过程区,本篇自足,长期以本篇为准)。
+> 行为对照基线与迁移动机归 git 历史(本篇自足,长期以本篇为准)。
 
 ## 1. 标尺(统一加法)
 

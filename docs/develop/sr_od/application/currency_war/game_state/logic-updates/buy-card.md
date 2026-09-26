@@ -19,7 +19,7 @@
 | board | 派生随写 | **派生量**:front_row/back_row 行写端挂钩 `GameState._resync_board_delta` 自动增量重算,随上行条件写触发,本腿禁手写 |
 | xp / level / equips / hp | 跳写 | 买牌不产经验(零购买子集反证,`research/xp-rules.md` §2);不触装备域 |
 
-执行侧配套(非容器域):op 内 tracked 双账同步(`mutate_bench_deployed`,shop 视图透传)、买前裁片留证、效果账本 `CounterKey.BUY` 计数推进(挂执行落地门 `apply_action_outcome`)。
+执行侧配套(非容器域):op 内 主域直写同步(`mutate_bench_deployed`,shop 视图透传)、买前裁片留证、效果账本 `CounterKey.BUY` 计数推进(挂执行落地门 `apply_action_outcome`)。
 
 ## 3. 确定面转移规则(逐腿)
 
@@ -35,7 +35,7 @@
 
 - 满栏仍买得进**当且仅当**本次点击能完成一次合成(判据单一源 = `cw_merge_simulate.py::merge_buy_completes`,前提门 = 已有同名同星素材 own≥1;own=0 满栏域游戏拒买,/);
 - 一击多买张数 k = `cw_merge_simulate.py::merge_buy_k` = min(店内同名同星张数, 3 − 已有数 mod 3)(绝不多买,`research/merge_mechanics.md` §2.5);
-- k 张逐张原价扣金(总价 = k×单价)、店载荷下架 k 张同身份牌、合成腾槽(应用机器 = `cw_merge_simulate.py::_apply_full_bench_merge_buy`,逻辑态直写与 tracked 双账同构单一源);
+- k 张逐张原价扣金(总价 = k×单价)、店载荷下架 k 张同身份牌、合成腾槽(应用机器 = `cw_merge_simulate.py::_apply_full_bench_merge_buy`,主域直写单一源);
 - 执行器张数回执 = `CwActionBuyCardOp` 现算 `merge_buy_k`,执行账补差 (k−1)×单价。
 
 ## 4. 随机面

@@ -47,11 +47,11 @@
 | `last_streak` | 结算屏「连胜×N」 | economy C 杠杆 | 节点 | 方向语义在符号 |
 | `last_level_obs` | read_level + 单调守卫 | 等级读数消误 | 局 | 识别层守卫状态 |
 | `active_strategies` | 选卡 handler 采集 | read_game_state 拷入 state | 局 | 已持投资策略 |
-| `last_owned_equips` | 备战入口观察装配点全量重写(主写端,P4 接线)+ 穿戴 pass 执行位步内覆写 | state.equips 遥测、载体中继兜底 | 帧 | ;决策输入(门①/工具评估/计划产出位)已切容器 `equips` 域(迭代 2026-09-18-prep-obs-retirement 阶段 3.2),勿回接本镜像 |
+| `last_owned_equips` | 备战入口观察装配点全量重写(主写端,P4 接线)+ 穿戴 pass 执行位步内覆写 | state.equips 遥测、载体中继兜底 | 帧 | ;决策输入(门①/工具评估/计划产出位)已切容器 `equips` 域(黑板帧退役前搬迁),勿回接本镜像 |
 | `chosen_megastar` / `chosen_partner` | 选择 handler | 遥测回写 state | 局 | 复盘维度 |
 | `star_pending_regression` | 识别防抖(合成动画窗确认) | star 真值采信 | 节点内 | 框架识别守卫 |
 | `briefing_affixes` / `briefing_bosses` / `selected_difficulty` / `enemy_difficulty` / `active_env` | 简报/入口屏/情报屏采集 | mechanics_fit/boss_fit/保血阈值 | 局 |  保位勿滤 |
-| ~~`prep_obs_frame`~~ | —— | —— | —— | **已退役删除**(迭代 2026-09-18-prep-obs-retirement 阶段 3.5):备战黑板帧宿主与 `gs.prep_obs` 槽一并删除,策略器唯读容器契约归位——备战决策读 = 容器单例 `game_state_of(session)` 全量直读;`PrepObservation` 瘦身为备战环 op 局部控制信号载体(shop_open/substate/event_overlay),不进 session |
+| ~~`prep_obs_frame`~~ | —— | —— | —— | **已退役删除**(黑板帧退役):备战黑板帧宿主与 `gs.prep_obs` 槽一并删除,策略器唯读容器契约归位——备战决策读 = 容器单例 `game_state_of(session)` 全量直读;`PrepObservation` 瘦身为备战环 op 局部控制信号载体(shop_open/substate/event_overlay),不进 session |
 | ~~`pending_round_outcomes`~~ | —— | —— | —— | **已退役删除**:消费侧 drain 退役后观察半累积槽整删——结算真值归宿 = gs 结算覆盖写端(`apply_settlement_cover`)+ `performance.history` |
 
 > 帧代次标注双槽现役宿主 = GameState 非 Field 双槽 `gs.frame_class_prep`/`gs.frame_class_shop`(帧语义注记,非游戏事实;写点 = 备战/商店域观察装配点与决策环直写,读者 = 决策入口方向节拍,读后即清):`gs.frame_class_shop` 标注对象 = **最近一次商店域容器观察写点**(入口观察段喂入/续段重观察)——商店黑板槽 `shop_state_frame` 已随两态制收口退役删除,容器 = 商店决策读单源;`gs.frame_class_prep` 标注对象 = 最近一次备战域容器观察写点(黑板帧宿主已退役,标注语义保留)。
@@ -83,7 +83,7 @@
 
 ### 2.4 执行层状态——迁出至执行侧载体(16 项;as-built 实际落点 22 具名 = 16 清册 + 账外第二波 6:`last_prep_action_sig`/`_supply_detour_done`/`cw_prep_pending_accts`/`cw_takeover_collect_done`/`cw_takeover_tries`(此两名已退役删除——现行接管补采无 gs 字段,真值经位面详情屏写门落容器)/`cw4_swap_arm_on`,见 「落位裁量」节)
 
-> **as-built 退役注(执行层落点列消解)**:执行侧载体(`ExecState`,本表「迁出落点」列的目标态宿主)已随执行层状态类目整体退役(git 历史可溯)——GameState 成为一统的局内事实容器后,执行层不再设独立状态载体。本表各字段终局:失败记忆(`deploy_fail_counts`/`equip_drag_fail_counts`)、死面(`_supply_detour_done`)、期望账(`pending_buy_expect`/`xp_expect_ledger`/`cw_prep_pending_accts`/`expected_state` 族)、僵尸轮账(`v2_round_key`/`v2_round_sold`)删除;防重入半边按语义归位(megastar 旗标 → 策略器状态 `StrategyState.megastar_clicked`,刷新计数 → GameState `node_screen_refresh` 域容器计数);跟踪账 → `GameState.tracked_books`;暂存/接管恢复/簿记/节点台账 → GameState 容器(选择域/match_facts 域/plane_node_sequences)。现行字段规格单一源 = `../game_state/fields.md` §3.4 与 `../game_state/README.md` §3.3。
+> **as-built 退役注(执行层落点列消解)**:执行侧载体(`ExecState`,本表「迁出落点」列的目标态宿主)已随执行层状态类目整体退役(git 历史可溯)——GameState 成为一统的局内事实容器后,执行层不再设独立状态载体。本表各字段终局:失败记忆(`deploy_fail_counts`/`equip_drag_fail_counts`)、死面(`_supply_detour_done`)、期望账(`pending_buy_expect`/`xp_expect_ledger`/`cw_prep_pending_accts`/`expected_state` 族)、僵尸轮账(`v2_round_key`/`v2_round_sold`)删除;防重入半边按语义归位(megastar 旗标 → 策略器状态 `StrategyState.megastar_clicked`,刷新计数 → GameState `node_screen_refresh` 域容器计数);席位真值 → 主域字段(bench/deployed);暂存/接管恢复/簿记/节点台账 → GameState 容器(选择域/match_facts 域/plane_node_sequences)。现行字段规格单一源 = `../game_state/fields.md` §3.4 与 `../game_state/README.md` §3.3。
 
 | 字段 | 产生者 | 消费者 | 生命周期 | 迁出落点(目标态归属) |
 |---|---|---|---|---|

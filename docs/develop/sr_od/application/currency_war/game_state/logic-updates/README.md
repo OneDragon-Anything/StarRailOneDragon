@@ -66,7 +66,7 @@
 |---|---|---|---|
 | PickEncounter | `CwActionPickEncounterOp` | [pick-encounter.md](pick-encounter.md) | `report_action_pick_encounter_param`(具名模块 `kernel/cw_action_report/pick_encounter.py`,发射即写 chosen_encounter;兑现后清单次消费) |
 | PickSupply | `CwActionPickSupplyOp` | [pick-supply.md](pick-supply.md) | `report_action_pick_supply_param`(即时单相一口写:owned 规范名 + 单位腿 `grant_bench_unit_cascade` + 装备后果腿 `apply_equip_acquire_consequence`;内容未知/名未解析 = 翻来源留证;选择落地 = `chosen_supply` 画面 op 确认即写) |
-| PickInvestStrategy | `CwActionPickInvestOp` | ——(专篇缺档;补篇决策 = 新增 pick-invest.md 专篇,接缝归口 = T-37 汇总登记) | `report_action_pick_invest_strategy_param`(发射即写,整支走获得链 `gain_invest_strategy`) |
+| PickInvestStrategy | `CwActionPickInvestOp` | ——(专篇缺档;补篇决策 = 新增 pick-invest.md 专篇,接缝归口 = 本 README 汇总登记) | `report_action_pick_invest_strategy_param`(发射即写,整支走获得链 `gain_invest_strategy`) |
 | PickInvestEnv | `CwActionPickInvestOp` | ——(同上,两行同指一 op) | `report_action_pick_invest_env_param`(发射即写,整支走获得链 `gain_invest_env`) |
 | PickPlanner | `CwActionPickPlannerOp` | [pick-planner.md](pick-planner.md) | `report_action_pick_planner_param`(即时单相:条件腿 rider 先行 → equip/upgrade 腿一口写,具名模块 `pick_planner.py`,模块头申报即时单相) |
 

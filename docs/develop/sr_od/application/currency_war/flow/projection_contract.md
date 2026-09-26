@@ -34,7 +34,7 @@
 ### 2.1 两个容器（权威槽位 = 下标）
 
 - **bench（备战栏）**：`gs.bench`（`BenchView`,slots 定长 = capacity,列表下标 0-8 = 物理槽位 1-9 减一;空槽 = `kind='empty'`）。容量判据 = 派生单一源 `kernel/cw_game_state.py::bench_free_slots`/`bench_is_full`，**禁止 `len(slots)` 数占用**。
-- **deployed（上阵）**：`gs.deployed`（`DeployedView` 统一槽位视图,`front_slots[i]` = 前排物理槽 i+1（定长 4）/ `back_slots[j]` = 后排物理槽 j+1（**动态容量 6-9**,上限 = `DEPLOYED_BACK_CAPACITY_MAX`;后排格数随布局档扩展,**扩展格进视图**,仅定长 10 下标工作表按容量截断,工作表桥 = `deployed_view_of_hits`/`deployed_indexed_of_view`）；位置 = 子表下标纯派生,下标 0-3 = 前排槽 1-4、4-9 = 后排槽 1-6,排内槽号换算 = 执行侧内联算术 + `cw_back_layout.py` 布局档。
+- **deployed（上阵）**：`gs.deployed`（`DeployedView` 统一槽位视图,`front_slots[i]` = 前排物理槽 i+1（定长 4）/ `back_slots[j]` = 后排物理槽 j+1（**动态容量 6-9**,上限 = `DEPLOYED_BACK_CAPACITY_MAX`;后排格数随布局档扩展,**扩展格进视图**,仅定长 10 下标工作表按容量截断,工作表桥 = `deployed_indexed_of_view`/`deployed_view_of_indexed`;`deployed_view_of_hits` = 观察构造器）；位置 = 子表下标纯派生,下标 0-3 = 前排槽 1-4、4-9 = 后排槽 1-6,排内槽号换算 = 执行侧内联算术 + `cw_back_layout.py` 布局档。
 
 权威槽位恒为子表下标（`Unit` 不存槽位信息位,位置 = 所在子表下标纯派生）。阵营不入 Unit——由 char_id 查角色注册表派生。
 
@@ -64,7 +64,7 @@
 ## 3. 写入端不变式（逻辑态面对消费方的承诺）
 
 1. **槽位表形状**：`gs.bench`（`BenchView`，空槽 = `kind='empty'`）与 `gs.deployed`（`DeployedView`，front/back 子表定长，位置 = 子表下标）为唯一定长槽位表；动作落地整值替换、无洞语义，「生成期索引 = 执行期索引」在单轮内成立，同轮多笔卖出/部署不可能引起索引漂移（的立法目的）。
-2. **信息位归一**：bench 落槽写端（`kernel/cw_exec_state.py::bench_place`）与上报函数落位腿让 `Unit.slot` 与落位下标一致；跨排移动的开拓者形态归一（char_id 随排切换）核 = `cw_exec_state.trailblazer_row_identity`（deploy_move/swap 两上报函数同源调用）。排路由不在写端——发射期由策略层 `deploy_row_pref`（comp 站位覆盖 > 注册表 position_pref 派生 > back 兜底）定。
+2. **开拓者形态归一**：跨排移动的开拓者形态归一（char_id 随排切换）核 = `cw_exec_state.trailblazer_row_identity`（deploy_move/swap 两上报函数同源调用）。排路由不在写端——发射期由策略层 `deploy_row_pref`（comp 站位覆盖 > 注册表 position_pref 派生 > back 兜底）定。
 3. **快照隔离**：`kernel/cw_exec_state.py::snapshot_copy` 浅拷贝 + equips 固化 tuple 断开对象别名——就地写端不穿透拷贝，反向亦然。`snapshot_copy` 现役消费方 = `kernel/cw_action_report/buy_card.py::report_action_buy_card_param`（买牌买前快照 scratch 拷贝链——快照与升星腿内聚单点），拷贝隔离由机制保证、不靠消费纪律。
 4. **席位单账直写**：卖出/部署/换位 handler 直写主域字段（卖出 = 主域该位删除；上阵/换位 = deployed 视图整值替换，载荷 `(to_row, to_slot)` 经下标定位(排内 1 基槽号 → 子表下标内联换算)，交换语义镜像——被占位单位回源槽）。落地事实的权威判定 = 观察边界对账（观察赢，权威 = 备战入口 heavy 观察，星级抖动门驻 `kernel/cw_reconcile.py`）。
 5. **披露面承诺**：预算遥测披露面 = `v3_reserve_cap`/`v3_reserve_overflow`/`v3_release_budget`/`v3_release_spent` 四字段 + `v3_disclosure_key` 键戳，唯一写点 = `economy_cycle.disclose_budget`，两调用点 = 备战决策入口（`bridge.py::decide_prep_screen`，前置发射位判定之后的原装配缝位，非 armed 短路帧才到达）与店开帧覆写（`economy_cycle.py::disclose_budget_at_shop_frame`，调用点 = 商店画面 op `cw_screen_shop.py::CwScreenShop` 观察 node，每商店访问入口恰一次——刷新即新访问 = 新披露）；披露面是遥测列非决策输入，禁决策消费，守卫锁 = test_cw_budget_disclosure（armed 短路帧不披露单帧锁 = test_armed_shortcircuit_frame_writes_no_disclosure）。
@@ -128,7 +128,7 @@
 | G5 | `obs/cw_identity_obs.py::find_armory_boxes` / `find_tomes` / `read_armory_boxes` / `read_tomes` | 返回值 `slot_idx` 的基（1-based，来自 `_ctx_slots` 的 `range(1, count+1)`）只在实现里，函数级 docstring 未声明；对照同文件 `bench_item_slots` 的「注释规范硬门」写法属漏网 | 消费方 `OpenBox.slot`/`OpenTome.slot` 的 validate（1-9）与匹配（`b[0]==action.slot`）全依赖此基；声明缺失=新读取方易按 0-based 惯例错拿 |
 | G6 | `kernel/cw_deploy_logic.py::residual_fill_plan`(部署机锚已随其退役收敛 kernel 单一源) | 返回三元组声明了 `slot_idx` 基（排行点位表 0-based 下标），但 `bench_idx` 的基与入参 `bench_pos`/`bench_cid` 的键域（bench 槽位表下标 0-8）只在调用方局部变量注释里有，函数自身 docstring 未声明 | 该函数标注「可离线直测」，离线构造入参时键域无函数级依据 |
 | G7 | ~~`strategies/impl/mandate_v1/turn_state.py` + `assembly.py`~~（**已结案**） | TurnState 层已随 turnstate-retirement 物理删除；hoard/hoard_readable 随 DirectionView 消亡 | 现行决策通路 = §4.1 时间线 |
-| G8 | ~~`strategies/impl/mandate_v1/contracts.py`~~（**已结案**：Snapshot 契约族经用户裁定随 turnstate-retirement T-6 退役整删，零生产消费实证在案；权威表灭失挂账随之销项） | 权威表指向 w583_stage2_contracts/SCHEMA_DRAFT.md，原始件已灭失（2026-09-12 清理）——载体删除后不再存在迁入问题 | 契约族残留引用 = 零（src/测试仓 grep 实证）；历史裁决原文归 git 历史 |
+| G8 | ~~`strategies/impl/mandate_v1/contracts.py`~~（**已结案**：Snapshot 契约族经用户裁定随 turnstate 层退役整删，零生产消费实证在案；权威表灭失挂账随之销项） | 权威表指向 w583_stage2_contracts/SCHEMA_DRAFT.md，原始件已灭失（2026-09-12 清理）——载体删除后不再存在迁入问题 | 契约族残留引用 = 零（src/测试仓 grep 实证）；历史裁决原文归 git 历史 |
 
 已核对合规（抽样，供后续审计对照，不再逐一列出）：族 A 全部 `[索引定义]` 字段（`SellBench.bench_idx`/`DeployMove.bench_idx`/`DeployMove.to_row+to_slot`/`SellDeployed.deployed_idx`/`SwapDeploy.deployed_idx+bench_idx`/`FillSpec.idx`/`PickEvent.option_idx+refresh_slots`）、`GameState.bench`(BenchView)`/`deployed`(DeployedView) 容器注释、`BenchSlot.kind` 五分类、`cw_identity_obs.py::bench_item_slots`、`prep_actions.py::drag_bench_to_sell`、`cw_state.py::xp_apply_clicks`。（`cw_exec_state.py::_invest_refresh_used_slots` 抽样条目已随该字段退役移除;`cw_op_equip_all.py::register_equip_worn` 抽样条目已随装备组合壳退役移除。）
 
@@ -136,4 +136,4 @@
 
 - **装备穿着主病灶策略语义再评估（opening 窗口与非 key_equips 释放条件）与装备释放条件批的策略语义评估**，其执行侧事实依据 = 本契约 §3.7（装备 owned 搬运链与穿戴腿）+ §4.3 末段（穿戴的执行期时序）+ §5 装备臂行。两任务判读执行侧「穿上/没穿上」证据时,真值 = 下一入口装备区观察读数覆盖;判读纪律 = 观察赢两态制(对账唯一发生点 = 观察边界,op-layer.md §1.3),不以画面单帧直觉为准。
 - 两任务涉及卖出/释放条件评估时，其动作面坐标系 = §2.2 双族对照（族 A `bench_idx`/`deployed_idx` + expect 代际校验；族 B 物理槽位无 expect）；评估「卖没卖对人」必须先分族再读数。
-- 本契约的验证阶梯状态：L0（读面基线）/L1（单件验穿）已过（报告 = `.debug/temp/currency_war/_archive_20260908/projection_ladder/阶梯执行报告_L0_L1.md`）；L2（已穿非空样本）/L3（落空补救链量化）需实机窗采样，**不在本批**，其结论落地前，涉及「批量穿戴不覆盖已穿」「落空率数字」的策略假设按未证对待（口径）。
+- 本契约的验证阶梯状态：L0（读面基线）/L1（单件验穿）已过（报告 = `.debug/temp/currency_war/_archive_20260908/projection_ladder/阶梯执行报告_L0_L1.md`）；L2（已穿非空样本）/L3（落空补救链量化）需实机窗采样(待采)，其结论落地前，涉及「批量穿戴不覆盖已穿」「落空率数字」的策略假设按未证对待（口径）。

@@ -51,7 +51,7 @@
 - 候选观察:`report_screen_encounter_obs` 写容器 `encounter` 域(空候选不写)+ `encounter_refresh_left`(剩余语义观察写端)。
 - `chosen_encounter`:写端 = **动作侧发射即写**(`kernel/cw_action_report/pick_encounter.py`,用户裁定 2026-09-21 遭遇例外改判,先例 = 投资域 chosen 迁获得链;值 = (难度档, 奖励文本),盲选/越界不写防假值固化;发射即写语义 = 意图记录,确认未生效窗内暂态假值由重派覆盖自愈);**兑现后清(单次消费,见下)**。
 - `encounter_reward_claimed`(顶层字段,`tuple[int, str] | None`):遭遇奖励兑现记录 = 最近一次伤害达标兑现的所选值,单槽逐遭遇覆盖。写端 = 结算兑现回调 `kernel/cw_encounter_selection.py::claim_encounter_reward`(挂点 = `CwOpSettleConfirm` 确认点击后、推进上报前):判遭遇 = 双证(node 镜像 token 'encounter' ∧ ring 尾行 node_type=='遭遇';原「结算行 note」载体不可实现,attack3 R1 定谳)∧ 达标 = `progress_delta > 0` 单判(遭遇奖励 = 伤害进度达标制非清场制,机制依据 = [../../../../game/currency_war/research/combat.md](../../../../../game/currency_war/research/combat.md) §3);兑现即清 `chosen_encounter`(单次消费:镜像残留/驻留重入/结算覆盖陈旧三面收口,天然幂等)。**数值不直写防双源**:金币真值 = `settle_truth` 结算读数、随机4费 = bench 观察(观察赢);兑现记录 = 语义账面(现役消费面 = 审计投影唯一,策略器收益对账读端挂账)。假阴性申报:双证存在同源面,镜像缺失遭遇局 fail-closed 漏兑现(方向安全)。
-- 刷新计数:`encounter_refresh_used` 已用计数与 `encounter_refreshed_in_visit` per-visit 位已退役(剩余语义化,迭代 2026-09-21-event-refresh-unify-supply-pick),闸 = `encounter_refresh_left` 剩余语义观察真值(kernel 闸与画面对照闸同读该字段)。
+- 刷新计数:`encounter_refresh_used` 已用计数与 `encounter_refreshed_in_visit` per-visit 位已退役(剩余语义化,剩余语义化),闸 = `encounter_refresh_left` 剩余语义观察真值(kernel 闸与画面对照闸同读该字段)。
 - 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.1 / §4「事件选择」;选择落地语义 = fields.md §4。
 
 ## 7. 子态与 overlay

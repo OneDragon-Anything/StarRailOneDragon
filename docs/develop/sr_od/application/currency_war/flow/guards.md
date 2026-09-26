@@ -7,7 +7,7 @@
 
 | 限额 | 值 | 语义 |
 |---|---|---|
-| `OP_FAIL_REDISPATCH_LIMIT=5` | 连续计（任一分发 op ok 清零；异键 ok 同闭窗） | 同一分发 op 连续 fail 达本值 → 留证截图 + round_fail 显式停交上层，取代「fail → round_wait 零预算重派」的无界空转（T-266；实锤 = 选择伙伴 15 连败靠 NODE-DWELL 900s 哨兵兜住才停，2026-09-15 事故）。round_fail 在 node_max_retry 400 下**不停机**——刻意：消除「静默」而非「重试」，ERROR 行进日志 = 哨兵 STALL 通道与人都能看到，停机决策留给观察者 |
+| `OP_FAIL_REDISPATCH_LIMIT=5` | 连续计（任一分发 op ok 清零；异键 ok 同闭窗） | 同一分发 op 连续 fail 达本值 → 留证截图 + round_fail 显式停交上层，取代「fail → round_wait 零预算重派」的无界空转（实锤 = 选择伙伴 15 连败靠 NODE-DWELL 900s 哨兵兜住才停，2026-09-15 事故）。round_fail 在 node_max_retry 400 下**不停机**——刻意：消除「静默」而非「重试」，ERROR 行进日志 = 哨兵 STALL 通道与人都能看到，停机决策留给观察者 |
 
 > 计数/判定统一在 `_dispatch_screen_op`（hook 早退位次之后，hook 仍可短路）。链形透传分支（3c）不经本网（各有自身预算）。
 > 补注:分支守卫钩子（0n visit_ok/_fail 计数、A1 bail 清除、B5 窗口关+闩清）自 dispatch 包装落地起经 `_dispatch_screen_op` 的 **on_result 调用点邻接闭包**执行，仅执行落点随包装迁移，钩子明细。

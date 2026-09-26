@@ -18,7 +18,7 @@
 | equips | 写 | 被卖单位装备全量追加进 owned 库存(`sold.equips` 非空才写;原执行账 owned 恢复腿随函数内聚单点化) |
 | bench / shop / xp | 跳写 | 不触 |
 
-**效果账面(申报:执行缝无金腿/无独立 owned 腿)**:回金与 owned 恢复的唯一写点 = 上报函数(原 `apply_op_effect` 金腿已随「统一观察对账迭代 2026-09-16 归因批」退役——执行缝 + 投影双腿各记一次 +refund,实读倒挂 −2 实证;原执行账 owned 恢复腿(执行账单一写者、无投影对应物)随 op 自上报收编进本函数单点)。
+**效果账面(申报:执行缝无金腿/无独立 owned 腿)**:回金与 owned 恢复的唯一写点 = 上报函数(原 `apply_op_effect` 金腿已退役(旧执行缝 + 投影双腿各记一次 +refund 形态,实读倒挂 −2 实证);原执行账 owned 恢复腿(执行账单一写者、无投影对应物)随 op 自上报收编进本函数单点)。
 
 ## 3. 确定面转移规则(逐条)
 
@@ -26,7 +26,7 @@
 2. `gold += 退款`——退款公式与手续费口径与卖备战**同一条**(单一源 = `kernel/cw_economy.py::sell_refund` + `bench_char_cost`;`_SELL_MULT` 倍数 + star≥2 且 cost≥2 手续费 −1,cost=1 豁免);
 3. 装备全量回装备区(同卖备战第 3 条:口述·权威 + C6 守恒建模 + 缺口 G5 帧级证据未采);
 4. board **派生随写**:front_row/back_row 整表写触发行写端挂钩 `GameState._resync_board_delta` 自动增量重算(观察基座含面板真值的装备羁绊贡献,本次行写只施加单位多重集差——新增加其羁绊标签、移除减、减至 0 摘键;禁独立手写 board);上阵计数随 deployed 摘槽派生递减(无独立字段写);
-5. 执行侧 tracked 同步:`PrepActionExecutor._track_remove_deployed`(物理 (row, slot) → `deployed_idx_of` 换算,置 None,且校验 `position_pref` 与排一致防错位)。
+5. 席位单账:上报直写主域 deployed(摘槽位删除,无平行随动账)。
 
 ## 4. 随机面
 
@@ -40,7 +40,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_action_report/sell_deployed.py::report_action_sell_deployed_param`(双域统一单点)/ `GameState._resync_board_delta`(board 派生挂钩单一源)/ `_row_unit_tags`;`kernel/cw_economy.py::sell_refund` / `bench_char_cost`;`kernel/cw_exec_state.py::deployed_row_slot` / `deployed_idx_of`;`prep_actions.py::PrepActionExecutor._sell_deployed` / `_track_remove_deployed`;`operations/cw_op/cw_sell_deployed_action.py::CwActionSellDeployedOp`(换血卖出 = m1p 发射臂逐件产原子,资格单一源 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`)。
+`kernel/cw_action_report/sell_deployed.py::report_action_sell_deployed_param`(双域统一单点)/ `GameState._resync_board_delta`(board 派生挂钩单一源)/ `_row_unit_tags`;`kernel/cw_economy.py::sell_refund` / `bench_char_cost`;`kernel/cw_exec_state排内槽号内联换算(工作表桥 = `cw_exec_state.deployed_indexed_of_view`/`deployed_view_of_indexed`);`operations/cw_op/cw_sell_deployed_action.py::CwActionSellDeployedOp`(换血卖出 = m1p 发射臂逐件产原子,资格单一源 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`)。
 
 ## 7. 语义验证(M1 直锁)
 

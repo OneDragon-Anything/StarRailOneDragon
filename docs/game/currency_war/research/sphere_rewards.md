@@ -1,7 +1,7 @@
 # 晶矿掉落规则(临时建模口径 v0)
 
 > 定位:备战画面晶矿(奖励球)点开后的掉落规则在册口径。**证据分级 = 用户临时拍定(2026-09-20),非核实游戏事实**——整套规则是自动化建模的临时工作口径,后续按实机采集数据校准(校准数据源 = 自动化随机态收口台账 `logic_rand_outcome` 行,逐局积累「采样值 vs 实读真值」对照)。
-> 建模落点 = `src/sr_od/application/currency_war/kernel/cw_ore_reward.py`(常量面,采集优化只改常量与披露键);设计正本 = `docs/develop/sr_od/application/currency_war/changes/2026-09-20-logic-rand-sampling/design.md`。
+> 建模落点 = `src/sr_od/application/currency_war/kernel/cw_ore_reward.py`(常量面,采集优化只改常量与披露键);采样契约见 `cw_merge_simulate.py::_merge_bench` docstring。
 
 ## 口径 v0
 
