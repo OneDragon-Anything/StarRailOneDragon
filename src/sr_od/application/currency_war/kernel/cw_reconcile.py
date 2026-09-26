@@ -103,19 +103,6 @@ def _star_gate_pending(session) -> dict:
     return pending
 
 
-def _tracked_identity(t) -> tuple[str, int, int] | None:
-    """tracked 条目身份读(bench 侧 BenchSlot → 内嵌 Unit;deployed 侧
-    Unit 直读)。返回 (char_id, star, slot 信息位);无身份(占位/空)→ None。"""
-    kind = getattr(t, 'kind', None)
-    if kind is not None:
-        if kind != 'unit' or getattr(t, 'unit', None) is None:
-            return None
-        t = t.unit
-    cid = str(getattr(t, 'char_id', '') or '')
-    return (cid, int(getattr(t, 'star', 1) or 1),
-            int(getattr(t, 'slot', 0) or 0))
-
-
 def _bench_read_entries(view: BenchView | None) -> list[tuple]:
     """观察视图 → 门/签名用的读条目 ``[(anchor, char_id, star, unit|None)]``。
 
@@ -199,28 +186,26 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
         (门后 bench 视图, 门后 deployed 视图)。
     """
     gs = game_state_of(session)
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        deployed_row_slot,
-    )
     pending = _star_gate_pending(session)
     frozen = is_merge_effect_window(screen)
     out: dict[str, object] = {}
-    for domain, reads, tracked_table in (
-            ('bench', bench, gs.tracked_books.bench),
-            ('deployed', deployed, gs.tracked_books.deployed)):
+    # 比较基线 = 主域席位视图现读(overlay-trigger 3.2:tracked 第二账
+    # 退役,基线从 tracked 表改主域派生视图,锚 = (子表, 下标);对账时点
+    # 在 director 观察写之前,主域现值即上一帧账面,与旧 tracked 基线
+    # 同源同时点)。
+    for domain, reads, account in (
+            ('bench', bench, gs.bench.value),
+            ('deployed', deployed, gs.deployed.value)):
         if reads is None:
             out[domain] = reads
             continue   # 读失败侧无读数无证据:候选态保持,不辖
         entries = (_bench_read_entries(reads) if domain == 'bench'
                    else _deployed_read_entries(reads))
-        tracked_at: dict[tuple[str, int], object] = {}
-        for i, t in enumerate(tracked_table or []):
-            if t is None:
-                continue
-            # 权威锚 = 槽位表下标(bench 下标+1 = 物理槽号;deployed 下标
-            # → (排, 排内槽号)),信息位(槽号字段)为派生不作锚。
-            tracked_at[(domain, i + 1) if domain == 'bench'
-                       else deployed_row_slot(i)] = t
+        # 基线条目同构(anchor 由下标派生,身份取内嵌 Unit)。
+        tracked_at: dict[tuple[str, int], object] = {
+            e[0]: e[3] for e in
+            (_bench_read_entries(account) if domain == 'bench'
+             else _deployed_read_entries(account))}
         # 缺读 = 证据中断:本帧读侧未出现的锚清除其星级候选(两帧重计)。
         # 候选键首元分域(bench = 'bench';deployed = 排名 front/back),
         # 只清本域候选——他域可能本帧整体读失败(None,照旧不辖)。
@@ -234,17 +219,20 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
             del pending[k]
         holds: dict[int, int] = {}   # id(读 Unit) → 保旧星
         for anchor, cid, star, unit in entries:
-            t = tracked_at.get(anchor)
-            _tident = _tracked_identity(t) if t is not None else None
-            if t is None or _tident is None or not cid \
-                    or cid != _tident[0]:
+            _acct = tracked_at.get(anchor)
+            _acct_unit = (getattr(_acct, 'unit', None)
+                          if _acct is not None and not hasattr(_acct, 'star')
+                          else _acct)   # bench 条目解包;deployed 条目即 Unit
+            if _acct_unit is None or not cid \
+                    or cid != str(getattr(_acct_unit, 'char_id', '') or ''):
                 # 锚上身份未锚定 = 单元更替,星级随身份直采;该锚旧候选
                 # 作废(防陈旧候选对后续同名单元假确认)。
                 for k in [k for k in pending
                           if k[0] == anchor[0] and k[1] == anchor[1]]:
                     del pending[k]
                 continue
-            if star == _tident[1]:
+            _old_star = int(getattr(_acct_unit, 'star', 1) or 1)
+            if star == _old_star:
                 pending.pop(anchor + (cid,), None)
                 continue
             key = anchor + (cid,)
@@ -254,8 +242,8 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
             if not frozen:
                 pending[key] = star   # 首帧差:登记候选,下帧同值才采新
             if unit is not None:
-                holds[id(unit)] = _tident[1]   # 保旧写账:门后副本换星
-            _conflict('star', _tident[1], star, screen,
+                holds[id(unit)] = _old_star   # 保旧写账:门后副本换星
+            _conflict('star', _old_star, star, screen,
                       verdict=('保旧-合成特效窗(窗内星读不可信,不计两帧;'
                                f'source={source})' if frozen else
                                '保旧-星级抖动门(单帧差弃读,两帧一致才采新;'
@@ -274,27 +262,35 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
 #: 时间维两帧一致 + 帧态维窗内冻结)。
 
 
-def _old_equips_pools(old_list) -> dict[str, list[list[str]]]:
-    """旧 tracked 表的装备池(char_id → 按表序的 equips 队列)。
+def _old_equips_pools(account_view) -> dict[str, list[list[str]]]:
+    """主域席位视图的装备池(char_id → 按表序的 equips 队列)。
 
-    对账覆盖装备的历史病灶:对账写回若整批替换 tracked 主账(新读 equips=[]
-    默认),动作链写入的装备在下次对账即被冲(希儿装备闪烁实证)。修法 =
-    旧账 equips 按 char_id 组池,新读按序续接(同名多副本逐个配对消耗,
-    次序无关)。"""
+    对账覆盖装备的历史病灶:观察写若整批替换主域(新读 equips=[] 默认),
+    动作链写入的装备在下次对账即被冲(希儿装备闪烁实证)。修法 =
+    现账 equips 按 char_id 组池,新读按序续接(同名多副本逐个配对消耗,
+    次序无关)。基线 = 主域视图(bench = BenchView / deployed =
+    DeployedView,overlay-trigger 3.2:tracked 第二账退役后对账续接
+    基线从 tracked 表改主域派生)。"""
+    if account_view is None:
+        return {}
+    if hasattr(account_view, 'slots'):   # BenchView
+        items = [s.unit if getattr(s, 'kind', None) == 'unit' else None
+                 for s in account_view.slots]
+    else:                                 # DeployedView(子表拼接序)
+        items = list(account_view.front_slots or []) \
+            + list(account_view.back_slots or [])
     pools: dict[str, list[list[str]]] = {}
-    for t in (old_list or []):
-        if t is None:
+    for u in items:
+        if u is None:
             continue
-        ident = _tracked_identity(t)
-        if ident is not None and ident[0]:
-            pools.setdefault(ident[0], []).append(
-                list(getattr(t.unit if hasattr(t, 'kind') else t,
-                             'equips', None) or []))
+        cid = str(getattr(u, 'char_id', '') or '')
+        if cid:
+            pools.setdefault(cid, []).append(list(u.equips or []))
     return pools
 
 
-def _continue_equips_bench(old_list, view: BenchView | None) -> BenchView | None:
-    """对账合并语义·bench 侧:旧 tracked equips 按 char_id 续接
+def _continue_equips_bench(account_view, view: BenchView | None) -> BenchView | None:
+    """对账合并语义·bench 侧:主域现账 equips 按 char_id 续接
     到新读视图的 unit 槽(frozen 形状 → replace 新构造)。
 
     新读自带的非空 equips(画面真值)优先保留不覆盖;旧有新无(角色离场)
@@ -302,7 +298,7 @@ def _continue_equips_bench(old_list, view: BenchView | None) -> BenchView | None
     与旧「就地改写读对象 equips」的同帧共享语义等价。"""
     if view is None:
         return None
-    pools = _old_equips_pools(old_list)
+    pools = _old_equips_pools(account_view)
     slots = []
     for s in view.slots:
         if (s.kind == 'unit' and s.unit is not None
@@ -315,16 +311,17 @@ def _continue_equips_bench(old_list, view: BenchView | None) -> BenchView | None
     return BenchView(slots=slots, capacity=view.capacity)
 
 
-def _continue_equips_deployed(old_list, view):
-    """对账合并语义·deployed 侧:旧 tracked equips 续接到新读视图
-    (frozen replace,槽位 = 子表下标原位)。续接结果只进 tracked 写回
-    (容器行域观察写端恒空表,不造假值 —— 空读守卫边界申报)。"""
+def _continue_equips_deployed(account_view, view):
+    """对账合并语义·deployed 侧:主域现账 equips 续接到新读视图
+    (frozen replace,槽位 = 子表下标原位)。续接副本随返回值交
+    director 同帧观察写主域(读链 deployed 装备恒空读,不造假值
+    ——空读守卫边界申报)。"""
     if view is None:
         return None
     from sr_od.application.currency_war.kernel.cw_game_state import (
         DeployedView,
     )
-    pools = _old_equips_pools(old_list)
+    pools = _old_equips_pools(account_view)
 
     def _row(units):
         out = []
@@ -363,7 +360,7 @@ def reconcile_tracking(session, bench: BenchView | None,
     merge 预估星被实读证伪 → observe-vs-logic 对账承接,不再单设钩子。)
 
     Args:
-        session: StrategySession(tracked_books.bench/deployed 被写回)
+        session: StrategySession(主域 bench/deployed 由调用方 director 观察)
         bench/deployed: 新读容器形状(None = 该侧失读,不写)
         screen: 冲突帧(传则 obs_conflict 存去重截图)
         source: 证据行来源标记(deploy_bench/director)
@@ -383,27 +380,22 @@ def reconcile_tracking(session, bench: BenchView | None,
     """
     if session is None:
         return False, bench, deployed
-    # 旧账基准 = game state 簿记(宿主 = GameState.tracked_books,本函数 =
-    # game state 层内部实现,就地处置)。P1 tracked 形状:bench =
-    # BenchSlot | None(unit 才有身份,占位件以 ('',1) 入漂移基准)/
-    # deployed = Unit | None。
-    _books = game_state_of(session).tracked_books
+    # 现账基准 = 主域席位视图(宿主 = GameState.bench/deployed,本函数 =
+    # game state 层内部实现,就地处置;overlay-trigger 3.2:tracked 第二账
+    # 退役,对账基准与续接基线全部改主域派生)。bench 视图条目:unit 才有
+    # 身份,占位件以 ('',1) 入漂移基准;deployed 条目 = Unit。
+    _gs = game_state_of(session)
 
     def _tracked_sig(entries) -> list:
-        out = []
-        for t in (entries or []):
-            if t is None:
-                continue
-            ident = _tracked_identity(t)
-            out.append((ident[0], ident[1]) if ident is not None else ('', 1))
-        return out
+        return [((e[1], e[2]) if e[3] is not None else ('', 1))
+                for e in (entries or [])]
 
-    old_b = _tracked_sig(_books.bench)
-    old_d = _tracked_sig(_books.deployed)
+    old_b = _tracked_sig(_bench_read_entries(_gs.bench.value))
+    old_d = _tracked_sig(_deployed_read_entries(_gs.deployed.value))
     _bench_entries = _bench_read_entries(bench)
     _dep_entries = _deployed_read_entries(deployed)
     if not _bench_entries and not _dep_entries and (old_b or old_d):
-        log.warning(f'[cw!][{source}] 对账跳过:SIFT 双空读(疑过渡帧)+前值非空 → 保旧 tracking')
+        log.warning(f'[cw!][{source}] 对账跳过:SIFT 双空读(疑过渡帧)+前值非空 → 保旧主域')
         _conflict('tracking', f'{old_b}|{old_d}', '[]|[]', screen,
                   verdict='保旧-双空读守卫(疑SIFT过渡帧)', source=source)
         # 双空读 = 全帧无读证据,星级候选一并清除(缺读 = 证据中断,两帧
@@ -411,8 +403,8 @@ def reconcile_tracking(session, bench: BenchView | None,
         # 会单帧假确认(击穿「连续两帧一致」契约)。
         _star_gate_pending(session).clear()
         return False, bench, deployed
-    # 星级抖动门(槽位锚定 + 两帧一致才采新):门后副本供纠漂判定、写回
-    # 与同帧容器观察写端 —— 保旧锚读账一致,不产「对账纠漂」噪声行
+    # 星级抖动门(槽位锚定 + 两帧一致才采新):门后副本供纠漂判定与
+    # 同帧容器观察写端 —— 保旧锚读账一致,不产「对账纠漂」噪声行
     #(出处见 _gate_star_jitter 上方门注释块)。
     bench, deployed = _gate_star_jitter(session, bench, deployed, screen,
                                         source=source)
@@ -421,53 +413,34 @@ def reconcile_tracking(session, bench: BenchView | None,
     new_d = [(e[1], e[2]) for e in _deployed_read_entries(deployed)]
     drifted = (old_b != new_b) or (old_d != new_d)
     if bench is not None:
-        # P6 直产写回 = 视图槽表直落:占用槽(含占位件 kind)原样入 tracked,
-        # 空槽 → None 洞(保洞)。占位件 kind 随读帧细分直达
-        # (P4 遗留「缺观察帧降级 supply_box」边界随直产消除)。槽号 =
-        # 下标+1 结构性健康(直产读链槽号来自建档 rect 枚举,
-        # 「无守卫槽号」面随形状消失,旧写回槽号健康门拒绝分支失去可达
-        # 输入,随直产退役)。入口防御 pad 到定长(空视图 = 空读载体,
-        # 定长输出契约保持)。
-        from sr_od.application.currency_war.kernel.cw_exec_state import (
-            BENCH_CAPACITY,
-        )
-        _bench_final = _continue_equips_bench(_books.bench, bench)
-        _table = [s if s.kind != 'empty' else None for s in _bench_final.slots]
-        while len(_table) < BENCH_CAPACITY:
-            _table.append(None)
-        game_state_of(session).tracked_books.bench = _table
-        bench = _bench_final
+        # 装备续接(bench 侧):主域现账 equips 池按 char_id 续接到新读
+        # 视图(frozen replace 承载),续接副本随返回值交 director 同帧
+        # 观察写主域(3.2:tracked 表写回腿删除,主域即唯一账)。
+        bench = _continue_equips_bench(_gs.bench.value, bench)
         try:
-            # 锚定写回 = 观察态退出点:屏幕真值写回成功即「已观察」
-            # ——容器观察态字段置 True(策略商店门放行;bench 读失败/双空
-            # 读守卫不走此处 = 保持未观察)。best-effort:容器缺席/写失败
-            # 不阻断对账主链(簿记已照常写回)。
+            # 锚定写点 = 观察态退出点:屏幕真值对账成功(守卫全过 + bench
+            # 侧有读)即「已观察」——容器观察态字段置 True(策略商店门
+            # 放行;bench 读失败/双空读守卫不走此处 = 保持未观察)。
+            # best-effort:容器缺席/写失败不阻断对账主链。
             game_state_of(session).write_logic(
                 game_state_of(session).tracked_account_observed, True,
                 produced_by=f'reconcile_tracking:{source}',
                 evidence='observation_anchor',
                 sig=ChannelSig(family='logic_action',
                                actor='CwReconcile', mode='compute'))
-            # 锚定闩同点置位(两闩同一成功条件,不新增判断分支):写回成功
+            # 锚定闩同点置位(两闩同一成功条件,不新增判断分支):对账成功
             # = 本局首次成功的备战 heavy 锚定已完成,未锚定期「容器逻辑写
-            # 走随机态」通道规则自此解除;写失败走 except = 两闩同不置位。
+            # 走随机态」通道规则自此解除;失败走 except = 两闩同不置位。
             # 测试/直构域置闩 = 直赋专口,生产唯一置位写点 = 此处。
             game_state_of(session).prep_anchored = True
         except Exception as _e:  # noqa: BLE001  观察态置位不阻断对账
             log.warning(f'[cw!][{source}] 观察态置位失败(不阻断): {_e}')
     if deployed is not None:
-        # P6 直产写回 = 合一视图 → 下标工作表(3.1 窗口期桥,容器原生
-        # 派生单一源;元素即视图 Unit,零中间形),装备续接只进 tracked
-        #(容器行域观察写端恒空表)。
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            deployed_indexed_of_view,
-        )
-        _view_final = _continue_equips_deployed(
-            game_state_of(session).tracked_books.deployed, deployed)
-        game_state_of(session).tracked_books.deployed = \
-            deployed_indexed_of_view(_view_final)
+        # 装备续接(deployed 侧):续接副本随返回值交 director 同帧观察写
+        # 主域(3.2:tracked 表写回腿删除)。
+        deployed = _continue_equips_deployed(_gs.deployed.value, deployed)
     if drifted:
-        log.warning(f'[cw!][{source}] 对账纠漂(read≠tracking):bench {old_b}→{new_b} |'
+        log.warning(f'[cw!][{source}] 对账纠漂(read≠主域):bench {old_b}→{new_b} |'
                     f' deployed {old_d}→{new_d}')
         _conflict('tracking', f'{old_b}|{old_d}', f'{new_b}|{new_d}', screen,
                   verdict='采新-对账纠漂(SIFT 实读)', source=source)

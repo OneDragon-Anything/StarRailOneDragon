@@ -78,8 +78,6 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (  # noqa: E402
     DEPLOYED_CAPACITY,  # noqa: F401
     DEPLOYED_FRONT_CAPACITY,  # noqa: F401
     PlaneNodeLedger,  # noqa: F401
-    bench_place,
-    deployed_slot_no,
     fill_boss_by_position,  # noqa: F401
     get_node_ledger,  # noqa: F401
     ledger_node_type,  # noqa: F401
@@ -87,7 +85,6 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (  # noqa: E402
 )
 from sr_od.application.currency_war.kernel.cw_merge_simulate import (  # noqa: E402
     _apply_full_bench_merge_buy,  # noqa: F401
-    _merge_bench,
     count_merge_material_blocked,  # noqa: F401
     merge_buy_completes,  # noqa: F401
     merge_buy_k,  # noqa: F401
@@ -356,7 +353,7 @@ class CwActionDeployMoveParam:
     to_slot: int
     # [索引定义] 坐标系: 排内 1 基画面槽号(前排 1-4 / 后排 1-6,与装备族
     #             CwActionWearEquipParam.slot 同坐标系;与 to_row 合成完整
-    #             落位,表下标 = deployed_idx_of(to_row, to_slot))
+    #             落位,表下标 = to_row/to_slot 固定双射内联换算)
     #             取值时机: 生成期快照(发射位从 kernel 指派/容器现值算出;
     #             执行期与容器写侧按载荷直落,不再现读)
     faction: str     # 该角色阵营(上阵后 board[faction] += 1)
@@ -1049,138 +1046,9 @@ def action_key(action: CwAction) -> str:
             return type(action).__name__   # 无字段 dataclass(CwActionStartBattleParam 等)→ 裸名
         return f'{type(action).__name__}({params})'
     return type(action).__name__
-
-
-def mutate_bench_deployed(bench: list,
-                          deployed: list,
-                          action: Action,
-                          shop: list[ShopCard] | None = None) -> None:
-    """就地应用 action 的 bench/deployed 转移到持久跟踪状态(运行时同步用)。
-
-    本函数**就地改** bench/deployed 两个列表,只做身份/星级/站位转移(buy→bench+merge / deploy→deployed /
-    sell→置 None),供运行时执行点(shop.buy / deploy_bench verify / _handle_bench_full sell)同步
-    tracked 主账。gold/shop/XP 期望态不在此辖:
-    容器逻辑态直写 = 上报函数族(report_action_<snake>_param,动作语义单一源,避双源漂移)。
-    P1 起容器原生形状(benchchar-retirement §2.3):bench =
-    ``list[BenchSlot | None]``(定长 9,None=洞,卖出/上阵置 None 不移位)/
-    deployed = ``list[Unit | None]``(定长 10,下标 = deployed_idx 动作坐标
-    恒稳,排归属由下标派生);入口防御性补 None 到定长(旧紧缩
-    构造兼容,禁借迁移改索引语义)。
-    CwActionLevelUpParam/CwActionRefreshShopParam/CwActionPickEventParam 不影响 bench/deployed → no-op。
-
-    「占用」判定口径(§2.4 字段映射约定):bench 侧 = ``kind == 'unit'``
-    (占位件槽非角色,恒不参与卖/上/合——卖恒拒/部署恒 held 防线的
-    tracked 侧镜像,kind 面单一收口);deployed 侧 = ``is not None``。
-
-    ``shop``(缺省 None = 零漂移兼容):调用方的当前店面视图。提供时,
-    满栏合成买走 ``_apply_full_bench_merge_buy`` 单一源——满栏时游戏对完成合成
-    的买入接受并合成(bench 素材被消费腾槽),tracked 侧同走
-    ``_apply_full_bench_merge_buy``,不再丢件漏记;未提供或未识别牌
-    (name 空,无法判合成对象)时维持旧丢件行为。
-    """
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        deployed_idx_of,
-        trailblazer_row_unit,
-    )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        BenchSlot,
-        Unit,
-    )
-    while len(bench) < BENCH_CAPACITY:
-        bench.append(None)
-    while len(deployed) < DEPLOYED_CAPACITY:
-        deployed.append(None)
-    if isinstance(action, CwActionBuyCardParam):
-        _placed = bench_place(
-            bench,
-            BenchSlot(kind='unit', unit=Unit(char_id=action.card.name or '',
-                                             star=int(action.card.star or 1))),
-        ) is not None
-        if not _placed and shop is not None and (action.card.name or ''):
-            _apply_full_bench_merge_buy(bench, deployed, action.card, shop)
-        _merge_bench(bench, deployed)   # 全场域(live tracking 与 simulate 同源)
-    elif isinstance(action, CwActionSellBenchParam):
-        # 代际校验(与 simulate 同源):expect 非空且不符 →
-        # 陈旧提案 no-op(不移除)
-        if 0 <= action.bench_idx < len(bench):
-            _s = bench[action.bench_idx]
-            if (_s is not None and _s.kind == 'unit'
-                    and _s.unit is not None
-                    and (not action.expect
-                         or _s.unit.char_id == action.expect)):
-                bench[action.bench_idx] = None   # 保洞:置 None 不移位
-    elif isinstance(action, CwActionDeployMoveParam):
-        _tgt = (bench[action.bench_idx]
-                if 0 <= action.bench_idx < len(bench) else None)
-        if (_tgt is not None and _tgt.kind == 'unit'
-                and _tgt.unit is not None):
-            # 同名唯一性守卫(W43 裁决 1,与 simulate 同源):已在场同名不上
-            # (游戏拒收同名部署,swap 换入同名也同拒)。
-            _u = _tgt.unit
-            _k = board_unique_key(_u)
-            if _k is not None and any(board_unique_key(d) == _k
-                                      for d in deployed if d is not None):
-                return
-            # 落位 = 载荷 (to_row, to_slot) 直落(换算单一源 =
-            # ``deployed_idx_of``,与执行拖点/容器写侧同源;拖拽语义 =
-            # 游戏规则:目标空 = 放置,有人 = 交换——被占位单位回源
-            # bench 槽,与 ``CwActionSwapDeployParam`` 换位契约同语义);
-            # 禁静默换槽(不另寻空位),载荷槽越出定长表/跨排 = 不写
-            # (陈旧载荷,交观察对账)。
-            _slot = int(action.to_slot)
-            _idx = deployed_idx_of(action.to_row, _slot)
-            if not (0 <= _idx < DEPLOYED_CAPACITY) \
-                    or deployed_slot_no(_idx) != _slot:
-                return
-            bench[action.bench_idx] = None   # 保洞:置 None 不移位
-            # 开拓者形态切换(同 simulate 语义,归一核单一源)
-            _u2 = trailblazer_row_unit(_u, action.to_row)
-            _occ = deployed[_idx]
-            deployed[_idx] = _u2
-            if _occ is not None:
-                bench[action.bench_idx] = BenchSlot(
-                    kind='unit', unit=_occ)
-    elif isinstance(action, CwActionSellDeployedParam):
-        # 动作 v2(契约包 C1):runtime 跟踪侧只做身份转移(金/装备归
-        # sim/容器域其他写点,本函数不管——与 simulate 单一源规则一致)
-        if 0 <= action.deployed_idx < len(deployed) \
-                and deployed[action.deployed_idx] is not None \
-                and (not action.expect
-                     or deployed[action.deployed_idx].char_id == action.expect):
-            deployed[action.deployed_idx] = None
-            # :置 None 不移位(deployed_idx 恒稳;陈旧提案=代际不符 no-op)
-    elif isinstance(action, CwActionSwapDeployParam):
-        if 0 <= action.deployed_idx < len(deployed) \
-                and deployed[action.deployed_idx] is not None \
-                and 0 <= action.bench_idx < len(bench):
-            _bs = bench[action.bench_idx]
-            if _bs is None or _bs.kind != 'unit' or _bs.unit is None:
-                return
-            out_unit = deployed[action.deployed_idx]
-            in_unit = _bs.unit
-            # 代际校验 + 同名唯一性(W43 裁决 1/2,与 simulate 同源)
-            if ((action.expect_deployed
-                 and out_unit.char_id != action.expect_deployed)
-                    or (action.expect_bench
-                        and in_unit.char_id != action.expect_bench)):
-                return   # 陈旧提案 no-op
-            _k = board_unique_key(in_unit)
-            if _k is not None and any(
-                    board_unique_key(d) == _k
-                    for _i, d in enumerate(deployed)
-                    if d is not None and _i != action.deployed_idx):
-                return
-            # 上场者继承下场者排(排归属由下标派生,§2.1 口径)+ 开拓者
-            # 形态归一(归一核单一源)。
-            _row = ('front' if action.deployed_idx < DEPLOYED_FRONT_CAPACITY
-                    else 'back')
-            deployed[action.deployed_idx] = trailblazer_row_unit(in_unit, _row)
-            bench[action.bench_idx] = BenchSlot(
-                kind='unit', unit=out_unit)
-
-
-
-
+# (mutate_bench_deployed 已随 overlay-trigger 3.2 tracked 第二账退役删除:
+#  动作写主域(容器逻辑通道)即同步,第二账无可同步;执行点同步腿
+#  同批删除,合成仿真自主域工作副本构造(cw_action_report 族)。)
 # ===== 布局未知态的策略侧支撑(15 号稿批 C 落地审修订)=====
 # 布局未知态计数复位的槽式转发供 strategies 面消费(strategies 合法桶 =
 # data/kernel/app,不得直依 obs:obs 侧在 resolve 时注册真实现)。

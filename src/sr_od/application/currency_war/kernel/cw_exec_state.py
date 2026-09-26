@@ -36,15 +36,19 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 # (转出口),本模块对其依赖一律函数内惰性 import,模块级引入会成环——
 # 沿用本仓懒加载惯例。)
 
-def _session_tracked(session) -> tuple[list, list]:
-    # tracked 主账宿主 = 容器簿记 GameState.tracked_books
-    #(kernel/cw_game_state.py;lazy import 防模块环,同 _advance_gold 惯例)。
-    # P1 起元素形状 = bench: BenchSlot | None / deployed: Unit | None(§2.3)。
+def _session_seats(session) -> tuple[list, list]:
+    # 席位主域读口(宿主 = GameState.bench/deployed 席位视图,kernel/
+    # cw_game_state.py;lazy import 防模块环,同 _advance_gold 惯例)。
+    # bench = list[BenchSlot | None] / deployed = 视图派生定长 10 工作表
+    # (overlay-trigger 3.2:tracked 第二账退役,合成仿真自主域派生)。
     from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_view_slots_of,
+        deployed_indexed_of_view,
         game_state_of,
     )
-    books = game_state_of(session).tracked_books
-    return list(books.bench or []), list(books.deployed or [])
+    _gs = game_state_of(session)
+    return (list(bench_view_slots_of(_gs)),
+            deployed_indexed_of_view(_gs.deployed.value))
 
 
 def _advance_gold(session, delta: int, *,
@@ -146,7 +150,7 @@ def _apply_buy_card(session, action: dict, _eff) -> None:
     star = int(action.get('star', 1) or 1)
     k = int(action.get('k', 1) or 1)
     cost = int(action.get('cost', 0) or 0)
-    bench, dep = _session_tracked(session)
+    bench, dep = _session_seats(session)
     res = merge_simulate(bench, dep, name, star, k=k,
                          in_shop_count=action.get('in_shop_count'))
     if cost:
@@ -157,18 +161,18 @@ def _apply_buy_card(session, action: dict, _eff) -> None:
 
 
 # ============================================================
-# 席位/槽位跟踪域 + 节点台账访问函数 + 布局转发(原 kernel/cw_state.py
+# 席位/槽位域 + 节点台账访问函数 + 布局转发(原 kernel/cw_state.py
 # 候裁9 词汇迁入):槽位表契约与节点序列台账的值宿主 =
-# GameState.tracked_books / plane_node_sequences(容器簿记,载体见
+# GameState.bench/deployed 席位视图 / plane_node_sequences(载体见
 # cw_game_state.py);本模块保留领域常量/类型与三访问函数,见模块尾。
 # ============================================================
 
 BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级变)
-# deployed 槽位语义:定长 10 槽表——下标 0-3 = 前排槽 1-4、
+# deployed 动作坐标系:定长 10 槽表——下标 0-3 = 前排槽 1-4、
 # 4-9 = 后排槽 1-6。后排实际格数 = 6 + (cap−level) 值域 6-9(cw_back_layout
 # 三信号裁决;上限 9 = 用户口述,board_structure.md)——超过 6 的
-# 扩展格属画面布局域,不进本表示(表长恒 10;取舍与理由,
-# 扩展格 7-9 的跟踪缺口在 9 档可达后常规化,扩板另案)。
+# 扩展格属画面布局域,超出动作坐标系不可寻址(主域视图可存 7-9 扩展
+# 格,工作表桥按 6 截断,overlay-trigger 3.1 在案)。
 DEPLOYED_FRONT_CAPACITY: int = 4
 DEPLOYED_BACK_CAPACITY: int = 6
 DEPLOYED_CAPACITY: int = DEPLOYED_FRONT_CAPACITY + DEPLOYED_BACK_CAPACITY
@@ -225,86 +229,12 @@ def bench_slots_healthy(slot_nos: list[int]) -> bool:
             and len(set(slot_nos)) == len(slot_nos))
 
 
-# ===== deployed 槽位语义 helpers(消费端唯一合法入口)=====
-
-
-def deployed_slot_no(idx: int) -> int:
-    """槽位下标 → 排内 1-based 槽号信息位(0-3→前排 1-4;4-9→后排 1-6)。"""
-    return idx - DEPLOYED_FRONT_CAPACITY + 1 if idx >= DEPLOYED_FRONT_CAPACITY \
-        else idx + 1
-
-
-def deployed_row_slot(idx: int) -> tuple[str, int]:
-    """deployed 槽位表下标 → (物理排, 排内槽号)(执行坐标边换算单一函数;
-    unified-action-factory 批2b 换算收口:容器下标 → 画面物理槽位的换算
-    全仓仅此一处,消费方 = 执行器拖点定位/判读显示)。
-
-    [索引定义] idx = deployed 槽位表下标 0-9(0-3 前/4-9 后);
-    返回 slot = 排内 1 基画面槽号(前排 1-4 / 后排 1-6)。
-    """
-    return ('front' if idx < DEPLOYED_FRONT_CAPACITY else 'back',
-            deployed_slot_no(idx))
-
-
-def deployed_idx_of(row: str, slot_no: int) -> int:
-    """物理 (排, 排内槽号) → deployed 槽位表下标(执行坐标边换算单一函数;
-    与 :func:`deployed_row_slot` 互逆,tracked 同步物理↔下标换算收拢点)。
-
-    [索引定义] row ∈ 'front'|'back';slot_no = 排内 1 基画面槽号;返回
-    槽位表下标(front: slot−1 / back: 4+slot−1)。
-    """
-    return (slot_no - 1 if row == 'front'
-            else DEPLOYED_FRONT_CAPACITY + slot_no - 1)
-
-
-def deployed_rows_to_indexed(front_row: list[Unit] | None,
-                             back_row: list[Unit] | None,
-                             ) -> list[Unit | None]:
-    """容器行域(front_row/back_row)→ deployed 下标工作表(§2.1「10 槽表
-    语义保留在需要处按行下标派生」的容器原生派生单一源;P1 消费面 =
-    上报函数族/sim 的工作副本构造,元素即行内 Unit 对象,零中间形)。
-
-    **3.1 窗口期申报**(overlay-trigger 详设:换算五函数保留至 3.2 随
-    tracked 消费端退役):Unit.slot 信息位已退役——本函数的槽位定位腿
-    (``u.slot``)对无信息位输入退化为占用序顺延落位;容器侧行域消费面
-    已改走 ``cw_game_state.deployed_indexed_of_view``(视图直取,位置
-    精确),本函数仅服务仍传旧档/紧缩行列表的窗口期调用方。两行全未观察
-    (None)→ [None]×10。"""
-    out: list[Unit | None] = [None] * DEPLOYED_CAPACITY
-
-    def _place(units: list[Unit], base: int, span: int) -> None:
-        cursor = base
-        for u in (units or []):
-            s = int(getattr(u, 'slot', 0) or 0)
-            idx = (s - 1 + base) if s >= 1 else -1
-            if not (base <= idx < base + span) or out[idx] is not None:
-                while cursor < base + span and out[cursor] is not None:
-                    cursor += 1
-                idx = cursor if cursor < base + span else -1
-                cursor += 1
-            if idx >= 0:
-                out[idx] = u
-
-    _place(list(front_row or []), 0, DEPLOYED_FRONT_CAPACITY)
-    _place(list(back_row or []),
-           DEPLOYED_FRONT_CAPACITY, DEPLOYED_BACK_CAPACITY)
-    return out
-
-
-def deployed_indexed_to_rows(dep: list[Unit | None] | None,
-                             ) -> tuple[list[Unit], list[Unit]]:
-    """:func:`deployed_rows_to_indexed` 的逆派生:下标工作表 → 容器行域
-    (紧缩列表)。**3.1 窗口期申报**:Unit.slot 信息位退役后行成员落位
-    槽号归一腿为恒等;容器侧落回视图改走
-    ``cw_game_state.deployed_view_of_indexed``。行成员与排归属由
-    下标派生(§2.1 口径)。"""
-    front: list[Unit] = []
-    back: list[Unit] = []
-    for i, u in enumerate(dep or []):
-        if u is None:
-            continue
-        (front if i < DEPLOYED_FRONT_CAPACITY else back).append(u)
-    return front, back
+# (换算五函数 deployed_slot_no/deployed_row_slot/deployed_idx_of/
+#  deployed_rows_to_indexed/deployed_indexed_to_rows 已随 overlay-trigger
+#  3.2 tracked 第二账退役删除:主域 = DeployedView 完整槽位表(下标直址),
+#  工作表桥 = cw_game_state.deployed_indexed_of_view/deployed_view_of_
+#  indexed;残余的下标→(排,排内槽号)固定双射(0-3=前排 1-4 /
+#  4-9=后排 1-6)由消费点内联算术承载,消费面 = 卖场上阵 op 与遥测归档。)
 
 
 def trailblazer_row_identity(char_id: str, to_row: str,
