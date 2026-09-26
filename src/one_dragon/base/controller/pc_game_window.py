@@ -1,4 +1,5 @@
 import ctypes
+import time
 from ctypes.wintypes import RECT
 
 import pyautogui
@@ -22,10 +23,17 @@ class PcGameWindow:
 
         self._win: Win32Window | None = None
         self._hWnd = None
+        self._init_fail_cooldown_until: float | None = None
+        """窗口查找失败后的冷却截止时间;冷却期内 get_win 直接返回 None 不触发枚举"""
+
+    _INIT_FAIL_COOLDOWN_SECONDS: float = 30.0
+    """窗口枚举失败后的冷却时长:枚举存在挂起风险,失败后短期内不重试"""
 
     def _clear_cached_window(self) -> None:
         self._win = None
         self._hWnd = None
+        # 标题变更/主动刷新语义:允许立刻重新枚举
+        self._init_fail_cooldown_until = None
 
     def init_win(self) -> None:
         """
@@ -42,8 +50,10 @@ class PcGameWindow:
                     self._win = win
                     self._hWnd = win._hWnd
         else:
+            # 找不到窗口:进入冷却期,调用方在冷却期内的重试不再触发全桌面枚举
             self._win = None
             self._hWnd = None
+            self._init_fail_cooldown_until = time.time() + self._INIT_FAIL_COOLDOWN_SECONDS
 
     def update_win_title(self, new_title: str) -> None:
         """
@@ -60,6 +70,14 @@ class PcGameWindow:
 
     def get_win(self) -> Win32Window | None:
         if self._win is None:
+            # 冷却期:窗口不存在时(如已关闭)调用方会高频轮询,而 init_win 的
+            # 全桌面窗口枚举存在挂起风险(2026-09-26 实证:游戏关闭后枚举在
+            # pygetwindow foreach_window 挂起 40+ 分钟,MCP 事件循环被同步调用
+            # 整体堵死)。失败后冷却期内直接返回 None,不再触发枚举。
+            if self._init_fail_cooldown_until is not None:
+                if time.time() < self._init_fail_cooldown_until:
+                    return None
+                self._init_fail_cooldown_until = None
             self.init_win()
         return self._win
 
@@ -166,15 +184,15 @@ class PcGameWindow:
 
         got_rect, client_rect = self._try_get_client_rect(hwnd)
 
-        # 句柄失效时重置缓存并重试一次，避免永久复用坏句柄
+        # 句柄失效:窗口大概率已销毁(如游戏关闭),重置缓存后直接返回 None,
+        # 不再走 init_win 全量窗口枚举——枚举有挂起风险且进程没了必然找不到
+        # (2026-09-26 实证:此处重新枚举在 pygetwindow 挂起,堵死 MCP 事件循环)。
+        # 游戏重启场景不受影响:缓存已清,下次 get_win 正常重枚举找到新窗口。
         if not got_rect and ctypes.windll.user32.IsWindow(hwnd) == 0:
-            log.warning('检测到失效窗口句柄，重置缓存后重试')
+            log.warning('检测到失效窗口句柄，重置缓存')
             self._reset_cached_window()
-            win = self.get_win()
-            hwnd = self.get_hwnd()
-            if win is None or hwnd is None:
-                return None
-            got_rect, client_rect = self._try_get_client_rect(hwnd)
+            return None
+        got_rect, client_rect = self._try_get_client_rect(hwnd)
 
         if not self._is_valid_client_rect(got_rect, client_rect) and ctypes.windll.user32.IsIconic(hwnd):
             # 最小化窗口时客户区可能为 0
