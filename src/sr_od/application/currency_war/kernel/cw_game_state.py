@@ -481,6 +481,12 @@ class Unit:
     equips: list[str] = field(default_factory=list)
 
 
+#: 后排物理格数上限(布局值域 {6..9} 的上界;用户口述 2026-09-11
+#: 重申:平常 6,宝钻/召唤物最多 9。观察写端槽位合法性的硬边界——
+#: 超此即读链漂移,丢弃留证)。
+DEPLOYED_BACK_CAPACITY_MAX: int = 9
+
+
 @dataclass(frozen=True)
 class DeployedView:
     """上阵统一槽位视图(同族先例 = BenchView / ShopPayload.cards;
@@ -505,10 +511,11 @@ def deployed_view_of_hits(front_hits: list, back_hits: list,
 
     - hits 元素 = ``(排内 1 基槽号, Unit)``(identify_slots 直产,槽位对
       携带——Unit 本体无槽位信息位,位置只在读链局部存在);
-    - back_capacity = 后排读到的槽位数(布局选档产物);缺省按命中最大
-      槽号与 6 取大(布局未知帧只读前排时保持 6 槽基线容量);
-    - 槽位越界命中(>前排 4 / >后排容量)丢弃并 log 留证(读链漂移信号,
-      与 _bench_view_of 同纪律:静默丢弃 = 身份静默丢失)。
+    - back_capacity = 后排读到的槽位数(布局选档产物);缺省按 6 基线
+      (布局未知帧只读前排时保持 6 槽基线容量),合法命中(≤ 布局值域
+      上界 9)可越给定提示扩容;
+    - 槽位越界命中(>前排 4 / 后排 > 布局上界 9 或 <1)丢弃并 log 留证
+      (读链漂移信号,与 _bench_view_of 同纪律:静默丢弃 = 身份静默丢失)。
     """
     front: list[Unit | None] = [None] * DEPLOYED_FRONT_CAPACITY_DEFAULT
     for s, u in (front_hits or []):
@@ -518,15 +525,17 @@ def deployed_view_of_hits(front_hits: list, back_hits: list,
             log.warning('[cw!][identity] 上阵读链前排槽位越界丢弃:'
                         'slot=%s char=%s(SIFT/星级读链漂移信号)',
                         s, getattr(u, 'char_id', ''))
-    cap = max(int(back_capacity or 0),
-              max((int(s) for s, _u in (back_hits or [])), default=0), 6)
+    cap = max(int(back_capacity or 0), 6)
     back: list[Unit | None] = [None] * cap
     for s, u in (back_hits or []):
-        if 1 <= int(s) <= cap:
-            back[int(s) - 1] = u
+        _s = int(s)
+        if 1 <= _s <= DEPLOYED_BACK_CAPACITY_MAX:
+            while len(back) < _s:
+                back.append(None)   # 合法命中越提示容量 → 扩容落位
+            back[_s - 1] = u
         else:
             log.warning('[cw!][identity] 上阵读链后排槽位越界丢弃:'
-                        'slot=%s char=%s(SIFT/星级读链漂移信号)',
+                        'slot=%s char=%s(>布局上界 9,读链漂移信号)',
                         s, getattr(u, 'char_id', ''))
     return DeployedView(front_slots=front, back_slots=back)
 

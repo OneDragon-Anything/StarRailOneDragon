@@ -424,6 +424,14 @@ def view_snapshot(rows: list[dict[str, Any]], run_id: str = '') -> list[str]:
                       if u is not None)
         back_n = sum(1 for u in (deployed.get('back_slots') or [])
                      if u is not None)
+    elif isinstance(vals.get('front_row'), list) \
+            or isinstance(vals.get('back_row'), list):
+        # 旧档回退(schema 1 行域两键,overlay-trigger 3.1 前的 journal):
+        # 历史判读不降级为 '?'(紧缩行直接计数)。
+        front_n = sum(1 for u in (vals.get('front_row') or [])
+                      if u is not None)
+        back_n = sum(1 for u in (vals.get('back_row') or [])
+                     if u is not None)
     else:
         front_n = back_n = '?'
     out.append(f'  front={front_n} back={back_n}'

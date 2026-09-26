@@ -823,12 +823,21 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     # 容器清空写经锚定闩择道(rand=False = 锚定后按本桥确定性语义):
     # 未锚定 = 未验证推算走随机态,首观察静默覆盖不触发失配安灯;
     # 锚定后走 write_logic,失配网生效(择道单一源 = anchor_aware_write)。
+    # deployed 清空 = 规范形空视图:front_slots 定长 4 / back_slots 按
+    # 现视图容量(缺省 6)——空列表违反定长不变量,且会让前排直址写
+    #(deploy_move 前排腿)IndexError(评审 需修-1)。
     write = anchor_aware_write(gs, rand=False)
     if front is not None:
         from sr_od.application.currency_war.kernel.cw_game_state import (
+            DEPLOYED_BACK_CAPACITY_DEFAULT,
+            DEPLOYED_FRONT_CAPACITY_DEFAULT,
             DeployedView,
         )
-        write(gs.deployed, DeployedView(front_slots=[], back_slots=[]),
+        _back_len = len(getattr(front, 'back_slots', None) or []) \
+            or DEPLOYED_BACK_CAPACITY_DEFAULT
+        write(gs.deployed,
+              DeployedView(front_slots=[None] * DEPLOYED_FRONT_CAPACITY_DEFAULT,
+                           back_slots=[None] * _back_len),
               produced_by='EffectLedgerBridge',
               evidence=ev, sig=sig)
         cleared.append('deployed')

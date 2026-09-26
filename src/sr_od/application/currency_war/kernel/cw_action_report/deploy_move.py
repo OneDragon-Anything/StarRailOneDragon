@@ -123,8 +123,12 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
         moved = replace(moved, star=_TRANSFORMED_STAR)
     # 载荷落位(单写:视图整值替换)。目标槽有人 = 交换,被占位单位回源
     # bench 槽(占位不拒,见 docstring);后排载荷越出现视图长度 = 容量内
-    # 扩展格,视图随落位扩容(容量变化 = 整视图结构性写)。
+    # 扩展格,视图随落位扩容(容量变化 = 整视图结构性写)。两排均带
+    # 防御性 pad(前排定长 4 是设计不变量,规范形写端恒满足;pad 兜底
+    # 任何非规范形残留视图,评审 需修-1)。
     if to_row == 'front':
+        while len(front_slots) < to_slot:
+            front_slots.append(None)
         _occupier = front_slots[to_slot - 1]
         front_slots[to_slot - 1] = moved
     else:

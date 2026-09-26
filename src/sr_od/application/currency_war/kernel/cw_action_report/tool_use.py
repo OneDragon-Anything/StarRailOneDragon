@@ -270,7 +270,7 @@ def _furnace_char_leg(gs: GameState, param: Any, sig: ChannelSig,
     unit = _resolve_row_unit(gs, param.row, param.slot)
     if unit is None:
         _defect_zero_write(sig, DEFECT_TARGET_UNIT_MISSING,
-                           field_name='front_row',
+                           field_name='deployed',
                            expected=f'({param.row},{param.slot}) 有单位',
                            actual='未观察/漂移无单位',
                            evidence='tool_furnace_char',
@@ -371,7 +371,7 @@ def report_action_privilege_card_use_param(gs: GameState, param: Any,
     _validate_sig(sig, ('logic_action',))
     if param.target_kind != 'equip':
         _defect_zero_write(sig, DEFECT_PRIVILEGE_WORN_UNSUPPORTED,
-                           field_name='front_row',
+                           field_name='deployed',
                            expected='库存腿(target_kind=equip,判据面现役只产库存腿)',
                            actual=f'target_kind={param.target_kind!r}',
                            evidence='tool_privilege',
@@ -419,7 +419,7 @@ def _wrench_report(gs: GameState, param: Any, sig: ChannelSig, *,
     unit = _resolve_row_unit(gs, param.row, param.slot)
     if unit is None:
         _defect_zero_write(sig, DEFECT_TARGET_UNIT_MISSING,
-                           field_name='front_row',
+                           field_name='deployed',
                            expected=f'({param.row},{param.slot}) 有单位',
                            actual='未观察/漂移无单位',
                            evidence=f'tool_{tool_name}',
@@ -477,7 +477,7 @@ def _projector_report(gs: GameState, param: Any, sig: ChannelSig, *,
     unit = _resolve_row_unit(gs, param.row, param.slot)
     if unit is None:
         _defect_zero_write(sig, DEFECT_TARGET_UNIT_MISSING,
-                           field_name='front_row',
+                           field_name='deployed',
                            expected=f'({param.row},{param.slot}) 有单位',
                            actual='未观察/漂移无单位',
                            evidence=f'tool_{tool_name}',
