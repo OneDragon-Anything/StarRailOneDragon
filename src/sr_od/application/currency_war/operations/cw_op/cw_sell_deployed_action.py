@@ -12,9 +12,6 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from sr_od.application.currency_war.kernel.cw_action_report.sell_deployed import (
     report_action_sell_deployed_param,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import (
-    deployed_row_slot,
-)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     game_state_from_ctx,
@@ -48,17 +45,23 @@ class CwActionSellDeployedOp(CwOperation):
 
         emitted 语义 = 机械发出(拖拽原语零判效,落地事实归观察侧
         reconcile 对账)。执行坐标边:deployed_idx → (row, 物理槽号)
-        单一换算函数 = kernel ``deployed_row_slot``。
+        固定双射内联换算(0-3=前排 1-4 / 4-9=后排 1-6,overlay-trigger
+        3.2:随 tracked 账退役,换算五函数删除,动作坐标系算术就地承载;
+        后排 7-9 扩展格超出动作坐标系不可寻址,3.1 在案)。
         """
         action: CwActionSellDeployedParam = self.param
         env = self.env
         ex = env.executor
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
+            DEPLOYED_FRONT_CAPACITY,
+        )
         from sr_od.application.currency_war.prep_actions import sell_point
-        row, slot_no = deployed_row_slot(action.deployed_idx)
+        row = 'front' if action.deployed_idx < DEPLOYED_FRONT_CAPACITY else 'back'
+        slot_no = (action.deployed_idx + 1 if row == 'front'
+                   else action.deployed_idx - DEPLOYED_FRONT_CAPACITY + 1)
         pts = ex._front_pts if row == 'front' else ex._back_pts
         src = pts[slot_no - 1]
         ex._drag(src, sell_point(ex._ctx))
-        ex._track_remove_deployed(row, slot_no)
         time.sleep(1.0)   # 用户口述口径 #21:卖出动画 1s
         # —— 自上报(机械发出后;op-layer.md §1.2):装备回收/退款单点 ——
         gs = game_state_from_ctx(self.ctx)

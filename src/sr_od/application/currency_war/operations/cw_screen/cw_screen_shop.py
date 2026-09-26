@@ -519,30 +519,10 @@ class CwScreenShop(CwOperation):
         _st_seg = strategy_state_of(match.session)
         if _st_seg is not None:
             _st_seg.cw4_segment_serial += 1
-        # 播种单一源 = tracked_bench_chars(带 star+merge,mutate/对账全程同步)。
-        # 空 = bench 真空(全部署/合成清空的事实正确态),不回退任何残账——
-        # 旧 tracked_bench 回退分支已退役:单动作架构下「首轮」场景由入口
-        # heavy 读屏重建(入口观察即对账);残账仅 CwActionBuyCardParam
-        # 追加、无人清理,回退会复活陈旧名(实证 = 2026-09-05 CwActionOpenShopParam
-        # 双账分叉事故,诊断档
-        # .debug/temp/currency_war/20260905_openshop_fork_diag/report.md)。
-        # (tracked 播种已随 W6 波 4 黑板容器化取消——设计件 §2.1-5:容器
-        #  bench = prep 帧观察值(观察漏斗写端)+ visit 内逻辑态直写;黑板帧
-        #  播种的唯一消费者 = 旧帧决策链,读者切换后无行为面。)
-        _tb = game_state_of(match.session).tracked_books.bench
-        # P1 tracked bench = list[BenchSlot | None]:unit 槽读内嵌身份,
-        # 占位件槽无身份以 ('', 1) 显影。
-        _tb_rows = []
-        for _b in (_tb or []):
-            if _b is None:
-                continue
-            if getattr(_b, 'kind', None) == 'unit' and _b.unit is not None:
-                _tb_rows.append((_b.unit.char_id, _b.unit.star))
-            else:
-                _tb_rows.append(('', 1))
-        if _tb_rows:
-            log.info(f'[cw] tracked_bench_chars='
-                     f'{_tb_rows}(播种取消,仅日志显影)')
+        # (tracked_bench_chars 播种日志显影块已随 overlay-trigger 3.2
+        #  tracked 第二账退役删除:播种 W6 波 4 已取消,日志消费面为零;
+        #  双响防御(提案守卫 expected-vs-主域)由 cw_shop_action_ops.
+        #  guard_proposal_vs_expected 读主域单点承载。)
         if not self._entry.shop:
             log.info('[cw] 店开入口牌面空(买空/OCR 失读窗):离屏语义关断,'
                      '容器沿用现值牌面决策')

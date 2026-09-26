@@ -113,7 +113,7 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
     bug,禁静默跳过)。辖面:CwActionSellBenchParam 的槽位占用与 expect 名一致性;
     CwActionBuyCardParam 的所购牌名在期望态店中(已买走/陈旧快照牌再提案 = 跨代际
     提案,炸出;未识别牌 name 空 = 无名可对,跳过名断言交未识别面处理;
-    满栏 merge 买的「一击多张」豁免属 expected-vs-tracked 双账豁免,
+    满栏 merge 买的「一击多张」豁免属 expected-vs-主域双源豁免,
     本断言不受豁免——提案时点牌仍在店中,名恒可对)。
     """
     # 容器读口在函数顶导入:函数体内任何位置的 import 语句都会

@@ -25,6 +25,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     ShopActionExecuted,
+    deployed_indexed_of_view,
     game_state_from_ctx,
     shop_payload_content_cards,
 )
@@ -38,7 +39,6 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import (
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionBuyCardParam,
-    mutate_bench_deployed,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
     ShopExecEnv,
@@ -148,22 +148,17 @@ class CwActionBuyCardOp(CwOperation):
                             record_drought_buy_no_reset(
                                 member=action.card.name,
                                 system=_sys, drought=_d)
-        # tracking 同步:满栏合成买与逻辑态直写同分支单一源(shop 视图
-        # 进 tracked mutate,满栏完成合成的买入在 tracked 侧同样合成腾槽
-        # ——旧丢件行为使 tracked 漏记合成,同 visit 下一动作守卫对拍
-        # 误炸;2026-09-09 05:52 运行局双响事故)。
+        # (tracking 随动同步腿已随 overlay-trigger 3.2 tracked 第二账
+        #  退役删除:容器逻辑态由下方 report_action_buy_card_param 单点
+        #  落账——满栏合成买在报文侧同走 _apply_full_bench_merge_buy,
+        #  原执行侧 mutate 镜像是第二账时代形状,2026-09-09 双响事故的
+        #  防御语义由「单账即同步」结构性承载。)
         _payload_cards = (shop_payload_content_cards(state.shop.value)
                           if state.shop.value is not None else [])
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            game_state_of as _gso_buy,
-        )
-        _books = _gso_buy(match.session).tracked_books
-        mutate_bench_deployed(_books.bench, _books.deployed,
-                              action, shop=_payload_cards)
         if action.card.name:
             _cnt = 1
             # 满栏判定(容器原生读):席占用 = BenchView 槽 kind ≠ empty
-            # (unit+占位件均占席);旧执行缝腿的数据源 = tracked 主账(_books)。
+            # (unit+占位件均占席)。
             _view = state.bench.value
             _bench_occ = (sum(1 for s in _view.slots if s.kind != 'empty')
                           if _view is not None else 0)
@@ -174,7 +169,7 @@ class CwActionBuyCardOp(CwOperation):
                 _cnt = max(1, merge_buy_k(
                     action.card.name, action.card.star or 1,
                     (list(_view.slots) if _view is not None else []),
-                    _books.deployed,
+                    deployed_indexed_of_view(state.deployed.value),
                     _payload_cards))
                 ledger.spend_executed += (action.card.cost or 0) * (_cnt - 1)
             from sr_od.application.currency_war.kernel.cw_prep_expect import (

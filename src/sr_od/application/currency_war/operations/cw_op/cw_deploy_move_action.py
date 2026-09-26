@@ -57,10 +57,10 @@ class CwActionDeployMoveOp(CwOperation):
         显影,重试 = 决策循环按新观察自然重派);载荷槽越出画面槽位数 =
         陈旧载荷未发出(round_fail,观察重派)。faction 字段不入执行。
 
-        发出即记账(用户裁定「动作 op = 机械执行」):拖拽发出后 tracked
-        按载荷落位记账(tracked 同步与容器写侧同源,``_track_move_
-        deployed``)+ 上报函数落容器;拖后零落地判定,静默不生效由下一
-        入口观察对账显影。
+        发出即记账(用户裁定「动作 op = 机械执行」):容器逻辑态由
+        上报函数单点落账(tracked 第二账已随 overlay-trigger 3.2 退役,
+        动作写主域即同步);拖后零落地判定,静默不生效由下一入口 heavy
+        实读对账显影。
         """
         action: CwActionDeployMoveParam = self.param
         env = self.env
@@ -80,9 +80,6 @@ class CwActionDeployMoveOp(CwOperation):
         # heavy 观察打在徽章动画帧上(SIFT/对账读脏,「对账纠漂」日志
         # 噪声源之一)。按「都等 2s」简单方案落(批尾/中间的区分不做)。
         time.sleep(2.0)
-        # 发出即记账:拖拽发出即 tracked 按载荷落位记账(机械执行零判效;
-        # 载荷槽 = 拖点,与容器写侧同源)。
-        ex._track_move_deployed(action.bench_idx, row, slot_no)
         # —— 自上报(机械发出后;op-layer.md §1.2)——
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:

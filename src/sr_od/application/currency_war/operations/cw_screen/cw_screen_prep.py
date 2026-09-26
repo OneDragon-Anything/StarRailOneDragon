@@ -68,7 +68,7 @@ from sr_od.application.currency_war.obs.cw_identity_obs import (
     read_ore_sights,
 )
 from sr_od.application.currency_war.obs.cw_observation import (
-    board_from_tracked,
+    board_from_deployed,
     build_prep_node_chain,
     read_deploy_cap,
     read_deployed_count,
@@ -558,8 +558,14 @@ class CwScreenPrep(CwOperation):
             session = self._session()
             if session is None:
                 return
-            computed = board_from_tracked(
-                list(gs_of_ctx(getattr(self, 'ctx', None), session).tracked_books.deployed or []))
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                deployed_indexed_of_view,
+                gs_of_ctx,
+            )
+            computed = board_from_deployed(
+                deployed_indexed_of_view(
+                    gs_of_ctx(getattr(self, 'ctx', None),
+                              session).deployed.value))
             if computed is None:
                 return
             frame = getattr(self, 'last_screenshot', None)

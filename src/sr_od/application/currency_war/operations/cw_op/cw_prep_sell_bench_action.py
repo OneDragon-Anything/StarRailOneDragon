@@ -33,8 +33,8 @@ class CwActionSellBenchOp(CwOperation):
     """卖备战槽角色:drag 槽中心 → 出售区(``drag_bench_to_sell`` 单一源;
     机械执行,源槽像素验重试拆除)。非终结。
 
-    自上报(op-layer.md §1.2):机械发出后直调上报函数,session 透传
-    (溢出腿 tracked 对称吸收)。
+    自上报(op-layer.md §1.2):机械发出后直调上报函数(容器逻辑态
+    单点;session 形参兼容保留)。
     """
 
     #: 非终结动作(每类显式声明,无基类缺省)。
@@ -63,7 +63,6 @@ class CwActionSellBenchOp(CwOperation):
             drag_bench_to_sell,
         )
         drag_bench_to_sell(ex._op, ex._ctx, action.bench_idx)
-        ex._track_remove_bench(action.bench_idx)
         # 用户口述口径(screen_flow_timing.md #21,2026-09-02):卖出金币
         # 动画很快,等 1s 足够——批尾观察前补这段,防读到金币动画帧。
         time.sleep(1.0)
