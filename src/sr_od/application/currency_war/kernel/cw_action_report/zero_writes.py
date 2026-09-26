@@ -64,7 +64,17 @@ def report_action_open_box_param(gs: GameState, param: Any, sig: ChannelSig) -> 
     """开补给箱上报:开箱即腾席但占席事实归下一入口 heavy 实读(R7
     终结化零窗口),容器零写。applied 出口构造后果声明(open_box;
     武装箱选择画面出现;喂入与消费面 = ``cw_sim_ports.declare_world`` /
-    sim 后端 advance)。"""
+    sim 后端 advance)。S6 点击直弹登记(overlay-trigger 3.3;
+    trigger-inventory §1.7:点备战栏箱位「开启」直接弹四选一——
+    统一入登记,kind = box_card;声明 next_screen 语义回归底层屏归
+    3.4 消费面,本批不改声明)。"""
+    from sr_od.application.currency_war.kernel.cw_overlay_register import (
+        KIND_SCREEN_NAMES,
+        register_screen_change,
+    )
+    register_screen_change(
+        gs, 'box_card', KIND_SCREEN_NAMES['box_card'],
+        source='s6_click@open_box')
     return _report_zero_write(gs, param, sig, 'zero_write(open_box)',
                               decl=_DECL_OPEN_BOX)
 

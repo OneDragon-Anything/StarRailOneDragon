@@ -61,5 +61,14 @@ def report_action_open_bookcard_param(gs: GameState, param: Any, sig: ChannelSig
     slots[_idx] = BenchSlot(kind='empty')
     _w(gs.bench, BenchView(slots=slots, capacity=view.capacity),
        'proj_open_item_clear')
+    # S6 点击直弹登记(overlay-trigger 3.3;trigger-inventory §1.8:
+    # 点书册卡「开启」直接弹五选一——统一入登记,kind = expert_invite)。
+    from sr_od.application.currency_war.kernel.cw_overlay_register import (
+        KIND_SCREEN_NAMES,
+        register_screen_change,
+    )
+    register_screen_change(
+        gs, 'expert_invite', KIND_SCREEN_NAMES['expert_invite'],
+        source='s6_click@open_bookcard')
     return LogicOutcome(applied=True, world_decl=_DECL)
 

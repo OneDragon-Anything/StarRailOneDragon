@@ -47,5 +47,14 @@ def report_action_open_tome_param(gs: GameState, param: Any, sig: ChannelSig) ->
     slots[_idx] = BenchSlot(kind='empty')
     _w(gs.bench, BenchView(slots=slots, capacity=view.capacity),
        'proj_open_item_clear')
+    # S6 点击直弹登记(overlay-trigger 3.3;trigger-inventory §1.9
+    # 用户纠正:点典籍槽一次即弹星徽四选一——统一入登记,kind = star_tome)。
+    from sr_od.application.currency_war.kernel.cw_overlay_register import (
+        KIND_SCREEN_NAMES,
+        register_screen_change,
+    )
+    register_screen_change(
+        gs, 'star_tome', KIND_SCREEN_NAMES['star_tome'],
+        source='s6_click@open_tome')
     return LogicOutcome(applied=True)
 

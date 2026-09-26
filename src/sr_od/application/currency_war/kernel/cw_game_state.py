@@ -135,6 +135,9 @@ from sr_od.application.currency_war.kernel.cw_node_schedule import (
     node_pos_of,
     node_sequence_of,
 )
+from sr_od.application.currency_war.kernel.cw_overlay_register import (
+    ScreenChanges,
+)
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 
 # 同桶直调(kernel→kernel 合法;遥测装配 = game state 初始化职责,用户
@@ -568,12 +571,12 @@ def deployed_rows_of_view(view: DeployedView | None,
 
 def deployed_indexed_of_view(view: DeployedView | None,
                              ) -> list[Unit | None]:
-    """上阵视图 → 定长 10 下标工作表(3.1 窗口期桥:tracked 主账与合成
-    工作副本的既定坐标系;3.2 换算层退役时本桥随 tracked 消费端一并退)。
+    """上阵视图 → 定长 10 下标工作表(合成仿真/满栏买计数的工作副本
+    坐标系;3.2 裁定保留:消费方 = merge 级联族与 merge_buy_k 等工作
+    副本构造,非 tracked 残留)。
 
     下标 0-3 = 前排槽 1-4 直取;4-9 = 后排槽 1-6(后排 7-9 扩展格超出
-    定长表表示域,按旧 deployed_rows_to_indexed 同语义截断丢弃——
-    tracked 表硬上限为既有边界,3.2 退役后续辖)。"""
+    动作坐标系表示域,截断丢弃——动作坐标系 10 槽硬上限为既有边界)。"""
     view = view if view is not None else DeployedView()
     back = list(view.back_slots or [])[:DEPLOYED_BACK_CAPACITY_DEFAULT]
     while len(back) < DEPLOYED_BACK_CAPACITY_DEFAULT:
@@ -2374,6 +2377,10 @@ class GameState:
     # —— (tracked 第二账簿记宿主已随 overlay-trigger 3.2 退役删除:
     #     3.1 容器合并后主域 bench/deployed 席位视图即唯一账,第二账
     #     无可同步;观察锚语义由 tracked_account_observed 字段独立承载。)——
+    # —— overlay 登记簿记宿主(非 Field;overlay-trigger 3.3 契约
+    #     C-登记/C-簿记:pending 队列 + 触发簿记,值载体与三访问口
+    #     单一源 = kernel/cw_overlay_register.py)——
+    screen_changes: ScreenChanges = field(default_factory=ScreenChanges)
     # —— 节点序列探针簿记宿主(非 Field;终态契约 §A′ 自 session 迁入,
     # 成员与访问纪律见 :class:`NodeBooks` 类注)——
     node_books: NodeBooks = field(default_factory=NodeBooks)
@@ -3058,7 +3065,10 @@ class GameState:
           单位集合的派生量,独立手写 board = 越格,见方法注)。派生写
           **继承行域写入来源**:行域随机态时 board 派生行同标随机态
           (行域真值形态随采样奖励而变,board 为其派生,污染沿派生链
-          传递);行域确定 logic 时 board 仍 logic。"""
+          传递);行域确定 logic 时 board 仍 logic;
+        - deployed 逻辑写尾挂值域回调级联(overlay-trigger C-回调:
+          按名分解 diff → 事件/资格集/星级回调;观察写不经本方法 =
+          零回调。logic/logic_rand 两通道同经,获得链递归每步语义完整)。"""
         name = self._field_name(target)
         old_row_value = target.value if name == 'deployed' else None
         self._swap(name, Field(value=value, source=source, evidence=evidence),
@@ -3067,6 +3077,11 @@ class GameState:
             self._resync_board_delta(name, old_row_value,
                                      produced_by=produced_by, sig=sig,
                                      rand=(source == 'logic_rand'))
+            from sr_od.application.currency_war.kernel.cw_faction_callbacks import (
+                on_deployed_logic_write,
+            )
+            on_deployed_logic_write(self, old_row_value, value,
+                                    source=produced_by)
 
     def relay(self, target: Field, value: Any,
               sig: ChannelSig) -> bool:
@@ -3442,6 +3457,30 @@ def report_node_advance(gs: GameState, *, trigger: str,
                                       sig=sig, source='logic')
     if not advanced:
         return LogicOutcome(applied=False, reason='advance_deduped')
+    # S4 占卜屋直登(overlay-trigger 3.3;trigger-inventory §1.5 用户
+    # 裁定:黑天鹅在前后台 → 每场战斗结算计数 +1 → 达 2 倍数弹启示卡
+    # 三选一)。战斗三型都经 settle_confirm 一腿;出战阵容 = deployed
+    # 现读(战斗期间板面无逻辑写路径,结算读即出战阵容);胜负不计,
+    # 参与即计。上报点直登,不走值回调(结算非 deployed 写)。
+    if trigger == 'settle_confirm':
+        from sr_od.application.currency_war.kernel.cw_faction_callbacks import (
+            _iter_field_units,
+        )
+        _view = gs.deployed.value
+        _fortune_char = '黑天鹅'
+        if any(str(u.char_id) == _fortune_char
+               for _r, u in _iter_field_units(_view)):
+            _sc = gs.screen_changes
+            _sc.fortune_battles += 1
+            if _sc.fortune_battles % 2 == 0:
+                from sr_od.application.currency_war.kernel.cw_overlay_register import (
+                    KIND_SCREEN_NAMES,
+                    register_screen_change,
+                )
+                register_screen_change(
+                    gs, 'fortune', KIND_SCREEN_NAMES['fortune'],
+                    source=(f's4_battle_count@{_sc.fortune_battles}'
+                            '@settle_confirm'))
     return LogicOutcome(
         applied=True, reason=f'node_ord→{effective + 1}',
         world_decl=WorldDecl(next_screen=_node_advance_next_screen(gs),
