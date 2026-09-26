@@ -2025,7 +2025,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 _pd_mch = get_char(name)
                 _pd_cand = BenchSlot(
                     kind='unit',
-                    unit=Unit(char_id=name, star=(card.star or 1), slot=0))
+                    unit=Unit(char_id=name, star=(card.star or 1)))
                 try:
                     # kernel 单一源直调(围栏语义,预检查询非判据面谓词
                     # 不挂 contracts,形态同出口③/T5)。
@@ -2247,7 +2247,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                             # 按 char_id 派生,select 链不消费该字段)
                             _cand_bc = BenchSlot(
                                 kind='unit',
-                                unit=Unit(char_id=name, star=1, slot=0))
+                                unit=Unit(char_id=name, star=1))
                             _tgt2, _fw2 = deploy_target_sets(k)
                             try:
                                 _lfs = cw_intention.locked_faction_scope(
@@ -2416,7 +2416,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     # single 输入契约;faction/position_pref 不入形状)
                     _cand5 = BenchSlot(
                         kind='unit',
-                        unit=Unit(char_id=name, star=1, slot=0))
+                        unit=Unit(char_id=name, star=1))
                     _tgt5, _fw5 = deploy_target_sets(k)
                     try:
                         _lfs5 = cw_intention.locked_faction_scope(_ist) \

@@ -76,13 +76,10 @@ def _bench_slot_is_item(b) -> bool:
     return getattr(b, 'kind', 'unit') in ('tome', 'bookcard', 'supply_box')
 
 
-def _slot_no_of(b) -> int:
-    """占席条目 → 槽号信息位(单位 = 内嵌 Unit.slot,1 基物理槽)。"""
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        bench_slot_unit,
-    )
-    u = bench_slot_unit(b)
-    return int(getattr(u, 'slot', 0) or 0) if u is not None else 0
+def _slot_no_of(b, idx: int | None = None) -> int:
+    """占席条目 → 紧缩位键(条目在紧缩占席序中的 0 基下标;overlay-trigger
+    3.1:Unit.slot 信息位退役,紧缩序 = 物理槽序;``idx`` 显式传位)。"""
+    return int(idx if idx is not None else 0)
 
 #: 部署计划容器槽位表不健康显影分键(计划级 fail-closed 时 +1)。键名保留
 #: 现役 ``deploy_chain_slot_table_unhealthy``(跨局遥测对照可比性优先;
@@ -518,8 +515,8 @@ def deploy_slot_plans(bench: list[BenchSlot], up_idx: list[int],
     - **前排保证**(kernel 规则随迁,2026-08-16 M47 修正口径):pref=back
       ∧ 前排全空(出战硬要求前排有角色)时队列后方真 front 候选提到
       当前位,无 front 候选才强转当前 back 件;
-    - 槽位 = 策略遍历容器行列现值自定:front_row/back_row 的 Unit 槽位
-      信息位(排内 1 基)取占用集,首选排取最低空槽、首选排满 fallback
+    - 槽位 = 策略遍历容器视图现值自定:deployed 视图子表下标(排内 1 基
+      派生)取占用集,首选排取最低空槽、首选排满 fallback
       另一排,两排全满截断(调用侧 cap 门先行,防御停);
     - 后排上限 = ``back_layout`` 现值(back_capacity_of 单一源,值域 6-9)
       ——发射空槽集合按实值派生,扩展局(宝钻 7/8/9)才可能指到扩展槽,
@@ -532,10 +529,11 @@ def deploy_slot_plans(bench: list[BenchSlot], up_idx: list[int],
     from sr_od.application.currency_war.kernel.cw_game_state import (
         back_capacity_of,
     )
-    front_units = list(state.front_row.value or [])
-    back_units = list(state.back_row.value or [])
-    front_occ = {int(getattr(u, 'slot', 0) or 0) for u in front_units}
-    back_occ = {int(getattr(u, 'slot', 0) or 0) for u in back_units}
+    _view = state.deployed.value
+    front_occ = {i + 1 for i, u in enumerate(
+        getattr(_view, 'front_slots', None) or []) if u is not None}
+    back_occ = {i + 1 for i, u in enumerate(
+        getattr(_view, 'back_slots', None) or []) if u is not None}
     back_total = back_capacity_of(state)
     fe = [s for s in range(1, DEPLOYED_FRONT_CAPACITY + 1)
           if s not in front_occ]
@@ -594,9 +592,8 @@ def deploy_plan_moves(frame: MandateFrame, session: StrategySession,
     """
     from one_dragon.utils.log_utils import log
     from sr_od.application.currency_war.data.cw_chars import char_first_faction
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        bench_slot_unit,
-        bench_slots_healthy,
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        slot_occupies,
     )
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         strategy_state_of,
@@ -610,34 +607,30 @@ def deploy_plan_moves(frame: MandateFrame, session: StrategySession,
     # 重建副作用;test 桩态亦不被替换)。
     _comp = getattr(strategy_state_of(session), 'target_comp', None)
     plans = deploy_slot_plans(frame.bench, up, _comp, state)
+    # 紧缩占席序 → 容器槽位表下标对位(overlay-trigger 3.1:Unit.slot
+    # 信息位退役,frame.bench 与容器视图同帧同对象——紧缩序 = 物理槽序,
+    # 第 k 个占用槽 ↔ frame.bench[k];视图漂移(占用数不等)= 陈旧帧
+    # fail-closed 整体弃算,防错位拖拽出场。)
     view = state.bench.value
-    bench_slots = list(view.slots) if view is not None else []
-    # 槽号信息位集 = 单位槽内嵌 Unit.slot(P4 容器形;与观察写端按槽落位
-    # 构造同源,健康门语义不变:唯一 ∧ 1..9)
-    if not bench_slots_healthy([
-            int(getattr(u, 'slot', 0) or 0)
-            for s in bench_slots
-            if s is not None and (u := bench_slot_unit(s)) is not None]):
+    _occ_positions = [i for i, s in enumerate(
+        getattr(view, 'slots', None) or [])
+        if s is not None and slot_occupies(s.kind)] \
+        if view is not None else []
+    if len(_occ_positions) != len(frame.bench):
         _bcd_counters = getattr(strategy_state_of(session), 'cw4_counters',
                                 None)
         if isinstance(_bcd_counters, dict):
             _bcd_counters[DEPLOY_PLAN_SLOT_TABLE_UNHEALTHY_KEY] = \
                 _bcd_counters.get(DEPLOY_PLAN_SLOT_TABLE_UNHEALTHY_KEY, 0) + 1
-        log.warning('[cw!][deploy-plan] 部署计划弃算:容器槽位表槽号不健康'
-                    '(重复/越界,%s)→ {slot:下标} 对位 fail-closed,'
-                    '本帧零部署 move', bench_slots)
+        log.warning('[cw!][deploy-plan] 部署计划弃算:紧缩占席序与容器'
+                    '槽位表占用数不等(陈旧帧,occupied=%d bench=%d)'
+                    '→ 对位 fail-closed,本帧零部署 move',
+                    len(_occ_positions), len(frame.bench))
         return []
-    _cidx_of = {}
-    for i, s in enumerate(bench_slots):
-        if s is None:
-            continue
-        u = bench_slot_unit(s)
-        if u is not None:
-            _cidx_of[int(getattr(u, 'slot', 0) or 0)] = i
+    _cidx_of = dict(enumerate(_occ_positions))
     out: list[tuple[int, str, int, str]] = []
     for bi, row, slot in plans:
-        _slot_no = _slot_no_of(frame.bench[bi])
-        _bi = _cidx_of.get(_slot_no)
+        _bi = _cidx_of.get(bi)
         if _bi is None:
             continue   # 对位失配(陈旧帧)= fail-closed 跳过该 move
         # 发射载荷 faction = 主阵营注册表派生单一源(char_first_faction,

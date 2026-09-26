@@ -41,11 +41,12 @@ if TYPE_CHECKING:
     )
 
 
-def _slot_of(b: object) -> int:
-    """占席条目 → 槽号信息位(单位 = 内嵌 Unit.slot,1 基物理槽;
-    P4 容器形解包单一读点,本模块三通道共用)。"""
-    u = bench_slot_unit(b)
-    return int(getattr(u, 'slot', 0) or 0) if u is not None else 0
+def _slot_of(b: object, idx: int | None = None) -> int:
+    """占席条目 → 卖出候选位键(紧缩序下标;overlay-trigger 3.1:Unit.slot
+    信息位退役,候选键 = 条目在紧缩占席序(物理槽序)中的 0 基下标,
+    发射侧经容器槽位表枚举对位还原;``idx`` 显式传位,P4 容器形解包
+    单一读点,本模块三通道共用)。"""
+    return int(idx if idx is not None else 0)
 
 
 def _star_of(b: object) -> int:
@@ -127,7 +128,7 @@ def line_switch_sell(old_line_members: tuple[str, ...],
     if empty_board_sell_blocked(_deployed, counters=counters):
         return [], EMPTY_BOARD_SELL_GUARD_KEY
     out: list[int] = []
-    for b in bench:
+    for i, b in enumerate(bench):
         name = _cid_of(b)
         if name in old_line_members and name not in new_line_members:
             # 注入态保守子集:仅燃料类(1★ 全额可退)放行,其余保留
@@ -140,7 +141,7 @@ def line_switch_sell(old_line_members: tuple[str, ...],
                 if counters is not None:
                     count_merge_material_blocked(counters, name, dedup_names)
                 continue
-            out.append(_slot_of(b))
+            out.append(_slot_of(b, i))
     return out, ''
 
 
@@ -244,8 +245,8 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
         if counters is not None:
             counters[key] = counters.get(key, 0) + n
 
-    qualified: list[BenchSlot] = []
-    for b in bench:
+    qualified: list[tuple[int, BenchSlot]] = []
+    for i, b in enumerate(bench):
         # 占位件物理门(先于其余资格门短路):占席物品不可卖、无金币
         # 现值,判据单一源 = predicates.item_slot_unsellable(跨通道共享
         # 谓词,与 M4 燃料/支付变现同门,禁内联复制)。
@@ -272,16 +273,17 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
                                                       bench_slot_unit(b),
                                                       k_members)):
             continue
-        qualified.append(b)
-    # 序:刚买件优先(R2-N1),其余 (star, slot) 升序(确定性)
+        qualified.append((i, b))
+    # 序:刚买件优先(R2-N1),其余 (star, 紧缩位) 升序(确定性;紧缩序
+    # = 物理槽序,与旧 (star, slot) 逐位等价)
     prefer = set(prefer_names)
-    qualified.sort(key=lambda b: (0 if _cid_of(b) in prefer else 1,
-                                  _star_of(b), _slot_of(b)))
+    qualified.sort(key=lambda ib: (0 if _cid_of(ib[1]) in prefer else 1,
+                                   _star_of(ib[1]), ib[0]))
     out: list[int] = []
     remaining = gap
     sellback = 0
-    for b in qualified:
-        out.append(_slot_of(b))
+    for i, b in qualified:
+        out.append(_slot_of(b, i))
         # 1★ 卖回净额 = sell_refund(1, 注册表 cost)(与 funding_support
         # 同款:bench_char_cost 未知名保守估 3,禁字面量双源)
         refund = sell_refund(1, bench_char_cost(bench_slot_unit(b)))
@@ -352,9 +354,11 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
         return [], EMPTY_BOARD_SELL_GUARD_KEY
     out: list[int] = []
     remaining = need_gold - gold
-    # T3 末位牺牲序:被保件稳定移尾(转化类放行,非禁卖)
-    for b in sorted(bench, key=lambda x: (_cid_of(x) in defer_names,
-                                          _star_of(x), _slot_of(x))):
+    # T3 末位牺牲序:被保件稳定移尾(转化类放行,非禁卖);位键 = 紧缩
+    # 序下标(物理槽序,与旧 (star, slot) 序逐位等价)
+    for i, b in sorted(enumerate(bench),
+                       key=lambda t: (_cid_of(t[1]) in defer_names,
+                                      _star_of(t[1]), t[0])):
         # 占位件物理门(先于其余资格门短路):占席物品不可卖、无金币
         # 现值,判据单一源 = predicates.item_slot_unsellable(跨通道共享
         # 谓词,与 M4 燃料/凑息同门,禁内联复制)。
@@ -378,7 +382,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
                                                       bench_slot_unit(b),
                                                       k_members)):
             continue
-        out.append(_slot_of(b))
+        out.append(_slot_of(b, i))
         # 1★ 卖回净额 = sell_refund(1, 注册表 cost) 派生(R196 症6:
         # 禁字面量 3 双源——bench_char_cost 未知名保守估 3 与旧值同构)
         remaining -= sell_refund(1, bench_char_cost(bench_slot_unit(b)))

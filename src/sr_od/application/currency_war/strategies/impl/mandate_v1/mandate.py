@@ -179,7 +179,7 @@ class MandateFrame:
       物理槽序;占位件 kind 面在域内,身份经 ``cw_exec_state.
       bench_slot_unit`` 解包读口取——faction/position_pref 不入形状的
       注册表派生口径在消费点落位);
-    - ``deployed`` = 行域单位紧缩序(``front_row + back_row`` 的容器
+    - ``deployed`` = 行域单位紧缩序(deployed 视图两子表的容器
       ``Unit``,前排在前;char_id/star/equips 直读);
     ``deploy_cap`` 真值源 = ``max_units_of`` 派生链(R4 统一:level+宝钻、
     封顶 = 4+back_max 动态真值〔GameState.back_layout,值域 10-13〕,
@@ -325,68 +325,77 @@ def _slot_star(b) -> int:
     return int(getattr(u, 'star', 1) or 1) if u is not None else 1
 
 
-def _slot_no_of(b) -> int:
-    """占席条目 → 槽号信息位(单位 = 内嵌 Unit.slot,1 基物理槽)。"""
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        bench_slot_unit,
-    )
-    u = bench_slot_unit(b)
-    return int(getattr(u, 'slot', 0) or 0) if u is not None else 0
+def _slot_no_of(b, idx: int | None = None) -> int:
+    """占席条目 → 紧缩位键(条目在紧缩占席序中的 0 基下标;overlay-trigger
+    3.1:Unit.slot 信息位退役,发射面位键 = 紧缩序下标(紧缩序 = 物理槽
+    序),容器对位经 ``_bench_container_idx_by_compact`` 枚举还原。"""
+    return int(idx if idx is not None else 0)
 
 
 def _bench_container_idx(state: GameState, victim: BenchSlot) -> int | None:
-    """发射面容器下标解析·bench 域(角色条目入口;见 by_slot 变体)。"""
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        bench_slot_unit,
-    )
-    u = bench_slot_unit(victim)
-    return _bench_container_idx_by_slot(
-        state, int(getattr(u, 'slot', 0) or 0) if u is not None else 0)
+    """发射面容器下标解析·bench 域(条目对位:生产链 = 同帧同对象身份
+    相等;测试/合成链可能等值重建 → 数据类值相等兜底,两道都过才认,
+    失配 = 陈旧帧 fail-closed 禁猜位)。"""
+    view = state.bench.value
+    if view is None or victim is None:
+        return None
+    for i, s in enumerate(view.slots):
+        if s is victim or s == victim:
+            return i
+    return None
 
 
-def _bench_container_idx_by_slot(state: GameState, slot_no: int) -> int | None:
-    """发射面容器下标解析·bench 域(unified-action-factory 批2b 换算收口;
-    P4 容器形:占席判定 = kind 口,BenchView.slots[i] = 物理槽 i+1 与
-    槽号信息位同源构造,失配 None = 陈旧/carry 帧禁猜位)。"""
+def _bench_container_idx_by_compact(state: GameState, pos: int) -> int | None:
+    """发射面容器下标解析·bench 域(紧缩位键 → 容器下标;unified-action-
+    factory 批2b 换算收口,overlay-trigger 3.1:位键 = 紧缩占席序下标
+    〔物理槽序〕,容器下标 = 第 pos+1 个占用槽的下标——对位失配
+    (越界/视图漂移)= 陈旧/carry 帧禁猜位,返回 None)。
+
+    [索引定义] pos = 紧缩占席序 0 基下标(消费方 = criteria/sell
+    三通道的候选位键);占用判定 = ``slot_occupies``(kind 口)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
         slot_occupies,
     )
-    if slot_no < 1:
+    if pos < 0:
         return None
     view = state.bench.value
-    if view is None or slot_no > len(view.slots):
+    if view is None:
         return None
-    s = view.slots[slot_no - 1]
-    if s is None or not slot_occupies(s.kind):
-        return None
-    return slot_no - 1
+    k = 0
+    for i, s in enumerate(view.slots):
+        if s is None or not slot_occupies(s.kind):
+            continue
+        if k == pos:
+            return i
+        k += 1
+    return None
+
+
+#: 兼容别名:旧调用面命名(by_slot = 旧槽号信息位键时代),语义已随
+#: overlay-trigger 3.1 切换为紧缩位键。
+_bench_container_idx_by_slot = _bench_container_idx_by_compact
 
 
 def _deployed_container_idx(state: GameState, victim: Unit) -> int | None:
-    """发射面容器下标解析·deployed 域(P4 容器形:行归属由行承载,
-    对位键 = (身份, 行内槽号)——场上同名唯一性不变量下与旧
-    (position_pref, slot) 二元组等价;前排命中 = slot−1,后排 =
-    前排容量+slot−1,换算单一源 = deployed_row_slot 域常量)。
-    失配 None = fail-closed 跳过。"""
+    """发射面容器下标解析·deployed 域(条目对位:生产链 = 同帧同对象
+    身份相等,测试/合成链等值重建兜底;前排命中 = 下标 0-3,后排 = 4+
+    〔定长 10 动作坐标系,后排 7-9 扩展格超出动作坐标系不可寻址——
+    tracked 表硬上限同族边界,3.2 续辖〕;失配 None = fail-closed 跳过)。
+    场上同名唯一性不变量下,值相等对位与旧 (身份, 槽号) 键等价。"""
     from sr_od.application.currency_war.kernel.cw_exec_state import (
+        DEPLOYED_BACK_CAPACITY,
         DEPLOYED_FRONT_CAPACITY,
     )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        deployed_rows_of,
-    )
-    _slot = int(getattr(victim, 'slot', 0) or 0)
-    if _slot < 1:
+    view = state.deployed.value
+    if view is None or victim is None:
         return None
-    _cid = getattr(victim, 'char_id', '') or ''
-    front, back = deployed_rows_of(state)
-    for u in (front or []):
-        if u is not None and (getattr(u, 'char_id', '') or '') == _cid \
-                and int(getattr(u, 'slot', 0) or 0) == _slot:
-            return _slot - 1
-    for u in (back or []):
-        if u is not None and (getattr(u, 'char_id', '') or '') == _cid \
-                and int(getattr(u, 'slot', 0) or 0) == _slot:
-            return DEPLOYED_FRONT_CAPACITY + _slot - 1
+    for i, u in enumerate(view.front_slots or []):
+        if u is victim or (u is not None and u == victim):
+            return i
+    for j, u in enumerate(view.back_slots or []):
+        if (u is victim or (u is not None and u == victim)) \
+                and j < DEPLOYED_BACK_CAPACITY:
+            return DEPLOYED_FRONT_CAPACITY + j
     return None
 
 
@@ -1432,18 +1441,12 @@ def run_mandate(frame: MandateFrame,
             _t1_slots, _t1_key = [], 'contract_abstain'
             _count('t1_interest_prep_contract_abstain')
         if not _t1_key and _t1_slots:
-            from sr_od.application.currency_war.kernel.cw_exec_state import (
-                bench_slot_unit,
-            )
-            _t1_name_of = {
-                (int(getattr(u, 'slot', 0) or 0)
-                 if (u := bench_slot_unit(b)) is not None else 0):
-                (u.char_id if u is not None else '') or ''
-                for b in frame.bench}
+            _t1_name_of = {i: _slot_cid(b)
+                           for i, b in enumerate(frame.bench)}
             for _s in _t1_slots:
-                # 容器下标解析(换算收口,见 _bench_container_idx_by_slot):
+                # 容器下标解析(换算收口,见 _bench_container_idx_by_compact):
                 # 失配 = 陈旧/carry 帧,fail-closed 跳过该候选。
-                _vidx = _bench_container_idx_by_slot(state, _s)
+                _vidx = _bench_container_idx_by_compact(state, _s)
                 if _vidx is None:
                     continue
                 # Emitted.reason = route_tag 透传载体填充(T-159 §3.3;
@@ -1579,8 +1582,7 @@ def run_mandate(frame: MandateFrame,
                     out.append(Emitted(CwActionSellBenchParam(bench_idx=_vidx,
                                                  reason='m4_fuel_sell'), True,
                                        'm4_fuel_sell'))
-                    bench = [b for b in bench
-                             if _slot_no_of(b) != _slot_no_of(victim)]
+                    bench = [b for b in bench if b is not victim]
                     freed = True
                     retries += 1
                     # 腾席后席位复检(静态:卖 1 件 ⇒ bench_free+1)

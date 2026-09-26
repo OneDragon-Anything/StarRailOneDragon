@@ -104,19 +104,20 @@ def extract_frame(ctx, img, templates) -> dict:
     except Exception as e:   # noqa: BLE001
         log.debug(f'[recorder] state 提取失败: {e}')
     try:
-        front, back = read_deployed_rows(ctx, img, templates)
+        front_hits, back_hits = read_deployed_rows(ctx, img, templates)
         rec['deployed'] = [
-            {'name': u.char_id, 'star': u.star, 'row': row, 'slot': u.slot}
-            for row, units in (('front', front), ('back', back))
-            for u in units]
+            {'name': u.char_id, 'star': u.star, 'row': row, 'slot': s}
+            for row, hits in (('front', front_hits), ('back', back_hits))
+            for s, u in hits]
         rec['deployed_n'] = len(rec['deployed'])
     except Exception as e:   # noqa: BLE001
         log.debug(f'[recorder] deployed 提取失败: {e}')
     try:
         view = read_bench_view(ctx, img, templates)
         rec['bench'] = [] if view is None else (
-            [{'name': s.unit.char_id, 'star': s.unit.star, 'slot': s.unit.slot}
-             for s in view.slots if s.kind == 'unit' and s.unit is not None]
+            [{'name': s.unit.char_id, 'star': s.unit.star, 'slot': i + 1}
+             for i, s in enumerate(view.slots)
+             if s.kind == 'unit' and s.unit is not None]
             + [{'name': '', 'star': 1, 'slot': i + 1}
                for i, s in enumerate(view.slots)
                if s.kind in ('supply_box', 'tome', 'bookcard')])

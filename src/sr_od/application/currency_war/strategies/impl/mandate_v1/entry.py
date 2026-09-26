@@ -116,7 +116,7 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import pr
 
 
 def _deployed_units_of(gs: GameState) -> list:
-    """上场单位域紧缩序(行域 front_row+back_row 的容器 Unit,前排在前;
+    """上场单位域紧缩序(deployed 视图两子表的容器 Unit,前排在前;
     本模块单一读点,benchchar-retirement P4 容器形)。"""
     front, back = deployed_rows_of(gs)
     return [d for d in (*front, *back) if d is not None]
@@ -625,7 +625,7 @@ def emit(session: StrategySession,
     # 同源改读容器读口派生——wanted 臂与下方组装两处共用同一推导,禁再
     # 引 obs 名单第二份。黑板字段退役面归阶段 3.5。
     # P4 容器形:bench = 占席条目域(BenchSlot 紧缩序),deployed = 行域
-    # 单位紧缩序(front_row + back_row,前排在前)。
+    # 单位紧缩序(deployed 视图两子表,前排在前)。
     _gs_bench = bench_entries_of(gs)
     _gs_deployed = _deployed_units_of(gs)
     _arm_out = mandate.wanted_closure_emit(
@@ -927,14 +927,14 @@ def emit(session: StrategySession,
                     cap_hold=locked_buy_cap_hold(gs))
             for s in slots:
                 # 容器下标解析(换算收口;失配 = 陈旧/carry 帧,fail-closed 跳过)
-                _vidx = mandate._bench_container_idx_by_slot(gs, s)
+                _vidx = mandate._bench_container_idx_by_compact(gs, s)
                 if _vidx is None or _vidx in sold_slots:
                     if _vidx is not None:
                         _ct['ev_conflict_dropped'] = \
                             _ct.get('ev_conflict_dropped', 0) + 1
                     continue
-                if next((mandate._slot_cid(b) for b in bench
-                         if mandate._slot_no_of(b) == s), '') in _f_release:
+                if (mandate._slot_cid(bench[s])
+                        if s < len(bench) else '') in _f_release:
                     _ct['dead_pair_exit_sold_funding'] = \
                         _ct.get('dead_pair_exit_sold_funding', 0) + 1
                 # 卖出通道记录字段随发射位填充(SELL_BENCH_REASONS 登记
@@ -1258,8 +1258,8 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
     _dp_release = sell_gate.dead_pair_exit_release(
         session, k_members, frame.bench, frame.deployed, round_num_of(gs),
         cap_hold=locked_buy_cap_hold(gs), counters=counters)
-    _slot_name_of = {mandate._slot_no_of(b): mandate._slot_cid(b)
-                     for b in frame.bench}
+    _slot_name_of = {i: mandate._slot_cid(b)
+                     for i, b in enumerate(frame.bench)}
     out: list[Emitted] = []
     # line_switch_sell(换线塌缩出口:k_switched 时对旧线件重评;
     # 契约核验(单一源=criteria/contracts.py),前提不成立 ⇒ 本帧弃权+计数;
@@ -1276,7 +1276,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
         slots = []
     for s in slots:
         # 容器下标解析(换算收口;失配 = 陈旧/carry 帧,fail-closed 跳过)
-        _vidx = mandate._bench_container_idx_by_slot(gs, s)
+        _vidx = mandate._bench_container_idx_by_compact(gs, s)
         if _vidx is None or _vidx in sold_slots:
             if _vidx is not None:
                 counters['ev_conflict_dropped'] = \
@@ -1330,7 +1330,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
                 cap_hold=locked_buy_cap_hold(gs))
         for s in fslots:
             # 容器下标解析(换算收口;失配 = 陈旧/carry 帧,fail-closed 跳过)
-            _vidx = mandate._bench_container_idx_by_slot(gs, s)
+            _vidx = mandate._bench_container_idx_by_compact(gs, s)
             if _vidx is None or _vidx in sold_slots:
                 if _vidx is not None:
                     counters['ev_conflict_dropped'] = \
@@ -1339,8 +1339,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
             # T3 转化类卖出销账(店侧同款)。plain 分键计数保留;reason =
             # 卖出通道记录字段(登记门键,记录非指令)——prep 卖出恒先于
             # 本轮买入,同轮买卖检查豁免面对本位结构性不可达。
-            _fbc = next((b for b in frame.bench
-                         if mandate._slot_no_of(b) == s), None)
+            _fbc = frame.bench[s] if s < len(frame.bench) else None
             _fname = mandate._slot_cid(_fbc) if _fbc is not None else ''
             if _fname in _dp_release:
                 counters['dead_pair_exit_sold_funding'] = \

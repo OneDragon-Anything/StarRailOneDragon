@@ -418,7 +418,15 @@ def view_snapshot(rows: list[dict[str, Any]], run_id: str = '') -> list[str]:
                f"hp={vals.get('hp', '?')} gold={vals.get('gold', '?')}"
                f" level={vals.get('level', '?')} xp={xp_s}"
                f" node={node_s}")
-    out.append(f'  front={_n("front_row")} back={_n("back_row")}'
+    deployed = vals.get('deployed')
+    if isinstance(deployed, dict):
+        front_n = sum(1 for u in (deployed.get('front_slots') or [])
+                      if u is not None)
+        back_n = sum(1 for u in (deployed.get('back_slots') or [])
+                     if u is not None)
+    else:
+        front_n = back_n = '?'
+    out.append(f'  front={front_n} back={back_n}'
                f' bench={bench_n} equips={_n("equips")}'
                f' effects={eff_n} pending_expected={pend_n}')
     return out
