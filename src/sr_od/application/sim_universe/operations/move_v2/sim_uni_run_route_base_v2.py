@@ -7,6 +7,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.application.sim_universe import sim_uni_screen_state
+from sr_od.application.sim_universe.operations import sim_uni_move_utils
 from sr_od.application.sim_universe.operations.move_v1.sim_uni_move_to_interact_by_detect import (
     SimUniMoveToInteractByDetect,
 )
@@ -96,7 +97,26 @@ class SimUniRunRouteBaseV2(SrOperation):
         screen: MatLike = self.screenshot()
         entry_list = sim_uni_screen_state.match_next_level_entry(self.ctx, screen, knn_distance_percent=self.check_next_entry_knn)
         if len(entry_list) == 0:
-            return self.round_success(status=SimUniRunRouteBaseV2.STATUS_NO_ENTRY)
+            # SIFT 图标匹配失败时 用 YOLO 兜底:入口距离远或视角偏离正面时,
+            # 小图标纹理匹配不到,但传送门本体 YOLO 可检(2026-09-26 实证:
+            # 事件层处理完事件后贴墙,激活的战斗入口在视野内,仅靠 SIFT
+            # 转圈 24 次全空判败)。检测到即按方向返回 WITH_ENTRY,
+            # 由 move_to_next 的 V3 两段式(YOLO 转向→靠近→图标匹配)精确交互。
+            frame_result = self.ctx.yolo_detector.sim_uni_yolo.run(screen)
+            left = 0
+            right = 0
+            for result in frame_result.results:
+                if result.detect_class.class_category != '模拟宇宙下层入口':
+                    continue
+                if sim_uni_move_utils.delta_angle_to_detected_object(result) < 0:
+                    left += 1
+                else:
+                    right += 1
+            if left == 0 and right == 0:
+                return self.round_success(status=SimUniRunRouteBaseV2.STATUS_NO_ENTRY)
+            self.nothing_times = 0
+            self.next_entry_direction = -1 if left > right else 1
+            return self.round_success(status=SimUniRunRouteBaseV2.STATUS_WITH_ENTRY)
         else:
             self.nothing_times = 0
             left = 0
