@@ -1,0 +1,201 @@
+screen_id: sim_uni_world_detail
+screen_name: 模拟宇宙-世界详情
+pc_alt: false
+area_list:
+- area_name: id_mark-通关积分提示
+  id_mark: true
+  pc_rect:
+  - 1140
+  - 138
+  - 1420
+  - 185
+  text: 通关可获得积分
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 标题-模拟宇宙
+  id_mark: false
+  pc_rect:
+  - 85
+  - 35
+  - 215
+  - 90
+  text: 模拟宇宙
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 世界难度标题
+  id_mark: false
+  pc_rect:
+  - 1140
+  - 100
+  - 1390
+  - 155
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 难度-1
+  id_mark: false
+  pc_rect:
+  - 100
+  - 135
+  - 165
+  - 200
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 难度-2
+  id_mark: false
+  pc_rect:
+  - 100
+  - 235
+  - 165
+  - 300
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 难度-3
+  id_mark: false
+  pc_rect:
+  - 100
+  - 348
+  - 165
+  - 412
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 难度-4
+  id_mark: false
+  pc_rect:
+  - 100
+  - 453
+  - 165
+  - 518
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 难度-5
+  id_mark: false
+  pc_rect:
+  - 100
+  - 565
+  - 165
+  - 630
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-继续进度
+  id_mark: false
+  pc_rect:
+  - 1615
+  - 952
+  - 1770
+  - 1008
+  text: 继续进度
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-结束并结算
+  id_mark: false
+  pc_rect:
+  - 1255
+  - 950
+  - 1450
+  - 1008
+  text: 结束并结算
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-下载初始角色
+  id_mark: false
+  pc_rect:
+  - 1440
+  - 952
+  - 1660
+  - 1008
+  text: 下载初始角色
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 模拟宇宙-初始配队
+- area_name: 探索进度
+  id_mark: false
+  pc_rect:
+  - 1580
+  - 900
+  - 1790
+  - 950
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 推荐队伍等级
+  id_mark: false
+  pc_rect:
+  - 1440
+  - 900
+  - 1670
+  - 950
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-返回列表
+  id_mark: false
+  pc_rect:
+  - 1830
+  - 40
+  - 1895
+  - 95
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
