@@ -97,7 +97,7 @@
 | 出战(点「按钮-出战」) | 未在行动值内取胜扣血(`data/gameplay.md`) | `CwActionStartBattleOp`;发射意图 = mandate_v1 前置发射位(判据 = `kernel/cw_launch_admission.py::readiness_launch_decision`);执行 = 统一执行器 `operations/cw_loop.py::launch_battle_unified` | 备战期出口(唯一完成态) | **备战访问终结**:交回外循环战斗分支 |
 | 点晶矿(区域-奖励) | 晶矿飞行动画 ≤2s(`research/screen_flow_timing.md` #16) | `CollectOre`(批式:一次全点→固定等待 2s→自上报交回;席满未点开的晶矿由下一帧观察回补;席满让路门 = `strategies/impl/mandate_v1/entry.py` 席满探针段) | 备战期 | 非终结 |
 | 开补给箱(点备战栏箱位) | 开箱即腾席(武装箱 overlay) | `OpenBox`(点「开启」即交回;选卡弹窗由画面 op `CwScreenBoxPick` 闭环、武装箱获得说明弹窗由 `CwScreenArmoryBox` 点 × 关闭,均非动作) | 备战期(实体面优先,`entry.py::emit` ①) | **访问终结** |
-| 开秘密典籍 | 典籍占备战席 1 槽 | `OpenTome`(选卡弹窗由画面 op `CwScreenBoxPick` 闭环,非动作) | 备战期(实体面优先,`entry.py::emit` ①) | 非终结 |
+| 开秘密典籍 | 典籍占备战席 1 槽 | `OpenTome`(点槽一次开启;星徽四选一弹窗由外循环阶段一身份分发 `CwScreenBookcard` 接管选卡,非本动作) | 备战期(实体面优先,`entry.py::emit` ①) | 非终结 |
 | 查看详情(角色/装备详情浮层) | 游戏辅助功能(`data/gameplay.md`) | 推进型弹窗 `CwScreenRoleDetailOverlay` 等(阶段一身份分发,空决策形态) | 无策略归属(推进为流程义务) | 关闭/点空白即终结 |
 | 关闭「中断挑战」弹窗 | ESC 误按/误点左上角弹出的真模态(点遮罩无效,关闭只有 X 一条路;底层 = 备战) | `cw_screen_interrupt_dialog.py::CwScreenInterruptDialog`(阶段一身份分发,空决策形态;语义红线 = 绝不点「放弃并结算」/「暂时离开」,唯一动作 = X;单篇 = [interrupt_dialog.md](interrupt_dialog.md)) | 无策略归属(推进为流程义务) | 点 X 即终结 |
 | 锁商店(跨节点保牌) | `research/economy.md` §2.1(整店级锁;官方机制) | **生产链路未建模**(建档已有「按钮-商店锁定」坐标备作将来) | 无 | — |
