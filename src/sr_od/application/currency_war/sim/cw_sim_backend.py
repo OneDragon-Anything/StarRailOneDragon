@@ -32,21 +32,21 @@ supply/encounter/box/晶矿面板)→ 容器各 opts 槽(经 ``cw_screen_report`
 supply → 补给;encounter → 遭遇节点;boss → BOSS 简报)。节点经验在
 节点推进时入账(NODE_XP_BY_TYPE 表原样);连胜转移在战斗结算后。
 
-**overlay 触发层**(事实触发):世界事实事件(kernel 事实事件 sink)→
-评估器 → :class:`OverlayQueue` 入队 → 模态呈现(压住底层画面,选完
-交回)。一期目录:巨星(盛会之星羁绊跨层,消费 board_changed)、
-planner(银狼首次升 2 星,消费 star_up)、开箱(动作触发,走 open_box
-声明)。
-其余族(partner/expert/fate/aha/hack)触发条件实机零档 → 评估器缺位 =
-不入队(数据缺口非架构豁免,补档后逐个落)。
+**overlay 触发层**(overlay-trigger 3.5 终态):判据 = kernel 值回调
+(cw_faction_callbacks,deployed 逻辑写尾)→ 容器登记
+(gs.screen_changes.pending)→ 呈现(问询时点懒呈现 + advance 纯转移
+尾 + 节点窗起点,压住底层画面,选完交回)。一期目录:巨星/planner
+(容器值回调判据)、开箱/专家/星徽(open_* 上报直登)、占卜屋/伙伴/
+祈愿/阿哈(判据/选卡上报)。无 sim 观察腿族(partner/fortune/
+wish_trial/star_tome/aha)呈现即卡 observe → 消费 + 逐 kind 披露,
+候观察腿接线再呈现。
 
 **确定性**:后端自有采样全部由 seed 派生(:func:`stream_rng` 流键,
 键形沿用旧引擎模块号坐标系);动作腿采样(炉/骇客改件/晶矿/刷新)
 经上报函数族 rng 形参,注入点在流程装配缝(运行器批)。
 
-**装配**::func:`install_backend` = 端口槽装配 + kernel 事实事件 sink
-订阅;:func:`uninstall_backend` 幂等复位。测试 teardown 必卸(端口槽
-与事件 sink 均为进程全局)。
+**装配**::func:`install_backend` = 端口槽装配;:func:`uninstall_backend`
+幂等复位。测试 teardown 必卸(端口槽为进程全局)。
 """
 from __future__ import annotations
 
@@ -56,7 +56,6 @@ from dataclasses import dataclass, field, replace
 from sr_od.application.currency_war.data.affix_effects_data import (
     AFFIX_EFFECTS,
 )
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.data.cw_shop_odds import REFRESH_PROB
 from sr_od.application.currency_war.data.cw_synthesis import SYNTHESIS_BASES
 from sr_od.application.currency_war.kernel.cw_battle_calib import (
@@ -67,10 +66,6 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     LostNodeRef,
     RoundStartIncome,
     round_start_income,
-)
-from sr_od.application.currency_war.kernel.cw_event_hooks import (
-    FactEvent,
-    set_fact_event_sink,
 )
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
@@ -155,13 +150,8 @@ from sr_od.application.currency_war.sim.cw_sim_enemy import (
 from sr_od.application.currency_war.sim.cw_sim_opening import apply_opening
 from sr_od.application.currency_war.sim.cw_sim_overlay import (
     OVERLAY_PARAM_PENDING,
-    OverlayQueue,
 )
 from sr_od.application.currency_war.sim.cw_sim_run_config import RunConfig
-from sr_od.application.currency_war.sim.cw_sim_special import (
-    SILVER_WOLF_ID,
-    planner_overlay_due,
-)
 from sr_od.application.currency_war.sim.cw_sim_streams import stream_rng
 
 # ============================================================ 画面档名常量
@@ -643,7 +633,6 @@ _BASE_DISCLOSURES: dict[str, object] = {
     NODE_XP_PENDING_U17: 'boss_xp12_composition_pending',
     PIGGY_NO_HP_LOSS: 'piggy_node_no_hp_loss_exempt',
     DISCLOSURE_AFFIX_SAMPLE: 'pool3_uniform_placeholder',
-    OVERLAY_PARAM_PENDING: 'm22_placeholder_options',
 }
 
 #: 单局驱动步上限(防流程死循环;正常局 < 2000 动作)。
@@ -741,14 +730,10 @@ class SimBackend:
     # —— 采样簿记(实机不可观察,后端私有) ——
     excluded_invest: set[str] = field(default_factory=set)
     excluded_env: set[str] = field(default_factory=set)
-    overlay_queue: OverlayQueue = field(default_factory=OverlayQueue)
-    #: 「我来当策划」已触发位(首次语义,一次性标志)。
-    planner_fired: bool = field(default=False)
-    #: planner 判据的升星前快照(star_up 事件无动作前视图,后端逐事件
-    #: 维护全域银狼最高星基线;1→2 跨越判据 = planner_overlay_due)。
-    planner_seen_star: int = field(default=0)
-    #: 巨星羁绊已触发层数(跨层入队判据的已消费水位;0 = 未触发)。
-    megastar_fired_tier: int = field(default=0)
+    # (私有 overlay 队列与评估器簿记三件[队列/一次性标志/银狼星基线/
+    #  巨星水位]已随 overlay-trigger 3.5 退役删除:sim 呈现数据源 =
+    #  容器登记 gs.screen_changes.pending,判据簿记 = ScreenChanges
+    #  sidecar,呈现检查 = 问询时点[screen_identity] + advance 尾。)
     #: 武装箱待授予候选下标(装备卡点击源记录;pick_box_card 落地消费)。
     _box_pick_pending: int | None = field(init=False, default=None)
     # —— 局结果面(消费方 = 运行器断言) ——
@@ -814,8 +799,17 @@ class SimBackend:
     # ---------------------------------------------------------- 端口五口
 
     def screen_identity(self) -> str:
-        """当前画面 screen_info 档名(状态机唯一答口)。"""
+        """当前画面 screen_info 档名(状态机唯一答口)。
+
+        问询时点呈现检查(overlay-trigger 3.5:事实事件槽退役后的
+        sim 懒呈现位):答身份前先查容器登记 pending——动作上报内已
+        register 的条目在此压上模态(等价实机「动作落地即弹」,时点 =
+        宿主交回后的首次身份问询)。呈现门/消费披露族语义同
+        :meth:`_present_pending_overlay`(fortune 门判当前底层)。
+        """
         self._maybe_finish_wait()
+        if self.gs.screen_changes.pending:
+            self._present_pending_overlay()
         return self._screen
 
     def observe(self, screen_name: str) -> object:
@@ -937,18 +931,9 @@ class SimBackend:
         if self._screen == SCREEN_PREP:
             self._present_modal(SCREEN_SHOP)
 
-    # ---------------------------------------------------------- 事件钩子
-
-    def on_fact_event(self, event: FactEvent) -> None:
-        """事实事件订阅(overlay 触发层评估器消费 + 板面真值基座刷新)。"""
-        if self.done:
-            return
-        if event.kind == 'board_changed':
-            self._evaluate_megastar()
-        elif event.kind == 'star_up':
-            self._evaluate_planner(event)
-        self._refresh_board()
-        self._present_pending_overlay()
+    # (事实事件订阅入口已随 overlay-trigger 3.5 事实事件槽退役删除:
+    #  懒呈现位 = screen_identity 问询时点检查;板面真值观察 =
+    #  advance 步界 _observe_board_truth。)
 
     # ------------------------------------------------------ 声明驱动推进
 
@@ -1002,6 +987,7 @@ class SimBackend:
             # 承载,呈现走本分支尾的 pending 呈现检查。
             self._dismiss_modal()
         self._reconcile_next_screen(decl)
+        self._observe_board_truth()   # 步界板面真值观察(等值零写)
         # overlay 呈现检查(3.4):**仅纯转移分支**——S6 声明改底层屏后
         # open_bookcard/open_tome 的弹窗呈现入口(battle_resolve/
         # node_advance 等其余分派保留原呈现时机 = 各自过程内/节点窗
@@ -1014,8 +1000,8 @@ class SimBackend:
         """当前对账豁免场景(:data:`RECONCILE_EXEMPT_KINDS`;命中 =
         最上层呈现屏 ≠ 底层稳态画面属建模内合法形态,断言延后至稳态;
         ''= 稳态可判)。overlay_trigger 3.4:overlay_pending 检查改读容器
-        登记 ``gs.screen_changes.pending``(呈现数据源已迁,旧 OverlayQueue
-        呈现面退役)。"""
+        登记 ``gs.screen_changes.pending``(呈现数据源已迁,旧私有队列
+        呈现面随 3.5 退役)。"""
         if self.gs.screen_changes.pending:
             return 'overlay_pending'
         if self._screen == SCREEN_INVEST_STRATEGY:
@@ -1151,7 +1137,7 @@ class SimBackend:
 
     def _on_overlay_picked(self, kind: str) -> None:
         """overlay 选定落地(模态交回 + 呈现检查):效果腿归各自上报/
-        效果批,本层零效果。overlay-trigger 3.4:原 OverlayQueue 出队腿
+        效果批,本层零效果。overlay-trigger 3.4:原私有队列出队腿
         退役——呈现数据源 = ``gs.screen_changes.pending``,消费 = 选卡
         上报内 ``consume_screen_change``(两世界同一行代码,register-
         consume.md「sim 消费」),本层不重复出队。
@@ -1203,7 +1189,7 @@ class SimBackend:
 
     def _present_pending_overlay(self, fortune_base: str | None = None) -> None:
         """overlay 呈现检查(overlay-trigger 3.4:数据源 = 容器登记
-        ``gs.screen_changes.pending``,私有 OverlayQueue 呈现面退役——
+        ``gs.screen_changes.pending``,旧私有队列呈现面退役——
         队列本体随评估器归 3.5 清扫;呈现时机不变 = advance/步界检查)。
 
         ``fortune_base`` = fortune 呈现门的底层判据屏(缺省 = 当前
@@ -1408,18 +1394,18 @@ class SimBackend:
         self._present_offer_or_node_screen()
 
     def _node_window_target_base(self) -> str:
-        """节点窗起点即将呈现的底层屏(不执行呈现,仅判定 fortune 门):
+        """节点窗起点即将呈现的底层屏(不执行呈现,仅判定 fortune 门)。
 
-        offer 槽命中 → 投资策略屏(模态——overlay 对模态守卫推迟,
-        目标值本身不参与门判定);其余 = 节点类型映射(battle/reward →
-        备战,supply/遭遇 → 各节点屏,boss → 简报)。"""
+        目标值参与门的备战/非备战二分:offer 槽命中 → 投资策略屏
+        (非备战侧,fortune 条目存活等待);其余 = 节点类型映射
+        (:meth:`_screen_for_node` 单一源——battle/reward → 备战,
+        supply/遭遇 → 各节点屏,boss → 简报)。"""
         plane, r = self._node_pos()
         active_env = self.gs.active_env.value
         if offer_slots(plane, r, active_env):
             return SCREEN_INVEST_STRATEGY
         kind = node_sequence_of(plane)[r - 1]
-        return {'supply': SCREEN_SUPPLY, 'encounter': SCREEN_ENCOUNTER,
-                'boss': SCREEN_BOSS_BRIEFING}.get(kind, SCREEN_PREP)
+        return self._screen_for_node(kind)
 
     def _present_offer_or_node_screen(self) -> None:
         """offer 日程检查 → 节点屏呈现(节点窗口让路恢复序)。
@@ -1549,60 +1535,23 @@ class SimBackend:
         self._screen = SCREEN_SETTLE
         self._sub = ''
 
-    # ---------------------------------------------------------- 触发评估
+    # (巨星/planner 触发评估器与银狼全域星基线已随 overlay-trigger 3.5
+    #  退役删除:判据 = 容器值回调[cw_faction_callbacks],簿记 =
+    #  ScreenChanges sidecar,呈现 = pending 检查。)
 
-    def _evaluate_megastar(self) -> None:
-        """巨星评估器(盛会之星羁绊跨层入队;阈值语义源 =
-        data/cw_factions.py tiers,玩法语义 = 羁绊激活时弹出,一局可
-        多次——逐层一次性水位去重)。计数 = 板面真值(容器行全量重算,
-        与 :meth:`_refresh_board` 同一计算;事实事件发射点的 board 派生
-        值滞后于 obs 通道行写,真值扫描免漂移)。"""
-        count = self._board_truth().get('盛会之星', 0)
-        if count <= 0:
-            return
-        tiers = FACTIONS['盛会之星'].tiers
-        tier_idx = sum(1 for t in tiers if count >= t)
-        if tier_idx > self.megastar_fired_tier:
-            self.megastar_fired_tier = tier_idx
-            self.overlay_queue.push('megastar')
+    # ---------------------------------------------------------- 板面真值观察
 
-    def _evaluate_planner(self, event: FactEvent) -> None:
-        """planner 评估器(银狼首次升达 2 星;判据单一源 =
-        cw_sim_special.planner_overlay_due,「首次」语义 = 一次性标志;
-        star_up 事件携带合成卡名,升星前视图 = 后端逐事件维护的基线)。"""
-        card = str(event.detail.get('card', '') or '')
-        if self.planner_fired or card != SILVER_WOLF_ID:
-            self.planner_seen_star = max(self.planner_seen_star,
-                                         self._silver_wolf_max_star())
-            return
-        cur = self._silver_wolf_max_star()
-        if planner_overlay_due(SILVER_WOLF_ID, self.planner_seen_star, cur):
-            self.planner_fired = True
-            self.overlay_queue.push('planner')
-        self.planner_seen_star = cur
+    def _observe_board_truth(self) -> None:
+        """板面真值观察(与实机「每备战帧面板观察」同契约;标签单一源
+        = kernel ``_row_unit_tags``,容器行全量重算)。
 
-    def _silver_wolf_max_star(self) -> int:
-        """全板面银狼最高星级(备战席+前台+后台;kernel 合成产物落点 =
-        场上同名位,扫描必须全域;无银狼 → 0)。"""
-        stars: list[int] = []
-        bench_view = self.gs.bench.value
-        if bench_view is not None:
-            stars += [int(s.unit.star) for s in bench_view.slots
-                      if s is not None and s.kind == 'unit'
-                      and s.unit is not None
-                      and s.unit.char_id == SILVER_WOLF_ID]
-        _view = self.gs.deployed.value
-        for sub in ((_view.front_slots if _view is not None else ()),
-                    (_view.back_slots if _view is not None else ())):
-            stars += [int(u.star) for u in (sub or [])
-                      if u is not None and u.char_id == SILVER_WOLF_ID]
-        return max(stars, default=0)
-
-    # ---------------------------------------------------------- 板面基座
-
-    def _board_truth(self) -> dict[str, int]:
-        """板面羁绊计数真值(容器行全量重算;标签单一源 = kernel
-        ``_row_unit_tags``,与 :meth:`_refresh_board` 同一计算)。"""
+        sim 是板面真值唯一持有者,kernel board 为派生量且基座未读时
+        派生挂钩跳过——步界全量重算真值观察 board(等值零写):承担
+        派生基座首读 + obs 通道行写(装备腿等不经 write_logic 挂钩的
+        写)后的漂移覆盖;失配经容器吸收面(``_absorb_board_derived``,
+        sim 证据前缀命中抑制面)观察赢采新。触发点 = advance 步界
+        (overlay-trigger 3.5:原事实事件触发点随槽退役,观察义务
+        保留迁居——sim 板面观察的唯一步界)。"""
         truth: dict[str, int] = {}
         _view = self.gs.deployed.value
         for row_name, sub in (('front_row', _view.front_slots if _view is not None else ()),
@@ -1612,19 +1561,7 @@ class SimBackend:
                     continue
                 for tag in _row_unit_tags(unit, row_name):
                     truth[tag] = truth.get(tag, 0) + 1
-        return truth
-
-    def _refresh_board(self) -> None:
-        """板面真值观察(与实机「每备战帧面板观察」同契约)。
-
-        sim 是板面真值唯一持有者,kernel board 为派生量且基座未读时
-        派生挂钩跳过——后端在事实事件后全量重算真值观察 board(等值
-        零写):承担派生基座首读 + obs 通道行写(装备腿等不经
-        write_logic 挂钩的写)后的漂移覆盖;失配经容器吸收面
-        (``_absorb_board_derived``,sim 证据前缀命中抑制面)观察赢采新。
-        """
         gs = self.gs
-        truth = self._board_truth()
         plane, r = self._node_pos()
         if gs.board.value is not None and gs.board.value == truth:
             return
@@ -1691,16 +1628,14 @@ def install_backend(backend: SimBackend) -> None:
     set_action_rng_provider(
         lambda tool: stream_rng(backend.seed, f'action/{tool}/{next(seq)}'))
     cw_sim_ports.install_sim_backend(backend)
-    set_fact_event_sink(backend.on_fact_event)
 
 
 def uninstall_backend() -> None:
-    """卸载 sim 后端(端口槽 + 事实事件 sink + 动作腿 rng 提供槽复位;
+    """卸载 sim 后端(端口槽 + 动作腿 rng 提供槽复位;
     幂等)。"""
     from sr_od.application.currency_war.kernel.cw_action_report import (
         set_action_rng_provider,
     )
 
     set_action_rng_provider(None)
-    set_fact_event_sink(None)
     cw_sim_ports.uninstall_sim_backend()

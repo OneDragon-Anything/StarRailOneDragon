@@ -24,22 +24,23 @@
   结构);激活门槛/奖励数值无档 → 占位披露;
 - aha/hack/planner:选项类型 kernel 在册(Megastar/Partner/Planner
   Option);planner 二选一 = gameplay「角色升星」节有档(银狼首次升
-  2 星触发,M21 挂钩)——触发由 sim 后端事实事件评估器入队(cw_sim_backend._evaluate_planner),非自发采样。
+  2 星触发,M21 挂钩)——触发由 sim 后端判据链承载(overlay-trigger
+  3.5 起为容器值回调),非自发采样。
 
 随机流键(后端侧装配):逐 overlay 独立子键 ``M22/{name}/...``。
 """
 from __future__ import annotations
 
 import random
-from collections.abc import Iterator
 
 from sr_od.application.currency_war.kernel.cw_game_state import GameState
 from sr_od.application.currency_war.sim.cw_sim_base import obs_sig, sim_evidence
 
-#: overlay 族在册名(队列 kind 合法值;overlay 呈现态在册名)。
-OVERLAY_KINDS: frozenset[str] = frozenset({
-    'megastar', 'partner', 'expert', 'fate', 'aha', 'hack', 'planner',
-})
+# (旧队列 kind 词表已随 overlay-trigger 3.5 队列退役删除——呈现态
+#  在册名单一源 = kernel/cw_overlay_register 的九 kind 词表[partner/
+#  megastar/planner/wish_trial/fortune/star_tome/box_card/expert_invite/
+#  aha];sim 修正清单的正名[fate→wish_trial/expert→expert_invite/
+#  hack→planner]随旧词表消亡即终态,fortune 由登记词表补齐。)
 
 #: 占位参数统一披露键(随局结果消费;逐 overlay 细项入清单值)。
 OVERLAY_PARAM_PENDING: str = 'overlay_param_pending'
@@ -61,55 +62,15 @@ OVERLAY_PENDING_ITEMS: tuple[str, ...] = (
     'hack_effect',
 )
 
-#: Fate 二选一接取轮结构(§0.1 攻略补记单源:2F-5F 各一次;节坐标
-#: = (位面, 轮) 语义候实机对账,首版仅声明结构存在)。
-FATE_PICK_COUNT: int = 4
-
 #: 选项生成占位池大小(expert 五选一 = 画面档语义;megastar/partner
 #: 三选一占位)。
 EXPERT_OPTION_COUNT: int = 5
 TRIPLE_OPTION_COUNT: int = 3
 
 
-class OverlayQueue:
-    """统一 overlay 事件队列(触发入队 → 状态机模态呈现 → 选卡裁决 →
-    效果应用;sim 后端唯一 overlay 呈现通道)。
-
-    队列序 = 入队序(同帧多 overlay 按触发序逐个呈现;实机弹窗栈序
-    无档,入队序占位,候实机对账)。占位触发面(零载族)不经本队列
-    自发入队——首版默认不自发触发,U14「纳入建模」由「框架完整 +
-    显式入队驱动」承载,触发参数候实机补档。
-    """
-
-    def __init__(self) -> None:
-        self._pending: list[str] = []
-
-    def push(self, kind: str) -> None:
-        """overlay 入队(kind 须在册;集外名在入队期炸错防词表漂移)。"""
-        if kind not in OVERLAY_KINDS:
-            raise ValueError(f'overlay kind {kind!r} 不在册(OVERLAY_KINDS)')
-        self._pending.append(kind)
-
-    def push_planner(self) -> None:
-        """「我来当策划」入队(M21 有档触发:银狼首次升 2 星;后端
-        事实事件评估器调用)。"""
-        self.push('planner')
-
-    def peek(self) -> str | None:
-        """队首 overlay 名(空队 = None;后端状态机据此决定模态呈现)。"""
-        return self._pending[0] if self._pending else None
-
-    def pop(self) -> str:
-        """弹出队首 overlay(空队 RuntimeError;调用方先 peek)。"""
-        if not self._pending:
-            raise RuntimeError('overlay 队列为空')
-        return self._pending.pop(0)
-
-    def __len__(self) -> int:
-        return len(self._pending)
-
-    def __iter__(self) -> Iterator[str]:
-        return iter(tuple(self._pending))
+# (统一 overlay 事件队列已随 overlay-trigger 3.5 退役删除:sim 呈现
+#  数据源 = 容器登记 gs.screen_changes.pending[kernel/cw_overlay_
+#  register],判据 = 容器值回调[cw_faction_callbacks]。)
 
 
 def pending_disclosure_items(kind: str) -> tuple[str, ...]:
@@ -151,11 +112,13 @@ def apply_disclosed_pick(gs: GameState, kind: str, option: str) -> None:
     (在册位才写)+ 披露面消费;无战力消费面,数值候实机补档)。
 
     在册 chosen 位映射:megastar→chosen_megastar / partner→
-    chosen_partner / hack→chosen_hack;fate/aha 无独立 chosen 位,
-    只披露(防容器词表外写入)。
+    chosen_partner / planner→chosen_hack(骇入策划位;正名 =
+    register-consume「sim 修正清单」:旧 kind 名 hack 与 planner 同物,
+    现役 kind 词表 = kernel/cw_overlay_register);wish_trial/fortune/
+    aha 无独立 chosen 位,只披露(防容器词表外写入)。
     """
     field_map = {'megastar': gs.chosen_megastar, 'partner': gs.chosen_partner,
-                 'hack': gs.chosen_hack}
+                 'planner': gs.chosen_hack}
     sig = obs_sig(group_id='sim:overlay')
     field = field_map.get(kind)
     if field is not None:

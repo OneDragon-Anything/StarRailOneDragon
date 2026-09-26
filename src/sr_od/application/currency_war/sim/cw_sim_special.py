@@ -40,14 +40,9 @@ SILVER_WOLF_ID: str = '银狼LV.999'
 THREE_STAR_FIVE_COST_PENDING: str = 'three_star_five_cost_effect_pending_u26'
 
 
-def planner_overlay_due(char_id: str, star_before: int,
-                        star_after: int) -> bool:
-    """「我来当策划」触发判据(引擎合成腿后消费):银狼升达 2 星的
-    合成事件(首次语义 = 引擎一次性标志,本判据只答「该次合成触发
-    吗」;重复升 2 星事件由调用方以 fired 位去重)。"""
-    return (char_id == SILVER_WOLF_ID
-            and int(star_before) < 2 <= int(star_after))
-
+# (planner 升星判据助手已随 overlay-trigger 3.5 评估器退役删除:
+#  判据单一源 = kernel/cw_faction_callbacks 的星级值回调[S3],
+#  每费用档簿记 = ScreenChanges.planner_tiers_fired。)
 
 def trailblazer_form_of(char_id: str, row: str) -> str:
     """开拓者按排形态名(kernel 单一源引用口;非开拓者原样返回)。
