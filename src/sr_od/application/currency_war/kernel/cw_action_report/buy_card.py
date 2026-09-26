@@ -10,9 +10,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from sr_od.application.currency_war.kernel.cw_event_hooks import (
-    emit_fact_event,
-)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     BenchSlot,
     ChannelSig,
@@ -173,9 +170,6 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         gs.effects.on_buy(card, star, k)
     except Exception as e:  # noqa: BLE001  记录面失败不阻塞
         _log.warning(f'[cw-buy] 效果账本 on_buy 回调失败(不阻塞): {e}')
-    # 事实事件:板面组成变化(买牌合成落地)+ 升星事件(合成升星发生时;
-    # overlay 触发层消费,缺省关零开销)
-    emit_fact_event('board_changed', {'actor': sig.actor})
-    if _star_up:
-        emit_fact_event('star_up', {'actor': sig.actor, 'card': name})
+    # (事实事件广播已随 overlay-trigger 3.5 事实事件槽退役删除:sim
+    #  呈现/登记经容器值回调与问询时点呈现检查承载。)
     return LogicOutcome(applied=True, bought_count=k)

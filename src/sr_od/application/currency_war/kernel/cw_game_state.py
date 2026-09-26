@@ -1662,7 +1662,7 @@ class LogicOutcome:
     拒绝判定由腿内既有判定填充(stale_proposal / 满栏非合成拒买 /
     同名拒上),
     拒绝 = applied=False + reason + **零容器写**;拒绝结论唯一出口 =
-    本出参(transition 事件广播按 applied 位触发,kernel/cw_event_hooks),
+    本出参(transition 事件广播通道已随 overlay-trigger 3.5 事实事件槽退役删除),
     调用侧禁自判拒绝(§2.1 单一源红线)。live 调用点忽略本出参
     (返回值不接 = 行为零变化)。
 

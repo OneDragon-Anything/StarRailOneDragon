@@ -74,10 +74,7 @@ def report_action_sell_deployed_param(gs: GameState, param: Any, sig: ChannelSig
         _w(gs.equips, list(gs.equips.value or []) + list(sold.equips),
            'proj_sell_deployed_equips')
     # 事实事件:板面组成变化(sell 落地;overlay 触发层消费,缺省关零开销)
-    from sr_od.application.currency_war.kernel.cw_event_hooks import (
-        emit_fact_event,
-    )
-    emit_fact_event('board_changed', {'actor': sig.actor})
+    # (事实事件广播已随 overlay-trigger 3.5 事实事件槽退役删除。)
     return LogicOutcome(applied=True,
                         reason=str(getattr(param, 'reason', '') or ''),
                         income=int(refund))

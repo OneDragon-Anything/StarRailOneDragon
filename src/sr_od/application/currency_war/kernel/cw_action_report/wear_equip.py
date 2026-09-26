@@ -176,8 +176,5 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
     # (tracked 第二账已随 overlay-trigger 3.2 退役:容器侧本函数
     #  _write_mutated_domain 整值替换写已是单点,原「tracked deployed
     #  穿戴随动腿」无可同步;session 形参兼容保留。)
-    from sr_od.application.currency_war.kernel.cw_event_hooks import (
-        emit_fact_event,
-    )
-    emit_fact_event('board_changed', {'actor': sig.actor})
+    # (事实事件广播已随 overlay-trigger 3.5 事实事件槽退役删除。)
     return LogicOutcome(applied=True)

@@ -54,8 +54,8 @@ _TOOL_USE_MODULE = 'tool_use'
 # (sim 统一迭代 3.4 运行器装配缝;T-2 偏差申报的注入点归属。
 #  实机缺省 None = 采样未播种口径零变化——上报函数 ``rng=None`` 回退
 #  自掷随机(采样是猜测);sim 装配后由运行器经本槽注入流键 rng
-#  (采样即世界真值,全程确定性)。先例 = ``cw_event_hooks`` 事件槽
-#  「模块级槽 + 缺省关 + 装配点显式接通」。)
+#  (采样即世界真值,全程确定性)。先例 = 事实事件槽(已随
+#  overlay-trigger 3.5 退役)同款「模块级槽 + 缺省关 + 装配点显式接通」。)
 
 _ACTION_RNG_PROVIDER: Callable[[str], random.Random] | None = None
 
