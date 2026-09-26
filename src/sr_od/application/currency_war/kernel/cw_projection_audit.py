@@ -76,15 +76,13 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     # 星级读数 = 席位单元属性(非独立容器字段),其识别层单帧抖动的吸收
     # 规则 = star_two_frame_gate(kernel/cw_reconcile 槽位锚定 + 两帧一致
     # 才采新),随席位三域写路径一并申报(出处 run_20260915_054718 §5)。
-    'front_row': ProjectionAuditRow(
+    'deployed': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
-        basis='deploy/sell/swap 投影写端 + 行内纯重排采新'
-              '(deploy_slot_reorder,20260918-reconcile 第5例收口)'
-              ' + 星级抖动门采新(star_two_frame_gate,槽位锚定+两帧一致)'),
-    'back_row': ProjectionAuditRow(
-        status=AUDIT_ABSORB_RULE,
-        basis='deploy/sell/swap 投影写端 + 行内纯重排采新'
-              '(deploy_slot_reorder,20260918-reconcile 第5例收口)'
+        basis='deploy/sell/swap 投影写端(单字段视图整值替换,'
+              'overlay-trigger 3.1 容器合并)'
+              ' + 行内纯重排采新'
+              '(deploy_slot_reorder,20260918-reconcile 第5例收口;'
+              '吸收口径 = 子表内单元级多重集相等,换排不吸收)'
               ' + 星级抖动门采新(star_two_frame_gate,槽位锚定+两帧一致)'),
     'bench': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
@@ -163,7 +161,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='开局写定(简报/位面详情实采写门)+ 观察覆盖'),
     'board': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
-        basis='派生量:front_row/back_row 写端挂钩 _resync_board_delta'
+        basis='派生量:deployed 写端挂钩 _resync_board_delta'
               ' 自动重算,禁独立手写 + 派生漂移观察覆盖采新'
               '(board_derived_adopt,安灯不响);观察侧 badge OCR 双源仲裁'),
     'shop_refresh_cost': ProjectionAuditRow(
@@ -408,8 +406,7 @@ def audit_bad_status_keys() -> list[str]:
 _STOP_FAMILY_MECHANISMS: dict[str, tuple[str, ...]] = {
     'bench': ('star_two_frame_gate',),
     'gold': ('settle_truth',),
-    'front_row': ('deploy_slot_reorder', 'star_two_frame_gate'),
-    'back_row': ('deploy_slot_reorder', 'star_two_frame_gate'),
+    'deployed': ('deploy_slot_reorder', 'star_two_frame_gate'),
     'board': ('_resync_board_delta', 'board_derived_adopt'),
     'node': ('_shop_panel_type_target',),
 }

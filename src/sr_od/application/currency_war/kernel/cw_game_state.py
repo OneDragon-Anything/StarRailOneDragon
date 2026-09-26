@@ -156,8 +156,20 @@ if TYPE_CHECKING:
 #: 3 节点后自动回 9,经效果账本 §5.1 逻辑写入)。
 BENCH_CAPACITY_DEFAULT: int = 9
 
+#: 上阵前排物理槽位数(恒 4;同值常量 = ``cw_exec_state.DEPLOYED_FRONT_CAPACITY``,
+#: 3.1 容器合并起容器侧自有单一源,换算层退役后唯一)。
+DEPLOYED_FRONT_CAPACITY_DEFAULT: int = 4
+#: 上阵后排基线槽位数(动态容量 6-9 的下限;同值常量 =
+#: ``cw_exec_state.DEPLOYED_BACK_CAPACITY``)。定长 10 下标工作表(3.1
+#: 窗口期桥/tracked 主账坐标系)的后排段长 = 本值,扩展格 7-9 超出其
+#: 表示域(既有 tracked 硬上限边界,3.2 随 tracked 退役续辖)。
+DEPLOYED_BACK_CAPACITY_DEFAULT: int = 6
+
 #: 行级 schema 版本(§3.7.1)。域版本映射见 ``DEFAULT_GS_SCHEMA``。
-GAME_STATE_SCHEMA_VERSION: int = 1
+#: 版本 2 = 上阵域合卷(front_row/back_row 两紧凑行域 → deployed 单字段
+#: DeployedView 完整槽位表,overlay-trigger 3.1;旧档 restore 经迁移函数
+#: 单次转换,见 ``restore_state_snapshot``)。
+GAME_STATE_SCHEMA_VERSION: int = 2
 
 #: 域粒度版本映射的当前全集(缺域键 = 该域未建模,禁建「None=未建模」占位
 #: 字段,§2.2/§8.8)。域增删或字段语义破坏性变更时 bump 对应域版本。
@@ -165,7 +177,10 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'node': 2,              # node/node_path/node_path_baseline(§3.2.1/§3.2.2;域版本 2 =
                             # node_path 值形 list[str] → NodeChain 载体(逐格 TokenCell 元数据)
                             # + 新增基线链字段 node_path_baseline,链观察落地批 2026-09-16)
-    'units': 1,             # front_row/back_row/bench/back_layout(§3.2.3-§3.2.7)
+    'units': 2,             # deployed(单字段 DeployedView 完整槽位表)/bench/back_layout
+                            # (§3.2.3-§3.2.7;域版本 2 = front_row/back_row 两紧凑行域
+                            # 合卷为 deployed 单字段(overlay-trigger 3.1 容器合并,
+                            # 空槽 None 显式、位置 = 子表下标派生);版本 1 = 紧凑行域两字段)
     'economy': 1,           # gold/level/xp/streak/hp/level_up_cost(§3.2.9-§3.2.13)
     'match_facts': 6,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/定时道具队列/board
                             # (§3.1/§3.2.6/§3.2.14/§3.2.20;域版本 6 = 新增
@@ -454,16 +469,134 @@ class Unit:
     **阵营不存**(§3.2.3/§8.6-7):阵营是角色静态属性,由 char_id 查角色
     注册表(cw_chars)派生;唯一例外开拓者形态随排(前台=记忆/后台=欢愉),
     由 char_id+当前排推导。禁在 Unit 另存阵营(防注册表双源)。
+
+    **槽位不存**(overlay-trigger 3.1 起,原 slot 信息位退役):位置 =
+    所在子表下标纯派生(deployed = DeployedView.front_slots/back_slots
+    下标;bench = BenchView.slots 下标),单位跨域流动时位置由动作载荷
+    携带(DeployMove(to_row, to_slot) 等参数即此)。
     """
 
     char_id: str
     star: int                       # 星级 1..3(合成上限;观察期快照)
     equips: list[str] = field(default_factory=list)
-    # [索引定义] slot = 屏幕槽位号,行内 1 基(前排 1..4/后排 X 槽 1..N/
-    # 备战栏 1..9,坐标 = screen_info 区域);与现役 deployed 容器 0 基下标
-    # (:0-3 前台/4-9 后台)的换算归迁移映射层(批次二)。
-    # 取值时机 = 观察期快照。
-    slot: int = 0
+
+
+@dataclass(frozen=True)
+class DeployedView:
+    """上阵统一槽位视图(同族先例 = BenchView / ShopPayload.cards;
+    overlay-trigger 3.1 容器合并:front_row/back_row 两紧凑行域合卷)。
+
+    - front_slots[i] = 前排物理槽 i+1(定长 4,下标 = 前排物理槽-1);
+    - back_slots[j] = 后排物理槽 j+1(动态容量 6-9,随布局扩容;容量变化
+      = 整视图结构性写,先例 = BenchView.capacity 随效果改写);
+    - 空槽 = None 显式:槽位直址 = (子表, 下标),「紧凑下标 ≠ 物理槽位」
+      家族病灶(第二账 TrackedBooks 的存在理由)在本模型下结构性消失;
+    - 一次写 = 一次完整语义变更(换排/替换/空槽上场 = 单字段整值替换,
+      frozen 帧替换,先例 = wear_equip 的域整表重建写法)。
+    """
+
+    front_slots: list[Unit | None] = field(default_factory=list)
+    back_slots: list[Unit | None] = field(default_factory=list)
+
+
+def deployed_view_of_hits(front_hits: list, back_hits: list,
+                          back_capacity: int | None = None) -> DeployedView:
+    """观察读链命中 → 上阵视图(观察写端值构造单一源;读侧仍分排读屏)。
+
+    - hits 元素 = ``(排内 1 基槽号, Unit)``(identify_slots 直产,槽位对
+      携带——Unit 本体无槽位信息位,位置只在读链局部存在);
+    - back_capacity = 后排读到的槽位数(布局选档产物);缺省按命中最大
+      槽号与 6 取大(布局未知帧只读前排时保持 6 槽基线容量);
+    - 槽位越界命中(>前排 4 / >后排容量)丢弃并 log 留证(读链漂移信号,
+      与 _bench_view_of 同纪律:静默丢弃 = 身份静默丢失)。
+    """
+    front: list[Unit | None] = [None] * DEPLOYED_FRONT_CAPACITY_DEFAULT
+    for s, u in (front_hits or []):
+        if 1 <= int(s) <= DEPLOYED_FRONT_CAPACITY_DEFAULT:
+            front[int(s) - 1] = u
+        else:
+            log.warning('[cw!][identity] 上阵读链前排槽位越界丢弃:'
+                        'slot=%s char=%s(SIFT/星级读链漂移信号)',
+                        s, getattr(u, 'char_id', ''))
+    cap = max(int(back_capacity or 0),
+              max((int(s) for s, _u in (back_hits or [])), default=0), 6)
+    back: list[Unit | None] = [None] * cap
+    for s, u in (back_hits or []):
+        if 1 <= int(s) <= cap:
+            back[int(s) - 1] = u
+        else:
+            log.warning('[cw!][identity] 上阵读链后排槽位越界丢弃:'
+                        'slot=%s char=%s(SIFT/星级读链漂移信号)',
+                        s, getattr(u, 'char_id', ''))
+    return DeployedView(front_slots=front, back_slots=back)
+
+
+def deployed_view_sequential(front_units, back_units,
+                             back_capacity: int | None = None) -> DeployedView:
+    """紧缩单位序 → 上阵视图(顺延落位:第 k 个单位落槽 k)。
+
+    测试种子与旧档迁移的落位语义承接(原紧凑行域列表的「顺序即占位」
+    口径:紧凑序第 k 位 ↔ 物理槽 k)。前排恒 4 容量;后排容量 = 给定值
+    或 max(单位数, 6)。"""
+    front: list[Unit | None] = list(front_units or [])
+    while len(front) < DEPLOYED_FRONT_CAPACITY_DEFAULT:
+        front.append(None)
+    cap = int(back_capacity or 0) or max(len(list(back_units or [])), 6)
+    back: list[Unit | None] = list(back_units or [])
+    while len(back) < cap:
+        back.append(None)
+    return DeployedView(front_slots=front, back_slots=back)
+
+
+def deployed_rows_of_view(view: DeployedView | None,
+                          ) -> tuple[list[Unit], list[Unit]]:
+    """上阵视图 → 紧缩单位行(前排在前;空槽跳过)。"""
+    if view is None:
+        return [], []
+    return ([u for u in (view.front_slots or []) if u is not None],
+            [u for u in (view.back_slots or []) if u is not None])
+
+
+def deployed_indexed_of_view(view: DeployedView | None,
+                             ) -> list[Unit | None]:
+    """上阵视图 → 定长 10 下标工作表(3.1 窗口期桥:tracked 主账与合成
+    工作副本的既定坐标系;3.2 换算层退役时本桥随 tracked 消费端一并退)。
+
+    下标 0-3 = 前排槽 1-4 直取;4-9 = 后排槽 1-6(后排 7-9 扩展格超出
+    定长表表示域,按旧 deployed_rows_to_indexed 同语义截断丢弃——
+    tracked 表硬上限为既有边界,3.2 退役后续辖)。"""
+    view = view if view is not None else DeployedView()
+    back = list(view.back_slots or [])[:DEPLOYED_BACK_CAPACITY_DEFAULT]
+    while len(back) < DEPLOYED_BACK_CAPACITY_DEFAULT:
+        back.append(None)
+    return list(view.front_slots or []) + back
+
+
+def deployed_view_of_indexed(dep: list[Unit | None] | None,
+                             orig: DeployedView | None = None,
+                             ) -> DeployedView:
+    """定长 10 下标工作表 → 上阵视图(``deployed_indexed_of_view`` 逆桥;
+    合成/迁移工作副本落回容器的构造单一源)。
+
+    后排容量继承 ``orig``(工作表不辖容量——容量变化 = 整视图结构性写,
+    只经观察/布局改写);orig 缺席按 6。工作表触不到的后排 7-9 扩展格
+    原样保留 orig 值。"""
+    dep = list(dep or [])
+    orig = orig if orig is not None else DeployedView()
+    front = [dep[i] if i < len(dep) else None
+             for i in range(DEPLOYED_FRONT_CAPACITY_DEFAULT)]
+    back_len = max(len(orig.back_slots or []),
+                   DEPLOYED_BACK_CAPACITY_DEFAULT)
+    back = [dep[DEPLOYED_FRONT_CAPACITY_DEFAULT + j]
+            if DEPLOYED_FRONT_CAPACITY_DEFAULT + j < len(dep)
+            else None
+            for j in range(DEPLOYED_BACK_CAPACITY_DEFAULT)]
+    _orig_back = list(orig.back_slots or [])
+    while len(_orig_back) < len(back):
+        _orig_back.append(None)
+    for j in range(DEPLOYED_BACK_CAPACITY_DEFAULT, back_len):
+        back.append(_orig_back[j])
+    return DeployedView(front_slots=front, back_slots=back)
 
 
 @dataclass(frozen=True)
@@ -1490,8 +1623,9 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #:   (语义源 = simulate 对应分支逐腿平移,直锁 test_cw_transfer_golden
 #:   钉住);
 #:   CwActionDeployMoveParam 不入(围栏部署 = 结算期代理,obs 通道申报对齐);
-#: - 域集扩:front_row / back_row(v2 腿与合成连锁全场域写回,deployed
-#:   域语义)、board(**派生量**:行写端挂钩 ``_resync_board_delta``
+#: - 域集扩:deployed(原 front_row/back_row 两紧凑行域,overlay-trigger
+#:   3.1 容器合并为单字段完整槽位表;v2 腿与合成连锁全场域写回)、
+#:   board(**派生量**:行写端挂钩 ``_resync_board_delta``
 #:   自动重算,禁独立手写;单一源见该方法注)、equips(卖出回收腿);
 #: - 域集扩(2026-09-18):level(CwActionLevelUpShopParam 升档直写;语义源 = prep 腿
 #:   买经验上报(report_action_level_up_param)同款,推进单一源 =
@@ -1505,7 +1639,7 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #:   全集。
 SHOP_PROJECTION_DOMAINS: tuple[str, ...] = (
     'gold', 'bench', 'shop', 'xp', 'level',
-    'front_row', 'back_row', 'board', 'equips')
+    'deployed', 'board', 'equips')
 
 
 @dataclass(frozen=True)
@@ -1826,9 +1960,9 @@ def seed_opening_state(gs: GameState) -> None:
     (不进失配三分流);决策可信位消费不认(先例 = hp 可信位只认
     observation/carried)。种子值 = 容器建立时点的开局真值或基线,逐字段
     语义见各字段注释「开局种子底座」;B/C 类字段(None 为设计语义或无
-    观察源)一个不种。写序契约:行域(front_row/back_row)先写,board
+    观察源)一个不种。写序契约:行域(deployed)先写,board
     派生行经行域挂钩(:meth:`GameState._resync_board_delta`)随动自动落
-    ——种子空行零差且板未读无派生基座,种子面不产 board 行,禁双写。
+    ——种子空视图零差且板未读无派生基座,种子面不产 board 行,禁双写。
     """
     # 常量引用单一源(函数级懒 import 防模块环,同本模块惯例)
     from sr_od.application.currency_war.kernel.cw_economy import (
@@ -1845,8 +1979,9 @@ def seed_opening_state(gs: GameState) -> None:
                             evidence=_SEED_EVIDENCE, sig=sig)
 
     # —— 行域先写(board 派生行随动自动落)——
-    _seed(gs.front_row, [])
-    _seed(gs.back_row, [])
+    _seed(gs.deployed, DeployedView(
+        front_slots=[None] * DEPLOYED_FRONT_CAPACITY_DEFAULT,
+        back_slots=[None] * DEPLOYED_BACK_CAPACITY_DEFAULT))
     # —— 阵容/装备/晶矿(空底座为建立时点真值;补给在 1-1 进入时点送达,
     # 内容候实机观察,合并效应归观察覆盖)——
     _seed(gs.bench, BenchView(
@@ -1934,7 +2069,7 @@ class TrackedBooks:
     **执行侧簿记容器**:写端 = kernel reconcile_tracking(观察边界
     锚定写回)+ 动作随动同步(部署/卖出/溢出腿);**策略禁读**——观察
     状态与策略消费口 = GameState.tracked_account_observed +
-    bench/front_row/back_row 席位视图。
+    bench/deployed 席位视图。
     """
 
     bench: list = field(default_factory=lambda: _default_tracked_bench())
@@ -2076,8 +2211,12 @@ class GameState:
     node_path_baseline: Field[NodeChain | None] = field(default_factory=Field)  # 基线链(链正本 §2/§3:位面入口写定,本位面内不被链读覆盖)
 
     # —— 单位域(含星级与装备)——
-    front_row: Field[list[Unit]] = field(default_factory=Field)  # 前排成员(§3.2.3;开局种子底座冷建即空行,首观察覆盖)
-    back_row: Field[list[Unit]] = field(default_factory=Field)   # 后排成员(§3.2.4;开局种子底座冷建即空行,首观察覆盖)
+    # [索引定义] deployed = 上阵统一槽位视图(§3.2.3/§3.2.4 合卷,overlay-trigger
+    # 3.1):front_slots[i] = 前排物理槽 i+1(定长 4)/ back_slots[j] = 后排
+    # 物理槽 j+1(动态容量 6-9 随布局扩容);空槽 = None 显式;一次写 =
+    # 一次完整语义变更(换排/替换/空槽上场均单写);开局种子底座冷建即
+    # 4+6 全空槽视图,首观察覆盖。
+    deployed: Field[DeployedView] = field(default_factory=Field)
     bench: Field[BenchView] = field(default_factory=Field)       # 备战席统一槽位视图(§3.2.5;capacity 随效果改写;开局种子底座冷建即 9 空槽空视图——建立时点确无手牌,开局补给观察覆盖)
     back_layout: Field[int] = field(default_factory=Field)       # 后台格数(值域 6-9:平常 6,宝钻/召唤物扩展,上限 9;6/7/8/9 四档均已交互建档——9 档凭据=cw_back_layout._LAYOUT_PREFIX 与 screen_info 后排9槽-1..9;>9 域外按 8 格超集运行+evidence superset 标记,§3.2.7;开局种子底座=6 平常基线)
     # [索引定义] tracked_account_observed = tracked 主账(bench+deployed 两
@@ -2269,7 +2408,7 @@ class GameState:
     # settlement_ring/encounter_log:不经 observe/write_logic 通道,无观察赢
     # 仲裁,写端直改;占位件 kind 三分类随 BenchSlot 保留,deployed 行归属
     # 由下标派生)。**策略禁读**(消费口只有 game state 的观察态字段
-    # tracked_account_observed 与席位视图 bench/front_row/back_row);合法
+    # tracked_account_observed 与席位视图 bench/deployed);合法
     # 写端 = kernel reconcile_tracking(观察边界锚定写回)+ 动作随动同步
     # (prep 执行器/溢出腿/部署装备回写/商店 mutate)。
     tracked_books: TrackedBooks = field(default_factory=TrackedBooks)
@@ -2667,34 +2806,41 @@ class GameState:
     def _absorb_slot_reorder(self, field_name: str, target: Field,
                              value: Any, observed_evidence: str | None,
                              sig: ChannelSig) -> bool:
-        """行槽位纯重排吸收(§2.3 失配分支前置;front_row/back_row 专属)。
-        游戏侧会在**行内自行重排**已上阵单位(排序规则游戏私有,非 bot
-        动作,无逻辑写端)——同单位多重集的排列差异是机制性结构差异,不是
-        推算 bug。命中条件全列(缺一不可):字段 ∈ {front_row, back_row};
-        新旧值均为非空 list 且长度相等;单位多重集相等(键 =
-        :func:`_rows_unit_key`,槽位号不在键内,装备集在键内——穿戴变化
-        不算重排)。命中 → ``deploy_slot_reorder`` 台账行(无告警无停机,
-        豁免 ≠ 消失同纪律)后覆盖照常 = 采新(游戏侧排序为画面事实),
-        与对账纠漂(tracked 主账采新)两面同向;形状不符(缺员/多员/
-        星级差/装备差)返回 False 交回三分流照真失配停,真投影 bug 不被
-        吞。返回 True = 已吸收(调用方跳过失配分流)。"""
-        if field_name not in ('front_row', 'back_row'):
+        """行槽位纯重排吸收(§2.3 失配分支前置;deployed 域专属;吸收口径
+        = overlay-trigger 详设「观察与吸收」节)。游戏侧会在**子表内自行
+        重排**已上阵单位(排序规则游戏私有,非 bot 动作,无逻辑写端)——
+        同子表内单元级多重集相同、排列不同 = 读数抖动,是机制性结构差异,
+        不是推算 bug。命中条件全列(缺一不可):字段 = deployed;新旧值均
+        为 DeployedView;两子表各自单元多重集相等(键 =
+        :func:`_rows_unit_key`,槽位不在键内,装备集在键内——穿戴变化
+        不算重排)。**换排(跨子表移动)多重集必不等 → 不吸收**,照真
+        失配三分流(换排是我们发起的逻辑写,观察侧换排差异 = 推算与实读
+        分歧的合法信号)。同口径天然覆盖「容量变化」读数(投资改槽后
+        扩容帧:单元多重集不变仅尾空槽增减 = 吸收;容量变更无逻辑写端,
+        属游戏侧行为)。命中 → ``deploy_slot_reorder`` 台账行(无告警无
+        停机,豁免 ≠ 消失同纪律)后覆盖照常 = 采新(游戏侧排序为画面
+        事实),与对账纠漂(tracked 主账采新)两面同向;形状不符(缺员/
+        多员/星级差/装备差/换排)返回 False 交回三分流照真失配停,真投影
+        bug 不被吞。返回 True = 已吸收(调用方跳过失配分流)。"""
+        if field_name != 'deployed':
             return False
         old, new = target.value, value
-        if not isinstance(old, list) or not isinstance(new, list) \
-                or not old or not new or len(old) != len(new):
+        if not isinstance(old, DeployedView) or not isinstance(new, DeployedView):
             return False
-        old_keys = list(map(_rows_unit_key, old))
-        new_keys = list(map(_rows_unit_key, new))
-        if Counter(old_keys) != Counter(new_keys):
-            return False
+        for old_units, new_units in ((old.front_slots, new.front_slots),
+                                     (old.back_slots, new.back_slots)):
+            if Counter(map(_rows_unit_key, [u for u in old_units or []
+                                            if u is not None])) != \
+                    Counter(map(_rows_unit_key, [u for u in new_units or []
+                                                 if u is not None])):
+                return False
         _emit_defect(field_name=field_name, expected=old, actual=new,
                      evidence=observed_evidence, sig=sig,
                      logic_evidence=target.evidence,
                      kind='deploy_slot_reorder')
-        log.info(f'[cw][gs] 行内纯重排吸收:{field_name} 同单位多重集 '
-                 f'排列差异采新(游戏侧行内重排无逻辑写端,'
-                 f'deploy_slot_reorder 留证)')
+        log.info('[cw][gs] 行内纯重排吸收:deployed 子表内同单位多重集'
+                 '排列差异采新(游戏侧行内重排无逻辑写端,'
+                 'deploy_slot_reorder 留证)')
         return True
 
     def _absorb_board_derived(self, field_name: str, target: Field,
@@ -2714,7 +2860,7 @@ class GameState:
           羁绊;
         - badge OCR 单帧误读(第 5 例定谳:坏读数在观察侧)。
 
-        「上阵单位集合」这一真不变量由 front_row/back_row 自身的失配/
+        「上阵单位集合」这一真不变量由 deployed 自身的失配/
         纯重排吸收面独立把守,board 对动作推算 bug 无独立检出力 → 命中
         即落 ``board_derived_adopt`` 台账行(无告警无停机,豁免 ≠ 消失
         同纪律)后覆盖照常采新:派生量以观察为真值源,坏读数显影于台账
@@ -2741,7 +2887,7 @@ class GameState:
     def _resync_board_delta(self, field_name: str, old_value: Any, *,
                             produced_by: str, sig: ChannelSig,
                             rand: bool = False) -> None:
-        """board 派生重算单一源(front_row/back_row 逻辑写端挂钩;本方法
+        """board 派生重算单一源(deployed 逻辑写端挂钩;本方法
         是「羁绊/阵营计数 = 上阵单位集合的派生量」的落码位,写入口 =
         :meth:`_write_logic_frame` 行域写后自动触发(write_logic/
         write_logic_rand 共用),禁绕过手写 board)。rand = 继承行域写入
@@ -2749,8 +2895,10 @@ class GameState:
         奖励而变,board 为其派生,污染沿派生链传递)。
 
         语义 = **观察基座 + 行变更增量**:board 现值为 None(板未读过)
-        时无派生基座,跳过等观察首读;否则对本次行写做单位多重集差
-        (键 = :func:`_rows_unit_key`),新增单位逐个加其羁绊标签
+        时无派生基座,跳过等观察首读;否则对本次 deployed 写做**逐子表**
+        单位多重集差(键 = :func:`_rows_unit_key`;前排/后排各算各的差,
+        排名随子表传入 :func:`_row_unit_tags`——开拓者形态随排的标签
+        差因此自然成立),新增单位逐个加其羁绊标签
         (:func:`_row_unit_tags`,L1 全集+装备贡献),移除单位逐个减、
         减至 0 摘键(面板语义:无成员不显行),差为零不写。增量口径
         (非全量重算)的依据:观察基座含左面板真值的装备羁绊贡献,而
@@ -2764,30 +2912,37 @@ class GameState:
         board = self.board.value
         if board is None:
             return
-        new_value = getattr(self, field_name).value
-        old_counter = Counter(map(_rows_unit_key, list(old_value or [])))
-        new_counter = Counter(map(_rows_unit_key, list(new_value or [])))
-        added = new_counter - old_counter
-        removed = old_counter - new_counter
-        if not added and not removed:
-            return
+        new_view = getattr(self, field_name).value
+        old_view = old_value
         new_board = dict(board)
-        for u in list(new_value or []):
-            k = _rows_unit_key(u)
-            if added.get(k, 0) > 0:
-                added[k] -= 1
-                for t in _row_unit_tags(u, field_name):
-                    new_board[t] = new_board.get(t, 0) + 1
-        for u in list(old_value or []):
-            k = _rows_unit_key(u)
-            if removed.get(k, 0) > 0:
-                removed[k] -= 1
-                for t in _row_unit_tags(u, field_name):
-                    v = new_board.get(t, 0) - 1
-                    if v > 0:
-                        new_board[t] = v
-                    else:
-                        new_board.pop(t, None)
+        for sub, row_name in (('front_slots', 'front_row'),
+                              ('back_slots', 'back_row')):
+            old_units = [u for u in (getattr(old_view, sub, None) or [])
+                         if u is not None]
+            new_units = [u for u in (getattr(new_view, sub, None) or [])
+                         if u is not None]
+            old_counter = Counter(map(_rows_unit_key, old_units))
+            new_counter = Counter(map(_rows_unit_key, new_units))
+            added = new_counter - old_counter
+            removed = old_counter - new_counter
+            if not added and not removed:
+                continue
+            for u in new_units:
+                k = _rows_unit_key(u)
+                if added.get(k, 0) > 0:
+                    added[k] -= 1
+                    for t in _row_unit_tags(u, row_name):
+                        new_board[t] = new_board.get(t, 0) + 1
+            for u in old_units:
+                k = _rows_unit_key(u)
+                if removed.get(k, 0) > 0:
+                    removed[k] -= 1
+                    for t in _row_unit_tags(u, row_name):
+                        v = new_board.get(t, 0) - 1
+                        if v > 0:
+                            new_board[t] = v
+                        else:
+                            new_board.pop(t, None)
         if new_board == dict(board):
             return
         write = self.write_logic_rand if rand else self.write_logic
@@ -2943,11 +3098,10 @@ class GameState:
           (行域真值形态随采样奖励而变,board 为其派生,污染沿派生链
           传递);行域确定 logic 时 board 仍 logic。"""
         name = self._field_name(target)
-        old_row_value = target.value if name in ('front_row', 'back_row') \
-            else None
+        old_row_value = target.value if name == 'deployed' else None
         self._swap(name, Field(value=value, source=source, evidence=evidence),
                    sig=sig, note=note)
-        if name in ('front_row', 'back_row'):
+        if name == 'deployed':
             self._resync_board_delta(name, old_row_value,
                                      produced_by=produced_by, sig=sig,
                                      rand=(source == 'logic_rand'))
@@ -3588,6 +3742,65 @@ def maybe_emit_chain_diff(gs: GameState, *, snapshot: bool,
     return True
 
 
+def _unit_from_dict(d: dict) -> Unit:
+    """Unit 快照 dict 重建单一源(restore 各重建点共用;宽容读:
+    缺席字段走值缺省)。"""
+    return Unit(char_id=str(d.get('char_id') or ''),
+                star=int(d.get('star') or 1),
+                equips=list(d.get('equips') or []))
+
+
+def _restore_deployed_view(d: dict) -> DeployedView:
+    """快照 deployed 域重建(值形状 = DeployedView 序列化 dict;
+    元素 Unit dict 缺席/畸形 → None 空槽,宽容读契约;旧档迁移腿
+    传入的是已构建的 DeployedView 实例 → 直通透传)。"""
+    if isinstance(d, DeployedView):
+        return d
+    front = [(_unit_from_dict(u) if isinstance(u, dict) else None)
+             for u in (d.get('front_slots') or [])]
+    while len(front) < DEPLOYED_FRONT_CAPACITY_DEFAULT:
+        front.append(None)
+    back = [(_unit_from_dict(u) if isinstance(u, dict) else None)
+            for u in (d.get('back_slots') or [])]
+    while len(back) < DEPLOYED_BACK_CAPACITY_DEFAULT:
+        back.append(None)
+    return DeployedView(front_slots=front, back_slots=back)
+
+
+def _migrate_rows_snapshot_to_deployed(front_raw, back_raw) -> DeployedView:
+    """旧档迁移函数单一实现(schema 1 紧凑行域两列表 → DeployedView;
+    overlay-trigger 3.1 快照兼容:restore 兼容面 = 本函数一处,接管恢复
+    行为等价)。
+
+    旧档 Unit dict 自带 slot 信息位(1 基排内画面槽号)——按槽位落位;
+    缺席(0)/越界按占用序顺延兜底(与旧 ``deployed_rows_to_indexed``
+    兼容口径同向)。tracked_books 非 Field 本就不入快照流水,无需迁移。"""
+    def _place(units_raw, cap: int) -> list[Unit | None]:
+        out: list[Unit | None] = [None] * cap
+        cursor = 0
+        for u in (units_raw or []):
+            if not isinstance(u, dict):
+                continue
+            unit = _unit_from_dict(u)
+            s = int(u.get('slot') or 0)
+            idx = s - 1 if 1 <= s <= cap else -1
+            if idx < 0 or out[idx] is not None:
+                while cursor < cap and out[cursor] is not None:
+                    cursor += 1
+                idx = cursor if cursor < cap else -1
+                cursor += 1
+            if idx >= 0:
+                out[idx] = unit
+        return out
+
+    front = _place(front_raw, DEPLOYED_FRONT_CAPACITY_DEFAULT)
+    back_cap = max(DEPLOYED_BACK_CAPACITY_DEFAULT,
+                   max((int(u.get('slot') or 0) for u in (back_raw or [])
+                        if isinstance(u, dict)), default=0))
+    back = _place(back_raw, back_cap)
+    return DeployedView(front_slots=front, back_slots=back)
+
+
 def restore_state_snapshot(gs: GameState, snap: dict) -> None:
     """行内 state 快照 → 容器域恢复(波 5 回放/Δ池 journal 切源的
     离线判读面;序列化 = :meth:`GameState.full_state_snapshot`)。
@@ -3595,22 +3808,27 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
     - 直 setattr 重建 Field(绕 _swap:零流水行、零版本分配——恢复是
       离线读面非生产写路径);values 键缺位 = 域保持 None(快照只存
       非 None 值的口径往返一致);
-    - 复杂域按字段名重建(node/front_row/back_row/bench/shop/plane_bosses;
+    - 复杂域按字段名重建(node/deployed/bench/shop/plane_bosses;
       _json_safe 无类型标,恢复表 = 字段名单一源),其余域直透
       (标量/list/dict 形态值);
+    - **旧档迁移**(schema 1 → 2):values 携 front_row/back_row 两键而
+      无 deployed 键 = 旧紧凑行域档 → 经 :func:`_migrate_rows_snapshot_
+      to_deployed` 单次转换落 deployed(槽位语义等价;快照兼容面收口
+      于迁移函数一处);新档两键均不现;
     - source/evidence 取 prov 面(缺 = observation/None 缺省);
     - write_seq/工程结构不恢复(判读面不需要版本续接)。
     """
     values = snap.get('values') if isinstance(snap, dict) else None
     if not isinstance(values, dict):
         return
+    if 'deployed' not in values \
+            and ('front_row' in values or 'back_row' in values):
+        values = dict(values)
+        values['deployed'] = _migrate_rows_snapshot_to_deployed(
+            values.get('front_row'), values.get('back_row'))
+        values.pop('front_row', None)
+        values.pop('back_row', None)
     prov = snap.get('prov') if isinstance(snap.get('prov'), dict) else {}
-
-    def _unit(d: dict) -> Unit:
-        return Unit(char_id=str(d.get('char_id') or ''),
-                    star=int(d.get('star') or 1),
-                    equips=list(d.get('equips') or []),
-                    slot=int(d.get('slot') or 1))
 
     def _bench_view(d: dict) -> BenchView:
         slots: list[BenchSlot] = []
@@ -3619,7 +3837,7 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
             u = sd.get('unit')
             slots.append(BenchSlot(
                 kind=str(sd.get('kind') or 'empty'),
-                unit=_unit(u) if isinstance(u, dict) else None))
+                unit=_unit_from_dict(u) if isinstance(u, dict) else None))
         return BenchView(slots=slots,
                          capacity=int(d.get('capacity')
                                       or BENCH_CAPACITY_DEFAULT))
@@ -3662,10 +3880,7 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
         'node': lambda d: NodeKey(plane=int(d.get('plane') or 1),
                                   round_num=int(d.get('round_num') or 1),
                                   kind=str(d.get('kind') or '')),
-        'front_row': lambda lst: [_unit(u) for u in lst
-                                  if isinstance(u, dict)],
-        'back_row': lambda lst: [_unit(u) for u in lst
-                                 if isinstance(u, dict)],
+        'deployed': _restore_deployed_view,
         'bench': _bench_view,
         'shop': _shop_payload,
     }
@@ -3723,11 +3938,12 @@ def level_of(gs: GameState) -> int:
 
 def deployed_rows_of(gs: GameState) -> tuple[list[Unit], list[Unit]]:
     """上阵席位行域读口(容器原生,benchchar-retirement §2.1 计算形状):
-    ``front_row``/``back_row`` 现值直读,行内元素即容器 ``Unit``;任一行
-    未观察(None)按空行计(缺行 = 空行缺省)。"""
-    front = gs.front_row.value
-    back = gs.back_row.value
-    return list(front or []), list(back or [])
+    ``deployed`` 视图 → 紧缩单位行(前排在前,空槽跳过;子表序 = 物理
+    槽序),行内元素即容器 ``Unit``;视图未观察(None)按空行计(缺行 =
+    空行缺省)。紧缩序不含位置信息——需要物理槽位的消费面(装备分配
+    occupied 键/落位计划)改读 ``gs.deployed.value`` 视图按下标直址,
+    禁从本口输出反推槽位。"""
+    return deployed_rows_of_view(getattr(gs.deployed, 'value', None))
 
 
 def bench_units_of(gs: GameState) -> list[Unit]:

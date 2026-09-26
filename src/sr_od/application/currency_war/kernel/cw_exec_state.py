@@ -191,31 +191,25 @@ def bench_place(bench: list[BenchSlot | None], slot: BenchSlot) -> int | None:
     """放入首个空槽(买入落位语义);无空槽返回 None(=bench_full 拒)。
 
     容器原生形状(§2.1):元素 = ``BenchSlot | None``——None 洞(卖出/上阵
-    置 None 不移位)与 ``kind='empty'`` 同为空槽。放置时归一
-    单位槽号信息位 ``slot.unit.slot = 下标+1``(物理槽位 1-9,frozen
-    replace 新构造;非 unit kind 原样落槽)。
+    置 None 不移位)与 ``kind='empty'`` 同为空槽。槽位信息位已随 Unit.slot
+    退役(overlay-trigger 3.1):权威槽位 = 表下标,落位归一腿为恒等
+    (保留函数形状供调用方零改动;非 unit kind 原样落槽)。
     """
     for i, b in enumerate(bench):
         if b is None or b.kind == 'empty':
-            bench[i] = _slot_normalized_at(slot, i)
+            bench[i] = slot
             return i
     return None
 
 
-def _slot_normalized_at(slot: BenchSlot, idx: int) -> BenchSlot:
-    """BenchSlot 落位到下标 idx 的归一构造(unit 槽号信息位 = idx+1)。"""
-    if slot.kind == 'unit' and slot.unit is not None:
-        from dataclasses import replace
-        return replace(slot, unit=replace(slot.unit, slot=idx + 1))
-    return slot
-
-
 def bench_occupied_slot_nos(bench: list[BenchSlot | None]) -> list[int]:
-    """占用槽号信息位集(槽号健康门输入;None 槽跳过)。
+    """占用槽号集(槽号健康门输入;None 槽跳过)。
 
-    [索引定义] 值 = Unit.slot 信息位(1 基物理槽号);
-    信息位恒为派生位,权威槽位 = 表下标。"""
-    return [slot.unit.slot for slot in (bench or [])
+    [索引定义] 值 = 物理槽号(1 基) = 表下标 + 1;Unit.slot 信息位已退役
+    (overlay-trigger 3.1),槽号由下标派生——结构上恒唯一且 ∈ 1..容量,
+    健康门对下标派生输入恒过(防线保留给仍传信息位口径的过渡期调用方)。
+    """
+    return [i + 1 for i, slot in enumerate(bench or [])
             if slot is not None and slot.kind == 'unit'
             and slot.unit is not None]
 
@@ -269,8 +263,13 @@ def deployed_rows_to_indexed(front_row: list[Unit] | None,
     """容器行域(front_row/back_row)→ deployed 下标工作表(§2.1「10 槽表
     语义保留在需要处按行下标派生」的容器原生派生单一源;P1 消费面 =
     上报函数族/sim 的工作副本构造,元素即行内 Unit 对象,零中间形)。
-    Unit.slot = 行内 1 基画面槽号(信息位)定位,缺席(0)按占用
-    序顺延兜底(与旧紧缩构造兼容)。两行全未观察(None)→ [None]×10。"""
+
+    **3.1 窗口期申报**(overlay-trigger 详设:换算五函数保留至 3.2 随
+    tracked 消费端退役):Unit.slot 信息位已退役——本函数的槽位定位腿
+    (``u.slot``)对无信息位输入退化为占用序顺延落位;容器侧行域消费面
+    已改走 ``cw_game_state.deployed_indexed_of_view``(视图直取,位置
+    精确),本函数仅服务仍传旧档/紧缩行列表的窗口期调用方。两行全未观察
+    (None)→ [None]×10。"""
     out: list[Unit | None] = [None] * DEPLOYED_CAPACITY
 
     def _place(units: list[Unit], base: int, span: int) -> None:
@@ -295,17 +294,16 @@ def deployed_rows_to_indexed(front_row: list[Unit] | None,
 def deployed_indexed_to_rows(dep: list[Unit | None] | None,
                              ) -> tuple[list[Unit], list[Unit]]:
     """:func:`deployed_rows_to_indexed` 的逆派生:下标工作表 → 容器行域
-    (紧缩列表;Unit.slot 信息位归一 = 落位排内槽号)。行成员与槽号由
-    下标派生(§2.1 排归属由下标派生口径)。"""
+    (紧缩列表)。**3.1 窗口期申报**:Unit.slot 信息位退役后行成员落位
+    槽号归一腿为恒等;容器侧落回视图改走
+    ``cw_game_state.deployed_view_of_indexed``。行成员与排归属由
+    下标派生(§2.1 口径)。"""
     front: list[Unit] = []
     back: list[Unit] = []
-    from dataclasses import replace
     for i, u in enumerate(dep or []):
         if u is None:
             continue
-        _no = deployed_slot_no(i)
-        placed = replace(u, slot=_no) if u.slot != _no else u
-        (front if i < DEPLOYED_FRONT_CAPACITY else back).append(placed)
+        (front if i < DEPLOYED_FRONT_CAPACITY else back).append(u)
     return front, back
 
 

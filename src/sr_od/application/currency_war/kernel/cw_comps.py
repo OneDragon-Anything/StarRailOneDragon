@@ -1321,13 +1321,16 @@ def form_progress(comp: Comp, gs: GameState) -> float:
         n += 1
     required = getattr(comp, 'required_deployed', None) or ()
     if required:
-        # 席位经容器行读(无该属性 = 轻量假想面板,按 0 计保守向)
-        _front = getattr(getattr(gs, 'front_row', None), 'value', None)
-        _back = getattr(getattr(gs, 'back_row', None), 'value', None)
+        # 席位经容器视图读(无该属性 = 轻量假想面板,按 0 计保守向;
+        # overlay-trigger 3.1:行域合卷为 deployed 单字段,鸭型位同名)
+        _view = getattr(getattr(gs, 'deployed', None), 'value', None)
+        _front = getattr(_view, 'front_slots', None)
+        _back = getattr(_view, 'back_slots', None)
         deployed_names = {
             u.char_id
-            for u in (*(_front or ()), *(_back or ()))
-            if u is not None and getattr(u, 'char_id', None)}
+            for u in (*(u for u in (_front or ()) if u is not None),
+                      *(u for u in (_back or ()) if u is not None))
+            if getattr(u, 'char_id', None)}
         for name in comp.required_deployed:
             total += 1.0 if name in deployed_names else 0.0
             n += 1
@@ -1906,18 +1909,23 @@ def _wearable_gate_ok(worn_all: list[str], char: str, item: str) -> bool:
     return True
 
 
-def _iter_deployed_rows(deployed_rows: tuple[list, list] | None):
-    """容器行域 ``(front_row, back_row)`` → ``(行名, Unit)`` 序列
-    (排归属由行承载,§2.1;分配器与诊断共用同一展开,禁第二份)。"""
-    if not deployed_rows:
+def _iter_deployed_rows(view) -> list[tuple[str, int, object]]:
+    """上阵视图 → ``(行名, 排内 1 基槽号, Unit)`` 序列(分配器与诊断共用
+    同一展开,禁第二份;overlay-trigger 3.1:位置 = DeployedView 子表
+    下标派生,视图缺席 = 空序)。"""
+    if view is None:
         return []
-    front, back = deployed_rows
-    return ([('front', d) for d in (front or [])]
-            + [('back', d) for d in (back or [])])
+    out: list[tuple[str, int, object]] = []
+    for row_name, sub in (('front', view.front_slots),
+                          ('back', view.back_slots)):
+        for i, u in enumerate(sub or []):
+            if u is not None:
+                out.append((row_name, i + 1, u))
+    return out
 
 
 def equip_alloc_empty_reason(comp: Comp | None,
-                             deployed_rows: tuple[list, list],
+                             view,
                              owned: list[str],
                              occupied: dict[tuple[str, int], list[str]] | None = None,
                              ) -> str:
@@ -1939,8 +1947,8 @@ def equip_alloc_empty_reason(comp: Comp | None,
     与 ``equip_allocation`` 同输入口径(occupied/completed 前提下守卫状态一致:
     空分配 ⇔ 无任何 ``_assign`` 发生)。可行性判定与分配器共用
     ``_pairing_guard_ok``/``_wearable_gate_ok`` 单源(镜像纪律)。
-    ``deployed_rows`` = 容器行域 ``(front_row, back_row)``,元素 = 容器
-    ``Unit``(P4 容器形,排归属由行承载,occupied 键 (row, 行内槽号))。
+    ``view`` = 上阵视图 :class:`DeployedView`(overlay-trigger 3.1:位置 =
+    子表下标派生,排归属由子表承载,occupied 键 (row, 行内槽号))。
     """
     occ = occupied or {}
     pool = list(owned)
@@ -1958,19 +1966,16 @@ def equip_alloc_empty_reason(comp: Comp | None,
     worn_all: dict[str, list[str]] = {}
     capacity: dict[str, int] = {}
     by_name: dict[str, list] = {}
-    for row_name, units in _iter_deployed_rows(deployed_rows):
-        d = units
+    for row_name, slot_no, d in _iter_deployed_rows(view):
         n = getattr(d, 'char_id', None)
         if n:
-            by_name.setdefault(n, []).append((row_name, d))
-            for w in occ.get((row_name,
-                              int(getattr(d, 'slot', 0) or 0)), []):
+            by_name.setdefault(n, []).append((row_name, slot_no, d))
+            for w in occ.get((row_name, slot_no), []):
                 worn_all.setdefault(n, []).append(w)
                 if is_basic(w):
                     worn_basics.setdefault(n, []).append(w)
     for n, ds in by_name.items():
-        used = sum(len(occ.get((_rn, int(getattr(d, 'slot', 0) or 0)), []))
-                   for _rn, d in ds)
+        used = sum(len(occ.get((_rn, _sn), [])) for _rn, _sn, _d in ds)
         capacity[n] = max(0, EQUIP_CAPACITY * len(ds) - used)
     if not any(v > 0 for v in capacity.values()):
         return 'no_deployed' if not capacity else 'capacity_full'
@@ -1994,7 +1999,7 @@ def equip_alloc_empty_reason(comp: Comp | None,
 
 
 def equip_allocation(comp: Comp | None,
-                     deployed_rows: tuple[list, list],
+                     view,
                      owned: list[str],
                      occupied: dict[tuple[str, int], list[str]] | None = None,
                      priority_order: list[str] | None = None,
@@ -2009,9 +2014,9 @@ def equip_allocation(comp: Comp | None,
     2. **其余场上 core** 拿剩余 key_equips(core 顺序);
     3. **剩余通用 owned** 按 deployed 顺序兜底(前排在前 —— 受击/反甲类在前排生效)。
     ``occupied[(row, slot)]`` = 已穿列表(容量扣减,EQUIP_CAPACITY);
-    ``deployed_rows`` = 容器行域 ``(front_row, back_row)``,元素 = 容器
-    ``Unit``(char_id/slot 行内槽号,排归属由行承载——benchchar-retirement
-    P4 容器形)。comp=None → 全走 3(通用兜底)。纯函数(可离线测);
+    ``view`` = 上阵视图 :class:`DeployedView`(元素 = 容器 ``Unit``,
+    char_id/star/equips 直读,排归属与行内槽号由子表下标派生——
+    overlay-trigger 3.1)。comp=None → 全走 3(通用兜底)。纯函数(可离线测);
     消费面 = `kernel/cw_equip_env.py`(判据求值位)。
 
     ``priority_order``(18 号稿 §3.3 签名扩展):可选分配优先序
@@ -2067,16 +2072,15 @@ def equip_allocation(comp: Comp | None,
     pool = list(owned)
     if comp is None:
         priority_order = None   # 18 号稿 §3.3:未定型帧词缀谓词集合退化,强制零重排
-    _units = _iter_deployed_rows(deployed_rows)
+    _units = _iter_deployed_rows(view)
     by_name: dict[str, list] = {}
-    for row_name, d in _units:
+    for row_name, slot_no, d in _units:
         n = getattr(d, 'char_id', None)
         if n:
-            by_name.setdefault(n, []).append((row_name, d))
+            by_name.setdefault(n, []).append((row_name, slot_no, d))
     capacity: dict[str, int] = {}
     for n, ds in by_name.items():
-        used = sum(len(occ.get((_rn, int(getattr(d, 'slot', 0) or 0)), []))
-                   for _rn, d in ds)
+        used = sum(len(occ.get((_rn, _sn), [])) for _rn, _sn, _d in ds)
         capacity[n] = max(0, EQUIP_CAPACITY * len(ds) - used)
 
     # ===== :防误合成守卫 + 回收去向(P14 定理 3/4)=====
@@ -2095,12 +2099,11 @@ def equip_allocation(comp: Comp | None,
     # 的 W1/W2 输入,经合成产物展开消费)
     worn_basics: dict[str, list[str]] = {}
     worn_all: dict[str, list[str]] = {}
-    for row_name, d in _units:
+    for row_name, slot_no, d in _units:
         n = getattr(d, 'char_id', None)
         if not n:
             continue
-        for w in occ.get((row_name,
-                          int(getattr(d, 'slot', 0) or 0)), []):
+        for w in occ.get((row_name, slot_no), []):
             worn_all.setdefault(n, []).append(w)
             if _is_basic(w):
                 worn_basics.setdefault(n, []).append(w)
@@ -2242,7 +2245,8 @@ def equip_allocation(comp: Comp | None,
         return out
     # comp=None:轮转分配;配对守卫生效
     # (comp=None 无豁免信息 → 任何互为配方的基础件对不同人发)
-    _names = [d.char_id for _rn, d in _units if getattr(d, 'char_id', '')]
+    _names = [d.char_id for _rn, _sn, d in _units
+              if getattr(d, 'char_id', '')]
     _round = 0
     while pool:
         _gave = False

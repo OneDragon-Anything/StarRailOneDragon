@@ -716,7 +716,7 @@ class BoardRewriteReport:
     sold_units: int                # sell_all 已读出的出售单位数(前台+后台+备战席;
                                    # 字段从未观察 = 0,不代表实际卖数)
     cleared_fields: tuple[str, ...] = ()   # 实际执行逻辑清空的 GameState 字段名
-    partial_read: bool = False     # True = 出售域未全读(front_row/back_row/bench
+    partial_read: bool = False     # True = 出售域未全读(deployed/bench
                                    # 任一从未观察)→ 退款公式输入不完整,退款
                                    # 零写入等观察收口(effect-domain.md §6.3);
                                    # upgrade_all 恒 False(无出售面)
@@ -744,7 +744,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
 
     **字段从未观察(value=None)= 无容器可写,跳过**(同族先例 =
     project_effect_capacity):选卡后的下一备战帧观察必全量重读板面,
-    跳过不损真值到达。**出售域未全读**(front_row/back_row/bench 任一
+    跳过不损真值到达。**出售域未全读**(deployed/bench 任一
     value=None,典型 = 接管局/观察缺口局)= 退款公式的输入不完整(未读
     域实际卖数未知,refund 只是已读面的部分值)→ 不满足归属判据确定性
     分支「确定性公式+已知输入」的前提(effect-domain.md §6.3)→ 退款
@@ -794,20 +794,23 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
         anchor_aware_write,
     )
 
-    front = gs.front_row.value
-    back = gs.back_row.value
+    front = gs.deployed.value
     view = gs.bench.value
     bench_units = [s.unit for s in view.slots
                    if s.kind == 'unit' and s.unit is not None] \
         if view is not None else []
-    sold = list(front or []) + list(back or []) + bench_units
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        deployed_rows_of_view,
+    )
+    _front_units, _back_units = deployed_rows_of_view(front)
+    sold = _front_units + _back_units + bench_units
     refund = sum(sell_refund(int(u.star), bench_char_cost(u, gs))
                  for u in sold)
     # 出售域全读判据:front/back 均已读且 bench view 已读,退款公式的输入
     # (实际卖数)才完整——任一子域从未观察时 refund 只是已读面的部分值,
     # 归属判据确定性分支「确定性公式+已知输入」前提不成立
     # (effect-domain.md §6.3),该退款禁入金(等观察收口)。
-    partial_read = front is None or back is None or view is None
+    partial_read = front is None or view is None
 
     ev = f'effect_board_rewrite@{frame}' if frame else 'effect_board_rewrite'
     # 组签名:一次出售清空 = 一次逻辑计算,组内行同 group(§3.2.1 group_id
@@ -822,13 +825,13 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     # 锚定后走 write_logic,失配网生效(择道单一源 = anchor_aware_write)。
     write = anchor_aware_write(gs, rand=False)
     if front is not None:
-        write(gs.front_row, [], produced_by='EffectLedgerBridge',
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            DeployedView,
+        )
+        write(gs.deployed, DeployedView(front_slots=[], back_slots=[]),
+              produced_by='EffectLedgerBridge',
               evidence=ev, sig=sig)
-        cleared.append('front_row')
-    if back is not None:
-        write(gs.back_row, [], produced_by='EffectLedgerBridge',
-              evidence=ev, sig=sig)
-        cleared.append('back_row')
+        cleared.append('deployed')
     if view is not None:
         write(
             gs.bench,
@@ -845,9 +848,9 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     # partial_read)。
     if partial_read and refund > 0:
         log.warning(
-            '[cw!][effect-bridge] 板面重写出售域部分读(front=%s/back=%s'
+            '[cw!][effect-bridge] 板面重写出售域部分读(deployed=%s'
             '/bench=%s)→ 退款 %d 零写入等观察收口(§6.3 输入不完整)',
-            front is not None, back is not None, view is not None, refund)
+            front is not None, view is not None, refund)
     if gs.gold.value is not None and refund > 0 and not partial_read:
         gs.write_logic(gs.gold, int(gs.gold.value) + refund,
                        produced_by='EffectLedgerBridge', evidence=ev, sig=sig)
@@ -918,8 +921,11 @@ def held_equip_count(gs: GameState, name: str) -> int:
     - 纯读零写入(write_seq 不动)。
     """
     total = 0
-    for units in (gs.front_row.value, gs.back_row.value):
-        for u in units or []:
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        deployed_rows_of,
+    )
+    for units in deployed_rows_of(gs):
+        for u in units:
             total += sum(1 for e in (u.equips or []) if e == name)
     view = gs.bench.value
     if view is not None:
@@ -939,8 +945,11 @@ def worn_equip_count(gs: GameState, name: str) -> int:
     (未穿)不计——「装备者」语义 = 穿戴者。纯读零写入。
     """
     total = 0
-    for units in (gs.front_row.value, gs.back_row.value):
-        for u in units or []:
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        deployed_rows_of,
+    )
+    for units in deployed_rows_of(gs):
+        for u in units:
             total += sum(1 for e in (u.equips or []) if e == name)
     return total
 
@@ -1031,8 +1040,8 @@ def spawn_equip_bench_unit(gs: GameState, char_id: str, star: int,
       「席满点不动」同源);
     - star 集 1..3 外 = 调用错,显式炸错(禁静默写错;银狼LV.999 星级已
       随获得后果定谳为 1★[口述·权威 2026-09-18],走后果函数不入本桥);
-    - 落位单位 slot = 落位物理槽(slots[i] ↔ 槽 i+1,BenchView 坐标系;
-      观察期快照语义,下一观察覆盖为真值)。
+    - 落位单位位置 = 落位物理槽(slots[i] ↔ 槽 i+1,BenchView 坐标系;
+      Unit 无槽位信息位,位置 = 子表下标纯派生——overlay-trigger 3.1)。
     """
     if not 1 <= star <= 3:
         raise ValueError(f'star 须在 1..3(Unit 星级值域),得 {star}'
@@ -1053,7 +1062,7 @@ def spawn_equip_bench_unit(gs: GameState, char_id: str, star: int,
     if idx is None:
         return False
     slots[idx] = BenchSlot(kind='unit', unit=Unit(char_id=char_id, star=star,
-                                                  equips=[], slot=idx + 1))
+                                                  equips=[]))
     ev = f'equip_spawn@{frame}' if frame else 'equip_spawn'
     gs.write_logic(gs.bench,
                    BenchView(slots=slots, capacity=view.capacity),
@@ -1258,22 +1267,27 @@ def transform_worn_equip_to_privilege(gs: GameState, target: Unit,
     def _replaced(unit: Unit) -> Unit:
         equips = list(unit.equips)
         equips[equips.index(worn_name)] = counterpart
-        return Unit(char_id=unit.char_id, star=unit.star, equips=equips,
-                    slot=unit.slot)
+        return Unit(char_id=unit.char_id, star=unit.star, equips=equips)
 
     ev = f'equip_worn_transform@{frame}' if frame else 'equip_worn_transform'
-    for row_field in (gs.front_row, gs.back_row):
-        units = row_field.value
-        if units is None:
-            continue
-        for i, u in enumerate(units):
-            if u == target:
-                new_units = list(units)
-                new_units[i] = _replaced(u)
-                gs.write_logic(row_field, new_units,
-                               produced_by='EffectLedgerBridge', evidence=ev,
-                               sig=_equip_bridge_sig(gs))
-                return counterpart
+    from dataclasses import replace as _dc_replace
+
+    dep_view = gs.deployed.value
+    if dep_view is not None:
+        for sub_name in ('front_slots', 'back_slots'):
+            units = getattr(dep_view, sub_name, None)
+            if units is None:
+                continue
+            for i, u in enumerate(units):
+                if u == target:
+                    new_units = list(units)
+                    new_units[i] = _replaced(u)
+                    new_view = _dc_replace(dep_view, **{sub_name: new_units})
+                    gs.write_logic(gs.deployed, new_view,
+                                   produced_by='EffectLedgerBridge',
+                                   evidence=ev,
+                                   sig=_equip_bridge_sig(gs))
+                    return counterpart
     view = gs.bench.value
     if view is not None:
         for i, s in enumerate(view.slots):
@@ -1341,8 +1355,11 @@ def settle_copy_machine_participation(gs: GameState, *,
     matured: list[CopyMachineSpawn] = []
     for equip_name, threshold in COPY_MACHINE_MATURE_BATTLES.items():
         wearers: list[str] = []
-        for units in (gs.front_row.value, gs.back_row.value):
-            for u in units or []:
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            deployed_rows_of,
+        )
+        for units in deployed_rows_of(gs):
+            for u in units:
                 if equip_name in (u.equips or []) and u.char_id not in wearers:
                     wearers.append(u.char_id)
         for wearer in wearers:
@@ -1412,17 +1429,15 @@ def merge_cascade_write(gs: GameState, work_bench: list, work_dep: list, *,
     存在定谳,分组键 (char_id, star) 无跨档歧义)。
 
     P1 容器原生形状:``work_bench`` = list[BenchSlot | None](工作槽表)/
-    ``work_dep`` = list[Unit | None](行域下标派生表,§2.3);逐级合并后
-    受影响域各落一行(:meth:`cw_merge_simulate._merge_bench` on_step
-    范式;行域载体在场上 = bench+front+back 同号三行):
+    ``work_dep`` = list[Unit | None](定长 10 下标工作表,§2.3;overlay-trigger
+    3.1 窗口期桥,视图同源派生);逐级合并后受影响域各落一行
+    (:meth:`cw_merge_simulate._merge_bench` on_step 范式;行域载体在场上 =
+    bench + deployed 两行——deployed 单字段视图整值替换,合一写):
     rand=False 走 write_logic(确定面),rand=True 走 write_logic_rand
     (采样链内);
     - ``orig_view`` = bench 原观察帧(容量随原观察;None = 默认容量);
     - 返回落行数(测试/留证用)。
     """
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        deployed_indexed_to_rows,
-    )
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_view_of_working,
     )
@@ -1448,13 +1463,14 @@ def merge_cascade_write(gs: GameState, work_bench: list, work_dep: list, *,
             rows += 1
         ds = _slot_sig(work_dep)
         if ds != last_ds:
-            front, back = deployed_indexed_to_rows(work_dep)
-            write(gs.front_row, front, produced_by=producer, evidence=ev,
-                  sig=sig)
-            write(gs.back_row, back, produced_by=producer, evidence=ev,
-                  sig=sig)
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                deployed_view_of_indexed,
+            )
+            write(gs.deployed,
+                  deployed_view_of_indexed(work_dep, gs.deployed.value),
+                  produced_by=producer, evidence=ev, sig=sig)
             last_ds = ds
-            rows += 2
+            rows += 1
 
     _merge_bench(work_bench, work_dep, on_step=on_step)
     return rows
@@ -1486,19 +1502,19 @@ def grant_bench_unit_cascade(gs: GameState, name: str, star: int, *,
     """
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         bench_place,
-        deployed_rows_to_indexed,
     )
     from sr_od.application.currency_war.kernel.cw_game_state import (
         BenchSlot,
         Unit,
         bench_view_of_working,
+        deployed_indexed_of_view,
     )
     orig_view = gs.bench.value
     if orig_view is None:
         return BenchGrantResult(placed=False, merge_steps=0,
                                 detail='bench_unobserved')
     work_bench = list(orig_view.slots)
-    work_dep = deployed_rows_to_indexed(gs.front_row.value, gs.back_row.value)
+    work_dep = deployed_indexed_of_view(gs.deployed.value)
     if bench_place(work_bench, BenchSlot(
             kind='unit', unit=Unit(char_id=name, star=star))) is None:
         return BenchGrantResult(placed=False, merge_steps=0,

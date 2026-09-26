@@ -172,10 +172,13 @@ def readiness_form_ok_from_snapshot(state_snapshot: dict | None, *,
     deployed = [SimpleNamespace(char_id=str(u.get('char_id') or ''))
                 for u in (state_snapshot.get('deployed') or [])
                 if isinstance(u, dict)]
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        DeployedView,
+    )
     view = SimpleNamespace(
         board=SimpleNamespace(value=board),
-        front_row=SimpleNamespace(value=deployed),
-        back_row=SimpleNamespace(value=()))
+        deployed=SimpleNamespace(value=DeployedView(
+            front_slots=list(deployed), back_slots=[])))
     return form_progress(comp, view) >= 1.0
 
 

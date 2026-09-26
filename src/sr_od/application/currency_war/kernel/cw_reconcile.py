@@ -137,18 +137,22 @@ def _bench_read_entries(view: BenchView | None) -> list[tuple]:
     return out
 
 
-def _deployed_read_entries(rows) -> list[tuple]:
-    """观察行域 → 门/签名用的读条目(形态同 :func:`_bench_read_entries`)。
+def _deployed_read_entries(view) -> list[tuple]:
+    """观察视图 → 门/签名用的读条目(形态同 :func:`_bench_read_entries`)。
 
-    [索引定义] anchor = (排 'front'|'back', 排内 1 基槽号);条目序 = 前排
-    行序 + 后排行序(与观察读链 front+back 拼接读序一致,
-    漂移签名按序比较不受载体影响)。"""
-    if rows is None:
+    [索引定义] anchor = (排 'front'|'back', 排内 1 基槽号)——槽号 =
+    DeployedView 子表下标 + 1(overlay-trigger 3.1:位置 = 子表下标派生,
+    Unit 无槽位信息位);条目序 = 前排子表序 + 后排子表序(与观察读链
+    front+back 拼接读序一致,漂移签名按序比较不受载体影响)。"""
+    if view is None:
         return []
     out: list[tuple] = []
-    for row, units in (('front', rows[0]), ('back', rows[1])):
-        for u in (units or []):
-            out.append(((row, int(getattr(u, 'slot', 0) or 0)),
+    for row, sub in (('front', getattr(view, 'front_slots', None)),
+                     ('back', getattr(view, 'back_slots', None))):
+        for i, u in enumerate(sub or []):
+            if u is None:
+                continue
+            out.append(((row, i + 1),
                         str(getattr(u, 'char_id', '') or ''),
                         int(getattr(u, 'star', 1) or 1),
                         u))
@@ -168,11 +172,14 @@ def _apply_star_holds(reads, holds: dict[int, int]):
                      and id(s.unit) in holds) else s
                  for s in reads.slots]
         return BenchView(slots=slots, capacity=reads.capacity)
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        DeployedView,
+    )
     front = [replace(u, star=holds[id(u)]) if id(u) in holds else u
-             for u in (reads[0] or [])]
+             for u in (reads.front_slots or [])]
     back = [replace(u, star=holds[id(u)]) if id(u) in holds else u
-            for u in (reads[1] or [])]
-    return front, back
+            for u in (reads.back_slots or [])]
+    return DeployedView(front_slots=front, back_slots=back)
 
 
 def _gate_star_jitter(session, bench, deployed, screen, *,
@@ -189,7 +196,7 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
     (整帧双空读的候选清除在对账守卫分支,本函数不可达)。
 
     Returns:
-        (门后 bench 视图, 门后 deployed 行)。
+        (门后 bench 视图, 门后 deployed 视图)。
     """
     gs = game_state_of(session)
     from sr_od.application.currency_war.kernel.cw_exec_state import (
@@ -308,37 +315,42 @@ def _continue_equips_bench(old_list, view: BenchView | None) -> BenchView | None
     return BenchView(slots=slots, capacity=view.capacity)
 
 
-def _continue_equips_rows(old_list, rows):
-    """对账合并语义·deployed 侧:旧 tracked equips 续接到新读
-    行域(frozen replace)。续接结果只进 tracked 写回(容器行域观察写端
-    恒空表,不造假值 —— 空读守卫边界申报)。"""
-    if rows is None:
+def _continue_equips_deployed(old_list, view):
+    """对账合并语义·deployed 侧:旧 tracked equips 续接到新读视图
+    (frozen replace,槽位 = 子表下标原位)。续接结果只进 tracked 写回
+    (容器行域观察写端恒空表,不造假值 —— 空读守卫边界申报)。"""
+    if view is None:
         return None
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        DeployedView,
+    )
     pools = _old_equips_pools(old_list)
 
     def _row(units):
         out = []
         for u in (units or []):
-            if not (getattr(u, 'equips', None) or []):
+            if u is not None and not (getattr(u, 'equips', None) or []):
                 eq = pools.get(str(getattr(u, 'char_id', '') or ''))
                 if eq:
                     u = replace(u, equips=eq.pop(0))
             out.append(u)
         return out
 
-    return _row(rows[0]), _row(rows[1])
+    return DeployedView(front_slots=_row(view.front_slots),
+                        back_slots=_row(view.back_slots))
 
 
 def reconcile_tracking(session, bench: BenchView | None,
                        deployed, screen=None, *,
                        source: str = 'reconcile', ctx=None,
-                       ) -> tuple[bool, BenchView | None, tuple | None]:
+                       ) -> tuple[bool, BenchView | None, object]:
     """tracking 对账统一入口:新 SIFT 读 vs 旧 session tracking,守卫后写回。
 
     P6 观察链直产:入参即容器形状 —— bench = :class:`BenchView`(占位件
     kind 识别期细分,写回不再经 orig_view 回查/降级);deployed =
-    (前排 Unit 行, 后排 Unit 行)。None = 该侧失读(不写该侧、星级门不辖、
-    候选态保持);空视图/双空行 = 空读(可触发双空读守卫/清账,与旧紧缩
+    :class:`DeployedView`(overlay-trigger 3.1:读侧分排读屏、对账载体 =
+    合一视图,位置 = 子表下标派生)。None = 该侧失读(不写该侧、星级门
+    不辖、候选态保持);空视图 = 空读(可触发双空读守卫/清账,与旧紧缩
     空表语义一致)。
 
     守卫(审计 #11/#12):
@@ -363,7 +375,7 @@ def reconcile_tracking(session, bench: BenchView | None,
         直依),缺省关 = 无窗(纯两帧时间维门)。
 
     Returns:
-        ``(是否写回, 门后 bench 视图, 门后 deployed 行)``。门后副本 =
+        ``(是否写回, 门后 bench 视图, 门后 deployed 视图)``。门后副本 =
         星级抖动门保旧写账 + 装备续接后的读副本(frozen 形状以 replace
         承载与旧「就地改写读对象」等价的同帧共享语义),director 同帧
         容器观察写端消费门后值。是否写回:False 仅双空读守卫与 session
@@ -444,16 +456,16 @@ def reconcile_tracking(session, bench: BenchView | None,
         except Exception as _e:  # noqa: BLE001  观察态置位不阻断对账
             log.warning(f'[cw!][{source}] 观察态置位失败(不阻断): {_e}')
     if deployed is not None:
-        # P6 直产写回 = 行域 → 下标工作表(容器原生派生单一源,§2.1;元素
-        # 即行内 Unit,零中间形),装备续接只进 tracked(容器行域观察写端
-        # 恒空表)。
-        from sr_od.application.currency_war.kernel.cw_exec_state import (
-            deployed_rows_to_indexed,
+        # P6 直产写回 = 合一视图 → 下标工作表(3.1 窗口期桥,容器原生
+        # 派生单一源;元素即视图 Unit,零中间形),装备续接只进 tracked
+        #(容器行域观察写端恒空表)。
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            deployed_indexed_of_view,
         )
-        _front, _back = _continue_equips_rows(
+        _view_final = _continue_equips_deployed(
             game_state_of(session).tracked_books.deployed, deployed)
         game_state_of(session).tracked_books.deployed = \
-            deployed_rows_to_indexed(_front, _back)
+            deployed_indexed_of_view(_view_final)
     if drifted:
         log.warning(f'[cw!][{source}] 对账纠漂(read≠tracking):bench {old_b}→{new_b} |'
                     f' deployed {old_d}→{new_d}')

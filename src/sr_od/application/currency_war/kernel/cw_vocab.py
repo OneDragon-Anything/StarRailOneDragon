@@ -1127,7 +1127,6 @@ def mutate_bench_deployed(bench: list,
             # bench 槽,与 ``CwActionSwapDeployParam`` 换位契约同语义);
             # 禁静默换槽(不另寻空位),载荷槽越出定长表/跨排 = 不写
             # (陈旧载荷,交观察对账)。
-            from dataclasses import replace
             _slot = int(action.to_slot)
             _idx = deployed_idx_of(action.to_row, _slot)
             if not (0 <= _idx < DEPLOYED_CAPACITY) \
@@ -1137,10 +1136,10 @@ def mutate_bench_deployed(bench: list,
             # 开拓者形态切换(同 simulate 语义,归一核单一源)
             _u2 = trailblazer_row_unit(_u, action.to_row)
             _occ = deployed[_idx]
-            deployed[_idx] = replace(_u2, slot=_slot)
+            deployed[_idx] = _u2
             if _occ is not None:
                 bench[action.bench_idx] = BenchSlot(
-                    kind='unit', unit=replace(_occ, slot=action.bench_idx + 1))
+                    kind='unit', unit=_occ)
     elif isinstance(action, CwActionSellDeployedParam):
         # 动作 v2(契约包 C1):runtime 跟踪侧只做身份转移(金/装备归
         # sim/容器域其他写点,本函数不管——与 simulate 单一源规则一致)
@@ -1172,15 +1171,12 @@ def mutate_bench_deployed(bench: list,
                     if d is not None and _i != action.deployed_idx):
                 return
             # 上场者继承下场者排(排归属由下标派生,§2.1 口径)+ 开拓者
-            # 形态归一(归一核单一源);槽位信息位随落位归一(frozen replace)。
-            from dataclasses import replace
+            # 形态归一(归一核单一源)。
             _row = ('front' if action.deployed_idx < DEPLOYED_FRONT_CAPACITY
                     else 'back')
-            deployed[action.deployed_idx] = replace(
-                trailblazer_row_unit(in_unit, _row),
-                slot=deployed_slot_no(action.deployed_idx))
+            deployed[action.deployed_idx] = trailblazer_row_unit(in_unit, _row)
             bench[action.bench_idx] = BenchSlot(
-                kind='unit', unit=replace(out_unit, slot=action.bench_idx + 1))
+                kind='unit', unit=out_unit)
 
 
 

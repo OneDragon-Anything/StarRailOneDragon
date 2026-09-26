@@ -96,7 +96,7 @@ def apply_equip_env_variants(signals: EquipEnvSignals,
                              registry,
                              session,
                              comp: Comp | None,
-                             deployed_rows: tuple[list, list],
+                             view,
                              owned: list[str],
                              occupied: dict[tuple[str, int], list[str]] | None,
                              hold_active: bool,
@@ -108,15 +108,15 @@ def apply_equip_env_variants(signals: EquipEnvSignals,
     开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3;门级
     hold/生锈豁免在 equip_all 调用侧生效,不经本函数。``registry``/
     ``session``/``signals``/``hold_active`` 参数占位不再参与取值。)
-    ``deployed_rows`` = 容器行域 ``(front_row, back_row)``,元素 = 容器
-    ``Unit``(P4 容器形,直通 ``equip_allocation`` 同名参数)。
+    ``view`` = 上阵视图 :class:`DeployedView`(overlay-trigger 3.1,
+    直通 ``equip_allocation`` 同名参数)。
     ``priority_order``(18 号稿 §3.2/§3.3):词缀条件优先层
     重排输入序,直通 ``equip_allocation`` 同名可选参数(缺省 None 零漂移);
     决策/执行分层同 裁定 3——序由策略侧 resolve_affix_priority_order
     产出,本入口只转发,禁内嵌评分。
     """
     from sr_od.application.currency_war.kernel.cw_comps import equip_allocation
-    base = equip_allocation(comp, deployed_rows, owned, occupied,
+    base = equip_allocation(comp, view, owned, occupied,
                             priority_order=priority_order)
     return base, []
 
@@ -399,7 +399,7 @@ def resolve_wear_release(round_num: int | None, node_type: str | None,
     )
 
 
-def resolve_affix_priority_order(comp, deployed_rows: tuple[list, list],
+def resolve_affix_priority_order(comp, view,
                                  enemy_affixes: list[str] | None,
                                  occupied: dict[tuple[str, int], list[str]] | None = None,
                                  ) -> list[str] | None:
@@ -409,8 +409,8 @@ def resolve_affix_priority_order(comp, deployed_rows: tuple[list, list],
     词缀层不启用(无输出侧谓词词缀在场 / 谓词全满足 / comp 缺失),回落
     基分配序(零重排)。纯函数;决策层产物,执行层禁内嵌评分(
     裁定 3 分层)。
-    ``deployed_rows`` = 容器行域 ``(front_row, back_row)``,元素 = 容器
-    ``Unit``(排归属由行承载,occupied 键 (row, 行内槽号))。
+    ``view`` = 上阵视图 :class:`DeployedView`(overlay-trigger 3.1:位置 =
+    子表下标派生,occupied 键 (row, 行内槽号))。
 
     判据(§3.2,零新自由参数——N 与罚值全部来自结构化载体):
     1. 在册词缀集 = 载体条目 ∧ wear_predicate 非空 ∧ penalty_side=='output';
@@ -445,19 +445,18 @@ def resolve_affix_priority_order(comp, deployed_rows: tuple[list, list],
     from sr_od.application.currency_war.kernel.cw_comps import (
         _iter_deployed_rows,
     )
-    _units = _iter_deployed_rows(deployed_rows)
-    present = [getattr(d, 'char_id', '') for _rn, d in _units
+    _units = _iter_deployed_rows(view)
+    present = [getattr(d, 'char_id', '') for _rn, _sn, d in _units
                if getattr(d, 'char_id', '')]
     if not present:
         return None
     occ = occupied or {}
     worn: dict[str, int] = {}
-    for _rn, d in _units:
+    for _rn, _sn, d in _units:
         n = getattr(d, 'char_id', None)
         if not n:
             continue
-        cnt = len(occ.get((_rn,
-                           int(getattr(d, 'slot', 0) or 0)), []))
+        cnt = len(occ.get((_rn, _sn), []))
         worn[n] = worn.get(n, 0) + cnt
     # [9] 基序:plaza_carry → core_chars → 其余在场(deployed 序)
     base: list[str] = []

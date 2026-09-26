@@ -793,12 +793,18 @@ class _HypotheticalPanel:
     def __init__(self, board_counts: dict[str, int],
                  deployed_names: set[str]) -> None:
         from types import SimpleNamespace
+
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            DeployedView,
+        )
         self.board = SimpleNamespace(value=dict(board_counts))
-        # required 腿席位经行读:假想板上必需件按「已换入」计(臂前提 =
+        # required 腿席位经视图读:假想板上必需件按「已换入」计(臂前提 =
         # 卖后上序底线保证必需件落位;在此不计则判据恒缺腿,臂永不开)。
-        self.front_row = SimpleNamespace(
-            value=tuple(SimpleNamespace(char_id=n) for n in deployed_names))
-        self.back_row = SimpleNamespace(value=())
+        self.deployed = SimpleNamespace(
+            value=DeployedView(
+                front_slots=[SimpleNamespace(char_id=n)
+                             for n in deployed_names],
+                back_slots=[]))
 
 
 def _required_swap_victim_completion_holds(ctx: SwapPlanContext,

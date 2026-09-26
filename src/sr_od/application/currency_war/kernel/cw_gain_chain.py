@@ -46,8 +46,6 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     bench_place,
-    deployed_indexed_to_rows,
-    deployed_rows_to_indexed,
 )
 from sr_od.application.currency_war.kernel.cw_gain_effects import (
     PICK_INVEST_EFFECTS,
@@ -62,6 +60,8 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     anchor_aware_write,
     apply_effect_burst_grant,
     bench_view_of_working,
+    deployed_indexed_of_view,
+    deployed_view_of_indexed,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     BENCH_ITEM_NAMES,
@@ -278,12 +278,14 @@ def _dep_sig(deployed: list) -> list:
 @dataclass
 class _WorkPool:
     """链内工作池:gs 现帧派生的三域工作副本 + 构建时签名(gain-chain.md §2 落位
-    基座同 grant_bench_unit_cascade:bench 槽表 + 上阵行域下标派生表)。"""
+    基座同 grant_bench_unit_cascade:bench 槽表 + 上阵定长 10 下标工作表
+    ——overlay-trigger 3.1 窗口期桥,视图同源派生)。"""
 
     bench: list[BenchSlot | None]
     dep: list[Unit | None]
     ovf: list[BenchSlot]
     orig_view: BenchView
+    orig_dep_view: object = None
     bench_sig: list = field(default_factory=list)
     dep_sig: list = field(default_factory=list)
     #: 构建时溢出位身份('' = 溢出位空;容器字段只存身份串,星级不入
@@ -304,9 +306,9 @@ def _build_pool(gs: GameState,
     if orig_view is None:
         return None
     pool = _WorkPool(bench=list(orig_view.slots),
-                     dep=deployed_rows_to_indexed(gs.front_row.value,
-                                                  gs.back_row.value),
-                     ovf=[], orig_view=orig_view)
+                     dep=deployed_indexed_of_view(gs.deployed.value),
+                     ovf=[], orig_view=orig_view,
+                     orig_dep_view=gs.deployed.value)
     card = str(gs.overflow_card.value or '')
     if card in BENCH_ITEM_NAMES:
         # 占席道具身份(实机真值:道具与角色同款溢出语义)→ 惰性槽件,
@@ -331,18 +333,17 @@ def _overflow_occupied(gs: GameState) -> bool:
 def _write_merge_step(gs: GameState, pool: _WorkPool, *, rand: bool,
                       sig: ChannelSig, producer: str, evidence: str) -> None:
     """单级合成后的容器写(受影响域各落一行,merge_cascade_write 范式:
-    签名比对判「是否需要落行」;行域载体在场上 = bench+front+back 同号
-    三行;溢出位腾空 → overflow 两字段成对清写)。"""
+    签名比对判「是否需要落行」;行域载体在场上 = bench + deployed 两行
+    ——deployed 单字段视图整值替换,overlay-trigger 3.1 合一写;溢出位
+    腾空 → overflow 两字段成对清写)。"""
     write = _select_write(gs, rand)
     if _slot_sig(pool.bench) != pool.bench_sig:
         write(gs.bench, bench_view_of_working(pool.bench, pool.orig_view),
               produced_by=producer, evidence=evidence, sig=sig)
     if _dep_sig(pool.dep) != pool.dep_sig:
-        front, back = deployed_indexed_to_rows(pool.dep)
-        write(gs.front_row, front, produced_by=producer, evidence=evidence,
-              sig=sig)
-        write(gs.back_row, back, produced_by=producer, evidence=evidence,
-              sig=sig)
+        write(gs.deployed,
+              deployed_view_of_indexed(pool.dep, pool.orig_dep_view),
+              produced_by=producer, evidence=evidence, sig=sig)
     if pool.ovf_name and not pool.ovf:
         # 溢出件被合成消费/腾槽归位 → 溢出位腾空,两字段成对清写
         #(与落位写对称;下帧 heavy 实读覆盖修正)
