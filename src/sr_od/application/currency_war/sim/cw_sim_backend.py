@@ -999,12 +999,16 @@ class SimBackend:
             #(底层稳态由 _reconcile_next_screen 对账)。原专家邀请函档
             # 特判呈现随 S6 声明改底层屏退役——专家画面的出现事实由
             # 登记(kind = expert_invite,open_bookcard 上报内 register)
-            # 承载,呈现走本方法末尾的 pending 呈现检查。
+            # 承载,呈现走本分支尾的 pending 呈现检查。
             self._dismiss_modal()
         self._reconcile_next_screen(decl)
-        # overlay 呈现检查(3.4:呈现时机 = advance/步界;上报内已
-        # register 的条目在此呈现——模态守卫在呈现检查内,叠模态推迟)。
-        self._present_pending_overlay()
+        # overlay 呈现检查(3.4):**仅纯转移分支**——S6 声明改底层屏后
+        # open_bookcard/open_tome 的弹窗呈现入口(battle_resolve/
+        # node_advance 等其余分派保留原呈现时机 = 各自过程内/节点窗
+        # 起点检查,不在 advance 尾提前:overlay 让路序「窗起点 overlay
+        # 先于 offer」是旧引擎收尾检查序的锁定语义)。
+        if decl.trigger == '':
+            self._present_pending_overlay()
 
     def _reconcile_exempt_reason(self) -> str:
         """当前对账豁免场景(:data:`RECONCILE_EXEMPT_KINDS`;命中 =
@@ -1197,35 +1201,40 @@ class SimBackend:
             return
         self._dismiss_modal()
 
-    def _present_pending_overlay(self) -> None:
+    def _present_pending_overlay(self, fortune_base: str | None = None) -> None:
         """overlay 呈现检查(overlay-trigger 3.4:数据源 = 容器登记
         ``gs.screen_changes.pending``,私有 OverlayQueue 呈现面退役——
         队列本体随评估器归 3.5 清扫;呈现时机不变 = advance/步界检查)。
+
+        ``fortune_base`` = fortune 呈现门的底层判据屏(缺省 = 当前
+        ``_screen``;节点窗起点传**目标底层**——当前屏仍是旧结算屏,
+        评审 M1:判当前会吞掉后续呈现)。
 
         逐 kind 呈现门(register-consume.md「sim 消费」):
 
         - megastar:模态 + 候选写容器(场上盛会之星资格成员,含持徽
           贡献——候选语义 = 判据资格集同源);
-        - planner/partner/wish_trial/star_tome:模态(partner 附候选 =
-          列车同行资格集,wish_trial/star_tome 无 sim 选项数据模型 →
-          消费 + 披露,不呈现,防策略读空候选卡死);
-        - fortune:**逐 kind 呈现门**——仅底层 = 备战时呈现
-          (trigger-inventory §1.5:下一节点非备战时推迟,选完进备战先弹,
-          不压补给/遭遇屏);底层非备战 = 条目存活等待;
+        - planner:模态(选项桶实机 OCR 写点,sim 生成器批接线);
         - box_card/expert_invite:open_box/open_bookcard 的 advance 分派
-          已呈现对应模态(候选写入在各自过程),本检查幂等跳过;
-        - aha:无独立画面档(锚挂备战)且 sim 无选卡 op → 消费 + 披露
-          (实机 = 备战锚特殊规则点首件,sim 近似申报;register-consume
-          「生命周期」aha 消费口径)。
+          已呈现对应模态(候选写入在各自过程),本检查幂等守卫;
+        - fortune:**逐 kind 呈现门**——仅底层 = 备战时收口消费
+          (trigger-inventory §1.5:下一节点非备战时推迟,选完进备战
+          先弹,不压补给/遭遇屏);底层非备战 = 条目存活等待;
+        - aha/partner/fortune(备战底层时)/wish_trial/star_tome:无
+          sim 呈现面族(aha 无独立画面档,实机 = 备战锚特殊规则点
+          首件;其余画面 op 无 sim 观察腿,呈现即卡 observe 重试;
+          partner 候选可自资格集算,候观察腿接线再呈现)→ 消费 +
+          **逐 kind 披露**(披露键含 kind,多 kind 同帧各自留痕)。
 
         模态叠模态守卫(原语义):当前已在模态屏 = 推迟(交回后再查)。
         """
         pending = list(self.gs.screen_changes.pending)
+        _fortune_base = self._screen if fortune_base is None else fortune_base
         for entry in pending:
             kind = entry.kind
             if self._screen in _MODAL_SCREENS:
                 return   # 模态中:全部推迟(选完交回后再查)
-            if kind == 'fortune' and self._screen != SCREEN_PREP:
+            if kind == 'fortune' and _fortune_base != SCREEN_PREP:
                 continue   # 呈现门:底层非备战,条目存活等待(trigger-inventory §1.5)
             if kind in ('aha', 'partner', 'fortune', 'wish_trial',
                         'star_tome'):
@@ -1236,8 +1245,8 @@ class SimBackend:
                 # → 消费 + 披露(fortune 呈现门语义保留:底层非备战时
                 # 上方 continue 使条目存活)。
                 consume_screen_change(self.gs, kind)
-                self.disclosures.setdefault(
-                    OVERLAY_PARAM_PENDING,
+                # 逐 kind 披露(键含 kind,多 kind 同帧不互吞)。
+                self.disclosures[f'{OVERLAY_PARAM_PENDING}:{kind}'] = (
                     'aha_auto_consumed' if kind == 'aha'
                     else f'{kind}_options_unmodeled')
                 continue
@@ -1256,8 +1265,8 @@ class SimBackend:
                 return
             # 集外 kind 不可构造(kind 封闭集在 register 口炸),防御披露。
             consume_screen_change(self.gs, kind)
-            self.disclosures.setdefault(OVERLAY_PARAM_PENDING,
-                                        'unpresentable_kind')
+            self.disclosures[f'{OVERLAY_PARAM_PENDING}:{kind}'] = \
+                'unpresentable_kind'
 
     def _present_megastar_options(self) -> None:
         """巨星候选写容器(候选 = 场上盛会之星角色,含持星徽贡献;选项
@@ -1381,14 +1390,36 @@ class SimBackend:
                       probs=probs, tag=f'shop:deal:p{plane}r{r}')
         # overlay 呈现检查(旧引擎收尾序:overlay 先于 offer;呈现压住
         # 节点屏,选定经 _dismiss_modal 恢复位复走 offer 检查——让路
-        # 不吞 offer 槽)。overlay-trigger 3.4:呈现源 = 容器登记
-        # (fortune 呈现门「底层=备战」在此不辖——节点窗起点 = 让路
-        # 恢复位语义,备战窗口前呈现属收尾检查序)。
+        # 不吞 offer 槽)。overlay-trigger 3.4 修正(评审 M1):fortune
+        # 呈现门判**目标底层**(节点窗起点即将呈现的屏)而非当前
+        # _screen——窗起点时 _screen 仍是旧结算屏(判当前则门恒
+        # continue 吞掉后续呈现,resume 悬挂);battle/reward 目标 =
+        # 备战(fortune 收口),supply/遭遇 = 节点屏(条目存活)。
+        # resume='offer' 仅在实际压上模态时置(纯门存活零呈现 = 不置,
+        # 防无模态消费掉 resume 位);offer 槽屏(模态)在场 = overlay
+        # 推迟到选卡后(present 幂等序:overlay 优先,offer 恢复查)。
         if self.gs.screen_changes.pending:
-            self._window_resume = 'offer'
-            self._present_pending_overlay()
-            return
+            _base = self._screen
+            self._present_pending_overlay(
+                fortune_base=self._node_window_target_base())
+            if self._screen != _base:
+                self._window_resume = 'offer'
+                return
         self._present_offer_or_node_screen()
+
+    def _node_window_target_base(self) -> str:
+        """节点窗起点即将呈现的底层屏(不执行呈现,仅判定 fortune 门):
+
+        offer 槽命中 → 投资策略屏(模态——overlay 对模态守卫推迟,
+        目标值本身不参与门判定);其余 = 节点类型映射(battle/reward →
+        备战,supply/遭遇 → 各节点屏,boss → 简报)。"""
+        plane, r = self._node_pos()
+        active_env = self.gs.active_env.value
+        if offer_slots(plane, r, active_env):
+            return SCREEN_INVEST_STRATEGY
+        kind = node_sequence_of(plane)[r - 1]
+        return {'supply': SCREEN_SUPPLY, 'encounter': SCREEN_ENCOUNTER,
+                'boss': SCREEN_BOSS_BRIEFING}.get(kind, SCREEN_PREP)
 
     def _present_offer_or_node_screen(self) -> None:
         """offer 日程检查 → 节点屏呈现(节点窗口让路恢复序)。
