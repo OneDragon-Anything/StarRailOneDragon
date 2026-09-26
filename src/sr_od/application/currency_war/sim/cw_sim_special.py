@@ -11,7 +11,6 @@ from sr_od.application.currency_war.data.cw_chars import (
     trailblazer_form,
 )
 
-
 #: 三星五费特效披露键(战力特征无档,第一期无消费面)。
 THREE_STAR_FIVE_COST_PENDING: str = 'three_star_five_cost_effect_pending_u26'
 
