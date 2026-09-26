@@ -59,7 +59,6 @@ from one_dragon.utils import log_utils
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     DEPLOYED_CAPACITY,
     DEPLOYED_FRONT_CAPACITY,
-    deployed_slot_no,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     MATCH_FINAL_FIELD,
@@ -781,10 +780,11 @@ def _sell_deployed_target_names(frame: dict[str, Any]) -> set[str]:
     换算命中而非下标直取:serialize_state 落遥测的 deployed 是**紧缩
     占用序**(None 空槽剔除),帧内列表下标 ≠ 槽位表下标;
     deployed_idx→(排,排内槽号) 是固定双射(0-3=前排 1-4,4-9=后排
-    1-6,deployed_slot_no 单一源),条目级 position_pref/slot 信息位随
-    序列化保留、落位写端按落位下标归一,按此对上。键缺失/越界 =
-    解析不出身份,不入集合(该件落 unexplained,宁缺勿造不炸)。
-    CwActionSellBenchParam 卖的是备战席,不解释场上离场,不入集合。
+    1-6,overlay-trigger 3.2:换算族退役后内联算术承载),条目级
+    position_pref/slot 信息位随序列化保留、落位写端按落位下标归一,
+    按此对上。键缺失/越界 = 解析不出身份,不入集合(该件落
+    unexplained,宁缺勿造不炸)。CwActionSellBenchParam 卖的是备战席,
+    不解释场上离场,不入集合。
     """
     names: set[str] = set()
     dep = (frame.get('state') or {}).get('deployed') or []
@@ -796,7 +796,8 @@ def _sell_deployed_target_names(frame: dict[str, Any]) -> set[str]:
                 or not 0 <= idx < DEPLOYED_CAPACITY:
             continue
         row = 'front' if idx < DEPLOYED_FRONT_CAPACITY else 'back'
-        slot_no = deployed_slot_no(idx)
+        slot_no = (idx + 1 if row == 'front'
+                   else idx - DEPLOYED_FRONT_CAPACITY + 1)
         for e in dep:
             if (isinstance(e, dict) and e.get('char_id')
                     and e.get('position_pref') == row

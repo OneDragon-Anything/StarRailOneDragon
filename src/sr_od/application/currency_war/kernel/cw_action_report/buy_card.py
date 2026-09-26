@@ -28,7 +28,6 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     deployed_indexed_of_view,
     deployed_view_of_indexed,
     detect_merge_upgrade,
-    mutate_bench_deployed_local,
     shop_cards_to_legacy,
     shop_payload_content_cards,
 )
@@ -68,16 +67,13 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         ShopCard as _LegacyShopCard,
     )
 
-    # 买前快照三件组(升星腿 scratch 基点;必须在简单腿写之前取——基点
+    # 买前快照两件组(升星腿比较基点;必须在简单腿写之前取——基点
     # 误取买后容器会重复落位,shop 视图缺失会漏满栏合成)。bench 未观察
     # = 缺省形态 [None]×9(全空可落位,非满栏拒)。
     _pre_view = gs.bench.value
     pre_bench = (list(_pre_view.slots) if _pre_view is not None
                  else [None] * 9)
     pre_dep = deployed_indexed_of_view(gs.deployed.value)
-    _payload_pre = gs.shop.value
-    pre_shop = (shop_payload_content_cards(_payload_pre)
-                if _payload_pre is not None else [])
 
     _grp_sig = (sig if sig.group_id is not None else _dc_replace(
         sig, group_id=f'act:{sig.actor}@{gs.write_seq + 1}'))
@@ -149,17 +145,18 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
 
     # —— 升星腿(买前快照基点;整表 write_logic 后写覆盖,与简单腿
     #    两写合计的期望态由投影直锁钉住,锁 M1)——
+    # overlay-trigger 3.2:升星检测的比较基点 = 本函数主工作副本
+    # (scratch_b/scratch_d 已完成 bench_place/满栏合成买/级联合成的
+    # 全套应用,与买前快照 pre_bench/pre_dep 恰构成 before/after 对;
+    # 原经 mutate_bench_deployed_local 二次仿真取 after 的腿随 tracked
+    # 第二账退役删除——同一动作同一引擎,二次仿真是 tracked 时代形状)。
     from types import SimpleNamespace as _NS
 
-    scratch_mb = list(pre_bench)
-    scratch_md = list(pre_dep)
-    mutate_bench_deployed_local(scratch_mb, scratch_md, param,
-                                shop=pre_shop)
     _star_up = detect_merge_upgrade(_NS(bench=pre_bench, deployed=pre_dep),
-                                    _NS(bench=scratch_mb, deployed=scratch_md))
+                                    _NS(bench=scratch_b, deployed=scratch_d))
     if _star_up:
         gs.write_logic(gs.bench,
-                       bench_view_of_working(scratch_mb, _pre_view),
+                       bench_view_of_working(scratch_b, _pre_view),
                        produced_by='CwActionBuyCardParam',
                        evidence='proj_merge_upgrade',
                        sig=ChannelSig(

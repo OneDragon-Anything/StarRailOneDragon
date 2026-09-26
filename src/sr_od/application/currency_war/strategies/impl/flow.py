@@ -846,7 +846,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 'decide_shop_action: 容器商店 payload 离屏(shop=None)'
                 '(黑板契约容器化:在屏前置 gs.shop.value is not None;'
                 'None=观察层失约,禁静默按空态决策)')
-        # 未观察门(观察态落容器字段,策略消费只走 game state):tracked
+        # 未观察门(观察态落容器字段,策略消费只走 game state):主域观察锚
         # 主账未按屏幕真值锚定(接管/重置/账失效事件后,备战环 heavy 观察
         # 尚未置位)时商店决策的关键输入(席面)不可信——返回恒可用终结
         # CwActionCloseShopParam 交商店画面 op 执行收店,外循环全分支重判自然落回备战节点,heavy

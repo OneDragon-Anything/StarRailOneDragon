@@ -1591,8 +1591,10 @@ def read_board(ctx: SrContext, screen: MatLike) -> dict[str, int]:
     return {f: c for f, (c, _nt) in pairs.items()}
 
 
-def board_from_tracked(tracked: list) -> dict[str, int] | None:
-    """从 tracked_deployed(身份可靠时)**计算** board 羁绊计数(用户 2026-08-16 定:以算为准)。
+def board_from_deployed(dep: list) -> dict[str, int] | None:
+    """从主域 deployed 工作表(身份可靠时)**计算** board 羁绊计数
+    (用户 2026-08-16 定:以算为准;overlay-trigger 3.2:基线从 tracked
+    第二账改主域派生,函数更名 board_from_tracked → board_from_deployed)。
 
     OCR 左面板的坑:激活阵营多时**一页显示不全要滚动** → OCR 只读可视区,滚出屏的静默漏
     (board 是 form_progress/pivot/economy 的地基,漏阵营 = 半成型误判)。角色注册表
@@ -1601,26 +1603,26 @@ def board_from_tracked(tracked: list) -> dict[str, int] | None:
 
     口径(迁移审计 w50(git 历史)):per-unit 标签单一源 = ``cw_bond_equips.unit_bond_tags``
     ——L1 全集(factions+flows+independent,开拓者按排归一)**+ L2 星徽装备
-    羁绊贡献**(``tracked_deployed[].equips``,deploy_bench 读回在案):
+    羁绊贡献**(``deployed[].equips``,deploy_bench 读回在案):
     星徽「装备者加入【X】羁绊」/欢愉卡带「已是成员计数+1」装备后左面板
     该羁绊行 +1,是面板真值的一部分(迁移审计 w49(git 历史) §2:此前缺维度 → computed_vs_ocr
     常态化误报 + 星徽局档位系统性低估)。
 
     Returns:
-        {羁绊: 在场人数};**tracked 空 或 含未知身份(char_id 空/'?'/不在注册表)→ None**
+        {羁绊: 在场人数};**表空 或 含未知身份(char_id 空/'?'/不在注册表)→ None**
         (混合态不切,OCR 兜底——未知角色的阵营贡献算不出,半算比漏算更毒;观察冲突留证会暴露
         混合频率)。**无阵营已知角色不 bail**(2026-08-17):白厄「救世主」复制效果不计人数
         (官方 trait 3005)→ 跳过零贡献即精确;布洛妮娅(factions 空flows 燃血)正常贡献 flows;
         独立羁绊行计入(与左面板显示同口径)。
 
-    P1 入参形状 = tracked deployed 下标表(list[Unit | None],§2.3):
-    排归属由下标派生(0-3 前/4-9 后,§2.1 单一源口径),开拓者形态
-    归一按派生排传入(禁对条目 getattr 柔取 position_pref 旧字段)。
+    入参形状 = 主域派生下标工作表(list[Unit | None],cw_game_state.
+    deployed_indexed_of_view):排归属由下标派生(0-3 前/4-9 后,动作
+    坐标系单一源口径),开拓者形态归一按派生排传入。
     """
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         DEPLOYED_FRONT_CAPACITY,
     )
-    _occ = [(i, u) for i, u in enumerate(tracked or [])
+    _occ = [(i, u) for i, u in enumerate(dep or [])
             if u is not None]   # 槽位表滤 None
     if not _occ:
         return None
@@ -2427,13 +2429,18 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # - computed 有而 OCR 不可见 = 滚动截断(正常,不算错)。
     # - tracked 空/含未知 → None → OCR 兜底(现状;混合态半算比漏算更毒)。
     from sr_od.application.currency_war.kernel.cw_game_state import (
+        deployed_indexed_of_view,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         game_state_of as _gso_board,
     )
     _gs_session = getattr(_match, 'session', None) if _match is not None \
         else None
-    _tracked_dep = (_gso_board(_gs_session).tracked_books.deployed
-                    if _gs_session is not None else None)
-    _computed = board_from_tracked(_tracked_dep)
+    # computed 底座 = 主域 deployed 派生工作表(overlay-trigger 3.2:
+    # tracked 第二账退役,底座改主域派生;排归属由下标派生)。
+    _dep_work = (deployed_indexed_of_view(_gso_board(_gs_session).deployed.value)
+                 if _gs_session is not None else None)
+    _computed = board_from_deployed(_dep_work)
     # spec 无 board 的阶段(battle_or_transit)跳过面板 OCR:空 OCR 侧 + honest=False
     # → 有 tracked 时保 computed 底座、无 tracked 时空板(与「OCR 全 miss」同语义)。
     _bp, _board_honest = (

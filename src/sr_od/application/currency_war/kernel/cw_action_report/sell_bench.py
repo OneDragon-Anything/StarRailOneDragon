@@ -29,7 +29,8 @@ def report_action_sell_bench_param(gs: GameState, param: Any, sig: ChannelSig,
     (C6 守恒)+ 溢出腿(overflow_warning 在场时腾出槽当帧记溢出件入位,
     容器状态条件域无关;身份两分 = 角色入 unit 槽件 / 占席道具入
     supply_box 槽件,判据 = ``cw_investments.BENCH_ITEM_NAMES``;
-    session 在场时同帧对称吸收执行侧 tracked 主账)。
+    session 在场时同帧对称吸收执行侧主账;tracked 第二账退役后为兼容
+    形参,现无消费者)。
 
     槽位空/占位件非 unit/越界 = 陈旧提案,applied=False 零写(等观察
     覆盖);expect 非空且名不符 = stale_proposal 拒绝(live 提案恒 ''
@@ -85,20 +86,8 @@ def report_action_sell_bench_param(gs: GameState, param: Any, sig: ChannelSig,
         bench_slots[idx] = _absorb
         _w(gs.overflow_card, '', 'proj_overflow_absorbed')
         _w(gs.overflow_warning, False, 'proj_overflow_cleared')
-        # 执行侧 tracked 对称吸收:入位件同帧记进执行主账(P1 tracked
-        # 形状 = list[BenchSlot | None] 定长 9,按下标直写;原「摘槽号
-        # 幂等 + 槽表重建」腿的信息位寻址随形退役——
-        # 表下标权威,直写即同槽同位,保洞语义不变)。
-        if session is not None:
-            from sr_od.application.currency_war.kernel.cw_exec_state import (
-                BENCH_CAPACITY,
-            )
-            _books = gs.tracked_books
-            _tracked = list(_books.bench or [])
-            while len(_tracked) < BENCH_CAPACITY:
-                _tracked.append(None)
-            _tracked[idx] = _absorb
-            _books.bench = _tracked
+        # (tracked 第二账已随 overlay-trigger 3.2 退役:入位件随本函数
+        #  bench 整表写单点落主账,原「执行侧对称吸收腿」无可同步。)
     _w(gs.bench, BenchView(slots=bench_slots,
                            capacity=(_bview.capacity
                                      if _bview is not None

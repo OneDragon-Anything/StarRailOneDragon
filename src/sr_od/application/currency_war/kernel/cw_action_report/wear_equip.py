@@ -173,22 +173,9 @@ def report_action_wear_equip_param(gs: GameState, param: Any, sig: ChannelSig,
     owned.remove(param.item_name)
     gs.write_logic(gs.equips, owned, produced_by=_PRODUCER,
                    evidence=f'owned[{param.item_name}] -1(穿戴)', sig=_grp_sig)
-    if session is not None:
-        from sr_od.application.currency_war.kernel.cw_exec_state import (
-            deployed_idx_of,
-        )
-
-        idx_dep = deployed_idx_of(param.row, param.slot)
-        _books = gs.tracked_books
-        dep = list(_books.deployed or [])
-        if 0 <= idx_dep < len(dep) and dep[idx_dep] is not None:
-            # P1 tracked deployed = list[Unit | None](frozen):穿戴腿 =
-            # replace 新构造整表写回(原就地拼 equips 随形退役)。
-            dep[idx_dep] = replace(
-                dep[idx_dep],
-                equips=list(getattr(dep[idx_dep], 'equips', None) or [])
-                + [param.item_name])
-            _books.deployed = dep    # 事实事件:板面组成变化(wear 落地;overlay 触发层消费,缺省关零开销)
+    # (tracked 第二账已随 overlay-trigger 3.2 退役:容器侧本函数
+    #  _write_mutated_domain 整值替换写已是单点,原「tracked deployed
+    #  穿戴随动腿」无可同步;session 形参兼容保留。)
     from sr_od.application.currency_war.kernel.cw_event_hooks import (
         emit_fact_event,
     )

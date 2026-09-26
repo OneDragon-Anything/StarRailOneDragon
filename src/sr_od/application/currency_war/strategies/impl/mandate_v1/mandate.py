@@ -1175,7 +1175,7 @@ def mark_s1_route_check(session: StrategySession, state: GameState | None,
          「乱清」,后者可无限重复);
     (ii) S2 在册 ∧ 本帧落地使备战席 free 由 0 翻正——任意 tag 含凑息/
          压库(义务残差优先,猎点 14;腾席即解除 wanted 封锁约束,tag
-         不豁免);席位翻正读数 = 执行器 tracked 账 pre/post 现读;
+         不豁免);席位翻正读数 = 执行器主域 bench 视图 pre/post 现读;
     (iii) 门 1 = 消费臂内提前收敛形态,归 wanted_closure_emit,不经本门。
     纯金变更(晶矿金/无席变动的金入账)永不清(B3 裁决唯一绝对项)。
     商店域落地(apply_action_outcome)不挂本门(§3.3 落域澄清:店内段
