@@ -1046,7 +1046,7 @@ def action_key(action: CwAction) -> str:
             return type(action).__name__   # 无字段 dataclass(CwActionStartBattleParam 等)→ 裸名
         return f'{type(action).__name__}({params})'
     return type(action).__name__
-# (mutate_bench_deployed 已随 tracked 第二账退役删除:
+# (席位同步聚合口已随席位第二账退役删除:
 #  动作写主域(容器逻辑通道)即同步,第二账无可同步;执行点同步腿
 #  同批删除,合成仿真自主域工作副本构造(cw_action_report 族)。)
 # ===== 布局未知态的策略侧支撑(15 号稿批 C 落地审修订)=====

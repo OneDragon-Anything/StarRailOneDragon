@@ -81,7 +81,7 @@ def report_action_swap_deploy_param(gs: GameState, param: Any, sig: ChannelSig) 
             if d is not None and _i != d_idx):
         return LogicOutcome(applied=False, reason=f'duplicate_on_board:{_k}')
     # 上场者继承下场者排(排归属 = 子表承载)+ 开拓者形态归一(与
-    # mutate_bench_deployed 同核)。
+    # deploy_move 上报同核)。
     _row = 'front' if d_idx < DEPLOYED_FRONT_CAPACITY_DEFAULT else 'back'
     scratch_d = list(dep_slots)
     scratch_b = list(bench_slots)

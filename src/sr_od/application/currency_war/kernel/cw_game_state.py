@@ -499,7 +499,7 @@ class DeployedView:
     - back_slots[j] = 后排物理槽 j+1(动态容量 6-9,随布局扩容;容量变化
       = 整视图结构性写,先例 = BenchView.capacity 随效果改写);
     - 空槽 = None 显式:槽位直址 = (子表, 下标),「紧凑下标 ≠ 物理槽位」
-      家族病灶(第二账 TrackedBooks 的存在理由)在本模型下结构性消失;
+      家族病灶(席位第二账的存在理由)在本模型下结构性消失;
     - 一次写 = 一次完整语义变更(换排/替换/空槽上场 = 单字段整值替换,
       frozen 帧替换,先例 = wear_equip 的域整表重建写法)。
     """
@@ -1716,9 +1716,9 @@ class ShopActionExecuted:
     refresh_paid: int | None = None
 
 
-# (mutate_bench_deployed_local 惰性转发已随tracked
-#  第二账退役删除:cw_vocab.mutate_bench_deployed 同批退役,买牌上报
-#  升星检测改用自身主工作副本的 before/after 对拍。)
+# (旧席位同步聚合口的惰性转发已随席位第二账退役删除:词表侧同步
+#  聚合同批退役,买牌上报升星检测改用自身主工作副本的 before/after
+#  对拍。)
 
 
 def bench_view_of_working(slots: list, capacity_view=None) -> BenchView:
@@ -2059,7 +2059,7 @@ def tracked_unobserved(session: object) -> bool:
 # ============================================================ GameState 单例
 
 
-# (TrackedBooks 主账簿记组已退役删除:主域
+# (席位主账簿记组已退役删除:主域
 #  bench/deployed 席位视图成为唯一账(3.1 合卷提供完整槽位表,槽位
 #  直址 = 子表下标),第二账存在理由消失;原消费面去向 = 动作随动同步
 #  腿全删 / 对账基线改主域派生 / 商店守卫 expected 侧读主域。)

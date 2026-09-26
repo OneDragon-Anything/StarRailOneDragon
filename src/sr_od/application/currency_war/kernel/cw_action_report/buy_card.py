@@ -145,8 +145,8 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     # 升星检测的比较基点 = 本函数主工作副本
     # (scratch_b/scratch_d 已完成 bench_place/满栏合成买/级联合成的
     # 全套应用,与买前快照 pre_bench/pre_dep 恰构成 before/after 对;
-    # 原经 mutate_bench_deployed_local 二次仿真取 after 的腿随 tracked
-    # 第二账退役删除——同一动作同一引擎,二次仿真是 tracked 时代形状)。
+    # 原二次仿真取 after 的腿随席位第二账退役删除——同一动作同一
+    # 引擎,二次仿真是第二账时代形状)。
     from types import SimpleNamespace as _NS
 
     _star_up = detect_merge_upgrade(_NS(bench=pre_bench, deployed=pre_dep),
