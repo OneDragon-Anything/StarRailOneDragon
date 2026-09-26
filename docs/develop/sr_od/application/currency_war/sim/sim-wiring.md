@@ -40,7 +40,7 @@
 | pending_loss | 世界腿：`loss:pending` 战斗结算失败腿写；轮首败补支消费后清账（`clear_pending_loss`） | 轮首收入 U04 败补支输入 |
 | bench | 世界腿：opening 播种（M06 派生池首个写端）；动作腿：BuyCard 落位/合成连锁/SellBench 同实机 | 读口 `bench_view_slots_of`/`bench_entries_of`/`bench_units_of` + 派生 `bench_free_slots`/`bench_is_full` |
 | front_row / back_row | 动作腿：上报族按载荷落位直写两行（同实机）；世界腿无整行写点 | 读口 `deployed_rows_of`/`deployed_count_of` 等 |
-| board | 动作腿：v2 腿重算同实机；世界腿：后端板面真值基座刷新（`SimBackend._refresh_board`，重算单一源 = `kernel/cw_bond_equips._recount_board`，事实事件后触发） | 围栏判据/策略；巨星评估器计数真值 |
+| board | 动作腿：v2 腿重算同实机；世界腿：后端板面真值观察（`SimBackend._observe_board_truth`，advance 步界等值零写） | 围栏判据/策略；overlay 判据计数真值（现役判据读 deployed 行，不读 board） |
 | equips | 动作腿：穿戴/卖出同实机；世界腿：开箱选定走 kernel `gain_equipment`（producer = `SimBackend`，证据 `sim:box_pick`） | 装备分配消费面 |
 | shop | 世界腿：`shop:deal` 节点切换自动全刷（kernel `sample_shop_deal` 单一源，整店锁跳过）；动作腿：刷新采样/买牌槽置换/CloseShop 离屏同实机 | 策略决策面（payload.cards 三态消费） |
 | shop_locked | 世界腿：reset 初值恒 False（`shop_lock:v1_unlocked`；v1 无锁动作通道，字段先行 + 披露） | M05 全刷跳过判据 |
@@ -86,10 +86,10 @@ readable/trusted 位恒按真值填（`cw_sim_obs_gen.py::gen_shop`），消费�
 | 节点屏刷新剩余呈现 | 呈现腿诚实缺位为主（环境逐卡刷新剩余/遭遇刷新剩余等生成器产缺位值，report 按「缺不写」防御语义跳写；补给刷新剩余由呈现写点给初值、刷新动作腿同实机递减） | 刷新类决策域以代码当期实现为准逐键判读 |
 | 战斗随机输出面 / 扣血分量 / P3 / overlay 余族 / 词缀张数分布等 | 未建模申报清单单一源 = [sim-design.md](sim-design.md) §8.2（本表不复写） | 逐键披露挡外推 |
 
-## 六、事件接线（后端订阅面 + 声明喂入）
+## 六、装配与声明喂入
 
-装配（`sim/cw_sim_backend.py::install_backend`）= 端口槽 + 事实事件 sink +
-动作腿 rng 提供槽三槽；卸载（`uninstall_backend`）幂等复位：
+装配（`sim/cw_sim_backend.py::install_backend`）= 端口槽 + 动作腿 rng
+提供槽两槽；卸载（`uninstall_backend`）幂等复位：
 
 - **端口槽**：`cw_sim_ports.install_sim_backend`（进程内单装配）。转移类
   动作后果不经订阅通道——转移动作 op 自上报出口一行
@@ -98,9 +98,11 @@ readable/trusted 位恒按真值填（`cw_sim_obs_gen.py::gen_shop`），消费�
   过程/画面呈现并按 `decl.next_screen` 等值对账（契约正本 =
   [sim-design.md](sim-design.md) §6.3；18 转移动作的声明终值 =
   [../flow/action_ops.md](../flow/action_ops.md) §4.8）。
-- **事实事件 sink**：`kernel/cw_event_hooks.set_fact_event_sink`（缺省关）→
-  `SimBackend.on_fact_event`：`board_changed` → 巨星评估器 + 板面真值刷新；
-  `star_up` → planner 评估器；消费后统一做 overlay 待呈现检查。
+
+不引发画面转移的世界变化不经订阅通道：overlay 判据 = kernel 值回调
+（`kernel/cw_faction_callbacks.py`，deployed 逻辑写尾内联，sim/实机同源，
+见 [sim-design.md](sim-design.md) §4.1）；板面真值观察 =
+`SimBackend._observe_board_truth`（advance 步界，等值零写）。
 
 ## 羁绊口径分层（board 统计语义单一源声明）
 

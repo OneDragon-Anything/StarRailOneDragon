@@ -46,18 +46,35 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 > **所有分发经统一包装 `_dispatch_screen_op` 落主日志 `[cw-op]` 行**与决策帧留证。身份命中臂 = `_dispatch_identity_screen` 精确键派发（键互斥,无顺序语义）;新增画面 = 建档（语料两向验证）+ 处理器臂 + `CW_DISPATCH_SCREENS` 登记,三处缺一不可。
 
 ```
-阶段一 身份分发：name = get_match_screen_name(ctx, frame, CW_DISPATCH_SCREENS)
+阶段一 身份分发（两段式判定,实机专属;sim 身份 = 后端状态机答口）：
+        第一段（登记预测优先,实机且容器登记 pending 非空时）：
+        按登记序逐屏 is_target_screen(ctx, frame, screen_name=predicted)
+        试,命中即取该名——登记条目长度通常 ≤2,弹窗动作落地即弹的确定性
+        预测;候选过滤 = 仅 screen_name ∈ CW_DISPATCH_SCREENS 的条目
+        （aha 类条目的屏档名 = 备战底屏,无独立分发屏,不参与两段式——
+        实机走阶段三反应式 + 兜底清收口,防命中备战名落入无备战臂死循环）。
+        机制依据 = get_match_screen_name 按 loader 序遍历、传入清单只作
+        过滤集不承序——提速必须两段式,重排清单无效。
+        第二段（全扫描,反应式兜底不变）：
+        name = get_match_screen_name(ctx, frame, CW_DISPATCH_SCREENS)
         （判据 = 各画面建档 id_mark 组合;清单 = 过滤器非优先级,遍历序 = loader 序,
           各画面身份经语料两向验证互不共命中后顺序不承重）
+        识别对账行：登记预测非空且实扫结果 ∉ 预测屏名集 → journal arbitrate
+        留证（判据假阳/延迟呈现漂移警报,best-effort 不阻塞分发）。
         命中 → _dispatch_identity_screen(name, frame) 派发对应画面处理器
         （位面过渡臂含 boss 判别排他:帧含'强敌'片段 → 接管派发 BOSS简报,
           防 boss 帧位面锚可读时误派过渡 op）
 阶段三 特殊规则（无独立画面档/身份不可表达;互相锚互斥,顺序不承重）：
         道具详情弹窗（OCR'聘用书' ∧ 非祈愿屏,祈愿排除为纵深）
         消耗品浮层（OCR'消耗品'∧'拖动到'）
-        阿哈装备选择（备战档'标识-简易装备',固定策略=点第 1 件,申报）
+        阿哈装备选择（备战档'标识-简易装备',固定策略=点第 1 件,申报;消费口径 =
+        兜底清空,见阶段二清点）
 阶段二 备战表面默认分支（双锚：'备战标识-购买经验' ∧ '按钮-出战';横幅中间态守卫：
         OCR'请选择投资策略' lcs 0.8 在场 → round_wait 等展开,#30 裁定）
+        双锚命中 → 容器登记兜底清空（本轮分发未接住任何 pending 条目 → 整列清,
+        判据假阳条目最多活到下一轮分发;识别到弹窗屏不清——多弹窗条目逐个存活,
+        fortune 在补给/遭遇屏期间条目存活直到进备战弹出被接住;sim 不走本清,
+        呈现即消费由后端收口）
         → CwScreenPrep 备战单轮（进入序/守卫域见 §3；发射决策宿主 = 策略层前置发射位）
 战斗窗（闩 _battle_wait_active ∨ 帧锚 _frame_in_battle_window）→ CwScreenBattleWait
 3c 大厅（身份行'标识-创业指南'）→ 对局收口（§5;遥测红线写端保留本 loop）

@@ -65,7 +65,7 @@ action = strategy.decide_prep_screen(容器 game state 直读;
 - **重观察通道(CwActionObs,scope 选口径)**:`scope='in_place'` → 注册表派发 `CwActionObsOp` → 宿主 `reobserve_in_visit()` heavy 观察链重跑(漏斗直写容器 = 重新观察上报),帧代次标 full 后**决策环原地续跑**(不交回外循环,访问/段序号不重启);重观察见事件 overlay = `CwObsOverlayBail` 抛出、决策循环捕获交回外循环重分发。`scope='outer_loop'` → 决策环 F3 之前拦截交回外循环重观察(不进执行器/动作记录;原 HoldFrame 空发射帧收编)。通道细则单一源 = [../flow/action_exec.md](../flow/action_exec.md) §3。
 
 - **动作全集**(备战域):OpenBox/OpenTome/OpenBookcard/CollectOre/DeployMove/SellBench/SellDeployed/WearEquip/LevelUp/OpenShop/StartBattle/Obs(环内重观察,零点击零拖拽;通道细则 = 上方「环内重观察通道」行)(组合壳 RunDeploy/RunEquip/RunTools 已随统一词表退役:部署 = DeployMove 原子序发射位逐帧现算,穿戴 = WearEquip 原子,工具 = 工具原子类经 `CwActionToolUseOp`)。词表单一源 = `kernel/cw_vocab.py::CW_ACTION_TYPES`;注册表 = `operations/cw_op/cw_action_registry.py`(SellBench/LevelUp 注册行 = 备战域 op)。
-- **逻辑态直写覆盖**(上报函数族申报):有容器写语义动作 = SellBench/SellDeployed/DeployMove/LevelUp/CollectOre/OpenTome/OpenBookcard/**WearEquip(容器 equips 写 owned−1 + tracked 目标 +1)**/工具原子七类(容器直写,正本 = `tool_use.py`)(各一上报函数,op 自上报单点);零写族 = OpenBox(终结化)/OpenShop/事件线 pick 族集中 `zero_writes.py`(消费真值归观察,截断点独占发射帧零窗口)。规则全集正本 = [../game_state/action-logic-state.md](../game_state/action-logic-state.md) + [../game_state/logic-updates/](../game_state/logic-updates/README.md)。
+- **逻辑态直写覆盖**(上报函数族申报):有容器写语义动作 = SellBench/SellDeployed/DeployMove/LevelUp/CollectOre/OpenTome/OpenBookcard/**WearEquip(容器 equips 写 owned−1 + 目标角色 equips +1)**/工具原子七类(容器直写,正本 = `tool_use.py`)(各一上报函数,op 自上报单点);零写族 = OpenBox(终结化)/OpenShop/事件线 pick 族集中 `zero_writes.py`(消费真值归观察,截断点独占发射帧零窗口)。规则全集正本 = [../game_state/action-logic-state.md](../game_state/action-logic-state.md) + [../game_state/logic-updates/](../game_state/logic-updates/README.md)。
 - 段序号置位:访问入口 `strategy_state.cw4_segment_serial += 1`(访问 = 腾席拒绝结论的输入不变性段;上一访问/上一域残留的续段 token/结论闩按序号不等自动失效)。
 - 执行要点(交互陷阱):拖拽类 = 统一拖拽原语机械单发(确认 settle → hold 短拖 → 光标 parking,零判效零重试);CollectOre 批式一次全点 → 固定等待 2s 等飞行动画 → 自上报交回;席满未点开的晶矿由下一帧观察回补;LevelUp 逐帧单击至升满一级(发射面 cost = `xp_click_cost` 现算装载,失读回退 `kernel/cw_economy.py::XP_CLICK_COST_FALLBACK`)。细则 = [../flow/action_exec.md](../flow/action_exec.md)。
 
@@ -81,7 +81,7 @@ action = strategy.decide_prep_screen(容器 game state 直读;
 ## 6. 状态上报面
 
 - 动作 → 上报函数:逐动作规格见 [../game_state/logic-updates/](../game_state/logic-updates/README.md)(备战域 = `kernel/cw_action_report/<snake>.py::report_action_<snake>_param`;dict 确认族到账 = `kernel/cw_exec_state.py::apply_confirm_effect`)。
-- tracked 主账随动(容器簿记 `GameState.tracked_books`,与对账无关,无策略读口);动作落地判定归观察边界对账(两态制:逻辑态直写 + 观察覆盖,失配 = 纠偏/缺陷台账,零决策不重执行);期望态暂存记账机制已随执行层状态类目退役(git 历史可溯)。
+- 席位单账直写:动作落地由上报函数直写主域字段(bench/deployed),无平行随动账;动作落地判定归观察边界对账(两态制:逻辑态直写 + 观察覆盖,失配 = 纠偏/缺陷台账,零决策不重执行);期望态暂存记账机制已随执行层状态类目退役(git 历史可溯)。
 
 ## 7. 子态与 overlay
 

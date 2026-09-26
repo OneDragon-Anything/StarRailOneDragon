@@ -236,29 +236,36 @@ node_path 现读=权威写端**(`prep_row`;P2/P3 基线回填 = `prep_row_first`
 无观察锚,本台账以类型序为真值的表述禁写进测试断言;接线前按归因输入预登记,
 实机采证后定口径。改写证据 = `chain_diff` obs_event 行(基线 vs 现行,链正本 §4/§5)。
 
-#### 3.2.3 前台角色 front_row
+#### 3.2.3 上阵角色 deployed(前排/后台统一槽位视图)
 
-**语义**:前排成员列表,成员=Unit(角色 char_id、星级、装备、槽位)。**阵营不是
-Unit 的存储字段**——阵营是角色的静态属性,由 char_id 查角色注册表(cw_chars)派生;
-唯一例外=开拓者形态随排(前台=记忆/后台=欢愉),由 char_id+当前排推导(
-详见 §3.2.18)。观察只存识别出的 char_id,禁在 Unit 另存阵营(防与注册表双源)。
+**语义**:上阵成员统一槽位视图(载体 = `DeployedView`):`front_slots[i]` =
+前排物理槽 i+1(定长 4)/ `back_slots[j]` = 后排物理槽 j+1(定长 6),成员 = Unit
+(角色 char_id、星级、装备;**槽位不存**——位置 = 所在子表下标纯派生,排归属
+0-3 前排/4-9 后排,换算单一源 = `cw_exec_state.deployed_row_slot`/
+`deployed_idx_of`)。**阵营不是 Unit 的存储字段**——阵营是角色的静态属性,由
+char_id 查角色注册表(cw_chars)派生;唯一例外=开拓者形态随排(前台=记忆/
+后台=欢愉),由 char_id+当前排推导(详见 §3.2.18)。观察只存识别出的 char_id,
+禁在 Unit 另存阵营/槽位(防双源)。读侧仍分排读屏(备战观察链两排各读一次),
+落容器 = 合一视图整值替换(一次写 = 一次完整语义快照,无半开帧)。
 **写端**(完整清单):
 - 观察写端:本屏观察覆盖(唯一观察画面)。
-- 逻辑写端(op,§4.2):RunDeploy 部署=前台 +该牌;SellBench 卖场上角色=前台 −该牌。
-- 效果写端(§5.3,选卡时点、非 op):出售清空面(人力重组/大裁员/降本增效/现金为王,
-  确定性)=逻辑写——**全员晋升替换面=随机,走观察覆盖不建逻辑写**(§5.3 归属判据)。
-- 不记预期值的变化:3 合 1 合成场上吸收升星、同行换位——后果全部等本屏下一次观察
-  覆盖(§4.1 豁免)。
+- 逻辑写端(op,§4.2):DeployMove 部署/换位 = 视图整值替换(上场者继承下场者
+  排,排归属 = 子表承载);SellDeployed 卖场上角色 = −该牌;buy 合成场上吸收
+  升星 = 同名位星级直写 + cascade;装备穿戴 = worn 集随写。deployed 逻辑写尾
+  挂值域回调级联(`kernel/cw_faction_callbacks.py`:按名分解 diff → overlay
+  判据登记;观察写不经此挂 = 零回调)。
+- 效果写端(§5.3,选卡时点、非 op):出售清空面(人力重组/大裁员/降本增效/
+  现金为王,确定性)=逻辑写——**全员晋升替换面=随机,走观察覆盖不建逻辑写**
+  (§5.3 归属判据)。
+- 不记预期值的变化:同行换位等无逻辑写端变化——后果等本屏下一次观察覆盖
+  (§4.1 豁免)。
 
-#### 3.2.4 后台角色 back_row
-
-同 front_row,后排。写端清单同构(观察覆盖/RunDeploy ±/SellBench −/效果出售清空面
-逻辑写、全员晋升随机面观察覆盖)。**边界(cost=0 系统单位)**:佩佩/狸狸/Gemi 狸等
-cost=0 系统单位落在后台——不可拖动、恒占最右槽(们)、deploy 重排候选剔除,但
-**可携带装备**(槽位语义锚=备战屏画面档案 docs/game/screens/currency_war_prep.md;
-注册表锚=cw_chars)。**注册表覆盖缺口(显式申报)**:Gemi 狸与泛称「狸狸」无
-Character 条目——识别库与「deploy 剔除 cost==0」按注册表运行兜不住其占位;条目
-补建归注册表建模批(或显式申报「不建」及理由,禁静默)。
+**边界(cost=0 系统单位)**:佩佩/狸狸/Gemi 狸等 cost=0 系统单位落在后台——
+不可拖动、恒占最右槽(们)、deploy 重排候选剔除,但**可携带装备**(槽位语义锚=
+备战屏画面档案 docs/game/screens/currency_war_prep.md;注册表锚=cw_chars)。
+**注册表覆盖缺口(显式申报)**:Gemi 狸与泛称「狸狸」无 Character 条目——识别库
+与「deploy 剔除 cost==0」按注册表运行兜不住其占位;条目补建归注册表建模批
+(或显式申报「不建」及理由,禁静默)。
 
 #### 3.2.5 备战席 bench
 
@@ -606,16 +613,10 @@ active_env 核对源。开局写端见 §3.4.3(多屏写入,本条=备战屏侧�
   `tracked_unobserved`)——未观察 → 返回恒可用终结 `CloseShop` 交回外循环,
   备战环 heavy 观察锚定后再进店;执行侧跳过留痕/连续跳过熔断
   (`cw_screen_shop`,分键 `shop_skipped_unobserved`/`..._stop`)。
-- **配套裁定(同批)**:tracked 主账宿主 = `GameState.tracked_books`(容器非 Field
-  簿记组,`TrackedBooks`;形状契约 = `bench` = `list[BenchSlot | None]` 定长 9
-  (元素 = 容器同款 BenchSlot 五分类,占位件 kind 随形保留;None = 洞,卖出/上阵/
-  合成消耗置 None 不移位,保洞语义)、`deployed` = `list[Unit | None]`
-  定长 10(**表下标 = deployed_idx 动作坐标,恒稳**;排归属由下标派生——0-3 前排/
-  4-9 后排,换算单一源 = `cw_exec_state.deployed_row_slot`/`deployed_idx_of`,
-  );写端 = kernel `reconcile_tracking`(观察边界锚定写回)+ 动作随动同步,
-  策略禁读(消费口 = `tracked_account_observed` + 席位视图)。执行侧不再另设
-  tracked 载体(执行层状态类目已退役,git 历史可溯),`mandate_v1._tracking_view`
-  (tracking 优先 + snapshot 静默回退)删除。
+- **单账口径(第二账已退役)**:席位真值唯一宿主 = 主域字段(bench §3.2.5 /
+  deployed §3.2.3),无平行 tracked 载体;动作随动同步腿随第二账退役删除
+  (主域由卖出/部署 op 自上报同步销账,单账即同步)。策略禁直接消费本闩外
+  的 tracked 量(消费口 = `tracked_account_observed` + 席位视图主域现读)。
 
 #### 3.2.23 银狼LV.999 当前费用档 lv999_cost_tier
 
@@ -626,10 +627,10 @@ active_env 核对源。开局写端见 §3.4.3(多屏写入,本条=备战屏侧�
 **读口唯一** = `cw_economy.effective_cost`(当前费用档:观察除数/账实结算/
 随机授予采样空间;静态画像族用注册表起始费,不经本口——双语义边界见该
 docstring)。机制依据:「下一个费用档的 1 星」升费腿定谳 + 同名即同档
-(全场同档,口述·权威 2026-09-18,记录处 = changes/2026-09-18-yinlang-
-exclusive-loop/design.md §2.0;equipment_mechanics §7 待实测项由本字段+
-商店观察对账清偿)。设计正本 = changes/2026-09-20-yinlang-starup-accounting
-/design.md §2.1。
+(全场同档,口述·权威 2026-09-18;升费腿写端 = kernel/cw_action_report/
+pick_planner.py 与 deploy_move.py 的升费腿,evidence = planner_upgrade_
+tier/deploy_upgrade_tier;equipment_mechanics §7 待实测项由本字段+
+商店观察对账清偿)。
 
 #### 3.2.24 定时道具发放队列 pending_item_grants
 
@@ -1627,9 +1628,6 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
     唯一写点 = `note_action_receipt`,§9):执行层零「是否生效」验证、
     零重试、零 miss 闩;静默不生效的治理 = 投影照写 → heavy 实读对账
     失配 → 安灯停局 → 按真 bug 根因调查(2026-09-18 用户裁定)。
-  - `TrackedBooks`(GameState.tracked_books):tracked 主账槽位簿记(`bench` =
-    `list[BenchSlot | None]` 定长 9 保洞 / `deployed` = `list[Unit | None]`
-    定长 10,下标 = deployed_idx 恒稳;§3.2.22 配套裁定)。
   - `plane_node_sequences`(GameState 位面节点序列台账,`PlaneNodeLedger` 载体):
     整行快照语义、逐位合并写、低频重写,Field 化无收益;访问口 = `cw_exec_state`
     三访问函数(get_node_ledger/ledger_node_type/ledger_update_plane)与

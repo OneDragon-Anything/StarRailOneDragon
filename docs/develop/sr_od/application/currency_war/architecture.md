@@ -144,7 +144,8 @@
 | 意向与事件 | `cw_intention`(终局意向)、`cw_events`(剩余事件画面决策核〔planner/巨星/圣杯/伙伴等〕+ 观察载荷契约 `EncounterOption`)、`cw_encounter_selection`(结算观测基建与兑现回调)、`cw_registry`(决策注册表) | 事件类节点的决策判据;画面选卡判据本体 = 策略层 `mandate_v1/`(投资环境/投资策略/补给/遭遇 `encounter_pick.py` 等,宪法五迁移) |
 | 装备 | `cw_bench_equips`/`cw_bond_equips`(装备跟踪/羁绊口径)、`cw_equip_env`(装备环境信号)、`cw_equip_value`(装备价值)、`cw_equip_wear_plan`(穿戴计划)、`cw_affix_effects`(词缀效果注册) | 装备域的跟踪、估值与计划 |
 | 战斗 | `cw_battle_calib`(战斗校准)、`cw_deploy_logic`(deploy 围栏/底线门/换血与补位判定;选人与落位计划单一源 = 策略层 `mandate_v1/deploy_plan.py`,sim 与 op 共用)、`cw_launch_admission`/`cw_launch_arbitrage`(发射准入/仲裁)、`cw_hp_policy`(hp 门)、`cw_first_passage`(首达生存概率) | 战斗结果的模拟与发射决策 |
-| 观测支撑 | `cw_obs_core`(OCR 公共设施)、`cw_observe`(统一日志/截图)、`cw_anchor`(流程转点观测锚)、`cw_overlay_registry`(overlay 生命周期注册) | 观测基础设施 |
+| 观测支撑 | `cw_obs_core`(OCR 公共设施)、`cw_observe`(统一日志/截图)、`cw_anchor`(流程转点观测锚) | 观测基础设施 |
+| overlay 触发 | `cw_overlay_register`(登记三口/九 kind 封闭词表/屏档名映射/ScreenChanges 簿记 sidecar)、`cw_faction_callbacks`(阵营值域回调级联,挂 deployed 逻辑写尾——判据单一源,sim/实机同源)、`cw_world_decl`(动作后果声明 WorldDecl) | overlay 触发登记层:判据→登记→呈现的数据与契约 |
 | 合成与推演 | `cw_merge_simulate`(合成引擎)、`cw_vocab`(统一动作词表)、`cw_prep_expect`(备战购买意图载体)、`cw_prep_actions`(备战域 kernel 件) | 期望态推演与备战域公共件 |
 | 其他 | `cw_performance`(观测反馈/死局检测)、`cw_run_allocator`(跨局分配)、`cw_decision_trace`(决策行发射)、`cw_discipline_rules`(血预算停手/危机带判据族)、`cw_plane_table`(节点日程标定)、`cw_investments`(投资领域模型)、`cw_effect_inventory`(在场效果清单)、`cw_plugins`(插件注册)、`cw_code_hash_gate`(起局码哈希结构闸)、`cw_telemetry_exit`(遥测上行出口钩子位)、`cw_survey19_hooks`(二轮扫描落地件)、`cw_opening_hp`(开局血量先验) | 各行括注即一句话职责;细节见 kernel/ 各模块 docstring(全量以 kernel/ 目录为准) |
 
@@ -163,11 +164,11 @@
 
 sim = 游戏本体的单局模拟器（「游戏后端」）：给定局级输入，按游戏规则推演一局的容器状态演化，对流程的动作与画面请求产出应答。驱动反转 = 根本裁决：真流程（外层循环 + 画面 op + 动作 op + 策略器）当驱动者，装上后端即在同一套流程代码里跑 sim 世界；与 live 共用同一容器（`GameState` 单例）、同一规则核（kernel/data）与同一写通道（上报函数族），动作拒绝语义在上报函数腿内，后端不自判拒绝。策略效果的批量评估/A/B/统计工具不在 sim 本体内（现不存在，sim-design §8.3），决策回放为 sim 之上的独立工具。
 
-世界后端本体 = `cw_sim_backend.py::SimBackend`（dataclass 组合持有容器 + 后端私有运行时，一实例一局：画面状态机/世界规则件编排/事件接线/局结果面，结构正本 = sim-design §2-§4）。按域分模块（除节点日程真值表住 kernel 外，均以 `cw_sim_` 前缀命名）：
+世界后端本体 = `cw_sim_backend.py::SimBackend`（dataclass 组合持有容器 + 后端私有运行时，一实例一局：画面状态机/世界规则件编排/声明喂入/局结果面，结构正本 = sim-design §2-§4）。按域分模块（除节点日程真值表住 kernel 外，均以 `cw_sim_` 前缀命名）：
 
 | 域 | 模块 | 负责 |
 |---|---|---|
-| 后端本体 | `cw_sim_backend.py` | SimBackend：画面状态机、世界规则件包装与编排、事件接线、确定性采样、局结果面 |
+| 后端本体 | `cw_sim_backend.py` | SimBackend：画面状态机、世界规则件包装与编排、声明驱动推进、overlay 懒呈现位、确定性采样、局结果面 |
 | 基座 | `cw_sim_base.py` | 容器写入签名/证据标签共用面（`sim:engine:` 前缀），不含游戏规则 |
 | 基座 | `cw_sim_streams.py` | 随机流键子流（按模块号+局内坐标派生独立子流，模块间不共享 rng） |
 | 基座 | `cw_sim_run_config.py` | 单局运行配置 `RunConfig`（开局参数正典字段清单唯一汇总面） |
@@ -177,8 +178,8 @@ sim = 游戏本体的单局模拟器（「游戏后端」）：给定局级输�
 | 节点日程 | `kernel/cw_node_schedule.py`（kernel 纯数据件） | 位面节点序列真值表（P1/P2 节点日程地面真值表；`node_advance` 声明 `next_screen` 的推导权威源，sim 后端同源 import——契约 = sim-design §6.3） |
 | 游戏系统 | `cw_sim_battle.py` | 战斗结算随机输出面（胜负/扣血采样）+ `apply_hp_outcome` 局终判定 |
 | 游戏系统 | `cw_sim_enemy.py` | 敌人难度派生与 boss 名单 |
-| 游戏系统 | `cw_sim_overlay.py` | overlay 事实触发层队列（`OverlayQueue`/`OVERLAY_KINDS`；评估器 = 后端事件处理方法） |
-| 游戏系统 | `cw_sim_special.py` | 特殊角色判据（planner 升星判据 `planner_overlay_due` 等） |
+| 游戏系统 | `cw_sim_overlay.py` | overlay 占位披露键常量宿主（`OVERLAY_PARAM_PENDING`；判据/登记/呈现单一源在 kernel 值回调与登记簿，见 sim-design §4） |
+| 游戏系统 | `cw_sim_special.py` | sim 侧特殊规则建模助手（planner 判据已归 kernel 值回调，本模块仅存留判据解耦件） |
 | 回放 | `cw_replay.py` | 决策回放 harness：对历史局容器真值帧重放商店决策，秒级验证策略改动影响 |
 
 sim 设计正本三篇见 `sim/`（体系总纲 sim-design、容器 GameState↔sim 后端接线底账 sim-wiring、战力模型需求定义件 sim-power-model）。

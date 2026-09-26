@@ -5,7 +5,7 @@
 ## 1. 分发判定
 
 - 阶段一身份分发(号制已退役):id_mark 锚「货币战争-银狼升星.标识-我来当策划」;dispatch 带 on_fail_retry。单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
-- 触发 = 银狼首次升 2 星(及 5 费升 2 星),非随机事件;机制 = [../../../../game/gameplay/currency_war.md](../../../../../game/gameplay/currency_war.md)「银狼我来当策划事件」节。
+- 触发 = 银狼**每个费用档**升达 2 星各弹一次(3/4/5 费各一次,非随机事件;判据单一源 = kernel 值回调 `cw_faction_callbacks.py` 银狼星级回调,每费用档簿记 = ScreenChanges.planner_tiers_fired 侧栏)→ 见 [../../../../game/gameplay/currency_war.md](../../../../../game/gameplay/currency_war.md)「银狼我来当策划事件」节。
 
 ## 2. 画面形态声明
 
