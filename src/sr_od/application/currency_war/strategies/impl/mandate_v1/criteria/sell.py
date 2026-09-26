@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 
 
 def _slot_of(b: object, idx: int | None = None) -> int:
-    """占席条目 → 卖出候选位键(紧缩序下标;overlay-trigger 3.1:Unit.slot
+    """占席条目 → 卖出候选位键(紧缩序下标;Unit.slot
     信息位退役,候选键 = 条目在紧缩占席序(物理槽序)中的 0 基下标,
     发射侧经容器槽位表枚举对位还原;``idx`` 显式传位,P4 容器形解包
     单一读点,本模块三通道共用)。"""

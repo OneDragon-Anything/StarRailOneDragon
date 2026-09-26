@@ -22,7 +22,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 def report_action_sell_deployed_param(gs: GameState, param: Any, sig: ChannelSig,
                                       session: object = None) -> LogicOutcome:
     """卖场上单位上报:deployed 视图摘槽(置 None 不移位)→ 单字段整值
-    替换写(board 随行写派生;overlay-trigger 3.1 一次写 = 一次完整语义
+    替换写(board 随行写派生;一次写 = 一次完整语义
     变更)+ gold +退款 + 装备回收。
     deployed_idx 越界/空槽或 expect 失配 = applied=False 零写。
 
@@ -74,7 +74,7 @@ def report_action_sell_deployed_param(gs: GameState, param: Any, sig: ChannelSig
         _w(gs.equips, list(gs.equips.value or []) + list(sold.equips),
            'proj_sell_deployed_equips')
     # 事实事件:板面组成变化(sell 落地;overlay 触发层消费,缺省关零开销)
-    # (事实事件广播已随 overlay-trigger 3.5 事实事件槽退役删除。)
+    # (事实事件广播已随事实事件槽退役删除。)
     return LogicOutcome(applied=True,
                         reason=str(getattr(param, 'reason', '') or ''),
                         income=int(refund))

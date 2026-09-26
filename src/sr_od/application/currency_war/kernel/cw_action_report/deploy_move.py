@@ -51,7 +51,7 @@ _TRANSFORMED_STAR: int = 1
 def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """上阵上报:bench 源槽摘槽 + 载荷 (to_row, to_slot) 直落
     (排内 1 基槽号直址子表下标,与执行拖点同源无分叉;一次写 = 一次完整
-    语义变更——落位/交换都是 deployed 单字段整值替换,overlay-trigger 3.1)
+    语义变更——落位/交换都是 deployed 单字段整值替换,)
     + 开拓者形态归一(归一核单一源 =
     ``cw_exec_state.trailblazer_row_identity``,与 swap 上报同源——
     benchchar-retirement P3 统一申报的缺陷修复:换排 = 命途切换,char_id
@@ -156,6 +156,6 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
             rand=False, evidence='proj_deploy_lv999_merge',
             producer='CwActionDeployMoveParam', sig=_grp_sig,
             orig_view=_bview)
-    # (事实事件广播已随 overlay-trigger 3.5 事实事件槽退役删除:
+    # (事实事件广播已随事实事件槽退役删除:
     #  sim 呈现/登记经容器值回调与问询时点呈现检查承载。)
     return LogicOutcome(applied=True)

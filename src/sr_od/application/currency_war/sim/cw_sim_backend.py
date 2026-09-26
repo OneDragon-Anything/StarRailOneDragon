@@ -32,7 +32,7 @@ supply/encounter/box/晶矿面板)→ 容器各 opts 槽(经 ``cw_screen_report`
 supply → 补给;encounter → 遭遇节点;boss → BOSS 简报)。节点经验在
 节点推进时入账(NODE_XP_BY_TYPE 表原样);连胜转移在战斗结算后。
 
-**overlay 触发层**(overlay-trigger 3.5 终态):判据 = kernel 值回调
+**overlay 触发层**(终态):判据 = kernel 值回调
 (cw_faction_callbacks,deployed 逻辑写尾)→ 容器登记
 (gs.screen_changes.pending)→ 呈现(问询时点懒呈现 + advance 纯转移
 尾 + 节点窗起点,压住底层画面,选完交回)。一期目录:巨星/planner
@@ -731,7 +731,7 @@ class SimBackend:
     excluded_invest: set[str] = field(default_factory=set)
     excluded_env: set[str] = field(default_factory=set)
     # (私有 overlay 队列与评估器簿记三件[队列/一次性标志/银狼星基线/
-    #  巨星水位]已随 overlay-trigger 3.5 退役删除:sim 呈现数据源 =
+    #  巨星水位]已退役删除:sim 呈现数据源 =
     #  容器登记 gs.screen_changes.pending,判据簿记 = ScreenChanges
     #  sidecar,呈现检查 = 问询时点[screen_identity] + advance 尾。)
     #: 武装箱待授予候选下标(装备卡点击源记录;pick_box_card 落地消费)。
@@ -801,7 +801,7 @@ class SimBackend:
     def screen_identity(self) -> str:
         """当前画面 screen_info 档名(状态机唯一答口)。
 
-        问询时点呈现检查(overlay-trigger 3.5:事实事件槽退役后的
+        问询时点呈现检查(事实事件槽退役后的
         sim 懒呈现位):答身份前先查容器登记 pending——动作上报内已
         register 的条目在此压上模态(等价实机「动作落地即弹」,时点 =
         宿主交回后的首次身份问询)。呈现门/消费披露族语义同
@@ -931,7 +931,7 @@ class SimBackend:
         if self._screen == SCREEN_PREP:
             self._present_modal(SCREEN_SHOP)
 
-    # (事实事件订阅入口已随 overlay-trigger 3.5 事实事件槽退役删除:
+    # (事实事件订阅入口已随事实事件槽退役删除:
     #  懒呈现位 = screen_identity 问询时点检查;板面真值观察 =
     #  advance 步界 _observe_board_truth。)
 
@@ -980,15 +980,15 @@ class SimBackend:
         elif decl.trigger == 'pick_invest_strategy':
             self._on_invest_picked(opening=False)
         elif decl.trigger == '':
-            # 纯转移(详设 §3 '' 行):overlay-trigger 3.4 起统一幂等交回
+            # 纯转移(详设 §3 '' 行):统一幂等交回
             #(底层稳态由 _reconcile_next_screen 对账)。原专家邀请函档
-            # 特判呈现随 S6 声明改底层屏退役——专家画面的出现事实由
+            # 特判呈现随 声明改底层屏退役——专家画面的出现事实由
             # 登记(kind = expert_invite,open_bookcard 上报内 register)
             # 承载,呈现走本分支尾的 pending 呈现检查。
             self._dismiss_modal()
         self._reconcile_next_screen(decl)
         self._observe_board_truth()   # 步界板面真值观察(等值零写)
-        # overlay 呈现检查(3.4):**仅纯转移分支**——S6 声明改底层屏后
+        # overlay 呈现检查(3.4):**仅纯转移分支**——声明改底层屏后
         # open_bookcard/open_tome 的弹窗呈现入口(battle_resolve/
         # node_advance 等其余分派保留原呈现时机 = 各自过程内/节点窗
         # 起点检查,不在 advance 尾提前:overlay 让路序「窗起点 overlay
@@ -1137,7 +1137,7 @@ class SimBackend:
 
     def _on_overlay_picked(self, kind: str) -> None:
         """overlay 选定落地(模态交回 + 呈现检查):效果腿归各自上报/
-        效果批,本层零效果。overlay-trigger 3.4:原私有队列出队腿
+        效果批,本层零效果。原私有队列出队腿
         退役——呈现数据源 = ``gs.screen_changes.pending``,消费 = 选卡
         上报内 ``consume_screen_change``(两世界同一行代码,register-
         consume.md「sim 消费」),本层不重复出队。
@@ -1188,15 +1188,15 @@ class SimBackend:
         self._dismiss_modal()
 
     def _present_pending_overlay(self, fortune_base: str | None = None) -> None:
-        """overlay 呈现检查(overlay-trigger 3.4:数据源 = 容器登记
+        """overlay 呈现检查(数据源 = 容器登记
         ``gs.screen_changes.pending``,旧私有队列呈现面退役——
         队列本体随评估器归 3.5 清扫;呈现时机不变 = advance/步界检查)。
 
         ``fortune_base`` = fortune 呈现门的底层判据屏(缺省 = 当前
-        ``_screen``;节点窗起点传**目标底层**——当前屏仍是旧结算屏,
-        评审 M1:判当前会吞掉后续呈现)。
+        ``_screen``;节点窗起点传**目标底层**——当前屏仍是旧结算屏,判当前
+        会吞掉后续呈现)。
 
-        逐 kind 呈现门(register-consume.md「sim 消费」):
+        逐 kind 呈现门(overlay 生命周期契约(sim 消费)):
 
         - megastar:模态 + 候选写容器(场上盛会之星资格成员,含持徽
           贡献——候选语义 = 判据资格集同源);
@@ -1204,7 +1204,7 @@ class SimBackend:
         - box_card/expert_invite:open_box/open_bookcard 的 advance 分派
           已呈现对应模态(候选写入在各自过程),本检查幂等守卫;
         - fortune:**逐 kind 呈现门**——仅底层 = 备战时收口消费
-          (trigger-inventory §1.5:下一节点非备战时推迟,选完进备战
+          (用户确认:下一节点非备战时推迟,选完进备战
           先弹,不压补给/遭遇屏);底层非备战 = 条目存活等待;
         - aha/partner/fortune(备战底层时)/wish_trial/star_tome:无
           sim 呈现面族(aha 无独立画面档,实机 = 备战锚特殊规则点
@@ -1221,7 +1221,7 @@ class SimBackend:
             if self._screen in _MODAL_SCREENS:
                 return   # 模态中:全部推迟(选完交回后再查)
             if kind == 'fortune' and _fortune_base != SCREEN_PREP:
-                continue   # 呈现门:底层非备战,条目存活等待(trigger-inventory §1.5)
+                continue   # 呈现门:底层非备战,条目存活等待()
             if kind in ('aha', 'partner', 'fortune', 'wish_trial',
                         'star_tome'):
                 # 无 sim 呈现面族:aha 无独立画面档(实机 = 备战锚特殊
@@ -1376,7 +1376,7 @@ class SimBackend:
                       probs=probs, tag=f'shop:deal:p{plane}r{r}')
         # overlay 呈现检查(旧引擎收尾序:overlay 先于 offer;呈现压住
         # 节点屏,选定经 _dismiss_modal 恢复位复走 offer 检查——让路
-        # 不吞 offer 槽)。overlay-trigger 3.4 修正(评审 M1):fortune
+        # 不吞 offer 槽)。修正:fortune
         # 呈现门判**目标底层**(节点窗起点即将呈现的屏)而非当前
         # _screen——窗起点时 _screen 仍是旧结算屏(判当前则门恒
         # continue 吞掉后续呈现,resume 悬挂);battle/reward 目标 =
@@ -1535,8 +1535,7 @@ class SimBackend:
         self._screen = SCREEN_SETTLE
         self._sub = ''
 
-    # (巨星/planner 触发评估器与银狼全域星基线已随 overlay-trigger 3.5
-    #  退役删除:判据 = 容器值回调[cw_faction_callbacks],簿记 =
+    # (巨星/planner 触发评估器与银狼全域星基线已随#  退役删除:判据 = 容器值回调[cw_faction_callbacks],簿记 =
     #  ScreenChanges sidecar,呈现 = pending 检查。)
 
     # ---------------------------------------------------------- 板面真值观察
@@ -1547,11 +1546,12 @@ class SimBackend:
 
         sim 是板面真值唯一持有者,kernel board 为派生量且基座未读时
         派生挂钩跳过——步界全量重算真值观察 board(等值零写):承担
-        派生基座首读 + obs 通道行写(装备腿等不经 write_logic 挂钩的
-        写)后的漂移覆盖;失配经容器吸收面(``_absorb_board_derived``,
-        sim 证据前缀命中抑制面)观察赢采新。触发点 = advance 步界
-        (overlay-trigger 3.5:原事实事件触发点随槽退役,观察义务
-        保留迁居——sim 板面观察的唯一步界)。"""
+        派生基座首读;sim 备战观察只写 node_path 无板面 obs 通道行写,
+        全域写路径现均经 write_logic(装备穿戴腿含)使派生挂钩常态
+        覆盖,本观察的漂移覆盖职责当前为防御性(基座首读为主要现役
+        职能)。失配经容器吸收面(``_absorb_board_derived``,sim 证据
+        前缀命中抑制面)观察赢采新。触发点 = advance 步界(等值零写
+        幂等,sim 板面观察的唯一步界)。"""
         truth: dict[str, int] = {}
         _view = self.gs.deployed.value
         for row_name, sub in (('front_row', _view.front_slots if _view is not None else ()),

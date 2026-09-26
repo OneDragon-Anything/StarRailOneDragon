@@ -26,7 +26,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 
 def report_action_swap_deploy_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """bench ↔ deployed 换位上报:原槽对调(置空/置位不移位坐标系)+
-    上场者继承下场者排(排归属 = 子表承载,overlay-trigger 3.1;含开拓者
+    上场者继承下场者排(排归属 = 子表承载含开拓者
     形态归一,归一核单一源 = ``cw_exec_state.trailblazer_row_identity``)+
     同名唯一性守卫(W43 裁决 1,与 simulate 同源)。
 

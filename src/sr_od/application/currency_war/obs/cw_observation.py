@@ -1593,7 +1593,7 @@ def read_board(ctx: SrContext, screen: MatLike) -> dict[str, int]:
 
 def board_from_deployed(dep: list) -> dict[str, int] | None:
     """从主域 deployed 工作表(身份可靠时)**计算** board 羁绊计数
-    (用户 2026-08-16 定:以算为准;overlay-trigger 3.2:基线从 tracked
+    (用户 2026-08-16 定:以算为准;基线从 tracked
     第二账改主域派生,函数更名 board_from_tracked → board_from_deployed)。
 
     OCR 左面板的坑:激活阵营多时**一页显示不全要滚动** → OCR 只读可视区,滚出屏的静默漏
@@ -2436,7 +2436,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     )
     _gs_session = getattr(_match, 'session', None) if _match is not None \
         else None
-    # computed 底座 = 主域 deployed 派生工作表(overlay-trigger 3.2:
+    # computed 底座 = 主域 deployed 派生工作表(
     # tracked 第二账退役,底座改主域派生;排归属由下标派生)。
     _dep_work = (deployed_indexed_of_view(_gso_board(_gs_session).deployed.value)
                  if _gs_session is not None else None)

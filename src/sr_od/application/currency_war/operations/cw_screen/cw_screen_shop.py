@@ -519,8 +519,7 @@ class CwScreenShop(CwOperation):
         _st_seg = strategy_state_of(match.session)
         if _st_seg is not None:
             _st_seg.cw4_segment_serial += 1
-        # (tracked_bench_chars 播种日志显影块已随 overlay-trigger 3.2
-        #  tracked 第二账退役删除:播种 W6 波 4 已取消,日志消费面为零;
+        # (tracked_bench_chars 播种日志显影块已随#  tracked 第二账退役删除:播种 W6 波 4 已取消,日志消费面为零;
         #  双响防御(提案守卫 expected-vs-主域)由 cw_shop_action_ops.
         #  guard_proposal_vs_expected 读主域单点承载。)
         if not self._entry.shop:
@@ -677,7 +676,7 @@ class CwScreenShop(CwOperation):
         # 守卫见函数注)。
         accrue_release_spent(match, action, _ok)
         if not _op_cls.terminal:
-            # overlay-trigger 3.4 宿主动作后交回(register-consume.md「实机
+            # 宿主动作后交回(overlay 生命周期契约「实机
             # 消费」表):pending 非空 = 触发动作已落地、弹窗将现(典型 =
             # 买腿三合一 planner 叠商店弹)→ 确定性提前交回外循环,取代
             # 等重观察发现;非终结帧的 round_wait 让位本出口。

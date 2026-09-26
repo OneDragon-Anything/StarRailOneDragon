@@ -85,7 +85,7 @@ def report_action_sell_bench_param(gs: GameState, param: Any,
         bench_slots[idx] = _absorb
         _w(gs.overflow_card, '', 'proj_overflow_absorbed')
         _w(gs.overflow_warning, False, 'proj_overflow_cleared')
-        # (tracked 第二账已随 overlay-trigger 3.2 退役:入位件随本函数
+        # (tracked 第二账已退役:入位件随本函数
         #  bench 整表写单点落主账,原「执行侧对称吸收腿」无可同步。)
     _w(gs.bench, BenchView(slots=bench_slots,
                            capacity=(_bview.capacity
@@ -102,7 +102,7 @@ def report_action_sell_bench_param(gs: GameState, param: Any,
         _w(gs.equips, list(gs.equips.value or []) + list(sold.equips),
            'proj_sell_equips_recover')
     # 事实事件:板面组成变化(sell 落地;overlay 触发层消费,缺省关零开销)
-    # (事实事件广播已随 overlay-trigger 3.5 事实事件槽退役删除。)
+    # (事实事件广播已随事实事件槽退役删除。)
     return LogicOutcome(applied=True,
                         reason=str(getattr(param, 'reason', '') or ''),
                         income=int(refund))

@@ -170,7 +170,7 @@ DEPLOYED_BACK_CAPACITY_DEFAULT: int = 6
 
 #: 行级 schema 版本(§3.7.1)。域版本映射见 ``DEFAULT_GS_SCHEMA``。
 #: 版本 2 = 上阵域合卷(front_row/back_row 两紧凑行域 → deployed 单字段
-#: DeployedView 完整槽位表,overlay-trigger 3.1;旧档 restore 经迁移函数
+#: DeployedView 完整槽位表旧档 restore 经迁移函数
 #: 单次转换,见 ``restore_state_snapshot``)。
 GAME_STATE_SCHEMA_VERSION: int = 2
 
@@ -182,7 +182,7 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                             # + 新增基线链字段 node_path_baseline,链观察落地批 2026-09-16)
     'units': 2,             # deployed(单字段 DeployedView 完整槽位表)/bench/back_layout
                             # (§3.2.3-§3.2.7;域版本 2 = front_row/back_row 两紧凑行域
-                            # 合卷为 deployed 单字段(overlay-trigger 3.1 容器合并,
+                            # 合卷为 deployed 单字段(容器合并,
                             # 空槽 None 显式、位置 = 子表下标派生);版本 1 = 紧凑行域两字段)
     'economy': 1,           # gold/level/xp/streak/hp/level_up_cost(§3.2.9-§3.2.13)
     'match_facts': 6,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/定时道具队列/board
@@ -473,7 +473,7 @@ class Unit:
     注册表(cw_chars)派生;唯一例外开拓者形态随排(前台=记忆/后台=欢愉),
     由 char_id+当前排推导。禁在 Unit 另存阵营(防注册表双源)。
 
-    **槽位不存**(overlay-trigger 3.1 起,原 slot 信息位退役):位置 =
+    **槽位不存**(,原 slot 信息位退役):位置 =
     所在子表下标纯派生(deployed = DeployedView.front_slots/back_slots
     下标;bench = BenchView.slots 下标),单位跨域流动时位置由动作载荷
     携带(DeployMove(to_row, to_slot) 等参数即此)。
@@ -493,7 +493,7 @@ DEPLOYED_BACK_CAPACITY_MAX: int = 9
 @dataclass(frozen=True)
 class DeployedView:
     """上阵统一槽位视图(同族先例 = BenchView / ShopPayload.cards;
-    overlay-trigger 3.1 容器合并:front_row/back_row 两紧凑行域合卷)。
+    容器合并:front_row/back_row 两紧凑行域合卷)。
 
     - front_slots[i] = 前排物理槽 i+1(定长 4,下标 = 前排物理槽-1);
     - back_slots[j] = 后排物理槽 j+1(动态容量 6-9,随布局扩容;容量变化
@@ -1635,8 +1635,7 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #:   (语义源 = simulate 对应分支逐腿平移,直锁 test_cw_transfer_golden
 #:   钉住);
 #:   CwActionDeployMoveParam 不入(围栏部署 = 结算期代理,obs 通道申报对齐);
-#: - 域集扩:deployed(原 front_row/back_row 两紧凑行域,overlay-trigger
-#:   3.1 容器合并为单字段完整槽位表;v2 腿与合成连锁全场域写回)、
+#: - 域集扩:deployed(原 front_row/back_row 两紧凑行域合并为单字段完整槽位表;v2 腿与合成连锁全场域写回)、
 #:   board(**派生量**:行写端挂钩 ``_resync_board_delta``
 #:   自动重算,禁独立手写;单一源见该方法注)、equips(卖出回收腿);
 #: - 域集扩(2026-09-18):level(CwActionLevelUpShopParam 升档直写;语义源 = prep 腿
@@ -1662,7 +1661,7 @@ class LogicOutcome:
     拒绝判定由腿内既有判定填充(stale_proposal / 满栏非合成拒买 /
     同名拒上),
     拒绝 = applied=False + reason + **零容器写**;拒绝结论唯一出口 =
-    本出参(transition 事件广播通道已随 overlay-trigger 3.5 事实事件槽退役删除),
+    本出参(transition 事件广播通道已随事实事件槽退役删除),
     调用侧禁自判拒绝(§2.1 单一源红线)。live 调用点忽略本出参
     (返回值不接 = 行为零变化)。
 
@@ -1717,7 +1716,7 @@ class ShopActionExecuted:
     refresh_paid: int | None = None
 
 
-# (mutate_bench_deployed_local 惰性转发已随 overlay-trigger 3.2 tracked
+# (mutate_bench_deployed_local 惰性转发已随tracked
 #  第二账退役删除:cw_vocab.mutate_bench_deployed 同批退役,买牌上报
 #  升星检测改用自身主工作副本的 before/after 对拍。)
 
@@ -2060,7 +2059,7 @@ def tracked_unobserved(session: object) -> bool:
 # ============================================================ GameState 单例
 
 
-# (TrackedBooks 主账簿记组已随 overlay-trigger 3.2 退役删除:主域
+# (TrackedBooks 主账簿记组已退役删除:主域
 #  bench/deployed 席位视图成为唯一账(3.1 合卷提供完整槽位表,槽位
 #  直址 = 子表下标),第二账存在理由消失;原消费面去向 = 动作随动同步
 #  腿全删 / 对账基线改主域派生 / 商店守卫 expected 侧读主域。)
@@ -2184,8 +2183,7 @@ class GameState:
     node_path_baseline: Field[NodeChain | None] = field(default_factory=Field)  # 基线链(链正本 §2/§3:位面入口写定,本位面内不被链读覆盖)
 
     # —— 单位域(含星级与装备)——
-    # [索引定义] deployed = 上阵统一槽位视图(§3.2.3/§3.2.4 合卷,overlay-trigger
-    # 3.1):front_slots[i] = 前排物理槽 i+1(定长 4)/ back_slots[j] = 后排
+    # [索引定义] deployed = 上阵统一槽位视图(§3.2.3/§3.2.4 合卷):front_slots[i] = 前排物理槽 i+1(定长 4)/ back_slots[j] = 后排
     # 物理槽 j+1(动态容量 6-9 随布局扩容);空槽 = None 显式;一次写 =
     # 一次完整语义变更(换排/替换/空槽上场均单写);开局种子底座冷建即
     # 4+6 全空槽视图,首观察覆盖。
@@ -2204,7 +2202,7 @@ class GameState:
     #(唯一锚定写端;bench 读失败/双空读守卫均不写 = 保持
     # 未观察)。消费面:策略商店门(flow.decide_shop_action,未观察 →
     # CwActionCloseShopParam 交回外循环走备战重锚定;判定单一源 = 本模块
-    # tracked_unobserved)。锚定语义重定义(overlay-trigger 3.2:tracked
+    # tracked_unobserved)。锚定语义重定义(tracked
     # 第二账退役)——锚 = 主域(bench/deployed 席位视图)已按屏幕真值
     # 对账;观察边界对账唯一发生点不变、两态制不变(prep.md §3/§6)。
     tracked_account_observed: Field[bool] = field(default_factory=Field)
@@ -2374,10 +2372,10 @@ class GameState:
     # logic 直写 ''(入位消费)。
     overflow_card: Field[str] = field(default_factory=Field)     # 开局种子底座='' 无溢出(真值观察覆盖)
 
-    # —— (tracked 第二账簿记宿主已随 overlay-trigger 3.2 退役删除:
+    # —— (tracked 第二账簿记宿主已退役删除:
     #     3.1 容器合并后主域 bench/deployed 席位视图即唯一账,第二账
     #     无可同步;观察锚语义由 tracked_account_observed 字段独立承载。)——
-    # —— overlay 登记簿记宿主(非 Field;overlay-trigger 3.3 契约
+    # —— overlay 登记簿记宿主(非 Field;契约
     #     C-登记/C-簿记:pending 队列 + 触发簿记,值载体与三访问口
     #     单一源 = kernel/cw_overlay_register.py)——
     screen_changes: ScreenChanges = field(default_factory=ScreenChanges)
@@ -2776,7 +2774,7 @@ class GameState:
                              value: Any, observed_evidence: str | None,
                              sig: ChannelSig) -> bool:
         """行槽位纯重排吸收(§2.3 失配分支前置;deployed 域专属;吸收口径
-        = overlay-trigger 详设「观察与吸收」节)。游戏侧会在**子表内自行
+        = 详设「观察与吸收」节)。游戏侧会在**子表内自行
         重排**已上阵单位(排序规则游戏私有,非 bot 动作,无逻辑写端)——
         同子表内单元级多重集相同、排列不同 = 读数抖动,是机制性结构差异,
         不是推算 bug。命中条件全列(缺一不可):字段 = deployed;新旧值均
@@ -3066,7 +3064,7 @@ class GameState:
           **继承行域写入来源**:行域随机态时 board 派生行同标随机态
           (行域真值形态随采样奖励而变,board 为其派生,污染沿派生链
           传递);行域确定 logic 时 board 仍 logic;
-        - deployed 逻辑写尾挂值域回调级联(overlay-trigger C-回调:
+        - deployed 逻辑写尾挂值域回调级联(契约 C-回调:
           按名分解 diff → 事件/资格集/星级回调;观察写不经本方法 =
           零回调。logic/logic_rand 两通道同经,获得链递归每步语义完整)。"""
         name = self._field_name(target)
@@ -3457,7 +3455,7 @@ def report_node_advance(gs: GameState, *, trigger: str,
                                       sig=sig, source='logic')
     if not advanced:
         return LogicOutcome(applied=False, reason='advance_deduped')
-    # S4 占卜屋直登(overlay-trigger 3.3;trigger-inventory §1.5 用户
+    # 占卜屋直登( 用户
     # 裁定:黑天鹅在前后台 → 每场战斗结算计数 +1 → 达 2 倍数弹启示卡
     # 三选一)。战斗三型都经 settle_confirm 一腿;出战阵容 = deployed
     # 现读(战斗期间板面无逻辑写路径,结算读即出战阵容);胜负不计,
@@ -3770,13 +3768,12 @@ def _restore_deployed_view(d: dict) -> DeployedView:
 
 def _migrate_rows_snapshot_to_deployed(front_raw, back_raw) -> DeployedView:
     """旧档迁移函数单一实现(schema 1 紧凑行域两列表 → DeployedView;
-    overlay-trigger 3.1 快照兼容:restore 兼容面 = 本函数一处,接管恢复
+    快照兼容:restore 兼容面 = 本函数一处,接管恢复
     行为等价)。
 
     旧档 Unit dict 自带 slot 信息位(1 基排内画面槽号)——按槽位落位;
     缺席(0)/越界按占用序顺延兜底(与旧 ``deployed_rows_to_indexed``
-    兼容口径同向)。第二账簿记(tracked 第二账,已随 overlay-trigger 3.2
-    退役)非 Field 本就不入快照流水,无迁移面。"""
+    兼容口径同向)。第二账簿记(tracked 第二账,已随退役)非 Field 本就不入快照流水,无迁移面。"""
     def _place(units_raw, cap: int) -> list[Unit | None]:
         out: list[Unit | None] = [None] * cap
         cursor = 0

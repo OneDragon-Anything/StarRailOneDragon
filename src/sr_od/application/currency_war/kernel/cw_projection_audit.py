@@ -79,7 +79,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'deployed': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
         basis='deploy/sell/swap 投影写端(单字段视图整值替换,'
-              'overlay-trigger 3.1 容器合并)'
+              '容器合并)'
               ' + 行内纯重排采新'
               '(deploy_slot_reorder,20260918-reconcile 第5例收口;'
               '吸收口径 = 子表内单元级多重集相等,换排不吸收)'

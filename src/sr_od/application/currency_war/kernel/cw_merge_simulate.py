@@ -571,7 +571,7 @@ def _apply_full_bench_merge_buy(bench: list[BenchSlot | None],
                                 card: ShopCard,
                                 shop: list[ShopCard] | None) -> int | None:
     """满栏合成买分支应用(买牌上报工作副本的单一源;原 tracked 同步口
-    随 overlay-trigger 3.2 第二账退役删除)。
+    随第二账退役删除)。
 
     调用语境 = ``bench_place`` 失败(bench 无空槽)后的满栏买入;前置 =
     该买完成一次合成(``merge_buy_completes``,不满足 = 满栏拒买,

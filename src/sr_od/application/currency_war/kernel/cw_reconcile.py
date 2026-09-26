@@ -60,7 +60,7 @@ def is_merge_effect_window(screen: MatLike | None) -> bool:
 # 未落地实证)。修法两层正交:
 # 1. **槽位锚定**:星级差逐槽判定,锚 = (域, 物理槽号) + 规范名同名——
 #    bench 锚 = 槽位表下标+1;deployed 锚 = (排, 排内槽号),排与槽号
-#    由视图子表下标派生(overlay-trigger 3.2:比较基线 = 主域席位视图)。
+#    由视图子表下标派生(比较基线 = 主域席位视图)。
 #    锚上身份变换(空槽落新单元/换人)= 单元更替事实,星级随身份直采。
 # 2. **两帧一致才采新**:锚上星读 ≠ 主域现值 = 候选(保旧写账 + 抖动
 #    台账行 surface='star');连续两帧候选同值才采新(升/降同门,银狼
@@ -128,7 +128,7 @@ def _deployed_read_entries(view) -> list[tuple]:
     """观察视图 → 门/签名用的读条目(形态同 :func:`_bench_read_entries`)。
 
     [索引定义] anchor = (排 'front'|'back', 排内 1 基槽号)——槽号 =
-    DeployedView 子表下标 + 1(overlay-trigger 3.1:位置 = 子表下标派生,
+    DeployedView 子表下标 + 1(位置 = 子表下标派生,
     Unit 无槽位信息位);条目序 = 前排子表序 + 后排子表序(与观察读链
     front+back 拼接读序一致,漂移签名按序比较不受载体影响)。"""
     if view is None:
@@ -189,7 +189,7 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
     pending = _star_gate_pending(session)
     frozen = is_merge_effect_window(screen)
     out: dict[str, object] = {}
-    # 比较基线 = 主域席位视图现读(overlay-trigger 3.2:tracked 第二账
+    # 比较基线 = 主域席位视图现读(tracked 第二账
     # 退役,基线从 tracked 表改主域派生视图,锚 = (子表, 下标);对账时点
     # 在 director 观察写之前,主域现值即上一帧账面,与旧 tracked 基线
     # 同源同时点)。
@@ -268,7 +268,7 @@ def _old_equips_pools(account_view) -> dict[str, list[list[str]]]:
     动作链写入的装备在下次对账即被冲(希儿装备闪烁实证)。修法 =
     现账 equips 按 char_id 组池,新读按序续接(同名多副本逐个配对消耗,
     次序无关)。基线 = 主域视图(bench = BenchView / deployed =
-    DeployedView,overlay-trigger 3.2:tracked 第二账退役后对账续接
+    DeployedView,tracked 第二账退役后对账续接
     基线从 tracked 表改主域派生)。"""
     if account_view is None:
         return {}
@@ -344,7 +344,7 @@ def reconcile_tracking(session, bench: BenchView | None,
 
     P6 观察链直产:入参即容器形状 —— bench = :class:`BenchView`(占位件
     kind 识别期细分,写回不再经 orig_view 回查/降级);deployed =
-    :class:`DeployedView`(overlay-trigger 3.1:读侧分排读屏、对账载体 =
+    :class:`DeployedView`(读侧分排读屏、对账载体 =
     合一视图,位置 = 子表下标派生)。None = 该侧失读(不写该侧、星级门
     不辖、候选态保持);空视图 = 空读(可触发双空读守卫/清账,与旧紧缩
     空表语义一致)。
@@ -380,7 +380,7 @@ def reconcile_tracking(session, bench: BenchView | None,
     if session is None:
         return False, bench, deployed
     # 现账基准 = 主域席位视图(宿主 = GameState.bench/deployed,本函数 =
-    # game state 层内部实现,就地处置;overlay-trigger 3.2:tracked 第二账
+    # game state 层内部实现,就地处置;tracked 第二账
     # 退役,对账基准与续接基线全部改主域派生)。bench 视图条目:unit 才有
     # 身份,占位件以 ('',1) 入漂移基准;deployed 条目 = Unit。
     _gs = game_state_of(session)

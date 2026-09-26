@@ -134,7 +134,7 @@ class ShopCard:
 #   #            取值时机: <生成期快照(执行期重校验,见 expect) | 生成期=执行期(恒稳) | 事务前快照 | 执行期现读>
 #   #            写入端: <发射点函数/模块>(仅 expect/锚定类防线字段必填)
 #
-# 坐标系(unified-action-factory 批2b 归一后单一;overlay-trigger 3.1/3.2
+# 坐标系(unified-action-factory 批2b 归一后单一;
 # 随容器合并与 tracked 退役更新):bench/deployed 域动作携**容器槽位表
 # 下标**(bench = BenchView.slots 下标 / deployed = DeployedView 子表下标,
 # 恒稳——生成期索引 = 执行期索引);发射面从容器读口
@@ -1046,7 +1046,7 @@ def action_key(action: CwAction) -> str:
             return type(action).__name__   # 无字段 dataclass(CwActionStartBattleParam 等)→ 裸名
         return f'{type(action).__name__}({params})'
     return type(action).__name__
-# (mutate_bench_deployed 已随 overlay-trigger 3.2 tracked 第二账退役删除:
+# (mutate_bench_deployed 已随 tracked 第二账退役删除:
 #  动作写主域(容器逻辑通道)即同步,第二账无可同步;执行点同步腿
 #  同批删除,合成仿真自主域工作副本构造(cw_action_report 族)。)
 # ===== 布局未知态的策略侧支撑(15 号稿批 C 落地审修订)=====

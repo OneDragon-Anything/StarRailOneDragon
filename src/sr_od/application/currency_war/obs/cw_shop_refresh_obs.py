@@ -4,8 +4,7 @@
 ``docs/develop/sr_od/application/currency_war/game_state/fields.md`` §3.3.4:刷新费 shop_refresh_cost 的值必须来自商店
 开态刷新钮标价的**现场读数**(识别失败=None,禁兜底改值;免费帧不写,None≠标价 0)。
 历史通道均不复活:面板徽标 OCR 读的是利息数值非刷价(旁证 reader 在
-``cw_observation.read_shop_refresh_cost``);「刷新前后金币差倒推」已随
-退役。本模块与徽标旁证 reader 的名字区分:**price=标价(本模块,写端权威)**,
+``cw_observation.read_shop_refresh_cost``);「刷新前后金币差倒推」已退役。本模块与徽标旁证 reader 的名字区分:**price=标价(本模块,写端权威)**,
 cost=徽标(cw_observation,旁证)。
 
 刷新钮**按钮态**读数(:func:`read_shop_refresh_button`,建档接入):单帧三态

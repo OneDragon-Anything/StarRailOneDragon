@@ -279,7 +279,7 @@ def _dep_sig(deployed: list) -> list:
 class _WorkPool:
     """链内工作池:gs 现帧派生的三域工作副本 + 构建时签名(gain-chain.md §2 落位
     基座同 grant_bench_unit_cascade:bench 槽表 + 上阵定长 10 下标工作表
-    ——overlay-trigger 3.1 窗口期桥,视图同源派生)。"""
+    ——窗口期桥,视图同源派生)。"""
 
     bench: list[BenchSlot | None]
     dep: list[Unit | None]
@@ -334,7 +334,7 @@ def _write_merge_step(gs: GameState, pool: _WorkPool, *, rand: bool,
                       sig: ChannelSig, producer: str, evidence: str) -> None:
     """单级合成后的容器写(受影响域各落一行,merge_cascade_write 范式:
     签名比对判「是否需要落行」;行域载体在场上 = bench + deployed 两行
-    ——deployed 单字段视图整值替换,overlay-trigger 3.1 合一写;溢出位
+    ——deployed 单字段视图整值替换,合一写;溢出位
     腾空 → overflow 两字段成对清写)。"""
     write = _select_write(gs, rand)
     if _slot_sig(pool.bench) != pool.bench_sig:

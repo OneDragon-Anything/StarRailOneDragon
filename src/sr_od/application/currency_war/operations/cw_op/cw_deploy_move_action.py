@@ -58,7 +58,7 @@ class CwActionDeployMoveOp(CwOperation):
         陈旧载荷未发出(round_fail,观察重派)。faction 字段不入执行。
 
         发出即记账(用户裁定「动作 op = 机械执行」):容器逻辑态由
-        上报函数单点落账(tracked 第二账已随 overlay-trigger 3.2 退役,
+        上报函数单点落账(tracked 第二账已退役,
         动作写主域即同步);拖后零落地判定,静默不生效由下一入口 heavy
         实读对账显影。
         """

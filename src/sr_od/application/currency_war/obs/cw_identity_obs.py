@@ -576,7 +576,7 @@ def read_deployed_rows(ctx: SrContext, screen: MatLike, templates: AvatarTemplat
                        level: int | None = None,
                        ) -> tuple[list[tuple[int, Unit]], list[tuple[int, Unit]]]:
     """舞台已上阵角色(前排 4 + 后排 N)→ (前排命中对, 后排命中对)
-    (P6 直产;overlay-trigger 3.1:命中对 = ``(排内 1 基槽号, Unit)``——
+    (P6 直产;命中对 = ``(排内 1 基槽号, Unit)``——
     Unit 无槽位信息位,位置随读链槽位对承载,容器写端经
     ``cw_game_state.deployed_view_of_hits`` 合一落视图)。
 

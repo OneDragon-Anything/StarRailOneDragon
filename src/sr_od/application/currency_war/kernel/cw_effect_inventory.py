@@ -1050,7 +1050,7 @@ def spawn_equip_bench_unit(gs: GameState, char_id: str, star: int,
     - star 集 1..3 外 = 调用错,显式炸错(禁静默写错;银狼LV.999 星级已
       随获得后果定谳为 1★[口述·权威 2026-09-18],走后果函数不入本桥);
     - 落位单位位置 = 落位物理槽(slots[i] ↔ 槽 i+1,BenchView 坐标系;
-      Unit 无槽位信息位,位置 = 子表下标纯派生——overlay-trigger 3.1)。
+      Unit 无槽位信息位,位置 = 子表下标纯派生——)。
     """
     if not 1 <= star <= 3:
         raise ValueError(f'star 须在 1..3(Unit 星级值域),得 {star}'
@@ -1438,8 +1438,7 @@ def merge_cascade_write(gs: GameState, work_bench: list, work_dep: list, *,
     存在定谳,分组键 (char_id, star) 无跨档歧义)。
 
     P1 容器原生形状:``work_bench`` = list[BenchSlot | None](工作槽表)/
-    ``work_dep`` = list[Unit | None](定长 10 下标工作表,§2.3;overlay-trigger
-    3.1 窗口期桥,视图同源派生);逐级合并后受影响域各落一行
+    ``work_dep`` = list[Unit | None](定长 10 下标工作表,§2.3;窗口期桥,视图同源派生);逐级合并后受影响域各落一行
     (:meth:`cw_merge_simulate._merge_bench` on_step 范式;行域载体在场上 =
     bench + deployed 两行——deployed 单字段视图整值替换,合一写):
     rand=False 走 write_logic(确定面),rand=True 走 write_logic_rand

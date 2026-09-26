@@ -15,7 +15,7 @@ CwActionSellDeployedParam/CwActionDeployMoveParam)携**容器槽位表下标**(0
 kernel/cw_vocab,坐标系裁定见其模块头);本执行器 = **执行坐标边**——
 容器下标 → screen_info 槽位中心的换算单点(bench 侧 = 备战栏-N area 序
 直取;deployed 侧 = 下标→(排,排内槽号)固定双射内联算术,0-3=前排
-1-4 / 4-9=后排 1-6,overlay-trigger 3.2 随 tracked 账退役换算族删除)。坐标参数化
+1-4 / 4-9=后排 1-6随 tracked 账退役换算族删除)。坐标参数化
 机械动作(CwActionWearEquipParam/工具原子类/CwActionOpenBoxParam/CwActionOpenTomeParam/CwActionOpenBookcardParam)的
 row/slot 字段 = 画面物理排槽位 1 基(动作参数定义,拖点直取 area,
 不经换算)。
@@ -192,7 +192,7 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> None:
 # (装备穿戴计划构造单一源 = kernel/cw_equip_wear_plan(R2 原子通路);
 #  发射位(mandate M7)直接消费同一构造函数,无第二源。)
 # (tracked 写点槽号健康显影 _expose_unhealthy_tracked_slots 已随
-#  overlay-trigger 3.2 tracked 第二账退役删除:其两个调用点均为 tracked
+#tracked 第二账退役删除:其两个调用点均为 tracked
 #  摘除腿,腿删则 helper 无消费面;容器形槽号 = 下标权威结构性健康。)
 
 
@@ -574,8 +574,7 @@ class PrepActionExecutor:
     def _bench_occupied_count(self) -> int:
         """备战席占用数(主域 bench 席位视图现读;席翻正判读输入)。
 
-        主域由卖出/部署 op 自上报同步销账(单账即同步,overlay-trigger
-        3.2),pre/post 两点夹一次 dispatch 即「本帧落地是否使席 free
+        主域由卖出/部署 op 自上报同步销账(单账即同步),pre/post 两点夹一次 dispatch 即「本帧落地是否使席 free
         由 0 翻正」的观测读数(方案 §3.3 (ii);缺页形态由消费臂门 1
         下帧现读自愈)。会话缺席/读失败 = -1(调用侧按「不可判」处理,
         不产生翻正)。
@@ -718,7 +717,7 @@ class PrepActionExecutor:
         DragCwChar.drag_char(self._op, src, dst)
 
     # (tracked 随动同步三腿(备战摘除/场上摘除/上阵落位)已随
-    #  overlay-trigger 3.2 tracked 第二账退役删除:动作写主域(逻辑
+    #tracked 第二账退役删除:动作写主域(逻辑
     #  通道)即同步,第二账无可同步;落地事实归观察边界 reconcile 对账。)
 
     # ===== 商店域 =====

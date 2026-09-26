@@ -1,5 +1,4 @@
-"""货币战争 overlay 登记簿记(overlay-trigger 阶段 C;design.md 契约
-C-登记/C-簿记;详设 details/register-consume.md)。
+"""货币战争 overlay 登记簿记(design.md 契约 C-登记/C-簿记;详设 overlay 生命周期契约)。
 
 三口(固定位置参数,用户裁定):
 - ``register_screen_change(gs, kind, screen_name, source)``:登记一条
@@ -8,12 +7,12 @@ C-登记/C-簿记;详设 details/register-consume.md)。
   弹出顺序不可枚举,用户裁定不强断言);
 - ``clear_screen_changes(gs)``:整列清空(识别回备战底屏的兜底清)。
 
-存处 = ``GameState.screen_changes`` 容器簿记 sidecar(register-consume.md
+存处 = ``GameState.screen_changes`` 容器簿记 sidecar(overlay 生命周期契约
 「存处」节裁定):单局生命周期随容器建亡、实机/sim 字面同一份存储、
 判据点全在 kernel 手里有 gs;先例 = 非 Field 簿记组(node_books 族)。
 
 kind 词表(九项,锚 = 现役选卡动作/画面名,禁新造同物异名;
-register-consume.md kind 表):partner / megastar / planner / wish_trial /
+overlay 生命周期契约 kind 表):partner / megastar / planner / wish_trial /
 fortune / star_tome / box_card / expert_invite / aha。sim 现役旧名
 ('fate'/'expert'/'hack')随 3.4 消费面切换正名,本模块不提供别名。
 
@@ -22,7 +21,7 @@ fortune / star_tome / box_card / expert_invite / aha。sim 现役旧名
 - planner 费用档集合(银狼 LV.999 每费用档首 2★ 一次);
 - 占卜屋战斗计数(黑天鹅在场,每 2 场弹一次);
 - 巨星跨档**无簿记**(每次上穿档线即弹,降档再升也弹——用户裁定;
-  register-consume.md「sim 修正清单」)。
+  overlay 生命周期契约「sim 修正清单」)。
 """
 from __future__ import annotations
 

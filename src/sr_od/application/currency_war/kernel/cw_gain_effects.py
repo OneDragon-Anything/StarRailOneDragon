@@ -49,7 +49,7 @@ HACKER_MOD_ASSUMPTION_KEYS: tuple[str, ...] = (
 )
 
 #: 骇客改件链翻来源域集(对抗审⑪:按「可能受影响域」裁,禁照抄 collect_ore
-#: 全域——gold 不受改件影响不翻,防噪声行;overlay-trigger 3.1:行域合卷
+#: 全域——gold 不受改件影响不翻,防噪声行;行域合卷
 #: 为 deployed 单字段)。
 _HACKER_MARK_DOMAINS: tuple[str, ...] = ('equips', 'bench', 'deployed')
 

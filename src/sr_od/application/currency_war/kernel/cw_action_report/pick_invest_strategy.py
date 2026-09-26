@@ -67,7 +67,7 @@ def report_action_pick_invest_strategy_param(
     gain_invest_strategy(
         gs, session, canon, rand=False, sig=sig,
         rng=action_sampling_rng('pick_invest_strategy', rng))
-    # S5 阿哈直登(overlay-trigger 3.3;trigger-inventory §1.6:选中
+    # 阿哈直登(用户确认:选中
     # 「阿哈大悦」确认后弹简易装备四选一,唯一路径 = 本上报)。
     if canon == '阿哈大悦':
         from sr_od.application.currency_war.kernel.cw_overlay_register import (

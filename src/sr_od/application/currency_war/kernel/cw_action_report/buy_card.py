@@ -142,7 +142,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
 
     # —— 升星腿(买前快照基点;整表 write_logic 后写覆盖,与简单腿
     #    两写合计的期望态由投影直锁钉住,锁 M1)——
-    # overlay-trigger 3.2:升星检测的比较基点 = 本函数主工作副本
+    # 升星检测的比较基点 = 本函数主工作副本
     # (scratch_b/scratch_d 已完成 bench_place/满栏合成买/级联合成的
     # 全套应用,与买前快照 pre_bench/pre_dep 恰构成 before/after 对;
     # 原经 mutate_bench_deployed_local 二次仿真取 after 的腿随 tracked
@@ -170,6 +170,6 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         gs.effects.on_buy(card, star, k)
     except Exception as e:  # noqa: BLE001  记录面失败不阻塞
         _log.warning(f'[cw-buy] 效果账本 on_buy 回调失败(不阻塞): {e}')
-    # (事实事件广播已随 overlay-trigger 3.5 事实事件槽退役删除:sim
+    # (事实事件广播已随事实事件槽退役删除:sim
     #  呈现/登记经容器值回调与问询时点呈现检查承载。)
     return LogicOutcome(applied=True, bought_count=k)

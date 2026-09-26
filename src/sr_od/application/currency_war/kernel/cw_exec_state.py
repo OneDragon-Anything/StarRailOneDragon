@@ -6,7 +6,7 @@ GameState(kernel/cw_game_state.py)。现辖三类领域函数:
 - 确认族到账推进:``apply_confirm_effect``(两态制标准语义;
   原 apply_op_effect 动作类分支随动作 op 重组批④ 收编 op 自上报后瘦身);
 - 槽位表领域模型:bench/deployed 槽位语义 helpers(benchchar-retirement
-  P1 起容器原生:bench = ``BenchSlot | None`` 槽表;overlay-trigger 3.1 起
+  P1 起容器原生:bench = ``BenchSlot | None`` 槽表;
   deployed 主域 = DeployedView 完整槽位表,3.2 随 tracked 第二账退役删除
   换算五函数——残余的下标→(排,排内槽号)固定双射由消费点内联算术承载,
   工作表桥 = cw_game_state.deployed_indexed_of_view/deployed_view_of_indexed);
@@ -41,7 +41,7 @@ def _session_seats(session) -> tuple[list, list]:
     # 席位主域读口(宿主 = GameState.bench/deployed 席位视图,kernel/
     # cw_game_state.py;lazy import 防模块环,同 _advance_gold 惯例)。
     # bench = list[BenchSlot | None] / deployed = 视图派生定长 10 工作表
-    # (overlay-trigger 3.2:tracked 第二账退役,合成仿真自主域派生)。
+    # (tracked 第二账退役,合成仿真自主域派生)。
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_view_slots_of,
         deployed_indexed_of_view,
@@ -173,7 +173,7 @@ BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级�
 # 4-9 = 后排槽 1-6。后排实际格数 = 6 + (cap−level) 值域 6-9(cw_back_layout
 # 三信号裁决;上限 9 = 用户口述,board_structure.md)——超过 6 的
 # 扩展格属画面布局域,超出动作坐标系不可寻址(主域视图可存 7-9 扩展
-# 格,工作表桥按 6 截断,overlay-trigger 3.1 在案)。
+# 格,工作表桥按 6 截断在案)。
 DEPLOYED_FRONT_CAPACITY: int = 4
 DEPLOYED_BACK_CAPACITY: int = 6
 DEPLOYED_CAPACITY: int = DEPLOYED_FRONT_CAPACITY + DEPLOYED_BACK_CAPACITY
@@ -197,7 +197,7 @@ def bench_place(bench: list[BenchSlot | None], slot: BenchSlot) -> int | None:
 
     容器原生形状(§2.1):元素 = ``BenchSlot | None``——None 洞(卖出/上阵
     置 None 不移位)与 ``kind='empty'`` 同为空槽。槽位信息位已随 Unit.slot
-    退役(overlay-trigger 3.1):权威槽位 = 表下标,落位归一腿为恒等
+    退役():权威槽位 = 表下标,落位归一腿为恒等
     (保留函数形状供调用方零改动;非 unit kind 原样落槽)。
     """
     for i, b in enumerate(bench):
@@ -211,7 +211,7 @@ def bench_occupied_slot_nos(bench: list[BenchSlot | None]) -> list[int]:
     """占用槽号集(槽号健康门输入;None 槽跳过)。
 
     [索引定义] 值 = 物理槽号(1 基) = 表下标 + 1;Unit.slot 信息位已退役
-    (overlay-trigger 3.1),槽号由下标派生——结构上恒唯一且 ∈ 1..容量,
+    (),槽号由下标派生——结构上恒唯一且 ∈ 1..容量,
     健康门对下标派生输入恒过(防线保留给仍传信息位口径的过渡期调用方)。
     """
     return [i + 1 for i, slot in enumerate(bench or [])
@@ -231,8 +231,7 @@ def bench_slots_healthy(slot_nos: list[int]) -> bool:
 
 
 # (换算五函数 deployed_slot_no/deployed_row_slot/deployed_idx_of/
-#  deployed_rows_to_indexed/deployed_indexed_to_rows 已随 overlay-trigger
-#  3.2 tracked 第二账退役删除:主域 = DeployedView 完整槽位表(下标直址),
+#  deployed_rows_to_indexed/deployed_indexed_to_rows 已随 tracked 第二账退役删除:主域 = DeployedView 完整槽位表(下标直址),
 #  工作表桥 = cw_game_state.deployed_indexed_of_view/deployed_view_of_
 #  indexed;残余的下标→(排,排内槽号)固定双射(0-3=前排 1-4 /
 #  4-9=后排 1-6)由消费点内联算术承载,消费面 = 卖场上阵 op 与遥测归档。)

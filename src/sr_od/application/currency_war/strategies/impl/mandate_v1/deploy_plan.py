@@ -77,8 +77,7 @@ def _bench_slot_is_item(b) -> bool:
 
 
 def _slot_no_of(b, idx: int | None = None) -> int:
-    """占席条目 → 紧缩位键(条目在紧缩占席序中的 0 基下标;overlay-trigger
-    3.1:Unit.slot 信息位退役,紧缩序 = 物理槽序;``idx`` 显式传位)。"""
+    """占席条目 → 紧缩位键(条目在紧缩占席序中的 0 基下标;Unit.slot 信息位退役,紧缩序 = 物理槽序;``idx`` 显式传位)。"""
     return int(idx if idx is not None else 0)
 
 #: 部署计划容器槽位表不健康显影分键(计划级 fail-closed 时 +1)。键名保留
@@ -607,7 +606,7 @@ def deploy_plan_moves(frame: MandateFrame, session: StrategySession,
     # 重建副作用;test 桩态亦不被替换)。
     _comp = getattr(strategy_state_of(session), 'target_comp', None)
     plans = deploy_slot_plans(frame.bench, up, _comp, state)
-    # 紧缩占席序 → 容器槽位表下标对位(overlay-trigger 3.1:Unit.slot
+    # 紧缩占席序 → 容器槽位表下标对位(Unit.slot
     # 信息位退役,frame.bench 与容器视图同帧同对象——紧缩序 = 物理槽序,
     # 第 k 个占用槽 ↔ frame.bench[k];视图漂移(占用数不等)= 陈旧帧
     # fail-closed 整体弃算,防错位拖拽出场。)

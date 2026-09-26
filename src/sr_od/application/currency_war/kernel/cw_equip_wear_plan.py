@@ -194,7 +194,7 @@ def _build_equip_wear_plan(session: Any,
     # 依据 = 迭代详设 obs-retirement §阶段 3.2-4。
     _bk_raw = _gs_c.back_layout.value
     _bk_n = int(_bk_raw) if _bk_raw is not None else None
-    # 上阵视图现读(overlay-trigger 3.1:deployed 单字段完整槽位表,
+    # 上阵视图现读(deployed 单字段完整槽位表,
     # 行内槽号 = 子表下标派生)
     deployed_view = _gs_c.deployed.value
     _has_deployed = deployed_view is not None and any(

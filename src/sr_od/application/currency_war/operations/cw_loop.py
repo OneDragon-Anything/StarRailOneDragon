@@ -588,7 +588,7 @@ class CwLoop(CwOperation):
             log.debug('[cw-loop] 分发画面预检失败(不阻塞): %s', e)
 
     def _resolve_frame_identity(self, screen) -> tuple[str | None, list]:
-        """阶段一身份解析(overlay-trigger 3.4:两段式 → 全扫描 → 对账行)。
+        """阶段一身份解析(两段式 → 全扫描 → 对账行)。
 
         - **两段式**(实机专属,sim 身份 = 状态机呈现即预测同源):
           pending 非空 → 按序逐屏 ``is_target_screen`` 试,命中即返
@@ -600,7 +600,7 @@ class CwLoop(CwOperation):
           pending 条目——aha 类条目的 screen_name = 备战底屏(锚挂备战档,
           无独立分发屏),命中备战名会落入无备战臂的身份分发死循环;
           此类条目不参与两段式,实机走反应式兜底(阶段三 aha 锚特殊
-          规则)+ 兜底清收口(register-consume.md「生命周期」aha 消费
+          规则)+ 兜底清收口(overlay 生命周期契约aha 消费
           口径 = 实机兜底清空)。
         - **对账行**:pending 预测 vs 实扫不一致 → note_obs_event
           arbitrate 行(判据假阳/延迟呈现漂移警报;条目存活至备战底屏
@@ -644,7 +644,7 @@ class CwLoop(CwOperation):
         return match_name, pending_pred
 
     def _fallback_clear_pending(self) -> None:
-        """备战底屏兜底清空(register-consume.md「生命周期」②)。
+        """备战底屏兜底清空(overlay 生命周期契约②)。
 
         识别回备战底屏(双锚)= 本轮分发(两段式 + 全扫描)未接住任何
         pending 条目 → 整列清,判据假阳条目最多活到下一轮分发。识别到

@@ -9,7 +9,7 @@
 穿戴后该角色 worn 集内可合成的两件立即合成为进阶件,循环至无可合成,
 两两配方 = ``cw_synthesis.synthesize_target`` K8 闭合):穿戴落位与
 合成在同一写序内完成——owned 摘件 → worn 集合成 → 目标域整表重建写
-(bench/deployed 两域,合成产物落 worn 集尾;overlay-trigger 3.1:
+(bench/deployed 两域,合成产物落 worn 集尾;
 前后排 = deployed 单字段视图)。规则住本上报
 = kernel 单一源(sim 与实机动作腿同构消费,禁第二份实现);合成改变
 板面装备贡献 → 落地写后广播 ``board_changed`` 事实事件。
@@ -75,7 +75,7 @@ def _locate_unit(gs: GameState, param: Any) -> tuple[str, int, Unit] | None:
     合法穿戴前置 = 计划指名;char_name 空 = front-only 回退步,按
     (row, slot) 现读)。[索引定义] row ∈ 'front'|'back'(词表通用声明),
     slot = 画面物理槽位 1 基,deployed 域 = DeployedView 子表下标 + 1
-    (overlay-trigger 3.1:位置 = 子表下标派生);bench 域 = BenchView 槽序
+    (位置 = 子表下标派生);bench 域 = BenchView 槽序
     (视图槽 i ↔ 画面槽位 i+1)。
 
     Returns:
@@ -109,7 +109,7 @@ def _locate_unit(gs: GameState, param: Any) -> tuple[str, int, Unit] | None:
 def _write_mutated_domain(gs: GameState, domain: str, idx: int,
                           unit: Unit, sig: ChannelSig) -> None:
     """目标域整表重建写(容器视图 frozen 链,穿戴写 = 域整表重建;
-    overlay-trigger 3.1:deployed 域 = 单字段视图整值替换)。"""
+    deployed 域 = 单字段视图整值替换)。"""
     if domain == 'bench':
         view = gs.bench.value
         slots = list(view.slots)
@@ -173,8 +173,8 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
     owned.remove(param.item_name)
     gs.write_logic(gs.equips, owned, produced_by=_PRODUCER,
                    evidence=f'owned[{param.item_name}] -1(穿戴)', sig=_grp_sig)
-    # (tracked 第二账已随 overlay-trigger 3.2 退役:容器侧本函数
+    # (tracked 第二账已退役:容器侧本函数
     #  _write_mutated_domain 整值替换写已是单点,原「tracked deployed
     #  穿戴随动腿」无可同步;session 形参兼容保留。)
-    # (事实事件广播已随 overlay-trigger 3.5 事实事件槽退役删除。)
+    # (事实事件广播已随事实事件槽退役删除。)
     return LogicOutcome(applied=True)

@@ -36,7 +36,7 @@ def report_action_open_tome_param(gs: GameState, param: Any, sig: ChannelSig) ->
 
     view = gs.bench.value
     if view is None:
-        # bench_unobserved 早退不登记:S6 登记与开件动作同生——本腿生产
+        # bench_unobserved 早退不登记:登记与开件动作同生——本腿生产
         # 不可达(bench 恒有开局种子 9 空槽视图,cw_game_state 种子底座),
         # 仅测试直构/极端离线形态可达;该形态开件本身未落地,登记即假阳。
         return LogicOutcome(applied=True, reason='bench_unobserved')
@@ -50,7 +50,7 @@ def report_action_open_tome_param(gs: GameState, param: Any, sig: ChannelSig) ->
     slots[_idx] = BenchSlot(kind='empty')
     _w(gs.bench, BenchView(slots=slots, capacity=view.capacity),
        'proj_open_item_clear')
-    # S6 点击直弹登记(overlay-trigger 3.3;trigger-inventory §1.9
+    # 点击直弹登记(
     # 用户纠正:点典籍槽一次即弹星徽四选一——统一入登记,kind = star_tome)。
     # 不构造 WorldDecl(3.4 评审 S1 入册):本上报零画面转移语义
     #(next_screen 无处可填——腾席后底层屏恒备战,星徽四选一画面的

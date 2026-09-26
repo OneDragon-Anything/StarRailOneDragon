@@ -28,7 +28,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
 #: 开书册卡声明(纯转移;封闭集单一源 = sim 后端 advance 分派表键集)。
-# overlay-trigger 3.4(S6 声明改底层屏):专家邀请函画面的出现事实改由
+#(声明改底层屏):专家邀请函画面的出现事实改由
 # 登记(kind = expert_invite,上报内 register)承载,声明 next_screen
 # 语义回归备战底屏(流转移 = 开卡即腾席后回备战,弹窗出现走登记分发)。
 _DECL: WorldDecl = WorldDecl(next_screen=SCREEN_PREP_FRAME,
@@ -53,7 +53,7 @@ def report_action_open_bookcard_param(gs: GameState, param: Any, sig: ChannelSig
 
     view = gs.bench.value
     if view is None:
-        # bench_unobserved 早退不登记:S6 登记与开卡动作同生——本腿生产
+        # bench_unobserved 早退不登记:登记与开卡动作同生——本腿生产
         # 不可达(bench 恒有开局种子 9 空槽视图,cw_game_state 种子底座),
         # 仅测试直构/极端离线形态可达;该形态开卡本身未落地,登记即假阳。
         return LogicOutcome(applied=True, reason='bench_unobserved',
@@ -68,7 +68,7 @@ def report_action_open_bookcard_param(gs: GameState, param: Any, sig: ChannelSig
     slots[_idx] = BenchSlot(kind='empty')
     _w(gs.bench, BenchView(slots=slots, capacity=view.capacity),
        'proj_open_item_clear')
-    # S6 点击直弹登记(overlay-trigger 3.3;trigger-inventory §1.8:
+    # 点击直弹登记(用户确认:
     # 点书册卡「开启」直接弹五选一——统一入登记,kind = expert_invite)。
     from sr_od.application.currency_war.kernel.cw_overlay_register import (
         KIND_SCREEN_NAMES,

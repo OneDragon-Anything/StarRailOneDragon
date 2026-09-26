@@ -326,8 +326,7 @@ def _slot_star(b) -> int:
 
 
 def _slot_no_of(b, idx: int | None = None) -> int:
-    """占席条目 → 紧缩位键(条目在紧缩占席序中的 0 基下标;overlay-trigger
-    3.1:Unit.slot 信息位退役,发射面位键 = 紧缩序下标(紧缩序 = 物理槽
+    """占席条目 → 紧缩位键(条目在紧缩占席序中的 0 基下标;Unit.slot 信息位退役,发射面位键 = 紧缩序下标(紧缩序 = 物理槽
     序),容器对位经 ``_bench_container_idx_by_compact`` 枚举还原。"""
     return int(idx if idx is not None else 0)
 
@@ -347,7 +346,7 @@ def _bench_container_idx(state: GameState, victim: BenchSlot) -> int | None:
 
 def _bench_container_idx_by_compact(state: GameState, pos: int) -> int | None:
     """发射面容器下标解析·bench 域(紧缩位键 → 容器下标;unified-action-
-    factory 批2b 换算收口,overlay-trigger 3.1:位键 = 紧缩占席序下标
+    factory 批2b 换算收口,位键 = 紧缩占席序下标
     〔物理槽序〕,容器下标 = 第 pos+1 个占用槽的下标——对位失配
     (越界/视图漂移)= 陈旧/carry 帧禁猜位,返回 None)。
 
@@ -372,7 +371,7 @@ def _bench_container_idx_by_compact(state: GameState, pos: int) -> int | None:
 
 
 #: 兼容别名:旧调用面命名(by_slot = 旧槽号信息位键时代),语义已随
-#: overlay-trigger 3.1 切换为紧缩位键。
+#:切换为紧缩位键。
 _bench_container_idx_by_slot = _bench_container_idx_by_compact
 
 

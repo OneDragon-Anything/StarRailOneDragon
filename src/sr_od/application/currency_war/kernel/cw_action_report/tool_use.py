@@ -133,7 +133,7 @@ def _remove_one(items: list[str], name: str) -> bool:
 def _resolve_row_unit(gs: GameState, row: str, slot: int) -> Unit | None:
     """目标身份解析:``row``/``slot``(画面物理排 + 排内槽位 1 基,与执行
     拖点同源坐标)→ deployed 视图子表现读单位(子表下标 = slot-1,
-    overlay-trigger 3.1:位置 = 子表下标派生;取值时机 = 上报期现读)。
+    位置 = 子表下标派生;取值时机 = 上报期现读)。
     行域未观察/槽位无单位(漂移)= None,bug 面由调用方留证零写。"""
     view = gs.deployed.value
     if view is None:
@@ -147,7 +147,7 @@ def _resolve_row_unit(gs: GameState, row: str, slot: int) -> Unit | None:
 def _write_row_equips_cleared(gs: GameState, row: str, unit: Unit, *,
                               evidence: str, sig: ChannelSig) -> bool:
     """行域穿戴清空写(扳手族/炉 char 腿共用):目标单位 ``equips`` 清空,
-    其余成员原样(单字段视图整值替换;overlay-trigger 3.1 一次写)。
+    其余成员原样(单字段视图整值替换;一次写)。
     行域值必已观察(单位自行域现读解析而来)。"""
     view = gs.deployed.value
     if view is None:

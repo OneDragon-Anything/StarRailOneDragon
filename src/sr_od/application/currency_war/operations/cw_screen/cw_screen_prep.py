@@ -242,7 +242,7 @@ class CwScreenPrep(CwOperation):
                                shop_open=obs.shop_open,   # gold 仅 shop 开态可信门
                                session=self._session())   # SIFT 三层漏斗(session 优先匹配)
             # P6 观察链直产:observe_full 回传容器形状(备战席 BenchView /
-            # 上场位 (前排命中对, 后排命中对)——overlay-trigger 3.1:读侧
+            # 上场位 (前排命中对, 后排命中对)——读侧
             # 仍分排读屏,落容器 = 一次 observe 写 DeployedView(两排同帧
             # 合一,视图构造单一源 = kernel deployed_view_of_hits)。templates
             # 未加载 → None → 下方换空载体(与旧 [] 等价:对账空读可清账、
@@ -320,7 +320,7 @@ class CwScreenPrep(CwOperation):
                                       family='obs', actor='CwScreenPrep',
                                       screen='货币战争-备战', mode='carried'))
                 # 上场席位观察写端(与 bench 写端同环同纪律;P6 直产;
-                # overlay-trigger 3.1 合一写):读侧仍分排读屏,落容器 =
+                # 合一写):读侧仍分排读屏,落容器 =
                 # 一次 observe 写 DeployedView(两排同帧合一——换排/重排/
                 # 容量变化都是单字段整值替换,无跨字段中间态);空读(两排
                 # 全空)= 失读非全空 → carry,禁「全场无人」假观察;特效窗
@@ -522,7 +522,7 @@ class CwScreenPrep(CwOperation):
         统一走公共 ``cw_reconcile.reconcile_tracking``(空读守卫/漂移留证/
         obs_conflict JSONL 单一实现,star 用 read_star 实机金星)。载体 =
         P6 直产容器形状(备战席 BenchView / 上场位 DeployedView——
-        overlay-trigger 3.1:读侧分排读屏、对账载体 = 合一视图);失读
+        读侧分排读屏、对账载体 = 合一视图);失读
         None → 空视图承载(旧链 [] 语义:对账空读可清账,非
         「读失败不辖」)。
 
@@ -790,7 +790,7 @@ class CwScreenPrep(CwOperation):
             # game-round 恰一次,环内多次重观察不放大方向刷新成本)。
             game_state_of(session).frame_class_prep = (
                 'full' if isinstance(action, CwActionObsParam) else 'none')
-            # —— overlay-trigger 3.4 宿主动作后交回(register-consume.md
+            # —— 宿主动作后交回(overlay 生命周期契约
             #    「实机消费」表):pending 非空 = 触发动作已落地、弹窗将现
             #    → 确定性提前交回外循环(两段式接住),取代等重观察发现。
             #    终结动作上方已各自出口,不经此处。

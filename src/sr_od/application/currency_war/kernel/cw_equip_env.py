@@ -108,7 +108,7 @@ def apply_equip_env_variants(signals: EquipEnvSignals,
     开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3;门级
     hold/生锈豁免在 equip_all 调用侧生效,不经本函数。``registry``/
     ``session``/``signals``/``hold_active`` 参数占位不再参与取值。)
-    ``view`` = 上阵视图 :class:`DeployedView`(overlay-trigger 3.1,
+    ``view`` = 上阵视图 :class:`DeployedView`,
     直通 ``equip_allocation`` 同名参数)。
     ``priority_order``(18 号稿 §3.2/§3.3):词缀条件优先层
     重排输入序,直通 ``equip_allocation`` 同名可选参数(缺省 None 零漂移);
@@ -409,7 +409,7 @@ def resolve_affix_priority_order(comp, view,
     词缀层不启用(无输出侧谓词词缀在场 / 谓词全满足 / comp 缺失),回落
     基分配序(零重排)。纯函数;决策层产物,执行层禁内嵌评分(
     裁定 3 分层)。
-    ``view`` = 上阵视图 :class:`DeployedView`(overlay-trigger 3.1:位置 =
+    ``view`` = 上阵视图 :class:`DeployedView`(位置 =
     子表下标派生,occupied 键 (row, 行内槽号))。
 
     判据(§3.2,零新自由参数——N 与罚值全部来自结构化载体):

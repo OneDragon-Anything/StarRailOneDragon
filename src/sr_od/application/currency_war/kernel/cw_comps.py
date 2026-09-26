@@ -1322,7 +1322,7 @@ def form_progress(comp: Comp, gs: GameState) -> float:
     required = getattr(comp, 'required_deployed', None) or ()
     if required:
         # 席位经容器视图读(无该属性 = 轻量假想面板,按 0 计保守向;
-        # overlay-trigger 3.1:行域合卷为 deployed 单字段,鸭型位同名)
+        # 行域合卷为 deployed 单字段,鸭型位同名)
         _view = getattr(getattr(gs, 'deployed', None), 'value', None)
         _front = getattr(_view, 'front_slots', None)
         _back = getattr(_view, 'back_slots', None)
@@ -1911,7 +1911,7 @@ def _wearable_gate_ok(worn_all: list[str], char: str, item: str) -> bool:
 
 def _iter_deployed_rows(view) -> list[tuple[str, int, object]]:
     """上阵视图 → ``(行名, 排内 1 基槽号, Unit)`` 序列(分配器与诊断共用
-    同一展开,禁第二份;overlay-trigger 3.1:位置 = DeployedView 子表
+    同一展开,禁第二份;位置 = DeployedView 子表
     下标派生,视图缺席 = 空序)。"""
     if view is None:
         return []
@@ -1947,7 +1947,7 @@ def equip_alloc_empty_reason(comp: Comp | None,
     与 ``equip_allocation`` 同输入口径(occupied/completed 前提下守卫状态一致:
     空分配 ⇔ 无任何 ``_assign`` 发生)。可行性判定与分配器共用
     ``_pairing_guard_ok``/``_wearable_gate_ok`` 单源(镜像纪律)。
-    ``view`` = 上阵视图 :class:`DeployedView`(overlay-trigger 3.1:位置 =
+    ``view`` = 上阵视图 :class:`DeployedView`(位置 =
     子表下标派生,排归属由子表承载,occupied 键 (row, 行内槽号))。
     """
     occ = occupied or {}
@@ -2016,7 +2016,7 @@ def equip_allocation(comp: Comp | None,
     ``occupied[(row, slot)]`` = 已穿列表(容量扣减,EQUIP_CAPACITY);
     ``view`` = 上阵视图 :class:`DeployedView`(元素 = 容器 ``Unit``,
     char_id/star/equips 直读,排归属与行内槽号由子表下标派生——
-    overlay-trigger 3.1)。comp=None → 全走 3(通用兜底)。纯函数(可离线测);
+    )。comp=None → 全走 3(通用兜底)。纯函数(可离线测);
     消费面 = `kernel/cw_equip_env.py`(判据求值位)。
 
     ``priority_order``(18 号稿 §3.3 签名扩展):可选分配优先序

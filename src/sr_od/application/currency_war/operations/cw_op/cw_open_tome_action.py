@@ -30,10 +30,10 @@ if TYPE_CHECKING:
 class CwActionOpenTomeOp(CwOperation):
     """开秘密典籍:单击典籍槽(开启)→ 固定动画等待。非终结。
 
-    overlay-trigger 3.5 单击化(用户确认 2026-09-25 游戏实际 = 单击
+    单击化(用户确认 2026-09-25 游戏实际 = 单击
     即弹;原双击序列的第二击落在已弹出的弹窗上有误触风险):
     实机核凭据 = 待实机局 journal(代码批先落地,实机验证随迭代收尾,
-    trigger-inventory §1.9)。"""
+    )。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False

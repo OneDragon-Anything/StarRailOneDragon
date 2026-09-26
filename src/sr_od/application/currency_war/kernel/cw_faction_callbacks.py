@@ -1,5 +1,4 @@
-"""货币战争 值域回调级联(overlay-trigger 阶段 B;design.md 契约 C-回调;
-详设 details/faction-trigger.md)。
+"""货币战争 值域回调级联(design.md 契约 C-回调;详设 faction-trigger.md)。
 
 回调挂 **deployed 值变更**(非动作)——部署/卖出/替换/合成落场/穿戴,
 凡改场上名单或装备,同一套回调;判据只看「值从什么变成什么」。观察写
@@ -42,7 +41,7 @@ _FACTION_POPUP_KINDS: dict[str, str] = {
     '命运圣杯': 'wish_trial',
 }
 
-#: S2 伙伴判据的在场前提角色(列车同行核心;trigger-inventory §1.2
+#: S2 伙伴判据的在场前提角色(列车同行核心; §1.2
 #: 用户裁定「姬子·启行在场 ∧ 另有成员」)。
 _PARTNER_ANCHOR_CHAR: str = '姬子·启行'
 
@@ -190,7 +189,7 @@ def on_qualification_changed(gs, old_sets, new_sets, source: str) -> None:
 def on_star_changed(gs, old_star, new_star, source: str) -> None:
     """星级回调 → S3 planner 判据:新值 ≥ 2 ∧ 该费用档未弹过
     (旧值无关——覆盖无→2 / 1→2 / 无→3[暂按会弹,实机复核标注 =
-    trigger-inventory §4]/ 2→3 不弹[档已弹];faction-trigger.md
+     §4]/ 2→3 不弹[档已弹];faction-trigger.md
     值域回调级联表)。费用档读 ``gs.lv999_cost_tier``(未观察 None =
     语义起始档 3,与 cw_economy.effective_cost 同缺省口径)。"""
     if new_star is None or new_star < 2:

@@ -1,29 +1,8 @@
-"""sim 重做·特殊角色规则(M21)。
+"""sim 特殊规则建模助手(占位与特殊判据的 sim 侧宿主)。
 
-设计正本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
-(§2.2 特殊角色判据)第一期定稿口径:
-
-- **银狼LV.999**(注册表单条目 ``data/cw_chars.py``,起始 3 费):当前
-  费用档 = 容器推演状态 ``gs.lv999_cost_tier``(读口唯一 =
-  ``kernel.cw_economy.effective_cost``;写端 = pick_planner 升费腿 /
-  deploy_move 上阵变费腿;2026-09-18 定谳:升费 = 变下一个费用档的
-  1 星)。池桶归属(商店发牌/效果授予采样空间)经 ``kernel.cw_pool``
-  档感知出口承接,本模块不再持有费用档派生口径;
-- 「我来当策划」二选一 overlay(升费 vs 其他)= 银狼首次升 2 星触发
-  (有档触发,gameplay「角色升星」节)→ M22 planner 族(U14 已裁决
-  纳入);引擎升星钩子在合成腿后消费触发判据,「首次」语义由引擎
-  一次性标志承载;
-- **开拓者双形态**:前台=记忆/后台=欢愉,位置决定生效——kernel
-  ``cw_chars.trailblazer_form`` 单一源(部署腿按目标排形态归一已在
-  kernel 转移函数内,sim 侧只供查询口与测试锚);
-- 三星五费特效(≈无敌)= M13 战力特征,第一期随机输出面下无消费,
-  挂披露;
-- 试用角色 = 账号未拥有、面板中等(``docs/game/gameplay/currency_war.md``
-  「试用角色」行 :81)——与自有同池同计数,sim 无账号概念,无差异
-  建模。
-
-随机量与流键:无(全部确定性规则;「我来当策划」选项生成归 M22
-``M21/planner``→``M22/planner`` 流)。
+现役成员与单一源关系:planner 触发判据 = kernel 值回调
+(cw_faction_callbacks 星级回调,每费用档簿记 = ScreenChanges
+sidecar);本模块仅存留与其判据解耦的 sim 侧特殊建模件。
 """
 from __future__ import annotations
 
@@ -34,13 +13,12 @@ from sr_od.application.currency_war.data.cw_chars import (
 
 #: 银狼LV.999 注册表规范名(单一源 = ``data/cw_chars.py``;名字含
 #: 「LV.999」后缀,与普通「银狼」4 费条目是两个角色)。
-SILVER_WOLF_ID: str = '银狼LV.999'
 
 #: 三星五费特效披露键(M13 战力特征,第一期无消费面)。
 THREE_STAR_FIVE_COST_PENDING: str = 'three_star_five_cost_effect_pending_u26'
 
 
-# (planner 升星判据助手已随 overlay-trigger 3.5 评估器退役删除:
+# (planner 升星判据助手已随评估器退役删除:
 #  判据单一源 = kernel/cw_faction_callbacks 的星级值回调[S3],
 #  每费用档簿记 = ScreenChanges.planner_tiers_fired。)
 
