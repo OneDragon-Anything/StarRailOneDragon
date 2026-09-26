@@ -12,12 +12,22 @@ from one_dragon.base.operation.operation_round_result import (
 # after_operation_done 的 result 注解在类定义期求值,OperationResult
 # 必须**运行期可导入**(TYPE_CHECKING 块对此场景不够——本模块无
 # `from __future__ import annotations`;用 _ 别名避与参数名冲突)。
-from one_dragon.base.screen.screen_utils import get_match_screen_name
+from one_dragon.base.screen.screen_utils import (
+    get_match_screen_name,
+    is_target_screen,
+)
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_screen_state import (
     PREP_DIRECT_EXIT_SCREENS,
     get_in_match_screen_name,
+)
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
+    game_state_of,
+)
+from sr_od.application.currency_war.kernel.cw_overlay_register import (
+    clear_screen_changes,
 )
 from sr_od.application.currency_war.kernel.cw_run_allocator import MatchOutcome
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
@@ -1473,10 +1483,50 @@ class CwLoop(CwOperation):
         # 状态机唯一答口 ``screen_identity()``(哨兵帧无识别面,实机
         # get_match_screen_name 在 sim 不可用);未装配 = 原识别链零行为
         # 变化(flow-seam 附录 A.2「sim 画面身份归 screen_identity」)。
-        _match_name = cw_sim_ports.sim_or_live_identity(
-            self.CW_DISPATCH_SCREENS,
-            lambda: get_match_screen_name(
-                self.ctx, screen, screen_name_list=self.CW_DISPATCH_SCREENS))
+        #
+        # overlay-trigger 3.4 两段式判定(register-consume.md「实机消费」
+        # 表):pending 非空 → 先按 pending 序逐屏 ``is_target_screen`` 试
+        # (命中即返;pending 长度通常 ≤2,弹窗动作落地即弹的确定性预测)。
+        # 未中 → 落回全扫描(反应式兜底不变)。机制依据:
+        # get_match_screen_name 按 loader 序遍历、传入清单只作过滤集不承序
+        # (screen_utils get_match_screen_name 实现)——提速必须两段式,
+        # 重排清单无效。sim 不走两段式:后端呈现即预测同源
+        # (screen_identity 已反映 pending 呈现),实机专属。
+        _match_name: str | None = None
+        _pending_pred: list = []
+        if cw_sim_ports.mechanical_io_allowed():
+            try:
+                _pending_pred = list(game_state_of(
+                    self.ctx.cw_match.session).screen_changes.pending)
+            except Exception:   # noqa: BLE001  无局/容器缺席 = 零预测,原链
+                _pending_pred = []
+            for _pe in _pending_pred:
+                if is_target_screen(self.ctx, screen,
+                                    screen_name=_pe.screen_name):
+                    _match_name = _pe.screen_name
+                    break
+        if _match_name is None:
+            _match_name = cw_sim_ports.sim_or_live_identity(
+                self.CW_DISPATCH_SCREENS,
+                lambda: get_match_screen_name(
+                    self.ctx, screen,
+                    screen_name_list=self.CW_DISPATCH_SCREENS))
+        # 识别对账行(overlay-trigger 3.4):pending 预测 vs 实扫不一致 →
+        # journal 留证(判据假阳/延迟呈现漂移警报;条目存活至备战底屏
+        # 兜底清,反应式兜底不受影响)。
+        if _pending_pred and _match_name is not None \
+                and _match_name not in {p.screen_name for p in _pending_pred}:
+            # 对账行 best-effort:无局/容器缺席不阻塞分发主链。
+            with contextlib.suppress(Exception):
+                _gs_pa = game_state_of(self.ctx.cw_match.session)
+                _gs_pa.note_obs_event(
+                    'arbitrate', 'screen_changes',
+                    {'predicted': [(p.kind, p.screen_name) for p in _pending_pred],
+                     'observed': _match_name},
+                    sig=ChannelSig(family='obs', actor='CwLoop',
+                                   mode='read',
+                                   group_id=f'gate:CwLoop@{_gs_pa.write_seq + 1}'),
+                    verdict='pending 预测未中(判据假阳或延迟呈现;兜底清收口)')
         # 路由点陈旧清点(终态契约 landing §3.1):识别产出后、身份分发前,
         # 复用当轮识别结果;语义三定义见 _route_clear_stale_payloads。
         self._route_clear_stale_payloads(_match_name)
@@ -1536,6 +1586,18 @@ class CwLoop(CwOperation):
         # 半开帧可从底层透出命中,prep.md §时序)。双锚同帧命中才认备战。
         if (self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success
                 and self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success):
+            # overlay-trigger 3.4 兜底清空(register-consume.md「生命周期」:
+            # 识别回备战底屏 = 本轮分发(两段式 + 全扫描)未接住任何 pending
+            # 条目 → 整列清,判据假阳条目最多活到下一轮分发。识别到弹窗屏
+            # 不清——多弹窗条目逐个存活,fortune 在补给/遭遇屏期间条目一直
+            # 活着直到进备战弹出被接住;弹窗真出现时阶段一全扫描照常命中
+            #(反应式兜底不变,清掉的只是预测优先权)。sim 不走本清(呈现
+            # 即消费,由后端呈现检查收口)。
+            if cw_sim_ports.mechanical_io_allowed():
+                # 兜底清 best-effort:无局/容器缺席不阻塞备战分发。
+                with contextlib.suppress(Exception):
+                    clear_screen_changes(game_state_of(
+                        self.ctx.cw_match.session))
             # (原 PREP_SETTLE_S 子态稳定门 + _post_settle_auto_shop 自动开店判稳
             # 标志位已退役,W971 §2.6/§2.11:半开帧防护替身 = 单轮 op 清场 +
             # 自动开店收起探针;稳定性由外循环每轮重识别保证。)

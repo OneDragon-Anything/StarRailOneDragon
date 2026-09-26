@@ -677,6 +677,16 @@ class CwScreenShop(CwOperation):
         # 守卫见函数注)。
         accrue_release_spent(match, action, _ok)
         if not _op_cls.terminal:
+            # overlay-trigger 3.4 宿主动作后交回(register-consume.md「实机
+            # 消费」表):pending 非空 = 触发动作已落地、弹窗将现(典型 =
+            # 买腿三合一 planner 叠商店弹)→ 确定性提前交回外循环,取代
+            # 等重观察发现;非终结帧的 round_wait 让位本出口。
+            _pending_n = len(game_state_of(match.session).screen_changes.pending)
+            if _pending_n:
+                log.info('[cw][plan] overlay 登记 %d 项在册 → 交回外循环分发',
+                         _pending_n)
+                return self.round_success(
+                    f'overlay 登记 {_pending_n} 项在册,交回外循环分发', wait=0.8)
             # 非终结:round_wait(帧不消费,零读屏;决策循环无防御上限,
             # 不收敛 = 策略实现 bug)。
             return self.round_wait()

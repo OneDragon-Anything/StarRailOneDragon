@@ -103,6 +103,9 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
     node_sequence_of,
 )
+from sr_od.application.currency_war.kernel.cw_overlay_register import (
+    consume_screen_change,
+)
 from sr_od.application.currency_war.kernel.cw_reward_node import (
     PIGGY_ENV_NAMES,
 )
@@ -992,20 +995,24 @@ class SimBackend:
         elif decl.trigger == 'pick_invest_strategy':
             self._on_invest_picked(opening=False)
         elif decl.trigger == '':
-            # 纯转移(详设 §3 '' 行):按 next_screen 二分——专家邀请函
-            # 档 = 模态呈现;其余纯转移动作(零档选卡族/关店)交回落点
-            # 恒备战 → 幂等交回(底层稳态由 _reconcile_next_screen 对账)。
-            if decl.next_screen == SCREEN_EXPERT:
-                self._present_modal(SCREEN_EXPERT)
-            else:
-                self._dismiss_modal()
+            # 纯转移(详设 §3 '' 行):overlay-trigger 3.4 起统一幂等交回
+            #(底层稳态由 _reconcile_next_screen 对账)。原专家邀请函档
+            # 特判呈现随 S6 声明改底层屏退役——专家画面的出现事实由
+            # 登记(kind = expert_invite,open_bookcard 上报内 register)
+            # 承载,呈现走本方法末尾的 pending 呈现检查。
+            self._dismiss_modal()
         self._reconcile_next_screen(decl)
+        # overlay 呈现检查(3.4:呈现时机 = advance/步界;上报内已
+        # register 的条目在此呈现——模态守卫在呈现检查内,叠模态推迟)。
+        self._present_pending_overlay()
 
     def _reconcile_exempt_reason(self) -> str:
         """当前对账豁免场景(:data:`RECONCILE_EXEMPT_KINDS`;命中 =
         最上层呈现屏 ≠ 底层稳态画面属建模内合法形态,断言延后至稳态;
-        ''= 稳态可判)。"""
-        if self.overlay_queue.peek() is not None:
+        ''= 稳态可判)。overlay_trigger 3.4:overlay_pending 检查改读容器
+        登记 ``gs.screen_changes.pending``(呈现数据源已迁,旧 OverlayQueue
+        呈现面退役)。"""
+        if self.gs.screen_changes.pending:
             return 'overlay_pending'
         if self._screen == SCREEN_INVEST_STRATEGY:
             return 'offer_presented'
@@ -1139,11 +1146,12 @@ class SimBackend:
         self._dismiss_modal()
 
     def _on_overlay_picked(self, kind: str) -> None:
-        """overlay 选定落地(评估器目录族):效果腿归各自上报/效果批
-        (megastar chosen = 决策面写端;planner 腿 = pick_planner 上报),
-        本层出队 + 模态交回。"""
-        if self.overlay_queue.peek() == kind:
-            self.overlay_queue.pop()
+        """overlay 选定落地(模态交回 + 呈现检查):效果腿归各自上报/
+        效果批,本层零效果。overlay-trigger 3.4:原 OverlayQueue 出队腿
+        退役——呈现数据源 = ``gs.screen_changes.pending``,消费 = 选卡
+        上报内 ``consume_screen_change``(两世界同一行代码,register-
+        consume.md「sim 消费」),本层不重复出队。
+        """
         if kind == 'planner':
             self.disclosures[DISCLOSURE_PLANNER_EFFECT] = 'picked:report_leg'
         self._dismiss_modal()
@@ -1190,24 +1198,64 @@ class SimBackend:
         self._dismiss_modal()
 
     def _present_pending_overlay(self) -> None:
-        """overlay 队列检查(空 = 直返;底层非模态屏才压上,防模态叠模态)。"""
-        kind = self.overlay_queue.peek()
-        if kind is None:
-            return
-        if self._screen in _MODAL_SCREENS:
-            return
-        self._return_screen = self._screen
-        self._return_sub = self._sub
-        if kind == 'megastar':
-            self._screen = SCREEN_MEGASTAR
-            self._present_megastar_options()
-        elif kind == 'planner':
-            self._screen = SCREEN_PLANNER
-        else:
-            # 零档族占位队列项不入呈现(评估器缺位 = 不入队,防御面)
-            self._return_screen = None
-            self._return_sub = ''
-            self.overlay_queue.pop()
+        """overlay 呈现检查(overlay-trigger 3.4:数据源 = 容器登记
+        ``gs.screen_changes.pending``,私有 OverlayQueue 呈现面退役——
+        队列本体随评估器归 3.5 清扫;呈现时机不变 = advance/步界检查)。
+
+        逐 kind 呈现门(register-consume.md「sim 消费」):
+
+        - megastar:模态 + 候选写容器(场上盛会之星资格成员,含持徽
+          贡献——候选语义 = 判据资格集同源);
+        - planner/partner/wish_trial/star_tome:模态(partner 附候选 =
+          列车同行资格集,wish_trial/star_tome 无 sim 选项数据模型 →
+          消费 + 披露,不呈现,防策略读空候选卡死);
+        - fortune:**逐 kind 呈现门**——仅底层 = 备战时呈现
+          (trigger-inventory §1.5:下一节点非备战时推迟,选完进备战先弹,
+          不压补给/遭遇屏);底层非备战 = 条目存活等待;
+        - box_card/expert_invite:open_box/open_bookcard 的 advance 分派
+          已呈现对应模态(候选写入在各自过程),本检查幂等跳过;
+        - aha:无独立画面档(锚挂备战)且 sim 无选卡 op → 消费 + 披露
+          (实机 = 备战锚特殊规则点首件,sim 近似申报;register-consume
+          「生命周期」aha 消费口径)。
+
+        模态叠模态守卫(原语义):当前已在模态屏 = 推迟(交回后再查)。
+        """
+        pending = list(self.gs.screen_changes.pending)
+        for entry in pending:
+            kind = entry.kind
+            if self._screen in _MODAL_SCREENS:
+                return   # 模态中:全部推迟(选完交回后再查)
+            if kind == 'fortune' and self._screen != SCREEN_PREP:
+                continue   # 呈现门:底层非备战,条目存活等待(trigger-inventory §1.5)
+            if kind in ('aha', 'partner', 'fortune', 'wish_trial',
+                        'star_tome'):
+                # 无 sim 呈现面族:aha 无独立画面档(实机 = 备战锚特殊
+                # 规则点首件);partner/fortune/wish_trial/star_tome 选项
+                # 注册表缺位且画面 op 无 sim 观察腿(呈现即卡 observe
+                # 重试;partner 候选可自资格集算,候 sim 观察腿接线再呈现)
+                # → 消费 + 披露(fortune 呈现门语义保留:底层非备战时
+                # 上方 continue 使条目存活)。
+                consume_screen_change(self.gs, kind)
+                self.disclosures.setdefault(
+                    OVERLAY_PARAM_PENDING,
+                    'aha_auto_consumed' if kind == 'aha'
+                    else f'{kind}_options_unmodeled')
+                continue
+            if kind == 'megastar':
+                self._present_modal(SCREEN_MEGASTAR)
+                self._present_megastar_options()
+                return
+            if kind == 'planner':
+                self._present_modal(SCREEN_PLANNER)
+                return
+            if kind in ('box_card', 'expert_invite'):
+                # open_* advance 分派已呈现(open_box 写候选/'' 纯转移
+                # 呈现 expert);此处幂等守卫——若模态未在(异常序)= 补呈现。
+                self._present_modal(
+                    SCREEN_BOX if kind == 'box_card' else SCREEN_EXPERT)
+                return
+            # 集外 kind 不可构造(kind 封闭集在 register 口炸),防御披露。
+            consume_screen_change(self.gs, kind)
             self.disclosures.setdefault(OVERLAY_PARAM_PENDING,
                                         'unpresentable_kind')
 
@@ -1331,10 +1379,12 @@ class SimBackend:
                 rotation_on=rotation_on)
             deal_shop(self.gs, rng, level=int(self.gs.level.value or 3),
                       probs=probs, tag=f'shop:deal:p{plane}r{r}')
-        # overlay 队列检查(旧引擎收尾序:overlay 先于 offer;呈现压住
+        # overlay 呈现检查(旧引擎收尾序:overlay 先于 offer;呈现压住
         # 节点屏,选定经 _dismiss_modal 恢复位复走 offer 检查——让路
-        # 不吞 offer 槽)
-        if self.overlay_queue.peek() is not None:
+        # 不吞 offer 槽)。overlay-trigger 3.4:呈现源 = 容器登记
+        # (fortune 呈现门「底层=备战」在此不辖——节点窗起点 = 让路
+        # 恢复位语义,备战窗口前呈现属收尾检查序)。
+        if self.gs.screen_changes.pending:
             self._window_resume = 'offer'
             self._present_pending_overlay()
             return
