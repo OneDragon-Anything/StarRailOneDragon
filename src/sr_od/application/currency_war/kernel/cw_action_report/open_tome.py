@@ -52,7 +52,7 @@ def report_action_open_tome_param(gs: GameState, param: Any, sig: ChannelSig) ->
        'proj_open_item_clear')
     # 点击直弹登记(
     # 用户纠正:点典籍槽一次即弹星徽四选一——统一入登记,kind = star_tome)。
-    # 不构造 WorldDecl(3.4 评审 S1 入册):本上报零画面转移语义
+    # 不构造 WorldDecl:本上报零画面转移语义
     #(next_screen 无处可填——腾席后底层屏恒备战,星徽四选一画面的
     # 出现事实由登记承载),呈现随下一动作 advance 收口;对齐零写族
     # 「applied=True 无声明 = 无转移」口径。

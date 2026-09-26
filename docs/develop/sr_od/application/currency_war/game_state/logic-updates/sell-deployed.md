@@ -52,4 +52,4 @@
 
 ## 9. 依据
 
-`research/economy.md` §3;`research/equipment_mechanics.md` §1 与「装备转移机制」节(卖角色 = 装备回区主力通道);`kernel/cw_action_report/sell_deployed.py::report_action_sell_deployed_param` docstring(v2 族语义正本);[fields.md](../fields.md) §3.2.3/§3.2.4(前后台角色)/§4.2 SellBench 行(「卖场上角色 → 前台/后台 −该牌」)。
+`research/economy.md` §3;`research/equipment_mechanics.md` §1 与「装备转移机制」节(卖角色 = 装备回区主力通道);`kernel/cw_action_report/sell_deployed.py::report_action_sell_deployed_param` docstring(v2 族语义正本);[fields.md](../fields.md) §3.2.3(上阵角色 deployed)/§4.2 SellBench 行(「卖场上角色 → 前台/后台 −该牌」)。

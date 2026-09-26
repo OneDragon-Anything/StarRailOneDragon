@@ -14,12 +14,12 @@ from sr_od.application.currency_war.data.cw_chars import (
 #: 银狼LV.999 注册表规范名(单一源 = ``data/cw_chars.py``;名字含
 #: 「LV.999」后缀,与普通「银狼」4 费条目是两个角色)。
 
-#: 三星五费特效披露键(M13 战力特征,第一期无消费面)。
+#: 三星五费特效披露键(战力特征无档,第一期无消费面)。
 THREE_STAR_FIVE_COST_PENDING: str = 'three_star_five_cost_effect_pending_u26'
 
 
 # (planner 升星判据助手已随评估器退役删除:
-#  判据单一源 = kernel/cw_faction_callbacks 的星级值回调[S3],
+#  判据单一源 = kernel/cw_faction_callbacks 的星级值回调,
 #  每费用档簿记 = ScreenChanges.planner_tiers_fired。)
 
 def trailblazer_form_of(char_id: str, row: str) -> str:

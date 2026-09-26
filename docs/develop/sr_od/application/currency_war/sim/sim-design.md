@@ -129,7 +129,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 ### 4.2 目录
 
 - **开箱 / 专家邀请函 / 星徽四选一**：动作触发——`open_box` / `open_bookcard` / `open_tome` 上报内直登（kind = `box_card` / `expert_invite` / `star_tome`，成功腿才登）；开箱的候选生成走 `report_screen_box_pick_obs` 同名通道。
-- **巨星（盛会之星）**：判据 = deployed 逻辑写尾的资格集上穿（逐次上穿判定，阈值语义源 = `data/cw_factions.py` tiers，簿记 = `ScreenChanges` 逐档集合），一局可多次。
+- **巨星（盛会之星）**：判据 = deployed 逻辑写尾的资格集上穿（**逐次上穿即弹,无簿记去重**——ScreenChanges 侧栏簿记仅 wish/planner/fortune 三族;阈值语义源 = `data/cw_factions.py` tiers），一局可多次。
 - **planner（银狼升星）**：判据 = deployed 逻辑写尾的银狼星级回调（每费用档一次，簿记 = `planner_tiers_fired`）。
 - **命运卜者（占卜屋强化）**：判据 = 占卜屋 settle_confirm 腿登记；**呈现门** = 底层备战才收口（下一节点非备战时条目存活等待）。
 - **列车同行 / 祈愿试炼 / 阿哈装备**：判据/选卡上报登记；**sim 无呈现面族**（画面 op 无 sim 观察腿，呈现即卡 observe 重试）→ 懒呈现位消费 + 逐 kind 披露（披露键 = `cw_sim_overlay.OVERLAY_PARAM_PENDING:{kind}`）；partner 候选可自资格集算，候 sim 观察腿接线再呈现。这是**数据缺口不是架构豁免**：补观察腿后逐个落呈现，架构面（登记/呈现/交回）零改动。

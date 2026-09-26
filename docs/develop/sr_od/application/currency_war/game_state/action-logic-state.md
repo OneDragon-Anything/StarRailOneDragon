@@ -53,7 +53,7 @@
 
 (sim 整帧副本单步应用器 `simulate` 及其宿主推演帧已随 sim 帧通道退役删除——sim 与实机共用容器逻辑态直写落点（首行）,考古归 git;语义验证 = M1 直锁(`test_cw_shop_projection_logic`)。)
 
-视觉域动作的容器面（迭代 2026-09-18-prep-obs-retirement 阶段 3.5 起）：晶矿/箱/典籍
+视觉域动作的容器面（黑板帧退役后直写容器）：晶矿/箱/典籍
 的容器腿已进各自上报函数（CollectOre 精确摘晶矿 = `report_action_collect_ore_param` /
 OpenTome·OpenBookcard 腾席 = `report_action_open_tome_param`/`report_action_open_bookcard_param`，§3.4-§3.7）；`PrepObservation`（`kernel/cw_prep_actions.py`）
 降级为备战环 op 局部控制信号载体（shop_open/substate/event_overlay），不再是
@@ -172,7 +172,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 **确定面**：
 
-1. 备战席 `from_slot` 槽位清空（kind → `empty` 不移位）；目标单位对象整体迁移（身份/星级/装备随人走），落 `to_row` 排的 `to_slot`（载荷 `(to_row, to_slot)` 直指——排内 1 基槽号经换算单一源 `deployed_idx_of` 定表下标；目标槽空 = 放置、有人 = 交换，被占位单位回源槽；`Unit.slot` 信息位随落位归一）；
+1. 备战席 `from_slot` 槽位清空（kind → `empty` 不移位）；目标单位对象整体迁移（身份/星级/装备随人走），落 `to_row` 排的 `to_slot`（载荷 `(to_row, to_slot)` 直指——排内 1 基槽号经内联换算定子表下标 定表下标；目标槽空 = 放置、有人 = 交换，被占位单位回源槽；`Unit.slot` 信息位随落位归一）；
 2. board 羁绊计数重算：按上场单位的羁绊标签全集（`unit_bond_tags`——星徽/卡带贡献在内；无标签回退阵营）随行写派生重算（行写端挂钩 `_resync_board_delta` 自动承载，增量全集，防全量重算抹掉 OCR 真值）；
 3. 上阵计数 +1（= 部署空位 deploy_vacancy −1；heavy 帧重读校准）；
 4. 腾席链语境：`bench_idx` 常为开箱/开典籍腾出的槽（§3.4/§3.5 先行）。
@@ -181,7 +181,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 **拒绝边界**：同名同星已在场 = 游戏拒（恒成立约束「场上同名同星 ≤1」，`research/merge_mechanics.md` §3；kernel `mutate_bench_deployed` 同名唯一性守卫 duplicate_on_board）→ 零容器写；目标槽被占/拖拽未落地 = 零变化，落地事实归下一帧观察。
 
-**依据**：`kernel/cw_action_report/deploy_move.py::report_action_deploy_move_param`（bench 摘槽 + 载荷 `(to_row, to_slot)` 直落两行 + 开拓者形态归一 + board 行写挂钩随写）；`prep_actions.py::_deploy_move` + `_track_move_deployed`；`research/merge_mechanics.md` §3。
+**依据**：`kernel/cw_action_report/deploy_move.py::report_action_deploy_move_param`（bench 摘槽 + deployed 视图整值替换(载荷 `(to_row, to_slot)` 经下标定位)+ 开拓者形态归一 + board 随写）；`research/merge_mechanics.md` §3。
 
 ### 3.2 SellDeployed（卖上阵角色）
 
@@ -195,7 +195,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 **依据**：`kernel/cw_action_report/sell_deployed.py::report_action_sell_deployed_param`（摘槽 + board 重算 + 回金 + owned 恢复腿内聚单点）；`prep_actions.py::_sell_deployed` + `_track_remove_deployed`。
 
-### 3.3 LevelUp（买经验·逐帧单击形态，R6 定案④）
+### 3.3 LevelUp（买经验·逐帧单击形态）
 
 词表 = `kernel/cw_prep_actions.py::LevelUp`。**粒度定案**：LevelUp 是单动作意图 = **单击**「购买经验」；升 N 击 = N 帧各发一次（决策循环逐帧重组，与商店域单击形态 `cw_level_up_action` 同构先例）。原「执行器有界连点（一次发射=升完一级）」随定案退役——把「一次发射=升完一级」留在执行器与统一类单击语义冲突（cost 字段失义）且授权滞留执行层与发射面门构成双源。
 
@@ -215,7 +215,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 **腾席**（本篇用词）= 备战席占用槽位被释放、可用空槽数增加。
 
-**确定面**：被点补给箱所在备战槽位的占位物品离席 → 槽位腾出（「开箱即腾席」，`kernel/cw_prep_actions.py::OpenBox` 注）。**容器 GameState 零写**（零写族申报 = `zero_writes.py::report_action_open_box_param`——R7 终结化：本访问交回后下一入口 heavy 观察覆盖，零窗口暴露）。
+**确定面**：被点补给箱所在备战槽位的占位物品离席 → 槽位腾出（「开箱即腾席」，`kernel/cw_prep_actions.py::OpenBox` 注）。**容器 GameState 零写**（零写族申报 = `zero_writes.py::report_action_open_box_param`——终结化：本访问交回后下一入口 heavy 观察覆盖，零窗口暴露）。
 
 **随机面 / 观察面**：箱内四选一内容 = 掉落内容归观察；本动作点「开启」后**本访问交回（终结化）**——武装箱选择画面由外循环按画面分发独立画面 op 选卡（`operations/cw_screen/cw_screen_box_pick.py`，见 §6 单选族边界），备战动作词表无选卡动作（`PickBoxCard` 已删）。动画等待 `_OVERLAY_ANIM_WAIT_S`，弹窗就位与否交下一帧观察（`research/screen_flow_timing.md` #28）。
 

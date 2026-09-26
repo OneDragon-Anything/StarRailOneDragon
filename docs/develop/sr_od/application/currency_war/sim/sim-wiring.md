@@ -22,7 +22,7 @@
 | 通道 | 辖面 | 载体 |
 |---|---|---|
 | obs（外部事件/世界真值） | 世界腿 + 呈现腿的状态事实 | ①后端直接 obs 写点（`sim/cw_sim_base.py::sim_evidence` 证据族，`sim:` 前缀）；②观察生成器产物经 `kernel/cw_screen_report/report_screen_<snake>_obs` 落容器（与实机观察上报同一写通道） |
-| logic_action（动作应用） | 动作的字段转移全集，登记面 = `SHOP_PROJECTION_DOMAINS`（gold/bench/shop/xp/level/front_row/back_row/board/equips） | 动作 op 组装后直调 `kernel/cw_action_report/report_action_<snake>_param`（sim 与实机同一段 op 代码，零私有动作语义）；带随机的动作采样腿 rng 经 `install_backend` 注入（键形 `action/<tool>/<序号>`） |
+| logic_action（动作应用） | 动作的字段转移全集，登记面 = `SHOP_PROJECTION_DOMAINS`（gold/bench/shop/xp/level/deployed/board/equips） | 动作 op 组装后直调 `kernel/cw_action_report/report_action_<snake>_param`（sim 与实机同一段 op 代码，零私有动作语义）；带随机的动作采样腿 rng 经 `install_backend` 注入（键形 `action/<tool>/<序号>`） |
 | 节点推进 | 终结动作上报 | kernel `report_node_advance`（trigger 封闭集 {settle_confirm, supply_confirm}），sim 与实机同源 |
 
 后端私有簿记（**不写容器**）：offer 去重集、overlay 队列、触发水位标志、随机流键坐标簿记、待授予候选下标、幂等守卫键、局结果面（`hp_trail`/`disclosures`）——实机不可观察的采样簿记按容器字段判据留后端私有（sim-design §5.1）。
@@ -39,7 +39,7 @@
 | streak | 世界腿：opening 0 + `streak:p<位面>r<轮>` 结算转移（带符号，`streak_signed_after`） | 收入侧连胜金（派生读 `max(signed, 0)`，无第二账） |
 | pending_loss | 世界腿：`loss:pending` 战斗结算失败腿写；轮首败补支消费后清账（`clear_pending_loss`） | 轮首收入 U04 败补支输入 |
 | bench | 世界腿：opening 播种（M06 派生池首个写端）；动作腿：BuyCard 落位/合成连锁/SellBench 同实机 | 读口 `bench_view_slots_of`/`bench_entries_of`/`bench_units_of` + 派生 `bench_free_slots`/`bench_is_full` |
-| front_row / back_row | 动作腿：上报族按载荷落位直写两行（同实机）；世界腿无整行写点 | 读口 `deployed_rows_of`/`deployed_count_of` 等 |
+| deployed | 动作腿：上报族 deployed 视图整值替换（同实机,一次写 = 一次完整语义快照）；世界腿无整值写点 | 读口 `deployed_rows_of`/`deployed_count_of` 等 |
 | board | 动作腿：v2 腿重算同实机；世界腿：后端板面真值观察（`SimBackend._observe_board_truth`，advance 步界等值零写） | 围栏判据/策略；overlay 判据计数真值（现役判据读 deployed 行，不读 board） |
 | equips | 动作腿：穿戴/卖出同实机；世界腿：开箱选定走 kernel `gain_equipment`（producer = `SimBackend`，证据 `sim:box_pick`） | 装备分配消费面 |
 | shop | 世界腿：`shop:deal` 节点切换自动全刷（kernel `sample_shop_deal` 单一源，整店锁跳过）；动作腿：刷新采样/买牌槽置换/CloseShop 离屏同实机 | 策略决策面（payload.cards 三态消费） |

@@ -654,7 +654,7 @@ class OreSight:
 
     count: int | None = None
     colors: tuple[str, ...] = ()
-    # [索引定义] points = 点击目标载荷(迭代 2026-09-18-prep-obs-retirement
+    # [索引定义] points = 点击目标载荷(黑板帧退役
     # 阶段 3.4 扩充):每项 (color, x, y, r) 平铺元组——晶矿为自由位置识别物
     # 无槽号,像素坐标必须随识别进容器(总纲坐标契约;点击列由 kernel
     # ``ore_click_targets_of`` 还原消费)。取值时机 = 备战入口 heavy
@@ -2324,7 +2324,7 @@ class GameState:
     # gs.effects 查询)。
     equips: Field[list[str]] = field(default_factory=Field)          # 装备库存(§3.2.15;开局种子底座=[] 开局真值)
     # [索引定义] occupied_equips:已穿装备位置(装备域姊妹面,迭代
-    # 2026-09-18-prep-obs-retirement 阶段 3.2 立域)。键坐标系 =
+    # 黑板帧退役 阶段 3.2 立域)。键坐标系 =
     # 'front:1'/'back:2' 形态字符串(row ∈ front|back,slot = 画面物理槽位
     # 1-based,前排 1-4/后排 1-选档 N,与机械动作参数同域——坐标系正本 =
     # cw_prep_actions.PrepObservation.occupied_equips 声明;tuple 键 JSON
@@ -2383,7 +2383,7 @@ class GameState:
     # 成员与访问纪律见 :class:`NodeBooks` 类注)——
     node_books: NodeBooks = field(default_factory=NodeBooks)
     # (备战黑板帧宿主 prep_obs 已随黑板退役删除——迭代
-    #  2026-09-18-prep-obs-retirement 阶段 3.5:名单/装备/占用/晶矿全部
+    #  黑板帧退役 阶段 3.5:名单/装备/占用/晶矿全部
     #  容器域承载,策略器唯读容器契约归位。)
 
     # —— 帧触发代次双槽(非 Field 簿记;终态契约 §B:session

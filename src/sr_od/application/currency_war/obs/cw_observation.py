@@ -2261,7 +2261,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # gold_readable 语义不变(None=读不到)。gold 值 = raw 读数——失读兜底 0
     # (gold 值勘误口径;需要可信金判读的消费方走 gold_readable 位——
     # 备战观察链 state_gold_trusted 位已随黑板退役删除,迭代
-    # 2026-09-18-prep-obs-retirement 阶段 3.5)。
+    # 黑板帧退役 阶段 3.5)。
     _gold_opt = read_gold_settled(ctx, screen) if _w('gold') else None
     gold_val = 0 if _gold_opt is None else _gold_opt
     gold_readable = _gold_opt is not None   # r319 保真位(对齐 hp_readable)

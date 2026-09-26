@@ -110,8 +110,7 @@ def _deploy_plan_inputs(frame: MandateFrame, session: StrategySession,
         'deployed_cids': _cids,
         'deployed_fac': deployed_bond_counts(_cids),
         'board': dict(state.board.value or {}),
-        # cap 单一源 = max_units_of 容器派生链(迭代 2026-09-18-prep-obs-
-        # retirement 阶段 3.1;无限回退分支已退役——max_units_of 恒 ≥1 有值)。
+        # cap 单一源 = max_units_of 容器派生链(黑板帧退役;无限回退分支已退役——max_units_of 恒 ≥1 有值)。
         'cap': max_units_of(state),
         'target_factions': _tgt,
         'target_cores': set(getattr(_comp, 'core_chars', None) or ()),

@@ -213,8 +213,7 @@ class MandateV1Strategy(CwFlowStrategy):
         scope='outer_loop' 交回外循环重观察——原 HoldFrame 通道收编,
         用户裁定 2026-09-20)。
 
-        输入 = **容器 game state 直读**(迭代 2026-09-18-prep-obs-
-        retirement 阶段 3.5:黑板 gs.prep_obs 读点与缺失抛错防线随黑板
+        输入 = **容器 game state 直读**(黑板帧退役:黑板 gs.prep_obs 读点与缺失抛错防线随黑板
         退役删除——「观察先于决策」前提由画面 op 编排保证,op 入口
         heavy 先于决策调用)。输出 = 决策核发射序列的**首个动作**;
         空序列(含截断截空)→ 空发射 obs(scope='outer_loop')= 本帧无

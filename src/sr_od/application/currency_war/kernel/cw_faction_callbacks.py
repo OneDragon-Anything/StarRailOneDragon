@@ -1,4 +1,4 @@
-"""货币战争 值域回调级联(design.md 契约 C-回调;详设 faction-trigger.md)。
+"""货币战争 值域回调级联(deployed 逻辑写尾的阵营触发判据级联;判据/登记/簿记
 
 回调挂 **deployed 值变更**(非动作)——部署/卖出/替换/合成落场/穿戴,
 凡改场上名单或装备,同一套回调;判据只看「值从什么变成什么」。观察写
@@ -20,7 +20,7 @@
 持徽,贡献单一源 cw_bond_equips.unit_bond_tags,开拓者按排形态);
 board = 多集口径(卡带系多计,策略消费口)——两者非视图关系。
 
-判据簿记(契约 C-簿记;住 cw_overlay_register.ScreenChanges sidecar):
+判据簿记(住 cw_overlay_register.ScreenChanges sidecar):
 巨星跨档无簿记(每次上穿即弹,降档再升也弹——用户裁定);祈愿首达档
 一次;planner 每费用档一次;伙伴无上限;占卜屋住 S4 上报点(本模块外)。
 """
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
         Unit,
     )
 
-#: 盯的阵营 → 跨档弹窗 kind(注册表驱动小表;faction-trigger.md
+#: 盯的阵营 → 跨档弹窗 kind(注册表驱动小表
 #: 「判据归位」表:阵营→弹窗映射 + FACTIONS 档位表,零硬编码档线)。
 #: 盛会之星 = 纯上穿无簿记;命运圣杯 = 首达档一次(簿记分键见下)。
 _FACTION_POPUP_KINDS: dict[str, str] = {
@@ -76,7 +76,7 @@ def _qualification_sets(view) -> dict[str, set[str]]:
 
     资格 = 出身 ∨ 持该阵营星徽(装备贡献单一源 = cw_bond_equips.
     unit_bond_tags:出身/卡带/星徽全量口径;名不在注册表/未知 → 零标签,
-    该名对所有阵营无资格)。开拓者按所在排形态(faction-trigger.md
+    该名对所有阵营无资格)。开拓者按所在排形态(
     「资格集语义」节)。
     """
     from sr_od.application.currency_war.kernel.cw_bond_equips import (
@@ -105,7 +105,7 @@ def _planner_star(view) -> int | None:
 
 def _diff_by_name(old_view, new_view
                   ) -> tuple[list, list, list]:
-    """一次 deployed 写按名分解三类事件(faction-trigger.md「资格集
+    """一次 deployed 写按名分解三类事件(
     语义」节):成员增(名新现)/ 成员减(名消失)/ 存活对(同名且
     (星, equips, 排面) 有差的 (旧单位, 新单位) 对——名含排面时
     开拓者换形态按名消失+名新增进前两类,资格集总对比仍正确)。"""
@@ -124,7 +124,7 @@ def _diff_by_name(old_view, new_view
 def on_units_changed(gs, added_units, removed_units, source: str) -> None:
     """角色变动回调(事件通知层:喂资格集——资格集在派生维护入口
     按视图总量对算,本层 = 契约 seam,未来成员类消费面挂点)。"""
-    # 通知层无独立判据(faction-trigger.md 回调表:overlay 判据不住此)。
+    # 通知层无独立判据(回调表口径:overlay 判据不住此)。
     return
 
 
@@ -135,7 +135,7 @@ def on_equips_changed(gs, changed_pairs, source: str) -> None:
 
 def on_qualification_changed(gs, old_sets, new_sets, source: str) -> None:
     """资格集变更回调 → S1a 跨档 / S1b 巨星重选 / S2 伙伴判据
-    (全部资格集判据;faction-trigger.md「判据归位」表)。"""
+    (全部资格集判据,判据归位 = 值回调单一源)。"""
     # —— S1a 档位跨越:有弹窗的阵营资格集大小上穿任一档线,单写至多
     #    一次。无来源排除(合成继承星徽致跨档同弹;经典合成名集合不变
     #    天然不进本回调)。巨星 = 纯上穿无簿记(降档再升也弹,用户裁定);
@@ -189,7 +189,7 @@ def on_qualification_changed(gs, old_sets, new_sets, source: str) -> None:
 def on_star_changed(gs, old_star, new_star, source: str) -> None:
     """星级回调 → S3 planner 判据:新值 ≥ 2 ∧ 该费用档未弹过
     (旧值无关——覆盖无→2 / 1→2 / 无→3[暂按会弹,实机复核标注 =
-     §4]/ 2→3 不弹[档已弹];faction-trigger.md
+     §4]/ 2→3 不弹[档已弹];口径同上
     值域回调级联表)。费用档读 ``gs.lv999_cost_tier``(未观察 None =
     语义起始档 3,与 cw_economy.effective_cost 同缺省口径)。"""
     if new_star is None or new_star < 2:
@@ -211,7 +211,7 @@ def on_deployed_logic_write(gs, old_view, new_view, source: str) -> None:
     """deployed 逻辑写尾的派生维护单一入口(挂点 = cw_game_state
     ``_write_logic_frame`` deployed 分支;观察写不经此)。
 
-    数据流(faction-trigger.md「资格集语义」节):按名分解 diff →
+    数据流(「资格集语义」):按名分解 diff →
     事件回调(通知层)→ 资格集一次提交 → 资格集回调一次(三判据);
     银狼星级同为派生存值 → 星级回调。值等(两视图占用全等)零回调。
 

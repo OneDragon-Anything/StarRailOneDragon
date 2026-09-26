@@ -116,7 +116,7 @@ def _build_equip_wear_plan(session: Any,
                            registry: Any = None) -> EquipPlanBuild:
     """装备穿戴计划产出位(分发段;C1 计划随指令下发)。
 
-    事实源 = **容器 game state 读口**(迭代 2026-09-18-prep-obs-retirement
+    事实源 = **容器 game state 读口**(黑板帧退役
     阶段 3.2 换源):owned ← ``gs.equips``、occupied ← ``gs.occupied_equips``
     (键 'front:1' 形态)、deployed ← 容器上阵视图 ``gs.deployed``、
     后排选档 ← ``gs.back_layout`` Field 原值;写者单一源 = cw_screen_prep
@@ -164,7 +164,7 @@ def _build_equip_wear_plan(session: Any,
     )
 
     # ===== 事实源前置(容器现读,零读屏;fail_reason 通道)=====
-    # 全面换源(迭代 2026-09-18-prep-obs-retirement 阶段 3.2):owned/
+    # 全面换源(黑板帧退役):owned/
     # occupied/back_layout/deployed 四路输入全部改容器读口,黑板帧
     # (gs.prep_obs)消费清零。None 语义映射 = 容器 Field 未观察(None)
     # = 识别域未就绪,fail 门保守关方向与旧黑板 None 逐位同。

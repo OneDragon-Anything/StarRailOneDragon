@@ -802,7 +802,7 @@ def _bench_item_kind_by_slot(ctx: SrContext, screen: MatLike) -> dict[int, str]:
 
     [索引定义] 键 = 备战栏物理槽 1..9(1 基,与 BenchView.slots 下标+1 同系);
     取值时机 = 调用帧现读快照(与 SIFT 命中同帧,跨帧失效)。
-    构造序沿用旧观察链 ``_item_kind``(2026-09-18-prep-obs-retirement 阶段
+    构造序沿用旧观察链 ``_item_kind``(黑板帧退役 阶段
     3.5):boxes → tomes 覆盖 → bookcards 覆盖(同槽多命中后写者胜)。
     """
     slots9 = _ctx_slots(ctx, '备战栏', 9)

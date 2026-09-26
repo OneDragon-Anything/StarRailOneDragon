@@ -2183,7 +2183,7 @@ def _deploy_cap_full_gate(session: StrategySession, state: GameState,
     ``max_units_of``(占用数口径——kernel 逐候选 cap 判定按 ID
     集合 len,对 SIFT 未识别件偏松;本门用占用数口径把该边界一并堵住,
     两道防线分工 = 换源修主形态、本门堵口径边界 + 提供计划级确定性
-    拒因,迭代 2026-09-18-prep-obs-retirement 阶段 3.1)。板满帧不产出
+    拒因,黑板帧退役)。板满帧不产出
     部署计划,拒因 ``deploy_cap_full`` 落 cw4_counters 计划级分键(帧级
     去重 = 同 (plane, round) 只计一次;与候选级 ``deploy_emit_held_cap``
     分工 = 计划级「本帧板满」确定性申报,交决策循环另行规划)。返回
@@ -2279,7 +2279,7 @@ def _emit_deploy_moves(out: list, frame: MandateFrame,
     行列现值自定,后排上限 = back_layout 现值)。发射序即执行序
     (备战环逐帧取决策输出首项)。逻辑态
     (bench 摘槽/deployed 落槽/board 增量)在观察侧
-    kernel 写口直写(容器逻辑态,迭代 2026-09-18-prep-obs-retirement 阶段 3.5),下一帧对容器现值重评自然续发剩余 move。
+    kernel 写口直写(容器逻辑态,黑板帧退役),下一帧对容器现值重评自然续发剩余 move。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
         deploy_plan_moves,

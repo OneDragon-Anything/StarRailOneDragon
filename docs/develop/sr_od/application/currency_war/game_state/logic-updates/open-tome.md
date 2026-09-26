@@ -17,7 +17,7 @@
 ## 3. 确定面转移规则(逐条)
 
 1. `read_tomes` 识别在席典籍(识别域 = screen_info 单一源,禁兜底坐标);
-2. 点目标槽**两次**(第一次选中、第二次开启,间隔 1s)→ 固定动画等待(`_OVERLAY_ANIM_WAIT_S`)→ 交回外循环(非终结,同画面继续本轮);
+2. 点目标槽**一次**(单击即开启,游戏侧单次点击弹星徽四选一;用户确认 2026-09-25)→ 固定动画等待(`_OVERLAY_ANIM_WAIT_S`)→ 交回外循环(非终结,同画面继续本轮);
 3. 星徽四选一 overlay 弹出由外循环阶段一身份行「货币战争-星徽秘典弹窗」分发星徽秘典画面 op(`operations/cw_screen/cw_screen_bookcard.py`):`chosen_tome` 选择写点(选择落地即写 logic)+ 确认到账登记 = `_overlay_confirm.register_confirm_arrival` → `kernel/cw_exec_state.py::apply_confirm_effect` dict `ConfirmTome` 分支 owned +1;
 4. 本动作自身零金零装备零经验面。
 

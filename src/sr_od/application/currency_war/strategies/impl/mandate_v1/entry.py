@@ -147,7 +147,7 @@ SPHERE_OCCUPYING_COLORS: frozenset[str] = frozenset()
 
 def _ore_bench_free(gs: GameState) -> int:
     """席自由槽读数(晶矿谓词第一腿输入;容器派生读口 ``bench_free_slots``
-    单一源,迭代 2026-09-18-prep-obs-retirement 阶段 3.3——旧黑板
+    单一源,黑板帧退役——旧黑板
     ``free_bench_slots`` 独立记账退役,箱/典籍占席由 ``slot_occupies``
     口径自动计入)。缺省方向 = adapter.py 在库裁决对齐:free None
     (bench 未观察,不确定)→ BENCH_CAPACITY,宁多收晶矿不误卖,
@@ -190,7 +190,7 @@ def _ore_progress_sig(gs: GameState) -> int:
     存在抖动,每次误变只多一环探针,无进展守卫(阈值 3)仍兜底。
     """
     _round = round_num_of(gs)
-    # 席/晶矿计数换源(容器派生,迭代 2026-09-18-prep-obs-retirement 阶段
+    # 席/晶矿计数换源(容器派生,黑板帧退役 阶段
     # 3.4):席占用 = BENCH_CAPACITY − bench_free_slots(箱/典籍占席自动
     # 计入;未观察 None → 占用 0 保守);晶矿计数 = 容器 spheres 载荷数
     # (未观察 → 0)。getattr 缺省静默退化面随换源消亡。
@@ -444,8 +444,7 @@ def emit(session: StrategySession,
          registry: DecisionV2Registry | None = None) -> list[Emitted]:
     """决策入口三遍编排(R189-4 结构签名;返回 Emitted 列表交桥截断发射)。
 
-    决策输入 = **容器 game state 直读**(迭代 2026-09-18-prep-obs-
-    retirement 阶段 3.5:obs 黑板形参退役,gs.prep_obs 槽随批删除——
+    决策输入 = **容器 game state 直读**(黑板帧退役:obs 黑板形参退役,gs.prep_obs 槽随批删除——
     策略器唯读容器契约归位)。
     编排:① prep 实体面(箱选卡/晶矿/箱/典籍——控制流与 overlay 切换
     优先于三遍)→ ①′ wanted 闭环消费臂(迁移 A;义务优先)→ ② 证明
@@ -471,7 +470,7 @@ def emit(session: StrategySession,
     # (武装箱选择对话框在场的选卡臂随 CwActionPickBoxCardParam 删除退役,批 2a R7:
     #  CwActionOpenBoxParam 终结化后选卡归独立画面 op 分发——cw_loop 按画面派发
     #  ``CwScreenBoxPick``,决策核不再消费 ``box_overlay_open``;采集面已随批2b 退役删除)。
-    # 开箱/开典籍/书册卡臂(迭代 2026-09-18-prep-obs-retirement 阶段 3.5
+    # 开箱/开典籍/书册卡臂(黑板帧退役
     # 换源;书册卡臂 = 用户裁定 2026-09-19 开卡时机归策略器,原备战环入口
     # 清场 ``cw_screen_prep._clear_prep_cards`` 代发通道撤销):触发物 = 容器
     # bench 槽位 kind(占席物细分)。⚠️ 读口 = 容器 BenchView.slots 直读
@@ -495,7 +494,7 @@ def emit(session: StrategySession,
                        if s is not None and s.kind == 'tome'), None)
     if _tome_slot is not None:
         return [Emitted(CwActionOpenTomeParam(slot=_tome_slot + 1), True, 'prep_tome')]
-    # 晶矿臂门+载荷同源(迭代阶段 3.4 换源收口,reviewer r1 打回项2):
+    # 晶矿臂门+载荷同源(迭代阶段 3.4 换源收口:
     # 门条件与点击载荷共用同一容器读口推导——黑板 obs.spheres 消费清零,
     # 防陈旧门真/载荷空(空转)或批 5 删字段后 AttributeError。
     _sf_targets = ore_click_targets_of(gs)
@@ -562,7 +561,7 @@ def emit(session: StrategySession,
         # 激活(晶矿 odds 采集批登记占席色,方案 §4)时恢复可达 = 让路
         # 帧腾席先于收晶矿。禁删除:退役-复活双倍审面(方案稿 §7.1 编排者
         # 终态;读者陷阱以本标注显影,零行为代价)。
-        # 名单/晶矿读点换容器现读(迭代 2026-09-18-prep-obs-retirement
+        # 名单/晶矿读点换容器现读(黑板帧退役
         # 阶段 3.4;黑板字段批 5 删除,死码块同步换源保激活可用)。
         _sf_occupied = any(
             (color or '') in SPHERE_OCCUPYING_COLORS
@@ -619,7 +618,7 @@ def emit(session: StrategySession,
     # = 臂动作即本帧发射(单动作环直通);空返回 = 臂无发射(门 0 失效/
     # 门 1 S1 已清/放弃态),照常落回常规步骤序。deploy_cap 真值链与
     # ④ 骨架帧同源(max_units_of 读口派生,R4 单一真值源)。
-    # 名单输入换源(容器现读;迭代 2026-09-18-prep-obs-retirement 阶段
+    # 名单输入换源(容器现读;黑板帧退役 阶段
     # 3.1):黑板 obs 名单一拍陈旧是部署超上限事故的根因(板满帧 cap 门槛
     # 按陈旧名单放行第 4 拖,游戏侧静默拒收),备战决策的名单消费面同帧
     # 同源改读容器读口派生——wanted 臂与下方组装两处共用同一推导,禁再
@@ -726,8 +725,7 @@ def emit(session: StrategySession,
         evaluate_tool_actions as _eval_tools,
     )
     _tools_emitted: list[Emitted] = []
-    # owned 快照源 = 容器 equips 读口(迭代 2026-09-18-prep-obs-
-    # retirement 阶段 3.2 换源;旧黑板 owned_equips 读点退役——评估输入
+    # owned 快照源 = 容器 equips 读口(黑板帧退役 换源;旧黑板 owned_equips 读点退役——评估输入
     # 与 M7 计划产出位同源同链,开箱新件经下一入口观察进容器)。
     _owned_snap = list(gs.equips.value or [])
     if _owned_snap:

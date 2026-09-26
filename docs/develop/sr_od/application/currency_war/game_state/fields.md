@@ -239,10 +239,13 @@ node_path 现读=权威写端**(`prep_row`;P2/P3 基线回填 = `prep_row_first`
 #### 3.2.3 上阵角色 deployed(前排/后台统一槽位视图)
 
 **语义**:上阵成员统一槽位视图(载体 = `DeployedView`):`front_slots[i]` =
-前排物理槽 i+1(定长 4)/ `back_slots[j]` = 后排物理槽 j+1(定长 6),成员 = Unit
+前排物理槽 i+1(定长 4)/ `back_slots[j]` = 后排物理槽 j+1(**动态容量 6-9**,
+上限常量 `DEPLOYED_BACK_CAPACITY_MAX`——后排格数随布局档扩展,扩展格进视图,
+扩容落位 = `deployed_view_of_hits`;仅定长 10 下标工作表按容量截断,工作表桥 =
+`deployed_view_of_hits`/`deployed_indexed_of_view`),成员 = Unit
 (角色 char_id、星级、装备;**槽位不存**——位置 = 所在子表下标纯派生,排归属
-0-3 前排/4-9 后排,换算单一源 = `cw_exec_state.deployed_row_slot`/
-`deployed_idx_of`)。**阵营不是 Unit 的存储字段**——阵营是角色的静态属性,由
+0-3 前排/4-9 后排,排内槽号换算 = 执行侧内联算术 + `cw_back_layout.py` 布局档)。
+**阵营不是 Unit 的存储字段**——阵营是角色的静态属性,由
 char_id 查角色注册表(cw_chars)派生;唯一例外=开拓者形态随排(前台=记忆/
 后台=欢愉),由 char_id+当前排推导(详见 §3.2.18)。观察只存识别出的 char_id,
 禁在 Unit 另存阵营/槽位(防双源)。读侧仍分排读屏(备战观察链两排各读一次),
@@ -379,8 +382,7 @@ sim 合成口同域直写。
 #### 3.2.8 晶矿 spheres
 
 数量/颜色——交互机会信号,不占席(§3.2.5)。席满时奖励无法落位的拦截判据归 op
-写入策略(§4 CollectOre)。**载荷坐标**(迭代 2026-09-18-prep-obs-retirement
-阶段 3.4 扩充):`OreSight.points` = `(color, x, y, r)` 平铺元组——晶矿为自由
+写入策略(§4 CollectOre)。**载荷坐标**(黑板帧退役时扩充):`OreSight.points` = `(color, x, y, r)` 平铺元组——晶矿为自由
 位置识别物无槽号,像素坐标必须随识别进容器(坐标单一真相源纪律;点击列由 kernel
 `ore_click_targets_of` 还原消费)。**写端** = CwScreenPrep 备战入口 heavy
 观察上报(空读照写 count=0 防残留假晶矿;两帧持存防抖留观察链);**逻辑写端** =
@@ -475,7 +477,7 @@ evidence 区分。旗牌通道=**弱**(stylized 数字 OCR 常空,两级放大�
 
 #### 3.2.15b 已穿装备位置 occupied_equips
 
-**语义**(迭代 2026-09-18-prep-obs-retirement 阶段 3.2 立域):已穿装备位置——
+**语义**(黑板帧退役时立域):已穿装备位置——
 键 = `'front:1'`/`'back:2'` 形态字符串(row ∈ front|back,slot = 画面物理槽位
 1-based,前排 1-4/后排 1-选档 N,与机械动作参数同域;tuple 键 JSON 序列化不安全
 故字符串化),值 = 件名列表。装备域姊妹面(§3.2.15),M7 装备计划四路输入之一
@@ -1145,7 +1147,7 @@ OCR 唯一,§3.3.4)。**每节点自动刷新不进计数组**(§3.3.9 单列基
 败战后奖励/补给轮的补发归宿=吞掉还是递延,待实机实证挂观测期核对项。**kernel 单一
 源函数族已就位**:`cw_economy.round_start_income`(+`reward_base_gold`/
 `loss_compensation_base`/`RoundStartIncome`)承载本行公式,两域禁第二份;live 写端
-载体指派与 sim 接入归迁移尾批(排期单一源=r5-migration-plan(已删过程件,git 可溯));
+载体指派与 sim 接入归迁移尾批(排期考古走 git);
 接线前轮首增量走观察覆盖兜底。
 
 - **战斗败轮补发**:战斗失败时结算屏不发收入,这笔金改到**下一轮轮首**补发。写入:
@@ -1494,7 +1496,7 @@ burst 结构化,出售动作本身=缺口登记 §5.2。
 
 ### 6.1 StrategyState(默认策略实现私有,框架层不感知)
 
-K 方向 · 义务账本 · CommitSignals · 旗标(S1 开店闩 / S2 wanted 残差;**S3 升级
+K 方向 · 义务账本 · CommitSignals · 旗标(开店闩 / wanted 残差;**升级
 检查=不立变量**(墓碑测试在册)——升级检查=期望态新鲜度派生,非存储
 旗标)· 刷新推论。as-built 映射(五语义槽 → mandate_state 字段族)单一源 =
 `strategies/impl/mandate_v1/mandate_state` 模块 docstring;归属判据见 §1——本结构
@@ -1530,10 +1532,10 @@ carried 沿用(从未读过→None);③None 仅当从未读过——不是机制
 - 中继纪律:恢复局新 session 的五镜像字段停在默认值,中继把未知固化为正式值的路径
   被 §2.1 空值闸拦断(空白串同判空白;列表元组字典集合非空才中继)。
 
-### 6.4 接管恢复(resumed_match)——已退役(迭代 T-8)
+### 6.4 接管恢复(resumed_match)——已退役
 
 `resumed_match`(bool,原 match_facts 域成员,渠道③接管协议 `logic_hook`)已随
-容器字段清理批次退役(迭代 2026-09-20-node-advance-action-report T-8):历史读端 =
+容器字段清理批次退役(接管恢复域随收口批退役,考古走 git):历史读端 =
 漏斗派生段的恢复局禁用分支,该分支随节点推进触发模型换代退役后旗标零逻辑
 消费,属死重。退役面 =
 Field 定义 + `cw_loop` 写点(`ResumeAttach`/`takeover_resumed` journal 行同灭)+
@@ -1643,8 +1645,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
     深度 10 同场去重)/`encounter_log`(本局全量遭遇行,遭遇经验证据通道)/
     `frame_class_prep`/`frame_class_shop`(帧触发代次双槽,值域
     full/view/none,读后即清)。
-    (`prep_obs` 备战黑板帧宿主已随黑板退役删除——迭代
-    2026-09-18-prep-obs-retirement 阶段 3.5:名单/装备/占用/晶矿全部容器域
+    (`prep_obs` 备战黑板帧宿主已随黑板帧退役删除:名单/装备/占用/晶矿全部容器域
     承载,策略器唯读容器契约归位;观察控制信号 shop_open/substate/
     event_overlay 降级为备战环 op 局部对象。)
 
@@ -1665,7 +1666,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
 
 ### 8.7 迁移与排期
 
-迁移波次/批次范围/消费切换排期归退役过程件(原单一源 r5-migration-plan,已删,考古走 git 历史),本篇不复制不另立。
+迁移波次/批次范围/消费切换排期归 git 历史,本篇不复制不另立。
 
 ### 8.8 治理面
 
