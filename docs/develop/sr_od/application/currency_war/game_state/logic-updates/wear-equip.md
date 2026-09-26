@@ -12,7 +12,7 @@
 
 | 账 | 写端 | 内容 |
 |---|---|---|
-| tracked(执行账)| op 自上报 `kernel/cw_action_report/wear_equip.py::report_action_wear_equip_param`(session 形参在场时执行;op 零 game state 直写)| owned 库存 −1 件(`gs.equips` write_logic,evidence `owned[<件>] -1(穿戴)`;owned 无此件 = 只跳该侧)+ tracked 目标角色 equips +1(物理 (row, slot) → 内联换算)|
+| equips 域 | op 自上报 `kernel/cw_action_report/wear_equip.py::report_action_wear_equip_param`(op 零 game state 直写)| owned 库存 −1 件(`gs.equips` write_logic,evidence `owned[<件>] -1(穿戴)`;owned 无此件 = 只跳该侧)+ 目标角色 equips +1(物理 (row, slot) 内联换算)|
 
 落地真值(穿没穿)= 观察写入边对账(下一入口装备区读数覆盖)。**零窗口申报**:WearEquip = 截断点(独占发射帧),发出即 visit 结束 → 下一入口 heavy 装备区实读覆盖,无同 visit 后续帧消费。(原「视觉域黑板帧摘件腿」随 `gs.prep_obs` 黑板退役删除——黑板帧退役。)
 
@@ -36,11 +36,11 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::CwActionWearEquipParam`;`kernel/cw_action_report/wear_equip.py::report_action_wear_equip_param`(tracked 腿)/ 内联换算;`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan` / `EquipWearStep`(四路输入容器读口,迭代阶段 3.2 换源);`kernel/cw_comps.py::EQUIP_CAPACITY`;`prep_actions.py::PrepActionExecutor._wear_equip` / `_owned_grid_locate` / `_equip_slot_drag_point` / `PREP_DRAG_SETTLE_WAIT_S`;`operations/cw_op/cw_wear_equip_action.py::CwActionWearEquipOp`;`obs/cw_back_layout.py::select_back_layout`。
+`kernel/cw_vocab.py::CwActionWearEquipParam`;`kernel/cw_action_report/wear_equip.py::report_action_wear_equip_param`(tracked 腿)/ 内联换算;`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan` / `EquipWearStep`(四路输入容器读口);`kernel/cw_comps.py::EQUIP_CAPACITY`;`prep_actions.py::PrepActionExecutor._wear_equip` / `_owned_grid_locate` / `_equip_slot_drag_point` / `PREP_DRAG_SETTLE_WAIT_S`;`operations/cw_op/cw_wear_equip_action.py::CwActionWearEquipOp`;`obs/cw_back_layout.py::select_back_layout`。
 
 ## 7. 语义验证
 
-WearEquip = 容器写语义动作(非零写族成员):容器 `equips` 域 owned −1(在册才减)+ tracked 目标角色 equips +1,两腿内聚于上报函数 `report_action_wear_equip_param` 单点(行为锁 = `test_cw_unified_action_2a` 词表覆盖锁容器写集断言);落地真值(穿没穿)归观察边界 reconcile。
+WearEquip = 容器写语义动作(非零写族成员):容器 `equips` 域 owned −1(在册才减)+ 目标角色 equips +1,两腿内聚于上报函数 `report_action_wear_equip_param` 单点(行为锁 = `test_cw_unified_action_2a` 词表覆盖锁容器写集断言);落地真值(穿没穿)归观察边界 reconcile。
 
 ## 8. 判例注记(发射期)
 

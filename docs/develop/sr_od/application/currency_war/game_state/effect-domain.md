@@ -39,7 +39,7 @@
 - 效果域载体 = `GameState.effects`,类型 `ActiveEffectInventory`(kernel/cw_game_state.py
   `effects` 字段 :1651;kernel/cw_effect_inventory.py `ActiveEffectInventory` 类 :142)。
   session 无独立字段——历史兼容读口 property 已撤,写读直经
-  `game_state_of(session).effects`(同一实例,防双账本)。
+  `game_state_of(session).effects`(同一实例,防第二账本)。
 - 写端(挂点)六处在产,全部经 inventory 方法(§7.3 映射表),零旁路直改;机器面 =
   效果域直摸锁(journal.md §6 硬约束①族)。
 - 读端 = 查表方法(`by_category`/`by_trigger`/`by_source`/`first`/`counter`/

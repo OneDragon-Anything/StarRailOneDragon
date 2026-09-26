@@ -5,7 +5,7 @@
 ## 总则(必读)
 
 1. **写口归属(硬规则)**:动作 op 只负责执行画面动作 + 机械执行后**直调自己的上报函数**(动作语义单一源 = `kernel/cw_action_report/` 上报函数族,每动作一文件一函数 `report_action_<snake>_param`,零写动作族集中在 `zero_writes.py`);**逻辑态的更新写入由上报函数族独占**(函数内 `gs.write_logic`,kernel → 容器单向依赖),dict 确认族到账 = `kernel/cw_exec_state.py::apply_confirm_effect`。op 层/策略层禁自带逻辑态记账函数或并行登记路径,禁新增按类型聚合的转移函数(现无任何聚合分派点;上报函数调用方 = 动作 op 直调与商店序列驱动器直调)。
-2. **两态制(+逻辑随机态扩展)**:容器(`GameState`)每字段只有两种值来源——观察态(`observe()` 写)与逻辑态(动作后推算,`write_logic()` 写);同帧冲突观察赢。效果本身随机的推算口径走**逻辑随机态**(`write_logic_rand()` 写,来源 `logic_rand`;观察覆盖差异预期内,策略器消费前必须重观察),见 [../action-logic-state.md](../action-logic-state.md) §1.2 与 [../fields.md](../fields.md) §2.1/§2.5。tracked 账字段在观察态/逻辑态基础上另有**「未观察」态值**(无观察锚定,值不可消费;与「已观察下的空」类型可分)。对账 = 观察态 vs 逻辑态比对,**唯一发生点 = 画面 op 上报观察数据进 game state 的观察边界,由 game state 执行**(../../screens/op-layer.md §1.3)。
+2. **两态制(+逻辑随机态扩展)**:容器(`GameState`)每字段只有两种值来源——观察态(`observe()` 写)与逻辑态(动作后推算,`write_logic()` 写);同帧冲突观察赢。效果本身随机的推算口径走**逻辑随机态**(`write_logic_rand()` 写,来源 `logic_rand`;观察覆盖差异预期内,策略器消费前必须重观察),见 [../action-logic-state.md](../action-logic-state.md) §1.2 与 [../fields.md](../fields.md) §2.1/§2.5。席位主域的「未观察」态由锚定闩 `tracked_account_observed` 承载(无观察锚定,值不可消费;与「已观察下的空」类型可分)。对账 = 观察态 vs 逻辑态比对,**唯一发生点 = 画面 op 上报观察数据进 game state 的观察边界,由 game state 执行**(../../screens/op-layer.md §1.3)。
 3. **确定面/随机面**:逻辑态只写确定面;随机面两档落法——无可写口径归下一帧观察(域级跳写),有确定面/期望口径按逻辑随机态直写(`write_logic_rand`),见 [../action-logic-state.md](../action-logic-state.md) §1.2。
 4. **拒绝语义**:游戏拒买/拒上/期望失配 → 上报函数返回 `LogicOutcome(applied=False, reason)`,零容器写。
 5. **判例**:商店期默认策略动作面 = 买牌/刷新/关店;卖备战与买经验收缩至备战期(判例见 [screens/README](../../screens/README.md) §5 与 strategy-docs/23_shop_screen.md)。**席满/腾位形态(2026-09-15 用户裁定修正)**:不是「关店→备战卖→重开」一条自动链——关店时**交还外循环**,由备战 op 在自己的决策周期自行判断与卖出;商店期为何关店、备战要做什么、何时重开,由**策略实现自行记录状态**(框架侧提供跨段状态载体与路由保证:节点内关店/重开牌面持久;策略侧多画面联动的重设计另批)。
@@ -30,7 +30,7 @@
 | LevelUp(LevelUpShop 同字段双类型,显式独立行同 op) | `CwActionLevelUpOp` | [level-up.md](level-up.md) | `report_action_level_up_param`(LevelUpShop 经 `report_action_level_up_shop_param` 一行委托) |
 | DeployMove | `CwActionDeployMoveOp` | [deploy-move.md](deploy-move.md) | `report_action_deploy_move_param` + board 派生挂钩 |
 | SellDeployed | `CwActionSellDeployedOp` | [sell-deployed.md](sell-deployed.md) | `report_action_sell_deployed_param`(双域统一单点) |
-| WearEquip | `CwActionWearEquipOp` | [wear-equip.md](wear-equip.md) | `report_action_wear_equip_param`(容器 equips 写 owned−1 + tracked 账内聚) |
+| WearEquip | `CwActionWearEquipOp` | [wear-equip.md](wear-equip.md) | `report_action_wear_equip_param`(容器 equips 写 owned−1 + 目标角色 equips +1 内聚) |
 | CollectOre | `CwActionCollectOreOp` | [collect-ore.md](collect-ore.md) | `report_action_collect_ore_param`(容器精确摘晶矿 + 晶矿金窗登记内聚单点) |
 | OpenBox | `CwActionOpenBoxOp` | [open-box.md](open-box.md) | 零写族 `zero_writes`(终结动作,交回外循环下一入口覆盖) |
 | OpenTome | `CwActionOpenTomeOp` | [open-tome.md](open-tome.md) | `report_action_open_tome_param` 腾席(bench kind tome → empty) |

@@ -26,7 +26,7 @@
 2. `gold += 退款`——退款公式与手续费口径与卖备战**同一条**(单一源 = `kernel/cw_economy.py::sell_refund` + `bench_char_cost`;`_SELL_MULT` 倍数 + star≥2 且 cost≥2 手续费 −1,cost=1 豁免);
 3. 装备全量回装备区(同卖备战第 3 条:口述·权威 + C6 守恒建模 + 缺口 G5 帧级证据未采);
 4. board **派生随写**:front_row/back_row 整表写触发行写端挂钩 `GameState._resync_board_delta` 自动增量重算(观察基座含面板真值的装备羁绊贡献,本次行写只施加单位多重集差——新增加其羁绊标签、移除减、减至 0 摘键;禁独立手写 board);上阵计数随 deployed 摘槽派生递减(无独立字段写);
-5. 席位单账:上报直写主域 deployed(摘槽位删除,无平行随动账)。
+5. 席位单账:上报直写主域 deployed(摘槽位删除,无平行第二账)。
 
 ## 4. 随机面
 

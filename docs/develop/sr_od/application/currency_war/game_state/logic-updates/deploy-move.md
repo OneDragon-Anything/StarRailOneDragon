@@ -23,15 +23,15 @@
 
 配套账随动作同步:
 
-- 席位单账:本上报直写主域——deployed 视图整值替换(载荷 `(to_row, to_slot)` 经排内槽号内联换算定子表下标),bench 侧源槽置 `empty`;交换语义镜像——目标槽有人 = 被占位单位回源 bench 槽。无平行随动账。
+- 席位单账:本上报直写主域——deployed 视图整值替换(载荷 `(to_row, to_slot)` 经排内槽号内联换算定子表下标),bench 侧源槽置 `empty`;交换语义镜像——目标槽有人 = 被占位单位回源 bench 槽。无平行第二账。
 
 ## 3. 确定面转移规则(逐条)
 
 1. **容器腿守卫**(先试落位后写账):`to_row` 非法(∉ front/back)= 参数非法零写;源槽空/非 unit/越界 = 陈旧提案零写;载荷槽越出定长表或换算回读与载荷 (排, 槽) 不符(跨排,如 front 5 号落在表后段)= 载荷非法零写——静默零写等观察覆盖;
 2. **目标落位** = 载荷 `(to_row, to_slot)` 直指(换算 = 排内槽号 ↔ 子表下标内联算术,与执行拖点同源无分叉):目标槽空 = 放置;有人 = 交换——被占位单位整体回填源 bench 槽(与 `report_action_swap_deploy_param` 换位契约同语义,装备随对象,);禁占位拒绝、禁静默换槽(不另寻空位);
 3. **上阵变换窗(银狼LV.999 3★ 落位腿对)**:拖拽载荷唯一指定源 = 恰此一枚(无歧义,免多枚三态判定)→ 落场单位写**下一费用档 1★**(常量单一源 = 上报函数;角色固有升星升费:备战栏不升费、拖上场才触发,机制锚 = `docs/game/gameplay/currency_war.md`「银狼LV.999 升星升费」条;身份保持,槽位随拖拽落点、观察为真值);其余单位恒等搬运零行为差。变换后的合成连锁 = `cw_effect_inventory.merge_cascade_write`(evidence `proj_deploy_lv999_merge`):正常路 = 常规引擎逐级合并、受影响域各落一行(确定面 `write_logic`);涉 LV.999 跨档合并(merge 身份键 = (char_id, star) 无费用维度,跨档禁猜)未定谳 → 自动降级 = bench/front_row/back_row 值不变翻来源(恒随机态标记 `write_logic_rand`,evidence 后缀 `#lv999_hold`,观察覆盖差异 = 预期内收口)+ 留证台账行 `LV999_MERGE_UNDECIDED_KIND`,定谳后恢复推演;
-4. **开拓者形态归一挂容器写口**:开拓者按目标排换形态(char_id 随排切换,board 计数不再错账)= 上报函数内 `cw_exec_state.trailblazer_row_unit`(归一核单一源 = `trailblazer_row_identity`,与 swap 上报同源——换排 = 命途切换,deploy/swap 两上报统一归一口);tracked 侧同核(`cw_vocab.py::mutate_bench_deployed` DeployMove 分支);
-5. **同名同星已在场拒**(恒成立约束「场上同名同星 ≤1」,`research/merge_mechanics.md` §3):守卫挂 tracked 同步口 `mutate_bench_deployed` DeployMove 分支 `board_unique_key` 同名唯一性判定(W43 裁决 1,与 sim 同源)——同名唯一键命中即整体不迁移;
+4. **开拓者形态归一挂容器写口**:开拓者按目标排换形态(char_id 随排切换,board 计数不再错账)= 上报函数内 `cw_exec_state.trailblazer_row_unit`(归一核单一源 = `trailblazer_row_identity`,与 swap 上报同源——换排 = 命途切换,deploy/swap 两上报统一归一口);tracked 侧同核(上报函数 DeployMove 分支 DeployMove 分支);
+5. **同名同星已在场拒**(恒成立约束「场上同名同星 ≤1」,`research/merge_mechanics.md` §3):守卫 = 上报函数内 `board_unique_key` 同名唯一性判定(与 sim 同源)——同名唯一键命中即整体不迁移;
 6. **board 派生增量口径**:board 现值为 None(板未读过)跳过等观察首读;否则对本次行写做单位多重集差(键 = `_rows_unit_key`)——新增单位逐个加其羁绊标签(`_row_unit_tags` → `kernel/cw_bond_equips.py::unit_bond_tags`,星徽/卡带贡献在内)、移除单位逐个减、减至 0 摘键;观察基座的装备羁绊真值保留(禁全量重算抹基座);未知身份(注册表外/OCR 误读)零贡献,禁 faction 兜底(Unit 不存阵营防注册表双源);
 7. **机械执行**(零判效,发出即记账):源拖点 = `bench_idx` 备战栏 area 序直取(容器下标 = area 序,零换算)→ 落点 = 载荷槽对应排 area 序 `to_slot - 1`(落位意图全部在载荷,执行边零现读零决定)→ `_drag`(DragCwChar 中心拖 + 失焦守卫)→ 固定等待 2s 徽章动画(`research/screen_flow_timing.md` #10)→ `上报直写主域`;
 8. **执行器拒绝通道**:载荷槽越出画面槽位数 = 未发出(round_fail,陈旧载荷观察重派)。
@@ -49,7 +49,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_action_report/deploy_move.py::report_action_deploy_move_param`(bench 侧原生 `BenchView.slots` 直操;变换窗常量 `_TRANSFORM_CHAR_ID`/`_TRANSFORM_STAR`/`_TRANSFORMED_STAR`)/ `GameState._resync_board_delta`(board 派生挂钩单一源)/ `_row_unit_tags`;`kernel/cw_effect_inventory.py::merge_cascade_write`(降级感知合成级联单一消费体)/ `lv999_cascade_blocked`(涉 LV.999 跨档禁猜降级判据);`kernel/cw_vocab.py::mutate_bench_deployed`(同名守卫 + 载荷落位 + 开拓者形态归一挂 tracked 口);`kernel/cw_exec_state.py` 工作表桥(`deployed_indexed_of_view`/`deployed_view_of_indexed`) / `deployed_indexed_to_rows` / `trailblazer_row_unit`;`strategies/impl/mandate_v1/deploy_plan.py::deploy_plan_moves`(发射位计划单一源);`kernel/cw_bond_equips.py::unit_bond_tags`(羁绊标签单一源);`prep_actions.py::PrepActionExecutor.上报直写主域`;`operations/cw_op/cw_deploy_move_action.py::CwActionDeployMoveOp`。
+`kernel/cw_action_report/deploy_move.py::report_action_deploy_move_param`(bench 侧原生 `BenchView.slots` 直操;变换窗常量 `_TRANSFORM_CHAR_ID`/`_TRANSFORM_STAR`/`_TRANSFORMED_STAR`)/ `GameState._resync_board_delta`(board 派生挂钩单一源)/ `_row_unit_tags`;`kernel/cw_effect_inventory.py::merge_cascade_write`(降级感知合成级联单一消费体)/ `lv999_cascade_blocked`(涉 LV.999 跨档禁猜降级判据);`kernel/cw_action_report/deploy_move.py`(同名守卫 + 载荷落位 + 开拓者形态归一内聚上报);`kernel/cw_exec_state.py` 工作表桥(`deployed_indexed_of_view`/`deployed_view_of_indexed`) / `deployed_indexed_to_rows` / `trailblazer_row_unit`;`strategies/impl/mandate_v1/deploy_plan.py::deploy_plan_moves`(发射位计划单一源);`kernel/cw_bond_equips.py::unit_bond_tags`(羁绊标签单一源);`prep_actions.py::PrepActionExecutor.上报直写主域`;`operations/cw_op/cw_deploy_move_action.py::CwActionDeployMoveOp`。
 
 ## 7. 语义验证(容器口径)
 
@@ -61,4 +61,4 @@ DeployMove 转移语义单一源 = 上报函数(`report_action_deploy_move_param
 
 ## 9. 依据
 
-[../action-logic-state.md](../action-logic-state.md) §3/§3A/§1.4(tracked 主账落点);`kernel/cw_action_report/deploy_move.py` docstring(写域/守卫与上阵变换窗申报面);`kernel/cw_effect_inventory.py::merge_cascade_write` docstring(降级语义与行域载体);`GameState._resync_board_delta` 方法注(增量口径依据);`kernel/cw_exec_state.py` /槽位语义注;`strategies/impl/mandate_v1/deploy_plan.py` 模块头(计划单一源口径);`research/merge_mechanics.md` §3(同名唯一恒成立);`research/screen_flow_timing.md` #10/#24。
+[../action-logic-state.md](../action-logic-state.md) §3/§3A/§1.4(席位单账直写口径);`kernel/cw_action_report/deploy_move.py` docstring(写域/守卫与上阵变换窗申报面);`kernel/cw_effect_inventory.py::merge_cascade_write` docstring(降级语义与行域载体);`GameState._resync_board_delta` 方法注(增量口径依据);`kernel/cw_exec_state.py` /槽位语义注;`strategies/impl/mandate_v1/deploy_plan.py` 模块头(计划单一源口径);`research/merge_mechanics.md` §3(同名唯一恒成立);`research/screen_flow_timing.md` #10/#24。

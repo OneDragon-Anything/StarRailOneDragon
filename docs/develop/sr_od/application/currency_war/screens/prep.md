@@ -81,7 +81,7 @@ action = strategy.decide_prep_screen(容器 game state 直读;
 ## 6. 状态上报面
 
 - 动作 → 上报函数:逐动作规格见 [../game_state/logic-updates/](../game_state/logic-updates/README.md)(备战域 = `kernel/cw_action_report/<snake>.py::report_action_<snake>_param`;dict 确认族到账 = `kernel/cw_exec_state.py::apply_confirm_effect`)。
-- 席位单账直写:动作落地由上报函数直写主域字段(bench/deployed),无平行随动账;动作落地判定归观察边界对账(两态制:逻辑态直写 + 观察覆盖,失配 = 纠偏/缺陷台账,零决策不重执行);期望态暂存记账机制已随执行层状态类目退役(git 历史可溯)。
+- 席位单账直写:动作落地由上报函数直写主域字段(bench/deployed),无平行第二账;动作落地判定归观察边界对账(两态制:逻辑态直写 + 观察覆盖,失配 = 纠偏/缺陷台账,零决策不重执行);期望态暂存记账机制已随执行层状态类目退役(git 历史可溯)。
 
 ## 7. 子态与 overlay
 
@@ -96,6 +96,6 @@ action = strategy.decide_prep_screen(容器 game state 直读;
 
 ## 9. 遥测与锁面
 
-- journal op 名 = 「备战」(dispatch 包装统一落 `[cw-op]` 主日志行);0n 分键 branch_shop_open_hit / branch_shop_open_visit_ok / branch_shop_open_visit_fail;发射域分键 deploy_emit_* / deploy_exec_*;板满拒因 = cw4_counters `deploy_cap_full`(帧级去重,迭代阶段 3.1)。
+- journal op 名 = 「备战」(dispatch 包装统一落 `[cw-op]` 主日志行);0n 分键 branch_shop_open_hit / branch_shop_open_visit_ok / branch_shop_open_visit_fail;发射域分键 deploy_emit_* / deploy_exec_*;板满拒因 = cw4_counters `deploy_cap_full`(帧级去重)。
 - 测试锁:词表覆盖锁(写口两集)、部署 cap 板满门与 prep 节点链专锁等,锁面 = `sr-od-test/test/sr_od/application/currency_war/`(test_cw_deploy_cap_gate.py / test_cw_unified_action_2a.py / test_cw_prep_node_chain.py 等;原黑板帧代次写点集契约锁随黑板退役删除)。
 - game 侧知识:过渡体系/战斗机制 = [../../../../game/currency_war/research/README.md](../../../../../game/currency_war/research/README.md);画面建档 = `assets/game_data/screen_info/currency_war_battle_prep.yml`。

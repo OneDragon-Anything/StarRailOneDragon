@@ -19,7 +19,7 @@
 | board | 派生随写 | **派生量**:front_row/back_row 行写端挂钩 `GameState._resync_board_delta` 自动增量重算,随上行条件写触发,本腿禁手写 |
 | xp / level / equips / hp | 跳写 | 买牌不产经验(零购买子集反证,`research/xp-rules.md` §2);不触装备域 |
 
-执行侧配套(非容器域):op 内 主域直写同步(`mutate_bench_deployed`,shop 视图透传)、买前裁片留证、效果账本 `CounterKey.BUY` 计数推进(挂执行落地门 `apply_action_outcome`)。
+执行侧配套(非容器域):op 内主域直写同步(shop 视图透传)、买前裁片留证、效果账本 `CounterKey.BUY` 计数推进(挂执行落地门 `apply_action_outcome`)。
 
 ## 3. 确定面转移规则(逐腿)
 

@@ -105,7 +105,7 @@
 
 ### 4.4 观察时序边界
 
-备战观察 = 入口 heavy 单次读屏直写容器;`PrepObservation` 局部载体只载控制信号(shop_open/substate/event_overlay),不承载状态面(名单/装备/占用/晶矿全容器域,阶段 3.5 起黑板退役;另挂观察链内部存续对拍轻字段 `front_occupied`/`back_occupied`:`deployed_count` 双源对拍消费,方法内即弃,不进 gs/session/report)。执行侧对同一画面的**再读**与决策帧之间无一致性承诺——需要强一致的判定（如 deploy 的占用检测）一律执行期现读（CV `slot_occupied`），不从观察载体取。动作-观察间隙内的局面推进 = op 自上报函数（`report_action_<snake>_param`）逻辑态直写(「在观察态到来之前供决策使用」是逻辑态的全部职能),真值以下一帧观察为准。
+备战观察 = 入口 heavy 单次读屏直写容器;`PrepObservation` 局部载体只载控制信号(shop_open/substate/event_overlay),不承载状态面(名单/装备/占用/晶矿全容器域,黑板已退役;另挂观察链内部存续对拍轻字段 `front_occupied`/`back_occupied`:`deployed_count` 双源对拍消费,方法内即弃,不进 gs/session/report)。执行侧对同一画面的**再读**与决策帧之间无一致性承诺——需要强一致的判定（如 deploy 的占用检测）一律执行期现读（CV `slot_occupied`），不从观察载体取。动作-观察间隙内的局面推进 = op 自上报函数（`report_action_<snake>_param`）逻辑态直写(「在观察态到来之前供决策使用」是逻辑态的全部职能),真值以下一帧观察为准。
 
 ## 5. 消费方读什么（逐臂）
 
@@ -123,7 +123,7 @@
 | # | 文件::符号 | 缺口 | 影响 |
 |---|---|---|---|
 | G1 | ~~`kernel/cw_game_state.py::BenchChar.slot`~~（**已消解**） | 缺口宿主 `BenchChar` 已随容器化退役：下标坐标系声明住动作类 docstring 与 `cw_exec_state` 工作表桥；`Unit` 不存槽位信息位（位置 = 子表下标纯派生） | 跨模块读者依据 = 代码注释与本文 §2.1 |
-| G3 | ~~`kernel/cw_exec_state.py::apply_op_effect`（path 构造；动作 op 重组批④后本口瘦身改名 `apply_confirm_effect`）与 `ExpectedEntry` docstring~~（**已消解**） | 期望态路径命名空间同一括号形态两种基（`tracked_bench_chars[N]` = 1-based、`tracked_deployed[N]` = 0-based、`deployed.{row}.{slot}` = 1-based）；缺口对象 `ExpectedEntry` 已随期望态条目表退役,身份寻址对账消亡 | path 字符串仍作上报函数族/`apply_confirm_effect` 推进清单/遥测面载体,判读者按 path 直读槽号须分域的提醒保留于 §2.4 |
+| G3 | ~~`kernel/cw_exec_state.py::apply_op_effect`（path 构造；动作 op 重组批④后本口瘦身改名 `apply_confirm_effect`）与 `ExpectedEntry` docstring~~（**已消解**） | 期望态路径命名空间同一括号形态两种基（历史 tracked_* path 两形态基不同,考古走 git;现役 `bench.slots[N]` = 0-based、`deployed.{row}.{slot}` = 1-based）；缺口对象 `ExpectedEntry` 已随期望态条目表退役,身份寻址对账消亡 | path 字符串仍作上报函数族/`apply_confirm_effect` 推进清单/遥测面载体,判读者按 path 直读槽号须分域的提醒保留于 §2.4 |
 | G4 | `kernel/cw_prep_actions.py::SellBench.slot` / `SellDeployed.row+slot` / `DeployMove.bench_idx+to_row+to_slot`（坐标参数化族全部槽位字段） | 坐标系有声明（模块头+类 docstring：物理槽位/载荷直指），**取值时机零声明**；「无 expect 代际校验、依赖单动作循环生成即执行短间隙」的结构边界未写在动作定义处（只散在 prep_visit/action_exec 的循环语义） | 坐标参数化动作一旦进入跨帧队列即无代际防线；登记为契约边界，接线跨帧队列前必须先补 expect 类防线或取值时机声明 |
 | G5 | `obs/cw_identity_obs.py::find_armory_boxes` / `find_tomes` / `read_armory_boxes` / `read_tomes` | 返回值 `slot_idx` 的基（1-based，来自 `_ctx_slots` 的 `range(1, count+1)`）只在实现里，函数级 docstring 未声明；对照同文件 `bench_item_slots` 的「注释规范硬门」写法属漏网 | 消费方 `OpenBox.slot`/`OpenTome.slot` 的 validate（1-9）与匹配（`b[0]==action.slot`）全依赖此基；声明缺失=新读取方易按 0-based 惯例错拿 |
 | G6 | `kernel/cw_deploy_logic.py::residual_fill_plan`(部署机锚已随其退役收敛 kernel 单一源) | 返回三元组声明了 `slot_idx` 基（排行点位表 0-based 下标），但 `bench_idx` 的基与入参 `bench_pos`/`bench_cid` 的键域（bench 槽位表下标 0-8）只在调用方局部变量注释里有，函数自身 docstring 未声明 | 该函数标注「可离线直测」，离线构造入参时键域无函数级依据 |

@@ -4,7 +4,7 @@
 
 ## 1. 效果账是什么
 
-动作 op 机械发出后,除容器动作转移语义外还有一类**可推算效果**需要直接写状态账:选卡到账(装备/道具入 owned)、卖出装备回收、穿戴 tracked 账、免战递减、工具消耗的确定性变换。纪律与动作逻辑态同源:确定性(结果可准确计算)= 逻辑写;含概率/随机 = 不建逻辑写端,观察收口(归属判据正本 = `docs/develop/sr_od/application/currency_war/game_state/effect-domain.md` §6.3)。op 层零自带记账——动作类效果内聚于各自上报函数(op 机械执行后直调,效果与动作转移同函数单点);dict 确认族到账经 `apply_confirm_effect`(推进失败不阻塞执行链)。
+动作 op 机械发出后,除容器动作转移语义外还有一类**可推算效果**需要直接写状态账:选卡到账(装备/道具入 owned)、卖出装备回收、穿戴 equips 域、免战递减、工具消耗的确定性变换。纪律与动作逻辑态同源:确定性(结果可准确计算)= 逻辑写;含概率/随机 = 不建逻辑写端,观察收口(归属判据正本 = `docs/develop/sr_od/application/currency_war/game_state/effect-domain.md` §6.3)。op 层零自带记账——动作类效果内聚于各自上报函数(op 机械执行后直调,效果与动作转移同函数单点);dict 确认族到账经 `apply_confirm_effect`(推进失败不阻塞执行链)。
 
 ## 2. 效果内聚落点(动作类 = op 自上报;dict 确认族 = apply_confirm_effect)
 
@@ -13,7 +13,7 @@
 | 效果 | 内聚宿主 | 说明 |
 |---|---|---|
 | SellDeployed owned 恢复 | `report_action_sell_deployed_param` | tracked 快照被卖单位装备逐件回收(「卖场上装备全额返还」;原执行账单写者面随函数内聚单点化)。金腿同函数(`sell_refund` 直写) |
-| WearEquip owned + tracked | `report_action_wear_equip_param` | 发出即登记零比对形态:`gs.equips` −1 + tracked 目标角色 equips +1(物理 (row,slot) → 内联换算 换算;session 缺席 = tracked 腿跳过;owned 无此件只跳 owned 侧) |
+| WearEquip owned + equips | `report_action_wear_equip_param` | 发出即登记零比对形态:`gs.equips` −1 + 目标角色 equips +1(物理 (row,slot) 内联换算;owned 无此件只跳 owned 侧) |
 | StartBattle 免战递减 | `report_action_start_battle_param` | 唯一逻辑推进 = 免战牌跳过递减:`skip_substate=True`(CwActionStartBattleOp 上报携带)→ `effects.consume_use`(上报时递减,非「验证落地后」;登记面缺位的局返 None 零动作) |
 | CollectOre 容器摘晶矿 | `report_action_collect_ore_param` | 零金账推进(晶矿金金额执行点不可推算 = 声明盲区)+ 载荷坐标精确摘除容器 `spheres` 晶矿(金真值归观察收口;金吸收规则现无,重设计项——见 [collect-ore.md](collect-ore.md) §2/§4) |
 | SellBench 回金/装备回收/溢出腿 | `report_action_sell_bench_param` | 回金唯一写点 + C6 装备回收 + 溢出腿内聚(原执行缝 SellBench 分支整支已删,双记防线) |

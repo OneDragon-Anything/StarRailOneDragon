@@ -17,8 +17,8 @@
 | 3 | level | ①OCR 直读(无兜底);②XP 分母反推;③`_expected_level` 启发式;④session 单调链 | **三源仲裁**(XP 主权/单调守卫/跳变守卫/authoritative 位;毒化防线=纯启发式不写回) | `_resolve_level`(cw_observation.py:1919) |
 | 4 | deploy_cap | ①paddle「X/Y」的 Y(直读);②level 估兜底;③域防抖双帧重读 | **域守卫(level≤cap≤level+2)+域外双帧一致采信+域外且重读不一致→拒信 None** | `_debounce_cap`() |
 | 5 | deployed 计数 | ①paddle X(游戏自带计数器);②CV 槽位占用实测 | **min 仲裁+spread>1 分歧留证+独立分键**(7026c5db;板满门消费仲裁值) | `arbitrate_deployed_count` |
-| 6 | deployed 槽位身份 | ①CV+SIFT 现读(read_deployed_chars);②跟踪账 tracked_deployed;③paddle X 对齐(截断/补齐);④board 重建 | **对齐目标=paddle X;身份=SIFT 单源**(未知='?'显式;无第二身份源可裁) | read_game_state deployed 段 |
-| 7 | bench 名单/占用 | ①备战栏 9 格 CV 扫描;②跟踪账 tracked_bench_chars(后播种=heavy 读屏重建);③商店行卡片(空间归属应排除) | **无空间归属仲裁** —— r9 诊断报告 §2.1 记「bench 名单=商店 4 卡」;7026c5db 勘误经三证**否决**该归因(候裁行在案)→ 病灶存疑待复现 | report §2.1 vs 7026c5db commit 注 |
+| 6 | deployed 槽位身份 | ①CV+SIFT 现读(read_deployed_chars);②(历史跟踪账,已退役);③paddle X 对齐(截断/补齐);④board 重建 | **对齐目标=paddle X;身份=SIFT 单源**(未知='?'显式;无第二身份源可裁) | read_game_state deployed 段 |
+| 7 | bench 名单/占用 | ①备战栏 9 格 CV 扫描;②(历史跟踪账,已退役;后播种 = heavy 读屏重建);③商店行卡片(空间归属应排除) | **无空间归属仲裁** —— r9 诊断报告 §2.1 记「bench 名单=商店 4 卡」;7026c5db 勘误经三证**否决**该归因(候裁行在案)→ 病灶存疑待复现 | report §2.1 vs 7026c5db commit 注 |
 | 8 | board 阵营计数 | ①OCR 徽标(可视区);②computed(tracked 身份全集) | **双源仲裁:computed 底座+备战帧徽标覆写**(帧态门:非备战帧双不可信只留证;W287 裁决翻转) | read_game_state board 段 |
 | 9 | 后排布局档 | ①公式 6+(cap−level);②CV 双端探针实测 | **双通道对账:CV 优先,CV 不可判退公式** —— 7 格帧 CV 左探针结构性失明(§3),公式输入 level 可毒化 → 家族⑤「7 实画选 6 档」。〔as-built 2026-09-05:点修已落库 da4f49f2=不一致分支加占用一致性仲裁(paddle−前排占用=后排期望,原裁定档修订节);批 B 三信号落码时按 handover_layout7.md 单一替换点并入〕 | `cw_back_layout.resolve_back_slots`() |
 | 10 | node_type | ①台账表(位面详情采集+投资环境后重读两写点,权威);②逐帧标签 OCR;③三票(ROI OCR/位置推断/高亮 Hu) | **表权威+三票纯记账**。⚠️ A4 勘误:三票中**真独立画面票只有 2 张**(票A ROI OCR/票C 高亮 Hu);票B=台账序列重索引(`seq[past_n]`),与权威同源,是「进度一致性对账」非独立读数——现行 `node_vote_verdict` 的 ≥2 反对判据实际由票A+票C 承载,票B 不构成独立性实证(§2.2 标称类③随之如实收缩) | `verify_node_type_votes`(cw_observation.py:614,620 票B=seq 索引) |
@@ -27,8 +27,8 @@
 | 13 | shop 牌费用/星级 | ①画面费用徽章(模板快路+OCR 慢路);②roster 注册表 1★ 费 | **一致性校验仲裁:倍数∈{1,3,9} 才采徽章**,否则 roster 兜底+留证 | `resolve_cost_star` |
 | 14 | shop 牌身份 | SIFT 单源(未识别='?'显式,不猜) | **单源显式未知**(无第二源;fail 方向=拒买) | `read_shop_cards` |
 | 15 | phase_round | ①顶栏 OCR;②last-known-good 缓存 | **时序防抖类:值域守卫+单调守卫+连续 2 帧同值回退确认** | `read_phase_round` |
-| 16 | OpenShop 期望账(播种) | ①旧账 tracked_bench;②屏幕真值 | **已单源化=最强仲裁**(退役旧账;回退分支失去存在前提) | |
-| 17 | 装备 equips | ①跟踪账 tracked_deployed[].equips(deploy_bench 读回);②(无画面面板第二源) | **跟踪账+读回**,无第二画面源可裁(口径;缺口登记 §8④) | `board_from_tracked`/unit_bond_tags |
+| 16 | OpenShop 期望账(播种) | ①(旧账,已退役);②屏幕真值 | **已单源化=最强仲裁**(退役旧账;回退分支失去存在前提) | |
+| 17 | 装备 equips | ①主域 deployed 视图 equips(上报写,观察读回);②(无画面面板第二源) | **主域+读回**,无第二画面源可裁(口径;缺口登记 §8④) | `board_from_tracked`/unit_bond_tags |
 | 18 | shop_refresh_cost | ①面板徽标读数;②基价常量 | **源定性勘误后删伪源**(徽标=利息数值非刷价,OCR 退出主链) —— 仲裁的第三形态:证明某源读的不是这个量后删除 | `read_shop_refresh_cost` docstring |
 | 19 | bench 是否满(A10-1 补) | ①「备战席已满」警告 OCR(`read_bench_full`);②bench 9 格 CV 占用计数==9;③`deploy_vacancy==0` 推断 | **三读数面并存,互不对账无分歧留证通道**(「警告在 ∧ 计数不满」形态无观测);登记 §8⑧ | cw_observation.py:1900 / cw_screen_prep.py vacancy 段 |
 | 20 | node_sequence 序列/进度(A10-2 补) | ①台账 seq(位面详情采集写);②逐帧行检测推进(past/upcoming 槽位计数) | **票B 隐式对账**(§1 行 10 勘误:past_n 对 seq 本质是本量的双源对账),无显式仲裁无独立留证键 | cw_observation.py:614-627 |

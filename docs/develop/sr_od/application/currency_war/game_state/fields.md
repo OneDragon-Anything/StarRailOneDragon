@@ -118,7 +118,7 @@ bench/front_row/back_row/equips/occupied_equips/spheres)、经济域(gold 3/leve
 xp (0,4)/hp 82/streak 0/back_layout 6/deploy_cap 3/刷新计数 0/strategy_refresh_left
 {})、局级事实域(active_env ''/active_strategies []/pending_item_grants []/
 enemy_affixes []/overflow False/''/prev_node_spent False)。种子值依据逐字段申报面见迭代设计;hp 实证域 =
-A8/难度108(§3.1.6 三写端时序)。node 族/payload 域/事件选择域/tracked 账等
+A8/难度108(§3.1.6 三写端时序)。node 族/payload 域/事件选择域/席位锚定闩等
 **不种**——None 在这些字段上是设计语义(离屏/未选择/未锚定闩本体)。
 
 **语义例外立据**:`logic_rand` 在册纪律「策略器消费前必须重观察」对种子底座构成
@@ -494,7 +494,7 @@ evidence 区分。旗牌通道=**弱**(stylized 数字 OCR 常空,两级放大�
 到点自动开启(无 op 参与);补给/事件获得的消耗品经观察覆盖收口(§4.1 豁免)。
 **清偿指针(核实时点):本字段 = **死字段**——现役零读端
 零写端(工具件实住 equips,工具上报记账载体 = equips 合并写,本字段申报与现实
-不符);字段级清偿归 fields 正本批,工具面不入本字段。
+不符);字段级清偿归 fields 正本,工具面不入本字段。
 
 #### 3.2.17 分类子态 prep_substate
 
@@ -591,18 +591,17 @@ active_env 核对源。开局写端见 §3.4.3(多屏写入,本条=备战屏侧�
   溢出腿落地后 logic 直写 False(推算消亡,下帧实读覆盖)。
   **消费端** = mandate 溢出门(flag 在场 → 本帧决策强收窄单动作 SellBench,
   禁发 StartBattle/冻结买面,action-logic-state.md §2.4 溢出条件行)。
-  腿落地同帧 = 三账事件:容器 bench 回占 + 执行侧 tracked 主账吸收
-  (`report_action_sell_bench_param` `session` 形参;缺吸收 = 商店播种守卫
-  双账分叉实机停机)+ 黑板帧镜像。
+  腿落地同帧 = 单账事件:容器 bench 回占(入位卡直接落主域,腾出槽即刻
+  回占;平行吸收腿与黑板帧镜像均已退役)。
 - `overflow_card: str`——溢出位角色身份(char_id;`''` = 溢出位无卡或身份未
   识别,与 warning 配对解读:True ∧ `''` = 有卡未识别)。**写端 = 双写端**
   (同 overflow_warning):观察写端(溢出位 SIFT)+ 获得链逻辑写端(席满溢出落位
   直写身份;星级不入容器字段,链内自记);SellBench 溢出腿落地后 logic 直写 `''`
   (入位消费;入位时星级缺读按 1 兜底,下帧 heavy 实读覆盖修正)。
 
-### 3.2.22 tracked 主账观察状态 tracked_account_observed(bool)
+### 3.2.22 席位主域锚定闩 tracked_account_observed(bool)
 
-**语义**:tracked 主账(bench+deployed 两面,同帧锚定,单一状态)是否已按
+**语义**:席位主域(bench+deployed 两面,同帧锚定,单一状态)是否已按
 屏幕真值锚定。三态:`None`(从未写)= 缺省可信——正常新局 0 件即屏幕真值,
 不经失效事件的 sim/离线入口不受误伤;`False` = 显式失效(接管/重置/账失效)
 后未锚定,**账值不可消费**;`True` = 已锚定。事件驱动(非逐帧)。
@@ -878,7 +877,7 @@ effective_refresh_prob:键在且 >0 直用、≤0/缺键退基线表——**契�
   卡名 normalize_invest_name 归一后——效果注册表 STRATEGY_EFFECTS 即以
   规范名为键,观察写端 OCR 名经同一归一函数入键,免双坐标系换算;原
   `strategy_refresh_used`「已用」字段随剩余语义化改名退役,其旧「on_
-  outcome 发射型钩子」写端申报与全仓零写端现状矛盾,本批一并清除):
+  outcome 发射型钩子」写端申报与全仓零写端现状矛盾,已一并清除):
   **写端 = 观察写端**(`report_screen_invest_strategy_obs` 摄入「刷新
   次数N」读数,读缺键跳写、已观察键覆盖);值语义 = 剩余次数(≤0 = 刷
   尽,闸消费口径)。无 visit 级复位——「可否再刷」权威判定 = 屏上余量

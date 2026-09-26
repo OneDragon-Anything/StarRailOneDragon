@@ -43,7 +43,7 @@
 | 场景 | 降级行为 | 为什么 fail-closed |
 |---|---|---|
 | gold 失读（shop 关态） | 备战入口 heavy 观察重试 | 宁可重观察,不造值 |
-| 卖出执行守卫 | 守卫断言唯一 = `guard_proposal_vs_expected`(`cw_shop_action_ops.py`;提案动作的对象在期望态中存在且未被消费,非法 = 策略器 bug 响亮炸出;零读屏)。卖前双账对拍 `guard_expected_vs_tracked` 已退役——对账唯一合法时点 = 观察边界(观察 vs 逻辑双态比对,kernel `cw_reconcile` 执行),op 层零双态比对 | 不卖错件(卖出不可逆);逻辑态建模 bug 检出归观察边界 reconcile 纠漂显影(观察赢),详见 `../screens/op-layer.md` §1.3/`action_exec.md` §4 |
+| 卖出执行守卫 | 守卫断言唯一 = `guard_proposal_vs_expected`(`cw_shop_action_ops.py`;提案动作的对象在期望态中存在且未被消费,非法 = 策略器 bug 响亮炸出;零读屏)。卖前席位对拍守卫已退役——对账唯一合法时点 = 观察边界(观察 vs 逻辑双态比对,kernel `cw_reconcile` 执行),op 层零双态比对 | 不卖错件(卖出不可逆);逻辑态建模 bug 检出归观察边界 reconcile 纠漂显影(观察赢),详见 `../screens/op-layer.md` §1.3/`action_exec.md` §4 |
 | 部署 cap 失读 | 单调链 max 兜底；全源失读 → 不设板满门（拖到游戏拒即真值） | 低读阻塞上阵（贵）> 高读白拖一次（便宜） |
 | 空部署计划 | 部署计划单一源 = `mandate_v1/deploy_plan.py::deploy_plan_moves`(选人 `select_deployments`),空计划不产动作 | 空计划 ✓ = 假成功形态(计划单一源空不提案为唯一防线;停顿监测归哨兵) |
 | 增量态构造 fail-closed | 金失读/tracked 空 → 回退全量 read_game_state | 空 tracked 真空/丢跟踪不可区分，不造值 |
