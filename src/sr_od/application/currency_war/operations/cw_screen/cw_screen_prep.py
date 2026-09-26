@@ -29,7 +29,9 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_game_state import (
     BenchView,
     ChannelSig,
+    DeployedView,
     OreSight,
+    deployed_view_of_hits,
     game_state_of,
     gs_of_ctx,
     node_ordinal_of,
@@ -240,12 +242,22 @@ class CwScreenPrep(CwOperation):
                                shop_open=obs.shop_open,   # gold 仅 shop 开态可信门
                                session=self._session())   # SIFT 三层漏斗(session 优先匹配)
             # P6 观察链直产:observe_full 回传容器形状(备战席 BenchView /
-            # 上场位 (前排, 后排) Unit 行)。templates 未加载 → None → 下方
-            # 换空载体(与旧 [] 等价:对账空读可清账、容器写端 carry)。
+            # 上场位 (前排命中对, 后排命中对)——overlay-trigger 3.1:读侧
+            # 仍分排读屏,落容器 = 一次 observe 写 DeployedView(两排同帧
+            # 合一,视图构造单一源 = kernel deployed_view_of_hits)。templates
+            # 未加载 → None → 下方换空载体(与旧 [] 等价:对账空读可清账、
+            # 容器写端 carry)。
             _bench_view = _of.get('bench_view')
-            _deployed_rows = _of.get('deployed_rows')
-            _wr, _bench_obs, _dep_rows = self._reconcile_tracking(
-                _bench_view, _deployed_rows, screen)
+            _dep_hits = _of.get('deployed_rows')
+            _dep_view_in = (None if _dep_hits is None else
+                            deployed_view_of_hits(
+                                _dep_hits[0], _dep_hits[1],
+                                back_capacity=(int(_gs_layout)
+                                               if (_gs_layout :=
+                                                   _of.get('back_layout_slots'))
+                                               is not None else None)))
+            _wr, _bench_obs, _dep_view = self._reconcile_tracking(
+                _bench_view, _dep_view_in, screen)
             _st = _of.get('read_receipt')
             session = self._session()
             # PrepObservation 消费切换转适配器:
@@ -307,30 +319,31 @@ class CwScreenPrep(CwOperation):
                                   sig=ChannelSig(
                                       family='obs', actor='CwScreenPrep',
                                       screen='货币战争-备战', mode='carried'))
-                # 上场席位观察写端(与 bench 写端同环同纪律;P6 直产):
-                # 行域直产自读链(排归属 = 行参承载),空行域 = 失读非全空
-                # → carry,禁「全场无人」假观察;特效窗门同 bench
-                # (star 读数物理不可信);front_row/back_row 观察照写。
+                # 上场席位观察写端(与 bench 写端同环同纪律;P6 直产;
+                # overlay-trigger 3.1 合一写):读侧仍分排读屏,落容器 =
+                # 一次 observe 写 DeployedView(两排同帧合一——换排/重排/
+                # 容量变化都是单字段整值替换,无跨字段中间态);空读(两排
+                # 全空)= 失读非全空 → carry,禁「全场无人」假观察;特效窗
+                # 门同 bench(star 读数物理不可信)。
                 _dep_carried_sig = ChannelSig(
                     family='obs', actor='CwScreenPrep',
                     screen='货币战争-备战', mode='carried')
-                if _dep_rows is not None and (_dep_rows[0] or _dep_rows[1]):
+                _dep_has_units = (_dep_view is not None and any(
+                    u is not None
+                    for u in list(_dep_view.front_slots or [])
+                    + list(_dep_view.back_slots or [])))
+                if _dep_view is not None and _dep_has_units:
                     if is_merge_effect_window(screen):
                         # 与 bench 特效窗门同语义:窗内不写(保 logic 逻辑态值,
                         # 下帧干净帧实读覆盖),不落 carried 假新鲜度。
                         pass
                     else:
-                        _gs_obs.observe(_gs_obs.front_row, _dep_rows[0],
-                                        sig=_prep_sig)
-                        _gs_obs.observe(_gs_obs.back_row, _dep_rows[1],
+                        _gs_obs.observe(_gs_obs.deployed, _dep_view,
                                         sig=_prep_sig)
                 else:
                     _dep_frame = (f'p{_st.plane}-r{_st.round_num}'
                                   if _st is not None else '')
-                    _gs_obs.carry(_gs_obs.front_row,
-                                  frame=_dep_frame,
-                                  sig=_dep_carried_sig)
-                    _gs_obs.carry(_gs_obs.back_row,
+                    _gs_obs.carry(_gs_obs.deployed,
                                   frame=_dep_frame,
                                   sig=_dep_carried_sig)
                 # 备战帧现行链写端:slots 由 observe_full
@@ -503,17 +516,18 @@ class CwScreenPrep(CwOperation):
         return self._observe(heavy=True)
 
     def _reconcile_tracking(self, bench: BenchView | None,
-                            deployed, screen=None) -> tuple:
+                            deployed: DeployedView | None, screen=None) -> tuple:
         """环入口对账(read≠tracking 漂移是既有 bug 源 → SIFT 真值重置 tracking)。
 
         统一走公共 ``cw_reconcile.reconcile_tracking``(空读守卫/漂移留证/
         obs_conflict JSONL 单一实现,star 用 read_star 实机金星)。载体 =
-        P6 直产容器形状(备战席 BenchView / 上场位 (前排, 后排) Unit 行);
-        失读 None → 空视图/空行承载(旧链 [] 语义:对账空读可清账,非
+        P6 直产容器形状(备战席 BenchView / 上场位 DeployedView——
+        overlay-trigger 3.1:读侧分排读屏、对账载体 = 合一视图);失读
+        None → 空视图承载(旧链 [] 语义:对账空读可清账,非
         「读失败不辖」)。
 
         Returns:
-            ``(是否写回, 门后 bench 视图, 门后 deployed 行)`` —— 门后副本
+            ``(是否写回, 门后 bench 视图, 门后 deployed 视图)`` —— 门后副本
             供同帧容器观察写端消费(星级保旧/装备续接随副本共享)。
         """
         session = self._session()
@@ -525,7 +539,7 @@ class CwScreenPrep(CwOperation):
         return reconcile_tracking(
             session,
             bench if bench is not None else BenchView(),
-            deployed if deployed is not None else ([], []),
+            deployed if deployed is not None else DeployedView(),
             screen, source='director', ctx=self.ctx)
 
     def _reconcile_faction_display(self, obs: PrepObservation) -> None:

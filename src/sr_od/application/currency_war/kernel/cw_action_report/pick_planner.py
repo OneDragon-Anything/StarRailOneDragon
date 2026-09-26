@@ -182,7 +182,7 @@ def _apply_equip_leg(gs: GameState, norm_item: str,
 def _apply_upgrade_transform(gs: GameState,
                              sig: ChannelSig) -> LogicOutcome:
     """升费腿 = 变换窗三态 + 档行:前置硬校验对上报
-    时容器观察态(bench ∪ front_row ∪ back_row 多重集)的 (银狼LV.999, 2★)
+    时容器观察态(bench ∪ deployed 多重集)的 (银狼LV.999, 2★)
     计数(单相时序等价论证:确认点击到本调用之间容器零
     写入,观察态与原落地相时点等值):
 
@@ -203,18 +203,15 @@ def _apply_upgrade_transform(gs: GameState,
     写端);「新费档银狼刷进商店」连带腿 = 档行兼任(池桶归属随档迁移),
     不另造申报行。
     """
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        deployed_indexed_to_rows,
-        deployed_rows_to_indexed,
-    )
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_view_of_working,
+        deployed_indexed_of_view,
+        deployed_view_of_indexed,
     )
 
     view = gs.bench.value
-    front = gs.front_row.value
-    back = gs.back_row.value
-    if view is None and front is None and back is None:
+    dep_view = gs.deployed.value
+    if view is None and dep_view is None:
         _emit_defect(field_name='bench',
                      expected=f'({_LV999_ID},2)×1',
                      actual='containers_unobserved', evidence='planner_landing',
@@ -229,11 +226,11 @@ def _apply_upgrade_transform(gs: GameState,
                      actual=f'现档={tier}', evidence='planner_landing',
                      sig=sig, kind='planner_upgrade_tier_ceiling')
         return LogicOutcome(applied=False, reason='upgrade_tier_ceiling')
-    # P1 容器原生工作副本:bench = BenchView 槽序、deployed = 行域下标
-    # 派生表;元素 frozen,浅拷贝列表即快照(变换 = replace 新
-    # 构造,零别名)。
+    # P1 容器原生工作副本:bench = BenchView 槽序、deployed = 定长 10
+    # 下标表(3.1 窗口期桥,视图同源派生);元素 frozen,浅拷贝列表即快照
+    #(变换 = replace 新构造,零别名)。
     work_bench = list(view.slots) if view is not None else []
-    work_dep = deployed_rows_to_indexed(front, back)
+    work_dep = deployed_indexed_of_view(dep_view)
     hits = [i for i, b in enumerate(work_bench)
             if b is not None and b.kind == 'unit' and b.unit is not None
             and b.unit.char_id == _LV999_ID and b.unit.star == 2]
@@ -248,7 +245,7 @@ def _apply_upgrade_transform(gs: GameState,
         return LogicOutcome(applied=False, reason='upgrade_source_missing')
     if count > 1:
         # 多枚:值不变翻来源(受影响域全集,未观察域跳写)+ 留证行自愈。
-        for fld in (gs.bench, gs.front_row, gs.back_row):
+        for fld in (gs.bench, gs.deployed):
             if fld.value is None:
                 continue
             gs.write_logic_rand(fld, fld.value,
@@ -270,10 +267,9 @@ def _apply_upgrade_transform(gs: GameState,
                        evidence='planner_upgrade_transform', sig=sig)
     else:
         work_dep[hits_dep[0]] = replace(work_dep[hits_dep[0]], star=1)
-        f2, b2 = deployed_indexed_to_rows(work_dep)
-        gs.write_logic(gs.front_row, f2, produced_by=_PLANNER_PRODUCER,
-                       evidence='planner_upgrade_transform', sig=sig)
-        gs.write_logic(gs.back_row, b2, produced_by=_PLANNER_PRODUCER,
+        gs.write_logic(gs.deployed,
+                       deployed_view_of_indexed(work_dep, dep_view),
+                       produced_by=_PLANNER_PRODUCER,
                        evidence='planner_upgrade_transform', sig=sig)
     gs.write_logic(gs.lv999_cost_tier, tier + 1,
                    produced_by=_PLANNER_PRODUCER,

@@ -72,8 +72,9 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
 
     返回字段(对齐 _observe heavy 段产出,消费方=director 回填):
     - bench_view/deployed_rows:备战席容器视图(BenchView,空读/未加载模板
-      → None)+ 上场位 (前排, 后排) Unit 行(P6 观察链直产,无中间形;
-      调用方按 None/空读走 carried);
+      → None)+ 上场位 (前排命中对, 后排命中对)(P6 观察链直产,元素 =
+      ``(排内 1 基槽号, Unit)``;overlay-trigger 3.1:读侧仍分排读屏,
+      容器写端合一落 DeployedView;调用方按 None/空读走 carried);
     - read_receipt::class:`GameStateReadReceipt`(read_game_state 轻量
       回执;逐帧读数消费面——节点类型/level 审计/raw 牌缓存——改走本回执);
     - gold_reread:bool——是否走了 MED-2 gold==0 重读

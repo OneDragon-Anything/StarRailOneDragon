@@ -259,7 +259,7 @@ def _megastar_match_domain(gs: GameState | None) -> list[str]:
     """巨星屏合法候选域(转换匹配域;双源并集,用户裁定 2026-09-22):
 
     - ①静态 = cw_chars「盛会之星」阵营成员(注册表派生);
-    - ②动态 = 场上(``gs.front_row``/``gs.back_row``)穿「盛会之星」羁绊
+    - ②动态 = 场上(``gs.deployed``)穿「盛会之星」羁绊
       星徽的角色(现读;判据复用 kernel 既有装备羁绊派生语义
       ``equip_bond_grants``——「星徽 = 装备者加入该羁绊」,禁观察域手搓
       第二套羁绊逻辑;开拓者按排归一形态,与 kernel ``unit_bond_tags``
@@ -280,9 +280,10 @@ def _megastar_match_domain(gs: GameState | None) -> list[str]:
     if gs is None:
         return domain
     seen = set(domain)
-    for row_name, row in (('front', gs.front_row.value),
-                          ('back', gs.back_row.value)):
-        for unit in (row or []):
+    _view = gs.deployed.value
+    for row_name, sub in (('front', _view.front_slots if _view is not None else ()),
+                          ('back', _view.back_slots if _view is not None else ())):
+        for unit in (sub or []):
             if unit is None:
                 continue   # 槽位表空槽
             equips = getattr(unit, 'equips', None) or []

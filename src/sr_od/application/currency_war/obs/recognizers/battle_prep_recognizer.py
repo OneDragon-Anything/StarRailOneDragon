@@ -193,11 +193,11 @@ class BattlePrepRecognizer(ScreenRecognizer):
         back_line: list[Unit] | None = None
         bench: BenchView | None = None
         if templates is not None:
-            front_row, back_row = read_deployed_rows(ctx, image, templates, level=level0)
-            front_line = ([replace(u, equips=front_equips.get(u.slot, []))
-                           for u in front_row] or None)
-            back_line = ([replace(u, equips=back_equips.get(u.slot, []))
-                          for u in back_row] or None)
+            front_hits, back_hits = read_deployed_rows(ctx, image, templates, level=level0)
+            front_line = ([replace(u, equips=front_equips.get(s, []))
+                           for s, u in front_hits] or None)
+            back_line = ([replace(u, equips=back_equips.get(s, []))
+                          for s, u in back_hits] or None)
             _bv = read_bench_view(ctx, image, templates)
             # 备战席无 below icon → unit equips 保持 [];空读(零占用)→ None
             bench = (_bv if (_bv is not None

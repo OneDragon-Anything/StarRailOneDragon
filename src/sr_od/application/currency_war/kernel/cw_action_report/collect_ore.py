@@ -28,8 +28,6 @@ from typing import Any
 
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     bench_place,
-    deployed_indexed_to_rows,
-    deployed_rows_to_indexed,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     BenchSlot,
@@ -40,6 +38,8 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     Unit,
     _validate_sig,
     bench_view_of_working,
+    deployed_indexed_of_view,
+    deployed_view_of_indexed,
 )
 from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     _bench_sig,
@@ -114,7 +114,8 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     # replace 新构造,零就地变异)
     remaining = list(view.points)
     work_bench = list(orig_bench.slots)
-    work_dep = deployed_rows_to_indexed(gs.front_row.value, gs.back_row.value)
+    orig_dep_view = gs.deployed.value
+    work_dep = deployed_indexed_of_view(orig_dep_view)
 
     opened = 0
     skipped = 0
@@ -142,8 +143,7 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
         # 步2 未抽中域标记(值不变,现值非 None 才标——None 域跳写,
         # 随机态标记对「本就未知」的域无信息增益)
         for dom, fld in (('gold', gs.gold), ('equips', gs.equips),
-                         ('bench', gs.bench), ('front_row', gs.front_row),
-                         ('back_row', gs.back_row)):
+                         ('bench', gs.bench), ('deployed', gs.deployed)):
             if dom == rolled_domain or dom in written:
                 continue
             cur = fld.value
@@ -195,24 +195,20 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
                     _written.add('bench')
                 ds = _dep_sig(work_dep)
                 if ds != last_ds:
-                    front, back = deployed_indexed_to_rows(work_dep)
-                    _w_rand(gs.front_row, front, ev)
-                    _w_rand(gs.back_row, back, ev)
+                    _w_rand(gs.deployed,
+                            deployed_view_of_indexed(work_dep, orig_dep_view),
+                            ev)
                     last_ds = ds
-                    _written.update({'front_row', 'back_row'})
+                    _written.add('deployed')
 
             _merge_bench(work_bench, work_dep, on_step=on_step)
 
             # 步4 合成未触及的行域标记(真值可能因角色奖励而变)
-            for dom, fld in (('front_row', gs.front_row),
-                             ('back_row', gs.back_row)):
-                if dom in written:
-                    continue
-                cur = fld.value
-                if cur is None:
-                    continue
-                _w_rand(fld, cur, f'proj_ore_mark_{dom}#ore{k}')
-                written.add(dom)
+            if 'deployed' not in written:
+                cur = gs.deployed.value
+                if cur is not None:
+                    _w_rand(gs.deployed, cur, f'proj_ore_mark_deployed#ore{k}')
+                    written.add('deployed')
 
     if opened == 0:
         return LogicOutcome(applied=False, reason='bench_full_no_open')

@@ -797,7 +797,6 @@ class PrepActionExecutor:
         match = self._ctx.cw_match
         if match is None or match.session is None:
             return
-        from dataclasses import replace
 
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             DEPLOYED_CAPACITY,
@@ -831,11 +830,10 @@ class PrepActionExecutor:
             dep.append(None)
         if moved is not None:
             _occ = dep[idx]
-            dep[idx] = replace(moved, slot=slot_no)
+            dep[idx] = moved
             if _occ is not None:
                 tracked[bench_idx] = BenchSlot(
-                    kind='unit',
-                    unit=replace(_occ, slot=bench_idx + 1))
+                    kind='unit', unit=_occ)
         _books.bench = tracked
         _books.deployed = dep
 

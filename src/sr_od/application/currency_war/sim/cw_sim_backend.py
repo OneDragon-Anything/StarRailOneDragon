@@ -1215,9 +1215,10 @@ class SimBackend:
         """巨星候选写容器(候选 = 场上盛会之星角色,含持星徽贡献;选项
         坐标 = sim 合成坐标,身份键无画面语义)。"""
         cands: list[MegastarOption] = []
-        for row_field, row_name in ((self.gs.front_row, 'front_row'),
-                                    (self.gs.back_row, 'back_row')):
-            for unit in (row_field.value or []):
+        _view = self.gs.deployed.value
+        for row_name, sub in (('front_row', _view.front_slots if _view is not None else ()),
+                              ('back_row', _view.back_slots if _view is not None else ())):
+            for unit in (sub or []):
                 if unit is None:
                     continue
                 if '盛会之星' in _row_unit_tags(unit, row_name):
@@ -1509,8 +1510,10 @@ class SimBackend:
                       if s is not None and s.kind == 'unit'
                       and s.unit is not None
                       and s.unit.char_id == SILVER_WOLF_ID]
-        for row in (self.gs.front_row.value, self.gs.back_row.value):
-            stars += [int(u.star) for u in (row or [])
+        _view = self.gs.deployed.value
+        for sub in ((_view.front_slots if _view is not None else ()),
+                    (_view.back_slots if _view is not None else ())):
+            stars += [int(u.star) for u in (sub or [])
                       if u is not None and u.char_id == SILVER_WOLF_ID]
         return max(stars, default=0)
 
@@ -1520,9 +1523,10 @@ class SimBackend:
         """板面羁绊计数真值(容器行全量重算;标签单一源 = kernel
         ``_row_unit_tags``,与 :meth:`_refresh_board` 同一计算)。"""
         truth: dict[str, int] = {}
-        for row_field, row_name in ((self.gs.front_row, 'front_row'),
-                                    (self.gs.back_row, 'back_row')):
-            for unit in (row_field.value or []):
+        _view = self.gs.deployed.value
+        for row_name, sub in (('front_row', _view.front_slots if _view is not None else ()),
+                              ('back_row', _view.back_slots if _view is not None else ())):
+            for unit in (sub or []):
                 if unit is None:
                     continue
                 for tag in _row_unit_tags(unit, row_name):

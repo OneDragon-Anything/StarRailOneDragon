@@ -81,8 +81,7 @@ def report_action_sell_bench_param(gs: GameState, param: Any, sig: ChannelSig,
             _absorb: BenchSlot = BenchSlot(kind='supply_box')
         else:
             _absorb = BenchSlot(
-                kind='unit', unit=Unit(char_id=_ov_id, star=1, equips=[],
-                                       slot=idx + 1))
+                kind='unit', unit=Unit(char_id=_ov_id, star=1, equips=[]))
         bench_slots[idx] = _absorb
         _w(gs.overflow_card, '', 'proj_overflow_absorbed')
         _w(gs.overflow_warning, False, 'proj_overflow_cleared')

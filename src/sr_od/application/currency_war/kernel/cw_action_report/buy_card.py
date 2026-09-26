@@ -13,10 +13,6 @@ from typing import Any
 from sr_od.application.currency_war.kernel.cw_event_hooks import (
     emit_fact_event,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import (
-    deployed_indexed_to_rows,
-    deployed_rows_to_indexed,
-)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     BenchSlot,
     ChannelSig,
@@ -29,6 +25,8 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     Unit,
     _validate_sig,
     bench_view_of_working,
+    deployed_indexed_of_view,
+    deployed_view_of_indexed,
     detect_merge_upgrade,
     mutate_bench_deployed_local,
     shop_cards_to_legacy,
@@ -76,7 +74,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     _pre_view = gs.bench.value
     pre_bench = (list(_pre_view.slots) if _pre_view is not None
                  else [None] * 9)
-    pre_dep = deployed_rows_to_indexed(gs.front_row.value, gs.back_row.value)
+    pre_dep = deployed_indexed_of_view(gs.deployed.value)
     _payload_pre = gs.shop.value
     pre_shop = (shop_payload_content_cards(_payload_pre)
                 if _payload_pre is not None else [])
@@ -146,9 +144,8 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     _w(gs.bench, bench_view_of_working(scratch_b, _pre_view),
        'proj_buy_place')
     if _dep_sig(scratch_d) != _dep_pre_sig:
-        front, back = deployed_indexed_to_rows(scratch_d)
-        _w(gs.front_row, front, 'proj_deployed_front')
-        _w(gs.back_row, back, 'proj_deployed_back')
+        _w(gs.deployed, deployed_view_of_indexed(scratch_d, gs.deployed.value),
+           'proj_deployed')
 
     # —— 升星腿(买前快照基点;整表 write_logic 后写覆盖,与简单腿
     #    两写合计的期望态由投影直锁钉住,锁 M1)——

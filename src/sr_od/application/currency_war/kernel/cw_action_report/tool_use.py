@@ -132,31 +132,37 @@ def _remove_one(items: list[str], name: str) -> bool:
 
 def _resolve_row_unit(gs: GameState, row: str, slot: int) -> Unit | None:
     """目标身份解析:``row``/``slot``(画面物理排 + 排内槽位 1 基,与执行
-    拖点同源坐标)→ 容器行域派生表现读单位(下标换算单一源 =
-    ``cw_exec_state.deployed_idx_of``;取值时机 = 上报期现读)。
+    拖点同源坐标)→ deployed 视图子表现读单位(子表下标 = slot-1,
+    overlay-trigger 3.1:位置 = 子表下标派生;取值时机 = 上报期现读)。
     行域未观察/槽位无单位(漂移)= None,bug 面由调用方留证零写。"""
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        deployed_idx_of,
-        deployed_rows_to_indexed,
-    )
-    dep = deployed_rows_to_indexed(gs.front_row.value, gs.back_row.value)
-    idx = deployed_idx_of(row, slot)
-    if not 0 <= idx < len(dep):
+    view = gs.deployed.value
+    if view is None:
         return None
-    return dep[idx]
+    sub = (view.front_slots if row == 'front' else view.back_slots) or []
+    if not 1 <= slot <= len(sub):
+        return None
+    return sub[slot - 1]
 
 
 def _write_row_equips_cleared(gs: GameState, row: str, unit: Unit, *,
                               evidence: str, sig: ChannelSig) -> bool:
     """行域穿戴清空写(扳手族/炉 char 腿共用):目标单位 ``equips`` 清空,
-    其余成员原样;只写目标所在行域(效果行局部,禁把未观察姊妹行写成
-    空表造假值)。行域值必已观察(单位自行域现读解析而来)。"""
-    fld = gs.front_row if row == 'front' else gs.back_row
-    units = fld.value
-    if units is None:
+    其余成员原样(单字段视图整值替换;overlay-trigger 3.1 一次写)。
+    行域值必已观察(单位自行域现读解析而来)。"""
+    view = gs.deployed.value
+    if view is None:
         return False
-    new_units = [replace(u, equips=[]) if u == unit else u for u in units]
-    gs.write_logic(fld, new_units, produced_by=TOOL_USE_REPORT_PRODUCER,
+    if row == 'front':
+        sub = [replace(u, equips=[]) if u == unit else u
+               for u in (view.front_slots or [])]
+        gs.write_logic(gs.deployed, replace(view, front_slots=sub),
+                       produced_by=TOOL_USE_REPORT_PRODUCER,
+                       evidence=evidence, sig=sig)
+        return True
+    sub = [replace(u, equips=[]) if u == unit else u
+           for u in (view.back_slots or [])]
+    gs.write_logic(gs.deployed, replace(view, back_slots=sub),
+                   produced_by=TOOL_USE_REPORT_PRODUCER,
                    evidence=evidence, sig=sig)
     return True
 

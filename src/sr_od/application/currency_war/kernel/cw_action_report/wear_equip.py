@@ -9,7 +9,8 @@
 穿戴后该角色 worn 集内可合成的两件立即合成为进阶件,循环至无可合成,
 两两配方 = ``cw_synthesis.synthesize_target`` K8 闭合):穿戴落位与
 合成在同一写序内完成——owned 摘件 → worn 集合成 → 目标域整表重建写
-(bench/front_row/back_row 三域,合成产物落 worn 集尾)。规则住本上报
+(bench/deployed 两域,合成产物落 worn 集尾;overlay-trigger 3.1:
+前后排 = deployed 单字段视图)。规则住本上报
 = kernel 单一源(sim 与实机动作腿同构消费,禁第二份实现);合成改变
 板面装备贡献 → 落地写后广播 ``board_changed`` 事实事件。
 
@@ -31,7 +32,6 @@ from sr_od.application.currency_war.data.cw_synthesis import synthesize_target
 from sr_od.application.currency_war.kernel.cw_game_state import (
     BenchView,
     ChannelSig,
-    Field,
     GameState,
     LogicOutcome,
     Unit,
@@ -71,10 +71,11 @@ def _wear_synthesis(equips: list[str]) -> list[str]:
 def _locate_unit(gs: GameState, param: Any) -> tuple[str, int, Unit] | None:
     """定位穿戴目标单位。
 
-    定位序 = char_name 在册名匹配(bench → front_row → back_row 全域,
+    定位序 = char_name 在册名匹配(bench → deployed 全域,
     合法穿戴前置 = 计划指名;char_name 空 = front-only 回退步,按
     (row, slot) 现读)。[索引定义] row ∈ 'front'|'back'(词表通用声明),
-    slot = 画面物理槽位 1 基,下标 = slot−1;bench 域 = BenchView 槽序
+    slot = 画面物理槽位 1 基,deployed 域 = DeployedView 子表下标 + 1
+    (overlay-trigger 3.1:位置 = 子表下标派生);bench 域 = BenchView 槽序
     (视图槽 i ↔ 画面槽位 i+1)。
 
     Returns:
@@ -89,22 +90,26 @@ def _locate_unit(gs: GameState, param: Any) -> tuple[str, int, Unit] | None:
             if (s is not None and s.kind == 'unit' and s.unit is not None
                     and s.unit.char_id == char_name):
                 return ('bench', i, s.unit)
-    for key, fld in (('front_row', gs.front_row), ('back_row', gs.back_row)):
-        rows = list(fld.value or [])
-        if char_name:
-            for i, u in enumerate(rows):
-                if u is not None and u.char_id == char_name:
-                    return (key, i, u)
-        elif key == row and 1 <= slot <= len(rows):
-            u = rows[slot - 1]
-            if u is not None:
-                return (key, slot - 1, u)
+    view = gs.deployed.value
+    if view is not None:
+        for key, sub in (('front_row', view.front_slots),
+                         ('back_row', view.back_slots)):
+            if char_name:
+                for i, u in enumerate(sub or []):
+                    if u is not None and u.char_id == char_name:
+                        return (key, i, u)
+            elif ('front' if key == 'front_row' else 'back') == row \
+                    and 1 <= slot <= len(sub or []):
+                u = (sub or [])[slot - 1]
+                if u is not None:
+                    return (key, slot - 1, u)
     return None
 
 
 def _write_mutated_domain(gs: GameState, domain: str, idx: int,
                           unit: Unit, sig: ChannelSig) -> None:
-    """目标域整表重建写(容器视图 frozen 链,穿戴写 = 域整表重建)。"""
+    """目标域整表重建写(容器视图 frozen 链,穿戴写 = 域整表重建;
+    overlay-trigger 3.1:deployed 域 = 单字段视图整值替换)。"""
     if domain == 'bench':
         view = gs.bench.value
         slots = list(view.slots)
@@ -113,10 +118,14 @@ def _write_mutated_domain(gs: GameState, domain: str, idx: int,
                        BenchView(slots=slots, capacity=view.capacity),
                        produced_by=_PRODUCER, evidence='wear_worn', sig=sig)
         return
-    fld: Field = gs.front_row if domain == 'front_row' else gs.back_row
-    rows = list(fld.value or [])
-    rows[idx] = unit
-    gs.write_logic(fld, rows, produced_by=_PRODUCER,
+    view = gs.deployed.value
+    sub = list(view.front_slots if domain == 'front_row'
+               else view.back_slots)
+    sub[idx] = unit
+    new_view = (replace(view, front_slots=sub) if domain == 'front_row'
+                else replace(view, back_slots=sub))
+    gs.write_logic(gs.deployed, new_view,
+                   produced_by=_PRODUCER,
                    evidence='wear_worn', sig=sig)
 
 
@@ -179,8 +188,7 @@ def report_action_wear_equip_param(gs: GameState, param: Any, sig: ChannelSig,
                 dep[idx_dep],
                 equips=list(getattr(dep[idx_dep], 'equips', None) or [])
                 + [param.item_name])
-            _books.deployed = dep
-    # 事实事件:板面组成变化(wear 落地;overlay 触发层消费,缺省关零开销)
+            _books.deployed = dep    # 事实事件:板面组成变化(wear 落地;overlay 触发层消费,缺省关零开销)
     from sr_od.application.currency_war.kernel.cw_event_hooks import (
         emit_fact_event,
     )
