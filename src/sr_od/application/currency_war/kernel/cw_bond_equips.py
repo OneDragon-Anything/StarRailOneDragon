@@ -3,7 +3,7 @@
 **board 口径的 per-unit 标签函数**——三处统计实机/派生/检查共用本函数,
 规则同源(一个函数):
 
-- 实机计算路径:``cw_observation.board_from_tracked``(面板真值对齐);
+- 实机计算路径:``cw_observation.board_from_deployed``(面板真值对齐);
 - sim/状态派生路径:``cw_state._recount_board``(= ``cw_battle_calib._board_counts_of``,
   CwActionDeployMoveParam/事务/围栏后的 board 维护);
 - 检查镜像:``cw_sim_checks._board_agg_of_deployed_row``(账本行聚合)。
@@ -104,7 +104,7 @@ def unit_bond_tags(bc, row: str | None = None) -> tuple[str, ...]:
     """一个已上阵单位的羁绊标签**多集**(L1 全集 + L2 装备贡献)。
 
     - 角色:CHARACTERS 注册表 factions + flows + independent 全集;
-      开拓者按排归一形态(前排=记忆/后排=欢愉,与 board_from_tracked
+      开拓者按排归一形态(前排=记忆/后排=欢愉,与 board_from_deployed
       同口径);排源 = ``row`` 显式形参(容器下标派生,§2.1——
       tracked deployed 为 Unit 行域/下标表,行归属由行参或下标传入,
       缺省回落 'back');
@@ -114,7 +114,7 @@ def unit_bond_tags(bc, row: str | None = None) -> tuple[str, ...]:
       * **卡带(欢愉/星核猎手系)= 计数 +1**(无条件,可双计:成员佩戴者
         对该羁绊贡献 2 = 自身 1 + 卡 1);
     - 身份未知(char_id 空/'?'/不在注册表)→ **空元组**(调用方决定兜底:
-      board_from_tracked 整体 bail;_recount_board 回退 faction 字段;
+      board_from_deployed 整体 bail;_recount_board 回退 faction 字段;
       容器派生 ``cw_game_state._row_unit_tags`` 零兜底——Unit 无 faction
       位,漂移由 board 观察覆盖采新收敛(board_derived_adopt))。
 
@@ -162,7 +162,7 @@ def _recount_board(deployed: list) -> dict[str, int]:
 
     口径(W50 口径统一):**羁绊全集 + 星徽装备贡献**——
     factions+flows+independent,开拓者按排归一,装备羁绊(星徽/卡带)
-    计入;与实机 ``board_from_tracked``(= 游戏左面板真值口径)同源,
+    计入;与实机 ``board_from_deployed``(= 游戏左面板真值口径)同源,
     per-unit 标签函数单一源 = ``cw_bond_equips.unit_bond_tags``。
     未识别身份(char_id 空/'?'/不在注册表)→ 回退 ``faction`` 字段
     单标签(空/'?' 不计,生产 OCR 空板同形;Unit 无 faction 位,该兜底

@@ -134,16 +134,16 @@ class ShopCard:
 #   #            取值时机: <生成期快照(执行期重校验,见 expect) | 生成期=执行期(恒稳) | 事务前快照 | 执行期现读>
 #   #            写入端: <发射点函数/模块>(仅 expect/锚定类防线字段必填)
 #
-# 坐标系(unified-action-factory 批2b 归一后单一):bench/deployed 域动作
-# 携**容器槽位表下标**(定长槽位表 ,下标恒稳——生成期索引 =
-# 执行期索引);发射面从容器读口(bench_view_slots_of/deployed_rows_of 系)
-# 直接取下标构造动作。物理槽位号(Unit.slot / BenchSlot 内嵌 Unit.slot
-# 信息位,1 基)仅存两边界,
-# 各只允许一处换算函数:①观察写入边(observe/reconcile 写链);
-# ②执行坐标边(executor 单点;kernel 助手 = ``cw_exec_state
-# .deployed_row_slot``/``deployed_idx_of``)。坐标参数化机械动作
-# (CwActionWearEquipParam/工具原子类,见备战域节)的 row/slot 字段 = 画面物理排槽位,
-# 属动作参数定义,不在换算边辖域。
+# 坐标系(unified-action-factory 批2b 归一后单一;overlay-trigger 3.1/3.2
+# 随容器合并与 tracked 退役更新):bench/deployed 域动作携**容器槽位表
+# 下标**(bench = BenchView.slots 下标 / deployed = DeployedView 子表下标,
+# 恒稳——生成期索引 = 执行期索引);发射面从容器读口
+# (bench_view_slots_of/deployed_rows_of 系)直接取下标构造动作。
+# 画面物理槽位号(1 基)仅存两边界:①观察写入边(observe/reconcile
+# 读链直产 (槽号, Unit) 对);②执行坐标边(deployed 下标→(排,排内
+# 槽号)固定双射内联算术,0-3=前排 1-4 / 4-9=后排 1-6)。坐标参数化
+# 机械动作(CwActionWearEquipParam/工具原子类,见备战域节)的 row/slot
+# 字段 = 画面物理排槽位,属动作参数定义,不在换算边辖域。
 
 # ``route_tag`` 字段契约(原 CwAction 基类唯一字段,摊平后逐动作类重声明):
 # 策略内部路由键(发射分支的构造事实,不随时间漂移、不维护状态),只回答
@@ -336,10 +336,10 @@ class CwActionLevelUpShopParam:
 class CwActionDeployMoveParam:
     """bench → 上阵(排 + 排内槽;完整落位意图入载荷)。
 
-    [坐标系] bench_idx = bench 槽位表下标 0-8(定长 9 槽);
+    [坐标系] bench_idx = bench 槽位表下标 0-8(BenchView.slots);
     落位 = (to_row, to_slot) 载荷直指——落位决策权归策略层,执行器与
-    容器写侧按载荷直落,禁执行边现读首空位;下标换算单一源 =
-    kernel ``deployed_idx_of``。拖拽语义 = 游戏规则:目标槽空 = 放置,
+    容器写侧按载荷直落(子表下标 = to_slot−1),禁执行边现读首空位。
+    拖拽语义 = 游戏规则:目标槽空 = 放置,
     有角色 = 交换交互(被占位角色回本载荷源槽);执行层不判断占位、
     不拒、禁静默换槽,唯一失败形态 = 拖拽未生效(观察对账显影)。
     ``faction`` = 上阵后 board 阵营计数所需,发射位从容器槽位表

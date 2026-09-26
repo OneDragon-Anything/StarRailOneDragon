@@ -23,14 +23,13 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 
 
-def report_action_sell_bench_param(gs: GameState, param: Any, sig: ChannelSig,
-                                   session: object = None) -> LogicOutcome:
+def report_action_sell_bench_param(gs: GameState, param: Any,
+                                   sig: ChannelSig) -> LogicOutcome:
     """卖备战席上报:bench 该槽置 empty + gold +退款 + 装备回收
     (C6 守恒)+ 溢出腿(overflow_warning 在场时腾出槽当帧记溢出件入位,
     容器状态条件域无关;身份两分 = 角色入 unit 槽件 / 占席道具入
     supply_box 槽件,判据 = ``cw_investments.BENCH_ITEM_NAMES``;
-    session 在场时同帧对称吸收执行侧主账;tracked 第二账退役后为兼容
-    形参,现无消费者)。
+    3.2 单账化后容器 bench 即唯一账,原 tracked 对称吸收腿退役)。
 
     槽位空/占位件非 unit/越界 = 陈旧提案,applied=False 零写(等观察
     覆盖);expect 非空且名不符 = stale_proposal 拒绝(live 提案恒 ''

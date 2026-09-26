@@ -570,8 +570,8 @@ def _apply_full_bench_merge_buy(bench: list[BenchSlot | None],
                                 deployed: list[Unit | None] | None,
                                 card: ShopCard,
                                 shop: list[ShopCard] | None) -> int | None:
-    """满栏合成买分支应用(``mutate_bench_deployed`` 与买牌上报共用
-    单一源)。
+    """满栏合成买分支应用(买牌上报工作副本的单一源;原 tracked 同步口
+    随 overlay-trigger 3.2 第二账退役删除)。
 
     调用语境 = ``bench_place`` 失败(bench 无空槽)后的满栏买入;前置 =
     该买完成一次合成(``merge_buy_completes``,不满足 = 满栏拒买,
@@ -583,11 +583,9 @@ def _apply_full_bench_merge_buy(bench: list[BenchSlot | None],
     。返回应用张数 k;前置不满足返回 None(调用方
     据此 no-op)。
 
-    双账同构依据(2026-09-09 05:52 运行局双响事故):满栏时游戏
-    对完成合成的买入**接受并合成**(金照扣、bench 素材被消费腾槽、场上
-    载体升星)——逻辑态与 tracked 两本账必须同走本分支;旧 tracked 侧
-    丢件不合成使两账结构性分叉,守卫在同 visit 下一动作(逻辑态侧已腾槽、
-    豁免条件失效)对拍误炸。
+    建模依据(2026-09-09 05:52 运行局双响事故):满栏时游戏对完成合成
+    的买入**接受并合成**(金照扣、bench 素材被消费腾槽、场上载体升星)
+    ——本分支即该游戏行为的主域建模;两账分叉面已随单账化结构性消灭。
     """
     _name = card.name
     _star = card.star or 1

@@ -281,7 +281,7 @@ def _board_counts_of(deployed) -> dict[str, int]:
     **= ``cw_state._recount_board`` 本体**(alias import,单一源)——
     「主阵营逐件累加」口径不可用:state.board 消费方(recipe 门/
     在场阵营集合/意向②信号)若读压掉流派/独立羁绊/
-    星徽贡献的窄口径,与实机 board_from_tracked(左面板真值)系统性
+    星徽贡献的窄口径,与实机 board_from_deployed(左面板真值)系统性
     分叉(审计项 Q4)。未识别(char_id 空)回退 faction 字段(生产 OCR
     空板同形)。"""
     from sr_od.application.currency_war.kernel.cw_bond_equips import _recount_board

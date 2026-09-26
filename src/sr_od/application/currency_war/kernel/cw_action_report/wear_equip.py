@@ -129,12 +129,12 @@ def _write_mutated_domain(gs: GameState, domain: str, idx: int,
                    evidence='wear_worn', sig=sig)
 
 
-def report_action_wear_equip_param(gs: GameState, param: Any, sig: ChannelSig,
-                                   session: object = None) -> LogicOutcome:
+def report_action_wear_equip_param(gs: GameState, param: Any,
+                                   sig: ChannelSig) -> LogicOutcome:
     """穿装备上报(穿戴原子,发出即记账):owned −1 + worn 集穿着即合成
-    (目标域整表重建)+ tracked 目标角色 +1。row/slot = 画面物理槽位
-    (词表定义),物理→下标换算单一函数 = ``deployed_idx_of``(执行坐标边)。
-    session 缺席 = tracked 腿跳过(离线形态)。
+    + 目标单位所在域整表重建单写(equips 随对象)。row/slot = 画面
+    物理槽位(词表定义),目标定位 = ``_locate_unit`` 全域定位(bench/
+    前排/后排;3.2 起 tracked 第二账退役,主域单点)。
 
     拒绝分支(零写 + 留证,布尔契约见模块头):owned 无件 / 目标不在册 /
     合成后超上限。``board_changed`` 事实事件仅 applied 出口广播

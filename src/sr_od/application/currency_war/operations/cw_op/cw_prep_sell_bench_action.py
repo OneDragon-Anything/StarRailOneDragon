@@ -34,7 +34,7 @@ class CwActionSellBenchOp(CwOperation):
     机械执行,源槽像素验重试拆除)。非终结。
 
     自上报(op-layer.md §1.2):机械发出后直调上报函数(容器逻辑态
-    单点;session 形参兼容保留)。
+    单点)。
     """
 
     #: 非终结动作(每类显式声明,无基类缺省)。
@@ -72,7 +72,5 @@ class CwActionSellBenchOp(CwOperation):
             report_action_sell_bench_param(
                 gs, action,
                 ChannelSig(family='logic_action',
-                           actor=type(self).__name__, mode='compute'),
-                session=getattr(getattr(self.ctx, 'cw_match', None),
-                                'session', None))
+                           actor=type(self).__name__, mode='compute'))
         return self.round_success(f'卖备战槽{action.bench_idx + 1} ✓')

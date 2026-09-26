@@ -6,10 +6,11 @@ GameState(kernel/cw_game_state.py)。现辖三类领域函数:
 - 确认族到账推进:``apply_confirm_effect``(两态制标准语义;
   原 apply_op_effect 动作类分支随动作 op 重组批④ 收编 op 自上报后瘦身);
 - 槽位表领域模型:bench/deployed 槽位语义 helpers(benchchar-retirement
-  P1 起容器原生:bench = ``BenchSlot | None`` 槽表、deployed = ``Unit | None``
-  下标槽表 + 容器行域↔下标派生对)与物理(排,槽号)↔ 表下标换算
-  (deployed_row_slot / deployed_idx_of 互逆对);观察读链直产容器形状
-  (obs/cw_identity_obs),本模块无换形适配层;
+  P1 起容器原生:bench = ``BenchSlot | None`` 槽表;overlay-trigger 3.1 起
+  deployed 主域 = DeployedView 完整槽位表,3.2 随 tracked 第二账退役删除
+  换算五函数——残余的下标→(排,排内槽号)固定双射由消费点内联算术承载,
+  工作表桥 = cw_game_state.deployed_indexed_of_view/deployed_view_of_indexed);
+  观察读链直产容器形状(obs/cw_identity_obs),本模块无换形适配层;
 - 位面节点序列台账访问:get_node_ledger / ledger_node_type /
   ledger_update_plane 与 fill_boss_by_position(台账值载体
   ``PlaneNodeLedger`` 住 kernel/cw_game_state.py,本模块运行时转发,

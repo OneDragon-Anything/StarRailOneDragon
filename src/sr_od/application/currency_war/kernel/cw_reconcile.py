@@ -56,19 +56,19 @@ def is_merge_effect_window(screen: MatLike | None) -> bool:
 # 病灶(run_20260915_054718 §5/§8 候选2):同名多星单元并存(bench 同名
 # 1/2/3★ 三副本)时 read_star 星级-槽位映射逐帧抖动(不死途 3★→1★,
 # episode ×3 全部「连续 2 帧」形态),「回退即采新」让单帧抖动直进
-# tracked 主账 → 3★ 合成判断与 buy_expect 对账被污染(3★ 合成线整局
+# 主账 → 3★ 合成判断与 buy_expect 对账被污染(3★ 合成线整局
 # 未落地实证)。修法两层正交:
 # 1. **槽位锚定**:星级差逐槽判定,锚 = (域, 物理槽号) + 规范名同名——
-#    bench 权威槽位 = 槽位表下标+1(信息位为派生);
-#    deployed = 表下标经 deployed_row_slot 换 (排, 排内槽号)。
+#    bench 锚 = 槽位表下标+1;deployed 锚 = (排, 排内槽号),排与槽号
+#    由视图子表下标派生(overlay-trigger 3.2:比较基线 = 主域席位视图)。
 #    锚上身份变换(空槽落新单元/换人)= 单元更替事实,星级随身份直采。
-# 2. **两帧一致才采新**:锚上星读 ≠ tracked = 候选(保旧写账 + 抖动
+# 2. **两帧一致才采新**:锚上星读 ≠ 主域现值 = 候选(保旧写账 + 抖动
 #    台账行 surface='star');连续两帧候选同值才采新(升/降同门,银狼
 #    升费形态无豁免)。「连续」以锚每帧在-read 为前提:候选锚在本帧
 #    读侧未出现(部分缺读)或整帧双空读(守卫早退)即清除其候选——
 #    缺读 = 证据中断,两帧重计;候选跨缺读帧存活会把门击穿成「隔缺读
 #    帧两读一致即采新」的同值单帧假确认。合成特效窗内读数物理不可信:
-#    保旧且不登记候选、不确认(冻结非清零,帧态维 ,与时间维
+#    保旧且不登记候选、不确认(冻结非清零,帧态维,与时间维
 #    两帧门正交)。
 # 候选态宿主 = 按局身份 session 的旁表(WeakKeyDictionary 主路,同
 # game_state_of 模式;新局新 session = 天然清零,无跨局串染面。GameState
@@ -219,10 +219,9 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
             del pending[k]
         holds: dict[int, int] = {}   # id(读 Unit) → 保旧星
         for anchor, cid, star, unit in entries:
-            _acct = tracked_at.get(anchor)
-            _acct_unit = (getattr(_acct, 'unit', None)
-                          if _acct is not None and not hasattr(_acct, 'star')
-                          else _acct)   # bench 条目解包;deployed 条目即 Unit
+            # 基线条目即 Unit(两域读条目构造同构:bench 占位件 = unit None
+            # / deployed 空槽跳过——锚上无身份走下方更替分支,无解包层)。
+            _acct_unit = tracked_at.get(anchor)
             if _acct_unit is None or not cid \
                     or cid != str(getattr(_acct_unit, 'char_id', '') or ''):
                 # 锚上身份未锚定 = 单元更替,星级随身份直采;该锚旧候选
