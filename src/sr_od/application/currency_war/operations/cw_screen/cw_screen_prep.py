@@ -546,8 +546,8 @@ class CwScreenPrep(CwOperation):
         """备战稳定帧羁绊显示对账(cw_faction_obs 接线;零决策:不一致仅落
         缺陷台账,不纠漂不重读——羁绊状态以计算侧为主源,显示只作对账票)。
 
-        computed 侧 = ``board_from_tracked``(session tracked_deployed,全集
-        主源;None=含未知身份算不出 → 宁缺勿造跳过);显示侧 = 左侧羁绊面板
+        computed 侧 = ``board_from_deployed``(主域 deployed 派生工作表,
+        全集主源;None=含未知身份算不出 → 宁缺勿造跳过);显示侧 = 左侧羁绊面板
         OCR(cw_faction_obs.read_displayed_factions,只读可视条目)。截断/
         OCR 失读/残名按 cw_faction_obs 口径不评不判错,仅计数随 refs 披露;
         ``computed_missing`` 形态(compare 第四态)同为留证不判错,

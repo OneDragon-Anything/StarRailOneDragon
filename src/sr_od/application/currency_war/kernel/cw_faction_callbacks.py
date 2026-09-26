@@ -117,7 +117,7 @@ def _diff_by_name(old_view, new_view
     added = [u for n, (_r, u) in new_by_name.items() if n not in old_by_name]
     removed = [u for n, (_r, u) in old_by_name.items() if n not in new_by_name]
     changed: list[tuple[Unit, Unit]] = [
-        (old_by_name[n][1], u) for n, u in new_by_name.items()
+        (old_by_name[n][1], u) for n, (_r, u) in new_by_name.items()
         if n in old_by_name and old_by_name[n][1] != u]
     return added, removed, changed
 
@@ -215,12 +215,19 @@ def on_deployed_logic_write(gs, old_view, new_view, source: str) -> None:
     数据流(faction-trigger.md「资格集语义」节):按名分解 diff →
     事件回调(通知层)→ 资格集一次提交 → 资格集回调一次(三判据);
     银狼星级同为派生存值 → 星级回调。值等(两视图占用全等)零回调。
+
+    事件面契约:``on_equips_changed`` 只收 equips 有差的存活对(裁决 =
+    按契约过滤;纯星变/开拓者形态变对不进该口——星级面归
+    ``on_star_changed`` 存值路径,资格集在下方按视图总量对算,两者
+    均不受此过滤影响)。
     """
     added, removed, changed = _diff_by_name(old_view, new_view)
     if added or removed:
         on_units_changed(gs, added, removed, source)
-    if changed:
-        on_equips_changed(gs, changed, source)
+    equip_pairs = [(old_u, new_u) for old_u, new_u in changed
+                   if list(old_u.equips or []) != list(new_u.equips or [])]
+    if equip_pairs:
+        on_equips_changed(gs, equip_pairs, source)
     old_sets = _qualification_sets(old_view)
     new_sets = _qualification_sets(new_view)
     if old_sets != new_sets:
