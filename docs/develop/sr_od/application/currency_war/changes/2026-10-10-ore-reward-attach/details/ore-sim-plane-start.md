@@ -13,8 +13,8 @@
 
 ### 1. 节点窗起点序(_begin_node_window)
 
-- `_apply_env_plane_gold` 调用点改为分道:env ∈ `ENV_ORE_GRANTS` → **声明入队**(`ore_declared_pending` 追加该位面条目;写 = write_logic,**sig = `logic_sig('sim:env')`**(与 `discharge_due_item_grants` 同组同窗,沿 sim 现行 logic_action 族构造形态);依据 = kernel 确定效果直写 write_logic 先例(cw_exec_state 金腿 / cw_effect_inventory 退款腿);窗口幂等守卫沿用现注释语义:`_window_begun_ord` 位面过渡点空白与直进节点共用、重放不双发);env ∉ ENV_ORE_GRANTS 且 `gold_per_plane_start` 非空 → 保留直发(通道留置,现无此形态环境);
-- **位面过渡过期清理接线**:窗口起点检测 plane 变化时清理旧 plane 未消费声明条目(evidence 留痕 `ore_declared_expired#p{old}`)——与入队同一改动点交付,归本阶段;
+- `_apply_env_plane_gold` 调用点改为分道:env ∈ `ENV_ORE_GRANTS` → **声明入队**(经 kernel 同一电平规则函数,守卫 = pending/done 双查——`_window_begun_ord` 窗口幂等降为冗余保险,沿留不删;写 = write_logic,**sig = `logic_sig('sim:env')`**(与 `discharge_due_item_grants` 同组同窗,沿 sim 现行 logic_action 族构造形态);依据 = kernel 确定效果直写 write_logic 先例(cw_exec_state 金腿 / cw_effect_inventory 退款腿));env ∉ ENV_ORE_GRANTS 且 `gold_per_plane_start` 非空 → 保留直发(通道留置,现无此形态环境);
+- **位面过渡过期清理接线**:同一电平清理函数(pending/done 中 plane ≠ 当前 plane 的条目移除,evidence 留痕 `ore_declared_expired#p{old}`)——窗口起点调用,与入队同一改动点交付,归本阶段;
 - 入队后位面开局矿呈现走 §2;金不再直发——**世界面**的金在点击兑现时入账(策略面估值消费 ENV_ECONOMY 数值不变,双源同值校验在构建期闭合)。
 
 ### 2. 位面开局矿呈现(_present_node_screen)
