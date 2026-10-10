@@ -19,7 +19,7 @@
 
 ### 2. 位面开局矿呈现(_present_node_screen)
 
-- 该位面**首个备战档呈现**(battle/reward → SCREEN_PREP 分支):`ore_declared_pending` 有当前 plane 条目 → spheres 含 1 个声明矿点(色档 `'金'` 占位[披露键 `ore_plane_start_pending`:呈现色未实采]);**坐标 = 面板序续接**——`reward_ore_points()` 点列为 i 从 1 起的 `(i*10, 10)`,声明矿点 = `(10*(N+1), 10)`(N = 同批面板点数;位面首节点为奖励节点时同批 8 面板矿 + 声明矿 = 第 9 点 (90,10),**禁独立从 1 起号**——同批撞键会被 `by_xy` 求交去重吞点);子态 `PREP_SUB_ORE`;
+- 备战档呈现(battle/reward → SCREEN_PREP 分支)**均检查** `ore_declared_pending` 当前 plane 条目(无额外「首帧判定」状态——出队即消费,后续呈现自然无声明矿):有条目 → spheres 含 1 个声明矿点(色档 `'金'` 占位[披露键 `ore_plane_start_pending`:呈现色未实采],**半径 r = 10 与面板矿同**,points 四元组齐整);**坐标 = 面板序续接**——`reward_ore_points()` 点列为 i 从 1 起的 `(i*10, 10)`,声明矿点 = `(10*(N+1), 10)`(N = 同批面板点数;位面首节点为奖励节点时同批 8 面板矿 + 声明矿 = 第 9 点 (90,10),**禁独立从 1 起号**——同批撞键会被 `by_xy` 求交去重吞点);子态 `PREP_SUB_ORE`;
 - 声明矿点与该节点自身面板锚点矿**同批合并**进一次 spheres 写——声明归属由生成函数 rng 掷(总纲裁定:归属不可知),批内不预分。
 
 ### 3. spheres 写端统一(spheres 写一律过挂接入口)

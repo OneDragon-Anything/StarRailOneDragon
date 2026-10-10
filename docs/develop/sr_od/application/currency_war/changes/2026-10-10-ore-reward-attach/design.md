@@ -29,16 +29,16 @@
 
 1. **GameState 新增两域**:`ore_rewards`(随机态;键 = 矿坐标身份 `'x,y'`,值 = `OreReward` 附着奖励)与 `ore_declared_pending`(逻辑态;声明待兑现队列,元素 (env, plane, gold))。
 2. **kernel 新增声明注册表与生成函数**:`ENV_ORE_GRANTS`(环境 → 各位面声明金额;增发货币 `(6,8,12)`,构建校验与 `ENV_ECONOMY.gold_per_plane_start` 逐位同值);共享生成函数 `generate_ore_rewards`:新矿批 → 待兑现声明**先占一席**(占哪个矿 rng 掷——归属不可观察)、其余逐矿采样 → 全部经 `write_logic_rand` 写入。
-3. **spheres 写端统一过挂接入口** `report_spheres_observed`(kernel/cw_ore_channel.py,live 与 sim 共用):写后按**容差配对**判定身份——配对命中 = 同身份继承附着(键重挂,不重掷)、未配对新现 = 生成附着、未配对消失 = 清洗;声明消费/过期随入口。声明入队两个事件:**位面进入**(live 在节点锚定写**前**读 plane 前值检测——入队必须先于同帧 spheres 写,承载性次序)+ **active_env 现值空→非空的备战帧边沿**(该域为 `gain_invest_env` 动作落地链逻辑写,无观察时点);live 接线规约(前值载体/次序/sig 形态)见 ore-reward-channel §5。
+3. **spheres 写端统一过挂接入口** `report_spheres_observed`(kernel/cw_ore_channel.py,live 与 sim 共用):写后按**容差配对**判定身份——配对命中 = 同身份继承附着(键重挂,不重掷)、无附着现役身份 = 生成附着、未配对消失 = 清洗;声明消费/过期随入口。声明入队两个事件:**位面进入**(live = 备战 heavy 帧的 op 成员帧首快照对拍 plane 边沿——节点域的 plane 写点在 `observe_full` 漏斗内,回执后检测,**入队必须先于同帧 spheres 写**,承载性次序)+ **active_env 现值空→非空的备战帧边沿**(该域为 `gain_invest_env` 动作落地链逻辑写,无观察时点);live 接线规约(快照载体/次序/sig 形态)见 ore-reward-channel §5。
 4. **点击上报改兑现**:`report_action_collect_ore_param` 按坐标身份取附着值直接应用(内联掷骰退役为缺项兜底,证据标注 `ore_reward_attach_missing`);开成即移除该身份附着。
 5. **sim 接线**:`_apply_env_plane_gold` 对 `ENV_ORE_GRANTS` 命中环境绕行(直发金退役为非矿形态预留通道);位面开局备战面板生成 1 个声明矿;奖励节点面板同样在生成时附着(「本面板只载有哪些晶矿」的旧口径废止)。
 6. **策略层禁读** `ore_rewards`(随机态域天然落消费门不可信侧 + 挑选 kernel 文档契约)。
 
 跨详设接口契约(总纲定死,各详设不得另行演化):
 
-- **矿身份 = 轨迹,不是精确坐标**——附着键 = 该身份**最新一次观察的 (x, y)** 整数元组,身份连续性由挂接入口的**容差配对继承**判定:消失 ↔ 新现在持存容差(12px,单一源 = `cw_identity_obs._SPHERE_PERSIST_POS_TOL`)内一一配对 = 同身份,继承附着、不重掷(依据:Hough 圆心跨帧抖动是常态——观察链两帧持存本身就是 ±12px/±6 容差过滤器 `filter_persistent_ores`,精确键会在抖动下换键、声明金被清洗丢失)。生成、继承重挂、点击兑现、清理全部经挂接入口单一判定;点击载荷求交仍按当帧坐标(collect_ore.py `by_xy` 同键制)。
+- **矿身份 = 轨迹,不是精确坐标**——附着键 = 该身份**最新一次观察的 (x, y)** 整数元组,身份连续性由挂接入口的**容差配对继承**判定:消失 ↔ 新现在持存容差(12px,单一源 = `cw_identity_obs` 的持存容差常量,公开化供 kernel 函数内 lazy 引用)内一一配对 = 同身份,继承附着、不重掷(依据:Hough 圆心跨帧抖动是常态——观察链两帧持存本身就是 ±12px/±6 容差过滤器 `filter_persistent_ores`,精确键会在抖动下换键、声明金被清洗丢失)。生成、继承重挂、点击兑现、清理全部经挂接入口单一判定;点击载荷求交仍按当帧坐标(collect_ore.py `by_xy` 同键制)。
 - **附着值类型 = `OreReward`(kernel/cw_ore_reward.py,唯一)**;`ore_rewards` 值形 = dict,键 `'x,y'` 字符串(JSON 安全;先例 = `occupied_equips` 键 `'front:1'`,cw_game_state 观察 写端)。
 - **生成函数单一入口** `generate_ore_rewards(declared_gold: tuple[int, ...], coords: tuple[tuple[int, int], ...], level: int, rng: random.Random) -> dict[str, OreReward]`;live/sim 共用,禁第二实现。
 - **rng 解析口** = `action_sampling_rng('ore_reward_gen', None)`(cw_action_report/__init__.py `action_sampling_rng`):live 未装配回退现掷(实机未播种口径先例);sim 装配方供键,确定性由写序担保(先例 = `provided_action_rng` 键序装配)。
-- **注册表** `ENV_ORE_GRANTS: dict[str, tuple[int, ...]]`(键 = 环境规范名,值 = 位面 1-3 声明金额);构建校验:键 ⊆ `INVESTMENT_ENVS`;同键 `ENV_ECONOMY.gold_per_plane_start` 非空时逐位同值。
+- **注册表** `ENV_ORE_GRANTS: dict[str, tuple[int, ...]]`(键 = 环境规范名,值 = 位面 1-3 声明金额);构建校验:键 ⊆ `INVESTMENT_ENVS`;同键 `ENV_ECONOMY.gold_per_plane_start` 非空时**长度相等且逐位同值**。
 - **写通道铁律**:附着值一律 `write_logic_rand`(用户裁定 2026-10-10:归属不可知 ⇒ 一切矿奖励是随机态,无确定性写路径);`spheres` 本体留观察通道(位置/颜色 = 画面真值),附着值**不进 `OreSight`**(通道纪律依据见 details/ore-reward-channel.md 问题与约束)。

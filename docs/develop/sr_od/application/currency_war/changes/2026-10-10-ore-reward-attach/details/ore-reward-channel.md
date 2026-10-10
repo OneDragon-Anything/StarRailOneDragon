@@ -41,7 +41,7 @@ ENV_ORE_GRANTS: dict[str, tuple[int, ...]] = {
 
 - 键 ⊆ `INVESTMENT_ENVS`(孤儿键防版本更新失联);
 - 值 = 长度 3、逐项正整数的元组(位面 1-3);
-- 同键在 `ENV_ECONOMY` 有非空 `gold_per_plane_start` → **逐位同值**(双源防漂移:估值面与世界面同出卡面,失同步即构建期炸)。
+- 同键在 `ENV_ECONOMY` 有非空 `gold_per_plane_start` → **长度相等且逐位同值**(双源防漂移:估值面与世界面同出卡面,失同步即构建期炸)。
 
 ### 3. 共享生成函数(cw_ore_reward.py)
 
@@ -66,9 +66,9 @@ def report_spheres_observed(gs, sight: OreSight, *, obs_sig, hook_sig,
 
 1. 旧坐标列 = 写前 `gs.spheres.value.points` 的 (x,y) 列表(值 None → 空列);
 2. `gs.observe(gs.spheres, sight, sig=obs_sig)`(现行为原样,含空读照写 count=0 语义);
-3. **容差配对**(身份连续性判定):旧列 × 新列中,**配对门 = 双轴独立 ≤ `_SPHERE_PERSIST_POS_TOL`(12px,常量单一源 = 从 cw_identity_obs 导入,禁复制数值;与 `filter_persistent_ores` 同语义)**,**贪心排序键 = 欧氏标量距离**,最近者优先一一配对。配对命中 = 同身份:
+3. **容差配对**(身份连续性判定):旧列 × 新列中,**配对门 = 双轴独立 ≤ 持存容差 12px(常量单一源 = `cw_identity_obs._SPHERE_PERSIST_POS_TOL` **公开化重命名**为 `SPHERE_PERSIST_POS_TOL**,kernel 在**函数体内 lazy import** 公开名——模块级 kernel→obs 导入无先例且会成环,lazy 先例 = cw_encounter_selection.py:39;禁复制数值;门语义与 `filter_persistent_ores` 同)**,**贪心排序键 = 欧氏标量距离**,最近者优先一一配对。配对命中 = 同身份:
    - `ore_rewards` 键 old→new **重挂**(write_logic_rand,evidence=`ore_gen_rekey#p{plane}`,值不变**不重掷**——声明金由此在坐标抖动下保全);
-   - 配对歧义(多对多交叉)时任取一致配对:附着是随机态猜测,配对误差不引入系统偏差(sim 侧合成坐标恒稳无歧义)。**误配几何可达域定量**:同帧两矿圆心最小间距 = Hough `minDist=35`(cw_identity_obs `find_ore_sights`),跨帧各抖 ±12px 时异矿最窄 35−2×12 = **11px ≤ tol**,交叉配对几何可达;贪心最近在真对距离 < 交叉对距离时选真对,真对距离 = 抖差(常态 ≪ 11px),常态救回;
+   - 配对歧义(多对多交叉)时按确定规则取一致配对——**距离平局 = 旧列序稳定优先,禁随机**:附着是随机态猜测,配对误差不引入系统偏差(sim 侧合成坐标恒稳无歧义)。**误配几何可达域定量**:同帧两矿圆心最小间距 = Hough `minDist=35`(cw_identity_obs `find_ore_sights`),跨帧各抖 ±12px 时异矿最窄 35−2×12 = **11px ≤ tol**,交叉配对几何可达;贪心最近在真对距离 < 交叉对距离时选真对,真对距离 = 抖差(常态 ≪ 11px),常态救回;
    - **跨面板别名披露**:上一面板未点击残留矿与下一面板矿同坐标时按同身份继承旧附着——sim 侧经济中性(未被消费的附着即世界真值),live 侧自愈于观察收口;极端角(现役身份全为别名残留)声明条目饿死至过期清理,接受并披露;
 4. **生成集 = 无附着的现役身份**(步序 3 重挂后,新值坐标中仍无 `ore_rewards` 键者——覆盖未配对新现、level 缺读跳过帧、恢复/竞态残留形态)。生成集非空:
    - `level = gs.level.value`;None → 本帧不生成(种子恒写 level=3,生产近乎不可达,此为保真防御;该批身份仍无键,下帧自动再进生成集;点击侧另有兜底,details/ore-click-consume.md §1);
@@ -84,9 +84,9 @@ def report_spheres_observed(gs, sight: OreSight, *, obs_sig, hook_sig,
 
 入队 = 事件驱动 + 幂等守卫。**live 接线规约**(实现者照此开工,不留拍板空间):
 
-- **前值载体**:op 成员快照——`CwScreenPrep` 增 `_prev_env: str`(照 `_prev_spheres_raw` 先例,cw_screen_prep.py op 成员帧间快照),每帧观察入口先读现值参与判定,帧尾写回。**生命周期**:`_prev_*` 成员每备战环重建(`_prev_spheres_raw` 同语义 = 环内连续帧,非跨环持久),事件②跨环重触发由幂等守卫(「该 (env,plane) 无在队条目」)吸收。事件①不用快照(锚定前现值即前值,见下)。
-- **事件①位面进入**:判定点 = 节点锚定写(`observe_node_anchor`)**之前**——锚定前 `gs.node.value` 仍是旧 plane,入口 `ore_declared_on_node_observing(gs, incoming_plane, sig)` 比较 incoming vs 锚定前现值即可边沿检测,锚定后已失前值。**次序硬约束 = 判定与入队完成先于同帧 spheres 写**——由「判定在锚定写之前」+ 现观察序「锚定写在前、spheres 写在后」共同保证(接错次序则位面首帧新现生成时声明未入队,若该帧后无新现,声明永不附着)。同一点检测到位面变化 → 触发过期(见下)。
-- **事件②环境选定**:`active_env` 现值空→非空的备战帧边沿(`_prev_env` 快照对拍)——该域是 `gain_invest_env` 动作落地链逻辑写(kernel/cw_gain_chain.py),无「观察时点」,边沿检测是备战频道的事后轮询,语义 = 兜「plane 1 入队先于环境选定」的序。**判定点 = 锚定写之后、spheres 写之前**(备战帧内,锚定已完成);**入队 plane 取值源 = 锚定现值 `gs.node.value.plane`**;`gs.node.value` 为 None(首锚定前,node 域不在开局种子表)→ 本帧不触发,由事件①在下一次锚定时兜住。
+- **前值载体**:op 成员帧首快照——`CwScreenPrep` 增 `_prev_node_plane: int | None` 与 `_prev_env: str`(照 `_prev_spheres_raw` 先例,cw_screen_prep.py op 成员帧间快照)。**快照时点 = `observe_full` 调用之前**(heavy 帧):节点域 plane 的写点在 `observe_full` 内的 read_game_state 漏斗(cw_observation.py read_receipt → `gs.observe(gs.node, …)`),回执后 `gs.node` 已是新值——**「锚定写前现值 = 旧 plane」不成立**(`observe_node_anchor` 锚的是序号锚定,写点晚于漏斗且不更新 plane),边沿检测必须自带帧首快照。**生命周期**:`_prev_*` 成员每备战环重建(`_prev_spheres_raw` 同语义 = 环内连续帧,非跨环持久),跨环重触发由幂等守卫(「该 (env,plane) 无在队条目」)吸收。
+- **事件①位面进入**:判定点 = **`observe_full` 回执之后、spheres 写之前**(heavy 帧;节点域本帧值已落,快照在前)。边沿 = `_prev_node_plane` 快照 vs 回执后 `gs.node.value.plane`;**快照 None(首帧/首锚定前)→ 视为边沿**(plane 1 与事件②幂等互吸,守卫吸收重复)。检测到位面变化 → 入队新 plane 条目 + 触发过期(旧 plane 条目清理,见下)。**次序硬约束 = 判定与入队完成先于同帧 spheres 写**——现观察序「observe_full(:240)→ 锚定写(:284)→ spheres 写(:384)」天然满足,接线点固定在回执后即可(接错次序则位面首帧新现生成时声明未入队,若该帧后无新现,声明永不附着)。
+- **事件②环境选定**:`active_env` 现值空→非空的备战帧边沿(`_prev_env` 快照对拍)——该域是 `gain_invest_env` 动作落地链逻辑写(kernel/cw_gain_chain.py),无「观察时点」,边沿检测是备战频道的事后轮询,语义 = 兜「plane 1 入队先于环境选定」的序。**判定点与事件①同点(observe_full 回执后、spheres 写之前)**;**入队 plane 取值源 = 回执后 `gs.node.value.plane`**;`gs.node.value` 为 None(首锚定前,node 域不在开局种子表)→ 本帧两事件都不触发,由下一 heavy 帧快照对拍兜住。
 - 条件(两事件共用):`env ∈ ENV_ORE_GRANTS` ∧ 该 (env, plane) 无在队条目 → 追加 `(env, plane, ENV_ORE_GRANTS[env][plane-1])`(write_logic)。
 - **过期**:事件①检测到位面变化时,清理旧 plane 未消费条目(write_logic,evidence 留痕 `ore_declared_expired#p{old}`)。若实机为自动开启(矿永不出现),声明不被消费、位面过渡时过期清理即终态——零污染,这就是把「自动开启假设」从 fail-closed 预设改为**模型对两种现实都稳健**的机制面;披露键 `ore_plane_start_pending`(**本迭代新增**,落 sim 侧 3.3;呈现面/色档/自动开启未实采,实机首遇校)。
 - **sig 形态(两端各自,均过 write_logic_rand 的 `_validate_sig`)**:live 挂接与入队写 = logic_hook 族,group_id=`'prep:ore-channel'`,actor=`CwScreenPrep`;sim 挂接写 = `logic_sig('sim:ores')`(logic_action 族,sim 现行构造形态,见 ore-sim-plane-start §3)。参数名 `hook_sig` 泛指「挂接写用 sig」,族差异即上述两端形态,不再另定。
