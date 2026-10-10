@@ -38,6 +38,10 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     observe_node_anchor,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
+from sr_od.application.currency_war.kernel.cw_ore_channel import (
+    check_ore_declared_level,
+    report_spheres_observed,
+)
 from sr_od.application.currency_war.kernel.cw_overlay_registry import (
     derive_clearable,
     derive_decision,
@@ -124,6 +128,13 @@ ENTRY_OVERLAY_CLOSE: dict[str, str] = {
 ENTRY_OVERLAY_CLEAR_ROUNDS: int = 4
 #: 点关闭后的画面过渡等待(秒)。
 ENTRY_OVERLAY_SETTLE_S: float = 1.0
+
+#: 晶矿奖励通道挂接写 sig(live 侧;详设 ore-reward-channel §5 sig 形态:
+#: logic_hook 族 = 观察 op 内流程 hook 的逻辑写,非动作 op 上报):
+#: 声明入队/过期/消费与附着 rekey/生成/清洗全部挂接写共用,组标识恒
+#: 'prep:ore-channel'(判读面按组过滤本通道全部写行)。
+_ORE_HOOK_SIG: ChannelSig = ChannelSig(
+    family='logic_hook', actor='CwScreenPrep', group_id='prep:ore-channel')
 
 
 def faction_display_ok_debug_line(row_count: int, ocr_skip_count: int,
@@ -376,19 +387,33 @@ class CwScreenPrep(CwOperation):
                          for (row, slot), names
                          in _of.get('occupied_equips').items()},
                         sig=_prep_sig)
+                # 声明入队/过期电平检查(迭代 2026-10-10-ore-reward-attach,
+                # 详设 ore-reward-channel §5 live 接线规约):判定点固定在
+                # observe_full 回执后、spheres 写前——node 域 plane 的写点
+                # 在回执内的 read_game_state 漏斗,回执前无「旧 plane 现值」
+                # 可对拍(observe_node_anchor 只推进序号不更新 plane);次序
+                # 硬约束 = 入队完成先于同帧 spheres 写(接反则位面首帧新现
+                # 生成时声明未入队,该帧后无新现即永不附着)。电平规则本体
+                # (无边沿/无 op 成员,守卫住 GameState)单一源在 kernel,
+                # 本点只接线;node 未锚定 = 函数内自跳过(下一 heavy 帧兜住)。
+                check_ore_declared_level(_gs_obs, hook_sig=_ORE_HOOK_SIG)
                 # 晶矿点击目标观察写端(空读照写 count=0——空读 = 真无晶矿,
                 # 跳写会留上一帧残留假晶矿坐标喂进点击载荷(幽灵晶矿);
                 # 两帧持存防抖已在 _sph_list 现读链完成(本点只做形态搬运)。
+                # 写一律过挂接入口(单一写径,禁第二写径):容差配对轨迹
+                # 继承/声明出队生成/消失清洗都在入口对「写前旧坐标 × 写后
+                # 新坐标」逐帧判定,散写即身份键漂移(声明金被「消失清洗 +
+                # 新现重掷」链路静默蒸发,详设 §4)。
                 _sph_pts = tuple((color, int(p.x), int(p.y), int(r))
                                  for color, p, r in _sph_list)
-                _gs_obs.observe(
-                    _gs_obs.spheres,
+                report_spheres_observed(
+                    _gs_obs,
                     OreSight(
                         count=len(_sph_pts),
                         colors=tuple(dict.fromkeys(
                             c for c, _p, _r in _sph_list)),
                         points=_sph_pts),
-                    sig=_prep_sig)
+                    obs_sig=_prep_sig, hook_sig=_ORE_HOOK_SIG, evidence='')
                 # 溢出告警观察写端(2026-09-15 实机建档 prep.md 告警/溢出节):横幅 = 游戏侧权威信号(出战被游戏忽略的
                 # 处理门,策略消费 = mandate 溢出门强收窄);溢出位 SIFT =
                 # 入位对象身份旁路(CwActionSellBenchParam 溢出腿;缺读 '' = 未识别,
