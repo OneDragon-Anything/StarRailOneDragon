@@ -68,7 +68,7 @@ def report_spheres_observed(gs, sight: OreSight, *, obs_sig, hook_sig,
 
 1. 旧坐标列 = 写前 `gs.spheres.value.points` 的 (x,y) 列表(值 None → 空列);
 2. `gs.observe(gs.spheres, sight, sig=obs_sig)`(现行为原样,含空读照写 count=0 语义);
-3. **容差配对**(身份连续性判定):旧列 × 新列中,**配对门 = 双轴独立 ≤ 持存容差 12px(常量单一源 = `cw_identity_obs._SPHERE_PERSIST_POS_TOL` **公开化重命名**为 `SPHERE_PERSIST_POS_TOL**,kernel 在**函数体内 lazy import** 公开名以避免模块级环——**kernel→obs 运行时导入现无先例**(cw_encounter_selection.py:39 的引用在 TYPE_CHECKING 块,运行时不执行),本迭代立此形态、落地后即为后续先例;禁复制数值;门语义与 `filter_persistent_ores` 同)**,**贪心排序键 = 欧氏标量距离**,最近者优先一一配对。配对命中 = 同身份:
+3. **容差配对**(身份连续性判定):旧列 × 新列中,**配对门 = 双轴独立 ≤ 持存容差 12px(常量单一源 = `cw_identity_obs._SPHERE_PERSIST_POS_TOL` **公开化重命名**为 `SPHERE_PERSIST_POS_TOL**,kernel 在**函数体内 lazy import** 公开名——**kernel→obs 运行时导入现无先例**(cw_encounter_selection.py:39 的引用在 TYPE_CHECKING 块,运行时不执行),且模块级反向边破坏 kernel←obs 单向分层(实测链不成运行环,实害 = 分层纪律),本迭代立此形态、落地后即为后续先例;禁复制数值;门语义与 `filter_persistent_ores` 同)**,**贪心排序键 = 欧氏标量距离**,最近者优先一一配对。配对命中 = 同身份:
    - `ore_rewards` 键 old→new **重挂**(write_logic_rand,evidence=`ore_gen_rekey#p{plane}`,值不变**不重掷**——声明金由此在坐标抖动下保全);
    - 配对歧义(多对多交叉)时按确定规则取一致配对——**候选对按(旧列序 × 新列序)枚举,距离平局 = 枚举序先者优先,禁随机**:附着是随机态猜测,配对误差不引入系统偏差(sim 侧合成坐标恒稳无歧义)。**误配几何可达域定量**:同帧两矿圆心最小间距 = Hough `minDist=35`(cw_identity_obs `find_ore_sights`),跨帧各抖 ±12px 时异矿最窄 35−2×12 = **11px ≤ tol**,交叉配对几何可达;贪心最近在真对距离 < 交叉对距离时选真对,真对距离 = 抖差(常态 ≪ 11px),常态救回;
    - **跨面板别名披露**:上一面板未点击残留矿与下一面板矿同坐标时按同身份继承旧附着——sim 侧经济中性(未被消费的附着即世界真值),live 侧自愈于观察收口;极端角(现役身份全为别名残留)声明条目饿死至过期清理,接受并披露;
@@ -88,8 +88,8 @@ def report_spheres_observed(gs, sight: OreSight, *, obs_sig, hook_sig,
 
 - **判定点 = 每个 heavy 帧 `observe_full` 回执之后、spheres 写之前**(节点域 plane 的写点在 `observe_full` 内的 read_game_state 漏斗,cw_observation.py read_receipt → `gs.observe(gs.node, …)`;`observe_node_anchor` 锚的是序号不更新 plane——漏斗回执后已无「旧 plane 现值」,禁在锚定前后找前值)。**plane 取值源 = 回执后 `gs.node.value.plane`**;None(首锚定前,node 域不在开局种子表)→ 本帧不检查,下一 heavy 帧兜住。
 - **入队条件(电平)**:`env = active_env 现值 ∈ ENV_ORE_GRANTS` ∧ `(env, plane)` ∉ `ore_declared_pending` ∧ `(env, plane)` ∉ `ore_declared_done` → 追加 `(env, plane, ENV_ORE_GRANTS[env][plane-1])`(write_logic)。位面 1 晚选环境、位面 2/3 过渡、恢复局续跑,全部由此一式闭合。
-- **消费标记**即 §4 步序 4(pending 移除 + done 追加,同一写)——done 是幂等守卫第二腿:**跨备战环、跨恢复局**(done 随快照存续)重查不重发。
-- **过期(电平清理)**:判定点顺手移除 `ore_declared_pending` / `ore_declared_done` 中 plane ≠ 当前 plane 的条目(write_logic,evidence 留痕 `ore_declared_expired#p{old}`)。若实机为自动开启(矿永不出现),pending 条目留至位面过渡被清理即终态——零污染,这就是把「自动开启假设」从 fail-closed 预设改为**模型对两种现实都稳健**的机制面;披露键 `ore_plane_start_pending`(**本迭代新增**,落 sim 侧 3.3;呈现面/色档/自动开启未实采,实机首遇校)。
+- **消费标记**即 §4 步序 4(pending 移除 + done 追加,同一写)——done 是幂等守卫第二腿:**跨备战环重查不重发**(守卫状态住 GameState,op 每环重建无可失忆);恢复局两形态:①cw_replay 离线恢复——done 随快照存续,不重发(生产 live 无快照恢复路径,restore_state_snapshot 仅离线回放消费);②live 接管局——pending+done 皆空、`active_env` 恒空 → 电平条件天然不满足,零多发;接管段欠发边界(接管成功前已过位面声明时点,该 plane 声明不发)接受并披露。
+- **过期(电平清理)**:判定点顺手移除 `ore_declared_pending` / `ore_declared_done` 中 plane ≠ 当前 plane 的条目(write_logic,evidence 留痕 `ore_declared_expired#p{old}`)。**边界披露**:电平清理依赖 plane 读数单调——node 域漏斗直写无倒退免疫(node_ord 锚定有 stale_dropped 处置,node 域无),plane 误读抖动 = 位面内至多重发一条声明(观察收口自愈,金域随机态纠偏),接受并披露。若实机为自动开启(矿永不出现),pending 条目留至位面过渡被清理即终态——零污染,这就是把「自动开启假设」从 fail-closed 预设改为**模型对两种现实都稳健**的机制面;披露键 `ore_plane_start_pending`(**本迭代新增**,落 sim 侧 3.3;呈现面/色档/自动开启未实采,实机首遇校)。
 - **次序硬约束 = 入队与过期电平检查完成先于同帧 spheres 写**——现观察序「observe_full(:240)→ …→ spheres 写(:384)」天然满足,接线点固定在回执后即可(接错次序则位面首帧新现生成时声明未入队,若该帧后无新现,声明永不附着)。
 - **sig 形态(两端各自,均过 write_logic_rand 的 `_validate_sig`)**:live 入队/过期/消费写 = logic_hook 族,group_id=`'prep:ore-channel'`,actor=`CwScreenPrep`;sim 挂接写 = `logic_sig('sim:ores')`(logic_action 族,sim 现行构造形态,见 ore-sim-plane-start §3)。参数名 `hook_sig` 泛指「挂接写用 sig」,族差异即上述两端形态,不再另定。
 

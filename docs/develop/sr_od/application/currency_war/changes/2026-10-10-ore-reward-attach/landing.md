@@ -72,7 +72,7 @@
 **验收凭据形式**:文档对照 review。
 
 ## 正本更新清单
-- docs/develop/sr_od/application/currency_war/game_state/fields.md:spheres 域节(附着值独立域说明)+ 新域 ore_rewards / ore_declared_pending ← 3.1
+- docs/develop/sr_od/application/currency_war/game_state/fields.md:spheres 域节(附着值独立域说明)+ 新域 ore_rewards / ore_declared_pending / ore_declared_done ← 3.1
 - docs/develop/sr_od/application/currency_war/game_state/gain-chain.md:环境发放族新增 ENV_ORE_GRANTS 声明矿通道 ← 3.1
 - docs/develop/sr_od/application/currency_war/flow/projection_contract.md:状态面板行的域清单内联描述(表格为单行长述,非逐域一行)——补 ore_rewards / ore_declared_pending / ore_declared_done 三域与 spheres 写端统一挂接入口说明 ← 3.1/3.4
 - docs/develop/sr_od/application/currency_war/sim/sim-wiring.md:节点窗起点序(声明入队 + 过期清理替代直发金)+ 位面开局矿呈现 ← 3.3
