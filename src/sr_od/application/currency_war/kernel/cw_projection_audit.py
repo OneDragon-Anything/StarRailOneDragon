@@ -230,6 +230,23 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'spheres': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='晶矿视觉域(§3.2.8,点击目标非席位居民),零逻辑写端'),
+    # —— 晶矿附着奖励与声明通道(迭代 2026-10-10-ore-reward-attach;
+    #    通道分工 = 附着值走随机态独立域,不进 spheres 观察面)——
+    'ore_rewards': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='附着奖励随机态域(键 = 矿身份最新观察坐标,容差配对轨迹'
+              '继承),无观察写端——附着值是可能世界快照非画面真值,observe '
+              '覆盖结构上不可达;写端 = cw_ore_channel 挂接入口(rekey/生成/'
+              '清理,write_logic_rand)+ 点击兑现摘除(3.2 辖)'),
+    'ore_declared_pending': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='声明待兑现队列(登记事实非观察投影,游戏 UI 无「待发放列表」'
+              '可读),无观察读端;唯一逻辑写端 = cw_ore_channel(入队电平/'
+              '消费移除/位面过渡过期)'),
+    'ore_declared_done': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='声明已消费标记(幂等守卫第二腿,随快照存续),无观察读端;'
+              '唯一逻辑写端 = cw_ore_channel(消费追加/位面过渡过期清理)'),
     # —— 交互状态 ——
     'prep_substate': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,

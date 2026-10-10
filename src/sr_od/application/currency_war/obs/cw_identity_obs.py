@@ -1431,7 +1431,11 @@ _SPHERE_V_MEAN_MIN: float = 140
 #: 超带。上限 48 = gold 带 +1 呼吸余量;仅作第三道辅助门(纹理/亮度为主门)。
 _SPHERE_R_MAX: int = 48
 #: 两帧持存圆心/半径容差(px;Hough 亚像素抖动 + 发光呼吸效应)。
-_SPHERE_PERSIST_POS_TOL: int = 12
+#: POS_TOL 公开化(无下划线):kernel 侧晶矿身份容差配对
+#: (kernel/cw_ore_channel.py)函数体内 lazy import 引用同一常量——配对门
+#: 必须与观察链两帧持存门同值同源(禁复制数值,双源漂移 = 身份判定与
+#: 防幻检判定用两把尺);R_TOL 仅观察链自用,保持私有。
+SPHERE_PERSIST_POS_TOL: int = 12
 _SPHERE_PERSIST_R_TOL: int = 6
 #: 点击后幻晶矿黑名单命中容差(px;点击坐标 → 复现检测圆心的匹配带宽)。
 _ORE_PHANTOM_MATCH_TOL: int = 18
@@ -1462,7 +1466,7 @@ def _ore_texture_gate(hsv: MatLike, edges: MatLike, ix: int, iy: int,
 def filter_persistent_ores(
         cur: list[tuple[str, Point, int]],
         prev: list[tuple[str, Point, int]] | None,
-        pos_tol: int = _SPHERE_PERSIST_POS_TOL,
+        pos_tol: int = SPHERE_PERSIST_POS_TOL,
         r_tol: int = _SPHERE_PERSIST_R_TOL,
 ) -> list[tuple[str, Point, int]]:
     """两帧持存交叉验证(纯函数):cur 中与 prev 某晶矿同位置同半径的才采信。

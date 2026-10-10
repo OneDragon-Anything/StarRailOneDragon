@@ -135,6 +135,9 @@ from sr_od.application.currency_war.kernel.cw_node_schedule import (
     node_pos_of,
     node_sequence_of,
 )
+from sr_od.application.currency_war.kernel.cw_ore_reward import (
+    OreReward,
+)
 from sr_od.application.currency_war.kernel.cw_overlay_register import (
     ScreenChanges,
 )
@@ -1996,6 +1999,12 @@ def seed_opening_state(gs: GameState) -> None:
     _seed(gs.equips, [])
     _seed(gs.occupied_equips, {})
     _seed(gs.spheres, OreSight())
+    # 晶矿附着奖励与声明通道三域(空底座;沿 pending_item_grants 种子族
+    # 先例——域值恒非 None,幂等守卫 membership 判定与挂接入口合并写零
+    # None 防御)。
+    _seed(gs.ore_rewards, {})
+    _seed(gs.ore_declared_pending, ())
+    _seed(gs.ore_declared_done, ())
     # —— 经济与成长(gold=3 对齐 sim 开局模型 M01 的 OPENING_GOLD;
     # level=3 与升级表键一致,deploy_cap=level+财富宝钻数、开局宝钻 0;
     # xp 需求查升级表单一源;hp 取遥测实证基线常量)——
@@ -2343,6 +2352,35 @@ class GameState:
     # 域名 spheres = 晶矿域既定名(本义即晶矿球,非旧名残留;2026-09-20
     # ore 改名收口裁定不辖容器域名,fields.md §3.2.8 声明)。
     spheres: Field[OreSight] = field(default_factory=Field)      # 开局种子底座=空读面(晶矿补给在 1-1 进入时点送达,观察覆盖)
+    # —— 晶矿附着奖励与声明通道(迭代 2026-10-10-ore-reward-attach;详设
+    #    details/ore-reward-channel.md §1。附着值不进 OreSight.points——
+    #    spheres 本体是画面真值留观察通道,附着值是随机态猜测,混进同域
+    #    会让消费门(logic_rand_fields)对它失灵,故独立成域)——
+    # [索引定义] ore_rewards 键 'x,y' = 矿身份**最新一次观察**的
+    # (int(x), int(y)) 拼接字符串(JSON 安全,先例 = occupied_equips 键
+    # 'front:1');身份连续性由挂接入口容差配对轨迹继承判定(键随轨迹
+    # 重挂,精确键会被 Hough 抖动换键)。取值时机 = 矿身份首现生成刻,
+    # 存续至开成摘除/消失清理;值类型 = OreReward(kernel/cw_ore_reward,
+    # 唯一)。写入端 = kernel/cw_ore_channel.report_spheres_observed 单一
+    # 写径(rekey/生成/清理三写,全部 write_logic_rand)+ 点击上报摘除
+    # (collect_ore,3.2 辖)。策略层禁读(随机态域天然落消费门不可信侧)。
+    ore_rewards: Field[dict[str, OreReward]] = field(default_factory=Field)
+    # [索引定义] ore_declared_pending = 声明待兑现队列(逻辑态):元素 =
+    # (env 投资环境规范名, plane 1 基位面号(与 NodeKey.plane 同坐标系),
+    # gold 该位面声明金额卡面直读)。取值时机 = 入队电平检查刻追加
+    # (check_ore_declared_level),生成刻移除(消费);「已发/未发」不可从
+    # ore_rewards 现值推导(键随点击/清理/重挂消失),队列是唯一账。
+    # 写入端 = cw_ore_channel(入队/消费/过期),无观察写端(声明是登记
+    # 事实非观察投影)。开局种子底座 = ()(A 类)。
+    ore_declared_pending: Field[tuple[tuple[str, int, int], ...]] = field(
+        default_factory=Field)
+    # [索引定义] ore_declared_done = 声明已消费标记(逻辑态):元素 =
+    # (env, plane)(坐标系同 pending);幂等守卫第二腿——跨备战环重查不
+    # 重发(op 每环重建无可失忆,守卫状态住 GameState)。取值时机 = 生成
+    # 消费刻与 pending 移除同一逻辑步追加;位面过渡随 pending 同清理。
+    # 恢复局随快照存续 = 离线回放不重发声明。开局种子底座 = ()(A 类)。
+    ore_declared_done: Field[tuple[tuple[str, int], ...]] = field(
+        default_factory=Field)
 
     # —— 交互状态 ——
     prep_substate: Field[str] = field(default_factory=Field)     # 分类子态四档(§3.2.17;恢复锁定=会话推断档,写端=接管协议 §6.3)
@@ -3807,7 +3845,8 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
     - 直 setattr 重建 Field(绕 _swap:零流水行、零版本分配——恢复是
       离线读面非生产写路径);values 键缺位 = 域保持 None(快照只存
       非 None 值的口径往返一致);
-    - 复杂域按字段名重建(node/deployed/bench/shop/plane_bosses;
+    - 复杂域按字段名重建(node/deployed/bench/shop/ore_rewards/
+      ore_declared_pending/ore_declared_done;
       _json_safe 无类型标,恢复表 = 字段名单一源),其余域直透
       (标量/list/dict 形态值);
     - **旧档迁移**(schema 1 → 2):values 携 front_row/back_row 两键而
@@ -3882,6 +3921,16 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
         'deployed': _restore_deployed_view,
         'bench': _bench_view,
         'shop': _shop_payload,
+        # 晶矿附着奖励与声明通道三域(迭代 2026-10-10-ore-reward-attach):
+        # _json_safe 无类型标(dataclass→dict/tuple→list),不登记则恢复面
+        # 拿 dict-of-dicts/list-of-lists 静默类型漂移。done 随快照存续 =
+        # 恢复局(离线回放)不重发声明。
+        'ore_rewards': lambda d: {str(k): OreReward(**v)
+                                  for k, v in d.items()},
+        'ore_declared_pending': lambda d: tuple(
+            (str(e[0]), int(e[1]), int(e[2])) for e in d),
+        'ore_declared_done': lambda d: tuple(
+            (str(e[0]), int(e[1])) for e in d),
     }
     for name, raw in values.items():
         target = getattr(gs, name, None)

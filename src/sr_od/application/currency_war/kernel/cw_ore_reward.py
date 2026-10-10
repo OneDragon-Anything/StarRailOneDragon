@@ -13,6 +13,11 @@ fields.md §4.2 的「箱」与 final_wandi_burn 的「稀有物」为 v0 有意
 
 采样语义(design §2.1):实机上采样是猜测(标随机态,观察校准);sim 里
 采样即世界真值——同一采样函数两副面孔。
+
+矿批附着生成(迭代 2026-10-10-ore-reward-attach;详设
+details/ore-reward-channel.md §3)::func:`generate_ore_rewards` = 矿进入
+世界时的附着奖励单一生成入口(声明金先占席、归属 rng 掷、其余逐矿采样),
+live/sim 共用,禁第二实现。
 """
 from __future__ import annotations
 
@@ -91,3 +96,42 @@ def roll_ore_reward(rng: random.Random, level: int) -> OreReward:
     return OreReward(kind='char',
                      char_id=rng.choice(chars_by_cost(cost)).name,
                      char_star=CHAR_DROP_STAR)
+
+
+def generate_ore_rewards(
+        declared_gold: tuple[int, ...],
+        coords: tuple[tuple[int, int], ...],
+        level: int,
+        rng: random.Random) -> dict[str, OreReward]:
+    """矿批附着奖励生成(纯函数;rng 注入,live/sim 共用单一入口,禁第二实现)。
+
+    矿进入世界时点的内容分配(迭代 2026-10-10-ore-reward-attach;详设
+    details/ore-reward-channel.md §3):待兑现声明金**逐个先占一席**
+    (``rng.choice`` 剩余坐标不放回——归属不可观察,用户裁定 2026-10-10,
+    占哪个矿必须掷随机),其余坐标逐个 :func:`roll_ore_reward` 采样
+    (临时口径 v0 原状,披露键 ``ORE_ASSUMPTION_KEYS``)。
+
+    - ``declared_gold`` 长度 ≤ ``len(coords)``(构造方 = 挂接入口
+      ``report_spheres_observed`` 保证,按生成集大小截断出队;违者
+      ValueError——静默丢声明 = 声明金蒸发);
+    - ``level`` 不在 ``REFRESH_PROB`` → 沿 ``roll_ore_reward`` 显式
+      ValueError(口径错档禁静默兜底,先例同函数);全部坐标被声明占满时
+      无采样发生,level 不参与判定;
+    - 返回键 = ``'x,y'`` 字符串(与容器 ``ore_rewards`` 键制同格);
+    - 掷序契约:声明占位在先、逐矿采样在后(同 rng 实例顺序推进,
+      sim 侧流键确定性依赖此序,改序 = 掷序漂移)。
+    """
+    if len(declared_gold) > len(coords):
+        raise ValueError(
+            f'声明金条数 {len(declared_gold)} 超矿批坐标数 {len(coords)}'
+            '(构造方须保证 declared_gold ≤ coords;静默丢声明 = 声明金蒸发)')
+    remaining: list[tuple[int, int]] = list(coords)
+    out: dict[str, OreReward] = {}
+    for gold in declared_gold:
+        xy = rng.choice(remaining)
+        remaining.remove(xy)
+        out[f'{int(xy[0])},{int(xy[1])}'] = OreReward(kind='gold',
+                                                      gold=int(gold))
+    for xy in remaining:
+        out[f'{int(xy[0])},{int(xy[1])}'] = roll_ore_reward(rng, level)
+    return out

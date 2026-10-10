@@ -1231,6 +1231,50 @@ for _n, _eff in ENV_ECONOMY.items():
 _validate_env_economy()
 
 
+# ===== 环境声明矿注册表(迭代 2026-10-10-ore-reward-attach;details/ore-reward-channel.md §2)=====
+# **世界发放域**(矿进入世界时的声明内容),与 ENV_ECONOMY(估值域)分域不互斥
+# ——增发货币两表同时在册是常态;ENV_GIFTS ∩ ENV_ECONOMY = ∅ 检查辖「单一
+# 环境只落一个估值结构」,本表不参与该检查,代之以与估值面的双源同值校验
+# (见 _validate_env_ore_grants 第③条)。消费面 = kernel/cw_ore_channel.py
+# 声明入队电平检查(键查)与挂接入口生成(值出队)。
+ENV_ORE_GRANTS: dict[str, tuple[int, ...]] = {
+    # 每位面开局 6/8/12 金晶矿(id 103 原文直读,cw_invest_data PlazaPortal('103'))
+    '增发货币': (6, 8, 12),
+}
+
+
+def _validate_env_ore_grants() -> None:
+    """ENV_ORE_GRANTS 构建校验(import 即炸;沿 _validate_env_economy 先例,
+    details/ore-reward-channel.md §2):
+
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
+    ② 值形:长度 3(位面 1-3)、逐项正整数的元组;
+    ③ 双源同值:同键在 ENV_ECONOMY 有非空 gold_per_plane_start → 长度相等
+    且逐位同值——估值面与世界面同出卡面(id 103),任一侧单独改金额即失同步,
+    构建期炸(世界真值错档 = sim 里声明矿发错钱)。
+    """
+    orphans = [n for n in ENV_ORE_GRANTS if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(f"ENV_ORE_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
+    for _n, _golds in ENV_ORE_GRANTS.items():
+        if not isinstance(_golds, tuple) or len(_golds) != 3 \
+                or not all(isinstance(_g, int) and not isinstance(_g, bool)
+                           and _g > 0 for _g in _golds):
+            raise ValueError(
+                f"ENV_ORE_GRANTS 值形({_n!r}):须为长度 3、逐项正整数的元组"
+                f"(位面 1-3 声明金额),现值 {_golds!r}")
+        _econ = ENV_ECONOMY.get(_n)
+        _src = tuple(getattr(_econ, 'gold_per_plane_start', ()) or ())
+        if _src and (len(_src) != len(_golds) or _src != tuple(_golds)):
+            raise ValueError(
+                f"ENV_ORE_GRANTS 双源失同步({_n!r}):ENV_ECONOMY."
+                f"gold_per_plane_start={_src} ≠ 本表 {tuple(_golds)}"
+                f"(估值面与世界面同出卡面,失同步即构建期炸)")
+
+
+_validate_env_ore_grants()
+
+
 # ===== 环境具名发放注册表(2026-09-12 invest-env 迭代;details/env-value-models.md §2.1)=====
 # 送卡型环境(契约 ×7 + 特邀专家 ×4)与道具型环境(火药味)的具名发放登记,白名单制
 # (表外环境一律无条目,禁从效果原文自动猜装,ENV_ECONOMY 同款纪律)。档位机器 =
