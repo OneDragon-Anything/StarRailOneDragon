@@ -24,10 +24,11 @@ ore_declared_done: Field[tuple[tuple[str, int], ...]] = field(default_factory=Fi
 - [索引定义] `ore_rewards` 键 `'x,y'` = 矿身份**最新一次观察**的 `(int(x), int(y))` 拼接(身份连续性判定见 §4,键随轨迹重挂);取值时机 = 矿身份首现生成刻,存续至开成摘除/消失清理。
 - [索引定义] `ore_declared_pending` 元素 `plane` = 1 基位面号(与 `NodeKey.plane` 同坐标系);`gold` = 该位面声明金额(卡面直读)。`ore_declared_done` 元素 = (env, plane),生成消费刻追加,位面过渡随 pending 同清理(§5)。
 
-**工程面三件**(与域定义同批交付):
+**工程面四件**(与域定义同批交付):
 
 - **开局种子底座**:三域入种子列表(`_seed(gs.ore_rewards, {})` / `_seed(gs.ore_declared_pending, ())` / `_seed(gs.ore_declared_done, ())`,沿 `pending_item_grants`/`active_env` 种子族先例,cw_game_state.py 开局种子函数)——域值恒非 None,幂等守卫与合并写零 None 防御。
 - **快照恢复登记**:`full_state_snapshot` 经 `_json_safe`(dataclass→dict、tuple→list);恢复表按字段名重建复杂域(先例 = node/deployed 重建 λ)。`ore_rewards` 登记重建 → `{k: OreReward(**v) for k, v in ...}`;`ore_declared_pending` / `ore_declared_done` 登记重建 → `tuple(tuple(e) for e in ...)`(done 随快照存续 = 恢复局不重发声明)。不登记则恢复面拿到 dict-of-dicts/list-of-lists 静默类型漂移,回放/Δ池判读面降级。
+- **DEFAULT_GS_SCHEMA 登记**:三新域各补独立键(键 = 字段名,版本 1);**不并入 spheres 的域版本 bump**——spheres 本体未变,bump 会对旧档谎报域内容变更。依据:缺域键 = 该域未建模的语义 + journal 写行内嵌 state.gs_schema(行行自足判读);不登记则三域写行的内嵌 schema 无域版本可查(restore 不消费 schema 故无功能故障,静默缺口)。
 - **None 起点合并**:§4 步序 4 合并写遇域值 None → 从 `{}` 起合并(种子后近乎不可达,防御性一行)。
 
 ### 2. 声明注册表(cw_investments.py)

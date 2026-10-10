@@ -114,6 +114,8 @@ def generate_ore_rewards(
     - ``declared_gold`` 长度 ≤ ``len(coords)``(构造方 = 挂接入口
       ``report_spheres_observed`` 保证,按生成集大小截断出队;违者
       ValueError——静默丢声明 = 声明金蒸发);
+    - ``coords`` 须无重复坐标(输入域由 Hough ``minDist=35`` + 两帧持存
+      排除;重复坐标坍缩同键会静默丢矿,构造方不自检);
     - ``level`` 不在 ``REFRESH_PROB`` → 沿 ``roll_ore_reward`` 显式
       ValueError(口径错档禁静默兜底,先例同函数);全部坐标被声明占满时
       无采样发生,level 不参与判定;

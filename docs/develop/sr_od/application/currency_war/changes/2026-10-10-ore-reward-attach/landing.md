@@ -11,7 +11,7 @@
 ## 3.1 kernel 声明通道与生成内核
 **范围**:生成函数、声明注册表、GameState 三域(ore_rewards / ore_declared_pending / ore_declared_done,含开局种子与快照恢复登记)、挂接入口(容差配对轨迹继承)、声明入队/过期电平函数(纯 kernel 面,无调用方接线)。边界——不含 collect_ore 改造、不含 sim/live 写端接线。
 **设计依据**:design.md §2;details/ore-reward-channel.md 全文。
-**文件面**:`src/sr_od/application/currency_war/kernel/cw_ore_reward.py`(生成函数)、`kernel/cw_investments.py`(ENV_ORE_GRANTS + 构建校验)、`kernel/cw_game_state.py`(两域定义 + 种子 + 恢复表登记)、`kernel/cw_ore_channel.py`(新模块:挂接入口 + 入队/过期)、`obs/cw_identity_obs.py`(**常量公开化重命名** `_SPHERE_PERSIST_POS_TOL` → `SPHERE_PERSIST_POS_TOL`,含模块内引用点同步;kernel 侧函数体内 lazy import)、`sr-od-test/test/sr_od/application/currency_war/test_cw_collect_ore_rand.py`(生成函数与入口单测)。
+**文件面**:`src/sr_od/application/currency_war/kernel/cw_ore_reward.py`(生成函数)、`kernel/cw_investments.py`(ENV_ORE_GRANTS + 构建校验)、`kernel/cw_game_state.py`(三域定义 + 种子 + 恢复表登记 + DEFAULT_GS_SCHEMA 三键)、`kernel/cw_ore_channel.py`(新模块:挂接入口 + 电平检查)、`obs/cw_identity_obs.py`(**常量公开化重命名** `_SPHERE_PERSIST_POS_TOL` → `SPHERE_PERSIST_POS_TOL`,含模块内引用点同步;kernel 侧函数体内 lazy import)、`kernel/cw_projection_audit.py`(完备性锁强制的新域登记,process_only 最小行)、`sr-od-test/test/sr_od/application/currency_war/test_cw_ore_channel.py`(新,生成函数与入口/电平单测)、`sr-od-test/test/sr_od/application/currency_war/test_cw_game_state_opening_seed.py`(种子枚举锁随三域扩员)。
 **依赖**:无。
 **优先级建议**:10
 **完成判据**:
@@ -72,7 +72,7 @@
 **验收凭据形式**:文档对照 review。
 
 ## 正本更新清单
-- docs/develop/sr_od/application/currency_war/game_state/fields.md:spheres 域节(附着值独立域说明)+ 新域 ore_rewards / ore_declared_pending / ore_declared_done ← 3.1
+- docs/develop/sr_od/application/currency_war/game_state/fields.md:spheres 域节(附着值独立域说明)+ 新域 ore_rewards / ore_declared_pending / ore_declared_done(含 DEFAULT_GS_SCHEMA 三键登记)← 3.1
 - docs/develop/sr_od/application/currency_war/game_state/gain-chain.md:环境发放族新增 ENV_ORE_GRANTS 声明矿通道 ← 3.1
 - docs/develop/sr_od/application/currency_war/flow/projection_contract.md:状态面板行的域清单内联描述(表格为单行长述,非逐域一行)——补 ore_rewards / ore_declared_pending / ore_declared_done 三域与 spheres 写端统一挂接入口说明 ← 3.1/3.4
 - docs/develop/sr_od/application/currency_war/sim/sim-wiring.md:节点窗起点序(声明入队 + 过期清理替代直发金)+ 位面开局矿呈现 ← 3.3

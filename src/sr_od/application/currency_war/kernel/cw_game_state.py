@@ -229,6 +229,14 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                # 契约扩员 12→15)
     'inventory': 1,         # equips/consumables/免战牌(§3.2.15/§3.2.16/§3.2.19〔勘误:免战牌正本=effect_inventory.remaining_uses,§8.6-3——本域不含其字段〕)
     'spheres': 1,           # 晶矿(§3.2.8,不占席)
+    'ore_rewards': 1,       # 矿附着奖励域(迭代 2026-10-10-ore-reward-attach;
+                            # 随机态,键 = 矿身份最新观察坐标 'x,y')。独立键
+                            # 不并入 spheres bump——spheres 本体未变,bump 会
+                            # 对旧档谎报域内容变更
+    'ore_declared_pending': 1,  # 声明待兑现队列(同迭代;元素 (env, plane, gold),
+                                # 电平入队/消费/过期三口,详设 ore-reward-channel §5)
+    'ore_declared_done': 1,     # 声明已消费标记(同迭代;幂等守卫第二腿,
+                                # 元素 (env, plane),位面过渡随 pending 同清理)
     'substate': 1,          # 分类子态/事件浮层(§3.2.17/§3.6.1)
     'shop': 2,              # 商店开态 payload(§3.3;域版本 2 = ShopPayload 扩
                             # 牌行点击坐标字段 card_points(选择坐标观察上报,
