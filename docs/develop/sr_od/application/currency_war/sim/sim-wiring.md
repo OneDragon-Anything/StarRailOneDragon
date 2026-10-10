@@ -32,7 +32,7 @@
 | 容器域 | sim 产生面 | sim 消费面 |
 |---|---|---|
 | node | 世界腿：进节点 obs 写 `NodeKey`（`node:p<位面>r<轮>`）+ kernel `observe_node_anchor` 节点序锚定 | 读口 `plane_of`/`round_num_of`/`node_kind_of`；策略 plane-aware 分支 |
-| gold | 世界腿：opening 初值 + `income:p<位面>r<轮>` 轮首收入（kernel `round_start_income` 三分支，含败补）+ 位面开局环境金；动作腿：扣减/回金同实机 | 读口 `gold_of`；策略消费面 |
+| gold | 世界腿：opening 初值 + `income:p<位面>r<轮>` 轮首收入（kernel `round_start_income` 三分支，含败补）+ 位面开局环境金**分道**（`_apply_env_plane_start`：env ∈ `ENV_ORE_GRANTS` → 节点窗起点声明入队 + 过期清理，**金不直发**、由点击声明矿兑现入账；其余环境 → `_apply_env_plane_gold` 直发）；动作腿：扣减/回金同实机 | 读口 `gold_of`；策略消费面 |
 | level | 世界腿：opening 初值 + `xp:node` 节点经验结转（`apply_node_xp`）；动作腿不写 level（升档等覆盖同实机） | 读口 `level_of`；抽牌概率档 |
 | xp | 世界腿：opening 初值 + `xp:node` 入账；动作腿 LevelUpShop 腿同实机 | 策略追级消费（clicks_to_next_level） |
 | hp | 世界腿：opening 实证档查表（无实证档报错索样本，`cw_opening_hp` 单一源）+ `battle:hp` 败局扣血 + 0hp 保底（`battle:hp_floor`）/局终 | hp 写入闸语义同实机（sim 写真值，无识别失真维） |
@@ -48,7 +48,9 @@
 | deploy_cap | 世界腿：opening 初值；宝钻扩展通道未建模（宝钻只增不减的 cap 增长面候补档） | 读口 `max_units_of` 封顶域 |
 | back_layout | sim 不写（宝钻扩展通道未建模）；读侧缺省回机制基线（读口缺省口径） | 读口 `back_capacity_of` |
 | active_env / active_strategies | 动作腿：pick 族动作走获得链（`report_action_pick_invest_*` → kernel `cw_gain_chain`）同实机 | 经济聚合（kernel `aggregate_economy`）消费 |
-| spheres | 世界腿：`ores:p<位面>r<轮>` 奖励节点晶矿面板（`reward_ore_points` 生成） | 采晶矿动作输入 |
+| spheres | 呈现腿：节点窗起点备战档呈现（`_present_node_screen`，evidence `ores:p<位面>r<轮>`）——奖励节点面板矿（`reward_ore_points`）+ 位面开局声明矿**同批合并**一次写（坐标 = 面板序续接，`_plane_start_declared_points`；色'金'占位见 §五）；子态 `PREP_SUB_ORE`（普通备战 pending 有当前位面条目时声明矿点单独呈现，子态同）；spheres 写一律过挂接入口 `report_spheres_observed`（非矿备战空读照写 count=0 亦过入口，清理残留矿身份） | 采晶矿动作输入 |
+| ore_rewards | 世界腿：挂接入口生成写（`sim:ores` logic_sig；声明金先占席 + 其余逐矿采样，`cw_ore_reward.generate_ore_rewards`——sim 采样即世界真值）；动作腿：点击兑现摘除（`ore_reward_detach`）同实机 | 策略禁读（随机态域）；点击兑现读（collect_ore 上报） |
+| ore_declared_pending / ore_declared_done | 世界腿：节点窗起点声明入队电平检查（`check_ore_declared_level`，`sim:env`，与 `discharge_due_item_grants` 同组同窗）+ 挂接入口生成消费（pending 移除 + done 追加）+ 位面过渡过期清理（evidence `ore_declared_expired#p<old>`） | 入队/消费幂等守卫（pending+done 双查，跨环单发）；出队供生成 |
 | encounter / supply / invest_env / invest_strategy / box 各 opts 槽 | 呈现腿：生成器回读呈现写点（后端节点事件件供给候选）经同名 report 落容器 | pick 族决策入口容器零参读 |
 | plane_bosses / enemy_affixes / enemy_difficulty / game_mode / selected_difficulty | 世界腿：reset 采样（boss 名单/词缀）与局级输入申报（`opening` 事件）；呈现腿：简报档生成器覆写（同值幂等） | 敌人侧上下文消费 |
 | 流程面域（chosen_* / event_overlay / substate / prev_screen / current_screen 等） | 动作腿/呈现腿同实机（pick 动作上报写 chosen；生成器产 `PrepObservation` 控制信号；screen 簿记走 `update_screen_after_operation` 同实机） | 决策面零参读 |
@@ -84,6 +86,7 @@ readable/trusted 位恒按真值填（`cw_sim_obs_gen.py::gen_shop`），消费�
 | level_up_cost | 不写（实机 OCR 真值域）；花费载体 = 动作 cost（策略侧 xp_click_cost 真值优先），sim 容器无真值 → 恒落兜底常量 | 花费敏感结论失真申报在案 |
 | 宝钻扩展通道（back_layout 增长 / deploy_cap 增长） | 不建模（opening 基线之外无写点） | 宝钻敏感面零变化 |
 | 节点屏刷新剩余呈现 | 呈现腿诚实缺位为主（环境逐卡刷新剩余/遭遇刷新剩余等生成器产缺位值，report 按「缺不写」防御语义跳写；补给刷新剩余由呈现写点给初值、刷新动作腿同实机递减） | 刷新类决策域以代码当期实现为准逐键判读 |
+| 位面开局声明矿呈现面 | 色档（现按'金'占位）与「晶矿自动开启与否」均未实采，sim 按「呈现可点」建模（点击兑现入账）；面板矿内容分布同属未校准面（披露单一源 = kernel `cw_ore_reward.ORE_ASSUMPTION_KEYS`，本表不双源） | 披露键 = `ORE_PLANE_START_PENDING`，实机首遇校；若实机为自动开启（矿永不出现），声明条目留至位面过渡被过期清理即终态，机制面零污染 |
 | 战斗随机输出面 / 扣血分量 / P3 / overlay 余族 / 词缀张数分布等 | 未建模申报清单单一源 = [sim-design.md](sim-design.md) §8.2（本表不复写） | 逐键披露挡外推 |
 
 ## 六、装配与声明喂入

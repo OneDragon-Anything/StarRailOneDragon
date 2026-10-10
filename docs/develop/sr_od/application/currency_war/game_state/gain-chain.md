@@ -160,6 +160,22 @@ sig: ChannelSig) -> tuple[str, ...]`——环境定时道具通道(§3 道具通
 回调 = kernel 内枚举函数,**不设注册机构**(用户裁定:函数体内枚举即收敛,新效果
 核实后在函数内加分支)。查无效果 = 安静不写,真值归观察覆盖。
 
+**环境发放三表分域**(哪些发放不经本节枚举):投资环境的「发放」类效果分三表,
+`cw_investments.py` 内各管一面——①`ENV_GIFTS`(具名发放通道:角色/占席道具,
+经 `on_env_gained` 枚举与 §2.7 定时支,本节辖);②`ENV_ECONOMY`(估值通道:
+结构化经济效果参数,策略层 `env_economy` 消费,发放动作不经本链);③
+`ENV_ORE_GRANTS`(声明矿通道:**世界发放域**——矿进入世界时的声明内容,现役
+= 增发货币〔id 103〕每位面开局 6/8/12 金晶矿)。声明矿的发放形态 = 位面开局
+声明入队 → 矿进入世界时附着 → 点击兑现,全程经 `kernel/cw_ore_channel.py`
+(电平检查 `check_ore_declared_level` + 挂接入口 `report_spheres_observed`)
+而非获得链原语;域定义与队列语义 = fields.md §3.2.8a/§3.2.8b。**分域边界**:
+`ENV_GIFTS ∩ ENV_ECONOMY = ∅`(单一环境只落一个估值结构,§3 道具通道同节
+校验);`ENV_ORE_GRANTS` 与两表**不互斥**——增发货币同有估值面
+(`ENV_ECONOMY.gold_per_plane_start`,策略层估值消费)与世界面(声明矿金额,
+点击兑现入账),两表同出卡面原文,靠构建期双源同值校验
+(`_validate_env_ore_grants` 第③条:同键长度相等且逐位同值,任一侧单独改金额
+import 即炸)防漂移。
+
 - **on_env_gained(gs, session, env_name, *, rand, sig)**:查 `cw_investments.py::
   ENV_GIFTS`(投资环境 → 具名发放数据表,即时与定时两通道)。命中后**先按
   advisor 分道,两道互斥**:

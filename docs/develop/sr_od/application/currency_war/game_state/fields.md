@@ -117,7 +117,9 @@ carried、不受本硬边界辖;在屏失读不写、沿用旧值,在屏与否�
 bench/front_row/back_row/equips/occupied_equips/spheres)、经济域(gold 3/level 3/
 xp (0,4)/hp 82/streak 0/back_layout 6/deploy_cap 3/刷新计数 0/strategy_refresh_left
 {})、局级事实域(active_env ''/active_strategies []/pending_item_grants []/
-enemy_affixes []/overflow False/''/prev_node_spent False)。种子值依据逐字段申报面见迭代设计;hp 实证域 =
+enemy_affixes []/overflow False/''/prev_node_spent False)、晶矿附着/声明三域
+(ore_rewards {}/ore_declared_pending ()/ore_declared_done ()——域值恒非 None,
+幂等守卫 membership 判定与挂接入口合并写零 None 防御,§3.2.8a/§3.2.8b)。种子值依据逐字段申报面见迭代设计;hp 实证域 =
 A8/难度108(§3.1.6 三写端时序)。node 族/payload 域/事件选择域/席位锚定闩等
 **不种**——None 在这些字段上是设计语义(离屏/未选择/未锚定闩本体)。
 
@@ -384,15 +386,77 @@ sim 合成口同域直写。
 数量/颜色——交互机会信号,不占席(§3.2.5)。席满时奖励无法落位的拦截判据归 op
 写入策略(§4 CollectOre)。**载荷坐标**:`OreSight.points` = `(color, x, y, r)` 平铺元组——晶矿为自由
 位置识别物无槽号,像素坐标必须随识别进容器(坐标单一真相源纪律;点击列由 kernel
-`ore_click_targets_of` 还原消费)。**写端** = CwScreenPrep 备战入口 heavy
-观察上报(空读照写 count=0 防残留假晶矿;两帧持存防抖留观察链);**逻辑写端** =
-`CollectOre` 按载荷坐标精确摘除(§4 CollectOre,原黑板腿随
-gs.prep_obs 退役迁移本口;logic-rand-sampling 迭代起摘除写改随机态)。
+`ore_click_targets_of` 还原消费)。**观察写端唯一写径** = kernel 挂接入口
+`cw_ore_channel.report_spheres_observed`(live = CwScreenPrep 备战入口 heavy、
+sim = 节点窗呈现,两端 spheres 写一律经此,禁第二写径——容差配对轨迹继承在入口
+逐帧对拍「写前旧坐标 × 写后新坐标」,散写即附着身份键漂移;空读照写 count=0 防
+残留假晶矿、两帧持存防抖留观察链)。**点击侧逻辑写** = `CollectOre` 按载荷坐标
+精确摘除(§4 CollectOre;设计内随机态写非旁路)。**附着值独立域**:晶矿点开
+的内容归属不在本域——`OreSight` 只留位置/颜色观察真值,附着值是随机态猜测,走
+独立随机态域 `ore_rewards`(§3.2.8a);混进同域会让随机态消费门对附着值失灵。
 
 **域名既定名声明**(2026-09-20 晶矿标识符 ore 治本收口):域名/字段名
 `spheres` 为晶矿域的**既定名**——本义即晶矿球,非旧名残留;ore 改名波
 (OreSight/ore_click_targets_of/collect_ore 等)不辖容器域名(改 = schema/
 遥测断档,零收益)。识别层同族:`reward_ores` 观察载荷字段同此既定口径。
+
+#### 3.2.8a 晶矿附着奖励 ore_rewards
+
+**语义**:`dict[str, OreReward] | None`(OreReward = `kernel/cw_ore_reward.py`
+的 frozen 数据类:kind ∈ gold/equip/char + 各 kind 载荷字段 gold/equip/
+char_id/char_star)。**随机态域**(write_logic_rand 专用通道):矿点开内容
+在实机不可观察——生成侧掷骰即猜测,真值由观察收口校准。**策略层禁读**
+(随机态域天然落消费门不可信侧;契约注 = `kernel/cw_prep_actions.py`
+select_ore_clicks docstring + 模块头)。
+
+- **键制**:键 `'x,y'` = 矿身份**最新一次观察**坐标 `(int(x), int(y))` 拼接
+  字符串(JSON 安全;先例 = occupied_equips 键 'front:1')。身份连续性由
+  挂接入口容差配对轨迹继承判定——键随轨迹重挂(精确键会被 Hough 坐标抖动
+  换键),值不变**不重掷**。取值时机 = 矿身份首现生成刻,存续至开成摘除/
+  消失清理。
+- **写入端**:①挂接入口 `report_spheres_observed` 单一写径三写——键重挂
+  (evidence `ore_gen_rekey#p<plane>`)、生成集合并写(evidence
+  `ore_gen#p<plane>+<n>`;生成 = 待兑现声明金逐个先占一席〔归属不可观察,
+  占哪个矿必须掷随机〕+ 其余坐标逐矿采样,采样器 =
+  `cw_ore_reward.generate_ore_rewards` 单一实现)、未配对消失身份清洗
+  (evidence `ore_gen_cleanup`);②点击上报摘除(`kernel/cw_action_report/
+  collect_ore.py`,开成随 spheres 摘除同点随机态写移除附着键,evidence
+  `ore_reward_detach#ore<k>`)。
+- **开局种子底座** = `{}`(§2.6;域值恒非 None——挂接入口合并写与点击兑现
+  读端零 None 防御)。
+- **快照恢复**:`restore_state_snapshot` 恢复表登记——键 str 直透、值按
+  OreReward 重建(`_json_safe` 无类型标,不登记则恢复面拿 dict-of-dicts
+  静默类型漂移;快照往返语义 = §9)。
+- **schema**:`DEFAULT_GS_SCHEMA['ore_rewards'] = 1` **独立键**,不并入
+  spheres bump——spheres 本体形状未变,bump 会对旧档谎报域内容变更(§3.7.1)。
+
+#### 3.2.8b 声明队列 ore_declared_pending / ore_declared_done
+
+**语义**:声明矿环境(登记表 = `cw_investments.py::ENV_ORE_GRANTS`,现役
+= 增发货币)的位面开局声明登记,**逻辑态域**(write_logic 专用通道)。声明 =
+该环境在该位面开局应发的金晶矿金额(卡面直读,如增发货币位面 1/2/3 = 6/8/12);
+发放形态 = 矿进入世界时附着(§3.2.8a 生成消费)→ 点击兑现入账。「已发/未发」
+不可从 ore_rewards 现值推导(键随点击/清理/重挂消失),队列是唯一账。
+
+- **ore_declared_pending**:`tuple[(env, plane, gold), ...]` 待兑现队列——
+  env = 投资环境规范名,plane = 1 基位面号(与 NodeKey.plane 同坐标系),
+  gold = 该位面声明金额。写入口三个(全在 `kernel/cw_ore_channel.py`):
+  **入队**(电平检查 `check_ore_declared_level`:env ∈ ENV_ORE_GRANTS ∧
+  (env, plane) ∉ pending ∧ ∉ done → 追加;电平触发单一规则——无边沿检测、
+  无帧间记忆、无 op 成员,守卫状态住 GameState,op 每备战环重建无可失忆)、
+  **消费**(挂接入口生成刻出队当前 plane 条目、按生成集大小截断,与 done
+  追加同一逻辑写原子承载)、**过期**(位面过渡顺手移除 plane ≠ 当前的条目,
+  evidence `ore_declared_expired#p<old>` 留痕)。无观察写端(声明是登记事实
+  非观察投影)。
+- **ore_declared_done**:`tuple[(env, plane), ...]` 已消费标记——幂等守卫
+  第二腿:同位面多备战环(跨环 op 重建)重查不重发;生成消费刻与 pending
+  移除同逻辑步追加;位面过渡随 pending 同清理。
+- **恢复局两形态各自闭合**:离线回放(done 随快照存续)→ 不重发声明;
+  live 接管局(active_env 恒空)→ 入队条件不触发(恢复局语义 = §6.3)。
+- **开局种子底座** = `()` 两域(§2.6;与 ore_rewards 同族恒非 None);
+  **快照恢复**:恢复表登记(逐元素 (str, int[, int]) 重建 tuple-of-tuple);
+  **schema**:`DEFAULT_GS_SCHEMA['ore_declared_pending'/'ore_declared_done']`
+  各 = 1 独立登记(§3.7.1)。
 
 #### 3.2.9 金币 gold(主条目)
 
@@ -1051,12 +1115,18 @@ win_reward_mult 施于连胜分量含奖励轮。单一源=STRATEGY_ECONOMY(经 
 #### CollectOre 点晶矿
 
 游戏事实=采晶矿即开启、内容即时入账、角色/箱落席占 1 槽、席满点不动。**席满拦截
-判据=前置谓词两腿:bench_free>0 ∨ 晶矿均不占席**。**记录层面(logic-rand-sampling
-迭代起)= 随机态采样直写**:上报函数按临时口径 v0 采样(金 1–5/简易装备池/概率表
-抽角色,`kernel/cw_ore_reward.py` 常量面,待采集校准),全部容器写标 logic_rand
-——spheres 逐点摘除 + 抽中域采样值(金 +N/装备 +件/角色落备战席 + 3合1 连锁)+
-未抽中域值不变标记;观察覆盖差异 = 随机效果落地预期内(`logic_rand_outcome`
-台账行),真值形态由下一帧观察收口。逐点顺序推演与守卫面 =
+判据=前置谓词两腿:bench_free>0 ∨ 晶矿均不占席**。**记录层面 = ore_rewards
+附着值兑现**(掷骰在生成侧挂接入口已完成,点击只兑现;§3.2.8a):命中附着键 →
+零掷直接应用;缺项(挂接入口不变量破坏的罕见态)→ 兜底采样器
+`kernel/cw_ore_reward.py::roll_ore_reward`(临时口径 v0:金 1–5/简易装备池/
+概率表抽角色,常量面待采集校准),该点全部写行 evidence 前缀
+`ore_reward_attach_missing#`;缺项 ∧ level 缺读 → 该点跳过不采(reason
+`ore_reward_attach_missing_level`,矿留 spheres 下帧挂接入口补生成后再点)。
+写序(每点)= spheres 摘除 → 附着键移除(随摘除同点随机态写移除,evidence
+`ore_reward_detach#ore<k>`)→ 未抽中域值不变标记 → 奖励应用(金 +N/装备 +件/
+角色落备战席 + 3合1 连锁),全部容器写标 logic_rand;观察覆盖差异 = 随机效果
+落地预期内(`logic_rand_outcome` 台账行),真值形态由下一帧观察收口。逐点顺序
+推演与守卫面 =
 [logic-updates/collect-ore.md](logic-updates/collect-ore.md)。
 
 #### OpenBox 开箱
