@@ -13,6 +13,12 @@ kernel/data;app 依一切)——共享视图归 kernel 是唯一同时满足两�
 纯 dataclass + 纯函数,零副作用、零识别/执行逻辑——「执行一个动作」在
 app/prep_actions.py 的 PrepActionExecutor,「产出动作」在策略层
 CwStrategy.decide_prep_screen 决策接口。
+
+策略禁读契约(迭代 2026-10-10-ore-reward-attach):``ore_rewards`` 附着值
+禁入任何决策读面——实机为随机猜测,读它 = oracle 泄漏;纪律面双防线 =
+随机态域消费门(:meth:`GameState.logic_rand_fields` 不可信侧口径 +
+消费前必须重观察)+ 本契约声明(先例 = cw_hp_policy.hp_readable 消费门
+口径声明方式)。
 """
 from __future__ import annotations
 
@@ -54,6 +60,10 @@ def select_ore_clicks(spheres: list, cap: int,
     大晶矿优先(r 降序;稳定排序保持观察序),上界 = min(cap, 硬上限
     ORE_CLICK_HARD_CAP)。席满让路门/占席晶矿语义归发射位(既有门),
     本函数不辖。
+
+    策略禁读契约(迭代 2026-10-10-ore-reward-attach):挑选仅消费色/
+    半径(大优先);``ore_rewards`` 附着值禁读——实机为随机猜测,读它
+    = oracle 泄漏(防线口径见模块头)。
 
     消费面:发射位(mandate_v1 entry)构造 CwActionCollectOreParam 载荷;执行器
     零排序零截断纯机械点(第二实现禁)。

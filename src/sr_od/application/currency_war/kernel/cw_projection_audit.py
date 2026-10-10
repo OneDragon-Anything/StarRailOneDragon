@@ -102,8 +102,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_ABSORB_RULE,
         basis='buy/sell/levelup/refresh 投影 + 结算真值收口 '
               '(settle_truth:边界收入随结算入账,boundary_income_credited 留证)。'
-              '晶矿随机金已改走逻辑随机态(collect_ore 采样直写,'
-              'logic_rand_outcome 行收口,2026-09-20 logic-rand-sampling);'
+              '晶矿随机金走逻辑随机态,写端申报:生成写 = ore_reward_attach'
+              '(挂接入口,含 rekey 重挂),兑现写 = collect_ore 上报'
+              '(logic_rand_outcome 行收口,2026-10-10-ore-reward-attach);'
               '投资卡随机授予仍无写端(申报表族 2026-09-19 拆除待重设计),'
               '命中照真失配停'),
     'level': ProjectionAuditRow(
@@ -229,7 +230,8 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '装配点),零逻辑写端'),
     'spheres': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
-        basis='晶矿视觉域(§3.2.8,点击目标非席位居民),零逻辑写端'),
+        basis='晶矿视觉域(§3.2.8,点击目标非席位居民),零逻辑写端'
+              '(点击摘除 = write_logic_rand 随机态写,非 write_logic)'),
     # —— 晶矿附着奖励与声明通道(迭代 2026-10-10-ore-reward-attach;
     #    通道分工 = 附着值走随机态独立域,不进 spheres 观察面)——
     'ore_rewards': ProjectionAuditRow(
@@ -237,11 +239,15 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='附着奖励随机态域(键 = 矿身份最新观察坐标,容差配对轨迹'
               '继承),无观察写端——附着值是可能世界快照非画面真值,observe '
               '覆盖结构上不可达;写端 = cw_ore_channel 挂接入口(rekey/生成/'
-              '清理,write_logic_rand)+ 点击兑现摘除(3.2 辖)'),
+              '清理,write_logic_rand)+ collect_ore 兑现摘除;读端 = '
+              'collect_ore 兑现,策略禁读(契约 = cw_prep_actions 模块头/'
+              'select_ore_clicks docstring,消费门不可信侧口径先例 = '
+              'cw_hp_policy.hp_readable)'),
     'ore_declared_pending': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='声明待兑现队列(登记事实非观察投影,游戏 UI 无「待发放列表」'
-              '可读),无观察读端;唯一逻辑写端 = cw_ore_channel(入队电平/'
+        basis='声明待兑现队列(卡文推算登记非观察投影,游戏 UI 无'
+              '「待发放列表」可读;同族行先例 = pending_item_grants),'
+              '无观察读端;唯一逻辑写端 = cw_ore_channel(入队电平/'
               '消费移除/位面过渡过期)'),
     'ore_declared_done': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,

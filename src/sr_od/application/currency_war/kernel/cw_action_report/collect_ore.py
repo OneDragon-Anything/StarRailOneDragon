@@ -12,10 +12,16 @@
   spheres 终值同样依随机链而变(后续晶矿开否取决于采样奖励是否耗席),
   本动作不存在确定面写;观察覆盖差异 = 随机效果落地预期内
   (``logic_rand_outcome`` 台账行),策略消费前必须重观察;
-- **采样** = ``kernel/cw_ore_reward.py::roll_ore_reward``(临时建模
-  口径 v0:金 1–5/简易装备池/当前概率表抽角色,假设档披露键在册);
-  rng 注入——实机缺省未播种(采样是猜测),sim 传流键 rng(采样即
-  世界真值,零自算)。
+- **奖励来源 = ore_rewards 附着值兑现**(迭代 2026-10-10-ore-reward-
+  attach:掷骰已前移到生成侧挂接入口 ``cw_ore_channel``,点击只兑现):
+  命中附着键 → 直接应用**零掷骰**;缺项(挂接入口不变量破坏的罕见态)
+  → 兜底 ``kernel/cw_ore_reward.py::roll_ore_reward``(临时口径 v0,
+  假设档披露键在册),该点全部写行 evidence 前缀
+  ``ore_reward_attach_missing#``;缺项 ∧ level 缺读 → 该点跳过不采
+  (reason ``ore_reward_attach_missing_level``,矿留 spheres 下帧补
+  生成);开成即随 spheres 摘除同点随机态写移除附着键(evidence
+  ``ore_reward_detach#ore{k}``)。rng 解析口不变——实机缺省未播种
+  (兜底采样是猜测),sim 传流键 rng(采样即世界真值,零自算)。
 
 动作上报函数族拆分件(每动作一文件;族规约 = 包 ``cw_action_report.
 __init__`` docstring)。本包 → 容器单向依赖。
@@ -52,6 +58,13 @@ from sr_od.application.currency_war.kernel.cw_ore_reward import (
 
 _PRODUCER = 'CwActionCollectOreParam'
 
+#: 缺项兜底路径的点级 evidence 前缀(详设 ore-click-consume §1):不变量
+#: 破坏的响亮标注——该点全部写行带前缀,判读可辨「非附着兑现」。
+_MISSING_EVIDENCE_PREFIX: str = 'ore_reward_attach_missing#'
+#: 缺项需兜底掷 ∧ level 缺读的跳点 reason(零写跳过不落写行,reason 是
+#: 唯一可断言通道;优先于 ore_partial_open_skipped 表达具体原因)。
+_MISSING_LEVEL_REASON: str = 'ore_reward_attach_missing_level'
+
 
 def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
                                     session: object = None,
@@ -59,16 +72,26 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     """点晶矿上报(逐点顺序推演 + 随机态逐步写;design §2.4 全表)。
 
     - **整批拒(零写)**:spheres 未观察(现行为)/载荷无交集(现行为)/
-      bench 未观察('bench_unobserved'——席满守卫与角色落点均不可判)/
-      level 缺读('level_unread'——角色采样需当前等级,宁缺勿造);
+      bench 未观察('bench_unobserved'——席满守卫与角色落点均不可判)。
+      level 缺读不再整批拒(语义收窄,详设 ore-click-consume §1):
+      附着命中不需 level,原 'level_unread' 守卫随采样退役到缺项兜底
+      路径(见逐点守卫);
     - **逐点守卫**:该点时备战席无空位 → 该晶矿留在 spheres、不采样
-      (裁决 3:满栏点击无效;前点奖励耗席累计判);
-    - **写序**(每点):spheres 摘除 → 未抽中域标记(值不变,现值非
-      None 才标)→ 奖励应用(金 +N/装备 +件/角色落位 + 3合1 连锁——
-      每级合并后受影响域各落一行,board 派生随行写自动继承随机态);
+      (裁决 3:满栏点击无效;前点奖励耗席累计判);缺项需兜底掷 ∧
+      level 缺读 → 同族跳过不采(矿留 spheres 不摘零写,证据通道 =
+      reason 'ore_reward_attach_missing_level';下帧挂接入口补生成
+      后再点);
+    - **写序**(每点):spheres 摘除 → 附着键移除(命中路径,随摘除
+      同点随机态写,evidence 'ore_reward_detach#ore{k}')→ 未抽中域
+      标记(值不变,现值非 None 才标)→ 奖励应用(金 +N/装备 +件/
+      角色落位 + 3合1 连锁——每级合并后受影响域各落一行,board 派生
+      随行写自动继承随机态);缺项路径该点全部写行 evidence 前缀
+      'ore_reward_attach_missing#';
     - **动作级出参**:全部开成 = applied=True;混合批 =
       'ore_partial_open_skipped';全部席满跳过 = applied=False
-      'bench_full_no_open'。
+      'bench_full_no_open';存在缺项∧level 缺读跳点 =
+      'ore_reward_attach_missing_level'(优先于前两条表达具体原因——
+      批内含非席满跳点即非「全部席满跳过」,全跳批亦报此 reason)。
 
     P1 容器原生(§3.2):bench 工作副本 = BenchView 槽序、deployed =
     行域下标派生表;整表写 = bench_view_of_working 直构(原
@@ -87,9 +110,10 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     orig_bench = gs.bench.value
     if orig_bench is None:
         return LogicOutcome(applied=False, reason='bench_unobserved')
+    # level 不再整批拒(语义收窄,详设 ore-click-consume §1):附着兑现
+    # 不需 level,原 'level_unread' 守卫随采样退役——缺项兜底路径的
+    # level 门下沉到点级(见循环内 missing_level 跳点)
     level = gs.level.value
-    if level is None:
-        return LogicOutcome(applied=False, reason='level_unread')
 
     # 载荷 ∩ 现值,按载荷序保序去重(同坐标重复点 = 单点)
     by_xy = {(int(p[1]), int(p[2])): p for p in view.points}
@@ -119,6 +143,7 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
 
     opened = 0
     skipped = 0
+    missing_level = 0
     for k, p in enumerate(ordered, 1):
         xy = (int(p[1]), int(p[2]))
         if sum(1 for b in work_bench
@@ -126,16 +151,39 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
             skipped += 1
             continue   # 席满即该点无效:晶矿留在 spheres,不摘不采
 
+        # —— 奖励来源 = ore_rewards 附着值兑现(掷骰已前移到生成侧)——
+        # 键制 'x,y' 与挂接入口 cw_ore_channel 同格(总纲 §2 接口契约)
+        attach_key = f'{xy[0]},{xy[1]}'
+        attached = (gs.ore_rewards.value or {}).get(attach_key)
+        if attached is not None:
+            reward = attached
+            ev_prefix = ''   # 命中零掷骰:附着值即生成侧已掷的结果
+        elif level is None:
+            # 兜底掷需 level(角色采样口径)而 level 缺读 → 该点跳过不采
+            # (与席满跳过同族:矿留 spheres 不摘、零写;下帧挂接入口
+            # 补生成后再点)
+            missing_level += 1
+            continue
+        else:
+            reward = roll_ore_reward(roll_rng, int(level))
+            ev_prefix = _MISSING_EVIDENCE_PREFIX
+
         # 步1 spheres 摘除(随机态——终值依随机链而变,design §2.4 表注)
         remaining = [q for q in remaining
                      if (int(q[1]), int(q[2])) != xy]
         _w_rand(gs.spheres, OreSight(
             count=len(remaining),
             colors=tuple(dict.fromkeys(q[0] for q in remaining)),
-            points=tuple(remaining)), f'proj_collect_ore_drop#ore{k}')
+            points=tuple(remaining)),
+            f'{ev_prefix}proj_collect_ore_drop#ore{k}')
+        # 步1b 开成即移除附着键(随 spheres 摘除同点随机态写;缺项路径
+        # 无键可摘零写。新 dict 构造 = 冻结帧替换语义,不污染旧引用)
+        if attached is not None:
+            detached = dict(gs.ore_rewards.value or {})
+            detached.pop(attach_key, None)
+            _w_rand(gs.ore_rewards, detached, f'ore_reward_detach#ore{k}')
         opened += 1
 
-        reward = roll_ore_reward(roll_rng, int(level))
         written = {'spheres'}
         rolled_domain = {'gold': 'gold', 'equip': 'equips',
                          'char': 'bench'}[reward.kind]
@@ -149,7 +197,7 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
             cur = fld.value
             if cur is None:
                 continue
-            _w_rand(fld, cur, f'proj_ore_mark_{dom}#ore{k}')
+            _w_rand(fld, cur, f'{ev_prefix}proj_ore_mark_{dom}#ore{k}')
             written.add(dom)
 
         # 步3 奖励应用(抽中域写采样值)
@@ -157,13 +205,13 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
             g = gs.gold.value
             if g is not None:
                 _w_rand(gs.gold, int(g) + int(reward.gold),
-                        f'proj_ore_reward_gold#ore{k}')
+                        f'{ev_prefix}proj_ore_reward_gold#ore{k}')
                 written.add('gold')
         elif reward.kind == 'equip':
             eq = gs.equips.value
             if eq is not None:
                 _w_rand(gs.equips, list(eq) + [reward.equip],
-                        f'proj_ore_reward_equip#ore{k}')
+                        f'{ev_prefix}proj_ore_reward_equip#ore{k}')
                 written.add('equips')
         else:
             # 角色奖励:落备战席首空槽 → 3合1 连锁(每级合并后受影响域
@@ -173,19 +221,20 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
                 kind='unit', unit=Unit(char_id=reward.char_id,
                                        star=reward.char_star)))
             _w_rand(gs.bench, bench_view_of_working(work_bench, orig_bench),
-                    f'proj_ore_reward_char#ore{k}')
+                    f'{ev_prefix}proj_ore_reward_char#ore{k}')
             written.add('bench')
             merge_no = 0
             last_bs = _bench_sig(work_bench)
             last_ds = _dep_sig(work_dep)
 
             def on_step(_k: int = k,
-                        _written: set[str] = written) -> None:
-                # 默认参数绑定本点序/本点登记集(B023:回调内聚合同步
-                # 调用,绑定义为调用刻值,防循环变量晚绑隐患)
+                        _written: set[str] = written,
+                        _evp: str = ev_prefix) -> None:
+                # 默认参数绑定本点序/本点登记集/本点前缀(B023:回调内聚
+                # 合同步调用,绑定义为调用刻值,防循环变量晚绑隐患)
                 nonlocal merge_no, last_bs, last_ds
                 merge_no += 1
-                ev = f'proj_ore_merge#{merge_no}#ore{_k}'
+                ev = f'{_evp}proj_ore_merge#{merge_no}#ore{_k}'
                 bs = _bench_sig(work_bench)
                 if bs != last_bs:
                     _w_rand(gs.bench,
@@ -207,11 +256,19 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
             if 'deployed' not in written:
                 cur = gs.deployed.value
                 if cur is not None:
-                    _w_rand(gs.deployed, cur, f'proj_ore_mark_deployed#ore{k}')
+                    _w_rand(gs.deployed, cur,
+                            f'{ev_prefix}proj_ore_mark_deployed#ore{k}')
                     written.add('deployed')
 
     if opened == 0:
+        # 批内含缺项∧level 缺读跳点即非「全部席满跳过」——具体原因
+        # reason 优先于 bench_full_no_open 表达(详设 ore-click-consume
+        # §1:reason 是零写跳过的唯一可断言通道)
+        if missing_level:
+            return LogicOutcome(applied=False, reason=_MISSING_LEVEL_REASON)
         return LogicOutcome(applied=False, reason='bench_full_no_open')
+    if missing_level:
+        return LogicOutcome(applied=True, reason=_MISSING_LEVEL_REASON)
     if skipped:
         return LogicOutcome(applied=True, reason='ore_partial_open_skipped')
     return LogicOutcome(applied=True)
