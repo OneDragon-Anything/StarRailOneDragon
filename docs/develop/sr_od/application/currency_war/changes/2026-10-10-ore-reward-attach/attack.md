@@ -1,104 +1,47 @@
-# 晶矿奖励附着通道 设计对抗报告(第二轮·修订稿)
+# 晶矿奖励附着通道 设计对抗报告(第三轮·收敛确认)
 
-第二轮审查:①对第一轮 P1/M1-M6/N1-N6 逐条修复核验(修法可与建议不同,但语义必须闭合、不留新拍板空间);②对修订稿本身再做一轮无前提攻击,重点 = 修订引入的新机制(容差配对轨迹继承边角 / live 接线规约可实现性 / 种子与恢复登记完整性 / landing 判据可验收性)。审查对象 = 本目录修订后全部文档;对照 = src 与 sr-od-test 现行代码。规范 = docs/develop/harness/iteration-design.md §5/§7。
+第三轮审查:对照第二轮报告逐条核验整改条件闭合(R2-M1 三处 + R2-N1/N2/N3 + R2-N4 七小点);对本轮修订触碰段落(ore-reward-channel §4 步序 3/4、§5 全节;ore-sim-plane-start §1/§4;ore-click-consume §1;landing 三处)做交互快攻;跨文档同步(design.md §2 ↔ channel §5 ↔ landing 3.4)一致性核验。对照 = src 与 sr-od-test 现行代码。审查中 landing.md「通用工程门」经模板层修缮改名「完成前常规检查」(与本轮核验面无关),以当前文件为准。
 
 ## ① 结论
 
-**有条件通过**。第一轮打回的头号问题 P1(矿身份键跨帧稳定性)已修成「容差配对轨迹继承」,结构与用户裁定兼容(席位生成期定、归属 rng、附着全走随机态),M2-M6/N1-N6 全部落实且依据核对为真;但 **M1 的修复文本自身留下三处未闭合**(ore-reward-channel §5 接线规约一句自相矛盾 + `_prev_node_plane` 消费点未定义 + 事件② plane 取值源未定)——照「实现者照此开工,不留拍板空间」的自我承诺,3.4 仍不可派工;另有 4 条备注级新发现。**条件 = R2-M1 三处闭合后放行 3.4;R2-N1/N2 措辞随同批修订;3.1/3.2/3.3 可立即开工。**
+**通过(定稿)**。第二轮全部条件逐条闭合,每条均按代码实证复核为真:R2-M1 三处(次序句对齐 / `_prev_node_plane` 删除 / 事件② plane 源 + None 行为 + 生命周期句)全部落实;R2-N1 生成集语义按建议修法①收口且三方一致;R2-N2 先例换成真实直写先例且两先例代码核实属实;R2-N3 定量披露落地;R2-N4(a)-(g) 七小点逐条闭合。本轮修订触碰段落的交互快攻与跨文档同步核验**零新发现**——四阶段(3.1–3.4)全部可派工,实现者照文档开工无拍板空间。收尾动作:设计方将 README.md / design.md 状态行由「对抗审中」更新为定稿态(流程动作,非文档缺陷)。
 
-## ② 修复核验表(第一轮 13 条)
+## ② 第二轮条件闭合核验表
 
 | 条目 | 判定 | 证据(修订稿 ↔ 代码) |
 |---|---|---|
-| P1 身份键稳定性 | **已修** | 总纲 §2 契约改「矿身份 = 轨迹,不是精确坐标」:附着键 = 最新观察坐标,连续性由挂接入口容差配对继承判定(消失↔新现 ≤`_SPHERE_PERSIST_POS_TOL` 一一配对 = 同身份,继承附着不重掷),并如实改写依据(两帧持存 = 防幻检容差过滤器,非坐标稳定器);channel §4 步序 3 给全配对语义(贪心最近、rekey evidence=`ore_gen_rekey#p{plane}`、值不变不重掷、跨面板别名披露);landing 3.1 判据含「坐标漂移 ≤12px 连续两帧 → 声明附着仍在且 roll 调用计数为零」。核:tol=12 单一源(cw_identity_obs.py :1434)+「从 cw_identity_obs 导入,禁复制数值」;spheres observe 写端恰两处(cw_screen_prep.py :384-391 / cw_sim_backend.py :1468-1473);kernel 引 obs 常量有先例(cw_encounter_selection.py :39 惰性 import,无环)。声明金保全语义闭合 |
-| M1 live 接线机制 | **部分修**(残留 → R2-M1) | 四问已答三:(a) 前值载体 = `_prev_node_plane`/`_prev_env` op 成员帧首快照(照 `_prev_spheres_raw` 先例,先例实存 cw_screen_prep.py :200-203);(c) hook_sig 形态 = logic_hook 族、group_id=`'prep:ore-channel'`、actor=`CwScreenPrep`(ChannelSig.group_id 字段实存 cw_game_state.py :401;类名实存 :146;group_id 为自由串无格式校验,可构造);(d) 事件②措辞已改「active_env 现值空→非空的备战帧边沿 + 注明 gain_invest_env 动作落地链逻辑写来源」(函数实存 cw_gain_chain.py :457,引用准确)。未闭合:(b) 次序硬约束句与判定点句**字面互斥** + `_prev_node_plane` 消费点未定义 + 事件② plane 取值源未写 → 见 R2-M1 |
-| M2 过期清理无落地阶段 | **已修** | landing 3.3 范围含「+ 位面过渡过期清理接线」、判据含「过期清理留痕」;3.4 范围含「+ 位面过渡过期清理接线」、判据含「位面过渡清理旧 plane 条目留痕」;sim §1 明确「与入队同一改动点交付,归本阶段」。两端(尤其 live)文件面与判据面均承载 |
-| M3 「§12」悬空指针 | **已修** | landing 首节建「通用工程门」单一定义(ruff/受影响测试全量/测试仓同步/逐文件 add+stat 复核,门源 = 项目 AGENTS.md「测试规范」「提交流程与协作边界」节);四阶段改「通用工程门(本文首节)」(:22/:35/:47/:61),无悬空引用 |
-| M4 依据失实簇(4 条) | **已修** | ①`_open_node_window` → `_begin_node_window`(sim §1 标题与正文,与 cw_sim_backend.py :1332 一致);②10 处 → **7 处**且行号逐一精确(click-consume §4;grep 实测恰 7 处 :160/:186/:212/:237/:254/:280/:308);③「在册」矛盾 → design §1「**新增**披露键 `ore_plane_start_pending` 落 3.3」与 sim §5「本迭代新增非在册」双向一致;④正本锚 → landing 清单改「invest_effects.md §1 批 2「时点日程」新增增发货币条目(位面开局声明矿流程模型,呈现面首遇待验)」——锚实存(invest_effects.md :36「### 批 2 时点日程」),动作可执行 |
-| M5 新域工程面 | **已修** | channel §1「工程面三件」:种子底座(两域入 `_seed` 族,`{}`/`()`,机制吻合 cw_game_state.py :1983-2018,`pending_item_grants`/`active_env` 种子先例实存 :2012-2014);快照恢复登记(`ore_rewards` rebuild → `OreReward(**v)`、`ore_declared_pending` → tuple-of-tuple,与 restore_state_snapshot 恢复表机制吻合 :3878-3898;OreReward 全字段带默认值,`**v` 重建成立);None 起点合并(§4 步序 4「None 起点从 {} 起」)。补核:快照枚举按 `dataclasses.fields` 自动遍历(:2687),新域自动进快照,无需另登记快照面——实现面自动成立 |
-| M6 sim 合并批坐标 | **已修** | sim §2「坐标 = 面板序续接:声明矿点 = `(10*(N+1), 10)`,位面首节点为奖励节点时同批 8 面板矿 + 声明矿 = 第 9 点 (90,10),**禁独立从 1 起号**——同批撞键会被 `by_xy` 求交去重吞点」;关键取舍补「独立号段在面板矿数变化时仍可能撞键,续接不撞」;landing 3.3 判据「坐标无撞键」。核:reward_ore_points 8 点 i 从 1 起 `(i*10, 10)`(:553-559),公式正确;by_xy 字典键去重(collect_ore.py :95)引用无误 |
-| N1 状态失同步 | **已修** | design §0「状态:对抗审中」= README「迭代设计:对抗审中」 |
-| N2 措辞强于机制 | **已修** | click-consume §2「防线是**双层的**,不是机械强制」(①随机态域不可信侧口径 = 纪律面;②文档契约);总纲 §2 第 6 条同步改口径 |
-| N3 先例引用 | **部分修**(残留 → R2-N2) | 补了通道归属论证「不属容器逻辑写端 anchor_aware 族:该域无观察写端可锚定」(论证成立);但替换后的先例「pending_item_grants 种子族」仍非「直写 write_logic」先例——见 R2-N2 |
-| N4 跳过证据通道 | **已修** | click-consume §1 定 `LogicOutcome.reason='ore_reward_attach_missing_level'`,关键取舍补「机械可断言、测试面最小;弃日志/台账(不可断言)」。核:LogicOutcome.reason 通道实存且为现行为出参形态(collect_ore.py :86/:104/:214/:216) |
-| N5 跨面板别名 | **已修** | channel §4 步序 3「跨面板别名披露」:sim 经济中性 / live 自愈于观察收口 / 极端角(现役身份全为别名残留)声明条目饿死至过期清理,接受并披露 |
-| N6 level 概率高估 | **已修** | channel §4 步序 4「种子恒写 level=3,生产近乎不可达,此为保真防御」;click-consume §1「语义收窄是保真不是主防御面」 |
+| R2-M1① 次序句与判定点句互斥 | **已闭合** | channel §5 事件①次序句改为「**次序硬约束 = 判定与入队完成先于同帧 spheres 写**——由『判定在锚定写之前』+ 现观察序『锚定写在前、spheres 写在后』共同保证」,原「夹在锚定写与 spheres 写之间」表述已除;与判定点句(「判定点 = 节点锚定写之前……比较 incoming vs 锚定前现值即可边沿检测」)方向一致、传导链自洽(判定在锚定前 ∧ 锚定写先于 spheres 写 ⇒ 入队先于 spheres 写);与 design §2 第 3 条(「在节点锚定写**前**读 plane 前值检测——入队必须先于同帧 spheres 写」)、landing 3.4 判据(「入队先于同帧 spheres 写」)三方一致。物理基础复核:cw_screen_prep.py 锚定写 :281-288(`observe_node_anchor`)先于 spheres 写 :384-391,「天然满足」成立 |
+| R2-M1② `_prev_node_plane` 孤儿成员 | **已闭合** | 全迭代目录 grep:`_prev_node_plane` 仅存于本报告历史叙述,设计文档面零残留;前值载体段收窄为 `_prev_env: str` 单成员(用途 = 事件②快照对拍),并显式写明「**事件①不用快照**(锚定前现值即前值)」——两种机制各写一半的问题消除,无拍板空间 |
+| R2-M1③ 事件② plane 源 + None 行为 + 生命周期句 | **已闭合** | §5 事件②:「判定点 = 锚定写之后、spheres 写之前(备战帧内,锚定已完成);**入队 plane 取值源 = 锚定现值 `gs.node.value.plane`**;`gs.node.value` 为 None(首锚定前,node 域不在开局种子表)→ 本帧不触发,由事件①在下一次锚定时兜住」。生命周期句已补:「`_prev_*` 成员每备战环重建(`_prev_spheres_raw` 同语义 = 环内连续帧,非跨环持久),事件②跨环重触发由幂等守卫吸收」——与 cw_screen_prep.py :191-195 现行注释语义逐句吻合。代码复核:种子表 :1983-2018 确无 gs.node(node None 分支的前提属实) |
+| R2-N1 生成集语义与配对机制自相矛盾 | **已闭合**(采纳建议修法①) | channel §4 步序 4 改「**生成集 = 无附着的现役身份**(步序 3 重挂后,新值坐标中仍无 `ore_rewards` 键者——覆盖未配对新现、level 缺读跳过帧、恢复/竞态残留形态)」;level None →「该批身份仍无键,**下帧自动再进生成集**」——新语义下「下帧再试」真实成立(重挂只搬已有键,身份是否进生成集与配对结果解耦,无附着旧身份恒留生成集)。三方一致:①配对机制(步序 3 重挂 ⊕ 步序 4 键判据解耦);②click-consume §1 缺项定义(「挂接入口保证每现役身份有附着;写端竞态等罕见态」——机制与定义一致,缺项回归罕见态);③landing 3.1 判据(「生成集 = 无附着现役身份(含 level 缺读帧后自动补生成)」)。原矛盾场景(配对命中 = 永不进生成池)在新判据下不存在 |
+| R2-N2 先例引用失实 | **已闭合** | channel §4 步序 4 声明消费写与 sim §1 声明入队写均改引「**依据 = kernel 确定效果直写 write_logic 先例(cw_exec_state 金腿 / cw_effect_inventory 退款腿)**」,`pending_item_grants` 旧引用已除;「不属 anchor_aware 族:该域无观察写端可锚定,声明是登记事实非观察投影」论证保留。两先例代码独立核实属实:cw_exec_state.py :71 `gs.write_logic(gs.gold, …)`(金腿,:58 docstring「经 logic_action 通道 write_logic」印证);cw_effect_inventory.py :864 `gs.write_logic(gs.gold, …+refund)`(退款腿)、:1231(宝箱腿)——均 kernel 确定效果直写,先例性质匹配 |
+| R2-N3 误配定量披露缺失 | **已闭合** | §4 步序 3 补「**误配几何可达域定量**:同帧两矿圆心最小间距 = Hough `minDist=35`(cw_identity_obs `find_ore_sights`),跨帧各抖 ±12px 时异矿最窄 35−2×12 = **11px ≤ tol**,交叉配对几何可达;贪心最近在真对距离 < 交叉对距离时选真对,真对距离 = 抖差(常态 ≪ 11px),常态救回」。代码复核:minDist=35(cw_identity_obs.py :1561)、tol=12(:1434)属实,35−24=11 数值正确,「歧义可达」由定性变定量 |
+| R2-N4(a) 配对距离度量未定 | **已闭合** | §4 步序 3:「配对门 = 双轴独立 ≤ `_SPHERE_PERSIST_POS_TOL`(12px……与 `filter_persistent_ores` 同语义)」+「**贪心排序键 = 欧氏标量距离**」——门(Chebyshev)与排序键(欧氏标量)分别定死。filter_persistent_ores 双轴独立语义复核属实(cw_identity_obs.py :1479-1480) |
+| R2-N4(b) hook_sig 族两端不一致 | **已闭合** | §5 sig 形态段:「live 挂接与入队写 = logic_hook 族,group_id=`'prep:ore-channel'`,actor=`CwScreenPrep`;sim 挂接写 = `logic_sig('sim:ores')`(logic_action 族,sim 现行构造形态……)。参数名 `hook_sig` 泛指『挂接写用 sig』,**族差异即上述两端形态,不再另定**」——族差异显式注明,统一措辞收口。ChannelSig.group_id 字段复核属实(cw_game_state.py :401,自由串可构造) |
+| R2-N4(c) sim 入队写 sig 未点名 | **已闭合** | sim §1:「写 = write_logic,**sig = `logic_sig('sim:env')`**(与 `discharge_due_item_grants` 同组同窗,沿 sim 现行 logic_action 族构造形态)」。代码复核:discharge_due_item_grants 现行调用确为 `sig=logic_sig('sim:env')`(cw_sim_backend.py :1364-1365),「同组同窗」引用准确 |
+| R2-N4(d) sim §4 装配方增键无事可做 | **已闭合** | sim §4 改述:「键 `'ore_reward_gen'` 随 `action_sampling_rng('ore_reward_gen', None)` **首调自动生效**——装配方是泛型 `lambda tool`(cw_sim_backend 装配段),本阶段**零改动**」+「`test_cw_sim_seam.py` provider 装卸断言面扩 `'ore_reward_gen'` 键(现断言形态实存,沿其装卸用例扩)」。代码复核:装配方泛型属实(:1629 `lambda tool: stream_rng(...)`),装卸断言面实存(test_cw_sim_seam.py :208-222,装卸/复位/同 seed 确定性断言形态)——工作面错位已纠正 |
+| R2-N4(e) landing 3.3 判据 12 在 sim 不可达 | **已闭合** | landing 3.3 判据改:「数值 = 6/8,sim 辖域 P1+P2 内实测;**12 由 3.1 生成函数单测覆盖**——sim 第一期 `plane>2` raise,位面 3 不可达」。代码复核:_node_ordinal 对 plane ∉ (1,2) raise ValueError(cw_sim_backend.py :1330),「位面 3 不可达」属实 |
+| R2-N4(f) landing 3.4 测试文件未点名 | **已闭合** | landing 3.4 文件面点名:`sr-od-test/test/sr_od/application/currency_war/test_cw_prep_node_row_housekeeping.py`(备战观察链家计,挂接/入队接线断言落此)。文件存在复核属实 |
+| R2-N4(g) reason 枚举漏 'no_intersection' | **已闭合** | click-consume §1 出参清单改:「其余(bench_full_no_open / ore_partial_open_skipped / spheres_unobserved / bench_unobserved / **no_intersection**(求交不动,现行为原样保留))不变」+ level_unread 退役已述(§1 与关键取舍节)。代码复核:现集恰 6 项(collect_ore.py :86/:89/:92/:104/:214/:216),5 保留项全列、退役项写明,枚举完整无漏项 |
 
-## ③ 新发现清单
+## ③ 新发现
 
-### R2-M1【整改】live 接线规约(ore-reward-channel §5)自相矛盾 + 两处未闭合——3.4 仍不可派工
+**无**。本轮修订触碰段落的交互快攻与跨文档同步核验均未发现 M 级及以上或备注级问题,核验覆盖面如下(零发现 = 已真核,非未查):
 
-- **问题(三件)**:
-  (a) **次序硬约束句与判定点句字面互斥**。「事件①位面进入:判定点 = 节点锚定写(`observe_node_anchor`)**之前**——锚定前 `gs.node.value` 仍是旧 plane,入口 `ore_declared_on_node_observing(gs, incoming_plane, sig)` 比较 incoming vs 现值即可边沿检测,**锚定后已失前值**」;紧接着「**次序硬约束 = 事件判定与入队必须夹在锚定写与 spheres 写之间**(现观察序锚定写在前,spheres 写在后,天然满足…)」。「夹在锚定写与 spheres 写之间」= 锚定写**之后**;而给出的判定机制(incoming vs 现值)只在锚定写**之前**成立——照次序句接线,锚定后 incoming 与现值恒等(均为新 plane),位面 2/3 的过渡边沿**永不触发**,声明永不入队,恰是 M1 要防的承载性错误(位面首帧新现生成时声明不在队,该帧后无新现则永不附着)。总纲 §2 第 3 条的表述(「在节点锚定写前读 plane 前值检测——入队必须先于同帧 spheres 写」)是自洽的正确版;详设接线规约作为「实现者照此开工」的操作文本,两句必须对齐。
-  (b) **`_prev_node_plane` 消费点未定义**。前值载体段定义了 `_prev_node_plane` 与 `_prev_env` 两个成员,但事件①机制用 incoming vs 锚定前现值(不需要快照)、事件②只用 `_prev_env`——`_prev_node_plane` 成了无用途成员;或作者本意是「锚定后用帧首快照对拍」的另一机制(那 `ore_declared_on_node_observing(gs, incoming_plane, sig)` 的比较对象就应改为快照,签名语义不同)。两种机制各写了一半,实现者必须自行裁决 = 拍板空间(硬规则 2)。
-  (c) **事件②入队的 plane 取值源未写**。条件行「`env ∈ ENV_ORE_GRANTS` ∧ 该 (env, plane) 无在队条目」——事件①的 plane = incoming_plane(明确),事件②的 plane 从哪读未写;且 node 域**不在开局种子表**(cw_game_state.py :1987-2018 无 `_seed(gs.node, …)`),首锚定前 `gs.node.value = None`,None 时事件②的行为(跳过,由事件①在下一次锚定兜住 / 报错)未定。
-- **证据**:ore-reward-channel §5 原文(前值载体/事件①/条件行三段);cw_screen_prep.py :281-288(锚定写)先于 :384-391(spheres 写,「天然满足」的物理基础核对属实);cw_game_state.py :1987-2018(种子表无 node);cw_screen_prep.py :194-195(`_prev_spheres_raw` 先例注释:**CwScreenPrep 每备战环重建 → 成员跨环不残留,语义 = 环内连续帧**——事件②跨环重触发由幂等守卫吸收,机制成立但值得写明,防实现者误以为跨环快照)。
-- **建议修法**:§5 次序句改为「事件①判定 = 锚定写**之前**(incoming_plane vs 锚定前现值),入队完成先于同帧 spheres 写」;删除 `_prev_node_plane` 或指明其机制(若保留锚定后判定,须同步改 `ore_declared_on_node_observing` 的比较对象);事件②补「plane = 锚定现值 plane,`gs.node.value` None → 本帧不触发(由事件①在下一次锚定兜住)」;补一句 `_prev_*` 环内生命周期与幂等守卫的配合。均为段落级修订,不动结构。
+- **channel §4 步序 3(欧氏排序键 + 定量披露)**:与步序内配对门语义、§1 约束第三条(两帧持存 = 防幻检容差过滤器)无矛盾;
+- **channel §4 步序 4(生成集新语义)**:与步序 3(重挂)、步序 5(消失清洗)、「点击未真开的回补形态」段(矿重现坐标无键 → 进生成集重掷)交互自洽;level None → 下帧自动再进生成集与判据自洽;
+- **channel §5 全节**:前值载体(`_prev_env`,帧首读现值/帧尾写回,照 :199-203 先例)→ 事件①(锚定前判定,不用快照)→ 事件②(快照对拍,锚定后 spheres 前)→ 共用条件 → 过期(事件①同点触发清旧 plane)→ sig 两端——内部无矛盾;事件②环内首帧 `_prev_env` 未初始化(视同空)语义照 `_prev_spheres_raw` getattr 先例唯一可答,幂等守卫吸收跨环重触发;
+- **sim §1 入队 sig(`sim:env`)与 §3 挂接 sig(`sim:ores`)**:两写两 sig 各自明确,与 channel §5「sim 挂接写 = logic_sig('sim:ores')」一致不混淆;
+- **sim §4(装配方零改动)** 与 landing 3.3 范围「rng 键装配」/判据「掷序确定性」一致(装配语义 = 键首调自动生效,断言面扩键);
+- **click-consume §1(reason 清单)** 与 §4(测试迁移「缺项∧level None 的 reason」)一致;
+- **跨文档同步**:design §2 第 3 条 ↔ channel §5 ↔ landing 3.4(范围「锚定写前判定/帧边沿」+ 判据「入队先于同帧 spheres 写」)三方一致;landing 3.1 生成集判据 ↔ channel §4 步序 4 同步;
+- **landing.md「通用工程门」→「完成前常规检查」改名**(第三轮审查中模板层修缮):首节单一定义(:3-9)+ 四阶段引用(:22/:35/:47/:61)一致,第二轮 M3 闭合语义维持,无新悬空引用;
+- **既核依据行号抽样复核**:7 处 monkeypatch 行号(test_cw_collect_ore_rand.py :160/:186/:212/:237/:254/:280/:308)、快照 fields 自动枚举(cw_game_state.py :2687,新域自动进快照)、恢复表 rebuild 按字段名(:3878-3885,新域登记机制与先例吻合)、OreReward 全字段默认值(cw_ore_reward.py :52-62,`**v` 重建成立)、roll_ore_reward 错档 ValueError(:74-78)、ENV_ECONOMY 增发货币 (6,8,12)(cw_investments.py :1176,双源同值对照面)、`_window_begun_ord` 幂等守卫(:1332-1344)——全部属实。
 
-### R2-N1【备注】「level None → 本帧不生成,下帧再试」与配对机制自相矛盾——attachmentless 身份永久缺附着,打破自己声明的缺项不变量
+## ④ 定稿试读结论
 
-- **问题**:channel §4 步序 4「`level = gs.level.value`;None → 本帧不生成(…下帧再试…)」。但步序 2 已把本帧观察写入 spheres(身份已存在),下帧步序 3 配对命中 = **同身份非新现** → 永不进生成池,「下帧再试」不成立:该批身份永久无附着。这与 click-consume §1 的缺项定义直接冲突——「缺项(不变量破坏:**挂接入口保证每现役身份有附着**;写端竞态等罕见态)」——不变量被本设计自己的防御路径系统性打破(非竞态)。生产近乎不可达(种子恒 level=3),点击侧 `ore_reward_attach_missing` 兜底接管不丢功能;但论证与机制不符,且直构测试域可达。
-- **证据**:channel §4 步序 2/3/4 次序;click-consume §1 缺项定义;cw_game_state.py :2003(`_seed(gs.level, 3)`)。
-- **建议修法(二选一)**:①生成资格 = 「无附着的现役身份」而非「未配对新现」——配对继承只对有附着的旧身份生效,无附着旧身份并入生成池(语义更干净,同时覆盖恢复/竞态形态);②删「下帧再试」,如实写「该批身份转永久缺项,由点击侧兜底接管」。
-
-### R2-N2【备注】N3 修复的先例引用仍失实:pending_item_grants 并非「直写 write_logic」先例
-
-- **问题**:channel §4 步序 4 声明消费写引「依据 = 无观察写端的卡文推算域直写 logic 先例(`pending_item_grants` 种子族)」。「种子族」三字只支撑种子底座选型;作为**写通道**先例不成立——`pending_item_grants` 的入队写与放出写全部经 `_select_write` → `anchor_aware_write`(cw_gain_chain.py :746-753 / :789-790),恰是设计声明「不属」的那一族。kernel 直写 write_logic 的真先例 = cw_exec_state.py :71(金腿)、cw_effect_inventory.py :864/:1231(退款/宝箱腿)等确定效果直写。决策本身已闭合(「无观察写端可锚定,声明 = 登记事实非观察投影」论证成立,直写通道可用),只须换引用,否则第一轮 M4 式「依据失实」在同一位置复发。
-- **建议修法**:引用改为「kernel 确定效果直写 write_logic 先例(cw_exec_state 金腿 / cw_effect_inventory 退款腿)」,保留「不属 anchor_aware 族」论证。
-
-### R2-N3【备注】12px 容差 × 多矿面板的误配几何最坏角未量化——可达但已披露,建议补定量
-
-- **问题**:`find_ore_sights` 的 HoughCircles `minDist=35`(cw_identity_obs.py :1561)⇒ 同帧两矿圆心最小间距 35px;跨帧各抖 ±12px 时,异矿间距最窄 35 − 12 − 12 = **11px ≤ 12px**,交叉配对几何可达。贪心最近通常救回(真对距离 = 抖差,通常远小于交叉对 ≥11px 的下界),误配后果已被 §4 步序 3 披露(附着是随机态猜测,配对误差不引入系统偏差;经济差由观察收口)。sim 侧「合成坐标恒稳无歧义」经核成立(同键续存/换批均唯一配对)。建议在披露句补一句 minDist=35 vs 2×tol=24 的量化边界,把「歧义可达」从定性变定量,便于采集校准期复核。
-- **建议修法**:§4 步序 3 披露句补「误配几何可达域:minDist=35 − 2×12 = 11px ≤ tol;贪心最近在真对距离 < 交叉对距离时选真对,抖差常态 ≪ 11px」。
-
-### R2-N4【备注】杂项小库(各一句话,随批或实现批顺带)
-
-- (a) **配对距离度量未定**:filter_persistent_ores 先例 = 双轴独立 ≤tol(Chebyshev,:1479-1480);§4「距离 ≤ tol + 贪心最近」需要标量距离参与排序——宜定死欧氏或 Chebyshev,否则又一处实现者拍板。
-- (b) **hook_sig 族两端不一致**:live = logic_hook 族,sim hook_sig = `logic_sig()` = **logic_action** 族(cw_sim_base.py :37-40)。两者都过 `_validate_sig` 机械无碍,但参数名「hook_sig」下的族两端不同,措辞宜统一或注明。
-- (c) **sim §1 声明入队写自身的 sig 未点名**:§3 只定了挂接入口的 hook_sig;入队在 `_begin_node_window` 分道处,建议点名(如 `logic_sig('sim:env')` 与 discharge 同组,或独立组)。
-- (d) **sim §4「装配方增键 'ore_reward_gen'」实际无事可做**:装配方是泛型 `lambda tool`(:1627-1629),键随首个调用自动生效,装配点无键表可增;工作面只在 seam 测试断言面(§4 第二条,test_cw_sim_seam.py :208-219 断言面实存可扩)。第一条按字面执行会找不到可改点,宜改述为「键随 action_sampling_rng('ore_reward_gen', None) 首调自动生效,装配方零改动,断言面扩键」。
-- (e) **landing 3.3 判据「数值 = 6/8/12」中 12 在 sim 不可达**:sim 第一期辖域 P1+P2(`_node_ordinal` 对 plane>2 raise,cw_sim_backend.py :1322-1330),位面 3 声明(12 金)在 sim 永不触发;判据宜写「6/8(sim 辖域内实测),12 由生成函数单测覆盖」。
-- (f) **landing 3.4 文件面「sr-od-test/ 对应 prep 观察测试」未点名文件**(其他阶段均点名到文件;仓内无 test_cw_screen_prep*.py,候选 = test_cw_prep_node_row_housekeeping.py / test_cw_obs_arch_* 族)——硬规则 4 文件面真实路径口径,宜点名。
-- (g) **click-consume §1 出参 reason 枚举漏 'no_intersection'**(collect_ore.py :104 现行为,求交不动则保留);「其余…不变」清单不全,'level_unread' 的退役已写明而 'no_intersection' 未提。
-
-## ④ 依据核验表(第二轮新核/复核)
-
-| # | 设计依据(出处) | 代码实况 | 判定 |
-|---|---|---|---|
-| 1 | tol=12 常量单一源 + 禁复制数值(channel §4) | cw_identity_obs.py :1434;kernel 引 obs 常量先例 = cw_encounter_selection.py :39(惰性,无环) | 属实 |
-| 2 | 锚定写在 spheres 写之前、天然满足承载次序(channel §5) | cw_screen_prep.py :281-288 → :384-391 | 属实 |
-| 3 | `_prev_spheres_raw` 先例 = op 成员帧间快照(channel §5) | :200-203;生命周期 = 环内(:194-195 注释) | 属实(生命周期语义见 R2-M1 附注) |
-| 4 | 两域入种子族 `{}`/`()`,先例 pending_item_grants/active_env(channel §1) | cw_game_state.py :1983-2018(:2012-2014 两先例实存);**node 域不在种子表** | 属实(事件② plane 源缺口 → R2-M1c) |
-| 5 | 快照恢复登记 rebuild λ(channel §1) | restore_state_snapshot 恢复表 = 字段名 rebuild(:3878-3898);快照按 dataclasses.fields 自动枚举(:2687)新域自动入 | 属实 |
-| 6 | OreReward(**v) 重建可行(channel §1) | cw_ore_reward.py :52-62 全字段带默认值 | 属实 |
-| 7 | pending_item_grants = 直写 logic 先例(channel §4) | 入队/放出全经 _select_write→anchor_aware_write(cw_gain_chain.py :746-753/:789-790) | **不属实** → R2-N2 |
-| 8 | 测试迁移面 7 处 monkeypatch 行号(click-consume §4) | grep 实测恰 7 处 :160/:186/:212/:237/:254/:280/:308 | 属实 |
-| 9 | invest_effects.md §1 批 2「时点日程」锚(landing 清单) | :36「### 批 2 时点日程」实存;§5「API 裁定」锚实存(:86) | 属实 |
-| 10 | ENV_ECONOMY 增发货币 (6,8,12) + 校验族 + ∅ 检查语义(channel §2/§约束) | cw_investments.py :1176 / :1200 / :1311(:1349-1352) | 属实 |
-| 11 | reward_ore_points 8 点 i*10、续接公式 (10*(N+1),10)(sim §2) | cw_sim_backend.py :543-559 | 属实 |
-| 12 | 窗口幂等守卫沿用 `_window_begun_ord`(sim §1) | :1332-1344,位面过渡点空白与直进节点共用、重放不双发 | 属实 |
-| 13 | sim 装配方增键 'ore_reward_gen'(sim §4) | 装配方 = 泛型 lambda tool(:1627-1629),无键表可增;seam 断言面实存(test_cw_sim_seam.py :208-219) | **表述失实(工作面错位)** → R2-N4d |
-| 14 | 3.3 判据「数值 = 6/8/12」 | sim 辖域 P1+P2,plane 3 raise(:1322-1330),12 不可达 | **判据不可全验** → R2-N4e |
-| 15 | sim「容差配对恒等、继承零触发」(sim §3) | 合成坐标确定性:同键续存/换批唯一配对,rekey(键变更)确不发生 | 属实 |
-| 16 | hook_sig:live logic_hook 族 / sim logic_sig('sim:ores')(channel §5、sim §3) | ChannelSig.group_id 实存(:401);logic_sig = logic_action 族(cw_sim_base.py :37-40),两者均过 _validate_sig | 属实(族两端不一致 → R2-N4b) |
-| 17 | 事件② = gain_invest_env 逻辑写、无观察时点(channel §5) | cw_gain_chain.py :457-496(经 _select_write) | 属实 |
-| 18 | 投影审计两锚:gold 行「collect_ore 采样直写…」/ spheres 行「零逻辑写端」(click-consume §3) | cw_projection_audit.py :105-108 / :230-232 | 属实 |
-| 19 | LogicOutcome.reason 为跳过证据通道(click-consume §1) | collect_ore.py :86/:104/:214/:216 现行为 | 属实 |
-| 20 | 出参 reason 集「其余…不变」(click-consume §1) | 现集另含 'no_intersection'(:104)未列 | **枚举不全** → R2-N4g |
-| 21 | 正本四锚:fields.md / gain-chain.md / sim-wiring.md / invest_effects.md(landing 清单) | 四文件全实存 | 属实 |
-| 22 | 测试五件实存(landing 各阶段) | test_cw_collect_ore_rand / test_cw_ore_container / test_cw_unified_action_2a / test_cw_sim_backend / test_cw_sim_seam 全实存 | 属实 |
-| 23 | 契约注落点 select_ore_clicks + 模块头(landing 3.4) | cw_prep_actions.py :47 | 属实 |
-| 24 | 3.4 文件面「对应 prep 观察测试」 | 仓内无 test_cw_screen_prep*.py,未点名 | **文件面未点名** → R2-N4f |
-| 25 | 12px 误配披露「sim 恒稳无歧义 / live 歧义无偏」(channel §4) | minDist=35 − 2×12 = 11px ≤ tol,交叉配对几何可达;贪心最近常态救回 | 属实(定量边界缺失 → R2-N3) |
-
-## ⑤ 实现者试读
-
-- **3.1(kernel 面):可开工**。域定义、种子与恢复登记、注册表三条校验、生成函数语义、挂接入口步序(含容差配对与 rekey)、入队/过期函数语义唯一可答。R2-N1 影响 §4 步序 4 的一句措辞与对应测试期望(建议随批定夺:生成资格改为「无附着现役身份」或如实写永久缺项),不阻塞开工。
-- **3.2(点击兑现):可开工**。命中零掷、缺项兜底前缀、detach 写序、level 收窄、reason 通道语义完整;7 处迁移面与行号核对无误;既有 evidence 断言面清楚。
-- **3.3(sim 接线):可开工**。分道、开局矿呈现、坐标续接、写端统一、占位退役、披露键全落到符号级;R2-N4 的 (d)(e) 两小点(装配方无键可增、12 不可达)是判据/表述级修正,不阻塞。
-- **3.4(live 挂接):不可开工**——R2-M1 阻塞(与第一轮同判):接线规约自相矛盾的次序句、无消费点的 `_prev_node_plane`、无取值源的事件② plane,每一处都是实现者必须拍的板。修完 §5 三处(一段级修订)即可放行。
-- 总评:P1 修复(轨迹继承 + 单一入口 + 双事件入队)结构成立,与五条用户裁定逐一兼容(观察含奖励→点击只兑现 = 附着生成前置;生成函数单一入口 live/sim 共用;固定矿生成期占席、归属 rng;附着全走 write_logic_rand;策略禁读双层防线)。本轮无 P 级发现,最重为 M 级接线规约残留。
-
-## 附:核三(治本)评语
-
-R2-M1 与 R2-N1 同属一类:**修复文本自身引入的半成品语义**——M1 修复把两种边沿检测机制(锚定前 incoming-vs-现值 / 锚定后快照对拍)各写了一半,N1 修复的「下帧再试」没有对着新配对机制推演到底。两处都是硬规则 4「修订后全量同步复查」应拦下的残留(修订触发的全量反查没有覆盖修订自身引入的交互),而非新架构问题——治本方向(内容时点前移 + 轨迹继承身份 + 单一入口)两轮一致成立。「§12」悬空在规范侧的架构根(模板行)仍未见修(R5-1 诉求),本批靠 landing 首节定义绕开,再次提请框架负责人修 iteration-design.md 模板。
+- **3.1(kernel 面):可开工**。域定义、种子与恢复登记、注册表三条校验、生成函数语义(含错档炸)、挂接入口步序(配对门/排序键/生成集/出队/消失清洗)、入队/过期函数——R2-M1①③ 与 R2-N1 收口后全部唯一可答。
+- **3.2(点击兑现):可开工**。命中零掷、缺项兜底前缀、detach 写序、level 收窄、reason 通道语义完整(枚举闭环);7 处迁移面行号复核无误。
+- **3.3(sim 接线):可开工**。分道 + 入队 sig、开局矿呈现与坐标续接、写端统一、装配方零改动 + 断言面扩键、占位退役、披露键;判据「6/8 + 12 单测覆盖」在辖域内可全验。
+- **3.4(live 挂接):可开工**(R2-M1 三处闭合后解除阻塞)。前值载体 `_prev_env` 照 `_prev_spheres_raw` 先例、事件①锚定前判定 + 入队先于同帧 spheres 写、事件②边沿对拍 + plane 取值源 + None 兜底、sig 两端形态、`_prev_*` 环内生命周期与幂等守卫配合——接线规约作为「实现者照此开工」的操作文本语义闭合,无拍板空间。
+- **总评**:三轮收敛完成——第一轮打回(P1+M1-M6+N1-N6)→ 第二轮有条件通过(R2-M1 整改 + R2-N1/N2 措辞 + R2-N3/N4 杂项)→ 本轮全部条件实证闭合、零新发现。核心结构(轨迹继承身份 + 单一挂接入口 + 双事件入队 + 生成集 = 无附着现役身份 + 直写先例引用)与五条用户裁定兼容,实现者照此开工。第二轮「附:核三(治本)评语」指出的模板层架构根(「§12」悬空 → 已由本目录 landing 首节定义 + 模板修缮改名落地缓解),框架侧 iteration-design.md 模板行诉求继续保留。
