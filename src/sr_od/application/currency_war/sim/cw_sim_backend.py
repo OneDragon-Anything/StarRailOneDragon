@@ -26,11 +26,14 @@ supply/encounter/box/晶矿面板)→ 容器各 opts 槽(经 ``cw_screen_report`
 
 **节点推进序列**(模块号流键坐标系):写 ``gs.node`` → 轮首收入
 (kernel ``round_start_income`` 三分支,U04 败补消费容器 ``pending_loss``)
-→ 位面开局环境金(kernel ``INVESTMENT_ENVS``)→ 商店自动全刷(整店锁
-跳过)→ overlay 队列检查 → offer 日程检查(U07 固定轮次 + 联席决策)
-→ 按节点类型呈现对应屏(battle/reward → 备战档,reward = 晶矿子态;
-supply → 补给;encounter → 遭遇节点;boss → BOSS 简报)。节点经验在
-节点推进时入账(NODE_XP_BY_TYPE 表原样);连胜转移在战斗结算后。
+→ 位面开局环境发放分道(声明矿环境 → 声明入队 + 过期清理,其余 →
+直发金)→ 商店自动全刷(整店锁跳过)→ overlay 队列检查 → offer
+日程检查(U07 固定轮次 + 联席决策)→ 按节点类型呈现对应屏
+(battle/reward → 备战档;奖励节点晶矿子态 = 面板矿 + 位面开局声明矿
+同批合并,spheres 写一律过挂接入口
+``cw_ore_channel.report_spheres_observed``;supply → 补给;encounter →
+遭遇节点;boss → BOSS 简报)。节点经验在节点推进时入账
+(NODE_XP_BY_TYPE 表原样);连胜转移在战斗结算后。
 
 **overlay 触发层**(终态):判据 = kernel 值回调
 (cw_faction_callbacks,deployed 逻辑写尾)→ 容器登记
@@ -89,6 +92,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     seed_opening_state,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
+    ENV_ORE_GRANTS,
     INVESTMENT_ENVS,
     INVESTMENT_STRATEGIES,
     QUALITY_REWRITE_ENV_NAMES,
@@ -97,6 +101,10 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
     node_sequence_of,
+)
+from sr_od.application.currency_war.kernel.cw_ore_channel import (
+    check_ore_declared_level,
+    report_spheres_observed,
 )
 from sr_od.application.currency_war.kernel.cw_overlay_register import (
     consume_screen_change,
@@ -491,16 +499,15 @@ ENCOUNTER_PARAMS_PENDING_U22: str = 'encounter_tier_params_pending_u22'
 REWARD_ORE_PANEL_ANCHOR: tuple[tuple[str, int], ...] = (
     ('金', 1), ('蓝', 5), ('灰', 2),
 )
+# (面板矿内容不经本模块携带:spheres 写一律过挂接入口
+#  ``cw_ore_channel.report_spheres_observed`` 生成附着——声明金先占席、
+#  其余逐矿采样;分布参数未校准的披露单一源 = kernel
+#  ``cw_ore_reward.ORE_ASSUMPTION_KEYS``,本模块不双源。)
 
-#: 逐色档内容占位(U23 无档:金=金币 30/蓝=装备 1 件/灰=金币 5)。
-REWARD_ORE_CONTENT_PLACEHOLDER: dict[str, tuple[str, int]] = {
-    '金': ('gold', 30),
-    '蓝': ('equip', 1),
-    '灰': ('gold', 5),
-}
-
-#: 晶矿内容占位披露键(U23)。
-ORE_CONTENT_PENDING_U23: str = 'ore_content_pending_u23'
+#: 位面开局声明矿呈现面披露键:呈现色档(现按 '金' 占位)与「晶矿
+#: 自动开启与否」均未实采,实机首遇校——sim 按「呈现可点」建模,若
+#: 实机为自动开启则声明条目留至位面过渡被过期清理,机制面零污染。
+ORE_PLANE_START_PENDING: str = 'ore_plane_start_pending'
 
 #: 箱候选数(4 选 1,U23 画面语义)。
 BOX_CANDIDATES: int = 4
@@ -545,10 +552,10 @@ def reward_ore_points() -> tuple[tuple[str, int, int, int], ...]:
 
     [索引定义] 元素 = ``(色档, x, y, r)``(OreSight.points 元素同形);
     (x, y) = sim 世界合成坐标,无画面语义,仅作晶矿身份键(点晶矿
-    上报按坐标求交,容器 spheres 点集即真值)。内容占位随局披露
-    :data:`ORE_CONTENT_PENDING_U23`;内容采样走 kernel
-    ``report_action_collect_ore_param``(流键 rng 注入),本面板只载
-    「有哪些晶矿」。
+    上报按坐标求交,容器 spheres 点集即真值)。内容不再由本面板携带
+    ——spheres 写经挂接入口 ``cw_ore_channel.report_spheres_observed``
+    生成附着(声明金先占席、其余逐矿采样,sim 采样即世界真值),点击
+    按附着值兑现。
     """
     points: list[tuple[str, int, int, int]] = []
     i = 0
@@ -633,6 +640,7 @@ _BASE_DISCLOSURES: dict[str, object] = {
     NODE_XP_PENDING_U17: 'boss_xp12_composition_pending',
     PIGGY_NO_HP_LOSS: 'piggy_node_no_hp_loss_exempt',
     DISCLOSURE_AFFIX_SAMPLE: 'pool3_uniform_placeholder',
+    ORE_PLANE_START_PENDING: 'face_gold_color_auto_open_unverified',
 }
 
 #: 单局驱动步上限(防流程死循环;正常局 < 2000 动作)。
@@ -1353,8 +1361,9 @@ class SimBackend:
         if kind not in INCOME_BRANCH_NODE_TYPES and pending is not None:
             clear_pending_loss(self.gs,
                                sig=obs_sig(group_id='sim:loss'))
-        # 位面开局环境金(M02 结构化通道:gold_per_plane_start)
-        self._apply_env_plane_gold(plane)
+        # 位面开局环境发放分道:声明矿环境走声明入队(金在点击兑现时
+        # 入账),其余环境保留直发通道(通道留置)。
+        self._apply_env_plane_start(plane)
         # 环境定时道具到点发放(迭代 2026-09-24-scheduled-env-gifts
         # design §2.4):本收口在窗口幂等守卫内,且位面过渡点空白与直进
         # 节点共用——「第 N 位面开始时」类发放即落在该位面 1 号节点窗
@@ -1460,26 +1469,74 @@ class SimBackend:
             self._screen = SCREEN_BOSS_BRIEFING
             self._sub = ''
             return
-        # battle / reward → 备战档(晶矿子态:奖励节点面板写容器 spheres)
-        if kind == 'reward':
-            self.disclosures.setdefault(ORE_CONTENT_PENDING_U23,
-                                        'gold30_equip1_gold5_placeholder')
-            points = reward_ore_points()
-            self.gs.observe(self.gs.spheres, OreSight(
+        # battle / reward → 备战档:奖励节点面板矿 + 位面开局声明矿
+        # **同批合并**进一次 spheres 写(声明归属由生成函数 rng 掷,批内
+        # 不预分);声明矿呈现无「首帧判定」状态——挂接入口出队即消费,
+        # 后续呈现自然无声明矿。备战档呈现均检查 pending 当前 plane 条目
+        # (含普通 battle 备战:有条目 → 声明矿点单独呈现,子态同为
+        # PREP_SUB_ORE——面板在场语义与奖励节点一致)。
+        panel = reward_ore_points() if kind == 'reward' else ()
+        points = panel + self._plane_start_declared_points(plane, len(panel))
+        # spheres 写一律过挂接入口(单一写径,禁第二写径):非 ore 备战
+        # 呈现空读照写 count=0 亦过入口——空批零生成、清理上节点残留
+        # 矿身份(容差配对在 sim 为恒等,合成坐标恒稳)。
+        report_spheres_observed(
+            self.gs, OreSight(
                 count=len(points),
                 colors=tuple(dict.fromkeys(p[0] for p in points)),
                 points=points),
-                evidence=sim_evidence(f'ores:p{plane}r{r}'),
-                sig=obs_sig(group_id='sim:ores'))
-            self._screen = SCREEN_PREP
-            self._sub = PREP_SUB_ORE
-            return
+            obs_sig=obs_sig(group_id='sim:ores'),
+            hook_sig=logic_sig('sim:ores'),
+            evidence=sim_evidence(f'ores:p{plane}r{r}'))
         self._screen = SCREEN_PREP
-        self._sub = ''
+        self._sub = PREP_SUB_ORE if points else ''
+
+    def _plane_start_declared_points(
+            self, plane: int,
+            panel_count: int) -> tuple[tuple[str, int, int, int], ...]:
+        """位面开局声明矿点列(``ore_declared_pending`` 当前 plane 有条目
+        → 恰 1 点;无 → 空元组)。
+
+        - 坐标 = **面板序续接** ``(10*(N+1), 10)``(N = 同批面板点数;
+          位面首节点为奖励节点时 8 面板矿 + 声明矿 = 第 9 点 (90,10),
+          P2 首节点为战斗节点时 = 首点 (10,10))——**禁独立从 1 起号**:
+          同批撞键会被点击载荷 ``by_xy`` 求交去重吞点,唯一性由续接
+          构造保证;
+        - 色档 '金' 为占位(呈现色未实采,披露键
+          :data:`ORE_PLANE_START_PENDING` 实机首遇校);r = 10 与面板
+          矿同;条目数 ≤ 1(入队电平的 (env, plane) 双守卫保证)。
+        """
+        pending = self.gs.ore_declared_pending.value or ()
+        if not any(e[1] == plane for e in pending):
+            return ()
+        return (('金', 10 * (panel_count + 1), 10, 10),)
+
+    def _apply_env_plane_start(self, plane: int) -> None:
+        """位面开局环境发放分道(详设 ore-sim-plane-start §1;节点窗
+        起点调用)。
+
+        - env ∈ :data:`ENV_ORE_GRANTS` → **声明入队**:经 kernel 同一
+          电平规则函数 :func:`check_ore_declared_level`(入队幂等守卫 =
+          pending/done 双查,``_window_begun_ord`` 窗口幂等降为冗余
+          保险;顺手清位面过渡过期条目,evidence
+          ``ore_declared_expired#p{old}`` 留痕)——**金不再直发**,世界
+          面的金在点击声明矿兑现时入账(策略面估值消费
+          ``ENV_ECONOMY`` 数值不变,双源同值校验构建期闭合);sig =
+          ``logic_sig('sim:env')``(与 ``discharge_due_item_grants``
+          同组同窗,kernel 确定效果直写 write_logic 先例);
+        - env ∉ 且 ``gold_per_plane_start`` 非空 → 保留直发(非矿形态
+          位面开局金的预留通道,现无此形态环境)。
+        """
+        env_name = normalize_invest_name(str(self.gs.active_env.value or ''))
+        if env_name in ENV_ORE_GRANTS:
+            check_ore_declared_level(self.gs, hook_sig=logic_sig('sim:env'))
+            return
+        self._apply_env_plane_gold(plane)
 
     def _apply_env_plane_gold(self, plane: int) -> None:
-        """环境结构化经济通道(M02:已结构化子集直接生效——位面开局金
-        通道;其余通道挂披露,效果批建模)。"""
+        """环境结构化经济通道·直发腿(M02:已结构化子集直接生效——位面
+        开局金通道;**非声明矿环境的预留通道**,声明矿环境已在上游
+        :meth:`_apply_env_plane_start` 分道绕行)。"""
         env_name = normalize_invest_name(str(self.gs.active_env.value or ''))
         env = INVESTMENT_ENVS.get(env_name)
         eff = env.economy if env is not None else None
