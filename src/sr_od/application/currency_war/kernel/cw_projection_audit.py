@@ -253,6 +253,12 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_PROCESS_ONLY,
         basis='声明已消费标记(幂等守卫第二腿,随快照存续),无观察读端;'
               '唯一逻辑写端 = cw_ore_channel(消费追加/位面过渡过期清理)'),
+    'env_grants_done': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='环境条件发放已发标记(幂等守卫,元素 (env, 条件键),局内'
+              '恒存随快照存续),无观察读端——发放登记事实非观察投影(同族'
+              '行先例 = ore_declared_done);唯一逻辑写端 = cw_env_grants.'
+              'check_env_streak_grants(发放刻追加)'),
     # —— 交互状态 ——
     'prep_substate': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,

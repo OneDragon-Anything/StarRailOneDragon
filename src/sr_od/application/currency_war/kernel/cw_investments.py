@@ -39,6 +39,9 @@ import re
 from dataclasses import dataclass, fields, replace
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER
+from sr_od.application.currency_war.data.cw_equipment_data import (
+    EQUIPMENTS,
+)
 from sr_od.application.currency_war.data.cw_invest_data import (
     PLAZA_AUGMENTS,
     PLAZA_PORTALS,
@@ -1777,3 +1780,45 @@ def _validate_env_pool_rewrite() -> None:
 
 
 _validate_env_pool_rewrite()
+
+
+# ===== 环境连胜触发发放注册表(迭代 2026-10-10-env-conditional-grants;
+# details/env-conditional-grant.md §2;白名单制)=====
+# 「条件达成的世界发放」首例登记:键 = 环境规范名,值 = (连胜阈值, 发放装备名)。
+# 表外环境一律无条目,禁从效果原文自动猜装(ENV_ECONOMY/ENV_GIFTS 同款纪律)。
+# 消费面 = kernel/cw_env_grants.check_env_streak_grants(触发检查单一源,
+# live/sim 结算接线都调它);表只收「连胜触发器」形状,升级类条件卡
+# (钻石商人等)触发点各不相同,各建各表不并入本表(总纲「明确不解决」)。
+ENV_STREAK_GRANTS: dict[str, tuple[int, str]] = {
+    # 本局首次 5 连胜 → 财富宝钻(id 104 原文直读,cw_invest_data PlazaPortal('104'))
+    '深井角斗场': (5, '财富宝钻'),
+}
+
+
+def _validate_env_streak_grants() -> None:
+    """ENV_STREAK_GRANTS 构建校验(import 即炸;沿 _validate_env_ore_grants
+    先例,details/env-conditional-grant.md §2):
+
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
+    ② 装备名漂移:发放装备必须在 EQUIPMENTS(版本改名不静默——发放写出
+    库存里不存在的名字 = 假身份混进 equips);
+    ③ 阈值形:连胜阈值 ≥ 1 的 int(≤0 = 条件永真,使「本局首次」一次性
+    守卫在任何结算即刻触发,登记笔误前置可见)。
+    """
+    orphans = [n for n in ENV_STREAK_GRANTS if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(
+            f"ENV_STREAK_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
+    for _n, (_threshold, _equip) in ENV_STREAK_GRANTS.items():
+        if _equip not in EQUIPMENTS:
+            raise ValueError(
+                f"ENV_STREAK_GRANTS 装备名漂移({_n!r} 注册表无此装备,"
+                f"版本改名?):{_equip!r}")
+        if not isinstance(_threshold, int) or isinstance(_threshold, bool) \
+                or _threshold < 1:
+            raise ValueError(
+                f"ENV_STREAK_GRANTS 阈值形({_n!r}):须为 ≥1 的 int,"
+                f"现值 {_threshold!r}")
+
+
+_validate_env_streak_grants()

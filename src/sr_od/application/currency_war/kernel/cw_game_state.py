@@ -237,6 +237,12 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # 电平入队/消费/过期三口,详设 ore-reward-channel §5)
     'ore_declared_done': 1,     # 声明已消费标记(同迭代;幂等守卫第二腿,
                                 # 元素 (env, plane),位面过渡随 pending 同清理)
+    'env_grants_done': 1,       # 环境条件发放已发标记(迭代
+                                # 2026-10-10-env-conditional-grants;元素
+                                # (env, 条件键),发放刻追加局内恒存,详设
+                                # env-conditional-grant §1)。独立键版本 1
+                                # 不并入他域 bump——他域本体未变,先例 =
+                                # ore_rewards 不并入 spheres
     'substate': 1,          # 分类子态/事件浮层(§3.2.17/§3.6.1)
     'shop': 2,              # 商店开态 payload(§3.3;域版本 2 = ShopPayload 扩
                             # 牌行点击坐标字段 card_points(选择坐标观察上报,
@@ -2013,6 +2019,9 @@ def seed_opening_state(gs: GameState) -> None:
     _seed(gs.ore_rewards, {})
     _seed(gs.ore_declared_pending, ())
     _seed(gs.ore_declared_done, ())
+    # 环境条件发放已发标记(空底座,同上种子族先例;开局未发任何条件
+    # 发放,「本局首次」守卫的初始真值 = 空集)
+    _seed(gs.env_grants_done, ())
     # —— 经济与成长(gold=3 对齐 sim 开局模型 M01 的 OPENING_GOLD;
     # level=3 与升级表键一致,deploy_cap=level+财富宝钻数、开局宝钻 0;
     # xp 需求查升级表单一源;hp 取遥测实证基线常量)——
@@ -2388,6 +2397,20 @@ class GameState:
     # 消费刻与 pending 移除同一逻辑步追加;位面过渡随 pending 同清理。
     # 恢复局随快照存续 = 离线回放不重发声明。开局种子底座 = ()(A 类)。
     ore_declared_done: Field[tuple[tuple[str, int], ...]] = field(
+        default_factory=Field)
+
+    # [索引定义] env_grants_done = 环境条件发放已发标记(逻辑态;迭代
+    # 2026-10-10-env-conditional-grants,details/env-conditional-grant.md
+    # §1):元素 = (env 投资环境规范名, 条件键具名触发器,当前唯一取值
+    # 'first_streak' = 本局首次连胜达成)。取值时机 = 发放刻追加
+    # (check_env_streak_grants 两写第二笔),**局内恒存无过期清理**——
+    # 「本局首次」整局有效,连胜无周期语义(与晶矿 done 的位面过渡过期
+    # 清理不同)。幂等守卫:跨结算重查不重发(结算低频天然幂等友好,
+    # 电平 + done 直写,边沿/op 成员记忆已否定,取舍见详设「关键取舍」)。
+    # 写入端 = cw_env_grants 单一逻辑写端,无观察写端(发放登记事实非
+    # 观察投影;直写先例 = cw_exec_state 金腿 / cw_effect_inventory 退款
+    # 腿)。恢复局随快照存续 = 接管局不重发。开局种子底座 = ()(A 类)。
+    env_grants_done: Field[tuple[tuple[str, str], ...]] = field(
         default_factory=Field)
 
     # —— 交互状态 ——
@@ -3854,7 +3877,7 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
       离线读面非生产写路径);values 键缺位 = 域保持 None(快照只存
       非 None 值的口径往返一致);
     - 复杂域按字段名重建(node/deployed/bench/shop/ore_rewards/
-      ore_declared_pending/ore_declared_done;
+      ore_declared_pending/ore_declared_done/env_grants_done;
       _json_safe 无类型标,恢复表 = 字段名单一源),其余域直透
       (标量/list/dict 形态值);
     - **旧档迁移**(schema 1 → 2):values 携 front_row/back_row 两键而
@@ -3939,6 +3962,11 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
             (str(e[0]), int(e[1]), int(e[2])) for e in d),
         'ore_declared_done': lambda d: tuple(
             (str(e[0]), int(e[1])) for e in d),
+        # 环境条件发放已发标记(迭代 2026-10-10-env-conditional-grants):
+        # tuple 化重建(_json_safe 落快照为 list-of-lists),done 随快照
+        # 存续 = 恢复局不重发(触发函数守卫天然闭合)。
+        'env_grants_done': lambda d: tuple(
+            (str(e[0]), str(e[1])) for e in d),
     }
     for name, raw in values.items():
         target = getattr(gs, name, None)
