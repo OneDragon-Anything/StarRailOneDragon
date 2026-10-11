@@ -4,8 +4,8 @@
 
 - **通道纪律**(依据 cw_game_state.py `write_logic_rand` docstring:落位/细节不可观察的效果走随机态,观察覆盖差异 = 随机效果落地属预期):财富宝钻到达的**库存位置不可观察** → 发放 = `write_logic_rand` 可能世界快照;`equips` 是观察域(owned_equips 识别器读屏覆盖),下一备战帧整表覆盖纠偏——猜错自愈,零持续污染。
 - **触发点代码事实**:streak 真值唯一生产点 = 结算屏 OCR(`parse_streak`「连胜×N」前缀 = 方向,cw_settlement_obs.py)→ 结算覆盖写端 `apply_settlement_cover`(kernel/cw_game_state.py,`gs.observe(gs.streak, streak_after)`),调用方 = operations/cw_screen/cw_screen_battle_wait.py(结算观察回执携带 streak_after);sim 同构 = cw_sim_backend.py 结算路径 `streak_signed_after` → observe。**触发检查挂在两处 streak 落账之后**,不新建观察面。
-- **「本局首次」守卫不能依赖持有状态**:补给/合成(蓝蓝/红红/红蓝 recipes)/其他卡(钻石商人等)都会给财富宝钻——「身上没宝钻」作守卫会误跳。守卫 = done 标记域(状态住 GameState;ore 迭代 R5 教训:op 成员记忆跨环重建伪造状态,禁用)。
-- **回调边界**:deploy_cap/back_layout/diamond_count 的 live 写端 = 观察识别器(逻辑侧禁写,投影审计在册)→ **live 不调回调**;sim 世界事实由 sim 自己写 → 回调 = sim 专用,两个调用点(深井发放后 + 补给宝钻)。
+- **「本局首次」守卫不能依赖持有状态**:补给/合成(蓝蓝/红红/红蓝 recipes)/其他卡(钻石商人等)都会给财富宝钻——「身上没宝钻」作守卫会误跳。守卫 = done 标记域(状态住 GameState;禁用 op 成员记忆——op 每备战环重建,跨环记忆伪造状态;晶矿通道 done 域同形先例 = kernel/cw_ore_channel.py)。
+- **回调边界**:deploy_cap/back_layout/diamond_count 的 live 写端 = 观察识别器(逻辑侧禁写,投影审计在册)→ **live 不调回调**;sim 世界事实由 sim 自己写 → 回调 = sim 专用,唯一调用点 = 深井发放后(supply 不采纳回调,见 §5)。
 - 接口契约引用(总纲 §2):触发检查单一源;登记表三条校验;done 域四件套;发放 write_logic_rand / done write_logic;回调 observe 三写。
 
 ## 方案
@@ -19,12 +19,12 @@ env_grants_done: Field[tuple[tuple[str, str], ...]] = field(default_factory=Fiel
 
 - [索引定义] 元素 `env` = 环境规范名;条件键 = 具名触发器(`'first_streak'`);取值时机 = 发放刻追加,局内恒存(无过期——「本局首次」整局有效,与晶矿 done 的位面过期清理不同:连胜无周期语义)。
 
-**工程面四件**(沿晶矿迭代 T-1 先例,同批交付):
+**工程面四件**(沿晶矿通道先例 = kernel/cw_ore_channel.py 与 cw_game_state.py 三域落地形态,同批交付):
 
 - **开局种子**:`_seed(gs.env_grants_done, ())`;
 - **快照恢复登记**:恢复表 tuple 化重建(`tuple(tuple(e) for e in ...)`);done 随快照存续;
 - **DEFAULT_GS_SCHEMA**:独立键 `env_grants_done: 1`(不并入他域 bump——他域本体未变);
-- **投影审计行**:完备性锁强制新域登记(先例 = 晶矿三域,T-1)。
+- **投影审计行**:完备性锁强制新域登记(先例 = cw_game_state.py 晶矿三域审计行)。
 
 ### 2. 登记表(cw_investments.py)
 
@@ -57,7 +57,7 @@ def check_env_streak_grants(gs, streak_after: int, sig) -> str | None
 
 **无 rng**:随机态指认知通道(落位未知、观察校准),追加位置(尾部)确定,不消耗随机数。
 
-**同窗洗白形态披露**:结算随机态发放后、下一备战帧观察前,若同窗口发生 equips 的 write_logic 写(如补给装备腿整表构造),猜值可能被洗白(逻辑态临时丢失宝钻)——真值仍在游戏世界,下一 equips 观察**整表覆盖**恢复,损失 = 逻辑态临时缺口;频率极低(需同窗结算 5 连胜 + 带钻补给),接受并披露,不设守卫。
+**同窗洗白形态披露(后果 = 安灯停机,显式接受)**:结算随机态发放后,同窗口的确定性 equips 写会把字段来源从 logic_rand 翻成纯 logic——典型 = 补给装备腿(`pick_supply` 读现值追加回写,**任意补给选定都走此腿,不限带钻**)。此后下一 heavy 帧观察对 logic 源**真失配**:缺陷行 + `[cw!]` 告警 + 安灯停机 flag(生产 = 截图留证 + 停机),值由观察采新。深井 5 连胜结算的下一节点凡为补给即触发洗白,频率不低;**告警仅在猜值与实读不符时发生**(OCR 假阳等),猜值正确则观察值与逻辑值一致、无失配。显式接受:发生时按安灯现场处理,续跑即愈(done 已标记不重发,幻影值已被观察覆盖)。
 
 **恢复局边界披露**:接管局 done 为空、active_env 非空 → 首个 streak ≥ 阈值的结算触发发放 = 最佳猜测;live equips 整表覆盖纠偏零持续污染,sim 无接管局。接受并披露。
 
@@ -66,11 +66,11 @@ def check_env_streak_grants(gs, streak_after: int, sig) -> str | None
 ### 4. 宝钻获得回调(同模块)
 
 ```python
-def on_diamond_acquired(gs, equip_name: str, sig) -> None
+def on_diamond_acquired(gs, equip_name: str) -> None
 ```
 
 - `equip_name != '财富宝钻'` → 直接返回(cap 加成语义只属财富宝钻,官方条目「拥有宝钻可以使团队规模上限 +1」= cw_equipment_data 财富宝钻行;红/蓝钻是补给视觉族同框,cap 语义无涉——依据 cw_obs_core `DIAMOND_EQUIP_NAMES` 仅视觉判定族);
-- 三写(全部 `gs.observe`,sim 世界事实先例 = `_on_supply_picked` 的 diamond_count 写):
+- 三写全部 `gs.observe`,**sig 由回调内部自构 obs 族**(如 `obs_sig(group_id='sim:env-diamond')`),入参不传 sig——observe 渠道校验只收 obs 族,复用调用方 logic 族入参首笔即炸;内构先例 = `_on_supply_picked` 内构 `obs_sig(group_id='sim:diamond')`:
   1. `diamond_count` 现值 + 1(宝钻族均计数);
   2. `deploy_cap` = `level_of(gs)` + equips 现值中 `'财富宝钻'` 计数(拥有即算、可叠加,D-53 实测口径);
   3. `back_layout` = `min(9, 现值 + 1)`(值域 6-9;现值 None → 以机制基线 6 起算,种子后不可达防御);
@@ -79,7 +79,7 @@ def on_diamond_acquired(gs, equip_name: str, sig) -> None
 ### 5. 接线(live 与 sim)
 
 - **live**:battle_wait 结算覆盖调用点之后(`apply_settlement_cover` 以非 None streak_after 调用时),`check_env_streak_grants(gs, streak_after, sig)`;sig = logic_hook 族,group `'battle-wait:env-grant'`,actor `CwScreenBattleWait`;返回值忽略(live 无回调)。**streak_after 为 None 的结算不调**(覆盖写端本就跳过 streak 观察,口径一致)。
-- **sim**:结算路径 streak observe 之后,`check_env_streak_grants(gs, signed, sig)`;返回非 None → `on_diamond_acquired(gs, 返回名, sig)`;**sig 写死单形态 = `logic_sig('sim:env')`**(触发函数两写均为 logic 渠道,obs_sig 形态进 write_logic_rand 会炸渠道族校验——禁 obs_sig)。
+- **sim**:结算路径 streak observe 之后,`check_env_streak_grants(gs, signed, sig)`;返回非 None → `on_diamond_acquired(gs, 返回名)`(回调内构 obs 族 sig,见 §4);**触发函数两写 sig 写死单形态 = `logic_sig('sim:env')`**(均为 logic 渠道,obs_sig 形态进 write_logic_rand 会炸渠道族校验——禁 obs_sig)。
 - **补给宝钻不采纳回调**:补给带钻选项的钻类型未建模(sim 聚合计数 `diamond_count`,不分红/蓝/财富;`_on_supply_picked` 现行为 = 仅写 diamond_count),红/蓝钻无 cap 语义,硬按财富宝钻回调三写 = 保真倒退——**supply 路径零改动**,钻类型建模另批(总纲「明确不解决」)。
 
 ### 6. 测试面摘要(细则归 landing)

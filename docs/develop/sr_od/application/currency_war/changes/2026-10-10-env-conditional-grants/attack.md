@@ -1,107 +1,83 @@
-# 环境条件发放 迭代设计·对抗审查报告
+# 环境条件发放 迭代设计·对抗审查报告(第二轮·定点复审)
 
-> 审查对象:本目录 README.md / design.md / landing.md / details/env-conditional-grant.md。
-> 审查规范:docs/develop/harness/iteration-design.md §5(写作硬规则)、§7(三核)。
-> 对照基准:全部「依据」按符号/内容直查代码核验(不依赖文档所写行号);审查轮次内共核验 25 组依据,逐条见 §三。
+> 审查对象:本目录 README.md / design.md / landing.md / details/env-conditional-grant.md 当前修订稿。
+> 核验基准:第一轮报告(本文件上一版)F1–F11 逐条;代码按符号直查,不依赖文档所写行号。本轮新核验 19 组代码事实,出处逐条内嵌。
+> 复审范围:修复核验(逐条对码)+ 修订交互快攻(仅本轮触碰段落)+ 跨文档三方同步(design §2 第 5 条 ↔ details §5 ↔ landing 3.3)。
 
 ## 一、结论
 
-**有条件通过**——主链(结算屏触发点 / write_logic_rand 随机态发放 / done 一次性守卫 / live 零回调 / 触发检查 live+sim 单一 kernel 源)与用户六条裁定逐条对齐,且关键代码事实全部核验属实;但 **§5「补给宝钻采纳」的 deploy_cap 腿按现文惰性,「缺口闭合」自证不成立**(最重发现),另有一处可达的随机态「洗白→安灯」风险链、三钻身份依据失真、引用锚与 sig 形态两处规范违例——修订 details §5(供给采纳段+sig 形态)与 landing 引用锚后可定稿,3.1/3.2 两阶段现有文本已基本可开工。
+**有条件通过(第二轮)——未达定稿**。第一轮 11 项发现中 7 项完全闭合(F1 主体/F3/F4/F5/L1/L2/L4/L5/L6,详见 §二),高危的 F1 结构性修复成立:supply 不采纳回调后「恒惰性腿」消失,深井发放路径 cap 公式经三向追问自洽。但修订只在自己触碰的段落内自洽,**三处中危残留跨出了触碰面**:
 
-## 二、发现清单
+- **N1【中】**:F1 修复的旧口径三处残留——design §0 迭代目标行、§1「解决到哪」、details「问题与约束·回调边界」仍写「sim 深井发放与补给宝钻两处调用 / 两个调用点 / 补给缺口顺手闭合」,与 §2 第 5 条「supply 路径零改动」直接矛盾(违反 iteration-design §5 规则 4「修订后全量同步复查……禁只改触碰段」,其「防的事故」原文即此形态:「行为变化申报与派工面残留旧口径」);
+- **N2【中】**:F2 新增「同窗洗白形态披露」段的**后果失真**——洗白后下一 equips 观察走的是 logic 源**真失配 → 安灯停机**(生产 = 留证 + 停机 flag),不是「临时缺口、整表覆盖自愈」;且「频率极低(需带钻补给)」低估:任意补给选定都写 equips,不限带钻。「不设守卫、接受披露」的处置建立在失真后果上,不自洽;
+- **N3【中】**:回调三写 observe 的 sig 形态与 sim 单 sig 接线**矛盾**——`observe()` 渠道校验只收 obs 族,而接线写死 `logic_sig('sim:env')` 并让回调复用入参 sig,首笔 observe 即 ValueError(F5 同类,修订交互新面);
+- **N4【低】**:跨迭代过程号清除不全(「ore 迭代 R5 教训」×1、T-1×3、T-5×1)。
 
-### F1【高】§5「补给宝钻采纳」的回调 deploy_cap 腿对补给路径恒惰性——「缺口闭合」自证不成立
+四项均为定点文本修法,无结构返工;修订后免第三轮全量再审,定点复核即定稿(iteration-design §6:定稿门槛 = 攻击收敛 + 试读过,「带开放问题的定稿」不存在,故本轮不放行定稿)。
 
-- **问题**:回调公式 `deploy_cap = level_of(gs) + equips 现值中 '财富宝钻' 计数`(details §4.2),但 sim 侧补给宝钻从不进 `gs.equips`——`_on_supply_picked` 带钻分支只写 `diamond_count`(sim/cw_sim_backend.py:1093-1101),带钻选项的 equip 是普通装备件、钻石是**额外**授予(test_cw_sim_backend.py:851-881 实证:上报写 `pick.equip` 入栏,钻石走 `_on_supply_picked` 计数)。于是把裸写替换为回调后:diamond_count +1 ✓、back_layout +1 ✓、**deploy_cap = level + 0 = 不涨**——用户裁定 3 点名要闭合的两腿缺口的 cap 腿原样留着。更糟的是双存域域内关系破裂:back_layout +1 而 deploy_cap 不动,违背容器在册口径「理论关系 back_layout ≈ 6+(cap−level) 仅域内成立」(kernel/cw_game_state.py deploy_cap 字段注)。landing 3.3 判据「supply 采纳后:带钻补给局三域同步(缺口闭合的行为面)」按现文不可达。
-- **证据**:cw_sim_backend.py:1093-1101(现状只写 diamond_count);details §4.2(cap 公式按 equips 计数);details §5「三写生效,sim 上限保真缺口闭合」;test_cw_sim_backend.py:881(`diamond_count == (1 if diamond else 0)`,equip 另行走上报腿)。
-- **建议修法**:二选一并写死进 details §5:①供给采纳时同时把 `'财富宝钻'` 追加入 `gs.equips`(使 cap 公式可计;需申报为 sim 内部口径并与 live 侧行为对齐说明);②回调 cap 公式改按 `diamond_count` 现值计数(「拥有」= diamond_count 台账),同时深井路径刚 append 过 equips 不受影响。任选其一都须连带处理 F3(三钻身份)。
+## 二、修复核验表(对照第一轮 F1–F11 逐条)
 
-### F2【中】随机态发放的猜值可被同窗确定性写「洗白」成 logic 源 → 观察失配走安灯链,与「预期内非 bug」申报冲突
-
-- **问题**:发放把 `equips` 写成 logic_rand(猜值含幻影财富宝钻),设计申报「观察覆盖差异 = 随机效果落地,预期内非 bug——零持续污染」。但结算完成白名单含补给/遭遇/投资策略(cw_screen_battle_wait.py:86-92),**该结算后、下一 heavy 观察前的窗口**内任何确定性 equips 写会把猜值吸收进 logic 源:补给选中带钻选项(策略第 1 级就偏好带钻,mandate_v1/supply.py:8-9、114-116)→ `report_action_pick_supply_param` 装备腿 `write_logic(gs.equips, 猜值+[item])`(cw_action_report/pick_supply.py:101-104)→ 字段来源翻 logic → 下一备战帧观察读到真实装备集(幻影钻名/件序不符)→ 失配按 **logic 源三分流 → 安灯停机**(observe() 的 `target.source == 'logic'` 分支,cw_game_state.py:2803-2814;EXEMPT_REGISTRY 无 equips 在册豁免,cw_mismatch_policy.py:63)。单局一次性(深井只发一次)但可达,且后果是无人值守 run 停机。窗口内**读**猜值的面(flow.py:760、mandate supply.py:164、pick_supply.py:101)同未披露。
-- **证据**:write_logic_rand docstring 的消费纪律是软约束(「策略器消费前必须重观察」,无硬闸);observe() 失配路由按**写时刻来源**定谳;pick_supply 装备腿恒 write_logic。
-- **建议修法**:details 补窗口边界披露段(晶矿通道对每条边界逐条披露,本设计缺失),并三选一给处置:①申报接受 + 把 `env_grant` 前缀登记进失配豁免(豁免 ≠ 消失,留证照落);②发放写改在下一 heavy 观察前夜执行(违背裁定触发点,不推荐);③给触发函数追加「同窗已有确定性 equips 写则放弃发放下结算重试」的次序守卫。至少要把「读猜值消费面清单」写进披露。
-
-### F3【中】「补给宝钻即财富宝钻(带钻选项语义)」依据失真:带钻选项 = 三钻之一,红/蓝钻无 cap 语义
-
-- **问题**:设计把 sim 供给采纳硬编码为 `on_diamond_acquired(gs, '财富宝钻', sig)`,引「带钻选项语义」为据;而在册观察契约是 `has_diamond:装备位带三钻之一(红钻/蓝钻/财富宝钻)`(kernel/cw_events.py:74;cw_node_obs.py:227「装备名精确匹配三钻」;cw_obs_core.py:50 `DIAMOND_EQUIP_NAMES = {红钻, 蓝钻, 财富宝钻}`),红钻/蓝钻官方条目无团队上限语义(data/cw_equipment_data.py:64-65「用于合成…星徽」)。三钻真实分布未定(U24 披露键 `SUPPLY_DIAMOND_SLOT_PENDING` 在册,cw_sim_backend.py:521)——现文等于让 sim 对红/蓝钻补给也 back_layout+1,是**保真度倒退**,与 landing 3.3「sim 行为变化 = 保真度修复」方向相反。landing 判据「宝钻裁决只认财富宝钻」在硬编码实参下永真,不构成可验收判据。
-- **建议修法**:details §5 明示「sim 一律按财富宝钻建模,真实分布 U24 未定」的假设并挂 SUPPLY_DIAMOND_SLOT_PENDING 披露键(或采样三钻身份);landing 3.3 该判据改为可证伪形态(如断言 evidence/produced_by 通道,或披露键断言)。
-
-### F4【中】landing 引用锚「ore-conditional」不存在(§5 硬规则 4 引用锚存在性违例)
-
-- **问题**:landing 3.1「行为对照 ore-conditional §1–§4」、3.3「行为对照 ore-conditional §5 sim 部分」——迭代内不存在任何 ore-conditional 文档,本迭代的详设是 details/env-conditional-grant.md;章节号序列与该详设吻合,系改名/复制残留。这正是 §5 规则 4「全量同步复查:逐一核设计引用的每个符号/路径存在性」要拦的形态。
-- **建议修法**:两处改指 `details/env-conditional-grant.md §1–§4 / §5`。
-
-### F5【中】sim 接线 sig 形态双表述歧义,选错即渠道族校验炸、sim 局崩(实现者无需再设计违例)
-
-- **问题**:details §5「sig = `obs_sig(group_id='sim:env')` / `logic_sig('sim:env')` 形态沿 3.3 晶矿先例(挂接/登记分通道)」——触发函数**只有一个 sig 参**且两笔写(write_logic_rand + write_logic)全在 logic 族(cw_game_state.py:3058/3095 校验),`obs_sig` 是 family='obs'(sim/cw_sim_base.py:30-33)传进去即 ValueError;晶矿先例的双 sig 是因为它还有 spheres 的 observe 写,本函数没有。`_resolve_battle` 无 try 包裹 → 异常直接炸穿 sim run。实现者面对双表述必须自行拍板(违反停手令前提)。
-- **建议修法**:写死 sim 传 `logic_sig(group_id='sim:env')` 单 sig,删「obs_sig/挂接/登记分通道」句;live 侧 `logic_hook` 族表述正确保留(先例 = cw_screen_prep.py:136-137 `_ORE_HOOK_SIG`)。
-
-### F6【低】触发函数 done 现值 None 防御缺失
-
-- **问题**:伪码 `(env, 'first_streak') ∈ env_grants_done` 与「现值 + ((env,'first_streak'),)」未防 `value=None`。生产双端都种子化(实机经 game_state_of;**sim 在 `__post_init__` 显式 `seed_opening_state`**,cw_sim_backend.py:776-780),但测试直构容器与旧档恢复(restore 对快照缺键域保持 None,cw_game_state.py:3854)可达,`None + tuple` = TypeError。晶矿先例同位有 `tuple(gs.ore_declared_done.value or ())` 防御(cw_ore_channel.py:168、239-240),本设计引用其形态却未带防御。
-- **建议修法**:伪码补 `or ()`,与先例同形;landing 3.1 判据「回调三写含…None 防御」扩为「触发函数与回调全部现值读口的 None 防御」。
-
-### F7【低】design.md §0 状态「草案」与 README「对抗审中」不同步
-
-- **问题**:对抗审已启动(本报告即其产物),README 进度行已写「对抗审中」,design.md §0 仍「草案」。硬规则 4 全量反查应同步两处。
-- **建议修法**:design.md §0 状态改「对抗审中」(定稿时再改「定稿」)。
-
-### F8【低】跨迭代过程号引用寿命错配(R5/R6/「3.3 晶矿先例」)
-
-- **问题**:details「晶矿迭代 R5/R6 教训」「ore 迭代 R5 教训」、landing「防 ore 迭代 R5 式假绿」、details §5「3.3 晶矿先例」——指向**兄弟 changes/ 迭代的攻击报告轮次号与 landing 阶段号**。changes/ 会不定期删减,失锚后这些引用不可重建(AGENTS.md §8「引用必须是持久索引」同判;iteration-design §1 引用寿命分层:跨迭代工件引用寿命 = 两迭代寿命的 min,不满足本迭代的可读性承诺)。教训语义本身已内联复述,引用只是装饰。
-- **建议修法**:R 号删除,改持久指针(「晶矿声明通道 done 域落地形态见 kernel/cw_ore_channel.py」)或纯语义描述(内联句已够)。
-
-### F9【低】关键取舍「获得链原语面向确定性写」依据失真
-
-- **问题**:取舍称「获得链的装备获得原语面向『获得时点确定的发放』(确定性写)」——`gain_equipment` 带 `rand: bool` 必参(cw_gain_chain.py:517、531 `_select_write(gs, rand)`),rand=True 时其写行(`list(inv) + [item]` 经 write_logic_rand)与本设计的发放写**完全同形**(gain-chain.md §2.3/§5 在册)。结论(独立写)仍可成立,但真实理由是另两条:done 与发放的原子内聚(同 sig 相邻两笔)+ 装备获得后果枚举不含宝钻语义(需另加分支,与回调重复)。依据错 = §5 规则 1 的攻击目标。
-- **建议修法**:取舍段改写为上述真实理由,删「确定性写」前提句。
-
-### F10【低】live OCR 假阳方向的假发放会永久占据一次性(披露缺)
-
-- **问题**:`parse_streak` 假阳(如连败×5 的「败」字漏读 → +5)会触发假发放;equips 观察能纠偏**值**(幻影钻被整表覆盖掉),但 done 标记无撤销腿 → 真 5 连胜在本局不再补发。一次性守卫不可逆是该设计固有属性,可与接管局披露并句披露即可,现文未提。
-- **建议修法**:details「恢复局边界披露」段并句:「OCR 方向假阳同理,假发放占据一次性、值由观察纠偏,接受并披露」。
-
-### F11【低】孤儿键校验族第 6 次逐表复写(治本核·跨件半问)
-
-- **问题**:`_validate_env_economy` / `_validate_env_ore_grants` / `_validate_env_gifts` / `_validate_strategy_grants` / `_validate_env_pool_rewrite` 之后,ENV_STREAK_GRANTS 再写第 6 份「孤儿键 + 格式」校验——同族第 N 次出现按根源两问应问「是否同一个更高层架构根」。注意:用户否定的是「统一**条件框架**」(触发接线万能通道),**不覆盖**校验助手提取——两者不冲突。
-- **建议修法**:本迭代可照旧逐表写(与姊妹迭代同形优先);在「关键取舍」或正本动机段留一句「校验骨架重复 6 份,提取共用 `_validate_env_table(表, 键集, 值检)` 助手挂后续批」,给根治排期入口即可;不构成立项阻塞。
-
-## 三、依据核验表(25 组,逐条对码)
-
-| # | 设计主张 | 核验结果 | 出处(符号/内容定位) |
+| 编号 | 修订主张 | 核验结果 | 核验依据(符号/内容定位) |
 |---|---|---|---|
-| 1 | 深井角斗场(104)「本局首次达成5连胜时,获得【财富宝钻】」原文 | ✅ 逐字属实 | data/cw_invest_data.py `PlazaPortal(id='104')` |
-| 2 | `INVESTMENT_ENVS` 含键『深井角斗场』(登记表键合法) | ✅ 键 = PLAZA_PORTALS.name 构建 | kernel/cw_investments.py `_build_envs`/`INVESTMENT_ENVS` |
-| 3 | `_validate_env_economy` / `ENV_ORE_GRANTS` import 即炸先例(3.1 姊妹迭代已落地) | ✅ 在册,含孤儿键+双源同步两腿 | cw_investments.py `ENV_ORE_GRANTS`/`_validate_env_ore_grants`(模块级直调) |
-| 4 | 结算覆盖写端 `apply_settlement_cover` 做 `gs.observe(gs.streak, streak_after)`,None 跳写 | ✅ 属实;sig 固定 obs/CwScreenBattleWait | kernel/cw_game_state.py `apply_settlement_cover` |
-| 5 | streak 真值唯一生产点 = `parse_streak`,前缀定方向(连胜+/连败−),失读 None | ✅ 属实 | obs/cw_settlement_obs.py `parse_streak` |
-| 6 | live 唯一接线点可行:battle_wait 结算块,`streak_after` 与 gs 同域可得 | ✅ `apply_settlement_cover` 全仓唯一生产调用点;`_obs.streak`/`gs_of_ctx` 在作用域内;外层 try 兜底不阻塞 | operations/cw_screen/cw_screen_battle_wait.py 结算覆盖段 |
-| 7 | sim 结算 streak 写点 `_resolve_battle` → observe(signed),幂等守卫在册 | ✅ `_settled_key` 键控;死亡早退不触发(败向 streak,无冲突) | sim/cw_sim_backend.py `_resolve_battle` |
-| 8 | sim 现状缺口:补给宝钻只写 diamond_count | ✅ 属实,含 `or 0` 防御 | cw_sim_backend.py `_on_supply_picked` |
-| 9 | sim 容器种子化(有 `or ()` 级前提) | ✅ `__post_init__` 显式 `seed_opening_state` + diamond_count observe 0 | cw_sim_backend.py `__post_init__` |
-| 10 | `max_units_of` = cap(≥level 采信)封顶 4+back_layout,消费面广 | ✅ 公式属实;20+ 消费点(部署/板满/升级判据) | cw_game_state.py `max_units_of` 及 grep 消费面 |
-| 11 | equips/deploy_cap 观察写端整表覆盖语义 | ✅ equips = 备战 heavy 整表 observe;deploy_cap = 双帧一致门 observe,失读 carry | operations/cw_screen/cw_screen_prep.py 装备段;obs/cw_observation.py 'deploy_cap' 写端 |
-| 12 | `write_logic_rand` 通道纪律(随机落地预期内、消费前重观察) | ✅ docstring 属实(纪律为软约束,见 F2) | cw_game_state.py `write_logic_rand` |
-| 13 | done 直写先例 = cw_exec_state 金腿 / cw_effect_inventory 退款腿 | ✅ 两处 `write_logic` 在册 | cw_exec_state.py 金腿;cw_effect_inventory.py 退款腿 |
-| 14 | 晶矿 done 域四件套先例(种子/恢复 tuple 重建/独立 schema 键/审计行) | ✅ 四件全在册;恢复不登记则 tuple→list 静默漂移的判断正确 | cw_game_state.py 种子三域/DEFAULT_GS_SCHEMA 三键/`restore_state_snapshot.rebuild`;cw_projection_audit.py 三行 |
-| 15 | 财富宝钻官方条目(cap+1 拥有即算可叠加、每3备战阶段+1金、合成 recipes 三路) | ✅ 逐字属实 | data/cw_equipment_data.py `'财富宝钻'` 行 |
-| 16 | 红/蓝钻 cap 语义无涉;`DIAMOND_EQUIP_NAMES` = 视觉判定族 | ✅ 条目无 cap 文本;集合 = {红钻,蓝钻,财富宝钻}(同时反证 F3:带钻≠财富宝钻) | data/cw_equipment_data.py 红钻/蓝钻行;kernel/cw_obs_core.py `DIAMOND_EQUIP_NAMES` |
-| 17 | 宝钻金面效果已注册、发放路径零登记义务 | ✅ `equip_diamond_phase_gold` 纯算术按 worn 计数,无登记面 | kernel/cw_effect_inventory.py `equip_diamond_phase_gold` |
-| 18 | 「同 `roll_ore_reward` live/sim 单一正确性来源」先例引用 | ✅ live(collect_ore 腿)与 sim(generate_ore_rewards)同函数 | kernel/cw_ore_reward.py `roll_ore_reward`;两调用点 |
-| 19 | 既有发放通道:ENV_GIFTS items_immediate/items_scheduled | ✅ 在册 | cw_investments.py `GiftGrant`/`ENV_GIFTS` |
-| 20 | 「D-53 实测口径」持久在案 | ✅ D-53 = cap 读链校准编号,多处引用(5 fixture 核正、局38 r2 cap5/lv3) | obs/cw_observation.py D-53 各处 |
-| 21 | live logic_hook 族 sig 先例(group 'prep:ore-channel' 形态) | ✅ `_ORE_HOOK_SIG` 同形在册 | cw_screen_prep.py `_ORE_HOOK_SIG` + `check_ore_declared_level` 接线 |
-| 22 | 正本更新清单五个路径真实存在 | ✅ 五路径全存在 | game_state/fields.md、game_state/gain-chain.md、flow/projection_contract.md、sim/sim-wiring.md、docs/game/currency_war/research/invest_effects.md |
-| 23 | landing 结构合规(阶段七件齐、首节常规检查自包含、末阶段正本更新、README 合模板) | ✅ 形齐(引用锚错名见 F4,状态不同步见 F7) | landing.md 各阶段;README.md |
-| 24 | 测试先例与技法可得(test_cw_ore_channel / opening_seed / sim_backend 在册;import 即炸测试 = monkeypatch+直调 validator) | ✅ 在册且技法有先例 | sr-od-test/test/sr_od/application/currency_war/ 三文件;test_cw_ore_channel.py 校验段 |
-| 25 | 深井角斗场现状零触发建模 | ✅ 全 src 无 104/深井触发逻辑(仅数据行与策略 stance) | grep 全量 |
+| **F1**【高】 | supply 不采纳回调、路径零改动;「明确不解决」新增钻类型未建模条目 | **主体闭合,残留 3 处旧口径 → N1**。①②③ 分见下三行 | — |
+| F1-① 新前提与代码事实一致性 | 「supply 带钻选项的钻类型未建模(聚合计数,可能红/蓝/财富任一)」 | ✅ **属实** | 选项侧 `has_diamond: bool` 无类型位(test_cw_sim_backend.py:870 `any(o.has_diamond)`、:872-873 `chosen_supply = ('', equip, has_diamond)`);`_on_supply_picked` 仅 `int(diamond_count.value or 0) + 1` 的 observe 写、零类型判别,且 `disclosures.setdefault(SUPPLY_DIAMOND_SLOT_PENDING, 'uniform_slot')`(sim/cw_sim_backend.py:1093-1103,披露键 :522)——「聚合计数、类型未建模」与代码逐字吻合 |
+| F1-② 恒惰性腿是否结构性消失 | 不采纳后「cap 腿对补给路径恒惰性」不再存在 | ✅ **结构性消失**。旧 F1 的成立前提是「supply 调回调但 cap 公式读不到宝钻」;现文回调唯一调用点 = 深井发放路径,该路径发放刻刚把宝钻 append 进 equips,cap 腿必然可计——不存在任何「调了回调但公式读零」的路径。landing 3.3 判据同步反转(「supply 路径零行为变化:diamond_count +1,deploy_cap/back_layout 不变」),可证伪且与代码现状一致 | details §5 不采纳段(:83);design §2 第 5 条(:34)与契约·回调边界(:43「仅深井发放路径调用」);landing 3.3(:38、:46) |
+| F1-③ 深井路径 cap 公式自洽性(R5 式追问) | 先 write_logic_rand append 宝钻 → 回调读 equips 现值计数 | ✅ **自洽**。`write_logic_rand` 经 `_write_logic_frame` 即时落值(source='logic_rand'),回调随即读 `gs.equips.value` 含新 append 的财富宝钻 → cap = level+1;`back_layout = min(9, 现值+1)` 与 cap 同步 +1,域内关系「back_layout ≈ 6+(cap−level)」保持(kernel/cw_game_state.py:2250 字段注);`level_of` 未观察缺省 1 无 None 炸(:3989-3992);diamond_count 开局种子 0(:790)+ `or 0` 防御;equips None 在该路径不可达(触发条件 6 的宁缺勿造前置)。边界注:sim 现状唯一向 equips 写入财富宝钻的路径 = 本发放(box 候选池 U24 未定、挂 BOX_POOL_PENDING_U24 披露,:1119;ENV_GIFTS 无宝钻条目),故「count=1、cap=level+1」在现模下恒真;未来 sim 若建模合成/礼包获得宝钻,回调须随获得路径接线,否则域内关系破裂——建议正本化时带一句 | cw_game_state.py:3095-3098;cw_sim_backend.py:1093-1103;landing 3.3 数值对照判据(:45) |
+| **F2**【中】 | 同窗洗白披露落 §3;处置「不设守卫、接受披露」 | **披露落了,处置不自洽 → N2**(后果失真 + 频率低估,详 §三) | 披露段在 details:60;反证链见 N2 |
+| **F3**【中】 | 失真依据清除;「红/蓝钻无 cap 语义」新依据 | ✅ **闭合**。旧失真依据(「带钻选项语义」支撑 supply 硬编码财富宝钻)随「supply 不采纳」结构性清除;新依据逐字属实:财富宝钻条目「拥有宝钻可以使团队规模上限+1,无论是否被角色穿戴」(data/cw_equipment_data.py:53);红钻「用于合成阵营星徽」、蓝钻「用于合成流派星徽」均无 cap 文本(:64-65);`DIAMOND_EQUIP_NAMES = {红钻, 蓝钻, 财富宝钻}` 系视觉判定族(kernel/cw_obs_core.py:50)。附非阻塞小注:landing 3.3「宝钻裁决只认财富宝钻」(:44)在接线面仍近永真(登记表唯一实参 = 财富宝钻),其证伪路径 = 回调**直调负例**单测(§4 早退分支),建议 3.1 验收凭据「回调三写」点名含负例 | details §4(:72);cw_equipment_data.py:53/64-65 |
+| **F4**【中】 | 引用锚全部可解析 | ✅ **闭合**。grep `ore-conditional` 全目录零残留(仅第一轮报告自引);landing 三处设计依据均指 `details/env-conditional-grant.md` §1–§4 / §5(live 部分) / §5(sim)/§4(回调) + design §2 第 5 条,全部可解析;design 自引「§2 第 5 条」、details「总纲 §2」可解析 | landing:13/18/26/39;grep 全量 |
+| **F5**【中】 | sig 单形态写死,三方一致 | ✅ **触发函数面闭合;回调面溢出新矛盾 → N3**。触发函数:design 契约「禁 obs_sig 进触发函数」(:42)/ details §5「sig 写死单形态 = logic_sig('sim:env')」(:82)/ landing 3.3「sig 写死 logic_sig('sim:env') 单形态」(:44)三方一致,无「挂接/登记分通道」残留;代码事实核实:`write_logic`/`write_logic_rand` 渠道校验均 `_validate_sig(sig, ('logic_action', 'logic_hook'))`(cw_game_state.py:3058/3095),`obs_sig` = family='obs'(sim/cw_sim_base.py:30-34)传入即炸,`logic_sig` = family='logic_action'(:37-40)合法 | design:42;details:82;landing:44;cw_game_state.py:3058/3095;cw_sim_base.py:30-40 |
+| **L1(F6)**【低】 | done 现值 None 防御 | ✅ **闭合**。条件矩阵第 5 序「done 现值(None → 视为空,防御)」、第 6 序 done 追加「现值(None → 视为空)+ ((env,'first_streak'),)」双读口均带防御(details:52/55),与晶矿先例 `or ()` 同形;landing 3.1 判据扩为「触发条件矩阵七序短路含 done None 防御……回调三写含 back_layout min9 与 None 防御」(landing:18) | details:52/55/76;landing:18 |
+| **L2(F7)**【低】 | design §0 状态同步 | ✅ **闭合**。design:6「状态:对抗审中」与 README 进度行一致 | design:6;README |
+| **L3(F8)**【低】 | 跨迭代过程号清除 | **部分闭合 → N4**:landing「防 ore 迭代 R5 式假绿」已改语义表述(「防姊妹迭代实证的假绿形态」landing:31)、details §5「3.3 晶矿先例」已删;但 details:7 仍留「ore 迭代 R5 教训」,另有 T-1×3(design:40、details:22、details:27)、T-5×1(design:5,含 .debug/progress 本地路径指针)——同为兄弟迭代任务号,寿命不受本迭代控制,与 F8 同判据 | grep 全量;N4 |
+| **L4(F9)**【低】 | 获得链前提修正 | ✅ **闭合**。取舍第三条已删「确定性写」前提,改真实理由:随机态纪律(落位未知走 write_logic_rand + 观察收口)+ done 原子性(同 sig 相邻两笔)(details:93);获得链 `rand: bool` 必参事实与现文不冲突(cw_sim_backend.py:1134-1137 `gain_equipment(..., rand=False, ...)` 同形在册) | details:93 |
+| **L5(F10)**【低】 | OCR 假阳披露 | ✅ **闭合**。details §3 第三披露段(:64)+ design「明确不解决」并句(:23),措辞与第一轮建议一致(假发放永久占据一次性、值由观察纠偏、接受并披露、校准另线) | details:64;design:23 |
+| **L6(F11)**【低】 | 校验样板第 6 处记档 | ✅ **闭合**。取舍第二条记档「孤儿键校验样板已第 6 处同形复写,提取排期入口留 harness 反馈队列;提取的是校验样板,非条件框架」(:92)——恰好把「校验样板 ≠ 条件框架」的裁定边界写明;第 6 处计数属实(`_validate_env_economy`/`_validate_env_ore_grants`/`_validate_env_gifts`/`_validate_strategy_grants`/`_validate_env_pool_rewrite` 五处在册,cw_investments.py:1200/1246/1355/1602/1739) | details:92;cw_investments.py 五 validator |
 
-## 四、实现者试读(逐阶段:凭文档能否开工)
+**跨文档三方同步**(design §2 第 5 条 ↔ details §5 ↔ landing 3.3):契约面一致 ✅(supply 零改动 + 回调仅深井 + sig 单形态,三处互证);破坏同步的只有 §二 N1 所列三处契约面**之外**的残留段。
 
-- **3.1 kernel 条件发放与登记表 —— 基本可开工**。四件套/登记表/条件矩阵/发放写行均有直接先例(晶矿通道同形),文件面真实;两处需带答案补:done 现值 `or ()` 防御(F6,可按先例自补)、审计行内容照 ore 行抄形。「import 即炸」测试技法有在册先例(monkeypatch + 直调 validator)。
-- **3.2 live 接线 —— 可开工**。调用点全仓唯一、`streak_after` 可得、sig 形态有 `_ORE_HOOK_SIG` 同形先例;唯一小坑是异常会被外层 try 记成「结算覆盖写失败」标签(可接受,建议实现时独立 try 或改日志措辞,属实现自由度)。
-- **3.3 sim 接线 + supply 采纳 —— 不可直接开工**。F1(cap 腿惰性,「缺口闭合」判据按现文写不出来)、F3(三钻身份假设未申报)、F5(sig 选错即崩)三个问题都在本阶段的设计依据内,且都没有「设计未回答→停手回指」的可用答案——必须先回 details §5 修订,否则实现者必然自行拍板(在未过对抗审的语境做设计决策)或交付一个与自身判据矛盾的实现。
-- **末阶段正本更新 —— 可执行**。清单五路径全部存在、逐条映射到阶段,无悬空引用。
+## 三、新发现(仅限本轮触碰面)
 
-**总试读结论**:3.1/3.2/末阶段凭文档可开工;3.3 被 F1/F3/F5 阻塞,修订后放行。
+### N1【中】F1 修复传播不全:三处旧「两调用点/补给缺口顺手闭合」口径残留
+
+- **位置与原文**:
+  1. design.md:5(§0 迭代目标,用户裁定记录):「『宝钻到手 → 重算上限』做成**共用函数**(sim 侧补给宝钻的既有上限缺口顺手闭合)」——裁定原文可留,但修订推翻了裁定的落地范围,现文无任何后注,读者先读到「补给缺口本迭代闭合」,三节之后才读到「supply 零改动、另批」;
+  2. design.md:17(§1 解决到哪):「宝钻回调 = kernel 共用函数(sim 深井发放与补给宝钻两处调用)」;
+  3. details:8(问题与约束·回调边界):「回调 = sim 专用,两个调用点(深井发放后 + 补给宝钻)」。
+- **矛盾对象**:design:34(§2 第 5 条「supply 路径零改动」)、design:43(契约「仅深井发放路径调用」)、details:83(§5 不采纳段)、landing:38/46(3.3 范围与零变化判据)。
+- **规范出处**:iteration-design.md §5 规则 4「修订后全量同步复查……禁只改触碰段」,其明列防的事故 =「方案改了、行为变化申报与派工面残留旧口径」。
+- **危害**:details 详设自顶向下阅读时,:8 先于 §5 出现,实现者按「两个调用点」接线 supply → 回调即复活第一轮 F1 的假闭合(supply 宝钻不进 equips,cap 腿恒惰)。
+- **修法**(三处各一句):①design:5 句尾补后注「(修订后调整:补给不采纳回调,该缺口不在本迭代闭合,见 §2 第 5 条)」;②design:17 改「宝钻回调 = kernel 共用函数(唯一调用点 = sim 深井发放路径;supply 不采纳,见第 5 条)」;③details:8 改「回调 = sim 专用,唯一调用点 = 深井发放后(supply 不采纳回调,见 §5)」。
+
+### N2【中】F2 披露段后果失真:洗白后实为 logic 源真失配 → 安灯停机,非「临时缺口自愈」;频率前提亦低估
+
+- **现文**(details:60):「猜值可能被洗白(逻辑态临时丢失宝钻)——真值仍在游戏世界,下一 equips 观察**整表覆盖**恢复,损失 = 逻辑态临时缺口;频率极低(需同窗结算 5 连胜 + 带钻补给),接受并披露,不设守卫。」
+- **代码事实链**(逐环核实):
+  1. 洗白腿 = 补给装备腿 `owned = list(gs.equips.value or []); owned.append(item); gs.write_logic(gs.equips, owned, ...)`(kernel/cw_action_report/pick_supply.py:101-104)——**读现值追加回写,任意补给选定都走此腿(不限带钻)**;write_logic 把字段来源从 logic_rand 翻成纯 logic(无任何 rand 继承闸,`any_logic_rand` 全仓无调用点,仅 docstring 提及);
+  2. 下一备战帧 heavy 观察:observe() 对 `source == 'logic'` 且值不等 → 先经 deployed/board 两个吸收器(equips 均不命中)→ `_route_logic_mismatch`(cw_game_state.py:2803-2814);**只有 `source == 'logic_rand'` 的覆盖才静默采新**(:2794-2802)——披露声称的「整表覆盖恢复」仅是未洗白情形的行为;
+  3. 三分流:豁免注册表 `EXEMPT_REGISTRY: dict = {}` **为空**(kernel/cw_mismatch_policy.py:63),抑制前缀仅 `'sim:engine'/'sim:synthesized'` 且「生产实机链零 sim 前缀写点」(cw_game_state.py:995)→ equips 失配 = **真失配** → 缺陷行 + `[cw!]` 告警 + 安灯钩子,生产装配 = 截图留证 + **停机 flag**(cw_mismatch_policy.py:15-16)——即第一轮 F2 点名的「无人值守 run 停机」后果原样可达。值确被观察采新(「观察赢」覆盖照常,cw_game_state.py:2815),但停机同时发生,不是「损失 = 临时缺口」。
+- **频率修正**:洗白不需「带钻补给」——幻影宝钻(发放 guess)与实读装备集不符即失配;深井 5 连胜结算的下一节点凡为补给(结算完成白名单含补给,cw_screen_battle_wait.py:86-92;补给必选卡 → 必写 equips)即触发,一次/局发放时刻的条件概率不低。「频率极低」的前提句失真。
+- **附带裁定事实**:第一轮修法选项①(把 `env_grant` 前缀登记失配豁免)对洗白形态**结构性无效**——豁免查表第三维用**字段现 evidence**(cw_mismatch_policy.py:66-91,路由传 `logic_evidence=target.evidence`),洗白后字段 evidence = 洗白写端的 `owned[...]` 前缀,`env_grant` 前缀永不命中;而按 equips 字段全量豁免会吞掉该字段全部真 bug。故「不设守卫」下唯一自洽出路是**如实披露停机后果并显式接受**。
+- **修法**(二选一):①维持「不设守卫」,重写披露段:「同窗确定性 equips 写(补给装备腿等)会把字段来源翻 logic,下一 heavy 观察 = logic 源真失配 → 安灯停机(生产 = 留证 + 停机),值由观察采新;接受该风险并披露——发生时按安灯现场处理,续跑即愈(done 已标记不重发,幻影值已被观察覆盖)」;②不愿接受停机则回到第一轮选项③次序守卫(同窗已有确定性 equips 写则本结算放弃发放、下结算重试)。任选其一均删「临时缺口/整表覆盖恢复/需带钻补给」三处失真表述。
+
+### N3【中】回调三写 observe 的 sig 形态与 sim 单 sig 接线矛盾(F5 同类,修订交互新面)
+
+- **问题**:design 契约「回调写法:三域全部 `gs.observe`」(design:44)+ details §4 回调签名 `on_diamond_acquired(gs, equip_name: str, sig)`(details:69)+ details §5 sim 接线「`on_diamond_acquired(gs, 返回名, sig)`;sig 写死单形态 = `logic_sig('sim:env')`」(details:82)——回调若复用入参 sig,其三笔 `gs.observe` 写在第一笔即炸:`observe()` 渠道校验 `_validate_sig(sig, ('obs',))` **只收 obs 族**(cw_game_state.py:2792),logic_action 族传入即 ValueError,`_resolve_battle` 无 try 包裹 → sim 局崩。
+- **定性**:F5 修的是**触发函数**(两笔 logic 写,单 logic_sig 正确);回调是另一个函数、三笔**观察通道**写,sig 族需求相反。修订把「单形态」写死到接线变量后,回调的 sig 形态变成「实现者自行拍板」(违停手令前提,F5 同罪);照字面复用则必崩。
+- **先例**:同文件 `_on_supply_picked` 的 observe 写**不收 sig 参、内部自构** `obs_sig(group_id='sim:diamond')`(cw_sim_backend.py:1099-1101)。
+- **修法**(一处):details §4 补一句「回调内部三写自构 obs 族 sig(如 `obs_sig(group_id='sim:env-diamond')`),先例 = `_on_supply_picked` 内构形态;入参不传 sig」并同步改签名为 `on_diamond_acquired(gs, equip_name: str) -> None`(与先例同形,推荐);或保留 sig 参但明写「仅用于留证行,observe 写一律内构 obs 族 sig」。design:44 与 landing 3.3 同步一句。
+
+### N4【低】跨迭代过程号残留(F8/L3 尾巴)
+
+- **残留清单**:details:7「ore 迭代 R5 教训:op 成员记忆跨环重建伪造状态,禁用」(R 号);design:40「投影审计行(完备性锁强制,T-1 先例)」、details:22「沿晶矿迭代 T-1 先例」、details:27「先例 = 晶矿三域,T-1」(兄弟迭代任务号 ×3);design:5「源迭代 `.debug/progress/2026-09-23-invest-effects-calc` T-5」(任务号 + gitignore 本地路径指针 ×1)。
+- **判据**:与 F8 同类——兄弟迭代工件(changes/ 任务表、.debug/progress)均可删减,失锚不可重建;教训语义均已内联复述,过程号只是装饰。
+- **修法**:details:7 删「ore 迭代 R5 教训:」字样留语义句(或改持久指针「晶矿声明通道 done 域落地形态见 kernel/cw_ore_channel.py」);三处 T-1 改持久指针(「先例 = cw_game_state.py 种子三域/DEFAULT_GS_SCHEMA 独立键/投影审计行」)或纯语义;design:5 的 T-5 改纯语义(「深井角斗场机制接入外溢」已自足,删 T-5 与 .debug 路径)。
+
+## 四、定稿试读(修订 N1–N4 后逐阶段)
+
+- **3.1 kernel 条件发放与登记表——可开工**。条件矩阵七序(含 None 防御)、四件套、登记表三条校验(`INVESTMENT_ENVS`/`EQUIPMENTS` 符号均在册,cw_investments.py:799、cw_equipment_data.py:51)、evidence 形态齐备;N3 修后回调签名定型,N4 修后依据指针全持久。
+- **3.2 live 接线——可开工**(本轮修订未触碰其可开工结论;调用点唯一、sig 先例 `_ORE_HOOK_SIG` 同形、streak_after None 口径一致)。
+- **3.3 sim 接线——N1/N3 修后可开工**。数值对照判据(diamond_count +1、cap = level+1、back_layout +1 min9、同 seed 重放)在现模下可达(F1-③ 边界注成立);「supply 零行为变化」判据与 `_on_supply_picked` 零改动现状对齐,可证伪。
+- **末阶段正本更新——可执行**(五路径全在,glob 复核通过)。
+
+**总试读结论**:本轮不放行定稿(带 3 中 1 低 = 「带开放问题的定稿」不存在);N1–N4 均为定点文本修法,修订后定点复核(不必全量再审)即放行定稿。
