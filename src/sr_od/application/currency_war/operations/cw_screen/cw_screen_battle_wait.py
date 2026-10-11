@@ -535,20 +535,27 @@ class CwScreenBattleWait(CwOperation):
                     # (败局页无该面板)不写。
                     # settlement 行注记带 battle_done:<节点类型> 语义
                     #(同时点同载荷,行行自足快照)。
+                    from sr_od.application.currency_war.kernel.cw_env_grants import (
+                        check_env_streak_grants,
+                    )
                     from sr_od.application.currency_war.kernel.cw_game_state import (
+                        ChannelSig,
                         apply_settlement_cover,
                         gs_of_ctx,
                     )
                     from sr_od.application.currency_war.kernel.cw_performance import (
                         HP_CONFIDENCE_THRESHOLD,
                     )
+                    # streak 真值先行提取(下方条件发放触发的接线条件面:
+                    # None = 覆盖写端跳过 streak 观察,检查同口径不调)
+                    _streak_after = getattr(_obs, 'streak', None)
                     apply_settlement_cover(
                         gs_of_ctx(self.ctx, _session),
                         hp_after=(getattr(_obs, 'hp_after', None)
                                   if getattr(_obs, 'hp_confidence', 1.0)
                                   >= HP_CONFIDENCE_THRESHOLD
                                   else None),
-                        streak_after=getattr(_obs, 'streak', None),
+                        streak_after=_streak_after,
                         killed=getattr(_obs, 'killed', None),
                         progress_delta=getattr(_obs, 'progress_delta', None),
                         gold=_assets.get('gold'),
@@ -558,6 +565,24 @@ class CwScreenBattleWait(CwOperation):
                                 and _assets.get('xp_next') is not None)
                             else None),
                         note=f'battle_done:{getattr(_obs, "node_type", None)}')
+                    # —— 环境条件发放触发(接线点 = 结算覆盖后,连胜真值
+                    # 已落账;条件单一源 = kernel check_env_streak_grants,
+                    # 条件登记表 = kernel ENV_STREAK_GRANTS)。与覆盖写共享
+                    # 本 best-effort try:覆盖写异常 = streak 未落账,连本
+                    # 检查一并跳过,保「真值落账后才触发」前提。None 不调
+                    #(口径与覆盖写端跳过 streak 观察一致)。返回值刻意
+                    # 忽略 = live 无回调:宝钻的 deploy_cap/back_layout
+                    # 联动属观察域(识别器读屏自动跟踪,逻辑侧禁写),
+                    # 回调仅 sim 侧消费。sig 契约 = logic_hook 族,actor =
+                    # 本 op 类名,组号 'battle-wait:env-grant'(发放两笔
+                    # logic 写同组,台账可对账)。
+                    if _streak_after is not None:
+                        check_env_streak_grants(
+                            gs_of_ctx(self.ctx, _session),
+                            int(_streak_after),
+                            ChannelSig(family='logic_hook',
+                                       actor='CwScreenBattleWait',
+                                       group_id='battle-wait:env-grant'))
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] 结算覆盖写失败(不阻塞): %s', e)
                 # 效果账本结算挂点(settlement 锚行为账本既有挂点提供
