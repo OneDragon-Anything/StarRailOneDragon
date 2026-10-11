@@ -274,9 +274,16 @@ def streak_income_after(streak: int, *, node_type: str,
 
 
 def streak_signed_after(streak_signed: int, *, node_type: str,
-                        won: bool) -> int:
+                        won: bool, piggy: bool = False) -> int:
     """容器带符号连胜转移(连胜 +/连败 −;战斗类胜 +1/败取负向计数;
-    奖励/补给轮不动;与旧引擎逐位同式)。"""
+    奖励/补给轮不动;与旧引擎逐位同式)。
+
+    扑满帧例外(piggy=True,2026-10-10 用户裁定):胜 +1/败清零——
+    败清零非负账;深井角斗场等连胜触发器读共用账自然跟随。"""
+    if piggy:
+        if won:
+            return streak_signed + 1 if streak_signed > 0 else 1
+        return 0
     if node_type not in COMBAT_NODE_TYPES:
         return streak_signed
     if won:
@@ -759,6 +766,11 @@ class SimBackend:
     #: 已收口节点窗口的线性序(None = 尚无;窗口前段幂等守卫,
     #: :meth:`_begin_node_window`)。
     _window_begun_ord: int | None = field(init=False, default=None)
+    #: 扑满节点递延收入快照(None = 非扑满窗或已落账):统一公式
+    #: 「战败时无连胜成分」需胜负,窗口开时未知 → 基数冻结(金/进轮
+    #: 连胜/收入修饰 = 轮初口径),结算腿胜负后落账并清回 None。
+    _piggy_income_snap: (tuple[int, int, tuple[float, int, int | None]]
+                         | None) = field(init=False, default=None)
     #: 对账延后声明队列(豁免场景内 next_screen 等值断言延后至稳态,
     #: :meth:`_reconcile_next_screen`;元素 = (延后时点已进窗线性序, 声明),
     #: 每次 advance 入口消费)。
@@ -1358,10 +1370,19 @@ class SimBackend:
         # 轮首收入(M04;败补挂账按 kernel 分支序消费——supply/reward
         # 轮不消费,败态跨轮保留至下一战斗轮;连胜 = 容器带符号派生读)
         pending = self.gs.pending_loss.value
-        apply_round_start_income(
-            self.gs, plane=plane, round_num=r, node_type=kind,
-            streak=max(int(self.gs.streak.value or 0), 0),
-            pending_loss=pending)
+        if is_piggy_node(self.gs):
+            # 扑满节点收入递延:统一公式败局形需胜负,窗口开时未知 →
+            # 只冻结基数(金/进轮连胜/修饰 = 轮初口径),结算腿落账
+            # (_resolve_battle);支付时点 = 结算屏,与实机一致。
+            self._piggy_income_snap = (
+                int(self.gs.gold.value or 0),
+                max(int(self.gs.streak.value or 0), 0),
+                income_modifiers_of(self.gs))
+        else:
+            apply_round_start_income(
+                self.gs, plane=plane, round_num=r, node_type=kind,
+                streak=max(int(self.gs.streak.value or 0), 0),
+                pending_loss=pending)
         if kind not in INCOME_BRANCH_NODE_TYPES and pending is not None:
             clear_pending_loss(self.gs,
                                sig=obs_sig(group_id='sim:loss'))
@@ -1580,8 +1601,26 @@ class SimBackend:
             return
         # 连胜转移(M15:容器带符号;败态挂账 M04,消费归下一战斗轮轮首)
         won = outcome.won
+        piggy = is_piggy_node(self.gs)
+        if self._piggy_income_snap is not None:
+            # 扑满收入落账(统一公式「战败时无连胜成分」:败局 = 基础+息,
+            # 胜局 = 基础+进轮连胜×倍率+息)。基数 = 窗口开快照(轮初口径,
+            # 息按窗口开金),支付时点 = 结算屏与实机一致;增量落当前金,
+            # 窗口内购物波动不受影响。
+            gold_snap, streak_in, (mult, flat, cap) = \
+                self._piggy_income_snap
+            row = round_start_income(
+                node.plane, node.round_num, 'reward', gold_snap, streak_in,
+                win_reward_mult=mult, interest_flat=flat, interest_cap=cap,
+                lost_round=not won)
+            gold_now = int(self.gs.gold.value or 0)
+            tag = f'income:p{node.plane}r{node.round_num}'
+            self.gs.observe(self.gs.gold, gold_now + row.total,
+                            evidence=sim_evidence(tag),
+                            sig=obs_sig(group_id=f'sim:{tag}'))
+            self._piggy_income_snap = None
         signed = streak_signed_after(int(self.gs.streak.value or 0),
-                                     node_type=kind, won=won)
+                                     node_type=kind, won=won, piggy=piggy)
         self.gs.observe(self.gs.streak, signed,
                         evidence=sim_evidence(
                             f'streak:p{node.plane}r{node.round_num}'),

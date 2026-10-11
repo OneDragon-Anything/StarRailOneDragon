@@ -32,11 +32,11 @@
 | 容器域 | sim 产生面 | sim 消费面 |
 |---|---|---|
 | node | 世界腿：进节点 obs 写 `NodeKey`（`node:p<位面>r<轮>`）+ kernel `observe_node_anchor` 节点序锚定 | 读口 `plane_of`/`round_num_of`/`node_kind_of`；策略 plane-aware 分支 |
-| gold | 世界腿：opening 初值 + `income:p<位面>r<轮>` 轮首收入（kernel `round_start_income` 三分支，含败补）+ 位面开局环境金**分道**（`_apply_env_plane_start`：env ∈ `ENV_ORE_GRANTS` → 节点窗起点声明入队 + 过期清理，**金不直发**、由点击声明矿兑现入账；其余环境 → `_apply_env_plane_gold` 直发）；动作腿：扣减/回金同实机 | 读口 `gold_of`；策略消费面 |
+| gold | 世界腿：opening 初值 + `income:p<位面>r<轮>` 轮首收入（kernel `round_start_income` 三分支，含败补；扑满帧 = 收入递延至结算腿 `_resolve_battle`，败局无连胜成分、基数 = 窗口开快照）+ 位面开局环境金**分道**（`_apply_env_plane_start`：env ∈ `ENV_ORE_GRANTS` → 节点窗起点声明入队 + 过期清理，**金不直发**、由点击声明矿兑现入账；其余环境 → `_apply_env_plane_gold` 直发）；动作腿：扣减/回金同实机 | 读口 `gold_of`；策略消费面 |
 | level | 世界腿：opening 初值 + `xp:node` 节点经验结转（`apply_node_xp`）；动作腿不写 level（升档等覆盖同实机） | 读口 `level_of`；抽牌概率档 |
 | xp | 世界腿：opening 初值 + `xp:node` 入账；动作腿 LevelUpShop 腿同实机 | 策略追级消费（clicks_to_next_level） |
 | hp | 世界腿：opening 实证档查表（无实证档报错索样本，`cw_opening_hp` 单一源）+ `battle:hp` 败局扣血 + 0hp 保底（`battle:hp_floor`）/局终 | hp 写入闸语义同实机（sim 写真值，无识别失真维） |
-| streak | 世界腿：opening 0 + `streak:p<位面>r<轮>` 结算转移（带符号，`streak_signed_after`） | 收入侧连胜金（派生读 `max(signed, 0)`，无第二账） |
+| streak | 世界腿：opening 0 + `streak:p<位面>r<轮>` 结算转移（带符号，`streak_signed_after`；扑满帧 = 胜 +1/败清零，2026-10-10 用户裁定） | 收入侧连胜金（派生读 `max(signed, 0)`，无第二账） |
 | pending_loss | 世界腿：`loss:pending` 战斗结算失败腿写；轮首败补支消费后清账（`clear_pending_loss`） | 轮首收入 U04 败补支输入 |
 | bench | 世界腿：opening 播种（M06 派生池首个写端）；动作腿：BuyCard 落位/合成连锁/SellBench 同实机 | 读口 `bench_view_slots_of`/`bench_entries_of`/`bench_units_of` + 派生 `bench_free_slots`/`bench_is_full` |
 | deployed | 动作腿：上报族 deployed 视图整值替换（同实机,一次写 = 一次完整语义快照）；世界腿无整值写点 | 读口 `deployed_rows_of`/`deployed_count_of` 等 |

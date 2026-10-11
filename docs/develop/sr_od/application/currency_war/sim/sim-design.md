@@ -93,7 +93,9 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 ```
 写 gs.node（NodeKey）+ 节点序观察锚定（kernel observe_node_anchor）
-→ 轮首收入（kernel round_start_income 三分支；败补支消费容器 pending_loss）
+→ 轮首收入（kernel round_start_income 三分支；败补支消费容器 pending_loss；
+  扑满帧例外 = 收入递延至结算腿 `_resolve_battle`，基数快照仍轮初口径——
+  统一公式「战败时无连胜成分」需胜负，窗口开时未知）
 → 位面开局环境金（kernel cw_investments.INVESTMENT_ENVS 结构化通道）
 → 商店自动全刷（整店锁跳过；kernel sample_shop_deal 采样）
 → overlay 队列检查（非空 → 让路呈现压住节点屏，选定后复走 offer 检查——让路不吞 offer 槽）

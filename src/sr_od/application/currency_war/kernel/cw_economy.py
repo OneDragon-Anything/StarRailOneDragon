@@ -520,7 +520,8 @@ def round_start_income(
         *, lost_node: LostNodeRef | None = None,
         win_reward_mult: float = 1.0,
         interest_flat: int = 0,
-        interest_cap: int | None = None) -> RoundStartIncome:
+        interest_cap: int | None = None,
+        lost_round: bool = False) -> RoundStartIncome:
     """轮首收入三支单一源(统一观察架构 §7-T1:同输入必同输出,禁第二份)。
 
     - 分支派发(supply→reward→败补→常规):
@@ -531,6 +532,9 @@ def round_start_income(
     - ``lost_node``:调用方契约=上一战斗类节点败且败态未被消费时传入
       (败态跨奖励/补给轮的归宿——吞掉还是递延——是调用方策略,本函数
       不裁决,待实机实证挂观测期核对项,GameState 设计 §4.2)。
+    - ``lost_round``:统一公式败局形(每节点 = 基础+息+连胜成分,战败无
+      连胜成分,economy.md 收入口径)——reward 轮消费(扑满败局;胜局
+      按进轮连胜照发不变)。战斗轮败局仍走败补支,不在本参数域。
     - ``interest_flat``:息 flat 修饰(狸财经狸每节点固定息,与息帽无关;
       聚合单一源=EconomyEffect.interest_flat_per_node)。
     - ``interest_cap``:resolved 息帽(None→DEFAULT_INTEREST_CAP;归一口
@@ -551,7 +555,8 @@ def round_start_income(
         branch = 'supply'
     elif node_type == 'reward':
         base = reward_base_gold(plane, round_num)
-        streak_amt = _streak_component(streak, win_reward_mult)
+        streak_amt = (0 if lost_round
+                      else _streak_component(streak, win_reward_mult))
         branch = 'reward'
     elif lost_node is not None:
         base = loss_compensation_base(lost_node.plane, lost_node.round_num,
