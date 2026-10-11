@@ -49,15 +49,19 @@ def check_env_streak_grants(gs, streak_after: int, sig) -> str | None
 2. `grant = ENV_STREAK_GRANTS.get(env)`;None → None;
 3. `streak_after <= 0`(连败/零方向)→ None;
 4. `streak_after < grant[0]`(阈值)→ None;
-5. `(env, 'first_streak') ∈ env_grants_done` → None(已发);
+5. `(env, 'first_streak') ∈ done 现值`(None → 视为空,防御)→ None(已发);
 6. **发放**:`base = gs.equips.value`;None → None(**宁缺勿造,不标 done——条件每结算重查,下个结算自动重试**,与晶矿生成集「下帧再试」同性质);
    `_w_rand(gs.equips, list(base) + [grant[1]], evidence=f'env_grant#{env}#streak{grant[0]}')`(write_logic_rand,produced_by=`'env_conditional_grant'`);
-   `_w_logic(gs.env_grants_done, 现值 + ((env, 'first_streak'),), evidence 同串)`(write_logic;直写先例 = cw_exec_state 金腿 / cw_effect_inventory 退款腿,不属 anchor_aware 族——登记事实非观察投影);
-7. 返回 `grant[1]`(被发装备名;调用方据此决定是否调宝钻回调)。
+   `_w_logic(gs.env_grants_done, 现值(None → 视为空) + ((env, 'first_streak'),), evidence 同串)`(write_logic;直写先例 = cw_exec_state 金腿 / cw_effect_inventory 退款腿,不属 anchor_aware 族——登记事实非观察投影);
+7. 返回 `grant[1]`(被发装备名;调用方据此决定是否调宝钻回调——sim 专用,live 忽略)。
 
 **无 rng**:随机态指认知通道(落位未知、观察校准),追加位置(尾部)确定,不消耗随机数。
 
+**同窗洗白形态披露**:结算随机态发放后、下一备战帧观察前,若同窗口发生 equips 的 write_logic 写(如补给装备腿整表构造),猜值可能被洗白(逻辑态临时丢失宝钻)——真值仍在游戏世界,下一 equips 观察**整表覆盖**恢复,损失 = 逻辑态临时缺口;频率极低(需同窗结算 5 连胜 + 带钻补给),接受并披露,不设守卫。
+
 **恢复局边界披露**:接管局 done 为空、active_env 非空 → 首个 streak ≥ 阈值的结算触发发放 = 最佳猜测;live equips 整表覆盖纠偏零持续污染,sim 无接管局。接受并披露。
+
+**OCR 假阳边界披露**:结算屏 OCR 误读(假阳 5)→ 假发放**永久占据一次性**(done 不回收,真达成时不再发),equips 猜值由观察纠偏;接受并披露(streak OCR 真值链校准另线)。
 
 ### 4. 宝钻获得回调(同模块)
 
@@ -75,15 +79,15 @@ def on_diamond_acquired(gs, equip_name: str, sig) -> None
 ### 5. 接线(live 与 sim)
 
 - **live**:battle_wait 结算覆盖调用点之后(`apply_settlement_cover` 以非 None streak_after 调用时),`check_env_streak_grants(gs, streak_after, sig)`;sig = logic_hook 族,group `'battle-wait:env-grant'`,actor `CwScreenBattleWait`;返回值忽略(live 无回调)。**streak_after 为 None 的结算不调**(覆盖写端本就跳过 streak 观察,口径一致)。
-- **sim**:结算路径 streak observe 之后,`check_env_streak_grants(gs, signed, sig)`;返回非 None → `on_diamond_acquired(gs, 返回名, sig)`;sig = `obs_sig(group_id='sim:env')` / `logic_sig('sim:env')` 形态沿 3.3 晶矿先例(挂接/登记分通道)。
-- **补给宝钻采纳**(缺口闭合):`_on_supply_picked` 的裸 `diamond_count +1` 写替换为 `on_diamond_acquired(gs, '财富宝钻', sig)`——补给宝钻即财富宝钻(带钻选项语义),三写生效,sim 上限保真缺口闭合;既有补给测试若断言 deploy_cap/back_layout 旧值需跟改。
+- **sim**:结算路径 streak observe 之后,`check_env_streak_grants(gs, signed, sig)`;返回非 None → `on_diamond_acquired(gs, 返回名, sig)`;**sig 写死单形态 = `logic_sig('sim:env')`**(触发函数两写均为 logic 渠道,obs_sig 形态进 write_logic_rand 会炸渠道族校验——禁 obs_sig)。
+- **补给宝钻不采纳回调**:补给带钻选项的钻类型未建模(sim 聚合计数 `diamond_count`,不分红/蓝/财富;`_on_supply_picked` 现行为 = 仅写 diamond_count),红/蓝钻无 cap 语义,硬按财富宝钻回调三写 = 保真倒退——**supply 路径零改动**,钻类型建模另批(总纲「明确不解决」)。
 
 ### 6. 测试面摘要(细则归 landing)
 
-触发函数全条件矩阵(方向/阈值/已发/环境不在册/equips 缺读重试)、随机态写行与 done 追加、恢复局边界(快照含 done 不重发)、live 接线次序(结算覆盖后、观察整表覆盖纠偏)、sim 数值对照(5 连胜后三域)+ supply 采纳后行为变化跟改。
+触发函数全条件矩阵(方向/阈值/已发/环境不在册/equips 缺读重试/done None 防御)、随机态写行与 done 追加、恢复局边界(快照含 done 不重发)、live 接线次序(结算覆盖后、观察整表覆盖纠偏)、sim 数值对照(5 连胜后三域)+ supply 路径零行为变化确认。
 
 ## 关键取舍
 
-- **边沿/快照机制 vs 电平 + done 标记**:直接电平 + done(晶矿迭代 R5/R6 教训整体继承:边沿与 op 成员记忆在本仓备战环语义下不可靠)。本机制的检查点 = 结算(低频、天然幂等友好),连电平的优势都比晶矿场景小。
-- **条件数据进登记表 vs 硬编码在触发点**:登记表。理由 = 孤儿键校验防静默失联(游戏版本改环境名,硬编码 if 无声失效,登记表 import 即炸),与 ENV_ORE_GRANTS 同纪律;不是通用化——表只收「连胜触发器」形状,升级类条件卡各建各表。
-- **发放 = 独立随机态写 vs 进获得链统一原语**:独立写。获得链的装备获得原语面向「获得时点确定的发放」(确定性写);本机制落位未知走随机态,且 done 标记与发放的原子性(同 sig 相邻两笔)在触发函数内聚更直观。获得链复用留给未来确有共性的场景。
+- **边沿/快照机制 vs 电平 + done 标记**:直接电平 + done。姊妹迭代(晶矿奖励附着通道)已实证:边沿与 op 成员记忆在备战环语义下不可靠(op 每环重建伪造边沿、消费移除销毁守卫前提)。本机制的检查点 = 结算(低频、天然幂等友好),连电平的优势都比晶矿场景小。
+- **条件数据进登记表 vs 硬编码在触发点**:登记表。理由 = 孤儿键校验防静默失联(游戏版本改环境名,硬编码 if 无声失效,登记表 import 即炸),与 ENV_ORE_GRANTS 同纪律;不是通用化——表只收「连胜触发器」形状,升级类条件卡各建各表。(孤儿键校验样板已第 6 处同形复写,提取排期入口留 harness 反馈队列;提取的是校验样板,非条件框架,不违「不建统一框架」裁定。)
+- **发放 = 独立随机态写 vs 进获得链统一原语**:独立写。差异点在随机态纪律(落位未知走 write_logic_rand + 观察收口)与 done 标记的原子性(同 sig 相邻两笔),在触发函数内聚更直观;获得链复用留给未来确有共性的场景。

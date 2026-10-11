@@ -15,7 +15,7 @@
 **依赖**:无。
 **优先级建议**:10
 **完成判据**:
-- 行为对照 ore-conditional §1–§4(域四件套/登记表三条校验/触发条件矩阵七序短路/随机态发放写行 + done 追加同 sig 相邻/equips 缺读不标 done 下结算重试/回调三写含 back_layout min9 与 None 防御);
+- 行为对照 details/env-conditional-grant.md §1–§4(域四件套/登记表三条校验/触发条件矩阵七序短路含 done None 防御/随机态发放写行 + done 追加同 sig 相邻/equips 缺读不标 done 下结算重试/回调三写含 back_layout min9 与 None 防御);
 - 双源类校验实证:ENV_STREAK_GRANTS 登记不存在的环境名或装备名 import 即炸;
 - 快照→恢复后 `env_grants_done` 仍 tuple-of-tuple;恢复局(快照含 done)触发函数不再发;
 - 完成前常规检查(本文首节)。
@@ -28,22 +28,22 @@
 **依赖**:3.1。
 **优先级建议**:5
 **完成判据**:
-- 触发检查调用点 = apply_settlement_cover 之后(次序断言真锁——**测试构造约束:fake 结算路径必须真实携带 streak_after 并走真覆盖写端,防 ore 迭代 R5 式假绿**);
+- 触发检查调用点 = apply_settlement_cover 之后(次序断言真锁——**测试构造约束:fake 结算路径必须真实携带 streak_after 并走真覆盖写端,防姊妹迭代实证的假绿形态:fake 不写前置状态、断言恒绿**);
 - 随机态发放 + equips 观察整表覆盖纠偏测试(猜错自愈);
 - streak_after None 的结算不调;
 - 完成前常规检查(本文首节)。
 **验收凭据形式**:测试名(调用点次序、发放写行、纠偏)+ grep 无旁路。
 
-## 3.3 sim 接线 + supply 采纳
-**范围**:结算路径触发检查接线;返回非 None → 宝钻回调;`_on_supply_picked` 裸 diamond_count 写替换为回调(缺口闭合,既有补给测试预期跟改)。
+## 3.3 sim 接线(supply 零改动)
+**范围**:结算路径触发检查接线;返回非 None 且装备为宝钻 → 宝钻回调(三写)。**补给宝钻不采纳回调**(钻类型未建模,supply 路径零改动)。
 **设计依据**:details/env-conditional-grant.md §5(sim)/§4(回调);design.md §2 第 5 条。
-**文件面**:`sim/cw_sim_backend.py`、`sr-od-test/test/sr_od/application/currency_war/test_cw_sim_backend.py`、涉及带钻补给的既有测试(申报)。
+**文件面**:`sim/cw_sim_backend.py`、`sr-od-test/test/sr_od/application/currency_war/test_cw_sim_backend.py`。
 **依赖**:3.1。
 **优先级建议**:5
 **完成判据**:
-- 行为对照 ore-conditional §5 sim 部分(触发在 streak observe 后;回调三写 diamond_count/deploy_cap/back_layout;宝钻裁决只认财富宝钻);
+- 行为对照 details/env-conditional-grant.md §5 sim 部分(触发在 streak observe 后;sig 写死 logic_sig('sim:env') 单形态;回调三写 diamond_count/deploy_cap/back_layout;宝钻裁决只认财富宝钻);
 - 数值对照:深井角斗场 sim 局 5 连胜达成后 diamond_count +1、deploy_cap = level+1、back_layout +1(min9)、装备在库;同 seed 重放一致;
-- supply 采纳后:带钻补给局三域同步(缺口闭合的行为面);
+- **supply 路径零行为变化**:带钻补给局断言与 3.3 前一致(diamond_count +1,deploy_cap/back_layout 不变——不采纳回调);
 - 完成前常规检查(本文首节)。
 **验收凭据形式**:测试名 + sim 局数值对照。
 
@@ -60,5 +60,5 @@
 - docs/develop/sr_od/application/currency_war/game_state/fields.md:新域 env_grants_done(条件发放已发标记)← 3.1
 - docs/develop/sr_od/application/currency_war/game_state/gain-chain.md:环境发放族新增条件达成发放(ENV_STREAK_GRANTS 结算连胜触发器)← 3.1
 - docs/develop/sr_od/application/currency_war/flow/projection_contract.md:状态面板行内联描述补 env_grants_done ← 3.1
-- docs/develop/sr_od/application/currency_war/sim/sim-wiring.md:结算路径(连胜触发发放)+ 补给宝钻回调采纳 ← 3.3
+- docs/develop/sr_od/application/currency_war/sim/sim-wiring.md:结算路径(连胜触发发放)← 3.3
 - docs/game/currency_war/research/invest_effects.md:§1 批 4「行为条件流」新增深井角斗场条目(结算连胜触发、随机态获得财富宝钻、回调重算上限)← 3.3
