@@ -3,7 +3,7 @@
 ## 0. 元信息
 
 - 迭代目标:源迭代(invest-effects-calc)深井角斗场机制接入外溢。用户裁定(2026-10-10):触发点 = **结算屏连胜真值落账处**(首次 ≥5);获得财富宝钻**落位未知 → 随机态**写;「宝钻到手 → 重算上限」做成**共用函数**(sim 侧补给宝钻的既有上限缺口顺手闭合——**修订后调整:补给不采纳回调,该缺口不在本迭代闭合,见 §2 第 5 条**);live 上限靠观察域自动跟踪,**零回调**。
-- 状态:对抗审中
+- 状态:定稿
 - 文档清单:
   - details/env-conditional-grant.md —— 登记表、触发检查 kernel 函数、随机态发放与 done 标记、宝钻获得回调、live/sim 接线
 
@@ -31,7 +31,7 @@
 2. **GameState 新域** `env_grants_done`(逻辑态;元素 (env, 条件键),一次性守卫标记),四件套 = 种子底座 + 快照恢复登记 + DEFAULT_GS_SCHEMA 独立键 + 投影审计行;
 3. **触发检查 kernel 函数**(kernel/cw_env_grants.py 新模块,live/sim 同一单一源):`check_env_streak_grants(gs, streak_after, sig) -> str | None`——active_env 在册 ∧ streak_after 为连胜方向且 ≥ 阈值 ∧ (env, 条件键) ∉ done → **随机态发放**(write_logic_rand equips 追加,落位未知)+ done 追加(write_logic),返回被发装备名;
 4. **live 接线**:结算覆盖写端调用点(cw_screen_battle_wait,`apply_settlement_cover` 之后)传入同一 streak_after;
-5. **sim 接线**:结算 streak 写点(cw_sim_backend)调用;返回非 None 且装备为宝钻 → 调 **宝钻获得回调** `on_diamond_acquired(gs, 装备名, sig)`(diamond_count +1、deploy_cap = level + 拥有财富宝钻数、back_layout = min(9, 现值+1),observe 写 = sim 世界事实)。**补给宝钻不采纳回调**:补给带钻选项的钻类型未建模(聚合计数,可能是红/蓝/财富任一),红/蓝钻无 cap 语义,硬按财富宝钻回调 = 保真倒退——supply 路径零改动,钻类型建模另批。
+5. **sim 接线**:结算 streak 写点(cw_sim_backend)调用;返回非 None 且装备为宝钻 → 调 **宝钻获得回调** `on_diamond_acquired(gs, 装备名)`(回调内构 obs 族 sig,见契约回调写法;diamond_count +1、deploy_cap = level + 拥有财富宝钻数、back_layout = min(9, 现值+1),observe 写 = sim 世界事实)。**补给宝钻不采纳回调**:补给带钻选项的钻类型未建模(聚合计数,可能是红/蓝/财富任一),红/蓝钻无 cap 语义,硬按财富宝钻回调 = 保真倒退——supply 路径零改动,钻类型建模另批。
 
 跨详设接口契约(总纲定死,各详设不得另行演化):
 

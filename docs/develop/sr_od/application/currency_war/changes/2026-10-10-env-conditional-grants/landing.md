@@ -41,7 +41,7 @@
 **依赖**:3.1。
 **优先级建议**:5
 **完成判据**:
-- 行为对照 details/env-conditional-grant.md §5 sim 部分(触发在 streak observe 后;sig 写死 logic_sig('sim:env') 单形态;回调三写 diamond_count/deploy_cap/back_layout;宝钻裁决只认财富宝钻);
+- 行为对照 details/env-conditional-grant.md §5 sim 部分(**触发函数两写 sig 写死 logic_sig('sim:env') 单形态;回调内构 obs 族 sig**;回调三写 diamond_count/deploy_cap/back_layout;宝钻裁决只认财富宝钻);
 - 数值对照:深井角斗场 sim 局 5 连胜达成后 diamond_count +1、deploy_cap = level+1、back_layout +1(min9)、装备在库;同 seed 重放一致;
 - **supply 路径零行为变化**:带钻补给局断言与 3.3 前一致(diamond_count +1,deploy_cap/back_layout 不变——不采纳回调);
 - 完成前常规检查(本文首节)。
