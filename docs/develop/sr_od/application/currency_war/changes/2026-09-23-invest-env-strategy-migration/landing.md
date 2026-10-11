@@ -22,13 +22,13 @@
 **完成判据**：
 - 全仓 grep：`ENV_FACTION_MATCH_FLOOR`/`GIFT_FLOOR_`/`cw_env_economy`（kernel 侧 import）/`candidate_faction_universe`/`candidate_char_universe` 零残留；`cw_events` 无 env 轴分支
 - L1 快速集全绿（`uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"`）
-- 行为对照 §2.10 行为变化申报表四条方向（序变化可从表 1-3 推导预期，非复刻旧序）
+- 行为对照 §2.10 行为变化申报表四条方向（序变化可从表 1-3 推导预期，非复刻旧序）+ flow 消费侧测试锁四条（env 帧路由与动作包装/memo 三态/decide-decide_pick 零漂移含全排除退化帧/策略轴回归）
 - §12 通用工程门（引用，不复述）
 **验收凭据形式**：grep 清零记录 + L1 通过 + 申报表对照
 **注意**：改代码后 MCP server 必须重启才生效（runtime-ops）；本阶段 commit 内新旧不并存。
 
 ## 3.3 文档拆分与实机对照
-**范围**：新建 `strategy-docs/28_invest_env_screen.md`（投资环境画面策略正本篇：标尺、四价值组件语义、系数/立场表指针=常量名、刷新判据、交互规则；值不落文档）；`25_event_overlays.md` 删投资环境相关行；`13_pick_family.md` `decide_invest_env` 行改指策略层新文件；`strategy-docs/README.md` §2 补 28 行；kernel 头注/契约注收口（`cw_events.py`/`cw_investments.py` 模块头 env 归属注、`cw_comps.py` `gift_hit_tier`/`candidate_char_universe` 处消费位指针改指策略层）；实机一局对照（重启 server 后跑一局，对照 §2.10 申报方向抽验 2-3 个选择帧的归因）。
+**范围**：新建 `strategy-docs/28_invest_env_screen.md`（投资环境画面策略正本篇：标尺、四价值组件语义、系数/立场表指针=常量名、刷新判据、交互规则；值不落文档）；`25_event_overlays.md` 删投资环境相关行；`13_pick_family.md` `decide_invest_env` 行改指策略层新文件；`strategy-docs/README.md` §2 补 28 行；kernel 注释指针全面收口（3.2 审查实测 ≥6 簇：`cw_events.py` 模块头与 decide_event docstring 已删 env 轴描述段、`cw_investments.py` 模块头维护清单与 6 处 `cw_env_economy.*` docstring 指针、`cw_comps.gift_hit_tier` 消费契约指向已删 GIFT_FLOOR_*/env 分支、`invest_env.decide_pick` docstring「sim 复用同吃」改「为 sim 复用预留」、`_d_src` 失去消费方的收口裁决）；landing 本文件 3.2 节「33 分位」措辞对齐 §2.7 均值口径；实机一局对照（重启 MCP server 后跑一局，对照 §2.10 申报方向抽验 2-3 个选择帧的归因）。
 **设计依据**：宪法六（一画面一文档）；design.md §2.10（注释指针收口项）
 **文件面**：`docs/develop/sr_od/application/currency_war/strategy-docs/`（28 新建、25/13/README 修改）、`kernel/cw_events.py`/`kernel/cw_investments.py`/`kernel/cw_comps.py`（仅头注与契约注）、`.debug/`（实机局记录）
 **依赖**：3.2
@@ -52,5 +52,7 @@
 - `strategy-docs/28_invest_env_screen.md`（新建即正本） ← 3.3
 - `strategy-docs/25_event_overlays.md`：删投资环境行 ← 3.3
 - `strategy-docs/13_pick_family.md`：decide_invest_env 行（接口与决策本体指针） ← 3.3
-- `strategy-docs/README.md`：§2 分篇表补 28 行 ← 3.3
+- `strategy-docs/README.md`：§2 分篇表补 28 行 + 25 号行描述去「投资环境」 ← 3.3/返工
+- `strategy-docs/16_evaluation_tables_reassessment.md`：ENV_PICK_VALUE/ENV_FACTION_MATCH_FLOOR/GIFT_FLOOR_* 行改退役（本迭代删除，依据 = 本迭代 design §2.10 + P97） ← 末阶段（3.3 实机提请 + 终审提请）
+- `strategy-docs/08_events.md`：E1 行旧机制层亲和口径换 28 指针 ← 末阶段（终审提请）
 - `kernel/cw_events.py`/`kernel/cw_investments.py`/`kernel/cw_comps.py`：模块头 env 轴归属注与消费位契约注（含 1003-1006 声明的残留指针） ← 3.2/3.3
