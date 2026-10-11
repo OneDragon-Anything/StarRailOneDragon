@@ -119,7 +119,8 @@ xp (0,4)/hp 82/streak 0/back_layout 6/deploy_cap 3/刷新计数 0/strategy_refre
 {})、局级事实域(active_env ''/active_strategies []/pending_item_grants []/
 enemy_affixes []/overflow False/''/prev_node_spent False)、晶矿附着/声明三域
 (ore_rewards {}/ore_declared_pending ()/ore_declared_done ()——域值恒非 None,
-幂等守卫 membership 判定与挂接入口合并写零 None 防御,§3.2.8a/§3.2.8b)。种子值依据逐字段申报面见迭代设计;hp 实证域 =
+幂等守卫 membership 判定与挂接入口合并写零 None 防御,§3.2.8a/§3.2.8b)、环境
+条件发放已发标记(env_grants_done ()——同族恒非 None,§3.5.5)。种子值依据逐字段申报面见迭代设计;hp 实证域 =
 A8/难度108(§3.1.6 三写端时序)。node 族/payload 域/事件选择域/席位锚定闩等
 **不种**——None 在这些字段上是设计语义(离屏/未选择/未锚定闩本体)。
 
@@ -361,9 +362,10 @@ CV 不可判/未建档→各自兜底(公式/防抖+8 格超集留证)。冲突�
 排中心恒 960);选中哪档就读哪套(坐标单一真相源=screen_info)。
 **写入规则**:布局档字段写**运行档真实槽位数**——6/7/8 档直读;实拍出现过 9 格
 (可达真实档位,坐标建档待办提级),域外一律按 **8 格超集**读全扩展带,evidence 补
-`superset` 标记(防超集近似被当精确值消费)。写端两处:实机 = 三信号裁决链
+`superset` 标记(防超集近似被当精确值消费)。写端三处:实机 = 三信号裁决链
 `resolve_back_slots` 收尾 observe(未知态帧不写);sim = 合成口直写(evidence=
-`sim:synthesized`,缺席不写)。已观测最大 cap=13。
+`sim:synthesized`,缺席不写);sim 环境条件发放回调 +1(财富宝钻扩展格,observe
+渠道 min 9 封顶,§3.5.5)。已观测最大 cap=13。
 **回归测试断言约束**:禁按未截断形态(线性外推)算预期、禁按 level 驱动表写。
 **挂账**:召唤物张力——钻石使 cap>level,召唤物是否经 cap 起效在案未解(挂账件 10);历史 8 格实证与公式差 1 的张力,双通道对账天然覆盖、不硬解。
 
@@ -374,7 +376,8 @@ Y 人数口径。
 **写端**:备战帧观察(双帧一致采信门输出;喂入口 =
 `cw_observation.read_game_state` spec 门 `deploy_cap` 键,防抖核 =
 `_debounce_cap` 单一源;拒信/失读帧 carry 沿用——宝钻只增不减,沿用方向安全)。
-sim 合成口同域直写。
+sim 合成口同域直写;sim 环境条件发放回调重算(= level + equips 中财富宝钻
+计数,拥有即算、可叠加,§3.5.5)。
 **为什么与 back_layout 双存**:部署/换线决策直接消费(max_units 封顶),且不可从
 其他字段可靠反推——§3.2.7 公式仅域内成立,域外态 back_layout 是 8 格超集近似值,
 反推会把近似当真值。**双存 = §8.8 在册例外形态**(「识别口径与推导口径并存且各有
@@ -900,7 +903,8 @@ effective_refresh_prob:键在且 >0 直用、≤0/缺键退基线表——**契�
 - **宝钻计数 diamond_count(主条目;跨画面货币,本屏落地)**:UI 可见的局内
   货币计数,获取通道 = 补给带钻选项等(None = 未观察,获取事件后累计)。**写端**:
   带钻选项落地写(sim 写端 = `sim/cw_sim_backend.py` 的 `_on_supply_picked`
-  供给 +1,钻信息读容器 `chosen_supply` 现值;实机观察写端候补档)。与部署容量
+  供给 +1,钻信息读容器 `chosen_supply` 现值;实机观察写端候补档);sim 环境
+  条件发放回调 +1(财富宝钻获得,observe 渠道,§3.5.5)。与部署容量
   的关系见 §3.2.7.1(deploy_cap = level + 财富宝钻数,两域各持识别/计数口径,
   禁互派生)。
 
@@ -1038,6 +1042,47 @@ None = 无挂账。消费 = 轮首收入败补支(U04 口径,kernel `round_start
 候补档(结算屏败局可观察、影响玩法=败补金,按容器字段判据入容器)。
 **边界**:值只证明「上一战斗类节点败了」,不承载扣血量(伤害分量未建模,
 §3.5.1);连胜转移(`streak_signed_after`)与挂账写同源结算腿,两值不互推。
+
+#### 3.5.5 环境条件发放已发标记 env_grants_done
+
+**语义**:`tuple[(env, 条件键), ...]` 逻辑态域——投资环境**条件达成发放**的
+已发标记(发放幂等守卫账:达成条件后跨结算重查不重发)。登记表 =
+`cw_investments.py::ENV_STREAK_GRANTS`(白名单制,键 = 投资环境规范名,值 =
+(连胜阈值, 发放装备名);现役 = 深井角斗场「本局首次 5 连胜 → 财富宝钻」);
+条件键 = 具名触发器,现役唯一取值 `'first_streak'` = 本局首次连胜达成。
+
+**触发与写端**(唯一逻辑写端 = `kernel/cw_env_grants.py::
+check_env_streak_grants`,live/sim 结算接线同调同一函数):结算连胜真值落账
+后检查,条件矩阵七序短路——①环境为空 ②环境不在登记表 ③连胜 ≤0(带符号
+口径)④未达阈值 ⑤已发(本域命中;现值 None 按空防御)⑥装备库存从未观察
+(equips None = 不发放**且不标 done**,条件每结算重查自动重试,宁缺勿造)
+⑦达标发放。发放 = 两笔相邻写(同 evidence `env_grant#<环境>#streak<阈值>`
+同 sig):equips 尾部追加(`write_logic_rand`——宝钻落位不可观察,可能世界
+快照,下一备战帧 equips 观察覆盖差异自动纠偏)+ 本域追加(`write_logic`
+直写登记;登记事实非观察投影,无观察写端)。
+
+**「本局首次」语义**:发放刻追加,**局内恒存无过期清理**——连胜无周期语义,
+无位面/轮次过期面(与 ore_declared_done 的位面过渡过期清理不同)。恢复局:
+快照含 done 随快照存续不重发;done 为空的接管形态,首个达标结算触发发放 =
+最佳猜测(边界显式接受)。
+
+**接线两处**(前提 = 真值已落账):live = 结算覆盖写端 `apply_settlement_cover`
+之后(同 best-effort 段,覆盖写异常连检查一并跳过;`streak_after` None =
+覆盖写端跳过 streak 观察,检查同口径不调;返回值忽略 = **live 无回调**,
+deploy_cap/back_layout/diamond_count 联动属观察域,识别器读屏跟踪,逻辑侧
+禁写);sim = 结算腿 streak observe 之后(`logic_sig('sim:env')`)。返回被发
+装备名 = 财富宝钻时仅 sim 调宝钻回调 `on_diamond_acquired`(世界数值面三写
+全走 observe,sig 内构 obs 族〔actor `EnvDiamondGrant` / group
+`sim:env-diamond`〕:diamond_count +1 / deploy_cap = level + equips 中财富
+宝钻计数〔拥有即算、可叠加〕/ back_layout = min(9, 现值+1),现值 None 以
+机制基线 6 起算;非财富宝钻早退;**supply 带钻补给不采纳回调**——钻类型
+未建模)。
+
+**登记四件**:开局种子 = `()`(§2.6,同晶矿声明族恒非 None);**快照恢复** =
+`restore_state_snapshot` 恢复表登记(逐元素 (str, str) 重建 tuple-of-tuple);
+**schema** = `DEFAULT_GS_SCHEMA['env_grants_done'] = 1` **独立键**,不并入
+他域 bump——他域本体未变,先例 = ore_rewards 不并入 spheres(§3.7.1);
+**审计** = `cw_projection_audit.py` 登记 PROCESS_ONLY 行(无观察读端)。
 
 ### 3.6 任何画面:事件浮层与派生域
 

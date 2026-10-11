@@ -160,7 +160,7 @@ sig: ChannelSig) -> tuple[str, ...]`——环境定时道具通道(§3 道具通
 回调 = kernel 内枚举函数,**不设注册机构**(用户裁定:函数体内枚举即收敛,新效果
 核实后在函数内加分支)。查无效果 = 安静不写,真值归观察覆盖。
 
-**环境发放三表分域**(哪些发放不经本节枚举):投资环境的「发放」类效果分三表,
+**环境发放四表分域**(哪些发放不经本节枚举):投资环境的「发放」类效果分四表,
 `cw_investments.py` 内各管一面——①`ENV_GIFTS`(具名发放通道:角色/占席道具,
 经 `on_env_gained` 枚举与 §2.7 定时支,本节辖);②`ENV_ECONOMY`(估值通道:
 结构化经济效果参数,策略层 `env_economy` 消费,发放动作不经本链);③
@@ -168,7 +168,19 @@ sig: ChannelSig) -> tuple[str, ...]`——环境定时道具通道(§3 道具通
 = 增发货币〔id 103〕每位面开局 6/8/12 金晶矿)。声明矿的发放形态 = 位面开局
 声明入队 → 矿进入世界时附着 → 点击兑现,全程经 `kernel/cw_ore_channel.py`
 (电平检查 `check_ore_declared_level` + 挂接入口 `report_spheres_observed`)
-而非获得链原语;域定义与队列语义 = fields.md §3.2.8a/§3.2.8b。**分域边界**:
+而非获得链原语;域定义与队列语义 = fields.md §3.2.8a/§3.2.8b;④
+`ENV_STREAK_GRANTS`(**条件达成通道**:结算连胜触发器——发放时点不在「获得」
+动作,在战斗结算连胜真值落账后,触发检查单一源 =
+`kernel/cw_env_grants.check_env_streak_grants`,现役 = 深井角斗场〔id 104〕
+本局首次 5 连胜 → 财富宝钻)。④与前三表的形状分工:`items_immediate` =
+选卡当场落席、`items_scheduled` = 登记定时队列到点落席(§2.7)、
+`ENV_ORE_GRANTS` = 位面开局声明矿——本表 = **结算时点 × 连胜条件 × 本局
+首次一次性**(一次性由 `env_grants_done` 标记承担,域规格 =
+fields.md §3.5.5)。发放不经获得链原语与本节枚举回调:装备发放 = equips 尾部
+追加 `write_logic_rand` + done 追加两笔相邻直写(宝钻落位不可观察的随机态
+写,无落位/升星/回调链诉求);宝钻的世界数值联动(diamond_count/deploy_cap/
+back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
+三写;live 不调,联动归观察域)。**分域边界**:
 `ENV_GIFTS ∩ ENV_ECONOMY = ∅`(单一环境只落一个估值结构,§3 道具通道同节
 校验);`ENV_ORE_GRANTS` 与两表**不互斥**——增发货币同有估值面
 (`ENV_ECONOMY.gold_per_plane_start`,策略层估值消费)与世界面(声明矿金额,
