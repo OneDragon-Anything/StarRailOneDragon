@@ -7,7 +7,7 @@
 1. 确认没有正在运行的游戏客户端进程（从启动器拉起的游戏是启动器子进程，后面若需重启启动器会连带杀掉它；发现游戏在跑 → 停下问用户）。
 2. **必须以用户桌面上下文启动，严禁从提权 shell 直接启动**：提权上下文下启动器界面读不出已保存的游戏关联——列表缺游戏/显示「获取游戏」（本机实测：提权启动后绝区零不显示；换用户上下文启动，零操作即恢复「开始游戏」）。正确方式（explorer 委托）：
    - 不需要调试口时：`Start-Process explorer.exe -ArgumentList '<启动器目录>\launcher.exe'`
-   - 需要调试口时：explorer 不转发额外参数，先写一个临时 wrapper.cmd（第一行 `@echo off`，第二行 `start "" "<launcher.exe>" --remote-debugging-port=9222`），再 `Start-Process explorer.exe -ArgumentList '<wrapper.cmd 路径>'` 委托执行。此组合已设计未实测——若端口未开，退化方案：请用户托盘退出一次，人工带口启动。
+   - 需要调试口时：explorer 不转发额外参数，先写一个临时 wrapper.cmd（第一行 `@echo off`，第二行 `start "" "<launcher.exe>" --remote-debugging-port=9222`），再 `Start-Process explorer.exe -ArgumentList '<wrapper.cmd 路径>'` 委托执行。已实测：参数生效、CDP 可连、游戏列表完整（三游戏全显示）。
 3. 若启动器已在运行：它是单例应用，直接再启动只会唤醒旧实例，需要先结束它。结束同样只能走用户上下文：托盘右键退出，或把 设置→通用→关闭设置→「关闭窗口」临时改为「退出启动器」后向主窗口（类名 `Qt51517QWindowIcon`、标题 米哈游启动器）发送 `WM_CLOSE`(0x0010)（实测 1 秒退出），结束后把设置改回用户原值。**严禁 `taskkill /F` 强杀**——强杀是异常退出，会诱发前端档案（Local Storage）重建。
 4. 启动参数：`--remote-debugging-port=9222` 是 Chromium/CEF 标准参数，启动器未做屏蔽。等待 10~15 秒让页面加载完。验证口已开：HTTP GET `http://127.0.0.1:9222/json/version` 返回 JSON 即成功。
 5. 用完收尾：「关闭窗口」设置改回用户原值，再不带参数经 explorer 委托正常重启一次，调试口即关闭。
