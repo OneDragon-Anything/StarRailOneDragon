@@ -5,10 +5,9 @@
 ## 1. 带 CDP 口启动启动器
 
 1. 确认没有正在运行的游戏客户端进程（从启动器拉起的游戏是启动器子进程，后面若需重启启动器会连带杀掉它；发现游戏在跑 → 停下问用户）。
-2. **必须以用户桌面上下文启动，严禁从提权 shell 直接启动**：提权上下文下启动器界面读不出已保存的游戏关联——列表缺游戏/显示「获取游戏」（本机实测：提权启动后绝区零不显示；换用户上下文启动，零操作即恢复「开始游戏」）。正确方式（explorer 委托）：
+2. **必须以用户桌面上下文启动，严禁从提权 shell 直接启动**：提权上下文下启动器界面读不出已保存的游戏关联——列表缺游戏/显示「获取游戏」（本机实测：提权启动后绝区零不显示；换用户上下文启动，零操作即恢复「开始游戏」）。正确方式（explorer 委托）：explorer.exe 常驻于用户桌面上下文（非提权），让它"打开"一个文件即以它的令牌启动目标——这是提权 shell 获得非提权子进程的最轻量通道。注意 explorer 的"打开"不转发应用参数，参数必须内嵌进文件（见下）。
    - 不需要调试口时：`Start-Process explorer.exe -ArgumentList '<启动器目录>\launcher.exe'`
-   - 需要调试口时：explorer 不转发额外参数，先写一个临时 wrapper.cmd（第一行 `@echo off`，第二行 `start "" "<launcher.exe>" --remote-debugging-port=9222`），再 `Start-Process explorer.exe -ArgumentList '<wrapper.cmd 路径>'` 委托执行。已实测：参数生效、CDP 可连、游戏列表完整（三游戏全显示）。
-   - 为什么是 .cmd 且不能换成 .ps1：explorer 委托的语义是「以用户上下文打开这个文件」——.cmd 打开即执行；.ps1 双击默认是记事本打开，不执行。也不要用 Shell.Application 的 ShellExecute 替代降权：实测子进程仍继承提权 token（启动器 token 检查为 elevated，游戏列表照样缺），是假降权。
+   - 需要调试口时：explorer 不转发额外参数，参数必须内嵌进"打开即执行"的文件。**推荐直接用自带脚本一条命令完成**：`pwsh -File scripts/hyp_launch_cdp.ps1 -LauncherPath '<启动器 exe>' [-Biz hkrpg_cn]`——脚本自动生成 .lnk（参数内嵌 Arguments 字段）并经 explorer 委托打开。已实测：参数生效、CDP 可连、游戏列表完整（三游戏全显示）。原理与手工等价物：生成 .lnk（TargetPath=启动器 exe、Arguments=参数）后 `Start-Process explorer.exe -ArgumentList '<lnk 路径>'`；备选 .cmd（`start "" "<exe>" <参数>`）效果相同但会闪控制台窗口。**.ps1 不可用**：Windows 默认把 .ps1 关联成记事本打开（微软故意防误执行脚本），explorer 委托它只会打开编辑器。也不要用 Shell.Application 的 ShellExecute 替代降权：实测子进程仍继承提权 token（token 检查为 elevated，游戏列表照样缺），是假降权。
 3. 若启动器已在运行：它是单例应用，直接再启动只会唤醒旧实例，需要先结束它。结束同样只能走用户上下文：托盘右键退出，或把 设置→通用→关闭设置→「关闭窗口」临时改为「退出启动器」后向主窗口（类名 `Qt51517QWindowIcon`、标题 米哈游启动器）发送 `WM_CLOSE`(0x0010)（实测 1 秒退出），结束后把设置改回用户原值。**严禁 `taskkill /F` 强杀**——强杀是异常退出，会诱发前端档案（Local Storage）重建。
 4. 启动参数：`--remote-debugging-port=9222` 是 Chromium/CEF 标准参数，启动器未做屏蔽。等待 10~15 秒让页面加载完。验证口已开：HTTP GET `http://127.0.0.1:9222/json/version` 返回 JSON 即成功。
 5. 用完收尾：「关闭窗口」设置改回用户原值，再不带参数经 explorer 委托正常重启一次，调试口即关闭。
