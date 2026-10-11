@@ -70,6 +70,10 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     RoundStartIncome,
     round_start_income,
 )
+from sr_od.application.currency_war.kernel.cw_env_grants import (
+    check_env_streak_grants,
+    on_diamond_acquired,
+)
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
     MegastarOption,
@@ -1582,6 +1586,19 @@ class SimBackend:
                         evidence=sim_evidence(
                             f'streak:p{node.plane}r{node.round_num}'),
                         sig=obs_sig(group_id='sim:streak'))
+        # —— 环境条件发放触发(迭代 2026-10-10-env-conditional-grants
+        # landing 3.3;接线点 = streak observe 之后,连胜真值已落账,
+        # 条件单一源 = kernel check_env_streak_grants)。sig 写死单形态
+        # = logic_sig('sim:env'):触发函数两写均为 logic 渠道,obs 族进
+        # write_logic_rand 即炸渠道族校验(禁 obs_sig,详设
+        # env-conditional-grant.md §5)。返回非 None → 宝钻回调(入参
+        # 只传装备名,sig 由回调内构 obs 族;宝钻裁决只认财富宝钻 =
+        # 回调内早退,接线不预判)。带钻补给不采纳回调:钻类型未建模,
+        # _on_supply_picked 零改动(详设 §5「补给宝钻不采纳回调」)。
+        granted = check_env_streak_grants(self.gs, signed,
+                                          logic_sig('sim:env'))
+        if granted is not None:
+            on_diamond_acquired(self.gs, granted)
         if not won and kind in COMBAT_NODE_TYPES:
             self.gs.observe(self.gs.pending_loss,
                             LostNodeRef(plane=node.plane,
