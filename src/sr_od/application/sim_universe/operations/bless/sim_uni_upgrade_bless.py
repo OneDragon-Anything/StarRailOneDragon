@@ -104,7 +104,9 @@ class SimUniUpgradeBless(SrOperation):
             if total_num + digit > self.left_num:
                 continue
             total_num += digit
-            self.upgrade_list.append(MatchResult(1, digit_rect.x1, digit_rect.x2, digit_rect.width, digit_rect.height,
+            # MatchResult 参数是 (c, x, y, w, h)：y 必须传 y1。历史误传 x2 导致点击中心
+            # 的纵坐标跟着横坐标走，点不中卡片且右列图标算出的 y≈1089 落在窗口外被拒点
+            self.upgrade_list.append(MatchResult(1, digit_rect.x1, digit_rect.y1, digit_rect.width, digit_rect.height,
                                                  data=digit))
             if total_num + 100 > self.left_num:  # 比较粗糙认为最少要100才能强化
                 break
