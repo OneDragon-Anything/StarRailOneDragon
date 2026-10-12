@@ -22,13 +22,13 @@
 ### 2. cw_plane_table 退役清单(9 制几何层整体退役)
 
 - **退役**:`node_t_of`、`schedule_of`、`r_remaining`、`r_global`、`r_remaining_in_plane`、`plane_offsets`、`plane_end_slots`、`NODES_PER_PLANE`、`TOTAL_NODES`、`DEFAULT_PLANE_LENGTHS`、`PLANE_FALLBACK_PRIORS`(11 符号;消费迁移见 §3-§6,消费清零依据 = 本篇 §3-§6 逐条)。
-- **保留**:`nodes_of_plane`(实况读、不夹,P2=7 正确性依据 = 其 docstring :68 在案;消费 = cw_discipline_rules:79、cw_line_switch:208、cw_economy:1408、cw_intention:366,零改动)、`clicks_to_level`/`level_cost`/`peak_refresh_level`/`HP_LOSS_MU`/`p_win_p2`(标定/胜率族,非几何)。
-- `nodes_of_plane` 回退常量再基:表缺回退从 `NODES_PER_PLANE=9` 改 `len(node_sequence_of(1, 场字段现值 or None))`(修饰 10 / 默认 9;session 非 GameState 时按 None);一次性告警保留。
+- **保留**:`nodes_of_plane`(实况读、不夹;P2=7 语义依据 = cw_discipline_rules.py:68「P2 boss@r7 判正,旧按 9 计永不触发」,docstring = cw_plane_table.py:129-139;消费 = cw_discipline_rules:79、cw_line_switch:208、cw_economy:1408、cw_intention:366,零改动——唯 :366 None 回退分支与 :96-100 import 随退役迁移,见 §5)、`clicks_to_level`/`level_cost`/`peak_refresh_level`/`HP_LOSS_MU`/`p_win_p2`(标定/胜率族,非几何)。
+- `nodes_of_plane` 回退常量再基:表缺回退从 `NODES_PER_PLANE=9` 改 `len(node_sequence_of(1, 场字段现值 or None))`(修饰 10 / 默认 9;session 非 GameState 时按 None);一次性告警保留;消费点注释随回退语义同步(cw_economy.py:914「缺表回退先验 9」句)。
 - 模块头「现役口径」段随退役改写(几何层退役声明 + 保留面清单)。
 
 ### 3. 策略门面重基(mandate_v1/statefn/horizon.py;签名不变)
 
-- `r_remaining(session, plane, round)`/`r_global`/`r_remaining_in_plane` 内部改场字段求和:`remaining = Σ_{p>plane} len(seq[p]) + (len(seq[plane]) − round)`(planes = 序列表键集;None 回退默认表)——语义逐字保留(含当前节点、到局终)。
+- `r_remaining(session, plane, round)`/`r_global`/`r_remaining_in_plane` 内部改场字段求和:`remaining = Σ_{p>plane} len(seq[p]) + (len(seq[plane]) − round + 1)`(含当前节点,与现行 `r_remaining_in_plane = plane_length − (node_in_plane − 1)` 半部逐值同式;planes = 序列表键集;None 回退默认表)——语义逐字保留(含当前节点、到局终)。
 - 门面 `__all__` 去 `schedule_of`(随退役);`delta_interest_flow`/`delta_w_increment`/`r_trunc` 不动(证明常数族 λ₃ 窗,非几何)。
 - 模块 docstring 单一源声明改「场字段(`gs.node_seq_by_plane`)」;裸 session/None 的 duck-typed 读出门面内部自备(`_probe_books` 同款模式)。
 
@@ -45,27 +45,31 @@
 |---|---|---|
 | cw_economy.py:1121(溢金视界 `rounds`) | `r_remaining(session, …)` | 场字段求和就地 |
 | cw_intention.py:952(超窗出口 `r_rem`) | 同上 | 同上(与 cw_economy 注释互锚) |
-| cw_economy.py:213-225(hp_safe 阈 `nodes_left` 闭式) | `(plane-1)*NODES_PER_PLANE + …`/`TOTAL_NODES` | 场字段求和(修掉闭式与夹取) |
+| cw_economy.py:213-225(hp_safe 阈 `nodes_left` 闭式) | `(plane-1)*NODES_PER_PLANE + …`/`TOTAL_NODES` | 场字段求和(修掉闭式与夹取;行为变化见 §8.6) |
 | cw_intention.py:371-376(`total_remaining_nodes`) | 恒按 9/位面计(29 号稿 :26 已登记禁消费缺陷) | 场字段求和修正(:407 遭遇窗门唯一消费保留) |
-| cw_comps.py:1655-1656(早期判)/:2300-2302(commit)/:2546-2551(信号 2 ceiling) | elapsed/remaining 闭式 ×3 | 模块内私有 elapsed/remaining 场字段求和 helper(同文件三调用点合一,非公共视界口) |
+| cw_intention.py:96-100(模块级 import)+ :366(`plane_remaining_nodes` None 回退分支) | import `NODES_PER_PLANE`/`TOTAL_NODES`/`r_remaining`;:366 `else NODES_PER_PLANE` | import 随退役清理;:366 None 分支改 `len(node_sequence_of(1, None))`(默认表 P1 长,与 nodes_of_plane 再基同款) |
+| cw_comps.py:1655-1656(早期判)/:2300-2302(commit)/:2546-2551(信号 2 ceiling) | elapsed/remaining 闭式 ×3 | 模块内私有 elapsed/remaining 场字段求和 helper(同文件三调用点合一,非公共视界口;elapsed = Σ_{p<plane} len + round,含当前节点口径与现式同) |
 | cw_registry.py:478、operations/cw_screen/cw_screen_prep.py:1146 | 注释涉退役符号 | 注释随改 |
+| strategies/impl/mandate_v1/criteria/refresh.py:71 | docstring 坐标系句引「kernel/cw_plane_table.r_remaining」 | 改指策略门面(注释级) |
 
 ### 6. strategy_economy 通道 4(boss 计数)场字段 kind 化
 
-剩余 boss 数 = 场字段序列自当前节点(含)起 `'boss'` 计数——kind 直查替代「位面末槽 × 每位面恰一 boss」几何假设(修饰局 boss 位移与未来序列变异天然正确;默认局数值不变,默认表 boss 位置 = 位面末槽)。通道 2/3/5/6 的 `remaining`(:241,经门面 `r_global`)零改;:209-228 docstring 的查表单一源句随改。
+剩余 boss 数 = 场字段序列自当前节点(含)起 `'boss'` 计数——kind 直查替代「位面末槽 × 每位面恰一 boss」几何假设(修饰局 boss 位移与未来序列变异天然正确)。**默认局数值变,非逐值不变**:现役 `plane_end_slots(schedule_of(gs))` 对 P3 先验 9 使 P3 虚拟末槽恒计入(P1 段 3 个、P2 起 2 个),kind 化封顶 modeled planes 后 P1 段 2、P2 起 1——P3 虚拟 boss 移除,方向与 §8.2 同(不可达节点不计),行为申报见 §8.3。通道 2/3/5/6 的 `remaining`(:241,经门面 `r_global`)零改;:209-228 docstring 与模块 docstring(:23-31,`PLANE_FALLBACK_PRIORS` 先验回退句)随改。
 
 ### 7. audit/标定面
 
 - `audit/derived.py:72-74`:R_全局 长度真值源注改场字段;`cw_plane_table.schedule_of`/`PLANE_FALLBACK_PRIORS` 符号引用随退役更新。
-- `audit/calibration.py:68`:`E2_DOMAIN_R_REMAIN_MAX` 27 → **18**(场字段 modeled 总长最大值 = 修饰 P1+P2 = 10+8;依据注释)。
+- `audit/calibration.py:68`:`E2_DOMAIN_R_REMAIN_MAX` 27 → **18**(场字段 modeled 总长最大值 = 修饰 P1+P2 = 10+8;依据注释);:47 网格域注释「T=r_remaining∈{1..27}」随改(上界同源)。
 
-### 8. 行为变化申报(策略规划输入的真值修正,T-8 裁决点 9 认定的缺陷修复面)
+### 8. 行为变化申报(策略规划输入的真值修正,T-8 裁决点 9 认定的缺陷修复面;变化项逐项列,不变项逐项给依据)
 
 1. **修饰局视界「少 1」夹取偏差消除**(schedule_of 把实读 P1=10 夹回 9 的方向性偏保守——裁决点 9 点名的故障);
 2. **P3 虚拟 9 轮移除**:视界封顶 modeled planes(P1+P2 = 16/18;现役 schedule_of 先验 9/7/9 = 25、TOTAL_NODES 闭式 = 27,两套口径本就互异)——与 bot 生命周期一致(进 P3 即结束链),P2 末段不再计入不可达轮;
-3. **boss 计数几何假设 → field 实 kind**(默认局逐值不变);
-4. 裸 session/None 回退先验 9 → 默认表长度(默认局数值不变);
-5. 标定域 27→18 收紧(校准网格定义面,非运行行为)。
+3. **boss 计数默认局亦变**:P3 虚拟末槽移除 → P1 段 3→2、P2 起 2→1(gold_per_boss_node 通道现金分随之;方向 = 不可达节点不计,与 §8.2 同源);
+4. **hp_safe 阈 nodes_left 封顶变化**(cw_economy:213-225 迁移):27 制闭式 → 场字段 modeled 总长,默认局 P2 r1 即 18→7(P1 段同式不变)——hp 安全阈不再计入不可达的第三位面虚构余量;
+5. 裸 session/None 回退先验 9 → 默认表长度(默认局数值不变,修饰局 10/8);
+6. 标定域 27→18 收紧(校准网格定义面,非运行行为);
+7. **默认局不变面**:门面 `r_remaining`/`r_global` 对默认表逐值同现役 schedule_of 口径(含当前节点语义保留);`total_remaining_nodes` 修正后默认局 P1/P2 段与门面同值(P3 段不再虚构);cw_comps 早期/commit 判据默认局逐值不变(elapsed 口径与现式同,§5)。
 
 ## 关键取舍
 

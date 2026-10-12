@@ -34,7 +34,7 @@
 **完成判据**:
 - 行为对照 design.md §2.2(两态字段/原语处置表/终局锁)、§2.3(直定与查链)、§2.4(账本三语义 + cw_gain_chain 消费)、§2.5(锚定写端)、§2.6(sim 簿记/进窗/局终腿)、§2.8(快照往返/旧档忽略);
 - 默认环境 sim 全链回归与现役基线逐值同(design §2.11 锁 9);修饰局回归 = T-8 既有测试面全绿;
-- 本批文件内 `node_ord`/`node_hist_ord`/`node_ordinal_of`/`_node_key_for_ord`/`node_pos_of`/`effective_node_ord`/`acquired_t`/`_portal_acquired_t`/`_entered_ord`/`_window_begun_ord` 符号零残留(grep 自证,入提交说明);
+- 本批文件内 `node_ord`/`node_hist_ord`/`node_ordinal`/`_node_key_for_ord`/`node_pos_of`/`effective_node_ord`/`acquired_t`/`_portal_acquired_t`/`_entered_ord`/`_window_begun_ord` 符号零残留(grep 自证,入提交说明;`node_ordinal` 裸词覆盖 `node_ordinal_of` 与 `tick_node` 旧形参名);
 - 完成前常规检查(本文首节,含 kernel/sim 全量)。
 **验收凭据形式**:design §2.11 锁 1-6/8/9 对应测试;sim 默认局全链一条(基线数字对照)。
 
@@ -53,9 +53,9 @@
 
 ## 3.4 遥测与载体收口
 
-**范围**:cw_anchor 锚行 `node_seq` 槽退役(AnchorEvent 字段/to_row 键/emit_anchor 形参与幂等键槽);journal_query `node_ordinal_of` 死 helper 删除;obs/cw_observation `_node_t` 死局部删除(:2268-2273)。**边界**:不含 defects 维度词表(零改动申报面);不含快照/恢复(3.2 已含)。
+**范围**:cw_anchor 锚行 `node_seq` 槽退役(AnchorEvent 字段/to_row 键/emit_anchor 形参与幂等键槽);journal_query `node_ordinal_of` 死 helper 删除;obs/cw_observation `_node_t` 死局部删除(:2268-2273);cw_reconcile `reconcile_hp` 的 `node_t` 死形参删除(:456/:477,守卫删除后零消费)。**边界**:不含 defects 维度词表(零改动申报面);不含快照/恢复(3.2 已含)。
 **设计依据**:design.md §2.8/§2.10 取舍 6/§2.7(死局部依据)。
-**文件面**:kernel/cw_anchor.py、telemetry/journal_query.py、obs/cw_observation.py;sr-od-test journal 域既有测试(test_cw_journal_assembly_guard.py 等)。
+**文件面**:kernel/cw_anchor.py、telemetry/journal_query.py、obs/cw_observation.py、kernel/cw_reconcile.py;sr-od-test journal 域既有测试(test_cw_journal_assembly_guard.py 等)。
 **依赖**:无。
 **优先级建议**:1
 **完成判据**:
@@ -68,7 +68,7 @@
 
 **范围**:T-8 裁决点 9 指派面(details/horizon-cleanup.md 全量)——cw_plane_table 几何层 11 符号退役(node_t_of/schedule_of/r_remaining/r_global/r_remaining_in_plane/plane_offsets/plane_end_slots/NODES_PER_PLANE/TOTAL_NODES/DEFAULT_PLANE_LENGTHS/PLANE_FALLBACK_PRIORS)+ nodes_of_plane 回退再基;策略门面 horizon.py 场字段重基(签名不变);proof/budget/levelup import 改道;strategy_economy boss 通道 kind 化;kernel 判据点(cw_economy/cw_intention/cw_comps)就地迁移;audit/标定域再基。**边界**:策略选卡估值/打分不动;`shop.py`/`statefn/odds.py`/`nodes_of_plane` 消费族零改动;行为变化以 details §8 申报为准。
 **设计依据**:design.md §2.7(视界族段)+ details/horizon-cleanup.md(全篇)。
-**文件面**:kernel/cw_plane_table.py、kernel/cw_economy.py、kernel/cw_intention.py、kernel/cw_comps.py、kernel/cw_registry.py(注释)、strategies/impl/mandate_v1/statefn/horizon.py、strategies/impl/mandate_v1/proof.py、strategies/impl/mandate_v1/statefn/budget.py、strategies/impl/mandate_v1/criteria/levelup.py、strategies/impl/mandate_v1/strategy_economy.py、strategies/impl/mandate_v1/audit/derived.py、strategies/impl/mandate_v1/audit/calibration.py、operations/cw_screen/cw_screen_prep.py(:1146 注释;与 3.2 同文件,依赖 3.2 防在飞冲突);sr-od-test 对应测试(策略域 + 受影响 kernel 域)。
+**文件面**:kernel/cw_plane_table.py、kernel/cw_economy.py、kernel/cw_intention.py、kernel/cw_comps.py、kernel/cw_registry.py(注释)、strategies/impl/mandate_v1/statefn/horizon.py、strategies/impl/mandate_v1/proof.py、strategies/impl/mandate_v1/statefn/budget.py、strategies/impl/mandate_v1/criteria/levelup.py、strategies/impl/mandate_v1/criteria/refresh.py(注释)、strategies/impl/mandate_v1/strategy_economy.py、strategies/impl/mandate_v1/audit/derived.py、strategies/impl/mandate_v1/audit/calibration.py、operations/cw_screen/cw_screen_prep.py(:1146 注释;与 3.2 同文件,依赖 3.2 防在飞冲突);sr-od-test 对应测试(策略域 + 受影响 kernel 域)。
 **依赖**:3.2(同文件在飞面防冲突;非符号依赖);前置闸(T-8 场字段在役)。
 **优先级建议**:1
 **完成判据**:
@@ -103,7 +103,7 @@
 
 - game_state/node-domain.md:§1 身份键句(`node_ordinal` 公式 → NodePos 键表示)、§2 字段表(`node_ord`/`node_hist_ord` 行 → `node_pos`/`node_hist_pos`)、生效序读口节(名称与字典序语义) ← 3.2
 - game_state/node-derivation.md:§3.2 身份键节(含 `AnchorEvent.node_seq` 引注句)、§3.3 原语签名与四分支比较语义(元组字典序)、终局语义(事件式声明)补节、§3.5 锚行载荷 `node_seq` 槽退役注、§① 结论节符号名 ← 3.2/3.4
-- game_state/fields.md:§3.6.2 节点域字段(`node_pos` 两态规格、`node_hist_pos`)+ §3.7.1(derivation 域版本 5)+ §3.2.8 快照/恢复值形如涉 ← 3.2
+- game_state/fields.md:§3.6.2 节点域字段(`node_pos` 两态规格、`node_hist_pos`)+ §3.7.1(derivation 域版本 5)+ §3.2.1(node 域)快照/恢复值形如涉 ← 3.2
 - game_state/effect-domain.md:登记时点语义(`acquired_key`)、`advance_node` 键契约、去重键 `(run_id, 生效序位)` ← 3.2
 - game_state/journal.md:§4 自足快照行(state 行 values `node_pos`/顶层 `node_hist_pos`/effects 行 `acquired_key` 值形键名) ← 3.2
 - game_state/README.md:§3.2 节点生效序摘要行(`node_ord` → `node_pos` 生效序读口) ← 3.2

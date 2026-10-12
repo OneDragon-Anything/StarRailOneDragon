@@ -1,12 +1,12 @@
 # 废弃全局节点编号(node_ordinal)迭代设计(总纲)
 
-> 状态:对抗审中(定稿门槛 = 攻击收敛 + 试读过)。
+> 状态:定稿(攻击收敛:r1/r2 处置毕,编排者按规范 §5 规则 4 亲验反查通过)。
 > 立项出处:2026-09-23-invest-effects-calc 迭代 T-8(人身意外险)设计对抗中的用户裁定(2026-10-12):「废弃这个编号,单独立项」。
 
 ## 0. 元信息
 
 - 迭代目标:废弃节点全局编号(`node_ordinal`,闭式公式 `(位面-1)*9 + 轮`)作为独立表示,节点位置/进度/数数语义全部改由 `(位面, 轮)` + 有效节点序列(场字段)承载。
-- 状态:对抗审中。
+- 状态:定稿。
 - 文档清单:design.md §2 即完整设计(无第二详设划分:键表示切换是单一原子语义,消费域改法同构);视界族清扫自成 [details/horizon-cleanup.md](details/horizon-cleanup.md)(T-8 裁决点 9 指派的迁移面,独立成篇);落地 = [landing.md](landing.md);索引 = [README.md](README.md)。
 
 ## 1. 问题与动机
@@ -14,7 +14,7 @@
 ### 1.1 现状症状
 
 1. **编号定义与序列脱钩**。全局编号的实现是一条闭式公式 `(位面-1)*9 + 轮`(cw_game_state.py:332-335),内嵌「第 1 位面恒 9 个节点」的默认环境假设。位面节点序列随投资环境变异后(人身意外险:P1=10/P2=8),公式与真实序列分叉:正解(公式)与反解(按序列累加,cw_node_schedule.py:60-74)不一致,「二元可逆」前提破(node-derivation.md §3.2 身份键正本明文「二元可逆」),同一数字跨局含义不同(旧局 10 = 2-1,修饰局 10 = 1-10)。
-2. **公式拷贝散落,单一源名存实亡**。全仓 `*9`/`//9`/`%9` 扫描(T-8 轮 5 外部审查)命中 14 处:kernel 正反解两套(cw_game_state.py:332/3350 + cw_node_schedule.py:60)、sim 独立双实现(`_ordinal_to_node`/`_node_ordinal`,cw_sim_backend.py:1298/1346)、obs 与 operations 内联四锚三文件(cw_observation.py:2273、cw_screen_battle_wait.py:379/670、cw_screen_supply_node.py:172)、商店查链反解一处(cw_game_state.py:3267)、acquired_t 快照两处(cw_effect_inventory.py:692、cw_affix_effects.py:450)、frame 拼接一处(cw_game_state.py:3383)、telemetry 死 helper 一处(journal_query.py:218)。每引入一个改序列的环境,都要全量扫描甄别哪些拷贝会错——invest-effects-calc/T-8 为此把改动面扩到 12 文件;T-8 裁决点 7 另立方法论勘误:扫描须含具名常量族(`NODES_PER_PLANE`/`schedule_of` 夹取族,本迭代 §2.7/details 承接)。
+2. **公式拷贝散落,单一源名存实亡**。全仓 `*9`/`//9`/`%9` 扫描命中 14 处(底册承 T-8 设计,裁决点 6 扩面):kernel 正反解两套(cw_game_state.py:332/3350 + cw_node_schedule.py:60)、sim 独立双实现(`_ordinal_to_node`/`_node_ordinal`,cw_sim_backend.py:1298/1346)、obs 与 operations 内联四锚三文件(cw_observation.py:2273、cw_screen_battle_wait.py:379/670、cw_screen_supply_node.py:172)、商店查链反解一处(cw_game_state.py:3267)、acquired_t 快照两处(cw_effect_inventory.py:692、cw_affix_effects.py:450)、frame 拼接一处(cw_game_state.py:3383)、telemetry 死 helper 一处(journal_query.py:218)。每引入一个改序列的环境,都要全量扫描甄别哪些拷贝会错——invest-effects-calc/T-8 为此把改动面扩到 12 文件;T-8 裁决点 7 另立方法论勘误:扫描须含具名常量族(`NODES_PER_PLANE`/`schedule_of` 夹取族,本迭代 §2.7/details 承接)。
 3. **表示分叉的守卫成本**。以编号为一方的消费点(锚定水位比较、效果账本去重与数数、推进水位、类型直定倒退免疫)与以 (位面,轮) 为另一方的消费点(同式岛:结算单调门、败局闩、hp 帧龄门锚)并存,两套表示的对齐义务散落在各处注释与测试里,序列一变即需逐处重审。
 4. **遥测语料跨局不可比**。journal 落盘的 ord 依存局口径(旧局 9 制/新局修饰制),跨局比序错位,只能靠纪律约定(跨语料对账按 (位面,轮) 键)兜底,无结构保证。
 
@@ -38,7 +38,7 @@
 
 - 前置:invest-effects-calc/T-8(人身意外险)落地——场字段与序列修饰层是本迭代的表示基础(本设计以 T-8 终态为基线,见 §2.0;T-8 未落地前本迭代不实施)。
 - 关联:invest-effects-calc/T-8 裁决点 5(kernel/sim 双份反解合并)随本迭代整体消解,本卡按「双份+同参」过渡;裁决点 6 的坐标消费面扩面修复为过渡态正确性义务,不因本迭代豁免。
-- 关联(T-8 定稿新增,对抗轮 6):**裁决点 7 前半**——killed-hp 兜底门删除(HP 对比兜底块 + `_st.last_outcome_t` + `node_t_of` 随删,胜负判定必须在结算画面识别)属 T-8 落地面,**本迭代零接触**(§2.7 零接触申报);**裁决点 9**——视界族/9 制几何层的函数退役与策略侧自算迁移**指派本迭代**(§2.7 + details/horizon-cleanup.md 承接)。
+- 关联(T-8 定稿新增):**裁决点 7 前半**——killed-hp 兜底门删除(HP 对比兜底块 + `_st.last_outcome_t` + `node_t_of` 随删,胜负判定必须在结算画面识别)属 T-8 落地面,**本迭代零接触**(§2.7 零接触申报);**裁决点 9**——视界族/9 制几何层的函数退役与策略侧自算迁移**指派本迭代**(§2.7 + details/horizon-cleanup.md 承接)。
 - 关联申报:同迭代设计件 T-19(劳伍派遣合同,设计成稿未落地)内引用 `node_pos_of`/`node_ordinal_of` 的「T-8 落地随迁」行,随本迭代整体失效——其触发器坐标改按 (位面,轮) 键表达,由 T-19 自身落地批消化(登记义务,不进本迭代文件面)。
 
 ## 2. 方案
@@ -89,7 +89,7 @@ def sequence_next(pos: NodePos,
 - `observe_node_anchor(gs, pos: NodePos, *, trigger_screen, actor, sig=None)`(:3570):四分支处置语义逐字保留,比较全换元组——`v is None` → first_anchor;`pos > v` → advance 补推;`pos == v` → reanchor;`pos < v` → stale_dropped 倒退免疫留证。跨位面形态 `(1,10) < (2,1)` 由字典序自然严格(T-8 修饰局下同式成立,不需任何序列查询)。
 - **删除**:`node_ordinal_of`(:332-335 正解公式)、`_node_key_for_ord`(:3350-3356 反解)、`_obs_node_ordinal` 改 **`_obs_node_pos(gs)`**(镜像已是 NodeKey,直接返回 `(cur.plane, cur.round_num)`,:3325)。
 
-**next_screen 推导(`_node_advance_next_screen`,:3423)**:输入即键——`pos = effective_node_pos(gs)`;`pos[1] > len(node_sequence_of(pos[0], seqs))` = 防御性 `''`(不可达:终局已在 `report_node_advance` 拦截,防御保留与现行同位);`pos[0] > 1 ∧ pos[1] == 1` → 位面过渡;否则 `_NODE_KIND_NEXT_SCREENS[node_sequence_of(...)[pos[1]-1]]`。`total` 求和与 `node_pos_of` 反解两段退役。
+**next_screen 推导(`_node_advance_next_screen`,:3423)**:输入即键——`pos = effective_node_pos(gs)`;**防御分支与现行同位优雅**:`pos is None → ''`(现行 :3435-3436 分支保留);`pos[0]` 无序列表 → `''`(对齐现行 `eff > total` 优雅局终;**禁直查 `node_sequence_of` 抛错**——先判位面在表性再取长);`pos[1] > len(seq)` → `''`(modeled 位面内损坏坐标防御);`pos[0] > 1 ∧ pos[1] == 1` → 位面过渡;否则 `_NODE_KIND_NEXT_SCREENS[seq[pos[1]-1]]`。`total` 求和与 `node_pos_of` 反解两段退役。
 
 ### 2.3 类型派生与商店查链(kernel/cw_game_state.py)
 
@@ -104,7 +104,7 @@ def sequence_next(pos: NodePos,
 - `ActiveEffect.acquired_t: int | None` → **`acquired_key: tuple[int, int] | None`**(:189,注释改「登记时点节点序位快照 (位面,轮)」)。
 - `ActiveEffectInventory._last_tick_node` → **`_last_tick_key`**(:222,去重键 = 序位相等)。
 - `advance_node(node_ordinal)` → **`advance_node(node_key: tuple[int, int] | None)`**(:335):同节点去重 `node_key == self._last_tick_key`;「登记当节点不推进」守卫 `e.acquired_key >= node_key` **元组比较**(:365-367——语义与现行 `>=` 序数比较逐值等价,字典序=全序);`remaining_nodes` 自然数倒计时**零改动**(「接下来 N 个节点」自 T-8 修饰制起差值即真实节点数,倒计时本就不依赖坐标算术)。
-- 快照两处内联 9 制退役:`_portal_acquired_t` → **`_portal_acquired_key`** 返回 `(nd.plane, nd.round_num)`(:684-693);`register_affixes_from_names` 同款内联(:448-450)同改;`_register`/`register_strategy`/`register_affix`/`register_portal` 的 `acquired_t` 形参名随载体(:250/:261/:265/:280)。**kernel 消费方随批**:cw_gain_chain.py:43(import)/:611(调用)/:581(注释)——portal 获得链经 `register_portal_from_env` 之外的直连消费点,与生产方同批评审(atomic 面闭合,H2 修复)。kernel 侧调用方 `_tick_effect_boundary_impl`(:3380-3384)传 `effective_node_pos(gs)`;frame 串 `f'p{(effective-1)//9+1}-r{(effective-1)%9+1}'`(:3383)改 `f'{pos[0]}-{pos[1]}'`(「位面-轮」统一标识,用户裁定 2026-10-12;frame 只进 evidence/余额账,随键直拼)。
+- 快照两处内联 9 制退役:`_portal_acquired_t` → **`_portal_acquired_key`** 返回 `(nd.plane, nd.round_num)`(:684-693);`register_affixes_from_names` 同款内联(:448-450)同改;`_register`/`register_strategy`/`register_affix`/`register_portal` 的 `acquired_t` 形参名随载体(:250/:261/:265/:280);`tick_node` 兼容口形参随改(:374-377)。**kernel 消费方随批**:cw_gain_chain.py:43(import)/:611(调用)/:581(注释)——portal 获得链直连消费点,与生产方同批评审(atomic 面闭合,H2 修复);同文件 `_node_frame`(:557-561,链内 frame 串 `p{plane}-r{round}`)一并统一为「位面-轮」形态 f'{p}-{r}'(与 §2.4 frame 口径同批,消除同 run 双形态并立——披露 2)。kernel 侧调用方 `_tick_effect_boundary_impl`(:3380-3384)传 `effective_node_pos(gs)`;frame 串 `f'p{(effective-1)//9+1}-r{(effective-1)%9+1}'`(:3383)改 `f'{pos[0]}-{pos[1]}'`(「位面-轮」统一标识,用户裁定 2026-10-12;frame 只进 evidence/余额账,随键直拼)。
 
 ### 2.5 观察锚定写端与画面 op(operations/cw_screen/)
 
@@ -158,7 +158,7 @@ def sequence_next(pos: NodePos,
 | operations/cw_screen/cw_screen_plane_transition.py | opening 判定改名 | §2.5 |
 | operations/cw_screen/cw_screen_battle_wait.py | 败局闩键门 | §2.7 |
 | operations/cw_op/cw_op_settle_confirm.py + kernel/cw_encounter_selection.py | 注释口径 | §2.5 |
-| kernel/cw_anchor.py + telemetry/journal_query.py + obs/cw_observation.py | 锚行槽/死 helper/死局部 | §2.8/2.7 |
+| kernel/cw_anchor.py + telemetry/journal_query.py + obs/cw_observation.py + kernel/cw_reconcile.py | 锚行槽/死 helper/死局部/死形参(`reconcile_hp` 的 `node_t` 兼容形参 :456/:477,守卫删除后零消费) | §2.8/2.7 |
 | kernel/cw_plane_table.py | 几何层 11 符号退役 + nodes_of_plane 回退再基 + 模块头 | §2.7/details §2 |
 | strategies/impl/mandate_v1/statefn/horizon.py | 门面场字段重基(签名不变) | §2.7/details §3 |
 | strategies/impl/mandate_v1/proof.py + statefn/budget.py + criteria/levelup.py | r_remaining import 改道门面 | §2.7/details §4 |
@@ -173,7 +173,7 @@ def sequence_next(pos: NodePos,
 - 结算单调门、killed-hp 兜底门(后者 T-8 已删,本迭代零接触——§2.7);
 - 观察漏斗对 `gs.node` 镜像的写端(镜像本就是 NodeKey)与 `top_bar_raw` 观察层;
 - 外循环路由、画面 op 分发、补给/遭遇/商店行为链(键化不触画面语义);
-- 策略层选卡估值/打分(StanceRow/打分器)与 `shop.py`/`statefn/odds.py`(门面调用/标定表,签名不变零改)、`nodes_of_plane` 消费族(`cw_discipline_rules`/`cw_line_switch`/`cw_intention:365-368` 位面内对照量);
+- 策略层选卡估值/打分(StanceRow/打分器)与 `shop.py`/`statefn/odds.py`(门面调用/标定表,签名不变零改)、`nodes_of_plane` 消费族(`cw_discipline_rules`/`cw_line_switch`/`cw_intention:365-368` 位面内对照量——唯 :366 None 回退分支消费 `NODES_PER_PLANE`,随 details §5 迁移;其余零改动);
 - 默认环境与修饰环境全部行为(字典序=全序恒等 + 逐值等价证明见各节;行为差申报面 = §2.12 披露 1/2/3);
 - `SETTLE_DEFEAT_LATCH` 主证据链(进度符号)、`defects` 维度词表、`node_key_of`/`round_state_snapshots` 查询面。
 
@@ -197,12 +197,13 @@ def sequence_next(pos: NodePos,
 7. **败局闩锁**:键门与旧 t 门逐值对拍((1,10)/(2,1)/(2,4)/(2,5) 边界,含修饰局形态)。
 8. **快照往返锁**:`node_pos`/`node_hist_pos`/`acquired_key` 快照↔恢复逐值;旧档 `node_ord` 键忽略不炸。
 9. **默认局回归**:默认环境 sim 全链一次,窗口幂等/收入/局终轮次与现役基线逐值同(修饰局回归 = T-8 既有测试面)。
-10. **视界族锁**(details §3/§6/§8):门面 `r_remaining` 场字段求和(默认表 = 现役 schedule_of 逐值;修饰表 = 修夹取后真值;None 回退);strategy_economy boss 计数(默认局逐值不变/修饰局按 field kind);`total_remaining_nodes` 修正后与门面同值。
+10. **视界族锁**(details §3/§6/§8):门面 `r_remaining` 场字段求和(默认表 = 现役 schedule_of 逐值;修饰表 = 修夹取后真值;None 回退);strategy_economy boss 计数对拍 = **变化申报面**(默认局 P1 段 3→2、P2 起 2→1,P3 虚拟末槽移除——details §8.3;非逐值不变);hp_safe 阈 nodes_left 对拍 = 变化申报面(details §8.4,默认局 P2 r1 18→7);`total_remaining_nodes` 修正后与门面同值。
 
 ### 2.12 披露申报
 
-1. **终局虚假 tick 移除(行为差,遥测面)**:现行终局确认会把水位推到越界序 `total+1` 并对效果账本多 tick 一次(advance_node_effective 内联于推进,越界序位无节点语义);键化后终局零写入零 tick。影响 = 尾局存活效果的 `remaining_nodes` 少递减一次、到期移除日志少一行——对局已终,账本随 run 销毁,零世界语义;sim 对账面不变(现役 sim 局终臂同在 tick 之后)。
-2. **reason 串与留证载荷口径**:`node_ord→N` 串、`target_ord`/`node_ord` 留证键改 `node_pos→2-1`(「位面-轮」统一标识,用户裁定 2026-10-12)、`target_pos`/`node_pos`;效果 frame 串 `p1-r3` → `1-3` 同口径——判读脚本若硬编码旧串需随批知晓(在册判读面 grep 核对归实现批);journal 行形状变化按 run 隔离,跨语料对账按 (位面,轮) 键(§1.3 既定)。
-3. **视界族行为变化(策略规划输入真值修正,T-8 裁决点 9 认定的缺陷修复面)**:修饰局视界「少 1」夹取偏差消除、P3 虚拟 9 轮移除(视界封顶 modeled planes,与 bot 进 P3 即结束链的生命周期一致)、boss 计数几何假设改 field 实 kind、标定域 27→18 收紧——逐项申报与默认局逐值不变依据 = details/horizon-cleanup.md §8。
+1. **终局虚假 tick 移除 + 终局后重复上报语义(行为差)**:现行终局确认会把水位推到越界序 `total+1` 并对效果账本多 tick 一次(advance_node_effective 内联于推进,越界序位无节点语义);键化后终局零写入零 tick。影响 = 尾局存活效果的 `remaining_nodes` 少递减一次、到期移除日志少一行——对局已终,账本随 run 销毁,零世界语义;sim 对账面不变(现役 sim 局终臂同在 tick 之后)。**幂等性形态变化**:现役终局推进写 logic 态,同屏重试上报被观察态门挡;键化终局零写入,`node_pos` 保持锚定态 → 终局后重试上报恒过门并重复发射 `match_end`(applied=True;零状态破坏,sim `advance()` done 早退吸收)——判读口径 = 同 run 多条 match_end 视为同一终局事件(键 = run_id),落地批不设终局闩(新增状态 vs 重复行噪声,取后者)。
+2. **reason 串与留证载荷口径**:`node_ord→N` 串、`target_ord`/`node_ord` 留证键改 `node_pos→2-1`(「位面-轮」统一标识,用户裁定 2026-10-12)、`target_pos`/`node_pos`;效果 frame 串统一为 `1-3` 形态,生产点两处随批同改——`_tick_effect_boundary_impl`(:3383)与 cw_gain_chain `_node_frame`(:557-561,burst 桥/板面重写桥 evidence 链)——改造后同 run 无 `p1-r3` 旧形态残留;判读脚本若硬编码旧串需随批知晓(在册判读面 grep 核对归实现批);journal 行形状变化按 run 隔离,跨语料对账按 (位面,轮) 键(§1.3 既定)。
+3. **视界族行为变化(策略规划输入真值修正,T-8 裁决点 9 认定的缺陷修复面)**:修饰局视界「少 1」夹取偏差消除、P3 虚拟 9 轮移除(视界封顶 modeled planes,与 bot 进 P3 即结束链的生命周期一致)、boss 计数几何假设改 field 实 kind(**默认局亦变**:P1 段 3→2、P2 起 2→1)、hp_safe 阈 nodes_left 封顶变化(默认局 P2 r1 18→7)、标定域 27→18 收紧——变化项与默认局不变面逐项申报 = details/horizon-cleanup.md §8。
 4. **`emit_anchor` 形参收敛**:锚行 `node_seq` 槽退役后,未来接线方按七字段封装的文档口径(node-derivation.md §3.5 历史节/正本批更新)同步;登记表在册锚 `node_enter` 的宿主描述不变。
 5. **T-8 互逆锁退役与 killed 门零接触**:T-8 落地批交付的「正反解互逆锁」测试随 `node_pos_of` 删除退役(无编号可互逆);killed-hp 兜底门/killed 邻接门行为面归 T-8(裁决点 7 前半),本迭代无涉——其「场字段↔live 台账对照」披露通道(序列真值证伪面)与键化正交,保留。
+6. **遥测身份字样豁免**:披露键值 `enter_p3_game_over_u19`(DISCLOSURE_P3_UNOBSERVED)含历史越界序编号字样,作为遥测身份保留(改键值 = journal 对账断流;语料连续性优先)——编号清零目标辖代码表示,不辖既有遥测身份串。
