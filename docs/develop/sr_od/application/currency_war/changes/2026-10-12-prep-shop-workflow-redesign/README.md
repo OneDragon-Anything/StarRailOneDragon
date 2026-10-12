@@ -7,6 +7,6 @@
 
 ## 进度
 - 迭代设计:对抗审中
-- 设计对抗:进行中（r1-r15 发现累计 282 项已全部修复；r16 发现 17 项修复中，r17 待发起）· 报告存迭代账本目录（.debug/progress/2026-10-12-prep-shop-workflow-redesign/attack-r1..r16.md）
+- 设计对抗:进行中（r1-r17 发现累计 316 项已全部修复；r18 发现 18 项修复中，r19 待发起）· 报告存迭代账本目录（.debug/progress/2026-10-12-prep-shop-workflow-redesign/attack-r1..r18.md）
 - 落地:阶段 0/9 done（明细见 landing.md）
 - 正本更新:未开始
