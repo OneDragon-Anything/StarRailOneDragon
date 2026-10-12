@@ -6,7 +6,7 @@
 - 落地:[landing.md](landing.md)
 
 ## 进度
-- 迭代设计:草案
-- 设计对抗:未开始 · 报告=[attack.md](attack.md)
-- 落地:阶段 0/8 done（明细见 landing.md）
+- 迭代设计:对抗审中
+- 设计对抗:进行中（r1 发现 24 项已修复；r2 发现 25 项已修复，r3 待发起）· 报告存迭代账本目录 reports 侧（.debug/progress/2026-10-12-prep-shop-workflow-redesign/attack-r1.md、attack-r2.md）
+- 落地:阶段 0/9 done（明细见 landing.md）
 - 正本更新:未开始
