@@ -50,6 +50,7 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     BOARD_REWRITE_SELL_ALL,
     BOARD_REWRITE_UPGRADE_ALL,
     BattlefieldEffect,
+    CounterKey,
     DurationKind,
     DutyFlags,
     EffectKind,
@@ -1822,3 +1823,75 @@ def _validate_env_streak_grants() -> None:
 
 
 _validate_env_streak_grants()
+
+
+# ===== 环境刷新次数触发发放注册表(T-7 二手市场;白名单制)=====
+# **世界发放域**(条件达成的世界发放第二例,ENV_STREAK_GRANTS 同族):
+# 键 = 环境规范名,值 = (计数键, 阈值, 金, 装备名可空)。装备可空 =
+# 金-only 触发器形状(长线利好族 T-21 复用面)。表外环境一律无条目,
+# 禁从效果原文自动猜装(ENV_ECONOMY/ENV_GIFTS 同款纪律)。
+# 消费面 = kernel/cw_env_grants.check_env_refresh_grants(触发检查
+# 单一源,唯一调用点 = 刷新上报函数尾部)。
+# **表间豁免声明**(ENV_ORE_GRANTS 同款):本表键与 ENV_ECONOMY 共存
+# (二手市场两表同时在册),不参与 ENV_POOL_REWRITE 校验收的「单一
+# 环境只落一个估值结构」三表互斥——本表条目非效果牌面,登记即常驻
+# 触发器;正确性代之以与估值面的双源同值校验(见
+# _validate_env_refresh_grants 第⑤条)。与 ENV_STREAK_GRANTS 两个世界
+# 发放表可同键并存(某卡兼有两种触发):done 键 = (env, 条件键) 带
+# 条件键维度,语义无冲突。
+ENV_REFRESH_GRANTS: dict[str, tuple[str, int, int, str | None]] = {
+    # 商店刷新 20 次后 +30 金 + 员工投影仪(id 106 原文直读,
+    # cw_invest_data PlazaPortal('106') desc「商店刷新20次后,获得30金币
+    # 和【员工投影仪】」);
+    # 计数域 = 全量(REFRESH_TOTAL):desc 无「花费金币」限定词,与
+    # 长线利好 id 120(PlazaPortal('120'))desc 显式「花费金币进行30次
+    # 刷新」构成官方文本自带的两域对照。
+    '二手市场': (CounterKey.REFRESH_TOTAL, 20, 30, '员工投影仪'),
+}
+
+
+def _validate_env_refresh_grants() -> None:
+    """ENV_REFRESH_GRANTS 构建校验(import 即炸;沿 _validate_env_ore_grants
+    / _validate_env_streak_grants 先例):
+
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
+    ② 计数键闭集:须为 CounterKey.REFRESH_TOTAL / REFRESH_PAID 之一
+    (计数读取按键分支,闭集外无读口);
+    ③ 值形:阈值与金均须 ≥1 的 int(bool 排除——isinstance(bool, int)
+    为真,0/False/1/True 形混入 = 登记笔误,前置可见);
+    ④ 装备名漂移:装备腿非 None 时必须在 EQUIPMENTS(发放写出库存里
+    不存在的名字 = 假身份混进 equips);
+    ⑤ 双源同值:同环境在 ENV_ECONOMY 有 gold_after_refreshes 时须与
+    (阈值, 金) 逐位相等——世界面与估值面同出卡面(id 106),任一侧
+    单独改数即失同步,构建期炸(先例 = _validate_env_ore_grants ③;
+    估值域字段演化时本条随迁)。
+    """
+    orphans = [n for n in ENV_REFRESH_GRANTS if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(
+            f"ENV_REFRESH_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
+    for _n, (_key, _threshold, _gold, _equip) in ENV_REFRESH_GRANTS.items():
+        if _key not in (CounterKey.REFRESH_TOTAL, CounterKey.REFRESH_PAID):
+            raise ValueError(
+                f"ENV_REFRESH_GRANTS 计数键闭集外({_n!r}):"
+                f"须为 CounterKey.REFRESH_TOTAL/REFRESH_PAID 之一,"
+                f"现值 {_key!r}")
+        for _label, _val in (('阈值', _threshold), ('金', _gold)):
+            if not isinstance(_val, int) or isinstance(_val, bool) or _val < 1:
+                raise ValueError(
+                    f"ENV_REFRESH_GRANTS 值形({_n!r} {_label}):"
+                    f"须为 ≥1 的 int,现值 {_val!r}")
+        if _equip is not None and _equip not in EQUIPMENTS:
+            raise ValueError(
+                f"ENV_REFRESH_GRANTS 装备名漂移({_n!r} 注册表无此装备,"
+                f"版本改名?):{_equip!r}")
+        _econ = ENV_ECONOMY.get(_n)
+        _src = tuple(getattr(_econ, 'gold_after_refreshes', ()) or ())
+        if _src and _src != (_threshold, _gold):
+            raise ValueError(
+                f"ENV_REFRESH_GRANTS 双源失同步({_n!r}):ENV_ECONOMY."
+                f"gold_after_refreshes={_src} ≠ 本表 ({_threshold}, {_gold})"
+                f"(世界面与估值面同出卡面,失同步即构建期炸)")
+
+
+_validate_env_refresh_grants()

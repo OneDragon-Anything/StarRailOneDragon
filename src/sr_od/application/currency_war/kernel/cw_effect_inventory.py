@@ -447,8 +447,8 @@ class ActiveEffectInventory:
 
     def record_refresh(self, free: bool) -> None:
         """刷新执行计数统一入账(触发点 = 刷新上报函数
-        report_action_refresh_shop_param,生产 = 刷新 op 自上报,sim = 委托
-        串直调,落地门零重复触发)。
+        report_action_refresh_shop_param,生产 = 刷新 op 自上报,sim 与
+        生产同一段 op 代码同口自上报,落地门零重复触发)。
 
         行为口径(2026-09-21 Field 化收窄:免费余额腿迁容器字段
         ``gs.free_refresh_left``,扣减由上报函数 write_logic 承载;本方法

@@ -1046,10 +1046,15 @@ None = 无挂账。消费 = 轮首收入败补支(U04 口径,kernel `round_start
 #### 3.5.5 环境条件发放已发标记 env_grants_done
 
 **语义**:`tuple[(env, 条件键), ...]` 逻辑态域——投资环境**条件达成发放**的
-已发标记(发放幂等守卫账:达成条件后跨结算重查不重发)。登记表 =
-`cw_investments.py::ENV_STREAK_GRANTS`(白名单制,键 = 投资环境规范名,值 =
-(连胜阈值, 发放装备名);现役 = 深井角斗场「本局首次 5 连胜 → 财富宝钻」);
-条件键 = 具名触发器,现役唯一取值 `'first_streak'` = 本局首次连胜达成。
+已发标记(发放幂等守卫账:达成条件后跨结算重查不重发)。登记表(白名单制,
+键 = 投资环境规范名)= `cw_investments.py::ENV_STREAK_GRANTS`(值 =
+(连胜阈值, 发放装备名);现役 = 深井角斗场「本局首次 5 连胜 → 财富宝钻」)
+与 `cw_investments.py::ENV_REFRESH_GRANTS`(值 = (计数键, 阈值, 金, 装备名
+可空);现役 = 二手市场「商店刷新 20 次 → +30 金 + 员工投影仪」)。
+条件键 = 具名词表:`'first_streak'` = 本局首次连胜达成(消费 =
+`check_env_streak_grants`);`'refresh_threshold'` = 刷新次数阈值触发器,
+T-7 二手市场(消费 = `check_env_refresh_grants`,唯一调用点 = 刷新上报函数
+`report_action_refresh_shop_param` 尾部,live/sim 同段 op 代码同口)。
 
 **触发与写端**(唯一逻辑写端 = `kernel/cw_env_grants.py::
 check_env_streak_grants`,live/sim 结算接线同调同一函数):结算连胜真值落账
@@ -1065,6 +1070,17 @@ check_env_streak_grants`,live/sim 结算接线同调同一函数):结算连胜�
 无位面/轮次过期面(与 ore_declared_done 的位面过渡过期清理不同)。恢复局:
 快照含 done 随快照存续不重发;done 为空的接管形态,首个达标结算触发发放 =
 最佳猜测(边界显式接受)。
+
+**refresh_threshold 触发形状**(同域第二通道):刷新次数计数现值(登记表
+计数键读 `gs.effects.refresh_total/refresh_paid`,语义单一源 =
+`EffectsInventory.record_refresh` docstring)≥ 阈值时发放,**三笔相邻写**
+同 evidence `env_grant#<环境>#refresh<阈值>` 同 sig:金(`write_logic`,
+现值 + 金)+ 装备(`write_logic_rand` 尾追,仅装备腿非 None 时)+ 本域
+追加(`write_logic`)。gold/equips 缺读(从未观察)→ 缓发**不标 done**
+(刷新高频,下次刷新自动重查;缺任一承载即整体缓发,禁半发放)。
+**一次性封账**同上,第 20 刷后重查不再发。接管/恢复局计数
+(`refresh_total/refresh_paid`)不进快照、从 0 起 → 晚发放形态显式接受
+(设计披露,金失配安灯 = 检测机制)。
 
 **接线两处**(前提 = 真值已落账):live = 结算覆盖写端 `apply_settlement_cover`
 之后(同 best-effort 段,覆盖写异常连检查一并跳过;`streak_after` None =

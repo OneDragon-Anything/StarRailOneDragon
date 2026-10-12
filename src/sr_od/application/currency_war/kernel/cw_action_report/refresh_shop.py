@@ -17,6 +17,11 @@
   ``logic_rand_outcome`` 台账、不进失配安灯(通道语义自带)。level 缺读
   = 该腿跳写(概率表按级索引,宁缺勿造)。干旱/供给族消费 observation
   only 是消费侧口径,本函数不管。
+- **环境条件发放腿**(T-7 二手市场):尾部触发检查
+  (``check_env_refresh_grants``;登记表 =
+  ``cw_investments.ENV_REFRESH_GRANTS``;发放 = 金/装备/done 三笔
+  同窗)——世界发放域,不属计数/采样语义;sim 与生产同段 op 代码
+  同口,单点覆盖双端。
 
 金账 −实付仅 ``executed.refresh_paid`` 喂入时写(现役零生产喂入方:生产
 op 不喂,sim 与生产同一段 op 代码同不喂;显式喂入为保留的申报差异参数通道)。
@@ -33,6 +38,9 @@ from __future__ import annotations
 import random
 from typing import Any
 
+from sr_od.application.currency_war.kernel.cw_env_grants import (
+    check_env_refresh_grants,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     GameState,
@@ -110,4 +118,8 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
                 gs.write_logic(gs.gold, int(g) - paid,
                                produced_by=_PRODUCER,
                                evidence='proj_refresh_gold', sig=_grp_sig)
+
+    # 环境条件发放腿:第 N 次刷新动作窗内尾部触发检查(计数腿已先入账,
+    # 此处计数现值含本刷;世界发放域,见模块头与本函数 docstring)。
+    check_env_refresh_grants(gs, _grp_sig)
     return LogicOutcome(applied=True)

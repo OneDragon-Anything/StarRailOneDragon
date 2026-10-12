@@ -1,4 +1,4 @@
-"""环境条件发放:连胜触发检查 kernel 函数 + 宝钻获得回调(live/sim 同一单一源)。
+"""环境条件发放:连胜/刷新次数触发检查 kernel 函数 + 宝钻获得回调(live/sim 同一单一源)。
 
 迭代 2026-10-10-env-conditional-grants(kernel 面,详设 =
 docs/develop/sr_od/application/currency_war/changes/
@@ -43,6 +43,9 @@ write_logic_rand 即炸渠道族校验);live = logic_hook 族 group
 """
 from __future__ import annotations
 
+from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+    CounterKey,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     DEPLOYED_BACK_CAPACITY_MAX,
     ChannelSig,
@@ -51,6 +54,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     level_of,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
+    ENV_REFRESH_GRANTS,
     ENV_STREAK_GRANTS,
 )
 
@@ -60,6 +64,10 @@ _PRODUCER: str = 'env_conditional_grant'
 #: done 域条件键:具名触发器「本局首次连胜达成」(当前唯一形状;
 #: 升级类条件键各建各表各函数,不进本模块)。
 FIRST_STREAK_KEY: str = 'first_streak'
+
+#: done 域条件键:刷新次数阈值触发器(每环境至多一个刷新触发器,
+#: (env, 本键) 天然唯一)。
+REFRESH_THRESHOLD_KEY: str = 'refresh_threshold'
 
 #: 回调三写证据串(判读可辨;刻意不带 ``sim:engine`` 前缀——该前缀是
 #: 失配抑制登记面,语义 = sim 后端世界腿外部事件写,回调写不属该族)。
@@ -129,6 +137,78 @@ def check_env_streak_grants(gs: GameState, streak_after: int,
                         produced_by=_PRODUCER, evidence=evidence, sig=sig)
     gs.write_logic(gs.env_grants_done,
                    done + ((env, FIRST_STREAK_KEY),),
+                   produced_by=_PRODUCER, evidence=evidence, sig=sig)
+    return equip_name
+
+
+def check_env_refresh_grants(gs: GameState, sig: ChannelSig) -> str | None:
+    """刷新次数条件发放触发检查(单一源;唯一调用点 = 刷新上报函数
+    ``report_action_refresh_shop_param`` 尾部,第 N 次刷新动作窗内,
+    live/sim 同一段 op 代码同口覆盖)。
+
+    条件矩阵(顺序即短路序,逐序返回 None = 未发放):
+
+    1. 当前环境(active_env)None/空链 → None;
+    2. 环境不在登记表(ENV_REFRESH_GRANTS)→ None;
+    3. ``(env, refresh_threshold) ∈ done 现值 → None``(已发,一次性
+       封账;done None 视为空防御,沿 streak 通道 ``value or ()`` 先例);
+    4. 计数现值 < 阈值 → None(计数键按登记表分支读
+       ``gs.effects.refresh_total/refresh_paid``——两者是 EffectsInventory
+       的 int 属性,``record_refresh`` 直加;计数语义单一源 =
+       EffectsInventory.record_refresh docstring,本函数不复制口径注释);
+    5. ``gs.gold.value`` None(从未观察)→ **None 且不标 done**——宁缺
+       勿造,刷新是备战期高频动作,下次刷新自动重查(重试延迟以秒计);
+    6. 装备腿非 None 且 ``gs.equips.value`` None → 同 5(缺任一承载
+       即整体缓发,禁半发放——半发放 = 金已入账装备永久漏发);
+    7. 达标 → 发放,**三笔相邻写同 evidence、同 sig、同 produced_by**
+       (同窗原子语义面,与 streak 通道同纪律):
+       - 金:``gs.write_logic(gs.gold, 现值 + 金)``;
+       - 装备(仅装备腿非 None):``gs.write_logic_rand(gs.equips,
+         现值尾部追加装备名)``——装备库存顺序是游戏侧决定,模型无
+         顺序观察锚 → 随机态通道(宝钻同族先例);
+       - done:``gs.write_logic(gs.env_grants_done, 现值 +
+         ((env, REFRESH_THRESHOLD_KEY),))``;
+       返回被发装备名(装备腿 None 的金-only 发放也返回 None——返回值
+       仅日志面消费,员工投影仪无宝钻式世界数值回调,无行为分支)。
+
+    - ``sig`` = 三笔共用的渠道签名,必须 logic_action 族(obs 族进
+      write_logic_rand 即炸渠道族校验)。唯一调用方传入上报函数内部的
+      ``_grp_sig``(logic_action 族,上报入口已把族锁死),天然满足;
+      logic_hook 分支本案不可达,不写分支(T-5 live 结算接线形态,
+      本案收敛点唯一);
+    - 本函数零 rng:随机态指认知通道,追加位置(尾部)与金增量均确定,
+      不消耗随机数。
+    """
+    env = gs.active_env.value
+    if not env:
+        return None
+    grant = ENV_REFRESH_GRANTS.get(env)
+    if grant is None:
+        return None
+    count_key, threshold, gold_amount, equip_name = grant
+    done = tuple(gs.env_grants_done.value or ())
+    if (env, REFRESH_THRESHOLD_KEY) in done:
+        return None
+    count = (gs.effects.refresh_total if count_key == CounterKey.REFRESH_TOTAL
+             else gs.effects.refresh_paid)
+    if count < threshold:
+        return None
+    gold_now = gs.gold.value
+    if gold_now is None:
+        # 金从未观察:发放金写出不完整账 = 断言无据,宁缺勿造不标 done
+        # (下次刷新自动重查;done 只在发放同窗登记)
+        return None
+    if equip_name is not None and gs.equips.value is None:
+        # 装备库存从未观察:缺任一承载即整体缓发(禁半发放)
+        return None
+    evidence = f'env_grant#{env}#refresh{threshold}'
+    gs.write_logic(gs.gold, int(gold_now) + gold_amount,
+                   produced_by=_PRODUCER, evidence=evidence, sig=sig)
+    if equip_name is not None:
+        gs.write_logic_rand(gs.equips, list(gs.equips.value) + [equip_name],
+                            produced_by=_PRODUCER, evidence=evidence, sig=sig)
+    gs.write_logic(gs.env_grants_done,
+                   done + ((env, REFRESH_THRESHOLD_KEY),),
                    produced_by=_PRODUCER, evidence=evidence, sig=sig)
     return equip_name
 

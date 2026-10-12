@@ -36,6 +36,7 @@
 ### 批 2 时点日程
 - **超发货币**(金):失去所有金,5 节点后获「该数+70」→ 负债日程;风险 = 窗口期金为 0 无息,DP 可算精确分界。
 - **增发货币**(金,环境 id 103):「第一/二/三位面开始时,获得一个 6/8/12 金币的晶矿」(原文直读)→ **位面开局声明矿流程模型**(与超发货币为两张不同卡):每位面开局金晶矿经声明矿通道(`cw_investments.ENV_ORE_GRANTS`,世界发放域)声明 → 矿进入世界时附着(`ore_rewards` 随机态域,占哪个矿归属 rng 掷)→ 点击兑现入账;估值面 `ENV_ECONOMY.gold_per_plane_start=(6,8,12)` 同出卡面(双源同值校验防漂移)。呈现面(晶矿色档/自动开启与否)未实采,sim 按「呈现可点」建模,披露键在册(`ORE_PLANE_START_PENDING`)实机首遇校;策略面按「晶矿自动开启」假设在册(证非自动 → bot 具备开矿动作前该通道 fail-closed,`env_economy.ENV_ECONOMY_PENDING_VERIFICATION`)。
+- **二手市场**(环境 id 106,B 类通道):「商店刷新20次后,获得30金币和【员工投影仪】。」(原文直读)→ **刷新次数触发器世界发放**:计数域 = 全量(免费+付费,desc 无「花费金币」限定词,与长线利好 id 120 显式「花费金币进行30次刷新」构成官方文本两域对照);一次性(达标发放一次,`env_grants_done` 封账,条件键 `refresh_threshold`,域规格 = fields.md §3.5.5);世界发放 = sim/live 同口刷新上报尾部触发(登记表 `cw_investments.ENV_REFRESH_GRANTS` + `kernel/cw_env_grants.check_env_refresh_grants`,金 `write_logic` + 装备 `write_logic_rand` 尾追 + done 三笔同窗);估值面 `ENV_ECONOMY.gold_after_refreshes=(20,30)` 同出卡面(双源同值校验防漂移);【员工投影仪】投放使用效果维持 §5 放弃(本条只管道具入世界)。
 - **人才激励/+**(银):投影仪发放(资产类,无数值,§5 裁定放弃)。
 - **恢复生机**(银):终 boss 后回 40 血 → 仅影响积分不影响胜率,不建模。
 - **偶像经济**(棱):礼盒内容无数值(放弃)。
