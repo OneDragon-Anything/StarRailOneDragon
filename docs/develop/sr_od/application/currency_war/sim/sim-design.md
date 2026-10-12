@@ -106,6 +106,8 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 窗口前段（收入/环境金/发牌）对同一节点只执行一次（幂等守卫键 = 节点线性序，`SimBackend._window_begun_ord`）——位面过渡点空白等点击源可能重放收口。节点经验在节点推进时入账（被离开节点的类型）；连胜转移在战斗结算后。位面过渡 = 全继承无重置（容器直接续跑 P2 序列，`kernel/cw_node_schedule.py::node_sequence_of` 地面真值表 P1+P2；P3 末节点推进即局终，披露键 `DISCLOSURE_P3_UNOBSERVED`）。
 
+**节点序列权威与场字段分发**：序列真值的单一源 = `cw_node_schedule`（默认地面真值表 + 环境修饰层）。改节点序列的投资环境（「人身意外险」boss 前插补给）经 `resolve_plane_node_seqs` 在环境注册时一次性解出，由获得链尾段写进 GameState 场字段 `node_seq_by_plane`（逻辑态；字段契约与回退语义见 [fields.md](../game_state/fields.md) §3.2.1）。运行时 sim 与 kernel 同源读该字段：局终判定/线性序反解/进窗/线性序正解/窗口收口/offer 门/节点屏呈现各消费点传场字段现值（None = 未注册回退默认表）；`_ordinal_to_node`/`_node_ordinal` 为 kernel 正反解的瘦委托（异常契约统一 `P3UnobservedError`）。任一侧漏读字段 = 修饰局 P1 r9 推进时 `next_screen` 声明与呈现屏确定性漂移（`DECL_SCREEN_DRIFT` 留证）。
+
 ### 3.4 初始序列（reset）
 
 词缀采样入 RunConfig → 开局种子（`apply_opening`，obs 真值覆盖种子底座）→ boss 名单采样写容器（`gs.plane_bosses`）→ 整店锁/宝钻计数按现役口径写初值 → hp 轨迹首点 → 呈现简报屏（词缀 + boss 载荷已写容器）。此后：简报下一步 → （环境在场）投资环境选卡 → wait_one_one 等待变体 → P1r1 对应屏。进入/退出条件的权威源 = `docs/develop/sr_od/application/currency_war/screens/` 各篇。

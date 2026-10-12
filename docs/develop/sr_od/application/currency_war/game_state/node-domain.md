@@ -9,8 +9,12 @@
 ## 1. 节点域管什么
 
 节点域回答「bot 现在打到第几个节点、是什么类型」。节点身份 = 节点序键
-`node_ordinal = (plane−1)×9 + round_num`(基 1,跨位面连续 9→10;坐标系与效果账本
-`advance_node` 同式)。类型是身份的载荷属性不入键,防第二失真源;类型读法与仲裁
+`node_ordinal`(基 1,**按局修饰变长制**:默认环境 = 默认序列表变长累加,
+与历史固定 9 制逐值同;投资环境改节点序列时(「人身意外险」每个 boss 位前
+插补给)序列真值随场字段 `node_seq_by_plane` 调整,正解 `node_ordinal_of`
+与反解 `node_pos_of` 同表互逆——凡持 gs 的生成/解码方同读场字段,两侧
+自洽,序差 = 真实节点数;坐标系与效果账本 `advance_node` 同源)。类型是
+身份的载荷属性不入键,防第二失真源;类型读法与仲裁
 见 §7 与 [fields.md](fields.md) §3.2.1。
 
 ## 2. 推进模型与字段结构(指针)
@@ -31,6 +35,7 @@ value 在场 ∧ source=observation 双条件)与推进生效原语 `advance_nod
 | `node_ord: Field[int]` | 节点序,**两态字段**:锚定态 observation(锚定 helper 解析读数直写,节点域专用口不经通用 observe())/ 推进态 logic(终结动作上报经原语写入,推进未确认态) | 同上 |
 | `node_hist_ord` | run 内单调水位 + 去重第二道防线;run 段随容器重基线 | 同上 |
 | `node: Field[NodeKey]` | plane/round/kind 观察镜像(漏斗写端保留,决策层坐标消费) | 同上 |
+| `node_seq_by_plane: Field[dict[int, tuple[str, ...]] \| None]` | 逐位面节点序列场字段(逻辑态):键 = 位面 1 基,值 = 节点类型序;写点唯一 = `gain_invest_env` 尾段,注册后恒全量;None = 未注册态,消费方回退默认表 | [fields.md](fields.md) §3.2.1 |
 
 画面上下文域 `prev_screen`/`current_screen` = 两个独立事实的原始读数(观察域,
 写点 = 观察漏斗;开局链分支写点已随触发模型换代退役,开局链段不再写上下文对),

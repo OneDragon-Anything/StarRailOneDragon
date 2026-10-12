@@ -216,11 +216,30 @@ rand 通道,§2.6)→ ②先验(首漏斗帧按档 82/62;非实证档先验返 N
 #### 3.2.1 当前节点 node
 
 **语义**:位面 + 轮次 + 节点类型(kind),坐标系=NodeKey(跨位面 round 重启,plane
-必在键内)。
+必在键内);节点序坐标系 = 按局修饰变长制(单一源见 §3.2.2b 场字段与
+[node-domain.md](node-domain.md) §1)。
 **写端**:本屏节点条=台账权威现读;kind 走三源仲裁序——**结算屏权威>
 节点序列台账现读 > 帧标签 OCR**(结算屏条目见 §3.5.2);帧标签仅 battle/boss 两类
 稳定,采信时折 evidence。类型派生权威链与冲突留证单一源 =
 [node-derivation.md](node-derivation.md) §3.3-5(链查询接口 = [chain-observation.md](chain-observation.md))。
+
+#### 3.2.2b 节点序列场字段 node_seq_by_plane
+
+**语义**:逐位面节点序列逻辑态真值(键 = 位面 1 基,恒只含键 {1,2};值 = 节点
+类型序,词表与 `PLANE_NODE_TABLES` 同)。节点身份坐标系的权威源:正解
+`node_ordinal_of`/反解 `node_pos_of`/next_screen 推导/观察锚定/round 读数上限
+(`node_round_cap`)全量经本字段。
+**写口**:逻辑态 `write_logic`,写点唯一 = `gain_invest_env` 尾段
+(evidence=`node_seq:env`)——修饰规则唯一计算点 =
+`cw_node_schedule.resolve_plane_node_seqs`,注册即落全量(改节点序列环境
+(人身意外险)落修饰表,其余环境落默认表,无半态);无观察写端。
+**None 回退契约**:None = 未注册态(P1 前段/恢复接管/recorder replay),消费方
+回退默认表(P1 内两制同值,回退无窗;P2 回退比现役 9 收紧 7、P3 余量 12——
+上限三态单一源 = `node_round_cap`)。
+**观察对账面**(留证不自动改写):备战帧节点行动态槽数 CV 读(`cw_node_reader`)
+→ live 台账 `seq_by_plane`(`cw_exec_state`)与本字段可逐位对照,失配 = desc
+建模证伪,`DECL_SCREEN_DRIFT`(sim 侧)与台账对照(live 侧)双通道报警。
+**恢复**:随快照容器现值携带(键 int 化 + 值 tuple 化重建),零重建逻辑。
 
 #### 3.2.2 节点序列台账 node_path
 
