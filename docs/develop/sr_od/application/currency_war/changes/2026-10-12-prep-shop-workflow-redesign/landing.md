@@ -37,7 +37,7 @@
 
 ## 3.2 卖出候选评估器统一
 
-**范围**：候选池统一为备战席口径（契约 D 七场景，全部仅备战席）、价值评估函数（金当量三项：变现价/再遇期权/合成进度，查表地基 = `sell_refund` + `reencounter_window_frames`；羁绊贡献 = 排序规则项非金当量，P3 作废不折金）、场景资格面参数化（常规面/自救扩展面（P78 全通道豁免、线内末位可卖）/凑息活期面/店内备战席面/筹资活期面/升级变现面/部署换血面）、现行 `sell_gate` 资格面与空板守卫收编。不含各发射位接线（接线随 3.3-3.6 各场景批次）。
+**范围**：候选池口径 = 契约 D 七场景（六备战席候选场景仅备战席；部署换血场景含场上、羁绊维生效）、价值评估函数（金当量三项：变现价/再遇期权/合成进度，查表地基 = `sell_refund` + `reencounter_window_frames`；羁绊贡献 = 排序规则项非金当量，P3 作废不折金）、场景资格面参数化（常规面/自救扩展面（P78 全通道豁免、线内末位可卖）/凑息活期面/店内备战席面/筹资活期面/升级变现面/部署换血面）、现行 `sell_gate` 资格面与空板守卫收编。不含各发射位接线（接线随 3.3-3.6 各场景批次）。
 **设计依据**：prep_pipeline §2；shop_session §3；line_and_upgrade §4。
 **文件面**：`strategies/impl/mandate_v1/sell_gate.py`（或新建评估器模块 + 旧函数委托）、`kernel/` 价值输入读口；测试仓。
 **依赖**：3.1（方向视图接口）。
@@ -161,7 +161,7 @@
 - `strategy-docs/04_survival_budget.md` ← 3.4（§7 对账表更新：#3 血线地板解锁撤销登记 + #4 P21 拦截语义的授权登记补全——#4 补全属授权登记变更，提案随本清单呈用户裁定后执行）
 - `strategy-docs/21_opening_window_and_tool_consume.md` ← 3.3（工具消费位次随工序重排的核记录；需要才改）
 - `strategy-docs/17_stall_form_spend_authority.md` ← 3.6（Φ_stall 停滞支出的锁线键载体切换记录：判定源改挂生效目标 view）
-- `strategy-docs/20_large_balance_must_spend.md` ← 3.6（必花域消费位收编记录：会话内买入评估入口的域帧判定；与升级重轴的域内交互语义登记）
+- `strategy-docs/20_large_balance_must_spend.md` ← 3.6（必花域消费位收编记录：会话内买入评估入口的域帧判定、**L3 触发源发射位两处化**；与升级重轴的域内交互语义登记）
 - `docs/game/currency_war/research/user_playstyle.md` ← 全迭代（2026-10-12 用户裁定系列补录 + [23]/[36] 差分回写，见 line_and_upgrade 差分节）
 - `docs/develop/sr_od/application/currency_war/screens/README.md` §5.4 ← 3.5（商店画面能力面补「出战」行——正本缺口补录）
 - `strategy-docs/` 全目录黑话清洗 ← 末阶段（用户裁定 2026-10-12：编号引用保留，其余自造词改正常表述或首现给定义）
