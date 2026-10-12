@@ -37,7 +37,7 @@
 
 ## 3.2 卖出候选评估器统一
 
-**范围**：候选池统一为备战席口径（契约 D 六场景，全部仅备战席）、价值评估函数（金当量三项：变现价/再遇期权/合成进度，查表地基 = `sell_refund` + `reencounter_window_frames`；羁绊贡献 = 排序规则项非金当量，P3 作废不折金）、场景资格面参数化（常规面/自救扩展面/凑息活期面/店内备战席面/筹资活期面/升级变现面）、现行 `sell_gate` 资格面与空板守卫收编。不含各发射位接线（接线随 3.3-3.6 各场景批次）。
+**范围**：候选池统一为备战席口径（契约 D 七场景，全部仅备战席）、价值评估函数（金当量三项：变现价/再遇期权/合成进度，查表地基 = `sell_refund` + `reencounter_window_frames`；羁绊贡献 = 排序规则项非金当量，P3 作废不折金）、场景资格面参数化（常规面/自救扩展面（P78 全通道豁免、线内末位可卖）/凑息活期面/店内备战席面/筹资活期面/升级变现面/部署换血面）、现行 `sell_gate` 资格面与空板守卫收编。不含各发射位接线（接线随 3.3-3.6 各场景批次）。
 **设计依据**：prep_pipeline §2；shop_session §3；line_and_upgrade §4。
 **文件面**：`strategies/impl/mandate_v1/sell_gate.py`（或新建评估器模块 + 旧函数委托）、`kernel/` 价值输入读口；测试仓。
 **依赖**：3.1（方向视图接口）。
@@ -80,7 +80,7 @@
 
 ## 3.5 商店执行链端口接线
 
-**范围**：店内卖备战席与店内买经验的执行链打通——商店画面 op 的执行环境（`ShopExecEnv`）补执行器端口，域内分发适配备战执行环境实现，使 `CwActionSellBenchParam`/`CwActionLevelUpParam` 在商店域可发射可执行；动作上报与对账链路核对。纯执行基础设施，零策略判据。
+**范围**：店内卖备战席与店内买经验的执行链打通——商店画面 op 的执行环境（`ShopExecEnv`）补执行器端口，域内分发适配备战执行环境实现，使 `CwActionSellBenchParam`/`CwActionLevelUpParam` 在商店域可发射可执行；**商店画面档补备战栏/出售区 area**（screen_info MCP upsert + 合并缓存更新，拖拽两端坐标地基）；动作上报与对账链路核对。纯执行基础设施，零策略判据。
 **设计依据**：design.md §1.3 例外条款；shop_session §1 执行链前置段；as-built 依据 = `screens/README.md` §5.4。
 **文件面**：`operations/cw_screen/cw_screen_shop.py`、`operations/cw_op/cw_shop_action_ops.py`（或 `prep_actions.py` 执行环境面）、`flow.py`（受限访问帧消费判据引用面）；测试仓。
 **依赖**：无（可与 3.1 并行）。
