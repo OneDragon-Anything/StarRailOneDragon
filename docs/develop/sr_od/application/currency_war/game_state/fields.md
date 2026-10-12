@@ -1056,8 +1056,10 @@ None = 无挂账。消费 = 轮首收入败补支(U04 口径,kernel `round_start
 T-7 二手市场(消费 = `check_env_refresh_grants`,唯一调用点 = 刷新上报函数
 `report_action_refresh_shop_param` 尾部,live/sim 同段 op 代码同口)。
 
-**触发与写端**(唯一逻辑写端 = `kernel/cw_env_grants.py::
-check_env_streak_grants`,live/sim 结算接线同调同一函数):结算连胜真值落账
+**触发与写端**(逻辑写端两函数并列,各辖一个条件键 = `kernel/cw_env_grants.py::
+check_env_streak_grants`(first_streak;live/sim 结算接线同调同一函数)/
+`check_env_refresh_grants`(refresh_threshold;唯一调用点 = 刷新上报函数尾部,
+live/sim 同段 op 代码同口)):结算连胜真值落账
 后检查,条件矩阵七序短路——①环境为空 ②环境不在登记表 ③连胜 ≤0(带符号
 口径)④未达阈值 ⑤已发(本域命中;现值 None 按空防御)⑥装备库存从未观察
 (equips None = 不发放**且不标 done**,条件每结算重查自动重试,宁缺勿造)
