@@ -47,6 +47,7 @@
 **裁决(§1.2 归层的落地形态):节点身份唯一表示 = `(位面, 轮)` 序位元组;全局编号整族退役。**
 
 - 序位 `NodePos = tuple[int, int]`(1 基),单一源住 `cw_node_schedule`(序列真值同域)。
+- **标识对外口径(用户裁定 2026-10-12:统一使用「位面-轮」式标识)**:节点标识 = `2-1` 形态的「位面-轮」标签,不再有独立于它的全局编号;元组 `(2, 1)` 只是标签的容器内表示,journal 数值列(plane/round_num)是列不是标签、维持不变。本迭代新铸的字符串口径(reason 串/留证载荷值/frame 串)统一按「位面-轮」形态落字(§2.2/§2.4)。
 - **字典序 = 序列全序**:位面优先、位面内轮次次序的元组字典序,与「有效节点序列按位面拼接展平」的前缀和序逐值一致(位面主序拼接下前缀和严格单调,数学恒等,不依赖任何具体序列值)。推论:**全部比较/去重/水位语义(锚定四分支、推进去重、倒退免疫、单调门、败局闩、登记当节点守卫)改元组直接比较,零序列依赖、零参数穿线**——这正是编号表示的守卫成本(每个持序值的生产/消费点都必须正确穿 `seqs`,T-8 裁决点 6 的 14 处扫描实证)被整体拆除的机制基础。
 - **数数语义显式化**:「推进 +1」= `sequence_next(pos, seqs)`(§2.1,全仓唯一后继实现,位面切换在此发生);「接下来 N 个节点」= 效果账本既有自然数倒计时(`remaining_nodes` 递减,本就是相对计数,无需坐标算术,§2.4);规划量(剩余节点数/剩余 boss 数)= 策略侧既有 `schedule_of` 求和族,不动(§2.7)。
 - **T-8 终态基线**:本设计以 T-8 落地后形态为起点——`node_seq_by_plane` 场字段在役(写点唯一 = `gain_invest_env` 尾段)、`node_sequence_of(plane, seqs=None)`/`node_round_cap(plane, seqs=None)`/`resolve_plane_node_seqs(env)` 在役、`node_pos_of(ordinal, seqs=None)` 与 kernel `node_ordinal_of(plane, round, seqs=None)` 带环境参在役。本迭代 **删除** T-8 的正反解换算面(`node_pos_of`、`node_ordinal_of`、kernel/sim 双份反解),**保留** 序列直查面(`node_sequence_of`/`node_round_cap`/`resolve_plane_node_seqs`——kind 查询与读数 cap 是序列的合法直查消费,不是编号投影)。T-8 的「正反解互逆锁」测试随反解删除而退役(无编号可互逆)。
@@ -102,7 +103,7 @@ def sequence_next(pos: NodePos,
 - `ActiveEffect.acquired_t: int | None` → **`acquired_key: tuple[int, int] | None`**(:189,注释改「登记时点节点序位快照 (位面,轮)」)。
 - `ActiveEffectInventory._last_tick_node` → **`_last_tick_key`**(:222,去重键 = 序位相等)。
 - `advance_node(node_ordinal)` → **`advance_node(node_key: tuple[int, int] | None)`**(:335):同节点去重 `node_key == self._last_tick_key`;「登记当节点不推进」守卫 `e.acquired_key >= node_key` **元组比较**(:365-367——语义与现行 `>=` 序数比较逐值等价,字典序=全序);`remaining_nodes` 自然数倒计时**零改动**(「接下来 N 个节点」自 T-8 修饰制起差值即真实节点数,倒计时本就不依赖坐标算术)。
-- 快照两处内联 9 制退役:`_portal_acquired_t` → **`_portal_acquired_key`** 返回 `(nd.plane, nd.round_num)`(:684-693);`register_affixes_from_names` 同款内联(:448-450)同改。kernel 侧调用方 `_tick_effect_boundary_impl`(:3380-3384)传 `effective_node_pos(gs)`;frame 串 `f'p{(effective-1)//9+1}-r{(effective-1)%9+1}'`(:3383)改 `f'p{pos[0]}-r{pos[1]}'`(frame 只进 evidence/余额账,随键直拼)。
+- 快照两处内联 9 制退役:`_portal_acquired_t` → **`_portal_acquired_key`** 返回 `(nd.plane, nd.round_num)`(:684-693);`register_affixes_from_names` 同款内联(:448-450)同改。kernel 侧调用方 `_tick_effect_boundary_impl`(:3380-3384)传 `effective_node_pos(gs)`;frame 串 `f'p{(effective-1)//9+1}-r{(effective-1)%9+1}'`(:3383)改 `f'{pos[0]}-{pos[1]}'`(「位面-轮」统一标识,用户裁定 2026-10-12;frame 只进 evidence/余额账,随键直拼)。
 
 ### 2.5 观察锚定写端与画面 op(operations/cw_screen/)
 
@@ -192,7 +193,7 @@ def sequence_next(pos: NodePos,
 ### 2.12 披露申报
 
 1. **终局虚假 tick 移除(行为差,遥测面)**:现行终局确认会把水位推到越界序 `total+1` 并对效果账本多 tick 一次(advance_node_effective 内联于推进,越界序位无节点语义);键化后终局零写入零 tick。影响 = 尾局存活效果的 `remaining_nodes` 少递减一次、到期移除日志少一行——对局已终,账本随 run 销毁,零世界语义;sim 对账面不变(现役 sim 局终臂同在 tick 之后)。
-2. **reason 串与留证载荷口径**:`node_ord→N` 串、`target_ord`/`node_ord` 留证键改 `node_pos→p-r`/`target_pos`/`node_pos`——判读脚本若硬编码旧串需随批知晓(在册判读面 grep 核对归实现批);journal 行形状变化按 run 隔离,跨语料对账按 (位面,轮) 键(§1.3 既定)。
+2. **reason 串与留证载荷口径**:`node_ord→N` 串、`target_ord`/`node_ord` 留证键改 `node_pos→2-1`(「位面-轮」统一标识,用户裁定 2026-10-12)、`target_pos`/`node_pos`;效果 frame 串 `p1-r3` → `1-3` 同口径——判读脚本若硬编码旧串需随批知晓(在册判读面 grep 核对归实现批);journal 行形状变化按 run 隔离,跨语料对账按 (位面,轮) 键(§1.3 既定)。
 3. **killed 邻接门免除 schedule_of 误差面**:现役时基 `node_t_of` 依赖 `schedule_of` 已揭晓长度(P3 先验 9),修饰局插入节点若晚于表揭晓时点存在时基偏差窗;键后继判定无此依赖。方向 = 更准,非回归;`last_outcome_pos` 为段内状态(非 Field),跨段残留语义与 `last_outcome_t` 相同。
 4. **`emit_anchor` 形参收敛**:锚行 `node_seq` 槽退役后,未来接线方按七字段封装的文档口径(node-derivation.md §3.5 历史节/正本批更新)同步;登记表在册锚 `node_enter` 的宿主描述不变。
 5. **T-8 互逆锁退役**:T-8 落地批交付的「正反解互逆锁」测试随 `node_pos_of` 删除退役(无编号可互逆);其「场字段↔live 台账对照」披露通道(序列真值证伪面)与键化正交,保留。
