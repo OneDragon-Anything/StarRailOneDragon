@@ -25,7 +25,7 @@
 
 **范围**：session 节点作用域键基建——节点边界处理函数（重置清单表 + 触发检测）、**方向签名前置段骨架**（`refresh_line_if_needed` 双域接线 + 分域签名两键 + **挂起→生效提升**（备战入口宿主）+ `line_members_view()` 读接口——本阶段先接现行为等价的方向解析，选线函数在 3.7 替换内核）、「本节点已处理」标记（`shop_handled`，值 = 节点号二元组）与未消费机会清单的**存储读写**（写入/清空/查询；解拦复核判定函数归 3.6 建造并接线）。不含备战工序重排与商店判据改动。
 **设计依据**：prep_pipeline §3；line_and_upgrade §3；shop_session §4；design.md 契约 A/B/C。
-**文件面**：`strategies/impl/mandate_v1/`（session 键与边界函数）、`kernel/` 对应状态字段；测试仓新增测试文件。
+**文件面**：`strategies/impl/mandate_v1/`（session 键与边界函数）；测试仓新增测试文件。
 **依赖**：无。
 **优先级建议**：8
 **完成判据**：
