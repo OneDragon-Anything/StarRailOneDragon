@@ -19,6 +19,9 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_node_schedule import (
+    node_round_cap,
+)
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     GOLD_MAX,
     GOLD_MIN,
@@ -74,7 +77,10 @@ def parse_settlement_node_type(ocr_texts: list[str]) -> str | None:
     return None
 
 
-def parse_settlement_round(ocr_texts: list[str]) -> tuple[int, int] | None:
+def parse_settlement_round(
+        ocr_texts: list[str],
+        round_caps: dict[int, tuple[str, ...]] | None = None,
+) -> tuple[int, int] | None:
     """结算屏头部「X-Y」→ (plane, round)(纯函数;W28 缺陷①修 a)。
 
     relaunch 残留结算屏场景(W23 定因):run 启动首帧即结算屏(上一进程留下),
@@ -84,7 +90,10 @@ def parse_settlement_round(ocr_texts: list[str]) -> tuple[int, int] | None:
     parse_settlement_node_type 同一窗口),此处直接解析恢复真值。
 
     - 只在头部(挑战成功/挑战结束)后 5 token 窗口内找(防误中远处数字对);
-    - 值域守卫:plane∈1-3、round∈1-9(嵌进正则字符类;位面/轮次越界=OCR 假阳);
+    - 值域守卫:plane∈1-3(嵌进正则字符类)+ round ≤ :func:`node_round_cap`
+      (T-8 位面化随场字段:round 字符类放宽两位数 ``\\d{1,2}``——「1-10」
+      形修饰局结算读数不再整体不匹配;round 上限后置校验,cap None = 回退
+      默认长度);位面/轮次越界 = OCR 假阳;
     - 前后不得紧邻数字(``(?<!\\d)``/``(?!\\d)``:防「11-6」这类粘连噪声的子串误取)。
     解析不出 → None(调用方保留 last-known 兜底值)。
     """
@@ -93,9 +102,11 @@ def parse_settlement_round(ocr_texts: list[str]) -> tuple[int, int] | None:
     if _hdr is None:
         return None
     for t in ocr_texts[_hdr:_hdr + 5]:
-        m = re.search(r'(?<!\d)([1-3])\s*-\s*([1-9])(?!\d)', t)
+        m = re.search(r'(?<!\d)([1-3])\s*-\s*(\d{1,2})(?!\d)', t)
         if m:
-            return int(m.group(1)), int(m.group(2))
+            plane, rnd = int(m.group(1)), int(m.group(2))
+            if 1 <= rnd <= node_round_cap(plane, round_caps):
+                return plane, rnd
     return None
 
 

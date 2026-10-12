@@ -29,6 +29,9 @@ from pathlib import Path
 
 from one_dragon.utils import cv2_utils
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    game_state_from_ctx,
+)
 from sr_od.application.currency_war.obs.currency_war_char_id import (
     load_avatar_templates,
 )
@@ -72,7 +75,14 @@ def extract_frame(ctx, img, templates) -> dict:
     """关键帧 → 结构化记录(识别全量;失败字段安全默认,不抛)。"""
     rec: dict = {'ts': datetime.now().isoformat(timespec='seconds')}
     try:
-        pr = read_phase_round(ctx, img)
+        # round_caps = 场字段现值(T-8 §2.5 实时态语料接线:修饰局 r10/r8
+        # 帧记 (1,10)/(2,8);局外/--replay 态无 session → None 回退默认
+        # 口径,披露 10②)。
+        _caps_gs = game_state_from_ctx(ctx)
+        pr = read_phase_round(
+            ctx, img,
+            round_caps=(_caps_gs.node_seq_by_plane.value
+                        if _caps_gs is not None else None))
         rec['plane'], rec['round'] = pr
     except Exception:   # noqa: BLE001
         rec['plane'] = rec['round'] = None

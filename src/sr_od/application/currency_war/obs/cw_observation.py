@@ -53,6 +53,9 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     TokenCell,
     game_state_from_ctx,
 )
+from sr_od.application.currency_war.kernel.cw_node_schedule import (
+    node_round_cap,
+)
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_BOARD,
     A_GOLD,
@@ -992,9 +995,61 @@ def reset_phase_round_cache() -> None:
     _phase_round_suspect = None
 
 
-def read_phase_round(ctx: SrContext, screen: MatLike) -> tuple[int, int]:
+#: 顶栏「X-Y」解析正则(两位数形态单一源;修饰局「1-10」整读,单字符类
+#: 旧正则会把「1-10」截成 (1,1) 倒退形态误读——误读比拒读更毒,T-8)。
+_PHASE_ROUND_XY_RE = re.compile(r'(\d{1,2})\s*-\s*(\d{1,2})')
+
+#: 「第X位面」无轮次形态正则(产出 (p,p),round ≡ 位面 ≤ 3,与两位数
+#: 放行无涉)。
+_PHASE_ROUND_PLANE_ONLY_RE = re.compile(r'第\s*(\d)\s*位面')
+
+
+def parse_phase_round_text(blob: str, *,
+                           digit_fallback: bool = False,
+                           ) -> tuple[int, int] | None:
+    """顶栏文本 → (plane, round) 解析纯函数(read_phase_round 与
+    ``battle_prep_recognizer._read_phase_round_pure`` 共享单一源,
+    T-8 设计 §2.5 第 4 份同族解析器收编;同正则同解析序)。
+
+    解析序:「X-Y」两位数形态(修饰局「1-10」整读)→「第X位面」
+    (产出 (p,p))→ ``digit_fallback=True`` 时数字回退(首数字 d →
+    (d,d),错源形态——交值域守卫/上层单调门辖;read_phase_round 恒关
+    :w891 停用裁定,Lv 泄漏形「Lv.3」会产出值域内 (3,3) 假 win 面,
+    仅识别器工具态保留该分支)。全不中 → None。
+    """
+    m = _PHASE_ROUND_XY_RE.search(blob)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    plane_m = _PHASE_ROUND_PLANE_ONLY_RE.search(blob)
+    if plane_m:
+        return int(plane_m.group(1)), int(plane_m.group(1))
+    if digit_fallback:
+        digits = re.findall(r'\d', blob)
+        if digits:
+            return int(digits[0]), int(digits[0])
+    return None
+
+
+def phase_round_in_range(cand: tuple[int, int],
+                         round_caps: dict[int, tuple[str, ...]] | None = None,
+                         ) -> bool:
+    """候选 (plane, round) 值域守卫(M70 假 win 防毒化,共享单一源):
+    plane∈1-3 ∧ round ≤ :func:`node_round_cap`(plane, round_caps)——
+    T-8 起上限位面化随场字段,错源窗口极窄后单调守卫/确认通道仍兜底。
+    plane 判定短路在前(node_round_cap 对集外位面响亮抛错)。"""
+    return (1 <= cand[0] <= 3
+            and 1 <= cand[1] <= node_round_cap(cand[0], round_caps))
+
+
+def read_phase_round(ctx: SrContext, screen: MatLike,
+                     round_caps: dict[int, tuple[str, ...]] | None = None
+                     ) -> tuple[int, int]:
     """位面 + 轮次(顶栏「X-Y」= 位面-轮次,如 "1-3" = 位面1 第3轮)。
 
+    :param round_caps: 位面 round 读数上限源(= gs.node_seq_by_plane 现值;
+      None = 未注册/局外读回退默认长度,T-8 设计 §2.5 三态见
+      :func:`node_round_cap`)。live 调用方恒传容器现值,修饰局两位数
+      round(如 P1 r10)随场字段放行。
     :return: (plane, round_num)。读不到 → 返回上次成功值(过渡帧兜底);无历史 → (1, 1)。
 
     单调守卫(审计 P0,2026-08-16,M38 同款毒化面):plane 局内单调递增、round 同位面内递增,
@@ -1007,23 +1062,24 @@ def read_phase_round(ctx: SrContext, screen: MatLike) -> tuple[int, int]:
     上下文规则修复无对象)→ 整段删除即治本。blob 无 X-Y/第X位面 匹配 → 直接走
     last-known-good/(1,1) 兜底。值域守卫(source=ocr_range)不属 fallback,是
     M70 假 win 防毒化守卫,保留。
+
+    正则/值域 T-8 起两位数形态:``1-10`` 形读数(人身意外险修饰局)不再被
+    单字符类正则截成 (1,1) 误读——误读比拒读更毒((1,1) 是倒退形态,经
+    2 帧确认通道会被采信固化);值域上限随场字段(:func:`node_round_cap`)。
     """
     global _last_phase_round
     blob = ''.join(r.data for r in _ocr(ctx, screen, _area_rect(ctx, A_PHASE)))
-    m = re.search(r'(\d)\s*-\s*(\d)', blob)          # "1-3"
-    if m:
-        new = (int(m.group(1)), int(m.group(2)))
-    else:
-        plane_m = re.search(r'第\s*(\d)\s*位面', blob)
-        new = (int(plane_m.group(1)), int(plane_m.group(1))) if plane_m else None
-    if new is not None:
+    new = parse_phase_round_text(blob)
+    if new is not None and not phase_round_in_range(new, round_caps):
         # ⚠️ 值域守卫(2026-08-17 M70 假 win 根因):plane 只有 1-3,读出 8(恢复对局时顶栏被
         # overlay 遮,OCR 抓到 A8 难度/Lv.8 的"8")→ last_state.plane=8 → 局终判定 8>=3 →
         # 假 win 假通关。值域外 = OCR 假阳,当 miss 处理(走 last-known/兜底),不进缓存。
-        if not (1 <= new[0] <= 3 and 1 <= new[1] <= 9):
-            obs_conflict('phase_round', _last_phase_round, new, screen,
-                         verdict='拒-值域外(plane∈1-3/round≤9,OCR抓错源如A8难度)', source='ocr_range')
-            new = None
+        # round 上限 T-8 起位面化 = node_round_cap(场字段现值,默认回退表长;
+        # 拦孤立数字错源的守卫意图不变,单调守卫 + 回退修正确认通道仍兜底)。
+        obs_conflict('phase_round', _last_phase_round, new, screen,
+                     verdict='拒-值域外(plane∈1-3/round≤位面上限,OCR抓错源如A8难度)',
+                     source='ocr_range')
+        new = None
     if new is not None:
         if _last_phase_round is not None and (new[0] < _last_phase_round[0]
                                               or (new[0] == _last_phase_round[0] and new[1] < _last_phase_round[1])):
@@ -2265,12 +2321,15 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     _gold_opt = read_gold_settled(ctx, screen) if _w('gold') else None
     gold_val = 0 if _gold_opt is None else _gold_opt
     gold_readable = _gold_opt is not None   # r319 保真位(对齐 hp_readable)
-    # :位面/轮次提前读 —— node_t=(plane-1)*9+round 是下行守卫
-    # 帧间事实窗锚与 hp_trusted 帧龄门锚(读取器相互独立,仅次序调整,
-    # 语义零漂移)。
+    # 位面/轮次提前读(round_caps = 场字段现值,T-8 live 漏斗接线:修饰局
+    # 两位数 round 随场字段放行;局外无容器 = None 回退默认长度)。
+    _caps_gs = game_state_from_ctx(ctx)
     plane, round_num = (
-        read_phase_round(ctx, screen) if _w('phase_round') else (1, 1))
-    _node_t = (plane - 1) * 9 + round_num
+        read_phase_round(
+            ctx, screen,
+            round_caps=(_caps_gs.node_seq_by_plane.value
+                        if _caps_gs is not None else None))
+        if _w('phase_round') else (1, 1))
     from sr_od.application.currency_war.kernel.cw_reconcile import reconcile_hp
     # hp 跳过/真读的门 = PHASE_FIELD_SPEC('hp' 在集内才 OCR,
     # 收编 6fc1fd4c 先例为规格单一源,不留两处门控):hp 区物理只在 shop 关态

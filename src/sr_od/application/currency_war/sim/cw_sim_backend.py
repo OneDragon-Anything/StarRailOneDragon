@@ -92,6 +92,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     clear_pending_loss,
     effective_node_ord,
     node_kind_of,
+    node_ordinal_of,
     observe_node_anchor,
     seed_opening_state,
 )
@@ -104,6 +105,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     normalize_invest_name,
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
+    node_pos_of,
     node_sequence_of,
 )
 from sr_od.application.currency_war.kernel.cw_ore_channel import (
@@ -1096,7 +1098,10 @@ class SimBackend:
         prev = self.gs.node.value
         if prev is not None:
             apply_node_xp(self.gs, node_type=prev.kind)
-        if eff > sum(len(node_sequence_of(p)) for p in (1, 2)):
+        # 节点序列权威源 = 场字段现值(T-8;sim 与 kernel 同源读,任一侧
+        # 漏读字段 → 修饰局 P1 r9 推进时 DECL_SCREEN_DRIFT 确定性留证):
+        _seqs = self.gs.node_seq_by_plane.value
+        if eff > sum(len(node_sequence_of(p, _seqs)) for p in (1, 2)):
             # P2 末 = 第一期辖域尽头;P3 进场即局终(p3_unobserved)
             self.disclosures[DISCLOSURE_P3_UNOBSERVED] = \
                 'enter_p3_game_over_u19'
@@ -1296,15 +1301,11 @@ class SimBackend:
             in_node=True, options=cands))
 
     def _ordinal_to_node(self, ordinal: int) -> tuple[int, int]:
-        """节点线性序 → (位面, 轮)(P1=9/P2=7 地面真值;超界在调用方
-        先行拦截为局终)。"""
-        acc = 0
-        for plane in (1, 2):
-            length = len(node_sequence_of(plane))
-            if ordinal <= acc + length:
-                return plane, ordinal - acc
-            acc += length
-        raise ValueError(f'节点线性序 {ordinal} 超出第一期辖域(P1+P2)')
+        """节点线性序 → (位面, 轮)(T-8 瘦委托:实现单一源 = kernel
+        :func:`node_pos_of`,seqs 同源透传场字段现值;原方法体双份实现
+        与 ValueError 异常分叉消除,超界统一 :class:`P3UnobservedError`
+        ——调用方均先行拦截局终,超界不可达)。"""
+        return node_pos_of(ordinal, seqs=self.gs.node_seq_by_plane.value)
 
     def _node_pos(self) -> tuple[int, int]:
         """当前节点 (位面, 轮)(gs.node 现值;未进窗 = (1, 1) 防御面)。"""
@@ -1316,7 +1317,7 @@ class SimBackend:
     def _enter_node_window(self, plane: int, round_num: int) -> None:
         """进节点(序列平移:写 gs.node + 节点序观察锚定;位面首 = 位面
         过渡屏,其余序列在 _begin_node_window 收口)。"""
-        seq = node_sequence_of(plane)
+        seq = node_sequence_of(plane, self.gs.node_seq_by_plane.value)
         kind = seq[round_num - 1]
         ordinal = self._node_ordinal(plane, round_num)
         self.gs.observe(self.gs.node,
@@ -1344,14 +1345,11 @@ class SimBackend:
                 'boss': SCREEN_BOSS_BRIEFING}.get(kind, SCREEN_PREP)
 
     def _node_ordinal(self, plane: int, round_num: int) -> int:
-        """(位面, 轮) → 节点线性序(P1=9/P2=7;观察锚定与守卫消费)。"""
-        acc = 0
-        for p in (1, 2):
-            length = len(node_sequence_of(p))
-            if p == plane:
-                return acc + round_num
-            acc += length
-        raise ValueError(f'位面 {plane} 超出第一期辖域(P1+P2)')
+        """(位面, 轮) → 节点线性序(T-8 瘦委托:实现单一源 = kernel
+        :func:`node_ordinal_of`,seqs 同源透传场字段现值;观察锚定与守卫
+        消费)。"""
+        return node_ordinal_of(plane, round_num,
+                               seqs=self.gs.node_seq_by_plane.value)
 
     def _begin_node_window(self) -> None:
         """节点窗口序列(收入 → 环境金 → 商店全刷 → overlay → offer →
@@ -1366,7 +1364,7 @@ class SimBackend:
         if self._window_begun_ord == ordinal:
             return
         self._window_begun_ord = ordinal
-        kind = node_sequence_of(plane)[r - 1]
+        kind = node_sequence_of(plane, self.gs.node_seq_by_plane.value)[r - 1]
         # 轮首收入(M04;败补挂账按 kernel 分支序消费——supply/reward
         # 轮不消费,败态跨轮保留至下一战斗轮;连胜 = 容器带符号派生读)
         pending = self.gs.pending_loss.value
@@ -1438,7 +1436,8 @@ class SimBackend:
         active_env = self.gs.active_env.value
         if offer_slots(plane, r, active_env):
             return SCREEN_INVEST_STRATEGY
-        kind = node_sequence_of(plane)[r - 1]
+        kind = node_sequence_of(
+            plane, self.gs.node_seq_by_plane.value)[r - 1]
         return self._screen_for_node(kind)
 
     def _present_offer_or_node_screen(self) -> None:
@@ -1475,7 +1474,7 @@ class SimBackend:
         子态;supply → 补给;encounter → 遭遇节点;boss → BOSS 简报)。"""
         self._window_resume = ''
         plane, r = self._node_pos()
-        kind = node_sequence_of(plane)[r - 1]
+        kind = node_sequence_of(plane, self.gs.node_seq_by_plane.value)[r - 1]
         if kind == 'supply':
             rng = stream_rng(self.seed, f'M18/opts/p{plane}/r{r}')
             opts = supply_options(rng)

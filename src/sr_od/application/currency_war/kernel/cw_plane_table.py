@@ -104,8 +104,14 @@ def schedule_of(session) -> tuple[int, int, int]:
 
 
 def node_t_of(session: object, plane: object, round_num: object) -> int | None:
-    """全局节点号(battle_wait killed hp 对比兜底轮次邻接门的时基):
+    """全局节点号(策略层计分通道消费:gold_per_boss_node 计分等,基 1):
     前序位面**实际长度**和 + 位面内轮次。
+
+    历史消费点「battle_wait killed hp 对比兜底轮次邻接门」已随 T-8 删除
+    (胜负判定必须在结算画面识别;该门邻接判在修饰局 (1,10)↔(2,1)
+    塌缩);本函数现役消费 = ``strategies/impl/mandate_v1/
+    strategy_economy`` 计分通道,退役随废弃节点编号迭代与
+    ``schedule_of`` 视界族同批清扫(T-8 设计裁决点 7 勘误:非死函数)。
 
     长度源 = ``schedule_of(session)``(P1=9/P2=7/P3 进表自适应;
     单一源)——替代内联 ``(plane-1)*9`` 字面量(位面真值可短于 9,
@@ -115,9 +121,7 @@ def node_t_of(session: object, plane: object, round_num: object) -> int | None:
     → None = 门恒等支(与各消费位旧守卫同型)。
 
     **同式契约**:全局节点号 t 的同源派生纪律——凡 t 语义消费必经本函数
-    派生,禁单侧改式(单侧改式 = 轮次邻接门判域静默漂移;现役生产
-    消费点 = ``cw_screen_battle_wait._record_round_outcome`` 的 killed
-    hp 对比兜底)。
+    派生,禁单侧改式(单侧改式 = 跨消费位 t 值静默漂移)。
     """
     if not plane or not round_num:
         return None

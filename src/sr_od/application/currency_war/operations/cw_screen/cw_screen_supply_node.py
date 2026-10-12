@@ -56,7 +56,11 @@ from sr_od.application.currency_war.kernel.cw_events import (
     normalize_registry_equip_name,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    node_ordinal_of,
     observe_node_anchor,
+)
+from sr_od.application.currency_war.kernel.cw_node_schedule import (
+    node_round_cap,
 )
 from sr_od.application.currency_war.kernel.cw_screen_report.supply_node import (
     CwScreenSupplyNodeObs,
@@ -72,9 +76,10 @@ from sr_od.context.sr_context import SrContext
 _REMAIN_RE = re.compile(r'剩余次数\s*[：:]\s*(\d+)')
 
 # 补给屏顶部节点条「备战阶段 X-Y」读数正则(cw_observation.read_phase_round
-# 核心同款 "1-3" 形态;该 reader 绑备战屏 A_PHASE 区且带 last-known 缓存/
-# 单调守卫,补给屏锚定不经它——禁猜语义下读不得即跳过,不吃兜底值)。
-_NODE_BAR_RE = re.compile(r'(\d)\s*-\s*(\d)')
+# 核心同款两位数形态 "1-3"/修饰局 "1-10";该 reader 绑备战屏 A_PHASE 区且带
+# last-known 缓存/单调守卫,补给屏锚定不经它——禁猜语义下读不得即跳过,
+# 不吃兜底值)。
+_NODE_BAR_RE = re.compile(r'(\d{1,2})\s*-\s*(\d{1,2})')
 
 
 class CwScreenSupplyNode(CwOperation):
@@ -147,9 +152,12 @@ class CwScreenSupplyNode(CwOperation):
 
         OCR 带 = 建档 pc_rect 外扩余量(x ±30 / y ±15,与 _read_refresh_anchor
         同款;crop_first=False 全帧识别按带过滤,防小框裁剪漏检)。
-        正则命中 + 值域内(plane∈1-3/round≤9,与 read_phase_round 值域守卫
-        同源——OCR 抓错源当 miss)→ 序号 (plane-1)*9+round;读不得/值域外
-        → None(调用方 = 跳过,禁猜)。纯读。
+        正则命中 + 值域内(plane∈1-3/round ≤ node_round_cap(场字段现值),
+        与 read_phase_round 值域守卫同源——OCR 抓错源当 miss)→ 节点序
+        (T-8:内联 ``(plane-1)*9+rnd`` 公式退役,改调 kernel 正解
+        :func:`node_ordinal_of` 传场字段现值,消第二份坐标公式;漏传处
+        修饰局 P2 起与滞后 v 塌缩重锚 = 影子轨道,T-8 设计 §2.3)。
+        读不得/值域外 → None(调用方 = 跳过,禁猜)。纯读。
         """
         if screen is None:
             return None
@@ -159,6 +167,9 @@ class CwScreenSupplyNode(CwOperation):
         _r = _area.pc_rect
         _band = Rect(max(0, _r.x1 - 30), max(0, _r.y1 - 15),
                      _r.x2 + 30, _r.y2 + 15)
+        _match = getattr(self.ctx, 'cw_match', None)
+        _gs = getattr(_match, 'gs', None) if _match is not None else None
+        _seqs = _gs.node_seq_by_plane.value if _gs is not None else None
         ocr_map = self.ctx.ocr_service.get_ocr_result_map(
             image=screen, rect=_band, color_range=None, crop_first=False,
         )
@@ -168,8 +179,8 @@ class CwScreenSupplyNode(CwOperation):
             m = _NODE_BAR_RE.search(text)
             if m:
                 plane, rnd = int(m.group(1)), int(m.group(2))
-                if 1 <= plane <= 3 and 1 <= rnd <= 9:
-                    return (plane - 1) * 9 + rnd
+                if 1 <= plane <= 3 and 1 <= rnd <= node_round_cap(plane, _seqs):
+                    return node_ordinal_of(plane, rnd, seqs=_seqs)
         return None
 
     @operation_node(name='观察', is_start_node=True)

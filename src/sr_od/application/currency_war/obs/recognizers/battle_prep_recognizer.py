@@ -9,7 +9,8 @@ HTTP 消费方直接读用,不必自己 OCR / 看图。
 (观察类不查 run_slot);若本识别器写了 operation 也在用的可变状态,会互相污染。故:
 - gold / hp / streak / deploy / board 复用 ``cw_observation`` 的**纯 reader**(它们不写全局 / session);
 - **phase 不复用 ``read_phase_round``**(它成功时写模块全局 ``_last_phase_round`` 的 last-known-good 兜底,
-  会与 operation 竞争污染兜底值)→ 本模块自写 ``_read_phase_round_pure``(只 OCR + 正则,不缓存,读不到返 None);
+  会与 operation 竞争污染兜底值)→ 本模块自写 ``_read_phase_round_pure``(只 OCR + 共享解析纯函数
+  ``parse_phase_round_text``,不缓存不写全局,读不到返 None);
 - **不复用 ``read_game_state``**(它读写 ``cw_match.session.last_level_obs`` / ``tracked_deployed``,是 session 状态)。
 
 **角色身份 + 星级 + 装备(前后台 / 备战席)**:用 ``cw_identity_obs.read_deployed_rows`` / ``read_bench_view``
@@ -27,7 +28,6 @@ plaza 烘焙立绘库经备战执行面身份链 live 验证通过(该执行面�
 """
 from __future__ import annotations
 
-import re
 from dataclasses import asdict, dataclass, replace
 from typing import TYPE_CHECKING
 
@@ -54,6 +54,8 @@ from sr_od.application.currency_war.obs.cw_identity_obs import (
     read_row_equipped,
 )
 from sr_od.application.currency_war.obs.cw_observation import (
+    parse_phase_round_text,
+    phase_round_in_range,
     read_board,
     read_deploy_cap,
     read_deployed_count,
@@ -73,26 +75,27 @@ if TYPE_CHECKING:
 def _read_phase_round_pure(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None:
     """位面 + 轮次(**纯读**):顶栏「X-Y」(如 "1-3" = 位面1 第3轮);读不到 → None。
 
-    与 ``cw_observation.read_phase_round`` 同解析,但**去掉**模块全局 ``_last_phase_round`` 的写 / 读
-    (并发安全:recognizer 不得与运行中 operation 竞争该全局)。读不到时返 None(不伪造 (1,1) 兜底)。
+    与 ``cw_observation.read_phase_round`` 共享解析纯函数
+    (:func:`cw_observation.parse_phase_round_text` +
+    :func:`cw_observation.phase_round_in_range`,同正则同值域单一源,
+    T-8 设计 §2.5——工具态 ``round_caps`` 恒 None → cap 回退默认长度
+    P1=9,「1-10」断言对本工具面不作要求,修饰局真值由场字段/台账
+    承载),但**去掉**模块全局 ``_last_phase_round`` 的写 / 读
+    (并发安全:recognizer 不得与运行中 operation 竞争该全局)。
+    数字回退分支(digit_fallback=True)随共享实现保留、行为不变。
+    读不到时返 None(不伪造 (1,1) 兜底)。
 
     Args:
         ctx: 运行上下文(经 ``cw_obs_core._area_rect`` / ``_ocr`` 读 ``区域-阶段`` area)。
         screen: 备战画面截图。
 
     Returns:
-        ``(plane, round_num)``;OCR 读不到返 None。
+        ``(plane, round_num)``;OCR 读不到/值域外返 None。
     """
     blob = ''.join(r.data for r in _ocr(ctx, screen, _area_rect(ctx, A_PHASE)))
-    m = re.search(r'(\d)\s*-\s*(\d)', blob)         # "1-3"
-    if m:
-        return int(m.group(1)), int(m.group(2))
-    plane_m = re.search(r'第\s*(\d)\s*位面', blob)
-    if plane_m:
-        return int(plane_m.group(1)), int(plane_m.group(1))
-    digits = re.findall(r'\d', blob)
-    if digits:
-        return int(digits[0]), int(digits[0])
+    cand = parse_phase_round_text(blob, digit_fallback=True)
+    if cand is not None and phase_round_in_range(cand):
+        return cand
     return None
 
 

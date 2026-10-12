@@ -292,9 +292,15 @@ class CwScreenPrep(CwOperation):
                 if _st is not None and _st.plane is not None \
                         and _st.round_num is not None:
                     with contextlib.suppress(Exception):
+                        # 锚定正解传场字段现值(T-8 设计 §2.3 写端覆盖事实:
+                        # 备战帧锚定是位面内全部战斗/奖励节点含 boss 的唯一
+                        # node_ord 观察写端——漏传则修饰局 P2 起形成恒滞后
+                        # 一节的影子轨道,9 制读数与滞后 v 塌缩重锚,
+                        # DECL 逐节留证,非可自愈形态)。
                         observe_node_anchor(
                             _gs_obs,
-                            node_ordinal_of(int(_st.plane), int(_st.round_num)),
+                            node_ordinal_of(int(_st.plane), int(_st.round_num),
+                                            seqs=_gs_obs.node_seq_by_plane.value),
                             trigger_screen='货币战争-备战',
                             actor='CwScreenPrep')
                 # 备战渠道签名:备战帧观察写入 = 渠道①,actor=本 op、

@@ -1647,7 +1647,15 @@ class CwLoop(CwOperation):
             # 出战成功即解除(章1.5)。误判防线:候选
             # 撤回(1-1 正常新局)/探针可开(非锁定)两处都不进锁定分支。
             if self._cw_resume_candidate:
-                _pr = read_phase_round(self.ctx, screen)
+                # round_caps 透传(T-8 §2.5 调用方接线):接管 = 新进程新
+                # 容器,场字段结构性必 None → cap 回退默认长度,修饰局接管
+                # 首帧「1-10」拒读退现役兜底行为(披露:不比现役差,残余随
+                # 接管链改造收敛);接线使场字段在场时语义自动正确。
+                _caps_gs = game_state_of(self.ctx.cw_match.session)
+                _pr = read_phase_round(
+                    self.ctx, screen,
+                    round_caps=(_caps_gs.node_seq_by_plane.value
+                                if _caps_gs is not None else None))
                 if not resume_candidate(self._is_new_match, _pr[0], _pr[1]):
                     self._cw_resume_candidate = False   # 1-1 正常新局,撤回候选
                 else:

@@ -251,8 +251,8 @@ def claim_encounter_reward(gs: GameState) -> str:
       方向安全,归观察可靠性治理);
     - 达标 = 容器结算域 ``progress_delta > 0`` **单判**(机制依据 =
       combat.md §3「遭遇奖励 = 伤害进度达标制,非清场制」;killed 不入
-      判据:结算链 killed 多为 progress 符号派生值 + hp 对比兜底腿在
-      达标制下语义未证);``None`` = 删失不兑现;
+      判据:结算链 killed 为 progress 符号派生值——HP 对比兜底腿已随
+      T-8 删除,胜负判定必须在结算画面识别出来);``None`` = 删失不兑现;
     - ``chosen_encounter`` 在场 = 消费票。
 
     兑现 = 写 ``encounter_reward_claimed``(所选 (难度档, 奖励文本),

@@ -190,8 +190,6 @@ class SettlementState:
       conf≥0.9 才更新);
     - saw_defeat_settlement = 败局闩:本局见过任一显式败局结算帧
       (3c 假 win 守卫消费);
-    - last_outcome_t = 上一结算真值轮全局节点号(killed hp 对比兜底的轮次
-      邻接门);
     - rounds_done = 已完成战斗轮数(新结算帧计数;轮锚点 = 挑战成功结算);
     - settle_page1_progress / settle_page1_settle = 结算页1 三项遥测暂存
       (页2 记录时合并消费,用后清);
@@ -214,7 +212,6 @@ class SettlementState:
     """
     last_outcome_hp: int | None = None
     saw_defeat_settlement: bool = False
-    last_outcome_t: int | None = None
     rounds_done: int = 0
     settle_page1_progress: int | None = None
     settle_page1_settle: dict = field(default_factory=dict)
@@ -365,20 +362,36 @@ class CwScreenBattleWait(CwOperation):
         _residual = self._mark_relaunch_residual()
         try:
             _session = self.ctx.cw_match.session
-            _plane, _round = read_phase_round(self.ctx, screen)
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                game_state_from_ctx,
+            )
+            _caps_gs = game_state_from_ctx(self.ctx)
+            _round_caps = (_caps_gs.node_seq_by_plane.value
+                           if _caps_gs is not None else None)
+            _plane, _round = read_phase_round(self.ctx, screen,
+                                              round_caps=_round_caps)
             _ocr_texts = [r.data for r in self.ctx.ocr_service.get_ocr_result_list(
                 image=screen, rect=None, color_range=None, crop_first=False)]
             # plane 归属:结算屏头部「X-Y」屏面真值 + 单调门覆盖 last-known。
-            _scr = parse_settlement_round(_ocr_texts)
+            # (T-8:读数两位数 + 值域随场字段,修饰局 (1,10) 结算行可读。)
+            _scr = parse_settlement_round(_ocr_texts, round_caps=_round_caps)
             if _scr is not None:
                 if _residual:
                     log.warning('[cw][bwait] relaunch 残留结算屏:round 按「%s-%s」校正'
                                 '(原兜底 P%s-r%s)', _scr[0], _scr[1], _plane, _round)
                     _plane, _round = _scr
                 else:
-                    _t_new = (_scr[0] - 1) * 9 + _scr[1]
-                    _t_old = (_plane - 1) * 9 + _round if (_plane and _round) else None
-                    if _t_old is None or _t_new >= _t_old:
+                    # 结算单调门(T-8):(位面, 轮) 元组直接比较——9 制序
+                    # 双侧比较退役(修饰局 (1,10)↔(2,1) 平局塌缩随内联公式
+                    # 一并消除;字典序即时间序,(2,1)>(1,10) 恒严格,
+                    # (1,10)<(2,1) 恒拒陈旧重放)。None 放行防御分支保留
+                    # (read_phase_round 现役恒返回正值二元组,与旧
+                    # `_t_old is None` 同语义)。与结算读数两位数放行绑定
+                    # 不可拆:读数不修则 (1,10) 恒 None 本改进不可达;
+                    # 本门不修则陈旧 (1,10) 结算屏在 (2,1) 后被 9 制平局
+                    # 放行(T-8 设计 §2.5)。
+                    _t_old = (_plane, _round) if (_plane and _round) else None
+                    if _t_old is None or _scr >= _t_old:
                         if (_scr[0], _scr[1]) != (_plane, _round):
                             log.info('[cw-bwait] plane/round 结算屏真值「%s-%s」覆盖 '
                                      'last-known「%s-%s」', _scr[0], _scr[1],
@@ -447,33 +460,17 @@ class CwScreenBattleWait(CwOperation):
                     _obs.progress_delta = _pg1
                     log.info('[cw-bwait] progress 合并(第一页暂存):%s', _pg1)
                 _st.settle_page1_progress = None
-            # boss 胜局 win 真值:进度符号先于 hp 对比兜底
+            # boss 胜局 win 真值:killed 判定两路 = progress 符号(本处)
+            # + killed 文本双置信度(读链 read_round_outcome 内)——均须在
+            # 结算画面识别出来(用户裁定,T-8 裁决点 7 前半);「拿血量
+            # 推断胜负」非识别,HP 对比兜底门已删,且其轮次邻接时基在
+            # 修饰局 (1,10)↔(2,1) 塌缩(node_t_of 长度源被夹回 9,两节点
+            # 流水号同值,邻接判恒假)。两主路径同失 = killed=None 观察收口
+            #(诚实缺位,无 HP 推断路径)。
             if _obs.killed is None and _obs.progress_delta is not None:
                 _obs.killed = _obs.progress_delta > 0
                 log.info('[cw-bwait] killed 进度符号判定:progress=%s → %s',
                          _obs.progress_delta, _obs.killed)
-            # killed 文本兜底(双侧置信度门 + 轮次邻接门)
-            # 时基经 kernel 单一源派生(schedule 前序位面实际长度和)。
-            # 上一真值源 = gs.hp(session.last_hp 锚已退役——本兜底先行于
-            # 本轮结算覆盖写,gs.hp 现值 = 上一结算真值)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                gs_of_ctx,
-            )
-            from sr_od.application.currency_war.kernel.cw_plane_table import (
-                node_t_of,
-            )
-            _now_t = node_t_of(_session, _plane, _round)
-            if not telemetry_only and _obs.hp_confidence >= 0.9 and _now_t is not None:
-                if _obs.killed is None:
-                    _prev_hp = gs_of_ctx(self.ctx, _session).hp.value
-                    _prev_t = _st.last_outcome_t
-                    if (_prev_hp is not None and _prev_t is not None
-                            and _now_t - _prev_t == 1):
-                        _obs.killed = _obs.hp_after >= _prev_hp
-                        log.info('[cw-bwait] killed 兜底(hp 对比):上轮 %s → 本轮 %s → %s',
-                                 _prev_hp, _obs.hp_after,
-                                 '赢' if _obs.killed else '输')
-                _st.last_outcome_t = _now_t
             # 结算三项遥测页1 暂存合并(同 progress 合并法;暂存值优先于页2 同帧读数)
             # heal_longline 同并入(回血分量,页1 瞬窗才可见)
             _st1 = _st.settle_page1_settle
