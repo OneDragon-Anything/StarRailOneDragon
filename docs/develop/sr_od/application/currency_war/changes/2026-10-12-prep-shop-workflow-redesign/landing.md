@@ -68,7 +68,7 @@
 
 **范围**：概率主轴判据落码（P40 期望模型 + 门槛表 + 实读单价）；人口位三元谓词（含边际贡献 > 0）；整级预授权 + 实付上界发射形态含升级前变现步（修「买一半」——现状机理 = 逐帧单击 × 静态阈值逐帧重闸，修法 = 发射粒度整批化 + 攒批资金口径 = 裸金 + 非线内 1★ 活期卡退金）；拦截层处置逐件落地（删 = 守息门/全段式预算闸/λ 顾问/血线地板解锁 + 升档器残件逐件[凑息禁令位/包件③/求值位] + **姿态授权对账退役**（拦截层删除的伴生面，血闸拒发落点 = 第 3 步零动作）；留 = P72 保底语义、P21 血预算线、等级帽闸）；as-built 表述消歧（11 §2 血购段与代码注释同步）。
 **设计依据**：line_and_upgrade §2（含 §2.3 逐件处置表）。
-**文件面**：`strategies/impl/mandate_v1/criteria/levelup.py`、`criteria/sell.py`（解锁包件②凑息禁令位退役）、`statefn/predicates.py` 与 `statefn/lambda_death.py`（HP_BAND_NEAR_DEATH 血线地板残件退役）、`flow.py`（升档器装配面清理）、`kernel/cw_economy.py` 血购段、`entry.py` 调用位、`operations/cw_op/cw_prep_level_up_action.py`（整批发射形态改造）、`prep_actions.py`（`_level_up` 连点原语配合）；测试仓。
+**文件面**：`strategies/impl/mandate_v1/criteria/levelup.py`、`criteria/sell.py`（解锁包件②凑息禁令位退役）、`statefn/predicates.py` 与 `statefn/lambda_death.py`（HP_BAND_NEAR_DEATH 决策面残件退役；**lock_open_lowband 纯观察件保留**——合法概率路由消费非决策面，保留申报）、`flow.py`（升档器装配面清理）、`kernel/cw_economy.py` 血购段、`entry.py` 调用位、`operations/cw_op/cw_prep_level_up_action.py`（整批发射形态改造）、`prep_actions.py`（`_level_up` 连点原语配合）；测试仓。
 **依赖**：3.0、3.1、3.3。
 **优先级建议**：6
 **完成判据**：
@@ -112,13 +112,14 @@
 
 ## 3.7 统一选线函数
 
-**范围**：四维评分函数**骨架**落码（注册表查表地基 + §1.2 缺件集构造 + 比较器接口——**量纲合成式与权重留标定批**，缺省恒未定型 = 比较器不消费数值，骨架可测结构）、定型门/滞后余量/切换成本账（【拟】缺省 = 恒未定型）、provisional 登记（owner/期限）、现行换线机器退役（§1.5 退役面逐项：θ 滞回/D_min 驻留/证伪分桶/第四触发/P84 门/影子评估/塌缩通道删除，K 空窗回退换源）、3.1 签名骨架换核。
+**范围**：四维评分函数**骨架**落码（注册表查表地基 + §1.2 缺件集构造 + 比较器接口——**量纲合成式与权重留标定批**，缺省恒未定型 = 比较器不消费数值，骨架可测结构）、**`kernel/cw_comps.py` 扩 `key_items` 字段并建表**（贯穿件名单，知识批交付，期限 = 本批开表前——贯穿件强信号维的数据地基）、定型门/滞后余量/切换成本账（【拟】缺省 = 恒未定型）、provisional 登记（owner/期限）、现行换线机器退役（§1.5 退役面逐项：θ 滞回/D_min 驻留/证伪分桶/第四触发/P84 门/影子评估/塌缩通道删除，K 空窗回退换源）、3.1 签名骨架换核。
 **设计依据**：line_and_upgrade §1 全部、§3；关键取舍节。
 **文件面**：`strategies/impl/mandate_v1/`（新选线模块 + `proof.py` 退役面 + `audit/provisional.py` 登记 + `sell_gate.py` line_switch 通道退役——与 3.6 通道登记同文件分域，本阶段后置串行）、`kernel/` 配合；测试仓。
 **依赖**：3.0（改前基线先行）、3.1、3.2、3.6（`sell_gate.py` 分域改动串行避冲突）。
 **优先级建议**：5
 **完成判据**：
 - 选线单帧锁：未定型输出（缺省恒未定型）、标定注入后首次定型、换目标账（余量拦截与成本拦截）、缺省保守形态；
+- key_items 建表核对：贯穿件名单与 final_comps 各线登记一致、缺失线 fail 方向 = 维度 None；
 - 退役面测试同步退役，docstring 记被替代语义（引 §1.5 清单行）；
 - 退役后全仓无死引用（多行形态 grep 复核退役符号零消费点，含挂账撤账项正本行清理）；
 - 完成前常规检查。
