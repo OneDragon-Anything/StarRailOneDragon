@@ -68,7 +68,7 @@
 
 **范围**：概率主轴判据落码（P40 期望模型 + 门槛表 + 实读单价）；人口位三元谓词（含边际贡献 > 0）；整级预授权 + 实付上界发射形态含升级前变现步（修「买一半」——现状机理 = 逐帧单击 × 静态阈值逐帧重闸，修法 = 发射粒度整批化 + 攒批资金口径 = 裸金 + 非线内 1★ 活期卡退金）；拦截层处置逐件落地（删 = 守息门/全段式预算闸/λ 顾问/血线地板解锁 + 升档器残件逐件[凑息禁令位/包件③/求值位] + **姿态授权对账退役**（拦截层删除的伴生面，血闸拒发落点 = 第 3 步零动作）；留 = P72 保底语义、P21 血预算线、等级帽闸）；as-built 表述消歧（11 §2 血购段与代码注释同步）。
 **设计依据**：line_and_upgrade §2（含 §2.3 逐件处置表）。
-**文件面**：`strategies/impl/mandate_v1/criteria/levelup.py`、`criteria/sell.py`（解锁包件②凑息禁令位退役）、`statefn/predicates.py` 与 `statefn/lambda_death.py`（HP_BAND_NEAR_DEATH 决策面残件退役；**lock_open_lowband 纯观察件保留**——合法概率路由消费非决策面，保留申报）、`flow.py`（升档器装配面清理）、`kernel/cw_economy.py` 血购段、`entry.py` 调用位、`operations/cw_op/cw_prep_level_up_action.py`（整批发射形态改造）、`prep_actions.py`（`_level_up` 连点原语配合）；测试仓。
+**文件面**：`strategies/impl/mandate_v1/criteria/levelup.py`、`criteria/sell.py`（解锁包件②凑息禁令位退役）、`statefn/predicates.py` 与 `statefn/lambda_death.py`（HP_BAND_NEAR_DEATH 决策面残件退役）；**lock_open_lowband 纯观察件保留**（实位 = `strategies/impl/flow.py` 概率路由段——合法路由消费非决策面，保留申报，3.4 文件面含 flow.py）、`flow.py`（升档器装配面清理）、`kernel/cw_economy.py` 血购段、`entry.py` 调用位、`operations/cw_op/cw_prep_level_up_action.py`（整批发射形态改造）、`prep_actions.py`（`_level_up` 连点原语配合）；测试仓。
 **依赖**：3.0、3.1、3.3。
 **优先级建议**：6
 **完成判据**：
@@ -114,7 +114,7 @@
 
 **范围**：四维评分函数**骨架**落码（注册表查表地基 + §1.2 缺件集构造 + 比较器接口——**量纲合成式与权重留标定批**，缺省恒未定型 = 比较器不消费数值，骨架可测结构）、**`kernel/cw_comps.py` 扩 `key_items` 字段并建表**（贯穿件名单，知识批交付，期限 = 本批开表前——贯穿件强信号维的数据地基）、定型门/滞后余量/切换成本账（【拟】缺省 = 恒未定型）、provisional 登记（owner/期限）、现行换线机器退役（§1.5 退役面逐项：θ 滞回/D_min 驻留/证伪分桶/第四触发/P84 门/影子评估/塌缩通道删除，K 空窗回退换源）、3.1 签名骨架换核。
 **设计依据**：line_and_upgrade §1 全部、§3；关键取舍节。
-**文件面**：`strategies/impl/mandate_v1/`（新选线模块 + `proof.py` 退役面 + `audit/provisional.py` 登记 + `sell_gate.py` line_switch 通道退役——与 3.6 通道登记同文件分域，本阶段后置串行）、`kernel/` 配合；测试仓。
+**文件面**：`strategies/impl/mandate_v1/`（新选线模块 + `proof.py` 退役面 + `audit/provisional.py` 登记 + `sell_gate.py` line_switch 通道退役——与 3.6 通道登记同文件分域，本阶段后置串行）、`strategies/impl/flow.py`（意向层机器退役载体 `_refresh_direction_views` 族清点）、`kernel/` 配合；测试仓。
 **依赖**：3.0（改前基线先行）、3.1、3.2、3.6（`sell_gate.py` 分域改动串行避冲突）。
 **优先级建议**：5
 **完成判据**：
@@ -133,6 +133,7 @@
 **依赖**：3.3、3.4、3.6、3.7。
 **优先级建议**：4
 **完成判据**：
+- 窗口期危险信号观察项 = 濒死报警帧频率（对比基线——缺省相概率主轴关闭，P21/血本位为限器非响应器，[18] 报警的响应 = 自救/凑息动作自身 + 外部哨兵留证）；
 - 对照报告产出：分布变化方向与预注册预期锚一致（**预期锚 = 对照差异预注册文件，载体 = proofs 目录单篇，先 commit 后跑批**）；不一致处逐项归因（实现 bug/机制理解错/sim 不可信三选一）；
 - 实机验收判据线预注册文件已 commit（先 commit 后跑实机批）。
 **验收凭据形式**：对照报告 + 预注册文件。
@@ -156,12 +157,13 @@
 - `strategy-docs/11_shop_decisions.md` ← 3.4/3.6（升级重轴与 P72(3a)/P21 保留记录、置换账、筹资、收缩废止、血购段 as-built 消歧、**§7 引擎池提案收编与 ENGINE_STALL_N 撤账、§3 刷新合格集变更记录**）
 - `strategy-docs/12_line_and_intention.md` ← 3.7（换线机器退役→选线函数全文重写）
 - `strategy-docs/00_framework.md` ← 3.4（hp 辖域收缩差分申报与升档器架构层评估：血线地板/λ 顾问删除后升档器「死亡风险唯一承接件」职能失主——架构去留由本正本更新批裁决；P21 保留依据）
-- `strategy-docs/01_math_framework.md` ← 3.4/3.6（§1 权限骨架的义务/优化权限重述；§3.2 卖面主不等式的自救扩展面例外登记；§3.7 换线判据行更新；§3.3 拦截层行更新：守息门/U_L/预算闸处置；§7 P72 收尾支钩子行 + §3.4 无目标刷新 fail 语义变更 + **P92 门输入面改造** + **待证钩子三条登记**（cw_prepsell_value_order/swap_domination/line_score_weighting）；定型门/滞后余量【拟】登记消费章程核对）
+- `strategy-docs/01_math_framework.md` ← 3.4/3.6（§1 权限骨架的义务/优化权限重述；§3.2 卖面主不等式的自救扩展面例外登记；§3.7 换线判据行更新；§3.3 拦截层行更新：守息门/U_L/预算闸处置；§7 P72 收尾支钩子行 + §3.4 无目标刷新 fail 语义变更 + **P92 门输入面改造** + **待证钩子四条登记**（cw_prepsell_value_order/swap_domination/line_score_weighting/all_channel_exists）；定型门/滞后余量/四维权重/×2 系数【拟】登记消费章程核对——登记集枚举与 line_and_upgrade 关键取舍统一）
 - `docs/develop/sr_od/application/currency_war/proofs/math_proofs.md` ← 末阶段（**命题处置登记同步**：P77 商店牌面维差分、P86 三臂收编处置（甲臂形态退役/乙臂偏差/丙臂辖域维持）、P92 挂起（腾席支消费位废止）、P96 晶矿复用挂账不激活（辖域扩展待证）、P78 通道重映射（置换新通道+自救豁免行）、P41 让位序近似实现关系、P49⑤ 档序偏差、P16 换线 E_rounds 消费终止、P72 闸拆解处置（(1)(2) 保留/(3a) 本体删除/保底金门保留）、P76 组合期权框架消费终止——索引行状态与落码行为一致）
 - `strategy-docs/04_survival_budget.md` ← 3.4（§7 对账表更新：#3 血线地板解锁撤销登记 + #4 P21 拦截语义的授权登记补全——#4 补全属授权登记变更，提案随本清单呈用户裁定后执行）
 - `strategy-docs/21_opening_window_and_tool_consume.md` ← 3.3（工具消费位次随工序重排的核记录；需要才改）
 - `strategy-docs/17_stall_form_spend_authority.md` ← 3.6（Φ_stall 停滞支出的锁线键载体切换记录：判定源改挂生效目标 view）
 - `strategy-docs/20_large_balance_must_spend.md` ← 3.6（必花域消费位收编记录：会话内买入评估入口的域帧判定、**L3 触发源发射位两处化**；与升级重轴的域内交互语义登记）
+- `docs/game/currency_war/research/screen_flow_timing.md` ← 3.6（#14/#27 boss 简报自动开店旧口径勘误——as-built 辨析回写）
 - `docs/game/currency_war/research/user_playstyle.md` ← 全迭代（2026-10-12 用户裁定系列补录 + [23]/[36] 差分回写，见 line_and_upgrade 差分节）
 - `docs/develop/sr_od/application/currency_war/screens/README.md` §5.4 ← 3.5（商店画面能力面补「出战」行——正本缺口补录）
 - `strategy-docs/` 全目录黑话清洗 ← 末阶段（用户裁定 2026-10-12：编号引用保留，其余自造词改正常表述或首现给定义）
