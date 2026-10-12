@@ -156,8 +156,10 @@
 - `strategy-docs/11_shop_decisions.md` ← 3.4/3.6（升级重轴与 P72(3a)/P21 保留记录、置换账、筹资、收缩废止、血购段 as-built 消歧）
 - `strategy-docs/12_line_and_intention.md` ← 3.7（换线机器退役→选线函数全文重写）
 - `strategy-docs/00_framework.md` ← 3.4（hp 辖域收缩差分申报与升档器架构层评估：血线地板/λ 顾问删除后升档器「死亡风险唯一承接件」职能失主——架构去留由本正本更新批裁决；P21 保留依据）
-- `strategy-docs/01_math_framework.md` ← 3.4/3.6（§1 权限骨架的义务/优化权限重述；§3.2 卖面主不等式的自救扩展面例外登记；§3.7 换线判据行更新；§3.3 拦截层行更新：守息门/U_L/预算闸处置；§7 P72 收尾支钩子行；定型门/滞后余量【拟】登记消费章程核对）
+- `strategy-docs/01_math_framework.md` ← 3.4/3.6（§1 权限骨架的义务/优化权限重述；§3.2 卖面主不等式的自救扩展面例外登记；§3.7 换线判据行更新；§3.3 拦截层行更新：守息门/U_L/预算闸处置；§7 P72 收尾支钩子行 + **待证钩子三条登记**（cw_prepsell_value_order/swap_domination/line_score_weighting）；定型门/滞后余量【拟】登记消费章程核对）
+- `docs/develop/sr_od/application/currency_war/proofs/math_proofs.md` ← 末阶段（**命题处置登记同步**：P77 商店牌面维差分、P86 三臂收编处置（甲臂形态退役/乙臂偏差/丙臂辖域维持）、P92 挂起（腾席支消费位废止）、P96 辖域扩展（晶矿场景复用）、P78 通道重映射（置换新通道+自救豁免行）、P41 让位序近似实现关系、P49⑤ 档序偏差——索引行状态与落码行为一致）
 - `strategy-docs/04_survival_budget.md` ← 3.4（§7 对账表更新：#3 血线地板解锁撤销登记 + #4 P21 拦截语义的授权登记补全——#4 补全属授权登记变更，提案随本清单呈用户裁定后执行）
+- `strategy-docs/21_tool_usage.md` ← 3.3（工具消费位次随工序重排的核记录；需要才改）
 - `strategy-docs/17_stall_form_spend_authority.md` ← 3.6（Φ_stall 停滞支出的锁线键载体切换记录：判定源改挂生效目标 view）
 - `strategy-docs/20_large_balance_must_spend.md` ← 3.6（必花域消费位收编记录：会话内买入评估入口的域帧判定；与升级重轴的域内交互语义登记）
 - `docs/game/currency_war/research/user_playstyle.md` ← 全迭代（2026-10-12 用户裁定系列补录 + [23]/[36] 差分回写，见 line_and_upgrade 差分节）
