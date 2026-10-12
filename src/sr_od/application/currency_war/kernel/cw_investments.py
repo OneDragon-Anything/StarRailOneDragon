@@ -1895,3 +1895,26 @@ def _validate_env_refresh_grants() -> None:
 
 
 _validate_env_refresh_grants()
+
+
+# ===== 节点序列修饰环境白名单归属校验(T-8;import 即炸)=====
+# 注册表数据住序列模块(kernel/cw_node_schedule.ENV_NODE_SUPPLY_BEFORE_BOSS,
+# 与序列真值同域、sim 同源直读);归属校验住 INVESTMENT_ENVS 的家——
+# 版本更新改名/移除环境后白名单键静默失联在构建期炸出,不进运行时
+# (防静默失联先例 = T-5 登记表校验;依赖方向:cw_investments 顶层 import
+# cw_node_schedule,后者零依赖,单向无环)。
+def _validate_env_node_seq() -> None:
+    """ENV_NODE_SUPPLY_BEFORE_BOSS 归属校验(沿 _validate_env_streak_grants
+    先例):键 ⊆ INVESTMENT_ENVS(归一名口径;防版本改名静默失联)。"""
+    from sr_od.application.currency_war.kernel.cw_node_schedule import (
+        ENV_NODE_SUPPLY_BEFORE_BOSS,
+    )
+    orphans = [n for n in ENV_NODE_SUPPLY_BEFORE_BOSS
+               if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(
+            f"ENV_NODE_SUPPLY_BEFORE_BOSS 孤儿键(base 无此环境?版本改名?):"
+            f"{sorted(orphans)}")
+
+
+_validate_env_node_seq()

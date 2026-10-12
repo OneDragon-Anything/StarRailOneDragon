@@ -132,6 +132,8 @@ from sr_od.application.currency_war.kernel.cw_mismatch_policy import (
     lookup_mismatch_exempt,
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
+    PLANE_NODE_TABLES,
+    P3UnobservedError,
     node_pos_of,
     node_sequence_of,
 )
@@ -243,6 +245,11 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # env-conditional-grant §1)。独立键版本 1
                                 # 不并入他域 bump——他域本体未变,先例 =
                                 # ore_rewards 不并入 spheres
+    'node_seq_by_plane': 1,     # 逐位面节点序列场字段(迭代 T-8 人身意外险:
+                                # 键 = 位面 1 基,值 = 节点类型序;逻辑态,
+                                # 写点唯一 = gain_invest_env 尾段,注册后
+                                # 恒全量。独立键版本 1,同 env_grants_done
+                                # 先例不并入他域 bump)
     'substate': 1,          # 分类子态/事件浮层(§3.2.17/§3.6.1)
     'shop': 2,              # 商店开态 payload(§3.3;域版本 2 = ShopPayload 扩
                             # 牌行点击坐标字段 card_points(选择坐标观察上报,
@@ -329,10 +336,26 @@ SCREEN_BOSS_BRIEFING: str = '货币战争-BOSS简报'
 SCREEN_SETTLE: str = '货币战争-结算'
 
 
-def node_ordinal_of(plane: int, round_num: int) -> int:
-    """节点序 = (plane-1)*9 + round_num(基 1;坐标系与效果账本 advance_node
-    去重键同源,判定方案 R3 §3.2 身份键)。"""
-    return (int(plane) - 1) * 9 + int(round_num)
+def node_ordinal_of(plane: int, round_num: int,
+                    seqs: dict[int, tuple[str, ...]] | None = None) -> int:
+    """节点序(基 1;坐标系与效果账本 advance_node 去重键同源,判定方案
+    R3 §3.2 身份键)。
+
+    T-8 起坐标系 = 按局修饰变长制:``seqs`` 给定(= 场字段现值)→ 按修饰
+    表变长累加(前序位面实际长度和 + round,与 :func:`node_pos_of` 同表
+    互逆);None → 默认表累加(默认序列下与旧固定 9 制逐值同,现役行为
+    回归)。位面不在有效表辖域(3 等)→ :class:`P3UnobservedError`
+    (P3 不运行,与反解异常契约统一;调用方均先行拦截局终)。
+    """
+    tables = seqs if seqs is not None else PLANE_NODE_TABLES
+    acc = 0
+    for p in sorted(tables):
+        if p == int(plane):
+            return acc + int(round_num)
+        acc += len(tables[p])
+    raise P3UnobservedError(
+        f'位面 {plane} 节点序列无完整观测(p3_unobserved;调用方须先行'
+        '拦截为局终)')
 
 #: 帧观察完整度三档(§2.4 关键结构 2)。
 FrameObsLevel = Literal['full', 'view', 'none']
@@ -2022,6 +2045,9 @@ def seed_opening_state(gs: GameState) -> None:
     # 环境条件发放已发标记(空底座,同上种子族先例;开局未发任何条件
     # 发放,「本局首次」守卫的初始真值 = 空集)
     _seed(gs.env_grants_done, ())
+    # (node_seq_by_plane 不种:B/C 类字段契约——None = 未注册态是设计
+    # 语义,T-8 设计「Field 缺省 None」,Field 声明缺省即开局真值,
+    # seed_opening_state「B/C 类字段一个不种」同规。)
     # —— 经济与成长(gold=3 对齐 sim 开局模型 M01 的 OPENING_GOLD;
     # level=3 与升级表键一致,deploy_cap=level+财富宝钻数、开局宝钻 0;
     # xp 需求查升级表单一源;hp 取遥测实证基线常量)——
@@ -2411,6 +2437,25 @@ class GameState:
     # 观察投影;直写先例 = cw_exec_state 金腿 / cw_effect_inventory 退款
     # 腿)。恢复局随快照存续 = 接管局不重发。开局种子底座 = ()(A 类)。
     env_grants_done: Field[tuple[tuple[str, str], ...]] = field(
+        default_factory=Field)
+
+    # [索引定义] node_seq_by_plane = 逐位面节点序列场字段(逻辑态;迭代
+    # T-8 人身意外险,设计正本 =
+    # .debug/progress/2026-09-23-invest-effects-calc/designs/
+    # T-8-renshenyiwai-xian.md §2.1):键 = 位面 1 基(与 NodeKey.plane 同
+    # 坐标系,恒只含键 {1,2},P3 不运行不入表),值 = 节点类型序
+    # (元素 ∈ cw_node_schedule.NODE_KINDS,与 PLANE_NODE_TABLES 同词表)。
+    # 取值时机 = 环境注册刻一次性落全量(修饰表或默认表,无半态),局内
+    # 恒存;**None = 未注册态**(P1 前段),消费方回退默认表(P1 内两制
+    # 同值,回退无窗)。写入端 = cw_gain_chain.gain_invest_env 尾段单一
+    # 写径(evidence='node_seq:env'),无观察写端——观察对账面 = 备战帧
+    # 节点行动态槽数 CV 读(cw_node_reader)→ live 台账 seq_by_plane
+    # (cw_exec_state),台账与本字段可逐位对照,v1 失配留证不自动改写。
+    # 消费面 = 节点序列正反解/next_screen 推导/观察锚定/round 值域上限
+    # (node_round_cap)全部经本字段,坐标系从固定 9 制改按局修饰变长制
+    # (正本 = game_state/node-domain.md §1)。开局种子底座 = None(A 类
+    # 未注册口径)。恢复局随快照存续 = 修饰局接管坐标系不断。
+    node_seq_by_plane: Field[dict[int, tuple[str, ...]] | None] = field(
         default_factory=Field)
 
     # —— 交互状态 ——
@@ -3264,8 +3309,13 @@ class GameState:
         if screen_name == SCREEN_SHOP_PANEL:
             _shop_target = _shop_panel_type_target(self)
             if _shop_target is not None:
-                _shop_plane = (_shop_target - 1) // 9 + 1
-                _shop_round = (_shop_target - 1) % 9 + 1
+                # 修饰制反解(T-8):内联 9 制 //9/%9 退役,改调
+                # node_pos_of 读场字段——漏改则修饰局 P2 起把修饰制序按
+                # 9 制解码、恒查后一节点(链缺零写使类型查链派生静默
+                # 失效;解出的 (位面,轮) 供链查询,直定仍用 target_ord,
+                # 二者同源后自洽,T-8 设计 §2.3)。
+                _shop_plane, _shop_round = node_pos_of(
+                    _shop_target, seqs=self.node_seq_by_plane.value)
                 _chain_q = chain_node_type(self, _shop_plane, _shop_round)
                 if _chain_q.token is not None:
                     _write_derived_node_type(
@@ -3325,11 +3375,16 @@ def effective_node_ord(gs: GameState) -> int | None:
 def _obs_node_ordinal(gs: GameState) -> int | None:
     """node 观察镜像的节点序(派生计算:镜像 NodeKey (plane, round) 正解
     序;镜像空 = None)。镜像由读链在非备战帧也写(店开帧 votes 读),
-    可领先推进水位——它是「当前节点」的观察权威源。"""
+    可领先推进水位——它是「当前节点」的观察权威源。
+
+    T-8:正解经场字段现值(修饰制坐标系)——漏传则修饰局 P2 起镜像序
+    恒小 1,``_shop_panel_type_target`` max 的镜像领先保护失效
+    (run_20260918_074040 第 11 例病理回归面,T-8 设计 §2.3)。"""
     cur = gs.node.value
     if cur is None:
         return None
-    return node_ordinal_of(cur.plane, cur.round_num)
+    return node_ordinal_of(cur.plane, cur.round_num,
+                           seqs=gs.node_seq_by_plane.value)
 
 
 def _shop_panel_type_target(gs: GameState) -> int | None:
@@ -3347,13 +3402,14 @@ def _shop_panel_type_target(gs: GameState) -> int | None:
     return max(ords) if ords else None
 
 
-def _node_key_for_ord(ordinal: int, kind: str) -> NodeKey:
-    """节点序 → 节点键(坐标系公式反解,§3.4.1 v3.2-G9:ord=(plane-1)*9+round
-    基 1;反解与正解同式自洽,位面切换 9→10 连续)。类型派生定位目标节点用
-    ——派生域只持单序,类型落 node.kind 需 (plane, round) 键。"""
-    return NodeKey(plane=(ordinal - 1) // 9 + 1,
-                   round_num=(ordinal - 1) % 9 + 1,
-                   kind=kind)
+def _node_key_for_ord(ordinal: int, kind: str,
+                      seqs: dict[int, tuple[str, ...]] | None = None
+                      ) -> NodeKey:
+    """节点序 → 节点键(坐标系反解,§3.4.1 v3.2-G9:ord 基 1,反解与正解
+    同表自洽,T-8 起经 :func:`node_pos_of` 变长制)。类型派生定位目标节点
+    用——派生域只持单序,类型落 node.kind 需 (plane, round) 键。"""
+    plane, round_num = node_pos_of(ordinal, seqs=seqs)
+    return NodeKey(plane=plane, round_num=round_num, kind=kind)
 
 
 def tick_effect_boundary(gs: GameState) -> None:
@@ -3380,7 +3436,16 @@ def _tick_effect_boundary_impl(gs: GameState) -> None:
     effective = effective_node_ord(gs)
     if effective is None:
         return
-    frame = f'p{(effective - 1) // 9 + 1}-r{(effective - 1) % 9 + 1}'
+    # frame 只进 evidence/效果刷新余额账,语义 = 节点身份标识,必须随
+    # 坐标系——T-8 起经场字段反解(内联 9 制拼接退役)。超域(eff 超序列
+    # 表总长 = P3 进场即局终态)frame 缺位落 ''(该桥合法缺省形状),
+    # 账本推进照常不截断。
+    try:
+        _frame_plane, _frame_round = node_pos_of(
+            effective, seqs=gs.node_seq_by_plane.value)
+        frame = f'p{_frame_plane}-r{_frame_round}'
+    except P3UnobservedError:
+        frame = ''
     advanced, expired = gs.effects.advance_node(effective)
     for _eff in expired:
         log.warning('[cw!][effect] 效果到期移除:%s(尾款触发面;金面走观察覆盖兜底)',
@@ -3434,13 +3499,17 @@ def _node_advance_next_screen(gs: GameState) -> str:
     eff = effective_node_ord(gs)
     if eff is None:
         return ''   # 不可达(构造点保证 eff 在场;防御性诚实缺省)
-    total = sum(len(node_sequence_of(p)) for p in (1, 2))
+    # 序列权威源 = 场字段现值(T-8;None = 未注册回退默认表,原行为):
+    # 总长判定/变长反解/kind 取值三处同源,防「总长按修饰制、反解按默认
+    # 制」的跨系错位。
+    seqs = gs.node_seq_by_plane.value
+    total = sum(len(node_sequence_of(p, seqs)) for p in (1, 2))
     if eff > total:
         return ''
-    plane, round_num = node_pos_of(eff)
+    plane, round_num = node_pos_of(eff, seqs)
     if plane > 1 and round_num == 1:
         return _NODE_PLANE_TRANSITION_SCREEN
-    return _NODE_KIND_NEXT_SCREENS[node_sequence_of(plane)[round_num - 1]]
+    return _NODE_KIND_NEXT_SCREENS[node_sequence_of(plane, seqs)[round_num - 1]]
 
 
 def advance_node_effective(gs: GameState, candidate: int, *,
@@ -3636,9 +3705,14 @@ def _write_derived_node_type(gs: GameState, kind: str, *, target_ord: int,
       画面直定写端 = BOSS 简报屏(kernel/cw_screen_report/boss_briefing)
       与商店查链两处,actor = 宿主登记名保留归因。
     """
-    key = _node_key_for_ord(target_ord, kind)
+    key = _node_key_for_ord(target_ord, kind,
+                            seqs=gs.node_seq_by_plane.value)
     cur = gs.node.value
-    if cur is not None and node_ordinal_of(cur.plane, cur.round_num) > target_ord:
+    # 直定倒退免疫比较(T-8):同读场字段——漏传则修饰局倒退判
+    # `12>12` 为假,陈旧直定不丢弃留证(T-8 设计 §2.3)。
+    if cur is not None and node_ordinal_of(
+            cur.plane, cur.round_num,
+            seqs=gs.node_seq_by_plane.value) > target_ord:
         gs.note_obs_event(
             'arbitrate', 'node',
             {'mirror': f'{cur.plane}-{cur.round_num}-{cur.kind}',
@@ -3877,7 +3951,8 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
       离线读面非生产写路径);values 键缺位 = 域保持 None(快照只存
       非 None 值的口径往返一致);
     - 复杂域按字段名重建(node/deployed/bench/shop/ore_rewards/
-      ore_declared_pending/ore_declared_done/env_grants_done;
+      ore_declared_pending/ore_declared_done/env_grants_done/
+      node_seq_by_plane;
       _json_safe 无类型标,恢复表 = 字段名单一源),其余域直透
       (标量/list/dict 形态值);
     - **旧档迁移**(schema 1 → 2):values 携 front_row/back_row 两键而
@@ -3967,6 +4042,11 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
         # 存续 = 恢复局不重发(触发函数守卫天然闭合)。
         'env_grants_done': lambda d: tuple(
             (str(e[0]), str(e[1])) for e in d),
+        # 逐位面节点序列场字段(T-8):键 int 化 + 值 tuple 化重建
+        # (_json_safe 落快照为 str 键 dict-of-list);随快照存续 = 修饰局
+        # 恢复坐标系不断。None 值域不在快照(只存非 None,往返一致)。
+        'node_seq_by_plane': lambda d: {
+            int(k): tuple(str(x) for x in v) for k, v in d.items()},
     }
     for name, raw in values.items():
         target = getattr(gs, name, None)

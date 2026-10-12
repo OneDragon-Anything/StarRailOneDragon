@@ -70,6 +70,9 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_EFFECTS,
     normalize_invest_name,
 )
+from sr_od.application.currency_war.kernel.cw_node_schedule import (
+    resolve_plane_node_seqs,
+)
 
 #: 链内写端缺省署名(gain-chain.md §2:写点迁移属申报过的行为变化,新写端新名,
 #: 不沿用旧名伪装连续;落地相接入显式传同值)。
@@ -482,6 +485,15 @@ def gain_invest_env(gs: GameState, session: object, env_name: str, *,
     write = _select_write(gs, rand)
     write(gs.active_env, canon, produced_by=producer,
           evidence=f'gain_invest_env:{canon}', sig=sig)
+    # 节点序列场字段写腿(T-8 设计 §2.1,**写点唯一**):修饰规则唯一
+    # 计算点 = resolve_plane_node_seqs,注册即落全量(白名单内修饰表/
+    # 白名单外默认表,无半态);通道 = write_logic(序列由 desc 规则化
+    # 确定,可准确计算 → 逻辑写,非采样面),插在 active_env 落账后。
+    # live 与 sim 同走本获得链(report_action_pick_invest_env_param 同源),
+    # 单点覆盖双端。
+    gs.write_logic(gs.node_seq_by_plane,
+                   resolve_plane_node_seqs(canon),
+                   produced_by=producer, evidence='node_seq:env', sig=sig)
     if session is not None:
         try:
             register_portal_from_env(session, env_name)

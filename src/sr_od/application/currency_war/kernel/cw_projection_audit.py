@@ -259,6 +259,13 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '恒存随快照存续),无观察读端——发放登记事实非观察投影(同族'
               '行先例 = ore_declared_done);唯一逻辑写端 = cw_env_grants.'
               'check_env_streak_grants(发放刻追加)'),
+    'node_seq_by_plane': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='逐位面节点序列场字段(T-8;键 = 位面 1 基,值 = 节点类型序,'
+              'None = 未注册回退默认表),无观察读端——序列由环境 desc 规则'
+              '化确定可计算,观察对账走节点行 CV 读→live 台账独立通道(失配'
+              '留证不自动改写);唯一逻辑写端 = cw_gain_chain.gain_invest_env '
+              "尾段(evidence='node_seq:env',注册即落全量)"),
     # —— 交互状态 ——
     'prep_substate': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,

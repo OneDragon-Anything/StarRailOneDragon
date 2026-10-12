@@ -418,9 +418,10 @@ def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
     - **注册表命中才登记**:AFFIX_EFFECT_SPECS 之外的词缀无结构化规格 →
       零动作;改写面写端不归登记挂点(归属单一源 = 各 spec.notes 与
       EQUIP_REWRITE_DECLARATIONS,接线前观察覆盖兜底)。
-    - acquired_t = 登记时点节点序快照((plane-1)*9+round,基 1,ActiveEffect
-      坐标系;GameState 节点单例;节点未观察(引导窗)= None 缺位,登记面
-      不炸,last_state 帧回退已随链退役批删除);余期播种/推进/到期与策略
+    - acquired_t = 登记时点节点序快照(修饰制坐标系,基 1,ActiveEffect
+      坐标系——kernel 正解派生,seqs = 场字段现值,T-8;GameState 节点
+      单例;节点未观察(引导窗)= None 缺位,登记面不炸,last_state 帧
+      回退已随链退役批删除);余期播种/推进/到期与策略
       源共用同一套挂点逻辑(声明式驱动:节点 tick/计数 bump 按 duties 与
       duration 语义自动辖及词缀条目,挂点代码零来源特判)。
     - 返回本次实际登记的词缀名列表(调用方留证日志;零命中返回空表)。
@@ -431,6 +432,7 @@ def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
         game_state_of,
+        node_ordinal_of,
     )
 
     gs = game_state_of(session)
@@ -445,9 +447,14 @@ def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
             hits.append(spec)
     if not hits:
         return []
+    # acquired_t = 登记时点节点序快照(kernel 正解派生,seqs = 场字段现值,
+    # 与推进入账同坐标系——内联 9 制退役,T-8 设计 §2.3;节点未观察
+    #(引导窗)= None 缺位,登记面不炸)。
     _nd = gs.node.value
     acquired_t: int | None = (
-        (_nd.plane - 1) * 9 + _nd.round_num) if _nd is not None else None
+        node_ordinal_of(_nd.plane, _nd.round_num,
+                        seqs=gs.node_seq_by_plane.value)
+        if _nd is not None else None)
     for spec in hits:
         effects.register_affix(spec, acquired_t)
     return [spec.name for spec in hits]

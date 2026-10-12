@@ -186,8 +186,11 @@ class ActiveEffect:
                                # strategy=策略源,affix=词缀源(登记端 register_affix),
                                # portal=环境源(登记端 register_portal_from_env,
                                # 结构化条目=ENV_PORTAL_EFFECTS)
-    acquired_t: int | None     # 登记时点;节点序 = (plane-1)*9+round,**基 1**;
-                               # 登记期快照(与 cw_loop _now_t 同式)
+    acquired_t: int | None     # 登记时点;节点序(修饰制坐标系,基 1——
+                               # 登记快照与推进入账同经 kernel 正解派生,
+                               # seqs = 场字段现值,T-8 起非固定 9 制);
+                               # 登记期快照(登记端 = _portal_acquired_t /
+                               # register_affixes_from_names)
     remaining_nodes: int | None  # N_NODES 类余期;**自然数计数非索引**;None=不限;
                                  # 挂点(tick_node)现读递减
     remaining_uses: int | None   # 次数类余量(免战牌×2 等);挂点现读递减
@@ -341,9 +344,10 @@ class ActiveEffectInventory:
           B1):per-node 形态(§3.3.5)每节点恰累加一次,靠本位判——同节点
           重复调用 advanced=False,调用方跳过累加(与余期递减同一去重键)。
         - ``node_ordinal`` 给定时做**同节点去重**:挂点每备战环采样,同节点
-          多次调用只推进一次(键 = 节点序 (plane-1)*9+round,基 1,与
-          ActiveEffect.acquired_t 同坐标系);None = 无条件推进(测试/sim
-          直调)。
+          多次调用只推进一次(键 = 节点序,基 1,修饰制坐标系——生产写端
+          经 kernel 正解派生、seqs = 场字段现值,与
+          ActiveEffect.acquired_t 同坐标系,T-8);None = 无条件推进(测试
+          /sim 直调)。
         - **登记当节点不推进**(acquired_t ≥ node_ordinal 的条目跳过):
           「持续/接下来 N 个节点」读作登记节点的**后继** N 节点(躺平
           「持续3个节点」/节省工位「在接下来3个节点」的卡文口径);登记
@@ -682,14 +686,23 @@ def register_portal_from_env(session: object, env_name: str) -> EffectSpec | Non
 
 
 def _portal_acquired_t(gs: object, session: object) -> int | None:
-    """登记时点节点序快照((plane-1)*9+round,基 1;register_affixes_from_names
-    同式):GameState 节点单例;节点未观察(引导窗)= None(登记期快照缺位
-    不炸登记面;last_state 帧回退已随链退役批删除,session 参数保留签名
-    兼容,不再消费)。"""
+    """登记时点节点序快照(修饰制坐标系,基 1;register_affixes_from_names
+    同式):GameState 节点单例经 kernel 正解 :func:`node_ordinal_of` 派生,
+    seqs = 场字段现值——与推进入账(advance_node 键)同坐标系契约
+    (cw_effect_inventory「登记当节点不推进」守卫由同坐标系保证,禁 9 制
+    内联快照使守卫在修饰局漂移,T-8 设计 §2.3)。节点未观察(引导窗)=
+    None(登记期快照缺位不炸登记面;last_state 帧回退已随链退役批删除,
+    session 参数保留签名兼容,不再消费)。"""
     _nd = getattr(gs, 'node', None)
     _nd_val = _nd.value if _nd is not None else None
     if _nd_val is not None:
-        return (_nd_val.plane - 1) * 9 + _nd_val.round_num
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            node_ordinal_of,
+        )
+        _caps = getattr(gs, 'node_seq_by_plane', None)
+        return node_ordinal_of(
+            _nd_val.plane, _nd_val.round_num,
+            seqs=(_caps.value if _caps is not None else None))
     return None
 
 
