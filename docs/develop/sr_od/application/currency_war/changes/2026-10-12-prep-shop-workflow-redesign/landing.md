@@ -168,7 +168,7 @@
 - `strategy-docs/17_stall_form_spend_authority.md` ← 3.6（Φ_stall 停滞支出的锁线键载体切换记录：判定源改挂锁定线 view）
 - `strategy-docs/20_large_balance_must_spend.md` ← 3.6（溢余段消费位收编记录：会话内买入评估入口的域帧判定、**L3 触发源发射位两处化**；与升级重轴的域内交互语义登记）
 - `docs/game/currency_war/research/screen_flow_timing.md` ← 3.6（#14/#27 boss 简报自动开店旧口径勘误——as-built 辨析回写）
-- `docs/game/currency_war/research/user_playstyle.md` ← 全迭代（2026-10-12 用户裁定系列补录 + [23]/[36] 差分回写，见 line_and_upgrade 差分节）
+- `docs/game/currency_war/research/user_playstyle.md`（**含速查表 [38] 行同步正文修订——速查表滞后双读源收口**）← 全迭代（2026-10-12 用户裁定系列补录 + [23]/[36] 差分回写，见 line_and_upgrade 差分节）
 - `docs/develop/sr_od/application/currency_war/screens/README.md` §5.4 ← 3.5（商店画面能力面补「出战」行——op 列值 = 前置发射位〔非店内 op〕，正本缺口补录；**卖备战席能力行变更**〔执行链批后店内可卖备战席——能力表同步〕；执行链注记同步）
 - `strategy-docs/` 全目录 + `changes/2026-10-12-prep-shop-workflow-redesign/` 迭代稿自身黑话清洗 ← 末阶段（用户裁定 2026-10-12：编号引用保留，其余自造词改正常表述或首现给定义）
 - `flow/session.md` ← 3.6（核对开店闩语义被会话标记替代的影响，需要才改）
