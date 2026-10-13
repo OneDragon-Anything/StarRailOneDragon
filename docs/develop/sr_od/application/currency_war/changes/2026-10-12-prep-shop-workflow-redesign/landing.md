@@ -112,7 +112,7 @@
 
 ## 3.7 终局线选择（候选-锁定制）
 
-**范围**：候选-锁定制落码（**键面归一先行**：target_comp 写者收为锁定动作〔消费 line_locked_comp 或收键——消除双写者〕、物化链写端切 opening_recipe_comp〔3.1 申报的收拢义务在此批兑现——P1 锁定局「互不覆写」落地〕、§1.6 三键清点含 line_locked_comp；线分数两项 + **热度映射常量表〔mandate_v1 侧——排序立场数据不落 kernel〕** + top3 候选管理 + 锁定双触发判定——硬规则查表与时点兜底，零标定参数）、**每线知识卡消费**（消费前置批建成的三字段——建表归独立前置批「3.0b 知识卡批」，见依赖节；3.7 消费 lock_rules/key_items 落锁定判定与候选分数）、锁定写入与连带动作（清预授权键/清商店标记/快照停算/装备定向开始）、现行换线机器退役（§1.6 退役面逐项：θ 滞回/D_min 驻留/证伪分桶/第四触发/P84 门/影子评估/塌缩通道删除，K 空窗回退换源；**provisional 旧槽位退役清单 = N_CRISIS/THETA/D_MIN/DELTA_HYST/V_MS/P_REC + V_C_MINUS_V_F/E2_CONCENTRATION_BAND（P76 两槽）+ DELTA_PRIOR（零消费）/V_GAP（R1/R2 门 3.6 退役后消费清零——provisional 自注与 contracts 付费刷新现读矛盾，3.6 逐点核对）/CONV_GOLD_PER_ROUND（换线窗口侧消费随 3.7 退役）** 逐槽列名，漏删 = 孤儿【拟】槽）。
+**范围**：候选-锁定制落码（**键面归一先行**：target_comp 写者收为锁定动作〔终态键 = target_comp 写者收为锁定动作〔契约 B/§3 同口径〕——line_locked_comp 收键归并，消除双写者〕、物化链写端切 opening_recipe_comp〔3.1 申报的收拢义务在此批兑现——P1 锁定局「互不覆写」落地〕、§1.6 三键清点含 line_locked_comp；线分数两项 + **热度映射常量表〔mandate_v1 侧——排序立场数据不落 kernel〕** + top3 候选管理 + 锁定双触发判定——硬规则查表与时点兜底，零标定参数）、**每线知识卡消费**（消费前置批建成的三字段——建表归独立前置批「3.0b 知识卡批」，见依赖节；3.7 消费 lock_rules/key_items 落锁定判定与候选分数）、锁定写入与连带动作（清预授权键/清商店标记/快照停算/装备定向开始）、现行换线机器退役（§1.6 退役面逐项：θ 滞回/D_min 驻留/证伪分桶/第四触发/P84 门/影子评估/塌缩通道删除，K 空窗回退换源；**provisional 旧槽位退役清单 = N_CRISIS/THETA/D_MIN/DELTA_HYST/V_MS/P_REC + V_C_MINUS_V_F/E2_CONCENTRATION_BAND（P76 两槽）+ DELTA_PRIOR（零消费）/V_GAP（R1/R2 门 3.6 退役后消费清零——provisional 自注与 contracts 付费刷新现读矛盾，3.6 逐点核对）/CONV_GOLD_PER_ROUND（换线窗口侧消费随 3.7 退役）** 逐槽列名，漏删 = 孤儿【拟】槽）。
 **设计依据**：line_and_upgrade §1 全部、§3；关键取舍节。
 **文件面**（目录级引用，含 entry.py 证据门/换线登记消费段与 audit/calibration.py 注入写入口——非闭集枚举）：`strategies/impl/mandate_v1/`（新选线模块 + `proof.py` 退役面 + `audit/provisional.py` 登记 + `sell_gate.py` line_switch 通道退役——与 3.6 通道登记同文件分域，本阶段后置串行）、`strategies/impl/flow.py`（意向层机器退役载体 `_refresh_direction_views` 族清点）、`criteria/sell.py` 与 `criteria/contracts.py`（换线塌缩出口函数体 `line_switch_sell`（函数体 criteria/sell.py line_switch 消费位（符号锚）、契约行 contracts.py 同位合取消费位（符号锚））与其契约行退役——**V_MS 槽随函数退役；U_X 在产消费位另列**（criteria/buy/refresh/shop/stockpile，P41 项载体——消费位清点 = 3.7 穷尽核对范围））、`strategies/impl/mandate.py`（读数开商店腾席链退役宿主——近亲族 grep 判据在此）、`kernel/` 配合；测试仓。
 **依赖**：3.1、3.2、3.6（`sell_gate.py` 分域改动串行避冲突）、**3.0b（lock_rules/key_items 锁定判定与候选分数消费）**。
@@ -121,7 +121,7 @@
 - 锁定单帧锁：未锁定输出（top3 快照正确性）、硬规则锁定（策略型/角色型各自命中即锁）、时点兜底锁定（P2 策略选定后取最高分）、锁后只读（重复触发不改变锁定线）；
 
 - key_items 建表核对：贯穿件名单与 final_comps 各线登记一致、缺失线 fail 方向 = 维度 None；
-- 退役面测试同步退役，docstring 记被替代语义（引 §1.5 清单行）；
+- 退役面测试同步退役，docstring 记被替代语义（引 §1.6 清单行）；
 - 退役后全仓无死引用（多行形态 grep 复核退役符号零消费点，含挂账撤账项正本行清理）；
 - 完成前常规检查。
 **验收凭据形式**：单帧锁 + 退役复核清单。
