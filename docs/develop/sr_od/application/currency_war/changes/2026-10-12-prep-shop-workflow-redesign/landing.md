@@ -26,7 +26,7 @@
 
 **范围**：`kernel/cw_comps.py` 每线知识卡三字段建表——`lock_rules`（每线锁定条件：策略型关联策略 + 角色型关键组合——**策略-线关联即本字段的构成，无独立关联表**）、`need_star`（每角色必要星级：CARRY 按攻略 2★/3★、辅助 1★——星级饥渴数据为源）、`key_items`（贯穿件名单）；CARRY 锚合流补全（plaza_carry ∪ core_chars，空值 3 线逐线补）。
 **依赖**：无。
-**完成判据**：三字段全 20 线非空；need_star 与星级饥渴表抽样对拍 ≥5 线；lock_rules 角色型条件按持有状态可判定（单帧锁）。
+**完成判据**：三字段全 20 线非空；need_star 逐线对拍 star_goals（20 线全量，冲突以攻略重述为准——line_and_upgrade §1.2 同判据）；lock_rules 角色型条件按持有状态可判定（单帧锁）。
 **文件面**：`kernel/cw_comps.py`；测试仓。
 **验收凭据形式**：建表 diff + 对拍记录；
 - 完成前常规检查（本文件首节）。
@@ -167,7 +167,7 @@
 - `strategy-docs/22_prep_screen.md` ← 3.3（第 0-8 步九段工序全文重写）
 - `strategy-docs/23_shop_screen.md` ← 3.5/3.6（执行链接线记录 + 会话模型全文重写；2026-09-14 收缩判例废止记录）
 - `strategy-docs/02_mandate_layer.md`（含 §7 零动作契约更新：CwAction|None 契约退役 → bridge CwActionObsParam(scope) 现行口径） ← 3.3/3.4（骨架义务语义并入工序表述；拦截层删除记录；§6 线内禁卖护栏的自救扩展面例外登记）
-- `strategy-docs/10_prep_decisions.md` ← 3.2/3.3（腾席判据→价值让位语义；部署时机；上阵窗口辖域与 entry_signals 建表记录）
+- `strategy-docs/10_prep_decisions.md`（含 §5 在册待建字段名 star_targets 与 3.0b need_star 并轨申报：star_targets 撤账、need_star 为唯一建表名） ← 3.2/3.3（腾席判据→价值让位语义；部署时机；上阵窗口辖域与 entry_signals 建表记录）
 - `strategy-docs/11_shop_decisions.md` ← 3.4/3.6（升级重轴与 P72(3a)/P21 保留记录、置换账、筹资、收缩废止、血购段 as-built 消歧、**§7 引擎池提案收编与 ENGINE_STALL_N 撤账、§3 刷新合格集变更记录**）
 - `strategy-docs/12_line_and_intention.md` ← 3.7（换线机器退役→选线函数全文重写）
 - `strategy-docs/00_framework.md` ← 3.4（hp 辖域收缩差分申报与升档器架构层评估：血线地板/λ 顾问删除后升档器「死亡风险唯一承接件」职能失主——架构去留由本正本更新批裁决——**评估判据：①消费面退役后死亡风险承接语义的替代载体核查（自救/凑息/查血限器清单）②产出 = 保留架构壳 vs 撤壳的裁决记录（owner = 编排者；**撤壳分支的代码批 = 下一迭代**——正本更新批只裁决不落码）**；P21 保留依据）
