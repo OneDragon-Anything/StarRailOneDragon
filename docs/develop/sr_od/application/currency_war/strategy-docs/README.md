@@ -39,7 +39,7 @@
 | 07 | [07_meta_run.md](07_meta_run.md) | 跨局 meta 域：显式声明出辖（当前无可设计对象，登记为未来立项） |
 | 18 | [18_equip_wear_semantics.md](18_equip_wear_semantics.md) | 装备穿戴策略语义：RunEquip 穿戴定谳、opening/非 key_equips 释放判据、词缀条件分配优先级 |
 | 19 | [19_reinforce_channel_and_survival_discount.md](19_reinforce_channel_and_survival_discount.md) | 补强通道与生存折现重估 |
-| 20 | [20_large_balance_must_spend.md](20_large_balance_must_spend.md) | 大额结余溢余段与旱期金出口分层 |
+| 20 | [20_large_balance_must_spend.md](20_large_balance_must_spend.md) | 大额结余溢余段与溢余消费出口序 |
 | 21 | [21_opening_window_and_tool_consume.md](21_opening_window_and_tool_consume.md) | 装备策略残余：opening 期释放门收窄 + 工具件消费语义（承 18 号稿） |
 | 22 | [22_prep_screen.md](22_prep_screen.md) | 备战画面策略面：收缩后动作清单(含商店期移入的卖备战/买经验)+ 判据指针(判据本体 = 10/02/04/18) |
 | 23 | [23_shop_screen.md](23_shop_screen.md) | 商店开画面策略面：买/刷/关收缩动作面 + 满席腾位链 + 能力/策略判例(判据本体 = 11) |
