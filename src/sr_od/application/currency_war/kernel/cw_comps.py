@@ -296,7 +296,7 @@ class ScoreContext:
     plane: int = 1
     round_num: int = 1
     gold: int = 0
-# 来源:docs/game/currency_war/data/competitors.md(V4.4 ~50 敌人词缀全集,米游社玩家攻略统计 🟡;词缀效果原文=affix_effects_data)+ cw_factions.FACTIONS desc(燃血角斗场原文)。
+# 来源:docs/game/currency_war/data/competitors.md(V4.4 ~50 敌人词缀全集,米游社玩家攻略统计;词缀效果原文=affix_effects_data)+ cw_factions.FACTIONS desc(燃血角斗场原文)。
 # 机制名跨版本稳;具体词缀属哪个机制随版本变(随 competitors.md 实机 OCR 更新)。
 # 只建模"对某类 comp 方向相反"的词缀(策略相关);纯数值怪强化(首领强化等)无 comp 交互,不入表。
 
@@ -1340,7 +1340,7 @@ COMP_LIBRARY: list[Comp] = [
         family="legacy", branch_key="v2 未单列(长尾保活;昼半并入 DOT·B 速度/昼半流的家族口径待拆分批)",
         flex_factions=["能量", "列车同行", "量子同频", "治疗"],
         plaza_carry="阿格莱雅",
-        level_plan={  # 对拍注/🟡9:阿格莱雅 1费(旧标2);「速升9找银狼」补 9 级
+        level_plan={  # 对拍注:阿格莱雅 1费(旧标2);「速升9找银狼」补 9 级
             5: LevelGoal("roll", target_cost=1, target_chars=["阿格莱雅", "风堇"]),
             6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
             8: LevelGoal("roll", target_cost=1, target_chars=["阿格莱雅"], star_goals={"阿格莱雅": 2}),
