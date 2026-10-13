@@ -22,8 +22,8 @@
 ### 2. cw_plane_table 退役清单(9 制几何层整体退役)
 
 - **退役**:`node_t_of`、`schedule_of`、`r_remaining`、`r_global`、`r_remaining_in_plane`、`plane_offsets`、`plane_end_slots`、`NODES_PER_PLANE`、`TOTAL_NODES`、`DEFAULT_PLANE_LENGTHS`、`PLANE_FALLBACK_PRIORS`(11 符号;消费迁移见 §3-§6,消费清零依据 = 本篇 §3-§6 逐条)。
-- **保留**:`nodes_of_plane`(实况读、不夹;P2=7 语义依据 = cw_discipline_rules.py:68「P2 boss@r7 判正,旧按 9 计永不触发」,docstring = cw_plane_table.py:129-139;消费 = cw_discipline_rules:79、cw_line_switch:208、cw_economy:1408、cw_intention:366,零改动——唯 :366 None 回退分支与 :96-100 import 随退役迁移,见 §5)、`clicks_to_level`/`level_cost`/`peak_refresh_level`/`HP_LOSS_MU`/`p_win_p2`(标定/胜率族,非几何)。
-- `nodes_of_plane` 回退常量再基:表缺回退从 `NODES_PER_PLANE=9` 改 `len(node_sequence_of(1, 场字段现值 or None))`(修饰 10 / 默认 9;session 非 GameState 时按 None);一次性告警保留;消费点注释随回退语义同步(cw_economy.py:914「缺表回退先验 9」句)。
+- **保留**:`nodes_of_plane`(实况读、不夹;P2=7 语义依据 = cw_discipline_rules.py:68「P2 boss@r7 判正,旧按 9 计永不触发」,docstring = cw_plane_table.py `nodes_of_plane` 内;消费 = cw_discipline_rules:79、cw_line_switch:208、cw_economy:1408、cw_intention:366,零改动——唯 :366 None 回退分支与 :96-100 import 随退役迁移,见 §5)、`clicks_to_level`/`level_cost`/`peak_refresh_level`/`HP_LOSS_MU`/`p_win_p2`(标定/胜率族,非几何)。
+- `nodes_of_plane` 回退常量再基:表缺回退从 `NODES_PER_PLANE=9` 改 `len(node_sequence_of(1, 场字段现值 or None))`(修饰 10 / 默认 9;session 非 GameState 时按 None);一次性告警保留;消费点注释随回退语义同步(cw_economy「缺表回退先验 9」句)。
 - 模块头「现役口径」段随退役改写(几何层退役声明 + 保留面清单)。
 
 ### 3. 策略门面重基(mandate_v1/statefn/horizon.py;签名不变)
@@ -49,8 +49,8 @@
 | cw_intention.py:371-376(`total_remaining_nodes`) | 恒按 9/位面计(29 号稿 :26 已登记禁消费缺陷) | 场字段求和修正(:407 遭遇窗门唯一消费保留) |
 | cw_intention.py:96-100(模块级 import)+ :366(`plane_remaining_nodes` None 回退分支) | import `NODES_PER_PLANE`/`TOTAL_NODES`/`r_remaining`;:366 `else NODES_PER_PLANE` | import 随退役清理;:366 None 分支改 `len(node_sequence_of(1, None))`(默认表 P1 长,与 nodes_of_plane 再基同款) |
 | cw_comps.py:1655-1656(早期判)/:2300-2302(commit)/:2546-2551(信号 2 ceiling) | elapsed/remaining 闭式 ×3 | 模块内私有 elapsed/remaining 场字段求和 helper(同文件三调用点合一,非公共视界口;elapsed = Σ_{p<plane} len + round,含当前节点口径与现式同) |
-| cw_registry.py:478、operations/cw_screen/cw_screen_prep.py:1146 | 注释涉退役符号 | 注释随改 |
-| strategies/impl/mandate_v1/criteria/refresh.py:71 | docstring 坐标系句引「kernel/cw_plane_table.r_remaining」 | 改指策略门面(注释级) |
+| cw_registry.py(注释)/operations/cw_screen/cw_screen_prep.py(节点行消费位 docstring 的「位面日程真值(schedule_of)」句) | 注释涉退役符号 | 注释随改 |
+| strategies/impl/mandate_v1/criteria/refresh.py | docstring 坐标系句引「kernel/cw_plane_table.r_remaining」 | 改指策略门面(注释级) |
 
 ### 6. strategy_economy 通道 4(boss 计数)场字段 kind 化
 

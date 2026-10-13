@@ -1,5 +1,7 @@
 # 废弃全局节点编号(node_ordinal)落地
 
+> **行号基准**:本文件 file:line = T-8 落地后工作树(2026-10-12);行号漂移按符号名定位。
+
 ## 完成前常规检查(各阶段完成判据引用本节,不复述)
 
 - `uv run ruff check` 对本阶段改动文件全部通过;
@@ -9,7 +11,7 @@
 - 提交:逐文件点名 `git add`(禁 `-A`/目录级),commit message 含阶段号;提交后 `git show --stat` 复核入库面 = 申报面;
 - 检查项来源 = 项目 AGENTS.md「测试规范」「提交流程与协作边界」节。
 
-> **前置闸**:invest-effects-calc/T-8(人身意外险)已落地(设计 §1.4/§2.0 基线,含 T-8 裁决点 7 前半的 killed-hp 兜底门删除)——T-8 未落地前本文件任何阶段不得开工。
+> **前置闸:已满足**——invest-effects-calc/T-8 已落地(2026-10-12 树核验:场字段/修饰层/killed 门删除全部在位,含裁决点 7 前半;设计 §2.0 落地态对齐申报三处)。落地批开工前复核 T-8 收尾状态(正本更新清零/账本终态)即可。
 
 ## 3.1 序列模块键原语(纯增)
 
@@ -53,14 +55,14 @@
 
 ## 3.4 遥测与载体收口
 
-**范围**:cw_anchor 锚行 `node_seq` 槽退役(AnchorEvent 字段/to_row 键/emit_anchor 形参与幂等键槽);journal_query `node_ordinal_of` 死 helper 删除;obs/cw_observation `_node_t` 死局部删除(:2268-2273);cw_reconcile `reconcile_hp` 的 `node_t` 死形参删除(:456/:477,守卫删除后零消费)。**边界**:不含 defects 维度词表(零改动申报面);不含快照/恢复(3.2 已含)。
-**设计依据**:design.md §2.8/§2.10 取舍 6/§2.7(死局部依据)。
-**文件面**:kernel/cw_anchor.py、telemetry/journal_query.py、obs/cw_observation.py、kernel/cw_reconcile.py;sr-od-test journal 域既有测试(test_cw_journal_assembly_guard.py 等)。
+**范围**:cw_anchor 锚行 `node_seq` 槽退役(AnchorEvent 字段/to_row 键/emit_anchor 形参与幂等键槽);journal_query `node_ordinal_of` 死 helper 删除;cw_reconcile `reconcile_hp` 的 `node_t` 死形参删除(:456,守卫删除后零消费)。**边界**:不含 defects 维度词表(零改动申报面);不含快照/恢复(3.2 已含);obs `_node_t` 死局部已随 T-8 漏斗改造删除(设计 §2.7 零接触申报),不在本阶段。
+**设计依据**:design.md §2.8/§2.10 取舍 6。
+**文件面**:kernel/cw_anchor.py、telemetry/journal_query.py、kernel/cw_reconcile.py;sr-od-test journal 域既有测试(test_cw_journal_assembly_guard.py 等)。
 **依赖**:无。
 **优先级建议**:1
 **完成判据**:
 - `emit_anchor`/`AnchorEvent` 形状对照 design §2.8;删除后 journal 域既有测试全绿;
-- `emit_anchor`/`node_seq`(锚行槽)/`node_ordinal_of`/`_node_t` 生产面与测试面双向 grep 零残留(自证入提交说明);
+- `emit_anchor`/`node_seq`(锚行槽)/`node_ordinal_of`/`node_t`(reconcile 形参)生产面与测试面双向 grep 零残留(自证入提交说明);
 - 完成前常规检查(本文首节)。
 **验收凭据形式**:journal 域既有测试全绿;双向 grep 零残留自证。
 
@@ -68,7 +70,7 @@
 
 **范围**:T-8 裁决点 9 指派面(details/horizon-cleanup.md 全量)——cw_plane_table 几何层 11 符号退役(node_t_of/schedule_of/r_remaining/r_global/r_remaining_in_plane/plane_offsets/plane_end_slots/NODES_PER_PLANE/TOTAL_NODES/DEFAULT_PLANE_LENGTHS/PLANE_FALLBACK_PRIORS)+ nodes_of_plane 回退再基;策略门面 horizon.py 场字段重基(签名不变);proof/budget/levelup import 改道;strategy_economy boss 通道 kind 化;kernel 判据点(cw_economy/cw_intention/cw_comps)就地迁移;audit/标定域再基。**边界**:策略选卡估值/打分不动;`shop.py`/`statefn/odds.py`/`nodes_of_plane` 消费族零改动;行为变化以 details §8 申报为准。
 **设计依据**:design.md §2.7(视界族段)+ details/horizon-cleanup.md(全篇)。
-**文件面**:kernel/cw_plane_table.py、kernel/cw_economy.py、kernel/cw_intention.py、kernel/cw_comps.py、kernel/cw_registry.py(注释)、strategies/impl/mandate_v1/statefn/horizon.py、strategies/impl/mandate_v1/proof.py、strategies/impl/mandate_v1/statefn/budget.py、strategies/impl/mandate_v1/criteria/levelup.py、strategies/impl/mandate_v1/criteria/refresh.py(注释)、strategies/impl/mandate_v1/strategy_economy.py、strategies/impl/mandate_v1/audit/derived.py、strategies/impl/mandate_v1/audit/calibration.py、operations/cw_screen/cw_screen_prep.py(:1146 注释;与 3.2 同文件,依赖 3.2 防在飞冲突);sr-od-test 对应测试(策略域 + 受影响 kernel 域)。
+**文件面**:kernel/cw_plane_table.py、kernel/cw_economy.py、kernel/cw_intention.py、kernel/cw_comps.py、kernel/cw_registry.py(注释)、strategies/impl/mandate_v1/statefn/horizon.py、strategies/impl/mandate_v1/proof.py、strategies/impl/mandate_v1/statefn/budget.py、strategies/impl/mandate_v1/criteria/levelup.py、strategies/impl/mandate_v1/criteria/refresh.py(注释)、strategies/impl/mandate_v1/strategy_economy.py、strategies/impl/mandate_v1/audit/derived.py、strategies/impl/mandate_v1/audit/calibration.py、operations/cw_screen/cw_screen_prep.py(节点行消费位 docstring 的「位面日程真值(schedule_of)」句;与 3.2 同文件,依赖 3.2 防在飞冲突);sr-od-test 对应测试(策略域 + 受影响 kernel 域)。
 **依赖**:3.2(同文件在飞面防冲突;非符号依赖);前置闸(T-8 场字段在役)。
 **优先级建议**:1
 **完成判据**:
@@ -81,7 +83,7 @@
 
 ## 3.6 全仓清零核对
 
-**范围**:对照 design §2.9 改清单与 §1.1 底册(14 处公式 + 具名常量几何层),全仓 grep 核对清单——编号族符号:`node_ord`/`node_hist_ord`/`effective_node_ord`/`node_ordinal_of`/`node_pos_of`/`_node_key_for_ord`/`_obs_node_ordinal`/`acquired_t`/`_portal_acquired_t`/`_entered_ord`/`_window_begun_ord`/`SETTLE_DEFEAT_LATCH_MIN_T`/`AnchorEvent` 的 `node_seq`/`_node_t`;视界族符号:`node_t_of`/`schedule_of`/`r_remaining`/`r_global`/`r_remaining_in_plane`/`plane_offsets`/`plane_end_slots`/`NODES_PER_PLANE`/`TOTAL_NODES`/`DEFAULT_PLANE_LENGTHS`/`PLANE_FALLBACK_PRIORS`;式样:`*9`/`//9`/`%9` 身份语义命中。残留学面逐处判读:叙述性历史注记(模块头版本注/退役注)合法,活代码/活契约引用 = 打回对应阶段。**边界**:纯核对,零代码改动(发现残留开修复批处理完再回到本阶段验收)。
+**范围**:对照 design §2.9 改清单与 §1.1 底册(14 处公式 + 具名常量几何层),全仓 grep 核对清单——编号族符号:`node_ord`/`node_hist_ord`/`effective_node_ord`/`node_ordinal_of`/`node_pos_of`/`_node_key_for_ord`/`_obs_node_ordinal`/`acquired_t`/`_portal_acquired_t`/`_entered_ord`/`_window_begun_ord`/`SETTLE_DEFEAT_LATCH_MIN_T`/`AnchorEvent` 的 `node_seq`;视界族符号:`node_t_of`/`schedule_of`/`r_remaining`/`r_global`/`r_remaining_in_plane`/`plane_offsets`/`plane_end_slots`/`NODES_PER_PLANE`/`TOTAL_NODES`/`DEFAULT_PLANE_LENGTHS`/`PLANE_FALLBACK_PRIORS`;式样:`*9`/`//9`/`%9` 身份语义命中。残留学面逐处判读:叙述性历史注记(模块头版本注/退役注)合法,活代码/活契约引用 = 打回对应阶段。**边界**:纯核对,零代码改动(发现残留开修复批处理完再回到本阶段验收);`node_t_of` 的「历史消费点已删」docstring 句(cw_plane_table,T-8 落地注)属合法历史注。
 **设计依据**:design.md §1.1(底册)/§2.9(改清单)/§1.3(清零目标)/§2.7(视界族)。
 **文件面**:无(核对报告入提交说明/迭代 README 进度注)。
 **依赖**:3.2、3.3、3.4、3.5
