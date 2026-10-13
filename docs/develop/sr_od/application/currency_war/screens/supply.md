@@ -66,7 +66,7 @@ pick = match.strategy.decide_supply()(零参;候选读容器 supply 槽)
 
 - `chosen_supply` write_logic(**确认即写**,选卡分支单点直写、点击链发射前;值 = (角色, 装备名列表) 2 元组,OCR 原文 y 序,不带钻字段——有没有钻石由消费侧按 `DIAMOND_EQUIP_NAMES` 名单自列表派生;兜底点卡/刷新轮无选定不写,None 保持「无记录」)。口径申报:supply 确认即写,chosen_tome 维持「出口验真后写」家族口径——差异理由 = supply 的中转暂存宿主随执行层状态类目退役(git 历史可溯),直写是载体消亡后的唯一形态;确认未落地窗内容器短暂持未落地选定,现无决策读者,低危可接受,出口验真保留为观察面。
 - 候选观察:`report_screen_supply_node_obs` 摄入候选写容器 `supply` 域(空 = 读缺不写)+ `supply_refresh_left` 摄入(读缺跳写)。
-- **效果逻辑态单相上报**(`kernel/cw_action_report/pick_supply.py::report_action_pick_supply_param`,即时单相):装备腿 = owned += 0..n 件归一规范名(集合 = 首件 + `extra_norm_items`,主件 → 附加件画面 y 序;零件 = 无装备名读数列,装备域零写 + `pick_supply_no_equip_column` 留证、不发缺陷)+ 单位腿(角色入席 + 合成级联)+ 获得后果链(命中后果表送角色 → bench + 级联);内容全未知 = 受影响域值不变翻来源 + 缺陷留证(禁猜);名未解析件 = 逐件值不变翻来源 + 缺陷留证(fail-closed,错名不入账由观察覆盖自愈,已解析件照常入账)。
+- **效果逻辑态单相上报**(`kernel/cw_action_report/pick_supply.py::report_action_pick_supply_param`,即时单相):装备腿 = owned += 0..n 件归一规范名(集合 = 首件 + `extra_norm_items`,主件 → 附加件画面 y 序;零件 = 无装备名读数列,装备域零写 + 留证(日志行 + reason `no_equip_column` 载体)、不发缺陷)+ 单位腿(角色入席 + 合成级联)+ 获得后果链(命中后果表送角色 → bench + 级联);内容全未知 = 受影响域值不变翻来源 + 缺陷留证(禁猜);名未解析件 = 逐件值不变翻来源 + 缺陷留证(fail-closed,错名不入账由观察覆盖自愈,已解析件照常入账)。
 - 节点推进:`report_node_advance(trigger='supply_confirm')`(确认点击落地即上报;kernel 观察态门 = 唯一推进落账门)。
 - 刷新剩余:容器 `supply_refresh_left`(观察写端 + sim 写端:补给节点入口先写初始 left=1、刷新 left−1 ≥0 截断);旧 `supply_refresh_used` 已用计数已退役(剩余语义化)。
 - 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.2 / §4「事件选择」;到账登记 ConfirmSupply 行已退役(即时单相上报取代)。

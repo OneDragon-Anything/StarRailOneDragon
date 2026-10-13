@@ -4,16 +4,16 @@
 
 ## 1. 动作是什么
 
-补给节点弹窗点选一个候选并确认,选中内容(角色/装备)随确认即时入账。词表 = `kernel/cw_vocab.py::CwActionPickSupplyParam`(字段:`idx` = 画面候选下标 0 起(payload 槽 options 列表序)、`reason` = 归因记录字段、`char_name` = 选中列角色名('' = 列无角色/兜底点卡路径)、`norm_item` = 选中列装备归一规范名('' = 未解析;`kernel/cw_events.py::normalize_registry_equip_name` 分层归一现算:精确快道 → containment longest-first → 相似救援唯一命中))。op 载体 = `operations/cw_op/cw_pick_supply_action.py::CwActionPickSupplyOp`(域 env = `OverlayPickExecEnv`;发射位 = `CwScreenSupplyNode._do_action` 经注册表工厂 `action_op_for` 派发)。
+补给节点弹窗点选一个候选并确认,选中内容(角色/装备组)随确认即时入账。词表 = `kernel/cw_vocab.py::CwActionPickSupplyParam`(字段:`idx` = 画面候选下标 0 起(payload 槽 options 列表序)、`reason` = 归因记录字段、`char_name` = 选中列角色名('' = 列无角色/兜底点卡路径)、`norm_item` = 选中列首件装备归一规范名('' = 未解析;`kernel/cw_events.py::normalize_registry_equip_name` 分层归一现算:精确快道 → containment longest-first → 相似救援唯一命中)、`extra_norm_items` = 列内附加装备归一规范名元组(画面 y 序 = norm_item 之后;'' 元素 = 该件归一未解析;归一逐件两段式同 norm_item;kw_only 且不入动作实例键,归因载荷不改变动作身份))。op 载体 = `operations/cw_op/cw_pick_supply_action.py::CwActionPickSupplyOp`(域 env = `OverlayPickExecEnv`;发射位 = `CwScreenSupplyNode._do_action` 经注册表工厂 `action_op_for` 派发)。
 
 ## 2. 逻辑态域集
 
 **即时单相一口写**(用户裁定 2026-09-21 = [flow/action_ops.md](../../flow/action_ops.md) §1 增补 2;上报函数 = `kernel/cw_action_report/pick_supply.py::report_action_pick_supply_param`,确认点击后一次调用写全部效果逻辑态,无发射/落地两相、无到账登记、无证据闩):
 
-- **装备腿(确定面)**:`norm_item` 在场 → owned += 归一规范名(`gs.equips` write_logic,账面恒标准名)+ 获得后果链 `kernel/cw_effect_inventory.py::apply_equip_acquire_consequence`(命中后果表送角色腿 → bench + 级联);`norm_item` = '' → 禁猜,equips 值不变翻来源 + `pick_supply_name_unresolved` 留证(fail-closed:错名不入账,观察覆盖自愈);
+- **装备腿(确定面,0..n 件)**:腿集合 = `norm_item` + `extra_norm_items`(选中列首件 + 附加件,主件 → 附加件画面 y 序):非空件逐件 owned += 归一规范名(`gs.equips` write_logic,账面恒标准名)+ 获得后果链 `kernel/cw_effect_inventory.py::apply_equip_acquire_consequence`(命中后果表送角色腿 → bench + 级联);'' 件(归一未解析)逐件禁猜,equips 值不变翻来源 + `pick_supply_name_unresolved` 留证(fail-closed:错名不入账,已解析件照常入账,观察覆盖自愈);`char_name` 非空 ∧ 腿集合全空 = **零装备名分支**:该列零装备名读数(char-only 列 / 件名全失读,读链层面不可分),装备域零写 + 留证(日志行 `[cw-pick-supply]` + 返回 reason=`no_equip_column` 载体)、零缺陷——治理旧「主件空 = 未解析」对 char-only 列的伪缺陷归因;失配由 equips 整表观察下一帧暴露(结构性 evidence 台账行待 kernel evidence-only 通道,挂账在册);
 - **单位腿(确定面)**:`char_name` 在场 → `kernel/cw_effect_inventory.py::grant_bench_unit_cascade`(入席 1★ + 合成级联,与商店购买同语义);
-- **内容全未知**(兜底点卡路径,char_name 与 norm_item 双空):bench/equips 值不变翻来源(`write_logic_rand`)+ `pick_supply_content_unresolved` 留证;
-- **选择落地 `chosen_supply`**:画面 op `CwScreenSupplyNode` 选卡分支**确认即写 write_logic**(值 = (角色, 装备, 有钻石);渠道签名 family='logic_action'、actor='CwScreenSupplyNode',journal 记录为逻辑源非观察源;兜底点卡/刷新轮不写 = 真选守卫)——动作事实边界例外③([../screens/op-layer.md](../../screens/op-layer.md) §2.2),**非观察写端**;
+- **内容全未知**(兜底点卡路径,char_name/norm_item/extra_norm_items 三载荷全空):bench/equips 值不变翻来源(`write_logic_rand`)+ `pick_supply_content_unresolved` 留证;
+- **选择落地 `chosen_supply`**:画面 op `CwScreenSupplyNode` 选卡分支**确认即写 write_logic**(值 = (角色, 装备名列表) 2 元组,OCR 原文画面 y 序,不带钻字段——带钻与否消费侧按 `kernel/cw_obs_core.DIAMOND_EQUIP_NAMES` 名单自列表派生;渠道签名 family='logic_action'、actor='CwScreenSupplyNode',journal 记录为逻辑源非观察源;兜底点卡/刷新轮不写 = 真选守卫)——动作事实边界例外③([../screens/op-layer.md](../../screens/op-layer.md) §2.2),**非观察写端**;
 - 刷新臂不在本动作:刷新圆钮机械点击留守画面 op 留守臂(刷新链 = `CwActionRefreshSupplyParam` 决策建议的执行半,终结形态交回);节点推进 = 确认点击落地即旁调 `kernel/cw_game_state.py::report_node_advance(trigger='supply_confirm')`(kernel 观察态门 = 唯一推进落账门)。
 
 ## 3. 确定面转移规则(逐条)
@@ -29,7 +29,7 @@
 
 ## 5. 拒绝语义
 
-零验证确认链:确认未落地(overlay 残留)不重试不判效——下一轮外循环重识别重派;定位点缺失由决策半现算面处置(执行面不兜底坐标);归一件名多/零命中与内容双空 = 非拒绝面,按「内容未知/未解析」翻来源留证(上报 applied=True 受理,零效果写)。
+零验证确认链:确认未落地(overlay 残留)不重试不判效——下一轮外循环重识别重派;定位点缺失由决策半现算面处置(执行面不兜底坐标);归一件名多/零命中与内容全未知(三载荷全空)= 非拒绝面,按载荷形态分型处置(上报 applied=True 受理):内容全未知 = 受影响域值不变翻来源留证;腿集含未解析件 = 该件翻来源留证、已解析件照常入账;char 非空 ∧ 腿全空 = 零装备名分支装备域零写零缺陷(§2),非「未解析」归因。
 
 ## 6. kernel 符号锚
 

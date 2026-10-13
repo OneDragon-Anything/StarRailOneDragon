@@ -555,7 +555,7 @@ evidence 区分。旗牌通道=**弱**(stylized 数字 OCR 常空,两级放大�
   单笔 logic 写(移除工具 ∧ `privilege_counterpart` 替换)、拆装扳手/精密扳手 =
   两笔 logic(回区合并写 + 行域穿戴清空;精密扳手不递减)、员工/完美投影仪 =
   移除工具 + 复制走 `gain_character` 获得链,零写分支统一 `tool_*` 缺陷行留证);
-  SellBench 卖出角色(装备全量回区);PickSupply 补给即时获得腿(owned += 0..n 件归一规范名(集合 = 选中列首件 + 附加件,主件 → 附加件画面 y 序;零件 = 无装备名读数列,`pick_supply_no_equip_column` 留证在案不发缺陷)+ 获得后果链 `apply_equip_acquire_consequence` 逐件,即时单相;`kernel/cw_action_report/pick_supply.py`)。
+  SellBench 卖出角色(装备全量回区);PickSupply 补给即时获得腿(owned += 0..n 件归一规范名(集合 = 选中列首件 + 附加件,主件 → 附加件画面 y 序;零件 = 无装备名读数列,装备域零写 + 留证(日志行 + reason `no_equip_column` 载体)不发缺陷)+ 获得后果链 `apply_equip_acquire_consequence` 逐件,即时单相;`kernel/cw_action_report/pick_supply.py`)。
 - 效果改写源(§5.2 在册):回收计划/+(拆简易、节点后发简易入区);公司军火更新·
   银/金/彩(进节点物品栏全量变同品质);保险的装备效果(每损 20 血获随机简易入区);
   变宝为废(词缀,每位面首次合成进阶装备 50% 变垃圾袋——随机面观察收口,§5.3 词缀源)。
@@ -1378,8 +1378,8 @@ equip 腿 = 入栏 + 获得后果链(§3.2.15)/ 升费腿 = 变换 + `lv999_cost
 `kernel/cw_action_report/pick_supply.py`,确认点击后一口写,
 `flow/action_ops.md` §4.5 PickSupply 行):装备腿 0..n 件 =
 equips owned += 0..n 件归一规范名(集合 = 选中列首件 + 附加件,主件 →
-附加件画面 y 序;零件 = 无装备名读数列,装备域零写 + `pick_supply_no_equip_column`
-留证不发缺陷)+ bench 单位腿(`grant_bench_unit_cascade` 入席 1★+合成级联)
+附加件画面 y 序;零件 = 无装备名读数列,装备域零写 + 留证(日志行 +
+reason `no_equip_column` 载体)不发缺陷)+ bench 单位腿(`grant_bench_unit_cascade` 入席 1★+合成级联)
 + 获得后果链(`apply_equip_acquire_consequence` 逐件);内容全未知 = 受影响域值
 不变翻来源 + 缺陷留证(禁猜);名未解析件 = 逐件值不变翻来源 + 缺陷留证;
 选择落地 = `chosen_supply` 画面 op 确认即写(§3.4 头部口径;值 = (角色,
