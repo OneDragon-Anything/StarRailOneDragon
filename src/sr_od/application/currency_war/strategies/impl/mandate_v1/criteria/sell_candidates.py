@@ -27,7 +27,7 @@ line_and_upgrade §4(金当量三项 + 羁绊排序规则项)——本模块是�
 - 垫件谓词(:func:`is_ore_pad_unit`)——晶矿场景过滤(prep_pipeline §1
   第 2 步现文口径;P96 释放集「挂账不激活」申报域 = 垫件层——池级 FACE_REGULAR
   仍含 dead_pair_exit_release 旁路为惰性面:垫件谓词恒拒 released 名〔同名对素材〕、
-  3.3 消费面走垫件过滤,行为零激活;P96 推进遥测/清账时一并收口——review-32 R1);
+  3.3 消费面走垫件过滤,行为零激活;P96 推进遥测/清账时一并收口);
 - 评估器(:func:`evaluate_sell_candidates`)。
 """
 from __future__ import annotations
