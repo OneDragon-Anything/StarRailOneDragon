@@ -7,6 +7,6 @@
 
 ## 进度
 - 迭代设计:对抗审中
-- 设计对抗:进行中（r1-r27 对抗循环累计修复 395+ 项；r28 发现 15 项修复中）· 报告存迭代账本目录（.debug/progress/2026-10-12-prep-shop-workflow-redesign/attack-r1..r28.md；账本区为运维区不入仓——收敛凭据链 = git commit 链 + 定稿时报告摘要入仓）
-- 落地:进行中（9 编号阶段+末阶段，明细见 landing.md）
+- 设计对抗:进行中（r1-r28 对抗循环累计修复 410+ 项；r29 发现 25 项修复中）· 报告存迭代账本目录（.debug/progress/2026-10-12-prep-shop-workflow-redesign/attack-r1..r29.md；账本区为运维区不入仓——收敛凭据链 = git commit 链 + 定稿时报告摘要入仓）
+- 落地:未开始（设计定稿后派落地批，明细见 landing.md）
 - 正本更新:未开始
