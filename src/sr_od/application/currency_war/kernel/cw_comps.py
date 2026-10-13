@@ -540,7 +540,7 @@ def pivot_overlap(src: Comp, dst: Comp) -> float:
     dst 需求角色(core∪shared)中已被 src 需求覆盖的比例 —— 重合高 = 转型只是「换方向继续买」,
     重合低 = 要推翻重来(卖板重买)。同 comp 返 1.0。dst 无任何需求角色(理论不可能,core 至少 1)
     返 0.5 中性;⚠️ 反甲白厄(core 仅白厄+shared 白厄)对任何 src 恒 0.0 —— 语义正确(它不与任何
-    comp 共享,转型=推翻),非 bug(评审🟡 注记)。
+    comp 共享,转型=推翻),非 bug(对拍注 注记)。
     """
     if src.name == dst.name:
         return 1.0
@@ -679,11 +679,11 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 评级(76807134):Archer 95 = S 级真神;攻略(76924524):高倍率九五核心+远坂凛+圣杯→+150%攻击+战技点
         # ⚠️ core_chars 用图鉴规范名:"Archer" 非"红A"(OCR/char_id 匹配靠 cw_chars.CHARACTERS 注册表)
         # (plaza 62 篇):3星率 0.18(5费 carry 常驻 2 星);速升9级节奏为主
-        # 评审🔴(费用勘误):圣杯四人 = Archer 5费/Saber 3费/吉尔伽美什 2费/远坂凛 1费(注册表),
+        # 对拍注(费用勘误):圣杯四人 = Archer 5费/Saber 3费/吉尔伽美什 2费/远坂凛 1费(注册表),
         # 旧注释「4 个 5 费成型难」错 —— 费用阶梯宽,成型难度主要在 Archer 本体。
         flex_factions=["战技点", "量子同频", "列车同行", "能量", "治疗", "盛会之星"],
         plaza_carry="Archer",
-        key_equips=["火力风暴潮", "动能激发剑", "动能激发剑", "碎星斩舰刀"],   # 评审🟡4:plaza 风暴潮87>电锯45(≈2:1)顺序倒置修正+补动能激发剑22(#3)
+        key_equips=["火力风暴潮", "动能激发剑", "动能激发剑", "碎星斩舰刀"],   # 对拍注:plaza 风暴潮87>电锯45(≈2:1)顺序倒置修正+补动能激发剑22(#3)
         # ↑ v2 教义:Archer=**战技点件**(动能激发剑:回合开始+消耗各回 1 战技点,
         #   战技点燃料层主C 的本命件)。闪闪侧(反重力皮靴)在双王条目同步
         mechanic_attributes=["高倍率单核"],   # 榜样激励克高倍率单核(test_mechanics_fit_honga)
@@ -698,7 +698,7 @@ COMP_LIBRARY: list[Comp] = [
         ],
         equip_assign={"Archer": ["火力风暴潮", "动能激发剑"], "远坂凛": ["动能激发剑"], "Saber": ["碎星斩舰刀"]},   # Saber 键经 substitute_plan 容纳(替班者)
         # ↑ v2:Archer=战技点件(动能激发剑;远坂凛同持第二把,战技点燃料层教义)
-        level_plan={  # 5费 Archer 是唯一高费门槛:前期低费过渡保血 → 升 8-9 找 Archer(2星即战力,0.18 三星率);评审🟡6:远坂凛 1费
+        level_plan={  # 5费 Archer 是唯一高费门槛:前期低费过渡保血 → 升 8-9 找 Archer(2星即战力,0.18 三星率);对拍注:远坂凛 1费
             4: LevelGoal("roll", target_cost=1, target_chars=["远坂凛"]),
             5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
             8: LevelGoal("roll", target_cost=5, target_chars=["Archer", "远坂凛"]),
@@ -728,7 +728,7 @@ COMP_LIBRARY: list[Comp] = [
         name="千冶减益", factions=["减益", "星核猎手"], core_chars=["千冶·刃", "瓦尔特", "卡芙卡", "缇宝", "符玄"],
         form_tiers={"减益": 4, "星核猎手": 2}, strength="A", form_difficulty="easy", early_power="高",
         # plaza 聚类 千冶·刃 n=29(减益26/星核19/燃血13/量子13/列车12):减益通用板大族,此前无承接
-        # (29 篇里最多 5 篇可被既有 comp 覆盖,评审🟢1 点名)。千冶·刃(2费) carry,瓦尔特 24/29+卡芙卡 16
+        # (29 篇里最多 5 篇可被既有 comp 覆盖,对拍注点名)。千冶·刃(2费) carry,瓦尔特 24/29+卡芙卡 16
         # +缇宝 15+符玄 14 常驻减益辅助群;皮靴 30 断层第一(carry 吃鞋)+风暴潮 14+螺旋桨 13;
         # 节奏 6级搜牌 12/29(2费 → 6级停)→7级 7 → 速升9 4(瓦尔特 5费);与黄泉减益(3费/7级)错位。
         key_equips=["反重力皮靴", "火力风暴潮", "光速螺旋桨", "反卫星狙击枪"],
@@ -775,7 +775,7 @@ COMP_LIBRARY: list[Comp] = [
         key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "高周波电锯"],
         mechanic_attributes=["欢愉叠层", "成型羁绊队"], shared_chars=["瓦尔特", "爻光", "火花"],   # 成型羁绊队:欢愉 4-6 档乘区(w878)
         char_positions={"爻光": "back"},   # 站位:爻光必后台(攻略反向论证:后台跑条给绯英多开大,总伤更高;前台倍率<20%残血版)
-        transition_chars=["花火"], typical_form_round=6,   # 评审🟡2:爻光 25/25 常驻是 core 非 transition;常驻是火花(16/25,4费)非花火
+        transition_chars=["花火"], typical_form_round=6,   # 对拍注:爻光 25/25 常驻是 core 非 transition;常驻是火花(16/25,4费)非花火
         # ===== v2:欢愉族家族·绯英档(资源锚 6 级;无信号时的默认落点)=====
         family="欢愉族", branch_key="绯英档(资源锚 6 级;无信号默认落点)", branch_of="狼尊欢愉",
         bond_signal="欢愉",   # ②类信号:绯英/银狼两档共用主体
@@ -786,7 +786,7 @@ COMP_LIBRARY: list[Comp] = [
         # ↑ v2 教义:绯英=永动机(天赋装备化)+风暴潮;全队皮靴(本批恒等约束下未单列,拆分批放开)
         flex_factions=["能量", "仙舟", "治疗", "量子同频", "战技点"],   # 能量降挂件(final_feiying 挂件层),
         plaza_carry="绯英",
-        level_plan={  # 评审🟡2:labels 6级搜牌 19/25=76%(全场最集中)→ 6级停 roll,旧 5/6/7 全 level_up 缺停留
+        level_plan={  # 对拍注:labels 6级搜牌 19/25=76%(全场最集中)→ 6级停 roll,旧 5/6/7 全 level_up 缺停留
             4: LevelGoal("roll", target_cost=1, target_chars=["绯英", "爻光"]),
             5: LevelGoal("level_up"),
             6: LevelGoal("roll", target_cost=2, target_chars=["绯英"], star_goals={"绯英": 2}),
@@ -857,7 +857,7 @@ COMP_LIBRARY: list[Comp] = [
         flex_factions=["战技点", "治疗", "盛会之星", "列车同行"],
         plaza_carry="希儿",
         level_plan={
-            5: LevelGoal("roll", target_cost=3, target_chars=["希儿"]),   # 评审🟡6:希儿 3费,旧标 2
+            5: LevelGoal("roll", target_cost=3, target_chars=["希儿"]),   # 对拍注:希儿 3费,旧标 2
             6: LevelGoal("roll", target_cost=3, target_chars=["希儿"], star_goals={"希儿": 2}),
             7: LevelGoal("roll", target_cost=3, target_chars=["希儿"], star_goals={"希儿": 2}),
             8: LevelGoal("level_up"),
@@ -946,12 +946,12 @@ COMP_LIBRARY: list[Comp] = [
         # 主体是减益板[减益13/巡海12/击破11 混合],不当击破锚)。常驻 忘归人12/大丽花11/灵砂11/乱破11/阮·梅10。
         # 装备:波提欧=虫洞掘进钻头16/光速螺旋桨9,不死途=反重力皮靴。
         mechanic_attributes=["击破", "成型羁绊队"], shared_chars=["黄泉", "流萤", "忘归人"],   # 成型羁绊队:击破6 档乘区(w878)
-        key_equips=["虫洞掘进钻头", "光速螺旋桨", "反重力皮靴", "光速螺旋桨·特权"],   # 评审🟡7:波提欧=钻头16/螺旋桨9,不死途=皮靴24(旧空表 equip_fit 恒 None)
+        key_equips=["虫洞掘进钻头", "光速螺旋桨", "反重力皮靴", "光速螺旋桨·特权"],   # 对拍注:波提欧=钻头16/螺旋桨9,不死途=皮靴24(旧空表 equip_fit 恒 None)
         transition_chars=["赛飞儿", "灵砂", "忘归人"], typical_form_round=7,
         family="legacy", branch_key="v2 未单列(长尾保活;v2 白厄A 巡海流为白厄系,非本套)",
         flex_factions=["减益", "盛会之星"],
         plaza_carry="波提欧",
-        level_plan={  # 后期 6 击破:前期过渡 → 升 8-9 击破;评审🟡6:波提欧 5费/不死途 2费
+        level_plan={  # 后期 6 击破:前期过渡 → 升 8-9 击破;对拍注:波提欧 5费/不死途 2费
             5: LevelGoal("roll", target_cost=1, target_chars=["乱破"]),
             6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
             8: LevelGoal("roll", target_cost=2, target_chars=["不死途", "波提欧"]),
@@ -989,7 +989,7 @@ COMP_LIBRARY: list[Comp] = [
         family="legacy", branch_key="v2 未单列(长尾保活;战技点作副档散于各线)",
         flex_factions=["量子同频", "盛会之星"],
         plaza_carry="丹恒·饮月",
-        level_plan={  # 评审🟡6:饮月 2费(旧标3);花火 2费
+        level_plan={  # 对拍注:饮月 2费(旧标3);花火 2费
             5: LevelGoal("roll", target_cost=2, target_chars=["花火", "远坂凛"]),
             6: LevelGoal("roll", target_cost=2, target_chars=["丹恒·饮月"], star_goals={"丹恒·饮月": 2}),
             7: LevelGoal("roll", target_cost=3, target_chars=["丹恒·饮月"], star_goals={"丹恒·饮月": 2}),
@@ -1024,7 +1024,7 @@ COMP_LIBRARY: list[Comp] = [
         # 非大黑塔+景元(游侠源误)。闪闪+Saber 每8行动连携+回能;圣杯羁绊给经济+改件加速3星。
         # Saber主c(风暴潮+冷笑话+永动机)/闪闪后台带鞋自加速;5能量;杨叔必备;刃+缇宝+符玄(阿瓦隆+绝对热量邪修75%减伤)
         # 过渡:体系牌+花火/凛(做3圣杯任务);7-8级找3星Saber或闪闪→上9挂杨叔
-        key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "反重力皮靴"],   # 评审🟡4:Saber 风暴潮56/永动机44/冷笑话36/电锯31(皮靴13 降位)
+        key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "反重力皮靴"],   # 对拍注:Saber 风暴潮56/永动机44/冷笑话36/电锯31(皮靴13 降位)
         # ↑ v2 教义:闪闪=**反重力皮靴**(41%,
         #   锁轴速度载体;final_grail_dual.md 圣杯A)
         mechanic_attributes=["连携高频开大", "成型羁绊队"], shared_chars=["吉尔伽美什", "Saber", "瓦尔特", "符玄"],   # 成型羁绊队:能量5 硬约束+圣杯任务链=档位乘区(w878)
@@ -1078,7 +1078,7 @@ COMP_LIBRARY: list[Comp] = [
         # 62/68 Final 实证)。
         form_tiers={"欢愉": 3}, strength="A", form_difficulty="medium",
         early_power="高",
-        # 评审🔴(火花簇 25 篇):旧 factions[星间+量子] 0/25 达标 —— 实战分布 欢愉22/战技点21/
+        # 对拍注(火花簇 25 篇):旧 factions[星间+量子] 0/25 达标 —— 实战分布 欢愉22/战技点21/
         # 星间21 并列,量子仅 flex 位 → 核心改 星间+欢愉(花火=欢愉阵营);core 补 开拓者·欢愉(20/25 在场,
         # 欢愉形态保留不换记忆)与银狼LV.999(17/25)。
         key_equips=["火力风暴潮", "高周波电锯", "碎星斩舰刀", "动能激发剑"],   # 花火1风暴潮+暴击刀;爻光三鞋
@@ -1088,7 +1088,7 @@ COMP_LIBRARY: list[Comp] = [
         family="legacy", branch_key="v2 未单列(长尾保活;花火线)",
         flex_factions=["星间旅人", "战技点", "列车同行", "量子同频", "星核猎手"],   # 星间=顺手增益源
         plaza_carry="火花",
-        level_plan={   # 前期龙丹护航 → 上8大D 2星花火 → 有机会追3必试(质变);评审🟡6:花火 2费/饮月 2费
+        level_plan={   # 前期龙丹护航 → 上8大D 2星花火 → 有机会追3必试(质变);对拍注:花火 2费/饮月 2费
             5: LevelGoal("roll", target_cost=2, target_chars=["丹恒·饮月"]),
             6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
             8: LevelGoal("roll", target_cost=2, target_chars=["花火"], star_goals={"花火": 2}),
@@ -1246,7 +1246,7 @@ COMP_LIBRARY: list[Comp] = [
         level_plan={
             5: LevelGoal("roll", target_cost=3, target_chars=["白厄"]),
             6: LevelGoal("level_up"),
-            7: LevelGoal("roll", target_cost=3, target_chars=["白厄"], star_goals={"白厄": 2}),   # 评审🟡8:labels 7级搜牌 25/38(66%),旧 7=level_up 直跳 8 缺停留
+            7: LevelGoal("roll", target_cost=3, target_chars=["白厄"], star_goals={"白厄": 2}),   # 对拍注:labels 7级搜牌 25/38(66%),旧 7=level_up 直跳 8 缺停留
             8: LevelGoal("roll", target_cost=0, target_chars=["白厄"], star_goals={"白厄": 3}),
         },
         # ===== 知识卡三字段(3.0b;数据源=final_comps/final_baie_reflect.md)=====
@@ -1276,7 +1276,7 @@ COMP_LIBRARY: list[Comp] = [
         form_tiers={"欢愉": 5, "星核猎手": 2}, strength="B", form_difficulty="medium", early_power="中",
         # V4.4 评级(76807134):狼尊 = B 级;攻略(76832783 直读):5欢愉(最大利用阿哈装备),狼尊双风暴潮+爻光双鞋
         # 刃(星核猎手):刃+狼尊行动7次→狼尊释放欢愉技。强依赖鞋≥6;尽量不d全力升级;也作绯英早期过渡c
-        # 评审🔴(狼尊簇 68 篇对拍):本体刃仅 2/68,千冶·刃 36/68 → core 刃改千冶·刃(V4.4 实战常驻)。
+        # 对拍注(狼尊簇 68 篇对拍):本体刃仅 2/68,千冶·刃 36/68 → core 刃改千冶·刃(V4.4 实战常驻)。
         key_equips=["火力风暴潮", "反重力皮靴", "反重力皮靴", "光速螺旋桨"], mechanic_attributes=["欢愉叠层", "成型羁绊队"],   # 成型羁绊队:欢愉 5-7 档乘区(w878)
         # ↑ v2 教义:银狼=风暴潮+
         #   **速度件**(升费链要行动),皮靴是速度载体;爻光本就是皮靴(攻略:爻光双鞋)
@@ -1301,7 +1301,7 @@ COMP_LIBRARY: list[Comp] = [
         # 全局累积型标注:银狼=升费链(cost_escalation)——累积持久(费用档不清零)
         # 但由购买/D 驱动非上场时间,**不适用「有空位就上」部署例外**;仅作类型区分。
         global_accumulators={"银狼LV.999": "cost_escalation"},
-        level_plan={  # 评审🟡6:银狼LV.999 3费(升费到5,标3=起始找牌档)
+        level_plan={  # 对拍注:银狼LV.999 3费(升费到5,标3=起始找牌档)
             4: LevelGoal("roll", target_cost=3, target_chars=["银狼LV.999", "爻光"]),
             5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
             8: LevelGoal("roll", target_cost=3, target_chars=["银狼LV.999"], star_goals={"银狼LV.999": 2}),
@@ -1332,7 +1332,7 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 评级(76807134):阿雅 = B 级(试用难玩;需反重力皮靴×2+速度投资,V3.8 最轮椅→V4.4 降 B)。
         # (plaza 8 篇 carry):装备 反重力皮靴×16 断层第一(「有鞋跟本输不了」);阿格莱雅 3星率
         # 0.88;实战板多为 昼神4+量子3/能量+治疗混搭(flex 已收)。强帖(「80连胜焚决」/「小伊卡」)
-        # use 均 0 且依赖本体/遗器/充能绳(M11)→ **保持 B**(评审🟡:升 A 依据不足,勿按万敌标准拔高)。
+        # use 均 0 且依赖本体/遗器/充能绳(M11)→ **保持 B**(对拍注:升 A 依据不足,勿按万敌标准拔高)。
         key_equips=["反重力皮靴", "反重力皮靴", "白昼·光速螺旋桨", "火力风暴潮"],
         countered_by_bosses=["电视机"], mechanic_attributes=["速度依赖", "成型羁绊队"],   # 成型羁绊队(边界套):昼之半神4 主档为战力底盘,速度件是执行载体非战力源(w878 裁注)
         shared_chars=["风堇", "昔涟", "银狼"], transition_chars=["风堇", "艾丝妲", "阿格莱雅"],
@@ -1340,7 +1340,7 @@ COMP_LIBRARY: list[Comp] = [
         family="legacy", branch_key="v2 未单列(长尾保活;昼半并入 DOT·B 速度/昼半流的家族口径待拆分批)",
         flex_factions=["能量", "列车同行", "量子同频", "治疗"],
         plaza_carry="阿格莱雅",
-        level_plan={  # 评审🟡6/🟡9:阿格莱雅 1费(旧标2);「速升9找银狼」补 9 级
+        level_plan={  # 对拍注/🟡9:阿格莱雅 1费(旧标2);「速升9找银狼」补 9 级
             5: LevelGoal("roll", target_cost=1, target_chars=["阿格莱雅", "风堇"]),
             6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
             8: LevelGoal("roll", target_cost=1, target_chars=["阿格莱雅"], star_goals={"阿格莱雅": 2}),
@@ -1371,7 +1371,7 @@ COMP_LIBRARY: list[Comp] = [
         form_tiers={"追击": 3}, strength="B", form_difficulty="medium", early_power="低",
         # V4.4 合集(76807134)追击 B 级 = 飞霄-led(纯追击);攻略(76883466):飞霄天赋追击永久+6%增伤,≥3追击=300%倍率
         # 飞霄双风暴潮+鸟(3追击关键)+缇宝/不死途/刃;2星飞霄上9(3星锁血反降);追击转→5追击60%真伤
-        # 评审🔴(锚点对拍):飞霄 carry 仅 3 篇(<5 不在聚类)→ plaza_carry 置空;plaza 追击族
+        # 对拍注(锚点对拍):飞霄 carry 仅 3 篇(<5 不在聚类)→ plaza_carry 置空;plaza 追击族
         # 真代表 = **那刻夏**(「5追击4昼之半神 后台主c之光」6444 use:「没鞋也没追击转别上那刻夏,
         # 至少得有其1」,装备优先级原文全序列)→ 补 core;追击簇 flex 常见 公司/昼之半神/群攻。
         key_equips=["火力风暴潮", "火力风暴潮", "永动机", "电磁弹射器"], mechanic_attributes=["追击", "成型羁绊队"],   # 成型羁绊队:追击档乘区(≥3追击=300%倍率,w878)
@@ -1414,13 +1414,13 @@ COMP_LIBRARY: list[Comp] = [
         #   ⚠️ 行为面:form_progress 成型判定按燃血 4 判(意图内)。
         # V4.4 评级(76807134):万敌 = B 级;【debuff=buff 典型】反伤/AoE/持续伤害 利燃血;攻略(77056698)
         # ↺ (plaza 40 篇校准)B→A:use 榜 #2(11.2w,「万敌无脑单挂A850 7人成型」);3星率 0.93
-        # 场最高;5级搜牌 26/40(1费 carry 5 级 D 标准节奏)。**form_tiers 校准(评审🔴4)**:旧 夜4+燃4
+        # 场最高;5级搜牌 26/40(1费 carry 5 级 D 标准节奏)。**form_tiers 校准(对拍注)**:旧 夜4+燃4
         # 仅 15% 帖达标 —— 榜首帖实跑 夜2+燃2(「7人成型」= 万敌+6弹性辅助;另一帖明言「夜神燃血也不
         # 要凑」)→ 降为 2+2(核心=万敌双标签引擎,其余 flex);千冶·刃 40/40 全勤补 core(旧漏)。
         # 遐蝶(n=6)= 同族副 carry(夜神6+燃血6),挂 shared 备转型。
         mechanic_attributes=["燃血"],
         char_positions={"万敌": "front"},   # 站位:万敌独前排(燃血角斗场吃受击掉血;弃1人口换触发密度)
-        key_equips=["火力风暴潮", "热血沸腾拳", "绝对热量", "高周波电锯"],   # 评审🟡4:plaza 热血沸腾拳40>绝对热量26 顺序修正(风暴潮54 断层第一)
+        key_equips=["火力风暴潮", "热血沸腾拳", "绝对热量", "高周波电锯"],   # 对拍注:plaza 热血沸腾拳40>绝对热量26 顺序修正(风暴潮54 断层第一)
         countered_by_bosses=["永久创伤"],   # 掉血削上限克燃血(不可玩);利:忍无可忍/正当防卫/灼热轰炸(debuff=buff)
         shared_chars=["风堇", "长夜月", "遐蝶"], transition_chars=["椒丘", "艾丝妲"],   # 长夜月是 core(夜半记录)
         typical_form_round=5,
@@ -2015,7 +2015,7 @@ def held_strategy_fit(comp: Comp, active_strategies: list[str]) -> float | None:
             continue
         fs, cs = strategy_bindings(s)
         hits += len((fs & comp.all_factions) | (cs & set(comp.core_chars)))
-    # 评审🟡:两路取 max 非覆盖 —— 定义型 affinity(0.5+0.5a)与绑定命中(0.5+0.25h)
+    # 对拍注:两路取 max 非覆盖 —— 定义型 affinity(0.5+0.5a)与绑定命中(0.5+0.25h)
     # 各自度量不同机会(方向定义 vs 成型加速),同策略双高时取大者不丢分;无命中无 affinity = 真实中性。
     hits_score = clamp(0.5 + 0.25 * hits, 0.0, 1.0) if hits > 0 else 0.5
     if best_affinity > 0:
@@ -2028,7 +2028,7 @@ def env_fit(comp: Comp, env: str) -> float | None:
 
     未选投资环境(env 空)→ **None**(动态权重剔除,治死重)。env 已选但不加成此 comp → 0.5
     (真实中性:env 在但不利好此 comp,有数据)。
-    ⚠️ 评审🔴2(T0 定向优先):env 在 affinity 表内时**非定向 comp 一律中性 0.5,不走
+    对拍注(T0 定向优先):env 在 affinity 表内时**非定向 comp 一律中性 0.5,不走
     faction 匹配** —— 否则 flex 全集匹配 1.0 盖过定向 0.9/0.95(实测反转:仙舟概念股下绯英欢愉
     [flex含仙舟] 1.0 > 景元仙舟 0.95)。定向 env 的 faction 加成只服务**单位获取**(送卡/刷新率),
     不改 comp 方向;非定向 env(无 affinity 条目的)才走 faction 亲和。
@@ -2822,7 +2822,7 @@ def equip_allocation(comp: Comp | None,
 COMMIT_FRAC: float = 0.4           # form_progress ≥0.4 算已 commit(2 阵营 comp 约 1 阵营过半)
 COMMIT_ROUND: int = 2
 COMMIT_STICK_FACTOR: float = 1.5   # 已 commit → pivot 阈值 ×1.5(0.10→0.15),更难弃成型 comp
-PIVOT_GAP_FLOOR: float = 0.05      # 信号1 阈值绝对下限(评审🟡6:easier/losing/overlap 叠乘最低
+PIVOT_GAP_FLOOR: float = 0.05      # 信号1 阈值绝对下限(对拍注:easier/losing/overlap 叠乘最低
 #                                   0.039 < comp_score 单轮自然抖动 ~0.06-0.1 → losing 窗口噪声级 churn)
 
 
@@ -3059,13 +3059,13 @@ def maybe_pivot(gs: GameState, ctx: ScoreContext, config, target: Comp | None,
                 _tag += f' [共享高{_overlap:.2f}降阈]'
             elif _overlap < 0.1:
                 _tag += f' [共享低{_overlap:.2f}加阈]'
-                # 评审🟡5:form_tiers 空的 comp(反甲白厄)fp 恒 0 → 永不 commit → 信号 1 是它
+                # 对拍注:form_tiers 空的 comp(反甲白厄)fp 恒 0 → 永不 commit → 信号 1 是它
                 # 唯一出路,再吃 ×1.3 加阈 = 最难逃的 comp(与 commit 锁的防振荡初衷相反 ——
                 # 那是给"已成型"的保护,它从没成型过)。降回 1.0。
                 if target is not None and not target.form_tiers:
                     _required_gap /= 1.3
                     _tag += '[无form_tiers回1.0]'
-            # 评审🟡6:叠乘下限(0.10×0.7×0.7×0.8=0.039 < comp_score 单轮自然抖动 ~0.06-0.1
+            # 对拍注:叠乘下限(0.10×0.7×0.7×0.8=0.039 < comp_score 单轮自然抖动 ~0.06-0.1
             # → losing 窗口内在重叠 comp 间噪声级来回切)。设绝对下限防 churn。
             _required_gap = max(_required_gap, PIVOT_GAP_FLOOR)
             if gap > _required_gap:
