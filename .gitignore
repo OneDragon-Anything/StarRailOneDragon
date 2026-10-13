@@ -30,6 +30,8 @@ config/[0-9]*/
 config/model.yml
 config/custom.yml
 config/pip.yml
+# 账号档案（agent 扫描产出的个人数据，不入 git）
+config/idx/
 custom/assets/ui/banner
 assets/ui/version_poster.webp
 assets/ui/static_background.webp
