@@ -87,8 +87,8 @@ producer=GAIN_CHAIN_PRODUCER)`(策略屏迁移批新增,三段式对齐 §2.1):
    跳写;持卡列表写入语义 = 数据卫生;跳写后登记/效果腿照常——零幂等
    闸,重复上报 = 代码 bug 面按 bug 治理);
 2. **效果账本登记**(best-effort,`session=None` = 跳过):`cw_investments.
-   STRATEGY_EFFECTS` 归一名命中 → `effects.register_strategy`(acquired_t =
-   节点序快照)+ burst 桥 `apply_effect_burst_grant` + 板面重写桥
+   STRATEGY_EFFECTS` 归一名命中 → `effects.register_strategy`(acquired_key =
+   节点序位快照)+ burst 桥 `apply_effect_burst_grant` + 板面重写桥
    `apply_board_rewrite`(自画面 op 三桥迁入);失败 log + 缺陷留证
    (`kind = DEFECT_STRATEGY_REGISTER`)、不阻塞;
 3. **触发策略效果**:`on_strategy_gained`(§3)。
@@ -127,7 +127,7 @@ sig: ChannelSig) -> tuple[str, ...]`——环境定时道具通道(§3 道具通
   `_apply_env_plane_gold` 之后——「第 N 位面开始时」类发放落在该位面 1 号节点窗
   打开时点(位面过渡屏被点掉、节点窗真正打开;位面过渡点空白与直进节点共用本
   收口),与 `gold_per_plane_start` 同窗;sig 组名沿 `sim:env`。
-- **幂等边界(双保险)**:①生产挂点在 sim 窗口幂等守卫内(`_window_begun_ord`
+- **幂等边界(双保险)**:①生产挂点在 sim 窗口幂等守卫内(`_window_begun_pos`
   对同一节点只放行一次,位面过渡点击重放不双发);②队列本身天然幂等——命中项
   发放即出队,重放调用查无命中、零写零效果。原语自身无幂等闸:生产挂点无重入面,
   未来实机挂点接线时按其重入面另评。

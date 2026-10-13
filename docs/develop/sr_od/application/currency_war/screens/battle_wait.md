@@ -62,7 +62,7 @@
 - **容器半覆盖写**:`kernel/cw_game_state.py::apply_settlement_cover`(GameState settlement 域:hp_after/streak_after/killed/progress_delta/gold/level/xp——金/等级/经验仅胜局,缺席不写;note=`battle_done:<节点类型>`;best-effort 失败不阻塞)。金读链现役形态见 §3;读失败 = gold 缺席不写(本局无金真值覆盖)。结算域字段规格 = [../game_state/fields.md](../game_state/fields.md) §3.5。
 - **plane/round 真值覆盖**:结算屏头部「X-Y」对 last-known 走单调门覆盖;双读不等 → `defects.record_defect('phase_round','perception_conflict')` 留证;残留屏(`_mark_relaunch_residual`)豁免并按屏面真值校正。
 - **节点类型**:首领识别锚(『货币战争-结算.标识-首领』画面位)> gs 推导(`kernel/cw_game_state.py::node_kind_of`;session 识别源已退役,单一源 = 容器)> 探针表兜底(`_node_type_from_table`,宿主 = `gs.node_books.plane_node_table`)> 缺省『普通战斗』;词汇表统一 = `_normalize_node_type`。
-- **killed 兜底链**:进度符号(`progress_delta > 0`)优先;hp 对比兜底(置信 ≥0.9 ∧ 轮次邻接门,时基 = `kernel/cw_plane_table.py::node_t_of`)。
+- **killed 判定两路**:进度符号(`progress_delta > 0`)+ killed 文本双置信度(读链 `read_round_outcome` 内)——均须在结算画面识别出来(胜负判定必须在结算画面识别,用户裁定);两主路径同失 = `killed=None` 观察收口(诚实缺位,禁 HP 推断)。
 - **遭遇选档观测面**(环写位):`_cw_selection_write` → `kernel/cw_encounter_selection.py::record_settlement_row`(残留行不入环;telemetry-only 面 `killed` 非显式败局行抑制不入环);对账落盘 hook `_cw_selection_capture`(缺省关,启用点 = 标定采集显式接通)。
 - **效果账本结算挂点**:`game_state_of(session).effects.on_battle_end()`(现役注册表零 BATTLE_END 条目 = 行为面仅事件计数)+ 拷贝仪参与计数 `kernel/cw_effect_inventory.py::settle_copy_machine_participation`(成熟入席落日志)。各独立 best-effort 异常域,失败不阻塞结算链。
 - **页1 暂存合并**:进度/三项遥测暂存在页2 记录时合并消费(暂存值优先于页2 同帧读数;跨窗滞留即弃,防上一场污染下一场)。
@@ -75,7 +75,7 @@
 
 - **出战宽限(口径)**:`BATTLE_WATCH_GRACE_S` 内未见结算屏 = 战斗进行中合法静止,不进未知帧计数;关窗 = 见结算屏(`saw_settlement`)。`battle_ts` 由外循环注入。
 - 未知帧 bail 上界 `UNKNOWN_BAIL_N`(节点作用域预算;战斗特效长帧期已由宽限挡在计数外,本值只辖「结算后卡死」形态)。
-- 结算屏点击未生效的长按兜底(宿主 = `cw_op/cw_op_settle_confirm.py`:`SETTLE_STAY_LONG_PRESS` 轮阈值 + `SETTLEMENT_NEXT` 长按点;见 §4 分支表);同屏指纹防重(`last_settle_fp`/`last_loss_fp`);败局闩 `saw_defeat_settlement` 双证据(进度符号 neg,或面板负分量 ∧ t ≥ `SETTLE_DEFEAT_LATCH_MIN_T`——次级证据裁决 = `_defeat_latch_by_secondary`,节点真值键 = 容器 node 读口,fail-closed 不置闩);relaunch 残留结算屏判据宽限 `RELAUNCH_SETTLE_GRACE_S`。
+- 结算屏点击未生效的长按兜底(宿主 = `cw_op/cw_op_settle_confirm.py`:`SETTLE_STAY_LONG_PRESS` 轮阈值 + `SETTLEMENT_NEXT` 长按点;见 §4 分支表);同屏指纹防重(`last_settle_fp`/`last_loss_fp`);败局闩 `saw_defeat_settlement` 双证据(进度符号 neg,或面板负分量 ∧ 序位 ≥ `SETTLE_DEFEAT_LATCH_MIN_POS`(= `(2, 5)`,元组字典序)——次级证据裁决 = `_defeat_latch_by_secondary`,节点真值键 = 容器 node 读口,fail-closed 不置闩);relaunch 残留结算屏判据宽限 `RELAUNCH_SETTLE_GRACE_S`。
 - 自动战斗检测连续命中计时(防单帧误判);开关动作后 wait 覆盖切换生效窗。
 
 ## 9. 遥测与锁面

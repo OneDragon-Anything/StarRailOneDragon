@@ -31,7 +31,7 @@
    计数/统计)。派生规则是 state 内部逻辑,在同一写入事务内完成——**无独立事件流**,
    一切派生产出都是 state 写入,不存在「hook 触发后再写」的第二条路径。
 3. **单字段双值结构**。一个事实 = 一个逻辑层值字段 + 一个原始读数字段,不设两个
-   专名字段再在读时合并。例:节点序 = `top_bar_raw`(观察层)+ `node_ord`(逻辑层)。
+   专名字段再在读时合并。例:节点序位 = `top_bar_raw`(观察层)+ `node_pos`(逻辑层)。
    单事实单值字段(金/hp 等)不拆,来源与质量维由渠道签名承载(见 journal.md §3)。
 4. **唯一写入口,禁旁路**。一切写入必经统一写入口(Field 系 API)或 inventory 方法域
    (效果域);绕 API 直改字段=违反,机器面=grep 子串守卫锁(先例
@@ -86,8 +86,8 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
   以观察为真值源:派生漂移(环境卡星徽幽灵计数/未知身份零贡献/徽标 OCR 坏读)
   经观察覆盖采新收敛,落 `board_derived_adopt` 台账行不进安灯——「上阵单位集合」
   这一真不变量由行域自身失配面独立把守。观察侧仍按双源仲裁覆盖(观察赢辖)。
-- **节点生效序**:权威序字段的读口 = 生效序读口,语义=`node_ord` 现值与 run 内
-  高水位取大(公式体与消费纪律 = [node-domain.md](node-domain.md) §3);两态来源
+- **节点生效序**:权威序位字段的读口 = 生效序读口,语义=`node_pos` 现值与 run 内
+  高水位按元组字典序取大(公式体与消费纪律 = [node-domain.md](node-domain.md) §3);两态来源
   语义(锚定态/推进态)单一源 = [node-derivation.md](node-derivation.md) §3.2-7。
 - **节点类型三源仲裁**:结算屏权威> 节点序列台账现读 > 帧标签 OCR
   ([fields.md](fields.md) §3.2.1;类型派生权威链与冲突留证单一源 =
@@ -107,7 +107,7 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | 域(gs_schema 键) | 字段全集 | 主写渠道 |
 |---|---|---|
 | 节点域(node) | node(NodeKey)/ node_path | ①观察+③派生(见 node-domain.md) |
-| 派生域(derivation) | top_bar_raw(观察层)/ node_ord(逻辑层)/ prev_screen / current_screen / node_hist_ord(哨兵) | ①观察+③派生(见 node-domain.md §2-§3) |
+| 派生域(derivation) | top_bar_raw(观察层)/ node_pos(逻辑层,`(位面, 轮)` 序位)/ prev_screen / current_screen / node_hist_pos(哨兵) | ①观察+③派生(见 node-domain.md §2-§3) |
 | 单位域(units) | front_row / back_row / bench(BenchView)/ back_layout / deploy_cap | ①观察+②动作+③效果桥 |
 | 经济域(economy) | gold / hp / level / xp / streak / level_up_cost / shop_refresh_cost | ①观察+②动作 |
 | 商店刷新计数域(refresh_counters) | 免费刷新剩余次数 = 容器字段 free_refresh_left(Field,剩余语义,三写端同格);付费/全量两计数住效果账本(写端=刷新上报函数);prev_node_spent 保留容器(economy 面) | ①观察+②动作+③效果桥 |

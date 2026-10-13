@@ -73,6 +73,10 @@ ts 与 `buffered` 行注记)/历史段补写窗(专用装配通道,不经运行�
   `gs_prov`(source 非 observation 或带 evidence 的字段入注记——单行可判「gold 真读
   还是沿用、hp 是否结算新鲜」)、effects 规范化序列、挂起预期摘要 `pending_expected`。
 - **序列化规范化**:effects 按 spec id 排序、receipts 按窗序——同态同形,离线 diff 可比。
+- **节点域值形键名**:state 行 `values` 内节点序位键 = `node_pos`(值 `[p, r]`
+  JSON 数组,元组经 `_json_safe` 转化)、顶层水位键 = `node_hist_pos`(同值形)、
+  effects 行登记时点键 = `acquired_key`(值 `[p, r]`);键名即值形契约,离线判读
+  按 (位面, 轮) 键取列。
 - **派生原子生效**:派生规则在单版本事务内完成(节点判定→类型→效果推进固定次序),
   派生字段与原始变更同行可见;派生出错=整笔回滚留证。
 - **效果域捕获声明**:效果账本域(effects)保持就地可变 inventory 方法域,不设专用

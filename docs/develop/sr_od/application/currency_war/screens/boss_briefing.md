@@ -16,7 +16,7 @@
 
 ## 3. 观察面
 
-横幅判定(观察 node):area 锚 miss → `is_boss_briefing_texts(read_ocr_texts)` 兜底(`read_ocr_texts` = 全帧 OCR,`ocr_service` 同帧缓存);判定不在 = 已推进 → 早退 success。obs = `CwScreenBossBriefingObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/boss_briefing.py`);report = `report_screen_boss_briefing_obs`——BOSS 类型直定:经 `_write_derived_node_type` 直定 boss 节点类型,目标 = 现 hist(简报屏仍是 boss 类型权威);门 = `obs.on_screen` 假早退 / hist 未推进禁猜零写;幂等 = 同 hist 重报走 `_write_derived_node_type` 冲突纪律(同节点同类型 = 同值重写行);match/gs 缺席跳过(局外兜底路径)。写端边界:GameState 写端 = boss 节点类型直定一行,零 node_ord 序号写(序号推进半部已退役——boss 节点序由结算确认上报推进);session 写端 = 零。
+横幅判定(观察 node):area 锚 miss → `is_boss_briefing_texts(read_ocr_texts)` 兜底(`read_ocr_texts` = 全帧 OCR,`ocr_service` 同帧缓存);判定不在 = 已推进 → 早退 success。obs = `CwScreenBossBriefingObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/boss_briefing.py`);report = `report_screen_boss_briefing_obs`——BOSS 类型直定:经 `_write_derived_node_type` 直定 boss 节点类型,目标 = 现 hist(简报屏仍是 boss 类型权威);门 = `obs.on_screen` 假早退 / hist 未推进禁猜零写;幂等 = 同 hist 重报走 `_write_derived_node_type` 冲突纪律(同节点同类型 = 同值重写行);match/gs 缺席跳过(局外兜底路径)。写端边界:GameState 写端 = boss 节点类型直定一行,零 `node_pos` 序位写(序位推进由结算确认上报经后继原语承接);session 写端 = 零。
 
 ## 4. 动作面
 

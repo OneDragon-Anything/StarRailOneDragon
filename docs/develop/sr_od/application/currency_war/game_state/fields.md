@@ -216,7 +216,7 @@ rand 通道,§2.6)→ ②先验(首漏斗帧按档 82/62;非实证档先验返 N
 #### 3.2.1 当前节点 node
 
 **语义**:位面 + 轮次 + 节点类型(kind),坐标系=NodeKey(跨位面 round 重启,plane
-必在键内);节点序坐标系 = 按局修饰变长制(单一源见 §3.2.2b 场字段与
+必在键内);节点身份序位 = `(位面, 轮)` 序位键(按局修饰变长;单一源见 §3.2.2b 场字段与
 [node-domain.md](node-domain.md) §1)。
 **写端**:本屏节点条=台账权威现读;kind 走三源仲裁序——**结算屏权威>
 节点序列台账现读 > 帧标签 OCR**(结算屏条目见 §3.5.2);帧标签仅 battle/boss 两类
@@ -226,8 +226,8 @@ rand 通道,§2.6)→ ②先验(首漏斗帧按档 82/62;非实证档先验返 N
 #### 3.2.2b 节点序列场字段 node_seq_by_plane
 
 **语义**:逐位面节点序列逻辑态真值(键 = 位面 1 基,恒只含键 {1,2};值 = 节点
-类型序,词表与 `PLANE_NODE_TABLES` 同)。节点身份坐标系的权威源:正解
-`node_ordinal_of`/反解 `node_pos_of`/next_screen 推导/观察锚定/round 读数上限
+类型序,词表与 `PLANE_NODE_TABLES` 同)。节点身份(序位键)的权威源:后继原语
+`sequence_next`/next_screen 推导/观察锚定/round 读数上限
 (`node_round_cap`)全量经本字段。
 **写口**:逻辑态 `write_logic`,写点唯一 = `gain_invest_env` 尾段
 (evidence=`node_seq:env`)——修饰规则唯一计算点 =
@@ -1132,16 +1132,25 @@ deploy_cap/back_layout/diamond_count 联动属观察域,识别器读屏跟踪,�
 
 #### 3.6.2 节点域字段与画面上下文
 
-`top_bar_raw`(观察层,顶栏原文)/`node_ord`(节点序,两态字段)/`prev_screen`/
+`top_bar_raw`(观察层,顶栏原文)/`node_pos`(节点序位,两态字段)/`prev_screen`/
 `current_screen` 的结构与写点纪律单一源 = [node-derivation.md](node-derivation.md)。
-节点序 `node_ord` 两态语义:**锚定态(observation)** = kernel 锚定 helper
+节点序位 `node_pos`(值 = `(位面, 轮)` 序位元组)两态语义:**锚定态(observation)** =
+kernel 锚定 helper
 `observe_node_anchor` 解析读数直写(顶栏/节点条读数与 gold 的 OCR 解析同类,非
 游戏规则推算;**锚定写端两处** = CwScreenPrep 备战顶栏 / CwScreenSupplyNode
 补给屏节点条);**推进态(logic,未确认)** = 终结动作上报推进(`report_node_advance`
-经推进生效原语 `advance_node_effective` 写入;序号前进唯一入口,效果推进尾段
-同临界区)。**`gs.node` 观察镜像写端归属 = 留守观察漏斗**(cw_observation 漏斗段
+经推进生效原语 `advance_node_effective` 写入;序位前进唯一入口 =
+`cw_node_schedule.sequence_next` 后继原语,效果推进尾段
+同临界区)。`node_hist_pos` = run 内单调水位 + 去重第二道防线;生效序读口 =
+`effective_node_pos`(元组字典序取大,派生计算非存储)。域归属 = derivation
+(`DEFAULT_GS_SCHEMA['derivation']` 版本 5 = 序位键化批;§3.7.1)。
+**快照/恢复值形**:`node_pos` 快照值 = `[p, r]` JSON 数组(元组经 `_json_safe`
+转 list),恢复经复杂值重建表 list→tuple 重建;顶层 `node_hist_pos` 与 effects 行
+`acquired_key` 同值形(恢复面不消费,零迁移);旧档遗留的编号表示键被恢复面
+忽略(历史语料不迁移裁定,恢复 = 离线判读面,零迁移函数)。
+**`gs.node` 观察镜像写端归属 = 留守观察漏斗**(cw_observation 漏斗段
 plane/round 读口基底)——它供决策层坐标消费,属观察域写入(与 gold/hp 同类,
-零派生零推进);漏斗退出的仅 = 推进域(`node_ord`/`node_hist_ord`)写入。本篇
+零派生零推进);漏斗退出的仅 = 推进域(`node_pos`/`node_hist_pos`)写入。本篇
 不复写判定语义。
 
 ### 3.7 工程结构(schema 版本)
@@ -1864,6 +1873,6 @@ sim 无独立局面表示:sim 与 live 同一容器类型同一份单例
   生成器呈现腿或动作腿写入,不再属「sim 不产」(node_screen_refresh
   为部分接入:补给刷新剩余有呈现写点,余诚实缺位,sim-wiring §五)。
   现仍无 sim 写点登记的域 = node_path / consumables / settlement /
-  top_bar_raw / node_ord / receipts / match_final,逐域最终归属
+  top_bar_raw / node_pos / receipts / match_final,逐域最终归属
   (建模边界 vs 接线缺口)以 sim-wiring 逐域表为准并候接线评估项
   裁决;本节不再维护封闭枚举,防与逐域底账双源漂移。

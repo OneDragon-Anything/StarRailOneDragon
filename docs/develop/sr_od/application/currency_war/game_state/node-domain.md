@@ -8,21 +8,26 @@
 
 ## 1. 节点域管什么
 
-节点域回答「bot 现在打到第几个节点、是什么类型」。节点身份 = 节点序键
-`node_ordinal`(基 1,**按局修饰变长制**:默认环境 = 默认序列表变长累加,
-与历史固定 9 制逐值同;投资环境改节点序列时(「人身意外险」每个 boss 位前
-插补给)序列真值随场字段 `node_seq_by_plane` 调整,正解 `node_ordinal_of`
-与反解 `node_pos_of` 同表互逆——凡持 gs 的生成/解码方同读场字段,两侧
-自洽,序差 = 真实节点数;坐标系与效果账本 `advance_node` 同源)。类型是
+节点域回答「bot 现在打到第几个节点、是什么类型」。节点身份唯一表示 = 节点
+序位键 `(位面, 轮)`(`NodePos`,二元素整数元组,1 基,单一源住
+`cw_node_schedule`;对外标识统一「位面-轮」标签形态如 `2-1`,元组只是标签的
+容器内表示)。序列真值**按局修饰变长**:默认环境 = 默认序列表;投资环境改
+节点序列时(「人身意外险」每个 boss 位前插补给)序列真值随场字段
+`node_seq_by_plane` 调整——凡持 gs 的生成方同读场字段(None = 未注册态回退
+默认表),与效果账本 `advance_node` 同源。「推进 +1」= `sequence_next`
+(`cw_node_schedule` 后继原语,位面切换在此发生);位面优先、位面内轮次次序
+的元组字典序 = 序列全序,全部比较/去重/水位语义直接比较序位元组。类型是
 身份的载荷属性不入键,防第二失真源;类型读法与仲裁
 见 §7 与 [fields.md](fields.md) §3.2.1。
 
 ## 2. 推进模型与字段结构(指针)
 
 **推进模型一句话(R7 触发模型)**:节点推进 = 上一节点**终结动作落地**的上报
-(战斗节点 = 结算胜利确认;补给节点 = 补给选择确认),经观察态门(`node_ord`
+(战斗节点 = 结算胜利确认;补给节点 = 补给选择确认),经观察态门(`node_pos`
 value 在场 ∧ source=observation 双条件)与推进生效原语 `advance_node_effective`
-落账;观察 = 对账锚定 + 兜底(`observe_node_anchor`,锚定写端两处 =
+落账;`sequence_next` 无后继(超出建模域)= 局终声明事件式(零写入零 tick,
+`applied=True, reason='match_end'`)。观察 = 对账锚定 + 兜底
+(`observe_node_anchor`,锚定写端两处 =
 `CwScreenPrep` 备战顶栏 / `CwScreenSupplyNode` 补给屏节点条),不再是推进触发面。
 判定本体单一源 = [node-derivation.md](node-derivation.md) §3.3。
 
@@ -32,8 +37,8 @@ value 在场 ∧ source=observation 双条件)与推进生效原语 `advance_nod
 | 字段 | 语义 | 指针 |
 |---|---|---|
 | `top_bar_raw: Field[str]` | 备战帧顶栏原文(观察层),唯一写点 = 观察汇聚;原文缺读不写禁猜 | 同上 |
-| `node_ord: Field[int]` | 节点序,**两态字段**:锚定态 observation(锚定 helper 解析读数直写,节点域专用口不经通用 observe())/ 推进态 logic(终结动作上报经原语写入,推进未确认态) | 同上 |
-| `node_hist_ord` | run 内单调水位 + 去重第二道防线;run 段随容器重基线 | 同上 |
+| `node_pos: Field[tuple[int, int]]` | 节点序位(`NodePos` 元组),**两态字段**:锚定态 observation(锚定 helper 解析读数直写,节点域专用口不经通用 observe())/ 推进态 logic(终结动作上报经原语写入,推进未确认态) | 同上 |
+| `node_hist_pos` | run 内单调水位 + 去重第二道防线;run 段随容器重基线 | 同上 |
 | `node: Field[NodeKey]` | plane/round/kind 观察镜像(漏斗写端保留,决策层坐标消费) | 同上 |
 | `node_seq_by_plane: Field[dict[int, tuple[str, ...]] \| None]` | 逐位面节点序列场字段(逻辑态):键 = 位面 1 基,值 = 节点类型序;写点唯一 = `gain_invest_env` 尾段,注册后恒全量;None = 未注册态,消费方回退默认表 | [fields.md](fields.md) §3.2.1 |
 
@@ -41,20 +46,21 @@ value 在场 ∧ source=observation 双条件)与推进生效原语 `advance_nod
 写点 = 观察漏斗;开局链分支写点已随触发模型换代退役,开局链段不再写上下文对),
 与节点推进无写入耦合。
 
-节点域不走通用观察覆盖失配三分流——锚定 helper 四分支显式处置(含 R<v 倒退
+节点域不走通用观察覆盖失配三分流——锚定 helper 四分支显式处置(含读数倒退
 免疫留证),单一源 = [node-derivation.md](node-derivation.md) §3.3-4。
 
 ## 3. 生效序读口与消费纪律
 
-- **生效序读口** `effective_node_ord()` = `max(node_ord 现值, node_hist_ord)`
-  (派生计算,非存储字段;None 安全,双空 = 未定)。判定与比较域统一在该读口;
-  定义与处置规则单一源 = [node-derivation.md](node-derivation.md) §3.2-7。
+- **生效序读口** `effective_node_pos()` = `max(node_pos 现值, node_hist_pos)`
+  (元组字典序取大;派生计算,非存储字段;None 安全,双空 = 未定)。判定与
+  比较域统一在该读口;定义与处置规则单一源 =
+  [node-derivation.md](node-derivation.md) §3.2-7。
 - **消费纪律**:一切序比较/节点判定一律经读口取值——不消费 `top_bar_raw`
-  原文,不按 `node_ord` 来源分叉判先后。两态来源语义 = 读方须知:
+  原文,不按 `node_pos` 来源分叉判先后。两态来源语义 = 读方须知:
   `source=logic` 是推进未确认态(待观察锚定翻确认),`source=observation` 是
   已锚定确认态;读口取 max 已吸收两态差,消费侧无需再判来源。
-- **hist 哨兵** `node_hist_ord`:去重键 `(run_id, effective_ord)` 的 run 内载体,
-  推进/锚定落账时占位;同序恰一次推进由去重键保证。
+- **hist 哨兵** `node_hist_pos`:去重键 `(run_id, 生效序位)` 的 run 内载体,
+  推进/锚定落账时占位;同序位恰一次推进由去重键保证。
 
 ## 4. 旧画面推断机制(已退役)
 

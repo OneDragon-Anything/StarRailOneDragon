@@ -42,7 +42,6 @@
 | `last_hp_real` / `last_hp_real_node` | 备战屏真值帧 reconcile | hp_trusted 帧龄门 | 帧/节点 |  对账锚 |
 | `hp_suspect` | 识别层拒信守卫 | 守卫自身复现确认 | 节点内 | 识别质量通道,非策略输入 |
 | `last_node_type` / `node_type_current` / `upcoming_types` | 节点行探针(read_node_sequence) | on_round_end 遥测、director 判节点 | 帧/节点 | 仿 last_hp 模式 |
-| `plane_node_table` / `plane_node_table_plane` / `plane_lengths_seen` | 位面首帧探针 | cw_plane_table.schedule_of、离线统计 | 位面/局 | |
 | `nodeseq_probe_anchor` | 框架探针 | 探针防重 | 节点 | 左移推断轮锚 |
 | `last_streak` | 结算屏「连胜×N」 | economy C 杠杆 | 节点 | 方向语义在符号 |
 | `last_level_obs` | read_level + 单调守卫 | 等级读数消误 | 局 | 识别层守卫状态 |

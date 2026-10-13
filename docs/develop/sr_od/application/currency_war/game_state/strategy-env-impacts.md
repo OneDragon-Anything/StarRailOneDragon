@@ -46,7 +46,7 @@
    ([node-domain.md](node-domain.md) §2)。
 2. **state 内部惰性读口 vs swap 急算**(派生值归位三件套):①随事件必须落账 →
    _swap 效果域段急算(计数器/发放/倒计时基数);②消费时才被问 → state 内部惰性
-   读口(首两个实例:`effective_node_ord()` [node-domain.md](node-domain.md) §3;
+   读口(首两个实例:`effective_node_pos()` [node-domain.md](node-domain.md) §3;
    `xp_buy_cost()` = 商业间谍被动腿,见 §3 商业间谍条);③_swap 前只放原始读数
    整理,依赖 state 内部知识的派生禁放。
 

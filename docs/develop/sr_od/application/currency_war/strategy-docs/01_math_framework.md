@@ -106,7 +106,7 @@ EV 层：只增不减——在骨架之上追加优化动作，本篇 §3 七面
 
 权威判据 = **P16**：E_rounds(c) = distance/per_round 超几何精确口径 + θ 滞回 + D_min 驻留（无抖动序列，振荡 ≤1/(2·D_min)）；判定 = E(alt)·(1+δ)+θ < E(cur)·(1+δ) ∧ 驻留 ≥ D_min。换线瞬间 P41 卖出不等式自动翻转。实证注（as-built，2026-09-06 核）：`should_switch_e` **已接线**（mandate_v1 证明 pass：`entry.py:397` → `proof.should_switch` → kernel/cw_line_switch）；休眠机理 = θ/U_X/V_ms【拟】None 期 fail-closed 封印（`theta_unavailable`/`switchline_exit_blocked` 短路），标定齐前换线事件恒 0——非零接线（详 [12_line_and_intention.md](12_line_and_intention.md) §3）。
 
-配方对/意向层（未锁线层）的方向判据 = **四层谓词**（在任优先 × form_ok 冻结 × 证据中性计票 × 可行性门；谓词结构条件消环，零新阈值族——意向层滞回唯一合法路径 = P31 并轨本面 P16 参数族）。辖域分界：本节辖锁线换线「换不换」，辖未锁配方对层「席位翻不翻」，P74 辖锁线买面「买不买」；三层共享 kernel `e_rounds` + `r_remaining` 读法，禁消费端内联改写。判据本体与消解矩阵以 `proofs/math_proofs.md` 索引 P-T166 行为准，实现锚见 [12_line_and_intention.md](12_line_and_intention.md) §3/§4。
+配方对/意向层（未锁线层）的方向判据 = **四层谓词**（在任优先 × form_ok 冻结 × 证据中性计票 × 可行性门；谓词结构条件消环，零新阈值族——意向层滞回唯一合法路径 = P31 并轨本面 P16 参数族）。辖域分界：本节辖锁线换线「换不换」，辖未锁配方对层「席位翻不翻」，P74 辖锁线买面「买不买」；三层共享 kernel `e_rounds` + 策略门面 `r_remaining`（`statefn/horizon`，场字段自算）读法，禁消费端内联改写。判据本体与消解矩阵以 `proofs/math_proofs.md` 索引 P-T166 行为准，实现锚见 [12_line_and_intention.md](12_line_and_intention.md) §3/§4。
 
 ### 3.8 横切修正项与支配性族
 
@@ -136,7 +136,7 @@ EV 层：只增不减——在骨架之上追加优化动作，本篇 §3 七面
 | λ_death(PL 键) | 直测分层表带 CI；**决策时可观测量 = 分层胜率 × 槽序表剩余战斗数（P51 Λ.1 生成式）；禁用事后 R、禁用桶级混合值、hp 不入自变量、板面/bench 维不入键** | **P51**（采集 #3 = λ 连续模型，到位后替换分层表） |
 | W_floor / W_flow | 等待代价两通道：W_flow∈[0,0.5] 小项；W_floor = λ_death×(g+Φ)——**消费形态 = 区间敞口比较，禁边际引用** | **P51** |
 | Ī(净收入率) | 按收入日程逐节点现算（base(r)+streak[决策前相]+败轮底金） | cw_economy 收入三表（全【注】） |
-| R_全局 | 当前节点 + 后续位面按**实际长度**求和 | schedule_of 实际长度（禁写死 9——`total_remaining_nodes` 恒按 9/位面计是已登记待修缺陷，非本表口径） |
+| R_全局 | 当前节点 + 后续位面按**实际长度**求和 | 策略门面 `statefn/horizon` 场字段自算（`r_global`/`r_remaining`，长度真值源 = `gs.node_seq_by_plane` 实际长度,None 回退默认表;本层禁新建长度常量） |
 | q / P_shop / E[refreshes] | 槽级命中概率/单店至少一张概率/缺口期望刷次（超几何 DP；第 4 参 c = 同费非目标已拿走数，禁传 cost——P41 A2 防错注） | cw_shop_odds |
 | V_opt(囤件期权) | u·P_miss·C_rescue（二维表按当前等级取格；消费处金可行性截断现检） | **P41** ① |
 | V_slot(bench 槽价) | 有空槽 = 0；free≤1 = max 被阻断动作净 EV；合成完备购不入阻断集 | **P41** ③ |
