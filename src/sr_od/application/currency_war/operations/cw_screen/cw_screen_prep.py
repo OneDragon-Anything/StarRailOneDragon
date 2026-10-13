@@ -34,7 +34,6 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     deployed_view_of_hits,
     game_state_of,
     gs_of_ctx,
-    node_ordinal_of,
     observe_node_anchor,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
@@ -292,15 +291,15 @@ class CwScreenPrep(CwOperation):
                 if _st is not None and _st.plane is not None \
                         and _st.round_num is not None:
                     with contextlib.suppress(Exception):
-                        # 锚定正解传场字段现值(T-8 设计 §2.3 写端覆盖事实:
+                        # 锚定输入即键((位面,轮) 元组直传;键表示下调用方
+                        # 零坐标换算义务,迭代
+                        # 2026-10-12-abolish-node-ordinal design §2.5)——
                         # 备战帧锚定是位面内全部战斗/奖励节点含 boss 的唯一
-                        # node_ord 观察写端——漏传则修饰局 P2 起形成恒滞后
-                        # 一节的影子轨道,9 制读数与滞后 v 塌缩重锚,
-                        # DECL 逐节留证,非可自愈形态)。
+                        # node_pos 观察写端(漏传/错读的越域形态由 kernel
+                        # 位面在表守卫丢弃留证)。
                         observe_node_anchor(
                             _gs_obs,
-                            node_ordinal_of(int(_st.plane), int(_st.round_num),
-                                            seqs=_gs_obs.node_seq_by_plane.value),
+                            (int(_st.plane), int(_st.round_num)),
                             trigger_screen='货币战争-备战',
                             actor='CwScreenPrep')
                 # 备战渠道签名:备战帧观察写入 = 渠道①,actor=本 op、

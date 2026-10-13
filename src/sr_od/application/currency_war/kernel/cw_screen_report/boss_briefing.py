@@ -38,8 +38,8 @@ def report_screen_boss_briefing_obs(gs: GameState,
       ⇒ 简报 op 被分派时 hist 已被 settle_confirm 推进至 boss 节点
       ——「hist 落后、类型写错节点」结构性不可达。hist None(锚先于
       任何上报的假想形态)= 零写禁猜(防御性保留);
-    - 序号推进半部已随旧腿退役:boss 节点序由结算确认上报推进,本口零
-      node_ord 写;
+    - 序位推进半部已随旧腿退役:boss 节点序位由结算确认上报推进,本口
+      零 node_pos 写;
     - 幂等:同 hist 重复上报走 _write_derived_node_type 冲突纪律(同节点
       同类型 = 同值重写行,自然幂等);
     - actor = CwScreenBossBriefing(宿主 op 登记名,留证归因);类型直定
@@ -47,10 +47,10 @@ def report_screen_boss_briefing_obs(gs: GameState,
     """
     if not obs.on_screen:
         return
-    hist = gs.node_hist_ord
+    hist = gs.node_hist_pos
     if hist is None:
         return   # hist 未推进:目标不可知,禁猜零写(结构性不可达,防御性保留)
     _write_derived_node_type(
-        gs, 'boss', target_ord=int(hist),
+        gs, 'boss', target_pos=hist,
         actor='CwScreenBossBriefing',
         trigger_screen=SCREEN_BOSS_BRIEFING, seq=gs.write_seq + 1)

@@ -235,7 +235,7 @@ def record_settlement_row(gs: GameState, outcome: RoundOutcome, *,
 def claim_encounter_reward(gs: GameState) -> str:
     """遭遇奖励兑现(纯容器读零读屏;``CwOpSettleConfirm`` 确认点击后、
     推进上报前调——语义顺序 = 先记账后推进,并防御下一备战帧观察早到
-    覆写 node 镜像;``report_node_advance`` 只推进 node_ord 不写镜像,
+    覆写 node 镜像;``report_node_advance`` 只推进 node_pos 不写镜像,
     推进前后调对读值无差别)。
 
     判据(design §2.4,attack3 X4/X7 + R1 定谳):

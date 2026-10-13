@@ -56,10 +56,10 @@ from sr_od.application.currency_war.kernel.cw_events import (
     normalize_registry_equip_name,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
-    node_ordinal_of,
     observe_node_anchor,
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
+    NodePos,
     node_round_cap,
 )
 from sr_od.application.currency_war.kernel.cw_screen_report.supply_node import (
@@ -146,17 +146,17 @@ class CwScreenSupplyNode(CwOperation):
                                               int(mrl.max.center.y))
         return None
 
-    def _read_node_bar(self, screen) -> int | None:
+    def _read_node_bar(self, screen) -> NodePos | None:
         """顶部节点条「备战阶段 X-Y」读数(视觉实证 V3:顶部节点条屏显,
         备战屏 A_PHASE 识别区不含该位置,故本屏独立建档「标识-备战阶段」)。
 
         OCR 带 = 建档 pc_rect 外扩余量(x ±30 / y ±15,与 _read_refresh_anchor
         同款;crop_first=False 全帧识别按带过滤,防小框裁剪漏检)。
         正则命中 + 值域内(plane∈1-3/round ≤ node_round_cap(场字段现值),
-        与 read_phase_round 值域守卫同源——OCR 抓错源当 miss)→ 节点序
-        (T-8:内联 ``(plane-1)*9+rnd`` 公式退役,改调 kernel 正解
-        :func:`node_ordinal_of` 传场字段现值,消第二份坐标公式;漏传处
-        修饰局 P2 起与滞后 v 塌缩重锚 = 影子轨道,T-8 设计 §2.3)。
+        与 read_phase_round 值域守卫同源——OCR 抓错源当 miss)→ **节点序位
+        元组 (plane, rnd) 直返**(键表示下读数即键,零坐标换算,迭代
+        2026-10-12-abolish-node-ordinal design §2.5;越域位面形态由 kernel
+        锚定位面在表守卫丢弃留证)。
         读不得/值域外 → None(调用方 = 跳过,禁猜)。纯读。
         """
         if screen is None:
@@ -180,7 +180,7 @@ class CwScreenSupplyNode(CwOperation):
             if m:
                 plane, rnd = int(m.group(1)), int(m.group(2))
                 if 1 <= plane <= 3 and 1 <= rnd <= node_round_cap(plane, _seqs):
-                    return node_ordinal_of(plane, rnd, seqs=_seqs)
+                    return plane, rnd
         return None
 
     @operation_node(name='观察', is_start_node=True)
@@ -222,9 +222,9 @@ class CwScreenSupplyNode(CwOperation):
         # 可锚——的唯一锚定点;divert 形态 = 备战帧已锚,本读数走处置规则表
         # reanchor/stale_dropped 分支承接,处置规则表正本 = `game_state/node-derivation.md`(E10 行))。
         # 读不得/局外 gs 缺席 = 跳过(禁猜;best-effort)。
-        _ordinal = self._read_node_bar(screen)
-        if _ordinal is not None and _gs is not None:
-            observe_node_anchor(_gs, _ordinal,
+        _pos = self._read_node_bar(screen)
+        if _pos is not None and _gs is not None:
+            observe_node_anchor(_gs, _pos,
                                 trigger_screen='货币战争-补给',
                                 actor='CwScreenSupplyNode')
         if _gs is not None:

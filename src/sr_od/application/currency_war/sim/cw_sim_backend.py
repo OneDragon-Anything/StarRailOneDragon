@@ -90,9 +90,8 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     OreSight,
     _row_unit_tags,
     clear_pending_loss,
-    effective_node_ord,
+    effective_node_pos,
     node_kind_of,
-    node_ordinal_of,
     observe_node_anchor,
     seed_opening_state,
 )
@@ -105,7 +104,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     normalize_invest_name,
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
-    node_pos_of,
+    NodePos,
     node_sequence_of,
 )
 from sr_od.application.currency_war.kernel.cw_ore_channel import (
@@ -763,20 +762,20 @@ class SimBackend:
     done: bool = field(init=False, default=False)
     #: 已完成结算的节点键(重入幂等守卫;战斗结算每节点恰一次)。
     _settled_key: tuple[int, int] | None = field(init=False, default=None)
-    #: 已进窗的节点线性序(节点推进重入幂等守卫)。
-    _entered_ord: int = field(init=False, default=0)
-    #: 已收口节点窗口的线性序(None = 尚无;窗口前段幂等守卫,
+    #: 已进窗的节点序位(节点推进重入幂等守卫;None = 尚无)。
+    _entered_pos: NodePos | None = field(init=False, default=None)
+    #: 已收口节点窗口的节点序位(None = 尚无;窗口前段幂等守卫,
     #: :meth:`_begin_node_window`)。
-    _window_begun_ord: int | None = field(init=False, default=None)
+    _window_begun_pos: NodePos | None = field(init=False, default=None)
     #: 扑满节点递延收入快照(None = 非扑满窗或已落账):统一公式
     #: 「战败时无连胜成分」需胜负,窗口开时未知 → 基数冻结(金/进轮
     #: 连胜/收入修饰 = 轮初口径),结算腿胜负后落账并清回 None。
     _piggy_income_snap: (tuple[int, int, tuple[float, int, int | None]]
                          | None) = field(init=False, default=None)
     #: 对账延后声明队列(豁免场景内 next_screen 等值断言延后至稳态,
-    #: :meth:`_reconcile_next_screen`;元素 = (延后时点已进窗线性序, 声明),
+    #: :meth:`_reconcile_next_screen`;元素 = (延后时点已进窗节点序位, 声明),
     #: 每次 advance 入口消费)。
-    _pending_reconcile: list[tuple[int, WorldDecl]] = field(
+    _pending_reconcile: list[tuple[NodePos | None, WorldDecl]] = field(
         init=False, default_factory=list)
     _steps: int = field(init=False, default=0)
 
@@ -924,7 +923,7 @@ class SimBackend:
         """等待变体惰性完成(任何问询/点击时点动画已完成 → 进 P1r1)。"""
         if self._sub == PREP_SUB_WAIT_ONE_ONE and not self.done:
             self._sub = ''
-            self._enter_node_window(1, 1)
+            self._enter_node_window((1, 1))
 
     def _supply_refresh(self) -> None:
         """补给免费刷新(点击源;剩余闸:left>0 才刷,刷后 left−1;选项
@@ -988,7 +987,14 @@ class SimBackend:
                 f'{sorted(ADVANCE_TRIGGER_KINDS)}(构造点漂移 = 接线 bug,'
                 '禁静默)')
         if decl.trigger == 'node_advance':
-            self._on_node_advance()
+            if decl.next_screen == '':
+                # 局终声明消费腿(键表示切换批 design §2.6):kernel 终局
+                # 事件式(sequence_next = None → applied=True match_end,
+                # 声明 next_screen='')的世界消费;kernel 声明权威、sim
+                # 对账的分工不变。
+                self._on_node_advance_terminal()
+            else:
+                self._on_node_advance()
         elif decl.trigger == 'battle_resolve':
             self._resolve_battle()
         elif decl.trigger == 'open_box':
@@ -1039,13 +1045,13 @@ class SimBackend:
     def _drain_pending_reconciles(self) -> None:
         """消费延后对账队列(advance 入口;已入稳态 = 逐声明补验等值,
         失配留证后一并清空——每声明对账一次,不重复告警)。仍在豁免
-        场景 = 继续延后;**世界已推进过下一节点窗**(进窗线性序 ≠ 延后
+        场景 = 继续延后;**世界已推进过下一节点窗**(进窗序位 ≠ 延后
         时点)= 断言时机已过,静默丢弃(预测的落点屏已被后续窗口替代,
         留证只会误报——sim 流程结算驻留快进形态常见)。"""
         if not self._pending_reconcile or self._reconcile_exempt_reason():
             return
-        for entered_ord, decl in self._pending_reconcile:
-            if self._entered_ord != entered_ord:
+        for entered_pos, decl in self._pending_reconcile:
+            if self._entered_pos != entered_pos:
                 continue
             if self._screen != decl.next_screen:
                 self._record_decl_drift(decl, self._screen)
@@ -1082,7 +1088,7 @@ class SimBackend:
         if self._screen == decl.next_screen:
             return
         if self._reconcile_exempt_reason():
-            self._pending_reconcile.append((self._entered_ord, decl))
+            self._pending_reconcile.append((self._entered_pos, decl))
             return
         self._record_decl_drift(decl, self._screen)
 
@@ -1090,26 +1096,33 @@ class SimBackend:
 
     def _on_node_advance(self) -> None:
         """节点推进(终结动作上报触发;kernel report_node_advance 已做
-        观察态门与同序去重,本层再守线性序 = 转移事件重入幂等)。"""
-        eff = effective_node_ord(self.gs)
-        if eff is None or eff <= self._entered_ord:
+        观察态门与同序位去重,本层再守序位 = 转移事件重入幂等)。键表示
+        下不存在越界序位——旧「eff 超真值表总长局终分支」随编号退役,局终
+        = kernel 终局事件式声明,走 :meth:`_on_node_advance_terminal`。"""
+        eff = effective_node_pos(self.gs)
+        if eff is None or (self._entered_pos is not None
+                           and eff <= self._entered_pos):
             return
         # 节点经验在节点推进时入账(被离开节点的类型;首推进无前节点)
         prev = self.gs.node.value
         if prev is not None:
             apply_node_xp(self.gs, node_type=prev.kind)
-        # 节点序列权威源 = 场字段现值(T-8;sim 与 kernel 同源读,任一侧
-        # 漏读字段 → 修饰局 P1 r9 推进时 DECL_SCREEN_DRIFT 确定性留证):
-        _seqs = self.gs.node_seq_by_plane.value
-        if eff > sum(len(node_sequence_of(p, _seqs)) for p in (1, 2)):
-            # P2 末 = 第一期辖域尽头;P3 进场即局终(p3_unobserved)
-            self.disclosures[DISCLOSURE_P3_UNOBSERVED] = \
-                'enter_p3_game_over_u19'
-            self._game_over()
-            return
-        plane, r = self._ordinal_to_node(eff)
-        self._entered_ord = eff
-        self._enter_node_window(plane, r)
+        self._entered_pos = eff
+        self._enter_node_window(eff)
+
+    def _on_node_advance_terminal(self) -> None:
+        """局终声明消费腿(trigger=node_advance ∧ next_screen=''):
+        kernel 终局事件式声明的世界消费——XP 入账(被离开节点类型,与
+        现行局终前入账同序)+ P3 未观测披露(键值 enter_p3_game_over_u19
+        为在册遥测身份,历史越界序编号字样豁免改键)+ 终局。此后
+        :meth:`_reconcile_next_screen` 走 done=True ∧ decl='' 合格臂,
+        漂移面零新增。"""
+        prev = self.gs.node.value
+        if prev is not None:
+            apply_node_xp(self.gs, node_type=prev.kind)
+        self.disclosures[DISCLOSURE_P3_UNOBSERVED] = \
+            'enter_p3_game_over_u19'
+        self._game_over()
 
     def _on_supply_picked(self) -> None:
         """补给选定落地:带钻选项给宝钻(世界事实写容器 diamond_count;
@@ -1300,13 +1313,6 @@ class SimBackend:
         report_screen_megastar_obs(self.gs, CwScreenMegastarObs(
             in_node=True, options=cands))
 
-    def _ordinal_to_node(self, ordinal: int) -> tuple[int, int]:
-        """节点线性序 → (位面, 轮)(T-8 瘦委托:实现单一源 = kernel
-        :func:`node_pos_of`,seqs 同源透传场字段现值;原方法体双份实现
-        与 ValueError 异常分叉消除,超界统一 :class:`P3UnobservedError`
-        ——调用方均先行拦截局终,超界不可达)。"""
-        return node_pos_of(ordinal, seqs=self.gs.node_seq_by_plane.value)
-
     def _node_pos(self) -> tuple[int, int]:
         """当前节点 (位面, 轮)(gs.node 现值;未进窗 = (1, 1) 防御面)。"""
         node = self.gs.node.value
@@ -1314,23 +1320,22 @@ class SimBackend:
             return 1, 1
         return node.plane, node.round_num
 
-    def _enter_node_window(self, plane: int, round_num: int) -> None:
-        """进节点(序列平移:写 gs.node + 节点序观察锚定;位面首 = 位面
-        过渡屏,其余序列在 _begin_node_window 收口)。"""
-        seq = node_sequence_of(plane, self.gs.node_seq_by_plane.value)
-        kind = seq[round_num - 1]
-        ordinal = self._node_ordinal(plane, round_num)
+    def _enter_node_window(self, pos: NodePos) -> None:
+        """进节点(输入即键;序列平移:写 gs.node + 节点序位观察锚定;
+        位面首 = 位面过渡屏,其余序列在 _begin_node_window 收口)。"""
+        seq = node_sequence_of(pos[0], self.gs.node_seq_by_plane.value)
+        kind = seq[pos[1] - 1]
         self.gs.observe(self.gs.node,
-                        NodeKey(plane=plane, round_num=round_num, kind=kind),
-                        evidence=sim_evidence(f'node:p{plane}r{round_num}'),
+                        NodeKey(plane=pos[0], round_num=pos[1], kind=kind),
+                        evidence=sim_evidence(f'node:p{pos[0]}r{pos[1]}'),
                         sig=obs_sig(group_id='sim:node'))
-        # 节点序锚定(sim 写端 = 世界呈现节点,与实机「备战帧顶栏/补给屏
+        # 节点序位锚定(sim 写端 = 世界呈现节点,与实机「备战帧顶栏/补给屏
         # 节点条」观察锚定同口;终结动作推进的观察态门以此为前提)。
-        observe_node_anchor(self.gs, ordinal,
+        observe_node_anchor(self.gs, pos,
                             trigger_screen=self._screen_for_node(kind),
                             actor='SimBackend')
         self._window_resume = ''
-        if plane > 1 and round_num == 1:
+        if pos[0] > 1 and pos[1] == 1:
             # 位面过渡(U20:全继承无重置;点空白后收口节点窗口)
             self._screen = SCREEN_PLANE_TRANSITION
             self._sub = ''
@@ -1344,13 +1349,6 @@ class SimBackend:
         return {'supply': SCREEN_SUPPLY, 'encounter': SCREEN_ENCOUNTER,
                 'boss': SCREEN_BOSS_BRIEFING}.get(kind, SCREEN_PREP)
 
-    def _node_ordinal(self, plane: int, round_num: int) -> int:
-        """(位面, 轮) → 节点线性序(T-8 瘦委托:实现单一源 = kernel
-        :func:`node_ordinal_of`,seqs 同源透传场字段现值;观察锚定与守卫
-        消费)。"""
-        return node_ordinal_of(plane, round_num,
-                               seqs=self.gs.node_seq_by_plane.value)
-
     def _begin_node_window(self) -> None:
         """节点窗口序列(收入 → 环境金 → 商店全刷 → overlay → offer →
         节点屏呈现;位面过渡点空白与直进节点共用本收口)。
@@ -1358,12 +1356,12 @@ class SimBackend:
         幂等守卫(3.4 联调裁决①):窗口前段(轮首收入/环境金/发牌)对
         同一节点只执行一次——位面过渡点击重放(同点位二次 click_answer)
         会二次进入本收口,无双发守卫则窗口前段收入/发牌双写(发牌覆盖
-        同值无感、收入是真双账)。守卫键 = 节点线性序。"""
+        同值无感、收入是真双账)。守卫键 = 节点序位 (位面,轮)。"""
         plane, r = self._node_pos()
-        ordinal = self._node_ordinal(plane, r)
-        if self._window_begun_ord == ordinal:
+        pos_key: NodePos = (plane, r)
+        if self._window_begun_pos == pos_key:
             return
-        self._window_begun_ord = ordinal
+        self._window_begun_pos = pos_key
         kind = node_sequence_of(plane, self.gs.node_seq_by_plane.value)[r - 1]
         # 轮首收入(M04;败补挂账按 kernel 分支序消费——supply/reward
         # 轮不消费,败态跨轮保留至下一战斗轮;连胜 = 容器带符号派生读)
@@ -1541,7 +1539,7 @@ class SimBackend:
 
         - env ∈ :data:`ENV_ORE_GRANTS` → **声明入队**:经 kernel 同一
           电平规则函数 :func:`check_ore_declared_level`(入队幂等守卫 =
-          pending/done 双查,``_window_begun_ord`` 窗口幂等降为冗余
+          pending/done 双查,``_window_begun_pos`` 窗口幂等降为冗余
           保险;顺手清位面过渡过期条目,evidence
           ``ore_declared_expired#p{old}`` 留痕)——**金不再直发**,世界
           面的金在点击声明矿兑现时入账(策略面估值消费

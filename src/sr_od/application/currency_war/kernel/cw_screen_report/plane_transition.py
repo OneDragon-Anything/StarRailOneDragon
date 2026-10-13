@@ -56,7 +56,7 @@ def report_screen_plane_transition_obs(gs: GameState,
     if obs.chain is None:
         return
     mirror = gs.node.value
-    opening = mirror is None and gs.node_hist_ord is None
+    opening = mirror is None and gs.node_hist_pos is None
     if not opening and mirror is None:
         return   # 非开局且镜像缺:行归属位面不可知,禁猜跳写
     gs.observe(gs.node_path, obs.chain, evidence='transition_snapshot',

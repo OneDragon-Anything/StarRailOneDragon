@@ -8,13 +8,14 @@ op 惯例 ``CwOpOpenShop``)。职责 = 点击「货币战争-结算/按钮-继�
 trigger='settle_confirm')`` → 返回。
 
 **去证据门 = 点击即上报**:动作 op 不做任何确认——点了就是
-上报推进;推进里只有 node_ord 为观察态(source==observation 且 value
+上报推进;推进里只有 node_pos 为观察态(source==observation 且 value
 在场)才落账(观察态门为唯一门,kernel ``report_node_advance``
-结构性承载)。转移证据机制(探锚/等待/bail/补报)已退役。无证据等待
-⇒「上报先于下一节点任何画面渲染」恒成立。死点击自愈链:幻影上报
-(logic 态)→ 重试点击再上报被观察态门挡(零推进)→ 某次点击落地 →
-备战帧读数 = hist → 等值 reanchor 翻锚定 → 下一节点解锁(最坏损失 =
-幻影那次多 tick 一档发放,用户已知悉接受)。
+结构性承载;P2 末终局确认走 kernel 终局事件式出口 applied=True
+reason='match_end',零写入零推进)。转移证据机制(探锚/等待/bail/补报)
+已退役。无证据等待 ⇒「上报先于下一节点任何画面渲染」恒成立。死点击
+自愈链:幻影上报(logic 态)→ 重试点击再上报被观察态门挡(零推进)→
+某次点击落地 → 备战帧读数 = hist → 等值 reanchor 翻锚定 → 下一节点
+解锁(最坏损失 = 幻影那次多 tick 一档发放,用户已知悉接受)。
 
 **归属界定**:随本 op 的仅 = 点击/长按兜底/兑现回调/推进上报;结算
 读点、``_record_round_outcome``、rounds_done 计数等结算链记留宿主
@@ -70,9 +71,9 @@ class CwOpSettleConfirm(CwOperation):
     def _report_node_advance(self) -> LogicOutcome | None:
         """settle_confirm 上报(容器获取参照宿主 gs 获取方式:session
         旁表;局外/session 缺 = 跳过上报 best-effort,返回 None 不炸
-        主流程)。返回 LogicOutcome(``applied`` = 推进落账位;声明随
-        ``world_decl``,签名改形申报 = 动作后果声明化详设 world-decl.md
-        §1 D1)。"""
+        主流程)。返回 LogicOutcome(``applied`` = 推进落账位;局终出口 =
+        match_end 终结事实,声明 next_screen='';声明随 ``world_decl``,
+        签名改形申报 = 动作后果声明化详设 world-decl.md §1 D1)。"""
         _match = getattr(self.ctx, 'cw_match', None)
         _session = getattr(_match, 'session', None) if _match is not None else None
         if _session is None:
@@ -131,7 +132,7 @@ class CwOpSettleConfirm(CwOperation):
                 self._stay = 0
             # 遭遇奖励兑现(推进上报前调:语义顺序 = 先记账后推进;并防御
             # 下一备战帧观察早到覆写 node 镜像——report_node_advance 只
-            # 推进 node_ord,镜像读值本身不随推进变。本局结算数据就绪性
+            # 推进 node_pos,镜像读值本身不随推进变。本局结算数据就绪性
             # 由宿主 battle_wait ②段保证:读点先于本 op 派发)。
             self._claim_encounter_reward()
             # 点击即上报(去证据门):重复上报被

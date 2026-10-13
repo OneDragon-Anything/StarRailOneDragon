@@ -405,10 +405,11 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_OBSERVATION_ONLY,
         basis='顶栏原文观察层字段(用户终裁 2026-09-11 字段层次终极版:'
               '原文缺读不写禁猜),零逻辑写端'),
-    'node_ord': ProjectionAuditRow(
+    'node_pos': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='派生规则四腿全部 write_logic(逻辑层,用户终裁 2026-09-11);'
-              '无观察写序键例外'),
+        basis='两态序键:锚定态 observe_node_anchor 直写 observation / '
+              '推进态 report_node_advance 经推进原语写 logic(值 = '
+              '(位面,轮) 元组键,2026-10-12-abolish-node-ordinal)'),
     # —— 回执与局终 ——
     'receipts': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,

@@ -40,7 +40,7 @@ from dataclasses import dataclass, field, replace
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     EQUIP_ACQUIRE_CONSEQUENCES,
-    _portal_acquired_t,
+    _portal_acquired_key,
     apply_board_rewrite,
     register_portal_from_env,
 )
@@ -567,10 +567,12 @@ def gain_bench_item(gs: GameState, item: str, *, rand: bool,
 
 
 def _node_frame(gs: GameState) -> str:
-    """链内 frame 字符串(p<plane>-r<round>;节点未观察 = 空——登记腿
-    evidence 用,与画面 op 三桥现行口径一致)。"""
+    """链内 frame 字符串(「位面-轮」统一标识,如 ``2-3``;节点未观察 =
+    空——登记腿 evidence 用;编号时代的 p{plane}-r{round} 双形态随键
+    表示统一,消除同 run 双形态并立,迭代
+    2026-10-12-abolish-node-ordinal 披露 2)。"""
     _nd = gs.node.value
-    return (f'p{_nd.plane}-r{_nd.round_num}' if _nd is not None else '')
+    return (f'{_nd.plane}-{_nd.round_num}' if _nd is not None else '')
 
 
 def gain_invest_strategy(gs: GameState, session: object,
@@ -590,7 +592,7 @@ def gain_invest_strategy(gs: GameState, session: object,
        形态],容器写照常):``STRATEGY_EFFECTS`` 归一名命中 →
        ``effects.register_strategy`` + burst 桥 ``apply_effect_burst_grant``
        + 板面重写桥 ``apply_board_rewrite``
-       (acquired_t = 节点序快照);失败 log + 缺陷留证(``DEFECT_STRATEGY_
+       (acquired_key = 节点序位快照);失败 log + 缺陷留证(``DEFECT_STRATEGY_
        REGISTER``)、不阻塞;
     3. **触发策略效果**:`on_strategy_gained`(查 ``PICK_INVEST_EFFECTS``
        分派;未收录卡安静不写)。
@@ -620,16 +622,17 @@ def gain_invest_strategy(gs: GameState, session: object,
         try:
             _spec = STRATEGY_EFFECTS.get(canon)
             if _spec is not None:
-                _t = _portal_acquired_t(gs, session)
+                _key = _portal_acquired_key(gs, session)
                 _frame = _node_frame(gs)
-                gs.effects.register_strategy(_spec, _t)
+                gs.effects.register_strategy(_spec, _key)
                 apply_effect_burst_grant(gs, _spec, frame=_frame)
                 _rw = apply_board_rewrite(gs, _spec, frame=_frame)
                 if _rw is not None:
                     log.info('[cw-gain] 板面重写桥:%s(退款 %s/清空域 %s)',
                              _rw.rewrite, _rw.refund_gold,
                              ','.join(_rw.cleared_fields) or '无')
-                log.info('[cw-gain] 效果账本登记:%s(t=%s)', canon, _t)
+                log.info('[cw-gain] 效果账本登记:%s(acquired=%s)', canon,
+                         _key)
         except Exception as e:  # noqa: BLE001  登记腿 best-effort(gain-chain.md §6)
             log.warning('[cw-gain] 策略登记腿失败(不阻塞):%s %s', canon, e)
             _emit_defect(field_name='active_strategies',

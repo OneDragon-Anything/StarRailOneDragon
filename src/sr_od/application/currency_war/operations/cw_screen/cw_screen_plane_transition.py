@@ -61,7 +61,7 @@ def _build_transition_chain(gs: GameState | None,
     if gs is None or not slots:
         return None
     mirror = gs.node.value
-    opening = mirror is None and gs.node_hist_ord is None
+    opening = mirror is None and gs.node_hist_pos is None
     if not opening and mirror is None:
         return None   # 非开局且镜像缺:行归属位面不可知,禁猜
     plane = 1 if opening else int(mirror.plane)

@@ -186,11 +186,10 @@ class ActiveEffect:
                                # strategy=策略源,affix=词缀源(登记端 register_affix),
                                # portal=环境源(登记端 register_portal_from_env,
                                # 结构化条目=ENV_PORTAL_EFFECTS)
-    acquired_t: int | None     # 登记时点;节点序(修饰制坐标系,基 1——
-                               # 登记快照与推进入账同经 kernel 正解派生,
-                               # seqs = 场字段现值,T-8 起非固定 9 制);
-                               # 登记期快照(登记端 = _portal_acquired_t /
-                               # register_affixes_from_names)
+    acquired_key: tuple[int, int] | None
+    # 登记时点;(位面, 轮) 节点序位元组(cw_node_schedule.NodePos 同形;
+    # 本模块零 import 包内模块纪律,类型就地写 tuple)。登记期快照
+    # (登记端 = _portal_acquired_key / register_affixes_from_names)
     remaining_nodes: int | None  # N_NODES 类余期;**自然数计数非索引**;None=不限;
                                  # 挂点(tick_node)现读递减
     remaining_uses: int | None   # 次数类余量(免战牌×2 等);挂点现读递减
@@ -219,10 +218,11 @@ class ActiveEffectInventory:
         self.entries: list[ActiveEffect] = []
         # 事件标记:键 → 计数(_EVENT_* 常量);on_level_up/on_battle_end 写
         self._events: dict[str, int] = {}
-        # 节点 tick 去重键(最近已推进的节点序;None=未推进过)。挂点每备战
-        # 环采样,同节点多次调用只推进一次——去重键是 tick 幂等性的载体,
-        # 随清单实例走(session 级生命周期,新局天然清零)。
-        self._last_tick_node: int | None = None
+        # 节点 tick 去重键(最近已推进的节点序位 (位面,轮);None=未推进
+        # 过)。挂点每备战环采样,同节点多次调用只推进一次——去重键是
+        # tick 幂等性的载体,随清单实例走(session 级生命周期,新局天然
+        # 清零)。
+        self._last_tick_key: tuple[int, int] | None = None
         # 装备效果进度侧栏(拷贝仪参与计数载体首用):键 = (装备名, 装备者
         # char_id),值 = 单调计数器。装备源效果无 EffectSpec 实例(
         # 申报面纪律:装备写端 = 桥/贡献算术直读 GameState),其进展量
@@ -250,22 +250,24 @@ class ActiveEffectInventory:
         )
 
     def _register(self, spec: EffectSpec, source: str,
-                  acquired_t: int | None) -> ActiveEffect:
-        """登记端共用体:spec + 来源 + 登记时点入清单(acquired_t 坐标系见
-        ActiveEffect.acquired_t;余期播种见 _seed_progress)。"""
+                  acquired_key: tuple[int, int] | None) -> ActiveEffect:
+        """登记端共用体:spec + 来源 + 登记时点入清单(acquired_key 坐标系见
+        ActiveEffect.acquired_key;余期播种见 _seed_progress)。"""
         remaining_nodes, remaining_uses = self._seed_progress(spec)
         entry = ActiveEffect(
-            spec=spec, source=source, acquired_t=acquired_t,
+            spec=spec, source=source, acquired_key=acquired_key,
             remaining_nodes=remaining_nodes, remaining_uses=remaining_uses,
         )
         self.entries.append(entry)
         return entry
 
-    def register_strategy(self, spec: EffectSpec, acquired_t: int | None) -> ActiveEffect:
+    def register_strategy(self, spec: EffectSpec,
+                          acquired_key: tuple[int, int] | None) -> ActiveEffect:
         """策略获得 → 入清单。"""
-        return self._register(spec, SOURCE_STRATEGY, acquired_t)
+        return self._register(spec, SOURCE_STRATEGY, acquired_key)
 
-    def register_affix(self, spec: EffectSpec, acquired_t: int | None) -> ActiveEffect:
+    def register_affix(self, spec: EffectSpec,
+                       acquired_key: tuple[int, int] | None) -> ActiveEffect:
         """词缀效果获得 → 入清单(source=affix;结构化注册 =
         kernel/cw_affix_effects.AFFIX_EFFECT_SPECS,spec.id = 词缀名)。
 
@@ -278,9 +280,10 @@ class ActiveEffectInventory:
         cw_affix_effects.EQUIP_REWRITE_DECLARATIONS 申报面);本方法承诺
         登记语义与策略源同轨(余期播种/推进/到期共用同一套挂点逻辑)。
         """
-        return self._register(spec, SOURCE_AFFIX, acquired_t)
+        return self._register(spec, SOURCE_AFFIX, acquired_key)
 
-    def register_portal(self, spec: EffectSpec, acquired_t: int | None) -> ActiveEffect:
+    def register_portal(self, spec: EffectSpec,
+                        acquired_key: tuple[int, int] | None) -> ActiveEffect:
         """投资环境效果获得 → 入清单(source=portal;结构化条目 =
         :func:`ENV_PORTAL_EFFECTS`(经济环境),未入模环境走
         :func:`register_portal_from_env` 运行期构造的 UnitBuffRef 占位
@@ -291,7 +294,7 @@ class ActiveEffectInventory:
         (active_env 写入同址;best-effort
         失败不阻塞确认链,effect-domain.md §7.3 登记面纪律同词缀源)。
         """
-        return self._register(spec, SOURCE_PORTAL, acquired_t)
+        return self._register(spec, SOURCE_PORTAL, acquired_key)
 
     # —— 查表端(形状保证;决策消费归后续)——
     def by_source(self, source: str) -> list[ActiveEffect]:
@@ -335,7 +338,7 @@ class ActiveEffectInventory:
                 if e.spec.duties.predict and e.spec.trigger == trigger]
 
     # —— 追踪端(挂点调用;纯逻辑,sim 与生产同一实现)——
-    def advance_node(self, node_ordinal: int | None = None
+    def advance_node(self, node_key: tuple[int, int] | None = None
                      ) -> tuple[bool, list[ActiveEffect]]:
         """进节点边界推进(§5.1「节点推进=倒计时递减」「到期=移除+触发
         尾款」),返回 ``(是否真实推进, 本次到期移除的条目)``。
@@ -343,12 +346,13 @@ class ActiveEffectInventory:
         - **是否真实推进**(advanced)是账本→字段桥的余额累加闸门(批次三
           B1):per-node 形态(§3.3.5)每节点恰累加一次,靠本位判——同节点
           重复调用 advanced=False,调用方跳过累加(与余期递减同一去重键)。
-        - ``node_ordinal`` 给定时做**同节点去重**:挂点每备战环采样,同节点
-          多次调用只推进一次(键 = 节点序,基 1,修饰制坐标系——生产写端
-          经 kernel 正解派生、seqs = 场字段现值,与
-          ActiveEffect.acquired_t 同坐标系,T-8);None = 无条件推进(测试
-          /sim 直调)。
-        - **登记当节点不推进**(acquired_t ≥ node_ordinal 的条目跳过):
+        - ``node_key`` 给定时做**同节点去重**:挂点每备战环采样,同节点
+          多次调用只推进一次(键 = (位面, 轮) 节点序位元组,
+          cw_node_schedule.NodePos 同形——生产写端传 GameState 生效序位
+          读口现值,与 ActiveEffect.acquired_key 同键);None = 无条件推进
+          (测试/sim 直调)。
+        - **登记当节点不推进**(acquired_key >= node_key 的条目跳过,元组
+          字典序比较——与旧序数 >= 比较逐值等价,字典序=全序):
           「持续/接下来 N 个节点」读作登记节点的**后继** N 节点(躺平
           「持续3个节点」/节省工位「在接下来3个节点」的卡文口径);登记
           节点当拍即计数会吞掉第一个受效节点。该读法待实采定谳,证伪时
@@ -359,15 +363,15 @@ class ActiveEffectInventory:
 
         余期是自然数计数(非索引):登记 3 → 三次有效推进后移除(躺平 3 节点)。
         """
-        if node_ordinal is not None and node_ordinal == self._last_tick_node:
+        if node_key is not None and node_key == self._last_tick_key:
             return False, []
-        self._last_tick_node = node_ordinal
+        self._last_tick_key = node_key
         expired: list[ActiveEffect] = []
         for e in list(self.entries):
             if e.remaining_nodes is None:
                 continue
-            if (node_ordinal is not None and e.acquired_t is not None
-                    and e.acquired_t >= node_ordinal):
+            if (node_key is not None and e.acquired_key is not None
+                    and e.acquired_key >= node_key):
                 continue
             e.remaining_nodes -= 1
             if e.remaining_nodes <= 0:
@@ -375,10 +379,11 @@ class ActiveEffectInventory:
                 expired.append(e)
         return True, expired
 
-    def tick_node(self, node_ordinal: int | None = None) -> list[ActiveEffect]:
+    def tick_node(self, node_key: tuple[int, int] | None = None
+                  ) -> list[ActiveEffect]:
         """兼容口:仅返回到期条目(忽略 advanced 位;余额累加等桥挂点用
         :meth:`advance_node` 取推进有效性)。"""
-        return self.advance_node(node_ordinal)[1]
+        return self.advance_node(node_key)[1]
 
     def consume_use(self, spec_id: str) -> int | None:
         """次数类余量递减(挂点 = 跳过执行落地,§3.2.19/§5.1「挂点现读递减」)。
@@ -655,7 +660,7 @@ def register_portal_from_env(session: object, env_name: str) -> EffectSpec | Non
     - **幂等**:portal 源已登记同名(spec.name = 归一名)跳过——环境确认链
       重入/retry 不得双登记(实例按 spec_key 唯一,effect-domain.md §9.1
       与词缀源同款纪律);
-    - acquired_t = 登记时点节点序快照((plane-1)*9+round 基 1;GameState
+    - acquired_key = 登记时点节点序位快照((位面, 轮) 元组;GameState
       节点单例;节点未观察(引导窗)= None 缺位,last_state 帧回退已随链
       退役批删除);
     - 返回本次登记的 spec(幂等跳过/未知名返回 None,调用侧日志留证)。
@@ -681,28 +686,21 @@ def register_portal_from_env(session: object, env_name: str) -> EffectSpec | Non
     _spec = env_portal_effects().get(_name)
     if _spec is None:
         _spec = _portal_placeholder_spec(_name)
-    effects.register_portal(_spec, _portal_acquired_t(gs, session))
+    effects.register_portal(_spec, _portal_acquired_key(gs, session))
     return _spec
 
 
-def _portal_acquired_t(gs: object, session: object) -> int | None:
-    """登记时点节点序快照(修饰制坐标系,基 1;register_affixes_from_names
-    同式):GameState 节点单例经 kernel 正解 :func:`node_ordinal_of` 派生,
-    seqs = 场字段现值——与推进入账(advance_node 键)同坐标系契约
-    (cw_effect_inventory「登记当节点不推进」守卫由同坐标系保证,禁 9 制
-    内联快照使守卫在修饰局漂移,T-8 设计 §2.3)。节点未观察(引导窗)=
-    None(登记期快照缺位不炸登记面;last_state 帧回退已随链退役批删除,
-    session 参数保留签名兼容,不再消费)。"""
+def _portal_acquired_key(gs: object, session: object) -> tuple[int, int] | None:
+    """登记时点节点序位快照((位面, 轮) 元组;register_affixes_from_names
+    同式):GameState 节点单例直接取 (plane, round_num)——键表示下零坐标
+    换算(编号正解已随编号表示退役),与推进入账(advance_node 键)同键
+    契约(cw_effect_inventory「登记当节点不推进」守卫由同键保证)。节点
+    未观察(引导窗)= None(登记期快照缺位不炸登记面;last_state 帧回退
+    已随链退役批删除,session 参数保留签名兼容,不再消费)。"""
     _nd = getattr(gs, 'node', None)
     _nd_val = _nd.value if _nd is not None else None
     if _nd_val is not None:
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            node_ordinal_of,
-        )
-        _caps = getattr(gs, 'node_seq_by_plane', None)
-        return node_ordinal_of(
-            _nd_val.plane, _nd_val.round_num,
-            seqs=(_caps.value if _caps is not None else None))
+        return int(_nd_val.plane), int(_nd_val.round_num)
     return None
 
 

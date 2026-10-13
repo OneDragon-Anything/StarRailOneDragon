@@ -19,7 +19,7 @@
   ``p3_unobserved``(U19;禁设回退先验,禁插值)。
 
 **模块归属**:真值表住 kernel(依赖方向架构锁:``node_advance`` 声明的
-``next_screen`` 推导权威源 = 本表 + ``effective_node_ord``,推导在
+``next_screen`` 推导权威源 = 本表 + ``effective_node_pos``,推导在
 ``report_node_advance``(kernel),kernel 禁 import sim
 (``cw_deploy_logic`` 在册);sim 后端同源 import 本表。
 """
@@ -141,29 +141,6 @@ def sequence_next(pos: NodePos,
     if plane + 1 in tables:
         return (plane + 1, 1)
     return None
-
-
-def node_pos_of(ordinal: int,
-                seqs: dict[int, tuple[str, ...]] | None = None
-                ) -> tuple[int, int]:
-    """节点线性序 → (位面, 轮次)(1 基;按序列表变长累加反解)。
-
-    ``seqs`` 给定(= 场字段现值)→ 按修饰制逐位面长度累加(与正解
-    :func:`node_ordinal_of` 同表互逆);None → 默认表(变长累加,非
-    固定位面长度——固定 9 仅在 P1=9 时与变长重合,非通用前提)。
-    超界(位面 3 等)= :class:`P3UnobservedError` 响亮,调用方先行
-    拦截局终。
-    """
-    tables = seqs if seqs is not None else PLANE_NODE_TABLES
-    acc = 0
-    for plane in sorted(tables):
-        length = len(tables[plane])
-        if ordinal <= acc + length:
-            return plane, ordinal - acc
-        acc += length
-    raise P3UnobservedError(
-        f'节点线性序 {ordinal} 超出序列表辖域(P1+P2;P3 未观测,'
-        '调用方须先行拦截为局终)')
 
 
 def node_round_cap(plane: int,
