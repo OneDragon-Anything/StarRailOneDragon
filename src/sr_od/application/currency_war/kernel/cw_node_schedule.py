@@ -3,6 +3,10 @@
 设计正本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
 (§3.3 位面过渡/节点序列)现役口径:
 
+- 节点身份唯一表示 = ``(位面, 轮)`` 序位元组(:data:`NodePos`,1 基,
+  字典序即节点全序);「推进 +1」后继 = :func:`sequence_next`(全仓
+  唯一后继实现,位面切换在此发生),``None`` 返回 = 超出建模域,
+  调用方按局终处理;
 - P1 = 9 节点、P2 = 7 节点,序列 = 默认环境地面真值表
   (``docs/game/currency_war/research/plane_schedule_observed.md``,
   P1 42 局零反例);**默认环境**序列与地面真值一致;改节点序列的
@@ -20,6 +24,12 @@
 (``cw_deploy_logic`` 在册);sim 后端同源 import 本表。
 """
 from __future__ import annotations
+
+from typing import TypeAlias
+
+#: 节点序位(位面, 轮次),二元素整数元组,1 基。节点身份唯一表示:
+#: 字典序 = 有效节点序列按位面拼接展平的全序(位面主序下前缀和单调恒等)。
+NodePos: TypeAlias = tuple[int, int]
 
 #: 节点类型词表(NodeKey.kind 合法值;与容器/日程表同域)。
 NODE_KINDS: frozenset[str] = frozenset({
@@ -98,6 +108,39 @@ def node_sequence_of(plane: int,
             f'位面 {plane} 节点序列无完整观测(p3_unobserved;补采归实机批,'
             '重做设计稿 §2.2 M03/U19:禁回退先验)')
     return seq
+
+
+def sequence_next(pos: NodePos,
+                  seqs: dict[int, tuple[str, ...]] | None = None,
+                  ) -> NodePos | None:
+    """节点序位的后继(「推进 +1」全仓唯一实现,位面切换在此发生)。
+
+    四态契约:
+
+    - 位面内 ``pos[1] < len(seq)`` → 同位面下一轮 ``(p, r+1)``;
+    - 位面末 → 下一位面首 ``(p+1, 1)``;
+    - pos 自身位面不在序列表,或位面末的下一位面无序列表(P3 未观测,
+      含 P2 末)→ ``None`` = 超出建模域,调用方按局终处理;
+    - modeled 位面内 ``pos[1] > len(seq)``(损坏坐标)→ ``ValueError``
+      响亮,禁静默跨位面。
+
+    ``seqs`` 给定(= GameState 场字段现值)→ 字段即权威;None → 默认表
+    (未注册读回退;与 :func:`node_sequence_of` 同参约定)。
+    """
+    tables = seqs if seqs is not None else PLANE_NODE_TABLES
+    plane, r = int(pos[0]), int(pos[1])
+    seq = tables.get(plane)
+    if seq is None:
+        return None
+    if r > len(seq):
+        raise ValueError(
+            f'节点序位 {plane}-{r} 超出位面 {plane} 序列长度 {len(seq)}'
+            '(modeled 位面内损坏坐标,禁静默跨位面)')
+    if r < len(seq):
+        return (plane, r + 1)
+    if plane + 1 in tables:
+        return (plane + 1, 1)
+    return None
 
 
 def node_pos_of(ordinal: int,
