@@ -42,7 +42,7 @@
 
 ## 3.3 同式岛收口(败局闩)
 
-**范围**:cw_screen_battle_wait 败局闩换键门(`SETTLE_DEFEAT_LATCH_MIN_POS=(2,5)`,设计 §2.7);结算单调门零改动核对;killed-hp 兜底门/`last_outcome_t` 零接触核对(T-8 裁决点 7 前半已删,断言符号不存在)。**边界**:不含结算读链其余语义;不含 cw_plane_table(3.5)。
+**范围**:cw_screen_battle_wait 败局闩换键门(`SETTLE_DEFEAT_LATCH_MIN_POS=(2,5)`,设计 §2.7);结算单调门零改动核对;killed-hp 兜底门/`last_outcome_t` 零接触核对(T-8 裁决点 7 前半已删,断言符号不存在);killed 判定注释的 `node_t_of` 历史引用(:467 区)去符号化改写(注释级,语义不变;防 3.5 退役后成无主残留)。**边界**:不含结算读链其余语义;不含 cw_plane_table(3.5)。
 **设计依据**:design.md §2.7(含逐值等价证明)。
 **文件面**:operations/cw_screen/cw_screen_battle_wait.py;sr-od-test 对应测试(settle/battle wait 域)。
 **依赖**:无(可与 3.2 并行;建议排后只为本批文件面清晰,非硬依赖)。
@@ -106,10 +106,11 @@
 - game_state/node-domain.md:§1 身份键句(`node_ordinal` 公式 → NodePos 键表示)、§2 字段表(`node_ord`/`node_hist_ord` 行 → `node_pos`/`node_hist_pos`)、生效序读口节(名称与字典序语义) ← 3.2
 - game_state/node-derivation.md:§3.2 身份键节(含 `AnchorEvent.node_seq` 引注句)、§3.3 原语签名与四分支比较语义(元组字典序)、终局语义(事件式声明)补节、§3.5 锚行载荷 `node_seq` 槽退役注、§① 结论节符号名 ← 3.2/3.4
 - game_state/fields.md:§3.6.2 节点域字段(`node_pos` 两态规格、`node_hist_pos`)+ §3.7.1(derivation 域版本 5)+ §3.2.1(node 域)快照/恢复值形如涉 ← 3.2
-- game_state/effect-domain.md:登记时点语义(`acquired_key`)、`advance_node` 键契约、去重键 `(run_id, 生效序位)` ← 3.2
+- game_state/effect-domain.md:登记时点语义(`acquired_key`)、`advance_node` 键契约、去重键 `(run_id, 生效序位)`、读口实例句(`effective_node_ord()` → `effective_node_pos()`) ← 3.2
+- game_state/strategy-env-impacts.md:读口实例句(`effective_node_ord()` → `effective_node_pos()`,「首两个实例」列表内) ← 3.2
 - game_state/journal.md:§4 自足快照行(state 行 values `node_pos`/顶层 `node_hist_pos`/effects 行 `acquired_key` 值形键名) ← 3.2
-- game_state/README.md:§3.2 节点生效序摘要行(`node_ord` → `node_pos` 生效序读口) ← 3.2
-- sim/sim-design.md:§3.x 节点窗(`_window_begun_pos` 幂等键、`_enter_node_window` 键签名、局终声明消费腿、`_ordinal_to_node`/`_node_ordinal` 退役注) ← 3.2
+- game_state/README.md:§2 节点序例句(`node_ord` 逻辑层措辞)、§3.2 节点生效序摘要行(:89)、§3.3 域清单行(`node_ord`/`node_hist_ord`) ← 3.2
+- sim/sim-design.md:§3.x 节点窗(`_window_begun_pos` 幂等键、`_enter_node_window` 键签名、局终声明消费腿、`_ordinal_to_node`/`_node_ordinal` 退役注)+ §6 `node_advance` 推导规则句(`effective_node_ord`/「超真值表总长」→ 终局声明事件式;与 action_ops.md §4.8 同文双锚,两处同改) ← 3.2
 - flow/action_ops.md:§1 `applied` 义务句补终局出口语义(`match_end` 事件式);§4.8 `node_advance` 行推导规则句(「超真值表总长」→「`sequence_next` 无后继 = 局终声明事件式」;`effective_node_ord` → `effective_node_pos`) ← 3.2
 - screens/battle_wait.md:§8 败局闩行(:78,`t ≥ SETTLE_DEFEAT_LATCH_MIN_T` → 序位 ≥ `SETTLE_DEFEAT_LATCH_MIN_POS`) ← 3.3
 - strategy-docs/01_math_framework.md:§5 R_全局 行(:139,长度真值源 schedule_of → 场字段自算) ← 3.5
