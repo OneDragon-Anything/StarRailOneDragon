@@ -105,14 +105,14 @@
 - 置换账锁：价值比较成立卖买、不成立放弃进清单、同 visit 买入不作让位候选；
 - 筹资锁：缺金卖活期凑够即买、候选穷尽进清单（含 P78-5 兜底豁免保留语义）；**读数协议锁**（多卖循环第二笔起账面判缺口〔禁逐笔开店重读〕/失效触发族逐项〔选卡含二选一/合成结果帧/晶矿/升级9级/计数达阈〔二手市场20次+长线利好30次〕〕/动作伴生入金记账/会话入口再锚定/漏账偏差侦测）；
 - 六序承继锁：未锁定期序 1 候选态判据（候选 top3 囤件 + 贯穿件恒囤 + 金有余压库）、场况插件上限、序 3/序 5 照旧；P86 三臂收编对照表交付（每臂有归属）；**三段式刷新判据 + 停留门行为测试**（P1 零**主动付费**刷新断言〔免费刷新不受限，shop_session §2.4 辖域注〕、段边界〔P1 锁定局同样零刷〕、多目标停留顺序、停留门×人口位硬触发优先）；
-- 重开触发锁：部署腾席解拦场景、卖出退金解拦场景（含义务件破息豁免申报形态）、收敛终止断言；
+- 重开触发锁：部署腾席解拦场景、卖出退金解拦场景（含义务件破息豁免申报形态）、收敛终止断言；**翻转行为差形态锁**（会话内买入中途武装人口位 → 升级即收工 → 剩余已过判据买入被截断且不入清单——shop_session §2.2 申报形态必测）；
 - 刷新终结语义回归确认（op 级重进仍同一会话，标记不受扰动）；
 - 完成前常规检查。
 **验收凭据形式**：单帧锁集 + 旧锁对账清单。
 
 ## 3.7 终局线选择（候选-锁定制）
 
-**范围**：候选-锁定制落码（**键面归一先行**：target_comp 终态单写者 = 锁定动作〔契约 B/§3 同口径〕——line_locked_comp 收键归并，消除双写者、物化链写端切 opening_recipe_comp〔3.1 申报的收拢义务在此批兑现——P1 锁定局「互不覆写」落地〕、§1.6 四键清点含 line_locked_comp；线分数两项 + **热度映射常量表〔mandate_v1 侧——排序立场数据不落 kernel〕** + top3 候选管理 + 锁定双触发判定——硬规则查表与时点兜底，零标定参数）、**每线知识卡消费**（消费前置批建成的三字段——建表归独立前置批「3.0b 知识卡批」，见依赖节；3.7 消费 lock_rules/key_items 落锁定判定与候选分数）、锁定写入与连带动作（§3 三件：清预授权键/清商店标记/快照清空并停算——装备定向属锁定效果非连带件）、现行换线机器退役（§1.6 退役面逐项：θ 滞回/D_min 驻留/证伪分桶/第四触发/P84 门/影子评估/塌缩通道删除，K 空窗回退换源；**provisional 旧槽位退役清单 = N_CRISIS/THETA/D_MIN/DELTA_HYST/V_MS/P_REC + V_C_MINUS_V_F/E2_CONCENTRATION_BAND（P76 两槽）+ DELTA_PRIOR（零消费）/V_GAP（R1/R2 门 3.6 退役后消费清零——provisional 自注与 contracts 付费刷新现读矛盾，3.6 逐点核对）/CONV_GOLD_PER_ROUND（换线窗口侧消费随 3.7 退役）** 逐槽列名，漏删 = 孤儿【拟】槽）。
+**范围**：候选-锁定制落码（**键面归一先行**：target_comp 终态单写者 = 锁定动作〔契约 B/§3 同口径〕——line_locked_comp 收键归并，消除双写者、物化链写端切 opening_recipe_comp〔3.1 申报的收拢义务在此批兑现——P1 锁定局「互不覆写」落地〕、§1.6 四键清点含 line_locked_comp；线分数两项 + **热度映射常量表〔mandate_v1 侧——排序立场数据不落 kernel〕** + top3 候选管理 + 锁定双触发判定——硬规则查表与时点兜底，零标定参数）、**每线知识卡消费**（消费前置批建成的三字段——建表归独立前置批「3.0b 知识卡批」，见依赖节；3.7 消费 lock_rules/key_items 落锁定判定与候选分数）、锁定写入与连带动作（§3 三件：清预授权键/清商店标记/快照清空并停算——装备定向属锁定效果非连带件）、p1_pair 物化触发的位面字面量整改（flow.py `_plane_v == 1` → 窗口谓词/配方信号——宪 2，§1.6 同指认）+ 现行换线机器退役（§1.6 退役面逐项：θ 滞回/D_min 驻留/证伪分桶/第四触发/P84 门/影子评估/塌缩通道删除，K 空窗回退换源；**provisional 旧槽位退役清单 = N_CRISIS/THETA/D_MIN/DELTA_HYST/V_MS/P_REC + V_C_MINUS_V_F/E2_CONCENTRATION_BAND（P76 两槽）+ DELTA_PRIOR（零消费）/V_GAP（R1/R2 门 3.6 退役后消费清零——provisional 自注与 contracts 付费刷新现读矛盾，3.6 逐点核对）/CONV_GOLD_PER_ROUND（换线窗口侧消费随 3.7 退役）** 逐槽列名，漏删 = 孤儿【拟】槽）。
 **设计依据**：line_and_upgrade §1 全部、§3；关键取舍节。
 **文件面**（目录级引用，含 entry.py 证据门/换线登记消费段与 audit/calibration.py 注入写入口——非闭集枚举）：`strategies/impl/mandate_v1/`（新选线模块 + `proof.py` 退役面 + `audit/provisional.py` 登记 + `sell_gate.py` line_switch 通道退役——与 3.6 通道登记同文件分域，本阶段后置串行）、`strategies/impl/flow.py`（意向层机器退役载体 `_refresh_direction_views` 族清点）、`criteria/sell.py` 与 `criteria/contracts.py`（换线塌缩出口函数体 `line_switch_sell`（函数体 criteria/sell.py line_switch 消费位（符号锚）、契约行 contracts.py 同位合取消费位（符号锚））与其契约行退役——**V_MS 槽随函数退役；U_X 在产消费位另列**（criteria/buy/refresh/shop/stockpile，P41 项载体——消费位清点 = 3.7 穷尽核对范围））、`strategies/impl/mandate.py`（读数开商店腾席链退役宿主——近亲族 grep 判据在此）、`kernel/` 配合；测试仓。
 **依赖**：3.1、3.2、3.6（`sell_gate.py` 分域改动串行避冲突）、**3.0b（lock_rules/key_items 锁定判定与候选分数消费）**。
@@ -154,7 +154,7 @@
 - `strategy-docs/23_shop_screen.md` ← 3.5/3.6（执行链接线记录 + 会话模型全文重写；2026-09-14 收缩判例废止记录）
 - `strategy-docs/02_mandate_layer.md`（含 §7 零动作契约更新：CwAction|None 契约退役 → bridge CwActionObsParam(scope) 现行口径） ← 3.3/3.4（骨架义务语义并入工序表述；拦截层删除记录；§6 线内禁卖护栏的自救扩展面例外登记）
 - `strategy-docs/10_prep_decisions.md`（含 §5 在册待建字段名 star_targets 与 3.0b need_star 并轨申报：star_targets 撤账、need_star 为唯一建表名） ← 3.2/3.3（腾席判据→价值让位语义；部署时机；上阵窗口辖域与 entry_signals 建表记录）
-- `strategy-docs/11_shop_decisions.md` ← 3.4/3.6（升级重轴与 P72(3a)/P21 保留记录、置换账、筹资、收缩废止、血购段 as-built 消歧、**§7 引擎池提案收编与 ENGINE_STALL_N 撤账、§3 刷新合格集变更记录**）
+- `strategy-docs/11_shop_decisions.md`（含 R*/w471 记录补行——U_L 消费位经济账分量同步） ← 3.4/3.6（升级重轴与 P72(3a)/P21 保留记录、置换账、筹资、收缩废止、血购段 as-built 消歧、**§7 引擎池提案收编与 ENGINE_STALL_N 撤账、§3 刷新合格集变更记录**）
 - `strategy-docs/12_line_and_intention.md` ← 3.7（换线机器退役→选线函数全文重写）
 - `strategy-docs/00_framework.md` ← 3.4（hp 辖域收缩差分申报与升档器架构层评估：血线地板/λ 顾问删除后升档器「死亡风险唯一承接件」职能失主——架构去留由本正本更新批裁决——**评估判据：①消费面退役后死亡风险承接语义的替代载体核查（自救/凑息/查血限器清单）②产出 = 保留架构壳 vs 撤壳的裁决记录（owner = 编排者；**撤壳分支的代码批 = 下一迭代**——正本更新批只裁决不落码）**；P21 保留依据）
 - `strategy-docs/01_math_framework.md` ← 3.4/3.6（§1 权限骨架的义务/优化权限重述；§3.2 卖面主不等式的自救扩展面例外登记；§3.7 换线判据行更新；§3.3 拦截层行更新：守息门/U_L/预算闸处置；§7 P72 收尾支钩子行 + **§3.4 无目标刷新 fail 语义变更（主落点 = 星级目标驱动的无目标即不刷）**、R*/w471 排程分量记录（11 行为消费位记录） + **P92 门输入面改造** + **待证钩子四条登记**（cw_prepsell_value_order/swap_domination/all_channel_exists/**p96_ore_transfer** P96 晶矿复用；line_score_weighting 随加权评分方案作废撤销）；×2 系数/概率账缺件集口径【拟】登记消费章程核对——登记集两项枚举与 line_and_upgrade §4 统一；**[38] 修订记录**〔攻略热度 tie-break〕）
