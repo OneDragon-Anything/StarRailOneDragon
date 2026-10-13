@@ -237,9 +237,10 @@ class CwScreenBattleWait(CwOperation):
     #: = 面板 visible 或超时才放行推进。超时兜底覆盖胜轮(面板整块不出现,
     #: 帧实证)。
     SETTLE_PANEL_WAIT_S: ClassVar[float] = 4.0
-    #: 败局闩次级证据裁决的轮次下限:
-    #: t = (plane-1)*9+round 过中位 + 面板负分量 双证据才置闩。
-    SETTLE_DEFEAT_LATCH_MIN_T: ClassVar[int] = 14
+    #: 败局闩次级证据裁决的节点序位下限:(位面, 轮) 元组字典序比较,
+    #: 序位过中位(默认局 18 节点的中位 P2 r5)之后 + 面板负分量
+    #: 双证据才置闩。
+    SETTLE_DEFEAT_LATCH_MIN_POS: ClassVar[tuple[int, int]] = (2, 5)
     #: relaunch 残留结算屏判据宽限。
     RELAUNCH_SETTLE_GRACE_S: ClassVar[float] = 30.0
     #: 出战宽限:战斗进行中合法静止,不进未知帧计数。
@@ -464,9 +465,9 @@ class CwScreenBattleWait(CwOperation):
             # + killed 文本双置信度(读链 read_round_outcome 内)——均须在
             # 结算画面识别出来(用户裁定,T-8 裁决点 7 前半);「拿血量
             # 推断胜负」非识别,HP 对比兜底门已删,且其轮次邻接时基在
-            # 修饰局 (1,10)↔(2,1) 塌缩(node_t_of 长度源被夹回 9,两节点
-            # 流水号同值,邻接判恒假)。两主路径同失 = killed=None 观察收口
-            #(诚实缺位,无 HP 推断路径)。
+            # 修饰局 (1,10)↔(2,1) 塌缩(旧全局编号按固定 9 轮每面折算,
+            # 两节点折算同值,邻接判恒假)。两主路径同失 = killed=None
+            # 观察收口(诚实缺位,无 HP 推断路径)。
             if _obs.killed is None and _obs.progress_delta is not None:
                 _obs.killed = _obs.progress_delta > 0
                 log.info('[cw-bwait] killed 进度符号判定:progress=%s → %s',
@@ -653,10 +654,10 @@ class CwScreenBattleWait(CwOperation):
         _neg = ((pnl.get('damage_base') is not None and pnl['damage_base'] < 0)
                 or (pnl.get('damage_unfinished_progress') is not None
                     and pnl['damage_unfinished_progress'] < 0))
-        _t = None
+        _pos = None
         _match = self.ctx.cw_match
         _sess = getattr(_match, 'session', None) if _match else None
-        # 轮键锚 = 容器节点读口(节点未观察 = 证据
+        # 序位锚 = 容器节点读口(节点未观察 = 证据
         # 不足不置闩,fail-closed)。
         if _sess is not None:
             from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -664,15 +665,15 @@ class CwScreenBattleWait(CwOperation):
             )
             _nd = gs_of_ctx(self.ctx, _sess).node.value
             if _nd is not None:
-                _t = (_nd.plane - 1) * 9 + _nd.round_num
-        _min_t = CwScreenBattleWait.SETTLE_DEFEAT_LATCH_MIN_T
-        if _neg and _t is not None and _t >= _min_t:
+                _pos = (_nd.plane, _nd.round_num)
+        _min_pos = CwScreenBattleWait.SETTLE_DEFEAT_LATCH_MIN_POS
+        if _neg and _pos is not None and _pos >= _min_pos:
             self._st.saw_defeat_settlement = True
-            log.info('[cw-bwait] 败局闩次级证据:面板负分量 + t=%s≥%s → 置闩',
-                     _t, _min_t)
+            log.info('[cw-bwait] 败局闩次级证据:面板负分量 + 序位%s≥%s → 置闩',
+                     _pos, _min_pos)
         else:
-            log.info('[cw-bwait] 败局闩次级证据不足(负分量=%s, t=%s, 门限=%s)→ '
-                     '不置闩留证', _neg, _t, _min_t)
+            log.info('[cw-bwait] 败局闩次级证据不足(负分量=%s, 序位=%s, 门限=%s)→ '
+                     '不置闩留证', _neg, _pos, _min_pos)
 
     def _mark_relaunch_residual(self) -> bool:
         """relaunch 残留结算屏判据(只标记不改行为)。"""
