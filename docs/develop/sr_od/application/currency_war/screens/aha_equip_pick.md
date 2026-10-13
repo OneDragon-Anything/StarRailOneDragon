@@ -8,7 +8,7 @@
 
 ## 2. 画面形态声明
 
-**空决策形态 + 固定策略申报**:选择面存在(四件选一)但零逻辑态账,本 op 按**固定单发**消费(点首件,不问策略器);按 key_equips 择优属策略面候选——为它设 decide 接口 = 给无选择面画面造空选择,违契约收缩方向。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口锚门(「货币战争-备战.标识-简易装备」,miss = round_fail 交回外循环重判)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部重入裁决(推进已发 → 锚不在 = 已离开本画面 → success 交回)→ 点首件单发 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 现役值仅框架异常路径消费)。空决策形态无 report 接口(obs 类只记入口裁决)。
+**空决策形态 + 固定策略申报**:选择面存在(四件选一)但零逻辑态账,本 op 按**固定单发**消费(点首件,不问策略器);按 key_equips 择优属策略面候选——为它设 decide 接口 = 给无选择面画面造空选择,违契约收缩方向。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口锚门(「货币战争-备战.标识-简易装备」,miss = round_fail 交回外循环重判)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部落地复查(推进已发 → 画面标志不在 = 已离开本画面 → success 交回)→ 点首件单发 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 在用值仅框架异常路径消费)。空决策形态无 report 接口(obs 类只记入口裁决)。
 
 ## 3. 观察面
 
@@ -18,15 +18,15 @@
 
 **动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
 
-| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+| 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| 无动作 op——单步推进留守 op 内(`progress_once` 点首件单发) | 画面 op 留守臂(`progress_once`:`area_center` 读 `货币战争-备战.按钮-简易装备首件` center + `click`,无 `mouse_move`) | 无 report 接口(推进型规范形态,op-layer.md §3) | 是(重入裁决:点首件已发 ∧ 「标识-简易装备」锚不在 = 已离开 → `round_success` 交回;锚在 = `round_wait` 再推进) |
+| 无动作 op——单步推进由内置动作完成(`progress_once` 点首件单发) | 画面 op 内置动作(`progress_once`:`area_center` 读 `货币战争-备战.按钮-简易装备首件` center + `click`,无 `mouse_move`) | 无 report 接口(推进型规范形态,op-layer.md §3) | 是(落地复查:点首件已发 ∧ 「标识-简易装备」id_mark 不在 = 已离开 → `round_success` 交回;id_mark 在 = `round_wait` 再推进) |
 
 `progress_once` = 读 `货币战争-备战.按钮-简易装备首件` center(`kernel/cw_obs_core.py::area_center`;矩形中心即首件位)→ `click` 单发(原分支无 `mouse_move`,保持)。坐标缺失 = False → 基类 `round_fail`。点首件后游戏自动关 overlay。
 
 ## 5. 终结与交回
 
-推进已发 → `round_wait` 重入;重入 = 锚 miss = 已离开 → `success` 交回(无防御上限)。落点 = 备战(1 分支重判)。
+推进已发 → `round_wait` 重访;落地复查 = id_mark miss = 已离开 → `success` 交回(无防御上限)。落点 = 备战(阶段二默认分支重判)。
 
 ## 6. 状态上报面
 
@@ -38,7 +38,7 @@
 
 ## 8. 守卫与防线
 
-`node_max_retry_times=2` 现役值仅框架异常路径消费;无停机钩子/安灯面(细则 = [../flow/guards.md](../flow/guards.md))。
+`node_max_retry_times=2` 在用值仅框架异常路径消费;无停机钩子/失配告警面(细则 = [../flow/guards.md](../flow/guards.md))。
 
 ## 9. 遥测与锁面
 

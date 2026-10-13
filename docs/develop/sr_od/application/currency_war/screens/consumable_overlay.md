@@ -1,6 +1,6 @@
 # 消耗品详情浮层(consumable_overlay · 无独立画面档)
 
-> 代码 = `operations/cw_screen/cw_screen_consumable_overlay.py::CwScreenConsumableOverlay`。职责:获消耗品奖励后游戏自动弹出的介绍 modal(0f′)的一次访问——点右上 × 关闭交回。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_consumable_overlay.py::CwScreenConsumableOverlay`。职责:获消耗品奖励后游戏自动弹出的介绍 modal(消耗品详情浮层分支)的一次访问——点右上 × 关闭交回。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 分发判定
 
@@ -8,7 +8,7 @@
 
 ## 2. 画面形态声明
 
-**空决策形态**。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(双 OCR 复判,与分发判定同源同参;miss = round_fail 交回外循环重判)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部重入裁决(推进已发 → 双 OCR 不命中 = 已离开本画面 → success 交回)→ 点 × 单次推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 现役值仅框架异常路径消费)。空决策形态无 report 接口。
+**空决策形态**。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(双 OCR 复判,与分发判定同源同参;miss = round_fail 交回外循环重判)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部落地复查(推进已发 → 双 OCR 不命中 = 已离开本画面 → success 交回)→ 点 × 单次推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 在用值仅框架异常路径消费)。空决策形态无 report 接口。
 
 ## 3. 观察面
 
@@ -18,15 +18,15 @@
 
 **动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
 
-| 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
+| 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| 无动作 op——单步推进留守 op 内(`progress_once` 点 × 关闭) | 画面 op 留守臂(`progress_once`:`area_center` 读 `货币战争-道具详情弹窗.按钮-关闭` center + `mouse_move`+`click`) | 无 report 接口(推进型规范形态,op-layer.md §3) | 是(重入裁决:点 × 已发 ∧ 双 OCR 均不命中 = 已离开 → `round_success` 交回;命中 = `round_wait` 再推进) |
+| 无动作 op——单步推进由内置动作完成(`progress_once` 点 × 关闭) | 画面 op 内置动作(`progress_once`:`area_center` 读 `货币战争-道具详情弹窗.按钮-关闭` center + `mouse_move`+`click`) | 无 report 接口(推进型规范形态,op-layer.md §3) | 是(落地复查:点 × 已发 ∧ 双 OCR 均不命中 = 已离开 → `round_success` 交回;命中 = `round_wait` 再推进) |
 
 `progress_once` = 读 `货币战争-道具详情弹窗.按钮-关闭` center(消耗品 modal 与聘用书 modal 同为道具详情弹窗家族,× 同位,借道同族档案)→ `mouse_move`+`click`(防吞点击,与 `cw_screen_item_detail_popup.py::CwScreenItemDetailPopup` 同式)。坐标缺失 = False → 决策动作 node `round_fail`。刻意不用 ESC:× 永远安全,ESC 在 modal 已自关时落备战会误弹「中断挑战」。
 
 ## 5. 终结与交回
 
-推进已发 → `round_wait` 重入;重入 = 双 OCR 复判,双条件不命中 = 已离开 → `success` 交回(无防御上限)。落点 = 底层屏(投资策略/备战等获得消耗品语境)重判。
+推进已发 → `round_wait` 重访;落地复查 = 双 OCR 复判,双条件不命中 = 已离开 → `success` 交回(无防御上限)。落点 = 底层屏(投资策略/备战等获得消耗品语境)重判。
 
 ## 6. 状态上报面
 
@@ -38,7 +38,7 @@
 
 ## 8. 守卫与防线
 
-`node_max_retry_times=2` 现役值仅框架异常路径消费;无停机钩子/安灯面(细则 = [../flow/guards.md](../flow/guards.md))。
+`node_max_retry_times=2` 在用值仅框架异常路径消费;无停机钩子/失配告警面(细则 = [../flow/guards.md](../flow/guards.md))。
 
 ## 9. 遥测与锁面
 
