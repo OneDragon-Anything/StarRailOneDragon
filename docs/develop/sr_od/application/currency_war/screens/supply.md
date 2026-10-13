@@ -13,11 +13,11 @@
 
 ## 3. 观察面
 
-观察 node = 节点完成门(`_in_node`)+ 选项一次读(每访问恰一次,决策轮复用实例载体不重读)。选项读取 `obs/cw_node_obs.py::read_supply_options`:
+观察 node = 节点完成门(`_in_node`)+ 选项一次读(每访问恰一次,决策轮复用实例载体不重读)。选项读取 `obs/cw_node_obs.py::read_supply_options`(归并纯函数 `_group_supply_columns` 可离线单测):
 
-- **列数动态探测**(通常 4 选 1;augment 改写下实测 3-5 不等,禁写死):装备行(y 640-780)定义列,角色行(y 500-600,roster 校验滤噪)按 x 就近配对(x 容差常量);
-- 钻识别双通道:主 = SIFT(装备 icon 带扫三钻模板,`cw_equipment` 模板库)、兜底 = 装备名精确匹配三钻集合(非子串,防带钻字误判);
-- 每列产出 `(SupplyOption(idx, char, equip, has_diamond), 卡身点击点)`。
+- **列数动态探测**(通常 4 选 1;augment 改写下实测 3-5 不等,禁写死):**角色锚点定列骨架**(y 500-600,roster 校验滤噪;x 序 = 列骨架,列 = 选项 = 角色 + 随选装备组,选中一并获得、非穿戴语义);装备行(y 640-780)按 x 聚簇后按簇心 x 归入最近锚点(容差常量;簇心 = 装备名 OCR 文本中心);孤儿簇(该列角色名失读)自成列 char='' 不并入邻列,无装备锚点成 char-only 列(equip=''——人才储备类变体天然承接);
+- 钻识别双通道:主 = SIFT(装备 icon 带扫三钻模板 → 命中点按最近簇心归列,`cw_equipment` 模板库)、兜底 = 装备名精确匹配三钻集合(遍历全列件名,非子串,防带钻字误判);
+- 每列产出 `(SupplyOption(idx, char, equip, extra_equips, has_diamond), 卡身点击点)`(equip = 列内画面 y 序首件,extra_equips = 其余件,OCR 原文未归一)。
 
 刷新剩余读数 `_read_refresh_anchor`:「文本-剩余次数」建档 rect 外扩 OCR 带 +「剩余次数:N」正则 → `(count, Point)` 双出(同帧同源,count 供闸与快照、point 供刷新臂文本锚定);读缺 = None。
 
@@ -29,7 +29,7 @@
 
 | 动作 op(词表参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| `CwActionPickSupplyOp`(`CwActionPickSupplyParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:卡身定位点/归一件名/角色名/选中下标) | **即时单相自上报** `report_action_pick_supply_param`(确认点击后一口写 owned 规范名 + 单位腿 `grant_bench_unit_cascade` + 装备后果腿 `apply_equip_acquire_consequence`;内容全未知/名未解析 = 翻来源留证禁猜)+ 节点推进 `report_node_advance(supply_confirm)`(确认点击落地即上报,重复上报被 kernel 观察态门挡) | **是(派发即终结)**:发出后 round_success 终结交回外循环;确认未生效由外循环重识别重派 |
+| `CwActionPickSupplyOp`(`CwActionPickSupplyParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:卡身定位点/归一件名/附加件归一名组/角色名/选中下标) | **即时单相自上报** `report_action_pick_supply_param`(确认点击后一口写单位腿 `grant_bench_unit_cascade` + 装备腿 0..n 件 owned 规范名 + 获得后果链 `apply_equip_acquire_consequence`,主件 → 附加件画面 y 序;内容全未知 = 翻来源留证禁猜,零装备名读数列 = 装备域零写留证不发缺陷,名未解析件逐件翻来源留证)+ 节点推进 `report_node_advance(supply_confirm)`(确认点击落地即上报,重复上报被 kernel 观察态门挡) | **是(派发即终结)**:发出后 round_success 终结交回外循环;确认未生效由外循环重识别重派 |
 | 刷新重掷(无注册表动作 op;`CwActionRefreshSupplyParam` 仅策略建议载体) | 画面 op 留守臂(容器 `supply_refresh_left` 剩余闸 + 锚点对照闸放行:「文本-剩余次数」锚定偏移 `mouse_move`+`click`) | 无自上报(刷新 = 终结交回,新装备面由外循环重进后的入口观察现读承载) | **是(终结)**:点钮 + 2s 动画窗后 round_success 交回;判据侧次数闸内嵌 decide(仅剩余 ≥1 才可能返刷新建议);建议刷但对照闸拒绝(现役仅锚点缺一种触发面)→ 重调一次(纯函数同输入同输出仍建议刷)→ 零点击终结交回 |
 
 决策动作 node 单动作体 `_do_action`(零参:候选与点击点自观察轮实例载体消费):
@@ -45,13 +45,13 @@ pick = match.strategy.decide_supply()(零参;候选读容器 supply 槽)
 │    (点钮即终结交回 = 外循环重进入口重建;新装备面由重进后选项现读承载)
 └─ 选卡形态:target = opts[pick.idx][1](卡身点击点,y≈550,点卡身不开对话直接选中;
      无选项/无 match 兜底 = CARD_BODY 屏中常量(900,550))
-     → chosen_supply 确认即写(点击链发射前单点直写:(char, equip, has_diamond);
-       兜底点卡/刷新轮不写 = 真选守卫)
+     → chosen_supply 确认即写(点击链发射前单点直写:(角色, 装备名列表)
+       2 元组,OCR 原文 y 序,不带钻字段;兜底点卡/刷新轮不写 = 真选守卫)
      → mouse_move + click → 0.6s → 点「按钮-确认」(round_by_find_and_click_area,
        success_wait 1.5)→ 动作 op 即时单相上报完整结果 + supply_confirm 推进
 ```
 
-选定快照 `picked`(角色/装备/钻 + `refresh_left` 容器现值快照)= 选定事实现场载荷,现役消费面 = 零(遥测接线候批);刷新轮/兜底点卡轮不带快照。选卡+确认+即时上报整体经动作工厂(`cw_pick_supply_action.py::CwActionPickSupplyOp`;归一件名 = 注册表级分层归一 `normalize_registry_equip_name` 现算:精确快道 → containment longest-first → 相似救援唯一命中,多/零命中 = '' 禁猜翻来源留证)。
+选定快照 `picked`(角色/首件装备/附加装备 `extra_equips`/钻 + `refresh_left` 容器现值快照)= 选定事实现场载荷,现役消费面 = 零(遥测接线候批;在读渲染方 = `tools/cw/replay_to_md.py` `_supply_entry`);刷新轮/兜底点卡轮不带快照。选卡+确认+即时上报整体经动作工厂(`cw_pick_supply_action.py::CwActionPickSupplyOp`;归一件名 = 注册表级分层归一 `normalize_registry_equip_name` 现算:精确快道 → containment longest-first → 相似救援唯一命中,多/零命中 = '' 禁猜逐件翻来源留证)。
 
 ## 5. 终结与交回
 
@@ -64,9 +64,9 @@ pick = match.strategy.decide_supply()(零参;候选读容器 supply 槽)
 
 ## 6. 状态上报面
 
-- `chosen_supply` write_logic(**确认即写**,选卡分支单点直写、点击链发射前;值 = (角色, 装备, 有钻石);兜底点卡/刷新轮无选定不写,None 保持「无记录」)。口径申报:supply 确认即写,chosen_tome 维持「出口验真后写」家族口径——差异理由 = supply 的中转暂存宿主随执行层状态类目退役(git 历史可溯),直写是载体消亡后的唯一形态;确认未落地窗内容器短暂持未落地选定,现无决策读者,低危可接受,出口验真保留为观察面。
+- `chosen_supply` write_logic(**确认即写**,选卡分支单点直写、点击链发射前;值 = (角色, 装备名列表) 2 元组,OCR 原文 y 序,不带钻字段——有没有钻石由消费侧按 `DIAMOND_EQUIP_NAMES` 名单自列表派生;兜底点卡/刷新轮无选定不写,None 保持「无记录」)。口径申报:supply 确认即写,chosen_tome 维持「出口验真后写」家族口径——差异理由 = supply 的中转暂存宿主随执行层状态类目退役(git 历史可溯),直写是载体消亡后的唯一形态;确认未落地窗内容器短暂持未落地选定,现无决策读者,低危可接受,出口验真保留为观察面。
 - 候选观察:`report_screen_supply_node_obs` 摄入候选写容器 `supply` 域(空 = 读缺不写)+ `supply_refresh_left` 摄入(读缺跳写)。
-- **效果逻辑态单相上报**(`kernel/cw_action_report/pick_supply.py::report_action_pick_supply_param`,即时单相):owned += 规范名(归一件名)+ 单位腿(角色入席 + 合成级联)+ 装备后果腿(命中后果表送角色 → bench + 级联);内容全未知/名未解析 = 受影响域值不变翻来源 + 缺陷留证(fail-closed,错名不入账由观察覆盖自愈)。
+- **效果逻辑态单相上报**(`kernel/cw_action_report/pick_supply.py::report_action_pick_supply_param`,即时单相):装备腿 = owned += 0..n 件归一规范名(集合 = 首件 + `extra_norm_items`,主件 → 附加件画面 y 序;零件 = 无装备名读数列,装备域零写 + `pick_supply_no_equip_column` 留证、不发缺陷)+ 单位腿(角色入席 + 合成级联)+ 获得后果链(命中后果表送角色 → bench + 级联);内容全未知 = 受影响域值不变翻来源 + 缺陷留证(禁猜);名未解析件 = 逐件值不变翻来源 + 缺陷留证(fail-closed,错名不入账由观察覆盖自愈,已解析件照常入账)。
 - 节点推进:`report_node_advance(trigger='supply_confirm')`(确认点击落地即上报;kernel 观察态门 = 唯一推进落账门)。
 - 刷新剩余:容器 `supply_refresh_left`(观察写端 + sim 写端:补给节点入口先写初始 left=1、刷新 left−1 ≥0 截断);旧 `supply_refresh_used` 已用计数已退役(剩余语义化)。
 - 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.2 / §4「事件选择」;到账登记 ConfirmSupply 行已退役(即时单相上报取代)。

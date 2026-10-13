@@ -555,7 +555,7 @@ evidence 区分。旗牌通道=**弱**(stylized 数字 OCR 常空,两级放大�
   单笔 logic 写(移除工具 ∧ `privilege_counterpart` 替换)、拆装扳手/精密扳手 =
   两笔 logic(回区合并写 + 行域穿戴清空;精密扳手不递减)、员工/完美投影仪 =
   移除工具 + 复制走 `gain_character` 获得链,零写分支统一 `tool_*` 缺陷行留证);
-  SellBench 卖出角色(装备全量回区);PickSupply 补给即时获得腿(owned += 归一规范名 + 获得后果链 `apply_equip_acquire_consequence`,即时单相;`kernel/cw_action_report/pick_supply.py`)。
+  SellBench 卖出角色(装备全量回区);PickSupply 补给即时获得腿(owned += 0..n 件归一规范名(集合 = 选中列首件 + 附加件,主件 → 附加件画面 y 序;零件 = 无装备名读数列,`pick_supply_no_equip_column` 留证在案不发缺陷)+ 获得后果链 `apply_equip_acquire_consequence` 逐件,即时单相;`kernel/cw_action_report/pick_supply.py`)。
 - 效果改写源(§5.2 在册):回收计划/+(拆简易、节点后发简易入区);公司军火更新·
   银/金/彩(进节点物品栏全量变同品质);保险的装备效果(每损 20 血获随机简易入区);
   变宝为废(词缀,每位面首次合成进阶装备 50% 变垃圾袋——随机面观察收口,§5.3 词缀源)。
@@ -909,7 +909,12 @@ effective_refresh_prob:键在且 >0 直用、≤0/缺键退基线表——**契�
 #### 3.4.2 补给屏
 
 - 角色/装备/钻石标记(**列数动态:通常 4 选 1,效果改写下实测 3-5 不等——在册
-  「勿写死」**)。补给屏已建档「文本-剩余次数」区域(UI 元素存在是硬事实;其语义=
+  「勿写死」**;「过剩经费」类修饰局每列装备 1→2 件)。**payload 元素契约**
+  (`SupplyOption`,域版本 3):**选项 = 一列(角色 + 随选装备组),选中一并获得,
+  非穿戴语义**——`equip` = 列内画面 y 序首件装备名、`extra_equips` = 其余件
+  (均 OCR 原文未归一;归一发生在选卡上报)、`char` = 列角色名(char-only 列
+  `equip=''`、`extra_equips=()`)、`has_diamond` = SIFT 视觉 + 文本兜底观测。
+  补给屏已建档「文本-剩余次数」区域(UI 元素存在是硬事实;其语义=
   是否剩余刷新次数,并入收窄待证问题)。
 - **补给刷新剩余次数**(`supply_refresh_left`,无开局种子 None = 未观察;
   旧「已用」计数 `supply_refresh_used` 随剩余语义化退役,考古走 git):
@@ -922,7 +927,9 @@ effective_refresh_prob:键在且 >0 直用、≤0/缺键退基线表——**契�
 - **宝钻计数 diamond_count(主条目;跨画面货币,本屏落地)**:UI 可见的局内
   货币计数,获取通道 = 补给带钻选项等(None = 未观察,获取事件后累计)。**写端**:
   带钻选项落地写(sim 写端 = `sim/cw_sim_backend.py` 的 `_on_supply_picked`
-  供给 +1,钻信息读容器 `chosen_supply` 现值;实机观察写端候补档);sim 环境
+  供给 +1,带钻与否 = 容器 `chosen_supply` 现值 (角色, 装备名列表) 按
+  `DIAMOND_EQUIP_NAMES` 名单自列表派生(任一件名命中即钻;钻名 OCR 误读 →
+  派生漏发,装备/钻数观察下一帧暴露失配);实机观察写端候补档);sim 环境
   条件发放回调 +1(财富宝钻获得,observe 渠道,§3.5.5)。与部署容量
   的关系见 §3.2.7.1(deploy_cap = level + 财富宝钻数,两域各持识别/计数口径,
   禁互派生)。
@@ -1016,8 +1023,9 @@ MegastarOption / PartnerOption / PlannerOption / EncounterOption / SupplyOption
 扩字段 = `ExpertInvitePayload.card_points` + `cash_point`、`ShopPayload.card_points`
 (定长 5,下标 ↔ 物理槽 1-5)。
 **schema 登记**:A 类逐域新键入 `DEFAULT_GS_SCHEMA`;B 类 typed 扩 `xy` = 所属域值
-形状变更,域版本自现值 bump 一档(encounter/supply 现值 2,xy 落地 = 2→3);C 类
-payload 扩字段 = 域版本 bump(专家邀请函域/商店 payload 所属域)。
+形状变更,域版本自现值 bump 一档(encounter 现值 2,xy 落地 = 2→3;supply 同款
+先例已兑现 = SupplyOption 扩 `extra_equips` 附加装备元组,域版本 2→3,T-9);
+C 类 payload 扩字段 = 域版本 bump(专家邀请函域/商店 payload 所属域)。
 
 #### 3.4.6 圣杯任务
 
@@ -1368,11 +1376,15 @@ equip 腿 = 入栏 + 获得后果链(§3.2.15)/ 升费腿 = 变换 + `lv999_cost
 覆盖自愈;**兑现后清 = 单次消费**——遭遇战斗结算达标即写 `encounter_reward_claimed`
 并清 chosen,见 §3.4.1)。**补给臂 = 即时单相效果写**(对齐遭遇臂的动作侧写形态;写端 =
 `kernel/cw_action_report/pick_supply.py`,确认点击后一口写,
-`flow/action_ops.md` §4.5 PickSupply 行):equips owned += 归一规范名 +
-bench 单位腿(`grant_bench_unit_cascade` 入席 1★+合成级联)+ 获得后果链
-(`apply_equip_acquire_consequence`);内容全未知/名未解析 = 受影响域值
-不变翻来源 + 缺陷留证(禁猜);选择落地 = `chosen_supply` 画面 op 确认即写
-(§3.4 头部口径;原「到账登记 ConfirmSupply」载体已退役,考古走 git)。遭遇/补给刷新闸全域 = 剩余语义观察真值
+`flow/action_ops.md` §4.5 PickSupply 行):装备腿 0..n 件 =
+equips owned += 0..n 件归一规范名(集合 = 选中列首件 + 附加件,主件 →
+附加件画面 y 序;零件 = 无装备名读数列,装备域零写 + `pick_supply_no_equip_column`
+留证不发缺陷)+ bench 单位腿(`grant_bench_unit_cascade` 入席 1★+合成级联)
++ 获得后果链(`apply_equip_acquire_consequence` 逐件);内容全未知 = 受影响域值
+不变翻来源 + 缺陷留证(禁猜);名未解析件 = 逐件值不变翻来源 + 缺陷留证;
+选择落地 = `chosen_supply` 画面 op 确认即写(§3.4 头部口径;值 = (角色,
+装备名列表) 2 元组,OCR 原文 y 序,不带钻字段——带钻与否消费侧自名单派生;
+原「到账登记 ConfirmSupply」载体已退役,考古走 git)。遭遇/补给刷新闸全域 = 剩余语义观察真值
 (`encounter_refresh_left`/`supply_refresh_left`,§3.4.1/§3.4.2;已用计数退役)。
 
 #### 出战
