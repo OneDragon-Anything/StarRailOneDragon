@@ -1,6 +1,6 @@
 # 守卫总册（guards）
 
-> 反向规格化来源 = `operations/cw_loop.py` + `operations/cw_screen/cw_screen_prep.py` + `operations/cw_screen/cw_screen_shop.py` + `obs/cw_identity_obs.py` + `kernel/cw_mismatch_policy.py` 的守卫/停机/降级段。职责：识别域与执行面的停机/留证防线。对局状态推进的监测不在框架——停滞判读 = 事件哨兵 `skills/sr-od-currency-war-dev/scripts/cw_sentinel.py`(v5.2:STALL 同特征零推进/LOOP 签名循环/NODE-DWELL 相位滞留/SILENCE 沉默,只留证不停机)。路径根 = `src/sr_od/application/currency_war/`。
+> 从代码反推,来源 = `operations/cw_loop.py` + `operations/cw_screen/cw_screen_prep.py` + `operations/cw_screen/cw_screen_shop.py` + `obs/cw_identity_obs.py` + `kernel/cw_mismatch_policy.py` 的守卫/停机/降级段。职责：识别域与执行面的停机/留证防线。对局状态推进的监测不在框架——停滞判读 = 事件哨兵 `skills/sr-od-currency-war-dev/scripts/cw_sentinel.py`(v5.2:STALL 同特征零推进/LOOP 签名循环/NODE-DWELL 相位滞留/SILENCE 沉默,只留证不停机)。路径根 = `src/sr_od/application/currency_war/`。
 > 分工判据（od-dev-stop-hooks）：**采集哨兵不停机**（bot 可能只是慢）；**停机钩子保画面**（`stop_running(reason=..., save_screenshot=True)` 一行——框架自动截图 + `[stop]` 日志行即现场事实；钩子不写 flag 文件，处理流程知识归本篇）。
 
 ## 1. 外环连续 fail 重派网（通用网）
@@ -9,21 +9,21 @@
 |---|---|---|
 | `OP_FAIL_REDISPATCH_LIMIT=5` | 连续计（任一分发 op ok 清零；异键 ok 同闭窗） | 同一分发 op 连续 fail 达本值 → 留证截图 + round_fail 显式停交上层，取代「fail → round_wait 零预算重派」的无界空转（实锤 = 选择伙伴 15 连败靠 NODE-DWELL 900s 哨兵兜住才停，2026-09-15 事故）。round_fail 在 node_max_retry 400 下**不停机**——刻意：消除「静默」而非「重试」，ERROR 行进日志 = 哨兵 STALL 通道与人都能看到，停机决策留给观察者 |
 
-> 计数/判定统一在 `_dispatch_screen_op`（hook 早退位次之后，hook 仍可短路）。链形透传分支（3c）不经本网（各有自身预算）。
-> 补注:分支守卫钩子（0n visit_ok/_fail 计数、A1 bail 清除、B5 窗口关+闩清）自 dispatch 包装落地起经 `_dispatch_screen_op` 的 **on_result 调用点邻接闭包**执行，仅执行落点随包装迁移，钩子明细。
-> 位面过渡的误分发根修在识别层：BOSS简报锚换装徽记模板（OCR 误读免疫），阶段一位面过渡身份臂挂 boss 判别排他（接管派发 boss op）。
+> 计数/判定统一在 `_dispatch_screen_op`（hook 早退位次之后，hook 仍可短路）。链形透传分支（大厅收尾）不经本网（各有自身预算）。
+> 补注:分支守卫钩子（商店访问 visit_ok/_fail 计数、弹窗让路标志（bail）清除、战斗窗关闭+标志清除）自 dispatch 包装落地起经 `_dispatch_screen_op` 的 **on_result 调用点邻接闭包**执行，仅执行落点随包装迁移，钩子明细。
+> 位面过渡的误分发根修在识别层：BOSS简报 id_mark 换装徽记模板（OCR 误读免疫），阶段一位面过渡身份分支挂 boss 判别排他（接管派发 boss op）。
 
 ## 2. 未知画面兜底（常驻安全网；`cw_loop.py::CwLoop._handle_unknown_fallback`）
 
 - 触发 = loop 尾所有分支不命中（兜一切未知态，非点名某态的临时捕获；移除条件 = 该类未知态全部建档实际不可达，长期保留）。
-- 处置：每轮 1s 重试（`UNKNOWN_RETRY_WAIT_S=1`，恒定），连续 `UNKNOWN_FAIL_THRESHOLD=15` 轮耗尽 → round_fail 交框架失败（运行 FAILED 收口），日志 `[cw!]` 行 + 失败结果即信号。
+- 处置：每轮 1s 重试（`UNKNOWN_RETRY_WAIT_S=1`，恒定），连续 `UNKNOWN_FAIL_THRESHOLD=15` 轮耗尽 → round_fail 交框架失败（运行 FAILED 收尾），日志 `[cw!]` 行 + 失败结果即信号。
 - 前置 bail = 战斗等待 op 自己的节点级预算（`cw_screen_battle_wait`，`UNKNOWN_BAIL_N=10` 轮未知 → op 截图留证 + round_fail bail 交回本兜底；不停机，兜底链裁决权留外循环）。
 - 处理流程：analyze_screen 离线判已建档命中 → 未命中按元素语义建档 + cw_loop 阶段一身份分发接线(处理器臂 + CW_DISPATCH_SCREENS 登记,三处缺一不可) → 重跑；战斗特效帧（OCR 乱码）**先确认非新画面**（analyze_screen 为准）才可调大阈值或加等待。画面被任何分支接走 → 计数自然复位。
 
 ## 3. 商店未识别卡停机
 
-位置 = 商店画面 op **观察 node 入口观察段**(`cw_screen_shop.py::CwScreenShop.observe` 调 `_shop_entry_read`,回执落地即判;入口 = 单次读零防抖——读缺交决策前置门响亮失败,禁重读等待)。判据 = 读链终判(`read_shop_cards` 内部易误判重观察之后)仍含 unknown 槽 → `stop_running(save_screenshot=True)` 框架截图留证(`[stop]` 日志行)+ round_fail——观察落地即停,决策/购买不见残缺牌面。**不能降级带病跑**(未识别卡按非 target 跳过 = 决策在残缺牌面上做 + 错过新内容建档窗口;用户 2026-08-24 裁决接受阻断代价)。决策侧 unknown 窗收窄(花钱禁发射、仅 CloseShop,`mandate_v1/shop.py`)保留为纵深第二线。
-处理流程：对 `[stop]` 截图跑 analyze_screen + 离线 SIFT 对拍（真实 rect 商店牌-1..5）确认真未知 → 新卡建档（screen_info/立绘库）→ 重启 server 重跑。
+位置 = 商店画面 op **观察 node 入口观察段**(`cw_screen_shop.py::CwScreenShop.observe` 调 `_shop_entry_read`,回执落地即判;入口 = 单次读零防抖——读缺交决策前置门显式失败,禁重读等待)。判据 = 读链终判(`read_shop_cards` 内部易误判重观察之后)仍含 unknown 槽 → `stop_running(save_screenshot=True)` 框架截图留证(`[stop]` 日志行)+ round_fail——观察落地即停,决策/购买不见残缺牌面。**不能降级带病跑**(未识别卡按非 target 跳过 = 决策在残缺牌面上做 + 错过新内容建档窗口;用户 2026-08-24 裁决接受阻断代价)。决策侧 unknown 窗收窄(花钱禁发出动作、仅 CloseShop,`mandate_v1/shop.py`)保留为纵深第二线。
+处理流程：对 `[stop]` 截图跑 analyze_screen + 离线 SIFT 交叉核对（真实 rect 商店牌-1..5）确认真未知 → 新卡建档（screen_info/立绘库）→ 重启 server 重跑。
 
 ## 4. 召唤物/物品未识别停机（`obs/cw_identity_obs.py`）
 
@@ -32,9 +32,9 @@
 
 ## 5. 特殊投资策略停机（临时捕获；`cw_screen_prep.py`）
 
-触发 = 效果清单含候逐条确定的名单效果（`_SPEC_INVEST_WATCH_NAMES`，挂点 = visit_open_shop 入口）→ 直接停机（`stop_running(save_screenshot=True)`），**人工采集**——停机后画面原样保持（店开着）：人工看画面 / MCP 截图补帧，对照效果注册表逐条确定该组合下商店改写/计数/经验行为，结论回填效果规格 verdict/notes。同组合进程内只停一次（重启清零 = 允许重停）。采够后删整段（常量+方法+挂点两行），不留开关。
+触发 = 效果清单含需逐条确定的名单效果（`_SPEC_INVEST_WATCH_NAMES`，挂点 = visit_open_shop 入口）→ 直接停机（`stop_running(save_screenshot=True)`），**人工采集**——停机后画面原样保持（店开着）：人工看画面 / MCP 截图补帧，对照效果注册表逐条确定该组合下商店改写/计数/经验行为，结论回填效果规格 verdict/notes。同组合进程内只停一次（重启清零 = 允许重停）。采够后删整段（常量+方法+挂点两行），不留开关。
 
-## 6. 观察对账安灯（kernel；`cw_mismatch_policy.py` 槽 + `currency_war_app.py` 闭包）
+## 6. 观察对账失配告警（发现失配即报警并停机；kernel；`cw_mismatch_policy.py` 槽 + `currency_war_app.py` 闭包）
 
 触发 = `GameState.observe()` 观察覆盖 logic 值失配（逻辑态被实读证伪 = bug：此前观察态错 / 逻辑推算代码错），经三分流（豁免注册表 / sim 证据抑制 / 真失配）后仍真失配 → 停机（闭包 = stop_running 一行，截图归框架）。处置 = 两原因排查：①此前观察态错——查 `state/journal.jsonl` 该字段前序写入行；②逻辑推算代码错——按 actor/动作组/写端 evidence 定位修推算。机制性结构差异走豁免申报（`EXEMPT_REGISTRY`，带 reason），不留开关。
 
@@ -43,9 +43,9 @@
 | 场景 | 降级行为 | 为什么 fail-closed |
 |---|---|---|
 | gold 失读（shop 关态） | 备战入口 heavy 观察重试 | 宁可重观察,不造值 |
-| 卖出执行守卫 | 守卫断言唯一 = `guard_proposal_vs_expected`(`cw_shop_action_ops.py`;提案动作的对象在期望态中存在且未被消费,非法 = 策略器 bug 响亮炸出;零读屏)。卖前席位对拍守卫已退役——对账唯一合法时点 = 观察边界(观察 vs 逻辑双态比对,kernel `cw_reconcile` 执行),op 层零双态比对 | 不卖错件(卖出不可逆);逻辑态建模 bug 检出归观察边界 reconcile 纠漂显影(观察赢),详见 `../screens/op-layer.md` §1.3/`action_exec.md` §4 |
+| 卖出执行守卫 | 守卫断言唯一 = `guard_proposal_vs_expected`(`cw_shop_action_ops.py`;提案动作的对象在期望态中存在且未被消费,非法 = 策略器 bug 显式报出;零读屏)。卖前席位交叉核对守卫已退役——对账唯一合法时点 = 观察边界(观察 vs 逻辑双态比对,kernel `cw_reconcile` 执行),op 层零双态比对 | 不卖错件(卖出不可逆);逻辑态建模 bug 检出归观察边界 reconcile 纠漂显影(以实际观察为准),详见 `../screens/op-layer.md` §1.3/`action_exec.md` §4 |
 | 部署 cap 失读 | 单调链 max 兜底；全源失读 → 不设板满门（拖到游戏拒即真值） | 低读阻塞上阵（贵）> 高读白拖一次（便宜） |
 | 空部署计划 | 部署计划单一源 = `mandate_v1/deploy_plan.py::deploy_plan_moves`(选人 `select_deployments`),空计划不产动作 | 空计划 ✓ = 假成功形态(计划单一源空不提案为唯一防线;停顿监测归哨兵) |
 | 增量态构造 fail-closed | 金失读/tracked 空 → 回退全量 read_game_state | 空 tracked 真空/丢跟踪不可区分，不造值 |
 | 期望态对账不一致 | 落缺陷台账留证，**不纠漂不重执行** | 对账是观测不是决策；纠漂需先归因 |
-| 免费刷新次数失配 | 观察锚定覆盖逻辑态(动作扣减/发放登记)失配 → 观察对账安灯(`cw_mismatch_policy` 三分流后真失配停机,同 §6 机制);免费刷新的事实可见性 = 该安灯 + 效果账本计数,零手写对账台账 | 次数 = 画面可观察的剩余次数(`gs.free_refresh_left` Field),观察赢自愈 |
+| 免费刷新次数失配 | 观察 id_mark 确认覆盖逻辑态(动作扣减/发放登记)失配 → 观察对账失配告警(`cw_mismatch_policy` 三分流后真失配停机,同 §6 机制);免费刷新的事实可见性 = 该失配告警 + 效果账本计数,零手写对账台账 | 次数 = 画面可观察的剩余次数(`gs.free_refresh_left` Field),以实际观察为准自愈 |

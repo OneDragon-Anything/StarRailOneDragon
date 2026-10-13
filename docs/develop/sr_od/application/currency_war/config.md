@@ -1,6 +1,7 @@
 # 货币战争 用户配置设计(配置语义单一源)
 
 > 本文回答「配置面该有什么、不该有什么」。决策依据 = 用户画像定调 + 单一职责原则。
+> (单一源 = 唯一权威出处,下同。)
 > 字段实现 = `currency_war_config.py`
 > (行为与当前值在代码,本文只记语义与归属)。
 
@@ -47,10 +48,12 @@
 - **必含轴保留**:成就局常需「一定用某阵容」,「优先」表达不了「一定」。
 - 消费端落点:comp 侧 `_passes_steering` 硬过滤 + `_priority_boost` 软加分
   (select_comp);选卡侧 = 两屏策略层策略器(投资策略 = `invest_strategy`,
-  正本 29 号稿;投资环境 = `invest_env`,正本 28 号稿)消费 priority
-  `STEERING_PRIORITY_BONUS`(常量在 mandate_v1/pick_common,两屏共用)/
-  forbid = 排除出候选(不走分值;子串匹配 OCR 容错;全被禁帧 = 全体候选
-  退化 argmax 最不负分,策略屏另有血本位三态兜底)。
+  详见 [strategy-docs/29_invest_strategy_screen.md](../strategy-docs/29_invest_strategy_screen.md);
+  投资环境 = `invest_env`,
+  详见 [strategy-docs/28_invest_env_screen.md](../strategy-docs/28_invest_env_screen.md))
+  消费 priority `STEERING_PRIORITY_BONUS`(常量在 mandate_v1/pick_common,两屏共用)/
+  forbid = 排除出候选(不走分值;子串匹配 OCR 容错);若所有候选都被禁用,
+  退回选扣分最少的候选;投资策略屏另有按血量安全度分三档的保底。
 - 预设(§3.2)打包这些轴,不自建平行评分。
 
 ### 3.2 预设(画像 2 的一键入口,后续做)
@@ -60,14 +63,14 @@
 
 ## 4. 运行控制与实验:只留 strategy_id(定稿)
 
-配置面的运行控制收敛结论(用户裁定):**用户面只留 `strategy_id`**——「选哪个脑」是真实用户选择:默认策略够日常;**画像 2 的成就玩法未来=选专用策略插件**(如「8 减益成就策略」),这是比逐字段转向更高一层的入口,策略插件体系(11 号)对用户的唯一暴露点。
+配置面的运行控制收敛结论(用户裁定):**用户面只留 `strategy_id`**——「选哪个脑」是真实用户选择:默认策略够日常;**画像 2 的成就玩法未来=选专用策略插件**(如「8 减益成就策略」),这是比逐字段转向更高一层的入口,策略插件体系(注册与换核见 [flow/README §2.4](flow/README.md))对用户的唯一暴露点。
 
 | 字段 | 定位 | 语义 |
 |---|---|---|
 | `strategy_id` | **用户面** | 选策略插件;**当前唯一合法值 = `mandate_v1`**(不配置即此值;注册面封闭集口径见 [flow/README §2.4](flow/README.md);decision_v2 等旧栈已删,存量 yml 写其他值配置加载即报错并提示改值) |
-| `strategy_seed` | 开发/实验(yml-only,不进 GUI) | A/B 复现调试;只种子化策略内部随机,游戏侧随机量不在辖内(sim/sim-design.md §2),对用户是虚承诺 |
+| `strategy_seed` | 开发/实验(yml-only,不进 GUI) | A/B 复现调试;只种子化策略内部随机,游戏侧随机量不在其适用范围内(sim/sim-design.md §2),对用户是虚承诺 |
 | `max_rounds` | 开发/实验(同上) | 多轮采样验证;一次 app 运行本就是一整局 |
-| `code_hash_gate` | 开发/运维(yml-only,不进 GUI) | 起局前置码哈希结构闸开关:起局前比对 server 已加载码面 vs git HEAD,不一致拒起;缺省开 = 安全闸宁拦勿放。**server 进程 PATH 无 git = 起局被拒**(fail-closed),git 是起局硬依赖 |
+| `code_hash_gate` | 开发/运维(yml-only,不进 GUI) | 起局前置码哈希结构闸开关:起局前比对 server 已加载码面 vs git HEAD,不一致拒起;缺省开 = 安全闸宁拦勿放。**server 进程 PATH 无 git = 起局被拒**(fail-closed——信息缺失/校验失败时宁可拒绝,不带错值运行),git 是起局硬依赖 |
 
 > 已出清字段(`economy_mode`/`event_whitelist` 删、`hp_safe_threshold`/`difficulty_hp_override` 迁代码常量 `kernel/cw_economy.py::HP_SAFE_THRESHOLD`/`::DIFFICULTY_HP_TABLE`、gate_* 4 个 yml-only flag 删)的**why 与过程 → git 历史**;阵营轴保留与必含轴确认的用户裁定 → 用户裁定档案(已随裁定档体系退役)。
 
