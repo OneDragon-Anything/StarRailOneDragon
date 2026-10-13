@@ -12,7 +12,7 @@
 
 ## 3.0b 知识卡建表批（前置批）
 
-**范围**：`kernel/cw_comps.py` 每线知识卡三字段建表——`lock_rules`（每线锁定条件：策略型关联策略 + 角色型关键组合——**策略-线关联即本字段的构成，无独立关联表**）、`need_star`（每角色必要星级：CARRY 按攻略 2★/3★、辅助 1★——星级饥渴数据为源）、`key_items`（贯穿件名单）；CARRY 锚合流补全（plaza_carry ∪ core_chars，空值 3 线逐线补）。
+**范围**：`kernel/cw_comps.py` 每线知识卡三字段建表——`lock_rules`（每线锁定条件：策略型关联策略 + 角色型关键组合——**策略-线关联即本字段的构成，无独立关联表**）、`need_star`（每角色必要星级：CARRY 按攻略 2★/3★、辅助 1★——星级饥渴数据为源）、`key_items`（贯穿件名单）；CARRY 锚合流补全（plaza_carry ∪ core_chars，空值 3 线 = CARRY_ANCHOR_FALLBACK 承接〔cw_comps 在产符号——交付凭据〕）。
 **依赖**：无。
 **完成判据**：三字段全 20 线非空；need_star 逐线对拍 star_goals（20 线全量，冲突以攻略重述为准——line_and_upgrade §1.2 同判据）；lock_rules 角色型条件按持有状态可判定（单帧锁）；
 - 完成前常规检查（本文件首节）。
