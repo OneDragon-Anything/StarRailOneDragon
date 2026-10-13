@@ -9,7 +9,7 @@
   - [details/shop_session.md](details/shop_session.md) —— 商店会话模型：一节点一会话、买入序、置换账、筹资、刷新、节末凑息、正常重开触发
   - [details/line_and_upgrade.md](details/line_and_upgrade.md) —— 统一选线函数、升级判据（概率主轴）、方向签名前置段
 
-## 1. 问题与动机
+## 1. 问题与动机（现状时点注：本节「现状/现行」描述 = 迭代设计时点快照〔2026-10-12〕——落地 3.0b-3.3 已改变部分现状〔entry_signals 已建/ore_defer 已退役/SPHERE_OCCUPYING 已删等〕，本节陈述不随落地更新，实施者以代码现状为准）
 
 ### 1.1 现状症状
 
