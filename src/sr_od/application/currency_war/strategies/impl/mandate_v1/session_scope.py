@@ -181,9 +181,16 @@ def _direction_signature(gs: GameState, st: StrategyState) -> tuple:
 def _recompute_line_state(gs: GameState, st: StrategyState) -> None:
     """方向状态重算(签名变化时执行;**本阶段 = 现行为等价内核**)。
 
-    - 锁定后只读锁定线:锁定线槽非空时候选快照停算(锁定写入连带
-      动作③的结构承载,不另设标志位)——签名照常更新(签名含锁定态,
-      幂等跳过照常),快照不再维护;
+    - **照读搬运的滞后债(显式接受)**:``target_comp`` 恒为**上一拍**
+      物化值——现行物化链写点(flow 层帧代次消费)位于本函数调用之后
+      (两入口的接线时序 = 边界 → 签名 → 现行帧代次内务),故
+      ``opening_recipe_comp``/``line_candidates`` 搬运的是最近一次物化
+      产物而非同帧最新值。**3.3 部署面消费 ``opening_recipe_comp``
+      时直读物化链产物**(读 ``target_comp`` 本体,不从本快照读);
+      3.7 替换内核(方向值自产自写)后此债消灭。
+    - 锁定后只读锁定线:锁定线槽非空时本段直接返回(候选快照停算,
+      锁定写入时已清空——:func:`write_line_lock` 连带③)——签名照常
+      更新(签名含锁定态,幂等跳过照常),快照不再维护;
     - 未锁定态(本阶段恒未锁定——锁定判据 3.7 落码,锁定仅经
       :func:`write_line_lock` 骨架写入):
       * ``opening_recipe_comp`` = 现行 ``target_comp`` 物化链产物照读
@@ -210,6 +217,10 @@ def refresh_line_if_needed(gs: GameState) -> None:
     3. 签名变化 → 重算方向状态(:func:`_recompute_line_state`)。节点
        号在签名构成内,节点边界重置置失效签名后本函数必重算(节点号
        变化时签名必变 = 节点边界重算入口,prep_pipeline §3)。
+
+    本阶段重算 = 照读搬运过渡内核,方向键取值恒为上一拍物化产物
+    (滞后债的完整声明与消费指引见 :func:`_recompute_line_state`
+    docstring)。
     """
     st = state_of(gs)
     sig = _direction_signature(gs, st)
@@ -232,7 +243,9 @@ def write_line_lock(gs: GameState, comp_name: str) -> None:
       ② 清商店会话标记(``shop_handled``——下一轮备战第 4 步按锁定
          线名单重开会话全量评估,shop_session §4.2「方向锁定不走清单
          解拦」);
-      ③ 候选快照停算(锁定后只读锁定线,无候选维护)——结构承载于
+      ③ 候选快照**清空**并停算(锁定后只读锁定线,无候选维护;清空
+         消除消费歧义——锁定后读 ``line_candidates`` 恒 = 空集,语义
+         自明,无需另查锁定旗标)——停算结构承载于
          :func:`_recompute_line_state` 的锁定守卫。
     - 触发判据(硬规则查表/时点兜底)归迭代批 3.7;本函数 = 写入
       骨架,3.7 判据命中帧经此写入。
@@ -243,7 +256,8 @@ def write_line_lock(gs: GameState, comp_name: str) -> None:
     st.line_locked_comp = comp_name
     st.levelup_preauth = None
     st.shop_handled = None
-    log.info('[cw][line-lock] 方向锁定 → %s(连带:清预授权键/清商店标记/快照停算)',
+    st.line_candidates = ()
+    log.info('[cw][line-lock] 方向锁定 → %s(连带:清预授权键/清商店标记/快照清空停算)',
              comp_name)
 
 

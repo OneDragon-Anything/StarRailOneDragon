@@ -401,15 +401,17 @@ class StrategyState:
     # = session_scope.write_line_lock。
     line_locked_comp: str | None = None
     # 候选 top3 快照(线名元组,分数降序):每帧派生快照非持久状态,
-    # 随方向证据签名重算自然更新;锁定写入后停算(连带动作③)。本阶段
-    # 内核 = 现行为等价(照读现行 target_comp 物化链产物名单),3.7
-    # 替换为线分数 top3。
+    # 随方向证据签名重算自然更新;锁定写入时**清空**并停算(连带动作
+    #③——锁定后读本键恒 = 空集,消费端无需另查锁定旗标)。本阶段内核
+    # = 现行为等价(照读现行 target_comp 物化链产物名单,取值恒为上一
+    # 拍物化值),3.7 替换为线分数 top3。
     line_candidates: tuple[str, ...] = ()
     # 过渡配方开局面键(契约 B 第三键):部署开局面数据源(P1 过渡
     # 配方,M5/P1),与锁定线槽互不覆写(消双写者冲突);终态写者 =
     # 配方对物化链,本阶段照读现行 target_comp 物化链产物搬运
-    #(session_scope._recompute_line_state)。每备战期自写,非节点
-    # 作用域键(节点边界不重置)。
+    #(session_scope._recompute_line_state;取值恒为上一拍物化值——
+    # 3.3 部署面消费时直读物化链产物,不从本快照读)。每备战期自写,
+    # 非节点作用域键(节点边界不重置)。
     opening_recipe_comp: Comp | None = None
     # 方向证据签名(上次评估签名;line_and_upgrade §3 步骤 2 幂等
     # 跳过的判据):签名同值跳过重算;节点边界重置置 None 失效(强制
