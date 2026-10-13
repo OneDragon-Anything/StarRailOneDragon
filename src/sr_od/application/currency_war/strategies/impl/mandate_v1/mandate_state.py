@@ -54,6 +54,36 @@ if TYPE_CHECKING:
     )
 
 
+@dataclass(frozen=True)
+class LevelUpPreAuth:
+    """升级预授权载荷(整级一次买齐;line_and_upgrade §2.2)。
+
+    授权帧(升级判据通过)写入,执行帧按授权值发整批经验、不再逐帧
+    重闸——「实付上界 = 授权值」即防「买一半」复发的跨帧携带机制。
+    写入端 = 升级判据授权帧(迭代批 3.4 落码);失效出口 = 节点边界
+    重置清键 / 锁定写入连带动作清键 / 执行帧发射完成清键(3.4)。
+    """
+
+    gold_cost: int    # 授权批金成本上界(整级经验批的总金成本)
+    blood_cost: int   # 授权血成本上界(血本位局的整级血成本;金本位局 = 0)
+
+
+@dataclass(frozen=True)
+class ShopOpportunity:
+    """未消费机会清单记录(shop_session §4.2:判据通过但被资源拦下的牌)。
+
+    写入端 = 商店会话正常收工位(迭代批 3.6 接线);消费端 = 备战第 4
+    步入口的解拦复核(判定函数 3.6 建造)。字段集 = 解拦判定所需最小面
+    (金位解除线 = 注册表价 `price` 比对、`order_class` = 解拦后重评的
+    归属序)。
+    """
+
+    card_name: str    # 牌名(注册表规范名)
+    blocked_by: str   # 拦因闭集:'bench_full'(席满)| 'gold_short'(金不足)
+    price: int        # 注册表价(金的解除线比对基准)
+    order_class: str  # 买入序类(统一买入策略的序归属;值域随 3.6 接线枚举)
+
+
 @dataclass
 class StrategyState:
     """mandate_v1 策略器一局状态(局首由工厂冷建,局终随 session 销毁)。
@@ -328,6 +358,63 @@ class StrategyState:
     # 调用**(其 None 冷建覆写属策略器装配语义,执行层不得触发)。写读点
     # = operations/cw_screen/cw_screen_megastar.py(复位/读/置位三点)。
     megastar_clicked: bool = False
+
+    # ===== 节点作用域与方向状态键(session 作用域键基建批
+    #       2026-10-12-prep-shop-workflow-redesign §3.1;读写单一源 =
+    #       session_scope 模块函数族,节点作用域键的重置清单唯一所有者
+    #       = session_scope._NODE_SCOPE_RESET_TABLE——新键登记进表,
+    #       禁各自散写重置逻辑)=====
+    # [索引定义] shop_handled = 「本节点已处理」商店会话标记
+    # (shop_session §4.1):值 = 最后正常收工处理的节点号二元组
+    # (位面, 轮)(均 1 基);取值时机 = 正常收工帧现读生效节点序位
+    # (写入端单一源 = session_scope.mark_shop_handled);None = 本节点
+    # 未处理(局首天然缺省 = 未处理)。跨节点失效 = 节点边界重置清值
+    # + 值比对双保险(session_scope.shop_handled_for_current_node)。
+    shop_handled: tuple[int, int] | None = None
+    # 未消费机会清单(shop_session §4.2):判据通过但被资源拦下的牌
+    # 记录(ShopOpportunity 元组序,记录序 = 追加序);正常收工写、
+    # 节点边界重置清空;读写单一源 = session_scope 存储函数族。
+    shop_opportunities: tuple[ShopOpportunity, ...] = ()
+    # 升级预授权键(line_and_upgrade §2.2):None = 无授权;写入端 =
+    # 升级判据授权帧(3.4 落码);节点边界重置清零 + 锁定写入连带动作
+    # 清键(节点切换 = 金/血/收入日程全变,旧授权作废,防跨节点兑现)。
+    levelup_preauth: LevelUpPreAuth | None = None
+    # [索引定义] node_boundary_last_pos = 节点边界处理函数的判重键:
+    # 上次执行边界重置的生效节点序位 (位面, 轮)(均 1 基);取值时机
+    # = 边界函数执行时现读覆盖(写入端单一源 = session_scope.
+    # handle_node_boundary);None = 本局尚未执行过边界处理。
+    node_boundary_last_pos: tuple[int, int] | None = None
+    # 「第二位面已启动」窗口谓词标志(line_and_upgrade §1.4 时点兜底
+    # 载体):node_hist_pos 序位首入 (2,*) 段时置位,单调置位永不复位
+    #(不进节点边界重置清单——历史事实非节点作用域态);消费端 = 3.7
+    # 时点兜底,读布尔标志(session_scope.plane2_started_of)非位面
+    # 元组字面量比较(宪法第 2 条合规的窗口谓词形态)。
+    plane2_started: bool = False
+
+    # ===== 方向状态键(契约 B;line_and_upgrade §3 载体落位;读写
+    #       单一源 = session_scope 方向函数族,候选-锁定判据本体 3.7
+    #       替换内核)=====
+    # [索引定义] line_locked_comp = 锁定线槽:锁定线的注册表线名
+    #(None = 未锁定);取值时机 = 锁定动作一次性写入(硬规则命中帧
+    # 或时点兜底帧,判据 3.7 落码),锁后只读——候选-锁定制无换目标,
+    # 跨节点持续保留(节点边界不重置,契约 C 第 5 项)。写入端单一源
+    # = session_scope.write_line_lock。
+    line_locked_comp: str | None = None
+    # 候选 top3 快照(线名元组,分数降序):每帧派生快照非持久状态,
+    # 随方向证据签名重算自然更新;锁定写入后停算(连带动作③)。本阶段
+    # 内核 = 现行为等价(照读现行 target_comp 物化链产物名单),3.7
+    # 替换为线分数 top3。
+    line_candidates: tuple[str, ...] = ()
+    # 过渡配方开局面键(契约 B 第三键):部署开局面数据源(P1 过渡
+    # 配方,M5/P1),与锁定线槽互不覆写(消双写者冲突);终态写者 =
+    # 配方对物化链,本阶段照读现行 target_comp 物化链产物搬运
+    #(session_scope._recompute_line_state)。每备战期自写,非节点
+    # 作用域键(节点边界不重置)。
+    opening_recipe_comp: Comp | None = None
+    # 方向证据签名(上次评估签名;line_and_upgrade §3 步骤 2 幂等
+    # 跳过的判据):签名同值跳过重算;节点边界重置置 None 失效(强制
+    # 下帧重算)。写入端单一源 = session_scope.refresh_line_if_needed。
+    line_eval_signature: tuple | None = None
 
     # ===== scratch(原 session.memory 消解宿主;§6.3 纪律平移)=====
     # 策略实现层私有 scratch——临时变量不再逐个升字段。纪律:

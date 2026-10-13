@@ -34,13 +34,17 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
+    Action,
     CwAction,
     CwActionObsParam,
 )
 from sr_od.application.currency_war.strategies.impl.flow import (
     CwFlowStrategy,
 )
-from sr_od.application.currency_war.strategies.impl.mandate_v1 import entry
+from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+    entry,
+    session_scope,
+)
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
 )
@@ -222,6 +226,11 @@ class MandateV1Strategy(CwFlowStrategy):
         (方向刷新先于三遍编排)。管线宿主 = self.gs(state_of(gs) 经同源
         接线解析策略器状态;game_state_of(gs) 本体直通)。
         """
+        # 节点边界处理 + 方向签名前置(契约 B/C:两入口调同一对函数,
+        # 时序 = 边界 → 签名 → 决策;line_and_upgrade §3 执行时序节)。
+        # 本批(3.1)只写新增键族,现行决策零影响;备战/商店统一行为。
+        session_scope.handle_node_boundary(self.gs)
+        session_scope.refresh_line_if_needed(self.gs)
         # 方向重估先于决策(触发 = 帧代次标注)
         self._consume_prep_direction_frame()
         # —— 前置发射位(达标臂的发射决策驻策略层)。armed 帧短路
@@ -242,6 +251,21 @@ class MandateV1Strategy(CwFlowStrategy):
         actions = decide_prep_frame(self.gs, self.config,
                                     registry=self.registry)
         return actions[0] if actions else CwActionObsParam(scope='outer_loop')
+
+    def decide_shop_action(self) -> Action:
+        """商店单动作入口(mandate 覆写 = 两项前置内务;决策本体 =
+        flow 基类现行决策,零改动)。
+
+        节点边界处理与方向签名前置(契约 B/C)与备战入口调同一对
+        函数——商店决策入口的统一行为(shop_session §1:入口首查节点
+        边界检测与标记检查,标记检查位归 3.6 会话重排接线),时序 =
+        边界 → 签名 → 决策(line_and_upgrade §3 执行时序节)。生产
+        单动作循环与 :meth:`decide_shop_screen` 驱动器都经本口,两面
+        同源;本批(3.1)只写新增键族,现行商店决策零影响。
+        """
+        session_scope.handle_node_boundary(self.gs)
+        session_scope.refresh_line_if_needed(self.gs)
+        return super().decide_shop_action()
 
     def decide_shop_screen(self, session: StrategySession | None = None,
                            config: CurrencyWarConfig | None = None) -> list:
