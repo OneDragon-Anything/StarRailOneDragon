@@ -115,7 +115,7 @@
 
 **范围**：四维评分函数**骨架**落码（注册表查表地基 + §1.2 缺件集构造 + 比较器接口——**量纲合成式与权重留标定批**，缺省恒未定型 = 比较器不消费数值，骨架可测结构）、**`kernel/cw_comps.py` 扩 `key_items` 字段并建表**（贯穿件名单，知识批交付，期限 = 本批开表前——贯穿件强信号维的数据地基）、定型门/滞后余量/切换成本账（【拟】缺省 = 恒未定型）、provisional 登记（owner/期限）、现行换线机器退役（§1.5 退役面逐项：θ 滞回/D_min 驻留/证伪分桶/第四触发/P84 门/影子评估/塌缩通道删除，K 空窗回退换源；**provisional 旧槽位退役清单 = N_CRISIS/THETA/D_MIN/DELTA_HYST/V_MS/P_REC** 逐槽列名，漏删 = 孤儿【拟】槽）、3.1 签名骨架换核。
 **设计依据**：line_and_upgrade §1 全部、§3；关键取舍节。
-**文件面**：`strategies/impl/mandate_v1/`（新选线模块 + `proof.py` 退役面 + `audit/provisional.py` 登记 + `sell_gate.py` line_switch 通道退役——与 3.6 通道登记同文件分域，本阶段后置串行）、`strategies/impl/flow.py`（意向层机器退役载体 `_refresh_direction_views` 族清点）、`criteria/sell.py` 与 `criteria/contracts.py`（换线塌缩出口函数体 `line_switch_sell`（contracts.py:241）与其契约行退役——**V_MS 槽随函数退役；U_X 在产消费位另列**（criteria/buy/refresh/shop/stockpile，P41 项载体——消费位清点 = 3.7 穷尽核对范围））、`strategies/impl/mandate.py`（读数开商店腾席链退役宿主——近亲族 grep 判据在此）、`kernel/` 配合；测试仓。
+**文件面**（目录级引用，含 entry.py 证据门/换线登记消费段与 audit/calibration.py 注入写入口——非闭集枚举）：`strategies/impl/mandate_v1/`（新选线模块 + `proof.py` 退役面 + `audit/provisional.py` 登记 + `sell_gate.py` line_switch 通道退役——与 3.6 通道登记同文件分域，本阶段后置串行）、`strategies/impl/flow.py`（意向层机器退役载体 `_refresh_direction_views` 族清点）、`criteria/sell.py` 与 `criteria/contracts.py`（换线塌缩出口函数体 `line_switch_sell`（contracts.py:241）与其契约行退役——**V_MS 槽随函数退役；U_X 在产消费位另列**（criteria/buy/refresh/shop/stockpile，P41 项载体——消费位清点 = 3.7 穷尽核对范围））、`strategies/impl/mandate.py`（读数开商店腾席链退役宿主——近亲族 grep 判据在此）、`kernel/` 配合；测试仓。
 **依赖**：3.0（改前基线先行）、3.1、3.2、3.6（`sell_gate.py` 分域改动串行避冲突）、key_items 知识批（前置交付物——`kernel/cw_comps.py` 建表的本批内前置任务）。
 **优先级建议**：5
 **完成判据**：
@@ -136,9 +136,9 @@
 **完成判据**：
 - 窗口期危险信号观察项 = 濒死报警帧频率（对比基线——缺省相概率主轴关闭，P21/血本位为限器非响应器，[18] 报警的响应 = 自救/凑息动作自身 + 外部哨兵留证）；
 - 对照报告产出：分布变化方向与预注册预期锚一致（**预期锚 = 对照差异预注册文件，载体 = proofs 目录单篇，先 commit 后跑批**）；不一致处逐项归因（实现 bug/机制理解错/sim 不可信三选一）；
-- 实机验收判据线预注册文件已 commit（先 commit 后跑实机批）。
-**验收凭据形式**：对照报告 + 预注册文件。
+- 实机验收判据线预注册文件已 commit（先 commit 后跑实机批）；
 - 完成前常规检查（本文件首节）。
+**验收凭据形式**：对照报告 + 预注册文件。
 
 ## 末阶段：正本更新
 
