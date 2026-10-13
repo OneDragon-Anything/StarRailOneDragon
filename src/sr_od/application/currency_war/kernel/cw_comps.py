@@ -296,7 +296,7 @@ class ScoreContext:
     plane: int = 1
     round_num: int = 1
     gold: int = 0
-# 来源:docs/game/currency_war/data/competitors.md(V4.4 ~50 敌人词缀全集,米游社玩家攻略统计;词缀效果原文=affix_effects_data)+ cw_factions.FACTIONS desc(燃血角斗场原文)。
+# 来源:docs/game/currency_war/data/competitors.md(V4.4 ~50 敌人词缀全集,米游社玩家攻略统计 🟡;词缀效果原文=affix_effects_data)+ cw_factions.FACTIONS desc(燃血角斗场原文)。
 # 机制名跨版本稳;具体词缀属哪个机制随版本变(随 competitors.md 实机 OCR 更新)。
 # 只建模"对某类 comp 方向相反"的词缀(策略相关);纯数值怪强化(首领强化等)无 comp 交互,不入表。
 
@@ -497,7 +497,7 @@ TRANSITION_POOL: list[str] = EARLY_CORE_POOL + TEMPO_POOL
 # 证据域 = transition_combos 四体系表 + 直通线信号谱两处,逐条目带出处
 # 指针;排除举证(圣杯 Archer/燃血万敌/群攻大黑塔/黄泉/仙舟DOT/列车2)
 # 见设计同节,防后续误扩。
-# 封闭性辖域 = 双出处(四体系表希儿系行 + 直通线信号谱 r167-r168 更新节)
+# 封闭性辖域 = 双出处(四体系表希儿系行 + 直通线信号谱更新节（历史轮次，git 可溯）)
 # ——四体系封闭裁定(transition_combos 头部)只辖过渡体系成员增删,不辖
 # 直通线名单;名单变更随玩法文档版本走。值 = 出处指针字符串(知识判据
 # 载体,禁塞数值权重——00_framework 第 1 条)。
@@ -656,7 +656,7 @@ COMP_LIBRARY: list[Comp] = [
         # ===== 知识卡三字段(3.0b;数据源=final_comps/final_jizi_train.md)=====
         lock_rules={
             # 类专属策略信号最强一类:概念股 130/388+邀请 90(构造机理§3 开局信号层);
-            # 罗刹开局=策略改变三月七身份(r167-r168 直通线信号谱「策略驱动」层)
+            # 罗刹开局=策略改变三月七身份（直通线信号谱「策略驱动」层——历史轮次 git 可溯）
             '策略型': ['列车同行概念股', '列车同行邀请', '本姑娘就是罗刹'],
             # 引擎核心组=姬子·启行(388 篇 100%)+三月七(76%,引擎触发器;领航员
             # 必绑 85%+ 共识)——「核心到手使过渡板保留率翻倍」的最小组合(§3)
@@ -2965,7 +2965,7 @@ def maybe_pivot(gs: GameState, ctx: ScoreContext, config, target: Comp | None,
                     _new_fp = form_progress(fastest, gs)
                     if _new_fp < _cur_fp + 0.25:
                         log.info('[cw-pivot] p=%s r=%s hp=%s 信号3保命:已定型(%s fp=%.2f) '
-                                 '落点 %s fp=%.2f 未显著更高 → 保持(危机交买牌/装备侧;r118)',
+                                 '落点 %s fp=%.2f 未显著更高 → 保持(危机交买牌/装备侧——历史轮次 git 可溯)',
                                  plane_of(gs), round_num_of(gs), _hp,
                                  target.name, _cur_fp, fastest.name, _new_fp)
                         return None
