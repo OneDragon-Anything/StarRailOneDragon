@@ -97,6 +97,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_ORE_GRANTS,
+    ENV_SUPPLY_EQUIP_COUNT,
     INVESTMENT_ENVS,
     INVESTMENT_STRATEGIES,
     QUALITY_REWRITE_ENV_NAMES,
@@ -106,6 +107,9 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
     NodePos,
     node_sequence_of,
+)
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    DIAMOND_EQUIP_NAMES,
 )
 from sr_od.application.currency_war.kernel.cw_ore_channel import (
     check_ore_declared_level,
@@ -584,19 +588,34 @@ def box_options() -> tuple[str, ...]:
     return tuple(sorted(SYNTHESIS_BASES)[:BOX_CANDIDATES])
 
 
-def supply_options(rng: random.Random) -> tuple[SupplyOption, ...]:
-    """补给 3 选项采样(M18:8 基础件池均匀取 3 + 带钻槽均匀占位)。
+def supply_options(rng: random.Random,
+                   env_name: str = '') -> tuple[SupplyOption, ...]:
+    """补给 3 选项采样(M18:8 基础件池均匀取 3 + 带钻槽 equip 级均匀占位;
+    每列件数按环境注册表 :data:`ENV_SUPPLY_EQUIP_COUNT`,默认 1)。
 
     ``SupplyOption.char`` 恒空(补给 = 装备选);idx = 选项 0 基下标。
-    offer 内不重名(不放回采样)。
+    ``env_name`` = 当前投资环境归一名(表外环境 = 每列 1 件)。
+    采样 = **逐槽独立均匀有放回**(``rng.choice``,全环境统一一码径,可
+    重复——「随机到一样就一样」):跨列重复有归档帧实证;同列重复实机
+    真值未证,sim 按最简放回统一(单排默认局同规则,无证据支持分异)。
+    同 seed 采样值随采样式变更漂移(分布假设变更,非回归破坏)。
+    带钻槽 = 总槽位 equip 级均匀掷,落选项 → 该选项 ``has_diamond=True``
+    (选项级布尔契约不变;钻具体在哪件属呈现面,SUPPLY_DIAMOND_SLOT_
+    PENDING U24 披露在册)。
     """
     pool = sorted(SYNTHESIS_BASES)
-    equips = rng.sample(pool, min(SUPPLY_OPTION_COUNT, len(pool)))
-    diamond_slot = rng.randrange(len(equips))
+    per_col = ENV_SUPPLY_EQUIP_COUNT.get(
+        normalize_invest_name(env_name or ''), 1)
+    names = [rng.choice(pool)
+             for _ in range(SUPPLY_OPTION_COUNT * per_col)]
+    diamond_slot = rng.randrange(len(names))
     return tuple(
-        SupplyOption(idx=i, char='', equip=name,
-                     has_diamond=(i == diamond_slot))
-        for i, name in enumerate(equips))
+        SupplyOption(idx=i, char='',
+                     equip=names[i * per_col],
+                     extra_equips=tuple(
+                         names[i * per_col + 1:(i + 1) * per_col]),
+                     has_diamond=(diamond_slot // per_col == i))
+        for i in range(SUPPLY_OPTION_COUNT))
 
 
 # ============================================================ 披露键群
@@ -938,7 +957,8 @@ class SimBackend:
                         sig=obs_sig(group_id='sim:supply'))
         rng = stream_rng(self.seed,
                          f'M18/opts/p{plane}/r{r}/refresh{used + 1}')
-        opts = supply_options(rng)
+        opts = supply_options(rng, normalize_invest_name(
+            str(self.gs.active_env.value or '')))
         report_screen_supply_node_obs(self.gs, CwScreenSupplyNodeObs(
             in_node=True, options=list(opts), refresh_left=None))
 
@@ -1126,9 +1146,14 @@ class SimBackend:
 
     def _on_supply_picked(self) -> None:
         """补给选定落地:带钻选项给宝钻(世界事实写容器 diamond_count;
-        钻信息 = 容器 chosen_supply 现值,确认即写端 = 补给画面 op)。"""
+        钻信息 = 容器 chosen_supply 现值 2 元组 (角色, 装备名列表) 按
+        :data:`DIAMOND_EQUIP_NAMES` 名单派生(列表任一件名命中即钻;
+        写端 = 补给画面 op 确认即写)。派生失败边 = 钻名 OCR 误读 →
+        列表名不匹配 → 宝钻腿漏发;装备观察(整表)与钻数观察下一帧
+        暴露失配,fail-visible 非静默)。"""
         chosen = self.gs.chosen_supply.value
-        if chosen is not None and bool(chosen[2]):
+        if chosen is not None and any(
+                n in DIAMOND_EQUIP_NAMES for n in chosen[1]):
             cur = int(self.gs.diamond_count.value or 0)
             self.gs.observe(self.gs.diamond_count, cur + 1,
                             evidence=sim_evidence('supply:diamond'),
@@ -1475,7 +1500,8 @@ class SimBackend:
         kind = node_sequence_of(plane, self.gs.node_seq_by_plane.value)[r - 1]
         if kind == 'supply':
             rng = stream_rng(self.seed, f'M18/opts/p{plane}/r{r}')
-            opts = supply_options(rng)
+            opts = supply_options(rng, normalize_invest_name(
+                str(self.gs.active_env.value or '')))
             report_screen_supply_node_obs(self.gs, CwScreenSupplyNodeObs(
                 in_node=True, options=list(opts), refresh_left=1))
             self._screen = SCREEN_SUPPLY

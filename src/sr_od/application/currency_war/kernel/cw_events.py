@@ -67,19 +67,26 @@ class EncounterOption:
 @dataclass
 
 class SupplyOption:
-    """一个补给选项:角色 + 装备 + 是否带钻(OCR/视觉读,``read_supply_options`` 阶段5)。
+    """一个补给选项 = 一列(角色 + 随选装备组;选中一并获得,**非穿戴
+    语义**——角色入席不带装备、装备入栏,与现役发放语义一致;OCR/视觉
+    读,``read_supply_options`` 阶段5)。
 
     观察载荷契约(与策略无关的游戏事实载体,形状五方引用;决策语义单一
     源 = 策略层 supply.py,宪法五)。
     has_diamond:装备位带三钻之一(红钻/蓝钻/财富宝钻;SIFT 主通道 + 文本
     兜底双通道,检测集单一源 =
     ``kernel/cw_obs_core.DIAMOND_EQUIP_NAMES``)。
-    equip:装备名(OCR 原文,未归一)。
+    equip:列内画面 y 序首件装备名(OCR 原文,未归一;归一发生在选卡
+    上报,``normalize_registry_equip_name``)。
+    extra_equips:列内其余装备名(OCR 原文,未归一;y 序 = equip 之后;
+    归一同 equip 两段式;默认 () = 单装备布局,additive 字段——既有
+    消费面(``equip/char/has_diamond``)零变化)。
     """
     idx: int
     char: str = ""
     equip: str = ""
     has_diamond: bool = False
+    extra_equips: tuple[str, ...] = ()
 
 
 def _equip_value(equip: str) -> int:

@@ -210,103 +210,195 @@ def pair_refresh_counts_to_slots(
 
 
 # 补给选项 y 带。2026-08-26 多样本核对(66 帧存档离线 OCR 对拍)两种布局:
-# ① 单装备行:角色名 cy513-567 / 装备名 cy~648-716;② 双装备行(每列 角色+2 装备):
-# 第一行 y≈648、**第二行 y≈748-749** —— 旧上界 735 使②整行漏读(10 选只读出 4,
-# 补给选卡输入读残)。上界放宽到 780:实测各帧 750-780 无任何文本中心
-# (最近下方元素「已选择/确认」在 y≥920,余量充足);①布局帧放宽前后结果逐一相同。
+# ① 单装备行:角色名 cy513-567 / 装备名 cy~648-716;② 双装备行(每列 角色+2 装备,
+# 「过剩经费」类修饰局):第一行 y≈648、**第二行 y≈748-749** —— 旧上界 735 使②
+# 整行漏读(10 选只读出 4,补给选卡输入读残)。上界放宽到 780:实测各帧 750-780
+# 无任何文本中心(最近下方元素「已选择/确认」在 y≥920,余量充足);①布局帧放宽
+# 前后结果逐一相同。
 _SUPPLY_CHAR_Y: tuple[int, int] = (500, 600)
 _SUPPLY_EQUIP_Y: tuple[int, int] = (640, 780)
 _SUPPLY_CARD_CLICK_Y: int = 550   # 卡身选中 y(沿用 CwScreenSupplyNode.CARD_BODY;点卡身不开对话直接选中)
-_SUPPLY_COL_X_TOL: int = 150      # 角色-装备同列 x 容差(配对用)
+# 装备文本 x 聚簇阈值(同列互距):归档帧实证列距 ~352、列内双排装备名
+# 文本中心 x 漂移 ≤~60(图标 x 列内稳定、名 x 因名长漂移),200 双侧余量在案;
+# 超阈值 = 邻列装备(裂簇防线)。
+_SUPPLY_COL_GAP: int = 200
+_SUPPLY_COL_X_TOL: int = 150      # 簇心归锚/孤儿判差与 SIFT 命中归簇共用容差
+# (实证:簇心 = 装备名 OCR 文本中心均值,非图标中心——名长右移显著;
+#  簇心-自身锚点最差 ~112(5 字件名 × 2 字角色名,单排帧)、-邻锚点 ≥~240,
+#  150 容差双侧余量 ~38/~90;样本属弱证据,超宽卡面理论形态可破,实机首遇补帧)
 # 钻装备名检测集单一源 = kernel/cw_obs_core.DIAMOND_EQUIP_NAMES(游戏装备
-# 真值,读数域共用)。本模块消费 = 补给钻识别文本兜底(_equip_is_diamond)
-# 与 SIFT 模板筛(_sift_detect_diamonds);主通道 = SIFT 的实证依据见后者。
-
-
-def _equip_is_diamond(equip_name: str) -> bool:
-    """文本兜底:装备名精确匹配三钻(非子串——防「虫洞掘进钻头」类带钻字误判)。"""
-    return equip_name in DIAMOND_EQUIP_NAMES
+# 真值,读数域共用)。本模块消费 = SIFT 模板筛(_sift_detect_diamonds)+
+# 归并纯函数内文本兜底(装备名精确匹配,any 遍历全列件名)。
 
 
 def _sift_detect_diamonds(ctx: SrContext, screen: MatLike,
-                          columns: list[tuple[int, int]]) -> set[int]:
-    """SIFT 主通道:补给卡装备 icon 区扫三钻模板 → 带钻列索引集合。
-
-    复用 read_equips 的模板匹配(ensure_equip_sift_templates 全量装备库,含三钻);
-    扫描区 = 各列的 x 范围并集 × 装备区 y 带。模板库缺/无命中 → 空集(调用方落文本兜底)。纯读。
+                          equip_xs: list[int]) -> list[tuple[int, int]]:
+    """SIFT 主通道:补给卡装备 icon 区扫三钻模板 → 命中点 (x, y) 列表
+    (命中→列的归簇语义在 :func:`_group_supply_columns` 按最近簇心承接,
+    本函数零配对语义)。复用 read_equips 的模板匹配(ensure_equip_sift_
+    templates 全量装备库,含三钻);扫描区 = 装备文本 x 范围外扩 × 装备区
+    y 带(r1 review#5:y 带 580-780 加宽覆盖实测命中 705-716 + 布局微变
+    余量,已覆盖双排第二行 748-749;右界由 screen 实宽派生,不假定 1920)。
+    模板库缺/零命中 → [](调用方落文本兜底)。纯读。
 
     ✅ 实测对拍(2026-08-17,31 张存档补给画面):4 张命中(3 蓝钻 1 红钻,
     y≈705-716 icon 带,x 归列正确),27 张零误报;红钻样本三方对拍一致
     (SIFT@x506y716 inliers9 = VLM「第2列红宝石」= OCR 装备名「红钻」)。
     """
-    if not columns:
-        return set()
+    if not equip_xs:
+        return []
     from sr_od.application.currency_war.obs.cw_equipment import (
         ensure_equip_sift_templates,
         read_equips,
     )
     templates = ensure_equip_sift_templates(ctx)
     if not templates:
-        return set()
+        return []
     diamond_tms = {n: t for n, t in templates.items() if n in DIAMOND_EQUIP_NAMES}
     if not diamond_tms:
-        return set()
-    # 扫描带:所有列的 x 范围并集 × 装备区 y 带(r1 review#5:y 带 580-780 加宽
-    # 覆盖实测命中 705-716 + 布局微变余量;右界由 screen 实宽派生,不假定 1920)
-    x1 = max(0, min(cx for cx, _ in columns) - 160)
-    x2 = min(screen.shape[1] - 1, max(cx for cx, _ in columns) + 160)
+        return []
+    x1 = max(0, min(equip_xs) - 160)
+    x2 = min(screen.shape[1] - 1, max(equip_xs) + 160)
     hits = read_equips(screen, diamond_tms, equip_rect=(x1, 580, x2, 780))
-    # 命中归列(最近列心)
-    out: set[int] = set()
-    for _name, (hx, _hy), _inl in hits:
-        best = min(range(len(columns)), key=lambda i: abs(columns[i][0] - hx))
-        if abs(columns[best][0] - hx) <= _SUPPLY_COL_X_TOL:
-            out.add(best)
+    return [(hx, hy) for _name, (hx, hy), _inl in hits]
+
+
+def _group_supply_columns(
+        chars: list[tuple[int, str]],
+        equips: list[tuple[int, int, str]],
+        sift_hits: list[tuple[int, int]] | None = None,
+) -> list[tuple[SupplyOption, int]]:
+    """补给选项归并纯函数(角色锚点定列骨架 + 装备簇归锚 + 孤儿簇/
+    char-only 优雅降级;离线单测入口,OCR 读链只喂坐标与文本)。
+
+    [输入坐标系] ``chars`` = (角色名文本中心 x, roster 校验后角色名);
+    ``equips`` = (装备名文本中心 x, 中心 y, OCR 原文名);``sift_hits`` =
+    SIFT 钻命中点 (x, y) 列表(实机主通道产物,可选);坐标 = 1080p 游戏
+    空间像素。
+    [输出] 列序(左→右 = 画面物理列序,与 ``SupplyOption.idx`` 及观察
+    上报契约「列表序 = 画面物理列序」精确一致)的 (SupplyOption, 点击 x)
+    列表;点击 x = 有装备列簇首件(y 序)文本中心 x(单排布局与旧逐装备
+    点击点逐值一致)/ char-only 列角色锚 x(卡身点击 y 恒
+    ``_SUPPLY_CARD_CLICK_Y``,由调用方补 Point)。
+
+    归并规则(设计 §2.2,归档帧几何依据见常量注):
+    1. 装备按 x 链式聚簇(x 序相邻互距 ≤ ``_SUPPLY_COL_GAP``);
+    2. 列骨架 = 角色锚点(x 序)——每列恰一角色卡是画面稳定结构,列数
+       由此确定;零锚点(角色名极端 OCR 全失读)兜底 = 装备 x 簇作骨架,
+       各簇自成 char='' 列;
+    3. 簇按簇心 x 归入最近锚点,容差 ``_SUPPLY_COL_X_TOL``;超差(该列
+       角色名失读不并入邻列)或锚点已被先到簇占用 = 孤儿簇自成列;
+    4. 无簇锚点 = char-only 列(equip=''、extra_equips=()——人才储备类
+       变体天然承接);
+    5. 列序 = 锚点列(按锚 x)与孤儿簇(按簇首件 x)按 x 合并排序;
+    6. 簇内按 y 排序 → ``equip`` 首件 + ``extra_equips`` 其余;
+    7. ``has_diamond`` = SIFT 命中归簇(最近簇心 ≤ 容差)+ 文本兜底
+       any(名 ∈ DIAMOND_EQUIP_NAMES)双通道任一(兜底遍历全列件名,
+       「虫洞掘进钻头」类带钻字非钻名不误判)。
+    """
+    sift_hits = list(sift_hits or ())
+    # 1) 装备 x 链式聚簇(相邻间距 ≤ 阈值即同簇;列距 >> 阈值,裂簇/并簇
+    # 双向余量在案)
+    clusters: list[list[tuple[int, int, str]]] = []
+    for ex, ey, ename in sorted(equips, key=lambda e: e[0]):
+        if clusters and ex - clusters[-1][-1][0] <= _SUPPLY_COL_GAP:
+            clusters[-1].append((ex, ey, ename))
+        else:
+            clusters.append([(ex, ey, ename)])
+    # 簇心 = 簇内装备名 OCR 文本中心 x 均值(非图标中心)
+    centers = [sum(e[0] for e in c) // len(c) for c in clusters]
+    # 2) 列骨架 = 角色锚点
+    anchors = sorted(chars, key=lambda c: c[0])
+    # 3) 簇归锚:每簇取最近锚点,≤容差且未被占 → 归入;否则孤儿簇
+    cluster_to_anchor: dict[int, int] = {}
+    taken: set[int] = set()
+    if anchors:
+        for ci, center in enumerate(centers):
+            ai = min(range(len(anchors)),
+                     key=lambda k: abs(anchors[k][0] - center))
+            if abs(anchors[ai][0] - center) <= _SUPPLY_COL_X_TOL \
+                    and ai not in taken:
+                cluster_to_anchor[ci] = ai
+                taken.add(ai)
+    # 4/5) 列装配:锚点列(有簇 = 装备列,无簇 = char-only 列)+ 孤儿簇
+    # 列;排序 x 键 = 锚点列取锚 x、孤儿簇取簇首件 x(列距 >> 簇心-锚点
+    # 最差距离,两键混排不翻转相邻列序)。
+    anchor_to_cluster = {ai: ci for ci, ai in cluster_to_anchor.items()}
+    # 元素 = (排序 x, 角色名, 簇成员(y 序)|[], 簇下标|None)
+    columns: list[tuple[int, str, list[tuple[int, int, str]], int | None]] = []
+    for ai, (ax, aname) in enumerate(anchors):
+        ci = anchor_to_cluster.get(ai)
+        if ci is None:
+            columns.append((ax, aname, [], None))    # char-only 列
+        else:
+            members = sorted(clusters[ci], key=lambda e: e[1])
+            columns.append((ax, aname, members, ci))
+    for ci, _members in enumerate(clusters):
+        if ci not in cluster_to_anchor:
+            members = sorted(clusters[ci], key=lambda e: e[1])
+            columns.append((members[0][0], '', members, ci))   # 孤儿簇列
+    columns.sort(key=lambda col: col[0])
+    # SIFT 命中归簇(最近簇心 ≤ 容差)→ 簇下标集,再映射到排序后列位
+    sift_clusters: set[int] = set()
+    for hx, _hy in sift_hits:
+        if not centers:
+            break
+        ci = min(range(len(centers)), key=lambda k: abs(centers[k] - hx))
+        if abs(centers[ci] - hx) <= _SUPPLY_COL_X_TOL:
+            sift_clusters.add(ci)
+    out: list[tuple[SupplyOption, int]] = []
+    for idx, (_col_x, char_name, members, ci) in enumerate(columns):
+        names = [m[2] for m in members] if members else ['']
+        click_x = members[0][0] if members else _col_x
+        has_d = (ci in sift_clusters if ci is not None else False) or any(
+            n in DIAMOND_EQUIP_NAMES for n in names)
+        out.append((SupplyOption(idx=idx, char=char_name, equip=names[0],
+                                 has_diamond=has_d,
+                                 extra_equips=tuple(names[1:])),
+                    click_x))
     return out
 
 
 def read_supply_options(ctx: SrContext, screen: MatLike) -> list[tuple[SupplyOption, Point]]:
-    """OCR 补给选项(每列 = 角色卡 + 装备)→ ``[(SupplyOption, 卡身点击点)]``,按 x 左→右。
+    """OCR 补给选项(角色锚点定列,列 = 选项 = 角色 + 装备组,非穿戴语义)
+    → ``[(SupplyOption, 卡身点击点)]``,按列 x 左→右。
 
-    布局:**列数动态探测**(通常 4 选 1;「全都要」类效果减 2 列、「人身意外险」类加补给
-    阶段可增列,augment 改写下实测见 3-5 不等——历史 docstring 的「3 选 1」「实测 5」均为
-    特例表述,勿写死),每列 = 角色名(y≈545)+ 装备名(y≈680),点卡身(y≈550)选中 +
-    右下「确认」。**刷新圆钮实存**(「剩余次数」文本锚左侧固定偏移点击,宿主 = 画面 op
-    留守臂 ``cw_screen_supply_node.py``;本读链只读选项,不读刷新剩余——
-    剩余读数闸 = 容器 ``supply_refresh_left`` 剩余语义观察真值,由画面 op
-    观察 node 同帧读经 report 摄入,全域规范 = ``screens/op-layer.md`` §1.4)。
-    钻识别双通道 ✅(2026-08-17):主 = SIFT(装备 icon 区 y600-760 扫三钻模板,装备图已采集);
-    兜底 = 装备名精确匹配。
+    布局:**列数动态探测**(通常 4 选 1;「全都要」类效果减 2 列、「人身意外险」
+    类加补给阶段可增列、「过剩经费」类每列装备 1→2 件,augment 改写下实测见
+    3-5 不等——历史 docstring 的「3 选 1」「实测 5」均为特例表述,勿写死),
+    每列 = 角色名(y≈545)+ 装备名(y≈680 单排 / 648+748 双排),点卡身
+    (y≈550)选中 + 右下「确认」。**刷新圆钮实存**(「剩余次数」文本锚左侧
+    固定偏移点击,宿主 = 画面 op 留守臂 ``cw_screen_supply_node.py``;本读链
+    只读选项,不读刷新剩余——剩余读数闸 = 容器 ``supply_refresh_left`` 剩余
+    语义观察真值,由画面 op 观察 node 同帧读经 report 摄入,全域规范 =
+    ``screens/op-layer.md`` §1.4)。
+    钻识别双通道 ✅(2026-08-17):主 = SIFT(装备 icon 区扫三钻模板 → 命中点,
+    装备图已采集);兜底 = 装备名精确匹配(遍历全列件名)。
 
-    装备行定义列(每装备名 = 1 选项),角色按最近 x 配对(``get_char`` roster 校验,滤噪)。读不到 → []
+    归并 = :func:`_group_supply_columns` 纯函数(角色锚点定列骨架 + 装备
+    簇归锚;孤儿簇自成列不并入邻列,char-only 列一等成立)——本读链只喂
+    OCR 坐标与文本 + SIFT 命中点。读不到(零锚点零装备簇)→ []
     (handler 退默认 ``CARD_BODY``)。
     """
     from sr_od.application.currency_war.data.cw_chars import get_char
     ocr_map = ctx.ocr_service.get_ocr_result_map(
         image=screen, rect=None, color_range=None, crop_first=False,
     )
-    equips: list[tuple[int, str]] = []   # (cx, name)
-    chars: list[tuple[int, str]] = []    # (cx, name) roster-validated
+    equips: list[tuple[int, int, str]] = []   # (cx, cy, name)
+    chars: list[tuple[int, str]] = []         # (cx, name) roster-validated
     for text, mrl in ocr_map.items():
         if mrl.max is None or not text:
             continue
         cx, cy = mrl.max.center.x, mrl.max.center.y
         if _SUPPLY_EQUIP_Y[0] <= cy <= _SUPPLY_EQUIP_Y[1]:
-            equips.append((cx, text))
+            equips.append((cx, cy, text))
         elif _SUPPLY_CHAR_Y[0] <= cy <= _SUPPLY_CHAR_Y[1] and get_char(text) is not None:
             chars.append((cx, text))
-    equips.sort(key=lambda e: e[0])
-    # 钻识别双通道:主 = SIFT(装备 icon 区扫三钻模板,稳);兜底 = 装备名精确匹配
-    # (OCR 艺术字形变风险;两通道任一命中即钻)。
-    _sift_diamonds = _sift_detect_diamonds(ctx, screen, [(ex, 0) for ex, _n in equips])
-    out: list[tuple[SupplyOption, Point]] = []
-    for i, (ex, ename) in enumerate(equips):
-        ch = ''
-        if chars:
-            ncx, nname = min(chars, key=lambda c: abs(c[0] - ex))
-            if abs(ncx - ex) < _SUPPLY_COL_X_TOL:
-                ch = nname
-        has_d = (i in _sift_diamonds) or _equip_is_diamond(ename)
-        out.append((SupplyOption(idx=i, char=ch, equip=ename, has_diamond=has_d),
-                    Point(ex, _SUPPLY_CARD_CLICK_Y)))
-    return out
+    # 钻识别双通道:主 = SIFT(装备 icon 区扫三钻模板 → 命中点,归簇在
+    # 纯函数内按最近簇心承接);兜底 = 装备名精确匹配(纯函数内 any,
+    # OCR 艺术字形变风险;两通道任一命中即钻)。
+    sift_hits = _sift_detect_diamonds(ctx, screen,
+                                      [ex for ex, _ey, _n in equips])
+    return [(opt, Point(click_x, _SUPPLY_CARD_CLICK_Y))
+            for opt, click_x in _group_supply_columns(chars, equips,
+                                                      sift_hits)]

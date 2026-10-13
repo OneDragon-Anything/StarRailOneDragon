@@ -258,8 +258,11 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                             # fields.md §3.3.1/§3.4.5a))
     'encounter': 2,         # 遭遇屏 payload(§3.4.1;域版本 2 = options 形状
                             # 升级 typed EncounterOption,终态契约)
-    'supply': 2,            # 补给屏 payload(§3.4.2;域版本 2 = options 形状
-                            # 升级 typed SupplyOption,终态契约)
+    'supply': 3,            # 补给屏 payload(§3.4.2;域版本 3 = SupplyOption
+                            # 扩 extra_equips 附加装备元组(列 = 角色+装备组,
+                            # T-9 过剩经费;typed 选项结构扩字段 = 值形状变更,
+                            # fields.md §3.4.5a bump 契约);域版本 2 = options
+                            # 形状升级 typed SupplyOption,终态契约)
     'event_choices': 1,     # 十事件屏 chosen_*(§3.4/§4 事件选择)
     'settlement': 1,        # 结算真值组 + hp 保底事件位(§3.5)
     'effects': 1,           # 在场效果激活账本(§5.1,非 Field 载体)
@@ -793,7 +796,10 @@ class EncounterPayload:
 
 @dataclass(frozen=True)
 class SupplyPayload:
-    """补给屏附加(§3.4.2):列数动态——通常4选1,效果改写3-5,勿写死(cw_node_obs.py:279-282)。options 元素 = SupplyOption(终态契约形状升级:裸 tuple(str,str,bool) → typed;迁移期同上零行为)。"""
+    """补给屏附加(§3.4.2):列数动态——通常4选1,效果改写3-5,勿写死
+    (读链 = obs/cw_node_obs.read_supply_options,角色锚点定列、列 = 选项)。
+    options 元素 = SupplyOption(终态契约形状升级:裸 tuple(str,str,bool) →
+    typed;extra_equips 附加装备元组 additive,列 = 角色+装备组,T-9)。"""
 
     options: list[SupplyOption] = field(default_factory=list)
 
@@ -2566,7 +2572,7 @@ class GameState:
     # 审计投影;数值不直写防双源——金币真值 = settle_truth 结算读数、
     # 随机4费 = bench 观察)
     encounter_reward_claimed: Field[tuple[int, str] | None] = field(default_factory=Field)
-    chosen_supply: Field[tuple[str, str, bool] | None] = field(default_factory=Field)  # (角色, 装备, 有钻石)
+    chosen_supply: Field[tuple[str, tuple[str, ...]] | None] = field(default_factory=Field)  # (角色, 装备名列表;y 序;带钻与否自列表派生)
     chosen_megastar: Field[str | None] = field(default_factory=Field)   # 盛会之星(§3.4.5)
     chosen_partner: Field[str | None] = field(default_factory=Field)    # 伙伴(候选阵营)
     chosen_wish: Field[str | None] = field(default_factory=Field)       # 祈愿试炼目标文本(档=货币战争-祈愿试炼,写端=cw_screen_wish_trial)

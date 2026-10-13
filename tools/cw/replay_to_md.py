@@ -1016,10 +1016,18 @@ def _supply_entry(op: dict[str, Any], gaps: GapLog) -> list[str]:
         for o in opts:
             if isinstance(o, dict):
                 dia = '(带钻石标)' if o.get('has_diamond') else ''
-                opt_bits.append(f"{o.get('char') or '(空位)'}+{o.get('equip')}{dia}")
+                # extra_equips = 列内附加装备(过剩经费类修饰局;旧行缺键 =
+                # 单件历史数据,只读口径不破坏)
+                equips = '+'.join([str(o.get('equip'))]
+                                  + [str(x) for x in
+                                     (o.get('extra_equips') or [])])
+                opt_bits.append(f"{o.get('char') or '(空位)'}+{equips}{dia}")
             else:
                 opt_bits.append(_short(o, 20))
-        picked = (f"{pick.get('char') or '?'}+{pick.get('equip') or '?'}"
+        picked_eq = '+'.join([str(pick.get('equip') or '?')]
+                             + [str(x) for x in
+                                (pick.get('extra_equips') or [])])
+        picked = (f"{pick.get('char') or '?'}+{picked_eq}"
                   + ('(带钻石标)' if pick.get('has_diamond') else ''))
         line = (f"- 决策循环:补给轮无 spend 决策(结构性);拾取 "
                 f"{_dash(pick.get('n_options') or len(opts))} 选 1:"

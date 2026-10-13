@@ -271,9 +271,11 @@ class CwScreenSupplyNode(CwOperation):
         refresh_target = None
         # 派发实例真实选中下标(上报 param 即真实选择;兜底/刷新轮 = 0 占位)。
         param_idx = 0
-        # 开出内容载荷(空串 = 兜底点卡路径/装备名未解析——报告侧按「内容未知/未解析」分型翻来源留证)。
+        # 开出内容载荷(空串 = 兜底点卡路径/装备名未解析——报告侧按「内容未知/未解析/无装备名列」分型)。
         picked_char = ''
         picked_norm_item = ''
+        # 列内附加装备归一件名(画面 y 序;默认 () = 单装备布局/兜底路径)。
+        picked_extra_norm: tuple[str, ...] = ()
         # 本轮选定快照(选定事实现场载荷;None=兜底点卡路径/刷新路径)。
         # 现役消费面 = 零(选定事实现场载荷,遥测接线候批)。
         picked: dict | None = None
@@ -313,34 +315,41 @@ class CwScreenSupplyNode(CwOperation):
                 target = opts[pick.idx][1]
                 reason = pick.reason
                 param_idx = pick.idx
-                # 选定快照(角色/装备/钻;refresh_left=容器剩余次数现值快照,
-                # 可 None——布尔键随计数闸消亡,left 供读端按剩余分型,无
-                # 「本局初始授予数」基线故携带而非推导)——
-                # 选定事实现场载荷,现役消费面 = 零(见上方组装点注释)。
+                # 选定快照(角色/首件装备/附加装备/钻;refresh_left=容器剩
+                # 余次数现值快照,可 None——布尔键随计数闸消亡,left 供读端
+                # 按剩余分型,无「本局初始授予数」基线故携带而非推导)——
+                # 选定事实现场载荷,现役消费面 = 零(遥测接线候批;在读
+                # 渲染方 = tools/cw/replay_to_md.py `_supply_entry`)。
                 _opt = opts[pick.idx][0]
                 picked = {'char': _opt.char, 'equip': _opt.equip,
                           'has_diamond': _opt.has_diamond,
+                          'extra_equips': _opt.extra_equips,
                           'refresh_left': _left}
                 # 开出内容载荷(归一件名 = 注册表级分层归一
                 # ``normalize_registry_equip_name`` 现算:精确快道 →
                 # containment longest-first → 相似救援唯一命中;多/零命中
-                # = '' 禁猜,报告侧翻来源留证)。
+                # = '' 禁猜,报告侧逐件翻来源留证)。
                 picked_char = _opt.char
                 picked_norm_item = normalize_registry_equip_name(_opt.equip)
+                picked_extra_norm = tuple(
+                    normalize_registry_equip_name(e)
+                    for e in _opt.extra_equips)
                 # GameState 选定记录(chosen_supply)——**确认即写**(口径分叉
                 # 显式申报:supply 直写,chosen_tome 维持「出口验真后写」家族
                 # 口径不变——差异理由 = supply 的中转暂存宿主已随执行层状态
                 # 类目退役,直写是暂存载体消亡后的唯一形态;chosen_tome 无
                 # 暂存载体。确认未落地窗内容器短暂持未落地值:容器
                 # chosen_supply 无决策读者,低危可接受;兜底点卡/刷新轮不写
-                # = 真选守卫(与本分支互斥)。)
+                # = 真选守卫(与本分支互斥)。)值 = (角色, 装备名列表)
+                # 2 元组(OCR 原文 y 序;不带钻字段——有没有钻石让消费侧
+                # 自行按名单派生,写端单点本分支)。
                 try:
                     from sr_od.application.currency_war.kernel.cw_game_state import (
                         ChannelSig,
                     )
                     _gs.write_logic(
                         _gs.chosen_supply,
-                        (_opt.char, _opt.equip, _opt.has_diamond),
+                        (_opt.char, (_opt.equip, *_opt.extra_equips)),
                         produced_by='CwScreenSupplyNode',
                         sig=ChannelSig(family='logic_action',
                                        actor='CwScreenSupplyNode',
@@ -378,6 +387,7 @@ class CwScreenSupplyNode(CwOperation):
                                   target=target, picked=picked)
         _param = CwActionPickSupplyParam(idx=param_idx,
                                          char_name=picked_char,
-                                         norm_item=picked_norm_item)
+                                         norm_item=picked_norm_item,
+                                         extra_norm_items=picked_extra_norm)
         action_op_for(_param, self.ctx, _env).execute()
         return True

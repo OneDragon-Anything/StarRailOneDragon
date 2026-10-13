@@ -1918,3 +1918,42 @@ def _validate_env_node_seq() -> None:
 
 
 _validate_env_node_seq()
+
+
+# ===== 环境补给选项装备携带数注册表(T-9 过剩经费;白名单制)=====
+# 「补给选项内容修饰」环境首例:键 = 环境规范名,值 = 每列装备件数
+# (默认 1 件不入表)。表外环境一律无条目,禁从效果原文自动猜装
+# (ENV_STREAK_GRANTS 同款白名单纪律)。消费面 = sim 生成器
+# (sim/cw_sim_backend.supply_options 查表发件);live 读链不消费本表
+# (obs 层角色锚点+几何归并按实读描述画面真值,不读局状态)。表形状
+# 预留「每列件数」泛化:读链天然携带 1..n 件,char-only 列 = 0 件;
+# 未来 3 件/列环境 sim 侧落本表即两面同启。无估值三表互斥闸——本表是
+# 世界/呈现修饰非估值结构(ENV_NODE_SUPPLY_BEFORE_BOSS 白名单同判,
+# 无互斥先例)。
+ENV_SUPPLY_EQUIP_COUNT: dict[str, int] = {
+    # 补给阶段中，角色会携带两件装备(id 108 原文直读,
+    # cw_invest_data PlazaPortal('108'))
+    '过剩经费': 2,
+}
+
+
+def _validate_env_supply_equip_count() -> None:
+    """ENV_SUPPLY_EQUIP_COUNT 构建校验(import 即炸;沿
+    _validate_env_streak_grants 先例):
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
+    ② 值形:≥2 的真 int(bool 排除——<2 与默认 1 件无差,登记笔误
+    前置可见)。"""
+    orphans = [n for n in ENV_SUPPLY_EQUIP_COUNT if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(
+            f"ENV_SUPPLY_EQUIP_COUNT 孤儿键(base 无此环境?版本改名?):"
+            f"{sorted(orphans)}")
+    for _n, _count in ENV_SUPPLY_EQUIP_COUNT.items():
+        if not isinstance(_count, int) or isinstance(_count, bool) \
+                or _count < 2:
+            raise ValueError(
+                f"ENV_SUPPLY_EQUIP_COUNT 值形({_n!r}):须为 ≥2 的 int,"
+                f"现值 {_count!r}")
+
+
+_validate_env_supply_equip_count()
