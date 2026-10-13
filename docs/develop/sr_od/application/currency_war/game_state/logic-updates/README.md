@@ -66,8 +66,8 @@
 |---|---|---|---|
 | PickEncounter | `CwActionPickEncounterOp` | [pick-encounter.md](pick-encounter.md) | `report_action_pick_encounter_param`(具名模块 `kernel/cw_action_report/pick_encounter.py`,发出动作时立即写入 chosen_encounter;兑现后清单只消费一次) |
 | PickSupply | `CwActionPickSupplyOp` | [pick-supply.md](pick-supply.md) | `report_action_pick_supply_param`(即时单相一口写:owned 追加 0..n 件规范名装备(选中列首件 + 附加件按画面 y 序)+ 角色入席分支 `grant_bench_unit_cascade` + 装备后果链逐件 `apply_equip_acquire_consequence`;整列读不到装备名 = 装备域留空不写、不算缺陷,内容未知/名字未解析 = 值保持不变、来源标记翻转并保留证据;选择落地 = `chosen_supply` 由画面 op 确认时写入 (角色, 装备名列表) 2 元组) |
-| PickInvestStrategy | `CwActionPickInvestOp` | ——(专篇缺档;补篇决策 = 新增 pick-invest.md 专篇,登记入口 = 本 README 汇总表) | `report_action_pick_invest_strategy_param`(发出动作时立即写入,整支走获得链 `gain_invest_strategy`) |
-| PickInvestEnv | `CwActionPickInvestOp` | ——(同上,两行同指一 op) | `report_action_pick_invest_env_param`(发出动作时立即写入,整支走获得链 `gain_invest_env`) |
+| PickInvestStrategy | `CwActionPickInvestOp` | [pick-invest.md](pick-invest.md)（专篇已补） | `report_action_pick_invest_strategy_param`(发出动作时立即写入,整支走获得链 `gain_invest_strategy`) |
+| PickInvestEnv | `CwActionPickInvestOp` | 同上（两行同指一 op,专篇同为 pick-invest.md） | `report_action_pick_invest_env_param`(发出动作时立即写入,整支走获得链 `gain_invest_env`) |
 | PickPlanner | `CwActionPickPlannerOp` | [pick-planner.md](pick-planner.md) | `report_action_pick_planner_param`(即时单相:先授予条件单位(rider,欢愉契约),随后装备/升费效果一口写,具名模块 `pick_planner.py`,模块头申报即时单相) |
 
 **零写族(7 行)**:
