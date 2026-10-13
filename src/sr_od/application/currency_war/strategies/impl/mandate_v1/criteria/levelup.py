@@ -214,7 +214,7 @@ def levelup_budget_gate(gs: GameState,
     ;此据 = 息通道非退化——两据独立在案,任一据修订必须过
     另一消费位重推,断言只锁同值不锁同据)。出辖三支(判据见
     ``_guarantee_floor_holds``):终局域(R_全局 查表判定,消费
-    ``kernel.cw_plane_table.r_remaining`` 单一源禁自推位面数,01
+    ``statefn/horizon.r_remaining`` 门面单一源禁自推位面数,01
     §8-1 位面参数化)/生存域(``p1_blood_floor`` 让位,真花光唯一
     合法通道)/买断制(cap_resolved=0 息账整体消解,p47 A1)。
     (3a) 非豁免路径行为零漂移:本门只辖两豁免支的放行输出,闸序
@@ -313,7 +313,7 @@ def _guarantee_floor_holds(gs: GameState,
     出辖三支先行(任一真 = 不设下界,让位语义各有在册出处):
 
     - 终局域:位面末战(``_plane_last_battle`` 单一源)∧ R_全局 ≤ 1
-      (``kernel.cw_plane_table.r_remaining`` 单一源查表;R 含当前节点,
+      (``statefn/horizon.r_remaining`` 门面场字段自算查表;R 含当前节点,
       决策帧最小值 = 末位面末战的 1;禁自推位面数——宪法 01 §8-1
       位面参数化不变量)。末位面末战后金无任何消费场景(域③前提
       失效:P41 终局清仓恒优/P23 死亡域攥金价值恒零),ALL IN 维持
@@ -336,7 +336,7 @@ def _guarantee_floor_holds(gs: GameState,
     levelup_budget_gate 键承载)。
     """
     if _plane_last_battle(gs, session):
-        from sr_od.application.currency_war.kernel.cw_plane_table import (
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.horizon import (
             r_remaining,
         )
         if r_remaining(session, *_plane_round_of(gs)) <= 1:

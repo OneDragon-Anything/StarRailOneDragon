@@ -1148,7 +1148,7 @@ def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
     """开局帧槽序表的**每位面首帧**写入。
 
     write-once 守卫会使 P1 的 9 槽表整局滞留:进 P2 后 7 槽真值永不落盘 →
-    nodes_of_plane / battles_left_p2 / 位面日程真值(cw_plane_table.schedule_of)
+    nodes_of_plane / battles_left_p2 等本位面轮数消费口
     全读错(表「在」但是错的)。按 ``plane_node_table_plane`` 锚定,位面变更即
     重写(位面内恒定语义不变,同位面多次 probe 不覆写);同时 append
     ``plane_lengths_seen``(位面长度真值序列,P3 进表即自适应)。

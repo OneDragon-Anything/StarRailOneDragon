@@ -19,19 +19,20 @@ resolved)``——resolved=False = fail-closed(缺参/日程不可得/位置缺�
 **剩余口径**(沿 env_economy 同形态):从 gs 当前节点起算到局终——开局
 取卡帧 = 全局期望,局内重发帧 = 剩余期望,同一函数自然覆盖。
 
-**剩余节点数查表单一源**(宪法二查表键合法形态):长度唯一真值源 =
-kernel ``cw_plane_table.schedule_of`` 位面实际长度,消费符号单一源 =
-``cw_plane_table.r_remaining``/``r_global``(经策略侧既有门面
-statefn/horizon.py import 重定向复用,禁新写第三实现);未揭晓位面沿其
-``PLANE_FALLBACK_PRIORS=(9,9,9)`` 结构先验回退(端点纪律结构先验,注册
-表明文排除统计估计——非【拟】,不另设「不可得」判定;单一源现役语义
-原样消费)。**口径偏差申报**(29 号稿 §2.1 原文申报,如实保留):
-``r_global`` 含当前节点,而「进入新节点给金/XP」类通道语义不含已进入的
-当前节点——原样消费 = per-node 通道系统性 +1 节点偏差(同向偏高,量级
-≤ 单节点流值);boss 通道同族偏高(当前节点即位面末槽时多计一笔已发放
-boss 金)。取上端 = 现金分计分偏高已知并申报(29 号稿 §2.1 口径申报行),
-非防低估。**禁消费** ``total_remaining_nodes`` 恒按 9/位面计的口径
-(01_math_framework §5 状态函数表 R_全局 行:已登记待修缺陷)。
+**剩余节点数自算单一源**(宪法二查表键合法形态;T-8 裁决点 9:框架不向
+策略供视界量,序列模块只留键原语):长度唯一真值源 = GameState 场字段
+``node_seq_by_plane``(修饰局 10/8、默认局 9/7;None = 未注册态回退默认
+表),自算消费符号单一源 = 策略门面 ``statefn/horizon.r_remaining``/
+``r_global``(本模块零新写视界实现);视界封顶 modeled planes(场字段
+键集 = P1+P2,P3 = 建模域外 = 运行终局,不可达轮不计;行为申报 = 迭代
+abolish-node-ordinal details/horizon-cleanup.md §8)。**口径偏差申报**
+(29 号稿 §2.1 原文申报,如实保留):``r_global`` 含当前节点,而「进入
+新节点给金/XP」类通道语义不含已进入的当前节点——原样消费 = per-node
+通道系统性 +1 节点偏差(同向偏高,量级 ≤ 单节点流值);boss 通道同族偏高
+(当前节点即 boss 位时多计一笔已发放 boss 金)。取上端 = 现金分计分偏高
+已知并申报(29 号稿 §2.1 口径申报行),非防低估。``total_remaining_nodes``
+恒按 9/位面的旧口径(01_math_framework §5 R_全局 行登记缺陷)已随视界族
+清扫修正为场字段求和——本模块仍统一经门面自算,不直引该对照量。
 
 **待建模通道**(v1 fail-closed = 0,建模落地自动进现金分):见
 :data:`STRATEGY_ECONOMY_PENDING_MODELING` 与字段分类的「待建模」集
@@ -53,10 +54,8 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     EconomyEffect,
     get_strategy,
 )
-from sr_od.application.currency_war.kernel.cw_plane_table import (
-    node_t_of,
-    plane_end_slots,
-    schedule_of,
+from sr_od.application.currency_war.kernel.cw_node_schedule import (
+    PLANE_NODE_TABLES,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.env_economy import (
     XP_GOLD_RATE,
@@ -207,8 +206,8 @@ def strategy_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     天然不入下方通道公式 = 塌 0,建模落地加通道即自动进现金分。
 
     通道(值全部 = 注册表游戏定义【注】直读;剩余视界查表单一源 =
-    ``cw_plane_table.r_remaining``/``r_global``,经 statefn/horizon 门面
-    复用——禁新写第三实现):
+    策略门面 ``statefn/horizon.r_remaining``/``r_global`` 场字段自算,
+    禁新写第三实现):
     - instant_gold:选卡当场一次性金,面值(**勿读 gold_next_nodes_amount
       代「现在」腿**——长期主义系「现在」腿由 amount 现值承载,误读即漏
       现在腿);
@@ -216,16 +215,16 @@ def strategy_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
       min(count, max(剩余节点数 − 1, 0))——「接下来」不含当前节点,按
       ``剩余节点数 − 1`` 截断(剩余节点数含当前节点,R≤count 终局帧多计
       1 腿消除);
-    - gold_per_node × 剩余节点数(r_global 查表,未揭晓位面沿
-      PLANE_FALLBACK_PRIORS 先验回退);
-    - gold_per_boss_node × 剩余 boss 节点数(boss = 位面末槽,
-      plane_end_slots 几何真值、每位面恰一 boss;含当前位面口径的偏差
-      见模块 docstring 申报);
+    - gold_per_node × 剩余节点数(r_global 场字段自算,None 回退默认表);
+    - gold_per_boss_node × 剩余 boss 节点数(场字段序列自当前节点(含)
+      起 ``'boss'`` kind 直查;封顶 modeled planes,P3 虚拟末槽不再计入
+      ——默认局 P1 段 3→2、P2 起 2→1,行为申报 details §8.3;含当前位面
+      口径的偏差见模块 docstring 申报);
     - interest_flat_per_node × 剩余节点数(息上调整数腿,金等价直读);
     - xp_per_node × 剩余节点数 × XP_GOLD_RATE;
     - xp_instant × XP_GOLD_RATE。
 
-    位置缺失帧:沿 env 屏先例退化 (1, 1) 现读(schedule_of 查表照常)。
+    位置缺失帧:沿 env 屏先例退化 (1, 1) 现读(场字段/默认表读出照常)。
     """
     st = get_strategy(name)
     eff = st.economy if st is not None else None
@@ -253,13 +252,18 @@ def strategy_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     # 通道 3:每节点金流
     if eff.gold_per_node:
         acc += float(eff.gold_per_node) * remaining
-    # 通道 4:每 boss 节点金(boss = 位面末槽,plane_end_slots 几何真值
-    # × schedule_of 实长;每位面恰一 boss → 剩余 boss 数 = 当前全局节点号
-    # 未越过的末槽个数,含当前节点口径偏高申报见模块 docstring)
+    # 通道 4:每 boss 节点金(剩余 boss 数 = 场字段序列自当前节点(含)
+    # 起 'boss' kind 直查——替代退役的「位面末槽 × 每位面恰一 boss」几何
+    # 假设,修饰局 boss 位移与未来序列变异天然正确;封顶 modeled planes,
+    # P3 虚拟末槽不再计入 → 默认局 P1 段 3→2、P2 起 2→1(行为申报
+    # details §8.3);当前节点即 boss 位时多计一笔已发放 boss 金的同族
+    # 偏高申报见模块 docstring)
     if eff.gold_per_boss_node:
-        _cur_t = node_t_of(gs, cur_plane, cur_round) or 1
-        _end_slots = plane_end_slots(schedule_of(gs))
-        _bosses = sum(1 for _e in _end_slots if _e >= _cur_t)
+        _seqs = gs.node_seq_by_plane.value or PLANE_NODE_TABLES
+        _from = max(1, cur_round) - 1   # 自当前节点(含)起;round 缺效防御同旧 or 1 支
+        _bosses = sum(
+            (seq[_from:] if k == cur_plane else seq).count('boss')
+            for k, seq in _seqs.items() if k >= cur_plane)
         acc += float(eff.gold_per_boss_node) * _bosses
     # 通道 5:固定息(每节点固定息上调整数,金等价直读)
     if eff.interest_flat_per_node:

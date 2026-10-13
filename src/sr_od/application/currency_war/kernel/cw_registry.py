@@ -474,8 +474,9 @@ class DecisionV2Registry:
     #: 不保「在场」,末轮无回场窗 → 永久丢失;迁移审计 w159(git 历史) §2:S1 局全部
     #: 37/37 通道=evolve_tx 整批下场)。护的是在场引擎贡献,不是库存。
     evolve_engine_guard_enabled: bool = True
-    #: 件2·末轮演进冻结:True 时位面末窗(剩 ≤1 轮,round_num ≥
-    #: NODES_PER_PLANE-1)演进换档(undeploy/sell 非空的拆板事务)
+    #: 件2·末轮演进冻结:True 时位面末窗(剩 ≤1 轮,即位面内倒数第二轮
+    #: 起;位面轮数 = 节点序列场字段现值长度,默认 P1=9/P2=7)演进换档
+    #: (undeploy/sell 非空的拆板事务)
     #: 冻结不发射——纯加深(deploy-only)与填位照旧;与 `w150_buy_lock/`
     #: final_fence(买侧末轮围栏)语义对齐:末轮换档天然
     #: 无回场窗,「加深收益 < 引擎丢失风险」在该窗口系统性为真

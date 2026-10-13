@@ -7,9 +7,19 @@
 = 修掉的 P2 计 9 病灶成批回流)。日程感知 DP 规划器
 已按 BLUEPRINT §3 裁决退出生产路径,不在本模块。
 
+**现役口径(9 制几何层退役)**:节点身份 = ``(位面, 轮)`` 序位键,
+逐位面节点类型序列唯一真值 = ``cw_node_schedule`` 真值表 + GameState
+场字段 ``node_seq_by_plane``(修饰局 10/8、默认局 9/7;None 未注册态
+回退默认表)。数量语义的视界量不在此层(T-8 裁决点 9:框架不向策略
+供视界量,序列模块只留键原语;策略侧经 mandate_v1/statefn/horizon
+门面场字段自算,kernel 判据点就地求和)——9 制几何层 11 符号
+(schedule_of/node_t_of/r_remaining 族/plane_offsets/plane_end_slots/
+NODES_PER_PLANE/TOTAL_NODES/DEFAULT_PLANE_LENGTHS/PLANE_FALLBACK_PRIORS)
+已整体退役,迁移对照 = 迭代 abolish-node-ordinal
+details/horizon-cleanup.md §2-§6。
+
 承载面(按消费面划定的最小集):
-- 位面日程几何:NODES_PER_PLANE/TOTAL_NODES/DEFAULT_PLANE_LENGTHS/
-  plane_offsets/plane_end_slots/schedule_of/nodes_of_plane/node_t_of;
+- 本位面轮数真值:nodes_of_plane(实况读、不夹);
 - 升级费用查询:clicks_to_level/level_cost(逐帧现读单价由消费方
   economy_cycle.upgrade_plan_fee 承担,本表只供次数);
 - 息封顶常量:GOLD_CAP_INTEREST(息闭式本体 = kernel cw_economy
@@ -42,9 +52,7 @@ def _probe_books(session):
     return game_state_of(session).node_books
 
 
-# ===== 日程/经济先验 =====
-NODES_PER_PLANE: int = 9
-TOTAL_NODES: int = NODES_PER_PLANE * 3
+# ===== 经济先验 =====
 GOLD_CAP_INTEREST: int = 50   # 息封顶(10 金 1 息、5 档封顶)
 XP_CLICK_COST_FLAT: int = 4   # 购买经验单击价先验(实测 4-8 取下限;
 # 生产升级费走 economy_cycle.upgrade_plan_fee 的 OCR 现读,本值仅 level_cost 先验用)
@@ -52,107 +60,48 @@ XP_CLICK_COST_FLAT: int = 4   # 购买经验单击价先验(实测 4-8 取下限
 #: nodes_of_plane 表缺回退告警的一次性指纹(防每帧刷屏;同 [cw!] 可 grep 纪律)
 _NODES_OF_PLANE_WARNED: set[str] = set()
 
-# ===== 位面日程(槽序排布) =====
-#: 日程先验:(位面1, 位面2, 位面3) 各自轮数。P1=9 结构已知;P2 真值 7
-#: 但以 session 表为准(生产自适应);P3 未知期保持 9 先验。
-DEFAULT_PLANE_LENGTHS: tuple[int, int, int] = (
-    NODES_PER_PLANE, NODES_PER_PLANE, NODES_PER_PLANE)
-
-#: schedule_of 未揭晓位面的回退先验(逐面):(9, 9, 9)。端点纪律:
-#: 未揭晓位面真值不可判 ⇒ 回退统一取结构上端(位面长度上限 9),
-# 消除回退低于真值时 horizon 的系统性低估通道(低回退会把不可逆卖面门槛压低)。
-# 语料众数观测(5/6 完整局为 7)是参考记录而非逐局真值,不作回退依据。
-# 与 DEFAULT_PLANE_LENGTHS(几何缺省,裸调用/测试兼容口径 9,9,9)数值相同但
-# 语义分立——后者只作 plane_offsets/plane_end_slots/build_ledger 的参数缺省,
-# 生产调用方应显式传 schedule_of(session) 实际长度,两者禁互替。
-PLANE_FALLBACK_PRIORS: tuple[int, int, int] = (
-    NODES_PER_PLANE, NODES_PER_PLANE, NODES_PER_PLANE)
-
-
-def plane_offsets(pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> tuple[int, ...]:
-    """日程 → 各位面起始槽(累计偏移;(9,9,9)→(0,9,18))。"""
-    offs: list[int] = []
-    acc = 0
-    for length in pl:
-        offs.append(acc)
-        acc += length
-    return tuple(offs)
-
-
-def plane_end_slots(pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> frozenset[int]:
-    """日程 → 各位面末槽(boss 奖金槽;(9,9,9)→{8,17,26})。"""
-    offs = plane_offsets(pl)
-    return frozenset(offs[i] + pl[i] - 1 for i in range(len(pl)))
-
-
-def schedule_of(session) -> tuple[int, int, int]:
-    """位面日程真值(单一源)。
-
-    真值源 = ``gs.node_books.plane_lengths_seen``(cw_screen_prep 每位面首帧随
-    plane_node_table 记录的「本局已揭晓位面轮数」序列,P3 进表即自适应);
-    未揭晓位面回退 ``PLANE_FALLBACK_PRIORS`` 逐面先验(9, 9, 9)——端点纪律
-对称化:未揭晓真值不可判,统一取语料分布上端(位面长度上限 9)。
-    脏表守卫:每位面长度夹 [1, NODES_PER_PLANE]
-    (同 超长脏表封顶语义)。duck-typed 读 session。
-    """
-    seen = _probe_books(session).plane_lengths_seen or []
-    out = []
-    for i in range(3):
-        length = int(seen[i]) if i < len(seen) else PLANE_FALLBACK_PRIORS[i]
-        out.append(min(max(length, 1), NODES_PER_PLANE))
-    return tuple(out)
-
-
-def node_t_of(session: object, plane: object, round_num: object) -> int | None:
-    """全局节点号(策略层计分通道消费:gold_per_boss_node 计分等,基 1):
-    前序位面**实际长度**和 + 位面内轮次。
-
-    历史消费点「battle_wait killed hp 对比兜底轮次邻接门」已随 T-8 删除
-    (胜负判定必须在结算画面识别;该门邻接判在修饰局 (1,10)↔(2,1)
-    塌缩);本函数现役消费 = ``strategies/impl/mandate_v1/
-    strategy_economy`` 计分通道,退役随废弃节点编号迭代与
-    ``schedule_of`` 视界族同批清扫(T-8 设计裁决点 7 勘误:非死函数)。
-
-    长度源 = ``schedule_of(session)``(P1=9/P2=7/P3 进表自适应;
-    单一源)——替代内联 ``(plane-1)*9`` 字面量(位面真值可短于 9,
-    字面量使后位面段系统性偏大)。session 缺席(None/裸对象)或日程未揭晓 → 回退
-    ``PLANE_FALLBACK_PRIORS``=(9,9,9),该态下取值与旧字面量逐位相同
-    (迁移期等价口径,sim/裸 session 零行为差)。plane/round 缺效(None/0)
-    → None = 门恒等支(与各消费位旧守卫同型)。
-
-    **同式契约**:全局节点号 t 的同源派生纪律——凡 t 语义消费必经本函数
-    派生,禁单侧改式(单侧改式 = 跨消费位 t 值静默漂移)。
-    """
-    if not plane or not round_num:
-        return None
-    lengths = schedule_of(session)
-    return sum(lengths[:int(plane) - 1]) + int(round_num)
-
 
 def nodes_of_plane(session) -> int:
     """本位面轮数真值(单一源)。
 
     真值源 = ``gs.node_books.plane_node_table``(开局帧实读槽序表,
     cw_screen_prep 每位面首帧写、位面内恒定):P1=9 槽、P2=7 槽(16 局
-    语料实证)、P3 首局进表即自适应。表缺(裸 session/None/sim P1 段/
-    开局首帧前)→ 回退 ``NODES_PER_PLANE=9`` 先验并记一次性
+    语料实证;P2=7 的判定语义依据 = cw_discipline_rules plane_last_
+    battle「P2 boss@r7 判正,旧按 9 计永不触发」),P3 首局进表即自适应。
+    表缺(裸 session/None/sim P1 段/开局首帧前)→ 回退**节点序列默认表
+    P1 长** = ``len(node_sequence_of(1, 场字段现值 or None))``(修饰局
+    10 / 默认局 9,真值随序列表,不设独立长度常量)并记一次性
     ``[cw!][plane_table]`` 告警(P3 真值未知期,回退事件即记档通道)。
 
-    P1 等价性:生产 P1 表恒 9 槽;sim P1 段不写表(只在 P2
-    进场写)→ 两路 P1 取值 ≡ 先验常量。duck-typed 读 session。
+    P1 等价性:生产 P1 表恒 9 槽(默认局;修饰局 P1 实长 10 由场字段
+    回退承接)→ 两路 P1 取值同源。duck-typed 读 session。
     """
     table = _probe_books(session).plane_node_table
     if table:
         return len(table)
     from one_dragon.utils.log_utils import log as _log
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        GameState,
+        game_state_of,
+    )
+    from sr_od.application.currency_war.kernel.cw_node_schedule import (
+        node_sequence_of,
+    )
+    if session is None:
+        seqs = None
+    elif isinstance(session, GameState):
+        seqs = session.node_seq_by_plane.value or None
+    else:
+        seqs = game_state_of(session).node_seq_by_plane.value or None
+    fallback = len(node_sequence_of(1, seqs))
     global _NODES_OF_PLANE_WARNED
     key = repr(type(session).__name__)
     if key not in _NODES_OF_PLANE_WARNED:
         _NODES_OF_PLANE_WARNED.add(key)
         _log.warning('[cw!][plane_table] plane_node_table 缺(%s)→ 本位面轮数'
-                     '回退先验 NODES_PER_PLANE=%d(表回填后自适应)',
-                     key, NODES_PER_PLANE)
-    return NODES_PER_PLANE
+                     '回退节点序列默认表 P1=%d(表回填后自适应)',
+                     key, fallback)
+    return fallback
 
 
 # ===== 标定表/纯函数 =====
@@ -233,32 +182,3 @@ def peak_refresh_level(cost: int) -> int:
         if p >= best_p:
             best_p, best_l = p, lv
     return best_l
-
-
-# ===== 视界层 R_剩余族(自 strategies statefn/horizon 下沉单一源,
-# ===== kernel 判据(schedule_upgrade 的 U_L 阈值检验)消费 R_剩余,下沉
-# ===== 保持「kernel 禁 import strategies」桶依赖矩阵;statefn/horizon 改
-# ===== import 重定向,消费方调用零改——与 schedule_upgrade 下沉同款先例)=====
-
-
-def r_remaining_in_plane(node_in_plane: int, plane_length: int) -> int:
-    """本位面剩余节点数(含当前节点;node_in_plane 为 1 基槽序)。"""
-    return max(0, plane_length - (node_in_plane - 1))
-
-
-def r_global(session: object, plane: int, node_in_plane: int) -> int:
-    """R_全局 = 当前节点 + 后续位面按**实际长度**求和(NMF §2「R_全局」行)。
-
-    长度全部来自 ``schedule_of(session)``(启动必载真值);金跨位面继承
-    ⇒ 视界跨位面求和;禁任何路径引用 NODES_PER_PLANE 先验替代 session 表。
-    """
-    lengths = schedule_of(session)
-    total = r_remaining_in_plane(node_in_plane, lengths[plane - 1])
-    for i in range(plane, len(lengths)):
-        total += lengths[i]
-    return total
-
-
-def r_remaining(session: object, plane: int, node_in_plane: int) -> int:
-    """R_剩余(到局终的总剩余轮数;Φ̂=Ī×R_剩余 的组成因子,R2-8)。"""
-    return r_global(session, plane, node_in_plane)

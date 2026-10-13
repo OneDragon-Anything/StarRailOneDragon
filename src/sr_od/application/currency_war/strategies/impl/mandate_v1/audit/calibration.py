@@ -44,8 +44,9 @@ DELTA_V_C_MINUS_V_F = provisional.CalibValue(
 
 #: ε₂ 集中度二阶带(P76 §3.4/§4.4 夹界余量;概率量纲,只抬 θ̂_suff
 #: 保守侧)。构造 = 两反向通道在**全生产消费域**网格(m∈{1..6}
-#: = 注册表 form_tiers needs 全集;L∈{1..10};T=r_remaining∈{1..27}
-#: = 日程全长 (9,9,9);R∈{0..60 步 2};全注册表 25 标签域)的包络:
+#: = 注册表 form_tiers needs 全集;L∈{1..10};T=r_remaining∈{1..18}
+#: = 场字段 modeled 总长上界(修饰 P1+P2 = 10+8);R∈{0..60 步 2};
+#: 全注册表 25 标签域)的包络:
 #: 通道①池衰减增富(侧线支出 ≤2R 金买主费档非目标 → t_c 加深)
 #: 全域 max **+12.39pp**;通道②收入流差(败金差 ≤+2 金/战,P76
 #: §3.4/P51 B1 量级 × T 战 → +SHOP_SLOTS·T 试验)全域 max
@@ -65,7 +66,9 @@ E2_CONCENTRATION_BAND = provisional.CalibValue(value=0.65)
 #: 网格)重算包络恒 0.6429(argmax R=0;大 R 双臂概率饱和、带差趋零,
 #: 小 q 长尾峰 ≤0.3),脚本第二断言在案。
 E2_DOMAIN_M_MAX = 6            #: 注册表 form_tiers needs 全集上界(巡海击破 6)
-E2_DOMAIN_R_REMAIN_MAX = 27    #: r_remaining 生产上界 = 日程全长 (9,9,9)
+E2_DOMAIN_R_REMAIN_MAX = 18    #: r_remaining 生产上界 = 场字段 modeled 总长
+# 最大值(修饰 P1+P2 = 10+8;视界封顶 modeled planes,旧 9 制 27 闭式的
+# 19-27 段 = bot 永不进入的死区间,随 9 制几何层退役收紧)。
 
 
 def band_in_domain(max_missing: int, r_remaining: int) -> bool:

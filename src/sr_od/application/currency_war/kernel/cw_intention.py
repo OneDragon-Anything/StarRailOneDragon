@@ -93,10 +93,8 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_line_switch import (
     e_rounds,
 )
-from sr_od.application.currency_war.kernel.cw_plane_table import (
-    NODES_PER_PLANE,
-    TOTAL_NODES,
-    r_remaining,
+from sr_od.application.currency_war.kernel.cw_node_schedule import (
+    PLANE_NODE_TABLES,
 )
 from sr_od.application.currency_war.kernel.cw_plugins import (
     cross_line_skeleton as _cross_line_skeleton,
@@ -360,20 +358,34 @@ def plane_remaining_nodes(gs: GameState, session=None) -> int:
 
     :位面轮数按 ``nodes_of_plane(session)`` 本位面真值(P2=7;
     旧按全局 9 计使 P2 冻结超限对照量虚高 2 轮)。session 缺省 None →
-    回退 P1 先验(裸调用/旧签名兼容)。
+    回退节点序列默认表 P1 长(裸调用/旧签名兼容;与 nodes_of_plane
+    再基同款,不设独立长度常量)。
     """
+    from sr_od.application.currency_war.kernel.cw_node_schedule import (
+        node_sequence_of,
+    )
     from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
-    n = nodes_of_plane(session) if session is not None else NODES_PER_PLANE
+    n = nodes_of_plane(session) if session is not None \
+        else len(node_sequence_of(1, None))
     r = min(max(1, round_num_of(gs)), n)
     return n - r + 1
 
 
 def total_remaining_nodes(gs: GameState) -> int:
-    """全局剩余节点数(可达性对照量;封顶 3 位面)。"""
-    p = min(max(1, plane_of(gs)), 3)
-    r = min(max(1, round_num_of(gs)), NODES_PER_PLANE)
-    t = (p - 1) * NODES_PER_PLANE + r - 1
-    return max(0, TOTAL_NODES - t)
+    """全局剩余节点数(可达性对照量;视界封顶 modeled planes)。
+
+    场字段求和(裁决点 9 就地自算;旧恒按 9/位面 27 制闭式已随视界族
+    退役修正——29 号稿 :26 登记的禁消费缺陷同步闭账):剩余 =
+    Σ_{p>=plane} len − round + 1(含当前节点);位面 ∉ 序列表键集(含
+    P3)= 建模域外 → 0(与策略门面 horizon 契约同款);None(未注册)
+    回退默认表。唯一消费 = ``_core_reachable`` 遭遇窗门。"""
+    seqs = gs.node_seq_by_plane.value
+    tables = seqs if seqs is not None else PLANE_NODE_TABLES
+    p = plane_of(gs)
+    if p not in tables:
+        return 0
+    return sum(len(t) for k, t in tables.items() if k >= p) \
+        - round_num_of(gs) + 1
 
 
 def encounter_window_rounds(char_name: str, level: int) -> float:
@@ -878,7 +890,7 @@ def _p1_pair_gate(candidate: tuple[str, ...],
 
     E = kernel ``e_rounds`` **逐字直调**(消费对象 = ``pair_target_comp``
     现行物化产物,与超窗出口同物化器同源,零第二估计器);R_rem =
-    ``cw_plane_table.r_remaining`` 单一源读法。实现 = 超窗出口判定
+    场字段求和就地自算(裁决点 9,与 cw_economy 判据点同式互锚)。实现 = 超窗出口判定
     ``_p1_pair_overwindow`` 的取反薄壳(同一比较单一源,门与出口同闸)。
     返回 (是否放行, E, R_rem);目标物化失败(None)按 E=inf = 拒
     (不可评估方向不换席,fail-closed 保守向,与出口读法一致)。
@@ -934,8 +946,10 @@ def _p1_pair_overwindow(pair: tuple[str, ...],
     - E = kernel ``e_rounds`` **逐字直调**(零第二估计器,三姊妹门共享
       测量单一源;消费对象 = ``pair_target_comp`` 现行物化产物,与本门
       E(inc)/E(alt) 同物化器同源,超窗判定不失真);
-    - R_rem = ``cw_plane_table.r_remaining`` 单一源读法(到局终,与 P84
-      门同读法);
+    - R_rem = 场字段求和就地自算(裁决点 9:框架不供视界量;封顶
+      modeled planes,位面 ∉ 序列表键集(含 P3)= 建模域外 → 0,与
+      策略门面 horizon 契约同款;与 cw_economy._upgrade_ul_threshold_ok
+      同式互锚,两处禁单侧改式);
     - 零新常量:比较即判据,出口与超窗同一比较单一源。
 
     **单点兜底充分性(承重项)**:健康域(E≤R_rem)无需
@@ -949,7 +963,12 @@ def _p1_pair_overwindow(pair: tuple[str, ...],
     target = pair_target_comp(pair)
     e_f = (e_rounds(target, gs, reg, session=session)
            if target is not None else math.inf)
-    r_rem = r_remaining(session, plane_of(gs), round_num_of(gs))
+    # R_rem 就地自算(T-8 裁决点 9:框架不供视界量,场字段求和,封顶
+    # modeled planes;与 cw_economy._upgrade_ul_threshold_ok 同式互锚,
+    # 禁单侧改式)。位面 ∉ 序列表键集(含 P3)= 建模域外 → 0。
+    _tb = gs.node_seq_by_plane.value or PLANE_NODE_TABLES
+    r_rem = (sum(len(t) for k, t in _tb.items() if k >= plane_of(gs))
+             - round_num_of(gs) + 1) if plane_of(gs) in _tb else 0
     return (not (math.isfinite(e_f) and e_f <= r_rem)), e_f, r_rem
 
 

@@ -45,7 +45,9 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     streak_gold,
     xp_click_cost,
 )
-from sr_od.application.currency_war.kernel.cw_plane_table import r_remaining
+from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.horizon import (
+    r_remaining,
+)
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import (

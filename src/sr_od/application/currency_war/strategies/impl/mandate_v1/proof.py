@@ -46,7 +46,6 @@ from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
 from sr_od.application.currency_war.kernel.cw_game_state import (
     shop_payload_content_cards,
 )
-from sr_od.application.currency_war.kernel.cw_plane_table import r_remaining
 from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import (
     calibration,
     provisional,
@@ -58,6 +57,9 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
     budget,
     odds,
     predicates,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.horizon import (
+    r_remaining,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vopt import (
     a7_lower_bound,
@@ -415,8 +417,8 @@ def assemble_lock_frame(gs, session: StrategySession,
     ``(missing, trials, frame)``。
 
     试验数口径(P38 ②层槽试验,docstring 钉死):``trials = SHOP_SLOTS
-    × (R_全局 + 可负担付费刷数)``。R_全局 = ``cw_plane_table.r_remaining``
-    (到局终剩余节点,NMF §2 单一源);付费刷数 = P38 ⑤层预算递推
+    × (R_全局 + 可负担付费刷数)``。R_全局 = ``statefn/horizon.r_remaining``
+    (策略门面场字段自算,到局终剩余节点,NMF §2 单一源);付费刷数 = P38 ⑤层预算递推
     (``statefn/budget.p38_budget_recursion``,金位逐轮模拟单一源;
     B<0 = 缺口件买不起域 → trials=0 且 P:=0,P38「买到即计数前提
     破产」保守分支)。**B<0 域的门内落点申报(r1 修正,原 below_nec

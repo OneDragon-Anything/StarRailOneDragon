@@ -68,7 +68,8 @@ def r1_horizon_closed(r_remaining: int) -> bool:
     """R1 域内放行的末轮豁免谓词(计划视野关闭维;消费位 = shop.py
     R1 域内残形切分线)。
 
-    ``r_remaining`` 坐标系 = kernel/cw_plane_table.r_remaining(到局终
+    ``r_remaining`` 坐标系 = 策略门面 statefn/horizon.r_remaining(场字段
+    自算,到局终
     的总剩余轮数,**含当前节点**);``<= 1`` = 本帧后无未来节点,金随
     局终沉没(货币战争单局制,结算不保留金)=> 刷新的机会成本归零,
     任何正概率出牌机会弱支配停手——「一次买齐这一级即停」的完整性

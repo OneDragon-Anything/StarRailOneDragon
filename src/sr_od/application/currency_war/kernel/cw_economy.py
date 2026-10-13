@@ -19,7 +19,6 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 )
 from sr_od.application.currency_war.kernel.cw_plane_table import (
     GOLD_CAP_INTEREST,
-    r_remaining,
 )
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
@@ -209,9 +208,8 @@ def effective_hp_threshold(gs: GameState) -> int:
         plane_of,
         round_num_of,
     )
-    from sr_od.application.currency_war.kernel.cw_plane_table import (
-        NODES_PER_PLANE,
-        TOTAL_NODES,
+    from sr_od.application.currency_war.kernel.cw_node_schedule import (
+        PLANE_NODE_TABLES,
     )
 
     diff = (gs.selected_difficulty.value or '').strip()
@@ -219,10 +217,14 @@ def effective_hp_threshold(gs: GameState) -> int:
     plane = plane_of(gs)
     if plane <= 1:
         return base
-    # 剩余战斗日程估计(位面×轮次 → 节点序;round_num 越界防御夹 [1, NODES_PER_PLANE])
-    t = (min(3, plane) - 1) * NODES_PER_PLANE \
-        + min(max(1, round_num_of(gs)), NODES_PER_PLANE) - 1
-    nodes_left = max(1, TOTAL_NODES - t)
+    # 剩余战斗日程就地自算(T-8 裁决点 9:框架不供视界量,场字段求和,
+    # 修掉 27 制闭式与 [1,9] 夹取——安全阈封顶 modeled planes,不计入
+    # 不可达第三位面的虚构余量,行为申报 details/horizon-cleanup.md §8.4;
+    # 与 cw_intention._p1_pair_overwindow 同式互锚,禁单侧改式)。
+    # 位面 ∉ 序列表键集(含 P3)= 建模域外 → 0(局终后无未来掉血节点)。
+    _tb = gs.node_seq_by_plane.value or PLANE_NODE_TABLES
+    nodes_left = (sum(len(t) for k, t in _tb.items() if k >= plane)
+                  - round_num_of(gs) + 1) if plane in _tb else 0
     ratio = plane_hp_ratio(board_tier_of(level_of(gs)), nodes_left, plane=plane)
     return min(100, int(base * ratio))
 
@@ -364,7 +366,8 @@ def loss_exact(gold: int, spend: int, rounds: int, net_income: int,
 
     双轨迹对照:基线 B(不花,守饱和线,溢余即花)vs A(花后守线);每轮息损
     = interest(B) − interest(A),两轨迹同收入演化。截断视界 R=rounds 由
-    horizon 层供给(schedule_of 实际长度,禁写死,§6.1)。溢金域先实金扣
+    调用方按场字段求和现算(视界量不入框架,裁决点 9;禁写死,§6.1)。
+    溢金域先实金扣
     再守线截断(IMPL_ADV_R194 症2);gold<0 钳 0。
     """
     gold_cap = 10 * cap
@@ -911,7 +914,8 @@ def get_node_goal(plane: int, round_num: int, *,
         # 标量投影容器:直接按入参构造最小决策容器(供给核只读经济/板面
         # 字段;无 session、无现成容器)。字段契约单一源 =
         # kernel cw_game_state.scalar_projection_state。
-        # session=None:nodes_of_plane 走缺表回退先验 9(一次性告警即记档)
+        # session=None:nodes_of_plane 走缺表回退(节点序列默认表 P1 长,
+        # 一次性告警即记档)
         # → h=9−r 常 >0,R* 窗口分量在投影容器**照常储蓄**(预算收权攻击
         # 审读 F6b 纠偏:原注释「投影帧不储蓄」与实现不符;方向保守无害)。
         # ⚠️ 结构性边界(申报,不扩修):下行两接缝核以
@@ -1067,7 +1071,7 @@ def _upgrade_ul_threshold_ok(gs: GameState,
     → 指示=1 时视为翻转项,方向门;指示=0 时纯概率账须独自过阈)。
     反例锚:希儿 lv7 省刷费 28 < 升级金 40,纯概率账亏 12,
     靠人口位翻转——缺本检验的裸「峰值级>当前级」会在该带过度升级。
-    R_剩余视界=r_remaining(决策帧现算,禁写死;本模块下沉实现)。
+    R_剩余视界 = 决策帧场字段求和现算(裁决点 9 就地自算,禁写死)。
 
     单核代表降级申报:规格的 E 为缺件集 ΣE_i(strategy-docs
     11 篇 §3);本实现取单目标核心代表——缺件集成员装配需 strategies
@@ -1118,7 +1122,15 @@ def _upgrade_ul_threshold_ok(gs: GameState,
     u_gold = clicks_to_next_level(gs) * xp_click_cost(gs)
     if u_gold <= 0:
         return True                  # 满级/零费边界:成本侧空,收益即过
-    rounds = r_remaining(session, plane_of(gs), round_num_of(gs))
+    # R_剩余就地自算(T-8 裁决点 9:框架不供视界量,场字段求和,封顶
+    # modeled planes;与 cw_intention._p1_pair_overwindow 同式互锚,禁
+    # 单侧改式)。位面 ∉ 序列表键集(含 P3)= 建模域外 → 0。
+    from sr_od.application.currency_war.kernel.cw_node_schedule import (
+        PLANE_NODE_TABLES,
+    )
+    _tb = gs.node_seq_by_plane.value or PLANE_NODE_TABLES
+    rounds = (sum(len(t) for k, t in _tb.items() if k >= plane_of(gs))
+              - round_num_of(gs) + 1) if plane_of(gs) in _tb else 0
     ibar = net_income(round_num_of(gs), 0)
     c_int = loss_exact(gold_of(gs), u_gold, rounds, ibar,
                        cap=cap_resolved_of_session(session))
@@ -1403,7 +1415,8 @@ def upgrade_plan_fee(gs: GameState) -> int:
 def _rounds_to_plane_end(gs: GameState, session: StrategySession) -> int:
     """到本位面末节点(= boss 节点)的剩余轮数(含当前轮;缺读兜底 0
     =不储蓄,保守侧:R* 退化为息线,义务面变宽但方向安全)。
-    nodes_of_plane 自带缺表回退(先验 9+一次性告警),此处不再兜层。"""
+    nodes_of_plane 自带缺表回退(节点序列默认表 P1 长 + 一次性告警),
+    此处不再兜层。"""
     from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
     total = nodes_of_plane(session)
     return max(0, total - round_num_of(gs))

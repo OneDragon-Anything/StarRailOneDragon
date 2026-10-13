@@ -49,6 +49,9 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     INVESTMENT_ENVS,
     GiftGrant,
 )
+from sr_od.application.currency_war.kernel.cw_node_schedule import (
+    PLANE_NODE_TABLES,
+)
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
@@ -1646,14 +1649,35 @@ def _priority_boost(comp: Comp, config) -> float:
     return boost
 
 
+def _schedule_elapsed_remaining(gs: GameState) -> tuple[int, int]:
+    """全局已进行/剩余节点数(场字段求和;T-8 裁决点 9:框架不供视界量,
+    判据点就地自算——本文件三调用点合一的模块内私有 helper,非公共视界口,
+    禁外借)。
+
+    elapsed = Σ_{p<plane} len + round(含当前节点,与旧 ``(plane-1)*9+round``
+    全局轮号同口径);remaining = Σ_{p>=plane} len − round + 1(含当前
+    节点,封顶 modeled planes);位面 ∉ 序列表键集(含 P3)= 建模域外 →
+    remaining 0(与策略门面 horizon 契约同款);None(未注册态)回退
+    默认表。两值同帧同源一次算出,禁调用方单侧改式。
+    """
+    seqs = gs.node_seq_by_plane.value
+    tables = seqs if seqs is not None else PLANE_NODE_TABLES
+    p = plane_of(gs)
+    elapsed = sum(len(t) for k, t in tables.items() if k < p) \
+        + round_num_of(gs)
+    remaining = (sum(len(t) for k, t in tables.items() if k >= p)
+                 - round_num_of(gs) + 1) if p in tables else 0
+    return elapsed, remaining
+
+
 def _difficulty_phase_factor(comp: Comp, gs: GameState) -> float:
     """阶段感知因子(用户:成型难度 + 早期战力都是关键维度):早期/穷 → 偏 easy 成型 + early_power 高。
 
     早期偏 easy **且** early_power 高,避免选易成型但早期弱的 comp
     (反例:DOT队 easy 但 DoT 慢热,plane1 弱)。先验待实玩校准(多局验证)。
     """
-    from sr_od.application.currency_war.kernel.cw_plane_table import NODES_PER_PLANE
-    early = (round_num_of(gs) + (plane_of(gs) - 1) * NODES_PER_PLANE) <= 3 or gold_of(gs) < 30   # 全局 elapsed 判早期(60-A1 ×6→单一源)
+    elapsed, _ = _schedule_elapsed_remaining(gs)
+    early = elapsed <= 3 or gold_of(gs) < 30   # 全局 elapsed 判早期(60-A1 ×6→单一源)
     if not early:
         return 1.0
     form_fac = {"easy": 1.15, "medium": 1.0, "hard": 0.85}.get(comp.form_difficulty, 1.0)
@@ -2297,9 +2321,9 @@ def target_committed(target: Comp, gs: GameState) -> bool:
     spread board(target 有零星投入但散)轮数兜底仍生效 → 防散板振荡。
     """
     fp = form_progress(target, gs)
-    from sr_od.application.currency_war.kernel.cw_plane_table import NODES_PER_PLANE
+    elapsed, _ = _schedule_elapsed_remaining(gs)
     return (fp >= COMMIT_FRAC
-            or ((plane_of(gs) - 1) * NODES_PER_PLANE + round_num_of(gs) >= COMMIT_ROUND and fp > 0))
+            or (elapsed >= COMMIT_ROUND and fp > 0))
 
 
 # pivot 冷却(防过度换线):换线漂移会让 P1 后段板面永远半成型——
@@ -2541,14 +2565,11 @@ def maybe_pivot(gs: GameState, ctx: ScoreContext, config, target: Comp | None,
                      best.name, target.name if target else 'None', gap, _required_gap, _tag)
     # 信号 2:ceiling 不可达(target 成型轮次 > 剩余轮次)
     if target is not None and target.typical_form_round > 0:
-        # remaining 须按 plane_table 节点单一源算:固定 18-elapsed 会在 P3 早段归 0 →
-        # 未成型 target 反复触发信号 2 pivot easy comp(真实还剩 7-9 节点)
-        from sr_od.application.currency_war.kernel.cw_plane_table import (
-            NODES_PER_PLANE,
-            TOTAL_NODES,
-        )
-        elapsed = round_num_of(gs) + (plane_of(gs) - 1) * NODES_PER_PLANE
-        remaining = max(TOTAL_NODES - elapsed, 0)
+        # remaining 按节点序列场字段求和(裁决点 9 就地自算):视界封顶
+        # modeled planes,固定 27 制闭式会在位面 ∉ 键集(含 P3)高估——
+        # P3 = 建模域外,bot 进 P3 即走结束链,不存在「P3 早段还剩节点」
+        # 的可达余量(不可达轮不计,细节 horizon-cleanup §8.2)。
+        _elapsed, remaining = _schedule_elapsed_remaining(gs)
         if target.typical_form_round > remaining and form_progress(target, gs) < 1.0:
             # 切成型最快的(easy 优先);已成型(form_progress=1.0)豁免 —— 不该放弃已完成的 comp
             easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates

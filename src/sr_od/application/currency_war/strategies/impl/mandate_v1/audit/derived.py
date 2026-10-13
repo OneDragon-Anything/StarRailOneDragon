@@ -70,8 +70,9 @@ ENTRIES: tuple[DerivedEntry, ...] = (
     ),
     DerivedEntry(
         'r_global', 'statefn.horizon.r_global',
-        ('cw_plane_table.schedule_of', 'cw_plane_table.PLANE_FALLBACK_PRIORS'),
-        # R_全局(L-R3-2:长度唯一真值源=schedule_of,禁新建长度常量 §6.1)
+        ('cw_game_state.node_seq_by_plane',),
+        # R_全局(L-R3-2:长度唯一真值源=场字段 node_seq_by_plane,None
+        # 回退默认表;T-8 裁决点 9 策略侧自算,禁新建长度常量 §6.1)
     ),
     DerivedEntry(
         'difficulty_interim', 'statefn.lambda_death.difficulty_band',
