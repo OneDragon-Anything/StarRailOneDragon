@@ -626,7 +626,7 @@ def dominance_buy_eligible(gold: int, bench_free: int,
     金位阈值 g*=10×cap_resolved 参数化(R70-1;字面 50 实现即红)。
 
     stop_flag(线成型旗)已摘除(泄金阶梯档 0,对抗审 F6
-    落点):必花域转化期帧(线未齐)被本旗关死
+    落点):溢余段转化期帧(线未齐)被本旗关死
     是「刷新成唯一出口」病灶的三合取之一(三处消费位=M6 shop 位/
     M6 prep 位/本函数, shop+prep 两域同步摘)。支配性优先序本体不动
     = 1★ 全额退净成本 0 的严格支配——论证锚(换锚重写):
@@ -1664,10 +1664,10 @@ def run_mandate(frame: MandateFrame,
             frame.gold, _bench_cand,
             saturation_line(_cap_of(session)) if _cap_now is not None else 0)
         state_of(session).cw4_pop_slot_why = _pop_why
-    # L3 必花域第三触发源(20 号稿 §3.1-L3/§3.5,备战栈接入;判定单一源
+    # L3 溢余段第三触发源(20 号稿 §3.1-L3/§3.5,备战栈接入;判定单一源
     # = in_must_spend_zone,与 shop 栈同源禁第二套语义;应-C 偏高必收:
     # 备战必花帧不再被停付线否决——域内让位,域外照旧)。
-    # 必花域备战期闩(g_20260906_034515 濒死段门链回放定谳:帧A g56 域内
+    # 溢余段备战期闩(g_20260906_034515 濒死段门链回放定谳:帧A g56 域内
     # CwActionLevelUpParam 本可发射、帧B g43 域外被危机带挂起零发射零分键——「花光」
     # 义务在域边界上蒸发):域豁免原为逐帧瞬时判定,商店域第一笔消费把金
     # 拉回域内后,同备战期后续 prep 帧(g<G_must)被 P2 危机带常态挂起,
@@ -1731,7 +1731,7 @@ def run_mandate(frame: MandateFrame,
         # levelup.level_spend_blocked(blood_budget_levelup_blocked ∪
         # p2_crisis_band,P48 λ>0 段转化优先)。让位=挂起本批经验支出,
         # 授权面降级由 entry._reconcile_posture_authorization 显式声明。
-        # 必花域帧停付线让位(裁定覆盖):域内本门不否决 L3。
+        # 溢余帧停付线让位(裁定覆盖):域内本门不否决 L3。
         # 停付判据提取为局部变量;域内豁免时记 must_spend_zone_defer_overridden
         # 显影分键(与 shop 侧 must_spend_r1_account_yielded 对称)——归因时
         # 区分「本来就不该停」与「停付被域裁压掉」,crisis_level_spend_defer
@@ -1744,7 +1744,7 @@ def run_mandate(frame: MandateFrame,
             # 禁裸缺省;现注入字段与缺省表同值,接线为单一源纪律面)。
             and levelup.level_spend_blocked(state, session, _reg))
         # [40]② 血闸:支付能力检查,与停付线**独立串联**——不可被
-        # 必花域/血线地板豁免(裁定字面「否则停」是支付能力非血线判断;血模式
+        # 溢余段/血线地板豁免(裁定字面「否则停」是支付能力非血线判断;血模式
         # 「破息批」无金可破,解锁包件①的转化语义本就不适用,方案审 N5/R2
         # 收窄申报)。拒因独立分键;金本位 gate 恒 True 直通。
         # kernel 闸波 2 已切容器签名(hp 经政策层读口),置顶 gs 直传
@@ -1757,7 +1757,7 @@ def run_mandate(frame: MandateFrame,
         else:
             if _level_spend_blocked:
                 # 域内豁免显影分键(与 shop 侧 must_spend_r1_account_yielded
-                # 对称):本会停付但被必花域裁定压掉,归因时
+                # 对称):本会停付但被溢余段裁定压掉,归因时
                 # 区分「本来就不该停」与「停付被域裁压掉」。
                 _count('must_spend_zone_defer_overridden')
             # L3 资格拒分键(拒因落盘缺口治疗,「拒因不可辨」复盘主项):
@@ -1811,7 +1811,7 @@ def run_mandate(frame: MandateFrame,
                                             frame.deployed, clicks, cost))
                                     if _gate_ok:
                                         # auth_basis 分键(可归因,与商店栈同序 arm1>arm0>pop;
-                                        # 三臂全空时 = 必花域触发源,分键 must_spend)
+                                        # 三臂全空时 = 溢余段触发源,分键 must_spend)
                                         if _arms_hit:
                                             _arm_tag = 'arm1' if _arm1 else (
                                                 'arm0' if _arm0 else 'pop')
@@ -1991,7 +1991,7 @@ def run_mandate(frame: MandateFrame,
     # M6 溢余转压库(存在性=金>g*;档匹配 fail-closed ⇒ 不买
     # +溢余滞留遥测;席位失败=单帧单评,R21-4)。stop_flag 已摘
     #(泄金阶梯档 2,摘旗扩域,对抗审 F6 落点
-    # 三处消费位之一):必花域转化期帧(线未齐)压库买合法,[13]
+    # 三处消费位之一):溢余段转化期帧(线未齐)压库买合法,[13]
     # 停手线纪律由候选集判据本体承载(stockpile_buy P49 档匹配
     # fail-closed + P56 s_reserve 下界 + 线内副本排除,全保留);
     # 窗口语义维持在产 ω 塌缩带(tier_search_window,shop 侧消费,

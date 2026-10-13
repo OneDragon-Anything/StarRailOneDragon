@@ -486,7 +486,7 @@ class DecisionTrace:
     sess_release_budget: int | None = None
     # 义务来源(''/'flip'/'crisis'/'third_path'/'reserve_admission'/
     # 'must_spend';'crisis'=危机金出口臂 ,判读兑换率分域勿漏
-    # 此值;'must_spend'=必花域帧写点新增值域——shop 必花域段
+    # 此值;'must_spend'=溢余帧写点新增值域——shop 溢余段段
     # 帧内 last-wins,轮界清零在披露键戳(写端 = economy_cycle.
     # disclose_budget)。现役 mandate_v1
     # 只产 ''/'must_spend',其余值为历史来源,存量数据按旧口径读)。

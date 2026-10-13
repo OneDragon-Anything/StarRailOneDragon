@@ -176,7 +176,7 @@ class StrategyState:
     v3_reserve_overflow: int = 0
     # 义务预算披露(遥测键 sess_release_budget 透传源;写端/读端同上)。
     v3_release_budget: int = 0
-    # 义务来源披露(遥测键 sess_release_reason 透传源;写端=shop 必花域
+    # 义务来源披露(遥测键 sess_release_reason 透传源;写端=shop 溢余段
     # 段「must_spend」帧内 last-wins + 披露键戳轮界清零,读端同上)。
     v3_release_reason: str = ''
     # 披露面轮键戳(T-88 轮界清零承载):坐标系=(plane, round) 二元组
@@ -245,7 +245,7 @@ class StrategyState:
     # 准入的历史形态申报,**不改卖出仲裁权**(卖谁 = 发射位按同一判定集
     # 现算,在册分工维持,分工裁决)。
     cw4_m1p_plan_pending: object = None
-    # 必花域相位闩(同值重入防抖)。
+    # 溢余段相位闩(同值重入防抖)。
     cw4_must_spend_phase: object = None
     # pop 槽否向理由留决策迹(D-lv7)。
     cw4_pop_slot_why: str = ''

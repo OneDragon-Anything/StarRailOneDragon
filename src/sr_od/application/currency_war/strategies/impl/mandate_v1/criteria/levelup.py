@@ -35,7 +35,7 @@ def lv9_stop(level: int, level_max: int) -> bool:
     上限)毫无数值或语义关联,禁接错源。
 
     ``level_max`` = 消费位传上下文注册表的 ``.level_max``(禁裸常数),
-    **必填**:4 消费位(shop M3 批/shop 必花域 L3/mandate 备战 M3/
+    **必填**:4 消费位(shop M3 批/shop 溢余段 L3/mandate 备战 M3/
     entry posture 镜像)已全量接线,过渡缺省通道已随 mandate 接线拆除
     (挂账收口);禁新消费位依赖缺省。
     """

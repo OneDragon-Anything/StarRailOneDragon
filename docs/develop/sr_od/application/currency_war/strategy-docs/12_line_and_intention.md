@@ -87,7 +87,7 @@ P16 换线判据（E_rounds 超几何精确口径 + θ 滞回 + D_min 驻留，�
 - **帧域与辖域**：无目标期帧 = 商店决策帧 ∧ `target_comp=None` ∧ 意向供给在场 ∧ 未降格终局；活跃域 = 位面 2（位面 3 入口即强锁或降格）。p1 两带（p1_gap/p1_lock_band）显式出辖（证明批必答⑥裁决①），weak/demoted_endgame 分带维持跨线骨架（`CROSS_LINE_SKELETON`）。
 - **甲臂（方向化囤货）**：候选机器强锁门逐字（`line_completion_feasibility` + `revoke_miss_tolerance_eps` + plane 条件 + 机器自身选择序）；判活帧囤货方向 = 首方向采购集，经 `hoard_target_set`/`k_empty_window_fallback` 向买面/卖免/刷新账三下游供血。已知缺口 = 缓锁豁免角漏授（core 可见 ∧ G≤ε，保守向，机器锁后 M2 自纠；`shop_no_target_arm_a_corner_defer` 分键显影）。
 - **乙臂（枢纽期权）**：资格核 = 覆盖数 ≥ 2（`_NO_TARGET_HUB_MIN_COVER`，结构定义量）∧ 非单卡注册身份（`CORE_SINGLE_CARD_REGISTRY` 排除）；发射位在 mandate_v1 商店域 M2 前，五前件合取（资格核 + 非合并素材 + 1★ 全退/席位/不破息/可负担）；获取 = 备战席持有，行权归部署域既有管辖。同帧仲裁三层序 = 支配序（仅 C_x={l_d} 单线方向件受层 1 辖）→ 机器原生序 → 注册表声明序（`char_declaration_index`）；覆盖数降序与席位数序被否决。持有语义由三面共同承载:登记资格域∪装配身份段∪部署域观测。
-- **丙臂（换现守息缺省）**：两臂皆空帧 k_members = 合法空集（`k_fallback_source=three_arm` 证据经 k_projection 契约放行）；辖买卡买面与卖面资格，不辖升级/刷新既有授权（M3 照常；R1 合格集空 → `no_chaseable_member` fail-closed，必花域烧费路径随合格集空关闭——必花域权威序 = 证明批必答②裁决②）。
+- **丙臂（换现守息缺省）**：两臂皆空帧 k_members = 合法空集（`k_fallback_source=three_arm` 证据经 k_projection 契约放行）；辖买卡买面与卖面资格，不辖升级/刷新既有授权（M3 照常；R1 合格集空 → `no_chaseable_member` fail-closed，溢余段烧费路径随合格集空关闭——溢余段权威序 = 证明批必答②裁决②）。
 - **四面退役**：`FALLBACK_COMP_NAME` 常量已删（墓碑注在 cw_intention 常量区），消费位四处同批处置（hoard 终支/economy 排程锚[维持缺省 3 费]/P1 门绯英支/DirectionView 投影字段）。
 
 ## 版本与变更记录

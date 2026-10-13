@@ -296,7 +296,7 @@ def cap_resolved_of_session(session: StrategySession | None) -> int:
 
     消费位 = 商店线 R1/R2 的 g* 装配(mandate._cap_of 重定向至此)、
     schedule_upgrade ② 前置息线、U_L 阈值检验的 loss_exact cap 参数、
-    必花域/发射帧溢余段、registry 预算面守息线分量(reserve_cap 守息
+    溢余段/发射帧溢余段、registry 预算面守息线分量(reserve_cap 守息
     线/换线可负担窗,随批接线)——
     共用本式,禁再内联 ``interest_cap×10`` 或 loss_exact 裸缺省 cap
     (息律投资 cap=10 局,裸缺省 5 会低估 C_int)。
@@ -321,14 +321,14 @@ def saturation_line(cap_resolved: int) -> int:
 
 
 def in_must_spend_zone(gold: int, session: StrategySession | None) -> bool:
-    """必花域判定(20 号稿 §2.1):g > G_must = 10 × cap_resolved。
+    """溢余段判定(20 号稿 §2.1):g > G_must = 10 × cap_resolved。
 
     单一源派生 = saturation_line(cap_resolved_of_session(session)),与
     息线 g*/arm2 守息门同链,零新自由参数;买断制语境(cap_resolved = 0)
     出辖恒 False(§2.1,该语境金出口归一般判据)。辖域 = 有动作决策点帧
     (shop/备战决策入口调用点;§3.4)。
 
-    消费点(本批接线):shop.py 出口③ L2 第二触发源(∨ 合并)/L3 必花域
+    消费点(本批接线):shop.py 出口③ L2 第二触发源(∨ 合并)/L3 溢余段
     升级/R1 域内残形切分线/EV 域内降排序——四点共用本判定,禁再内联
     ``gold > 10 * cap`` 字面量式。
     """
@@ -343,11 +343,11 @@ def in_launch_spend_zone(gold: int, session: StrategySession | None) -> bool:
 
     = ``gold > saturation_line(cap_resolved_of_session(session))``——与
     :func:`in_must_spend_zone` 共享 g* 单一源(saturation_line 同链,
-    禁内联第二份);买断制语境(cap_resolved = 0)出辖恒 False(与必花域
+    禁内联第二份);买断制语境(cap_resolved = 0)出辖恒 False(与溢余段
     §2.1 同口径)。
 
-    **与必花域同 g* 不同域,禁并键**(DESIGN v1.1 §5;launch_gold_tradeoff
-    §3 边界①同判):必花域辖「有动作决策点的 shop/备战帧」,本谓词辖
+    **与溢余段同 g* 不同域,禁并键**(DESIGN v1.1 §5;launch_gold_tradeoff
+    §3 边界①同判):溢余段辖「有动作决策点的 shop/备战帧」,本谓词辖
     「发射帧溢出段」(armed 帧发射前的受限访问入段判定;两域互斥 =
     调用点约定非结构保证,M-1 降级口径,新增消费点须回 DESIGN §5 对账
     表)。消费点:mandate_v1 前置发射位帧级金判定

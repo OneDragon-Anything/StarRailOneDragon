@@ -20,7 +20,7 @@ flow/README.md §1 决策控制分层铁律):
 **两面接线拓扑(防生产/sim 分叉三层,DESIGN v1.1 §3.2 载体)**:
 
 1. 判定语义单一源 = 本模块(:func:`in_launch_spend_zone` 在
-   ``kernel/cw_economy`` 与必花域共享 g* 链;单动作预算闸
+   ``kernel/cw_economy`` 与溢余段共享 g* 链;单动作预算闸
    :func:`launch_arbitration_gate`;分键名常量族);含全部
    ``launch_arbitrage_*`` 分键名,两面直调禁字面量散写。
 2. 位次契约:发射帧仲裁段(flow 层特殊路径)已退役(受控决策分层
@@ -118,7 +118,7 @@ def launch_arbitration_gate(action, gold: int,
     闸拒 = 该动作不执行(消费终止,非跳过续试:评估序 = 既有优先序,
     跳过高位动作改试低位 = 重排,违红线 5;消费机会用尽即收,方向保守)。
 
-    g* 每次闸检现读 session resolved 链(不缓存帧首值):判定与必花域/
+    g* 每次闸检现读 session resolved 链(不缓存帧首值):判定与溢余段/
     R1/R2 的 g* 同源同帧语义;cap 在发射帧内不变(息帽覆写只随投资卡
     变,投资卡选择不在发射帧发生),现读仅为单一源纪律不为缓存规避。
 

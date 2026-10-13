@@ -370,7 +370,7 @@ class CwActionRefreshShopParam:
     # R1 发射位,今日唯一刷新发射点;L2 补位=买卡、L3 末位=升级,
     # 结构上不产刷新动作,槽位留作未来发射点扩展):
     # - 'r1'                 = 息线门 R1(域外常规承诺账);
-    # - 'must_spend_r1_yielded' = 必花域内 R1 切分线(核算账降排序
+    # - 'must_spend_r1_yielded' = 溢余段内 R1 切分线(核算账降排序
     #   yielded 支);
     # - '' = 未标(缺省;原引擎 obs 'other' 桶归类已随引擎退役)。
     reason: str = ''
@@ -729,11 +729,14 @@ class CwActionPickSupplyParam:
 
     开出内容载荷(确定性通道,照 PickInvest 载荷扩展先例):``char_name`` = 选中列角色名
     (read_supply_options roster 校验产物;'' = 列无角色/兜底点卡路径);
-    ``norm_item`` = 选中列装备归一件名(``normalize_registry_equip_name``
-    注册表级分层归一,OCR 原始名不静默改写由 handler 持有;'' = 未解析)。
-    两字段不入动作实例键(归因载荷不改变动作身份,``route_tag`` 先例);
-    动作 op 确认点击后立即上报,按实际开出内容应用(单位腿 + 装备后果腿,
-    即时单相,design §2.0B)。
+    ``norm_item`` = 选中列首件装备归一件名(``normalize_registry_equip_name``
+    注册表级分层归一,OCR 原始名不静默改写由 handler 持有;'' = 未解析);
+    ``extra_norm_items`` = 列内附加装备归一件名元组(画面 y 序 = norm_item
+    之后;'' 元素 = 该件归一未解析,上报侧逐件 fail-closed;默认 () = 单
+    装备布局,既有构造点零变化)。
+    三字段不入动作实例键(归因载荷不改变动作身份,``route_tag`` 先例);
+    动作 op 确认点击后立即上报,按实际开出内容应用(单位腿 + 装备腿
+    0..n 件 + 后果链,即时单相,design §2.0B)。
     """
     idx: int
     # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
@@ -745,6 +748,8 @@ class CwActionPickSupplyParam:
                            metadata={'action_key_exclude': True})
     norm_item: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+    extra_norm_items: tuple[str, ...] = field(default=(), kw_only=True,
+                                              metadata={'action_key_exclude': True})
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 

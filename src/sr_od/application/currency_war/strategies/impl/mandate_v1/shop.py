@@ -120,7 +120,7 @@ grant 结构性恒 0**,无代码路径可增,P94 证明+标定批落授权,禁�
 p91_m6_same_axis_hit / p91_m6_off_axis_hit(M6 压库同轴/异轴选择帧
 对键)/ p91_refresh_up_switch(R1 刷-升选择切换帧)/
 p92_no_buy_refresh_blocked(P92 全通道可实现买入集空帧拦刷 = 面②
-审计①桶计数)/ must_spend_r1_no_buy_blocked(必花域内 P92 拦刷的
+审计①桶计数)/ must_spend_r1_no_buy_blocked(溢余段内 P92 拦刷的
 域内 liveness 显影,与 must_spend_r1_budget_fail 混桶禁)。
 
 T-253 G-S1 退出通道批增补(键族单一源 = sell_gate 键族清单):
@@ -1651,7 +1651,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         #(bench_free ≤ 1,mandate.dominance_buy_eligible 后半合取)拒发
         # 帧显影——资格门 False 此前静默,否决观测面只剩发射频次差。
         # 本支只计数不决策:两半合取的复算 = 遥测归因(金带外 False =
-        # 非必花域常态不计),判定单一源仍在资格门本体。
+        # 非溢余段常态不计),判定单一源仍在资格门本体。
         _count('dominance_band_wait')
 
     # C1 直通核心卡支配性支(并列支配通道;位次 = dominance 邻位:既有
@@ -1875,7 +1875,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
 
     # (商店期升级决策面已收缩,T-271 判例:买经验归备战期(22 号篇 §1
     #  等级节奏),备战帧 M3 判据单一源 = mandate.run_mandate M3 块——
-    #  商店域三臂/血闸/P72 预算闸/L3 必花域升级发射随收缩退役;升级
+    #  商店域三臂/血闸/P72 预算闸/L3 溢余段升级发射随收缩退役;升级
     #  需求形态的商店表达 = 关店交回备战。备战期开店闩(cw4_shopped_
     #  phase)挡「同备战期重开无信息量」的语义与 M3 在备战域续评自洽:
     #  商店关店交回后备战环重评 M3,不受开店闩辖。)
@@ -1966,8 +1966,8 @@ def decide_shop_action(gs: GameState, session: StrategySession,
 
     # ---- 泄金阶梯档 1:可上场非定向买(press_buy_deployable;
     # R2 审 F8/F10/F12 落点)----
-    # 必花域溢余金消费序的第二档(单动作契约下物理位次即优先序:
-    # 档 0 定向/支配臂已在前,本臂先于下方档 2 压库)。触发 = 必花域
+    # 溢余段溢余金消费序的第二档(单动作契约下物理位次即优先序:
+    # 档 0 定向/支配臂已在前,本臂先于下方档 2 压库)。触发 = 溢余段
     # 帧 ∧ 锁线态(单一源 = ``_ist.locked_comp``,同出口③ D 支定谳,
     # 禁 k_members 非空作门——恒真不可作门,17号稿 §1.1 应修-8 B-1)
     # ∧ deploy_vacancy > 0 ∧ bench_free ≥ 1 ∧ 店内存在可上场件。
@@ -2061,7 +2061,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 期 M3/预算闸退役(T-271):闸写点不存在,挂起分支结构性死路一并
     # 拆除;prep 位「M6」语义不受影响。)
     # stop_flag 已摘(泄金阶梯档 2,摘旗扩域,
-    # 对抗审 F6 落点三处消费位之一):必花域转化期帧(线未齐)压库
+    # 对抗审 F6 落点三处消费位之一):溢余段转化期帧(线未齐)压库
     # 合法,[13] 停手线纪律语义由候选集判据本体承载(P49 档匹配
     # fail-closed + P56 s_reserve 下界 + 线内副本排除 + 轮内新鲜度
     # 排除,全保留/新增见下);窗口语义维持在产 ω 塌缩带
@@ -2162,14 +2162,14 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 七分键零静默:fuel_filler_stall_buy/fenced/precheck_unavailable/
     # fuel_not_on_sale/bench_full/below_reserve(held_postbuy = 部署
     # 执行侧,record_fuel_filler_held_postbuy)。
-    # 必花域判定(20 号稿 §2.1):g > G_must = 10 × cap_resolved_of_
+    # 溢余段判定(20 号稿 §2.1):g > G_must = 10 × cap_resolved_of_
     # session(saturation_line 同源派生,零新自由参数);买断制语境
     #(cap_resolved = 0)出辖恒 False。辖域 = 有动作决策点帧(本函数
     # 即 shop 决策点)。L2 第二触发源 / L3 / R1 切分线共用本判定。
     # (求值点已上移至档 1 臂前,泄金阶梯批:档 1/出口③ 同帧同值
     # 单点计算,禁第二份。)
     if _zone_hit:
-        # 必花域帧义务来源披露(T-88 写点;遥测键 sess_release_reason 透传
+        # 溢余帧义务来源披露(T-88 写点;遥测键 sess_release_reason 透传
         # 源):帧内 last-wins、域外帧不覆写,轮界清零在披露键戳
         # (economy_cycle.disclose_budget)。披露面字段禁决策判据消费
         #(决策输入 = obs(黑板)+ session 容器直读)。
@@ -2181,7 +2181,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     if (getattr(_ist, 'locked_comp', None)
             and _lvl_readable):
         # C 支(落后·期望态口径;level 消费 level_readable 可信位)。
-        # L2 第二触发源(20 号稿 §3.1-L2,∨ 合并):必花域帧不辖 C/A
+        # L2 第二触发源(20 号稿 §3.1-L2,∨ 合并):溢余帧不辖 C/A
         #(触发面差异),垫件在售/席/金位/围栏预检资格照常(资格硬闸
         #(i) 零解封);触发源分键 must_spend_l2_trigger。
         if level_of(gs) - len(deployed) > 0 or _zone_hit:
@@ -2299,7 +2299,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                                     #(合计口径,兼容既有判读/复盘对照)。
                                     # 预注册裁决协议(DESIGN §5-3,先写
                                     # 死后看数,防挪线):
-                                    # - 必花域触发源(l2 前缀键)中 cap
+                                    # - 溢余段触发源(l2 前缀键)中 cap
                                     #   占比 >80% ⇒ 板满平凡拒成立,层错
                                     #   假设终结,走 DESIGN §4-2(L3 接线)
                                     #   /§4-3(白名单扩行);
@@ -2319,9 +2319,9 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                                     if _zone_hit:
                                         # 触发源对照分列(DESIGN §5-2):
                                         # Φ_stall 源板未满 cap 占比应≈0,
-                                        # 必花域源板满帧 cap 主导——两源
+                                        # 溢余段源板满帧 cap 主导——两源
                                         # 分布差异可检验(Φ_stall 源 =
-                                        # 非前缀键,必花域源 = l2_ 前缀键)。
+                                        # 非前缀键,溢余段源 = l2_ 前缀键)。
                                         _count(f'fuel_filler_stall_fenced_'
                                                f'l2_{_ff_why}')
                                 continue   # 围栏拒帧,试其余垫件
@@ -2501,7 +2501,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 if not ok_seat:
                     _count('shop_ev_bench_wait')
                 else:
-                    # 必花域内 (iii) 期望核算类 veto(ev_buy_veto)降为
+                    # 溢余段内 (iii) 期望核算类 veto(ev_buy_veto)降为
                     # 排序信号:非 veto 先买,veto 候选排末位仍可消费
                     #(三分类 (iii));域外 veto 照旧直拒。
                     _deferred = []
@@ -2596,7 +2596,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 _ledger, _g0 - g_star)
             if _zone_hit and rkey == 'account_over_budget':
                 # R1 域内残形切分线(20 号稿)——设计出处 =
-                # 必花域「要花」授权对 g*/L 核算账的切分;辖域申报:现辖
+                # 溢余段「要花」授权对 g*/L 核算账的切分;辖域申报:现辖
                 # = 末轮豁免支(计划视野关闭),其余域内超账帧恢复账前件
                 # 拦(口径分叉修复;病灶 = 2026-09-15 sim 批量找问题报告
                 # 「问题 1」零买入连刷段)。合格集空守卫(no_chaseable_
@@ -2624,7 +2624,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     #(r1_commitment_account 路径总账,输入全为游戏定义
                     # 量)全域一致辖刷新发射——计划账超预算 = 一次买不
                     # 齐,部分刷的期望尾段 = 零产出烧金段(主批零买入
-                    # 刷新 761 次 × 2 金);拦后帧落 L3 必花域升级
+                    # 刷新 761 次 × 2 金);拦后帧落 L3 溢余段升级
                     #(转升级)或 CwActionCloseShopParam(停手),泄金阶梯买/压库臂
                     # 不受影响。血线维度不辖本判据(user_playstyle
                     # [39]:hp 只进读数位)。
@@ -2712,7 +2712,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                         reason=_r1_src)
                 if _p92_ready:
                     # 面② 审计①桶计数(全通道口径判定尺,禁以 P40 E
-                    # 口径单独判定);必花域内加计域内 liveness 键
+                    # 口径单独判定);溢余段内加计域内 liveness 键
                     # (与 budget_fail 混桶禁)。
                     _count('p92_no_buy_refresh_blocked')
                     if _zone_hit:
@@ -2765,7 +2765,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # shop_wave_idle_gold 波计数不等值,跨结构不可对拍)。
     if gold_of(gs) >= 10:
         _count('shop_visit_idle_gold')
-    # (L3 必花域升级发射随商店期升级决策面收缩退役,T-271:必花域
+    # (L3 溢余段升级发射随商店期升级决策面收缩退役,T-271:溢余段
     # 「要花」的消费出口 = 买卡臂 + 关店交回备战由 M3/装备面消费。)
     # ---- 商店期跨段状态 substrate(T-271 框架化声明)----
     # 商店域策略实现把「为何关店/备战要做什么/何时重开」表达为会话级

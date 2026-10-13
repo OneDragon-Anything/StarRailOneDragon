@@ -83,7 +83,7 @@
 **依赖**：3.0、3.1、3.3。
 **优先级建议**：6
 **完成判据**：
-- 判据单帧锁：概率账触发/不触发、人口位三元触发、**停留门拦截与放行**（可达最优等级模型：最优在更高 → 升级优先；当前已最优/被推过 → 停留刷；人口位/arm0/必花域-L3 硬触发豁免）、金不足整批不买、血本位不足零购买、等级帽拒发、P72(3a) floor 与 P21 危机带保留语义；**11 §5 金支出出口（FM-1 防线）核对**；
+- 判据单帧锁：概率账触发/不触发、人口位三元触发、**停留门拦截与放行**（可达最优等级模型：最优在更高 → 升级优先；当前已最优/被推过 → 停留刷；人口位/arm0/溢余段-L3 硬触发豁免）、金不足整批不买、血本位不足零购买、等级帽拒发、P72(3a) floor 与 P21 危机带保留语义；**11 §5 金支出出口（FM-1 防线）核对**；
 - 「买一半」缺陷回归锁：血本位局血不足整级时零购买断言 + 授权后整批发射断言；
 - 被删四件的现行锁退役（docstring 记被替代语义，出处引 line_and_upgrade §2.3 处置表）；
 - 完成前常规检查。
@@ -176,7 +176,7 @@
 - `strategy-docs/24_deploy_segment.md` ← 3.6（换血双轨链判定源迁移记录：committed 判定改挂锁定线 view + 替补窗口辖域例外）
 - `strategy-docs/18_equip_wear_semantics.md` ← 3.7（已定型扣留判定源迁移记录：committed_hold_active 判定源改挂锁定线 view）
 - `strategy-docs/17_stall_form_spend_authority.md` ← 3.6（Φ_stall 停滞支出的锁线键载体切换记录：判定源改挂锁定线 view）
-- `strategy-docs/20_large_balance_must_spend.md` ← 3.6（必花域消费位收编记录：会话内买入评估入口的域帧判定、**L3 触发源发射位两处化**；与升级重轴的域内交互语义登记）
+- `strategy-docs/20_large_balance_must_spend.md` ← 3.6（溢余段消费位收编记录：会话内买入评估入口的域帧判定、**L3 触发源发射位两处化**；与升级重轴的域内交互语义登记）
 - `docs/game/currency_war/research/screen_flow_timing.md` ← 3.6（#14/#27 boss 简报自动开店旧口径勘误——as-built 辨析回写）
 - `docs/game/currency_war/research/user_playstyle.md` ← 全迭代（2026-10-12 用户裁定系列补录 + [23]/[36] 差分回写，见 line_and_upgrade 差分节）
 - `docs/develop/sr_od/application/currency_war/screens/README.md` §5.4 ← 3.5（商店画面能力面补「出战」行——op 列值 = 前置发射位〔非店内 op〕，正本缺口补录；**卖备战席能力行变更**〔执行链批后店内可卖备战席——能力表同步〕；执行链注记同步）

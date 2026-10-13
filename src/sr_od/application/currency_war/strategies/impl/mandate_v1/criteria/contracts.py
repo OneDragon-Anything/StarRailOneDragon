@@ -94,7 +94,7 @@ def _s_reserve_line_formed(ctx: ContractCtx) -> bool:
     在场 ∧ 实解析空集 ∧ p2plus 带证据 source 齐备)时前提放行——该帧不
     存在「为目标线预留」语境,S 预留原始禁令对象(无目标语境恒量预留,
     R196 同型)不成立;溢余带必花通道(dominance/EV)按裁决②
-    「必花域维持」不以本前提误伤,其自身带判据/候选门照旧辖。证据要件
+    「溢余段维持」不以本前提误伤,其自身带判据/候选门照旧辖。证据要件
     与 k_projection 契约同构(F-9 防御纵深:band='p2plus' ∧ source=
     three_arm 双核,无来源空不放行,两谓词判定一致);供给缺帧
     (k_fallback_available False)维持旧违例语义(无评估证据的空 =
@@ -264,7 +264,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '01_math_framework §3.3'),
     ('levelup', 'xp_ledger_stop'): Contract(
         None, 'XP 期望账本升级停(lv9_stop 轮内盲区补位;与 lv9_stop '
-        '同位合取消费,消费位=shop M3 批/shop 必花域 L3;live level_max=10 '
+        '同位合取消费,消费位=shop M3 批/shop 溢余段 L3;live level_max=10 '
         '无门槛表项判据不辖,行为零变更)',
         'kernel/cw_economy.xp_apply_clicks 推进算子单一源'),
     ('levelup', 'level_spend_blocked'): Contract(
