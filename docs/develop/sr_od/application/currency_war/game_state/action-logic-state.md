@@ -32,17 +32,17 @@
 
 ### 1.3 写口归属：op 上报动作，game state 独占写逻辑态（硬规则）
 
-- **动作 op 的职责边界** = 执行画面动作（点击/拖拽）+ **机械执行后直调自己的上报函数**（动作语义单一源 = `kernel/cw_action_report/` 上报函数族，每动作一文件一函数 `report_action_<snake>_param`；零写动作族集中在 `zero_writes.py`）。逻辑态的更新写入由上报函数族独占完成（函数内 `gs.write_logic`，kernel → 容器单向依赖）；dict 确认族到账效果经 `kernel/cw_exec_state.py::apply_confirm_effect`（§1.4 表）。
+- **动作 op 的职责边界** = 执行画面动作（点击/拖拽）+ **机械执行后直调自己的上报函数**（动作语义单一源 = `kernel/cw_action_report/` 上报函数族，每动作一文件一函数 `report_action_<snake>_param`；零写动作族集中在 `zero_writes.py`）。逻辑态的更新写入由上报函数族独占完成（函数内 `gs.write_logic`，kernel → 容器单向依赖）；dict 确认族到账效果经 `kernel/cw_exec_state.py::apply_confirm_effect`（§1.5 表）。
 - **禁令**：op 层/策略层不得自带逻辑态记账函数或并行登记路径——同一动作存在两条写逻辑态的通道是账实分离类缺陷的温床。执行遥测计数（次数/金额/证据留档）不属逻辑态,不受本条辖,但不得反向写容器。
 - **逐动作计算规则的梳理文档** = [logic-updates/](logic-updates/README.md)（总-分结构：总览 + 每动作 op 一篇,说明该动作的逻辑态应如何计算）;本篇保留总则与原则,分篇逐节指向子目录。
 
-### 1.3 kernel 单一源指针纪律
+### 1.4 kernel 单一源指针纪律
 
-- **规则已实现**：本篇只写语义 + 指向 kernel 函数（符号锚）；数值只写常量名，不复制数值（值的单一源在代码）。本篇被指对象：`kernel/cw_merge_simulate.py::merge_buy_k` / `merge_buy_completes` / `_merge_bench` / `_apply_full_bench_merge_buy` / `same_star_count`；`kernel/cw_economy.py::sell_refund` / `bench_char_cost` / `xp_apply_clicks` / `xp_click_cost` / `clicks_to_next_level` / `blood_xp_full_clicks`；`kernel/cw_action_report/` 上报函数族（每动作一文件 `report_action_<snake>_param`，零写族 `zero_writes.py`；刷新计数 = 效果账本 `record_refresh` 单口，经刷新上报函数触发，`kernel/cw_effect_inventory.py`）与 `kernel/cw_game_state.py::detect_merge_upgrade`；`kernel/ ；`kernel/cw_exec_state.py::apply_confirm_effect`（dict 确认族）；上报写端 = `kernel/cw_action_report/tool_use.py` 七具名上报函数（工具七类容器直写；登记表 `EQUIP_WRITE_SIDES` 保留）；`kernel/cw_effect_inventory.py::spawn_equip_bench_unit` / `grant_equip_item` / `transform_equip_to_privilege` / `transform_worn_equip_to_privilege`。
+- **规则已实现**：本篇只写语义 + 指向 kernel 函数（符号锚）；数值只写常量名，不复制数值（值的单一源在代码）。本篇被指对象：`kernel/cw_merge_simulate.py::merge_buy_k` / `merge_buy_completes` / `_merge_bench` / `_apply_full_bench_merge_buy` / `same_star_count`；`kernel/cw_economy.py::sell_refund` / `bench_char_cost` / `xp_apply_clicks` / `xp_click_cost` / `clicks_to_next_level` / `blood_xp_full_clicks`；`kernel/cw_action_report/` 上报函数族（每动作一文件 `report_action_<snake>_param`，零写族 `zero_writes.py`；刷新计数 = 效果账本 `record_refresh` 单口，经刷新上报函数触发，`kernel/cw_effect_inventory.py`）与 `kernel/cw_game_state.py::detect_merge_upgrade`；`kernel/cw_exec_state.py::apply_confirm_effect`（dict 确认族）；上报写端 = `kernel/cw_action_report/tool_use.py` 七具名上报函数（工具七类容器直写；登记表 `EQUIP_WRITE_SIDES` 保留）；`kernel/cw_effect_inventory.py::spawn_equip_bench_unit` / `grant_equip_item` / `transform_equip_to_privilege` / `transform_worn_equip_to_privilege`。
 - **规则未实现**（无 kernel 落码写口）：**本篇该节即实现规格**——实现时按本节规则落码，不另立规格文档。
 - 同一规则多载体若漂移，以 kernel 单一源为准修齐（`kernel/cw_merge_simulate.py` 模块头注）。
 
-### 1.4 逻辑态的三个落点（载体）
+### 1.5 逻辑态的三个落点（载体）
 
 同一套规则按宿主分落点落码；本篇按动作写规则一次，在役落点同规则消费：
 
@@ -61,7 +61,7 @@ OpenTome·OpenBookcard 腾席 = `report_action_open_tome_param`/`report_action_o
 WearEquip/工具原子/OpenBox 的装备域容器腿 = 容器零写（消费真值归观察的正本申报，
 §3.4/§3A；截断点独占发射帧零窗口，下一入口 heavy 覆盖）。
 
-### 1.5 枚举范围与动作计数
+### 1.6 枚举范围与动作计数
 
 本篇枚举 = 商店域 6 个动作词条（§2）+ 备战域原子动作（§3：DeployMove/SellDeployed/LevelUp/OpenBox/OpenTome/CollectOre/OpenBookcard + §3A WearEquip 与工具原子类，规则见 §4）+ 转场类 2 个（§5）+ 词表完备性注 2 条（§2.7）。事件线选择（pick 族，含武装箱四选一画面 op）按 §6 声明为非逻辑态通道。动作词表本体与执行载体表 = [action_exec.md](../flow/action_exec.md) §1、[screens/README](../screens/README.md) §4（能力面/策略面之分不在本篇重复）。（幻影机制墓碑：「试用角色揭示卡」= 备战栏动画帧误判，2026-09-19 用户定谳撤销，禁再建模；墓碑 = `cw_identity_obs` 模块内注。）
 
@@ -336,7 +336,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（词表�
 
 ## 7. 知识缺口与补档清单
 
-> 缺口只辖「确定面内的参数/规则未实证」，不辖「整条规则缺席」（规则缺席 = 本篇即实现规格，§1.3）。**缺口闭合前的统一过渡形态：该动作执行后交回重观察**（观察覆盖兜底 + 缺陷台账暴露）——这是过渡手段，不是架构：每条缺口闭合后按其「在册处置」列收敛为纯逻辑态直写。
+> 缺口只辖「确定面内的参数/规则未实证」，不辖「整条规则缺席」（规则缺席 = 本篇即实现规格，§1.4）。**缺口闭合前的统一过渡形态：该动作执行后交回重观察**（观察覆盖兜底 + 缺陷台账暴露）——这是过渡手段，不是架构：每条缺口闭合后按其「在册处置」列收敛为纯逻辑态直写。
 
 | 编号 | 缺口 | 波及动作 | 在册处置（闭合前记账规则） | 补档方法 |
 |---|---|---|---|---|

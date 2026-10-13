@@ -32,7 +32,7 @@
 │   单动作循环逐帧恰取一个动作(接口返回 CwAction | None,    │
 │   None = 本帧无动作);商店决策 = decide_shop_action 单动作   │
 │   接口;flow.py 旧备战骨架（相位机/腾席链等 10 方法+session  │
-│   字段）已删（考古走 git 历史）;pick 族 13 接口与冷建/结算   │
+│   字段）已删（考古走 git 历史）;pick 族 12 接口与冷建/结算   │
 │   收编仍由 flow.py 中间 ABC 承载│
 ├─ 动作执行（kernel/cw_vocab.py 词表 + prep_actions.py 执行器│
 │ + cw_screen_shop.py 商店画面 op 两 node + cw_action_registry.py 单一注册表  │
@@ -58,7 +58,7 @@
 
 | 身份 | 载体 | 职责 | 禁止 |
 |---|---|---|---|
-| **契约** | `strategies/impl/cw_strategy.py` 的 `CwStrategy` ABC(抽象 12 + 非 abstract 工厂 1;接口面见 §2.2) | 定义各画面 op 调用策略器的全部决策入口与唯一冷建口(§2.2) | ABC 自身零内置逻辑(纯接口,create_state 工厂除外);零策略专属语义(update_target/意向 target 机器/生命周期事件钩子已出契约面)。接口计数:抽象 16 + 非 abstract 工厂 1(接口面见 §2.2) |
+| **契约** | `strategies/impl/cw_strategy.py` 的 `CwStrategy` ABC(抽象 16 + 非 abstract 工厂 1;接口面见 §2.2) | 定义各画面 op 调用策略器的全部决策入口与唯一冷建口(§2.2) | ABC 自身零内置逻辑(纯接口,create_state 工厂除外);零策略专属语义(update_target/意向 target 机器/生命周期事件钩子已出契约面)。接口计数:抽象 16 + 非 abstract 工厂 1(接口面见 §2.2) |
 | **管理器** | `strategies/impl/cw_strategy_manager.py`(StrategyManager) | 按实例化/选择策略;注册面封闭集 = {mandate_v1}(decision_v2 已随 commit b94e9cfb 删除) | 不承载判据;不知策略内部结构 |
 | **实现** | `strategies/impl/mandate_v1/`(单一核)+ `strategies/impl/flow.py`(`CwFlowStrategy` 中间辅助 ABC:唯一冷建口/方向节拍内化刷新/pick 族/商店单动作接口与驱动器缺省,`_abstract=True` 不注册;旧备战骨架已删;结算策略半惰性 drain 三方法已删(退役批)) | 决策本体 | 禁自实现生命周期机制(幂等键/连败恢复/屏蔽/stall 门——归流程侧);禁绕契约自造接口 |
 | **注册壳** | `strategies/mandate_v1_strategy.py`(MandateV1Live) | 把实现包注册进策略扫描器 | 壳内零判据逻辑 |
