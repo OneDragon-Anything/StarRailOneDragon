@@ -26,7 +26,7 @@
 | `decide_wish_trial(options)` | E5（圣杯试炼二选一，祈愿试炼） | 打分：①金币类 +`PICK_BIAS.wish_gold`；②target/框架阵营词命中 +`PICK_BIAS.wish_faction`；③「刷新/购买」操作向 +`PICK_BIAS.wish_operation`；另 effect_pick_bias 基分；fallback idx=0 | **有规格**（奖励偏好序雏形：Archer>金币>星徽，combo_methodology）；数学待 derive（08 E5：奖励序 = 知识判据；「何时接」可挂金日程；**供给硬缺为前置**） |
 | `decide_box_card(names)` | E18（武装箱/节点弹窗四选一装备卡；2026-08-19 用户定调批次接入策略模块） | 薄壳：locked_comp 两态锚 + 三本库存账 → 共享机器 `pick_equipment`（kernel/cw_equip_value，序数分档：key 直击 > 近兑现 > 材料 > 通用；base = `equip_generic_value` 通用输出先验）；fallback idx=0 | **有规格**（armory-box-value 定稿；零新常数，数值维 = P42 挂账不变） |
 | `decide_fortune()` | 命运卜者强化三选一(收编入契约面) | 委托 `cw_events.decide_fortune`（战力关键词权重 argmax;无匹配缺省首卡,handler 侧越界防御同落首卡） | **有规格**（关键词权重结构打分,语义单一源 = kernel 本体） |
-| `decide_expert_invite()` | E9（专家邀请函选卡;收编入契约面） | 委托 `cw_events.choose_expert_index` 三级语义（在场浓度版,idx=-1 表金为王）;**行为分叉申报**：与 E9 在案规格（目标线成员优先 → 池浓度）分叉,已挂账独立行为变更(迁移批 2 报告),入口保持实码行为不擅自切规格 | **有规格**（实码行为;与在案规格的分叉已挂账申报） |
+| `decide_expert_invite()` | E9（专家邀请函选卡;收编入契约面） | 委托 `cw_events.choose_expert_index` 三级语义（在场同系优先版,idx=-1 表金为王）;**行为分叉申报**：与 E9 在案规格（目标线成员优先 → 按压库收益选）分叉,已挂账独立行为变更(迁移批 2 报告),入口保持实码行为不擅自切规格 | **有规格**（实码行为;与在案规格的分叉已挂账申报） |
 
 (原 `decide_equip_pick()` = 选择装备三选一行,已随该屏误判退役删除,2026-09-22。)
 
@@ -42,7 +42,7 @@
 | E6 | 领航员绑定 | 获得姬子·启行时（含板凳持有，身份级绑定） | 时间函数：前期保命绑三月七 → 后期输出换绑 | B3；final_jizi |
 | E7 | 巨星选择（盛会之星） | 盛会羁绊 | comp 引擎 × 乘区关系 | M14 |
 | E8 | 星徽/卡带驾驶员 | 获得虚数件时 | comp 知识声明，缺省=边际羁绊贡献最大者 | B4；final_comps |
-| E9 | 专家邀请函（解锁谁） | 战利品通道 | 目标线成员优先 → 池浓度（压库口径） | economy §1 |
+| E9 | 专家邀请函（解锁谁） | 战利品通道 | 目标线成员优先 → 按压库收益选（提高目标档刷出概率） | economy §1 |
 | E10 | 工具使用（工具 7 件） | 到货即评估 | 装备机器：三道门框架（[10_prep_decisions.md](10_prep_decisions.md) §2.1） | equipment_mechanics §5；P14 域 |
 | E11 | 装备合成配对 | 持有 ≥2 基础件 | 目标线组件需求向量 + 唯一件 + 禁忌件过滤 | cw_synthesis；[29] |
 | E12 | 商店锁 | 任意备战期 | 试验模型内的期权：保留 5 槽 vs 重抽（P38 O3=最佳猜测/待实测）；**供给缺口**：锁按钮建档/状态识别/op 全缺 | economy §2.1 |
