@@ -1874,119 +1874,11 @@ def run_mandate(frame: MandateFrame,
     state_of(session).cw4_m1p_arm_pending = None
     state_of(session).cw4_m1p_plan_pending = None
     if not any(isinstance(e.action, (CwActionDeployMoveParam, CwActionSellDeployedParam)) for e in out):
-        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-            assemble_swap_plan_inputs,
-            select_swap_plan,
-            swap_plan_up_names,
-        )
-        from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
-            select_deployments_reasoned as _swap_select_up,
-        )
-        _m1p_reasons: dict[str, str] = {}
-        # 装配产物持引用(放行判定消费 membership/bench 的替补席成员集合,
-        # 同一快照,禁放行判定二次装配出第二份输入)。
-        # W6 波3 贯通 + prep 链容器化段 2:装配已切容器签名,置顶 gs 直传
-        #(过渡桥装箱面消亡)。
-        _m1p_ctx = assemble_swap_plan_inputs(
-            session, state=state,
-            deployed=list(frame.deployed),
-            bench=list(frame.bench), cap=frame.deploy_cap)
-        # select_up 注入(kernel 依赖倒置契约;选人单一源 = deploy_plan,
-        # P3 迁移后 kernel 不再持有选人语义)。
-        _m1p = select_swap_plan(_m1p_ctx, reasons_out=_m1p_reasons,
-                                select_up=_swap_select_up)
-        # 逐件拒因分键(键集;T-127 §2.3 分键闭集扩:收窄后
-        # 仍被保的弹性件拒因 target_keep 与义务集拒因 buy_membership
-        # 纳入闭集——病灶局八件拒因 4×target_keep+2×buy_membership 在
-        # 旧闭集零显影,「臂武装而计划空」无法遥测归因;帧级显影)。
-        for _r in (set(_m1p_reasons.values())
-                   & {'engines_guard', 'star_guard', 'merge_material_guard',
-                      'post_sell_offline', 'fp_unreadable',
-                      'target_keep', 'buy_membership',
-                      'post_sell_req_missing'}):
-            _count(_r)
-        if _m1p.abstain == 'cap_unreadable':
-            _count('m1p_cap_unreadable')
-        elif _m1p.abstain == 'membership_unreadable':
-            _count('m1p_membership_unreadable')
-        elif _m1p.abstain == 'input_missing':
-            _count('m1p_input_missing')   # 供给缺失 ≠ 真计划空,禁混桶
-        elif _m1p.abstain == 'no_direction':
-            # F1 弃权分键(T-167 层位纠正:no_direction 属
-            # plan 级弃权键,不并入上方逐件拒因闭集——两套键各自独立
-            # 计数,混桶 = 静默无显影)。本键显影 = 无方向幻影部署形态
-            # 在案(事故判读锚:run_20260908_210431 的 m1p_fired=53 对位,
-            # 修后无方向局此键增长 ∧ m1p_fired 归零)。
-            _count('m1p_no_direction')
-        elif _m1p.abstain == 'no_bench_target':
-            # F1 合取②弃权分键(有向态 bench 无目标视图件:base/formed
-            # 臂「非目标件填空上序」是执行面必然空转的形态——执行面卖出
-            # 臂同门只会走「bench 无目标视图件」跳过分支;弃权+出战才是
-            # 支配正确。如实申报的行为变化面(「修订(T-167)」节),用例预期更新)。
-            _count('m1p_no_bench_target')
-        elif _m1p.nonempty:
-            if any(isinstance(e.action, CwActionLevelUpParam) for e in out):
-                _count('m1p_defer_levelup')
-            elif not getattr(state_of(session), 'cw4_m1p_seam_verified', False):
-                _count('m1p_input_seam_pending')
-            elif _m1p.arm == 'transition' and not _redeploy_emission_allowed(
-                    session, state, _m1p_ctx):
-                # 部署执行放行判定未过(P79-3;T-127 §2.3):与逐件资格拒因
-                # 分列禁混桶——资格拒 = 「能不能换」(victim 级),本键 =
-                # 「该不该这帧换」(帧级 defer,替补席线内成员轴/代价轴)。
-                _count('redeploy_cost_gate_defer')
-            else:
-                # 批 2a 原子通路:换血发射 = 逐 victim 产 CwActionSellDeployedParam(先卖);
-                # 卖后上序 = kernel 计划语义(select_swap_plan 的 up 复用
-                # select_deployments 同一谓词),后续帧卖出逻辑态腾位后由
-                # M1/M1′ 臂对 fresh 黑板重评自然续发 CwActionDeployMoveParam——发射序
-                # (先卖后上)由 kernel 计划序表达,不再经组合壳执行臂。
-                # (执行侧 CwScreenDeploy 卖出臂随组合壳退役,换血卖出归
-                # CwActionSellDeployedParam 原子;卖出资格同吃义务集∪新鲜度排除,
-                # swap_sell_exclusion_reason 单一判定不变。)
-                _victims: list[Emitted] = []
-                for _vn in _m1p.sell_names:
-                    _vd = next((d for d in frame.deployed
-                                if d is not None
-                                and (d.char_id or '') == _vn), None)
-                    if _vd is None:
-                        continue   # 计划名与黑板失配(陈旧提案),逐件跳过
-                    # 容器下标解析(换算收口,见 _deployed_container_idx):
-                    # 失配 = 黑板视图与容器失配,fail-closed 逐件跳过。
-                    _didx = _deployed_container_idx(state, _vd)
-                    if _didx is None:
-                        continue
-                    _victims.append(Emitted(
-                        CwActionSellDeployedParam(deployed_idx=_didx),
-                        True, 'm1_swap_redeploy'))
-                if _victims:
-                    out.extend(_victims)
-                    _count('m1p_fired')
-                    # 双臂分键(plan.arm = 胜出者资格族标注;禁新排序键)
-                    if _m1p.arm == 'transition':
-                        _count('swap_arm_transition_trigger')
-                    elif _m1p.arm == 'formed':
-                        _count('swap_arm_formed_trigger')
-                    # 被换下场成员逐件归因分键(T-127 §2.3/§6.3:替补席待上场
-                    # 轮数判读可归因;只随发射显影,defer 帧由 defer 键单义承载)
-                    if _m1p.arm == 'transition' and _m1p.sell_names:
-                        _count(f"redeploy_transition_victim_"
-                               f"{_m1p.sell_names[0]}")
-                    # 计划载荷透传(T-279 R1):sell/up 名单 +
-                    # 计划时点转型域事实(ctx 装配快照) + 计划时点板占用数。
-                    # 原消费方 = CwScreenDeploy 部署段(组合壳退役后零读者,
-                    # 载荷保留为计划快照留证面;卖出仲裁权归本发射位)。
-                    state_of(session).cw4_m1p_arm_pending = _m1p.arm
-                    state_of(session).cw4_m1p_plan_pending = {
-                        'sell': list(_m1p.sell_names),
-                        'up': swap_plan_up_names(_m1p, _m1p_ctx),
-                        'trans_domain': bool(getattr(_m1p_ctx,
-                                                     'transition_domain',
-                                                     False)),
-                        'occ': len(frame.deployed),
-                    }
-        else:
-            _count('m1p_plan_empty')
+        # 提取为 emit_swap_redeploy(run_mandate 与 entry 九段第 5 步共用
+        # 发射位;判据/状态写点原样迁出,零行为变化;defer_actions 传
+        # 骨架 out 承载 m1p_defer_levelup 的同帧升级推迟判定)。
+        out.extend(emit_swap_redeploy(frame, session, state,
+                                      defer_actions=out))
 
     # M6 溢余转压库(存在性=金>g*;档匹配 fail-closed ⇒ 不买
     # +溢余滞留遥测;席位失败=单帧单评,R21-4)。stop_flag 已摘
@@ -2080,6 +1972,145 @@ def run_mandate(frame: MandateFrame,
 #  M7/M7.5 逐帧现算形态下逐件逻辑态使判据面天然收敛,同 phase 一次闩与
 #  逐件序互斥;载体字段 cw4_m7_equipped_phase/cw4_tools_phase 同批删除,
 #  0 穿活锁防线归 visit 动作数上限 + 环级无进展守卫。)
+
+
+def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
+                       state: GameState, *,
+                       select_up=None,
+                       defer_actions: list | None = None) -> list[Emitted]:
+    """M1″ 板满换阵补部署发射位(run_mandate 与 entry 九段第 5 步共用;
+    逻辑原样自 run_mandate m1p 块迁出,零行为变化)。
+
+    判据单一源 = kernel ``cw_deploy_logic.select_swap_plan``(组合语义:
+    cap 满占用数口径 ∧ 义务集/轮内新鲜度排除后存在合格 victim ∧ 卖出后
+    假想状态复用 select_deployments 判 up 非空);发射 = 逐 victim 产
+    ``CwActionSellDeployedParam``(先卖),卖后上序由后续帧 M1/M1′ 对
+    fresh 容器重评自然续发 ``CwActionDeployMoveParam``。
+
+    ``select_up`` = 选人判定注入(缺省 None = ``deploy_plan.
+    select_deployments_reasoned`` 单一源;kernel 依赖倒置契约——选人
+    语义归策略层)。entry 第 5 步传窗口辖域包装(替补受上阵窗口辖域辖,
+    契约 D 部署换血行)——注入层过滤 up 集,窗口未到件移入 held(不进
+    select_deployments 拒因闭集,窗口辖域 = 帧级 defer 非资格拒)。
+
+    ``defer_actions`` = 同帧既有发射序列(升级推迟判定的输入:m1p 与
+    CwActionLevelUpParam 同帧时推迟换血——升级开新 vacancy,下帧 M1′
+    零成本接管,卖出不可逆 > 等一帧;run_mandate 传骨架 out,entry 传
+    第 3 步动作)。
+
+    m1p 执行侧分键载体帧级复位(cw4_m1p_arm_pending/cw4_m1p_plan_
+    pending,pending 只活一个决策帧)与发射由本函数承载——run_mandate
+    调用侧与 entry 调用侧同帧级语义。
+    """
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        assemble_swap_plan_inputs,
+        select_swap_plan,
+        swap_plan_up_names,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
+        select_deployments_reasoned as _default_select_up,
+    )
+    _st = state_of(session)
+    counters = _st.cw4_counters
+    if not isinstance(counters, dict):
+        counters = {}
+        _st.cw4_counters = counters
+
+    def _count(key: str) -> None:
+        counters[key] = counters.get(key, 0) + 1
+
+    out: list[Emitted] = []
+    _m1p_reasons: dict[str, str] = {}
+    # 装配产物持引用(放行判定消费 membership/bench 的替补席成员集合,
+    # 同一快照,禁放行判定二次装配出第二份输入)。
+    _m1p_ctx = assemble_swap_plan_inputs(
+        session, state=state,
+        deployed=list(frame.deployed),
+        bench=list(frame.bench), cap=frame.deploy_cap)
+    _m1p = select_swap_plan(_m1p_ctx, reasons_out=_m1p_reasons,
+                            select_up=select_up or _default_select_up)
+    # 逐件拒因分键(键集;T-127 §2.3 分键闭集:收窄后仍被保的弹性件拒因
+    # target_keep 与义务集拒因 buy_membership 纳入闭集)。
+    for _r in (set(_m1p_reasons.values())
+               & {'engines_guard', 'star_guard', 'merge_material_guard',
+                  'post_sell_offline', 'fp_unreadable',
+                  'target_keep', 'buy_membership',
+                  'post_sell_req_missing'}):
+        _count(_r)
+    if _m1p.abstain == 'cap_unreadable':
+        _count('m1p_cap_unreadable')
+    elif _m1p.abstain == 'membership_unreadable':
+        _count('m1p_membership_unreadable')
+    elif _m1p.abstain == 'input_missing':
+        _count('m1p_input_missing')   # 供给缺失 ≠ 真计划空,禁混桶
+    elif _m1p.abstain == 'no_direction':
+        # F1 弃权分键(T-167 层位纠正:plan 级弃权键,不并入逐件拒因闭集)
+        _count('m1p_no_direction')
+    elif _m1p.abstain == 'no_bench_target':
+        # F1 合取②弃权分键(有向态 bench 无目标视图件:base/formed 臂
+        # 「非目标件填空上序」是执行面必然空转的形态;弃权+出战才是
+        # 支配正确)。
+        _count('m1p_no_bench_target')
+    elif _m1p.nonempty:
+        if any(isinstance(e.action, CwActionLevelUpParam)
+               for e in (defer_actions or ())):
+            _count('m1p_defer_levelup')
+        elif not getattr(_st, 'cw4_m1p_seam_verified', False):
+            _count('m1p_input_seam_pending')
+        elif _m1p.arm == 'transition' and not _redeploy_emission_allowed(
+                session, state, _m1p_ctx):
+            # 部署执行放行判定未过(P79-3;T-127 §2.3):与逐件资格拒因
+            # 分列禁混桶——资格拒 = 「能不能换」(victim 级),本键 =
+            # 「该不该这帧换」(帧级 defer,替补席线内成员轴/代价轴)。
+            _count('redeploy_cost_gate_defer')
+        else:
+            # 逐 victim 产 CwActionSellDeployedParam(先卖);容器下标解析
+            # 失配 = 黑板视图与容器失配,fail-closed 逐件跳过。
+            _victims: list[Emitted] = []
+            for _vn in _m1p.sell_names:
+                _vd = next((d for d in frame.deployed
+                            if d is not None
+                            and (d.char_id or '') == _vn), None)
+                if _vd is None:
+                    continue   # 计划名与黑板失配(陈旧提案),逐件跳过
+                _didx = _deployed_container_idx(state, _vd)
+                if _didx is None:
+                    continue
+                _victims.append(Emitted(
+                    CwActionSellDeployedParam(deployed_idx=_didx),
+                    True, 'm1_swap_redeploy'))
+            if _victims:
+                out.extend(_victims)
+                _count('m1p_fired')
+                # 双臂分键(plan.arm = 胜出者资格族标注;禁新排序键)
+                if _m1p.arm == 'transition':
+                    _count('swap_arm_transition_trigger')
+                elif _m1p.arm == 'formed':
+                    _count('swap_arm_formed_trigger')
+                # 被换下场成员逐件归因分键(T-127 §2.3/§6.3:只随发射显影)
+                if _m1p.arm == 'transition' and _m1p.sell_names:
+                    _count(f"redeploy_transition_victim_"
+                           f"{_m1p.sell_names[0]}")
+                # 计划载荷透传(T-279 R1):sell/up 名单 + 计划时点转型域
+                # 事实(ctx 装配快照) + 计划时点板占用数(载荷保留为计划
+                # 快照留证面;卖出仲裁权归本发射位)。
+                _st.cw4_m1p_arm_pending = _m1p.arm
+                _st.cw4_m1p_plan_pending = {
+                    'sell': list(_m1p.sell_names),
+                    'up': swap_plan_up_names(_m1p, _m1p_ctx),
+                    'trans_domain': bool(getattr(_m1p_ctx,
+                                                 'transition_domain',
+                                                 False)),
+                    'occ': len(frame.deployed),
+                }
+    else:
+        _count('m1p_plan_empty')
+    # 帧级复位(发射位与调用侧同帧语义):本函数无 m1p 发射时 pending
+    # 复位 None——无条件复位防跨帧残留误归因。
+    if not any(isinstance(e.action, CwActionSellDeployedParam) for e in out):
+        _st.cw4_m1p_arm_pending = None
+        _st.cw4_m1p_plan_pending = None
+    return out
 
 
 def m7_wearable_exists(owned: list[str]) -> bool:

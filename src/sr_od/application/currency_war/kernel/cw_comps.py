@@ -233,6 +233,26 @@ class Comp:
     常驻件登记(线核心输出位以外的结构成员,可含 shared/transition 层的贯穿件——
     姬子线饮月类)。与 CARRY 档成员全集(``carry_set`` 合流口径)可能相交,持有
     证据分档的消费序归 3.7。插件档 = 线成员 − CARRY − 本名单(派生,不入表)。"""
+    entry_signals: dict[str, tuple[str, int]] = field(default_factory=dict)
+    """上线窗口信号表(部署窗口辖域数据地基;prep_pipeline §1 第 5 步;
+    [21] 2026-08-26 定谳「该角色的羁绊组齐了才上」的形式化载体——单上
+    没什么作用,凑够羁绊才上去替换,保证战斗力)。键 = 角色规范名(线
+    终局成员 core ∪ shared),值 = ``(信号类, 阈值)``,信号类闭集:
+    - ``'synergy'``:该线主羁绊(``bond_signal``;缺省取 form_tiers 首键)
+      板面计数 ≥ 阈值 → 窗口到——定谳主形态,阈值 = 主羁绊成型档
+      (form_tiers);白厄 4 击破齐原型([21]);
+    - ``'level'``:玩家等级 ≥ 阈值 → 窗口到(核心等级窗,值域保留——
+      现表无登记行,[21] 定谳后孤立等级数字不独立作窗);
+    - ``'plane_end'``:终局位面段已启动(窗口谓词形态,消费端 =
+      ``session_scope.plane2_started_of``;满编后期形态线,README C4
+      「白厄 B 套特权反甲 = 满编后期的常态」)→ 窗口到;
+    - ``'always_on'``:恒可上——全局累积型角色例外([21]「越早越好」
+      ——``global_accumulators`` 的 hp_charge_stack 型;及「前期 = 终局
+      同体」线成员〔bond_signal 行内注释在案〕),阈值不消费(占 0)。
+    fail 读法:缺行(角色无登记)→ 窗口谓词恒假 = 窗口永不到(纯终局件
+    只囤不上,保守侧,prep_pipeline 第 5 步 fail 方向声明)。判定消费端
+    = mandate_v1 部署窗口辖域(数据 kernel / 判据策略层,宪 5 合宪申报
+    同知识卡三字段)。"""
 
     @property
     def all_factions(self) -> set[str]:
@@ -649,6 +669,9 @@ COMP_LIBRARY: list[Comp] = [
         },
         # 骨架=三月七(引擎触发器/贯穿件)+饮月(仙舟∩列车焊点,构造机理§2 贯穿件行)
         key_items=['三月七', '丹恒·饮月'],
+        # 上线窗口(4.0b 同批建表;[21] 定谳「羁绊组齐才上」主形态):
+        # 主羁绊 bond_signal=列车同行,成型档 4 → synergy 4
+        entry_signals=dict.fromkeys(('姬子·启行', '三月七', '花火', '瓦尔特'), ('synergy', 4)),
     ),
     Comp(
         name="命运圣杯红A", factions=["命运圣杯"], core_chars=["Archer", "远坂凛"],
@@ -697,6 +720,8 @@ COMP_LIBRARY: list[Comp] = [
         },
         # 骨架=远坂凛(触发器)+花火/刻律德菈(战技点线燃料生产端,构造机理§2)
         key_items=['远坂凛', '花火', '刻律德菈'],
+        # 上线窗口:主羁绊 bond_signal=命运圣杯,成型档 3 → synergy 3
+        entry_signals=dict.fromkeys(('Archer', '远坂凛', '瓦尔特'), ('synergy', 3)),
     ),
     # ===== A 级(版本强势,V4.4 合集 76807134)=====
     Comp(
@@ -735,6 +760,8 @@ COMP_LIBRARY: list[Comp] = [
         },
         # 骨架=plaza n=29 常驻辅助群(瓦尔特 24/卡芙卡 16/缇宝 15/符玄 14,本条注)
         key_items=['瓦尔特', '卡芙卡', '缇宝', '符玄'],
+        # 上线窗口:无 bond_signal → 主羁绊取 form_tiers 首键(减益),档 4
+        entry_signals=dict.fromkeys(('千冶·刃', '瓦尔特', '卡芙卡', '缇宝', '符玄', '黄泉', '花火', '不死途', '开拓者·记忆', '椒丘'), ('synergy', 4)),
     ),
     Comp(
         # 主羁绊(依据=final_feiying_joy.md 类结构三处一致:
@@ -785,6 +812,8 @@ COMP_LIBRARY: list[Comp] = [
         # 骨架=定轨引擎爻光+能量环藿藿(18/25,插件排序首位,构造机理§2——
         # 绯英线比银狼线更依赖能量经济的差异件)
         key_items=['爻光', '藿藿'],
+        # 上线窗口:主羁绊 bond_signal=欢愉,成型档 4 → synergy 4
+        entry_signals=dict.fromkeys(('绯英', '瓦尔特', '爻光', '开拓者·欢愉', '符玄', '火花'), ('synergy', 4)),
     ),
     Comp(
         name="希儿量子", factions=["量子同频", "贝洛伯格"],
@@ -853,6 +882,8 @@ COMP_LIBRARY: list[Comp] = [
         },
         # 骨架=引擎核心组非 carry 四件(构造机理§2:花火 63/符玄 62/缇宝 58/刻律德菈 53)
         key_items=['花火', '符玄', '缇宝', '刻律德菈'],
+        # 上线窗口:无 bond_signal → 主羁绊取 form_tiers 首键(量子同频),档 4
+        entry_signals=dict.fromkeys(('希儿', '花火', '符玄', '缇宝', '刻律德菈', '知更鸟', '布洛妮娅', '瓦尔特'), ('synergy', 4)),
     ),
     Comp(
         name="黄泉减益", factions=["巡海游侠", "减益"], core_chars=["黄泉", "不死途", "乱破", "千冶·刃", "瓦尔特"],
@@ -904,6 +935,8 @@ COMP_LIBRARY: list[Comp] = [
         },
         # 骨架=充能/生存/放大插件头名(构造机理§2:不死途>千冶·刃;椒丘隐形奶;瓦尔特 45/50)
         key_items=['不死途', '千冶·刃', '椒丘', '瓦尔特'],
+        # 上线窗口:主羁绊 bond_signal=减益,成型档 4 → synergy 4
+        entry_signals=dict.fromkeys(('黄泉', '不死途', '乱破', '千冶·刃', '瓦尔特', '刃', '符玄'), ('synergy', 4)),
     ),
     Comp(
         name="巡海击破", factions=["击破", "巡海游侠"], core_chars=["不死途", "波提欧", "乱破", "忘归人", "大丽花", "灵砂", "阮·梅"],
@@ -941,6 +974,8 @@ COMP_LIBRARY: list[Comp] = [
         # (簇内常驻 10-12/12);大丽花/灵砂(常驻 11)不入=巡海4 只需 4 名巡海成员、
         # 槽位弹性,常驻率相近的成员间不点名骨架(选择理由登记=对拍记录§四R4)
         key_items=['不死途', '乱破', '忘归人', '阮·梅'],
+        # 上线窗口:无 bond_signal → 主羁绊取 form_tiers 首键(击破),档 6
+        entry_signals=dict.fromkeys(('不死途', '波提欧', '乱破', '忘归人', '大丽花', '灵砂', '阮·梅', '黄泉', '流萤'), ('synergy', 6)),
     ),
     Comp(
         name="龙丹战技点", factions=["战技点", "列车同行"], core_chars=["丹恒·饮月", "远坂凛", "瓦尔特", "花火", "刻律德菈"],
@@ -979,6 +1014,8 @@ COMP_LIBRARY: list[Comp] = [
         # 瓦尔特必备=龙丹节正文;刻律复制=刻律星3 技能文本〔final_seele/final_wandi
         # 在册〕——龙丹节通篇无刻律德菈,复制能力出处不在彼处)
         key_items=['远坂凛', '瓦尔特', '花火', '刻律德菈'],
+        # 上线窗口:无 bond_signal → 主羁绊取 form_tiers 首键(战技点),档 4
+        entry_signals=dict.fromkeys(('丹恒·饮月', '远坂凛', '瓦尔特', '花火', '刻律德菈'), ('synergy', 4)),
     ),
     Comp(
         name="双王圣杯", factions=["命运圣杯", "能量"], core_chars=["吉尔伽美什", "Saber", "瓦尔特", "符玄", "开拓者·记忆", "藿藿"],
@@ -1024,6 +1061,8 @@ COMP_LIBRARY: list[Comp] = [
         # 骨架=闪闪锁轴速度载体(README B9)+远坂凛触发器+记忆主拉条(锁轴前置+本体
         # 配对)+生存件(符玄 60%/藿藿 43%,构造机理§2)
         key_items=['吉尔伽美什', '远坂凛', '开拓者·记忆', '符玄', '藿藿'],
+        # 上线窗口:主羁绊 bond_signal=命运圣杯,成型档 3 → synergy 3
+        entry_signals=dict.fromkeys(('吉尔伽美什', 'Saber', '瓦尔特', '符玄', '开拓者·记忆', '藿藿'), ('synergy', 3)),
     ),
     Comp(
         # V4.0 A级(BV1vVcLzXEN8 2026-02 转录):花火主C(吃点巧普攻+幻语记,倍率随花火等级)+星间旅人
@@ -1071,6 +1110,10 @@ COMP_LIBRARY: list[Comp] = [
         },
         # 骨架=core 非花火三件(爻光引擎/开拓者·欢愉 20-25/银狼LV.999 17-25,簇校准注)
         key_items=['爻光', '开拓者·欢愉', '银狼LV.999'],
+        # 上线窗口:无 bond_signal → 主羁绊取 form_tiers 首键(欢愉),档 3;
+        # 银狼LV.999 = cost_escalation 累积型但「不适用有空位就上例外」
+        #(global_accumulators 字段注),按线 synergy 窗
+        entry_signals=dict.fromkeys(('花火', '爻光', '开拓者·欢愉', '银狼LV.999', '银狼', '符玄', '丹恒·饮月'), ('synergy', 3)),
     ),
     Comp(
         # 新增(plaza 大族群补缺):银河学者+群攻族 —— 大黑塔 carry 38 篇 + 小黑塔 carry 26 篇。
@@ -1122,6 +1165,10 @@ COMP_LIBRARY: list[Comp] = [
         },
         # 骨架=黑塔(联动引擎件)+缇宝(46/52)/翡翠(31/52,学者4 档件)(构造机理§2)
         key_items=['黑塔', '缇宝', '翡翠'],
+        # 上线窗口:主羁绊 bond_signal=银河学者,成型档 4 → synergy 4;
+        # 小黑塔(黑塔)「备战席放满越多越好」的 bench 语义特例与窗口辖域
+        # 天然一致——银河学者档齐前囤不上
+        entry_signals=dict.fromkeys(('大黑塔', '黑塔', '缇宝', '翡翠'), ('synergy', 4)),
     ),
     Comp(
         name="银枝群攻", factions=["群攻"], core_chars=["银枝", "翡翠", "知更鸟"],
@@ -1160,6 +1207,8 @@ COMP_LIBRARY: list[Comp] = [
         },
         # 骨架=翡翠(3群攻结构件)+知更鸟(拉条件,攻略句内明示)
         key_items=['翡翠', '知更鸟'],
+        # 上线窗口:无 bond_signal → 主羁绊取 form_tiers 首键(群攻),档 3
+        entry_signals=dict.fromkeys(('银枝', '翡翠', '知更鸟'), ('synergy', 3)),
     ),
     Comp(
         name="反甲白厄", factions=[], core_chars=["白厄", "三月七", "姬子·启行"],
@@ -1216,6 +1265,10 @@ COMP_LIBRARY: list[Comp] = [
         },
         # 骨架=三月七(护盾/反震插件 46/78)+姬子·启行(领航员工具 38/78)(构造机理§2)
         key_items=['三月七', '姬子·启行'],
+        # 上线窗口:反甲装备流无羁绊主档(form_tiers 空)→ plane_end(终局
+        # 位面段;README C4「白厄 B 套特权反甲 = 满编后期的常态」——
+        # 装备流战力随装备合成累积,前中期上 = 裸装白厄送战损)
+        entry_signals=dict.fromkeys(('白厄', '三月七', '姬子·启行'), ('plane_end', 0)),
     ),
     # ===== B 级(强度一般,V4.4 合集 76807134)=====
     Comp(
@@ -1269,6 +1322,9 @@ COMP_LIBRARY: list[Comp] = [
         # 骨架=铁三角非 carry(爻光 100% 阿哈引擎/绯英 84% 副C沉淀)+插件前二
         # (开拓者 65/68/火花 57/68,构造机理§2)
         key_items=['爻光', '绯英', '开拓者·欢愉', '火花'],
+        # 上线窗口:主羁绊 bond_signal=欢愉,成型档 5(欢愉 5 = 特权化银狼档)→
+        # synergy 5;银狼LV.999 = cost_escalation 不适用早上例外(字段注)
+        entry_signals=dict.fromkeys(('银狼LV.999', '爻光', '千冶·刃', '开拓者·欢愉', '火花', '绯英', '花火'), ('synergy', 5)),
     ),
     Comp(
         name="昼神阿雅", factions=["昼之半神"], core_chars=["阿格莱雅", "风堇", "昔涟"],
@@ -1305,6 +1361,8 @@ COMP_LIBRARY: list[Comp] = [
         },
         # 骨架=昔涟(诗篇刷新商店经济引擎)+风堇(core 内非 carry)
         key_items=['昔涟', '风堇'],
+        # 上线窗口:无 bond_signal → 主羁绊取 form_tiers 首键(昼之半神),档 4
+        entry_signals=dict.fromkeys(('阿格莱雅', '风堇', '昔涟', '银狼'), ('synergy', 4)),
     ),
     Comp(
         # 打法知识:docs/game/currency_war/research/final_comps/README.md 类索引(游戏知识,非字段镜像,无同步义务)
@@ -1346,6 +1404,8 @@ COMP_LIBRARY: list[Comp] = [
         },
         # 骨架=知更鸟(3追击关键)+那刻夏(plaza 追击族真代表,簇注)+不死途(攻略句内)
         key_items=['知更鸟', '那刻夏', '不死途'],
+        # 上线窗口:无 bond_signal → 主羁绊取 form_tiers 首键(追击),档 3
+        entry_signals=dict.fromkeys(('飞霄', '知更鸟', '那刻夏', '不死途', '缇宝'), ('synergy', 3)),
     ),
     Comp(
         name="万敌单C", factions=["夜之半神", "燃血"], core_chars=["万敌", "千冶·刃", "长夜月", "刻律德菈", "缇宝"],
@@ -1408,6 +1468,13 @@ COMP_LIBRARY: list[Comp] = [
         },
         # 骨架=千冶·刃(全勤通用插件)+刻律德菈(复制插件)+长夜月(夜半记录器,core 内)
         key_items=['千冶·刃', '刻律德菈', '长夜月'],
+        # 上线窗口:主羁绊 bond_signal=夜之半神,档 2;万敌本人 = hp_charge_stack
+        # 全局累积型([21] 例外「越早越好」——受伤充能全局叠层,先上过渡
+        # 羁绊有空位就上)→ always_on
+        entry_signals={
+            '万敌': ('always_on', 0),
+            **dict.fromkeys(('千冶·刃', '长夜月', '刻律德菈', '缇宝', '风堇', '遐蝶'), ('synergy', 2)),
+        },
     ),
     Comp(
         name="DOT队", factions=["持续伤害", "星核猎手"], core_chars=["卡芙卡", "黑天鹅", "千冶·刃", "海瑟音", "符玄"],
@@ -1458,6 +1525,10 @@ COMP_LIBRARY: list[Comp] = [
         },
         # 骨架=黑天鹅(层数机器)/海瑟音(副输出)/千冶·刃(星核副产品+群盾)/符玄(生存)
         key_items=['黑天鹅', '海瑟音', '千冶·刃', '符玄'],
+        # 上线窗口:本线 bond_signal 行内注释「开局即战力,前期 = 终局同体
+        # 一路加深」——DOT 件无「囤而不上」阶段(P1 即终局形态)→ 全员
+        # always_on
+        entry_signals=dict.fromkeys(('卡芙卡', '黑天鹅', '千冶·刃', '海瑟音', '符玄', '桑博'), ('always_on', 0)),
     ),
     Comp(
         # 新增(plaza 补缺):景元仙舟族 —— 景元 carry 16 + 彦卿 14 篇。
@@ -1498,6 +1569,8 @@ COMP_LIBRARY: list[Comp] = [
         # 骨架=镜流(双三星结构件)+彦卿(传剑搭档)+符玄(19/24 常驻)+藿藿
         # (仙舟三人组 P1→Final 原样保留,构造机理「加法不换件的最纯样本」)
         key_items=['镜流', '彦卿', '符玄', '藿藿'],
+        # 上线窗口:无 bond_signal → 主羁绊取 form_tiers 首键(仙舟),档 5
+        entry_signals=dict.fromkeys(('景元', '镜流', '彦卿', '符玄', '忘归人', '藿藿'), ('synergy', 5)),
     ),
     Comp(
         # 新增(plaza 补缺):专家桑博 DOT —— 33.3k use 帖(「专家老桑博,越用越有活」5级搜牌)。
@@ -1540,6 +1613,9 @@ COMP_LIBRARY: list[Comp] = [
         },
         # 骨架=卡芙卡(过渡共享引爆器)+千冶·刃(core 内非 carry)
         key_items=['卡芙卡', '千冶·刃'],
+        # 上线窗口:同 DOT队——bond_signal 行内注释「开局即战力,前期 = 终局
+        # 同体」→ 全员 always_on
+        entry_signals=dict.fromkeys(('桑博', '卡芙卡', '千冶·刃', '海瑟音'), ('always_on', 0)),
     ),
 ]
 

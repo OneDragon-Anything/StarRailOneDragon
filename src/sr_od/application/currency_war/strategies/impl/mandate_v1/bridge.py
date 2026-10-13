@@ -189,13 +189,13 @@ class MandateV1Strategy(CwFlowStrategy):
 
     _abstract: bool = False   # 覆写 flow 基类的辅助 ABC 位:本类 = 可注册的活策略核
     STRATEGY_ID: str = 'mandate_v1'
-    STRATEGY_NAME: str = '新数学框架核(mandate_v1;三遍化决策序)'
+    STRATEGY_NAME: str = '新数学框架核(mandate_v1;九段全扫工序)'
     AUTHOR: str = 'OneDragon'
     VERSION: str = '0.1'
-    DESCRIPTION: str = ('cw4 新核:证明 pass(线选择/停手线)→升档器'
-                        '求值位→骨架 pass(M1-M7 义务)→EV pass(criteria'
-                        ' 七面);单动作循环发射(帧稳定截断为决策核内'
-                        '发射组织,非流程侧契约)')
+    DESCRIPTION: str = ('cw4 新核:备战九段全扫工序(溢出自救→消耗品→'
+                        '晶矿→升级→商店会话→部署→装备工具→凑息→出战)'
+                        ';单动作循环发射(帧稳定截断为决策核内发射'
+                        '组织,非流程侧契约)')
 
     def __init__(self, gs, config,
                  registry: DecisionV2Registry | None = None) -> None:
@@ -368,18 +368,13 @@ class MandateV1Strategy(CwFlowStrategy):
 def decide_prep_frame(session: StrategySession, config: object,
                       *, registry: DecisionV2Registry | None = None,
                       ) -> list[CwAction]:
-    """三遍编排 + 帧稳定截断(纯函数;R189-4 结构签名;决策输入 =
-    容器 game state 直读,迭代阶段 3.5 去 obs 形参)。
+    """备战决策帧(九段全扫 + 帧稳定截断;纯函数;决策输入 =
+    容器 game state 直读)。
 
-    ev_arm 模式参数取 ``config.ev_arm``(缺省 full;非法值回落 full)。
-    截断语境供给(R196 症5):conditional 类名-槽一致性复检消费的
-    bench 占用槽位集,容器 kind 口现读派生。
+    截断语境供给:conditional 类名-槽一致性复检消费的 bench 占用槽位集,
+    容器 kind 口现读派生。
     """
-    ev_arm = getattr(config, 'ev_arm', 'full')
-    if ev_arm not in entry.EV_ARM_VALUES:
-        ev_arm = 'full'
-    emitted = entry.emit(session, config,
-                         ev_arm=ev_arm, registry=registry)
+    emitted = entry.emit(session, config, registry=registry)
     # route_tag 伴带透传(方案 v2.1 §3.3 通道载体主案,收编):
     # 发射臂身份自 Emitted.reason 写入动作自带字段,消旧「actions 列表
     # 推导丢弃发射臂身份」的丢点。tag 定位 = 策略内部路由键(发射分支
