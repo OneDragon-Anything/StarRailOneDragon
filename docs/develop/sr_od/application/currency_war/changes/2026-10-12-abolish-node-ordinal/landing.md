@@ -83,7 +83,7 @@
 
 ## 3.6 全仓清零核对
 
-**范围**:对照 design §2.9 改清单与 §1.1 底册(14 处公式 + 具名常量几何层),全仓 grep 核对清单——编号族符号:`node_ord`/`node_hist_ord`/`effective_node_ord`/`node_ordinal_of`/`node_pos_of`/`_node_key_for_ord`/`_obs_node_ordinal`/`acquired_t`/`_portal_acquired_t`/`_entered_ord`/`_window_begun_ord`/`SETTLE_DEFEAT_LATCH_MIN_T`/`AnchorEvent` 的 `node_seq`;视界族符号:`node_t_of`/`schedule_of`/`r_remaining`/`r_global`/`r_remaining_in_plane`/`plane_offsets`/`plane_end_slots`/`NODES_PER_PLANE`/`TOTAL_NODES`/`DEFAULT_PLANE_LENGTHS`/`PLANE_FALLBACK_PRIORS`;式样:`*9`/`//9`/`%9` 身份语义命中。残留学面逐处判读:叙述性历史注记(模块头版本注/退役注)合法,活代码/活契约引用 = 打回对应阶段。**边界**:纯核对,零代码改动(发现残留开修复批处理完再回到本阶段验收);`node_t_of` 的「历史消费点已删」docstring 句(cw_plane_table,T-8 落地注)属合法历史注。
+**范围**:对照 design §2.9 改清单与 §1.1 底册(14 处公式 + 具名常量几何层),全仓 grep 核对清单——编号族符号:`node_ord`/`node_hist_ord`/`effective_node_ord`/`node_ordinal_of`/`node_pos_of`/`_node_key_for_ord`/`_obs_node_ordinal`/`acquired_t`/`_portal_acquired_t`/`_entered_ord`/`_window_begun_ord`/`SETTLE_DEFEAT_LATCH_MIN_T`/`AnchorEvent` 的 `node_seq`;视界族符号:`node_t_of`/`schedule_of`/`r_remaining`/`r_global`/`r_remaining_in_plane`/`plane_offsets`/`plane_end_slots`/`NODES_PER_PLANE`/`TOTAL_NODES`/`DEFAULT_PLANE_LENGTHS`/`PLANE_FALLBACK_PRIORS`;式样:`*9`/`//9`/`%9` 身份语义命中。残留学面逐处判读:叙述性历史注记(模块头版本注/退役注)合法,活代码/活契约引用 = 打回对应阶段。**合法剩余预登记**:test_cw_battle_wait_defeat_latch.py 对拍测试内嵌的旧门公式 `(p-1)*9+r` = 对拍参照(锁 7 逐值等价证明的载体),非残留,勿开修复批;`node_t_of` 的「历史消费点已删」docstring 句(cw_plane_table,T-8 落地注)同属合法历史注。**边界**:纯核对,零代码改动(发现残留开修复批处理完再回到本阶段验收)。
 **设计依据**:design.md §1.1(底册)/§2.9(改清单)/§1.3(清零目标)/§2.7(视界族)。
 **文件面**:无(核对报告入提交说明/迭代 README 进度注)。
 **依赖**:3.2、3.3、3.4、3.5
