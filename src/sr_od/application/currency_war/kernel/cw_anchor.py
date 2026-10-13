@@ -90,15 +90,15 @@ class AnchorEvent:
     """一次锚触发的记录行(§12.3 锚行封装)。
 
     七字段组到物理列的映射:①anchor_id;②trigger_type;③时点键 =
-    ts/run_id/plane/round_num/node_seq/unit_seq(node_seq = 登记期快照;
-    unit_seq 仅商店域动作锚,坐标 = (plane,round) 内购买单元序,1 起);
+    ts/run_id/plane/round_num/unit_seq(unit_seq 仅商店域动作锚,坐标 =
+    (plane,round) 内购买单元序,1 起);
     ④payload(逐锚类型化槽位候 H2;effect_ref 槽位预留恒空,§12.0);
     ⑤scope;⑥evidence_refs;⑦produced_by(锚宿主 op 类名,沿登记件
     produced_by 口径)。
 
-    [索引定义] node_seq/unit_seq:坐标系 = run 内 (plane, round) 键下的
-    节点序位快照 / 购买单元序(与 spend_ledger.unit_seq 同坐标系);
-    取值时机 = 登记期快照(生成期),不随执行期重排回写。
+    [索引定义] unit_seq:坐标系 = run 内 (plane, round) 键下的购买单元序
+    (与 spend_ledger.unit_seq 同坐标系);取值时机 = 登记期快照(生成期),
+    不随执行期重排回写。
     """
 
     anchor_id: str
@@ -107,7 +107,6 @@ class AnchorEvent:
     run_id: str
     plane: int
     round_num: int
-    node_seq: int | None
     unit_seq: int | None
     payload: dict[str, Any]
     scope: str
@@ -124,7 +123,6 @@ class AnchorEvent:
             'run_id': self.run_id,
             'plane': self.plane,
             'round': self.round_num,
-            'node_seq': self.node_seq,
             'unit_seq': self.unit_seq,
             'payload': dict(self.payload),
             'scope': self.scope,
@@ -283,7 +281,7 @@ validate_registry()
 
 # ===== 幂等键(指标 3:每真值事件恰一行)=====
 
-_DedupeKey = tuple[str, str, int, int, int | None, int | None, str]
+_DedupeKey = tuple[str, str, int, int, int | None, str]
 
 _EMITTED_KEYS: set[_DedupeKey] = set()
 
@@ -298,7 +296,7 @@ def reset_anchor_dedupe() -> None:
 def emit_anchor(anchor_id: str, *, plane: int, round_num: int,
                 payload: dict[str, Any], scope: str,
                 produced_by: str = '',
-                node_seq: int | None = None, unit_seq: int | None = None,
+                unit_seq: int | None = None,
                 evidence_refs: list[dict[str, str]] | None = None,
                 event_key: str = '', summary: str = '') -> bool:
     """登记一次锚触发并走 §12.3 载体一上行口(载体墓碑见模块头:ExogenousEvent
@@ -310,8 +308,8 @@ def emit_anchor(anchor_id: str, *, plane: int, round_num: int,
     (evidence_required=true 的锚 evidence_refs 必填,指标 5);⑤已武装
     的 payload 值域闭集(如 sell channel ∈ SELL_CHANNELS,§12.5-4)。
 
-    幂等(锁③):键 = (anchor_id, run_id, plane, round, node_seq,
-    unit_seq, event_key);重试路径双触发零双行——第二发丢弃返 False。
+    幂等(锁③):键 = (anchor_id, run_id, plane, round, unit_seq,
+    event_key);重试路径双触发零双行——第二发丢弃返 False。
     ``event_key`` = 发射侧事件区分词:同一时点键域内多次同名事件必带
     (如 buy_landed 的 槽位#序),天然单发的锚(node_enter 同
     (plane,round) 唯一)留空即可。
@@ -361,7 +359,6 @@ def emit_anchor(anchor_id: str, *, plane: int, round_num: int,
     if not run_id:
         return False
     key: _DedupeKey = (anchor_id, run_id, int(plane), int(round_num),
-                       None if node_seq is None else int(node_seq),
                        None if unit_seq is None else int(unit_seq),
                        event_key)
     if key in _EMITTED_KEYS:
@@ -370,7 +367,7 @@ def emit_anchor(anchor_id: str, *, plane: int, round_num: int,
     event = AnchorEvent(
         anchor_id=anchor_id, trigger_type=spec.trigger_type,
         ts=datetime.now().isoformat(timespec='seconds'), run_id=run_id,
-        plane=int(plane), round_num=int(round_num), node_seq=node_seq,
+        plane=int(plane), round_num=int(round_num),
         unit_seq=unit_seq, payload={**payload, 'effect_ref': None},
         scope=scope, evidence_refs=list(evidence_refs or []),
         produced_by=produced_by)

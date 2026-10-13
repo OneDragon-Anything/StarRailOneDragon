@@ -452,8 +452,7 @@ def reconcile_tracking(session, bench: BenchView | None,
 
 
 def reconcile_hp(session, new_hp: int | None, screen=None, *,
-                 source: str = 'read_game_state',
-                 node_t: int | None = None) -> tuple[int | None, bool]:
+                 source: str = 'read_game_state') -> tuple[int | None, bool]:
     """hp 对账统一入口(终态契约 §A 简化形态)。
 
     旧三层(保旧不写沿用/下行守卫/复现确认/帧龄门)随 session 防御锚
@@ -474,7 +473,7 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
     Args:
         session: StrategySession(开局先验输入面;None=离线/测试,只透传)
         new_hp: read_hp_opt 现读(None=读不到,shop 开态血量区空)
-        screen/source/node_t: 留证兼容形参(守卫删除后 node_t 不再消费)
+        screen/source: 留证兼容形参
 
     Returns:
         (决策用 hp, 是否真读):真值帧=(新读, True);读不到=(先验或

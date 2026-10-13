@@ -215,15 +215,6 @@ def node_key_of(row: dict[str, Any]) -> tuple[int, int] | None:
         return None
 
 
-def node_ordinal_of(row: dict[str, Any]) -> int | None:
-    """节点序(设计 §3.4.1 坐标系 ord=(plane-1)*9+round,基 1;宽容 =
-    读不到 None)。判读概览/分段排序用。"""
-    key = node_key_of(row)
-    if key is None:
-        return None
-    return (key[0] - 1) * 9 + key[1]
-
-
 def round_state_snapshots(
         rows: list[dict[str, Any]], run_id: str = '') -> dict[
         tuple[str, int, int], dict[str, Any]]:
