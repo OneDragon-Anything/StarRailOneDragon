@@ -109,6 +109,14 @@ _SLOTS: dict[str, _Slot] = {
     # 在二阶带内成立;None 期充分侧不可评(禁在余量未定时声明锁不劣)。
     'E2_CONCENTRATION_BAND': _Slot('P76 §3.4/§4.4 集中度二阶带 ε₂(夹界余量;'
                                    'None=夹界充分侧不可评)'),
+    # —— 卖出价值函数(契约 D 统一口径;design 契约 D/line_and_upgrade §4,
+    #    迭代 2026-10-12-prep-shop-workflow-redesign;【拟·owner = 编排者、
+    #    期限 = 一个对局周期】登记集成员)——
+    'MERGE_PROGRESS_X2': _Slot('合成进度 ×2 结构近似系数(line_and_upgrade §4:'
+                               '差一张 = 两张的再遇期权沉淀;None = fail-closed '
+                               '×1 线性运行——不放大持有期权 = 保守侧,'
+                               '标定对照完成后切 ×2;消费端 = criteria/'
+                               'sell_candidates.sell_gold_equivalent)'),
 }
 
 #: 槽位值存储(缺省全 None = fail-closed)
@@ -152,10 +160,19 @@ def _guard_e2_probability_band(value: CalibValue) -> str | None:
     return None if 0.0 <= value.value <= 1.0 else 'ε₂ 系概率尺度带,合法域 [0,1]'
 
 
+def _guard_merge_progress_coef(value: CalibValue) -> str | None:
+    """合成进度系数合法域 = [1, 2]:下界 1 = fail-closed 线性形态(<1 会
+    反转「差一张沉淀 ≥ 单张期权」的持有价值方向);上界 2 = 结构近似
+    声明域(「两张的再遇期权沉淀」,超出即超出申报的近似语义)。"""
+    return None if 1.0 <= value.value <= 2.0 else \
+        '合成进度 ×2 系数合法域 [1,2](结构近似声明域)'
+
+
 #: 守卫登记表(键 = 槽位名;本批登记标定批两槽,其余槽位随其标定批补)
 _VALUE_GUARDS: dict[str, Callable[[CalibValue], str | None]] = {
     'V_C_MINUS_V_F': _guard_delta_positive,
     'E2_CONCENTRATION_BAND': _guard_e2_probability_band,
+    'MERGE_PROGRESS_X2': _guard_merge_progress_coef,
 }
 
 
