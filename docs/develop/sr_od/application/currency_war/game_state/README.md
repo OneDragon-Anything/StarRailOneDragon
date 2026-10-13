@@ -11,16 +11,20 @@
 
 统一 state(GameState)的设计文档正式目录,总-分结构:本文件=总纲,分篇各管一面;
 另有动作逻辑态总则与逐动作更新规格子目录(§4)。字段级完整规格(字段清单、决策 op 写入面、
-效果族归属、生命周期与治理面)的正本 = [fields.md](fields.md)(沿用原详设节号体系,
+效果族归属、生命周期与治理面)的权威版本 = [fields.md](fields.md)(沿用原详设节号体系,
 代码注释所引节号以该篇为解析归宿);本目录自足,不依赖任何迭代过程件。
 
-上位裁定与 why(ADR 档案体系已按用户令整体退役,裁定 why 的归宿 = 本目录正本动机段 + git 历史)。
-**现行有效上位裁定三条**:①节点推进动作上报化(触发模型换代:终结动作上报 +
-观察锚定,判定本体单一源 = [node-derivation.md](node-derivation.md) §3.3;旧节点域
-画面推断口径连同其守卫已退役);②单字段双值结构(§2 设计理念);③字段层次终极版
-(观察层=原始读数/逻辑层=计算值,§2 第 1-2 条;节点域专用锚定写口的直写改判见
-[node-derivation.md](node-derivation.md) §3.2-7)。
-承载这三条的记录机制 = [journal.md](journal.md)(三渠道写入口 observe/carry/write_prior + 自足快照变更账)。
+上位裁定与 why(ADR 档案体系已按用户令整体停用,裁定 why 的归宿 = 本目录权威版本动机段 + git 历史)。
+**现行有效的三条上位裁定**:
+①**节点前进由动作上报触发,画面读数只用来核对**——点下「继续挑战」「确认」这类终结动作就立即上报推进;
+  画面读出的节点号只做对账核对(对账 = 推算状态与下一帧实读逐项比对,对不上即 bug),不再当推进的触发器
+  (规则本体唯一权威出处 = [node-derivation.md](node-derivation.md) §3.3;旧的「从画面推断推进」口径连同守卫已停用)。
+②**一个事实存两个字段**——一个逻辑层值字段 + 一个原始读数字段,不设两个专名字段再在读时合并(§2 设计理念第 3 条)。
+③**字段分层的最终版**——一个事实按四层落位:原始读数(观察层)/按规则推算的值(逻辑层)/读时现算的派生读取入口
+  (不存储)/单调历史水位,以节点域四件套为样板(§2 第 1-2 条;[node-domain.md](node-domain.md) §2);
+  节点域另有一条「直写改判」:节点序位允许观察侧用画面识别标志确认后直接写入(不走通用观察通道),
+  这是对旧裁决「禁止观察直写序位键」的改判,见 [node-derivation.md](node-derivation.md) §3.2-7。
+承载这三条的记录机制 = [journal.md](journal.md)(三个渠道写入口 observe/carry/write_prior + 自足快照变更账)。
 
 ## 2. 设计理念(六条)
 
@@ -35,12 +39,12 @@
    单事实单值字段(金/hp 等)不拆,来源与质量维由渠道签名承载(见 journal.md §3)。
 4. **唯一写入口,禁旁路**。一切写入必经统一写入口(Field 系 API)或 inventory 方法域
    (效果域);绕 API 直改字段=违反,机器面=grep 子串守卫锁(先例
-   = 旧 12 流写面删除批「旧流文件名全仓零写点」grep 锁手法)。
+   = 旧 12 流写面删除批「旧流文件名全仓零写入位置」grep 锁手法)。
 5. **单版本事务**。一次逻辑写入 = 一个版本 = 一笔自足快照行:写入口收到写入后,同一
    事务内先落原始变更,再按固定次序跑关注点派生(节点判定→类型→效果推进),所有连带
-   字段更新共享同一版本 id;原子性=派生出错整笔回滚留证,无中间态。
+   字段更新共享同一版本 id;原子性=派生出错整笔回滚保留证据,无中间态。
 6. **行行自足账本**。任一账本行 = 改了什么 + 渠道签名 + 版本 id + 写入后完整 state
-   快照;查询=按行直接读,零重放、零前溯、零锚、零对账。崩溃丢失窗=该时点无行,
+   快照;查询=按行直接读,零重放、零前溯、零锚定点、零对账。崩溃丢失窗=该时点无行,
    诚实缺失。
 
 ## 3. 核心规范摘要
@@ -49,59 +53,62 @@
 
 写入 API 按数据层两分 + 随机扩展(符号=kernel/cw_game_state.py):
 
-| 写口 | 层 | 用途 |
+| 写入入口 | 层 | 用途 |
 |---|---|---|
 | `observe()` | 观察层 | 亲眼看到的原始读数,覆盖旧值;value=None 拒绝(缺读不写禁猜) |
-| `write_logic()` | 逻辑层 | 按游戏规则推算的逻辑值**直接写字段**(两态制 标准通道,策略器立即可读;非免检——值之后仍受观察覆盖辖) |
-| `write_logic_rand()` | 逻辑层·随机扩展 | **效果随机的动作采样链**直写(逻辑随机态,source=logic_rand;采样语义:上报函数真掷随机按采样走确定性链,值 = 可能世界快照):观察覆盖差异 = 随机效果落地预期内(落 `logic_rand_outcome` 台账行,不进失配三分流);**策略器消费前必须重观察**(查询口 = `logic_rand_fields()`,跨动作污染判定 = `any_logic_rand()`)。首个落地 = 点晶矿;采样口径未建的动作仍按域级跳写 |
+| `write_logic()` | 逻辑层 | 按游戏规则推算的逻辑值**直接写字段**(两态制 标准通道,策略器立即可读;非免检——值之后仍会被观察覆盖) |
+| `write_logic_rand()` | 逻辑层·随机扩展 | 随机效果动作的采样推算直写(详见 [fields.md](fields.md) §2.5) |
 
 配套口:`carry()`(失读沿用,evidence 带 carried:来源帧;**logic_rand 来源不沿用**
 ——随机态种子/采样值非「上次好值」,fields.md §2.2)/`write_prior()`
 (先验写入,如开局 hp 先验)/`leave_screen()`(画面附加域离屏置 None)/`relay()`
-(接管中继)/`note_obs_event()`(零状态变更的观察事件留证行)。完整 API 契约见
+(接管中继)/`note_obs_event()`(零状态变更的观察事件保留证据行)。完整 API 契约见
 journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 [fields.md](fields.md) §8)。(原 `expect()`/`confirm()`/`discard_expected()`
 两步机制已随统一 state 直迁废除。)
-**开局种子底座与锚定闩**:冷建播种 A 类字段(rand 态)+ `prep_anchored` 闩 + 择道口
-`anchor_aware_write`——rand 通道「消费前必须重观察」纪律的显式例外面(种子/未锚定期
-链写供直接消费,锚定后恢复),正本 = [fields.md](fields.md) §2.6。
+**开局预填初值与锚定标志位**:每局全新创建时按开局真值预填一批字段(rand 随机态)+ `prep_anchored` 标志位 +
+通道选择入口 `anchor_aware_write`——rand 通道「消费前必须重观察」纪律的显式例外(种子值/未确认期
+链写供直接消费,确认后恢复纪律),权威版本 = [fields.md](fields.md) §2.6。
 
 ### 3.2 权威序
 
-- **观察赢**:观察写入覆盖 logic 来源值;失配记 `observe_vs_logic_mismatch` 缺陷行
-  (留证显影,不静默)。失配 = 推算代码 bug,修推算代码。失配比对前的**前置吸收
-  面**(形状受控的机制性差异,命中即台账行采新、不进安灯):gold 节点边界金补结
-  闩(boundary_gold_backfilled)/ front_row、back_row 行槽位纯重排
-  (deploy_slot_reorder,同单位多重集仅排列差异 = 游戏侧行内重排无逻辑
-  写端,采新入纠漂面)/ board 派生漂移观察覆盖采新(board_derived_adopt,辖
-  `proj_board_resync` 写端)。**逻辑随机态旁路**:logic_rand 来源值的观察
-  覆盖差异 = 随机效果落地预期内,落 `logic_rand_outcome` 台账行采新
-  (无告警无停机),不经三分流。**已知缺口**:bench/equips 投资卡随机授予、
+- **以实际观察为准**:观察写入覆盖 logic 来源值;失配记 `observe_vs_logic_mismatch` 缺陷记录行
+  (保留证据、暴露出来,不静默)。失配 = 推算代码 bug,修推算代码。失配比对前的**已知机制性差异白名单**
+  ——以下三种已知差异不算推算错误,读到新值就直接采纳并记一行日志(不触发告警停机;失配告警首现注:
+  发现失配即报警并停机):
+  ① 节点边界把差额金币补回(gold 节点边界金补齐,`boundary_gold_backfilled`);
+  ② 上阵行内单位只换位置、成员不变(front_row/back_row 行槽位纯重排,`deploy_slot_reorder`
+  ——同单位多重集仅排列差异 = 游戏侧行内重排、无逻辑写入方,直接采纳新读数并做纠偏处理);
+  ③ board 羁绊计数与观察不一致(board 派生漂移,观察覆盖直接采纳新读数,`board_derived_adopt`,
+  适用于 `proj_board_resync` 写入方)。**逻辑随机态旁路**:logic_rand 来源值的观察
+  覆盖差异 = 随机效果落地预期内,落 `logic_rand_outcome` 记录行直接采纳新读数
+  (无告警无停机),不经失配的三种标准处理分支——三分支 = ①白名单差异直接采纳
+  ②logic_rand 预期内差异记录采纳 ③真失配记缺陷并停机。**已知缺口**:bench/equips 投资卡随机授予、
   晶矿随机金现无吸收规则(随机对账申报面 2026-09-19 用户裁定整体拆除待重设计;
-  重设计机制位 = 逻辑随机态 write_logic_rand,写端接线归后续批),
+  重设计机制位置 = 逻辑随机态 write_logic_rand,写入方接线归后续批),
   命中照真失配停。
 - **board 派生量**(禁独立写):上阵羁绊计数 = front_row/back_row 单位集合的派生量,
-  逻辑写端经 `write_logic` 行域挂钩 `_resync_board_delta` 单一源自动重算(观察基座 +
-  行变更增量);独立手写 board = 越格(非派生写端的 board 失配照真失配停)。派生量
+  逻辑写入方经 `write_logic` 行域挂钩 `_resync_board_delta` 单一源自动重算(观察基座 +
+  行变更增量);独立手写 board = 违反约束的写入(非派生写入方的 board 失配照真失配停)。派生量
   以观察为真值源:派生漂移(环境卡星徽幽灵计数/未知身份零贡献/徽标 OCR 坏读)
-  经观察覆盖采新收敛,落 `board_derived_adopt` 台账行不进安灯——「上阵单位集合」
-  这一真不变量由行域自身失配面独立把守。观察侧仍按双源仲裁覆盖(观察赢辖)。
-- **节点生效序**:权威序位字段的读口 = 生效序读口,语义=`node_pos` 现值与 run 内
+  经观察覆盖直接采纳新读数收敛,落 `board_derived_adopt` 记录行不触发失配告警——「上阵单位集合」
+  这一真不变量由行域自身失配面独立把守。观察侧仍按双源仲裁覆盖(以实际观察为准)。
+- **节点生效序**:权威序位字段的读取入口 = 生效序读取入口,语义=`node_pos` 现值与 run 内
   高水位按元组字典序取大(公式体与消费纪律 = [node-domain.md](node-domain.md) §3);两态来源
-  语义(锚定态/推进态)单一源 = [node-derivation.md](node-derivation.md) §3.2-7。
-- **节点类型三源仲裁**:结算屏权威> 节点序列台账现读 > 帧标签 OCR
-  ([fields.md](fields.md) §3.2.1;类型派生权威链与冲突留证单一源 =
+  语义(id_mark 确认态/推进态)单一源 = [node-derivation.md](node-derivation.md) §3.2-7。
+- **节点类型三源仲裁**:结算屏权威> 节点序列记录表现读 > 帧标签 OCR
+  ([fields.md](fields.md) §3.2.1;类型派生权威链与冲突保留证据单一源 =
   [node-derivation.md](node-derivation.md) §3.3-5,指针 = [node-domain.md](node-domain.md) §7)。
 
-**容器字段投影完备性审计**:全部 Field 字段对「游戏侧变更是否可造成 observe 失配」
-的三分类注册面 = `kernel/cw_projection_audit.py`(`PROJECTION_AUDIT`;「无写端无规则」
-缺口恒空,完备性锁在测试仓 test_cw_board_derived_and_reorder.py);字段级语义正本
+**容器字段投影完备性审计**:每个字段都在 `kernel/cw_projection_audit.py` 登记了
+「游戏改动会不会导致观察对不上」的分类(`PROJECTION_AUDIT`;「无写入方无规则」
+缺口恒空,齐全性由测试仓 test_cw_board_derived_and_reorder.py 保证);字段级语义权威版本
 仍 = [fields.md](fields.md)。
 
 ### 3.3 域清单
 
 统一 state 按域组织(域=字段分组,读不分域;写入域准入白名单=迁移批裁定硬
-约束,逐格以实码写点全集为准;域键=gs_schema 键,字段全集逐字段规格 =
+约束,逐格以实码写入位置全集为准;域键=gs_schema 键,字段全集逐字段规格 =
 [fields.md](fields.md)):
 
 | 域(gs_schema 键) | 字段全集 | 主写渠道 |
@@ -110,8 +117,8 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | 派生域(derivation) | top_bar_raw(观察层)/ node_pos(逻辑层,`(位面, 轮)` 序位)/ prev_screen / current_screen / node_hist_pos(哨兵) | ①观察+③派生(见 node-domain.md §2-§3) |
 | 单位域(units) | front_row / back_row / bench(BenchView)/ back_layout / deploy_cap | ①观察+②动作+③效果桥 |
 | 经济域(economy) | gold / hp / level / xp / streak / level_up_cost / shop_refresh_cost | ①观察+②动作 |
-| 商店刷新计数域(refresh_counters) | 免费刷新剩余次数 = 容器字段 free_refresh_left(Field,剩余语义,三写端同格);付费/全量两计数住效果账本(写端=刷新上报函数);prev_node_spent 保留容器(economy 面) | ①观察+②动作+③效果桥 |
-| 节点屏刷新计数域(node_screen_refresh) | env_refresh_left / strategy_refresh_left(逐卡,键 = 注册表规范卡名)/ encounter_refresh_left / supply_refresh_left(四字段均剩余语义:屏显「剩余次数」观察真值;旧 `*_refresh_used` 已用计数字段已退役,考古走 git) | ①观察(各屏观察 report 摄入,读缺跳写、None = 未观察 = 拒绝;encounter 写端 = `report_screen_encounter_obs`)+ sim 写端(仅 supply_refresh_left;遭遇/投资两屏无 sim 刷新执行面;逐字段规格 = fields.md §3.4.1–§3.4.4) |
+| 商店刷新计数域(refresh_counters) | 免费刷新剩余次数 = 容器字段 free_refresh_left(Field,剩余语义,三写入方同格);付费/全量两计数放在效果账本(写入方=刷新上报函数);prev_node_spent 保留容器(economy 面) | ①观察+②动作+③效果桥 |
+| 节点屏刷新计数域(node_screen_refresh) | env_refresh_left / strategy_refresh_left(逐卡,键 = 注册表规范卡名)/ encounter_refresh_left / supply_refresh_left(四字段均剩余语义:屏显「剩余次数」观察真值;旧 `*_refresh_used` 已用计数字段已停用,考古走 git) | ①观察(各屏观察 report 数据进入点摄入,读缺跳写、None = 未观察 = 拒绝;encounter 写入方 = `report_screen_encounter_obs`)+ sim 写入方(仅 supply_refresh_left;遭遇/投资两屏无 sim 刷新执行面;逐字段规格 = fields.md §3.4.1–§3.4.4) |
 | 持久账本域(inventory) | equips / consumables(免战牌载体归一入效果账本,不在本域) | ①观察+②动作 |
 | 晶矿域(spheres) | spheres | ①观察 |
 | 交互状态域(substate) | prep_substate(分类子态四档)/ event_overlay | ①观察+③接管协议 |
@@ -122,8 +129,8 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | 轮内账域(round_ledger) | round_fresh_buys(值形状 `{'phase': tuple|None, 'names': list[str]}`) | ②动作(record_fresh_buy 单口写,sim/live 同口) |
 | 效果账本域(effects) | effects(ActiveEffectInventory 实例清单;非 Field 载体) | inventory 方法域(随快照行自带) |
 | 动作回执域(receipts) | receipts(滚动窗,容量常量 RECEIPTS_WINDOW_CAP) | ②动作 |
-| 局终域(match_final) | match_final(一段终态一行;恢复局跨段多行) | ③局终收口 |
-| 工程结构(非 Field) | schema_version / gs_schema / frame_obs / write_seq / hb_prev_seq / hb_stall_count / created_monotonic / prep_anchored(锚定闩,fields.md §2.6);非域台账单列——`plane_node_sequences`(位面节点序列台账,PlaneNodeLedger 载体;访问口 = cw_exec_state 三访问函数) | 构造/迁移写;簿记组/台账 = 直读属性(非 Field 无渠道面) |
+| 局终域(match_final) | match_final(一段终态一行;恢复局跨段多行) | ③局终收尾 |
+| 工程结构(非 Field) | schema_version / gs_schema / frame_obs / write_seq / hb_prev_seq / hb_stall_count / created_monotonic / prep_anchored(锚定标志位,fields.md §2.6);非域记录表单列——`plane_node_sequences`(位面节点序列记录表,PlaneNodeLedger 载体;读取入口 = cw_exec_state 三访问函数) | 构造/迁移写;簿记组/记录表 = 直读属性(非 Field 无渠道面) |
 
 渠道族封闭集 = obs(画面 op 观察)/ logic_action(动作 op 逻辑计算)/ logic_hook
 (state 内部派生逻辑计算);carried/prior/synthesized 是 obs 族内子模,非第四源。
@@ -132,15 +139,15 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 
 | 分篇 | 管什么 |
 |---|---|
-| [fields.md](fields.md) | 字段级完整规格(原详设节号体系 §1-§8 + §9 推演内核帧映射对账):逐字段语义/写端/边界、决策 op 写入面、效果族写入归属、生命周期与治理面;代码注释所引节号的解析归宿 |
+| [fields.md](fields.md) | 字段级完整规格(原详设节号体系 §1-§8 + §9 与 sim 的表示分界):逐字段语义/写入方/边界、决策 op 写入面、效果族写入归属、生命周期与治理面;代码注释所引节号的解析归宿 |
 | [journal.md](journal.md) | 记录机制:账本文件、三渠道封闭集与渠道签名、版本 id 与单版本事务、自足快照行、落盘与查询 |
-| [effect-domain.md](effect-domain.md) | 效果域:在场效果账本的内容语义(计数器模型/实例清单/分类词表/生命周期/逐效果规格) |
-| [node-domain.md](node-domain.md) | 节点域指针篇:生效序读口与消费纪律、记录面分工、类型派生与链查询指针;判定本体单一源引用(禁复写) |
-| [node-derivation.md](node-derivation.md) | 节点推进判定方案(派生规则单一源持久家):终结动作上报+观察锚定判定本体/画面流转全景图/场景走查/退役申报 |
-| [strategy-env-impacts.md](strategy-env-impacts.md) | 投资策略/环境逐效果在 state 里的影响(已确认条目+候逐条确定占位清单) |
-| [chain-observation.md](chain-observation.md) | 链观察对接:基线链/现行链双源、diff 证据、与遥测账本的挂接 |
-| [retirement.md](retirement.md) | 旧 12 流退役逐流处置与消费方迁移清单 |
-| [action-logic-state.md](action-logic-state.md) | 动作逻辑态总则:两态制纪律(+逻辑随机态扩展)、写口归属硬规则(动作 op 只上报动作,逻辑态更新由 game state 独占)、确定面/随机面、拒绝语义 |
+| [effect-domain.md](effect-domain.md) | 效果域:在场效果账本的内容语义(计数器模型/实例清单/分类清单/生命周期/逐效果规格) |
+| [node-domain.md](node-domain.md) | 节点域索引篇:生效序读取入口与消费纪律、记录面分工、类型派生与链查询指针;规则本体单一源引用(不在两处重复写) |
+| [node-derivation.md](node-derivation.md) | 节点推进判定方案(派生规则单一源持久家):终结动作上报+观察 id_mark 确认规则本体/画面流转全景图/场景走查/停用申报 |
+| [strategy-env-impacts.md](strategy-env-impacts.md) | 投资策略/环境逐效果在 state 里的影响(已确认条目+待逐条确定占位清单) |
+| [chain-observation.md](chain-observation.md) | 链观察对接:基线链/现行链双源、diff 证据、与遥测记录表的接入 |
+| [retirement.md](retirement.md) | 旧 12 流停用逐流处置与消费方迁移清单 |
+| [action-logic-state.md](action-logic-state.md) | 动作逻辑态总则:两态制纪律(+逻辑随机态扩展)、写入入口归属硬规则(动作 op 只上报动作,逻辑态更新由 game state 独占)、确定面/随机面、拒绝语义 |
 | [logic-updates/](logic-updates/README.md) | 逐动作逻辑态更新规格(每动作 op 一篇:域集/转移规则/随机面/拒绝语义/kernel 符号锚) |
 
 ## 5. 边界与姊妹文档
@@ -148,18 +155,37 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 - **sim 表示分界**:sim 与 live 同一容器类型、同一份单例(`game_state_of(session)`)
   ——后端世界真值写 obs 渠道,动作效果经动作 op 上报函数族走 logic_action 渠道
   (渠道签名写入口,渠道族封闭集见 §3);不存在「容器 ↔
-  中间帧」映射层(原推演内核帧及其合成口已随帧通道退役,考古归 git 历史)。
+  中间帧」映射层(原推演内核帧及其合成口已随帧通道停用,考古归 git 历史)。
   表示分界与接线底账 = [fields.md](fields.md) §9 与 [../sim/sim-wiring.md](../sim/sim-wiring.md)。
-- **字段级规格**=[fields.md](fields.md)(本目录分篇,正本)——字段清单/决策 op
+- **字段级规格**=[fields.md](fields.md)(本目录分篇,权威版本)——字段清单/决策 op
   写入面/效果族归属/生命周期/治理面;与其冲突时以代码现状为准,正文随代码同步修订。
 - **派生规则单一源**=场景一判定方案([node-derivation.md](node-derivation.md))——本目录引用不复写。
-- **旧流退役处置**=[retirement.md](retirement.md)(本目录分篇;退役排期过程件归 git 历史)。
-- **链观察**=[chain-observation.md](chain-observation.md)(本目录分篇,链观察对接面正本);链观察设计原始件已随过程区清理退役,考古走 git 历史。
+- **旧流停用处置**=[retirement.md](retirement.md)(本目录分篇;停用排期过程件归 git 历史)。
+- **链观察**=[chain-observation.md](chain-observation.md)(本目录分篇,链观察对接面权威版本);链观察设计原始件已随过程区清理停用,考古走 git 历史。
 - **效果域内容语义**(计数器模型/生命周期/逐效果规格)=
   [effect-domain.md](effect-domain.md);本目录只记捕获面
   (效果变化随快照行自带)与逐效果 state 影响登记。
-- **策略侧遥测(决策行文件)**= 两文件模型的另一文件,schema 正本 =
+- **策略侧遥测(决策行文件)**= 两文件模型的另一文件,schema 权威版本 =
   [决策行文件schema设计.md](决策行文件schema设计.md)(本目录分篇);state 引用
   只经版本钉 state_ref=`(run_id, v)`,且决策输入禁读状态流水。
 - 玩法语义(各效果游戏机制原文/节点流转时序)挂靠
   [docs/game/currency_war/](../../../../../game/currency_war/)(game 子树)。
+
+## 6. 术语表
+
+保留词与图例(其余黑话已按用户裁定改写为白话,不在本表):
+
+| 术语 | 定义 | 例子 |
+|---|---|---|
+| 逻辑态 | 动作执行后不经观察、按游戏规则从动作前状态推算并直写容器的预期状态;真值以下一帧观察为准 | 点「买牌」后按价格公式把 gold −单价直写进容器,下一帧实读再核对 |
+| 对账 | 推算状态 vs 下一帧实读逐项比对,对不上 = 有 bug | 推算 gold=37,下一帧读出 35 → 失配,按 bug 修推算代码 |
+| 帧 | 一次拍画面 + 做决策的时点 | 备战帧 = 拍一张备战画面并在其上做一轮决策 |
+| 帧代次 | 帧的版本标记(区分本帧是完整识别/局部查看/未识别) | `frame_obs` 取值 full/view/none |
+| 零判效 | 动作执行侧不做「是否生效」判定,生效与否交由下一次观察核对 | 出战点击后不读屏确认,下一帧战斗/备战画面自然暴露结果 |
+| 两态制 | 字段值只有观察/推算两种来源 | `gold.source` ∈ {observation, logic} |
+| 逻辑随机态 | 随机效果按采样结果推算直写(source=logic_rand),无法采样的留给观察 | 点晶矿先掷随机采样奖励再直写 spheres;刷新后的整店铺面不可采样 → 留观察 |
+| id_mark 锚定 | 用画面识别标志确认节点/画面(画面上的稳定识别元素命中后,读数与现值对账,领先才采信) | 备战顶栏读出「备战阶段 2-3」与容器现值比较,领先则写入 |
+| 单一源 | 唯一权威出处——同一语义只在一处定义,别处只引用不复写 | 退款公式只在 `kernel/cw_economy.py::sell_refund`,文档只写符号名 |
+| 正本 | 某语义面的权威版本文档(本文档集旧称,正文中已统一写作「权威版本」) | 字段级规格的权威版本 = fields.md |
+| fail-closed | 输入缺失或判据不可判定时取「不动作」的保守分支,并留遥测,不猜缺省值 | 好运令牌判据未建 → 永不进准入,而不是猜一件装备发放 |
+| 数字来源标注四形态 | 进决策门的数字必须标注来源:【注】游戏定义值(注册表直读)/【推】已证推导(引命题号)/【拟】观测估计(带置信区间+标定义务)/【拍】用户立场登记值(合法性来自裁定本身) | 「刷新基价 4」是【注】;立场分表各项是【拍】;η=0.8 效率折扣是【拟】 |

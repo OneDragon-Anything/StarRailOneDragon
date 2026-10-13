@@ -1,13 +1,13 @@
 # 获得链(gain-chain.md —— 「获得」过程的链式规范)
 
-> 本文档所属 = game_state 设计目录,总纲见 [README](README.md)。本篇 = **获得链正本**:
+> 本文档所属 = game_state 设计目录,总纲见 [README](README.md)(术语与图例:保留词与数字来源标注四形态【注】【推】【拟】【拍】见 [README](README.md) §6 术语表;对账 = 推算状态与下一帧实读逐项比对,对不上即 bug;帧 = 一次拍画面+做决策的时点,帧代次 = 帧的版本标记)。本篇 = **获得链权威版本**:
 > 六个链原语(获得投资环境 / 获得角色 / 获得装备 / 获得投资策略 / 获得占席道具 /
 > 定时道具到点发放)的契约(签名/时序)、事件回调枚举、
 > 溢出落位规则、随机态参数纪律与失败安全规则。代码 = `kernel/cw_gain_chain.py`
 > (路径根 = `src/sr_od/application/currency_war/`)。
 >
 > 节内引用的代码锚 = 符号名(模块/类/函数/常量),行号不书;本文不引 changes/ 任何
-> 内容,自足可读。容器字段语义正本 = [fields.md](fields.md),本篇只写「获得」这一
+> 内容,自足可读。容器字段语义权威版本 = [fields.md](fields.md),本篇只写「获得」这一
 > 动作过程的链式语义。
 
 ## 1. 本篇管什么
@@ -15,14 +15,14 @@
 > 术语注(首次出现):**获得链** = 「获得一件游戏资产」这件事的统一过程语义——
 > 注册/落位 → 事件回调 → 升星判断 → 升星产物递归重进获得。此前各效果函数体内
 > 手写递归、各自决定升星时机与随机态口径;获得链把过程收敛为统一的原语入口
-> (现役六原语见 §2)。
+> (在用六原语见 §2)。
 
 - **管**:一次「获得」内部怎么走——容器写的时序、回调触发点、升星时机、溢出落位、
   随机态如何沿链传播、失败形态怎么处置。
 - **不管**:溢出善后(腾位/卖牌归策略溢出面,链只如实记账);效果数据表的内容建模
   (数据表 = 游戏数据映射,见 §3)。
 
-## 2. 原语契约(现役六原语)
+## 2. 原语契约(在用六原语)
 
 六个公开入口(kernel/cw_gain_chain.py;效果内容住 ``cw_gain_effects.py``,
 拆分 = 投资两屏迁移批,详见 §8),全部带 `rand: bool` 必带入参(纪律见 §5)
@@ -35,15 +35,15 @@
 
 `gain_invest_env(gs, session, env_name, *, rand, sig, producer=GAIN_CHAIN_PRODUCER)`:
 
-0. **无效载荷拒绝(前置)**:归一后名为空/`'?'` = 零写 + 缺陷留证
+0. **无效载荷拒绝(前置)**:归一后名为空/`'?'` = 零写 + 缺陷保留证据
    (`kind = pick_invest_invalid_payload`)——无效输入拒绝,非防重复保护;
-1. **注册**:`gs.active_env` 逻辑写(写端署名 = `producer`,缺省
+1. **注册**:`gs.active_env` 逻辑写(写入方署名 = `producer`,缺省
    `GAIN_CHAIN_PRODUCER`)。选择事实产生在动作执行时(动作 op 机械链
    发出即上报,用户裁定 2026-09-21「执行即按成功处理」;原「点卡前写」
-   与「落地相写」两代语义均已退役)。
+   与「落地相写」两代语义均已停用)。
 2. **效果账本登记**:`cw_effect_inventory.py::register_portal_from_env(session,
-   env_name)`——best-effort 腿:失败 log + 缺陷留证(`kind =
-   DEFECT_PORTAL_REGISTER`)、不阻塞;`session=None` = 登记腿跳过(局外/测试形态),
+   env_name)`——best-effort 分支:失败 log + 缺陷保留证据(`kind =
+   DEFECT_PORTAL_REGISTER`)、不阻塞;`session=None` = 登记分支跳过(局外/测试形态),
    容器写照常。session 由调用方显式传入,kernel 禁自取上下文。
 3. **触发环境效果**:`on_env_gained`(§3)。
 
@@ -60,7 +60,7 @@
 1. **落位**:以 gs 现帧派生工作池(备战槽表 + 上阵行域派生表 + 溢出表)。
    - 备战有空槽 → `cw_exec_state.py::bench_place` 入槽,写 bench;
    - 备战满 → **溢出落位**(§4);
-   - 溢出位已被占 → 零写 + 留证(§4);bench 未观察(直构/sim 域)→ 拒落零写(§6)。
+   - 溢出位已被占 → 零写 + 保留证据(§4);bench 未观察(直构/sim 域)→ 拒落零写(§6)。
 2. **触发「获得角色」回调** `on_character_gained`(§3)——回调可递归调任意链原语。
 3. **回调返回后,单级 3 合 1 升星判断**(合成池 = 备战 ∪ 上阵 ∪ 溢出):恰有同名
    同星 3 只 → 消耗三只、载体升星(单级合成规则见 §2.5)。**回调先于升星**的理由 =
@@ -81,15 +81,15 @@
 `gain_invest_strategy(gs, session, strategy_name, *, rand, sig, rng=None,
 producer=GAIN_CHAIN_PRODUCER)`(策略屏迁移批新增,三段式对齐 §2.1):
 
-0. **无效载荷拒绝(前置)**:归一后名为空/`'?'` = 零写 + 缺陷留证
+0. **无效载荷拒绝(前置)**:归一后名为空/`'?'` = 零写 + 缺陷保留证据
    (`kind = pick_invest_invalid_payload`)——无效输入拒绝,非防重复保护;
 1. **注册**:`gs.active_strategies` **按名字去重追加**(归一名已在列表 →
-   跳写;持卡列表写入语义 = 数据卫生;跳写后登记/效果腿照常——零幂等
+   跳写;持卡列表写入语义 = 数据卫生;跳写后登记/效果分支照常——零幂等
    闸,重复上报 = 代码 bug 面按 bug 治理);
 2. **效果账本登记**(best-effort,`session=None` = 跳过):`cw_investments.
    STRATEGY_EFFECTS` 归一名命中 → `effects.register_strategy`(acquired_key =
    节点序位快照)+ burst 桥 `apply_effect_burst_grant` + 板面重写桥
-   `apply_board_rewrite`(自画面 op 三桥迁入);失败 log + 缺陷留证
+   `apply_board_rewrite`(自画面 op 三桥迁入);失败 log + 缺陷保留证据
    (`kind = DEFECT_STRATEGY_REGISTER`)、不阻塞;
 3. **触发策略效果**:`on_strategy_gained`(§3)。
 
@@ -112,7 +112,7 @@ merge_simulate 终态」——禁第二套语义。merge_simulate 是一次到�
 `landing`('bench' = 落备战槽 / 'overflow' = 溢出位 / 'skipped' = 未落席)/
 `merge_levels`(合成级数)/ `effects`(命中的效果名元组)/ `detail`(拒落因键,
 新增 `'invalid_payload'` = 无效载荷拒绝)。
-留证与测试用,零决策消费。
+保留证据与测试用,零决策消费。
 
 ### 2.7 定时道具到点发放 discharge_due_item_grants
 
@@ -120,19 +120,19 @@ merge_simulate 终态」——禁第二套语义。merge_simulate 是一次到�
 sig: ChannelSig) -> tuple[str, ...]`——环境定时道具通道(§3 道具通道定时支)的
 到点发放原语:读 `pending_item_grants` 现值,按 (plane, round_num) 分割命中/
 保留;命中项逐个 `_place_bench_item` 落位(备战空槽 → 席满溢出落位 → 溢出位被占
-零写留证,复用即时通道同款道具落位语义);命中非空才一次 write 回写保留队列。
+零写保留证据,复用即时通道同款道具落位语义);命中非空才一次 write 回写保留队列。
 返回效果串 = 每命中项 `item_gift:<名>`(与落位成败解耦,与即时通道同阶)。
 
-- **挂点**:sim `SimBackend._begin_node_window` 内、位面开局环境金
+- **接入点**:sim `SimBackend._begin_node_window` 内、位面开局环境金
   `_apply_env_plane_gold` 之后——「第 N 位面开始时」类发放落在该位面 1 号节点窗
   打开时点(位面过渡屏被点掉、节点窗真正打开;位面过渡点空白与直进节点共用本
-  收口),与 `gold_per_plane_start` 同窗;sig 组名沿 `sim:env`。
-- **幂等边界(双保险)**:①生产挂点在 sim 窗口幂等守卫内(`_window_begun_pos`
+  收尾时点),与 `gold_per_plane_start` 同窗;sig 组名沿 `sim:env`。
+- **幂等边界(双保险)**:①生产接入点在 sim 窗口幂等守卫内(`_window_begun_pos`
   对同一节点只放行一次,位面过渡点击重放不双发);②队列本身天然幂等——命中项
-  发放即出队,重放调用查无命中、零写零效果。原语自身无幂等闸:生产挂点无重入面,
-  未来实机挂点接线时按其重入面另评。
-- **rand 语义**:环境发放 = 确定发放,调用方传 `rand=False`(§5;写通道仍走
-  择道口单一收口)。
+  发放即出队,重放调用查无命中、零写零效果。原语自身无幂等闸:生产接入点无重入面,
+  未来实机接入点接线时按其重入面另评。
+- **rand 语义**:环境发放 = 确定发放,调用方传 `rand=False`(§5;写通道仍统一走
+  通道选择入口单口)。
 - **零吞错与次序**:落位异常上抛(§6),队列回写收尾——先逐项落位、后回写发放后
   的保留队列,异常时队列不丢账。
 - **实机局不接本原语**:队列登记后保持原样,备战真值由观察覆盖
@@ -144,34 +144,35 @@ sig: ChannelSig) -> tuple[str, ...]`——环境定时道具通道(§3 道具通
 (占席道具公开发放口,命名沿 gain_character/gain_equipment 系):实现 = 模块
 私有落位原语 `_place_bench_item` 加 `producer` 形参后的公开薄包装,落位语义
 全部复用——备战空槽落 `BenchSlot(kind='supply_box')` → 席满溢出落位(§4,
-道具与角色同款)→ 溢出位被占零写 + 留证(§6);bench 未观察 = 拒落零写
+道具与角色同款)→ 溢出位被占零写 + 保留证据(§6);bench 未观察 = 拒落零写
 (§2.2 同款档)。返回落位成败布尔(备战槽或溢出位均算落位)。
-`rand=False` = 确定发放(策略箱腿/环境发放同约定,§5)。
+`rand=False` = 确定发放(策略箱授予/环境发放同约定,§5)。
 
-消费面:效果域效果体经本口发放占席道具(§3 on_strategy_gained 箱腿三卡),
+消费面:效果域效果体经本口发放占席道具(§3 on_strategy_gained 箱授予分支三卡),
 链内其余道具落位调用点(on_env_gained 即时道具通道 / §2.7 到点发放)走
 `_place_bench_item` 同一语义核心。公开动机 = 策略发放面补「占席道具」形态:
 效果体与链模块双向破环约束下(§8 模块拆分),效果体此前无占席道具发放口——
-骇客卡 bench 腿走 `gain_character`(角色),道具腿无对应入口,公开薄包装即
+骇客卡的 bench 分支走 `gain_character`(角色),道具分支无对应入口,公开薄包装即
 最小口;`producer` 缺省 = 链缺省署名,既有调用点不传即行为不变。
 
-## 3. 枚举回调(现役四枚举;枚举即收敛,无注册表)
+## 3. 枚举回调(在用四枚举;枚举即收敛,无注册表)
 
 回调 = kernel 内枚举函数,**不设注册机构**(用户裁定:函数体内枚举即收敛,新效果
 核实后在函数内加分支)。查无效果 = 安静不写,真值归观察覆盖。
 
 **环境发放四表分域**(哪些发放不经本节枚举):投资环境的「发放」类效果分四表,
 `cw_investments.py` 内各管一面——①`ENV_GIFTS`(具名发放通道:角色/占席道具,
-经 `on_env_gained` 枚举与 §2.7 定时支,本节辖);②`ENV_ECONOMY`(估值通道:
+经 `on_env_gained` 枚举与 §2.7 定时支,属本节适用范围);②`ENV_ECONOMY`(估值通道:
 结构化经济效果参数,策略层 `env_economy` 消费,发放动作不经本链);③
-`ENV_ORE_GRANTS`(声明矿通道:**世界发放域**——矿进入世界时的声明内容,现役
+`ENV_ORE_GRANTS`(声明矿通道(首现定义:声明矿 = 按环境声明金额发放的金晶矿):
+**sim 世界侧发放**——矿进入世界时的声明内容,在用
 = 增发货币〔id 103〕每位面开局 6/8/12 金晶矿)。声明矿的发放形态 = 位面开局
 声明入队 → 矿进入世界时附着 → 点击兑现,全程经 `kernel/cw_ore_channel.py`
 (电平检查 `check_ore_declared_level` + 挂接入口 `report_spheres_observed`)
 而非获得链原语;域定义与队列语义 = fields.md §3.2.8a/§3.2.8b;④
 `ENV_STREAK_GRANTS`(**条件达成通道**:结算连胜触发器——发放时点不在「获得」
 动作,在战斗结算连胜真值落账后,触发检查单一源 =
-`kernel/cw_env_grants.check_env_streak_grants`,现役 = 深井角斗场〔id 104〕
+`kernel/cw_env_grants.check_env_streak_grants`,在用 = 深井角斗场〔id 104〕
 本局首次 5 连胜 → 财富宝钻)。④与前三表的形状分工:`items_immediate` =
 选卡当场落席、`items_scheduled` = 登记定时队列到点落席(§2.7)、
 `ENV_ORE_GRANTS` = 位面开局声明矿——本表 = **结算时点 × 连胜条件 × 本局
@@ -183,7 +184,7 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
 三写;live 不调,联动归观察域)。**分域边界**:
 `ENV_GIFTS ∩ ENV_ECONOMY = ∅`(单一环境只落一个估值结构,§3 道具通道同节
 校验);`ENV_ORE_GRANTS` 与两表**不互斥**——增发货币同有估值面
-(`ENV_ECONOMY.gold_per_plane_start`,策略层估值消费)与世界面(声明矿金额,
+(`ENV_ECONOMY.gold_per_plane_start`,策略层估值消费)与 sim 世界侧(声明矿金额,
 点击兑现入账),两表同出卡面原文,靠构建期双源同值校验
 (`_validate_env_ore_grants` 第③条:同键长度相等且逐位同值,任一侧单独改金额
 import 即炸)防漂移。
@@ -201,8 +202,8 @@ import 即炸)防漂移。
     落位写入(角色落位同构:备战空槽放 `BenchSlot(kind='supply_box')`,双端
     同一获得链——sim 世界写入即容器写);席满 = 溢出落位(实机真值:道具与角色
     同款——落溢出席并阻断进入战斗,`overflow_warning=True` + `overflow_card=
-    道具名` 两字段直写,见 §4);溢出位被占 = 零写 + 每道具一遥测申报留证
-    (`kind = DEFECT_OVERFLOW_TAKEN`,与角色腿同款);效果串 `item_gift:<名>`
+    道具名` 两字段直写,见 §4);溢出位被占 = 零写 + 每道具一遥测申报保留证据
+    (`kind = DEFECT_OVERFLOW_TAKEN`,与角色分支同款);效果串 `item_gift:<名>`
     (数量 = 元素重复次数)恒登记,开箱链由外循环画面分发承接(武装箱选择画面
     独立建档)。首条 = 火药味(id 101,开局 2 个简易武装箱)。**定时支**
     (`items_scheduled`):登记不落席——(节点键, 道具名)逐项解析入容器队列
@@ -211,53 +212,53 @@ import 即炸)防漂移。
     数量 = 元素重复次数,发放事实登记与即时通道同阶),到点发放 =
     `discharge_due_item_grants`(§2.7)。首例 = 特权阶级(id 102,第二位面
     开始时获得 1 个特权武装箱)。
-  - 欢愉契约条件腿**不在本枚举**:正式模型 = 银狼策划选择上报落地相的条件腿
-    rider(`kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`,
+  - 欢愉契约条件分支**不在本枚举**:正式模型 = 银狼策划选择上报落地相的附加条件授予
+    分支(`kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`,
     头号玩家选项触发 + 欢愉契约在册 → `gain_character`(火花/开拓者·欢愉随机
-    其一,1★,rand=True),调用点级 best-effort 例外见 §6;条件腿原文与建模依据 =
+    其一,1★,rand=True),调用点级 best-effort 例外见 §6;条件分支原文与建模依据 =
     `cw_investments.py::ENV_GIFTS['欢愉契约'].chars_conditional`)。
-- **on_character_gained(gs, name, star, *, rand, sig)**:现役枚举 = **空集**(暂无
+- **on_character_gained(gs, name, star, *, rand, sig)**:在用枚举 = **空集**(暂无
   已核实的「获得角色时」触发型效果)。**本函数 = 该类效果未来的唯一收敛点**。
 - **on_equipment_gained(gs, item, *, rand, sig)**:查 `cw_effect_inventory.py::
   EQUIP_ACQUIRE_CONSEQUENCES`(装备获得 → 送出单位;该表是游戏数据映射不是效果
   注册表)→ 命中 → `gain_character`(表值星级;确定发放 → rand 原样透传)。
 - **on_strategy_gained(gs, strategy_name, *, rand, sig, rng=None)**(策略屏迁移批
   新增):查 ``cw_gain_effects.py::PICK_INVEST_EFFECTS``(策略卡获得效果注册表,
-  键 = 注册表规范名;现役 = 骇客专家:银狼 与 箱腿三卡 战术义眼++/保守派/
-  快请专家·彩)→ 命中 → 效果体执行。骇客卡链序 = 狼腿 `gain_character` +
+  键 = 注册表规范名;在用 = 骇客专家:银狼 与 箱授予分支三卡 战术义眼++/保守派/
+  快请专家·彩)→ 命中 → 效果体执行。骇客卡链序 = 银狼分支 `gain_character` +
   商店池遥测申报行 + 改件 `gain_equipment(rand=True)` 采样入栏(改件后果经
-  `on_equipment_gained` 回调)。箱腿三卡 = 获得时点占席道具发放:效果体消费
+  `on_equipment_gained` 回调)。箱授予分支三卡 = 获得时点占席道具发放:效果体消费
   `gain_bench_item`(§2.8;确定发放 → rand=False,效果串
   `box_grant:<道具名>(placed=<是否落位>)`),发放名单单一源 =
   cw_gain_effects `_STRATEGY_BOX_GRANTS`(卡规范名 → 道具名;与登记面镜像
   `cw_investments.STRATEGY_GRANTS` 三卡 `items_immediate` 逐对相等,
-  一致性锁测试)。三卡的战斗被动腿(能量恢复/伤害减免)非「获得时点」效果,
-  不在效果体(获得时点容器写腿辖域外);快请专家·彩的好运令牌腿(非占席
-  道具,消耗品域)与空括号腿(数据源缺口禁猜)同不在。未建模申报归
+  一致性锁测试)。三卡的战斗被动效果(能量恢复/伤害减免)非「获得时点」效果,
+  不在效果体(获得时点容器写分支适用范围外);快请专家·彩的好运令牌分支(非占席
+  道具,消耗品域)与空括号分支(数据源缺口禁猜)同不在。未建模申报归
   [strategy-env-impacts.md](strategy-env-impacts.md) §3;未收录卡安静不写。
 
-## 4. 溢出落位规则(双写端)
+## 4. 溢出落位规则(双写入方)
 
 备战席满时新获得件无处落 → 溢出落位(角色与占席道具同款,2026-09-24 实机
 真值用户确认——道具同样落溢出席并阻断进入战斗),写 `overflow_warning=True`
 + `overflow_card=身份串`(角色 = char_id,道具 = 道具名;两字段各一行,
 同 evidence 同 sig 同组):
 
-- **双写端声明**:两字段由「观察写端单一源」扩为**双写端**——观察 heavy 写端
-  (备战溢出观察)+ 获得链逻辑写端(席满溢出落位直写);第二逻辑写端先例 = 卖牌
-  溢出腿(`kernel/cw_action_report/sell_bench.py`)。与容器字段注释、
-  `kernel/cw_projection_audit.py` 对账 basis 行一致,字段语义正本 = fields.md
+- **双写入方声明**:两字段由「观察写入方单一源」扩为**双写入方**——观察完整观察(全量识别)写入方
+  (备战溢出观察)+ 获得链逻辑写入方(席满溢出落位直写);第二逻辑写入方先例 = 卖牌
+  溢出分支(`kernel/cw_action_report/sell_bench.py`)。与容器字段注释、
+  `kernel/cw_projection_audit.py` 对账 basis 行一致,字段语义权威版本 = fields.md
   §3.2.21。
 - **身份两分判 kind**:溢出位身份串的消费方(合成池构建 `_build_pool` /
-  卖牌溢出腿入位)按 `cw_investments.BENCH_ITEM_NAMES` 判 `BenchSlot`
+  卖牌溢出分支入位)按 `cw_investments.BENCH_ITEM_NAMES` 判 `BenchSlot`
   kind——命中 = `supply_box` 惰性槽件(禁造 Unit 假身份进合成素材组),
-  未命中 = 角色。词表来源 = 两张 GiftGrant 授予表的 `items_immediate` ∪
+  未命中 = 角色。取值清单来源 = 两张 GiftGrant 授予表的 `items_immediate` ∪
   `items_scheduled`(定时道具同为占席道具,身份 kind 判定同面);
   效果体内联发放的道具登记时须显式并入该表。
 - **星级链记**:星级不入容器字段(overflow_card 只存身份串);链内工作池自记本次
   授予的星级(升星判断用链记真值)——写入即知真值,不依赖观察兜底口径。观察来源
   的溢出卡星级缺读按 1 兜底(现行口径,fields.md §3.2.21)。
-- **溢出位被占**(链内连环授予第二次溢出):游戏行为未实证 → 零写 + 缺陷台账留证
+- **溢出位被占**(链内连环授予第二次溢出):游戏行为未实证 → 零写 + 缺陷记录表保留证据
   (`kind = DEFECT_OVERFLOW_TAKEN`),禁猜。
 - 溢出件被合成消费/腾槽归位 → 溢出位腾空,两字段成对清写(False + '')。
   道具件不入素材组(无升星语义),只参与腾槽归位。
@@ -269,38 +270,38 @@ import 即炸)防漂移。
 - 链入口按自身性质定初值(投资环境/投资策略确认 = 确定性入口,False);
 - 递归调用点按**该效果自身性质**传参:效果体含采样 → 对其发起的子链传 `rand=True`;
   不含采样 → 原样透传;
-- 语义:任一写点的 rand 值 = 「本次写是否处于随机语义」,不承诺全链一致——采样效果
-  只翻转它自己的子链。写通道 = 择道口 `anchor_aware_write`(fields.md §2.6):
-  未锚定(锚定闩 `prep_anchored` 未置)一律 `write_logic_rand`——种子底座/链落账是
-  未验证推算,首观察静默覆盖;锚定后按 rand 形参(失配网生效)。通道语义正本 =
+- 语义:任一写入位置的 rand 值 = 「本次写是否处于随机语义」,不承诺全链一致——采样效果
+  只翻转它自己的子链。写通道 = 通道选择入口 `anchor_aware_write`(fields.md §2.6):
+  未确认(锚定标志位 `prep_anchored` 未置)一律 `write_logic_rand`——开局预填初值/链落账是
+  未验证推算,首观察静默覆盖;确认后按 rand 形参(失配网生效)。通道语义权威版本 =
   fields.md §2.1/§2.5。
 
 ## 6. 失败安全四则
 
-1. **链原语零吞错**:容器写腿/回调效果腿异常上抛(真异常该响);调用方(动作上报
+1. **链原语零吞错**:容器写分支/回调效果分支异常上抛(真异常该响);调用方(动作上报
    函数)不包整链、零额外吞错。
-2. **未锚定期写走随机态,未观察拒落档保留**:容器经开局种子底座播种(fields.md
+2. **未锚定期写走随机态,未观察拒落档保留**:容器经开局预填初值播种(fields.md
    §2.6),生产链路阵容/装备域不再有 None——原「未观察 = bug 面」缺陷 kind
-   (`gain_chain_bench_unobserved`/`gain_chain_equips_unobserved`)已退役;直构容器
-   (sim/测试)的 None 拒落零写与 detail 档保留,零缺陷发射。链写通道随锚定闩择道
+   (`gain_chain_bench_unobserved`/`gain_chain_equips_unobserved`)已停用;直构容器
+   (sim/测试)的 None 拒落零写与 detail 档保留,零缺陷发射。链写通道随锚定标志位择道(走通道选择入口)
    (§5,fields.md §2.6)。
 3. **查无效果安静不写**(§3):真值归观察覆盖。
-4. **席满且溢出位被占 = 零写留证**(§4;游戏行为未实证,禁猜)。
+4. **席满且溢出位被占 = 零写保留证据**(§4;游戏行为未实证,禁猜)。
 
-best-effort 边界收在**非容器写的观测/登记腿**内(§2.1/§2.4 登记腿、§3 advisor 申报
-行):失败 log + 缺陷留证、不阻塞。**唯一容器写调用点级例外 = 条件腿授予 rider**
-(`pick_planner.py::_grant_joy_conditional`,try/except + 缺陷行
-`joy_conditional_grant_failed` 后照常腿型分派——授予与选项应用是两条独立因果,
+best-effort 边界收在**非容器写的观测/登记分支**内(§2.1/§2.4 登记分支、§3 advisor 申报
+行):失败 log + 缺陷保留证据、不阻塞。**唯一容器写调用点级例外 = 附加条件授予分支(挂在选项上报上的授予路径)**
+(`pick_planner.py::_grant_joy_conditional`,try/except + 缺陷记录行
+`joy_conditional_grant_failed` 后照常分支型分派——授予与选项应用是两条独立因果,
 授予失败不得拖垮选项应用;链内部零吞错不变)。无效载荷拒绝(§2.1-0/§2.4-0)
-同属零写 + 留证(输入校验,非防重复保护)。
+同属零写 + 保留证据(输入校验,非防重复保护)。
 
 ## 7. 与旧机制的关系(grant_bench_unit_cascade 过渡期)
 
 `cw_effect_inventory.py::grant_bench_unit_cascade`(落位后**立即**级联合成
-`merge_cascade_write`、升星产物不触发回调、备战满拒落零写)仍在役,消费点 =
-pick_supply 等旧通道(策略屏效果腿已随投资两屏迁移批改走链原语,消费点撤出)。
-它与本链「回调先、升星后」**双时序并存**至各自迁移批;现役消费面无 on-gain 效果
-在册,行为等价。各消费点迁移完成后 grant_bench_unit_cascade 退役。装备获得→送
+`merge_cascade_write`、升星产物不触发回调、备战满拒落零写)仍在用,消费点 =
+pick_supply 等旧通道(策略屏效果分支已随投资两屏迁移批改走链原语,消费点撤出)。
+它与本链「回调先、升星后」**双时序并存**至各自迁移批;在用消费面无 on-gain 效果
+在册,行为等价。各消费点迁移完成后 grant_bench_unit_cascade 停用。装备获得→送
 角色的「全渠道统一后置钩子」`apply_equip_acquire_consequence` 的分派动作已归
 `on_equipment_gained` 回调(§3),数据表共用。
 
@@ -311,7 +312,7 @@ pick_supply 等旧通道(策略屏效果腿已随投资两屏迁移批改走链�
   session 形参显式传入,动作 op 自 ctx 取)。
 - **投资策略落地相**(策略屏迁移批新增):`kernel/cw_action_report/
   pick_invest_strategy.py::report_action_pick_invest_strategy_param` →
-  `gain_invest_strategy`(无效载荷拒绝/按名字去重追加/登记腿/`on_strategy_
+  `gain_invest_strategy`(无效载荷拒绝/按名字去重追加/登记分支/`on_strategy_
   gained`)。
 - **上报时点**(用户裁定 2026-09-21,action_ops.md §1 增补 2):两支均 =
   动作 op 机械链(点选中 → 点确认)发出后**立即**上报——零分步、零证据
