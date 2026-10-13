@@ -51,7 +51,7 @@
 
 ## 3.3 备战工序重排
 
-**范围**：`entry.py::emit` 按第 0-8 步九段全扫重写；溢出自救接入（资格面扩展 + 每帧全量重评无试错计数 + 自救动作序（含候选空出路），替换现行强收窄单卖）；晶矿腾位的纯垫件身份判断；消耗品/晶矿/部署/装备工具/节末凑息/出战各段接线；步骤间调用 3.1 的标记与边界函数、3.2 的评估器；**`kernel/cw_comps.py` 的 COMP_LIBRARY 扩 `entry_signals` 字段并建表**（终局线上线条件登记，窗口辖域数据地基，建表前 fail 方向 = 窗口恒假）；**ore_defer 试错计数键族退役**（ore_defer_streak/ore_defer_progress_sig/ore_defer_yield——与无试错计数原则对应，晶矿垫件纯判断替代）；**SPHERE_OCCUPYING_COLORS 死码块**按「退役-复活双倍审面」在册约定处置（随重写删除 + 双倍审面登记）；出战前置发射位机制保留接线确认。升级判据本阶段先保留现行判据内核**含现行血线解锁语义**仅移动调用时机（行为不变，判据重轴与血线解锁删除在 3.4，拆批防混无哑火中间态）；**升档器三件（λ 收紧消费位 / `_upgrader_evaluate` 调用位 / F7 禁令+包件③）在新 emit 原位保留**（行为不变承诺的组成部分，3.4 退役）。商店域第 4 步的清单复核接线候 3.6 交付（见 3.6 范围）。
+**范围**：`entry.py::emit` 按第 0-8 步九段全扫重写；溢出自救接入（资格面扩展 + 每帧全量重评无试错计数 + 自救动作序（含候选空出路），替换现行强收窄单卖）；晶矿腾位的纯垫件身份判断；消耗品/晶矿/部署/装备工具/节末凑息/出战各段接线；步骤间调用 3.1 的标记与边界函数、3.2 的评估器；**`kernel/cw_comps.py` 的 COMP_LIBRARY 扩 `entry_signals` 字段并建表**（schema = `{信号类: level|synergy|plane_end|always_on, 阈值}`〔值域枚举，fail 读法 = 缺行 → 窗口恒假〕；终局线上线条件登记，窗口辖域数据地基）；**ore_defer 试错计数键族退役**（ore_defer_streak/ore_defer_progress_sig/ore_defer_yield——与无试错计数原则对应，晶矿垫件纯判断替代）；**SPHERE_OCCUPYING_COLORS 死码块**按「退役-复活双倍审面」在册约定处置（锚 = entry.py:562 死码块注释；随重写删除 + 双倍审面登记）；出战前置发射位机制保留接线确认。升级判据本阶段先保留现行判据内核**含现行血线解锁语义**仅移动调用时机（行为不变，判据重轴与血线解锁删除在 3.4，拆批防混无哑火中间态）；**升档器三件（λ 收紧消费位 / `_upgrader_evaluate` 调用位 / F7 禁令+包件③）在新 emit 原位保留**（行为不变承诺的组成部分，3.4 退役）。商店域第 4 步的清单复核接线候 3.6 交付（见 3.6 范围）。
 **设计依据**：prep_pipeline §1 全部、§2、§3；design.md §2.1 条 1/7/8。
 **文件面**：`strategies/impl/mandate_v1/entry.py`、`strategies/impl/mandate_v1/bridge.py`（备战入口适配）、`mandate.py` 相关发射位、`kernel/cw_comps.py`（COMP_LIBRARY entry_signals 建表）、`prep_actions.py`（应用根执行层件——无 mandate_v1 同名文件）配合面；测试仓。
 **依赖**：3.0（改前基线先行）、3.1、3.2。
@@ -113,7 +113,7 @@
 
 ## 3.7 统一选线函数
 
-**范围**：四维评分函数**骨架**落码（注册表查表地基 + §1.2 缺件集构造 + 比较器接口——**量纲合成式与权重留标定批**，缺省恒未定型 = 比较器不消费数值，骨架可测结构）、**`kernel/cw_comps.py` 扩 `key_items` 字段并建表**（贯穿件名单，知识批交付，期限 = 本批开表前——贯穿件强信号维的数据地基）、定型门/滞后余量/切换成本账（【拟】缺省 = 恒未定型）、provisional 登记（owner/期限）、现行换线机器退役（§1.5 退役面逐项：θ 滞回/D_min 驻留/证伪分桶/第四触发/P84 门/影子评估/塌缩通道删除，K 空窗回退换源；**provisional 旧槽位退役清单 = N_CRISIS/THETA/D_MIN/DELTA_HYST/V_MS/P_REC** 逐槽列名，漏删 = 孤儿【拟】槽）、3.1 签名骨架换核。
+**范围**：四维评分函数**骨架**落码（注册表查表地基 + §1.2 缺件集构造 + 比较器接口——**量纲合成式与权重留标定批**，缺省恒未定型 = 比较器不消费数值，骨架可测结构）、**`kernel/cw_comps.py` 扩 `key_items` 字段并建表**（schema = `[角色名列表]`〔fail 读法 = 缺行 → 维度 None〕；贯穿件名单，知识批交付，期限 = 本批开表前）、定型门/滞后余量/切换成本账（【拟】缺省 = 恒未定型）、provisional 登记（owner/期限）、现行换线机器退役（§1.5 退役面逐项：θ 滞回/D_min 驻留/证伪分桶/第四触发/P84 门/影子评估/塌缩通道删除，K 空窗回退换源；**provisional 旧槽位退役清单 = N_CRISIS/THETA/D_MIN/DELTA_HYST/V_MS/P_REC** 逐槽列名，漏删 = 孤儿【拟】槽）、3.1 签名骨架换核。
 **设计依据**：line_and_upgrade §1 全部、§3；关键取舍节。
 **文件面**（目录级引用，含 entry.py 证据门/换线登记消费段与 audit/calibration.py 注入写入口——非闭集枚举）：`strategies/impl/mandate_v1/`（新选线模块 + `proof.py` 退役面 + `audit/provisional.py` 登记 + `sell_gate.py` line_switch 通道退役——与 3.6 通道登记同文件分域，本阶段后置串行）、`strategies/impl/flow.py`（意向层机器退役载体 `_refresh_direction_views` 族清点）、`criteria/sell.py` 与 `criteria/contracts.py`（换线塌缩出口函数体 `line_switch_sell`（函数体 criteria/sell.py:73、契约行 contracts.py:241）与其契约行退役——**V_MS 槽随函数退役；U_X 在产消费位另列**（criteria/buy/refresh/shop/stockpile，P41 项载体——消费位清点 = 3.7 穷尽核对范围））、`strategies/impl/mandate.py`（读数开商店腾席链退役宿主——近亲族 grep 判据在此）、`kernel/` 配合；测试仓。
 **依赖**：3.0（改前基线先行）、3.1、3.2、3.6（`sell_gate.py` 分域改动串行避冲突）、key_items 知识批（前置交付物——`kernel/cw_comps.py` 建表的本批内前置任务）。
@@ -159,14 +159,16 @@
 - `strategy-docs/11_shop_decisions.md` ← 3.4/3.6（升级重轴与 P72(3a)/P21 保留记录、置换账、筹资、收缩废止、血购段 as-built 消歧、**§7 引擎池提案收编与 ENGINE_STALL_N 撤账、§3 刷新合格集变更记录**）
 - `strategy-docs/12_line_and_intention.md` ← 3.7（换线机器退役→选线函数全文重写）
 - `strategy-docs/00_framework.md` ← 3.4（hp 辖域收缩差分申报与升档器架构层评估：血线地板/λ 顾问删除后升档器「死亡风险唯一承接件」职能失主——架构去留由本正本更新批裁决——**评估判据：①消费面退役后死亡风险承接语义的替代载体核查（自救/凑息/查血限器清单）②产出 = 保留架构壳 vs 撤壳的裁决记录（owner = 编排者；**撤壳分支的代码批 = 下一迭代**——正本更新批只裁决不落码）**；P21 保留依据）
-- `strategy-docs/01_math_framework.md` ← 3.4/3.6（§1 权限骨架的义务/优化权限重述；§3.2 卖面主不等式的自救扩展面例外登记；§3.7 换线判据行更新；§3.3 拦截层行更新：守息门/U_L/预算闸处置；§7 P72 收尾支钩子行 + **§3.4 无目标刷新 fail 语义变更（主落点）**、R*/w471 排程分量记录（11 行为消费位记录） + **P92 门输入面改造** + **待证钩子五条登记**（cw_prepsell_value_order/swap_domination/line_score_weighting/all_channel_exists/**p96_ore_transfer** P96 晶矿复用）；定型门/滞后余量/四维权重/×2 系数【拟】登记消费章程核对——登记集枚举与 line_and_upgrade 关键取舍统一）
+- `strategy-docs/01_math_framework.md` ← 3.4/3.6（§1 权限骨架的义务/优化权限重述；§3.2 卖面主不等式的自救扩展面例外登记；§3.7 换线判据行更新；§3.3 拦截层行更新：守息门/U_L/预算闸处置；§7 P72 收尾支钩子行 + **§3.4 无目标刷新 fail 语义变更（主落点）**、R*/w471 排程分量记录（11 行为消费位记录） + **P92 门输入面改造** + **待证钩子五条登记**（cw_prepsell_value_order/swap_domination/line_score_weighting/all_channel_exists/**p96_ore_transfer** P96 晶矿复用）；定型门/滞后余量/四维权重/×2 系数/概率账缺件集口径【拟】登记消费章程核对——登记集五项枚举与 line_and_upgrade §4 统一）
 - `docs/develop/sr_od/application/currency_war/proofs/math_proofs.md` ← 末阶段（**命题处置登记同步**：P77 商店牌面维差分、P86 三臂收编处置（甲臂形态退役/乙臂偏差/丙臂辖域维持）、P92 挂起（腾席支消费位废止）、P96 晶矿复用挂账不激活（辖域扩展待证）、P78 通道重映射（置换新通道+自救豁免行）、P41 让位序近似实现关系、P49⑤ 档序偏差、P48② 口径改写与 boss_floor 同值异据约束、P16 换线 E_rounds 消费终止、P72 闸拆解处置（(1)(2) 保留/(3a) 本体删除/保底金门保留）、P76 组合期权框架消费终止——索引行状态与落码行为一致）
 - `strategy-docs/04_survival_budget.md` ← 3.4（§7 对账表更新：#3 血线地板解锁撤销登记 + #4 P21 拦截语义的授权登记补全——#4 补全属授权登记变更，提案随本清单呈用户裁定后执行）
 - `strategy-docs/21_opening_window_and_tool_consume.md` ← 3.3（工具消费位次随工序重排的核记录；需要才改）
+- `strategy-docs/24_deploy_segment.md` ← 3.6（换血双轨链判定源迁移记录：committed 判定改挂生效目标 view + 替补窗口辖域例外）
+- `strategy-docs/18_equip_wear_semantics.md` ← 3.7（已定型扣留判定源迁移记录：committed_hold_active 判定源改挂生效目标 view）
 - `strategy-docs/17_stall_form_spend_authority.md` ← 3.6（Φ_stall 停滞支出的锁线键载体切换记录：判定源改挂生效目标 view）
 - `strategy-docs/20_large_balance_must_spend.md` ← 3.6（必花域消费位收编记录：会话内买入评估入口的域帧判定、**L3 触发源发射位两处化**；与升级重轴的域内交互语义登记）
 - `docs/game/currency_war/research/screen_flow_timing.md` ← 3.6（#14/#27 boss 简报自动开店旧口径勘误——as-built 辨析回写）
 - `docs/game/currency_war/research/user_playstyle.md` ← 全迭代（2026-10-12 用户裁定系列补录 + [23]/[36] 差分回写，见 line_and_upgrade 差分节）
-- `docs/develop/sr_od/application/currency_war/screens/README.md` §5.4 ← 3.5（商店画面能力面补「出战」行——正本缺口补录）
+- `docs/develop/sr_od/application/currency_war/screens/README.md` §5.4 ← 3.5（商店画面能力面补「出战」行——op 列值 = 前置发射位〔非店内 op〕，正本缺口补录）
 - `strategy-docs/` 全目录 + `changes/2026-10-12-prep-shop-workflow-redesign/` 迭代稿自身黑话清洗 ← 末阶段（用户裁定 2026-10-12：编号引用保留，其余自造词改正常表述或首现给定义）
 - `flow/session.md` ← 3.6（核对开店闩语义被会话标记替代的影响，需要才改）
