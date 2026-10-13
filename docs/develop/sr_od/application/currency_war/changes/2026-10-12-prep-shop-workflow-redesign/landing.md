@@ -31,6 +31,7 @@
 **完成判据**：
 - 节点号变化触发边界处理：重置清单各键按表复位（对照 prep_pipeline §3 清单逐键测试）；
 - 签名不变跳过重算、签名变化触发重算（幂等性测试）；
+- **提升机制测试**：签名校验拦截过期挂起、提升联动清标记 + 清预授权键、节点清挂起；
 - 标记仅正常收工写入、清单存储读写/节点清空的单元测试通过（解拦复核判定函数归 3.6，本阶段只测存储面）；
 - 完成前常规检查（本文件首节）。
 **验收凭据形式**：新增单元测试 + 单帧锁。
@@ -52,7 +53,7 @@
 
 **范围**：`entry.py::emit` 按第 0-8 步九段全扫重写；溢出自救接入（资格面扩展 + 每帧全量重评无试错计数 + 自救动作序（含候选空出路），替换现行强收窄单卖）；晶矿腾位的纯垫件身份判断；消耗品/晶矿/部署/装备工具/节末凑息/出战各段接线；步骤间调用 3.1 的标记与边界函数、3.2 的评估器；**`kernel/cw_comps.py` 的 COMP_LIBRARY 扩 `entry_signals` 字段并建表**（终局线上线条件登记，窗口辖域数据地基，建表前 fail 方向 = 窗口恒假）；**ore_defer 试错计数键族退役**（ore_defer_streak/ore_defer_progress_sig/ore_defer_yield——与无试错计数原则对应，晶矿垫件纯判断替代）；**SPHERE_OCCUPYING_COLORS 死码块**按「退役-复活双倍审面」在册约定处置（随重写删除 + 双倍审面登记）；出战前置发射位机制保留接线确认。升级判据本阶段先保留现行判据内核**含现行血线解锁语义**仅移动调用时机（行为不变，判据重轴与血线解锁删除在 3.4，拆批防混无哑火中间态）；**升档器三件（λ 收紧消费位 / `_upgrader_evaluate` 调用位 / F7 禁令+包件③）在新 emit 原位保留**（行为不变承诺的组成部分，3.4 退役）。商店域第 4 步的清单复核接线候 3.6 交付（见 3.6 范围）。
 **设计依据**：prep_pipeline §1 全部、§2、§3；design.md §2.1 条 1/7/8。
-**文件面**：`strategies/impl/mandate_v1/entry.py`、`strategies/impl/mandate_v1/bridge.py`（备战入口适配）、`mandate.py` 相关发射位、`kernel/cw_comps.py`（COMP_LIBRARY entry_signals 建表）、`strategies/impl/mandate_v1/prep_actions.py` 配合面（与 kernel 同名文件消歧）；测试仓。
+**文件面**：`strategies/impl/mandate_v1/entry.py`、`strategies/impl/mandate_v1/bridge.py`（备战入口适配）、`mandate.py` 相关发射位、`kernel/cw_comps.py`（COMP_LIBRARY entry_signals 建表）、`prep_actions.py`（应用根执行层件——无 mandate_v1 同名文件）配合面；测试仓。
 **依赖**：3.0（改前基线先行）、3.1、3.2。
 **优先级建议**：7
 **完成判据**：
@@ -114,7 +115,7 @@
 
 **范围**：四维评分函数**骨架**落码（注册表查表地基 + §1.2 缺件集构造 + 比较器接口——**量纲合成式与权重留标定批**，缺省恒未定型 = 比较器不消费数值，骨架可测结构）、**`kernel/cw_comps.py` 扩 `key_items` 字段并建表**（贯穿件名单，知识批交付，期限 = 本批开表前——贯穿件强信号维的数据地基）、定型门/滞后余量/切换成本账（【拟】缺省 = 恒未定型）、provisional 登记（owner/期限）、现行换线机器退役（§1.5 退役面逐项：θ 滞回/D_min 驻留/证伪分桶/第四触发/P84 门/影子评估/塌缩通道删除，K 空窗回退换源；**provisional 旧槽位退役清单 = N_CRISIS/THETA/D_MIN/DELTA_HYST/V_MS/P_REC** 逐槽列名，漏删 = 孤儿【拟】槽）、3.1 签名骨架换核。
 **设计依据**：line_and_upgrade §1 全部、§3；关键取舍节。
-**文件面**：`strategies/impl/mandate_v1/`（新选线模块 + `proof.py` 退役面 + `audit/provisional.py` 登记 + `sell_gate.py` line_switch 通道退役——与 3.6 通道登记同文件分域，本阶段后置串行）、`strategies/impl/flow.py`（意向层机器退役载体 `_refresh_direction_views` 族清点）、`criteria/sell.py` 与 `criteria/contracts.py`（换线塌缩出口函数体 `line_switch_sell`（contracts.py:241）与其契约行退役——U_X/V_MS 槽随函数消亡）、`strategies/impl/mandate.py`（读数开商店腾席链退役宿主——近亲族 grep 判据在此）、`kernel/` 配合；测试仓。
+**文件面**：`strategies/impl/mandate_v1/`（新选线模块 + `proof.py` 退役面 + `audit/provisional.py` 登记 + `sell_gate.py` line_switch 通道退役——与 3.6 通道登记同文件分域，本阶段后置串行）、`strategies/impl/flow.py`（意向层机器退役载体 `_refresh_direction_views` 族清点）、`criteria/sell.py` 与 `criteria/contracts.py`（换线塌缩出口函数体 `line_switch_sell`（contracts.py:241）与其契约行退役——**V_MS 槽随函数退役；U_X 在产消费位另列**（criteria/buy/refresh/shop/stockpile，P41 项载体——消费位清点 = 3.7 穷尽核对范围））、`strategies/impl/mandate.py`（读数开商店腾席链退役宿主——近亲族 grep 判据在此）、`kernel/` 配合；测试仓。
 **依赖**：3.0（改前基线先行）、3.1、3.2、3.6（`sell_gate.py` 分域改动串行避冲突）、key_items 知识批（前置交付物——`kernel/cw_comps.py` 建表的本批内前置任务）。
 **优先级建议**：5
 **完成判据**：
