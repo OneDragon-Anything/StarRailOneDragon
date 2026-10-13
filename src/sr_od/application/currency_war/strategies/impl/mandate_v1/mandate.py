@@ -1729,8 +1729,7 @@ def run_mandate(frame: MandateFrame,
         # 9×CwActionLevelUpShopParam 36g 零本帧收益):血预算停升级门(P21)此前只有
         # decision_v2 侧消费,cw4 M3 未接 = 双栈语义断层;判据单一源 =
         # levelup.level_spend_blocked(blood_budget_levelup_blocked ∪
-        # p2_crisis_band,P48 λ>0 段转化优先)。让位=挂起本批经验支出,
-        # 授权面降级由 entry._reconcile_posture_authorization 显式声明。
+        # p2_crisis_band,P48 λ>0 段转化优先)。让位=挂起本批经验支出。
         # 溢余帧停付线让位(裁定覆盖):域内本门不否决 L3。
         # 停付判据提取为局部变量;域内豁免时记 must_spend_zone_defer_overridden
         # 显影分键(与 shop 侧 must_spend_r1_account_yielded 对称)——归因时

@@ -742,7 +742,14 @@ def _step5_deploy(session: StrategySession, gs: GameState,
     """第 5 步部署调整(prep_pipeline §1 第 5 步;现行部署面整体保留,
     判据本体不改动,仅调用时机移到商店会话之后)。
 
-    结构(与现行 run_mandate 部署段同源同序):
+    结构(判据本体与 run_mandate 部署段同源;**执行序差分申报**:
+    M1″ 与 M1′ 的相对序与 run_mandate 互换——run_mandate 序 =
+    M1′ 后 M1″,本步 = M1″ 后 M1′。空段期不可观测(M1′ 仅在第 3 步
+    发射升级时触发,空段期恒 False;M1″ 仅在本步无既有部署动作时
+    评估)——行为等价。3.4 接线后可观测差:升级 ∧ 板满帧,本序
+    M1″ 先评估(可发射换血卖出),run_mandate 序则 M1′ 先占部署动作
+    使 M1″ 跳过——3.4 落码时按 line_and_upgrade §2.2 相邻性语义
+    复核此位):
     - M5 开局配方(开局帧 round_num ≤ 1 ∧ 板空 ∧ bench 有件);
     - M1 空槽凑人数补位(deploy_vacancy > 0;任意合法单位上阵优于空槽,
       P24 残余补部署);
