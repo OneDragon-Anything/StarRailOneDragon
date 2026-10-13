@@ -52,7 +52,7 @@
 ## 3.3 备战工序重排
 
 **范围**：`entry.py::emit` 按第 0-8 步九段全扫重写；溢出自救接入（资格面扩展 + 每帧全量重评无试错计数 + 自救动作序（含候选空出路），替换现行强收窄单卖）；晶矿腾位的纯垫件身份判断；消耗品/晶矿/部署/装备工具/节末凑息/出战各段接线；步骤间调用 3.1 的标记与边界函数、3.2 的评估器；**`kernel/cw_comps.py` 的 COMP_LIBRARY 扩 `entry_signals` 字段并建表**（schema = `{信号类: level|synergy|plane_end|always_on, 阈值}`〔值域枚举，fail 读法 = 缺行 → 窗口恒假〕；终局线上线条件登记，窗口辖域数据地基）；**ore_defer 试错计数键族退役**（ore_defer_streak/ore_defer_progress_sig/ore_defer_yield——与无试错计数原则对应，晶矿垫件纯判断替代）；**SPHERE_OCCUPYING_COLORS 死码块**按「退役-复活双倍审面」在册约定处置（锚 = entry.py:562 死码块注释；随重写删除 + 双倍审面登记）；出战前置发射位机制保留接线确认。升级判据本阶段先保留现行判据内核**含现行血线解锁语义**仅移动调用时机（行为不变，判据重轴与血线解锁删除在 3.4，拆批防混无哑火中间态）；**升档器三件（λ 收紧消费位 / `_upgrader_evaluate` 调用位 / F7 禁令+包件③）在新 emit 原位保留**（行为不变承诺的组成部分，3.4 退役）。商店域第 4 步的清单复核接线候 3.6 交付（见 3.6 范围）。
-**设计依据**：prep_pipeline §1 全部、§2、§3；design.md §2.1 条 1/7/8。
+**设计依据**：prep_pipeline §1 全部、§2、§3；design.md §2.1 条 1/8/9。
 **文件面**：`strategies/impl/mandate_v1/entry.py`、`strategies/impl/mandate_v1/bridge.py`（备战入口适配）、`mandate.py` 相关发射位、`kernel/cw_comps.py`（COMP_LIBRARY entry_signals 建表）、`prep_actions.py`（应用根执行层件——无 mandate_v1 同名文件）配合面；测试仓。
 **依赖**：3.0（改前基线先行）、3.1、3.2。
 **优先级建议**：7
