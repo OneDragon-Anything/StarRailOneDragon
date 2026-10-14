@@ -47,6 +47,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_vocab import Action
+    from sr_od.context.sr_context import SrContext
     from sr_od.operations.sr_operation import SrOperation  # noqa: F401
 
 
@@ -75,7 +76,13 @@ class ShopVisitLedger:
 
 @dataclass
 class ShopExecEnv:
-    """动作 op 执行环境(画面 op 注入;动作 op 不自持画面层状态)。"""
+    """动作 op 执行环境(画面 op 注入;动作 op 不自持画面层状态)。
+
+    ``executor`` = 备战域共用词表动作 op(``CwActionSellBenchOp``/
+    ``CwActionLevelUpOp`` 等,体内经 ``env.executor`` 消费 ``_ctx``/``_op``)
+    在商店域的执行器端口适配(商店执行链端口接线;None = 端口未注入,
+    该族动作发射即 AttributeError 响亮暴露)。
+    """
 
     op: SrOperation
     match: object            # CurrencyWarMatch(避免运行时导入环,注解宽松)
@@ -87,6 +94,30 @@ class ShopExecEnv:
     # 当前期望态(W6 波 4 容器化,设计件 §2.4-2:执行侧读点改容器单例
     # game_state_of(match.session);满栏 k 计等消费经席位/payload 读口)
     state: GameState
+    executor: ShopActionExecutor | None = None
+
+
+class ShopActionExecutor:
+    """商店域动作执行器端口适配(商店执行链端口接线)。
+
+    备战域动作 op 经 ``env.executor`` 消费的最小端口面 = ``_ctx``
+    (SrContext)/``_op``(宿主画面 op:拖拽原语/光标 parking 经其取
+    controller);商店域以宿主商店画面 op 适配该端口(备战域同端口 =
+    ``PrepActionExecutor``,prep_actions.py 备战 runner 包络)。
+
+    ``screen_name`` = 域坐标权威画面:备战域共用词表动作的 area 读
+    (备战栏/出售区/购买经验按钮)在商店域必须解析到商店开画面档
+    (该档自备同名 area,坐标地基单一源 = 本域画面档);备战 runner
+    无本属性,消费点 getattr 缺省回落备战画面。
+    """
+
+    def __init__(self, op: SrOperation, ctx: SrContext) -> None:
+        from sr_od.application.currency_war.kernel.cw_obs_core import (
+            SHOP_SCREEN_NAME,
+        )
+        self._op = op
+        self._ctx = ctx
+        self.screen_name: str = SHOP_SCREEN_NAME
 
 
 def _plane_of(state: GameState) -> int:

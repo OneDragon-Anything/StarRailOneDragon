@@ -28,26 +28,39 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     ShopActionExecuted,
     game_state_from_ctx,
 )
-from sr_od.application.currency_war.kernel.cw_obs_core import area_center
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    SCREEN_NAME,
+    area_center,
+)
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionLevelUpParam
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
+    from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
+        ShopExecEnv,
+    )
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
 
 class CwActionLevelUpOp(CwOperation):
     """买经验(整批连点形态:找钮 → 连点授权击数 → 等待;授权批击数
-    由决策侧预授权携带,执行零重闸)。非终结。"""
+    由决策侧预授权携带,执行零重闸)。非终结。
+
+    双域执行(商店执行链端口接线):备战域经 ``PrepExecEnv.executor``
+    (PrepActionExecutor)、商店域经 ``ShopExecEnv.executor``
+    (ShopActionExecutor);按钮坐标在商店域优先取 env 已锚定的
+    ``level_btn``(商店画面 op 观察 node 的 area 锚定产物,缺失即
+    round_fail 的同源纪律),回落自读备战画面档 area。
+    """
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False
     terminal_wait = 0.0
 
     def __init__(self, ctx: SrContext, param: CwActionLevelUpParam,
-                 env: PrepExecEnv):
+                 env: PrepExecEnv | ShopExecEnv):
         CwOperation.__init__(self, ctx, op_name='CwActionLevelUpOp',
                              need_check_game_win=False)
         self.param = param
@@ -73,11 +86,17 @@ class CwActionLevelUpOp(CwOperation):
         from sr_od.application.currency_war.kernel.cw_economy import (
             xp_click_cost,
         )
-        btn = area_center(ex._ctx, '备战标识-购买经验')
+        btn = getattr(env, 'level_btn', None)
         if btn is None:
-            # 按钮 area 缺失 = 建档漂移,显式失败交回重读(禁兜底坐标
-            # 静默点击;用户裁定 2026-09-22,action_ops.md §4.2 LevelUp 行)。
-            # round_fail 经执行缝 = emitted=False 未发出事实,下帧重派重读。
+            # 商店域 env 已带观察 node 锚定的 level_btn;无锚定(备战域
+            # env / 商店域锚定缺席)→ 自读 area。按钮 area 缺失 = 建档
+            # 漂移,显式失败交回重读(禁兜底坐标静默点击;用户裁定
+            # 2026-09-22,action_ops.md §4.2 LevelUp 行)。round_fail 经
+            # 执行缝 = emitted=False 未发出事实,下帧重派重读。
+            btn = area_center(
+                ex._ctx, '备战标识-购买经验',
+                screen_name=str(getattr(ex, 'screen_name', SCREEN_NAME)))
+        if btn is None:
             return self.round_fail(
                 '「备战标识-购买经验」area 缺失,禁兜底坐标交回重读')
         clicks = max(1, int(getattr(action, 'clicks', 1) or 1))
@@ -93,6 +112,11 @@ class CwActionLevelUpOp(CwOperation):
             for _ in range(clicks):
                 ex._ctx.controller.click(btn)
         # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
+        # 商店访问账(shop 域 visit 汇总口径;备战 env 无 ledger 字段 =
+        # 备战域无访问账概念,跳过——发出即记账,与买/刷 op 同位)。
+        _led = getattr(env, 'ledger', None)
+        if _led is not None:
+            _led.total_xp_buy += clicks
         # 光标 parking(审计 P0,2026-08-16 = M38 level 毒化注入点):按钮距等级显示区 18px,
         # 点击后光标压住 Lv.N 区 → 下帧 OCR 读错(4 毒化 3 位面的链头)。park 后再继续。
         ex._op.park_cursor(before_wait=0.3, after_wait=0.15)

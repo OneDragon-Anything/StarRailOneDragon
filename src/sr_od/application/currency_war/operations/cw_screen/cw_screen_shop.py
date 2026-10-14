@@ -35,7 +35,6 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     tracked_unobserved,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import (
-    SCREEN_NAME,
     SHOP_SCREEN_NAME,
     area_center,
     shop_card_click_points,
@@ -483,10 +482,11 @@ class CwScreenShop(CwOperation):
             return self.round_fail(
                 f'area 缺失:{",".join(_miss_cards)}({SHOP_SCREEN_NAME}),'
                 f'禁兜底点击')
-        self._level_btn = area_center(self.ctx, BUY_EXP_AREA)
+        self._level_btn = area_center(self.ctx, BUY_EXP_AREA,
+                                      screen_name=SHOP_SCREEN_NAME)
         if self._level_btn is None:
             return self.round_fail(
-                f'area 缺失:{BUY_EXP_AREA}({SCREEN_NAME}),禁兜底点击')
+                f'area 缺失:{BUY_EXP_AREA}({SHOP_SCREEN_NAME}),禁兜底点击')
         self._refresh_btn = area_center(self.ctx, '按钮-刷新', SHOP_SCREEN_NAME)
         if self._refresh_btn is None:
             return self.round_fail(
@@ -613,6 +613,7 @@ class CwScreenShop(CwOperation):
             action_op_class_for,
         )
         from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
+            ShopActionExecutor,
             ShopExecEnv,
             guard_proposal_vs_expected,
         )
@@ -645,11 +646,16 @@ class CwScreenShop(CwOperation):
         # op 基类退役删除:直调节点函数 = 唯一路径;重试/停机查归包络与
         # 交回面,动作层零重试;节点异常原样上抛 = 执行异常通道不变。)
         _op_cls = action_op_class_for(action)
+        # 执行器端口(商店执行链端口接线):备战域共用词表动作
+        # (SellBench/LevelUp 族 op 经 env.executor 消费 _ctx/_op + 域
+        # 坐标权威画面)在商店域的适配注入;商店原生动作(买/刷/关)
+        # 不经此端口,行为零影响。
         _env = ShopExecEnv(
             op=self, match=match, config=self._config,
             click_pts=self._click_pts, level_btn=self._level_btn,
             refresh_btn=self._refresh_btn, ledger=self.ledger,
-            state=_cur_gs)
+            state=_cur_gs,
+            executor=ShopActionExecutor(self, self.ctx))
         _result = _op_cls(self.ctx, action, env=_env).run()
         _ok = bool(_result.is_success)
         # 执行落地回执(R2 回执域,逐动作 op 一条 logic_action 行):

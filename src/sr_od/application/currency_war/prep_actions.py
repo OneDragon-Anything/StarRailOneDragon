@@ -110,13 +110,16 @@ class StopBrakeShortCircuit(RuntimeError):
     """
 
 
-def row_area_centers(ctx: SrContext, prefix: str) -> list[Point]:
-    """从 screen_info「货币战争-备战」读全部 prefix-N 区域中心(N 升序)。
+def row_area_centers(ctx: SrContext, prefix: str,
+                     screen_name: str = SCREEN_NAME) -> list[Point]:
+    """从 screen_info 读全部 prefix-N 区域中心(N 升序)。
 
     逐区现读、不硬编码(后排 >6 时 screen_info 补区后自动跟上);
-    prep_actions 执行器 / cw_screen_prep 观察共用。
+    prep_actions 执行器 / cw_screen_prep 观察共用。``screen_name`` =
+    坐标权威画面(缺省备战画面;商店域传商店开画面——底栏 area
+    商店画面档自备,跨屏坐标不共用文件)。
     """
-    si = ctx.screen_loader.get_screen(SCREEN_NAME)
+    si = ctx.screen_loader.get_screen(screen_name)
     if si is None:
         return []
     pts: list[tuple[int, Point]] = []
@@ -132,23 +135,25 @@ def row_area_centers(ctx: SrContext, prefix: str) -> list[Point]:
     return [p for _, p in pts]
 
 
-def sell_point(ctx: SrContext) -> Point:
-    """出售区落点(单一源):screen_info「货币战争-备战.区域-出售区」中心
+def sell_point(ctx: SrContext, screen_name: str = SCREEN_NAME) -> Point:
+    """出售区落点(单一源):screen_info「区域-出售区」中心
     (W62 件2 落地;游戏机制 = 拖到左下区域即出售,无按钮)。
 
+    ``screen_name`` = 坐标权威画面(缺省备战画面;商店域传商店开画面)。
     area 缺失 = 建档漂移/档案损坏 → RuntimeError 显式上抛(信息带 area
     名),禁回退硬编码坐标静默点击(坐标单一真相源)。消费面含
     卖上阵 off-target 拖拽,落点直入 drag 原语 → None 不可流入,
     直取 + 上抛是唯一兼容形态。
     """
-    pt = area_center(ctx, '区域-出售区')
+    pt = area_center(ctx, '区域-出售区', screen_name=screen_name)
     if pt is None:
         raise RuntimeError(
-            'area 缺失:区域-出售区(货币战争-备战),出售区落点不可派生,禁兜底坐标')
+            f'area 缺失:区域-出售区({screen_name}),出售区落点不可派生,禁兜底坐标')
     return pt
 
 
-def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> None:
+def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int,
+                       screen_name: str = SCREEN_NAME) -> None:
     """拖备战槽(槽位下标 0-8)→ 出售区(共享卖原语,W62 件2/设计章2.10)。
 
     d2 卖通道生产接线(shop.py prefix 循环 CwActionSellBenchParam 分支)与 prep_actions
@@ -162,6 +167,8 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> None:
         ctx: SrContext。
         bench_idx: 槽位下标 0-8(:列表下标 = 物理备战栏槽位 1-9 减一);
             越界 = 调用方 bug,响亮上抛(守卫非判效)。
+        screen_name: 拖拽两端的坐标权威画面(缺省备战画面;商店域
+            传商店开画面——该画面档自备 备战栏/出售区 area)。
     """
     from sr_od.application.currency_war.sim.cw_sim_ports import (
         sim_backend_installed,
@@ -170,7 +177,7 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> None:
         # sim 模式:机械腿(焦点守卫+真实拖拽)静默成功,自上报照走
         # (直连 controller 旁路 port 检查;落位事实由后端世界承接)
         return
-    pts = row_area_centers(ctx, '备战栏')
+    pts = row_area_centers(ctx, '备战栏', screen_name=screen_name)
     if not (0 <= bench_idx < len(pts)):
         raise AssertionError(
             f'[cw][guard] 卖出拖拽槽位越界:bench_idx={bench_idx}'
@@ -186,7 +193,8 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> None:
     from sr_od.application.currency_war.operations.dev.drag_cw_char import (
         DragCwChar,
     )
-    DragCwChar.drag_char(op, pts[bench_idx], sell_point(ctx))
+    DragCwChar.drag_char(op, pts[bench_idx], sell_point(ctx,
+                                                        screen_name=screen_name))
 
 
 # (装备穿戴计划构造单一源 = kernel/cw_equip_wear_plan(R2 原子通路);
