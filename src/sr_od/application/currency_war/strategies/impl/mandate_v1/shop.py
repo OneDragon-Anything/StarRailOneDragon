@@ -1552,8 +1552,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 生产 fail-closed 零行为差,位次申报见收工对照表。)
 
     # —— ②(b) 死金压库(现行判据本体不动;消费位随会话循环接线)——
-    if gold < g_star and bench_free > 0 \
-            and reward_node_suppressed(gs):
+    if gold < g_star and reward_node_suppressed(gs):
         _dead_gold = gold - 10 * (gold // 10)
         _dg_gap = {m for m in buy_members if m not in owned}
         for _dg_prio in range(3):
@@ -1579,24 +1578,28 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                         _hit = False
                 if not _hit:
                     continue
+                if gold < cost:
+                    continue
+                if bench_free <= 0:
+                    # 席满 → 置换账(shop_session §2.2 序 4 行:席满帧
+                    # 买入路径 = 置换,价值比较拒 → 席满类机会清单)。
+                    _sw = _swap_account(card, 'order_4')
+                    if _sw is not None:
+                        return _sw
+                    _count('dead_gold_press_bench_full_gate')
+                    continue
                 ok2, _ = mandate.check_seats(
                     bench_free, 0, needs_bench=True, needs_board=False,
                     name='', deployed_names=deployed_names)
                 if not ok2:
                     break
-                if gold < cost:
-                    continue
                 _count('dead_gold_press_buy_hit')
                 _dg_cause = ('obligation', 'hold', 'press')[_dg_prio]
                 return _emit_buy(card, 'dead_gold_press_buy',
                                  launch_cause=_dg_cause)
-    elif gold < g_star and bench_free <= 0 \
-            and reward_node_suppressed(gs):
-        _count('dead_gold_press_bench_full_gate')
 
     # —— 档 1:可上场非定向买(现行判据本体不动;溢余段消费位)——
-    if (getattr(_ist, 'locked_comp', None)
-            and _zone_hit and bench_free > 0):
+    if getattr(_ist, 'locked_comp', None) and _zone_hit:
         _pd_vac = (_cap_now - len(deployed)) if _cap_now else None
         if _pd_vac is None:
             _count('press_buy_deployable_cap_unreadable')
@@ -1653,18 +1656,37 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 if gold < cost:
                     _count('press_buy_deployable_unaffordable')
                     continue
+                if bench_free <= 0:
+                    # 席满 → 置换账(shop_session §2.2 序 4 行)。
+                    _sw = _swap_account(card, 'order_4')
+                    if _sw is not None:
+                        return _sw
+                    _count('press_buy_deployable_bench_full_gate')
+                    continue
                 _count('press_buy_deployable_hit')
                 return _emit_buy(card, 'press_buy_deployable')
 
     # —— M6 溢余转压库(现行判据本体不动;整买预留约束经 s_reserve
     # 与 R2 侧预留承载)——
     _m6_exhausted = gold <= g_star   # 无溢余 ⇒ 压库候选结构性耗尽(空转)
-    _m6_arms = gold > g_star and bench_free > 0
+    _m6_arms = gold > g_star
     if _m6_arms:
         ok2, _ = mandate.check_seats(
             bench_free, 0, needs_bench=True, needs_board=False,
             name='', deployed_names=deployed_names)
         if not ok2:
+            # 席满 → 置换账(shop_session §2.2 序 4 行;候选过滤 = M6
+            # 视图去线内件——压库判据的席位维由置换价值比较承载,
+            # 判据本体不动)。
+            for card in _buy_view('m6'):
+                _m6_name = card.name or ''
+                if not _m6_name or _m6_name in buy_members:
+                    continue
+                if gold < card_cost(card):
+                    continue
+                _sw = _swap_account(card, 'order_4')
+                if _sw is not None:
+                    return _sw
             _count('m6_bench_full')
         elif not tier_w:
             _count('m6_overflow_strand')
@@ -1762,6 +1784,14 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         if not _ff_sale:
             _count('fuel_not_on_sale')
         elif bench_free <= 0:
+            # 席满 → 置换账(shop_session §2.2 序 4 行;1★ 垫件的低
+            # 价值通常被比较拒 → 机会清单,行为面与旧硬门一致)。
+            for card in _ff_sale:
+                if gold - card_cost(card) < s_reserve:
+                    continue
+                _sw = _swap_account(card, 'order_4')
+                if _sw is not None:
+                    return _sw
             _count('bench_full')
         else:
             for card in _ff_sale:
@@ -1839,6 +1869,21 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     bench_free, 0, needs_bench=True, needs_board=False,
                     name='', deployed_names=deployed_names)
                 if not ok_seat:
+                    # 席满 → 置换账(shop_session §2.2 序 3/5 行;生产
+                    # U_X None fail-closed 恒零候选,接线统一为零行为差)。
+                    for cand in cands:
+                        _slots = (gs.shop.value.cards
+                                  if gs.shop.value is not None else [])
+                        _slot = (_slots[cand.slot_idx]
+                                 if cand.slot_idx < len(_slots) else None)
+                        _card = (_slot.card
+                                 if _slot is not None
+                                 and _slot.kind == 'content' else None)
+                        if _card is None:
+                            continue
+                        _sw = _swap_account(_card, 'order_5')
+                        if _sw is not None:
+                            return _sw
                     _count('shop_ev_bench_wait')
                 else:
                     _deferred = []
@@ -2075,7 +2120,10 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 # 买入类目通道〔序 1-5 + C1/dominance 邻位 + 置换(席
                 # 满帧买入路径 = seat_recoverable 腿)〕;P92 命题本体
                 # 挂起,本门 = 结构判据不依赖命题,待证钩子
-                # all_channel_exists)。
+                # all_channel_exists。批 3.6 复核补腿:序 2 预算腿/
+                # 序 4 溢余与奖励帧死金腿/C1 邻位腿已入集——装配面:
+                # 预算 = 会话累计额度现读;序 4 = 溢余帧 ∨ 奖励帧低金;
+                # C1 地板 = 注册表核心最低费现算)。
                 _p92_ready = contracts.ensure_contract(
                     ('refresh', 'all_channel_buy_exists'),
                     contracts.ContractCtx(gold=gold), counters)
@@ -2096,6 +2144,12 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                          if n in set(buy_members)
                          and CHARACTERS.get(n) is not None
                          and CHARACTERS[n].cost})
+                    _p92_c1_floor = min(
+                        (int(CHARACTERS[n].cost)
+                         for n in CORE_SINGLE_CARD_REGISTRY
+                         if CHARACTERS.get(n) is not None
+                         and CHARACTERS[n].cost),
+                        default=None)
                     _p92_ok = crit_refresh.all_channel_buy_exists(
                         gold=gold, g_star=g_star,
                         cap_resolved=cap_resolved,
@@ -2111,7 +2165,13 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                         merge_pair_costs=_p92_pairs,
                         level=level_of(gs),
                         ev_face_open=not provisional.is_none('U_X'),
-                        window_nonempty=bool(card_w))
+                        window_nonempty=bool(card_w),
+                        plugin_budget_open=_st.shop_plugin_budget > 0,
+                        order4_zone_open=(
+                            gold > g_star
+                            or (reward_node_suppressed(gs)
+                                and gold >= 1)),
+                        c1_floor_cost=_p92_c1_floor)
                 if _p92_ready and _p92_ok:
                     shop_sess.note_refresh_counters(
                         gs, refresh_cost_effective(gs=gs))

@@ -288,6 +288,9 @@ def all_channel_buy_exists(gold: int, g_star: int, cap_resolved: int,
                            level: int,
                            ev_face_open: bool,
                            window_nonempty: bool,
+                           plugin_budget_open: bool = False,
+                           order4_zone_open: bool = False,
+                           c1_floor_cost: int | None = None,
                            ) -> bool:
     """P92 全通道可实现买入集非空判定尺(math_proofs P92;面②六桶审计
     ①桶判定的单一源,「在册结构的严格化非新门」口径)。
@@ -320,7 +323,16 @@ def all_channel_buy_exists(gold: int, g_star: int, cap_resolved: int,
       ``window_nonempty``;
     - 合成完备购(M2b):∃同名 1★×2 配对「refresh_prob(level,base)>0
       ∧ 金 ≥ base」——**满栏不阻断**(merge §2.5 机制事实,p76「深追
-      不受席满阻断」,买入即自动合成净释放 1 席)。
+      不受席满阻断」,买入即自动合成净释放 1 席);
+    - 序 2 场况插件(批 3.6 通道集重建):``plugin_budget_open``
+      (会话累计额度 > 0——上阵空位在册即有可买形态,板面差一人档
+      的插件件刷新可出;席位面并入 seat_ok);
+    - 序 4 压库臂(②(b) 死金/档 1/M6/垫件):``order4_zone_open``
+      (溢余帧〔金 > g*〕或奖励帧死金形态的帧级可达——M6/档 1/垫件
+      的溢余触发域与 ②(b) 的奖励帧低金域并集,调用方装配);
+    - C1 恒买邻位:``c1_floor_cost``(注册表核心最低费,非 None 即
+      通道池非空)∧ 席 ∧ 金 ≥ 最低费——核心在售即买,池非空故只查
+      帧级资格(与 dominance 通道同款口径)。
 
     输入全为帧级现读/注册表量,零新自由参数;调用方装配候选 cost 列表
     (缺员/囤腿/配对),判定尺只做通道合取判定。
@@ -354,4 +366,14 @@ def all_channel_buy_exists(gold: int, g_star: int, cap_resolved: int,
     for base in merge_pair_costs:
         if refresh_prob(level, base) > 0.0 and gold >= base:
             return True
-    return False
+    # ⑤ 序 2 场况插件(批 3.6 通道集重建;插件件落 bench——席位维
+    # = seat_ok;席满帧的置换路径由 seat_recoverable 腿承载)
+    if plugin_budget_open and seat_ok:
+        return True
+    # ⑥ 序 4 压库臂(②(b) 死金/档 1/M6/垫件的帧级可达;席位维 =
+    # 至少一席可落——席满帧置换拒后无买入即无通道)
+    if order4_zone_open and (bench_free >= 1 or seat_recoverable):
+        return True
+    # ⑦ C1 恒买邻位(核心在售即买;池非空只查帧级资格)
+    return (c1_floor_cost is not None and seat_ok
+            and gold >= int(c1_floor_cost))

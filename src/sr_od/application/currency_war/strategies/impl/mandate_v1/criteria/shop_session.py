@@ -108,13 +108,25 @@ def anchor_gold_ledger_if_new_visit(gs: GameState) -> bool:
     visit 判重 = ``cw4_segment_serial`` 对比(生产 op 观察 node 与 sim
     驱动器两路均在访问入口 +1,单一锚定信号——覆盖会话入口/刷新重进/
     受限访问帧三类实读时点)。锚定值 = 该帧 ``gs.gold``(入口观察刚写入
-    的实读真值)。"""
+    的实读真值)。
+
+    漏账偏差侦测(锚定位留痕):锚定前账面非 None ∧ 与实读不等 ⇒ 计数
+    ``gold_ledger_drift``(+``gold_ledger_drift_last_delta`` 末次差值)
+    ——伴生记账漏项/失效族缺口的 telemetry 可见面,差值符号与幅度供
+    实机 reconcile 归因(正偏差 = 漏计收入侧,负偏差 = 漏计支出侧)。"""
     st = state_of(gs)
     serial = st.cw4_segment_serial
     if st.gold_ledger_visit_serial == serial:
         return False
     st.gold_ledger_visit_serial = serial
-    st.gold_ledger = gold_of(gs)
+    fresh = gold_of(gs)
+    if st.gold_ledger is not None and st.gold_ledger != fresh:
+        ct = st.cw4_counters
+        if isinstance(ct, dict):
+            ct['gold_ledger_drift'] = ct.get('gold_ledger_drift', 0) + 1
+            ct['gold_ledger_drift_last_delta'] = \
+                int(fresh) - int(st.gold_ledger)
+    st.gold_ledger = fresh
     return True
 
 
