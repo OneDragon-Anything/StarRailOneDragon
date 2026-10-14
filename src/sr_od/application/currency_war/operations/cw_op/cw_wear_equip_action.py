@@ -86,8 +86,6 @@ class CwActionWearEquipOp(CwOperation):
             pass
         ex._op.park_cursor(after_wait=0.1)
         # —— 自上报(机械发出后;op-layer.md §1.2)——
-        # (session 死形参已在 3.2 评审随 kernel 侧摘除——同族 sell_bench
-        #  调用点同步清成三参形态,本点为漏清残留,对齐。)
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_wear_equip_param(

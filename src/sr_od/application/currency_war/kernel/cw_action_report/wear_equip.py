@@ -16,7 +16,8 @@
 
 拒绝语义(布尔契约,统一回声;拒绝 = 零写 + 留存证据,禁半写):
 - owned 无该件 → ``wear_item_not_owned``(合法穿戴前置,漏 = 计划失效);
-- 目标角色不在册(char_name 空按 (row, slot) 现读;槽空/未命中)→
+- 目标槽位解析失败(越界/空槽/在位者与 char_name 不符 = 陈旧提案;
+  计划步恒戳物理槽位锚,定位序见 :func:`_locate_unit`)→
   ``wear_target_unit_missing``(front-only 回退步拖空槽 avatar = 游戏
   侧静默拒,上报如实拒);
 - 合成后仍超 ``WEAR_LIMIT`` → ``wear_over_cap_rejected``(上限按合成后
@@ -71,11 +72,18 @@ def _wear_synthesis(equips: list[str]) -> list[str]:
 def _locate_unit(gs: GameState, param: Any) -> tuple[str, int, Unit] | None:
     """定位穿戴目标单位。
 
-    定位序 = char_name 在册名匹配(bench → deployed 全域,
-    合法穿戴前置 = 计划指名;char_name 空 = front-only 回退步,按
-    (row, slot) 现读)。[索引定义] row ∈ 'front'|'back'(词表通用声明),
-    slot = 画面物理槽位 1 基,deployed 域 = DeployedView 子表下标 + 1
-    (位置 = 子表下标派生);bench 域 = BenchView 槽序
+    定位序 = **物理槽位锚先行**:计划步恒戳 (row, slot)
+    (``cw_equip_wear_plan`` M7 分配自 deployed 视图派生 / front-only
+    回退步空槽序),且机械拖拽的真实落点 = 该槽位 avatar——账随拖点走。
+    同名角色跨域在场(deployed + bench 各一份)时,名匹配 bench 先序会
+    记到**另一个**单位身上:席上副本穿满 → 超限拒单零写 → 决策环同
+    输入重派无限自旋(sim 实证);实机同构时账面与画面分裂(下一入口
+    观察失配)。槽位解析失败/在位者身份与 char_name 不符 = 陈旧提案,
+    拒单(禁静默按名改目标)。row/slot 缺省(row 空)的调用面走原名
+    匹配回退(bench → deployed 全域,char_name 空按槽位现读的原
+    front-only 形态已被槽位先行覆盖)。[索引定义] row ∈ 'front'|'back'
+    (词表通用声明),slot = 画面物理槽位 1 基,deployed 域 = DeployedView
+    子表下标 + 1(位置 = 子表下标派生);bench 域 = BenchView 槽序
     (视图槽 i ↔ 画面槽位 i+1)。
 
     Returns:
@@ -84,13 +92,25 @@ def _locate_unit(gs: GameState, param: Any) -> tuple[str, int, Unit] | None:
     char_name = str(getattr(param, 'char_name', '') or '')
     row = str(getattr(param, 'row', '') or '')
     slot = int(getattr(param, 'slot', 0) or 0)
+    view = gs.deployed.value
+    if view is not None and row in ('front', 'back') and slot >= 1:
+        sub = (view.front_slots if row == 'front'
+               else view.back_slots) or []
+        if 1 <= slot <= len(sub):
+            u = sub[slot - 1]
+            if u is not None and (not char_name
+                                  or u.char_id == char_name):
+                return (('front_row' if row == 'front' else 'back_row'),
+                        slot - 1, u)
+        # 槽位已戳但解析不得(越界/空槽)或身份不符 = 陈旧提案,如实拒
+        #(零写交回重派,下帧计划重戳新槽位);禁回退名匹配静默改目标。
+        return None
     bench_view = gs.bench.value
     if char_name and bench_view is not None:
         for i, s in enumerate(bench_view.slots):
             if (s is not None and s.kind == 'unit' and s.unit is not None
                     and s.unit.char_id == char_name):
                 return ('bench', i, s.unit)
-    view = gs.deployed.value
     if view is not None:
         for key, sub in (('front_row', view.front_slots),
                          ('back_row', view.back_slots)):
@@ -98,11 +118,6 @@ def _locate_unit(gs: GameState, param: Any) -> tuple[str, int, Unit] | None:
                 for i, u in enumerate(sub or []):
                     if u is not None and u.char_id == char_name:
                         return (key, i, u)
-            elif ('front' if key == 'front_row' else 'back') == row \
-                    and 1 <= slot <= len(sub or []):
-                u = (sub or [])[slot - 1]
-                if u is not None:
-                    return (key, slot - 1, u)
     return None
 
 
@@ -133,8 +148,9 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
                                    sig: ChannelSig) -> LogicOutcome:
     """穿装备上报(穿戴原子,发出即记账):owned −1 + worn 集穿着即合成
     + 目标单位所在域整表重建单写(equips 随对象)。row/slot = 画面
-    物理槽位(词表定义),目标定位 = ``_locate_unit`` 全域定位(bench/
-    前排/后排;3.2 起 tracked 第二账停用,主域单点)。
+    物理槽位(词表定义;计划步恒戳,机械拖拽落点),目标定位 =
+    ``_locate_unit`` 槽位锚先行 + 无槽位调用面名匹配回退
+    (3.2 起 tracked 第二账停用,主域单点)。
 
     拒绝分支(零写 + 留存证据,布尔契约见模块头):owned 无件 / 目标不在册 /
     合成后超上限。``board_changed`` 事实事件仅 applied 出口广播

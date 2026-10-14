@@ -117,11 +117,12 @@ def _build_equip_wear_plan(session: Any,
     """装备穿戴计划产出位(分发段;C1 计划随指令下发)。
 
     事实源 = **容器 game state 读口**(黑板帧停用
-    阶段 3.2 换源):owned ← ``gs.equips``、occupied ← ``gs.occupied_equips``
-    (键 'front:1' 形态)、deployed ← 容器上阵视图 ``gs.deployed``、
-    后排选档 ← ``gs.back_layout`` Field 原值;写者单一源 = cw_screen_prep
-    观察装配点(装备域采集单一源 = ``obs.cw_observe_full.observe_full``
-    heavy)。
+    阶段 3.2 换源):owned ← ``gs.equips``、deployed ← 容器上阵视图
+    ``gs.deployed``、后排选档 ← ``gs.back_layout`` Field 原值;写者单一源
+    = cw_screen_prep 观察装配点(装备域采集单一源 =
+    ``obs.cw_observe_full.observe_full`` heavy)。已穿槽位(occupied)自
+    deployed 视图 ``unit.equips`` 逻辑推导——输入源换源,动机见函数体
+    「已穿槽位输入源」注;不读 ``gs.occupied_equips`` 观察面。
     本函数**零读屏**:原对执行帧现读三路
     owned/occupied/deployed 停用 = 调用位置迁移——识别函数本体归观察链
     复用(识别机制不出端口,obs.cw_observe_full 采集);kernel 判据单一
@@ -140,9 +141,10 @@ def _build_equip_wear_plan(session: Any,
     「构造点唯一」契约维持:唯一构造点 = 本函数。
 
     失读通道(契约保真位,与 empty_reason 合法稳态禁并用):黑板帧缺失 /
-    owned None(模板库或装备区 rect 缺失)/ occupied None(TM grays 缺失)
-    → fail_reason 通道(未发出,标志不置位,下帧重派;资源缺失原因在采集层
-    observe_full log 留存证据,此处 fail_reason 保留分键关键词)。
+    owned None(模板库或装备区 rect 缺失)→ fail_reason 通道(未发出,
+    标志不置位,下帧重派;资源缺失原因在采集层 observe_full log 留存
+    证据,此处 fail_reason 保留分键关键词)。occupied 观察面失读不关本门
+    (输入源已换逻辑推导,见函数体「已穿槽位输入源」注)。
 
     **签名边界**:形参 = (session, registry)(ctx 鸭子形参收窄为决策链可达两件:
     session 黑板帧/
@@ -164,10 +166,11 @@ def _build_equip_wear_plan(session: Any,
     )
 
     # ===== 事实源前置(容器现读,零读屏;fail_reason 通道)=====
-    # 全面换源(黑板帧停用):owned/
-    # occupied/back_layout/deployed 四路输入全部改容器读口,黑板帧
-    # (gs.prep_obs)消费清零。None 语义映射 = 容器 Field 未观察(None)
-    # = 识别域未就绪,fail 门保守关方向与旧黑板 None 逐位同。
+    # 全面换源(黑板帧停用):owned/back_layout/deployed 输入改容器
+    # 读口,黑板帧(gs.prep_obs)消费清零;occupied 起初同批读
+    # gs.occupied_equips 观察面,后随零读屏决策环换逻辑推导(见下注)。
+    # None 语义映射 = 容器 Field 未观察(None)= 识别域未就绪,
+    # fail 门保守关方向与旧黑板 None 逐位同。
     from sr_od.application.currency_war.kernel.cw_game_state import (
         game_state_of,
     )
@@ -178,25 +181,33 @@ def _build_equip_wear_plan(session: Any,
             fail_reason='装备观察域未就绪:owned'
                         '(cw_equip 模板库未加载/区域-道具装备 缺失)')
     owned_names = list(_owned_v)
-    _occupied_v = _gs_c.occupied_equips.value
-    if _occupied_v is None:
-        return EquipPlanBuild(
-            fail_reason='装备观察域未就绪:occupied'
-                        '(cw_equip TM grays 未加载)')
-    # occupied 容器键 'front:1' 形态 → 求值键 (row, 物理槽位 1-based)
-    # (坐标系正本 = cw_prep_actions.PrepObservation.occupied_equips 声明);
-    # 防御拷贝(计划求值全程本地态,禁反向污染容器)。
-    occupied_all: dict = {(key.split(':', 1)[0], int(key.split(':', 1)[1])):
-                          list(names)
-                          for key, names in _occupied_v.items()}
+    # 上阵视图现读(deployed 单字段完整槽位表,
+    # 行内槽号 = 子表下标派生)
+    deployed_view = _gs_c.deployed.value
+    # 已穿槽位输入源 = 逻辑态推导(原 = gs.occupied_equips 观察面):
+    # 单动作决策循环(ADR-0517「入口单次观察 + 期望态投影承载」)环内
+    # 零读屏,决策输入必须由动作上报投影——观察面无穿戴写端,visit 内
+    # 恒为入口快照,与 kernel 穿戴上限判据(unit.equips 逻辑面,随每笔
+    # 穿戴上报活更新)双基分裂:分配器按过期容量持续派发 → kernel 拒
+    # (零写)→ 同输入重派 → 无限重建计划自旋(sim 挂栈实证;实机入口
+    # 快照同形潜伏)。换源后分配容量与 kernel 上限同基,自旋结构性消灭。
+    # 实机入口观察仍写 occupied_equips 观察面(记录/reconcile 面不变),
+    # 逻辑账由入口对账纠偏语义照旧。键坐标系与观察面同构
+    # ((row, 物理槽位 1-based));空装槽位不入表(与采集层
+    # read_row_equipped「空槽不在 dict」同形,front-only 空槽检测语义
+    # 不变);防御拷贝(计划求值全程本地态,禁反向污染容器)。
+    occupied_all: dict = {}
+    if deployed_view is not None:
+        for _rn, _sub in (('front', deployed_view.front_slots),
+                          ('back', deployed_view.back_slots)):
+            for _i, _u in enumerate(_sub or []):
+                if _u is not None and _u.equips:
+                    occupied_all[(_rn, _i + 1)] = list(_u.equips)
     # back_layout 读 Field 原值:None(未观察) = 布局未知双弃权帧,有值 =
     # 槽数(禁 back_capacity_of——其 None→6 缺省翻转弃权语义);
     # 依据 = 迭代详设 obs-retirement §阶段 3.2-4。
     _bk_raw = _gs_c.back_layout.value
     _bk_n = int(_bk_raw) if _bk_raw is not None else None
-    # 上阵视图现读(deployed 单字段完整槽位表,
-    # 行内槽号 = 子表下标派生)
-    deployed_view = _gs_c.deployed.value
     _has_deployed = deployed_view is not None and any(
         u is not None
         for u in list(getattr(deployed_view, 'front_slots', None) or [])
@@ -340,8 +351,8 @@ def _build_equip_wear_plan(session: Any,
                 owned_wearable_names=wearable)
         # 21 号稿 §2.3 消费位逐件化(v3,S6/B1):帧级布尔 hold 改
         # 件级判定——同帧可「自由件穿+key 命中穿+保留域件扣」并存。
-        # free_slot = O2 门输入(存在有空装备槽的在场角色;源 = 入口
-        # 观察产物 occupied_equips,非现读)。
+        # free_slot = O2 门输入(存在有空装备槽的在场角色;源 = 已穿
+        # 槽位逻辑推导面,见函数体「已穿槽位输入源」注)。
         _free_slot_any = any(len(v) < EQUIP_CAPACITY
                              for v in occupied_m7.values())
         _releasable = [n for n in wearable
@@ -405,8 +416,9 @@ def _build_equip_wear_plan(session: Any,
                               owned_wearable_names=wearable)
     # ===== front-only 回退分支(身份读失败 fallback;key_equips
     # 优先;求值块自 op 整体搬迁,一并计划化不设豁免)=====
-    # 前排已穿槽 = 入口观察产物 occupied_equips 的前排切片(键坐标系
-    # 同采集层;原 read_row_equipped 现读停用)。
+    # 前排已穿槽 = 已穿槽位逻辑推导面的前排切片(键坐标系同采集层
+    # 形态;原 read_row_equipped 现读与 occupied_equips 观察面读均已
+    # 停用)。
     occupied = {slot: names for (row, slot), names in occupied_all.items()
                 if row == 'front'}
     if occupied:
