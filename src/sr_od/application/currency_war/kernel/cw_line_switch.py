@@ -1,34 +1,26 @@
-"""换线判据:E_rounds 比较 + θ 滞回 + D_min 驻留(DESIGN §③)。
+"""线可行性原语:E_rounds 估计与线距(候选-锁定制批 3.7 后的保留面)。
 
-设计=唯一规格:无定型姿态设计件 §③。
+批 3.7 退役申报(迭代 2026-10-12-prep-shop-workflow-redesign;
+line_and_upgrade §1.6 退役面首行):原换线判据(θ 滞回 + D_min 驻留
+切换裁决 ``should_switch_e`` 与辖域门 ``switch_allowed``)已随候选-
+锁定制退役删除(锁定为一次性决策,无换目标 ⇒ 无换线判据对象;
+registry 四参数 line_switch_enabled/theta/debias_delta/min_dwell 同批
+撤账)。本模块保留项(在产消费面):
+
+- ``tier_progress``/``line_distance``/``e_rounds``:线距与期望轮数
+  估计——P1 配方链三姊妹门(门槛/易手可行性/超窗出口)与
+  cw_recipe 双轨派生消费;
+- ``shop_supply``/``_P2_NODE_TEMPLATE``/``node_loss_kind``:供给门与
+  节点型归一——cw_first_passage 掉血分布消费。
+
 核心公式(候选线 c,候选集=过渡引擎池方向):
 
     distance(c) = need(c) − held(c) − shelf(c)   # 需求张数 − 持有 − 货架可见可买
     E_rounds(c) ≈ distance(c) / per_round(c)
     per_round(c) = (1 + 可负担刷次数) × p̄(c, lv) # 自然刷 1 次/轮 + 买刷;截断到 bench 空位
 
-p̄ 同超几何模型(cw_shop_odds P5 表实值;同 ``ev_proto.p_at_least_one`` 构型:
-每格独立,P(格=该费用)=p;给定 m 格该费用,P(至少一张目标)=1−C(同费非
-目标,m)/C(同费总,m))。**p̄ 乐观偏差**:理论满池值未扣 NPC 消耗/争夺,
-系统性偏乐观 10-20%——判据先修偏再比较:双线 E_rounds 同乘 (1+δ)
-(registry.line_switch_debias_delta,默认 0.15),θ(registry.line_switch_theta,
-默认 1.0 轮)只承载去偏后的剩余噪声(DESIGN §③)。
-
-切换条件(滞回 + 驻留):
-
-    E_rounds(alt)×(1+δ) + θ < E_rounds(cur)×(1+δ)  且 当前线驻留 ≥ D_min=2
-
-(D_min 压振荡频率硬上限至 1/(2·D_min);退化情形双 inf → 维持原线。)
-
-与 drought bail 的关系(DESIGN §附4):**或-并存**——E_rounds 比较为主判据,
-N=5 连续 shop_supply<1.0 的经验观测保留为独立旁路(drought_excluded 死线
-名单语义不变):E_rounds=inf 是静态池数学,检测不了「理论可达、实测断供」
-的线,后者只有经验观测能测;两路任一触发即弃线。
-
-切换成本:1★ 卖出全额退成本(cw_state.sell_refund)→ 凑齐羁绊前换线近乎
-零成本,唯一真实成本=2★ 已合成件折价(−1 金)与 bench 机会成本;D_min 之外
-无需额外切换税(DESIGN §③)。辖域=位面前中段;末窗禁换是设计内辖域声明
-(末窗的线选择由投影血量判据下的找件 EV 接管)。
+p̄ 同超几何模型(cw_shop_odds P5 表实值;**p̄ 乐观偏差**:理论满池值未扣
+NPC 消耗/争夺,系统性偏乐观 10-20%,消费侧方向判读时知悉)。
 """
 from __future__ import annotations
 
@@ -40,7 +32,6 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     bench_free_slots,
     gold_of,
     level_of,
-    round_num_of,
     shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_registry import (
@@ -195,41 +186,6 @@ def e_rounds(comp: Comp, gs: GameState,
     rolls = min(affordable, bench_free)    # 买刷截断到 bench 空位
     per_round = (1 + rolls) * p
     return dist / per_round
-
-
-def switch_allowed(gs: GameState, session: StrategySession) -> bool:
-    """辖域门:位面前中段可换;末窗禁换(设计内辖域声明,DESIGN §③)。
-
-    末窗=本位面末 3 轮(9 轮位面即 r≥7;7 轮位面 P2 即 r≥5)——末窗换线
-    = 丢弃已成形板面战力追 0-progress 新线,且 D_min=2 驻留在末窗等价于
-    禁换;真值源=``cw_plane_table.nodes_of_plane``(位面轮数)。
-    """
-    from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
-    return round_num_of(gs) <= nodes_of_plane(session) - 3
-
-
-def should_switch_e(e_cur: float, e_alt: float, dwell_rounds: int,
-                    registry: DecisionV2Registry | None = None) -> tuple[bool, str]:
-    """切换裁决(纯数):输入双线 E_rounds 与当前驻留轮数。
-
-    返回 (是否切换, 理由串)。条件:E(alt)×(1+δ)+θ < E(cur)×(1+δ)
-    且 dwell≥D_min;退化情形双 inf → 维持原线(理由 'both_inf');
-    e_cur=inf 且 e_alt 有限 = 原线静态不可达,不等式恒真(仍受 D_min 辖)。
-    """
-    reg = registry or DEFAULT_REGISTRY
-    if not math.isfinite(e_alt):
-        return False, 'alt_inf'
-    if math.isfinite(e_cur) and math.isfinite(e_alt):
-        if e_cur <= 0:
-            return False, 'cur_done'
-    k = 1.0 + reg.line_switch_debias_delta
-    lhs = e_alt * k + reg.line_switch_theta
-    rhs = e_cur * k if math.isfinite(e_cur) else math.inf
-    if not lhs < rhs:
-        return False, 'theta'
-    if dwell_rounds < reg.line_switch_min_dwell:
-        return False, f'dwell({dwell_rounds}<{reg.line_switch_min_dwell})'
-    return True, 'ok'
 
 
 #: P2 位面节点模板(economy.md §10.2;表缺/位面锚不符时的投影回退):

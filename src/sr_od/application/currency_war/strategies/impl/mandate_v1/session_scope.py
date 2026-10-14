@@ -183,11 +183,15 @@ def _direction_signature(gs: GameState, st: StrategyState) -> tuple:
     """方向证据签名(line_and_upgrade §3 步骤 1)。
 
     构成 = 持有名单(备战席 ∪ 场上,(char_id, star) 多重集,排序成序)
-    + 装备持有 + 投资效果集(active_strategies)+ 等级 + 节点号 + 锁定态。
-    为什么等级入签名:店内整级购买经验后等级变 → 概率表变 → 候选分数
-    与刷新判据期望全变,消费旧等级概率 = 评估陈旧(设计原文)。锁定态
-    入签名:锁定写入为一次性事件,写入后签名含锁定标志、此后只读。
-    签名只做相等比较(幂等跳过判据),持有名单排序保证顺序无关。
+    + 装备持有 + 投资效果集(active_strategies)+ **投资环境
+    (active_env)** + 等级 + 节点号 + 锁定态。为什么等级入签名:店内
+    整级购买经验后等级变 → 概率表变 → 候选分数与刷新判据期望全变,
+    消费旧等级概率 = 评估陈旧(设计原文)。env 入签名(review-37 R1):
+    环境分级与策略型锁定消费 held_invest(strategies ∪ env),env 变
+    化而签名其余分量不变时幂等跳过会漏重算(评分/锁定延迟到下一
+    签名变化帧)。锁定态入签名:锁定写入为一次性事件,写入后签名含
+    锁定标志、此后只读。签名只做相等比较(幂等跳过判据),持有名单
+    排序保证顺序无关。
     """
     held = sorted((u.char_id, int(u.star)) for u in _held_units(gs))
     equips = gs.equips.value or ()
@@ -196,6 +200,7 @@ def _direction_signature(gs: GameState, st: StrategyState) -> tuple:
         tuple(held),
         tuple(sorted(equips)),
         tuple(sorted(strategies)),
+        gs.active_env.value or '',
         int(level_of(gs)),
         effective_node_pos(gs),
         st.target_comp,
@@ -226,17 +231,27 @@ def _sync_derived_lock_cache(st: StrategyState) -> None:
 def _update_p2_pick_done(gs: GameState, st: StrategyState) -> None:
     """时点兜底触发腿之二:P2 起首次投资策略三选一完成侦测(§1.4)。
 
-    「完成帧」的判读层实现 = P2 首帧快照 active_strategies 基线,其后
+    基线 = **P1 滑动基线**(每次 P1 帧刷新持续覆写,进 P2 冻结)——
+    P1 期间获得的策略(白银投资类加场卡)入基线不计增长;进 P2 后的
     集合增长(投资策略获得——上报链写 active_strategies,决策帧刷新
-    观察到增长)即置位;单调旗标,置位后不再维护(锁定后无消费面)。
-    增长来源不区分选卡/节点赠得(P2 段下一笔策略获得的压倒性形态 =
-    开局三选一;两者对「策略已定 → 可兜底锁线」语义等价,裁量申报)。
+    观察到)即置位。为什么滑动而非「P2 首帧快照」(review-37 R2):
+    P2 开局三选一先于首个 P2 决策帧完成时,首帧快照会把该笔获得吞进
+    基线(兜底退化为第二笔获得帧);滑动基线以 P1 末次刷新快照冻结,
+    首笔 P2 获得照常侦测为增长。单调旗标,置位后不再维护(锁定后无
+    消费面)。防御位:P2 首帧前无任何 P1 刷新帧(接管局)时基线以
+    首帧现值兜底捕获——该帧前的获得不可辨(保守侧:不触发,等下一
+    笔增长)。增长来源不区分选卡/节点赠得(P2 段下一笔策略获得的
+    压倒性形态 = 开局三选一;两者对「策略已定 → 可兜底锁线」语义
+    等价,裁量申报)。
     """
-    if not st.plane2_started or st.p2_strategy_pick_done:
-        return
     current = frozenset(gs.active_strategies.value or ())
+    if not st.plane2_started:
+        st.p2_pick_baseline = current   # P1 滑动基线(进 P2 冻结)
+        return
+    if st.p2_strategy_pick_done:
+        return
     if st.p2_pick_baseline is None:
-        st.p2_pick_baseline = current
+        st.p2_pick_baseline = current   # 防御位:P2 首帧前无 P1 帧(接管局)
         return
     if current - st.p2_pick_baseline:
         st.p2_strategy_pick_done = True
@@ -355,16 +370,25 @@ def line_members_view(gs: GameState) -> LineMembersView:
 def direction_comp_of(gs: GameState) -> Comp | None:
     """现行方向 comp 读口(§1.6 消费面分派的组合读形态;批 3.7)。
 
-    = 锁定线(``target_comp``,终局面)优先;未锁定期回落过渡配方
-    开局面(``opening_recipe_comp``,P1 配方物化链产物)。两键都空
-    (P1 空窗/P2+ 未锁窗口)= None——无方向帧由 K 空窗回退
+    = 锁定线(``target_comp``,终局面)优先;**P1 未锁帧**回落过渡
+    配方开局面(``opening_recipe_comp``,配方物化链产物——窗口谓词
+    辖,P2 起配方面出辖、进 P2 时由 ``clear_p1_recipe`` 同点清空)。
+    两键都空(P1 空窗 / P2+ 未锁窗口)= None——无方向帧由 K 空窗回退
     (``cw_intention.k_empty_window_fallback``)承接。「现行方向」类
     消费位(flow pick 族/部署围栏 k_members/工具面/商店序 1 名单)
     统一经本读口,禁消费点自拼两键优先级(第二读口径)。
+
+    防御双保险(review-37 P1):``plane2_started`` 帧**禁回落配方键**
+    ——即使清空写端因时序未及(如 P2 首帧先于 flow 贵段),读口也
+    不消费过期 P1 配方(P2 未锁窗恒走「无方向 → K 空窗回退 p2plus
+    带」)。
     """
     st = state_of(gs)
-    return st.target_comp if st.target_comp is not None \
-        else st.opening_recipe_comp
+    if st.target_comp is not None:
+        return st.target_comp
+    if st.plane2_started:
+        return None
+    return st.opening_recipe_comp
 
 
 # ============================================================ 商店会话标记与机会清单存储(契约 A)

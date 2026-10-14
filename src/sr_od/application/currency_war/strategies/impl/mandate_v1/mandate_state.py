@@ -382,10 +382,13 @@ class StrategyState:
     # 跳过的判据):签名同值跳过重算;节点边界重置置 None 失效(强制
     # 下帧重算)。写入端单一源 = session_scope.refresh_line_if_needed。
     line_eval_signature: tuple | None = None
-    # [索引定义] p2_pick_baseline = P2 首帧的 active_strategies 快照
-    #(frozenset;None = 尚未进入 P2);取值时机 = P2 首次方向重算帧现读
-    #(写入端单一源 = session_scope._update_p2_pick_done)。非节点作用域
-    # 键(时点兜底触发腿的单调事实基线,节点边界不清)。
+    # [索引定义] p2_pick_baseline = P2 选卡完成侦测基线(frozenset;
+    # None = 尚无任何方向重算帧)。取值时机 = **P1 滑动基线**(每次 P1
+    # 方向重算帧现读覆写,进 P2 冻结——P1 期间获得的策略〔加场卡〕入
+    # 基线不计增长;review-37 R2:P2 首帧快照会把先于首决策帧完成的
+    # 开局三选一吞进基线)。写入端单一源 =
+    # session_scope._update_p2_pick_done。非节点作用域键(时点兜底
+    # 触发腿的单调事实基线,节点边界不清)。
     p2_pick_baseline: frozenset[str] | None = None
     # [索引定义] p2_strategy_pick_done = P2 起首次投资策略获得(「第 10
     # 结点起首次投资策略三选一完成帧」的判读层侦测:active_strategies

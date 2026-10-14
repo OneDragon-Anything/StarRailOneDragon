@@ -221,8 +221,11 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             _ms.v3_intention_key = key
             if not session_scope.plane2_started_of(state):
                 update_p1_recipe(state, ist, self.registry)
-            elif getattr(ist, 'p1_pair', ()):
-                clear_p1_recipe(ist)
+            else:
+                # 进 P2:配方锁退场 + 开局面键同点清空(写端单一出口,
+                # review-37 P1——P2 未锁窗禁消费过期 P1 配方;幂等,
+                # 空对/已清帧 no-op)。
+                clear_p1_recipe(ist, _ms)
         self._refresh_direction_views(state, _ms)
 
     def _refresh_direction_views(self, state: GameState,

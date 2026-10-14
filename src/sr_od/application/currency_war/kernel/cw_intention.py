@@ -24,6 +24,7 @@ comp 锁定状态机(信号分层锁线/撤销出口①②③/P2 移交强锁/P3
 """
 from __future__ import annotations
 
+import contextlib
 import math
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -1290,10 +1291,14 @@ def update_p1_recipe(gs: GameState, ist: IntentionState,
     return ist
 
 
-def clear_p1_recipe(ist: IntentionState) -> None:
+def clear_p1_recipe(ist: IntentionState, st: object = None) -> None:
     """进 P2:配方锁退场(解冻闭集出口②「位面末」;清除 ⟹ F 同帧归 0)。
 
     位面辖域由调用侧窗口谓词判定后调用一次(幂等:空对帧 no-op)。
+    ``st``(可选,策略器状态鸭子参数)非空时**同点清空
+    ``opening_recipe_comp``**——配方物化链写端被 P1 窗口守卫辖,进 P2
+    后永不再写,不清则 P2 未锁窗读口消费过期 P1 配方(review-37 P1:
+    direction 读口「两键都空」契约与 K 空窗回退 p2plus 带可达性)。
     """
     if ist.p1_pair:
         ist.p1_pair = ()
@@ -1301,6 +1306,11 @@ def clear_p1_recipe(ist: IntentionState) -> None:
         ist.p1_pair_frozen_pair = ()
         ist.p1_pair_refreeze_hold = ()
         ist.last_event = 'p1_pair:exit_p1'
+    if st is not None:
+        # 开局面键同点清空(写端单一出口;读侧 plane2 守卫 = 防御双保险)。
+        # 异型状态对象(第三方策略面)缺属性 = 无键可清,吞异常。
+        with contextlib.suppress(Exception):
+            st.opening_recipe_comp = None
 
 
 def _line_hoard(comp: Comp) -> tuple[set[str], set[str]]:

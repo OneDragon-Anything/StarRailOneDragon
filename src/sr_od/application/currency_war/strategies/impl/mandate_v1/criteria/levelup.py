@@ -423,9 +423,6 @@ def upgrade_trigger(gs: GameState, session: StrategySession,
         level_of,
         max_units_of,
     )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
-        state_of,
-    )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
         predicates,
     )
@@ -440,17 +437,18 @@ def upgrade_trigger(gs: GameState, session: StrategySession,
     if cap is not None and predicates.arm1_existence(
             len(deployed), bench_names, deployed_names, cap):
         return True, ARM_POPULATION
-    # ② arm0(need > level;k_members = 锁定线名单,未锁定回退现行
-    # target_comp 物化链产物——3.7 键面归一并前的现行为等价口径;
-    # bench 输入 = 占席条目域〔arm0_need 解包口径〕)。
-    k_members = predicates.line_members(
-        getattr(state_of(session), 'target_comp', None))
+    # ② arm0(need > level)。k_members 解析:锁定态 = 锁定线名单;
+    # 未锁定期 target_comp = None(锁定线槽空)⇒ 成员集恒空 ⇒ arm0
+    # 名义在列、实际仅锁定后可触发(review-37 R3:设计 §2.1 将 arm0
+    # 列为未锁定期触发之一,实现辖域 = 锁定后——未锁定期无星级目标
+    # 语义承载〔旧配方伪 comp need_star 基本为空,行为差近零〕,
+    # 张力申报随正本更新批;bench 输入 = 占席条目域〔arm0_need
+    # 解包口径〕)。
     from sr_od.application.currency_war.strategies.impl.mandate_v1.session_scope import (
         line_members_view,
     )
     view = line_members_view(gs)
-    if view.locked:
-        k_members = view.members
+    k_members = view.members if view.locked else ()
     arm0, _key = predicates.arm0_level_lag(
         level_of(gs), gs.level.value is not None,
         deployed, list(bench_entries_of(gs)), k_members, cap)

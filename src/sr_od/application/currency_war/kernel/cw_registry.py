@@ -726,16 +726,10 @@ class DecisionV2Registry:
     #: 边际战力代理 Δhp·boss 层(裸差分,hp/场;P1 boss 全在 r9 轮次混杂极小,
     #: 末窗旗杆帧的正确语料层——DESIGN §①)
     delta_hp_boss: float = 4.30
-    #: 换线判据总开关(False=回 W332b 前行为;E_rounds 主判据 A/B 通道)
-    line_switch_enabled: bool = True
-    #: 切换阈值 θ 轮(滞回余量;只承载去偏后的双向估计噪声,不兼职补偏差
-    #: ——DESIGN §③修订 2)
-    line_switch_theta: float = 1.0
-    #: p̄ 乐观偏差修正 δ(NPC 消耗/争夺上界估计;双线 E_rounds 同乘 (1+δ)
-    #: 先修偏再比较——DESIGN §③修订 1)
-    line_switch_debias_delta: float = 0.15
-    #: 当前线最短驻留轮 D_min(压振荡频率硬上限至 1/(2·D_min);DESIGN §③修订 3)
-    line_switch_min_dwell: int = 2
+    # (换线判据四参数族 line_switch_enabled/theta/debias_delta/min_dwell
+    #  已随候选-锁定制批 3.7 撤账——迭代 2026-10-12-prep-shop-workflow-
+    #  redesign;line_and_upgrade §1.6 退役面:唯一消费者 should_switch_e
+    #  同批删除,锁定一次性决策无换线判据对象。)
     # (release 帧活栈消费门开关已随 第 4 态清理:开臂
     # A/B 结案,消费门恒接线,判据单一源 = posture_release 消费门活值,
     # 读 strategy_state_of(session).v3_release;旧开关/字段名见该 ADR。)
