@@ -1238,6 +1238,9 @@ class SimBackend:
         opts = (self.gs.invest_env_opts.value if opening
                 else self.gs.invest_strategy_opts.value) or []
         (self.excluded_env if opening else self.excluded_invest).update(opts)
+        # 「选择后」旗牌即时反映(裁定 2026-10-14);开局环境选卡时
+        # 节点未进窗(node None),写点内早退。
+        self._update_difficulty_flag()
         self._after_modal_pick(opening=opening)
 
     def _on_open_box(self) -> None:
@@ -1459,6 +1462,10 @@ class SimBackend:
             return
         self._window_begun_pos = pos_key
         kind = node_sequence_of(plane, self.gs.node_seq_by_plane.value)[r - 1]
+        # 备战旗牌难度观察(裁定 2026-10-14):窗开即旗牌可见时点,
+        # 上窗以来状态变动(连胜/选卡)在此反映;本窗内选卡的即时反映
+        # 由 _on_invest_picked 写点承担。
+        self._update_difficulty_flag()
         # 轮首收入(M04;败局补偿登记待办按 kernel 分支序消费——supply/reward
         # 轮不消费,败态跨轮保留至下一战斗轮;连胜 = 容器带符号派生读)
         pending = self.gs.pending_loss.value
@@ -1697,6 +1704,38 @@ class SimBackend:
                 streak=abs(int(self.gs.streak.value or 0)),
                 encounter_tier=(int(chosen[0])
                                 if chosen is not None else None))))
+
+    def _update_difficulty_flag(self) -> None:
+        """备战旗牌难度观察写点(2026-10-14 用户裁定:sim 对选择后的
+        难度做记录更新——观察面 = 备战画面旗牌读数;live 生产主源 =
+        备战旗牌两级管线,fields.md §3.2.14 语义 = 节点相关观察真值、
+        非单调,难度修改器/简单模式/伟大征服/品质通胀都动它)。
+
+        值 = 局级输入档(``RunConfig.enemy_difficulty``,简报开局基线)
+        + 已定谳修正项(品质通胀/策略静态 Δ/伟大征服连胜项,M19
+        ``difficulty_of`` 派生);U25 基础节点曲线未采,节点间基线移动
+        不在 sim 面(披露键 ``DIFFICULTY_BASE_PENDING_U25`` 在册)。
+        遭遇档恒不入(旗牌住备战帧,遭遇档是遭遇节点内选项维度)。
+        写点 = 节点窗开(状态变动后的下一次旗牌可见)+ 投资选卡落地
+        (「选择后」即时);obs 渠道直写(与 live 旗牌 OCR 同一容器域,
+        同值重写幂等)。局级输入缺省(None)不写——无基线禁出数。
+        """
+        base = self.cfg.enemy_difficulty
+        node = self.gs.node.value
+        if base is None or node is None:
+            return
+        breakdown = difficulty_of(
+            list(self.gs.active_strategies.value or []),
+            node_kind=node.kind,
+            streak=abs(int(self.gs.streak.value or 0)),
+            encounter_tier=None)
+        self.gs.observe(
+            self.gs.enemy_difficulty,
+            int(base + breakdown.quality_bonus + breakdown.special_bonus
+                + breakdown.strategy_delta),
+            evidence=sim_evidence(
+                f'difficulty:flag:p{node.plane}r{node.round_num}'),
+            sig=obs_sig(group_id='sim:difficulty'))
 
     def _resolve_battle(self) -> None:
         """coarse 战斗结算(随机输出面;start_battle/pick_encounter/
