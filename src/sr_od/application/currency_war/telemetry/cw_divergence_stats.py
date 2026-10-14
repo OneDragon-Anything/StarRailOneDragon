@@ -4,7 +4,7 @@
 = candidate_scores top-2 分差(r6 补齐)+ 影子 DP 姿态 vs 生产姿态差(本模块)。
 问询卡/热键应答/GUI 挂实机批;本模块先积累**分歧频率分布**(下局起有语料)。
 
-W446:读端迁移到规范 loader(``cw_replay_reader``)——裸 dict 换类型化
+读端迁移到规范 loader(``cw_replay_reader``)——裸 dict 换类型化
 ``DecisionTrace``,dp_posture 读取统一走 ``posture_tag``(dict/str/载体帧
 长串归一,见该模块 docstring 的实测证据);统计口径不变。
 """

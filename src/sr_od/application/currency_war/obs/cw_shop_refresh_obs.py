@@ -4,15 +4,15 @@
 ``docs/develop/sr_od/application/currency_war/game_state/fields.md`` §3.3.4:刷新费 shop_refresh_cost 的值必须来自商店
 开态刷新钮标价的**现场读数**(识别失败=None,禁兜底改值;免费帧不写,None≠标价 0)。
 历史通道均不复活:面板徽标 OCR 读的是利息数值非刷价(旁证 reader 在
-``cw_observation.read_shop_refresh_cost``);「刷新前后金币差倒推」已退役。本模块与徽标旁证 reader 的名字区分:**price=标价(本模块,写端权威)**,
+``cw_observation.read_shop_refresh_cost``);「刷新前后金币差倒推」已停用。本模块与徽标旁证 reader 的名字区分:**price=标价(本模块,写端权威)**,
 cost=徽标(cw_observation,旁证)。
 
-刷新钮**按钮态**读数(:func:`read_shop_refresh_button`,建档接入):单帧三态
+刷新钮**按钮态**读数(func:`read_shop_refresh_button`,建档接入):单帧三态
 =免费态(「免费刷新」锚+剩余次数)/付费耗尽态(「刷新」+金币图标+标价,白亮钮)/
 不可用灰态(同付费渲染,按钮变暗,金<标价)。免费态次数 = §3.3.6
 效果账本免费余额的 UI 观察通道(实机取证:免费帧按钮渲染「免费刷新」+
-次数数字,次数与「文本-刷新价格」rect 同位——推翻该节「画面无计数控件」旧对拍
-申报,正本更新归设计批)。三态渲染规格与行为实锤出处 =
+次数数字,次数与「文本-刷新价格」rect 同位——推翻该节「画面无计数控件」旧交叉核对
+申报,正本更新归设计批)。三态渲染规格与行为已实测确认出处 =
 ``.debug/currency_war/evidence/20260912_t15_t13_t18/``(免费帧
 t13_free_refresh_available_2left_hist_w591t / 耗尽帧 t13_shop_open_refresh_
 exhausted_2gold_gold61 / 灰态帧 t13_refresh_disabled_gold1_dark_button)。
@@ -85,7 +85,7 @@ def read_shop_refresh_price(ctx: SrContext, screen: MatLike) -> int | None:
     再消费本读数(现役唯一消费点 = cw_observation 商店开态喂入口,已接)。
 
     管线两级(与 ``cw_observation.read_level_up_cost`` 同形):标价为小字目标,
-    全帧 det 必漏(归档帧离线对拍实证:analyze_screen 全帧 OCR 对标价数字
+    全帧 det 必漏(归档帧离线交叉核对实证:analyze_screen 全帧 OCR 对标价数字
     零命中),裁 area 后 3x 放大读;读空再 OTSU 二值化重试(低对比渲染变异帧
     保底;二值化伤彩色小字,不作第一级)。区域 = screen_info
     「货币战争-备战-开商店」屏「文本-刷新价格」area(坐标单一真相源)。
@@ -116,7 +116,7 @@ _COUNT_MAX: int = 9999
 def _parse_free_count(texts: list[str]) -> int | None:
     """免费态次数 rect OCR 文本 → int | None(纯函数可单测)。
 
-    识别结构 = 纯数字渲染(免费帧钮内无金币图标,历史帧 w591t 实证:
+    识别结构 = 纯数字渲染(免费帧钮内无金币图标,历史帧实证:
     「免费刷新」+次数上下两行)——无付费帧的图标并入前缀问题,逐条取首个
     落可信域的整数;全部不可信 → None。
     """
@@ -160,8 +160,8 @@ class ShopRefreshButton:
     - **免费态**(免费余额>0):金色圆钮,钮内「免费刷新」+剩余次数数字;
     - **耗尽态**(余额 0,可负担):白亮圆钮,「刷新」+金币图标+标价;
     - **不可用灰态**(金<标价):渲染与耗尽态**逐字相同**,仅按钮变暗——
-      文本面无法表达。判别面**定谳 = 逻辑面金价对比**(金现读 vs 标价):
-      语义层直编机制规则「置灰⟺金<标价」(行为实锤:灰态点击金/牌
+      文本面无法表达。判别面**已定案 = 逻辑面金价对比**(金现读 vs 标价):
+      语义层直编机制规则「置灰⟺金<标价」(行为已实测确认:灰态点击金/牌
       均不变;金≥标价白亮可点),标价在灰态可读经归档灰态帧真 OCR 实证
       (测试真帧锁)。暗钮模板案 = 表现层拟合,冻结为后备:单帧定阈无鲁
       棒性证据且 UI 改版即碎;触发条件 = 标价通道在灰态持续失读使金价

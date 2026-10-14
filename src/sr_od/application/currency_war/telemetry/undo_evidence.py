@@ -2,7 +2,7 @@
 record 模式,禁第二套机制)。
 
 在库分键:
-- ``sell_breaker_preserved``:W209/卖出熔断撤销面(谁/为何/
+- ``sell_breaker_preserved``:卖出熔断撤销面(谁/为何/
   保留了什么;写入点 = cw_op_deploy off-target 卖出通道的围栏保留分支);
 - ``drought_buy_no_reset``:干旱计数器买入不重置证据面(pair_drought
   重置单一源 = 商店可见性 _update_pair_drought,买入不重置——干旱解锁
@@ -10,7 +10,7 @@ record 模式,禁第二套机制)。
 
 既有覆盖(复用不另建):m2_retry_exhausted / bench_full_buy_abandon /
 shop_churn_pair_buy 等 cw4_counters 族 + 干旱当值内联本证据行
-expected/observed(decisions 行 drought 字段载体已随删除波 1 退役);
+expected/observed(decisions 行 drought 字段载体已停用);
 策略桶受包依赖矩阵限制(strategies→telemetry
 非合法边),店侧熔断 veto 经 cw4_counters 分键承载,证据写入点收敛在
 operations 执行侧。
@@ -25,7 +25,7 @@ from sr_od.application.currency_war.telemetry import defects
 
 def record_sell_breaker_preserved(*, char_id: str, reason: str,
                                    channel: str) -> None:
-    """W209/卖出熔断撤销证据(谁/为何/保留了什么;L2 留证)。
+    """卖出熔断撤销证据(谁/为何/保留了什么;L2 保留证据)。
 
     run 归属由 current_run_id 汇点自取(无需会话入参);
     :param char_id: 被熔断保留的单位(谁);
@@ -44,7 +44,7 @@ def record_sell_breaker_preserved(*, char_id: str, reason: str,
 
 def record_drought_buy_no_reset(*, member: str, system: str,
                                 drought: int) -> None:
-    """干旱计数器买入不重置证据(L2 留证;解锁流程审计面)。
+    """干旱计数器买入不重置证据(L2 保留证据;解锁流程审计面)。
 
     pair_drought 重置单一源 = 商店可见性(cw_intention._update_pair_drought);
     买入体系成员不重置计数——本分键把「买了但没重置」的形态落台账,

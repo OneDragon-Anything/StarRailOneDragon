@@ -1,7 +1,7 @@
 """货币战争 结算屏观测(P1.5 观测回路):战后小队 HP。
 
 结算屏(战斗后「挑战结束/数据统计/继续挑战」)展示战后小队 HP「小队生命值<N>」+ 总伤害等
-(2026-08-05 实跑 OCR 确认形态:['挑战结束','战斗','小队生命值71i','数据统计','连胜×0','继续挑战'])。
+(实跑 OCR 确认形态:['挑战结束','战斗','小队生命值71i','数据统计','连胜×0','继续挑战'])。
 ``parse_settlement_hp`` 纯函数(可单测);``read_round_outcome`` OCR 全屏调它 → ``RoundOutcome``
 (结算观察半直写输入;性能 trend 用)。node_type/comp_tag/plane/round 由调用方(loop)传入
 (结算屏不暴露这些)。
@@ -37,8 +37,8 @@ def parse_settlement_node_type(ocr_texts: list[str]) -> str | None:
     """结算屏节点类型(纯函数;r366)→ 中文标准词或 None。
 
     权威源 = 结算屏自身头部:``挑战成功/挑战结束`` 后 1-4 个 token 内
-    出现的类型词(奖励/战斗/遭遇/补给/首领)。实跑 token 形态(2026-08-22
-    局48 七轮实锤):
+    出现的类型词(奖励/战斗/遭遇/补给/首领)。实跑 token 形态
+    (局48 七轮已实测确认):
     - reward: ['挑战成功','奖励','Lv.3',...]
     - battle: ['挑战成功','1-3X点','战斗','火热连胜×1',...]('1-N'带 OCR 噪声)
     - encounter: ['挑战结束','遭遇','火热连胜×0',...]
@@ -81,9 +81,9 @@ def parse_settlement_round(
         ocr_texts: list[str],
         round_caps: dict[int, tuple[str, ...]] | None = None,
 ) -> tuple[int, int] | None:
-    """结算屏头部「X-Y」→ (plane, round)(纯函数;W28 缺陷①修 a)。
+    """结算屏头部「X-Y」→ (plane, round)(纯函数;缺陷①修 a)。
 
-    relaunch 残留结算屏场景(W23 定因):run 启动首帧即结算屏(上一进程留下),
+    relaunch 残留结算屏场景(根因):run 启动首帧即结算屏(上一进程留下),
     loop 的 last-known plane/round 缓存已被 reset → read_phase_round 兜底 (1,1)
     → 残留屏上的真实轮次(如 r6 结算)被错记成 r1。结算屏**头部自身**带
     「X-Y」轮次标识(实跑 token 形态:['挑战结束','1-6','战斗',...],与
@@ -91,7 +91,7 @@ def parse_settlement_round(
 
     - 只在头部(挑战成功/挑战结束)后 5 token 窗口内找(防误中远处数字对);
     - 值域守卫:plane∈1-3(嵌进正则字符类)+ round ≤ :func:`node_round_cap`
-      (T-8 位面化随场字段:round 字符类放宽两位数 ``\\d{1,2}``——「1-10」
+      (位面化随场字段:round 字符类放宽两位数 ``\\d{1,2}``——「1-10」
       形修饰局结算读数不再整体不匹配;round 上限后置校验,cap None = 回退
       默认长度);位面/轮次越界 = OCR 假阳;
     - 前后不得紧邻数字(``(?<!\\d)``/``(?!\\d)``:防「11-6」这类粘连噪声的子串误取)。
@@ -117,7 +117,7 @@ def parse_settlement_hp(ocr_texts: list[str]) -> int | None:
     防「每损失20点小队生命值获得5」(投资策略描述,偶同屏)误取 20/5。越界(HP_MIN..HP_MAX)→ 丢弃。
     """
     for t in ocr_texts:
-        # OCR 偶 garble「生命值」→「命值」(missing 生);两形态都匹配(2026-08-07 实跑 on_round_end hp=0 根因)。
+        # OCR 偶 garble「生命值」→「命值」(missing 生);两形态都匹配(实跑 on_round_end hp=0 根因)。
         for kw in ('生命值', '命值'):
             if kw in t:
                 m = re.search(kw + r'\s*(\d+)', t)
@@ -128,8 +128,8 @@ def parse_settlement_hp(ocr_texts: list[str]) -> int | None:
     return None
 
 
-# W40:「数据统计」面板伤害列区(结算屏右侧;win/ended 两 fixture 实测校准,
-# 2026-08-25)——「数据统计」标题下方右列,每角色一行伤害值(「396.3万」形,
+#「数据统计」面板伤害列区(结算屏右侧;win/ended 两 fixture 实测校准)
+# ——「数据统计」标题下方右列,每角色一行伤害值(「396.3万」形,
 # 实测 token x∈[1196,1280]、行 y 随上阵数下探;区放宽留边)。1080p 坐标
 # (项目既有前提,截图像素与游戏空间 1:1)。
 _STAT_COL_RECT = (1130, 580, 1310, 860)
@@ -137,7 +137,7 @@ _STAT_COL_RECT = (1130, 580, 1310, 860)
 
 def parse_settlement_assets(ocr_texts: list[str]) -> dict[str, int | None]:
     """结算屏金币存量/等级/经验读数 → {'gold','level','xp_cur','xp_next'}
-    (纯函数,可单测;W971 05-battle §1「结算屏 hp/gold/level 写 session」的
+    (纯函数,可单测;05-battle §1「结算屏 hp/gold/level 写 session」的
     gold/level 读口,期望态结算覆盖点消费)。
 
     证据口径(EXPECTED_STATE.md §1 节引 win 帧亲读):结算页含「金币总览
@@ -196,7 +196,7 @@ def read_settle_gold_opt(ctx: SrContext, screen: MatLike) -> int | None:
     """结算屏右上角金币存量(稳定门版;None = 读不到)。
 
     为什么存在:``parse_settlement_assets`` 的「存量 <N>」锚属旧版结算布局,
-    当前版本 token 流无该词 → 胜局金解析全失败(实锤 run_20260918_084010 结算
+    当前版本 token 流无该词 → 胜局金解析全失败(已实测确认 run_20260918_084010 结算
     帧 .debug/temp/currency_war/redesign/fixtures/settle_ocr/window_batch/
     h_004_084253.png 亲读 + 当日 6/6 胜局读失败警告),战后金真值入口全灭。
     真值实际挂在**右上角货币计数**(同帧实证:计数 11 = 账本 7 + 获得金币
@@ -204,7 +204,7 @@ def read_settle_gold_opt(ctx: SrContext, screen: MatLike) -> int | None:
     稳定门(纪律单一源 = cw_observation.read_gold_settled,`w489_sim_real_gap/`
     审计感知面):计数器可在结算展示期仍在入账滚动(settle_ocr 时序批实测
     165656..165808 帧 9,9,空,空,13),单帧可能拿旧值 → 首读失败补采一帧
-    (渲染未就绪形态),读到后帧间不一致取末帧 + 冲突留证;控制器不可得
+    (渲染未就绪形态),读到后帧间不一致取末帧 + 冲突保留证据;控制器不可得
     (离线/单测)退单帧读,行为与无门一致。边界:area 缺失/裁空/越界
     (GOLD_MIN..GOLD_MAX)→ None,不猜;任何异常(帧不可下标/识别链故障)
     → None,观测面 best-effort 不毒化结算覆盖链。
@@ -259,7 +259,7 @@ def _read_settle_gold_gated(ctx: SrContext, screen: MatLike) -> int | None:
 def parse_streak(ocr_texts: list[str]) -> int | None:
     """结算屏「连胜×N」/「连败×N」→ 带符号 streak(连胜 + / 连败 −;纯函数可单测)。
 
-    fixture 核实(2026-08-11):结算屏 OCR 含 '连胜×0' 形态,**前缀连胜/连败 = 方向**(read_streak
+    fixture 核实:结算屏 OCR 含 '连胜×0' 形态,**前缀连胜/连败 = 方向**(read_streak
     备战只读 magnitude 无方向)。OCR 偶把 × 读成 x/X/*;前缀与尾随数字在同一 token。
     失读(全帧无连胜/连败 token)→ None:『连胜×0』真 0 与失读 None 分写,None 化后
     消费链守卫 = 结算观察半 None 跳过沿用 / is_losing_streak None 行跳过。
@@ -274,10 +274,10 @@ def parse_streak(ocr_texts: list[str]) -> int | None:
 
 
 def parse_settlement_progress(ocr_texts: list[str]) -> int | None:
-    """结算屏「挑战进度 ±N」→ 带符号进度增量(纯函数;2026-08-18 用户点破接)。
+    """结算屏「挑战进度 ±N」→ 带符号进度增量(纯函数;用户点破接)。
 
-    **胜负+扣血的游戏内真值记录**(用户 2026-08-18:「扣血其实就是战斗失败,这个玩法里
-    应该有记录」):赢 = 正进度(挑战进度 +2,live 11:32 样本),输 = 负进度(M41 实锤
+    **胜负+扣血的游戏内真值记录**(用户:「扣血其实就是战斗失败,这个玩法里
+    应该有记录」):赢 = 正进度(挑战进度 +2,live 11:32 样本),输 = 负进度(M41 已实测确认
     「2-1战斗 -22 挑战进度」——**数字前置**形态)。OCR 三形态:
     ① 同 token 粘连('挑战进度+2');
     ② 后随分离 token('挑战进度' '+2';注意「挑战成功」屏另有**无符号累计值**形态
@@ -306,7 +306,7 @@ def parse_settlement_progress(ocr_texts: list[str]) -> int | None:
 
 
 def parse_settlement_won(ocr_texts: list[str]) -> bool | None:
-    """结算屏胜负真值(纯函数;2026-08-18):「挑战成功」→ 赢;「挑战进度」负 → 输;
+    """结算屏胜负真值(纯函数):「挑战成功」→ 赢;「挑战进度」负 → 输;
     其余(无法判定)→ None。输轮结算屏形态 = 「挑战结束」+ 前往结算(无「挑战成功」)。"""
     if any('挑战成功' in t for t in ocr_texts):
         return True
@@ -318,11 +318,11 @@ def parse_settlement_won(ocr_texts: list[str]) -> bool | None:
 
 
 def parse_settlement_damage(items: list) -> int | None:
-    """结算屏「数据统计」面板己方伤害求和 → damage_dealt(纯函数;W40)。
+    """结算屏「数据统计」面板己方伤害求和 → damage_dealt(纯函数)。
 
-    W23 定谳:结算屏无敌方血量通道,「数据统计」面板的**己方角色伤害明细**
+    已定案:结算屏无敌方血量通道,「数据统计」面板的**己方角色伤害明细**
     是 enemy_hp_after 的最接近语义代理(面板求和≈总输出,与敌方剩余血量强
-    负相关)。面板**就在结算屏本体右侧列**(win/ended 两 fixture 实锤:
+    负相关)。面板**就在结算屏本体右侧列**(win/ended 两 fixture 已实测确认:
     「数据统计」标题 (~1120,554) 下方,每角色一行「试用」徽标 + 伤害值
     「396.3万」/「137.0万」形,**无需点开放大镜子面板**)——本函数与
     ``parse_settlement_hp`` 消费**同一帧**全图 OCR(``items`` 带坐标,按
@@ -360,7 +360,7 @@ def parse_settlement_damage(items: list) -> int | None:
 
 #: 掉血说明 tooltip「小队生命值结算说明」整体区域(1080p;帧实测 =
 #: fixtures/settle_ocr/end_boss_win_with_breakdown_panel.png)。tooltip 为**进页瞬态**
-#: 子件(REAL_MACHINE_COLLECTION_1.md:新批 40 帧 2s 后 0 命中,首批 4/7 系进页瞬窗)
+#: 子件(REAL_MACHINE_COLLECTION_1.md:新采 帧 2s 后 0 命中,首批 4/7 系进页瞬窗)
 #: → 读点必须在进页窗口内(页1 即读 / 钩子帧即读),miss 记 None 不阻塞。
 _SETTLE_DMG_PANEL_RECT = Rect(1237, 485, 1702, 682)
 #: 挑战进度条全槽(1080p;帧实测,end_loss/end_final_fail 两帧条槽左右端一致)。
@@ -375,8 +375,8 @@ def settle_page1_progress_sign(ocr_texts: list[str]) -> str | None:
     """结算页 1「挑战进度 ±N」符号三态('pos'/'neg'/None=OCR 未读到;纯函数)。
 
     三用途:① boss 胜局页1 判别(='pos',见 ``is_boss_win_settle_page1``);
-    ② 失败页分支置闩门(='neg' 显式负增量才认败局——None 是 OCR 偶漏,两种
-    形态页都可能漏,拿漏读当败局真值置闩会把 boss 胜局 run 判废,真通关永不
+    ② 失败页分支置位标志门(='neg' 显式负增量才认败局——None 是 OCR 偶漏,两种
+    形态页都可能漏,拿漏读当败局真值置位标志会把 boss 胜局 run 判废,真通关永不
     判 win);③ 页1 暂存消费方自读。调用方要几种判定就自己拿 sign 比较,勿按
     bool 再读一遍 OCR。
 
@@ -500,7 +500,7 @@ def parse_progress_fill_ratio(screen: MatLike | None) -> float | None:
 
     判据:进度条槽 ``_SETTLE_PROGRESS_BAR_RECT`` 内,列的红像素占比 ≥
     ``_PROGRESS_COL_FILL_RATIO`` 记该列已填充;fill_ratio = 最右填充列的右缘
-    占全槽宽比(进度条为**连续填充**(C2 定谳:连续条,总长=位面节点数),
+    占全槽宽比(进度条为**连续填充**(C2 已定案:连续条,总长=位面节点数),
     前缀列扫描对刻度分隔免疫)。红 = RGB 通道 R 显著高于 G/B(条体为红填充,
     槽底为暗色)。条不可见(红像素质量过低)/帧缺 → None,不冒认 0。
 
@@ -545,20 +545,20 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
 
     OCR 全屏 → ``parse_settlement_hp`` 得 hp_after;解析成功 hp_confidence=1.0(进 trend),失败 0.0
     (< ``HP_CONFIDENCE_THRESHOLD`` 不进 trend,防噪声)。plane/round_num/comp_tag 由调用方
-    (loop)传入。node_type:**结算屏自身解析优先**(r366/——局48 实锤
+    (loop)传入。node_type:**结算屏自身解析优先**(r366/——局48 已实测确认
     购买单元内关店通道零执行,node_type 生产链全死,传参恒回退普通战斗);
     解析不出再退调用方传入值(备战期 nodeseq 链,当前流下常 None→普通战斗)。
 
-    ✅ 已接线(2026-08-07 起):CwScreenBattleWait._record_round_outcome 每轮胜结算屏调用 →
+    ✅ 已接线:CwScreenBattleWait._record_round_outcome 每轮胜结算屏调用 →
     结算观察半直写(_write_settlement_observation)→ performance.record
-    (outcomes 流行写入已随删除波 1 退役,观察半不受影响)。
+    (outcomes 流行写入已停用,观察半不受影响)。
     """
     from sr_od.application.currency_war.kernel.cw_performance import RoundOutcome
     _items = ctx.ocr_service.get_ocr_result_list(
         image=screen, rect=None, crop_first=False)
     ocr_texts = [r.data for r in _items]
     hp = parse_settlement_hp(ocr_texts)
-    # W40:damage_dealt 生产(W23 定谳的最大数据缺口 0/239)——「数据统计」
+    # damage_dealt 生产(已定案的最大数据缺口 0/239)——「数据统计」
     # 面板就在结算屏本体右侧列,同一帧全图 OCR 即可解析(坐标在 items 里),
     # 无需点开子面板/额外截图。读不到(面板被遮/OCR 漏)→ None 保持旧锁。
     damage = parse_settlement_damage(_items)
@@ -577,15 +577,15 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     # 「生命值」前缀(只裸数字)→ 暂 conf=0(后续实机核实 boss 结算屏 hp 位置 refine)。
     if hp is None and any('挑战失败' in t for t in ocr_texts):
         hp = 0
-    # 胜负+进度真值(2026-08-18 用户点破:「扣血=战斗失败,游戏内有记录」):
+    # 胜负+进度真值(用户点破:「扣血=战斗失败,游戏内有记录」):
     # killed = 「挑战成功」/负进度判定;progress_delta = 挑战进度带符号值(赢 +2/输 -22)。
     # 旧版 killed 恒 None + 输轮(挑战结束+前往结算,走 loop 3b)从不产生 outcome 行 →
     # telemetry 只见赢轮,「P2 输给谁/扣多少」全盲。
     _won = parse_settlement_won(ocr_texts)
-    # [streak_gold 采集钩子已删(r63 建,2026-08-23 删)]——真值表已从奖励弹窗
+    # [streak_gold 采集钩子已删(r63 建,后删)]——真值表已从奖励弹窗
     # 规则区判读完成(docs/game/currency_war/research/economy_truth.md),
     # 弹窗底部即完整规则表(与对局状态无关),无需再攒结算屏样本。
-    _streak_after = parse_streak(ocr_texts)   # 结算「连胜×N」前缀=方向(C 杠杆 2/3;fixture 核实 2026-08-11)
+    _streak_after = parse_streak(ocr_texts)   # 结算「连胜×N」前缀=方向(C 杠杆 2/3;fixture 核实)
     # 结算三项遥测(docs/develop/.../05_observation.md §3.1):挑战进度填充率(纯像素列扫描,
     # 零 OCR 成本)+ 伤害两分量(tooltip 区域裁剪 OCR)。填充率**只对页 1 帧读**
     # 页 2 帧矩形罩在 HP 心形上会恒定读出假值(0.392 三局同值实证)
@@ -602,7 +602,7 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
         streak=_streak_after,
         killed=_won,
         progress_delta=parse_settlement_progress(ocr_texts),
-        damage_dealt=damage,   # W40:数据统计面板伤害求和(同帧;读不到 None)
+        damage_dealt=damage,   # 数据统计面板伤害求和(同帧;读不到 None)
         progress_fill_ratio=_fill,   # 结算三项遥测:进度条填充率(读不到 None,不冒认 0)
         damage_base=_panel['damage_base'],
         damage_unfinished_progress=_panel['damage_unfinished_progress'],

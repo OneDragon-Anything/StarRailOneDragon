@@ -1,14 +1,14 @@
 """按局存档(cw match archive):终局旁路装配单局档案。
 
-来源:2026-09-07 单局复盘实证的摩擦(规格件见当次任务书,设计要点)——
+来源: 单局复盘实证的摩擦(规格件见当次任务书,设计要点)——
 复盘一局需要在查询侧手工做四件事:跨 run 拼段(server 重启切段)、滤
 hp=100 备帧假值、grep 跨 run 帧流、多源现算拼视图。本模块把这套机制化:
 
 - **档案 = 终局旁路产物**:只读 live 流根的 *.jsonl(与判读 CLI 同源同层),
   写 ``telemetry/matches/``(布局单一源 = kernel/cw_observe 根常量块);对
   运行时零侵入(不改任何内存态/决策路径,
-  触发点 try 包裹失败不阻塞局终收口)。
-- **触发双路**:①局终钩子(cw_loop 局终收口分支调
+  触发点 try 包裹失败不阻塞局终收尾)。
+- **触发双路**:①局终钩子(cw_loop 局终收尾分支调
   ``assemble_pending``,正常局自动装配);②CLI 离线装配(崩溃局/补装配,
   ``--game`` 点名绕过水位线)。旧数据不回填:首次装配以水位线记账
   (``.watermark.json``),只装水位线之后结束的局。
@@ -16,8 +16,8 @@ hp=100 备帧假值、grep 跨 run 帧流、多源现算拼视图。本模块把
   game_id = 首段 run_id 时间戳派生(``g_YYYYMMDD_HHMMSS``)——纯数据派生,
   跨重启稳定,不依赖生成时进程状态。
 - **自包含切片**:档案内嵌该局全部关联 jsonl 行切片(现契约单键 = 统一
-  state 新账一项;旧 12 流切片键已随删除波 1 写入端退役拆除,op_journal
-  切片键随其流退役定格于 v12 存量档——存量档案内嵌切片照常可读,裸数据
+  state 新账一项;旧 12 流切片键已停用,op_journal
+  切片键已停增,定格于 v12 存量档——存量档案内嵌切片照常可读,裸数据
   归档只读),``--match`` 视图把切片物化到临时目录后走 journal_query 视图
   族读新账。
   obs_conflicts.jsonl 例外:跨局 journal 无 run_id 键且体积大,不入切片。
@@ -26,7 +26,7 @@ hp=100 备帧假值、grep 跨 run 帧流、多源现算拼视图。本模块把
   ——装配时切片缺键或空回源流文件按段过滤补读(``_load_derived_inputs``;
   源流在 = 无损重装配,消除 v7 注申报的「重装配无益有损」;源流已清 =
   空列表诚实退化)。档案 ``slices`` 载荷不变(仍两文件契约)。
-- **归局骨架(W3 起三源)**:journal 实机形态段(``run_YYYYMMDD_HHMMSS``,
+- **归局骨架(三源)**:journal 实机形态段(``run_YYYYMMDD_HHMMSS``,
   过滤 sim/测试段——journal 单文件多写者,哨兵同口径)+ 旧流段(存量语料
   重装配仍可归局);两源段按段首 ts 合并进同一时序插位。装配收尾走跨档
   归属收敛守卫(``_converge_cross_archive_ownership``):档案段集中「当前
@@ -96,10 +96,10 @@ log = log_utils.log
 #: 「把决策帧当战后板面读」的时序误读。terminal = 该轮决策迹流内最晚 ts
 #: 帧的板面计数(schema.terminal_state_summary 单一源),装配端派生、
 #: 零新运行时写入,故对存量档案同样生效。
-#: v4(w943 审计 P2-5 返修):+rounds[].terminal_closure(收口类型):
+#: v4(审计 P2-5 返修):+rounds[].terminal_closure(收尾类型):
 #: 'start_battle'=末帧动作含出战(该帧观察=全部备战动作执行后的定型帧,
 #: terminal 可信为执行后账面)/'mid_prep'=末帧为普通备战动作(轮经强制
-#: 出战/bail/停机等异常出口收口,terminal 滞后一个动作=执行前末观察,
+#: 出战/bail/停机等异常出口收尾,terminal 滞后一个动作=执行前末观察,
 #: 判读须降权)。旧档案缺此键 → load_archive 版本检查自动重装配补齐
 #:(P2-4 返修:版本迁移读端不再静默缺列)。
 #: v5(M2 遥测增强批 ③):+endgame.final_snapshot(局级终局快照列:
@@ -110,16 +110,16 @@ log = log_utils.log
 #: 装配端纯读派生;单段局恒空列表,旧档案经 load_archive 版本检查自动
 #: 重装配补齐)。加法字段。装配器选型依据:并段与对账本质是「读侧把
 #: 已落库的 run 段拼成一局」,写入端已如实落库无需改;恢复帧读数与终值
-#: 不符时两侧都是真读,装配器无权裁哪边是真值,只做显影交判读定谳。
+#: 不符时两侧都是真读,装配器无权裁哪边是真值,只做显影交判读定案。
 #: v7(行为观测计数落盘批):+顶层 ``cw4_counters``(策略行为观测计数
-#: 局终快照;写入端 = cw_loop 局终收口把 ``strategy_state_of(session).cw4_counters`` 经
+#: 局终快照;写入端 = cw_loop 局终收尾把 ``strategy_state_of(session).cw4_counters`` 经
 #: ``record_cw4_counters_snapshot`` 落 ``cw4_counters.jsonl``,装配端按
 #: 局时间窗纯读派生归局)。旧档案/无计数流经 load_archive 版本检查自动
 #: 重装配补齐(无窗内行 → None=数据缺失;空 dict=局内真实零计数)。
 #: 加法字段。
-#: v7 注(W4 流删退役,r5-migration-plan.md §2 W4):该顶层字段
+#: v7 注(流删停用,r5-migration-plan.md §2):该顶层字段
 #: 已随流载体 ``cw4_counters.jsonl`` 写端/装配面整体拆除——新装配档案无
-#: 此键;局终级全键聚合收编载体 = 局终域行载荷 ``MatchFinal.cw4_counters``
+#: 此键;局终级全键聚合并入载体 = 局终域行载荷 ``MatchFinal.cw4_counters``
 #: (档案显影位 ``endgame.match_final.final.cw4_counters``)。**不 bump
 #: SCHEMA_VERSION 申报**:bump 会触发存量档案 load 时重装配,把已落盘的
 #: 旧字段整批抹掉(读侧宽容缺键,重装配无益有损);存量档案字段只读保留,
@@ -145,10 +145,10 @@ log = log_utils.log
 #: final' 条目。顶层新增加法列 hp_events(事件行显影)/hp_pay_defects
 #: (modeled 期望账 vs 结算真值偏差)。旧档案经版本检查自动重装配。
 #: v10(场上件离场逐件落账批):+顶层 ``departures``(离场
-#: 事件派生列,装配端纯读派生、零新运行时写入)。缺口实锤(g_20260907_075840
+#: 事件派生列,装配端纯读派生、零新运行时写入)。缺口已实测确认(g_20260907_075840
 #: p1r1,Saber):实机对局实证(部署机时代)——执行期换血卖出逐件身份只在
 #: log 行与匿名计数键(sell_offtarget_*),无遥测行(该执行载体已随部署机
-#: 退役删除;现役同类通道 = m1p 臂逐件发 CwActionSellDeployedParam,决策
+#: 停用删除;现役同类通道 = m1p 分支逐件发 CwActionSellDeployedParam,决策
 #: 时点逐件在案)——场上件
 #: 「无卖出动作而消失」挡 pivot 判读。决策时点卖出(CwActionSellBenchParam/CwActionSellDeployedParam)
 #: 本就逐件在案(actions+期望态快照),不在本列重复;本列吃的是帧间差分:
@@ -158,21 +158,21 @@ log = log_utils.log
 #: 旧档案经 load_archive 版本检查自动重装配补齐。加法字段。
 #: v11(零结算段自标识批):+段条目 ``settlement_gap``(装配端纯读
 #: 派生;见 ``_settlement_gap``),并修 assign_games 决策独有段时序插位(见其
-#: docstring)。锚点病灶:段摘要 rounds_survived 取自收口时点 state.round_num
+#: docstring)。锚点病灶:段摘要 rounds_survived 取自收尾时点 state.round_num
 #: (备战停滞段可带非零冻结值),「rounds_survived=N 且本段零 outcome 行」
 #: 曾被判读成「结算遥测断流」(实证:g_20260908_165445 续段 run_20260908_
-#: 210431,79 决策帧全冻结 p2-r6、零 CwActionStartBattleParam 发射、rounds_survived=6;
+#: 210431,79 决策帧全冻结 p2-r6、零 CwActionStartBattleParam 发出、rounds_survived=6;
 #: g_20260909_012536,4 次出战尝试未成战后无进展守卫停机,rounds_survived=1
 #: ——两段本就零结算,非遥测丢失)。本字段在场 = 本段零结算,判读直接可见。
 #: 旧档案经 load_archive 版本检查自动重装配补齐。加法字段。
 #: v12(统一 state 消费方迁移批 R3-1,设计 §3.6.2 档案行「装配器 v12+:切片
 #: = 两文件」):+切片 ``state/journal.jsonl``(统一 state 新账,行行自足
-#: 快照行;写端 = kernel/cw_state_journal,无条件常开(R5 W1/)——
+#: 快照行;写端 = kernel/cw_state_journal,无条件常开——
 #: 新账在产物目录才入切片,缺席 = 空切片,判读可区分「无对局产物」与
 #: 「无行」)。加法切片,旧档案经 load_archive 版本检查自动重装配补齐;
 #: 设计清单的第二文件(策略侧决策行)候其落地批再加切片,防空引用。
-#: v12 定格(2026-09-15 用户裁定:op_journal 流退役,写端删除批落码):
-#: op_journal 切片键随其流退役停增,切片契约 = 单键 ``state/journal.jsonl``。
+#: v12 定格(用户裁定:op_journal 流停用,写端删除已实现):
+#: op_journal 切片键已停用,切片契约 = 单键 ``state/journal.jsonl``。
 #: SCHEMA_VERSION **冻结在 12**——存量 v12 档案内嵌的 op_journal 切片是
 #: 全库唯一的 op 行存档,而升版会触发 load_archive 版本检查全档重装配、
 #: 把该切片整批摘除(= 数据丢失):任何升版前必须先把存量档案的
@@ -187,9 +187,9 @@ _WATERMARK_NAME: str = '.watermark.json'
 
 # 结算屏真值链可信门槛 = HP_CONF_TRUSTED(query.py,单一源;语义与边界见其注释)
 
-#: 入切片的 jsonl 流(按 run_id 过滤)。单键 = 统一 state 新账(W3 曾为
-#: op_journal + state/journal 两键,op_journal 键随其流写入端退役拆除,
-#: 2026-09-15 用户裁定)。旧流文件缺 = 空切片(存量档案内嵌切片不受影响,
+#: 入切片的 jsonl 流(按 run_id 过滤)。单键 = 统一 state 新账(曾为
+#: op_journal + state/journal 两键,op_journal 键随其流写入端停用,拆除,
+#: 用户裁定)。旧流文件缺 = 空切片(存量档案内嵌切片不受影响,
 #: 裸数据归档只读可考古)。
 _SLICE_FILES: tuple[str, ...] = (
     'state/journal.jsonl',
@@ -218,7 +218,7 @@ _TERMINAL_RESULTS: frozenset[str] = frozenset({'win', 'loss'})
 
 def matches_dir(replay_dir: Path | str) -> Path:
     """档案目录:生产 live 流根 → 兄弟目录 ``telemetry/matches``(单一源 =
-    kernel/cw_observe 的根常量块,2026-09-07 用户裁定布局);其余目录
+    kernel/cw_observe 的根常量块,用户裁定布局);其余目录
     (测试合成流目录/sim 批目录等)保持旧子目录语义 ``<replay_dir>/matches``
     ——测试夹具以 tmp 流目录自洽构造,生产布局只有 live 一个入口。"""
     rd = Path(replay_dir)
@@ -249,15 +249,15 @@ def _settlement_gap(dec_rows: list[dict[str, Any]],
 
     - 触发条件 = 本段决策帧 ≥1 且结算行(outcomes)= 0:本段全程没有
       任何一场战斗走到结算屏(备战停滞 / 出战失败后被守卫或人工停机)。
-    - 为什么要在装配端显影:段摘要的 rounds_survived 写自收口时点的
+    - 为什么要在装配端显影:段摘要的 rounds_survived 写自收尾时点的
       state.round_num(备战环里的 state 可能多环冻结),零结算段可以带
       非零 claimed 值——「claimed=N 而 outcome 行 0」形态曾被判读成
       「结算遥测断流」(实证局见 SCHEMA_VERSION v11 注)。本字段在场
       即「零结算是事实而非丢数据」,claimed 值随行给出仅供对照。
     - 边界:仅决策帧为 0 的空段(如被代码闸拦下、一行未写)不标注
       (无判读价值);有任一 outcome 行(含 synthetic_supply/recovered/
-      loss_page 来源)即视为「有结算记录」,不标注。收口终局行
-      (source='terminal_closure' 收口行)**不入**该判定——它不是战斗
+      loss_page 来源)即视为「有结算记录」,不标注。收尾终局行
+      (source='terminal_closure' 收尾行)**不入**该判定——它不是战斗
       结算行,恰是「本段零场战斗走到结算屏」的证据行(的
       零结算语义):计它入「有结算记录」会让零结算停机段的终局行
       静默关闭本自标识(落地审建议采纳),判读者按协议读到的是
@@ -276,7 +276,7 @@ def _settlement_gap(dec_rows: list[dict[str, Any]],
                                    (summary or {}).get('rounds_survived')}}
 
 
-# ===== 局终行识别(R5 W2;局终域 match_final,retirement.md §2 runs 行)=====
+# ===== 局终行识别(局终域 match_final,retirement.md §2 runs 行)=====
 
 # 局终行的 field 值单一源 = kernel MATCH_FINAL_FIELD(随写口声明;
 # 模块顶部统一 import,本节不再复制字面量)。
@@ -289,7 +289,7 @@ def extract_match_final_rows(
     识别判据(封闭):``row=='write'`` ∧ ``field=='match_final'`` ∧ run_id
     非空。返回 ``{run_id: 行}``——局终域 = 一段一行(写口段内幂等,写前
     查重),同 run_id 多行(跨写口版本演进的理论形态)取 v 最大行,不抛;
-    无局终行(段未收口/旧产物无账本)= 空 dict,判读可区分「未收口」与「无产物」。
+    无局终行(段未收尾/旧产物无账本)= 空 dict,判读可区分「未收尾」与「无产物」。
     """
     out: dict[str, dict[str, Any]] = {}
     for r in journal_rows or []:
@@ -355,9 +355,9 @@ def assign_games(replay_dir: Path | str) -> list[dict[str, Any]]:
     plane/round/hp 连续性只作复核素材,不作分组判据(首帧判据已覆盖
     实证形态;连续性兜底留给未来出现「续局段恰好从 (p1,r1) 误读起」时)。
 
-    段骨架三源(W3):journal 实机形态段(唯一活账;`_JOURNAL_RUN_ID_RE`
+    段骨架三源:journal 实机形态段(唯一活账;`_JOURNAL_RUN_ID_RE`
     过滤 sim/测试段)+ outcomes 首现序 + decisions 独有段——journal 时代
-    旧流恒空(删除波 1 停写),历史目录重装配走旧流段路径,新局全走
+    旧流恒空(停写),历史目录重装配走旧流段路径,新局全走
     journal 段路径;两源段按段首 ts 统一插位,去重(journal 段优先)。
     时序插位(v11 修):旧法把决策独有段排序后整体**补尾**,
     续局归组「并入 games[-1]」无时序门 → 该段被错组到时间上晚于它的最后
@@ -370,7 +370,7 @@ def assign_games(replay_dir: Path | str) -> list[dict[str, Any]]:
     outcomes = read_jsonl(Path(replay_dir) / 'outcomes.jsonl')
     decisions = read_jsonl(Path(replay_dir) / 'decisions.jsonl')
     runs = read_jsonl(Path(replay_dir) / 'runs.jsonl')
-    # 新账段(W3 唯一活账;宽容消费单一源 read_journal_stats,同流两读法
+    # 新账段(唯一活账;宽容消费单一源 read_journal_stats,同流两读法
     # 两契约曾致装配端崩——R3.1 落地审 F1;只采实机形态段,见常量注)
     jrows, _jstats = read_journal_stats(replay_dir)
     j_seg_order = [rid for rid in _journal_run_order(jrows)
@@ -503,7 +503,7 @@ def _load_derived_inputs(rd: Path, segments: set[str],
     """派生列输入行集(重装配保真的输入供给,装配主路径在册函数)。
 
     - 为什么存在:v12+ 切片契约只含 state 新账单键(op_journal 键已随其流
-      退役拆除),而 ``_build_rounds`` / ``_derive_departures`` 等派生函数
+      停用,拆除),而 ``_build_rounds`` / ``_derive_departures`` 等派生函数
       的输入吃旧流键——不回源流,任何重装配(load_archive 版本迁移 /
       assemble_pending 段集增长 / 跨档守卫整体重装配)都会把
       rounds/loss_nodes/departures 等派生列全量清空(v7 注申报的
@@ -579,7 +579,7 @@ def _last_decision_frame(dec_rows: list[dict[str, Any]],
       同轮中途的 tracking 翻转噪声按「以最晚帧为准」收敛。
     - ts 并列取流内后见者(同秒多帧 = 执行步进密集,后见者更晚)。
       「流内序 = 文件序」依赖 decisions.jsonl **单调追加**这一未成文不变量
-      (w943 审计 P3-7 在此显式声明):append-only jsonl 下二者等价;若未来
+      (审计 P3-7 在此显式声明):append-only jsonl 下二者等价;若未来
       出现段间回写/乱序合并,本函数需改为显式按 (ts, 文件序) 双键排序。
     """
     rows: list[dict[str, Any]] = []
@@ -594,13 +594,13 @@ def _last_decision_frame(dec_rows: list[dict[str, Any]],
 
 
 def _terminal_closure(last_frame: dict[str, Any] | None) -> str | None:
-    """终态收口类型(w943 审计 P2-5):末帧动作计划是否含出战。
+    """终态收尾类型(审计 P2-5):末帧动作计划是否含出战。
 
     - 步进帧的记录时点 = 动作**执行前**的最近观察(cw_screen_prep
       ``_decide_port`` → ``_record_step(acct['last_obs'], …)``)。末帧动作
       含 CwActionStartBattleParam ⇒ 该帧观察在全部备战动作执行之后(出战决策以定型
       观察为输入)→ terminal 可信为执行后账面('start_battle');
-      末帧是普通备战动作 ⇒ 轮经强制出战/bail/停机等**异常出口**收口
+      末帧是普通备战动作 ⇒ 轮经强制出战/bail/停机等**异常出口**收尾
       (出战没走 decide 记录)→ terminal 滞后一个动作('mid_prep')。
     - 判据 = 末帧 actions 的 ``__type__`` 字符串匹配(serialize_action
       产物);装配端纯读判定,零运行时改动。None = 无末帧(仅结算行轮)。
@@ -668,7 +668,7 @@ def _action_counts(actions: list[dict[str, Any]]) -> dict[str, int]:
 
 
 def _evidence_links(replay_dir: Path, key: tuple[int, int]) -> list[str]:
-    """buy_expect 留证 webp 按轮索引(cw_screen_prep 只在对账不一致时落盘,
+    """buy_expect 保留证据 webp 按轮索引(cw_screen_prep 只在对账不一致时落盘,
     文件名 tag=p{plane}-r{round},落 live 流根;可选证据,缺 = 空列表)。"""
     tag = f'p{key[0]}-r{key[1]}_'
     base = Path(replay_dir)
@@ -771,16 +771,16 @@ def _sell_deployed_target_names(frame: dict[str, Any]) -> set[str]:
     """帧动作里 CwActionSellDeployedParam 的卖出目标名集合(按同帧 deployed 解析槽位身份)。
 
     解析键 = 动作 ``deployed_idx``(= state.deployed 槽位表下标 0-9,
-    )——这是唯一能落帧的生产形状:全仓唯一构造点 = kernel
+)——这是唯一能落帧的生产形状:全仓唯一构造点 = kernel
     cw_state.CwActionSellDeployedParam(cw_evolution 谷底回滚 / sim engine,序列化字段
     deployed_idx/income/reason/expect,无 row/slot);cw_prep_actions 的
-    同名 row+slot 类零构造点、且策略辖外声明不发射(test_cw_shop_line
-    辖外锁),不会出现在 decisions 帧。
+    同名 row+slot 类零构造点、且策略覆盖外声明不发出(test_cw_shop_line
+    覆盖外锁),不会出现在 decisions 帧。
 
     换算命中而非下标直取:serialize_state 落遥测的 deployed 是**紧缩
     占用序**(None 空槽剔除),帧内列表下标 ≠ 槽位表下标;
     deployed_idx→(排,排内槽号) 是固定双射(0-3=前排 1-4,4-9=后排
-    1-6,换算族退役后内联算术承载),条目级
+    1-6,换算族停用后内联算术承载),条目级
     position_pref/slot 信息位随序列化保留、落位写端按落位下标归一,
     按此对上。键缺失/越界 = 解析不出身份,不入集合(该件落
     unexplained,宁缺勿造不炸)。CwActionSellBenchParam 卖的是备战席,
@@ -810,9 +810,9 @@ def _derive_departures(dec: list[dict[str, Any]],
                        segments: list[str]) -> list[dict[str, Any]]:
     """顶层 ``departures`` 派生列(v10;纯读,零运行时写入)。
 
-    - 缺口与实锤:实机对局实证(部署机时代)——执行期换血卖出逐件身份只在
-      log 行与匿名计数键,无遥测行(该执行载体已随部署机退役删除;现役
-      同类通道 = m1p 臂逐件发 CwActionSellDeployedParam,决策时点逐件在案)
+    - 缺口与已实测确认:实机对局实证(部署机时代)——执行期换血卖出逐件身份只在
+      log 行与匿名计数键,无遥测行(该执行载体已停用;现役
+      同类通道 = m1p 分支逐件发 CwActionSellDeployedParam,决策时点逐件在案)
       ——复盘实证 g_20260907_075840
       p1r1 Saber(08:00:18 帧 [椒丘,藿藿,Saber] → 08:00:42 帧 [椒丘,艾丝妲,
       藿藿],无任何 Sell 动作)。决策时点卖出(CwActionSellBenchParam/CwActionSellDeployedParam)本就
@@ -877,15 +877,15 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
     每轮聚合:node_type(结算屏真值优先)/ hp 真值链 / 金 / 等级 / 动作
     (计数+全量序列化)/ shop 快照全波(offer/refresh)/ 配对(sess_p1_pair)/
     姿态(dp_posture,decision_v2 决策帧口径)/ b_t(form_score 替代披露
-    口径;form_score 已退役,历史数据只读透传)/ 证据链接 /
+    口径;form_score 已停用,历史数据只读透传)/ 证据链接 /
     战后终态(terminal,该轮最晚帧板面计数——与决策帧列并列的「执行后」快照)。
     败场节点(loss_nodes,v8 起)= hp 链上掉血的**结算行**(战斗腿口径;
-    );v9步进链升格为 **hp 变化事件步进链**:
+);v9步进链升格为 **hp 变化事件步进链**:
 
     - 两链分工:rounds 链 = 轮级血面变化(单槽取末结算行,净额,无可信
       门——「本轮账面变化」的本职);步进链 = hp 变化走行,可信结算行
       (可信门,判据见 _settlement_hp_usable;v9 起合成行一律退出)∪
-      hp_pay 事件行(批1 写点产物)按 **ts 全局交织**各成一步:结算步出
+      hp_pay 事件行( 写点产物)按 **ts 全局交织**各成一步:结算步出
       掉血条目,事件步只推进游标不出条目(保 「一条目=掉血结算
       行」口径纯度,新增加法来源 hp_source='endgame_final' 除外)。
     - 段界重锚(v9):跨段停机时游标不再携带前段值——走行遇换段(以及
@@ -897,7 +897,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
       续段首槽 hp_delta 语义从「跨段净额」变「段内变化」(读端可见口径
       变化,跨局对照跨段槽位数字会变,申报)。
     - 真值对账(v9,hp_pay 建模账):事件只作期望账;下一**可信结算行**
-      与「游标(已含事件推进)」偏差≠0 → hp_pay_defects 落一行(留证不
+      与「游标(已含事件推进)」偏差≠0 → hp_pay_defects 落一行(保留证据不
       阻塞),游标照取结算值自愈——建模错账最多污染到下一结算并当场显影。
     - 走行序(F5 三边界):ts 单源 = 记录时点墙钟,排序键字符
       串比较;①同秒并列:事件物料前置拼接 + Python 稳定排序 → 同秒事件
@@ -955,7 +955,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
             continue
     # 每轮决策迹帧计数(复盘「零决策行」缺口一眼可见,免翻原始 jsonl;
     # 已知形态:补给轮只有首补给 detour 一次性快照,后续补给轮 = 0,
-    # 写入端接线归 operations 面——W941 返修 REPORT 判定节)
+    # 写入端接线归 operations 面——返修 REPORT 判定节)
     dec_count: dict[tuple[int, int], int] = {}
     for d in dec:
         try:
@@ -1068,7 +1068,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
             'sess_p1_pair': (frame or {}).get('sess_p1_pair'),
             'dp_postures': sorted(set(dp_tags)),
             # b_t:同轮末帧时点值(form_score 替代披露口径;form_score
-            # 已退役历史只读——新帧无该键恒 None,旧行仍透传)
+            # 已停用历史只读——新帧无该键恒 None,旧行仍透传)
             'b_t': (frame or {}).get('b_t'),
             'form_score': (frame or {}).get('form_score'),
             'form_ok': (frame or {}).get('form_ok'),
@@ -1097,7 +1097,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
             'terminal_ts': _row_ts(last_frame) if last_frame else None,
             'terminal_source': ('last_decision_frame' if last_frame
                                 else 'none'),
-            # 收口类型(v4):start_battle=执行后定型帧可信 / mid_prep=
+            # 收尾类型(v4):start_battle=执行后定型帧可信 / mid_prep=
             # 异常出口,terminal 滞后一个动作须降权(语义见函数注)。
             'terminal_closure': _terminal_closure(last_frame),
             'outcome': outcome,
@@ -1125,7 +1125,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
             # 内联无此依赖;该轮条目丢失是缺 ts 数据的诚实代价)。
             # 回落来源守卫(「合成行一律退出步进链」的回落侧补执):
             # 来源行 = outcome 时同用 _settlement_hp_usable 判据(synthetic
-            # 标记/conf 门一并辖),frame 来源用 _hp_entry 可信位(可读位)
+            # 标记/conf 门一并覆盖),frame 来源用 _hp_entry 可信位(可读位)
             # ——不满足即同缺 ts 行走「不进链」通道,条目缺失 = 缺数据的
             # 诚实代价。纯补给轮(唯一 outcome=合成行,补给节点天然无结算
             # 屏)被 settle 路挡下的快照鬼值不再经本路复活回步进链;
@@ -1204,7 +1204,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
             o = it['row']
             step_hp = int(o['hp_after'])
             # 真值对账(v9):modeled 期望账(游标已含事件推进)vs 结算
-            # 真值,偏差≠0 落 defect 行(留证不阻塞);游标照取结算值自愈。
+            # 真值,偏差≠0 落 defect 行(保留证据不阻塞);游标照取结算值自愈。
             if pending_pay_n and step_prev is not None:
                 _gap = step_hp - step_prev
                 if _gap != 0:
@@ -1271,8 +1271,8 @@ def _resume_reconciliation(segments: list[str],
       prev 侧「不可信」依赖存档数据既有写入约定(readable=False 帧由
       当时的决策备帧生产端写 hp=None,值缺失即 aligned=None),本处
       不再重复守卫。
-      装配器**不裁真值**:两侧都是诚实读数,不符只显影交判读定谳
-      (2026-09-05 夜第八局实证:恢复帧 hp14/金68 vs 档案终值 hp29/金36,
+      装配器**不裁真值**:两侧都是诚实读数,不符只显影交判读定案
+      (夜第八局实证:恢复帧 hp14/金68 vs 档案终值 hp29/金36,
       判读侧需此列才免手工翻流对账)。
     - 单段局 / 无续局段 → 空列表(判读「无恢复事件」与「未装配」以
       schema_version ≥ 6 区分)。
@@ -1357,7 +1357,7 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
     runs_by_seg = {r.get('run_id'): r for r in runs_rows}
     last_summary = runs_by_seg.get(segments[-1]) if segments else {}
     result = str((last_summary or {}).get('result') or '')
-    # abandoned 判定:末段无 runs 摘要(收口路径没走)或 result 非完结值域
+    # abandoned 判定:末段无 runs 摘要(收尾路径没走)或 result 非完结值域
     abandoned = (not result) or (result not in _TERMINAL_RESULTS)
     rounds, loss_nodes, boundaries, hp_pay_defects = _build_rounds(
         rd, derived_rows, segments, result)
@@ -1386,7 +1386,7 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
                                 'registry_fingerprint':
                                     row.get('registry_fingerprint') or ''}
             break
-    # 局终行识别(R5 W2):game 终局 = 段序末段的局终行(局终域 = 段级
+    # 局终行识别:game 终局 = 段序末段的局终行(局终域 = 段级
     # 事实,恢复局跨段多行,聚合取末行);末段无局终行 = None(旧档案/
     # 旧产物无账本形态,判读按「新账无终局行」对待)。加法键不 bump
     # SCHEMA_VERSION 申报:本键只能派生自新账行,存量档案源流已清无法
@@ -1395,9 +1395,9 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
     return {
         'schema_version': SCHEMA_VERSION,
         'game_id': game['game_id'],
-        # (顶层 ``cw4_counters`` 已随 R5 W4 流删拆除:流载体
-        #  ``cw4_counters.jsonl`` 写端/装配面整体退役,局终级全键聚合
-        #  收编载体 = 局终域行载荷 ``MatchFinal.cw4_counters``,档案显影
+        # (顶层 ``cw4_counters`` 已停用:流载体
+        #  ``cw4_counters.jsonl`` 写端/装配面整体停用,局终级全键聚合
+        #  并入载体 = 局终域行载荷 ``MatchFinal.cw4_counters``,档案显影
         #  位 = ``endgame.match_final.final.cw4_counters``;存量已装配
         #  档案的旧顶层字段是已落盘数据,本端不删不改,读侧宽容缺键。)
         'strategy_version': strategy_version,
@@ -1414,11 +1414,11 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
         'rounds': rounds,
         'loss_nodes': loss_nodes,
         # hp 变化事件显影列(v9 加法,装配端纯读;旧档案恒空 = 采集面修复
-        # 只及新局)与 modeled 期望账对账偏差列(v9 加法,留证不阻塞)
+        # 只及新局)与 modeled 期望账对账偏差列(v9 加法,保留证据不阻塞)
         'hp_events': _hp_pay_events(derived_rows.get('exogenous.jsonl') or []),
         'hp_pay_defects': hp_pay_defects,
         # 离场事件派生列(v10 加法;装配端纯读,旧档案重装配补齐):
-        # 执行期 deploy 换血卖出逐件落账缺口(075840 Saber 实锤)的判读面。
+        # 执行期 deploy 换血卖出逐件落账缺口(075840 Saber 已实测确认)的判读面。
         'departures': _derive_departures(derived_rows.get('decisions.jsonl') or [],
                                          segments),
         'opening': _build_opening(derived_rows, runs_by_seg),
@@ -1432,8 +1432,8 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
                     # 终局阵容/金/等级,取值口径见 _final_snapshot。
                     'final_snapshot': _final_snapshot(
                         derived_rows.get('decisions.jsonl') or []),
-                    # 局终行(局终域识别,R5 W2;None=末段无局终行):
-                    # runs 收编载体的档案显影位,局边界判定读此键。
+                    # 局终行(局终域识别;None=末段无局终行):
+                    # runs 并入载体的档案显影位,局边界判定读此键。
                     'match_final': match_final_view(
                         _final_rows.get(segments[-1]) if segments else None),
                     'segment_summaries': seg_summaries},
@@ -1467,8 +1467,8 @@ def _final_snapshot(dec_rows: list[dict[str, Any]]) -> dict[str, Any] | None:
       terminal 是「该轮执行后」,本列是「全局限最晚帧」——非收尾战斗帧,
       与 endgame.final_hp(结算屏真值)并列可读,判读终局板面以此列为准、
       勿再上翻逐轮表。
-    - 时序边界(与 terminal_state_summary 的 w943 P2-5 边界同判):最晚帧
-      若是普通备战动作(mid_prep 收口),快照滞后一个动作;可信度随附
+    - 时序边界(与 terminal_state_summary 的 P2-5 边界同判):最晚帧
+      若是普通备战动作(mid_prep 收尾),快照滞后一个动作;可信度随附
       closure(start_battle=执行后定型 / mid_prep=执行前末观察降权)。
     - 字段:deployed/bench/board 终局阵容三维 + gold(_readable)+
       level(_readable, False=启发式兜底帧「兜底 4」非真读)+
@@ -1517,7 +1517,7 @@ def load_archive(replay_dir: Path | str, game_id: str,
                  *, auto_rebuild: bool = True) -> dict[str, Any] | None:
     """读单局档案;不存在 → None。
 
-    版本迁移读端(w943 审计 P2-4 返修):档案 ``schema_version`` < 当前
+    版本迁移读端(审计 P2-4 返修):档案 ``schema_version`` < 当前
     SCHEMA_VERSION 时默认**就地重装配一次**(``assemble_game``:从 replay
     源流重派生加法字段并原子写回)——存量 v2/v3 档案经 ``--match`` 读出
     不再静默缺 terminal 族键。重装配失败(源 jsonl 已清/游戏分组不存在)
@@ -1617,7 +1617,7 @@ def find_cross_archive_segment_dups(
     段级(档案 segments 的 run_id):档案切片由 build_archive 严格按段集
     过滤(单一写端契约),「同段跨档案」⇒「同段行跨档案」,段级判据即
     行级双计的充分条件;行级逐行对账是档案完整性问题(手改/半截),不属
-    本核验辖域。返回 ``[{run_id, archives: [game_id...]}]``,空 = 通过。
+    本核验适用范围。返回 ``[{run_id, archives: [game_id...]}]``,空 = 通过。
     """
     md = matches_dir(replay_dir)
     owners: dict[str, list[str]] = {}
@@ -1698,9 +1698,9 @@ def _converge_cross_archive_ownership(
     守卫在每次装配收尾按当前口径全局对账:
     - 本局仍在分组(源流在)→ 整体重装配(build_archive 按当前口径
       重派生,派生列一并自愈);
-    - 本局已不在分组(源流失)→ 定向剪枝(:func:`_prune_foreign_segments`)。
+    - 本局已不在分组(源流失)→ 定向剪枝(func:`_prune_foreign_segments`)。
     分组判定为「该段活着且归他局」才触发;分组无此段(孤本形态,live 流
-    已清且无第二档案持有)不辖——孤本是唯一存档,禁动。
+    已清且无第二档案持有)不覆盖——孤本是唯一存档,禁动。
     返回被收敛(重装配或剪枝)的 game_id 列表。收敛方向单向(每次触发
     严格减少全局多余段数),循环内联处理全部违例档案,不递归套守卫。
     """
@@ -1748,8 +1748,8 @@ def _converge_cross_archive_ownership(
 def assemble_game(replay_dir: Path | str, game_id: str) -> dict[str, Any] | None:
     """装配指定局(补装配入口:不问水位线;游戏不存在 → None)。
 
-    收尾走跨档归属收敛守卫 + 核验(:func:`_converge_cross_archive_ownership`
-    / :func:`_warn_cross_archive_dups`):本局装配可能收编其他存量档案
+    收尾走跨档归属收敛守卫 + 核验(func:`_converge_cross_archive_ownership`
+    / :func:`_warn_cross_archive_dups`):本局装配可能并入其他存量档案
     错误持有的段,守卫保证「同一 journal 段只归属一个档案」。
     """
     rd = Path(replay_dir)
@@ -1780,7 +1780,7 @@ def _latest_end_ts(games: list[dict[str, Any]]) -> str:
 
     不能取 ``games[-1]``:``assign_games`` 把「无 outcomes 出现序的孤立
     段」追加在列表尾部,列表末元素不是时间序最晚局——曾致水位线冻结在
-    某个旧孤立段的 end_ts(2026-09-05 夜实证:冻结在 06:56:29,其后
+    某个旧孤立段的 end_ts(夜实证:冻结在 06:56:29,其后
     正常局只能靠 CLI 点名装配,水位线永远不动)。
     """
     return max((g.get('end_ts') or '' for g in games), default='')
@@ -1792,7 +1792,7 @@ def _archive_covers_segments(archive: dict[str, Any],
 
     档案存在且 schema 最新 ≠ 内容最新:活局续段被 ``assign_games`` 并入
     既有局后,该局 end_ts 越过水位线,但 schema 不变——若只按版本跳过,
-    续段永远进不了档案(2026-09-05 夜实证:g_20260905_080023 档案停在
+    续段永远进不了档案(夜实证:g_20260905_080023 档案停在
     单段,084407/090407 两续段只活在 assign_games 的内存分组里)。
     """
     archived = [s.get('run_id') for s in archive.get('segments') or []]
@@ -1882,7 +1882,7 @@ def assemble_pending(replay_dir: Path | str) -> list[str]:
     if done:
         rebuild_index(rd)
         _write_watermark(rd, _latest_end_ts(games))
-    # 跨档归属收敛 + 核验:水位线上方新装配的局可能收编存量档案
+    # 跨档归属收敛 + 核验:水位线上方新装配的局可能并入存量档案
     # 错误持有的续段(该档案常落水位线以下,只随本守卫收敛,双计才可消)
     _converge_cross_archive_ownership(rd, games)
     _warn_cross_archive_dups(rd)

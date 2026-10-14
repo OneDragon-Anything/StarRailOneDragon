@@ -1,16 +1,16 @@
 """货币战争 **后排槽位布局**(双通道对账:公式 + CV 实测,
-2026-08-26 W209 事故响应批 + 同日口述双通道指令修订)。
+事故响应批 + 同日口述双通道指令修订)。
 
 机制(用户口述权威,docs/game/currency_war/research/board_structure.md):
 - **等级只定上场人数 cap,不定格子数**;正常恒 前台 4 格 + 后台 6 格;
 - **后台格数 = 6 + (cap − level)**(口述公式),**值域 {6..9},上限 9**
-  (用户口述 2026-09-11 重申:平常 6,宝钻/召唤物最多 9):钻石/召唤物使
+  (用户口述重申:平常 6,宝钻/召唤物最多 9):钻石/召唤物使
   cap 超过 level,差值即后台扩展量——diff 0 → 6 格基线;diff==1(钻石+1)
-  → 7 格**已建档**(2026-08-26 佩佩局交互实锤+覆盖拖测;几何=**整排居中
-  重排** 中心 534..1386,screen_info ``后排7槽-1..7``;居中勘误见
+  → 7 格**已建档**(佩佩局交互已实测确认+覆盖拖测;几何=**整排居中
+  重排** 中心 534..1386,screen_info ``后排7槽-1..7``;居中校正见
   :data:`_LAYOUT_PREFIX` 注);diff 2 → 8 格(393-1529 带,
   狸猫局交互实拍,screen_info ``后排8槽-1..8``);diff≥3 → 裁决值 9,
-  9 档**已交互建档**(2026-09-12 实机交互实锤:位面 1-3 lv4/cap7 局拖拽
+  9 档**已交互建档**(实机交互已实测确认:位面 1-3 lv4/cap7 局拖拽
   逐位落位吻合 + 槽 9 点击开浮窗,screen_info ``后排9槽-1..9``,
   几何 = 居中重排族带 321..1599;CV 判别通路见 :func:`cv_back_slots`)。
 - **back_max 容器接线(语义裁决·闸门二)**:裁决值经
@@ -18,40 +18,39 @@
   observe 进 ``GameState.back_layout``(决策视图 back_max 供数自此取
   容器动态真值;superset 标记判据见写端 docstring)。
 
-**双通道对账**(口述指令 2026-08-26 追加,两通道都做):
+**双通道对账**(口述指令追加,两通道都做):
 
 1. **公式通道**::func:`back_slots_from_cap_diff`「6+(cap−level)」——cap =
    ``read_deploy_cap_debounced``(paddle 直读 + 域防抖:域外重读一帧,
-   仍域外拒信退基线,W218/接线;显式传 cap 的调用方自担防抖),
+   仍域外拒信退基线,接线;显式传 cap 的调用方自担防抖),
    level = session 等级链(单调链防毒化)。
    「钻石局检测」由此消解(无需识别钻石图标,两 OCR 读数相减即扩展量)。
 2. **CV 通道**::func:`cv_back_slots` 画面实测——后排 y 带槽位存在性签名
    (空槽暗框 vs 无格背景的灰度 std 判别,标定见 :data:`_CV_SLOT_STD_MIN`)。
-3. **对账语义(三信号,布局档对账批修订)**:一致 → 公式值;不一致 →
+3. **对账语义(三信号)**:一致 → 公式值;不一致 →
    信号梯——①公式(6+(cap−level),输入过 cap/level 防抖可信门);②CV 占用
-   态门三态探针(:func:`cv_back_slots`,full/slice/none 已治端点占用误高估);
-   ③占用一致性仲裁(:func:`_occupancy_consistency_arbitrate`:paddle X −
+   态门三态探针(func:`cv_back_slots`,full/slice/none 已治端点占用误高估);
+   ③占用一致性仲裁(func:`_occupancy_consistency_arbitrate`:paddle X −
    前排占用 = 后排期望人数,逐候选档读中心占用取最一致者;期望基准独立性
    边界见 ``_expected_back_population`` docstring)。裁决序:一致采公式;
    冲突 ∧ paddle 可读 → 信号③仲裁;冲突 ∧ paddle 不可得 → 信号②结构证据
    (cv>formula 采 CV,cv<formula 采公式——门后 CV 低读为下界不否决推导);
-   CV 不可判/未建档 → 各自既有语义(公式兜底 / 防抖+8 格超集留证)。
-   ``obs_conflict('back_layout_channel_conflict')`` 留证(带两值,便于判读)。
-4. 7 格档已建档(2026-08-26 佩佩局,用户口述真值 + 点击面板/拖拽交互实锤 +
+   CV 不可判/未建档 → 各自既有语义(公式兜底 / 防抖+8 格超集保留证据)。
+   ``obs_conflict('back_layout_channel_conflict')`` 保留证据(带两值,便于判读)。
+4. 7 格档已建档(佩佩局,用户口述真值 + 点击面板/拖拽交互已实测确认 +
    246 覆盖拖测)→ diff==1 直读 7 格;9 格档已交互建档(见机制节)→
    diff≥3 直读 9。**未建档新档位**(>9 域外/CV 新观察)→ 8 格超集运行
-   (读全扩展带;拖到不存在格被游戏拒 = 廉价失败方向)+ 留证钩子
+   (读全扩展带;拖到不存在格被游戏拒 = 廉价失败方向)+ 保留证据钩子
    (``cw_identity_obs.read_deployed_rows``,n_raw 未建档时 obs_conflict
-   留证+去重截图引导人工经 MCP 采集,7/9 格即按此流程
-   闭合后钩子自然静默)。旧「lv6=7 格待采」留证机器
-   (note_pending_7slots/_PENDING_7SLOT_LEVELS)随 level 驱动模型作废清理
+   保留证据+去重截图引导人工经 MCP 采集,7/9 格即按此流程
+   闭合后钩子自然静默)。
 
 旧 level 驱动模型(「level≥7→8 格」)**归因错误**(其实证局狸猫局
-本身带召唤物=cap 差,不是 level),本模块勘误;level 只进 cap 板满门,
+本身带召唤物=cap 差,不是 level)——level 只进 cap 板满门,
 不进布局选档。run 26(lv8 无召唤物局)按 8 格坐标拖不存在的 7/8 号格 +
 幻影空位把部署卡死在 bench = 崩坏根因①。
 
-**复核结论(W292,W285 关键实拍 3 帧全部落在本模块公式上)**:
+**复核结论(关键实拍 3 帧全部落在本模块公式上)**:
 「lv6/lv7 → 7 格待采」假设 **死档确认,7 槽 levels 集 = ∅**(7 格档由
 cap 差驱动,diff==1,与 level 无关;已落地,本复核补实拍证据):
 2a55bb42(lv6 cap6 diff0)后排实画 **6 格**、9d64caf0(lv6 cap8 diff2)
@@ -59,14 +58,14 @@ cap 差驱动,diff==1,与 level 无关;已落地,本复核补实拍证据):
 「level 驱动 7 格」预测,全部与 6+(cap−level) 自洽。37fa3b88(1-1)
 7 格实拍 + 空槽暗框实测中心 676/960/1244 与已登记 后排7槽 坐标**逐位
 吻合(校正数 = 0)**,系统单位狸猫实测 x=1402 vs 7 档右心 1386 差 16px
-≤ 40 容差——W285 记的「~40px 偏差」对象是**当时运行选档(8 档右心
-1458)**,属选档瞬时不一致(自检按设计留证),非 7 档坐标错。
+≤ 40 容差——审计记录的「~40px 偏差」对象是**当时运行选档(8 档右心
+1458)**,属选档瞬时不一致(自检按设计保留证据),非 7 档坐标错。
 
-**后台 9 格档(已交互建档)**:用户口述真值(2026-09-07/09-11)确认 9 格
+**后台 9 格档(已交互建档)**:用户口述真值确认 9 格
 可达(宝钻/召唤物扩展封顶 9),e4972b43(cap13 lv8)实拍后台 **9 格**,
 几何与居中重排族自洽(暗框/占位 std 剖面峰落 392..1528、pitch 142)。
 坐标档 = screen_info ``后排9槽-1..9``(rect = ``[321+142*(i-1),600,
-463+142*(i-1),739]``,i=1..9),登记凭据 = 2026-09-12 实机交互实锤
+463+142*(i-1),739]``,i=1..9),登记凭据 = 实机交互已实测确认
 (位面 1-3 lv4/cap7 局:拖拽落位与预测 rect 逐位吻合 + 槽 9 点击开
 浮窗——布局/坐标建档唯一终审;实拍帧入库 sr-od-test
 ``screens/货币战争-备战/后排9槽-cap7lv4*``,4 组 = 首帧/拖拽验证态/
@@ -76,7 +75,6 @@ cap 差驱动,diff==1,与 level 无关;已落地,本复核补实拍证据):
 单一真相源 = screen_info(6 槽 = ``后排-1..6``;7 槽 = ``后排7槽-1..7``;
 8 槽 = ``后排8槽-1..8``;9 槽 = ``后排9槽-1..9``)。
 旧 10/11 档是循环论证幻影,禁再登记;「后排6槽-P2开局局」
-(改名前档案名:后排7槽-P2开局局,见 sr-od-test README_W535_RENAME.md)
 实拍帧经 CV 复核两端扩展位均为背景(旧 7 槽观察同属幻影,实为 6 格)。
 系统单位恒最右模型与布局自检(``cw_identity_obs.check_system_unit_layout``)
 保留作交叉验证。CV 通道与该自检同为 1080p 原生坐标(项目基准,同款假设)。
@@ -97,7 +95,7 @@ if TYPE_CHECKING:
 #: (排中心恒 960,pitch 142),带随档对称扩展:
 #: 6 格 604..1316 / 7 格 534..1386 / 8 格 464..1458 / 9 格 392..1528(中心)、
 #: 321..1599(格带缘)——四档各自居中,不共享列位。**旧记「7 格=6 格右扩一格,
-#: 佩佩中心 1458」错位 +71px**(2026-08-26 勘误:点击面板交互实锤——点真
+#: 佩佩中心 1458」错位 +71px**(点击面板交互已实测确认——点真
 #: 中心 534/1390 开详情,点旧记中心 604/746/1458 全无响应;占用台座扫峰
 #: 左缘 -70 校正后全落 534/818/1102/1386;万敌 246 覆盖拖测逐位验证)。
 #: ⚠️ 10/11 档是循环论证幻影,禁登记;9 格 = 后台物理上限
@@ -113,9 +111,8 @@ _LAYOUT_PREFIX: dict[int, str] = {
 _BACK_SLOTS_BASE: int = 6
 
 #: 公式裁决值域上界(cap 差域 = {0..3} → 格数值域 {6..9})。**上限 9 = 用户
-#: 口述真值**(2026-09-11 重申确认,board_structure.md 量化公式节;宝钻/召唤
-#: 物扩展下后台最多 9 格)。历史修订:旧值 2(封顶 8 格超集)按上限 9 真值
-#: 勘误——diff>2 已有实拍实证(e4972b43:lv8 cap13 diff=5,后台真值 9 格,
+#: 口述真值**(重申确认,board_structure.md 量化公式节;宝钻/召唤
+#: 物扩展下后台最多 9 格)。上限实拍实证(e4972b43:lv8 cap13 diff=5,后台真值 9 格,
 #: 与「线性外推 11」矛盾、与封顶 9 吻合);diff>2 的公式形状(召唤物修正项
 #: 与否,0)仍待实机,**封顶 9 即用户确认的保守终态**。注意与
 #: ``cw_observation.DEPLOY_CAP_MAX_DIFF``(cap 采信域,域外走双帧一致门)
@@ -139,7 +136,7 @@ _last_sel_log: tuple | None = None
 # 写类(后排部署/tracked 后排写入)冻结止损(依据=读写代价不对称:重读廉价/
 # 毒化传播贵,非「真值=6」分布先验;fail_closed_side 声明见注册面)。
 
-#: 连续未知帧冻结阈值(B3):与防抖门同 N=3,复用 W209h house 先例节奏,
+#: 连续未知帧冻结阈值(B3):与防抖门同 N=3,复用 house 先例节奏,
 #: 显式不立第二旋钮;任一已知帧清零复位。
 UNKNOWN_FREEZE_FRAMES: int = 3
 
@@ -177,7 +174,7 @@ except Exception:   # noqa: BLE001  注册 best-effort(缺省关)
 _CV_ANCHOR_XS: tuple[int, ...] = (606, 1031)
 #: 裁切半宽(槽 rect 宽 142 的半径,同既有槽建模)
 _CV_HALF: int = 71
-#: 槽存在判据(右端 1458 与锚位通用):裁切灰度 std ≥ 本值。标定(W209 探针,
+#: 槽存在判据(右端 1458 与锚位通用):裁切灰度 std ≥ 本值。标定(探针,
 #: sr-od-test 6 帧 6 格态 ×2 端扩展位 = 12 个背景样本 std ≤ 2.9;空槽暗框
 #: std ≥ 10.5,占位立绘 50-67):阈值 6.0 = 背景上限 2.9 的 2.07×、空槽
 #: 下限 10.5 的 0.57×,双向余量均 >1.7×。
@@ -219,7 +216,7 @@ def _cv_slot_std(screen, cx: int) -> float | None:
     return _cv_band_std(screen, cx - _CV_HALF, cx + _CV_HALF)
 
 
-#: 探针三态(布局档对账批:CV 端点探针占用态门,15 号稿批 B;落地审 C1
+#: 探针三态(布局档对账批:CV 端点探针占用态门,15 号稿后续批;落地审 C1
 #: 修订:半窗判据与整窗判据分离 + 擦线保守带恢复)。每探针测「整窗 std +
 #: 左/右半窗 std」,判定:
 #: - none:整窗 < ``_CV_SLOT_STD_MIN``(6.0)——纯背景(6 格帧整窗实测
@@ -261,7 +258,7 @@ def _probe_state(screen, cx: int) -> str | None:
     if whole < _CV_SLOT_STD_MIN:
         return _PROBE_NONE
     if whole < _PROBE_AMBIG_WHOLE_MAX:
-        return None   # 擦线保守带:背景纹理/弱信号不猜,退公式(留证在调用方)
+        return None   # 擦线保守带:背景纹理/弱信号不猜,退公式(保留证据在调用方)
     lo, hi = min(left, right), max(left, right)
     if lo <= 0.5:   # 0.5=纯平半窗(std 近零)与「有内容」的分界,哨兵帧实测纯平半窗 std≤0.3
         return _PROBE_SLICE   # 单半窗有内容、另半窗纯平 = 极端切片
@@ -271,8 +268,8 @@ def _probe_state(screen, cx: int) -> str | None:
 
 #: **外缘探针(x=357/1564)——9 格档独有几何签名**(窗 ±71 同 :data:`_CV_HALF`;
 #: 标定 = sr-od-test ``screens/货币战争-备战/后排9槽-cap7lv4*`` 4 帧实拍 ×
-#: 既有 6/7/8 档 fixture 全量 + 开商店族 10 帧负例纯读扫描,2026-09-12
-#: 交互实锤帧族)。
+#: 既有 6/7/8 档 fixture 全量 + 开商店族 10 帧负例纯读扫描
+#: 交互已实测确认帧族)。
 #:
 #: 机理(居中重排族带随档对称扩展,格带缘 6/7/8/9 = 604..1316/463..1457/
 #: 393..1529/321..1599):357 窗=[286,428]——6/7 格全排外背景(none);
@@ -357,7 +354,7 @@ def cv_back_slots(screen) -> int | None:
             return 7
         if inner == (_PROBE_NONE, _PROBE_NONE):
             return 6
-        return None   # 混合形态:未标定,保守不可判(退公式,留证在调用方)
+        return None   # 混合形态:未标定,保守不可判(退公式,保留证据在调用方)
     except Exception:   # noqa: BLE001  CV best-effort,失败退公式
         return None
 
@@ -369,19 +366,19 @@ def _layout_prefixes() -> dict[int, str]:
 
 def back_slots_from_cap_diff(diff: int) -> int:
     """口述公式:后台格数 = 6 + (cap − level)(纯函数,布局选档锁的测试面);
-    **裁决值域 {6..9}**(上限 9 = 用户口述真值 2026-09-11,机制正本
+    **裁决值域 {6..9}**(上限 9 = 用户口述真值,机制正本
     board_structure.md 量化公式节;e4972b43 diff=5 实拍 9 格吻合封顶)。
 
-    - diff < 0(cap<level 读错族,cw_screen_prep 另有 obs_conflict 留证)按 0;
+    - diff < 0(cap<level 读错族,cw_screen_prep 另有 obs_conflict 保留证据)按 0;
     - diff > 3(域外)按 3 封顶(= 9 格上限)——diff>2 的公式形状(召唤物
       修正项与否,0 张力)待实机,封顶 9 即用户确认的保守
       终态(见 :data:`_CAP_DIFF_MAX` 注);
-    - 裁决值即坐标档:9 档已交互建档(2026-09-12 实机实锤,见
+    - 裁决值即坐标档:9 档已交互建档(实机已实测确认,见
       :data:`_LAYOUT_PREFIX` 注),diff≥3 直读 9;残余分离面 = 未来新档
       (>9),由调用侧 :func:`resolve_back_slots`(运行值 ``n``:未建档 →
       8 格超集)退 **8 格超集**(扩展带读全不丢系统单位;拖到不存在的位被
-      游戏拒 = 廉价失败方向;留证钩子按 n_raw 未建档触发)。diff==1 →
-      7 格已建档直读(2026-08-26 佩佩局)。
+      游戏拒 = 廉价失败方向;保留证据钩子按 n_raw 未建档触发)。diff==1 →
+      7 格已建档直读(佩佩局)。
     """
     d = 0 if diff < 0 else min(diff, _CAP_DIFF_MAX)
     return _BACK_SLOTS_BASE + d
@@ -391,16 +388,16 @@ def back_slots_from_cap_diff(diff: int) -> int:
 #: 实证(狸猫局 lv7 cap8/9 两帧同为 8 格)与公式 6+(8−7)=7 冲突。候选解释:
 #: ①召唤物加格不加 cap(公式需补召唤物项)/②当年 cap 读数有误/③召唤物局
 #: 两帧实为 cap9。批内不硬解:双通道对账天然覆盖(CV 为真值,公式不符 →
-#: ``back_layout_channel_conflict`` 留证);run 27+ 锚点「钻石/召唤物局记录
+#: ``back_layout_channel_conflict`` 保留证据);run 27+ 锚点「钻石/召唤物局记录
 #: cap/level/CV 格数三点对」攒数据后定公式是否需修正项。
 FORMULA_SUMMON_TENSION_NOTED: bool = True
 
 
 def note_channel_conflict(screen, formula_n: int, cv_n: int,
                           cap, level, source: str) -> None:
-    """双通道不一致留证(节流 300s/源;对账语义件3)。
+    """双通道不一致保留证据(节流 300s/源;对账语义件3)。
 
-    采 CV 值运行 + 留证两值(公式依赖的 cap/level OCR 读数可能错;CV 是画面
+    采 CV 值运行 + 保留证据两值(公式依赖的 cap/level OCR 读数可能错;CV 是画面
     真值)。best-effort 不抛。
     """
     import time as _time
@@ -428,7 +425,7 @@ def select_back_layout(ctx, screen, level: int | None = None,
     """布局选档单一入口(双通道对账)→ ``(槽数, 布局前缀)``。
 
     委托 :func:`resolve_back_slots`(详见其对账语义与各返回字段);
-    消费方只需格数+前缀。停机钩子/留证消费 raw 字段请直调后者。
+    消费方只需格数+前缀。停机钩子/保留证据消费 raw 字段请直调后者。
     **布局未知态**(15 号稿 §3.2④,双弃权帧)→ ``(None, '')``——消费方
     按读写分级跳过后排依赖操作(单帧)/冻结止损(连续),禁把空串前缀
     静默当 6 档基线用(那正是本态要防的缺省化复发)。
@@ -439,7 +436,7 @@ def select_back_layout(ctx, screen, level: int | None = None,
 
 
 def _cv_confirm_readings(ctx, screen, first_cv: int, formula_n: int) -> list[int | None]:
-    """W209h 防抖重读(run 27 停机事故:CV 瞬态假阳——
+    """防抖重读(run 27 停机事故:CV 瞬态假阳——
     特效/粒子把 1458 位单帧 std 顶到 6.5(阈值 6.0 擦线过,真槽 ≥10.5/
     背景 ≤2.9 之间无人带),公式 6 与 fixture 复测一致)。
 
@@ -450,7 +447,7 @@ def _cv_confirm_readings(ctx, screen, first_cv: int, formula_n: int) -> list[int
     monkeypatch ``ctx.screenshot``(不可截 = None,按不一致处理)。
 
     返回三次读数序列 ``[first, r2, r3]``(None = 该次不可读,视为不一致)
-    ——留证/判读消费。
+    ——保留证据/判读消费。
     """
     readings = [first_cv]
     try:
@@ -481,8 +478,8 @@ def _expected_back_population(ctx: SrContext, screen: MatLike,
     与既有防线的关系:①paddle X 本身独立于 CV(游戏计数器),是基准中
     唯一的非 CV 项;②仲裁只在公式/CV 冲突帧触发且需 paddle 可读,单帧
     偏置不落盘(下帧重判);③错判的下游有显影(身份漏读 → deployed_align
-    留证 / deployed_count_2src 分键);④15 号稿布局三信号(如身份反哺
-    布局)落码后应以更强信号替代本判别器(见移交笔记)。"""
+    保留证据 / deployed_count_2src 分键);④15 号稿布局三信号(如身份反哺
+    布局)实现后应以更强信号替代本判别器(见移交笔记)。"""
     try:
         from sr_od.application.currency_war.obs.currency_war_cv import (
             slot_occupied,
@@ -531,7 +528,7 @@ def _occupancy_consistency_arbitrate(ctx: SrContext, screen: MatLike,
 def _observe_back_layout_to_container(ctx, n: int | None,
                                       n_raw: int | None) -> None:
     """三信号裁决值落 GameState.back_layout 容器(back_max 语义裁决·闸门二
-    写端接线;值源切换定谳 = W5 方案稿 §2.3 + 机制正本
+    写端接线;值源切换已定案(机制正本
     docs/game/currency_war/research/board_structure.md 量化公式节)。
 
     - **挂点 = resolve_back_slots 收尾(三信号裁决单一源)**:部署拖拽/
@@ -540,7 +537,7 @@ def _observe_back_layout_to_container(ctx, n: int | None,
       决策层(kernel 视图 back_max 供数)自此可见动态真值;
     - 值 = 运行档 ``n``(已建档 6/7/8/9 直读;未来新档 >9 → 8 格超集
       运行)——**裁决值与坐标档分离的残余面 = 未建档新档**:容器记运行值,
-      evidence 补 ``superset`` 标记(标记判据 = 裁决 raw 值未建档,与留证
+      evidence 补 ``superset`` 标记(标记判据 = 裁决 raw 值未建档,与保留证据
       采集钩子同一条判据;设计正本 §3.2.7「域外一律按 8 格超集读全扩展带」
       同口径,防超集近似被当精确值消费;9 档已建档,直读无标记);
     - 裁决未知帧(n_raw=None:双弃权/防抖未过)不写——宁缺勿造,容器
@@ -584,12 +581,12 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
       用户口述真值;9 档已建档直读,**残余分离面 = 未来新档 >9**:运行值
       退 8 格超集;公式弃权帧 = None);
     - ``cv_n``:CV 实测格数(None=不可判;防抖未通过时为 None 语义=退公式);
-    - ``cv_readings``:防抖重读序列(W209h;仅新格数读数触发时非 None);
+    - ``cv_readings``:防抖重读序列(仅新格数读数触发时非 None);
     - ``n_raw``:对账后原始格数(不一致采 CV;未建档值保留原值供钩子判档;
       未知态帧 = None);
     - ``n``/``prefix``:运行值(未建档档 → 8 格超集,已建档档直读;未知态
       帧 → ``None``/``''``,消费方按读写分级处置,§3.2④);
-    - ``cap``/``level``/``diff``:读数快照(判读/留证);
+    - ``cap``/``level``/``diff``:读数快照(判读/保留证据);
     - ``unknown``/``frozen``/``unknown_streak``:布局未知态三键(§3.2④)——unknown=本帧双弃权;frozen=连续未知达 ``UNKNOWN_FREEZE_FRAMES``
       (写类冻结止损);unknown_streak=当前连续计数(任一已知帧清零);
     - **容器接线(back_max 语义裁决·闸门二)**:已知帧裁决值随写
@@ -604,10 +601,10 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
     ``cw_identity_obs._level_trusted``(容器 level Field.source)。
 
     对账:一致 → 公式值;CV 实测存在且不符 → **CV 值**(画面事实>推导)+
-    :func:`note_channel_conflict` 留证两值;CV None → 公式值兜底。
-    **防抖(W209h/决策 11)**:CV 读出**未建档**新格数(≠公式 且 ∉ 已建档
+    :func:`note_channel_conflict` 保留证据两值;CV None → 公式值兜底。
+    **防抖(决策 11)**:CV 读出**未建档**新格数(≠公式 且 ∉ 已建档
     档 {6,7,8,9})单帧不行动——重读 2 次三次一致才采 CV 值;任一不一致 =
-    瞬态,退公式值 + 留证(阈值不动,瞬态用重读解)。
+    瞬态,退公式值 + 保留证据(阈值不动,瞬态用重读解)。
     """
     global _unknown_streak
     try:
@@ -617,7 +614,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
             )
             level = _session_level(ctx)
         if cap is None:
-            # W218:cap 瞬态误读(过渡帧旧值残影,run 27 型)会直接改
+            #cap 瞬态误读(过渡帧旧值残影,run 27 型)会直接改
             # diff → 公式通道选错档(格数类高危点);改走 read_deploy_cap_debounced
             # (域防抖:域外重读一帧,仍域外 → None → 下方 diff=0 退 6 格
             # 基线,失败安全侧;level 未知时域不可判,退原直读语义)。
@@ -643,7 +640,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
     _arb_n: int | None = None   # 冲突最终裁决档(None=无冲突/保 CV 旧规)
     if formula_n is None and cv_n is None:
         # 布局未知态(§3.2④):双弃权 → 不固定选任何档。连续计数按
-        # 「一次判定全不可判计 1」(B3 换算规则),每帧 JSONL 留证不节流。
+        # 「一次判定全不可判计 1」(B3 换算规则),每帧 JSONL 保留证据不节流。
         _unknown_streak += 1
         _frozen = _unknown_streak >= UNKNOWN_FREEZE_FRAMES
         from one_dragon.utils.log_utils import log
@@ -699,8 +696,8 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
     if formula_n is None:
         # 公式弃权 ∧ CV 单源可用:采 CV 实测(布局类「实测>推导」,§2.2;
         # 占用态门三态探针已给结构判据,不存在「采信启发式」问题)。
-        # 防护对齐(落地审 C2):未建档读数与双通道路径同过 W209h 三读门
-        #(防单源幻影高档当帧生效);未确认 → CV 弃权进未知态;分键留证。
+        # 防护对齐(落地审 C2):未建档读数与双通道路径同过 三读门
+        #(防单源幻影高档当帧生效);未确认 → CV 弃权进未知态;分键保留证据。
         if cv_n not in _LAYOUT_PREFIX:
             cv_readings = _cv_confirm_readings(ctx, screen, cv_n, formula_n)
             if not (len(cv_readings) == 3
@@ -721,7 +718,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
         log.info('[cw][layout] 公式弃权(level_trusted=False)→ CV 单源 %s 格',
                  cv_n)
     elif cv_n is not None and cv_n != formula_n:
-        # 对账不一致:CV 实测优先(画面事实>推导)+ 留证两值
+        # 对账不一致:CV 实测优先(画面事实>推导)+ 保留证据两值
         note_channel_conflict(screen, formula_n, cv_n, cap, level,
                               'select_back_layout')
         # 分键(15 号稿批 C):记录函数单一源 = kernel.cw_telemetry_exit
@@ -735,8 +732,8 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
         except Exception:   # noqa: BLE001  遥测 best-effort
             pass
         if cv_n not in _LAYOUT_PREFIX:
-            # W209h 防抖:新格数读数(会触发 7 格采集/停机)单帧不行动——
-            # 重读 2 次三次一致才采;任一不一致 = 瞬态自愈退公式 + 留证序列
+            # 防抖:新格数读数(会触发 7 格采集/停机)单帧不行动——
+            # 重读 2 次三次一致才采;任一不一致 = 瞬态自愈退公式 + 保留证据序列
             cv_readings = _cv_confirm_readings(ctx, screen, cv_n, formula_n)
             if not (len(cv_readings) == 3
                     and all(r == cv_n for r in cv_readings)):
@@ -766,7 +763,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
         # 不仲裁,走下方信号②退化梯。
         # 边界:cv_n 未建档(∉ _LAYOUT_PREFIX,走上方防抖/8 格超集语义)时
         # 不仲裁——仲裁只能在「两个已建档档」之间选,不得把未建档超集读数
-        # 静默收敛回已建档档(那会跳过留证采集钩子)。
+        # 静默收敛回已建档档(那会跳过保留证据采集钩子)。
         if cv_n is not None and cv_n != formula_n and cv_n in _LAYOUT_PREFIX:
             try:
                 from sr_od.application.currency_war.obs.cw_observation import (
@@ -789,8 +786,8 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
                 # 读数已无「N 档端点被占误高估」偏置——cv>formula = 两端整格
                 # 存在的结构证据(full,full),采 CV;cv<formula = 下界读数
                 # (端点切片/失明非「无格」证据),不否决有 cap/level 防抖
-                # 背书的公式,采公式。双向不对称均有留证(上方
-                # note_channel_conflict),复现即按帧对拍。
+                # 背书的公式,采公式。双向不对称均有保留证据(上方
+                # note_channel_conflict),复现即按帧交叉核对。
                 if cv_n > formula_n:
                     from one_dragon.utils.log_utils import log
                     log.info('[cw][layout] 通道冲突(paddle 不可得):CV %s > '

@@ -1,4 +1,4 @@
-"""货币战争 胜率模型 · 影子模式适配类(win_model M1,W30)。
+"""货币战争 胜率模型 · 影子模式适配类(win_model M1)。
 
 契约 C7(``契约包_C1-C7.md`` §C7,草案级)接口形状落地:``WinModelVersion``
 (version/model_id 字段)+ ``features`` / ``predict``。
@@ -6,12 +6,12 @@
 **影子模式(本文件现状,硬边界)**:
 - ``predict`` **不接任何 sim 结算路径**——不修改输入、不被结算分派器调用
   (sim 默认结算件仍是 Δ池回放);调用只把预测落 ``shadow_log`` 供离线
-  对拍「模型预测 vs 实机结果」漂移监控(C7 消费方之三);
-- 模型本体 = W30 训练的 P1 域 killed 分类探针(LR+L2,joblib,位于
+  交叉核对「模型预测 vs 实机结果」漂移监控(C7 消费方之三);
+- 模型本体 = 离线训练的 P1 域 killed 分类探针(LR+L2,joblib,位于
   ``.debug/temp/currency_war/cw_dev/win_model_v0/``,gitignored 区);
   模型文件缺失时 ``available=False``,``predict`` 直接返回 None(不抛)。
 
-标签源 = ``outcomes.killed``(实机结算真值,W23 定);特征集 fs1 见
+标签源 = ``outcomes.killed``(实机结算真值);特征集 fs1 见
 ``w30_meta.json`` 的 feature_cols(引擎数/板深/羁绊档位/node_type 先验)。
 """
 from __future__ import annotations
@@ -26,20 +26,20 @@ from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_system_cards import SYSTEM_CARDS
 
-# 符号解耦(处死计划批 0 第 2 项):铁三角权威副本迁 knowledge/cw_line_facts,
+# 符号解耦(处死计划 第 2 项):铁三角权威副本迁 knowledge/cw_line_facts,
 # 不再依赖 kernel/cw_line_defs(死刑判据文件)
 from sr_od.application.currency_war.knowledge.cw_line_facts import _CORE_TRIO
 from sr_od.application.currency_war.telemetry.cw_win_features import (
     features_from_deployed,
 )
 
-#: 模型产物目录(W30 训练输出;gitignored,模型走运行时资产惯例不进 git)。
+#: 模型产物目录(离线训练输出;gitignored,模型走运行时资产惯例不进 git)。
 _MODEL_DIR = Path('.debug/temp/currency_war/cw_dev/win_model_v0')
 _MODEL_PATH = _MODEL_DIR / 'w30_lr_killed.joblib'
 _META_PATH = _MODEL_DIR / 'w30_meta.json'
 _SHADOW_LOG = _MODEL_DIR / 'shadow_predictions.jsonl'
 
-#: 引擎实体单一源(W47 统一化,原先三组具名字面量改 import/派生):
+#: 引擎实体单一源(原先三组具名字面量统一为 import/派生):
 #: - 铁三角 = ``knowledge.cw_line_facts._CORE_TRIO`` 注册表真值(注册表 import 不复制);
 #: - DOT 件池 = ``FACTIONS['持续伤害']`` 成员的 ≤2 费子集(过渡件口径,
 #:   海瑟音4/黑天鹅5 是终局件不进池);
@@ -51,13 +51,13 @@ _DOT_POOL = tuple(sorted(
 _SEELE = SYSTEM_CARDS['seele'].engine_required[0]
 _NODE_TYPES = ('普通战斗', '遭遇', 'boss')
 
-# ── plaza 先验面样本权重口径(W495 逐篇语料接入,单一源)──────────────
+# ── plaza 先验面样本权重口径(逐篇语料接入,单一源)──────────────
 #: 无 use 计数帖的基础权重(=遥测行权重 1,先验面最低话语权)。
 PLAZA_BASE_WEIGHT: float = 1.0
 #: 先验面份额:plaza 全量权重和归一到「等效遥测局数」的倍数。
 #: =1.0 即先验面与遥测集同话语权(Beta 收缩 α=n 的等价量级;
 #: 「先验不主导」与旧粗模型的单元封顶口径(PLAZA_SHARE_MAX=0.25,
-#: 模块已随 sim 重做删除面退役,git 历史可考)同精神——粗模型按单元
+#: 模块已停用,git 历史可考)同精神——粗模型按单元
 #: 封顶,影子模型按全集配平,都是防 784 篇生存者语料淹没带负样本的
 #: 实机校准锚)。
 PLAZA_PRIOR_FACE_N: float = 1.0
@@ -91,7 +91,7 @@ def plaza_post_features(post: Any) -> dict[str, Any]:
     ``features_from_deployed``)+ plaza 附加列:
 
     - ``plaza_use`` / ``plaza_weight_raw``:use 计数与原始权重
-      (:func:`plaza_sample_weight`;归一在训练侧,见上);
+      (func:`plaza_sample_weight`;归一在训练侧,见上);
     - ``n_carry``:Final carry 数(帖结构特征,通常 1);
     - ``n_labels`` / ``n_portals`` / ``n_augs``:节奏标签/门户/投资实选
       计数(密度代理;词表级 one-hot 留给 Phase B 特征条件化再升)。
@@ -120,7 +120,7 @@ def plaza_post_features(post: Any) -> dict[str, Any]:
 
 
 def _engine_columns(base: dict[str, Any]) -> dict[str, Any]:
-    """基础特征 dict → 追加引擎覆盖度派生列(单一源,features() 共用)。
+    """基础特征 dict → 追加引擎覆盖度派生列(单一源,features 共用)。
 
     engine_trio/dot_pieces/seele 实体出处见模块头「引擎实体单一源」注释。
     """
@@ -163,7 +163,7 @@ _PLATT_PROB_EPS: float = 1e-6
 class PlattCalibrator:
     """Platt 概率再校准层:``p → sigmoid(a·logit(p) + b)``。
 
-    设计(为什么是 Platt 而非温度缩放):W495 影子对拍实测的失真形态是
+    设计(为什么是 Platt 而非温度缩放):影子交叉核对实测的失真形态是
     「排序能力好、概率整体下压、高分段欠冲且对先验面份额不敏感」——
     偏移主导 + 尺度分量并存,单参数温度缩放(1/T)表达不了纯偏移;
     Platt 双参数严格包含温度缩放为特例(a=1/T, b=0),故选 Platt。
@@ -239,10 +239,10 @@ class WinModelVersion:
 
 
 class ShadowKilledModel:
-    """W30 P1 域 killed 分类探针的影子模式包装(C7 接口形状)。
+    """P1 域 killed 分类探针的影子模式包装(C7 接口形状)。
 
     用法(仅离线分析/漂移监控,不进结算路径):
-        model = ShadowKilledModel()
+        model = ShadowKilledModel
         feats = model.features(deployed)          # deployed → 特征向量
         outcome = model.predict(feats, 'boss')    # 预测 + 落 shadow_log
     """
@@ -294,9 +294,9 @@ class ShadowKilledModel:
 
         本方法不被 sim 结算分派器调用(C7 验收边界④:win_model 上线前
         仅作离线分析件);返回 ``{'killed': bool, 'killed_prob': float}``
-        供漂移监控对拍,无模型时返回 None。
+        供漂移监控交叉核对,无模型时返回 None。
 
-        ``calibrator``:可选 Platt 校准层(:func:`fit_platt_scaling` 的产物,
+        ``calibrator``:可选 Platt 校准层(func:`fit_platt_scaling` 的产物,
         只许遥测锚拟合);默认 None = 不校准,与未引入校准层前的行为
         逐一相同(概率/阈值/日志全零漂移)。传入恒等参数
         ``PlattCalibrator()`` 同样零漂移。

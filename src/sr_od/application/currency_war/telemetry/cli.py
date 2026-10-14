@@ -1,11 +1,11 @@
-"""判读 CLI(``python -m`` 入口,自 cw_telemetry 拆出,分包期6)。
+"""判读 CLI(``python -m`` 入口,自 cw_telemetry 拆出)。
 
-W3(R5 单源直迁第三波,正本 = docs/develop/sr_od/application/currency_war/game_state/
-r5-migration-plan.md §2 W3):``--source`` 双读面拆除——旧 12 流视图族随
-流写入端退役(删除波 1)一并删除,journal(\\*:读面 = journal_query)成为
+(单源直迁,正本 = docs/develop/sr_od/application/currency_war/game_state/
+r5-migration-plan.md §2):``--source`` 双读面拆除——旧 12 流视图族随
+流写入端停用,一并删除,journal(\\*:读面 = journal_query)成为
 ``query`` 唯一读面;``checks`` 子命令(sim/ledger_hooks 读生产旧流的检查
-器)同批退役;``--sim-batch`` 入口随旧视图删除(sim 批目录无 journal,
-批判读桥期 = skills 侧 cw_batch_stats,journal 侧 sim 视图候 W6 sim 切
+器)一并停用;``--sim-batch`` 入口随旧视图删除(sim 批目录无 journal,
+批判读桥期 = skills 侧 cw_batch_stats,journal 侧 sim 视图待 sim 切
 统一容器批)。``assemble`` 按局档案装配入口保留(切片含 journal,v12+)。
 """
 

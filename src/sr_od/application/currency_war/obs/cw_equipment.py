@@ -8,7 +8,7 @@
 
 装备区识别演进:全域 SIFT(单应变换天然单实例,同模板多格重复只锁一格 → 占用召回 62%)
 → **网格几何 + 逐格 TM 分类**(格几何按 28 帧真值实测标定;同模板多实例问题随逐格独立消失)。
-标定与对拍基线:``.debug/temp/currency_war/w540_equip_grid/REPORT.md``(171 真值格)。
+标定与交叉核对基线:``.debug/temp/currency_war/w540_equip_grid/REPORT.md``(171 真值格)。
 """
 from __future__ import annotations
 
@@ -65,8 +65,8 @@ def load_equip_templates(equip_dir: Path) -> dict[str, tuple[MatLike, tuple, np.
     return templates
 
 
-# ===== 装备区网格几何(W540 28 帧真值实测标定)=====
-# 实测格距 ~75px;旧注释「行距 ~98px」是模板素材尺寸(plaza 统一 98px),非格距 —— 勘误随本批生效。
+# ===== 装备区网格几何(28 帧真值实测标定)=====
+# 实测格距 ~75px(plaza 模板素材的 ~98px 是素材尺寸,非格距)。
 _EQUIP_COL_ROW1: tuple[int, ...] = (1693, 1768, 1843)  # row1 材料堆叠带三列(格心 x,1080p 绝对坐标)
 _EQUIP_COL_EQ: tuple[int, ...] = (1768, 1843)          # 装备行两列(左列 x1693 仅 row1 存在)
 _EQUIP_ROW1_Y: int = 160                               # row1 格心 y(无横幅基准)
@@ -122,7 +122,7 @@ def _equip_slot_centers(dy: int) -> list[tuple[int, int, int, int]]:
 def _fill_order_slots(dy: int) -> tuple[list[tuple[int, int, int, int]], list[tuple[int, int, int, int]]]:
     """栏内**填充序**格点,分两段(各段独立做「首空即停」剪枝)。
 
-    填充规律(用户口述·权威,2026-09-02;知识档 equipment_mechanics.md §5):
+    填充规律(用户口述·权威;知识档 equipment_mechanics.md §5):
     ① row1 消耗品带右→左;② 装备区右列自上而下、再左列自上而下;获得按序 append,
     栏内无空洞 → 每段扫描遇首空即停(其后必空,剪枝;异常由装备期望态对账暴露)。
 
@@ -239,7 +239,7 @@ def _classify_grid(screen: MatLike, scaled: dict[float, list[tuple[str, np.ndarr
 
     row1 消耗品带只匹配**工具模板子集**(注册表 category='工具';全库分类与穿戴
     决策都不涉及消耗品,子集 ~10 模板 vs 全库 157)——owned 全量快照仍含工具
-    (W209g 采集写端契约不变,快照消费 cells 的 name 集合)。
+    (采集写端契约不变,快照消费 cells 的 name 集合)。
 
     :return: ``(cells, dy_offs)``;``dy_offs`` = 占用格 TM 峰心垂直偏移绝对值列表
         (候选档对齐自验用,见 ``_EQUIP_DY_ALIGN_TOL``)。
@@ -444,7 +444,7 @@ def read_equips(
     """装备区 owned icon ``[(name, (cx, cy), inliers)]``(按置信降序)。
 
     默认区域(= 装备区标准格 ``(1620,90,1918,710)``)走**逐格分类**(``read_equip_grid``):
-    28 帧真值对拍召回 171/171、零误检;第三元素语义由 SIFT inliers 改为 ``int(score*100)``
+    28 帧真值交叉核对召回 171/171、零误检;第三元素语义由 SIFT inliers 改为 ``int(score*100)``
     (同为置信度量,消费方仅用于排序)。row1 材料格与装备格一并列出(与旧输出口径一致)。
 
     **非默认 equip_rect 走全域 SIFT 旧路径**(``_read_equips_sift``,行为不变)——
@@ -552,7 +552,7 @@ def _check_owned_order(
     screen: MatLike,
     equip_rect: tuple[int, int, int, int],
 ) -> None:
-    """owned 栏顺序异常检测(诊断留证,无行为影响;仅 SIFT 旧路径):行内跳格记 ``[cw!]`` + 存图。"""
+    """owned 栏顺序异常检测(诊断保留证据,无行为影响;仅 SIFT 旧路径):行内跳格记 ``[cw!]`` + 存图。"""
     pts = [(e[1][0], e[1][1]) for e in equips]
     anomaly = _owned_order_anomaly(pts)
     if anomaly is None:

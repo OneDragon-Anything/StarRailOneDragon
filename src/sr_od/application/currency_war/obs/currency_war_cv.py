@@ -3,15 +3,15 @@
 本文件现役只保留 **槽位占用判据**(slot_occupied):布局仲裁信号③(占用
 一致性,``cw_back_layout._occupancy_consistency_arbitration``)与占槽簿记
 消费。历史上的 deploy 两要素颜色检测(备战栏饱和度找头像/浅青描边找空槽/
-Canny 边框找槽中心)已随 deploy 链路改走 screen_info 布局档 rect + 本判据
-退役删除(零外部消费实证 2026-09-12;git 历史可复活)。
+Canny 边框找槽中心)已停用(deploy 链路改走 screen_info 布局档 rect + 本判据;
+零外部消费实证;git 历史可复活)。
 """
 
 import cv2
 from cv2.typing import MatLike
 
 # 槽位占用判据(替 SIFT;SIFT 对备战立绘不可靠见 D-4):灰度 std。
-# 空槽 placeholder 低方差(~11),立绘高方差(~39-67);阈值 25 干净分离(2026-08-09 实测)。
+# 空槽 placeholder 低方差(~11),立绘高方差(~39-67);阈值 25 干净分离(实测)。
 SLOT_OCCUPY_HALF: int = 55
 SLOT_OCCUPY_STD_THR: float = 25.0
 

@@ -1,6 +1,6 @@
 """货币战争 **节点行类型识别**(纯 CV,无框架依赖;``cw_observation.read_node_sequence`` 包装接入)。
 
-节点行(备战顶部)模型(2026-08-12 实证 + pi/VLM 确认):
+节点行(备战顶部)模型(实证 + pi/VLM 确认):
 - 基础 8 槽(槽 i = 第 1+i 轮),但 invest-env 会增/改节点(人身意外险+补给 / 战争边疆战斗→遭遇 /
   经济过热奖励→扑满)→ **每次到备战画面重新识别**,``detect_node_circles`` HoughCircles 动态定圆
   (圆位置/数量会变,不硬编码)。
@@ -13,7 +13,7 @@
 pi 验圆心准)。Hu 矩(形状)匹配 —— TM 灰度/彩色对小图标不可靠(同图跨帧仅 0.5、彩色不区分),
 Hu 抓 Otsu 二值化后的轮廓才稳(encounter/reward 完美、supply 可分;见 events.md 3.5.5)。
 
-⚠️ 判态阈值 + Hu 未识别阈值来自单对局实证(2026-08-12),跨对局/版本可能漂移 → 多样本校准。
+⚠️ 判态阈值 + Hu 未识别阈值来自单对局实证,跨对局/版本可能漂移 → 多样本校准。
 """
 from __future__ import annotations
 
@@ -23,16 +23,16 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-#: 节点行区域(备战顶部;含 boss 节点,2026-08-26 用户给权威范围实锺:旧值
+#: 节点行区域(备战顶部;含 boss 节点,用户给权威范围已实测确认:旧值
 #: 右界 1280 把 boss 圆(~x1354,r22)截在带外——生产从未检出过 boss 节点就是
 #: 这条右界截的)。**单一源 = screen_info 备战屏「区域-节点条」area**;
 #: ``cw_observation.read_node_sequence`` 经 ``_area_rect`` 读 yml 传入,
 #: 本常量仅作纯 CV 测试与 yml 缺失时的兜底(两者漂移以 yml 为准)。
 NODE_ROW_RECT: tuple[int, int, int, int] = (544, 24, 1406, 106)
-# 判态阈值(2026-08-12 单对局实证 + 2026-08-16 V 门修正):
+# 判态阈值(单对局实证 + V 门修正):
 # - S 分:未来(低 20-37) vs 当前/过去(高 81-136)——S<60 → 未来;
 # - V 分:当前(高 69-132) vs 过去(低 39-65)——V>67 → 当前,else 过去;
-# - **V 下限门(2026-08-16,63 张误报实证)**:变暗的**过去**节点饱和度 S 也降到未来区间
+# - **V 下限门(63 张误报实证)**:变暗的**过去**节点饱和度 S 也降到未来区间
 #   (S<60)→ 仅按 S 判会把过去节点判成未来(实测 63 张「未识别误报」全是此类),下游
 #   Hu 匹配/采集钩子全被污染。真未来节点亮(V 84-99),变暗过去节点暗(V 47-88 mean 67)
 #   → 加 V≥V_MIN_UPCOMING 双门:V 低于此且 S 低 → 判「过去(变暗)」而非未来。
@@ -76,17 +76,17 @@ def _hu_distance(a: HuLike, b: HuLike) -> float:
 def load_node_type_templates(templates_dir: Path) -> dict[str, list[HuLike]]:
     """加载节点类型模板(battle/supply/encounter/reward + **encounter_v2**)→ {type: Hu 矩}。
 
-    ⚠️ 通道对齐(2026-08-16 review P1 修正):模板 PNG 经 imdecode 读到 **BGR** → 先翻成
+    ⚠️ 通道对齐(review P1 修正):模板 PNG 经 imdecode 读到 **BGR** → 先翻成
     RGB 语义再 ``RGB2GRAY`` 正确 luma —— 与 classify_node_row(live RGB 截图)同侧。
 
     encounter_v2(r86):**遭遇节点的第二渲染**(深蓝圆底+灰色三叉箭头,186 张积压
-    采样实锤,对旧 4 模板最近 Hu=supply 4.02 ≫ 阈值 2.8 → 恒「未识别」刷采集);
+    采样已实测确认,对旧 4 模板最近 Hu=supply 4.02 ≫ 阈值 2.8 → 恒「未识别」刷采集);
     自模板回归 184/186 命中。类型归 encounter(同语义:难度选择节点)。
     """
     out: dict[str, list[HuLike]] = {}
     # alias:文件名 → 类型 key(encounter_v2 → encounter 同语义)
     _alias = {'encounter_v2': 'encounter'}
-    # 同 key 多模板(encounter/encounter_v2):保留各自 Hu,**classify 的 min() 匹配
+    # 同 key 多模板(encounter/encounter_v2):保留各自 Hu,**classify 的 min 匹配
     # 天然取更近者** → 多变体都参与匹配(聚合而非覆盖)。
     for t in ('battle', 'supply', 'encounter', 'encounter_v2', 'reward'):
         p = templates_dir / f'node_type_{t}.png'
@@ -100,7 +100,7 @@ def load_node_type_templates(templates_dir: Path) -> dict[str, list[HuLike]]:
     return out
 
 
-#: boss SIFT 命中判据(2026-08-26 佩佩局实锺:巨鹿生物制药 好匹配 5 vs 次名
+#: boss SIFT 命中判据(佩佩局已实测确认:巨鹿生物制药 好匹配 5 vs 次名
 #: 金血记忆体联盟 1,5:1 断层):好匹配 ≥3 且 ≥2×次名。TM 五版全败(图鉴
 #: 全彩+底色 vs 节点红框小图跨渲染态),SIFT 抓局部特征对底色/缩放鲁棒
 #: (与角色立绘识别同机制)。
@@ -112,7 +112,7 @@ def load_boss_templates(templates_dir: Path) -> dict[str, tuple]:
     """加载 boss 头像 SIFT 模板库 → ``{boss名: (keypoints, descriptors)}``。
 
     模板源 = 竞争对手图鉴页顶导航圆形头像(``assets/template/currency_war/
-    boss_avatar/*.png``,20 件全量,2026-08-26 从 .debug/images 图鉴采集批
+    boss_avatar/*.png``,20 件全量,从 .debug/images 图鉴采集批
     裁取;命名 = 图鉴标题 OCR = ``cw_enemy_data.BOSS_MECHANICS`` 规范名,
     20/20 对齐)。通道:read_image → RGB → GRAY(SIFT 单通道)。
     """
@@ -175,7 +175,7 @@ def detect_node_circles(row_gray: np.ndarray) -> list[tuple[int, int, int]]:
 def _circle_state(row_rgb: np.ndarray, cx: int, cy: int) -> str:
     """圆的态(已过/当前/未来)via HSV 平均饱和度 S + 亮度 V(采样窗 _SAMPLE_R;RGB 输入)。
 
-    判定序(2026-08-16 修正):
+    判定序(修正):
     1. S ≥ STATE_S_UPCOMING(高饱和)→ 当前/过去:V > STATE_V_CURRENT → current else past;
     2. S < 60(低饱和)但 **V < V_MIN_UPCOMING(暗)** → **past(变暗的过去节点** —— 饱和度
        随亮度一起降,单看 S 会把它误判未来,63 张误报实证);
@@ -199,15 +199,15 @@ def classify_node_row(row_rgb: np.ndarray, templates: dict[str, HuLike],
                       boss_templates: dict[str, tuple] | None = None) -> list[NodeSlot]:
     """节点行裁图(**RGB**,框架截图通道)→ 槽识别列表。纯 CV(无框架依赖)。
 
-    ⚠️ 通道语义(2026-08-16 review P1 修正):框架截图链 GDI/mss → ``BGRA2RGB`` → **live 是
+    ⚠️ 通道语义(review P1 修正):框架截图链 GDI/mss → ``BGRA2RGB`` → **live 是
     RGB**;本函数此前用 ``COLOR_BGR2GRAY`` 把 RGB 当 BGR 灰度化(R/B 权重互换,错误 luma)。
     模板/fixture 经 imdecode 走 BGR —— 两侧恰好都在"错误侧"自洽,BGR 路径测试绿但 live
-    从未被验证(review 实锤:RGB 传入时 idx4 supply(0.00)→encounter(1.66) 翻转)。修正:
+    从未被验证(review 已实测确认:RGB 传入时 idx4 supply(0.00)→encounter(1.66) 翻转)。修正:
     本函数与模板加载统一 **RGB 语义 + ``RGB2GRAY`` 正确 luma**;调用方(read_node_sequence)
     直传框架 RGB 截图;测试 fixture 传 imdecode 结果需先翻成 RGB(BGR→RGB)。
 
     - HoughCircles 动态定圆(数量/位置随 invest-env 变)。
-    - **两段判态(2026-08-16 修正)**:
+    - **两段判态(修正)**:
       ① HSV 找「当前槽」:S ≥ STATE_S_UPCOMING 且 V > STATE_V_CURRENT(高饱和高亮,独一);
       ② **位置先验**:节点行时间左→右递进 —— 当前槽左侧一律 past(变暗图标,HSV 单特征
          与真未来交叠 V 79-99 vs 87-88 分不开,63 张误报实证),右侧一律 upcoming。
@@ -215,12 +215,12 @@ def classify_node_row(row_rgb: np.ndarray, templates: dict[str, HuLike],
     - 未来圆 Hu 矩匹配 4 模板 → best 类型 + 最近距离;当前/过去 node_type=None(当前类型
       由上层 OCR 标签定,见 cw_observation.read_node_sequence)。
     - 未来圆 hu_dist > HU_DIST_UNRECOGNIZED → 未识别(上层触发采集 hook,如新节点类型)。
-    - **boss 槽(2026-08-26)**:``boss_templates`` 非空时,**最右槽**(首领=位面最后节点,
-      既有位置判,动态槽数适应——invest-env 增删节点不锁槽号)SIFT 对拍 boss 头像库
+    - **boss 槽**:``boss_templates`` 非空时,**最右槽**(首领=位面最后节点,
+      既有位置判,动态槽数适应——invest-env 增删节点不锁槽号)SIFT 交叉核对 boss 头像库
       (``match_boss_sift``;红框彩色头像 vs 图鉴全彩模板,TM 五版实证跨渲染态不可行,
       SIFT 局部特征鲁棒)。命中 → ``NodeSlot.boss=boss 名``;未命中 → None(保守,不猜)。
       boss 槽的 Hu 类型(如撞 encounter 距离)**被 boss 识别覆盖**——头像圆的二值轮廓
-      对符号模板无意义(实锺:boss 圆 Hu 2.05 撞 encounter)。
+      对符号模板无意义(已实测确认:boss 圆 Hu 2.05 撞 encounter)。
     """
     gray = cv2.cvtColor(row_rgb, cv2.COLOR_RGB2GRAY)
     circles = detect_node_circles(gray)
@@ -282,7 +282,7 @@ def current_slot_hu_type(row_rgb: np.ndarray, slot: NodeSlot,
     """三票校验·票C:当前槽**高亮态图标** Hu 矩对 4 模板 → (类型, 最近距离)。
 
     旧 classify 只对 upcoming 槽跑 Hu(当前槽高亮态 Hu 恒不匹配的结论是
-    **TM 时代**的;Hu 对高亮二值轮廓有效,1-1 fixture current 槽实锺可分)
+    **TM 时代**的;Hu 对高亮二值轮廓有效,1-1 fixture current 槽已实测确认可分)
     → 校验票单独重算当前槽 Hu,不依赖/不影响 classify 的 upcoming 赋值。
     距离 > ``CUR_HU_DIST_HIT`` → (None, dist)(无有效接近,票弃权)。
     纯 CV(无框架依赖);输入 RGB(框架截图通道,同 classify)。

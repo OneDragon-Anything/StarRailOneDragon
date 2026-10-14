@@ -1,10 +1,10 @@
 """货币战争 **对局采集器**:任意对局(bot 实跑 / 人类手打)的旁路观测记录器。
 
-用途(2026-08-19 用户定调:可复用、进正式代码):
+用途(用户定调:可复用、进正式代码):
 - **人类演示采集**:用户手打一局/一位面,离线提取完整决策流(板面/上场角色/星级/bench/
-  金/HP/等级/羁绊)供 bot 对拍 —— 用户 P1 全胜演示是策略校准的最高权威语料。
+  金/HP/等级/羁绊)供 bot 交叉核对 —— 用户 P1 全胜演示是策略校准的最高权威语料。
 - **bot 对局旁路观测**:与 telemetry(decisions.jsonl,plan 视角)互补,本模块记录**画面真值**
-  (识别器视角),可对拍「计划 vs 实际」。
+  (识别器视角),可交叉核对「计划 vs 实际」。
 - 离线重放:对任意历史截图目录重跑提取。
 
 设计:
@@ -75,7 +75,7 @@ def extract_frame(ctx, img, templates) -> dict:
     """关键帧 → 结构化记录(识别全量;失败字段安全默认,不抛)。"""
     rec: dict = {'ts': datetime.now().isoformat(timespec='seconds')}
     try:
-        # round_caps = 场字段现值(T-8 §2.5 实时态语料接线:修饰局 r10/r8
+        # round_caps = 场字段现值(§2.5 实时态语料接线:修饰局 r10/r8
         # 帧记 (1,10)/(2,8);局外/--replay 态无 session → None 回退默认
         # 口径,披露 10②)。
         _caps_gs = game_state_from_ctx(ctx)
@@ -89,10 +89,10 @@ def extract_frame(ctx, img, templates) -> dict:
     try:
         st = read_game_state(ctx, img)
         if st is not None:
-            # r92(redesign 101):hp_readable 保真位必带——recorder 是画面真值对拍语料,
-            # 混入假 100 会污染 bot vs 人类 HP 曲线对拍(r68 hp 毒化同族)。
-            # :hp 失读时沿用 last_hp_real,全无真值帧 hp=None
-            # (W823 None 化,无 100 兜底);hp_readable=False 即「读不到」分字段标记;
+            # r92(redesign 101):hp_readable 保真位必带——recorder 是画面真值交叉核对语料,
+            # 混入假 100 会污染 bot vs 人类 HP 曲线交叉核对(r68 hp 毒化同族)。
+            # hp 失读时沿用 last_hp_real,全无真值帧 hp=None
+            # (已 None 化,无 100 兜底);hp_readable=False 即「读不到」分字段标记;
             # gold 同款带保真位。
             # (迁移批 3.2:输入 = read_game_state 轻量回执,逐字段语义与旧
             # 帧逐位同;bench_full 改容器派生读口——旧帧 bench 恒空表,该
@@ -198,7 +198,7 @@ def replay_dir(dir_path: Path) -> None:
     """离线重放:对已有截图目录逐帧提取(frames.jsonl 不存在时生成;存在则版本号递增)。
 
     r92(redesign 101):旧「存在则写 frames_v2」在 v2 已存在时仍 'w' 覆盖 → 第三次
-    重放丢第二次结果(换阈值对拍迭代场景实损)。修:版本号递增(frames_v2/v3/…)。
+    重放丢第二次结果(换阈值交叉核对迭代场景实损)。修:版本号递增(frames_v2/v3/…)。
     """
     from sr_od.context.sr_context import SrContext
 

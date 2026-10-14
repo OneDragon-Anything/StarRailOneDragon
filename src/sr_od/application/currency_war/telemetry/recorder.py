@@ -1,20 +1,20 @@
-"""遥测采集保留面(删除波 1 后)。
+"""遥测采集保留面。
 
-旧 12 流中「策略源收编 9 流」(decisions/outcomes/exogenous/spend_ledger/
+旧 12 流中「策略源并入 9 流」(decisions/outcomes/exogenous/spend_ledger/
 shop_snapshots/exec_events/invest_cards/obs_conflicts/runs)的写入端已随
-用户 2026-09-10 直迁裁定整段删除(处置表单一源 =
+用户直迁裁定整段删除(处置表单一源 =
 docs/develop/sr_od/application/currency_war/game_state/retirement.md §2;历史档案只读,
-判读唯一读面 = telemetry/journal_query 新账视图族——W3 删旧读面后
+判读唯一读面 = telemetry/journal_query 新账视图族——删旧读面后
 telemetry/query 只余纯函数单一源)。本模块保留:
 
 - TelemetryRecorder:进程级落盘根槽载体(replay_dir/enabled;测试经
   telemetry.state.set_recorder_replay_dir 换根,装配面语义不变)+ 缺陷
-  台账写入(record_defect;保留专用流,候裁面见处置表 defect_ledger 行)。
-  (snapshot_expected_paths 挂起期望快照 helper 已随 两态制
-  退役删除——expected_state 条目表拆除无快照可取。)
+  台账写入(record_defect;保留专用流,待裁决面见处置表 defect_ledger 行)。
+  (snapshot_expected_paths 挂起期望快照 helper 已随两态制
+  停用删除——expected_state 条目表拆除无快照可取。)
 
-旧内存累积面(gold 轨迹/comps 序列/难度表)随 runs 流写入端一并退役——
-其唯一消费方是局终 summary 派生列,退役后无写入消费方。
+旧内存累积面(gold 轨迹/comps 序列/难度表)随 runs 流写入端一并停用——
+其唯一消费方是局终 summary 派生列,停用后无写入消费方。
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
     SEVERITY_L2_RECORD,
 )
 
-# 符号解耦(处死计划批 0):序列化权威副本迁 knowledge/cw_serialize,
+# 符号解耦(处死计划):序列化权威副本迁 knowledge/cw_serialize,
 # 不再依赖 kernel/cw_intention(死刑判据文件)
 from sr_od.application.currency_war.knowledge.cw_serialize import _to_jsonable
 from sr_od.application.currency_war.telemetry.schema import (
@@ -59,12 +59,12 @@ DEFECT_LEDGER_RETIREMENT_MANIFEST_NAME: str = 'defect_ledger.retirement.jsonl'
 class TelemetryRecorder:
     """落盘根槽载体 + 缺陷台账写入器。enabled=False 时写入 no-op(测试门)。
 
-    生产单例经 telemetry.state.get_recorder()(enabled=True,写
+    生产单例经 telemetry.state.get_recorder(enabled=True,写
     .debug/currency_war/telemetry/live/);唯一现役流 = 缺陷台账
-    (record_defect;op_journal 工程诊断流已随 2026-09-15 用户裁定退役,
+    (record_defect;op_journal 工程诊断流已停用,
     op 调用流归宿 = server 主日志 [cw-op] 行;board_state_archive 写入点
-    已退役、存量档案只读;cw4 计数流已随 R5 W4 流删退役,聚合归宿 =
-    局终域行载荷 MatchFinal.cw4_counters,r5-migration-plan.md §2 W4)。
+    已停用、存量档案只读;cw4 计数流已停用,聚合归宿 =
+    局终域行载荷 MatchFinal.cw4_counters,r5-migration-plan.md §2)。
     """
 
     def __init__(self, replay_dir: Path | str = DEFAULT_REPLAY_DIR, enabled: bool = False) -> None:
@@ -90,7 +90,7 @@ class TelemetryRecorder:
                       confidence: float | None = None) -> None:
         """记一条缺陷台账(defect_ledger.jsonl;纯观测索引层,字段语义见 DefectRecord)。
 
-        severity 空时保守缺省 L2 留证(正经初判走模块级 record_defect,
+        severity 空时保守缺省 L2 保留证据(正经初判走模块级 record_defect,
         那里有分级纯函数与复现计数);evidence.refs 由调用方给原流行定位,
         本方法不复制观测数据。confidence(可空):识别置信度快照,语义见
         DefectRecord.confidence。
@@ -123,7 +123,7 @@ class TelemetryRecorder:
 #   retired 同生死,重写失败轮恒空 = 跟随者自动不跟)。
 # - 孤儿段(journal 常开化前历史段,册外):同常量同窗自评补判
 #   (REAL_RUN_ID_RE 分型 + JOURNAL_RETENTION_DAYS/JOURNAL_NONLIVE_
-#   RETENTION_DAYS;2026-09-12 实测:现役台账 141 段 14.0MB 全为册外
+#   RETENTION_DAYS;实测:现役台账 141 段 14.0MB 全为册外
 #   实机形态段,纯跟随对其零作用,不补判龄则历史体积永不回落)。这不构成
 #   第二清理周期——触发点/常量/reason 值域全承 journal 同一趟,仅对裁决源
 #   无意见(册外)的段补判龄;journal 有意见的段一律以 journal 为准。
@@ -283,7 +283,7 @@ def follow_journal_retirement(telemetry_root: Path,
                               summary: dict[str, Any]) -> None:
     """journal 段淘汰的台账联动跟随者(kernel ``set_retirement_follower``
     槽的注入实现;生产武装点 = ``telemetry.defects.install_exit_hooks``,
-    与出口钩子/安灯同点显式接通,缺省关)。
+    与出口钩子/失配告警同点显式接通,缺省关)。
 
     telemetry_root = journal 所在 state 目录的父目录(kernel 只识根,文件
     名归本域单一源 :data:`DEFECT_LEDGER_NAME`)——生产 = telemetry live 根;

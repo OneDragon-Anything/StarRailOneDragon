@@ -67,10 +67,10 @@ def read_affixes(ctx: SrContext, screen: MatLike) -> list[str]:
 
 
 def read_detail_affixes(ctx: SrContext, screen: MatLike) -> list[str]:
-    """**位面详情画面**词缀横条 → 敌人词缀 OCR 名列表(接管局补采通道)。
+    """**位面详情画面**词缀横条 → 敌人词缀 OCR 名列表(中断恢复的对局补采通道)。
 
     词缀只出现在简报/位面详情/敌人信息浮层三画面——**备战画面无此条**
-    (2026-08-26 21:5x 实证:1-1 及之后备战底带=备战席卡槽,VLM 确认;
+    (实证:1-1 及之后备战底带=备战席卡槽,VLM 确认;
     首版误以为备战常驻,read_prep_affixes 空读两轮后用户纠正)。横条 =
     位面详情屏「区域-词缀横条」(y965-1015,含「敌人难度108」前缀段)。
     ``CwScreenPlaneIntel`` 开位面详情采集时同帧调用(零额外交互)。
@@ -119,18 +119,18 @@ def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
     """简报首领行 → 3 个 boss 名(画面 x 序 = 位面序真值;读侧经 :func:`clean_boss_names_by_lcs` 清洗)。
 
     3 个位面是货币战争的玩法结构(每局 3 位面 × 每位面 1 boss),**所有难度(A5/A8/A850)都 3 个,
-    不随难度变**(2026-08-05 攻略 + 官方确认;难度只改敌人强度/词缀,不改位面数)。
+    不随难度变**(攻略 + 官方确认;难度只改敌人强度/词缀,不改位面数)。
 
     简报屏 3 boss 横排卡片(立绘 + 阵营标签 + 名字);读「区域-首领行」area OCR → boss 名
     (滤数字/符号/短噪声/「阵营」2 字 label)。**排列 = 位面序真值**(「排列≠位面序」
     系单条日志孤证误判,勿据此改排列语义;裁定语义正本 = ``game_state/fields.md``
     §3.1.3;简报读数经 LCS 清洗后按序经 ``report_screen_briefing_obs`` 写容器
     ``plane_bosses``,消费链 boss_fit)。``CwScreenPlaneIntel`` 位面详情实采保留为
-    **接管场景重采**通道(对局中内存丢失时补采)+ 对账真值源。
+    **中断恢复场景重采**通道(对局中内存丢失时补采)+ 对账真值源。
 
     读不到 / area 缺 → []。
 
-    ⚠️ 数据层待补(同 competitors.md,后续浏览器/图鉴采):boss 机制 + 哪些 comp 怕哪个 boss
+    ⚠️ 数据层待补(同 competitors.md,后续浏览器/图鉴采):boss 机制 + 哪些 阵容怕哪个 boss
     (``comp.countered_by_bosses``)。当前 ``comp.countered_by_bosses`` 多为空 → boss_fit 中性 0.5;识别链路先通,
     数据层后续接上即生效。boss 阵营(红色标签内)OCR 暂不读(红底干扰,待视觉核实后再决定是否采)。
     """
@@ -205,7 +205,7 @@ def read_affix_effect(ctx: SrContext, screen: MatLike, affix_name: str) -> str:
     → 取标题下方**紧邻连续**的行(按 y 排序,与上一行 dy ≤ 45 纳入,遇大 gap 停)拼接 = 效果原文。
     找不到标题 / 无下行 → ''(调用方写 yml 待人工同步)。
 
-    tooltip 机制(2026-08-05 A8 实机点 4 词缀验证):点词缀弹 tooltip(切换不关旧),水平居中词缀,
+    tooltip 机制(A8 实机点 4 词缀验证):点词缀弹 tooltip(切换不关旧),水平居中词缀,
     y 850-920(词缀行上方);内容 = 词缀名标题(y最小)+ 描述(+ 数值/续句,行高 ~25-30,dy 递增)。
     效果确定在标题正下方,故不靠固定 y 上界,靠**连续性**(dy≤45)取,遇 Gap(到词缀行/难度/下一步)
     即停 —— 分辨率/布局微变也鲁棒。

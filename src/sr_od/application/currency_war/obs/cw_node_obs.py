@@ -3,7 +3,7 @@
 各画面 ``decide`` 与 kernel ``decide_planner`` 等剩余钩子)。
 
 与 ``cw_observation``(备战屏 reads)分模块:本模块只管**节点 overlay 的选项读取**(decide_* 的输入)。
-决策接线 audit(2026-08-07,``.debug/temp/currency_war/decision_wiring_audit.md``):这些 decide_*
+决策接线 audit(``.debug/temp/currency_war/decision_wiring_audit.md``):这些 decide_*
 策略钩子早已就绪,缺的是 **reader** —— 本模块补 reader,handler 才能调 decide_* 用真数据(非硬编码默认)。
 
 每 reader 纯函数(可单测,喂 fixture OCR);坐标/带状过滤来自实机建档
@@ -29,11 +29,11 @@ from sr_od.context.sr_context import SrContext
 
 # 遭遇卡标题「遭遇其X」→ X 中文数字 → 难度档(其一=1 … 其六=6;
 # 难度轴消费 = 策略层 encounter_pick 能力态/经验档层判据)。
-# ⚠️ 「一」笔画细,paddle OCR 常**漏读**(左卡=易卡=其一,OCR 成「遭遇其」无数字,实机 baseline 核实
-# 2026-08-07)→ 数字设**可选**:无数字 → 默认难度 1(即漏了「一」的易卡)。其四(四 笔画清)读得稳。
+# ⚠️ 「一」笔画细,paddle OCR 常**漏读**(左卡=易卡=其一,OCR 成「遭遇其」无数字,实机 baseline 核实)
+#→ 数字设**可选**:无数字 → 默认难度 1(即漏了「一」的易卡)。其四(四 笔画清)读得稳。
 _CN_NUM: dict[str, int] = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6}
 _TITLE_RE = re.compile(r'遭遇其([一二三四五六])?')
-# 奖励文本带(「奖励预览」标签 y≈568 下方,y≈600-690;排除标签本身)。实机 baseline 核实(2026-08-07)。
+# 奖励文本带(「奖励预览」标签 y≈568 下方,y≈600-690;排除标签本身)。实机 baseline 核实。
 _REWARD_Y_LO, _REWARD_Y_HI = 600, 695
 _REWARD_LABEL = '奖励预览'
 
@@ -44,7 +44,7 @@ def read_encounter_options(ctx: SrContext, screen: MatLike) -> list[EncounterOpt
     遭遇**选项 UI 不显词缀**(词缀战后才显;design 08 的 affix 分支对此屏 N/A)→ ``affixes=[]``。
     按 title center-x 左→右排序 → ``idx``。决策消费 = 策略层
     ``mandate_v1/encounter_pick.decide``(能力态直通形:κ_S 三态 + 经验
-    档层 + 奖励 tiebreak;不消费 comp 成型度——判据语义正本 =
+    档层 + 奖励 tiebreak;不消费 阵容成型度——判据语义正本 =
     strategy-docs/31 号稿)。读不到 title(OCR 漏/非遭遇屏)→ 返 []
     (画面 op act 空候选零点击 round_success
     终结交回重读,禁盲选派发——选卡确认不可逆消耗本节点;screens/encounter.md §4/§8)。
@@ -209,7 +209,7 @@ def pair_refresh_counts_to_slots(
     return out
 
 
-# 补给选项 y 带。2026-08-26 多样本核对(66 帧存档离线 OCR 对拍)两种布局:
+# 补给选项 y 带。多样本核对(66 帧存档离线 OCR 交叉核对)两种布局:
 # ① 单装备行:角色名 cy513-567 / 装备名 cy~648-716;② 双装备行(每列 角色+2 装备,
 # 「过剩经费」类修饰局):第一行 y≈648、**第二行 y≈748-749** —— 旧上界 735 使②
 # 整行漏读(10 选只读出 4,补给选卡输入读残)。上界放宽到 780:实测各帧 750-780
@@ -241,8 +241,8 @@ def _sift_detect_diamonds(ctx: SrContext, screen: MatLike,
     余量,已覆盖双排第二行 748-749;右界由 screen 实宽派生,不假定 1920)。
     模板库缺/零命中 → [](调用方落文本兜底)。纯读。
 
-    ✅ 实测对拍(2026-08-17,31 张存档补给画面):4 张命中(3 蓝钻 1 红钻,
-    y≈705-716 icon 带,x 归列正确),27 张零误报;红钻样本三方对拍一致
+    ✅ 实测交叉核对(31 张存档补给画面):4 张命中(3 蓝钻 1 红钻,
+    y≈705-716 icon 带,x 归列正确),27 张零误报;红钻样本三方交叉核对一致
     (SIFT@x506y716 inliers9 = VLM「第2列红宝石」= OCR 装备名「红钻」)。
     """
     if not equip_xs:
@@ -288,7 +288,7 @@ def _group_supply_columns(
        各簇自成 char='' 列;
     3. 簇按簇心 x 归入最近锚点,容差 ``_SUPPLY_COL_X_TOL``;超差(该列
        角色名失读不并入邻列)或锚点已被先到簇占用 = 孤儿簇自成列;
-    4. 无簇锚点 = char-only 列(equip=''、extra_equips=()——人才储备类
+    4. 无簇锚点 = char-only 列(equip=''、extra_equips=——人才储备类
        变体天然承接);
     5. 列序 = 锚点列(按锚 x)与孤儿簇(按簇首件 x)按 x 合并排序;
     6. 簇内按 y 排序 → ``equip`` 首件 + ``extra_equips`` 其余;
@@ -368,11 +368,11 @@ def read_supply_options(ctx: SrContext, screen: MatLike) -> list[tuple[SupplyOpt
     3-5 不等——历史 docstring 的「3 选 1」「实测 5」均为特例表述,勿写死),
     每列 = 角色名(y≈545)+ 装备名(y≈680 单排 / 648+748 双排),点卡身
     (y≈550)选中 + 右下「确认」。**刷新圆钮实存**(「剩余次数」文本锚左侧
-    固定偏移点击,宿主 = 画面 op 留守臂 ``cw_screen_supply_node.py``;本读链
+    固定偏移点击,宿主 = 画面 op 留守分支 ``cw_screen_supply_node.py``;本读链
     只读选项,不读刷新剩余——剩余读数闸 = 容器 ``supply_refresh_left`` 剩余
     语义观察真值,由画面 op 观察 node 同帧读经 report 摄入,全域规范 =
     ``screens/op-layer.md`` §1.4)。
-    钻识别双通道 ✅(2026-08-17):主 = SIFT(装备 icon 区扫三钻模板 → 命中点,
+    钻识别双通道 ✅:主 = SIFT(装备 icon 区扫三钻模板 → 命中点,
     装备图已采集);兜底 = 装备名精确匹配(遍历全列件名)。
 
     归并 = :func:`_group_supply_columns` 纯函数(角色锚点定列骨架 + 装备

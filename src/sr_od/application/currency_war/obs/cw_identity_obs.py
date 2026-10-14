@@ -22,7 +22,7 @@ supply_box/tome/bookcard,不经「事后拼 kind 映射」);上场位 = ``read_d
 可离线硬编码 rect 测;``read_deployed_rows`` / ``read_bench_view`` 从 ctx screen_info 取 rect
 再调核心。与 ``currency_war_char_id`` 同样的「纯 CV + 外部接线」分层。
 
-**可靠性:实测初步可用(2026-08-09 D-22)**:r1-8 备战截图 SIFT 立绘库 **6/6 有角色槽命中**(inliers
+**可靠性:实测初步可用(D-22)**:r1-8 备战截图 SIFT 立绘库 **6/6 有角色槽命中**(inliers
 29-48)+ 空槽不误 → 立绘库可用,推翻脸库旧结论。待补:共脸变体样本 + 角色名 ground truth(见
 ``currency_war_char_id`` docstring)。
 """
@@ -93,7 +93,7 @@ def ensure_portrait_templates(ctx: SrContext) -> AvatarTemplates | None:
     templates = getattr(ctx, 'cw_portrait_templates', None)
     if templates is None:
         base = get_project_root() / 'assets' / 'template'
-        portrait_dir = base / 'currency_war' / 'portrait_plaza'   # 官方立绘库(plaza big_icon 烘焙,含 mask;唯一库,旧手采库已删 2026-08-17)
+        portrait_dir = base / 'currency_war' / 'portrait_plaza'   # 官方立绘库(plaza big_icon 烘焙,含 mask;唯一库,旧手采库已删)
         if not portrait_dir.is_dir():
             return None
         templates = load_avatar_templates(portrait_dir)
@@ -101,19 +101,19 @@ def ensure_portrait_templates(ctx: SrContext) -> AvatarTemplates | None:
     return templates
 
 
-# 金星(亮金色五角星)HSV 范围(CV 采样 4 样本 star_front_1..4 标定 2026-08-11;crop=RGB)。
+# 金星(亮金色五角星)HSV 范围(CV 采样 4 样本 star_front_1..4 标定;crop=RGB)。
 # 亮金色 ≈ #FFD700:H 黄~橙(OpenCV 0-180),高 S 高 V。立绘金色装饰(衣服/腰带)也命中 → 靠位置(底部)过滤。
-# HSV 金色范围;**V>150** 只抓自发光亮金星,滤暗金衣服装饰(2026-08-13 实测标定):
+# HSV 金色范围;**V>150** 只抓自发光亮金星,滤暗金衣服装饰(实测标定):
 # 前排角色立绘底部有大量暗金衣服(V80-150)淹没金星,旧 V>80 把衣服抓成 area1279 大块致检测崩溃。
 _STAR_GOLD_LO: tuple[int, int, int] = (10, 40, 150)
 _STAR_GOLD_HI: tuple[int, int, int] = (45, 255, 255)
-# TM 匹配阈值(2026-08-13:0.45)。**根因实测**:第2星 TM val 系统性低于第1星(第1 0.62-0.69 / 第2
+# TM 匹配阈值(0.45)。**根因实测**:第2星 TM val 系统性低于第1星(第1 0.62-0.69 / 第2
 # 0.45-0.58)—— 两星**紧贴遮挡**,第2星 mask 不完整 → val 偏低;各排一致(星尺寸 17-19px 跨排相同,**非缩放
 # 失配**,多模板 per 排无用,实测推翻)。val 随紧贴程度变(后排-6 最紧 val~0.45 / 后排-3 0.51)。
 # thresh 0.45 = **真第2星(≥0.45)与噪声装饰(<0.40)的分界**,非打地鼠补丁。验:立绘库 0/71 + 全 fixture
 # 无新 FP + 所有 2★ 槽读 2(0.40 才过数噪声,余量 ~0.05)。迭代史:0.55→0.50(后排-3)→0.45(后排-6)。
 _STAR_TM_THRESH: float = 0.45
-# peak 轮廓圆度下限(2026-08-13 实测标定:0.25)。原 0.35 太紧 —— 真金星 circ 实测 0.34-0.50(随槽位
+# peak 轮廓圆度下限(实测标定:0.25)。原 0.35 太紧 —— 真金星 circ 实测 0.34-0.50(随槽位
 # 渲染微变),备战-9 边槽把同颗星 circ 压到 0.34<0.35 被误拒 → 2星读 1(假阴)。**立绘库 0/71 误判
 # 不靠 circ**(area+aspect+V>150+TM 已挡死,circ>0.0 仍 0/71)+ 全 fixture 无新 FP → 放宽到 0.25 留足余量。
 _STAR_CIRC_MIN: float = 0.25
@@ -125,7 +125,7 @@ def _load_star_tmpl() -> MatLike | None:
     """加载四角星 TM 模板(模块级缓存,首次 imread 后复用);缺失返 None(read_star fallback 1)。"""
     global _STAR_TMPL_CACHE
     if _STAR_TMPL_CACHE is None:
-        # 模板统一目录(2026-08-16 用户规范:assets/template/currency_war/<类型>/;star 金星模板在 star/)
+        # 模板统一目录(用户规范:assets/template/currency_war/<类型>/;star 金星模板在 star/)
         p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'star' / 'star_gold_tmpl.png'
         if p.exists():
             _STAR_TMPL_CACHE = cv2.imread(str(p), cv2.IMREAD_GRAYSCALE)
@@ -141,7 +141,7 @@ def read_star(crop: MatLike) -> int:
 
     旧轮廓法对 **2 星紧贴**(连通成大域 area>600 上限漏)+ **前排衣服淹没**(area1279
     把金星淹没)结构性失效。TM 各星独立滑窗匹配,紧贴亦分,V>150 滤衣服让 mask 干净 —— 治本。
-    验证(2026-08-13):立绘库 71 张 0 误判 + 各位置 2星(前排-3/后排-3/备战-4)读 2 + 三月七 2星 +
+    验证:立绘库 71 张 0 误判 + 各位置 2星(前排-3/后排-3/备战-4)读 2 + 三月七 2星 +
     1星各槽稳读 1。**thresh 0.45**:第2星 TM val 系统性低于第1星(第1 0.62-0.69 / 第2 0.45-0.58)——
     两星**紧贴遮挡**致第2星 mask 不完整 → val 偏低;**各排星尺寸 17-19px 相同(非缩放失配,多模板 per 排实测无用,
     推翻该假设)**。val 随紧贴程度变(后排-6 最紧 ~0.45)。0.45 = 真第2星(≥0.45)与噪声(<0.40)分界。
@@ -180,7 +180,7 @@ def read_star(crop: MatLike) -> int:
             peaks.append((int(y), int(x)))
     # peak 局部形状验证:四角星 area 80-320 + aspect 近方 0.80-1.20 + circ>_STAR_CIRC_MIN(滤细长/碎装饰)。
     # circ 下限见 _STAR_CIRC_MIN(0.35→0.25,原误拒备战-9 边槽真金星)。
-    # ⚖️ 行对齐验证(2026-08-16,用户实锤星徽秘典画面 star2 误标追因):真金星 N 颗 = **水平一排**
+    # ⚖️ 行对齐验证(用户已实测确认星徽秘典画面 star2 误标追因):真金星 N 颗 = **水平一排**
     # (同 y ±4px,间距规律);服饰装饰(肩部金色领结/饰带)形状碰巧过形状门(实测 TM 0.51 + area/aspect/circ
     # 全过)但 y 偏上离真星行远 → 行对齐杀此类误报。实现:过形状门的 peak 取**最大聚类行**(同 y 带
     # 内数量多者优先;单峰自成一行的场景=1 星照常)。
@@ -214,17 +214,17 @@ def read_star(crop: MatLike) -> int:
     return max(count, 1)
 
 
-# ===== 合成特效帧态门(W292/,W285 抽样批3)=====
-# 病灶(W285 §三 star 层,抽样 2/2 采新帧全错):read_star 会采在 3合1 合成
+# ===== 合成特效帧态门(抽样)=====
+# 病灶(§三 star 层,抽样 2/2 采新帧全错):read_star 会采在 3合1 合成
 # 星爆动画/拖拽过渡窗内(特效遮挡第 2 星 → 读 1),对账侧「连续 2 次回退才采新」
 # 防抖会被**持续 ≥2 帧的动画窗**骗过(第 2 帧仍在窗内 → 假确认采新 1★ 毒化)。
 # 修法:回退**采新确认前**先过本帧态门——特效帧在场上 = 读数不可信窗,保旧且
 # **不推进**防抖计数(冻结,非清零:动画结束后的干净回退帧仍能确认)。
-# 与既有回退防抖(r34/W292 前是逐角色计数)的关系:防抖管「时间维」(单帧疑云
+# 与既有回退防抖(r34 前是逐角色计数)的关系:防抖管「时间维」(单帧疑云
 # 下帧确认),本门管「帧态维」(本帧物理上不可信)——正交合并,防抖主干不动。
 #
-# 两签名均 4 帧正样本(W285 判读)+ 全部可用负样本标定(RGB 约定,生产
-# read_image 同约定;2026-09-05 离线标定,脚本 .debug/temp/cw_w292_calib5.py):
+# 两签名均 4 帧正样本(判读)+ 全部可用负样本标定(RGB 约定,生产
+# read_image 同约定;离线标定,脚本 .debug/temp/cw_w292_calib5.py):
 #
 # 1. **合成星爆粒子**(正样本 obs_conflict_star__a61848f0:前排带金色四角星
 #    爆点):前排棋盘带内严橙金窗口(自发光取色,窗域 = 下方
@@ -261,7 +261,7 @@ _BANNER_RED_DOM_MIN: float = 0.06
 
 
 def is_merge_effect_frame(screen: MatLike | None) -> bool:
-    """合成特效帧态判定(W292/):当前帧是否处于 3合1 星爆动画/拖拽
+    """合成特效帧态判定:当前帧是否处于 3合1 星爆动画/拖拽
     合成过渡窗内 → True(read_star 读数不可信,消费方保旧)。
 
     判据 = 两签名任一命中(标定数字与边界见上方常量块注释):
@@ -271,7 +271,7 @@ def is_merge_effect_frame(screen: MatLike | None) -> bool:
 
     ``screen`` = 全帧 RGB(None → False,离线/读失败不拦);非 1080p 帧越界
     裁切自动收缩为空 → False。best-effort:任何异常 → False(不拦,防抖
-    主干仍兜底——门失效的代价回到 W292 前行为,不引入新故障面)。
+    主干仍兜底——门失效的代价回到既有回退行为,不引入新故障面)。
     """
     if screen is None:
         return False
@@ -318,7 +318,7 @@ def identify_slots(
         无形态归一)。排归属不入命中形状(容器 Unit 无排位,由调用方行参/行域承载)。
     :param min_inliers: 识别门槛(identify_character 透传)。部署排(有场景背景)传更高
         (``_DEPLOYED_MIN_INLIERS``);备战栏卡槽背景干净,保持默认。
-    :param live_only: 部署排专用(2026-08-26 定策,同日居中勘误后语义微调):
+    :param live_only: 部署排专用(定策):
         plaza 官方 art(插画)对棋盘 3D 站立小人是**跨域匹配**,分数不稳
         (错位窗口时代曾出 0-26 弱命中/假阳带,真窗口下空槽已零假阳但跨域
         弱命中风险仍在,run20 商店卡同型);**现场采集 art(raw_board 变体/
@@ -329,15 +329,15 @@ def identify_slots(
         跨域弱命中带实测上限 29(33 帧板面基准,空槽全库最高内点),强主档
         (如开拓者·欢愉 73 内点)远超弱带,按「有变体即拒」误杀。
         ⚠️ 变体必须真窗口采(旧错位残片变体会在正位帧上输给 plaza 主档 →
-        live_only 假阴丢读,2026-08-26 万敌@s2 实证后已全量重采)。
+        live_only 假阴丢读,万敌@s2 实证后已全量重采)。
     :param center_gate: 部署排专用(**位置感知识别**)。角色卡宽
         (~170px) > 槽窗宽(~142px),槽裁片必然渗入邻卡边缘;同名邻窗双命中
         由既有幽灵去重吸收,**异名**渗漏(邻卡残条命中邻卡同款饰品)会以弱
         内点压过本窗真身。True 时改走中心归属门:每槽在**横向扩展窗**
-        (:data:`_DEPLOYED_EXPAND_PAD`)内取全库假设列表
-        (:func:`identify_hypotheses`),homography 投影模板中心落在**本槽核**
+        (data:`_DEPLOYED_EXPAND_PAD`)内取全库假设列表
+        (func:`identify_hypotheses`),homography 投影模板中心落在**本槽核**
         (原 rect)内才认领,再过同一套阈值/歧义语义
-        (:func:`currency_war_char_id._resolve_best`)—— 渗漏假设的中心在邻槽,
+        (func:`currency_war_char_id._resolve_best`)—— 渗漏假设的中心在邻槽,
         几何直接出局,与内点数无关。 False(默认)= 旧逐槽裁片路径
         (备战栏/商店卡窗与卡同宽无渗漏,保持不变)。
     :return: 命中列表 ``[(slot_idx, Unit), ...]``(槽位对直产——Unit 无槽位
@@ -386,7 +386,7 @@ def identify_slots(
             try:
                 _mean = float(screen[rect.y1:rect.y2,
                                      rect.x1:rect.x2].mean())
-            except Exception:   # noqa: BLE001  裁剪越界等,留证降级
+            except Exception:   # noqa: BLE001  裁剪越界等,保留证据降级
                 _mean = -1.0
             if _mean >= 50:
                 try:
@@ -406,7 +406,7 @@ def identify_slots(
         name = resolve_char_name(avatar_id)
         if name is None:
             continue
-        # 开拓者形态按排归一(用户 2026-08-16):前台=记忆/后台=欢愉;立绘库两形态覆盖不均时
+        # 开拓者形态按排归一(用户定):前台=记忆/后台=欢愉;立绘库两形态覆盖不均时
         # SIFT 可能按旧立绘判成另一形态 —— 已上阵排是权威(row 即真实排),归一消歧。
         from sr_od.application.currency_war.data.cw_chars import (
             is_trailblazer,
@@ -445,10 +445,10 @@ _GHOST_RATIO: float = 0.5
 #: (真命中 35-57),保持默认 10 不抬高。
 _DEPLOYED_MIN_INLIERS: int = 15
 
-#: 部署排只认现场 art(live_only;2026-08-26 佩佩局定策):plaza 官方 art 跨域
+#: 部署排只认现场 art(live_only;佩佩局定策):plaza 官方 art 跨域
 #: 弱命中(插画 vs 3D 站立小人,run20 商店卡同型问题)不做部署排身份依据;
 #: 现场变体(真窗口 raw_board)同域强命中,空槽零假阳。漏读代价(未知位,
-#: 对账可见)< 跨域弱命中毒化代价。**变体必须真窗口采**(居中勘误前错位
+#: 对账可见)< 跨域弱命中毒化代价。**变体必须真窗口采**(旧错位
 #: 残片变体致 live_only 假阴,万敌@s2 丢读实证;已全量重采)。
 _DEPLOYED_LIVE_ONLY: bool = True
 
@@ -525,10 +525,10 @@ def _ctx_slots(ctx: SrContext, prefix: str, count: int) -> list[tuple[int, Rect]
 
 
 def _session_level(ctx: SrContext) -> int | None:
-    """容器 level 读口(终态契约 §A:last_level_obs 单调链退役,单一源 =
+    """容器 level 读口(终态契约 §A:last_level_obs 单调链停用,单一源 =
     gs.level 覆盖/carried)→ 无 session/无值 → None。
 
-    布局选档的 level 源(:后排槽数由 level 驱动)。离线/无
+    布局选档的 level 源(后排槽数由 level 驱动)。离线/无
     session 场景返 None(调用方退 6 槽基线)。**单一源可信门**(15 号稿
     §2.3/§6):启发式兜底帧的 level 值不参与——容器侧该门由喂入结构性
     满足(``read_game_state`` 仅 authoritative 帧观察写 level,兜底帧走
@@ -553,7 +553,7 @@ def _level_trusted(ctx: SrContext) -> bool | None:
     ``True`` = 容器 level 当前值来自真读观察(Field.source='observation');
     ``False`` = 沿用态(source='carried',启发式兜底帧不写容器,沿用值非
     新证);无 session / level 从未观察 → ``None`` = 未声明(布局公式通道
-    维持现行为,零行为变更)。last_state 链退役换源:旧帧显式位
+    维持现行为,零行为变更)。last_state 链停用换源:旧帧显式位
     ``level_readable`` 的 observed/兜底两态由容器 source 镜像(喂入口
     ``read_game_state`` 观察写=真读/carry=兜底帧),布局公式与 14 号稿
     level 消费门共用本定义,不得各写一份「什么算可信 level」。"""
@@ -588,7 +588,7 @@ def read_deployed_rows(ctx: SrContext, screen: MatLike, templates: AvatarTemplat
     (未传 level 时 session 等级链);读不到 → 6 槽基线。
     **布局未知态**(15 号稿 §3.2④):单帧未知 → 只返前排(跳过后排读,
     后排命中恒空表);冻结帧(连续 3 未知)→ 读类退 6 档基线继续读;每帧
-    JSONL 留证在 resolve 侧。level_trusted 接线:未显式传 level 时取容器
+    JSONL 保留证据在 resolve 侧。level_trusted 接线:未显式传 level 时取容器
     level authoritative 位(``_level_trusted``,derived 帧公式通道弃权)。
     """
     from sr_od.application.currency_war.obs.cw_back_layout import (
@@ -603,7 +603,7 @@ def read_deployed_rows(ctx: SrContext, screen: MatLike, templates: AvatarTemplat
     _lay = resolve_back_slots(ctx, screen, level=level, level_trusted=_lt)
     if _lay.get('unknown') and not _lay.get('frozen'):
         # 单帧未知(§3.2④):跳过后排身份读(宁缺勿造,同 paddle None
-        # 对齐跳过先例);JSONL 留证(resolve 侧每帧落证)。
+        # 对齐跳过先例);JSONL 保留证据(resolve 侧每帧落证)。
         front = identify_slots(screen, templates, _ctx_slots(ctx, '前排', 4),
                                'front',
                                min_inliers=_DEPLOYED_MIN_INLIERS,
@@ -616,25 +616,25 @@ def read_deployed_rows(ctx: SrContext, screen: MatLike, templates: AvatarTemplat
         back_slots = fallback_back_slots()
     else:
         back_slots = back_row_slot_rects_ctx(ctx, _lay['prefix']) or fallback_back_slots()
-    # 布局留证采集钩子(W209i 降级:原停机钩子废弃;
-    # 2026-08-26 佩佩局 7 格坐标档已建档 → 钩子对 7 静默,只对未来**未建档**
-    # 新档位(diff≥3 域外/CV 新观察)留证):
-    # 触发 = 对账原始格数 n_raw 未建档(∉ _LAYOUT_PREFIX)→ **obs_conflict 留证
+    # 布局保留证据采集钩子(降级:原停机钩子废弃;
+    # 佩佩局 7 格坐标档已建档 → 钩子对 7 静默,只对未来**未建档**
+    # 新档位(diff≥3 域外/CV 新观察)保留证据):
+    # 触发 = 对账原始格数 n_raw 未建档(∉ _LAYOUT_PREFIX)→ **obs_conflict 保留证据
     # + 去重截图,不停机**。
     # 降级依据(run 27 停机事故实证):货币战争备战阶段是**实时倒计时**,
     # 战斗自动开打——停 bot ≠ 停游戏,run 27 hook 停机后画面自行推进到
     # 首领战败结算(14:09 停 → 14:16 结算,截图 20260826_141613),「停机
     # 保画面待采集」对实时制游戏是虚假承诺;误停代价(烧一局 + 世界状态
-    # 不可控)>> 采集收益。7 格坐标 2026-08-26 经 MCP 交互实锤采集完成
+    # 不可控)>> 采集收益。7 格坐标经 MCP 交互已实测确认采集完成
     # (后排7槽-1..7 upsert + _LAYOUT_PREFIX 登记),本钩子自然静默。
-    # 帧态门(is_prep_like_frame)辖**留证**触发(过渡/动画帧不留证,
+    # 帧态门(is_prep_like_frame)覆盖**保留证据**触发(过渡/动画帧不保留证据,
     # 判定素材 = 本函数入参 screen = 当前处理帧,非缓存——run 27 复盘:
     # 触发帧确为备战态,门本身有效,失效的是「停机能保画面」的假设)。
     # 帧态门 + obs_conflict 自带 300s 节流;升级路径 = 框架原生 PAUSE
     # (方案 C,未暴露;真需要现场采集时人工经 MCP 驱动)。
     try:
         from sr_od.application.currency_war.obs.cw_back_layout import _LAYOUT_PREFIX
-        # 未知帧 n_raw=None 不辖本钩子(未知态留证已在 resolve 侧另落)
+        # 未知帧 n_raw=None 不覆盖本钩子(未知态保留证据已在 resolve 侧另落)
         if _lay['n_raw'] is not None and _lay['n_raw'] not in _LAYOUT_PREFIX:
             from sr_od.application.currency_war.kernel.cw_obs_core import (
                 is_prep_like_frame,
@@ -722,12 +722,12 @@ def check_system_unit_layout(
     模型(用户口述权威):狸猫(狸小虎/狸小龙)/佩佩类系统召唤单位恒占布局**最右
     槽位(们)**,布局格数变 → 其 x 跟着最右格移动。判别:后排读到系统单位
     (char_id 判定 = roster cost==0 段)时,SIFT 实测其 x,与所选档最右 k 格中心
-    (k=系统单位数)对拍;任一差 > ``_SYSTEM_UNIT_LAYOUT_TOL_PX`` →
+    (k=系统单位数)交叉核对;任一差 > ``_SYSTEM_UNIT_LAYOUT_TOL_PX`` →
     ``obs_conflict('layout_mismatch_by_system_unit')``(节流 300s)。
 
     与空槽签名法交叉实证过(三触发帧狸猫@1329/1467 只与 8 格自洽)。纯读
     best-effort,失败不抛。佩佩暂无 roster/模板条目 → 现覆盖狸猫对(有模板者)。
-    ``back_hits`` = 后排命中对(``(槽号, Unit)``;只消费 char_id,槽位不辖)。
+    ``back_hits`` = 后排命中对(``(槽号, Unit)``;只消费 char_id,槽位不覆盖)。
     """
     import time as _time
 
@@ -781,7 +781,7 @@ def read_bench_view(ctx: SrContext, screen: MatLike, templates: AvatarTemplates)
     驻本读链):overlay 残留/动画帧/
     识别退化都会产空读 → 返 None,调用方走 carried(宁缺勿造),禁把
     「9 槽全空」当 observation 入记录。占用未识别的槽由召唤物停机钩子
-    (:func:`_summon_unknown_hook`)兜底,不静默丢弃。用途:离线重建 /
+    (func:`_summon_unknown_hook`)兜底,不静默丢弃。用途:离线重建 /
     漂移恢复 / 备战 heavy 观察。
     """
     hits = identify_slots(screen, templates, _ctx_slots(ctx, '备战栏', 9), '')
@@ -802,7 +802,7 @@ def _bench_item_kind_by_slot(ctx: SrContext, screen: MatLike) -> dict[int, str]:
 
     [索引定义] 键 = 备战栏物理槽 1..9(1 基,与 BenchView.slots 下标+1 同系);
     取值时机 = 调用帧现读快照(与 SIFT 命中同帧,跨帧失效)。
-    构造序沿用旧观察链 ``_item_kind``(黑板帧退役 阶段
+    构造序沿用旧观察链 ``_item_kind``(黑板帧停用 阶段
     3.5):boxes → tomes 覆盖 → bookcards 覆盖(同槽多命中后写者胜)。
     """
     slots9 = _ctx_slots(ctx, '备战栏', 9)
@@ -819,7 +819,7 @@ def _bench_view_of(hits: list[tuple[int, Unit]],
     - hits = ``(物理槽号, Unit)`` 命中对(Unit 无槽位信息位,位置随读链
       槽位对承载);SIFT 命中先落槽(unit),占槽物品只填**空槽**(身份胜出
       ——与旧 ``_merge_item_occupied_slots``「已识别角色位跳过」同序);
-    - 槽位越界命中丢弃并 log 留证(物理槽 1..capacity 外 = 读链漂移信号,
+    - 槽位越界命中丢弃并 log 保留证据(物理槽 1..capacity 外 = 读链漂移信号,
       静默丢弃 = 身份静默丢失);
     - 零占用 → None(失读非全空,见 :func:`read_bench_view`)。
     """
@@ -844,24 +844,24 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
     """召唤物/物品停机钩子(偏常驻兜底,hook审计 S3):占用但全部识别路径
     不认识的备战席槽 → 停机保画面留现场建档。
 
-    为什么读链双路径都必须挂:身份读链有旧路径(:func:`read_bench_view`)
-    与漏斗路径(:func:`read_bench_view_tiered`,P4R4 heavy 批起的生产主路径)
+    为什么读链双路径都必须挂:身份读链有旧路径(func:`read_bench_view`)
+    与漏斗路径(func:`read_bench_view_tiered`,P4R4 heavy 批起的生产主路径)
     两条,钩子段原本只内联在旧路径——漏斗路径「占用未识别」的槽被静默
     丢弃,跟踪席数少 1 → 席满被当有空位,策略照幻影空位发买牌、游戏全拒
-    且金不动(实机局:黄泉槽整槽丢读后 2 张连发全拒,2026-09-14
+    且金不动(实机局:黄泉槽整槽丢读后 2 张连发全拒
     run_20260914_210200 停机钩子 exec_fail_mismatch)。本函数即原旧路径
     内联段原样抽出,双路径共用单一源。
     """
     # [触发=「占用且全部识别路径不认识」= 兜一切未知物品变体,比临时建档
     # 面宽——真删了,下个新物品变体会被当空槽乱操作,比停机贵;保留,识别
     # 覆盖新变体时自然不再触发]
-    # 召唤物/特殊形态建档(用户 2026-08-18 定调):
+    # 召唤物/特殊形态建档(用户定调):
     # 槽位占用(slot_occupied CV)真 + SIFT 认不出 = 未建档单位现身 → **停机保画面**,
     # AI 现场点该槽 → 右侧详情面板出角色名(身份 ground truth 源)+ 外观对照 → 定名建档
     # (portrait_plaza/<名>/raw.png 白框法裁剪 + roster 核条目)→ 处理完删 flag
     # (钩子段在识别覆盖该物品变体前保留)。
     # ⚠️ r78 新误触模式守卫:**角色详情面板开着时跳过** —— 详情面板(x1400+)盖住 bench
-    # 右端(slot7-9),被遮槽 SIFT 看到的是面板 UI(实锤:summon_unknown__e1fb06c8 帧
+    # 右端(slot7-9),被遮槽 SIFT 看到的是面板 UI(已实测确认:summon_unknown__e1fb06c8 帧
     # slot9 裁出的是搜索图标,详情面板上还明晃晃写着「藿藿」本尊)→ 假「占用未识别」
     # 反复停机。详情面板 OCR 锚(装备推荐/出售按钮区)在场 → 本帧不判。
     # ⚠️ 防抖(r17-r31 教训):同内容哈希只停一次(cw_shot_unique 返 None = 已采过 → 不再停),
@@ -870,7 +870,7 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
         from sr_od.application.currency_war.kernel.cw_obs_core import _ocr
         from sr_od.application.currency_war.kernel.cw_observe import cw_shot_unique
         # r82 守卫修正:「按钮-装备推荐」area 在「货币战争-备战-角色详情」子屏,
-        # _area_rect 默认查备战屏恒 None → 旧守卫形同虚设(r82 实锤:停机帧上面板
+        # _area_rect 默认查备战屏恒 None → 旧守卫形同虚设(r82 已实测确认:停机帧上面板
         # 开着仍停机)。枚举两屏查,任一命中即面板开 → 本帧不判。
         _panel_open = False
         for _scr_name in ('货币战争-备战-角色详情', '货币战争-备战'):
@@ -885,9 +885,9 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
         # 真召唤物在商店开时占槽也永远发现不了)。真根因 = 该占槽物品是箱/卡包的
         # **变体渲染**,find_armory_boxes/find_tomes/宽松互斥全没认出 → 漏到本钩子。
         # r100k:书册卡已建档(find_bookcards)进 _obj_slots → 本钩子不再拦它。
-        # 书册卡开启语义已确认(2026-08-30 实机:点槽 → 「专家邀请函」五选一),
-        # 原确认停机钩子退役,自动处理链见 operations/cw_screen/cw_screen_expert_invite.py
-        # (开卡发射位 = 策略器 entry ① 卡片臂 + 外循环阶段一身份行「货币战争-备战-专家邀请函」弹窗分发接线)。
+        # 书册卡开启语义已确认(实机:点槽 → 「专家邀请函」五选一),
+        # 原确认停机钩子停用,自动处理链见 operations/cw_screen/cw_screen_expert_invite.py
+        # (开卡动作发出点 = 策略器 entry ① 卡片分支 + 外循环阶段一身份行「货币战争-备战-专家邀请函」弹窗分发接线)。
         # 排除集单一源(部署伪槽修复批 ①):原内联段(find_* 族 ∪ 泛 TM 低阈
         # 扫描)整体迁入 bench_item_slots,本钩子消费模糊档(精确 ∪ 泛扫描,
         # 行为与原内联段等价);停机钩子其余段(面板守卫/帧态门/锚
@@ -935,8 +935,8 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
                                  ' shot=%s(处理流程归 guards.md;用户'
                                  ' 2026-08-20 裁决:未建档物品被当空槽/'
                                  '普通占用乱操作比停机贵)', _slot, _shot)
-                    # 框架化(2026-09-16):截图归 stop_running 参数,
-                    # flag 文件退役——[stop] 日志行 + shot 即现场事实。
+                    # 框架化:截图归 stop_running 参数,
+                    # flag 文件停用——[stop] 日志行 + shot 即现场事实。
                     ctx.run_context.stop_running(
                         reason='hook:summon_unknown', save_screenshot=True)
                 break
@@ -957,12 +957,12 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
 # 状态读取与写回均挂 session(``cw_idfunnel_last``/``cw_idfunnel_seen``),
 # 不引入模块级全局;无 session(离线/测试)→ 直接 L3 全库,行为等价。
 # 实现手法 = **传缩小后的 templates 子字典**;裁决代码零改动。
-# ⚠️ 子集仲裁的固有缺陷(实机实证,2026-09-14 run_20260914_210200
+# ⚠️ 子集仲裁的固有缺陷(实机实证,run_20260914_210200
 # 停机钩子 exec_fail_mismatch):歧义比在子集里失真——真身不在子集时,
 # 基准线上的跨身份弱命中即可称王(黄泉卡全库 27 内点为冠军,子集里被
 # 10~18 内点的忘归人/不死途弱命中顶替),毒化 last/seen 后整槽丢读 →
 # 席满被当有空位,策略发幻影买牌被游戏全拒。故 L1/L2 子集命中须清
-# 加严线(:data:`_FUNNEL_SUBSET_MIN_INLIERS_FACTOR`),弱命中一律下探
+# 加严线(data:`_FUNNEL_SUBSET_MIN_INLIERS_FACTOR`),弱命中一律下探
 # L3 全库仲裁兜底——子集只做「强信号快配」,不做裁决。
 
 #: 漏斗 session 状态字段名(session 上动态挂;对象由本层独占读写)。
@@ -973,13 +973,13 @@ _FUNNEL_SEEN: str = 'cw_idfunnel_seen'
 #: 基准档 10 → 20,部署排 15 → 30)。为什么存在:子集仲裁无法复现全局
 #: 歧义比(缺席的高分真身不进比较),基准线上的弱命中在子集内恒称王;
 #: 实测跨身份弱命中带 10~18 内点、同帧干净真身 ≥27(黄泉 27/其余槽
-#: 29~61,离线对拍停机帧)→ 2× 线把弱命中全部压到 L3 仲裁,真身快配
+#: 29~61,离线交叉核对停机帧)→ 2× 线把弱命中全部压到 L3 仲裁,真身快配
 #: 通路不受影响。代价:内点在 [基准线, 2× 线) 窗的真命中多付一次全库
 #: 扫描(性能面,非正确性)。边界:①真身内点本帧跌破加严线时也下探 L3,
 #: L3 同阈值再败则该槽丢读——单帧丢读的防线在召唤物停机钩子
 #: (``_summon_unknown_hook``,占用未识别 → 停机保画面),不在本参数;
 #: ②跨身份第二名内点在加严线之上时,子集仍可能误收(全局歧义比无法在
-#: 子集复现,属本机制残余风险),由对账留证(obs_conflict)与钩子兜底。
+#: 子集复现,属本机制残余风险),由对账保留证据(obs_conflict)与钩子兜底。
 _FUNNEL_SUBSET_MIN_INLIERS_FACTOR: int = 2
 
 
@@ -1081,7 +1081,7 @@ def read_deployed_rows_tiered(session, ctx: SrContext, screen: MatLike,
                               ) -> tuple[list[tuple[int, Unit]],
                                          list[tuple[int, Unit]]]:
     """:func:`read_deployed_rows` 的漏斗版(签名多 session;布局解析/
-    留证钩子/系统单位自检全部复用旧实现,仅 front/back 识别走三层漏斗)。
+    保留证据钩子/系统单位自检全部复用旧实现,仅 front/back 识别走三层漏斗)。
     布局未知态语义与旧实现同款(§3.2④):单帧未知只返前排(后排命中恒空);
     冻结帧读类退 6 档基线。"""
     from sr_od.application.currency_war.obs.cw_back_layout import (
@@ -1124,40 +1124,40 @@ def read_bench_view_tiered(session, ctx: SrContext, screen: MatLike,
     return _bench_view_of(hits, _bench_item_kind_by_slot(ctx, screen))
 
 
-# ===== 简易武装箱识别(备战栏槽位;2026-08-14 首见实机;2026-09-23 模板治本) =====
+# ===== 简易武装箱识别(备战栏槽位;首见实机;模板治本) =====
 # 奖励节点清关后右侧面板出「奖励球」(=晶矿,factions 晶矿条目:开启后可能获金币/角色/装备/稀有物品)。采晶矿开启:
 # 内容即时入账(金币/装备),或掉箱**落备战席占 1 槽**,点它开箱 → 腾槽 + 得内容。
 # 备战席满时晶矿点不动(晶矿可能给角色/箱,都要占席)→ **开箱优先于采晶矿**。
 # 道具真名 = **简易武装箱**,名称权威 = 开启后 overlay 标题「简易武装箱·请选择1个」(四件简易装备四选一;
 # 实机帧 .debug/currency_war/evidence/20260912_t15_t13_t18/t18_box_face_armory_choice_4equips.png)。
-# 旧名「补给箱」系早期无视觉建档误定,用户定谳废弃(2026-09-23):银灰箱只有一种,晶矿掉落与
+# 旧名「补给箱」系早期无视觉建档误定,用户已定案废弃:银灰箱只有一种,晶矿掉落与
 # 投资策略(军火贸易/火药味等)所给同渲染同链,槽位识别层不分来源;占席 kind='supply_box' 为历史代号保留。
-# 箱子是固定 UI icon → 灰度 TM 足够(SIFT 无必要);分离度(2026-08-14 实测):箱槽 1.0 vs 角色槽 ≤0.242。
+# 箱子是固定 UI icon → 灰度 TM 足够(SIFT 无必要);分离度(实测):箱槽 1.0 vs 角色槽 ≤0.242。
 # 模板 = 实机真值帧箱体本体裁片(90x80,**不含「开启」钮字**——按钮为所有槽位通用 UI,入模即噪声;
-# 旧模板含钮字被同批评掉)。TM 自检:源帧 1.0 / 相邻时刻帧 0.997 / 空槽 0.258 / 旧「补给箱」模板区域 0.955(同渲染实锤)。
-# ⚠️ 拖动后选中态(蓝光效环)降 TM 至 ~0.65-0.69(2026-08-14 拖动实测;点空白取消选中 → 0.931 恢复,跨槽位稳)
+# 旧模板含钮字被同批评掉)。TM 自检:源帧 1.0 / 相邻时刻帧 0.997 / 空槽 0.258 / 旧「补给箱」模板区域 0.955(同渲染已实测确认)。
+# ⚠️ 拖动后选中态(蓝光效环)降 TM 至 ~0.65-0.69(拖动实测;点空白取消选中 → 0.931 恢复,跨槽位稳)
 # → 阈值取 0.6:覆盖选中态,噪声槽 0.242 仍有 ~2.4× 分离。bench 满判定:箱占席但非角色,read_bench_view 角色位读不到
 # → 硬信号以「备战席已满」OCR 为准。
 _SUPPLY_BOX_TM_THR: float = 0.6
 _armory_box_gray: MatLike | None = None
 _armory_box_loaded: bool = False
-# 星徽秘典(2026-08-16 M45 建档,用户指导):投资策略「秘密典籍」所给道具,
+# 星徽秘典(M45 建档,用户指导):投资策略「秘密典籍」所给道具,
 # 占备战席 1 槽;点两次(选中→开启)→ 星徽四选一(CwScreenBookcard 接管)。
 # 名称权威 = 开启后 overlay(星徽四选一弹窗);真名「星徽秘典」,旧称「秘密典籍/典籍」系以策略卡代称,已正名。
 # 双渲染注册表(同链不同外观,TM 互斥 0.125,槽位层都须认出):
 # - 星徽秘典_金.png = 金色票券卡(票面星纹),源帧 sr-od-test/screens/货币战争-备战/shop_closed_lowhp.webp slot7 内窗;
-# - 星徽秘典_红.png = 红金封面星徽书,源帧 sr-od-test/screens/货币战争-武装箱/r256_summon_42d15804.png slot3(用户定谳星徽秘典;
-#   曾被早期建档误标「简易武装箱」,2026-09-23 看图更正——简易武装箱实为银灰箱,见上节)。
+# - 星徽秘典_红.png = 红金封面星徽书,源帧 sr-od-test/screens/货币战争-武装箱/r256_summon_42d15804.png slot3(用户已定案星徽秘典;
+#   曾被早期建档误标「简易武装箱」,看图更正——简易武装箱实为银灰箱,见上节)。
 # 模板均为箱体/书体本体裁片,无「开启」钮字;尺寸 < 全部槽裁片(最小 111x131),防 shape 守卫判盲。
-# 互斥判定:秘典命中需秘典分 > 箱分(同槽双模板对拍,防箱被认成秘典)。
+# 互斥判定:秘典命中需秘典分 > 箱分(同槽双模板交叉核对,防箱被认成秘典)。
 _star_tome_grays: list[MatLike] | None = None
 _star_tome_loaded: bool = False
-# 专家邀请函(r100k 建档,2026-08-20;2026-09-23 正名+重裁):青蓝卡片+白色书册 icon,
+# 专家邀请函(r100k 建档;正名+重裁):青蓝卡片+白色书册 icon,
 # 占备战席 1 槽。真名 = **专家邀请函**,名称权威 = 开启后 overlay 标题「专家邀请函·请选择1个
 # 专家顾问,该角色在选择后同步加入商店」(sr-od-test/screens/货币战争-备战-专家邀请函/弹窗.webp;
 # 官方效果文本旁证:「专家研讨会:获得1个【专家邀请函】和1个【简易武装箱】」);旧称「书册卡」
 # 系外观绰号,代码代号(find_bookcards/kind='bookcard')保留。点槽 → 邀请函五选一,选后专家
-# 入商店;处理链 = cw_screen_expert_invite.py。模板 2026-09-23 重裁 = 旧真值内窗去底部「开启」
+# 入商店;处理链 = cw_screen_expert_invite.py。模板重裁 = 旧真值内窗去底部「开启」
 # 钮字(86x97;钮字为占槽道具通用 UI,入模即噪声)。TM 自检:源内窗 1.0 / shop 帧全槽最高
 # 0.656(金票券槽,阈值 0.75 下余量 0.094)/ t18 帧全槽 ≤0.486。原「书册卡_未知」名废。
 _bookcard_gray: MatLike | None = None
@@ -1274,7 +1274,7 @@ def find_armory_boxes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tu
 
 
 def read_armory_boxes(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]]:
-    """备战栏简易武装箱(``备战栏-1..9``)→ ``[(slot_idx, 开启 center)]``(开箱 op 用;2026-08-14 首见机制)。"""
+    """备战栏简易武装箱(``备战栏-1..9``)→ ``[(slot_idx, 开启 center)]``(开箱 op 用;首见机制)。"""
     return find_armory_boxes(screen, _ctx_slots(ctx, '备战栏', 9))
 
 
@@ -1282,7 +1282,7 @@ def find_tomes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int
     """纯 CV 核心:槽位 rect 内 TM 匹配星徽秘典(双渲染取最高分)→ ``[(slot_idx, 槽 center)]``(点开启用)。
 
     与 ``find_armory_boxes`` 同法,外加**互斥判定**(r11 修,M55 P2 活锁根因):秘典命中需
-    同时 ①秘典 TM ≥ 0.6 且 ②秘典分 > 箱分(同槽双模板对拍)。实测误检帧(武装箱槽):
+    同时 ①秘典 TM ≥ 0.6 且 ②秘典分 > 箱分(同槽双模板交叉核对)。实测误检帧(武装箱槽):
     秘典 0.558/箱 0.926 —— 旧版 0.558<0.6 本就该拦,但光照/选中态可抬分,双条件保证
     箱永远不被认成秘典(0.926>0.558 互斥性强)。秘典点两次(选中→开启)→ 星徽四选一
     弹窗(CwScreenBookcard 接管选卡)。双渲染注册表见区块注释(金票券/红星书)。
@@ -1311,7 +1311,7 @@ def find_tomes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int
             rb = cv2.matchTemplate(crop, bx, cv2.TM_CCOEFF_NORMED)
             box_score = cv2.minMaxLoc(rb)[1]
             if box_score >= tome_score:   # 箱分更高 = 这是箱不是秘典
-                # r15 review 留证(选中态真秘典余量薄 0.06-0.14):拒绝时记双分数——若真秘典被
+                # r15 review 保留证据(选中态真秘典余量薄 0.06-0.14):拒绝时记双分数——若真秘典被
                 # 选中态光效不对称抬升箱分误拒(delta<0.15 时),日志可见即可闭环(margin/取消选中复读)。
                 if tome_score - box_score < 0.15:
                     from one_dragon.utils import log_utils
@@ -1328,9 +1328,9 @@ def read_tomes(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]]:
     return find_tomes(screen, _ctx_slots(ctx, '备战栏', 9))
 
 
-# ===== [幻影机制墓碑] 「试用角色揭示卡」=====
-# 历史定性更正(用户 2026-09-19 定谳):备战栏偶现的发光金卡 = **动画帧**(合成/
-# 到账类瞬态特效),不是可点道具。W595 曾据单帧把它建模成「试用角色揭示卡」
+# ===== [幻影机制已证伪标记] 「试用角色揭示卡」=====
+# 历史定性更正(用户已定案):备战栏偶现的发光金卡 = **动画帧**(合成/
+# 到账类瞬态特效),不是可点道具。旧判定曾据单帧把它建模成「试用角色揭示卡」
 # (find_trial_reveal_cards 双通道检测 + 模板 + 试用揭示动作),整链已撤销删除,
 # 模板 png 同批删除;禁再以任何形态复活。备战栏发光帧的正确处置 = 等
 # 动画播完的下一帧自然可读;若动画帧再次触发 summon 停机钩子,按现场截图
@@ -1360,7 +1360,7 @@ def bench_item_slots(ctx: SrContext, screen: MatLike, *, fuzzy: bool) -> set[int
       立绘在极端帧可能弱匹配过阈 → 部署面误排真角色 = 战力真空(贵方向,
       r60 同型),比伪槽白拖更贵。
     - 模糊档(``fuzzy=True``)= 精确档 ∪ 泛 TM 低阈扫描(0.45 阈,箱/典籍
-      互斥对拍)。仅 summon 停机钩子消费:best-effort 包在 try/except,误排
+      互斥交叉核对)。仅 summon 停机钩子消费:best-effort 包在 try/except,误排
       最多少停机一次(下帧重判,便宜方向)。
 
     :param fuzzy: True = 精确 ∪ 泛扫描(钩子档);False = 仅精确识别族(部署档)。
@@ -1399,7 +1399,7 @@ def bench_item_slots(ctx: SrContext, screen: MatLike, *, fuzzy: bool) -> set[int
     return out
 
 
-# ===== 晶矿识别(奖励节点清关后 区域-奖励 面板;2026-08-14 live 建档) =====
+# ===== 晶矿识别(奖励节点清关后 区域-奖励 面板;live 建档) =====
 # 球 = 晶矿(factions 球条目:开启后可能获金币/角色/装备/稀有物品)。通关奖励节点后备战右侧
 # 面板出现晶矿形奖励(实测 1-8 清关:1 大金晶矿[r~44] + 5 蓝晶矿[r~32] + 2 灰晶矿[r~18])。采晶矿即开启:
 # 金币/装备即时入账;角色/简易武装箱落备战席占槽;**备战席满时晶矿点不动**(先开箱腾席再采晶矿)。
@@ -1417,8 +1417,8 @@ _REWARD_MAX_R: int = 60
 
 # ===== 幻检交叉验证(奖励域读取防幻检批;实机停机局实证:×12 礼盒蝴蝶结/
 # 扣饰被 Hough 幻检为 2 晶矿,点击零消失 → CwActionCollectOreParam 同签名死循环
-# 停机;同族第 2 件,前件 = W261 装备 icon 越界假圆)=====
-# 三道门全部标定自 18 样本离线对拍(3 真晶矿 fixture reward_spheres_4/5/8 共
+# 停机;同族第 2 件,前件 = 同族装备 icon 越界假圆误报)=====
+# 三道门全部标定自 18 样本离线交叉核对(3 真晶矿 fixture reward_spheres_4/5/8 共
 # 16 真晶矿 + 礼盒停机帧 2 幻晶矿;标定脚本口径 = 圆内 r−4 mask 的 Canny 边缘
 # 占比与 HSV V 均值):
 #: 真晶矿内部纹理:16 真晶矿样本 Canny 边缘占比 0.000-0.145(发光平滑晶矿面)
@@ -1427,7 +1427,7 @@ _SPHERE_EDGE_RATIO_MAX: float = 0.17
 #: 真晶矿亮度:真晶矿为自发光体,16 样本圆内 V 均值 164-252(灰晶矿最暗 ~164)
 #: / 礼盒幻晶矿 112-116(哑光实体)。阈值 140 双向余量 ≥24,与纹理门独立维度。
 _SPHERE_V_MEAN_MIN: float = 140
-#: 真晶矿半径带(2026-08-14 建档:gold~44/blue~32/gray~18);礼盒幻晶矿 r56
+#: 真晶矿半径带(建档:gold~44/blue~32/gray~18);礼盒幻晶矿 r56
 #: 超带。上限 48 = gold 带 +1 呼吸余量;仅作第三道辅助门(纹理/亮度为主门)。
 _SPHERE_R_MAX: int = 48
 #: 两帧持存圆心/半径容差(px;Hough 亚像素抖动 + 发光呼吸效应)。
@@ -1447,7 +1447,7 @@ def _ore_texture_gate(hsv: MatLike, edges: MatLike, ix: int, iy: int,
 
     标定数字见上方常量块注释(18 样本:16 真晶矿全过 / 2 礼盒幻晶矿全杀,
     两主门独立维度双向余量充足)。真晶矿 = 自发光平滑晶矿面;面板内非晶矿实体
-    (礼盒蝴蝶结/装备 icon 等哑光高纹理物)两主门同杀 —— 属 W261 家族
+    (礼盒蝴蝶结/装备 icon 等哑光高纹理物)两主门同杀 —— 属同族幻检家族
     通用排除,非单点补丁。
     """
     if r > _SPHERE_R_MAX:
@@ -1497,7 +1497,7 @@ def _session_phantom_points(ctx: SrContext) -> list[Point]:
 
 
 def note_phantom_ore(ctx: SrContext, pt: Point) -> None:
-    """点击后零消失的晶矿登记为幻晶矿(会话黑名单 + 分键留证;best-effort)。
+    """点击后零消失的晶矿登记为幻晶矿(会话黑名单 + 分键保留证据;best-effort)。
 
     黑名单 = session 动态挂 ``ore_phantom_points``(局级生命周期,
     与漏斗/期望账本同款挂载模式);读侧 ``read_ore_sights`` 按位置容差
@@ -1525,8 +1525,8 @@ def note_phantom_ore(ctx: SrContext, pt: Point) -> None:
             SEVERITY_L2_RECORD,
             record_defect,
         )
-        # 分键坐标 = 容器节点读口(last_state 链退役换源;未观察 = 0 缺省,
-        # best-effort 留证面不炸)。
+        # 分键坐标 = 容器节点读口(last_state 链停用换源;未观察 = 0 缺省,
+        # best-effort 保留证据面不炸)。
         _nd = game_state_of(s).node.value
         record_defect(
             'ore', 'ore_phantom',
@@ -1568,7 +1568,7 @@ def find_ore_sights(screen: MatLike, panel_rect: Rect) -> list[tuple[str, Point,
     )
     if circles is None:
         return []
-    hsv = cv2.cvtColor(panel, cv2.COLOR_RGB2HSV)  # RGB 输入必须 RGB2HSV(BGR2HSV 红/蓝 H 错位 → gold 分类失败,2026-08-14 webp fixture 实测)
+    hsv = cv2.cvtColor(panel, cv2.COLOR_RGB2HSV)  # RGB 输入必须 RGB2HSV(BGR2HSV 红/蓝 H 错位 → gold 分类失败,webp fixture 实测)
     edges = cv2.Canny(gray, 80, 160)   # 幻检纹理门(与 Hough 共用同 blur 灰度)
     out: list[tuple[str, Point, int]] = []
     for cx, cy, r in circles[0]:

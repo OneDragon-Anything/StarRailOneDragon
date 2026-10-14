@@ -13,12 +13,12 @@ node 选中半读链)。失败语义:reader 任一候选观察失败(SIFT 与 OC
 不一致 → ``READ_FAILED`` 哨兵 / OCR 名转换失败 → 域外原值保留 / 重复
 命中)以列表形态过 ``standardize_megastar_options`` 门 → 返回 ``None``
 → observe node round_fail 零写零上报交回重观察(现役机制,调用方零改;
-失败信号不走 None 直返——调用方 fail 消息构造迭代候选列表留证)。
+失败信号不走 None 直返——调用方 fail 消息构造迭代候选列表保留证据)。
 
 候选点击坐标随本读链一并观察上报(规范 = op-layer.md §1.1「选择坐标
 观察上报」):xy = (该卡标签中心 x, 在册卡身线 y),每卡自带,动作 op
 按 ``idx`` 自容器 ``megastar_opts[idx].xy`` 取点,零坐标现算。旧
-「候选-左/右」两槽左右映射模型(idx 枚举序 → 固定槽位常量)已退役
+「候选-左/右」两槽左右映射模型(idx 枚举序 → 固定槽位常量)已停用
 ——单候选/部分读时名字与点击位错位(两槽模型把 idx0 恒映射左槽,
 候选只出现在右槽时点错卡),坐标随卡自带后该缺陷类整体灭绝。
 """
@@ -47,7 +47,7 @@ from sr_od.context.sr_context import SrContext
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import GameState
 
-# 巨星候选标题「盛会之星一X先生/女士!」→ X = 角色名(花火/星期日…)。实测 OCR 核实(2026-08-07 cw_megastar)。
+# 巨星候选标题「盛会之星一X先生/女士!」→ X = 角色名(花火/星期日…)。实测 OCR 核实(cw_megastar)。
 # 先生/女士 + 全/半角叹号容错(OCR 渲染不一)。
 _MEGASTAR_RE = re.compile(r'盛会之星一(.+?)(先生|女士)[!！]?')
 
@@ -57,7 +57,7 @@ _MEGASTAR_SCREEN: str = '货币战争-盛会之星'
 # 弹窗全宽,容纳 N>2 候选的更宽分布)。
 _LABEL_BAND_AREA: str = '候选标签带'
 
-# 在册卡身线 y(实机 bot 点 (822,333) 命中候选卡金边选中,2026-08-07
+# 在册卡身线 y(实机 bot 点 (822,333) 命中候选卡金边选中
 # cw_megastar 实测)。候选点击 y 恒此值;x = 该卡标签中心 x,每卡自带。
 CANDIDATE_BODY_Y: int = 333
 
@@ -66,7 +66,7 @@ CANDIDATE_BODY_Y: int = 333
 # round_fail。哨兵必要性:调用方 observe 的 fail 消息构造迭代候选列表
 # (``cw_screen_megastar.py`` 现形),失败信号必须以列表形态过门,哨兵
 # 名 = 「OCR 名本身合法但被立绘反证」场景在列表形态下的最小失败载体
-# (域外/重复场景自带域外原值,无需哨兵)。细节留证(双名各值)在
+# (域外/重复场景自带域外原值,无需哨兵)。细节保留证据(双名各值)在
 # reader warn 日志。
 READ_FAILED: str = '<观察失败>'
 
@@ -88,7 +88,7 @@ def _default_identify(ctx: SrContext) -> IdentifyFn:
     模板经 ``ctx.cw_portrait_templates`` 缓存,缺则按生产惯例加载
     (``cw_identity_obs.ensure_portrait_templates``,与 deploy/bench/shop
     SIFT 共用同一缓存)。库目录缺失 = SIFT 通道全程未命中(OCR 转换名
-    承重,不硬依赖库;warn 留证)。
+    支撑结论,不硬依赖库;warn 保留证据)。
     """
     from sr_od.application.currency_war.obs.currency_war_char_id import (
         identify_character,
@@ -120,13 +120,13 @@ def read_megastar_options(
     检测模型(正本 = screens/megastar.md §3,逐条落):
     ① **弹窗标签带限定 OCR 定卡**:标签带 area「候选标签带」rect 限定
        OCR → 正则「盛会之星一X先生/女士」逐命中 → N = 命中数,每 hit
-       得(标签中心 x, 原始名 X)。全屏扫已退役(全屏扫会把屏上其它
+       得(标签中心 x, 原始名 X)。全屏扫已停用(全屏扫会把屏上其它
        「盛会之星」字样卷入,且旧实现的坐标按枚举序硬映射左右槽)。
     ② **逐卡立绘 SIFT 交叉验证**:每 hit 按卡身相对几何裁立绘区 → SIFT
        立绘库识别 → 裁决:SIFT 命中且与 OCR 名(经双源域标准化转换)
        一致 → 用之;不一致 = 识别质量不足以区分 → 该候选 char_id 置
        ``READ_FAILED`` 哨兵(整函数观察失败信号,见 return);SIFT 未命中
-       → OCR 转换名承重(库缺新角色不硬依赖);OCR 名转换失败 → 原值
+       → OCR 转换名支撑(库缺新角色不硬依赖);OCR 名转换失败 → 原值
        保留过门(标准化门既有判法判域外失败)。
     ③ **xy = (该卡标签中心 x, 卡身线)**:y = ``CANDIDATE_BODY_Y`` 在册
        实测卡身线,x 随卡标签中心,每卡自带坐标,无枚举映射。
@@ -137,7 +137,7 @@ def read_megastar_options(
     :return: 候选列表(按 x 左→右,xy 每卡自带)。失败信号 = 列表内含
         ``READ_FAILED`` 哨兵 ∨ 域外原值(调用方 observe 经
         ``standardize_megastar_options`` 门判失败 → round_fail 零写零
-        上报交回重观察;fail 消息构造迭代本列表,原值/哨兵自然留证)。
+        上报交回重观察;fail 消息构造迭代本列表,原值/哨兵自然保留证据)。
         空列表 = 合法空读(标签带零命中,上游按候选空语义处理)。
         纯读零副作用。
     """
@@ -177,7 +177,7 @@ def read_megastar_options(
                      else _MegastarGate._lcs_resolve(norm, domain))
         if not canon_ocr:
             # OCR 名域外 = 标准化门既有判法的失败:原值留列表过门
-            # (门判域外 → None → round_fail,fail 消息含原值留证),
+            # (门判域外 → None → round_fail,fail 消息含原值保留证据),
             # 无需 SIFT 反证(已必失败,省裁片识别算力)。
             log.warning(f'[cw-megastar] 候选 OCR 名标准化失败:{raw!r}'
                         '(域外名,过门判观察失败)')
@@ -215,7 +215,7 @@ class _MegastarGate:
     ``CwScreenInvestEnv.ENV_LCS_THRESHOLD``/``ENV_LCS_AMBIGUITY_MARGIN``),
     随实测误读样本校准,单一源住本类。评分判法实现 = 域级单一源
     ``cw_obs_core.lcs_resolve_strict``(阈值过滤 + 次高分差拒判,全族
-    统一;本类只绑巨星匹配域常量)——原手写循环镜像副本随批退役。
+    统一;本类只绑巨星匹配域常量)——原手写循环镜像副本已停用。
     """
 
     # LCS 兜底过阈值线(归一候选对域名的 LCS 长度 / 域名长度;同族 0.75
@@ -256,7 +256,7 @@ def _normalize_char_name(name: str) -> str:
 
 
 def _megastar_match_domain(gs: GameState | None) -> list[str]:
-    """巨星屏合法候选域(转换匹配域;双源并集,用户裁定 2026-09-22):
+    """巨星屏合法候选域(转换匹配域;双源并集,用户裁定):
 
     - ①静态 = cw_chars「盛会之星」阵营成员(注册表派生);
     - ②动态 = 场上(``gs.deployed``)穿「盛会之星」羁绊
@@ -270,7 +270,7 @@ def _megastar_match_domain(gs: GameState | None) -> list[str]:
     静态源。已知缺口(残余风险,与设计同册):环境卡授予的星徽穿戴只显
     于左面板、行单位 ``equips`` 为空(实机实证,``cw_game_state.py`` 注
     在册)→ 该情形合法候选域外 → 转换失败响亮停逼修观察面,方向安全非
-    无声错选;缺口收口 = 观察面扩员,另批。
+    无声错选;缺口收尾 = 观察面扩员(另行处理)。
 
     序 = 固定序(静态注册表序 → 前排 → 后排,去重保首见),是 LCS 评分
     「平分取序首」确定性的基础;域成员恒为注册表规范名(动态腿未注册
@@ -315,7 +315,7 @@ def standardize_megastar_options(
     判失败 → 返回 None:调用方 observe node round_fail 整函数早退,零写
     容器零上报零点击,交外循环重观察重读(禁带病上报;瞬时误读下轮新
     帧自愈,持续误读 = 连续 fail 至外环重派网响亮停,逼修数据;fail 消
-    息迭代候选列表,原值/哨兵自然留证)。成功返回新 ``MegastarOption``
+    息迭代候选列表,原值/哨兵自然保留证据)。成功返回新 ``MegastarOption``
     列表(char_id = 规范名,``idx``/``xy`` 原值保留——动作参数纯序号 +
     观察上报坐标,转换只动名字、坐标原样携带(选择坐标观察上报同进退,
     规范 = op-layer.md §1.1))。纯读零副作用。"""

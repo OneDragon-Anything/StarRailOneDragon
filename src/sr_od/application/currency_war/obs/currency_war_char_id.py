@@ -1,20 +1,19 @@
 """货币战争角色识别:SIFT 特征匹配模板库(纯 CV;库由调用方传 ``avatar_dir``,生产用立绘库)。
 
-**生产实际用的库(2026-08-17 起)**:``deploy_bench._get_templates`` 等加载
+**生产实际用的库**:``deploy_bench._get_templates`` 等加载
 ``assets/template/currency_war/portrait_plaza``(**官方立绘库**,plaza big_icon 烘焙,72 角色,
 中文规范名 key,含变体分开取:姬子/姬子·启行、丹恒·饮月/丹恒·腾荒、刃/千冶·刃、银狼/银狼LV.999;
 ``tools/cw/gen_plaza_chars.py`` 生成)。``resolve_char_name``
 对中文 key 直接返(立绘库),对英文 id 映射(脸库),两库兼容。旧手采库 ``character_cw_portrait``
-(白框法)与其前身 ``currency_war_portrait``(R/B 存反,AGENTS.local 图像通道约定所记事故)已于
-2026-08-17 删除,plaza 库为唯一立绘库。
+(白框法)与其前身 ``currency_war_portrait`` 已删除,plaza 库为唯一立绘库。
 
-⚠️ **识别可靠性:实测初步可用(2026-08-09 D-22)**:离线对 r1-8 备战截图跑 SIFT(`test_portrait_recog.py`),
+⚠️ **识别可靠性:实测初步可用(D-22)**:离线对 r1-8 备战截图跑 SIFT(`test_portrait_recog.py`),
 立绘库对 **6/6 有角色槽全命中**(inliers 29-48),空槽 None(best=0-1 不误识别)→ **立绘库可靠,
 推翻脸库旧结论**(脸库只 4 角色强命中)。下方「4 角色强命中」是 character_avatar(脸库)旧实测,仅作
 下界参考。**待补**:更多样本(尤其共脸变体 姬子/姬子·启行 能否靠服装区分)+ 角色名 ground truth
 (详情面板 OCR)。
 
-**2026-08-06 旧实测(character_avatar 脸库,仅作下界参考)**:脸近景库对面部独特角色强命中(4/4:
+**旧实测(character_avatar 脸库,仅作下界参考)**:脸近景库对面部独特角色强命中(4/4:
 佩拉/黑塔/Saber/藿藿,best inliers 23-30 vs 第二名 3-4);配饰/帽子重角色、货币战争专属变体待核。
 此结论「脸库够用、无需半身模板」与代码实际加载立绘库不符 —— 以代码为准(立绘库)。
 
@@ -53,13 +52,13 @@ def load_avatar_templates(avatar_dir: Path) -> AvatarTemplates:
     模板文件:每角色目录 ``raw.png``(主模板,官方图鉴 art)+ 可选变体
     ``raw_*.png``(现场采集 art,如商店卡立绘与图鉴 pose 不同时补采样;
     键带 ``#k`` 后缀,识别返回时剥离——见 ``identify_character`` 返回值)。
-    2026-08-26 run20 停机事故实证:开拓者·欢愉图鉴 art 对商店卡仅 5 内点
+    run20 停机事故实证:开拓者·欢愉图鉴 art 对商店卡仅 5 内点
     (阈值 10),玩家名遮挡卡名时 SIFT 是唯一通道 → 变体机制必要。
 
     若同目录存在 ``mask.png``(官方库烘焙产物,alpha 二值掩码),SIFT 只在掩码区提特征
     (背景色不进描述子;ADR 见烘焙生成器 tools/cw/gen_plaza_chars.py)。无 mask 则全图(旧手采库兼容)。
 
-    **变体模板逐文件掩码**(2026-08-28):变体 ``raw_<域>.png`` 优先读同目录
+    **变体模板逐文件掩码**:变体 ``raw_<域>.png`` 优先读同目录
     ``mask_<域>.png``(如 ``raw_board.png`` ↔ ``mask_board.png``),缺失再退 ``mask.png``
     (形状须与该文件一致,不一致按无掩码)。根因:``mask.png`` 尺寸只配主档 ``raw.png``,
     变体形状必然失配 → 变体曾整体无掩码入库,卡框/角标等**跨卡恒定的 UI 铬特征**进描述子,
@@ -186,7 +185,7 @@ def identify_hypotheses(slot_img: MatLike, templates: AvatarTemplates,
         if h_mat is None:
             continue
         # 退化 homography 守卫:RANSAC 可能把一片模板点映射到
-        # 单个场景点(实测:佩佩局空槽 忘归人 21 内点中 19 点塌缩到同一
+        # 单个场景点(实测:佩佩局空槽 忘归人 21 内点中 19 点聚拢到同一
         # 场景坐标)—— 此时内点数与投影中心都是伪值。内点场景坐标去重后
         # 不足 ``_HYP_MIN_UNIQUE_INLIERS`` 个 → 无几何证据,丢弃。
         scene_pts = {(round(float(skp[good[i].trainIdx].pt[0])),
@@ -208,7 +207,7 @@ def identify_hypotheses(slot_img: MatLike, templates: AvatarTemplates,
 
 
 #: 假设退化守卫:内点场景坐标去重下限(见 identify_hypotheses 内注释)。
-#: 真假设的内点散布在整卡(几十个不同点);8 = 远低于真假设、高于塌缩型
+#: 真假设的内点散布在整卡(几十个不同点);8 = 远低于真假设、高于聚拢型
 #: 伪假设(实测伪假设 3 个唯一点)的保守值。
 _HYP_MIN_UNIQUE_INLIERS: int = 8
 
@@ -240,7 +239,7 @@ def identify_character(
     :param ambiguity_ratio: best 需 ≥ ratio × second 才算非歧义。
     :param return_key: True 时命中返回**原始模板键**(可能带 ``#k`` 变体后缀,
         如 ``卡芙卡#1``=现场采集变体),False(默认)返回剥离后的规范名 ——
-        2026-08-26 佩佩局:部署排需区分命中源(plaza 官方 art 跨域匹配在
+        佩佩局:部署排需区分命中源(plaza 官方 art 跨域匹配在
         棋盘背景上有 11-26 内点假阳带,现场变体才是可靠信号),调用方
         (cw_identity_obs.identify_slots live_only)用。
     :return: ``(char_id or None, best_inliers)``。None = 未知 / 歧义 / 低于阈值。
@@ -251,12 +250,12 @@ def identify_character(
     恰为已知色相对(RED_HUE_PAIRS),按 slot_img 的色相差仲裁 —— SIFT 定「是这对兄弟」,
     色相定「是哪只」。
     """
-    gray = cv2.cvtColor(slot_img, cv2.COLOR_RGB2GRAY)   # sr_od screen 是 RGB(screencapper BGRA2RGB;D-52 装备侧同类修,本处 2026-08-19 补)
+    gray = cv2.cvtColor(slot_img, cv2.COLOR_RGB2GRAY)   # sr_od screen 是 RGB(screencapper BGRA2RGB;D-52 装备侧同类修,本处补)
     skp, sdesc = _SIFT.detectAndCompute(gray, None)
     if sdesc is None or len(skp) < 4:
         # 旧路径此况全模板返 0 → best=0 < min_inliers;等价直返
         return None, 0
-    # 两阶段惰性 RANSAC(2026-08-24 性能优化;决策语义与旧全扫逐位等价):
+    # 两阶段惰性 RANSAC(性能优化;决策语义与旧全扫逐位等价):
     # 阶段1 全模板 ratio-test good 数(免 RANSAC,knnMatch 是 BF 高效项);
     # 阶段2 按 good 降序惰性 RANSAC,剪枝 g ≤ best/ambiguity_ratio ——
     #   内点 ≤ good(RANSAC 只减不加),被剪者不可能超 best、也不可能
@@ -309,7 +308,7 @@ def _resolve_best(scores: list[tuple[str, int]], slot_img: MatLike,
     if best < min_inliers:
         return None, best
     # 变体模板键(#k 后缀)剥离:同一角色的多 art 模板互不构成「歧义」——
-    # 同 cid 变体在 top2 时取高者即最终答案(2026-08-26 变体机制)。
+    # 同 cid 变体在 top2 时取高者即最终答案(变体机制)。
     _base = best_id.split('#')[0]
     if second > 0 and best < ambiguity_ratio * second:
         if second_id.split('#')[0] != _base:
@@ -348,7 +347,7 @@ if __name__ == '__main__':
     screen_path = sys.argv[1] if len(sys.argv) > 1 else str(
         repo / '.debug' / 'sr_od_mcp' / 'screenshot' / 'screenshot_20260802_121926_271794.png'
     )
-    avatar_dir = repo / 'assets' / 'template' / 'currency_war/portrait_plaza'   # 官方立绘库(plaza big_icon 烘焙,唯一库)   # noqa: E501  # 与 deploy_bench 生产路径一致;旧 demo 用 character_avatar 脸库,2026-08-09 对齐)
+    avatar_dir = repo / 'assets' / 'template' / 'currency_war/portrait_plaza'   # 官方立绘库(plaza big_icon 烘焙,唯一库)   # noqa: E501  # 与 deploy_bench 生产路径一致;旧 demo 用 character_avatar 脸库,对齐)
     # 填充的备战槽(GT 坐标,峰高证实有角色)
     slots = {
         'bench-1': (382, 845, 495, 979),

@@ -1,4 +1,4 @@
-"""货币战争 备战帧左侧羁绊面板·显示侧识别器 + 与计算侧羁绊计数的对账(W545)。
+"""货币战争 备战帧左侧羁绊面板·显示侧识别器 + 与计算侧羁绊计数的对账。
 
 **裁决口径(用户定)**:羁绊状态以我方逻辑计算为主源
 (``cw_observation.board_from_deployed``),左侧面板显示只作**对账票**
@@ -230,7 +230,7 @@ def _read_badge_digit(ctx: SrContext, screen: MatLike,
 
     返回纯数字 token(全帧坐标)或 None(各偏移档均读不出)。反相 =
     白字黑底 → 黑字白底(paddle rec 习惯);框半宽避开圆环(环被读成
-    '0',16 帧对拍实测);多偏移档覆盖徽章相对名行的 +29~+38 抖动。
+    '0',16 帧交叉核对实测);多偏移档覆盖徽章相对名行的 +29~+38 抖动。
     """
     ocr = ctx.ocr_service.get_ocr_result_list
     for dy0 in _BADGE_DY_CANDS:
@@ -292,7 +292,7 @@ def compare_factions(computed: dict[str, int],
       显示只列可见条目,底部截断是常态);
     - displayed 有而 computed 没有 → computed_missing(显式第四态:
       计算侧是全集主源,该形态= 计算侧漏贡献或名称配错,判 mismatch
-      同级留证但单独命名便于归因)。
+      同级保留证据但单独命名便于归因)。
     """
     res = FactionReconcileResult()
     shown: set[str] = set()
@@ -316,7 +316,7 @@ def report_faction_reconcile(result: FactionReconcileResult, **kwargs) -> int:
     串同一链路;行为锁见测试仓 faction_reconcile/faction_wire 两锁文件)。
     函数本身保持纯转发:
     逐 mismatch 调 ``record_defect``(kernel/cw_telemetry_exit 出口钩子位,
-    分包期 4 起零直依 telemetry;run_id 门控/分级/安灯语义单一源在 telemetry),
+    零直依 telemetry;run_id 门控/分级/失配告警语义单一源在 telemetry),
     返回落账行数。
     """
     from sr_od.application.currency_war.kernel.cw_telemetry_exit import record_defect

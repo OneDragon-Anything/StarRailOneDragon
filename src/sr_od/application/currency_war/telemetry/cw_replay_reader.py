@@ -1,11 +1,11 @@
 """货币战争 遥测读端规范 loader(零生产行为变更)。
 
 遥测判读脚本曾普遍直接消费裸 dict(decisions/outcomes.jsonl 的 json.loads
-产物),字段名/形态写错全部静默——实证:dp_posture 写端 2026-08-26 起
-dict→str 收窄后,读端 ``isinstance(dp, dict)`` 恒 False 结构性漏报;actions
+产物),字段名/形态写错全部静默——实证:dp_posture 写端把 dict 收窄成 str 后,
+读端 ``isinstance(dp, dict)`` 恒 False 结构性漏报;actions
 元素只有 ``__type__`` 键、读 ``get('type')`` 恒 None;hp_trusted 位在 state
 子字典顶层不存在(历史行 = 旧帧序列化嵌在 state 内;容器期行 state =
-serialize_state 产物,hp_trusted 位已随政策层派生退役——两代形状并存,
+serialize_state 产物,hp_trusted 位已停用——两代形状并存,
 裸读必错)。
 
 本模块是**读端的唯一规范入口**:
@@ -18,7 +18,7 @@ serialize_state 产物,hp_trusted 位已随政策层派生退役——两代形�
 - ``load_decisions`` / ``load_outcomes``:规范 loader,返回类型化对象
   列表;坏行(JSON 解析失败/非 dict)跳过不抛。
 - ``posture_tag``:dp_posture 的标准读法(判读脚本一律走它,禁再裸
-  isinstance)。归一规则按实测证据(decisions.jsonl 7367 帧,2026-08-28):
+  isinstance)。归一规则按实测证据(decisions.jsonl 7367 帧,):
   - dict 形态(3425 帧,历史 r620 自动附路径)键形状唯一 =
     ``{'spend_mode': str, 'target_level': int}`` → tag 取 ``spend_mode``;
   - str 形态:tag 是短串(实测 ≤7 字符,如 '存息'/'升级+D6'/'+D2'/

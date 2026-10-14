@@ -15,15 +15,15 @@ HTTP 消费方直接读用,不必自己 OCR / 看图。
 
 **角色身份 + 星级 + 装备(前后台 / 备战席)**:用 ``cw_identity_obs.read_deployed_rows`` / ``read_bench_view``
 (纯 CV SIFT,**纯读** —— 只裁槽位 + SIFT + 直产容器形状,不写 session / 全局,可安全并发)产
-``front_line`` / ``back_line``(前排/后排 Unit 行)与 ``bench``(:class:`BenchView` 备战席容器
+``front_line`` / ``back_line``(前排/后排 Unit 行)与 ``bench``(class:`BenchView` 备战席容器
 视图,占槽物品 kind 识别期细分)。立绘库经
 ``ensure_portrait_templates`` **幂等加载缓存**(只读资源,并发安全,同 ``ensure_equip_tm_templates``);
 库缺失→三字段 None。装备经 ``read_row_equipped`` 读 below-avatar icon,按 slot 注入 Unit.equips
 (frozen replace 新构造;备战席无 below icon→bench unit equips 恒 [])。
 
-⚠️ **可靠性标注**:立绘库 ``currency_war/portrait_plaza``(官方 plaza 烘焙)实测可用 —— D-22(2026-08-09,
-手采库时代)有角色槽 6/6 命中空槽不误;切 plaza 库时 A/B 对拍持平(14 vs 15,一致 13);实机对局实证:
-plaza 烘焙立绘库经备战执行面身份链 live 验证通过(该执行面已退役,考古归 git)。消费方据该字段时仍知其 SIFT 来源(非 OCR),供智能体交叉验证而非盲信
+⚠️ **可靠性标注**:立绘库 ``currency_war/portrait_plaza``(官方 plaza 烘焙)实测可用 —— D-22
+(手采库时代)有角色槽 6/6 命中空槽不误;切 plaza 库时 A/B 交叉核对持平(14 vs 15,一致 13);实机对局实证:
+plaza 烘焙立绘库经备战执行面身份链 live 验证通过(该执行面已停用)。消费方据该字段时仍知其 SIFT 来源(非 OCR),供智能体交叉验证而非盲信
 (证据链见 ``currency_war_char_id`` docstring)。
 """
 from __future__ import annotations
@@ -76,9 +76,9 @@ def _read_phase_round_pure(ctx: SrContext, screen: MatLike) -> tuple[int, int] |
     """位面 + 轮次(**纯读**):顶栏「X-Y」(如 "1-3" = 位面1 第3轮);读不到 → None。
 
     与 ``cw_observation.read_phase_round`` 共享解析纯函数
-    (:func:`cw_observation.parse_phase_round_text` +
-    :func:`cw_observation.phase_round_in_range`,同正则同值域单一源,
-    T-8 设计 §2.5——工具态 ``round_caps`` 恒 None → cap 回退默认长度
+    (func:`cw_observation.parse_phase_round_text` +
+    :func:`cw_observation.phase_round_in_range`,同正则同值域单一源;
+    工具态 ``round_caps`` 恒 None → cap 回退默认长度
     P1=9,「1-10」断言对本工具面不作要求,修饰局真值由场字段/台账
     承载),但**去掉**模块全局 ``_last_phase_round`` 的写 / 读
     (并发安全:recognizer 不得与运行中 operation 竞争该全局)。
@@ -120,8 +120,8 @@ class _BattlePrepState:
     back_line: list[Unit] | None   # 后排 Unit 行(同上)
     bench: BenchView | None        # 备战席容器视图(read_bench_view SIFT 直产;slots=9 槽 BenchSlot,占位物品 kind 细分;备战席无 below icon→unit equips 恒 [];空读→None)
     owned_equips: list[dict] | None      # 右侧 owned 装备栏(read_equips SIFT;元素 {name,category,cx,cy,inliers};category 工具/特殊=消耗品,其余简易/进阶/...=装备;空→None;templates 未加载→None)
-    armory_boxes: list[dict] | None      # 备战栏简易武装箱槽位(read_armory_boxes TM;元素 {slot,cx,cy};晶矿开箱掉箱占席,点「开启」腾槽;空→None;2026-08-14 首见机制)
-    reward_ores: list[dict] | None    # 奖励面板晶矿(read_ore_sights HoughCircles;元素 {color,cx,cy,r};color gold/blue/gray;采晶矿开启入账,角色/箱占席;空→None;2026-08-14 首见机制)
+    armory_boxes: list[dict] | None      # 备战栏简易武装箱槽位(read_armory_boxes TM;元素 {slot,cx,cy};晶矿开箱掉箱占席,点「开启」腾槽;空→None;首见机制)
+    reward_ores: list[dict] | None    # 奖励面板晶矿(read_ore_sights HoughCircles;元素 {color,cx,cy,r};color gold/blue/gray;采晶矿开启入账,角色/箱占席;空→None;首见机制)
 
 
 class BattlePrepRecognizer(ScreenRecognizer):
@@ -177,8 +177,8 @@ class BattlePrepRecognizer(ScreenRecognizer):
         # 读只产假 MISS 噪声 — 某模板 val 0.55-0.56,shot miss_slot5 实证无 icon)。
         phase0 = _read_phase_round_pure(ctx, image)
         level0 = read_level(ctx, image, phase0[0], phase0[1]) if phase0 else read_level(ctx, image, 0, 0)
-        # 后排装备槽按 cap 差公式选档(W209/口述「后台格数=6+(cap−level)」;
-        # 旧 level 驱动已废)。已建档 6/7/8/9 直读,>9 域外保守 8 格超集(select_back_layout 内辖留证)。
+        # 后排装备槽按 cap 差公式选档(口述「后台格数=6+(cap−level)」;
+        # 旧 level 驱动已废)。已建档 6/7/8/9 直读,>9 域外保守 8 格超集(覆盖式保留证据在 select_back_layout)。
         from sr_od.application.currency_war.obs.cw_back_layout import (
             select_back_layout as _sel_bl,
         )
@@ -187,7 +187,7 @@ class BattlePrepRecognizer(ScreenRecognizer):
         equip_grays = ensure_equip_tm_templates(ctx)
         front_equips = read_row_equipped(ctx, image, equip_grays, '前排', 4) if equip_grays is not None else {}
         # 布局未知态(15 号稿 §3.2④,select_back_layout 返 (None,''))→ 后排
-        # equips 空 dict(纯读面,跳过即正确;JSONL 留证在 resolve 侧)。
+        # equips 空 dict(纯读面,跳过即正确;JSONL 保留证据在 resolve 侧)。
         back_equips = (read_row_equipped(ctx, image, equip_grays, _back_pfx, _back_n)
                        if (equip_grays is not None and _back_n) else {})
         # 角色直产容器形状(read_deployed_rows 已按排分域);只补 equips
@@ -224,7 +224,7 @@ class BattlePrepRecognizer(ScreenRecognizer):
             owned_equips = _owned or None
         phase = phase0
         level = level0
-        # W209/:cap>level(宝钻/钻石叠加)不再只是经济信息——它直接编码
+        #cap>level(宝钻/钻石叠加)不再只是经济信息——它直接编码
         # 后排扩展量(口述公式 6+(cap−level)),布局选档已在函数头消费。
         # r317(批次2):read_hp 裸调用迁 read_hp_opt
         # (miss→None;与 director 同源——消掉「MCP 报 100 而

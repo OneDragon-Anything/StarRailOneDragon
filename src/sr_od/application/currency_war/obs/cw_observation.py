@@ -7,16 +7,16 @@
 备战字段采集按 doc 06(``strategy/06_input_model.md``)逐簇推进(board tier 已接,余待采:
 active_strategies/enemy_difficulty/level_up_cost/inventory 等;icon/身份类阻塞于 vision/SIFT 库)。
 
-**区域单一真相源 = screen_info**(用户 2026-08-03):``assets/game_data/screen_info/currency_war_battle_prep.yml``
+**区域单一真相源 = screen_info**(用户口径):``assets/game_data/screen_info/currency_war_battle_prep.yml``
 (screen「货币战争-备战」),经 ``cw_obs_core._area_rect`` 读 area 的 pc_rect —— 改区域改 yml 即可,不动代码。
 
 设计原则(strategy/05_observation(签名+失败语义+sanity bounds)):
-- 每字段用 ``_ocr(rect=...)`` 定区域读(**不塌缩重复文本** —— 地图版 get_ocr_result_map 按文本聚合,
+- 每字段用 ``_ocr(rect=...)`` 定区域读(**不合并重复文本** —— 地图版 get_ocr_result_map 按文本聚合,
   两张同阵营牌会撞键丢一张;list 版保留全部)。
 - OCR 失败 / 越界(sanity bounds)→ 安全默认,不抛错(plan 对默认安全降级:
   gold 默认 0 → 不买;hp 默认 100 → 不触发保血)。越界读(gold 读成 500)比读不到更危险。
 
-v1 OCR 可读性(2026-08-03,实机多样本 + 诊断脚本确认):
+v1 OCR 可读性(实机多样本 + 诊断脚本确认):
 - **level**:``read_level`` OCR 优先 + ``_expected_level`` 兜底;telemetry level 跨样本合理(✓)。
 - **hp**:⚠️ **plan-time 读不到(保血原本未武装),根因已确认 = shop 开启时右上角 HP 区空,非读取器坏**。
   ``BuyShopCards`` 在 shop 关闭帧读 hp → 覆盖 state.hp(见 shop.buy)。
@@ -102,7 +102,7 @@ def _expected_level(plane: int, round_num: int) -> int:
 def read_gold_opt(ctx: SrContext, screen: MatLike) -> int | None:
     """当前金币(r319:miss→None 保真版;契约伴生 read_gold 仍返 0)。
 
-    保留裁剪读 + 3x 放大(2026-08-24 crop-first 审计):小目标 stylized 数字,全图 det 几乎
+    保留裁剪读 + 3x 放大(crop-first 审计):小目标 stylized 数字,全图 det 几乎
     总漏——放大破 det 天花板,与全图帧缓存不兼容;理由详见 ``read_gold`` docstring。
     """
     rect = _area_rect(ctx, A_GOLD)
@@ -121,9 +121,9 @@ def read_gold_opt(ctx: SrContext, screen: MatLike) -> int | None:
 def read_gold(ctx: SrContext, screen: MatLike) -> int:
     """当前金币(底部右侧数字)。读不到 / 越界 → 0(plan 不买,安全保守)。
 
-    gold 数字小 + stylized,paddle native det 几乎总漏(读 0/空,实锤见 process_log)→
+    gold 数字小 + stylized,paddle native det 几乎总漏(读 0/空,已实测确认见 process_log)→
     裁 area 后 **放大 3x** 再 OCR(破小目标 det 天花板)。area 已收紧到只含 gold 数字
-    (排除隔壁 G0/0 货币;2026-08-07 实测 [1610,890,1690,945] 放大后稳读 3/2)。
+    (排除隔壁 G0/0 货币;实测 [1610,890,1690,945] 放大后稳读 3/2)。
     读值走 ``read_gold_settled`` 稳定门(见其 docstring:读金瞬间数字在动的场景,
     单帧读会拿到入账前旧值)。
     """
@@ -140,7 +140,7 @@ GOLD_SETTLE_MAX_POLLS: int = 3
 GOLD_SETTLE_INTERVAL_S: float = 0.5
 
 #: 难度旗牌徽记带上沿(裁片内 y,1080p 像素):「文本-难度」旗牌上半是徽记图案、
-#: 下半是数字。像素亲测(58 帧 fixture 裁片,2026-08-28):徽记占 y 0..45、
+#: 下半是数字。像素亲测(58 帧 fixture 裁片,):徽记占 y 0..45、
 #: 数字带 y>=55,取 48 留双向安全距。``_ocr_difficulty_binarized`` 据此抹带。
 _DIFFICULTY_EMBLEM_BAND_Y: int = 48
 
@@ -159,15 +159,15 @@ _DIFFICULTY_MAX: int = 300
 def read_gold_settled(ctx: SrContext, screen: MatLike) -> int | None:
     """带稳定门的金读数(读不到/越界 → None,契约同 ``read_gold_opt``)。
 
-    根因(实机 12 局 20 条 gold_delta 冲突对拍,`w489_sim_real_gap/` 审计感知面):局收入在
-    轮/位面切换后**入账计数器仍在跳**(实锤 run_20260828_074721 P3 r1:开店
+    根因(实机 12 局 20 条 gold_delta 冲突交叉核对,`w489_sim_real_gap/` 审计感知面):局收入在
+    轮/位面切换后**入账计数器仍在跳**(已实测确认 run_20260828_074721 P3 r1:开店
     连读 73→75,同一读点数字在动;下轮开店读 90 = 本轮关店读 79 + 常规收入
     11,反推关店实读正确、开店读系统性偏低 = 读在入账前/入账中)→ 单帧读
-    把「未入账旧值」当真值喂给 plan,息线/花金义务整体错位(大额漂 16-40 金)。
+    把「未入账旧值」当真值喂给 plan,利息线/花金义务整体错位(大额漂 16-40 金)。
 
     修法(读链根因环,不做「读数再猜」):同读点补采新帧重读,两帧一致才采信;
     不一致(计数器在跳)→ 取**末帧**(新帧更接近当下;入账计数器单调向上,末帧
-    ≥ 首帧即入账后真值)+ ``obs_conflict('gold', ...)` 留证 + warning(不静默:
+    ≥ 首帧即入账后真值)+ ``obs_conflict('gold', ...)` 保留证据 + warning(不静默:
     采了哪个值、为何采,判读侧可见)。补采走 ``ctx.controller.screenshot()``
     (同 ``read_deploy_cap_debounced`` 先例);控制器不可得(离线/单测)退单帧读,
     行为与修前完全一致。
@@ -208,7 +208,7 @@ def read_gold_settled(ctx: SrContext, screen: MatLike) -> int | None:
 def read_refresh_probs(ctx: SrContext, screen: MatLike) -> dict[int, float] | None:
     """商店开态的概率条 → {费用档 1-5: 概率}(r77 轮岗接线;读不到 → None 退基线)。
 
-    **为什么读屏**(用户 2026-08-19 点题「轮岗」):投资环境轮岗每备战阶段随机翻倍
+    **为什么读屏**(用户点题「轮岗」):投资环境轮岗每备战阶段随机翻倍
     一个费用档(基线 lv6 30/40/25/5 → 1费翻倍变 60/22/15/3,实测吻合)——概率条
     直接印在商店面板上,OCR 即真值,无需建模哪个档被随机翻倍、也覆盖其他概率类
     环境。消费方:plan._sample_cost(D 牌蒙特卡洛)/ refresh 价值评估。
@@ -221,7 +221,7 @@ def read_refresh_probs(ctx: SrContext, screen: MatLike) -> dict[int, float] | No
     if rect is None:
         return None
     from sr_od.application.currency_war.data.cw_shop_odds import parse_prob_bar
-    # 全图 OCR + rect 过滤(2026-08-24 crop-first 审计转换;fixture shop_open.webp 对拍
+    # 全图 OCR + rect 过滤(crop-first 审计转换;fixture shop_open.webp 交叉核对
     # 与裁剪读逐字等价)。read_game_state 链同帧多 reader 共享一次全图识别(帧级缓存)。
     texts = [r.data for r in _ocr(ctx, screen, rect)]
     return parse_prob_bar(texts)
@@ -230,19 +230,19 @@ def read_refresh_probs(ctx: SrContext, screen: MatLike) -> dict[int, float] | No
 def read_hp_opt(ctx: SrContext, screen: MatLike) -> int | None:
     """read_hp 的保真版:读不到/越界 → None(默认值由调用方定)。
 
-    遥测用(insights 2026-08-15「hp=100 默认值毒化遥测」):read_hp 的 100 默认是决策层
+    遥测用(insights 「hp=100 默认值毒化遥测」):read_hp 的 100 默认是决策层
     安全设计(不触发保血),但遥测记录里「真 100」与「读不到兜底 100」不可区分 → 复盘误判
     (M19 曾误读「P1 零损」)。遥测/复盘侧用本函数区分。
 
-    两通道对账(原生 + 3x 放大,不一致以放大通道为准并留证):
+    两通道对账(原生 + 3x 放大,不一致以放大通道为准并保留证据):
     hp 数字为美术字,笔画断续时**原生分辨率 det/rec 偶发丢十位**(如 47 读成 4、
-    12 读成 2;2026-09-02 obs_conflict 分诊帧 40e3354a/e4746213 离线复现实证:
+    12 读成 2;obs_conflict 分诊帧 40e3354a/e4746213 离线复现实证:
     同帧原生读 4/2、3x CUBIC 放大读 47/12,均与画面真值一致)。旧实现「原生命中
     即短路」让这类错值直接采信——掉十位把健康读成濒死,且错值恰落在下行守卫的
     拒信/复现通道里制造证据噪声。修法:放大通道**常开**作第二读,两通道一致才
-    静默;不一致 → obs_conflict 留证并采放大值。放大通道更可信的依据 = 本函数
+    静默;不一致 → obs_conflict 保留证据并采放大值。放大通道更可信的依据 = 本函数
     既有失明回退先例(低血小数值原生 det 漏检、3x 放大即恢复,局21 P2 r4 离线
-    对拍)+ 上述掉十位帧的离线复现。代价:每真值帧多一次小裁片(90×80)放大
+    交叉核对)+ 上述掉十位帧的离线复现。代价:每真值帧多一次小裁片(90×80)放大
     OCR,百毫秒级。
     """
     rect = _area_rect(ctx, '文本-剩余血量')
@@ -275,8 +275,8 @@ def _ocr_upscaled(ctx: SrContext, screen: MatLike, rect: Rect | None,
     小字区域(XP 条 / 等级数字)原生分辨率下 paddle det 漏检 → 双失读级联:
     等级 OCR 与 XP 反推同帧皆空 → 决策落 ``_expected_level`` 启发式(假设已买经验,
     P1 早期系统性偏高 +2)→ cap<level 域守卫拒信 deploy_cap(冲突帧
-    6f41536e/23dee97a 实锤:画面 Lv.3/3、Lv.4/4 自洽,虚高全在 level 侧)。
-    3x CUBIC 放大后三张冲突帧 XP 与等级全恢复读数(离线对拍)。
+    6f41536e/23dee97a 已实测确认:画面 Lv.3/3、Lv.4/4 自洽,虚高全在 level 侧)。
+    3x CUBIC 放大后三张冲突帧 XP 与等级全恢复读数(离线交叉核对)。
     """
     if rect is None:
         return []
@@ -368,7 +368,7 @@ def read_level(ctx: SrContext, screen: MatLike, plane: int, round_num: int) -> i
     OCR ``文本-等级``(screen_info 区域已排除下方 XP "0/6" 与「购买经验金币」,
     仅含等级数字 + "LV." 标签)→ 取首个数字。读不到 → **经验条反推**
     (``read_xp_progress`` 的 xp_to_next 经 ``XP_TO_NEXT_LEVEL`` 倒查,如
-    "0/4" → lv3;2026-08-26 佩佩局实弹:OCR 漏读 Lv.3 小字 → 旧 ``_expected_level``
+    "0/4" → lv3;佩佩局实弹:OCR 漏读 Lv.3 小字 → 旧 ``_expected_level``
     兜底 4 → cap−level=0 → 后排选 6 格档丢佩佩@7 —— 期望曲线假设已买经验,
     P1 早期系统性偏高);仍读不到 → ``_expected_level`` 启发式兜底(≈ 真实等级,
     使 economy level_val≈0 不误判欠等级)。
@@ -379,7 +379,7 @@ def read_level(ctx: SrContext, screen: MatLike, plane: int, round_num: int) -> i
     v = read_level_raw_opt(ctx, screen)
     if v is not None:
         return v
-    # XP 反推先验(session 上次观测等级)已随终态契约 §A 等级守卫退役——
+    # XP 反推先验(session 上次观测等级)已停用(见终态契约 §A 等级守卫)——
     # 无结构先验可用,XP 不可解析 → None(调用方走 _expected_level 兜底)。
     xp = read_xp_progress(ctx, screen, expected_level=None)
     if xp is not None:
@@ -489,7 +489,7 @@ def _classify_node_row(ctx: SrContext, screen: MatLike) -> tuple[list | None, tu
     if _BOSS_TEMPLATES is None:
         _bd = get_project_root() / 'assets' / 'template' / 'currency_war' / 'boss_avatar'
         _BOSS_TEMPLATES = load_boss_templates(_bd) if _bd.is_dir() else {}
-    # 节点行区域单一源 = screen_info「区域-节点条」(2026-08-26 boss 识别批:
+    # 节点行区域单一源 = screen_info「区域-节点条」(boss 识别:
     # yml 扩到含 boss 圆 ~x1354;常量仅兜底,漂移以 yml 为准)
     _rect = _area_rect(ctx, '区域-节点条')
     _x0, _y0, _x1, _y1 = (
@@ -519,7 +519,7 @@ def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
     if _slots is None:
         return None
     # r80(审计 P0-1):OCR 标签**带位置**锚定校验 —— 「首领」等标签会出现在即将到来的
-    # 节点下方(2-7 实证 x1341 vs 当前槽 cx≈900)→ 标签 x 与当前槽 cx 对拍,错位不覆盖。
+    # 节点下方(2-7 实证 x1341 vs 当前槽 cx≈900)→ 标签 x 与当前槽 cx 交叉核对,错位不覆盖。
     _t, _lx = _node_type_label(ctx, screen)
     if _t:
         _cur_slot = next((s for s in _slots if s.state == 'current'), None)
@@ -696,7 +696,7 @@ def verify_node_type_votes(ctx: SrContext, screen: MatLike,
                     ' → 落缺陷台账(识别错误候选,复现计数显影)', table_t, votes,
                     past_n, hu_dist, _future_bad)
         try:
-            # 分包期 4:落账经 kernel/cw_telemetry_exit 出口钩子位(零直依 telemetry)
+            #落账经 kernel/cw_telemetry_exit 出口钩子位(零直依 telemetry)
             from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
                 journal_refs,
                 record_defect,
@@ -712,7 +712,7 @@ def verify_node_type_votes(ctx: SrContext, screen: MatLike,
                          '复现由台账行复现计数显影'),
                 reader_source='node_ledger_three_vote',
                 gap_large=False,
-                # refs 旧挂点清理(W7 refs 迁移):decisions 流已退役,
+                # refs 旧挂点清理(refs 迁移):decisions 流已停用,
                 # 改指 journal (run_id,v) 锚(plane/round 已在行参内联)。
                 refs=journal_refs(),
                 note='节点类型台账制:表=权威(位面详情采集+投资环境后重读两写点,'
@@ -729,7 +729,7 @@ def read_plane_detail_difficulty(ctx: SrContext, screen: MatLike) -> int | None:
     """位面详情底部明文「敌人难度 N」→ N | None(**只存参考**)。
 
     生产难度主源 = 备战旗牌两级管线(``read_enemy_difficulty``)
-    不变;本读法服务位面详情采集时的参考值落账(离线对拍/缺口排查)。
+    不变;本读法服务位面详情采集时的参考值落账(离线交叉核对/缺口排查)。
     明文正读(非艺术字)→ 全屏 OCR 按「敌人难度」前缀正则提取,不依赖
     固定坐标(位面详情布局随内容变,正则锚文本比锚坐标稳)。
     """
@@ -753,10 +753,10 @@ def read_plane_detail_nodes(ctx: SrContext, screen: MatLike) -> list | None:
     与 ``read_node_sequence`` 同一 CV 核心(``classify_node_row``:定圆/判态/
     Hu 类型/boss SIFT),差异只在输入域:
     - 带 = screen_info「货币战争-位面详情」屏的「区域-节点条」area
-      (用户权威坐标 385,514,1596,661;2026-08-26 实锺 9 圆全检出,最右
+      (用户权威坐标 385,514,1596,661;已实测确认 9 圆全检出,最右
       SIFT boss 巨鹿生物制药=6 断层命中——与备战条同源互证);
     - 该带是**选中位面的彩色渲染态**(位面详情里位面 2/3 也可选中展开,
-      非备战的锁灰态)→ **接管局三位面 boss 全量采集通道**:依次点三张
+      非备战的锁灰态)→ **中断恢复的对局三位面 boss 全量采集通道**:依次点三张
       位面卡,每选中一张调本函数,boss 槽 SIFT 认该位面 boss;
       ⚠️ 选中**过去位面**(位面号 < 会话当前位面)时节点全部变暗(灰态),
       本读法在该渲染下识别可能退化(实机 P2 采位面 1 长停留实证)——
@@ -801,7 +801,7 @@ def read_detail_node_type_label(ctx: SrContext, screen: MatLike) -> str | None:
     图案即该 boss 的纹章风头像;大图标 SIFT 未命中系模板库缺该风格所致,
     属识别能力缺口,**非「本屏无身份信息」**——证据帧 = sr-od-test/screens/
     货币战争-位面详情/位面详情-纹章风头像-run30.png)。类型名稳定可 OCR
-    (run30 实锺「首领节点」全字命中),作「点到的确是 boss 节点」验证。
+    (run30 已实测确认「首领节点」全字命中),作「点到的确是 boss 节点」验证。
     读不到 → None(过渡帧/OCR 失败,调用方重试,重试耗尽响亮失败)。
     """
     rect = _area_rect(ctx, '文本-节点类型名', '货币战争-位面详情')
@@ -837,7 +837,7 @@ def _ocr_difficulty_binarized(ctx: SrContext, screen: MatLike, rect: Rect | None
                               scale: int = 4) -> list:
     """难度旗牌专用预处理 OCR:裁剪 → 放大 → OTSU → 反转 → 徽记 y 分带剔除。
 
-    为什么整链不可省(2026-08-28 58 帧 fixture 离线对拍,产物
+    为什么整链不可省(58 帧 fixture 离线交叉核对,产物
     ``.debug/temp/currency_war/w526_difficulty_reader/``):
     - 白色艺术字数字 + 深色纹理旗底 + 顶部徽记贴边,原生直读 0/58;
     - OTSU 把数字从纹理旗底分离;反转成黑字白底(paddle 对白底黑字稳);
@@ -864,7 +864,7 @@ def _ocr_difficulty_binarized(ctx: SrContext, screen: MatLike, rect: Rect | None
 def read_enemy_difficulty(ctx: SrContext, screen: MatLike) -> int | None:
     """当前敌人难度(左上角 ``文本-难度`` 旗牌;boss 血量 ≈ base×1.052^难度,doc 13 §13.7)。
 
-    难度数字是白色艺术字 + 深色纹理旗底,原生直读必失(58 帧对拍 0/58,全是 0/1 类
+    难度数字是白色艺术字 + 深色纹理旗底,原生直读必失(58 帧交叉核对 0/58,全是 0/1 类
     垃圾或空)→ 走旗牌专用两级管线(与 ``read_level_up_cost`` 两级形状一致,便于维护;
     本场景二级二值化为主、一级放大为辅):
     1. ``_ocr_difficulty_binarized``(OTSU+反转+徽记剔除,41/41 有旗牌帧全读对);
@@ -886,7 +886,7 @@ def read_level_up_cost(ctx: SrContext, screen: MatLike) -> int | None:
 
     费用数字与 XP/等级同属备战屏原生分辨率下 paddle det 漏检的小字目标——画面档
     ``docs/game/screens/currency_war_prep.md``「不可行」结论系放大手法引入前所下。
-    58 张备战 fixture 离线对拍:3x 放大读 55/58 → 加 OTSU 二值化二级重试 57/58;
+    58 张备战 fixture 离线交叉核对:3x 放大读 55/58 → 加 OTSU 二值化二级重试 57/58;
     唯一残留帧数字在场但两级均未检出,走 None 兜底。
     两级管线:``_ocr_upscaled`` 读空 → ``_ocr_upscaled_binarized`` 重试。
     读不到 → None(plan 用 ``LEVEL_UP_COST_TABLE`` 兜底)。
@@ -917,7 +917,7 @@ def _parse_coin_fee_digit(texts: list[str]) -> int | None:
 def read_shop_refresh_cost(ctx: SrContext, screen: MatLike) -> int | None:
     """商店面板「↻ N」徽标读数(``文本-刷新金币数`` rect)——**非刷价,仅旁证**。
 
-    `w577_refresh_fee_and_andon/` 定谳:rect 内容 = 商店折叠面板徽标,数值 = min(gold//10,5)
+    `w577_refresh_fee_and_andon/` 已定案:rect 内容 = 商店折叠面板徽标,数值 = min(gold//10,5)
     (= 利息公式),与实付刷新费无关——多局干净对账实付恒 2(基价
     ``cw_state.REFRESH_COST_BASE``)而徽标随金位变。本函数保留作旁证/测试用,
     已退出 ``read_game_state`` 主链(决策热路径少一次 OCR)。
@@ -976,7 +976,7 @@ def read_selected_difficulty(ctx: SrContext, screen: MatLike) -> str:
 
 
 # last-known-good (plane, round):plane 单调递增、round 同位面内递增;过渡帧 OCR 失败时
-# 返回上次成功值,避免 fallback (1,1) 误导 level_plan/支出 gate(2026-08-04 实跑发现:
+# 返回上次成功值,避免 fallback (1,1) 误导 level_plan/支出 gate(实跑发现:
 # plane=4 lv=9 后过渡帧读成 plane=1 lv=4 兜底)。跨局由 reset_phase_round_cache 清空。
 _last_phase_round: tuple[int, int] | None = None
 
@@ -996,7 +996,7 @@ def reset_phase_round_cache() -> None:
 
 
 #: 顶栏「X-Y」解析正则(两位数形态单一源;修饰局「1-10」整读,单字符类
-#: 旧正则会把「1-10」截成 (1,1) 倒退形态误读——误读比拒读更毒,T-8)。
+#: 旧正则会把「1-10」截成 (1,1) 倒退形态误读——误读比拒读更毒,)。
 _PHASE_ROUND_XY_RE = re.compile(r'(\d{1,2})\s*-\s*(\d{1,2})')
 
 #: 「第X位面」无轮次形态正则(产出 (p,p),round ≡ 位面 ≤ 3,与两位数
@@ -1009,12 +1009,12 @@ def parse_phase_round_text(blob: str, *,
                            ) -> tuple[int, int] | None:
     """顶栏文本 → (plane, round) 解析纯函数(read_phase_round 与
     ``battle_prep_recognizer._read_phase_round_pure`` 共享单一源,
-    T-8 设计 §2.5 第 4 份同族解析器收编;同正则同解析序)。
+    第 4 份同族解析器并入;同正则同解析序)。
 
     解析序:「X-Y」两位数形态(修饰局「1-10」整读)→「第X位面」
     (产出 (p,p))→ ``digit_fallback=True`` 时数字回退(首数字 d →
-    (d,d),错源形态——交值域守卫/上层单调门辖;read_phase_round 恒关
-    :w891 停用裁定,Lv 泄漏形「Lv.3」会产出值域内 (3,3) 假 win 面,
+    (d,d),错源形态——交值域守卫/上层单调门覆盖;read_phase_round 恒关
+    停用裁定,Lv 泄漏形「Lv.3」会产出值域内 (3,3) 假 win 面,
     仅识别器工具态保留该分支)。全不中 → None。
     """
     m = _PHASE_ROUND_XY_RE.search(blob)
@@ -1035,7 +1035,7 @@ def phase_round_in_range(cand: tuple[int, int],
                          ) -> bool:
     """候选 (plane, round) 值域守卫(M70 假 win 防毒化,共享单一源):
     plane∈1-3 ∧ round ≤ :func:`node_round_cap`(plane, round_caps)——
-    T-8 起上限位面化随场字段,错源窗口极窄后单调守卫/确认通道仍兜底。
+    上限位面化随场字段,错源窗口极窄后单调守卫/确认通道仍兜底。
     plane 判定短路在前(node_round_cap 对集外位面响亮抛错)。"""
     return (1 <= cand[0] <= 3
             and 1 <= cand[1] <= node_round_cap(cand[0], round_caps))
@@ -1047,34 +1047,34 @@ def read_phase_round(ctx: SrContext, screen: MatLike,
     """位面 + 轮次(顶栏「X-Y」= 位面-轮次,如 "1-3" = 位面1 第3轮)。
 
     :param round_caps: 位面 round 读数上限源(= gs.node_seq_by_plane 现值;
-      None = 未注册/局外读回退默认长度,T-8 设计 §2.5 三态见
+      None = 未注册/局外读回退默认长度,三态见
       :func:`node_round_cap`)。live 调用方恒传容器现值,修饰局两位数
       round(如 P1 r10)随场字段放行。
     :return: (plane, round_num)。读不到 → 返回上次成功值(过渡帧兜底);无历史 → (1, 1)。
 
-    单调守卫(审计 P0,2026-08-16,M38 同款毒化面):plane 局内单调递增、round 同位面内递增,
-    读到**倒退值**(如 plane3 → plane2)= OCR 假阳 → 保旧 + obs_conflict 留证(毒化面:
+    单调守卫(审计 P0,M38 同款毒化面):plane 局内单调递增、round 同位面内递增,
+    读到**倒退值**(如 plane3 → plane2)= OCR 假阳 → 保旧 + obs_conflict 保留证据(毒化面:
     level_plan/支出 gate/P2P3 概率表/_expected_level 兜底全歪)。
 
-    数字 fallback 分支已停用(w891 延迟审计候选③):该分支唯一合法产出 (1,1) 与
+    数字 fallback 分支已停用(延迟审计候选③):该分支唯一合法产出 (1,1) 与
     无历史兜底返回值完全重合,结构上不可能改变任何返回值;近两日 868 次被拒全为
     纯浪费的 OCR 判读(被拒数字是 A8 难度/Lv 泄漏的错源,不是可修复的形变真值,
     上下文规则修复无对象)→ 整段删除即治本。blob 无 X-Y/第X位面 匹配 → 直接走
     last-known-good/(1,1) 兜底。值域守卫(source=ocr_range)不属 fallback,是
     M70 假 win 防毒化守卫,保留。
 
-    正则/值域 T-8 起两位数形态:``1-10`` 形读数(人身意外险修饰局)不再被
+    正则/值域 两位数形态:``1-10`` 形读数(人身意外险修饰局)不再被
     单字符类正则截成 (1,1) 误读——误读比拒读更毒((1,1) 是倒退形态,经
-    2 帧确认通道会被采信固化);值域上限随场字段(:func:`node_round_cap`)。
+    2 帧确认通道会被采信固化);值域上限随场字段(func:`node_round_cap`)。
     """
     global _last_phase_round
     blob = ''.join(r.data for r in _ocr(ctx, screen, _area_rect(ctx, A_PHASE)))
     new = parse_phase_round_text(blob)
     if new is not None and not phase_round_in_range(new, round_caps):
-        # ⚠️ 值域守卫(2026-08-17 M70 假 win 根因):plane 只有 1-3,读出 8(恢复对局时顶栏被
+        # ⚠️ 值域守卫(M70 假 win 根因):plane 只有 1-3,读出 8(恢复对局时顶栏被
         # overlay 遮,OCR 抓到 A8 难度/Lv.8 的"8")→ last_state.plane=8 → 局终判定 8>=3 →
         # 假 win 假通关。值域外 = OCR 假阳,当 miss 处理(走 last-known/兜底),不进缓存。
-        # round 上限 T-8 起位面化 = node_round_cap(场字段现值,默认回退表长;
+        # round 上限 位面化 = node_round_cap(场字段现值,默认回退表长;
         # 拦孤立数字错源的守卫意图不变,单调守卫 + 回退修正确认通道仍兜底)。
         obs_conflict('phase_round', _last_phase_round, new, screen,
                      verdict='拒-值域外(plane∈1-3/round≤位面上限,OCR抓错源如A8难度)',
@@ -1183,12 +1183,12 @@ def _resolve_paddle_digits(text_digits: str, glyph_digit_n: int, slash_idx: int 
     实测,见 ``_read_deploy_paddle``):
     - **直接对齐**:文本数字数 == 字形数 → 按「斜杠前=x、后=y」切(direct=True);
     - **去首对齐**:文本多 1 个数字 = 左侧图标被 rec 读成 '1' 并进数字
-      (迁移审计 w287(git 历史)/a8 实证 '10/3'=0/3)或空心字形(0/6/8)被 rec 加幻影前缀 '1'
+      (迁移审计/a8 实证 '10/3'=0/3)或空心字形(0/6/8)被 rec 加幻影前缀 '1'
       (抹图标后仍现 '16/7'=6/7 实证,非图标独有)→ 去首个再切;
     - **去斜杠位对齐**:文本无 '/' 且多 1 个数字 = 斜杠被读成数字
       ('717'=7/7 实证)→ 去掉斜杠位置上的那个数字再切。
     全部候选过 ``_validate_paddle_xy`` 约束验证;裁决:有 direct 候选取 direct
-    (唯一),否则候选唯一才采,多候选歧义 → (None, None, 候选清单) 交调用方留证。
+    (唯一),否则候选唯一才采,多候选歧义 → (None, None, 候选清单) 交调用方保留证据。
     """
     x_n: int | None = None if slash_idx is None else slash_idx
     y_n: int | None = None if x_n is None else glyph_digit_n - x_n
@@ -1243,8 +1243,8 @@ def _parse_paddle_positional(crop: MatLike, ocr_results: list, level: int | None
     """单次 OCR 结果 → 位置感知解析(与 ``_read_deploy_paddle`` 守卫分层:本函数只管解析)。
 
     流程:连通域字形(剔图标)→ 斜杠=细长字形 → OCR 文本数字串对齐字形 → 约束验证。
-    全部失败 → (None, None);唯一候选歧义/约束拒绝时 obs_conflict 留证(证据行节流由
-    obs_conflict 自带)。``screen`` 供留证截图(None=纯解析,不留证)。
+    全部失败 → (None, None);唯一候选歧义/约束拒绝时 obs_conflict 保留证据(证据行节流由
+    obs_conflict 自带)。``screen`` 供保留证据截图(None=纯解析,不保留证据)。
     """
     glyphs = _paddle_glyph_strip(crop)
     if not glyphs:
@@ -1268,7 +1268,7 @@ def _parse_paddle_positional(crop: MatLike, ocr_results: list, level: int | None
     # level 先验修正通道(分诊 C 根修;帧证据 obs_conflict_deploy_paddle__d9f64136:
     # 画面 4/4、字形干净,level 先验 ≥5 时 y≥level 把唯一合法候选拒空)。level 来自
     # 三源解析(自身可误读/毒化),不该让间接先验一票否决直接几何读——全部候选仅
-    # 因 y≥level 被拒时,用绝对域(x≤y,1≤y≤13)重解析一次,采回 + 留证(cap 侧
+    # 因 y≥level 被拒时,用绝对域(x≤y,1≤y≤13)重解析一次,采回 + 保留证据(cap 侧
     # 与 level 的一致性由 _debounce_cap 双帧通道终审,判据同上)。
     if level is not None:
         x, y, cands = _resolve_paddle_digits(text_digits, digit_n, slash_idx, None,
@@ -1312,11 +1312,11 @@ def _read_deploy_paddle(ctx: SrContext, screen: MatLike,
     ⚠️ 旧注「cap≠level(lv4-5 3/3、lv6 5/5)」自主推进期错数据,已废;旧「+1 封顶」
     假设同废(叠加无上界,消费端域检查见 cw_screen_prep 审计#15 已反转)。
 
-    零重帧原则:解析失败只返 (None, None) 并留证,不在解析层重截帧;
+    零重帧原则:解析失败只返 (None, None) 并保留证据,不在解析层重截帧;
     重帧仍归 ``read_deploy_cap_debounced`` 的域外防抖(瞬时误读须跨帧才能识别,
     同帧源不可替代)。
 
-    保留裁剪读(2026-08-24 crop-first 审计):X/Y 指示同 ``_board_pairs`` 的全屏密度问题;
+    保留裁剪读(crop-first 审计):X/Y 指示同 ``_board_pairs`` 的全屏密度问题;
     裁切(padding 给足)是稳读前提。
     """
     rect = _area_rect(ctx, '区域-部署数')
@@ -1366,13 +1366,13 @@ def read_deploy_cap(ctx: SrContext, screen: MatLike,
 # (宝钻可叠加;cap<level 不可能——唯一合法 diff=−1 形态是诅咒泽尔里奇
 # −1 cap,未见实例,先按域拒)。|cap−level|>2 或 cap<level = paddle 误读族(
 # 15 行 old=5/6→new=3/4 实测),直接进决策 = 把读错抬到决策层 → 重读一帧再核,仍异拒信。
-# 迁移审计 w292(git 历史) 修订:diff>2 **不再是绝对禁区**——迁移审计 w285(git 历史) #41 实拍帧
+# 迁移审计修订:diff>2 **不再是绝对禁区**——迁移审计#41 实拍帧
 # obs_conflict_deploy_cap_out_of_range__e4972b43(2-2,paddle 12/13 + 经验面板
-# Lv.8/2-72 双读数实锤 + 后台 9 格实画)= diff=5 真实高档,旧域把它拒信 →
-# resolve_back_slots diff=0 退 6 槽基线在 9 格板上跑 = 迁移审计 w285(git 历史) 指认的「6 槽降级
+# Lv.8/2-72 双读数已实测确认 + 后台 9 格实画)= diff=5 真实高档,旧域把它拒信 →
+# resolve_back_slots diff=0 退 6 槽基线在 9 格板上跑 = 迁移审计指认的「6 槽降级
 # 错误兜底」。现:域外值重读一帧,**两帧一致且在绝对板面上界内 → 采信**(瞬时
 # 误读族仍被「重读不等」拦住——12槽误档事故 8a56db39 是单帧读数,无两帧一致
-# 实证);留证不消失(采信也留,判读可见)。cap<level 同走双帧一致通道
+# 实证);保留证据不消失(采信也留,判读可见)。cap<level 同走双帧一致通道
 # (对照 level 先验疑毒化分支,见 _debounce_cap 注)。
 DEPLOY_CAP_MAX_DIFF: int = 2
 #: cap 绝对板面上界(实拍上限:前台 4 + 后台 9 = 13,e4972b43;超界即使两帧
@@ -1384,7 +1384,7 @@ def _debounce_cap(ctx: SrContext, screen: MatLike, cap: int | None,
                   level: int) -> int | None:
     """cap 真值防抖门核(/;首读值已得时复用,避免重跑整条
     paddle 管线——``read_deploy_cap_debounced`` 与 ``resolve_paddle_pair``
-    共用本核,防抖语义单一源)。域/守卫/留证语义与原实现逐行一致。"""
+    共用本核,防抖语义单一源)。域/守卫/保留证据语义与原实现逐行一致。"""
     if cap is None or level <= 0:
         return cap
     if level <= cap <= level + DEPLOY_CAP_MAX_DIFF:
@@ -1400,7 +1400,7 @@ def _debounce_cap(ctx: SrContext, screen: MatLike, cap: int | None,
     if (cap2 is not None and cap2 == cap
             and 1 <= cap2 <= DEPLOY_CAP_ABS_MAX):
         # 域外双帧一致采信(上下两向同判据,判据镜像):瞬时误读被
-        # 「两帧一致」概率压住;留证让判读侧可见本次采信,复现异常高频则回头收紧。
+        # 「两帧一致」概率压住;保留证据让判读侧可见本次采信,复现异常高频则回头收紧。
         # 下向(cap<level)不再恒拒——域判据的对照集 level 自身可误读/毒化
         #(帧证据 obs_conflict_deploy_paddle__d9f64136:画面 4/4、level 先验 5,
         # 旧恒拒把真值锁死;cap=level+宝钻机制里 cap<level 的唯一现实来源就是
@@ -1427,9 +1427,9 @@ def read_deploy_cap_debounced(ctx: SrContext, screen: MatLike,
 
     域 = ``level ≤ cap ≤ level + DEPLOY_CAP_MAX_DIFF``;域外时独立再截一帧重读:
     重读入域 → 采重读值;**重读与首读一致且 level ≤ cap ≤ DEPLOY_CAP_ABS_MAX
-    → 采信(域外双帧一致,真实高档 迁移审计 w292(git 历史)/,e4972b43 diff=5 实拍)**
-    + obs_conflict 留证;其余(重读仍域外且不一致/cap<level/超绝对上界)→
-    留证 + None(调用方 max_units 兜底 level,与「未读到」同态)。
+    → 采信(域外双帧一致 = 真实高档;e4972b43 diff=5 实拍)**
+    + obs_conflict 保留证据;其余(重读仍域外且不一致/cap<level/超绝对上界)→
+    保留证据 + None(调用方 max_units 兜底 level,与「未读到」同态)。
     截图失败(异常)按重读不可得处理。防抖核=``_debounce_cap``(单一源)。
     """
     cap = read_deploy_cap(ctx, screen, level)
@@ -1448,12 +1448,12 @@ def arbitrate_deployed_count(paddle_n: int | None,
     1. 两源都可读 → **取低值 min**(fail-closed 向「板未满」侧)。依据 =
        代价不对称(本仓既有 r60/r64 取舍口径):计数偏高 → 「板满」假判 →
        合法化 no-op → 零推进死锁(实证:备战环 CV 幻影占用合法化 no-op 的
-       实机停机局,``deployed_count_2src`` 留证三连);计数偏低 →
+       实机停机局,``deployed_count_2src`` 保留证据三连);计数偏低 →
        多试一次拖拽被游戏拒(源槽弹回,廉价可观测)。取 min 恒落在廉价侧,
        单调规则不依赖任何拍定分界。
-    2. 分歧告警带沿用既有留证判据 |paddle−cv|>1(spread≤1 属两源合法
+    2. 分歧告警带沿用既有保留证据判据 |paddle−cv|>1(spread≤1 属两源合法
        读数差:CV 采样边沿/动画残影,单帧 ±1 不行动);>1 = 结构性分歧,
-       调用方须留证 + 记 ``telemetry.defects.DEFECT_KIND_DEPLOYED_COUNT_2SRC``
+       调用方须保留证据 + 记 ``telemetry.defects.DEFECT_KIND_DEPLOYED_COUNT_2SRC``
        分键(防静默;不一致率按该 kind 计数)。
 
     **单源缺席(显式申报的退化语义;注意与主方向相反)**:
@@ -1464,10 +1464,10 @@ def arbitrate_deployed_count(paddle_n: int | None,
     退化,且**必须**记 ``DEPLOYED_COUNT_2SRC`` 分键申报(不得静默)。
     双缺席 → (None, False)。
 
-    **注册面迁移(15 号稿批 A)**:裁决内核已迁
+    **注册面迁移(15 号稿本批)**:裁决内核已迁
     ``cw_arbitration.combine_deployed_count``(注册键 ``deployed_count``,
     计数类);本函数保留签名与 docstring 作既有消费面单一入口,内核转调,
-    前后行为逐字节等价(对拍锁)。
+    前后行为逐字节等价(交叉核对锁)。
     """
     from sr_od.application.currency_war.obs.cw_arbitration import (
         combine_deployed_count,
@@ -1523,7 +1523,7 @@ def _read_badge_cell(ctx: SrContext, screen: MatLike | None, row_y: float) -> in
     徽标"3"整体失读,仅档位链 "21416" 可读)。徽标几何 = 名称行下方固定偏移
     (f1173e2d 实测:徽标框 y≈名称行+21..+48、x≈66-108,白字深色圆底)。
     小格裁切 + 3x 放大复用 ``_ocr_upscaled`` 的 det 天花板手法(3db91784 实帧
-    对拍:3x 读 '3' conf=1.0);3x 空读再试 5x。纯数字 1-12 之外按失读处理。
+    交叉核对:3x 读 '3' conf=1.0);3x 空读再试 5x。纯数字 1-12 之外按失读处理。
     screen=None(测试注入态,无像素)→ None。
     """
     if screen is None:
@@ -1649,7 +1649,7 @@ def read_board(ctx: SrContext, screen: MatLike) -> dict[str, int]:
 
 def board_from_deployed(dep: list) -> dict[str, int] | None:
     """从主域 deployed 工作表(身份可靠时)**计算** board 羁绊计数
-    (用户 2026-08-16 定:以算为准;基线从 tracked
+    (用户定:以算为准;基线从 tracked
     第二账改主域派生,函数更名 board_from_tracked → board_from_deployed)。
 
     OCR 左面板的坑:激活阵营多时**一页显示不全要滚动** → OCR 只读可视区,滚出屏的静默漏
@@ -1657,17 +1657,17 @@ def board_from_deployed(dep: list) -> dict[str, int] | None:
     (``cw_chars.CHARACTERS``)已有全量阵营数据 → 每个已上场已知身份角色贡献其全部阵营,
     计数天然是全集,不受滚动/遮挡/OCR 误读影响。
 
-    口径(迁移审计 w50(git 历史)):per-unit 标签单一源 = ``cw_bond_equips.unit_bond_tags``
+    口径(迁移审计):per-unit 标签单一源 = ``cw_bond_equips.unit_bond_tags``
     ——L1 全集(factions+flows+independent,开拓者按排归一)**+ L2 星徽装备
     羁绊贡献**(``deployed[].equips``,deploy_bench 读回在案):
     星徽「装备者加入【X】羁绊」/欢愉卡带「已是成员计数+1」装备后左面板
-    该羁绊行 +1,是面板真值的一部分(迁移审计 w49(git 历史) §2:此前缺维度 → computed_vs_ocr
+    该羁绊行 +1,是面板真值的一部分(迁移审计§2:此前缺维度 → computed_vs_ocr
     常态化误报 + 星徽局档位系统性低估)。
 
     Returns:
         {羁绊: 在场人数};**表空 或 含未知身份(char_id 空/'?'/不在注册表)→ None**
-        (混合态不切,OCR 兜底——未知角色的阵营贡献算不出,半算比漏算更毒;观察冲突留证会暴露
-        混合频率)。**无阵营已知角色不 bail**(2026-08-17):白厄「救世主」复制效果不计人数
+        (混合态不切,OCR 兜底——未知角色的阵营贡献算不出,半算比漏算更毒;观察冲突保留证据会暴露
+        混合频率)。**无阵营已知角色不 bail**:白厄「救世主」复制效果不计人数
         (官方 trait 3005)→ 跳过零贡献即精确;布洛妮娅(factions 空flows 燃血)正常贡献 flows;
         独立羁绊行计入(与左面板显示同口径)。
 
@@ -1724,15 +1724,15 @@ def read_board_next_tier(ctx: SrContext, screen: MatLike) -> dict[str, int]:
 # ===== 商店牌费用徽章数字识别(2星直出缺口闭环;merge_mechanics §2.6/§2.7)=====
 # 依据:商店每张牌底部名字条右端有金色费用徽章,徽章内白色数字(1-3 位) =
 # 该牌当前星级的实付费用(费用倍数体系 merge_mechanics §2.6:费用 = 原费用 ×
-# 3^(星级−1),1★=原费、2★=×3、3★=×9;用户 2026-09-02 定稿:数字可为两位,
+# 3^(星级−1),1★=原费、2★=×3、3★=×9;用户定稿:数字可为两位,
 # 如饮月 2★=6、4费2★=12)。旧链 cost 从 roster 查表派生 → 2星/3星直出按 1星
-# 记错星级;改读画面数字即可闭环(§2.7 识别缺口条,2026-09-02 落地)。
+# 记错星级;改读画面数字即可闭环(§2.7 识别缺口条,落地)。
 #: 数字模板目录(assets/template/ 下子路径)。
 _SHOP_COST_TMPL_DIR: str = 'currency_war/shop_cost'
 #: 费用 area 名后缀(screen_info「货币战争-备战-开商店」屏,商店牌-N-费用)。
 _SHOP_COST_AREA_SUFFIX: str = '-费用'
 #: TM 采信阈值(二值掩码 TM_CCOEFF_NORMED)。标定:正确数字最低 0.78(「1」字形
-#: 窄,抗锯齿边像素波动大)、错误数字最高 0.59(13 帧 65 槽离线对拍,
+#: 窄,抗锯齿边像素波动大)、错误数字最高 0.59(13 帧 65 槽离线交叉核对,
 #: 产物 .debug/temp/cw_cost_badges/);0.60 居中,两侧余量 ≥0.19。
 _SHOP_COST_TM_THRESH: float = 0.60
 #: 费用倍数 → 星级(费用倍数体系,merge_mechanics §2.6;用户定稿:星级 =
@@ -1876,9 +1876,9 @@ def resolve_cost_star(badge_cost: int | None, base_cost: int) -> tuple[int, int,
     - badge 缺失 / base_cost≤0(名字未识别)→ 按基准费兜底,
       cost_source='roster_fallback';
     - badge = base_cost × 倍数,倍数 ∈ {1,3,9} → star 1/2/3,cost = 读数
-      (实付价真值;2/3星直出实锤由调用方 `[cw!]` 留证);
+      (实付价真值;2/3星直出已实测确认由调用方 `[cw!]` 保留证据);
     - 倍数 ∉ {1,3,9}(含 ×27=4★ 超 CW 星级域、非整数倍 = 疑误读)→ 兜底
-      基准费(按基准费记 1★),cost_source='roster_fallback',调用方留证。
+      基准费(按基准费记 1★),cost_source='roster_fallback',调用方保留证据。
     """
     if badge_cost is None or base_cost <= 0:
         return base_cost, 1, COST_SOURCE_ROSTER_FALLBACK
@@ -1892,7 +1892,7 @@ def resolve_cost_star(badge_cost: int | None, base_cost: int) -> tuple[int, int,
 def _anchor_hit_full_ocr(full_ocr, area) -> bool:
     """全帧 OCR 位匹配锚判定(token 文本 LCS≥0.5 且 bbox 中心落在
     area.rect 内;识别层同源全帧路径——裁剪路径对买光态暗钮确定性
-    拒识,实机三败定谳;实测 token 位 (1598,967,47×27) ⊆ 锚 rect)。"""
+    拒识,实机三败已定案;实测 token 位 (1598,967,47×27) ⊆ 锚 rect)。"""
     from one_dragon.utils import str_utils
     if not full_ocr or area is None:
         return False
@@ -1923,12 +1923,12 @@ def _anchor_hit_full_ocr(full_ocr, area) -> bool:
 def read_shop_cards(ctx: SrContext, screen: MatLike,
                     full_ocr: list | None = None
                     ) -> list[ShopSlot] | None:
-    """SIFT 商店牌行 → 定长 5 槽三态数组(ShopSlot;用户三态裁定 2026-09-13)。
+    """SIFT 商店牌行 → 定长 5 槽三态数组(ShopSlot;用户三态裁定)。
 
     返回 None = 店未开(收起锚 miss;调用方漏斗不写 payload)——旧紧缩
-    ``[]`` 混载「店未开/买空/失读」三事实的塌缩在此根治:买光 =
+    ``[]`` 混载「店未开/买空/失读」三事实的问题在此根治:买光 =
     ``[empty×5]`` 是合法真值;unknown = 应为内容但识别失败(缺陷台账
-    留证,决策一律跳过)。
+    保留证据,决策一律跳过)。
 
     逐槽判定表(详设 shop-slot-model §2):rect 缺失 = unknown+缺陷
     (建档漂移,旧 continue 静默跳过是病灶根);亮度均值 <50 = empty
@@ -1939,15 +1939,15 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
 
     终判稳定门(对抗窄攻 F2,防过渡帧误判):全 empty 或含 unknown 的
     判定成立前,0.8s 后新截屏重读一次——两帧逐槽一致才接受;不一致 =
-    动画/淡入过渡帧,以第二次为准并留证。重观察上限一次,不构成等待环。
+    动画/淡入过渡帧,以第二次为准并保留证据。重观察上限一次,不构成等待环。
 
     D-55 由 OCR 改 SIFT:OCR 牌名对开拓者(玩家自定义名)读不到/匹配错;
-    模板目录名须用规范名「开拓者·记忆/欢愉」(2026-08-15 修)。faction
-    语义(2026-08-17):``'?'``=未知(name 空/不在注册表);``''``=已知
+    模板目录名须用规范名「开拓者·记忆/欢愉」。faction
+    语义:``'?'``=未知(name 空/不在注册表);``''``=已知
     无阵营(白厄类)。立绘库经 ``ensure_portrait_templates`` 按需加载。
     """
     templates = ensure_portrait_templates(ctx)
-    # 商店开态前置门(M37/M38 误停机根因,2026-08-16):收起锚不命中 =
+    # 商店开态前置门(M37/M38 误停机根因,):收起锚不命中 =
     # 店未开,返 None(「不在商店」≠「没牌」≠「未识别」;r7 review P0-A
     # 修过恒真比较,枚举等值比较保留)。
     _si = ctx.screen_loader.get_screen(SHOP_SCREEN_NAME)
@@ -1957,7 +1957,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
         from one_dragon.utils import log_utils
         log_utils.log.warning('[cw!] read_shop_cards 商店开态锚「按钮-收起」缺失(fail-open)→ 检查 yml')
     if _collapse_area is not None and full_ocr is not None:
-        # 全帧 OCR 位匹配锚判定(实机五败定谳:裁剪路径对买光态暗钮
+        # 全帧 OCR 位匹配锚判定(实机五败已定案:裁剪路径对买光态暗钮
         # 确定性拒识——det 模型对低对比小图不可检,二值化亦不救;全帧
         # 路径活,识别层同源。漏斗既有全帧结果下传,零额外成本)。
         # 判定确定 → 无重试(同数据重判同结果)。
@@ -2018,7 +2018,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
                 out.append(ShopSlot(kind='empty'))
                 continue
             if _mean < 60:
-                # 灰带:疑暗卡被特效/裁切偏移压暗,不猜=unknown(r15 留证升级)
+                # 灰带:疑暗卡被特效/裁切偏移压暗,不猜=unknown(r15 保留证据升级)
                 try:  # noqa: SIM105  遥测 best-effort
                     record_defect(
                         'confidence', 'perception_conflict',
@@ -2100,7 +2100,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
         return slots
     # 终判稳定门:易误判判定(全 empty/含 unknown)强制重观察一次——
     # 防淡入帧亮度<50 被误判 empty → 买光店假象 → 误关店。不一致 =
-    # 过渡帧,以第二次为准留证;上限一次,不构成等待环。
+    # 过渡帧,以第二次为准保留证据;上限一次,不构成等待环。
     import time as _time
 
     from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
@@ -2141,7 +2141,7 @@ def _resolve_level(
     xp_level: int | None,
     last_level: int,
 ) -> tuple[int, list[tuple[str, int, int, str, str]], bool]:
-    """等级三源解析(纯函数,2026-08-18 治本重构:live M-cw 乒乓根因)。
+    """等级三源解析(纯函数,治本重构:live M-cw 乒乓根因)。
 
     输入:
     - ``ocr_raw``:「文本-等级」区直读(**无兜底**;None=失读);
@@ -2156,14 +2156,14 @@ def _resolve_level(
     解析序(信源主权从高到低):
     1. 基值 = ocr_raw(可读)否则 heuristic;
     2. XP 覆盖(「信 XP 分母」):xp_level 可读且 ≠ 基值 → 采 XP;
-    3. 单调守卫:较 last 下降 → **XP 主权豁免**(live 2026-08-18 实证:OCR 失读→启发式 6
+    3. 单调守卫:较 last 下降 → **XP 主权豁免**(live 实证:OCR 失读→启发式 6
        被写进 last_level_obs 毒化,XP 反推 5 每帧被单调守卫打回 → level 乒乓 6↔5,
        策略全程跑假等级);XP 未确认的下降仍是 OCR 误读 → 保旧;
     4. 跳变守卫:较 last 跳 >+2 且 XP 未确认 → OCR 单源假阳 → 保旧(M38 语义)。
     """
     level = ocr_raw if ocr_raw is not None else heuristic
     events: list[tuple[str, int, int, str, str]] = []
-    # XP 覆盖:真实双源分歧(OCR 可读)才留证;OCR 失读时的例行为「兜底让位 XP」
+    # XP 覆盖:真实双源分歧(OCR 可读)才保留证据;OCR 失读时的例行为「兜底让位 XP」
     # (设计常态,逐帧记 [cw!] 是遥测噪声 —— live 10:47-10:48 每帧 2 冲突实证)。
     if xp_level is not None and xp_level != level and ocr_raw is not None:
         events.append(('xp_override', level, xp_level, '采新-XP分母反推', 'xp_denominator'))
@@ -2235,10 +2235,10 @@ PHASE_FIELD_SPEC: dict[str, frozenset[str]] = {
 
 @dataclass(frozen=True)
 class GameStateReadReceipt:
-    """read_game_state 轻量回执(帧表示退役;容器直写已在读取过程内完成,
+    """read_game_state 轻量回执(帧表示停用;容器直写已在读取过程内完成,
     本结构只携带「本帧逐面读数 + 保真位」)。
 
-    消费面 = 无单例也能用的逐帧值:遥测 recorder(画面真值对拍语料,
+    消费面 = 无单例也能用的逐帧值:遥测 recorder(画面真值交叉核对语料,
     gold/hp/level 保真位必带)、逐帧标量读点(cw_loop 恢复对局检测
     plane/round、observe_full gold==0 重读门、备战环 node_type/level/
     shop 帧读、动作行 plane/round 基准)。语义 = 旧帧形态逐字段口径:
@@ -2246,7 +2246,7 @@ class GameStateReadReceipt:
     值(hp_readable/hp_trusted 位不变)、level 三源解析值(level_readable
     阶段跳过帧按旧帧缺省 True)、board = 徽标裁决后计数、shop = 原始
     读牌列表(遗留 ShopCard 形态,与旧帧 shop 域同源)。读数域 None
-    (离屏/店未开,三态契约)在本回执域塌缩为空容器——回执只携带
+    (离屏/店未开,三态契约)在本回执域归并为空容器——回执只携带
     旧帧形态,三态区分归容器域 gs.shop.value。
     """
 
@@ -2276,7 +2276,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     :class:`GameStateReadReceipt`(本帧逐面读数 + 保真位;容器单例
     game_state_of(session) 才是决策真值源)。
 
-    :param phase: 规范入口序列阶段键(:先清场、再识别、后动作)——
+    :param phase: 规范入口序列阶段键(先清场、再识别、后动作)——
       ``prep_clean``=P1 干净备战期全量基线(含 hp 真读主路径);``prep_shop_open``
       =P2a 开店动作期(仅买牌决策所需);``battle_or_transit``=战斗/过渡帧(仅
       位面轮次)。**None = 全量路径 = 现行为逐行不变**(存量调用点/测试零波及);
@@ -2291,7 +2291,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
 
     各字段 OCR 失败 → 安全默认(见各 reader)。level 不可 OCR → ``_expected_level`` 兜底;
     hp 读不到 → ``reconcile_hp`` 对账(终态契约 §A:开局先验 或
-    None 诚实未知;的沿用 last_hp_real/兜底 100 两层均已退役,
+    None 诚实未知;的沿用 last_hp_real/兜底 100 两层均已停用,
     结算覆盖 = hp 唯一真值入口)。v1 不读 bench/deployed 身份(buy 决策靠 board+shop+gold;
     部署 = DeployMove 原子序(备战决策环动作));席位域观察写端 = 备战装配环(通道声明见下
     容器直写块注),本漏斗不写。
@@ -2316,12 +2316,11 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 入账前旧值 = `w489_sim_real_gap/` 感知面「开局金系统性偏低」根因环;
     # gold_readable 语义不变(None=读不到)。gold 值 = raw 读数——失读兜底 0
     # (gold 值勘误口径;需要可信金判读的消费方走 gold_readable 位——
-    # 备战观察链 state_gold_trusted 位已随黑板退役删除,迭代
-    # 黑板帧退役 阶段 3.5)。
+    # 备战观察链 state_gold_trusted 位已随黑板帧机制停用)。
     _gold_opt = read_gold_settled(ctx, screen) if _w('gold') else None
     gold_val = 0 if _gold_opt is None else _gold_opt
     gold_readable = _gold_opt is not None   # r319 保真位(对齐 hp_readable)
-    # 位面/轮次提前读(round_caps = 场字段现值,T-8 live 漏斗接线:修饰局
+    # 位面/轮次提前读(round_caps = 场字段现值,live 漏斗接线:修饰局
     # 两位数 round 随场字段放行;局外无容器 = None 回退默认长度)。
     _caps_gs = game_state_from_ctx(ctx)
     plane, round_num = (
@@ -2332,21 +2331,21 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         if _w('phase_round') else (1, 1))
     from sr_od.application.currency_war.kernel.cw_reconcile import reconcile_hp
     # hp 跳过/真读的门 = PHASE_FIELD_SPEC('hp' 在集内才 OCR,
-    # 收编 6fc1fd4c 先例为规格单一源,不留两处门控):hp 区物理只在 shop 关态
+    # 并入 6fc1fd4c 先例为规格单一源,不留两处门控):hp 区物理只在 shop 关态
     # 可见——spec 无 'hp' 的阶段(prep_shop_open 开店面板遮挡/battle_or_transit
     # 非备战)OCR 必然 miss,是每帧必付的死读;_hp_opt=None 走 reconcile
     #(开局先验或 None,沿用交 carried 语义)。
     # prep_clean(关店备战帧)= 真读主路径,两级放大回退在该阶段才有意义。
     # phase=None = 全量路径,必须与 prep_clean 同读 hp:全量调用方(director
-    # heavy 环入口 observe_full/对拍 recorder)的帧多为**关店**备战帧,hp 可见;
-    # 曾按 6fc1fd4c 把全量路径也跳过(readable 恒 False),是 2026-08-30 局
+    # heavy 环入口 observe_full/交叉核对 recorder)的帧多为**关店**备战帧,hp 可见;
+    # 曾按 6fc1fd4c 把全量路径也跳过(readable 恒 False),是局内
     # 位面2 r1 连续 readable=False 的识别根因——画面可见却从未 OCR。
     # 代价边界:仅 shop 开态的全量帧落 miss 回退(两级小图 OCR ~百毫秒),
     # 关店常态帧全图 OCR 走帧级缓存零新增。
     _hp_opt = (read_hp_opt(ctx, screen)
                if (_spec is None or 'hp' in _spec) else None)
     _sess_hp = getattr(getattr(ctx, 'cw_match', None), 'session', None)
-    # 终态契约 §A:reconcile_hp 守卫腿与 session.last_hp_real 帧龄门退役——
+    # 终态契约 §A:reconcile_hp 守卫腿与 session.last_hp_real 帧龄门停用——
     # 真值帧采新;读不到 = 开局先验或 None,沿用交 carried 语义;
     # hp_trusted = 真读位(可信位判定单一源 = hp_decision_trusted_of)。
     hp_val, hp_readable = reconcile_hp(
@@ -2368,18 +2367,18 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         node_type = _ledger_t if _ledger_t is not None else _obs_t
         if _ledger_t is not None:
             verify_node_type_votes(ctx, screen, plane, round_num)
-    # 终态契约 §A:last_level_obs 先验随等级单调守卫退役删除
+    # 终态契约 §A:last_level_obs 先验随等级单调守卫停用删除
     # (_last_lv 恒 0 = 无历史先验;等级真值 = gs.level 结算/观察覆盖 +
     # carried;误读窗行为变化登记 design §1.3)。_expected_level 结构先验
     # (位面/轮次推算)保留。
-    _match = getattr(ctx, 'cw_match', None)   # enemy_difficulty 回退源仍用(§B 换源归 T-3)
+    _match = getattr(ctx, 'cw_match', None)   # enemy_difficulty 回退源仍用(§B 换源)
     _last_lv = 0
     xp_progress = (read_xp_progress(ctx, screen, expected_level=(_last_lv or None))
                    if _w('xp') else None)
     level = 1
     level_readable = True
     if _w('level'):
-        # 等级三源解析(2026-08-18 治本重构):OCR 直读(无兜底)/XP 分母反推/启发式兜底
+        # 等级三源解析(治本重构):OCR 直读(无兜底)/XP 分母反推/启发式兜底
         # 经 ``_resolve_level`` 统一仲裁 —— 旧内联链在「OCR 失读 + XP 可读」态每帧乒乓
         #(XP 采新 5 → 单调守卫用毒化 last 6 打回,live 10:47-10:48 三连发实证),
         # 且把启发式兜底值写回 last_level_obs(毒源)。纯函数语义/事件/防线详见其 docstring。
@@ -2403,13 +2402,13 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                 log.warning(f'[cw!] level {_kind}:{_old}->{_new}')
             obs_conflict('level', _old, _new, screen, verdict=_verdict, source=_src,
                          plane=plane, round_num=round_num)
-        # (毒化防线与 last_level_obs 写回已随终态契约 §A 守卫退役删除——
+        # (毒化防线与 last_level_obs 写回已停用(见终态契约 §A 守卫)——
         #  等级真值归宿 = gs.level 覆盖/carried,误读窗不再有单调守卫打回。)
     # (迁移审计批 F1):cap 真值接线——防抖后采信(决策层 max_units
     # 优先读真值、level 兜底;读不到/域外拒信 → None 保持兜底语义,与旧恒
     # level 行为兼容)。生产 cap = level + 宝钻数(D-53)。
-    # 阶段 gate 路径 cap 与 deployed_count 合并单读(resolve_paddle_pair,
-    # );phase=None 全量路径保持单读防抖不变。
+    # 阶段 gate 路径 cap 与 deployed_count 合并单读(resolve_paddle_pair);
+    # phase=None 全量路径保持单读防抖不变。
     deploy_cap: int | None
     if _spec is None:
         deploy_cap = read_deploy_cap_debounced(ctx, screen, level)
@@ -2427,7 +2426,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 判读纪律:live=False 帧的值是简报恒值,别当「难度 vs 轮次」曲线样本。
     # spec 无此字段的阶段(prep_shop_open 以 P1 基线为准;battle 帧无旗牌)跳过
     # 两级管线,直接 session 值 + live=False(与「真读 None 回退」同语义)。
-    # (session 恒值回退已随终态契约 §B 退役:开局简报基线由 briefing 写端
+    # (session 恒值回退已停用(见终态契约 §B):开局简报基线由 briefing 写端
     #  直入 gs(logic 源),旗牌真读(observation)覆盖,失读帧走 carry 沿用。)
     # 判读纪律:live=False 帧的值不落新证,别当「难度 vs 轮次」曲线样本。
     # spec 无此字段的阶段(prep_shop_open 以 P1 基线为准;battle 帧无旗牌)
@@ -2446,11 +2445,11 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     level_up_cost: int | None = (
         read_level_up_cost(ctx, screen) if _w('level_up_cost') else None)
     # streak:gs.streak(结算覆盖写端带符号直入容器,方向可靠;fixture 核实
-    # 2026-08-11;终态契约 §B:session.last_streak 退役)。
+    #;终态契约 §B:session.last_streak 停用)。
     # 无值(离线/测试/开局未结算)→ read_streak 备战 magnitude fallback。
-    # 双源留证(观察冲突审计 #8 P2,2026-08-17):结算真值(带符号)与备战
-    # magnitude 独立可对拍——|结算|≠备战 且 非结算重置边缘(胜→连胜≥1/
-    # 败→连败≤-1 或 0)→ 一方误读,留证统计毒化率(口径不变)。
+    # 双源保留证据(观察冲突审计 #8 P2):结算真值(带符号)与备战
+    # magnitude 独立可交叉核对——|结算|≠备战 且 非结算重置边缘(胜→连胜≥1/
+    # 败→连败≤-1 或 0)→ 一方误读,保留证据统计毒化率(口径不变)。
     _m_st = getattr(ctx, 'cw_match', None)
     _sess = getattr(_m_st, 'session', None) if _m_st is not None else None
     _gs_st = getattr(_m_st, 'gs', None)
@@ -2476,15 +2475,15 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                              source='settlement_vs_prep', plane=plane, round_num=round_num)
     else:
         streak_val = (read_streak(ctx, screen) or 0) if _w('streak') else 0
-    # board 双源(用户 2026-08-16 定:羁绊多时左面板一页显示不全要滚动 → OCR 只读可视区,
+    # board 双源(用户定:羁绊多时左面板一页显示不全要滚动 → OCR 只读可视区,
     # 滚出屏的静默漏;游戏数据(角色注册表)已全量 → computed 做**全集底座**,不受滚动/遮挡影响;
-    # 迁移审计 w287(git 历史) 裁决翻转):computed(tracked 全已知身份)仍是全集底座(滚出屏的阵营只有它
+    # 迁移审计裁决翻转):computed(tracked 全已知身份)仍是全集底座(滚出屏的阵营只有它
     # 知道);但**可视区徽标行(左栏 OCR)是画面事实 —— 可视行计数与 computed 不等时以徽标为准
-    # 覆写**(迁移审计 w285(git 历史) 抽样 board 3/6 采 computed 错、徽标才是真值实证)。例外(防新错):非备战帧
-    # (overlay 遮挡/动画过渡,迁移审计 w285(git 历史) overlay 干扰 2/6 实证)徽标与 computed **均不可靠** →
-    # 不裁不覆,保 computed 底座 + 留证(等下一帧备战帧再裁)。
+    # 覆写**(迁移审计抽样 board 3/6 采 computed 错、徽标才是真值实证)。例外(防新错):非备战帧
+    # (overlay 遮挡/动画过渡,迁移审计overlay 干扰 2/6 实证)徽标与 computed **均不可靠** →
+    # 不裁不覆,保 computed 底座 + 保留证据(等下一帧备战帧再裁)。
     # - OCR 可见但 computed 无 = tracked 漏该阵营角色(强信号):备战帧同样采徽标覆入;
-    #   非备战帧留证不覆。
+    #   非备战帧保留证据不覆。
     # - computed 有而 OCR 不可见 = 滚动截断(正常,不算错)。
     # - tracked 空/含未知 → None → OCR 兜底(现状;混合态半算比漏算更毒)。
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -2496,7 +2495,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     _gs_session = getattr(_match, 'session', None) if _match is not None \
         else None
     # computed 底座 = 主域 deployed 派生工作表(
-    # tracked 第二账退役,底座改主域派生;排归属由下标派生)。
+    # tracked 第二账停用,底座改主域派生;排归属由下标派生)。
     _dep_work = (deployed_indexed_of_view(_gso_board(_gs_session).deployed.value)
                  if _gs_session is not None else None)
     _computed = board_from_deployed(_dep_work)
@@ -2510,9 +2509,9 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     if _computed is not None:
         _needs_arbitration = any(_computed.get(_f) != _c for _f, _c in _ocr_board.items())
         _prep_like = is_prep_like_frame(ctx, screen) if _needs_arbitration else True
-        # 裁决迁仲裁注册面(15 号稿批 A;注册键 board_faction_count,标称类
-        # 帧态门):内核只产决策,留证行仍在此处按决策发射——行数/field/
-        # 新旧值/verdict 文本逐字节不变(零行为验收对拍)。
+        # 裁决迁仲裁注册面(15 号稿本批;注册键 board_faction_count,标称类
+        # 帧态门):内核只产决策,保留证据行仍在此处按决策发出——行数/field/
+        # 新旧值/verdict 文本逐字节不变(零行为验收交叉核对)。
         from sr_od.application.currency_war.obs.cw_arbitration import (
             combine_board_frame_gated,
         )
@@ -2552,7 +2551,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         board_val = _merged
     else:
         board_val = _ocr_board
-    # active 双字段单一源 = gs(终态契约 §B:选择写点直写容器,session 份退役)。
+    # active 双字段单一源 = gs(终态契约 §B:选择写点直写容器,session 份停用)。
     active_strategies_val: list[str] = []
     active_env_val = ''
     plane_bosses_val: list[str | None] = []
@@ -2565,15 +2564,15 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             else _gso_mirror(_match.session)
         active_strategies_val = list(_gs_m.active_strategies.value or [])
         active_env_val = str(_gs_m.active_env.value or '')
-        # `w512_obs_surfaces/`(观测自检设计 §2.9/§5-B6,策略激活态事件级对拍,消费侧):
+        # `w512_obs_surfaces/`(观测自检设计 §2.9/§5-B6,策略激活态事件级交叉核对,消费侧):
         # 「声明选中名」暂存槽在此消费——写链已先于暂存发生(handler 先
         # append session 再暂存),故本时点声明名应已在持卡列表;不在 = 写链
-        # 断或选择落空 → 台账留证(中相关面,默认 L2;离线按复现分级)。
+        # 断或选择落空 → 台账保留证据(中相关面,默认 L2;离线按复现分级)。
         # 消费即清,不串轮;无暂存(非投资轮)零开销。handler/策略决策零
-        # 改动(纯旁路)。(注:暂存生产端候 strategy_offer 收编批重接;
+        # 改动(纯旁路)。(注:生产端 strategy_offer 暂存,后续并入重接;
         # 槽与消费面保留。)
         try:
-            # 分包期 4:策略暂存槽迁 kernel/cw_observe、落账经 kernel/cw_telemetry_exit
+            #策略暂存槽迁 kernel/cw_observe、落账经 kernel/cw_telemetry_exit
             # 出口钩子位(零直依 telemetry)
             from sr_od.application.currency_war.kernel.cw_observe import (
                 consume_pending_strategy_pick,
@@ -2598,13 +2597,13 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         # 词缀/巨星/伙伴/连胜)与决策(mechanics_fit/boss_fit/
         # 连胜门)同源。注入点单一(此处),策略器的
         # 方向刷新注入保留(两处都幂等:非空才覆)。
-        # (终态契约 §B:active 双字段与 briefing 双字段中继全部退役——
+        # (终态契约 §B:active 双字段与 briefing 双字段中继全部停用——
         #  写端(选择 handler/简报/位面详情采集/prep 补采)直入容器,
         #  session 中转面死亡。)
     # shop_cards:spec 无的阶段(prep_clean 面板未开;battle 帧同)直置
     # None(三态语义 None=离屏,不与「买光=[empty×5]」混载),连锚判定都省。
     # 全帧 OCR 一次(锚位匹配 + 牌面判定同源;买光态暗钮裁剪路径
-    # 确定性拒识的根治,实机五败定谳)
+    # 确定性拒识的根治,实机五败已定案)
     _full_ocr = (ctx.ocr_service.get_ocr_result_list(image=screen)
                  if _w('shop_cards') else None)
     shop_val = (read_shop_cards(ctx, screen, full_ocr=_full_ocr)
@@ -2635,7 +2634,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         if session is not None:
             gs = game_state_of(session)
             frame = f'p{plane}-r{round_num}'
-            # 渠道①签名(R5 W1 显式签名铺满;§3.2.1 ①类属 = 观察汇聚
+            # 渠道①签名(显式签名铺满;§3.2.1 ①类属 = 观察汇聚
             # 模块):真读/沿用两 mode 各一;screen = 调用方画面建档名
             # (失配豁免精确键的观察侧维度,迭代 2026-09-16-unified-obs-
             # reconcile 补齐);hp 等带质量维的专项 sig 在各自写点。
@@ -2711,7 +2710,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                 gs.observe(gs.level_up_cost, int(level_up_cost),
                            sig=_sig_read)
             if _w('deploy_cap'):
-                # deploy_cap 观察写端(W5 入容器,§2.3;spec 键已在册,容器喂入
+                # deploy_cap 观察写端(入容器,§2.3;spec 键已在册,容器喂入
                 # 沿用既有键门):采信门输出才 observe——防抖核
                 # (read_deploy_cap_debounced/_debounce_cap,双帧一致)
                 # 已在读取半部,None = 拒信/失读帧 → carry 沿用(§2.2 处置①;
@@ -2758,7 +2757,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                 from sr_od.application.currency_war.obs.cw_shop_refresh_obs import (
                     read_shop_refresh_button,
                 )
-                # 灰态判别走逻辑面金价对比(不可用态判别两案比选定谳:暗钮模板
+                # 灰态判别走逻辑面金价对比(不可用态判别两案比选已定案:暗钮模板
                 # =表现层拟合,单帧定阈无鲁棒性证据且 UI 改版即碎,冻结后备;
                 # 金价对比 =语义层直编机制规则「置灰⟺金<标价」,price 灰态可读
                 # 经归档灰态帧真 OCR 实证)。gold 复用本帧已读值(同帧零新增读);
@@ -2766,13 +2765,13 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                 _btn = read_shop_refresh_button(
                     ctx, screen,
                     gold=(int(gold_val) if gold_readable else None))
-                # 免费刷新次数观察锚定(2026-09-21 Field 化,三写端之观察
+                # 免费刷新次数观察锚定(Field 化,三写端之观察
                 # 写端):复用本现役调用产物,零新增读屏。双态口径:免费态
                 # 锚次数;付费域(锚未中∧标价读出,含耗尽/灰态,游戏规则
                 # ⇒ 免费余量恒 0)锚 0;整帧判不出(free=None)跳写,免费
                 # 态次数失读同跳写(宁缺勿造,读缺值留观察覆盖)。失配对账
                 # = Field 机制白送:observe 覆盖 logic(动作扣减/发放登记)
-                # 失配走既有 cw_mismatch_policy 安灯,零手写台账。
+                # 失配走既有 cw_mismatch_policy 失配告警,零手写台账。
                 if _btn.free is True and _btn.free_remaining is not None:
                     gs.observe(gs.free_refresh_left, int(_btn.free_remaining),
                                sig=_sig_read)
@@ -2789,7 +2788,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             # 禁把 handler 已写的 logic 翻成 observation);值恒等(同一事实),
             # 归档 gs_prov 按 evidence 可分。
             # 渠道③签名(§3.2.4 relay 契约):中继走 logic_hook 族,actor =
-            # 本汇聚模块,行内身份可对账(R5 W1 起签名必填)。
+            # 本汇聚模块,行内身份可对账(签名必填)。
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig as _ChannelSig,
             )
@@ -2800,24 +2799,24 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             gs.relay(gs.active_env, str(active_env_val), sig=_relay_sig)
             gs.relay(gs.plane_bosses, list(plane_bosses_val), sig=_relay_sig)
             gs.relay(gs.enemy_affixes, list(enemy_affixes_val), sig=_relay_sig)
-            # equips 装备库存(W5 申报面,方案 §2.2):观察写端 = 备战入口
+            # equips 装备库存(申报面,方案 §2.2):观察写端 = 备战入口
             # 观察链装备区采集(采集点 = observe_full heavy,写点 =
             # cw_screen_prep._observe heavy 装配点;P4 观察接线前 =
-            # prep_actions._build_equip_wear_plan 派发位现读,已随该批退役)。
+            # prep_actions._build_equip_wear_plan 派发位现读,已停用)。
             # (终态契约 §B:last_owned_equips 中继兜底与 selected_difficulty
-            #  中继行均已退役——写端(备战观察全量重写 + 穿戴/选卡/卖返
+            #  中继行均已停用——写端(备战观察全量重写 + 穿戴/选卡/卖返
             #  logic 增量 + 入口链漏斗)直入容器,session 镜像面死亡;
             #  商店线权重与 flow 打分读 gs.equips/gs.selected_difficulty。)
-            # —— 画面上下文(R1 §3.1.4/§3.4;R5 W1 常开)——
+            # —— 画面上下文(R1 §3.1.4/§3.4;常开)——
             # 本口 = read_game_state 唯一漏斗 = 观察汇聚模块(上下文域唯一
             # 写点):随分派观察写 prev/current 上下文对。阶段键 → 画面标识
             # 映射:battle_or_transit = 战斗/结算段内相位(多物理屏,按
             # prev_branch 语义记分支 token);phase None(全量路径,调用方 =
             # 备战 heavy 环入口)按干净备战帧记。写入无条件(journal 常开,
-            # R5 W1 影子闸折叠——;行落盘另以 sink/run_id 在场为准)。
-            # 辖域(切换批 2026-09-20-node-advance-action-report design §2.4
+            # 影子闸折叠;行落盘另以 sink/run_id 在场为准)。
+            # 适用范围(切换批 2026-09-20-node-advance-action-report design §2.4
             # 攻击 B1):漏斗已退出推进域(node_ord/hist 写入与效果推进尾段
-            # 随四推断腿退役)——本调用只写上下文对/顶栏原文;gs.node 观察镜像
+            # 随四推断腿停用)——本调用只写上下文对/顶栏原文;gs.node 观察镜像
             # 写端保留在本漏斗(上方 node 段,决策层坐标供给端)。
             _ctx_name = _phase_screen_context(phase, plane, round_num)
             if _ctx_name is not None:
@@ -2836,7 +2835,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 失读 unknown)的权威承载 = 容器域 gs.shop.value(上方 observe/carry/
     # leave_screen 写端已按三态适配);回执 = 旧帧形态逐字段镜像,
     # shop 域遗留形态本就是紧缩 [](空表 = 不在商店真值),消费方全为列表
-    # 真值/迭代语义,塌缩不丢语义。board 值域恒 dict(徽标裁决合并或 OCR
+    # 真值/迭代语义,整合不丢语义。board 值域恒 dict(徽标裁决合并或 OCR
     # 底座),or 同判 = 同口径防御。
     return GameStateReadReceipt(
         gold=gold_val, gold_readable=gold_readable,
@@ -2851,14 +2850,14 @@ def _phase_screen_context(phase: str | None, plane: int | None,
     """阶段键 → 画面上下域标识(R1 §3.1.4/§3.4;映射单一源)。
 
     - prep_clean / None(全量路径,调用方 = 备战 heavy 环入口)→ 干净备战帧
-      (:data:`SCREEN_PREP_FRAME`);
+      (data:`SCREEN_PREP_FRAME`);
     - prep_shop_open → 商店面板块('货币战争-备战-开商店');
     - battle_or_transit → 战斗/结算段内相位 token(分支级标识;段内多物理屏
       无法细分建档名,边界申报见 kernel 常量注释);
     - 未注册阶段名(read_game_state fail-open 态)→ None = 不写(画面身份
       未知禁猜,与「禁拿兜底默认值当观察」同义)。
 
-    辖域:四推断腿退役后本口只供上下文对画像;plane/round None 时不写
+    适用范围:四推断腿停用后本口只供上下文对画像;plane/round None 时不写
     (沿用旧门——画面身份伴随读数缺位,身份不猜)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -2879,17 +2878,17 @@ def _phase_screen_context(phase: str | None, plane: int | None,
     return None   # fail-open 未知阶段:身份不猜不写
 
 
-# ============================================================ 局终判定面(R5 W2;归层=遥测层)
+# ============================================================ 局终判定面(归层=遥测层)
 #
-# 对局结束识别的判定核心,唯一落点 = 本节(消费方 = 未来 cw_loop 收口写点/
+# 对局结束识别的判定核心,唯一落点 = 本节(消费方 = 未来 cw_loop 收尾写点/
 # 启动扫描补写/判读回放,均判据只读、零新增画面建档)。判定面以现有建档
-# 判据为基:胜利/失败复用在产结算观察链判据(killed 显式败局 / 回大厅收口
+# 判据为基:胜利/失败复用在产结算观察链判据(killed 显式败局 / 回大厅收尾
 # 的 plane==3 通关语义),主动停止复用 run_context 停止语义,异常终局 =
-# 无收口证据的补写形态(标 abnormal,写口见 kernel ``write_match_final``)。
+# 无收尾证据的补写形态(标 abnormal,写口见 kernel ``write_match_final``)。
 
 
 def runs_result_to_final_type(result: str) -> str | None:
-    """现役 runs ``result`` 词表 → 局终类型收编映射(retirement.md §2 runs 行)。
+    """现役 runs ``result`` 词表 → 局终类型并入映射(retirement.md §2 runs 行)。
 
     win/loss/stopped 同名直映;abandoned 及其余非完结值(含空串)= abnormal
     (非完结值域 = 异常终局家族,与档案装配器 ``_TERMINAL_RESULTS`` 的
@@ -2929,13 +2928,13 @@ class MatchFinalDraft:
 def resolve_final_type(*, stop_requested: bool, saw_defeat: bool,
                        plane_reached: int | None,
                        rounds_played: bool = True) -> str | None:
-    """在线判定面核心(回大厅收口/收口兜底共用;纯函数)。
+    """在线判定面核心(回大厅收尾/收尾兜底共用;纯函数)。
 
-    判定序 = 主动停止 > 失败 > 通关(与在产收口语义同序:cw_loop 3c 分支
-    ``won = plane==3 ∧ ¬败局闩``、W75 收口 ``stopped = is_context_stop``):
+    判定序 = 主动停止 > 失败 > 通关(与在产收尾语义同序:cw_loop 3c 分支
+    ``won = plane==3 ∧ ¬败局标志``、收尾 ``stopped = is_context_stop``):
 
     - ``stop_requested``(run_context 停止语义)→ 'stopped';
-    - ``saw_defeat``(败局闩 = 结算观察链见过显式败局帧)→ 'loss';
+    - ``saw_defeat``(败局标志 = 结算观察链见过显式败局帧)→ 'loss';
     - ``plane_reached == 3`` 精确值(假 win 守卫同口径,时代实证:
       OCR 难度泄漏会读出 plane=8,禁 >=)且非败局 → 'win';
     - 未打过任何结算轮(``rounds_played=False``)→ None(开局失败形态,
@@ -2943,7 +2942,7 @@ def resolve_final_type(*, stop_requested: bool, saw_defeat: bool,
     - 其余(未停止、无败局、plane<3 的真实结束)→ 'abnormal'。
 
     消费契约:返回值直接作 ``write_match_final(final_type=…)`` 入参;
-    None = 调用方跳过收口。
+    None = 调用方跳过收尾。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
         FINAL_ABNORMAL,
@@ -2978,12 +2977,12 @@ def detect_match_final(*, run_id: str,
     :func:`resolve_final_type`)。
 
     证据阶梯(先到先定,通道名记入 ``evidence``):
-    1. ``journal_final``(新账局终行在档)→ None(本段已收口,幂等跳过);
-    2. ``runs_summary``(现役收口行,收编对象)→ result 经
+    1. ``journal_final``(新账局终行在档)→ None(本段已收尾,幂等跳过);
+    2. ``runs_summary``(现役收尾行,并入对象)→ result 经
        :func:`runs_result_to_final_type` 映射,plane/round/hp 取行值;
-    3. terminal_closure 结算行(source='terminal_closure',收口行;
-       match_result 值 = 收口时点的对局级结果)→ 同映射;
-    4. 无收口证据(断流/进程死亡)→ abnormal(补写形态判据,G8:启动
+    3. terminal_closure 结算行(source='terminal_closure',收尾行;
+       match_result 值 = 收尾时点的对局级结果)→ 同映射;
+    4. 无收尾证据(断流/进程死亡)→ abnormal(补写形态判据,G8:启动
        扫描按本判定补写,note=recovered 显影)。
 
     ``outcome_rows`` = 本段结算观察行(现役结算观察链产物;阶梯 3 的证据源)。
@@ -2993,7 +2992,7 @@ def detect_match_final(*, run_id: str,
         FINAL_ABNORMAL,
     )
     if journal_final is not None:
-        return None   # 新账已收口:幂等跳过
+        return None   # 新账已收尾:幂等跳过
     summary = runs_summary if isinstance(runs_summary, dict) else None
     if summary is not None:
         return MatchFinalDraft(

@@ -1,4 +1,4 @@
-"""缺陷判定与分级台账:judge_severity/record_defect/bypass_* 出口(自 cw_telemetry 拆出,分包期6;L0 安灯停线已随 2026-09-16 框架化批退役)。"""
+"""缺陷判定与分级台账:judge_severity/record_defect/bypass_* 出口(自 cw_telemetry 拆出;L0 失配告警停线已停用)。"""
 
 from __future__ import annotations
 
@@ -16,26 +16,26 @@ from sr_od.application.currency_war.telemetry.state import (
 
 # ===== 统一缺陷台账(defect_ledger.jsonl;纯观测索引层,零行为变更)=====
 # 把散在观察冲突/执行失败的缺陷口径归一:台账每行经 evidence.refs 指回证据行
-# ——审计先查台账,下钻再回证据行。R5 W7 refs 迁移(retirement.md §2
-# defect_ledger 行,候裁 4 定谳):旧流(decisions/outcomes/obs_conflicts)
-# 写面已随删除波 1 退役,refs 统一改指 journal ``(run_id,v)`` 锚(构造
+# ——审计先查台账,下钻再回证据行。refs 迁移(retirement.md §2
+# defect_ledger 行,已定案):旧流(decisions/outcomes/obs_conflicts)
+# 写面已停用,refs 统一改指 journal ``(run_id,v)`` 锚(构造
 # 单一源 = kernel.cw_telemetry_exit.journal_refs;无账本媒体时诚实省略)。
 # 证据行现役归宿 = journal obs_event arbitrate 行(field 对账);exec 失败
-# 旁路已随 exec_events 流退役消失(见文件尾注)。obs_conflicts 历史行内
+# 旁路已随 exec_events 流停用而消失(见文件尾注)。obs_conflicts 历史行内
 # run_id 由唯一汇点自取补齐——历史行无此键(读取端按「有键才过滤」容忍)。
 
 #: 分级三档(severity 写入端只给初判;离线可用 judge_severity 按演进后规则
 #: 重判,不重写历史)。判据(观测自检框架设计 §4,三条按序):
 #: ①决策关键面吗 ②gap 大吗 ③复现了吗——L0=①∧②∧③ 且裁决未自动;
 #: L1=①∧② 单次,或中相关面∧②∧③;L2=其余(非关键面/小 gap/裁决已自动)。
-# 分级常量单一源自分包期 4 起在 kernel/cw_telemetry_exit(obs 显式判级调用点
+# 分级常量单一源在 kernel/cw_telemetry_exit(obs 显式判级调用点
 # 与本模块判级同取一源;telemetry→kernel 上行合法向,见顶部 import)。
 
 #: 决策关键面(误读直接改买/升/部署决策的观测面)。
 DECISION_CRITICAL_SURFACES: frozenset[str] = frozenset(
     {'gold', 'bench', 'deployed', 'level_xp', 'shop_refresh', 'phase_round'})
 
-#: 中决策相关面(误读改辅助判断:保血阈值/成型判定/对拍解释)。
+#: 中决策相关面(误读改辅助判断:保血阈值/成型判定/交叉核对解释)。
 MEDIUM_CRITICAL_SURFACES: frozenset[str] = frozenset(
     {'hp', 'equip', 'strategy', 'node_seq', 'streak'})
 
@@ -47,14 +47,14 @@ DEFECT_GAP_LARGE_GOLD: int = 10
 
 
 #: obs_conflict field → 台账 surface 映射(枚举=既有冲突点全集;未映射的
-#: 新字段原样落 surface,消费端按字符串聚合,枚举外值不炸)。R5 W1 依
-#: 迁移规划 obs_event 收编条目对齐调用点全集:deploy_paddle(部署 paddle
+#: 新字段原样落 surface,消费端按字符串聚合,枚举外值不炸)。依
+#: 迁移规划 obs_event 并入条目对齐调用点全集:deploy_paddle(部署 paddle
 #: 识别)与 back_layout_*/layout_mismatch 系(后排布局选档)补入——证据
-#: 行收编 journal 后 field 键仍沿本枚举聚合台账 surface(R5 W1/)。
+#: 行并入 journal 后 field 键仍沿本枚举聚合台账 surface。
 #: tracking/star(cw_reconcile 对账域)同为活键补入:surface 保持 field
 #: 同名——冲突值跨 bench|deployed 两侧(账面整体快照/跨侧角色星),归并
 #: 任一单侧域会错置漂移归因;补枚举前经兜底 `get(field, field)` 即落同名,
-#: 行为零变,补入仅闭合键清单(R5 W1 键封闭判据)。
+#: 行为零变,补入仅闭合键清单(键封闭判据)。
 OBS_FIELD_TO_SURFACE: dict[str, str] = {
     'gold': 'gold', 'gold_delta': 'gold',
     'hp': 'hp', 'level': 'level_xp',
@@ -71,9 +71,9 @@ OBS_FIELD_TO_SURFACE: dict[str, str] = {
 }
 
 
-#: 裁决已自动的冲突面(对账纠漂/双帧采信/双源留证——冲突被写入端自动消化,
+#: 裁决已自动的冲突面(对账纠漂/双帧采信/双源保留证据——冲突被写入端自动消化,
 #: 按分级判据恒 L2,不升级):deployed_align 截断补齐、board 徽标仲裁、
-#: hp 上行留证、streak 双源、cap 域外双帧采信及其同族。
+#: hp 上行保留证据、streak 双源、cap 域外双帧采信及其同族。
 AUTO_RESOLVED_OBS_FIELDS: frozenset[str] = frozenset(
     {'deployed_align', 'board', 'hp', 'streak', 'deploy_cap_domain',
      'deploy_cap_vs_level', 'deployed_count_2src'})
@@ -88,7 +88,7 @@ AUTO_RESOLVED_OBS_FIELDS: frozenset[str] = frozenset(
 DEFECT_KIND_DEPLOYED_COUNT_2SRC: str = 'deployed_count_2src_divergence'
 
 #: 同局分歧**持续显影阈值**(逐次行数达此值再落一条 L1 升级行——真结构性
-#: CV 坏死要响铃不只留痕)。取值依据 = 留证 verdict 既有口径「同局 ≥3 次
+#: CV 坏死要响铃不只留痕)。取值依据 = 保留证据 verdict 既有口径「同局 ≥3 次
 #: 排期修源」的代码化,非新拍阈值。
 DEPLOYED_COUNT_2SRC_SUSTAINED_N: int = 3
 
@@ -121,13 +121,13 @@ def record_deployed_count_2src_divergence(paddle_n: int | None, cv_n: int,
     """记一条 deployed 计数双源分键行(best-effort;run_id 缺省 no-op)。
 
     真分歧(paddle 有读值):仲裁已在本侧完成(取低值),逐次行恒 L2
-    留证(auto_resolved=True——仲裁已在本侧完成,决策面不消费污染源);同局
+    保留证据(auto_resolved=True——仲裁已在本侧完成,决策面不消费污染源);同局
     真分歧逐次行数达 ``DEPLOYED_COUNT_2SRC_SUSTAINED_N`` 再落一条 L1
     升级行(持续显影,每局至多一条,升级行不进逐次计数)。
     paddle 失读退化帧(paddle_n=None):单源 CV 行动(向板满侧),无
     paddle 真值 ⇒ gap 无差值语义——走 ``_DEGRADED`` 独立分键、gap 不填、
     不入逐次计数(退化帧不污染真分歧率,也不触发持续显影)。
-    证据层(journal obs_event arbitrate 行)由调用方的 obs_conflict 留证
+    证据层(journal obs_event arbitrate 行)由调用方的 obs_conflict 保留证据
     并行承载,本行 refs 指认来源便于归因。
     """
     rid = _telstate._CURRENT_RUN_ID
@@ -202,8 +202,8 @@ def judge_severity(surface: str, *, gap_large: bool, reproduced: bool,
     """分级初判(纯函数,可单测;离线重判即用本函数重放)。
 
     判据链(两条按序):裁决已自动 → L2(自动纠漂不算缺陷升级对象);
-    决策关键 ∧ 大 gap → L1(单次与复现同级——L0 安灯停线已随
-    「停机处置归框架 stop_running」批退役,复现信息由台账行自带);
+    决策关键 ∧ 大 gap → L1(单次与复现同级——L0 失配告警停线已停用,
+    停机处置归框架 stop_running,复现信息由台账行自带);
     中相关面 ∧ 大 gap ∧ 复现 → L1;其余 → L2。非数值面的「大 gap」由
     调用方按硬失败形态判定,经 gap_large 传入。
     """
@@ -246,7 +246,7 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
 
 
 def install_exit_hooks() -> None:
-    """分包期 4 出口钩子注入(生产武装点=CurrencyWarApp.__init__;幂等):
+    """出口钩子注入(生产武装点=CurrencyWarApp.__init__;幂等):
     把本模块真实现写进 kernel/cw_telemetry_exit 的钩子槽,使 kernel/obs/
     decision 三桶的 telemetry 上行出口(落账/run_id 归属键)零直依本模块。
 
@@ -257,10 +257,10 @@ def install_exit_hooks() -> None:
     install_state_telemetry,清理趟触发时槽已就位)。本函数只武装槽位,
     清理本体在 journal 装配趟执行(recorder.follow_journal_retirement)。
 
-    删除波 1:exogenous/exec_events 实现槽随旧流写入端退役移除——
+    exogenous/exec_events 实现槽已停用——
     install_exit_hooks 不再注入两流实现(kernel 侧访问器一为 no-op 桩、
-    一已删除)。L0 安灯停线面已随「停机处置归框架 stop_running」批
-    整体退役(判级/台账保留,停机不再由缺陷层发起)。"""
+    一已删除)。L0 失配告警停线面已停用(停机处置归框架 stop_running;
+    判级/台账保留,停机不再由缺陷层发起)。"""
     from sr_od.application.currency_war.kernel import (
         cw_state_journal,
         cw_telemetry_exit,
@@ -307,10 +307,10 @@ def bypass_obs_conflict_to_defect(rec: dict) -> None:
         gap=gap, plane=int(rec.get('plane') or 0),
         round_num=int(rec.get('round_num') or 0),
         verdict=str(rec.get('verdict') or ''), shot=rec.get('shot'),
-        # refs = journal (run_id,v) 锚(W7 refs 迁移,retirement.md §2
+        # refs = journal (run_id,v) 锚(refs 迁移,retirement.md §2
         # defect_ledger 行):锚恰为上方汇点刚写入的 obs_event 证据行版本
         #(obs_conflict 先 note_obs_event 后旁路,同栈无间写);旧
-        # obs_conflicts 流指针已随删除波 1 退役,新行按其下钻扑空。
+        # obs_conflicts 流指针已停用,新行按其下钻扑空。
         refs=journal_refs(),
         reader_source=str(rec.get('source') or ''),
         gap_large=gap_large,
@@ -322,7 +322,7 @@ def bypass_obs_conflict_to_defect(rec: dict) -> None:
 
 
 # `w512_obs_surfaces/` exec 失败旁路(bypass_exec_event_to_defect)已随
-# exec_events 流写入端退役(删除波 1):发射语义下动作 op 无成败知识
+# exec_events 流写入端停用:发出语义下动作 op 无成败知识
 # (receipts 零成败字段 + 观察侧 reconcile 对比),执行失败证据面随之
 # 消失;缺陷台账保留面的现役供给 = obs 冲突旁路 + 各显式判级点。
 # _exec_family_surface 映射随之删除(唯一消费方 = 该旁路)。

@@ -50,7 +50,7 @@ def features_from_deployed(deployed: list[dict]) -> dict[str, Any]:
     - ``star_sum`` / ``star_hist``:星级总和与分布({1:..,2:..,3:..});
     - ``equip_count``:装备件数(``deployed[].equips``,已装备口径;
       未装备池 ``state.equips`` 不在此)。**当前语料零方差**(10927 条
-      deployed 仅 1.1% 非空,批38 审计)——M1 不指望它有贡献,
+      deployed 仅 1.1% 非空,压测审计)——M1 不指望它有贡献,
       语料攒厚后自然生效,训练侧可按需排除;
     - ``total_cost``:Σ 注册表 ``cost``×计数——**完成度代理,已知偏差**:
       注册表 cost=起始费,升星升费未建模(cw_chars 银狼LV.999 注释,
@@ -62,15 +62,15 @@ def features_from_deployed(deployed: list[dict]) -> dict[str, Any]:
     - ``tier_hist``:羁绊档位直方图({1:..,2:..,3:..,4:..},
       每羁绊激活到第几层,阈值对照 ``FACTIONS[*].tiers``);
     - ``max_tier``:最高激活档位(阵容成型度粗粒度代理);
-    - ``tier3_count``:tier_hist 中档位==3 的羁绊个数。批39 压测实证
-      (sim_压测_批39/报告.md,原始件已灭失(2026-09-12 清理)):
+    - ``tier3_count``:tier_hist 中档位==3 的羁绊个数。压测实证
+      (sim_压测_批39/报告.md,原始件已灭失(清理)):
       tier-3 羁绊数是 P1 boss 胜负近似分界(t3≤2 → 0/19 胜;t3=3 的
       板唯一胜)——max_tier 不区分「有几个 t3 羁绊」(3×tier-3 板与
       1×tier-3 板同值),tier3_count 补上这一维度。
 
-    ⚠️ **node_type 不在本函数输出里**(设计决策,批38 审计修订):
+    ⚠️ **node_type 不在本函数输出里**(设计决策, 审计修订):
     node_type(普通战斗/遭遇/boss)是**训练表侧 join 的强先验特征**
-    (批38:胜率 0.309/0.040/0.056),不是 ``deployed`` 派生量——本函数
+    (胜率 0.309/0.040/0.056),不是 ``deployed`` 派生量——本函数
     只做 deployed 派生特征,不引入「入参原样透传出参」的伪特征。
     消费侧(sim 结算器 / 训练脚本)拼特征向量时须**显式加入 node_type**
     (训练表已由 ``win_model_build_table.py`` join 带上该列)。

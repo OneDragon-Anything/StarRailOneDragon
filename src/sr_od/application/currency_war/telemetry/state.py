@@ -1,14 +1,14 @@
-"""telemetry 模块级可变单例态簇(自 cw_telemetry 前置收敛,分包期6)。
+"""telemetry 模块级可变单例态簇(自 cw_telemetry 前置收敛,)。
 
-本模块是全部模块级可变单例(run_id/recorder/安灯 handler/缺陷复现位)的
+本模块是全部模块级可变单例(run_id/recorder/失配告警 handler/缺陷复现位)的
 唯一拥有者:其他段(schema/recorder/defects/query/cli)一律以
 ``state.X`` 属性访问读取,赋值只发生在本模块内(含 global 声明的变更器
 函数),防 import 绑定快照读到过期值。
 
-删除波 1(用户 2026-09-10 直迁裁定)后本模块只剩「run 生命周期 + 落盘根
-槽 + 缺陷台账辅助态」:旧流写入端面临的所有暂存槽(supply pick/单元金收口/
-执行事实/简报局间缓冲)与 runs 收口写行随九流写入端退役删除;run 收口位
-保留(close_run——run_id 段归属供给 journal run_id provider,收口位驱动
+旧流写入端直迁收拢后,本模块只剩「run 生命周期 + 落盘根
+槽 + 缺陷台账辅助态」:旧流的所有暂存槽(supply pick/单元金收尾/
+执行事实/简报局间缓冲)与 runs 收尾写行已停用;run 收尾位
+保留(close_run——run_id 段归属供给 journal run_id provider,收尾位驱动
 跨局重铸,语义见该函数注)。
 """
 
@@ -30,25 +30,25 @@ log = log_utils.log
 
 # ===== 模块级单例 + run_id 跟踪(ops 不改签名即可采集)=====
 # telemetry 是横切关注点,用模块级 recorder + current_run_id。run_id 铸造
-# 单点 = ensure_run_started(入口链在写任何开局遥测行前铸造,loop 侧认领,
-# )。退役后 run_id 的现役消费方 = journal 行归属(kernel
+# 单点 = ensure_run_started(入口链在写任何开局遥测行前铸造,loop 侧认领)。
+# run_id 的现役消费方 = journal 行归属(kernel
 # run_id provider 注入面)与缺陷台账行归属。
-# 默认 enabled=True(用户 2026-08-03 要数据调优;写 .debug/ 不入 git,I/O <1ms 不影响备战实时)。
+# 默认 enabled=True(用户要数据调优;写 .debug/ 不入 git,I/O <1ms 不影响备战实时)。
 _RECORDER: TelemetryRecorder | None = None
 
 _CURRENT_RUN_ID: str = ""
 
 _CURRENT_DIFFICULTY: str = ""
 
-# :铸造时点的 match 容器引用 token。ensure_run_started 用「is 比较」
-# 判当前 open run 是否属于这个物理对局(不用 id()——规避对象复活后 id 复用;
+#铸造时点的 match 容器引用 token。ensure_run_started 用「is 比较」
+# 判当前 open run 是否属于这个物理对局(不用 id——规避对象复活后 id 复用;
 # 强引用滞留一个死容器,内存代价可忽略)。None = 尚未铸造或铸造时无容器
 # (重启后中途进局,ctx.cw_match=None 直达投资屏的形态)。
 _RUN_MATCH: object | None = None
 
 
 # ===== 落盘根装配槽 =====
-# 为什么是槽:get_recorder() 单例构造不传 replay_dir(缺省 DEFAULT_REPLAY_DIR,
+# 为什么是槽:get_recorder 单例构造不传 replay_dir(缺省 DEFAULT_REPLAY_DIR,
 # kernel/cw_observe 根常量块),假局档案要改指档案根原本只能私 poke
 # ``_RECORDER``——与 install_obs_ports「模块级槽 + 缺省关 + 装配点显式接通」
 # 同构的正规入口(方案 §4-2 落盘根装配槽申报)。缺省 None = 生产路径逐位
@@ -74,7 +74,7 @@ def get_recorder() -> TelemetryRecorder:
 
     落盘根 = :func:`set_recorder_replay_dir` 接通的装配槽值;槽缺省 None
     时走生产缺省根(kernel/cw_observe.DEFAULT_REPLAY_DIR)——两者互斥,
-    槽只改根不改 enabled 等其余构造面。退役后现役写入面 = 缺陷台账
+    槽只改根不改 enabled 等其余构造面。停用后现役写入面 = 缺陷台账
     (record_defect);本单例同时是档案装配/计数快照的 replay_dir 供给口。
     """
     global _RECORDER
@@ -91,10 +91,10 @@ def get_recorder() -> TelemetryRecorder:
 def start_run(difficulty: str = "") -> str:
     """开始一次 run:生成 run_id(时间戳)。返回 run_id。
 
-    :生产铸造统一经 :func:`ensure_run_started`(入口链在写任何
+    生产铸造统一经 :func:`ensure_run_started`(入口链在写任何
     开局遥测行前调用;直调本函数仅存在于测试)。
 
-    删除波 1:局起点两件旧流伴生面随写入端退役——①runs 兜底回填
+    局起点两件旧流伴生面已停用——①runs 兜底回填
     (sim/ledger_hooks.recover_dangling_run_summaries,写 runs 行);
     ②简报行局间缓冲补写(写 exogenous 行)。run_id 铸造/指纹日志照常
     (journal 行归属 + 构建指纹随局落日志)。
@@ -119,14 +119,14 @@ def ensure_run_started(match: object, difficulty: str) -> str:
 
     门控三分支任一成立 → 经 start_run 铸新 run(本体零改动),并在其返回后
     自赋 _RUN_MATCH token(token 赋值在 ensure 内不进 start_run——保
-    start_run 签名/函数体原样,w603 直调锁零波及);否则认领现有 open run
+    start_run 签名/函数体原样,直调锁零波及);否则认领现有 open run
     原样返回(同一物理对局一段一 id)。三分支语义:
 
     - ``_CURRENT_RUN_ID`` 空:进程首局/重启后首铸造(治冷启动首局零行);
-    - ``_RUN_CLOSED``:上局已收口,正常开新局(跨 loop 执行必然已收口,
+    - ``_RUN_CLOSED``:上局已收尾,正常开新局(跨 loop 执行必然已收尾,
       after_operation_done 全路径必达写 summary);
     - ``_RUN_MATCH is not match``:悬空 open run 防护——入口铸造后入口链
-      FAIL 的 run 不收口;新局确凿信号处容器被弃置重建(cw_entry_start
+      FAIL 的 run 不收尾;新局确凿信号处容器被弃置重建(cw_entry_start
       ``_discard_stale_once`` + establish),新容器 ≠ 铸造时容器 → 强制
       重铸,防新局开局行盖进上次失败会话的悬空 run。
 
@@ -136,11 +136,11 @@ def ensure_run_started(match: object, difficulty: str) -> str:
     生产铸造唯一调用点 = 本函数(cw_entry_start 简报/投资环境/投资策略三分
     支 + cw_loop __init__ 认领)。返回 open run_id。
 
-    职责边界(用户裁定 2026-09-15):本函数只辖 run 领取(铸造/认领);
+    职责边界(用户裁定):本函数只覆盖 run 领取(铸造/认领);
     遥测数据的保存 = game state 职责,state 流水装配入口 =
     kernel/cw_game_state :func:`game_state_of` 局容器单例建立路径(触发只钉
     该建立点;生产注入漏斗 =
-    ``establish_new_match`` 容器建立点),run 领取层不辖装配。
+    ``establish_new_match`` 容器建立点),run 领取层不覆盖装配。
     """
     global _RUN_MATCH
     if (not _CURRENT_RUN_ID) or _RUN_CLOSED or (_RUN_MATCH is not match):
@@ -158,12 +158,12 @@ def reset_run_state() -> None:
     """run 态簇的测试复位正规入口:清 _CURRENT_RUN_ID/_RUN_MATCH/_RUN_CLOSED
     /_CURRENT_DIFFICULTY 四件。
 
-    为什么收口成单点(ensure 门消费簇 × 测试复位链缺口):三件套
+    为什么收尾成单点(ensure 门消费簇 × 测试复位链缺口):三件套
     分散在三处生产写点(start_run 铸造 / ensure_run_started 赋 token /
-    close_run 置收口位),测试侧逐件 monkeypatch 清单漏一件即留
-    跨测试残留——实证:假局 harness 局终经生产收口位裸写
+    close_run 置收尾位),测试侧逐件 monkeypatch 清单漏一件即留
+    跨测试残留——实证:假局 harness 局终经生产收尾位裸写
     _RUN_CLOSED=True,teardown 复位链不覆盖,后续未全簇桩化就直调
-    ensure_run_started 的测试把「上局已收口」误判为真走重铸假分支(出处:
+    ensure_run_started 的测试把「上局已收尾」误判为真走重铸假分支(出处:
     .debug/temp/currency_war/attacks/three_review_20260908/三审报告-第二波.md
     F1,**易失产物**待回填)。
 
@@ -174,12 +174,12 @@ def reset_run_state() -> None:
     入簇而非散点补桩 = 簇成员随写点扩员自动进复位链,防逐件补桩清单再漏。
 
     生产路径零调用申报:生产 run 态由 ensure_run_started → start_run →
-    close_run 自洽推进(收口位由下一局 start_run 复位),复位
+    close_run 自洽推进(收尾位由下一局 start_run 复位),复位
     语义只属于测试 teardown,本函数禁入任何生产调用链。
 
     边界:只复位 run 态簇四件;_RECORDER 与落盘根槽有各自正规入口
-    (:func:`set_recorder_replay_dir`;decision_frame_hooks 落盘根装配槽
-    零消费已随批退役拆除,现役写根恒生产公式),
+    (func:`set_recorder_replay_dir`;decision_frame_hooks 落盘根装配槽
+    零消费已停用,现役写根恒生产公式),
     teardown 按槽分立调用,职责不混。
     """
     global _CURRENT_RUN_ID, _RUN_MATCH, _RUN_CLOSED
@@ -190,8 +190,8 @@ def reset_run_state() -> None:
     _CURRENT_DIFFICULTY = ''
 
 
-#: run 关闭位:局终收口后,直到下一局 start_run 前,_CURRENT_RUN_ID
-#: 指向已收口的局 —— ensure_run_started 据此在下一局铸造新段
+#: run 关闭位:局终收尾后,直到下一局 start_run 前,_CURRENT_RUN_ID
+#: 指向已收尾的局 —— ensure_run_started 据此在下一局铸造新段
 #(journal 行 run 归属的生命周期承接口)。
 _RUN_CLOSED: bool = False
 
@@ -199,18 +199,18 @@ _RUN_CLOSED: bool = False
 def close_run(result: str = "", plane_reached: int = 0,
               rounds_survived: int = 0, final_hp: int = 0,
               notes: str = "") -> None:
-    """run 收口位(局终调;删除波 1 后**零落盘**)。
+    """run 收尾位(局终调;**零落盘**)。
 
-    `w603_telemetry_wiring/`:收口置 run 关闭位 —— 此后到下一局
+    `w603_telemetry_wiring/`:收尾置 run 关闭位 —— 此后到下一局
     start_run 前 ensure_run_started 铸新段(journal 行归属新 run_id)。
-    旧局终 summary 写行已随旧流写入端退役(删除波 1);形参保留
+    旧局终 summary 写行已停用;形参保留
     (调用点传值面不变),值只进日志不进任何流。局终元数据的 journal
-    归宿 = 局终域 match_final 行(W3 在线接线,写点 = kernel
-    write_match_final,收口点 = cw_loop 3c 回大厅 / W75 停机兜底)。
-    收口时点先落盘流水缓冲(:func:`kernel.cw_state_journal.flush_pending`):
-    批量 flush 阈值之间收口时局终行与段尾行还在内存,紧随的档案装配
+    归宿 = 局终域 match_final 行(在线接线,写点 = kernel
+    write_match_final,收尾点 = cw_loop 3c 回大厅 / 停机兜底)。
+    收尾时点先落盘流水缓冲(func:`kernel.cw_state_journal.flush_pending`):
+    批量 flush 阈值之间收尾时局终行与段尾行还在内存,紧随的档案装配
     读盘会漏行(g_20260915_070645 档案缺 endgame.match_final 实证)——
-    与 StateJournal.close「局终收口 flush」设计意图对齐,丢失窗上界
+    与 StateJournal.close「局终收尾 flush」设计意图对齐,丢失窗上界
     收敛到本时点。
     """
     global _RUN_CLOSED
@@ -221,7 +221,7 @@ def close_run(result: str = "", plane_reached: int = 0,
             flush_pending,
         )
         flush_pending()
-    except Exception as e:  # noqa: BLE001  观测件,失败不阻塞收口
+    except Exception as e:  # noqa: BLE001  观测件,失败不阻塞收尾
         log.warning('[cw][telemetry] 收口流水落盘失败(不阻塞): %s', e)
     _RUN_CLOSED = True
     log.info('[cw][telemetry] run 收口:%s p%s-r%s hp=%s (%s)',

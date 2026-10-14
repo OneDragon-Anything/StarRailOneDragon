@@ -1,20 +1,20 @@
-"""观察层读数多源仲裁·统一注册面(15 号稿 §2.4,批 A)。
+"""观察层读数多源仲裁·统一注册面(15 号稿 §2.4)。
 
 设计出处 = ``docs/develop/sr_od/application/currency_war/strategy-docs/15_observation_multisource_arbitration.md``
 §2.2(量纲分类与泛化规则)/§2.4(统一注册面)。病灶 = 家族内六处成型仲裁各自
-私写裁决规则/分歧带/留证键,判读侧要拼多文件才能回答「这个量现在怎么裁」;
+私写裁决规则/分歧带/保留证据键,判读侧要拼多文件才能回答「这个量现在怎么裁」;
 本模块把「裁决规则 + 分歧带 + 分键」收敛为声明式注册表,证据通道**不新建**
 ——原始证据行仍走 ``kernel.cw_observe.obs_conflict``,不一致率分键仍走
 ``telemetry.defects``,注册面只统一「谁在什么键下调用它们」。
 
-**批 A 严格零行为变更**:迁移语义不变性由对拍测试锁(注册面语义/迁移
-对拍:deployed 全格对拍 + board 分歧帧×帧态矩阵)钉死;裁决值/schema/分键
-锁死,obs_conflict 的 verdict 提示文本允许随迁移改写(A13 声明,对拍不锁)。
+**本批严格零行为变更**:迁移语义不变性由交叉核对测试锁(注册面语义/迁移
+交叉核对:deployed 全格交叉核对 + board 分歧帧×帧态矩阵)钉死;裁决值/schema/分键
+锁死,obs_conflict 的 verdict 提示文本允许随迁移改写(A13 声明,交叉核对不锁)。
 
 量纲四类(§2.2):count(计数,朝声明方向取值或弃权)/nominal(标称,优先级+
 否决+帧态门)/scalar(连续标量,显式通道优先序)/layout(布局,实测>推导+
 未知态)。hp/level 通道仲裁**暂不迁**(§5/§8⑥:先例最复杂迁移收益最低);
-布局三信号归批 B,本模块先立 ``DIM_LAYOUT`` 与 unknown verdict 的注册面形态。
+布局三信号归后续批,本模块先立 ``DIM_LAYOUT`` 与 unknown verdict 的注册面形态。
 """
 from __future__ import annotations
 
@@ -32,19 +32,19 @@ DIM_LAYOUT: str = 'layout'
 # ===== verdict 五态(§2.4)=====
 
 VERDICT_OK: str = 'ok'                  # 双源齐且一致(带内零差)
-VERDICT_NOISE: str = 'noise'            # 带内分歧(合法读数差,不行动不留证)
+VERDICT_NOISE: str = 'noise'            # 带内分歧(合法读数差,不行动不保留证据)
 VERDICT_ARBITRATED: str = 'arbitrated'  # 真分歧,已按规则采信
 VERDICT_REJECTED: str = 'rejected'      # 缺席源弃权(单源可用,另一源缺席)
-VERDICT_UNKNOWN: str = 'unknown'        # 全源弃权(布局未知态等;批 B 主消费)
+VERDICT_UNKNOWN: str = 'unknown'        # 全源弃权(布局未知态等;后续批主消费)
 
 
 @dataclass(frozen=True)
 class ArbitrationRule:
-    """单量仲裁声明(§2.4 注册面 schema;对拍锁 schema 面)。
+    """单量仲裁声明(§2.4 注册面 schema;交叉核对锁 schema 面)。
 
     - ``combine``:类内泛化规则的量实例(纯函数,``**readings`` 按源名传参),
       返回 ``(采信值, 是否真分歧)``;
-    - ``band``:分歧带,带内 = 合法读数差(噪声,不行动不留证);
+    - ``band``:分歧带,带内 = 合法读数差(噪声,不行动不保留证据);
     - ``defect_kind``:不一致率分键(defects 台账 kind);
     - ``obs_field``:证据层 obs_conflict 的 field 键;
     - ``fail_closed_side``:计数/布局类必填的「廉价侧/弃权语义」声明 + 依据
@@ -80,7 +80,7 @@ def registered_keys() -> list[str]:
     return sorted(_RULES)
 
 
-# ===== 裁决内核(迁移自私写法;批 A 前后逐字节等价,对拍钉死)=====
+# ===== 裁决内核(由各私写实现原样迁入;迁移前后逐字节等价,交叉核对钉死)=====
 
 def combine_deployed_count(paddle_x: int | None,
                            cv_occupied: int | None) -> tuple[int | None, bool]:
@@ -103,15 +103,15 @@ def combine_board_frame_gated(badge_ocr: dict[str, int],
     """board 阵营计数帧态门仲裁内核(标称类②画面事实优先 + 帧态门,§1 行 8)。
 
     - computed(tracked 身份全集)= 底座;badge_ocr(可视区徽标 OCR)= 画面
-      事实,分歧时备战帧覆写(W287 裁决翻转);
+      事实,分歧时备战帧覆写(裁决翻转);
     - 非备战帧/动画帧(``prep_like``/``board_honest`` 任一为假):双源皆不
-      可信 → 不裁不覆保底座(W285 overlay 干扰 2/6 实证防新错);
+      可信 → 不裁不覆保底座(overlay 干扰 2/6 实证防新错);
     - badge 有 computed 无 = tracked 漏阵营(强信号),备战帧同样覆入。
 
     :return: ``(merged, decisions)``;decisions = ``[(faction, kind, take_badge)]``
         按 badge_ocr 迭代序,kind ∈ ``'ocr_only'``(badge 有 computed 无)/
         ``'count_mismatch'``(计数不等),take_badge = 该分歧是否覆写。
-        留证(obs_conflict)由调用方按 decisions 发射(本内核纯裁决零副作用)。
+        保留证据(obs_conflict)由调用方按 decisions 发出(本内核纯裁决零副作用)。
     """
     merged = dict(computed)
     decisions: list[tuple[str, str, bool]] = []
@@ -130,7 +130,7 @@ def combine_board_frame_gated(badge_ocr: dict[str, int],
     return merged, decisions
 
 
-# ===== 注册表(批 A 迁移两量;fail_closed_side 依据均为已定谳实证)=====
+# ===== 注册表(本批迁移两量;fail_closed_side 依据均为已定案实证)=====
 
 register(ArbitrationRule(
     key='deployed_count',
@@ -178,11 +178,11 @@ def arbitrate(key: str, readings: dict[str, Any],
               ctx: Any = None) -> tuple[Any, str, bool]:
     """按注册规则裁决 → ``(采信值, verdict, 是否真分歧)``。
 
-    - verdict 语义:双源齐且一致=ok;带内分歧=noise(调用方不行动不留证);
-      带外分歧=arbitrated(调用方按键留证+分键);缺席源=rejected(单源
-      可用,弃权声明生效);全源缺席=unknown(布局未知态等,批 B 主消费)。
-    - ``ctx`` 预留(证据发射的帧上下文);批 A 证据发射仍在各消费点
-      (行数/分键逐字节不变是验收第一判据),注册面统一发射点随批 B 收口。
+    - verdict 语义:双源齐且一致=ok;带内分歧=noise(调用方不行动不保留证据);
+      带外分歧=arbitrated(调用方按键保留证据+分键);缺席源=rejected(单源
+      可用,弃权声明生效);全源缺席=unknown(布局未知态等,后续批主消费)。
+    - ``ctx`` 预留(证据发出的帧上下文);本批证据发出仍在各消费点
+      (行数/分键逐字节不变是验收第一判据),注册面统一发出点随后续批收尾。
     - 未注册 key → KeyError(禁静默:注册面漏登记要当场炸,不是退直调)。
     """
     rule = _RULES.get(key)

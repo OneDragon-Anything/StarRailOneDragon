@@ -5,9 +5,9 @@
 正本面 = ``docs/develop/sr_od/application/currency_war/game_state/journal.md`` §5/§7;设计
 工作稿存 .debug/temp 为易失档,禁作正本指针):判读/装配/策略回溯 = 按行
 直接读(单行自足);跨行对照 = 行间差分(人读/离线),**零机制化重放**。
-本模块 = 统一 state 新账的**唯一**判读读面(W3 起,正本 =
-r5-migration-plan.md §2 W3:journal 为唯一被读账本;旧 12 流视图族已随
-删除波 1 写入端退役拆除);判读 CLI query 命令唯一走本读面。
+本模块 = 统一 state 新账的**唯一**判读读面(正本 =
+r5-migration-plan.md §2:journal 为唯一被读账本;旧 12 流视图族已随
+写入端停用,拆除);判读 CLI query 命令唯一走本读面。
 
 行模型(journal.md §1 两行型,写端 = kernel/cw_game_state ``_swap``/
 ``note_obs_event``,落盘 = kernel/cw_state_journal 批量 flush 追加 JSONL):
@@ -98,7 +98,7 @@ def read_journal_stats(
     字节层 ``errors='replace'``:物理截断可劈开多字节字符,替换不抛;
     计数口径按「行内出现 U+FFFD」近似(合法数据天然不含 U+FFFD,误计
     风险可忽略)。装配消费方(match_archive ``_load_slice``)与判读读面
-    (:func:`read_journal`)共用本实现——同流两读法曾各持一契约,装配端
+    (func:`read_journal`)共用本实现——同流两读法曾各持一契约,装配端
     严格读在截断尾上崩(R3.1 落地审 F1/F3),收拢后契约单源。
     """
     p = journal_path(replay_dir)
@@ -172,8 +172,8 @@ def row_kind(row: dict[str, Any]) -> str:
 
 
 def row_sig(row: dict[str, Any]) -> dict[str, Any]:
-    """渠道签名(核心字段;缺位 = 空 dict——签名自 R5 W1 起写入必填
-    ,缺位只在旧期历史行/手工构造出现,读面不设门槛)。"""
+    """渠道签名(核心字段;缺位 = 空 dict——签名恒写入必填,
+    缺位只在旧期历史行/手工构造出现,读面不设门槛)。"""
     sig = row.get('sig')
     return sig if isinstance(sig, dict) else {}
 
@@ -360,7 +360,7 @@ def _pair_s(first: int | None, last: int | None) -> str:
 
 
 def view_events(rows: list[dict[str, Any]], run_id: str = '') -> list[str]:
-    """观察事件行显影(行型 2;obs_conflicts 收编后的证据面在账内直读)。"""
+    """观察事件行显影(行型 2;obs_conflicts 并入后的证据面在账内直读)。"""
     out = [f'[obs_event] run={run_id or "(全部段)"} (行型 2,零状态变更证据)']
     evs = [r for r in rows_of(rows, run_id) if row_kind(r) == ROW_OBS_EVENT]
     if not evs:
@@ -431,7 +431,7 @@ def view_snapshot(rows: list[dict[str, Any]], run_id: str = '') -> list[str]:
     return out
 
 
-# ============================================================ 局终行读取视图(R5 W2)
+# ============================================================ 局终行读取视图
 
 def match_final_rows(rows: list[dict[str, Any]],
                      run_id: str = '') -> list[dict[str, Any]]:
@@ -446,10 +446,10 @@ def match_final_rows(rows: list[dict[str, Any]],
 
 
 def view_match_final(rows: list[dict[str, Any]], run_id: str = '') -> list[str]:
-    """局终行视图(R5 W2 判读读面:局终域 match_final 的读取视图)。
+    """局终行视图(判读读面:局终域 match_final 的读取视图)。
 
     逐行 = 段级终局载荷(final_type/终局快照/段级时长/补写位);无行 =
-    「本段未收口」与「旧产物无账本」在头行不可分,行缺位本身即判读事实
+    「本段未收尾」与「旧产物无账本」在头行不可分,行缺位本身即判读事实
     (与 view_events 无行提示同口径)。
     """
     out = [f'[局终行] run={run_id or "(全部段)"} '
@@ -463,7 +463,7 @@ def view_match_final(rows: list[dict[str, Any]], run_id: str = '') -> list[str]:
         dur = after.get('duration_s')
         dur_s = f'{float(dur):.0f}s' if isinstance(dur, (int, float)) else '?'
         bf = '补写' if after.get('backfilled') else '-'
-        # 版本两戳(W2-delta 审 N1:runs 退役后两戳 = 策略版本戳唯一在档
+        # 版本两戳(runs 停用后两戳 = 策略版本戳唯一在档
         # 载体,判读 CLI 须可见,免翻 jsonl 载荷;旧产物无戳显 '?')。
         commit = after.get('code_commit') or '?'
         reg_fp = after.get('registry_fingerprint') or '?'

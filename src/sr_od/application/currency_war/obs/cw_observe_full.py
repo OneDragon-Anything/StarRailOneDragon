@@ -79,7 +79,7 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
       回执;逐帧读数消费面——节点类型/level 审计/raw 牌缓存——改走本回执);
     - gold_reread:bool——是否走了 MED-2 gold==0 重读
       (**重新截图**重读——同帧重读结果恒同,无意义;
-      op 可传则用 op.screenshot(),不可传(离线)跳过重读);
+      op 可传则用 op.screenshot,不可传(离线)跳过重读);
     - substate:dict 标注各模块可读性(node_seq/shop_cards);
     - owned_equips/occupied_equips/back_layout_slots:装备域三路
       采集(P4 观察接线;None = 识别域资源未就绪,语义见
@@ -156,10 +156,10 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
         }
         # ===== 装备域 owned/occupied 采集(P4 观察接线)=====
         # 归位备战画面 op 入口观察链(heavy = 唯一读屏点):原分发段
-        # prep_actions._build_equip_wear_plan 现读三路退役,识别函数本体
+        # prep_actions._build_equip_wear_plan 现读三路停用,识别函数本体
         # (read_equips/read_row_equipped)复用,迁移的是调用位置;deployed
         # 名单已由上方身份半采集,此处补 owned/occupied 两路。None = 识别
-        # 域资源未就绪(原因 log 留证),消费方(计划产出位)按 None 走
+        # 域资源未就绪(原因 log 保留证据),消费方(计划产出位)按 None 走
         # fail 通道;[]/{} = 真读到空。后排布局未知态(select_back_layout
         # 双弃权帧)→ 后排不采集,宁缺勿造(同读侧 read_deployed_rows
         # 单帧未知只返前排的跳过先例)。

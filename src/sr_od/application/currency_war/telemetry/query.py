@@ -1,9 +1,9 @@
-"""判读查询纯函数层(自 cw_telemetry 拆出,分包期6;W3 收缩为单一源保留面)。
+"""判读查询纯函数层(自 cw_telemetry 拆出;收缩为单一源保留面)。
 
-W3(R5 单源直迁第三波,正本 = docs/develop/sr_od/application/currency_war/game_state/
-r5-migration-plan.md §2 W3):旧 12 流视图族(query_rounds/supply/anomalies/
+(单源直迁,正本 = docs/develop/sr_od/application/currency_war/game_state/
+r5-migration-plan.md §2):旧 12 流视图族(query_rounds/supply/anomalies/
 hp/economy/gold_flow/tiers/plan_vs_exec/spend_ledger/exogenous/exec_events/
-invest_cards/obs_conflicts 及其 join/helper)随流写入端退役(删除波 1)一并
+invest_cards/obs_conflicts 及其 join/helper)随流写入端停用一并
 删除——判读唯一读面 = journal 新账(telemetry/journal_query 视图族 + 判读
 CLI);本模块只保留仍被**活消费方**引用的纯函数单一源:
 
@@ -13,7 +13,7 @@ CLI);本模块只保留仍被**活消费方**引用的纯函数单一源:
   (match_archive 档案真值链 + sim 池语料面)。
 
 吃旧流的存量语料判读:裸 JSONL 可直接读(归档只读);git 历史可复活已删
-视图(申报 = 候裁 6 考古工具面口径,retirement.md §7-#7)。
+视图(申报口径 = 考古工具面,retirement.md §7-#7)。
 """
 
 from __future__ import annotations
