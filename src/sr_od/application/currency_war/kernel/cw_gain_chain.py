@@ -69,6 +69,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     INVESTMENT_ENVS,
     STRATEGY_EFFECTS,
     normalize_invest_name,
+    random_char_pool,
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
     resolve_plane_node_seqs,
@@ -459,6 +460,7 @@ def _gain_character_core(gs: GameState, name: str, star: int, *, rand: bool,
 
 def gain_invest_env(gs: GameState, session: object, env_name: str, *,
                     rand: bool, sig: ChannelSig,
+                    rng: random.Random | None = None,
                     producer: str = GAIN_CHAIN_PRODUCER) -> GainOutcome:
     """获得投资环境(gain-chain.md §2.1):
 
@@ -470,6 +472,10 @@ def gain_invest_env(gs: GameState, session: object, env_name: str, *,
     2. **效果账本登记**(best-effort:失败 log + 留存证据不阻塞;session=None
        = 登记腿跳过、容器写照常,与 report 函数 session 缺省语义同构);
     3. **触发环境效果**(on_env_gained)。
+
+    ``rng`` = 环境随机支(chars_random_immediate)采样注入,透传
+    on_env_gained(缺省回退在该函数体内,与 gain_invest_strategy 的 rng
+    形参同构)。
 
     容器写腿零吞错:写/回调效果腿异常上抛。
     """
@@ -503,7 +509,8 @@ def gain_invest_env(gs: GameState, session: object, env_name: str, *,
                          actual=f'登记腿异常:{e}',
                          evidence=f'gain_invest_env:{env_name}', sig=sig,
                          kind=DEFECT_PORTAL_REGISTER)
-    effects = on_env_gained(gs, session, env_name, rand=rand, sig=sig)
+    effects = on_env_gained(gs, session, env_name, rand=rand, sig=sig,
+                            rng=rng)
     return GainOutcome(placed=True, landing='skipped', merge_levels=0,
                        effects=effects, detail='')
 
@@ -693,7 +700,8 @@ def _place_bench_item(gs: GameState, item: str, *, rand: bool,
 
 
 def on_env_gained(gs: GameState, session: object, env_name: str, *,
-                  rand: bool, sig: ChannelSig) -> tuple[str, ...]:
+                  rand: bool, sig: ChannelSig,
+                  rng: random.Random | None = None) -> tuple[str, ...]:
     """「获得投资环境」触发型效果枚举(gain-chain.md §3)。
 
     - ``ENV_GIFTS`` 命中 → **先按 advisor 分道,两道互斥**:advisor=False
@@ -707,6 +715,16 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
     - **环境即时金腿**(世界规则,注册表结构化通道):环境经济
       ``economy.gold_instant`` 非零 → gold 直加(两执行面同源;旧 sim
       引擎私有腿随驱动反转停用,规则落本链为单一源);
+    - **随机支**(``chars_random_immediate``,具名支之后):规格过滤池
+      (random_char_pool)内均匀掷骰选名 → ``gain_character`` 落席,星级
+      = spec.star;效果体含采样 → 子链 rand=True(gain-chain.md §5)——
+      未锚定期(开局窗)本就走 write_logic_rand,rand=True 声明采样语义
+      并保锚定后不进失配网(实机猜错 = 首观察静默覆盖,
+      logic_rand_outcome 收口,不响安灯)。效果串
+      ``env_gift_random:<名>@<星>star``(与具名支 ``env_gift:`` 前缀分离,
+      采样发放可独立过滤审计);``rng`` 缺省回退自掷(直构/测试形态;
+      正式接线由上报函数条件解析传入,sim 装配 = 流键 rng 即世界真值)。
+      首例 = 人才引进(id 109,开局 1 个随机 4 费,星级先验 1);
     - **道具通道**(``items_immediate`` + ``items_scheduled``):道具 =
       占席待开箱,非角色非装备。即时支:落位写入(角色落位同构:备战空槽放
       ``BenchSlot(kind='supply_box')``,双端同一获得链,sim 世界写入即
@@ -747,6 +765,27 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
                        evidence=f'on_env_gained:{_name}',
                        producer=GAIN_CHAIN_PRODUCER)
         effects.append(f'env_gift:{char}')
+    if grant.chars_random_immediate:
+        # 随机支:效果体含采样 → 子链 rand=True(gain-chain.md §5 递归
+        # 调用点按效果自身性质传参)。星级 = spec.star(人才引进 1 = 先验
+        # 非结构值,先验错走随机态观察覆盖不响停);rng 缺省回退自掷
+        # (直构/测试形态;正式接线 = 上报函数条件解析传入,sim 装配 =
+        # 流键 rng 即世界真值,on_strategy_gained 的 roll_rng 同款回退)。
+        roll_rng = rng if rng is not None else random.Random()
+        for spec in grant.chars_random_immediate:
+            pool = random_char_pool(spec)
+            if not pool:
+                # 构建期已闸(_validate_env_gifts 池非空),运行期空 =
+                # 注册表漂移;零写留 log 防御分支(不改容器,不炸链)
+                log.warning(
+                    f'[cw-gain] 随机赠卡池空(注册表漂移?):'
+                    f'{_name} cost={spec.cost} type_tag={spec.type_tag!r}')
+                continue
+            name = roll_rng.choice(pool)
+            gain_character(gs, name, spec.star, rand=True, sig=sig,
+                           evidence=f'on_env_gained:{_name}',
+                           producer=GAIN_CHAIN_PRODUCER)
+            effects.append(f'env_gift_random:{name}@{spec.star}star')
     for item in grant.items_immediate:
         # 落位 = 角色落位同构(_build_pool/bench_place/write 序;席满 →
         # 溢出落位,溢出位被占 = 零写留存证据,helper 内);效果串恒登记

@@ -38,7 +38,11 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, fields, replace
 
-from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER
+from sr_od.application.currency_war.data.cw_chars import (
+    CHARACTER_ROSTER,
+    CHARACTERS,
+    chars_by_cost,
+)
 from sr_od.application.currency_war.data.cw_equipment_data import (
     EQUIPMENTS,
 )
@@ -325,9 +329,29 @@ class EnvEconomyEffect:
 
 
 @dataclass(frozen=True)
+class RandomCharSpec:
+    """随机赠卡规格(费用档 + 到手星级 + 类型过滤;「随机N费赠卡」家族
+    载体,立形首例 = 人才引进「开局拥有1个随机4费角色」,后继 = 战力
+    提升/战力飙升等同族卡复用,禁第二形状):
+
+    - cost: 费用档 1-5(chars_by_cost 输入域;值域构建期校验,见
+      ``_validate_env_gifts``);
+    - star: 到手星级 1-3(``Unit.star`` 值域)。desc 明写 = 结构值;
+      desc 未标 = 填 1 的先验值(先验语义不因显式化而消失,披露键
+      ``ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS`` 随卡保留——先验错走
+      随机态观察覆盖,不响停);
+    - type_tag: 非空 = 角色 ``char_type`` 按 '、' 切分后须含该标签才
+      入池(取值 = 注册表 char_type 标签闭集,构建期从 CHARACTERS
+      派生校验,防手写错字致池空静默);空 = 不过滤(池 = 费用档全档)。
+    """
+    cost: int
+    star: int
+    type_tag: str = ''
+
+
+@dataclass(frozen=True)
 class GiftGrant:
-    """投资环境的**具名发放**结构(送卡/送道具估值;2026-09-12 invest-env 迭代,
-    details/env-value-models.md §2.1.3;InvestmentEnv 同区 schema)。
+    """投资环境的**具名发放**结构(送卡/送道具估值;InvestmentEnv 同区 schema)。
 
     发放按「取环境当场到手(即时)」与「满足条件后到手(条件)」两分——估值只对
     确定性部分给足档,条件部分降档处理(详设 §2.1.2 规则 3)。送卡的价值判据 =
@@ -359,6 +383,13 @@ class GiftGrant:
       详设 §2.1.2 规则 2);False=直接送卡(契约,白得资产)
     - sell_value_note: 卖价残值注记(【注】下界;卖价 ≈ 按费用退金,度量费用
       不度量阵容价值,不进任何分值族,详设 §2.1.2-2)
+    - chars_random_immediate: 取环境当场发放的随机角色,元素 =
+      RandomCharSpec,数量 = 元素重复次数(效果原文「获得1个随机N费角色」
+      直读形态的结构化承载)。「不可具名不入」注释辖 chars_immediate/
+      chars_conditional 两个估值域字段(档位机器按具名角色打分);本字段
+      是世界发放域形状,不进档位机器(恒判 off)。发放 = 采样支:规格过滤
+      池内均匀掷骰选名 → gain_character(rand=True,gain-chain.md §5
+      效果体含采样)。立形首例 = 人才引进(星级先验 1)
     """
     chars_immediate: tuple[str, ...] = ()
     chars_conditional: tuple[tuple[str, str], ...] = ()
@@ -366,6 +397,7 @@ class GiftGrant:
     items_scheduled: tuple[tuple[str, str], ...] = ()
     advisor: bool = False
     sell_value_note: str = ''
+    chars_random_immediate: tuple[RandomCharSpec, ...] = ()
 
 
 #: ``items_scheduled`` 节点键格式('位-轮';位面 1 基 1-3,位面内轮 1 基
@@ -605,7 +637,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duration=DurationKind.ONCE, category=EffectKind.BATTLEFIELD,
         payload=BattlefieldEffect(board_rewrite=BOARD_REWRITE_SELL_ALL),
         duties=DutyFlags(predict=True),
-        notes='全场出售事件;执行时序编排(卖→免费买→狂刷)=W610-P1 M8,本批不接;'
+        notes='全场出售事件;执行时序编排(卖→免费买→狂刷)=设计件 M8 编排,未接;'
               '写归属=出售面逻辑写/发牌面观察收口(详设 §5 人力重组行)'),
     # 躺平:官方「你无法在商店购买角色和刷新,持续3个节点。在此之后,获得20金币」。
     # inventory 余期追踪首例(remaining_nodes 3→0 移除);冻结姿态属姿态面适用范围。
@@ -1195,7 +1227,7 @@ ENV_ECONOMY: dict[str, EnvEconomyEffect] = {
     '二手市场': EnvEconomyEffect(gold_after_refreshes=(20, 30)),
     # 全部奖励节点替换为(超级)次元扑满、掉落(超)多战利品(id 105/119 原文
     # 直读;效果无数值,增益真值+CI 在估算注册表按变体分键,当前零有效估计
-    # → 通道 fail-closed 裸分维持,数据批口径见 details/data-batch-estimates.md)
+    # → 通道 fail-closed 裸分维持,数据批口径归数据采集批(详设原文已删,git 历史可溯)
     '经济过热': EnvEconomyEffect(reward_node_bonus=_REWARD_NODE_BONUS_MARK),
     '经济严重过热': EnvEconomyEffect(reward_node_bonus=_REWARD_NODE_BONUS_MARK),
 }
@@ -1279,13 +1311,13 @@ def _validate_env_ore_grants() -> None:
 _validate_env_ore_grants()
 
 
-# ===== 环境具名发放注册表(2026-09-12 invest-env 迭代;details/env-value-models.md §2.1)=====
+# ===== 环境具名发放注册表(白名单制)=====
 # 送卡型环境(契约 ×7 + 特邀专家 ×4)与道具型环境(火药味)的具名发放登记,白名单制
 # (表外环境一律无条目,禁从效果原文自动猜装,ENV_ECONOMY 同款纪律)。档位机器 =
 # cw_comps.gift_hit_tier(消费契约见其 docstring);档位是定序实现常数非金流期望
 # (定序/基数分账),不经经济入口,消费位 = 策略层 gift_value
 # (gift_hit_tier 包装;28 号稿 §2 与 29 号稿 §2.3)。
-# 逐条语义盘点与分档落点表 = details/env-value-models.md §2.1.1/§2.1.2;锁 = 测试仓
+# 逐条语义与分档落点 = 本表登记 + 效果原文对账 id(详设盘点原文已删,git 历史可溯);锁 = 测试仓
 # test_cw_env_gift.py(G1 分档表/G2 失格门构造/G8 互斥断言半边)。
 ENV_GIFTS: dict[str, GiftGrant] = {
     # 效果原文对账 id(cw_invest_data.PLAZA_PORTALS):量子同频 125/公司 126/持续伤害 127/
@@ -1348,7 +1380,43 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 后保持原样,备战真值归观察覆盖,迭代 2026-09-24-scheduled-env-gifts
     # design §2.5 不对称申报)
     '特权阶级': GiftGrant(items_scheduled=(('2-1', '特权武装箱'),)),
+    # 随机支登记(id 109 效果原文「开局拥有1个随机4费角色。」直读,
+    # PlazaPortal('109'));星级未标 = star 1 先验(晶矿 CHAR_DROP_STAR/
+    # 骇客同句式先例,先验语义由披露键 star_prior 承载);无类型词 →
+    # type_tag 空,池 = 4 费全档;时点「开局」= 环境注册时点,与火药味
+    # 「开局时获得」同口径(items_immediate 选卡即发)
+    '人才引进': GiftGrant(chars_random_immediate=(RandomCharSpec(cost=4, star=1),)),
 }
+
+
+def random_char_pool(spec: RandomCharSpec) -> list[str]:
+    """规格过滤池(注册表派生,零硬编码第二源):费用档内 + 类型标签含入
+    (chars_by_cost × char_type 按 '、' 切分)。构建期非空校验见
+    ``_validate_env_gifts``;运行期空池 = 注册表漂移,发放腿(cw_gain_chain
+    ``on_env_gained`` 随机支)再查一道防御。"""
+    return [c.name for c in chars_by_cost(spec.cost)
+            if not spec.type_tag or spec.type_tag in c.char_type.split('、')]
+
+
+#: 随机赠卡类型标签闭集(从 CHARACTERS.char_type 按 '、' 切分派生,空标签
+#: 剔除;构建期校验 RandomCharSpec.type_tag 用,防手写错字致池空静默)。
+_CHAR_TYPE_TAGS: frozenset[str] = frozenset(
+    tag for _c in CHARACTERS.values()
+    for tag in _c.char_type.split('、') if tag)
+
+#: 随机赠卡家族的采样/先验假设申报键(家族常量,三键;键随家族携带不随
+#: 单卡增减,消费面 = 实测校准与披露清单):
+#: - uniform: 规格过滤池内均匀 v0(真分布未实测,实机校准源 =
+#:   logic_rand_outcome 行掷骰名 vs bench 实读逐局积累);
+#: - star_prior: desc 未标星时 star=1 为先验非结构值(直出高星由 bench
+#:   观察星级覆盖模型值,随机态不响灯);
+#: - type_tag: 类型过滤口径 = char_type 含标签(本键随家族常量携带,
+#:   空标签卡不消费)。
+ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS: tuple[str, ...] = (
+    'env_gift_random_char_uniform',
+    'env_gift_random_char_star_prior',
+    'env_gift_random_char_type_tag',
+)
 
 # (送卡「档→分」映射与 advisor 折减 = 策略层 gift_value
 # (GIFT_TIER_SCORE/ADVISOR_DISCOUNT,消费位 = invest_env/invest_strategy),
@@ -1357,18 +1425,21 @@ ENV_GIFTS: dict[str, GiftGrant] = {
 
 
 def _validate_env_gifts() -> None:
-    """ENV_GIFTS 构建校验(import 即炸;details/env-value-models.md §2.1.3):
+    """ENV_GIFTS 构建校验(import 即炸):
 
     ① 孤儿键:键必须在 INVESTMENT_ENVS(沿 ENV_ECONOMY 先例,防版本更新改名/
     移除后静默失联);② 角色名漂移:发放角色(即时∪条件)必须在 CHARACTER_ROSTER
     (版本漂移不静默,与孤儿键同批校验);③ 空发放集条目拒绝(即时角色/条件角色/
-    即时道具/定时道具全空 = 数据残缺,档位机器恒判 off,会把登记笔误放大成失格门
-    误杀);④ ``set(ENV_GIFTS) ∩ set(ENV_ECONOMY) = ∅``——单一环境只落一个估值
-    结构,防双通道叠加(∩ ENV_POOL_REWRITE 半边由 3.6 品质改写建表时收全);⑤
-    定时通道两防呆(迭代 2026-09-24-scheduled-env-gifts):节点键格式 '位-轮'
-    (坏键 = on_env_gained 入队解析必炸的脏数据,import 拒收)、定时道具名禁
-    ∈ CHARACTER_ROSTER(道具/角色通道串行防呆,道具名混入角色注册表会在
-    发放侧造假身份)。
+    即时道具/定时道具/随机角色全空 = 数据残缺,档位机器恒判 off,会把登记笔误
+    放大成失格门误杀);④ ``set(ENV_GIFTS) ∩ set(ENV_ECONOMY) = ∅``——单一环境
+    只落一个估值结构,防双通道叠加(∩ ENV_POOL_REWRITE 半边由 3.6 品质改写建表时
+    收全);⑤ 定时通道两防呆(迭代 2026-09-24-scheduled-env-gifts):节点键格式
+    '位-轮'(坏键 = on_env_gained 入队解析必炸的脏数据,import 拒收)、定时道具名禁
+    ∈ CHARACTER_ROSTER(道具/角色通道串行防呆,道具名混入角色注册表会在发放侧
+    造假身份);⑥ 随机赠卡规格(RandomCharSpec)值域三查:cost 1-5/star 1-3
+    (bool 显式拒——bool 是 int 子类,True 会被纯 int 判当 1 混过)、type_tag ∈
+    注册表 char_type 标签闭集(错字致池空静默)、规格过滤池非空(注册表漂移防呆,
+    先例 = _uniform_char_of_cost 的 ValueError)。
     """
     orphans = [n for n in ENV_GIFTS if n not in INVESTMENT_ENVS]
     if orphans:
@@ -1389,11 +1460,31 @@ def _validate_env_gifts() -> None:
                 raise ValueError(
                     f"ENV_GIFTS 定时道具名进角色注册表({_name!r}):"
                     f"{_item!r}(道具/角色通道串行防呆)")
+        for _spec in _grant.chars_random_immediate:
+            if isinstance(_spec.cost, bool) or not 1 <= _spec.cost <= 5:
+                raise ValueError(
+                    f"ENV_GIFTS 随机赠卡费用档({_name!r}):{_spec.cost!r} "
+                    f"须为 1-5 整数(chars_by_cost 输入域)")
+            if isinstance(_spec.star, bool) or _spec.star not in (1, 2, 3):
+                raise ValueError(
+                    f"ENV_GIFTS 随机赠卡星级({_name!r}):{_spec.star!r} "
+                    f"须为 1-3 整数(Unit.star 值域)")
+            if _spec.type_tag and _spec.type_tag not in _CHAR_TYPE_TAGS:
+                raise ValueError(
+                    f"ENV_GIFTS 随机赠卡类型标签({_name!r}):"
+                    f"{_spec.type_tag!r} 不在注册表 char_type 标签闭集"
+                    f"(手写错字会致池空静默):{sorted(_CHAR_TYPE_TAGS)}")
+            if not random_char_pool(_spec):
+                raise ValueError(
+                    f"ENV_GIFTS 随机赠卡池空({_name!r}):"
+                    f"cost={_spec.cost} type_tag={_spec.type_tag!r} "
+                    f"过滤后无角色(注册表漂移?)")
         if not _grant.chars_immediate and not _grant.chars_conditional \
-                and not _grant.items_immediate and not _grant.items_scheduled:
+                and not _grant.items_immediate and not _grant.items_scheduled \
+                and not _grant.chars_random_immediate:
             raise ValueError(
                 f"ENV_GIFTS 空发放集:{_name!r} 即时角色/条件角色/即时道具/"
-                f"定时道具全空,数据残缺")
+                f"定时道具/随机角色全空,数据残缺")
     _overlap = set(ENV_GIFTS) & set(ENV_ECONOMY)
     if _overlap:
         raise ValueError(
@@ -1608,9 +1699,11 @@ def _validate_strategy_grants() -> None:
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后静默
     失联);② 角色名漂移:发放角色(即时∪条件)必须在 CHARACTER_ROSTER;
-    ③ 空发放集拒绝(即时角色/条件角色/即时道具/定时道具四通道全空 = 登记
-    笔误,档位机器恒判 off;items 两通道沿 _validate_env_gifts 同款并入——
-    箱腿条目 chars 两通道空而 items_immediate 非空,合法);④ **反扫候选
+    ③ 空发放集拒绝(即时角色/条件角色/即时道具/定时道具/随机角色五通道
+    全空 = 登记笔误,档位机器恒判 off;items 两通道沿 _validate_env_gifts
+    同款并入——箱腿条目 chars 两通道空而 items_immediate 非空,合法;
+    chars_random_immediate 同款并入——GiftGrant 两表共享,策略侧随机
+    登记后继[二/三/四费援军族]首登记不因旧判定误炸);④ **反扫候选
     闭集防线**:机械反扫(「获得…roster 名」全表命中)候选集
     ⊆ STRATEGY_GRANTS ∪ 排除/假阳性白名单——新增「获得」直读发放卡漏登记
     即炸;白名单键孤儿同样炸(防记因指向已删卡后防线空转)。
@@ -1626,10 +1719,11 @@ def _validate_strategy_grants() -> None:
             raise ValueError(
                 f"STRATEGY_GRANTS 角色名漂移({_name!r} 注册表无此人,版本改名?):{_drift}")
         if not _grant.chars_immediate and not _grant.chars_conditional \
-                and not _grant.items_immediate and not _grant.items_scheduled:
+                and not _grant.items_immediate and not _grant.items_scheduled \
+                and not _grant.chars_random_immediate:
             raise ValueError(
                 f"STRATEGY_GRANTS 空发放集:{_name!r} 即时角色/条件角色/"
-                f"即时道具/定时道具全空,数据残缺")
+                f"即时道具/定时道具/随机角色全空,数据残缺")
     _wl_orphans = [n for n in _STRATEGY_GRANTS_SCAN_EXCLUSIONS
                    if n not in INVESTMENT_STRATEGIES]
     if _wl_orphans:
@@ -1647,11 +1741,10 @@ def _validate_strategy_grants() -> None:
 _validate_strategy_grants()
 
 
-# ===== 环境品质改写注册表(2026-09-12 invest-env 迭代 3.6;
-# details/env-value-models.md §2.2;白名单制)=====
+# ===== 环境品质改写注册表(白名单制)=====
 # 品质改写型环境(时代 ×3 + 头彩/尾彩 + 银·金·彩 + 联席决策,恰 7 条)的池改写
 # 事实登记。表外环境一律无条目,禁从效果原文自动猜装(ENV_ECONOMY/ENV_GIFTS
-# 同款纪律)。两型两层拆分(详设 §2.2.2):层 E(基数,改写后取卡金流期望抬升
+# 同款纪律)。两型两层拆分:层 E(基数,改写后取卡金流期望抬升
 # ΔV)经 env_economy_value 单一入口分派(策略层 env_economy._pool_rewrite_
 # value 驻策略层),
 # 当前态恒 fail-closed——受限通道 μ_E 不随品质单调(银 3.31 > 金 2.42 实测),
@@ -1669,8 +1762,7 @@ _validate_strategy_grants()
 # 锁 = 测试仓 test_cw_env_pool_rewrite.py(Q1-Q6)。
 @dataclass(frozen=True)
 class StrategyPoolRewrite:
-    """投资环境的**策略池品质改写**结构(品质改写型估值;2026-09-12 invest-env
-    迭代 3.6,details/env-value-models.md §2.2.5;与 EnvEconomyEffect/GiftGrant
+    """投资环境的**策略池品质改写**结构(品质改写型估值;与 EnvEconomyEffect/GiftGrant
     同属 InvestmentEnv 的估值 schema 家族,落点集中本段避免触碰已交付段)。
 
     字段语义(值全部 = cw_invest_data 效果原文直读;效果原文对账 id 见
@@ -1679,7 +1771,7 @@ class StrategyPoolRewrite:
       (银·金·彩为 offer 结构改写、联席决策为数量通道,无层 E 语义)
     - rewrite_picks: 被改写的取卡序号,**坐标系 = 本局投资策略取卡全局序,
       1 基**(头彩效果原文点名「第一个投资策略」/尾彩点名「第三个投资策略」
-      → 固定取卡集基数 3 的序数承载,details/env-value-models.md §2.2.2;
+      → 固定取卡集基数 3 的序数承载;
       时代 = (1,2,3) 全改写);取值时机 = 注册表登记期常量(效果原文直读,
       非执行期现读)
     - offer_structure: offer 结构改写语义标记('silver_gold_prism_slots' =
@@ -1741,7 +1833,7 @@ ENV_POOL_REWRITE: dict[str, StrategyPoolRewrite] = {
 
 
 def _validate_env_pool_rewrite() -> None:
-    """ENV_POOL_REWRITE 构建校验(import 即炸;details/env-value-models.md §2.2.5):
+    """ENV_POOL_REWRITE 构建校验(import 即炸):
 
     ① 孤儿键:键必须在 INVESTMENT_ENVS(沿 ENV_ECONOMY/ENV_GIFTS 先例,防版本
     更新改名/移除后静默失联);② 三注册表互斥收全:``set(ENV_POOL_REWRITE) ∩
