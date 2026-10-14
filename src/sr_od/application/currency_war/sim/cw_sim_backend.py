@@ -88,6 +88,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     NodeKey,
     OreSight,
+    ShopPayload,
     _row_unit_tags,
     clear_pending_loss,
     effective_node_pos,
@@ -769,6 +770,13 @@ class SimBackend:
     # —— 采样簿记(实机不可观察,后端私有) ——
     excluded_invest: set[str] = field(default_factory=set)
     excluded_env: set[str] = field(default_factory=set)
+    #: 商店牌面节点级记录(牌面 = 节点级持久事实,发牌时定;2026-10-17
+    #: 用户裁定):值 = 商店在屏期间 ``gs.shop`` 的最后非空观测(跟随
+    #: 发牌/刷新/买卡一切写点,驱动入口懒同步
+    #: :meth:`_sync_shop_record`);开店呈现写回消费(:meth:`_open_shop`,
+    #: 对偶实机「每次进店读屏」)。关店清 ``gs.shop`` 呈现不清本记录;
+    #: 节点窗起新发牌自然覆盖(整店锁跳过发牌 = 牌面跨节点保留,同语义)。
+    _shop_record: ShopPayload | None = field(init=False, default=None)
     # (私有 overlay 队列与评估器簿记三件[队列/一次性标志/银狼星基线/
     #  巨星水位]已退役删除:sim 呈现数据源 =
     #  容器登记 gs.screen_changes.pending,判据簿记 = ScreenChanges
@@ -852,6 +860,7 @@ class SimBackend:
         :meth:`_present_pending_overlay`(fortune 门判当前底层)。
         """
         self._maybe_finish_wait()
+        self._sync_shop_record()
         if self.gs.screen_changes.pending:
             self._present_pending_overlay()
         return self._screen
@@ -865,6 +874,7 @@ class SimBackend:
         未注册屏呈现 = :class:`LookupError` 具名响错(防静默失真,
         flow-seam §3 锁)。惰性导入注册表:注册表反向引用本模块档名
         常量,模块级互引成环。"""
+        self._sync_shop_record()
         from sr_od.application.currency_war.sim.cw_sim_obs_gen import (
             observe_screen,
         )
@@ -879,6 +889,7 @@ class SimBackend:
         等待变体(wait_one_one)在问询时立即完成(sim 世界瞬时呈现,
         动画无时间维)。"""
         self._maybe_finish_wait()
+        self._sync_shop_record()
         if screen_name != self._screen:
             return False
         return area_name not in _UNPRESENTED_OVERLAY_ANCHORS.get(
@@ -890,6 +901,7 @@ class SimBackend:
         round 结果(机械镜 = :func:`cw_sim_ports.mirror_click_answer`;
         until 问询经 :meth:`visible` 取转移后真值)。"""
         self._maybe_finish_wait()
+        self._sync_shop_record()
         self._handle_click_source(screen_name, area_name)
         self._tick()
         return cw_sim_ports.mirror_click_answer(
@@ -972,9 +984,34 @@ class SimBackend:
         self._box_pick_pending = idx
 
     def _open_shop(self) -> None:
-        """开店点击源(备战 → 开商店态;close_shop 声明交回)。"""
+        """开店点击源(备战 → 开商店态;close_shop 声明交回)。
+
+        呈现写回(2026-10-17 用户裁定,对偶实机「每次进店读屏」):
+        离屏态(关店已清 ``gs.shop``)以节点级牌面记录
+        (:attr:`_shop_record`)补写——实机每次进店 live 漏斗重读屏写
+        payload,sim 无识别面,以发牌期记录承载同一观察语义;在屏态
+        (节点窗起刚发牌)保持现值零写。"""
         if self._screen == SCREEN_PREP:
             self._present_modal(SCREEN_SHOP)
+            if self.gs.shop.value is None and self._shop_record is not None:
+                self.gs.observe(self.gs.shop, self._shop_record,
+                                evidence=sim_evidence('shop:reopen'),
+                                sig=obs_sig(group_id='sim:shop:reopen'))
+
+    def _sync_shop_record(self) -> None:
+        """商店牌面记录懒同步(全部驱动入口调用):在屏 payload 非
+        ``None`` 即跟随记录。
+
+        跟随面 = ``gs.shop`` 的一切写点——节点窗起发牌(deal_shop)、
+        动作腿刷新/买卡(kernel 上报,均新建 payload 整体替换)。payload
+        写入与下次开店之间必经驱动入口(策略帧循环先观察后决策,动作
+        声明经 advance、开店经 click_answer),故入口同步即完整覆盖;
+        离屏态(关店清 ``None``)不动记录——关店清的是呈现不是记录,
+        节点级持久事实由本记录承载。"""
+
+        payload = self.gs.shop.value
+        if payload is not None:
+            self._shop_record = payload
 
     # (事实事件订阅入口已随事实事件槽退役删除:
     #  懒呈现位 = screen_identity 问询时点检查;板面真值观察 =
@@ -1000,6 +1037,7 @@ class SimBackend:
         if self.done:
             return
         self._drain_pending_reconciles()
+        self._sync_shop_record()
         self._tick()
         if decl.trigger not in ADVANCE_TRIGGER_KINDS:
             raise ValueError(

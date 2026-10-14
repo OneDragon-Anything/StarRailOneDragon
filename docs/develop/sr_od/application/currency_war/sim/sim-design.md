@@ -87,6 +87,8 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 1. **动作后果声明**（kernel `cw_world_decl.WorldDecl`，契约权威版本 = §6.3）：转移动作 op 经端口 `cw_sim_ports.declare_world` 喂入 `SimBackend.advance`，按 `decl.trigger` 分派世界过程/画面呈现、完成后按 `decl.next_screen` 等值对账。18 转移动作全量声明驱动：settle_confirm/supply_confirm（经 kernel `report_node_advance`）→ 节点推进；start_battle/pick_encounter → 战斗结算 → 结算页；开箱动作落地 → 武装箱画面 + 候选生成；pick 族 → 模态交回/选卡世界过程；纯转移类（开书册卡/关店/零写选卡族）→ 按 `next_screen` 推进画面。同一终结动作重复上报不二次推进 = kernel 观察态门（重复上报零推进）+ 后端逐 handler 幂等守卫。
 2. **点击源**（不经声明通道的推进型点击，经端口 `click_answer` 感知）：简报下一步、BOSS 简报点空白、位面过渡点空白、补给刷新、开店。这些点击的转移语义权威源 = `docs/develop/sr_od/application/currency_war/screens/` 各篇的终结动作与返回表。
 
+**商店牌面观察链**（点击源「开店」的观察写回语义）：牌面 = 节点级持久事实，发牌时定（节点窗口序列的商店自动全刷；实机不可观察，后端私有记录 `SimBackend._shop_record`）。开店呈现时把记录写回 `gs.shop`（模拟读屏，对偶实机「每次进店 live 漏斗重读屏写 payload」——sim 无识别面，以发牌期记录承载同一观察语义）；关店动作上报 `leave_screen` 清空 `gs.shop` 呈现不清记录；节点切换新发牌自然覆盖记录（整店锁跳过发牌 = 牌面跨节点保留，同语义）。记录跟随 = 全部驱动入口（`screen_identity`/`observe`/`visible`/`click_answer`/`advance`）懒同步在屏 payload 非空即跟随——覆盖发牌/刷新/买卡一切写点（写点与下次开店之间必经驱动入口：策略帧循环先观察后决策）。写回仅离屏态生效（在屏态保持现值零写）。
+
 ### 3.3 节点窗口序列
 
 节点推进（终结动作触发）后的窗口序列（`SimBackend._begin_node_window`，权威序 = 旧引擎实测收尾检查序 overlay → offer → 下一节点）：
