@@ -1,4 +1,4 @@
-"""λ_death 分层表(PL 键位面键)+ 区间敞口比较 + 差分复合项(第三口)。
+"""λ_death 分层表(PL 键位面键)。
 
 单一源与键结构(PL 键=位面键,R26-H1 重写;键结构与消费语义以
 P51_V3_REBUILD v3.3+本模块为单一源):
@@ -8,17 +8,15 @@ P51_V3_REBUILD v3.3+本模块为单一源):
 - 表数据 = ``data/lambda_death_pl_v33.json``(由 tools/cw/proofs/p51/
   gen_pl_v33_json.py 从 P51_V3_REBUILD v3.3 运行产物生成,含逐格消费标签
   与空格回退处置)。**启动必载**(R2-4):import 时即加载;加载失败或格值
-  None = 运行时损坏守卫 + 报警,不作合法缺省姿态(P51 工件主表采集物带 CI,
-  连续模型标定后退役)。
-- λ 合法消费形态(P51 §5-11 / 00_framework §6 λ 表使用纪律):区间敞口比较 + 保守端
-  + 单调约束;禁边际引用、禁闸门;阈值类消费一律扫描带形态(辖未来新消费位,
-  现存消费位=空集,R30-4)。本模块对外只暴露:
-  ① λ CI 端点查询(lambda_ci / cell)②区间敞口比较 API(布尔)③差分复合项
-  算子(第三口,不透明对象)。全量 W_floor/W_flow 数值模块私有,类型上不对外
-  暴露(R5-7 接口收口)。
-- floor_eff:0.1 死阈值段分类投影已随三段管辖退役(R26-H1/R10-1);现行
-  floor_eff = **arm2 结构守息门金下限 10×cap_resolved**(零 λ 依赖,R8-4
-  参数化:默认局 cap=5 还原 50;买断制 cap=0 ⇒ 门=0,息恒 0 无可守)。
+  None = 运行时损坏守卫 + 报警,不作合法缺省姿态。
+- **现行消费面 = 键构造与查表基础设施**(difficulty_band 派生审计登记/
+  hp_band 血带结构锚 predicates 观测件消费):λ 表本体保留为 P51 标定
+  工件;原决策消费族(λ 顾问/exposure 比较/差分复合项/升档器排序键/
+  floor_eff 守息门)已随血线地板/λ 顾问/升档器删除链与拦截层删除链
+  退役(迭代 2026-10-12-prep-shop-workflow-redesign 批 3.4,review-34
+  R2 供给侧孤儿清理;archaeology 走 git 历史)——新增决策消费须先过
+  λ 表使用纪律审查(区间敞口比较 + 保守端 + 单调约束;禁边际引用、
+  禁闸门,R30-4)。
 """
 from __future__ import annotations
 
@@ -31,7 +29,6 @@ from one_dragon.utils.log_utils import log
 
 if TYPE_CHECKING:
     pass
-
 #: 表工件路径(与本模块同目录 data/ 下;启动必载,R2-4)
 _TABLE_PATH: Path = Path(__file__).parent / 'data' / 'lambda_death_pl_v33.json'
 
@@ -157,145 +154,12 @@ def cell(key: str | None) -> LambdaCell | None:
     return _LAMBDA_TABLE.get(key)
 
 
-def lambda_ci(key: str | None) -> tuple[float, float] | None:
-    """键 → (CI 下端, CI 上端)。
-
-    仅 ``可消费`` 格返回端点;禁用/仅方向/空格/域外 → None(消费端 fail-closed)。
-    消费纪律:端点随消费位分键(λ̄_detection/λ̄_gate 同端不同计数值域,R52-2/
-    R55-1 定谳两端同取 CI 下端;卖面 V_power 系数取 CI 上端——组-端取端纪律,
-    原 design_economy §E4.1 组-端对照表已删档,考古走 git 历史)。**本函数只供 statefn 层内部与已登记复合形态消费**,
-    判据模块禁自持端点构造 d̂(R19-3)。
-    """
-    c = cell(key)
-    if c is None or c.label != '可消费':
-        return None
-    return (c.ci_lo, c.ci_hi)  # type: ignore[return-value]——可消费格载入期已验非 None
-
-
-def floor_eff(cap_resolved: int) -> int:
-    """arm2 结构守息门金下限 = 10×cap_resolved(R8-4 参数化)。
-
-    0.1 死阈值的二值投影已随三段管辖退役(R26-H1);默认局 cap=5 还原 50,
-    买断制 cap=0 ⇒ 门=0(息恒 0 无可守,语义正确)。零 λ 依赖的结构安全阀。
-    """
-    return 10 * cap_resolved
-
-
-def exposure_ge(key: str | None, gold: int, ibar_remaining_product: float,
-                threshold: float) -> bool | None:
-    """区间敞口比较 API(P51 §5-11 合法消费形态;布尔返回,R5-7 收口①)。
-
-    语义:``λ_U(key) × (g + Ī×R_剩余) ≥ threshold`` 是否成立——W_floor 的
-    **区间比较形态**(消费侧拿不到 W 全量数值,只能问布尔)。取 CI 上端 =
-    敞口上界(保守端:卖面门槛上偏方向,L-R3-1 推论 2)。域外/损坏/不可消费
-    格 → None(调用方按缺输入最保守处置,§2.0-3 规格③)。
-    """
-    ci = lambda_ci(key)
-    if ci is None:
-        return None
-    return ci[1] * (gold + ibar_remaining_product) >= threshold
-
-
-class ExposureComposite:
-    """第三口差分复合项(R15-2/R16-3/R19-3):d̂×(g+Φ̂_full) 的不透明封装。
-
-    输出数值 ≡ 权威式 d̂×(g+Ī×R_剩余) 水平值;**裸 Φ̂/全量 Φ/W 数值在类型上
-    不可达**(R5-7)。合法运算白名单 = 加法与比较仅两种(R19-3):减法/乘法/
-    除法/数值取值接口在类型上不可达——乘常数亦不开(1/d̂ 系运行时算得值,
-    开乘常数即重开反解口 Φ̂=复合项×(1/d̂)−g)。防线强度=约定+评审面
-    (比较二分泄露封装数值不可防,登记表 R19);判据侧自持 λ 端点构造 d̂
-    或直算 d̂×(g+·) 形态 = 模式审计红。
-    """
-
-    __slots__ = ('_value',)
-
-    def __init__(self, value: float) -> None:
-        object.__setattr__(self, '_value', float(value))
-
-    def __add__(self, other: object) -> ExposureComposite:
-        if isinstance(other, ExposureComposite):
-            return ExposureComposite(self._value + other._value)
-        if isinstance(other, (int, float)):
-            return ExposureComposite(self._value + float(other))
-        return NotImplemented
-
-    __radd__ = __add__
-
-    def __lt__(self, other: object) -> bool:
-        return self._cmp(other) < 0
-
-    def __le__(self, other: object) -> bool:
-        return self._cmp(other) <= 0
-
-    def __gt__(self, other: object) -> bool:
-        return self._cmp(other) > 0
-
-    def __ge__(self, other: object) -> bool:
-        return self._cmp(other) >= 0
-
-    def _cmp(self, other: object) -> int:
-        ov = other._value if isinstance(other, ExposureComposite) else float(other)  # type: ignore[arg-type]
-        if self._value < ov:
-            return -1
-        return 0 if self._value == ov else 1
-
-    # —— 白名单外运算:类型不可达(白名单=add/compare,R19-3)——
-    def __sub__(self, other: object) -> float:  # pragma: no cover——守卫路径
-        raise TypeError('ExposureComposite 白名单外运算:减法不可达(R19-3)')
-
-    def __mul__(self, other: object) -> float:  # pragma: no cover
-        raise TypeError('ExposureComposite 白名单外运算:乘法不可达(R19-3)')
-
-    __rmul__ = __mul__
-
-    def __truediv__(self, other: object) -> float:  # pragma: no cover
-        raise TypeError('ExposureComposite 白名单外运算:除法不可达(R19-3)')
-
-    def __float__(self) -> float:  # pragma: no cover
-        raise TypeError('ExposureComposite 数值取值接口不可达(裸 Φ̂ 反解封印,R15-2)')
-
-
-def differential_composite(key: str | None, gold: int,
-                           ibar: int, r_remaining: int) -> ExposureComposite | None:
-    """第三口算子入口(R16-5 对拍锚对象):模块内直算 d̂×(g+Ī×R_剩余)。
-
-    d̂ 构造收在模块内(R19-3):**R29-3 定谳——λ_L 取表内同格 CI 下端 ⇒
-    d̂ = 同格 CI 宽度(λ_U−λ_L)**(PL 键下卖出不动键,平移在差分中抵消;
-    旧 λ_L:=0 形态落码即红=过保守形态锚)。Φ̂_full = Ī×R_剩余(基础流
-    组成下界估计器,R2-8)仅模块内部使用。域外/损坏/不可消费格 → None
-    (该件不卖,fail-closed,R6-5 同款方向)。
-    """
-    ci = lambda_ci(key)
-    if ci is None:
-        return None
-    d_hat = max(0.0, ci[1] - ci[0])
-    return ExposureComposite(d_hat * (gold + ibar * r_remaining))
-
-
-def consumable_keys() -> tuple[str, ...]:
-    """C 集合(可消费格键全集;λ 顾问分位参考分布的定义域,§2.0-3 规格①)。"""
-    return tuple(k for k, c in _LAMBDA_TABLE.items() if c.label == '可消费')
-
-
-def lambda_u_order() -> tuple[float, ...]:
-    """C 集合 λ_U 降序全序(R31-6:λ_U=1.000 饱和截断格按 CI 下端次键,n 大者
-    优先——并列打破后 tie-break 值,升档器排序键消费位)。"""
-    items: list[tuple[float, float, int]] = []
-    for k in consumable_keys():
-        c = _LAMBDA_TABLE[k]
-        assert c.ci_lo is not None and c.ci_hi is not None
-        items.append((c.ci_hi, c.ci_lo, c.n))
-    items.sort(key=lambda t: (-t[0], -t[1], -t[2]))
-    return tuple(t[0] for t in items)
-
-
 __all__ = [
-    'DIFFICULTY_BAND_BOUND', 'ExposureComposite', 'HP_BAND_MID',
-    'HP_BAND_NEAR_DEATH', 'LambdaCell', 'LambdaTableCorruptError',
-    'cell', 'consumable_keys', 'differential_composite', 'difficulty_band',
-    'exposure_ge', 'floor_eff', 'hp_band', 'lambda_ci', 'lambda_u_order',
-    'make_key', 'table_loaded',
+    'DIFFICULTY_BAND_BOUND', 'HP_BAND_MID', 'HP_BAND_NEAR_DEATH',
+    'LambdaCell', 'LambdaTableCorruptError', 'cell', 'difficulty_band',
+    'hp_band', 'make_key', 'table_loaded',
 ]
+
 
 def _private_table_view() -> dict[str, LambdaCell]:
     """审计钩子(derived.py 登记用;禁判据侧直接消费私有表 dict)。"""

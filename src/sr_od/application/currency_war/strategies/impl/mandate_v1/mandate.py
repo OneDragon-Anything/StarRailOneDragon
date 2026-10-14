@@ -1609,11 +1609,12 @@ def run_mandate(frame: MandateFrame,
     # 2026-10-12-prep-shop-workflow-redesign 批 3.4:判据内核 =
     # criteria/levelup.upgrade_trigger 五臂(arm0/概率账/人口位/溢余段-L3/
     # 停留门),发射位收拢为 entry.py 备战第 3 步(会话内升级检查归
-    # shop_session 重排批);M1′ 随 M3 发射消亡失去输入,其在九段工序的
-    # 对应位 = entry._step5_deploy 的 m1_prime_redeploy。替代语义考古走
-    # git 历史。)
+    # shop_session 重排批)。升级后补部署无独立对应分支:九段全扫单
+    # 动作循环下第 3 步命中即返回,升级帧结构性到不了部署步——行为
+    # 经下帧 M1 空槽补位收敛(deploy_vacancy 更新后 M1 命中,零卖出
+    # 成本接管)。替代语义考古走 git 历史。)
 
-    # M1″(板满换阵补部署意图;发射序 = M1′ 后、M6 前)。语义出处 =
+    # M1″(板满换阵补部署意图;发射序 = M6 前)。语义出处 =
     # (board-full swap redeploy;判据单一源 =
     # kernel.cw_deploy_logic.select_swap_plan,组合语义:cap 满占用数
     # 口径 ∧ 义务集/轮内新鲜度排除后存在合格 victim ∧ 卖出后假想状态
@@ -1624,8 +1625,10 @@ def run_mandate(frame: MandateFrame,
     # CwActionDeployMoveParam 原子(发射=判定+存在性;机械执行侧
     # CwActionSellDeployedOp 零仲裁零现读,swap_sell_exclusion_reason
     # 单一判定,义务集∪新鲜度排除发射侧同吃)。
-    # 同帧 CwActionLevelUpParam 抑制(m1p_defer_levelup):升级开新 vacancy,下帧
-    # M1′ 以零卖出成本接管——卖出不可逆 > 等一帧。
+    # 同帧 CwActionLevelUpParam 抑制(m1p_defer_levelup):升级开新 vacancy,
+    # 下帧 M1 空槽补位以零卖出成本接管——卖出不可逆 > 等一帧。
+    # (九段全扫发射面下 defer 输入结构性恒空——第 3 步命中即返回,
+    # 升级帧到不了部署步;本 defer 分支 = run_mandate 测试面在册路径。)
     # 发射位门(state_of(session).cw4_m1p_seam_verified):装配两侧(发射⇔执行)
     # 输入对齐核对通过前置 False = 发射关闭、m1p_input_seam_pending 显影
     # (:接线核对通过前不许发射,对齐证据 = 开闸前置义务;

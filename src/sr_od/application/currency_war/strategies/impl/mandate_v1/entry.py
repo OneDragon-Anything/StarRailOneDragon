@@ -91,6 +91,11 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.sell_can
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
 )
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+        LevelUpPreAuth,
+    )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
 
 if TYPE_CHECKING:
@@ -700,6 +705,40 @@ def _step2_ore(session: StrategySession, gs: GameState) -> list[Emitted]:
 # ============================================================ 第 3 步:升级检查
 
 
+def _fallback_legs_ok(session: StrategySession, gs: GameState,
+                      pre: LevelUpPreAuth, name: str) -> bool:
+    """P78-5′ 兜底豁免的两腿必要条件(design 契约 D 升级变现行;
+    review-34 F1 落码):豁免构成 = **义务账 ∨ 对象无损**。
+
+    - 腿①(触发源义务血统维,验臂):``pre.source_arm`` 为骨架义务
+      血统——人口位(02 号稿 §3 M3 义务正文)/ arm0(02 §5 回退)
+      → 豁免成立,funding_hold_fallback 全量消费(对象不验);
+    - 腿②(卖出对象级无损维,验对象非验触发臂):偏好账臂(停留门
+      升级优先臂/概率账 = 优化路径;溢余段-L3 = 20 号稿义务形态但
+      P78-5′ 账性判别上零息损不构成「不做会输」= 偏好账——同走本
+      腿)下被放行对象须持有账 ≈ 0:非核心/非④件(``holds``)∧ 非
+      种子(P78-7 相邻轮回卖封口集)。funding_hold_fallback 兜底池
+      ⊆ hold 核心集(池条件 = holds ∩ A 排除),偏好臂下结构性
+      恒拒——验证照落为防御性腿(兜底池未来扩容非核心资产时腿②
+      自动生效)。臂键缺省 ''(异常/无臂身份)按保守侧走腿②对象验。
+    """
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+        levelup,
+    )
+    if pre.source_arm in (levelup.ARM_POPULATION, levelup.ARM_ARM0):
+        return True    # 腿①:骨架义务血统(授权文号含义务正文)
+    from sr_od.application.currency_war.kernel.cw_card_identity import (
+        sell_hold_exclusion_names,
+    )
+    if name in sell_hold_exclusion_names():
+        return False   # 核心/④件:持有账 > 0,腿②不成立
+    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+        sell_gate,
+    )
+    # 种子(P78-7):相邻轮回卖封口集
+    return name not in sell_gate.seed_exclusions(session, round_num_of(gs))
+
+
 def _bench_liquid_gold(gs: GameState) -> int:
     """攒批资金的活期分量(line_and_upgrade §2.2 攒批口径):备战席
     **非线内 1★ 活期卡**退金合计(1★ 全额退口径)。
@@ -764,6 +803,17 @@ def _levelup_floor_ok(gs: GameState, session: StrategySession,
             and after_gold < saturation_line(cap) \
             and not levelup.terminal_all_in(gs, session):
         return False       # 优化臂息线差额保留(确认前保守侧)
+    # 契约核验(review-34 R4:前提恒真行,纪律接线;失败 = 保守拒)。
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+        contracts,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+        state_of,
+    )
+    if not contracts.ensure_contract(
+            ('levelup', 'guarantee_floor_gate'),
+            contracts.ContractCtx(), state_of(session).cw4_counters):
+        return False
     return levelup.guarantee_floor_gate(gs, session, after_gold, 0, 1, cap)
 
 
@@ -857,15 +907,22 @@ def _step3_level_up(session: StrategySession, gs: GameState,
                 bench_slot_unit,
             )
             u = bench_slot_unit(fallback[0])
-            if u is not None:
+            if u is not None and _fallback_legs_ok(session, gs, pre,
+                                                   str(u.char_id or '')):
                 idx = mandate._bench_container_idx(gs, fallback[0])
                 if idx is not None:
-                    mandate.record_round_sold(session, gs, str(u.char_id or ''))
+                    mandate.record_round_sold(session, gs,
+                                              str(u.char_id or ''))
                     counters['levelup_funding_fallback_sell'] = \
                         counters.get('levelup_funding_fallback_sell', 0) + 1
                     return [Emitted(CwActionSellBenchParam(
                         bench_idx=idx, reason='levelup_liquidate'),
                         True, 'levelup_liquidate_sell')]
+            if u is not None:
+                # 腿拒显影(两腿必要条件不过——偏好账臂变卖有价资产):
+                # 键保留零动作,分键区分「无兜底候选」与「候选被腿拒」。
+                counters['levelup_fallback_leg_reject'] = \
+                    counters.get('levelup_fallback_leg_reject', 0) + 1
         # 候选穷尽(含兜底):键保留至节点末,执行帧不发射——零动作交回
         # 全扫(幂等重评;失效出口 = 节点边界重置清键)。
         counters['levelup_liquidate_exhausted'] = \
@@ -882,17 +939,33 @@ def _step3_level_up(session: StrategySession, gs: GameState,
         counters['levelup_reward_node_defer'] = \
             counters.get('levelup_reward_node_defer', 0) + 1
         return []
+    # 判据契约核验(criteria/contracts.py;review-34 R4 接线:消费位
+    # 经 ensure_contract,前提违例 = 弃权零动作 + 计数,契约纪律不断线)。
     # 等级帽(注册表 level_max 单一源;备战域等级真值每帧观察新鲜,
     # xp_ledger_stop 轮内盲区补位辖 shop 域逻辑态直写窗,此处不合取)。
     from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+        contracts,
+    )
     reg = registry if registry is not None else DEFAULT_REGISTRY
+    if not contracts.ensure_contract(('levelup', 'lv9_stop'),
+                                     contracts.ContractCtx(), counters):
+        return []
     if levelup.lv9_stop(level_of(gs), reg.level_max):
         counters['levelup_reject_level_cap'] = \
             counters.get('levelup_reject_level_cap', 0) + 1
         return []
-    # 五臂判据(line_and_upgrade §2.1 触发源并集)。
+    # 五臂判据(line_and_upgrade §2.1 触发源并集;契约前提 = 人口位板满
+    # 口径等级驱动 cap——消费位现读 max_units_of 传入核验)。
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        max_units_of,
+    )
+    if not contracts.ensure_contract(
+            ('levelup', 'upgrade_trigger'),
+            contracts.ContractCtx(deploy_cap=max_units_of(gs)), counters):
+        return []
     trig, arm_key = levelup.upgrade_trigger(gs, session, reg)
     if not trig:
         return []
@@ -912,11 +985,15 @@ def _step3_level_up(session: StrategySession, gs: GameState,
         st.cw4_must_spend_phase = phase
     zone_hit = (in_must_spend_zone(gold_of(gs), session)
                 or st.cw4_must_spend_phase == phase)
-    if not zone_hit and levelup.level_spend_blocked(gs, session, reg):
-        # P21 危机带让位(域外帧;域内帧 = 溢余花出义务优先)。
-        counters['levelup_crisis_defer'] = \
-            counters.get('levelup_crisis_defer', 0) + 1
-        return []
+    if not zone_hit:
+        if not contracts.ensure_contract(('levelup', 'level_spend_blocked'),
+                                         contracts.ContractCtx(), counters):
+            return []
+        if levelup.level_spend_blocked(gs, session, reg):
+            # P21 危机带让位(域外帧;域内帧 = 溢余花出义务优先)。
+            counters['levelup_crisis_defer'] = \
+                counters.get('levelup_crisis_defer', 0) + 1
+            return []
     # 整级批成本(批大小 = 门槛表差值折击数,P48 整买引理形态)。
     from sr_od.application.currency_war.kernel.cw_economy import (
         clicks_to_next_level,
@@ -955,9 +1032,13 @@ def _step3_level_up(session: StrategySession, gs: GameState,
                else 'levelup_guarantee_floor_defer')
         counters[key] = counters.get(key, 0) + 1
         return []
-    # 攒批资金到位判定(裸金 + bench 非线内 1★ 活期退金 ≥ 批成本)。
+    # 攒批资金到位判定(裸金 + bench 非线内 1★ 活期退金 ≥ 批成本;
+    # P48 整买纪律消费经契约核验)。
     if gold_of(gs) >= batch_cost:
-        if levelup.spend_unified(clicks, gold_of(gs), cost):
+        if contracts.ensure_contract(
+                ('levelup', 'spend_unified'),
+                contracts.ContractCtx(gold=gold_of(gs)), counters) \
+                and levelup.spend_unified(clicks, gold_of(gs), cost):
             # 裸金足:同帧执行帧(P48 整买纪律放行,一次买齐)。
             return [Emitted(CwActionLevelUpParam(
                 cost=int(cost), clicks=clicks, auth_basis=arm_key),
@@ -971,7 +1052,9 @@ def _step3_level_up(session: StrategySession, gs: GameState,
         from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
             LevelUpPreAuth,
         )
-        st.levelup_preauth = LevelUpPreAuth(gold_cost=batch_cost, blood_cost=0)
+        st.levelup_preauth = LevelUpPreAuth(gold_cost=batch_cost,
+                                            blood_cost=0,
+                                            source_arm=arm_key)
         counters['levelup_preauth_issued'] = \
             counters.get('levelup_preauth_issued', 0) + 1
         cands, _why = evaluate_sell_candidates(gs, 'levelup_liquidate_prep')
@@ -1046,13 +1129,15 @@ def _step5_deploy(session: StrategySession, gs: GameState,
     """第 5 步部署调整(prep_pipeline §1 第 5 步;现行部署面整体保留,
     判据本体不改动,仅调用时机移到商店会话之后)。
 
-    结构(判据本体与 run_mandate 部署段同源;第 3 步发射升级动作时
-    M1′ 评估新人口位补部署——升级开新 vacancy,部署面当帧兑现):
+    结构(判据本体与 run_mandate 部署段同源;升级后补部署经**下帧
+    M1 空槽补位结构性收敛**——九段全扫单动作循环下第 3 步命中即
+    emit 返回,升级帧到不了本步;下帧全扫 deploy_vacancy 更新后 M1
+    以零卖出成本接管,「卖出不可逆 > 等一帧」的原语义由该结构承载,
+    不设独立 M1′ 分支):
     - M5 开局配方(开局帧 round_num ≤ 1 ∧ 板空 ∧ bench 有件);
     - M1 空槽凑人数补位(deploy_vacancy > 0;任意合法单位上阵优于空槽,
-      P24 残余补部署);
-    - M1″ 板满换阵补部署(m1p 换血;替补受上阵窗口辖域辖);
-    - M1′ 升级后新人口位补部署(第 3 步发射升级时)。
+      P24 残余补部署——升级开新 vacancy 的补部署也经本臂);
+    - M1″ 板满换阵补部署(m1p 换血;替补受上阵窗口辖域辖)。
 
     上阵窗口辖域(用户裁定 2026-10-12):终局成员在其上线窗口前不上阵
     ——纯终局件谓词 + 窗口判定见 :func:`_deploy_window_blocked`;过渡∩
@@ -1072,9 +1157,11 @@ def _step5_deploy(session: StrategySession, gs: GameState,
             and mandate._deployable(frame, session, gs)):
         _emit_deploy_moves_scoped(out, frame, session, gs,
                                   'm1_deploy', window_scope=True)
-    # M1″ 板满换阵(m1p 换血;up 候选经窗口辖域包装注入;第 3 步升级
-    # 动作为换血推迟判定的输入——升级开新 vacancy,下帧 M1′ 以零卖出
-    # 成本接管,卖出不可逆 > 等一帧)。
+    # M1″ 板满换阵(m1p 换血;up 候选经窗口辖域包装注入)。defer_actions
+    # 输入在九段全扫下单动作循环下结构性恒空(第 3 步命中即 emit 返回,
+    # 升级帧到不了本步)——同帧升级推迟换血的语义由结构承载:升级帧
+    # 第 3 步先行返回 + 下帧 M1 空槽补位以零卖出成本接管(卖出不可逆
+    # > 等一帧)。
     if not any(isinstance(e.action, (CwActionDeployMoveParam,
                                      CwActionSellDeployedParam))
                for e in out):
@@ -1082,13 +1169,6 @@ def _step5_deploy(session: StrategySession, gs: GameState,
             frame, session, gs,
             select_up=_make_windowed_select_up(session, gs),
             defer_actions=step3_actions))
-    # M1′ 升级后补部署(第 3 步发射升级时评估——新人口位增量当帧兑现)。
-    _has_levelup = any(isinstance(e.action, CwActionLevelUpParam)
-                       for e in step3_actions)
-    if _has_levelup and frame.deploy_vacancy > 0 \
-            and mandate._deployable(frame, session, gs):
-        _emit_deploy_moves_scoped(out, frame, session, gs,
-                                  'm1_prime_redeploy', window_scope=True)
     return out
 
 

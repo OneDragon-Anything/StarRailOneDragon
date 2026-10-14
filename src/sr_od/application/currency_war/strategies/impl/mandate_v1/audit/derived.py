@@ -58,11 +58,6 @@ ENTRIES: tuple[DerivedEntry, ...] = (
         # P43 引擎口径 DP 两次求值相减
     ),
     DerivedEntry(
-        'floor_eff', 'statefn.lambda_death.floor_eff',
-        ('statefn.interest.interest_cap_resolved',),
-        # arm2 结构守息门 10×cap_resolved(R8-4;0.1 投影已退役 R26-H1)
-    ),
-    DerivedEntry(
         'delta_interest_flow', 'statefn.horizon.delta_interest_flow',
         ('statefn.interest.INTEREST_CAP_SUP',
          'audit.proof_consts.LAMBDA3_WINDOW'),
