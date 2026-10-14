@@ -1,11 +1,11 @@
-"""敌情注册表(15 号提案 v0;2026-08-16)。
+"""敌情注册表。
 
-**诊断(15 号)**:对手信息「管线已建、资产为零、消费两个散件」—— boss_fit 接缝建成数周
+**诊断**:对手信息「管线已建、资产为零、消费两个散件」—— boss_fit 接缝建成数周
 出口接空表(comp.countered_by_bosses 用俗称「剧目/电视机」,而 state.plane_bosses 是规范
-公司名「造梦兄弟影业」,**名字空间错位 → 永不命中**,task#73 遗留)。本模块 = v0:
+公司名「造梦兄弟影业」,**名字空间错位 → 永不命中**,task#73 的遗留问题)。本模块:
 ①BOSS_NICKNAMES 俗称→规范名映射(打通 boss_fit);
 ②BOSS_MECHANICS 20 boss 机制 tag 注册表(bosses.md 图鉴实采,版本 V4.4);
-③matchup(comp 机制属性 × boss 机制)结构层 —— 可解释 reasons 输出。
+③matchup(阵容机制属性 × boss 机制)结构层 —— 可解释 reasons 输出。
 
 数据来源:docs/game/currency_war/data/bosses.md(游戏内数据银行图鉴 OCR,权威;
 **2026-08-17 重采 20/20 全量**,原始截图 .debug/temp/currency_war/boss_shots_0817/)。
@@ -58,7 +58,7 @@ BOSS_MECHANICS: dict[str, tuple[str, ...]] = {
     '绘师家族产业': ('aoe', 'dot', 'summon'),                     # 怨火灼身DoT高覆盖+吞神子嗣(2026-08-17 采)
 }
 
-# boss 机制 tag → 克/利我方 comp 机制属性(结构层;comp_library.md/competitors.md 攻略句)
+# boss 机制 tag → 克/利我方阵容机制属性(结构层;comp_library.md/competitors.md 攻略句)
 # key=boss tag;counters=克我方属性(我方带此属性 → 打该 boss 减分);synergies=利我方属性。
 BOSS_MECHANIC_NICKS: dict[str, str] = {
     # 俗称→机制 tag 挂钩(俗称已全部定位规范名或确认为小怪,此表只剩非 boss 词缀类)
@@ -124,10 +124,10 @@ def boss_tags(bosses: list[str]) -> tuple[str, str]:
 
 
 def matchup(comp_mechanics: list[str], bosses: list[str]) -> tuple[float, list[str]]:
-    """结构层 matchup:我方 comp 机制属性 × 本局 boss 机制 → (score, reasons)。
+    """结构层 matchup:我方阵容机制属性 × 本局 boss 机制 → (score, reasons)。
 
     score ∈ [0,1],0.5 中性;每条克制 -0.15,每条利好 +0.12(方向先验,E2 待校);
-    reasons 可解释输出(「boss机制×我方属性=克/利」),供日志/复盘/12 号问询卡消费。
+    reasons 可解释输出(「boss机制×我方属性=克/利」),供日志/复盘/问询卡消费。
     空 boss / 无机制 → (0.5, [])(中性,boss_fit None 语义由调用方处理)。
     """
     if not bosses or not comp_mechanics:

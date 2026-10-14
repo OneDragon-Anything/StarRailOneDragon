@@ -15,7 +15,7 @@ from sr_od.application.currency_war.data.cw_chars import (
 THREE_STAR_FIVE_COST_PENDING: str = 'three_star_five_cost_effect_pending_u26'
 
 
-# (planner 升星判据助手已随评估器退役删除:
+# (planner 升星判据助手已停用删除:
 #  判据单一源 = kernel/cw_faction_callbacks 的星级值回调,
 #  每费用档簿记 = ScreenChanges.planner_tiers_fired。)
 

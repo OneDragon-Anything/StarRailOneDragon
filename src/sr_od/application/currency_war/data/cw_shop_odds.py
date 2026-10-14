@@ -11,7 +11,7 @@
 
 **池参数**:
 - a = 每种牌副本数(1/2费=27 可升4星 / 3/4/5费=9 最高3星;均 3 倍数,3合1 决定;权威源 V3.7 必修二,
-  5费=9 与 [NGA tid=45557485](https://bbs.nga.cn/read.php?tid=45557485) 实锤吻合;2026-08-12 用户确认)
+  5费=9 与 [NGA tid=45557485](https://bbs.nga.cn/read.php?tid=45557485) 实测吻合;用户确认)
 - v = 同费用种类数(由角色注册表 CHARACTERS 派生,当前 1费20/2费15/3费14/4费14/5费9;
   单一源 = 本文件 ``DISTINCT_CARDS_PER_COST``,随注册表自动传导)
 - p(level, cost) = 刷新概率(Lv1-10 × 1-5费 权威表,2026-08-11 游戏内"商店刷新概率"实机 OCR,见 REFRESH_PROB;D-91)
@@ -28,12 +28,12 @@ from sr_od.application.currency_war.data.cw_chars import CHARACTERS, chars_by_co
 SHOP_SLOTS: int = 5  # 每次刷新 5 格(不考虑昔涟诗篇)
 
 # a:每种牌的副本数 —— 1/2费=27(可升 4 星:27=3 个 3 星=9×3)、3/4/5费=9(最高 3 星)。均 3 的倍数(3合1 决定)。
-# 权威源:V3.7 必修二。V4.2 银狼档旧口径含非 3 倍数 → 不可信弃用(用户 2026-08-28 最终裁决:异值攻略帖一律讹误勿采)。
-# (5费=9 NGA tid=45557485 实锤吻合;1/2费=27 由「可升 4 星」推出,2026-08-12 用户确认)
+# 权威源:V3.7 必修二。V4.2 银狼档旧口径含非 3 倍数 → 不可信弃用(用户最终裁决:异值攻略帖一律讹误勿采)。
+# (5费=9 NGA tid=45557485 实测吻合;1/2费=27 由「可升 4 星」推出,用户确认)
 POOL_COPIES_PER_CARD: dict[int, int] = {1: 27, 2: 27, 3: 9, 4: 9, 5: 9}
 # v:同费用的种类数 —— 从角色注册表派生(单一真相源;改 CHARACTERS 自动传导,非硬编码)
 # 注:v 口径以本派生为准(CHARACTERS 为单一真相源);外部文章(77124902)的 v 值是
-# 其采集时点的注册表快照,与当前派生不一致时不作对拍基准
+# 其采集时点的注册表快照,与当前派生不一致时不作交叉核对基准
 DISTINCT_CARDS_PER_COST: dict[int, int] = {cost: len(chars_by_cost(cost)) for cost in range(1, 6)}
 
 # 刷新概率 p[level][cost](V4.4 权威,2026-08-11 游戏内"商店刷新概率"表实机 OCR;D-91)
@@ -90,7 +90,7 @@ def boosted_cost_tier(observed: dict[int, float], level: int) -> int | None:
     return None
 
 
-# 轮岗事件概率:生产 20% 决策行(361/1806,replay 2026-08-24 批㉓ F4)带轮岗翻倍
+# 轮岗事件概率:生产 20% 决策行(361/1806,replay 语料统计)带轮岗翻倍
 # 概率条真值 → sim 每备战期以本概率掷轮岗事件(机制 = 投资环境轮岗
 # 每备战阶段随机翻倍一档费用概率,概率条直接印在商店上)。
 ROTATION_CHANCE: float = 0.2
@@ -102,7 +102,7 @@ def rotation_probs(level: int, tier: int) -> dict[int, float] | None:
     模型(与生产 parse_prob_bar 读到的概率条同构,基线某档 ×2):
     - 翻倍档 p' = 2p(锁:轮岗帧的档概率 = 基线×2);
     - 其余档按剩余质量重归一 p' = p·(1−2p)/(1−p)——翻倍档吃掉自己原质量的一倍。
-      实读对拍(lv6 1费翻倍:基线 30/40/25/5 → 实读 60/22/15/3):本模型给
+      实读交叉核对(lv6 1费翻倍:基线 30/40/25/5 → 实读 60/22/15/3):本模型给
       60/22.9/14.3/2.9,与整数百分比实读在舍入邻域内一致。
     - 该档基线 p=0(该等级不出此费)或 2p≥1(无剩余质量可吃,如 lv1-3 纯 1 费)
       → 轮岗不可能落此档,返 None。
@@ -196,7 +196,7 @@ def expected_refreshes_for_card(level: int, cost: int, target_star: int,
 def reencounter_window_frames(level: int, cost: int, held: int = 0) -> float:
     """该卡再遇窗(自然帧)= 1/P(≥1 张/帧)——P77 §1.4「再遇窗 1/q」同式
     (math_proofs/p77-shop-spot-availability-signal.md;消费位 = s_reserve
-    拒绝对价载体,shop.py )。
+    拒绝对价载体,shop.py)。
 
     q = 单次刷新 5 格出现至少 1 张该卡的概率,超几何精确算
     (``_refresh_dist`` k_need=1 的 P(0) 补);held = 已持有该卡基础副本数
@@ -217,14 +217,14 @@ def reencounter_window_frames(level: int, cost: int, held: int = 0) -> float:
 
 def acquirability_factor(core_chars: list[str], level: int,
                          held: dict[str, int] | None = None) -> float:
-    """comp 核心角色的**牌池感知**可得性 [0,1](select_comp 用;牌池模型,补 理论法)。
+    """阵容核心角色的**牌池感知**可得性 [0,1](select_comp 用;牌池模型,补 理论法)。
 
     P(单次刷新 5 格中至少出 1 张该角色)= 1 - P(0 张),用 ``_refresh_dist`` 精确超几何算:
     - P(出该费用)= refresh_prob(level, cost);M~B(5, p) 出该费用格数;
     - 给定 m 格该费用,出该角色 = 超几何(剩余该角色副本 a−j / 同费剩余总副本 v·a−j);
     - **j = 玩家已持有该角色的基础副本数**(1星1/2星3/3星9/4星27,3合1 折算)→ 持有越多,剩余越少,越难再刷
       (牌库有限:买掉即减,用户根因;副本数 27/9)。忽略 NPC 消耗(未知,保守:只扣自己持有的)。
-    comp 取核心角色里**最低**(阵容受最稀卡限制)。
+    阵容取核心角色里**最低**(阵容受最稀卡限制)。
 
     :param held: {char_name: 已持基础副本数 j},默认 None=全 0(早期未持,纯满池理论)。
     :return: [0,1];p=0(该等级不出该费)→ 0;无识别角色 → 1.0(中性不降权)。

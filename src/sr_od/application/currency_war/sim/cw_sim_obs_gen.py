@@ -13,7 +13,7 @@
 battle_wait(战斗结算窗)、补给、投资环境、投资策略、简报、boss 简报、
 位面过渡、遭遇、开箱、巨星、planner。**非金路径屏不出注册表**:
 后端状态机呈现未注册屏时 ``observe`` = :class:`LookupError` 具名响错
-(防静默失真——sim 不会走到的屏出现观察请求 = 接线 bug 或辖域外屏,
+(防静默失真——sim 不会走到的屏出现观察请求 = 接线 bug 或适用范围外屏,
 响亮暴露而非产空产物)。
 
 合成坐标约定:实机观察产物里的点击坐标(x/y 中心等)在 sim 世界无
@@ -144,10 +144,10 @@ def gen_prep(backend: SimBackend) -> CwScreenPrepObs:
 
     - 控制信号(flow-seam §3:状态机已知商店开合与 overlay 呈现态):
       ``shop_open`` = 商店模态在场(状态机真值,观察备战时恒 False——
-      模态在场则档名为开商店,非本生成器辖);``event_overlay`` = overlay
+      模态在场则档名为开商店,非本生成器覆盖);``event_overlay`` = overlay
       呈现态(同理由,备战档在场 = 无 overlay 压顶,恒 None);
       ``substate`` = 备战子态可读性标注(ore / wait_one_one / 常规)。
-    - ``front_occupied``/``back_occupied`` = live 观察链的识别对拍轻
+    - ``front_occupied``/``back_occupied`` = live 观察链的识别交叉核对轻
       字段(方法内即弃消费),sim 产物不挂(零识别面)。
     - ``node_path_chain`` = None 诚实缺位:节点行读 = 实机画面识别域,
       sim 世界无此识别面(链 diff 治理消费面随联调批申报)。
@@ -331,7 +331,7 @@ def observe_screen(backend: SimBackend, screen_name: str) -> object:
     """注册表分派:档名 → 生成器产物经同名上报函数落容器并返回。
 
     未注册档名 = :class:`LookupError` 具名响错(状态机呈现未注册屏 =
-    sim 辖域外/接线 bug,防静默失真;flow-seam §3 锁)。判定基准 =
+    sim 适用范围外/接线 bug,防静默失真;flow-seam §3 锁)。判定基准 =
     注册表键集,非「当前呈现屏匹配」——观察请求与呈现屏错位由流程侧
     visible 门承接(且 wait_one_one 惰性完成会在问询间隙合法翻屏,
     身份断言会误伤)。

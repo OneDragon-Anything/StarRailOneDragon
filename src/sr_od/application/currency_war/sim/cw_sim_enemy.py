@@ -3,14 +3,14 @@
 设计正本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
 (§2.2 敌人侧)第一期口径:
 
-- **M19**:难度账 = 纯派生函数(构成公式已定谳成分直接实现);基础
+- **M19**:难度账 = 纯派生函数(构成公式已定案成分直接实现);基础
   难度逐节点曲线 = 候实机数据(补采前基础分量按 None 披露,禁插值;
-  U25 定稿口径:「局级输入档 + 已定谳修正项」)。已定谳成分:
+  U25 定稿口径:「局级输入档 + 已定案修正项」)。已定案成分:
   - 投资策略品质加成 白0/金3/彩6 每持 1 个(``research/economy.md`` §9);
   - 遭遇等级加成 0/10/20/30(本模块 ``ENCOUNTER_TIER_BONUS``
     同表单一源);
   - 特殊加成:伟大征服 +当前连胜数(注册表 ``difficulty_per_streak``)
-    + 圣杯试炼 +30(定谳数值;激活态随 fate overlay 占位未建模,
+    + 圣杯试炼 +30(已定案数值;激活态随 fate overlay 占位未建模,
     首版恒未激活,披露键申报);
   - 策略静态 Δ(简单模式 −3 等 C 类)与节点型限定(难度修改器:
     遭遇+首领 −4)按注册表 ``difficulty_delta``/``difficulty_node_types``;
@@ -20,8 +20,8 @@
   从 boss 机制注册表全池逐位面采样,``RunConfig.boss_roster_override``
   局级输入优先;普通节点敌人逐只构成不建模(第一期随机输出面无
   消费)。词缀列表 = 局级输入(RunConfig);「开局不利」恒 −20 HP 由
-  M01 ``cw_opening_hp`` 单一承载(词缀采样腿禁再实现任何 HP 类修正,
-  R5 折入定案);词缀对战斗数值面的影响随第一期随机输出面无消费。
+  M01 ``cw_opening_hp`` 单一承载(词缀采样腿禁再实现任何 HP 类修正);
+  词缀对战斗数值面的影响随第一期随机输出面无消费。
 
 随机流键(后端侧装配):boss 逐位面采样 ``M20/boss/{plane}``。
 """
@@ -38,16 +38,16 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     normalize_invest_name,
 )
 
-#: 品质加成表(白0/金3/彩6 每持 1 个;economy.md §9 定谳;银=白档 0)。
+#: 品质加成表(白0/金3/彩6 每持 1 个;economy.md §9 已定案;银=白档 0)。
 QUALITY_DIFFICULTY_BONUS: dict[str, int] = {'银': 0, '金': 3, '棱彩': 6}
 
-#: 遭遇等级加成四档真值(其一0/其二10/其三20/其四30;economy.md §9 定谳;
+#: 遭遇等级加成四档真值(其一0/其二10/其三20/其四30;economy.md §9 已定案;
 #: 归宿 = 难度账域(本模块,与加成消费同域);单一消费面 = 难度派生
 #: ``difficulty_of``——遭遇选项生成面不读本表,档数走 backend
 #: ``encounter_options`` 独立常量)。
 ENCOUNTER_TIER_BONUS: tuple[int, ...] = (0, 10, 20, 30)
 
-#: 圣杯试炼特殊加成真值(economy.md §9 定谳 +30;激活态 = fate overlay
+#: 圣杯试炼特殊加成真值(economy.md §9 已定案 +30;激活态 = fate overlay
 #: 占位面,首版恒未激活——披露键见 :data:`HOLY_GRAIL_PENDING`)。
 HOLY_GRAIL_BONUS: int = 30
 HOLY_GRAIL_PENDING: str = 'holy_grail_activation_pending_u14'
@@ -62,7 +62,7 @@ BOSS_DEDUP_PENDING: str = 'plane_boss_dedup_pending_u02'
 
 @dataclass(frozen=True)
 class DifficultyBreakdown:
-    """难度账分解(定谳成分逐项披露;base None = 基础曲线未采)。"""
+    """难度账分解(已定案成分逐项披露;base None = 基础曲线未采)。"""
 
     #: 基础难度(节点曲线分量;U25 候实机数据,补采前恒 None)
     base: int | None

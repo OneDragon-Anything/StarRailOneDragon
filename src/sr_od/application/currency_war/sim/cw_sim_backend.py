@@ -193,11 +193,11 @@ SCREEN_PLANNER: str = '货币战争-银狼升星'
 #: 战斗窗口呈现屏(sim 结算瞬时完成;战斗等待动画窗属实机时间维)。
 #: 档名取流程消费面 = 「货币战争-结算」(currency_war_settlement.yml,
 #: 「按钮-继续挑战」宿主屏):结算后流程经 CwScreenBattleWait 结算分支
-#: + CwOpSettleConfirm 点击推进(3.4 联调裁决:T-2 初版取
-#: 「货币战争-战斗结算」与流程消费锚错位,推进链不可达)。
+#: + CwOpSettleConfirm 点击推进(档名 = 流程消费锚;错位则
+#: 推进链不可达)。
 SCREEN_SETTLE: str = '货币战争-结算'
-#: 局终呈现屏(done 后终态;死亡/第一期辖域尽头两源共用)。呈现即可达
-#: 流程终局链(CwScreenBattleWait ③B terminal_lobby → 主循环 3c 收口)。
+#: 局终呈现屏(done 后终态;死亡/第一期适用范围尽头两源共用)。呈现即可达
+#: 流程终局链(CwScreenBattleWait ③B terminal_lobby → 主循环 3c 收尾)。
 #: 非金路径档名(无生成器):呈现 ≠ 观察,observe 该档名按未注册响错。
 SCREEN_LOBBY: str = '货币战争-大厅'
 
@@ -247,7 +247,7 @@ def apply_round_start_income(gs: GameState, *, plane: int, round_num: int,
 
     - ``streak`` = 收入侧无符号连胜计数(进轮连胜;派生读 = 容器带符号
       取 ``max(signed, 0)``,禁第二账);
-    - ``pending_loss`` = 上一败掉的战斗类节点引用(单挂账,容器
+    - ``pending_loss`` = 上一败掉的战斗类节点引用(单条登记的待办,容器
       ``gs.pending_loss``):非 supply/reward 节点传入触发 kernel 败补支
       (U04 口径);supply/reward 轮不传(败态跨轮保留,仅下一战斗轮
       消费——与 kernel 分支序一致);消费后清回 None 由调用方负责。
@@ -402,7 +402,7 @@ def deal_shop(gs: GameState, rng: random.Random, *, level: int,
 
 
 #: 策略 offer 固定日程(U07① 已裁决;(plane, round_num) 对;P3r2 随
-#: P3 辖域自然延后生效)。
+#: P3 适用范围自然延后生效)。
 INVEST_OFFER_SCHEDULE: tuple[tuple[int, int], ...] = ((1, 3), (2, 2), (3, 2))
 
 #: 联席决策环境注册表规范名(id122;效果原文「在2-6节点进行一次额外的
@@ -499,11 +499,11 @@ def quality_rewrite_hit(active_env: str | None) -> bool:
 
 
 # ============================================================ 节点事件件
-# (选项生成保留;apply_*_pick 动作腿退役——
+# (选项生成保留;apply_*_pick 动作腿停用——
 #  pick 动作走 op → 上报函数族获得链,与实机同构。)
 
 
-#: 遭遇档位数(U22 占位:实机四档旁证 + 加成表四档定谳)。
+#: 遭遇档位数(U22 占位:实机四档旁证 + 加成表四档已定案)。
 ENCOUNTER_TIER_COUNT: int = 4
 
 #: 遭遇奖励包金占位(U22)。
@@ -621,7 +621,7 @@ def supply_options(rng: random.Random,
 
 # ============================================================ 披露键群
 # (恒在册声明面,随局结果 unmodeled 输出;装备三键键义
-#  ——动作腿退役后不变:发放空表/特权投影仪/炉拖角色模式仍未建模。)
+#  ——动作腿停用后不变:发放空表/特权投影仪/炉拖角色模式仍未建模。)
 
 #: 环境结构化经济通道披露键(M02:两位面金通道已结构化,其余候效果批)。
 DISCLOSURE_ENV_CHANNELS: str = 'env_economy_channels_pending_m02'
@@ -710,8 +710,8 @@ class SimRunResult:
 
 # ============================================================ 声明驱动推进
 # (动作后果声明 WorldDecl 的 advance 分派;设计件 = 动作后果声明化迭代
-#  总纲 design.md §2.2 契约 5 + 详设 details/world-decl.md §3。与现行
-#  转移事件分派并存至退役批:单动作单轨,advance 只承载已迁移动作的
+#  总纲 design.md §2.2 契约 5 + 详设 details/world-decl.md §3。转移事件
+#  分派已停用:单动作单轨,advance 只承载已迁移动作的
 #  trigger,同一动作任一时刻只有一条驱动路径。)
 
 #: advance 分派表键集(``trigger`` 封闭集代码单一源;权威表 = 详设
@@ -735,8 +735,8 @@ RECONCILE_EXEMPT_KINDS: frozenset[str] = frozenset({
     'overlay_pending', 'offer_presented', 'window_resume_pending',
 })
 
-#: 对账漂移留证的 disclosures 键(声明与状态机画面漂移早期警报;值 =
-#: 漂移明细串列表,缺陷留证不停机)。
+#: 对账漂移保留证据的 disclosures 键(声明与状态机画面漂移早期警报;值 =
+#: 漂移明细串列表,缺陷保留证据不停机)。
 DECL_SCREEN_DRIFT: str = 'decl_screen_drift'
 
 
@@ -778,7 +778,7 @@ class SimBackend:
     #: 节点窗起新发牌自然覆盖(整店锁跳过发牌 = 牌面跨节点保留,同语义)。
     _shop_record: ShopPayload | None = field(init=False, default=None)
     # (私有 overlay 队列与评估器簿记三件[队列/一次性标志/银狼星基线/
-    #  巨星水位]已退役删除:sim 呈现数据源 =
+    #  巨星水位]已停用:sim 呈现数据源 =
     #  容器登记 gs.screen_changes.pending,判据簿记 = ScreenChanges
     #  sidecar,呈现检查 = 问询时点[screen_identity] + advance 尾。)
     #: 武装箱待授予候选下标(装备卡点击源记录;pick_box_card 落地消费)。
@@ -791,7 +791,7 @@ class SimBackend:
     _settled_key: tuple[int, int] | None = field(init=False, default=None)
     #: 已进窗的节点序位(节点推进重入幂等守卫;None = 尚无)。
     _entered_pos: NodePos | None = field(init=False, default=None)
-    #: 已收口节点窗口的节点序位(None = 尚无;窗口前段幂等守卫,
+    #: 已收尾节点窗口的节点序位(None = 尚无;窗口前段幂等守卫,
     #: :meth:`_begin_node_window`)。
     _window_begun_pos: NodePos | None = field(init=False, default=None)
     #: 扑满节点递延收入快照(None = 非扑满窗或已落账):统一公式
@@ -853,7 +853,7 @@ class SimBackend:
     def screen_identity(self) -> str:
         """当前画面 screen_info 档名(状态机唯一答口)。
 
-        问询时点呈现检查(事实事件槽退役后的
+        问询时点呈现检查(事实事件槽停用后的
         sim 懒呈现位):答身份前先查容器登记 pending——动作上报内已
         register 的条目在此压上模态(等价实机「动作落地即弹」,时点 =
         宿主交回后的首次身份问询)。呈现门/消费披露族语义同
@@ -1013,7 +1013,7 @@ class SimBackend:
         if payload is not None:
             self._shop_record = payload
 
-    # (事实事件订阅入口已随事实事件槽退役删除:
+    # (事实事件订阅入口已停用删除:
     #  懒呈现位 = screen_identity 问询时点检查;板面真值观察 =
     #  advance 步界 _observe_board_truth。)
 
@@ -1071,8 +1071,8 @@ class SimBackend:
             self._on_invest_picked(opening=False)
         elif decl.trigger == '':
             # 纯转移(详设 §3 '' 行):统一幂等交回
-            #(底层稳态由 _reconcile_next_screen 对账)。原专家邀请函档
-            # 特判呈现随 声明改底层屏退役——专家画面的出现事实由
+            #(底层稳态由 _reconcile_next_screen 对账)。专家邀请函档
+            # 特判呈现已停用(声明改底层屏)——专家画面的出现事实由
             # 登记(kind = expert_invite,open_bookcard 上报内 register)
             # 承载,呈现走本分支尾的 pending 呈现检查。
             self._dismiss_modal()
@@ -1091,7 +1091,7 @@ class SimBackend:
         最上层呈现屏 ≠ 底层稳态画面属建模内合法形态,断言延后至稳态;
         ''= 稳态可判)。overlay_trigger 3.4:overlay_pending 检查改读容器
         登记 ``gs.screen_changes.pending``(呈现数据源已迁,旧私有队列
-        呈现面随 3.5 退役)。"""
+        呈现面已停用)。"""
         if self.gs.screen_changes.pending:
             return 'overlay_pending'
         if self._screen == SCREEN_INVEST_STRATEGY:
@@ -1102,10 +1102,10 @@ class SimBackend:
 
     def _drain_pending_reconciles(self) -> None:
         """消费延后对账队列(advance 入口;已入稳态 = 逐声明补验等值,
-        失配留证后一并清空——每声明对账一次,不重复告警)。仍在豁免
+        失配保留证据后一并清空——每声明对账一次,不重复告警)。仍在豁免
         场景 = 继续延后;**世界已推进过下一节点窗**(进窗序位 ≠ 延后
         时点)= 断言时机已过,静默丢弃(预测的落点屏已被后续窗口替代,
-        留证只会误报——sim 流程结算驻留快进形态常见)。"""
+        保留证据只会误报——sim 流程结算驻留快进形态常见)。"""
         if not self._pending_reconcile or self._reconcile_exempt_reason():
             return
         for entered_pos, decl in self._pending_reconcile:
@@ -1116,7 +1116,7 @@ class SimBackend:
         self._pending_reconcile.clear()
 
     def _record_decl_drift(self, decl: WorldDecl, actual: str) -> None:
-        """声明与状态机画面漂移留证(详设 §3 对账面;缺陷留证不停机,
+        """声明与状态机画面漂移保留证据(详设 §3 对账面;缺陷保留证据不停机,
         早期警报面 = :attr:`disclosures`)。"""
         self.disclosures.setdefault(DECL_SCREEN_DRIFT, []).append(
             f'{decl.trigger or "<pure>"}|{decl.next_screen or "<end>"}'
@@ -1132,7 +1132,7 @@ class SimBackend:
         :meth:`_drain_pending_reconciles` 补验。局终双载体:``done`` 世界
         呈现恒 = 大厅(:meth:`_game_over`,声明预测已失效只锁载体);
         ``next_screen=''`` 预测局终而世界未终局 = 漂移。断言不等且不在
-        豁免集 = 缺陷留证(:data:`DECL_SCREEN_DRIFT`)不停机——声明与
+        豁免集 = 缺陷保留证据(:data:`DECL_SCREEN_DRIFT`)不停机——声明与
         状态机漂移的早期警报。
         """
         if self.done:
@@ -1155,7 +1155,7 @@ class SimBackend:
     def _on_node_advance(self) -> None:
         """节点推进(终结动作上报触发;kernel report_node_advance 已做
         观察态门与同序位去重,本层再守序位 = 转移事件重入幂等)。键表示
-        下不存在越界序位——旧「eff 超真值表总长局终分支」随编号退役,局终
+        下不存在越界序位——eff 超真值表总长的局终分支已停用,局终
         = kernel 终局事件式声明,走 :meth:`_on_node_advance_terminal`。"""
         eff = effective_node_pos(self.gs)
         if eff is None or (self._entered_pos is not None
@@ -1173,7 +1173,7 @@ class SimBackend:
         kernel 终局事件式声明的世界消费——XP 入账(被离开节点类型,与
         现行局终前入账同序)+ P3 未观测披露(键值 enter_p3_game_over_u19
         为在册遥测身份,历史越界序编号字样豁免改键)+ 终局。此后
-        :meth:`_reconcile_next_screen` 走 done=True ∧ decl='' 合格臂,
+        :meth:`_reconcile_next_screen` 走 done=True ∧ decl='' 合格分支,
         漂移面零新增。"""
         prev = self.gs.node.value
         if prev is not None:
@@ -1243,7 +1243,7 @@ class SimBackend:
     def _on_overlay_picked(self, kind: str) -> None:
         """overlay 选定落地(模态交回 + 呈现检查):效果腿归各自上报/
         效果批,本层零效果。原私有队列出队腿
-        退役——呈现数据源 = ``gs.screen_changes.pending``,消费 = 选卡
+        停用——呈现数据源 = ``gs.screen_changes.pending``,消费 = 选卡
         上报内 ``consume_screen_change``(两世界同一行代码,register-
         consume.md「sim 消费」),本层不重复出队。
         """
@@ -1294,7 +1294,7 @@ class SimBackend:
 
     def _present_pending_overlay(self, fortune_base: str | None = None) -> None:
         """overlay 呈现检查(数据源 = 容器登记
-        ``gs.screen_changes.pending``,旧私有队列呈现面退役——
+        ``gs.screen_changes.pending``,旧私有队列呈现面已停用——
         队列本体随评估器归 3.5 清扫;呈现时机不变 = advance/步界检查)。
 
         ``fortune_base`` = fortune 呈现门的底层判据屏(缺省 = 当前
@@ -1308,7 +1308,7 @@ class SimBackend:
         - planner:模态(选项桶实机 OCR 写点,sim 生成器批接线);
         - box_card/expert_invite:open_box/open_bookcard 的 advance 分派
           已呈现对应模态(候选写入在各自过程),本检查幂等守卫;
-        - fortune:**逐 kind 呈现门**——仅底层 = 备战时收口消费
+        - fortune:**逐 kind 呈现门**——仅底层 = 备战时收尾消费
           (用户确认:下一节点非备战时推迟,选完进备战
           先弹,不压补给/遭遇屏);底层非备战 = 条目存活等待;
         - aha/partner/fortune(备战底层时)/wish_trial/star_tome:无
@@ -1385,7 +1385,7 @@ class SimBackend:
 
     def _enter_node_window(self, pos: NodePos) -> None:
         """进节点(输入即键;序列平移:写 gs.node + 节点序位观察锚定;
-        位面首 = 位面过渡屏,其余序列在 _begin_node_window 收口)。"""
+        位面首 = 位面过渡屏,其余序列在 _begin_node_window 收尾)。"""
         seq = node_sequence_of(pos[0], self.gs.node_seq_by_plane.value)
         kind = seq[pos[1] - 1]
         self.gs.observe(self.gs.node,
@@ -1399,7 +1399,7 @@ class SimBackend:
                             actor='SimBackend')
         self._window_resume = ''
         if pos[0] > 1 and pos[1] == 1:
-            # 位面过渡(U20:全继承无重置;点空白后收口节点窗口)
+            # 位面过渡(U20:全继承无重置;点空白后收尾节点窗口)
             self._screen = SCREEN_PLANE_TRANSITION
             self._sub = ''
             return
@@ -1414,11 +1414,11 @@ class SimBackend:
 
     def _begin_node_window(self) -> None:
         """节点窗口序列(收入 → 环境金 → 商店全刷 → overlay → offer →
-        节点屏呈现;位面过渡点空白与直进节点共用本收口)。
+        节点屏呈现;位面过渡点空白与直进节点共用本收尾)。
 
         幂等守卫(3.4 联调裁决①):窗口前段(轮首收入/环境金/发牌)对
         同一节点只执行一次——位面过渡点击重放(同点位二次 click_answer)
-        会二次进入本收口,无双发守卫则窗口前段收入/发牌双写(发牌覆盖
+        会二次进入本收尾,无双发守卫则窗口前段收入/发牌双写(发牌覆盖
         同值无感、收入是真双账)。守卫键 = 节点序位 (位面,轮)。"""
         plane, r = self._node_pos()
         pos_key: NodePos = (plane, r)
@@ -1426,7 +1426,7 @@ class SimBackend:
             return
         self._window_begun_pos = pos_key
         kind = node_sequence_of(plane, self.gs.node_seq_by_plane.value)[r - 1]
-        # 轮首收入(M04;败补挂账按 kernel 分支序消费——supply/reward
+        # 轮首收入(M04;败局补偿登记待办按 kernel 分支序消费——supply/reward
         # 轮不消费,败态跨轮保留至下一战斗轮;连胜 = 容器带符号派生读)
         pending = self.gs.pending_loss.value
         if is_piggy_node(self.gs):
@@ -1449,7 +1449,7 @@ class SimBackend:
         # 入账),其余环境保留直发通道(通道留置)。
         self._apply_env_plane_start(plane)
         # 环境定时道具到点发放(迭代 2026-09-24-scheduled-env-gifts
-        # design §2.4):本收口在窗口幂等守卫内,且位面过渡点空白与直进
+        # design §2.4):本收尾在窗口幂等守卫内,且位面过渡点空白与直进
         # 节点共用——「第 N 位面开始时」类发放即落在该位面 1 号节点窗
         # 打开时点(位面过渡屏被点掉时),窗口重放不双发;环境发放为
         # 确定发放 → rand=False(gain-chain.md §5),组名沿 sim:env 与
@@ -1473,7 +1473,7 @@ class SimBackend:
         # 呈现门判**目标底层**(节点窗起点即将呈现的屏)而非当前
         # _screen——窗起点时 _screen 仍是旧结算屏(判当前则门恒
         # continue 吞掉后续呈现,resume 悬挂);battle/reward 目标 =
-        # 备战(fortune 收口),supply/遭遇 = 节点屏(条目存活)。
+        # 备战(fortune 收尾),supply/遭遇 = 节点屏(条目存活)。
         # resume='offer' 仅在实际压上模态时置(纯门存活零呈现 = 不置,
         # 防无模态消费掉 resume 位);offer 槽屏(模态)在场 = overlay
         # 推迟到选卡后(present 幂等序:overlay 优先,offer 恢复查)。
@@ -1660,7 +1660,7 @@ class SimBackend:
         if dead:
             self._game_over()
             return
-        # 连胜转移(M15:容器带符号;败态挂账 M04,消费归下一战斗轮轮首)
+        # 连胜转移(M15:容器带符号;败局待办登记 M04,消费归下一战斗轮轮首)
         won = outcome.won
         piggy = is_piggy_node(self.gs)
         if self._piggy_income_snap is not None:
@@ -1709,7 +1709,7 @@ class SimBackend:
         self._screen = SCREEN_SETTLE
         self._sub = ''
 
-    # (巨星/planner 触发评估器与银狼全域星基线已随#  退役删除:判据 = 容器值回调[cw_faction_callbacks],簿记 =
+    # (巨星/planner 触发评估器与银狼全域星基线已停用:判据 = 容器值回调[cw_faction_callbacks],簿记 =
     #  ScreenChanges sidecar,呈现 = pending 检查。)
 
     # ---------------------------------------------------------- 板面真值观察
@@ -1724,7 +1724,7 @@ class SimBackend:
         全域写路径现均经 write_logic(装备穿戴腿含)使派生挂钩常态
         覆盖,本观察的漂移覆盖职责当前为防御性(基座首读为主要现役
         职能)。失配经容器吸收面(``_absorb_board_derived``,sim 证据
-        前缀命中抑制面)观察赢采新。触发点 = advance 步界(等值零写
+        前缀命中抑制面)以实际观察为准采新。触发点 = advance 步界(等值零写
         幂等,sim 板面观察的唯一步界)。"""
         truth: dict[str, int] = {}
         _view = self.gs.deployed.value
@@ -1746,9 +1746,9 @@ class SimBackend:
     # ---------------------------------------------------------- 局结果面
 
     def _game_over(self) -> None:
-        """局终(死亡/第一期辖域尽头;重入安全)。终态呈现 = 大厅屏:
+        """局终(死亡/第一期适用范围尽头;重入安全)。终态呈现 = 大厅屏:
         流程经 CwScreenBattleWait 终局锚(③B terminal_lobby)→ 主循环
-        3c 收口,与实机「终局结算 → 返回货币战争 → 大厅」的消费链同形
+        3c 收尾,与实机「终局结算 → 返回货币战争 → 大厅」的消费链同形
         (sim 结算瞬时,直达终点)。"""
         self.done = True
         self._screen = SCREEN_LOBBY
@@ -1786,7 +1786,7 @@ def install_backend(backend: SimBackend) -> None:
     调用方(运行器/测试)负责 teardown 必卸(:func:`uninstall_backend`);
     端口槽单装配纪律由 ``cw_sim_ports`` 锁(重复安装 raise)。
 
-    动作腿 rng 注入(3.4 联调接线;T-2 偏差申报的归属点):流程侧动作
+    动作腿 rng 注入(3.4 联调接线;偏差申报的归属点):流程侧动作
     op → 上报函数族的采样腿(rng=None 回退)经
     ``cw_action_report.set_action_rng_provider`` 拿流键 rng——键形
     ``action/<tool>/<序号>``,序号 = 本装配内调用序(动作序列确定性

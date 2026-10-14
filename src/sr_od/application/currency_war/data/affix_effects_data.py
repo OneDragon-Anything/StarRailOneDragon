@@ -7,7 +7,7 @@
 → **下轮启动重新 import 生效**。人工也可直接编辑本文件(校准/补全)。
 
 格式 = ``AFFIX_EFFECTS: dict[str, str] = {...}``(json 兼容,双引号)。词缀分类见 competitors.md。
-mechanics_fit 接线(词缀→tag→comp 克制评分)已在 cw_comps.AFFIX_MECHANIC_MAP + MECHANIC_COUNTERS/SYNERGIES
+mechanics_fit 接线(词缀→tag→阵容克制评分)已在 cw_comps.AFFIX_MECHANIC_MAP + MECHANIC_COUNTERS/SYNERGIES
 落地(接 ``comp_score`` W_MECH);本文件只采 effect 原文(ground truth,不参策略)。
 """
 from __future__ import annotations

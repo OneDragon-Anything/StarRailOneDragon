@@ -2,10 +2,10 @@
 # 重跑: uv run python tools/cw/gen_plaza_comps.py
 # 同源产物(人读版,COMP_LIBRARY 手判层校准用): docs/game/currency_war/data/plaza_meta.md
 # 手判层(勿混): src/sr_od/application/currency_war/kernel/cw_comps.py COMP_LIBRARY(strength/form_difficulty/level_plan)。
-"""货币战争 plaza 实战 comp 统计(高难玩家帖聚合,gen_plaza_comps.py 生成)。
+"""货币战争 plaza 实战阵容统计(高难玩家帖聚合,gen_plaza_comps.py 生成)。
 
 784 篇 V4.4 高难帖(v4.4 + 非KOL沙盒 + 未过期过滤),按 Final 阶段 carry 聚类 29 个(n≥5)。
-频次字段语义:X×N = N 篇帖中出现;star3_by_cost = carry 费用档 3 星率(客观频次,仅校准对拍用——费用档星目标启发式已废弃,星目标只认成型档显式要求)。
+频次字段语义:X×N = N 篇帖中出现;star3_by_cost = carry 费用档 3 星率(客观频次,仅校准交叉核对用——费用档星目标启发式已废弃,星目标只认成型档显式要求)。
 装备只记 Final 阶段(编辑器 UI 限制,非玩法事实——目标套装);合成时序看 PLAZA_GLOBAL["craft_first"]。
 """
 from __future__ import annotations
@@ -19,7 +19,7 @@ class PlazaCarryCluster:
     carry: str
     n_posts: int
     total_use: int                       # 被使用次数合计(可信度权重;头部帖才有计数)
-    carry_star3_rate: float              # carry 终局 3 星率(客观频次,校准对拍用;不作星目标决策输入)
+    carry_star3_rate: float              # carry 终局 3 星率(客观频次,校准交叉核对用;不作星目标决策输入)
     traits: tuple[tuple[str, int], ...]      # Final 激活羁绊频次(核心+次要混排)
     units: tuple[tuple[str, int], ...]       # 常驻角色频次(不含 carry)
     carry_equips: tuple[tuple[str, int], ...]  # carry 装备频次(Final 目标套装)

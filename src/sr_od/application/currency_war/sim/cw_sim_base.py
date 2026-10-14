@@ -7,7 +7,7 @@
 
 evidence 前缀 = ``sim:engine:``:与旧引擎同前缀契约——该前缀在容器
 ``_MISMATCH_SUPPRESS_PREFIXES`` 登记为失配抑制面,内核零改动即可复用
-(契约平移,考古归 git)。
+(契约平移)。
 """
 from __future__ import annotations
 

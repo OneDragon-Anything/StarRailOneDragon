@@ -10,7 +10,7 @@
 - **无 sim 呈现面族**(画面 op 无 sim 观察腿)消费 + 披露,
   披露键 = 本模块 ``OVERLAY_PARAM_PENDING`` 逐 kind 后缀。
 
-(旧统一队列与占位框架已整体退役,考古走 git;呈现/判据/词表单一源见上。)
+(旧统一队列与占位框架已整体停用;呈现/判据/词表单一源见上。)
 """
 from __future__ import annotations
 

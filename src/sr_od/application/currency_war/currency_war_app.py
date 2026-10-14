@@ -31,17 +31,17 @@ from sr_od.application.currency_war.telemetry import defects, state
 from sr_od.application.sr_application import SrApplication
 from sr_od.context.sr_context import SrContext
 
-# [停机钩子·常驻兜底,统一观察对账迭代 2026-09-16 §2.4;2026-09-16 框架化]
+# [停机钩子·常驻兜底;设计 = 统一观察对账迭代设计 §2.4]
 # 触发:GameState.observe() 观察覆盖 logic 值失配(逻辑态被实读证伪),
-# 未命中豁免注册表 → stop_running(框架截图留证 + [stop] 日志行)。
-# flag 文件与每局闩退役:事实载体 = 日志 + 缺陷台账行;stop_running 幂等
-# + was_live 截图门天然防重复,闭包不再需要自维护闩。
+# 未命中豁免注册表 → stop_running(框架截图保留证据 + [stop] 日志行)。
+# flag 文件与每局标志停用:事实载体 = 日志 + 缺陷台账行;stop_running 幂等
+# + was_live 截图门天然防重复,闭包不再需要自维护标志。
 
 
 def _build_reconcile_andon(ctx: SrContext) -> Callable[[dict], None]:
-    """构造统一观察对账安灯闭包(装配段专用;模块级函数便于离线单测)。
+    """构造统一观察对账失配告警闭包(装配段专用;模块级函数便于离线单测)。
 
-    处置壳 = stop_running 一行(2026-09-16 框架化):截图留证由框架
+    处置壳 = stop_running 一行:截图保留证据由框架
     ``stop_running(save_screenshot=True)`` 承担,事实载体 = [stop] 日志行 +
     缺陷台账行(kernel 侧 _emit_defect 已落)。真失配 = 逻辑态被实读证伪
     = bug,停机现场修推算代码(处置协议归 guards.md / game_state README)。
@@ -60,7 +60,7 @@ class CurrencyWarApp(SrApplication):
     大世界 → 货币战争大厅(`CwEntryEnter`)→ 开始对局到备战(`CwEntryStart`)
     → 对局循环到结束(`CwLoop`:备战 买/升等级/deploy/出战 + 多类事件 + 结算回大厅)。
 
-    **中间态接手(,2026-08-04)**:app 不再总从大世界线性起 —— 各入口 op 先检测当前态,
+    **中间态接手**:app 不再总从大世界线性起 —— 各入口 op 先检测当前态,
     已在 CW(大厅/对局中)就跳过 enter/start、直接进 loop。故 bot crash/重启/手动接管后,
     从任何态(大世界 / 大厅 / 备战 / 事件 / 战斗 / 结算)重跑 app 都能 resume,不卡 entry。
 
@@ -74,13 +74,13 @@ class CurrencyWarApp(SrApplication):
     _IN_MATCH_KEYWORDS: ClassVar[tuple[str, ...]] = (
         '购买经验', '备战阶段', '投资策略', '投资环境', '补给阶段',
         '遭遇其一', '盛会之星', '出战', '挑战结束', '挑战成功', '请选择投资',
-        '总伤害', '敌方行动中', '我方行动中',  # 战斗屏(对局中,防 _in_match 漏判 → 重进大厅卡,2026-08-12)
-        '武装箱',  # 节点武装箱弹窗(盖底层屏,OCR 只见弹窗文字;M19 停机重启曾漏判 → 误走 enter 链「返回普通大世界」连点关掉弹窗,2026-08-15)。族名关键词:简易/特权弹窗标题同命中(lcs_percent=0.8 下 LCS(武装箱,标题)=3 ≥ 3×0.8)
-        '星徽秘典', '返回投资策略选择',   # 星徽秘典道具详情弹窗(盖投资策略/备战,M34 实锤:OCR 只见弹窗文字 → _in_match 漏判 → enter 链循环点右上角[overlay 的返回位]8min);返回投资策略选择=备战屏对局中独有右上按钮
-        '挑战失败',   # 挑战失败终局结算屏(对局评价/下一步;M42 实锤 2026-08-16:M41 战败后 app 重启,_in_match 漏判 → 误走 enter 链「返回普通大世界」循环点右上角;loop 3b「返回货币战争」同收局)
+        '总伤害', '敌方行动中', '我方行动中',  # 战斗屏(对局中,防 _in_match 漏判 → 重进大厅卡)
+        '武装箱',  # 节点武装箱弹窗(盖底层屏,OCR 只见弹窗文字;M19:停机重启后 _in_match 漏判 → 误走 enter 链「返回普通大世界」连点关掉弹窗)。族名关键词:简易/特权弹窗标题同命中(lcs_percent=0.8 下 LCS(武装箱,标题)=3 ≥ 3×0.8)
+        '星徽秘典', '返回投资策略选择',   # 星徽秘典道具详情弹窗(盖投资策略/备战,M34 已实测确认:OCR 只见弹窗文字 → _in_match 漏判 → enter 链循环点右上角[overlay 的返回位]8min);返回投资策略选择=备战屏对局中独有右上按钮
+        '挑战失败',   # 挑战失败终局结算屏(对局评价/下一步;M42 已实测确认:M41 战败后 app 重启,_in_match 漏判 → 误走 enter 链「返回普通大世界」循环点右上角;loop 3b「返回货币战争」同收局)
     )
 
-    # ⚖️ 治本(2026-08-17,M19/M34/M42 关键词补丁链的结构替代):对局中态检测升级为
+    # ⚖️ 治本(M19/M34/M42 关键词补丁的结构性替代):对局中态检测升级为
     # **screen_info 画面匹配**(货币战争- 前缀 − 大厅态白名单)——新对局画面建档即自动生效,
     # 不再靠事后补关键词(每漏一个新屏 = enter 链「返回普通大世界」死循环 ~8min)。
     # 关键词保留为 fallback(id_mark 未全中的半开/过渡帧)。
@@ -103,30 +103,30 @@ class CurrencyWarApp(SrApplication):
         return cw_screen_state.in_match_screen_names(screen_info_list)
 
     def __init__(self, ctx: SrContext):
-        # 分包期 4 出口钩子武装(幂等):kernel/obs/decision 三桶的 telemetry
+        # 出口钩子武装(幂等):kernel/obs/decision 三桶的 telemetry
         # 上行出口(落账/run_id 归属键)经 kernel/cw_telemetry_exit 钩子位
         # 转发,缺省关;生产在此接通。
         defects.install_exit_hooks()
-        # 分包期 5 obs 读口注入(幂等):decision/kernel 桶禁直依 obs,新局弃置
+        # obs 读口注入(幂等):decision/kernel 桶禁直依 obs,新局弃置
         # 残留容器时的 obs last-known-good 缓存清理与对账合成特效帧态门
         # (kernel/cw_reconcile)经 decision_assembly 装配点接通
         # (缺省关=跳过缓存清理/门放行;session 全量重建承担状态隔离)。
         from sr_od.application.currency_war.decision_assembly import install_obs_ports
         install_obs_ports()
-        # R1 统一 state 状态流水武装(幂等):删除波 1(用户 2026-09-10 直迁
-        # 裁定「journal 无条件常开,无 state_journal flag」)后装配段无条件
-        # 武装——旧 12 流中收编 9 流的写入端已删,journal 是流程侧唯一落盘流。
+        # 统一 state 状态流水武装(幂等):用户裁定 journal 无条件常开(无
+        # state_journal flag),装配段无条件武装——旧 12 流中 9 流已并入
+        # journal(旧写入端已删),journal 是流程侧唯一落盘流。
         # run 归属读取函数在此注入(kernel 禁依 telemetry,依赖倒置;同
         # 出口钩子的装配点显式接通纪律)。
         from sr_od.application.currency_war.kernel.cw_state_journal import (
             install_state_telemetry,
         )
         install_state_telemetry(run_id_provider=state.current_run_id)
-        # 统一观察对账安灯武装(幂等;迭代 2026-09-16-unified-obs-reconcile
-        # §2.4;2026-09-16 框架化:处置壳 = stop_running 一行,截图归框架):
+        # 统一观察对账失配告警武装(幂等;设计 = 迭代 2026-09-16-unified-obs-reconcile
+        # §2.4;处置壳 = stop_running 一行,截图归框架):
         # 真失配缺陷行 → 停机;kernel 槽缺省关,生产在此与出口钩子同点接通。
         set_reconcile_andon_hook(_build_reconcile_andon(ctx))
-        # obs_event 收编制 GameState 供给(kernel 禁自寻会话;观察冲突证据
+        # obs_event 并入 GameState 供给(kernel 禁自寻会话;观察冲突证据
         # 行型 2 的宿主供给,与 run_id provider 同点注入)。
         from sr_od.application.currency_war.kernel import cw_telemetry_exit
         from sr_od.application.currency_war.kernel.cw_game_state import (

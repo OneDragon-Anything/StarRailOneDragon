@@ -1,9 +1,9 @@
-"""货币战争 过渡引擎体系注册事实(自 kernel 死刑判据文件迁入的权威副本)。
+"""货币战争 过渡引擎体系注册事实(知识层权威副本)。
 
-迁入出处:`docs/develop/currency_war/archive/redesign/03_legacy_cleanup_plan.md` 批 0
-第 1/5 项——telemetry/schema 与 kernel/cw_battle_calib 消费的**数据半部**
-符号(TRANSITION_TRAITS 注册数据 + engines_count 机制事实判据)迁出
-cw_deploy_logic(部署决策半部,处死计划批 3 处死)。
+符号出处:`docs/develop/currency_war/archive/redesign/03_legacy_cleanup_plan.md`
+——telemetry/schema 与 kernel/cw_battle_calib 消费的**数据半部**
+符号(TRANSITION_TRAITS 注册数据 + engines_count 机制事实判据)自
+cw_deploy_logic 迁出(该文件的部署决策半部已按处死计划删除)。
 
 engines_count 是机制事实判据(transition_combos.md 2026-08-23 定稿口径:
 四体系两两组合=过渡成型),输入 board 计数输出体系达成数,无 ctx/无拍值,
@@ -11,8 +11,8 @@ engines_count 是机制事实判据(transition_combos.md 2026-08-23 定稿口径
 
 零漂移契约:与 kernel/cw_deploy_logic 同名符号派生式同源(同一
 SYSTEM_CARDS/FACTIONS 注册表派生,不存在字面双源;本模块 = 知识层
-权威副本,kernel 侧同名副本的迁移挂账见该文件注释,历史过渡叙述中
-的 sim 旧引擎消费点已随 sim 重做删除面退役)。**新增消费一律
+权威副本,kernel 侧同名副本的处理待办见该文件注释;
+sim 旧引擎消费点已停用)。**新增消费一律
 import 本模块。**
 
 依赖方向:仅 import 数据注册表与 cw_system_cards(体系卡注册,保留件);

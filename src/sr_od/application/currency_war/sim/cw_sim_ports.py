@@ -42,7 +42,7 @@ class SimBackendProtocol(Protocol):
     """sim 后端端口协议(结构类型;3.2 SimBackend 按此实现)。
 
     形状取最小稳定面(薄协议):新增屏 = 后端注册生成器,协议签名不变
-    (T-120 旧协议 4 方法随流程形态漂移作废的教训:协议形状取最小面)。
+    (旧协议 4 方法随流程形态漂移作废的教训:协议形状取最小面)。
     """
 
     def screen_identity(self) -> str:

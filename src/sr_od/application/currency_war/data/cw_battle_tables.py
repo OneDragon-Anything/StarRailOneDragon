@@ -18,7 +18,7 @@ WIN_DELTAS: tuple[int, ...] = (2, 2, 0, -4)
 #: r3 基础损
 LOSS_BASE: float = 7.0
 #: 每多一轮加重(r7≈-23 对齐观测;r259 二次校准 139 轮干净差分,原 3.5 系数
-#: 低估后段流血 → 提到 4.0;方向分桶样本小且与「发牌差的队锁线晚」混杂,
+#: 低估后段流血 → 提到 4.0;方向分桶样本小且与「发牌差的队伍终局阵容锁定偏晚」混杂,
 #: 起胜负面不由方向门控,幅度层保留方向无关的轮次递增)
 LOSS_PER_ROUND: float = 4.0
 # 遭遇结算强度 = boss 档 × 1.15(用户口述:遭遇三四可比 boss 难;
@@ -32,11 +32,11 @@ BOSS_BY_DIR_ROUND: tuple[tuple[int, float, float], ...] = (
     (99, 36.0, 10.0),
 )
 
-# ===== 节点×轮次胜率阶梯(回退层胜负面单一源,W31 实测) =====
+# ===== 节点×轮次胜率阶梯(回退层胜负面单一源,实测) =====
 # 来源:replay outcomes 语料 plane=1 & killed 非空 & board_before 非空
 # = n=192(killed True 104 / False 88),按 (node_type, round) 统计的
-# killed 胜率——W31 报告(`deep_read/W31_报告.md` §2,原始件已灭失
-# (2026-09-12 清理))。替换旧拍脑袋胜负面:
+# killed 胜率——深度研读报告(`deep_read/W31_报告.md` §2,原始件已灭失
+# (2026-09-12 清理))。替换无实测依据的旧胜负面:
 #   battle  方向二元门控(方向已立→胜)——胜率从未按节点实测;
 #   encounter 结构性恒败(p=0);
 #   boss    rung 表 (0, 0, 0.25) + rung2 桶外推(跨节点
@@ -62,8 +62,8 @@ NODE_WIN_P_BY_TYPE: dict[str, float] = {
     'boss': 0.05,
 }
 # 胜时小额(与 reward/supply 的 EARLY_WIN_DELTA 同档;「大胜」
-# 形态待样本后校准——W31 语料只有 killed 二值,无胜幅度分层)。
-# ⚠️ P1 初始 HP=80 非 100(simulate_p1 `st.hp = 80`;批⑪ 自纠记档
+# 形态待样本后校准——语料只有 killed 二值,无胜幅度分层)。
+# ⚠️ P1 初始 HP=80 非 100(simulate_p1 `st.hp = 80`
 # ——按 100 锚算 boss 损失会出伪影)。
 BOSS_WIN_DELTA: int = 2
 
@@ -97,10 +97,10 @@ class P2CombatCalib:
     """P2 段战斗存活层参数族(`w193_p2sim/`/;单一注入点,A/B 同通道)。
 
     ``calibrated=False`` = 逐位回 `w157_p2/`/行为(Δ池 plane=2 桶
-    优先 + ``P2_BATTLE_WIN_P`` 恒值回退档)——A/B 回退对照臂。
+    优先 + ``P2_BATTLE_WIN_P`` 恒值回退档)——A/B 回退对照分支。
     """
 
-    #: 总开关:True=参数化校准层辖 plane≥2 战斗类结算(绕过 Δ池
+    #: 总开关:True=参数化校准层覆盖 plane≥2 战斗类结算(绕过 Δ池
     #: plane=2 合并采样——该路径被防饥饿守卫抹平条件性,
     #: 已判「假条件化」;Phase 3 桶键 form×round 到量后让位池采样)
     calibrated: bool = True
@@ -121,8 +121,8 @@ class P2CombatCalib:
     form_star_weight: float = 0.5
     #: level 折算基准(P2 常见进场 level 6)
     form_level_base: int = 6
-    #: 事件金双臂(W186 §3:K3 零样本——'p1'=复用 P1 表[打标未校准],
-    #: 'zero'=P2 段事件金归零;敏感性双臂,rng 流两臂同耗保配对)
+    #: 事件金双分支(K3 零样本——'p1'=复用 P1 表[打标未校准],
+    #: 'zero'=P2 段事件金归零;敏感性双分支,rng 流两分支同耗保配对)
     event_gold: str = 'p1'
     #: 分段掉血带(败场;带内均匀采样)
     band_battle_r1: tuple[int, int] = (14, 28)
@@ -143,6 +143,6 @@ P2_COMBAT_DEFAULT = P2CombatCalib()
 #: 板深分桶宽(桶键 = depth // 宽 × 宽;消费 = live_delta_for /
 #: handoff 深度分桶 / 池指纹输入——改值=采样语义变,指纹随变)
 DEPTH_BUCKET_W: int = 3
-#: 防饥饿守卫门槛(批③ F1:battle 桶6 n=1 恒 -11,把跨深度 6
-#: 边界的策略臂系统性伪惩罚;命中的桶 n<门槛 → 邻桶合并降级采样)
+#: 防饥饿守卫门槛(battle 桶6 n=1 恒 -11,把跨深度 6
+#: 边界的策略分支系统性伪惩罚;命中的桶 n<门槛 → 邻桶合并降级采样)
 BUCKET_MIN_N: int = 5

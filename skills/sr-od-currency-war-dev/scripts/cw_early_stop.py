@@ -1,24 +1,23 @@
-"""早停监视 v4(只报不停,停局决策归主 agent;T-257:尾读源切 journal)。
+"""早停监视 v4(只报不停,停局决策归主 agent;尾读源 = journal)。
 
-## 判据 v3→v4(判据数值与报警契约不变,数据源面切 journal)
+## 判据(数据源 = journal)
 
-判据 v3(2026-08-25 目标函数修正,用户点破五局误判后重写;判据权威 =
-docs/game/currency_war/research/user_playstyle.md 口述登记簿 [28](P1 守息
-过程+双指标验收)+[18](hp 低=报警观察非触发);2026-08-26 口径修正只改
-本说明,判据逻辑不动):
-  **位面1的目标=[28] 双指标验收:息基保住 × 形态达标**(出口 ~50 金是守息的
+判据权威 =
+docs/game/currency_war/research/user_playstyle.md 口述登记簿 [28](P1 保利息
+过程+双指标验收)+[18](hp 低=报警观察非触发):
+  **位面1的目标=[28] 双指标验收:息基保住 × 形态达标**(出口 ~50 金是保利息的
   表征,不是单指标验收目标;[28] 最高权威:进 P2 应携 ~50 金;赢 boss 但
   花光=「打过了也没经济通关」)。
   - 真停局候选:P1 出口金 < 50(息基未保住表征,候选线索非验收线)或 HP=1
     (真死局);
   - HP<70 → **[P1-HP-LOW-OBSERVE] 观察报警不停局**([18]:hp 低=运营质量报警
-    不是 ALL IN/停局触发;正确响应=判读看形态/金/锁线,不是停)。
+    不是 ALL IN/停局触发;正确响应=判读看形态/金/终局阵容锁定状态,不是停)。
 
-## 数据源 v3→v4(journal.md §1/§4;删除波 1 后旧流停写)
+## 数据源(journal.md §1/§4;旧流停写)
 
-v3 读 decisions.jsonl(state.hp/plane/streak)+ outcomes.jsonl(hp_after 真值,
-金回退 decisions 备战帧)。删除波 1(T-243)后两流写入端已删(哨兵武装即
-NO_ACTIVE_RUN 自愈退出,永远看不到 P1→P2)。v4 尾读 journal
+旧流 = decisions.jsonl(state.hp/plane/streak)+ outcomes.jsonl(hp_after 真值,
+金回退 decisions 备战帧),两流写入端已删(哨兵武装即
+NO_ACTIVE_RUN 自愈退出,永远看不到 P1→P2)。本版尾读 journal
 (state/journal.jsonl,唯一账面),逐项等价映射:
 
 - plane → 行内 ``state.values.node.plane``(节点派生写端=观察汇聚的派生
@@ -27,8 +26,8 @@ NO_ACTIVE_RUN 自愈退出,永远看不到 P1→P2)。v4 尾读 journal
   decisions 备战帧回退)在 journal 上收敛为单源:journal 的 hp 走写入闸
   (BoardState hp 字段注释 §3.2.13——非真读帧不经 observe,失读走 carry
   不产行),行流 hp 值天然含「结算覆盖后的真值」(P1 末行= boss 结算后
-  覆盖值),精度不低于旧 outcomes hp_after;报警文本 src 标签统一标
-  journal,v3 的 FALLBACK-DECISIONS 标签随双源结构消亡。
+  覆盖值);报警文本 src 标签统一标
+  journal。
 - gold → 行内 ``state.values.gold``(备战帧观察+买卖扣金 logic 写入,比
   v3 的「备战帧≈出口金」更精确——扣金即时入账)。
 - streak → 行内 ``state.values.streak``。
@@ -51,7 +50,7 @@ would-alert(判据面与 watch 同一 feed)。
 默认 70)、CW_EARLYSTOP_GOLD_TH(金验收线,默认 50)、CW_EARLYSTOP_LOCK。
 
 历史:v1(2026-08-24) P1 末 HP 读 outcomes 真值;v0 用 decisions 备战帧;
-v3 金主判据([28]);v4 尾读源切 journal;v4.1(2026-09-12,T-77) tail-f
+v3 金主判据([28]);v4 尾读源切 journal;v4.1(2026-09-12) tail-f
 长持句柄改短持周期读(kernel 寿命策略 purge 的 Windows 共享冲突治本面,
 判据/报警契约不变)。
 """
@@ -242,11 +241,10 @@ def watch() -> None:
         break   # 尾行已是 P2+:当前局 P1 已结束,从头等下一局(不回填)
     pos = JOURNAL.stat().st_size
     while True:
-        # 短持周期读(v4.1,T-77):每轮 open→读到 EOF→close。v4 的 tail-f
+        # 短持周期读(v4.1):每轮 open→读到 EOF→close。v4 的 tail-f
         # 形态(with 块内 while True 长持句柄)在 Windows 上让 kernel 寿命
         # 策略的原子改名(os.replace)恒被共享冲突拒绝(WinError 5,读端
-        # Python open 无 FILE_SHARE_DELETE)——purge 永不落地,实测 5 轮
-        # 连败(2026-09-12)。短持后句柄只在读窗内存在,purge/轮转照常;
+        # Python open 无 FILE_SHARE_DELETE)——purge 永不落地,实测 5 轮连败。短持后句柄只在读窗内存在,purge/轮转照常;
         # 「文件变小」重置语义保留(轮询首检出 size<pos)。
         size = JOURNAL.stat().st_size
         if size < pos:   # 文件被替换(purge/重建) → 从头重置

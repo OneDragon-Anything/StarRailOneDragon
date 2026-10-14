@@ -1,4 +1,4 @@
-"""货币战争 决策装配边界·生产武装点(app 桶;统一迁移批 ② 后形态)。
+"""货币战争 决策装配边界·生产武装点(app 桶)。
 
 生产武装点 = ``install_obs_ports``(CurrencyWarApp.__init__ 接通):
 decision 桶 obs 读口注入、kernel 侧合成特效帧态门注入,以及 GameState
@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-# ------------------------------------------------------- obs 读口注入(期5 ⑦)
+# ------------------------------------------------------- obs 读口注入
 
 def install_obs_ports() -> None:
     """装配点接通 decision 桶的 obs 读口(生产武装点 = CurrencyWarApp.__init__)。
@@ -26,8 +26,8 @@ def install_obs_ports() -> None:
     同点接通 kernel 侧合成特效帧态门(``cw_reconcile`` 注入槽,分包矩阵禁
     kernel→obs 直依;缺省关 = 门放行走既有连续 2 次确认防抖主干)。
 
-    (原「期望态留证 sink」expected_reconcile.jsonl 装配已随
-    两态制废除——覆盖点 diff 对账随条目表拆除,无 diff 行可落盘。)
+    (「期望态保留证据 sink」expected_reconcile.jsonl 不再装配——两态制
+    已废除,覆盖点 diff 对账随条目表拆除,无 diff 行可落盘。)
     """
     from sr_od.application.currency_war.kernel.cw_reconcile import (
         set_merge_effect_gate,
@@ -44,8 +44,8 @@ def install_obs_ports() -> None:
     set_obs_reset_hook(reset_phase_round_cache)
     set_merge_effect_gate(is_merge_effect_frame)
 
-    # 缺陷台账生产武装点(迁移批次二,任务书件 7):GameState 观察覆盖
-    # logic 值失配行(kernel/cw_game_state._emit_defect,批次一为缺省关)
+    # 缺陷台账生产武装点:GameState 观察覆盖
+    # logic 值失配行(kernel/cw_game_state._emit_defect,槽缺省关)
     # 经 sink 落 gs_defect.jsonl(与 expected_reconcile.jsonl 同目录同追加
     # 形态);缺省关 = 只缓冲不落盘,测试零真实 IO。
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -73,7 +73,7 @@ def _gs_defect_sink_for_test(base_dir: Path):
             p.parent.mkdir(parents=True, exist_ok=True)
             with p.open('a', encoding='utf-8') as f:
                 f.write(json.dumps(row, ensure_ascii=False, default=str) + '\n')
-        except Exception:  # noqa: BLE001  留证 best-effort
+        except Exception:  # noqa: BLE001  保留证据 best-effort
             pass
 
     return _sink

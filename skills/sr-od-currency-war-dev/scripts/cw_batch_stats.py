@@ -19,33 +19,33 @@ p1_pair, state_board_factions/state_deployed(sim 行轮末快照)},
   消费 board_factions/deployed 两键):决策行 ``form_ok`` 字段是策略器
   镜像写端(write_shop_mirrors)在商店决策帧时点的读数,与同行 state
   (引擎轮末值)不同时点——轮内升级解锁席位后补位达标的局镜像恒 False,
-  凑齐率被低估(2026-09-15 批 4/300 实证),故轮末快照可算时一律现算;
+  凑齐率被低估(300 局样本中 4 局实证),故轮末快照可算时一律现算;
   快照缺输入(生产档案行/旧批行)回退 form_ok 镜像读数(不虚构)。
-  form 原值(b_t 优先/form_score 回退,退役只读)逐局展示。批级 =
+  form 原值(b_t 优先/form_score 回退,停用只读)逐局展示。批级 =
   通关局中凑齐真占比;通关局 = 0 的批(P1-only sim 载体)如实披露
   不适用,禁折 0。
 - ③ 终局金 = 每局最后一条行的 gold。
 - ④ 终局阵容完成率 = 末行 locked_comp 非空时按②同款行凑齐判定(1/0);
-  locked_comp 空 = 未锁线 = 0(用户规格逐字)。批级 = ④=1 局占比,
-  分母 = 可判局。口径分叉:sim 行 locked_comp 缺键/空串 = 未锁线
-  (引擎未建锁线态 = 没锁);档案行结构性无 v3_intention 键 = 无数据,
-  不入分母(「无数据」与「未锁线」两种事实,混同会把档案伪影当行为信号)。
+  locked_comp 空 = 终局阵容未锁定 = 0(用户规格逐字)。批级 = ④=1 局占比,
+  分母 = 可判局。口径分叉:sim 行 locked_comp 缺键/空串 = 终局阵容未锁定
+  (引擎未建终局阵容锁定状态 = 没锁);档案行结构性无 v3_intention 键 = 无数据,
+  不入分母(「无数据」与「终局阵容未锁定」两种事实,混同会把档案伪影当行为信号)。
   **P1 配方对代理键(观测面专用,局表 p 标)**:locked_comp 空而同行
-  v3_intention.p1_pair 非空 = P1 配方锁活跃帧(:配方锁局
+  v3_intention.p1_pair 非空 = P1 配方锁活跃帧(配方锁局
   locked_comp 恒空,引擎语义零改,本脚本只读遥测)——锁定目标代理 =
   配方对,④ 改按②同款判定并标 p。语义依据:P1 配方锁的锁定目标 =
-  配方对(kernel/cw_intention.pair_target_comp 物化伪 comp),凑齐判定
-  = 行内轮末快照对该伪 comp 现算 readiness(回退 form_ok 镜像),⟺
+  配方对(kernel/cw_intention.pair_target_comp 物化伪阵容),凑齐判定
+  = 行内轮末快照对该伪阵容现算 readiness(回退 form_ok 镜像),⟺
   终局板面完成配方锁方向 = ④ 问题的 P1 等价问法。动机:P1-only 载体
   下不加代理则 ④ 结构性恒 0 = 指标-载体错配。边界:配方对空窗帧
-  (p1_pair 空)仍按未锁线 = 0;①资格锁局 locked_comp 非空走既有
-  判定分支,代理不辖;P2+ 帧 p1_pair 恒空(IntentionState 字段契约),
+  (p1_pair 空)仍按终局阵容未锁定 = 0;①资格锁局 locked_comp 非空走既有
+  判定分支,代理不覆盖;P2+ 帧 p1_pair 恒空(IntentionState 字段契约),
   代理结构性不可达。
 
 P1 通关判定(按优先级):行面存在 plane>=2 行 → 行面证据;否则局级权威源
 (sim = runs.jsonl 的 plane_reached;档案 = endgame.plane_reached)≥2 → 行面
 证据;两源都缺 → 行面规则收尾:无 plane>=2 行 = 无行面证据。**死亡筛
-(T-169 统计口径增补,2026-09-09)**:行面证据达 2 后还须末行 hp>0——死在
+(统计口径增补,2026-09-09)**:行面证据达 2 后还须末行 hp>0——死在
 P2 段的局(末行 hp=0)行面不存活。hp 缺读(行无 hp 键)局死亡筛不适用 =
 保持 plane 证据判定(边界如实申报:该类局死亡状态不可判,不折 0 不折 1)。
 **killed 消费(通关权威口径,件3)**:通关 = 行面存活 ∧ 局末行
@@ -59,24 +59,24 @@ outcomes killed==True。killed = 结算屏「玩家击败对手」,是行面证�
 填充,killed=true 非战斗结算,不承载真值(合成轮恰为末轮 → 整局未知
 桶,证据档案见 _archive_rows 注)。输出双列披露:通关率(killed 真值,
 权威)+ 通关率(行面口径,旧列兼容——无 killed 数据的历史批/档案唯一
-可算口径);逐局表「行/killed」双标记同义。**权威源降级通道(T-169 落地审 F7)**:
+可算口径);逐局表「行/killed」双标记同义。**权威源降级通道(审查)**:
 新批布局(2026-09-07)不落 runs.jsonl——runs.jsonl 缺失时改读
 outcomes.jsonl 逐局 max(plane) 作局级权威源(同语义);runs 值优先不覆盖。
 载体验证(2026-09-09 增补):模拟常开批须 --planes 2 才有 P2 观测
 (planes=1 段表只含 P1 九轮,P2 面零观测)。
 载体标识:批统计头行自动标注载体类型
 (全载体 = 生产档案或存在 plane>=2 行的 sim 批;P1-only = 零 plane>=2 行
-的 sim 批——其通关率 0 是载体辖域结果,禁当行为信号,与下行边界同义)。
+的 sim 批——其通关率 0 是载体适用范围结果,禁当行为信号,与下行边界同义)。
 
-出口生存余量读数行(T-169 账本 23:49 增补/落地审 F3 补交付;读数非门):
+出口生存余量读数行(账本 23:49 增补/审查 补交付;读数非门):
 P1 出口行(= ① 同行源)hp 分布 min/中位/max + 死亡地板命中数(sim 地板 0,
 出口 hp<=0 = 死在出口帧)——与死亡筛同源不同问:筛答「算不算通关」,
 本行答「出口时还剩多少血」;hp 缺读局不入分布,可读数随行披露。
 
 boss 结算敏感性边界披露(sim 源头行固定披露):boss 战损 Δ 采样键 =
-净星深一维(迁移审计 w240),不含 rung(成型度)维——「同净星深、
+净星深一维,不含 rung(成型度)维——「同净星深、
 不同成型度」的 boss 战损差异在 sim 内不可分辨(无敏感性边界可读)。升维
-rung×净星深二维列是后续候选(T-169 增补项 ②,本批只披露不升维);判读
+rung×净星深二维列是后续候选(增补项 ②,本版只披露不升维);判读
 boss 段读数(如 hp 轨迹尾段)时按此键边界理解。
 
 [28] 线读数 = P1 出口金 ≥50 的局数,一行,不做门只做读数——[28] 双指标验收
@@ -176,17 +176,17 @@ def _sim_rows(batch: Path) -> dict[str, dict]:
     for r in dec:
         st = r.get('state') or {}
         key = (r.get('plane') or 1, r.get('round_num') or 0)
-        # 同轮多决策帧全保留,按 (plane, round) 排序;指标只读各辖域末行
+        # 同轮多决策帧全保留,按 (plane, round) 排序;指标只读各适用范围末行
         # (①=plane==1 末行,③=全局末行),末轮清算连帧时末帧 gold
         # 即清算后残金(取值语义见模块 docstring)
         g(r.get('run_id') or '?')['rows'].append({
             '_key': key,
             'plane': key[0], 'round': key[1], 'node_type': None,
             'gold': r.get('gold'), 'hp': r.get('hp'),
-            'form': r.get('b_t', r.get('form_score')),  # b_t 优先(新数据),form_score 回退读历史(退役只读)
+            'form': r.get('b_t', r.get('form_score')),  # b_t 优先(新数据),form_score 回退读历史(停用只读)
             'form_ok': r.get('form_ok'),
             'level': st.get('level'),
-            # 锁线字段(单一源 = v3_intention.locked_comp;缺键/空串 = 未锁线)
+            # 终局阵容锁定字段(单一源 = v3_intention.locked_comp;缺键/空串 = 终局阵容未锁定)
             'locked_comp': (r.get('v3_intention') or {}).get('locked_comp') or '',
             # P1 配方锁目标(v3_intention.p1_pair;缺键/空 = 配方锁未活跃)
             'p1_pair': (r.get('v3_intention') or {}).get('p1_pair') or (),
@@ -214,11 +214,11 @@ def _sim_rows(batch: Path) -> dict[str, dict]:
         gd = games.get(rid)
         if gd is not None:
             gd['killed'] = k
-    # 权威源降级通道(T-169 落地审 F7:新批布局 2026-09-07 起不落
+    # 权威源降级通道(审查新批布局 2026-09-07 起不落
     # runs.jsonl,旧通道成死路)——runs.jsonl 缺失时读 outcomes.jsonl
     # 逐局 max(plane)(同语义:引擎实际到达的最高位面,逐轮行带 plane);
     # runs 值优先不覆盖(旧批兼容)。两源皆缺的局 plane_reached 保持
-    # None(不可判,死亡筛不适用),report 头部小注显影(F3)。
+    # None(不可判,死亡筛不适用),report 头部小注显影。
     # 位置=decisions/outcomes 两循环后(games 键已齐),回填才非空操作。
     if not (batch / 'runs.jsonl').exists():
         max_plane: dict[str, int] = {}
@@ -255,7 +255,7 @@ def _archive_rows(mid: str) -> dict:
         'gold': r.get('gold'), 'hp': r.get('hp'),
         'form': r.get('b_t', r.get('form_score')), 'form_ok': r.get('form_ok'),
         'level': r.get('level'),
-        # 档案行无 v3_intention 键 → None(结构性无数据;与 sim 的「未锁线」
+        # 档案行无 v3_intention 键 → None(结构性无数据;与 sim 的「终局阵容未锁定」
         # 是两种事实,④ 判定时不入分母,见模块 docstring)
         'locked_comp': None,
         # 档案行结构性无 p1_pair(同上,两种事实)→ None,代理分支不可达
@@ -325,7 +325,7 @@ def game_metrics(game: dict) -> dict:
     passed_row = any((r.get('plane') or 0) >= 2 for r in rows)
     if not passed_row and game.get('plane_reached') is not None:
         passed_row = game['plane_reached'] >= 2
-    # 死亡筛(T-169 统计口径增补):plane 证据达 2 后还须末行 hp>0——
+    # 死亡筛(统计口径增补):plane 证据达 2 后还须末行 hp>0——
     # 死在 P2 的局(末行 hp=0)行面不存活。hp 缺读局不适用死亡筛 =
     # 保持 plane 证据判定(不可判 ≠ 判死,边界见模块 docstring)。
     if passed_row and last is not None and last.get('hp') is not None \
@@ -339,7 +339,7 @@ def game_metrics(game: dict) -> dict:
     lc = last.get('locked_comp') if last else None
     proxy = False
     if lc is None:
-        comp_done = None            # 档案源结构性无锁线字段 = 无数据
+        comp_done = None            # 档案源结构性无终局阵容锁定字段 = 无数据
     elif lc:
         comp_done = 1 if _row_form_ok(last) else 0
     elif last.get('p1_pair'):
@@ -350,7 +350,7 @@ def game_metrics(game: dict) -> dict:
         comp_done = 1 if _row_form_ok(last) else 0
         proxy = True
     else:
-        comp_done = 0               # 未锁线 = 0(用户规格逐字;含配方对空窗帧)
+        comp_done = 0               # 终局阵容未锁定 = 0(用户规格逐字;含配方对空窗帧)
     return {
         'passed_row': passed_row,
         'passed': passed,
@@ -372,13 +372,13 @@ def _fmt(v, nd: int = 0) -> str:
 
 
 def carrier_label(games: dict[str, dict], source: str) -> str:
-    """批载体标识(头行自动标注;T-169 统计口径增补)。
+    """批载体标识(头行自动标注;统计口径增补)。
 
     全载体 = 生产档案,或存在 plane>=2 行的 sim 批(数据证明可达位面 2);
-    P1-only = 零 plane>=2 行的 sim 批——该批通关率 0 是载体辖域结果,
+    P1-only = 零 plane>=2 行的 sim 批——该批通关率 0 是载体适用范围结果,
     禁当行为信号(判读先看本标识再看通关率)。边界:planes=2 sim 批
     恰逢全批死在 P1 时行面证据与 P1-only 载体同形,本标识按「数据可见
-    辖域」如实标注(该批同样没有 P2 数据可判,语义不漂)。
+    适用范围」如实标注(该批同样没有 P2 数据可判,语义不漂)。
     """
     if source == 'archive':
         return '全载体(生产档案)'
@@ -410,11 +410,11 @@ def report(games: dict[str, dict], title: str, source: str = 'sim') -> None:
     print(f'\n== 批统计面(四指标) | {title} | 局数 {n} '
           f'| 载体: {carrier_label(games, source)} ==')
     if source == 'sim':
-        # boss 结算敏感性边界披露(T-169 增补 ②,只披露不升维;口径见
+        # boss 结算敏感性边界披露(增补 ②,只披露不升维;口径见
         # 模块 docstring「boss 结算敏感性边界披露」节,单一源在彼处)
         print('边界: boss 结算键=净星深一维,无 rung×净星深'
               '敏感性——升维列后续候选,boss 段读数按一维键边界理解')
-        # 局级权威源缺行小注(T-169 落地审 F3):runs/outcomes 两通道皆
+        # 局级权威源缺行小注(审查):runs/outcomes 两通道皆
         # 无法给出 plane_reached 的局数——该类局死亡筛不适用(不可判),
         # 通关判定降级行面证据;>0 时显影,归 runs/账本完整性问题。
         no_auth = sum(1 for gd in games.values()
@@ -451,7 +451,7 @@ def report(games: dict[str, dict], title: str, source: str = 'sim') -> None:
     else:
         print('④终局阵容完成率: 无数据(全批无锁线字段观测)')
     print(f'[28]线 出口金≥50: {line28}/{gold28} 局(读数,非门)')
-    # 出口生存余量读数行(T-169 账本 23:49 增补/落地审 F3 补交付;
+    # 出口生存余量读数行(账本 23:49 增补/审查 补交付;
     # 读数非门):P1 出口行(= ① 同行源)hp 分布 + 死亡地板命中数
     # (sim 地板 0,出口 hp<=0 = 死在出口帧;与死亡筛同源不同问——
     # 筛答「算不算通关」,本行答「出口时还剩多少血」)。hp 缺读局

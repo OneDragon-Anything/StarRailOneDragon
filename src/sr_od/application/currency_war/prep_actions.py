@@ -1,28 +1,28 @@
-"""货币战争 备战决策环 执行器(P1;strategy/03(原 doc 15§4)/§13)。
+"""货币战争 备战决策环 执行器(P1;strategy/03 §13)。
 
 框架层:本模块**不含玩法判断**(何时收晶矿/卖谁/何时出战 = 策略层 CwStrategy.decide_prep_screen),
-只负责「机械执行一个动作」(用户裁定 2026-09-10:动作 op 只管机械执行,
+只负责「机械执行一个动作」(用户裁定:动作 op 只管机械执行,
 禁止做任何验证——点击/拖拽后不读屏判「是否生效」,落地判定完全归观察侧
-reconcile 对账;终裁:执行回执 ``(progressed, detail)`` 退役,
+reconcile 对账;执行回执 ``(progressed, detail)`` 已停用,
 ``execute`` 无返回,发出即职责完成)。失败路径(§13.2 修订):
-- 参数非法 → validate 返回错误串(Director 拒绝执行 + 交回留证);
+- 参数非法 → validate 返回错误串(Director 拒绝执行 + 交回保留证据);
 - 执行前输入契约拒绝(晶矿/箱/按钮等目标不在,执行前观察,M6 边界面)→
   本动作未发出,机械交回外循环重观察重决策;
 - 执行异常 → 异常上抛(Director 上抛 = 本环 fail,外层 op retry 接管)。
 
-slot 语义(unified-action-factory 批2b 归一后):席位域动作(CwActionSellBenchParam/
+slot 语义(unified-action-factory 统一后):席位域动作(CwActionSellBenchParam/
 CwActionSellDeployedParam/CwActionDeployMoveParam)携**容器槽位表下标**(0 基,词表单一源 =
 kernel/cw_vocab,坐标系裁定见其模块头);本执行器 = **执行坐标边**——
 容器下标 → screen_info 槽位中心的换算单点(bench 侧 = 备战栏-N area 序
 直取;deployed 侧 = 下标→(排,排内槽号)固定双射内联算术,0-3=前排
-1-4 / 4-9=后排 1-6随 tracked 账退役换算族删除)。坐标参数化
+1-4 / 4-9=后排 1-6;tracked 第二账停用后旧换算族已删)。坐标参数化
 机械动作(CwActionWearEquipParam/工具原子类/CwActionOpenBoxParam/CwActionOpenTomeParam/CwActionOpenBookcardParam)的
 row/slot 字段 = 画面物理排槽位 1 基(动作参数定义,拖点直取 area,
 不经换算)。
-统一动作工厂收编:动作级
+统一动作工厂并入:动作级
 机械执行体已逐字迁入 ``operations/cw_op/`` 备战 op 类(一 op 一文件),
 分派改查单一注册表 ``action_op_for``(_dispatch_action);本模块保留
-runner 包络(W209j 刹车/执行点金差/回执登记/validate 与机械原语)与
+runner 包络(刹车/执行点金差/回执登记/validate 与机械原语)与
 原方法薄委托(替身缝)。
 """
 from __future__ import annotations
@@ -75,10 +75,10 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 #: overlay 弹出/关闭的固定动画等待(等待归产生动画的操作)。
-#: 原为事件驱动轮询上界 1.8s(1.5s 旧固定值 + 0.3s 轮询间隔,依据:单局
-#: 耗时审计报告 .debug/temp/currency_war/w417_duration_audit/REPORT.md
-#: 「需验证·出战链」)——判效半拆除(用户裁定 2026-09-10)后收敛为固定
-#: 等待,值取原上界保最坏情形覆盖面不缩水;弹窗就位与否交下一帧观察。
+#: 值依据:单局耗时审计报告
+#: .debug/temp/currency_war/w417_duration_audit/REPORT.md
+#: 「需验证·出战链」的最坏耗时上界(判效已拆,用户裁定动作 op 只机械
+#: 执行);弹窗就位与否交下一帧观察。
 _OVERLAY_ANIM_WAIT_S: float = 1.8
 
 #: 商店收起动画时长(操作完成自等动画;实测口径 screen_flow_timing
@@ -98,13 +98,12 @@ PREP_DRAG_SETTLE_WAIT_S: float = 0.5
 
 
 class StopBrakeShortCircuit(RuntimeError):
-    """W209j 停机短路异常(纵深防御第二层)。
+    """停机短路异常(纵深防御第二层)。
 
     语义 = 运行中被停 → 拒绝执行任何动作(run 27 实证:director 环在
     Deploy 钩子 stop_running 后仍发 CwActionStartBattleParam 点出战——环顶检查(第一层)
-    之外,本入口兜底覆盖绕环路径)。原表达通道 = 执行回执 ``(False, '已
-    停止[W209j刹车]')``,随端口回执退役改为停机短路异常:执行器抛出,
-    调用方(cw_screen_prep 决策环 / cw_loop 发射核)捕获后交回外循环,
+    之外,本入口兜底覆盖绕环路径)。表达 = 本异常:执行器抛出,
+    调用方(cw_screen_prep 决策环 / cw_loop 动作发出核)捕获后交回外循环,
     下轮 loop 顶见 STOP 退出。判据 = last_run_result 非空(start 清
     None/stop 写入;run_state STOP 是 idle 初始态不能直接用)。
     """
@@ -137,7 +136,7 @@ def row_area_centers(ctx: SrContext, prefix: str,
 
 def sell_point(ctx: SrContext, screen_name: str = SCREEN_NAME) -> Point:
     """出售区落点(单一源):screen_info「区域-出售区」中心
-    (W62 件2 落地;游戏机制 = 拖到左下区域即出售,无按钮)。
+    (游戏机制 = 拖到左下区域即出售,无按钮)。
 
     ``screen_name`` = 坐标权威画面(缺省备战画面;商店域传商店开画面)。
     area 缺失 = 建档漂移/档案损坏 → RuntimeError 显式上抛(信息带 area
@@ -154,7 +153,7 @@ def sell_point(ctx: SrContext, screen_name: str = SCREEN_NAME) -> Point:
 
 def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int,
                        screen_name: str = SCREEN_NAME) -> None:
-    """拖备战槽(槽位下标 0-8)→ 出售区(共享卖原语,W62 件2/设计章2.10)。
+    """拖备战槽(槽位下标 0-8)→ 出售区(共享卖原语,设计章 2.10)。
 
     d2 卖通道生产接线(shop.py prefix 循环 CwActionSellBenchParam 分支)与 prep_actions
     ``_sell_bench`` 共用本 helper:「拖→出售区」机械一段(拆源槽
@@ -165,7 +164,7 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int,
     Args:
         op: 调用方 op(取 ctx.controller 操作)。
         ctx: SrContext。
-        bench_idx: 槽位下标 0-8(:列表下标 = 物理备战栏槽位 1-9 减一);
+        bench_idx: 槽位下标 0-8(列表下标 = 物理备战栏槽位 1-9 减一);
             越界 = 调用方 bug,响亮上抛(守卫非判效)。
         screen_name: 拖拽两端的坐标权威画面(缺省备战画面;商店域
             传商店开画面——该画面档自备 备战栏/出售区 area)。
@@ -197,11 +196,11 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int,
                                                         screen_name=screen_name))
 
 
-# (装备穿戴计划构造单一源 = kernel/cw_equip_wear_plan(R2 原子通路);
-#  发射位(mandate M7)直接消费同一构造函数,无第二源。)
+# (装备穿戴计划构造单一源 = kernel/cw_equip_wear_plan(原子通路);
+#  动作发出点(mandate M7)直接消费同一构造函数,无第二源。)
 # (tracked 写点槽号健康显影 _expose_unhealthy_tracked_slots 已随
-#tracked 第二账退役删除:其两个调用点均为 tracked
-#  摘除腿,腿删则 helper 无消费面;容器形槽号 = 下标权威结构性健康。)
+#  tracked 第二账停用而删除:其两个调用点均为 tracked 摘除腿,腿删则
+#  helper 无消费面;容器形槽号 = 下标权威结构性健康。)
 
 
 @dataclass
@@ -211,9 +210,9 @@ class PrepExecEnv:
     域依赖结构化包,op 构造时传入(原 execute 时刻注入改为构造时)。
     ``executor`` = 备战 runner 包络引用(坐标槽位表/机械原语/tracked 账
     同步的单一宿主;op 体经此消费,执行包络留守 runner)。``detail``/
-    ``emitted`` = 历史 prep 域旁路字段(批③起消费面改 round 结果成功态
+    ``emitted`` = prep 域遗留旁路字段(消费面 = round 结果成功态
     与 status,op 体保留写以维持体迁移逐字性,字段值不再被包络消费);
-    ``skip_substate`` 仍被包络消费(回执 extra 留证)。
+    ``skip_substate`` 仍被包络消费(回执 extra 保留证据)。
     """
 
     op: SrOperation
@@ -231,7 +230,7 @@ class PrepActionExecutor:
     """备战原子动作执行器(框架层;持 ctx + 宿主 op 复用截图/区域匹配/拖拽原语)。
 
     宿主 op = CwScreenPrep(SrOperation);机械执行(点击/拖拽/等待),落地
-    判定归观察侧 reconcile(用户裁定 2026-09-10);拖拽统一走
+    判定归观察侧 reconcile(用户裁定);拖拽统一走
     DragCwChar.drag_char(中心拖 + hold0,2026-08-13 实测验证)。
     """
 
@@ -241,13 +240,13 @@ class PrepActionExecutor:
         # 机械执行摘要(最近一次 execute 的 detail;登记件解析输入,非成败
         # 回执——端口无返回,摘经由本属性旁路供 on_outcome detail)。
         self.last_detail: str = ''
-        # 出战点击事实(出战域重设计收缩语义,T-286):True = StartBattleOp
+        # 出战点击事实(出战域重设计收缩语义):True = StartBattleOp
         # 点击序列已执行(含弹窗确认);False = 找不到按钮/area 缺失等
-        # 未执行形态。消费方 = cw_loop 发射核(launch_prepared_battle 返回
+        # 未执行形态。消费方 = cw_loop 动作发出核(launch_prepared_battle 返回
         # 值旁路)。getattr 容缺(__new__ 桩形态)。
         self.last_launch_ok: bool | None = None
         # StartBattleOp 上报的免战跳过子态标记(op 写 env.skip_substate,
-        # dispatch 后由本 runner 读取一次,只进回执 extra 留证——递减本体
+        # dispatch 后由本 runner 读取一次,只进回执 extra 保留证据——递减本体
         # = op 自上报)。getattr 容缺(__new__ 桩形态)。
         self._last_skip_substate: bool = False
         # 执行点金差显影(备战执行缝账务包络;写点 = execute 每次
@@ -255,7 +254,7 @@ class PrepActionExecutor:
         # 写入,None = 该动作执行点金差不可推算(诚实缺失,非 0);消费方
         # = 回执 extra 金差键与观察侧备战帧金对账。getattr 容缺
         # (__new__ 桩形态,execute 入口显式复位不依赖构造)。
-        # (CwActionLevelUpParam 金腿已随批2b 翻转切 action.cost 直写——
+        # (CwActionLevelUpParam 金腿 = action.cost 直写——
         # apply_prep_action_logic 单一写点,本执行缝对 CwActionLevelUpParam 恒 0。)
         self.last_gold_delta: int | None = None
         # 槽位中心(screen_info 静态,构造时读一次;F3 参数校验 + 拖拽坐标共用)
@@ -350,14 +349,13 @@ class PrepActionExecutor:
         """机械执行一个动作(无返回;发出即职责完成,落地判定归
         观察侧 reconcile)。
 
-        ⚠️ W209j 刹车(纵深防御第二层):运行中被停 → 拒绝
+        ⚠️ 停机刹车(纵深防御第二层):运行中被停 → 拒绝
         执行任何动作(点击/拖拽/出战),抛 :class:`StopBrakeShortCircuit`
-        停机短路(原回执 ``(False, '已停止')`` 通道随回执退役改异常;
-        语义与触发判据不变,run 27 实证覆盖绕环路径)。调用方捕获后交回
-        外循环,下轮 loop 顶见 STOP 退出。
+        停机短路(语义与触发判据见类 docstring;run 27 实证覆盖绕环路径)。
+        调用方捕获后交回外循环,下轮 loop 顶见 STOP 退出。
 
-        发出即登记(批3a:期望态推进门/闩/清键门由「回执门控」改「发出
-        即登记 + 对账纠偏」;执行前输入契约拒绝 = 动作未发出,不登记)。
+        发出即登记(期望态推进门/标志/清键门 = 发出即登记 + 对账纠偏,
+        不按回执门控;执行前输入契约拒绝 = 动作未发出,不登记)。
         """
         _rc = getattr(self._ctx, 'run_context', None)
         if _rc is not None and getattr(_rc, 'last_run_result', None) is not None:
@@ -381,16 +379,16 @@ class PrepActionExecutor:
         self.last_gold_delta = gold_delta
         # (卖出回金的容器唯一写点 = 卖出 op 自上报
         #  (report_action_sell_*_param),防双记——执行缝与投影双腿各记
-        #  一次的实机倒挂实证归 git。本处 gold_delta 仅进回执 extra 留证。)
+        #  一次的实机倒挂实证归 git。本处 gold_delta 仅进回执 extra 保留证据。)
         _gold_extra = ({'gold_delta': int(gold_delta)}
                        if gold_delta not in (None, 0) else None)
         if isinstance(action, CwActionStartBattleParam) and self._last_skip_substate:
             # 跳过子态标记进回执 extra(上报动作事实的遥测面;递减本体 =
-            # op 自上报,回执只留证)。
+            # op 自上报,回执只保留证据)。
             _gold_extra = {**(_gold_extra or {}), 'skip_substate': True}
         self._note_action_receipt(action, emitted, detail, extra=_gold_extra)
         if isinstance(action, CwActionStartBattleParam):
-            # 出战点击事实(出战域重设计,T-286):真执行链 = 注册表分派
+            # 出战点击事实(出战域重设计):真执行链 = 注册表分派
             # CwActionStartBattleOp 点击序列,round 结果成功态即发出事实
             # (round_fail = 找不到按钮/area 缺失,在册例外 =
             # action_ops.md §2.3);
@@ -400,8 +398,8 @@ class PrepActionExecutor:
             if isinstance(action, CwActionStartBattleParam):
                 self.last_launch_ok = emitted
         # (S1 清键执行侧落地门已随迭代 2026-10-12-prep-shop-workflow-
-        # redesign 批 3.6/3.7 退役删除——备战期开店闩废止,清键门无对象。)
-        # (动作逻辑效果推进已随动作 op 重组批③ 收编进各 op 自上报
+        # redesign 停用删除——备战期开店标志废止,清键门无对象。)
+        # (动作逻辑效果推进已并入各 op 自上报
         #  (op 内直调自己的上报函数,op-layer.md §1.2):原执行器
         #  apply_op_effect 调用删除 = 双记防线——op 已写,本处再写即双记。)
         log.info('[cw][exec] %s → %s', type(action).__name__,
@@ -410,18 +408,18 @@ class PrepActionExecutor:
     def _note_action_receipt(self, action: CwAction, emitted: bool,
                              detail: str,
                              extra: dict | None = None) -> None:
-        """动作执行回执 → GameState receipts 域(R2 §3.1.1-4/§3.2.5;
-        渠道② logic_action,唯一写点 = kernel note_action_receipt)。
+        """动作执行回执 → GameState receipts 域
+        (渠道② logic_action,唯一写点 = kernel note_action_receipt)。
 
         - **发出即簿记,不是验证**(M1③):applied = 分派面「是否发出」
           事实透传(执行前输入契约拒绝 = 未发出,回执 reason 带机械摘要);
           本写点零成败判定——不读屏、不做落地推断(「拖3次源槽未变」类
-          像素验回执已随判效拆除),落地判定归观察侧 reconcile;
-        - 每动作 op 恰一条 logic_action 行(动作全集逐 op 覆盖;W209j 停机
+          像素验回执已停用),落地判定归观察侧 reconcile;
+        - 每动作 op 恰一条 logic_action 行(动作全集逐 op 覆盖;停机
           短路在本口之前抛出 = 执行被拒不产行——停机非动作);
         - ``extra`` = 执行面结构化字段透传(§3.2.1 质量词表执行面;
           含金动作的 ``gold_delta`` 执行点金差,见 _executed_gold_delta);
-        - journal 常开(R5 W1 影子闸折叠)回执写入无条件;无局
+        - journal 常开(影子闸折叠)回执写入无条件;无局
           (session 缺)跳过;best-effort 不阻塞动作链。
         """
         try:
@@ -490,17 +488,16 @@ class PrepActionExecutor:
           dispatch 前快照,费单一源 = kernel ``bench_char_cost``——与容器
           上报函数(report_action_sell_*)同式;身份不可辨 = None 诚实
           缺失,不做保守估值假账,观察覆盖兜底);
-        - ``CwActionLevelUpParam`` = 0(批2b 翻转:金腿切 ``action.cost`` 直写,唯一
-          写点 = 买经验自上报(report_action_level_up_param);原执行缝金差
-          ``_last_levelup_spent`` 通道随翻转退役,防双记);
+        - ``CwActionLevelUpParam`` = 0(金腿 = ``action.cost`` 直写,唯一
+          写点 = 买经验自上报(report_action_level_up_param);执行缝金差
+          ``_last_levelup_spent`` 通道已停用,防双记);
         - ``CwActionCollectOreParam`` = None(晶矿金通道随机,执行点不可推算——声明
           盲区,观察覆盖兜底,禁拍值);
         - 其余动作 = 0(发出零金动);未发出 = None(无金动无账)。
         ``None`` 与 0 的消费语义:仅非 None 非 0 进回执 extra 金差键
-        (回执留证);**容器金账不经本值直推**——统一观察对账迭代
-        (2026-09-16 归因批)退役执行缝直推腿,卖出/花金容器唯一写点 =
-        卖出自上报(report_action_sell_*),防双腿双记(实机 −2 倒挂
-        实证)。None = 该动作本拍金账留观察覆盖。
+        (回执保留证据);**容器金账不经本值直推**——执行缝直推腿已停用,
+        卖出/花金容器唯一写点 = 卖出自上报(report_action_sell_*),
+        防双腿双记(实机 −2 倒挂实证)。None = 该动作本拍金账留观察覆盖。
         """
         if not emitted:
             return None
@@ -543,7 +540,7 @@ class PrepActionExecutor:
         result = op.run()
         if isinstance(action, CwActionStartBattleParam):
             # 免战跳过子态标记转发(op 写 env.skip_substate;递减本体 =
-            # op 自上报,回执 extra 留证消费;getattr 容缺 = 桩 env 形态)
+            # op 自上报,回执 extra 保留证据消费;getattr 容缺 = 桩 env 形态)
             self._last_skip_substate = bool(getattr(env, 'skip_substate',
                                                     False))
         return (result.status or ''), bool(result.is_success)
@@ -552,14 +549,14 @@ class PrepActionExecutor:
 
     def _collect_ore(self, action: CwActionCollectOreParam) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_collect_ore_action.CwActionCollectOreOp``,统一
-        动作工厂批3 体迁 + 薄委托,替身缝保留;机械语义 docstring 随体)。"""
+        动作工厂体迁薄委托,替身缝保留;机械语义 docstring 随体)。"""
         return self._dispatch_action(action)
 
     def _bench_occupied_count(self) -> int:
         """备战席占用数(主域 bench 席位视图现读;席翻正判读输入)。
 
         主域由卖出/部署 op 自上报同步销账(单账即同步),pre/post 两点夹一次 dispatch 即「本帧落地是否使席 free
-        由 0 翻正」的观测读数(方案 §3.3 (ii);缺页形态由消费臂门 1
+        由 0 翻正」的观测读数(方案 §3.3 (ii);缺页形态由消费侧
         下帧现读自愈)。会话缺席/读失败 = -1(调用侧按「不可判」处理,
         不产生翻正)。
         """
@@ -575,39 +572,34 @@ class PrepActionExecutor:
             return -1
 
     def _open_box(self, action: CwActionOpenBoxParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_open_box_action.CwActionOpenBoxOp``;批3 体迁 +
-        薄委托,替身缝保留)。终结动作(R7):交回等待 = CwActionOpenBoxOp.
+        """薄委托(体已迁 ``cw_open_box_action.CwActionOpenBoxOp``;替身缝保留)。终结动作:交回等待 = CwActionOpenBoxOp.
         terminal_wait(与 _OVERLAY_ANIM_WAIT_S 等价,等价锁在册)。"""
         return self._dispatch_action(action)
 
     def _open_tome(self, action: CwActionOpenTomeParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_open_tome_action.CwActionOpenTomeOp``;批3 体迁 +
-        薄委托,替身缝保留)。"""
+        """薄委托(体已迁 ``cw_open_tome_action.CwActionOpenTomeOp``;替身缝保留)。"""
         return self._dispatch_action(action)
 
     def _open_bookcard(self, action: CwActionOpenBookcardParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_open_bookcard_action.CwActionOpenBookcardOp``;批3
-        体迁 + 薄委托,替身缝保留——测试直调面沿此缝)。"""
+        """薄委托(体已迁 ``cw_open_bookcard_action.CwActionOpenBookcardOp``;替身缝保留——测试直调面沿此缝)。"""
         return self._dispatch_action(action)
 
     # ===== 席位域 =====
 
     def _sell_bench(self, action: CwActionSellBenchParam) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_prep_sell_bench_action.CwActionSellBenchOp``;
-        批3 体迁 + 薄委托,替身缝保留)。"""
+        薄委托,替身缝保留)。"""
         return self._dispatch_action(action)
 
     def _sell_deployed(self, action: CwActionSellDeployedParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_sell_deployed_action.CwActionSellDeployedOp``;批3
-        体迁 + 薄委托,替身缝保留)。"""
+        """薄委托(体已迁 ``cw_sell_deployed_action.CwActionSellDeployedOp``;替身缝保留)。"""
         return self._dispatch_action(action)
 
     def _deploy_move(self, action: CwActionDeployMoveParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_deploy_move_action.CwActionDeployMoveOp``;批3 体迁
-        + 薄委托,替身缝保留)。"""
+        """薄委托(体已迁 ``cw_deploy_move_action.CwActionDeployMoveOp``;替身缝保留)。"""
         return self._dispatch_action(action)
 
-    # ===== 装备/工具原子域(R2 穿戴 / R8 工具按消耗品各立类;机械原语
+    # ===== 装备/工具原子域(穿戴 / 工具按消耗品各立类;机械原语
     #       _equip_slot_drag_point/_owned_grid_locate
     #       留守本 runner,体迁 op 经 env.executor 消费)=====
 
@@ -662,13 +654,12 @@ class PrepActionExecutor:
         return Point(entry[1][0], entry[1][1]) if entry is not None else None
 
     def _wear_equip(self, action: CwActionWearEquipParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_wear_equip_action.CwActionWearEquipOp``;批3 体迁 +
-        薄委托,替身缝保留)。"""
+        """薄委托(体已迁 ``cw_wear_equip_action.CwActionWearEquipOp``;替身缝保留)。"""
         return self._dispatch_action(action)
 
     def _use_tool(self, action: CwAction) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_tool_use_action.ToolUseOp``,工具原子七类
-        共用;批3 体迁 + 薄委托,替身缝保留)。"""
+        共用;替身缝保留)。"""
         return self._dispatch_action(action)
 
     def _drag(self, src: Point, dst: Point) -> None:
@@ -701,14 +692,13 @@ class PrepActionExecutor:
         DragCwChar.drag_char(self._op, src, dst)
 
     # (tracked 随动同步三腿(备战摘除/场上摘除/上阵落位)已随
-    #tracked 第二账退役删除:动作写主域(逻辑
+    #tracked 第二账停用删除:动作写主域(逻辑
     #  通道)即同步,第二账无可同步;落地事实归观察边界 reconcile 对账。)
 
     # ===== 商店域 =====
 
     def _level_up(self, action: CwActionLevelUpParam | None = None) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_prep_level_up_action.CwActionLevelUpOp``;批3
-        体迁 + 薄委托,替身缝保留)。
+        """薄委托(体已迁 ``cw_prep_level_up_action.CwActionLevelUpOp``;替身缝保留)。
 
         ``action`` 形参 = 注册表分派载体(原签名无参——单击体不读动作
         字段;缺省补零价占位实例仅作类型解析,行为零变化)。"""
@@ -720,8 +710,7 @@ class PrepActionExecutor:
     # 本入口保留薄委托替身缝,返回序 (ok, detail)。
 
     def _start_battle(self) -> tuple[bool, str]:
-        """薄委托(体已迁 ``cw_start_battle_action.CwActionStartBattleOp``;批3
-        体迁 + 薄委托,替身缝保留)。"""
+        """薄委托(体已迁 ``cw_start_battle_action.CwActionStartBattleOp``;替身缝保留)。"""
         detail, emitted = self._dispatch_action(CwActionStartBattleParam())
         return emitted, detail
 

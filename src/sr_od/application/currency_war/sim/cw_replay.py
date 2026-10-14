@@ -7,9 +7,8 @@
 数据源:state/journal.jsonl(统一 state 状态流水,行行自足)——按
 (run, plane, round) 取每轮最后一次写入的行内 state 快照,经
 :func:`restore_state_snapshot` 恢复进容器后决策。旧 decisions.jsonl
-源与其整帧重建/会话恢复面已随本切源退役(该流写入端已随删除
-波 1 停写,读死数据;退役面 = _rebuild_state/_restore_session/--diff
-分歧对比/意向 latch 回读/执行态可信位回读,归 git 历史)。
+源与其整帧重建/会话恢复面已停用(该流写入端已停写,读死数据;停用面 =
+_rebuild_state/_restore_session/--diff 分歧对比/意向 latch 回读/执行态可信位回读)。
 
 用法:
   uv run python -m sr_od.application.currency_war.sim.cw_replay \
@@ -17,10 +16,10 @@
   不传 --run:回放全部 run(按轮键排序跨局遍历,打警示头)。
 
 ⚠️ 结论边界(判读语义,切源后如实申报):
-- **意向/锁线冷启动**:策略态(意向 latch/锁定配方对/经验期望账本)
+- **意向/终局阵容锁定的冷启动**:策略态(意向 latch/锁定配方对/经验期望账本)
   不入状态流水,journal 源回放每轮冷建 session——方向层按容器帧键
-  自驱,锁线延续性语义与实跑不可比;分支级(锁线相关)决策对比需
-  旧格式语料 + 冻结快照 worktree(历史档案考古走 git 历史)。
+  自驱,终局阵容锁定的延续性语义与实跑不可比;分支级(终局阵容锁定相关)决策对比需
+  旧格式语料 + 冻结快照 worktree(历史档案)。
 - 轮真值 = 该轮最后一次容器写入的快照(备战决策帧语境;战斗/结算
   中间态不构成独立轮)。
 """
@@ -85,7 +84,7 @@ def main() -> None:
         else:
             i += 1
 
-    # 单一策略臂 = mandate_v1(统一迁移批 A9 裁决:与实机/sim 同源;
+    # 单一策略分支 = mandate_v1(统一迁移裁决:与实机/sim 同源;
     # decision_v2 字符串 = 历史档案别名,接受但同路)。
     from sr_od.application.currency_war.strategies.impl.mandate_v1.bridge import (
         MandateV1Strategy,

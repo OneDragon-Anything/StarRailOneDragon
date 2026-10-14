@@ -6,7 +6,7 @@
   AttributeError/StopIteration)/停机终态(STOPPED/停机待建档/plan_error)/
   超时——命中即退出推送。处置依据:审计 0 自愈、run 已断,「退出=事件」
   是唯一即时信道,不能降级到轮询。数据源 = server 主日志(op_journal 面,
-  删除波 1 未触及);『plan_error』词源=旧 decisions 流的决策崩溃措辞,
+  不受旧流停写影响);『plan_error』词源=旧 decisions 流的决策崩溃措辞,
   该流停写后此词在日志恒 0 命中(与 v5 时代一致,纯兜底词汇保留)。
 - [SENTINEL-HIT-CONT](v5.1 分级·一般驻留):『执行失败』(单 op 失败,
   有自愈实录 2026-09-08 08:09;且常来自共享日志的其他活动,对 CW 是外活动
@@ -35,9 +35,9 @@
     `[cw-op] op=备战 plane=` 分发行(每备战轮必落);窗自上一实质推进后的首个
     备战行起算,任一实质推进即重置。补观察断流盲区:认知冻结形态无 state 行
     (NODE-DWELL 失明)、备战行让日志不沉默(SILENCE 失明)、无警告(STALL
-    失明)、零动作(LOOP 失明)。心跳采样退役(2026-09-15)后的承接面。
+    失明)、零动作(LOOP 失明)。心跳采样停用后的承接面。
 
-## 实质推进(STALL/LOOP 两分支单一判据,2026-09-03 语义修复)
+## 实质推进(STALL/LOOP 两分支单一判据)
 
 无操作成功**不算推进**。计为推进的只有:
   ① `[cw][composite]` 复合动作成功(部署/装备等真实执行,prep_actions 发出)。
@@ -61,10 +61,10 @@
 | v4.0 | 活跃循环卡死 LOOP + 试用期纪律 | run 24 出战被拒循环 53min;参数 N=10/win=1500s/span≥300s/stale=600s(首报警比人工早 ~44min) |
 | v4.1 | 活跃局判定第 4 条(decisions 新鲜度) | 2026-09-03 1-1 卡死 26min 零报警:runs/outcomes 双陈旧误判「已终局」,LOOP 整局被 suppress |
 | v5 | STALL 推进语义修复(无操作成功≠推进)+ 节点滞留 NODE-DWELL + 词汇审计(见下) | 2026-09-03 1-1 卡死段实机日志回放标定 |
-| v5.1 | HIT 分级(关键即退/一般驻留续侦+纪元内同因去重+证据文件)+ 游标恒锚尾不变量(武装/轮转/漂移一律从当前尾起扫,水位文件退役为纯活性心跳) | 2026-09-09 01:13-01:14 脏纪元三连自退实证(死亡实例留新鲜小值水位被信任=重放向量,哨兵逐格啃完脏纪元期间全盲)+ 2026-09-08 70min 补位空窗实证(HIT 即退纯损) |
-| v5.3 | 备战环空转 PREP-SPIN(备战行持续 ∧ 零实质推进 ≥ 600s → 报警;心跳采样退役后的观察断流检测承接) | 心跳采样删除裁定(2026-09-15);效果账本自推进迁移迭代设计 3.3 哨兵交接;采样窗精化挂效果域批 M3 |
-| v5.2 | 活跃局判定数据源切 journal(_run_ended 重写:尾实机段 match_final 收口+行 ts 新鲜;runs/outcomes/decisions 三流写入端已随删除波 1 停写,旧判定链武装即误判「已终局」);实机段形态过滤(run_%Y%m%d_%H%M%S,fake_/sim_/harness 段不采信——journal 多写者单文件新形态) | T-257(删除波 1 落地审新立项);journal 行结构=kernel/cw_board_state._swap/write_match_final,段隔离=正选实机段形态(kernel/cw_state_journal.REAL_RUN_ID_RE 同源判据) |
-| v5.4 | 实质推进①退役(plan 行非零动作计数):流程侧商店访问摘要行形已删,「CwActionOpenShopParam → ✓ 商店访问完成」一律不计推进;判据收敛 = composite/state-round/进位面/采晶矿 | 访问完成行不带动作数,零动作空转与真买牌行形不可分,数完成行 = 1-1 卡死「全零也算推进」病灶复活;真买牌经过轮(state 行变化)入 state 信号 |
+| v5.1 | HIT 分级(关键即退/一般驻留续侦+纪元内同因去重+证据文件)+ 游标恒锚尾不变量(武装/轮转/漂移一律从当前尾起扫,水位文件降级为纯活性心跳) | 2026-09-09 01:13-01:14 脏纪元三连自退实证(死亡实例留新鲜小值水位被信任=重放向量,哨兵逐格啃完脏纪元期间全盲)+ 2026-09-08 70min 补位空窗实证(HIT 即退纯损) |
+| v5.3 | 备战环空转 PREP-SPIN(备战行持续 ∧ 零实质推进 ≥ 600s → 报警;心跳采样停用后的观察断流检测承接) | 心跳采样删除裁定(2026-09-15);效果账本自推进迁移迭代设计 3.3 哨兵交接 |
+| v5.2 | 活跃局判定数据源切 journal(_run_ended 重写:尾实机段 match_final 收尾+行 ts 新鲜;runs/outcomes/decisions 三流写入端已停写,旧判定链武装即误判「已终局」);实机段形态过滤(run_%Y%m%d_%H%M%S,fake_/sim_/harness 段不采信——journal 多写者单文件新形态) | (旧流停写审查后立项);journal 行结构=kernel/cw_board_state._swap/write_match_final,段隔离=正选实机段形态(kernel/cw_state_journal.REAL_RUN_ID_RE 同源判据) |
+| v5.4 | 实质推进①停用(plan 行非零动作计数):流程侧商店访问摘要行形已删,「CwActionOpenShopParam → ✓ 商店访问完成」一律不计推进;判据收敛 = composite/state-round/进位面/采晶矿 | 访问完成行不带动作数,零动作空转与真买牌行形不可分,数完成行 = 1-1 卡死「全零也算推进」病灶复活;真买牌经过轮(state 行变化)入 state 信号 |
 
 ## 词汇审计(v5,对照流程侧代码与 .log/mcp_server.log 全文 grep)
 
@@ -78,7 +78,7 @@ log 387 次全是真崩溃栈);『执行失败』(operation.py:695);『STOPPED�
 (director 动作执行行:出战/开商店等流程层执行日志)。
 已死删除:『人工结束』(operation.py:410 注释实证已被 stop_source 机制取代,
 全文 grep 0 命中,STOPPED 覆盖同事件);『返回状态 plan』『step1/step2
-RunBuyPhase』『[cw][director] step』(W971 备战 step 机→序列契约迁移前的旧核
+RunBuyPhase』『[cw][director] step』(备战 step 机→序列契约迁移前的旧核
 词汇,全文 grep 0 命中);旧 PROGRESS 元组(『→ ✓』『执行成功』子串判据,
 v5 语义修复的根)。
 降级保留:『plan_error』当前只写 decisions.jsonl 不进 log(0 命中),留作
@@ -92,13 +92,13 @@ v5 语义修复的根)。
 
 日志时间戳无日期(跨天 append),窗口按 HH:MM:SS 回绕计算;
 扫描起点不变量(v5.1):起点 ∈ {进入监视时的文件尾} ∪ {单调前进的已读位置}
-——武装一律锚尾(水位文件退役为纯活性心跳,只按 mtime 消费,值不进游标),
+——武装一律锚尾(水位文件降级为纯活性心跳,只按 mtime 消费,值不进游标),
 日志轮转/截断锚定新纪元当前尾,信道漂移切新文件当前尾。历史字节永不在
 扫描集合内,脏日志纪元(有历史 ERROR 行)结构性不重放。
 离线自测: 环境变量 CW_SENTINEL_LOG / CW_SENTINEL_POS 重定向日志与水位路径;
   CW_SENTINEL_REPLAY_DIR(或 CW_SENTINEL_JOURNAL)重定向活跃局判定账面
   (v5.2 起 = state/journal.jsonl 单文件;旧 CW_SENTINEL_RUNS/OUTCOMES/
-  DECISIONS 三 env 随三流退役删除);CW_SENTINEL_SILENCE /
+  DECISIONS 三 env 已随旧三流停用删除);CW_SENTINEL_SILENCE /
   CW_SENTINEL_CONFIRM / CW_SENTINEL_DWELL_SEC / CW_SENTINEL_JOURNAL_FRESH /
   CW_SENTINEL_JOURNAL_TAIL / CW_SENTINEL_RUN_RE 覆盖阈值与段形态(仅自测);
   CW_SENTINEL_HIT_EVIDENCE 重定向 HIT 证据路径;
@@ -181,8 +181,8 @@ def _acquire_lock() -> bool:
     LOCK.write_text(str(os.getpid()))
     return True
 _REPLAY_DIR = Path(os.environ.get('CW_SENTINEL_REPLAY_DIR', r'D:\code\workspace\StarRailOneDragon\.debug\currency_war\telemetry\live'))
-# v5.2 活跃局判定数据源切 journal(T-257):v4.1 的 runs/outcomes/decisions
-# 三流写入端已随删除波 1(T-243)从 src 删除——三流 mtime 冻结在停写时刻,
+# 活跃局判定数据源 = journal(v5.2 起):旧判定链读 runs/outcomes/decisions
+# 三流,写入端已从 src 删除(旧流停写)——三流 mtime 冻结在停写时刻,
 # 判定链恒走「runs 尾行有 result+同 id outcomes 陈旧+decisions 陈旧」→
 # _run_ended() 恒 True → LOOP 报警整局被 suppress+局后空窗外的静默误判 IDLE
 # (实机窗武装必误报的机制)。journal = state/journal.jsonl 唯一账面。
@@ -198,7 +198,7 @@ JOURNAL_FRESH_SEC = int(os.environ.get('CW_SENTINEL_JOURNAL_FRESH', 600))
 # fake_/sim_ 段与 harness 短 id 段不采信(同源判据 =
 # kernel/cw_state_journal.REAL_RUN_ID_RE,三件哨兵同口径)。
 RUN_ID_RE = re.compile(os.environ.get('CW_SENTINEL_RUN_RE', r'^run_\d{8}_\d{6}$'))
-# _run_ended() 每次调用的尾读字节量:只需覆盖「尾实机段的收口行」
+# _run_ended() 每次调用的尾读字节量:只需覆盖「尾实机段的收尾行」
 # (match_final 局终才落=段尾),不追段首。缺省 4MB:真实 journal 实测(2026-09-11)
 # sim 测试段单次可写 4MB+ 行(fake 段 receipts 数千行),512KB 尾窗会被整段
 # 挤出导致「尾窗无实机段行」;4MB ≈ 典型 sim 单次写入量,实机段行不被挤出。
@@ -238,11 +238,11 @@ SILENCE_SEC = int(os.environ.get('CW_SENTINEL_SILENCE', 360))  # 静默死锁阈
 SILENCE_CONFIRM = int(os.environ.get('CW_SENTINEL_CONFIRM', 420))  # v3.4:二次确认窗
 
 # ── 实质推进判据(v5,STALL/LOOP 单一源;详见文件头「实质推进」节)──────
-# v5.4:plan 行非零动作判据退役——流程侧商店访问摘要行形已删,访问完成行
+# v5.4:plan 行非零动作判据已停用——流程侧商店访问摘要行形已删,访问完成行
 # 不带动作数,零动作空转与真买牌行形不可分,数完成行 = 旧「全零也算推进」
 # 病灶复活;真买牌的推进可见化 = 过轮(state 行 round 变化)入其余信号。
 
-# ── v4.0 活跃循环卡死(W180,run 24 标定)─────────────────────────────
+# ── v4.0 活跃循环卡死(,run 24 标定)─────────────────────────────
 LOOP_WIN = int(os.environ.get('CW_SENTINEL_LOOP_WIN', 1500))  # 循环判定窗口(秒)
 LOOP_N = int(os.environ.get('CW_SENTINEL_LOOP_N', 10))        # 同签名阈值
 # 只数定向动作行(白名单前缀)——OCR/obs 冲突行天然秒级重复,数它们必误报;
@@ -350,14 +350,14 @@ def _run_ended() -> bool:
     即返回 False;数据全部只采实机形态段 RUN_ID_RE,fake_/sim_/harness 段
     不采信——journal 多写者单文件,sim 段行不构成「有局/已终局」证据):
       1. journal 不可读/无实机段行 → 活跃(保守,不弱化局中告警);
-      2. 尾实机段(末条实机段行的 run_id)无 match_final 收口行 → 活跃
-         (段未收口=局在打或异常未收口;后者由静默/STALL 通道报警,不该
+      2. 尾实机段(末条实机段行的 run_id)无 match_final 收尾行 → 活跃
+         (段未收尾=局在打或异常未收尾;后者由静默/STALL 通道报警,不该
          在这里当「已终局」吞掉告警——v4.1 事故方向的守卫);
       3. 末条实机段行 ts 距今 < JOURNAL_FRESH_SEC → 活跃(局终后下一局
          开局初期行流尚未推进/局中长动画段的兜底,沿 v4.1 第 4 条语义)。
-      其余(尾段已收口+行流陈旧)= 局后空窗 → True(IDLE 优雅退出)。
+      其余(尾段已收尾+行流陈旧)= 局后空窗 → True(IDLE 优雅退出)。
     对应关系(v4.1 判定链 → v5.2):旧 1「runs 尾行无 result」≈ 新 2
-    (match_final 是 runs 的 journal 收编载体,局终才落);旧 2「outcomes
+    (match_final 是 runs 的 journal 并入载体,局终才落);旧 2「outcomes
     有更新局」≈ 新 3(尾段行新鲜即有新活动);旧 3/4(outcomes/decisions
     mtime 新鲜)≈ 新 3(journal 行频高于旧两流,判定更强)。
     """
@@ -371,7 +371,7 @@ def _run_ended() -> bool:
     last_rid = real[-1]['run_id']
     if not any(r['run_id'] == last_rid and r.get('row') == 'write'
                and r.get('field') == 'match_final' for r in real):
-        return False   # 尾实机段未收口 → 活跃(判定链 2)
+        return False   # 尾实机段未收尾 → 活跃(判定链 2)
     try:
         last_ts = datetime.fromisoformat(str(real[-1].get('ts') or ''))
         age = time.time() - last_ts.timestamp()
@@ -727,7 +727,7 @@ def process_line(line: str, line_end: int | None) -> tuple[str, bool] | None:
             return (f'[SENTINEL-STALL] 近{span}秒同特征行≥{STALL_N}且无实质推进: {bad[:120]}',
                     True)
     if kind == 'loop':
-        # 局已终局(journal 尾实机段有 match_final 收口行)则抑制——08-25 17:07
+        # 局已终局(journal 尾实机段有 match_final 收尾行)则抑制——08-25 17:07
         # 实证:局末/server 重启间隙,窗口残留旧动作行 + 无新推进,非卡死
         # (与 SILENCE 分支同源守卫;replay 模式不做此查——历史回放时 journal
         # 是当前态,不代表历史时刻)。
@@ -922,11 +922,11 @@ def _selftest() -> int:
                                'sig': {}, 'note': '', 'evidence_refs': []},
                               ensure_ascii=False) + '\n'
         for name, journal_text, expect in (
-            # 局后空窗:尾实机段已收口(match_final 在场)+行陈旧 → IDLE(12:51 场景)
+            # 局后空窗:尾实机段已收尾(match_final 在场)+行陈旧 → IDLE(12:51 场景)
             ('idle_after_run',
              _jrow('run_20260901_000001') + _jrow('run_20260901_000001', 'match_final'),
              '[RUN-ENDED-IDLE]'),
-            # 局中静默:尾实机段未收口(无 match_final)→ 活跃 → 双窗后仍报 SILENCE
+            # 局中静默:尾实机段未收尾(无 match_final)→ 活跃 → 双窗后仍报 SILENCE
             ('active_run_silence',
              _jrow('run_20260901_000002'),
              '[SENTINEL-SILENCE]'),
@@ -968,7 +968,7 @@ def _selftest() -> int:
         log_b.write_text('', encoding='utf-8')
         old = time.time() - 3600
         os.utime(log_b, (old, old))   # B 初始陈旧 → 武装时选 A
-        # v5.2:静默尾段预期「已收口+陈旧」→ _run_ended()=True → IDLE 退出路径
+        # v5.2:静默尾段预期「已收尾+陈旧」→ _run_ended()=True → IDLE 退出路径
         _stale_ts = '2020-01-01T00:00:00'
         (d / 'state').mkdir()
         (d / 'state' / 'journal.jsonl').write_text(''.join(
@@ -1250,7 +1250,7 @@ def _selftest() -> int:
         cases.append(('L6_stall_escalation', '第10条STALL退出+CONT恰1', ok, _last_line(o)))
 
     # L7 终局标记修复锁(行为增量):『指令[...] 执行失败』行喂到后进入静默
-    # 双窗(短阈值;journal 尾实机段未收口使 _run_ended() 为假(v5.2);
+    # 双窗(短阈值;journal 尾实机段未收尾使 _run_ended() 为假(v5.2);
     # 夹具不得混入『执行成功』——该行在 v5/v5.1 都会置位标记,混入即毁判别力)。
     # v5 下该行的标记置位到不了(HIT 判定即提前返回,准确说是仅 执行失败 行
     # 的置位丢失,执行成功 行本就置位);v5.1 续侦喂行后应走 [sentinel-quiet]
@@ -1267,7 +1267,7 @@ def _selftest() -> int:
                         'field': 'gold', 'after': 1, 'same_value': False,
                         'state': {'values': {}}, 'sig': {}, 'note': '',
                         'evidence_refs': []}, ensure_ascii=False) + '\n',
-            encoding='utf-8')   # 尾段未收口(无 match_final)→ 判活跃
+            encoding='utf-8')   # 尾段未收尾(无 match_final)→ 判活跃
         proc, out = _spawn_resident(d, 'L7', extra_env={
             'CW_SENTINEL_SILENCE': '3', 'CW_SENTINEL_CONFIRM': '3'})
         time.sleep(2.2)
@@ -1298,7 +1298,7 @@ if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--replay':
     sys.exit(_replay(sys.argv[2]))
 
 if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--dry-ended':
-    # v5.2 活跃局判定单点干跑(T-257):对给定 journal(缺省=现役路径)跑一次
+    # 活跃局判定单点干跑(v5.2 起):对给定 journal(缺省=现役路径)跑一次
     # _run_ended() 打印 ENDED=… 退出;纯判定面输出,不进监视循环不占锁。
     if len(sys.argv) > 2:
         JOURNAL_JSONL = Path(sys.argv[2])
@@ -1311,7 +1311,7 @@ if not REPLAY_MODE and not _acquire_lock():
 # 2026-09-09 01:13-01:14 三连自退实证的自持链:死亡实例报警路径写
 # MARKER=line_end → 十分钟内重武信任该新鲜小值 → 从历史中段续扫 → 撞新鲜
 # 历史 ERROR → 再死、水位再前爬——哨兵像啃玉米一样把脏纪元啃完,期间监控
-# 全盲。「信任水位」整体退役:水位文件降级为纯活性心跳(runtime-ops 活性
+# 全盲。「信任水位」整体停用:水位文件降级为纯活性心跳(runtime-ops 活性
 # 回读只消费 mtime),值不再进入游标;武装起点恒为武装时刻的文件尾。
 # LOG 缺失守卫(搭车件,现行武装即崩):pos 以 None 起始,由 _read_new_lines()
 # 首见成功 stat 时锚定当时尾(锚定发生在该函数内 size<pos 比较之前,否则
@@ -1330,9 +1330,9 @@ print(f'[sentinel] armed v5.1 @ {time.strftime("%H:%M:%S")}, pos={_pos_show}(武
 last_line_wall = time.time()
 
 
-# v3.8(2026-08-26 02:2x 轮转锁死修,根因实锤):原实现长持有日志句柄(readline
+# v3.8(2026-08-26 02:2x 轮转锁死修,根因已实测确认):原实现长持有日志句柄(readline
 # 尾随)——Windows 下开着句柄挡 os.rename,server 的 TimedRotatingFileHandler
-# 午夜滚转 PermissionError(WinError 32,日志 Traceback 实锤:轮转 rename 被本
+# 午夜滚转 PermissionError(WinError 32,日志 Traceback 已实测确认:轮转 rename 被本
 # 哨兵的句柄挡住)。改**短开轮询**:每 POLL_SEC 开→seek→读新增→关,全程不持
 # 句柄;外部轮转(rename/截断)由 size<pos 判据捕获(v5.1 起处置=锚定新纪元
 # 当前尾,不再是回零重读)。行处理语义除 HIT 分级(v5.1,见文件头)外逐位
@@ -1363,8 +1363,8 @@ def _read_new_lines() -> list[tuple[str, int]]:
         pos = size
     if size < pos:
         # v5.1 D2 轮转/截断:旧纪元坐标失效 → 锚定新纪元当前尾,历史不重放。
-        # v5 及以前此处置 pos=0=整文件重放,是 2026-09-09 脏纪元自毁循环的
-        # 向量之一(武装信任水位是另一个,已在武装块拆除)。检测边界:
+        # 旧版此处置 pos=0=整文件重放,是 2026-09-09 脏纪元自毁循环的
+        # 向量之一(武装信任水位是另一个,已拆除)。检测边界:
         # size<pos 只能测「新纪元未长过旧 pos」的轮转;新文件在一个轮询间隔
         # 内长过旧 pos 则漏检(需单间隔重写整旧文件长度,本项目日志速率下
         # 不可达;漏检后果=跳过新纪元前缀的丢失窗,不重放不崩溃)。
@@ -1441,18 +1441,17 @@ while True:
                     last_line_wall = time.time()
                     _seen_quiet_noted = False
                     _skipped_stale = 0
-    # 心跳无条件每轮写(2026-09-04 勘误:旧版嵌在 not _lines 分支内,
-    # 局活跃日志有流时水位冻结——runtime-ops「哨兵活性回读」以 pos mtime
-    # 推进判活,冻结被误读成挂死,两个健康实例被杀)。进程活着 = 水位推进,
+    # 心跳无条件每轮写(旧版嵌在 not _lines 分支内,局活跃日志有流时
+    # 水位冻结——runtime-ops「哨兵活性回读」以 pos mtime 推进判活,冻结被
+    # 误读成挂死,两个健康实例被杀)。进程活着 = 水位推进,
     # 与是否读到新行无关;报警路径(写 _line_end 后 exit)不受影响。
-    # v5.1:值退役为纯活性指标(游标不再读它);pos 尚未锚定(None,武装时
+    # v5.1:值降级为纯活性指标(游标不再读它);pos 尚未锚定(None,武装时
     # 日志缺失)写 '-1' 占位——写 "None" 字符串会让任何按 int 解析水位的
     # 工具崩,可解析占位两全(仅 mtime 被消费,值本身无人读)。
     MARKER.write_text('-1' if pos is None else str(pos))
     if time.time() - last_line_wall > SILENCE_SEC:
-            # v3.5(12:51 误报修):静默判定前先做「活跃局检查」(v5.2 起离线读
-            # state/journal.jsonl 尾窗;v5.1 及以前读 runs/outcomes/decisions,
-            # 三流已随删除波 1 停写退役)。局已自然终局 → 局后空窗是正常交接
+            # 静默判定前先做「活跃局检查」(v5.2 起离线读 state/journal.jsonl
+            # 尾窗;旧三流已停写停用)。局已自然终局 → 局后空窗是正常交接
             # 状态,IDLE 提示 + 优雅退出,不走 SILENCE 报警;
             # 局仍活跃 → 维持原双窗逻辑(结算屏/动画段误报防护不弱化)。
             if _run_ended():
