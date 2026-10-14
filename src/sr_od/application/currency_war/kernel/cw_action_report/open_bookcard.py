@@ -2,11 +2,11 @@
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
 ``cw_action_report.__init__`` docstring)。容器、写入口与观察
-写端留守 ``kernel/cw_game_state``,本包 → 容器单向依赖。
+写端留在 ``kernel/cw_game_state``,本包 → 容器单向依赖。
 语义正本 = 函数 docstring(自 cw_game_state 逐字迁移)。
 
 **后果声明**(动作后果声明化详设 world-decl.md §2 表 #6):applied 出口
-构造 ``WorldDecl``(trigger = ''——腾席写端 = 本上报「开卡即腾席」,
+构造 ``WorldDecl``(trigger = ''——腾位写端 = 本上报「开卡即腾位」,
 backend 活仅呈现专家邀请函弹窗;``next_screen`` = 专家邀请函档,画面档
 全表唯一可推),转移事件广播随本动作单轨切换摘除。
 """
@@ -30,13 +30,13 @@ from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 #: 开书册卡声明(纯转移;封闭集单一源 = sim 后端 advance 分派表键集)。
 #(声明改底层屏):专家邀请函画面的出现事实改由
 # 登记(kind = expert_invite,上报内 register)承载,声明 next_screen
-# 语义回归备战底屏(流转移 = 开卡即腾席后回备战,弹窗出现走登记分发)。
+# 语义回归备战底屏(流转移 = 开卡即腾位后回备战,弹窗出现走登记分发)。
 _DECL: WorldDecl = WorldDecl(next_screen=SCREEN_PREP_FRAME,
                              trigger='')
 
 
 def report_action_open_bookcard_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """开书册卡上报:bench 槽位 kind → empty(开卡即腾席)。槽 kind 门 =
+    """开书册卡上报:bench 槽位 kind → empty(开卡即腾位)。槽 kind 门 =
     ``'bookcard'``(kind 细分批:书册卡槽不再统一降级 supply_box,容器
     bench kind 细分 = 'bookcard' 单一口径);槽不存在/类型不符 =
     applied=False 零写零声明。applied 出口构造后果声明(:data:`_DECL`,

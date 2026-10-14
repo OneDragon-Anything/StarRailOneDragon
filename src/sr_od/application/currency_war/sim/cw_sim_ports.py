@@ -155,7 +155,7 @@ def sim_or_live_identity(screen_names: tuple[str, ...] | list[str],
     语义与 :func:`sim_or_live_observation` 同族:装了后端 →
     ``screen_identity()``(画面状态机唯一答口,flow-seam 附录 A.2
     「sim 画面身份归 screen_identity」),且仅当档名 ∈ 调用方清单时返回
-    (清单外 = None,交回调用方默认分支——与实机 ``get_match_screen_name``
+    (清单外 = None,结束本次访问调用方默认分支——与实机 ``get_match_screen_name``
     的清单过滤语义同形,备战双锚默认分支因此不受影响);未装配 → 执行
     ``live_read()`` 原识别链,实机路径零行为变化。
     """

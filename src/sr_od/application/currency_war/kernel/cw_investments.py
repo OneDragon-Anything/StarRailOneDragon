@@ -302,10 +302,10 @@ class EnvEconomyEffect:
     字段语义(值全部 = cw_invest_data 效果原文直读):
     - gold_per_plane_start: 每位面开局金,元组下标 = 位面−1(增发货币 (6,8,12);
       晶矿→金兑现按自动开启建模——晶矿开启是玩家动作面,自动与否未实采
-      (战技点契约「打开20个晶矿后」为存在玩家动作的佐证),假设在册
+      (战技点契约「打开20个晶矿后」为存在玩家动作的佐证),假设已登记
       登记;证非自动则 bot 具备开矿动作前该通道 fail-closed)
     - gold_instant: 获得时一次性金(蓝海 6;随机环境期望不计——选卡时未知
-      且分布含未入模者,取舍在册)
+      且分布含未入模者,取舍已登记)
     - xp_after_level: (等级, 节点数, 每节点XP)(成功经验 (8,3,12);「升 8
       必然发生」假设显式登记(发展优先战略下 lv8 标配),
       证伪改条件概率)
@@ -836,7 +836,7 @@ INVESTMENT_ENVS: dict[str, InvestmentEnv] = _build_envs()
 _validate_strategy_effects()
 
 
-#: 品质覆写族环境在册名(注册表 id110/111/112/123/124/135):选中后改写
+#: 品质覆写族环境已登记名(注册表 id110/111/112/123/124/135):选中后改写
 #: 后续 offer 品质分布的环境集合。游戏事实名单(单一源 = 本常量位,随
 #: 注册表演进);效果建模批消费,当前命中面只作披露判据
 #: (披露键 = 'invest_quality_rewrite_envs_pending')。
@@ -1161,7 +1161,7 @@ def blood_xp_mode(session) -> tuple[str, int] | None:
     单一源 = 注册表 STRATEGY_ECONOMY.xp_buy_hp_cost 派生(先例 =
     prep_actions.record_hp_pay_event 的 mode 判定;[40]② 血闸与遥测写点
     经本助手同源消费)。多卡命中取 active_strategies 序首个
-    (现版本游戏仅『奋斗协议』单卡在册;新血本位卡落地零改动)。
+    (现版本游戏仅『奋斗协议』单卡已登记;新血本位卡落地零改动)。
     入参先经 get_strategy 归一(session 存量 OCR 原始名不静默 miss)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
@@ -1199,7 +1199,7 @@ def resolve_strategy_canonical(name: str) -> str | None:
 # A 类精确四条 + B 类两条(长线利好/二手市场)+ C 类两条(经济过热/经济严重
 # 过热),通道分类全量。表外环境 economy 恒 None,禁从效果原文
 # 自动猜装(六条防错装对账 = _validate_env_economy);
-# 轮岗/人才下沉无通道可装 → 「待建模」显式在册(策略层 env_economy.
+# 轮岗/人才下沉无通道可装 → 「待建模」显式已登记(策略层 env_economy.
 # ENV_ECONOMY_PENDING_MODELING,区别于漏登记)。
 # B/C 通道的估算参数(概率/期望/增益)在策略层 env_economy.ENV_ECONOMY_
 # ESTIMATES(gold_after_refreshes 通道已改拍值注册,参数随迁停用),
@@ -1213,7 +1213,7 @@ ENV_ECONOMY: dict[str, EnvEconomyEffect] = {
     # 开局额外 +6 金(id 113;随机环境期望不计,design §2.6 取舍)
     '蓝海': EnvEconomyEffect(gold_instant=6),
     # 升 8 级后 3 节点各 +12XP(id 138)= 36XP;×1:1 折金等价
-    # (策略层 env_economy.XP_GOLD_RATE 用户裁定暂定;「升 8 必然发生」假设在册)
+    # (策略层 env_economy.XP_GOLD_RATE 用户裁定暂定;「升 8 必然发生」假设已登记)
     '成功经验': EnvEconomyEffect(xp_after_level=(8, 3, 12)),
     # 每取一张策略 +2×已持有数(id 147);3-5 节点额外策略不计(策略域价值)
     '策略大师': EnvEconomyEffect(gold_per_strategy_coef=2),
@@ -1269,7 +1269,7 @@ _validate_env_economy()
 
 # ===== 环境声明矿注册表(迭代 2026-10-10-ore-reward-attach;details/ore-reward-channel.md §2)=====
 # **世界发放域**(矿进入世界时的声明内容),与 ENV_ECONOMY(估值域)分域不互斥
-# ——增发货币两表同时在册是常态;ENV_GIFTS ∩ ENV_ECONOMY = ∅ 检查覆盖「单一
+# ——增发货币两表同时已登记是常态;ENV_GIFTS ∩ ENV_ECONOMY = ∅ 检查覆盖「单一
 # 环境只落一个估值结构」,本表不参与该检查,代之以与估值面的双源同值校验
 # (见 _validate_env_ore_grants 第③条)。消费面 = kernel/cw_ore_channel.py
 # 声明入队电平检查(键查)与挂接入口生成(值出队)。
@@ -1784,7 +1784,7 @@ class StrategyPoolRewrite:
       §2.2.4,v1 无消费端);None = 无额外取卡
     - difficulty_exempt: 敌人难度不随高品质策略提高(白银时代第二条效果;
       游戏【注·交叉核对】口径 = 白银 +0/黄金 +3/棱彩 +6 每拥有 1 个,
-      docs/game/currency_war/research/economy.md 难度精确口径行——数值在册
+      docs/game/currency_war/research/economy.md 难度精确口径行——数值已登记
       不折金,难度→收益需战力/胜率建模属宪法禁域 00_framework §1.1,§2.2.3)
     - pending_notes: 效果原文歧义待办(单张改写型 offer 覆盖面歧义:三卡全改
       还是仅点名张;银·金·彩槽位-品质映射语义)——pending 条目必填
@@ -1925,7 +1925,7 @@ _validate_env_streak_grants()
 # 消费面 = kernel/cw_env_grants.check_env_refresh_grants(触发检查
 # 单一源,唯一调用点 = 刷新上报函数尾部)。
 # **表间豁免声明**(ENV_ORE_GRANTS 同款):本表键与 ENV_ECONOMY 共存
-# (二手市场两表同时在册),不参与 ENV_POOL_REWRITE 校验收的「单一
+# (二手市场两表同时已登记),不参与 ENV_POOL_REWRITE 校验收的「单一
 # 环境只落一个估值结构」三表互斥——本表条目非效果牌面,登记即常驻
 # 触发器;正确性代之以与估值面的双源同值校验(见
 # _validate_env_refresh_grants 第⑤条)。与 ENV_STREAK_GRANTS 两个世界

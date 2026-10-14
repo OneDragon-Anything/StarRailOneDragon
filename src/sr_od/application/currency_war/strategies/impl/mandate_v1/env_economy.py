@@ -4,7 +4,7 @@
 **策略层的衍生估值**——把 ``cw_investments.ENV_ECONOMY`` 的整局经济通道
 折成金等价期望。kernel 侧只留游戏原始真值 ``cw_investments.ENV_ECONOMY``
 (通道结构 = 游戏效果原文的结构化,【注】);``ENV_ECONOMY_PENDING_
-MODELING`` 亦驻本模块(下方「待建模」在册段)——「留 kernel 不迁」系
+MODELING`` 亦驻本模块(下方「待建模」已登记段)——「留 kernel 不迁」系
 早期过时表述,以代码体为准。语义正本 = strategy-docs/28_invest_env_
 screen.md §2 现金分行;迁移批的删除面对照考古走 git 历史。
 
@@ -81,7 +81,7 @@ _REWARD_BONUS_VARIANTS: dict[str, str] = {
 
 # 奖励节点槽位结构先验(【拟】对局档案众数结构,数据批 2026-09-12;样本量与
 # 槽位变异性申报 = invest-env 迭代 data-batch-estimates 详设,git 历史可溯)。
-# (位面, 轮次) 1 基;P3 结构零样本不计 = 视界保守低估(模板在册后补)。
+# (位面, 轮次) 1 基;P3 结构零样本不计 = 视界保守低估(模板已登记后补)。
 _REWARD_SLOTS: tuple[tuple[int, int], ...] = ((1, 1), (1, 2), (1, 8), (2, 6))
 
 # 取卡序→位面结构映射(k 1 基;策略大师通道 P(第 k 张策略可取) 的位面归属)。
@@ -136,7 +136,7 @@ class EconomyEstimate:
 #: details/data-batch-estimates.md——完成局 n=114、Wilson 95% 区间、
 #: 比例值 4 位舍入)。**不落参数申报**(零样本/零有效估计,禁拍值;缺位 =
 #: 相关通道 fail-closed,补数据缩区间后自动恢复):
-#: - reward_node_bonus_normal/super:扑满局在册(经济过热 ×7 + 经济严重过热
+#: - reward_node_bonus_normal/super:扑满局已登记(经济过热 ×7 + 经济严重过热
 #:   ×1)但遥测无扑满战利品独立字段,奖励轮收支差分混入备战净支出,增益不可
 #:   分离 → 经济过热/经济严重过热 fail-closed(补采建议见口径文档)。
 #: (refresh_total_ge20_p / refresh_paid_ge30_p 随 gold_after_refreshes 拍值
@@ -155,19 +155,19 @@ ENV_ECONOMY_ESTIMATES: dict[str, EconomyEstimate] = {
         cutoff='2026-09-12'),
 }
 
-# 「待建模」在册(原 invest-env 迭代:显式区别于「漏登记」):有经济语义、
-# v1 无参数化模型的环境。在册即消费端恒 (0.0, False)(fail-closed);不入
+# 「待建模」已登记(原 invest-env 迭代:显式区别于「漏登记」):有经济语义、
+# v1 无参数化模型的环境。已登记即消费端恒 (0.0, False)(fail-closed);不入
 # ENV_ECONOMY(无通道字段可装,双登记由 _validate_estimates_governance 拒绝);
 # 补出参数化模型后迁 ENV_ECONOMY 并落参。
 ENV_ECONOMY_PENDING_MODELING: dict[str, str] = {
-    # 刷新概率结构翻倍:概率面已在 cw_shop_odds 在册,金等价参数化缺失
+    # 刷新概率结构翻倍:概率面已在 cw_shop_odds 已登记,金等价参数化缺失
     '轮岗': '刷新概率结构翻倍(概率面 cw_shop_odds 在册);金等价参数化缺失',
     # 商店 2 星概率提升:需先查证 2★ 商店价结构,未查证不入(查证前禁装通道)
     '人才下沉': '商店 2 星概率提升;需先查证 2★ 商店价结构,未查证不入',
 }
 
-# 假设/机制实采的待验证登记(原 invest-env 迭代假设登记行的验证项在册;实采定案前按
-# 在册假设建模,证伪即按各条处置改)。
+# 假设/机制实采的待验证登记(原 invest-env 迭代假设登记行的验证项已登记;实采定案前按
+# 已登记假设建模,证伪即按各条处置改)。
 ENV_ECONOMY_PENDING_VERIFICATION: dict[str, str] = {
     # 增发货币通道按「晶矿自动开启」建模;晶矿开启是玩家动作面(战技点契约
     # 「打开20个晶矿后」为存在玩家动作的佐证),自动与否未实采。证非自动 →
@@ -254,9 +254,9 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     - gold_instant:选卡当场一次性金(零参数,精确);
     - gold_per_plane_start:每位面开局金 × 位面可达权(剩余口径:既往位面
       不计;当前位面仅在开局轮(轮次 ≤ 1)可领——位面开局发放发生在轮 1 之前;
-      晶矿自动开启假设见 ENV_ECONOMY_PENDING_VERIFICATION 在册条);
+      晶矿自动开启假设见 ENV_ECONOMY_PENDING_VERIFICATION 已登记条);
     - xp_after_level:节点数 × 每节点 XP × XP_GOLD_RATE(「升 8 必然发生」
-      假设在册,v1 全额,不随剩余位面折扣——假设本身已承担心);
+      假设已登记,v1 全额,不随剩余位面折扣——假设本身已承担心);
     - gold_per_strategy_coef:``Σ_k coef×(k−1)×P(第 k 张策略可取)``,k = 剩余
       取卡序(已持有数起、基线取卡基数止),P(k) = 取卡所在位面的可达权
       (_STRATEGY_PICK_PLANES 结构表);
@@ -351,7 +351,7 @@ def _validate_estimates_governance() -> None:
     """估算治理构建校验(import 即炸;迁移迭代 3.1 迁入改造后保留两项):
 
     ① C 类哨兵条目必须有变体键映射(漏映射 = 参数查询恒 miss,通道静默
-    fail-closed 变哑炮);② 「待建模」在册环境必须真实存在(∈
+    fail-closed 变哑炮);② 「待建模」已登记环境必须真实存在(∈
     INVESTMENT_ENVS)且不与 ENV_ECONOMY 双登记(单一环境只落一个估值口径)。
     (原「ECON_VALUE_NORM 域带上界越界」项随域带归一删除——现金分直接按
     金等价计,无上界语义可守。)
@@ -397,7 +397,7 @@ _validate_estimates_governance()
 #: 样本面 = 净帧普通口径(扑满过热局整局剔除,对齐「148 总/140 普通」采样
 #: 面裁定)。重采入口 = tools/cw/env_pool_rewrite_estimates.py(实采定位
 #: 演化只改本表;口径与样本量 = invest-env 迭代 layer-e-promotion-batch 详设
-#: (git 历史可溯))。v1 在册值 24 系日程回退口径(9+9+9)下的参照值,被本
+#: (git 历史可溯))。v1 已登记值 24 系日程回退口径(9+9+9)下的参照值,被本
 #: 实采取代。
 _STRAT_PICK_HORIZONS: dict[int, int] = {1: 23, 2: 15}
 

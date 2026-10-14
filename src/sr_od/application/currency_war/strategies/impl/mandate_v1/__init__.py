@@ -1,21 +1,21 @@
 """货币战争新核包(mandate_v1 换核;换核迁移序原文已删档,
 沿革见 git 历史)。
 
-域内术语(本包注释用词的单一参考;前三个为玩法文档在册词,后两个为本
+域内术语(本包注释用词的单一参考;前三个为玩法文档已登记词,后两个为本
 包直白化后的标准称呼):
 - 终局阵容锁定:把最终阵容(目标线)确定下来、此后围绕它买牌的阶段与状态。玩法
   先例 = ``docs/game/currency_war/research/final_comps/README.md``
   「见核心即锁定终局阵容、围绕它买」(玩法文档原文);系统语义正本 =
   ``docs/develop/sr_od/application/currency_war/strategy-docs/
   12_line_and_intention.md``(代码对应 ``locked_comp`` 等符号)。
-- 腾席:腾出备战席位——bench 满先卖最弱杂件,或升人口扩容。用户玩法
-  纪律在册 = ``docs/game/currency_war/research/user_playstyle.md``
-  条目 [32]「腾席优先级」。
+- 腾位:腾出备战席位——bench 满先卖最弱杂件,或升人口扩容。用户玩法
+  纪律已登记 = ``docs/game/currency_war/research/user_playstyle.md``
+  条目 [32]「腾位优先级」。
 - 让位:优先级让步——两判据冲突帧,低优先一方放弃(「X 让位给 Y」)。
   玩法先例 = ``docs/game/currency_war/research/economy.md``(经济让位
   保血)、``user_playstyle.md``(购买让位于利息线)。
 - 放行判定:把一个备战动作(部署/装备穿戴等)真正发出之前的条件判定,
-  缺一即本帧不发、留待下帧(P79-3 等命题在册)。
+  缺一即本帧不发、留待下帧(P79-3 等命题已登记)。
 - 替补席线内成员:在 bench 上、属于目标线、因板满尚未上场等待换上的
   成员。设计文档旧称「压席成员」。
 

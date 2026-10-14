@@ -1,8 +1,8 @@
 """货币战争 战斗等待 op。
 
-接 「出战 op 交回循环」之后的战斗/结算窗口:等结算画面 → 结算处理(遥测读点 →
+接 「出战 op 结束本次访问循环」之后的战斗/结算窗口:等结算画面 → 结算处理(遥测读点 →
 点「继续挑战」)→ 完成判据白名单任一出现(备战系/补给/遭遇/投资策略/强敌来袭/
-位面过渡锚)→ round_success 交回主循环分发;「前往结算」链的团灭终局(多页 →
+位面过渡锚)→ round_success 结束本次访问主循环分发;「前往结算」链的团灭终局(多页 →
 返回货币战争 → 大厅)= 第三出口,round_success(status='terminal_lobby') 交整局
 退出(主循环 3c 收尾)。
 
@@ -37,7 +37,7 @@ kernel/cw_screen_report/battle_wait
 注入(``__init__(ctx, st, config)``,RunLoop 持有);
 ``node_max_retry_times=400`` 归节点。本屏 sim 腿 = 不适用
 (sim 事实来源为 coarse 结算产出非画面段),等价判据主要支撑 = 实机
-在册行为锁经 execute()/wait() 单路径全绿。
+已登记行为锁经 execute()/wait() 单路径全绿。
 """
 from __future__ import annotations
 
@@ -98,7 +98,7 @@ def hit_settle_completion_anchor(op: SrOperation, screen) -> bool:
     备战用单锚(宽到达判定;「按钮-出战」双锚精判是循环备战分支的
     职责,此处重复即双源)。BOSS简报锚 = 阵营徽记模板(OCR 误读免疫);
     「强敌」片段判别为锚 miss 的兜底(判别单一源见
-    cw_screen_boss_briefing)——boss 帧完成判定交回循环阶段一身份接管。
+    cw_screen_boss_briefing)——boss 帧完成判定结束本次访问循环阶段一身份接管。
     位面过渡锚(boss 局每位面开始出现一次;boss 简报帧已在上方排他
     ——共享文案不误判为本白名单项)。
     """
@@ -112,7 +112,7 @@ def hit_settle_completion_anchor(op: SrOperation, screen) -> bool:
     )
     _texts = read_ocr_texts(op.ctx, screen)
     if is_boss_briefing_texts(_texts):
-        return True   # boss 简报帧(徽记模板锚 miss 的形态)→ 完成判定,交回循环阶段一身份接管
+        return True   # boss 简报帧(徽记模板锚 miss 的形态)→ 完成判定,结束本次访问循环阶段一身份接管
     return op.round_by_ocr(screen, '点击空白处继续',
                            lcs_percent=0.8).is_success
 
@@ -600,7 +600,7 @@ class CwScreenBattleWait(CwOperation):
                 # 装备写端·拷贝仪参与计数结算(生产接线;载体 =
                 # settle_copy_machine_participation,指定挂点 = 战斗结算
                 # 覆盖带 on_battle_end 同分支同时序):现值
-                # 观察面(前台+后台在册单位)逐件推进参与计数,整除阈值
+                # 观察面(前台+后台已登记单位)逐件推进参与计数,整除阈值
                 # 成熟经入席桥落 1★ 复制;对局无拷贝仪穿戴 = 零扫描命中
                 # 零行为差。独立 best-effort try(同 on_battle_end 纪律,
                 # 不与结算覆盖写端共享异常域;失败不阻塞结算链)。
@@ -717,14 +717,14 @@ class CwScreenBattleWait(CwOperation):
         """驻留轮(出口判定先行,分支链随后;逐轮 round_wait 重判)。"""
         screen = self.last_screenshot
         # ③出口 B:团灭终局链终点 = 回到大厅(「返回货币战争」落点)→
-        # terminal 交回主循环 3c 收尾(runs summary/分配器/存档在彼处;
+        # terminal 结束本次访问主循环 3c 收尾(runs summary/分配器/存档在彼处;
         # 遥测连续性红线:收尾点固定于此)。
         if self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南',
                                    crop_first=False).is_success:
             log.info('[cw-bwait] 终局分叉:已回大厅 → terminal_lobby(交整局退出收口)')
             return self.round_success('terminal_lobby')
 
-        # ③出口 A:完成判据白名单任一命中 → 交回循环分发
+        # ③出口 A:完成判据白名单任一命中 → 结束本次访问循环分发
         if self._hit_completion_anchor(screen):
             log.info('[cw-bwait] 完成判据白名单命中 → 交回循环分发')
             return self.round_success('back_to_loop')
@@ -758,7 +758,7 @@ class CwScreenBattleWait(CwOperation):
             time.sleep(0.2)
             # ②段委托结算确认 op CwOpSettleConfirm:点击/长按兜底/推进
             # 上报随 op(去证据门形态,点击即上报;宿主侧无动作上报);
-            # 上方读点与 rounds_done 计数等结算链记留宿主。op 交回后回
+            # 上方读点与 rounds_done 计数等结算链记留宿主。op 结束后回
             # wait() 顶走 ③段白名单出口收尾(出口判定 = 状态机出口判据,
             # 非动作验证)。
             from sr_od.application.currency_war.operations.cw_op.cw_op_settle_confirm import (

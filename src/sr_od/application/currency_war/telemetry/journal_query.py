@@ -3,7 +3,7 @@
 设计裁定正本(
 0630-unified-state-journal.md``,后果节消费方迁移/M4 档案行;记录机制 as-built
 正本面 = ``docs/develop/sr_od/application/currency_war/game_state/journal.md`` §5/§7;设计
-工作稿存 .debug/temp 为易失档,禁作正本指针):判读/装配/策略回溯 = 按行
+工作稿存 .debug/temp 为临时档,禁作正本指针):判读/装配/策略回溯 = 按行
 直接读(单行自足);跨行对照 = 行间差分(人读/离线),**零机制化重放**。
 本模块 = 统一 state 新账的**唯一**判读读面(正本 =
 r5-migration-plan.md §2:journal 为唯一被读账本;旧 12 流视图族已随
@@ -36,7 +36,7 @@ U+FFFD 的行计 ``byte_repair_lines`` 后仍走 JSON 判定(坏行照跳)。
 
 消费方迁移覆盖清单(逐消费方 = 已迁/候/不适用)单一源 = retirement.md §7
 (``docs/develop/sr_od/application/currency_war/game_state/retirement.md`` 消费方迁移清单,
-11 消费面;本模块 = 其中判读 CLI 面的新账读入口)。溯源注(易失产物域,
+11 消费面;本模块 = 其中判读 CLI 面的新账读入口)。溯源注(临时产物域,
 非单一源):批交付报告 ``.debug/temp/currency_war/统一state-R3.1-交付
 报告.md`` §5 与 ``统一state-R3.2-交付报告.md`` 曾载逐消费方迁移核对明细
 (R3.2 补行 3:cw_replay_reader/cw_divergence_stats/cw_node_validate)。
@@ -360,7 +360,7 @@ def _pair_s(first: int | None, last: int | None) -> str:
 
 
 def view_events(rows: list[dict[str, Any]], run_id: str = '') -> list[str]:
-    """观察事件行显影(行型 2;obs_conflicts 并入后的证据面在账内直读)。"""
+    """观察事件行暴露(行型 2;obs_conflicts 并入后的证据面在账内直读)。"""
     out = [f'[obs_event] run={run_id or "(全部段)"} (行型 2,零状态变更证据)']
     evs = [r for r in rows_of(rows, run_id) if row_kind(r) == ROW_OBS_EVENT]
     if not evs:

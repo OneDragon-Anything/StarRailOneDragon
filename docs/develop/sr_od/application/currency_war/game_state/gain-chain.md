@@ -43,7 +43,7 @@ producer=GAIN_CHAIN_PRODUCER)`(`rng` = 环境随机支采样注入,透传
 1. **注册**:`gs.active_env` 逻辑写(写入方署名 = `producer`,缺省
    `GAIN_CHAIN_PRODUCER`)。选择事实产生在动作执行时(动作 op 机械链
    发出即上报,用户裁定 2026-09-21「执行即按成功处理」;原「点卡前写」
-   与「落地相写」两代语义均已停用)。
+   与「落地补写」两代语义均已停用)。
 2. **效果账本登记**:`cw_effect_inventory.py::register_portal_from_env(session,
    env_name)`——best-effort 分支:失败 log + 缺陷保留证据(`kind =
    DEFECT_PORTAL_REGISTER`)、不阻塞;`session=None` = 登记分支跳过(局外/测试形态),
@@ -105,7 +105,7 @@ rand=True(§5)。
 工作表,返回升星产物身份 `(char_id, star+1)`;无同名同星 3 只 → None。规则逐条
 对齐 `kernel/cw_merge_simulate.py::merge_simulate` 不动点合并段(分组键
 `(char_id, star)`、场上载体优先、全备战取最左、溢出件合成腾槽归位优先、装备继承
-并入、场上同名同星 ≤1 不变量),对齐由对拍测试锁「同池同输入下,单级 ×N 次 ==
+并入、场上同名同星 ≤1 不变量),对齐由比对测试锁「同池同输入下,单级 ×N 次 ==
 merge_simulate 终态」——禁第二套语义。merge_simulate 是一次到底的不动点推演、无
 回调时机;链式版需要「单级合成 + 产物回调」,故独立实现单级函数。
 
@@ -207,7 +207,7 @@ import 即炸)防漂移。
     落席,星级 = spec.star(人才引进 1 = 先验非结构值)。**效果体含采样 →
     子链 rand=True**(§5)——未锚定期(开局窗)本就走 write_logic_rand,
     rand=True 声明采样语义并保锚定后不进失配网(实机猜错 = 首观察静默覆盖,
-    `logic_rand_outcome` 收口,不响安灯)。效果串 `env_gift_random:<名>@<星>star`
+    `logic_rand_outcome` 收尾,不触发告警停局)。效果串 `env_gift_random:<名>@<星>star`
     (与具名支 `env_gift:` 前缀分离,采样发放可独立过滤审计)。`rng` 缺省回退
     自掷 `random.Random()`(直构/测试形态);正式接线 = 上报函数
     `report_action_pick_invest_env_param` **条件解析**(仅选中环境登记了随机支
@@ -230,9 +230,9 @@ import 即炸)防漂移。
     数量 = 元素重复次数,发放事实登记与即时通道同阶),到点发放 =
     `discharge_due_item_grants`(§2.7)。首例 = 特权阶级(id 102,第二位面
     开始时获得 1 个特权武装箱)。
-  - 欢愉契约条件分支**不在本枚举**:正式模型 = 银狼策划选择上报落地相的附加条件授予
+  - 欢愉契约条件分支**不在本枚举**:正式模型 = 银狼策划选择上报动作落地时点的附加条件授予
     分支(`kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`,
-    头号玩家选项触发 + 欢愉契约在册 → `gain_character`(火花/开拓者·欢愉随机
+    头号玩家选项触发 + 欢愉契约已登记 → `gain_character`(火花/开拓者·欢愉随机
     其一,1★,rand=True),调用点级 best-effort 例外见 §6;条件分支原文与建模依据 =
     `cw_investments.py::ENV_GIFTS['欢愉契约'].chars_conditional`)。
 - **on_character_gained(gs, name, star, *, rand, sig)**:在用枚举 = **空集**(暂无
@@ -324,16 +324,16 @@ best-effort 边界收在**非容器写的观测/登记分支**内(§2.1/§2.4 �
 `merge_cascade_write`、升星产物不触发回调、备战满拒落零写)仍在用,消费点 =
 pick_supply 等旧通道(策略屏效果分支已随投资两屏迁移批改走链原语,消费点撤出)。
 它与本链「回调先、升星后」**双时序并存**至各自迁移批;在用消费面无 on-gain 效果
-在册,行为等价。各消费点迁移完成后 grant_bench_unit_cascade 停用。装备获得→送
+已登记,行为等价。各消费点迁移完成后 grant_bench_unit_cascade 停用。装备获得→送
 角色的「全渠道统一后置钩子」`apply_equip_acquire_consequence` 的分派动作已归
 `on_equipment_gained` 回调(§3),数据表共用。
 
 ## 8. 接入面现状(双支;含模块拆分)
 
-- **投资环境落地相**:`kernel/cw_action_report/pick_invest_env.py::
+- **投资环境动作落地接入**:`kernel/cw_action_report/pick_invest_env.py::
   report_action_pick_invest_env_param` → `gain_invest_env`(rand=False;
   session 形参显式传入,动作 op 自 ctx 取)。
-- **投资策略落地相**(策略屏迁移批新增):`kernel/cw_action_report/
+- **投资策略动作落地接入**(策略屏迁移批新增):`kernel/cw_action_report/
   pick_invest_strategy.py::report_action_pick_invest_strategy_param` →
   `gain_invest_strategy`(无效载荷拒绝/按名字去重追加/登记分支/`on_strategy_
   gained`)。

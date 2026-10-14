@@ -84,7 +84,7 @@ class PrepObservation:
     双源交叉核对消费,方法内即弃,不进 gs/session/report):
     - ``shop_open``:观察链门参数(F2 gold 可信派生/卡池票门);
     - ``substate``:observe_full 可读性标注(对账/日志判读);
-    - ``event_overlay``:bail 控制信号(交回外循环分发)。
+    - ``event_overlay``:bail 控制信号(返回主循环分发)。
 
     状态类字段(bench_chars/deployed_chars/装备三路/spheres/boxes/tomes/
     free_bench_slots/deploy_vacancy 族/front_size/state_gold_trusted/P1P5
@@ -93,5 +93,5 @@ class PrepObservation:
     substate: dict = field(default_factory=dict)   # observe_full 可读性(对账/日志)
     shop_open: bool = False             # 锚点「按钮-收起」可见(观察链门参数)
     # 事件 overlay 检测(盛会之星/选择伙伴/祈愿试炼 —— 挡操作,检测到即
-    # 交回外循环分支 handler;已实测确认:盛会之星 overlay 下 deploy 全灭 → 空场 HP 82→1)
+    # 返回主循环分支 handler;已实测确认:盛会之星 overlay 下 deploy 全灭 → 空场 HP 82→1)
     event_overlay: str | None = None

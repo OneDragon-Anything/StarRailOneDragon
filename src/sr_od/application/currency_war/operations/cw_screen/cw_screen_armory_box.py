@@ -16,10 +16,10 @@
 分流)+ obs{on_screen} → 调
 占位 ``report_screen_armory_box_obs``(统一形态;本屏现役零容器写点,接口
 为占位,match/gs 缺席跳过)→ obs 挂实例属性进决策 node。决策动作 node =
-落地复查顶部(点 × 已发 → 锚不在 = 弹窗已关(道具进背包)→ success 交回;
+落地复查顶部(点 × 已发 → 锚不在 = 弹窗已关(道具进背包)→ success 结束本次访问;
 锚在 = 点击未落地 → 重点)→ 点 × 关闭 → ``round_wait`` 循环推进(不烧节点
 重试预算;不收敛 = 动作 bug 响亮暴露,无防御上限)。本屏 sim 腿 = 不适用(sim 无对应画面段),
-等价判据主要支撑 = 实机在册行为锁。
+等价判据主要支撑 = 实机已登记行为锁。
 """
 import time
 from typing import ClassVar
@@ -38,14 +38,14 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenArmoryBox(CwOperation):
-    """道具获得说明弹窗:点 × 关闭 + 重入观察裁决交回(验证废除)。"""
+    """道具获得说明弹窗:点 × 关闭 + 落地复查后结束本次访问(零验证)。"""
 
     DIALOG_SCREEN: ClassVar[str] = '货币战争-武装箱弹窗'
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-武装箱弹窗')
-        # 点 × 已发待落地复查标志(验证废除形态):锚不在 + 已发 = 弹窗已关
-        #(道具进背包)→ success 交回;锚在 = 点击未落地 → 重点。
+        # 点 × 已发待落地复查标志(零验证形态(用户裁定:动作层不做效果验证,判效归下一帧观察)):锚不在 + 已发 = 弹窗已关
+        #(道具进背包)→ success 结束本次访问;锚在 = 点击未落地 → 重点。
         self._click_pending: bool = False
         # 观察结果(观察 node 产物,决策动作 node 消费)。
         self._obs: CwScreenArmoryBoxObs | None = None
@@ -75,7 +75,7 @@ class CwScreenArmoryBox(CwOperation):
     def act(self) -> OperationRoundResult:
         """落地复查(顶部)→ 点 × 关闭 → round_wait。
 
-        落地复查(观察驱动,验证废除形态):上轮点 × 已发 → 锚不在 = 弹窗
+        落地复查(观察驱动,零验证形态):上轮点 × 已发 → 锚不在 = 弹窗
         已关(底层屏交还 loop)→ success;锚在 = 点击未落地 → 清标志重点。
         循环推进 = round_wait(不烧节点重试预算;不收敛 = 动作 bug 响亮
         暴露,无防御上限)。"""
@@ -99,6 +99,6 @@ class CwScreenArmoryBox(CwOperation):
         self.ctx.controller.mouse_move(_pt)   # 防吞点击(截图前移光标)
         self.ctx.controller.click(_pt)
         time.sleep(1.0)
-        # 机械交回(验证废除):弹窗消失与否由下一轮重入观察裁决(act 顶部)。
+        # 机械部分完成即结束本次访问(零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)):弹窗消失与否由下一轮落地复查(act 顶部)。
         self._click_pending = True
         return self.round_wait('点 × 已发,重入观察裁决', wait=1)

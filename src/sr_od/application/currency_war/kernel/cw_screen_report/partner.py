@@ -4,7 +4,7 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 观察面 = overlay 门判定 + 候选(立绘识别真身,失败回落 label 名)。
 report 摄入点 = operations/cw_screen/cw_screen_partner.py::
 ``CwScreenPartner.observe``(观察 node);适用范围边界:动作事实
-``chosen_partner`` 不并入,留守选择点。
+``chosen_partner`` 不并入,留在选择点。
 """
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def report_screen_partner_obs(gs: GameState, obs: CwScreenPartnerObs, *,
 
     写点锚 = cw_screen_partner.py::``CwScreenPartner.observe``(观察 node
     摄入);options 空 = OCR 未读得,不写(原写点「读得才写」闸逐位平移);
-    ``chosen_partner`` 留守选择点(动作事实边界)。
+    ``chosen_partner`` 留在选择点(动作事实边界)。
     """
     if sig is None:
         sig = ChannelSig(family='logic_action',

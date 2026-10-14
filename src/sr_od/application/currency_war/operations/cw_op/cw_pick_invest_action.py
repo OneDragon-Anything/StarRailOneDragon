@@ -91,7 +91,7 @@ class CwActionPickInvestOp(CwOperation):
         # 调用方义务在此履行)。投资两屏同指一 op、上报出口各构造各喂
         # (动作后果声明化详设 world-decl.md §4 喂入落点):上报后一行
         # 声明喂入(design.md §2.2 契约 3;实机端口未装 = no-op,sim
-        # 装配后驱动后端 pick_invest_env/strategy 排除集累计+交回);
+        # 装配后驱动后端 pick_invest_env/strategy 排除集累计+结束本次访问);
         # round data 携带声明(journal 记账面)。
         world_decl: WorldDecl | None = None
         gs = game_state_from_ctx(self.ctx)

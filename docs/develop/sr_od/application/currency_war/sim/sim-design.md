@@ -3,7 +3,7 @@
 > 性质：**设计权威版本（as-built）**——写 sim 现在就是这么设计的：结构、语义、接口契约、数据流、边界；与代码现状同步维护，架构变化才改本文。数值一律不落本文（单一源在代码常量/注册表，正文只写常量名）。
 > 结构分工（本目录三篇）：本文 = 体系总纲；[sim-wiring.md](sim-wiring.md) = 容器 GameState ↔ sim 后端逐域接线底账（域粒度，接线变更改对应行）；[sim-power-model.md](sim-power-model.md) = 战斗结算机制化（战力模型）需求定义件（未实施，落地时按其重建结算层）。
 > 读者 = 无会话历史的工程师/智能体。术语首次出现给定义。代码定位一律用符号锚 `文件::符号名`，路径根 = `src/sr_od/application/currency_war/`。
-> 前身申报：sim 曾是「自驱动引擎」（reset/step 步进协议、策略注入式喂帧、引擎私有工作帧）；该形态已整体退役，考古走 git 历史。本文只写现值。
+> 前身申报：sim 曾是「自驱动引擎」（reset/step 步进协议、策略注入式喂帧、引擎私有工作帧）；该形态已整体停用，考古走 git 历史。本文只写现值。
 
 ## 0. 术语
 
@@ -45,7 +45,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 `SimBackend`（`sim/cw_sim_backend.py::SimBackend`）为 dataclass，**组合**持有 `gs: GameState`（禁子类——子类制造第二容器形状，Field 通道与裸属性两套状态纪律混于一体，决策输入形状随运行模式漂移）。三块内容：
 
-1. **画面状态机**（私有态）：当前屏档名 + 子态、模态交回目标、节点窗口让路恢复位（§3）。
+1. **画面状态机**（私有态）：当前屏档名 + 子态、模态结束本次访问目标、节点窗口让路恢复位（§3）。
 2. **采样簿记**（实机不可观察）：offer 全程去重集（`excluded_invest`/`excluded_env`）、overlay 队列（`sim/cw_sim_overlay.py::OverlayQueue`）、触发水位标志（`planner_fired`/`megastar_fired_tier`/`planner_seen_star`）、随机流键坐标簿记、待授予候选下标。
 3. **局结果面**：`hp_trail`、`disclosures`（披露面）、`done`、幂等守卫键；`result()` 出 `sim/cw_sim_backend.py::SimRunResult`（纯结果无评判，消费方 = 运行器断言）。
 
@@ -84,7 +84,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 ### 3.2 转移源两类
 
-1. **动作后果声明**（kernel `cw_world_decl.WorldDecl`，契约权威版本 = §6.3）：转移动作 op 经端口 `cw_sim_ports.declare_world` 喂入 `SimBackend.advance`，按 `decl.trigger` 分派世界过程/画面呈现、完成后按 `decl.next_screen` 等值对账。18 转移动作全量声明驱动：settle_confirm/supply_confirm（经 kernel `report_node_advance`）→ 节点推进；start_battle/pick_encounter → 战斗结算 → 结算页；开箱动作落地 → 武装箱画面 + 候选生成；pick 族 → 模态交回/选卡世界过程；纯转移类（开书册卡/关店/零写选卡族）→ 按 `next_screen` 推进画面。同一终结动作重复上报不二次推进 = kernel 观察态门（重复上报零推进）+ 后端逐 handler 幂等守卫。
+1. **动作后果声明**（kernel `cw_world_decl.WorldDecl`，契约权威版本 = §6.3）：转移动作 op 经端口 `cw_sim_ports.declare_world` 喂入 `SimBackend.advance`，按 `decl.trigger` 分派世界过程/画面呈现、完成后按 `decl.next_screen` 等值对账。18 转移动作全量声明驱动：settle_confirm/supply_confirm（经 kernel `report_node_advance`）→ 节点推进；start_battle/pick_encounter → 战斗结算 → 结算页；开箱动作落地 → 武装箱画面 + 候选生成；pick 族 → 模态结束本次访问/选卡世界过程；纯转移类（开书册卡/关店/零写选卡族）→ 按 `next_screen` 推进画面。同一终结动作重复上报不二次推进 = kernel 观察态门（重复上报零推进）+ 后端逐 handler 幂等守卫。
 2. **点击源**（不经声明通道的推进型点击，经端口 `click_answer` 感知）：简报下一步、BOSS 简报点空白、位面过渡点空白、补给刷新、开店。这些点击的转移语义权威源 = `docs/develop/sr_od/application/currency_war/screens/` 各篇的终结动作与返回表。
 
 **商店牌面观察链**（点击源「开店」的观察写回语义）：牌面 = 节点级持久事实，发牌时定（节点窗口序列的商店自动全刷；实机不可观察，后端私有记录 `SimBackend._shop_record`）。开店呈现时把记录写回 `gs.shop`（模拟读屏，对偶实机「每次进店 live 漏斗重读屏写 payload」——sim 无识别面，以发牌期记录承载同一观察语义）；关店动作上报 `leave_screen` 清空 `gs.shop` 呈现不清记录；节点切换新发牌自然覆盖记录（整店锁跳过发牌 = 牌面跨节点保留，同语义）。记录跟随 = 全部驱动入口（`screen_identity`/`observe`/`visible`/`click_answer`/`advance`）懒同步在屏 payload 非空即跟随——覆盖发牌/刷新/买卡一切写点（写点与下次开店之间必经驱动入口：策略帧循环先观察后决策）。写回仅离屏态生效（在屏态保持现值零写）。
@@ -111,7 +111,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 **局终声明消费分支**：kernel 终局出口为事件式（`report_node_advance` 遇 `sequence_next` 无后继 → 零写入零效果 tick，返回 `applied=True, reason='match_end'` + `WorldDecl(next_screen='')`）；`advance()` 对 `trigger='node_advance' ∧ next_screen=''` 走局终分支 = XP 入账（被离开节点的类型）+ `DISCLOSURE_P3_UNOBSERVED` 披露（键值 `enter_p3_game_over_u19` 保留）+ game over 收尾，对账随后走 `done ∧ decl=''` 合格分支。kernel 声明权威、sim 对账分工不变；同 run 多条 `match_end` = 同一终局事件重复发出，`advance()` done 早退吸收。
 
-**节点序列权威与场字段分发**：序列真值的单一源 = `cw_node_schedule`（默认地面真值表 + 环境修饰层）。改节点序列的投资环境（「人身意外险」boss 前插补给）经 `resolve_plane_node_seqs` 在环境注册时一次性解出，由获得链尾段写进 GameState 场字段 `node_seq_by_plane`（逻辑态；字段契约与回退语义见 [fields.md](../game_state/fields.md) §3.2.1）。运行时 sim 与 kernel 同源读该字段：局终判定/进窗/窗口收尾/offer 门/节点屏呈现各消费点传场字段现值（None = 未注册回退默认表）；节点身份一律 `(位面, 轮)` 序位键直用，kind 查询经 `node_sequence_of` 直查（异常契约统一 `P3UnobservedError`）。**退役注**：sim 侧编号反解薄委托 `_ordinal_to_node`/`_node_ordinal` 已随全局节点编号表示退役删除（删壳即消解，无独立第二实现）。任一侧漏读字段 = 修饰局位面 1 轮 9 推进时 `next_screen` 声明与呈现屏确定性漂移（`DECL_SCREEN_DRIFT` 留证）。
+**节点序列权威与场字段分发**：序列真值的单一源 = `cw_node_schedule`（默认地面真值表 + 环境修饰层）。改节点序列的投资环境（「人身意外险」boss 前插补给）经 `resolve_plane_node_seqs` 在环境注册时一次性解出，由获得链尾段写进 GameState 场字段 `node_seq_by_plane`（逻辑态；字段契约与回退语义见 [fields.md](../game_state/fields.md) §3.2.1）。运行时 sim 与 kernel 同源读该字段：局终判定/进窗/窗口收尾/offer 门/节点屏呈现各消费点传场字段现值（None = 未注册回退默认表）；节点身份一律 `(位面, 轮)` 序位键直用，kind 查询经 `node_sequence_of` 直查（异常契约统一 `P3UnobservedError`）。**停用注**：sim 侧编号反解薄委托 `_ordinal_to_node`/`_node_ordinal` 已随全局节点编号表示停用删除（删壳即消解，无独立第二实现）。任一侧漏读字段 = 修饰局位面 1 轮 9 推进时 `next_screen` 声明与呈现屏确定性漂移（`DECL_SCREEN_DRIFT` 保留证据）。
 
 ### 3.4 初始序列（reset）
 
@@ -133,7 +133,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 - **判据**：kernel 值回调（`kernel/cw_faction_callbacks.py`，挂 `GameState._write_logic_frame` deployed 写尾）按阵营资格集/星级事件在**逻辑写时**判定，命中即登记——sim 与实机同一份判据代码，观察写零回调（观察通道不触发）。
 - **登记**：`kernel/cw_overlay_register.py` 三口（`register_screen_change` / `consume_screen_change` / `clear_screen_changes`）+ 九类登记目录（封闭集,新增类型必须登记）+ 屏档名映射（`KIND_SCREEN_NAMES`）；登记簿 = `gs.screen_changes.pending`（ScreenChanges sidecar，含逐档簿记 `wish_tiers_fired` / `planner_tiers_fired` / `fortune_battles`，生命周期 = 局）。
-- **呈现**：`SimBackend._present_pending_overlay`——数据源 = 容器登记 pending；呈现位三处 = `screen_identity` 问询时点懒呈现（动作上报内登记的条目在宿主交回后的首次身份问询压上模态，等价实机「动作落地即弹」）、`advance` 纯转移尾、节点窗起点（fortune 呈现门判目标底层）。
+- **呈现**：`SimBackend._present_pending_overlay`——数据源 = 容器登记 pending；呈现位三处 = `screen_identity` 问询时点懒呈现（动作上报内登记的条目在宿主结束后的首次身份问询压上模态，等价实机「动作落地即弹」）、`advance` 纯转移尾、节点窗起点（fortune 呈现门判目标底层）。
 
 ### 4.2 目录
 
@@ -196,10 +196,10 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 声明契约四条：
 
-1. **trigger 封闭集**：单一源 = `sim/cw_sim_backend.py::ADVANCE_TRIGGER_KINDS`（advance 分派表键集），9 类过程 + 空：`node_advance`（节点推进）/ `battle_resolve`（战斗结算）/ `open_box` / `pick_box_card` / `pick_megastar` / `pick_planner` / `pick_supply` / `pick_invest_env` / `pick_invest_strategy`。准入判据 = 写端归属：上报函数/获得链已写的后果（腾席/离屏/动作直接后果）不进 trigger；只有后端专属的过程（经济结算/队列出队/候选采样/排除集簿记——实机里「游戏自己算」的部分）才进；写端全在上报侧的动作（开书册卡/关店/五类零写选卡）= `''` 纯转移。值零新词，沿用动作名。
+1. **trigger 封闭集**：单一源 = `sim/cw_sim_backend.py::ADVANCE_TRIGGER_KINDS`（advance 分派表键集），9 类过程 + 空：`node_advance`（节点推进）/ `battle_resolve`（战斗结算）/ `open_box` / `pick_box_card` / `pick_megastar` / `pick_planner` / `pick_supply` / `pick_invest_env` / `pick_invest_strategy`。准入判据 = 写端归属：上报函数/获得链已写的后果（腾位/离屏/动作直接后果）不进 trigger；只有后端专属的过程（经济结算/队列出队/候选采样/排除集簿记——实机里「游戏自己算」的部分）才进；写端全在上报侧的动作（开书册卡/关店/五类零写选卡）= `''` 纯转移。值零新词，沿用动作名。
 2. **`node_advance` 的 `next_screen` 推导**：权威源 = kernel 后继原语 `sequence_next`（`kernel/cw_node_schedule.py`，带场字段现值参）+ `effective_node_pos`（`kernel/cw_game_state.py`，推进落账后的生效序位）。规则序：`sequence_next` 无后继（超出建模域）→ 局终声明事件式 `''`（`reason='match_end'`，零写入零效果 tick）→ 位面切换轮优先（`货币战争-位面过渡`）→ 新节点类型映射画面（battle/reward→备战、supply→补给、encounter→遭遇节点、boss→BOSS 简报）。禁读容器 `gs.node` 作推导口——它是观察镜像，不随推进变。
 3. **喂入契约**：转移动作 op 在自上报出口紧跟一行 `cw_sim_ports.declare_world(outcome.world_decl)`（一次动作多支上报 = 每支上报出口各自紧跟一行；round 结果 `data` 携带最后一份声明）；非转移动作 `world_decl` 恒 None，无喂入行。端口未装配 = no-op（实机零行为变化）；`decl is None` 端口层直返。
-4. **消费与对账**（`SimBackend.advance(decl)`）：按 `decl.trigger` 分派世界过程/画面呈现（18 转移动作全量在表；`''` = 纯画面转移，按 `next_screen` 推进）；完成后按 `decl.next_screen` 等值对账——断言对象 = 状态机**底层稳态画面**（让路恢复位消费完、overlay 弹完后的落点屏）；建模内失配豁免三类（overlay 登记在册 pending / offer 呈现 / 节点窗让路）断言延后至稳态补验；`next_screen=''` 预测局终，断言载体 = `done` 为真 ∧ 呈现大厅屏（局终无下一画面，不走字面等值）。断言不等且不在豁免集 = `disclosures` 缺陷留证不停机（声明与状态机漂移的早期警报）。`trigger` 集外值 = ValueError 显式报错（构造点漂移 = 接线 bug，禁静默）。
+4. **消费与对账**（`SimBackend.advance(decl)`）：按 `decl.trigger` 分派世界过程/画面呈现（18 转移动作全量在表；`''` = 纯画面转移，按 `next_screen` 推进）；完成后按 `decl.next_screen` 等值对账——断言对象 = 状态机**底层稳态画面**（让路恢复位消费完、overlay 弹完后的落点屏）；建模内失配豁免三类（overlay 登记已登记 pending / offer 呈现 / 节点窗让路）断言延后至稳态补验；`next_screen=''` 预测局终，断言载体 = `done` 为真 ∧ 呈现大厅屏（局终无下一画面，不走字面等值）。断言不等且不在豁免集 = `disclosures` 缺陷保留证据不停机（声明与状态机漂移的早期警报）。`trigger` 集外值 = ValueError 显式报错（构造点漂移 = 接线 bug，禁静默）。
 
 ### 6.4 观察生成器
 

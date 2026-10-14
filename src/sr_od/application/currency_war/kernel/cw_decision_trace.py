@@ -6,7 +6,7 @@
   (§2 行五段结构与动作发出契约 / §4 字段语义 / §5 写入时机与生命周期 /
   §10 锁面清单;下文 §N 即该文档节号);
 
-  定案记录(易失档已删,git 历史可溯)
+  定案记录(临时档已删,git 历史可溯)
   (C1 过渡态定性 / C2 文件名目录位 / C3 派生列不发出 / C4 首批动作发出面 /
   C7 独立版本常量 / C8 待裁决 6 联动)。
 
@@ -106,7 +106,7 @@ DECISION_TRACE_SCHEMA_VERSION: int = 1
 DECISION_TRACE_DIR_NAME: str = 'strategy'
 DECISION_TRACE_FILE_NAME: str = 'decision_trace.jsonl'
 
-#: 段淘汰 manifest 文件名(决策行文件同目录;逐段一行 archived_out 显影,
+#: 段淘汰 manifest 文件名(决策行文件同目录;逐段一行 archived_out 暴露,
 #: 语义对齐 journal 的 ``journal.retirement.jsonl``)。
 DECISION_TRACE_RETIREMENT_MANIFEST_NAME: str = 'decision_trace.retirement.jsonl'
 
@@ -347,7 +347,7 @@ def _retire_segments(path: Path, retired_ids: list[str], *,
     ——两文件禁单件淘汰(retirement.md §6-5):禁「journal 段已清而决策
     行段残留」的半淘汰态。只摘 run_id 精确命中行;坏行/无 run_id 行原样
     保留(宁留不误删,清理面不做判定)。逐段写 manifest 一行
-    ``archived_out`` 显影(判读辨「清理 vs 丢数据」);原子重写
+    ``archived_out`` 暴露(判读辨「清理 vs 丢数据」);原子重写
     (临时文件 + ``os.replace``,中断读者不读半截)。
 
     返回 ``{'retired': [run_id...], 'rows_dropped': n}``。"""
@@ -377,7 +377,7 @@ def _retire_segments(path: Path, retired_ids: list[str], *,
             keep_lines.append(json.dumps(row, ensure_ascii=False))
     if not dropped:
         return summary
-    # manifest 显影(逐段一行;追加,历次淘汰记录累积;失败 = 放弃本轮
+    # manifest 暴露(逐段一行;追加,历次淘汰记录累积;失败 = 放弃本轮
     # 清理——不可发生「删了没记账」,manifest 是段存续的判别面)
     def _ts_of(rows: list[dict]) -> list[str]:
         return sorted(str(r.get('ts') or '') for r in rows)
@@ -395,7 +395,7 @@ def _retire_segments(path: Path, retired_ids: list[str], *,
                     'last_ts': tss[-1] if tss else '',
                     'retired_at': retired_at,
                 }, ensure_ascii=False) + '\n')
-    except Exception as e:  # noqa: BLE001  显影失败 = 本轮不清理
+    except Exception as e:  # noqa: BLE001  暴露失败 = 本轮不清理
         log.warning('[cw!][decision-trace] 淘汰 manifest 写入失败(本轮不清理): %s', e)
         return summary
     # 原子重写(保留行 = 未淘汰段行 + 原样保留的坏行)

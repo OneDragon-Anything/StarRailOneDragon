@@ -1,7 +1,7 @@
 # P53 V̄ 合成价值链的帧级 horizon 现算(R1 刷新门比较项的视界口径修正)
 
-> 状态:**已退役(2026-09-04 修订单 R2)——V̄ 链整链退役,刷新决策改路径总账比较(形式二);结构存活部分(帧级视界[视界=剩余战斗轮数,下文同]现算纪律)由新判据继承。修订单 R1(2026-09-04,增量 B)见文末「修订单 R1」节,修订单 R2 见文末「修订单 R2」节**
-> 数据源(单一源代码,数值不抄):`cw_registry`(`rung_value`/`h3_win_rate`/`expected_battle_loss`/`hp_to_gold`)、`cw_economy.STREAK_GOLD_TABLE`、`cw_plane_table.schedule_of`(经 `horizon.r_remaining`);机制面 = P40 ①/②/⑤、CALIB_REPORT §2.1/§2.2(**修订单 R1 后:前四字段已退役,现行因子=win_rate_dp_by_plane/vbar_hp_value_transitional,见文末**)
+> 状态:**已停用(2026-09-04 修订单 R2)——V̄ 链整链停用,刷新决策改路径总账比较(形式二);结构存活部分(帧级视界[视界=剩余战斗轮数,下文同]现算纪律)由新判据继承。修订单 R1(2026-09-04,增量 B)见文末「修订单 R1」节,修订单 R2 见文末「修订单 R2」节**
+> 数据源(单一源代码,数值不抄):`cw_registry`(`rung_value`/`h3_win_rate`/`expected_battle_loss`/`hp_to_gold`)、`cw_economy.STREAK_GOLD_TABLE`、`cw_plane_table.schedule_of`(经 `horizon.r_remaining`);机制面 = P40 ①/②/⑤、CALIB_REPORT §2.1/§2.2(**修订单 R1 后:前四字段已停用,现行因子=win_rate_dp_by_plane/vbar_hp_value_transitional,见文末**)
 > 依据(修 A 的实证出处):REFRESH_CFO_REPORT(存于未入库临时档案 `.debug/temp/currency_war/ab_run_20260903_r2/`,git 外)§3/§5/§6——被拦帧 R_剩余 中位 12 vs 常数 5,512/512 拒刷已定案为系统性错误
 > 计算脚本:`tools/cw/proofs/p53_frame_horizon_vgap_check.py`(入库可重跑)
 > 提出:付费刷新拒刷复盘修 A 批(2026-09);证明 = 本篇
@@ -108,7 +108,7 @@ V̄_net(r) = (rung_value[2] + Δp(e0→e1) × 单战价值) × r
 
 ## 修订单 R1(2026-09-04,增量 B——因子 provenance 重接地)
 
-**触发**:宪法第一条(策略不依赖战力建模)+ 用户裁定(未证即退役/A-B 无裁决权)。原 §①「零新自由参数」声明**作废**——其因子表把 cw_registry 当出处,而 registry 装的是三个经验拟合(rung_value=P3 拟合 / h3_win_rate=P1 校准且无位面维且 rung2 n=9 / expected_battle_loss×hp_to_gold=未标定×P3 废溯源),循环论证。
+**触发**:宪法第一条(策略不依赖战力建模)+ 用户裁定(未证即停用/A-B 无裁决权)。原 §①「零新自由参数」声明**作废**——其因子表把 cw_registry 当出处,而 registry 装的是三个经验拟合(rung_value=P3 拟合 / h3_win_rate=P1 校准且无位面维且 rung2 n=9 / expected_battle_loss×hp_to_gold=未标定×P3 废溯源),循环论证。
 
 **结构存活**:帧级现算形态(V̄ 随 r 现算,禁常数视界)、单调性、r≤0 边界、R1 门形态——不变。
 
@@ -129,22 +129,22 @@ V̄_net(r, plane) = Δp[plane] × 单战价值 × r
              论证:0-1 档无弹窗金、5+ 档金更高被排除=min=保守下界)
 ```
 
-**因子处置**:rung_value 档位流退役(收入三元分解中无 rung 确定函数:利息规则=存金函数边际 0;连胜流已由 Δp 通道计账,再立=双计;史料=rung 档位流退役裁定,git 历史可溯);h3_win_rate 被 win_rate_dp_by_plane 取代(旧 rung0=0.139 比 P1 实测 0.250 低约 44%);expected_battle_loss/hp_to_gold/rounds_left_est 随消费端死亡一并退役。
+**因子处置**:rung_value 档位流停用(收入三元分解中无 rung 确定函数:利息规则=存金函数边际 0;连胜流已由 Δp 通道计账,再立=双计;史料=rung 档位流停用裁定,git 历史可溯);h3_win_rate 被 win_rate_dp_by_plane 取代(旧 rung0=0.139 比 P1 实测 0.250 低约 44%);expected_battle_loss/hp_to_gold/rounds_left_est 随消费端死亡一并停用。
 
 **连续性锚作废**:原 §②「r=5 ⇒ 24.70=旧注入」随 slope 变化(4.939→P1 5.22)失效——旧值是旧因子组的特例,不再具锚地位;新 P1 锚 r=5 ⇒ 26.08(锁=test_cw_vgap_frame_horizon)。
 
 **行为差**:P1 slope=0.450×11.59=5.22(CI [3.18,7.10] 覆盖旧值 4.939,决策温和);P2 slope=0(门实质关闭,与 economy「P2 少刷、多吃利息」共识同向)。生产默认 V_GAP=None ⇒ R1 门 fail-closed 关闭不变,行为影响待 V_GAP 标定注入后兑现。
 
-## 修订单 R2(2026-09-04——V̄ 链整链退役)
+## 修订单 R2(2026-09-04——V̄ 链整链停用)
 
 **触发**:用户裁定禁胜率建模(修订单 R1 重接地后的因子端 win_rate_dp_by_plane / vbar_hp_value_transitional 仍是统计拟合量,不属游戏定义量)+ 刷新决策改路径总账比较(形式二,推导批验收采纳)。
 
-**退役面**:
+**停用面**:
 
-- R1 刷新门比较项 V̄_net 整链退役:判据本体(criteria/refresh.r1_commitment_account)改为**形式二可负担性**——`c_eff·E(D|L*) + Σ卡费 + L(g, spend, R_剩余, Ī) ≤ g − g*`(E = expected_refreshes_for_card 按缺件集与等级选择输出 L*;g* = 10×cap_resolved);L* = 留级账 T_stay vs 升一级账 T_up(含 U_L 及其利息损失)取小(贪心序反例承载,11_shop_decisions.md §2 修正②)。输入全为游戏定义量(REFRESH_PROB 池参数 / XP 表 / 利息规则),零胜率。
+- R1 刷新门比较项 V̄_net 整链停用:判据本体(criteria/refresh.r1_commitment_account)改为**形式二可负担性**——`c_eff·E(D|L*) + Σ卡费 + L(g, spend, R_剩余, Ī) ≤ g − g*`(E = expected_refreshes_for_card 按缺件集与等级选择输出 L*;g* = 10×cap_resolved);L* = 留级账 T_stay vs 升一级账 T_up(含 U_L 及其利息损失)取小(贪心序反例承载,11_shop_decisions.md §2 修正②)。输入全为游戏定义量(REFRESH_PROB 池参数 / XP 表 / 利息规则),零胜率。
 - P57 搜索窗 V̄ 读法门随链消解:窗口重锚塌缩带(注:「塌缩带」=命中率衰减到峰值 ω 倍以上的费档区间)`refresh_prob(L,c) ≥ ω×峰值级命中率`(ω = registry.omega_collapse_ratio,同源);calib e2_24.7 交叉核对锚作废。
-- 实现:`statefn/vbar.py` 留已证伪标记;`win_rate_dp_by_plane` / `vbar_hp_value_transitional` 注册表字段退役(本修订单);V_GAP/V_MS provisional 槽位保留登记、消费端清零。
+- 实现:`statefn/vbar.py` 留已证伪标记;`win_rate_dp_by_plane` / `vbar_hp_value_transitional` 注册表字段停用(本修订单);V_GAP/V_MS provisional 槽位保留登记、消费端清零。
 
 **结构存活(由新判据继承)**:帧级视界现算纪律(R_剩余 = horizon/schedule_of 现算,禁常数视界——本篇 §①r 因子行的纪律在新账的 L 项继续生效);「本期刷窗用尽即停」边界(新门由预算比较结构承载)。
 
-**连续性锚再作废**:修订单 R1 的新 P1 锚 r=5 ⇒ 26.08 随链退役(锁=test_cw_vgap_frame_horizon 已重锚为可负担性行为锁)。
+**连续性锚再作废**:修订单 R1 的新 P1 锚 r=5 ⇒ 26.08 随链停用(锁=test_cw_vgap_frame_horizon 已重锚为可负担性行为锁)。

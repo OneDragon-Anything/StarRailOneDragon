@@ -191,7 +191,7 @@ def game_start_reset(gs: GameState) -> None:
     孤儿态申报(迭代 2026-09-24-encounter-screen-strategy-migration
     design §2.1):全仓零调用——环/经验表的局生命周期实际由 GameState
     平级字段 default_factory 冷建承担(每局新容器,开局即空);本钩子 =
-    生命周期设计意图的在册保留面(显式复位口),不随判据迁移删除。
+    生命周期设计意图的已登记保留面(显式复位口),不随判据迁移删除。
     """
     gs.settlement_ring.reset()
     gs.encounter_log.reset()

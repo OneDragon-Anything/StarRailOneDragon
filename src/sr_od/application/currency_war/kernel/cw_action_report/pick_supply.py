@@ -7,7 +7,7 @@
 
 1. **内容全未知**(兜底点卡路径,char_name/norm_item/extra_norm_items
    三载荷全空):bench/equips 值不变翻来源 + ``pick_supply_content_unresolved``
-   留存证据行(内容不可辨禁猜,观察覆盖差异收束自愈)——分支逐位保持旧落地相形态;
+   留存证据行(内容不可辨禁猜,观察覆盖差异收束自愈)——分支逐位保持旧落地补写形态形态;
 2. **单位腿**(param.char_name):角色入备战席 + 合成级联(:func:
    `grant_bench_unit_cascade`,与商店购买同语义;入席星级 1★ = 获取面
    单位恒 1★、升星仅经合成的先验口径,先验错 = 确定面响停修因非随机);

@@ -215,9 +215,9 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
 
     返回 ``(launch_ok, detail)`` = 出战**点击序列已执行**(出战域重设计
      收缩语义:执行器 last_launch_ok 旁路;False = 找不到按钮/area
-    缺失等未执行形态——旧「动作发出点内部事实」判效面随 op 重写停用,交回后
+    缺失等未执行形态——旧「动作发出点内部事实」判效面随 op 重写停用,结束后
     画面状态由外循环下一帧重判)。W209j 刹车短路(停机标志
-    已设)→ 返回 (False, '已停止[W209j刹车]'),交回外循环由 loop 顶退出。
+    已设)→ 返回 (False, '已停止[W209j刹车]'),返回主循环由 loop 顶退出。
     """
     from sr_od.application.currency_war.kernel.cw_vocab import (
         CwActionStartBattleParam,
@@ -266,15 +266,15 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
 
 
 def readiness_admission_report(state, comp) -> dict:
-    """达标分支 G1 准入预估(§9.2 三元+victim 收尾,动作发出面显影用)。
+    """达标分支 G1 准入预估(§9.2 三元+victim 收尾,动作发出面暴露用)。
 
     实现单一源 = ``kernel.cw_launch_admission.launch_admission_report``
-    (动作发出面观测批迁出:sim 桶不可依 app 桶——包依赖矩阵 LEGAL_EDGES,
+    (动作发出面观测批迁出:sim 桶不可依 app 层——包依赖矩阵 LEGAL_EDGES,
     纯判据入 kernel 后 sim 后端/cw_loop/测试三方共用;线成员谓词由本
     调用面注入同一单一源,禁各面自写第二实现)。判据语义、三元口径与
     **帧对齐说明**(预估源 = 容器单例 game_state_of, 装配源迁移
     ——旧 last_state 滞后帧+过渡桥装箱停用;单例与滞后帧同为备战观察
-    写端刷新,预估显影非拦截,一轮滞后语义本就可接受)见彼处 docstring。
+    写端刷新,预估暴露非拦截,一轮滞后语义本就可接受)见彼处 docstring。
     ``state`` = session(容器单例取源)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -372,7 +372,7 @@ def launch_battle_unified(op, ctx, *, face: str) -> tuple[bool, str]:
     CwActionStartBattleParam 执行。失败语义按调用面分轨:本函数只返回事实
     ``(launch_ok, detail)``,计数与复位归调用方(禁调用面私有记账入本函数)。
 
-    :param face: ``'armed'``(达标分支面:G1 准入预估显影 + 部署原子序每帧
+    :param face: ``'armed'``(达标分支面:G1 准入预估暴露 + 部署原子序每帧
         现算不过标志)| ``'resume'``(恢复局面面:标志覆盖部署原子序一次)。两
         face 同保屏态复验与浮层安全检查(design 申报:恢复局面面防误触补齐)。
     """
@@ -838,7 +838,7 @@ class CwLoop(CwOperation):
             _gs = gs_of_ctx(getattr(self, "ctx", None), session)
             #  观察态失效(接管):容器观察态字段写 False——tracked 主
             # 账值自本事件起不可消费,商店策略门(flow.decide_shop_action,
-            # 判定单一源 = kernel tracked_unobserved)据此关店交回外循环,
+            # 判定单一源 = kernel tracked_unobserved)据此关店返回主循环,
             # 备战环 heavy 观察(reconcile_tracking 屏幕真值写回)置 True
             # 完成锚定后再进店;店内零原地重建。重置/账失效类事件出现时
             # 同口写 False(语义登记 = game state 字段注)。
@@ -1221,7 +1221,7 @@ class CwLoop(CwOperation):
                 log.info('[cw-loop] 商店卡牌详情弹窗 → 点X关闭(ok=%s)', ok)
 
             # 关不掉 → on_fail_retry 映射 round_retry(落地判定 = op 内落地复查
-            # 与观察侧对账,非动作层验效——验证废除批)
+            # 与观察侧对账,非动作层验效——零验证批(用户裁定:动作层不做效果验证,判效归下一帧观察))
             return self._dispatch_screen_op(
                 CwScreenShopCardDetailPopup(self.ctx), journal_name='商店卡牌详情',
                 frame_tag='overlay_shop_card_detail', wait=1.5,
@@ -1271,8 +1271,8 @@ class CwLoop(CwOperation):
         if name == '货币战争-提示-前台无角色':
 
             def _frontless_confirm_step() -> OperationRoundResult:
-                # 出战域重设计:弹窗确认交回语义——点确认关弹窗,
-                # 零恢复动作(不重部署不补发出,原前台无角色恢复链已停用);交回
+                # 出战域重设计:弹窗确认结束本次访问语义——点确认关弹窗,
+                # 零恢复动作(不重部署不补发出,原前台无角色恢复链已停用);结束本次访问
                 # 外循环下一帧重判真实画面(备战 = 重走备战环决策;弹窗
                 # 残留 = 本分支再入确认,天然幂等)。「前台无角色」根因
                 # 处置归部署面决策,弹窗臂不自愈。
@@ -1388,7 +1388,7 @@ class CwLoop(CwOperation):
         if name == '货币战争-大厅':
             return self._lobby_return_collect(screen)
 
-        # 在册画面暂无处理器(建档先于接线的过渡态)→ 等待,不落备战默认
+        # 已登记画面暂无处理器(建档先于接线的过渡态)→ 等待,不落备战默认
         log.warning('[cw-loop] 身份命中但无处理器(建档/接线过渡态): %s → 等待', name)
         return self.round_wait(wait=1.0)
 
@@ -1613,7 +1613,7 @@ class CwLoop(CwOperation):
             return self.round_wait(wait=1.0)
 
         # 1. 备战阶段 → 备战单轮 op(CwScreenPrep 单轮五段:观察→对账→决策→
-        #    期望态→执行,交回本循环; P3b 返工定稿:内环已拆,外循环是
+        #    期望态→执行,结束本次访问本循环; P3b 返工定稿:内环已拆,外循环是
         #    唯一循环)。注:遭遇/选择伙伴 等 event overlay 已在阶段一身份分发处理。
         # 画面判定 = **双锚**( 用户定调「全面的 id mark」):「备战标识-购买经验」
         # (左下,conf 0.9999)+「按钮-出战」(右,跨 shop 开/关子态恒在;单锚在 overlay
@@ -1715,7 +1715,7 @@ class CwLoop(CwOperation):
             # 曾迁 CwScreenPrep 环入口清场段(``_clear_prep_cards``),
             # 用户裁定 开卡时机归策略实现管后该段撤销——识别
             # kind('bookcard')进容器 bench,开卡动作由策略器 entry ① 卡片分支
-            # 发出(终结动作,交回语义不变);外循环只保留画面识别分派
+            # 发出(终结动作,结束本次访问语义不变);外循环只保留画面识别分派
             #(书册卡开出的专家邀请函弹窗选卡 = 阶段一身份行「货币战争-备战-专家邀请函」分发
 # CwScreenExpertInvite,分发判定单一源 = flow/outer_loop.md §2.2)。
             # (「试用角色揭示卡」= 动画帧误判的幻影机制 定案撤销,
@@ -1726,13 +1726,13 @@ class CwLoop(CwOperation):
                     # :备战环经出战出口 → 战斗窗口开(watch 宽限计时起点)
                     self._battle_ts = time.monotonic()
                     # 环出口含出战 → 战斗窗口驻留标志置位(下轮委托 CwScreenBattleWait;
-                    # 环入口分诊交回/bail 的返回由下轮重判自然分流——非出战返回帧
+                    # 环入口分诊结束本次访问/bail 的返回由下轮重判自然分流——非出战返回帧
                     # 仍是备战画面,委托入口的帧锚不命中,标志却会错误置位?否:
                     # 标志只表达「出战已发出」,CwScreenBattleWait 对非战斗帧走宽限等待,
-                    # 白名单锚(备战双锚单锚宽判定)命中即 success 交回,零风险)。
+                    # 白名单锚(备战双锚单锚宽判定)命中即 success 结束本次访问,零风险)。
                     self._battle_wait_active = True
                 # 环让位重入契约( §2.9,实机 P1-r6 bail ping-pong 修复):
-                # director 返回(含环入口分诊交回/事件 overlay bail)后**必经本
+                # director 返回(含环入口分诊结束本次访问/事件 overlay bail)后**必经本
                 # return → 下轮 loop 顶全分支重判**(阶段一/阶段三 overlay 分支先于备战双锚),
                 # 不在同一迭代内直接回备战分支/环。日志留痕 = 重入可观测
                 #(此前 bail↔重派静默,排障无从分辨「没重判」vs「判了没接住」)。
@@ -1746,7 +1746,7 @@ class CwLoop(CwOperation):
 
         # 战斗/结算窗口 → CwScreenBattleWait( 05-battle §1:原 1f/2/3/3b/5/6
         # 内联分支并入;三段式 = 等结算画面 / 结算处理(遥测读点 + 点继续挑战)
-        # / 完成判据白名单;团灭终局分叉(多页 → 返回货币战争 → 大厅)交回本
+        # / 完成判据白名单;团灭终局分叉(多页 → 返回货币战争 → 大厅)结束本次访问本
         # 循环 3c 收尾——runs summary/分配器/存档写端不随 op 化迁移,遥测
         # 连续性红线)。双入口:①出战驻留标志(出战成功置位);②帧锚(中断恢复的对局/
         # relaunch 残留结算屏,等价旧「战斗中帧直接落 1f/2/3 分支」语义)。

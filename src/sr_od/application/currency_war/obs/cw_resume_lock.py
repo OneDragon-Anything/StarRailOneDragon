@@ -37,7 +37,7 @@ def locked_after_start_battle(progressed: bool) -> bool:
     """锁定模式出战结果 → 锁标志是否保留(解除条件)。
 
     ``progressed=True``(出战**点击序列已执行**——出战域重设计
-    收缩语义:op 零判效,交回后画面由外循环下一帧重判)→ False(解除,
+    收缩语义:op 零判效,结束后画面由外循环下一帧重判)→ False(解除,
     游戏侧锁定随该节点出战解除,下个备战相位落常规循环);``False``(未执行)
     → True(保锁重试,连续失败由 stall 哨兵/unknown 兜底,不新增死循环路径)。
     """

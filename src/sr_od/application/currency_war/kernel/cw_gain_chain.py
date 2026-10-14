@@ -2,8 +2,8 @@
 
 链式规范正本 = docs/develop/sr_od/application/currency_war/game_state/
 gain-chain.md(原语契约/时序/溢出落位/随机态纪律/失败安全/接入面现状)。
-接入面(双支):投资环境落地相(``cw_action_report.pick_invest_env``)+
-投资策略落地相(``cw_action_report.pick_invest_strategy``),均经
+接入面(双支):投资环境动作落地接入(``cw_action_report.pick_invest_env``)+
+投资策略动作落地接入(``cw_action_report.pick_invest_strategy``),均经
 ``cw_action_report`` 上报函数消费本模块。
 
 链式过程语义:「获得」= 注册/落位 → 事件回调 → 3 合 1 升星判断 →
@@ -76,7 +76,7 @@ from sr_od.application.currency_war.kernel.cw_node_schedule import (
 )
 
 #: 链内写端缺省署名(gain-chain.md §2:写点迁移属申报过的行为变化,新写端新名,
-#: 不沿用旧名伪装连续;落地相接入显式传同值)。
+#: 不沿用旧名伪装连续;动作落地接入显式传同值)。
 GAIN_CHAIN_PRODUCER: str = 'CwGainChain'
 
 #: 缺陷留存证据 kind 词表(_emit_defect 台账行分键;留存证据不停机,gain-chain.md §6)。
@@ -720,7 +720,7 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       = spec.star;效果体含采样 → 子链 rand=True(gain-chain.md §5)——
       未锚定期(开局窗)本就走 write_logic_rand,rand=True 声明采样语义
       并保锚定后不进失配网(实机猜错 = 首观察静默覆盖,
-      logic_rand_outcome 收口,不响安灯)。效果串
+      logic_rand_outcome 收尾,不触发告警停局)。效果串
       ``env_gift_random:<名>@<星>star``(与具名支 ``env_gift:`` 前缀分离,
       采样发放可独立过滤审计);``rng`` 缺省回退自掷(直构/测试形态;
       正式接线由上报函数条件解析传入,sim 装配 = 流键 rng 即世界真值)。
@@ -736,7 +736,7 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       ``item_scheduled:<名>@<节点键>``(数量 = 元素重复次数,发放事实
       登记与即时通道同阶),到点发放 = :func:`discharge_due_item_grants`;
     - 查无效果(表外环境)= 安静不写(用户裁定),真值归观察覆盖。
-      (欢愉契约条件腿不在本枚举:其正式模型 = 银狼策划选择上报落地相的
+      (欢愉契约条件腿不在本枚举:其正式模型 = 银狼策划选择上报动作落地时点的
       条件腿 rider,住 ``cw_action_report.pick_planner``,触发事件 =
       头号玩家选项弹窗被处理。)
     """

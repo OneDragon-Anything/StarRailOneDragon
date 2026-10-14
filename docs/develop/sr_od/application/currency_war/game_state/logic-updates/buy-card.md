@@ -27,7 +27,7 @@
 
 1. 新单位落备战席**首个空槽**(`cw_exec_state.py::bench_place`,槽号信息位归一 = 下标+1);
 2. gold `−=` 牌单价 × k(常态 k=1;金账全款无打包价——满栏自动多买也无价格优惠,`research/merge_mechanics.md` §2.5);
-3. 商店载荷:被买槽置 empty 留空不紧缩(买后右邻槽像素零变化实锤,`research/economy.md` §2.1);
+3. 商店载荷:被买槽置 empty 留空不紧缩(买后右邻槽像素零变化实证,`research/economy.md` §2.1);
 4. **全场合成连锁**:买入后同名同星计数(备战∪场上,`cw_merge_simulate.py::same_star_count`)≥3 即升星。落点 = 场上那张的位置(装备/站位随之继承)或三张全在备战栏时最左一张的位置;连锁可多级(2★ 产物再凑 3 → 3★);三只身上的装备**全部**继承到产物(`kernel/cw_merge_simulate.py::_merge_bench` 不动点循环;装备继承 = 玩家已定案,merge_simulate 模块头规则 4)。升星触发时 front_row/back_row 整表 + board 重算随写(值签名变化才写)。升星触发判定单一源 = `kernel/cw_game_state.py::detect_merge_upgrade`(同名最高星抬升);
 5. 生产调用序 = 动作 op(`CwActionBuyCardOp`)机械执行后直调 `report_action_buy_card_param` 单点——简单落位与合成升星写都内聚在这个函数:买前快照三件组 = pre_bench/pre_deployed/pre_shop 作 scratch 基点,函数内第一时间取(原落地门/两驱动器三处抄写已并入这一处);升星发生才整表覆盖,后写赢。原落地门的两写调用面(`apply_action_outcome` 直写块)已随动作 op 重组删除 = 防止双重记账;落地门在用的保留职责 = 把卖出的 route-tag 暴露出来(`cw_screen_shop.py::apply_action_outcome`,同函数 S1 清键与暴露段);BUY 计数在用 = 上报函数 `on_buy` 回调单点,REFRESH 计数在用 = 效果账本 `record_refresh` 单一入口(触发 = `report_action_refresh_shop_param`),落地门刷新侧零代码。
 

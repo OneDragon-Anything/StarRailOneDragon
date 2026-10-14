@@ -5,7 +5,7 @@
 (不在扫描面内)。本文件是桥:零逻辑复制的壳子类——``__module__`` 守卫
 (只注册「定义于本模块」的类)要求壳子类在此定义。manager 另在 discover
 收尾强制注册本壳(不依赖扫描发现)。壳类本体 = 零覆写的注册自描述载体:
-决策通路 = obs(黑板)+ session 容器直读,实现单一源在 impl 桶 bridge。
+决策通路 = obs(黑板)+ session 容器直读,实现单一源在 impl 层 bridge。
 """
 from __future__ import annotations
 

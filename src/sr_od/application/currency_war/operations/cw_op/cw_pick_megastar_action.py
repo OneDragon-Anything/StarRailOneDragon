@@ -36,7 +36,7 @@ class CwActionPickMegastarOp(CwOperation):
     """盛会之星 pick 确认链(统一动作工厂 迁入)。
 
     候选选中半迁入本类(pick-op-unify 批,``env.need_select`` 驱动,见
-    ``run``);``chosen_megastar`` 写端留守画面 op(单次逻辑写入豁免面,
+    ``run``);``chosen_megastar`` 写端留在画面 op(单次逻辑写入豁免面,
     派发前写)——确认机械半 = 确认钮单发。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
@@ -59,7 +59,7 @@ class CwActionPickMegastarOp(CwOperation):
         中后 0.6s 动画窗,时序逐位保留)。点击坐标 = 容器
         ``megastar_opts[param.idx].xy``(观察上报,按下标取;坐标单一真相
         源 = 观察上报,本 op 零坐标现算、零 screen_info 二次取点)。
-        ``chosen_megastar`` 写端与选中旗标留守画面 op(单次逻辑写入豁免
+        ``chosen_megastar`` 写端与选中旗标留在画面 op(单次逻辑写入豁免
         面,派发前写)。"""
         param = self.param
         env = self.env
@@ -101,11 +101,11 @@ class CwActionPickMegastarOp(CwOperation):
         # 下一帧落地复查自愈:节点循环读「仍在巨星 overlay?」(标识锚仍
         # 命中)→ 重走本方法 → 候选已选 → 机械单发确认再推进
         # (宿主 round_wait 循环推进,不烧节点重试预算)。
-        # chosen_megastar 写端留守画面 op(动作事实边界,派发前写 =
+        # chosen_megastar 写端留在画面 op(动作事实边界,派发前写 =
         # 选择点),无登记的待办登记环节。
         # 自上报(机械链发出后;零写,契约面统一)。上报后一行声明喂入
         # (动作后果声明化喂入契约 = design.md §2.2 契约 3;实机端口未装
-        # = no-op,sim 装配后驱动后端 pick_megastar 出队+交回);round
+        # = no-op,sim 装配后驱动后端 pick_megastar 出队+结束本次访问);round
         # data 携带声明(journal 记账面)。
         world_decl = None
         gs = game_state_from_ctx(self.ctx)

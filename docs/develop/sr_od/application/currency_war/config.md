@@ -72,7 +72,7 @@
 | `max_rounds` | 开发/实验(同上) | 多轮采样验证;一次 app 运行本就是一整局 |
 | `code_hash_gate` | 开发/运维(yml-only,不进 GUI) | 起局前置码哈希结构闸开关:起局前比对 server 已加载码面 vs git HEAD,不一致拒起;缺省开 = 安全闸宁拦勿放。**server 进程 PATH 无 git = 起局被拒**(fail-closed——信息缺失/校验失败时宁可拒绝,不带错值运行),git 是起局硬依赖 |
 
-> 已出清字段(`economy_mode`/`event_whitelist` 删、`hp_safe_threshold`/`difficulty_hp_override` 迁代码常量 `kernel/cw_economy.py::HP_SAFE_THRESHOLD`/`::DIFFICULTY_HP_TABLE`、gate_* 4 个 yml-only flag 删)的**why 与过程 → git 历史**;阵营轴保留与必含轴确认的用户裁定 → 用户裁定档案(已随裁定档体系退役)。
+> 已出清字段(`economy_mode`/`event_whitelist` 删、`hp_safe_threshold`/`difficulty_hp_override` 迁代码常量 `kernel/cw_economy.py::HP_SAFE_THRESHOLD`/`::DIFFICULTY_HP_TABLE`、gate_* 4 个 yml-only flag 删)的**why 与过程 → git 历史**;阵营轴保留与必含轴确认的用户裁定 → 用户裁定档案(已随裁定档体系停用)。
 
 ## 5. 待用户定的事项
 

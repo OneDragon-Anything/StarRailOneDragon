@@ -3,8 +3,8 @@
 ``cw_overlay_pick_env``)。
 
 机械语义:点卡选中(建档「遭遇卡-其一/其二」area 取点,缺失 = 显式
-round_fail 交回重读,禁兜底坐标)→ 确认
-机械交回;机械链发出后直调自上报单口
+round_fail 返回主循环重新识别画面,禁兜底坐标)→ 确认
+机械部分完成即结束本次访问;机械链发出后直调自上报单口
 ``report_action_pick_encounter_param``(发出即写)。
 """
 from __future__ import annotations
@@ -42,8 +42,8 @@ class CwActionPickEncounterOp(CwOperation):
     """遭遇节点 pick 确认链(机械语义单一源,统一动作工厂 迁入)。
 
     点卡选中(建档「遭遇卡-其一/其二」area 取点,缺失 = 显式 round_fail
-    交回重读,禁兜底坐标)→ 确认机械交回
-    (验证废除:不读屏判「overlay 关没关」,落地由外循环重识别重派承载;
+    返回主循环重新识别画面,禁兜底坐标)→ 确认步机械完成即结束本次访问
+    (零验证(用户裁定:动作层不做效果验证,判效归下一帧观察):不读屏判「overlay 关没关」,落地由外循环重识别重派承载;
     「插空白点击取消选中→死循环」风险的防线 = 固定顺序确认链本身——
     机械语义单一源随体迁入本类)。"""
 
@@ -68,7 +68,7 @@ class CwActionPickEncounterOp(CwOperation):
         card_area = '遭遇卡-其一' if idx == 0 else '遭遇卡-其二'
         card = area_center(op.ctx, card_area, CwScreenEncounter.SCREEN_NAME)
         if card is None:
-            # 卡位 area 缺失 = 建档漂移,显式失败交回重读(禁兜底坐标
+            # 卡位 area 缺失 = 建档漂移,显式失败返回主循环重新识别画面(禁兜底坐标
             # 静默点击;用户裁定,action_ops.md §4.5 PickEncounter 行)。
             env.round_result = self.round_fail(
                 f'遭遇卡 area 缺失:{card_area}'
@@ -87,7 +87,7 @@ class CwActionPickEncounterOp(CwOperation):
         # 假值窗由外循环重派覆盖自愈,兑现回调消费防线 = 兑现后清)。
         # 上报后一行声明喂入(动作后果声明化喂入契约 = design.md §2.2
         # 契约 3;实机端口未装 = no-op,sim 装配后驱动后端 battle_resolve
-        # ——遭遇「派发即终结」选档落地即结算)。
+        # ——遭遇「点击发出后即结束本次访问」选档落地即结算)。
         world_decl = None
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:

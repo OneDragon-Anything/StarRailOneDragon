@@ -62,7 +62,7 @@
 - 策略行为观测键与效果域键**零交集**:键级审计已定案「游戏效果键 0 键」(效果域键的
   载体独立 = `cw_effect_inventory.py`,CounterKey 写入位置经 `effects.bump_key`,与
   cw4_counters 无共同键);机器锁 = sr-od-test `test_cw4_key_closure.py::test_effect_
-  domain_zero_keys_d1_idle_declaration`(:809)。**键并入落码后无迁入效果域之键**。
+  domain_zero_keys_d1_idle_declaration`(:809)。**键并入写入代码后无迁入效果域之键**。
 - 未来新游戏效果键(新卡/词缀/环境源建模批产出)一律按本文语义入域:规格入注册表
   (`STRATEGY_EFFECTS` 或对应源注册表)+ 实例经登记接入点入清单,禁旁落行为观测容器。
 
@@ -208,7 +208,7 @@
 | 跳过消耗 | `consume_use`(prep_actions.py:1512,跳过执行成功回执) | 次数类余量(免战牌) | uses 计数 +1(目标模型)/ 递减镜像(现表示法,§4) |
 | 升级标记 | `on_level_up`(prep_actions.py:1350) | LEVEL_UP | 事件标记(`_EVENT_LEVEL_UP`,下划线前缀与策略计数器键空间隔离,:124) |
 | 选卡落地 | `register_strategy`(operations/cw_screen/cw_screen_invest_strategy.py:440;免战牌同点自动登记 :416-440)+ burst 桥 `apply_effect_burst_grant`(:448)+ 板面重写桥 `apply_board_rewrite`(同点紧随) | INSTANT | 登记入清单 + 一次性发放 |
-| 获得链登记(portal 源) | 获得链原语 `kernel/cw_gain_chain.py::gain_invest_env` → `register_portal_from_env`(kernel/cw_effect_inventory.py;投资环境落地相经动作上报 `report_action_pick_invest_param` portal 支进入) | INSTANT(portal 效果) | 登记入清单 |
+| 获得链登记(portal 源) | 获得链原语 `kernel/cw_gain_chain.py::gain_invest_env` → `register_portal_from_env`(kernel/cw_effect_inventory.py;投资环境动作落地接入经动作上报 `report_action_pick_invest_param` portal 支进入) | INSTANT(portal 效果) | 登记入清单 |
 
 - **账本→字段桥**(效果发放换算成 state 字段写入的固定函数口,kernel/cw_game_state.py):
   `apply_effect_burst_grant`(选卡时点一次性批量授予)/
@@ -276,7 +276,7 @@
   `_validate_affix_specs` 与策略源同纪律:孤儿键/id 漂移/payload↔category 不一致/
   pending 缺保守支任一命中 import 即炸)+ 豁免表 `AFFIX_SPEC_EXEMPT` 一条
   (**开局不利**——开局 hp 专用载体 cw_opening_hp 承载,,禁第二份 −20 数值
-  源)。在册三条:**成长的烦恼**(8 级后每次购经验 −1 金,LevelUp 金面)/
+  源)。已登记三条:**成长的烦恼**(8 级后每次购经验 −1 金,LevelUp 金面)/
   **变宝为废**(每位面首次合成进阶装备 50% 变垃圾袋,ON_MERGE 装备库存改写,
   载体 `BattlefieldEffect.first_merge_equip_junk`)/ **永久创伤**(受击失生命上限
   20%、至多 60%——hp_max 字段缺位,交由观察收尾+缺口申报,fields.md §5.2)。
@@ -297,7 +297,7 @@
 
 通用形态:实例 = {spec_key, 登记节点, counter?}(§4);登记接入点统一 = 选卡落地(§7.3);
 证据槽行号 = 落文时点快照。按驱动族分组;同组共性只在组首写一次。词缀源三条的逐条
-规格在册于 `cw_affix_effects` spec notes(归属申报同源),不在本节 STRATEGY_EFFECTS
+规格已登记于 `cw_affix_effects` spec notes(归属申报同源),不在本节 STRATEGY_EFFECTS
 适用范围(§7.6)。
 
 ### 节点推进族

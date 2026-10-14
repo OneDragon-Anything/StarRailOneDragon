@@ -77,7 +77,7 @@ DEFECT_MUTATE_OUT_OF_SCOPE_KEPT: str = 'furnace_mutate_out_of_scope_kept'
 #: 冶金炉采样池 v0 建模假设档披露键(pick_invest 先例形态):池语义 =
 #: 同类别均匀、排除自身,成员资格轴 = 注册表 category(作用域白名单 =
 #: 口述·权威 2026-09-21,属定案非假设)。已知边角:简易池 8 件 vs 实机
-#: 7 件(光能电池归属)在 game 侧待实测,在册待校准批。
+#: 7 件(光能电池归属)在 game 侧待实测,已登记待校准批。
 FURNACE_MUTATE_POOL_ASSUMPTION_KEYS: tuple[str, ...] = (
     'furnace_mutate_pool_v0_same_category',
 )
@@ -122,7 +122,7 @@ def furnace_mutate_sample(rng: random.Random, item_name: str) -> str | None:
 # ============================================================ 共用腿
 
 def _remove_one(items: list[str], name: str) -> bool:
-    """多重集移除该名一个实例(在册才减;不在 = 零移除返 False,
+    """多重集移除该名一个实例(已登记才减;不在 = 零移除返 False,
     上报无条件不判成败,不因此拒绝)。"""
     if name in items:
         items.remove(name)

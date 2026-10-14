@@ -5,7 +5,7 @@
 > 职责与结构见 [sim-design.md](sim-design.md)）。后端不持本地工作帧，局状态 =
 > 容器 `GameState` 单例（`kernel/cw_game_state.game_state_of(session)`）。
 > 写容器一律走带渠道签名的写入口（渠道族封闭集 obs/logic_action/logic_hook，
-> 写入口校验渠道族与 actor 在册）；读容器走决策面公共读口族与 Field 直读。
+> 写入口校验渠道族与 actor 已登记）；读容器走决策面公共读口族与 Field 直读。
 > 本表逐域记录 sim 的产生面（哪个渠道、什么事件写）与读取面；用途：新域的
 > 「三消费面」检查（策略/遥测/sim 代理三面同改纪律）以此为底账。
 >

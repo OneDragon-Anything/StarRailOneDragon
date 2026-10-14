@@ -44,7 +44,7 @@ BOSS_BY_DIR_ROUND: tuple[tuple[int, float, float], ...] = (
 # 逐轮实测:奖励轮 r1/r2/r8 全胜;battle r3 0.30 / r4 0.29;
 # encounter r7 0.04;boss r9 0.05。未观测的 (node, round) 组合按
 # 节点类型边际值兜底(``NODE_WIN_P_BY_TYPE``)。
-# ⚠️ 数据边界:语料全部来自旧策略(line_strategy)病局
+# ⚠️ 数据边界:语料全部来自旧策略(line_strategy)异常对局
 # ——「六局同型败的镜像」,阶梯是旧策略在各种板面下的**边际**胜率,
 # 不含成型度条件性(rung 维被压平);decision_v2 新策略语料攒够后
 # **应重标本表**(届时遥测 board_before 补记角色名+星级,条件性才可标定)。

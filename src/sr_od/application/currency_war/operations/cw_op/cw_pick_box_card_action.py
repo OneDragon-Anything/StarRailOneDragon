@@ -36,8 +36,8 @@ class CwActionPickBoxCardOp(CwOperation):
     点卡(mouse_move+click;点击点 = 容器 ``box_card_names_xy[idx]``——
     观察期按避让几何(卡名带下方 y,避「查看详情」按钮)解出上报,
     op-layer.md §1.1 :35,动作 op 自取,缺席/越界 = 守卫断言)→ overlay
-    动画固定等待(``_OVERLAY_ANIM_WAIT_S``,与开箱终结交回等待同源)。
-    选卡即终结 = 画面 op 派发后 round_success 交回(落地归下一帧观察);
+    动画固定等待(``_OVERLAY_ANIM_WAIT_S``,与开箱结束本次访问等待同源)。
+    选卡即终结 = 画面 op 派发后 round_success 结束本次访问(落地归下一帧观察);
     本 op 零 chosen 写端,容器写零。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
@@ -79,7 +79,7 @@ class CwActionPickBoxCardOp(CwOperation):
         time.sleep(_OVERLAY_ANIM_WAIT_S)
         # 自上报(机械链发出后;零写,契约面统一)。上报后一行声明喂入
         # (动作后果声明化喂入契约 = design.md §2.2 契约 3;实机端口未装
-        # = no-op,sim 装配后驱动后端 pick_box_card 入栏+交回);round
+        # = no-op,sim 装配后驱动后端 pick_box_card 入栏+结束本次访问);round
         # data 携带声明(journal 记账面)。
         world_decl = None
         if gs is not None:

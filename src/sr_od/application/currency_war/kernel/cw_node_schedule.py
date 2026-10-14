@@ -21,7 +21,7 @@
 **模块归属**:真值表住 kernel(依赖方向架构锁:``node_advance`` 声明的
 ``next_screen`` 推导权威源 = 本表 + ``effective_node_pos``,推导在
 ``report_node_advance``(kernel),kernel 禁 import sim
-(``cw_deploy_logic`` 在册);sim 后端同源 import 本表。
+(``cw_deploy_logic`` 已登记);sim 后端同源 import 本表。
 """
 from __future__ import annotations
 
@@ -167,7 +167,7 @@ def node_round_cap(plane: int,
 
 
 def validate_sequences() -> None:
-    """真值表结构守卫(模块自检;长度=位面轮数、类型词表在册)。
+    """真值表结构守卫(模块自检;长度=位面轮数、类型词表已登记)。
 
     消费面 = 模块导入期与测试;P1=9/P2=7 的轮数真值
     (plane_schedule_observed.md)在此显式钉住,序列错位在导入期炸错

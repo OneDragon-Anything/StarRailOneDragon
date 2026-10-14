@@ -4,7 +4,7 @@
 GameState 场字段 ``node_seq_by_plane``(环境注册刻一次性落全量:修饰局
 P1=10/P2=8、默认局 9/7;None = 未注册态,开局 P1 前段/裸 session,读侧
 回退默认表 ``cw_node_schedule.PLANE_NODE_TABLES``)。
-**本层禁新建任何长度常量**——PLANE_LENGTHS_TRUTH 冻结元组形态已处死
+**本层禁新建任何长度常量**——PLANE_LENGTHS_TRUTH 冻结元组形态已淘汰
 (它是 TOTAL_NODES=27 病灶的复发形态)。
 
 **裁决点 9 契约(框架不供视界量)**:位面轮次族(r_remaining/r_global/

@@ -2,7 +2,7 @@
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
 ``cw_action_report.__init__`` docstring)。容器、写入口与观察
-写端留守 ``kernel/cw_game_state``,本包 → 容器单向依赖。
+写端留在 ``kernel/cw_game_state``,本包 → 容器单向依赖。
 
 **穿着即合成腿**(世界规则,语义正本 =
 ``docs/game/currency_war/research/equipment_mechanics.md``「穿着即合成」:
@@ -103,7 +103,7 @@ def _locate_unit(gs: GameState, param: Any) -> tuple[str, int, Unit] | None:
                 return (('front_row' if row == 'front' else 'back_row'),
                         slot - 1, u)
         # 槽位已戳但解析不得(越界/空槽)或身份不符 = 陈旧提案,如实拒
-        #(零写交回重派,下帧计划重戳新槽位);禁回退名匹配静默改目标。
+        #(零写返回主循环重派,下帧计划重戳新槽位);禁回退名匹配静默改目标。
         return None
     bench_view = gs.bench.value
     if char_name and bench_view is not None:
@@ -152,7 +152,7 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
     ``_locate_unit`` 槽位锚先行 + 无槽位调用面名匹配回退
     (3.2 起 tracked 第二账停用,主域单点)。
 
-    拒绝分支(零写 + 留存证据,布尔契约见模块头):owned 无件 / 目标不在册 /
+    拒绝分支(零写 + 留存证据,布尔契约见模块头):owned 无件 / 目标不已登记 /
     合成后超上限。``board_changed`` 事实事件仅 applied 出口广播
     (拒绝 = 零写 = 无世界变化)。
     """

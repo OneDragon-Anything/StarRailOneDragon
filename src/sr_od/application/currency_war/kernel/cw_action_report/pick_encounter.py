@@ -1,11 +1,11 @@
 """货币战争动作上报:遭遇节点选择(report_action_pick_encounter_param)。
 
 **发出即写**(迭代 2026-09-21-event-refresh-unify-supply-pick design
-§2.4;用户裁定 2026-09-21:选卡派发即终结,选择事实 = 动作执行时产生):
+§2.4;用户裁定 2026-09-21:选卡点击发出后即结束本次访问,选择事实 = 动作执行时产生):
 ``CwActionPickEncounterOp`` 确认点击后立即写 ``chosen_encounter``——
 写端位置 = op-layer §2.2 动作事实边界(遭遇例外改判,
 先例 = 投资域 chosen 迁获得链的显式收窄条款;zero_writes 零写族语义
-不容容器写函数留守,照 pick_supply 升格先例迁具名模块)。
+不容容器写函数留在,照 pick_supply 升格先例迁具名模块)。
 
 值组装 = 容器 ``encounter`` payload 槽 ``options[param.idx]``(与策略
 决策同源,param 零扩字段);payload 离屏 / idx 越界 = 观察层失约形态,
@@ -19,7 +19,7 @@ __init__`` docstring)。本包 → 容器单向依赖。
 
 **后果声明**(动作后果声明化迭代,详设 world-decl.md §2 表 #4):applied
 出口构造 ``WorldDecl``(trigger = ``battle_resolve``;``next_screen`` =
-结算屏——遭遇「派发即终结」选档落地即该遭遇战结算,权威 =
+结算屏——遭遇「点击发出后即结束本次访问」选档落地即该遭遇战结算,权威 =
 screens/encounter.md §5 + sim ``pick_encounter → _resolve_battle``),
 转移事件广播随本动作单轨切换摘除。
 """

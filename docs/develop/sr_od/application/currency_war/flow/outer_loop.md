@@ -43,7 +43,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 
 ### 2.2 两阶段分发
 
-> **所有分发经统一包装 `_dispatch_screen_op` 落主日志 `[cw-op]` 行**与决策帧留证。身份命中分支 = `_dispatch_identity_screen` 精确键派发（键互斥,无顺序语义）;新增画面 = 建档（语料两向验证）+ 处理器分支 + `CW_DISPATCH_SCREENS` 登记,三处缺一不可。
+> **所有分发经统一包装 `_dispatch_screen_op` 落主日志 `[cw-op]` 行**与决策帧保留证据。身份命中分支 = `_dispatch_identity_screen` 精确键派发（键互斥,无顺序语义）;新增画面 = 建档（语料两向验证）+ 处理器分支 + `CW_DISPATCH_SCREENS` 登记,三处缺一不可。
 
 ```
 阶段一 身份分发（两段式判定,实机专属;sim 身份 = 后端状态机答口）：
@@ -60,7 +60,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
         （判据 = 各画面建档 id_mark 组合;清单 = 过滤器非优先级,遍历序 = loader 序,
           各画面身份经语料两向验证互不共命中后顺序不承重）
         识别对账行：登记预测非空且实扫结果 ∉ 预测屏名集 → journal arbitrate
-        留证（判据假阳/延迟呈现漂移警报,best-effort 不阻塞分发）。
+        保留证据（判据假阳/延迟呈现漂移警报,best-effort 不阻塞分发）。
         命中 → _dispatch_identity_screen(name, frame) 派发对应画面处理器
         （位面过渡分支含 boss 判别排他:帧含'强敌'片段 → 接管派发 BOSS简报,
           防 boss 帧位面 id_mark 可读时误派过渡 op）
@@ -87,7 +87,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 - **序位不承重的依据**：原「浮层先于备战」序位补偿的是「id_mark 命中≠前台」;现由各浮层自身精确身份承载。补给锁定族以自身「返回XX选择」文字 id_mark 进阶段一;旧选择装备 overlay 与列车同行的 id_mark 撞车由列车同行整行副题 id_mark 消解;投资策略横幅中间态 = 身份天然 miss + 阶段二守卫等待(#30)。
 - **行为边界变化申报**：角色详情弹窗/星徽详情弹窗/中断挑战弹窗由「备战分支后置」改为阶段一身份先行（专属处理器带验效关闭,与备战环入口清场双通道收敛）;位面过渡节点锚误读帧从 OCR 派发改为兜底等待（下一轮 OCR 命中即恢复,不再即时派发）。
 
-### 2.3 分发分支对照（旧分支号记法已退役）
+### 2.3 分发分支对照（旧分支号记法已停用）
 
 旧分支号 = `cw_loop.py` 主循环画面分发 if 分支的注释顺序编号（历史演化物）。现行分发已改两阶段（§2.2）：阶段一按画面建档名派发（映射 = `_dispatch_identity_screen` 的 `if name == '货币战争-XX'` 链），旧分支号已全部换成画面身份分发。现行各分支按功能名列示（**权威源 = cw_loop.py 分发段注释块**，本表与代码注释冲突时以代码为准；读旧档案时按画面名对号，git 历史可溯）：
 
@@ -101,12 +101,12 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 | 回大厅收尾（局终正常收尾） | id_mark 行'标识-创业指南' |
 | 下一步 | OCR；CwScreenNextButton |
 
-> **兜底增设判据（用户裁定）**：未建档保存的故障形态不作兜底理由——不为无法追溯的形态预建兜底，身份 miss 的真实帧走未知兜底（guards.md §2）留证，证据入库后再议加固。位面过渡的 boss 帧排他仍保留在阶段一位面过渡身份分支（boss 判别片段，判别单一源）。
+> **兜底增设判据（用户裁定）**：未建档保存的故障形态不作兜底理由——不为无法追溯的形态预建兜底，身份 miss 的真实帧走未知兜底（guards.md §2）保留证据，证据入库后再议加固。位面过渡的 boss 帧排他仍保留在阶段一位面过渡身份分支（boss 判别片段，判别单一源）。
 
 
 ## 3. 备战表面默认分支的进入序（cw_loop.py::CwLoop.loop 备战分支段）
 
-两个 id_mark 同帧命中后按序（本分支无前置挂点——战斗时间戳清理与心跳采样/效果账本 tick 分别退役与迁出：前者无消费者，后者归 kernel 推进生效原语尾段，节点推进 = 终结动作上报 + 画面 op id_mark 确认，外循环不写节点域）：
+两个 id_mark 同帧命中后按序（本分支无前置挂点——战斗时间戳清理与心跳采样/效果账本 tick 分别停用与迁出：前者无消费者，后者归 kernel 推进生效原语尾段，节点推进 = 终结动作上报 + 画面 op id_mark 确认，外循环不写节点域）：
 
 **动作发出决策不在本分支**：达标帧的发出决策宿主 = mandate_v1 决策链最先检查的发出点（`decide_prep_screen` 入口消费 kernel `readiness_launch_decision`；出战就绪帧产受限商店访问意图或 `StartBattle` 终点意图，随第 5 步派发的备战访问 op 落执行；判据与语义 = [../strategy-docs/14_p1_consume_arms.md](../strategy-docs/14_p1_consume_arms.md) §9.6/§11.10）。
 
@@ -114,7 +114,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 2. **恢复局（locked-resume）检测**：候选 = 新 match ∧ 首个备战相位 round>1；点一下商店按钮试探：能打开 = 未锁定，打不开 = 锁定恢复态；锁定态跳过全部备战交互，经统一执行器（恢复模式，含屏态复验与浮层安全检查——防误触补齐）直接出战并置战斗窗，出战成功即解除（`cw_loop.py::locked_resume_sync_and_battle`）；
 3. 可控轮数：`max_rounds` 已跑满 → round_success 停备战屏（单/多轮验证）；
 4. 补给节点分流：nodeseq current=supply → 点"返回补给阶段"进补给屏（用节点类型判，非按钮——battle 节点也有该按钮）；
-5. 派发 `CwScreenPrep` 备战单轮（两 node:观察 node(heavy 观察+接管补采+审计留守)+ 决策动作 node（单动作决策循环）, [../screens/prep.md](../screens/prep.md)；环入口清场并入观察段）。**访问结束契约置战斗窗**：出战意图由 op 内统一执行器 `launch_battle_unified`（出战就绪模式）落执行，op 以终结出口 success 结束本次访问；外循环 `_on_prep_round` 回调见 success 返回即置 `_battle_ts` + `_battle_wait_active`（非出战出口的 success 返回误置位由 CwScreenBattleWait 宽限等待 + 备战 id_mark 白名单兜底分流）；
+5. 派发 `CwScreenPrep` 备战单轮（两 node:观察 node(heavy 观察+接管补采+审计留在观察侧)+ 决策动作 node（单动作决策循环）, [../screens/prep.md](../screens/prep.md)；环入口清场并入观察段）。**访问结束契约置战斗窗**：出战意图由 op 内统一执行器 `launch_battle_unified`（出战就绪模式）落执行，op 以终结出口 success 结束本次访问；外循环 `_on_prep_round` 回调见 success 返回即置 `_battle_ts` + `_battle_wait_active`（非出战出口的 success 返回误置位由 CwScreenBattleWait 宽限等待 + 备战 id_mark 白名单兜底分流）；
 6. **环让位重入契约**：备战分支处理完（含弹窗让路；策略器——旧日志标签 director）必须以 return 结束本轮，下一轮从循环顶重新识别画面，不在同一轮里直接再进备战分支（`cw_loop.py::CwLoop.loop` 备战分支尾环让位段）。
 
 ## 4. 轮次推进
@@ -122,7 +122,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 轮 = 一次"备战环 → 出战 → 战斗 → 结算"。推进信号：
 - 出战成功：`_battle_ts = monotonic()`（战斗窗口宽限计时起点，BATTLE_WATCH_GRACE_S=600 覆盖实测 4-5.5min 战斗）+ `_battle_wait_active=True`；
 - 结算：CwScreenBattleWait 完成判据白名单（备战两个 id_mark 的宽判定命中即 success 返回）；`saw_settlement` → `_battle_ts=None`；
-- **节点推进（外循环零写点）**：序号前进唯一动作入口 = kernel `report_node_advance`——战斗节点终结 = `CwOpSettleConfirm` 转移证据（完成判据白名单命中）后上报 settle_confirm；补给节点终结 = `CwActionPickSupplyOp` 确认（until = 下一节点备战 id_mark）后上报 supply_confirm。观察 id_mark 确认 = 画面 op 观察 node（`CwScreenPrep` 备战顶栏 / `CwScreenSupplyNode` 补给屏节点条 → kernel `observe_node_anchor`）。历史开局链分支写点已整体退役，外循环与观察漏斗均不写推进域（判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md)）；
+- **节点推进（外循环零写点）**：序号前进唯一动作入口 = kernel `report_node_advance`——战斗节点终结 = `CwOpSettleConfirm` 转移证据（完成判据白名单命中）后上报 settle_confirm；补给节点终结 = `CwActionPickSupplyOp` 确认（until = 下一节点备战 id_mark）后上报 supply_confirm。观察 id_mark 确认 = 画面 op 观察 node（`CwScreenPrep` 备战顶栏 / `CwScreenSupplyNode` 补给屏节点条 → kernel `observe_node_anchor`）。历史开局链分支写点已整体停用，外循环与观察漏斗均不写推进域（判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md)）；
 - 轮计数 `_settle.rounds_done`（SettlementState，结算链已并入；max_rounds 停点消费）；
 - 节点真值：节点行观察归备战观察域——备战入口 heavy 观察消费位（`cw_screen_prep.py::_write_prep_node_chain`，识别复用 `observe_full` 现役 `read_node_sequence` 调用）写槽序表/台账（[../screens/prep.md](../screens/prep.md) §3）。
 
@@ -131,7 +131,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 | 钩子 | 内容 | 载体 |
 |---|---|---|
 | run 收尾 | `after_operation_done` 全路径必达;`close_run` 零落盘,置跨局 run_id 重铸位;局终元数据归宿 = GameState 局终域 match_final 行 | `cw_loop.py::CwLoop.after_operation_done` |
-| op 调用流 | **全分支 dispatch 包装统一落**：`_dispatch_screen_op` 每次分发在出口落一行主日志 `[cw-op]` 行（`op=<名> plane=<位面> round=<轮次> dur=<秒>s outcome=<ok|fail|error>`，op 名 = 画面身份名，如 商店访问/备战/回大厅收尾…；只落出口行，dur = 单调钟差）+ 决策帧留证（frame_tag）；异常路径补落 outcome='error' 的行后上抛；op_journal 流已随 2026-09-15 用户裁定退役，存量档案双键切片只读 | server 主日志（`.log/mcp_server.log` / `.debug/sr_od_mcp/main_server.log`）+ `decision_frames/` |
-| 局终正常收尾（大厅收尾分支） | 假局守卫 + 假 win 守卫（plane==3 精确 ∧ 非死局）+ 局终域 match_final 行 + `close_run` + 对局存档装配 + match 清空 | `cw_loop.py::CwLoop.loop 大厅收尾分支（代码注释「回到大厅(对局结束)→ 对局收口」段）` |
+| op 调用流 | **全分支 dispatch 包装统一落**：`_dispatch_screen_op` 每次分发在出口落一行主日志 `[cw-op]` 行（`op=<名> plane=<位面> round=<轮次> dur=<秒>s outcome=<ok|fail|error>`，op 名 = 画面身份名，如 商店访问/备战/回大厅收尾…；只落出口行，dur = 单调钟差）+ 决策帧保留证据（frame_tag）；异常路径补落 outcome='error' 的行后上抛；op_journal 流已随 2026-09-15 用户裁定停用，存量档案双键切片只读 | server 主日志（`.log/mcp_server.log` / `.debug/sr_od_mcp/main_server.log`）+ `decision_frames/` |
+| 局终正常收尾（大厅收尾分支） | 假局守卫 + 假 win 守卫（plane==3 精确 ∧ 非死局）+ 局终域 match_final 行 + `close_run` + 对局存档装配 + match 清空 | `cw_loop.py::CwLoop.loop 大厅收尾分支（代码注释「回到大厅(对局结束)→ 对局收尾」段）` |
 | 跨局分配器 | ThompsonAllocator 进程级单例，plaza 份额先验；终局 update（更新分支 = comp→plaza_carry 归一；影子期只记后验） | `cw_loop.py::ThompsonAllocator 单例与终局 update` |
 | 关键点快照 `_snap` | 选人/事件屏 debug 截图 + 全量 OCR 日志（验证后去掉；非关键路径 best-effort） | `cw_loop.py::CwLoop._snap` |

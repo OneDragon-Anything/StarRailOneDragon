@@ -2,7 +2,7 @@
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
 ``cw_action_report.__init__`` docstring)。容器、写入口与观察
-写端留守 ``kernel/cw_game_state``,本包 → 容器单向依赖。
+写端留在 ``kernel/cw_game_state``,本包 → 容器单向依赖。
 语义正本 = 函数 docstring(自 cw_game_state 逐字迁移)。
 """
 
@@ -22,7 +22,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 
 
 def report_action_open_tome_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """开秘密典籍上报:bench 槽位 kind → empty(开件即腾席,占席事实
+    """开秘密典籍上报:bench 槽位 kind → empty(开件即腾位,占席事实
     进容器)。槽不存在/类型不符 = applied=False 零写(陈旧提案)。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
@@ -53,7 +53,7 @@ def report_action_open_tome_param(gs: GameState, param: Any, sig: ChannelSig) ->
     # 点击直弹登记(
     # 用户纠正:点典籍槽一次即弹星徽四选一——统一入登记,kind = star_tome)。
     # 不构造 WorldDecl:本上报零画面转移语义
-    #(next_screen 无处可填——腾席后底层屏恒备战,星徽四选一画面的
+    #(next_screen 无处可填——腾位后底层屏恒备战,星徽四选一画面的
     # 出现事实由登记承载),呈现随下一动作 advance 收束;对齐零写族
     # 「applied=True 无声明 = 无转移」口径。
     from sr_od.application.currency_war.kernel.cw_overlay_register import (

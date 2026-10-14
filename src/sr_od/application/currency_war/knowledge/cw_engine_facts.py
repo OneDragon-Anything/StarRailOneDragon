@@ -3,7 +3,7 @@
 符号出处:`docs/develop/currency_war/archive/redesign/03_legacy_cleanup_plan.md`
 ——telemetry/schema 与 kernel/cw_battle_calib 消费的**数据半部**
 符号(TRANSITION_TRAITS 注册数据 + engines_count 机制事实判据)自
-cw_deploy_logic 迁出(该文件的部署决策半部已按处死计划删除)。
+cw_deploy_logic 迁出(该文件的部署决策半部已按淘汰计划删除)。
 
 engines_count 是机制事实判据(transition_combos.md 2026-08-23 定稿口径:
 四体系两两组合=过渡成型),输入 board 计数输出体系达成数,无 ctx/无拍值,

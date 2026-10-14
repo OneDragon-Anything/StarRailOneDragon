@@ -87,17 +87,17 @@ AUTO_RESOLVED_OBS_FIELDS: frozenset[str] = frozenset(
 #: 仲裁规则与依据 = ``cw_observation.arbitrate_deployed_count`` docstring。
 DEFECT_KIND_DEPLOYED_COUNT_2SRC: str = 'deployed_count_2src_divergence'
 
-#: 同局分歧**持续显影阈值**(逐次行数达此值再落一条 L1 升级行——真结构性
+#: 同局分歧**持续暴露阈值**(逐次行数达此值再落一条 L1 升级行——真结构性
 #: CV 坏死要响铃不只留痕)。取值依据 = 保留证据 verdict 既有口径「同局 ≥3 次
 #: 排期修源」的代码化,非新拍阈值。
 DEPLOYED_COUNT_2SRC_SUSTAINED_N: int = 3
 
-#: 分歧持续显影升级行 kind(与逐次行分键:逐次行 = 每次仲裁事件恒 L2;
+#: 分歧持续暴露升级行 kind(与逐次行分键:逐次行 = 每次仲裁事件恒 L2;
 #: 升级行 = 每局至多一条的「持续」状态事件 L1,判读侧不合并计数)。
 DEFECT_KIND_DEPLOYED_COUNT_2SRC_SUSTAINED: str = 'deployed_count_2src_sustained'
 
 #: paddle 失读退化行独立分键(与真分歧拆分:退化帧无 paddle 真值,
-#: gap 无差值语义,且不计入持续显影阈值——真分歧率不被失读帧污染,
+#: gap 无差值语义,且不计入持续暴露阈值——真分歧率不被失读帧污染,
 #: 归因不单向指向 CV 占用源)。
 DEFECT_KIND_DEPLOYED_COUNT_2SRC_DEGRADED: str = 'deployed_count_2src_degraded'
 
@@ -123,10 +123,10 @@ def record_deployed_count_2src_divergence(paddle_n: int | None, cv_n: int,
     真分歧(paddle 有读值):仲裁已在本侧完成(取低值),逐次行恒 L2
     保留证据(auto_resolved=True——仲裁已在本侧完成,决策面不消费污染源);同局
     真分歧逐次行数达 ``DEPLOYED_COUNT_2SRC_SUSTAINED_N`` 再落一条 L1
-    升级行(持续显影,每局至多一条,升级行不进逐次计数)。
+    升级行(持续暴露,每局至多一条,升级行不进逐次计数)。
     paddle 失读退化帧(paddle_n=None):单源 CV 行动(向板满侧),无
     paddle 真值 ⇒ gap 无差值语义——走 ``_DEGRADED`` 独立分键、gap 不填、
-    不入逐次计数(退化帧不污染真分歧率,也不触发持续显影)。
+    不入逐次计数(退化帧不污染真分歧率,也不触发持续暴露)。
     证据层(journal obs_event arbitrate 行)由调用方的 obs_conflict 保留证据
     并行承载,本行 refs 指认来源便于归因。
     """
@@ -252,7 +252,7 @@ def install_exit_hooks() -> None:
 
     同点扩装:journal 段淘汰的 defect_ledger 联动跟随清理
     (kernel/cw_state_journal.set_retirement_follower 槽)——台账段随
-    journal run 段生命周期同窗清理/同显影,禁另起独立清理周期(双源漂移
+    journal run 段生命周期同窗清理/同暴露,禁另起独立清理周期(双源漂移
     禁令);缺省关,本函数即生产武装点(装配序在本 app 内先于
     install_state_telemetry,清理趟触发时槽已就位)。本函数只武装槽位,
     清理本体在 journal 装配趟执行(recorder.follow_journal_retirement)。

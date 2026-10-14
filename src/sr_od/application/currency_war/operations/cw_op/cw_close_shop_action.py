@@ -56,11 +56,11 @@ def _note_receipt(op: SrOperation, applied: bool, reason: str) -> None:
 class CwActionCloseShopOp(CwOperation):
     """关店 = 恒可用终结动作 op(恒可用终结不变量 = screens/op-layer.md
     §1.4;终结集总表 = screens/README.md §6):执行即本画面访问结束、
-    交回外循环。"""
+    返回主循环。"""
 
-    #: 终结动作(执行即本画面访问结束,交回外循环)。
+    #: 终结动作(执行即本画面访问结束,返回主循环)。
     terminal = True
-    #: 终结交回等待秒数(无转移动画等待语义)。
+    #: 结束本次访问等待秒数(无转移动画等待语义)。
     terminal_wait = 0.0
 
     def __init__(self, ctx: SrContext, param: CwActionCloseShopParam,
@@ -72,7 +72,7 @@ class CwActionCloseShopOp(CwOperation):
 
     @operation_node(name='close_shop', is_start_node=True)
     def run(self) -> OperationRoundResult:
-        """机械关店两出口(均 round_success = 终结交回;零转移验证):
+        """机械关店两出口(均 round_success = 结束本次访问;零转移验证):
 
         - 帧上找「按钮-收起」miss = 店已关(幂等,无动作可发)→ 回执
           applied=false + 清场上报;
@@ -81,11 +81,11 @@ class CwActionCloseShopOp(CwOperation):
           = 外循环 0n 重分发自然重派,重派即重试。
 
         清场上报后一行声明喂入(动作后果声明化喂入契约 = design.md §2.2
-        契约 3;实机端口未装 = no-op,sim 装配后驱动后端纯转移分支交回
+        契约 3;实机端口未装 = no-op,sim 装配后驱动后端纯转移分支结束本次访问
         备战);round data 携带声明(journal 记账面)。
         """
         # 「按钮-收起」融合判定点击(动作 op 体内点击目标定位 = 瞄准,
-        # flow/action_ops.md §1 在册允许形态)。
+        # flow/action_ops.md §1 已登记允许形态)。
         if not self.round_by_find_and_click_area(
                 self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起').is_success:
             _note_receipt(self, False, '商店已关(幂等入口观察,无动作可发)')

@@ -9,10 +9,10 @@ round_retry 消耗观察 node 预算)→ **一次读全**(3 张卡名 + 逐卡�
 opts`` + 逐卡剩余 ``strategy_refresh_left`` 观察写端)→ obs 挂实例
 属性。决策动作 node = 零参决策(候选自容器槽;空候选/无有效输出 =
 round_fail 显式失败交外循环重派,fallback 盲发路径废除——裁定「没有
-选到就是代码 bug」)→ 逐卡刷新终结交回 ∨ 选卡确认链经
+选到就是代码 bug」)→ 逐卡刷新结束本次访问 ∨ 选卡确认链经
 ``CwActionPickInvestOp`` 派发(pick-op-unify 批机械链迁入动作 op;
 派发实例携归一名,词表 = CwActionPickInvestStrategyParam 屏别独立类)
-→ **round_success 终结交回**(选完即交回外循环,用户裁定;确认未生效
+→ **round_success 结束本次访问**(选完即返回主循环,用户裁定;确认未生效
 = 代码 bug,归点击链可靠性治理,不设防重复/等待——action_ops.md §1
  即时上报契约)。
 
@@ -20,20 +20,20 @@ round_fail 显式失败交外循环重派,fallback 盲发路径废除——裁�
 策略层刷新判据(``invest_strategy.decide`` 帧级门 + 槽级动作集,推导见
 math_proofs P81)→ 返回刷新建议非空 ∧ 逐槽余量闸(obs 携带
 + 容器 ``strategy_refresh_left`` 双闸,剩余 ≤0 = 尽)→ 文本锚定点刷新
-圆钮一次 → 固定等待(机械时序,非判效)→ 本访问即终结交回(外循环重进
+圆钮一次 → 固定等待(机械时序,非判效)→ 本访问即结束本次访问(外循环重进
 = 入口重建,新事实的观察与决策归重进的下一访问)。投资策略屏刷新是
 **逐卡刷新**(每卡独立按钮、独立计数,归档帧对实证)。访问内刷后零
 比对(刷后不重读不比对不重决策;正本 = flow/op-layer.md §1.4)。计数 =
 屏上剩余次数观察真值(用户裁定:game state 记录画面
 可观察的剩余次数),写端 = 观察 report 摄入,本 op 零计数写点。
 
-形态(投资两屏迁移批):观察一次读全 + 即时上报 + 终结交回;选择事实
+形态(投资两屏迁移批):观察一次读全 + 即时上报 + 结束本次访问;选择事实
 (active_strategies)经动作落地链写(动作 op 立即自上报 → gain_invest_
 strategy 整链:无效载荷拒绝/持卡面按名字去重/效果账本登记腿/on_strategy_
 gained 效果分派,正本 = game_state/gain-chain.md),画面 op 零选择写点。
 本屏 sim 腿 = 可见(sim 后端呈现本屏,读屏点经 ``sim_or_live_observation``
 改道生成器产物),判据/策略层改动属 sim 可 A/B 面(A/B 批跑通道现缺,
-候补登记的待办),行为支撑 = 实机在册行为锁。
+候补登记的待办),行为支撑 = 实机已登记行为锁。
 """
 import time
 from typing import ClassVar
@@ -83,7 +83,7 @@ def _guard_classify(name: str, config) -> tuple[bool, bool, bool, bool]:
     - blood/forbidden = F2 唯一 L1 守卫输入(L1 = 非血∧非禁);
     - ``top`` = 顶级判定(S1 定义型 ∨ S2 经济引擎档)。返回值随链语义演进:
       现役消费 = 闸 3 的 L1 计算(exact/blood/forbidden);top 输出现在无
-      消费方(原「新卡达顶级停链」随 终结交回裁定停用),保留
+      消费方(原「新卡达顶级停链」随 结束本次访问裁定停用),保留
       返回形状供闸内联解包,语义 = 帧内单名顶级事实。
     帧级 D*-dependent 判据(对齐档 N/max_N)只在 kernel:handler 禁直调 kernel
     判据算刷新建议(G1——直调会丢 D*① 三参换基),本 helper 只服务执行期守卫
@@ -229,9 +229,9 @@ class CwScreenInvestStrategy(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=10)
     def act(self) -> OperationRoundResult:
-        """零参决策 → 逐卡刷新终结交回 / 点卡+确认后立即终结 → round_success。
+        """零参决策 → 逐卡刷新结束本次访问 / 点卡+确认后立即终结 → round_success。
 
-        选卡链派发后本访问即终结交回外循环(选完即交回,用户裁定
+        选卡链派发后本访问即终结返回主循环(选完即结束本次访问,用户裁定
        ;确认未生效 = 代码 bug,overlay 残留由外循环按当前
         画面重识别重派,修法 = 点击链可靠性,action_ops.md §1 )。"""
         obs = self._obs
@@ -240,7 +240,7 @@ class CwScreenInvestStrategy(CwOperation):
     def _decide_and_act(self, obs: CwScreenInvestStrategyObs) -> OperationRoundResult:
         """决策+动作内聚体(决策面):零参决策(候选自容器槽)→ 逐卡刷新
         终结动作(obs 余量闸 + 容器剩余口径双闸)→ 选卡确认链派发(动作
-        op 内即时上报)→ round_success 终结交回。空候选/决策无有效输出 =
+        op 内即时上报)→ round_success 结束本次访问。空候选/决策无有效输出 =
         round_fail 显式失败(零盲发,裁定「没有选到就是代码 bug」);
         无 match 局外不设早退支(画面 op 不支持局外单独调用——
         op-layer.md §1.1;用户裁决 全族删门)。"""
@@ -267,7 +267,7 @@ class CwScreenInvestStrategy(CwOperation):
             refresh_slots = act.slots
 
         # ===== 逐卡刷新 = 终结动作(用户裁定:点钮后本访问即
-        # 终结交回,外循环重进后重观察重决策;闸门语义:
+        # 结束本次访问,外循环重进后重观察重决策;闸门语义:
         # 逐卡预算;闸输入 = obs 携带 + 容器剩余口径,决策环零识别)=====
         if refresh_slots:
             # 闸 2 读源 = 容器逐卡剩余(观察写端;键 = 规范卡名;≤0 = 尽;
@@ -300,9 +300,9 @@ class CwScreenInvestStrategy(CwOperation):
                 _tx, _ty = _hit[1], _hit[2]
                 safe_click(self, Point(_tx + CwScreenInvestStrategy._REFRESH_BTN_DX, _ty),
                            tag='cw-strat')
-                # 动画窗固定等待(机械时序,非判效)→ 终结交回:本访问
+                # 动画窗固定等待(机械时序,非判效)→ 结束本次访问:本访问
                 # 零比对(刷后不重读不比对不重决策),选卡/确认均不在本
-                # 访问;round_success 交回外循环重进 = 入口重建。
+                # 访问;round_success 返回主循环重进 = 入口重建。
                 time.sleep(CwScreenInvestStrategy.REFRESH_ANIM_WAIT_S)
                 log.info(f'[cw-strat] 槽{_i}刷新终结交回:重进后重观察重决策')
                 return self.round_success('投资策略刷新终结交回(重进重观察重决策)',
@@ -313,7 +313,7 @@ class CwScreenInvestStrategy(CwOperation):
             if isinstance(act, CwActionRefreshInvestCardsParam):   # 防御:策略未实现去重
                 act = None
 
-        # ===== 选卡确认链(派发即即时上报,本访问终结交回)=====
+        # ===== 选卡确认链(派发即即时上报,本访问结束本次访问)=====
         if isinstance(act, CwActionPickInvestStrategyParam) and 0 <= act.idx < len(opts):
             chosen, choose_x, choose_y = opts[act.idx]
             reason = act.reason

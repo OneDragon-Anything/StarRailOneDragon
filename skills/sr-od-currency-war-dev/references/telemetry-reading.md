@@ -1,6 +1,6 @@
 # 遥测判读方法论(看什么/怎么读/覆盖与缺口)
 
-> 实机局数据判读的细则。读者 = 智能体;适用于:局后判读、跨局对照、异常定位。验收口径(什么算"打得好")的单一源 = 当期进度账本目标行判据;sim 批侧的数据判读见 sim-testing.md。
+> 实机局数据判读的细则。读者 = 智能体;适用于:局后判读、跨局对照、异常定位。验收尾径(什么算"打得好")的单一源 = 当期进度账本目标行判据;sim 批侧的数据判读见 sim-testing.md。
 
 ## 查询工具(遥测 CLI)
 
@@ -11,7 +11,7 @@ $env:PYTHONPATH='src'; uv run python -m sr_od.application.currency_war.telemetry
 - **模块入口必须带 `PYTHONPATH=src` 前缀**(上式已含;裸 `-m` 与 `--env-file .env` 都报 ModuleNotFoundError——`.env` 不放 PYTHONPATH)。仓内无独立 `cw_telemetry` 可执行命令,help 的 prog 名显示为 cw_telemetry 而已。
 - **按局档案(跨 run 段免拼段)**:正常局局终自动装配;`--match <game_id>` 直读单局档案(`--recent` 读索引;崩溃局补装配 `assemble --game <game_id>`)。
 
-- rounds=逐轮表(按节点分段);gold=金账行间差分;hp=hp 链;events=观察事件行显影;snapshot=末行快照摘要;final=局终行(match_final)。旧视图族(supply/anomalies/economy 等)已随旧流拆除,深维度按「新复盘需求=新视图」纪律按行差分直读。
+- rounds=逐轮表(按节点分段);gold=金账行间差分;hp=hp 链;events=观察事件行暴露;snapshot=末行快照摘要;final=局终行(match_final)。旧视图族(supply/anomalies/economy 等)已随旧流拆除,深维度按「新复盘需求=新视图」纪律按行差分直读。
 - **生产局秒级自检**:旧 `checks` 子命令已随旧流停用——生产自检走哨兵三件(journal 面;武装口径见 [runtime-ops.md](runtime-ops.md)「哨兵脚本组」);sim 批次侧等价物 = simulate_p1_batch 默认内嵌的 checks_violations(sim 检查器保留)。
 - 日志跨 run 累积(append+轮转,重启不销毁证据):查旧局按时间窗 grep;需关注行检索 `grep [cw!]`;格式标准单一源在 strategy/05 §6。
 
@@ -45,7 +45,7 @@ $env:PYTHONPATH='src'; uv run python -m sr_od.application.currency_war.telemetry
 | xp_progress | 无 | 经验点了几下/何时升级;半吊子点经验(金尽未升级) |
 | level_up_cost / shop_refresh_cost | 无 | 折扣卡生效核对 |
 | streak | **空**(state)·outcomes 有 | 连胜-保息抉择是否如设计触发 |
-| bench_full_flag | **空** | 席满轮与腾席动作对齐 |
+| bench_full_flag | **空** | 席满轮与腾位动作对齐 |
 
 ### 供给与选择
 | 字段 | 视图 | 复盘问题 |
@@ -77,10 +77,10 @@ target_comp(终局阵容切换序列/churn)、candidate_scores、eval_breakdown�
 
 ### hp_pay 事件行与 hp_events 列
 
-- **定义**:hp_pay = 血购(用 HP 代替金币买经验;现版本唯一来源 = 投资卡『奋斗协议』xp_buy_hp_cost=6)每击一次落一条的执行回执行,kind='hp_pay',原写在 exogenous.jsonl(外生事件流:决策之外的既成事实记录)——**写端已随旧流拆除停写,新局零产出,仅存量档案可见**(装配读侧宽容缺键)。查询:档案 JSON 直读顶层 hp_events 显影列/hp_pay_defects 对账列(判读 CLI 无 exogenous 视图,已随旧视图族拆除)。
+- **定义**:hp_pay = 血购(用 HP 代替金币买经验;现版本唯一来源 = 投资卡『奋斗协议』xp_buy_hp_cost=6)每击一次落一条的执行回执行,kind='hp_pay',原写在 exogenous.jsonl(外生事件流:决策之外的既成事实记录)——**写端已随旧流拆除停写,新局零产出,仅存量档案可见**(装配读侧宽容缺键)。查询:档案 JSON 直读顶层 hp_events 暴露列/hp_pay_defects 对账列(判读 CLI 无 exogenous 视图,已随旧视图族拆除)。
 - **粒度口径:行数 = 血购击数,总量 = Σhp_delta**。店通道单动作 1 行、备战通道连点循环每击 1 行;数击数、核对血购总量都用本口径。行内字段:hp_delta=−单次代价、currency='hp'、mode=生效卡名、basis='modeled'(按注册表建模的期望值,非实读);**行内不带 state 快照**——支付时点 HP HUD 结构性不可见,行里没有支付时点真值,这是设计而非采集缺失。
 - **mode 派生口径**:是否出行与 mode 值都和血购判定同源注册表(active_strategies 中 xp_buy_hp_cost>0 的卡,多卡命中取 active 序首个);卡非 active(金本位升级)→ 零行。零行 = 当局没发生建模内血购,不是采集漏。
-- **hp_events 列**:档案顶层加法列 = hp_pay 事件行显影;schema 9 前旧档案恒空(采集面修复只及新局,空 ≠ 没血购)。链上事件步只推进游标、不出掉血条目——「一条掉血条目 = 一次掉血结算」的语义不变,血购不冒充战斗掉血,战斗腿数字因此不含血购。
+- **hp_events 列**:档案顶层加法列 = hp_pay 事件行暴露;schema 9 前旧档案恒空(采集面修复只及新局,空 ≠ 没血购)。链上事件步只推进游标、不出掉血条目——「一条掉血条目 = 一次掉血结算」的语义不变,血购不冒充战斗掉血,战斗腿数字因此不含血购。
 - **遥测禁入决策输入**:hp_pay 行是纯观测追加写,任何决策/跟踪代码禁读它回写 state.hp / session.last_hp_real / 预算门状态(grep 守卫锁钉死, 隔离申报)。判读同理:档案里有 hp_pay ≠ bot 决策时知道血购掉血——决策侧的血购感知走注册表判定,不经遥测。
 
 ### hp_pay_defects 列(建模期望账对账缺陷)
@@ -93,7 +93,7 @@ target_comp(终局阵容切换序列/churn)、candidate_scores、eval_breakdown�
 
 - **机制**:装配走行跨段(及 rounds 链到达续局段首轮)时,以该段恢复帧(续局段恢复后最早被记录的帧;与 resume_reconciliation 同一帧定义)的 HP 读数重锚(游标重置为恢复读数);恢复帧不可锚(缺帧/hp None/readable=False)→ 不锚、跨段携带照旧(诚实退化)。
 - **续段首槽 delta 语义变化(读端可见)**:rounds 里续局段第一轮的 hp_delta 从「跨段净额」变「段内变化」。实例:g_20260907_025608 位面 2 轮 1 从 −43 变 −19——停机间隙的 −24 不再混进战斗腿。跨局对照跨段槽位时数字会变,属修复语义非回归。
-- **重锚差显影落点**:停机间隙变化改显影在 resume_reconciliation 对应续段行的扩展字段:`unexplained_delta`(= 恢复帧读数 − 重锚前游标;负 = 停机间隙真掉血)+ `consumed_by_chain=true`(已被链消费,判读勿重复计入)。**不进 loss_nodes**——重锚差是段界间隙变化,不是战斗掉血条目。
+- **重锚差暴露落点**:停机间隙变化改暴露在 resume_reconciliation 对应续段行的扩展字段:`unexplained_delta`(= 恢复帧读数 − 重锚前游标;负 = 停机间隙真掉血)+ `consumed_by_chain=true`(已被链消费,判读勿重复计入)。**不进 loss_nodes**——重锚差是段界间隙变化,不是战斗掉血条目。
 - **判读动作**:续段首轮大额掉血先查 resume_reconciliation:有 unexplained_delta = 已段内化,战斗腿自恢复读数起算;无且恢复帧不可锚 = 仍跨段携带,大额含停机间隙,归因先拆开。
 
 ### endgame_final 终局兜底条目与 loss_nodes 读法(schema 9 扩展)
@@ -140,7 +140,7 @@ target_comp(终局阵容切换序列/churn)、candidate_scores、eval_breakdown�
 - 新复盘需求 = 新视图/查询参数(schema 变更查询同步),不是新 py 文件。
 - **别为复盘写一次性脚本**——新复盘需求 = 新视图/查询参数;确需脚本用完即删。
 - **阵容质量 = 三维**(羁绊档位 × 角色构成 × 装备分配)——只看羁绊 = 空壳盲判(羁绊够但核心不在场/装备乱用都看不见;数据在 state.deployed[].star/equips 里,别被视图边界限制)。
-- **名×帧粒度键(逐帧累加型,状态显影计数)禁按事件频度判读**:绝对值只作跨局带对照;时滞/摩擦类问题盯轮差分键;判「某键异常」前先核写入语义(事件计数 vs 状态显影),单一源 = 写入点注释——按事件频度误读状态显影键会立一轮假排查。
+- **名×帧粒度键(逐帧累加型,状态暴露计数)禁按事件频度判读**:绝对值只作跨局带对照;时滞/摩擦类问题盯轮差分键;判「某键异常」前先核写入语义(事件计数 vs 状态暴露),单一源 = 写入点注释——按事件频度误读状态暴露键会立一轮假排查。
 - 改动效果对照:改策略后下一局 `--recent 5` 并列对比(测试绿≠实跑行为对)。
 - **sim 批次同法可查**:sim 批判读走 skills 侧 `cw_batch_stats`(sim 自写账本;判读 CLI `--sim-batch` 入口已随旧流停用,journal 侧 sim 视图待统一账迁移后续批补建),详见 [sim-testing.md](sim-testing.md)——本文档案判读手法按各账本面对应成立,生产判读 CLI 不指向 sim 产物目录。
 - 判读定位的策略行为病**必须固化 sim**(检查项/单帧锁),闭环纪律见 [autonomous-loop.md](autonomous-loop.md) 实机监控第 4 步;需要锁死的确定行为固化成单帧锁,见 [strategy-work.md](strategy-work.md)「单帧锁」。

@@ -37,7 +37,7 @@ obs_conflicts/runs`,recorder 写入面/match_archive 切片/全仓落盘调用�
 | shop_snapshots | 字段并入候选+流停用 | 牌面=state 的 shop payload 域,offer/refresh 各为一行观察写入行,独立快照流冗余;rho_obs 不并入→判读侧离线派生 |
 | cw4_counters | 流停用(键级审计已定案:效果域 0 键/策略行为键 256 字面+16 闭族 80 实例+9 开放族全保留=策略侧决策行 strategy-state 载体,无消费删 0 键) | 键=策略 state 容器(StrategyState.cw4_counters),sim 红则/轮差分/预注册不经流照旧;局终级全键聚合=局终域行载荷 ``MatchFinal.cw4_counters``;键全集登记单一源=封闭锁(test_cw4_key_closure) |
 | defect_ledger | **保留专用(待裁决)** | 案 A=并入 obs_event;案 B(倾向)=保留专用流——severity 判级/复现计数/verdict 取值清单/失配告警联动(失配告警=缺陷触发的报警停机联动)是「质量索引」不是「证据内容」;裁保留时 refs 改指 journal `(run_id,v)` 键+寿命联动 |
-| op_journal | **停用(2026-09-15 用户裁定,写入方删除批落码)** | op 耗时画像/op 序列归 server 主日志 `[cw-op]` 行(dispatch/仲裁出口行);进程中断证据 = 实机段无 match_final 收尾 + 行流 ts 戛止(中断时点活动签名 = 尾行 sig.actor);动作回执/金差账已在 state 流 receipts/gold 行登记 |
+| op_journal | **停用(2026-09-15 用户裁定,写入方删除批写入代码)** | op 耗时画像/op 序列归 server 主日志 `[cw-op]` 行(dispatch/仲裁出口行);进程中断证据 = 实机段无 match_final 收尾 + 行流 ts 戛止(中断时点活动签名 = 尾行 sig.actor);动作回执/金差账已在 state 流 receipts/gold 行登记 |
 | exec_events | 字段并入+流停用 | 发射事实→receipts 发射行(**零成败字段**);失败可见性=消费方对比语义(发射行后预期变化未出现=未落地,判定归观察侧 reconcile) |
 | invest_cards | 字段并入候选+流停用 | 候选卡面+效果原文→画面 payload 域 `strategy_offer`(离屏即 None);注册表 ground truth 回流用途不变;逐局原文语料断供已定案 = 接受断供(写入端已随首批写面删除批停用),定案与恢复路径 = |
 | obs_conflicts | 并入(obs_event)+流停用 | 拒读/仲裁拒绝=零写入观察证据,与写入同源同流;行结构/截图节流/告警门语义原样并入 |
@@ -52,7 +52,7 @@ obs_conflicts/runs`,recorder 写入面/match_archive 切片/全仓落盘调用�
 (red)判据面(即 sim 检查跑红时看哪些判据)/轮差分/预注册披露;逐 key 归宿表=迁移
 前置件(产出归迁移批,不在本文预列)。
 
-**已定案落码形态(键并入归两文件模型②的策略自身记忆要素,决策行文件落地
+**已定案代码落地形态(键并入归两文件模型②的策略自身记忆要素,决策行文件落地
 前由策略 state 容器承载)**:效果域 0 键(①空转,效果域 inventory 与本容器零交
 集);策略行为键 256 字面+16 闭族 80 实例+9 开放域族全保留在策略 state 容器
 (②,无消费删 0 键,弱消费键随迁);流载体停用,局终级全键聚合改由局终域行载荷
@@ -96,7 +96,7 @@ read_game_state 查表优先/装备 O1 门/三票 重接与 session 表冻结面
    (消费面切换批交付,本体删除批把门)。
 5. 寿命契约耦合:**保留**——滚动清理以 run 段为整体单元(两文件同批淘汰,禁单件
    淘汰);已淘汰单元的钉=永久 unverified,档案 index 行申报 archived_out 注记;
-   保留窗下限=跨期语料窗(实现居所 = `cw_state_journal` 退役 manifest)。
+   保留窗下限=跨期语料窗(实现居所 = `cw_state_journal` 停用 manifest)。
 6. 归档只读+观察窗:观察窗(过渡性质)消解,实机窗口(验证性质)替代;归档数据
    只读保留为事实约束(旧档案不删不写,可裸读考古)。
 

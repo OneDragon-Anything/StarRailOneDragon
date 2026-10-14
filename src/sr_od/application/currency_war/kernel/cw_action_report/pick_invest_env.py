@@ -14,7 +14,7 @@ pick_planner)。
 
 **后果声明**(动作后果声明化详设 world-decl.md §2 表 #7):applied 出口
 构造 ``WorldDecl``(trigger = ``pick_invest_env``;``next_screen`` =
-备战屏,权威 = sim ``_on_invest_picked`` 交回 + 开局判别推导见详设 §3),
+备战屏,权威 = sim ``_on_invest_picked`` 结束本次访问 + 开局判别推导见详设 §3),
 转移事件广播随本动作单轨切换摘除。⚠️ 备战值隐性耦合现役 offer 日程
 (日程节点均 battle/reward → 备战;日程扩面时须随节点 kind 推导化)。
 """
@@ -66,7 +66,7 @@ def report_action_pick_invest_env_param(
       条件解析把位移收窄到「真发放随机支的局」,「默认环境局 rng 消耗
       序列逐位不变」严格成立;
     - 出参 applied=True = 受理;reason = ``gain_chain_applied``;出口
-      构造后果声明(:data:`_DECL_TRIGGER`,交回备战)。
+      构造后果声明(:data:`_DECL_TRIGGER`,结束本次访问备战)。
     """
     _validate_sig(sig, ('logic_action',))
     opts = gs.invest_env_opts.value

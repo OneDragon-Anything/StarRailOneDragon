@@ -19,7 +19,7 @@ payload 承载效果数值/战场语义;经济/状态类复用 ``cw_investments.
 **文末附加段**:账本→字段桥与结算收束诸段——板面重写(:func:`apply_board_rewrite`)、
 装备改写写端(写端桥/贡献算术,装备申报面 = cw_affix_effects
 EQUIP_REWRITE_DECLARATIONS × EQUIP_WRITE_SIDES)、节点边界金结算载体
-(贡献算术的组合写收口 + 精密扳手获得回执窗)、穿域特权化腿(特权赋予卡
+(贡献算术的组合写收尾 + 精密扳手获得回执窗)、穿域特权化腿(特权赋予卡
 拖角色腿,归工具执行批)、拷贝仪参与计数载体(装备效果进度侧栏)——把
 效果声明翻译成 GameState 字段写入归属,宿主放本侧的原因与惰性 import
 纪律见各段头注。
@@ -164,7 +164,7 @@ SOURCE_AFFIX: str = 'affix'
 
 
 # ===== 板面重写语义词表(BattlefieldEffect.board_rewrite 取值;防散落字符串)=====
-# 在册条目 = 全员晋升/人力重组(cw_investments.STRATEGY_EFFECTS,官方文
+# 已登记条目 = 全员晋升/人力重组(cw_investments.STRATEGY_EFFECTS,官方文
 # cw_invest_data.py:67/:68);写入归属两行单一源 =
 # docs/develop/sr_od/application/currency_war/game_state/effect-domain.md §8 同名条(全员晋升/人力重组)。
 BOARD_REWRITE_UPGRADE_ALL: str = 'upgrade_all_cost+1'   # 整场上阵替换:全场升为
@@ -233,7 +233,7 @@ class ActiveEffectInventory:
         # 刷新上报函数 report_action_refresh_shop_param 统一触发,
         # 消费方 = env_economy 选卡评估通道 + 免费闸;
         # 2026-09-21 用户裁定 Field 化:免费刷新剩余次数升格容器字段
-        # gs.free_refresh_left,本账本留守两计数):
+        # gs.free_refresh_left,本账本留在两计数):
         self.refresh_total: int = 0           # 全量累计(免费+付费)
         self.refresh_paid: int = 0            # 付费累计(长线利好阈值型)
 
@@ -389,7 +389,7 @@ class ActiveEffectInventory:
         """次数类余量递减(挂点 = 跳过执行落地,§3.2.19/§5.1「挂点现读递减」)。
 
         remaining_uses −1;归零移除(用尽 = 效果离场;「用尽后按钮恢复
-        出战」待实机验,设计 §3.2.19 挂观察工作清单)。无在册条目或该
+        出战」待实机验,设计 §3.2.19 挂观察工作清单)。无已登记条目或该
         条目非次数类 → 返回 None 且零动作——递减挂点与登记挂点解耦:
         登记面缺位的局不炸执行链(保守端 = 记录缺失,不虚构递减)。
         """
@@ -439,7 +439,7 @@ class ActiveEffectInventory:
         """动作侧全量计数推进(挂点 = 刷新上报函数,§5.1「刷新=计数累加」;
         生产单点 = report_action_refresh_shop_param 统一触发)。
 
-        对全部**声明过记账义务**(duties.track=True)的在册条目推进
+        对全部**声明过记账义务**(duties.track=True)的已登记条目推进
         counters[key]:计数消费按 (spec_id, key) 隔离读(:meth:`counter`),
         无关条目的同键计数零消费面。「谁要记账」的声明单一源 =
         EffectSpec.duties.track,本方法只推进不解释——按触发类型过滤
@@ -1044,7 +1044,7 @@ def spawn_equip_bench_unit(gs: GameState, char_id: str, star: int,
     数据拷贝仪族计数臂(成熟回执,无门)——员工/完美投影仪消费已停用
     (tool-gain-report 迭代:投影仪复制改走获得链
     ``cw_gain_chain.gain_character`` 统一时序,登记面映射 =
-    cw_affix_effects.EQUIP_WRITE_SIDES report: 形;本桥留守只覆盖计数臂)。
+    cw_affix_effects.EQUIP_WRITE_SIDES report: 形;本桥留在只覆盖计数臂)。
     (分身墨镜系获得发放腿已改覆盖
     apply_equip_acquire_consequence——获得后果全渠道统一,本桥不再服务
     该两行;数据拷贝仪Max 行保持本桥覆盖计数臂,其获得后果由后果函数按
@@ -1132,7 +1132,7 @@ def transform_equip_to_privilege(gs: GameState, source_name: str, *,
 
 
 # ============================================================ 节点边界金结算载体
-# (装备申报面三贡献算术的组合写收口,归属判据 = effect-domain.md §6.3
+# (装备申报面三贡献算术的组合写收尾,归属判据 = effect-domain.md §6.3
 # 确定性分支:轮首收入三支与装备贡献全部确定性可算 → 逻辑写,且同窗变更
 # 源必须合并为**单次**金面写入(窗口独占性分形段头注:节点边界窗曾与未接
 # 写端的轮首收入共享,本载体即该窗的 live 写端收束——收入公式已收束
@@ -1175,7 +1175,7 @@ def settle_node_boundary_gold(
     write_logic),实机 live 写端收束。
 
     - **收入面**:值分量与分支派发全部经 :func:`cw_economy.round_start_income`
-      (收入收敛单一源,禁第二份);息基 = **结算前**金现值(本函数读
+      (收入收敛单一源,禁第二份);利息计算基数 = **结算前**金现值(本函数读
       ``gs.gold`` 后传入,调用方无须自取——单一金基座防息算双读);
       ``lost_node``/倍率/息修饰由调用方按其适用范围契约传入(败态消费、
       aggregate_economy 聚合归接线批)。
@@ -1224,7 +1224,7 @@ def settle_node_boundary_gold(
 
 def settle_wrench_duplicate_gold(gs: GameState, *, frame: str = '') -> int:
     """获得回执窗金结算:精密扳手在场的拆装扳手获得改 +1 金(贡献算术
-    :func:`equip_wrench_duplicate_gold` 的组合写收口)。
+    :func:`equip_wrench_duplicate_gold` 的组合写收尾)。
 
     - 调用时机 = 拆装扳手获得回执(每次一件);「改为获得 1 金币」 =
       该笔获得不再进消耗品栏(消耗品处置归获得回执的调用侧,本载体只管
@@ -1247,7 +1247,7 @@ def settle_wrench_duplicate_gold(gs: GameState, *, frame: str = '') -> int:
 # (特权赋予卡拖角色腿的实现位:官方文「拖动到一个角色上使用,从角色已
 # 穿戴的进阶装备中选择一件变为特权装备」——选定后变换确定性(36 进阶 ↔
 # 36 特权后缀映射,:func:`privilege_counterpart`)→ 逻辑写;「选择」面 =
-# bot 决策/回执事实,归调用侧,本载体只管选定后的写端。**本腿现役留守
+# bot 决策/回执事实,归调用侧,本载体只管选定后的写端。**本腿现役留在
 # 不接**(tool-gain-report 迭代:用户裁定 2026-09-21 特权卡按不能拖角色
 # 处理待实机测试,判据面只产库存腿、上报侧 char 腿 fail-closed 留存证据;
 # 实机证可拖即升格接线,本桥为既定写端)。库存腿的 live 写端 =
@@ -1327,7 +1327,7 @@ def transform_worn_equip_to_privilege(gs: GameState, target: Unit,
 # 单调计数器模型 §3);成熟判定 = 计数 ÷ 阈值整除(每 N 场一次,§3 规则 3
 # 计算侧);成熟写端 = 入席桥 :func:`spawn_equip_bench_unit`(申报行
 # 「成熟回执时点窗口独占」,1★ 自身复制)。**现值观察面**:参与事实由
-# 当前观察态现读(战斗结算时点的前台+后台在册单位 = 参战者;备战席未
+# 当前观察态现读(战斗结算时点的前台+后台已登记单位 = 参战者;备战席未
 # 上场不参战),不建独立参战事实字段。生产挂点 = 战斗结算覆盖带(接线
 # 归覆盖批;接线前零调用零行为差)。随机臂(「任意方式获得装备者时 30%
 # 概率获得复制」)与伤害增幅腿 = 零建模/观察收口,不在本载体——申报面 =
@@ -1356,7 +1356,7 @@ class CopyMachineSpawn:
 def settle_copy_machine_participation(gs: GameState, *,
                                       frame: str = '') -> list[CopyMachineSpawn]:
     """拷贝仪参与计数载体·战斗参与结算:扫描**现值观察面**(前台+后台
-    在册单位)上的拷贝仪穿戴者,逐件推进参与计数;计数整除阈值 = 成熟,
+    已登记单位)上的拷贝仪穿戴者,逐件推进参与计数;计数整除阈值 = 成熟,
     成熟即经入席桥落一个穿戴者 1★ 复制进备战席。返回成熟结果列表
     (零成熟返回空表)。
 

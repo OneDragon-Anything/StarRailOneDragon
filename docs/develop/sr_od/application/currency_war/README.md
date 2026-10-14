@@ -14,7 +14,7 @@
 |---|---|
 | [architecture.md](architecture.md) | 全景图:模块分层与职责边界(代码树反向规格化) |
 | [strategy-docs/](strategy-docs/README.md) | 策略设计:每个画面结合哪些数学证明、怎么产出决策(阅读顺序 / 宪法四条 / 三形态章程在其 README) |
-| [screens/](screens/README.md) | 画面 op 层:**一画面一文档**(分发判定/形态/观察面/动作面/终结交回/状态上报面/守卫/遥测);能力矩阵 + 画面文档模板在其 README;层设计正本 = screens/op-layer.md(行为规范+基类机制+obs 工具箱) |
+| [screens/](screens/README.md) | 画面 op 层:**一画面一文档**(分发判定/形态/观察面/动作面/结束本次访问/状态上报面/守卫/遥测);能力矩阵 + 画面文档模板在其 README;层设计正本 = screens/op-layer.md(行为规范+基类机制+obs 工具箱) |
 | [flow/](flow/README.md) | 流程控制:外循环路由(outer_loop)/ 动作执行契约(action_exec)/ 守卫总册(guards)/ 策略↔流程契约与入口链(README)/ session 三态分离(session)/ 逻辑态面交互契约(projection_contract) |
 | [game_state/](game_state/README.md) | GameState 设计:容器理念与权威序(README)/ 字段级规格(fields)/ 记录机制(journal)/ 效果域/节点域/链观察/动作逻辑态总则与逐动作更新规格(logic-updates)/ 两本账(决策行文件 schema) |
 | [proofs/](proofs/math_proofs.md) | 证明体系:命题状态索引(P 系列单篇在 `proofs/`,验证件在 `validations/`)——一切「多少算够」的定价权威 |
@@ -22,7 +22,7 @@
 | [config.md](config.md) | 用户配置设计(配置语义单一源;用户偏好才进配置) |
 | `changes/` | 增量迭代设计(过程区,会不定期删减;代码与正本禁引其内容) |
 
-决策 why 的归宿 = 设计文档动机段与代码注释(ADR 档案体系已退役,考古走 git 历史)。进度 / 焦点 / 待办 = 本地 `.debug/progress/` 当前活跃迭代账本(不入 git)。
+决策 why 的归宿 = 设计文档动机段与代码注释(ADR 档案体系已停用,考古走 git 历史)。进度 / 焦点 / 待办 = 本地 `.debug/progress/` 当前活跃迭代账本(不入 git)。
 
 ## 代码引用稳定路径
 

@@ -1,11 +1,11 @@
 """部署动作 op(CwActionDeployMoveOp)——动作 op 重组换壳(原
 ``DeployMoveOp``,ActionOp ABC → 框架 SrOperation;机械执行后 **op 内
 直调自己的上报函数** ``report_action_deploy_move_param``,零分派,
-op-layer.md §1.2 动作 op 契约)。bench → 上阵单步拖拽(腾席链专用)。非终结。
+op-layer.md §1.2 动作 op 契约)。bench → 上阵单步拖拽(腾位链专用)。非终结。
 
 机械执行零判效(用户裁定「动作 op = 机械执行」,落地判定归观察侧
 reconcile 对账):拖后不做像素验证。拖拽静默不生效属执行环境噪声,由
-下一入口 heavy 实读对账显影,重试 = 决策循环按新观察自然重派。
+下一入口 heavy 实读对账暴露,重试 = 决策循环按新观察自然重派。
 """
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
 
 class CwActionDeployMoveOp(CwOperation):
-    """bench → 上阵单步拖拽(腾席链专用;统一词表 CwActionDeployMoveParam)。
+    """bench → 上阵单步拖拽(腾位链专用;统一词表 CwActionDeployMoveParam)。
     非终结。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
@@ -54,13 +54,13 @@ class CwActionDeployMoveOp(CwOperation):
         载荷,执行边零现读零决定)。拖拽语义 = 游戏规则:目标槽空 = 放置,
         有人 = 交换交互——执行层不判断占位、不拒、禁静默换槽,唯一失败
         形态 = 拖拽未生效(机械发出零判效,由下一入口 heavy 实读对账
-        显影,重试 = 决策循环按新观察自然重派);载荷槽越出画面槽位数 =
+        暴露,重试 = 决策循环按新观察自然重派);载荷槽越出画面槽位数 =
         陈旧载荷未发出(round_fail,观察重派)。faction 字段不入执行。
 
         发出即记账(用户裁定「动作 op = 机械执行」):容器逻辑态由
         上报函数单点落账(tracked 第二账已停用,
         动作写主域即同步);拖后零落地判定,静默不生效由下一入口 heavy
-        实读对账显影。
+        实读对账暴露。
         """
         action: CwActionDeployMoveParam = self.param
         env = self.env

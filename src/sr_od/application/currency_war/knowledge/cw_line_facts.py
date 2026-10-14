@@ -8,7 +8,7 @@
 任何 kernel 判据/决策符号(知识层单向依赖,禁反向 import 判据/决策层)。
 
 单一源纪律:**新增消费一律 import 本模块,禁重建数据副本**;cw_line_defs/
-cw_intention 的 sim/旧判据残留副本已标权威指向本模块,随各自消费点迁移处死。
+cw_intention 的 sim/旧判据残留副本已标权威指向本模块,随各自消费点迁移淘汰。
 """
 from __future__ import annotations
 

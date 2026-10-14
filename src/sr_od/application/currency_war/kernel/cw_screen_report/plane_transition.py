@@ -5,7 +5,7 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 构造归观察侧)。report 摄入点 = operations/cw_screen/
 cw_screen_plane_transition.py::``CwScreenPlaneTransition.observe``
 (观察 node);适用范围边界:纯观测写点,调用方的 best-effort 抑制
-contextlib.suppress 留守观察侧,本函数不吞异常。
+contextlib.suppress 留在观察侧,本函数不吞异常。
 """
 from __future__ import annotations
 

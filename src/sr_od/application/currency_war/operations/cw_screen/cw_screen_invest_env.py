@@ -1,7 +1,7 @@
 
 """货币战争 投资环境 3 选 1 op(两 node 直继承 SrOperation)。
 
-观察 node = 入口门(标识-投资环境,miss = round_fail 交回外循环重判)
+观察 node = 入口门(标识-投资环境,miss = round_fail 返回主循环重新判定)
 → **一次读全**(3 张环境卡名 + 全局刷新剩余次数,零稳定帧等待一次读
 全)→ 观察标准化门(逐候选两段转换:形变归一精确匹配 → LCS 相似匹配
 兜底;任一候选转换失败 ∨ 两候选命中同一注册名 = round_fail 零写零
@@ -10,17 +10,17 @@
 标准注册名 + ``env_refresh_left`` 观察写端)→ obs 挂实例属性。决策动作
 node = 零参决策(候选自容器槽;空候选/无有效输出 = round_fail 显式失
 败,零盲发 = op-layer.md §1.1 + action_ops.md §1 )→ 环境帧刷新
-判据可发整组重掷(终结交回)∨ 点**最优**卡底 + 确认链经
+判据可发整组重掷(结束本次访问)∨ 点**最优**卡底 + 确认链经
 ``CwActionPickInvestOp`` 派发(上报纯 idx,名字自容器标准名单一源)→
-**round_success 终结交回**(选完即交回 = op-layer.md §1.1;确认未生效
+**round_success 结束本次访问**(选完即结束本次访问 = op-layer.md §1.1;确认未生效
 = 代码 bug,overlay 残留由外循环按当前画面重识别重派,修法 = 点击链
 可靠性——action_ops.md §1  即时上报契约)。
 
-环境刷新 = 终结动作(刷新 = 唯一引入新事实的动作,须交回外循环重观察;
+环境刷新 = 终结动作(刷新 = 唯一引入新事实的动作,须返回主循环重新观察;
 结构语义 = screens/op-layer.md §1.4):决策返回 ``refresh_slots`` 非空 ∧
 剩余次数授权(obs 携带 + 容器 ``env_refresh_left``)→ 点刷新圆钮一次
 (文本锚定偏移)→ 动画窗固定等待 → 零效果缺陷留存证据对账 → 本访问即终结
-交回。
+结束本次访问。
 
 选择事实(active_env)经动作落地链写:动作 op 确认后立即自上报 →
 ``gain_invest_env`` 整链(active_env 注册 + portal 登记 + on_env_gained
@@ -29,7 +29,7 @@ node = 零参决策(候选自容器槽;空候选/无有效输出 = round_fail �
 §3.4.3),写端 = 观察 report 摄入。无 match 局外不设早退支(画面 op
 不支持局外单独调用——op-layer.md §1.1;用户裁决 全族删门)。
 本屏 sim 腿 = 不适用(sim 端口
-适配器未建),等价判据主要支撑 = 实机在册行为锁。
+适配器未建),等价判据主要支撑 = 实机已登记行为锁。
 """
 import time
 from typing import ClassVar
@@ -105,14 +105,14 @@ class CwScreenInvestEnv(CwOperation):
     #(实机形态:「击口概念股」对击破/追击概念股同分 0.8——卡面与注册表
     # 一一对应,近分 = 必有误读,禁猜)。0.15 = 真命中最小分辨差下探留
     # 裕度(5 字共享词素族 1 字误读 0.8 与后缀借分 3/5 = 0.6 差 0.2);
-    # 同分/近分一律拒判交回重观察。
+    # 同分/近分一律拒判返回主循环重新观察。
     ENV_LCS_AMBIGUITY_MARGIN: ClassVar[float] = 0.15
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-投资环境')
         # 刷新零效果留存证据证据(刷新分支只读不比,读数原样携带——
         # 元组 = (刷前计数, 刷前名集, 刷后计数, 刷后名集);
-        # 消费点 = 刷新分支终结交回出口 ``_reconcile_refresh_no_effect``
+        # 消费点 = 刷新分支结束本次访问出口 ``_reconcile_refresh_no_effect``
         # 对账,消费即清;None = 无待评证据)。
         self._refresh_evidence: tuple[int, list[str],
                                       list, list[tuple[str, int]]] | None = None
@@ -180,11 +180,11 @@ class CwScreenInvestEnv(CwOperation):
         return getattr(_match, 'gs', None) if _match is not None else None
 
     def _reconcile_refresh_no_effect(self) -> None:
-        """刷新零效果留存证据对账(消费点 = 刷新分支终结交回出口):携带证据
+        """刷新零效果留存证据对账(消费点 = 刷新分支结束本次访问出口):携带证据
         (刷前计数/名集 + 刷后帧机械重读)在此评「计数未扣 ∧ 名集未变」→
         落缺陷台账(零决策零改道);任一侧读缺 = 过渡帧不可判,不猜。
         消费即清(每次刷新恰评一次)。缺陷的实际触发形态 = 刷新未生效而
-        overlay 残留——证据为当次刷新的机械重读快照,评点住终结交回出口
+        overlay 残留——证据为当次刷新的机械重读快照,评点住结束本次访问出口
         与该形态覆盖面等价(每笔证据恰评一次)。"""
         _ev = self._refresh_evidence
         if _ev is None:
@@ -208,14 +208,14 @@ class CwScreenInvestEnv(CwOperation):
                      '比对宿主 = 刷新臂终结交回出口对账,消费即清',
                 gap_large=False,
                 severity=cw_defects.SEVERITY_L2_RECORD)
-        except Exception:   # noqa: BLE001  留存证据不阻塞交回
+        except Exception:   # noqa: BLE001  留存证据不阻塞结束本次访问
             pass
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
         """入口门 + 一次读全 + 观察标准化门 → report 落容器。
 
-        门 miss = round_fail 早退交回外循环重判(现役首闸同 status)。
+        门 miss = round_fail 早退返回主循环重新判定(现役首闸同 status)。
         零稳定帧等待;一次读全 = 环境卡名 + 全局刷新剩余计数,同一帧
         读取。标准化门任一候选转换失败(含两候选命中同名)= round_fail
         整函数早退,零写容器零上报(op-layer.md §1.1)。门后 report 摄入
@@ -229,7 +229,7 @@ class CwScreenInvestEnv(CwOperation):
             return self.round_fail('非投资环境屏')
         # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
         #(经同名 report 落容器);否则执行原读链。live 读链早退形态(候选
-        # 标准化失败 round_fail)原样交回。
+        # 标准化失败 round_fail)原样结束本次访问。
         obs = cw_sim_ports.sim_or_live_observation(
             CwScreenInvestEnv.SCREEN_NAME, self._observe_live)
         if isinstance(obs, OperationRoundResult):
@@ -240,7 +240,7 @@ class CwScreenInvestEnv(CwOperation):
     def _observe_live(self) -> 'CwScreenInvestEnvObs | OperationRoundResult':
         """live 观察读链(读屏点改道原样迁移;sim 生成器产物不走本链)。
 
-        一次读全 + 观察标准化门(失败 = round_fail 早退,零写零上报交回
+        一次读全 + 观察标准化门(失败 = round_fail 早退,零写零上报结束本次访问
         重观察)+ report 落容器。"""
         screen = self.screenshot()
         counts = read_invest_refresh_counts(self.ctx, screen, 'env')
@@ -263,9 +263,9 @@ class CwScreenInvestEnv(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=10)
     def act(self) -> OperationRoundResult:
-        """零参决策 → 环境刷新终结交回 / 选卡+确认后立即终结 → round_success。
+        """零参决策 → 环境刷新结束本次访问 / 选卡+确认后立即终结 → round_success。
 
-        选卡链派发后本访问即终结交回外循环(选完即交回 = op-layer.md
+        选卡链派发后本访问即终结返回主循环(选完即结束本次访问 = op-layer.md
         §1.1;确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重
         识别重派,修法 = 点击链可靠性,action_ops.md §1 )。"""
         obs = self._obs
@@ -275,7 +275,7 @@ class CwScreenInvestEnv(CwOperation):
         """决策+动作内聚体(决策面):零参决策(候选自容器槽,观察标准化
         门已保证值域 = 标准注册名)→ 环境刷新终结动作(obs 余量授权 +
         容器 env_refresh_left)→ 点最优卡底 → 确认链派发(动作 op 内
-        即时上报)→ round_success 终结交回。空候选/决策无有效输出 =
+        即时上报)→ round_success 结束本次访问。空候选/决策无有效输出 =
         round_fail 显式失败(零盲发 = op-layer.md §1.1 + action_ops.md
         §1 「没有选到就是代码 bug」);无 match 局外不设早退支
         (画面 op 不支持局外单独调用——op-layer.md §1.1;用户裁决
@@ -301,7 +301,7 @@ class CwScreenInvestEnv(CwOperation):
         refresh_slots: tuple[int, ...] = ()
         if isinstance(act, CwActionRefreshInvestCardsParam):
             refresh_slots = act.slots
-        # ===== 环境刷新 = 终结动作(刷新 = 唯一引入新事实的动作,须交回
+        # ===== 环境刷新 = 终结动作(刷新 = 唯一引入新事实的动作,须结束本次访问
         # 外循环重观察;环境屏 = 整组重掷:单全局钮 + 单计数。闸输入 =
         # obs.refresh(同帧一次读全,决策环零识别)+ 容器 env_refresh_left;
         # 读缺 = 无授权失败安全)=====
@@ -330,7 +330,7 @@ class CwScreenInvestEnv(CwOperation):
                 log.info(f'[cw-env] 环境刷新终结交回:计数 {_budget}→'
                          f'{_counts2[0][0] if _counts2 else "读缺"},'
                          f'重进后重观察重分类')
-                # 零效果留存证据对账(消费即清)→ 终结交回:选卡/确认均不在
+                # 零效果留存证据对账(消费即清)→ 结束本次访问:选卡/确认均不在
                 # 本访问;外循环重进 = 入口重建。
                 self._reconcile_refresh_no_effect()
                 return self.round_success('投资环境刷新终结交回(重进重观察重分类)',
@@ -340,7 +340,7 @@ class CwScreenInvestEnv(CwOperation):
             act = match.strategy.decide_invest_env()
             if isinstance(act, CwActionRefreshInvestCardsParam):   # 防御:策略未实现去重
                 act = None
-        # ===== 选卡确认链(派发即即时上报,本访问终结交回)=====
+        # ===== 选卡确认链(派发即即时上报,本访问结束本次访问)=====
         if isinstance(act, CwActionPickInvestEnvParam) and 0 <= act.idx < len(opts):
             chosen, choose_x = opts[act.idx]
             reason = act.reason

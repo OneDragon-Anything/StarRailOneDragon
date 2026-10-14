@@ -10,7 +10,7 @@
 
 **容器(GameState,游戏状态对象,下同)零写**——事件线选择非逻辑态通道([../action-logic-state.md](../action-logic-state.md) §6):
 
-- **候选选中部分留守画面 op**:候选选中点击与 `chosen_megastar` 的写入在原体内交错(点击 → 写入 → 动画等待),该写入属单次逻辑写入豁免面——确认机械部分先收拢进本 op,候选选择部分随写入留在画面 op;`chosen_megastar`(容器 Field,值 = 强化角色名)由 `CwScreenMegastar` 在候选选中时点写入;
+- **候选选中部分留在画面 op**:候选选中点击与 `chosen_megastar` 的写入在原体内交错(点击 → 写入 → 动画等待),该写入属单次逻辑写入豁免面——确认机械部分先收拢进本 op,候选选择部分随写入留在画面 op;`chosen_megastar`(容器 Field,值 = 强化角色名)由 `CwScreenMegastar` 在候选选中时点写入;
 - **确认到账 grant**:无——原「到账登记」ConfirmMegastar 块已随两态制废除(`chosen_megastar` 的写入没有登记待办的环节);`ConfirmMegastar` 在 `register_confirm_arrival` 零写(`_overlay_confirm.py` 分道申报);
 - 候选选中建议不经本动作确认链外的第二载体;本 op = 确认钮单发。
 
@@ -42,4 +42,4 @@
 
 ## 9. 依据
 
-`operations/cw_op/cw_pick_megastar_action.py::CwActionPickMegastarOp` docstring(候选留守裁定/单发语义);`operations/cw_screen/_overlay_confirm.py` 分道申报;[flow/action_ops.md](../../flow/action_ops.md) §4.4(pick 族行);[fields.md](../fields.md) §3.4.5(盛会之星域)。
+`operations/cw_op/cw_pick_megastar_action.py::CwActionPickMegastarOp` docstring(候选留在裁定/单发语义);`operations/cw_screen/_overlay_confirm.py` 分道申报;[flow/action_ops.md](../../flow/action_ops.md) §4.4(pick 族行);[fields.md](../fields.md) §3.4.5(盛会之星域)。

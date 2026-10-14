@@ -213,7 +213,7 @@ class CwEntryExit(CwOperation):
     @operation_node(name='胜利结算继续挑战', node_max_retry_times=10,
                     timeout_seconds=120)
     def settlement_continue(self) -> OperationRoundResult:
-        # 无 until:点击成功即交回路由(对局推进后通常回备战走退局发起)
+        # 无 until:点击成功即结束本次访问路由(对局推进后通常回备战走退局发起)
         return self.round_by_find_and_click_area(
             self.last_screenshot, '货币战争-结算', '按钮-继续挑战',
             success_wait=2)

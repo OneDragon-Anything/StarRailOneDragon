@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-点击商店「按钮-刷新」,整店 5 槽全部重掷。**访问终结**动作(= 发出后结束本次访问,返回主循环重新识别画面):刷新是唯一引入新事实的动作,执行即本访问结束、交回外循环,重进 = 全新入口观察重建期望态(次数无硬墙;无限刷新环 = 策略实现 bug 框架不兜底)。op 载体 = `operations/cw_op/cw_refresh_shop_action.py::CwActionRefreshShopOp`(`terminal=True`,体内零读屏零验证);动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionRefreshShopParam`。
+点击商店「按钮-刷新」,整店 5 槽全部重掷。**访问终结**动作(= 发出后结束本次访问,返回主循环重新识别画面):刷新是唯一引入新事实的动作,执行即本访问结束、返回主循环,重进 = 全新入口观察重建期望态(次数无硬墙;无限刷新环 = 策略实现 bug 框架不兜底)。op 载体 = `operations/cw_op/cw_refresh_shop_action.py::CwActionRefreshShopOp`(`terminal=True`,体内零读屏零验证);动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionRefreshShopParam`。
 
 ## 2. 逻辑态域集
 
@@ -25,9 +25,9 @@
 
 ## 4. 随机面
 
-**刷后的新牌面 = 整店 5 槽全换**(非逐槽补空,实机实锤 `research/economy.md` §2.1)→ 上报函数以随机态采样预写期望态(`write_logic_rand` 通道;观察覆盖 = 预期内),真值归下一入口观察。免费刷新的概率事件(免费次数获得)= 两效果桥发放(`apply_effect_burst_grant`/`grant_effect_node_refresh_balance`,容器 Field 同格登记,见 [../fields.md](../fields.md) 商店免费刷新节)。
+**刷后的新牌面 = 整店 5 槽全换**(非逐槽补空,实机实证 `research/economy.md` §2.1)→ 上报函数以随机态采样预写期望态(`write_logic_rand` 通道;观察覆盖 = 预期内),真值归下一入口观察。免费刷新的概率事件(免费次数获得)= 两效果桥发放(`apply_effect_burst_grant`/`grant_effect_node_refresh_balance`,容器 Field 同格登记,见 [../fields.md](../fields.md) 商店免费刷新节)。
 
-**UI 陷阱在册**:面板右下「刷新金币数」区域实际印的是利息徽标(min(gold//10,5)),不是刷价(三路来源交叉核对后已定案,`REFRESH_COST_BASE` 注)。
+**UI 陷阱已登记**:面板右下「刷新金币数」区域实际印的是利息徽标(min(gold//10,5)),不是刷价(三路来源交叉核对后已定案,`REFRESH_COST_BASE` 注)。
 
 ## 5. 拒绝语义
 

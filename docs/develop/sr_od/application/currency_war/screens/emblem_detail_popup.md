@@ -8,7 +8,7 @@
 
 ## 2. 画面形态声明
 
-**空决策形态**(纯推进)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(`entry_ok` 两个 id_mark 其一复判,分发判定 = 建档双 id_mark 组合全命中,见 §1;miss = round_fail 交回外循环重判)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部落地复查(推进已发 → 两个 id_mark 均 miss = 已离开本画面 → success 交回)→ 点 X 单次推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 在用值仅框架异常路径消费)。空决策形态无 report 接口。
+**空决策形态**(纯推进)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(`entry_ok` 两个 id_mark 其一复判,分发判定 = 建档双 id_mark 组合全命中,见 §1;miss = round_fail 返回主循环重新判定)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部落地复查(推进已发 → 两个 id_mark 均 miss = 已离开本画面 → success 结束本次访问)→ 点 X 单次推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 在用值仅框架异常路径消费)。空决策形态无 report 接口。
 
 ## 3. 观察面
 
@@ -16,17 +16,17 @@
 
 ## 4. 动作面
 
-**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+**动作 op 与交回对照表**(本篇唯一动作清单;「返回主循环」= 本访问结束、控制权返回 `cw_loop.py::CwLoop.loop` 重判):
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| 无动作 op——单步推进由内置动作完成(`progress_once` 点 X 关闭) | 画面 op 内置动作(`progress_once`:`round_by_find_and_click_area` 点 `货币战争-星徽详情.按钮-关闭`,success_wait=1) | 无 report 接口(推进型规范形态,op-layer.md §3) | 是(落地复查:点 X 已发 ∧ 两个 id_mark 均 miss = 已离开 → `round_success` 交回;其一在 = `round_wait` 再推进) |
+| 无动作 op——单步推进由内置动作完成(`progress_once` 点 X 关闭) | 画面 op 内置动作(`progress_once`:`round_by_find_and_click_area` 点 `货币战争-星徽详情.按钮-关闭`,success_wait=1) | 无 report 接口(推进型规范形态,op-layer.md §3) | 是(落地复查:点 X 已发 ∧ 两个 id_mark 均 miss = 已离开 → `round_success` 结束本次访问;其一在 = `round_wait` 再推进) |
 
-`progress_once` = `round_by_find_and_click_area(货币战争-星徽详情.按钮-关闭, success_wait=1)`(点 X 后等关闭动画再交回裁决)。**刻意不用 ESC**:X 是弹窗内坐标永远安全,ESC 在面板已关时落备战会误弹「中断挑战」——该红线禁在 op 内「顺手统一」成 ESC。
+`progress_once` = `round_by_find_and_click_area(货币战争-星徽详情.按钮-关闭, success_wait=1)`(点 X 后等关闭动画再结束本次访问裁决)。**刻意不用 ESC**:X 是弹窗内坐标永远安全,ESC 在面板已关时落备战会误弹「中断挑战」——该红线禁在 op 内「顺手统一」成 ESC。
 
 ## 5. 终结与交回
 
-推进已发 → `round_wait` 重访;落地复查 = 两个 id_mark 均 miss = 已离开 → `success` 交回(无防御上限)。落点 = 备战(阶段二默认分支重判)。
+推进已发 → `round_wait` 重访;落地复查 = 两个 id_mark 均 miss = 已离开 → `success` 结束本次访问(无防御上限)。落点 = 备战(阶段二默认分支重判)。
 
 ## 6. 状态上报面
 
@@ -34,7 +34,7 @@
 
 ## 7. 子态与 overlay
 
-本 op 自身即 overlay 处理件;命中即自处理,底层(备战)交回重判。
+本 op 自身即 overlay 处理件;命中即自处理,底层(备战)返回主循环重新判定。
 
 ## 8. 守卫与防线
 
@@ -43,4 +43,4 @@
 ## 9. 遥测与锁面
 
 - journal op 名 = 「星徽详情」;frame_tag = `overlay_emblem_detail`(dispatch 包装)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,emblem_detail_popup 在册);建档 = `currency_war_star_badge_detail.yml`。
+- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,emblem_detail_popup 已登记);建档 = `currency_war_star_badge_detail.yml`。

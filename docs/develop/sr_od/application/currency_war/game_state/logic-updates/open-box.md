@@ -4,28 +4,28 @@
 
 ## 1. 动作是什么
 
-点击占备战席 1 槽的补给箱道具开启:**终结动作**(= 发出后结束本次访问,返回主循环重新识别画面)——开箱即引入新事实(武装箱选择画面弹出),执行即本访问结束,交回外循环分发选卡。op 载体 = `operations/cw_op/cw_open_box_action.py::CwActionOpenBoxOp`(`terminal=True`,`terminal_wait=1.8s`;体迁薄委托 = `prep_actions.py::PrepActionExecutor._open_box`);动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionOpenBoxParam`(`slot: int | None`,None = 第一箱)。发出条件 = 备战策略产出 OpenBox。
+点击占备战席 1 槽的补给箱道具开启:**终结动作**(= 发出后结束本次访问,返回主循环重新识别画面)——开箱即引入新事实(武装箱选择画面弹出),执行即本访问结束,返回主循环分发选卡。op 载体 = `operations/cw_op/cw_open_box_action.py::CwActionOpenBoxOp`(`terminal=True`,`terminal_wait=1.8s`;体迁薄委托 = `prep_actions.py::PrepActionExecutor._open_box`);动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionOpenBoxParam`(`slot: int | None`,None = 第一箱)。发出条件 = 备战策略产出 OpenBox。
 
 ## 2. 逻辑态域集
 
-容器(GameState,游戏状态对象,下同)**零写**(零写族申报):上报函数 = `zero_writes.py::report_action_open_box_param`(**零写族**集中申报,函数体恒零容器写)——终结化改造,结束判定先行交回外循环(返回主循环),不经逻辑态写;腾席/到账事实由交回后的下一入口完整观察覆盖(零窗口:终结 = 发出即本次访问结束,同一访问内无后续帧消费)。箱不消失,消耗在选卡确认(申报 = 函数 docstring)。
+容器(GameState,游戏状态对象,下同)**零写**(零写族申报):上报函数 = `zero_writes.py::report_action_open_box_param`(**零写族**集中申报,函数体恒零容器写)——终结化改造,结束判定先行返回主循环(返回主循环),不经逻辑态写;腾位/到账事实由结束后的下一入口完整观察覆盖(零窗口:终结 = 发出即本次访问结束,同一访问内无后续帧消费)。箱不消失,消耗在选卡确认(申报 = 函数 docstring)。
 
 **触发物识别**(备战观察链):补给箱占席事实经 bench 槽位 `kind='supply_box'` 进容器(观察读链 `read_bench_view` 识别期定 kind;决策分支 = mandate_v1 entry 开箱分支读容器 bench 首个 supply_box 槽,分支顺序 box 优先于典籍)。
 
 ## 3. 确定面转移规则(逐条)
 
 1. `read_armory_boxes` 识别在席箱 (识别域 = screen_info 单一源,禁兜底坐标);
-2. 点目标槽「开启」(槽中心 + `BOX_OPEN_DY=41` 偏移)→ 固定动画等待(`terminal_wait=1.8s`,等待归产生动画的操作)→ 机械交回外循环;
-3. 后续选卡 = 武装箱选择画面 op(`operations/cw_screen/cw_screen_box_pick.py`)分发:卡名集 logic 写入 `box_card_names` 候选槽(actor = CwScreenBoxPick,同访问覆盖写)→ 策略契约 `decide_box_card` 现算选卡(fail-closed——读不到数据/条件不满足时默认走保守分支不动作)→ 选卡即终结交回;
-4. **到账**:选中装备进 owned 库存无独立逻辑写入方,真值归下一帧装备区读数观察覆盖;确认到账登记面 = `operations/cw_screen/_overlay_confirm.py::register_confirm_arrival` → `apply_confirm_effect` dict `ConfirmBox` 分支(owned +1)——分支在册,在用的登记发出点核对 = ConfirmSupply(补给选卡)/ConfirmTome(星徽秘典)/ConfirmExpertCash(专家邀请函),ConfirmBox 暂无在用发出点(武装箱链现走 `box_card_names` 写槽 + 观察覆盖,登记面为确认通道预留)。
+2. 点目标槽「开启」(槽中心 + `BOX_OPEN_DY=41` 偏移)→ 固定动画等待(`terminal_wait=1.8s`,等待归产生动画的操作)→ 机械部分完成后返回主循环;
+3. 后续选卡 = 武装箱选择画面 op(`operations/cw_screen/cw_screen_box_pick.py`)分发:卡名集 logic 写入 `box_card_names` 候选槽(actor = CwScreenBoxPick,同访问覆盖写)→ 策略契约 `decide_box_card` 现算选卡(fail-closed——读不到数据/条件不满足时默认走保守分支不动作)→ 选卡即终结,返回主循环;
+4. **到账**:选中装备进 owned 库存无独立逻辑写入方,真值归下一帧装备区读数观察覆盖;确认到账登记面 = `operations/cw_screen/_overlay_confirm.py::register_confirm_arrival` → `apply_confirm_effect` dict `ConfirmBox` 分支(owned +1)——分支已登记,在用的登记发出点核对 = ConfirmSupply(补给选卡)/ConfirmTome(星徽秘典)/ConfirmExpertCash(专家邀请函),ConfirmBox 暂无在用发出点(武装箱链现走 `box_card_names` 写槽 + 观察覆盖,登记面为确认通道预留)。
 
 ## 4. 随机面 / 观察面
 
-箱内卡面内容 = 随机面归观察;选卡后果不记预期值(事件线选择非逻辑态通道,[../action-logic-state.md](../action-logic-state.md) §6);腾席/到账真值均由下一入口完整观察帧实读覆盖。
+箱内卡面内容 = 随机面归观察;选卡后果不记预期值(事件线选择非逻辑态通道,[../action-logic-state.md](../action-logic-state.md) §6);腾位/到账真值均由下一入口完整观察帧实读覆盖。
 
 ## 5. 拒绝语义
 
-无箱 / 指定槽无箱 = 未发出(`emitted=False`,观察-执行竞态),交回重观察重派;`action.slot` 对位无匹配 = 未发出(detail 载实读槽位表);validate 参数非法(slot 越界)= 发出前输入契约拒绝。容器零写语义下无 `applied=False` 拒绝形态。
+无箱 / 指定槽无箱 = 未发出(`emitted=False`,观察-执行竞态),返回主循环重新观察重派;`action.slot` 对位无匹配 = 未发出(detail 载实读槽位表);validate 参数非法(slot 越界)= 发出前输入契约拒绝。容器零写语义下无 `applied=False` 拒绝形态。
 
 ## 6. kernel 符号锚
 
@@ -33,11 +33,11 @@
 
 ## 7. 语义验证
 
-OpenBox = **零写族成员**(登记面申报 = `zero_writes.py`,行为锁 = `test_cw_unified_action_2a` 动作类型覆盖锁零写集断言:write_seq 不变);终结化语义由注册表 `terminal=True` 承载(执行即交回外循环,下一入口完整观察覆盖腾席/到账真值)。触发物识别 = 容器 bench 槽 kind 细分(mandate_v1 决策面 bench kind 分派用例)。
+OpenBox = **零写族成员**(登记面申报 = `zero_writes.py`,行为锁 = `test_cw_unified_action_2a` 动作类型覆盖锁零写集断言:write_seq 不变);终结化语义由注册表 `terminal=True` 承载(执行即返回主循环,下一入口完整观察覆盖腾位/到账真值)。触发物识别 = 容器 bench 槽 kind 细分(mandate_v1 决策面 bench kind 分派用例)。
 
 ## 8. 判例注记(动作发出阶段)
 
-备战期(占席道具只在备战画面可见可点);开箱是腾席类动作之一(占席道具三件 = 补给箱/秘密典籍/书册卡,腾席义务先于部署/上阵发出)。
+备战期(占席道具只在备战画面可见可点);开箱是腾位类动作之一(占席道具三件 = 补给箱/秘密典籍/书册卡,腾位义务先于部署/上阵发出)。
 
 ## 9. 依据
 

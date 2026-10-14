@@ -5,7 +5,7 @@
 > 三面拆分后,买面 buy_members = 锁定采购集(`locked_buy_membership`,
 > 含阵营∪流派全集)而卖免面 k_members 保持 core∪shared 口径,由此产生的
 > 「missing 恒非空 ⇒ M4 每帧卖 1 买 1、净金≈0、drought 被买动作重置」循环。
-> 代码锚:`shop.py:487`(missing 定义,按名记持)/`:509-520`(M4 腾席)/
+> 代码锚:`shop.py:487`(missing 定义,按名记持)/`:509-520`(M4 腾位)/
 > `:522-538`(M2 义务买)/`:496-506`(`_on_target_buy` 买即重置 drought);
 > `mandate.py:156-195`(`check_irreversible`/`fuel_sell_candidates`,
 > 燃料集 = 1★ ∧ zero_overlap(k_members) ∧ 无后台效果);
@@ -44,7 +44,7 @@ missing = ∅ ⟺ B ⊆ owned ⟹ |B| ≤ |owned| ≤ C。注册表直调
 
 Fuel 的排除集是 k(core∪shared),而 B ⊋ k(囤积集 − core∪shared 达
 2~14 名/阵容,黄泉减益 13 名)。故备战席上的囤积集非核心件是合法
-燃料——**帧 t 买入的缺员可在帧 t′>t 被 M4 卖出**以腾席给另一缺员,
+燃料——**帧 t 买入的缺员可在帧 t′>t 被 M4 卖出**以腾位给另一缺员,
 Φ 可降。M4 取 `cands[0]`(slot 升序,mandate.py:178)无任何
 价值序/买入序/合成进度保护,方向随机。
 
@@ -93,7 +93,7 @@ Fuel 的排除集是 k(core∪shared),而 B ⊋ k(囤积集 − core∪shared �
    Fuel ∩ B = ∅ ⟹ Φ 单调不减、循环 ≤|B∖k| 次收敛;|B|>C 时行为
    变为诚实停摆(m2_retry_exhausted / bench_full_buy_abandon 计数,
    金开始累积)——停摆可见、可判读,优于不可见换手。需重新推导:
-   排除后 M4 腾席能力收窄是否使缺员买入延迟(实证 = 帧级交叉核对)。
+   排除后 M4 腾位能力收窄是否使缺员买入延迟(实证 = 帧级交叉核对)。
 2. **义务分级候选(设计层,需 ADR)**:M2 义务序 core∪shared 优先、
    囤积集其余成员降机会性(EV 域)——从源头收窄 B,使义务集容量
    可满足;与「替班者语义」「P48 统一支出判据」对表后立项。
@@ -110,5 +110,5 @@ Fuel 的排除集是 k(core∪shared),而 B ⊋ k(囤积集 − core∪shared �
 - P59(同批姊妹篇:买面义务集与换阵分支的另一域间裂缝,替班者反例);
 - 原裁定文档修订节(三面拆分与收敛性登记待办出处)、P41(围栏/卖出 EV,
   燃料判据来源)、P24(dominance_buy 与本循环共享席位约束面);
-- P18(release 门集合过滤命题——两篇合看:义务分支/腾席面与买面
+- P18(release 门集合过滤命题——两篇合看:义务分支/腾位面与买面
   义务集的「域同构」缺审计是共同根型)。

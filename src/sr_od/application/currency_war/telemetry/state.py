@@ -165,10 +165,10 @@ def reset_run_state() -> None:
     _RUN_CLOSED=True,teardown 复位链不覆盖,后续未全簇桩化就直调
     ensure_run_started 的测试把「上局已收尾」误判为真走重铸假分支(出处:
     .debug/temp/currency_war/attacks/three_review_20260908/三审报告-第二波.md
-    F1,**易失产物**待回填)。
+    F1,**临时产物**待回填)。
 
     难度列入簇(出处:.debug/temp/currency_war/attacks/
-    three_review_20260908/三审报告-第三波.md F3,**易失产物**待 ADR 回填;
+    three_review_20260908/三审报告-第三波.md F3,**临时产物**待 ADR 回填;
     单一入口判据承本函数既有先例):_CURRENT_DIFFICULTY 由 start_run 与
     _CURRENT_RUN_ID 同语句铸造。残留病理 = 遥测内容污染,无分支翻转;
     入簇而非散点补桩 = 簇成员随写点扩员自动进复位链,防逐件补桩清单再漏。

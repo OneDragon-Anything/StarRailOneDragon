@@ -50,7 +50,7 @@
    - [user_playstyle.md](user_playstyle.md) ★ — 用户口述节奏全集:开局 / 经济利息律 / 升级 / 阵容 / 装备纪律(条目现存至 [42],稳定 ID 永不复用;**直觉假设登记簿**——策略命题以 [math_proofs](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md) 证明与 sim/实机分布实证为准;条目引用须区分已证/待证)
 3. **过渡体系与战力证据**(位面 1 怎么活到成型、什么形态能过;按口述条目号展开,故排在纪律后):
    - [transitions.md](transitions.md) — 过渡叙事:开局分级(终局阵容锁定资格)/ 成型停买线 / 换血点 / 保底过渡阵容(已抛弃史料)
-   - [transition_combos.md](transition_combos.md) ★ — 四种过渡体系逐路线定义(引擎池 / 核心池;落码依据)
+   - [transition_combos.md](transition_combos.md) ★ — 四种过渡体系逐路线定义(引擎池 / 核心池;代码落地依据)
    - [stage_transitions.md](stage_transitions.md) — 位面 1→2→3 阵容演化定量(加法不换件的数据边界)
    - [h3_tier_core_crosstab.md](h3_tier_core_crosstab.md) — 档位 × 核心在场 × 败率交叉(实机语料统计)
 4. **终局阵容**(位面 2/3 打什么):
@@ -71,7 +71,7 @@
 | 升星合成:买牌落点/场上吸收/备战最左/连锁合成(买一张=可能升两级) | [merge_mechanics.md](merge_mechanics.md) |
 | 战斗机制:伤害三乘区/星级收益/血量星/连胜经济/练度 | [combat.md](combat.md) |
 | 过渡体系:位面 1 骨架/成型停买线/换血点/位面 2 保底过渡阵容(已抛弃史料)/买牌纪律 | [transitions.md](transitions.md) |
-| **过渡阵容逐路线定义**(引擎池/核心池/开局直奔终局阵容的结构;落码依据) | [transition_combos.md](transition_combos.md) ★ |
+| **过渡阵容逐路线定义**(引擎池/核心池/开局直奔终局阵容的结构;代码落地依据) | [transition_combos.md](transition_combos.md) ★ |
 | **终局阵容分类**(final comps 分类索引+逐类累积;核心角色/羁绊双维;**单套阵容打法知识单一源**) | [final_comps/README.md](final_comps/README.md) ★ |
 | 阵容理解方法论(技能/羁绊/玩法三层怎么读) | [combo_methodology.md](combo_methodology.md) |
 | 玩法方法论 M1-M16:资源入口/核心×弹性/多线通用角色分级/骨架拼装/升星经济学/装备优先级/站位… | [plaza_methodology.md](plaza_methodology.md) |
@@ -94,4 +94,4 @@
 - **值(数据)的单一源 = 代码注册表**(`src/sr_od/application/currency_war/data/cw_*.py`);本目录记「凭什么信」。
 - **设计消费**:`docs/develop/sr_od/application/currency_war/strategy-docs/` 的 as-built 正文引用本目录结论(只引结论一句话+链接,不复制内容)。
 - **上游**:原 ../sources/ 外部原文存档(已删[eb9c72a1],git 历史 `eb9c72a1~1` 可查);仍被引用的条目以各篇「原文细节补记」块为仅存记录,本目录结论的证据等级就地标注。
-- **裁定/教训不进本目录**:玩法取舍 → 设计文档动机段与代码注释(ADR 档案体系已按用户令退役);分析教训 → 本地 insights。
+- **裁定/教训不进本目录**:玩法取舍 → 设计文档动机段与代码注释(ADR 档案体系已按用户令停用);分析教训 → 本地 insights。

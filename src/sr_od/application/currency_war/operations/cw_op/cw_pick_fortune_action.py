@@ -82,7 +82,7 @@ class CwActionPickFortuneOp(CwOperation):
             success_wait=1.0)
         # 自上报(机械链发出后;零写,契约面统一)。上报后一行声明喂入
         # (动作后果声明化喂入契约 = design.md §2.2 契约 3;实机端口未装
-        # = no-op,sim 装配后驱动后端纯转移分支交回);round data 携带
+        # = no-op,sim 装配后驱动后端纯转移分支结束本次访问);round data 携带
         # 声明(journal 记账面)。
         world_decl = None
         gs = game_state_from_ctx(self.ctx)

@@ -1,8 +1,8 @@
-"""货币战争 D牌期望模型(A4 牌池概率;纯逻辑,可测,不碰游戏)。
+"""货币战争 刷新找牌期望模型(A4 牌池概率;纯逻辑,可测,不碰游戏)。
 
 **依据**(米游社 V4.4 权威计算,2026-08-03 采集):
-- [article/77124902](https://www.miyoushe.com/sr/article/77124902) D牌期望表补充(计算方法)
-- [article/77074467](https://www.miyoushe.com/sr/article/77074467) D牌期望表主文(30 场景表)
+- [article/77124902](https://www.miyoushe.com/sr/article/77124902) 刷新找牌期望表补充(计算方法)
+- [article/77074467](https://www.miyoushe.com/sr/article/77074467) 刷新找牌期望表主文(30 场景表)
 
 **模型**(详 ``docs/game/currency_war/research/economy.md``):
 1. 每次刷新 5 格,每格独立以概率 p 出目标费用 → 出目标费用数 M ~ 二项 B(5, p)。
@@ -16,7 +16,7 @@
   单一源 = 本文件 ``DISTINCT_CARDS_PER_COST``,随注册表自动传导)
 - p(level, cost) = 刷新概率(Lv1-10 × 1-5费 权威表,2026-08-11 游戏内"商店刷新概率"实机 OCR,见 REFRESH_PROB;D-91)
 
-供 D 牌蒙特卡洛估值用(替代粗近似采样):
+供 刷新找牌蒙特卡洛估值用(替代粗近似采样):
 当期望刷新次数 × 刷新成本 < 买到目标牌的收益时才值得 D。
 """
 from __future__ import annotations

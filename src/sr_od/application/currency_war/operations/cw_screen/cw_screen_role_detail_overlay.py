@@ -14,21 +14,21 @@ archive 双锚——「按钮-装备推荐」(角色详情变体,4 张归档 fix
 收紧 lcs 无济于事)→ 实机事故中该弹窗被角色详情判据垄断 26 分钟。位置约束的
 area 锚天然区分两变体(本弹窗底部按钮不在右侧面板锚区内)。
 
-验效停用(验证废除批,用户裁定:动作 op 禁验证):原 VERIFY_AREA
-= 按钮-装备推荐 的「点后验消失」半拆除——落地判定归重入观察裁决
+验效停用(零验证批(用户裁定:动作层不做效果验证,判效归下一帧观察),用户裁定:动作 op 禁验证):原 VERIFY_AREA
+= 按钮-装备推荐 的「点后验消失」半拆除——落地判定归落地复查
 (点空白零效果时锚仍在 → 重入再做一次,卡死从不可见变分钟级可见失败;
 出口裁决 = entry_ok 双锚其一的合法观察)。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;
 推进型空决策骨架逐屏内联,无共享基类——模式一致即重复):观察 node =
-入口门(双锚其一,见上;miss 未发 = round_fail 交回外循环重判,「下一
+入口门(双锚其一,见上;miss 未发 = round_fail 返回主循环重新判定,「下一
 帧重判」是外循环职责)+ obs{on_screen} 挂实例属性(空决策形态无 report:
 本屏零容器写点,obs 类住 kernel/cw_screen_report/role_detail_overlay.py,
 import 构造即可)。决策动作 node = 落地复查顶部(点空白已发 → 双锚
-miss = 已离开本画面 → success 交回——出口 = 入口观察的合法重判,非
+miss = 已离开本画面 → success 结束本次访问——出口 = 入口观察的合法重判,非
 动作层判效;在 = 再推进)→ 点「区域-空白关闭」单次推进(success_wait=1.5
 同 0a4/0t 家族口径)→ round_wait 循环(不烧节点重试预算,不收敛 = 动作
-bug 响亮暴露,无防御上限;「推进动作未落地」= round_fail 如实交回)。
+bug 响亮暴露,无防御上限;「推进动作未落地」= round_fail 如实结束本次访问)。
 本类入口信号 = 自有双锚判定(覆写形态),落地复查有观察信号可用,无
 「免锚发出即 success」出口。
 """
@@ -45,7 +45,7 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenRoleDetailOverlay(CwOperation):
-    """详情弹窗:双锚其一(装备推荐/合成公式)命中,点面板外空白关+落地复查交回。"""
+    """详情弹窗:双锚其一(装备推荐/合成公式)命中,点面板外空白关+落地复查结束本次访问。"""
 
     #: 关闭点击位:备战前后排之间的真空白(面板外,两 overlay 家族共用)
     BLANK_SCREEN = '货币战争-备战'
@@ -55,8 +55,8 @@ class CwScreenRoleDetailOverlay(CwOperation):
         CwOperation.__init__(self, ctx, op_name='货币战争-详情弹窗')
         # 画面档名(双锚所在建档,与外循环身份分发同画面档;实例属性)
         self._screen_name: str = '货币战争-备战-角色详情'
-        # 推进已发标志(验证废除形态):区分「首发锚 miss = 误分发 fail 交回」
-        # 与「重入锚 miss = 已离开本画面 success 交回」(实例级,单 op 生命周期)。
+        # 推进已发标志(零验证形态):区分「首发锚 miss = 误分发 失败结束本次访问」
+        # 与「重入锚 miss = 已离开本画面 success 结束本次访问」(实例级,单 op 生命周期)。
         self._advanced_once: bool = False
         # 观察结果(观察 node 产物,决策动作 node 消费;空决策形态无 report)。
         self._obs: CwScreenRoleDetailOverlayObs | None = None
@@ -76,7 +76,7 @@ class CwScreenRoleDetailOverlay(CwOperation):
         """入口门 + obs{on_screen} 装载(空决策形态无 report)。
 
         门 miss = 首发误分发(分发判定帧命中 ∧ op 新帧门 miss 的过渡帧):
-        fail 交回外循环重判,不在 op 内等待重探。"""
+        失败结束本次访问,返回主循环重新判定,不在 op 内等待重探。"""
         screen = self.last_screenshot
         if not self.entry_ok(screen):
             return self.round_fail(
@@ -89,8 +89,8 @@ class CwScreenRoleDetailOverlay(CwOperation):
     def act(self) -> OperationRoundResult:
         """落地复查(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
         if self._advanced_once and not self.entry_ok(self.last_screenshot):
-            # 落地复查(验证废除形态):重入锚 miss = 已离开本画面 → success
-            # 交回;旗标清(实例级,单 op 生命周期语义)。
+            # 落地复查(零验证形态):重入锚 miss = 已离开本画面 → success
+            # 结束本次访问;旗标清(实例级,单 op 生命周期语义)。
             self._advanced_once = False
             return self.round_success(
                 f'{self.op_name}已推进(重入观察:已离开本画面)', wait=1)

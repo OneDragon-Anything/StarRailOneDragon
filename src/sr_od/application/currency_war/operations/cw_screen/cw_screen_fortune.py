@@ -20,16 +20,16 @@ x≈510/900/1290 / 确认 (1441-1543,584-615)。
 与现役决策体读同帧等价;坐标 = area 主源 + 兜底)→
 ``report_screen_fortune_obs`` 双写容器 ``fortune_opts``/``fortune_opts_xy``
 (无空门,空表照写)→ obs 挂实例属性进决策 node。决策动作 node = 落地复查
-顶部(入口词「命运卜者」不在 = overlay 已关 → success 交回)→ 决策从容器
+顶部(入口词「命运卜者」不在 = overlay 已关 → success 结束本次访问)→ 决策从容器
 零参读;无 match 局外不设早退支(用户裁决 全族删门)→ 两守卫
 (返回词表外/None = 具名 round_fail 零盲发;idx 越界 = 守卫断言
 AssertionError;策略异常自然传播)→ 选卡+确认链经
 ``CwActionPickFortuneOp`` 派发(pick-op-unify 批机械链迁入动作 op)→
 round_wait 循环(不烧节点重试预算,无防御上限;确认未落地轮重走)。
-本屏无 chosen_* 写端(fields.md §4「事件选择」在册:写端未接线 = 先补档;
+本屏无 chosen_* 写端(fields.md §4「事件选择」已登记:写端未接线 = 先补档;
 选择后果走下一帧观察覆盖);本屏 sim 腿
 = 不适用(sim 无对应画面段,事件浮层族即时落定),等价判据主要支撑 = 实机
-在册行为锁。
+已登记行为锁。
 """
 from typing import ClassVar
 
@@ -67,9 +67,9 @@ class CwScreenFortune(CwOperation):
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-命运卜者强化')
-        # 确认已发待落地复查标志(验证废除形态):本屏分发即门(无 op 内入口
+        # 确认已发待落地复查标志(零验证形态(用户裁定:动作层不做效果验证,判效归下一帧观察)):本屏分发即门(无 op 内入口
         # 守卫),重入出口裁决区分「首发 miss」与「重入 miss(= overlay 已关
-        # → success 交回)」,见决策动作 node 顶部。
+        # → success 结束本次访问)」,见决策动作 node 顶部。
         self._confirm_pending: bool = False
         # 观察结果(观察 node 产物,决策动作 node 消费;options = 入口帧一次读)。
         self._obs: CwScreenFortuneObs | None = None
@@ -126,12 +126,12 @@ class CwScreenFortune(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=5)
     def act(self) -> OperationRoundResult:
-        """落地复查(顶部)→ 零参决策 → 选卡+确认机械交回 → round_wait。
+        """落地复查(顶部)→ 零参决策 → 选卡+确认步机械完成即结束本次访问 → round_wait。
 
         落地复查(观察驱动;形态正本 = screens/op-layer.md §1.1「落地复查
         留在决策动作 node 顶部」):本屏分发即门(无 op 内入口守卫),
         round_wait 重入不经外循环分发 → 顶部出口门补位:入口词不在 =
-        overlay 已关(上轮确认已落地)→ success 交回外循环;在 = 重走
+        overlay 已关(上轮确认已落地)→ success 返回主循环;在 = 重走
         选卡+确认。
 
         决策出口守卫:无 match 局外不设早退支(用户裁决 全族

@@ -16,18 +16,18 @@
 | `PerfectProjectorUse` | 完美投影仪 | `row` + `slot` |
 | `LuckyTokenUse` | 好运令牌 | `row` + `slot` |
 
-工具名解析表 = `CwActionToolUseOp._TOOL_NAME_BY_CLASS`(注册名 = icon 定位的稳定依据,与装备注册表同名)。七类均在册(动作类型 union 与 `CW_ACTION_TYPES` 白名单皆在,注册表七行同指 `CwActionToolUseOp`)。
+工具名解析表 = `CwActionToolUseOp._TOOL_NAME_BY_CLASS`(注册名 = icon 定位的稳定依据,与装备注册表同名)。七类均已登记(动作类型 union 与 `CW_ACTION_TYPES` 白名单皆在,注册表七行同指 `CwActionToolUseOp`)。
 
 ## 2. 逻辑态域集
 
-容器(GameState,游戏状态对象,下同)`equips` 域**有写**:消耗移除与效果写入同域**合并单笔**(确定面 `write_logic`/随机面 `write_logic_rand`,禁拆两笔);获得走 `gain_character` 获得链(投影仪复制);变异面不走链(冶金炉变异产物随机归观察);零写分支统一保留证据 `tool_*`。写入方正本 = `kernel/cw_action_report/tool_use.py` 七具名上报函数(`_REPORT_BY_CLASS` 按 param 类型解析,一族一文件先例),逐类语义与采样口径以函数 docstring 为正本。效果写入桥引用:`EQUIP_WRITE_SIDES` 登记面与效果桥四函数(`transform_equip_to_privilege`/`spawn_equip_bench_unit`/`grant_equip_item`/`settle_wrench_duplicate_gold`,均在用)——申报各工具效果分支的写入流向与组合收尾(逐件恰一个落码写入方,登记值共四形 bridge:/contribution:/op:/observation):
+容器(GameState,游戏状态对象,下同)`equips` 域**有写**:消耗移除与效果写入同域**合并单笔**(确定面 `write_logic`/随机面 `write_logic_rand`,禁拆两笔);获得走 `gain_character` 获得链(投影仪复制);变异面不走链(冶金炉变异产物随机归观察);零写分支统一保留证据 `tool_*`。写入方正本 = `kernel/cw_action_report/tool_use.py` 七具名上报函数(`_REPORT_BY_CLASS` 按 param 类型解析,一族一文件先例),逐类语义与采样口径以函数 docstring 为正本。效果写入桥引用:`EQUIP_WRITE_SIDES` 登记面与效果桥四函数(`transform_equip_to_privilege`/`spawn_equip_bench_unit`/`grant_equip_item`/`settle_wrench_duplicate_gold`,均在用)——申报各工具效果分支的写入流向与组合收尾(逐件恰一个代码写入方,登记值共四形 bridge:/contribution:/op:/observation):
 
 | 工具(分支)| 效果写入方(``EQUIP_WRITE_SIDES`` 申报;效果桥/收尾引用)|
 |---|---|
 | 冶金炉·equip | 负写入(不写)形态 `observation`(变异产物随机归观察)|
 | 冶金炉·char | 变异产物随机归观察 |
 | 特权赋予卡·equip(在用执行分支)| 库存替换桥 `cw_effect_inventory.transform_equip_to_privilege`(`bridge:` 形;映射单一源 = `privilege_counterpart`)|
-| 特权赋予卡·char | 已穿装备原位变换桥 `transform_worn_equip_to_privilege` 在册(「哪件被选」随机归观察;在用执行分支只消费库存替换)|
+| 特权赋予卡·char | 已穿装备原位变换桥 `transform_worn_equip_to_privilege` 已登记(「哪件被选」随机归观察;在用执行分支只消费库存替换)|
 | 拆装扳手 | `op:` 形(执行域既有装备转移链)|
 | 精密拆装扳手 | `contribution:equip_wrench_duplicate_gold`(重复获得 +1 金,零直写,组合写收尾 = 获得回执窗)|
 | 员工投影仪 | 入席桥 `cw_effect_inventory.spawn_equip_bench_unit`(费用门表 `cw_affix_effects._TOOL_SPAWN_COST_GATE`,数值单一源 = `cw_effect_inventory.STAFF_PROJECTOR_COST_GATE`)|
@@ -59,7 +59,7 @@
 
 ## 7. 语义验证
 
-写入方归属完备性 = 双层防漂移锁:`EQUIP_WRITE_SIDES` 键集恰等于 `EQUIP_REWRITE_DECLARATIONS`(逐件恰一个落码写入方,登记值四形封闭 + 目标函数可解析校验,import 时即显式报错),扫描命中集 vs 申报键集对齐归测试锁(`test_cw_affix_spec_registry`);桥/组合写的等价性 = 窗口独占契约(完全预测,失配等价推算 bug 走缺陷记录表,不静默不改道)。落地真值(消耗没消耗/变换没变换)= 下一帧装备区读数观察覆盖。
+写入方归属完备性 = 双层防漂移锁:`EQUIP_WRITE_SIDES` 键集恰等于 `EQUIP_REWRITE_DECLARATIONS`(逐件恰一个代码写入方,登记值四形封闭 + 目标函数可解析校验,import 时即显式报错),扫描命中集 vs 申报键集对齐归测试锁(`test_cw_affix_spec_registry`);桥/组合写的等价性 = 窗口独占契约(完全预测,失配等价推算 bug 走缺陷记录表,不静默不改道)。落地真值(消耗没消耗/变换没变换)= 下一帧装备区读数观察覆盖。
 
 ## 8. 判例注记(动作发出阶段)
 

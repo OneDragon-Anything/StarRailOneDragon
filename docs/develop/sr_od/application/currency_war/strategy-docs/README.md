@@ -10,7 +10,7 @@
 
 - 每个机制规格无歧义（判据、触发、适用范围、边界逐条写明）；
 - 每个进决策门的数字带**数字来源标注（四种）**：数字必须标来源，共四类——【注】= 游戏规则原始数值（读自代码注册表）；【推】= 由【注】推导（附证明编号）；【拟】= 从对局数据估计（须给置信区间，未标定时禁止触发动作）；【拍】= 用户拍板指定的偏好值。没标来源的数值不得参与决策（完整章程见 01 §6）；
-- 每条论断可回溯（命题号 → `proofs/math_proofs.md` 索引 → 单篇证明；命题集与各命题状态一律以该索引为准——编号有空洞、个别命题有退役/撤回状态，勿按编号连续性推断；或「文件:节」出处）。
+- 每条论断可回溯（命题号 → `proofs/math_proofs.md` 索引 → 单篇证明；命题集与各命题状态一律以该索引为准——编号有空洞、个别命题有停用/撤回状态，勿按编号连续性推断；或「文件:节」出处）。
 
 ## 2. 阅读顺序（总纲先读 → 分篇按决策点）
 
@@ -32,8 +32,8 @@
 | 12 | [12_line_and_intention.md](12_line_and_intention.md) | 切换终局阵容与意向：生命周期状态机、证据门与通用目标态定义、终局阵容切换机器四触发 |
 | 13 | [13_pick_family.md](13_pick_family.md) | pick 族薄判据：九接口决策规格 + 事件面目录 E1-E18（投资事件面 18 类） |
 | 14 | [14_p1_consume_arms.md](14_p1_consume_arms.md) | 位面 1 经济循环消费分支：闲置金转战力的三个动作发出通道（买/升/刷）设计与硬前置裁决 |
-| 15 | [15_observation_multisource_arbitration.md](15_observation_multisource_arbitration.md) | 观察层读数多源一致性与仲裁：双源冲突的采信规则、留证与布局档错位 |
-| 16 | [16_evaluation_tables_reassessment.md](16_evaluation_tables_reassessment.md) | 评估表体系重估：选卡/选项分数常量族的保留/改形/退役裁定与已登记的待重新推导事项 |
+| 15 | [15_observation_multisource_arbitration.md](15_observation_multisource_arbitration.md) | 观察层读数多源一致性与仲裁：双源冲突的采信规则、保留证据与布局档错位 |
+| 16 | [16_evaluation_tables_reassessment.md](16_evaluation_tables_reassessment.md) | 评估表体系重估：选卡/选项分数常量族的保留/改形/停用裁定与已登记的待重新推导事项 |
 | 17 | [17_stall_form_spend_authority.md](17_stall_form_spend_authority.md) | 落后即消费族：无可追件∧富金∧落后形态（Φ_stall）的支出授权面 |
 | 08 | [08_events.md](08_events.md) | 事件面规格骨架：E1-E18（投资事件面 18 类）逐项收录语义、数学判据逐项标「待推导」（落差登记） |
 | 07 | [07_meta_run.md](07_meta_run.md) | 跨局 meta 域：明确声明不在设计范围内（当前无可设计对象，登记为未来立项） |
@@ -65,9 +65,9 @@
 | `docs/develop/sr_od/application/currency_war/proofs/`（math_proofs.md 索引 + P 系列单篇） | **定价权威** | 一切"多少算够"的数学证明。本链只消费命题结论与状态，不重推、不改写；命题以索引状态列为准 |
 | `docs/game/currency_war/research/` | **游戏真值** | 与实现无关的游戏机制事实。游戏版本变了它变，本链引用不复制数值 |
 | 代码注册表（`cw_chars`/`cw_shop_odds`/`cw_equipment_data` 等） | **游戏原始真值单一源**（仅游戏定义值；衍生打分归策略层 = 宪法第 5 条，kernel 内存量评分 = 待迁策略内容） | 文档只写常量名与语义，值一律在代码 |
-| `src/sr_od/.../currency_war/` 代码 | **实现** | 本链是设计，代码是实现；行为变更走三同步 = as-built 正文语义更新 + 代码注释 + 测试（见 sr-od-currency-war-dev skill「文档同步」）；决策 why 进设计文档动机段与代码注释（ADR 档案已退役，仅经用户命令创建） |
+| `src/sr_od/.../currency_war/` 代码 | **实现** | 本链是设计，代码是实现；行为变更走三同步 = as-built 正文语义更新 + 代码注释 + 测试（见 sr-od-currency-war-dev skill「文档同步」）；决策 why 进设计文档动机段与代码注释（ADR 档案已停用，仅经用户命令创建） |
 | `archive/design/`、`archive/redesign/`、`strategy/` 旧树 | **素材·已删除（4e32b2e4 吸收后删除）·git 历史可溯** | 被整合的旧素材仅存于 git 历史，不再承载现行语义；其中的旧编号链接/勘误史不搬入本链 |
-| `.debug/progress/` 当前迭代 | 进度与决策 why 的登记处 | 进度不进共享文档;决策 why 收敛于设计文档动机段与代码注释(ADR 档案已退役) |
+| `.debug/progress/` 当前迭代 | 进度与决策 why 的登记处 | 进度不进共享文档;决策 why 收敛于设计文档动机段与代码注释(ADR 档案已停用) |
 
 ## 4. 宪法：用户六条裁定（每篇都要过）
 

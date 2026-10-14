@@ -38,7 +38,7 @@ class CwActionPickExpertInviteOp(CwOperation):
     点选(点击点 = 容器 ``expert_invite.card_points[idx]`` ∨ ``cash_point``
     (idx=-1;观察上报写入,op-layer.md §1.1 :35),动作 op 按下标自取,
     缺席/越界 = 守卫断言)→ 弹窗关闭动画固定等待。``chosen_expert``/
-    ConfirmExpertCash 到账登记留守画面 op 落地复查出口(动作事实边界),
+    ConfirmExpertCash 到账登记留在画面 op 落地复查出口(动作事实边界),
     本 op 容器写零。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
@@ -88,7 +88,7 @@ class CwActionPickExpertInviteOp(CwOperation):
         time.sleep(1.2)   # 选卡 → 弹窗关闭动画窗
         # 自上报(机械链发出后;零写,契约面统一)。上报后一行声明喂入
         # (动作后果声明化喂入契约 = design.md §2.2 契约 3;实机端口未装
-        # = no-op,sim 装配后驱动后端纯转移分支交回);round data 携带
+        # = no-op,sim 装配后驱动后端纯转移分支结束本次访问);round data 携带
         # 声明(journal 记账面)。
         world_decl = None
         if gs is not None:

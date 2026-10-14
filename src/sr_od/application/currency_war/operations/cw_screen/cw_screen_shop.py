@@ -8,7 +8,7 @@
 - 决策动作 node(round_wait 单动作循环,循环内零读屏零拦截零闸):
   决策(容器零参读)→ 守卫 → 注册表派发 execute(全动作统一路径,
   含 CloseShop 真点击)→ 簿记 → 终结读注册表:非终结 round_wait,
-  终结(RefreshShop/CloseShop)round_success 交回外循环。
+  终结(RefreshShop/CloseShop)round_success 返回主循环。
 
 生产调用点(0n 转交与显式开店同口 ``cw_screen_prep.visit_open_shop``、
 ``run_operation`` 单跑)构造本类并节点函数直驱(不经框架 execute 循环,
@@ -120,7 +120,7 @@ def _shop_entry_read(op: SrOperation, match: 'CurrencyWarMatch',
     - 商店未识别卡停机( 迁移+框架化,用户裁定「识别不到就是
       bug」):判据 = 读链终判(read_shop_cards 内部易误判重观察之后)仍含
       unknown 槽;处置 = stop_running(框架截图留存证据 + [stop] 日志行)+
-      round_fail,协作停机窗内不续波,交回外循环收尾。处理流程知识归
+      round_fail,协作停机窗内不续波,返回主循环收尾。处理流程知识归
       guards.md §3。
 
     Returns:
@@ -199,7 +199,7 @@ def apply_action_outcome(
     容器逻辑态直写已随动作 op 重组并入各 op 自上报(op 内直调
     自己的上报函数,op-layer.md §1.2)——原非终结直写块(apply_shop_action_
     logic + 合成升星腿)删除 = 双记防线;终结跳写判断随 op 自覆盖不再需要。
-    本门保留面:卖出 route-tag 泄漏显影。(效果账本 BUY 计数已迁买牌
+    本门保留面:卖出 route-tag 泄漏暴露。(效果账本 BUY 计数已迁买牌
     上报函数获取计算完时点的 ``gs.effects.on_buy`` 回调单点——live/sim
     同源,消除落地门计数分叉;刷新侧计数与免费腿扣减 = 刷新 op 自上报
     经上报函数单口,见 cw_action_report/refresh_shop。)
@@ -379,7 +379,7 @@ class CwScreenShop(CwOperation):
       点击点位/升级钮/刷新钮 screen_info 锚定(缺失 = 建档漂移显式
       round_fail,禁兜底坐标静默点击)→ settle + park + 入口观察
       (:func:`_shop_entry_read`,读 + 未识别卡停机闸两段,单次读零防抖)
-      → obs 镜像 → 段首簿记:段序号 +1(visit 边界 = op 边界,腾席拒绝
+      → obs 镜像 → 段首簿记:段序号 +1(visit 边界 = op 边界,腾位拒绝
       结论的输入不变性段,跨 visit 伪命中封死)/ 帧代次 ``frame_class_shop
       = 'full'``(每访问入口;刷新后新访问重估方向视图,限频由方向重算
       既有键守卫「每 game-round 恰一次」承载)/ 店开帧预算披露覆写 /
@@ -393,7 +393,7 @@ class CwScreenShop(CwOperation):
       (全动作统一路径,零特例拦截零闸;CloseShop = 真点击)→ 簿记
       (回执/落地门/续段 token/义务实花;CloseShop 跳过回执)→ 终结读
       注册表:非终结 round_wait(帧不消费,零读屏);终结 round_success
-      交回外循环(访问动作日志行交回前 log,回执 detail = 执行账汇总串)。
+      返回主循环(访问动作日志行结束本次访问前 log,回执 detail = 执行账汇总串)。
       刷新无次数上限(无限刷新环 = 策略实现 bug,框架不兜底)。
     """
 
@@ -477,7 +477,7 @@ class CwScreenShop(CwOperation):
         # ---- 入口观察(唯一读屏点,即对账)----
         # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
         #(CwScreenShopObs = 入口回执同面镜像,经同名 report 落容器);
-        # 否则原入口读链(读漏斗 + 停机闸)。live 停机闸早退形态原样交回。
+        # 否则原入口读链(读漏斗 + 停机闸)。live 停机闸早退形态原样结束本次访问。
         obs = cw_sim_ports.sim_or_live_observation(
             SHOP_SCREEN_NAME, lambda: self._entry_read_live(match))
         if isinstance(obs, OperationRoundResult):
@@ -490,7 +490,7 @@ class CwScreenShop(CwOperation):
         #  锚定失配失配告警 + 效果账本计数:入口锚定写端 = 观察漏斗 shop-open
         #  段刷新钮三态(漏斗自带,本 op 零额外调用);本文件无金/牌面
         #  快照比对对账件。)
-        #  段序号置位(商店 visit 开始):visit = 腾席拒绝结论的输入
+        #  段序号置位(商店 visit 开始):visit = 腾位拒绝结论的输入
         # 不变性段,入口 +1 使上一 visit/上一域(备战)残留的续段 token/
         # 结论标志按序号不等自动失效(跨 visit/跨战斗伪命中封死)。状态对象
         # 缺席(第三方策略面/桩)= 无缓存载体,跳过置位(缺席退缺省口径,
@@ -498,7 +498,7 @@ class CwScreenShop(CwOperation):
         _st_seg = strategy_state_of(match.session)
         if _st_seg is not None:
             _st_seg.cw4_segment_serial += 1
-        # (tracked_bench_chars 播种日志显影块已停用:播种  波 4 已取消,日志消费面为零;
+        # (tracked_bench_chars 播种日志暴露块已停用:播种  波 4 已取消,日志消费面为零;
         #  双响防御(提案守卫 expected-vs-主域)由 cw_shop_action_ops.
         #  guard_proposal_vs_expected 读主域单点承载。)
         if not self._entry.shop:
@@ -560,7 +560,7 @@ class CwScreenShop(CwOperation):
         """live 入口观察链(读屏点改道原样迁移;sim 生成器产物不走本链)。
 
         读漏斗(read_game_state 容器直写)+ 停机闸(未识别卡 stop_running +
-        round_fail,stop 形态原样交回调用 node)→ obs 镜像 + 原始帧留存证据。
+        round_fail,stop 形态原样结束本次访问调用 node)→ obs 镜像 + 原始帧留存证据。
         返回的 CwScreenShopObs 与入口回执逐字段同源(shop.py 模块头
         「同面镜像」),调用 node 以之同时承载 ``self._entry`` 回执位。"""
         _entry, _entry_shot, _stop = _shop_entry_read(self, match)
@@ -623,7 +623,7 @@ class CwScreenShop(CwOperation):
         # 动作 op 重组:op 经注册表类级解析 + (ctx, param, env) 组装;
         # 上报由 op 自调,落地门只留计数/回执。(执行器端口分支已随画面
         # op 基类停用删除:直调节点函数 = 唯一路径;重试/停机查归包络与
-        # 交回面,动作层零重试;节点异常原样上抛 = 执行异常通道不变。)
+        # 结束本次访问面,动作层零重试;节点异常原样上抛 = 执行异常通道不变。)
         _op_cls = action_op_class_for(action)
         # 执行器端口(商店执行链端口接线):备战域共用词表动作
         # (SellBench/LevelUp 族 op 经 env.executor 消费 _ctx/_op + 域
@@ -661,9 +661,9 @@ class CwScreenShop(CwOperation):
         # 守卫见函数注)。
         accrue_release_spent(match, action, _ok)
         if not _op_cls.terminal:
-            # 宿主动作后交回(overlay 生命周期契约「实机
+            # 宿主动作后结束本次访问(overlay 生命周期契约「实机
             # 消费」表):pending 非空 = 触发动作已落地、弹窗将现(典型 =
-            # 买腿三合一 planner 叠商店弹)→ 确定性提前交回外循环,取代
+            # 买腿三合一 planner 叠商店弹)→ 确定性提前返回主循环,取代
             # 等重观察发现;非终结帧的 round_wait 让位本出口。
             _pending_n = len(game_state_of(match.session).screen_changes.pending)
             if _pending_n:
@@ -675,7 +675,7 @@ class CwScreenShop(CwOperation):
             # 不收敛 = 策略实现 bug)。
             return self.round_wait()
         # 访问终结(RefreshShop/CloseShop):访问动作日志行(plan=…,随轮
-        # 累积)交回前 log;round_success 回执 detail = 执行账汇总串。交回
+        # 累积)结束本次访问前 log;round_success 回执 detail = 执行账汇总串。结束本次访问
         # 外循环零额外动作——节点行观察归备战观察域,商店域零探针。
         log.info('[cw] shop=%s plan=%s',
                  [(s.kind,

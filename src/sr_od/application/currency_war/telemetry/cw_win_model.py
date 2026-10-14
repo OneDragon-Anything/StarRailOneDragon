@@ -26,7 +26,7 @@ from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_system_cards import SYSTEM_CARDS
 
-# 符号解耦(处死计划 第 2 项):铁三角权威副本迁 knowledge/cw_line_facts,
+# 符号解耦(淘汰计划 第 2 项):铁三角权威副本迁 knowledge/cw_line_facts,
 # 不再依赖 kernel/cw_line_defs(死刑判据文件)
 from sr_od.application.currency_war.knowledge.cw_line_facts import _CORE_TRIO
 from sr_od.application.currency_war.telemetry.cw_win_features import (

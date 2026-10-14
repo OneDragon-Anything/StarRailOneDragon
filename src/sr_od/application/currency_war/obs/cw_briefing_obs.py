@@ -170,7 +170,7 @@ def clean_boss_names_by_lcs(names: list[str]) -> list[str] | None:
     精确命中规范名(输入已是规范名 → ①段原样返回);②不中再 LCS 相似
     匹配(``lcs_resolve_strict``,阈值过滤 + 次高分差拒判)。
     失败语义:任一读数两段皆不中 ∨ LCS 近分歧义 = 转换失败 → 返回 None,
-    调用方 ``observe`` 据此 round_fail 零写零上报交回重观察(禁原名透传
+    调用方 ``observe`` 据此 round_fail 零写零上报返回主循环重新观察(禁原名透传
     带病上报——错名直接进 boss_fit 评分)。
     """
     from sr_od.application.currency_war.data.cw_enemy_data import (

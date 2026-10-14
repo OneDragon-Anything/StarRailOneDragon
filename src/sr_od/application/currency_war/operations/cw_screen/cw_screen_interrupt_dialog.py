@@ -2,7 +2,7 @@
 
 ESC 误按/误点左上角弹出的「是否中断挑战」真模态(历史 3 次已实测确认;
  建档替原停机钩子)的处理迁移:点右上 X 关回备战,单尝试合同
-(验证废除批拆 op 内新帧重试:C10——X 不在(旧帧)的重试由外循环重派
+(零验证批(用户裁定:动作层不做效果验证,判效归下一帧观察)拆 op 内新帧重试:C10——X 不在(旧帧)的重试由外循环重派
 承载,重派即新帧)。**刻意不用 ESC**(bug#2,原分支注释随迁,
 禁在 op 内「顺手统一」成 ESC):面板已关时 ESC 落备战弹「中断挑战」;
 X 是弹窗内坐标永远安全。背景: M53 停机建档。
@@ -16,14 +16,14 @@ exogenous popup 行随 op 迁移(测量链:误触弹窗是外生事件
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;
 推进型空决策骨架逐屏内联,无共享基类——模式一致即重复):观察 node =
 入口锚门(「标识-中断挑战」,与阶段一身份分发判定同源同参,分发判定单一源 = flow/outer_loop.md §2.2;miss 未发 =
-round_fail 交回外循环重判,「下一帧重判」是外循环职责)+ obs{on_screen}
+round_fail 返回主循环重新判定,「下一帧重判」是外循环职责)+ obs{on_screen}
 挂实例属性(空决策形态无 report:本屏零容器写点,obs 类住
 kernel/cw_screen_report/interrupt_dialog.py,import 构造即可)。决策动作
-node = 落地复查顶部(点 X 已发 → 锚 miss = 已离开本画面 → success 交回
+node = 落地复查顶部(点 X 已发 → 锚 miss = 已离开本画面 → success 结束本次访问
 ——出口 = 入口观察的合法重判,非动作层判效;锚在 = 再推进)→ 点
 「按钮-关闭」单次推进(单尝试合同,见模块头)→ round_wait 循环(不烧
 节点重试预算,不收敛 = 动作 bug 响亮暴露,无防御上限;「推进动作未
-落地」= round_fail 如实交回)。
+落地」= round_fail 如实结束本次访问)。
 """
 from cv2.typing import MatLike
 
@@ -45,8 +45,8 @@ class CwScreenInterruptDialog(CwOperation):
         # 画面档名/入口锚(与阶段一身份分发判定同源同参;实例属性)
         self._screen_name: str = '货币战争-中断挑战弹窗'
         self._entry_area: str = '标识-中断挑战'
-        # 推进已发标志(验证废除形态):区分「首发锚 miss = 误分发 fail 交回」
-        # 与「重入锚 miss = 已离开本画面 success 交回」(实例级,单 op 生命周期)。
+        # 推进已发标志(零验证形态):区分「首发锚 miss = 误分发 失败结束本次访问」
+        # 与「重入锚 miss = 已离开本画面 success 结束本次访问」(实例级,单 op 生命周期)。
         self._advanced_once: bool = False
         # 观察结果(观察 node 产物,决策动作 node 消费;空决策形态无 report)。
         self._obs: CwScreenInterruptDialogObs | None = None
@@ -62,7 +62,7 @@ class CwScreenInterruptDialog(CwOperation):
         """入口锚门 + obs{on_screen} 装载(空决策形态无 report)。
 
         门 miss = 首发误分发(分发判定帧命中 ∧ op 新帧锚 miss 的过渡帧):
-        fail 交回外循环重判,不在 op 内等待重探。"""
+        失败结束本次访问,返回主循环重新判定,不在 op 内等待重探。"""
         screen = self.last_screenshot
         if not self.entry_ok(screen):
             return self.round_fail(
@@ -75,8 +75,8 @@ class CwScreenInterruptDialog(CwOperation):
     def act(self) -> OperationRoundResult:
         """落地复查(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
         if self._advanced_once and not self.entry_ok(self.last_screenshot):
-            # 落地复查(验证废除形态):重入锚 miss = 已离开本画面 → success
-            # 交回;旗标清(实例级,单 op 生命周期语义)。
+            # 落地复查(零验证形态):重入锚 miss = 已离开本画面 → success
+            # 结束本次访问;旗标清(实例级,单 op 生命周期语义)。
             self._advanced_once = False
             return self.round_success(
                 f'{self.op_name}已推进(重入观察:已离开本画面)', wait=1)
@@ -94,7 +94,7 @@ class CwScreenInterruptDialog(CwOperation):
     def progress_once(self) -> bool:
         """推进处理:点「按钮-关闭」。
 
-        单尝试合同(验证废除,C10 拆 op 内新帧重试):一次 find+click,
+        单尝试合同(零验证,C10 拆 op 内新帧重试):一次 find+click,
         按钮不在(旧帧/已自关)不再原地新帧重找——False 交 fail,外循环
         重派 = 新帧重试在 loop 级承载(重派即新帧,语义等价)。"""
         _btn = self.round_by_find_and_click_area(

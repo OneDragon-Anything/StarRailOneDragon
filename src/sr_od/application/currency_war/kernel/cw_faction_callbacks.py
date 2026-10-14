@@ -49,7 +49,7 @@ _PARTNER_ANCHOR_CHAR: str = '姬子·启行'
 _PARTNER_FACTION: str = '列车同行'
 
 #: S3 planner 的星级跟踪角色(银狼 LV.999;与 deploy_move 升费腿/
-#: lv999_cost_tier 同名同源;场上同名唯一 =  裁决 1 在册守卫)。
+#: lv999_cost_tier 同名同源;场上同名唯一 =  裁决 1 已登记守卫)。
 _PLANNER_CHAR: str = '银狼LV.999'
 
 #: S1b 巨星重选的首档门槛(盛会之星 tiers 首档 = 2;用户裁定:场上
@@ -95,7 +95,7 @@ def _qualification_sets(view) -> dict[str, set[str]]:
 def _planner_star(view) -> int | None:
     """场上银狼 LV.999 星级(派生存值;不在场 = None)。
 
-    场上同名唯一( 裁决 1 入口守卫在册)⇒ 至多一值;防御性取首见。
+    场上同名唯一( 裁决 1 入口守卫已登记)⇒ 至多一值;防御性取首见。
     """
     for _row, u in _iter_field_units(view):
         if str(u.char_id) == _PLANNER_CHAR:

@@ -53,7 +53,7 @@ if TYPE_CHECKING:
     )
 
 #: 动作发出帧仲裁段段数帽(sim 侧;结构常量非策略值,覆盖 sim 循环有界性)。
-#: 生产段循环现为无帽 round_wait(以终结动作收尾后交回重观察),本帽
+#: 生产段循环现为无帽 round_wait(以终结动作收尾后返回主循环重新观察),本帽
 #: 与生产无对齐关系——重审候 sim 基线批;两面漂移由本注释对账申报覆盖。
 LAUNCH_ARBITRAGE_SEGMENT_CAP: int = 5
 
@@ -64,12 +64,12 @@ GATE_BLOCKED_REASON: str = 'launch_arbitrage_budget_blocked'
 # ===== 禁散写第二字面量;判读口径逐键见各写入点注释)=====
 #: 仲裁段进入的动作发出帧数(溢出段,消费授权成立)。
 KEY_ZONE_FRAMES: str = 'launch_arbitrage_frames'
-#: 带内动作发出帧数(g ≤ g*,fail-closed 不花;显影防止「零消费」被误读为
+#: 带内动作发出帧数(g ≤ g*,fail-closed 不花;暴露防止「零消费」被误读为
 #: 溢出帧无机会——带内是授权缺位,非机会缺位)。
 KEY_INBAND_CLOSED: str = 'launch_arbitrage_inband_closed'
 #: 溢出帧上零消费帧数(预算 > 0 但评估栈无合格消费机会)。
 KEY_ZERO_CONSUME: str = 'launch_arbitrage_zero_consume'
-#: 预算闸拦截动作数(花穿利息线部分不适用的落地显影)。
+#: 预算闸拦截动作数(花穿利息线部分不适用的落地暴露)。
 KEY_GATE_BLOCKS: str = 'launch_arbitrage_gate_blocked'
 #: 仲裁消费后弃射帧数(生产 defect 分键:仲裁段已消费、动作发出核屏态复验
 #: 未过 ⇒ 走既有 stale 分支弃射;可辨识残量,从「非动作发出帧 digest 零变化」

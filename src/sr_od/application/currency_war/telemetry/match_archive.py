@@ -31,7 +31,7 @@ hp=100 备帧假值、grep 跨 run 帧流、多源现算拼视图。本模块把
   重装配仍可归局);两源段按段首 ts 合并进同一时序插位。装配收尾走跨档
   归属收敛守卫(``_converge_cross_archive_ownership``):档案段集中「当前
   分组归他局」的段全部摘除(源流在 = 整体重装配自愈;源流失 = 定向剪枝 +
-  ``pruned_segments`` 显影),保证同一 journal 段只归属一个档案——旧口径
+  ``pruned_segments`` 暴露),保证同一 journal 段只归属一个档案——旧口径
   时代写入的存量档案错误持有续段时(跨档双计实证),靠水位线/
   读端重装配都够不到,守卫是唯一收敛路径。
 - **写盘原子性**:档案与 index 均 tmp 写入 + ``os.replace`` 原子改名,
@@ -110,7 +110,7 @@ log = log_utils.log
 #: 装配端纯读派生;单段局恒空列表,旧档案经 load_archive 版本检查自动
 #: 重装配补齐)。加法字段。装配器选型依据:并段与对账本质是「读侧把
 #: 已落库的 run 段拼成一局」,写入端已如实落库无需改;恢复帧读数与终值
-#: 不符时两侧都是真读,装配器无权裁哪边是真值,只做显影交判读定案。
+#: 不符时两侧都是真读,装配器无权裁哪边是真值,只做暴露交判读定案。
 #: v7(行为观测计数落盘批):+顶层 ``cw4_counters``(策略行为观测计数
 #: 局终快照;写入端 = cw_loop 局终收尾把 ``strategy_state_of(session).cw4_counters`` 经
 #: ``record_cw4_counters_snapshot`` 落 ``cw4_counters.jsonl``,装配端按
@@ -120,7 +120,7 @@ log = log_utils.log
 #: v7 注(流删停用,r5-migration-plan.md §2):该顶层字段
 #: 已随流载体 ``cw4_counters.jsonl`` 写端/装配面整体拆除——新装配档案无
 #: 此键;局终级全键聚合并入载体 = 局终域行载荷 ``MatchFinal.cw4_counters``
-#: (档案显影位 ``endgame.match_final.final.cw4_counters``)。**不 bump
+#: (档案暴露位 ``endgame.match_final.final.cw4_counters``)。**不 bump
 #: SCHEMA_VERSION 申报**:bump 会触发存量档案 load 时重装配,把已落盘的
 #: 旧字段整批抹掉(读侧宽容缺键,重装配无益有损);存量档案字段只读保留,
 #: 重装配旧档案该字段消失(裸 ``cw4_counters.jsonl`` 归档数据在盘可考古)。
@@ -142,7 +142,7 @@ log = log_utils.log
 #: (synthetic_supply)一律退出步进链(先验「陈旧直到证伪」,v8 的 0 值
 #: 防御升格;rounds 槽/query_hp 显示行为不变);④终局腿:result='loss' 且
 #: 步进游标未到 0 → runs.final_hp=0 结构真值兜底出 hp_source='endgame_
-#: final' 条目。顶层新增加法列 hp_events(事件行显影)/hp_pay_defects
+#: final' 条目。顶层新增加法列 hp_events(事件行暴露)/hp_pay_defects
 #: (modeled 期望账 vs 结算真值偏差)。旧档案经版本检查自动重装配。
 #: v10(场上件离场逐件落账批):+顶层 ``departures``(离场
 #: 事件派生列,装配端纯读派生、零新运行时写入)。缺口已实测确认(g_20260907_075840
@@ -249,7 +249,7 @@ def _settlement_gap(dec_rows: list[dict[str, Any]],
 
     - 触发条件 = 本段决策帧 ≥1 且结算行(outcomes)= 0:本段全程没有
       任何一场战斗走到结算屏(备战停滞 / 出战失败后被守卫或人工停机)。
-    - 为什么要在装配端显影:段摘要的 rounds_survived 写自收尾时点的
+    - 为什么要在装配端暴露:段摘要的 rounds_survived 写自收尾时点的
       state.round_num(备战环里的 state 可能多环冻结),零结算段可以带
       非零 claimed 值——「claimed=N 而 outcome 行 0」形态曾被判读成
       「结算遥测断流」(实证局见 SCHEMA_VERSION v11 注)。本字段在场
@@ -500,7 +500,7 @@ def _load_slice(replay_dir: Path, segments: set[str]) -> dict[str, list[dict[str
 def _load_derived_inputs(rd: Path, segments: set[str],
                          slice_rows: dict[str, list[dict[str, Any]]],
                          ) -> dict[str, list[dict[str, Any]]]:
-    """派生列输入行集(重装配保真的输入供给,装配主路径在册函数)。
+    """派生列输入行集(重装配保真的输入供给,装配主路径已登记函数)。
 
     - 为什么存在:v12+ 切片契约只含 state 新账单键(op_journal 键已随其流
       停用,拆除),而 ``_build_rounds`` / ``_derive_departures`` 等派生函数
@@ -620,7 +620,7 @@ def _hp_entry(dec_frame: dict[str, Any] | None,
     - source='settlement':结算屏真值(trusted = hp_confidence ≥ 0.9);
     - source='frame':决策备帧 hp(trusted = hp_readable 且 state.hp_trusted
       非 False——readable=False 时 hp 是 read_hp miss 沿用值/兜底值,不可信
-      必须显影。r1 备战帧例外:血量固定但不恒 100,读失败帧顶层 hp=None
+      必须暴露。r1 备战帧例外:血量固定但不恒 100,读失败帧顶层 hp=None
       (recorder 诚实未知口径)自然落 source='none',不再以兜底 100 混入)。
     两源皆缺 → hp=None, trusted=False。
     """
@@ -684,7 +684,7 @@ def _segment_resume_frame(dec: list[dict[str, Any]],
     结算行兜底(hp_after/hp_confidence 归一为帧 hp/hp_readable 口径)。
 
     两处消费必须同源(v9):_resume_reconciliation 的对账对象与段界重锚的
-    锚值——否则「重锚用的恢复帧」与「对账列显影的恢复帧」分叉,判读对不上。
+    锚值——否则「重锚用的恢复帧」与「对账列暴露的恢复帧」分叉,判读对不上。
     """
     rows = [d for d in dec if d.get('run_id') == rid]
     resume = min(rows, key=_row_ts) if rows else None
@@ -720,7 +720,7 @@ def _resume_hp_anchorable(resume: dict[str, Any] | None) -> int | None:
 
 def _hp_pay_events(exo_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """顶层 hp_events 派生列(v9,加法,装配端纯读):kind='hp_pay' 事件行
-    显影——非结算血变(血购支付)的可见面。行字段从 choice 载荷平铺
+    暴露——非结算血变(血购支付)的可见面。行字段从 choice 载荷平铺
     (plane/round 显式入 choice 是写点契约,顶层 plane 恒 None);旧档案
     恒空列表 = 装配端救不回没有写入的数据(采集面修复只及新局)。"""
     out: list[dict[str, Any]] = []
@@ -898,13 +898,13 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
       变化,跨局对照跨段槽位数字会变,申报)。
     - 真值对账(v9,hp_pay 建模账):事件只作期望账;下一**可信结算行**
       与「游标(已含事件推进)」偏差≠0 → hp_pay_defects 落一行(保留证据不
-      阻塞),游标照取结算值自愈——建模错账最多污染到下一结算并当场显影。
+      阻塞),游标照取结算值自愈——建模错账最多污染到下一结算并当场暴露。
     - 走行序(F5 三边界):ts 单源 = 记录时点墙钟,排序键字符
       串比较;①同秒并列:事件物料前置拼接 + Python 稳定排序 → 同秒事件
       先于结算(备战先于战斗的物理先序),结算/回落保持 v8 遍历序(key
       升序、key 内 ts 稳定)= 单段局逐字节退化的技术前提;②缺 ts 行:
       排序键回空串会错位到全局最前 → 守卫为不进步进链(该行步进资格让位
-      回落,hp_events 列仍显影);③时钟回拨/NTP 步进:走行序失真,诚实
+      回落,hp_events 列仍暴露);③时钟回拨/NTP 步进:走行序失真,诚实
       退化(错位条目)与恢复帧不可锚退化并列申报。
     - 终局腿(v9,C-主,加法零新运行时写入):链走完后 result='loss' 且
       步进游标≠0 → 追加 {hp:0, delta:−游标, hp_source:'endgame_final',
@@ -924,7 +924,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
       纪律,方向正确非回归);净额≥0 的轮因战斗腿<0 仍必有条目。判读侧
       勿按旧直觉假设 loss_nodes ⊆ rounds 掉血轮(§边界申报)。
     返回:(rounds, loss_nodes, boundaries, hp_pay_defects)。boundaries =
-    {run_id: {unexplained_delta, consumed_by_chain}}(v9 段界重锚差显影)。
+    {run_id: {unexplained_delta, consumed_by_chain}}(v9 段界重锚差暴露)。
     """
     dec = slice_rows.get('decisions.jsonl') or []
     outs = slice_rows.get('outcomes.jsonl') or []
@@ -1008,7 +1008,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
         hp_e = _hp_entry(frame, outcome)
         # —— v9 段界重锚(rounds 链):到达续局段首 key → 取该段恢复帧 hp
         # 重锚轮级游标(prev_hp 从「前段末值」换锚「本段恢复读数」)。重锚差
-        # 显影归走行段界处统一落(见走行注释:步进链游标含事件推进,是
+        # 暴露归走行段界处统一落(见走行注释:步进链游标含事件推进,是
         # 「事件已解释边界差」的唯一知情者);恢复帧不可锚 → 不锚维持携带。
         _aid = anchor_seg_by_key.get(key)
         if _aid is not None:
@@ -1106,7 +1106,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
         # —— v9 步进链物料收集(走行在循环后):结算/回落按 v8 遍历序
         # (key 升序、key 内 ts 稳定)收集;缺 ts 行不进步进链(F5② 守卫:
         # 空串排序键会错位到全局最前;该行步进资格让位回落,hp_events 列
-        # 仍显影)——落条目的构造规则与 v8 逐字一致,仅执行位后移到走行处
+        # 仍暴露)——落条目的构造规则与 v8 逐字一致,仅执行位后移到走行处
         node_type_by_key[key] = nt_out or nt_state
         key_step_rows = [o for o in outs_k
                          if o.get('hp_after') is not None
@@ -1160,7 +1160,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
         try:
             delta_ev = int(ch.get('hp_delta'))
         except (TypeError, ValueError):
-            continue   # F5② 守卫:畸形事件不进链(hp_events 列仍显影)
+            continue   # F5② 守卫:畸形事件不进链(hp_events 列仍暴露)
         if not _row_ts(r):
             continue   # F5② 守卫:缺 ts 行错位防御
         event_items.append({'_kind': 'event', 'hp_delta': delta_ev,
@@ -1179,7 +1179,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
             walk_seg = rid
         elif rid and rid != walk_seg:
             # 段界重锚(步进链):换段 → 该段恢复帧 hp 重锚游标。重锚差
-            # ≠0 → 边界差显影(本处单一落点:步进链游标含 hp_pay 事件推进,
+            # ≠0 → 边界差暴露(本处单一落点:步进链游标含 hp_pay 事件推进,
             # 是「事件已解释边界差 → 重锚 no-op」的唯一知情者,§2.3 形态②;
             # rounds 链锚点静默换锚)。跨段未决对账随重锚落账不追溯。
             walk_seg = rid
@@ -1271,7 +1271,7 @@ def _resume_reconciliation(segments: list[str],
       prev 侧「不可信」依赖存档数据既有写入约定(readable=False 帧由
       当时的决策备帧生产端写 hp=None,值缺失即 aligned=None),本处
       不再重复守卫。
-      装配器**不裁真值**:两侧都是诚实读数,不符只显影交判读定案
+      装配器**不裁真值**:两侧都是诚实读数,不符只暴露交判读定案
       (夜第八局实证:恢复帧 hp14/金68 vs 档案终值 hp29/金36,
       判读侧需此列才免手工翻流对账)。
     - 单段局 / 无续局段 → 空列表(判读「无恢复事件」与「未装配」以
@@ -1397,7 +1397,7 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
         'game_id': game['game_id'],
         # (顶层 ``cw4_counters`` 已停用:流载体
         #  ``cw4_counters.jsonl`` 写端/装配面整体停用,局终级全键聚合
-        #  并入载体 = 局终域行载荷 ``MatchFinal.cw4_counters``,档案显影
+        #  并入载体 = 局终域行载荷 ``MatchFinal.cw4_counters``,档案暴露
         #  位 = ``endgame.match_final.final.cw4_counters``;存量已装配
         #  档案的旧顶层字段是已落盘数据,本端不删不改,读侧宽容缺键。)
         'strategy_version': strategy_version,
@@ -1408,12 +1408,12 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
         'continuity_note': continuity_note,
         # 恢复态对账列(v6)+ 段界重锚差扩展字段(v9):
         # boundaries 按 run_id 并入对应续段行(unexplained_delta/consumed_
-        # by_chain),不进 loss_nodes——重锚差是「段界间隙变化」显影非战斗腿。
+        # by_chain),不进 loss_nodes——重锚差是「段界间隙变化」暴露非战斗腿。
         'resume_reconciliation': _merge_boundary_records(
             _resume_reconciliation(segments, derived_rows), boundaries),
         'rounds': rounds,
         'loss_nodes': loss_nodes,
-        # hp 变化事件显影列(v9 加法,装配端纯读;旧档案恒空 = 采集面修复
+        # hp 变化事件暴露列(v9 加法,装配端纯读;旧档案恒空 = 采集面修复
         # 只及新局)与 modeled 期望账对账偏差列(v9 加法,保留证据不阻塞)
         'hp_events': _hp_pay_events(derived_rows.get('exogenous.jsonl') or []),
         'hp_pay_defects': hp_pay_defects,
@@ -1433,7 +1433,7 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
                     'final_snapshot': _final_snapshot(
                         derived_rows.get('decisions.jsonl') or []),
                     # 局终行(局终域识别;None=末段无局终行):
-                    # runs 并入载体的档案显影位,局边界判定读此键。
+                    # runs 并入载体的档案暴露位,局边界判定读此键。
                     'match_final': match_final_view(
                         _final_rows.get(segments[-1]) if segments else None),
                     'segment_summaries': seg_summaries},
@@ -1642,7 +1642,7 @@ def find_cross_archive_segment_dups(
 
 
 def _warn_cross_archive_dups(rd: Path) -> list[dict[str, Any]]:
-    """装配收尾核验:违例逐条 WARNING 显影(判读可见,不阻塞装配)。"""
+    """装配收尾核验:违例逐条 WARNING 暴露(判读可见,不阻塞装配)。"""
     dups = find_cross_archive_segment_dups(rd)
     for d in dups:
         log.warning('[cw][archive] 段 %s 同时存在于 %d 个档案 %s——'
@@ -1665,7 +1665,7 @@ def _prune_foreign_segments(path: Path, archive: dict[str, Any],
     为什么是剪枝不是重装配:该局的源流行已被清理(assign_games 分不出
     本局),build_archive 无从重派生;剪枝只动「归属错误」的面(段集 +
     切片),rounds/loss_nodes 等派生列基于剪枝前段集、保留不动——档案
-    级 ``pruned_segments`` 显影记录声明这一局限,判读跨档对照以被剪段
+    级 ``pruned_segments`` 暴露记录声明这一局限,判读跨档对照以被剪段
     的归属局档案为准。schema_version 不动(不宣称按当前口径全量重派生)。
     """
     foreign_set = set(foreign)

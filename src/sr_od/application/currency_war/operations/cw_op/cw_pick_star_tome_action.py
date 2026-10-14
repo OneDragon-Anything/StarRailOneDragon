@@ -40,7 +40,7 @@ class CwActionPickStarTomeOp(CwOperation):
     点卡(safe_click 防吞点击;点击点 = 容器 ``star_tome_opts_xy[idx]``——
     观察期解出上报,op-layer.md §1.1 :35 坐标单一真相源 = 观察上报,
     动作 op 自取,缺席/越界 = 守卫断言)→ 选中动画固定等待。
-    ``chosen_tome``/ConfirmTome 到账登记留守画面 op 落地复查出口(动作
+    ``chosen_tome``/ConfirmTome 到账登记留在画面 op 落地复查出口(动作
     事实边界),本 op 容器写零。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
@@ -74,7 +74,7 @@ class CwActionPickStarTomeOp(CwOperation):
         time.sleep(1.0)
         # 自上报(机械链发出后;零写,契约面统一)。上报后一行声明喂入
         # (动作后果声明化喂入契约 = design.md §2.2 契约 3;实机端口未装
-        # = no-op,sim 装配后驱动后端纯转移分支交回);round data 携带
+        # = no-op,sim 装配后驱动后端纯转移分支结束本次访问);round data 携带
         # 声明(journal 记账面)。
         world_decl = None
         if gs is not None:

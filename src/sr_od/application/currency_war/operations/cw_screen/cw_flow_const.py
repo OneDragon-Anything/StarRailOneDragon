@@ -12,7 +12,7 @@ from __future__ import annotations
 BRIEFING_SETTLE_S: float = 1.0
 
 #: 备战触发型 overlay 族(盛会之星/列车同行/武装箱/祈愿/策划/命运/秘典)确认后
-#: 固定等待( 06-overlays §4/§5:关闭速度都快,固定 1.0s 交回循环)。
+#: 固定等待( 06-overlays §4/§5:关闭速度都快,固定 1.0s 结束本次访问循环)。
 CW_OVERLAY_SETTLE_S: float = 1.0
 
 #: 1-1 开局动画等待上界(用户口径 ~10s,待校准; 01-opening §2:

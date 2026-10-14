@@ -48,7 +48,7 @@
 
 ## 8. 判例注记(动作发出阶段)
 
-生产策略面归**备战期**(部署期换血/腾位卖,策略判据 = strategy-docs/24 号篇):商店域 v2 动作族能力面保留(上报函数 `report_action_sell_deployed_param` 在用),生产策略面归备战期(注册表单行在册,备战域 op);商店期默认发出的动作 = 买/刷/关(判例 = [screens/README](../../screens/README.md) §5)。
+生产策略面归**备战期**(部署期换血/腾位卖,策略判据 = strategy-docs/24 号篇):商店域 v2 动作族能力面保留(上报函数 `report_action_sell_deployed_param` 在用),生产策略面归备战期(注册表单行已登记,备战域 op);商店期默认发出的动作 = 买/刷/关(判例 = [screens/README](../../screens/README.md) §5)。
 
 ## 9. 依据
 

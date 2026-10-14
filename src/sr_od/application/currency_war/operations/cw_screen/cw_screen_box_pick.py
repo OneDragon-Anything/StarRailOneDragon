@@ -4,9 +4,9 @@
 外循环阶段一身份分发进本 op(分发判定单一源 = ``flow/outer_loop.md``
 §2.2);武装箱选卡不属备战动作词表(单选族例外:选卡即终结,判据 =
 ``screens/README.md`` §3)。链路:备战环 ``CwActionOpenBoxParam`` 点开启
-(**终结化**——开箱即交回)→ 外循环按本画面分发本 op → OCR 卡名 →
+(**终结化**——开箱即结束本次访问)→ 外循环按本画面分发本 op → OCR 卡名 →
 选卡决策(局内策略 ``decide_box_card`` 契约面;无 match 局外不设早退
-支,用户裁决 全族删门)→ 点卡 → 固定动画等待 → **选卡即终结交回**
+支,用户裁决 全族删门)→ 点卡 → 固定动画等待 → **选卡即终结,返回主循环**
 (选卡落地由下一帧观察覆盖)。
 
 决策分层纪律:打分只住机器——策略契约 ``decide_box_card``
@@ -18,7 +18,7 @@
 分层铁律 + ``screens/op-layer.md`` §1.1 出口三语义)。无 match 局外
 不设早退支(op-layer.md §1.1「画面 op 不支持局外单独调用」;用户裁决
  全族删门),本 op 不设任何兜底决策路径;
-``pick_equipment`` 打分单一源留守策略器 ``decide_box_card`` 消费(策略
+``pick_equipment`` 打分单一源留在策略器 ``decide_box_card`` 消费(策略
 器自限域)。
 
 单选族交互(实机实测口径):点卡选中即确认(单步,无独立确认钮);
@@ -26,16 +26,16 @@
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation):
 观察 node = 入口锚复验(「标识-请选择」,分发即门,op 内机械复验防误派;
-miss 未发 = round_fail 交回外循环按画面重分发)+ OCR 卡名行读数(读数闸
+miss 未发 = round_fail 返回主循环按画面重分发)+ OCR 卡名行读数(读数闸
 下限 2 字,上限 = 装备注册表最长名派生 ``_CARD_NAME_LEN_MAX``——9 字
 特权名如「战场进化手册·特权」可达,旧 8 字手抄上限先于归一化确定性
 静默丢弃 9 字名 = 四选一缩三选一;x 升序;空 = 变体字型/动画帧读缺 = 未
-发出通道 round_fail 交回
+发出通道 round_fail 返回主循环
 外循环重派,禁盲点首卡兜底——选错不可逆,读数闸属观察处理)→ 观察
 标准化门(卡名经装备注册表两段转换:形变归一精确命中 → LCS 相似匹配,
 阈值常量住代码 + 次高分差拒判(最高分未明显高于次高分 = 歧义 = 转换
 失败,禁直接取最高分);任一候选转换失败 = 观察失败 round_fail 零写
-零上报交回重读,名字与坐标同进退;重复名合法逐候选独立归一——屏契约 =
+零上报返回主循环重新识别画面,名字与坐标同进退;重复名合法逐候选独立归一——屏契约 =
 ``screens/box_pick.md`` §3)+ 坐标解点(候选 x + CARD_Y 避让几何,观察
 期一次解出)→ ``CwScreenBoxPickObs`` → ``report_screen_box_pick_obs``
 写槽 ``box_card_names`` / ``box_card_names_xy`` 落容器(「写槽以本访问
@@ -46,7 +46,7 @@ miss 未发 = round_fail 交回外循环按画面重分发)+ OCR 卡名行读数
 (``_decide_card_index`` 局内专用,fail-closed 契约)→ 选卡链经 ``CwActionPickBoxCardOp`` 派发(点卡选中即确认 +
 动画等待 + 自上报住动作 op,机械链契约 = ``flow/action_exec.md`` §2;
 点击坐标 = 容器 ``box_card_names_xy[idx]`` 动作 op 自取)→ 选卡即终结
-交回(单选族例外,判据 = ``screens/README.md`` §3;选卡落地由下一帧
+结束本次访问(单选族例外,判据 = ``screens/README.md`` §3;选卡落地由下一帧
 观察覆盖,无落地复查旗标)。
 """
 from typing import ClassVar
@@ -124,20 +124,20 @@ class CwScreenBoxPick(CwOperation):
         """入口锚复验 + OCR 卡名 → 标准化门/解点 → report 落容器。
 
         两道闸(入口锚/读数,均在观察 node):锚 miss = 非本画面;
-        卡名空 = 未发出通道(变体字型/动画帧)——都 fail 交回外循环重派
+        卡名空 = 未发出通道(变体字型/动画帧)——都 失败结束本次访问,返回主循环重派
         (重观察语境禁猜,禁盲点首卡),report 不调(容器不进盲值)。
         标准化门任一候选转换失败同 fail 早退(零写零上报,与「读空」闸
         同型并列;名字与坐标同进退)。"""
         screen = self.last_screenshot
         # 入口锚复验(分发即门,op 内机械复验防误派;锚 miss = 非本画面
-        # → fail 交回外循环按画面重分发)
+        # → 失败结束本次访问,返回主循环按画面重分发)
         if not self.round_by_find_area(
                 screen, CwScreenBoxPick.SCREEN_NAME, '标识-请选择',
                 crop_first=False).is_success:
             return self.round_fail('非武装箱选择画面(标识-请选择 miss)')
         # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
         #(经同名 report 落容器);否则原读链。live 读链早退形态(读空闸/
-        # 标准化门 round_fail)原样交回。
+        # 标准化门 round_fail)原样结束本次访问。
         obs = cw_sim_ports.sim_or_live_observation(
             CwScreenBoxPick.SCREEN_NAME, self._observe_live)
         if isinstance(obs, OperationRoundResult):
@@ -154,11 +154,11 @@ class CwScreenBoxPick(CwOperation):
         """live 观察读链(读屏点改道原样迁移;sim 生成器产物不走本链)。
 
         OCR 卡名行 → 两道闸(读空/标准化,失败 = round_fail 早退零写零
-        上报交回重派)→ 坐标解点 → report 落容器。"""
+        上报返回主循环重派)→ 坐标解点 → report 落容器。"""
         screen = self.last_screenshot
         cards = self._read_card_names(screen)
         if not cards:
-            # OCR 未读卡名(变体字型/动画帧)= 未发出通道:交回外循环
+            # OCR 未读卡名(变体字型/动画帧)= 未发出通道:失败返回主循环
             # 重派(重观察语境禁猜),禁盲点首卡兜底(选错不可逆)。
             return self.round_fail('OCR 未读到卡名(变体/动画帧),交回重派')
         # 观察标准化门(op-layer.md §1.1 条款①):任一候选转换失败 =
@@ -187,7 +187,7 @@ class CwScreenBoxPick(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=5)
     def act(self) -> OperationRoundResult:
-        """选卡决策 → 选卡链经工厂派发 → 选卡即终结交回。
+        """选卡决策 → 选卡链经工厂派发 → 选卡即终结,返回主循环。
 
         点卡选中即确认 + 动画等待 + 自上报住 ``CwActionPickBoxCardOp``
         (机械链契约 = flow/action_exec.md §2;点击坐标 = 容器
@@ -238,7 +238,7 @@ class CwScreenBoxPick(CwOperation):
         分与次高分差 ≥ ``_EQUIP_LCS_AMBIGUITY_MARGIN``——分差过近 =
         注册表内歧义不可分辨,禁直接取最高分);两段皆不中 ∨ 歧义 =
         转换失败,返回 None(调用方 round_fail 整函数早退,零写零上报
-        交回重读)。
+        返回主循环重新识别画面)。
 
         四卡可能同名(同装备多张)= 重复名合法观察面:逐候选独立归一,
         不适用「多候选命中同一注册名 = 转换失败」互斥判(该判覆盖选项

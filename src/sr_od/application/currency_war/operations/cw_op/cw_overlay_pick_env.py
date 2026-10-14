@@ -6,7 +6,7 @@
 ``kernel/cw_action_report/pick_<snake>.py`` 对称)。域 env = :class:`OverlayPickExecEnv`
 (结构化包,构造时传入);机械参数适用范围(申报单一源 = flow/action_ops.md
 §4.5 段首)= 选卡定位 + 域载荷经 env 传入;确认钮不属机械参数,由本 op
-执行体瞄准查找(action_ops.md §1  在册例外)。op 类体内零决策零读
+执行体瞄准查找(action_ops.md §1  已登记例外)。op 类体内零决策零读
 决策输入(决策 = 选中哪个与腿型载荷,瞄准定位查找非决策)。
 
 **自上报统一**:pick 族每类 run 体在机械链(选中点击 → 确认点击)发出

@@ -33,8 +33,8 @@
 | WearEquip | `CwActionWearEquipOp` | [wear-equip.md](wear-equip.md) | `report_action_wear_equip_param`(库存 equips 写 owned−1 + 目标角色 equips +1,集中在同一函数) |
 | CollectOre | `CwActionCollectOreOp` | [collect-ore.md](collect-ore.md) | `report_action_collect_ore_param`(从游戏状态精确移除晶矿 + 晶矿金窗口登记,集中在同一函数) |
 | OpenBox | `CwActionOpenBoxOp` | [open-box.md](open-box.md) | 零写族 `zero_writes`(终结动作——发出即结束本次访问、返回主循环,数据由下一入口的观察覆盖) |
-| OpenTome | `CwActionOpenTomeOp` | [open-tome.md](open-tome.md) | `report_action_open_tome_param` 腾席(释放备战席槽位:bench kind tome → empty) |
-| OpenBookcard | `CwActionOpenBookcardOp` | [open-bookcard.md](open-bookcard.md) | `report_action_open_bookcard_param` 腾席(释放备战席槽位:bench kind bookcard → empty;终结动作,动作发出点 = 策略器卡片分支) |
+| OpenTome | `CwActionOpenTomeOp` | [open-tome.md](open-tome.md) | `report_action_open_tome_param` 腾位(释放备战席槽位:bench kind tome → empty) |
+| OpenBookcard | `CwActionOpenBookcardOp` | [open-bookcard.md](open-bookcard.md) | `report_action_open_bookcard_param` 腾位(释放备战席槽位:bench kind bookcard → empty;终结动作,动作发出点 = 策略器卡片分支) |
 | FurnaceUse | `CwActionToolUseOp` | [tools.md](tools.md) | 容器直写(正本 = `tool_use.py` 七函数) |
 | PrivilegeCardUse | `CwActionToolUseOp` | [tools.md](tools.md) | 同上 |
 | WrenchUse | `CwActionToolUseOp` | [tools.md](tools.md) | 同上 |
@@ -84,11 +84,11 @@
 
 (原 PickEquip 行因选择装备屏的误判已整体停用删除——动作类型清单/注册行/上报函数全套删除,已证伪标记 = `flow/action_ops.md` §4.5 末行,不入本表。)
 
-### 动作类型清单在册、不经注册表分发(层级区别:非注册行)
+### 动作类型清单已登记、不经注册表分发(层级区别:非注册行)
 
 以下动作类型在 `CW_ACTION_TYPES` 白名单但**无注册行**,与组合壳/画面 op 同属「动作域之外」层级(全集口径见 [flow/action_ops.md](../../flow/action_ops.md) §4.5/§4.6):
 
-- **3 个刷新动作**(RefreshNodeOptions/RefreshSupply/RefreshInvestCards)走各画面既有点击链;(HoldFrame 曾在册 = 等待帧非动作,2026-09-20 用户裁定随重观察动作的并入而删除——`CwActionObsParam` scope='outer_loop' 同为分支拦截型,但其动作类型有注册行(in_place 路径派发用),不属本节「无注册行」的豁免范围);
+- **3 个刷新动作**(RefreshNodeOptions/RefreshSupply/RefreshInvestCards)走各画面既有点击链;(HoldFrame 曾已登记 = 等待帧非动作,2026-09-20 用户裁定随重观察动作的并入而删除——`CwActionObsParam` scope='outer_loop' 同为分支拦截型,但其动作类型有注册行(in_place 路径派发用),不属本节「无注册行」的豁免范围);
 - **商店域旧 op 文件**(`cw_sell_bench_action` / `cw_level_up_action`):**已随动作 op 重组停用删除**(动作类型清单摊平后单一注册行指备战 op,`cw_action_registry.py` 模块头「同名动作双域行更替申报」注销登记),逻辑态语义由上报函数保留、并入 [sell-bench.md](sell-bench.md) / [level-up.md](level-up.md) 双域记载。
 
-**非动作清单类注(SwapDeploy)**:`CwActionSwapDeployParam` = union 在册 / `CW_ACTION_TYPES` 白名单外 / 无注册行 / 上报与 sim 消费在用,宿主 = [prep-executor-actions.md](prep-executor-actions.md) §3。
+**非动作清单类注(SwapDeploy)**:`CwActionSwapDeployParam` = union 已登记 / `CW_ACTION_TYPES` 白名单外 / 无注册行 / 上报与 sim 消费在用,宿主 = [prep-executor-actions.md](prep-executor-actions.md) §3。

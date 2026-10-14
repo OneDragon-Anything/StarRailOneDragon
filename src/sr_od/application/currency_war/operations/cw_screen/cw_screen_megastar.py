@@ -3,17 +3,17 @@
 
 形态(迭代-screen-op-flat-report):观察 node + 决策动作 node 两段
 直继承 SrOperation。观察 node = 节点完成门(``_in_node``,miss = round_success
-交回外循环,选中标记复位副作用在门内)+ 候选观察(懒读保真:仅「本访问将
+返回主循环,选中标记复位副作用在门内)+ 候选观察(懒读保真:仅「本访问将
 选择」即未选中时读候选;确认访问不重读,迁移不增加读屏)→
 ``report_screen_megastar_obs`` 落容器 ``megastar_opts`` → obs 挂实例属性进
 决策 node。决策动作 node = 节点完成复检(每轮新帧,overlay 消失 = 完成)→
 决策从容器零参读 → 「选中 → 确认」链经 ``CwActionPickMegastarOp`` 派发
 (pick-op-unify 批:候选选中半迁入动作 op,``env.need_select`` 驱动)→
 round_wait 循环推进(不烧节点重试预算;不收敛 = 策略 bug 响亮暴露,无防御
-上限)。``chosen_megastar`` = 选择点单次逻辑写入留守决策面(动作事实边界,
+上限)。``chosen_megastar`` = 选择点单次逻辑写入留在决策面(动作事实边界,
 不进 report);选中旗标宿主 = 策略器 StrategyState(经 kernel strategy_state_of
 None-safe 通道,执行层不冷建)。本屏 sim 腿 = 不适用(sim 无对应画面段,
-事件浮层族即时落定),等价判据主要支撑 = 实机在册行为锁。
+事件浮层族即时落定),等价判据主要支撑 = 实机已登记行为锁。
 
 出口语义(选中半访问):候选空 = 具名 round_fail 零盲发,返回词表外/
 None = 具名 round_fail,idx 越界 = 守卫断言 AssertionError——守卫均在
@@ -123,7 +123,7 @@ class CwScreenMegastar(CwOperation):
                                       wait=CW_OVERLAY_SETTLE_S)
         # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
         #(经同名 report 落容器);否则原读链(懒读 + 标准化门 + 上报)。
-        # live 读链早退形态(候选名标准化失败 round_fail)原样交回。
+        # live 读链早退形态(候选名标准化失败 round_fail)原样结束本次访问。
         obs = cw_sim_ports.sim_or_live_observation(
             '货币战争-盛会之星', self._observe_live)
         if isinstance(obs, OperationRoundResult):
@@ -143,7 +143,7 @@ class CwScreenMegastar(CwOperation):
         options = [] if clicked else read_megastar_options(self.ctx, screen)
         if not clicked:
             # 观察标准化门:候选名零转换禁入容器(op-layer.md §1.1);转换
-            # 失败 = 观察失败,零写零上报交回重观察重读(禁带病上报)。
+            # 失败 = 观察失败,零写零上报返回主循环重新观察重读(禁带病上报)。
             standardized = standardize_megastar_options(options, _gs)
             if standardized is None:
                 log.warning('[cw-megastar] 观察标准化门失败:候选转换不到'
@@ -181,11 +181,11 @@ class CwScreenMegastar(CwOperation):
         return self.round_wait(wait=1.5)
 
     def _do_action(self) -> OperationRoundResult | None:
-        """单动作体:决策 + chosen 写端留守 + 「选中 → 确认」链经工厂。
+        """单动作体:决策 + chosen 写端留在 + 「选中 → 确认」链经工厂。
 
         候选选中点击在 ``CwActionPickMegastarOp``(``env.need_select``
         驱动),本方法只决策与写端——``chosen_megastar`` 写端与选中
-        旗标留守(单次逻辑写入豁免面;派发前写 = 选择点,写点 → 点选
+        旗标留在(单次逻辑写入豁免面;派发前写 = 选择点,写点 → 点选
         窗口内无读者)。确认轮(已选中)只发确认。"""
         _match = self.ctx.cw_match
         need_select = not self._clicked_of(_match)
@@ -216,7 +216,7 @@ class CwScreenMegastar(CwOperation):
                 if _st is not None:
                     _st.megastar_clicked = True
                 # 巨星选择落容器 chosen_megastar(gs 单一源,session 域无此
-                # 写端;桩无 gs = 跳过写)。chosen_* = 动作事实边界:留守
+                # 写端;桩无 gs = 跳过写)。chosen_* = 动作事实边界:留在
                 # 选择点,不进 report。
                 if getattr(_match, 'gs', None) is not None:
                     from sr_od.application.currency_war.kernel.cw_game_state import (

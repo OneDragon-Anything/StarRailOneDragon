@@ -27,16 +27,16 @@ journal.md §5)。
 寿命契约(装配端;retirement.md §6-5 直迁形态):滚动清理以 **run 段**
 为整体单元(段 = 行内 run_id 归属,整段淘汰禁切半段),已淘汰段的 state_ref
 钉 = 永久 unverified,淘汰动作在本模块 manifest(``journal.retirement.jsonl``,
-journal 同目录)逐段显影(archived_out;判读者钉解析失败时查 manifest 可辨
+journal 同目录)逐段暴露(archived_out;判读者钉解析失败时查 manifest 可辨
 「清理」与「丢数据」)。淘汰分三道闸(策略语义正本 = journal.md §5「寿命
 (滚动清理)策略」):实机段龄窗(跨期语料窗承诺适用范围 = 实机对局语料)/
 非实机段龄窗(sim 批与 harness 段短窗——全消费面不采信,30 天窗对其无效,
 是账面体积无上界的根源)/体积兜底窗(容量失控时从最老段清,可击穿实机窗,
-manifest 显影保考古)。清理时点 = 装配(:func:`install_state_telemetry`
+manifest 暴露保考古)。清理时点 = 装配(:func:`install_state_telemetry`
 前置)——单进程写端未启动,零并发窗;活跃段(最新 run_id)永不清理。
 同生命周期伴生流(telemetry defect_ledger)随本趟段裁决联动清理
 (:func:`set_retirement_follower` 槽注入,生产武装点 =
-telemetry.defects.install_exit_hooks)——同窗同显影,禁另起独立清理
+telemetry.defects.install_exit_hooks)——同窗同暴露,禁另起独立清理
 周期(双源漂移禁令)。
 
 本模块只管「行进了内存之后」的事(缓冲/序列化/落盘/装配/寿命);行的组装与
@@ -87,11 +87,11 @@ JOURNAL_NONLIVE_RETENTION_DAYS: int = 3
 #: (实测):非实机段正常积累 ~60MB/日,3 天窗 ≈ 180MB 留余量;压测日
 #: 单段可达 ~145MB(fake_20260908),192MB = 约一个压测段 + 正常积累余量;
 #: 实现时点现役账面 251.6MB 恰超此窗,首次装配即触发首次真实回收。容量失控
-#: 可击穿实机段 30 天承诺窗——被清段经 manifest 逐段显影保考古
+#: 可击穿实机段 30 天承诺窗——被清段经 manifest 逐段暴露保考古
 #: (retirement.md §6-5「保留窗下限」语义:正常积累下承诺成立,容量约束优先)。
 JOURNAL_MAX_BYTES: int = 192 * 1024 * 1024
 
-#: 段淘汰 manifest 文件名(journal 同目录;逐段一行 archived_out 显影,
+#: 段淘汰 manifest 文件名(journal 同目录;逐段一行 archived_out 暴露,
 #: 判读者 state_ref 钉解析失败时的「清理 vs 丢数据」判别面)。
 RETIREMENT_MANIFEST_NAME: str = 'journal.retirement.jsonl'
 
@@ -182,7 +182,7 @@ def enforce_journal_retention(journal_path: Path | str, *,
       交叠,段龄判据对其无意义);无 ts 段不判龄不清理(宁保留不误删);
     - 被淘汰段逐段写 manifest(``journal.retirement.jsonl``,journal 同
       目录)一行 ``{run_id, archived_out, rows, first_ts, last_ts,
-      retired_at, reason}`` 显影——钉解析失败 = 查 manifest 辨「清理 vs
+      retired_at, reason}`` 暴露——钉解析失败 = 查 manifest 辨「清理 vs
       丢数据」,reason 辨哪道闸;
     - 文件重写 = 临时文件 + ``os.replace`` 原子改名(中断读者不读半截);
     - 坏行/无 ts 行/无 run_id 行 = 原样保留(宽容契约:清理面不做判定,
@@ -287,7 +287,7 @@ def enforce_journal_retention(journal_path: Path | str, *,
     retired_idx: set[int] = set()
     for rid in retired_ids:
         retired_idx.update(seg_rows[rid])
-    # manifest 显影(逐段一行;追加,历次淘汰记录累积)
+    # manifest 暴露(逐段一行;追加,历次淘汰记录累积)
     manifest_path = path.parent / RETIREMENT_MANIFEST_NAME
     retired_at = datetime.fromtimestamp(now_epoch).isoformat(timespec='seconds')
     try:
@@ -304,7 +304,7 @@ def enforce_journal_retention(journal_path: Path | str, *,
                     'last_ts': ts_list[-1] if ts_list else '',
                     'retired_at': retired_at,
                 }, ensure_ascii=False) + '\n')
-    except Exception as e:  # noqa: BLE001  显影失败 = 放弃本轮清理(宁不删
+    except Exception as e:  # noqa: BLE001  暴露失败 = 放弃本轮清理(宁不删
         # 不可发生「删了没记账」——manifest 是段存续的唯一判别面)
         log.warning('[cw!][state-journal] 淘汰 manifest 写入失败(本轮不清理): %s', e)
         return summary
@@ -428,7 +428,7 @@ def install_state_telemetry(path: Path | str | None = None, *,
         log.warning('[cw!][state-journal] 段清理失败(不阻塞装配): %s', e)
     else:
         # 段淘汰联动跟随:defect_ledger 等同生命周期伴生流随本趟
-        # 段裁决清理(同窗同显影,禁另起独立清理周期——双源漂移禁令);
+        # 段裁决清理(同窗同暴露,禁另起独立清理周期——双源漂移禁令);
         # telemetry_root = journal state 目录父目录(生产 = telemetry live
         # 根),测试 tmp 装配即派生 tmp 根、缺文件零成本 no-op。槽缺席 =
         # 缺省关(单元测试/未武装装配零副作用);失败不阻塞装配。

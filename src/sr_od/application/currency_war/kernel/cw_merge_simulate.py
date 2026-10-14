@@ -488,7 +488,7 @@ def merge_material_stale_names(bench: list[BenchSlot | None],
     「滞留」语义:对在场即 2/3 进度悬置;持续 N 轮计数仍增长 = N 轮
     未合成(合成后计数停止增长,轮差分归零)——轮级时长由消费端按
     键差分判读,本函数只答「当前帧哪些名滞留」。设计出处:
-    §4 滞留显影待修项(G-B1 第四级)。
+    §4 滞留暴露待修项(G-B1 第四级)。
     """
     names = {ident[0] for _x, ident in _slots_iter(bench, deployed)
              if ident is not None and ident[1] == 1}
@@ -503,7 +503,7 @@ def count_merge_material_blocked(counters: dict, name: str,
 
     口径(C1,三审整改定案):拦截**事件**计数,非评估次数——同一决策
     帧内同一素材名只计 1(帧内多通道资格评估、投影读(P56 liquid_
-    refund)/腾席环重试对同名重复触达均去重),跨帧滞留素材每次新触达
+    refund)/腾位环重试对同名重复触达均去重),跨帧滞留素材每次新触达
     仍计。去重载体 = ``dedup_names``(调用方按帧创建并传入;None =
     无去重的单评语境,测试/离线直调)。评估次数口径为已废弃的实装
     偏差(「拦截事件判读」被投影读/重试环污染的整改)。

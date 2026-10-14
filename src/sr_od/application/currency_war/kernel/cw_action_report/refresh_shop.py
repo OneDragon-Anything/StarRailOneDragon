@@ -30,7 +30,7 @@ op 不喂,sim 与生产同一段 op 代码同不喂;显式喂入为保留的申�
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
 ``cw_action_report.__init__`` docstring)。容器、写入口与观察
-写端留守 ``kernel/cw_game_state``,本包 → 容器单向依赖。
+写端留在 ``kernel/cw_game_state``,本包 → 容器单向依赖。
 """
 
 from __future__ import annotations

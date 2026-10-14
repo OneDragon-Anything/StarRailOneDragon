@@ -14,13 +14,13 @@
 - **角色入席(确定面)**:`char_name` 在场 → `kernel/cw_effect_inventory.py::grant_bench_unit_cascade`(入席 1★ + 合成级联,与商店购买同语义);
 - **内容全未知**(兜底点卡路径,char_name/norm_item/extra_norm_items 三载荷全空):bench/equips 值不变、来源标记翻转(`write_logic_rand`)+ `pick_supply_content_unresolved` 保留证据;
 - **选择落地 `chosen_supply`**:画面 op `CwScreenSupplyNode` 选卡分支**确认即写 write_logic**(值 = (角色, 装备名列表) 2 元组,OCR 原文画面 y 序,不带钻字段——带钻与否消费侧按 `kernel/cw_obs_core.DIAMOND_EQUIP_NAMES` 名单自列表派生;渠道签名 family='logic_action'、actor='CwScreenSupplyNode',journal 记录为逻辑源非观察源;兜底点卡/刷新轮不写 = 真选守卫)——动作事实边界例外③([../screens/op-layer.md](../../screens/op-layer.md) §2.2),**非观察写入方**;
-- 刷新分支不在本动作:刷新圆钮机械点击留守画面 op 的留守分支(刷新链 = `CwActionRefreshSupplyParam` 决策建议的执行部分,终结形态交回);节点推进 = 确认点击落地即旁调 `kernel/cw_game_state.py::report_node_advance(trigger='supply_confirm')`(kernel 观察态门 = 唯一推进落账门)。
+- 刷新分支不在本动作:刷新圆钮机械点击留在画面 op 内置动作的分支(刷新链 = `CwActionRefreshSupplyParam` 决策建议的执行部分,终结形态=返回主循环);节点推进 = 确认点击落地即旁调 `kernel/cw_game_state.py::report_node_advance(trigger='supply_confirm')`(kernel 观察态门 = 唯一推进落账门)。
 
 ## 3. 确定面转移规则(逐条)
 
 1. 点卡选中:定位点 = `env.target`(决策部分从 screen_info/OCR 现算;op 类体内不自算)→ mouse_move + click → 固定等待 0.6s;
 2. 确认:`round_by_find_and_click_area`(screenshot, '货币战争-补给', '按钮-确认', success_wait=1.5);
-3. **即时自上报**:确认点击后无条件调 `report_action_pick_supply_param`(不判 confirm_result):装备写入 + 角色入席一口写;派发即终结(结束本次访问),确认未生效由外循环按当前画面重识别重派(零判效——发出后不读屏验证是否生效;零重试);
+3. **即时自上报**:确认点击后无条件调 `report_action_pick_supply_param`(不判 confirm_result):装备写入 + 角色入席一口写;点击发出后即结束本次访问(结束本次访问),确认未生效由外循环按当前画面重识别重派(零判效——发出后不读屏验证是否生效;零重试);
 4. **推进上报**:`confirm_result.is_success` 门内旁调 `report_node_advance(trigger='supply_confirm')`(is_success 门 = 发出事实门,非判效;重复上报被 kernel 观察态门结构性挡)。
 
 ## 4. 随机面
@@ -37,7 +37,7 @@
 
 ## 7. 语义验证
 
-行为锁 = `test_cw_supply_pick_immediate_report.py`(即时单相写序)/ `test_supply.py`(分层归一)/ `test_cw_supply_advance_wiring.py`(推进接线)/ `test_obs_arch_event_screens.py`(chosen 确认即写),在册路径 = `sr-od-test/test/sr_od/application/currency_war/`;owned 真值 = 下一帧装备区读数观察覆盖。
+行为锁 = `test_cw_supply_pick_immediate_report.py`(即时单相写序)/ `test_supply.py`(分层归一)/ `test_cw_supply_advance_wiring.py`(推进接线)/ `test_obs_arch_event_screens.py`(chosen 确认即写),已登记路径 = `sr-od-test/test/sr_od/application/currency_war/`;owned 真值 = 下一帧装备区读数观察覆盖。
 
 ## 8. 判例注记(动作发出阶段)
 
@@ -45,4 +45,4 @@
 
 ## 9. 依据
 
-`kernel/cw_action_report/pick_supply.py` 模块头(写序/分支类型/保留证据分型);`operations/cw_op/cw_pick_supply_action.py::CwActionPickSupplyOp` docstring 与 run 体(刷新分支留守/即时上报/推进旁调);[flow/action_ops.md](../../flow/action_ops.md) §4.5(PickSupply 行);[../fields.md](../fields.md) §3.2.15/§3.2.5(效果写入)/§3.4 头部(chosen 确认即写)/§4「事件选择」补给分支;[../../screens/supply.md](../../screens/supply.md) §4/§6(画面 op 侧契约)。
+`kernel/cw_action_report/pick_supply.py` 模块头(写序/分支类型/保留证据分型);`operations/cw_op/cw_pick_supply_action.py::CwActionPickSupplyOp` docstring 与 run 体(刷新分支留在/即时上报/推进旁调);[flow/action_ops.md](../../flow/action_ops.md) §4.5(PickSupply 行);[../fields.md](../fields.md) §3.2.15/§3.2.5(效果写入)/§3.4 头部(chosen 确认即写)/§4「事件选择」补给分支;[../../screens/supply.md](../../screens/supply.md) §4/§6(画面 op 侧契约)。

@@ -22,7 +22,7 @@
 ## 3. 确定面转移规则(逐条)
 
 1. 每击:+`XP_PER_BUY` 经验、−单击价;攒满当前级门槛(`XP_TO_NEXT_LEVEL`)即升级、溢出结转(推进算子单一源 = `kernel/cw_economy.py::xp_apply_clicks`;封顶 `MAX_PLAYER_LEVEL`);
-2. **单击价单一源** = `kernel/cw_economy.py::xp_click_cost` 两支语义:**显示价支**(容器(GameState,游戏状态对象,下同)`level_up_cost` 观察价直通——游戏侧已算好全部折扣,下限 0)/ **兜底支**(基价 `XP_CLICK_COST_FALLBACK` 减在册折扣:`xp_buy_cost_discount` + 等级门折扣 `xp_click_discount_from_level`,`level_of(bs) ≥ xp_click_discount_from_level_at` 生效;折扣只降价不减经验)。动作发出方把现算值装进 `action.cost`,转移函数按 `action.cost` 扣减(商店域 × 击数,备战域单击);
+2. **单击价单一源** = `kernel/cw_economy.py::xp_click_cost` 两支语义:**显示价支**(容器(GameState,游戏状态对象,下同)`level_up_cost` 观察价直通——游戏侧已算好全部折扣,下限 0)/ **兜底支**(基价 `XP_CLICK_COST_FALLBACK` 减已登记折扣:`xp_buy_cost_discount` + 等级门折扣 `xp_click_discount_from_level`,`level_of(bs) ≥ xp_click_discount_from_level_at` 生效;折扣只降价不减经验)。动作发出方把现算值装进 `action.cost`,转移函数按 `action.cost` 扣减(商店域 × 击数,备战域单击);
 3. 金:gold `−=` 单击价 × 实击数。击数 = 执行回执 `ShopActionExecuted.levelup_clicks`(生产落地门喂 1;缺回执 = `applied=False, reason='levelup_clicks_not_fed'` 本轮不写,等观察覆盖)。**金币写入 = 上报函数按 `action.cost`×击数直写**(本口唯一写入位置;执行侧金差 `_executed_gold_delta` 对 LevelUp 恒 0,防双记);
 4. 授权/放行门槛全在决策核的动作发出点(备战域):每帧发出前置 = `clicks_to_next_level` 现算击数 > 0;金地板(`spend_unified`)/预算闸(`levelup_budget_gate`)/血闸(`blood_xp_gate`)/血本位模式(`blood_xp_gate_for`)= 动作发出点的门槛链;满级 = 击数 0,无授权不发出。执行器 `PrepActionExecutor._level_up` 零授权零计数(找钮 → 单击 → 光标 parking 防等级显示区毒化 → 升级事件挂点 `effects.on_level_up()`);
 5. 经验/等级真值 = 下一帧观察经验对账族承接(XpLedger 通道单击推进 + OCR 真值 reconcile)。

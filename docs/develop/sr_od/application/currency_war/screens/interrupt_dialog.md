@@ -4,11 +4,11 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(分支号制已停用):id_mark = `货币战争-中断挑战弹窗.标识-中断挑战`(单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。真模态:点遮罩无效,关闭只有 X 一条路;建档 = `currency_war_interrupt_dialog.yml`(「按钮-放弃并结算」「按钮-暂时离开」为在册定位区,op 零消费)。
+- 阶段一身份分发(分支号制已停用):id_mark = `货币战争-中断挑战弹窗.标识-中断挑战`(单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。真模态:点遮罩无效,关闭只有 X 一条路;建档 = `currency_war_interrupt_dialog.yml`(「按钮-放弃并结算」「按钮-暂时离开」为已登记定位区,op 零消费)。
 
 ## 2. 画面形态声明
 
-**空决策形态**(纯推进;弹窗带选项面但选择被语义红线钉死为唯一出口——关 X,放弃/离开永不候选)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口锚门(「货币战争-中断挑战弹窗.标识-中断挑战」,与分发判定同源同参;miss = round_fail 交回外循环重判)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部落地复查(推进已发 → id_mark 不在 = 已离开本画面 → success 交回)→ 点 X 单次推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 在用值仅框架异常路径消费)。空决策形态无 report 接口。
+**空决策形态**(纯推进;弹窗带选项面但选择被语义红线钉死为唯一出口——关 X,放弃/离开永不候选)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口锚门(「货币战争-中断挑战弹窗.标识-中断挑战」,与分发判定同源同参;miss = round_fail 返回主循环重新判定)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部落地复查(推进已发 → id_mark 不在 = 已离开本画面 → success 结束本次访问)→ 点 X 单次推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 在用值仅框架异常路径消费)。空决策形态无 report 接口。
 
 ## 3. 观察面
 
@@ -16,17 +16,17 @@
 
 ## 4. 动作面
 
-**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+**动作 op 与交回对照表**(本篇唯一动作清单;「返回主循环」= 本访问结束、控制权返回 `cw_loop.py::CwLoop.loop` 重判):
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| 无动作 op——单步推进由内置动作完成(`progress_once`:点 X 关闭) | 画面 op 内置动作(`progress_once`,单尝试合同点 `货币战争-中断挑战弹窗.按钮-关闭` + `park_cursor`) | 无 report 接口(推进型规范形态,[op-layer.md](op-layer.md) §3) | 是(落地复查交回):点 X → `round_wait` 重访,「标识-中断挑战」id_mark 不在 = 已离开本画面 → `round_success` 交回外循环(见 §5) |
+| 无动作 op——单步推进由内置动作完成(`progress_once`:点 X 关闭) | 画面 op 内置动作(`progress_once`,单尝试合同点 `货币战争-中断挑战弹窗.按钮-关闭` + `park_cursor`) | 无 report 接口(推进型规范形态,[op-layer.md](op-layer.md) §3) | 是(落地复查结束本次访问):点 X → `round_wait` 重访,「标识-中断挑战」id_mark 不在 = 已离开本画面 → `round_success` 返回主循环(见 §5) |
 
 `progress_once` = `round_by_find_and_click_area(货币战争-中断挑战弹窗.按钮-关闭)`(单尝试合同:按钮不在〔旧帧/已自关〕不再原地新帧重找,False 交决策动作 node fail——新帧重试在 loop 级承载,外循环重派即新帧)。点击成功 → `park_cursor(after_wait=0.1)`(光标离场防污染下一帧)。刻意不用 ESC:X 永远安全,ESC 在面板已关时落备战会再弹本弹窗。
 
 ## 5. 终结与交回
 
-推进已发 → `round_wait` 重访;落地复查 = id_mark miss = 已离开 → `success` 交回(无防御上限;分发行未挂 `on_fail_retry`,fail 走包装缺省映射——区别于商店卡牌详情/角色详情两屏的 retry 池通道)。落点 = 备战(阶段二默认分支重判,对局继续)。
+推进已发 → `round_wait` 重访;落地复查 = id_mark miss = 已离开 → `success` 结束本次访问(无防御上限;分发行未挂 `on_fail_retry`,fail 走包装缺省映射——区别于商店卡牌详情/角色详情两屏的 retry 池通道)。落点 = 备战(阶段二默认分支重判,对局继续)。
 
 ## 6. 状态上报面
 
@@ -34,7 +34,7 @@
 
 ## 7. 子态与 overlay
 
-本 op 自身即 overlay 处理件;命中即自处理,底层(备战)交回重判。
+本 op 自身即 overlay 处理件;命中即自处理,底层(备战)返回主循环重新判定。
 
 ## 8. 守卫与防线
 
@@ -43,4 +43,4 @@
 ## 9. 遥测与锁面
 
 - journal op 名 = 「中断挑战弹窗」;frame_tag = `overlay_interrupt_dialog`(dispatch 包装)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,interrupt_dialog 在册);建档 = `currency_war_interrupt_dialog.yml`。
+- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,interrupt_dialog 已登记);建档 = `currency_war_interrupt_dialog.yml`。

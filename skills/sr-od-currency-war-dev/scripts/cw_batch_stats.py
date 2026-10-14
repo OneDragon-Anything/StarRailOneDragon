@@ -54,7 +54,7 @@ outcomes killed==True。killed = 结算屏「玩家击败对手」,是行面证�
 只看行面会把前者整批误判为通关,通关率系统性虚高(全载体批实测为
 真值的数倍,读数以 killed 列为准)。局末行 killed 不可判(outcomes
 缺局 / sim 键缺 / None,旧批无该字段同此)→ 未知桶:不入通关
-(禁默认通关),报告头按局数显影;不回退取早轮行——早轮 True 只证该轮
+(禁默认通关),报告头按局数暴露;不回退取早轮行——早轮 True 只证该轮
 胜,不证终局杀穿。档案侧合成轮同律:补给节点的 outcome 是采集端合成
 填充,killed=true 非战斗结算,不承载真值(合成轮恰为末轮 → 整局未知
 桶,证据档案见 _archive_rows 注)。输出双列披露:通关率(killed 真值,
@@ -82,7 +82,7 @@ boss 段读数(如 hp 轨迹尾段)时按此键边界理解。
 [28] 线读数 = P1 出口金 ≥50 的局数,一行,不做门只做读数——[28] 双指标验收
 明确「出口金单独不作验收」(单指标优化会复刻「金 92 过线但板面弱」的假达标);
 出处 = docs/game/currency_war/research/user_playstyle.md 的 [28] 条
-(50 金息律簇,P1 验收框架:息基保住 × P1 形态达标)。
+(50 金息律簇,P1 验收框架:利息计算基数保住 × P1 形态达标)。
 
 数据源与用法(项目根运行;另机/异目录语料用 --sim-root/--matches-root 显式指路):
     uv run python skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py --sim-batch latest
@@ -103,7 +103,7 @@ from pathlib import Path
 # src 判据引导(②④轮末现算的判据单一源 = kernel readiness 快照读口):
 # 自脚本位反推仓库 src 加入 sys.path,项目根直跑零前置;导入失败(异机
 # 裸语料/非仓布局)= 判据复用不可用,②④回退 form_ok 镜像读数(回退态
-# stderr 显影一行,统计仍可算,读数口径降级如实申报)。
+# stderr 暴露一行,统计仍可算,读数口径降级如实申报)。
 _REPO_SRC = Path(__file__).resolve().parents[3] / 'src'
 if _REPO_SRC.is_dir() and str(_REPO_SRC) not in sys.path:
     sys.path.insert(0, str(_REPO_SRC))
@@ -218,7 +218,7 @@ def _sim_rows(batch: Path) -> dict[str, dict]:
     # runs.jsonl,旧通道成死路)——runs.jsonl 缺失时读 outcomes.jsonl
     # 逐局 max(plane)(同语义:引擎实际到达的最高位面,逐轮行带 plane);
     # runs 值优先不覆盖(旧批兼容)。两源皆缺的局 plane_reached 保持
-    # None(不可判,死亡筛不适用),report 头部小注显影。
+    # None(不可判,死亡筛不适用),report 头部小注暴露。
     # 位置=decisions/outcomes 两循环后(games 键已齐),回填才非空操作。
     if not (batch / 'runs.jsonl').exists():
         max_plane: dict[str, int] = {}
@@ -416,7 +416,7 @@ def report(games: dict[str, dict], title: str, source: str = 'sim') -> None:
               '敏感性——升维列后续候选,boss 段读数按一维键边界理解')
         # 局级权威源缺行小注(审查):runs/outcomes 两通道皆
         # 无法给出 plane_reached 的局数——该类局死亡筛不适用(不可判),
-        # 通关判定降级行面证据;>0 时显影,归 runs/账本完整性问题。
+        # 通关判定降级行面证据;>0 时暴露,归 runs/账本完整性问题。
         no_auth = sum(1 for gd in games.values()
                       if gd.get('plane_reached') is None)
         if no_auth:

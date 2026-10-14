@@ -1,12 +1,12 @@
-"""货币战争 决策装配边界·生产武装点(app 桶)。
+"""货币战争 决策装配边界·生产武装点(app 层)。
 
 生产武装点 = ``install_obs_ports``(CurrencyWarApp.__init__ 接通):
-decision 桶 obs 读口注入、kernel 侧合成特效帧态门注入,以及 GameState
+decision 层 obs 读口注入、kernel 侧合成特效帧态门注入,以及 GameState
 缺陷台账 sink 的落盘实现(实现住本模块,
 kernel 零像素触达;缺省关 = 不落盘)。
 
 为何在 app:本模块 import prep_actions/obs 执行面词汇,且被
-cw_screen_prep(备战环)消费——两侧都在 app 桶,装配边界归 app 是分包矩阵
+cw_screen_prep(备战环)消费——两侧都在 app 层,装配边界归 app 是分包矩阵
 (DESIGN 分包 §3.2,app 依一切)的自然落位。
 """
 from __future__ import annotations
@@ -16,10 +16,10 @@ from pathlib import Path
 # ------------------------------------------------------- obs 读口注入
 
 def install_obs_ports() -> None:
-    """装配点接通 decision 桶的 obs 读口(生产武装点 = CurrencyWarApp.__init__)。
+    """装配点接通 decision 层的 obs 读口(生产武装点 = CurrencyWarApp.__init__)。
 
     分包依赖矩阵禁 decision→obs 直依:决策核只持注入槽
-    (``cw_strategy._RESET_PHASE_ROUND_CACHE``),本函数从 obs 桶取实现注入。
+    (``cw_strategy._RESET_PHASE_ROUND_CACHE``),本函数从 obs 层取实现注入。
     未接通(缺省关)= 新局弃置残留容器时跳过 obs 模块级缓存清理——
     session 全量重建承担状态隔离,仅 last-known-good 观测缓存延用旧值。
 

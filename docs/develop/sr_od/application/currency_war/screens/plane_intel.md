@@ -34,23 +34,23 @@
 **恒全采位面1→2→3**:
 
 - **三位面 boss**(每个识别 node 同体执行 `_recognize_current_plane`):点该位面卡(「货币战争-位面详情.按钮-位面卡1..3」;转移证据 = 详情条节点编号 OCR 位面段联动到目标位面)→ 点最右 boss 节点(位置先验「首领 = 位面最后节点」;`read_plane_detail_nodes` 动态定位节点圆,节点数随位面/投资策略变,不硬编码)→ 详情条类型名标签验「首领」(`read_detail_node_type_label`;非首领 = 位置先验失效,重试)→ 大图标 SIFT 交叉核对 boss_avatar 模板库(`_read_boss_big_icon`,「货币战争-位面详情.区域-boss大图标」~107px;`obs/cw_node_reader.py::match_boss_sift`;锁态小图 SIFT 特征塌缩认不出,大图标增熵破局)。
-  **boss 节点两种渲染态**:①头像态——节点 = 红框头像,大图标 SIFT 命中;②**纹章风头像渲染变体**——节点 = 金色纹章风头像图案,图案即 boss 的纹章风头像(boss 身份在屏;游戏侧画面档 = [../../../../game/screens/货币战争-位面详情.md](../../../../game/screens/货币战争-位面详情.md))。模板库缺该风格致 SIFT 未命中,属识别能力缺口;证据帧 = `sr-od-test/screens/货币战争-位面详情/位面详情-纹章风头像-run30.png`。两种态统一同一失败语义:**识别失败 = node 重试,耗尽 = op fail 响亮暴露,无 None/占位/降级分支**(把识别失败降级为 None 违反对账真值纪律;纹章风头像模板采集另行立项前,含该类 boss 的中断恢复对局会响亮失败,属预期失败显影)。
+  **boss 节点两种渲染态**:①头像态——节点 = 红框头像,大图标 SIFT 命中;②**纹章风头像渲染变体**——节点 = 金色纹章风头像图案,图案即 boss 的纹章风头像(boss 身份在屏;游戏侧画面档 = [../../../../game/screens/货币战争-位面详情.md](../../../../game/screens/货币战争-位面详情.md))。模板库缺该风格致 SIFT 未命中,属识别能力缺口;证据帧 = `sr-od-test/screens/货币战争-位面详情/位面详情-纹章风头像-run30.png`。两种态统一同一失败语义:**识别失败 = node 重试,耗尽 = op fail 响亮暴露,无 None/占位/降级分支**(把识别失败降级为 None 违反对账真值纪律;纹章风头像模板采集另行立项前,含该类 boss 的中断恢复对局会响亮失败,属预期失败暴露)。
 - **敌人词缀**:「货币战争-位面详情.区域-词缀横条」(`read_detail_affixes`,位面1 同帧读一次;词缀不随位面卡切换变;空 = 无词缀,上报走幂等门)。
 - **位面节点带**:该位面全节点预览序列随采随存(`_detail_seqs`,键 = 位面号 1 基;node6 经台账口统一落账)。
 - **敌人难度参考值**:`read_plane_detail_difficulty`(每个识别 node 同帧顺带读当位面值;node6 逐位面落账;生产难度主源 = 备战旗牌两级管线,本值仅参考)。
 
 ## 4. 动作面
 
-**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回外循环主循环 `cw_loop.py::CwLoop.loop` 重新识别画面并重判):
+**动作 op 与交回对照表**(本篇唯一动作清单;「返回主循环」= 本访问结束、控制权返回主循环 `cw_loop.py::CwLoop.loop` 重新识别画面并重判):
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| 无注册表动作 op——识别/点开子步 node(入口门:非位面详情屏 = round_fail 存证;恒点「货币战争-位面详情.按钮-位面卡1」保证从位面1起采 + 单位面识别体) | 管线 node(识别位面1,start) | 无(读数暂挂实例属性 `_plane_bosses`/`_affixes`/`_detail_seqs`/`_difficulty_refs`,落写归「上报」node) | 否(管线子步;识别预算 3 耗尽 = op fail 交回) |
-| 无注册表动作 op——识别/点开子步 node(点「货币战争-位面详情.按钮-位面卡2」;转移证据 = 详情条节点编号位面段联动) | 管线 node(点开位面2) | 无(同上) | 否(管线子步;点开预算 2 耗尽 = op fail 交回) |
-| 无注册表动作 op——识别/点开子步 node(点 boss 节点圆 → 标签验「首领」→ 大图标 SIFT,同单位面识别体) | 管线 node(识别位面2) | 无(同上) | 否(管线子步;识别预算 3 耗尽 = op fail 交回) |
-| 无注册表动作 op——识别/点开子步 node(点「货币战争-位面详情.按钮-位面卡3」+ 联动证据) | 管线 node(点开位面3) | 无(同上) | 否(管线子步;点开预算 2 耗尽 = op fail 交回) |
-| 无注册表动作 op——识别/点开子步 node(同单位面识别体) | 管线 node(识别位面3) | 无(同上) | 否(管线子步;识别预算 3 耗尽 = op fail 交回) |
-| 无注册表动作 op——纯上报 node(零点击;组装 `CwScreenPlaneIntelObs`) | 管线 node(上报) | `report_screen_plane_intel_obs`(`plane_bosses` 已有真值不覆写 / `enemy_affixes` 幂等门)+ 台账/难度/词缀登记(session 通道,best-effort) | 是(管线走完 = 采集访问终结;round_success 交编排 `CwEntryPlaneIntel` 委派点,编排关闭位面详情后 success 才交回 `CwLoop.loop`;上报时无对局 session = round_fail 交回) |
+| 无注册表动作 op——识别/点开子步 node(入口门:非位面详情屏 = round_fail 存证;恒点「货币战争-位面详情.按钮-位面卡1」保证从位面1起采 + 单位面识别体) | 管线 node(识别位面1,start) | 无(读数暂挂实例属性 `_plane_bosses`/`_affixes`/`_detail_seqs`/`_difficulty_refs`,落写归「上报」node) | 否(管线子步;识别预算 3 耗尽 = op 失败结束本次访问) |
+| 无注册表动作 op——识别/点开子步 node(点「货币战争-位面详情.按钮-位面卡2」;转移证据 = 详情条节点编号位面段联动) | 管线 node(点开位面2) | 无(同上) | 否(管线子步;点开预算 2 耗尽 = op 失败结束本次访问) |
+| 无注册表动作 op——识别/点开子步 node(点 boss 节点圆 → 标签验「首领」→ 大图标 SIFT,同单位面识别体) | 管线 node(识别位面2) | 无(同上) | 否(管线子步;识别预算 3 耗尽 = op 失败结束本次访问) |
+| 无注册表动作 op——识别/点开子步 node(点「货币战争-位面详情.按钮-位面卡3」+ 联动证据) | 管线 node(点开位面3) | 无(同上) | 否(管线子步;点开预算 2 耗尽 = op 失败结束本次访问) |
+| 无注册表动作 op——识别/点开子步 node(同单位面识别体) | 管线 node(识别位面3) | 无(同上) | 否(管线子步;识别预算 3 耗尽 = op 失败结束本次访问) |
+| 无注册表动作 op——纯上报 node(零点击;组装 `CwScreenPlaneIntelObs`) | 管线 node(上报) | `report_screen_plane_intel_obs`(`plane_bosses` 已有真值不覆写 / `enemy_affixes` 幂等门)+ 台账/难度/词缀登记(session 通道,best-effort) | 是(管线走完 = 采集访问终结;round_success 交编排 `CwEntryPlaneIntel` 委派点,编排关闭位面详情后 success 才结束本次访问 `CwLoop.loop`;上报时无对局 session = round_fail 返回主循环) |
 
 动作定位点与转移证据明细(上表点击的落点级细节;含编排 op 的开/关点击,编排不在注册表动作域):
 
@@ -67,7 +67,7 @@
 - 失败语义(响亮暴露):节点条读不出 / 详情条类型名未读出 / 非首领 / 大图标 SIFT 未命中 = 该识别 node round_retry,耗尽 = op fail;上报时无对局 session = round_fail(真值无处落,不静默丢)。
 - 编排门三重(零点击):对局中(session 在,缺席 = fail 存证)→ 画面合法(备战/位面详情;其它屏 = 调用时机错误快速 fail 存证,不空转 retry 烧预算)→ 真值跳过(容器已有位面真值 → 零点击直通成功;放在屏幕门之后,错屏先报错屏,别让跳过门吞掉真实状态信号)。
 - 编排委派 = `round_by_op_result` 结果透传(失败 = 编排 fail 交调用方失败链,不自旋);委派失败详情屏留场、无专用清理——下一轮再进时「已在详情屏直通」分支跳过打开直接委派(自愈);连续失败 = 连续响亮。
-- 编排关闭 = 点 X 验标题消失 → success 交回外循环。
+- 编排关闭 = 点 X 验标题消失 → success 返回主循环。
 
 ## 6. 状态上报面
 
@@ -75,7 +75,7 @@
 - **附属机制**(与写门同居「上报」node 簇,session 通道;异常口径 best-effort,不阻塞上报主链):
   - 节点类型台账:`kernel/cw_exec_state.py::ledger_update_plane` plane_detail 源(详情条整面覆盖,None 位保旧)+ boss 位按「首领 = 位面最后节点」位置先验回填(`fill_boss_by_position`,回填依据 = 本 op 标签验证语义)。台账值载体宿主 = `GameState.plane_node_sequences`(`PlaneNodeLedger`,容器非 Field 簿记)。
   - 敌人难度参考值:`get_node_ledger().difficulty_ref` 逐位面落账。
-  - 词缀效果账本登记:`kernel/cw_affix_effects.py::register_affixes_from_names`(上报后登记;中断恢复的对局这是词缀登记唯一活源——简报侧登记挂点在中断恢复的对局不运行;命中结构化注册才入账本,登记体按在册条目幂等,补采重跑不双登记;登记面纪律 = [../game_state/effect-domain.md](../game_state/effect-domain.md) 词缀源节)。
+  - 词缀效果账本登记:`kernel/cw_affix_effects.py::register_affixes_from_names`(上报后登记;中断恢复的对局这是词缀登记唯一活源——简报侧登记挂点在中断恢复的对局不运行;命中结构化注册才入账本,登记体按已登记条目幂等,补采重跑不双登记;登记面纪律 = [../game_state/effect-domain.md](../game_state/effect-domain.md) 词缀源节)。
 
 ## 7. 子态与 overlay
 

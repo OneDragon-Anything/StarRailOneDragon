@@ -81,7 +81,7 @@ class CwActionOpenTomeOp(CwOperation):
         # 固定动画等待(原轮询判效半拆除,A3)
         time.sleep(_OVERLAY_ANIM_WAIT_S)
         log.info(f'[cw][tome] 开典籍槽{slot} → 单击已发(选卡交 CwScreenBookcard)')
-        # —— 自上报(机械发出后;op-layer.md §1.2):开件腾席 ——
+        # —— 自上报(机械发出后;op-layer.md §1.2):开件腾位 ——
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_open_tome_param(

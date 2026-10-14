@@ -150,7 +150,7 @@ class CwEntryPlaneIntel(CwOperation):
     @node_from(from_name='委派识别')
     @operation_node(name='关闭位面详情', node_max_retry_times=3)
     def close_detail(self) -> OperationRoundResult:
-        """点 X 关位面详情(验标题消失 = 真转移)→ success(交回外循环)。"""
+        """点 X 关位面详情(验标题消失 = 真转移)→ success(返回主循环)。"""
         screen = self.last_screenshot
         if not self.round_by_find_area(
                 screen, _PD_SCREEN, '标识-位面详情标题',

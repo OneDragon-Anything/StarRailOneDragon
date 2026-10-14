@@ -28,7 +28,7 @@
 **登记/申报双层**(防漂移锁 = 测试 `test_cw_affix_spec_registry`):
 
 - `EQUIP_REWRITE_DECLARATIONS`:装备注册表改写成员 25 件逐件归属申报(键集恰等于谓词扫描 `scan_rewrite_equipments` 命中集);
-- `EQUIP_WRITE_SIDES`:逐件登记**恰一个**落码写入方,登记值共四形:`bridge:<函数>` = 触发窗口独占的确定性直写 / `contribution:<函数>` = 贡献算术零直写、组合写收尾 / `op:<符号>` = 执行域既有写入方 / `observation` = 负写入(不写)(随机面/真值同帧送达面/字段缺位面,由观察收尾);构建校验 import 时即显式报错(`_validate_equip_write_sides`:键集相等/目标函数可解析/归属成文互证);
+- `EQUIP_WRITE_SIDES`:逐件登记**恰一个**代码写入方,登记值共四形:`bridge:<函数>` = 触发窗口独占的确定性直写 / `contribution:<函数>` = 贡献算术零直写、组合写收尾 / `op:<符号>` = 执行域既有写入方 / `observation` = 负写入(不写)(随机面/真值同帧送达面/字段缺位面,由观察收尾);构建校验 import 时即显式报错(`_validate_equip_write_sides`:键集相等/目标函数可解析/归属成文互证);
 - 词缀源 `AFFIX_EFFECT_SPECS`:改写 GameState 字段的词缀按 EffectSpec 四元组建格(成长的烦恼 = LevelUp 金面改写源,8 级起每击加价、写入方未接线走观察覆盖;变宝为废 = 装备库存随机面由观察收尾;永久创伤 = hp_max 字段缺位由观察收尾)。豁免集 `AFFIX_SPEC_EXEMPT`(开局不利已有专用写入载体 `cw_opening_hp.opening_hp_prior`,禁第二份 −20 数值源)。登记挂点 = `register_affixes_from_names`(简报/位面详情两读链共用,幂等)。
 
 ## 4. 写入桥逐件(cw_effect_inventory)
@@ -50,7 +50,7 @@
 
 ## 6. 动作侧计数面(效果账计数)
 
-- `CounterKey.BUY`:买牌上报函数获取计算完时点回调 `gs.effects.on_buy` 推进(`kernel/cw_action_report/buy_card.py`;对全部声明 `duties.track` 的在册条目推进,消费按 (spec_id, key) 隔离读;满栏一击多买按实际张数 k 计 k 次,live/sim 同源)——返利族「每购 3 张 5 费」计数面;
+- `CounterKey.BUY`:买牌上报函数获取计算完时点回调 `gs.effects.on_buy` 推进(`kernel/cw_action_report/buy_card.py`;对全部声明 `duties.track` 的已登记条目推进,消费按 (spec_id, key) 隔离读;满栏一击多买按实际张数 k 计 k 次,live/sim 同源)——返利族「每购 3 张 5 费」计数面;
 - `CounterKey.REFRESH`:刷新上报函数统一触发(`report_action_refresh_shop_param` → `gs.effects.record_refresh`:refresh_total 恒 +1、付费帧 refresh_paid +1、同帧 bump)——采购专员族「每刷 7/5 次」触发面 + 选卡评估全量计数(refresh_total/refresh_paid);
 - 免战牌次数:`consume_use`(跳过执行落地递减,归零移除,见 [start-battle.md](start-battle.md));
 - 升级事件:`effects.on_level_up`(挂点 = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp` 内,发出即登记,best-effort 观测零决策语义)。

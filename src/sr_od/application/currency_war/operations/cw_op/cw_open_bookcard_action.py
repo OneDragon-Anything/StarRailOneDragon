@@ -6,7 +6,7 @@
 
 终结动作(开卡时机归策略器,动作发出点 = entry ① prep 实体面卡片分支,
 screens/README §5.5):点完开启即引入新事实(专家邀请函弹窗在场)→
-本动作终结交回外循环,弹窗由外循环按画面分发 ``CwScreenExpertInvite``
+本动作终结返回主循环,弹窗由外循环按画面分发 ``CwScreenExpertInvite``
 选卡(分发判定单一源 = flow/outer_loop.md §2 阶段一身份分发)。"""
 from __future__ import annotations
 
@@ -35,13 +35,13 @@ if TYPE_CHECKING:
 class CwActionOpenBookcardOp(CwOperation):
     """开书册卡:``find_bookcards`` 识别 → 点槽中心 → 固定动画等待
     (纯机械执行)。终结动作(动作发出点 = 策略器 entry ① prep 实体面卡片
-    臂,screens/README §5.5;弹专家邀请函 = 新事实 → 终结交回,与
+    臂,screens/README §5.5;弹专家邀请函 = 新事实 → 结束本次访问,与
     OpenBox 终结化同构,规范锚 = op-layer.md §1.4)。"""
 
-    #: 终结动作(专家邀请函弹窗在场 = 新事实,交回外循环重分发选卡)。
+    #: 终结动作(专家邀请函弹窗在场 = 新事实,返回主循环重新分发选卡)。
     terminal = True
 
-    #: 交回等待 = 开卡动画等待值(与 prep_actions._OVERLAY_ANIM_WAIT_S
+    #: 结束本次访问等待 = 开卡动画等待值(与 prep_actions._OVERLAY_ANIM_WAIT_S
     #: 逐字等价,漂移由等价锁暴露)。
     terminal_wait = 1.8
 
@@ -56,7 +56,7 @@ class CwActionOpenBookcardOp(CwOperation):
     def run(self) -> OperationRoundResult:
         """开书册卡:``find_bookcards`` 识别 → 点槽中心 → 固定动画等待。
 
-        点完开启本动作即交回——专家邀请函弹窗由外循环按画面分发
+        点完开启本动作即结束本次访问——专家邀请函弹窗由外循环按画面分发
         ``CwScreenExpertInvite`` 选卡(选卡决策不在本执行链)。动画等待取
         家族常量 ``_OVERLAY_ANIM_WAIT_S``;弹窗就位与否交下一帧观察。识别
         按 ``action.slot`` 对位(slot=None = 首张);书册卡识别含
@@ -93,7 +93,7 @@ class CwActionOpenBookcardOp(CwOperation):
         time.sleep(_OVERLAY_ANIM_WAIT_S)
         log.info(f'[cw][bookcard] 开书册卡槽{slot} → 点开启已发'
                  '(交回外循环,专家邀请函分发选卡)')
-        # —— 自上报(机械发出后;op-layer.md §1.2 动作 op 契约):开卡腾席 ——
+        # —— 自上报(机械发出后;op-layer.md §1.2 动作 op 契约):开卡腾位 ——
         # 上报后一行声明喂入(动作后果声明化喂入契约 = design.md §2.2
         # 契约 3;实机端口未装 = no-op,sim 装配后驱动后端纯转移分支呈现
         # 专家邀请函);round data 携带声明(journal 记账面)。

@@ -99,7 +99,7 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
     语境经 ``predicates.bench_effect_context`` 共享装配现读——症3 三通道
     统一)。序:``prefer_names``
     (刚买件名集合,R2-N1 发出约束:首卖刚买件使连带卖出损失=0;帧级逻辑态
-    架构下刚买件尚未入 bench,按名匹配同资格在册件)优先,其余按
+    架构下刚买件尚未入 bench,按名匹配同资格已登记件)优先,其余按
     (star, slot) 升序(funding_support 同款序)。
 
     分键遥测(R3-R5 四字段,设计 §3.2;counters=None 时不记):

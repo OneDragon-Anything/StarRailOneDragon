@@ -115,7 +115,7 @@ hold 保留域(第 1 行内的三门全不中后的扣留资格清单;v2 修正)
 
 ### 3.1 并入声明(防第二源)
 
-工具 7 件的逐件使用判据(门 A 到货不规划 / 门 B 价值面 / 门 C 不可逆性分级 + 冶金炉/扳手/精密扳手/投影仪×2/令牌/特权卡逐件三分)**已有在册设计** = `10_prep_decisions.md` §2.1(并入自原 `strategy/11_tools_usage_design.md`),其判据内容本篇**全量并入、零改写**——本篇只补三件它没有的:**①与 `18_equip_wear_semantics.md` as-built 架构的消费位接口(§3.2);②与富余段/利息线(`20_large_balance_must_spend.md`,晚于 `10_prep_decisions.md`)的经济循环接口(§3.3);③sim 可验证性声明与实机验收点(§4,`10_prep_decisions.md` §2.1.9 有骨架,本篇按当前架构对齐并补验收点)**。逐件三分表见 §3.4(并入转写 + 增量列)。
+工具 7 件的逐件使用判据(门 A 到货不规划 / 门 B 价值面 / 门 C 不可逆性分级 + 冶金炉/扳手/精密扳手/投影仪×2/令牌/特权卡逐件三分)**已有已登记设计** = `10_prep_decisions.md` §2.1(并入自原 `strategy/11_tools_usage_design.md`),其判据内容本篇**全量并入、零改写**——本篇只补三件它没有的:**①与 `18_equip_wear_semantics.md` as-built 架构的消费位接口(§3.2);②与富余段/利息线(`20_large_balance_must_spend.md`,晚于 `10_prep_decisions.md`)的经济循环接口(§3.3);③sim 可验证性声明与实机验收点(§4,`10_prep_decisions.md` §2.1.9 有骨架,本篇按当前架构对齐并补验收点)**。逐件三分表见 §3.4(并入转写 + 增量列)。
 
 ### 3.2 与 `18_equip_wear_semantics.md` as-built 架构的消费位接口
 

@@ -5,7 +5,7 @@ op-layer.md §1.2 动作 op 契约)。一 op 一文件。
 
 机械执行零判效(用户裁定「动作 op = 机械执行」,落地判定归观察侧
 reconcile 对账):点击后零像素验证零读屏,发出即记账。点击静默不生效属
-执行环境噪声,由下一入口 heavy 实读对账显影(shop+gold 失配 → 失配告警停 →
+执行环境噪声,由下一入口 heavy 实读对账暴露(shop+gold 失配 → 失配告警停 →
 按真 bug 修),重试 = 决策循环按新观察自然重派。
 """
 from __future__ import annotations
@@ -111,7 +111,7 @@ class CwActionBuyCardOp(CwOperation):
                 '(身份未命中 ∧ (name,star) 未命中),禁兜底点击')
         if not (1 <= _slot_no <= len(env.click_pts)):
             # 槽号越界/点位缺失 = 槽号-点表不一致(建档漂移/数据漂移上游
-            # 显影),显式 round_fail(信息带 area 名,与 level_btn/refresh_btn
+            # 暴露),显式 round_fail(信息带 area 名,与 level_btn/refresh_btn
             # 同款纪律),禁兜底坐标静默点击(坐标单一真相源)。
             return self.round_fail(
                 f'商店牌槽号越界/点位缺失:{A_SHOP_CARD_PREFIX}'

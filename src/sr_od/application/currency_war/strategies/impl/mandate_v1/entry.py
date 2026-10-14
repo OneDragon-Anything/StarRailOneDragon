@@ -11,14 +11,14 @@
     → 第 4 步 商店会话 → 第 5 步 部署调整 → 第 6 步 装备与工具
     → 第 7 步 节末凑息 → 第 8 步 出战
 
-模块分工:买面/凑息/腾席的备战域动作发出点(dominance/M2/M4/M6
+模块分工:买面/凑息/腾位的备战域动作发出点(dominance/M2/M4/M6
 凑息臂)由店内会话(23 号篇)与卖出评估器(criteria/sell_candidates,
 卖出场景注册表)承载;卖出场景统一消费 ``evaluate_sell_candidates``;
 升级判据本体 = ``criteria/levelup``(11 号篇 §2),本模块只做
 工序接线与发出组装。部署/装备/工具判据单一源 = deploy_plan /
 cw_equip_wear_plan / cw_equip_env(第 5/6 步只承载调用时机)。
 
-``mandate.run_mandate`` 为测试面在册函数(生产调用走本模块 emit)。
+``mandate.run_mandate`` 为测试面已登记函数(生产调用走本模块 emit)。
 ``truncate_frame_stable``(帧稳定截断动作发出器,词表正本 =
 flow/action_exec.md §1)与 ``_ore_bench_free`` 等公共骨架——
 bridge 与测试面在产消费。
@@ -447,7 +447,7 @@ def emit(session: StrategySession,
     shop_sess.sync_gold_ledger(gs)
     shop_sess.detect_merge_result_frame(gs)
 
-    # 骨架帧装配(部署面共用输入;stop_flag 构造性 False——停手线 = 买面
+    # 骨架帧装配(部署面共用输入;stop_flag 构造性 False——成型停买线 = 买面
     # 判据,消费位在商店域(shop.py 自装配),备战域 M2 已移店内)。
     # k = 现行方向 阵容(锁定线优先,未锁 = 过渡配方开局面;键面归一
     # 归一后的统一读口 direction_comp_of——12 号篇 §2 消费面分派)。
@@ -486,7 +486,7 @@ def emit(session: StrategySession,
     # 其余步骤全部不执行(告警不消出战无效,例外仅自救动作本身)。
     if bool(gs.overflow_warning.value):
         _rescue = _step0_overflow_self_rescue(session, gs, frame)
-        return _rescue   # 含 [] = 防御分支零动作交回外循环(不出战)
+        return _rescue   # 含 [] = 防御分支零动作返回主循环(不出战)
 
     # —— 第 1 步:点开消耗品(书册卡 → 补给箱 → 星徽秘典;臂序 = 现行
     # 实体面段在案顺序)——弹窗由外循环画面分发接住,处理后回备战重新
@@ -536,7 +536,7 @@ def emit(session: StrategySession,
         return _interest_out
 
     # 形态⑥观测(纯观测零行为,fail-closed 期只记不判):target 空窗
-    # ∧ 濒死带 ∧ 域外 ∧ 持金 ∧ 本帧零金消费——金滞留入败局的形态显影
+    # ∧ 濒死带 ∧ 域外 ∧ 持金 ∧ 本帧零金消费——金滞留入败局的形态暴露
     # (键名申报源 = supply_arbitration_design §5.1 terminal_targetless_
     # idle;载体适用范围随工序重排收窄 = 到达第 7 步之后的帧,实体面/开店/
     # 部署/装备帧提前返回不入键;到达本段的帧无 LevelUp/OpenShop 类
@@ -593,7 +593,7 @@ def _step0_overflow_self_rescue(session: StrategySession, gs: GameState,
     ③ 卖出(有损腾位;评估器自救扩展面 = 仅备战席 + 真全量持有,P78
     资格仲裁族全通道豁免、线内件按价值序末位让位)→ ④ 防御性分支
     (识别异常真实形态;真全量可卖下候选空结构性不可达,若仍到达 =
-    零动作正常交回外循环轮转,持续无推进由外部哨兵保留证据暴露)。
+    零动作正常返回主循环轮转,持续无推进由外部哨兵保留证据暴露)。
 
     空板守卫 as-built 如实申报:评估器内 empty_board_sell_blocked 为
     后态判定,deployed = 0 帧卖出哑火——deployed = 0 帧的自救主路径 =
@@ -618,7 +618,7 @@ def _step0_overflow_self_rescue(session: StrategySession, gs: GameState,
         return _emit_sell_candidate(
             session, gs, _cands[0], reason='self_rescue_sell',
             tag='m0_self_rescue_sell', counter='self_rescue_sell')
-    # 态 4:防御性分支(结构不可达;识别异常形态零动作交回外循环)。
+    # 态 4:防御性分支(结构不可达;识别异常形态零动作返回主循环)。
     st = state_of(session)
     st.cw4_counters['self_rescue_no_exit'] = \
         st.cw4_counters.get('self_rescue_no_exit', 0) + 1
@@ -635,7 +635,7 @@ def _emit_sell_candidate(session: StrategySession, gs: GameState,
     坐标换算:评估器候选 idx = 紧缩占席序下标(bench 支)→ 容器槽位表
     下标(动作参数坐标系);deployed 支 = 上场紧缩行序 → 容器行序
     (CwActionSellDeployedParam 坐标系)。失配 = 陈旧帧 fail-closed
-    零动作交回外循环。卖出登记(record_round_sold) = 轮内新鲜度排除
+    零动作返回主循环。卖出登记(record_round_sold) = 轮内新鲜度排除
     账本写端(资格面账本,非试错计数),与现行卖出位同口径。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
@@ -721,7 +721,7 @@ def _step2_ore(session: StrategySession, gs: GameState) -> list[Emitted]:
 def _fallback_legs_ok(session: StrategySession, gs: GameState,
                       pre: LevelUpPreAuth, name: str) -> bool:
     """P78-5′ 兜底豁免的两腿必要条件(design 契约 D 升级变现行;
-    设计落码对拍确认):豁免构成 = **义务账 ∨ 对象无损**。
+    设计写入代码比对确认):豁免构成 = **义务账 ∨ 对象无损**。
 
     - 腿①(触发源义务血统维,验臂):``pre.source_arm`` 为骨架义务
       血统——人口位(02 号稿 §3 M3 义务正文)/ arm0(02 §5 回退)
@@ -786,7 +786,7 @@ def _bench_liquid_gold(gs: GameState) -> int:
 
 def _levelup_floor_ok(gs: GameState, session: StrategySession,
                       arm_key: str, after_gold: int) -> bool:
-    """发出前花后金下界检查(11 号篇 §2 保底金门 + 守 50 定谳(user_playstyle [3])
+    """发出前花后金下界检查(11 号篇 §2 保底金门 + 守 50 定论(user_playstyle [3])
     确认前 fail 态的单一装配口)。
 
     - 全域(所有臂):保底金门 = ``guarantee_floor_gate`` 单一源
@@ -944,11 +944,11 @@ def _step3_level_up(session: StrategySession, gs: GameState,
                         bench_idx=idx, reason='levelup_liquidate'),
                         True, 'levelup_liquidate_sell')]
             if u is not None:
-                # 腿拒显影(两腿必要条件不过——偏好账臂变卖有价资产):
+                # 腿拒暴露(两腿必要条件不过——偏好账臂变卖有价资产):
                 # 键保留零动作,分键区分「无兜底候选」与「候选被腿拒」。
                 counters['levelup_fallback_leg_reject'] = \
                     counters.get('levelup_fallback_leg_reject', 0) + 1
-        # 候选穷尽(含兜底):键保留至节点末,执行帧不发出——零动作交回
+        # 候选穷尽(含兜底):键保留至节点末,执行帧不发出——零动作结束本次访问
         # 全扫(幂等重评;失效出口 = 节点边界重置清键)。
         counters['levelup_liquidate_exhausted'] = \
             counters.get('levelup_liquidate_exhausted', 0) + 1
@@ -1096,7 +1096,7 @@ def _step3_level_up(session: StrategySession, gs: GameState,
             counters.get('levelup_liquidate_exhausted', 0) + 1
         return []
     # 攒批资金(含活期口径)不足整级 → 一击不买(攒钱模式,等节点收入;
-    # 压牌库买入受整买预留约束不会吃掉攒批资金,23 号篇序 4 压库)。
+    # 压牌库买入受整买预留约束不会吃掉攒批资金,23 号篇序 4 压牌库)。
     counters['levelup_stockpile_wait'] = \
         counters.get('levelup_stockpile_wait', 0) + 1
     return []

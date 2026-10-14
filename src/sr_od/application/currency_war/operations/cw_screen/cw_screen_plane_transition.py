@@ -1,24 +1,24 @@
 """货币战争 位面过渡 op。
 
 「点击空白处继续」提示出现即点空白(简报下一步后 / 每个 boss 位面开始时各一次)。
-完成 = 提示消失(真转移)交回循环;提示未现 = 该步不适用(编排壳按步分流)。
+完成 = 提示消失(真转移)结束本次访问循环;提示未现 = 该步不适用(编排壳按步分流)。
 识别与点击坐标均走 screen_info(``currency_war_plane_transition``:
 提示 text area + 区域-空白点击,cw_loop 实证空白点建档)。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation):
 观察 node = 提示门(「提示-点击空白继续」miss 未发 = round_fail 交编排
 壳/循环重新分流)+ 过渡链观察一次读:底部全亮行读数构造链值(plane
-派生与 TokenCell 构造留守观察侧,见 ``_build_transition_chain``;与
+派生与 TokenCell 构造留在观察侧,见 ``_build_transition_chain``;与
 kernel report 的协同契约见该屏 kernel 屏文件)→ ``report_screen_plane_
 transition_obs`` 写 ``node_path``/``node_path_baseline``(链防御在
-report 内;读+写整体 best-effort 抑制留守观察侧,不阻塞推进)→ obs 挂
-实例属性进决策 node。决策动作 node = 重入裁决顶部(点空白已发 → 提示
-不在 = 过渡完成 → success 交回(外环通用连续 fail 预算
+report 内;读+写整体 best-effort 抑制留在观察侧,不阻塞推进)→ obs 挂
+实例属性进决策 node。决策动作 node = 落地复查顶部(点空白已发 → 提示
+不在 = 过渡完成 → success 结束本次访问(外环通用连续 fail 预算
 ``cw_loop.py::CwLoop.OP_FAIL_REDISPATCH_LIMIT`` 只认 fail,完成路径必须
 success);提示在 = 点击未落地 → 重点)→ 点空白推进 →
 round_wait 循环(不烧节点重试预算;不收敛 = 动作 bug 响亮暴露,无防御
 上限)。门在观察 node 先行,裁决住决策动作 node 顶部。本屏 sim 腿 =
-不适用(sim 无对应画面段),等价判据主承重 = 实机在册行为锁 +
+不适用(sim 无对应画面段),等价判据主承重 = 实机已登记行为锁 +
 sr-od-test 链观察锁(test_node_chain.py 过渡屏节)。
 """
 import contextlib
@@ -81,7 +81,7 @@ def _build_transition_chain(gs: GameState | None,
 
 
 class CwScreenPlaneTransition(CwOperation):
-    """位面过渡:识别「点击空白处继续」→ 点空白 → 重入观察裁决交回(验证废除)。"""
+    """位面过渡:识别「点击空白处继续」→ 点空白 → 落地复查后结束本次访问(零验证)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-位面过渡'
     PROMPT_AREA: ClassVar[str] = '提示-点击空白继续'
@@ -89,8 +89,8 @@ class CwScreenPlaneTransition(CwOperation):
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-位面过渡')
-        # 点空白已发待重入裁决标志(验证废除形态):重入裁决住决策动作
-        # node 顶部——提示不在 + 已发 = 过渡完成 → success 交回;提示在 =
+        # 点空白已发待落地复查标志(零验证形态(用户裁定:动作层不做效果验证,判效归下一帧观察)):落地复查住决策动作
+        # node 顶部——提示不在 + 已发 = 过渡完成 → success 结束本次访问;提示在 =
         # 点击未落地 → 重点。
         self._click_pending: bool = False
         # 观察结果(观察 node 产物;链值 None = 行空/读缺,report 诚实缺位)。
@@ -139,10 +139,10 @@ class CwScreenPlaneTransition(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=8)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 点空白推进 → round_wait。
+        """落地复查(顶部)→ 点空白推进 → round_wait。
 
-        重入裁决(观察驱动,验证废除形态):上轮点空白已发 → 提示不在 =
-        过渡完成(提示已消失)→ success 交回;提示在 = 点击未落地 → 重点。
+        落地复查(观察驱动,零验证形态):上轮点空白已发 → 提示不在 =
+        过渡完成(提示已消失)→ success 结束本次访问;提示在 = 点击未落地 → 重点。
         循环推进 = round_wait(不烧节点重试预算;不收敛 = 动作 bug 响亮
         暴露,无防御上限)。"""
         if self._click_pending:
@@ -162,7 +162,7 @@ class CwScreenPlaneTransition(CwOperation):
             self.ctx.controller.mouse_move(blank)
             self.ctx.controller.click(blank)
         else:
-            # sim:本点击是后端点击源(空白点击 → 节点窗口收口推进),
+            # sim:本点击是后端点击源(空白点击 → 节点窗口收尾推进),
             # 必须过 click_answer 端口——直连旁路静默跳过 = 世界零反应,
             # 过渡屏永驻 → 外循环重派风暴(flow-seam §2 直连旁路逐点
             # port 检查;动作 op 族「世界反应由自上报承接」形态不适用
@@ -171,6 +171,6 @@ class CwScreenPlaneTransition(CwOperation):
                 self, CwScreenPlaneTransition.SCREEN_NAME,
                 CwScreenPlaneTransition.BLANK_AREA, None, None)
         time.sleep(1.0)   # click 异步落地 + 过渡翻页动画
-        # 机械交回(验证废除):提示消失与否由下一轮重入观察裁决(act 顶部)。
+        # 机械部分完成即结束本次访问(零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)):提示消失与否由下一轮落地复查(act 顶部)。
         self._click_pending = True
         return self.round_wait('点空白已发,重入观察裁决')

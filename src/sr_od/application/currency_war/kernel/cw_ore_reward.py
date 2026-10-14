@@ -6,7 +6,7 @@
 不动结构;校准数据源 = 随机态观察收口的 ``logic_rand_outcome`` 行(采样值
 vs 实读真值逐局积累)。
 
-在册冲突调和(design §0 裁决 2):screen_flow_timing #16 三形态佐证本口径;
+已登记冲突调和(design §0 裁决 2):screen_flow_timing #16 三形态佐证本口径;
 fields.md §4.2 的「箱」与 final_wandi_burn 的「稀有物」为 v0 有意不建模
 ——采样错形态时观察收口兜底(安全的不准确),代价由席满让路门 + 观察
 回补既有裁定承担。
@@ -45,7 +45,7 @@ CHAR_DROP_STAR: int = 1
 _SIMPLE_EQUIP_POOL: tuple[str, ...] = tuple(sorted(
     name for name, eq in EQUIPMENTS.items() if eq.category == '简易'))
 
-#: 建模假设档披露键汇总(design §0.1;在册落点 = 本常量,随局披露面消费)
+#: 建模假设档披露键汇总(design §0.1;已登记落点 = 本常量,随局披露面消费)
 ORE_ASSUMPTION_KEYS: tuple[str, ...] = (
     'ore_type_uniform',
     'ore_gold_uniform_1_5',

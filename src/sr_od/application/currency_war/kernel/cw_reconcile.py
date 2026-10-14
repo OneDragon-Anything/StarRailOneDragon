@@ -25,14 +25,14 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_opening_hp import opening_hp_prior
 
 # 合成特效帧态门注入槽(分包依赖矩阵禁 kernel→obs 直依):kernel 只持槽位,
-# 实现由 app 装配点(decision_assembly.install_obs_ports)从 obs 桶注入。
+# 实现由 app 装配点(decision_assembly.install_obs_ports)从 obs 层注入。
 # 缺省关(None)= 门放行,回退直接走「连续 2 次确认采新」——与门函数自身
 # 「screen=None → False 不拦」的 best-effort 语义同向,不引入新故障面。
 _IS_MERGE_EFFECT_FRAME = None
 
 
 def set_merge_effect_gate(fn) -> None:
-    """注入合成特效帧态门实现(obs 桶 ``is_merge_effect_frame``;生产武装点接通)。"""
+    """注入合成特效帧态门实现(obs 层 ``is_merge_effect_frame``;生产武装点接通)。"""
     global _IS_MERGE_EFFECT_FRAME
     _IS_MERGE_EFFECT_FRAME = fn
 
@@ -41,7 +41,7 @@ def is_merge_effect_window(screen: MatLike | None) -> bool:
     """合成特效窗判定读口(P3-10 批次二复审):观察消费前的窗内统一判别口。
 
     复用 ``_IS_MERGE_EFFECT_FRAME`` 注入槽(生产武装点 =
-    decision_assembly.install_obs_ports 注入 obs 桶 ``is_merge_effect_frame``——
+    decision_assembly.install_obs_ports 注入 obs 层 ``is_merge_effect_frame``——
     与 star 回退帧态门是同一特效窗物理事实的两个消费口)。``screen=None`` 或
     槽缺省关(未装配)恒 False = 核对放行,与既有门 best-effort 语义同向,
     不引入新故障面;注入后 True = 窗内星读数物理不可信,消费方顺延核对
@@ -73,7 +73,7 @@ def is_merge_effect_window(screen: MatLike | None) -> bool:
 # 候选态宿主 = 按局身份 session 的旁表(WeakKeyDictionary 主路,同
 # game_state_of 模式;新局新 session = 天然清零,无跨局串染面。GameState
 # 本体是 eq-dataclass 不可哈希,故不以其为键;不可弱引用桩面回退 id 键
-# 旁表,超限清空只保在册——同 _DEPLOYED_2SRC_RUN_COUNTS 纪律)。
+# 旁表,超限清空只保已登记——同 _DEPLOYED_2SRC_RUN_COUNTS 纪律)。
 # 保旧经门后副本承载(frozen 容器形状不可就地改写,P6 直产载体:replace
 # 新构造),其后的纠漂快照与写回消费门后副本——单帧抖动不进 drift 判定
 # (不产「对账纠漂」噪声行),同帧容器席位视图观察写端(备战帧 director

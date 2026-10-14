@@ -9,7 +9,7 @@
 - **候选买入评估**:对店面每张牌先判类再过金约束门——件级买入判定序(六序)与 M2 义务通道语义 = `11_shop_decisions.md` §1(序 1/序 2 = 骨架义务 M2,不走利息规则门;序 3-5 = EV 买面,判据 = `criteria/buy.py::ev_buy_candidates`/`ev_buy_veto`);合成完成买入 M2b 与核心卡支配支(C1)= `11_shop_decisions.md` §1/§2 在案通道;拒因分类单一源 = `shop.py::shop_unbought_reasons`。
 - **刷新放行条件**:先一次性算清这轮刷新到出完牌的总花费(卡费 + 利息损失等路径总账),不超可用金才允许刷(路径总账判据 = `criteria/refresh.py::r1_commitment_account`,账项装配 = `shop.py::_r1_ledger_terms`;P40 `../proofs/p40-refresh-ev.md` + 验证档 `../proofs/validations/P40_VALIDATION.md`,利息损失递推 = P47 `../proofs/p47-interest-account.md`);期内续刷受 R2 利息线熔断(`criteria/refresh.py::r2_budget`/`r2_card_reserve`,P54);刷前过存在性门 P92(`criteria/refresh.py::all_channel_buy_exists`,`../proofs/math_proofs.md` P92 行);危机帧不变式 P36-a(`criteria/refresh.py::crisis_refresh_invariant`)先于存在性门。刷新 = **结束本次访问**(刷后返回主循环(重新识别画面),重进 = 入口观察重建期望态;次数无硬墙,无限刷新环 = 策略实现 bug 框架不兜底)。
 - **收工判定**:「无动作可做」= 主动提案 `CloseShop`(恒可用的结束动作,全函数契约);牌面含未识别槽(失读窗)→ 花钱动作全禁、仅关店收工(能力矩阵篇 §3.5/§4)。
-- **满席腾位(收缩后目标形态)**:商店期**不卖备战**——席满而需腾位时 = 提案 `CloseShop` 离店 → 返回主循环(重新识别画面)交备战 → 备战期 M4 腾席卖出([22_prep_screen.md](22_prep_screen.md))→ 重开商店(`OpenShop`)继续买。牌面持久依据:节点内关店/重开不刷新商店,跨节点才自动刷新全店(`docs/game/currency_war/research/economy.md` §2.1)——腾位往返不损失已刷牌面。
+- **满席腾位(收缩后目标形态)**:商店期**不卖备战**——席满而需腾位时 = 提案 `CloseShop` 离店 → 返回主循环(重新识别画面)交备战 → 备战期 M4 腾位卖出([22_prep_screen.md](22_prep_screen.md))→ 重开商店(`OpenShop`)继续买。牌面持久依据:节点内关店/重开不刷新商店,跨节点才自动刷新全店(`docs/game/currency_war/research/economy.md` §2.1)——腾位往返不损失已刷牌面。
 
 ## 2. 会执行的动作清单(收缩后目标形态)
 

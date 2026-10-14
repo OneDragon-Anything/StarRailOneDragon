@@ -6,7 +6,7 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 obs,op-layer.md §1.1 观察标准化门/选择坐标观察上报)。report 摄入点 =
 operations/cw_screen/cw_screen_bookcard.py::
 ``CwScreenBookcard.observe``(观察 node);适用范围边界:动作事实
-``chosen_tome`` 不并入,留守落地复查点。
+``chosen_tome`` 不并入,留在落地复查点。
 """
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def report_screen_bookcard_obs(gs: GameState, obs: CwScreenBookcardObs, *,
 
     写点锚 = cw_screen_bookcard.py::``CwScreenBookcard.observe``(观察
     node 摄入);options 空 = OCR 未读得,不写(原写点「读得才写」闸逐位
-    平移,双域一体);``chosen_tome`` 留守落地复查点(动作事实边界)。
+    平移,双域一体);``chosen_tome`` 留在落地复查点(动作事实边界)。
     """
     if sig is None:
         sig = ChannelSig(family='logic_action',

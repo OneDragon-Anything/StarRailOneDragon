@@ -47,7 +47,7 @@ DEPLOY_FENCE: frozenset[str] = frozenset(_RECIPE | _ENGINE_FENCE)
 # 臂判定位,best-effort sink,待标定①载体)——消费面禁
 # 字面量散写(三审07轮 C2),键名改这里即全链跟随。
 LAUNCH_QUALITY_DEFER_FRAMES_KEY: str = 'launch_quality_defer_frames'
-#: 质量评估异常帧分键(fail-open 显影;armed∧quality_eval_error 帧,
+#: 质量评估异常帧分键(fail-open 暴露;armed∧quality_eval_error 帧,
 # 与「配方不完备」常态帧单义区分,残量禁静默)。
 LAUNCH_QUALITY_EVAL_ERROR_KEY: str = 'launch_quality_eval_error'
 
@@ -281,7 +281,7 @@ def readiness_launch_decision(gs: GameState, comp: Comp | None,
     armed)、``quality``(配方完备帧的质量维报告;
     None = 配方不完备帧,或质量评估异常的 fail-open 帧——异常帧
     armed 维持配方腿结果,防死锁优先)、
-    ``quality_eval_error``(评估异常显影旗:True = quality=None 系
+    ``quality_eval_error``(评估异常暴露旗:True = quality=None 系
     异常 fail-open 而非配方不完备,消费面经
     ``LAUNCH_QUALITY_EVAL_ERROR_KEY`` 分键落盘,残量禁静默)。
 
@@ -311,7 +311,7 @@ def readiness_launch_decision(gs: GameState, comp: Comp | None,
         except Exception:   # noqa: BLE001  质量评估异常 fail-open(算不出
             # 不关闸,防死锁优先)
             quality = None
-            # 异常显影旗(残量禁静默,口径):quality=None 兼有
+            # 异常暴露旗(残量禁静默,口径):quality=None 兼有
             # 「配方不完备」常态义,异常帧经本旗与消费面分键单义区分。
             quality_eval_error = True
         armed = True if quality is None else (
@@ -330,11 +330,11 @@ def readiness_launch_decision(gs: GameState, comp: Comp | None,
 
 def launch_admission_report(gs: GameState, comp: Comp, *,
                             line_members: Callable[[Comp], set[str]]) -> dict:
-    """达标臂 G1 准入预估(§9.2 准入三元 + victim 收束,动作发出面显影用)。
+    """达标臂 G1 准入预估(§9.2 准入三元 + victim 收束,动作发出面暴露用)。
 
     返回 dict(全 bool):``board_full``(三元①板满:占用部署数 ≥ 可上阵
     数 ``state.max_units()``;旧口径 = 物理槽位总数 DEPLOYED_CAPACITY,level 驱动 cap 全域
-    <10 ⇒ 该分键结构性不显影;换占用数 vs max_units 与 swap 臂同一裁决
+    <10 ⇒ 该分键结构性不暴露;换占用数 vs max_units 与 swap 臂同一裁决
     先例(禁物理门),占用数单一源 = 容器行成员计数)、``bench_core_waiting``(三元②:bench 存在线内
     待上场件——口径 = core∪shared(line_members)∨ 阵营交集,
     与买入/部署义务面对齐)、``victim_missing``(三元③:板上无合格
@@ -342,10 +342,10 @@ def launch_admission_report(gs: GameState, comp: Comp, *,
 
     victim 资格单一源 = offtarget_sell_allowed fenced 臂全条件(off-line
     ∧ 围栏 ∧ 非保护域,保护域 = core∪shared∪替班者)。**不附 1★ 全退门**——
-    换血卖出无退款资格前置,提案侧多一道门只会造成 victim_missing 误显影。
+    换血卖出无退款资格前置,提案侧多一道门只会造成 victim_missing 误暴露。
     提案侧预估基于期望态现读;执行时刻机械单发零现读,落地归观察对账
     (预估与执行间无现读重建面)。
-    三元不全/victim 缺失**只显影不拦截**(出战优先;准入是观测面,
+    三元不全/victim 缺失**只暴露不拦截**(出战优先;准入是观测面,
     非第二道闸)。
 
     :param line_members: 线成员谓词(注入参;单一源 =
@@ -372,7 +372,7 @@ def launch_admission_report(gs: GameState, comp: Comp, *,
     protect = protect_names_of(comp)
     t_factions = set(getattr(comp, 'all_factions', []) or [])
     # 板满口径 = 占用数 vs max_units(与 swap 臂同裁决:禁物理槽位门);
-    # cap 缺读 = 质量闸兜底同口径(不显影板满)。
+    # cap 缺读 = 质量闸兜底同口径(不暴露板满)。
     try:
         _cap = int(max_units_of(gs))
     except Exception:   # noqa: BLE001  cap 缺读 = 放行判定 None 兜底同口径

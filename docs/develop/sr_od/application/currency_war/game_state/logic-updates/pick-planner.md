@@ -10,17 +10,17 @@
 
 **单相**(上报宿主 = `kernel/cw_action_report/pick_planner.py::report_action_pick_planner_param`,与 pick_invest 同构;`CwActionPickPlannerOp` 确认点击后调用,`leg_type`/`norm_item` 经 `OverlayPickExecEnv` 随派发透传):
 
-- **条件单位(rider)先行**(上报内、效果分支分派之前):欢愉契约在册时采样授予一枚条件单位(获得链 `gain_character`,evidence = `joy_conditional:<单位名>`;授予失败不阻塞分支分派,调用点级 best-effort);
+- **条件单位(rider)先行**(上报内、效果分支分派之前):欢愉契约已登记时采样授予一枚条件单位(获得链 `gain_character`,evidence = `joy_conditional:<单位名>`;授予失败不阻塞分支分派,调用点级 best-effort);
 - 按效果分支分派的容器(GameState,游戏状态对象,下同)写域:
   - **装备分支**:`equips` 入栏(`write_logic`)+ 获得后果链(`cw_effect_inventory.apply_equip_acquire_consequence`,命中后果表则送角色 → bench + 合成级联);未解析件名 → `equips` 值不变、来源标记翻转 + 保留证据的行(禁猜);
   - **升费分支**:`bench`/`front_row`/`back_row` 变换窗三态(恰一枚 2★银狼LV.999 → 变 1★ + `lv999_cost_tier` 档行(现档+1,牌库改变的容器表达;档行时序 = 变换落行后、级联前)/ 多枚 → 值不变、来源标记翻转并保留证据 / 零枚未观察 → fail-closed(读不到数据/条件不满足时默认走保守分支不动作)保留证据并触发告警停机)+ `merge_cascade_write` 级联;
   - **unknown**:零记账 + 保留证据的行(含弱化词且装备名识别未命中的卡文落此——弱化兜底档已按原文二分法停用,由静默零记账改为显式申报报错);
 - **未路由分支** = 终态兜底零写(reason = `unrouted_leg_zero_write`);
-- **选中点几何**(避开卡内「详情」按钮区)归决策部分 `_card_point` 单一源现算,经 `env.target` 传入。(决策部分现算经 env = 已登记的「选择坐标观察上报」欠账,收敛归族级迭代处理)
+- **选中点几何**(避开卡内「详情」按钮区)归决策部分 `_card_point` 单一源现算,经 `env.target` 传入。(决策部分现算经 env = 已登记的「选择坐标观察上报」待办,收敛归族级迭代处理)
 
 ## 3. 确定面转移规则(逐条)
 
-1. **点卡选中**:mouse_move + click `env.target`(press_time = `op.CLICK_PRESS_TIME`;选中点避开卡内「详情」按钮区——点卡身上部,点错触详情面板的实证几何治理;选中点经 `env.target` = 已登记的「选择坐标观察上报」欠账,§2 行注同源)→ 固定等待 1.2s(选中动画);
+1. **点卡选中**:mouse_move + click `env.target`(press_time = `op.CLICK_PRESS_TIME`;选中点避开卡内「详情」按钮区——点卡身上部,点错触详情面板的实证几何治理;选中点经 `env.target` = 已登记的「选择坐标观察上报」待办,§2 行注同源)→ 固定等待 1.2s(选中动画);
 2. **确认** = `round_by_find_and_click_area`(建档「按钮-骇入确认」查找点击,确认钮查找全族统一,用户裁定 2026-09-22;不带 until = 动作 op 禁验证;area 缺失 = 显式失败交框架轮次);轮次结果经 `env.round_result` 旁路回传;
 3. **确认点击后即时自上报**完整结果(单相一口写,见 §2);
 4. 详情面板防御已拆:面板若真弹出(点错所致)= 选中点几何治理域,后果归下一帧外循环自愈——本屏分发即门,外循环按当前画面重分派(详情 overlay 族分支)。
@@ -43,7 +43,7 @@
 
 ## 8. 判例注记(动作发出阶段)
 
-骇入策划 overlay 画面期;动作发出点 = 画面 op act 段经注册表工厂分派,派发即终结交回。
+骇入策划 overlay 画面期;动作发出点 = 画面 op act 段经注册表工厂分派,点击发出后即结束本次访问并返回主循环。
 
 ## 9. 依据
 

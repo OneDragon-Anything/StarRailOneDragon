@@ -54,7 +54,7 @@ def report_screen_supply_node_obs(gs: GameState, obs: CwScreenSupplyNodeObs, *,
     (观察 node 摄入;原写点以「本分支将调用 decide」为前提取
     ``[o for o, _ in opts]``,元素类型对齐 ``SupplyPayload.options`` 声明)。
     options 空 = 读缺(CARD_BODY 兜底路径),整函数早退不写(含 left,
-    invest_env names 空先 return 同构);``chosen_supply`` 留守(动作事实
+    invest_env names 空先 return 同构);``chosen_supply`` 留在(动作事实
     边界)。
     """
     if sig is None:

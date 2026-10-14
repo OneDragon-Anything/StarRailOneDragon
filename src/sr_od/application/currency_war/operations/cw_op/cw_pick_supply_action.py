@@ -4,7 +4,7 @@
 
 机械语义:点卡选中 → 确认;确认点击后立即一口自上报完整结果
 (``report_action_pick_supply_param``)+ 节点推进上报;刷新圆钮机械
-点击留守画面 op。
+点击留在画面 op。
 """
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 class CwActionPickSupplyOp(CwOperation):
     """补给节点 pick 确认链(统一动作工厂 迁入)。
 
-    刷新圆钮机械点击留守画面 op(刷新链 = 刷新建议动作
+    刷新圆钮机械点击留在画面 op(刷新链 = 刷新建议动作
     ``CwActionRefreshSupplyParam`` 的执行半)——pick execute 语义 =
     点卡选中 → 确认,不含刷新分支。
     **即时上报**(契约单一源 = `flow/action_ops.md` §1  与

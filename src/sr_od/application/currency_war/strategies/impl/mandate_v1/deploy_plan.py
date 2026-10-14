@@ -80,11 +80,11 @@ def _slot_no_of(b, idx: int | None = None) -> int:
     """占席条目 → 紧缩位键(条目在紧缩占席序中的 0 基下标;Unit.slot 仅作信息位,紧缩序 = 物理槽序;``idx`` 显式传位)。"""
     return int(idx if idx is not None else 0)
 
-#: 部署计划容器槽位表不健康显影分键(计划级 fail-closed 时 +1)。键名保留
+#: 部署计划容器槽位表不健康暴露分键(计划级 fail-closed 时 +1)。键名保留
 #: 现役 ``deploy_chain_slot_table_unhealthy``(跨局遥测对照可比性优先;
 #: 发出点已统一为本函数 = 原出战链局部键的同语义继承,mandate 动作发出点与
 #: 出战链共用;键名沿用 deploy_chain_ 前缀为历史命名,语义 = 本计划单一源
-#: 的计划级显影,benchchar-retirement P8 申报确认)。
+#: 的计划级暴露,benchchar-retirement P8 申报确认)。
 DEPLOY_PLAN_SLOT_TABLE_UNHEALTHY_KEY: str = 'deploy_chain_slot_table_unhealthy'
 
 
@@ -474,9 +474,9 @@ def can_deploy_single(
         required_names=required_names)
     if idx in up:
         return True, ''
-    # 缺省 'unannotated' 显影(策略审查二十三跳必改项):候选 held 而拒因
+    # 缺省 'unannotated' 暴露(策略审查二十三跳必改项):候选 held 而拒因
     # 字典无标注 = 未来新增 hold 路径漏标拒因的缺口形态——不冒名 'cap',
-    # 显影回炉标注(既有五拒因调用面零变化)。
+    # 暴露回炉标注(既有五拒因调用面零变化)。
     return False, reasons.get(idx, 'unannotated')
 
 
@@ -484,7 +484,7 @@ def deploy_row_pref(char_id: str, comp: object | None) -> str:
     """落位排路由(策略三级;design §2.2「每人的排全部由策略实现决定」)。
 
     ① 阵容 站位覆盖:``Comp.char_positions``(字段契约「阵容 特定站位
-       要求(角色→front/back),覆盖命途 position_pref 默认」;在册实例
+       要求(角色→front/back),覆盖命途 position_pref 默认」;已登记实例
        = 爻光必后台/万敌独前排/知更鸟前台,攻略实证);
     ② 注册表派生:``get_char(char_id).position_pref()``(design §2.1
        「position_pref 不入形状,消费点经注册表按 char_id 派生;禁全局
@@ -581,7 +581,7 @@ def deploy_plan_moves(frame: MandateFrame, session: StrategySession,
     槽位表存在重复/越界槽号时 ``{slot: 下标}`` 字典对位语义未定义
     (静默保留后值 = 拖错人出场的通道),判据单一源 =
     ``bench_slots_healthy``;不健康 → 整份计划 fail-closed 不出 +
-    :data:`DEPLOY_PLAN_SLOT_TABLE_UNHEALTHY_KEY` 分键显影防静默降级。
+    :data:`DEPLOY_PLAN_SLOT_TABLE_UNHEALTHY_KEY` 分键暴露防静默降级。
     逐 move 对位失配(陈旧帧)= fail-closed 跳过该 move。
 
     返回 ``[(bench 容器下标, row, 排内 1 基槽号, faction)]``;计划空 =

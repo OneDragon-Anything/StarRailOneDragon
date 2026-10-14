@@ -419,7 +419,7 @@ def blank_window_policy(gs: GameState) -> BlankWindowDecision:
     - 买侧 = 目标件出现只买它,否则压当前目标费用带([30] 压牌库模型:买同费件,
       目标出货概率随池空升高;费用带=目标件费用众数,草案级);
     - 上场侧 = 现有牌最优羁绊组合(归部署围栏/decision_v2,本入口只管买侧);
-    - **绝不为凑数 D 牌**([31]):off-target 件一律不进 buy_idx。
+    - **绝不为凑羁绊填充而刷新商店**([31]):off-target 件一律不进 buy_idx。
     """
     active_any = any(card_active(card, gs) for card in SYSTEM_CARDS.values())
     if active_any:

@@ -4,7 +4,7 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 观察面 = 分支候选卡 + 「剩余次数」入口稳定帧读数(同一稳定帧一次读)。
 report 摄入点 = operations/cw_screen/cw_screen_encounter.py::
 ``CwScreenEncounter.observe``(观察 node);适用范围边界:动作事实
-``chosen_encounter`` 不并入,留守落地复查面;``encounter_refresh_left``
+``chosen_encounter`` 不并入,留在落地复查面;``encounter_refresh_left``
 观察写端在本 report(读缺跳写,剩余语义观察真值,机械先例 =
 invest_env 的 ``env_refresh_left`` 摄入)。
 """
@@ -52,7 +52,7 @@ def report_screen_encounter_obs(gs: GameState, obs: CwScreenEncounterObs, *,
     写点锚 = cw_screen_encounter.py::``CwScreenEncounter.observe``(观察
     node 摄入;刷新链终结化后本函数零二次覆盖写调用点)。options 空 =
     读缺,整函数早退不写(含 left,invest_env names 空先 return 同构);
-    ``chosen_encounter`` 留守(动作事实边界)。
+    ``chosen_encounter`` 留在(动作事实边界)。
     """
     if sig is None:
         sig = ChannelSig(family='logic_action',

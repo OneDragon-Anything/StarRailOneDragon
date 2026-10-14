@@ -22,7 +22,7 @@ live/sim 共用的单一正确性来源理由,非「通用复用」)。
 - 回调三写(diamond_count/deploy_cap/back_layout):sim 世界数值面,
   全部 :meth:`GameState.observe`(先例 = ``_on_supply_picked`` 的
   diamond_count observe 写);**live 不调回调**——三域 live 写端 =
-  观察识别器,逻辑侧禁写(投影审计在册)。
+  观察识别器,逻辑侧禁写(投影审计已登记)。
 
 **sig 单形态**(禁 obs_sig 进触发函数)::func:`check_env_streak_grants`
 的 ``sig`` 入参必须是 logic_action / logic_hook 族(obs 族进

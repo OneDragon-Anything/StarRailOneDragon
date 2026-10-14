@@ -15,7 +15,7 @@
 - ``p_win_lambda(board_tier, hp, nodes_left)``:λ_hp = P(win|hp+1) − P(win|hp)(峰形曲线)。
 
 升级路径(并轨 V2):本模块立出口 API 供消费端(salvage/计价/
-evidence 门);换桶分布转移矩阵、D 牌 Bernoulli 赌局化、hp 残值补丁为
+evidence 门);换桶分布转移矩阵、刷新商店 Bernoulli 赌局化、hp 残值补丁为
 后续扩展方向(K1-K3 判据)。
 """
 from __future__ import annotations

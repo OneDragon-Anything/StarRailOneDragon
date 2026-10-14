@@ -140,7 +140,7 @@ def node_win_p(node_type: str, round_num: int = 0) -> float:
 
     (node, round) 实测组合优先(``NODE_WIN_P_LADDER``),缺组合退
     节点类型边际(``NODE_WIN_P_BY_TYPE``)。语料边界见常量注释:
-    旧策略病局镜像、无成型度条件性——新策略语料攒够后重标。
+    旧策略异常对局镜像、无成型度条件性——新策略语料攒够后重标。
     """
     if node_type in ('reward', 'supply'):
         return NODE_WIN_P_BY_TYPE[node_type]
@@ -205,7 +205,7 @@ def boss_settle_delta(gs: GameState, dir_round: int,
     胜 → ``BOSS_WIN_DELTA`` 小额(掷 ``node_win_p('boss', round)``,
     n=192 实测 0.05);负 → 旧 ``boss_delta`` 档(幅度层保留)。
     旧 rung 条件胜率(的 0/0/0.25 + rung2 外推)已被
-    实测边际替换——语料是旧策略病局镜像,无条件性可标(成型度
+    实测边际替换——语料是旧策略异常对局镜像,无条件性可标(成型度
     条件性等新策略语料,见 ``NODE_WIN_P_LADDER`` 注释)。
     仅当 ``live_delta_for`` 返 None(无可及桶)时由调用方使用;
     Δ池可及桶命中时经验分布优先(池是实机真值,sim 规则表是补洞)。

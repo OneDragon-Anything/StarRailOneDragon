@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面但零逻辑态账——逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,例:买牌后金币 −40、备战席 +1;下一帧观察与推算不符时以实际观察为准,下同;本屏选择不产生逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(观察 node + 决策动作 node 两个运行节点,合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(「标识-祈愿试炼」,miss = round_fail 交回外循环重判)→ objective 一次读 → `report_screen_wish_trial_obs` 落容器(容器 = GameState,游戏状态对象,下同)`wish_trial_opts` / `wish_trial_opts_xy`(空桶照写,同门双写,op-layer.md §1.1「选择坐标观察上报」条款)→ obs 挂实例属性。决策动作 node = 顶部落地复查(确认 pending = 上轮已发确认的 `(objectives, pick_idx)` 快照;标识不在 = overlay 已关 → 此刻才写 `chosen_wish` + success;标识在 = 未落地 → 清标志重走)→ 零参决策 `match.strategy.decide_wish_trial()`(候选自容器槽;打分:金币类/阵营词命中/刷新购买操作向 + 效果偏置基分,权重常量单一源 = `strategies/impl/pick_bias.py::PICK_BIAS`,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E5;E 系编号 = 事件面编号,目录见该篇)。决策出口无屏内兜底:无对局上下文(无 match)不设早退支(用户裁决 2026-09-22 全族删门);返回 None/动作类型清单外 = 具名 round_fail、不发出无依据的动作、交回外循环(op-layer.md §1.1 出口③),pick idx 越界 = 守卫断言 AssertionError(op-layer.md §1.3,禁钳位),策略异常自然传播;守卫均在派发前、零点击,fail 出口非循环出口、非防御上限;选卡派发 = 策略产实例直发,流程侧零值域改写。选卡坐标 = 容器 `wish_trial_opts_xy`(选项坐标伴随域,与候选名域 `wish_trial_opts` 同序等长):观察上报与名字域同门一并入容器(op-layer.md §1.1「选择坐标观察上报」条款,坐标单一真相源 = 观察上报),动作 op 按 idx 自容器取点,缺席/越界 = 守卫断言;确认钮等静态控件识别标志 = screen_info area 现取不变。选卡确认链经 `CwActionPickWishTrialOp` 派发(机械链+自上报在动作 op 内,选卡动作统一迁移批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 在用值仅框架异常路径消费)。
+**单选族例外**(有选择面但零逻辑态账——逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,例:买牌后金币 −40、备战席 +1;下一帧观察与推算不符时以实际观察为准,下同;本屏选择不产生逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(观察 node + 决策动作 node 两个运行节点,合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(「标识-祈愿试炼」,miss = round_fail 返回主循环重新判定)→ objective 一次读 → `report_screen_wish_trial_obs` 落容器(容器 = GameState,游戏状态对象,下同)`wish_trial_opts` / `wish_trial_opts_xy`(空桶照写,同门双写,op-layer.md §1.1「选择坐标观察上报」条款)→ obs 挂实例属性。决策动作 node = 顶部落地复查(确认 pending = 上轮已发确认的 `(objectives, pick_idx)` 快照;标识不在 = overlay 已关 → 此刻才写 `chosen_wish` + success;标识在 = 未落地 → 清标志重走)→ 零参决策 `match.strategy.decide_wish_trial()`(候选自容器槽;打分:金币类/阵营词命中/刷新购买操作向 + 效果偏置基分,权重常量单一源 = `strategies/impl/pick_bias.py::PICK_BIAS`,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E5;E 系编号 = 事件面编号,目录见该篇)。决策出口无屏内兜底:无对局上下文(无 match)不设早退支(用户裁决 2026-09-22 全族删门);返回 None/动作类型清单外 = 具名 round_fail、不发出无依据的动作、返回主循环(op-layer.md §1.1 出口③),pick idx 越界 = 守卫断言 AssertionError(op-layer.md §1.3,禁钳位),策略异常自然传播;守卫均在派发前、零点击,fail 出口非循环出口、非防御上限;选卡派发 = 策略产实例直发,流程侧零值域改写。选卡坐标 = 容器 `wish_trial_opts_xy`(选项坐标伴随域,与候选名域 `wish_trial_opts` 同序等长):观察上报与名字域同门一并入容器(op-layer.md §1.1「选择坐标观察上报」条款,坐标单一真相源 = 观察上报),动作 op 按 idx 自容器取点,缺席/越界 = 守卫断言;确认钮等静态控件识别标志 = screen_info area 现取不变。选卡确认链经 `CwActionPickWishTrialOp` 派发(机械链+自上报在动作 op 内,选卡动作统一迁移批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 在用值仅框架异常路径消费)。
 
 ## 3. 观察面
 
@@ -17,13 +17,13 @@
 
 ## 4. 动作面
 
-**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回外循环主循环 `cw_loop.py::CwLoop.loop` 重新识别画面并重判):
+**动作 op 与交回对照表**(本篇唯一动作清单;「返回主循环」= 本访问结束、控制权返回主循环 `cw_loop.py::CwLoop.loop` 重新识别画面并重判):
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| `CwActionPickWishTrialOp`(`CwActionPickWishTrialParam`) | 注册表工厂 `action_op_for` 直发策略产 `CwActionPickWishTrialParam` 实例(`OverlayPickExecEnv` 仅携 op;坐标由动作 op 自容器取[op-layer §1.1「选择坐标观察上报」条款];两守卫派发前,流程侧零值域改写) | 自上报 `report_action_pick_wish_trial_param`(零写族 = 上报不写容器、消费真值归观察的动作类,容器零写) | 否(非终结):发出后 `round_wait` 循环推进;是否生效由落地复查判——「货币战争-祈愿试炼.标识-祈愿试炼」不在 = 补写 `chosen_wish` + success 交回外循环(见 §5) |
+| `CwActionPickWishTrialOp`(`CwActionPickWishTrialParam`) | 注册表工厂 `action_op_for` 直发策略产 `CwActionPickWishTrialParam` 实例(`OverlayPickExecEnv` 仅携 op;坐标由动作 op 自容器取[op-layer §1.1「选择坐标观察上报」条款];两守卫派发前,流程侧零值域改写) | 自上报 `report_action_pick_wish_trial_param`(零写族 = 上报不写容器、消费真值归观察的动作类,容器零写) | 否(非终结):发出后 `round_wait` 循环推进;是否生效由落地复查判——「货币战争-祈愿试炼.标识-祈愿试炼」不在 = 补写 `chosen_wish` + success 返回主循环(见 §5) |
 | (无 match,无对局上下文,非动作) | — | — | 不设早退支(op-layer §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路自然失败,局内不达此态 |
-| (决策无有效输出/pick idx 越界,非动作) | — | — | 守卫 fail:动作类型清单外/None = round_fail(含原值)、idx 越界 = AssertionError;零点击零派发,交回外循环 |
+| (决策无有效输出/pick idx 越界,非动作) | — | — | 守卫 fail:动作类型清单外/None = round_fail(含原值)、idx 越界 = AssertionError;零点击零派发,返回主循环 |
 
 决策动作 node 选卡+确认链(整体经动作工厂 `cw_pick_wish_trial_action.py::CwActionPickWishTrialOp` 派发,选卡动作统一迁移批;机械链+自上报零写在动作 op 内,派发 param 携真实选中 idx):
 
@@ -36,7 +36,7 @@ pick = decide_wish_trial()(零参;候选读容器 wish_trial_opts 槽)
    → 1.0s → 点「按钮-确认选择」[round_by_find_and_click_area,success_wait 1.5;
    本屏独有检测,不与 partner/megastar 的同名钮撞——祈愿识别标志在前已分流]
    → 自上报 report_action_pick_wish_trial_param)
-  (机械交回零判效——零判效 = 执行侧不判定动作是否生效,落地事实归下一帧观察;
+  (机械部分完成即结束本次访问零判效——零判效 = 执行侧不判定动作是否生效,落地事实归下一帧观察;
    落地判定归决策动作 node 顶部落地复查,
    chosen_wish 写端随之在复查点,防未落地轮留幻影登记)
 ```
@@ -47,11 +47,11 @@ pick = decide_wish_trial()(零参;候选读容器 wish_trial_opts 槽)
 
 | 条件 | 级别 | 交回落点 |
 |---|---|---|
-| 落地复查:标识不在(overlay 关) | **画面终结** | 补写 `chosen_wish` + round_success 交回外循环重分发(回备战) |
+| 落地复查:标识不在(overlay 关) | **画面终结** | 补写 `chosen_wish` + round_success 返回主循环重新分发(回备战) |
 | 落地复查:标识仍在(确认未落地) | 节点循环重入 | 重走重选(`round_wait` 循环推进,不烧节点重试预算,无防御上限) |
 | 无 match(无对局上下文) | 不设早退支(op-layer §1.1;用户裁决 2026-09-22 全族删门) | 未支持用法:单跑缺上下文沿正常链路自然失败,局内不达此态 |
-| 决策无有效输出(返回 None/动作类型清单外)/pick idx 越界 | 守卫 fail(op FAIL) | round_fail / 框架异常路径(留证截图 + node_max_retry_times=8 预算耗尽)交回外循环;连续 fail 由外循环重派防线兜底(flow/README §4) |
-| 入口识别标志 miss | op FAIL | 交回外循环重分发 |
+| 决策无有效输出(返回 None/动作类型清单外)/pick idx 越界 | 守卫 fail(op FAIL) | round_fail / 框架异常路径(保留证据截图 + node_max_retry_times=8 预算耗尽)返回主循环;连续 fail 由外循环重派防线兜底(flow/README §4) |
+| 入口识别标志 miss | op FAIL | 返回主循环重新分发 |
 
 「确认离开 = 画面终结」= [README.md](README.md) §6;守卫两行与「入口识别标志 miss」行同落点类,补行保表完备。
 
@@ -70,7 +70,7 @@ pick = decide_wish_trial()(零参;候选读容器 wish_trial_opts 槽)
 - 决策出口守卫:无对局上下文(无 match)不设早退支(op-layer.md §1.1;用户裁决 2026-09-22 全族删门)——原「盲发首卡」已停用申报;返回 None/动作类型清单外 = 具名 round_fail、不发出无依据的动作——原「策略异常 fallback 首卡」已停用申报。
 - 值域守卫:pick idx 越界 = 守卫断言 AssertionError——原「越界保持 idx=0 静默钳位」已停用申报。
 - chosen 记录面:objective 未读到/选中槽文本空不写(None 保持「无记录」)——语义保持,策略异常降级轮已随守卫停用。
-- 确认落地判定归落地复查(同轮验关已拆,验证废除);未落地轮重走 = `round_wait` 循环推进(无防御上限)。
+- 确认落地判定归落地复查(同轮验关已拆,零验证(用户裁定:动作层不做效果验证,判效归下一帧观察));未落地轮重走 = `round_wait` 循环推进(无防御上限)。
 - 无本屏专属停机钩子;守卫总册 = [../flow/guards.md](../flow/guards.md)。
 
 ## 9. 遥测与锁面

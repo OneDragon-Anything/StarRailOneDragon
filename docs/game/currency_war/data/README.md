@@ -24,10 +24,10 @@
 | [competitors.md](competitors.md) | 敌人词缀(~50)机制分类/克制叙事 + 竞争对手阵营(**词缀效果原文已入注册表 `affix_effects_data.AFFIX_EFFECTS`——运行时采集 ground truth;本文保留机制分类与克制启示层;20 个竞争对手阵营仍未建模,本文唯一源**) | ~50词缀 | 🟡 词缀=米游社攻略统计+实机采集校准(🔴 20个竞争对手阵营待实机) |
 | [advantage_layouts.md](advantage_layouts.md) | 优势布局/职级效果(等价钻钞 meta 增益;**注册表未建,本文唯一源**) | ~20 | ⚠️ bwiki,米游社-pending |
 | [bosses.md](bosses.md) | boss 克制关系全集(**机制 tag 已入注册表 `cw_enemy_data.BOSS_MECHANICS`(20 boss)+ `matchup` 结构层;本文保留逐 boss 技能叙事与克制启示,克制方向待实机校验**) | V4.4 全量 | 🟢/🟡 |
-| [plaza_meta.md](plaza_meta.md) | plaza 实战 meta 人读版(生成勿手编,`tools/cw/gen_plaza_comps.py`;`cw_plaza_comps.py` 校准对拍源) | 29 聚类 | 🟢 官方 API |
+| [plaza_meta.md](plaza_meta.md) | plaza 实战 meta 人读版(生成勿手编,`tools/cw/gen_plaza_comps.py`;`cw_plaza_comps.py` 校准比对源) | 29 聚类 | 🟢 官方 API |
 
-> 战力表系(`cw_power_table`/`cw_power_table_data`/生成器 `gen_power_table.py`)已零消费退役删除;
-> 退役前的人读快照 `docs/develop/currency_war/power_table_meta.md` 亦已退役,出处走 git 历史。
+> 战力表系(`cw_power_table`/`cw_power_table_data`/生成器 `gen_power_table.py`)已零消费停用删除;
+> 停用前的人读快照 `docs/develop/currency_war/power_table_meta.md` 亦已停用,出处走 git 历史。
 
 ---
 

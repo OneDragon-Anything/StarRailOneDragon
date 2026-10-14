@@ -2,7 +2,7 @@
 
 获得道具(如 3 费聘用书)后自动弹介绍 modal(0e3)的处理迁移:点 × 关闭,
 无验效。**入口观察用 OCR 回退**(建档 currency_war_item_detail.yml
-在册但无 id_mark——仅「按钮-关闭」定位区,无画面身份锚):
+已登记但无 id_mark——仅「按钮-关闭」定位区,无画面身份锚):
 「聘用书」∧ 非祈愿屏,与外循环分发判定同源同参——祈愿试炼选项名含
 「聘用书」(4 费聘用书)的截胡死循环修复(实机已实测确认单次 15min+)靠这道排他,
 排他双写于外循环分支判定与本 op 入口(两处同参,建档含 id_mark 后 op 侧
@@ -11,14 +11,14 @@
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;
 推进型空决策骨架逐屏内联,无共享基类——模式一致即重复):观察 node =
 入口门(OCR「聘用书」∧ 祈愿锚不命中,与外循环 0e3 分发判定同源同参;
-miss 未发 = round_fail 交回外循环重判,「下一帧重判」是外循环职责)+
+miss 未发 = round_fail 返回主循环重新判定,「下一帧重判」是外循环职责)+
 obs{on_screen} 挂实例属性(空决策形态无 report:本屏零容器写点,obs 类
 住 kernel/cw_screen_report/item_detail_popup.py,import 构造即可)。
 决策动作 node = 落地复查顶部(点 × 已发 → 门 miss = 已离开本画面 →
-success 交回——出口 = 入口观察的合法重判,非动作层判效;在 = 再推进)
+success 结束本次访问——出口 = 入口观察的合法重判,非动作层判效;在 = 再推进)
 → area 读「按钮-关闭」+ mouse_move+click 单次推进(防吞点击保留)→
 round_wait 循环(不烧节点重试预算,不收敛 = 动作 bug 响亮暴露,无防御
-上限;「推进动作未落地」= round_fail 如实交回)。本类入口信号 = 自有
+上限;「推进动作未落地」= round_fail 如实结束本次访问)。本类入口信号 = 自有
 OCR 排他判定(覆写形态),落地复查有观察信号可用,无「免锚发出即
 success」出口。
 """
@@ -44,8 +44,8 @@ class CwScreenItemDetailPopup(CwOperation):
         CwOperation.__init__(self, ctx, op_name='货币战争-道具详情弹窗')
         # 画面档名(× 控件所在建档;实例属性)
         self._screen_name: str = '货币战争-道具详情弹窗'
-        # 推进已发标志(验证废除形态):区分「首发 miss = 误分发 fail 交回」
-        # 与「重入 miss = 已离开本画面 success 交回」(实例级,单 op 生命周期)。
+        # 推进已发标志(零验证形态(用户裁定:动作层不做效果验证,判效归下一帧观察)):区分「首发 miss = 误分发 失败结束本次访问」
+        # 与「重入 miss = 已离开本画面 success 结束本次访问」(实例级,单 op 生命周期)。
         self._advanced_once: bool = False
         # 观察结果(观察 node 产物,决策动作 node 消费;空决策形态无 report)。
         self._obs: CwScreenItemDetailPopupObs | None = None
@@ -63,7 +63,7 @@ class CwScreenItemDetailPopup(CwOperation):
         """入口门 + obs{on_screen} 装载(空决策形态无 report)。
 
         门 miss = 首发误分发(分发判定帧命中 ∧ op 新帧门 miss 的过渡帧):
-        fail 交回外循环重判,不在 op 内等待重探。"""
+        失败结束本次访问,返回主循环重新判定,不在 op 内等待重探。"""
         screen = self.last_screenshot
         if not self.entry_ok(screen):
             return self.round_fail(
@@ -76,8 +76,8 @@ class CwScreenItemDetailPopup(CwOperation):
     def act(self) -> OperationRoundResult:
         """落地复查(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
         if self._advanced_once and not self.entry_ok(self.last_screenshot):
-            # 落地复查(验证废除形态):重入 miss = 已离开本画面 → success
-            # 交回;旗标清(实例级,单 op 生命周期语义)。
+            # 落地复查(零验证形态):重入 miss = 已离开本画面 → success
+            # 结束本次访问;旗标清(实例级,单 op 生命周期语义)。
             self._advanced_once = False
             return self.round_success(
                 f'{self.op_name}已推进(重入观察:已离开本画面)', wait=1)
@@ -90,7 +90,7 @@ class CwScreenItemDetailPopup(CwOperation):
 
     def progress_once(self) -> bool:
         """推进处理:读「按钮-关闭」center → mouse_move+click(缺失 =
-        False 如实交回;× 位于 (1862,65) 原 VLM 定位已 area 化,mouse_move
+        False 如实结束本次访问;× 位于 (1862,65) 原 VLM 定位已 area 化,mouse_move
         防吞点击保留)。"""
         close = area_center(self.ctx, self.CLOSE_AREA, self._screen_name)
         if close is None:

@@ -8,25 +8,25 @@
 
 ## 2. 画面形态声明
 
-**空决策形态**(确认即推进,零策略问询)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 标识门(「标识-未达上限警告」,miss = round_fail 交回外循环)+ obs{on_screen} + 占位 report 调用 → obs 挂实例属性;决策动作 node = 顶部落地复查(确认已发 → id_mark 不在 = 弹窗已关 → success 交回;id_mark 在 = 未落地重做)→ `_confirm_and_dismiss` 确认体 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=10` 在用值仅框架异常路径消费)。
+**空决策形态**(确认即推进,零策略问询)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 标识门(「标识-未达上限警告」,miss = round_fail 返回主循环)+ obs{on_screen} + 占位 report 调用 → obs 挂实例属性;决策动作 node = 顶部落地复查(确认已发 → id_mark 不在 = 弹窗已关 → success 结束本次访问;id_mark 在 = 未落地重做)→ `_confirm_and_dismiss` 确认体 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=10` 在用值仅框架异常路径消费)。
 
 ## 3. 观察面
 
-轻观察:payload = `CwScreenDeployNotFullObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/deploy_not_full.py`);标识门在观察 node(miss → `round_fail` 交回外循环)。report = `report_screen_deploy_not_full_obs` 占位调用(本屏在用零容器写点,接口为统一形态占位;match/gs 缺席跳过)。零 GameState 写端。
+轻观察:payload = `CwScreenDeployNotFullObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/deploy_not_full.py`);标识门在观察 node(miss → `round_fail` 返回主循环)。report = `report_screen_deploy_not_full_obs` 占位调用(本屏在用零容器写点,接口为统一形态占位;match/gs 缺席跳过)。零 GameState 写端。
 
 ## 4. 动作面
 
-**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回 `cw_loop.py::CwLoop.loop` 重判):
+**动作 op 与交回对照表**(本篇唯一动作清单;「返回主循环」= 本访问结束、控制权返回 `cw_loop.py::CwLoop.loop` 重判):
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| 无动作 op——确认链由内置动作完成(`_confirm_and_dismiss`:勾「本局不再提示」+ 确认) | 画面 op 内置动作(`_confirm_and_dismiss`:勾 `货币战争-未达上限警告.勾选-本局不再提示`(`_overlay_confirm.py::safe_click`)+ 确认(`_overlay_confirm.py::emit_overlay_confirm`)+ 置位 `_confirm_pending`) | 观察侧 `report_screen_deploy_not_full_obs`(占位调用挂观察 node,本屏零容器写点;动作本体无自上报) | 否(非终结):确认后 `round_wait` 循环推进;落地由落地复查判——id_mark 不在 = 弹窗已关 → `round_success` 交回外循环(见 §5) |
+| 无动作 op——确认链由内置动作完成(`_confirm_and_dismiss`:勾「本局不再提示」+ 确认) | 画面 op 内置动作(`_confirm_and_dismiss`:勾 `货币战争-未达上限警告.勾选-本局不再提示`(`_overlay_confirm.py::safe_click`)+ 确认(`_overlay_confirm.py::emit_overlay_confirm`)+ 置位 `_confirm_pending`) | 观察侧 `report_screen_deploy_not_full_obs`(占位调用挂观察 node,本屏零容器写点;动作本体无自上报) | 否(非终结):确认后 `round_wait` 循环推进;落地由落地复查判——id_mark 不在 = 弹窗已关 → `round_success` 返回主循环(见 §5) |
 
 `_confirm_and_dismiss`:勾 `货币战争-未达上限警告.勾选-本局不再提示`(`_overlay_confirm.py::safe_click` 带防吞点击 + 0.3s)→ 确认(`_overlay_confirm.py::emit_overlay_confirm`,mouse_move 缓解 + success_wait=3.0)→ 置位 `_confirm_pending`(落地判定归下一轮落地复查)。坐标 = screen_info 现取优先,**缺失才用兜底常量**(`CHECKBOX_NO_PROMPT(912,589)` / `BTN_CONFIRM(1159,653)`)——与「禁兜底坐标」一般红线不同的 as-built 例外,在此申报。
 
 ## 5. 终结与交回
 
-落地复查:确认已发 ∧ id_mark miss = 已关 → `round_success(wait=3.0)` 交回;id_mark 仍在 = 确认未落地 → 重做(`round_wait` 循环推进,无防御上限)。落点 = 底层屏(备战 / 出战链语境)重判。
+落地复查:确认已发 ∧ id_mark miss = 已关 → `round_success(wait=3.0)` 结束本次访问;id_mark 仍在 = 确认未落地 → 重做(`round_wait` 循环推进,无防御上限)。落点 = 底层屏(备战 / 出战链语境)重判。
 
 ## 6. 状态上报面
 
@@ -34,7 +34,7 @@
 
 ## 7. 子态与 overlay
 
-- 本 op 自身即 overlay 处理件;命中即自处理,底层屏交回重判。
+- 本 op 自身即 overlay 处理件;命中即自处理,底层屏返回主循环重新判定。
 - **同弹窗第二消费者**:出战链 `cw_op/cw_start_battle_action.py::CwActionStartBattleOp` 出战点击轮询段内嵌同款行为(勾选幂等 + 确认 + 轮询)——出战语境由出战链就地消化,不经外循环分发;两处行为对齐为申报面,无单一源锁。
 
 ## 8. 守卫与防线

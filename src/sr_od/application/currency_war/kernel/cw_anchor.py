@@ -32,7 +32,7 @@ BOUNDARY_TRIGGERED_DECLARED 独立表、不改既有 EMIT 表——第二申报�
 sim 域只验事实来源存在性,§12.4-A)。
 
 闭集内 = §12.2 以「实机先行」标记的 8 锚;实机-only(box_opened/
-event_choice/encounter 刷新发出)与缓立/范围外行不在册,登记随其归属方案。
+event_choice/encounter 刷新发出)与缓立/范围外行不已登记,登记随其归属方案。
 """
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ from sr_od.application.currency_war.kernel import cw_telemetry_exit
 # ===== 触发时点轴(§6.4 三型;v10 扩展申报 boundary)=====
 
 ANCHOR_TRIGGER_LANDED: str = 'landed'
-#: 发出型(点击发出即置位不等验效)——在册成员为实机-only 锚,现闭集无。
+#: 发出型(点击发出即置位不等验效)——已登记成员为实机-only 锚,现闭集无。
 ANCHOR_TRIGGER_EMITTED: str = 'emitted'
 ANCHOR_TRIGGER_BOUNDARY: str = 'boundary'
 

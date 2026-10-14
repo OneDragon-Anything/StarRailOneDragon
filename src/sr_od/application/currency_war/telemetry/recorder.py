@@ -38,7 +38,7 @@ from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
     SEVERITY_L2_RECORD,
 )
 
-# 符号解耦(处死计划):序列化权威副本迁 knowledge/cw_serialize,
+# 符号解耦(淘汰计划):序列化权威副本迁 knowledge/cw_serialize,
 # 不再依赖 kernel/cw_intention(死刑判据文件)
 from sr_od.application.currency_war.knowledge.cw_serialize import _to_jsonable
 from sr_od.application.currency_war.telemetry.schema import (
@@ -52,7 +52,7 @@ from sr_od.application.currency_war.telemetry.schema import (
 DEFECT_LEDGER_NAME: str = 'defect_ledger.jsonl'
 
 #: 台账段淘汰 manifest 文件名(台账同目录;journal.retirement.jsonl 同构
-#: 显影面——判读者下钻台账行扑空时查本文件辨「清理 vs 丢数据」)。
+#: 暴露面——判读者下钻台账行扑空时查本文件辨「清理 vs 丢数据」)。
 DEFECT_LEDGER_RETIREMENT_MANIFEST_NAME: str = 'defect_ledger.retirement.jsonl'
 
 
@@ -113,7 +113,7 @@ class TelemetryRecorder:
 # ===== 寿命联动:defect_ledger run 段清理(journal 段裁决的跟随者)=====
 # 联动契约(寿命联动随 run 段同批淘汰;框架 =
 # kernel.cw_state_journal 三道闸):defect_ledger 段随 journal run 段
-# 生命周期同窗清理、同 manifest 显影,禁另起独立清理周期(双源漂移禁令)
+# 生命周期同窗清理、同 manifest 暴露,禁另起独立清理周期(双源漂移禁令)
 # ——触发点唯一 = journal 装配趟(kernel install_state_telemetry),本侧
 # 只做跟随,不自设周期。段裁决两分:
 # - 共享段(run_id 在 journal 段名册内):**严格跟随** journal 归因,禁自评
@@ -211,7 +211,7 @@ def enforce_defect_ledger_retention(
     retired_idx: set[int] = set()
     for rid in retired_ids:
         retired_idx.update(seg_rows[rid])
-    # manifest 显影(逐段一行;追加,历次淘汰记录累积)
+    # manifest 暴露(逐段一行;追加,历次淘汰记录累积)
     manifest_path = path.parent / DEFECT_LEDGER_RETIREMENT_MANIFEST_NAME
     retired_at = datetime.fromtimestamp(now_epoch).isoformat(timespec='seconds')
     try:
@@ -228,7 +228,7 @@ def enforce_defect_ledger_retention(
                     'last_ts': ts_list[-1] if ts_list else '',
                     'retired_at': retired_at,
                 }, ensure_ascii=False) + '\n')
-    except Exception as e:  # noqa: BLE001  显影失败 = 放弃本轮清理(宁不删
+    except Exception as e:  # noqa: BLE001  暴露失败 = 放弃本轮清理(宁不删
         # 不可发生「删了没记账」——manifest 是段存续的唯一判别面)
         log.warning('[cw!][defect-ledger] 淘汰 manifest 写入失败(本轮不清理): %s', e)
         return result

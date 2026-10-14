@@ -7,23 +7,23 @@ bug#1(``before_screenshot`` 移光标 → click 落空)/隐藏多步 overlay →
 write-operation skill「反模式:点了≠成了」)。
 
 本模块给这类 handler 统一收尾:确认点击带 bug#1 ``mouse_move`` 缓解 + 固定等待,
-机械交回 ``round_retry``(观察驱动)。**不做落地判定**(用户裁定:
+机械部分完成即结束本次访问 ``round_retry``(观察驱动)。**不做落地判定**(用户裁定:
 动作 op 只管机械执行,禁止做任何验证;M1③ 发出即职责完成,调用方不问成败):
 overlay 关没关由调用方节点下一轮重入的入口观察裁决——重入时入口词不在 = 已离开
-本画面 → success 交回(重入观察出口,先例 = ``cw_entry_start`` 守卫
+本画面 → success 结束本次访问(重入观察出口,先例 = ``cw_entry_start`` 守卫
 ``_handle_entry_popup_spec`` / megastar 循环顶「已离开本节点画面?」同化先例);
 仍在 = 基于新观察重做确认动作(计 ``node_max_retry_times`` 预算,耗尽 FAIL
 bail = 有界终止单)。success/retry = 轮次流转语义,非动作成败回执。
 
 分型注(现役消费面):``emit_overlay_confirm`` 现役唯一消费方 = 未达上限
 (``cw_screen_deploy_not_full``,落地复查出口语义承载者——上段「下一轮重入
-的入口观察裁决」仅此形态在用);已迁移屏(即时上报 + 派发即终结:遭遇/
+的入口观察裁决」仅此形态在用);已迁移屏(即时上报 + 点击发出后即结束本次访问:遭遇/
 补给/策划/投资两屏)确认钮 = 动作 op 体内 ``round_by_find_and_click_area``
 查找点击,产物经 ``OverlayPickExecEnv.round_result`` 旁路回传且宿主不消费,
 不经本模块;``safe_click`` = 选项选中点击通用件(选中半在用,不涉确认
 收尾语义)。
 
-注:仅收尾「确认 + 机械交回」。选项**选中**的点击(卡身/候选/勾选)各 handler
+注:仅收尾「确认 + 机械部分完成即结束本次访问」。选项**选中**的点击(卡身/候选/勾选)各 handler
 用 ``safe_click`` 带 bug#1 缓解即可;确认统一走 ``emit_overlay_confirm``。
 """
 import time
@@ -108,9 +108,9 @@ def emit_overlay_confirm(
     confirm_wait: float = 1.0, success_wait: float = 2.0, tag: str = 'cw-overlay',
     press_time: float = 0.1,
 ) -> OperationRoundResult:
-    """点确认按钮(``mouse_move`` 防吞点击)+ 固定等待,机械交回 ``round_retry``。
+    """点确认按钮(``mouse_move`` 防吞点击)+ 固定等待,机械部分完成即结束本次访问 ``round_retry``。
 
-    验证废除形态(用户裁定,替换原 ``confirm_and_verify`` 的
+    零验证形态(用户裁定:动作层不做效果验证,判效归下一帧观察)(用户裁定,替换原 ``confirm_and_verify`` 的
     「点后重截验入口词消失」判效半):
 
     - 确认点击带 ``mouse_move``(防吞点击,partner reset 根因同类)。
@@ -120,7 +120,7 @@ def emit_overlay_confirm(
       ``round_retry``(观察驱动):**不读屏判「是否生效」**——落地判定归下一轮
       重入的入口观察(调用方节点顶部裁决)与观察侧 reconcile 对账,不在动作层。
     - ``entry_keyword`` 仅作日志与调用方落地复查的对照词(与 entry 检测同词);
-      ``success_wait`` 保留为调用方落地复查 success 出口的交回等待值。
+      ``success_wait`` 保留为调用方落地复查 success 出口的结束本次访问等待值。
     - 始终不落地 = 每圈耗 1 次节点预算,预算耗尽 FAIL bail(有界终止单,
       防 26 分钟超时事故形态)。
     """
@@ -129,7 +129,7 @@ def emit_overlay_confirm(
         op.ctx.controller.mouse_move(confirm_point)
         op.ctx.controller.click(confirm_point, press_time=press_time)
     time.sleep(confirm_wait)
-    # 机械交回(观察驱动):下一轮重入由调用方节点顶部入口观察裁决出口
-    #(不在 = 已关 → success 交回;在 = 重做确认,计节点预算)。
+    # 机械部分完成即结束本次访问(观察驱动):下一轮重入由调用方节点顶部入口观察裁决出口
+    #(不在 = 已关 → success 结束本次访问;在 = 重做确认,计节点预算)。
     _ = success_wait   # 保留签名兼容调用方出口等待取值;本函数零观察零判效
     return op.round_retry(wait=1)

@@ -76,7 +76,7 @@ class CwActionLevelUpOp(CwOperation):
         调用面兼容。经验/等级/金真值 = 上报函数单点直写(击数 =
         ``executed.levelup_clicks`` 喂实际连点数;金腿 = ``action.cost``
         ×clicks 直写,cost = 动作发出面 xp_click_cost 现算装载)+ 下一帧
-        观察对账族双通道。单击价本处现算仅作 detail 显影。
+        观察对账族双通道。单击价本处现算仅作 detail 暴露。
         """
         action: CwActionLevelUpParam = self.param
         env = self.env
@@ -90,7 +90,7 @@ class CwActionLevelUpOp(CwOperation):
         if btn is None:
             # 商店域 env 已带观察 node 锚定的 level_btn;无锚定(备战域
             # env / 商店域锚定缺席)→ 自读 area。按钮 area 缺失 = 建档
-            # 漂移,显式失败交回重读(禁兜底坐标静默点击;用户裁定
+            # 漂移,显式失败结束本次访问,返回主循环重新识别画面(禁兜底坐标静默点击;用户裁定
             #,action_ops.md §4.2 LevelUp 行)。round_fail 经
             # 执行缝 = emitted=False 未发出事实,下帧重派重读。
             btn = area_center(

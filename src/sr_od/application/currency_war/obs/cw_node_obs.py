@@ -47,7 +47,7 @@ def read_encounter_options(ctx: SrContext, screen: MatLike) -> list[EncounterOpt
     档层 + 奖励 tiebreak;不消费 阵容成型度——判据语义正本 =
     strategy-docs/31 号稿)。读不到 title(OCR 漏/非遭遇屏)→ 返 []
     (画面 op act 空候选零点击 round_success
-    终结交回重读,禁盲选派发——选卡确认不可逆消耗本节点;screens/encounter.md §4/§8)。
+    终结返回主循环重新识别画面,禁盲选派发——选卡确认不可逆消耗本节点;screens/encounter.md §4/§8)。
     """
     ocr_map = ctx.ocr_service.get_ocr_result_map(
         image=screen, rect=None, color_range=None, crop_first=False,
@@ -118,7 +118,7 @@ def read_encounter_refresh_count(ctx: SrContext, screen: MatLike) -> tuple[int, 
 # 两屏交互模型不同构(归档帧实证,三张):策略屏逐卡刷新(每卡一组
 # 「刷新圆钮 icon + 刷新次数N」,N 独立扣减)/ 环境屏整组重掷(单个全局钮 +
 # 剩余次数:N)。正则族两支 = 两屏冒号/无冒号形态(策略屏「刷新次数1」无冒号、
-# 环境屏「剩余次数：1」全角冒号,均为在册 OCR 实证)。
+# 环境屏「剩余次数：1」全角冒号,均为已登记 OCR 实证)。
 _INVEST_REMAIN_RE = re.compile(r'剩余次数\s*[：:]\s*(\d+)')
 _INVEST_REFRESH_COUNT_RE = re.compile(r'刷新次数\s*(\d+)')
 # 计数行 OCR 带:单一真相源 = screen_info(策略屏「区域-刷新次数行」/环境屏
@@ -368,7 +368,7 @@ def read_supply_options(ctx: SrContext, screen: MatLike) -> list[tuple[SupplyOpt
     3-5 不等——历史 docstring 的「3 选 1」「实测 5」均为特例表述,勿写死),
     每列 = 角色名(y≈545)+ 装备名(y≈680 单排 / 648+748 双排),点卡身
     (y≈550)选中 + 右下「确认」。**刷新圆钮实存**(「剩余次数」文本锚左侧
-    固定偏移点击,宿主 = 画面 op 留守分支 ``cw_screen_supply_node.py``;本读链
+    固定偏移点击,宿主 = 画面 op 内置分支 ``cw_screen_supply_node.py``;本读链
     只读选项,不读刷新剩余——剩余读数闸 = 容器 ``supply_refresh_left`` 剩余
     语义观察真值,由画面 op 观察 node 同帧读经 report 摄入,全域规范 =
     ``screens/op-layer.md`` §1.4)。

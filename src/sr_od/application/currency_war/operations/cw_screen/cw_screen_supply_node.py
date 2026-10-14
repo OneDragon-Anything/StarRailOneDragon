@@ -13,34 +13,34 @@ CARD_BODY 兜底。钻(红/蓝/财富宝钻)视觉判定(SIFT 主通道 + 文本
 刷新按钮实存(「剩余次数」文锚左侧圆钮,``_REFRESH_BTN_DX`` 文本锚定)。
 
 **刷新 = 终结动作**:decide_supply 建议刷新 ∧ 对照闸放行 → 点钮一次
-(点击后本动作即返回,op 交回外循环重进 = 入口重建,新装备面由重进后的
+(点击后本动作即返回,op 返回主循环重进 = 入口重建,新装备面由重进后的
 入口观察现读承载)。**对照闸 = 剩余语义观察真值**(用户裁定,
 全域规范 = ``op-layer.md`` §1.4):闸读源 = 容器 ``supply_refresh_left``
 (观察 node 同帧「剩余次数：N」读数经 report 摄入,读缺跳写);判据侧
 次数闸已内嵌 decide(仅剩余 ≥1 才可能返刷新建议),本面 = 对照兜底——
-锚读缺(无点击点)时重调一次(纯函数同输出仍建议刷)→ 零点击终结交回。
+锚读缺(无点击点)时重调一次(纯函数同输出仍建议刷)→ 零点击结束本次访问。
 原实例旗标/已用计数写点随剩余闸停用。
 
 T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点击点由 read_supply_options 按列返回。
 
 形态:观察 node + 决策动作 node 两段
 直继承 SrOperation。观察 node 另承载节点条锚定(顶部「备战阶段 X-Y」→
-``observe_node_anchor``;锚定写端在册 = `screens/op-layer.md` §2.1;
+``observe_node_anchor``;锚定写端已登记 = `screens/op-layer.md` §2.1;
 节点条锚定四分支处置规则表正本 = `game_state/node-derivation.md`
 (E10 行)——补给「自动弹」形态的唯一锚定点)。观察 node = 节点完成门(``_in_node``,miss = overlay 消失 /
-进了下一节点 = 节点完成,success 交回外层)+ 选项一次读(每访问恰一次,与
+进了下一节点 = 节点完成,success 结束本次访问外层)+ 选项一次读(每访问恰一次,与
 现役决策体读同帧等价,迁移不增加读屏)→ ``report_screen_supply_node_obs``
 落容器 ``supply``(空 = 读缺 CARD_BODY 兜底路径,闸在 report 内)→ obs 挂
 实例属性进决策 node。决策动作 node = 零参决策(候选自容器槽)→ 刷新终结
-交回 / 选卡派发即 ``round_success`` 终结(派发即终结正本 =
+结束本次访问 / 选卡派发即 ``round_success`` 终结(点击发出后即结束本次访问正本 =
 `screens/op-layer.md` §1.1、`flow/action_ops.md` §4.5:动作 op 确认
-点击后立即上报完整结果,零落地复查、零落地相补写面——确认未生效 =
+点击后立即上报完整结果,零落地复查、零旧机制补写面——确认未生效 =
 代码 bug,overlay 残留由外循环按当前画面重识别重派)。``chosen_supply``
 = 确认即写特殊口径(选定中转暂存宿主已停用,直写是载体消亡后的唯一
-形态)留守决策体真选分支,派发前写(``op-layer.md`` §2.2 动作事实边界
+形态)留在决策体真选分支,派发前写(``op-layer.md`` §2.2 动作事实边界
 硬规则);本屏 sim 腿 = 观察腿在产(生成器产物经同名 report 落容器)、
 决策腿未接(sim 局 act 恒走 CARD_BODY 兜底),等价判据
-主要支撑 = 实机在册行为锁。
+主要支撑 = 实机已登记行为锁。
 """
 import re
 import time
@@ -235,14 +235,14 @@ class CwScreenSupplyNode(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=8)
     def act(self) -> OperationRoundResult:
-        """分发身份安全网 + 单动作(刷新终结交回 ∨ 选卡派发即终结)。
+        """分发身份安全网 + 单动作(刷新结束本次访问 ∨ 选卡点击发出后即结束本次访问)。
 
         门 miss = 已离开本节点画面(分发身份安全网:确认链已发即离开 =
         节点完成)→ success 交还外层。动作两分支均终结本访问:刷新点钮后
-        交回(外循环重进 = 入口重建);选卡经动作 op 确认点击后立即上报
+        结束本次访问(外循环重进 = 入口重建);选卡经动作 op 确认点击后立即上报
         完整结果,派发即 round_success 终结(正本 = `screens/op-layer.md`
         §1.1、`flow/action_ops.md` §4.5,零重入
-        裁决、零落地相补写面)。"""
+        裁决、零旧机制补写面)。"""
         if not self._in_node(self.last_screenshot):
             return self.round_success(f'{self.op_name} 节点完成(已离开本节点画面)')
         if self._do_action():
@@ -256,19 +256,19 @@ class CwScreenSupplyNode(CwOperation):
         决策 = 策略层单一源(``match.strategy.decide_supply()`` →
         ``strategies/impl/mandate_v1/supply.py`` 三级字典序);读不到选项
         → CARD_BODY 兜底。刷新分支 = 剩余对照闸放行(容器
-        ``supply_refresh_left`` >0 且锚点在位)才点圆钮,点后 2s 终结交回;
+        ``supply_refresh_left`` >0 且锚点在位)才点圆钮,点后 2s 结束本次访问;
         建议刷但对照闸拒绝 → 重调一次(纯函数同输入同输出仍建议刷)→
-        零点击终结交回。
+        零点击结束本次访问。
         选卡分支点卡身 + 确认机械半经工厂(注册表 ``action_op_for`` 派发
         ``cw_pick_supply_action.CwActionPickSupplyOp``,替身缝 = 工厂派发调用点),
-        确认点击后动作 op 立即上报完整结果,派发即终结。
-        Returns: True = 动作已发(终结交回)。
+        确认点击后动作 op 立即上报完整结果,点击发出后即结束本次访问。
+        Returns: True = 动作已发(结束本次访问)。
         """
         match = self.ctx.cw_match
         opts = self._sup_opts or []
         # 导入无条件置顶:派发段(下方 CARD_BODY 兜底路径)也构造
         # CwActionPickSupplyParam,分支内导入会使兜底路径 UnboundLocalError
-        #(sim 局 = 声明姿态「act 恒走 CARD_BODY 兜底」,模块头在册)。
+        #(sim 局 = 声明姿态「act 恒走 CARD_BODY 兜底」,模块头已登记)。
         from sr_od.application.currency_war.kernel.cw_vocab import (
             CwActionPickSupplyParam,
             CwActionRefreshSupplyParam,
@@ -301,14 +301,14 @@ class CwScreenSupplyNode(CwOperation):
                 # 同输出仍建议刷;本面 = 刷新锚点缺失对照兜底)。
                 pick = match.strategy.decide_supply()
                 if isinstance(pick, CwActionRefreshSupplyParam):
-                    # 重调仍建议刷新 = 刷新锚点缺失面,零点击终结交回
+                    # 重调仍建议刷新 = 刷新锚点缺失面,零点击结束本次访问
                     #(外循环重进 = 入口重建重试观察,不空转本节点预算)。
                     log.warning('[cw-supply] 建议刷新但剩余闸拒绝(left=%r)'
                                 ' → 零点击终结交回(外循环重进重试观察)',
                                 _left)
                     return True
             if isinstance(pick, CwActionRefreshSupplyParam):
-                # 剩余闸放行:点圆钮一次后终结交回(外循环重进 = 入口重建,
+                # 剩余闸放行:点圆钮一次后结束本次访问(外循环重进 = 入口重建,
                 # 新装备面由重进后的入口观察现读承载)。
                 refresh_target = Point(
                     self._refresh_point.x + CwScreenSupplyNode._REFRESH_BTN_DX,
@@ -371,15 +371,15 @@ class CwScreenSupplyNode(CwOperation):
             # 用户口述口径(docs/game/currency_war/research/screen_flow_timing.md
             # #19):补给屏刷新后 2s 画面稳定——原 0.6s 依赖「下一轮
             # wait 1.5s」合计 2.1s,余量仅 0.1s,重掷动画尾帧可能被读(选项读缺
-            # → 决策建立在残缺选项上)。等满 2s 再交回。
+            # → 决策建立在残缺选项上)。等满 2s 再结束本次访问。
             time.sleep(2.0)
             return True
-        # 点卡选中 → 确认机械半经工厂(刷新圆钮机械点击留守上方——刷新链 =
+        # 点卡选中 → 确认机械半经工厂(刷新圆钮机械点击留在上方——刷新链 =
         # CwActionRefreshSupplyParam 建议的执行半,
         # pick execute 语义 = 点卡选中 → 确认)。派发实例携真实选中下标与
         # 开出内容载荷(上报 param 即真实选择+内容;动作 op 确认点击后
         # 立即一口写 owned/单位腿/后果腿;无 match 兜底路径同形派发,
-        # 内容空 = 报告侧内容未知分型)。派发即终结。
+        # 内容空 = 报告侧内容未知分型)。点击发出后即结束本次访问。
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )

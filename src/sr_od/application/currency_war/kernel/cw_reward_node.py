@@ -28,7 +28,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 
 #: 扑满环境名单(单一源派生):PLAZA_PORTALS 效果文本含「奖励节点替换」
-#: 的环境名——当前在册命中 = id105 经济过热 / id119 经济严重过热
+#: 的环境名——当前已登记命中 = id105 经济过热 / id119 经济严重过热
 #: (cw_invest_data.py;方案审 v3 已做派生完备性检查:PLAZA_PORTALS
 #: 全表内含该子串者仅此两行,其余命中在 PlazaAugment 表,不在名单源)。
 #: 派生式判据让版本重采自动跟上;失配方向(版本改词致漏派生)= 守卫

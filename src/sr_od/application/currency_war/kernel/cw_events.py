@@ -49,7 +49,7 @@ class EncounterOption:
     difficulty:难度档 1-6(画面标题「遭遇其X」派生,OCR 漏读「一」→ 1;
     越高敌人越强、奖励越好)。
     affixes:敌人词缀 OCR 原名(经 ``AFFIX_MECHANIC_MAP`` → 机制 tag;
-    选项 UI 不显词缀、战后才显——现役写端恒空列表,死输入申报在册)。
+    选项 UI 不显词缀、战后才显——现役写端恒空列表,死输入申报已登记)。
     rewards:奖励(钻/装备/金币;偏好序消费 = 策略层 encounter_pick
     reward_tier 档序)。
     """
@@ -153,7 +153,7 @@ class PartnerOption:
 
 class PartnerPick:
     """kernel 时代伙伴选卡返回载体,已被 ``cw_vocab.CwActionPickPartnerParam``
-    替代(替代关系在册 = cw_vocab 该类 docstring);现役仅 ``EVENT_PICK_TYPES``
+    替代(替代关系已登记 = cw_vocab 该类 docstring);现役仅 ``EVENT_PICK_TYPES``
     登记在场(登记面,零生产零消费)。
 
     [索引定义] idx:历史语义 = 候选列表下标 0 基(登记面保留,现役零消费)。

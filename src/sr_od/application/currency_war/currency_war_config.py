@@ -68,7 +68,7 @@ class CurrencyWarConfig(YamlConfig):
         self.env_forbid: list[str] = self.get('env_forbid', [])
         # —— 开发/实验字段(不进未来 GUI,仅供 yml 调试)——
         # strategy_seed:策略内部 rng 种子(None=真随机、固定 int=A/B 复现调试)。
-        # ⚠️ 只种子化策略内部蒙特卡洛 D 牌随机;游戏侧行局演化(发牌/boss/掉血)服务端决定,种子化不到。
+        # ⚠️ 只种子化策略内部蒙特卡洛刷新找牌随机;游戏侧行局演化(发牌/boss/掉血)服务端决定,种子化不到。
         # strategy_id 合法值域(统一迁移批 ②:decision_v2 栈删除,值域收缩={'mandate_v1'};
         # 构造期前置校验,禁「运行拼错才炸」——存量 yml 写 'default' 会在配置
         # 加载时报错并给出迁移提示)
@@ -94,8 +94,8 @@ class CurrencyWarConfig(YamlConfig):
         # app._run_loop 透传给 CwLoop。
         _mr = self.get('max_rounds', None)
         self.max_rounds: int | None = int(_mr) if _mr not in (None, '', 0) else None
-        # (简报 vs 实采对账开关键已随对账网退役删除——对账自比较无双源
-        #  可比对,按零实效机制退役;yml 残留旧开关键无害,get() 不再读。)
+        # (简报 vs 实采对账开关键已随对账网停用删除——对账自比较无双源
+        #  可比对,按零实效机制停用;yml 残留旧开关键无害,get() 不再读。)
         # 起局前置码哈希结构闸(混合码事故防线):工作树≠HEAD 拒绝
         # 起局。默认开 = 安全闸宁拦勿放;闸本体见 kernel/cw_code_hash_gate
         # (豁免名单/口径申报单一源 = 闸模块 docstring)。

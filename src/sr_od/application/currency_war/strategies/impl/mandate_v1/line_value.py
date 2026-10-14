@@ -65,7 +65,7 @@ def line_value_best(cand_comps: frozenset[str] | set[str],
       非空 → locked ∩ cand 取 max(空交集 → 0);未锁或降格 → cand 全体
       取 max(cand 空 → 0);
     - 档分 = 集合内 阵容 档分 max(:data:`LINE_STRENGTH_SCORE` 直索引,
-      非在册档名 KeyError = fail-loud)。
+      非已登记档名 KeyError = fail-loud)。
 
     **依赖边界 = 仅消费 COMP_LIBRARY 档分映射**(与现役同源 import,本
     文件模块级单一依赖)——不新增 get_comp/STRATEGY_BINDINGS/ENV_* 依赖,

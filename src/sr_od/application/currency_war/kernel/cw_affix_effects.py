@@ -310,7 +310,7 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
 #: cw_effect_inventory 文末「装备改写写端」段头注):
 #: - ``bridge:<函数名>``      写端桥——触发窗口独占的确定性直写;
 #: - ``contribution:<函数名>`` 贡献算术——触发窗口与未接写端共享,零直写,
-#:                             组合写收口 = 节点边界金结算载体
+#:                             组合写收尾 = 节点边界金结算载体
 #:                             (settle_node_boundary_gold/settle_wrench_
 #:                             duplicate_gold,cw_effect_inventory 文末);
 #: - ``report:<函数名>``      动作上报写端——工具动作机械执行后上报函数
@@ -354,7 +354,7 @@ def _validate_equip_write_sides() -> None:
     ① 键集恰等于 EQUIP_REWRITE_DECLARATIONS(每件申报恰一个实现写端,零静默);
     ② 值词表封闭:bridge:/contribution: 目标函数必须在 cw_effect_inventory
        可解析且可调用(改名/删除即炸);report: 目标函数必须在
-       cw_action_report.tool_use 在册(动作上报写端单一宿主,改名/删除
+       cw_action_report.tool_use 已登记(动作上报写端单一宿主,改名/删除
        即炸);op: 锚非空;observation 无载荷;
     ③ 实现形(bridge/contribution/report/op)申报 notes 必含「逻辑写」、
        observation 形必含「观察收口」——登记与归属申报互证,防单边漂移
@@ -412,7 +412,7 @@ def _validate_equip_write_sides() -> None:
 def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
     """词缀 OCR 名集 → 命中结构化注册的词缀入效果账本(source='affix')。
 
-    - **幂等**:已在册词缀源条目(spec.id = 词缀名)跳过——简报重入/retry、
+    - **幂等**:已已登记词缀源条目(spec.id = 词缀名)跳过——简报重入/retry、
       位面详情补采重跑同词缀集不得双登记(实例按 spec_key 唯一,
       effect-domain.md §9.1 销案「同卡叠加语义」同源)。
     - **注册表命中才登记**:AFFIX_EFFECT_SPECS 之外的词缀无结构化规格 →

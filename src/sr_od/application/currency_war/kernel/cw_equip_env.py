@@ -346,7 +346,7 @@ def rust_release_active(enemy_affixes: list[str] | None, gate: bool) -> bool:
 def output_penalty_release_active(enemy_affixes: list[str] | None) -> bool:
     """row5:输出侧罚则词缀在场(18 号稿 §2.1;行为无条件化)。
 
-    判据源 = data/affix_wear_semantics_data 结构化载体:在册词缀集判定
+    判据源 = data/affix_wear_semantics_data 结构化载体:已登记词缀集判定
     规则 = 结构条目存在 ∧ ``wear_predicate`` 非空 ∧ ``penalty_side ==
     'output'``(缺结构化条目的散文词缀不进,防解析散文)。附带跑互检
     显警(§3.1 检测面,显警不拦截、只 log——防新词缀漏建模静默)。
@@ -410,7 +410,7 @@ def resolve_affix_priority_order(comp, view,
     子表下标派生,occupied 键 (row, 行内槽号))。
 
     判据(§3.2,零新自由参数——N 与罚值全部来自结构化载体):
-    1. 在册词缀集 = 载体条目 ∧ wear_predicate 非空 ∧ penalty_side=='output';
+    1. 已登记词缀集 = 载体条目 ∧ wear_predicate 非空 ∧ penalty_side=='output';
     2. 谓词涉及角色集合 = **在场角色全集**(不限已终局阵容锁定成员——罚则按角色
        个体结算,不按阵容资格);
     3. 排序 = [9] 既有优先序(plaza_carry → core_chars → 其余在场按
@@ -465,7 +465,7 @@ def resolve_affix_priority_order(comp, view,
     for c in present:
         if c not in base:
             base.append(c)
-    # 谓词未满足 = 任一在册输出侧条目的 N 未达(多词缀各谓词都须满足)
+    # 谓词未满足 = 任一已登记输出侧条目的 N 未达(多词缀各谓词都须满足)
     unsatisfied = [c for c in base
                    if any(worn.get(c, 0) < e.wear_predicate[1] for e in entries)]
     if not unsatisfied:

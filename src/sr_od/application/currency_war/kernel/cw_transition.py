@@ -14,7 +14,7 @@ user_playstyle.md)——**改本模块前先读并对表**,理解变更先改文
 - 纯过渡牌(Early 高频 → Final 必弃):艾丝妲 31%→2% / 椒丘 31%→8% /
   爻光 35%→16% / 饮月 44%→20% / 藿藿 44%→22%
 - 贯穿牌:三月七 36%→36% / 千冶·刃 29%→64% / 姬子/花火 24%→48%
-- 过渡框架 = 仙舟 32% + 列车 29%(主流仅两种;DOT 为挂件形态 28%)
+- 过渡框架 = 仙舟 32% + 列车 29%(主流仅两种;DOT 为填充形态 28%)
 
 **模型**:``TRANSITION_PACK`` = Early 高频纯过渡+贯穿牌的目标集合;
 Early 期判定(plane1 + 未定型)由消费方内联声明(框架启动变体已停用)。
@@ -197,7 +197,7 @@ def transition_score(char_id: str, faction: str, framework: str = '') -> float:
     fw_facs = FRAMEWORK_FACTIONS.get(framework, ()) if framework else ()
     _fac_hit = bool(framework and _char_has_faction(char_id, fw_facs))
     if ent is None:
-        base = 0.6 if _fac_hit else 0.0   # 非在册但阵营命中=partial 级(阵营兜底)
+        base = 0.6 if _fac_hit else 0.0   # 非已登记但阵营命中=partial 级(阵营兜底)
     else:
         fw, tier = ent
         base = {'carry': 1.0, 'partial': 0.6, 'drop': 0.4}.get(tier, 0.3)
@@ -208,7 +208,7 @@ def transition_score(char_id: str, faction: str, framework: str = '') -> float:
         elif fw == '通用':
             base += 0.15  # 通用插件次之
         elif _fac_hit:
-            base += 0.2   # 阵营兜底:在册他框架件但阵营命中当前框架
+            base += 0.2   # 阵营兜底:已登记他框架件但阵营命中当前框架
         # fw != framework 且 framework=''(预囤):base 保持档位分(囤任何框架件)
     if faction in FRAMEWORK_FACTIONS.get(framework, ()):
         base += 0.2

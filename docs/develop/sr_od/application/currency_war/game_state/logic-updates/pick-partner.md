@@ -17,7 +17,7 @@
 ## 3. 确定面转移规则(逐条)
 
 1. **点选候选**:`env.unselected` 为真(未选中提示在场实证)或首轮(`op._confirm_pulses == 0`)→ mouse_move + click `op._pick_point`(y 取建档「候选-卡区」带的中心;单选语义无反选面)→ 固定等待 0.7s;
-2. **确认**:确认点 = `op._find_text_center`(screenshot, '确认选择');缺失 → `round_retry(wait=1)` 交回(轮次结果经 `env.round_result` 旁路);命中 → mouse_move + click → 固定等待 1.0s → `op._confirm_pulses += 1`、`op._confirm_pending = True` → `round_retry(wait=1)`;
+2. **确认**:确认点 = `op._find_text_center`(screenshot, '确认选择');缺失 → `round_retry(wait=1)` 结束本次访问(轮次结果经 `env.round_result` 旁路);命中 → mouse_move + click → 固定等待 1.0s → `op._confirm_pulses += 1`、`op._confirm_pending = True` → `round_retry(wait=1)`;
 3. 本屏 = 单屏单选、无第二画面步:点选 → 确认 → 落地复查即完;retry 轮重复确认零副作用(置灰态被游戏拒绝,无确认穿透风险)。
 
 ## 4. 随机面
@@ -26,7 +26,7 @@
 
 ## 5. 拒绝语义
 
-零验证确认链(确认后不读屏验证是否生效):「确认选择」文本缺失 → round_retry 交回(非判效,落地复查);确认未落地(overlay 残留)不重试不判效——下一轮重入入口观察裁决。
+零验证确认链(确认后不读屏验证是否生效):「确认选择」文本缺失 → round_retry 返回轮次结果(非判效,落地复查);确认未落地(overlay 残留)不重试不判效——下一轮重入入口观察裁决。
 
 ## 6. kernel 符号锚
 

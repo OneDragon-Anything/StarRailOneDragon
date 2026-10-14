@@ -51,9 +51,9 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_vocab import CwAction
     from sr_od.context.sr_context import SrContext
 
-# 注解中的 ``CurrencyWarConfig`` 刻意不 import 真类型:config 属 app 桶,本模块
+# 注解中的 ``CurrencyWarConfig`` 刻意不 import 真类型:config 属 app 层,本模块
 # 归 strategies 包实现层,与 cw_strategy_manager 同层(策略统一迁移批二勘误落位:接口是
-# ops/sim/impl 三方共享契约,非实现本体;本模块禁依 app 桶);config 实例由调用方按参
+# ops/sim/impl 三方共享契约,非实现本体;本模块禁依 app 层);config 实例由调用方按参
 # 注入,下面绑定只是注解名的文档性占位(字符串;「刻意字符串注解」先例 =
 # 期 0b kernel/cw_strategy_session 的 SrContext 处理)。
 CurrencyWarConfig = 'CurrencyWarConfig'
@@ -83,9 +83,9 @@ class CwStrategy(ABC, Generic[_TState]):
       (命运卜者强化/专家邀请函;三 overlay 选卡判据扩员,原选择装备口
       已随该屏误判修正删除)——决策输入一律
       ``self.gs`` 自取,会话残余依赖
-      由 §3.2/§3.3 重复账治理清偿。
+      由 §3.2/§3.3 重复账治理偿还。
     - **输出统一**:单一 ``CwAction``(选择族 per-screen 子类型 + 三刷新动作
-      + 重观察 CwActionObsParam(scope='in_place' 环内 / 'outer_loop' 交回,
+      + 重观察 CwActionObsParam(scope='in_place' 环内 / 'outer_loop' 结束本次访问,
       后者承载原 HoldFrame 空动作发出语义),无 None)。
 
     兼容裁定:注册面封闭集 {mandate_v1},第三方存量策略在新契约下不兼容 =
@@ -146,9 +146,9 @@ class CwStrategy(ABC, Generic[_TState]):
     @abstractmethod
     def decide_prep_screen(self) -> CwAction:
         """备战画面黑板决策(单动作,None 停用;空动作发出 = CwActionObsParam
-        scope='outer_loop' 交回外循环重观察——原 HoldFrame 并入,用户裁定
+        scope='outer_loop' 返回主循环重新观察——原 HoldFrame 并入,用户裁定
         2026-09-20;环内重观察 = scope='in_place',宿主观察链重跑后原地
-        续决策,不交回外循环)。"""
+        续决策,不返回主循环)。"""
 
     @abstractmethod
     def decide_shop_action(self) -> Action:

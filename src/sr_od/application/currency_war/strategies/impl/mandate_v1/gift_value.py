@@ -14,7 +14,7 @@
   (``cw_chars.chars_by_faction``)在未排除候选阵容名单
   (core∪shared∪transition)中出现者的档位分**算术平均**(随机发放取无偏
   期望;具名发放取最高档的口径差异 = 确定性赠卡承重面,沿旧机器规则①,
-  非双重标准);无成员在册 → 0。
+  非双重标准);无成员已登记 → 0。
 
 复用契约(29 号稿 §2.3):策略屏赠卡**不走**本文件
 具名/随机两现役口径——策略卡具名发放走 kernel ``STRATEGY_GRANTS`` +
@@ -65,7 +65,7 @@ def grant_gift_value(grant: GiftGrant,
 
 def named_gift_value(env_name: str,
                      evicted: frozenset[str] | set[str]) -> float:
-    """具名赠卡分(ENV_GIFTS 在册环境;具名口径见 28 号稿 §2)。
+    """具名赠卡分(ENV_GIFTS 已登记环境;具名口径见 28 号稿 §2)。
 
     = :func:`grant_gift_value` 的 ENV_GIFTS 查表薄委托(查无 → 0,无具名
     发放);非 ENV_GIFTS 环境 → 0。"""
@@ -83,7 +83,7 @@ def random_faction_gift_value(faction: str,
     kernel ``gift_hit_tier``——单角色即时发放的命中档即该角色的最高身份档,
     与 ``cw_comps._char_gift_tier`` 同义,借此复用 kernel 档位机器(禁二次
     推导,契约同其 docstring)。三名单(core∪shared∪transition)皆不在
-    (tier='off')的成员不入平均分母;全员集外 → 0(除零防 = 无成员在册)。
+    (tier='off')的成员不入平均分母;全员集外 → 0(除零防 = 无成员已登记)。
     """
     if not faction:
         return 0.0

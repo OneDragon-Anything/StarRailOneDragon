@@ -2,7 +2,7 @@
 
 三口(固定位置参数,用户裁定):
 - ``register_screen_change(gs, kind, screen_name, source)``:登记一条
-  待处理弹窗(pending FIFO,同 kind 在册去重);
+  待处理弹窗(pending FIFO,同 kind 已登记去重);
 - ``consume_screen_change(gs, kind)``:按 kind 匹配移除(与顺序无关——
   弹出顺序不可枚举,用户裁定不强断言);
 - ``clear_screen_changes(gs)``:整列清空(识别回备战底屏的兜底清)。
@@ -89,7 +89,7 @@ class ScreenChanges:
 
 def register_screen_change(gs, kind: str, screen_name: str,
                            source: str) -> None:
-    """登记一条待处理弹窗(同 kind 在册不重复)。
+    """登记一条待处理弹窗(同 kind 已登记不重复)。
 
     kind 集外 = 编程错误,响亮炸出(词表封闭集纪律)。
     """
@@ -105,7 +105,7 @@ def register_screen_change(gs, kind: str, screen_name: str,
 
 
 def consume_screen_change(gs, kind: str) -> None:
-    """消费:按 kind 匹配移除(与顺序无关;不在册 = no-op)。"""
+    """消费:按 kind 匹配移除(与顺序无关;不已登记 = no-op)。"""
     sc = gs.screen_changes
     sc.pending = [p for p in sc.pending if p.kind != kind]
 

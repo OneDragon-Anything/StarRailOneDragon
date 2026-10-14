@@ -2,7 +2,7 @@
 
 boss 节点前弹「强敌来袭」简报横幅:识别阵营徽记模板锚「标识-阵营徽记」/
 「强敌」片段判别兜底(#26 建档;锚从标题 OCR 换徽记模板,标题 OCR 会被
-误读击穿而徽记像素稳定)→ 点空白推进 → **直接交回外循环重判**(点掉后
+误读击穿而徽记像素稳定)→ 点空白推进 → **直接返回主循环重新判定**(点掉后
 去向由 loop 全分支自然处理——boss 战自动开打/备战流转;旧「轮询备战
 商店开」完成承诺实证错误:boss 简报点掉后直接开 boss 战,商店永不开,
 等锚必超时,第七局/第八局接管实录)。
@@ -13,18 +13,18 @@ boss 节点前弹「强敌来袭」简报横幅:识别阵营徽记模板锚「�
 
 形态(画面 op 两段式:观察 node → 决策动作 node,继承 CwOperation,
 轻屏统一形态):观察 node = 横幅门(徽记模板锚 miss → 「强敌」片段判别
-兜底;不在 = 已推进 → 早退 success 交回外循环重判,obs 不装载)+ 门内
+兜底;不在 = 已推进 → 早退 success 返回主循环重新判定,obs 不装载)+ 门内
 obs{on_screen} → ``report_screen_boss_briefing_obs``(boss 类型直定写端,
 目标 = 现 hist——迭代-node-advance-action-report 切换批自旧
 BOSS 简报腿迁移,design §2.5 表;直定前置同源守卫见 kernel 屏文件,
 match/gs 缺席跳过)→ obs 挂实例属性进
-决策 node。决策动作 node = 点空白一次推进 → success 交回(本屏一次点击
+决策 node。决策动作 node = 点空白一次推进 → success 结束本次访问(本屏一次点击
 即终结,横幅退场裁决 = 外循环重派后的下一次入口门,不做 op 内轮询)。
 **判别单一源红线**:迁移只改宿主类,禁改 ``BOSS_BRIEFING_TOKENS``/
 ``is_boss_briefing_texts`` 判别面——三处消费同源(op 内锚兜底/
 ``CwScreenBattleWait._hit_completion_anchor`` 完成白名单/loop 阶段一位
 面过渡身份臂排他)不变。本屏 sim 腿 = 不适用(sim 无对应画面段),等价
-判据主要支撑 = 实机在册行为锁(锁面 = sr-od-test test_cw_obs_arch_phase_
+判据主要支撑 = 实机已登记行为锁(锁面 = sr-od-test test_cw_obs_arch_phase_
 screens.py + test_cw_anchor_exclusion.py)。
 """
 import time
@@ -71,7 +71,7 @@ def read_ocr_texts(ctx, screen) -> list[str]:
 
 
 class CwScreenBossBriefing(CwOperation):
-    """BOSS 简报:识别「强敌来袭」→ 点空白 → 交回外循环重判。"""
+    """BOSS 简报:识别「强敌来袭」→ 点空白 → 返回主循环重新判定。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-BOSS简报'
     # 横幅锚 = 阵营徽记模板(二值化模板匹配,OCR 误读免疫;从标题 OCR 锚
@@ -93,7 +93,7 @@ class CwScreenBossBriefing(CwOperation):
         门判定:徽记模板锚「标识-阵营徽记」miss → 「强敌」片段判别兜底
         (``is_boss_briefing_texts``,判别单一源,**禁顺手复制判别逻辑**;
         横幅动画相位致模板 miss 时,片段判别按全帧 OCR 文本补一刀)。不在
-        = 已推进 → 早退 success 交回外循环重判(loop 全分支识别点掉后的
+        = 已推进 → 早退 success 返回主循环重新判定(loop 全分支识别点掉后的
         任何画面——boss 战/备战/流转);在 → obs 装载 + report(boss 类型
         直定,目标 = 现 hist;match/gs 缺席跳过)。"""
         screen = self.last_screenshot
@@ -106,7 +106,7 @@ class CwScreenBossBriefing(CwOperation):
             # 片段判别按全帧 OCR 文本补一刀)。
             banner_hit = is_boss_briefing_texts(read_ocr_texts(self.ctx, screen))
         if not banner_hit:
-            # 横幅已退 = 点空白已生效推进 → 直接交回外循环重判。
+            # 横幅已退 = 点空白已生效推进 → 直接失败返回主循环重判。
             log.info('[cw-flow-boss] 横幅已退(点空白已生效)→ 交回外循环重判')
             return self.round_success('BOSS 简报推进完成,交回外循环重判')
         # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
@@ -131,7 +131,7 @@ class CwScreenBossBriefing(CwOperation):
     @operation_node(name='决策动作', node_max_retry_times=8)
     def act(self) -> OperationRoundResult:
         """点空白推进体:读「区域-空白点击」center(缺失 → fail 留存证据缺建档)
-        → 点空白 → success 交回(横幅退场由外循环重派后的下一次入口门判定)。"""
+        → 点空白 → success 结束本次访问(横幅退场由外循环重派后的下一次入口门判定)。"""
         blank = area_center(self.ctx, CwScreenBossBriefing.BLANK_AREA,
                             CwScreenBossBriefing.SCREEN_NAME)
         if blank is None:

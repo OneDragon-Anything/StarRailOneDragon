@@ -50,7 +50,7 @@ class CwOpSettleConfirm(CwOperation):
     生产路径 = ``CwScreenBattleWait`` ②段委托本类 ``execute()``。单 node
     驻留形态:每轮点「继续挑战」(停留 ≥3 轮长按兜底)→ 点击即上报
     (重复上报被 kernel 观察态门结构性挡,零推进零危害);按钮不在场
-    (流转已发生/过渡帧)→ round_success 交回宿主(出口判定 = 宿主 ③段
+    (流转已发生/过渡帧)→ round_success 返回宿主(出口判定 = 宿主 ③段
     白名单,非本 op 职责)。上报 = best-effort(局外/session 缺跳过、
     kernel 观察态门挡零推进,均不炸主流程)。
     """
@@ -114,7 +114,7 @@ class CwOpSettleConfirm(CwOperation):
     @operation_node(name='结算确认', is_start_node=True, node_max_retry_times=400)
     def confirm(self) -> OperationRoundResult:
         """驻留轮:点「继续挑战」(停留 ≥3 轮长按兜底)→ 兑现回调 → 点击即上报;
-        按钮不在场 → 交回宿主(出口判定归宿主 ③段白名单)。"""
+        按钮不在场 → 返回宿主(出口判定归宿主 ③段白名单)。"""
         # 帧 = node runner 轮首帧(last_screenshot;screenshot_before_round
         # 缺省供帧,与 round_by_find_and_click_area 全仓画面 op 通行形态
         # 一致,禁同轮二次现取——冗余读点)。
@@ -148,6 +148,6 @@ class CwOpSettleConfirm(CwOperation):
                      '上报(advanced=%s)',
                      outcome.applied if outcome is not None else False)
             return self.round_wait(wait=1.0, data=world_decl)
-        # 按钮不在场:流转已发生(或过渡帧)→ 交回宿主;宿主 ③段白名单
+        # 按钮不在场:流转已发生(或过渡帧)→ 返回宿主;宿主 ③段白名单
         # 出口收尾,miss 则下轮重判/重分派。
         return self.round_success('结算确认点击已发,交回宿主出口判定')

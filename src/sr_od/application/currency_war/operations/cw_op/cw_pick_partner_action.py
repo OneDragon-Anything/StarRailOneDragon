@@ -35,7 +35,7 @@ class CwActionPickPartnerOp(CwOperation):
     """选择伙伴 pick 确认链(统一动作工厂 迁入)。
 
     「点选候选 → 确认」脉冲链整体迁入(未选中实证下重点选,单选语义
-    无反选面;确认被拒的防线判定留守画面 op 决策半)。选中态标记
+    无反选面;确认被拒的防线判定留在画面 op 决策半)。选中态标记
     (``_pick_point``)与脉冲计数(``_confirm_pulses``/``_confirm_pending``)
     宿主仍是画面 op,经 env.op 消费——计数生命周期 = 节点级,画面 op
     单一归属不变。"""
@@ -70,7 +70,7 @@ class CwActionPickPartnerOp(CwOperation):
             log.info('[cw-partner] 点选候选 %s(未选中提示在场=%s)',
                      op._pick_point, unselected)
         # 确认 = 建档「按钮-确认选择」查找点击(round_by_find_and_click_area
-        # 全族统一,用户裁定;OCR 找钮停用——screen_info 在册
+        # 全族统一,用户裁定;OCR 找钮停用——screen_info 已登记
         # 即查,读缺 = round_retry 交框架轮次,禁兜底静默点击)。读缺分支
         # 未发确认点击,不上报(retry 旁路语义,见模块头)。
         confirm_result = op.round_by_find_and_click_area(
@@ -88,7 +88,7 @@ class CwActionPickPartnerOp(CwOperation):
         # 自上报(确认点击发出后;零写,契约面统一。读缺旁路分支未发
         # 确认点击,不上报不喂——见模块头)。上报后一行声明喂入(动作
         # 后果声明化喂入契约 = design.md §2.2 契约 3;实机端口未装 =
-        # no-op,sim 装配后驱动后端纯转移分支交回);round data 携带声明。
+        # no-op,sim 装配后驱动后端纯转移分支结束本次访问);round data 携带声明。
         world_decl = None
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:

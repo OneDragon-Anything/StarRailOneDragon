@@ -7,7 +7,7 @@
   逐步写(每步一行,同组 group_id,evidence 带点序 ``#ore<k>``);
 - **席满即该点无效**:该点时备战席无空位(含前点角色奖励耗席后的
   累计判)→ 晶矿留在 spheres 字段现值中(不摘除、不采样),等下轮
-  重派(screen_flow_timing #16 在册裁定同源);
+  重派(screen_flow_timing #16 已登记裁定同源);
 - **全部容器写均为随机态**(rand = :meth:`GameState.write_logic_rand`):
   spheres 终值同样依随机链而变(后续晶矿开否取决于采样奖励是否耗席),
   本动作不存在确定面写;观察覆盖差异 = 随机效果落地预期内
@@ -16,7 +16,7 @@
   attach:掷骰已前移到生成侧挂接入口 ``cw_ore_channel``,点击只兑现):
   命中附着键 → 直接应用**零掷骰**;缺项(挂接入口不变量破坏的罕见态)
   → 兜底 ``kernel/cw_ore_reward.py::roll_ore_reward``(临时口径 v0,
-  假设档披露键在册),该点全部写行 evidence 前缀
+  假设档披露键已登记),该点全部写行 evidence 前缀
   ``ore_reward_attach_missing#``;缺项 ∧ level 缺读 → 该点跳过不采
   (reason ``ore_reward_attach_missing_level``,矿留 spheres 下帧补
   生成);开成即随 spheres 摘除同点随机态写移除附着键(evidence

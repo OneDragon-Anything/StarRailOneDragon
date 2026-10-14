@@ -15,7 +15,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     bench_char_cost,
 )
 
-# 符号解耦(处死计划 第 1 项):本模块消费的注册数据/序列化符号权威
+# 符号解耦(淘汰计划 第 1 项):本模块消费的注册数据/序列化符号权威
 # 副本迁 knowledge/(cw_engine_facts/cw_line_facts/cw_serialize),
 # 不再依赖 kernel/cw_deploy_logic、kernel/cw_intention(死刑判据文件)
 from sr_od.application.currency_war.knowledge.cw_engine_facts import TRANSITION_TRAITS
@@ -28,7 +28,7 @@ from sr_od.application.currency_war.knowledge.cw_serialize import _to_jsonable
 # 默认 replay 目录单一源已下沉 kernel/cw_observe(sim 桶消费它而
 # sim 禁依 telemetry;本模块经上行 import 取用)。replay 序列化符号
 # (_to_jsonable/serialize_intention)权威副本已迁 knowledge/cw_serialize
-# (处死计划)。
+# (淘汰计划)。
 SCHEMA_VERSION: int = 1   # 决策迹 schema 版本(字段名稳定;改 schema 升版本号)
 
 
@@ -172,7 +172,7 @@ def salvageable_1star_value(state: GameState) -> int:
       任何帧表示,容器单例直读。
     - 纯函数契约:只读 state、零行为消费(P10④ 判读供给;挂载点
       ``TelemetryRecorder.record_decision`` handoff 富化处已随 handoff
-      快照换代停用,本函数保留为在册判读口径的读值单一源)。
+      快照换代停用,本函数保留为已登记判读口径的读值单一源)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_units_of,
@@ -775,7 +775,7 @@ class SpendUnitRecord:
     # 执行侧「计划≠尝试」可见化(读端 join 面保留,现无生产
     # 写入端,恒缺省 False)。
     plan_truncated: bool = False     # True=plan 里有动作未尝试(至终结动作截断丢弃)——口径差非执行失败
-    refresh_skipped: str | None = None  # 刷新被跳过的原因(数据行在册取值含 'max_cap',读端兼容;现无生产写入端);None=未跳过
+    refresh_skipped: str | None = None  # 刷新被跳过的原因(数据行已登记取值含 'max_cap',读端兼容;现无生产写入端);None=未跳过
     refresh_attempted: bool = False  # 本单元内至少点击过一次刷新
     # 刷新点击后牌面是否已变(两帧一致门+牌名集交叉核对);None=未尝试/不可判。
     # 现无生产写入端:唯一消费(失配告警 free_refresh_proc 豁免判定输入)随

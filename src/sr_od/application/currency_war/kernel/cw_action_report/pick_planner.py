@@ -22,7 +22,7 @@
 
 **后果声明**(动作后果声明化详设 world-decl.md §2 表 #11):applied 出口
 构造 ``WorldDecl``(trigger = ``pick_planner``;``next_screen`` = 备战屏
-——巨星/planner 弹在备战上,选完交回),转移事件广播随本动作单轨切换
+——巨星/planner 弹在备战上,选完结束本次访问),转移事件广播随本动作单轨切换
 摘除;applied=False 出口(升费前置硬校验拒)= 声明 None。
 
 动作上报函数族拆分件(每动作一文件;族规约 = 包 ``cw_action_report.
@@ -120,9 +120,9 @@ def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
 def _grant_joy_conditional(gs: GameState, sig: ChannelSig,
                            rng: random.Random | None) -> None:
     """欢愉契约条件腿授予 rider(条件腿正式模型):planner 上报 = 头号玩家
-    选项弹窗被处理的触发事件。``active_env`` 归一等于「欢愉契约」在册 →
+    选项弹窗被处理的触发事件。``active_env`` 归一等于「欢愉契约」已登记 →
     候选集取 ``ENV_GIFTS['欢愉契约'].chars_conditional`` 名集(结构化
-    在册数据单一源)均匀采样一枚,``gain_character(1★, rand=True)`` 走
+    已登记数据单一源)均匀采样一枚,``gain_character(1★, rand=True)`` 走
     获得链固定时序(落位 → 回调 → 单级合成,4 费单位正常参与 3 合 1;
     evidence = ``joy_conditional:<单位名>``)。
 
@@ -190,7 +190,7 @@ def _apply_upgrade_transform(gs: GameState,
     """升费腿 = 变换窗三态 + 档行:前置硬校验对上报
     时容器观察态(bench ∪ deployed 多重集)的 (银狼LV.999, 2★)
     计数(单相时序等价论证:确认点击到本调用之间容器零
-    写入,观察态与原落地相时点等值):
+    写入,观察态与原落地补写机制(已废除)时点等值):
 
     - **现档 ≥ 5**(误走本腿:5 费升 2 星两选项皆装备,upgrade 不应出现;
       出现 = 识别或机制异常)→ 不写变换不写档,留存证据行

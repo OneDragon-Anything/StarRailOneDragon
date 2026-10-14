@@ -477,7 +477,7 @@ def _expected_back_population(ctx: SrContext, screen: MatLike,
     (少检)反向。即基准并非独立真值,系统性 CV 偏差会同向偏置仲裁。
     与既有防线的关系:①paddle X 本身独立于 CV(游戏计数器),是基准中
     唯一的非 CV 项;②仲裁只在公式/CV 冲突帧触发且需 paddle 可读,单帧
-    偏置不落盘(下帧重判);③错判的下游有显影(身份漏读 → deployed_align
+    偏置不落盘(下帧重判);③错判的下游有暴露(身份漏读 → deployed_align
     保留证据 / deployed_count_2src 分键);④15 号稿布局三信号(如身份反哺
     布局)实现后应以更强信号替代本判别器(见移交笔记)。"""
     try:

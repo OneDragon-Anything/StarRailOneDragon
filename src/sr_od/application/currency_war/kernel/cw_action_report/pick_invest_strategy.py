@@ -9,7 +9,7 @@ game_state/gain-chain.md)。本包 → 容器单向依赖。
 
 **后果声明**(动作后果声明化详设 world-decl.md §2 表 #8):applied 出口
 构造 ``WorldDecl``(trigger = ``pick_invest_strategy``;``next_screen`` =
-备战屏,权威 = sim ``_on_invest_picked`` 交回;offer 日程耦合注同
+备战屏,权威 = sim ``_on_invest_picked`` 结束本次访问;offer 日程耦合注同
 pick_invest_env),转移事件广播随本动作单轨切换摘除。
 """
 from __future__ import annotations
@@ -57,7 +57,7 @@ def report_action_pick_invest_strategy_param(
     - ``rng`` = 采样注入(sim 可播种;缺省链内生成);
     - 出参 applied=True = 受理;reason = ``gain_chain_applied``(获得链
       结果可辨形态,投资双支对齐);出口构造后果声明
-      (:data:`_DECL_TRIGGER`,交回备战)。
+      (:data:`_DECL_TRIGGER`,结束本次访问备战)。
     """
     _validate_sig(sig, ('logic_action',))
     canon = _canon_invest_name(str(getattr(param, 'norm_name', '') or ''))

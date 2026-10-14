@@ -85,7 +85,7 @@ class CwActionPickPlannerOp(CwOperation):
         # 腿型分派效果——点完即按成功上报,零判效零证据标志;
         # leg_type/norm_item 经 env kwargs 形态保持)。上报后一行声明
         # 喂入(动作后果声明化喂入契约 = design.md §2.2 契约 3;实机
-        # 端口未装 = no-op,sim 装配后驱动后端 pick_planner 出队+交回);
+        # 端口未装 = no-op,sim 装配后驱动后端 pick_planner 出队+结束本次访问);
         # round data 携带声明(journal 记账面)。
         world_decl = None
         gs = game_state_from_ctx(self.ctx)

@@ -211,7 +211,7 @@ def read_refresh_probs(ctx: SrContext, screen: MatLike) -> dict[int, float] | No
     **为什么读屏**(用户点题「轮岗」):投资环境轮岗每备战阶段随机翻倍
     一个费用档(基线 lv6 30/40/25/5 → 1费翻倍变 60/22/15/3,实测吻合)——概率条
     直接印在商店面板上,OCR 即真值,无需建模哪个档被随机翻倍、也覆盖其他概率类
-    环境。消费方:plan._sample_cost(D 牌蒙特卡洛)/ refresh 价值评估。
+    环境。消费方:plan._sample_cost(刷新找牌蒙特卡洛)/ refresh 价值评估。
     """
     from sr_od.application.currency_war.kernel.cw_obs_core import (
         SHOP_SCREEN_NAME,
@@ -646,7 +646,7 @@ def verify_node_type_votes(ctx: SrContext, screen: MatLike,
     - 票C 当前槽高亮态图标 Hu 对模板(``cw_node_reader.current_slot_hu_type``)。
 
     ≥2 张非弃权票一致反对表值 → 落缺陷台账(``cw_telemetry.record_defect``,
-    中相关面;复现由台账行复现计数显影)。**投资环境变异窗豁免**
+    中相关面;复现由台账行复现计数暴露)。**投资环境变异窗豁免**
     (``ledger.env_grace_until``):窗内节点行合法变异中,不一致是预期而非
     识别错误,不落。同一 (plane, round) 只落一行(逐帧校验每帧跑,去重防刷屏)。
     任何前置不满足(无表值 / 非 clean 帧 / 无当前槽)→ 静默跳过。
@@ -2609,7 +2609,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     shop_val = (read_shop_cards(ctx, screen, full_ocr=_full_ocr)
                 if _w('shop_cards') else None)
     # r77(轮岗接线):商店开态顺手读概率条真值(60/22/15/3/0 类)——read 失败(None)时
-    # 消费方(_sample_cost)自动退基线表;成功时 D 牌蒙特卡洛用实际分布。
+    # 消费方(_sample_cost)自动退基线表;成功时 刷新找牌蒙特卡洛用实际分布。
     # spec 无的阶段(prep_clean/battle:概率条只印在开店面板,读出恒 None)跳过。
     refresh_probs_val = read_refresh_probs(ctx, screen) if _w('refresh_probs') else None
     # 席满判定 = GameState 派生(kernel/cw_game_state.bench_is_full);
@@ -2710,7 +2710,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                 gs.observe(gs.level_up_cost, int(level_up_cost),
                            sig=_sig_read)
             if _w('deploy_cap'):
-                # deploy_cap 观察写端(入容器,§2.3;spec 键已在册,容器喂入
+                # deploy_cap 观察写端(入容器,§2.3;spec 键已已登记,容器喂入
                 # 沿用既有键门):采信门输出才 observe——防抖核
                 # (read_deploy_cap_debounced/_debounce_cap,双帧一致)
                 # 已在读取半部,None = 拒信/失读帧 → carry 沿用(§2.2 处置①;
@@ -2983,7 +2983,7 @@ def detect_match_final(*, run_id: str,
     3. terminal_closure 结算行(source='terminal_closure',收尾行;
        match_result 值 = 收尾时点的对局级结果)→ 同映射;
     4. 无收尾证据(断流/进程死亡)→ abnormal(补写形态判据,G8:启动
-       扫描按本判定补写,note=recovered 显影)。
+       扫描按本判定补写,note=recovered 暴露)。
 
     ``outcome_rows`` = 本段结算观察行(现役结算观察链产物;阶梯 3 的证据源)。
     纯读函数,零副作用。

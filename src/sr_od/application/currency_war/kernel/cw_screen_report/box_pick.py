@@ -6,7 +6,7 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 op-layer.md §1.1 观察标准化门/选择坐标观察上报)。report 摄入点 =
 operations/cw_screen/cw_screen_box_pick.py::``CwScreenBoxPick.observe``
 (观察 node);适用范围边界:本屏选卡即终结,无 chosen 写端;选错不可逆的
-「卡名空交回重派」闸留守观察侧。
+「卡名空返回主循环重派」闸留在观察侧。
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ class CwScreenBoxPickObs:
     经装备注册表两段转换标准化,任一候选转换失败 = 观察失败,report 不
     达);列表序 = 画面物理卡位序(x 升序左→右,恒稳);重复名合法
     (四卡可能同名,同装备多张,逐候选独立归一);空 = 变体字型/动画帧
-    读缺,观察侧交回外循环重派,report 不调(禁盲点首卡)。
+    读缺,观察侧返回主循环重派,report 不调(禁盲点首卡)。
 
     [索引定义] ``points`` = 各卡点击坐标(卡名带下方避让几何,观察期
     一次解出);键 = ``card_names`` 列表下标 idx(0 起,左→右画面物理序,
@@ -51,7 +51,7 @@ def report_screen_box_pick_obs(gs: GameState, obs: CwScreenBoxPickObs, *,
     观察上报,op-layer.md §1.1 :35)。
 
     写点锚 = cw_screen_box_pick.py::``CwScreenBoxPick.observe``(观察 node;
-    调用方「卡名空 = round_fail 交回重派」闸已保证非空到达,原写点无
+    调用方「卡名空 = round_fail 返回主循环重派」闸已保证非空到达,原写点无
     空门——防线逐位平移不加强不减弱)。
     """
     if sig is None:

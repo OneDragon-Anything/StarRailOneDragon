@@ -2,11 +2,11 @@
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
 ``cw_action_report.__init__`` docstring)。容器、写入口与观察
-写端留守 ``kernel/cw_game_state``,本包 → 容器单向依赖。
+写端留在 ``kernel/cw_game_state``,本包 → 容器单向依赖。
 语义正本 = 函数 docstring(自 cw_game_state 逐字迁移)。
 
 **后果声明**(动作后果声明化详设 world-decl.md §2 表 #18):applied 出口
-构造 ``WorldDecl``(trigger = ''——离屏写端 = 本上报,backend 活仅交回
+构造 ``WorldDecl``(trigger = ''——离屏写端 = 本上报,backend 活仅结束本次访问
 备战;shop.md §5 关店回备战),转移事件广播随本动作单轨切换摘除。
 """
 
@@ -34,7 +34,7 @@ def report_action_close_shop_param(gs: GameState, param: Any, sig: ChannelSig) -
 
     消费面 = ``CwActionCloseShopOp`` 执行体自上报(幂等已关/点击已发两
     出口同调,关店时点清场);sim 后端消费 = 声明喂入
-    (``cw_sim_ports.declare_world``)驱动 advance 纯转移分支交回备战。
+    (``cw_sim_ports.declare_world``)驱动 advance 纯转移分支结束本次访问备战。
     """
     _validate_sig(sig, ('logic_action',))
     if gs.shop.value is not None:

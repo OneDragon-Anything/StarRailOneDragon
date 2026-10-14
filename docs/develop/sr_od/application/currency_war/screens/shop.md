@@ -1,6 +1,6 @@
 # 商店开画面(shop · 货币战争-备战-开商店)
 
-> 代码 = `operations/cw_screen/cw_screen_shop.py::CwScreenShop`(两 node 画面 op:观察 node + 决策动作 node)+ `operations/cw_screen/cw_screen_prep.py::visit_open_shop`(生产调用编排单一源)。职责:商店打开态的一次访问——入口观察(唯一读屏点)→ 单动作 round_wait 决策循环(执行 → 逻辑态直写;逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,例:买牌后金币 −40、备战席 +1;下一帧观察与推算不符时以实际观察为准,下同)→ 终结动作交回外循环(交回 = 本访问结束、控制权交回外循环主循环重新识别画面;下同)。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_shop.py::CwScreenShop`(两 node 画面 op:观察 node + 决策动作 node)+ `operations/cw_screen/cw_screen_prep.py::visit_open_shop`(生产调用编排单一源)。职责:商店打开态的一次访问——入口观察(唯一读屏点)→ 单动作 round_wait 决策循环(执行 → 逻辑态直写;逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,例:买牌后金币 −40、备战席 +1;下一帧观察与推算不符时以实际观察为准,下同)→ 终结动作返回主循环(结束本次访问 = 本访问结束、控制权返回主循环重新识别画面;下同)。路径根 = `src/sr_od/application/currency_war/`。
 > **决策判据(买什么/卖什么/刷不刷/升不升)一律不在本篇**——本篇只管「循环怎么转、期望态怎么推进、何时离店」;判据见 [../../strategy-docs/11_shop_decisions.md](../strategy-docs/11_shop_decisions.md)。
 
 ## 1. 分发判定
@@ -12,7 +12,7 @@
 
 ## 2. 画面形态声明
 
-**决策循环形态(两 node 画面 op;决策动作 node = round_wait 单动作循环)**。生产两路(外循环「商店开画面」分支转交与显式开店同口 `visit_open_shop`、`run_operation` 单跑)构造 `CwScreenShop` 并节点函数直驱(观察 node 恰一次 → 决策动作 node 循环至终结;不经框架 execute 循环——决策循环轮间零截图)。决策入口 = 契约 `decide_shop_action`(`strategies/impl/mandate_v1/shop.py`;**全函数** = 对任何输入都给出恰一个动作:f(期望态) → 恰一个动作,「无动作可做」= CloseShop 恒可用终结;观察帧缺失即抛错;终态零参口)。全动作统一路径零特例拦截零闸(§4);终结动作(RefreshShop/CloseShop)= 本访问结束交回外循环——外循环「商店开画面」分支重分发 → 新访问入口观察重建牌面 → 策略逐帧再决策,「刷后买不买/刷不刷」由策略在下一访问自然表达。刷新无次数上限——用户裁定:无限刷新环 = 策略实现 bug,框架不兜底(暴露面 = 外部停滞哨兵);决策循环无防御性轮数上限——用户裁定:不收敛 = 策略实现 bug,响亮暴露。回放经 `decide_shop_screen` 驱动器消费(非契约成员,同经 `decide_shop_action` 单动作核);sim 经真流程消费同一单动作接口(驱动反转,无独立引擎直调面)。
+**决策循环形态(两 node 画面 op;决策动作 node = round_wait 单动作循环)**。生产两路(外循环「商店开画面」分支转交与显式开店同口 `visit_open_shop`、`run_operation` 单跑)构造 `CwScreenShop` 并节点函数直驱(观察 node 恰一次 → 决策动作 node 循环至终结;不经框架 execute 循环——决策循环轮间零截图)。决策入口 = 契约 `decide_shop_action`(`strategies/impl/mandate_v1/shop.py`;**全函数** = 对任何输入都给出恰一个动作:f(期望态) → 恰一个动作,「无动作可做」= CloseShop 恒可用终结;观察帧缺失即抛错;终态零参口)。全动作统一路径零特例拦截零闸(§4);终结动作(RefreshShop/CloseShop)= 本访问结束返回主循环——外循环「商店开画面」分支重分发 → 新访问入口观察重建牌面 → 策略逐帧再决策,「刷后买不买/刷不刷」由策略在下一访问自然表达。刷新无次数上限——用户裁定:无限刷新环 = 策略实现 bug,框架不兜底(暴露面 = 外部停滞哨兵);决策循环无防御性轮数上限——用户裁定:不收敛 = 策略实现 bug,响亮暴露。回放经 `decide_shop_screen` 驱动器消费(非契约成员,同经 `decide_shop_action` 单动作核);sim 经真流程消费同一单动作接口(驱动反转,无独立引擎直调面)。
 
 出参交接契约:失败判定 = 轮结果 `is_success`(False = 未识别卡停机/未观察熔断的 round_fail);执行账 = `op.ledger`(`ShopVisitLedger`,run 完成后有效,`total_buy`/`total_xp_buy`/`total_refresh` 为上报 executed 计数单一源)。
 
@@ -24,7 +24,7 @@
 点击点位/升级钮/刷新钮 screen_info 定位核实(缺失 = 建档漂移显式 round_fail,禁兜底坐标静默点击)
 → read_game_state(phase=PHASE_PREP_SHOP_OPEN) 全量现读,漏斗容器(容器 = GameState,游戏状态对象,下同)直写(obs 族渠道签名;
    产出 GameStateReadReceipt 回执)
-→ 未识别卡停机闸(读链终判仍含 unknown 槽 → stop_running 留证 + round_fail)
+→ 未识别卡停机闸(读链终判仍含 unknown 槽 → stop_running 保留证据 + round_fail)
 → 免费刷新次数观察登记(漏斗 shop-open 段自带,复用刷新钮三态在用读,零新增读屏:
    免费态登记实读次数 / 付费域登记 0(游戏规则 ⇒ 免费余量恒 0)/ 整帧判不出跳写;
    失配对账 = Field 机制白送,见 §8)
@@ -41,20 +41,20 @@
 
 ## 4. 动作面
 
-**动作 op 与交回对照表**(本篇唯一动作清单;「交回外循环」= 本访问结束、控制权交回外循环主循环 `cw_loop.py::CwLoop.loop` 重新识别画面并重判):
+**动作 op 与交回对照表**(本篇唯一动作清单;「返回主循环」= 本访问结束、控制权返回主循环 `cw_loop.py::CwLoop.loop` 重新识别画面并重判):
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
 | `CwActionBuyCardOp`(`CwActionBuyCardParam`) | 注册表工厂(`action_op_class_for` + `ShopExecEnv` 组装) | 自上报 `report_action_buy_card_param` 单点(简单落位/合成连锁/升星分支内聚;获取计算完后触发 `gs.effects.on_buy` 购买回调,bump CounterKey.BUY) | 否(非终结):发出后落地门/回执行,决策循环续跑;执行未落地 = applied=false 回执行,期望态两侧都不动 |
 | `CwActionLevelUpOp`(`CwActionLevelUpShopParam`;备战域注册行同 op) | 注册表工厂(同上) | 自上报 `report_action_level_up_param` | 否(非终结):发出后决策循环续跑(clicks 序列 = 动作内部步骤,逐帧重组) |
 | `CwActionSellBenchOp`(`CwActionSellBenchParam`;注册行已更替备战域 op) | 注册表工厂(同上) | 自上报 `report_action_sell_bench_param` | 否(非终结):拖拽机械单发,发出即记账 |
-| `CwActionRefreshShopOp`(`CwActionRefreshShopParam`,**访问终结** terminal=True) | 注册表工厂(同上) | 自上报 `report_action_refresh_shop_param` 单口(计数触发 + `free_refresh_left` Field 免费次数分支扣减 + `write_logic_rand` 随机态采样) | **是(访问终结)**:执行后本访问即结束交回外循环重进;零读屏零验证(免费判定 = Field 值,非决策闸) |
+| `CwActionRefreshShopOp`(`CwActionRefreshShopParam`,**访问终结** terminal=True) | 注册表工厂(同上) | 自上报 `report_action_refresh_shop_param` 单口(计数触发 + `free_refresh_left` Field 免费次数分支扣减 + `write_logic_rand` 随机态采样) | **是(访问终结)**:执行后本访问即结束返回主循环重进;零读屏零验证(免费判定 = Field 值,非决策闸) |
 | `CwActionCloseShopOp`(`CwActionCloseShopParam`;执行位 = 真机械点击) | 注册表工厂(同上,全动作统一路径) | 自上报 `report_action_close_shop_param`(店族 payload 清场 leave_screen;幂等已关/点击已发两出口同调) | **是(访问终结)**:恒可用终结;「终结不入 decisions 行」契约(执行事实回执由动作 op 自身承担) |
 
 ```
 while True(round_wait 单动作循环;循环内零读屏,帧不消费):
   action = strategy.decide_shop_action()   # 恰一个动作,全函数(终态零参口)
-  │    异常 → 留证后上抛
+  │    异常 → 保留证据后上抛
   ├─ CloseShop 且 tracked 未观察 → 跳过留痕/连续跳过熔断(留痕后照常执行:
   │    未观察跳过 = 零消费动作,仅执行关店离店,备战环 heavy 观察核实后再进店)
   ├─ 守卫断言 guard_proposal_vs_expected(提案对象在期望态存在且未被消费,
@@ -74,8 +74,8 @@ while True(round_wait 单动作循环;循环内零读屏,帧不消费):
   │    门保留为结构防线——未落地 ⇒ 两侧都不动;期望态推进 = op 自上报单点
   ├─ op 自上报(容器规则通道,纯计算零读屏)直写容器
   终结判定读注册表 action_op_class_for(action).terminal:
-    非终结 = round_wait;终结(RefreshShop/CloseShop)= round_success 交回外循环
-    (访问动作日志行交回前 log;回执 detail = 执行账汇总串)
+    非终结 = round_wait;终结(RefreshShop/CloseShop)= round_success 返回主循环
+    (访问动作日志行结束本次访问前 log;回执 detail = 执行账汇总串)
 ```
 
 逐动作规格 = [../game_state/logic-updates/](../game_state/logic-updates/README.md)(buy-card / refresh-shop / close-shop / level-up 各篇)。
@@ -84,12 +84,12 @@ while True(round_wait 单动作循环;循环内零读屏,帧不消费):
 
 | 条件 | 语义 |
 |---|---|
-| **RefreshShop 访问终结** | 刷新是唯一引入新事实的动作(新牌面),执行即本访问结束交回外循环——重进 = 全新访问入口观察重建期望态(真交回,零额外动作;节点行观察归备战观察域,商店域零探针) |
-| **CloseShop 访问终结** | 策略器主动选关店(全函数「无动作可做」的表达)= 恒可用终结;执行位真点击收起,交回外循环。唯一常规离店条件 |
+| **RefreshShop 访问终结** | 刷新是唯一引入新事实的动作(新牌面),执行即本访问结束返回主循环——重进 = 全新访问入口观察重建期望态(真结束本次访问,零额外动作;节点行观察归备战观察域,商店域零探针) |
+| **CloseShop 访问终结** | 策略器主动选关店(全函数「无动作可做」的表达)= 恒可用终结;执行位真点击收起,返回主循环。唯一常规离店条件 |
 | 未观察跳过熔断 | tracked 未观察 → 策略恒可用终结 CloseShop = 零动作跳过(缺陷台账留痕);连续 `SHOP_UNOBSERVED_SKIP_LIMIT` 次 = round_fail 交兜底链 |
 | 全 unknown 窗 | 牌面含 unknown 槽(整帧 OCR/SIFT 失读窗)→ **入口观察即停**(见下行;决策入口前置门仅返回 CloseShop 为纵深第二线) |
 | 刷新无硬墙 | 刷新无次数上限(用户裁定:无限刷新环 = 策略实现 bug,框架不兜底);每刷一次 = 一次完整「商店开画面」分支重分发与全新访问 |
-| 未识别卡停机 | 入口观察回执落地即判:读链终判(内部易误判重观察后)仍含 unknown 槽(empty=确证空位不计)→ `stop_running(save_screenshot=True)` 框架截图留证 + round_fail——决策/购买不见残缺牌面(未识别不能降级带病跑;细则 = [../flow/guards.md](../flow/guards.md) §3) |
+| 未识别卡停机 | 入口观察回执落地即判:读链终判(内部易误判重观察后)仍含 unknown 槽(empty=确证空位不计)→ `stop_running(save_screenshot=True)` 框架截图保留证据 + round_fail——决策/购买不见残缺牌面(未识别不能降级带病跑;细则 = [../flow/guards.md](../flow/guards.md) §3) |
 | 循环异常 | 上抛 → 编排层单元 aborted 关账,店不收(交上层重新识别) |
 
 `visit_open_shop` = 商店画面 op 驱动的**编排单一源**(构造 `CwScreenShop` 节点函数直驱),显式开店与「商店开画面」分支转交两路径共用;失败路径不收店(店留着交上层重新识别)。访问回执 detail = 固定完成事实串(执行账计数;该行不计入停滞看门狗认可的实质推进信号——零动作空转与真买牌在日志行形态上不可分,推进可见化归 state/round 变化、复合动作成功、采晶矿成功等信号)。

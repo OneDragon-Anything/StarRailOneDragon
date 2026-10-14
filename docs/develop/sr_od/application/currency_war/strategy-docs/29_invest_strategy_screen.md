@@ -22,13 +22,13 @@
 | 分期金 | 「现在」项 + 接下来 count 个节点的项,count 项按「剩余节点数 − 1」截断(「接下来」不含当前节点,终局帧不多计) | `gold_next_nodes_amount + gold_next_nodes_amount × min(count, max(剩余节点数−1, 0))` |
 | 按节点流 | gold_per_node / xp_per_node / 固定利息 interest_flat_per_node | 各自额度 × 剩余节点数,XP 项过 `XP_GOLD_RATE` |
 | boss 节点金 | gold_per_boss_node | × 剩余 boss 数(场字段序列自当前节点(含)起 `'boss'` kind 直查;封顶 modeled planes) |
-| 待建模族 | 字段级「待建模」分类集 + 卡级登记 `STRATEGY_ECONOMY_PENDING_MODELING`(键 = 规范卡名,值 = 未建模项清单;适用范围 = 无字段项 ∪ 字段在册未挂值项) | fail-closed 0 |
+| 待建模族 | 字段级「待建模」分类集 + 卡级登记 `STRATEGY_ECONOMY_PENDING_MODELING`(键 = 规范卡名,值 = 未建模项清单;适用范围 = 无字段项 ∪ 字段已登记未挂值项) | fail-closed 0 |
 
 - 剩余口径单一源 = 策略门面 `statefn/horizon` 场字段自算(`r_remaining`/`r_global`,长度真值源 = `gs.node_seq_by_plane` 位面实际长度,None = 未注册态回退默认表;禁第三实现);视界(决策考虑的未来跨度)封顶 modeled planes(场字段键集位面 1+位面 2,位面 3 = 建模域外 = 局终,不可达轮不计;位面 ∉ 序列表键集契约 = 返回 0);gs 节点位置未写帧退化 `(1,1)`(沿 env 屏先例)。`total_remaining_nodes` 已随缺陷修正改场字段求和(与门面同值,`01_math_framework.md` §5 R_全局 行口径)。
 - 口径申报(如实保留的已知偏高):`r_global` 含当前节点,而「进入新节点给金」类通道语义不含已进入的当前节点 → per-node 通道系统性 +1 节点偏差;boss 通道同族(当前节点即位面末槽时多计一笔已发放 boss 金)。取上端 = 现金分计分偏高已知并申报,非防低估。
 - 不计分通道(结构登记、永不为分):血本位(扣血换收益的卡族,如奋斗协议/不等价交换)分区(`xp_buy_hp_cost`/`hp_gold_swap`)、难度族(难度→价值需战力建模,宪法一禁域)、期权/远见族(分布假设未证)、负向结构登记(无正账可折)。
-- 注册表外经济语义卡(research 在册明列经济结构而未注册 STRATEGY_ECONOMY)= 建模待修问题形态:按 0 分申报低估、`STRATEGY_ECONOMY_PENDING_MODELING` 补列代表例;禁凭 research 记载凭直觉给分。
-- 构建期校验(import 即炸):`STRATEGY_ECONOMY` 全表字段必须落「计分/待建模/不计」三类之一(未分类 = 建模缺口静默,炸出);卡级登记断言集 = 键为注册表规范名/值非空/economy 在册而全默认者必在册/按适用范围规则派生的闭集必在册。
+- 注册表外经济语义卡(research 已登记明列经济结构而未注册 STRATEGY_ECONOMY)= 建模待修问题形态:按 0 分申报低估、`STRATEGY_ECONOMY_PENDING_MODELING` 补列代表例;禁凭 research 记载凭直觉给分。
+- 构建期校验(import 即炸):`STRATEGY_ECONOMY` 全表字段必须落「计分/待建模/不计」三类之一(未分类 = 建模缺口静默,炸出);卡级登记断言集 = 键为注册表规范名/值非空/economy 已登记而全默认者必已登记/按适用范围规则派生的闭集必已登记。
 
 ### 2.2 方向分(阵容价值空间)
 

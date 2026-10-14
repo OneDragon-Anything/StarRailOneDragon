@@ -35,7 +35,7 @@ REFRESH_CLICK_SETTLE_WAIT_S: float = 1.0
 
 class CwActionRefreshShopOp(CwOperation):
     """刷新 = 终结 op(唯一引入新事实的动作,期望态必须在新事实处重建
-    ——终结后交回外循环,下一段入口重观察)。
+    ——终结后返回主循环,下一段入口重观察)。
 
     体内零读屏零比对零验证(action_ops §1 动作 op 无论执行前后
     不做观察识别,点击链之外零截图零识别):免费刷新判定 = 容器 Field
@@ -44,9 +44,9 @@ class CwActionRefreshShopOp(CwOperation):
     payload 随机态由上报函数 write_logic_rand 采样(观察覆盖,以实际观察为准)。
     """
 
-    #: 终结动作(执行即本画面访问结束,交回外循环)。
+    #: 终结动作(执行即本画面访问结束,返回主循环)。
     terminal = True
-    #: 终结交回等待秒数(无转移动画等待语义)。
+    #: 结束本次访问等待秒数(无转移动画等待语义)。
     terminal_wait = 0.0
 
     def __init__(self, ctx: SrContext, param: CwActionRefreshShopParam,
@@ -89,6 +89,6 @@ class CwActionRefreshShopOp(CwOperation):
                 _gs_rpt, self.param,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
-        # 终结交回:真值不写(观察覆盖),期望态下段入口重建。
+        # 结束本次访问:真值不写(观察覆盖),期望态下段入口重建。
         return self.round_success(
             f'刷新已发(刷价 {_refresh_fee};终结交回,期望态下段入口重建)')

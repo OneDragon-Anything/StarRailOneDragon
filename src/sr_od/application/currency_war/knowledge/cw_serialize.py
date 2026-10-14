@@ -4,14 +4,14 @@
 ——telemetry 保留层消费的序列化符号,自 kernel/cw_intention 迁出至本模块。
 
 为何归位 knowledge 而非留在 cw_intention:本节序列化的是**判读口径保真
-形状**——旧意向状态机(IntentionState,已按处死计划删除)删除后,历史
+形状**——旧意向状态机(IntentionState,已按淘汰计划删除)删除后,历史
 遥测档案(实机旧流决策行 / sim P2 改写回写行)仍必须可读,序列化
 形状随本模块存活,不随 IntentionState 类死。序列化用 dataclass 反射
 (``is_dataclass`` 鸭子类型),不 import 任何意向决策符号,依赖方向合法
 (知识层不依赖决策层,设计 01_strategy_layer.md §1)。
 
 零漂移契约:本模块与 ``kernel/cw_intention`` 尾部同名函数逐字同体;
-cw_intention 侧副本仅为旧消费点保留(处死计划「sim 框架与旧策略
+cw_intention 侧副本仅为旧消费点保留(淘汰计划「sim 框架与旧策略
 import 零改动」硬约束)。
 **新增消费一律 import 本模块**,禁再接旧位置。
 """

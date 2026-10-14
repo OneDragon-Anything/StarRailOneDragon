@@ -71,7 +71,7 @@ if TYPE_CHECKING:
 # 分类判据与29 号稿 §2.1 逐通道对应:「计分」= v1 落地通道公式可算;
 # 「待建模」= 有字段腿但价值模型缺(fail-closed = 0,建模落地自动进);
 # 「不计」= 结构登记永不为分。字段分类校验辖「有字段腿」;卡级登记
-# (PENDING_MODELING)辖「无字段腿 ∪ 字段在册未挂值腿」,两适用范围不重叠。
+# (PENDING_MODELING)辖「无字段腿 ∪ 字段已登记未挂值腿」,两适用范围不重叠。
 
 #: 计分通道字段(v1 公式直算,值全 = 注册表游戏定义【注】直读):
 #: - instant_gold:选卡当场一次性金(面值);
@@ -102,7 +102,7 @@ _CASH_SCORED_FIELDS: frozenset[str] = frozenset({
 #:   缺,P97 预算只证可达性不证单次价值);
 #: - XP 通道:xp_per_refresh(刷新 XP 收入的价值缺金值口径)、
 #:   xp_buy_cost_discount/xp_click_discount_from_level/_at(P22 占优方向
-#:   在册但金值未立);
+#:   已登记但金值未立);
 #: - 轨迹依赖:win_reward_mult/sell_price_mult;
 #: - 合成触发族:gold_per_2star2cost_merge/gold_per_3star_merge(频次
 #:   分布未采);
@@ -146,17 +146,17 @@ _NOT_SCORED_FIELDS: frozenset[str] = frozenset({
     'hp_max_loss_pct_of_loss', 'hp_max_loss_cap_pct',
 })
 
-# ===== 「待建模」卡级在册(键 = 注册表规范卡名,值 = 未建模腿清单描述)=====
-# **卡级登记适用范围 = 无字段腿 ∪ 字段在册未挂值腿**(区别于字段分类校验的
+# ===== 「待建模」卡级已登记(键 = 注册表规范卡名,值 = 未建模腿清单描述)=====
+# **卡级登记适用范围 = 无字段腿 ∪ 字段已登记未挂值腿**(区别于字段分类校验的
 # 「有字段腿」适用范围):字段分类校验只扫 EconomyEffect 已挂值条目,扫不到
-# 「字段在册但条目未挂值」(如固定理财系 xp_instant 在字段闭集里而条目
+# 「字段已登记但条目未挂值」(如固定理财系 xp_instant 在字段闭集里而条目
 # 缺省)与「无字段腿」(效果结构在注册表无对应字段),唯卡级登记辖得住。
-# 在册行辖未建模腿的**可见性**(治理账,非运行时闸——已建模腿照常计分,
+# 已登记行辖未建模腿的**可见性**(治理账,非运行时闸——已建模腿照常计分,
 # 见 strategy_economy_value docstring);建模落地后改写对应行描述。
 STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # 固定理财系:官方「现在以及每个位面开始时,获得4/6经验值和2/3次免费
-    # 刷新」——「现在」段 XP 腿字段在册未挂值 +「位面开始段」XP/刷新腿
-    # 无字段(cw_investments.STRATEGY_ECONOMY 条目注释在册注明);
+    # 刷新」——「现在」段 XP 腿字段已登记未挂值 +「位面开始段」XP/刷新腿
+    # 无字段(cw_investments.STRATEGY_ECONOMY 条目注释已登记注明);
     # 「现在」段刷新腿 2/3 刷已挂 free_refresh_burst(归刷新族字段待建模)
     '固定理财': '「现在」段XP腿(字段在册未挂值);「位面开始段」XP腿+'
                '刷新腿(无字段);刷新腿(free_refresh_burst=2,刷新族待建模)',
@@ -170,12 +170,12 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     '狸财经狸': '取款腿(金<20 取 10)+存款腿(P3 首领取全部存款)无字段载体;'
                '30 本金系非玩家收入语境值不进账',
     # 超发货币:gold_at_node 族字段已挂值(归时点大额族字段待建模),
-    # 但「失去现有全部金」负腿无字段且方向不明——兼无字段腿在卡级在册
+    # 但「失去现有全部金」负腿无字段且方向不明——兼无字段腿在卡级已登记
     '超发货币': '正腿兑现条件(5 节点后)概率未建模(gold_at_node 族字段'
                '待建模);负腿「失去现有全部金」无字段载体,方向不明',
-    # —— 注册表外经济语义卡代表例(economy 未注册但 research 在册明列
+    # —— 注册表外经济语义卡代表例(economy 未注册但 research 已登记明列
     # 经济结构 = 建模待修问题形态,按无已建模机械成分 0 分申报低估;
-    # invest_effects 批 3/4 在册,禁凭 research 记载凭直觉给分)——
+    # invest_effects 批 3/4 已登记,禁凭 research 记载凭直觉给分)——
     '被动收入': '每节点 XP = 备战席最左侧角色基础费用(量级可达 ~125 当量'
                '大于买断制现金流),无字段载体',
     '气氛组': '战斗结束按 0 伤害角色数给 XP,无字段载体',
@@ -200,7 +200,7 @@ def strategy_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     无 economy 条目或全默认 → (0, False)(无通道可装,非异常)。
 
     **卡级待建模登记不设运行时闸**:STRATEGY_ECONOMY_PENDING_MODELING
-    辖「无字段腿 ∪ 字段在册未挂值腿」的可见性(治理账),已建模腿照常
+    辖「无字段腿 ∪ 字段已登记未挂值腿」的可见性(治理账),已建模腿照常
     计分——狸财经狸的 interest_flat_per_node 活计分腿 × 剩余节点数照付
     (行为申报 7:计 2 金/节点流,取款/存款腿待建模塌 0);未建模字段
     天然不入下方通道公式 = 塌 0,建模落地加通道即自动进现金分。
@@ -323,10 +323,10 @@ def _validate_pending_modeling_registry() -> None:
     写成恒真断言):
 
     ① 键 = 注册表规范名(孤儿即炸);② 值非空(描述腿清单);
-    ③ 「economy 条目在册而 EconomyEffect 全字段默认的登记条目必须在册」
+    ③ 「economy 条目已登记而 EconomyEffect 全字段默认的登记条目必须已登记」
     (现仅孪生素数——全默认卡不入字段分类校验视野,唯卡级登记可辖);
-    ④ 按适用范围规则派生的登记卡闭集必须在册(直调 5 张:固定理财/固定理财+/
-    孪生素数/狸财经狸/超发货币——前两者兼「字段在册未挂值」腿,后三者
+    ④ 按适用范围规则派生的登记卡闭集必须已登记(直调 5 张:固定理财/固定理财+/
+    孪生素数/狸财经狸/超发货币——前两者兼「字段已登记未挂值」腿,后三者
     兼「无字段」腿)。混合卡的腿级明细不可自动验证,靠行为申报清单
     (29 号稿 §2.1)人工对账兜底。"""
     for _name in STRATEGY_ECONOMY_PENDING_MODELING:
@@ -334,7 +334,7 @@ def _validate_pending_modeling_registry() -> None:
             raise ValueError(f"待建模在册孤儿键(注册表无此卡):{_name!r}")
         if not STRATEGY_ECONOMY_PENDING_MODELING[_name]:
             raise ValueError(f"待建模在册空描述:{_name!r}")
-    # ③ 全默认 economy 条目必须在册(现仅孪生素数,直调亲核)
+    # ③ 全默认 economy 条目必须已登记(现仅孪生素数,直调亲核)
     _default_eff = EconomyEffect()
     _all_default = {n for n, eff in STRATEGY_ECONOMY.items()
                     if eff == _default_eff}
@@ -342,7 +342,7 @@ def _validate_pending_modeling_registry() -> None:
     if _missing_default:
         raise ValueError(
             f"全默认 economy 条目缺卡级待建模登记:{sorted(_missing_default)}")
-    # ④ 适用范围规则派生闭集必须在册(直调 5 张;固定理财系兼未挂值腿、
+    # ④ 适用范围规则派生闭集必须已登记(直调 5 张;固定理财系兼未挂值腿、
     # 后三者兼无字段腿——两适用范围形态各由本断言辖住代表)
     _required_closed_set = ('固定理财', '固定理财+', '孪生素数', '狸财经狸', '超发货币')
     _missing_closed = [n for n in _required_closed_set

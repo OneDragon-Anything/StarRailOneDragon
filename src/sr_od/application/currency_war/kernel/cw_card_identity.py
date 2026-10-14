@@ -41,7 +41,7 @@ _TRANSITION_RELEASE_TIERS: frozenset[str] = frozenset({'carry', 'partial'})
 
 
 def transition_release_names() -> frozenset[str]:
-    """④放行集 = TRANSITION_PACK 档 ∈ {carry, partial} 的在册件名集。
+    """④放行集 = TRANSITION_PACK 档 ∈ {carry, partial} 的已登记件名集。
 
     为什么按档过滤而非取全表:drop 档(卡芙卡/椒丘/艾丝妲)= P1 末弃
     应急件,买入价值低(cw_line_facts.py 档位注释 + transition_score
