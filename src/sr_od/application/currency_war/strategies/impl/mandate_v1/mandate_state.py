@@ -12,14 +12,15 @@ one_dragon 零 import 本类。
 设计 §8.5 结构草图的五个语义槽在本类的落位(as-built 映射;草图 = 槽位
 清单,本类 = 默认策略实现的全量 realization):
 
-- **K 方向**(配方方向)→ ``target_comp``/``locked_line``/``bridge_id``/
-  ``transition_framework``/``target_drought``/``pending_deploys`` 意向面族;
+- **K 方向**(配方方向)→ ``target_comp``(锁定线槽,批 3.7 键面
+  归一后 = 候选-锁定制终态单写者键)/``locked_line``/``bridge_id``/
+  ``transition_framework``/``pending_deploys`` 意向面族;
 - **义务账本** → ``cw4_fuel_filler_stall_buys``(统一发射登记簿,五出口
   生命周期)/``v3_release``(泄息指令)族;
-- **CommitSignals** → ``commit_signals``(定型信号累积器,惰性建);
-- **S1 开店闩** → ``cw4_shopped_phase``(同一备战期开店意图一次性);
-- **S2 wanted 残差** → ``cw4_shop_wanted_pending``(+ ``cw4_wanted_
-  abandon_phase``/``cw4_wanted_reopens`` 同族裁决态);
+- **CommitSignals** → ``commit_signals``(定型信号累积器〔评估数据表,
+  §1.6 边界外保留项〕,投资选卡帧惰性建);
+- **S1 开店闩/S2 wanted 残差** → 已随迭代 2026-10-12 批 3.6/3.7 退役
+  (会话标记/会话循环承接;字段与机器同批清理);
 - **刷新推论** → ``v3_dir_refresh_used``/``v2_round_refreshes`` 等刷新
   计数与推论面;
 - **S3 升级检查不立变量**——升级检查 = 期望态
@@ -105,26 +106,28 @@ class StrategyState:
     天然初值,清零段整体消失)。
     """
 
-    # ===== 意向面(方向重估策略推导;局/轮;写者 = flow 层 _refresh_direction,
-    #       内化——原 update_target 直调点收编进策略器决策入口)=====
-    target_comp: Comp | None = None   # 战略层目标阵容(方向刷新维护)
-    # 弃 target 重选(防 commit 锁死不可达 target:方向刷新重选)。
-    target_drought: int = 0
+    # ===== 方向键面(批 3.7 键面归一:锁定线槽 = target_comp 终态单写者
+    #       = session_scope.write_line_lock;配方物化链写端 =
+    #       opening_recipe_comp;写读单一源 = session_scope 方向函数族)=====
+    target_comp: Comp | None = None
+    """锁定线槽(候选-锁定制的锁定产物,Comp 对象;None = 未锁定)。
+
+    终态单写者 = ``session_scope.write_line_lock``(硬规则命中帧或时点
+    兜底帧一次性写入,锁后只读——候选-锁定制无换目标);物化链
+    (flow 层 P1 配方)写端已切 ``opening_recipe_comp``,两键互不覆写
+    (P1 锁定局并集消费见 shop 序 1,line_and_upgrade §1.3)。kernel
+    消费面经 ist.locked_comp 派生缓存续读(session_scope 同步)。"""
     # 待执行的部署意图(按 position_pref 决策落位)。
     pending_deploys: list = field(default_factory=list)
     # 过渡框架(仙舟/列车,''=未定):双轨期买/上/卖三侧的统一临时 target。
+    # (现役无写端、消费面按 '' 缺省只读——历史保留键,读端见
+    # cw_recipe/cw_deploy_logic。)
     transition_framework: str = ''
 
     # ===== 定型面(定型信号推导;局)=====
-    # CommitSignals(定型信号累积器;方向刷新首调时惰性建——
-    # default_factory 会引环形导入,保留 None 惰性建模式)。
+    # CommitSignals(定型信号累积器,评估数据表——§1.6 机器本体退役的
+    # 边界外保留项;投资选卡帧惰性建并喂入,纯遥测决策面零消费)。
     commit_signals: object = None
-    # 双轨期信号领先线 comp(囤牌方向;方向刷新每回合刷新)。
-    stash_comp: object = None
-    # 定型边沿(卖散上限放宽;decide_prep 一次性消费)。
-    commit_flip_pending: bool = False
-    # flex 收敛白名单(已铺 flex top2)。
-    focus_factions: set[str] = field(default_factory=set)
 
     # ===== 相位面(v2 决策层相位元组;A2 改判迁出——活读端 =
     # 商店执行回执 decisions 行(写点 = cw_screen_shop),活写端 = sim 初始相位注入)=====
@@ -230,12 +233,8 @@ class StrategyState:
     v3_piggy_reward: bool = False
     # 商店拒因遥测(shop.py 逐帧刷新;期望态即逻辑态后真值)。
     cw4_shop_rejects: dict = field(default_factory=dict)
-    # cw4 线级状态机(proof.LineState;_line_state 惰性建入口统一收口)。
-    cw4_line_state: object = None
     # M1″ seam 门唯一写点(mandate.py;值源 = M1P_SEAM_VERIFIED)。
     cw4_m1p_seam_verified: bool = False
-    # 换线排除集(cw4 换线判据族读;proof/line_switch 消费)。
-    drought_excluded: set = field(default_factory=set)
     # 息帽覆写单一源 = session.active_strategies 经 aggregate_economy
     # 聚合(cw_economy.cap_resolved_of_session 消费)。
 
@@ -286,12 +285,8 @@ class StrategyState:
     cw4_must_spend_phase: object = None
     # pop 槽否向理由留决策迹(D-lv7)。
     cw4_pop_slot_why: str = ''
-    # 上一备战期线名快照(k_switched 实值化基准)。
-    cw4_prev_line_name: str = ''
     # 近轮已卖名滚动账(P71 凑息卖去重)。
     cw4_recent_sold_names: list = field(default_factory=list)
-    # 备战期开店闩(同一备战期内开店意图一次性)。
-    cw4_shopped_phase: object = None
     # 素材滞留首见轮账(名 → 首见帧轮次)。
     cw4_stale_seen_rounds: dict = field(default_factory=dict)
     # 本次商店访问已买名单(bridge 清账/op 落账跨层共享)。
@@ -313,40 +308,9 @@ class StrategyState:
     #(close_on_sell/deploy/merge/round/switch)落 cw4_counters。
     cw4_fuel_filler_stall_buys: dict = field(default_factory=dict)
 
-    # ===== T-159 备战旗标状态机(方案 v2.1 §3.1 载体层级裁决,
-    # 收编:旗标语义域 = 跨画面访问的复查义务,必须比 visit 长、比对局短,
-    # session 是唯一同时满足两界的现役层;全部键式,(位面, 轮次) 相等
-    # 命中,节点推进自动失效,免战跳变/恢复局冷建零特判)=====
-    # S2 wanted 残差旗标:((位面, 轮次), 买因类, 残差名单元组,
-    # 在店快照)。唯一写点 = mandate.shop_wanted_defer(商店域席满残差
-    # 产生时点);消费 = mandate.wanted_closure_emit(备战域闭环消费臂)
-    # 与 mandate.mark_s1_route_check(路线 (ii) 判据读者,读载体长度
-    # 判 S2 在册)——两消费点共三处触达。
-    # 门序:门 0 镜像 → 门 0′ 前件 → 门 1 → 两腿 → 放弃。
-    # 买因类 = LAUNCH_CAUSES 现役分类学(猎点 14,禁第二分类学),
-    # 现役仅 obligation 类置位(press/EV 席满属 discretionary,排除在
-    # 重进之外,§5.3 [13])。
-    # 在店快照 = 置位时点「在店的缺员 (名, 费用)」子集(T-161 F2,
-    # )。为什么置位时点快照而非臂时点现读:消费臂在备战域,
-    # obs 对 spec 无商店域的阶段把 state.shop 清空(「没牌」观测真值,
-    # ),现读恒空 = 闭环被前件永久闷死(T-161 方案审 F2-1
-    # 阻断级发现)。费用 = 卡面费用(游戏定义量,节点内不变)随置位
-    # 快照;金不在快照里,臂时点现读——节点内金会变(晶矿入账/他臂
-    # 卖出退金),快照金会把「可负担」错钉在置位时点、错杀 late-flip。
-    # 快照计算单一源 = shop.py 调用位经 _shop_candidates 同一闭包
-    #(方案审 F2-6 禁第二份候选读法)。
-    cw4_shop_wanted_pending: tuple | None = None
-    # wanted 裁决放弃态:(位面, 轮次)。置位 = 消费臂两腿皆不可行或重进
-    # 安全阀超限——本节点不再重进;节点推进键失配自动干净。
-    cw4_wanted_abandon_phase: object = None
-    # wanted 重进安全阀计数:(phase, n)。记账点 = 门 1 实清与两腿发射;
-    # 上限 = mandate.WANTED_REOPEN_CAP(B+1,保守安全阀非紧界,§6.2)。
-    cw4_wanted_reopens: tuple | None = None
-    # S1 清键后的重进观测标记:(位面, 轮次)。写点 = mark_s1_route_check
-    # 实清与 _wanted_reopen_budget;读点 = shop.decide_shop_action 的
-    # shop_reopen_discretionary_actions 计数(B4 内容面观测,[28] 息基腿
-    # 风险源监控)。纯遥测面,禁决策判据消费。
-    cw4_reopen_armed_phase: object = None
+    # ===== T-159 备战旗标状态机残留收口(迭代 2026-10-12 批 3.6/3.7:
+    #       S1 开店闩随会话标记承接删除、S2 wanted 残差随会话重排删除,
+    #       旗标族字段已随 3.7 死码清理退役——本节仅存存活字段)=====
     # 武装段受限访问旗(发射帧仲裁;前置发射位载体):True = 本武装段已产
     # 出受限访问意图(段 = armed 连续期,失武装帧复位——复位后若再武装且
     # 仍命中,允许新段再访,合法形态例 = 访问内升级抬息帽)。取值时机 =
@@ -398,32 +362,37 @@ class StrategyState:
     # 元组字面量比较(宪法第 2 条合规的窗口谓词形态)。
     plane2_started: bool = False
 
-    # ===== 方向状态键(契约 B;line_and_upgrade §3 载体落位;读写
-    #       单一源 = session_scope 方向函数族,候选-锁定判据本体 3.7
-    #       替换内核)=====
-    # [索引定义] line_locked_comp = 锁定线槽:锁定线的注册表线名
-    #(None = 未锁定);取值时机 = 锁定动作一次性写入(硬规则命中帧
-    # 或时点兜底帧,判据 3.7 落码),锁后只读——候选-锁定制无换目标,
-    # 跨节点持续保留(节点边界不重置,契约 C 第 5 项)。写入端单一源
-    # = session_scope.write_line_lock。
-    line_locked_comp: str | None = None
-    # 候选 top3 快照(线名元组,分数降序):每帧派生快照非持久状态,
+    # ===== 方向状态键(契约 B;line_and_upgrade §3 载体落位;批 3.7
+    #       键面归一:锁定线槽 = target_comp〔意向面段,终态单写者 =
+    #       session_scope.write_line_lock〕+ 候选快照 + opening_recipe_comp
+    #       三键;line_locked_comp 过渡键已收键退役)=====
+    # 候选 top3 快照(线名元组,分数降序——line_select 字典序:环境分级
+    # → 持有证据级 → 攻略热度,注册序终局):每帧派生快照非持久状态,
     # 随方向证据签名重算自然更新;锁定写入时**清空**并停算(连带动作
-    #③——锁定后读本键恒 = 空集,消费端无需另查锁定旗标)。本阶段内核
-    # = 现行为等价(照读现行 target_comp 物化链产物名单,取值恒为上一
-    # 拍物化值),3.7 替换为线分数 top3。
+    #③——锁定后读本键恒 = 空集,消费端无需另查锁定旗标)。
     line_candidates: tuple[str, ...] = ()
     # 过渡配方开局面键(契约 B 第三键):部署开局面数据源(P1 过渡
-    # 配方,M5/P1),与锁定线槽互不覆写(消双写者冲突);终态写者 =
-    # 配方对物化链,本阶段照读现行 target_comp 物化链产物搬运
-    #(session_scope._recompute_line_state;取值恒为上一拍物化值——
-    # 3.3 部署面消费时直读物化链产物,不从本快照读)。每备战期自写,
-    # 非节点作用域键(节点边界不重置)。
+    # 配方,M5/P1),与锁定线槽互不覆写;键面归一后 = 配方对物化链
+    # 唯一写端(flow 层 P1 物化写此键,session_scope 不搬运)。每备战
+    # 期自写,非节点作用域键(节点边界不重置);P2 起物化链停写(窗口
+    # 谓词辖),残留值不消费(direction_comp_of 的未锁回落仅在未锁定态
+    # 被读,锁定态恒走锁定线)。
     opening_recipe_comp: Comp | None = None
     # 方向证据签名(上次评估签名;line_and_upgrade §3 步骤 2 幂等
     # 跳过的判据):签名同值跳过重算;节点边界重置置 None 失效(强制
     # 下帧重算)。写入端单一源 = session_scope.refresh_line_if_needed。
     line_eval_signature: tuple | None = None
+    # [索引定义] p2_pick_baseline = P2 首帧的 active_strategies 快照
+    #(frozenset;None = 尚未进入 P2);取值时机 = P2 首次方向重算帧现读
+    #(写入端单一源 = session_scope._update_p2_pick_done)。非节点作用域
+    # 键(时点兜底触发腿的单调事实基线,节点边界不清)。
+    p2_pick_baseline: frozenset[str] | None = None
+    # [索引定义] p2_strategy_pick_done = P2 起首次投资策略获得(「第 10
+    # 结点起首次投资策略三选一完成帧」的判读层侦测:active_strategies
+    # 相对 baseline 增长)单调旗标;置位后恒真(节点边界不清);消费端
+    # = 时点兜底触发腿之二(line_select.evaluate_lock 经 session_scope
+    # 传入)。
+    p2_strategy_pick_done: bool = False
 
     # ===== 商店会话读数协议与会话循环键(迭代批 3.6;读写单一源 =
     #       criteria/shop_session 协议函数族与会话循环发射位——新键在

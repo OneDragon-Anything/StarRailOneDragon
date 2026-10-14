@@ -40,10 +40,10 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_intention import (
     IntentionState,
-    hoard_target_set,
+    clear_p1_recipe,
     p1_early_pair,
     pair_target_comp,
-    update_intention,
+    update_p1_recipe,
 )
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
@@ -76,6 +76,7 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
     encounter_pick,
     invest_env,
     invest_strategy,
+    session_scope,
     supply,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
@@ -92,96 +93,6 @@ if TYPE_CHECKING:
 # config 属 app 桶,impl 桶禁 import(cw_strategy.py 字符串注解先例);
 # 实例由调用方按参注入。
 CurrencyWarConfig = 'CurrencyWarConfig'
-
-# ===== 面③出辖观察件(锁生成可行性;纯观测零行为)=====
-# lock_gen_feasibility_obs_* 族(低血带新开 lock 开启率/切阵后 N 轮内亡率/
-# 死区面计数)。落位申报:消费位在本文件(strategies 侧)而非
-# kernel.cw_intention——分键带判定需消费 p1/p2_blood_floor 域谓词与
-# λ 血带锚(strategies 层判据单一源),kernel 观察位禁反向 import
-# strategies(布局依赖矩阵);本观察件随 update_intention 生产驱动面
-# (CwFlowStrategy._refresh_direction 贵段)同频触发。
-#: 分键前缀(键族与 241/245 键族零交集;键写入
-#: strategy_state.cw4_counters,经局终快照链/sim 轮差分入账本)。
-LOCK_GEN_FEASIBILITY_OBS_PREFIX: str = 'lock_gen_feasibility_obs_'
-
-#: 锁开事件判定 = last_event 转移入锁类前缀(信号锁 'lock:'/强锁
-#: 'forced_lock:'/P2 移交 'handoff_lock:';撤销/驱逐/降格前缀不辖)。
-_LOCK_EVENT_PREFIXES: tuple[str, ...] = ('lock:', 'forced_lock:',
-                                         'handoff_lock:')
-
-
-def bump_lock_gen_feasibility_obs(_ms: StrategyState,
-                                  state: GameState,
-                                  ist: IntentionState,
-                                  pre_last_event: str) -> None:
-    """面③出辖观察件计数(纯观测零行为,只写计数不改任何判定/发射)。
-
-    三键:
-    - ``..._lock_open_total``:锁开事件分母(信号锁/强锁/移交锁全计,
-      由 last_event 转移入 ``_LOCK_EVENT_PREFIXES`` 判定);
-    - ``..._lock_open_lowband``:分子——锁开帧在 λ 低血带(带判定 =
-      ``hp_decision_trusted`` ∧ ``HP_BAND_NEAR_DEATH`` 血带结构锚单一源,
-      禁字面量第二份;引血带键 = 合法概率路由——自检:观察分键的带
-      判定不做任何行为分支)。「低血带新开 lock 开启率」
-      由读端按两键比值派生,禁把率写进计数(只记不判);
-    - ``..._boss_neardeath_p1|p2``:boss 节点濒死帧死区面计数(R1 存疑-1
-      兑付:λ 表濒死 boss 格全禁/空 ⇒ lock 生成可行性门在 boss 窗濒死帧
-      行为化即恒闭,死区人口分授权域申报不留白;P1/P2 授权域不同禁混键;
-      boss token 词表与 discipline.plane_last_battle 同款)。
-
-    辖域:随状态机贵段同频(每 game-round 恰一次);降格终局吸收态帧
-    (状态机短路)不计。第三测量「切阵后 N 轮内亡率」(771014 型 =
-    p2 濒死带 ∧ 新开 lock ∧ ≤2 轮内 hp0)不在本载体:策略层结构性不可见
-    hp0(hp0 即局终无后续决策帧),归档案层
-    离线派生(decisions 锁事件 × rounds hp 轨迹 join),申报义务在案。
-    (终态契约 §2.5 impl 桶:计数宿主 = 显式 ``_ms`` 形参。)
-    """
-    if ist.demoted_endgame:
-        return   # 降格终局吸收态:状态机短路帧不计(与意向帧计数同拍缺席)
-    counters = getattr(_ms, 'cw4_counters', None)
-    if not isinstance(counters, dict):
-        return
-    from sr_od.application.currency_war.kernel.cw_discipline_rules import (
-        hp_decision_trusted,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.lambda_death import (
-        HP_BAND_NEAR_DEATH,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
-        p1_blood_floor,
-        p2_blood_floor,
-    )
-    # 双形态归一退役(装配源换源收口):调用面全为容器直喂
-    #(商店线 W6 波4 已切;备战线随 PrepObservation.state 槽退役改容器
-    # 单例,同函数),帧兼容支随消点删除,入参即容器。
-    if ist.last_event != pre_last_event \
-            and ist.last_event.startswith(_LOCK_EVENT_PREFIXES):
-        _k_total = LOCK_GEN_FEASIBILITY_OBS_PREFIX + 'lock_open_total'
-        counters[_k_total] = counters.get(_k_total, 0) + 1
-        # hp 决策可信位读口(统一 state 迁移波 2,hp施门下沉kernel政策层
-        # 设计 §2.3)。商店线容器直喂时该位按容器真实 source 判
-        #(原桥视图恒 True 失真窗随直喂消亡);本件纯观测零行为。
-        _gs = state
-        hp = _gs.hp.value
-        if hp is not None and hp_decision_trusted(_gs) \
-                and hp <= HP_BAND_NEAR_DEATH:
-            _k_low = LOCK_GEN_FEASIBILITY_OBS_PREFIX + 'lock_open_lowband'
-            counters[_k_low] = counters.get(_k_low, 0) + 1
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        node_kind_of,
-    )
-    # node 单一源 = gs 推导(终态契约 §A′:session 识别优先源退役,同
-    # cw_discipline_rules 重锚口径)。
-    node = node_kind_of(state) or ''
-    if node == 'boss':
-        if p1_blood_floor(state):
-            _k_dz = LOCK_GEN_FEASIBILITY_OBS_PREFIX + 'boss_neardeath_p1'
-        elif p2_blood_floor(state):
-            _k_dz = LOCK_GEN_FEASIBILITY_OBS_PREFIX + 'boss_neardeath_p2'
-        else:
-            return   # 域外帧不入键(hp 缺读/带外帧防污染死区读数)
-        counters[_k_dz] = counters.get(_k_dz, 0) + 1
-
 
 class CwFlowStrategy(CwStrategy[StrategyState]):
     """主流程驱动核(生命周期 + 战略层意向 + pick 族 + 备战主流程栈)。
@@ -292,74 +203,56 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
 
     def _refresh_direction(self, state: GameState,
                            _ms: StrategyState) -> None:
-        """方向重估全程(full 类帧入口)。
+        """方向节拍贵段(每 game-round 恰一次;键守卫)。
 
-        键守卫贵段:``update_intention`` 状态机驱动 + 候选线评分遥测供数,
-        每 game-round 恰一次(幂等键 = ``(plane, round_num)``,持有者 =
-        ``StrategyState.v3_intention_key``,与 kernel ``drive_intention`` 纵深
-        防御守卫同键面);便宜段 = 派生视图刷新,每次 full 帧入口一次。
-        逐字平移自原 ``update_target``(行为锚:段级重入只刷新派生视图,
-        不重复驱动锁线/撤销计数)。
-        (终态契约 §2.5 impl 桶:策略器状态 = 显式 ``_ms`` 形参
-        (即 self.state),state_of(session) 间接读退役。)
+        批 3.7 意向层机器退役后,贵段 = **P1 过渡配方链驱动**
+        (``update_p1_recipe``——配方对派生/冻结闩,line_and_upgrade
+        §1.6 保留项);位面辖域以窗口谓词承载(``plane2_started_of``
+        布尔标志,宪法第 2 条合规——P1 配方物化触发的整改形态,非
+        ``_plane_v == 1`` 位面字面量;P2 起停驱并清配方锁
+        ``clear_p1_recipe``)。终局线选择不经本段——候选-锁定制在
+        session_scope 前置段(``refresh_line_if_needed``,两入口先于
+        本段执行)。便宜段 = 派生视图刷新
+        (:meth:`_refresh_direction_views`),每次 full 帧入口一次。
         """
         ist = self._ensure_intention(_ms)
         key = (plane_of(state), round_num_of(state))
         if _ms.v3_intention_key != key:
             _ms.v3_intention_key = key
-            # :session 透传(plane_remaining_nodes 读本位面轮数真值);
-            # registry 透传(C4 存活轮数门在 v2 换线通道的判据注入,A/B 臂
-            # 经构造参替换 registry 即可达;cw_intention 缺省 None=缺省表)
-            _lg_pre_event = ist.last_event
-            update_intention(state, ist, None,
-                             st=_ms, registry=self.registry)
-            # 面③出辖观察件(锁生成可行性;纯观测零行为,载体与辖域声明
-            # 见 bump_lock_gen_feasibility_obs docstring)——随状态机贵段
-            # 同频,每 game-round 恰一次。
-            bump_lock_gen_feasibility_obs(_ms, state, ist, _lg_pre_event)
+            if not session_scope.plane2_started_of(state):
+                update_p1_recipe(state, ist, self.registry)
+            elif getattr(ist, 'p1_pair', ()):
+                clear_p1_recipe(ist)
         self._refresh_direction_views(state, _ms)
 
     def _refresh_direction_views(self, state: GameState,
                                  _ms: StrategyState) -> None:
-        """派生视图刷新(便宜段;view 类帧入口只走本段,不触状态机——
-        )。原 ``update_target`` 无守卫段逐字平移:get_comp
-        解析 + P1 配方对物化 + ``target_comp``/``v3_core_names`` 写入 +
-        意向事件日志。(状态宿主 = 显式 ``_ms`` 形参,同上。)"""
+        """派生视图刷新(便宜段;view 类帧入口只走本段)。
+
+        批 3.7 键面归一后的写位分布:
+
+        - ``target_comp``(锁定线槽)**本段零写**——终态单写者 =
+          ``session_scope.write_line_lock``(硬规则/时点兜底命中帧,
+          P1 锁定局「互不覆写」的落地);
+        - P1 未锁帧 = 过渡配方物化链写 ``opening_recipe_comp``
+          (配方对伪 comp;窗口谓词辖——P2 起停写;空窗帧按
+          ``p1_early_pair`` 无门槛方向物化,「空窗期同样有方向」的
+          在册语义保持);
+        - ``v3_core_names`` = 现行方向(锁定线优先,未锁 = 配方)核心名。
+        """
         ist = self._ensure_intention(_ms)
-        comp = get_comp(ist.locked_comp) if ist.locked_comp else None
-        # `w578_target_comp_wire/`:P1 配方锁帧物化——后 locked_comp 在配方锁局恒空,
-        # state_of(session).target_comp 恒 None → 部署选人/评分管线/投资装备钩子等
-        # 既有 target 消费者全盲(实机断链:引擎件躺 bench、散脸占板)。
-        # 把已锁配方对物化为伪 comp(单一口径=cw_intention.pair_target_comp
-        # docstring);①锁局 locked_comp 优先,本分支不辖;P2+/空对不物化
-        # (不越 辖域)。
-        _plane_v = (plane_of(state) if isinstance(state, GameState)
-                    else int(getattr(state, 'plane', 1) or 1))
-        if comp is None and _plane_v == 1:
-            # P1 目标不空窗(经济冻结批):配方对退场帧(p1_pair=() 空窗)
-            # 不落 None——按 p1_early_pair 方向物化(单一源=
-            # cw_intention.p1_early_pair;买入门同款读法:空窗期
-            # 同样有方向,不该因为不够锁而没方向;实机局
-            # g_20260904_042657 p1r7-r9 经济冻结根)。旧形态 None →
-            # 消费者(部署/评分/准备域引擎)全盲,0 买 0 刷。
-            # **冻结语义衔接(/§3.3 裁决①)**:F=True 帧
-            # update_intention 已把 p1_pair 钉在 frozen_pair(重派生抑制),
-            # 本段首选取 ist.p1_pair 即物化冻结方向,冻结期方向零漂移;
-            # 空窗帧的 early 面已并批在任纪律(同一夺席算子作用于无门槛
-            # 合格集,cw_intention.p1_early_pair 内聚,裁决①)
-            # ——本段只消费产出,不复制派生。P1 外不辖(维持旧辖域:
-            # P2+ 终局线走 locked_comp / 强制 assignment 通道)。
+        comp = getattr(_ms, 'target_comp', None)
+        if comp is None and not session_scope.plane2_started_of(state):
             pair = tuple(getattr(ist, 'p1_pair', ()) or ()) \
                 or p1_early_pair(state, ist)
-            if pair:
-                comp = pair_target_comp(pair)
-        _ms.target_comp = comp
-        hoard = hoard_target_set(state, ist)
-        _ms.v3_core_names = set(comp.core_chars) if comp else set()
+            _ms.opening_recipe_comp = pair_target_comp(pair) if pair else None
+        direction = comp if comp is not None \
+            else getattr(_ms, 'opening_recipe_comp', None)
+        _ms.v3_core_names = set(direction.core_chars) if direction else set()
         if ist.last_event and ist.last_event not in (
                 _ms.v3_last_intention_event,):
-            log.info('[cw][d2] 意向 %s mode=%s(%s)',
-                     ist.phase, hoard.mode, ist.last_event)
+            log.info('[cw][d2] 意向 %s mode=p1_recipe(%s)',
+                     ist.phase, ist.last_event)
         _ms.v3_last_intention_event = ist.last_event
 
     # ===== 决策入口统一内务:黑板帧代次消费(/§3.4)=====
@@ -630,7 +523,8 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                                              'megastar_opts')
         self._consume_prep_direction_frame()   # 入口内务
         available = [o.char_id for o in options if o.char_id]
-        chosen_name = cw_comps.select_megastar(self.gs, self.state.target_comp, available)
+        chosen_name = cw_comps.select_megastar(
+            self.gs, session_scope.direction_comp_of(self.gs), available)
         if chosen_name:
             for o in options:
                 if o.char_id == chosen_name:
@@ -649,8 +543,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                                              'partner_opts')
         self._consume_prep_direction_frame()   # 入口内务
         wants: list[str] = list(getattr(self.config, 'character_build_around', []) or [])
-        if self.state.target_comp is not None:
-            wants += list(self.state.target_comp.core_chars)
+        _dir_c = session_scope.direction_comp_of(self.gs)
+        if _dir_c is not None:
+            wants += list(_dir_c.core_chars)
         for o in options:
             if o.char_id and o.char_id in wants:
                 return CwActionPickPartnerParam(idx=o.idx, reason=f"命中偏好/核心 {o.char_id}")
@@ -665,7 +560,8 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         options = self._require_slot_options(self.gs.planner_opts,
                                              'planner_opts')
         self._consume_prep_direction_frame()   # 入口内务
-        pick = cw_events.decide_planner(options, self.gs, self.state.target_comp)
+        pick = cw_events.decide_planner(
+            options, self.gs, session_scope.direction_comp_of(self.gs))
         return CwActionPickPlannerParam(idx=pick.idx, reason=pick.reason)
 
     def decide_star_tome(self) -> CwActionPickStarTomeParam:
@@ -687,9 +583,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 FRAMEWORK_FACTIONS,
             )
             _fw_facs = set(FRAMEWORK_FACTIONS.get(fw, ()) or ())
-        _tgt_facs: set[str] = set()
-        if self.state.target_comp is not None:
-            _tgt_facs = set(self.state.target_comp.all_factions or [])
+        _dir_c = session_scope.direction_comp_of(self.gs)
+        _tgt_facs: set[str] = set(
+            _dir_c.all_factions or []) if _dir_c is not None else set()
         best_i, best_s = 0, -1.0
         for i, name in enumerate(options):
             s = 0.0
@@ -718,9 +614,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         self._consume_prep_direction_frame()   # 入口内务
         if not options:
             return CwActionPickWishTrialParam(idx=0)
-        _tgt_facs: set[str] = set()
-        if self.state.target_comp is not None:
-            _tgt_facs = set(self.state.target_comp.all_factions or [])
+        _dir_c = session_scope.direction_comp_of(self.gs)
+        _tgt_facs: set[str] = set(
+            _dir_c.all_factions or []) if _dir_c is not None else set()
         fw = getattr(self.state, 'transition_framework', '')
         _fw_facs: set[str] = set()
         if fw:

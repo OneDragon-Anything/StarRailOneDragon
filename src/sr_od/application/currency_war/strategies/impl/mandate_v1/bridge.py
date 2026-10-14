@@ -199,18 +199,12 @@ class MandateV1Strategy(CwFlowStrategy):
 
     def __init__(self, gs, config,
                  registry: DecisionV2Registry | None = None) -> None:
-        """核构造 + 标定注入(标定批 T-278/;终态契约 §2.1:gs/config
-        透传基类构造注入)。
+        """核构造(终态契约 §2.1:gs/config 透传基类构造注入)。
 
-        ``calibration.apply()`` 幂等(只填 None 槽),把 Δ/ε₂ 标定值
-        送入 provisional 槽位(生产注入单点;None 期证据门恒不可评
-        fail-closed 语义不变)。测试隔离:证据门锁经 ``provisional.
-        reset`` fixture 清场,与本注入位无关。"""
+        (原 ``calibration.apply()`` P76 两槽注入位已随证据门退役批 3.7
+        删除——V_C_MINUS_V_F/E2_CONCENTRATION_BAND 槽位不迁移,
+        line_and_upgrade §1.6;audit/calibration.py 同批移除。)"""
         super().__init__(gs, config, registry)
-        from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import (
-            calibration,
-        )
-        calibration.apply()
 
     def decide_prep_screen(self) -> CwAction:
         """备战画面决策(终态零参口 §2.1;单动作;空发射 = CwActionObsParam

@@ -27,8 +27,11 @@ DESIGN.md §2.1/§3):
 
 重跑: $env:PYTHONPATH='src'; uv run python tools/cw/proofs/p65_check.py
 """
+from __future__ import annotations
+
 import itertools
 import sys
+from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_deploy_logic import TRANSITION_TRAITS
@@ -38,12 +41,72 @@ from sr_od.application.currency_war.kernel.cw_intention import (
     _derive_p1_pair,
     _pair_bond_keys,
     _v2_comps,
+    _visible_chars,
     encounter_window_rounds,
     intention_core,
     line_completion_feasibility,
-    promote_candidates,
 )
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_comps import Comp
+    from sr_od.application.currency_war.kernel.cw_game_state import GameState
+    from sr_od.application.currency_war.kernel.cw_intention import IntentionState
+    from sr_od.application.currency_war.kernel.cw_registry import DecisionV2Registry
+    from sr_od.application.currency_war.strategies.impl.cw_strategy import (
+        StrategySession,
+    )
+
+
+# ===== P65 冻结副本(退役符号归档;迭代 2026-10-12-prep-shop-workflow-
+#      redesign 批 3.7:意向层机器本体〔含 promote_candidates〕随候选-
+#      锁定制退役删除。本脚本保留 = P65 在册命题的历史验证载体:冻结
+#      副本逐字取自退役前生产实现(git 历史),其依赖的
+#      line_completion_feasibility/_asset_thickness 等判据原语仍为在产
+#      符号——副本能继续复算当时的集合包含断言,但不再断言「生产直调」
+#      (生产符号已不存在,重跑语义 = 历史公式复核);位面读改桩属性
+#      ``gs.plane``(与脚本自有镜像 _handoff_candidates 同款鸭子读,
+#      生产 plane_of 已容器化读 node——原脚本在容器迁移前已断,本批
+#      冻结副本恢复可跑)。)=====
+def promote_candidates(gs: GameState,
+                       ist: IntentionState,
+                       session: StrategySession | None = None,
+                       registry: DecisionV2Registry | None = None,
+                       visible: set[str] | None = None) -> list[Comp]:
+    """晋升候选集纯派生(设计稿 §2.1 公式;本批为 G8 观测载体,零行为)。
+
+    公式(与 P2 移交候选 :1345 同判据形状,输入换 p1_pair 冻结快照):
+    ``{ c ∈ v2 comps : c ∉ evicted ∧ (form_tiers ∪ sub_tiers) ∩
+    pair 体系键 ≠ ∅ ∧ plane ∉ weak_planes ∧ _core_reachable ∧
+    (plane != 2 或 G > ε) }``。输入 = ``p1_pair_frozen_obs``(退场前
+    冻结副本,空 = P1 无配方方向,候选恒空)。
+
+    - **行为交付面出辖**:排序与锁定消费归 P65 直证批(设计稿 §6 验收
+      序「①前置观测」),本函数禁入任何行为消费点;
+    - 体系键交集用 ``_pair_bond_keys``(希儿系展开=量子同频+贝洛伯格,
+      与 ``locked_faction_scope`` 同口径,不另造键展开)。"""
+    pair = tuple(ist.p1_pair_frozen_obs or ())
+    if not pair:
+        return []
+    reg = registry or DEFAULT_REGISTRY
+    vis = _visible_chars(gs) if visible is None else visible
+    bonds = _pair_bond_keys(pair)
+    out: list[Comp] = []
+    for c in _v2_comps():
+        if c.name in ist.evicted:
+            continue
+        if not (set(c.form_tiers) | set(c.sub_tiers)) & bonds:
+            continue
+        if gs.plane in (c.weak_planes or ()):
+            continue
+        if not _core_reachable(c, gs, vis):
+            continue
+        if gs.plane == 2 and line_completion_feasibility(
+                gs, c, session, reg, vis) <= reg.revoke_miss_tolerance_eps:
+            continue
+        out.append(c)
+    return out
+
 
 # ===== 12 线枚举快照锁(设计稿验收要求:防 COMP_LIBRARY 漂移)=====
 # 每行: (name, family, 字面体系键交集(form_tiers∪sub_tiers ∩

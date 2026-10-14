@@ -54,7 +54,6 @@ from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     same_star_count,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
-    S1_RESET_ROUTE_TAGS,
     CwAction,
     CwActionDeployMoveParam,
     CwActionFurnaceUseParam,
@@ -124,9 +123,6 @@ if TYPE_CHECKING:
     )
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         StrategySession,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
-        StrategyState,
     )
 
 # M1″ seam 门开关常量(唯一写点的值源)。True = 开闸
@@ -799,9 +795,8 @@ def core_single_card_buy_eligible(locked_buy: bool) -> bool:
 
     辖域分界(设计 §2 N2 路线 b):既有 dominance_buy 辖「停手态 ∧
     溢余带 ∧ 线外燃料件」;本通道辖「锁线态 ∧ 不破息带 ∧ registry
-    名单核心卡」。开店闩(cw4_shopped_phase)默认不消费:闩辖
-    run_mandate 的 CwActionOpenShopParam 发射节流(_emit_open_shop),本通道在商店
-    决策访问位下游,无闩读/写。
+    名单核心卡」。(备战期开店闩已退役——批 3.6/3.7 会话标记承接,
+    本通道在商店决策访问位下游,无闩读/写。)
     """
     return locked_buy
 
@@ -902,310 +897,6 @@ def _redeploy_emission_allowed(session: StrategySession,
                for b in _waiting)
 
 
-# ===== T-159 备战决策环旗标状态机(用户裁定 2026-09-08)=====
-# 三旗标:S1 = 备战期开店闩(cw4_shopped_phase,键式,现行)重置白名单化;
-# S2 = 商店 wanted 残差旗标(cw4_shop_wanted_pending,本批新增);
-# S3 = 节点升级检查为逻辑旗标不立变量(§1.4 单向上位:期望态每帧幂等
-# 求值即脏标记,独立变量与期望态构成双源,失步即错裁决)。
-# 下文「§x.y」引用 = 收编的方案 v2.1 同号节(清键三路径
-# 封闭枚举/迁移 A-D/终止性三支柱与安全阀降格/实现裁定申报三条均
-# 在册),节内注释不再重复携带出处路径。
-
-#: wanted 重进安全阀上限(§6.2:键式计数 ≤ 每节点)。保守安全阀非紧界
-#: 申报:零调参门自答 = 框架流程防线常量(熔断动作 = 裁决放弃+遥测,
-#: 值不进任何决策门;与 MAX_REFRESH/VISIT_ACTION_CAP 同类事故阀形态),
-#: B 自注册表直读禁裸写。终止性由 §6.1 三支柱(bench 件永久消耗)独立
-#: 保证,本阀为纵深防御非终止性来源;超限计数键 wanted_circuit_break
-#: > 0 即回查。
-WANTED_REOPEN_CAP: int = BENCH_CAPACITY + 1
-
-
-def route_tag_of(action: CwAction) -> str:
-    """动作落地路线标签(执行侧清键路由的唯一读法;T-159 §3.3)。
-
-    deploy_launch 类 = 部署臂动作本体(批 2a 前载体 = RunDeploy 组合壳,
-    R2 原子通路后 = CwActionDeployMoveParam;细分归因保留在 Emitted.reason,不维护
-    第二份状态);卖出类 = route_tag 字段原值(桥自 Emitted.reason 透传,
-    见 bridge.decide_prep_frame)。未标 = ''。
-    """
-    if isinstance(action, CwActionDeployMoveParam):
-        return 'deploy_launch'
-    return getattr(action, 'route_tag', '') or ''
-
-
-def shop_wanted_defer(session: StrategySession, state: GameState,
-                      missing: list[str],
-                      in_shop_snapshot: tuple[tuple[str, int], ...]) -> None:
-    """S2 置位(唯一写点;调用位 = shop.decide_shop_action 席满缺员
-    形态 bench_full_buy_abandon 同点,T-159 迁移 A;原 m2_retry_exhausted
-    并列位随商店期腾席卖射退役并入本单一形态,T-271)。
-
-    残差语义 = 「店面有义务缺员买入但席满腾不出」的结构性流失记录
-    (猎点 10:回备战后开店闩命中挡住重开,M2 重评发不出 CwActionOpenShopParam,
-    买入机会丢失至下节点)。键式 = (位面, 轮次) 相等命中,节点推进
-    自动失效(§3.2);类型 = 现役买因分类学 LAUNCH_CAUSES 的 obligation
-    类(猎点 14:线名单缺员 = obligation;EV 席满拒因 = press 类属
-    discretionary,按 §5.3 [13] 精确化注排除在重进之外,不置位)。
-    遥测 shop_wanted_deferred 与残差计数点同粒度(事件帧)。
-
-    ``in_shop_snapshot`` = 「在店的缺员 (名, 费用)」子集(T-161 F2 前件
-    载体):消费臂判定 ∃在店∧可负担 的存在性数据源。必须由
-    调用位(商店域,商店面板开着、state.shop 有效)经 _shop_candidates
-    同一闭包算好传入——臂在备战域,state.shop 已被 obs 清空,
-    现读恒空(T-161 方案审 F2-1);费用为卡面费用(游戏定义量),金不在
-    快照内、臂时点现读。空快照合法(缺员全不在店),消费臂按 hold 处理。
-    """
-    st = state_of(session)
-    st.cw4_shop_wanted_pending = (
-        _phase_key(state),   # 相位键容器读口(§3.2 键式,同上)
-        'obligation',   # LAUNCH_CAUSES 闭集成员(单一源 = sell_gate)
-        tuple(missing),
-        tuple(in_shop_snapshot))
-    ct = getattr(st, 'cw4_counters', None)
-    if isinstance(ct, dict):
-        ct['shop_wanted_deferred'] = ct.get('shop_wanted_deferred', 0) + 1
-
-
-def _wanted_reopen_budget(st: StrategyState, phase: tuple,
-                          counters: dict) -> bool:
-    """重进安全阀记账(§6.2):键式计数超 WANTED_REOPEN_CAP ⇒ 熔断计数
-    + 裁决放弃态,返回 False。记账点 = 门 1 实清与两腿发射(每次潜在
-    重进各记一次;发射侧计数对落地失败过计数 = 方向保守,提前触发
-    正是阀职责)。附带置重进观测标记(shop 侧 discretionary 计数消费)。
-    """
-    prev = getattr(st, 'cw4_wanted_reopens', None)
-    n = (prev[1] + 1) if (isinstance(prev, tuple) and len(prev) == 2
-                          and prev[0] == phase) else 1
-    if n > WANTED_REOPEN_CAP:
-        counters['wanted_circuit_break'] = \
-            counters.get('wanted_circuit_break', 0) + 1
-        st.cw4_wanted_abandon_phase = phase
-        return False
-    st.cw4_wanted_reopens = (phase, n)
-    st.cw4_reopen_armed_phase = phase
-    return True
-
-
-def wanted_closure_emit(session: StrategySession, state: GameState,
-                        bench: list[BenchSlot],
-                        deployed: list[Unit],
-                        deploy_cap: int | None, round_num: int,
-                        ) -> list[Emitted]:
-    """S2 wanted 闭环消费臂(T-159 迁移 A;调用位 = entry.emit ①实体面后、
-    ②证明 pass 前——wanted 是未完成义务,闭环优先级高于常规步骤序)。
-    载体 = 容器 gs(prep 链容器化段 2;域读经读口族)。
-
-    门序(方案 §5.2;门 0′ 为 T-161 F2 增设):放弃态短路 → 门 0 残差
-    有效性镜像(missing ∧ not stop_flag 现读复核,审 B1)→ 门 0′ 前件
-    复核(∃在店快照成员∧可负担,不满足 = hold 零发射且 S2 保留)
-    → 门 1 席已空闲先重进(零发射,S1 清键后调用方落回常规步骤序,由
-    当帧 M2 重评发 CwActionOpenShopParam)→ 腿 1 部署腾槽(无损优先,[22] 囤积判据
-    一致)→ 腿 2 M4 卖角色 → 两腿皆不可行 = 裁决放弃态(用户 5.1
-    「商店没得买了」)。返回发射列表:非空 = 本帧臂动作(调用方直通
-    返回,单动作环);空 = 臂无发射,调用方照常续走后续编排。落地后的
-    S1 清键由路径 (i) 执行侧落地门承接(mark_s1_route_check),臂内只
-    管发射与预算。
-    """
-    st = state_of(session)
-    s2 = getattr(st, 'cw4_shop_wanted_pending', None)
-    if not (isinstance(s2, tuple) and len(s2) == 4):
-        return []
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        gold_of,
-        level_of,
-        plane_of,
-    )
-    phase = (plane_of(state), round_num)
-    if s2[0] != phase:
-        return []   # 键失配(节点推进)= 旗标自动干净(§3.2),零特判
-    if getattr(st, 'cw4_wanted_abandon_phase', None) == phase:
-        return []   # 本节点裁决放弃态:不再重进
-    counters = getattr(st, 'cw4_counters', None)
-    if not isinstance(counters, dict):
-        counters = {}
-        st.cw4_counters = counters
-
-    def _count(key: str) -> None:
-        counters[key] = counters.get(key, 0) + 1
-
-    # 门 0:判据与 ② 证明 pass 同源(同一契约门 + proof.stop_buy);臂
-    # 在 ② 之前运行故自备镜像求值(同一 ensure_contract 键,幂等)。
-    # 弃权侧 = 保守停买(与 ② 同向:契约核验失败按停手处理,残差清零)。
-    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
-        proof as _proof,
-    )
-    k = getattr(st, 'target_comp', None)
-    k_members = predicates.line_members(k)
-    bench_names = [_slot_cid(b) for b in bench]
-    deployed_names = [d.char_id or '' for d in deployed]
-    stop_flag = _proof.stop_buy(k, bench_names, deployed_names) \
-        if contracts.ensure_contract(('proof', 'stop_buy'),
-                                     contracts.ContractCtx(), counters) \
-        else True
-    owned = set(bench_names) | set(deployed_names)
-    still_missing = [m for m in (s2[2] or ()) if m not in owned]
-    if not still_missing or stop_flag:
-        st.cw4_shop_wanted_pending = None
-        return []
-
-    # 门 0′(T-161 F2 前件):残差激活前件 = ∃m∈still_missing:
-    # m 在店快照 ∧ 可负担。可负担复用 check_affordable ①号本体(单一源,
-    # 禁第二份 affordability 谓词;与闭环最终买入在店内段要过的同一道闸
-    # 同源——「激活时判得过的,重进后买入也判得过」,方案审 §1.3);
-    # 金臂时点现读(节点内金会变,快照金会错杀 late-flip),费用取置位
-    # 快照(卡面费用 = 游戏定义量,节点内不变)。不满足 = hold 返回
-    #(零发射),S2 保留至节点推进自动失效、不置放弃态、不记重进预算
-    #(预算只在发射点记账):可负担腿可随节点内金入账翻真,早清错杀;
-    # 「不在店」腿本节点确定性死(备战域无刷新通道,重开不换牌面)但
-    # 统一保留零成本(纯谓词评估),过期规则保持单一 = 键失配(§3.2)。
-    # 附:前件不满足即返回,腾席腿(腿 2 卖燃料)不再为「买不成的买入」
-    # 付出不可逆代价——本前件即 F2 缺陷(先腾席后知道买不成)的关闭面。
-    _gold_now = gold_of(state)
-    _in_shop = dict(s2[3] or ())
-    if not any(m in _in_shop
-               and check_affordable(_gold_now, _in_shop[m])[0]
-               for m in still_missing):
-        _count('wanted_precond_hold')
-        return []
-
-    # 门 1(席已空闲先重进,审 B1):部署/卖出在其他臂已腾过席的情形不
-    # 重复腾,S1 实清时记一次重进预算;闩本已清(如路径 (ii) 已清)则
-    # 零记账直落常规序。
-    if max(0, BENCH_CAPACITY - len(bench)) > 0:
-        if getattr(st, 'cw4_shopped_phase', None) == phase:
-            if not _wanted_reopen_budget(st, phase, counters):
-                return []
-            st.cw4_shopped_phase = None
-            _count('wanted_reopen')
-        return []
-
-    # 腿 1(M1 部署腾槽):部署门 = M1 既有单一源 _deployable(围栏/去重/
-    # cap 全在谓词内),不因 wanted 改判据。Emitted.reason = wanted_close
-    #(消费臂填充位,§3.3 现役发射位);路线类经动作类型归 deploy_launch
-    #(§5.2 腿 1),臂归属由 wanted_* 计数键承载。
-    deploy_vacancy = (max(0, deploy_cap - len(deployed))
-                      if deploy_cap else 0)
-    if deploy_vacancy > 0:
-        _frame = MandateFrame(
-            gold=gold_of(state),
-            level=level_of(state),
-            bench=bench, deployed=deployed, deploy_cap=deploy_cap,
-            node_type=None, stop_flag=stop_flag, k_members=k_members,
-            round_num=round_num)
-        if _deployable(_frame, session, state):
-            if not _wanted_reopen_budget(st, phase, counters):
-                return []
-            _count('wanted_leg_deploy')
-            _out: list[Emitted] = []
-            _emit_deploy_moves(_out, _frame, session, state, 'wanted_close')
-            return _out
-
-    # 腿 2(M4 卖角色):候选与排除同源(M4 腾席臂同参 fuel_sell_candidates
-    # + 统一装配 A channel='m4_fuel');路线类 = m4_fuel_sell(§5.2 腿 2:
-    # 同源候选即同路线类,不复刻第三枚举值——§3.3 封闭集无 wanted_close)。
-    # 释放集同参同源(N3:cap_hold 与本位装配同一现读;单点 = sell_gate)。
-    _m4_excl = sell_exclusions(session, k_members, channel='m4_fuel',
-                               cap_hold=locked_buy_cap_hold(state),
-                               current_round=round_num)
-    _dp_release = dead_pair_exit_release(
-        session, k_members, bench, deployed, round_num,
-        cap_hold=locked_buy_cap_hold(state), counters=counters)
-    cands = fuel_sell_candidates(bench, k_members, state=state,
-                                 exclude_names=_m4_excl,
-                                 merge_guard_release=_dp_release,
-                                 counters=counters,
-                                 dedup_names=set())
-    if cands:
-        if not _wanted_reopen_budget(st, phase, counters):
-            return []
-        _count('wanted_leg_fuel_sell')
-        # 轮内卖出登记(档 2 新鲜度排除写端,与 M4 腾席臂同口径)。
-        _c0 = _slot_cid(cands[0])
-        record_round_sold(session, state, _c0)
-        if _c0 in _dp_release:
-            _count('dead_pair_exit_sold_m4_fuel')
-        _vidx = _bench_container_idx(state, cands[0])
-        if _vidx is None:
-            _count('wanted_leg_fuel_sell_stale_idx')
-            return []
-        return [Emitted(CwActionSellBenchParam(bench_idx=_vidx,
-                                  reason='m4_fuel_sell'), True,
-                        'm4_fuel_sell')]
-
-    # 两腿皆不可行 = 裁决放弃态:本节点不再重进;S2 键式保留至节点推进
-    # 自动失效(放弃态同样键式,跨节点零污染)。
-    st.cw4_wanted_abandon_phase = phase
-    _count('wanted_abandon')
-    return []
-
-
-def _phase_key_of(state: GameState | None) -> tuple[int | None, int]:
-    """phase 键单一换算(T-146 装配源换源适配):容器 node 读出
-    (plane, round_num);未观察帧 = 旧缺帧形态 (None, 1) 逐位镜像。"""
-    node = state.node.value if state is not None else None
-    return ((node.plane, node.round_num) if node is not None else (None, 1))
-
-
-def mark_s1_route_check(session: StrategySession, state: GameState | None,
-                        action: CwAction, *,
-                        pre_bench_count: int,
-                        post_bench_count: int,
-                        landed: bool) -> None:
-    """S1 清键落地门唯一写点(T-159 迁移 D;调用位 = PrepActionExecutor
-    .execute 发出位——批3a:原「progressed 返回才调」随 T-223 端口回执
-    退役改为发出即调,``landed`` 过渡期恒 False fail-closed,批5 观察侧
-    reconcile 落地事实接管供给)。
-
-    三路径封闭枚举(方案 §3.3,审 D1;三条均未命中一律不清):
-    (i) route_tag 白名单落地(deploy_launch 由动作类型承载;批 2a 载体 =
-         RunDeploy 组合壳 → CwActionDeployMoveParam 原子序);部署类另须 ``landed=True``
-         (F1b,T-167:no-op 部署零新信息,清闩 = 凭空
-         再武装一次开店意图,实证 = 同事故 25 次无信息量重开店交替活锁。
-         landed 为必传参:禁由 detail 字符串反推——带前缀显影文本裸比对
-         恒 False;批5 供给接管前执行器恒传 False = 宁「该清不清」不
-         「乱清」,后者可无限重复);
-    (ii) S2 在册 ∧ 本帧落地使备战席 free 由 0 翻正——任意 tag 含凑息/
-         压库(义务残差优先,猎点 14;腾席即解除 wanted 封锁约束,tag
-         不豁免);席位翻正读数 = 执行器主域 bench 视图 pre/post 现读;
-    (iii) 门 1 = 消费臂内提前收敛形态,归 wanted_closure_emit,不经本门。
-    纯金变更(晶矿金/无席变动的金入账)永不清(B3 裁决唯一绝对项)。
-    商店域落地(apply_action_outcome)不挂本门(§3.3 落域澄清:店内段
-    S1 语义正在成立中,域内卖出经由六序域内闭环,旗标无感)。
-    误标损失上界(勘误,T-167:原「不该清乱清 = 一次无信息量重
-    开店」判断被本事故证伪——乱清可无限重复,事故窗口 25 次重开店交替
-    活锁;「该清不清」侧仍是 wanted 滞留一拍自愈,非正确性损害):
-    s1_reset_by_* 与卖出通道遥测交叉对账 = 误标检出位。
-    """
-    if session is None:
-        return
-    st = state_of(session)
-    phase = _phase_key_of(state)
-    tag = route_tag_of(action)
-    route = ''
-    if tag in S1_RESET_ROUTE_TAGS:
-        route = tag                                   # (i) 卖出类
-    elif isinstance(action, CwActionDeployMoveParam):
-        if not landed:
-            return   # F1b:no-op 部署(STATUS_NOOP 等零落地形态)不清闩
-        route = 'deploy_launch'                       # (i) 部署类
-    else:
-        s2 = getattr(st, 'cw4_shop_wanted_pending', None)
-        if (isinstance(s2, tuple) and len(s2) == 4 and s2[0] == phase
-                and pre_bench_count >= 0 and post_bench_count >= 0
-                and BENCH_CAPACITY - pre_bench_count <= 0
-                < BENCH_CAPACITY - post_bench_count):
-            route = f'bench_flip_{tag or "untagged"}'   # (ii)
-    if not route:
-        return
-    if getattr(st, 'cw4_shopped_phase', None) != phase:
-        return   # 闩不在本节点(未置/他节点键):无可清,遥测零面
-    st.cw4_shopped_phase = None
-    st.cw4_reopen_armed_phase = phase   # 重进观测标记(shop 侧计数消费)
-    ct = getattr(st, 'cw4_counters', None)
-    if isinstance(ct, dict):
-        ct[f's1_reset_by_{route}'] = ct.get(f's1_reset_by_{route}', 0) + 1
-
-
 # ===== executor 本体 =====
 
 def run_mandate(frame: MandateFrame,
@@ -1235,35 +926,16 @@ def run_mandate(frame: MandateFrame,
     事件粒度:续段缓存命中帧不增,量级骤降 ≠ 风暴消失,判读协议随批
     声明;观测对 m2_stall_cache_hit / m2_stall_cache_rederive 与重复帧
     键 m2_stall_repeat_frame 同批新增,语义与商店域一致)/
-    shop_latch_skip_dominance_buy / shop_latch_skip_m2_buy /
-    shop_latch_skip_m6_stock(备战期开店闩跳过计数,分站记)/
-    equip_latch_skip_m7(装备期闩跳过计数,装备穿戴放行判定门②)/
     deadlock_only_transition_victim(方向④纯计数,零行为;design
     §2.2.3 触发谓词:m2_retry_exhausted 事件帧 ∧ 释放集并入候选后燃料
     资格面仍空 ∧ bench 存在 ④ 件)+ dead_pair_exit_sold_m4_fuel /
     dead_pair_exit_sold_interest(释放成员实际卖出笔数,键族单一源 =
     sell_gate 键族清单)。
 
-    备战期开店闩(``session.cw4_shopped_phase``):同一备战期内开店意图
-    只消费一次。为什么是决策的推论而非限制:①商店域决策发生在店内一次
-    访问内闭环(买/升/刷/卖四字段=店内决策输出,刷新后当场再评估),
-    骨架不二次发店;②期内重开无信息量——输入逐项不可变:店面五张
-    (无店内刷新则恒定)、金(店外只因 M3 买经验减少不会增加,候选集
-    单调变小决策不可能翻新)、席位(M4 卖席只在 M2 同帧)、K 线(换线
-    下一备战期生效);同一帧状态重发同一动作=备战环活锁(2026-09-03
-    实机首局 1-1 卡死根因:M2 每帧重燃 CwActionOpenShopParam 截断点,CwActionStartBattleParam
-    永不可达;sim 每回合单次决策,该活环只在实机多帧备战环可见)。
-    边界:闩置位在**商店决策访问位**(mandate_v1/shop.decide_shop_action
-    入口=开店动作真执行、商店域决策已发生的时点),不在发射位——
-    备战环是单动作环,同发射列表里 M7 发射序回排后的 RunEquip(可续类)
-    先执行即逻辑态未建模终结本环,发射列表中其后的 CwActionOpenShopParam 意图未执行;
-    若发射即置闩,闩烧而店未开,后续环重跑 mandate 被闩挡死 ⇒ 空批
-    CwActionStartBattleParam(2026-09-05 单动作备战环实机停机局的扩展诊断定谳:同局
-    备战环连续三轮经济冻结后空批出战,「闩置位在发射位而非执行位」;
-    发射序回排修订后本闩置位时机是同型残留)。闩未置时发射位
-    照常重发(下帧重试);位面/轮次推进=新键自动失效(新店内容
-    重新决策)。旧核每备战期一次店内完整决策与本
-    闩同构,佐证非理由。
+    备战期开店闩已随迭代 2026-10-12-prep-shop-workflow-redesign 批
+    3.6/3.7 退役删除(防活锁职责 = 商店会话标记 shop_handled 承接;
+    历史 counter 键 shop_latch_skip_* / equip_latch_skip_m7 随闩退役
+    停产,判读归 git 历史)。
     """
     counters = getattr(state_of(session), 'cw4_counters', None)
     if not isinstance(counters, dict):
@@ -1295,22 +967,11 @@ def run_mandate(frame: MandateFrame,
     def _count(key: str) -> None:
         counters[key] = counters.get(key, 0) + 1
 
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        plane_of,
-    )
 
-    # 备战期键(位面,轮次):plane 经读口(未观察帧缺省 1 镜像)。
-    phase = (plane_of(state), frame.round_num)
-    shopped = getattr(state_of(session), 'cw4_shopped_phase', None) == phase
 
     def _emit_open_shop(tag: str) -> None:
-        """开店意图发射位(备战期闩消费点):闩命中=跳过+分站计数;
-        闩未命中=发射但不置闩——置闩在商店决策访问位
-        (mandate_v1/shop.decide_shop_action,开店动作真执行时点),
-        理由见本函数 docstring「备战期开店闩」节边界段。"""
-        if shopped:
-            _count(f'shop_latch_skip_{tag}')
-            return
+        """开店意图发射位(备战期开店闩已随批 3.6/3.7 退役删除——会话
+        标记〔shop_handled〕承接防活锁,本位恒发射)。"""
         out.append(Emitted(CwActionOpenShopParam(), True, tag))
 
     out: list[Emitted] = []
@@ -1485,9 +1146,9 @@ def run_mandate(frame: MandateFrame,
     missing = [m for m in k
                if m not in set(frame.bench_names) | set(frame.deployed_names)]
     # T3 同轮保留集卖侧读端已上移至 ②(a) 凑息接线前(单点计算声明见彼处)。
-    if shopped and missing and not frame.stop_flag:
-        _count('shop_latch_skip_m2_buy')
-    if missing and not frame.stop_flag and not shopped:
+    # (开店闩跳过分支已随备战期开店闩退役删除——批 3.6/3.7,会话标记
+    # 承接防活锁;run_mandate 现为测试面在册函数。)
+    if missing and not frame.stop_flag:
         ok, _why = check_seats(frame.bench_free, frame.deploy_vacancy,
                                needs_bench=True, needs_board=False,
                                name='', deployed_names=frame.deployed_names)

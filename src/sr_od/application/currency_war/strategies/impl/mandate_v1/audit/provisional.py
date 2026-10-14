@@ -1,21 +1,18 @@
 """【拟】未标定项 fail-closed 开关注册表(01_math_framework §6 第 3 形态;
 原 design_economy §E4.0 第 3 条已删档,考古走 git 历史)。
 
-静态登记 【拟】清单(批时快照)+ 后补槽位
-(θ/D_min/δ/χ/p_rec/N_crisis 等)。**计数口径单一声明(IMPL_ADV_R194
-症3,禁三处三种组成)**:【拟】清单 = **13 个编号行**(#1-#13,#11 零槽位
-——由 statefn/lambda_death.py λ 表承载,载体指定而非 None 槽位语义;
-#2 拆 V_MS/V_GAP 两槽,同源单标定禁双源);本表槽位 = 逐槽实存集,随
-消费面退役撤槽(BLOODLINE_HP_THRESHOLD/F7_CONTINGENCY_ARMED/
-P_LAMBDA_QUANTILE 已随血线地板/λ 顾问删除链撤账——迭代
-2026-10-12-prep-shop-workflow-redesign 批 3.4)、随消费面登记后补
-(V_C_MINUS_V_F/E2_CONCENTRATION_BAND/MERGE_PROGRESS_X2/
-LEVELUP_MISSING_SET_AGG)。每项一个 ``Optional`` 槽位,
+静态登记 【拟】清单(批时快照)+ 后补槽位。**计数口径单一声明**:
+本表槽位 = 逐槽实存集,随消费面退役撤槽(BLOODLINE_HP_THRESHOLD/
+F7_CONTINGENCY_ARMED/P_LAMBDA_QUANTILE 随批 3.4 血线地板/λ 顾问
+删除链;V_MS/P_REC/THETA/D_MIN/DELTA_HYST/DELTA_PRIOR/CONV_GOLD_
+PER_ROUND/N_CRISIS/V_GAP 随批 3.7 换线机器与换线窗口侧消费面退役;
+V_C_MINUS_V_F/E2_CONCENTRATION_BAND〔P76 两槽〕随证据门退役撤槽
+——候选-锁定制无定型门标定项,槽位不迁移,line_and_upgrade §1.6)、
+随消费面登记后补(MERGE_PROGRESS_X2/LEVELUP_MISSING_SET_AGG)。
+每项一个 ``Optional`` 槽位,
 **缺省 None = 对应判据分支 fail-closed**;标定值只能经本模块 ``inject``
 显式注入(带 CI 对象)——「注入即开闸」事故(TUNING#1/#2)的结构性防线,
-禁散落各判据文件。注入形态值(θ=1.0/δ=0.15/D_min=2 等
-量级论证级值)系 sim 驱动专用,显式标「注入形态,非生产开闸口径」
-(R24-2/R36-2)——生产开闸须标定批 CI 验收五件套(R4-F6/§5.3 对拍 2)。
+禁散落各判据文件。
 
 V̄ 拟合族类型级封印(R10-2):``V_BAR`` 槽位不提供数值取值接口
 (``get`` 对其恒返 None 且 ``inject`` 拒绝)——未标定且永不标定开闸作闸门
@@ -47,22 +44,15 @@ class _Slot:
     sealed: bool = False  # 类型级封印(V̄ 拟合族,R10-2)
 
 
-#: 槽位登记表(键=符号名;【拟】清单 批时快照 13 槽 + 后补;计数口径见模块
-#: docstring 单一声明:13 编号行 −#11(零槽,λ 表承载)+#2 拆两槽 = 13 槽)
+#: 槽位登记表(键=符号名;随消费面退役撤槽/登记后补,现状清单见模块
+#: docstring 单一声明)
 _SLOTS: dict[str, _Slot] = {
-    # —— 【拟】清单(13 编号行 → 13 槽;批时快照)——
+    # —— 【拟】清单批时快照的存活槽(V_MS/V_GAP/THETA/D_MIN/DELTA_HYST/
+    #    DELTA_PRIOR/CONV_GOLD_PER_ROUND/P_REC/N_CRISIS 已随换线机器/
+    #    换线窗口侧消费面退役撤槽——迭代 2026-10-12-prep-shop-workflow-
+    #    redesign 批 3.7;line_and_upgrade §1.6 退役面清单;#11 零槽位
+    #    由 statefn/lambda_death.py λ 表承载)——
     'U_X': _Slot('#1 u_x/H_x 使用概率/需要时距;分槽/带序逐格(R17-4)'),
-    'V_MS': _Slot('#2a V_ms 成型边际价值;值消费端已随 V̄ 链退役清零'
-                  '(旧读者=statefn/odds 窗口门);None 性消费端='
-                  'proof.py 换线出口前置与 criteria/sell.line_switch_sell'
-                  ' 的 is_none 检查(换线塌缩出口 fail-closed)——注入即'
-                  '解锁该出口,禁随意注入;槽位保留登记'),
-    'V_GAP': _Slot('#2b V_gap【拟·未标定】;值消费端已随 V̄ 链退役清零'
-                   '(R1 门改形式二可负担性,判据本体='
-                   'criteria/refresh.r1_commitment_account,无标定槽位依赖);'
-                   'None 性消费端(sim 判前锁注入态守卫,ab_core_swap '
-                   'v6 行 17)已随自驱动引擎退役——现无任何行为面消费,'
-                   '注入零效果;槽位保留登记(史料披露用)'),
     'W_POP': _Slot('#3 w 人口位战力当量(臂一只用 w>0,不需精确值)'),
     'RHO_IMPUTE': _Slot('#4 ρ 摊派口径(A7);均匀摊保守首版'),
     'NBAR_ESTIMATOR': _Slot('#5 n̄ 估计器(实估,误差二阶 A3)'),
@@ -71,26 +61,9 @@ _SLOTS: dict[str, _Slot] = {
     'V_FURNACE': _Slot('#8 v_F/v_B 炉/死库存价值(sim 唯一标定通道)'),
     'C_FRAME_Q': _Slot('#9 c_frame/q(P34-b;q plaza 先验只撑量级)'),
     'DELTA_P_WIN': _Slot('#10 Δp(d→胜率换算;P43 只供外差项)'),
-    # #11(λ_death 连续模型)无本表槽位:该条落点=「分层直测表带 CI 先行」,
-    # 载体=statefn/lambda_death.py 的 λ 表(启动必载损坏守卫,R2-4),非【拟】
-    # None fail-closed 槽位语义——硬凑占位槽反而伪造「缺省 None」状态(IMPL_ADV_R194 症3)。
     'P_HIT_Q_CONV': _Slot('#12 p_hit/q_conv(P36-b/c 危机预算阶梯)'),
     # —— 类型级封印族(R10-2:V̄ 拟合族永不作闸门)——
     'V_BAR': _Slot('#13 V̄ 刷新价值门量;比较项不授权,禁作闸门', sealed=True),
-    # —— 后补槽位(换线/升档器/窗口侧,R189 ④-2:θ/D_min/δ 系归本模块)——
-    'THETA': _Slot('换线滞回 θ(R24-2;None 期 should_switch 不评估+θ_unavailable 记数)'),
-    'D_MIN': _Slot('换线最小间隔 D_min(R24-2;与 θ 同批标定)'),
-    # δ(P16 滞回)槽位:步4 批补齐——R23-5「θ/D_min 参数归宿=provisional
-    # 【拟】槽位(δ 同槽登记)」的 δ 半边在步2 落码时未建槽(仅建 θ/D_MIN,
-    # DELTA_PRIOR 系窗口平移量、与 P16 δ 撞名不同义,R34-4)。本槽 = P16
-    # 滞回 δ 的唯一归宿;None 期与 θ/D_min 同 fail-closed(should_switch
-    # 不评估)。加槽系缺口闭合,非数值语义变更(STEP34_REPORT 呈报项)。
-    'DELTA_HYST': _Slot('P16 换线滞回 δ(R23-5 同槽登记;R34-4:与窗口 δ_prior 无关)'),
-    'DELTA_PRIOR': _Slot('窗口 δ_prior(R44 系;治本拆分前不可判分量)'),
-    'CONV_GOLD_PER_ROUND': _Slot(
-        'χ 金→轮折算率(R44-1【拟·语料拟合】,依附 λ 表版本;None=窗口帧 C_stay/χ fail-closed)'),
-    'P_REC': _Slot('换线塌缩回补概率 p_rec(R38-2【拟:0】期望形态)'),
-    'N_CRISIS': _Slot('危局阀标定输入 N_gate(R64/R65;标定账=sim 轨迹真值)'),
     'P3_LENGTH_STAT': _Slot('P3 长度统计量(R41-3【拟·语料统计】;通关语料出现前不可填)'),
     # —— 升级判据重轴批登记(迭代 2026-10-12-prep-shop-workflow-redesign
     #    批 3.4;line_and_upgrade §2.1/§4 两处同口径声明)——
@@ -100,19 +73,6 @@ _SLOTS: dict[str, _Slot] = {
     'LEVELUP_MISSING_SET_AGG': _Slot(
         '升级概率账缺件集聚合口径(None=single_core 单核代表;sum/bottleneck'
         ' 为切换候选,line_and_upgrade §2.1/§4 统一登记集成员)'),
-    # —— 锁线夹界槽位(math_proofs P76 §5.5 落码批;规约态,
-    # evidence_gate 全仓零消费点,接线批装配后才进决策路径)——
-    # 完成溢价 Δ=V_C−V_F:P76 §7 #1 挂 V_ms【拟】同源单标定禁双源,标定批
-    # 自 V_ms 交付;None 期 evidence_gate 夹界「不可评」+delta 成因分键
-    # (仿 theta_unavailable 分键纪律)。丁.4 引理域 V_C>V_F:注入非正值
-    # 系域外,门侧 fail-closed 同归不可评。
-    'V_C_MINUS_V_F': _Slot('P76 §4.3 锁线夹界完成溢价 Δ=V_C−V_F(§7 #1 '
-                           '同源单标定;None=evidence_gate 不可评)'),
-    # ε₂ 集中度二阶带(丙.4 净二阶带内支配的带宽):P76 §4.4「ε₂ 并入夹界
-    # 余量(落码形态)」的归宿——θ̂_suff 抬升量,保证「P ≥ θ̂_suff ⇒ 锁不劣」
-    # 在二阶带内成立;None 期充分侧不可评(禁在余量未定时声明锁不劣)。
-    'E2_CONCENTRATION_BAND': _Slot('P76 §3.4/§4.4 集中度二阶带 ε₂(夹界余量;'
-                                   'None=夹界充分侧不可评)'),
     # —— 卖出价值函数(契约 D 统一口径;design 契约 D/line_and_upgrade §4,
     #    迭代 2026-10-12-prep-shop-workflow-redesign;【拟·owner = 编排者、
     #    期限 = 一个对局周期】登记集成员)——
@@ -144,25 +104,13 @@ def is_none(name: str) -> bool:
     return get(name) is None
 
 
-# ===== 槽位值域守卫(T-214;标定批 )=====
+# ===== 槽位值域守卫(T-214;标定批)=====
 # 位置论证:inject 系唯一开闸通道(provisional.py 头注),值域防线放
 # 消费位防不住其他槽位、放调用方防不住绕行——结构防线只能在通道本体
 # 做写入前校验(不合法拒绝)。未登记槽位 = 既有语义不变(无值域知识
 # 不装假守卫);守卫只辖 ``value``,CI 端点系消费位扫描用信息不入守卫。
-
-def _guard_delta_positive(value: CalibValue) -> str | None:
-    """Δ=V_C−V_F 合法域 = (0, ∞):丁.4 引理域 V_C>V_F(P76 §4.2),
-    非正值系域外输入(T-124 夹界批已在门内设 delta_non_positive 分支,
-    本守卫把同一域约束上移到注入通道,门内分支保留为纵深防御)。"""
-    return None if value.value > 0 else 'Δ=V_C−V_F 须 >0(丁.4 引理域)'
-
-
-def _guard_e2_probability_band(value: CalibValue) -> str | None:
-    """ε₂ 合法域 = [0, 1]:集中度二阶带加于 θ̂_suff(P76 §4.4 落码
-    形态),量纲 = 概率尺度;负带 = 抬低充分侧门槛(fail-open 向),
-    >1 = 夹界充分侧全域病态,同出域。"""
-    return None if 0.0 <= value.value <= 1.0 else 'ε₂ 系概率尺度带,合法域 [0,1]'
-
+# (P76 两槽守卫 _guard_delta_positive/_guard_e2_probability_band 已随
+# 证据门退役批 3.7 与槽位同批撤除。)
 
 def _guard_merge_progress_coef(value: CalibValue) -> str | None:
     """合成进度系数合法域 = [1, 2]:下界 1 = fail-closed 线性形态(<1 会
@@ -172,10 +120,8 @@ def _guard_merge_progress_coef(value: CalibValue) -> str | None:
         '合成进度 ×2 系数合法域 [1,2](结构近似声明域)'
 
 
-#: 守卫登记表(键 = 槽位名;本批登记标定批两槽,其余槽位随其标定批补)
+#: 守卫登记表(键 = 槽位名;随各槽标定批登记,其余槽位随其标定批补)
 _VALUE_GUARDS: dict[str, Callable[[CalibValue], str | None]] = {
-    'V_C_MINUS_V_F': _guard_delta_positive,
-    'E2_CONCENTRATION_BAND': _guard_e2_probability_band,
     'MERGE_PROGRESS_X2': _guard_merge_progress_coef,
 }
 

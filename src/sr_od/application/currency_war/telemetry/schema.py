@@ -393,7 +393,7 @@ class DecisionTrace:
     # 走哪条路线/攒息门/定型判定)。全可选,旧记录缺省 None 不破坏 schema。
     sess_framework: str = ""                      # transition_framework(配方路线)
     sess_dual_track: bool | None = None           # 双轨期(定型与否)
-    sess_drought: int | None = None               # target_drought(断供计数)
+    sess_drought: int | None = None               # (原 target_drought 断供计数;写端随意向层机器批 3.7 退役恒缺键,旧语料兼容读)
     # (sess_pivot_cooldown 已随 pivot 冷却宿主字段退役删除;旧语料该键经
     #  extra.get 读缺省 None,schema 兼容)
     sess_commit_scores: dict[str, float] = field(default_factory=dict)  # CommitSignals 累积分

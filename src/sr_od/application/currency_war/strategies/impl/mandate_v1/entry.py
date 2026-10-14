@@ -333,7 +333,7 @@ def _deploy_window_blocked(session: StrategySession,
     """
     if not char_id:
         return False
-    k = getattr(state_of(session), 'target_comp', None)
+    k = session_scope.direction_comp_of(session)
     if char_id in predicates.line_members(k):
         return False   # 现行过渡/方向配方成员 = 过渡行为正常上阵
     view = session_scope.line_members_view(gs)
@@ -453,7 +453,9 @@ def emit(session: StrategySession,
 
     # 骨架帧装配(部署面共用输入;stop_flag 构造性 False——停手线 = 买面
     # 判据,消费位在商店域(shop.py 自装配),备战域 M2 已移店内)。
-    _k = getattr(st, 'target_comp', None)
+    # k = 现行方向 comp(锁定线优先,未锁 = 过渡配方开局面;批 3.7 键面
+    # 归一后的统一读口 direction_comp_of——§1.6 消费面分派)。
+    _k = session_scope.direction_comp_of(session)
     k_members = predicates.line_members(_k)
     # K 空窗回退(部署围栏目标供给;回退单一源 = cw_intention,与商店域
     # 同源消费,禁复制兜底逻辑;ist 缺失 = 意向供给缺帧,保守侧不回退)。
@@ -544,7 +546,7 @@ def emit(session: StrategySession,
     # 部署/装备帧提前返回不入键;到达本段的帧无 LevelUp/OpenShop 类
     # 动作,旧动作面条件恒真,申报)。
     if (gold_of(gs) > 0
-            and getattr(st, 'target_comp', None) is None
+            and session_scope.direction_comp_of(session) is None
             and not in_must_spend_zone(gold_of(gs), session)
             and (predicates.p1_blood_floor(gs)
                  or predicates.p2_blood_floor(gs))):
@@ -1284,7 +1286,7 @@ def _step6_equip_tools(session: StrategySession, gs: GameState,
     )
     counters['m7_5_evaluated'] = counters.get('m7_5_evaluated', 0) + 1
     _tool_actions = _eval_tools(
-        owned, getattr(st, 'target_comp', None))
+        owned, session_scope.direction_comp_of(session))
     _tool_admitted = _admit_tools(_tool_actions)
     if not any(a.usable for a in _tool_admitted):
         if any(a.usable for a in _tool_actions):
@@ -1312,7 +1314,7 @@ def _step6_equip_tools(session: StrategySession, gs: GameState,
         from sr_od.application.currency_war.kernel.cw_equip_env import (
             _privilege_base_name as _pbn,
         )
-        _keys = list(getattr(getattr(st, 'target_comp', None),
+        _keys = list(getattr(session_scope.direction_comp_of(session),
                              'key_equips', None) or [])
         _rq_set = _rq(_keys)
         _priv_targets = {_pbn(k) for k in _keys if _pbn(k) is not None}

@@ -99,12 +99,13 @@ if TYPE_CHECKING:
 #: 清单 P78 行):interest = 节末凑息;funding = 会话内筹资/升级变现
 #: (funding 同款通道对价,含 P78-5 兜底豁免);m4_fuel = 备战域晶矿腾位/
 #: 告警自救;m4_fuel 语义现由评估器 'ore_make_room'/'self_rescue' 场景
-#: 承载;line_switch = 换线塌缩(3.7 退役面,本批保留登记);projection
-#: = 投影视图读端(P78-6 读端同源);shop_swap = 店内置换账新增通道
-#: (迭代批 3.6 登记,不占既有闭集序号——谱系行非行为面:非 projection
-#: 通道的装配 A 输出逐位相同)。
+#: 承载;line_switch 换线塌缩通道已随候选-锁定制批 3.7 退役撤档
+#: (迭代 2026-10-12-prep-shop-workflow-redesign;line_and_upgrade §1.6);
+#: projection = 投影视图读端(P78-6 读端同源);shop_swap = 店内置换账
+#: 通道(迭代批 3.6 登记,不占既有闭集序号——谱系行非行为面:非
+#: projection 通道的装配 A 输出逐位相同)。
 SELL_CHANNELS: frozenset[str] = frozenset({
-    'interest', 'funding', 'm4_fuel', 'line_switch', 'projection',
+    'interest', 'funding', 'm4_fuel', 'projection',
     'shop_swap',
 })
 

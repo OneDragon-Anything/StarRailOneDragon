@@ -8,20 +8,25 @@
   函数 :func:`handle_node_boundary`,检测到节点号(位面, 轮)变化时
   按 :data:`_NODE_SCOPE_RESET_TABLE` 复位——其他模块的节点作用域键
   显式登记进该表,禁各自散写重置逻辑;
-- **方向状态骨架**(design 契约 B;line_and_upgrade §3):
-  :func:`refresh_line_if_needed`(签名前置段,幂等跳过)+
-  :func:`write_line_lock`(锁定写入——连带动作三件的唯一所有者)+
-  :func:`line_members_view`(名单读接口)。**本阶段方向解析 = 现行为
-  等价**(现行 ``target_comp`` 物化链照读),候选-锁定判据本体在迭代
-  批 3.7 替换内核;
+- **方向状态**(design 契约 B;line_and_upgrade §3;批 3.7 键面归一
+  后的终态形态):
+  :func:`refresh_line_if_needed`(签名前置段,幂等跳过 + 候选-锁定
+  判据内核 = :mod:`line_select`)+
+  :func:`write_line_lock`(锁定写入——连带动作三件的唯一所有者,兼
+  ``target_comp`` 终态单写者)+
+  :func:`line_members_view`(名单读接口)+
+  :func:`direction_comp_of`(现行方向读口:锁定线优先,未锁 = 过渡
+  配方开局面——§1.6 消费面分派的组合读形态);
 - **商店会话标记与机会清单存储**(design 契约 A;shop_session §4):
   ``shop_handled`` 标记与未消费机会清单的写入/清空/查询——解拦复核
   判定函数归迭代批 3.6 建造,本模块只建存储。
 
-过渡期双轨(line_and_upgrade §3「框架事实」节):现行 ``target_comp``
-物化链(flow 层帧代次消费)写点不动,本模块方向键为新增键族,不改
-任何现有键语义;3.3-3.7 各批按消费面逐步切到本模块视图(读侧分批
-切换,无协调缺口)。
+过渡期双轨收口(批 3.7 键面归一):现行 ``target_comp`` 双写者冲突
+已消——写者收为锁定动作(:func:`write_line_lock` 终态单写者),配方
+物化链写端切 ``opening_recipe_comp``(flow 层);``line_locked_comp``
+过渡键退役收键。kernel 消费面经 ``ist.locked_comp``/``ist.phase``
+派生缓存续读(重建写端 = 本模块刷新/锁定动作同步,§1.6「line_
+members_view 刷新时重写 locked_comp」的落码形态)。
 """
 from __future__ import annotations
 
@@ -37,6 +42,10 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     effective_node_pos,
     level_of,
 )
+from sr_od.application.currency_war.kernel.cw_intention import IntentionState
+from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+    line_select,
+)
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     LevelUpPreAuth,
     ShopOpportunity,
@@ -45,7 +54,7 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state imp
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_game_state import Unit
+    from sr_od.application.currency_war.kernel.cw_comps import Comp, Unit
 
 
 # ============================================================ 节点边界处理(契约 C)
@@ -71,10 +80,12 @@ if TYPE_CHECKING:
 #    shop_session_processing/shop_upgrade_close_pending/shop_plugin_
 #    budget)→ 复位(会话不跨节点;边界帧残留旗标防泄入下一节点会话,
 #    卫生性复位);
-# ⑦ 方向状态本身(line_locked_comp / line_candidates /
+# ⑦ 方向状态本身(target_comp / line_candidates /
 #    opening_recipe_comp)不重置——锁定为一次性决策跨节点持续保留
 #    (契约 C;候选快照随签名重算自然更新、配方物化链每备战期自写,
-#    均非节点作用域键)。plane2_started 同不重置(单调历史事实)。
+#    均非节点作用域键)。plane2_started 同不重置(单调历史事实);
+#    p2_pick_baseline/p2_strategy_pick_done 同不重置(时点兜底触发
+#    腿为单调事实,且锁定后无消费面)。
 _NODE_SCOPE_RESET_TABLE: tuple[tuple[str, object], ...] = (
     ('shop_handled', None),
     ('shop_opportunities', ()),
@@ -187,36 +198,79 @@ def _direction_signature(gs: GameState, st: StrategyState) -> tuple:
         tuple(sorted(strategies)),
         int(level_of(gs)),
         effective_node_pos(gs),
-        st.line_locked_comp,
+        st.target_comp,
     )
 
 
-def _recompute_line_state(gs: GameState, st: StrategyState) -> None:
-    """方向状态重算(签名变化时执行;**本阶段 = 现行为等价内核**)。
+def _sync_derived_lock_cache(st: StrategyState) -> None:
+    """kernel 派生缓存同步(``ist.locked_comp``/``ist.phase`` ← 锁定线槽)。
 
-    - **照读搬运的滞后债(显式接受)**:``target_comp`` 恒为**上一拍**
-      物化值——现行物化链写点(flow 层帧代次消费)位于本函数调用之后
-      (两入口的接线时序 = 边界 → 签名 → 现行帧代次内务),故
-      ``opening_recipe_comp``/``line_candidates`` 搬运的是最近一次物化
-      产物而非同帧最新值。**3.3 部署面消费 ``opening_recipe_comp``
-      时直读物化链产物**(读 ``target_comp`` 本体,不从本快照读);
-      3.7 替换内核(方向值自产自写)后此债消灭。
-    - 锁定后只读锁定线:锁定线槽非空时本段直接返回(候选快照停算,
-      锁定写入时已清空——:func:`write_line_lock` 连带③)——签名照常
-      更新(签名含锁定态,幂等跳过照常),快照不再维护;
-    - 未锁定态(本阶段恒未锁定——锁定判据 3.7 落码,锁定仅经
-      :func:`write_line_lock` 骨架写入):
-      * ``opening_recipe_comp`` = 现行 ``target_comp`` 物化链产物照读
-        (配方开局面独立键;终态写者 = 配方对物化链本体,本阶段物化
-        链仍写 ``target_comp``,故此处照读搬运);
-      * ``line_candidates`` = 照读产物名的单元素快照(终态 = 线分数
-        top3,3.7 替换;无产物 = 空)。
+    §1.6 意向层机器本体退役后,``ist.locked_comp`` 不再有状态机写者,
+    改为锁定线槽(``target_comp``)的派生缓存——「重建写端 =
+    line_members_view 刷新时重写 locked_comp(派生缓存单一写端)」的
+    落码形态:kernel 消费面(cw_economy/cw_deploy_logic/shop/flow 装配
+    面等在册读点)读端零改。锁定 ⟺ ``st.target_comp`` 非 None;
+    ``phase`` 仅剩 ``locked``/``unlocked`` 两态(weak/demoted 随状态机
+    退役不可达)。ist 缺席时**冷建**(与 flow._ensure_intention 同构)——
+    前置序时序上 refresh 先于 flow 方向内务,首帧锁定时 ist 可能尚未
+    惰性就位,不冷建则派生缓存存在失同步窗。
     """
-    if st.line_locked_comp is not None:
+    ist = getattr(st, 'v3_intention', None)
+    if not isinstance(ist, IntentionState):
+        ist = st.v3_intention = IntentionState()
+    name = st.target_comp.name if st.target_comp is not None else None
+    ist.locked_comp = name or ''
+    ist.phase = 'locked' if name else 'unlocked'
+
+
+def _update_p2_pick_done(gs: GameState, st: StrategyState) -> None:
+    """时点兜底触发腿之二:P2 起首次投资策略三选一完成侦测(§1.4)。
+
+    「完成帧」的判读层实现 = P2 首帧快照 active_strategies 基线,其后
+    集合增长(投资策略获得——上报链写 active_strategies,决策帧刷新
+    观察到增长)即置位;单调旗标,置位后不再维护(锁定后无消费面)。
+    增长来源不区分选卡/节点赠得(P2 段下一笔策略获得的压倒性形态 =
+    开局三选一;两者对「策略已定 → 可兜底锁线」语义等价,裁量申报)。
+    """
+    if not st.plane2_started or st.p2_strategy_pick_done:
         return
-    comp = getattr(st, 'target_comp', None)
-    st.opening_recipe_comp = comp
-    st.line_candidates = (comp.name,) if comp is not None else ()
+    current = frozenset(gs.active_strategies.value or ())
+    if st.p2_pick_baseline is None:
+        st.p2_pick_baseline = current
+        return
+    if current - st.p2_pick_baseline:
+        st.p2_strategy_pick_done = True
+
+
+def _recompute_line_state(gs: GameState, st: StrategyState) -> None:
+    """方向状态重算(签名变化时执行;候选-锁定制真内核,line_and_upgrade
+    §1.2-§1.4;判据本体单一源 = :mod:`line_select`)。
+
+    - 锁定后只读锁定线:锁定线槽(``target_comp``)非空时本段在缓存
+      同步后直接返回(候选快照停算,锁定写入时已清空——
+      :func:`write_line_lock` 连带③);
+    - 未锁定态:每帧对全部 20 线算分(:func:`line_select.line_score_key`
+      字典序:环境分级 → 持有证据级 → 攻略热度,注册序终局),top3 写
+      候选快照(``line_candidates``,派生快照非持久状态);随后求值
+      锁定双触发(:func:`line_select.evaluate_lock`——硬规则查表同帧
+      多命中取线分数最高 + 热度 tie-break + 注册序终局;时点兜底 =
+      plane2_started ∧ P2 投资策略选卡完成),命中即经
+      :func:`write_line_lock` 写入(锁定动作发生的域内立即生效,§3)。
+    """
+    _sync_derived_lock_cache(st)
+    if st.target_comp is not None:
+        return
+    _update_p2_pick_done(gs, st)
+    held_chars = line_select.held_chars_of(gs)
+    held_invest = line_select.held_invest_names_of(gs)
+    candidates = line_select.compute_candidates(held_chars, held_invest)
+    st.line_candidates = candidates
+    lock_name = line_select.evaluate_lock(
+        candidates, held_chars, held_invest,
+        plane2_started=st.plane2_started,
+        p2_strategy_pick_done=st.p2_strategy_pick_done)
+    if lock_name is not None:
+        write_line_lock(gs, lock_name)
 
 
 def refresh_line_if_needed(gs: GameState) -> None:
@@ -231,9 +285,7 @@ def refresh_line_if_needed(gs: GameState) -> None:
        号在签名构成内,节点边界重置置失效签名后本函数必重算(节点号
        变化时签名必变 = 节点边界重算入口,prep_pipeline §3)。
 
-    本阶段重算 = 照读搬运过渡内核,方向键取值恒为上一拍物化产物
-    (滞后债的完整声明与消费指引见 :func:`_recompute_line_state`
-    docstring)。
+    本阶段重算 = 候选-锁定制真内核(批 3.7;判据本体 = :mod:`line_select`)。
     """
     st = state_of(gs)
     sig = _direction_signature(gs, st)
@@ -246,10 +298,14 @@ def refresh_line_if_needed(gs: GameState) -> None:
 def write_line_lock(gs: GameState, comp_name: str) -> None:
     """锁定写入(一次性决策;**连带动作三件的唯一所有者 = 本函数**,
     line_and_upgrade §3 载体落位节——§1.4/契约 B 对连带动作的引用均
-    指向此处):
+    指向此处)。批 3.7 键面归一后本函数兼任 ``target_comp`` 的**终态
+    单写者**(锁定线槽 = target_comp;物化链写端已切 opening_recipe_
+    comp,P1 锁定局互不覆写):
 
     - 锁定线槽一次性写入,锁后只读:已锁定时本函数 no-op(候选-锁定
-      制无换目标,重复触发不改变锁定线);
+      制无换目标,重复触发不改变锁定线);注册表解析失败(锁定名不在
+      COMP_LIBRARY)按未锁定处置拒绝写入——判定内核只产注册表名,
+      此分支为防御位;
     - 连带动作三件:
       ① 清升级预授权键(未锁定态授权按候选集算,锁定线变更后需按
          新名单重新过账,防旧授权跨锁定兑现);
@@ -260,16 +316,22 @@ def write_line_lock(gs: GameState, comp_name: str) -> None:
          消除消费歧义——锁定后读 ``line_candidates`` 恒 = 空集,语义
          自明,无需另查锁定旗标)——停算结构承载于
          :func:`_recompute_line_state` 的锁定守卫。
-    - 触发判据(硬规则查表/时点兜底)归迭代批 3.7;本函数 = 写入
-      骨架,3.7 判据命中帧经此写入。
+    - kernel 派生缓存(``ist.locked_comp``/``ist.phase``)同帧同步
+      (:func:`_sync_derived_lock_cache`)——kernel 消费面锁定当帧生效。
     """
     st = state_of(gs)
-    if st.line_locked_comp is not None:
+    if st.target_comp is not None:
         return
-    st.line_locked_comp = comp_name
+    comp = get_comp(comp_name)
+    if comp is None:
+        log.warning('[cw!][line-lock] 锁定线解析失败(%s),拒绝写入(按未锁定)',
+                    comp_name)
+        return
+    st.target_comp = comp
     st.levelup_preauth = None
     st.shop_handled = None
     st.line_candidates = ()
+    _sync_derived_lock_cache(st)
     log.info('[cw][line-lock] 方向锁定 → %s(连带:清预授权键/清商店标记/快照清空停算)',
              comp_name)
 
@@ -279,20 +341,30 @@ def line_members_view(gs: GameState) -> LineMembersView:
 
     未锁定 → 空名单 + 未锁定旗标(两域据此走件级评估路径——候选囤件
     优先级,line_and_upgrade §1.3);锁定 → 锁定线名单(core_chars ∪
-    shared_chars,注册表序去重)。注册表漂移(锁定名解析失败)按未
-    锁定口径返回(保守向:消费面拿空名单走件级路径,不猜名单)。
+    shared_chars,注册表序去重)。
     """
     st = state_of(gs)
-    name = st.line_locked_comp
-    if name is None:
-        return LineMembersView(locked=False, comp_name=None, members=())
-    comp = get_comp(name)
+    comp = st.target_comp
     if comp is None:
-        log.warning('[cw!][line-view] 锁定线解析失败(%s),按未锁定口径返回', name)
         return LineMembersView(locked=False, comp_name=None, members=())
     members = tuple(dict.fromkeys(
         list(comp.core_chars) + list(getattr(comp, 'shared_chars', None) or ())))
-    return LineMembersView(locked=True, comp_name=name, members=members)
+    return LineMembersView(locked=True, comp_name=comp.name, members=members)
+
+
+def direction_comp_of(gs: GameState) -> Comp | None:
+    """现行方向 comp 读口(§1.6 消费面分派的组合读形态;批 3.7)。
+
+    = 锁定线(``target_comp``,终局面)优先;未锁定期回落过渡配方
+    开局面(``opening_recipe_comp``,P1 配方物化链产物)。两键都空
+    (P1 空窗/P2+ 未锁窗口)= None——无方向帧由 K 空窗回退
+    (``cw_intention.k_empty_window_fallback``)承接。「现行方向」类
+    消费位(flow pick 族/部署围栏 k_members/工具面/商店序 1 名单)
+    统一经本读口,禁消费点自拼两键优先级(第二读口径)。
+    """
+    st = state_of(gs)
+    return st.target_comp if st.target_comp is not None \
+        else st.opening_recipe_comp
 
 
 # ============================================================ 商店会话标记与机会清单存储(契约 A)
@@ -356,6 +428,7 @@ __all__ = [
     'ShopOpportunity',
     'clear_shop_handled',
     'clear_shop_opportunities',
+    'direction_comp_of',
     'handle_node_boundary',
     'line_members_view',
     'mark_shop_handled',

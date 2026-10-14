@@ -11,10 +11,10 @@
 不抛异常不断局(谓词异常同判弃权)。契约层只加前提核验,**禁改判据
 数学**(判据本体函数零触碰)。
 
-辖外声明:换线判据族(should_switch/回锁窗/干旱计数)=影子面
-(R197 症2 裁决:换线权威=意向状态机,本模块只产遥测;02_mandate_layer
-§2/§7 权限划界),其行为接线=过线后批——本表
-只登记判据面三函数位,前提核验随实装接线批落位。
+辖外声明:换线判据族(should_switch/回锁窗/干旱计数/证据门影子评估)
+已随候选-锁定制整体退役删除(迭代 2026-10-12-prep-shop-workflow-
+redesign 批 3.7;line_and_upgrade §1.6 退役面清单——原「影子面接线
+归过线后批」的过线已由本批兑现为删除),无行为接线遗留。
 """
 from __future__ import annotations
 
@@ -227,9 +227,6 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         None, 'EV 买否决门(随候选流一体;R7-1 发射面后半)',
         'BYPASS_TABLE 对应行(criteria/__init__.py 单一源;buy.ev_buy_* 行)'),
     # —— criteria/sell ——
-    ('sell', 'line_switch_sell'): Contract(
-        None, '换线塌缩出口:前提=K 已切换(判据自带 k_switched 门)',
-        '01_math_framework §3.2(卖)'),
     ('sell', 'sell_for_interest'): Contract(
         None, '凑息档 EV 面(T_SEARCH 缺省 fail-closed 自带)',
         '01_math_framework §3.2+P41 桶不动资格(R20-1)'),
@@ -329,17 +326,12 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         None, 'D-P3 修复池项 OPEN 挂账不变(定谳手段 = 实机 boss 掉血'
         '分布对拍,从未执行),复活须先「对拍定谳→三形态标注→落码」'
         '全流程', 'D-P3 修复池(原文考古走 git 历史)'),
-    # —— 第七面「换线」(proof 判据面函数位;影子面,前提核验随实装
-    #    接线批落位——见模块 docstring 辖外声明)——
+    # —— 第七面「换线」残留件(迭代 2026-10-12 批 3.7:换线判据族
+    #    (should_switch/signal_arm/证据门影子评估)随候选-锁定制退役
+    #    删除——见模块 docstring 辖外声明与 proof.py 退役申报)——
     ('proof', 'stop_buy'): Contract(
         None, '停买谓词(分类,非发射;输入=K/持有名单)',
         'BYPASS_TABLE 对应行(谓词)+02_mandate_layer §3'),
-    ('proof', 'should_switch'): Contract(
-        None, '换线事件发射位(影子面:登记遥测,不写 target_comp)',
-        'BYPASS_TABLE 对应行(换线事件影子面;R197 症2 换线权威=意向状态机)'),
-    ('proof', 'signal_arm'): Contract(
-        None, '直通信号臂(两臂同开,证明层状态驱动)',
-        'BYPASS_TABLE 对应行(两臂同开;R11-3 直通信号臂)'),
     # —— 三先例的非 criteria 消费位 ——
     ('mandate', 'dominance_buy'): Contract(
         _s_reserve_line_formed,

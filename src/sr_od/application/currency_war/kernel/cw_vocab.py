@@ -280,21 +280,9 @@ SELL_BENCH_REASONS: frozenset[str] = frozenset({
 SELL_BENCH_ORPHAN_REASONS: frozenset[str] = frozenset({
     'line_switch_collapse',
 })
-
-
-# S1 清键白名单 route_tag 闭集(备战旗标状态机 路径 (i)
-# 卖出类;部署类由动作类型 CwActionDeployMoveParam 承载 = route_tag_of,不占本集)。
-# 宿主 = kernel 词表:值域闭集单一源——策略器清键路由(mandate_v1)与
-# 框架侧防御位误标检出(cw_screen_shop 的 s1_reset_mischannel
-# 计数)双消费同取此源(operations 禁触策略实现包常量)。
-# equip_transfer_sell = 预留 tag(审 D3:M7 伴随卖人发生在组合 op 内部、
-# 无现役 prep 域发射位,留作枚举完备性,禁虚找挂点)。凑息/压库类 tag
-# 不入白名单:其触发重开只能经路径 (ii)(S2 在册 ∧ 腾席翻正,义务
-# 优先,猎点 14)。
-S1_RESET_ROUTE_TAGS: frozenset[str] = frozenset({
-    'm4_fuel_sell',
-    'equip_transfer_sell',
-})
+# (S1 清键白名单 S1_RESET_ROUTE_TAGS 已随备战期开店闩退役删除——迭代
+# 2026-10-12-prep-shop-workflow-redesign 批 3.6/3.7;双消费位
+# 〔mandate_v1 清键路由与 cw_screen_shop 误标检出〕同批拆除。)
 
 
 @dataclass

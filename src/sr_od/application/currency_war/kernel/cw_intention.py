@@ -1,45 +1,26 @@
-"""货币战争 · 终局意向模块(strategy_v4 点0 实现;纯逻辑,不碰游戏/板上)。
+"""货币战争 · 方向载体模块(P1 配方对链 + 囤货/回退接口;纯逻辑,不碰游戏)。
 
-单一规格源:strategy_v4 设计件「点0」
-(信号分层①-⑤ / 撤销析取 / 窗口冻结语义 / 强制锁线对象限定 + 降格终局);
-攻略信号数据:`comp_definitions_v2.md` 各套(欢愉族绯英档=⑤兜底、黑塔纪元 65%、
-万敌 1 费开局即在等)。
+**批 3.7 重构申报**(迭代 2026-10-12-prep-shop-workflow-redesign;
+line_and_upgrade §1.6 意向层机器本体退役):原 strategy_v4 点0 的
+comp 锁定状态机(信号分层锁线/撤销出口①②③/P2 移交强锁/P3 强锁/
+降格终局)已整体退役——终局线选择归策略层候选-锁定制
+(mandate_v1.session_scope/line_select:硬规则查表 + 时点兜底,
+锁定后不换线,防摇摆由结构承载非滞回参数)。本模块保留三族:
 
-**教义边界(user_playstyle)**:
-- [21] final 件「买而不上」→ 本模块锁线后**只改囤货方向**(输出「囤货目标集合」
-  供买侧消费),不改板上、不产出任何上场/换人动作;
-- [23] 终局线由贯穿件锁定,不是 pivot → 锁定后撤销**只有三个出口**
-  (前两个为析取,第三个为 P2 供给可行视界独立通道):
-  ①意向核心断供证据(三条件合取:miss ≥ max(CORE_MISS_N, N_req 闭式)
-  ∧ 存在异线核心可达 ∧ 异线资产厚度 ≥ A_min——统计证据+替代资产证据,
-  只计刷新窗已开的轮,窗口冻结语义);②更高层级替代
-  信号且过可达性对照;③P2 线完成率 G ≤ ε(供给概率×剩余轮×血预算,
-  注册表派生零新参数)∧ 线内在店断供 ≥ PAIR_SUPPLY_CONFIRM_ROUNDS
-  (观测证据合取,防误杀活线)且存在可行替代线(先验 G>ε ∧ 替代线
-  核心在店/在手=已验证可达)——降级到 unlocked
-  交 P2 移交重锁(handoff_lock;可逆,不写 evicted)。分数涌现换线不进本模块。
-- [23]/[21] 的 P1 时序面:贯穿件 P1 可买可囤([21] bench 等窗口),
-  但**终局专属线(锁线方向不含过渡引擎)在 P1 的③/④锁线证据被资格门拦下**——
-  资格 = ①类(策略/环境亲和;transitions §1「拿到逆天投资策略才配锁直通线」);
-  P2/P3 ③照旧([23] 路径不变,本门只收紧 P1 时机)。
+- **P1 配方对链**(:func:`update_p1_recipe`/``p1_pair`` 族):过渡配方
+  体系对的派生/冻结闩/超窗/退场——配方物化链保留项(M5 开局面
+  数据源),位面辖域由调用侧(flow)以窗口谓词承载;
+- **囤货与回退接口**(:func:`hoard_target_set`/``k_empty_window_fallback``/
+  ``locked_buy_*`` 族/``no_target_arms`` P86 三臂):买侧与部署侧的
+  现行读面;``locked_comp``/``phase`` 改为锁定线槽派生缓存(写端 =
+  mandate_v1.session_scope,锁定 ⟺ target_comp 非空);
+- **定型权威**(:func:`committed_authority`/:func:`committed_from`):
+  规则④「位面 ≥ 2 恒定型」支已退役(P2 时点兜底锁定替代;§1.6 行为
+  差申报:P2 入口至兜底锁帧的短窗 = 双轨期口径)。
 
-**P1 过渡配方锁**:位面 1 的锁定产物=过渡配方体系对
-(transition_combos 两两组合;[20] 过渡是配方不是散买),终局 comp 锁定
-只保留①类资格通道,P2+ 照旧锁 comp。(配方锁行为无条件,
-见本文件「P1 锁线资格门」节注释)。
-
-模块构成:
-- ``detect_signals(gs)``:信号分层判定(①策略驱动/②类专属羁绊/③核心卡/
-  ④资源/⑤由解析侧兜底,本函数不发⑤信号);
-- ``IntentionState``:锁线/撤销状态机(未锁/锁定/弱意向 + 降格终局标记),
-  ``update_intention(gs, ist)`` 每回合驱动;
-- ``hoard_target_set(gs, ist)``:锁后效果接口——输出囤货目标集合(角色件 +
-  装备件),买侧唯一消费面;无目标期帧(P2+ 无信号)囤货方向 = 三臂判据
-  (P86;甲臂候选机器强锁门逐字/乙臂枢纽期权资格核/丙臂守息缺省,
-  见「P86 无目标期三臂判据」节)。
-
-数值标注「设计推断,sim 校准」的常量属 strategy_v4「悬而未决·摆动域」,
-不写死语义进文档。
+**教义边界(user_playstyle)**:[21] final 件「买而不上」→ 本模块
+只改囤货方向(输出「囤货目标集合」供买侧消费),不改板上、不产出
+任何上场/换人动作;[23] 终局线由锁定承载(锁定后不换线)。
 """
 from __future__ import annotations
 
@@ -47,7 +28,6 @@ import math
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_shop_odds import (
     DISTINCT_CARDS_PER_COST,
@@ -58,16 +38,12 @@ from sr_od.application.currency_war.kernel.cw_comps import (
     CORE_SINGLE_CARD_REGISTRY,
     SEELE_CARRY_CHAR,
     SEELE_OR_LEGS,
-    STRONG_ENV_MECHS,
     V2_FAMILIES,
     Comp,
-    augment_affinity,
-    augment_env_affinity,
     char_routes,
     derive_key_equips,
     form_progress,
     get_comp,
-    merged_mechanic_tables,
 )
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     RECIPE_FLOOR_TRAIN_CAP,
@@ -103,7 +79,6 @@ from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
-    strategy_state_lazy,
     strategy_state_of,
 )
 
@@ -115,16 +90,7 @@ if TYPE_CHECKING:
         StrategySession,
     )
 
-# ===== 常量(设计推断,sim 校准;strategy_v4 点0 摆动域)=====
-CORE_MISS_N: int = 6
-"""撤销出口①阈值:意向核心 N 轮不可得 → 撤销(设计推断,sim 校准)。
-计数分母 = 该核心刷新窗已开的轮(窗口冻结语义,见 LineTrack)。"""
-FAMILY_BOND_MIN_COUNT: int = 2
-"""②类专属羁绊信号阈值:板上+bench 该羁绊计数 ≥ 此值 → 家族信号。
-
-【注】游戏定义量:信号族专属羁绊(银河学者/夜之半神/列车同行等)的
-羁绊首档均为 2 人(cw_factions 注册表 counts[0]),阈值 = 信号族最小
-激活档,非经验拟合)。"""
+# ===== 常量(候选-锁定制批 3.7:撤销/信号族常量随意向层机器退役删除)=====
 
 # 无目标期帧囤货方向由三臂判据输出(甲臂=候选机器强锁门逐字/乙臂=
 # 枢纽期权资格核/丙臂=守息缺省),见本模块「P86 无目标期三臂判据」节。
@@ -137,61 +103,19 @@ FAMILY_BOND_MIN_COUNT: int = 2
 # 快照测试锁派生结果(不等 = 数据错)。
 CROSS_LINE_SKELETON: tuple[str, ...] = _cross_line_skeleton()
 
-# ②类专属信号注册表(family → 专属羁绊名)。从 COMP_LIBRARY v2 家族派生
-# (``Comp.bond_signal`` 数据字段,cw_comps 各条承载)——COMP_LIBRARY 演进时
-# 随家族条目走,不与判断层双源。语义注(来源=comp_definitions_v2 各套「核心/副档」栏):
-# 万敌燃血=夜之半神 2(96% 必配,主档)/DOT卡芙卡=持续伤害(开局即战力)/
-# 姬子列车=列车同行(四人 100% 固定)/黄泉减益=减益(4-6 档主体,到前 DOT 班底
-# 共享牌桌)/欢愉族=欢愉(绯英/银狼两档共用主体)/圣杯双C=命运圣杯(2 档开任务
-# =燃料线入口)/大黑塔群攻=银河学者(星级总量成长)。
-# 希儿量子/白厄反甲**无②信号**(bond_signal=None):量子/贝是放大器不是独立
-# 伤害源(点2 卡4 语义),白厄=独立羁绊绑死单卡(只走③)。
-FAMILY_BOND_SIGNALS: dict[str, str] = {
-    c.family: c.bond_signal
-    for c in COMP_LIBRARY
-    if c.family in V2_FAMILIES and c.bond_signal
-}
-
-
-@dataclass(frozen=True)
-class IntentionSignal:
-    """一条分层意向信号(①>②>③>④;⑤不产出,由解析侧兜底)。"""
-
-    layer: int          # 1-4(小=高优先)
-    kind: str           # 'env' | 'strategy' | 'family_bond' | 'core_card' | 'resource'
-    comp_name: str      # 指向 COMP_LIBRARY 套名
-    evidence: str       # 证据描述(遥测/判读用)
-    weight: float       # 同层排序(亲和权重;大者优先)
-
-
-@dataclass
-class LineTrack:
-    """一条候选线的撤销计数器(窗口冻结语义载体)。
-
-    - ``miss_count``:刷新窗**已开**且核心不可得的轮数(分母只计开窗轮);
-    - ``frozen_rounds``:刷新窗**未开**的连续轮数(冻结计数器;窗口重开即清零);
-      冻结超过位面剩余节点数 → 该线移出候选集(点0〔修A1〕)。
-    """
-
-    miss_count: int = 0
-    frozen_rounds: int = 0
-    member_drought: int = 0
-    """线级在店供给断供计数(出口③证据组;窗口冻结语义同 frozen_rounds):
-    有商店语境轮且 core∪shared 无任何成员在店 +1,有成员在店清零,
-    无商店语境轮冻结。阈值复用 ``PAIR_SUPPLY_CONFIRM_ROUNDS``(出现
-    观测按 1/轮累积、缺席证据按 (1−q)<1/轮 累积的同一离散化推导,
-    与断供供给确认计数同构)。"""
-
 
 @dataclass
 class IntentionState:
-    """锁线/撤销状态机(未锁 unlocked / 锁定 locked / 弱意向 weak)。
+    """方向状态载体(P1 配方对链 + kernel 派生缓存;批 3.7 意向层机器
+    本体退役后的保留形态——comp 锁定状态机〔信号锁线/撤销出口/P2 移交/
+    P3 强锁/降格终局〕已删除,终局线锁定归策略层候选-锁定制:
+    ``locked_comp``/``phase`` 改为锁定线槽派生缓存,写端 =
+    mandate_v1.session_scope〔同步于 refresh/锁定动作〕;``p1_pair`` 族
+    = 配方对物化链产物〔保留项〕。机器时代字段(``weak_comp``/
+    ``lock_layer``/``evicted``/``demoted_endgame`` 等)无写端恒缺省,
+    读端按保守缺省语义消费〔evicted=∅ 恒空集/demoted=False〕)。"""
 
-    P1:锁定产物=过渡配方体系对(``p1_pair``)——终局 comp
-    锁定只保留①类资格通道;P2+ ``p1_pair`` 恒空,comp 锁定照旧。
-    """
-
-    phase: str = 'unlocked'            # 'unlocked' | 'locked' | 'weak'
+    phase: str = 'unlocked'            # 'unlocked' | 'locked'(weak 随机器退役不可达;派生缓存,写端 = session_scope)
     locked_comp: str = ''              # 锁定线(COMP_LIBRARY 套名)
     p1_pair: tuple[str, ...] = ()      # P1 配方锁:体系对(过渡体系键;P2+ 恒空)
     """**P1 锁定目标数据形态(显式可读,约束基准契约)**:
@@ -279,7 +203,6 @@ class IntentionState:
     段)。解封两路:重派生出不同对(合法换向,新方向自由闩)/ fp 回落
     (方向丢失,此后再达成 = 新 form_ok 事件,允许再闩)。"""
 
-    tracks: dict[str, LineTrack] = field(default_factory=dict)
     last_event: str = ''               # 最近一次状态转移(判读/遥测锚点)
     revoke_evidence: dict[str, object] = field(default_factory=dict)
     """撤销出口①开窗的证据字段快照(实机判读锚点,设计 R3.5「无证据
@@ -419,60 +342,6 @@ def _core_reachable(comp: Comp, gs: GameState,
     return encounter_window_rounds(core, level_of(gs)) <= total_remaining_nodes(gs)
 
 
-def _direct_line_qualified(gs: GameState, comp_name: str) -> bool:
-    """直通终局线资格判定。
-
-    资格单一源 = 亲和表反查(**派生,不手写名单**):
-    - 策略侧:任一持有策略 ``s ∈ gs.active_strategies`` 在
-      ``AUGMENT_COMP_AFFINITY`` 中指向该 comp(如 黑塔纪元→大黑塔银河学者);
-    - 环境侧:``gs.active_env`` 在 ``ENV_COMP_AFFINITY`` 中指向该 comp
-      (如 银河学者概念股→大黑塔银河学者)。
-
-    无任何表项的 comp(万敌单C/DOT队/黄泉线等)恒无资格 —— 它们的终局线
-    只能由③核心卡(贯穿件到手,[23] 合法)或后续注册的资格项锁线。
-    """
-    for s in (gs.active_strategies.value or []):
-        if comp_name in augment_affinity(s):
-            return True
-    return comp_name in augment_env_affinity(gs.active_env.value or '')
-
-
-def _line_env_qualified(gs: GameState, comp_name: str) -> bool | None:
-    """累积型线强环境判据。
-
-    语义出处:「全局累积型角色越早越好,但需特定环境才强,**无环境不选**」
-    (user_playstyle [21] 例外条款)+ accumulator_family §3(万敌强环境=
-    敌方多动/反伤类)§4.2 前提②「当前/将遇敌方词缀 ∈ 该成员强环境集」。
-
-    返回三态:
-    - ``None`` = 判据不辖或信息缺失(comp 无 hp_charge_stack 累积成员 /
-      强环境集未建模 / ``gs.enemy_affixes`` 空=词缀可信位缺失)——调用方
-      必须放行(动态权重剔除同款:缺信息不造硬结论,不猜);
-    - ``True`` = 词缀机制 tag 与强环境集命中;
-    - ``False`` = 累积型线但环境不命中(「无环境不选」的事实面)。
-
-    词缀→机制归一走 ``AFFIX_MECHANIC_MAP`` 单一源(未知词缀原样透传,与
-    ScoreContext.mechanics 同构);未入映射的词缀(如 灼热轰炸)按不命中
-    处理(宁缺勿错,见 STRONG_ENV_MECHS 注释)。消费方=update_intention
-    的锁线信号过滤(行为无条件化,开关清偿决议(git 历史)),已锁线不辖
-    (环境缺失只「不主动选」,不没收已锁线——accumulator_family §3 同义)。
-    """
-    comp = get_comp(comp_name)
-    if comp is None:
-        return None
-    acc_types = set((comp.global_accumulators or {}).values())
-    if 'hp_charge_stack' not in acc_types:
-        return None
-    need = STRONG_ENV_MECHS.get('hp_charge_stack')
-    if not need:
-        return None
-    if not (gs.enemy_affixes.value or []):
-        return None
-    affix_map, _, _ = merged_mechanic_tables()
-    mech = {affix_map.get(a, a) for a in (gs.enemy_affixes.value or [])}
-    return bool(mech & need)
-
-
 # ===== P1 锁线资格门=====
 # 三门行为无条件化(后治理蓝图):P1 终局线资格门/配方锁/过渡对
 # 三门的 sim A/B 已终裁,无开关;A/B 基线臂由 git
@@ -482,40 +351,6 @@ _ENGINE_BOND_KEYS: frozenset[str] = frozenset(b for b, _t in TRANSITION_TRAITS)
 """三羁绊体系键(仙舟/列车同行/持续伤害;派生自 cw_deploy_logic.TRANSITION_TRAITS
 单一源,与 scoring/cw_sim/deploy_logic 的体系判定同源)。希儿系=单卡二元判定
 不占羁绊键(与 scoring '希儿系' 哨兵同口径)。"""
-
-
-def _p1_transition_eligible(comp: Comp) -> bool:
-    """线的锁线方向是否仍喂养过渡引擎(资格门的「过渡线」支)。
-
-    三支全部派生,无手写线名(「派生优于快照」同款):
-    - 希儿 ∈ core:希儿系=四体系之一,单卡即战力(伤害在希儿技能层);
-    - 主/副档 ∩ 三羁绊体系键 ≠ ∅:锁线方向=意向线主/副档羁绊
-      (discipline 方向期阵营门的消费对象),档位即体系 → 锁了仍在买引擎件
-      (DOT队/专家桑博DOT/列车同行;[20] 过渡是配方——4列车保送 P2 即其
-      升级层)。
-    其余线=终局专属(万敌单C/黄泉减益/双王圣杯/命运圣杯红A/大黑塔银河学者/
-    狼尊欢愉/反甲白厄):前期战力来自通用引擎池而非自身目标件
-
-    """
-    if '希儿' in comp.core_chars:
-        return True
-    tier_keys = set(comp.form_tiers) | set(comp.sub_tiers)
-    return bool(tier_keys & _ENGINE_BOND_KEYS)
-
-
-def _p1_gate_blocks(gs: GameState, comp: Comp) -> bool:
-    """P1 终局专属线锁线证据门是否拦下该线。
-
-    拦截 = 门开 ∧ plane==1 ∧ 非过渡线 ∧ 无①类资格(策略/环境亲和,
-    与②门同一资格源 _direct_line_qualified)。P2/P3 不辖——
-    [21] 上场窗口(姬子=7级/万敌=1-9 变阵点)与 1-8 换血点都在 P1 之后,
-    终局线在 P2 起锁是 [23] 全文语义。
-    """
-    if plane_of(gs) != 1:
-        return False
-    if _p1_transition_eligible(comp):
-        return False
-    return not _direct_line_qualified(gs, comp.name)
 
 
 #: 希儿系体系键(单卡二元判定,不占羁绊键;与 cw_battle_calib._engines_count
@@ -1216,75 +1051,6 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
     )
 
 
-def detect_signals(gs: GameState) -> list[IntentionSignal]:
-    """信号分层判定(①策略驱动 > ②类专属羁绊 > ③核心卡 > ④资源)。
-
-    返回分层信号列表(未排序;消费方按 layer 升序 / weight 降序取最优);
-    ⑤无信号兜底不在此产出——列表为空时解析侧落三臂判据(无目标期帧)。
-    冻结超限已移出候选集(evicted)的线不产信号(等同信号未发生)。
-    """
-    out: list[IntentionSignal] = []
-    comps = _v2_comps()
-    # 注:evicted 过滤由 IntentionState 携带,detect_signals 是纯函数不读状态机;
-    # 调用方(update_intention)负责过滤。直接消费方请走 update_intention。
-    visible = _visible_chars(gs)
-
-    # ① 策略驱动:投资环境 / 投资策略字段出现 → 对应线(近硬绑亲和表)
-    if gs.active_env.value:
-        for comp_name, w in augment_env_affinity(gs.active_env.value).items():
-            if get_comp(comp_name) is not None:
-                out.append(IntentionSignal(1, 'env', comp_name,
-                                           f'环境[{gs.active_env.value}]×{w}', w))
-    for s in (gs.active_strategies.value or []):
-        for comp_name, w in augment_affinity(s).items():
-            if get_comp(comp_name) is not None:
-                out.append(IntentionSignal(1, 'strategy', comp_name,
-                                           f'策略[{s}]×{w}', w))
-
-    # ② 类专属:家族专属羁绊信号(板上+bench 计数达阈;希儿量子/白厄反甲无②)。
-    # 资格门:羁绊副产品计数(学者2/夜半2/列车2 等)不是直通资格
-    # ——直通终局线的锁线资格 = 持有对应投资策略/环境(亲和表反查);
-    # 无资格不发②信号(意向保持 unlocked,P1 板面归四体系过渡逻辑,
-    # P2+ 无目标期囤货方向由三臂判据承接[P86];贯穿件到手走③,
-    # [23] 合法路径不变)。
-    counts = _bond_counts(gs)
-    for fam, bond in FAMILY_BOND_SIGNALS.items():
-        if counts.get(bond, 0) >= FAMILY_BOND_MIN_COUNT:
-            for c in comps:
-                if c.family == fam and _direct_line_qualified(gs, c.name):
-                    out.append(IntentionSignal(
-                        2, 'family_bond', c.name,
-                        f'{bond}×{counts[bond]}(≥{FAMILY_BOND_MIN_COUNT})', 0.5))
-
-    # ③ 核心卡:具名意向核心在店/到手
-    # P1 资格门:终局专属线(锁线方向不含过渡引擎)在 P1 的③证据
-    # 被拦下(贯穿件照买照囤 [21],只是不构成 P1 锁线证据);过渡线/持资格
-    # 线/P2+/门关照旧。证据类=「某张卡在场」,非①类「策略/环境」。
-    for c in comps:
-        core = intention_core(c)
-        if core and core in visible:
-            if _p1_gate_blocks(gs, c):
-                continue
-            out.append(IntentionSignal(3, 'core_card', c.name,
-                                       f'核心[{core}]可见', 1.0))
-
-    # ④ 资源:升费资源等特殊系统锚(④层)。
-    # 数据缺口声明:升费资源(道具)暂无容器字段——以升费链角色到手
-    # (cost_escalation['角色'] 在 bench/deployed)作「资源到位」代理;字段接入后扩。
-    # :④与③同为「卡/资源到手」证据类,P1 终局专属线同门。
-    _front, _back = deployed_rows_of(gs)
-    owned = {u.char_id for u in (*_front, *_back, *bench_units_of(gs))
-             if u is not None and u.char_id}
-    for c in comps:
-        ce = c.special_systems.get('cost_escalation')
-        if ce and ce.get('角色') in owned:
-            if _p1_gate_blocks(gs, c):
-                continue
-            out.append(IntentionSignal(4, 'resource', c.name,
-                                       f'升费链[{ce.get("角色")}]已到手', 0.5))
-    return out
-
-
 def _asset_thickness(comp: Comp, gs: GameState) -> float:
     """候选线资产厚度(骨架件退役后口径):
 
@@ -1315,24 +1081,6 @@ def _core_miss_q(core: str, level: int) -> float:
     return 1.0 - (1.0 - r) ** 5
 
 
-def core_miss_n_required(core: str, level: int, eps: float) -> int:
-    """证据组 A 的断供轮数闭式:N_req = ⌈ln ε / ln(1−q)⌉。
-
-    推导:P(N 轮未现 | 单轮出现率 q) = (1−q)^N ≤ ε——「核心实际可达
-    却连续 N_req 轮缺席」的概率压到 ε 以下,缺席才从噪声升级为断供
-    证据(设计=撤销证据闭式设计件 R3 节;治 载明的
-    「拍死计数把正常噪声送进撤销」病灶)。ε 取
-    registry.revoke_miss_tolerance_eps(默认 5%)。实表代入
-    (cw_shop_odds):3 费@lv5 q=0.069→N_req=42,3 费@lv7 q=0.135→21,
-    1 费@lv5→27——拍死值 CORE_MISS_N=6 的缺席在 q≈0.07 下自然概率
-    ≈0.65,纯属噪声,定量坐实「6 是多容易误触发」。
-
-    q=0(窗口关/未识别)→ 返回 CORE_MISS_N:闭式无定义,退上限保险
-    (该情形走冻结语义,本值不实际辖判)。"""
-    q = _core_miss_q(core, level)
-    if q <= 0.0 or q >= 1.0:
-        return CORE_MISS_N
-    return max(1, math.ceil(math.log(eps) / math.log(1.0 - q)))
 
 
 def p2_supply_horizon(gs: GameState,
@@ -1363,6 +1111,8 @@ def p2_supply_horizon(gs: GameState,
     hp = int(decision_hp(gs, session) or 0)
     blood_rounds = math.ceil(hp / float(reg.vd_p2_loss)) if hp > 0 else 0
     return min(plane_left, blood_rounds)
+
+
 
 
 def line_completion_feasibility(gs: GameState,
@@ -1419,93 +1169,6 @@ def line_completion_feasibility(gs: GameState,
     return g
 
 
-def _best_supply_feasible_alt(gs: GameState,
-                              ist: IntentionState,
-                              session: StrategySession | None,
-                              reg: DecisionV2Registry,
-                              visible: set[str],
-                              exclude: str) -> tuple[str, float] | None:
-    """供给可行替代线top-1(出口③的换线目标;与 ``_revoke_alt_evidence``
-    同构的「异线」口径:排除当前线与 evicted,弱面位面过滤同款)。
-
-    **双门槛**(A/B 两轮实证收敛,见 REPORT):
-    1. G > ε(先验可行);
-    2. 替代线意向核心在店/在手([23] 贯穿件语义:锁向承诺只有贯穿件
-       到手才算「已验证可达」——G 略高于 ε 的替代线自己也完成不了,
-       换过去是拿血量赌先验,A/B s3 局实证为净伤害)。
-    可行线集空 → None(全不可行时维持现任锁——任何换线都是 ε 级噪声,
-    P25 锁线价值保留,不折腾)。返回 (线名, G) 或 None。"""
-    best: tuple[str, float] | None = None
-    for c in _v2_comps():
-        if c.name == exclude or c.name in ist.evicted:
-            continue
-        if plane_of(gs) in (c.weak_planes or ()):
-            continue
-        core = intention_core(c)
-        if not core or core not in visible:
-            continue
-        g = line_completion_feasibility(gs, c, session, reg, visible)
-        if g > reg.revoke_miss_tolerance_eps \
-                and (best is None or g > best[1]):
-            best = (c.name, g)
-    return best
-
-
-def _p2_signal_supply_ok(gs: GameState,
-                         sig: IntentionSignal,
-                         session: StrategySession | None,
-                         reg: DecisionV2Registry,
-                         visible: set[str]) -> bool:
-    """P2 信号缓锁门的单信号判据(见 update_intention 消费位注)。
-    核心在店/在手 → 放行;否则 G > ε 才放行。"""
-    comp = get_comp(sig.comp_name)
-    if comp is None:
-        return True
-    core = intention_core(comp)
-    if core and core in visible:
-        return True
-    return line_completion_feasibility(
-        gs, comp, session, reg, visible) > reg.revoke_miss_tolerance_eps
-
-
-def _revoke_alt_evidence(gs: GameState, visible: set[str],
-                         locked_comp: str, evicted: set[str],
-                         a_min: float) -> tuple[str, float] | None:
-    """证据组 B:I_evidence = ∃ 异线 comp:``_core_reachable`` ∧
-    ``_asset_thickness`` ≥ A_min(意图证据本体——「有没有另一条线正在
-    实际生长」,区别于噪声与断供共有的「本线缺了多久」;设计 R3.1)。
-
-    - ``_core_reachable`` 复用出口②的可达对照,不造第二把尺;
-    - 排除当前锁定线(「异线」字面)与 evicted 冻结超限线(已证明
-      不可续的线不是「生长中的替代资产」);
-    - 多条满足取厚度最大者(证据强度排序;选线权仍在信号分层,
-      证据只回答「可不可以撤」,不回答「撤向哪」)。
-    返回 (comp 名, 厚度) 或 None。"""
-    best: tuple[str, float] | None = None
-    for c in _v2_comps():
-        if c.name == locked_comp or c.name in evicted:
-            continue
-        if not _core_reachable(c, gs, visible):
-            continue
-        thk = _asset_thickness(c, gs)
-        if thk >= a_min and (best is None or thk > best[1]):
-            best = (c.name, thk)
-    return best
-
-
-def _best_signal(signals: list[IntentionSignal]) -> IntentionSignal | None:
-    """分层取最优:layer 升序 → weight 降序 → 库序(stable)。"""
-    if not signals:
-        return None
-    return sorted(signals, key=lambda s: (s.layer, -s.weight))[0]
-
-
-def _track(ist: IntentionState, comp_name: str) -> LineTrack:
-    if comp_name not in ist.tracks:
-        ist.tracks[comp_name] = LineTrack()
-    return ist.tracks[comp_name]
-
-
 # ===== 锁线断头观测分键(纯观测件;设计语义 = 锁线断点按断点位置分键的
 # 定向观测,分键清单 = 下行前缀全集逐键注。原锁线断头 P2 定向通道设计稿
 # 未入库已灭失(原件名 lock_path_p2_channel_design/DESIGN.md);语义存档 =
@@ -1527,596 +1190,117 @@ LOCK_PATH_OBS_KEY_PREFIXES: tuple[str, ...] = (
 )
 
 
-def _near_death_band(gs: GameState,
+def update_p1_recipe(gs: GameState, ist: IntentionState,
                      registry: DecisionV2Registry | None = None,
-                     session: StrategySession | None = None) -> bool:
-    """濒死带观测判定(零新参数):0 < hp ≤ ``vd_p2_loss``,即血预算
-    轮数 ⌈hp/vd_p2_loss⌉ == 1——与 ``p2_supply_horizon`` 血预算支同式,
-    只辖观测分键(设计稿 §2.3 观测件;授权面出辖 §12-7 并案批)。"""
-    # hp 决策消费点统一经政策层读口(挂账兑现,同 p2_supply_horizon)。
-    from sr_od.application.currency_war.kernel.cw_hp_policy import (
-        decision_hp,
-    )
-    hp = int(decision_hp(gs, session) or 0)
-    if hp <= 0:
-        return False
-    return math.ceil(hp / float((registry or DEFAULT_REGISTRY).vd_p2_loss)) == 1
-
-
-def _bump_obs(session: StrategySession | None, key: str) -> None:
-    """观测分键计数(strategy_state_of(session).cw4_counters 容器;键登记惯例同 mandate_v1)。
-
-    双形态宿主(终态契约 §2.6 kernel 注入化):入参即 StrategyState
-    (带 cw4_counters 属性)→ 直用;session/None → 旧路径(strategy_state_lazy;
-    None 纯逻辑直调静默跳过)。容器缺席惰性建空 dict(先例 =
-    mandate_v1/entry.py 初始化面)——只写计数,不碰任何判定输入,零行为。"""
-    if session is None:
-        return
-    st = session if hasattr(session, 'cw4_counters') \
-        else strategy_state_lazy(session)
-    if st is None:
-        return   # 工厂未注册(第三方策略面):kernel 不代建,静默跳过
-    st.cw4_counters[key] = st.cw4_counters.get(key, 0) + 1
-
-
-def promote_candidates(gs: GameState,
-                       ist: IntentionState,
-                       session: StrategySession | None = None,
-                       registry: DecisionV2Registry | None = None,
-                       visible: set[str] | None = None) -> list[Comp]:
-    """晋升候选集纯派生(设计稿 §2.1 公式;本批为 G8 观测载体,零行为)。
-
-    公式(与 P2 移交候选 :1345 同判据形状,输入换 p1_pair 冻结快照):
-    ``{ c ∈ v2 comps : c ∉ evicted ∧ (form_tiers ∪ sub_tiers) ∩
-    pair 体系键 ≠ ∅ ∧ plane ∉ weak_planes ∧ _core_reachable ∧
-    (plane != 2 或 G > ε) }``。输入 = ``p1_pair_frozen_obs``(退场前
-    冻结副本,空 = P1 无配方方向,候选恒空)。
-
-    - **行为交付面出辖**:排序与锁定消费归 P65 直证批(设计稿 §6 验收
-      序「①前置观测」),本函数禁入任何行为消费点;
-    - 体系键交集用 ``_pair_bond_keys``(希儿系展开=量子同频+贝洛伯格,
-      与 ``locked_faction_scope`` 同口径,不另造键展开)。"""
-    pair = tuple(ist.p1_pair_frozen_obs or ())
-    if not pair:
-        return []
-    reg = registry or DEFAULT_REGISTRY
-    vis = _visible_chars(gs) if visible is None else visible
-    bonds = _pair_bond_keys(pair)
-    out: list[Comp] = []
-    for c in _v2_comps():
-        if c.name in ist.evicted:
-            continue
-        if not (set(c.form_tiers) | set(c.sub_tiers)) & bonds:
-            continue
-        if plane_of(gs) in (c.weak_planes or ()):
-            continue
-        if not _core_reachable(c, gs, vis):
-            continue
-        if plane_of(gs) == 2 and line_completion_feasibility(
-                gs, c, session, reg, vis) <= reg.revoke_miss_tolerance_eps:
-            continue
-        out.append(c)
-    return out
-
-
-def _lock(ist: IntentionState, gs: GameState, sig: IntentionSignal,
-          forced: bool = False) -> None:
-    ist.phase = 'locked'
-    ist.locked_comp = sig.comp_name
-    ist.p1_pair = ()   # comp 锁定取代配方锁(①资格通道)
-    # 命题 1b 解冻闭集出口③「comp 锁定取代」:域退出类
-    # 清除,外部清除 ⟹ F 同帧归 0(F=1⟹对非空不变式的写点侧半边)。
-    # 冻结保护配方方向不被噪声重派生,不保护已被合法方向替代取代的承诺。
-    ist.p1_pair_frozen = False
-    ist.p1_pair_frozen_pair = ()
-    ist.p1_pair_refreeze_hold = ()
-    # :①锁局(P1∧配方锁开)同时派生过渡对副方向
-    # (与 p1_pair 同口径;P2+ 强制锁线/旧通道 P1 锁均不辖)。
-    # incumbent=():comp 锁定 = 域切换,合法换向不继承旧在任
-    # (「域切换不继承」同款语义)。
-    ist.transition_pair = (
-        _derive_p1_pair(gs)
-        if plane_of(gs) == 1
-        else ()
-    )
-    ist.lock_layer = sig.layer if not forced else 1   # 强制锁线视作最高层(不可被出口②撤)
-    ist.lock_plane = plane_of(gs)
-    ist.lock_round = round_num_of(gs)
-    ist.forced = forced
-    ist.weak_comp = ''
-    ist.revoke_evidence = {}   # 重锁=证据消费完毕(字段契约见 IntentionState)
-    ist.last_event = ('forced_lock:' if forced else 'lock:') + sig.comp_name
-
-
-def update_intention(gs: GameState, ist: IntentionState,
-                     session: StrategySession | None = None,
-                     registry: DecisionV2Registry | None = None,
-                     st=None
                      ) -> IntentionState:
-    """每回合驱动锁线/撤销状态机(就地改 ist 并返回;直吃容器 GameState)。
+    """P1 过渡配方链驱动(配方对物化链的派生段;§1.6 意向层机器本体
+    退役后的保留项——每 game-round 恰一次,就地改 ist 并返回)。
 
-    序:降格终局短路 → 锁定态撤销检查(冻结 → miss-N → 高层信号)
-    → 未锁/弱意向解析(新信号锁线,否则⑤兜底方向)→ P3 入口强制锁线。
-    (C4 存活轮数门接线 _switch_gate_open、门闩与换线门决策位/闩已随
-    旧方案清退批删除,清查报告 OLD_MIX_AUDIT §1.3——默认关开关族出局,
-    换线裁决回归 E_rounds/θ/δ/D_min 主判据。)
+    原 ``update_intention`` 的 comp 锁定状态机(信号锁线/撤销出口
+    ①②③/P2 移交强锁/P3 强锁/降格终局)已随候选-锁定制退役(迭代
+    2026-10-12-prep-shop-workflow-redesign 批 3.7;终局线锁定 =
+    策略层 session_scope/line_select 的硬规则+时点兜底);本函数只承
+    载**配方对链**:命题 1b 冻结状态机(超窗出口 → 重派生/冻结钉向
+    → 置位评估)+ 观测快照(p1_pair_frozen_obs)。位面辖域由调用侧
+    (flow 层)以窗口谓词承载——本函数只在 P1 活动窗被调。
     """
-    if ist.demoted_endgame:
-        # 吸收态短路也计入锁定率分母(帧末恒 unlocked,分子自然不计;
-        # 漏计会虚高锁定率——分键口径声明见函数尾计数块)。
-        _plane_key = f'p{min(max(1, plane_of(gs)), 3)}'
-        _bump_obs(st or session, f'intention_frame_{_plane_key}')
-        return ist   # 降格终局是 absorbing 态(点7 止损序同构,不回弹)
-    if plane_of(gs) != 1 and ist.transition_pair:
-        # 出 P1:过渡对副方向退场(P2+ 锁定目标=locked_comp 唯一)
-        ist.transition_pair = ()
     visible = _visible_chars(gs)
-    # (原「门闩位面切换清零」分支只在闩置位后生效;门闩删除后默认行为
-    # =位面切换不清 miss_count——维持删除前生产默认,零漂移。)
-    # R3 断供驱逐:每 game-round 恰一次的体系级断供计数
-    # (pair 方向在场时辖;断供计数写 pair_drought,驱逐分支已随未证阈值
-    # 退役,pair_evicted 恒空集——派生 exclude 参数留兼容)。
+    # 体系级在店供给计数(纯遥测;断供驱逐分支已退役,不触发行为)。
     _update_pair_drought(gs, ist, visible)
-    sigs = [s for s in detect_signals(gs) if s.comp_name not in ist.evicted]
-    # 弱面位面过滤(经济冻结批,病灶③):注册表自注 weak_planes 含当前
-    # 位面的线不产锁线信号——单一源=Comp.weak_planes 注册项自注(如
-    # DOT队 weak_planes=(2,)「P2 被抽陀螺,保命 pivot 不选」)。旧形态
-    # 只滤 maybe_pivot 保命路径,③核心卡可见信号(P2r1 卡芙卡在场)绕过
-    # 过滤锁出 P2 弱面线,选线即死路(实机局 g_20260904_042657)。
-    _pre_wp = len(sigs)
-    _pre_sigs = sigs
-    sigs = [s for s in sigs
-            if plane_of(gs) not in (getattr(get_comp(s.comp_name),
-                                            'weak_planes', ()) or ())]
-    if len(sigs) != _pre_wp:
-        log.info('[cw][intention] 弱面过滤 %d→%d 信号(plane=%s)',
-                 _pre_wp, len(sigs), plane_of(gs))
-        # G5 观测分键(设计稿 §6):信号曾生成但被弱面剔——逐被剔信号
-        # 计 eval,并按豁免判据(设计稿 §2.2:厚度 ≥ A_min ∧ 意向核心
-        # 在店/在手)预演分支(fail-closed 期只计数,豁免行为不落)。
-        # fail 支=厚度不足是「维持零通道」组拼合式的必要输入(§6)。
-        _reg_wp = registry or DEFAULT_REGISTRY
-        _a_min = _reg_wp.revoke_evidence_min_thickness
-        _kept = {y.comp_name for y in sigs}
-        for s in (x for x in _pre_sigs if x.comp_name not in _kept):
-            comp_wp = get_comp(s.comp_name)
-            if comp_wp is None:
-                continue
-            _bump_obs(st or session, 'weakplane_exempt_eval')
-            thk = _asset_thickness(comp_wp, gs)
-            core = intention_core(comp_wp)
-            core_vis = bool(core) and core in visible
-            if thk >= _a_min and core_vis:
-                _bump_obs(st or session, 'weakplane_exempt_eval_hit')
-            elif thk < _a_min:
-                _bump_obs(st or session, 'weakplane_exempt_eval_fail_thickness')
-            else:
-                _bump_obs(st or session, 'weakplane_exempt_eval_fail_visible')
-    revoked = False   # 本轮是否发生撤销(出口①miss/出口②):撤后当轮不重锁——
-    # 「意向降级为弱意向……直至新信号」= 新信号指下一轮起的信号;同轮撤+锁会让
-    # 弱意向态不可观测(判读/遥测断档),状态机一回合最多一次转移。
-
-    if ist.phase == 'locked':
-        comp = get_comp(ist.locked_comp)
-        core = intention_core(comp) if comp else ''
-        track = _track(ist, ist.locked_comp)
-        ch = CHARACTERS.get(core) if core else None
-        window_open = bool(ch) and refresh_prob(level_of(gs), ch.cost) > 0
-        if not window_open:
-            # 窗口冻结:未开窗不计 miss;冻结超位面剩余节点 → 移出候选集,
-            # 意向回⑤无信号态——**不触发③**(该轮③信号被排除)
-            track.frozen_rounds += 1
-            # :冻结超限对照量按本位面真值(session 透传,P2=7)。
-            if track.frozen_rounds > plane_remaining_nodes(gs, session):
-                ist.evicted.add(ist.locked_comp)
-                ist.phase = 'unlocked'
-                ist.locked_comp = ''
-                ist.lock_layer = 0
-                ist.transition_pair = ()   # 锁撤销 → 副方向随之退场
-                ist.revoke_evidence = {}   # 驱逐不经撤销,证据随之失效
-                ist.last_event = f'evict:frozen:{track.frozen_rounds}'
-                sigs = [s for s in sigs if s.layer != 3]   # 不触发③
-        else:
-            track.frozen_rounds = 0
-            # 线级在店供给断供计数(出口③证据组):有店轮无任何线内
-            # 成员(core∪shared)在店 +1,有成员清零,无店轮冻结。
-            _shop = gs.shop.value   # payload 域:非当前画面 None(W6 波3 切换)
-            shop_names = {getattr(c, 'name', '') or ''
-                          for c in shop_payload_content_cards(_shop)}
-            if shop_names:
-                line_members_seen = bool(
-                    shop_names & (set(comp.core_chars)
-                                  | set(comp.shared_chars))) if comp else False
-                track.member_drought = (0 if line_members_seen
-                                        else track.member_drought + 1)
-            if core in visible:
-                track.miss_count = 0
-            else:
-                track.miss_count += 1
-                # 撤销出口①(三条件合取,缺一不开窗;设计 R3.1):
-                #   ① miss ≥ max(CORE_MISS_N, N_req)——N_req 由 ε 容忍
-                #     概率闭式推导(证据组 A),CORE_MISS_N 保留为上限保险
-                #     (防牌池数据异常使 N_req 过小);仅达拍死计数不再
-                #     开窗(:门放行噪声换线的病灶在此收窄)。
-                #   ② 证据组 B:存在异线 comp 核心可达 ∧ 资产厚度 ≥ A_min
-                #     (registry.revoke_evidence_min_thickness,冻结池
-                #     随机厚度基线 f0 曲线 5% 点测量值,见其注释)。
-                # 误开窗操作定义(开窗局到局末未发生「新线落锁且新线
-                # 最终成型(form_score 达标)」=纯扰动)与 A/B 判据
-                # (注入臂 n=300/臂、池指纹锚,生产阈值零动):
-                #   a) evidence 臂触发率 >0 且逐例带证据字段(off 臂 ≈0
-                #      实测;off 臂逐位=零漂移锚);
-                #   b) 开窗局中新线成型局 ≥2/3,低于此=证据组 B 分辨力
-                #      不足,回炉 A_min/ε;
-                #   c) 开窗局 P2 存活轮数分布不后移(C3 无效判据口径)→
-                #      出口在 sim 牌池概念无效,如实记「结构件」,不硬开臂。
-                reg = registry or DEFAULT_REGISTRY
-                n_req = core_miss_n_required(
-                    core, level_of(gs), reg.revoke_miss_tolerance_eps)
-                if track.miss_count >= max(CORE_MISS_N, n_req):
-                    ev = _revoke_alt_evidence(
-                        gs, visible, ist.locked_comp, ist.evicted,
-                        reg.revoke_evidence_min_thickness)
-                    if ev is not None:
-                        # 撤销出口①:断供证据 + 替代资产证据齐备 → 降级弱意向
-                        alt_name, thk = ev
-                        q = _core_miss_q(core, level_of(gs))
-                        alt_comp = get_comp(alt_name)
-                        e_alt = (e_rounds(alt_comp,
-                                          gs, reg,
-                                          session=session)
-                                 if alt_comp is not None else math.inf)
-                        ist.phase = 'weak'
-                        ist.weak_comp = ist.locked_comp
-                        ist.locked_comp = ''
-                        ist.lock_layer = 0
-                        ist.transition_pair = ()   # weak 不辖(同 scope 契约)
-                        ist.revoke_evidence = {
-                            'kind': 'miss',
-                            'miss_count': track.miss_count,
-                            'n_req': n_req,
-                            'q': round(q, 4),
-                            'eps': reg.revoke_miss_tolerance_eps,
-                            'alt_comp': alt_name,
-                            'e_alt': (round(e_alt, 3)
-                                      if math.isfinite(e_alt) else None),
-                            'asset_thickness': round(thk, 2),
-                            'a_min': reg.revoke_evidence_min_thickness,
-                        }
-                        ist.last_event = (
-                            f'revoke:miss{track.miss_count}'
-                            f'(n_req={n_req},q={q:.3f},alt={alt_name}'
-                            f',thk={thk:.1f})')
-                        revoked = True
-            # 撤销出口③(P2 供给可行视界降级,锁线可行性批):
-            # 条件 = P2 ∧ 窗开 ∧ 核心不在店/在手 ∧ 线完成率 G ≤ ε ∧
-            # 线内在店断供 ≥ PAIR_SUPPLY_CONFIRM_ROUNDS ∧ 存在 G > ε
-            # 的可行替代线。语义:出口①的证据门槛 N_req(3费@lv7=21 轮)
-            # 在 P2 的 7 轮视界内不可达——死守一条供给空缺线既无法完成
-            # 也无法被证据机器合法放弃(R5 死法族主因:10 死亡局锁线波
-            # 线内件出现率 16.7%,hp0 终持金≥100)。**断供证据合取是
-            # 防误杀的关键**:G ≤ ε 只是先验不可行,引擎线(列车同行等
-            # 成员持续在售)仍可能功能良好,A/B 实证(s3 局)无证据合取
-            # 时会撤掉活线换死线——先验 + 观测断供双证据才构成「线死」。
-            # 降级到 unlocked 让 P2 移交(handoff_lock)机制
-            # 下一轮确定性地重锁到可行线,换线不绕信号运气。与出口①
-            # 同构的可逆性:降级不写 evicted,现线缺件兑现(买到)/血量
-            # 回升(H 变大)/升级(q 变大)后 G 恢复即可经信号/移交重锁
-            # (un-evict 同款,经济冻结批语义)。核心在店帧不辖(当轮
-            # 可买,缺件集即缩,G 会被低估)。全线不可行(无 G>ε 替代)
-            # 不降级:任何换线都是 ε 级噪声,P25 锁线价值保留。
-            if (not revoked and plane_of(gs) == 2 and core
-                    and core not in visible
-                    and track.member_drought >= PAIR_SUPPLY_CONFIRM_ROUNDS):
-                _reg_f = registry or DEFAULT_REGISTRY
-                g_locked = line_completion_feasibility(
-                    gs, comp, session, _reg_f, visible)
-                if g_locked <= _reg_f.revoke_miss_tolerance_eps:
-                    alt = _best_supply_feasible_alt(
-                        gs, ist, session, _reg_f, visible,
-                        exclude=ist.locked_comp)
-                    if alt is not None:
-                        from sr_od.application.currency_war.kernel.cw_hp_policy import (
-                            decision_hp as _decision_hp_disc,
-                        )
-                        alt_name, g_alt = alt
-                        _h = p2_supply_horizon(gs, session, _reg_f)
-                        ist.phase = 'unlocked'
-                        ist.weak_comp = ist.locked_comp
-                        ist.locked_comp = ''
-                        ist.lock_layer = 0
-                        ist.transition_pair = ()
-                        ist.revoke_evidence = {
-                            'kind': 'supply_infeasible',
-                            'g_locked': round(g_locked, 4),
-                            'alt_comp': alt_name,
-                            'g_alt': round(g_alt, 4),
-                            'eps': _reg_f.revoke_miss_tolerance_eps,
-                            'h_eff': _h,
-                            'hp': int(_decision_hp_disc(gs, session) or 0),  # 读法声明同 p2_supply_horizon(政策层读口)
-                            'member_drought': track.member_drought,
-                        }
-                        ist.last_event = (
-                            f'revoke:supply_infeasible:{alt_name}'
-                            f'(g={g_locked:.3f},g_alt={g_alt:.3f}'
-                            f',h={_h})')
-                        revoked = True
-        if ist.phase == 'locked':
-            # 撤销出口②:更高层级替代信号 + 可达性对照(层级高≠必换)
-            for s in sigs:
-                if s.comp_name == ist.locked_comp or s.layer >= ist.lock_layer:
-                    continue
-                new_comp = get_comp(s.comp_name)
-                if new_comp and _core_reachable(new_comp, gs, visible):
-                    ist.phase = 'weak'
-                    ist.weak_comp = ist.locked_comp
-                    ist.locked_comp = ''
-                    ist.lock_layer = 0
-                    ist.transition_pair = ()   # weak 不辖(同 scope 契约)
-                    ist.revoke_evidence = {}   # 出口②非证据组 A/B 通道(字段契约)
-                    ist.last_event = f'revoke:higher:{s.comp_name}(L{s.layer})'
-                    revoked = True
-                    break   # 「直至新信号」——本轮撤,下轮新信号再锁
-
-
-    if ist.phase == 'locked' and plane_of(gs) == 1:
-        # :①锁局过渡对随资产重派生(同 p1_pair 语义——
-        # 「变体按来牌选」[20],非 pivot)。方向稳定性由 四层
-        # 谓词结构承载(门槛先行+在任优先单席易手+合成中性排序维+
-        # 可行性门),非「支持度只增」资产单调性假设——该前提已被
-        # sim 实证证伪(卖出/合成降计数)。
-        # [23] 冻结语义辖终局线,不辖过渡副方向;在任 I = 现值
-        # transition_pair(域内重评,先于本次计票)。
-        pair = _derive_p1_pair(gs, incumbent=ist.transition_pair,
-                               registry=registry, session=session)
-        if pair != ist.transition_pair:
-            ist.transition_pair = pair
-            ist.last_event = ('lock_pair:' + '+'.join(pair)) \
-                if pair else 'lock_pair:wait'
-
-    if ist.phase in ('unlocked', 'weak') and not revoked:
-        # P2 信号供给可行性缓锁门(锁线可行性批):候选信号线的核心
-        # 不在店/在手 ∧ 线完成率 G ≤ ε ⇒ 本轮不锁(与 H1 环境判据同款
-        # 「缓锁」语义,只辖主动选线,已锁线不辖)。核心在店的信号不辖
-        # ——当轮可买,P25「核心出现即买」的锁线价值优先,且买入后
-        # 缺件集即缩。辖域=plane==2(vd_p2_loss 血预算与 7 轮视界都是
-        # P2 量;P1 配方锁/P3 强锁语义不动)。防的是出口③降级后的
-        # 立即重锁死循环与 ①②亲和信号把方向锁进供给空缺线(R5 死亡
-        # 局 5 条不同锁线全部低供给:任何线都可能供给不济,锁前先验
-        # 可达性)。
-        if plane_of(gs) == 2:
-            _reg_f2 = registry or DEFAULT_REGISTRY
-            _n0 = len(sigs)
-            # G6 观测分键(设计稿 §6):信号存活至缓锁门但被 G≤ε 剔除。
-            # 濒死带定向观测(设计稿 §2.3,只计数不定谳):濒死带 = 血预算
-            # 轮数 ⌈hp/vd_p2_loss⌉ == 1(零新参数,与 p2_supply_horizon 血
-            # 预算支同式;G 数值分布不入计数容器,走既有 revoke_evidence
-            # 遥测面)。授权设计(濒死换向豁免)出辖设计稿 §12-7 并案批,
-            # fail-closed 前行为零变更。
-            _nd = _near_death_band(gs, _reg_f2, session)
-            if _nd:
-                _bump_obs(st or session, 'neardeath_direction_obs_frame')
-            sigs = [s for s in sigs
-                    if _p2_signal_supply_ok(gs, s, session, _reg_f2,
-                                            visible)]
-            if len(sigs) != _n0:
-                log.info('[cw][intention] P2 供给可行性缓锁 %d→%d 信号',
-                         _n0, len(sigs))
-                _bump_obs(st or session, 'p2_supply_gate_cull')
-                if _nd:
-                    _bump_obs(st or session, 'neardeath_direction_obs_supply_cull')
-        # H1 锁线环境判据(行为无条件化):累积型线强环境不命中(False)的信号
-        # 本轮不锁(缓锁——「无环境不选」只辖**主动选线**,已锁线与判据
-        # 不辖(None)/信息缺失帧不拦;观察期=line_env_lock_min_round)。
-        # 已锁分支(上方 locked)有意不过此滤:环境缺失不没收已锁线
-        # (accumulator_family §3 同义)。
-        _reg_env = registry or DEFAULT_REGISTRY
-        if round_num_of(gs) >= _reg_env.line_env_lock_min_round:
-            _n0 = len(sigs)
-            sigs = [s for s in sigs
-                    if _line_env_qualified(gs, s.comp_name) is not False]
-            if len(sigs) != _n0:
-                log.info('[cw][intention] 环境判据缓锁 %d→%d 信号(affixes=%s)',
-                         _n0, len(sigs), gs.enemy_affixes.value)
-        # P1 过渡配方锁:P1 的锁定产物=体系对;
-        # ②③④信号不再锁终局 comp(终局 comp 锁定移至 P2+)——
-        # 只保留①类资格通道(直通终局线资格,语义零改动)。
-        # 方向产物=按手上资产派生的体系对(transition_combos 两两组合)。
-        if plane_of(gs) == 1:
-            sigs = [s for s in sigs
-                    if _direct_line_qualified(gs, s.comp_name)]
-            # ── 命题 1b form_ok 冻结状态机──
-            # 帧序:①超窗出口(F=True 时先判,解冻后本帧重派生照走)
-            # → ②重派生(F=True 抑制,方向= frozen_pair;F=False 帧走
-            # 在任优先算子+命题 3 可行性门 §2.1/§2.4)→ ③置位评估
-            # (事件闩)。解冻闭集(p1_pair 域恰三项):超窗出口(①)/
-            # 位面 exit_p1(下方 elif)/comp 锁定取代(_lock 域退出类)。
-            _unfroze_this_frame = False
-            if ist.p1_pair_frozen and ist.p1_pair_frozen_pair:
-                over, e_f, r_rem = _p1_pair_overwindow(
-                    ist.p1_pair_frozen_pair, gs, session, registry)
-                if over:
-                    # 出口①触发:解冻 + 封印该对(防「出口→解冻→保持→
-                    # 复位→再触发」逐帧空转环);本帧重派生按派生语义执行,
-                    # 在任保持帧对保持且 F=False,直至新 form_ok 帧再闩。
-                    _unfroze_this_frame = True
-                    ist.p1_pair_refreeze_hold = ist.p1_pair_frozen_pair
-                    ist.p1_pair_frozen = False
-                    ist.p1_pair_frozen_pair = ()
-                    ist.last_event = (
-                        f'p1_pair:unfreeze_overwindow'
-                        f'(E={e_f:.2f},R_rem={r_rem})')
-            if ist.p1_pair_frozen:
-                # 冻结的是方向不是板面:买入/部署继续服务 frozen_pair,
-                # 重派生被抑制(p1_pair 钉在 frozen_pair 上)。
-                pair = ist.p1_pair_frozen_pair
-                if pair != ist.p1_pair:
-                    ist.p1_pair = pair
-                    ist.last_event = 'p1_pair:' + '+'.join(pair)
-            else:
-                # 在任优先单席易手(I=现值 p1_pair 先于
-                # 本次计票)+ 命题 3 可行性门后置合取(§2.4:仅辖换席
-                # 候选;空窗首进/空席填充/在任保持不辖门)。registry/
-                # session 透传 = 单体系点火渐进通道的 E 估计器输入
-                # (_progressive_second_seat;与 gate 估计同源同参)。
-                pair, cand = _p1_pair_eased(gs, ist.p1_pair,
-                                            registry=registry, session=session)
-                gate_e: float = 0.0
-                gate_r: int = 0
-                gate_denied = False
-                if cand is not None:
-                    ok, gate_e, gate_r = _p1_pair_gate(
-                        cand, gs, registry, session)
-                    if ok:
-                        pair = cand
-                    else:
-                        gate_denied = True
-                fp_v: float | None = None
-                if ist.p1_pair_refreeze_hold:
-                    if pair != ist.p1_pair_refreeze_hold:
-                        ist.p1_pair_refreeze_hold = ()   # 换向解封
-                    else:
-                        _t = pair_target_comp(pair)
-                        fp_v = (form_progress(_t,
-                                              gs)
-                                if _t is not None else 0.0)
-                        if fp_v < 1.0:
-                            # fp 回落 = 方向丢失;此后再达成才是新
-                            # form_ok 事件,允许再闩(§2.2 清除后段)。
-                            ist.p1_pair_refreeze_hold = ()
-                        elif not _unfroze_this_frame:
-                            # 超窗在任保持帧类(F=0 期)的路由读数
-                            # (§2.4「保持+pair_gate 路由读数,如实显影」;
-                            # 出口帧本身保留 unfreeze 事件不覆写)。
-                            ist.last_event = ('pair_gate:hold('
-                                              + '+'.join(pair) + ')')
-                if gate_denied:
-                    # 门拒 = 保持原对 + pair_gate 拒因分键(§2.4;
-                    # 门拒帧派生对必等于在任对,p1_pair 字段零写入)。
-                    ist.last_event = (f'pair_gate:deny(E={gate_e:.2f},'
-                                      f'R_rem={gate_r})')
-                elif pair != ist.p1_pair:
-                    ist.p1_pair = pair
-                    if cand is not None and pair == cand:
-                        # 过门换席帧走 pair_gate 路由子键(E/R_rem 入键,
-                        # ADR §4 事件分键条款三子键之一)。
-                        ist.last_event = ('pair_gate:route:' + '+'.join(pair)
-                                          + f'(E={gate_e:.2f},'
-                                          f'R_rem={gate_r})')
-                    else:
-                        ist.last_event = ('p1_pair:' + '+'.join(pair)) \
-                            if pair else 'p1_pair:wait'
-                # 置位评估(事件闩):空对永不置位;封印期内不闩。
-                if pair and not ist.p1_pair_refreeze_hold:
-                    if fp_v is None:
-                        _t = pair_target_comp(pair)
-                        fp_v = (form_progress(_t,
-                                              gs)
-                                if _t is not None else 0.0)
-                    if fp_v >= 1.0:
-                        ist.p1_pair_frozen = True
-                        ist.p1_pair_frozen_pair = pair
-                        ist.last_event = 'p1_pair:freeze:' + '+'.join(pair)
-            # 观测快照(唯一写入端):最新非空派生对冻结留档,供 P2 期
-            # promote_candidates 消费(p1_pair 本体在 exit_p1 清空,见下)。
-            if pair and pair != ist.p1_pair_frozen_obs:
-                ist.p1_pair_frozen_obs = pair
-        elif ist.p1_pair:
-            # 进 P2:配方锁退场(解冻闭集出口②「位面末」,清除 ⟹ F 同帧
-            # 归 0),comp 锁定通道照旧(P2+ 锁定产物=终局 comp)
-            ist.p1_pair = ()
+    pair = ist.p1_pair
+    # ── 命题 1b form_ok 冻结状态机(帧序:超窗出口 → 重派生/冻结钉向
+    # → 置位评估;解冻闭集原三项目 comp 锁定取代支随机器退役消亡)──
+    _unfroze_this_frame = False
+    if ist.p1_pair_frozen and ist.p1_pair_frozen_pair:
+        over, e_f, r_rem = _p1_pair_overwindow(
+            ist.p1_pair_frozen_pair, gs, None, registry)
+        if over:
+            # 出口①触发:解冻 + 封印该对(防逐帧空转环);本帧重派生
+            # 按派生语义执行,在任保持帧对保持且 F=False,直至新
+            # form_ok 帧再闩。
+            _unfroze_this_frame = True
+            ist.p1_pair_refreeze_hold = ist.p1_pair_frozen_pair
             ist.p1_pair_frozen = False
             ist.p1_pair_frozen_pair = ()
-            ist.p1_pair_refreeze_hold = ()
-            ist.last_event = 'p1_pair:exit_p1'
-        best = _best_signal(sigs)
-        if best is not None:
-            _lock(ist, gs, best)
-        elif ist.phase == 'weak':
-            ist.last_event = ist.last_event or 'weak:hold'
-        # 无信号:保持 unlocked——囤货方向落三臂判据(hoard_target_set 处理)
-
-
-    # 强制锁线(位面入口无意向;点0〔修N4〕对象限定)。经济冻结批扩 P2:
-    # P2 开局必须有目标(目标移交/重 assignment)——P1 配方锁在 P2 退场
-    # (p1_pair:exit_p1)后,若信号未锁(unlocked),旧形态落⑤兜底囤货但
-    # target_comp=None,准备域决策引擎无方向空转;现在 P2 unlocked 帧
-    # 按「weak_planes 过滤 ∧ 核心可达 ∧ 资产最厚」强制 assignment(同 P3
-    # 语义)。P3 起维持原辖域(phase!='locked');P2 收窄到 unlocked:
-    # weak 态是撤销机器在册的意向降级,强制锁会踩掉其「直至新信号」语义。
-    # 位面强锁候选同过 weak_planes 过滤(P3 旧分支未滤,同病灶③面)。
-    # P2 无可达候选 ⇒ 保持 unlocked(P86 三臂判据接管囤货方向:甲臂空帧
-    # 由乙臂枢纽期权/丙臂守息缺省承接,位面余量尚在,不降格终局;
-    # 降格=终局不可达判定,归 P3)。
-    # P2 移交守卫:撤销当轮(出口①/②/③)不接同一轮的移交重锁——
-    # 「状态机一回合最多一次转移」纪律(revoked 注);下一轮由移交通道
-    # 正常重锁(P3 强锁辖域不受本守卫影响,维持既有语义)。
-    _p2_handoff = (plane_of(gs) == 2 and ist.phase == 'unlocked'
-                   and not revoked)
-    if (plane_of(gs) >= 3 or _p2_handoff) and ist.phase != 'locked':
-        # G7/G8 观测分键(设计稿 §6):移交帧分母;候选空帧(handoff_lock
-        # 零发射的直接断点);濒死带出口去向;晋升候选集纯派生非空率
-        # (G8,输入 = p1_pair_frozen_obs,零行为)。与 G5/G6 分键交叉
-        # = 「整局零锁定」摆动局可逐门分解断点(禁合并单键)。
-        if _p2_handoff:
-            _bump_obs(st or session, 'p2_handoff_frame')
-            if _near_death_band(gs, registry, session):
-                _bump_obs(st or session, 'neardeath_direction_obs_handoff_frame')
-        _reg_h = registry or DEFAULT_REGISTRY
-        if _p2_handoff and ist.p1_pair_frozen_obs:
-            _bump_obs(st or session, 'promote_candidate_frame')
-            if promote_candidates(gs, ist, session, _reg_h, visible):
-                _bump_obs(st or session, 'promote_candidate_nonempty')
-        # P2 移交候选补「锁线可行性」门(锁线可行性批):G > ε 才可锁
-        # ——锁线前先验证可达性(供给概率×剩余轮×血预算,注册表派生
-        # 零新参数),不可行线不进强锁候选;全不可行 ⇒ 无候选 ⇒ 保持
-        # unlocked(⑤兜底语义=「降级目标」面,不降格终局)。
-        # P3 分支不动(强锁/降格终局辖域原语义,本批只辖 P2)。
-        cands = [c for c in _v2_comps()
-                 if c.name not in ist.evicted
-                 and plane_of(gs) not in (c.weak_planes or ())
-                 and _core_reachable(c, gs, visible)
-                 and (plane_of(gs) != 2
-                      or line_completion_feasibility(
-                          gs, c, session, _reg_h, visible)
-                      > _reg_h.revoke_miss_tolerance_eps)]
-        if cands:
-            best = sorted(
-                cands,
-                key=lambda c: (-_asset_thickness(c, gs),
-                               encounter_window_rounds(intention_core(c), level_of(gs))),
-            )[0]
-            _lock(ist, gs, IntentionSignal(1, 'forced', best.name,
-                                              '资产最厚', 1.0), forced=True)
-            if _p2_handoff:
-                # 移交锁与 P3 强制锁分事件标签(判读可辨「P2 开局移交」与
-                # 「P3 入口强制」;标签风格同 last_event 'p1_pair:' 族)。
-                ist.last_event = 'handoff_lock:' + best.name
-        elif plane_of(gs) >= 3:
-            # 全部不可达 → 降格终局:四体系过渡板深档强化+通用骨架满配
-            ist.demoted_endgame = True
-            ist.phase = 'unlocked'
-            ist.locked_comp = ''
-            ist.revoke_evidence = {}   # 降格不经撤销,证据随之失效
-            ist.last_event = 'demote:endgame'
-        elif _p2_handoff:
-            # G7 观测分键:候选空帧——unlocked 帧零候选 ⇒ handoff_lock
-            # 零发射(「整局零锁定」摆动的最直接断点;设计稿 §6)。
-            _bump_obs(st or session, 'p2_handoff_cand_empty')
-            if _near_death_band(gs, _reg_h, session):
-                _bump_obs(st or session, 'neardeath_direction_obs_handoff_empty')
-
-    # 锁定率帧计数(设计稿 §6「锁定率入批统计披露」;分母 = 意向驱动帧,
-    # 分子 = 帧末 phase=='locked';按位面分列,与 cw_batch_stats 的
-    # planes/locked_frames 同域口径。只承归因:锁定率与结局无单调关系,
-    # 禁作优化目标。生产驱动面 = flow.CwFlowStrategy._refresh_direction
-    #(内化;本模块 drive_intention 生产调用点已清零,保留作
-    # 纵深防御),共用 strategy_state_of(session).v3_intention_key 段级重入守卫 ⇒ 每 game-round 恰一次)。
-    _plane_key = f'p{min(max(1, plane_of(gs)), 3)}'
-    _bump_obs(st or session, f'intention_frame_{_plane_key}')
-    if ist.phase == 'locked' and ist.locked_comp:
-        _bump_obs(st or session, f'intention_locked_frame_{_plane_key}')
+            ist.last_event = (
+                f'p1_pair:unfreeze_overwindow(E={e_f:.2f},R_rem={r_rem})')
+    if ist.p1_pair_frozen:
+        # 冻结的是方向不是板面:买入/部署继续服务 frozen_pair,
+        # 重派生被抑制(p1_pair 钉在 frozen_pair 上)。
+        pair = ist.p1_pair_frozen_pair
+        if pair != ist.p1_pair:
+            ist.p1_pair = pair
+            ist.last_event = 'p1_pair:' + '+'.join(pair)
+    else:
+        # 在任优先单席易手(I=现值 p1_pair 先于本次计票)+ 命题 3
+        # 可行性门后置合取(仅辖换席候选)。
+        pair, cand = _p1_pair_eased(gs, ist.p1_pair,
+                                    registry=registry, session=None)
+        gate_e: float = 0.0
+        gate_r: int = 0
+        gate_denied = False
+        if cand is not None:
+            ok, gate_e, gate_r = _p1_pair_gate(
+                cand, gs, registry, None)
+            if ok:
+                pair = cand
+            else:
+                gate_denied = True
+        fp_v: float | None = None
+        if ist.p1_pair_refreeze_hold:
+            if pair != ist.p1_pair_refreeze_hold:
+                ist.p1_pair_refreeze_hold = ()   # 换向解封
+            else:
+                _t = pair_target_comp(pair)
+                fp_v = (form_progress(_t, gs)
+                        if _t is not None else 0.0)
+                if fp_v < 1.0:
+                    # fp 回落 = 方向丢失;此后再达成才是新 form_ok
+                    # 事件,允许再闩。
+                    ist.p1_pair_refreeze_hold = ()
+                elif not _unfroze_this_frame:
+                    ist.last_event = ('pair_gate:hold('
+                                      + '+'.join(pair) + ')')
+        if gate_denied:
+            # 门拒 = 保持原对 + pair_gate 拒因分键(门拒帧派生对必等于
+            # 在任对,p1_pair 字段零写入)。
+            ist.last_event = (f'pair_gate:deny(E={gate_e:.2f},'
+                              f'R_rem={gate_r})')
+        elif pair != ist.p1_pair:
+            ist.p1_pair = pair
+            if cand is not None and pair == cand:
+                ist.last_event = ('pair_gate:route:' + '+'.join(pair)
+                                  + f'(E={gate_e:.2f},R_rem={gate_r})')
+            else:
+                ist.last_event = ('p1_pair:' + '+'.join(pair)) \
+                    if pair else 'p1_pair:wait'
+        # 置位评估(事件闩):空对永不置位;封印期内不闩。
+        if pair and not ist.p1_pair_refreeze_hold:
+            if fp_v is None:
+                _t = pair_target_comp(pair)
+                fp_v = (form_progress(_t, gs)
+                        if _t is not None else 0.0)
+            if fp_v >= 1.0:
+                ist.p1_pair_frozen = True
+                ist.p1_pair_frozen_pair = pair
+                ist.last_event = 'p1_pair:freeze:' + '+'.join(pair)
+    # 观测快照(唯一写入端):最新非空派生对冻结留档。
+    if pair and pair != ist.p1_pair_frozen_obs:
+        ist.p1_pair_frozen_obs = pair
     return ist
+
+
+def clear_p1_recipe(ist: IntentionState) -> None:
+    """进 P2:配方锁退场(解冻闭集出口②「位面末」;清除 ⟹ F 同帧归 0)。
+
+    位面辖域由调用侧窗口谓词判定后调用一次(幂等:空对帧 no-op)。
+    """
+    if ist.p1_pair:
+        ist.p1_pair = ()
+        ist.p1_pair_frozen = False
+        ist.p1_pair_frozen_pair = ()
+        ist.p1_pair_refreeze_hold = ()
+        ist.last_event = 'p1_pair:exit_p1'
 
 
 def _line_hoard(comp: Comp) -> tuple[set[str], set[str]]:
@@ -2433,32 +1617,27 @@ def committed_authority(state: GameState | None,
                         session: StrategySession | None) -> bool:
     """committed(已定型/非双轨期)权威判定(方向层单一派生源)。
 
-    - **权威序**(任一成立即 True):
-      ① ``state 位面 >= 2``——P2 起恒定型(语义边界沿用方向重估时代的
-         定型边界 = 进位面 2,严于文档口径 P2-3;载体史考古走 git 历史):
-      ② ``strategy_state_of(session).v3_intention.phase == 'locked'``——意向状态机已锁线;
-      ③ ``ist.p1_pair`` 非空——P1 配方锁已立(产物形态)。
-    - **缺供给帧 = 保守侧 False**(=双轨=攒息):ist 不可得/字段缺失时
-      **禁止**缺省 True——True=已定型=激进侧,攒息门/双轨买门全开
-      (供给点清单 D2:拔掉供给探针下必须落保守侧,变异锁钉住)。
+    - **权威序**(任一成立即 True;批 3.7 候选-锁定制口径):
+      ① ``strategy_state.target_comp`` 非空——锁定线槽非空(定型语义 =
+      锁定线非空,line_and_upgrade §1.6 判定源迁移:P1 硬规则锁定与
+      P2 时点兜底统一承载。原「位面 ≥ 2 恒定型」支已退役——P2 时点
+      兜底锁定替代原 P2 恒定型,行为差申报:P2 入口至兜底锁帧之间的
+      短窗 committed=False〔双轨期口径〕,锁定时点与原接近);
+      ② ``ist.p1_pair`` 非空——P1 配方锁已立(产物形态;配方物化链
+      保留项)。
+    - **缺供给帧 = 保守侧 False**(=双轨=攒息):策略状态/ist 不可得或
+      字段缺失时**禁止**缺省 True——True=已定型=激进侧,攒息门/双轨
+      买门全开(供给点清单 D2:拔掉供给探针下必须落保守侧,变异锁钉住)。
     - 消费契约:全部消费点经本函数或 ``decision_v2.prep_brain
-      .committed_from``(唯一读端,内部委托本函数)取值;
-      state/session 侧双轨字段降级为兼容残留(读点归零,
-      grep 守卫锁),写端退役随老栈(strategy 层)老栈退役。
-    - **state 形态 = 容器单例**(W6 波3 切换;plane 经 ``plane_of`` 读口)。
-      波5 过渡兼容支(旧帧 plane 属性直读)已随 last_state 链
-      退役批删除(本形态注即其退役指针,指针兑现);禁新消费点再喂
-      旧帧或手造鸭子镜像(同型鸭子桥禁令,_PlaneShim 已随波3 消亡)。
+      .committed_from``(唯一读端,内部委托本函数)取值。
+    - **state 形态 = 容器单例**(W6 波3 切换;禁新消费点再喂旧帧或手造
+      鸭子镜像)。
     """
-    if state is not None:
-        if plane_of(state) >= 2:
-            return True
-    ist = getattr(strategy_state_of(session), 'v3_intention', None) if session is not None else None
-    if ist is None:
-        return False
-    if getattr(ist, 'phase', '') == 'locked':
+    st = strategy_state_of(session) if session is not None else None
+    if st is not None and getattr(st, 'target_comp', None) is not None:
         return True
-    return bool(getattr(ist, 'p1_pair', ()) or ())
+    ist = getattr(st, 'v3_intention', None) if st is not None else None
+    return bool(getattr(ist, 'p1_pair', ()) or ()) if ist is not None else False
 
 
 def committed_from(session: StrategySession,
@@ -2483,39 +1662,6 @@ def committed_from(session: StrategySession,
         game_state_of,
     )
     return committed_authority(game_state_of(session), session)
-
-
-def drive_intention(gs: GameState, session: StrategySession,
-                    registry: DecisionV2Registry | None = None) -> None:
-    """意向状态机驱动点(P7 契约):每 game-round 恰一次。
-
-    - 锚定 = 决策入口方向刷新(内化后,唯一活跃生产驱动者 =
-      flow.CwFlowStrategy._refresh_direction;本函数生产调用点已清零,
-      键守卫保留作纵深防御——同一键面误驱动天然幂等);驱动键 =
-      (plane, round_num),段级重入守卫 = strategy_state_of(session).v3_intention_key
-      (与策略器方向刷新共享同一键面——并存天然幂等,
-      同轮重入不重复计数,miss/冻结分母 = 轮不膨胀);
-    - ist 归属(session 保留清单裁决,P4):``v3_intention`` 是跨轮状态机
-      计数器族(miss_count/frozen_rounds/evicted/tracks),显式归 session
-      保留清单;局级重置由「每局新建 StrategySession」保证,跨局零残留
-      (行为锁 test_cw_migration_direction_layer);
-    - registry 显式参数(P6):撤销阈值/门判据注入面直达状态机,禁在
-      折叠后静默落缺省表——缺省 None 只用于无注入臂的缺省栈。
-
-    (自 decision_v2.prep_brain 迁入意向域单一源;prep_brain 本名保留
-    re-export,消费方调用零改。)
-    """
-    st = strategy_state_lazy(session)
-    ist = st.v3_intention if st is not None else None
-    if not isinstance(ist, IntentionState):
-        if st is None:
-            return   # 工厂未注册(第三方策略面):kernel 不代建,跳过驱动
-        ist = st.v3_intention = IntentionState()
-    key = (plane_of(gs), round_num_of(gs))
-    if st.v3_intention_key == key:
-        return   # 同轮已驱动:幂等出口(重入只保派生视图刷新,不计数)
-    st.v3_intention_key = key
-    update_intention(gs, ist, session, registry=registry)
 
 
 def locked_buy_scope(ist: IntentionState | None) -> frozenset[str] | None:

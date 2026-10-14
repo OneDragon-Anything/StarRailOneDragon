@@ -26,9 +26,8 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
         '发射面', '旁路', 'R2-2+R7-1(候选生成+否决门一体,整体不发射)'),
     ('buy', 'ev_buy_veto'): (
         '发射面', '旁路', '随 ev_buy_candidates 整体旁路(拆开=fail-open)'),
-    # —— criteria/sell(01_math_framework §3.2;fuel_sell/protected_sell 在 mandate/predicates)——
-    ('sell', 'line_switch_sell'): (
-        '发射位', '旁路', 'R2-2(换线机关闭,塌缩出口无对象)'),
+    # —— criteria/sell(01_math_framework §3.2;fuel_sell/protected_sell 在 mandate/predicates;
+    #    line_switch_sell 换线塌缩出口已随候选-锁定制批 3.7 退役删除)——
     ('sell', 'sell_for_interest'): (
         '发射位', '旁路', 'R5-4 补漏(凑息档 EV 追加发射)'),
     ('sell', 'funding_support_sell'): (

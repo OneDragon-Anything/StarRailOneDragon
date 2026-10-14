@@ -397,34 +397,10 @@ class PrepActionExecutor:
             # 执行缝(假环境)不经真分派 = applied 真值(F11 双轨申报)。
             self.last_launch_ok = emitted
         if emitted:
-            # S1 清键门(唯一写点 = mandate.mark_s1_route_
-            # check,三路径封闭枚举)。批3a 跨批对齐写死:``landed`` 供给
-            # 改观察侧 reconcile 落地事实(接口本批定、批5 E1 落地供给),
-            # 过渡期恒传 False = fail-closed(宁「该清不清」不「乱清」,
-            # 后者可无限重复——交替活锁形态;「该清不清」侧 wanted 滞留
-            # 一拍自愈,非正确性损害,mandate docstring 在案)。部署类
-            # (CwActionDeployMoveParam)(i)-deploy_launch 路径过渡期不清,防线语义
-            # (no-op 不清)完整存活。发射位只读不写的同型纪律在此不适用
-            # ——本门消费「已落地」事实,发射侧天然无此事实(猎点 8)。
-            # CwActionOpenShopParam 分支不经本执行器(cw_screen_prep 流程层编排),开店
-            # 落地不触清键面,与其置位语义(商店决策访问位)自洽。
-            try:
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    gs_of_ctx,
-                )
-                from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
-                    mark_s1_route_check,
-                )
-                _m = self._ctx.cw_match
-                _sess = _m.session if _m is not None else None
-                if _sess is not None:
-                    mark_s1_route_check(
-                        _sess, gs_of_ctx(getattr(self, "ctx", None), _sess), action,
-                        pre_bench_count=_pre_bench,
-                        post_bench_count=self._bench_occupied_count(),
-                        landed=False)
-            except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
-                log.warning('[cw][s1-route] 清键门失败(不阻塞): %s', e)
+            if isinstance(action, CwActionStartBattleParam):
+                self.last_launch_ok = emitted
+        # (S1 清键执行侧落地门已随迭代 2026-10-12-prep-shop-workflow-
+        # redesign 批 3.6/3.7 退役删除——备战期开店闩废止,清键门无对象。)
         # (动作逻辑效果推进已随动作 op 重组批③ 收编进各 op 自上报
         #  (op 内直调自己的上报函数,op-layer.md §1.2):原执行器
         #  apply_op_effect 调用删除 = 双记防线——op 已写,本处再写即双记。)

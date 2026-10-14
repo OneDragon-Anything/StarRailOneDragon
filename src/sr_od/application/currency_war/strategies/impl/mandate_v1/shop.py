@@ -1024,16 +1024,20 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     _lvl_readable = bool(level_of(gs) is not None)
 
     # —— 序 1 名单解析(三态;契约 E)——
-    k = getattr(_st, 'target_comp', None)
+    # k = 现行方向 comp(锁定线优先,未锁 = 过渡配方开局面;§1.6 消费面
+    # 分派的组合读形态——批 3.7 键面归一:target_comp = 锁定线槽单写者,
+    # 未锁帧配方面走 opening_recipe_comp,读口单一源 = direction_comp_of)。
+    k = session_scope.direction_comp_of(session)
     k_members = predicates.line_members(k)
     k_fallback: frozenset[str] | set[str] | None = None
     k_band: str | None = None
     if k is None and _ist is not None and _p2_started:
-        # K 空窗回退(语义保留、判定源切换 = 候选空;line_and_upgrade
-        # §1.6 行):回退单一源 = cw_intention,与备战域同源消费,禁复制。
-        # 位面辖域守卫(P86 甲臂收编:命题辖域 = 位面 2——宪法第 2 条
-        # 豁免登记的辖域字面量,被退役调用位的 plane 条件在序 1 源①
-        # 候选集构建处显式保留,非静默丢失;3.7 正本更新批消字面量化)。
+        # K 空窗回退(语义保留、判定源切换 = 未锁定旗标来自线选择机制
+        # 〔锁定线槽空〕;line_and_upgrade §1.6 行):回退单一源 =
+        # cw_intention,与备战域同源消费,禁复制。位面辖域守卫(P86 甲臂
+        # 收编:命题辖域 = 位面 2——宪法第 2 条豁免登记的辖域字面量,
+        # 被退役调用位的 plane 条件在序 1 源①候选集构建处显式保留,
+        # 非静默丢失;3.7 正本更新批消字面量化)。
         k_fallback, k_band = cw_intention.k_empty_window_fallback(
             gs, _ist, session=session, registry=_reg)
         if k_fallback:
@@ -1042,7 +1046,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     _buy_members = cw_intention.locked_buy_membership(_ist) \
         if _ist is not None else None
     if _line_view.locked:
-        # 锁定态(3.7 终态键):P1 锁定局 = 过渡配方 ∪ 锁定线名单并集
+        # 锁定态(锁定线槽非空):P1 锁定局 = 过渡配方 ∪ 锁定线名单并集
         #(配方物化链不辖 P1 配方件);P2 起 = 锁定线名单单源(退出条件
         # 载体 = plane2_started 窗口谓词,line_and_upgrade §1.3 分域)。
         if _p2_started:
@@ -1054,14 +1058,6 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             buy_members = tuple(sorted(
                 set(_line_view.members) | _recipe_names))
         obligation_members = buy_members
-    elif _buy_members:
-        # 过渡桥:旧锁定机器(ist.locked_comp)在锁帧的采购集宽集照读
-        # (行为等价;3.7 键面归一后此腿消亡)。
-        buy_members = tuple(sorted(_buy_members))
-        _obligation_raw = cw_intention.locked_buy_membership(
-            _ist, cap_hold=_cap_hold_now)
-        obligation_members = (tuple(sorted(_obligation_raw))
-                              if _obligation_raw else k_members)
     else:
         # 未锁定 = 候选态:候选线成员并集 ∪ 贯穿件恒囤(空窗帧回退集
         # 承接为候选 stand-in)。④转线件经序 1 的 ④臂收编(见下)。

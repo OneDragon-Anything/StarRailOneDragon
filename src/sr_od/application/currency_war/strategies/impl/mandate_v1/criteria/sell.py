@@ -1,14 +1,16 @@
 """criteria/sell——EV 卖面(§2.2;fuel_sell/protected_sell 在 mandate/谓词层)。
 
-三个发射/通道位:line_switch_sell(换线塌缩出口)、sell_for_interest
-(凑息档 EV 面,臂①旁路)、funding_support_sell(支付能力变现子域,
-R13-5 支付支撑通道,两臂同开、mandate=false+funding_support=true)。
+两个发射/通道位:sell_for_interest(凑息档 EV 面,臂①旁路)、
+funding_support_sell(支付能力变现子域,R13-5 支付支撑通道,两臂同开、
+mandate=false+funding_support=true)。换线塌缩出口(line_switch_sell)
+已随候选-锁定制退役删除(迭代 2026-10-12-prep-shop-workflow-redesign
+批 3.7:锁定为一次性决策,无换目标后的清场需求——line_and_upgrade
+§1.6 退役面清单;V_MS 槽随函数退役撤槽)。
 
 fail 方向(§2.2.1 唯一权威规格):不可逆卖面缺输入(λ 表损坏/域外/
-第四态无载/sell_refund 损坏)⇒ 不评不卖;u/V_ms🔴 ⇒ line_switch_sell
-比较臂无载 ⇒ 不卖 + 出口确定性关闭(proof.should_switch 前置门同构)。
-凑息卖自 T1 语义重写批(设计 13_buy_face_design §2.2)起 = 回拉发射位
-(金位触发+目标量止盈,函数 docstring 单一源),无 fail-closed 输入面。
+第四态无载/sell_refund 损坏)⇒ 不评不卖。凑息卖自 T1 语义重写批
+(设计 13_buy_face_design §2.2)起 = 回拉发射位(金位触发+目标量止盈,
+函数 docstring 单一源),无 fail-closed 输入面。
 """
 from __future__ import annotations
 
@@ -23,15 +25,11 @@ from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     count_merge_material_blocked,
     merge_material_reject_reason,
 )
-from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import provisional
 from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import (
     EMPTY_BOARD_SELL_GUARD_KEY,
     empty_board_sell_blocked,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
-from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vopt import (
-    refund_full_star_ok,
-)
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -68,81 +66,6 @@ def _deployed_units_of(state: GameState) -> list[Unit]:
     )
     front, back = deployed_rows_of(state)
     return [d for d in (*front, *back) if d is not None]
-
-
-def line_switch_sell(old_line_members: tuple[str, ...],
-                     new_line_members: tuple[str, ...],
-                     bench: list[BenchSlot], deployed: list[Unit],
-                     gs: GameState, *, k_switched: bool,
-                     counters: dict | None = None,
-                     dedup_names: set[str] | None = None,
-                     merge_guard_release: frozenset[str] | set[str] = frozenset(),
-                     ) -> tuple[list[int], str]:
-    """换线塌缩出口(§2.2 主比较式的发射位;k_switched=K 已按 K′ 更新)。
-
-    载体 = 容器 gs(prep 链容器化段 2 起 gs 单形态)。
-
-    返回 (拟卖 bench slot 列表, 归因键)。发射前置:
-    - K 未切换 ⇒ 无对象(空,'no_event');
-    - u/V_ms【拟】None(全🔴延迟态,§2.2.1 第 4 行)⇒ 不卖 +
-      'switchline_exit_blocked'(塌缩出口整体延迟至标定后);
-    - 候选 = 旧线成员 ∧ 非新线成员 ∧ protected_sell 恒不卖对象排除
-      (骨架/贯穿件 = 新旧线交集成员保留)。
-    比较式本体(V_opt/V_power 全式)消费 u/V_ms 数值——全式未落位期
-    (含 U_X/V_MS 注入态)返回**保守子集而非全集**(IMPL_ADV_R200 症5③
-    「全堵→全卖」悬崖修):保守子集 = 燃料类件(1★ ∧ sell_refund 全额
-    可退,``refund_full_star_ok``)——依据=p41-hoard-sell-ev 燃料类支配性
-    论证(零重叠∧1★全额退 ⇒ 卖出净成本=0,卖错代价≈0);2★+/部分退
-    件卖错损失不可逆(手续费+V_opt 再遇账),注入态无全式比较 ⇒ 保守
-    保留至 vopt 全式落位。全式接线后本子集语义由比较式取代。
-
-    合成素材拒入守卫(G-S1):保守子集候选若与场上(bench∪deployed)
-    另有同名同星副本(2/3 合成进度素材),拒因键 ``merge_material_
-    guard``(单一源 = ``cw_state.merge_material_reject_reason``,与
-    部署侧同键)拒入塌缩对象集——换线不构成素材豁免(素材对换线后
-    板面仍可能是素材)。设计出处:。
-    拒因分键接线(D1 整改,「全发射位显影」兑现:本通道
-    曾静默 continue 无计数,接线枚举也不含本位):``counters`` 非 None
-    时计数 ``merge_material_guard_blocked``;计数 = 事件口径(C1,同帧
-    同名只计 1,去重载体 = ``dedup_names``,单一源 =
-    ``cw_state.count_merge_material_blocked``,与 M4 燃料/凑息/支付
-    变现同键同口径分账)。
-
-    T3 同轮保留结构无关声明:本通道候选集 ⊂ 旧线成员,同轮保留集
-    (垫件)零重叠永不在旧线 ⇒ 无交互,本函数不设 defer 参数——
-    形式化声明防后人误加;若未来候选域扩到线外件,须先补 defer 接线。
-
-    ``merge_guard_release``(T-253;缺省空集 = 零漂移端):死库存素材对
-    释放集,G-S1 判据处的条件旁路(命中 ⇒ 跳过拒入、不计数;单一源 =
-    sell_gate.dead_pair_exit_release,消费位禁自算)。旁路只撕 G-S1 一
-    道子谓词,资格谓词族其余各门照旧。
-    """
-    if not k_switched:
-        return [], 'no_event'
-    if provisional.is_none('U_X') or provisional.is_none('V_MS'):
-        return [], 'switchline_exit_blocked'
-    # 空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
-    # 板空帧不塌缩清算,孤儿件留 bench 下帧再评(损失 = 清算延迟,非自旋)。
-    # deployed 读 = 容器行域单一源。
-    _deployed = _deployed_units_of(gs)
-    if empty_board_sell_blocked(_deployed, counters=counters):
-        return [], EMPTY_BOARD_SELL_GUARD_KEY
-    out: list[int] = []
-    for i, b in enumerate(bench):
-        name = _cid_of(b)
-        if name in old_line_members and name not in new_line_members:
-            # 注入态保守子集:仅燃料类(1★ 全额可退)放行,其余保留
-            if not refund_full_star_ok(_star_of(b), bench_char_cost(
-                    bench_slot_unit(b))):
-                continue
-            if merge_material_reject_reason(name, _star_of(b), bench,
-                                            deployed) \
-                    and name not in merge_guard_release:
-                if counters is not None:
-                    count_merge_material_blocked(counters, name, dedup_names)
-                continue
-            out.append(_slot_of(b, i))
-    return out, ''
 
 
 def sell_for_interest(gold: int, bench: list[BenchSlot],
