@@ -98,10 +98,10 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_ORE_GRANTS,
+    ENV_POOL_REWRITE,
     ENV_SUPPLY_EQUIP_COUNT,
     INVESTMENT_ENVS,
     INVESTMENT_STRATEGIES,
-    QUALITY_REWRITE_ENV_NAMES,
     aggregate_economy,
     normalize_invest_name,
 )
@@ -427,9 +427,6 @@ QUALITY_DISTRIBUTION_DISCLOSURE: str = 'invest_quality_distribution_uniform_pend
 #: 环境品质维度缺失披露键(PlazaPortal 无 rarity 注册,品质掷点不适用)。
 ENV_QUALITY_DISCLOSURE: str = 'env_quality_not_registered'
 
-#: 品质覆写族未建模披露键(名单单一源 = kernel QUALITY_REWRITE_ENV_NAMES)。
-QUALITY_REWRITE_ENVS_PENDING: str = 'invest_quality_rewrite_envs_pending'
-
 #: 离群触发点未建模披露键(U07① ~1-2% 触发源未归因,不作机制建模)。
 OFFER_OUTLIER_DISCLOSURE: str = 'invest_offer_outlier_triggers_unmodeled'
 
@@ -456,9 +453,16 @@ def _roll_quality(rng: random.Random) -> str:
 
 
 def sample_strategy_offer(rng: random.Random, excluded: set[str],
+                          forced_quality: str = '',
                           ) -> tuple[str, ...]:
     """策略 offer 候选生成(U07③:先掷品质 → 该品质池均匀取 1;
     offer 内去重 + 排除已出选项 = 全程不重复)。
+
+    ``forced_quality`` 非空 = 品质改写命中次(时代族环境,判据 =
+    :func:`rewrite_quality_for_pick`):该张候选跳过品质掷点直取目标
+    品质池(2026-10-14 用户裁定:固定品质后照常抽样,可观察面 = 候选
+    全目标品质);目标品质池被排除集吃光 → 回退全池(排除后),回退
+    语义 = 现役防御契约沿用(用户裁定:正常局不可达,不扩防御分支)。
 
     ``excluded`` = 本局已出过的全部选项名(后端持有的累计集,调用方
     须把返回值并入)。某品质池被排除集吃光 → 该候选回退全池(排除后)
@@ -467,7 +471,7 @@ def sample_strategy_offer(rng: random.Random, excluded: set[str],
     banned = set(excluded)
     picks: list[str] = []
     for _ in range(OFFER_CANDIDATES):
-        quality = _roll_quality(rng)
+        quality = forced_quality or _roll_quality(rng)
         pool = [n for n, s in INVESTMENT_STRATEGIES.items()
                 if s.rarity == quality and n not in banned]
         if not pool:
@@ -492,10 +496,25 @@ def sample_env_offer(rng: random.Random, excluded: set[str],
     return tuple(rng.sample(pool, k))
 
 
-def quality_rewrite_hit(active_env: str | None) -> bool:
-    """当前环境是否命中品质覆写族(披露判据;首版不建模,命中即按
-    :data:`QUALITY_REWRITE_ENVS_PENDING` 披露)。"""
-    return (active_env or '') in QUALITY_REWRITE_ENV_NAMES
+def rewrite_quality_for_pick(active_env: str | None,
+                             pick_ordinal: int) -> str | None:
+    """品质改写判据:当前环境命中「全改写型」条目且本次取卡序在改写集
+    内 → 返回目标品质;否则 None(按默认分布抽样)。
+
+    全改写型判据 = ``rewrite_picks == (1, 2, 3)``(时代族结构特征,建表
+    校验保证该形状无 pending 歧义——部分改写型必填 pending_notes 的逆
+    否)。部分改写型(头彩/尾彩)offer 覆盖面歧义未定谳,不接入返回
+    None(2026-10-14 用户裁定:实采定谳后由各自建模批接入,复用本判据
+    放宽一行)。pick_ordinal 坐标系 = 本局策略三选一呈现全局序 1 基,
+    与 ``ENV_POOL_REWRITE.rewrite_picks`` 同坐标系。环境名直查不做归一
+    (与现役注册表消费同款形状;环境名来自注册表注册,无 OCR 变异源)。
+    """
+    rewrite = ENV_POOL_REWRITE.get(active_env or '')
+    if rewrite is None or rewrite.rewrite_quality == '' \
+            or rewrite.rewrite_picks != (1, 2, 3):
+        return None
+    return rewrite.rewrite_quality if pick_ordinal in rewrite.rewrite_picks \
+        else None
 
 
 # ============================================================ 节点事件件
@@ -770,6 +789,12 @@ class SimBackend:
     # —— 采样簿记(实机不可观察,后端私有) ——
     excluded_invest: set[str] = field(default_factory=set)
     excluded_env: set[str] = field(default_factory=set)
+    #: 策略三选一呈现全局序(1 基;品质改写判据坐标系,与
+    #: ``ENV_POOL_REWRITE.rewrite_picks`` 同基)。自增点 = offer 分支实际
+    #: 呈现时点(`_present_offer_or_node_screen` 内),呈现一次计一次:
+    #: 开局环境 offer 走 opening 形态不经该函数不计数;overlay 让路复走
+    #: 在实际呈现前不进分支,无双计。sim 私有簿记,非 GameState 观察域。
+    _invest_pick_ordinal: int = field(init=False, default=0)
     #: 商店牌面节点级记录(牌面 = 节点级持久事实,发牌时定;2026-10-17
     #: 用户裁定):值 = 商店在屏期间 ``gs.shop`` 的最后非空观测(跟随
     #: 发牌/刷新/买卡一切写点,驱动入口懒同步
@@ -1511,11 +1536,12 @@ class SimBackend:
         plane, r = self._node_pos()
         active_env = self.gs.active_env.value
         if offer_slots(plane, r, active_env):
-            if quality_rewrite_hit(str(active_env or '')):
-                self.disclosures[QUALITY_REWRITE_ENVS_PENDING] = \
-                    str(active_env)
+            self._invest_pick_ordinal += 1
+            forced = rewrite_quality_for_pick(str(active_env or ''),
+                                              self._invest_pick_ordinal)
             rng = stream_rng(self.seed, f'M11/offer/p{plane}/r{r}')
-            opts = sample_strategy_offer(rng, self.excluded_invest)
+            opts = sample_strategy_offer(rng, self.excluded_invest,
+                                         forced_quality=forced or '')
             self._window_resume = 'node'
             self._screen = SCREEN_INVEST_STRATEGY
             self._sub = ''
