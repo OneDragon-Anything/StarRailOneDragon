@@ -769,7 +769,7 @@ def blood_xp_gate(hp_trusted: int | None, hp_readable: bool,
     - 本函数**禁读** hp_pay 遥测(隔离申报):hp 输入 = 最近可信备战
       帧值,与 P21 闸同一决策输入。
 
-    「买一半」缺陷的 as-built 消歧(line_and_upgrade §2.2):
+    「买一半」缺陷的 as-built 消歧(11 号篇 §2 支出形态):
     部分购买的真实机理 = **逐帧单击发出形态 × 本闸静态全量阈值逐帧
     重闸**——血支付中血量跌回阈值之下即停止发出、留下部分级;本闸
     本体(全量击数口径)从来不是截断源。修法 = 发出粒度整批化
@@ -1068,7 +1068,7 @@ def schedule_upgrade(gs: GameState, session: StrategySession,
     承载)。谓词单一源 = _pop_slot_indicator。
 
     概率级②臂(峰值级 > 当前级 ∧ 息引擎已立 ∧ U_L 阈值检验)已停用
-    (line_and_upgrade §2.3 升级②臂行):「概率改善才升」语义由
+    (11 号篇 §2 拦截层处置行):「概率改善才升」语义由
     新概率主账承接(适用范围 = 未锁定期不消费、锁定后 ∧ plane2_started
     双条件消费〔载体 = 锁定线缺件集〕,判据落位 = strategies/impl/
     mandate_v1/criteria/levelup.py)。本函数消费面(R* 储蓄分量

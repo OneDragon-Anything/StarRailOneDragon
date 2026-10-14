@@ -282,7 +282,7 @@ SELL_BENCH_ORPHAN_REASONS: frozenset[str] = frozenset({
 class CwActionLevelUpParam:
     cost: int        # 本次「购买经验」单击花金(:一次点击 = +XP_PER_BUY 经验,非整级;凑够门槛才升级)
     clicks: int = 1
-    # 本动作携带的购买击数(整批发出形态;line_and_upgrade §2.2 一次买齐:
+    # 本动作携带的购买击数(整批发出形态;11 号篇 §2 整级预授权一次买齐:
     # 授权击数 = 门槛表差值折击数,实付上界 = clicks×cost ≤ 授权值)。
     # 缺省 1 = 单击形态(逐帧单击发出的兼容值;执行器按本字段连点)。
     auth_basis: str = ''

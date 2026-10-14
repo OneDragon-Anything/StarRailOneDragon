@@ -3,8 +3,8 @@
 战略层:围绕目标阵容 commit + 转型 + 巨星。
 auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模块给**可配置 + 自适应**的选目标机制。
 
-数据与设计依据(详 ``docs/develop/currency_war/strategy/02_comp.md`` +
-``05_observation.md`` + ``docs/game/currency_war/data/plaza_meta.md``):
+数据与设计依据(阵容知识源 = ``docs/game/currency_war/research/final_comps/`` 系列 +
+``docs/game/currency_war/data/plaza_meta.md``;观察设计正本 = strategy-docs 15 号篇):
 - ``COMP_LIBRARY``:起步 roster(20 套;plaza 784 篇高难帖校准)。
   **两层架构**:``cw_plaza_comps.py``(gen_plaza_comps.py 生成)= base 事实层(实战频次/装备/节奏);
   本文件 COMP_LIBRARY = 手判层(strength/form_difficulty/level_plan 取舍)—— ``plaza_carry`` 字段
@@ -190,7 +190,7 @@ class Comp:
     本字段的 ``form_tiers`` 档位不入 AND 账(该键成型语义归 OR 组;档位值
     保留作线键/完全体账单结构载体——囤货采购集羁绊展开、晋升候选键面交集、
     换线距离账等结构消费读 form_tiers 键面,清空即残)。禁把 OR 腿当 AND
-    写进 ``form_tiers`` 计账(键侧 AND 语义会把 OR 塌回 AND 全档——批序 1
+    写进 ``form_tiers`` 计账(键侧 AND 语义会把 OR 塌回 AND 全档——前置命题
     病灶本体)。"""
     required_deployed: tuple[str, ...] = ()
     """carry 在场条件:逐一必须**在板**(deployed;bench 在手不算)——文档
@@ -198,12 +198,13 @@ class Comp:
     carry 条件。进度折法:逐名折一条 0/1 虚拟腿(在板=1 否则 0);state
     缺 deployed 视图的轻量假想面板按 0 计(保守向,缺读≠满成)。"""
 
-    # ===== 知识卡三字段(3.0b 建表;3.4/3.6/3.7 三批消费;设计依据 =
-    # changes/2026-10-12-prep-shop-workflow-redesign/details/line_and_upgrade.md
-    # §1.2/§1.4/§1.5)。玩法知识(终局阵容的客观定义——攻略数据,换策略
-    # 不变其值),非策略层立场数据(宪法第 5 条对账申报见 line_and_upgrade §1.2)。=====
+    # ===== 知识卡字段(选线/升级/窗口辖域的共用知识地基;设计口径 =
+    # strategy-docs/12_line_and_intention.md §1)。玩法知识(终局阵容的客观
+    # 定义——攻略数据,换策略不变其值),非策略层立场数据(宪法第 5 条对账
+    # 申报见 12 号篇 §1.1)。=====
     lock_rules: dict[str, list[str]] = field(default_factory=dict)
-    """每线锁定条件(候选-锁定制硬规则查表;line_and_upgrade §1.4;3.7 锁定判定消费)。
+    """每线锁定条件(候选-锁定制硬规则查表;12 号篇 §1.3;锁定判定单一消费端 =
+    mandate_v1/line_select.hard_lock_hit_lines)。
     键固定两枚,值均为注册表 canonical 名:
     - '策略型':强关联策略/环境名(``cw_invest_data`` PLAZA_AUGMENTS/PLAZA_PORTALS 键;
       augment 与 portal 混编——§1.4 例本身含概念股/圣杯契约)——**任一**到手即命中。
@@ -216,25 +217,25 @@ class Comp:
       角色规范名(``cw_chars.CHARACTERS`` 键,与 ``core_chars`` 同名空间);取值时机 =
       建库静态登记。
     单帧判定单一源 = ``char_lock_hit``/``strategy_lock_hit``(禁消费位自写子集判定
-    ——判据双源);空列表 = 该线无此型条件(锁定走另一型或时点兜底,§1.4 表)。"""
+    ——判据双源);空列表 = 该线无此型条件(锁定走另一型或时点兜底,12 号篇 §1.3 表)。"""
     need_star: dict[str, int] = field(default_factory=dict)
-    """每角色必要星级(锁定后星级目标单一源;line_and_upgrade §1.5;3.4 停留门/
-    3.6 刷新判据消费)。键 = 角色规范名(线终局成员:核心输出位 + core_chars +
+    """每角色必要星级(锁定后星级目标单一源;12 号篇 §1.4;停留门/
+    刷新判据消费)。键 = 角色规范名(线终局成员:核心输出位 + core_chars +
     攻略明文星级成员),值 = 必要星级;定义 3★ 就追到底无降档、定义 2★ 即完成
-    (§1.5)。定值规则:核心输出位按线攻略明文,无明文线按星级饥饿两档表拍定
+    (12 号篇 §1.4)。定值规则:核心输出位按线攻略明文,无明文线按星级饥饿两档表拍定
     (final_comps README A4:高饥渴线 Final 3★ 占 80-94% 标 3★/低饥渴线 ≤2★ 过半
     标 2★);辅助 1★(A4 辅助普适档——D 牌预算全落核心,辅助升星只吃自然来牌);
     攻略明文更高者以明文为准。对拍基准 = ``level_plan`` 各级 ``star_goals`` 并集
     (冲突以攻略重述为准;star_goals 保留为对拍基准不进决策链,消费单一源 =
-    本字段——line_and_upgrade §1.2 双源申报)。"""
+    本字段——12 号篇 §1.1 双源申报)。"""
     key_items: list[str] = field(default_factory=list)
-    """骨架件/贯穿件名单(持有证据分的中档;line_and_upgrade §1.2;3.7 候选分数消费)。
+    """骨架件/贯穿件名单(持有证据分的中档;12 号篇 §1.1;候选分数消费)。
     坐标系 = 角色规范名;数据源 = final_comps 各篇构造机理「槽位构造」的引擎/贯穿/
     常驻件登记(线核心输出位以外的结构成员,可含 shared/transition 层的贯穿件——
     姬子线饮月类)。与 CARRY 档成员全集(``carry_set`` 合流口径)可能相交,持有
-    证据分档的消费序归 3.7。插件档 = 线成员 − CARRY − 本名单(派生,不入表)。"""
+    证据分档的消费序归线分数(12 号篇 §1.1)。插件档 = 线成员 − CARRY − 本名单(派生,不入表)。"""
     entry_signals: dict[str, tuple[str, int]] = field(default_factory=dict)
-    """上线窗口信号表(部署窗口辖域数据地基;prep_pipeline §1 第 5 步;
+    """上线窗口信号表(部署窗口辖域数据地基;22 号篇 §1 第 5 步;
     [21] 2026-08-26 定谳「该角色的羁绊组齐了才上」的形式化载体——单上
     没什么作用,凑够羁绊才上去替换,保证战斗力)。键 = 角色规范名(线
     终局成员 core ∪ shared),值 = ``(信号类, 阈值)``,信号类闭集:
@@ -250,7 +251,7 @@ class Comp:
       ——``global_accumulators`` 的 hp_charge_stack 型;及「前期 = 终局
       同体」线成员〔bond_signal 行内注释在案〕),阈值不消费(占 0)。
     fail 读法:缺行(角色无登记)→ 窗口谓词恒假 = 窗口永不到(纯终局件
-    只囤不上,保守侧,prep_pipeline 第 5 步 fail 方向声明)。判定消费端
+    只囤不上,保守侧,22 号篇 §1 第 5 步 fail 方向声明)。判定消费端
     = mandate_v1 部署窗口辖域(数据 kernel / 判据策略层,宪 5 合宪申报
     同知识卡三字段)。"""
 
@@ -653,7 +654,7 @@ COMP_LIBRARY: list[Comp] = [
             9: LevelGoal("roll", target_cost=5, target_chars=["姬子·启行", "花火", "瓦尔特"],
                          star_goals={"姬子·启行": 3, "花火": 2}),
         },
-        # ===== 知识卡三字段(3.0b;数据源=final_comps/final_jizi_train.md)=====
+        # ===== 知识卡字段(数据源=final_comps/final_jizi_train.md)=====
         lock_rules={
             # 类专属策略信号最强一类:概念股 130/388+邀请 90(构造机理§3 开局信号层);
             # 罗刹开局=策略改变三月七身份（直通线信号谱「策略驱动」层）
@@ -704,7 +705,7 @@ COMP_LIBRARY: list[Comp] = [
             8: LevelGoal("roll", target_cost=5, target_chars=["Archer", "远坂凛"]),
             9: LevelGoal("roll", target_cost=5, target_chars=["Archer"], star_goals={"Archer": 2}),
         },
-        # ===== 知识卡三字段(3.0b;数据源=final_comps/final_grail_dual.md)=====
+        # ===== 知识卡字段(数据源=final_comps/final_grail_dual.md)=====
         lock_rules={
             # 类级信号最强:契约=完成两次试炼固定得 Archer(供给结构改变,构造机理§3)
             # +邀请 54/196;星徽 47/「都是这家伙的错!」30(同节 196 篇口径;
@@ -746,7 +747,7 @@ COMP_LIBRARY: list[Comp] = [
             8: LevelGoal("level_up"),
             9: LevelGoal("roll", target_cost=5, target_chars=["瓦尔特", "符玄"]),
         },
-        # ===== 知识卡三字段(3.0b;长尾线无 final_comps 专篇,数据源=本条 plaza 校准注 n=29)=====
+        # ===== 知识卡字段(长尾线无 final_comps 专篇,数据源=本条 plaza 校准注 n=29)=====
         lock_rules={
             # 减益通用板无类专属策略(无千冶专篇;减益星徽=通用阵营徽章,效果文本
             # 无线定义语义)——锁定走角色型/时点兜底
@@ -794,7 +795,7 @@ COMP_LIBRARY: list[Comp] = [
             8: LevelGoal("roll", target_cost=2, target_chars=["绯英"], star_goals={"绯英": 2}),
             9: LevelGoal("roll", target_cost=5, target_chars=["瓦尔特"]),
         },
-        # ===== 知识卡三字段(3.0b;数据源=final_comps/final_feiying_joy.md)=====
+        # ===== 知识卡字段(数据源=final_comps/final_feiying_joy.md)=====
         lock_rules={
             # 绯英线无专属策略(开局策略节明言「无专属策略——通用欢愉开局,门槛最低」;
             # 欢愉契约送银狼=姊妹银狼线信号,不登记本线)
@@ -863,7 +864,7 @@ COMP_LIBRARY: list[Comp] = [
             8: LevelGoal("level_up"),
             9: LevelGoal("roll", target_cost=5, target_chars=["瓦尔特", "知更鸟"]),
         },
-        # ===== 知识卡三字段(3.0b;数据源=final_comps/final_seele_quantum.md)=====
+        # ===== 知识卡字段(数据源=final_comps/final_seele_quantum.md)=====
         lock_rules={
             # 类专属策略:量子力学/钢铁美学(开局策略节「希儿类专属策略」);量/贝
             # 契约·邀请·概念股·星徽=双放大器入口(ENV/AUGMENT 亲和表 ≥0.7 条目)
@@ -918,7 +919,7 @@ COMP_LIBRARY: list[Comp] = [
             8: LevelGoal("level_up"),
             9: LevelGoal("roll", target_cost=0, target_chars=["黄泉"], star_goals={"黄泉": 2, "不死途": 2}),
         },
-        # ===== 知识卡三字段(3.0b;数据源=final_comps/final_huangquan_debuff.md)=====
+        # ===== 知识卡字段(数据源=final_comps/final_huangquan_debuff.md)=====
         lock_rules={
             # 离火燎原=黄泉专属增伤策略(开局策略节「大招增幅使黄泉大招回到巅峰」);
             # 减益星徽/套组=通用阵营徽章,不登记
@@ -957,7 +958,7 @@ COMP_LIBRARY: list[Comp] = [
             8: LevelGoal("roll", target_cost=2, target_chars=["不死途", "波提欧"]),
             9: LevelGoal("roll", target_cost=5, target_chars=["波提欧", "忘归人"], star_goals={"不死途": 2}),
         },
-        # ===== 知识卡三字段(3.0b;长尾线无专篇,数据源=本条 plaza 校准注 n=12 波提欧簇)=====
+        # ===== 知识卡字段(长尾线无专篇,数据源=本条 plaza 校准注 n=12 波提欧簇)=====
         lock_rules={
             # 击破概念股=通用阵营入口(无击破专篇;击破6 泛阵营板)——锁定走角色型/时点兜底
             '策略型': [],
@@ -996,7 +997,7 @@ COMP_LIBRARY: list[Comp] = [
             8: LevelGoal("level_up"),
             9: LevelGoal("roll", target_cost=0, target_chars=["瓦尔特", "符玄"]),
         },
-        # ===== 知识卡三字段(3.0b;数据源=final_comps/final_longtail_others.md 龙丹节)=====
+        # ===== 知识卡字段(数据源=final_comps/final_longtail_others.md 龙丹节)=====
         lock_rules={
             # 战技点契约效果直赠核心 饮月+花火(cw_invest_data 128)——效果文本级线关联
             '策略型': ['战技点契约'],
@@ -1043,7 +1044,7 @@ COMP_LIBRARY: list[Comp] = [
             8: LevelGoal("roll", target_cost=3, target_chars=["吉尔伽美什", "Saber"], star_goals={"Saber": 3}),
             9: LevelGoal("roll", target_cost=0, target_chars=["瓦尔特", "符玄"]),
         },
-        # ===== 知识卡三字段(3.0b;数据源=final_comps/final_grail_dual.md)=====
+        # ===== 知识卡字段(数据源=final_comps/final_grail_dual.md)=====
         lock_rules={
             # 圣杯家族类级信号(同红A 条目):契约/邀请/星徽/「都是这家伙的错!」
             '策略型': ['命运圣杯契约', '命运圣杯邀请', '命运圣杯星徽', '都是这家伙的错！'],
@@ -1094,13 +1095,13 @@ COMP_LIBRARY: list[Comp] = [
             8: LevelGoal("roll", target_cost=2, target_chars=["花火"], star_goals={"花火": 2}),
             9: LevelGoal("roll", target_cost=0, target_chars=["花火", "开拓者·记忆"], star_goals={"花火": 3}),
         },
-        # ===== 知识卡三字段(3.0b;数据源=本条 BV 转录注+plaza 火花簇 25 篇校准注)=====
+        # ===== 知识卡字段(数据源=本条 BV 转录注+plaza 火花簇 25 篇校准注)=====
         lock_rules={
             # 无类专属策略(火花簇散见文档无专篇;欢愉契约送银狼=狼尊线信号不登记)
             '策略型': [],
             # 攻略明文核心=花火主C(吃点巧普攻,倍率随花火等级)+爻光三鞋(跑条供R回合);
             # ⚠️ plaza_carry='火花'(聚类锚)与攻略主C=花火 双源分歧——角色型按攻略
-            # 重述定,锚保持聚类真值,分歧登记在 3.0b 交叉核对记录
+            # 重述定,锚保持聚类真值,分歧登记在 知识卡建表对拍记录(git 历史)
             '角色型': ['花火', '爻光'],
         },
         need_star={
@@ -1149,7 +1150,7 @@ COMP_LIBRARY: list[Comp] = [
             9: LevelGoal("roll", target_cost=0, target_chars=["大黑塔", "缇宝", "翡翠"],
                          star_goals={"大黑塔": 3}),
         },
-        # ===== 知识卡三字段(3.0b;数据源=final_comps/final_daheita_aoe.md)=====
+        # ===== 知识卡字段(数据源=final_comps/final_daheita_aoe.md)=====
         lock_rules={
             # 黑塔纪元=策略驱动直通线(32/38 篇用它开局,「没有黑塔纪元这条线基本
             # 不存在」);银河学者概念股/邀请=ENV 亲和 1.0/0.9 条目
@@ -1191,7 +1192,7 @@ COMP_LIBRARY: list[Comp] = [
             8: LevelGoal("level_up"),
             9: LevelGoal("roll", target_cost=0, target_chars=["翡翠", "知更鸟"]),
         },
-        # ===== 知识卡三字段(3.0b;数据源=本条攻略直读注 77006068)=====
+        # ===== 知识卡字段(数据源=本条攻略直读注 77006068)=====
         lock_rules={
             # 群攻概念股=通用阵营入口(无银枝专篇;群攻族并归大黑塔线)——锁定走
             # 角色型/时点兜底
@@ -1249,7 +1250,7 @@ COMP_LIBRARY: list[Comp] = [
             7: LevelGoal("roll", target_cost=3, target_chars=["白厄"], star_goals={"白厄": 2}),   # 交叉核对注:labels 7级搜牌 25/38(66%),旧 7=level_up 直跳 8 缺停留
             8: LevelGoal("roll", target_cost=0, target_chars=["白厄"], star_goals={"白厄": 3}),
         },
-        # ===== 知识卡三字段(3.0b;数据源=final_comps/final_baie_reflect.md)=====
+        # ===== 知识卡字段(数据源=final_comps/final_baie_reflect.md)=====
         lock_rules={
             # 轮回不止效果直赠白厄+装备(cw_invest_data 332201)——效果文本级线关联;
             # 公司军火更新=通用装备流,不登记
@@ -1306,7 +1307,7 @@ COMP_LIBRARY: list[Comp] = [
             5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
             8: LevelGoal("roll", target_cost=3, target_chars=["银狼LV.999"], star_goals={"银狼LV.999": 2}),
         },
-        # ===== 知识卡三字段(3.0b;数据源=final_comps/final_yinlang_joy.md)=====
+        # ===== 知识卡字段(数据源=final_comps/final_yinlang_joy.md)=====
         lock_rules={
             # 骇客专家:银狼=银狼专属开局策略(开局策略节,10 篇);欢愉契约效果
             # 直赠核心 银狼LV.999(cw_invest_data 1201)
@@ -1346,7 +1347,7 @@ COMP_LIBRARY: list[Comp] = [
             8: LevelGoal("roll", target_cost=1, target_chars=["阿格莱雅"], star_goals={"阿格莱雅": 2}),
             9: LevelGoal("roll", target_cost=0, target_chars=["银狼"], star_goals={"阿格莱雅": 3}),
         },
-        # ===== 知识卡三字段(3.0b;数据源=final_comps/final_longtail_others.md 昼神节)=====
+        # ===== 知识卡字段(数据源=final_comps/final_longtail_others.md 昼神节)=====
         lock_rules={
             # 昼之半神概念股=ENV 亲和 1.0 条目(送昼神角色+刷新率提升)
             '策略型': ['昼之半神概念股'],
@@ -1387,14 +1388,14 @@ COMP_LIBRARY: list[Comp] = [
             8: LevelGoal("level_up"),
             9: LevelGoal("roll", target_cost=0, target_chars=["知更鸟", "不死途"]),
         },
-        # ===== 知识卡三字段(3.0b;数据源=本条攻略直读注 76883466+plaza 追击簇注)=====
+        # ===== 知识卡字段(数据源=本条攻略直读注 76883466+plaza 追击簇注)=====
         lock_rules={
             # 追击概念股=通用阵营入口(无追击专篇;追击=大黑塔线降级路径变体)——
             # 锁定走角色型/时点兜底
             '策略型': [],
             # 攻略结构=飞霄(天赋追击增伤主C,76883466)+知更鸟(3追击关键);
             # ⚠️ plaza 追击族真代表=那刻夏(6444 use)与本线核心=飞霄(攻略明文)
-            # 分歧——角色型按攻略重述定,登记在 3.0b 交叉核对记录
+            # 分歧——角色型按攻略重述定,登记在 知识卡建表对拍记录(git 历史)
             '角色型': ['飞霄', '知更鸟'],
         },
         need_star={
@@ -1449,13 +1450,13 @@ COMP_LIBRARY: list[Comp] = [
             9: LevelGoal("roll", target_cost=0, target_chars=["万敌", "千冶·刃"],
                          star_goals={"万敌": 3, "千冶·刃": 2}),
         },
-        # ===== 知识卡三字段(3.0b;数据源=final_comps/final_wandi_burn.md)=====
+        # ===== 知识卡字段(数据源=final_comps/final_wandi_burn.md)=====
         lock_rules={
             # 开局信号=数量信号(「万敌7只以上可玩,不然重开」#13,构造机理§3)非策略;
             # 超光速提拔(9+/40 篇第一策略,README A3 归类「类专属策略」)**不登记**:
             # 效果=随机1费升4星(cw_invest_data 350301),定向依赖「场上唯一1费」的
             # 操作前提,非「拿到即定线」——与量子力学(获得【希儿】)/骇客专家:银狼
-            # (点名银狼)的效果文本直赠线核心不同通道;裁决留痕=3.0b 交叉核对记录§四。
+            # (点名银狼)的效果文本直赠线核心不同通道;裁决留痕=知识卡建表对拍记录(git 历史)§四。
             # 星魂升华=通用补偿件同理
             '策略型': [],
             # 万敌(40/40 载体)+千冶·刃(40/40 全勤)+刻律德菈(38/40 复制插件=第二万敌)
@@ -1510,7 +1511,7 @@ COMP_LIBRARY: list[Comp] = [
             5: LevelGoal("level_up"), 6: LevelGoal("level_up"),
             8: LevelGoal("roll", target_cost=0, target_chars=["卡芙卡"], star_goals={"卡芙卡": 2}),
         },
-        # ===== 知识卡三字段(3.0b;数据源=final_comps/final_dot_kafka.md)=====
+        # ===== 知识卡字段(数据源=final_comps/final_dot_kafka.md)=====
         lock_rules={
             # 持续伤害契约效果直赠卡芙卡+椒丘,计数 180 得黑天鹅(cw_invest_data 127)
             # ——效果文本级线关联;持续伤害星徽=通用阵营徽章不登记
@@ -1552,7 +1553,7 @@ COMP_LIBRARY: list[Comp] = [
             8: LevelGoal("level_up"),
             9: LevelGoal("roll", target_cost=0, target_chars=["景元", "彦卿"], star_goals={"景元": 3}),
         },
-        # ===== 知识卡三字段(3.0b;数据源=final_comps/final_longtail_others.md 景元节)=====
+        # ===== 知识卡字段(数据源=final_comps/final_longtail_others.md 景元节)=====
         lock_rules={
             # 飞光双策略=augment 硬绑(AUGMENT_COMP_AFFINITY 1.0;「拿到=近乎硬绑」);
             # 仙舟概念股/邀请=ENV 亲和 0.9/0.8 条目
@@ -1599,7 +1600,7 @@ COMP_LIBRARY: list[Comp] = [
             6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
             8: LevelGoal("roll", target_cost=0, target_chars=["卡芙卡", "海瑟音", "瓦尔特"]),
         },
-        # ===== 知识卡三字段(3.0b;数据源=final_comps/final_dot_kafka.md 桑博专家版节)=====
+        # ===== 知识卡字段(数据源=final_comps/final_dot_kafka.md 桑博专家版节)=====
         lock_rules={
             # 特邀专家:桑博=env 定义型(「开局必须刷专家邀请环境」33k use 帖;ENV 亲和 1.0)
             '策略型': ['特邀专家:桑博'],
@@ -1620,7 +1621,7 @@ COMP_LIBRARY: list[Comp] = [
 ]
 
 
-# ===== CARRY 锚派生(3.0b;line_and_upgrade §1.2「plaza_carry ∪ core_chars 合流」)=====
+# ===== CARRY 锚派生(12 号篇 §1.1「plaza_carry ∪ core_chars 合流」)=====
 # CARRY 档口径分两层:**合流全集** = ``carry_set``(单名锚 ∪ core_chars 全员,
 # 3.7 持有证据 CARRY 档按「持有任一档内成员」判定)——「无单一直接字段,
 # 派生申报」的完整实现;**单名锚** = plaza_carry(聚类注册表锚,层间交叉核对面),
@@ -1644,7 +1645,7 @@ def carry_anchor(comp: Comp) -> str:
     plaza_carry 非空 → 直接用(聚类交叉核对锚);空值线查 ``CARRY_ANCHOR_FALLBACK``
     (攻略明文补全,依据就地注释);两者皆缺 → ''(锚缺失申报态,消费侧按无锚处理)。
     ⚠️ 锚与攻略核心输出位存在个别分歧(火花星间旅人:plaza_carry='火花' vs
-    攻略明文花火主C)——分歧登记在 3.0b 交叉核对记录,锚字段保持聚类真值不覆写。
+    攻略明文花火主C)——分歧登记在 知识卡建表对拍记录(git 历史),锚字段保持聚类真值不覆写。
     """
     if comp.plaza_carry:
         return comp.plaza_carry
@@ -1652,7 +1653,7 @@ def carry_anchor(comp: Comp) -> str:
 
 
 def carry_set(comp: Comp) -> set[str]:
-    """线 CARRY 档成员全集(持有证据分 CARRY 档口径;line_and_upgrade §1.2
+    """线 CARRY 档成员全集(持有证据分 CARRY 档口径;12 号篇 §1.1
     「plaza_carry ∪ core_chars 合流」的派生落地;3.7 消费)。
 
     = {``carry_anchor`` 单名锚} ∪ ``core_chars`` 全员——锚是聚类交叉核对锚(层间
@@ -1723,7 +1724,7 @@ def hp_charge_stack_chars() -> frozenset[str]:
 # 策略层 strategies/impl/mandate_v1/gift_value.py。)
 
 
-# ===== 送卡型档位阶梯(定序机器,零数值;details/env-value-models.md §2.1.2)=====
+# ===== 送卡型档位阶梯(定序机器,零数值;详设原文已删,git 历史可溯)=====
 # 档 = 角色在候选套中的身份,高→低 core/shared/transition/off;_GIFT_TIER_DOWN =
 # 条件降档链(规则 3:兑现概率 <1 且行为依赖,定序上只给弱一档的确定性)。
 _GIFT_TIER_RANK: dict[str, int] = {'off': 0, 'transition': 1, 'shared': 2, 'core': 3}
@@ -1756,7 +1757,7 @@ def gift_hit_tier(grant: GiftGrant, evicted: frozenset[str] | set[str] = frozens
                   ) -> str:
     """送卡型环境 GiftGrant 的命中档('core'|'shared'|'transition'|'off')。
 
-    实现详设三规则(全部定序,零数值;details/env-value-models.md §2.1.2):
+    实现三规则(全部定序,零数值;详设原文已删,git 历史可溯):
     ① 即时优先——即时集非空取其最优档,不看条件集(确定性赠卡是估值支撑面);
     ② 条件降档——即时集为空取条件集最优档降一档(core→shared→transition→off);
     ③ advisor 族切换由调用方做(同一套档位判定;本函数不读 advisor)。

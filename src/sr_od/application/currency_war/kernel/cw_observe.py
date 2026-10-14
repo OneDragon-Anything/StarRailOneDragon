@@ -5,7 +5,7 @@
 (避免每加一个监测点都改签名链 read_equipped_below ← read_row_equipped ← recognizer)。
 
 日志格式(A 族,本 helper 产出):``[cw]/[cw!]`` + ``[op][step][target]``(step/target 可空)+ fields + ``| shot=``;
-两族前缀(A 识别观测层 / B ``[cw-<tag>]`` 流程层)与检索口径的**单一源 = docs/develop/currency_war/strategy/05_observation.md §6**。
+两族前缀(A 识别观测层 / B ``[cw-<tag>]`` 流程层)与检索口径的**单一源 = strategy-docs/15_observation_multisource_arbitration.md(观察多源仲裁篇)**。
 
 并发安全:logger 只读(全局配置,``info`` 不写状态);``cw_shot`` 存文件(副作用,但 MISS/异常罕见,
 同名覆盖最新,并发竞争可接受)。纯函数可用(不写 ctx/session 状态,与 ``recognize`` 纯读原则兼容)。

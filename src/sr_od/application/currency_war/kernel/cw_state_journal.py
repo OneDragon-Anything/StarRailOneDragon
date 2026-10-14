@@ -1,8 +1,8 @@
 """统一 state 状态流水落盘(无条件常开)。
 
-设计裁定正本 = ``docs/develop/sr_od/application/currency_war/decisions/0630-unified-state-journal.md``
-(含修订节)+ ``docs/develop/sr_od/application/currency_war/decisions/0634-state-journal-always-on.md``
-(影子双写推翻:journal 无条件常开,无开关无影子期;记录机制
+设计裁定(原 ADR 0630/0634,已随 ADR 档案停用删除——git 历史可溯;journal 无条件常开,无开关无影子期)
+
+(记录机制
 as-built 正本面 = ``docs/develop/sr_od/application/currency_war/game_state/journal.md``)。
 形态:流程侧唯一落盘流 ``state/journal.jsonl``,每次 state 写入一行,行 =
 改了什么 + 渠道签名 + 版本 id + **写入后完整 state 快照**——行行自足,

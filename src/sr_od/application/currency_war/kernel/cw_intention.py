@@ -1,11 +1,9 @@
 """货币战争 · 方向载体模块(P1 配方对链 + 囤货/回退接口;纯逻辑,不碰游戏)。
 
-**批 3.7 重构申报**(迭代 2026-10-12-prep-shop-workflow-redesign;
-line_and_upgrade §1.6 意向层机器本体退役):原 strategy_v4 点0 的
-comp 锁定状态机(信号分层锁线/撤销出口①②③/P2 移交强锁/P3 强锁/
-降格终局)已整体退役——终局线选择归策略层候选-锁定制
-(mandate_v1.session_scope/line_select:硬规则查表 + 时点兜底,
-锁定后不换线,防摇摆由结构承载非滞回参数)。本模块保留三族:
+终局线选择归策略层候选-锁定制(mandate_v1.session_scope/line_select:
+硬规则查表 + 时点兜底,锁定后不换线,防摇摆由结构承载非滞回参数,
+12 号篇 §1);原 comp 锁定状态机(信号分层锁线/撤销出口①②③/P2 移交
+强锁/P3 强锁/降格终局)不存于本模块(考古走 git 历史)。本模块保留三族:
 
 - **P1 配方对链**(:func:`update_p1_recipe`/``p1_pair`` 族):过渡配方
   体系对的派生/冻结闩/超窗/退场——配方物化链保留项(M5 开局面
@@ -91,7 +89,7 @@ if TYPE_CHECKING:
         StrategySession,
     )
 
-# ===== 常量(候选-锁定制批 3.7:撤销/信号族常量随意向层机器退役删除)=====
+# ===== 常量(意向层机器退役后保留的常量;撤销/信号族随机器删除)=====
 
 # 无目标期帧囤货方向由三臂判据输出(甲臂=候选机器强锁门逐字/乙臂=
 # 枢纽期权资格核/丙臂=守息缺省),见本模块「P86 无目标期三臂判据」节。
@@ -107,7 +105,7 @@ CROSS_LINE_SKELETON: tuple[str, ...] = _cross_line_skeleton()
 
 @dataclass
 class IntentionState:
-    """方向状态载体(P1 配方对链 + kernel 派生缓存;批 3.7 意向层机器
+    """方向状态载体(P1 配方对链 + kernel 派生缓存;意向层机器
     本体退役后的保留形态——comp 锁定状态机〔信号锁线/撤销出口/P2 移交/
     P3 强锁/降格终局〕已删除,终局线锁定归策略层候选-锁定制:
     ``locked_comp``/``phase`` 改为锁定线槽派生缓存,写端 =
@@ -368,7 +366,7 @@ _P1_PAIR_PREF: tuple[str, ...] = tuple(
     b for b, _t in TRANSITION_TRAITS) + (SEELE_SYSTEM,)
 
 # ===== 希儿系形态端口(OR 腿 + carry)=====
-# 辖域切分(与批序 2 支持度端口 ``_seele_system_support`` 机械可检验,
+# 辖域切分(与支持度端口 ``_seele_system_support`` 机械可检验,
 # 禁互相渗透成双源):形态端口读**板面羁绊计数**(gs.board,经
 # form_progress),支持度端口读**owned 去重成员计数**(bench∪deployed);
 # 本文件 form 链禁出现 _seele_system_support 消费。
@@ -1198,8 +1196,7 @@ def update_p1_recipe(gs: GameState, ist: IntentionState,
     退役后的保留项——每 game-round 恰一次,就地改 ist 并返回)。
 
     原 ``update_intention`` 的 comp 锁定状态机(信号锁线/撤销出口
-    ①②③/P2 移交强锁/P3 强锁/降格终局)已随候选-锁定制退役(迭代
-    2026-10-12-prep-shop-workflow-redesign 批 3.7;终局线锁定 =
+    ①②③/P2 移交强锁/P3 强锁/降格终局)已随候选-锁定制退役(终局线锁定 =
     策略层 session_scope/line_select 的硬规则+时点兜底);本函数只承
     载**配方对链**:命题 1b 冻结状态机(超窗出口 → 重派生/冻结钉向
     → 置位评估)+ 观测快照(p1_pair_frozen_obs)。位面辖域由调用侧
@@ -1297,7 +1294,7 @@ def clear_p1_recipe(ist: IntentionState, st: object = None) -> None:
     位面辖域由调用侧窗口谓词判定后调用一次(幂等:空对帧 no-op)。
     ``st``(可选,策略器状态鸭子参数)非空时**同点清空
     ``opening_recipe_comp``**——配方物化链写端被 P1 窗口守卫辖,进 P2
-    后永不再写,不清则 P2 未锁窗读口消费过期 P1 配方(review-37 P1:
+    后永不再写,不清则 P2 未锁窗读口消费过期 P1 配方(读口守卫:
     direction 读口「两键都空」契约与 K 空窗回退 p2plus 带可达性)。
     """
     if ist.p1_pair:
@@ -1627,9 +1624,9 @@ def committed_authority(state: GameState | None,
                         session: StrategySession | None) -> bool:
     """committed(已定型/非双轨期)权威判定(方向层单一派生源)。
 
-    - **权威序**(任一成立即 True;批 3.7 候选-锁定制口径):
+    - **权威序**(任一成立即 True;候选-锁定制口径,12 号篇 §2):
       ① ``strategy_state.target_comp`` 非空——锁定线槽非空(定型语义 =
-      锁定线非空,line_and_upgrade §1.6 判定源迁移:P1 硬规则锁定与
+      锁定线非空,12 号篇 §2 判定源:P1 硬规则锁定与
       P2 时点兜底统一承载。原「位面 ≥ 2 恒定型」支已退役——P2 时点
       兜底锁定替代原 P2 恒定型,行为差申报:P2 入口至兜底锁帧之间的
       短窗 committed=False〔双轨期口径〕,锁定时点与原接近);

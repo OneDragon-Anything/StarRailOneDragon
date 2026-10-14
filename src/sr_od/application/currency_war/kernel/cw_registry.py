@@ -15,7 +15,7 @@ kernel 与 decision_v2 必须共享**同一** registry 实例(A/B 注入契约:�
 - 档位期望:P3 已证边际(e0→e1 +1.4 / e1→e2 +1.6 金/轮)→ 累计档值;
 - 战力:星级阶梯已清退禁引(禁胜率建模裁定,P3 禁引);
 - 息律:[17][28](50 金息律 / P1 满息通关)进 interest_rule 约束;
-决策见 docs/develop/sr_od/application/currency_war/decisions/0291-decision-v2-skeleton.md。
+决策记录已随 ADR 档案停用删除(git 历史可溯)。
 
 ⚠️ 收入口径修正挂账(sim 侧已落码):sim 败轮金 + 奖励轮
 成对修正使 P1 出口金约 +6.6 金/局(无反馈静态重放量化)——凡以 sim
@@ -727,9 +727,9 @@ class DecisionV2Registry:
     #: 末窗旗杆帧的正确语料层——DESIGN §①)
     delta_hp_boss: float = 4.30
     # (换线判据四参数族 line_switch_enabled/theta/debias_delta/min_dwell
-    #  已随候选-锁定制批 3.7 撤账——迭代 2026-10-12-prep-shop-workflow-
-    #  redesign;line_and_upgrade §1.6 退役面:唯一消费者 should_switch_e
-    #  同批删除,锁定一次性决策无换线判据对象。)
+    #  已随候选-锁定制撤账:唯一消费者 should_switch_e 已删——锁定一次性
+    #  决策无换线判据对象(12 号篇 §1.4;考古走 git 历史);零消费死字段,
+    #  清理归后续批。)
     # (release 帧活栈消费门开关已随 第 4 态清理:开臂
     # A/B 结案,消费门恒接线,判据单一源 = posture_release 消费门活值,
     # 读 strategy_state_of(session).v3_release;旧开关/字段名见该 ADR。)

@@ -1,11 +1,10 @@
-"""线可行性原语:E_rounds 估计与线距(候选-锁定制批 3.7 后的保留面)。
+"""线可行性原语:E_rounds 估计与线距(候选-锁定制下的保留面,12 号篇 §1.4)。
 
-批 3.7 退役申报(迭代 2026-10-12-prep-shop-workflow-redesign;
-line_and_upgrade §1.6 退役面首行):原换线判据(θ 滞回 + D_min 驻留
-切换裁决 ``should_switch_e`` 与辖域门 ``switch_allowed``)已随候选-
-锁定制退役删除(锁定为一次性决策,无换目标 ⇒ 无换线判据对象;
-registry 四参数 line_switch_enabled/theta/debias_delta/min_dwell 同批
-撤账)。本模块保留项(在产消费面):
+换线判据(θ 滞回 + D_min 驻留切换裁决 ``should_switch_e`` 与辖域门
+``switch_allowed``)不存于本模块——锁定为一次性决策、锁后不换线,无换线
+判据对象(考古走 git 历史);registry 四参数
+line_switch_enabled/theta/debias_delta/min_dwell 为零消费死字段,
+清理归后续批。本模块保留项(在产消费面):
 
 - ``tier_progress``/``line_distance``/``e_rounds``:线距与期望轮数
   估计——P1 配方链三姊妹门(门槛/易手可行性/超窗出口)与

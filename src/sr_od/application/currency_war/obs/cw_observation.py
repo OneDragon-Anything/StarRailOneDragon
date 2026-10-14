@@ -2270,7 +2270,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     """备战屏截图 → 容器直写(obs 族 sig)+ 轻量回执(逐字段 gate 单一源
     = PHASE_FIELD_SPEC)。
 
-    迁移批 3.2(详设 details/sim-state-switch.md §5):观察 reader 直接产
+    观察 reader 直接产
     容器写(gs.observe/carry/write_prior/relay,写语义与原
     _feed_board_state 逐位同),漏斗不再构造整帧——返回值降为
     :class:`GameStateReadReceipt`(本帧逐面读数 + 保真位;容器单例
@@ -2618,7 +2618,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         from sr_od.application.currency_war.kernel.cw_observe import set_obs_phase
         set_obs_phase(None)   # 冲突行阶段标注随本次读取结束清位(best-effort)
 
-    # ===== 容器直写(迁移批 3.2:原 _feed_board_state 喂入口与本函数合并,
+    # ===== 容器直写(原 _feed_board_state 喂入口与本函数合并,
     # 写语义逐位同;GameState 观察流接线,字段级规格正本 =
     # docs/develop/sr_od/application/currency_war/game_state/fields.md §2.1/
     # §8.7)。best-effort:任何异常不阻塞返回(记录层故障不毒化决策链;

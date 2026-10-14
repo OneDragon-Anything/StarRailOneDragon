@@ -1,7 +1,7 @@
 """cw_equipment 装备视觉识别(**手维护,非生成**)。
 
-数据模型(Equipment / EQUIPMENTS / get_equip)在 ``cw_equipment_data``(由
-``tools/cw/gen_equip_registry.py`` 从 ``docs/game/currency_war/data/equipment.md`` 生成)。
+数据模型(Equipment / EQUIPMENTS / get_equip)在 ``cw_equipment_data``
+(生成器 = ``tools/cw/gen_equip_registry.py``;该生成文件为单一源)。
 本文件含:装备区**逐格分类**(``read_equip_grid`` / ``read_equips`` / ``read_equip_count``)
 与穿戴装备 TM 识别(``read_equipped_below``)。
 **拆分目的(R16 P0-1)**:生成器只写 ``cw_equipment_data``,永不覆盖本文件。

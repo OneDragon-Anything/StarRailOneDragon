@@ -6,7 +6,7 @@
 effect = 图鉴 OCR(plaza 数值校验层修正误读)> md;
 recipes/props/official = plaza 官方 API(compose_list 结构化合成树 + properties
 结构化数值 + category_name 官方分类;与图鉴 icon 反查交叉验证);
-``docs/game/currency_war/data/equipment.md`` 仅未解锁兜底(4 条,解锁采集后可删)。
+官方 API 未解锁条目的兜底(4 条,解锁采集后可删)。
 
 **来源溯源**:数据银行装备图鉴(权威)+ 米游社图鉴对齐。2026-08-06 经 ``harvest_equip_codex``
 op 采 154 件图标 + cw_shots OCR 校验,效果正文与 docs(米游社)一致 → 数据银行权威性确认。

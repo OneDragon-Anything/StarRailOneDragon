@@ -613,7 +613,7 @@ def _portal_placeholder_spec(env_name: str) -> EffectSpec | None:
     - 效果原文存档(payload.effect_text = INVESTMENT_ENVS[name].effect 官方
       全文,可见性优先——判读面可读,bot 零响应);
     - G 组(ENV_GIFTS 命中)占位 notes 附 GiftGrant 摘要(即时/条件发放角色
-      + advisor 语义,详设 env-value-models.md §2.3「判读面可读」);
+      + advisor 语义,「判读面可读」口径);
     - trigger/duration 无行为消费(占位零响应),统一 PLANE_START/PERMANENT
       (环境 = 选定后整局规则面语义),notes 声明占位形;
     - id = plaza 数字 id(从 source 剥前缀;非 plaza 形 source 原样保留)。
@@ -633,7 +633,7 @@ def _portal_placeholder_spec(env_name: str) -> EffectSpec | None:
                 f'{c}:{note}' for c, note in grant.chars_conditional) + ']')
         if grant.advisor:
             _parts.append('advisor=顾问入商店')
-        _notes = ('未入模占位(效果原文存档,bot 零响应;详设 env-value-models.md §2.3);'
+        _notes = ('未入模占位(效果原文存档,bot 零响应);'
                   + ' '.join(_parts))
     else:
         _notes = '未入模占位(效果原文存档,bot 零响应)'

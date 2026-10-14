@@ -583,10 +583,10 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     # telemetry 只见赢轮,「P2 输给谁/扣多少」全盲。
     _won = parse_settlement_won(ocr_texts)
     # [streak_gold 采集钩子已删(r63 建,后删)]——真值表已从奖励弹窗
-    # 规则区判读完成(docs/game/currency_war/research/economy_truth.md),
+    # 规则区判读完成(docs/game/currency_war/research/economy.md),
     # 弹窗底部即完整规则表(与对局状态无关),无需再攒结算屏样本。
     _streak_after = parse_streak(ocr_texts)   # 结算「连胜×N」前缀=方向(C 杠杆 2/3;fixture 核实)
-    # 结算三项遥测(docs/develop/.../05_observation.md §3.1):挑战进度填充率(纯像素列扫描,
+    # 结算三项遥测(设计 = telemetry/schema.py 键登记):挑战进度填充率(纯像素列扫描,
     # 零 OCR 成本)+ 伤害两分量(tooltip 区域裁剪 OCR)。填充率**只对页 1 帧读**
     # 页 2 帧矩形罩在 HP 心形上会恒定读出假值(0.392 三局同值实证)
     # ——「点击空白加速」是页 1 帧态标记词。本函数读点 = 调用帧:败局链(1f/3b)在

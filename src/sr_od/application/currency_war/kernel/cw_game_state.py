@@ -2358,15 +2358,17 @@ class GameState:
     # skip_battle_active/remaining 两 Field 已按正本归一移除,消费走
     # gs.effects 查询)。
     equips: Field[list[str]] = field(default_factory=Field)          # 装备库存(§3.2.15;开局种子底座=[] 开局真值)
-    # [索引定义] occupied_equips:已穿装备位置(装备域姊妹面,迭代
-    # 黑板帧停用 阶段 3.2 立域)。键坐标系 =
+    # [索引定义] occupied_equips:已穿装备位置(装备域姊妹面,纯观察
+    # 记录面——决策面零消费)。键坐标系 =
     # 'front:1'/'back:2' 形态字符串(row ∈ front|back,slot = 画面物理槽位
     # 1-based,前排 1-4/后排 1-选档 N,与机械动作参数同域——坐标系正本 =
     # cw_prep_actions.PrepObservation.occupied_equips 声明;tuple 键 JSON
     # 序列化不安全故字符串化);值 = 件名列表。取值时机 = 备战 heavy 观察
     # 每入口帧实读覆盖(两态制,以实际观察为准);写入端单一源 = CwScreenPrep 观察
-    # 写端(与 equips 同点同环);未观察(None) = 识别域未就绪,M7 装备计划
-    # 按 fail 门保守关(与旧黑板 None 语义同映射)。
+    # 写端(与 equips 同点同环);未观察(None) = 识别域未就绪,无决策面
+    # 后果——M7 装备分配容量不读本域,已穿槽位自 deployed 视图 unit.equips
+    # 逻辑推导(键坐标系/空槽不入表与本观察面逐位同形,与 kernel 穿戴上限
+    # 同基,自旋结构性消灭),本域保留为观察审计载体(observation_only)。
     occupied_equips: Field[dict[str, list[str]]] = field(default_factory=Field)  # 开局种子底座={} 开局真值(无穿戴),观察覆盖
     # ⚠️ consumables = 死字段:现役零读端零写端(工具件实住 equips,
     # 工具上报记账载体 = equips 合并写,不入本字段),fields.md §3.2.16
@@ -2423,9 +2425,8 @@ class GameState:
         default_factory=Field)
 
     # [索引定义] node_seq_by_plane = 逐位面节点序列场字段(逻辑态;
-    # 「人身意外险」设计迭代,设计正本 =
-    # .debug/progress/2026-09-23-invest-effects-calc/designs/
-    # T-8-renshenyiwai-xian.md §2.1):键 = 位面 1 基(与 NodeKey.plane 同
+    # 「人身意外险」效果建模;语义 = 本注释与 research/invest_effects.md):
+    # 键 = 位面 1 基(与 NodeKey.plane 同
     # 坐标系,恒只含键 {1,2},P3 不运行不入表),值 = 节点类型序
     # (元素 ∈ cw_node_schedule.NODE_KINDS,与 PLANE_NODE_TABLES 同词表)。
     # 取值时机 = 环境注册刻一次性落全量(修饰表或默认表,无半态),局内

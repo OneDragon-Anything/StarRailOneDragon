@@ -1,6 +1,6 @@
 # 警告:本文件由 tools/cw/gen_plaza_invest.py 生成(plaza config V4.4),勿手编;
 # 版本更新重跑生成;人工建模增量(economy/评估分/分类)在 cw_investments.py。
-# 人读版(同源生成,品质分组表格): docs/game/currency_war/data/invest_cards.md
+# 人读版(效果全量分类): docs/game/currency_war/research/invest_effects.md(原同源生成表格已删)
 # 重跑: uv run python tools/cw/gen_plaza_invest.py
 """货币战争 投资策略/环境 base 数据(plaza 官方 API,gen_plaza_invest.py 生成)。
 

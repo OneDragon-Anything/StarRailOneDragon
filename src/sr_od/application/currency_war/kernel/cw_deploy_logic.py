@@ -92,9 +92,9 @@ def tier_completes(bonds, deployed_fac: dict[str, int]) -> int:
 # 三羁绊(阵营, 阈值)对从 SYSTEM_CARDS 派生(排除 seele 卡
 # ——希儿系是 deployed 单卡判定非阵营计数,deploy 排序/形态维无意义,
 # 见 ignition_gain 注);tier 阈值经 FACTIONS 注册表,单一源。
-# ⚠️ 迁移待办(docs/develop/currency_war/archive/redesign/03_legacy_cleanup_plan.md):
+# ⚠️ 遗留副本(迁移计划原文已删,git 历史可溯):
 # 权威副本 = knowledge/cw_engine_facts.TRANSITION_TRAITS(同派生式,零字面双源);
-# 本副本仅为 sim/旧判据未迁消费点保留,按该计划随文件删除;勿新增消费。
+# 本副本仅为 sim/旧判据消费点保留;权威副本删除后随之清理;勿新增消费。
 TRANSITION_TRAITS: tuple[tuple[str, int], ...] = tuple(
     (card.judge_factions[0], FACTIONS[card.judge_factions[0]].tiers[0])
     for card in SYSTEM_CARDS.values() if card.card_id != 'seele'
@@ -1737,7 +1737,7 @@ def select_swap_plan(ctx: SwapPlanContext | None,
         # form``):候选集成员资格不足以防「同属候选的普通成员占位」白卖,
         # 须绑定卖出 victim 成对兑现。适用范围 = ``required_swap_arm_pending``
         # 真帧——required 在板帧完成分支仍可武装(有意设计,
-        # test_cw_swap_pair_domain 完成件让位锁钉定),此帧底线同样会覆盖;
+        # test_deploy 完成件让位锁钉定),此帧底线同样会覆盖;
         # 谓词假帧不覆盖,逐位同旧。
         if up2 and required_swap_arm_pending(ctx):
             _req = set(ctx.required_names)
