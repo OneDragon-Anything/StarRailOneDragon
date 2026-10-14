@@ -16,9 +16,9 @@
 
 | 域 | 生成器(tools/cw/) | 产出 | 采集要点 |
 |---|---|---|---|
-| 角色 | `gen_plaza_chars.py` | stdout 对拍 diff(对拍器,不一致非零退出,无落盘产物) | config API;**同名多档各一条**(银狼 3/4/5 费);开拓者双形态按 id 映射(8009 欢愉/8007 记忆);`•`→`·` canon |
+| 角色 | `gen_plaza_chars.py` | stdout 交叉核对 diff(交叉核对器,不一致非零退出,无落盘产物) | config API;**同名多档各一条**(银狼 3/4/5 费);开拓者双形态按 id 映射(8009 欢愉/8007 记忆);`•`→`·` canon |
 | 投资策略/环境 | `gen_plaza_invest.py` | `cw_invest_data`(334+83) | 数字 id 稳定主键;效果官方全文去富文本 |
-| 羁绊 | `gen_factions.py` | stdout 对拍 diff(对拍器,替代已删的 cw_factions_data 平行数据层) | 两跳:lineup/index 按羁绊筛采 trait_detail(采集器在 .debug,版本更新重跑)+ config 属性映射;effect_rich 自渲染(未知 property type 警告不静默) |
+| 羁绊 | `gen_factions.py` | stdout 交叉核对 diff(交叉核对器,替代已删的 cw_factions_data 平行数据层) | 两跳:lineup/index 按羁绊筛采 trait_detail(采集器在 .debug,版本更新重跑)+ config 属性映射;effect_rich 自渲染(未知 property type 警告不静默) |
 | 装备 | `gen_equip_registry.py` | `cw_equipment_data` | 优先级分层:骨架=plaza>图鉴>md 兜底;effect=图鉴 OCR>plaza 校正;recipes=plaza compose_list+图鉴 icon 反查交叉 |
 | 实战阵容 | `gen_plaza_comps.py` | `cw_plaza_comps`+plaza_meta | lineup/index match_hard,过滤版本/KOL 沙盒/过期 → is_carry 聚类 |
 
@@ -36,7 +36,7 @@
 | 域 | 机制 | 状态/删留条件 |
 |---|---|---|
 | **敌人词缀效果** | `HandleBriefing` 简报 OCR → `affix_effects_data` 自写 | 常驻:采新不覆盖旧(静态数据已有值更可信,divergent 只 log+截图待 review);写入不影响已加载内存(下轮 import 生效);人可直接编辑校准 |
-| **节点奖励明细(基础奖励+连胜档金)** | `prep_director._probe_node_reward`:备战点六边形(商店按钮左)→截图(`cw_reward` 前缀)→ OCR 全文记 log(`[cw][reward-probe]` 行)→关弹窗 | **临时钩子(用户交办,采完删)**:capture-only;2026-08-27 重挂采证中——当前采集目标=位面 1 第 3-8 轮**基础奖励真值**(该段零弹窗样本;已采 7 帧=1-1=3、1-2=4、1-9=5、2-1×4=5,判读见 `docs/game/currency_war/research/economy.md` 实测表),连胜各档**金额**真值表仍为残余目标;判读入口=log 行+shots;采完钩子整段删除、本行一并清理 |
+| **节点奖励明细(基础奖励+连胜档金)** | `prep_director._probe_node_reward`:备战点六边形(商店按钮左)→截图(`cw_reward` 前缀)→ OCR 全文记 log(`[cw][reward-probe]` 行)→关弹窗 | **临时钩子(用户交办,采完删)**:capture-only;采集目标=位面 1 第 3-8 轮**基础奖励真值**(该段零弹窗样本;已采 7 帧=1-1=3、1-2=4、1-9=5、2-1×4=5,判读见 `docs/game/currency_war/research/economy.md` 实测表),连胜各档**金额**真值表仍为残余目标;判读入口=log 行+shots;采完钩子整段删除、本行一并清理 |
 | **连胜档金真值(结算屏)** | `cw_settlement_obs`:连胜≥3 存整屏(`streak_gold_stN` 前缀) | **临时钩子,采齐删**:与上方六边形钩子同目标两路采集(结算屏「获得金币总览」分连胜行) |
 | **未识别商店卡** | `shop.py` 停机钩子:全 unknown 且重读 2 帧不自愈 → 停机留画面 | 保留(真未知兜底:新版本新卡/非角色内容);触发时按调研档案排查序走(防抖自愈=瞬时帧) |
 | **未识别节点图标** | `cw_node_reader` Hu 距离>阈值 → 裁图标存盘 | 版本前哨(新节点类型如扑满);判态用 HSV 三态非单特征(亮/暗 V 值有交叠) |
@@ -45,9 +45,9 @@
 
 | 常量 | 值的依据 | 残余缺口 |
 |---|---|---|
-| `streak_gold` 连胜档金 | 奖励弹窗 VLM 判读 + 六边形弹窗 OCR 复核 | 各档金额的独立复核(上方两钩子采齐后终验);~~cw_sim 注释与 cw_economy 双表冲突~~ **已消**:旧 cw_sim 行内陈旧注释(r296 口述 0-1→0)已随单一源化删除,现行单一源 = `cw_economy.STREAK_GOLD_TABLE`/`streak_gold`(0-1→1/2-4→2/5→3/6+→4;49/49 样本,出处见该表 docstring 引 economy.md §10.1),sim 收入模型 import 同函数防漂移 |
+| `streak_gold` 连胜档金 | 奖励弹窗 VLM 判读 + 六边形弹窗 OCR 复核 | 各档金额的独立复核(上方两钩子采齐后终验);~~cw_sim 注释与 cw_economy 双表冲突~~ **已消**:旧 cw_sim 行内陈旧注释(口述 0-1→0)已随单一源化删除,现行单一源 = `cw_economy.STREAK_GOLD_TABLE`/`streak_gold`(0-1→1/2-4→2/5→3/6+→4;49/49 样本,出处见该表 docstring 引 economy.md §10.1),sim 收入模型 import 同函数防漂移 |
 | `BASE_REWARD_GOLD` 节点基础奖励 | 弹窗实测恒 5 + 对账首轮→次轮子集中位 +1 双重支持(分轮次裁决) | ~~冲突~~ **已解决**:混轮中位 +5 是后期事件金拉高;残余=晶矿/节点事件金未入对账模型(sim 校准层候选) |
-| `XP_TO_NEXT_LEVEL` 升级门槛 {3:4,4:6,5:20,6:40,7:52,8:72,9:84} | **用户口述门槛表 + telemetry XP 分母独立对拍一致**(曾推翻旧「整级大金」错模型) | **lv1-2 门槛缺失**(表从 LV.3 起);lv7-9 档对拍样本少;版本更新需复核 |
+| `XP_TO_NEXT_LEVEL` 升级门槛 {3:4,4:6,5:20,6:40,7:52,8:72,9:84} | **用户口述门槛表 + telemetry XP 分母独立交叉核对一致**(曾推翻旧「整级大金」错模型) | **lv1-2 门槛缺失**(表从 LV.3 起);lv7-9 档交叉核对样本少;版本更新需复核 |
 | `XP_PER_BUY=4` / 单击价 | 用户口述+实测 | 商业间谍类折扣另算(效果层) |
 
 ## 四、派生/人判层
@@ -66,19 +66,19 @@
 2. **效果原文 → 结构化数值,只收能进模型的**:经济效果按语义归位到具名字段(一次性 vs 每节点 vs 触发式分开;曾把 9 条重复性效果错装 instant_gold,按原文归位修正)。战力类不进经济模型(走战力评估);反向激励的(损血换钱)只建档不进分。
 3. **边界靠效果原文,不脑补**:仅建 API 文本明说的数值;歧义处标注释;异质效果(契约/时代/规则类环境)不硬塞一个维度,**待分类建模**而非硬建模。
 4. **人判维度标注判断层身份**:category/评级/站位要求等是人的判断——判断层文件头反向标注「生成器不写本文件」,防被覆盖。
-5. **对拍锚防漂移**:跨层字段(如 comp.plaza_carry 指向聚类 carry 名)让两层数据互相可校验;孤儿校验(overlay 引用 base 不存在的键 → import 即炸)。
+5. **交叉核对锚防漂移**:跨层字段(如 comp.plaza_carry 指向聚类 carry 名)让两层数据互相可校验;孤儿校验(overlay 引用 base 不存在的键 → import 即炸)。
 6. **机制特例单独建模,不泛化**(如开拓者双形态按排归一、银狼升费多档):特例进注册表的机制字段/映射表,别把特例逻辑散进消费代码。
 
 ### 各实体增量清单(查「这字段哪来的/谁消费」)
 
 | 实体 | 增量属性(人维护) | 消费点 |
 |---|---|---|
-| **投资策略/环境**(`cw_investments`) | `STRATEGY_ECONOMY`(EconomyEffect 45 字段:给金/免费刷/利息覆写/难度Δ/连胜倍率/合成与购买触发族…,字段三分 = 计分/待建模/不计)+ 卡级待建模登记 `STRATEGY_ECONOMY_PENDING_MODELING`;`STRATEGY_GRANTS` 策略卡具名发放(登记判据 = 29 号稿 §2.3);`ENV_CATEGORY` 七类+`ENV_FACTION` 阵营绑定。选卡评序 = 策略层组件分(29/28 号稿),本表不留选卡分 | 两屏选卡策略器(invest_strategy/invest_env)/`_refresh_cost`/`_refresh_cap`/利息引擎/难度账本/env 亲和 |
+| **投资策略/环境**(`cw_investments`) | `STRATEGY_ECONOMY`(EconomyEffect 45 字段:给金/免费刷/利息覆写/难度Δ/连胜倍率/合成与购买触发族…,字段三分 = 计分/待建模/不计)+ 卡级待建模登记 `STRATEGY_ECONOMY_PENDING_MODELING`;`STRATEGY_GRANTS` 策略卡具名发放(登记判据 = strategy-docs/29_invest_strategy_screen.md §2.3);`ENV_CATEGORY` 七类+`ENV_FACTION` 阵营绑定。选卡评序 = 策略层组件分(strategy-docs/29_invest_strategy_screen.md 与 28_invest_env_screen.md),本表不留选卡分 | 两屏选卡策略器(invest_strategy/invest_env)/`_refresh_cost`/`_refresh_cap`/利息引擎/难度账本/env 亲和 |
 | **角色**(`cw_chars`) | char_type/f 流派阵营两分/independent/开拓者形态映射(按排归一) | 部署站位/羁绊计数/压缩牌库 |
 | **羁绊**(`cw_factions`) | category 四分类(combat/economy/support/independent)/tiers/note 人判注记 | 评分/成型判定/骨架派生 |
 | **comp**(`cw_comps`) | 核心/弹性二分/form_tiers/key_equips(可重复)/countered_by_bosses/mechanic_attributes(词缀双向)/shared_chars(转型成本)/char_positions(comp 级站位覆盖)/LevelGoal 曲线(等级→动作+星目标) | select_comp/maybe_pivot/装备分配/mechanics_fit/boss_fit |
 | **装备**(`cw_equipment_data`) | category 九类/stacking/recipes 多路/props 结构化数值 | 补给选择/合成/equip_fit |
-| **plaza 派生**(`cw_plaza_comps`) | star3_by_cost(费用档 3 星率,**客观频次仅校准对拍用**——费用档星目标启发式已废弃,星目标只认成型档显式要求;语义单一源 = `cw_plaza_comps` 模块注释)/labels 节奏/craft_first/transition_pool | 星级目标/等级节奏/合成优先 |
+| **plaza 派生**(`cw_plaza_comps`) | star3_by_cost(费用档 3 星率,**客观频次仅校准交叉核对用**——费用档星目标启发式已废弃,星目标只认成型档显式要求;语义单一源 = `cw_plaza_comps` 模块注释)/labels 节奏/craft_first/transition_pool | 星级目标/等级节奏/合成优先 |
 
 ## 钩子统一使用(产物路径与纪律;分工见 od-dev-stop-hooks)
 

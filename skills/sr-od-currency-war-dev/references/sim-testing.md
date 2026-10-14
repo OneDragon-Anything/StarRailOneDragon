@@ -9,35 +9,35 @@
 - **可信(真代码层)**:策略决策、发牌概率表、有限牌池、角色注册表、XP 表、板深 Δ 池(三态 `resolve_pool`;池解析结果在进程内按池参数缓存一次(`sim/pool.py` `_RESOLVED_CACHE`,无复位函数)——同进程改快照文件不生效,换池/重跑一律起新进程,CLI 调用天然如此)。
 - **校准层(参数注入,带误差)**:开局 bench/收入模型/战斗结算/节点序列。
 - **代理近似(消费前核语义)**:`st.deployed` 代理名单;板深=`_deployable_depth` 可部署口径(≠已部署,视图带 `*`)。
-- **未建模**:装备效果、星级、词条/boss 克制、P2/P3 专属;P2 备战与 P1 共享(spend 正常非零),但结算键仅 3 维——涉 P2 战力判读须声明。
+- **未建模**:装备效果、星级、词条/boss 克制、位面 2/3 专属;位面 2 备战与位面 1 共享(spend 正常非零),但结算键仅 3 维——涉位面 2 战力判读须声明。
 - Δ 池按深度分桶:±2 深度测不出;「散面 vs 集中」与实机可能反向——这类维度以实机为准并记录偏差。
-- **持卡局观察键口径注**:`_obs_refresh_avail`(账本 obs.refresh_avail_frames)与 checks/segments 检查器的息线仍按注册表基础息线 50——持息帽卡局(买断制/开源节流/利息上调)的决策口径按 resolved 链(g\*=0/90/100),这些键的读数与决策口径**分叉**;A/B 判读消费它们前先核当批持卡构成,禁直接当「刷新可用性」跨臂对读。
+- **持卡局观察键口径注**:`_obs_refresh_avail`(账本 obs.refresh_avail_frames)与 checks/segments 检查器的利息线仍按注册表基础利息线 50——持有利息上限卡的局(买断制/开源节流/利息上调)的决策口径按 resolved 链(g\*=0/90/100),这些键的读数与决策口径**分叉**;A/B 判读消费它们前先核当批持卡构成,禁直接当「刷新可用性」跨臂交叉比对。
 - **coarse 战斗结算对板深/等级零敏感,A/B 禁消费该面(2026-09-09 在册裁定)**:coarse 两态模型(战斗类节点 battle/encounter/boss 的 sim 结算引擎,单一源 `cw_coarse_battle`)只按成型度 rung 查胜率表与伤害直方——板深/等级不进结算键。A/B 两臂若只在板深/等级维度不同,战斗结算面读数恒同:该面上的任何「有差异/无差异」都不是策略效应,禁据此下结论;涉板深/等级的命题以实机 A/B 为准。
 - **hp/掉血类指标校准前禁作 A/B 判据(2026-09-09 在册裁定,与金类指标同族——金类侧同款条目 = 「出口金校准前不作 A/B 判据」,载体 = docs/develop/sr_od/application/currency_war/proofs/p86-no-target-period-fund-allocation.md §5.1 键③,出处 T-169 纪律)**:sim 的 hp/掉血读数(出口 hp、hp≤20 低尾占比、单轮掉血等)依赖战斗结算校准,该维有已知失真(实证:出口 hp≤20 占比跨批同量级 12.7-14.7%,但 R9 单轮掉血中位 −34,且按板深四分位分组组间零敏感 = ±2 深度桶测不出)。校准补齐前这类指标只作报警线/观察面,禁当 A/B 判据;涉 hp 的结论以实机为准。
-- **重放/批跑通道已随 sim-redesign 删除（2026-09-15；无当期替代——现 sim = 库形态 SimBackend 后端(``sim/cw_sim_backend.py``)驱动、策略经 ports 注入；`cw_replay` 是历史局 journal 重放、非 sim seed 重放）**：批 `manifest.json` 的 `pool_fingerprint` 仍是对账键，跨日对照必核一致；校准数据缺源大声报错（静默回退=假信心）；sim 批绝不写生产 replay 目录；批跑/重放工具候补期间 A/B 挂起（strategy-work「验证」）。
+- **重放/批跑通道已删除（2026-09-15；无当期替代——现 sim = 库形态 SimBackend 后端(``sim/cw_sim_backend.py``)驱动、策略经 ports 注入；`cw_replay` 是历史局 journal 重放、非 sim seed 重放）**：批 `manifest.json` 的 `pool_fingerprint` 仍是对账键，跨日对照必核一致；校准数据缺源大声报错（静默回退=假信心）；sim 批绝不写生产 replay 目录；批跑/重放工具候补期间 A/B 挂起（strategy-work「验证」）。
 
 ## 种子段分配纪律(并行批派发)
 
 - **并行 sim 批的种子段必须互斥**:sim 局 = seed + 池指纹可复现,两批种子段重叠 = 同种子局逐位重复、零新信息(实证:2026-09-09 两对并行批种子段全同,约 600 局冗余白烧)。
 - **纪律 = 种子段由编排者统一下发**:派单任务书写明该批 `seed_base` 与局数 n(占用段 = `[seed_base, seed_base+n)`);派发前对账在飞批已占段,不重叠才派。
-- **消费端对账**:批 `manifest.json` 的 `seeds` 键即该批占用段;发现段重叠的批,其对比结论降权(重叠局不当作独立样本)。批组织与常驻跑法 → autonomous-loop「sim 批组织细则」,本节只辖种子段互斥。
+- **消费端对账**:批 `manifest.json` 的 `seeds` 键即该批占用段;发现段重叠的批,其对比结论降权(重叠局不当作独立样本)。批组织与常驻跑法 → autonomous-loop「sim 批组织细则」,本节只管种子段互斥。
 - **跨批互证必须不相交 seed 集**:聚合分布类指标(阵营分布/比值带等)的跨批对照,两批 seed 集必须不相交——同 seed+同采样器+同策略的两批,批间一致恰是**相关性的证据**,不是独立复证(实证:两批同用一段 seed 集,「连续两批同向→不再是抽样噪声」的升级推理被审计证伪);同 seed 重放只许用于逐帧恒等对照(零假设=恒等);凡引「两批一致」作升级证据,先声明两批 seed 集关系。
 
 ## 批驱动器 monkeypatch 规约(from-import 语义)
 
 - **捕获/探针钩子的 patch 面 = 调用方模块命名空间里的绑定,不是定义模块的属性**:Python `from X import f` 把 `f` 复制进导入方自己的命名空间;目标模块(如 `cw_sim_backend`)对 `settle_battle`(定义于 `cw_sim_battle`)的调用解析的是自家那份绑定,patch 定义模块的属性对调用点不可见——钩子零触发、捕获产物全空且**零报错**(静默失效,批照常跑完,极易漏检)。
 - **动手判据**:patch 前先看目标调用模块顶部的 from-import,函数被谁 from-import 就 patch 谁命名空间里的名字;patch 后必跑小批(n≥10)验证落盘产物非空——捕获行数为零 = patch 面错,不是「无战斗可采」。
-- 实证:2026-09-18 t17 系 4 批 outcomes 全 0 字节、3100 局 killed 真值全未知,根因即捕获钩子 patch 在了定义模块;修后小批即检出采集率恢复。
+- 实证:2026-09-18 的 4 个批 outcomes 全 0 字节、3100 局 killed 真值全未知,根因即捕获钩子 patch 在了定义模块;修后小批即检出采集率恢复。
 
 ## 一、找问题(三步主线)
 
 **主线**:统计指标 → 找出表现不好的指标 → 挑一局复盘归因。
 
 ### 1. 统计指标
-`uv run python skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py --sim-batch <批次名|latest>`(生产档案侧 `--recent N` / `--match <game_id>`;脚本零 src 导入,项目根直接跑)。四指标(①P1 出口金 ②过渡凑齐率 ③终局金 ④终局阵容完成率)+ [28] 线与出口生存余量读数,每局每指标都有值;口径边界见脚本头注记(旧多族指标已按用户规格删除,不存在按开局词缀分组)。
+`uv run python skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py --sim-batch <批次名|latest>`(生产档案侧 `--recent N` / `--match <game_id>`;脚本零 src 导入,项目根直接跑)。四指标(①位面 1 出口金 ②过渡凑齐率 ③终局金 ④终局阵容完成率)+ 口述登记[28]线(50 金利息线,定义见 `docs/game/currency_war/research/user_playstyle.md`)与出口生存余量读数,每局每指标都有值;口径边界见脚本头注记(旧多族指标已按用户规格删除,不存在按开局词缀分组)。
 
 ### 2. 找出表现不好的指标
 从第 1 步的指标里筛出表现不好的(怎么筛不规定:与设计预期对照、与历史批/同批分布比,哪种都行)。
 
 ### 3. 挑一局复盘——归因到决策
-对表现不好的指标,拿体现它最重的那一局做复盘(脚本按指标点名最差局):sim 局=批次目录里该局的记录,实机局=对局档案;按 match-review.md 复盘协议读,带上面边界——sim 边界造成的现象不立为策略病灶。sim 局直查 = 批目录(缺省 `.debug/currency_war/telemetry/sim/<批名>/`)内 `decisions.jsonl` 行行自足直读(联接键 run_id+round_num)——sim 批无判读 CLI 视图入口(`--sim-batch` 已随统一账迁移退役,仓内亦无 cw_telemetry/cw_sim 独立命令,别手搓脚本)。复盘骨架生成器(零 src 导入,项目根直接跑):`uv run python tools/cw/review_skeleton.py --decisions <批目录>/decisions.jsonl [--run-id <局id>]`——生成逐节点骨架(入口观察/决策循环摘要/判定三槽);原版随附的可疑项检测器预填(sim/checks/suspects.py)已随 sim 重做退役,当前为纯骨架,可疑项由复盘者按三槽自查,检测器注册表重建后恢复预填。逐轮决策表直读批目录 `decisions.jsonl` 即可(重放/批跑通道已删,见「先知道边界」末条)。
+对表现不好的指标,拿体现它最重的那一局做复盘(脚本按指标点名最差局):sim 局=批次目录里该局的记录,实机局=对局档案;按 match-review.md 复盘协议读,带上面边界——sim 边界造成的现象不立为策略病灶。sim 局直查 = 批目录(缺省 `.debug/currency_war/telemetry/sim/<批名>/`)内 `decisions.jsonl` 行行自足直读(联接键 run_id+round_num)——sim 批无判读 CLI 视图入口(`--sim-batch` 已随统一账迁移停用,仓内亦无 cw_telemetry/cw_sim 独立命令,别手搓脚本)。复盘骨架生成器(零 src 导入,项目根直接跑):`uv run python tools/cw/review_skeleton.py --decisions <批目录>/decisions.jsonl [--run-id <局id>]`——生成逐节点骨架(入口观察/决策循环摘要/判定三槽);原版随附的可疑项检测器预填(sim/checks/suspects.py)已随 sim 重做移除,当前为纯骨架,可疑项由复盘者按三槽自查,检测器注册表重建后恢复预填。逐轮决策表直读批目录 `decisions.jsonl` 即可(重放/批跑通道已删,见「先知道边界」末条)。
