@@ -205,7 +205,6 @@ def effective_hp_threshold(gs: GameState) -> int:
     )
     from sr_od.application.currency_war.kernel.cw_game_state import (
         level_of,
-        plane_of,
         round_num_of,
     )
     from sr_od.application.currency_war.kernel.cw_node_schedule import (
@@ -777,6 +776,15 @@ def blood_xp_gate(hp_trusted: int | None, hp_readable: bool,
       ``cw_discipline_rules.hp_decision_trusted`` 解析后传入)。
     - 本函数**禁读** hp_pay 遥测(隔离申报):hp 输入 = 最近可信备战
       帧值,与 P21 闸同一决策输入。
+
+    「买一半」缺陷的 as-built 消歧(line_and_upgrade §2.2 现状缺陷修正
+    申报;迭代 2026-10-12-prep-shop-workflow-redesign 批 3.4):历史
+    部分购买的真实机理 = **逐帧单击发射形态 × 本闸静态全量阈值逐帧
+    重闸**——血支付中血量跌回阈值之下即停止发射、留下部分级;本闸
+    本体(全量击数口径)从来不是截断源。修法 = 发射粒度整批化
+    (升级预授权 + 实付上界 = 授权血成本,执行帧不再逐帧重闸——
+    血余额为静态阈值,授权帧一次检查即无逐帧重闸复发面),闸本体
+    语义不变。
     """
     if not hp_readable:
         return False
@@ -1040,10 +1048,9 @@ def _registry_of(session: StrategySession) -> DecisionV2Registry:
 def _pop_slot_indicator(gs: GameState) -> bool:
     """ΔV_pop 指示项(P39 修订式):板满(cap 满)∧ bench 有 2★ 等待件。
 
-    消费位 = schedule_upgrade ①臂 / _upgrade_ul_threshold_ok 翻转分量 /
-    mandate_v1 criteria/levelup._realize_chain_ready(P72 支A)。
-    (原「三副本有意复制、改谓词三处同改」纪律随 W6 波 4 签名切换收敛为
-    本单一源——strategy 层消费位同批改委托,漂移风险由单源天然消解。)
+    消费位 = schedule_upgrade 人口位臂(唯一排程触发)。原第三消费位
+    (U_L 检验翻转分量/P72 支A 兑现链)已随升级判据重轴批退役
+    (迭代 2026-10-12-prep-shop-workflow-redesign 批 3.4)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_units_of,
@@ -1056,159 +1063,43 @@ def _pop_slot_indicator(gs: GameState) -> bool:
                for u in bench_units_of(gs))
 
 
-def _upgrade_ul_threshold_ok(gs: GameState,
-                             session: StrategySession) -> bool:
-    """② 臂 U_L 阈值检验(升级判据形式二修正①;裸直觉补检验)。
-
-    升级 iff ``c_eff·(E(D|L) − E(D|L+1)) + ΔV_pop > U_L + C_int``——
-    全部游戏定义量:c_eff=刷价现读;E(D|L)=expected_refreshes_for_card
-    (目标核心 2★ 完成档,owned=j 折算,REFRESH_PROB 池参数);U_L=
-    clicks_to_next_level×xp_click_cost(XP 表/OCR 实读);C_int=息损
-    P47 L 递推(loss_exact,gold 支 U_L 后 R_剩余 轮,Ī=收入日程现算;
-    cap 参数 = cap_resolved_of_session 现读——裸缺省 5 在息律投资
-    cap=10 局会低估 C_int,息帽三源归一)。
-    ΔV_pop 按 P39 式 = w·1[板满 ∧ bench 有 2★ 等待件](w 待标定禁计值
-    → 指示=1 时视为翻转项,方向门;指示=0 时纯概率账须独自过阈)。
-    反例锚:希儿 lv7 省刷费 28 < 升级金 40,纯概率账亏 12,
-    靠人口位翻转——缺本检验的裸「峰值级>当前级」会在该带过度升级。
-    R_剩余视界 = 决策帧场字段求和现算(裁决点 9 就地自算,禁写死)。
-
-    单核代表降级申报:规格的 E 为缺件集 ΣE_i(strategy-docs
-    11 篇 §3);本实现取单目标核心代表——缺件集成员装配需 strategies
-    侧 line_members,违背「kernel 禁 import strategies」桶边界,故申报
-    降级而非静默偏差。保守性边界:多成员同受升级受益帧 benefit 低估
-    → 检验偏严(保守向);成员在 L+1 概率回落(E 恶化)帧单核可能
-    高估净受益(非保守端,边界注)。
-
-    ΔV_pop 指示项谓词(板满 ∧ bench 有 2★ 等待件)与 schedule_upgrade
-    ①臂**有意复制**——两处是同一 P39 指示项在「检验内翻转分量」与
-    「排程触发①」两个消费位的落点,语义单一源 = P39 修订式;改任一处
-    须同步另一处(同步锚对:本函数 / schedule_upgrade ① 臂)。
-    第三消费位:mandate_v1/criteria/levelup.
-    ``_realize_chain_ready``(P72 支A 兑现链放行)消费同一指示项——三
-    副本逐字一致,改谓词三处同改;三副本一致对拍锁候批(登记面申报,
-    防漂移无锁位)。
-    """
-    import math as _math
-
-    from sr_od.application.currency_war.data.cw_shop_odds import (
-        expected_refreshes_for_card,
-    )
-
-    # ΔV_pop 指示项(P39 修订式;与 schedule_upgrade ①臂谓词成同步锚对,
-    # 见 docstring 末段——改谓词两处同改;第三消费位 = criteria/levelup.
-    # _realize_chain_ready,三处同改)
-    if _pop_slot_indicator(gs):
-        return True
-
-    level = level_of(gs)
-    core, cost = _target_core_cost(session)
-    j = _owned_core_copies(gs, core) if core else 0
-    e_l = expected_refreshes_for_card(level, cost, target_star=2, owned=j)
-    e_l1 = expected_refreshes_for_card(level + 1, cost, target_star=2,
-                                       owned=j)
-    # 显式守卫:升级后反不可追(e_l1==0 且 e_l>0)⇒ False。前提声明:
-    # 现行 REFRESH_PROB 表满足「一旦出牌永不消失」的单调性(低级不出
-    # 的费档升级后才出现,不反向),故该形态在现表下不可达、守卫不
-    # 触发;池突变使表整体重生成(§8 resolved input)或换表后若失去
-    # 该单调性,此守卫生效,防止把「升级后 E 归零」误读成无穷收益。
-    if e_l1 == 0.0 and e_l > 0.0:
-        return False
-    if not (_math.isfinite(e_l) and _math.isfinite(e_l1)):
-        return e_l <= 0.0 < e_l1     # 当前级不可追而上级可追:纯解锁收益
-    benefit = refresh_cost_effective(gs=gs) * (e_l - e_l1)
-    if benefit <= 0:
-        return False                 # 概率不升反降(内峰回落档):无收益面
-    u_gold = clicks_to_next_level(gs) * xp_click_cost(gs)
-    if u_gold <= 0:
-        return True                  # 满级/零费边界:成本侧空,收益即过
-    # R_剩余就地自算(T-8 裁决点 9:框架不供视界量,场字段求和,封顶
-    # modeled planes;与 cw_intention._p1_pair_overwindow 同式互锚,禁
-    # 单侧改式)。位面 ∉ 序列表键集(含 P3)= 建模域外 → 0。
-    from sr_od.application.currency_war.kernel.cw_node_schedule import (
-        PLANE_NODE_TABLES,
-    )
-    _tb = gs.node_seq_by_plane.value or PLANE_NODE_TABLES
-    rounds = (sum(len(t) for k, t in _tb.items() if k >= plane_of(gs))
-              - round_num_of(gs) + 1) if plane_of(gs) in _tb else 0
-    ibar = net_income(round_num_of(gs), 0)
-    c_int = loss_exact(gold_of(gs), u_gold, rounds, ibar,
-                       cap=cap_resolved_of_session(session))
-    return benefit > u_gold + c_int
-
-
 def schedule_upgrade(gs: GameState, session: StrategySession,
-                     registry: DecisionV2Registry | None = None) -> bool:
-    """排程升级判据(确定性费用查表核;蓝图 §3.4 R4 接缝)。
+                      registry: DecisionV2Registry | None = None) -> bool:
+    """排程升级判据(人口位单臂;蓝图 §3.4 R4 接缝)。
 
-    ``registry``:显式注入优先(A/B 注入面,P6 契约:同一调用链全部接缝
-    必须传**同一个** registry 实例——economy_cycle.disclose_budget 单源
-    现算披露);
-    缺省落 _registry_of(session) → DEFAULT_REGISTRY。**cap 归一注**:
-    本函数的 ② 前置息线与 U_L 检验息损 cap 已归一到
-    ``cap_resolved_of_session``(session resolved 链)单一源,registry
-    注入不再移动这两处——registry 仍辖同链其余接缝(refresh_ev_budget/
-    reserve_cap 的预算面)。
-    规则集 = 规则倡导审读 §1.3/§2-R4(机制常量直算,零标定权重);**预告态契约**
-    (预算收权迁移前预验尸 D1 契约):排程只回答「要不要开始攒」,不以当帧可负担为前置——
-    付不付得起是执行层的事(``ev.levelup_ev_basis`` 可负担性入口门),
-    排程判据若收窄成「付得起才排」会造成 R* 塌缩 → 义务花光 → 更排不上
-    的自我强化升级迟到循环(DP 无此失败模式:其 level_up 判定不依赖当帧
-    是否看得见目标)。
+    registry:显式注入优先(A/B 注入面,P6 契约:同一调用链全部接缝
+    必须传**同一个** registry 实例);缺省落 _registry_of(session) →
+    DEFAULT_REGISTRY。**预告态契约**(预算收权迁移前预验尸 D1 契约):
+    排程只回答「要不要开始攒」,不以当帧可负担为前置——付不付得起是
+    执行层的事,排程判据若收窄成「付得起才排」会造成 R* 塌缩 →
+    义务花光 → 更排不上的自我强化升级迟到循环。
 
-    触发(任一,判据单一址=R4:本函数被 R* 储蓄分量(reserve_cap)、
-    arbiter 金地板授权、EV 升级授权 ② 臂三处共调):
-    ① 人口位([33]):cap 满 ∧ bench 有成型件(2★)等上场——升级后能
-       立即部署,当轮兑现战力,为最高义务。**辖域 = 战斗帧**(2026-09-08
-       奖励帧策略审查):「当轮兑现」的兑现对象是本帧的战斗,奖励帧
-       无战斗 → 当帧升级与推迟到下一备战帧升级,2★ 的部署时点对下一场
-       战斗相同,本臂收益面在奖励帧不增益;奖励帧行为由规则①
-       升级抑制先辖(抑制判据置于臂计算之前短路)。辖域注不改谓词本体
-       (M3 消费位 = criteria/levelup._realize_chain_ready 同步锚对,
-       同款辖域注见彼处);奖励帧政策的命题化归审查建议②命题批。
-    ② 概率级([3]/[7]):目标核心概率峰值级 > 当前级 ∧ 息引擎已立
-       (g ≥ 息线,[12] 息引擎前置)∧ **U_L 阈值检验**(形式二
-       修正①:``c_eff·(E(D|L)−E(D|L+1)) + ΔV_pop > U_L + C_int``,
-       装配=``_upgrade_ul_threshold_ok``;裸直觉缺此检验会在小移位带
-       过度升级——希儿 lv7 反例,见该函数 docstring)。
-    禁升条件([12]/[32]):息引擎未立不追级(② 的前置即此);空升级
-    不升(① 触发本身即「有件可上」,无空升级面;② 是概率抬档语义,
-    不涉部署)。
-    **规则文本偏差披露(预算收权攻击审读 F2)**:规则倡导审读 §2-R4 规则 2 原文有第三合取
-    「花完升级费后 g′ ≥ interest_floor」,与其 §1.3 伪码矛盾(伪码无此
-    项);本实现**取伪码侧**(预告态,不设该合取——保留它会让
-    g∈[息线, 息线+费) 帧不排程,恰造 D1 塌缩循环)。可负担性/平台未破
-    由执行层收口:ev.levelup_ev_basis 可负担性入口门 + ② 臂花后 ≥息线。
+    触发 = **人口位**([33]):cap 满 ∧ bench 有成型件(2★)等上场——
+    升级后能立即部署,当轮兑现战力。**辖域 = 战斗帧**(奖励帧无战斗,
+    本臂收益面不增益——奖励帧行为由规则①升级抑制先辖,消费位代码序
+    承载)。谓词单一源 = _pop_slot_indicator。
 
-    目标级解析:意向锁定核心 → 兜底 comp 核心 → 缺省 3 费档(meta
-    「7 级搜牌」主流带);费用档 → 峰值级查表
-    (``cw_plane_table.peak_refresh_level``)。comp 空帧不缺供给——
-    兜底链保证 L_target 恒可解(D1:target 级判定迟疑帧返回 False 是
-    塌缩循环的入口,禁)。
+    概率级②臂(峰值级 > 当前级 ∧ 息引擎已立 ∧ U_L 阈值检验)已随
+    升级判据重轴退役(迭代 2026-10-12-prep-shop-workflow-redesign 批
+    3.4;line_and_upgrade §2.3 升级②臂行):「概率改善才升」语义由
+    新概率主账承接(辖域 = 未锁定期不消费、锁定后 ∧ plane2_started
+    双条件消费〔载体 = 锁定线缺件集〕,判据落位 = strategies/impl/
+    mandate_v1/criteria/levelup.py)。本函数消费面(R* 储蓄分量
+    reserve_cap / get_node_goal spend_mode / economy_cycle.channel_
+    capacity 的 C_t 分量)随②臂退役,缺省相 R* 升级排程分量 = 零;
+    人口位触发时预算线照旧供给;arm0(need>level)触发时的攒批资金
+    由升级预授权链承载(整级预授权 + 压库整买预留,shop_session
+    §2.2 序 4),非本函数辖。
+
+    淘金客姿态(refresh_invest_active 局)升级通道整体退役
+    (sim 注入臂实证;谓词单一址)。
     """
     from sr_od.application.currency_war.kernel.cw_investments import (
         refresh_invest_active,
     )
     if refresh_invest_active(type('_S', (), {'active_strategies': gs.active_strategies.value or []})()):
         return False    # 淘金客姿态:升级通道退役(sim 注入臂实证;谓词单一址)
-    # ① 人口位:cap 满 ∧ bench 有成型件(2★)等上场([33]/[32](a));
-    # 谓词单一源 = _pop_slot_indicator(原「有意复制三副本」纪律随本批
-    # 签名切换收敛为 kernel 单一源——第三消费位 criteria/levelup
-    # 同批改委托,同步锚对语义由单一源天然承载)
-    if _pop_slot_indicator(gs):
-        return True
-    # ② 概率级:息引擎已立 ∧ 目标峰值级在当前级之上 ∧ U_L 阈值检验
-    # (升级判据形式二修正①:升级 iff c_eff·ΔE + ΔV_pop > U_L + C_int;
-    # 裸「峰值级>当前级」直觉缺此检验会在小移位带过度升级——希儿 lv7
-    # 省 28 < 升 40 反例,纯概率亏 12)
-    # 息线口径 = cap_resolved_of_session(session resolved 链)单一源
-    # (息帽三源归一:旧 reg.interest_cap×10 与 session 链
-    # 不同源——A/B 旋钮辖 decision_v2 预算面,不辖本前置)
-    if gold_of(gs) < saturation_line(cap_resolved_of_session(session)):
-        return False
-    if _target_peak_level(gs, session) <= level_of(gs):
-        return False
-    return _upgrade_ul_threshold_ok(gs, session)
+    return _pop_slot_indicator(gs)
 
 
 def _vd_core_of(session: StrategySession) -> str:

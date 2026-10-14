@@ -41,10 +41,6 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
     REFRESH_COST_BASE,
-    blood_xp_gate_for,
-    clicks_to_next_level,
-    in_must_spend_zone,
-    xp_click_cost,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
@@ -56,10 +52,6 @@ from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     count_merge_material_blocked,
     merge_material_reject_reason,
     same_star_count,
-)
-from sr_od.application.currency_war.kernel.cw_reward_node import (
-    is_piggy_reward_frame,
-    reward_node_suppressed,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     S1_RESET_ROUTE_TAGS,
@@ -80,7 +72,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
     contracts,
-    levelup,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
     sell as crit_sell,
@@ -1304,8 +1295,6 @@ def run_mandate(frame: MandateFrame,
         counters[key] = counters.get(key, 0) + 1
 
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        max_units_of,
-        node_kind_of,
         plane_of,
     )
 
@@ -1615,231 +1604,14 @@ def run_mandate(frame: MandateFrame,
             and _deployable(frame, session, state)):
         _emit_deploy_moves(out, frame, session, state, 'm1_deploy')
 
-    # M3 升级整批(触发信号 = arm1_existence(statefn/predicates);
-    # arm2 调度门只延迟不否决;P48 整买纪律 D-BUYNOTE 内嵌)。
-    # cap 接线=消费点现读 state.max_units()(R4 单一真值源:level+宝钻、
-    # 封顶 = 4+back_max 动态真值〔GameState.back_layout,值域 10-13〕,
-    # 与 shop 侧同链;FIX_REVIEW ②-1 双源漂移修复——旧观察复合
-    # cap 已废)——板满按当前 cap 判,非固定槽表常数(2026-09-03 零刷新
-    # 诊断批定谳的域错位形态)。契约核验(FIX_REVIEW R1 漏接位补齐):
-    # arm1/lv9_stop/spend_unified 三消费位经 ensure_contract;固定常数/
-    # 无 state 喂入(对抗复验=FIX_REVIEW 场景 A)⇒ deploy_cap=None 前提
-    # 违例 ⇒ 弃权+计数,判据不可达。
-    _cap_now = max_units_of(state)
-    _arm1 = (contracts.ensure_contract(
-        ('predicates', 'arm1_existence'),
-        contracts.ContractCtx(deploy_cap=_cap_now), counters)
-        and _cap_now is not None
-        and predicates.arm1_existence(len(frame.deployed), frame.bench_names,
-                                      frame.deployed_names, _cap_now))
-    # arm0 升级授权回补(14号稿 §4.2 A4 现量版):等级落后于上阵人数需求
-    #(need = 期望态现量,排除谓词 (名,星) 口径 Y3);level 消费只认
-    # authoritative 可信位(level_readable,C4)——不可信帧 fail 向不触发
-    # + arm0_level_unreadable 分键(W6:15 号稿 T-8 锁读链合一,消费端
-    # fail 向零静默)。与 arm1 并联触发(任一成立即进 M3 判据链)。
-    _arm0 = False
-    if contracts.ensure_contract(
-            ('predicates', 'arm0_level_lag'),
-            contracts.ContractCtx(), counters):
-        _arm0, _arm0_key = predicates.arm0_level_lag(
-            frame.level,
-            state.level.value is not None,   # 等级可信位 = 有值即真读(喂入口 carry 门保证)
-            frame.deployed, frame.bench, k, _cap_now)
-        if not _arm0 and _arm0_key == 'level_unreadable':
-            _count('arm0_level_unreadable')
-        elif _arm0 and _cap_now is None:
-            _count('arm0_cap_unreadable')   # 存-3(落地审清单 20260905_cp1_landing_review/问题清单.md):cap 不可读静默弃权补分键
-            _arm0 = False
-    # pop_slot(D-lv7 满编+富金+候补升 cap;落地审应-B:与商店栈同判据
-    # 同单一源,三臂并联)——备战帧店面不可读 ⇒ buyable_candidate 腿
-    # 只在商店栈生效(双栈分域声明);备战帧独有触发域 = 满编+富金+
-    # bench 有线内候补,否向理由留决策迹字段(D-lv7 纪律)。
-    _pop = False
-    if contracts.ensure_contract(
-            ('levelup', 'pop_slot'), contracts.ContractCtx(), counters):
-        _bench_cand = sum(1 for n in frame.bench_names if n in k)
-        _pop, _pop_why = levelup.pop_slot(
-            len(frame.deployed),
-            _cap_now if _cap_now is not None else 0,
-            frame.gold, _bench_cand,
-            saturation_line(_cap_of(session)) if _cap_now is not None else 0)
-        state_of(session).cw4_pop_slot_why = _pop_why
-    # L3 溢余段第三触发源(20 号稿 §3.1-L3/§3.5,备战栈接入;判定单一源
-    # = in_must_spend_zone,与 shop 栈同源禁第二套语义;应-C 偏高必收:
-    # 备战必花帧不再被停付线否决——域内让位,域外照旧)。
-    # 溢余段备战期闩(g_20260906_034515 濒死段门链回放定谳:帧A g56 域内
-    # CwActionLevelUpParam 本可发射、帧B g43 域外被危机带挂起零发射零分键——「花光」
-    # 义务在域边界上蒸发):域豁免原为逐帧瞬时判定,商店域第一笔消费把金
-    # 拉回域内后,同备战期后续 prep 帧(g<G_must)被 P2 危机带常态挂起,
-    # 残金闲置入死战。修法 = 本备战期曾入域(裸金判定,先于 level_
-    # readable 资格闸)即置闩,键式=(plane, round) 与开店闩
-    # cw4_shopped_phase 同构,位面/轮次推进=新键自动失效;闩存续帧让位
-    # 豁免保持(「本备战期必花」语义),闩延命帧分键
-    # must_spend_zone_latch_extend 显影(归因区分「本帧自身域内」与
-    # 「闩延命」)。shop 域帧自辖不写闩——域内帧在本域已全量消费,
-    # 无本域后续帧依赖(prep 闩由 prep 域内帧点燃;单动作架构下开店的
-    # prep 帧先于店内消费帧,闩天然先置)。
-    _zone_raw = in_must_spend_zone(frame.gold, session)
-    if _zone_raw:
-        state_of(session).cw4_must_spend_phase = phase
-    _zone_latched = getattr(state_of(session), 'cw4_must_spend_phase', None) == phase
-    if _zone_latched and not _zone_raw:
-        _count('must_spend_zone_latch_extend')
-    _zone_hit = (_zone_raw or _zone_latched) and (
-        state.level.value is not None)   # 等级不可信帧 fail 向(资格硬闸)
-    _arms_hit = _arm1 or _arm0 or _pop
-    # T-115 规则① 消费位3:奖励帧升级抑制,判据单一源 =
-    # kernel.cw_reward_node.reward_node_suppressed(None fail-open)。抑制
-    # 先于危机/血闸求值——抑制 = 结构性无授权,支付能力检查无须求值
-    # (§0.2「抑制先行」;同帧双闸分键不混桶:reward_node_defer ≠
-    # blood_xp_gate_defer ≠ crisis_level_spend_defer)。扑满环境帧守卫
-    # 解除抑制(守卫单一源同 kernel),写点同时复活 v3_piggy_reward
-    # 遥测真值(↺)。载体 = 置顶 gs 直传(段 2 消桥)。
-    _reward_defer = reward_node_suppressed(state)
-    if _reward_defer:
-        _count('reward_node_defer')
-    _m3_node_kind = node_kind_of(state)
-    if _m3_node_kind == 'reward':
-        # 每可辨奖励帧刷新扑满标记(真值随环境选择变化,防跨帧滞留旧值)
-        state_of(session).v3_piggy_reward = is_piggy_reward_frame(state)
-    elif _m3_node_kind is not None:
-        # 可辨非奖励帧复位(纯遥测零决策面;字段语义 = telemetry schema
-        # piggy_reward「本帧是扑满奖励帧」,跨轮滞留 True 污染按行判读;
-        # 与 shop 栈写点同批同语义)。不可辨帧(None)不复位,维持最近真值。
-        state_of(session).v3_piggy_reward = False
-    # 形态⑥第二破口观测(纯观测零行为;M3 前置短路帧显影,补「零分键
-    # 零静默」)。分键形态钉死四元合取(241 §15.1 R3-低3 兑付:防宽化为
-    # 「一切前置短路帧」——域内闩失效帧/cap 不可读帧不入键),键带授权域
-    # 维分列(P1 域/P2 域授权域不同,防混键重演 fenced/precheck 教训):
-    # 濒死带(分域等价物 = p1/p2 域谓词,血带结构锚单一源在谓词内)
-    # ∧ 轴 B 空(strategy_state.target_comp None = 无方向空窗,含 P2
-    # exit_p1 后 target 空窗形态)∧ 域外(裸金判定非域内亦非闩延命)
-    # ∧ ¬(_arms_hit ∨ _zone_hit) = M3 前置在本帧短路。设计出处 =
-    # p2_blood_band_unified_design/DESIGN.md §2.1 fail-closed 观测面 +
-    # supply_arbitration_design/DESIGN.md §5.1。
-    if not (_arms_hit or _zone_hit) and not (_zone_raw or _zone_latched):
-        _nd_p1 = predicates.p1_blood_floor(state)
-        if _nd_p1 or predicates.p2_blood_floor(state):
-            if getattr(state_of(session), 'target_comp', None) is None:
-                _count('l3_pregate_targetless_neardeath_p1' if _nd_p1
-                       else 'l3_pregate_targetless_neardeath_p2')
-    if (_arms_hit or _zone_hit) and _cap_now is not None \
-            and not _reward_defer:
-        # 候选③危机带经验授权让位(g_20260904_054904 p2r1:hp=1 帧
-        # 9×CwActionLevelUpShopParam 36g 零本帧收益):血预算停升级门(P21)此前只有
-        # decision_v2 侧消费,cw4 M3 未接 = 双栈语义断层;判据单一源 =
-        # levelup.level_spend_blocked(blood_budget_levelup_blocked ∪
-        # p2_crisis_band,P48 λ>0 段转化优先)。让位=挂起本批经验支出。
-        # 溢余帧停付线让位(裁定覆盖):域内本门不否决 L3。
-        # 停付判据提取为局部变量;域内豁免时记 must_spend_zone_defer_overridden
-        # 显影分键(与 shop 侧 must_spend_r1_account_yielded 对称)——归因时
-        # 区分「本来就不该停」与「停付被域裁压掉」,crisis_level_spend_defer
-        # 原语义不变(仍只辖域外命中帧)。
-        _level_spend_blocked = (
-            contracts.ensure_contract(
-                ('levelup', 'level_spend_blocked'),
-                contracts.ContractCtx(), counters)
-            # 停付线消费注入注册表(同族泛化项收口,
-            # 禁裸缺省;现注入字段与缺省表同值,接线为单一源纪律面)。
-            and levelup.level_spend_blocked(state, session, _reg))
-        # [40]② 血闸:支付能力检查,与停付线**独立串联**——不可被
-        # 溢余段/血线地板豁免(裁定字面「否则停」是支付能力非血线判断;血模式
-        # 「破息批」无金可破,解锁包件①的转化语义本就不适用,方案审 N5/R2
-        # 收窄申报)。拒因独立分键;金本位 gate 恒 True 直通。
-        # kernel 闸波 2 已切容器签名(hp 经政策层读口),置顶 gs 直传
-        #(段 2 消桥:过渡桥装箱面消亡)。
-        _blood_gate_blocked = not blood_xp_gate_for(state, session)
-        if _blood_gate_blocked:
-            _count('blood_xp_gate_defer')
-        elif _level_spend_blocked and not _zone_hit:
-            _count('crisis_level_spend_defer')
-        else:
-            if _level_spend_blocked:
-                # 域内豁免显影分键(与 shop 侧 must_spend_r1_account_yielded
-                # 对称):本会停付但被溢余段裁定压掉,归因时
-                # 区分「本来就不该停」与「停付被域裁压掉」。
-                _count('must_spend_zone_defer_overridden')
-            # L3 资格拒分键(拒因落盘缺口治疗,「拒因不可辨」复盘主项):
-            # lv9_stop / spend_unified 拒绝此前零分键零静默,与「零动作+
-            # 计数缺席」不可辨复盘同型。键名对齐复盘申报口径:
-            # level_cap(满级)/ batch_unaffordable(整批买不齐,P48 整买
-            # 纪律拦截)。契约核验失败仍走 ensure_contract 自身的
-            # criteria_contract_violation:<名> 分键,不混桶。
-            if contracts.ensure_contract(
-                    ('levelup', 'lv9_stop'),
-                    contracts.ContractCtx(), counters):
-                # 等级帽单一源(第 4 消费位接线收口 =
-                # ):消费注入注册表 .level_max,禁裸常数/缺省。
-                if levelup.lv9_stop(frame.level, _reg.level_max):
-                    _count('l3_reject_level_cap')
-                else:
-                    # 成本计算 = 容器(W6 波 4 接缝族切容器帧;
-                    # xp 现读透传修复(g_20260906_034515)由容器读天然承载
-                    # ——漏斗 level_up_cost/xp 观察写端与视图同源)。
-                    # 载体 = 置顶 gs 复用(段 2:容器单例即形参)。
-                    clicks = clicks_to_next_level(state)
-                    cost = xp_click_cost(state)
-                    if contracts.ensure_contract(
-                            ('levelup', 'spend_unified'),
-                            contracts.ContractCtx(gold=frame.gold), counters):
-                        if levelup.spend_unified(clicks, frame.gold, cost):
-                            ok1, _ = check_affordable(frame.gold, 0,
-                                                      batch_cost=clicks * cost)
-                            if ok1:
-                                # P72 (3) 全段预算闸(承继
-                                # ):发射前过闸;拒 = 整批推迟
-                                # (攒到闸开帧一次买齐,禁按闸值截断击数
-                                # 的部分买——spend_unified 整批语义辖域)。
-                                # 拒因独立分键遥测显影。契约核验失败
-                                # (fail-closed 弃权)不发射,违例计数由
-                                # ensure_contract 自带,不混拒因键。
-                                # 本位「M6」= _emit_open_shop('m6_stock'),
-                                # 转店后 shop 帧 M3 重过闸兜住闸拒形态,
-                                # prep 位不重复挂起 M6(防双闸,
-                                # 落码声明)。
-                                if contracts.ensure_contract(
-                                        ('levelup', 'levelup_budget_gate'),
-                                        contracts.ContractCtx(
-                                            gold=frame.gold,
-                                            deploy_cap=_cap_now), counters):
-                                    _gate_ok, _gate_why = (
-                                        levelup.levelup_budget_gate(
-                                            state, session, frame.gold,
-                                            _cap_of(session),
-                                            frame.k_members, frame.bench,
-                                            frame.deployed, clicks, cost))
-                                    if _gate_ok:
-                                        # auth_basis 分键(可归因,与商店栈同序 arm1>arm0>pop;
-                                        # 三臂全空时 = 溢余段触发源,分键 must_spend)
-                                        if _arms_hit:
-                                            _arm_tag = 'arm1' if _arm1 else (
-                                                'arm0' if _arm0 else 'pop')
-                                        else:
-                                            _arm_tag = 'must_spend'
-                                            _count('must_spend_l3_prep_trigger')
-                                        # cost/auth_basis 分键装载(类合并
-                                        # 后口径):cost = kernel xp_click_cost
-                                        # 现算(上方已算,失读函数内回退兜底);
-                                        # auth_basis = 发射臂放行名分键(记录非指令,
-                                        # action_key_exclude 不入幂等键)。
-                                        out.append(Emitted(
-                                            CwActionLevelUpParam(cost=int(cost),
-                                                    auth_basis=_arm_tag),
-                                            True,
-                                            f'm3_levelup_batch:{_arm_tag}'))
-                                    else:
-                                        _count(_gate_why)
-                        else:
-                            _count('l3_reject_batch_unaffordable')
-
-    # M1′(M3 后新人口位补部署;R6-6/R8-1:迭代至不动点——批 2a 载体 =
-    # CwActionDeployMoveParam 原子序,逻辑态直写推进黑板,发射即覆盖升级增量空位的
-    # 部署重评)
-    if frame.deploy_vacancy > 0 and _deployable(frame, session, state):
-        has_levelup = any(isinstance(e.action, CwActionLevelUpParam) for e in out)
-        if has_levelup:
-            _emit_deploy_moves(out, frame, session, state,
-                               'm1_prime_redeploy')
+    # (升级整批 M3 段(三臂 arm1/arm0/pop + 溢余段 + 血闸 + 预算闸)与
+    # M1′ 升级后补部署段已随升级判据重轴批退役——迭代
+    # 2026-10-12-prep-shop-workflow-redesign 批 3.4:判据内核 =
+    # criteria/levelup.upgrade_trigger 五臂(arm0/概率账/人口位/溢余段-L3/
+    # 停留门),发射位收拢为 entry.py 备战第 3 步(会话内升级检查归
+    # shop_session 重排批);M1′ 随 M3 发射消亡失去输入,其在九段工序的
+    # 对应位 = entry._step5_deploy 的 m1_prime_redeploy。替代语义考古走
+    # git 历史。)
 
     # M1″(板满换阵补部署意图;发射序 = M1′ 后、M6 前)。语义出处 =
     # (board-full swap redeploy;判据单一源 =

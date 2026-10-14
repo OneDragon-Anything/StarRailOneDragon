@@ -34,9 +34,18 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
     ('sell', 'funding_support_sell'): (
         '支付支撑通道', '不旁路(两臂同开)',
         'R13-5/R14-4(mandate=false+funding_support=true,臂间对称)'),
-    # —— criteria/levelup(01_math_framework §3.3;arm1_existence 在 statefn/predicates)——
-    ('levelup', 'arm2_schedule'): (
-        '门', '旁路=门关闭', 'R5-4 范畴定谲(M3 触发退 arm1 单臂)'),
+    # —— criteria/levelup(line_and_upgrade §2;arm1_existence 在 statefn/predicates;
+    #    迭代 2026-10-12-prep-shop-workflow-redesign 批 3.4 重轴——arm2 守息门/
+    #    saturation_floor/levelup_budget_gate 量闸已随拦截层删除链退役,处置依据 =
+    #    line_and_upgrade §2.3 处置表)——
+    ('levelup', 'upgrade_trigger'): (
+        '判据/闭式', '不旁路',
+        '五臂触发并集(line_and_upgrade §2.1:arm0/概率账/人口位/'
+        '溢余段-L3/停留门;发射位 = 备战第 3 步与会话内升级检查)'),
+    ('levelup', 'prob_band_of_cost'): (
+        '状态函数', '不旁路',
+        '最优概率带查表(REFRESH_PROB 1..9 域内峰值区间,line_and_'
+        'upgrade §2.1 停留门;peak_refresh_level 域上限校验非带定义本体)'),
     ('levelup', 'spend_unified'): (
         '判据/闭式', '不旁路', '02_mandate_layer §3(义务侧消费)'),
     ('levelup', 'batch_form'): (
@@ -47,15 +56,12 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
         '判据/闭式', '不旁路', 'T-228(XP 期望账本停,lv9_stop 轮内盲区'
         '补位;shop M3 批/L3 两发射位与 lv9_stop 合取消费)'),
     ('levelup', 'level_spend_blocked'): (
-        '谓词', '不旁路', '候选③(危机带经验授权让位;M3 两域发射位消费)'),
+        '谓词', '不旁路', '候选③(危机带经验授权让位;发射位消费)'),
     ('levelup', 'pop_slot'): (
         '判据/闭式', '不旁路', 'D-lv7(OPEN 检查点;决策迹理由显式)'),
-    ('levelup', 'saturation_floor'): (
-        '状态函数', '不旁路', 'g*=10×cap_resolved 单一源重导出(R70-1)'),
-    ('levelup', 'levelup_budget_gate'): (
-        '门', '不旁路', 'P72 (3) 全段预算闸(p72-full-band-budget-gate'
-        '+;P71-b 溢余段形态全段化,M3 两域+L3 发射位消费,'
-        '义务侧量闸)'),
+    ('levelup', 'guarantee_floor_gate'): (
+        '门', '不旁路', 'P72(3a) 内保底金门(line_and_upgrade §2.3'
+        ' 单一裁决:发射前全域最终硬检查,花后金 ≥ 1 息档)'),
     # —— criteria/refresh(01_math_framework §3.4)——
     ('refresh', 'r0_stop'): (
         '门', '不旁路', 'R10-3(结构位,与 crisis_refresh_invariant 同族)'),

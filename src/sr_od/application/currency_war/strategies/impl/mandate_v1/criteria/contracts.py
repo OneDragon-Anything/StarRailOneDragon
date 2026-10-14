@@ -121,17 +121,6 @@ def _gold_minus_reserve_ctx(ctx: ContractCtx) -> bool:
     return ctx.gold is not None and ctx.reserve is not None
 
 
-def _budget_gate_ctx(ctx: ContractCtx) -> bool:
-    """P71-b 预算闸前提:现读金与等级驱动 cap 在场。
-
-    闸值分量 g* 依赖 cap_resolved(消费位传 cap_resolved_of_session
-    口径)、闸比较依赖决策帧现读金——缺任一即语境未核验,弃权
-    (fail-closed,与先例②同型)。ρ/Σ预留分量对合格集空自带 0 兜底
-    (refresh.r2_card_reserve 契约),不另设前提。
-    """
-    return ctx.gold is not None and ctx.deploy_cap is not None
-
-
 def _arm1_cap_level_driven(ctx: ContractCtx) -> bool:
     """先例③前提:arm1 板满口径=等级驱动 cap(禁固定常数)。
 
@@ -247,12 +236,20 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     ('sell', 'funding_support_sell'): Contract(
         None, '支付支撑通道(两臂同开;触发=金不足自带 gold<need 门)',
         '02_mandate_layer §2/§7+BYPASS_TABLE 行(R13-5/R14-4 支付支撑通道)'),
-    # —— criteria/levelup ——
-    ('levelup', 'arm2_schedule'): Contract(
-        None, 'arm2 调度门(结构守息门,零 λ 依赖)', 'BYPASS_TABLE 对应行(门)'),
-    ('levelup', 'saturation_floor'): Contract(
-        None, '守息线 g*=10×cap_resolved 重导出(interest.saturation_line 单一源)',
-        '01_math_framework §3.3+interest.saturation_line(R70-1 参数化)'),
+    # —— criteria/levelup(line_and_upgrade §2;迭代
+    #    2026-10-12-prep-shop-workflow-redesign 批 3.4 重轴:arm2 守息门/
+    #    saturation_floor/levelup_budget_gate 量闸已随拦截层删除链退役,
+    #    处置依据 = line_and_upgrade §2.3 处置表)——
+    ('levelup', 'upgrade_trigger'): Contract(
+        _arm1_cap_level_driven,
+        '五臂触发并集:前提=人口位板满口径等级驱动 cap(禁固定常数,'
+        '消费位现读 max_units_of);概率账/停留门辖锁定后 ∧ '
+        'plane2_started 双条件,判据体内自判',
+        'line_and_upgrade §2.1 触发源并集(迭代 2026-10-12)'),
+    ('levelup', 'prob_band_of_cost'): Contract(
+        None, '最优概率带查表(REFRESH_PROB 1..9 域内峰值区间,平顶'
+        '整段;输入全为游戏定义量)',
+        'line_and_upgrade §2.1 停留门(迭代 2026-10-12)'),
     ('levelup', 'spend_unified'): Contract(
         None, 'P48 整买纪律(M3 义务侧消费)',
         'P48 命题+11_shop_decisions(D-BUYNOTE 修复池编号,原文考古走 git 历史)'),
@@ -274,13 +271,11 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     ('levelup', 'pop_slot'): Contract(
         None, 'D-lv7 OPEN 检查点(满编+富金+候补升 cap)',
         'D-lv7 修复池(原文考古走 git 历史;现行=本判据与决策迹)'),
-    ('levelup', 'levelup_budget_gate'): Contract(
-        _budget_gate_ctx,
-        'P72 (3) 全段预算闸(P71-b 溢余段形态全段化):前提='
-        '现读金与等级驱动 cap 在场(息档 τ 与退化锚 g* 依赖 '
-        'cap_resolved 口径,禁固定常数;ALL IN 豁免与支A 兑现链在'
-        '判据体内自判,不另设前提)',
-        'p72-full-band-budget-gate §1+§2.5'),
+    ('levelup', 'guarantee_floor_gate'): Contract(
+        None, 'P72(3a) 内保底金门(发射前全域最终硬检查,花后金 ≥ '
+        '1 息档;出辖两支 = 终局域末战 ALL IN/买断制,判据体内自判)'
+        '——前提恒真',
+        'line_and_upgrade §2.3 P72(3a) 内保底金门行(单一裁决消两读)'),
     # —— criteria/refresh ——
     ('refresh', 'r0_stop'): Contract(
         None, 'R0 维持结构门(结构位,输入=店面快照+金,恒良定义)',

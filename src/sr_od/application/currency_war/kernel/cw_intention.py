@@ -948,7 +948,9 @@ def _p1_pair_overwindow(pair: tuple[str, ...],
       E(inc)/E(alt) 同物化器同源,超窗判定不失真);
     - R_rem = 场字段求和就地自算(裁决点 9:框架不供视界量;封顶
       modeled planes,位面 ∉ 序列表键集(含 P3)= 建模域外 → 0,与
-      策略门面 horizon 契约同款;与 cw_economy._upgrade_ul_threshold_ok
+      策略门面 horizon 契约同款;与策略层概率账(criteria/levelup.
+      prob_account_ok 的 R_剩余就地自算段——原 cw_economy.
+      _upgrade_ul_threshold_ok 已随升级判据重轴批退役)
       同式互锚,两处禁单侧改式);
     - 零新常量:比较即判据,出口与超窗同一比较单一源。
 
@@ -964,7 +966,8 @@ def _p1_pair_overwindow(pair: tuple[str, ...],
     e_f = (e_rounds(target, gs, reg, session=session)
            if target is not None else math.inf)
     # R_rem 就地自算(T-8 裁决点 9:框架不供视界量,场字段求和,封顶
-    # modeled planes;与 cw_economy._upgrade_ul_threshold_ok 同式互锚,
+    # modeled planes;与策略层概率账(criteria/levelup.prob_account_ok
+    # 的 R_剩余就地自算段——原 _upgrade_ul_threshold_ok 同式互锚承接)互锚,
     # 禁单侧改式)。位面 ∉ 序列表键集(含 P3)= 建模域外 → 0。
     _tb = gs.node_seq_by_plane.value or PLANE_NODE_TABLES
     r_rem = (sum(len(t) for k, t in _tb.items() if k >= plane_of(gs))

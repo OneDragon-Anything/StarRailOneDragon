@@ -1,11 +1,14 @@
 """买经验动作 op(CwActionLevelUpOp)——动作 op 重组批③ 换壳(原
 ``PrepLevelUpOp``,ActionOp ABC → 框架 SrOperation;机械执行后 **op 内
 直调自己的上报函数** ``report_action_level_up_param``,零分派,op-layer.md
-§1.2 动作 op 契约)。逐帧单击形态。非终结。
+§1.2 动作 op 契约)。
 
-命名申报:``CwActionLevelUpParam``/``CwActionLevelUpShopParam`` 同字段双
-类型共用本 op(注册表两行同指,上报 = 同一函数;原商店域
-``cw_level_up_action.LevelUpOp`` 生产不可达,随批③文件删除)。
+**整批连点形态**(迭代 2026-10-12-prep-shop-workflow-redesign 批 3.4;
+line_and_upgrade §2.2「一次买齐」):动作参数携带授权批击数
+(``CwActionLevelUpParam.clicks``),本 op 单次执行内连点该击数——
+决策帧零介入 = 授权后不再逐帧重闸,「买一半」缺陷(逐帧单击 × 静态
+阈值逐帧重闸,血支付中血量跌回阈值之下即停止发射)的机制级修复。
+缺省 clicks=1 兼容历史单击调用面。非终结。
 """
 from __future__ import annotations
 
@@ -22,6 +25,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
+    ShopActionExecuted,
     game_state_from_ctx,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
@@ -35,8 +39,8 @@ if TYPE_CHECKING:
 
 
 class CwActionLevelUpOp(CwOperation):
-    """买经验(R6 逐帧单击形态:找钮 → 单击 → 固定等待,零授权零计数)。
-    非终结。"""
+    """买经验(整批连点形态:找钮 → 连点授权击数 → 等待;授权批击数
+    由决策侧预授权携带,执行零重闸)。非终结。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False
@@ -51,15 +55,14 @@ class CwActionLevelUpOp(CwOperation):
 
     @operation_node(name='level_up', is_start_node=True)
     def run(self) -> OperationRoundResult:
-        """买经验单击(R6 逐帧单击形态:找钮 → 单击 → 固定等待)。
+        """买经验整批(line_and_upgrade §2.2 一次买齐:授权批击数在
+        决策侧预授权帧算定,执行帧不再重闸——实付上界 = 授权值)。
 
-        执行器授权面全删(粒度定案:发射面逐击现算):
-        授权击数推导/血闸整级授权/逐击金地板全部上移发射位(kernel
-        ``clicks_to_next_level`` 现算击数 > 0 = 每帧发射前置)。升 N 击 =
-        N 帧(决策循环逐帧重组,单击形态)。
-
-        经验/等级/金真值 = 上报函数单点直写(单击击数自算 = 1;金腿 =
-        ``action.cost`` 直写,cost = 发射面 xp_click_cost 现算装载)+ 下一帧
+        执行 = 单次 op 内连点 ``clicks`` 击(决策循环零介入,防「逐帧
+        单击 × 静态阈值逐帧重闸」的部分级复发);击数缺省 1 = 历史单击
+        调用面兼容。经验/等级/金真值 = 上报函数单点直写(击数 =
+        ``executed.levelup_clicks`` 喂实际连点数;金腿 = ``action.cost``
+        ×clicks 直写,cost = 发射面 xp_click_cost 现算装载)+ 下一帧
         观察对账族双通道。单击价本处现算仅作 detail 显影。
         """
         action: CwActionLevelUpParam = self.param
@@ -77,6 +80,7 @@ class CwActionLevelUpOp(CwOperation):
             # round_fail 经执行缝 = emitted=False 未发出事实,下帧重派重读。
             return self.round_fail(
                 '「备战标识-购买经验」area 缺失,禁兜底坐标交回重读')
+        clicks = max(1, int(getattr(action, 'clicks', 1) or 1))
         # 单击价容器读口(kernel 单一源,失读回退兜底价;与假环境执行缝同式)
         _price = XP_CLICK_COST_FALLBACK
         if session is not None:
@@ -86,7 +90,8 @@ class CwActionLevelUpOp(CwOperation):
             _price = xp_click_cost(game_state_of(session))
         if cw_sim_ports.mechanical_io_allowed():
             ex._ctx.controller.mouse_move(btn)   # 防吞点击(review M-5)
-            ex._ctx.controller.click(btn)
+            for _ in range(clicks):
+                ex._ctx.controller.click(btn)
         # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
         # 光标 parking(审计 P0,2026-08-16 = M38 level 毒化注入点):按钮距等级显示区 18px,
         # 点击后光标压住 Lv.N 区 → 下帧 OCR 读错(4 毒化 3 位面的链头)。park 后再继续。
@@ -100,14 +105,15 @@ class CwActionLevelUpOp(CwOperation):
                 game_state_of(session).effects.on_level_up()
         except Exception as e:   # noqa: BLE001  观测失败不阻塞对局
             log.warning('[cw][levelup] effect inventory 挂点失败(不阻塞): %s', e)
-        # —— 自上报(机械发出后;op-layer.md §1.2):单击击数自算 = 1 ——
+        # —— 自上报(机械发出后;op-layer.md §1.2):击数 = 本批实际连点数 ——
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_level_up_param(
                 gs, action,
                 ChannelSig(family='logic_action',
-                           actor=type(self).__name__, mode='compute'))
-        detail = (f'买经验单击 1 击花金{_price}'
-                  '(逐帧单击形态;级真值=下一帧观察 reconcile)')
+                           actor=type(self).__name__, mode='compute'),
+                executed=ShopActionExecuted(levelup_clicks=clicks))
+        detail = (f'买经验整批 {clicks} 击花金{_price * clicks}'
+                  f'(单价{_price};级真值=下一帧观察 reconcile)')
         log.info(f'[cw][levelup] {detail}')
         return self.round_success(detail)

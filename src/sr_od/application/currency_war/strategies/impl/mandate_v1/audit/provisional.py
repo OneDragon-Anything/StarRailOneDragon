@@ -1,15 +1,19 @@
 """【拟】未标定项 fail-closed 开关注册表(01_math_framework §6 第 3 形态;
 原 design_economy §E4.0 第 3 条已删档,考古走 git 历史)。
 
-静态登记 【拟】清单(批时快照)+ 换线/升档器后补槽位
-(θ/D_min/δ/χ/p_rec/血线阈值/N_crisis 等)。**计数口径单一声明(IMPL_ADV_R194
-症3,禁三处三种组成)**:【拟】清单 = **13 个编号行**(#1-#13);本表槽位 = 13 个,
-换算式=13 行 −#11(零槽位,由 statefn/lambda_death.py λ 表承载,该条系
-「分层直测表带 CI 先行」的载体指定而非【拟】None 槽位语义)+#2 拆 V_MS/V_GAP
-两槽(同源单标定,禁双源)。每项一个 ``Optional`` 槽位,
+静态登记 【拟】清单(批时快照)+ 后补槽位
+(θ/D_min/δ/χ/p_rec/N_crisis 等)。**计数口径单一声明(IMPL_ADV_R194
+症3,禁三处三种组成)**:【拟】清单 = **13 个编号行**(#1-#13,#11 零槽位
+——由 statefn/lambda_death.py λ 表承载,载体指定而非 None 槽位语义;
+#2 拆 V_MS/V_GAP 两槽,同源单标定禁双源);本表槽位 = 逐槽实存集,随
+消费面退役撤槽(BLOODLINE_HP_THRESHOLD/F7_CONTINGENCY_ARMED/
+P_LAMBDA_QUANTILE 已随血线地板/λ 顾问删除链撤账——迭代
+2026-10-12-prep-shop-workflow-redesign 批 3.4)、随消费面登记后补
+(V_C_MINUS_V_F/E2_CONCENTRATION_BAND/MERGE_PROGRESS_X2/
+LEVELUP_MISSING_SET_AGG)。每项一个 ``Optional`` 槽位,
 **缺省 None = 对应判据分支 fail-closed**;标定值只能经本模块 ``inject``
 显式注入(带 CI 对象)——「注入即开闸」事故(TUNING#1/#2)的结构性防线,
-禁散落各判据文件。注入形态值(θ=1.0/δ=0.15/D_min=2、血线阈值 hp=15 等
+禁散落各判据文件。注入形态值(θ=1.0/δ=0.15/D_min=2 等
 量级论证级值)系 sim 驱动专用,显式标「注入形态,非生产开闸口径」
 (R24-2/R36-2)——生产开闸须标定批 CI 验收五件套(R4-F6/§5.3 对拍 2)。
 
@@ -86,16 +90,16 @@ _SLOTS: dict[str, _Slot] = {
     'CONV_GOLD_PER_ROUND': _Slot(
         'χ 金→轮折算率(R44-1【拟·语料拟合】,依附 λ 表版本;None=窗口帧 C_stay/χ fail-closed)'),
     'P_REC': _Slot('换线塌缩回补概率 p_rec(R38-2【拟:0】期望形态)'),
-    'BLOODLINE_HP_THRESHOLD': _Slot(
-        '血线硬地板阈值(R27-1②【拟】;注入形态=hp15 血带结构锚,R36-2)'),
     'N_CRISIS': _Slot('危局阀标定输入 N_gate(R64/R65;标定账=sim 轨迹真值)'),
     'P3_LENGTH_STAT': _Slot('P3 长度统计量(R41-3【拟·语料统计】;通关语料出现前不可填)'),
-    'F7_CONTINGENCY_ARMED': _Slot('应急期 F7 独立分键 f7_contingency_armed(R38-3)'),
-    # λ 顾问分位参数 p(R28-1 相对分位触发;R41-5② 注入口径先例=带扫中心经
-    # 本槽注入,sim 驱动专用)。步4 批补槽:None 期 λ 顾问触发信号构造性 ⊥
-    # (R29-1),仅影子求值进遥测——槽缺位会使求值位两读,补齐系缺口闭合
-    # (STEP34_REPORT 呈报项,非数值语义变更)。
-    'P_LAMBDA_QUANTILE': _Slot('λ 顾问相对分位 p(R28-1;R29-1 None 期不评估)'),
+    # —— 升级判据重轴批登记(迭代 2026-10-12-prep-shop-workflow-redesign
+    #    批 3.4;line_and_upgrade §2.1/§4 两处同口径声明)——
+    # 缺件集聚合口径:None = 单核代表(在产保守形态);求和/瓶颈口径为
+    # 切换候选【拟·owner = 编排者、期限 = 一个对局周期】——未决前一律
+    # 单核代表,禁混用。消费端 = criteria/levelup.prob_account_ok。
+    'LEVELUP_MISSING_SET_AGG': _Slot(
+        '升级概率账缺件集聚合口径(None=single_core 单核代表;sum/bottleneck'
+        ' 为切换候选,line_and_upgrade §2.1/§4 统一登记集成员)'),
     # —— 锁线夹界槽位(math_proofs P76 §5.5 落码批;规约态,
     # evidence_gate 全仓零消费点,接线批装配后才进决策路径)——
     # 完成溢价 Δ=V_C−V_F:P76 §7 #1 挂 V_ms【拟】同源单标定禁双源,标定批

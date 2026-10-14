@@ -186,14 +186,11 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
     缺口率)/``t1_pullback_gold_ge_gstar``(回拉后逻辑态金 ≥ g* 帧数=金位
     轨迹)。
 
-    凑息禁令(血线硬地板解锁包件②,≤15 族在册授权):死亡线帧不凑息
-    ——金不卖回,当轮转化优先(14号稿 §5.4 Y7 口径);返回
-    ([], 'blood_floor') 零静默分键。P2 半边 =
-    p2_blood_floor_unlock 合成(设计出处 = p2_blood_band_unified_design/
-    DESIGN.md §2.1 凑息禁令直移植,裁定条目 = 241 §15.2 覆①消费让位;
-    授权闩 False 期间恒不触发,P2 帧凑息行为零变更),拒因键
-    'p2_blood_floor' 与 P1 域 'blood_floor' 分键禁并(键族零交集,
-    统一设计稿 §4-8)。
+    凑息禁令(血线硬地板解锁包件②)已随血线地板删除链退役(迭代
+    2026-10-12-prep-shop-workflow-redesign 批 3.4;line_and_upgrade §2.3
+    血线地板解锁行——唯一消费方 = 已废止的血线解锁;正典依据
+    user_playstyle [39]「HP 不作决策依据」,濒死响应 = 修经济/阵容
+    本身,凑息卖回不受血线辖)。
 
     合成素材拒入守卫(G-S1):候选与场上(state.deployed ∪ bench,含
     自身)另有同名同星副本 ⇒ 2/3 合成进度素材,拒因键
@@ -218,14 +215,6 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
     成员 = 卖掉意图已死的近零值资产,正是燃料类语义(P78-5′ 对价豁免
     条款照常辖,无新增豁免需求)。
     """
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
-        p1_blood_floor,
-        p2_blood_floor_unlock,
-    )
-    if p1_blood_floor(state):
-        return [], 'blood_floor'
-    if p2_blood_floor_unlock(state):
-        return [], 'p2_blood_floor'
     # 空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
     # 板空帧卖储备换金 = 期权损失换零净金(1★ 全额退),弱劣拒帧。
     # deployed 读 = 容器行域单一源(守卫与资格循环两处共用同一次

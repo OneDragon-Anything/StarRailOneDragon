@@ -180,7 +180,8 @@ def r2_card_reserve(k_members: tuple[str, ...],
     (shop.py R1 段)按 L* 重估传入——R1 已选等级的出牌面辖 R2 预留
     卡价(用当前级过滤会在 L*≠当前级帧错档)。P71-b 预算闸消费取
     缺省当前级:闸在升级授权前评估,预留口径与 P54 floor「满息档 +
-    至少一张命中卡可买」同帧同等级(见 levelup.levelup_budget_gate)。
+    至少一张命中卡可买」同帧同等级(花后金下界 = levelup.
+    guarantee_floor_gate 同链)。
 
     证明单一源 = p54-r2-interest-floor §②(零新自由参数:ρ 锚
     CHARACTERS 注册表 cost,非字面量)。可追过滤与 R1 装配侧

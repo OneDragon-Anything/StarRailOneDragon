@@ -300,14 +300,19 @@ S1_RESET_ROUTE_TAGS: frozenset[str] = frozenset({
 @dataclass
 class CwActionLevelUpParam:
     cost: int        # 本次「购买经验」单击花金(:一次点击 = +XP_PER_BUY 经验,非整级;凑够门槛才升级)
+    clicks: int = 1
+    # 本动作携带的购买击数(整批发射形态;迭代 2026-10-12-prep-shop-
+    # workflow-redesign 批 3.4——line_and_upgrade §2.2 一次买齐:授权批
+    # 击数 = 门槛表差值折击数,实付上界 = clicks×cost ≤ 授权值)。缺省 1
+    # = 单击形态(历史逐帧单击发射的兼容值;执行器按本字段连点)。
     auth_basis: str = ''
     # 授权依据**记录**字段(非指令):
-    # 放行臂名('pop_slot'=①[33]人口位 / 'dp'=②DP 花费授权 /
-    # 'static_ev'=③静态 EV 平台账;''=未过 ev.levelup_ev_authorized 的
-    # 旧调用/未接线路径)。由 arbiter 升级门与 remediation 补偿臂在
-    # **放行时**写入(sim 账本 actions 侧序列化为 CwActionLevelUpParam 行的 auth 键,
-    # 检查器 levelup_interest_engine_gate 消费)。仿 CwActionSellBenchParam.income
-    # 「记录不是指令」形态——执行层不读此字段,行为零改动。
+    # 放行臂名(现值域 = criteria/levelup 五臂键:'pop_slot'=人口位[33] /
+    # 'arm0'=need>level 机制臂 / 'must_spend'=溢余段-L3 / 'stay_gate'=
+    # 停留门升级优先臂 / 'prob_account'=概率账;''=未接线路径)。
+    # 由发射位在**放行时**写入(记录非指令——执行层不读此字段,行为
+    # 零改动;sim 账本 actions 侧序列化为 auth 键)。仿
+    # CwActionSellBenchParam.income「记录不是指令」形态。
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 
@@ -328,6 +333,7 @@ class CwActionLevelUpShopParam:
     # 不重声明则 decide_shop_screen 的 CwActionLevelUpShopParam(cost=…, auth_basis=…)
     # 构造被误判 kwargs 违例(2026-09-02 L3 暴露)。
     cost: int = 0
+    clicks: int = 1
     auth_basis: str = ''
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})

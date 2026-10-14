@@ -176,10 +176,15 @@ def channel_capacity(gs: GameState, session: StrategySession,
                      registry: DecisionV2Registry) -> int:
     """C_t = 升级计划费 + 非期权可买账 + 刷价×刷新预算。
 
-    刷新分量取 ``refresh_ev_budget`` 预算式(查表核单一址,预算收权
-    批 ;合法 0 帧契约见该函数 docstring)。接缝符号懒 import
-    自 kernel 侧 cw_economy(局部别名绑定):monkeypatch 桩点重钉至
-    cw_economy 符号后经属性访问动态解析,拦截语义不变。
+    升级计划费分量消费 ``schedule_upgrade``(人口位单臂——概率级②臂
+    已随升级判据重轴退役,迭代 2026-10-12-prep-shop-workflow-redesign
+    批 3.4;line_and_upgrade §2.3 升级②臂行:概率改善排程语义由策略层
+    概率主账承接,锁定后 ∧ plane2_started 双条件消费,其攒批由升级
+    预授权链承载不经 C_t)。刷新分量取 ``refresh_ev_budget``
+    预算式(查表核单一址,预算收权批;合法 0 帧契约见该函数
+    docstring)。接缝符号懒 import 自 kernel 侧 cw_economy(局部别名
+    绑定):monkeypatch 桩点重钉至 cw_economy 符号后经属性访问动态
+    解析,拦截语义不变。
     """
     from sr_od.application.currency_war.kernel import cw_economy as _ke
     total = 0

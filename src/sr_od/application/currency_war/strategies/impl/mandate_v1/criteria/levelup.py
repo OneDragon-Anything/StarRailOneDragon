@@ -1,14 +1,28 @@
-"""criteria/levelup——升级面判据(§2.3;M3 触发信号 arm1_existence 在
-statefn/predicates,不在本域)。
+"""criteria/levelup——升级面判据(概率主轴 + 整级预授权)。
 
-D-BUYNOTE(修复池执行层附注,随批收编):新核买牌/升级发射器内嵌
-P48 整买纪律常量判据——``spend_unified`` = XP 仅整批够升级时放行
-(181254 r7/r8 各 4 金散买 XP 零收益的防复发锚)。
-D-lv7(OPEN 检查点):``pop_slot`` 对「满编+富金+bench 有候补」的
-覆盖核查——本模块 ``pop_slot`` 落位并显式给不触发理由进决策迹。
+判据体系 = 迭代 2026-10-12-prep-shop-workflow-redesign 批 3.4 落码
+(设计唯一源 = details/line_and_upgrade.md §2;触发五臂/支出形态/
+拦截层处置逐节对齐):
+
+- **触发五臂并集**(§2.1):arm0(need > level 机制臂)∨ 人口位(三元
+  谓词)∨ 溢余段-L3 ∨ 概率账(辖锁定后 ∧ plane2_started 双条件)∨
+  停留门升级优先臂(同双条件——P1 硬规则锁定子局星级目标存在仍不辖,
+  判据位排除 P1 冲级);
+- **支出形态**(§2.2):判据通过 → 整级预授权(置键含授权批成本/
+  授权血成本上界)→ 变现序列(每帧一卖至缺口闭合或候选穷尽)→
+  执行帧发购买经验整批(实付上界 = 授权值,不再逐帧重闸)→ 清键
+  ——「买一半」缺陷(逐帧单击 × 静态阈值逐帧重闸)的机制级修复;
+- **拦截层**(§2.3 处置表):保留 = 保底金门(``guarantee_floor_gate``
+  ——发射前全域最终硬检查)/ P21 血预算线(``level_spend_blocked``)/
+  等级帽闸(``lv9_stop``/``xp_ledger_stop``);已退役 = 调度守息门
+  (arm2 结构守息门——息线纪律由 [17] 溢余语义承载,行为等价)/
+  P72(3a) 全段式量闸(其「整批推迟」与概率主轴攒钱语义合并,预留
+  保护由整买预留约束承接)/ λ 顾问(生产态构造性零介入,撤槽 =
+  工程清理)/ 血线地板解锁(濒死响应 = 修经济/阵容本身)。
 """
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -35,9 +49,8 @@ def lv9_stop(level: int, level_max: int) -> bool:
     上限)毫无数值或语义关联,禁接错源。
 
     ``level_max`` = 消费位传上下文注册表的 ``.level_max``(禁裸常数),
-    **必填**:4 消费位(shop M3 批/shop 溢余段 L3/mandate 备战 M3/
-    entry posture 镜像)已全量接线,过渡缺省通道已随 mandate 接线拆除
-    (挂账收口);禁新消费位依赖缺省。
+    **必填**:消费位(备战第 3 步/会话内升级检查两处)已全量接线,
+    过渡缺省通道已随 mandate 接线拆除(挂账收口);禁新消费位依赖缺省。
     """
     return level >= level_max
 
@@ -82,33 +95,12 @@ def xp_ledger_stop(xp_progress: tuple[int, int] | None,
     return int(xp_progress[1]) >= threshold
 
 
-def arm2_schedule(gold: int, cap_resolved: int, *, gate_open: bool = False,
-                  ) -> bool:
-    """arm2 调度门(R5-4 范畴定谳:门,无发射;臂①=门关闭恒 false)。
-
-    结构守息门(R26-H1 后保留成分):金下限 g*=10×cap_resolved
-    (L-R3-3 引理 1 同源,零 λ 依赖)——arm2 触发的调度类批金条件。
-    ``gate_open`` = 升档器信号位(血线地板触发帧解锁:g*→0,R28-2;
-    λ 顾问触发帧延迟 arm2 调度类批 ⇒ false)。
-    """
-    floor = 0 if gate_open else saturation_floor(cap_resolved)
-    return gold >= floor
-
-
-def saturation_floor(cap_resolved: int) -> int:
-    """守息线 g* = 10×cap_resolved(单一源=statefn/interest.saturation_line
-    的重导出消费口,禁另算)。"""
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
-        saturation_line,
-    )
-    return saturation_line(cap_resolved)
-
-
 def spend_unified(clicks_to_next: int, gold: int, click_cost: int) -> bool:
     """P48 整买纪律(D-BUYNOTE):整批 XP 放行判据。
 
     仅当「一次买齐到下一级」的金够付时放行(clicks×click_cost ≤ gold)
-    ——散买 XP(买不够升级)零收益,拦截。M3 义务侧消费(不旁路)。
+    ——散买 XP(买不够升级)零收益,拦截(line_and_upgrade §2.2 裸金
+    足支的判据位;P72(1) 整买形态 = Leontief 互补的落码载体)。
     """
     if clicks_to_next <= 0:
         return False
@@ -133,338 +125,350 @@ def _max_units_of(state: GameState) -> int:
     return max_units_of(state)
 
 
-def levelup_budget_gate(gs: GameState,
-                        session: StrategySession | None,
-                        gold: int, cap_resolved: int,
-                        k_members: tuple[str, ...], bench: list,
-                        deployed: list, clicks: int,
-                        click_cost: int) -> tuple[bool, str]:
-    """P72 (3) 全段预算闸:升级支出 s 的量闸(全段辖域)。
+# ============================================================ 最优概率带(§2.1 停留门)
 
-    载体 = 容器 gs 单形态(prep 链容器化段 2;entry 姿态镜像/商店线
-    两位/mandate 面消费恒直传 gs)。内部字段读经读口
-    (``_plane_round_of``/``_max_units_of``)。``bench`` = 占席条目域
-    (容器 BenchSlot,身份/星级经解包读口;P4 容器形)、``deployed`` =
-    容器行域单位。
 
-    判据式(证明 = docs/develop/sr_od/application/currency_war/proofs/
-    p72-full-band-budget-gate.md;P71-b (3) 辖域的全段化推广非推翻,
-    溢余段逐字退化零漂移):
+def prob_band_of_cost(cost: int) -> tuple[int, int]:
+    """费用档 → 最优概率带 (下界, 上界)(line_and_upgrade §2.1 停留门)。
 
-    ``g − s ≥ 10·τ(g) + ρ + Σ预留``(P72 (3a) 强读式;τ(g) =
-    min(⌊g/10⌋, cap_resolved),s = clicks×click_cost 整批成本)
+    带 = **搜索域 1..9 内** REFRESH_PROB 概率峰值的等级区间,平顶整段
+    取全部峰值等级(1 费带 [1,3] 类)——成员由 REFRESH_PROB 直接计算。
+    禁写成「全域最高值区间 ∩ ≤9」:4/5 费全域峰在 lv10(0.40/0.25),
+    截掉得空集;域内峰口径下 4/5 费带 = [9,9](lv9 的 0.30/0.10)。
 
-    - 息档零侵蚀 + 购买力保底:花后金位不低于「当前息档最低金位 +
-      一张命中卡 + 下帧窗口预留」——升级不花「正在生息的钱」;
-    - g > g* 帧 10·τ(g) = g*,逐字退化回 P71-b (3)(证明 §1 退化
-      一致性,已落码溢余段行为零漂移);
-    - g ≤ g* 帧(中间段)不再空过放行:旧 ``gold <= g_star`` vacuous
-      分支即 T-93 签名 A 真洞——「义务买牌先花钱 + 逐击发射」组合
-      把金潜到息线以下(30 局插桩 20% 局息损潜行,fix_p71_bypass/
-      方案设计 §2.3);全段化后中间段逐帧管账。
-
-    三分量口径(全部已证单一源,P72 §6 零新自由参数核对表):
-    - τ(g) = ``kernel.cw_economy.interest(gold, cap_resolved)`` 直消费
-      (息律档数分量单一源,禁第二实现;cap_resolved 必须传
-      cap_resolved_of_session 口径——投资覆写语境裸 level 推 cap 会
-      错线,消费位禁偷懒);
-    - ρ = ``refresh.r2_card_reserve``(合格集最低费卡价,P54 §②);
-    - Σ预留 = 下帧窗口一张命中卡价——与 ρ 消费**同一函数同参**
-      (P54 A2 单刷波粒度整数下界)。⚠ 两分量并存是语义角色差异,
-      多数帧数值相同不是重复项、禁删一:ρ = 本轮升级后买卡臂对一张
-      命中卡的即时购买力;Σ预留 = 下帧窗口的购买力预留(
-      三分量声明承继,并存保判据式与证明同形)。
-    等级过滤口径:ρ/Σ预留取当前级(闸在升级授权前评估,与 P54 floor
-    同帧同等级);R1 形式二的 L* 目标级重估是刷新语境,不辖本闸。
-
-    ALL IN 豁免支(P72 §2.5,新增交互):位面末 boss 末战帧 R=0 ⟹
-    L(g,s,0,Ī)≡0 且息/购买力无消费主体,(3a) 的保护对象(未来息流)
-    不存在——机会成本恒零,预算闸前提不成立,放行花光。豁免谓词 =
-    ``plane_last_battle`` 单一源(经本模块 ``_plane_last_battle`` 重导出
-    委托),与 level_spend_blocked 的 (2) 支 ALL IN 豁免同谓词同帧
-    判定(证明 §2.5 合取序,禁「(2) 豁免了 (3) 还拦」的分裂);
-    ``session`` 参数即为其 nodes_of_plane 真值链新增。
-
-    ALL IN 豁免支收窄(泄金阶梯批,F5 豁免
-    语义迁移申报行;指标 G=P21 域内非支A XP 支出=0):豁免的 XP 类
-    通道按「当轮可上场」类别白名单过滤——hp 落停升级线内
-    (``kernel.cw_discipline_rules.all_in_xp_domain_hit``,P21 域,
-    复用停升级线锚表零新参数)∧ 支A 兑现链未就绪(``_realize_chain_
-    ready`` 单一源)的帧,升级收益兑现 ≥1 战之后(P21 到账延迟),
-    位面末花光的类别白名单不含 d≥1 经验批 → 拒(拒因分键
-    ``all_in_xp_category_filtered``,零静默)。支A 形态(板满 ∧
-    bench 有 2★ 等待件 = 升级人口位当帧可兑现,下方既有支)与域外
-    帧(hp>停线)维持全豁免。宪法姿态:消费既有停升级线 hp 读数,
-    零新增 hp 消费点(总图 N5 对账);「R=0 机会成本恒零」论证在
-    d≥1 类不成立(收益兑现主体已死亡概率辖域,P21),非推翻豁免
-    本体——时机判断([18])保留,变的是类别结构。
-
-    保底金门(T-149;``_guarantee_floor_holds`` 判据本体):
-    ALL IN/支A 两豁免支的放行输出上追加第二条件「花后金 ≥ 1 息档」
-    ——豁免支只有放行谓词没有花后下界时,可把金花穿到 0(0 金过 P1
-    = 息通道死 + 购买力通道死,T-126 病理;缺口本体在豁免支结构,
-    d15ce341 回滚只拆了放大器)。推导链(数学先行,零拍定):域③
-    「非末位面持金未来效用 > 0/息档纪律辖」(math_proofs P83,权威 =
-    用户直接指令 2026-09-08 + P47 A6 全局轴)⇒ 下界须落在息档结构上
-    ⇒ g ≥ 10 是「下一向位面首息存在」的机制判等式(interest 的
-    10 = 息档宽 = 斜率倒数,g<10 首息恒 0)⇒ 「保一档不多保」=
-    最小绑定支配论证(扩档须先补第 2 档转化机会成本在册账,禁静默
-    蠕升)。下界值单一源 = ``DEFAULT_REGISTRY.boss_floor``(**同值
-    异据共享载体**:彼据 = release 泄息通道 P1 出口金生存边际
-    ;此据 = 息通道非退化——两据独立在案,任一据修订必须过
-    另一消费位重推,断言只锁同值不锁同据)。出辖三支(判据见
-    ``_guarantee_floor_holds``):终局域(R_全局 查表判定,消费
-    ``statefn/horizon.r_remaining`` 门面单一源禁自推位面数,01
-    §8-1 位面参数化)/生存域(``p1_blood_floor`` 让位,真花光唯一
-    合法通道)/买断制(cap_resolved=0 息账整体消解,p47 A1)。
-    (3a) 非豁免路径行为零漂移:本门只辖两豁免支的放行输出,闸序
-    与 (3a) 判据式一字不动。推迟 = 整批推迟(P48 整买辖域,禁按
-    闸值截断击数),拒因独立分键 ``guarantee_floor_defer``(与
-    ``levelup_budget_gate_blocked`` 分键区分,XP 花穿 vs 买入通道
-    花穿可归因);推迟终止性 = 定性申报非定理(g 非单调,M2/E_rev/
-    funding/P36-a 均可合法减 g;三条退出路径 = 谓词消失/g−s 越线/
-    减通道在册有界;位面末帧 defer = 跨位面兑现——等待件/等级/金
-    跨位面继承,批在下一向位面继续可发),持续 defer 由分键显影。
-
-    支A(C_realize=1 兑现链放行):板满 ∧ bench 有 2★ 等待件 = 升级
-    人口位增量当帧可兑现——谓词与 ``kernel.cw_economy.schedule_upgrade``
-    ①臂 / ``_upgrade_ul_threshold_ok`` ΔV_pop 指示项**成同步锚对**
-    (同一 P39 指示项,改谓词多处同改,见 ``_realize_chain_ready``)。
-    P39 ②「骨架义务 M3,arm2 无权否决存在性」:全段化若缺本支,
-    arm1 帧会被量闸否决存在性——本支是 P72 消解该否决的 sanctioned
-    机制(证明 §1 支A 姿态声明,沿 schedule_upgrade ①臂短路先例)。
-    **辖域 = 战斗帧**(2026-09-08 奖励帧策略审查;schedule_upgrade ①臂
-    同款辖域注的锚对位):「当帧可兑现」隐含帧上有战斗,奖励帧无战斗
-    → 本支收益面在奖励帧不适用,该帧由 规则①抑制先辖
-    (抑制判据在本闸求值之前短路,shop M3 消费位代码序承载)。本注只
-    声明辖域,不收窄谓词本体——奖励帧支A豁免的命题化归审查建议②
-    命题批,禁在本判据体上加帧型分支造第二套帧型判定。
-
-    ⚠ P39 接缝处置(落码批核对点 B):(3b) 数值完备
-    账支(``ΔV_band ≥ s + L + 尖括号欠账``,C_realize=0 帧)**本批
-    不落码**——math_proofs P39 明载 ΔV_band「窗口前提证伪的重锚
-    ……禁单独作闸门」,该支在 C_realize=0 帧的收益侧承担项正是
-    ΔV_band 独自,落码即以边界带未裁决量(sim 对拍项 2 在册)作
-    决定性闸门。替代构造 = 承担项换位:全段化放行域由 (3a)(注册表
-    量)∪ 支A(零标定构造谓词)承载,证明辖域内其余帧 fail-closed
-    推迟(缺支B 只收窄放行域、永不放宽;防恒拒由 (3a) 开局结构性
-    宽松承载,证明 §3)。支B 与支A②支(has_deployable 部署面接线,
-    C_realize 完整评价面)挂账随 P39 sim 对拍项 2 裁决落码
-    (01 §6 三要素 3:owner=编排者,期限=一个对局周期;P72 §5
-    边界 3/5 同族观察)。
-
-    行为语义:拒 = 该批升级**整批推迟**(攒到 10·τ(g)+ρ+Σ预留+s 的
-    帧一次买齐)——禁「按闸值截断击数」的部分买(P48 整买 (1) 辖域);
-    推迟目标随金位上移但 g 越过 g* 后固定为 g*+ρ+Σ预留+U_L,存在
-    不动点无「追着息档永远攒不够」的发散(证明 §1 收敛性,禁误读为
-    移动靶)。常开无开关(证明已闭环,strategy-work §3 第 1 档);
-    pop_slot 升级臂不入闸(P71-a 是收益侧分域命题,承继)。
-
-    返回 (可行, 拒因);拒因分键两键——``levelup_budget_gate_blocked``
-    ((3a) 量闸,三处发射位共键)/``guarantee_floor_defer``(豁免支保底
-    门推迟)——独立显影可归因,禁混键。s ≤ 0(无批可发)恒
-    可行:闸辖「升级支出的量」,不制造支出。
+    lv10 出域依据:P35 已证停手窗 lv9→10 恒负 + ``peak_refresh_level``
+    在产表即此口径(1..9 域内取峰,cw_plane_table);带成员与该表的
+    关系 = 带上界取 max(带)(单点峰形态,并列取高档),peak_refresh_
+    level 作域上限校验,非带定义本体(line_and_upgrade §2.1 带成员
+    规则与在产载体关系申报)。
     """
-    if clicks * click_cost <= 0:
-        return True, ''
-    if _plane_last_battle(gs, session):
-        # ALL IN 豁免支收窄(F5;辖域与支A 判据见 docstring):
-        # P21 域内 ∧ 非支A 帧拒 XP;域外帧/支A 形态维持全豁免放行。
-        # 位次申报:本支先于 保底金门——P21 域内 XP 类即便
-        # 生存域/保底让位也拒(类别白名单仅支A)。
-        from sr_od.application.currency_war.kernel.cw_discipline_rules import (
-            all_in_xp_domain_hit,
-        )
-        from sr_od.application.currency_war.kernel.cw_registry import (
-            DEFAULT_REGISTRY,
-        )
-        if not _realize_chain_ready(gs, bench, deployed) \
-                and all_in_xp_domain_hit(
-                    gs, session,
-                    DEFAULT_REGISTRY):
-            return False, 'all_in_xp_category_filtered'
-        if _guarantee_floor_holds(gs, session, gold, clicks, click_cost,
-                                  cap_resolved):
-            return True, ''      # ALL IN 豁免(P72 §2.5;花后下界见上)
-        return False, 'guarantee_floor_defer'
-    if _realize_chain_ready(gs, bench, deployed):
-        if _guarantee_floor_holds(gs, session, gold, clicks, click_cost,
-                                  cap_resolved):
-            return True, ''      # 支A:兑现链当帧可兑现(P39 ①臂姿态)
-        return False, 'guarantee_floor_defer'
-    from sr_od.application.currency_war.kernel.cw_economy import interest
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.refresh import (
-        r2_card_reserve,
+    from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
+    c = min(5, max(1, int(cost)))
+    probs = [refresh_prob(lv, c) for lv in range(1, 10)]
+    peak = max(probs)
+    return probs.index(peak) + 1, 9 - probs[::-1].index(peak)
+
+
+def _held_max_star(state: GameState, name: str) -> int:
+    """同名持有最高星(bench ∪ 场上全场域;未持有 = 0)。
+
+    星级目标完成判定 = 持有最高星 ≥ 必要星级(need_star 以「追到底」
+    语义登记,合成路径的中间拷贝由最高星天然承载,line_and_upgrade
+    §1.5)。"""
+    best = 0
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_units_of,
+        deployed_rows_of,
     )
-    rho = r2_card_reserve(k_members, bench, deployed, gs)
-    window_reserve = r2_card_reserve(k_members, bench, deployed, gs)
-    tau = interest(gold, cap_resolved)
-    if gold - clicks * click_cost >= tau * 10 + rho + window_reserve:
-        return True, ''
-    return False, 'levelup_budget_gate_blocked'
+    front, back = deployed_rows_of(state)
+    for u in (*bench_units_of(state), *front, *back):
+        if u is not None and (u.char_id or '') == name:
+            best = max(best, int(u.star or 1))
+    return best
 
 
-def _guarantee_floor_holds(gs: GameState,
-                           session: StrategySession | None,
-                           gold: int, clicks: int, click_cost: int,
-                           cap_resolved: int) -> bool:
-    """保底金门判据本体(T-149):豁免支花后金下界,真 = 放行。
+def _held_copies_folded(state: GameState, name: str) -> int:
+    """同名持有基础副本折算数(3 合 1:star s → 3^(s-1);bench ∪ 场上)。
 
-    出辖三支先行(任一真 = 不设下界,让位语义各有在册出处):
+    期望刷次的 owned 修正输入(与 kernel ``_owned_core_copies`` 同式;
+    该函数为目标核心私有,本处为任意缺件名的一般化读法)。"""
+    n = 0
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_units_of,
+        deployed_rows_of,
+    )
+    front, back = deployed_rows_of(state)
+    for u in (*bench_units_of(state), *front, *back):
+        if u is not None and (u.char_id or '') == name:
+            n += 3 ** (int(u.star or 1) - 1)
+    return n
 
-    - 终局域:位面末战(``_plane_last_battle`` 单一源)∧ R_全局 ≤ 1
-      (``statefn/horizon.r_remaining`` 门面场字段自算查表;R 含当前节点,
-      决策帧最小值 = 末位面末战的 1;禁自推位面数——宪法 01 §8-1
-      位面参数化不变量)。末位面末战后金无任何消费场景(域③前提
-      失效:P41 终局清仓恒优/P23 死亡域攥金价值恒零),ALL IN 维持
-      花光原语义(P72 §2.5「机会成本恒零」前提仅在全局轴此处成立)。
-    - 生存域:``p1_blood_floor``(≤15 族在册授权,00 §3)——域③的
-      「未来效用」前提在死亡带失效(效用上限被死亡吸收态截断,P23),
-      转化优先语义既有(level_spend_blocked 同源让位);真花光唯一
-      合法通道自此收敛到本域。
-    - 买断制:cap_resolved = 0 ⇒ 息账整体消解(p47 A1),「息档纪律
-      辖」无对象,下界失去推导基座,金出口归一般判据(20 号稿出辖
-      先例同款)。
 
-    下界值 = ``DEFAULT_REGISTRY.boss_floor``(同值异据共享载体,据各
-    表):此据 = 息通道非退化判等式(见 levelup_budget_gate docstring
-    推导链);彼据 = release 泄息通道 P1 出口金生存边际(原消费位
-    ``sim/checks/segments.py`` boss_floor 豁免)已随自驱动引擎退役
-    拆除,考古归 git——同值锁保留,彼据侧修订重推义务随其消费位退役
-    灭失(§同值异据声明/P83)。
-    模块私有:非判据面公开函数,不入契约/旁路枚举表(契约由
-    levelup_budget_gate 键承载)。
+def unfinished_star_targets(state: GameState) -> list[tuple[str, int, int]]:
+    """未完成星级目标集(line_and_upgrade §1.5/§2.1;锁定线 need_star
+    驱动)。
+
+    锁定线 need_star 表中持有最高星 < 必要星级的成员,返回
+    (角色名, 必要星级, 当前实费档)。定义 3★ 就追到底无降档、定义
+    2★ 即完成(§1.5);辅助 1★ 持有即完成,未持有者入集(首张即目标)。
+    费用档 = ``effective_cost`` 当前实费 resolved 口径(银狼系变费后
+    实档,档漂移时带随之重取)。未锁定期 = 空集(停留门辖锁定后,
+    line_and_upgrade §2.1)。
     """
-    if _plane_last_battle(gs, session):
-        from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.horizon import (
-            r_remaining,
-        )
-        if r_remaining(session, *_plane_round_of(gs)) <= 1:
-            return True          # 终局域:末位面末战,域③前提失效
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
-        p1_blood_floor,
-        p2_blood_floor_unlock,
+    from sr_od.application.currency_war.kernel.cw_comps import get_comp
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        effective_cost,
     )
-    if p1_blood_floor(gs):
-        return True              # 生存域:死亡带转化优先,本门让位
-    if p2_blood_floor_unlock(gs):
-        # P2 濒死带生存域同构让位(解锁包件① P2 半边的保底金面;设计出处 =
-        # p2_blood_band_unified_design/DESIGN.md §2.1 同构移植,授权闩合成
-        # 经 p2_blood_floor_unlock)。死亡吸收态截断「未来效用」前提的论证
-        # (P23)位面无关,P1 半边同款;闩 False 期间恒不触发,行为零变更。
-        return True              # P2 濒死带生存域:本门让位(闩合成 fail-closed)
-    if cap_resolved == 0:
-        return True              # 买断制:息账消解,下界无推导基座
-    from sr_od.application.currency_war.kernel.cw_registry import (
-        DEFAULT_REGISTRY,
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.session_scope import (
+        line_members_view,
     )
-    return gold - clicks * click_cost >= DEFAULT_REGISTRY.boss_floor
+    view = line_members_view(state)
+    if not view.locked:
+        return []
+    comp = get_comp(view.comp_name) if view.comp_name else None
+    if comp is None:
+        return []
+    out: list[tuple[str, int, int]] = []
+    for name, need in (comp.need_star or {}).items():
+        need_i = int(need)
+        if _held_max_star(state, name) < need_i:
+            out.append((name, need_i, effective_cost(state, name)))
+    return out
 
 
-def _realize_chain_ready(gs: GameState, bench: list,
-                         deployed: list) -> bool:
-    """P72 支A 谓词:C_realize=1 判定(升级收益的兑现链当帧可兑现)。
+def stay_target_of(state: GameState) -> tuple[str, int, int] | None:
+    """当前停留目标 = 未完成星级目标中费用档最低者(shop_session §2.4
+    多目标停留顺序:先低费后高费,与搜牌等级节奏一致;并列取注册表
+    名序,确定性)。"""
+    targets = unfinished_star_targets(state)
+    if not targets:
+        return None
+    return min(targets, key=lambda t: (t[2], t[0]))
 
-    板满(占用数 ≥ max_units)∧ bench 有 2★ 等待件——与
-    ``kernel.cw_economy.schedule_upgrade`` ①臂及
-    ``_upgrade_ul_threshold_ok`` ΔV_pop 指示项成同步锚对(同一 P39
-    指示项的第三消费位,改谓词多处同改;禁止判据体外的平行实现,
-    本注释与 contracts 锚为登记面非实现副本)。两支全断 ⟹
-    C_realize=0 构造性精确零(证明 §2.3)。模块私有:非判据面公开
-    函数,不入契约/旁路枚举表(契约由 levelup_budget_gate 键承载)。
-    占用判定 = 容器占用(元素非 None 计 1;deployed = 容器行域单位,
-    benchchar-retirement P4 容器形);bench 有 2★ 等待件 = 占席条目
-    经解包读口取星级(占位件无星级,不构成等待件)。
 
-    C_realize ②支(部署面合格谓词,现役单一源 =
-    ``strategies.impl.mandate_v1.deploy_plan.has_deployable_reasoned``,
-    P3 起kernel 不再持有选人/部署语义)随支B 挂账:
-    谓词真源已在策略层,接线需闸+检查器双面重建部署语境,随
-    C_realize 完整评价面批落码;早稿 pop_slot 放宽支系「融资腿」非
-    合格判据(P72 §2.3 勘误锚承继)。
+def _locked_and_plane2(state: GameState,
+                       session: StrategySession) -> bool:
+    """概率账/停留门臂的共同辖域门:锁定后 ∧ plane2_started 双条件。
+
+    P1 硬规则锁定子局星级目标存在仍不辖(P1 不冲级)——概率账收益
+    = P2 起未来刷新期望改善,P1 视界内不消费;P1 经验论证在案(到
+    7 级为 P2 人口目标,P1 冲级与「P1 恒不刷」及经验账冲突,
+    line_and_upgrade §2.1)。窗口谓词形态 = ``plane2_started_of``
+    (3.1 交付,宪法第 2 条合规)。"""
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.session_scope import (
+        line_members_view,
+        plane2_started_of,
+    )
+    return line_members_view(state).locked and plane2_started_of(state)
+
+
+def stay_gate_upgrade_first(state: GameState,
+                            session: StrategySession) -> bool:
+    """停留门升级优先臂(line_and_upgrade §2.1 停留门的主动面)。
+
+    当前停留目标未完成 ∧ 其最优概率带下界 > 当前等级 → 升级触发
+    (升到带内去刷,[3]「目标费用在更高等级概率更大 → 升级」)。三支
+    分派互斥完备:①带下界 > 等级 = 本臂真(升级优先);②等级 ∈ 带 /
+    ③等级 > 带上界(被推过,单调不可降,当前即剩余可达最优)= 本臂
+    假(停留刷新,延迟升级——刷新判据归 shop_session §2.4)。
     """
-    cap = _max_units_of(gs)
-    if sum(1 for d in (deployed or []) if d is not None) < cap:
+    if not _locked_and_plane2(state, session):
         return False
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        bench_slot_unit,
+    target = stay_target_of(state)
+    if target is None:
+        return False
+    lo, _hi = prob_band_of_cost(target[2])
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        level_of,
     )
-    return any(bench_slot_unit(b) is not None
-               and int(getattr(bench_slot_unit(b), 'star', 1) or 1) >= 2
-               for b in (bench or []))
+    return lo > level_of(state)
 
 
-def batch_form(level: int, target_level: int) -> bool:
-    """批量成型判据(M3 批形态:目标级差>0 才有批;义务侧消费)。"""
-    return level < target_level
+#: 概率账缺件集聚合口径的 provisional 槽名(line_and_upgrade §2.1/§4
+#: 两处同口径声明):缺件集多成员的期望改善聚合,现行 = 单核代表
+#: (在产保守形态——多成员同受升级受益帧 benefit 低估 → 检验偏严);
+#: 求和/瓶颈口径为切换候选【拟·owner = 编排者、期限 = 一个对局周期】
+#: ——未决前一律单核代表,禁混用。
+LEVELUP_MISSING_SET_AGG_SLOT: str = 'LEVELUP_MISSING_SET_AGG'
+
+#: 单核代表的槽位注入值语义(求和/瓶颈切换候选的登记面):None =
+#: 'single_core'(单核代表);注入 'sum'/'bottleneck' = 切换聚合口径
+#: ——本批只落单核代表消费,切换值的消费面随标定值注入批接续。
+_AGG_SINGLE_CORE: str = 'single_core'
 
 
-def level_spend_blocked(gs: GameState, session: StrategySession,
-                        registry: DecisionV2Registry | None = None) -> bool:
-    """危机带内整批经验授权让位保命面(实机复盘 g_20260904_054904
-    p2r1 候选③:hp=1 败即死帧 9×CwActionLevelUpShopParam 36g,m3_batch 批授权把
-    67% 金转为本帧零收益经验)。M3 发射位(mandate/shop 两域)消费。
+def _missing_aggregate_mode() -> str:
+    """缺件集聚合口径现读(provisional 槽;None/未注入 = 单核代表)。"""
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import (
+        provisional,
+    )
+    cv = provisional.get(LEVELUP_MISSING_SET_AGG_SLOT)
+    return str(cv.value) if cv is not None else _AGG_SINGLE_CORE
 
-    载体 = 容器 gs 单形态(prep 链容器化段 2;entry 姿态镜像与商店线/
-    mandate 消费恒直传 gs,旧帧过渡支随段 2 帧兼容支删除消亡)。
-    内部血线谓词(kernel ``blood_budget_levelup_blocked``/``p2_crisis_band``)
-    已切容器签名,容器 gs 直读。
 
-    ``registry`` = 上下文注册表(停付线字段 vd_p2_loss 族的单一源口径);
-    三生产消费位(entry posture 镜像/shop M3/mandate 备战 M3)恒注入
-    (同族泛化项收口),``None`` 回读缺省表 = 与
-    entry/shop ``_reg`` 通道同款直调兼容约定,禁新消费位依赖缺省。
+def _expected_refreshes_for_target(level: int, cost: int, need: int,
+                                   owned: int) -> float:
+    """追星目标的期望刷次(完成档张数 k = 3^(need-1):1★=1/2★=3/3★=9;
+    超几何 DP 单一源 = ``cw_shop_odds.expected_refreshes``,pool 参数
+    与 ``expected_refreshes_for_card`` 同表——k 表按 need_star 展开是
+    本口径的一般化,非第二份概率口径)。"""
+    from sr_od.application.currency_war.data.cw_shop_odds import (
+        DISTINCT_CARDS_PER_COST,
+        POOL_COPIES_PER_CARD,
+        expected_refreshes,
+        refresh_prob,
+    )
+    c = min(5, max(1, int(cost)))
+    k = 3 ** (int(need) - 1)
+    return expected_refreshes(
+        refresh_prob(level, c),
+        DISTINCT_CARDS_PER_COST.get(c, 13),
+        POOL_COPIES_PER_CARD.get(c, 9),
+        0, k, owned)
 
-    两支,全部单一源判据,零新自由参数:
-    - ``discipline.blood_budget_levelup_blocked``(decision_v2 同源,
-      P21 已证:hp ≤ 停升级线内升级收益到账 ≥1 战之后,EV=−C−I 严格
-      负,敏感网格全负域免 β)——cw4 栈 M3 此前未消费该门,同帧
-      decision_v2 侧已停、cw4 侧照发 = 双栈语义断层(p2r1 实证帧);
-    - P2 危机带 ``discipline.p2_crisis_band``(hp ≤ ceil(2×vd_p2_loss)
-      ≈41 = P21 d=2「到账更慢」档;经验收益兑现链 ≥2 战,与危机带
-      搜索停付同一判据、同一血线单一源——P48 三段管辖 λ>0 段
-      「转化优先、S 线降级」;与 arbiter._crisis_buy_gate_open 同语义
-      族成对:停未来面、开当轮转化面)。
-    ALL IN 豁免(位面末 boss 战花光,[18])两支共享——blood_budget_
-    levelup_blocked 内含,危机支同判让位(末战花光是时机不是血线
-    判断)。hp 不可信帧由 blood_budget 支 fail-closed 拒付(危机会
-    在内)。
 
-    血线硬地板解锁包件①(≤15 族在册授权,00§3/NMF 在册「不影响发展
-    为主线」条件):死亡线帧(判据单一源 = predicates.p1_blood_floor,
-    阈值常量 = lambda_death.HP_BAND_NEAR_DEATH)M3 破息批**解锁至
-    饱和线下**——p1_levelup_stop_hp 停付线(≈11 ⊂ ≤15 重叠域)以地板
-    为准重裁让位(14号稿 N3①);ALL IN 豁免族同型语义 = 深血线花光
-    是转化时机判断,非血线判断。不可信帧地板 fail 向不判线,停付维持
-    既有 fail-closed。
+def prob_account_ok(state: GameState,
+                    session: StrategySession) -> bool:
+    """概率账(line_and_upgrade §2.1 主判据;辖锁定后 ∧ plane2_started
+    双条件,载体 = 锁定线缺件集)。
+
+    判据式:升一级后「找到缺件的期望刷次下降量」折算的金价值
+    (期望刷次下降量 × 单次刷价 c_eff 画面实读)> 升级整级成本 +
+    期间息损 → 该升。期间息损 = P47 双轨迹递推 L 项(``loss_exact``,
+    输入面 = 金/收入日程/剩余视界,与刷新账同源)。
+
+    缺件集聚合口径 = 单核代表【拟】(provisional 槽
+    :data:`LEVELUP_MISSING_SET_AGG_SLOT`,None = 单核;求和/瓶颈为
+    切换候选):代表 = 缺件集中费用档最低者(与停留目标同序——概率
+    账评估的「找到缺件的期望改善」以同一目标为锚,查表确定式零拟合)。
+    量化地基 = ``expected_refreshes``(P40 超几何 DP)+ REFRESH_PROB +
+    门槛表(``XP_TO_NEXT_LEVEL``)+ 买经验单价(画面实读)。
     """
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
-        p1_blood_floor,
-        p2_blood_floor_unlock,
+    if not _locked_and_plane2(state, session):
+        return False
+    targets = unfinished_star_targets(state)
+    if not targets:
+        return False
+    if _missing_aggregate_mode() != _AGG_SINGLE_CORE:
+        # 切换口径未落消费面:fail-closed 回单核代表(禁未决口径混用,
+        # line_and_upgrade §2.1「未决前一律单核代表」)。
+        pass
+    name, need, cost = min(targets, key=lambda t: (t[2], t[0]))
+    owned = _held_copies_folded(state, name)
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        cap_resolved_of_session,
+        clicks_to_next_level,
+        level_of,
+        loss_exact,
+        net_income,
+        refresh_cost_effective,
+        xp_click_cost,
     )
-    if p1_blood_floor(gs):
-        return False    # 死亡线:转化优先,停付线让位(解锁包件①)
-    if p2_blood_floor_unlock(gs):
-        # P2 濒死带同构让位(解锁包件① P2 半边;设计出处 =
-        # p2_blood_band_unified_design/DESIGN.md §2.1「解锁包三件同构移植」,
-        # 裁定条目 = 241 §15.2 覆①消费让位)。授权闩 False 期间恒不触发
-        # ⇒ P2 深血线停付族(p2_crisis_band 危机支/血预算)照常全额管辖,
-        # 行为零变更(fail-closed,§3.2-3)。
-        return False    # P2 濒死带:转化优先,停付族让位(闩合成 fail-closed)
-    from sr_od.application.currency_war.kernel.cw_discipline_rules import (
-        blood_budget_levelup_blocked,
-        p2_crisis_band,
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        gold_of,
+        plane_of,
+        round_num_of,
     )
-    from sr_od.application.currency_war.kernel.cw_registry import (
-        DEFAULT_REGISTRY,
+    level = level_of(state)
+    e_l = _expected_refreshes_for_target(level, cost, need, owned)
+    e_l1 = _expected_refreshes_for_target(level + 1, cost, need, owned)
+    # 升级后反不可追(e_l1==0 且 e_l>0)⇒ False。前提:现行 REFRESH_PROB
+    # 满足「一旦出牌永不消失」单调性,该形态现表下不可达;池突变换表
+    # 失去该单调性时守卫生效,防「升级后 E 归零」被误读成无穷收益。
+    if e_l1 == 0.0 and e_l > 0.0:
+        return False
+    if not (math.isfinite(e_l) and math.isfinite(e_l1)):
+        return e_l <= 0.0 < e_l1   # 当前级不可追而上级可追:纯解锁收益
+    benefit = refresh_cost_effective(gs=state) * (e_l - e_l1)
+    if benefit <= 0:
+        return False               # 概率不升反降(内峰回落档):无收益面
+    u_gold = clicks_to_next_level(state) * xp_click_cost(state)
+    if u_gold <= 0:
+        return True                # 满级/零费边界:成本侧空,收益即过
+    # R_剩余就地自算(T-8 裁决点 9:框架不供视界量,场字段求和,封顶
+    # modeled planes;与 cw_intention._p1_pair_overwindow 同式互锚)。
+    from sr_od.application.currency_war.kernel.cw_node_schedule import (
+        PLANE_NODE_TABLES,
     )
-    reg = registry if registry is not None else DEFAULT_REGISTRY
-    # kernel 血线门波 2 已切容器签名(hp 经政策层读口),容器 gs 直读。
-    if blood_budget_levelup_blocked(gs, session, reg):
-        return True
-    if _plane_last_battle(gs, session):
-        return False    # ALL IN 窗:停手让位(与血预算支同一豁免序)
-    return p2_crisis_band(gs, session, reg)
+    _tb = state.node_seq_by_plane.value or PLANE_NODE_TABLES
+    rounds = (sum(len(t) for k, t in _tb.items() if k >= plane_of(state))
+              - round_num_of(state) + 1) if plane_of(state) in _tb else 0
+    ibar = net_income(round_num_of(state), 0)
+    c_int = loss_exact(gold_of(state), u_gold, rounds, ibar,
+                       cap=cap_resolved_of_session(session))
+    return benefit > u_gold + c_int
+
+
+# ============================================================ 五臂触发(§2.1 触发源并集)
+
+#: 五臂触发键(发射 auth_basis 记录值域;line_and_upgrade §2.1 触发源
+#: 并集)。优先序 = 人口位 > arm0 > 溢余段 > 停留门 > 概率账(战力当轮
+#: 兑现的义务臂在前,优化路径在后;人口位/arm0/溢余段为义务/机制臂,
+#: 不受攒息约束——[12]/[33] 明文例外)。
+ARM_POPULATION: str = 'pop_slot'
+ARM_ARM0: str = 'arm0'
+ARM_MUST_SPEND: str = 'must_spend'
+ARM_STAY_GATE: str = 'stay_gate'
+ARM_PROB_ACCOUNT: str = 'prob_account'
+
+
+def upgrade_trigger(gs: GameState, session: StrategySession,
+                    registry: DecisionV2Registry | None = None,
+                    ) -> tuple[bool, str]:
+    """升级触发五臂并集(line_and_upgrade §2.1 触发源并集;主入口)。
+
+    五臂(∨ 语义完整承继 20 号稿三源 + 概率账 + 停留门):
+    ① 人口位(三元谓词:板满 ∧ 阵营相关等待件不限星级 ∧ 上场边际
+       贡献 > 0——由板满+共享羁绊结构承载,w>0 板面谓词,P39 臂一);
+    ② arm0(need > level 机制臂,等级落后于上阵人数需求;14 号稿
+       §4.2 现量版);
+    ③ 溢余段-L3(g > 10×cap_resolved 溢余金零息,「金这么多都是要
+       花的」,20 号稿 L3 出口);
+    ④ 停留门升级优先臂(辖锁定后 ∧ plane2_started);
+    ⑤ 概率账(主判据,辖锁定后 ∧ plane2_started)。
+
+    奖励帧抑制辖升级触发(reward_node_suppressed 闸,消费位 = 本函数
+    调用方前置;P80 候裁维持挂账)。返回 (是否触发, 臂键——多臂同帧
+    命中按 :data:`ARM_POPULATION` 等五键声明的优先序取首,auth_basis
+    记录用)。
+    """
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        in_must_spend_zone,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_entries_of,
+        bench_units_of,
+        deployed_rows_of,
+        gold_of,
+        level_of,
+        max_units_of,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+        state_of,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
+        predicates,
+    )
+    bench_units = list(bench_units_of(gs))
+    front, back = deployed_rows_of(gs)
+    deployed = [d for d in (*front, *back) if d is not None]
+    cap = max_units_of(gs)
+    bench_names = [str(u.char_id or '') for u in bench_units
+                   if u is not None]
+    deployed_names = [str(u.char_id or '') for u in deployed]
+    # ① 人口位(P39 臂一三元;deploy_cap 真值链 = 当前可上阵数)。
+    if cap is not None and predicates.arm1_existence(
+            len(deployed), bench_names, deployed_names, cap):
+        return True, ARM_POPULATION
+    # ② arm0(need > level;k_members = 锁定线名单,未锁定回退现行
+    # target_comp 物化链产物——3.7 键面归一并前的现行为等价口径;
+    # bench 输入 = 占席条目域〔arm0_need 解包口径〕)。
+    k_members = predicates.line_members(
+        getattr(state_of(session), 'target_comp', None))
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.session_scope import (
+        line_members_view,
+    )
+    view = line_members_view(gs)
+    if view.locked:
+        k_members = view.members
+    arm0, _key = predicates.arm0_level_lag(
+        level_of(gs), gs.level.value is not None,
+        deployed, list(bench_entries_of(gs)), k_members, cap)
+    if arm0:
+        return True, ARM_ARM0
+    # ③ 溢余段-L3(域内帧判定单一源 in_must_spend_zone;20 号稿三源
+    # ∨ 合并语义完整承继)。
+    if in_must_spend_zone(gold_of(gs), session):
+        return True, ARM_MUST_SPEND
+    # ④ 停留门升级优先臂 / ⑤ 概率账(双条件辖域内)。
+    if stay_gate_upgrade_first(gs, session):
+        return True, ARM_STAY_GATE
+    if prob_account_ok(gs, session):
+        return True, ARM_PROB_ACCOUNT
+    return False, ''
+
+
+# ============================================================ 保底金门(P72(3a) 内保留件)
 
 
 def _plane_last_battle(gs: GameState,
@@ -479,6 +483,111 @@ def _plane_last_battle(gs: GameState,
     return _plb(gs, session)
 
 
+def terminal_all_in(gs: GameState, session: StrategySession) -> bool:
+    """终局域末战 ALL IN 判定(位面末战 ∧ R_全局 ≤ 1)。
+
+    单一源供两处消费::func:`guarantee_floor_gate` 出辖半支与优化臂
+    (概率账/停留门)的息线差额保留豁免(末位面末战后金无任何消费
+    场景,P41 终局清仓恒优/P23 死亡域攥金价值恒零——ALL IN 维持花光
+    原语义,P72/P83 收窄口径)。``r_remaining`` 门面场字段自算查表
+    (R 含当前节点,决策帧最小值 = 末位面末战的 1;禁自推位面数——
+    宪法 01 §8-1 位面参数化不变量)。
+    """
+    if not _plane_last_battle(gs, session):
+        return False
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.horizon import (
+        r_remaining,
+    )
+    return r_remaining(session, *_plane_round_of(gs)) <= 1
+
+
+def guarantee_floor_gate(gs: GameState, session: StrategySession,
+                         gold: int, clicks: int, click_cost: int,
+                         cap_resolved: int) -> bool:
+    """保底金门(line_and_upgrade §2.3 P72(3a) 内保底金门行——单一
+    裁决消两读):升级整批发射前的**全域最终硬检查**,真 = 放行。
+
+    检查式:预估花后金 ≥ 1 息档(下界值单一源 =
+    ``DEFAULT_REGISTRY.boss_floor`` = 10)。概率账不覆盖「升了不许
+    花穿」,正交(P72 已证命题的保底下界)。调用方传「预估花后金」
+    形态时 clicks/click_cost 传 0/1(gold 直比;攒批口径下的保守下界
+    = 裸金 + 活期退金 − 批成本)。
+
+    出辖两支(任一真 = 不设下界,让位语义各有在册出处):
+    - **终局域**::func:`terminal_all_in` 单一源(ALL IN 维持花光原
+      语义);
+    - **买断制**:cap_resolved = 0 ⇒ 息账整体消解(p47 A1),下界
+      失去推导基座,金出口归一般判据。
+
+    下界值推导链:域③「非末位面持金未来效用 > 0/息档纪律辖」
+    (math_proofs P83)⇒ 下界落息档结构 ⇒ g ≥ 10 是「下一向位面首息
+    存在」的机制判等式(interest 的 10 = 息档宽 = 斜率倒数,g<10 首息
+    恒 0)⇒「保一档不多保」= 最小绑定支配论证。同值异据约束 =
+    **现存半侧**(P48②):彼据(release 泄息通道 P1 出口金生存边际)
+    消费位已随自驱动引擎退役、彼据侧修订重推义务灭失——boss_floor
+    修订的单侧重推约束照旧(此侧为息通道非退化判等式,断言只锁同值
+    不锁同据)。
+    """
+    if terminal_all_in(gs, session):
+        return True          # 终局域:末位面末战,域③前提失效
+    if cap_resolved == 0:
+        return True          # 买断制:息账消解,下界无推导基座
+    from sr_od.application.currency_war.kernel.cw_registry import (
+        DEFAULT_REGISTRY,
+    )
+    return gold - clicks * click_cost >= DEFAULT_REGISTRY.boss_floor
+
+
+# (原 P72(3a) 全段式量闸 ``levelup_budget_gate`` 单体拆解:量闸本体
+# 删除——其「整批推迟」与概率主轴攒钱语义合并,预留保护由整买预留
+# 约束承接;保底金门保留为 :func:`guarantee_floor_gate` 发射前检查位;
+# 支A 兑现链谓词随量闸消亡(其「量闸否决存在性」的消解对象不存在了)。
+# 处置依据 = line_and_upgrade §2.3 处置表 P72(3a) 行;替代语义考古
+# 走 git 历史。)
+
+
+def level_spend_blocked(gs: GameState, session: StrategySession,
+                        registry: DecisionV2Registry | None = None) -> bool:
+    """P21 血预算线(危机带内整批经验授权让位保命面;line_and_upgrade
+    §2.3 保留件——P21 已证:hp ≤ 停升级线内升级收益到账 ≥1 战之后,
+    EV 严格为负)。发射位(备战第 3 步/会话内升级检查)消费;溢余段
+    域内让位照 20 号稿(调用方判域)。
+
+    ``registry`` = 上下文注册表(停付线字段 vd_p2_loss 族的单一源口径);
+    ``None`` 回读缺省表 = 直调兼容约定,禁新消费位依赖缺省。
+
+    两支,全部单一源判据,零新自由参数:
+    - ``discipline.blood_budget_levelup_blocked``(P21 停升级线);
+    - P2 危机带 ``discipline.p2_crisis_band``(hp ≤ ceil(2×vd_p2_loss)
+      ≈41 = P21 d=2「到账更慢」档)。
+    ALL IN 豁免(位面末 boss 战花光,[18])两支共享——末战花光是
+    时机判断非血线判断。hp 不可信帧 fail-closed 拒付(危机会在内)。
+
+    血线地板解锁让位支(死亡线帧停付让位)已随血线地板删除链退役
+    (line_and_upgrade §2.3 血线地板解锁行;正典依据 user_playstyle
+    [39]「HP 不作决策依据」——濒死响应 = 修经济/阵容本身,[18] 报警
+    语义)。
+    """
+    from sr_od.application.currency_war.kernel.cw_discipline_rules import (
+        blood_budget_levelup_blocked,
+        p2_crisis_band,
+    )
+    from sr_od.application.currency_war.kernel.cw_registry import (
+        DEFAULT_REGISTRY,
+    )
+    reg = registry if registry is not None else DEFAULT_REGISTRY
+    if blood_budget_levelup_blocked(gs, session, reg):
+        return True
+    if _plane_last_battle(gs, session):
+        return False    # ALL IN 窗:停手让位(与血预算支同一豁免序)
+    return p2_crisis_band(gs, session, reg)
+
+
+def batch_form(level: int, target_level: int) -> bool:
+    """批量成型判据(目标级差>0 才有批;义务侧消费)。"""
+    return level < target_level
+
+
 def pop_slot(deployed_count: int, deploy_cap: int, gold: int,
              bench_candidates: int, floor_gold: int, *,
              buyable_candidate: bool = False, bench_free: int = 0,
@@ -490,8 +599,7 @@ def pop_slot(deployed_count: int, deploy_cap: int, gold: int,
 
     前置放宽(14号稿 §4.3,零参数):「bench_candidates > 0」改为
     「bench 有候选 ∨ 买入面有可即时买入的线内候选(affordable ∧
-    bench_free ≥ 1)」——从「已持有候补」放宽到「买得起候补」;臂①落地
-    后 bench 空帧大幅减少,本修正兜剩余帧(满编+空 bench+富金末段)。
+    bench_free ≥ 1)」——从「已持有候补」放宽到「买得起候补」。
     """
     if deployed_count < deploy_cap:
         return False, 'not_full'          # 未满编:普通 M1 部署辖
