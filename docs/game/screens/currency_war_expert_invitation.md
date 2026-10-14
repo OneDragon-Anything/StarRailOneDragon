@@ -33,7 +33,7 @@ source_image: screens/货币战争-备战-专家邀请函/弹窗.webp
 
 ## automation 要读信息
 
-- 每张角色卡的**阵营标签**(卡下部标签行,y≈332-360:贝洛伯格/星核猎手/仙舟等)与**角色名**(名字条 y≈364-398)→ 选卡决策输入:选与当前主力阵营(羁绊面板 OCR,`cw_observation.read_board`)同线的角色;无同线 → 现金为王(经济兜底)。判据实现见 `operations/handlers/handle_bookcard.py` 的 `choose_expert_index`。
+- 每张角色卡的**阵营标签**(卡下部标签行,y≈332-360:贝洛伯格/星核猎手/仙舟等)与**角色名**(名字条 y≈364-398)→ 选卡决策输入:选与当前主力阵营(羁绊面板 OCR,`cw_observation.read_board`)同一路线的角色;无同路线 → 现金为王(经济兜底)。判据实现见 `operations/handlers/handle_bookcard.py` 的 `choose_expert_index`。
 
 ## 识别快照
 

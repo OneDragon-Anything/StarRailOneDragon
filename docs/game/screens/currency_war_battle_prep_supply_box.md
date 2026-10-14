@@ -31,7 +31,7 @@ source_image: screens/货币战争-备战-武装箱选择/box_open.webp
 
 ## automation 要读信息
 
-- **4 张卡装备名**(区域-卡名行 [545,255,1545,300]):OCR → 装备规范名 → 选择策略(合成材料通用性/comp key_equips 命中优先)。选卡即决策点(缺 handler,bot 暂无自动开箱)。
+- **4 张卡装备名**(区域-卡名行 [545,255,1545,300]):OCR → 装备规范名 → 选择策略(合成材料通用性/阵容关键装备清单 `key_equips` 命中优先)。选卡即决策点(缺 handler,bot 暂无自动开箱)。
 
 ## 识别快照
 
@@ -44,6 +44,6 @@ source_image: screens/货币战争-备战-武装箱选择/box_open.webp
 ## 备注 / 待查
 
 - **进阶/更高档武装箱变体待采样**(标题前缀变,id_mark LCS 覆盖;卡数量是否恒 4 待验)。
-- **选卡策略 handler 待接**(现无;奖励球收取 op 的下游,详 3.4 B6)。
+- **选卡策略 handler 待接**(现无;奖励球收取 op 的下游,选卡策略后续接入选型)。
 - screen_info:`currency_war_battle_prep_supply_box.yml`(标识-武装箱 + 标识-请选择 id_mark + 装备卡-1..4 + 区域-卡名行)。
 - 与「货币战争-备战-装备详情」(点 owned 装备弹的)区分:本画面是 4 选 1 决策 overlay,非信息面板。

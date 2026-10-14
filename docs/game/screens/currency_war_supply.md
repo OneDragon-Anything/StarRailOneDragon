@@ -34,9 +34,9 @@ source_image: screens/货币战争-补给/未选择.webp
 
 ## automation 要读信息
 
-- **N 张卡的(角色, 装备)**:`read_supply_options` OCR 装备名(定义列)→ 角色按最近 x 配对(`get_char` roster 校验滤噪);钻(红/蓝/财富宝钻)视觉判定 `has_diamond`(SIFT 主通道 + 装备名精确匹配兜底)→ 决策 = 策略层三级字典序(钻 > 终局角色 > 装备;决策本体 = `strategies/impl/mandate_v1/supply.py`,语义单一源 = strategy-docs 30 号稿)。
+- **N 张卡的(角色, 装备)**:`read_supply_options` OCR 装备名(定义列)→ 角色按最近 x 配对(`get_char` roster 校验滤噪);钻(红/蓝/财富宝钻)视觉判定 `has_diamond`(SIFT 主通道 + 装备名精确匹配兜底)→ 决策 = 策略层三级字典序(钻 > 终局角色 > 装备;决策本体 = `strategies/impl/mandate_v1/supply.py`,语义单一源(唯一权威出处)= strategy-docs/30_supply_screen.md)。
 - **已选择 / 剩余次数**:判可选/选满(确认是否可点)。当前未读(待接线)。
-- 刷新按钮实存:「剩余次数:N」文锚左侧圆钮(画面 op 文本锚定偏移点击;剩余次数 = 本节点剩余刷新机会,刷新判断语义 = strategy-docs 30 号稿)。
+- 刷新按钮实存:「剩余次数:N」文锚左侧圆钮(画面 op 文本锚定偏移点击;剩余次数 = 本节点剩余刷新机会,刷新判断语义 = strategy-docs/30_supply_screen.md)。
 
 ## 识别快照
 
@@ -54,4 +54,4 @@ source_image: screens/货币战争-补给/未选择.webp
 
 - screen_info(5 area):`标识-补给阶段`(id_mark=true)+ `按钮-确认` + `按钮-返回备战界面` + `文本-已选择` + `文本-剩余次数`(2026-08-13 建档 + 补全)。卡身点击点由 `read_supply_options` OCR 动态返回(装备名 x, 550;非固定 area);`CwScreenSupplyNode.CARD_BODY=(900,550)` 硬编码兜底(`operations/cw_screen/cw_screen_supply_node.py`)。
 - **交互验证缺口(待下一补给节点 passive)**:`角色详情`子面板(Q 键开,未递归验)、卡旁数字(如「9」「8」,疑费用/星级)—— 本节点补给已消耗,下个补给节点补验。(试用角标含义已确认 → 玩法 doc。)
-- **决策点**:补给节点流程已接线并 live 确认(选→确认→推进,非出战);旧 `RunSupplyNode` 执行器已退役,现役 = `CwScreenSupplyNode`(观察 + 决策动作两 node,`operations/cw_screen/cw_screen_supply_node.py`),选卡/刷新判断语义 = strategy-docs 30 号稿。
+- **决策点**:补给节点流程已接线并 live 确认(选→确认→推进,非出战);旧 `RunSupplyNode` 执行器已退役,现役 = `CwScreenSupplyNode`(观察 + 决策动作两 node,`operations/cw_screen/cw_screen_supply_node.py`),选卡/刷新判断语义 = strategy-docs/30_supply_screen.md。

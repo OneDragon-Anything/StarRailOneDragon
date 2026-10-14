@@ -13,7 +13,7 @@ source_image: screens/货币战争-投资策略/default.webp
 
 - **入口**:备战阶段触发(特定轮次 / 条件)→ 本屏(遮罩在备战之上)。展开为**两段**:备战画面先完整可见 → 中部先出「请选择投资策略」横幅(选卡未出现;横幅文字在 y≈510,**不在** id_mark 位 [855,78,1065,118])→ 随后展开为全屏选卡页(标题落顶部)。**横幅中间态无可交互元素,裁定不处理、等展开完成(2026-09-15)**。
 - **出口**:点一张卡选中 →「确认」→ 回备战。或「返回备战界面」(右上)取消。
-- 与"投资环境"(开局 3 选 1,定阵营走向)不同:投资策略是**过程中**的策略 buff(334 池,代码单一源 `cw_invest_data.py`,plaza API)。
+- 与"投资环境"(开局 3 选 1,定阵营走向)不同:投资策略是**过程中**的策略 buff(334 池,代码单一源(唯一权威出处)`cw_invest_data.py`,plaza API)。
 
 ## 识别特征(稳定锚点)
 
@@ -31,7 +31,7 @@ source_image: screens/货币战争-投资策略/default.webp
 
 ## 关键数据(策略相关)
 
-> bot 已接(``cw_screen_invest_strategy``):OCR 3 卡名 → 策略层策略器打分(`strategies/impl/mandate_v1/invest_strategy.py`,系统侧设计正本 = `docs/develop/sr_od/application/currency_war/strategy-docs/29_invest_strategy_screen.md`)→ 点最优卡 + 确认。overlay 时 board 不可读 → 空 board stub。
+> bot 已接(``cw_screen_invest_strategy``):OCR 3 卡名 → 策略层策略器打分(`strategies/impl/mandate_v1/invest_strategy.py`,系统侧设计权威版本 = `docs/develop/sr_od/application/currency_war/strategy-docs/29_invest_strategy_screen.md`)→ 点最优卡 + 确认。overlay 时 board 不可读 → 空 board stub。
 
 - **3 选项(本场实例)**:
   1. **幸运星祝福** — 得【幸运星】;小队 +15% 幸运一击率 + 5% 速度。
@@ -49,5 +49,5 @@ source_image: screens/货币战争-投资策略/default.webp
 
 - **选中 mechanics(2026-08-04 实测)**:默认无卡选中;点**卡名**(y≈474)开详情不选中(曾致卡死 18min);点**描述区**(y≈545)才选中。op 用 OCR 卡名 center-x + 描述区 Y 拼 click(screen_info ``区域-卡牌描述行`` 给 Y)。
 - 归档:`screens/货币战争-投资策略/default.webp`。
-- screen_info:`currency_war_invest_strategy`(task#20)—— ``标识-请选择投资策略`` / ``区域-卡牌描述行`` / ``按钮-确认``。
+- screen_info:`currency_war_invest_strategy`—— ``标识-请选择投资策略`` / ``区域-卡牌描述行`` / ``按钮-确认``。
 - 关键点击防吞:关键 click 前 mouse_move(零移动不被判 drag)。

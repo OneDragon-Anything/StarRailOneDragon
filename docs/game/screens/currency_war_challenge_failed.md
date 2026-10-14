@@ -39,6 +39,6 @@ source_image: screens/货币战争-挑战失败/failed.webp
 
 ## 备注 / 待查
 
-- **本屏 fixture**:A8 对局位面 2-1 团灭(2026-08-11 实测 D-67)。`failed.webp`。
+- **本屏 fixture**:A8 对局位面 2-1 团灭(2026-08-11 实测建档)。`failed.webp`。
 - **对局评价页(下一步 之后)待建档**:对局未完成/阵容/积分 9600/投资环境/策略回顾(「下一页」翻 → 大厅)。bot 主要需识别「挑战失败」+ 点下一步;对局评价页可快速翻过。
 - screen_info:`currency_war_challenge_failed`(标识-挑战失败 id_mark + 按钮-下一步 + 文本-小队生命值)。

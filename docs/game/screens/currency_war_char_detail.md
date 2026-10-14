@@ -68,5 +68,5 @@ source_image: screens/货币战争-备战-角色详情/信息tab.webp
   `currency_war_battle_prep_char_tooltip.yml`(画面名 货币战争-备战-角色信息提示,
   真值帧 char_detail)。
 - fixture 已归档 `sr-od-test/screens/货币战争-备战-角色详情/`(信息tab / char_detail_equipped / equip_detail_stepbystep / 装备详情子态,2026-08-13;门回归锁 test_cw_w559_overlay_gates)。
-- 待采集(挂账):「装备推荐」按钮在**未持装备角色**上的大面板渲染是否与在库 4 帧一致,
+- 待采集(登记的待办):「装备推荐」按钮在**未持装备角色**上的大面板渲染是否与在库 4 帧一致,
   无真值帧,遇实机时补。

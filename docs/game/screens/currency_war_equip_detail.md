@@ -54,7 +54,7 @@ source_image: screens/货币战争-备战/equip_detail_roller.webp
 
 ## 备注 / 待查
 
-- **与角色详情装备子态区分**(3.12 已建):角色详情(点角色)有角色名/阵营/装备推荐/装备槽,盖出战;本面板(点 owned 装备)装备-only 无角色,不盖出战。
+- **与角色详情装备子态区分**(角色详情档已建):角色详情(点角色)有角色名/阵营/装备推荐/装备槽,盖出战;本面板(点 owned 装备)装备-only 无角色,不盖出战。
 - **owned_equips extras**:备战 recognizer 产 owned 装备 list(name+category+坐标),bot 据坐标点装备开本面板(category 工具/特殊=消耗品,简易/进阶/特权/星徽/白昼/命运/骇客=装备)。
 - 独立装备详情的装备名/category/属性 位置与角色详情装备子态重合(复用 area),但内容来源不同(独立=点 owned;角色子态=点角色装备)。
-- **3.13 进度**:13.2 完成(点 owned 装备→开详情→analyze+VLM+交互验证);13.3-7(screen_info 增量已做/doc+fixture 已建)。
+- **建档进度**:点 owned 装备→开详情→analyze+VLM+交互验证 已完成;screen_info 增量已做、doc+fixture 已建。

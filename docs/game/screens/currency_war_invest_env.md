@@ -12,8 +12,8 @@ source_image: screens/货币战争-投资环境/default.webp
 ## 何时出现 + 状态流转
 
 - **入口**:简报「下一步」→ 位面教程叠层(「点击空白处继续」点空白)→ 本屏。
-- **出口**:点一张卡选中 →「确认」→ 备战阶段(Plane 1 Round 1)。
-- 开局(简报后)必弹一次;后续节点出现的是投资策略屏(两屏不同 handler);接管/恢复局可能重入本屏。
+- **出口**:点一张卡选中 →「确认」→ 备战阶段(位面 1 第 1 轮)。
+- 开局(简报后)必弹一次;后续节点出现的是投资策略屏(两屏不同 handler);中断恢复的对局可能重入本屏。
 
 ## 识别特征(稳定锚点)
 
@@ -26,17 +26,17 @@ source_image: screens/货币战争-投资环境/default.webp
 - 「确认」按钮:底部,screen_info ``按钮-确认`` center ≈ (1082,982)。
 - 「剩余次数：N」(本场 N=1,左下)。
 
-> screen_info ``currency_war_invest_env``:``标识-投资环境``(id_mark 标题锚点)+ ``区域-卡牌描述行``(给选中 Y=450)+ ``按钮-确认`` + ``区域-剩余次数行``(刷新计数 OCR 带单一真相源)。op ``cw_screen_invest_env`` 经 ``cw_obs_core.area_center`` 读(screen_info 缺失才用兜底常量)。
+> screen_info ``currency_war_invest_env``:``标识-投资环境``(id_mark 标题锚点)+ ``区域-卡牌描述行``(给选中 Y=450)+ ``按钮-确认`` + ``区域-剩余次数行``(刷新计数 OCR 的唯一权威出处)。op ``cw_screen_invest_env`` 经 ``cw_obs_core.area_center`` 读(screen_info 缺失才用兜底常量)。
 
 ## 关键数据(策略相关)
 
-> bot 行为(系统侧设计正本 = `docs/develop/sr_od/application/currency_war/screens/invest_env.md`):观察 node OCR 3 卡名落容器 → 策略契约 `decide_invest_env` 打分(判据 = 策略层 `strategies/impl/mandate_v1/invest_env.py`,正本 = `strategy-docs/28_invest_env_screen.md`:统一加法标尺 = 现金+方向+赠卡+立场+转向轴,优先经济后终局阵容)→ 环境帧判据可发**整组刷新**(终结交回重观察)∨ 点最优卡描述区 + 确认(确认链 = `CwActionPickInvestOp`)。环境 overlay 时 board 无新鲜观察,dot 惩罚细化自然失效,定序主判据不依赖 board。
+> bot 行为(系统侧设计权威版本 = `docs/develop/sr_od/application/currency_war/screens/invest_env.md`):观察 node OCR 3 卡名落容器 → 策略契约 `decide_invest_env` 打分(判据 = 策略层 `strategies/impl/mandate_v1/invest_env.py`,权威版本 = `strategy-docs/28_invest_env_screen.md`:统一加法标尺 = 现金+方向+赠卡+立场+转向轴,优先经济后终局阵容)→ 环境帧判据可发**整组刷新**(终结交回重观察)∨ 点最优卡描述区 + 确认(确认链 = `CwActionPickInvestOp`)。环境 overlay 时 board 无新鲜观察,dot 惩罚细化自然失效,定序主判据不依赖 board。
 
 - **3 选项(本场实例)**:
   1. **昼之半神概念股** — 开局得【昼之半神】角色 + 初始简易装备,昼之半神角色刷新率提高。(阵营 buff)
   2. **特邀专家：银狼** — 首次得【银狼LV.999】时,银狼以专家顾问加入商店。(关键角色)
   3. **列车同行概念股** — 开局得【列车同行】角色 + 装备,列车同行刷新率提高。(阵营 buff)
-- **投资环境池**:游戏内总 83 / 解锁 68(D-68 数据银行核对),每场随机出 3。全集见代码 `src/sr_od/application/currency_war/kernel/cw_investments.py::INVESTMENT_ENVS`。
+- **投资环境池**:游戏内总 83 / 解锁 68(数据银行核对),每场随机出 3。全集见代码 `src/sr_od/application/currency_war/kernel/cw_investments.py::INVESTMENT_ENVS`。
 - **剩余次数**:环境重掷剩余预算——点刷新圆钮整组重掷 3 卡、每刷一次扣 1,读 0 = 刷新无授权(实机归档帧实证口径)。
 
 ## 识别快照

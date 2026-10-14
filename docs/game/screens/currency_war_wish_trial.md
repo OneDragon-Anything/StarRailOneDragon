@@ -29,9 +29,9 @@ source_image: screens/货币战争-祈愿试炼/祈愿试炼.webp
 
 ## automation 要读信息
 
-- 三张卡名 + objective/reward 文本(y 310-470 带)——策略化选卡(TODO:易完成度/契合 comp;现固定第 1 张)。
+- 三张卡名 + objective/reward 文本(y 310-470 带)——策略化选卡(TODO:易完成度/契合阵容;现固定第 1 张)。
 
 ## 识别快照
 
 - fixture:`screens/货币战争-祈愿试炼/祈愿试炼.webp`(2026-08-13 采)。
-- handler:CwScreenWishTrial(D-87~89 闭环,2026-08-08 live 验证)。
+- handler:CwScreenWishTrial(2026-08-08 实现并实机验证闭环)。

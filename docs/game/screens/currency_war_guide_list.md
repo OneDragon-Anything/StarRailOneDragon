@@ -7,7 +7,7 @@ source_image: screens/货币战争-攻略列表/list_推荐.webp
 
 # 货币战争-攻略列表(游戏内攻略面板主屏)
 
-备战屏「按钮-攻略」(1610,63) 进入的第一个画面。**官方推荐 comp 活数据源**:条目带版本标记(V4.4/V4.2/V3.7 混排)+ 羁绊公式标题 + 热度 + 作者 + 攻略码。
+备战屏「按钮-攻略」(1610,63) 进入的第一个画面。**官方推荐阵容活数据源**:条目带版本标记(V4.4/V4.2/V3.7 混排)+ 羁绊公式标题 + 热度 + 作者 + 攻略码。
 
 ## 何时出现 + 状态流转
 
@@ -20,7 +20,7 @@ source_image: screens/货币战争-攻略列表/list_推荐.webp
 - id_mark(组合):主 tab「热门攻略」+「我的阵容」(两 tab 恒可见,不随子 tab 态变)。
 - 顶部:「货币战争 / ? / 图例 / 攻略」+ 主 tab 行;子 tab 行「推荐攻略 / 热门攻略 / 收藏(0/20)」。
 
-## 可交互元素(全部 click 实锤,2026-08-15)
+## 可交互元素(点击行为全部已实测确认,2026-08-15)
 
 | 元素 | 坐标(中心) | 行为 |
 |---|---|---|
@@ -48,6 +48,6 @@ source_image: screens/货币战争-攻略列表/list_推荐.webp
 
 ## 备注
 
-- **前往攻略广场 URL 实锤**:`act.miyoushe.com/sr/event/currency-wars/index.html?...utm_campaign=gridfight_strategy&gt__lineup_id=<id>#/lineup/<id>` —— 米游社活动 SPA,带 lineup_id 上下文;每点一次叠一个新 tab(同 Edge 窗口)。**攻略数据可走网页 API 采集**(chrome-devtools 通道),搜索缺口由网页端补。
+- **前往攻略广场 URL(已实测确认)**:`act.miyoushe.com/sr/event/currency-wars/index.html?...utm_campaign=gridfight_strategy&gt__lineup_id=<id>#/lineup/<id>` —— 米游社活动 SPA,带 lineup_id 上下文;每点一次叠一个新 tab(同 Edge 窗口)。**攻略数据可走网页 API 采集**(chrome-devtools 通道),搜索缺口由网页端补。
 - 列表滚动区内容随子 tab 变;「收藏(0/20)」计数动态,OCR 匹配注意。
 - VLM 曾把选中主 tab 误读为「搜索框」—— 该画面**无搜索 UI**,勿再采信。
