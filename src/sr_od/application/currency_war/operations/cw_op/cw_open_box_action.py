@@ -6,7 +6,7 @@ op-layer.md §1.2 动作 op 契约)。
 终结动作(R7 批2a 终结化):点完「开启」本动作即交回外循环,武装箱选择
 画面由外循环按画面分发独立画面 op 选卡。terminal_wait = 开箱动画等待,
 与 runner 包络 ``_OVERLAY_ANIM_WAIT_S`` 等价(等价测试锁 =
-test_cw_unified_action_3)。
+test_action_registry 终结集锁)。
 """
 from __future__ import annotations
 

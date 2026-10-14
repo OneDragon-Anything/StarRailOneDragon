@@ -17,7 +17,7 @@
 预算,轮询由固定超时兜底)。决策动作 node = 零动作交回节点(纯等待型无
 推进动作,备战就绪即 success 交回主循环——现役「act 段零动作如实申报」
 的两段形态承接)。本屏 sim 腿 = 不适用(sim 无对应画面段),等价判据
-主承重 = 实机在册行为锁(test_cw_obs_arch_closing_screens.py)。
+主承重 = 实机在册行为锁(test_obs_arch_phase_screens.py)。
 """
 import time
 from typing import ClassVar

@@ -20,7 +20,7 @@ kernel):每次进简报屏都重读重采,点采对注册表比对自身幂等(�
 点击未落地 → 重点)→ 点「下一步」+ 置位 → round_wait 循环推进(不烧
 节点重试预算;不收敛 = 策略实现 bug 响亮暴露,无防御上限)。本屏 sim
 腿 = 不适用(sim 无对应画面段),等价判据主要支撑 = 实机在册行为锁 +
-写入流交叉核对(锁面 = sr-od-test test_cw_obs_arch_phase_screens.py)。
+写入流交叉核对(锁面 = sr-od-test test_obs_arch_phase_screens.py)。
 """
 import contextlib
 import time

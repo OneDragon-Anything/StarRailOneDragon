@@ -245,7 +245,7 @@ def trailblazer_row_identity(char_id: str, to_row: str,
     消费面 = :func:`trailblazer_row_unit`(Unit 容器原生唯一载体),
     归一口唯一(design §3 不变量 5;swap 与 deploy_move 两上报均经
     :func:`trailblazer_row_unit` 同源,哨兵 =
-    test_cw_trailblazer_stance_normalization)。"""
+    test_faction_derivation_locks 开拓者形态归一节)。"""
     from sr_od.application.currency_war.data.cw_chars import (
         get_char,
         is_trailblazer,

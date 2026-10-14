@@ -30,7 +30,7 @@
 代码 bug,overlay 残留由外循环按当前画面重识别重派)。本屏无 chosen_* 写端(选择存证行已已停用
 停用);本屏 sim 腿 = 不适用(sim 无对应画面段,事件
 浮层族即时落定),等价判据主要支撑 = 实机在册行为锁
-(test_cw_screen_two_node_family 两 node 形态锁;接线/基建锁补档 =
+(test_screen_two_node_family 两 node 形态锁;接线/基建锁补档 =
 开放设计注,见 screens/planner.md §9)。
 """
 from typing import ClassVar

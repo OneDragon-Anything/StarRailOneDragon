@@ -413,7 +413,7 @@ def _pick_domain(cands: list[_Cand],
 
 def _breakdown(c: _Cand) -> str:
     """归因串:总分 + 五组件分解(仅观测,进 reason;形态 = 测试仓
-    行为锁 test_cw_invest_strategy.py 锚定的 ``pick total=...`` 前缀)。"""
+    行为锁 test_invest_strategy.py 锚定的 ``pick total=...`` 前缀)。"""
     _cash, _dir, _gift, _stance, _steer = c.components
     return (f'pick total={c.total:.0f}'
             f' cash={_cash:.0f} dir={_dir:.0f} gift={_gift:.0f}'

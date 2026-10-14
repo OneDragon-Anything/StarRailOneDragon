@@ -9,7 +9,7 @@ affix_wear_semantics_data.py ↔ affix_effects_data.py):``EQUIPMENTS`` = 真值�
 
 **对拍义务**:注册表 effect 散文 = 前置措辞真值;本文件结构值 = 带对拍义务的派生
 建模。游戏改前置措辞 → ``check_equipment_wear_rule_coverage`` 显警 + 测试仓对拍锁
-(test_cw_equip.py 穿戴规则对拍锁)拦截,禁静默沿用。
+(test_equip.py 穿戴规则对拍锁)拦截,禁静默沿用。
 
 **消费位**:kernel/cw_comps._wearable_gate_ok(``equip_allocation`` 分配前排除,
 P95 支配命题 §2-A W2/W3;命题单篇 =

@@ -3,7 +3,7 @@
 
 规约:词表类 ``CwActionXxxParam`` 恰有一个具名上报函数
 ``report_action_<snake>_param``(snake = 去前缀/后缀转下划线,
-机械可推导;完备锁 = sr-od-test test_cw_action_report_contract,
+机械可推导;完备锁 = sr-od-test test_action_report,
 经包级属性解析)。文件布局:
 - 有容器写语义的动作 = 一动作一文件(文件名 = snake);
 - ``level_up_shop`` = level_up 同字段双类型别名,独立文件保持

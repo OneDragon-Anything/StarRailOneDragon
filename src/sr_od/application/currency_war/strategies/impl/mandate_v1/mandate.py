@@ -717,7 +717,8 @@ def dead_stock_pair_buy_reject_reason(name: str, star: int,
 
 #: 收窄集 S_spec(P88 §0;键域 = 买因闭集 ``sell_gate.LAUNCH_CAUSE_
 #: BY_ARM``,收窄集必须 ⊆ 闭集——闭集对账锁 = 测试仓
-#: test_cw_press_narrow_transition.py 闭集锁,新买入分支先入映射表归
+#: test_sell_window_launch.py::test_launch_cause_closed_set,收窄域
+#: 行为锁 = test_front_window_predicates.py,新买入分支先入映射表归
 #: 因果类才可发出[A4 硬闸],越出闭集的收窄键 = 锁红面)。
 #: 豁免 ⇔ reason ∈ 闭集 ∖ S_spec,由「仅两 S_spec 动作发出点挂适用范围前置、
 #: 他臂零消费」结构性承载(防复制枚举漂移:豁免名单不在此列举,

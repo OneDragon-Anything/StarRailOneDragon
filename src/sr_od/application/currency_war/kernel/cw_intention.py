@@ -1421,7 +1421,7 @@ def hub_option_names(gs: GameState, ist: IntentionState) -> tuple[str, ...]:
 
     输入面 = (COMP_LIBRARY, ist.evicted, plane_of(gs), weak_planes,
     CORE_SINGLE_CARD_REGISTRY)——G/``_core_reachable`` 禁入(定理 B2
-    解耦独立性的实现守卫,静态锁 = test_cw_no_target_three_arms.py 锁 2)。
+    解耦独立性的实现守卫,静态锁 = test_no_target_three_arms.py 锁 2)。
     返回序 = 注册表声明序(逐套 core∪shared 首现序;同帧仲裁第三层的
     确定性序,证明批 §4.4)。
     """
@@ -1660,7 +1660,7 @@ def committed_from(session: StrategySession,
     grep 守卫锁「session 侧双轨字段直读点归零(本函数之外)」;
     变异锁:拔掉意向供给(ist=None 且 plane<2)必须落 False 保守侧
     (穿透锁=test_cw_session_separation 的 committed_authority 直锁
-    + test_cw_migration_direction_layer 对拍帧)。
+    + test_intention 对拍帧)。
     decision_v2.prep_brain 本名保留 import 重定向,消费方调用零改。
     """
     if state is not None:

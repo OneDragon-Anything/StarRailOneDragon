@@ -16,7 +16,7 @@ node = 重入裁决顶部(确认已发 → 锚不在 = 弹窗已关 → success 
 → 确认 emit_overlay_confirm → 置位 → round_wait 循环推进(不烧节点重试
 预算;不收敛 = 动作 bug 响亮暴露,无防御上限)。本屏 sim 腿 = 不适用
 (sim 无对应画面段),等价判据主承重 = 实机在册行为锁
-(test_cw_obs_arch_closing_screens.py)。
+(test_obs_arch_phase_screens.py)。
 """
 import time
 from typing import ClassVar

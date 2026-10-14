@@ -1,5 +1,4 @@
-"""criteria/shop_session——商店会话读数协议与解拦复核(shop_session §4.2;
-迭代 2026-10-12-prep-shop-workflow-redesign 批 3.6)。
+"""criteria/shop_session——商店会话读数协议与解拦复核(shop_session §4.2)。
 
 本模块 = 商店会话的共用判据面(宪法第 6 条:备战第 4 步与商店入口两画面
 消费同一函数,非画面文件互 import;存储 = session_scope/StrategyState)。
@@ -14,7 +13,7 @@ as-built 备战帧金位不可观察(cw_screen_prep「gold 仅 shop 开态可信
 - **① 记账层(已知 delta 多写点)**:买牌花费/卖出退金/购买经验单价
   由执行链上报函数写 ``gs.gold``(动作 op 自上报,期望态投影),账面
   经 :func:`sync_gold_ledger` 每决策帧入口再同步吸收(有效时账面 ==
-  ``gs.gold`` 不变量;发射点不重复挂 delta 钩子防双记);付费刷新费由
+  ``gs.gold`` 不变量;发出点不重复挂 delta 钩子防双记);付费刷新费由
   上报链终结跳写(刷新 = 访问终结,真值 = 下一入口观察),由③锚定
   吸收;**单卡「X 动作时 +Y 金」型伴生入金**(返利/返利+〔每购买 3
   个 5 费角色 +3〕/节节高升〔任意升级 +1〕)上报链不覆盖,经伴生函数
@@ -87,7 +86,7 @@ def sync_gold_ledger(gs: GameState) -> None:
 
     为什么需要:买/卖/经验的 delta 由执行链上报函数只写 ``gs.gold``
     (上一帧执行后的投影),账面值经本同步吸收这些 delta 维持
-    「有效时账面 == gs.gold」不变量——发射点无须逐动作挂 delta 钩子
+    「有效时账面 == gs.gold」不变量——发出点无须逐动作挂 delta 钩子
     (上报链已写的再记一次 = 双记),伴生入金(上报链不覆盖)仍经
     :func:`apply_gold_delta` 双写。"""
     st = state_of(gs)
@@ -251,11 +250,11 @@ def note_ore_click(gs: GameState) -> None:
 
 
 def note_levelup_emission(gs: GameState, new_level: int) -> None:
-    """升级发射失效/入账挂点:升级 9 级(成长基金 +40,独立失效)+
+    """升级动作发出的失效/入账挂点:升级 9 级(成长基金 +40,独立失效)+
     节节高升伴生(任意升级 +1,记账层)。
 
-    消费位 = 备战第 3 步执行帧与会话内升级执行位(整批发射帧);``new_level``
-    = 发射后到达等级(本批 = 当前级 + 1)。"""
+    消费位 = 备战第 3 步执行帧与会话内升级执行位(整批动作发出帧);``new_level``
+    = 发出后到达等级(本批 = 当前级 + 1)。"""
     account_upgrade_companion_gold(gs)
     if int(new_level) >= 9:
         invalidate_gold_ledger(gs, 'level9')
@@ -272,10 +271,10 @@ LONG_TERM_PAID_REFRESH: int = 30
 
 
 def note_refresh_counters(gs: GameState, cost: int) -> None:
-    """刷新计数达阈族失效(协议②;店内域挂点 = 刷新发射位)。
+    """刷新计数达阈族失效(协议②;店内域挂点 = 刷新动作发出点)。
 
     达阈帧失效(阈值帧兜底):计数含本笔后恰达阈值 ⇒ 置 None。计数读
-    ``gs.effects`` 现值 +1(发射位先于上报,上报后计数已含本笔——两
+    ``gs.effects`` 现值 +1(动作发出点先于上报,上报后计数已含本笔——两
     时点读数等价,本处取前瞻值免下帧重判);总刷(含免费)辖二手市场
     20 次,付费刷辖长线利好 30 次(两域官方文本对照 = ENV_REFRESH_
     GRANTS 注)。刷新本身终结访问,重进锚定天然承接失效后的再锚定。"""

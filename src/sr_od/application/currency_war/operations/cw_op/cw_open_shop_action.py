@@ -27,7 +27,7 @@ class CwActionOpenShopOp(CwOperation):
 
     终结动作:开店切商店画面(非帧稳定)→ 本备战访问终结,交回外循环
     重识别;终结等待 = ``terminal_wait``(与原决策循环 ``wait=1.0`` 逐字
-    等价,等价测试锁 = test_cw_unified_action_3)。
+    等价,等价测试锁 = test_action_registry 终结集锁)。
     """
 
     #: 终结动作(开店切商店画面,交回外循环重识别)。

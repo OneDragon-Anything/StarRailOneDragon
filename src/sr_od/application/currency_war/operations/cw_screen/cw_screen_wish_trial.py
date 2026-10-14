@@ -23,7 +23,7 @@ AssertionError;策略异常自然传播——守卫均在派发前、零点击 �
 (不烧节点重试预算,无防御上限)。chosen_wish = 重入裁决点单次逻辑写入
 留守(动作事实边界,不进 report);本屏 sim 腿 = 不适用(sim 无对应画面
 段,事件浮层族即时落定),等价判据主承重 = 实机在册行为锁
-(test_cw_game_state_consume chosen_wish 接线锁)。
+(test_game_state chosen_record_face chosen_wish 锁)。
 """
 from typing import ClassVar
 

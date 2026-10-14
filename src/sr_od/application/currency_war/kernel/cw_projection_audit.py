@@ -19,7 +19,7 @@
 
 三/四态的关系:任务口径的三分类里,「无写端无规则」= 可失配面(status ∈
 {write_end, absorb_rule} 才合法出现)中既无写端也无规则的缺口,经本次审计收束
-后**恒空**(锁 = 测试仓 test_cw_board_derived_and_reorder.py 完备性锁);
+后**恒空**(锁 = 测试仓 test_board_derived_and_reorder.py 完备性锁);
 observation_only / process_only 是「结构上不可失配」的声明性收束,非缺口。
 
 **维护纪律**:新增 GameState 容器字段必须在 :data:`PROJECTION_AUDIT`

@@ -1656,8 +1656,8 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #: **扩面申报表**(扩面须逐批显式登记于本表,
 #: 原「禁扩静默」条款由本表承接):
 #: - 支持动作集扩:v2 动作族 CwActionSellDeployedParam / CwActionSwapDeployParam
-#:   (语义源 = simulate 对应分支逐腿平移,直锁 test_cw_transfer_golden
-#:   钉住);
+#:   (语义源 = simulate 对应分支逐腿平移,直锁 test_gain_chain
+#:   卖/换上报 v2 族契约节钉住);
 #:   CwActionDeployMoveParam 不入(围栏部署 = 结算期代理,obs 通道申报对齐);
 #: - 域集扩:deployed(原 front_row/back_row 两紧凑行域合并为单字段完整槽位表;v2 腿与合成连锁全场域写回)、
 #:   board(**派生量**:行写端挂钩 ``_resync_board_delta``
@@ -4160,7 +4160,7 @@ def back_capacity_of(gs: GameState) -> int:
     ⚠️ 语义修正申报(调研草案 §4/风险 7):静态 6 基线
     与实局 7/8 不符,本读口起消费面拿到动态真值——cap 封顶与
     后排容量门输出随之修正,行为差由 cap 域锁(test_cw_cap_domain/
-    test_cw_cap_override_link)重推语义覆盖。单一源:``max_units_of`` 封顶
+    test_cap_override_link)重推语义覆盖。单一源:``max_units_of`` 封顶
     域与本读口同式,禁消费面内联第二份。"""
     back = gs.back_layout.value
     return int(back) if back is not None else 6

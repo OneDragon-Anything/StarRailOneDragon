@@ -234,7 +234,8 @@ class MandateV1Strategy(CwFlowStrategy):
         # 预算遥测披露(唯一写点 = economy_cycle.disclose_budget;落点 =
         # 原装配缝调用位——前置动作发出点判定之后,非出战就绪帧才到达,
         # 出战就绪短路帧维持不披露,零行为变化)。披露面禁决策消费(语义锚 =
-        # mandate_state.py 披露字段注释与守卫锁 test_cw_budget_disclosure)。
+        # mandate_state.py 披露字段注释与守卫锁 test_economy 预算遥测
+        # 披露节)。
         from sr_od.application.currency_war.strategies.impl.mandate_v1.economy_cycle import (
             disclose_budget,
         )

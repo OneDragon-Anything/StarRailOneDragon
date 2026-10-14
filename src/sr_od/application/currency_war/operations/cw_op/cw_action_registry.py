@@ -12,7 +12,7 @@
 op-layer.md §1.2)。
 
 **收编状态**:商店域五行首批在册;备战域批3 收编在册;事件线 pick 族
-批4 收编在册。注册完备锁(测试 = sr-od-test test_cw_unified_action_4)
+批4 收编在册。注册完备锁(测试 = sr-od-test test_action_registry)
 以本表为机械约束对象:遍历统一词表 ``cw_vocab.CW_ACTION_TYPES`` +
 事件线 pick 族 ``cw_events.PICK_ACTION_TYPES``,逐类断言本表解析可命中。
 (原 CompTransaction 行已随 unified-action-factory 批2b R3 删除——整档

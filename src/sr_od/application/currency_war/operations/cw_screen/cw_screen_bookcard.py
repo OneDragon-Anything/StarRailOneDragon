@@ -25,8 +25,8 @@ op-layer.md §1.1 观察标准化门)+
 ConfirmTome 到账登记 = 重入裁决点留守(动作事实边界,不进 report;
 ConfirmTome 逻辑推进 = owned 本体直推);本屏 sim 腿 = 不适用(sim 无对应
 画面段,事件浮层族即时落定),等价判据主承重 = 实机在册行为锁
-(test_cw_game_state_consume chosen_tome 锁 +
-test_cw_screen_two_node_family 形态锁;典籍通道真 op 锁补档 =
+(test_game_state chosen_record_face chosen_tome 锁 +
+test_screen_two_node_family 形态锁;典籍通道真 op 锁补档 =
 开放设计注,见 screens/bookcard.md §9)。
 """
 from typing import ClassVar

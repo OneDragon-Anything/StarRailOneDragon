@@ -844,7 +844,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # 驱动器同路(W6 波 4,设计件 §2.2-3):决策读容器单例 + 期望态
         # 推进 = 逐动作直调上报函数(动作 op 重组批④:快照三件组已内聚
         # 买牌上报,双抄写段退役);逐域期望态由投影直锁钉住
-        # (test_cw_shop_projection_logic,锁 M1)。帧缺失 = 容器离屏 =
+        # (test_shop_projection_logic,锁 M1)。帧缺失 = 容器离屏 =
         # 观察层失约同型抛错(在屏前置)。
         gs = self.gs
         if gs.shop.value is None:

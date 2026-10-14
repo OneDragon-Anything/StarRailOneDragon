@@ -24,7 +24,7 @@ node。决策动作 node = 落地复查顶部(确认已发 → 标识不在 = ov
 首轮决策一次定同一点位(chosen_partner = 选择点单次逻辑写入留守,动作事实
 边界不进 report)→ 「点选候选 → 确认」脉冲链经工厂 → round_wait 循环。
 本屏 sim 腿 = 不适用(sim 无对应画面段,事件浮层族即时落定),等价判据
-主要支撑 = 实机行为锁(test_cw_partner_select_confirm_flow 选选流序/确认
+主要支撑 = 实机行为锁(test_screen_ops 选选流序/确认
 被拒有界重试锁)。
 """
 from pathlib import Path

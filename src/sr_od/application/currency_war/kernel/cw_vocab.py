@@ -21,7 +21,7 @@
 策略为纯规则路线(用户裁定 2026-09-12):规则直接产出动作,决策零模拟
 试探。原单步动作应用器 ``simulate``(整帧副本纯函数)已删除——期望态
 推进单一源 = 容器逻辑态直写(kernel/cw_action_report 上报函数族
-+ 合成升星腿);动作语义验证 = 投影直锁(M1,test_cw_shop_projection_logic):
++ 合成升星腿);动作语义验证 = 投影直锁(M1,test_shop_projection_logic):
 - 现役策略(mandate_v1)决策 = mandate_v1/shop.decide_shop_action
   (容器读,纯规则分支),期望态推进 = 容器逻辑态直写
   (上报函数族,合成升星腿内聚 buy_card 上报)。
@@ -183,9 +183,10 @@ class CwActionSellBenchParam:
     无实码对应,全仓 grep 仅本 docstring 自引用,锁面引用同勘误);
     prep 域动作发出点(mandate_v1/entry)构造留 expect 缺省 ''(不校验形态,
     族B 载体本无此字段,缺省即不校验)。
-    锁面 = test_cw_sell_reason_matrix.py(reason/归因面)与
-    test_cw_sell_window_launch.py(TestFundingHoldFallback 兜底位
-    expect+income 正锁)。
+    锁面 = test_sell_window_launch.py(发射登记/窗口段仲裁)与
+    test_shop_session_loop.py(筹资形态/兜底穷尽机会清单;原
+    test_cw_sell_reason_matrix / TestFundingHoldFallback 锁随测试批
+    收编退役,expect+income 写端正锁并入上述两文件)。
     """
     bench_idx: int
     # [索引定义] 坐标系: bench 槽位表下标 0-8(定长 9 槽,空槽 None)

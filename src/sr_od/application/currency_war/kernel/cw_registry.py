@@ -956,7 +956,8 @@ class DecisionV2Registry:
         - 覆盖通道 = ``interest_floor_override``(仅纪律视图 ALL IN 清零,
           非标定旋钮);
         - 消费守卫:除本方法与本类定义处外 ``interest_floor`` 读点 = 0
-          (grep 锁 test_cw_migration_direction_layer)。
+          (API 契约防线归 review 与代码规范;grep 锁系测试纪律禁源码
+          扫描已退役,勿复活)。
         """
         if self.interest_floor_override is not None:
             return self.interest_floor_override

@@ -5,7 +5,7 @@
 操作链零 simulate 前瞻消费,期望态推进改走容器逻辑态直写
 (上报函数族单点,kernel/cw_action_report;
 kernel 规则单一源,与序列驱动器同形;写语义由投影直锁钉
-(锁 M1,test_cw_shop_projection_logic)):
+(锁 M1,test_shop_projection_logic)):
 
 - ``execute(env)``:机械执行(点击/拖拽;op 框架既有的重试/等待语义
   在此层),无判断。
