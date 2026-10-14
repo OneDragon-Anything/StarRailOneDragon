@@ -1,35 +1,81 @@
 # 22 备战画面策略面(prep screen)
 
-> 画面 = 货币战争-备战(建档 `assets/game_data/screen_info/currency_war_battle_prep.yml`);**能力面**(游戏可用动作全集/op 映射/结束访问语义)= [../screens/README.md](../screens/README.md) §5.3。本篇 = 该画面的**策略面**:策略思路概述 + 会执行的动作清单(按用户裁定 2026-09-14 策略收缩后的目标形态)+ 形式判据指针。
-> **单一源** = 该信息的唯一权威出处;**帧** = 一次截取游戏画面并做一次决策的时点;**逻辑态** = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,真值以下一帧实际观察为准;**血本位** = 扣血换收益的卡族(如奋斗协议/不等价交换);**数字来源标注(四种)**:【注】游戏定义值 /【推】已证推导 /【拟】观测估计 /【拍】用户立场登记值。
-> 判据权威定义的唯一权威文档 = 既有编号篇(文件名见下),**引用不重复**:部署/装备/腾席判据 = [10_prep_decisions.md](10_prep_decisions.md);骨架义务 M1-M7(每局必做的七项基础义务:M1 部署终局阵容成员、M2 义务买入、M3 角色升级、M4 备战席满腾位、M5 开局板面、M6 富余金必花、M7 装备穿戴)= [02_mandate_layer.md](02_mandate_layer.md);血预算 = [04_survival_budget.md](04_survival_budget.md);装备穿戴语义 = [18_equip_wear_semantics.md](18_equip_wear_semantics.md);切换终局阵容 = [12_line_and_intention.md](12_line_and_intention.md)。数值单一源在代码(常量名形态)。流程编排 = `../flow/prep_visit.md`。
+> 画面 = 货币战争-备战(建档 `assets/game_data/screen_info/currency_war_battle_prep.yml`);**能力面**(游戏可用动作全集/op 映射/结束访问语义)= [../screens/README.md](../screens/README.md) §5.3。本篇 = 该画面的**策略面**:决策工序(九段全扫)+ 会执行的动作清单 + 形式判据指针。
+> **单一源** = 该信息的唯一权威出处;**帧** = 一次截取游戏画面并做一次决策的时点;**逻辑态** = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,真值以下一帧实际观察为准;**数字来源标注(四种)**:【注】游戏定义值 /【推】已证推导 /【拟】观测估计 /【拍】用户立场登记值。
+> 判据权威定义的唯一权威文档 = 既有编号篇(文件名见下),**引用不重复**:升级判据 = [11_shop_decisions.md](11_shop_decisions.md) §2;卖出候选评估器 = [11_shop_decisions.md](11_shop_decisions.md) §4;骨架义务 M1-M7(每局必做的七项基础义务:M1 部署终局阵容成员、M2 义务买入、M3 角色升级、M4 备战席满腾位、M5 开局板面、M6 富余金必花、M7 装备穿戴)= [02_mandate_layer.md](02_mandate_layer.md);部署/上阵窗口判据 = [10_prep_decisions.md](10_prep_decisions.md);血预算 = [04_survival_budget.md](04_survival_budget.md);装备穿戴语义 = [18_equip_wear_semantics.md](18_equip_wear_semantics.md);终局线选择 = [12_line_and_intention.md](12_line_and_intention.md);商店会话语义 = [23_shop_screen.md](23_shop_screen.md)。数值单一源在代码(常量名形态)。流程编排 = `../flow/prep_visit.md`。
 
-## 1. 策略思路/算法概述
+## 1. 决策工序:九段全扫(第 0-8 步)
 
-决策入口 = `strategies/impl/mandate_v1/bridge.py::decide_prep_screen` → `entry.py::emit` 三遍编排,单动作循环逐帧恰取一个动作(接口返回 `CwAction | None`,`None` = 本帧无动作,返回主循环(重新识别画面)):① 备战实体面(武装箱/典籍/晶矿;先取场景内可开的实体奖励)→ ①′ wanted 闭环(核对目标装备需求清单是否闭环)→ ② 证明 pass(更新阵容意向状态:阵容意向状态机推进/切换终局阵容登记)→ ②′ 工具消费(评估要不要用冶金炉/扳手类工具件)→ ③ 升档器求值位(按血线硬地板与 λ 顾问评估是否上调姿态,只升不降)→ ④ 骨架 pass(必做义务检查 M1-M7)→ ⑤ EV pass(花钱动作按期望收益择优)→ ⑥ 无动作 ⇒ 出战(备战环唯一完成态)。各面:
+决策入口 = `strategies/impl/mandate_v1/bridge.py::decide_prep_screen` → `entry.py::emit`。每帧回到备战画面从第 0 步向下扫描,**执行第一个满足条件的步骤并返回其动作,下一帧重新扫描**;全部步骤不中 ⇒ 第 8 步出战。单动作循环不变(逐帧恰取一个动作);回跳语义(腾位后回头点晶矿、买完牌回头部署)在全扫下自然表达,无需状态机记步。策略层无试错计数:全部判据为每帧全量重评的纯判断——该不该做由价值/身份判断直接给出,不做「试 N 次后放弃」形态;动作未生效归执行层落地验证,候选空等异常帧正常交回外循环。
 
-- **攒利息规划**:保利息线 g* = 饱和线(常量单一源 = `kernel/cw_economy.py::saturation_line`);富余金处置 = 骨架义务 M6;可变现利息线下界 = P56(`../proofs/p56-realizable-interest-floor.md`)。
-- **等级节奏**:骨架义务 M3 的升级分支(存在性分支 arm1 + 调度门分支 arm2),支出过升级预算闸(P71/P72)、整批可负担(P48 整买纪律)、等级帽资格闸(`kernel/cw_registry.py::level_max`)、血本位(扣血换收益的卡族,如奋斗协议/不等价交换)支付检查(`kernel/cw_economy.py::blood_xp_gate`)与血预算停止追等级线([04_survival_budget.md](04_survival_budget.md) §4)。
-- **凑利息卖出**(商店期收缩后的备战期承接口):金离利息线还差一点时卖备战换金,档序 = P49(`../proofs/p49-pool-compression-ev.md`);资格统一受装配 A 约束(`sell_gate.py::sell_exclusions`,P78)+ 空板止损守卫(`sell_gate.py::empty_board_sell_blocked`)。
-- **腾位运营**:备战席满挡义务买入 → M4 腾席卖最弱 1★ 垫件(`mandate.py::fuel_sell_candidates`);若备战席已满且必须买入,由流程层在一轮内先卖后买腾位,不走策略层判据(`../flow/prep_visit.md` §4)。商店期席满腾位链的「备战卖」一步落在本画面(见 [23_shop_screen.md](23_shop_screen.md))。
-- **上阵/换排**:骨架义务 M1(终局阵容成员部署)/M5(开局板面),放行条件纪律 = `10_prep_decisions.md` §1;部署执行段细则 = [24_deploy_segment.md](24_deploy_segment.md)。
-- **装备与工具**:M7 骨架地板 + EV 穿戴([18_equip_wear_semantics.md](18_equip_wear_semantics.md));工具消耗判据单一源 = `kernel/cw_equip_env.py::evaluate_tool_actions`。
-- **姿态与升档器**:发展优先默认([00_framework.md](00_framework.md) §1);升档器(血线硬地板 + λ 顾问只升不降)= `00_framework.md` §4。
+每帧入口先执行**读数协议入口序**(金位账面同步 + 合成结果帧失效检测,协议单一源 = [23_shop_screen.md](23_shop_screen.md) §2 读数协议节),再进入九段扫描。
 
-## 2. 会执行的动作清单(收缩后目标形态)
+**第 0 步:溢出告警自救。**
+- 触发 = `gs.overflow_warning` 为真。机制事实:告警在场 = 备战席 9 格全满且溢出位有一张卡(角色或占席道具),溢出卡阻断进入战斗;解除方式唯一 = 腾出一个备战席空槽,溢出卡自动归位。
+- 自救动作序按损失递增排列(免费腾位在前、有损卖出最后),每帧重评取首个可行:
+  1. **上阵安置**(免费腾位):场上人口上限有空位 ∧ 备战席有可上阵单位 → 拖上阵(腾出备战席槽 → 溢出卡归位;同时是有效部署)。告警帧豁免上阵窗口辖域——上阵纯为腾槽保命,告警解除后窗口辖域恢复正常。
+  2. **点开消耗品**(免费腾位):无上阵安置可行 ∧ 备战席有已知占席物品(书册卡/补给箱/星徽秘典)→ 点开腾槽(占席道具不可卖但可点开)。
+  3. **卖出**(有损腾位):候选评估非空 → 按卖出候选评估器的**自救扩展资格面**(候选池仅备战席——溢出解除需腾备战槽,卖场上件无此效果;资格面 = 真全量持有:P78 资格仲裁族〔同 visit 线内禁卖、核心/转线件、种子〕全通道豁免,线内件按价值序整体置末层后仍可卖——告警解除的零停机出口优先于硬资格)卖出首位候选。
+  4. 全部不可行 → 防御性分支:零动作交回外循环(识别异常真实形态的兜底;全量可卖下候选空在结构上不可达)。
+- 告警在场时,其余步骤全部不执行(告警不消出战无效);例外仅上列自救动作本身。
+- 空板守卫 as-built 语义:卖出守卫(`sell_gate.py::empty_board_sell_blocked`)为后态判定,deployed = 0 帧全部卖出场景哑火——deployed = 0 帧的自救主路径 = 上阵安置(非卖出,不受守卫辖)。
+
+**第 1 步:点开消耗品。** 触发 = 备战席槽位有 kind 为 bookcard/supply_box/tome 的物品(书册卡/补给箱/星徽秘典);点开顺序 = 书册卡 → 补给箱 → 星徽秘典。点开产生的弹窗由外循环画面分发接住,处理后回备战重新全扫(弹窗不是工序步骤)。
+
+**第 2 步:晶矿。** 触发 = `ore_click_targets_of(gs)` 非空。
+- 席位未满:点全部晶矿(判据 = 全点;执行面按批式点击上界分批推进,`prep_actions._collect_ore`)。
+- 席位满:**按候选身份直接判断值不值得腾位,无试错计数**——候选经垫件谓词过滤后取价值最小者卖 1 腾位,下轮全扫回来点晶矿;过滤集空 → 本节点放弃晶矿(确定的高价值持有不换随机产出)。垫件谓词 = 1★ ∧ 非线内 ∧ 非合成素材 ∧ 非通用插件注册表成员 ∧ 非核心/转线件/种子 ∧ 非候选 top3 成员(`criteria/sell_candidates.py::is_ore_pad_unit`;P96 释放集复用挂账不激活,标定前晶矿垫件不含释放集)。判断天然自收敛:候选按价值升序让位,散件卖完后自动停在「无垫件可卖」。
+- 依据:确定损失换随机收益只在损失 ≈ 0 时成立(卖出纪律 = 不可逆动作按持有价值守门,弃购/囤积的真实代价 = 再遇窗口)。
+
+**第 3 步:升级检查。** 判据与发射形态单一源 = [11_shop_decisions.md](11_shop_decisions.md) §2(概率主轴五臂判据 + 整级预授权 + 变现步 + 执行帧整批发射)。本步只定义调用时机:每轮全扫评估一次;**判据不过 = 本步零动作,扫描继续到下一步**(血预算线/保底金门类拒发同落零动作语义);授权帧后由升级预授权键驱动执行帧(键是唯一跨帧授权状态;节点边界重置清键)。攒批资金不足整级时一击不买(攒钱模式,等节点收入进账后自然满足)。
+
+**第 4 步:商店会话。** 入口先调**解拦复核**(未消费机会清单的解拦判定:金位变化/席位空出任一使拦因解除 → 清「本节点已处理」标记);然后判标记 ≠ 当前节点号。满足 → 输出 `CwActionOpenShopParam` 开店;不满足 → 跳过本步。本步是备战侧**决策性**开店意图的唯一来源(金位读数开商店为辅助形态——读金非处理决策,语义单一源 = [23_shop_screen.md](23_shop_screen.md))。部署产生的腾席效果由本步入口的清单复核自然消费,无独立重开钩子。
+
+**第 5 步:部署调整。** 部署面判据整体保留:目标线成员上阵/换位(发射门纪律 = [10_prep_decisions.md](10_prep_decisions.md) §1)、开局配方(过渡体系开局)、空槽凑人数补位(任意合法单位上阵优于空槽,P24 残余补部署);调用时机在商店会话之后(先逛店再统一部署)。要点:
+- **上阵窗口辖域**:终局成员在其上线窗口前不上阵——窗口 = 阵容知识声明的上线条件(核心等级/羁绊齐/变阵点等);数据载体 = `kernel/cw_comps.py::COMP_LIBRARY` 的 `entry_signals` 字段(信号类 + 阈值),缺行 → 窗口恒假(纯终局件一律只囤不上,保守侧)。纯终局件谓词 = 终局库成员 ∧ 非现行过渡配方成员(未锁定期按全库知识判定,锁定后按锁定线名单);过渡∩终局重叠件按过渡成员正常上阵;全局累积型角色例外(越早越好,例外判定 = entry_signals 的累积型信号类);羁绊组齐信号 = 上线条件之一。判据与建表口径 = [10_prep_decisions.md](10_prep_decisions.md) §5。
+- 部署候选排除「场上已有同名同星」角色(游戏约束该状态不可达)。
+- 方向读口:现行方向 = 锁定线优先,未锁 = 过渡配方开局面(`session_scope.direction_comp_of`);无方向(K 空窗)时部署围栏目标经 K 空窗回退供给(`kernel/cw_intention.k_empty_window_fallback`,回退单一源,禁复制兜底逻辑)。
+
+**第 6 步:装备与工具。** 装备穿戴 = 现行完整实现保留(合成规划/分配/转移,语义 = [18_equip_wear_semantics.md](18_equip_wear_semantics.md));工具使用判据 = `kernel/cw_equip_env.evaluate_tool_actions`;调用位置固定为部署之后。
+
+**第 7 步:节末凑息检查。** 所有花费决策完成后的**最终利息线检查**——「卖活期牌回金」两种目的两个位置:为买而卖(会话内筹资,排在买牌账内)与为息而卖(本步)。本步必须在出战前最后执行:息按节末金位结算,提前卖会被后续购买把金位吃回去。触发 = 当前金位 < 息线(`kernel/cw_economy.py::saturation_line(cap_resolved)`;利息规则投资局 cap=10 ⇒ 息线=100,禁裸 50——口径出处 = [11_shop_decisions.md](11_shop_decisions.md) §1 金约束门)。动作 = 卖 1★ 全额退件(评估器过滤参数 = 仅活期件)补缺口,**卖到缺口闭合即止、不多卖一张**。升级变现序列在途时本步受抑制(同池候选,变现优先;变现穷尽后本步恢复)。
+
+**第 8 步:出战。** 以上全部步骤无动作 → 输出 `CwActionStartBattleParam`(备战环唯一完成态)。出战前置发射位机制保留(发射前判定宿主 = `kernel/cw_launch_admission.py::readiness_launch_decision`,机制出处 = [26_battle_settlement.md](26_battle_settlement.md)):出战就绪帧短路本工序的出战动作直接发射;**受限商店访问帧不受会话标记辖**(发射帧仲裁授权的溢余段消费照常进入商店执行)。出战点击后若长时间未离开备战画面且第 0 步告警已清 → 交外循环(已建档画面的轮转/哨兵留证)。
+
+## 2. 卖出候选评估器的备战域消费
+
+全部卖出场景(备战与商店两域)共用一个卖出候选评估器(单一入口 `criteria/sell_candidates.py::evaluate_sell_candidates`):候选池构成/资格面/价值排序的**单一源定义 = [11_shop_decisions.md](11_shop_decisions.md) §4**(价值 = 变现价 + 再遇期权 + 合成进度的金当量三项 + 羁绊规则项)。备战画面消费的场景:溢出自救(第 0 步,自救扩展资格面)、晶矿腾位(第 2 步,垫件谓词过滤)、升级变现(第 3 步变现序列,备战侧候选池 = 备战席 ∪ 场上无关角色)、节末凑息(第 7 步,仅 1★ 全额退件)。每笔卖出记遥测(场景、卖出名、价值档),各自可判读归因。
+
+## 3. 节点边界状态重置
+
+策略入口(备战/商店两域各自)在节点号读取处调用同一边界处理函数(`session_scope.handle_node_boundary`):检测到生效序位(位面,轮次)变化 → 按清单表执行一次重置(重置全部幂等;函数内部判重避免冗余执行)。**键清单的唯一所有者 = 该函数的清单表**,其他模块的节点作用域键显式登记进表(键名 + 复位值),禁各自散写重置逻辑。清单:
+
+| 键 | 复位 | 理由 |
+|---|---|---|
+| `shop_handled`(本节点已处理标记) | 清值 | 新节点牌面全换,旧标记语义死亡(节点切换自动刷新全店) |
+| `shop_opportunities`(未消费机会清单) | 清空 | 牌面变了,旧机会作废 |
+| `levelup_preauth`(升级预授权键) | 清零 | 节点切换 = 金/血/收入日程全变,旧授权作废,防跨节点兑现 |
+| `line_eval_signature`(方向证据签名) | 置失效 | 强制下帧重算(节点变动伴随结算收入与自然经验,资产面可能变化) |
+| `gold_ledger`(金位账面) | 置失效 | 读数失效条件「节点切换」经本表落地 |
+| 会话域旗标(读数意图/受限访问/会话处理中/升级即收工/插件额度) | 复位 | 会话不跨节点,边界帧残留旗标防泄入下一节点 |
+
+**负登记(不重置项)**:方向状态本身(锁定线槽/候选快照/开局配方)不重置——锁定为一次性决策跨节点持续保留,候选快照随签名重算自然更新,配方物化链每备战期自写;`plane2_started`(第二位面已启动窗口谓词)与 P2 选卡侦测键同不重置(单调历史事实)。
+
+## 4. 会执行的动作清单
 
 | 动作 | 动作类型(op 载体) | 触发判据(指针) |
 |---|---|---|
-| 上阵/换排(拖备战栏→前排/后排) | `DeployMove`(原子序,动作发出点逐帧现算) | M1/M5 + `10_prep_decisions.md` §1 放行条件纪律;残余补部署 P24(`../proofs/p24-residual-fill-dominance.md`) |
-| 卖备战(腾位/凑利息/筹资/切换终局阵容塌缩) | `SellBench` | M4(`mandate.py::fuel_sell_candidates`)/ P49+P56(`criteria/sell.py::sell_for_interest`)/ 筹资(`criteria/sell.py::funding_support_sell`)/ 塌缩(`12_line_and_intention.md`);资格面 = `sell_gate.py::sell_exclusions`(P78) |
-| 买经验(连点「购买经验」至升一级;商店期收缩后的唯一买经验期) | `LevelUp` | M3 升级分支 + 预算闸 + 整买纪律 + 等级帽 + 血本位/血预算线(§1 等级节奏行全链) |
-| 开商店(显式/读数两形态) | `OpenShop` | 骨架/EV 需要店面时;读数开商店 = 腾位链取金真值等(动作类型载体 = `kernel/cw_vocab.py::CwActionOpenShopParam`) |
-| 开补给箱/开典籍/点晶矿 | `OpenBox`/`OpenTome`/`CollectOre` | 实体面优先(`entry.py::emit` ①;箱选卡判据 = `13_pick_family.md`;席满让路门 = entry 席满探针段) |
-| 穿装备/消耗工具 | `WearEquip`/工具原子类(经 `CwActionToolUseOp`) | M7 + `18_equip_wear_semantics.md` + `cw_equip_env` 求值 |
-| 出战 | `StartBattle` | 决策链最先检查的发出点(`kernel/cw_launch_admission.py::readiness_launch_decision`,宿主 = mandate_v1 decide 入口);备战环正常出口(唯一完成态,详见 [26_battle_settlement.md](26_battle_settlement.md)) |
+| 上阵/换排(拖备战栏→前排/后排) | `DeployMove`(原子序,动作发出点逐帧现算) | 第 5 步部署面:M1/M5 + [10_prep_decisions.md](10_prep_decisions.md) §1 放行条件 + 上阵窗口辖域(entry_signals);残余补部署 P24(`../proofs/p24-residual-fill-dominance.md`);第 0 步自救态 1(告警帧窗口豁免) |
+| 卖备战(自救/晶矿腾位/升级变现/节末凑息) | `SellBench` | 第 0/2/3/7 步各场景;评估器与资格面 = [11_shop_decisions.md](11_shop_decisions.md) §4 |
+| 买经验(购买经验整批发射,升级的唯一支出形态) | `LevelUp` | 第 3 步升级检查:五臂判据 + 整级预授权 + 变现步([11_shop_decisions.md](11_shop_decisions.md) §2) |
+| 开商店(决策性/读数两形态) | `OpenShop` | 第 4 步商店会话(解拦复核 + 标记判重);读数开商店 = 金位读数辅助形态([23_shop_screen.md](23_shop_screen.md)) |
+| 开补给箱/开书册卡/点开星徽秘典 | `OpenBox`/`OpenBookcard`/`OpenTome` | 第 0 步自救态 2 / 第 1 步消耗品点开(弹窗后续判据 = [13_pick_family.md](13_pick_family.md)) |
+| 点晶矿 | `CollectOre` | 第 2 步(席位未满全点;满 = 垫件腾位后回头点) |
+| 穿装备/消耗工具 | `WearEquip`/工具原子类(经 `CwActionToolUseOp`) | 第 6 步:M7 + [18_equip_wear_semantics.md](18_equip_wear_semantics.md) + `cw_equip_env` 求值 |
+| 出战 | `StartBattle` | 第 8 步(以上全部步骤无动作);前置发射位机制 = [26_battle_settlement.md](26_battle_settlement.md) |
 
-备战期不做的:闭店态无商店域动作;卖上阵件仅经部署面换血通道([24_deploy_segment.md](24_deploy_segment.md)),无独立备战卖出上阵的义务出口。
+备战期不做的:独立备战卖出上阵件的义务出口不存在——场上件卖出仅经部署面换血通道([24_deploy_segment.md](24_deploy_segment.md))与升级变现/节末凑息的场上无关角色候选(§1 第 3/7 步)。
 
-## 3. 能力 vs 策略
+## 5. 能力 vs 策略
 
-备战期动作集与能力面同集(策略收缩只发生在商店期,对照 [../screens/README.md](../screens/README.md) §5.3 与 [23_shop_screen.md](23_shop_screen.md) §3);原则定义 = [../screens/README.md](../screens/README.md) §1。
+备战期动作集与能力面同集(原则定义 = [../screens/README.md](../screens/README.md) §1 与 §5.3);商店期「卖备战/买经验收缩至备战期」的旧判例已废止(两画面现为全动作面分工而非能力收缩,对照 [23_shop_screen.md](23_shop_screen.md) §3)。
