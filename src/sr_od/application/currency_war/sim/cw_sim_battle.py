@@ -14,9 +14,11 @@
   直扣不拆,结构字段置 None 占位并随局披露不可分;
 - 败 → 挑战进度均匀采样(服务遭遇达标制等结构消费);胜 → 进度记
   达标;
-- **M14 结构规则**:HP 只在节点战斗失败时扣;首次 hp≤0 保底剩 1
-  (保底位 = 容器 ``hp_floor_triggered``,全局机制);再次归零 → 局终;
-  HP 跨位面继承不重置。
+- **M14 结构规则**:HP 只在节点战斗失败时扣;**普通奖励关例外恒胜
+  白拿**(奖励关不需要战力,不存在败局;后端结算腿承载改写,输出面
+  ``SIM_REWARD_FREE_WIN_FACE``);扑满奖励关不掉血(M17);首次 hp≤0
+  保底剩 1(保底位 = 容器 ``hp_floor_triggered``,全局机制);再次归零
+  → 局终;HP 跨位面继承不重置。
 
 随机流键(后端侧装配):``M13/{plane}/{round}``(胜负掷点 + 扣血/进度
 采样同流依序消耗)。
@@ -41,6 +43,11 @@ SIM_WIN_PROB: float = 0.5
 
 #: 输出面简化档标记(随局披露;sim-only 简化档禁外推)。
 SIM_BATTLE_FACE: str = 'sim_random_face_u01'
+
+#: 普通奖励关恒胜白拿的输出面标记(奖励关不需要战力 = 用户账本 408 行
+#: 裁定,kernel ``cw_reward_node.py`` 裁定权威行单一源;不存在败局,
+#: 判读侧据此区分「真随机战斗面」并挡外推)。
+SIM_REWARD_FREE_WIN_FACE: str = 'sim_reward_free_win_face'
 
 
 @dataclass(frozen=True)

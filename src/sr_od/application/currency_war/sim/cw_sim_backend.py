@@ -156,6 +156,7 @@ from sr_od.application.currency_war.sim.cw_sim_base import (
 )
 from sr_od.application.currency_war.sim.cw_sim_battle import (
     SIM_BATTLE_FACE,
+    SIM_REWARD_FREE_WIN_FACE,
     apply_hp_outcome,
     settle_battle,
 )
@@ -1678,6 +1679,13 @@ class SimBackend:
         rng = stream_rng(self.seed, f'M13/{node.plane}/{node.round_num}')
         outcome = settle_battle(rng, plane=node.plane,
                                 round_num=node.round_num)
+        if kind == 'reward' and not is_piggy_node(self.gs):
+            # 普通奖励关恒胜白拿:奖励关不需要战力(用户账本 408 行裁定,
+            # 单一源 = kernel cw_reward_node.py 裁定权威行;user_playstyle
+            # 「默认稳过」主条),不存在败局——不掉血不掷负。先采后改写:
+            # M13 随机流消耗恒定,同 seed 其他节点随机序列不漂移。
+            outcome = replace(outcome, won=True, hp_delta=0, progress=1.0,
+                              face=SIM_REWARD_FREE_WIN_FACE)
         if is_piggy_node(self.gs) and outcome.hp_delta < 0:
             # 扑满不掉血豁免(M17:扑满关有战力要求、不掉血)
             outcome = replace(outcome, hp_delta=0)
