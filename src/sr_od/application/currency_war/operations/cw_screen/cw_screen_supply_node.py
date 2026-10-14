@@ -266,6 +266,13 @@ class CwScreenSupplyNode(CwOperation):
         """
         match = self.ctx.cw_match
         opts = self._sup_opts or []
+        # 导入无条件置顶:派发段(下方 CARD_BODY 兜底路径)也构造
+        # CwActionPickSupplyParam,分支内导入会使兜底路径 UnboundLocalError
+        #(sim 局 = 声明姿态「act 恒走 CARD_BODY 兜底」,模块头在册)。
+        from sr_od.application.currency_war.kernel.cw_vocab import (
+            CwActionPickSupplyParam,
+            CwActionRefreshSupplyParam,
+        )
         target = CwScreenSupplyNode.CARD_BODY
         reason = 'no-options(CARD_BODY 兜底)'
         refresh_target = None
@@ -282,10 +289,6 @@ class CwScreenSupplyNode(CwOperation):
         if match is not None and opts:
             # 零参决策(写槽已由观察轮 report 落容器 supply;决策调用形态
             # 不变,同访问覆盖写)。
-            from sr_od.application.currency_war.kernel.cw_vocab import (
-                CwActionPickSupplyParam,
-                CwActionRefreshSupplyParam,
-            )
             _gs = match.gs
             # 剩余对照闸读源 = 容器 supply_refresh_left(观察轮 report 摄入
             # 的同帧读数;None = 未观察/读缺,≤0 = 已刷尽)。

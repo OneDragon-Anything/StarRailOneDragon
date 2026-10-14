@@ -141,6 +141,14 @@ class CwScreenBossBriefing(CwOperation):
         if cw_sim_ports.mechanical_io_allowed():
             self.ctx.controller.mouse_move(blank)
             self.ctx.controller.click(blank)
-        # else sim:机械腿静默成功(点击源转移由后端 click_answer 承载)
+        else:
+            # sim:本点击是后端点击源(空白点击 → battle_resolve 推进),
+            # 必须过 click_answer 端口——直连旁路静默跳过 = 世界零反应,
+            # 横幅永驻 → 外循环重派风暴(flow-seam §2 直连旁路逐点
+            # port 检查;动作 op 族「世界反应由自上报承接」形态不适用
+            # 本屏,推进通道只有点击源)。
+            cw_sim_ports.click_answer(
+                self, CwScreenBossBriefing.SCREEN_NAME,
+                CwScreenBossBriefing.BLANK_AREA, None, None)
         time.sleep(1.0)   # click 异步落地 + 横幅退场动画
         return self.round_success('点空白已发,交回外循环重判')

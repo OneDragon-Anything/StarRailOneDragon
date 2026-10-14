@@ -19,7 +19,7 @@ success);提示在 = 点击未落地 → 重点)→ 点空白推进 →
 round_wait 循环(不烧节点重试预算;不收敛 = 动作 bug 响亮暴露,无防御
 上限)。门在观察 node 先行,裁决住决策动作 node 顶部。本屏 sim 腿 =
 不适用(sim 无对应画面段),等价判据主承重 = 实机在册行为锁 +
-sr-od-test 链观察锁(test_cw_transition_node_chain.py)。
+sr-od-test 链观察锁(test_node_chain.py 过渡屏节)。
 """
 import contextlib
 import time
@@ -161,7 +161,15 @@ class CwScreenPlaneTransition(CwOperation):
         if cw_sim_ports.mechanical_io_allowed():
             self.ctx.controller.mouse_move(blank)
             self.ctx.controller.click(blank)
-        # else sim:机械腿静默成功(点击源转移由后端 click_answer 承载)
+        else:
+            # sim:本点击是后端点击源(空白点击 → 节点窗口收口推进),
+            # 必须过 click_answer 端口——直连旁路静默跳过 = 世界零反应,
+            # 过渡屏永驻 → 外循环重派风暴(flow-seam §2 直连旁路逐点
+            # port 检查;动作 op 族「世界反应由自上报承接」形态不适用
+            # 本屏,推进通道只有点击源)。
+            cw_sim_ports.click_answer(
+                self, CwScreenPlaneTransition.SCREEN_NAME,
+                CwScreenPlaneTransition.BLANK_AREA, None, None)
         time.sleep(1.0)   # click 异步落地 + 过渡翻页动画
         # 机械交回(验证废除):提示消失与否由下一轮重入观察裁决(act 顶部)。
         self._click_pending = True

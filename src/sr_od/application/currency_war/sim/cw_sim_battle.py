@@ -86,6 +86,16 @@ def apply_hp_outcome(gs: GameState, outcome: BattleOutcome) -> tuple[bool, bool]
         再次归零 → 整局结束(引擎据此进 game_over)。
     """
     if outcome.won or outcome.hp_delta == 0:
+        # 胜局/零扣血也落一行等值 hp 写:结算写流 = 「每战斗结算恰一条
+        # hp 写行」的锁面(first_run 容器不变式②),等值跳写会让写流与
+        # hp_trail(每结算一条)失去同构——实机对偶 = 结算屏恒显 hp,
+        # 无「胜利就不读 hp」的形态。hp 未观察(None)= 无值可写,照旧
+        # 零写(防御面;正常局 reset 即种)。
+        hp_now = gs.hp.value
+        if hp_now is not None:
+            gs.observe(gs.hp, int(hp_now),
+                       evidence=sim_evidence('battle:hp'),
+                       sig=obs_sig(group_id='sim:battle'))
         return False, False
     hp_after = int(gs.hp.value or 0) + outcome.hp_delta
     tag = 'battle:hp'
