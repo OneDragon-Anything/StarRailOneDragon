@@ -93,8 +93,8 @@
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
-| 三选一选环境卡 | `data/gameplay.md`(投资环境 = 整局增益);开场必经 | `operations/cw_screen/cw_screen_invest_env.py::CwScreenInvestEnv`(阶段一身份行「货币战争-投资环境」);决策 = pick 族 `decide_invest_env`(规格 = strategy-docs 13 号篇) | 确认离开(overlay 消失) |
-| 刷新圆钮重掷三卡 | `research/screen_flow_timing.md` #4(刷新动画 ~2s) | 同 op 内整组重掷(`cw_screen_invest_env.py::_decide_and_act`:点→等动画→**本访问即交回**,round_success 终结,无 pending;外循环重进 = 入口重建重观察重分类);是否建议刷新 = 投资环境刷新三态判据(策略层 `invest_env`,正本 = strategy-docs 28 号稿 §4;math_proofs P81) | **刷新即本访问终结**(刷新 = 唯一引入新事实的动作);确认离开才画面终结 |
+| 三选一选环境卡 | `data/gameplay.md`(投资环境 = 整局增益);开场必经 | `operations/cw_screen/cw_screen_invest_env.py::CwScreenInvestEnv`(阶段一身份行「货币战争-投资环境」);决策 = pick 族 `decide_invest_env`(规格 = strategy-docs/13_pick_family.md) | 确认离开(overlay 消失) |
+| 刷新圆钮重掷三卡 | `research/screen_flow_timing.md` #4(刷新动画 ~2s) | 同 op 内整组重掷(`cw_screen_invest_env.py::_decide_and_act`:点→等动画→**本访问即交回**,round_success 终结,无 pending;外循环重进 = 入口重建重观察重分类);是否建议刷新 = 投资环境刷新三态判据(策略层 `invest_env`,正本 = strategy-docs/28_invest_env_screen.md §4;math_proofs P81) | **刷新即本访问终结**(刷新 = 唯一引入新事实的动作);确认离开才画面终结 |
 
 ### 5.3 备战画面(货币战争-备战)
 
@@ -131,7 +131,7 @@
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
 | 选卡(N 选 1) | 各事件机制(`data/gameplay.md`/`research/economy.md` §9) | 各画面 op(阶段一身份分发,分支号制已停用) | 确认离开(overlay 消失)= 画面终结 |
-| 逐卡/整屏刷新重掷 | 刷新后 ~2s 稳定(时序 #13/#19/#23) | 投资策略逐槽(观察 obs 携带逐卡余量 + `safe_click` 内置动作)/ 遭遇(`cw_screen_encounter.py` 刷新终结分支,容器 `encounter_refresh_left` 剩余闸)/ 补给(`cw_screen_supply_node.py`「剩余次数」文本锚定,容器 `supply_refresh_left` 剩余闸);建议刷新 = 各屏策略层刷新判据(策略屏 = `invest_strategy` 帧级门+槽级动作集,正本 = strategy-docs 29 号稿 §4;环境屏 = `invest_env` 三态,28 号稿 §4;P81) | **刷新 = 终结为全域规范**(正本 = [op-layer.md](op-layer.md) §1.4):投资环境整组重掷、投资策略逐卡、遭遇、补给(点钮 + 2s 后 round_success 交回外循环重进 = 入口重建)全链终结语义,闸全域 = 剩余语义观察真值(`*_refresh_left`,禁已用推算);确认离开才画面终结 |
+| 逐卡/整屏刷新重掷 | 刷新后 ~2s 稳定(时序 #13/#19/#23) | 投资策略逐槽(观察 obs 携带逐卡余量 + `safe_click` 内置动作)/ 遭遇(`cw_screen_encounter.py` 刷新终结分支,容器 `encounter_refresh_left` 剩余闸)/ 补给(`cw_screen_supply_node.py`「剩余次数」文本锚定,容器 `supply_refresh_left` 剩余闸);建议刷新 = 各屏策略层刷新判据(策略屏 = `invest_strategy` 帧级门+槽级动作集,正本 = strategy-docs/29_invest_strategy_screen.md §4;环境屏 = `invest_env` 三态,28_invest_env_screen.md §4;P81) | **刷新 = 终结为全域规范**(正本 = [op-layer.md](op-layer.md) §1.4):投资环境整组重掷、投资策略逐卡、遭遇、补给(点钮 + 2s 后 round_success 交回外循环重进 = 入口重建)全链终结语义,闸全域 = 剩余语义观察真值(`*_refresh_left`,禁已用推算);确认离开才画面终结 |
 | 开书册卡(点备战席槽位「开启」→ 弹专家邀请函) | 书册卡 = 备战席占槽道具 | `CwActionOpenBookcardOp`(备战决策环终结动作,`terminal=True`;动作发出点 = 策略器 entry ① prep 实体面卡片分支 `strategies/impl/mandate_v1/entry.py`)→ 弹窗由阶段一身份分发 `operations/cw_screen/cw_screen_expert_invite.py::CwScreenExpertInvite` 选卡 | 开卡即备战访问终结;弹窗选卡确认离开 = 弹窗访问终结 |
 | 返回备战/返回选择(暗色锁定子态) | 暗色蒙层态判别 id_mark = 右上操作按钮(screen_flow_timing #18) | `operations/cw_screen/cw_screen_prep_locked_return.py::CwScreenPrepLockedReturn`(阶段一身份分发;策略锁定/遭遇锁定两档参数化) | 点返回即终结 |
 | 关「属性详情」面板 | 点卡身上部误触发 | 未建模独立处理(点卡 = 机械单发);面板残留由下一帧重新识别自愈(重分发重走链/详情 overlay 族分支) | 面板关闭即随重新访问收敛 |

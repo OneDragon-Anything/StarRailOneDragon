@@ -77,7 +77,7 @@
 | `v3_handoff` / `v3_handoff_plane` | 位面 2 承接快照(策略计算) | decide_prep | 位面 | MandateState |
 | `v3_posture_unfulfilled` | 仲裁帧级重算(策略) | 对账门遥测 | 帧 | MandateState |
 | `cw4_counters`(动态属性,非 dataclass 字段) | 策略行为观测分键(mandate_v1/encounter/shop/entry 多点写) | decisions 行、cw4_counters.jsonl 局终快照、sim 轮差分账本、A/B 披露 | 局 | MandateState;**遥测消费线必须随迁保持可读**(§5.4) |
-| `v2_state` / `locked_line` / `bridge_id` | 决策层相位元组/锁线/桥线(初版误判退役;对抗审查 A2 改判——**活读端** = cw_screen_buy_cards.py:658-662 直接属性访问入 decisions 行;**原活写端** = 旧引擎 engine_p1.py:672/701,已随引擎退役消解,见 §5.6 as-built 注) | decisions 行遥测 | 局 | MandateState.相位面(sim 初始相位改经状态构造,§5.6) |
+| `v2_state` / `locked_line` / `bridge_id` | 决策层相位元组/终局阵容锁定/桥线(初版误判退役;对抗审查 A2 改判——**活读端** = cw_screen_buy_cards.py:658-662 直接属性访问入 decisions 行;**原活写端** = 旧引擎 engine_p1.py:672/701,已随引擎退役消解,见 §5.6 as-built 注) | decisions 行遥测 | 局 | MandateState.相位面(sim 初始相位改经状态构造,§5.6) |
 | `memory`(dict) | 策略 scratch | 策略临时变量 | 局 | **随切换直接消解**(§6.3,用户裁定) |
 
 ### 2.4 执行层状态——迁出至执行侧载体(16 项;as-built 实际落点 22 具名 = 16 清册 + 计划外第二波 6:`last_prep_action_sig`/`_supply_detour_done`/`cw_prep_pending_accts`/`cw_takeover_collect_done`/`cw_takeover_tries`(此两名已退役删除——现行接管补采无 gs 字段,真值经位面详情屏写门落容器)/`cw4_swap_arm_on`,见 「落位裁量」节)
@@ -139,7 +139,7 @@
 
 ### 3.2 裁决 2:恢复局语义 = 策略器状态保守冷启动
 
-**裁决**:恢复局(server 重启后接管残局)下,session 观察数据由入口观察全量重建(现状 `discard_stale_match_container` + 新局兜底已有 by-construction 语义,flow/README §2.3),策略器状态**不可重建、不尝试重建**——以空 MandateState 冷启动,凭当帧观察数据重新驱动意向状态机(重锁线/重评演进)。丢失状态的语义逐类显式声明:
+**裁决**:恢复局(server 重启后接管残局)下,session 观察数据由入口观察全量重建(现状 `discard_stale_match_container` + 新局兜底已有 by-construction 语义,flow/README §2.3),策略器状态**不可重建、不尝试重建**——以空 MandateState 冷启动,凭当帧观察数据重新驱动意向状态机(重新锁定终局阵容/重评演进)。丢失状态的语义逐类显式声明:
 
 | 丢失的状态类 | 冷启动语义 | 风险评级 |
 |---|---|---|

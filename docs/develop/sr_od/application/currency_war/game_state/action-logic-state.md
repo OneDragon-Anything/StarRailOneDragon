@@ -168,7 +168,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（动作�
 
 备战域动作类型清单 = `kernel/cw_vocab.py::CW_ACTION_TYPES` 备战域子集；执行器 = `prep_actions.py::PrepActionExecutor`（机械执行，发出即职责完成，落地判定归观察对账）。容器写语义单一源 = 各动作的上报函数 `kernel/cw_action_report/<snake>.py::report_action_<snake>_param`（写域申报面 = 各函数 docstring；金账/库存分支内聚于函数 `session` 形参面；零写动作族 = `zero_writes.py` 集中申报）；dict 确认族到账 = `kernel/cw_exec_state.py::apply_confirm_effect`。slot 语义 = 清单摊平后统一为槽位表下标（原生 `BenchSlot` 形态，零换算；历史「备战栏物理槽位 1-9」口径随两域统一消亡）。
 
-**发射形态（原子通路）**：决策核逐帧发原子动作（部署 = DeployMove 序 / 穿戴 = WearEquip 序 / 工具 = 各消耗品原子类 / 卖出 = SellBench/SellDeployed），备战环逐帧执行决策输出的恰一个动作（None = 本帧无动作，交回外循环重观察）；组合壳（RunDeploy/RunEquip/RunTools）不再是生产发射形态（类与登记行已删除）。发射位计划构造单一源 = `strategies/impl/mandate_v1/deploy_plan.py::deploy_plan_moves`（部署：选人 `select_deployments` + 落位策略 `deploy_row_pref`/`deploy_slot_plans`——排 = comp 站位覆盖 > 注册表 `position_pref` 派生 > back 兜底，前排保证随迁，槽位按容器行列现值自定，后排上限 = `back_layout` 现值；出战链经 `battle_chain_deploy_params` 共用同源）、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`（穿戴）、`kernel/cw_equip_env.py::evaluate_tool_actions`+`admitted_tool_actions`（工具 G1 准入,即代码侧发射位准入门）、`kernel/cw_prep_actions.py::select_ore_clicks`（采晶矿载荷）。
+**动作发出形态（原子通路）**：决策核逐帧发原子动作（部署 = DeployMove 序 / 穿戴 = WearEquip 序 / 工具 = 各消耗品原子类 / 卖出 = SellBench/SellDeployed），备战环逐帧执行决策输出的恰一个动作（None = 本帧无动作，交回外循环重观察）；组合壳（RunDeploy/RunEquip/RunTools）不再是生产的动作发出形态（类与登记行已删除）。动作发出点计划构造单一源 = `strategies/impl/mandate_v1/deploy_plan.py::deploy_plan_moves`（部署：选人 `select_deployments` + 落位策略 `deploy_row_pref`/`deploy_slot_plans`——排 = 阵容站位覆盖 > 注册表 `position_pref` 派生 > back 兜底，前排保证随迁，槽位按容器行列现值自定，后排上限 = `back_layout` 现值；出战链经 `battle_chain_deploy_params` 共用同源）、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`（穿戴）、`kernel/cw_equip_env.py::evaluate_tool_actions`+`admitted_tool_actions`（工具 G1 准入,即代码侧动作发出点准入门）、`kernel/cw_prep_actions.py::select_ore_clicks`（采晶矿载荷）。
 
 ### 3.1 DeployMove（备战席 → 上阵单步拖拽）
 
@@ -204,7 +204,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（动作�
 **确定面**：
 
 - 每击：+`XP_PER_BUY` 经验、−单击价（单击价单一源 = `kernel/cw_economy.py::xp_click_cost` 两支语义：显示价支容器 `level_up_cost` 直通 / 兜底支基价 `XP_CLICK_COST_FALLBACK` 减在册折扣）；
-- **授权/发射门全在决策核发射位**（执行器授权面全删）：每帧发射前置 = kernel `clicks_to_next_level` 现算击数 > 0；金地板逐击查金（`spend_unified`）/预算闸（`levelup_budget_gate`）/血闸（`blood_xp_gate`）= 发射位既有门链；满级 = 击数 0，无授权不发射；
+- **授权/放行条件全在决策核动作发出点**（执行器授权面全删）：每帧发出前置 = kernel `clicks_to_next_level` 现算击数 > 0；金地板逐击查金（`spend_unified`）/预算闸（`levelup_budget_gate`）/血闸（`blood_xp_gate`）= 动作发出点既有门链；满级 = 击数 0，无授权不发出；
 - **容器逻辑态**（上报函数 `report_action_level_up_param`）：xp/level 跨门槛推进（推进算子单一源 = `xp_apply_clicks`，单击步长；level/xp 缺读 = 域级跳写）；**deploy_cap 不写**（容量真值由观察写入方防抖读承接，`max_units` 的 cap<level 兜底规则保守承接升级增量）；
 - **金分支** = 上报函数按 `action.cost`×击数直写（`report_action_level_up_param`；击数 = 执行回执 `ShopActionExecuted.levelup_clicks`，缺回执 = levelup_clicks_not_fed 拒零写；执行缝金差对 LevelUp 恒 0/已停用）；
 - 经验/等级真值 = 下一帧观察经验对账族承接（XpLedger 通道单击推进 + OCR 真值 reconcile）。
@@ -237,7 +237,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（动作�
 
 **随机面直写（logic-rand-sampling 迭代起,采样语义首个落地）**：坐标列表中被点的晶矿按载荷坐标**逐点顺序推演**——每点独立守卫（该点时 bench 无空位 = 晶矿留在 spheres 不摘不采,前点奖励耗席累计判）→ 独立采样（临时口径 v0:金 1–5/简易装备池/概率表抽角色,`kernel/cw_ore_reward.py` 常量面,待采集校准）→ **逐步随机态写**（spheres 摘除/抽中域采样值/未抽中域值不变标记/角色落位 + 3合1 连锁每级受影响域各落一行,board 派生随行继承随机态）。全部容器写 = `write_logic_rand`;观察覆盖差异 = 随机效果落地预期内（`logic_rand_outcome` 记录行）。逐动作规格权威版本 = [logic-updates/collect-ore.md](../game_state/logic-updates/collect-ore.md)。
 
-**发射形态（坐标参数化机械动作）**：载荷 = 有序晶矿坐标点击列表（大晶矿优先/上界挑选归决策侧 kernel 单一源 = `kernel/cw_prep_actions.py::select_ore_clicks`，发射位以预算常量 `ORE_CLICK_BATCH_MAX_K` 调用）；执行器纯机械逐个点（原读屏选晶矿与批内截断半随改形停用）。
+**动作发出形态（坐标参数化机械动作）**：载荷 = 有序晶矿坐标点击列表（大晶矿优先/上界挑选归决策侧 kernel 单一源 = `kernel/cw_prep_actions.py::select_ore_clicks`，动作发出点以预算常量 `ORE_CLICK_BATCH_MAX_K` 调用）；执行器纯机械逐个点（原读屏选晶矿与批内截断半随改形停用）。
 
 **前置谓词（席满拦截）**：bench 空闲 >0 ∨ 晶矿均不占席，才发射采晶矿（fields.md §4.2 CollectOre；席满让路门 = 策略发射面席满探针）；上报层同口径双保险（逐点守卫）。席满点占席晶矿 = 游戏侧点不动，晶矿仍在 → 下一帧观察回补、下轮再派。
 
@@ -251,7 +251,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（动作�
 
 **随机面 / 观察面**：五选一卡面内容归观察；选卡决策 = 弹窗画面 op `CwScreenExpertInvite`（默认策略单一源 = `choose_expert_index` 原位，chosen_expert 落地记录 §6 边界），本动作不选卡。动画等待 `_OVERLAY_ANIM_WAIT_S`，弹窗就位与否交下一帧观察。
 
-**发射形态**（用户裁定 2026-09-19 开卡时机归策略实现管）：发射位 = 策略器 entry ① prep 实体面卡片臂（容器 bench kind `'bookcard'` 触发；原备战环入口清场段 `_clear_prep_cards` 代发通道撤销）。**终结动作**（op 类 `terminal=True`，弹窗 = 新事实，交回外循环重分发选卡；备战单次访问终结分支已随批补齐）。
+**动作发出形态**（用户裁定 2026-09-19 开卡时机归策略实现管）：动作发出点 = 策略器 entry ① prep 实体面卡片分支（容器 bench kind `'bookcard'` 触发；原备战环入口清场段 `_clear_prep_cards` 代发通道撤销）。**终结动作**（op 类 `terminal=True`，弹窗 = 新事实，交回外循环重分发选卡；备战单次访问终结分支已随批补齐）。
 
 **依据**：`kernel/cw_vocab.py::CwActionOpenBookcardParam`；`prep_actions.py::PrepActionExecutor._open_bookcard`。
 
@@ -279,12 +279,12 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（动作�
 
 工具类（category='工具'）7 件登记于装备注册表（`research/equipment_mechanics.md` §5 全量；不可 drag 穿，消耗交互 = owned 网格内 icon→icon 拖曳）。**逐件写入方登记单一源** = `kernel/cw_affix_effects.py::EQUIP_WRITE_SIDES`（每件恰一个落码写入方，取值清单四形：`bridge:`=写入方桥确定性直写 / `contribution:`=贡献算术零直写组合收尾 / `op:`=执行域既有写入方 / `observation`=负写入方随机面交由观察收尾）+ 逐件归属申报 `EQUIP_REWRITE_DECLARATIONS`。
 
-**执行载体**：工具消耗 = 备战动作类型清单原子类（§3A.2，按消耗品各立类），发射位 = mandate_v1 entry ②′（判据单一源 = `kernel/cw_equip_env.py::evaluate_tool_actions` → `admitted_tool_actions` G1 准入〔首现注:G1 准入 = 代码侧发射位准入门,拒因键 `g1_not_admitted`〕，本层禁第二套时机判断），机械半 = `prep_actions.py::PrepActionExecutor._use_tool`。原组合 op 载体（`CwOpTools`，含消耗确认对拍）随原子化停用。
+**执行载体**：工具消耗 = 备战动作类型清单原子类（§3A.2，按消耗品各立类），动作发出点 = mandate_v1 entry ②′（判据单一源 = `kernel/cw_equip_env.py::evaluate_tool_actions` → `admitted_tool_actions` G1 准入〔首现注:G1 准入 = 代码侧动作发出点准入门,拒因键 `g1_not_admitted`〕，本层禁第二套时机判断），机械半 = `prep_actions.py::PrepActionExecutor._use_tool`。原组合 op 载体（`CwOpTools`，含消耗确认对拍）随原子化停用。
 
 **分档结构**（执行接线 = 哪个执行面消费本件规则）：
 
 - **档 1（判据准入放行，原子类发射）**：冶金炉（→`FurnaceUse`，furnace_single）、特权赋予卡（→`PrivilegeCardUse`，privilege_upgrade）；
-- **档 2（判据面 fail-closed〔首现注:fail-closed = 判据缺失或不可判时取不动作的保守分支〕，类随族立档、发射位禁无判据发射）**：拆装扳手（→`WrenchUse`）、精密拆装扳手（→`PrecisionWrenchUse`）、员工投影仪（→`StaffProjectorUse`）、完美投影仪（→`PerfectProjectorUse`）、好运令牌（→`LuckyTokenUse`）——判据面拒因分键在册（dest_unready/cold_start_later/rc_missing）；其中员工投影仪/完美投影仪/好运令牌的 kernel 写入方桥已备（接线 = 桥调用），拆装扳手走执行域既有装备转移链。
+- **档 2（判据面 fail-closed〔首现注:fail-closed = 判据缺失或不可判时取不动作的保守分支〕，类随族立档、动作发出点禁无判据发出）**：拆装扳手（→`WrenchUse`）、精密拆装扳手（→`PrecisionWrenchUse`）、员工投影仪（→`StaffProjectorUse`）、完美投影仪（→`PerfectProjectorUse`）、好运令牌（→`LuckyTokenUse`）——判据面拒因细分键在册（dest_unready/cold_start_later/rc_missing）；其中员工投影仪/完美投影仪/好运令牌的 kernel 写入方桥已备（接线 = 桥调用），拆装扳手走执行域既有装备转移链。
 
 **通用边界**：工具消耗品 −1 与目标件消失 = **容器零写**（消费真值归观察——装备域下一帧读数覆盖；工具原子 = 发射帧独占类，无中间窗口）；消耗确认三态对拍随原子化停用（消费真值归观察）。首件消费后画面网格重排（reflow）→ 工具原子 = 发射帧独占类（后续网格目标动作下帧重评）。装备获得固定入栏序（第 1 排消耗品从右往左、装备区先右列后左列，`research/equipment_mechanics.md` §5）= 观察剪枝知识，不进逻辑态。
 
@@ -347,7 +347,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（动作�
 | sell_refund 3★/4★ 手续费精确值(−1 为推测) | SellBench / SellDeployed / CompTransaction | 退款消费按保守端(下界)组装;live 核定 = 单局复盘检查项 | 3★ 已 live 定案(2026-09-15 详情面板实测:3★2费=+17=cost×9−1 ✓,1★/2★ 同场三点全中,详 economy.md §3——4★ 档仍未核,剩余缺口收敛到 4★) |
 | 卖价修饰 ×2（大裁员/降本增效）作用口径（净额 vs 基础价） | SellBench / SellDeployed | 不写修饰分支，退款按基础公式；实持效果局观察覆盖 | 持修饰效果局卖 2★ 看回金差 |
 | 卖带装角色装备去向（口述·权威 = 全量回区；实机帧级证据未采） | SellBench / SellDeployed / CompTransaction | 按装备守恒约束回收建模直写（在用）；对账层认「账面 2 组件 == 画面 1 进阶」类合法态 | 卖带装单位前后装备区逐格对拍（完整观察帧采集） |
-| 好运令牌定向池结构（「四件」vs「3+3」）与判据面（R(c) 推荐表未采集） | 好运令牌（§4.7/§3A.2） | 判据面 fail-closed 永不进准入；`LuckyTokenUse` 类随族立档 + 发射位禁无判据发射，逻辑态 = 工具 −1 + 获得面按选定后确定直写 | 拖一次令牌数选项实机采集（proofs/p14 Q5）+ 判据面建模批补档 |
+| 好运令牌定向池结构（「四件」vs「3+3」）与判据面（R(c) 推荐表未采集） | 好运令牌（§4.7/§3A.2） | 判据面 fail-closed 永不进准入；`LuckyTokenUse` 类随族立档 + 动作发出点禁无判据发出，逻辑态 = 工具 −1 + 获得面按选定后确定直写 | 拖一次令牌数选项实机采集（proofs/p14 Q5）+ 判据面建模批补档 |
 | 商业间谍「升级时刷新商店并偷最贵 3 张」副作用 | LevelUp（两形态） | 升级分支只写经验/金；牌面偷取后果归下一帧观察 | 持商业间谍局升级时刻前后商店牌面对拍 |
 | 晋升名额「买经验时随机一槽变高 1 费」副作用 | LevelUp（两形态） | 同商业间谍行（随机面归观察） | 持晋升名额局买经验前后牌面费用对拍 |
 | 免战牌跳过后 hp/streak/收入「不动」（暂定表述） | StartBattle（跳过子态） | 跳过无结算帧；下一备战帧观察覆盖时三字段必核对 | 免战局跳过前后三字段对拍 |
