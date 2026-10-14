@@ -171,7 +171,7 @@ def locked_resume_sync_and_battle(op, ctx):
 
     **无条件插入,零血线判据**:hp 入参合规口径 = λ 表血带维或已确认
     硬地板授权(00_framework §3)——「hp≤阈值则强制同步」形态不实现,
-    登记待办:待玩家确认。与「达标即出战」分支(§9.6)的关系按 C1 规格:本函数
+    登记待办:待玩家确认。与「达标即出战」分支(strategy-docs/14_p1_consume_arms.md §9.6)的关系按 C1 规格:本函数
     = 恢复局面调用面(标志覆盖),底层动作发出核 = ``launch_prepared_battle``
     单一函数,达标分支经策略层前置动作发出点(bridge._launch_front_check)调用
     面共用动作发出核、**不过本标志**(旧「须经本函数单一动作发出点,禁旁路」话术
@@ -198,7 +198,7 @@ def _battle_chain_deploy_moves(session) -> list:
 
 
 def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
-    """出战底层动作发出核(C1 单一发出函数,§9.6):部署原子序 +
+    """出战底层动作发出核(C1 单一发出函数,strategy-docs/14_p1_consume_arms.md §9.6):部署原子序 +
     CwActionStartBattleParam 的执行核,恢复局面与达标分支两调用面共用,禁各写一套
     CwActionStartBattleParam 动作发出点。
 
