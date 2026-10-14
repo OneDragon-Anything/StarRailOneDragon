@@ -317,6 +317,23 @@ def saturation_line(cap_resolved: int) -> int:
     return 10 * cap_resolved
 
 
+def next_interest_line(gold: int, cap_resolved: int) -> int | None:
+    """下一利息档线(凑息卖出止盈目标的单一源)。
+
+    跨到下一利息档所需的金位线 = ``(min(g//10, cap-1)+1)×10``。凑息
+    卖出只有跨档才有收益(interest = min(g//10, cap),档内卖出金额
+    变动不涨息),缺口 = 本线 − 当前金;返回 None = 无档可跨,凑息
+    零收益,消费位必须零发出:
+
+    - 已达满档(gold ≥ cap×10,含饱和线之上)——利息已封顶;
+    - 买断制(cap_resolved ≤ 0)——利息通道整体关闭。
+    """
+    gold_n = int(gold or 0)
+    if cap_resolved <= 0 or gold_n >= 10 * cap_resolved:
+        return None
+    return (min(gold_n // 10, cap_resolved - 1) + 1) * 10
+
+
 def in_must_spend_zone(gold: int, session: StrategySession | None) -> bool:
     """富余段判定(20 号稿 §2.1):g > G_must = 10 × cap_resolved。
 

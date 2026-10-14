@@ -19,10 +19,12 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     interest,
     interest_cap_resolved,
     loss_exact,
+    next_interest_line,
     saturation_line,
 )
 
 __all__ = [
     'DEFAULT_INTEREST_CAP', 'INTEREST_CAP_SUP', 'interest',
-    'interest_cap_resolved', 'loss_exact', 'saturation_line',
+    'interest_cap_resolved', 'loss_exact', 'next_interest_line',
+    'saturation_line',
 ]

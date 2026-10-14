@@ -35,7 +35,7 @@ from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
 from sr_od.application.currency_war.kernel.cw_economy import (
     cap_resolved_of_session,
     in_must_spend_zone,
-    saturation_line,
+    next_interest_line,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
 from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -1351,29 +1351,45 @@ def _step7_node_end_interest(session: StrategySession,
     """第 7 步节末凑息(22 号篇 §1 第 7 步;候选池 = 备战席 ∪
     场上无关角色〔来金族,用户裁定 2026-10-13〕)。
 
-    触发 = 当前金位 < 利息线(saturation_line(cap_resolved);禁裸 50)。
-    动作 = 卖 1★ 全额退件(评估器 'node_end_interest' 场景过滤)补缺口,
-    卖到缺口闭合即止、不多卖一张(卖回量最小化):单动作循环下每帧
-    首候选一张,卖出上报更新金位后下帧重评,金位 ≥ 利息线即停。空板守卫
-    (deployed = 0 帧哑火)= 评估器 as-built 并入语义。本步卖出的退金
-    由第 4 步入口统一复核(23 号篇契约 A)。
+    触发 = 存在「单件退金 ≥ 到下一利息档缺口」的资格候选(缺口单一源
+    = kernel ``next_interest_line``;跨不了档的卖出零利息收益,一件不
+    卖——金 10~19 区间卖光 bench 也不涨息,纯亏资产,[11] 卖回量最小
+    化的前件)。动作 = 取退金 ≥ 缺口中退金最小的 1★ 全额退件(评估器
+    'node_end_interest' 场景过滤),逐帧单张:跨档后下帧按新金位重评,
+    缺口重算自然收敛。空板守卫(deployed = 0 帧哑火)= 评估器 as-built
+    并入语义。本步卖出的退金由第 4 步入口统一复核(23 号篇契约 A)。
 
     升级变现序列在途抑制(11 号篇 §2 帧交错规则①):键在
     ∧ 变现候选尚存时本步零发出(同池候选竞争,变现优先);变现穷尽
     后竞争消失、本步恢复。
 
-    金位读数门(23 号篇金位读数形态):账面失效帧无法判「金位 ≥
-    利息线」→ 读数开店锚定(标记不动),下帧重评。
+    金位读数门(23 号篇金位读数形态):账面失效帧无法判「缺口与候选
+    退金」→ 读数开店锚定(标记不动),下帧重评。
     """
     if _step3_liquidation_pending(session, gs):
         return []
     if state_of(gs).gold_ledger is None:
         return _open_shop_for_gold_read(session, gs)
-    if gold_of(gs) >= saturation_line(cap_resolved_of_session(session)):
+    _gold = gold_of(gs)
+    _line = next_interest_line(_gold, cap_resolved_of_session(session))
+    if _line is None:
         return []
+    _gap = _line - _gold
     _cands, _why = evaluate_sell_candidates(gs, 'node_end_interest')
     if not _cands:
         return []
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        bench_char_cost,
+        sell_refund,
+    )
+    _feasible: list[tuple[int, int]] = []
+    for _i, _c in enumerate(_cands):
+        _r = sell_refund(1, bench_char_cost(_c.unit, gs))
+        if _r >= _gap:
+            _feasible.append((_r, _i))
+    if not _feasible:
+        return []
+    _r, _best_i = min(_feasible)   # 退金最小;并列取评估器让位序靠前
     return _emit_sell_candidate(
-        session, gs, _cands[0], reason='interest_prep',
+        session, gs, _cands[_best_i], reason='interest_prep',
         tag='interest_prep', counter='node_end_interest_sell')

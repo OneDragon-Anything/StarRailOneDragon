@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_economy import (
     bench_char_cost,
+    next_interest_line,
     sell_refund,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import bench_slot_unit
@@ -79,16 +80,18 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
                       merge_guard_release: frozenset[str] | set[str] = frozenset(),
                       dedup_names: set[str] | None = None,
                       ) -> tuple[list[int], str]:
-    """凑息卖·回拉动作发出点(T1 语义重写;设计 13_buy_face_design §2.2)。
+    """凑息卖·回拉动作发出点(T1;设计 13_buy_face_design §2.2)。
 
-    语义重写三项(R2-N4,取代旧「T_SEARCH_A 注入态资格全集无差别全发」):
-    ① **金位触发(缺口驱动)**:买/花后逻辑态金 ``gold`` < 利息线
-       g* = saturation_line(cap_resolved) 才发出,缺口 = g* − gold;
-       非缺口帧零发出(返回 'not_needed',与 funding_support 触发形态同构);
-    ② **目标量止盈**:remaining 递减贪心(funding_support ``remaining``
-       模板同构移植,零待证依赖;任意确定序贪心都能卖够,序只影响效率
-       ——p49 ⑤ 每金序/[11] 最小化为效率升级项,非本位前件),
-       Σrefund ≥ 缺口即止,不多卖一张;
+    语义(R2-N4,取代旧「T_SEARCH_A 注入态资格全集无差别全发」):
+    ① **金位触发(下一利息档缺口驱动)**:当前金未达下一利息档线
+       (单一源 = kernel ``next_interest_line``;已达满档/买断制 =
+       None)才评资格,缺口 = 档线 − 当前金;档线之上零发出(返回
+       'not_needed',与 funding_support 触发形态同构);
+    ② **跨档止盈(卖回量最小化 [11] 的严格语义)**:只有「单件退金
+       ≥ 缺口」的候选才可卖——跨不了档的卖出零利息收益、纯亏持有
+       资产,一件不卖(拒因 'no_tier_gain');可行件取**退金最小**的
+       一张(逐帧单张模型:跨档后下帧按新金位重评,缺口重算自然
+       收敛,不一次多卖);
     ③ **槽位布尔门停用**:T_SEARCH_A 裸布尔检查退出本消费位(窗口数值
        链归 P57 裁决,与本重写分账)。
 
@@ -103,10 +106,11 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
     (star, slot) 升序(funding_support 同款序)。
 
     分键遥测(R3-R5 四字段,设计 §3.2;counters=None 时不记):
-    ``t1_interest_emit_frames``(动作发出帧数)/``t1_interest_gap_total``(缺口
-    累计)与 ``t1_interest_sellback_total``(实际卖回累计,两者之比=覆盖
-    缺口率)/``t1_pullback_gold_ge_gstar``(回拉后逻辑态金 ≥ g* 帧数=金位
-    轨迹)。
+    ``t1_interest_emit_frames``(动作发出帧数)/``t1_interest_gap_total``(到
+    下一利息档缺口累计)与 ``t1_interest_sellback_total``(实际卖回累计,
+    两者之比=覆盖缺口率)/``t1_pullback_gold_ge_gstar``(本张卖出即闭合
+    缺口〔跨档〕帧数——跨档止盈下发出即闭合,键名保留 g* 字样 =
+    历史遥测兼容,语义按本行)。
 
     凑息禁令(血线硬地板解锁包件②)已删除(line_and_upgrade §2.3
     血线地板解锁行——唯一消费方 = 已废止的血线解锁;正典依据
@@ -122,11 +126,9 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
 
     ``defer_names``(T3 同轮保留;凑息回拉通道 = **绝对跳过**,非降序):
     集合内名字整体退出卖出资格集(分键 ``t3_protect_deferred``,零静默)
-    ——机理 = T5 门槛7 不等式:买后缺口 gap ≤ 决策帧可变现件退金总和
-    (被保垫件 1★ 全额可退,卖谁都净零,跳过后改卖其他 liquid 照常闭合
-    缺口,回拉功能零损失;边界申报:同轮多笔被保买入帧,前笔被保件在
-    买入帧 s_reserve 投影内时缺口闭合可能不足——失败形态 = 金留 g* 之下
-    真实持有,非自旋,经 t1_interest_gap/sellback 差值可判读)。与
+    ——被保垫件 1★ 全额可退卖谁都净零,跳过零损失;其余候选按跨档
+    止盈判据独立评估,凑不齐缺口即零发出(失败形态 = 金留档内真实
+    持有,非自旋,经 t1_interest_gap/sellback 差值可判读)。与
     G-S1 不冲突:被保件同时是素材时双守卫各拒各的(保护只影响排序/跳过,
     不影响资格闭集)。
 
@@ -143,11 +145,10 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
     _deployed = _deployed_units_of(state)
     if empty_board_sell_blocked(_deployed, counters=counters):
         return [], EMPTY_BOARD_SELL_GUARD_KEY
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
-        saturation_line,
-    )
-    g_star = saturation_line(cap_resolved)
-    gap = g_star - int(gold or 0)
+    _line = next_interest_line(int(gold or 0), cap_resolved)
+    if _line is None:
+        return [], 'not_needed'
+    gap = _line - int(gold or 0)
     if gap <= 0:
         return [], 'not_needed'
 
@@ -189,18 +190,22 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
     prefer = set(prefer_names)
     qualified.sort(key=lambda ib: (0 if _cid_of(ib[1]) in prefer else 1,
                                    _star_of(ib[1]), ib[0]))
-    out: list[int] = []
-    remaining = gap
-    sellback = 0
+    # 跨档止盈(数量判据,非资格):单件退金 ≥ 缺口才卖,取退金最小的
+    # 一张(并列取紧缩位靠前 = 资格序稳定);无可行件 = 跨不了档的卖出
+    # 零利息收益纯亏资产,一件不卖('no_tier_gain',消费位按非空拒因
+    # 跳过路径处置)。资格集空 = 无候选诚实空集,拒因保持 ''(原语义,
+    # 与「有候选凑不出档」分键)。
+    if not qualified:
+        return [], ''
+    feasible: list[tuple[int, int]] = []
     for i, b in qualified:
-        out.append(_slot_of(b, i))
-        # 1★ 卖回净额 = sell_refund(1, 注册表 cost)(与 funding_support
-        # 同款:bench_char_cost 未知名保守估 3,禁字面量双源)
         refund = sell_refund(1, bench_char_cost(bench_slot_unit(b)))
-        remaining -= refund
-        sellback += refund
-        if remaining <= 0:
-            break
+        if refund >= gap:
+            feasible.append((refund, i))
+    if not feasible:
+        return [], 'no_tier_gain'
+    sellback, best_idx = min(feasible)
+    out = [best_idx]
     _count('t1_interest_emit_frames')
     _count('t1_interest_gap_total', gap)
     _count('t1_interest_sellback_total', sellback)
