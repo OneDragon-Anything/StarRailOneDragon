@@ -216,6 +216,12 @@ def mirror_click_answer(
       响亮,与实机 AREA_NO_CONFIG 同形;``node_clicked`` 置位语义保留,
       ``update_screen_after_operation`` 画面簿记照走——两者均零 controller
       触达);
+    - **屏门**(实机「按钮在本帧上找到才点得着」的 sim 对偶):问询屏
+      非后端当前呈现屏(经 :func:`visible` 判定)→ round_retry(实机
+      OCR_CLICK_NOT_FOUND 同形,调用方按 is_success 分流)。无此门 =
+      任意屏上点击恒成功,驻留型动作 op 在世界已切走后仍每轮「点击 +
+      上报」越屏偷跑推进——冒烟批阻断二实证(结算确认把后续 16 节点
+      的推进全部冒领,流程层节点处理零执行,5000 步风暴假通过);
     - until 问询 = :func:`visible`(``until_not_find_all`` = 取反,目标区域
       不可见才算过);问询为假 = 继续轮询返回 ``round_wait``,**不重发点击**
       (sim 点击腿已成功,重发会重复触发状态机转移);
@@ -231,6 +237,8 @@ def mirror_click_answer(
     area = op.ctx.screen_loader.get_area(screen_name, area_name)
     if area is None:
         return op.round_fail(status=f'区域未配置 {area_name}')
+    if not visible(screen_name, area_name):
+        return op.round_retry(status=f'未找到 {area_name}')
     op.node_clicked = True
     op.update_screen_after_operation(screen_name, area_name)
     if until_find_all is None and until_not_find_all is None:
