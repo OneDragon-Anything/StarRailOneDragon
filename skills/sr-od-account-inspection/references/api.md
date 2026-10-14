@@ -59,6 +59,15 @@
 
 结论：10035 对明细接口族是**网关级拒绝**（IP/环境信誉评分），人工极验+票据不解除；开源项目的极验处理流程（genshin.py auth/server.py 全套）可完整复现但同样无效。排查方向只剩环境：更换出口 IP（如手机热点）后低频重试，或长期等 IP 信誉恢复。**规避：走游戏内画面读取路线。**
 
+开源界穷尽验证（2026-10-14，genshin.py @ master + MihoyoBBSTools 对照）：
+- genshin.py `Client(region=CHINESE)` 正确调用 get_starrail_characters → 同样 `GeetestError: [10035]`（region 默认 OVERSEAS 是常见坑，国服必须显式传）
+- genshin.py 对 10035 仅抛异常，无自动解法（issue #228 官方答案 create_mmt→verify_mmt 只适用于海外 verify_mmt 端点与「响应内嵌挑战」的签到类接口）
+- game_record 10035 响应 data 为空、**服务端不下发挑战**（gt/challenge）——createVerification 主动创建的挑战票据（x-rpc-challenge/validate/seccode，含 MihoyoBBSTools 的 `|jordan` seccode 格式）不被 game_record 网关接受
+- curl_cffi（真 Chrome TLS 指纹）与浏览器结果一致 → TLS 指纹非变量
+- card 接口始终 retcode 0 且数据实时 → cookie/UID 均有效，仅明细族被网关拒
+
+=> 10035 的解锁不在客户端：等 IP/环境信誉恢复（隔数日低频重试）或换全新出口 IP 再试。
+
 关键规格备忘（下次重试直接用）：
 - create_mmt 头：`x-rpc-app_version: 2.60.1`、`x-rpc-client_type: 5`、`x-rpc-challenge_game: 6`、`x-rpc-page: v1.4.1-rpg_#/rpg`、`x-rpc-tool-version: v1.4.1-rpg`；DS 的 `q=` 恒为 `is_high=false`
 - 验证页：`https://static.geetest.com/static/js/gt.0.5.0.js`（版本敏感）+ `<meta name="referrer" content="no-referrer"/>` + initGeetest 必传 `api_server: "api.geetest.com"`（漏传连国际服务器必失败）
