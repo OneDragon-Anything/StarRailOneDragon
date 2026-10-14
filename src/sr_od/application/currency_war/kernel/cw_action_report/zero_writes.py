@@ -2,12 +2,12 @@
 
 族策略:视觉域/转场/选择类动作的容器写语义 = 零(逐类函数体 =
 三行委托 :func:`_report_zero_write`),集中一文件不逐类开文件
-(无逐类专辖内容);命名规约完备锁照样逐类点验收口 = 包级
+(无逐类专覆盖内容);命名规约完备锁照样逐类点验收束 = 包级
 ``__getattr__`` 未命中落本模块。语义正本 = 各函数 docstring
 (自 cw_game_state 逐字迁移)。
 
 工具原子七类(冶金炉/特权赋予卡/拆装扳手/精密拆装扳手/员工投影仪/
-完美投影仪/好运令牌)已迁出零写族:上报升格为容器写(机械执行直接
+完美投影仪/好运令牌)不在零写族:上报升格为容器写(机械执行直接
 上报写容器),分步实现正本 = 同包 ``tool_use``;包级 ``__getattr__``
 命名规约解析具名模块先于本模块。
 """
@@ -73,7 +73,7 @@ def report_action_open_box_param(gs: GameState, param: Any, sig: ChannelSig) -> 
     sim 后端 advance)。点击直弹登记(
      §1.7:点备战栏箱位「开启」直接弹四选一——
     统一入登记,kind = box_card;声明 next_screen 语义回归底层屏归
-    3.4 消费面,本批不改声明)。"""
+    3.4 消费面,本模块不改声明)。"""
     from sr_od.application.currency_war.kernel.cw_overlay_register import (
         KIND_SCREEN_NAMES,
         register_screen_change,
@@ -91,7 +91,7 @@ def report_action_open_box_param(gs: GameState, param: Any, sig: ChannelSig) -> 
 # projector_use_param / report_action_lucky_token_use_param)= 容器写形态,
 # 单一源 = 同包 tool_use(冶金炉采样池 sim 同源 + 投影仪走获得链);包级
 # ``__getattr__`` 命名规约解析具名模块先于本模块,直接 import 零写委托
-# 的旧消费面已随迁改直取具名模块。
+# 的旧消费面已改直取具名模块。
 
 
 
@@ -104,20 +104,20 @@ def report_action_open_shop_param(gs: GameState, param: Any, sig: ChannelSig) ->
 
 def report_action_pick_event_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """选事件选项上报(CwActionPickEventParam 参数载体 + sim 脚本动作;
-    策略器不发射),容器零写。"""
+    策略器不发出),容器零写。"""
     return _report_zero_write(gs, param, sig, 'zero_write(pick_event)')
 
 
 # report_action_pick_invest_param / report_action_pick_equip_param /
 # report_action_pick_supply_param / report_action_pick_encounter_param
-# 已迁出零写族:pick_equip / pick_supply = 分步→即时实现(同包具名模块;
-# 策划屏迁移归后续批);pick_invest 已随投资两屏迁移批拆为
+# 不在零写族(移具名模块):pick_equip / pick_supply = 分步→即时实现
+# (同包具名模块);pick_invest 拆为
 # pick_invest_strategy / pick_invest_env(即时上报形态:机械链发出即按
 # 成功写完整结果,action_ops.md §1 增补 2;策略支整支走获得链
-# gain_invest_strategy,环境支走 gain_invest_env);pick_encounter 已随
-# 遭遇扩围批迁同包 pick_encounter.py(发射即写 chosen_encounter,选择事实 =
+# gain_invest_strategy,环境支走 gain_invest_env);pick_encounter 在同包
+# pick_encounter.py(发出即写 chosen_encounter,选择事实 =
 # 动作执行时产生,用户裁定 2026-09-21)。包级 ``__getattr__`` 命名规约
-# 解析具名模块先于本模块,直接 import 零写委托的旧消费面已随迁改直取
+# 解析具名模块先于本模块,直接 import 零写委托的旧消费面已改直取
 # 具名模块。
 
 
@@ -201,7 +201,7 @@ def report_action_pick_expert_invite_param(gs: GameState, param: Any, sig: Chann
 
 
 # —— 刷新建议三动作(遭遇/补给/投资):参数类在册(CW_ACTION_TYPES)、
-#    生产发射面留守画面 op 刷新链,不经动作 op 自上报——本组函数零生产
+#    生产动作发出面留守画面 op 刷新链,不经动作 op 自上报——本组函数零生产
 #    调用方,在场 = 命名规约完备锁对象(test_cw_action_report_contract
 #    遍历词表逐类断言「每动作恰一个上报函数」),禁当死代码删除。——
 

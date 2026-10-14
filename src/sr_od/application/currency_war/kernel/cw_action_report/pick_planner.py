@@ -3,21 +3,21 @@
 **即时单相上报**(行为正本 = `flow/action_ops.md` §4.5 PickPlanner 行;
 用户裁定 2026-09-21 = action_ops.md §1 增补 2:动作 op
 点完就立即上报,按成功把结果写进 game state):``CwActionPickPlannerOp``
-确认点击后一口写完整效果逻辑态,无发射/落地两相、无证据闩。写序:
+确认点击后一口写完整效果逻辑态,无发出/落地两相、无证据标志。写序:
 
 - **条件腿 rider**(:func:`_grant_joy_conditional`)先于腿型分派执行——
   弹窗出现即触发,与选择哪条腿无关(授予失败不阻塞腿型分派);
 - **equip**:件名命中 → 装备入栏(write_logic)+ 获得后果链
   (apply_equip_acquire_consequence);未解析 → 禁猜,equips 值不变翻
-  来源 + 留证行;
+  来源 + 留存证据行;
 - **upgrade**:变换窗三态 + 档行(见 :func:`_apply_upgrade_transform`);
-- **unknown**:零记账 + 留证行(含弱化词且装备锚未命中的卡文落此——
-  弱化兜底档已按原文二分法退役,静默零记账变响亮申报)。
+- **unknown**:零记账 + 留存证据行(含弱化词且装备锚未命中的卡文落此——
+  弱化兜底档已按原文二分法停用,静默零记账变响亮申报)。
 
 其余未路由腿型 = 终态兜底零写(reason = ``unrouted_leg_zero_write``)。
 
 确认未生效重派 → 效果腿重复应用的风险按增补 2 禁止清单第 4 条接受,
-不设防(升费腿二次上报走「零枚 → 留证零写」,档行不会 +1 两次)。
+不设防(升费腿二次上报走「零枚 → 留存证据零写」,档行不会 +1 两次)。
 效果腿的写语义单点 = 本函数(确认后无第二写边)。
 
 **后果声明**(动作后果声明化详设 world-decl.md §2 表 #11):applied 出口
@@ -84,7 +84,7 @@ def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
     写序 = 模块头:条件腿 rider(:func:`_grant_joy_conditional`)先于
     腿型分派;随后腿型分派逐步应用,逐字段各落一行遥测(单次动作报告
     多次写遥测 = 预期行为):equip 入栏+后果链 / upgrade 变换窗三态+档行
-    / unknown 零记账+留证 / 未路由腿型终态兜底零写。applied 出口构造
+    / unknown 零记账+留存证据 / 未路由腿型终态兜底零写。applied 出口构造
     后果声明(:data:`_DECL`;拒出口 None)。
 
     - ``leg_type``/``norm_item`` = 决策半腿型载荷(classify_planner_leg
@@ -127,14 +127,14 @@ def _grant_joy_conditional(gs: GameState, sig: ChannelSig,
     evidence = ``joy_conditional:<单位名>``)。
 
     rand 语义:授予体含采样(二选一)→ ``rand=True`` **全通道 logic_rand,
-    锚定前后同通道**(rand 形参优先于锚定闩短路)——未锚定 = 未验证推算
+    锚定前后同通道**(rand 形参优先于锚定标志短路)——未锚定 = 未验证推算
     走随机态,首观察静默覆盖;锚定后 rand=True 仍 logic_rand(采样面)。
     校准面 = ``logic_rand_outcome`` 行(模型选中单位 vs 观察实见单位成对
-    数据),无失配网辖;均匀二选一分布未实测,候校准。
+    数据),无失配网覆盖;均匀二选一分布未实测,候校准。
 
     **调用点级 best-effort**:链原语零吞错纪律在本调用点的显式例外
     (登记腿 best-effort 同族先例)——授予与选项应用是两条独立因果,
-    授予失败不拖垮腿型分派:异常 log + 缺陷留证后照常继续;链内部照旧
+    授予失败不拖垮腿型分派:异常 log + 缺陷留存证据后照常继续;链内部照旧
     零吞错。
     """
     if normalize_invest_name(gs.active_env.value or '') != '欢愉契约':
@@ -163,7 +163,7 @@ def _apply_equip_leg(gs: GameState, norm_item: str,
     """装备腿(确定性通道):入栏 + 获得后果链。"""
     if not norm_item:
         # 未解析:禁猜名,equips 值不变翻来源(collect_ore 步2 同款)+
-        # 留证行——观察覆盖差异 = 预期内收口自愈。
+        # 留存证据行——观察覆盖差异 = 预期内收束自愈。
         if gs.equips.value is not None:
             gs.write_logic_rand(gs.equips, gs.equips.value,
                                 produced_by=_PLANNER_PRODUCER,
@@ -193,7 +193,7 @@ def _apply_upgrade_transform(gs: GameState,
     写入,观察态与原落地相时点等值):
 
     - **现档 ≥ 5**(误走本腿:5 费升 2 星两选项皆装备,upgrade 不应出现;
-      出现 = 识别或机制异常)→ 不写变换不写档,留证行
+      出现 = 识别或机制异常)→ 不写变换不写档,留存证据行
       (kind=``planner_upgrade_tier_ceiling``);
     - **恰一枚** → 工作副本变换(−2★ +1★,槽位无关,落点不建模观察为
       真值)→ **档行**(变换落行后、级联前;现档 = :func:`effective_cost`,
@@ -201,8 +201,8 @@ def _apply_upgrade_transform(gs: GameState,
       (merge_cascade_write 正常推演——费用档不同时存在[口述·权威
       2026-09-18],分组键无跨档歧义)→ 受影响域各落一行(write_logic);
     - **多枚**(二次升费现实可发)→ 触发单位不可辨(禁猜)→ 受影响域
-      值不变翻来源 + 留证行(kind=planner_upgrade_ambiguous),档不动;
-    - **零枚/未观察** → 不写 + 留证行(真异常,照真失配响停,fail-closed
+      值不变翻来源 + 留存证据行(kind=planner_upgrade_ambiguous),档不动;
+    - **零枚/未观察** → 不写 + 留存证据行(真异常,照真失配响停,fail-closed
       禁猜),档不动。
 
     费用档不建模于单位(档 = 容器 match 级字段 lv999_cost_tier,本腿即其
@@ -224,7 +224,7 @@ def _apply_upgrade_transform(gs: GameState,
                      sig=sig, kind='planner_upgrade_source_missing')
         return LogicOutcome(applied=False,
                             reason='upgrade_source_unobserved')
-    # 现档封顶闸:5 费档 upgrade 腿不期出现,出现即留证零写。
+    # 现档封顶闸:5 费档 upgrade 腿不期出现,出现即留存证据零写。
     tier = effective_cost(gs, _LV999_ID)
     if tier >= 5:
         _emit_defect(field_name='lv999_cost_tier',
@@ -250,7 +250,7 @@ def _apply_upgrade_transform(gs: GameState,
                      kind='planner_upgrade_source_missing')
         return LogicOutcome(applied=False, reason='upgrade_source_missing')
     if count > 1:
-        # 多枚:值不变翻来源(受影响域全集,未观察域跳写)+ 留证行自愈。
+        # 多枚:值不变翻来源(受影响域全集,未观察域跳写)+ 留存证据行自愈。
         for fld in (gs.bench, gs.deployed):
             if fld.value is None:
                 continue

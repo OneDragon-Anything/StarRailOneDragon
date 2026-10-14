@@ -1,6 +1,6 @@
-"""货币战争 词缀源效果结构化注册 + 装备注册表改写成员扫描申报(非策略源效果辖域)。
+"""货币战争 词缀源效果结构化注册 + 装备注册表改写成员扫描申报(非策略源效果适用范围)。
 
-**辖域**(统一 state 迭代 GameState 数据结构设计 §5.1「词缀效果辖域申报」与
+**适用范围**(统一 state 迭代 GameState 数据结构设计 §5.1「词缀效果适用范围申报」与
 §7 扫描范围源 c/源 e 的代码化;两份 data 注册表 = 效果文本真值,本模块 = 规格申报面):
 - **词缀源结构化注册** ``AFFIX_EFFECT_SPECS``:会改写 GameState 字段的敌人词缀
   (成长的烦恼/变宝为废/永久创伤)按 EffectSpec 四元组建格。键 = affix_effects_data
@@ -8,8 +8,8 @@
 - **装备注册表改写成员扫描** ``scan_rewrite_equipments`` × ``EQUIP_REWRITE_DECLARATIONS``:
   cw_equipment_data 全量中改写金/小队生命/生命上限/容量/单位/装备面的成员逐件申报
   写入归属——装备效果大量随投资卡发放后成常驻写入源,不点名=无人看管。
-- **装备改写成员写端落码登记** ``EQUIP_WRITE_SIDES``:申报表 25 件逐件登记
-  落码写端(桥/贡献算术/动作上报/负写端四形,分形判据见其行注);桥与
+- **装备改写成员写端实现登记** ``EQUIP_WRITE_SIDES``:申报表 25 件逐件登记
+  实现写端(桥/贡献算术/动作上报/负写端四形,分形判据见其行注);桥与
   贡献算术宿主 = kernel/cw_effect_inventory.py 文末「装备改写写端」段
   (免模块级成环,与板面重写桥同宿主纪律);动作上报宿主 =
   kernel/cw_action_report/tool_use(工具动作机械执行直接上报写容器)。
@@ -17,13 +17,13 @@
   两读链的产出点经它入效果账本(生产调用方 =
   ``operations/cw_screen/cw_screen_briefing.py::CwScreenBriefing.observe``
   词缀读链登记段,开局首读 / ``operations/cw_screen/cw_screen_plane_intel.py``
-  上报节点词缀登记段,接管局补采)。
+  上报节点词缀登记段,中断恢复对局补采)。
 
 **边界**:
 - STRATEGY_EFFECTS 只产策略源(cw_investments overlay 头注,键空间/孤儿校验独立);
   环境源('portal')登记端未建,ActiveEffect.source 词表预留。
-- 改写面写端:装备申报面已按归属判据落码(EQUIP_WRITE_SIDES 四形登记;
-  写端桥为账本→字段桥,生产挂点接线归节点结算/获得回执各辖批,接线前
+- 改写面写端:装备申报面已按归属判据实现(EQUIP_WRITE_SIDES 四形登记;
+  写端桥为账本→字段桥,生产挂点接线归节点结算/获得回执各覆盖批,接线前
   一律观察覆盖兜底;动作上报形 = 工具动作上报函数已接线 live,工具七行
   归 kernel/cw_action_report/tool_use);词缀面写端(CwActionLevelUpParam
   金/装备库存/hp_max)不在本模块,归属单一源 = 各 spec 的 notes,仍观察
@@ -134,7 +134,7 @@ def _validate_affix_specs() -> None:
         elif spec.category == EffectKind.BATTLEFIELD:
             ok = isinstance(spec.payload, BattlefieldEffect)
         else:
-            ok = False  # 词缀辖域无 UNIT_BUFF 用例;新类别入册须先扩本守卫
+            ok = False  # 词缀适用范围无 UNIT_BUFF 用例;新类别入册须先扩本守卫
         if not ok:
             raise ValueError(
                 f"AFFIX_EFFECT_SPECS payload↔category 不一致:{name!r} "
@@ -149,7 +149,7 @@ def _validate_affix_specs() -> None:
 #: 任一关键词组**组内全现**即命中该面(组内=AND,组间=OR——单关键词组退化
 #: 为包含判定)。敌方侧生命类文本(熄火/强化/净化族)用「小队」「我方小队」
 #: 锚定排除。倒计时增减族(决战在即/战个痛快/时间刺客)不入谓词——倒计时
-#: 无 GameState 字段载体,非本申报面辖域。
+#: 无 GameState 字段载体,非本申报面适用范围。
 _AFFIX_REWRITE_FACES: tuple[tuple[str, tuple[tuple[str, ...], ...]], ...] = (
     ('gold', (('金币',),)),
     ('hp', (('小队生命值',),)),
@@ -188,7 +188,7 @@ def scan_rewrite_affixes() -> dict[str, str]:
 #: 解锁获得单位。面形语义同 _AFFIX_REWRITE_FACES(组内 AND/组间 OR)。
 #: 词表口径:小队生命 = 「小队生命值」措辞(单位战斗内生命/护盾文本不含该词,
 #: 天然排除);罪孽王冠正文 OCR 截断(「扣除双倍小队」后残缺),以残文关键词
-#: 单列。节点态改写(破解芯片「节点变为弱化状态」)不在源 c 谓词辖域,归节点
+#: 单列。节点态改写(破解芯片「节点变为弱化状态」)不在源 c 谓词适用范围,归节点
 #: 序列台账面。
 _EQUIP_REWRITE_FACES: tuple[tuple[str, tuple[tuple[str, ...], ...]], ...] = (
     ('gold', (('金币',),)),
@@ -222,7 +222,7 @@ def scan_rewrite_equipments() -> dict[str, str]:
 #: 归属判据(效果写入归属判据正本 = docs/develop/sr_od/application/currency_war/game_state/
 #: effect-domain.md §6.3;详设 = GameState 数据结构设计 §5.3):结果可准确
 #: 计算(确定性公式+已知输入)→ 逻辑写;含概率/随机 → 不建逻辑写端,观察
-#: 收口。「现观察覆盖兜底」= 生产挂点接线归各辖批(工具执行/节点结算/获得
+#: 收束。「现观察覆盖兜底」= 生产挂点接线归各覆盖批(工具执行/节点结算/获得
 #: 回执),接线前记录面维持观察覆盖。
 EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
     '财富宝钻': '金面:装备者每3备战阶段+1金(确定性→逻辑写;写端=贡献算术'
@@ -305,8 +305,8 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
 }
 
 
-# ===== 装备改写成员写端落码登记(键集必须恰等于 EQUIP_REWRITE_DECLARATIONS)=====
-#: 逐件登记落码写端,值词表五形(窗口独占性分形判据 =
+# ===== 装备改写成员写端实现登记(键集必须恰等于 EQUIP_REWRITE_DECLARATIONS)=====
+#: 逐件登记实现写端,值词表五形(窗口独占性分形判据 =
 #: cw_effect_inventory 文末「装备改写写端」段头注):
 #: - ``bridge:<函数名>``      写端桥——触发窗口独占的确定性直写;
 #: - ``contribution:<函数名>`` 贡献算术——触发窗口与未接写端共享,零直写,
@@ -317,7 +317,7 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
 #:                             直接写容器(宿主 = kernel/cw_action_report/
 #:                             tool_use,tool-gain-report 迭代;确定面
 #:                             write_logic、随机面 write_logic_rand 采样链);
-#: - ``op:<锚>``              op 域既有写端(本批零新增);
+#: - ``op:<锚>``              op 域既有写端(本次零新增);
 #: - ``observation``           负写端——随机面/真值同拍送达面/字段缺位面。
 EQUIP_WRITE_SIDES: dict[str, str] = {
     '财富宝钻': 'contribution:equip_diamond_phase_gold',
@@ -351,14 +351,14 @@ EQUIP_WRITE_SIDES: dict[str, str] = {
 def _validate_equip_write_sides() -> None:
     """EQUIP_WRITE_SIDES 构建校验(import 即炸,与 _validate_affix_specs 同纪律):
 
-    ① 键集恰等于 EQUIP_REWRITE_DECLARATIONS(每件申报恰一个落码写端,零静默);
+    ① 键集恰等于 EQUIP_REWRITE_DECLARATIONS(每件申报恰一个实现写端,零静默);
     ② 值词表封闭:bridge:/contribution: 目标函数必须在 cw_effect_inventory
        可解析且可调用(改名/删除即炸);report: 目标函数必须在
        cw_action_report.tool_use 在册(动作上报写端单一宿主,改名/删除
        即炸);op: 锚非空;observation 无载荷;
-    ③ 落码形(bridge/contribution/report/op)申报 notes 必含「逻辑写」、
+    ③ 实现形(bridge/contribution/report/op)申报 notes 必含「逻辑写」、
        observation 形必含「观察收口」——登记与归属申报互证,防单边漂移
-       (report: 随机面 write_logic_rand 属逻辑族随机写,同辖「逻辑写」)。
+       (report: 随机面 write_logic_rand 属逻辑族随机写,同覆盖「逻辑写」)。
     覆盖完备性(扫描命中集 vs 申报表键集)归测试锁(模块 docstring「防漂移锁」)。
     """
     if set(EQUIP_WRITE_SIDES) != set(EQUIP_REWRITE_DECLARATIONS):
@@ -420,11 +420,11 @@ def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
       EQUIP_REWRITE_DECLARATIONS,接线前观察覆盖兜底)。
     - acquired_key = 登记时点节点序位快照((位面, 轮) 元组键,
       cw_node_schedule.NodePos 同形——GameState 节点单例直取,零坐标
-      换算(编号正解已随编号表示退役);节点未观察(引导窗)= None 缺位,
-      登记面不炸,last_state 帧回退已随链退役批删除);余期播种/推进/到期
+      换算(编号正解已停用);节点未观察(引导窗)= None 缺位,
+      登记面不炸,last_state 帧回退已停用);余期播种/推进/到期
       与策略源共用同一套挂点逻辑(声明式驱动:节点 tick/计数 bump 按
-      duties 与 duration 语义自动辖及词缀条目,挂点代码零来源特判)。
-    - 返回本次实际登记的词缀名列表(调用方留证日志;零命中返回空表)。
+      duties 与 duration 语义自动覆盖及词缀条目,挂点代码零来源特判)。
+    - 返回本次实际登记的词缀名列表(调用方留存证据日志;零命中返回空表)。
 
     game_state_of 运行期函数内 import:board_state 所在模块头 import 本模块
     的兄弟模块(cw_effect_inventory),保持本模块零运行期容器依赖、可离线

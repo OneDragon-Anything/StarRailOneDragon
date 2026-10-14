@@ -5,8 +5,8 @@ flow/action_ops.md §1 增补 2):动作 op = 机械执行
 不判成败,上报**无条件按成功写容器**——确定面
 :meth:`GameState.write_logic`、随机面(效果含采样):
 :meth:`GameState.write_logic_rand` 采样链。「失败」不是本层概念,容器与
-实机出入归观察对账机制按其契约处置。本批自 ``zero_writes`` 零写占位升格
-(七函数退役迁入,包级 ``__getattr__`` 命名规约解析具名模块先于零写族,
+实机出入归观察对账机制按其契约处置。本模块自 ``zero_writes`` 零写占位升格
+(七函数自零写族移至本模块,包级 ``__getattr__`` 命名规约解析具名模块先于零写族,
 op 侧调用形态不变)。
 
 记账载体 = ``gs.equips``(工具件住装备库存,观察/策略同口径):**工具
@@ -18,17 +18,17 @@ op 侧调用形态不变)。
   升星判断 → 产物递归;复制触发三合一 = 口述·权威 2026-09-21);
 - **变异面不走链**:冶金炉/特权卡 = 原地替换数量不变,非获得——直写、
   不触发获得回调(采证钩子 = 变异产物命中 ``EQUIP_ACQUIRE_CONSEQUENCES``
-  键集落 ``furnace_mutate_consequence_candidate`` 留证行;冶金炉作用域
-  白名单定谳后变异产物域(简易/进阶)与后果表成员(特殊/骇客)不相交,
+  键集落 ``furnace_mutate_consequence_candidate`` 留存证据行;冶金炉作用域
+  白名单定案后变异产物域(简易/进阶)与后果表成员(特殊/骇客)不相交,
   该钩子对冶金炉为结构性不触发的哨兵);
 - **冶金炉采样池 v0** = ``cw_sim_equips.furnace_reroll`` 同源(同类别池
-  均匀、排除被变异件自身;两实现等价由对拍锁钉死,禁第二套口径)。
+  均匀、排除被变异件自身;两实现等价由交叉核对锁钉死,禁第二套口径)。
   **作用域白名单**(口述·权威 2026-09-21):冶金炉只作用于简易/进阶,
   特殊(银狼升星奖励专属 10 件在内)与骇客不可作用、亦不可产出;披露键
   :data:`FURNACE_MUTATE_POOL_ASSUMPTION_KEYS`;rng = pick_invest 关键字
   带缺省形态(缺省未播种 = 采样是猜测);
 - **失败安全**(沿 gain-chain §2.7 同款):目标单位未观察/漂移、桥零写
-  分支(库存未观察/无此件)= bug 面零写 + 留证不停机;rand 写吸收工具
+  分支(库存未观察/无此件)= bug 面零写 + 留存证据不停机;rand 写吸收工具
   消失的成败差异 = 预期自愈形态,不落缺陷。
 
 动作上报函数族拆分件(每动作一文件;族规约 = 包
@@ -66,7 +66,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 #: 投影仪 ``gain_character`` 调用与各直写腿 produced_by 同值)。
 TOOL_USE_REPORT_PRODUCER: str = 'CwActionToolUseReport'
 
-#: 缺陷留证 kind 词表(_emit_defect 台账行分键;留证不停机)。
+#: 缺陷留存证据 kind 词表(_emit_defect 台账行分键;留存证据不停机)。
 DEFECT_PRIVILEGE_WORN_UNSUPPORTED: str = 'tool_privilege_worn_unsupported'
 DEFECT_TARGET_UNIT_MISSING: str = 'tool_target_unit_missing'
 DEFECT_BRIDGE_ZERO_WRITE: str = 'tool_bridge_zero_write'
@@ -76,7 +76,7 @@ DEFECT_MUTATE_OUT_OF_SCOPE_KEPT: str = 'furnace_mutate_out_of_scope_kept'
 
 #: 冶金炉采样池 v0 建模假设档披露键(pick_invest 先例形态):池语义 =
 #: 同类别均匀、排除自身,成员资格轴 = 注册表 category(作用域白名单 =
-#: 口述·权威 2026-09-21,属定谳非假设)。已知边角:简易池 8 件 vs 实机
+#: 口述·权威 2026-09-21,属定案非假设)。已知边角:简易池 8 件 vs 实机
 #: 7 件(光能电池归属)在 game 侧待实测,在册待校准批。
 FURNACE_MUTATE_POOL_ASSUMPTION_KEYS: tuple[str, ...] = (
     'furnace_mutate_pool_v0_same_category',
@@ -112,7 +112,7 @@ def furnace_mutate_pool(item_name: str) -> list[str] | None:
 def furnace_mutate_sample(rng: random.Random, item_name: str) -> str | None:
     """冶金炉单次变异采样(:func:`furnace_mutate_pool` 均匀取一;
     采样算子与 sim furnace_reroll 同形 ``pool[rng.randrange(len(pool))]``,
-    同种子同输入逐次等值由对拍锁钉死)。池不可用 → None。"""
+    同种子同输入逐次等值由交叉核对锁钉死)。池不可用 → None。"""
     pool = furnace_mutate_pool(item_name)
     if not pool:
         return None
@@ -134,7 +134,7 @@ def _resolve_row_unit(gs: GameState, row: str, slot: int) -> Unit | None:
     """目标身份解析:``row``/``slot``(画面物理排 + 排内槽位 1 基,与执行
     拖点同源坐标)→ deployed 视图子表现读单位(子表下标 = slot-1,
     位置 = 子表下标派生;取值时机 = 上报期现读)。
-    行域未观察/槽位无单位(漂移)= None,bug 面由调用方留证零写。"""
+    行域未观察/槽位无单位(漂移)= None,bug 面由调用方留存证据零写。"""
     view = gs.deployed.value
     if view is None:
         return None
@@ -170,14 +170,14 @@ def _write_row_equips_cleared(gs: GameState, row: str, unit: Unit, *,
 def _defect_zero_write(sig: ChannelSig, kind: str, *,
                        field_name: str, expected: Any, actual: Any,
                        evidence: str, detail: str) -> None:
-    """零写分支统一留证(留证不停机;detail 区分因,消费真值归观察)。"""
+    """零写分支统一留存证据(留存证据不停机;detail 区分因,消费真值归观察)。"""
     _emit_defect(field_name=field_name, expected=expected, actual=actual,
                  evidence=f'{evidence}:{detail}' if detail else evidence,
                  sig=sig, kind=kind)
 
 
 def _equips_inv(gs: GameState) -> list[str] | None:
-    """装备库存现读快照(None = 未观察,bug 面由调用方留证零写)。"""
+    """装备库存现读快照(None = 未观察,bug 面由调用方留存证据零写)。"""
     inv = gs.equips.value
     return None if inv is None else list(inv)
 
@@ -193,8 +193,8 @@ def report_action_furnace_use_param(gs: GameState, param: Any, sig: ChannelSig,
     - ``target_kind='char'``(拖角色):①equips 单笔 write_logic_rand
       合并写 = 移除工具 ∧ 移除穿戴件 ∧ 追加各穿戴件同类别采样替换;
       ②目标角色行域 write_logic(穿戴清空)。
-    变异面不走获得链、不触发获得回调(原地替换数量不变,候实机采证);
-    采样命中 ``EQUIP_ACQUIRE_CONSEQUENCES`` 键集 → 留证行
+    变异面不走获得链、不触发获得回调(原地替换数量不变,待实机采证);
+    采样命中 ``EQUIP_ACQUIRE_CONSEQUENCES`` 键集 → 留存证据行
     (kind=``furnace_mutate_consequence_candidate``,变异产物是否触发后果
     的实机采证钩子)。
     ``rng`` = 采样注入(pick_invest 先例关键字带缺省;None = 模块级缺省
@@ -209,7 +209,7 @@ def report_action_furnace_use_param(gs: GameState, param: Any, sig: ChannelSig,
         return _furnace_equip_leg(gs, param, sig, roll_rng)
     if param.target_kind == 'char':
         return _furnace_char_leg(gs, param, sig, roll_rng)
-    # 词表外 target_kind = bug 面:零写留证禁猜(禁猜出口保持受理,
+    # 词表外 target_kind = bug 面:零写留存证据禁猜(禁猜出口保持受理,
     # 消费真值归观察)。
     _defect_zero_write(sig, DEFECT_BRIDGE_ZERO_WRITE,
                        field_name='equips',
@@ -265,7 +265,7 @@ def _furnace_equip_leg(gs: GameState, param: Any, sig: ChannelSig,
 def _furnace_char_leg(gs: GameState, param: Any, sig: ChannelSig,
                       rng: random.Random) -> LogicOutcome:
     """炉·拖角色腿:①equips 采样链 rand 合并写(白名单件采样替换,越
-    白名单穿戴件保留原样 + 聚合留证——其是否随动作消失未采证,v0 保留);
+    白名单穿戴件保留原样 + 聚合留存证据——其是否随动作消失未采证,v0 保留);
     ②行域穿戴清空 logic 写(全拆,清空本身无随机)。"""
     unit = _resolve_row_unit(gs, param.row, param.slot)
     if unit is None:
@@ -283,8 +283,8 @@ def _furnace_char_leg(gs: GameState, param: Any, sig: ChannelSig,
     for w in worn:
         w_cat = getattr(get_equip(w), 'category', None)
         if w_cat not in FURNACE_MUTATE_CATEGORIES:
-            # 作用域白名单(2026-09-21 定谳):非简易/进阶穿戴件不可变异
-            # → v0 保留原样(未采证),聚合留证不停机。
+            # 作用域白名单(2026-09-21 定案):非简易/进阶穿戴件不可变异
+            # → v0 保留原样(未采证),聚合留存证据不停机。
             kept_out_of_scope.append(w)
             continue
         new_item = furnace_mutate_sample(rng, w)
@@ -341,7 +341,7 @@ def _emit_consequence_candidates(gs: GameState, sig: ChannelSig,
                                  pairs: list[tuple[str, str]], *,
                                  evidence: str) -> None:
     """变异后果采证钩子:采样命中 ``EQUIP_ACQUIRE_CONSEQUENCES`` 键集成员
-    → 留证行,供实机局判读比对「变异产物是否触发后果」(推翻「变异不
+    → 留存证据行,供实机局判读比对「变异产物是否触发后果」(推翻「变异不
     触发」即升格 ``on_equipment_gained``,design §1.4 采证点)。"""
     for src, new_item in pairs:
         if new_item in EQUIP_ACQUIRE_CONSEQUENCES:
@@ -360,12 +360,12 @@ def report_action_privilege_card_use_param(gs: GameState, param: Any,
     - ``target_kind='equip'``(库存腿):**单笔 write_logic 合并写**
       equips = 移除工具 ∧ 目标件名 → ``privilege_counterpart`` 替换
       (映射桥;同名多件全替换与库存桥 ``transform_equip_to_privilege``
-      同口径,禁第二套);桥零写分支透传(库存未观察/无此件)→ 留证
+      同口径,禁第二套);桥零写分支透传(库存未观察/无此件)→ 留存证据
       kind=``tool_bridge_zero_write``;
-    - 其余(拖角色腿):**fail-closed 零写** + 留证
+    - 其余(拖角色腿):**fail-closed 零写** + 留存证据
       (kind=``tool_privilege_worn_unsupported``;用户裁定 2026-09-21 按
-      不能拖角色处理候实机测试,判据面现役只产库存腿,收到 char 腿 =
-      bug 面留证)。
+      不能拖角色处理待实机测试,判据面现役只产库存腿,收到 char 腿 =
+      bug 面留存证据)。
     变异面(数量不变的原地变换)不走获得链、不触发获得回调。
     """
     _validate_sig(sig, ('logic_action',))
@@ -429,7 +429,7 @@ def _wrench_report(gs: GameState, param: Any, sig: ChannelSig, *,
     ev = f'tool_{tool_name}@{param.row}{param.slot}'
     inv = _equips_inv(gs)
     if inv is None:
-        # ①腿 bug 面(库存未观察):零写留证;②腿(行域)独立事实照写。
+        # ①腿 bug 面(库存未观察):零写留存证据;②腿(行域)独立事实照写。
         _defect_zero_write(sig, DEFECT_BRIDGE_ZERO_WRITE,
                            field_name='equips', expected='equips 已观察',
                            actual='equips 未观察(None)',
@@ -459,7 +459,7 @@ def report_action_wrench_use_param(gs: GameState, param: Any,
 def report_action_precision_wrench_use_param(gs: GameState, param: Any,
                                              sig: ChannelSig) -> LogicOutcome:
     """精密拆装扳手上报:同拆装扳手,**equips 不移除工具**(无限次用
-    不递减;重复获得改 +1 金 = 贡献算术获得回执窗,不在本上报辖)。"""
+    不递减;重复获得改 +1 金 = 贡献算术获得回执窗,不在本上报覆盖)。"""
     return _wrench_report(gs, param, sig, tool_name='精密拆装扳手',
                           consume=False)
 
@@ -471,8 +471,8 @@ def _projector_report(gs: GameState, param: Any, sig: ChannelSig, *,
     """投影仪族共用实现:①equips ``write_logic`` 移除工具;②获得走链
     ``gain_character(char, 1★)``(复制进席触发 3 合 1 = 口述·权威
     2026-09-21;席满溢出/落点 = 链语义承接)。费用门(≤3,注册表现读
-    ``bench_char_cost``)前置查 = 防御纵深(发射位判据面已辖),超门 =
-    留证零写。"""
+    ``bench_char_cost``)前置查 = 防御纵深(动作发出点判据面已覆盖),超门 =
+    留存证据零写。"""
     _validate_sig(sig, ('logic_action',))
     unit = _resolve_row_unit(gs, param.row, param.slot)
     if unit is None:
@@ -533,9 +533,9 @@ def report_action_perfect_projector_use_param(gs: GameState, param: Any,
 
 def report_action_lucky_token_use_param(gs: GameState, param: Any,
                                         sig: ChannelSig) -> LogicOutcome:
-    """好运令牌上报:**零写 + 留证**(kind=``tool_token_not_admitted``
-    注记)。发射位判据面 fail-closed 永不准入(R9 判据批挂账,禁无判据
-    发射),写端随 R9 判据批;本函数在场 = 命名规约完备锁对象。"""
+    """好运令牌上报:**零写 + 留存证据**(kind=``tool_token_not_admitted``
+    注记)。动作发出点判据面 fail-closed 永不准入(R9 判据批待办,禁无判据
+    发出),写端随 R9 判据批;本函数在场 = 命名规约完备锁对象。"""
     _validate_sig(sig, ('logic_action',))
     _ = gs
     _emit_defect(field_name='equips',

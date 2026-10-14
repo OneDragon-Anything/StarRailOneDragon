@@ -41,7 +41,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 
 #: 变换窗触发单位(银狼LV.999,3★):拖上场变下一费用档 1★
-#: (design §2.1A;名单与星级 = 定谳口径,机制单一源 =
+#: (design §2.1A;名单与星级 = 定案口径,机制单一源 =
 #: docs/game/gameplay/currency_war.md「银狼LV.999 升星升费」条)。
 _TRANSFORM_CHAR_ID: str = '银狼LV.999'
 _TRANSFORM_STAR: int = 3
@@ -150,12 +150,12 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
         # 时序 = 行域写后、级联前(与 planner 升费腿同约定,design §2.2)。
         _w(gs.lv999_cost_tier, _tier_before + 1, 'deploy_upgrade_tier')
         # 升费连锁(场上同名同星不变量)经常规级联覆盖(正常推演,
-        # 费用档不同时存在定谳)。
+        # 费用档不同时存在定案)。
         merge_cascade_write(
             gs, bench_slots, scratch,
             rand=False, evidence='proj_deploy_lv999_merge',
             producer='CwActionDeployMoveParam', sig=_grp_sig,
             orig_view=_bview)
-    # (事实事件广播已随事实事件槽退役删除:
+    # (事实事件广播已停用:
     #  sim 呈现/登记经容器值回调与问询时点呈现检查承载。)
     return LogicOutcome(applied=True)

@@ -4,10 +4,10 @@ kernel/obs/decision 三桶对 telemetry 的全部上行出口收敛为本模块�
 三桶零直依 telemetry(分包目标矩阵 §3.2;单一测量源=scan_v3):
 
 - 落账出口:``record_defect`` / ``bypass_obs_conflict_to_defect``
-  (缺陷台账 = 保留专用流;exogenous/exec_events 旧流写入口已随退役删除——
+  (缺陷台账 = 保留专用流;exogenous/exec_events 旧流写入口已停用——
   ``record_exogenous`` 留 no-op 桩只护在飞挂起面调用方,见其注);
 - run_id 归属键:``current_run_id`` provider(冲突行/结算行/影子文件名的局归属);
-- obs_event 收编制 provider:``obs_event_board``(观察冲突证据归宿 = 统一
+- obs_event 并入制 provider:``obs_event_board``(观察冲突证据归宿 = 统一
   state 账本行型 2;GameState 单例供给由装配段注入,kernel 禁自寻会话)。
 
 注入纪律(与框架「副作用缺省关 + 启动点显式接通」一致):
@@ -51,7 +51,7 @@ def install_exit_hooks(*, run_id_provider: Callable[[], str],
                        bypass_obs_conflict_to_defect: Callable[[dict[str, Any]], None]) -> None:
     """注入全部出口实现(显式逐槽,幂等;生产调用方=telemetry.install_exit_hooks)。
 
-    exogenous/exec_events 实现槽已随旧流写入端退役删除(删除波 1)——
+    exogenous/exec_events 实现槽已停用()——
     两流的出口访问器或为 no-op 桩、或已移除,不再接受注入。"""
     global _run_id_provider, _record_defect
     global _bypass_obs_conflict_to_defect
@@ -91,12 +91,12 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
 def record_exogenous(round_num: int, kind: str, detail: str = '',
                      state: Any = None,
                      choice: dict[str, Any] | None = None) -> None:
-    """旧 exogenous 流出口(已退役 no-op 桩;删除波 1)。
+    """旧 exogenous 流出口(已停用 no-op 桩;)。
 
     保留原因:锚登记机制(kernel/cw_anchor.py,已入库惰性未接线,本文件
-    此前是其唯一 kernel 侧上行出口)的调用方仍 import 本符号,其归宿候裁
-    (retirement.md §2 exogenous 行 §5-7 挂起)——候裁落地前本桩恒
-    no-op,既不断在飞调用方,也零旧流产出。候裁裁「路由退役」时随其
+    此前是其唯一 kernel 侧上行出口)的调用方仍 import 本符号,其归宿待裁决
+    (retirement.md §2 exogenous 行 §5-7 挂起)——待裁决落地前本桩恒
+    no-op,既不断在飞调用方,也零旧流产出。待裁决裁「路由停用」时随其
     调用点整段删除,本桩同步消失。
     """
     return
@@ -113,7 +113,7 @@ def bypass_obs_conflict_to_defect(rec: dict[str, Any]) -> None:
 
 
 def set_obs_event_board_provider(fn: Callable[[], Any] | None) -> None:
-    """注入/清除 obs_event 收编制 GameState 供给槽(装配段显式接通;
+    """注入/清除 obs_event 并入制 GameState 供给槽(装配段显式接通;
     None = 缺省关,观察冲突证据不进账本)。"""
     global _obs_event_board_provider
     _obs_event_board_provider = fn
@@ -134,8 +134,8 @@ def journal_refs(*extra: dict[str, str] | None) -> list[dict[str, str]]:
     """缺陷台账 refs 的 journal ``(run_id,v)`` 锚构造(保留流 refs 迁移单一源)。
 
     依据 = retirement.md §2 defect_ledger 行「裁保留时 refs 改指 journal
-    ``(run_id,v)`` 键」(候裁 4 定谳保留专用流后的消费面迁移,R5 W7):旧流
-    (decisions/outcomes/obs_conflicts)写面已随删除波 1 退役,refs 指旧流行
+    ``(run_id,v)`` 键」(待裁决 4 定案保留专用流后的消费面迁移,):旧流
+    (decisions/outcomes/obs_conflicts)写面已停用,refs 指旧流行
     = 下钻扑空;journal 行行自足(每行内嵌当时完整 state 快照),
     ``(run_id, v)`` 唯一定位一行。锚取缺陷记录时刻现版 ``current_version()``
     (读口不占版本)= 最近一行,其内嵌 state 供下钻对账;bypass 场景该值
@@ -157,8 +157,8 @@ def journal_refs(*extra: dict[str, str] | None) -> list[dict[str, str]]:
     return out
 
 
-# ===== 布局档分键记录函数(15 号稿批 C;落地审 C3 择一=记录单一源迁入
-# 出口模块:obs 布局面只依 kernel 出口,telemetry.defects 不留副本)=====
+# ===== 布局档分键记录函数(记录单一源在本出口模块:
+# obs 布局面只依 kernel 出口,telemetry.defects 不留副本)=====
 
 def record_back_layout_divergence(formula_n: int, cv_n: int,
                                   source: str = 'resolve_back_slots') -> None:

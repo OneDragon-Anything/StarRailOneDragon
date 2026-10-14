@@ -41,7 +41,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 
 # 符号解耦:铁三角权威副本在 knowledge/cw_line_facts,
-# 不再依赖 kernel/cw_line_defs(迁移挂账文件)
+# 不再依赖 kernel/cw_line_defs(迁移待办文件)
 from sr_od.application.currency_war.knowledge.cw_line_facts import _CORE_TRIO
 
 # ===== 判据常量(tier 阈值派生自 FACTIONS,单一源)=====
@@ -176,7 +176,7 @@ class BlankWindowDecision:
     - ``target_char_ids``:买侧目标件(引擎件见即买:铁三角+希儿);
     - ``target_factions``:来牌方向的目标阵营(已有件的体系——「目标件出现只买它」);
     - ``buy_idx``:当前商店里可买的目标件索引(char 命中 target 集合的槽位);
-    - ``cost_band``:压库目标费用带(无目标件时按此带压库;草案级=目标件费用众数);
+    - ``cost_band``:压牌库目标费用带(无目标件时按此带压牌库;草案级=目标件费用众数);
     - ``ruling``:裁决记录。
     """
     is_blank: bool
@@ -416,7 +416,7 @@ def pick_card_combination(gs: GameState, intent: str | None = None,
 def blank_window_policy(gs: GameState) -> BlankWindowDecision:
     """空窗期规则入口(四体系一个都没凑成,通常仅前 1-2 轮)。
 
-    - 买侧 = 目标件出现只买它,否则压当前目标费用带([30] 压库模型:买同费件,
+    - 买侧 = 目标件出现只买它,否则压当前目标费用带([30] 压牌库模型:买同费件,
       目标出货概率随池空升高;费用带=目标件费用众数,草案级);
     - 上场侧 = 现有牌最优羁绊组合(归部署围栏/decision_v2,本入口只管买侧);
     - **绝不为凑数 D 牌**([31]):off-target 件一律不进 buy_idx。
@@ -448,7 +448,7 @@ def blank_window_policy(gs: GameState) -> BlankWindowDecision:
         if card.faction and card.faction in target_factions:
             buy_idx.append(i)
     # 费用带(草案级):目标件费用众数;无目标件时兜底 1(前 1-2 轮低费带);
-    # 同频取低费(前 1-2 轮压库偏保守)
+    # 同频取低费(前 1-2 轮压牌库偏保守)
     costs = [CHARACTERS[n].cost for n in engine_chars if n in CHARACTERS]
     cost_band = (sorted(costs, key=lambda c: (-costs.count(c), c))[0]
                  if costs else 1)

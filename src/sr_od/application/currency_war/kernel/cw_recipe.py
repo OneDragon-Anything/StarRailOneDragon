@@ -1,4 +1,4 @@
-"""过渡配方一等公民模型(user_playstyle [20]-[23]/[26] 定稿模型落码)。
+"""过渡配方一等公民模型(user_playstyle [20]-[23]/[26] 定稿模型实现)。
 
 不变量:**P1 双轨期,板面(买/上/卖)只由过渡配方驱动;终局件只囤不上场;
 终局线 P1 内冻结换线(定义型 augment 除外)。**
@@ -23,27 +23,27 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.knowledge.cw_line_facts import TRANSITION_PACK
 
-# 配方伪 comp 注册表(框架 → Comp;core = 该框架 carry+partial 件;form_tiers = 配方目标档)。
+# 配方伪 阵容注册表(框架 → Comp;core = 该框架 carry+partial 件;form_tiers = 配方目标档)。
 # ⚠️ core 含 partial(爻光/缇宝/符玄)不含 drop(卡芙卡/椒丘 = 应急战力件,买了就上但不追;
 # 瓦尔特/腾荒不在 TRANSITION_PACK,勿引用)。
 # form_tiers:仙舟 = 3仙舟(攻略口径 3仙舟+2DOT 的主羁绊档;DOT 由 flows 自然带);
 #             列车 = 4列车(数据口径主流档);量子 = 3量子+2贝。
 _RECIPES: dict[str, Comp] = {
-    # 仙舟 factions 补「持续伤害」(deploy 围栏视图定谳 B2 修正条件,依据 =
+    # 仙舟 factions 补「持续伤害」(deploy 围栏视图定案 B2 修正条件,依据 =
     # .debug/progress/2026-09-11-cw-clear-run/定谳记录-deploy围栏.md 攻击线 B2):
     # 框架 drop 件卡芙卡(星核猎手)/椒丘(狼狩)注册表均无仙舟阵营,其围栏
     # tgt 身份只系于 FRAMEWORK_FACTIONS['仙舟'] 的持续伤害键;配方键面不完备时,
     # 以配方为围栏视图的路径(装配单一源)会把自家 drop 件挤出 tgt 桶(r70
     # 「框架牌不上场被卖」回归向量)。键面补全后框架并集语义被配方吸收,
-    # deploy_target_sets 的显式 ∪ 退役(装配单一源纪律:并集语义只许一处)。
+    # deploy_target_sets 的显式 ∪ 停用(装配单一源纪律:并集语义只许一处)。
     '仙舟': Comp(
         name='过渡·仙舟配方', factions=['仙舟', '持续伤害'],
         core_chars=[n for n, (fw, tier) in TRANSITION_PACK.items()
                     if fw == '仙舟' and tier in ('carry', 'partial')],
         form_tiers={'仙舟': 3},
         strength='A', form_difficulty='easy',
-        # 过渡期站位(爻光必后台,站位规则住在终局 comp,
-        # 配方伪 comp 需自带;漏了 → _pick_deploy_row 落 position_pref 兜底)
+        # 过渡期站位(爻光必后台,站位规则住在终局 阵容,
+        # 配方伪 阵容需自带;漏了 → _pick_deploy_row 落 position_pref 兜底)
         char_positions={'爻光': 'back'},
     ),
     '列车': Comp(
@@ -66,7 +66,7 @@ _RECIPES: dict[str, Comp] = {
 
 
 def recipe_comp(framework: str) -> Comp | None:
-    """框架 → 配方伪 comp(未定框架返 None,消费方退现行为)。"""
+    """框架 → 配方伪 阵容(未定框架返 None,消费方退现行为)。"""
     return _RECIPES.get(framework)
 
 
@@ -91,8 +91,8 @@ def decision_target(session, gs: GameState) -> Comp | None:
     用法:决策路径处把 ``strategy_state_of(session).target_comp`` 的直接读换成本函数
     (仅决策路径;遥测/结算 tag 仍读原 target_comp 记终局线名)。
 
-    双轨期(配方驱动):框架已定 → 配方伪 comp(仙舟/列车/量子三选一,
-    pick_framework 按持有计数+portal 偏置选);无框架 → 终局 comp(散件口径)。
+    双轨期(配方驱动):框架已定 → 配方伪 阵容(仙舟/列车/量子三选一,
+    pick_framework 按持有计数+portal 偏置选);无框架 → 终局 阵容(散件口径)。
     非双轨(定型/P2+):终局 comp。
 
     量子配方=希儿线的过渡形态;终局衔接走统一公式——CommitSignals 定型时,
@@ -106,8 +106,8 @@ def decision_target(session, gs: GameState) -> Comp | None:
     (framework_startup 休眠开关关,无写端),双分支同返回 target_comp
     (C 方案对抗报告 攻击面 3 实证)。
 
-    波3 起 state 形态 = 容器直传(W6 波3 committed_from 签名切 GameState,
-    hp施门下沉kernel政策层设计 §2.4 shim 收编申报②):``_PlaneShim``
+    state 形态 = 容器直传(committed_from 签名切 GameState,
+    hp施门下沉kernel政策层设计 §2.4 shim 并入申报②):``_PlaneShim``
     单字段鸭子桥同波消亡——committed_authority 仅读 plane,真容器
     ``plane_of`` 读口喂入恰等价,禁再新增同型鸭子桥(新消费点一律
     直接按容器形态调用)。

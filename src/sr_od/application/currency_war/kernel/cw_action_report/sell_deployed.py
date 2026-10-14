@@ -28,7 +28,7 @@ def report_action_sell_deployed_param(gs: GameState, param: Any, sig: ChannelSig
 
     deployed_idx = 动作坐标系定长 10 下标(0-3 前排 / 4-9 后排槽 1-6;
     窗口期桥,后排 7-9 扩展格超出动作坐标系不可卖——tracked 表硬上限
-    同族边界,3.2 续辖)。"""
+    同族边界,3.2 续覆盖)。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
 
@@ -74,7 +74,7 @@ def report_action_sell_deployed_param(gs: GameState, param: Any, sig: ChannelSig
         _w(gs.equips, list(gs.equips.value or []) + list(sold.equips),
            'proj_sell_deployed_equips')
     # 事实事件:板面组成变化(sell 落地;overlay 触发层消费,缺省关零开销)
-    # (事实事件广播已随事实事件槽退役删除。)
+    # (事实事件广播已停用。)
     return LogicOutcome(applied=True,
                         reason=str(getattr(param, 'reason', '') or ''),
                         income=int(refund))

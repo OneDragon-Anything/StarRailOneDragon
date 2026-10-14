@@ -7,15 +7,15 @@
 = 修掉的 P2 计 9 病灶成批回流)。日程感知 DP 规划器
 已按 BLUEPRINT §3 裁决退出生产路径,不在本模块。
 
-**现役口径(9 制几何层退役)**:节点身份 = ``(位面, 轮)`` 序位键,
+**现役口径(9 制几何层停用)**:节点身份 = ``(位面, 轮)`` 序位键,
 逐位面节点类型序列唯一真值 = ``cw_node_schedule`` 真值表 + GameState
 场字段 ``node_seq_by_plane``(修饰局 10/8、默认局 9/7;None 未注册态
-回退默认表)。数量语义的视界量不在此层(T-8 裁决点 9:框架不向策略
+回退默认表)。数量语义的视界量不在此层( 裁决点 9:框架不向策略
 供视界量,序列模块只留键原语;策略侧经 mandate_v1/statefn/horizon
 门面场字段自算,kernel 判据点就地求和)——9 制几何层 11 符号
 (schedule_of/node_t_of/r_remaining 族/plane_offsets/plane_end_slots/
 NODES_PER_PLANE/TOTAL_NODES/DEFAULT_PLANE_LENGTHS/PLANE_FALLBACK_PRIORS)
-已整体退役,迁移对照 = 迭代 abolish-node-ordinal
+已整体停用,迁移对照 = 迭代 abolish-node-ordinal
 details/horizon-cleanup.md §2-§6。
 
 承载面(按消费面划定的最小集):
@@ -126,7 +126,7 @@ def p_win_p2(b: float) -> float:
     return lo + (hi - lo) * frac
 
 
-#: XP 门槛表:权威表 = cw_economy.XP_TO_NEXT_LEVEL(候裁9 迁居后单一源;
+#: XP 门槛表:权威表 = cw_economy.XP_TO_NEXT_LEVEL(单一源;
 #: 1/2 级游戏内近乎白送,权威表未收录 → 本地先验补 1/2 级)。惰性取表:
 #: 本模块保持 kernel 纯表叶位(零 kernel 模块级依赖),免词汇迁移环。
 _XP_NEED: dict[int, int] | None = None
@@ -158,7 +158,7 @@ def level_cost(level: int) -> int:
     return clicks_to_level(level) * XP_CLICK_COST_FLAT
 
 
-# (第二息实现 ``plane_table.interest`` 已删(随批清理):与
+# (``plane_table.interest`` 已删:与
 #  kernel cw_economy.interest 同形双源、全仓零生产调用——息闭式唯一源
 #  = kernel cw_economy.interest(cap 参数化,消费 cap_resolved 链)。)
 
@@ -169,7 +169,7 @@ def peak_refresh_level(cost: int) -> int:
     「允许高一档」:峰值平手时高一级的相邻档概率差可忽略,而提前一级
     到位=多一轮峰值窗口)。cost 越界(非 1-5)→ 夹到边界档。
     lv10 显式排除:峰值搜索域 = 1-9——lv10 是满级终端态,「要不要停
-    在 lv9 不冲 lv10」由 lv9→10 特档单独辖(摊还账闭式,P35:标定带内
+    在 lv9 不冲 lv10」由 lv9→10 特档单独覆盖(摊还账闭式,P35:标定带内
     停手窗恒负);若把 lv10 计入峰值级,排程判据②会用「峰值级>当前级」
     绕过该特档门,与既裁停手结论打架(表内 lv10 的 5费概率 0.25 高于
     lv9 的 0.10,不做排除即会命中此形态)。

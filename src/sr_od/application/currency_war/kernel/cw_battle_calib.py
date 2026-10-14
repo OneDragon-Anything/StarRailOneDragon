@@ -8,7 +8,7 @@ P2CombatCalib)、板面聚合族(_board_factions_of/_board_counts_of/
 _engines_count/_transition_formed/_first_*_round/
 _battles_before_engines/_deployable_depth/_roll_rotation)。
 
-sim 重做删除面收口(考古归 git):节点序列
+sim 重做删除面收束():节点序列
 采样 sample_node_sequence(42 局零反例,序列用地面真值表)与
 方向观测判据 _direction_established/_target_comp_label(判据本属
 策略器;删时 src/测试仓已零消费方)随裁定删除——kernel 只留特征
@@ -74,8 +74,7 @@ def deployed_star_depth(gs: GameState) -> int:
 def _star_depth_from_rows(rows) -> int:
     """净星深(replay 行口径):decisions ``state.deployed`` 条目
     (dict 形态)Σ(star−1)——与 :func:`deployed_star_depth` 同式,
-    池语料侧(_pool_from_replay;原 cw_delta_pool_gen 已随 sim 重做
-    删除面退役)共用,防双源。"""
+    池语料侧(_pool_from_replay;原 cw_delta_pool_gen 已停用)共用,防双源。"""
     return sum(int(x.get('star') or 1) - 1
                for x in (rows or []) if isinstance(x, dict))
 
@@ -87,7 +86,7 @@ def p2_form_key(gs: GameState, calib: P2CombatCalib) -> float:
     engines = ``_settle_rung`` 同源(deployed 口径四体系达成数,0-4);
     P2 实测:deployed 口径与掉血对应最干净、板深无区分度。
     star_depth = ``deployed_star_depth`` 单一源(core2 维/board_tier
-    的星级分量因果通道,交接 sim 报告 §⑥/交接门报告挂账的 sim 建模缺口)。
+    的星级分量因果通道,交接 sim 报告 §⑥/交接门报告待办的 sim 建模缺口)。
     """
     star_depth = deployed_star_depth(gs)
     return (float(_settle_rung(gs)) + calib.form_level_weight * (
@@ -230,7 +229,7 @@ def node_delta(node: str, round_num: int, dir_round: int,
 
     plane≥2:battle 回退档换 **P2 掉血带**——
     胜率 P2_BATTLE_WIN_P(0.11)/负 -15~-17 均匀带(语料实证,
-    P1 阶梯的 r3/r4 战斗胜率与幅度带都不辖 P2);encounter/boss
+    P1 阶梯的 r3/r4 战斗胜率与幅度带都不覆盖 P2);encounter/boss
     沿用 P1 档+标注(P2 语料 3/2 行不足,池可及时优先池采样)。"""
     if node in ('reward', 'supply'):
         return EARLY_WIN_DELTA
@@ -292,7 +291,7 @@ def _first_tier_round(res, tier: int) -> int | None:
     """配方档位首达轮(ledger 的 board_factions 逐轮查
     recipe_tier≥tier 的最小轮;查不到=None)。"""
     # 符号解耦:改接 knowledge/cw_line_facts 权威副本,
-    # 不再依赖 kernel/cw_line_defs(迁移挂账文件)
+    # 不再依赖 kernel/cw_line_defs(迁移待办文件)
     from sr_od.application.currency_war.knowledge.cw_line_facts import recipe_tier
     for row in res.ledger:
         bf = (row.get('state') or {}).get('board_factions') or {}
@@ -322,14 +321,14 @@ def _engines_count(board_factions: dict[str, int],
 
     本体 = cw_deploy_logic.engines_count(单一源);
     符号解耦后权威副本 = knowledge/cw_engine_facts.engines_count
-    (cw_deploy_logic 迁移挂账,本薄委托改接新家);历史消费点
+    (cw_deploy_logic 迁移待办,本薄委托改接新家);历史消费点
     (decision_v2/cw_evolution 等的懒 import)不动,原 cw_delta_pool_gen
-    消费点已随 sim 重做删除面退役。
+    消费点已停用面停用。
     希儿系=希儿在场 AND(量子同频≥2 OR 贝洛伯格≥2)——
     与三羁绊同级可组合。
     """
     # 符号解耦:改接 knowledge/cw_engine_facts 权威副本
-    #(机制事实判据,不依赖迁移挂账的 kernel/cw_deploy_logic)
+    #(机制事实判据,不依赖迁移待办的 kernel/cw_deploy_logic)
     from sr_od.application.currency_war.knowledge.cw_engine_facts import (
         engines_count as _impl,
     )
@@ -394,7 +393,7 @@ def _deployable_depth(gs: GameState) -> int:
     level 上限——池侧同样无上限,桶键在 live_delta_for 侧统一分桶)。
     「读 deployed 不数 bench」语义由 board=_recount_board
     (deployed 派生)间接保留。
-    **辖域(v11 后)**:reward/supply 桶键与观测面(depth_trail/账本);
+    **适用范围(v11 后)**:reward/supply 桶键与观测面(depth_trail/账本);
     boss 桶键=净星深(deployed_star_depth);encounter
     桶键=rung(v11/,_settle_rung 同源;depth 键下期望伤害
     真平——P1 配对实证「主通道断裂」的 encounter 维由扩容+键查证裁决:
@@ -411,7 +410,7 @@ def _roll_rotation(rng: random.Random, level: int) -> dict[int, float] | None:
     ⚠️ 语义已勘误(01_strategy_layer.md §4.10 概率表族,DESIGN_FINAL_ATTACK
     阻断-2):「20%」是 replay 观测在场频率,非机制概率——运行时被测体
     已改用 ``roll_rotation_per_stage``(对已选环境条件化,
-    每阶段 100% 重掷)。本函数保留作旧树 replay 对拍口径,勿在新消费点接线。
+    每阶段 100% 重掷)。本函数保留作旧树 replay 交叉核对口径,勿在新消费点接线。
     """
     if rng.random() >= ROTATION_CHANCE:
         return None

@@ -1,46 +1,46 @@
-"""策略侧决策行文件发射面(两文件模型②;决策行文件落地批)。
+"""策略侧决策行文件动作发出面(两文件模型②;决策行文件落地批)。
 
-**正本与定谳依据**(持久索引):
+**正本与定案依据**(持久索引):
 - 行 schema 正本 =
   ``docs/develop/sr_od/application/currency_war/design/决策行文件schema设计.md``
-  (§2 行五段结构与发射契约 / §4 字段语义 / §5 写入时机与生命周期 /
+  (§2 行五段结构与动作发出契约 / §4 字段语义 / §5 写入时机与生命周期 /
   §10 锁面清单;下文 §N 即该文档节号);
-- 定谳记录 =
+- 定案记录 =
   ``.debug/progress/2026-09-11-cw-clear-run/定谳记录-c1c8.md``
-  (C1 过渡态定性 / C2 文件名目录位 / C3 派生列不发射 / C4 首批发射面 /
-  C7 独立版本常量 / C8 候裁 6 联动;挂波定谳 C6 = W6 后)。
+  (C1 过渡态定性 / C2 文件名目录位 / C3 派生列不发出 / C4 首批动作发出面 /
+  C7 独立版本常量 / C8 待裁决 6 联动)。
 
-**发射面语义**(§5.1/§5.4):决策行 = 一个决策帧(入口观察→策略求值→
+**动作发出面语义**(§5.1/§5.4):决策行 = 一个决策帧(入口观察→策略求值→
 动作计划产出)一行,JSONL 追加写,落 ``strategy/decision_trace.jsonl``
-(定谳 C2,镜像 ``state/journal.jsonl`` 布局;禁复用 decisions.jsonl——
+(定案 C2,镜像 ``state/journal.jsonl`` 布局;禁复用 decisions.jsonl——
 历史档案与 sim 产物以该名为键,双载体同名 = 读面歧义)。写口在**决策帧
-收口**时点被调用(策略求值完成、动作计划产出、执行未开始):求值过程
+收束**时点被调用(策略求值完成、动作计划产出、执行未开始):求值过程
 自身产生的计数写点落入本行窗口(该决策自身行为的归因);跨窗的执行侧
-写点(部署 held、仲裁、耗尽臂等)归入其发生后的下一行窗口。发射频率 =
-调用频率,一收口一行,无内部节流(量级论证 §5.3:~40-80 行/局)。
+写点(部署 held、仲裁、耗尽臂等)归入其发生后的下一行窗口。发出频率 =
+调用频率,一收束一行,无内部节流(量级论证 §5.3:~40-80 行/局)。
 
-**窗口与锚**(§5.1):写口持有锚(上一行收口时点的容器内容快照,按局段
-重置,与容器同界);本行收口时点现读策略计数容器 → 与锚逐键求差 → 发射 →
+**窗口与锚**(§5.1):写口持有锚(上一行收束时点的容器内容快照,按局段
+重置,与容器同界);本行收束时点现读策略计数容器 → 与锚逐键求差 → 发出 →
 更新锚。行首窗口起点 = 局段起点(容器冷建,空 dict)。消失键按「缺席 = 0」
 入账(容器重建形态),保证望远镜恒等式(§5.2)在前缀和重建口径下精确成立。
 
-**数学契约与降格主张**(§5.2,定谳 C1):窗口增量满足望远镜恒等式——
-对局段内收口时点序 t_1 < … < t_n,任意前缀 m 的行增量逐键求和 = 第 m 行
-收口时点的容器内容(对差非零键精确成立,含清零/覆写键),该恒等式是
+**数学契约与降格主张**(§5.2,定案 C1):窗口增量满足望远镜恒等式——
+对局段内收束时点序 t_1 < … < t_n,任意前缀 m 的行增量逐键求和 = 第 m 行
+收束时点的容器内容(对差非零键精确成立,含清零/覆写键),该恒等式是
 窗口增量载体的机器验证面(锁 sr-od-test 行为锁)。**残差归属按降格主张
 陈述,不称数学全称证明**:「行 = 决策帧」是消费面语义不变量;末决策行
-之后、局终收口之前窗口 (t_n, T] 的容器写点无行归属,在该不变量下由局终
+之后、局终收束之前窗口 (t_n, T] 的容器写点无行归属,在该不变量下由局终
 聚合(``MatchFinal.cw4_counters``)唯一承载——尾行行型会破坏「行都是
 决策帧」不变量且代价大于收益(局终聚合已是现成权威面)。单调键的终局
 对账为不等式:Σ行增量 ≤ 局终聚合同键值(§5.2/锁 L3)。
 
-**发射契约与首批发射面**(§2.2/§2.4,定谳 C4):本文件的发射契约单独于
+**动作发出契约与首批动作发出面**(§2.2/§2.4,定案 C4):本文件的动作发出契约单独于
 类演进契约声明(telemetry/schema.py ``DecisionTrace`` 类保持只追加,本
 模块不 import 之——桶依赖矩阵禁 kernel→telemetry,行键名以常量登记单一
-源)。**首批发射面只含 cw4_counters**(§2.4);sess_* 策略披露族 14 字段
+源)。**首批动作发出面只含 cw4_counters**(§2.4);sess_* 策略披露族 14 字段
 (:data:`DISCLOSURE_FAMILY_CLOSED_LIST`,成员封闭清单)按消费需求逐批
-接线,未接线期不入行;退役面字段(§2.3)与派生列 refresh_trigger
-(定谳 C3,判读侧离线自同行 actions 派生)恒不入行。行内容只来自容器
+接线,未接线期不入行;停用面字段(§2.3)与派生列 refresh_trigger
+(定案 C3,判读侧离线自同行 actions 派生)恒不入行。行内容只来自容器
 现读与调用方传入,禁读 journal / 决策行文件自身(§8-4,写侧
 延伸)。
 
@@ -53,13 +53,13 @@
 两文件禁单件淘汰):淘汰判定单一源 = journal 段清理,本文件协同淘汰
 journal 已淘汰的同一 run_id 集。
 
-**确认联动(定谳 C8)**:四查消费面等价(§6)以「局终聚合渲染读链零改动」
-为前提——§6① 判读恒等的读链存活挂 r5-migration-plan §7 候裁 6(考古
-工具面去留)裁量;本批为纯新增发射面,零改任何既有读链。T2(判读面帧
-归因视图)非义务,不落本批,归宿维持挂候裁 6 同批。
+**确认联动(定案 C8)**:四查消费面等价(§6)以「局终聚合渲染读链零改动」
+为前提——§6① 判读恒等的读链存活挂 r5-migration-plan §7 待裁决 6(考古
+工具面去留)裁量;本文件为纯新增动作发出面,零改任何既有读链。T2(判读面帧
+归因视图)非义务,归宿挂待裁决 6。
 
 **钉面标记**:行面无钉面标记字段;历史档案如出现 ``pin_scope='board_state'``
-标记行,其判读语义与字段退役依据见 schema 正本 §8-2「历史档案字段说明」。
+标记行,其判读语义与字段停用依据见 schema 正本 §8-2「历史档案字段说明」。
 """
 from __future__ import annotations
 
@@ -90,17 +90,17 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import (
     strategy_state_of,
 )
 
-# ============================================================ 常量(定谳落点)
+# ============================================================ 常量(定案落点)
 
-#: 行头 schema 版本(定谳 C7):**新文件自带独立版本常量**,初值 1 独立
+#: 行头 schema 版本(定案 C7):**新文件自带独立版本常量**,初值 1 独立
 #: 谱系,命名对齐 ``*_SCHEMA_VERSION`` 仓内先例(kernel/cw_game_state
 #: ``GAME_STATE_SCHEMA_VERSION``)。
 #: 禁动 telemetry/schema.py 模块级共用 ``SCHEMA_VERSION``——该常量被
-#: DecisionTrace/OutcomeRecord 等共用,模块级抬号会把未退役旧流行版本号
-#: 连带抬升(C7 定谳排除项)。
+#: DecisionTrace/OutcomeRecord 等共用,模块级抬号会把未停用旧流行版本号
+#: 连带抬升(C7 定案排除项)。
 DECISION_TRACE_SCHEMA_VERSION: int = 1
 
-#: 文件目录位与名(定谳 C2):镜像 ``state/journal.jsonl`` 布局,名取自
+#: 文件目录位与名(定案 C2):镜像 ``state/journal.jsonl`` 布局,名取自
 #: schema 类名 DecisionTrace(持久索引);**禁复用 decisions.jsonl**
 #: (历史档案与 sim 产物以该名为键,双载体同名 = 读面歧义)。
 DECISION_TRACE_DIR_NAME: str = 'strategy'
@@ -110,13 +110,13 @@ DECISION_TRACE_FILE_NAME: str = 'decision_trace.jsonl'
 #: 语义对齐 journal 的 ``journal.retirement.jsonl``)。
 DECISION_TRACE_RETIREMENT_MANIFEST_NAME: str = 'decision_trace.retirement.jsonl'
 
-#: 首批发射面(定谳 C4/§2.4):**只含 cw4_counters**。扩面走逐批接线
-#: (消费方出现时随批扩发射契约),本常量 = 发射契约的机器面单一源。
+#: 首批动作发出面(定案 C4/§2.4):**只含 cw4_counters**。扩面走逐批接线
+#: (消费方出现时扩动作发出契约),本常量 = 动作发出契约的机器面单一源。
 EMITTED_FIELDS: tuple[str, ...] = ('cw4_counters',)
 
-#: sess_* 策略披露族成员封闭清单(定谳 C4/§2.4;13 个 sess_ 前缀透传字段
+#: sess_* 策略披露族成员封闭清单(定案 C4/§2.4;13 个 sess_ 前缀透传字段
 #: + 1 个非前缀披露字段 p1_downgrade_active,共 14;sess_p1_pair 不属本族
-#: ——归行结构「决策记录」段)。**首批发射不含**,按消费需求逐批接线;
+#: ——归行结构「决策记录」段)。**首批发出不含**,按消费需求逐批接线;
 #: 成员增删 = 改本清单 + 设计终版 §2.4 同步(封闭清单禁散落第二登记)。
 DISCLOSURE_FAMILY_CLOSED_LIST: tuple[str, ...] = (
     # 行结构 §2.1 已具名 5 个
@@ -138,7 +138,7 @@ DISCLOSURE_FAMILY_CLOSED_LIST: tuple[str, ...] = (
     'p1_downgrade_active',
 )
 
-#: 退役面字段(§2.3 逐项判据):统一 state 可算/已退役/死字段,不入新
+#: 停用面字段(§2.3 逐项判据):统一 state 可算/已停用/死字段,不入新
 #: 文件行(瘦身判据「凡统一 state 可算的内容不存」的适用面)。
 RETIRED_FIELDS_NOT_EMITTED: tuple[str, ...] = (
     'state',            # 全量 state 快照(容器期 = serialize_state 产物,full_state_snapshot
@@ -150,23 +150,23 @@ RETIRED_FIELDS_NOT_EMITTED: tuple[str, ...] = (
     'gold_readable',    # 同上
     'level_readable',   # 同上
     'active_strategies',  # 统一 state 局级事实域字段
-    'form_score',       # 已退役字段(schema 自申报历史数据只读,替代披露 = b_t)
-    'phase',            # 死字段(v2 相位机退役无写端;与容器 v3_phase 非同一载体)
+    'form_score',       # 已停用字段(schema 自申报历史数据只读,替代披露 = b_t)
+    'phase',            # 死字段(v2 相位机停用无写端;与容器 v3_phase 非同一载体)
 )
 
-#: 派生列不入行(定谳 C3):refresh_trigger 由判读侧离线自同行 actions
+#: 派生列不入行(定案 C3):refresh_trigger 由判读侧离线自同行 actions
 #: 按现役口径派生(recorder 同规则,'' 归 other 桶),行为等价零新语义。
 #: 注意与披露族不同:本字段**恒不入行**(非「逐批接线」),接线通道不存在。
 DERIVED_COLUMN_NOT_EMITTED: tuple[str, ...] = ('refresh_trigger',)
 
-#: 行键发射序(§2.1 五段组织的行内平铺键序:行头 → 钉 → 策略记忆首批发射面)。
+#: 行键发出序(§2.1 五段组织的行内平铺键序:行头 → 钉 → 策略记忆首批动作发出面)。
 #: JSON 行键序随插入序,消费面按名访问(键序敏感读者不存在,§2.3 字段序
 #: 脚注同判据);本元组 = 行形状锁(§10-L5)的断言底稿。
 ROW_KEY_ORDER: tuple[str, ...] = (
     'schema_version', 'ts', 'run_id', 'difficulty', 'plane', 'round_num',
     'strategy_id', 'ev_arm',            # 行头(身份与 join key)
     'state_ref',                        # 钉(state_ref 版本钉)
-    *EMITTED_FIELDS,                    # 策略记忆(首批发射面)
+    *EMITTED_FIELDS,                    # 策略记忆(首批动作发出面)
 )
 
 
@@ -177,7 +177,7 @@ ROW_KEY_ORDER: tuple[str, ...] = (
 #: 自担序列化/缓冲/落盘(生产 = :class:`StateJournal.append`)。
 _DECISION_TRACE_SINK: Callable[[dict], None] | None = None
 
-#: 进程内现役落盘实例(reset 时收口 flush;缺省 None)。
+#: 进程内现役落盘实例(reset 时收束 flush;缺省 None)。
 _ACTIVE_DECISION_TRACE: StateJournal | None = None
 
 
@@ -247,7 +247,7 @@ def reset_decision_trace_all_anchors() -> None:
 
 
 def _window_diff(counters: dict, anchor: dict) -> dict[str, int]:
-    """窗口差分(§5.1):键 → 本行收口窗口内的内容变化量(带符号)。
+    """窗口差分(§5.1):键 → 本行收束窗口内的内容变化量(带符号)。
 
     键域 = 锚与现读的并集:消失键按「缺席 = 0」入账(容器重建形态),
     保证望远镜恒等式在前缀和重建口径下精确成立;零差键省略(§4「零差
@@ -260,17 +260,17 @@ def _window_diff(counters: dict, anchor: dict) -> dict[str, int]:
     return out
 
 
-# ============================================================ 写口(决策帧收口)
+# ============================================================ 写口(决策帧收束)
 
 def record_decision_frame(session: object, *,
                           state_ref_version: int | None = None,
                           strategy_id: str = '',
                           ev_arm: str = '') -> dict | None:
-    """决策帧收口 → 决策行发射(两文件模型②写口;§5.1)。
+    """决策帧收束 → 决策行发出(两文件模型②写口;§5.1)。
 
-    调用时点 = **决策帧收口**:策略求值完成、动作计划产出、执行未开始。
-    求值过程自身产生的计数写点因此落入本行窗口;收口之后的执行侧写点归
-    下一行窗口。一收口一行,无内部节流。
+    调用时点 = **决策帧收束**:策略求值完成、动作计划产出、执行未开始。
+    求值过程自身产生的计数写点因此落入本行窗口;收束之后的执行侧写点归
+    下一行窗口。一收束一行,无内部节流。
 
     - ``session`` = 局身份(:class:`StrategySession`);锚旁表按键引用,
       新 session = 新局段 = 首行窗口起点为局段起点;
@@ -286,7 +286,7 @@ def record_decision_frame(session: object, *,
     sink 异常不毒化决策链(记录层故障不阻塞业务)。
 
     cw4_counters 三态(§4,锁 L4):None = 无策略载体(无 match 注册/
-    第三方策略未装配);{} = 本窗口零变更(显式发射,与 None 可辨);
+    第三方策略未装配);{} = 本窗口零变更(显式发出,与 None 可辨);
     非空 dict = 本窗口有变更(只出现差非零键,值全 int 带符号)。"""
     run_id = current_run_id_safe()
     if not run_id:
@@ -295,7 +295,7 @@ def record_decision_frame(session: object, *,
     counters = getattr(st, 'cw4_counters', None)
     cw4_payload: dict[str, int] | None
     if counters is None:
-        # 无策略载体(§4 None 语义):发射 None,不猜;锚不动(无容器
+        # 无策略载体(§4 None 语义):发出 None,不猜;锚不动(无容器
         # 无窗口账务)。
         cw4_payload = None
     else:
@@ -423,7 +423,7 @@ def install_decision_trace(path: Path | str | None = None, *,
     """装配决策行落盘(幂等:重入先复位再装,防双槽叠加)。
 
     - path = 决策行文件路径;None = 生产缺省
-      ``<live 根>/strategy/decision_trace.jsonl``(定谳 C2,镜像
+      ``<live 根>/strategy/decision_trace.jsonl``(定案 C2,镜像
       ``state/journal.jsonl`` 布局);
     - flush_every = 批量落盘阈值(行数;崩溃丢失窗上界,语义同 journal);
     - journal_path = 同文件模型①的 journal 路径(给定则先跑 journal 段
@@ -461,9 +461,9 @@ def install_decision_trace(path: Path | str | None = None, *,
 
 
 def reset_decision_trace() -> None:
-    """复位决策行落盘(收口 flush + 摘 sink;测试 teardown 与重装前调)。
+    """复位决策行落盘(收束 flush + 摘 sink;测试 teardown 与重装前调)。
 
-    收口成单点理由同 :func:`cw_state_journal.reset_state_telemetry`:
+    收束成单点理由同 :func:`cw_state_journal.reset_state_telemetry`:
     槽 = 进程级全局,残留会把后续局的决策行带进旧句柄。"""
     global _ACTIVE_DECISION_TRACE
     dt = _ACTIVE_DECISION_TRACE

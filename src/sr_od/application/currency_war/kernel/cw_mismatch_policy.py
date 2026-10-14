@@ -1,7 +1,7 @@
-"""统一观察对账·失配处置策略(豁免注册表 + 安灯钩子槽)。
+"""统一观察对账·失配处置策略(豁免注册表 + 失配告警钩子槽)。
 
 **正本指针** = ``docs/develop/sr_od/application/currency_war/game_state/README.md``
-(观察对账与安灯节)。
+(观察对账与失配告警节)。
 
 失配 = ``GameState.observe()`` 观察覆盖 logic 值不一致(逻辑态被实读证伪
 = bug:此前观察态错 / 逻辑推算代码错),处置三分流住在观察写入口
@@ -12,9 +12,9 @@
    豁免 ≠ 消失——豁免命中仍落 ``exempt_mismatch`` 台账行,只是无告警无停机。
    初始为空:已知生产失配都是 bug(归日常修/归因批),注册表是给未来
    确证机制差异留治理位,不是给已知 bug 开后门。
-2. **安灯钩子槽**:真失配缺陷行落行后的运行时处置钩子(生产装配 = 截图
-   留证 + 停机 flag,装配点 = currency_war_app 装配段)。kernel 侧纯记录:
-   缺省 None = 测试/sim 环境零副作用(只留证不停机),满足「可注入回调、
+2. **失配告警钩子槽**:真失配缺陷行落行后的运行时处置钩子(生产装配 = 截图
+   留存证据 + 停机 flag,装配点 = currency_war_app 装配段)。kernel 侧纯记录:
+   缺省 None = 测试/sim 环境零副作用(只留存证据不停机),满足「可注入回调、
    缺省无真实现」约束;注入槽先例 = ``set_defect_sink``。
 
 **导入方向**:本模块零依赖 ``cw_game_state``(被其单向 import;kernel→kernel
@@ -91,14 +91,14 @@ def lookup_mismatch_exempt(screen: str | None, field_name: str,
     return None
 
 
-#: 真失配安灯钩子槽(缺省 None = 测试/sim 零副作用,只留证不停机)。
+#: 真失配告警钩子槽(缺省 None = 测试/sim 零副作用,只留存证据不停机)。
 #: 注入槽模式先例 = ``set_defect_sink``;生产装配点 = currency_war_app
 #: 装配段(与 defect sink 同点注入)。
 _ANDON_HOOK: Callable[[dict], None] | None = None
 
 
 def set_reconcile_andon_hook(fn: Callable[[dict], None] | None) -> None:
-    """接通/复位真失配安灯钩子(None = 关,缺省态;注入槽模式)。
+    """接通/复位真失配告警钩子(None = 关,缺省态;注入槽模式)。
 
     契约:真失配缺陷行落行后同步调用 ``fn(row)``;``row`` = 缺陷行 dict
     (ts / field / expected / actual / observed_evidence / screen / actor /
@@ -110,12 +110,12 @@ def set_reconcile_andon_hook(fn: Callable[[dict], None] | None) -> None:
 
 
 def fire_reconcile_andon(row: dict) -> None:
-    """触发真失配安灯(best-effort:钩子缺席/异常都不阻塞观察写链;
+    """触发真失配告警(best-effort:钩子缺席/异常都不阻塞观察写链;
     由 cw_game_state 缺陷行落行后调用,本模块不自判触发时机)。"""
     hook = _ANDON_HOOK
     if hook is None:
         return
     try:
         hook(row)
-    except Exception as e:  # noqa: BLE001  安灯 best-effort,不毒化写入链
+    except Exception as e:  # noqa: BLE001  失配告警 best-effort,不毒化写入链
         log.debug(f'[cw-gs] reconcile andon skip: {e}')

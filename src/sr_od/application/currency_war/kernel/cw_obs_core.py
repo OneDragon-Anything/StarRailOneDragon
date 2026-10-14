@@ -173,7 +173,7 @@ _GOLD_INFO_ANCHOR_TEXT: str = '金币说明'
 def is_prep_like_frame(ctx: SrContext, screen: MatLike) -> bool:
     """帧态判据(两段式):**先**遍历 ``UPPER_SCREENS`` 逐屏
     get_match_screen_name,任一命中 → False(上层画面在场 = 非备战帧;
-    上层不排除时曾发生选择伙伴帧被放行误拖实锤);**全部未命中后**再判
+    上层不排除时曾发生选择伙伴帧被放行误拖已实测确认);**全部未命中后**再判
     备战/开商店双屏(id_mark 体系,框架 screen_utils)→ True;过渡帧/结算/
     事件/动画帧 → False。
 

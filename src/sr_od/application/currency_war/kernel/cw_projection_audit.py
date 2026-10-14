@@ -1,6 +1,6 @@
-"""字段投影完备性审计注册面(观察对账族架构收口;T-40)。
+"""字段投影完备性审计注册面(观察对账族架构收束;)。
 
-**问题域**:统一观察对账安灯(2026-09-16-unified-obs-reconcile)把「游戏侧
+**问题域**:统一观察对账失配告警(2026-09-16-unified-obs-reconcile)把「游戏侧
 状态变更未投影进逻辑态」逐帧显影为停局——逐例打补丁不可收敛(2026-09-18
 五连停局实证,``.debug/temp/incidents/20260918-reconcile/``),本注册面把
 **全部 GameState 容器字段**对「游戏侧变更是否会造成 observe 失配」做
@@ -8,7 +8,7 @@
 
 1. ``write_end``:游戏侧该域的合法变更都有动作/结算/派生**投影写端**
    (bot 动作后逻辑态随写,或从观察数据派生写入);
-2. ``absorb_rule``:存在**吸收规则**承接无写端的游戏侧变更(结算真值收口
+2. ``absorb_rule``:存在**吸收规则**承接无写端的游戏侧变更(结算真值收束
    ``settle_truth``、豁免注册表、行内纯重排采新
    ``deploy_slot_reorder``);
 3. ``observation_only``:字段**有观察读端但零逻辑写端**——observe 覆盖
@@ -18,9 +18,9 @@
    观察覆盖永不触及,同属结构上不可失配。
 
 三/四态的关系:任务口径的三分类里,「无写端无规则」= 可失配面(status ∈
-{write_end, absorb_rule} 才合法出现)中既无写端也无规则的缺口,本批收口
+{write_end, absorb_rule} 才合法出现)中既无写端也无规则的缺口,经本次审计收束
 后**恒空**(锁 = 测试仓 test_cw_board_derived_and_reorder.py 完备性锁);
-observation_only / process_only 是「结构上不可失配」的声明性收口,非缺口。
+observation_only / process_only 是「结构上不可失配」的声明性收束,非缺口。
 
 **维护纪律**:新增 GameState 容器字段必须在 :data:`PROJECTION_AUDIT`
 登记行(登记缺失 = 完备性锁红);行内容变更走 review 可见,禁运行时
@@ -426,7 +426,7 @@ def audit_missing_fields(field_names: list[str]) -> list[str]:
 
 
 def audit_stale_keys(field_names: list[str]) -> list[str]:
-    """完备性锁另半边:本表中已不存在的字段键(字段退役后残留)。"""
+    """完备性锁另半边:本表中已不存在的字段键(字段停用后残留)。"""
     return [k for k in PROJECTION_AUDIT if k not in set(field_names)]
 
 
@@ -438,7 +438,7 @@ def audit_bad_status_keys() -> list[str]:
 
 
 #: 已知停局家族的机制必含关键词(完备性锁的抽检半边:五连停局各域的
-#: 收口机制必须仍在其位——防后续重构悄悄拔掉吸收/派生面)。
+#: 收束机制必须仍在其位——防后续重构悄悄拔掉吸收/派生面)。
 _STOP_FAMILY_MECHANISMS: dict[str, tuple[str, ...]] = {
     'bench': ('star_two_frame_gate',),
     'gold': ('settle_truth',),

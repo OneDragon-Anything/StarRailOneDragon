@@ -13,7 +13,7 @@
   design §2.2-§2.3;「候选全部为装备的多选一」场景禁第二套打分)。
 
   (原第五件 ``decide_equip_overlay_pick`` = 选择装备 overlay 三选一判据
-  已随该屏误判退役删除——屏不存在,见外循环退役号 0a0。)
+  已停用——屏不存在,见外循环停用号 0a0。)
 
 档位语义(design §2.2/§2.3,零参数):
 - tier 3:key 直击且需求未满足(持有数_total < 需求件数);
@@ -24,7 +24,7 @@
 
 账口径(design §2.5):owned_spare = 装备区备用库存账;owned_total =
 总持有账(备用 + 部署位穿戴 + 备战席穿戴,需求守卫用)。已知失真
-通道与挂账见 design §2.3 边界清单。
+通道与待办见 design §2.3 边界清单。
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ from collections.abc import Sequence
 from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
 
 # 通用装备价值(V4.4 meta 先验;**值在代码单一源,不进 strategy doc**;实玩校准)。
-# 设计原则:带钻 > 鞋(找鞋战争;速度 comp 命脉)> 电池 > 花/通用。具体值随版本。
+# 设计原则:带钻 > 鞋(找鞋战争;速度 阵容命脉)> 电池 > 花/通用。具体值随版本。
 # :键必须 ⊆ EQUIPMENT_ROSTER(注册表单一源)——
 # 死名不入表(表残留经游戏语料核裁删除:超级电池=超充站 buff 词非装备/
 # 能量饮料=全语料零出现/翁瓦克=局外遗器名被 误收);翁瓦克 4 分
@@ -46,7 +46,7 @@ EQUIP_GENERIC_VALUE: dict[str, int] = {
     # (各阵容装备段 + 核心机制):核心输出装补缺 —— 缺失 = 全 0 分 →
     # 补给/装备决策系统性低估 core 装备(火力风暴潮 = 伤害征服核心乘区,最高优先)。
     "火力风暴潮": 6, "高周波电锯": 5, "冷笑话引擎": 4,
-    # (装备价值表补值批):策略层 key_equips 全量缺值清偿。
+    # (装备价值表补值批):策略层 key_equips 全量缺值修复。
     # 方法 = 数学先行对位锚(值取现表档位序 + 注册表 props/effect 数值
     # 对位,禁拍值;出处 = equipment_mechanics.md §2/§5 + 08 号稿 E4):
     # - 光速螺旋桨 5 = 对位反重力皮靴 5 档:速度→强度换算乘区(effect
@@ -63,12 +63,12 @@ EQUIP_GENERIC_VALUE: dict[str, int] = {
     # - 窄域件 2 档:反卫星狙击枪(后台条件+幸运一击伤害),对位绝对
     #   热量 2 档。
     # - 体系件 4 档:以牙还牙甲(反甲流团队护盾+反伤核心,流内需 3 件)。
-    # 变体辖域(白昼/特权):与同名基础件**同值**——变体 = 基础件效果
+    # 变体适用范围(白昼/特权):与同名基础件**同值**——变体 = 基础件效果
     # 的数值强化(注册表 effect 直读:光速螺旋桨·特权 4%/2% vs 底版
     # 2%/1%;火力风暴潮·特权叠 16% vs 底版),消费场景(羁绊队/特权)
     # 只强化不改定位,无实测量化依据禁拍差异化值。白昼·光速螺旋桨
     # effect 与底版逐字一致,直对位。以牙还牙甲·特权(反甲流 key,
-    # 判读报告 15 名清单漏计、扩全量检查披露后现身)同辖域对位底版
+    # 判读报告 15 名清单漏计、扩全量检查披露后现身)同适用范围对位底版
     # 4 档——全量披露检查正是为抓这一类盲区。
     "光速螺旋桨": 5, "动能激发剑": 4,
     "虫洞掘进钻头": 5, "电光履": 4, "以牙还牙甲": 4, "碎星斩舰刀": 4,
@@ -88,7 +88,7 @@ def equip_generic_value(name: str) -> int:
 def equip_material_generality(name: str) -> int:
     """装备名 → 注册表配方引用**条数**(自对配方双槽只计 1 条;缺名/非材料 = 0)。
 
-    诚实派生,手工梯度表已退役。直调现状(2026-09-12 实跑):简易 8 件
+    诚实派生,手工梯度表已停用。直调现状(2026-09-12 实跑):简易 8 件
     各 10 条完全同值、蓝钻/红钻各 11 条、垃圾袋 2 条、进阶 0 条——简易域
     内恒值无序,故箱打分不消费本函数(design §2.1);保留供非箱消费位
     与注册表形态审计(V2 快照锁)。
@@ -119,7 +119,7 @@ def key_recipe_pairs(key_equips) -> dict[str, tuple[tuple[str, str], ...]]:
 
 def key_fit_names(key_equips) -> frozenset[str]:
     """契合全集 = key 成品 ∪ 全部材料对成员(由 key_recipe_pairs 派生,
-    单一推导;V4 独立构造对拍锁防派生链自身 bug)。"""
+    单一推导;V4 独立构造交叉核对锁防派生链自身 bug)。"""
     names: set[str] = set()
     for k, pairs in key_recipe_pairs(key_equips).items():
         names.add(k)
@@ -143,7 +143,7 @@ def _near_redeem(name: str, pairs_by_key: dict[str, tuple[tuple[str, str], ...]]
 
     操作条件:交叉对 = name 为零侧且另一侧 ≥1;自对 = 持 1 补第 2 只
     (cnt 恰 1;持 0 不成对、持 ≥2 已可合,均不升档)。对数净增加的
-    宽定义(第 2+ 件 K)归 P42 数值化辖域,不进序数档。"""
+    宽定义(第 2+ 件 K)归 P42 数值化适用范围,不进序数档。"""
     for k in unmet_keys:
         for a, b in pairs_by_key.get(k, ()):
             if name != a and name != b:

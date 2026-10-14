@@ -1,13 +1,13 @@
 """货币战争 执行域领域模型与纯函数宿主(cw_exec_state;无状态面)。
 
-本模块不承载跨调用状态——原执行层状态载体已整体退役,局内事实宿主 =
-GameState(kernel/cw_game_state.py)。现辖三类领域函数:
+本模块不承载跨调用状态——原执行层状态载体已整体停用,局内事实宿主 =
+GameState(kernel/cw_game_state.py)。现覆盖三类领域函数:
 
 - 确认族到账推进:``apply_confirm_effect``(两态制标准语义;
-  原 apply_op_effect 动作类分支随动作 op 重组批④ 收编 op 自上报后瘦身);
+  原 apply_op_effect 动作类分支已并入各 op 自上报后瘦身);
 - 槽位表领域模型:bench/deployed 槽位语义 helpers(benchchar-retirement
   P1 起容器原生:bench = ``BenchSlot | None`` 槽表;
-  deployed 主域 = DeployedView 完整槽位表,3.2 随 tracked 第二账退役删除
+  deployed 主域 = DeployedView 完整槽位表,3.2 随 tracked 第二账停用删除
   换算五函数——残余的下标→(排,排内槽号)固定双射由消费点内联算术承载,
   工作表桥 = cw_game_state.deployed_indexed_of_view/deployed_view_of_indexed);
   观察读链直产容器形状(obs/cw_identity_obs),本模块无换形适配层;
@@ -30,8 +30,8 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 
 # ============================================================ 确认族到账推进
-# (波 5b 自 kernel/cw_expected_state 迁入;动作 op 重组批④ 瘦身改名:
-# 动作词表类分支收编 op 自上报(kernel/cw_action_report),本口只剩 dict
+# (自 kernel/cw_expected_state 收拢;动作词表类分支已并入 op 自上报
+# (kernel/cw_action_report),本口只剩 dict
 # 确认族,消费点 = _overlay_confirm.register_confirm_arrival。
 # ⚠️ 动作词表/合成引擎(cw_vocab/cw_merge_simulate)模块级 import 本模块
 # (转出口),本模块对其依赖一律函数内惰性 import,模块级引入会成环——
@@ -41,7 +41,7 @@ def _session_seats(session) -> tuple[list, list]:
     # 席位主域读口(宿主 = GameState.bench/deployed 席位视图,kernel/
     # cw_game_state.py;lazy import 防模块环,同 _advance_gold 惯例)。
     # bench = list[BenchSlot | None] / deployed = 视图派生定长 10 工作表
-    # (tracked 第二账退役,合成仿真自主域派生)。
+    # (tracked 第二账停用,合成仿真自主域派生)。
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_view_slots_of,
         deployed_indexed_of_view,
@@ -54,12 +54,12 @@ def _session_seats(session) -> tuple[list, list]:
 
 def _advance_gold(session, delta: int, *,
                   produced_by: str = 'PrepActionExecutor') -> None:
-    """op 逻辑效果的金账直推(last_state 链退役后宿主 = 容器单例):
+    """op 逻辑效果的金账直推(last_state 链停用后宿主 = 容器单例):
     ``game_state_of(session).gold`` 经 logic_action 通道 write_logic
     (可为负;现值 None 视 0 基线——金账由商店波顶/结算屏可信读覆盖
-    修正,观察赢)。渠道面 = family='logic_action' + actor
+    修正,以实际观察为准)。渠道面 = family='logic_action' + actor
     'PrepActionExecutor'(在册;登记类属 = 动作 op 逻辑效果推进宿主,
-    produced_by 携调用面标识留证)。
+    produced_by 携调用面标识留存证据)。
     """
     try:
         from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -98,8 +98,8 @@ def _owned_add(session, item: str) -> None:
 def apply_confirm_effect(session, payload: dict, *,
                          produced_by: str = 'PrepActionExecutor',
                          detail: str = '') -> list[dict]:
-    """确认类到账 dict 的逻辑效果推进(原 ``apply_op_effect`` 瘦身改名,
-    动作 op 重组批④:动作词表类分支已全量收编各 op 自上报
+    """确认类到账 dict 的逻辑效果推进(原 ``apply_op_effect`` 瘦身改名;
+    动作词表类分支已全量并入各 op 自上报
     (kernel/cw_action_report 函数族),本口只剩 dict 确认族;消费方 =
     ``_overlay_confirm.register_confirm_arrival``)。
 
@@ -131,13 +131,13 @@ def apply_confirm_effect(session, payload: dict, *,
         _eff(f'owned[{item}]', f'+1({op})', 'owned')
     elif op == 'ConfirmExpertCash':
         # 专家邀请函「现金为王」:弃卡取现金固定回金 +4 金账直推
-        # (原 _overlay_confirm 内联 last_state 直推随链退役迁入本口,
+        # (原 _overlay_confirm 内联 last_state 直推,现宿主 = 本口,
         # 与 owned 确认族同一推进语义单一源;shop_wave_top 实读覆盖修正)。
         _advance_gold(session, 4, produced_by=produced_by)
         _eff('gold', '+4(现金为王弃卡回金)', 'gold')
     elif op == 'CwActionBuyCardParam':
         # dict 形 CwActionBuyCardParam(模拟/离线入口):合成引擎算购买数,金账
-        # 逻辑推进;tracked 本体推进 = 执行器/调用方辖。
+        # 逻辑推进;tracked 本体推进 = 执行器/调用方覆盖。
         _apply_buy_card(session, payload, _eff)
     return effects
 
@@ -162,8 +162,7 @@ def _apply_buy_card(session, action: dict, _eff) -> None:
 
 
 # ============================================================
-# 席位/槽位域 + 节点台账访问函数 + 布局转发(原 kernel/cw_state.py
-# 候裁9 词汇迁入):槽位表契约与节点序列台账的值宿主 =
+# 席位/槽位域 + 节点台账访问函数 + 布局转发:槽位表契约与节点序列台账的值宿主 =
 # GameState.bench/deployed 席位视图 / plane_node_sequences(载体见
 # cw_game_state.py);本模块保留领域常量/类型与三访问函数,见模块尾。
 # ============================================================
@@ -196,8 +195,8 @@ def bench_place(bench: list[BenchSlot | None], slot: BenchSlot) -> int | None:
     """放入首个空槽(买入落位语义);无空槽返回 None(=bench_full 拒)。
 
     容器原生形状(§2.1):元素 = ``BenchSlot | None``——None 洞(卖出/上阵
-    置 None 不移位)与 ``kind='empty'`` 同为空槽。槽位信息位已随 Unit.slot
-    退役():权威槽位 = 表下标,落位归一腿为恒等
+    置 None 不移位)与 ``kind='empty'`` 同为空槽。槽位信息位已停用(Unit.slot
+    不再承载):权威槽位 = 表下标,落位归一腿为恒等
     (保留函数形状供调用方零改动;非 unit kind 原样落槽)。
     """
     for i, b in enumerate(bench):
@@ -210,7 +209,7 @@ def bench_place(bench: list[BenchSlot | None], slot: BenchSlot) -> int | None:
 def bench_occupied_slot_nos(bench: list[BenchSlot | None]) -> list[int]:
     """占用槽号集(槽号健康门输入;None 槽跳过)。
 
-    [索引定义] 值 = 物理槽号(1 基) = 表下标 + 1;Unit.slot 信息位已退役
+    [索引定义] 值 = 物理槽号(1 基) = 表下标 + 1;Unit.slot 信息位已停用
     (),槽号由下标派生——结构上恒唯一且 ∈ 1..容量,
     健康门对下标派生输入恒过(防线保留给仍传信息位口径的过渡期调用方)。
     """
@@ -231,7 +230,7 @@ def bench_slots_healthy(slot_nos: list[int]) -> bool:
 
 
 # (换算五函数 deployed_slot_no/deployed_row_slot/deployed_idx_of/
-#  deployed_rows_to_indexed/deployed_indexed_to_rows 已随 tracked 第二账退役删除:主域 = DeployedView 完整槽位表(下标直址),
+#  deployed_rows_to_indexed/deployed_indexed_to_rows 已停用:主域 = DeployedView 完整槽位表(下标直址),
 #  工作表桥 = cw_game_state.deployed_indexed_of_view/deployed_view_of_
 #  indexed;残余的下标→(排,排内槽号)固定双射(0-3=前排 1-4 /
 #  4-9=后排 1-6)由消费点内联算术承载,消费面 = 卖场上阵 op 与遥测归档。)
@@ -276,7 +275,7 @@ def trailblazer_row_unit(unit: Unit, to_row: str) -> Unit:
 # 遮挡坏帧)因此只影响校验票,不再直接污染决策输入。
 #
 # 台账值载体 :class:`PlaneNodeLedger` 住 kernel/cw_game_state.py(宿主 =
-# 容器非 Field 簿记 ``GameState.plane_node_sequences``,载体解散迭代迁入);
+# 容器非 Field 簿记 ``GameState.plane_node_sequences``);
 # 本模块保留三访问函数(get_node_ledger / ledger_node_type /
 # ledger_update_plane)与 fill_boss_by_position——签名不变,消费面
 # (cw_vocab 转出口 / cw_equip_wear_plan 直 import / obs 与各画面 op)

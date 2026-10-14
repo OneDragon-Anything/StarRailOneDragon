@@ -6,7 +6,7 @@ transition_combos.md;位面演化定量 → stage_transitions.md;打法纪律 �
 user_playstyle.md)——**改本模块前先读并对表**,理解变更先改文档
 (防实现漂移)。
 
-**问题**:select_comp 从最终 comp 选线 → P1 买「半成型最终线」(form 0.25-0.5)
+**问题**:select_comp 从最终 阵容选线 → P1 买「半成型最终线」(form 0.25-0.5)
 打不过玩家的「标准过渡包」(2 羁绊即成型)→ P1 后段战力崩 → boss 稳定损 30+。
 
 **数据**(plaza lineups_HotHard.jsonl,V4.4 有效 784 篇):
@@ -17,9 +17,9 @@ user_playstyle.md)——**改本模块前先读并对表**,理解变更先改文
 - 过渡框架 = 仙舟 32% + 列车 29%(主流仅两种;DOT 为挂件形态 28%)
 
 **模型**:``TRANSITION_PACK`` = Early 高频纯过渡+贯穿牌的目标集合;
-Early 期判定(plane1 + 未定型)由消费方内联声明(框架启动变体已退役)。
+Early 期判定(plane1 + 未定型)由消费方内联声明(框架启动变体已停用)。
 plan 的买牌/上阵在 Early 期以过渡包为 target(过渡包羁绊低费快成型),
-P1 末/P2 起切最终 comp(select_comp 照常,积累的贯穿牌无缝继承)。
+P1 末/P2 起切最终 阵容(select_comp 照常,积累的贯穿牌无缝继承)。
 
 **数据宿主**:TRANSITION_PACK/FRAMEWORK_FACTIONS/FRAMEWORKS 权威副本 =
 ``knowledge/cw_line_facts.py``(策展数据归知识层);本模块只留 kernel 判据函数,
@@ -121,16 +121,16 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
     return fw
 
 
-# ===== 定型信号管线(用户指导:最终 comp 的选择信号从开局积累,双轨并行) =====
+# ===== 定型信号管线(用户指导:最终 阵容的选择信号从开局积累,双轨并行) =====
 # 信号源(按到达顺序):简报词缀 → P1 投资策略 → P1 投资环境 → P1 商店供给倾向
 # → 最晚 P2-3 投资策略/环境(最后一次有经济量转型的节点,之后锁死)。
-# 权重 = 该信号对 comp 强度的证据量(词缀克制/定义型 augment 是强证据)。
+# 权重 = 该信号对 阵容强度的证据量(词缀克制/定义型 augment 是强证据)。
 
-#: 信号源 → 权重(**仅遥测/诊断**,信号定型门已退役,累积分
+#: 信号源 → 权重(**仅遥测/诊断**,信号定型门已停用,累积分
 # 只进 sess_commit_scores 遥测与 leader 囤牌倾向参考,禁作决策门消费;
 # 权重为相对证据强度的经验排序,未证——不进任何行为判据)。
 SIGNAL_WEIGHTS: dict[str, float] = {
-    'briefing_affix': 1.5,      # 开局词缀(克制/加成直接改 comp 强度;mechanics_fit 主分)
+    'briefing_affix': 1.5,      # 开局词缀(克制/加成直接改 阵容强度;mechanics_fit 主分)
     'invest_strategy': 2.0,     # 投资策略(定义型如黑塔纪元 affinity≥0.9 = 资源入口级)
     'invest_env': 1.0,          # 投资环境(方向性弱于策略)
     'shop_supply': 0.5,         # 商店供给(每回合弱证据,持续累积)
@@ -142,29 +142,29 @@ SIGNAL_WEIGHTS: dict[str, float] = {
     'bonus_reward': 0.4,        # 奖励节点随机产出(最弱证据)
 }
 
-# (信号定型门已退役 2026-09-04,「未证即退役」裁定:旧
+# (信号定型门已停用 2026-09-04,「未证即停用」裁定:旧
 # COMMIT_SIGNAL_THRESHOLD=5.0 / COMMIT_MIN_T=7 为拍死值(原注释只证了
 # 「不能更低」),且 ready() 全库零生产消费(定型权威 = cw_intention.committed_authority:plane≥2 / 意向状态机 locked /
-# p1_pair 非空)。连同退役:t_of 全局轮序换算(唯一消费 = 已删 ready 的
+# p1_pair 非空)。连同停用:t_of 全局轮序换算(唯一消费 = 已删 ready 的
 # 轮门,P2=7 节点按 9 计的量纲失真一并消失)。CommitSignals 保留为
 # 遥测累积器,SIGNAL_WEIGHTS 见上注。)
 
 
 class CommitSignals:
     """选卡信号累积器(局级,挂 StrategySession;接线残留的
-    遥测载体,定型门退役后**无决策消费**)。
+    遥测载体,定型门停用后**无决策消费**)。
 
-    各信号源到达时调 ``add``(源名 + 该源的 comp 分贡献),累积到每条线;
+    各信号源到达时调 ``add``(源名 + 该源的 阵容分贡献),累积到每条线;
     ``leader`` 给当前倾向(仅遥测/判读参考)。定型权威 =
     ``cw_intention.committed_authority``(plane≥2 / 意向状态机 locked /
-    p1_pair 非空),本类不参与定型判定(旧信号定型门已退役,见模块注)。
+    p1_pair 非空),本类不参与定型判定(旧信号定型门已停用,见模块注)。
     """
 
     def __init__(self) -> None:
         self.scores: dict[str, float] = {}
 
     def add(self, source: str, comp_scores: dict[str, float]) -> None:
-        """累积一个信号源的 comp 分贡献(源权重 × 归一化分)。"""
+        """累积一个信号源的 阵容分贡献(源权重 × 归一化分)。"""
         w = SIGNAL_WEIGHTS.get(source, 0.0)
         if w <= 0 or not comp_scores:
             return

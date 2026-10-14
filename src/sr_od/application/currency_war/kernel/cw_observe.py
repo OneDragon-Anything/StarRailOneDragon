@@ -29,11 +29,11 @@ _SHOT_DIR = get_project_root() / '.debug' / 'temp' / 'currency_war' / 'shots'
 # ===== CW 遥测/深评固定落盘根(单一源;2026-09-07 用户裁定)=====
 # 结构:telemetry/{live,matches,sim} 三层——live = 实时追加流(统一
 # state journal 等 jsonl,跨局追加行内带 run_id,不按局拆文件;op_journal
-# 已随 2026-09-15 用户裁定退役,op 调用流归宿 = server 主日志 [cw-op] 行);
+# 已停用,op 调用流归宿 = server 主日志 [cw-op] 行);
 # matches = 按局装配档案(局终旁路装配器写,见 telemetry/match_archive);
 # sim = sim 批账本(每批一目录)。深评报告根独立于 telemetry(消费面是人读的
 # 复盘 md):.debug/currency_war/deep_review/。
-# 旧根 .debug/temp/currency_war/{replay,sim_runs} 同期退役:该处历史
+# 旧根 .debug/temp/currency_war/{replay,sim_runs} 同期停用:该处历史
 # 材料已迁新树,旧路径不再有任何活跃写点(存量数据一次性迁移见
 # tools/cw/migrate_telemetry_tree.py,可重跑补迁运行中局的终局产物)。
 # 全部经 get_project_root 仓根锚定:旧的相对 Path 形态 cwd 敏感
@@ -48,16 +48,16 @@ DEEP_REVIEW_ROOT: Path = (get_project_root() / '.debug' / 'currency_war'
 
 #: 实时流根(遥测 recorder/query/match_archive 的 replay_dir 语义 = 本目录;
 #: 保留旧符号名作别名,「replay_dir」参数名在 query/cli 全链沿用,整体
-#: 更名是独立重构不属本批——路径才是用户裁定面,符号名不是)。
+#: 更名是独立重构不属本次范围——路径才是用户裁定面,符号名不是)。
 DEFAULT_REPLAY_DIR: Path = LIVE_DIR
 
-# ===== 退役旧根(布局裁定前的落点;写端守卫拒写面)=====
+# ===== 停用旧根(布局裁定前的落点;写端守卫拒写面)=====
 # 为什么升为常量:2026-09-07 22:20:52 实证——write_batch_ledger 的禁写
 # 守卫只锚当前生产根时,以旧根为 out_dir 的空批把历史三流整份截断
 # (事故对账与守卫裁决
-# 及其 2026-09-07 22:20:52 空批截断记载)。退役根必须与生产根同级受守卫辖,直到旧根目录物理清除为止。
-#: 字面量按路径分段拼装(不写成可被墓碑扫描命中的连续串):本声明是
-#: 「否定式退役背书」,墓碑扫描辖的是回流写点,不是本声明本身。
+# 及其 2026-09-07 22:20:52 空批截断记载)。停用根必须与生产根同级受守卫覆盖,直到旧根目录物理清除为止。
+#: 字面量按路径分段拼装(不写成可被停用声明扫描命中的连续串):本声明是
+#: 「否定式停用背书」,停用声明扫描覆盖的是回流写点,不是本声明本身。
 RETIRED_STREAMS_ROOT: Path = (get_project_root() / '.debug' / 'temp'
                               / 'currency_war' / 'replay')
 RETIRED_SIM_ROOT: Path = (get_project_root() / '.debug' / 'temp'
@@ -121,7 +121,7 @@ def cw_shot_unique(image: MatLike, label: str) -> str | None:
 # 观测阶段上下文(规范入口序列「先清场、再识别、后动作」):read_game_state
 # 按调用点传入的阶段键(prep_clean/prep_shop_open/battle_or_transit)置位,obs_conflict
 # 落证据行时带上(键 obs_phase)——噪声判定位的数据面:规范落地后 P0 清场期/overlay 期
-# 来源的冲突行应 ≈0(这些阶段整条备战识别链不跑,物理上无冲突可留证)。
+# 来源的冲突行应 ≈0(这些阶段整条备战识别链不跑,物理上无冲突可留存证据)。
 # best-effort:异常路径漏复位只影响后续冲突行的阶段标注,不影响行为;read_game_state
 # 每次入口重新置位自愈。
 _OBS_PHASE: str | None = None
@@ -141,10 +141,10 @@ def current_obs_phase() -> str | None:
 # 观察冲突证据链(用户 2026-08-16 指示):新旧观察冲突时持久化结构化证据,供后续调研
 # (M38 教训:lv4 毒化 3 个位面才被发现,中途无数 [cw!] 日志没人看 —— 冲突要进专属文件+截图,
 # 离线可统计「哪个字段在哪个画面毒化频次最高」,驱动 reader 优先级)。
-# 删除波 1(用户 2026-09-10 直迁裁定):独立证据文件的写入端退役,证据归宿
+# (用户 2026-09-10 直迁裁定):独立证据文件的写入端停用,证据归宿
 # = 统一 state 账本行型 2(obs_event,GameState
 # .note_obs_event;同流占版本内嵌当时 state),行结构/截图节流/告警门语义
-# 原样收编(retirement.md §2 obs_conflicts 行)。存档只读:历史冲突行仍可
+# 原样并入(retirement.md §2 obs_conflicts 行)。存档只读:历史冲突行仍可
 # 经判读 CLI 旧视图读(不迁移)。
 
 #: 冲突截图节流窗(秒):同 (field, verdict) 在窗内只存一张截图。
@@ -157,9 +157,9 @@ _conflict_shot_ts: dict[tuple[str, str], float] = {}
 
 
 #: gold_delta 分级告警门(|gap|>10 → warning 级告警行,局中可被哨兵/监控 grep;
-#: ≤10 维持留证不告警)。门取 10 的依据:OCR 单帧噪声实测 ≤3(见 obs_conflicts
+#: ≤10 维持留存证据不告警)。门取 10 的依据:OCR 单帧噪声实测 ≤3(见 obs_conflicts
 #: 历史行小 gap 段),常规收支误记 ±2 内被审计容差吸收;>10 已是「账面与实读
-#: 系统性错位」量级(息线/花金义务判定整体失真),必须当下可见。
+#: 系统性错位」量级(利息线/花金义务判定整体失真),必须当下可见。
 GOLD_DELTA_ALARM_GAP: int = 10
 
 
@@ -200,7 +200,7 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
         # 证据归宿 = 账本行型 2(obs_event;占版本内嵌当时 state)。供给槽
         # 缺省关(未装配/无会话)= 行不落——与账本自身「无 sink 拒写」语义
         # 一致;旁路缺陷台账行不受此门照常供给。渠道签名(§3.2.1 ①类属):
-        # actor = 本仲裁汇点,行内身份可对账(签名必填纪律 R5 W1)。
+        # actor = 本仲裁汇点,行内身份可对账(签名必填纪律 )。
         _gs = cw_telemetry_exit.obs_event_board()
         if _gs is not None:
             with contextlib.suppress(Exception):
@@ -219,8 +219,8 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
                verdict=verdict, shot=shot)
         # gold_delta 分级消费(审计建议,用户裁决落地):|gap|>10 升级为
         # warning 告警行(检索锚 ``[cw!][alarm][gold_delta]``,哨兵/监控 grep 本行
-        # 即接;≤10 维持留证)。账面期望 vs 实读的大额错位意味着金模型已系统性
-        # 漂移,等局后统计才发现会喂错整局的息线/花金判断。
+        # 即接;≤10 维持留存证据)。账面期望 vs 实读的大额错位意味着金模型已系统性
+        # 漂移,等局后统计才发现会喂错整局的利息线/花金判断。
         if field == 'gold_delta':
             try:
                 _gap = abs(int(new) - int(old))
@@ -240,11 +240,11 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
         pass
 
 
-# ===== 策略激活对拍暂存槽(消费者=obs.cw_observation 构建 state 读
+# ===== 策略激活交叉核对暂存槽(消费者=obs.cw_observation 构建 state 读
 # session.active_strategies 处(obs→kernel 合法向)——槽模式与 _OBS_PHASE
-# 同族:生产→消费紧邻、消费即清。原生产者(投资策略卡采集遥测)已随
-# invest_cards 流写入端退役删除(删除波 1);槽与消费
-# 面保留,候 strategy_offer 收编批重接生产端)=====
+# 同族:生产→消费紧邻、消费即清。原生产者(投资策略卡采集遥测)已停用删除;
+# 槽与消费
+# 面保留,待 strategy_offer 并入批重接生产端)=====
 _PENDING_STRATEGY_PICK: str | None = None
 
 

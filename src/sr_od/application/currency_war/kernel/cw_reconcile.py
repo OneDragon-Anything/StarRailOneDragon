@@ -1,7 +1,7 @@
 """tracking 对账公共层(观察冲突审计 P0 #12)。
 
 两处对账实现(deploy_bench._reconcile_tracking / cw_screen_prep._reconcile_tracking)同语义
-但强弱不一 —— director 版有空读守卫(M14 实锤)+截图留证,deploy_bench 版直接覆盖(过渡帧
+但强弱不一 —— director 版有空读守卫(M14 已实测确认)+截图留存证据,deploy_bench 版直接覆盖(过渡帧
 双空读会污染 tracking)→ bug 温床。本模块抽公共 helper:统一守卫 + obs_conflict 证据链。
 """
 from __future__ import annotations
@@ -178,7 +178,7 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
     与旧「就地改写读对象 star」等价:单帧抖动不进 drift 判定与写回,同帧
     容器席位视图观察写端(director 消费门后副本)同得保旧值。候选态
     按局身份旁表存(键 = (域, 槽号, 规范名))。锚上身份未锚定
-    (空槽/换人/占位件)与读失败侧(None)不辖,候选随锚作废防陈旧假确认;
+    (空槽/换人/占位件)与读失败侧(None)不覆盖,候选随锚作废防陈旧假确认;
     读侧已取得但锚未出现(部分缺读)= 证据中断,该锚候选清除重计
     (整帧双空读的候选清除在对账守卫分支,本函数不可达)。
 
@@ -190,7 +190,7 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
     frozen = is_merge_effect_window(screen)
     out: dict[str, object] = {}
     # 比较基线 = 主域席位视图现读(tracked 第二账
-    # 退役,基线从 tracked 表改主域派生视图,锚 = (子表, 下标);对账时点
+    # 停用,基线从 tracked 表改主域派生视图,锚 = (子表, 下标);对账时点
     # 在 director 观察写之前,主域现值即上一帧账面,与旧 tracked 基线
     # 同源同时点)。
     for domain, reads, account in (
@@ -198,7 +198,7 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
             ('deployed', deployed, gs.deployed.value)):
         if reads is None:
             out[domain] = reads
-            continue   # 读失败侧无读数无证据:候选态保持,不辖
+            continue   # 读失败侧无读数无证据:候选态保持,不覆盖
         entries = (_bench_read_entries(reads) if domain == 'bench'
                    else _deployed_read_entries(reads))
         # 基线条目同构(anchor 由下标派生,身份取内嵌 Unit)。
@@ -208,7 +208,7 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
              else _deployed_read_entries(account))}
         # 缺读 = 证据中断:本帧读侧未出现的锚清除其星级候选(两帧重计)。
         # 候选键首元分域(bench = 'bench';deployed = 排名 front/back),
-        # 只清本域候选——他域可能本帧整体读失败(None,照旧不辖)。
+        # 只清本域候选——他域可能本帧整体读失败(None,照旧不覆盖)。
         # 缺读帧不清会让候选原样存活,同值复现帧单帧假确认(击穿
         # 「连续两帧一致」契约)。
         _in_bench = domain == 'bench'
@@ -253,12 +253,11 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
     return out['bench'], out['deployed']
 
 
-#: 星级稳定性口径沿革:终态契约 §A 曾以「回退即采新」替换旧 N=2 防抖
-#: (旧确认门被「连续 2 帧」抖动 episode 骗过,2026-09-15 局深检
+#: 星级稳定性口径 = 「槽位锚定 + 两帧一致才采新」(终态契约 §A;
+#: 门本体 = :func:`_gate_star_jitter`,与本门特效窗判别正交合并:
+#: 时间维两帧一致 + 帧态维窗内冻结)。口径依据 = 2026-09-15 局深检
 #: .debug/currency_war/deep_review/run_20260915_054718.md §5 三次 episode
-#: 实证);识别优化批以「槽位锚定 + 两帧一致才采新」取代采新口径
-#:(门本体 = :func:`_gate_star_jitter`,与本门特效窗判别正交合并:
-#: 时间维两帧一致 + 帧态维窗内冻结)。
+#: 实证(「连续 2 帧」防抖被抖动 episode 骗过)。
 
 
 def _old_equips_pools(account_view) -> dict[str, list[list[str]]]:
@@ -268,7 +267,7 @@ def _old_equips_pools(account_view) -> dict[str, list[list[str]]]:
     动作链写入的装备在下次对账即被冲(希儿装备闪烁实证)。修法 =
     现账 equips 按 char_id 组池,新读按序续接(同名多副本逐个配对消耗,
     次序无关)。基线 = 主域视图(bench = BenchView / deployed =
-    DeployedView,tracked 第二账退役后对账续接
+    DeployedView,tracked 第二账停用后对账续接
     基线从 tracked 表改主域派生)。"""
     if account_view is None:
         return {}
@@ -346,16 +345,16 @@ def reconcile_tracking(session, bench: BenchView | None,
     kind 识别期细分,写回不再经 orig_view 回查/降级);deployed =
     :class:`DeployedView`(读侧分排读屏、对账载体 =
     合一视图,位置 = 子表下标派生)。None = 该侧失读(不写该侧、星级门
-    不辖、候选态保持);空视图 = 空读(可触发双空读守卫/清账,与旧紧缩
+    不覆盖、候选态保持);空视图 = 空读(可触发双空读守卫/清账,与旧紧缩
     空表语义一致)。
 
     守卫(审计 #11/#12):
-    - **双空读守卫**(M14 实锤):新读 bench/deployed 双空 + 前值非空 = 疑 SIFT 过渡帧
+    - **双空读守卫**(M14 已实测确认):新读 bench/deployed 双空 + 前值非空 = 疑 SIFT 过渡帧
       → 保旧不写(空读是读失败,不是「板真没了」);
-    - **漂移留证**:新旧不一致 → obs_conflict(裁决=采新-对账纠漂)+ [cw!] 日志;
+    - **漂移留存证据**:新旧不一致 → obs_conflict(裁决=采新-对账纠漂)+ [cw!] 日志;
       一致 → 静默(常态无噪声)。
 
-    (star 回退停机钩子已随「星回退处置归观察对账」批退役,2026-09-16:
+    (star 回退停机钩子已停用,2026-09-16:
     merge 预估星被实读证伪 → observe-vs-logic 对账承接,不再单设钩子。)
 
     Args:
@@ -363,8 +362,7 @@ def reconcile_tracking(session, bench: BenchView | None,
         bench/deployed: 新读容器形状(None = 该侧失读,不写)
         screen: 冲突帧(传则 obs_conflict 存去重截图)
         source: 证据行来源标记(deploy_bench/director)
-        ctx: SrContext(兼容形参;star 回退停机钩子已随「星回退处置归观察
-            对账」批退役,不再消费)
+        ctx: SrContext(兼容形参;star 回退停机钩子已停用,不再消费)
         星级抖动门(槽位锚定 + 两帧一致才采新,单帧差保旧写账 + surface=
         'star' 台账行);合成特效窗内星读不可信(冻结,不计两帧)——窗判别
         实现经模块级 ``set_merge_effect_gate`` 注入(分包矩阵禁 kernel→obs
@@ -381,7 +379,7 @@ def reconcile_tracking(session, bench: BenchView | None,
         return False, bench, deployed
     # 现账基准 = 主域席位视图(宿主 = GameState.bench/deployed,本函数 =
     # game state 层内部实现,就地处置;tracked 第二账
-    # 退役,对账基准与续接基线全部改主域派生)。bench 视图条目:unit 才有
+    # 停用,对账基准与续接基线全部改主域派生)。bench 视图条目:unit 才有
     # 身份,占位件以 ('',1) 入漂移基准;deployed 条目 = Unit。
     _gs = game_state_of(session)
 
@@ -427,10 +425,10 @@ def reconcile_tracking(session, bench: BenchView | None,
                 evidence='observation_anchor',
                 sig=ChannelSig(family='logic_action',
                                actor='CwReconcile', mode='compute'))
-            # 锚定闩同点置位(两闩同一成功条件,不新增判断分支):对账成功
+            # 锚定标志同点置位(两标志同一成功条件,不新增判断分支):对账成功
             # = 本局首次成功的备战 heavy 锚定已完成,未锚定期「容器逻辑写
-            # 走随机态」通道规则自此解除;失败走 except = 两闩同不置位。
-            # 测试/直构域置闩 = 直赋专口,生产唯一置位写点 = 此处。
+            # 走随机态」通道规则自此解除;失败走 except = 两标志同不置位。
+            # 测试/直构域置标志 = 直赋专口,生产唯一置位写点 = 此处。
             game_state_of(session).prep_anchored = True
         except Exception as _e:  # noqa: BLE001  观察态置位不阻断对账
             log.warning(f'[cw!][{source}] 观察态置位失败(不阻断): {_e}')
@@ -446,8 +444,8 @@ def reconcile_tracking(session, bench: BenchView | None,
     return True, bench, deployed
 
 
-# (终态契约 §A:hp 同域上行留证阈值/下行守卫三助手(_battle_facts_between/
-#  _outcome_is_no_loss/_reject_down)已随 session 防御锚退役删除——
+# (终态契约 §A:hp 同域上行留存证据阈值/下行守卫三助手(_battle_facts_between/
+#  _outcome_is_no_loss/_reject_down)已停用——
 #  行为变化登记 design §1.3,实机失准走识别优化批。)
 
 
@@ -456,24 +454,23 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
     """hp 对账统一入口(终态契约 §A 简化形态)。
 
     旧三层(保旧不写沿用/下行守卫/复现确认/帧龄门)随 session 防御锚
-    (last_hp_real/last_hp_real_node/hp_suspect)退役删除——「上一真值」
+    (last_hp_real/last_hp_real_node/hp_suspect)停用删除——「上一真值」
     职责由 gs.hp 结算覆盖写端 + carried 语义承载(该三层 hp
     三层设计「读不到保旧沿用 last_hp_real」;ADR 档案目录已删,原文 =
     git 历史 docs/develop/currency_war/decisions/0282-hp-three-layers.md。
-    定谳:结算观测 hp_after 与沿用锚的先后语义随退役消解——结算覆盖是
+    定案:结算观测 hp_after 与沿用锚的先后语义随停用消解——结算覆盖是
     hp 唯一真值入口,本读侧无锚可遮蔽之;行为变化登记 design §1.3:
     失读窗不再有锚补,实机识别失准走识别优化批)。
 
     保留两支:
     - 开局初值表先验:读不到 → 实证档先验(readable=False,
-      真值帧到达即被覆盖);先验输入 briefing_*/enemy_difficulty 待 T-3
-      重复账退役换源 gs 正本;
+      真值帧到达即被覆盖);先验输入 briefing_*/enemy_difficulty 换源 gs 正本;
     - 真值帧直传(真值帧是物理读数,判读侧消费证据)。
 
     Args:
         session: StrategySession(开局先验输入面;None=离线/测试,只透传)
         new_hp: read_hp_opt 现读(None=读不到,shop 开态血量区空)
-        screen/source: 留证兼容形参
+        screen/source: 留存证据兼容形参
 
     Returns:
         (决策用 hp, 是否真读):真值帧=(新读, True);读不到=(先验或
@@ -506,5 +503,5 @@ def _conflict(field: str, old, new, screen, *, verdict: str, source: str,
     try:
         from sr_od.application.currency_war.kernel.cw_observe import obs_conflict
         obs_conflict(field, old, new, screen, verdict=verdict, source=source, **ctx)
-    except Exception:  # noqa: BLE001  留证 best-effort
+    except Exception:  # noqa: BLE001  留存证据 best-effort
         pass

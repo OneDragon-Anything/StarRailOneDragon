@@ -120,9 +120,8 @@ class MegastarPick:
     """decide_megastar 返回:选第几个候选 + 原因。
 
     enhance_char_id:巨星 overlay step2「强化角色」意向(我方角色名);
-    恒 None(强化角色决策意向已随 megastar_enhance_enabled 开关族删除
-    ——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3;字段保留兼容既有
-    遥测/执行面读取)。
+    恒 None(强化角色决策意向已停用;字段保留兼容既有
+    遥测/执行面读取,勿重接)。
     """
     idx: int
     reason: str = ""
@@ -141,7 +140,7 @@ class PartnerOption:
     ``CwScreenPartnerObs.options``/容器 ``partner_opts`` 槽同一候选列表;
     取值时机 = 观察 node 入口帧一次读快照,访问内恒稳。
     char_id:候选角色名(空 = 识别未命中回落失败/读缺;识别失败回落
-    流派名/空 = op-layer.md §1.1 :34 转换失败欠账形态,收敛方向 = 观察
+    流派名/空 = op-layer.md §1.1 :34 转换失败待修项形态,收敛方向 = 观察
     失败 round_fail 零写零上报;屏级转换成功性边界由 screens/partner.md
     登记,含多候选同名同判);缺省选卡语义单一源 = 策略器 ``decide_partner``
     (strategy-docs/13_pick_family.md §1 E6)。
@@ -196,7 +195,7 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
     几乎总是升费——打分走通用原则,让「何时升费不是最优」可被策略表达。
     定形(16 号稿 §1.7):两档定序结构 = 升费档 > 装备档,
     各层方向均有出处(升费优先 = 用户定调 + 银狼策划机制原文;装备域内
-    key_equip 命中优先 = comp 知识);下列数值全部
+    key_equip 命中优先 = 阵容知识);下列数值全部
     是档位实现常数,只承载层间/层内定序,非基准基数:
 
     - **升费档**(「提升费用」):银狼成长滚动投资前提(升费→新费档刷商店→3星5费
@@ -251,8 +250,8 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
 # 具体碰撞例 = 破解芯片卡文含「弱化」而实为装备卡,装备域优先判定消解)。
 
 #: 腿型词表(封闭集):upgrade=升费腿 / equip=装备腿 / unknown=未识别
-#: (零记账留证;含弱化词且装备锚未命中的卡文落 unknown——弱化兜底档
-#: 已按原文二分法退役,静默零记账变响亮申报)。
+#: (零记账留存证据;含弱化词且装备锚未命中的卡文落 unknown——弱化兜底档
+#: 已按原文二分法停用,静默零记账变响亮申报)。
 PLANNER_LEG_UPGRADE: str = 'upgrade'
 PLANNER_LEG_EQUIP: str = 'equip'
 PLANNER_LEG_UNKNOWN: str = 'unknown'
@@ -285,7 +284,7 @@ def normalize_equip_name(text: str) -> str:
     §2.1① equip 件名归一单一源)。
 
     - 判据 = :func:`_similar_equip_hits`;**唯一命中**才返回归一件名,
-      零/多命中返回 ''(未解析——禁猜名,记账侧走值不变翻来源留证);
+      零/多命中返回 ''(未解析——禁猜名,记账侧走值不变翻来源留存证据);
     - 纯函数零副作用,handler 决策半与测试共用。
     """
     hits = _similar_equip_hits(text)
@@ -318,7 +317,7 @@ def normalize_registry_equip_name(text: str) -> str:
        最长胜出);并列最长 → 落第 3 层;
     3. **相似救援**:LCS 占比 ≥ :data:`_EQUIP_NORM_LCS_FLOOR`(相对
        件名长度)唯一命中 → 返回;多命中/零命中 → ''(禁猜,fail-closed:
-       错名不入账,报告侧翻来源留证,观察覆盖自愈)。
+       错名不入账,报告侧翻来源留存证据,观察覆盖自愈)。
 
     纯函数零副作用,补给 handler 组装点与测试共用。
     """
@@ -354,10 +353,10 @@ def classify_planner_leg(text: str) -> tuple[str, str]:
     2. **相似归一**:锚未中 → :func:`_similar_equip_hits`——唯一命中 →
        equip(OCR 形变救援);**多命中 → equip 且件名未解析**(norm_item
        ='':多件注册表名同时高相似 = 装备信号成立而件名不可辨,禁猜——
-       记账侧走值不变翻来源留证);零命中 = 无装备信号;
+       记账侧走值不变翻来源留存证据);零命中 = 无装备信号;
     3. **升费关键词**:「提升费用」→ upgrade(记账分类词表 = 本函数内联
-       面,非 decide_planner 决策词表;弱化兜底档已退役——含弱化词且
-       装备锚未命中的卡文落步 4 unknown,静默零记账变响亮留证);
+       面,非 decide_planner 决策词表;弱化兜底档已停用——含弱化词且
+       装备锚未命中的卡文落步 4 unknown,静默零记账变响亮留存证据);
     4. 空/未识别 → unknown(零记账,台账行证未识别事实)。
 
     返回 ``(leg_type, norm_item)``:norm_item 仅 equip 腿携带归一件名,
@@ -379,8 +378,8 @@ def classify_planner_leg(text: str) -> tuple[str, str]:
     return (PLANNER_LEG_UNKNOWN, '')
 
 
-# ===== 命运卜者强化三选一(decide_fortune 判据;普查迁移批 2 F-overlay-01
-# ===== 收编:自 cw_screen_fortune handler v1 内联文本规则逐位平移,判据
+# ===== 命运卜者强化三选一(decide_fortune 判据;F-overlay-01
+# ===== 判据体 = cw_screen_fortune handler 内联文本规则的逐位转写,)
 # ===== 单一源住 kernel,handler 留 OCR 分桶/写槽/点卡/确认链)=====
 
 #: 战力关键词权重表(逐位平移自 handler v1)。累加制:同文多词各计各的——
@@ -409,8 +408,8 @@ def decide_fortune(texts: list[str]) -> int:
     return best_i
 
 
-# ===== 专家邀请函选卡(choose_expert_index;普查迁移批 2 F-overlay-02
-# ===== 收编:自 cw_screen_expert_invite 整函数平移,三级语义原样)=====
+# ===== 专家邀请函选卡(choose_expert_index;F-overlay-02
+# ===== 判据体 = cw_screen_expert_invite 整函数的逐位转写,三级语义原样)=====
 
 
 def choose_expert_index(card_bonds: list[str | None],
@@ -425,8 +424,7 @@ def choose_expert_index(card_bonds: list[str | None],
     board 为空(读数失败)走 ③:选卡无依据时经济兜底优于盲选。
 
     边界:本实现与 13_pick_family.md E9 在案规格(目标线成员优先 → 池
-    浓度)是两套语义,分叉已作为独立行为变更挂账(迁移批 2 报告),不在
-    迁移中消解——本函数保持实码行为。
+    浓度)是两套语义,分叉已登记为独立行为变更待办——本函数保持实码行为。
     """
     if not card_bonds or not board:
         return -1
@@ -440,7 +438,7 @@ def choose_expert_index(card_bonds: list[str | None],
     return -1
 
 
-# ===== 事件线 pick 族运行时元组(统一动作工厂批4;kernel 纯函数返回载体
+# ===== 事件线 pick 族运行时元组(kernel 纯函数返回载体
 # ===== 元组。终态契约 §2.2:策略器产出 = cw_vocab 词表 Pick 子类型并
 # ===== 收敛单表 CW_ACTION_TYPES,本表 = kernel decide_* 返回载体的
 # ===== 运行时登记,注册完备锁遍历走词表单表)=====

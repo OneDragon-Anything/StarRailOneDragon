@@ -9,8 +9,8 @@ report 保持占位。
 op 层观察写点勘察结论:唯一候选 =
 cw_screen_shop 段头 gold 救援补写(首读假 0 救回后
 ``gs.observe(gs.gold, ..., evidence='gold_rescue:shop_first_read_fake_zero')``)
-——属入口观察链内的纠正补写(救援读循环 + obs_conflict 留证三元组的
-同点写半),非独立观察域,不收编、零行为改道;是否收编交后续批裁决。
+——属入口观察链内的纠正补写(救援读循环 + obs_conflict 留存证据三元组的
+同点写半),非独立观察域,不并入、零行为改道;是否并入交后续批裁决。
 """
 from __future__ import annotations
 
@@ -53,5 +53,5 @@ class CwScreenShopObs:
 def report_screen_shop_obs(gs: GameState, obs: CwScreenShopObs, *,
                            sig: ChannelSig | None = None) -> None:
     """商店屏观察上报:容器写端在 read_game_state 漏斗,本函数不重复
-    承接;op 层观察写点勘察结论见模块头(gold 救援补写不收编,交后续批
+    承接;op 层观察写点勘察结论见模块头(gold 救援补写不并入,交后续批
     裁决)。接口为统一形态占位(占位不构造不校验 sig——无写即无渠道面)。"""

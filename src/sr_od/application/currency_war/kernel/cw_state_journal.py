@@ -1,4 +1,4 @@
-"""统一 state 状态流水落盘(R5 W1 起无条件常开)。
+"""统一 state 状态流水落盘(无条件常开)。
 
 设计裁定正本 = ``docs/develop/sr_od/application/currency_war/decisions/0630-unified-state-journal.md``
 (含修订节)+ ``docs/develop/sr_od/application/currency_war/decisions/0634-state-journal-always-on.md``
@@ -24,12 +24,12 @@ as-built 正本面 = ``docs/develop/sr_od/application/currency_war/game_state/jo
 分文件候选已否决,journal.md §1);局外写入拒绝(run_id 空 = 不写假行,
 journal.md §5)。
 
-寿命契约(R5 W3 装配端;retirement.md §6-5 直迁形态):滚动清理以 **run 段**
+寿命契约(装配端;retirement.md §6-5 直迁形态):滚动清理以 **run 段**
 为整体单元(段 = 行内 run_id 归属,整段淘汰禁切半段),已淘汰段的 state_ref
 钉 = 永久 unverified,淘汰动作在本模块 manifest(``journal.retirement.jsonl``,
 journal 同目录)逐段显影(archived_out;判读者钉解析失败时查 manifest 可辨
 「清理」与「丢数据」)。淘汰分三道闸(策略语义正本 = journal.md §5「寿命
-(滚动清理)策略」):实机段龄窗(跨期语料窗承诺辖域 = 实机对局语料)/
+(滚动清理)策略」):实机段龄窗(跨期语料窗承诺适用范围 = 实机对局语料)/
 非实机段龄窗(sim 批与 harness 段短窗——全消费面不采信,30 天窗对其无效,
 是账面体积无上界的根源)/体积兜底窗(容量失控时从最老段清,可击穿实机窗,
 manifest 显影保考古)。清理时点 = 装配(:func:`install_state_telemetry`
@@ -86,7 +86,7 @@ JOURNAL_NONLIVE_RETENTION_DAYS: int = 3
 #: 段(活跃段/无 ts 段),超出部分如实保留(段整体单元禁切半段)。取值依据
 #: (实测):非实机段正常积累 ~60MB/日,3 天窗 ≈ 180MB 留余量;压测日
 #: 单段可达 ~145MB(fake_20260908),192MB = 约一个压测段 + 正常积累余量;
-#: 落码时点现役账面 251.6MB 恰超此窗,首次装配即触发首次真实回收。容量失控
+#: 实现时点现役账面 251.6MB 恰超此窗,首次装配即触发首次真实回收。容量失控
 #: 可击穿实机段 30 天承诺窗——被清段经 manifest 逐段显影保考古
 #: (retirement.md §6-5「保留窗下限」语义:正常积累下承诺成立,容量约束优先)。
 JOURNAL_MAX_BYTES: int = 192 * 1024 * 1024
@@ -158,7 +158,7 @@ class StateJournal:
             return 0
 
     def close(self) -> int:
-        """收口 flush(局终/复位时点;丢失窗上界收敛到本时点)。"""
+        """收束 flush(局终/复位时点;丢失窗上界收敛到本时点)。"""
         return self.flush()
 
 
@@ -174,7 +174,7 @@ def enforce_journal_retention(journal_path: Path | str, *,
     - 清理单元 = **run 段整体**(行内 run_id 归属;禁切半段——段内版本序
       完整性是 state_ref 钉解析的前提);
     - 三道闸按序判定(测试可传参覆写常量):
-      ①实机段龄窗 ``retention_days``(跨期语料窗;只辖 :data:`REAL_RUN_ID_RE`
+      ①实机段龄窗 ``retention_days``(跨期语料窗;只覆盖 :data:`REAL_RUN_ID_RE`
       实机形态段);②非实机段龄窗 ``nonlive_retention_days``(sim/harness 段
       短窗);③体积兜底窗 ``max_bytes``(前两道清完后文件仍超 → 按段末时间
       从最老段继续淘汰,不分型,直到 ≤ 上限或只剩不可清段);
@@ -195,8 +195,8 @@ def enforce_journal_retention(journal_path: Path | str, *,
       「共享段跟随裁决」与「孤儿段自评」,并保证禁在 journal 行仍在账时
       跟随淘汰(台账索引行先丢而证据行还在 = 索引面单边丢失,比双留更坏)。
 
-    为什么挂在装配前置而非收口:装配时点单进程写端未启动(零并发窗),
-    收口时点进程可能即将续写下一局(缓冲/flush 交叠窗);滚动语义由每次
+    为什么挂在装配前置而非收束:装配时点单进程写端未启动(零并发窗),
+    收束时点进程可能即将续写下一局(缓冲/flush 交叠窗);滚动语义由每次
     进程装配触发承载(每次启动清一次,频率对「保留窗 = 天级」足够)。
     """
     path = Path(journal_path)
@@ -363,7 +363,7 @@ def enforce_journal_retention(journal_path: Path | str, *,
 
 
 #: 段淘汰联动跟随者槽(注入式;None = 缺省关,装配点显式接通纪律)。
-#: 生产武装点 = telemetry.defects.install_exit_hooks(与出口钩子/安灯同点);
+#: 生产武装点 = telemetry.defects.install_exit_hooks(与出口钩子/失配告警同点);
 #: kernel 禁依 telemetry(桶依赖矩阵锁),依赖倒置经本槽注入(同 run_id
 #: provider 先例)。签名 ``fn(telemetry_root, retirement_summary)``:
 #: telemetry_root = journal 所在 state 目录的父目录(生产 = telemetry live
@@ -405,7 +405,7 @@ def install_state_telemetry(path: Path | str | None = None, *,
                             run_id_provider: Callable[[], str] | None = None) -> StateJournal:
     """装配状态流水(幂等:重入先复位再装,防双槽叠加)。
 
-    - R5 W1 常开化:本口无开关语义,生产 = currency_war_app
+    - 常开化:本口无开关语义,生产 = currency_war_app
       装配段无条件调用;影子双写/缺省关纪律已销案(被推翻);
     - path = 流水落盘路径;None = 生产缺省 ``<live 根>/state/journal.jsonl``
       (§3.0 落盘根:与旧流同根,哨兵/装配路径习惯延续);
@@ -420,7 +420,7 @@ def install_state_telemetry(path: Path | str | None = None, *,
     reset_state_telemetry()
     if path is None:
         path = default_journal_path()
-    # 寿命契约清理(R5 W3 装配端):写端未启动的零并发窗,每进程装配触发
+    # 寿命契约清理(装配端):写端未启动的零并发窗,每进程装配触发
     # 一次段粒度滚动清理(见 enforce_journal_retention 注);失败不阻塞装配。
     try:
         summary = enforce_journal_retention(path)
@@ -457,8 +457,8 @@ def ensure_journal_assembly(
         run_id_provider: Callable[[], str] | None) -> None:
     """流水装配兜底(幂等,已装配 = 零成本直过)。
 
-    为什么存在(W3 欠账,实测修复):W1 的装配契约 = 「app 装配段
-    单点显式接通」,但九流写入端退役(删除波)后,绕过 app 直跑 op 的生产
+    为什么存在(实测修复):装配契约 = 「app 装配段
+    单点显式接通」;九流写入端已停用,绕过 app 直跑 op 的生产
     入口(MCP ``run_operation`` 直调 CwLoop——接管/残局续跑的标准姿势,
     哨兵以「指令[ 货币战争-对局循环 ]」日志行为活动签名)失去旧 lazy
     recorder 单例的隐式覆盖 → sink 缺席,整局行按「诚实缺失」静默不落
@@ -488,21 +488,21 @@ def ensure_journal_assembly(
 def flush_pending() -> int:
     """现役流水缓冲批量落盘(返回本次落盘行数;无实例 = 0)。
 
-    消费方 = run 收口单点(telemetry.state.close_run):批量 flush 阈值
-    (64 行)之间收口时,局终行与段尾行还在内存缓冲,收口后紧随的档案
+    消费方 = run 收束单点(telemetry.state.close_run):批量 flush 阈值
+    (64 行)之间收束时,局终行与段尾行还在内存缓冲,收束后紧随的档案
     装配读盘会漏行(实证:g_20260915_070645 档案缺 endgame.match_final,
-    行随进程终止永失)。收口时点落盘把崩溃丢失窗上界收敛到收口后残段,
-    与 :meth:`StateJournal.close` 的「局终收口 flush」设计意图对齐。
+    行随进程终止永失)。收束时点落盘把崩溃丢失窗上界收敛到收束后残段,
+    与 :meth:`StateJournal.close` 的「局终收束 flush」设计意图对齐。
     """
     journal = _ACTIVE_JOURNAL
     return journal.flush() if journal is not None else 0
 
 
 def reset_state_telemetry() -> None:
-    """复位流水实例(收口 flush + 摘钩子与 run 归属供给槽;测试 teardown 与
+    """复位流水实例(收束 flush + 摘钩子与 run 归属供给槽;测试 teardown 与
     重装前调)。
 
-    为什么收口成单点:槽 = 进程级全局,残留会把后续局的流水行带进旧句柄
+    为什么收束成单点:槽 = 进程级全局,残留会把后续局的流水行带进旧句柄
     (与 telemetry.state 复位簇同病理);生产重装经 install 的幂等口,
     本函数亦为其前置。
     """

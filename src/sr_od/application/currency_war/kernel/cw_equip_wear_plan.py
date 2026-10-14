@@ -1,20 +1,20 @@
 """货币战争 装备穿戴计划构造(kernel 桶;组合壳溶解的原子通路件)。
 
-本模块自执行器模块 ``prep_actions.py`` 迁居(穿装备计划构造随发射位
-上移 kernel,决策侧逐帧现算):计划单一源随发射位上移,
-组合壳(RunEquip→CwOpEquipAll)退役后发射位直接消费同一构造函数,
+本模块 = 穿装备计划构造的 kernel 宿主(计划构造随动作发出点
+上移 kernel,决策侧逐帧现算):计划单一源随动作发出点上移,
+组合壳(RunEquip→CwOpEquipAll)停用后动作发出点直接消费同一构造函数,
 无第二源。机械执行半现役宿主 = ``cw_wear_equip_action.py::
 CwActionWearEquipOp`` + ``prep_actions.py`` 机械原语
 (``_equip_slot_drag_point``/``_owned_grid_locate``);
-``EquipWearStep`` 及拉黑/排序纯 helper 一并迁入
-(kernel 不得依 operations——依赖方向倒置是本次迁居的另一半动机)。
+``EquipWearStep`` 及拉黑/排序纯 helper 同住本模块
+(kernel 不得依 operations——依赖方向是本归属 kernel 的动机之一)。
 
-**边界申报(批 2a)**:``_build_equip_wear_plan(session,
+**边界申报**:``_build_equip_wear_plan(session,
 registry)`` 形参 = 决策链可达两件(黑板帧宿主 session / 判据开关
 registry),类型 Any(duck 型;kernel 零 app/context import)。
 
-W880 装备环境信号「构造点唯一」契约维持:唯一构造点 = 本模块
-``_build_equip_wear_plan``(求值块自 op 迁出后,一次打包传递)。
+ 装备环境信号「构造点唯一」契约维持:唯一构造点 = 本模块
+``_build_equip_wear_plan``(一次打包传递)。
 """
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import (
 )
 
 #: 前排槽位数(= screen_info 前排-1..4;deploy 侧同容量;自
-#: 备战执行器模块迁居(考古归 git),计划面消费)。
+#: 计划面消费)。
 FRONT_SLOT_COUNT: int = 4
 
 
@@ -46,7 +46,7 @@ def _prioritize_wearable(
 ) -> list[tuple[str, tuple[int, int]]]:
     """穿戴候选按 target_comp.key_equips 优先排序(命脉件在前,其余原序)。
 
-    comp 驱动穿戴(替 naive ``wearable[0]``);无 target / 无 key_equips
+    阵容驱动穿戴(替 naive ``wearable[0]``);无 target / 无 key_equips
     → 原序(等价旧行为)。``key_equips`` 可含重复 → 按 multiplicity 消费
     (命中的重复件也优先,但不超额)。
     """
@@ -70,9 +70,9 @@ class EquipWearStep:
 
     产出位 = 分发段 ``_build_equip_wear_plan``(读备战入口观察产物
     PrepObservation,P4 观察接线后零读屏,由 kernel 判据单一源
-    求值),发射位逐步产 ``CwActionWearEquipParam``;op 对计划
+    求值),动作发出点逐步产 ``CwActionWearEquipParam``;op 对计划
     只做机械执行(定位/拖拽/报告),禁二次求值。2a 原子通路:本步同时
-    是 ``CwActionWearEquipParam`` 动作的构造源(发射位逐步产原子动作)。
+    是 ``CwActionWearEquipParam`` 动作的构造源(动作发出点逐步产原子动作)。
 
     字段坐标系(索引/槽位字段定义注释约定):
     - ``row``: 'front'|'back'(画面物理排;deployed 槽位表同坐标系);
@@ -96,14 +96,14 @@ class EquipPlanBuild:
     - ``steps``: 机械执行计划(EquipWearStep 列表,产出期快照,pass 内恒稳);
     - ``empty_reason``: 计划空时的具名原因(字面量与今日 op 停手归因逐字
       相等;字面量消费面 = 遥测分键计数,无分类器依赖);
-      非空计划时为 ''(发射契约 NOOP 形态的产生位);
+      非空计划时为 ''(动作发出契约 NOOP 形态的产生位);
     - ``fail_reason``: 资源前置缺失原因(模板/tm_grays/rect None → 走本
-      通道 ok=False 闩不置,同今日 op round_fail 同形);非空时 steps=[] 且
+      通道 ok=False 标志不置位,同今日 op round_fail 同形);非空时 steps=[] 且
       不与 empty_reason 并用;
     - ``branch``: 'm7'(M7 角色级分配)| 'front_only'(身份读失败回退;
       空计划 NOOP 不挂哨兵,与今日该分支无哨兵覆盖一致);
     - ``owned_wearable_names``: 计划面产出的本帧可穿名单快照,测试锁消费
-      (零穿戴哨兵已随装备组合壳退役,工具类过滤归 kernel 判据面)。
+      (零穿戴哨兵已停用,工具类过滤归 kernel 判据面)。
     """
     steps: list = field(default_factory=list)
     empty_reason: str = ''
@@ -116,37 +116,37 @@ def _build_equip_wear_plan(session: Any,
                            registry: Any = None) -> EquipPlanBuild:
     """装备穿戴计划产出位(分发段;C1 计划随指令下发)。
 
-    事实源 = **容器 game state 读口**(黑板帧退役
+    事实源 = **容器 game state 读口**(黑板帧停用
     阶段 3.2 换源):owned ← ``gs.equips``、occupied ← ``gs.occupied_equips``
     (键 'front:1' 形态)、deployed ← 容器上阵视图 ``gs.deployed``、
     后排选档 ← ``gs.back_layout`` Field 原值;写者单一源 = cw_screen_prep
     观察装配点(装备域采集单一源 = ``obs.cw_observe_full.observe_full``
     heavy)。
     本函数**零读屏**:原对执行帧现读三路
-    owned/occupied/deployed 退役 = 调用位置迁移——识别函数本体归观察链
+    owned/occupied/deployed 停用 = 调用位置迁移——识别函数本体归观察链
     复用(识别机制不出端口,obs.cw_observe_full 采集);kernel 判据单一
     源求值(释放判据表/hold 逐件/词缀序/环境变体 → equip_allocation)
     → 静态计划(EquipWearStep 列表)随 op 构造下发。
 
-    新鲜度语义(执行帧现读退役的架构内解法):计划 = 入口观察期快照;
-    发射后执行前板面漂移(合成耗件/列 reflow)→ 计划步定位 miss →
+    新鲜度语义(执行帧现读停用的架构内解法):计划 = 入口观察期快照;
+    发出后执行前板面漂移(合成耗件/列 reflow)→ 计划步定位 miss →
     装备版计划失效 round_fail → 下帧重派 → 重新入口观察,不回退执行链
     现读。观察范围外的派生字段(配对守卫/hold 判据等)保持策略层纯计算
     (kernel 判据零改动)。
 
     op 侧四 kernel 判据(resolve_wear_release/classify_item_hold/
     apply_equip_env_variants/resolve_affix_priority_order):
-    执行器侧对四判据零引用(机械执行红线)。W880 装备环境信号
+    执行器侧对四判据零引用(机械执行红线)。 装备环境信号
     「构造点唯一」契约维持:唯一构造点 = 本函数。
 
     失读通道(契约保真位,与 empty_reason 合法稳态禁并用):黑板帧缺失 /
     owned None(模板库或装备区 rect 缺失)/ occupied None(TM grays 缺失)
-    → fail_reason 通道(未发出,闩不置,下帧重派;资源缺失原因在采集层
-    observe_full log 留证,此处 fail_reason 保留分键关键词)。
+    → fail_reason 通道(未发出,标志不置位,下帧重派;资源缺失原因在采集层
+    observe_full log 留存证据,此处 fail_reason 保留分键关键词)。
 
-    **签名边界(批 2a)**:形参 = (session, registry)——原
-    ctx 鸭子形参收窄为决策链可达两件(session 黑板帧/
-    registry 判据开关),发射位(mandate M7)与执行位薄派发两调用面同参;
+    **签名边界**:形参 = (session, registry)(ctx 鸭子形参收窄为决策链可达两件:
+    session 黑板帧/
+    registry 判据开关),动作发出点(mandate M7)与执行位薄派发两调用面同参;
     形参类型 Any(duck 型,kernel 零 app import)。
     """
     from sr_od.application.currency_war.data.cw_equipment_data import (
@@ -164,7 +164,7 @@ def _build_equip_wear_plan(session: Any,
     )
 
     # ===== 事实源前置(容器现读,零读屏;fail_reason 通道)=====
-    # 全面换源(黑板帧退役):owned/
+    # 全面换源(黑板帧停用):owned/
     # occupied/back_layout/deployed 四路输入全部改容器读口,黑板帧
     # (gs.prep_obs)消费清零。None 语义映射 = 容器 Field 未观察(None)
     # = 识别域未就绪,fail 门保守关方向与旧黑板 None 逐位同。
@@ -214,7 +214,6 @@ def _build_equip_wear_plan(session: Any,
             form_progress,
         )
         _form = form_progress(_tgt_comp, _gs_c)
-    # W629-R1 扩口(批 2):state/last_state 通道读点点名迁移——
     # committed 读端唯一化(decision_v2.prep_brain.committed_from,
     # 内部 = cw_intention 权威派生)。
     from sr_od.application.currency_war.kernel.cw_intention import (
@@ -252,7 +251,7 @@ def _build_equip_wear_plan(session: Any,
                          _round_now + 1)
         if (_hold_node is not None
             and _round_now is not None) else None)
-    # W880 装备环境信号单源(设计 §2.2):构造点唯一 = 本函数,一次打包
+    #  装备环境信号单源(设计 §2.2):构造点唯一 = 本函数,一次打包
     # 传递;state 缺失(离线/旧栈)= 空集 → 判据安全默认不启用。
     from sr_od.application.currency_war.kernel.cw_equip_env import (
         apply_equip_env_variants as _apply_env_variants,
@@ -262,7 +261,7 @@ def _build_equip_wear_plan(session: Any,
     )
     _equip_signals = build_equip_env_signals(_gs_c)
     # 释放判据表+ 收窄:row1(opening) 域扣留收窄为
-    # 逐件判定(classify_item_hold),帧级 ``.hold`` 只辖 row2 域。
+    # 逐件判定(classify_item_hold),帧级 ``.hold`` 只覆盖 row2 域。
     _release = resolve_wear_release(
         _round_now, _node_type,
         _reg_eq.opening_hold_battle_gate_enabled,
@@ -287,7 +286,7 @@ def _build_equip_wear_plan(session: Any,
                  _release.rust_release, _release.output_penalty_release,
                  _form)
     if _has_deployed:
-        # W209g 断点③语义保留:后排 occupied 采集随布局选档(
+        # 断点③语义保留:后排 occupied 采集随布局选档(
         # 双通道单一源)——本处只消费采集产物。
         occupied_m7: dict[tuple[str, int], list[str]] = occupied_all
         deployed_by_name: dict[str, list] = {}
@@ -305,8 +304,8 @@ def _build_equip_wear_plan(session: Any,
         log.info('[cw-equip] M7 角色级分配:deployed=%s occupied=%s',
                  [(rn, sn, d.char_id) for rn, sn, d in _row_units],
                  {f'{r}{s}': '+'.join(v) for (r, s), v in occupied_m7.items() if v})
-        # (原 hits = read_equips 执行帧现读退役:owned 件名池 = 入口观察
-        #  产物 owned_names。M7 计划消费只辖件名——read_equips 的坐标分量
+        # (原 hits = read_equips 执行帧现读停用:owned 件名池 = 入口观察
+        #  产物 owned_names。M7 计划消费只覆盖件名——read_equips 的坐标分量
         #  归执行位定位读(机械现读,合法),不在计划面。)
         wearable = [n for n in owned_names
                     if EQUIPMENTS.get(n) is not None
@@ -365,14 +364,14 @@ def _build_equip_wear_plan(session: Any,
         _priority_order = resolve_affix_priority_order(
             _tgt_comp, deployed_view,
             sorted(_equip_signals.enemy_affixes), occupied_m7)
-        # W880 装备分配入口(kernel/cw_equip_env.apply_equip_env_variants)。
+        #  装备分配入口(kernel/cw_equip_env.apply_equip_env_variants)。
         alloc, _env_actions = _apply_env_variants(
             _equip_signals, _reg_eq, session, _tgt_comp,
             deployed_view, _releasable, occupied_m7,
             hold_active=_fill_hold,
             priority_order=_priority_order)
         if not alloc:
-            # W596/W593 方案③:分配空做结构化归因(pool_empty/capacity_full/
+            # 方案③:分配空做结构化归因(pool_empty/capacity_full/
             # pairing_guard/no_deployed/unknown)。
             from sr_od.application.currency_war.kernel.cw_comps import (
                 equip_alloc_empty_reason,
@@ -407,7 +406,7 @@ def _build_equip_wear_plan(session: Any,
     # ===== front-only 回退分支(身份读失败 fallback;key_equips
     # 优先;求值块自 op 整体搬迁,一并计划化不设豁免)=====
     # 前排已穿槽 = 入口观察产物 occupied_equips 的前排切片(键坐标系
-    # 同采集层;原 read_row_equipped 现读退役)。
+    # 同采集层;原 read_row_equipped 现读停用)。
     occupied = {slot: names for (row, slot), names in occupied_all.items()
                 if row == 'front'}
     if occupied:
@@ -418,18 +417,18 @@ def _build_equip_wear_plan(session: Any,
     if unknown:
         log.warning('[cw-equip] owned 观察命中但不在 EQUIPMENTS registry(名对齐缺失?R18 P1): %s',
                     sorted(set(unknown)))
-    # 过滤工具类(拆装扳手/冶金炉等非 drag 穿);⚠️ 过滤只辖**穿戴决策**
+    # 过滤工具类(拆装扳手/冶金炉等非 drag 穿);⚠️ 过滤只覆盖**穿戴决策**
     # (wearable)。位置分量已无计划面消费,零元组仅保 _prioritize_wearable
     # 元组契约形状。
     _wearable_all = [n for n in owned_names
                      if EQUIPMENTS.get(n) is not None
                      and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
     # 回退帧穿戴门(fail-closed):回退帧 char='' 无 per-char 语境,判定
-    # 单源 ``_wearable_gate_ok`` 三谓词中 W1(worn 输入)与 W2(空栏前置)
-    # 无信息恒过 = 与历史行为等价;生效面 = W3 专属门——件级门(银狼专属
+    # 单源 ``_wearable_gate_ok`` 三谓词中谓词一(worn 输入)与谓词二(空栏前置)
+    # 无信息恒过 = 与历史行为等价;生效面 = 谓词三 专属门——件级门(银狼专属
     # 10 件)与类别门(骇客类)命中件 × char 不在白名单 → 拒,只放无门件。
-    # 不对称取向与 W3 主路径一致(错杀 = 件滞留 owned;漏放 = 拖错白拖
-    # + 安灯)。单源复用先例 = equip_alloc_empty_reason 同消费本函数,
+    # 不对称取向与谓词三主路径一致(错杀 = 件滞留 owned;漏放 = 拖错白拖
+    # + 失配告警)。单源复用先例 = equip_alloc_empty_reason 同消费本函数,
     # 禁回退分支内联白名单(分配语义与分配空诊断不漂移)。
     wearable = []
     _gate_held: list[str] = []
@@ -453,7 +452,7 @@ def _build_equip_wear_plan(session: Any,
         return EquipPlanBuild(empty_reason='pool_empty(无穿戴候选)',
                               branch='front_only',
                               owned_wearable_names=[])
-    # comp 驱动穿戴:优先穿 target_comp.key_equips 命脉件。
+    # 阵容驱动穿戴:优先穿 target_comp.key_equips 命脉件。
     _key_equips = (_tgt_comp.key_equips if _tgt_comp is not None else None)
     wearable = _prioritize_wearable(wearable, _key_equips)
     # 排序后候选 × 空槽序 zip(产出期快照;中途合成耗件 → 计划步定位

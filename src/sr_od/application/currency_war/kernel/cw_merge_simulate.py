@@ -7,8 +7,8 @@
 3. 满栏例外:能触发合成的牌满栏也买得进;自动多买一次买满缺数
    ``min(店内张数, 3 − 已有 mod 3)``,金账全款(无折扣);
 4. 装备继承:三只身上的装备**全部**继承到升星产物(玩家口述 2026-09-02
-   定谳,补备战案空白;与「场上吸收装备/站位随之继承」一致);
-5. 星徽(阵营装备)不参与星数合成——本引擎只辖角色星数,装备名单随
+   定案,补备战案空白;与「场上吸收装备/站位随之继承」一致);
+5. 星徽(阵营装备)不参与星数合成——本引擎只覆盖角色星数,装备名单随
    Unit.equips 原样继承,不做类别分流(分流是佩戴决策域)。
 
 与 ``cw_state._merge_bench`` 的关系:_merge_bench 是 tracked 侧既有不动点
@@ -59,7 +59,7 @@ class MergeStep:
     [定义注释] landing_kind/landing_slot = 升星产物的落点坐标系:
     'bench' 时 landing_slot = 物理槽位 1-9(最左合成);'deployed' 时
     = deployed 槽位表下标 0-9(场上吸收)。inherited_equips =
-    被消耗两只的装备全量(§4 规则 4,玩家定谳)。
+    被消耗两只的装备全量(§4 规则 4,玩家定案)。
     """
     name: str
     from_star: int
@@ -324,7 +324,7 @@ def same_star_count_public(name: str, star: int,
 
 
 # ============================================================
-# 候裁9 词汇迁入(原 kernel/cw_state.py 合成域):
+# 合成域词汇:
 # 升星合成规则族与本引擎双源收敛(单一语义源同文件定居;原 :35 的
 # 本模块->cw_state 反向 import 同批消除)。
 # ============================================================
@@ -439,8 +439,7 @@ def star_base_copies(star: int) -> int:
 
     单一源:折算的消费位(持有量入经济/牌池账等)一律经本函数,禁内联
     dict 或裸幂式第二表达(旧内联形态 = shop.py 星级折算 dict 与
-    cw_comps/cw_economy/cw_intention 的散写 ``3 ** (star - 1)``,后者
-    随批收敛挂账)。star 缺效(非 1-3)→ 保守折 1 份(与旧 dict 缺省
+    cw_comps/cw_economy/cw_intention 的散写 ``3 ** (star - 1)``,收敛待办)。star 缺效(非 1-3)→ 保守折 1 份(与旧 dict 缺省
     ``.get(star, 1)`` 同值)。"""
     s = int(star or 1)
     if s < 1 or s > 3:
@@ -459,13 +458,13 @@ def merge_material_reject_reason(name: str, star: int,
     ``merge_material_guard``——与部署侧 ``cw_deploy_logic.
     swap_sell_exclusion_reason`` 的拒因闭集**同名同键**(同一守卫语义
     的两个卖出路径实现点;计数单一源 = ``same_star_count``,禁消费方
-    手搓同式)。辖域 = bench 四卖出通道(M4 燃料/凑息卖/支付变现/
-    换线塌缩),各通道原有资格谓词不动,只追加本子谓词。
+    手搓同式)。适用范围 = bench 四卖出通道(M4 燃料/凑利息卖/支付变现/
+    换线归零),各通道原有资格谓词不动,只追加本子谓词。
     数学依据:同名同星满 3 即自动升星且不变量「场上同名同星 ≤1」
     (merge_mechanics.md §1/§2)⇒ c_excl≥2 稳态不可达,守卫生效域
     恒为 c_excl=1(2/3 合成进度,差最后一张)——卖出即销毁距 2★
-    差一张的确定性进度期权,fail-closed 不卖。辖星 = 1(升星链语义
-    不在本守卫辖域;2★ 成件全场唯一,子谓词恒放行)。
+    差一张的确定性进度期权,fail-closed 不卖。覆盖星 = 1(升星链语义
+    不在本守卫适用范围;2★ 成件全场唯一,子谓词恒放行)。
     设计出处:(合成素材拒入守卫,与部署侧 merge_material_guard
     同键);案发对账 = g_20260906_081836 / g_20260906_095111 两局 P2r1
     (2/3 进度素材被燃料类资格卖断)。
@@ -484,12 +483,12 @@ def merge_material_stale_names(bench: list[BenchSlot | None],
     判定:全场域(bench∪deployed)同名同 1★ 计数 ≥2 的名 = 存在 2/3
     合成进度素材对;计数单一源 = ``same_star_count``(与
     ``merge_material_reject_reason`` 同源,禁消费方手搓同式)。
-    辖星 = 1(2★ 成件全场唯一,不构成素材对,同守卫口径)。
+    覆盖星 = 1(2★ 成件全场唯一,不构成素材对,同守卫口径)。
     排序 = 字母序去重(确定性计数,禁集合迭代序入账本)。
     「滞留」语义:对在场即 2/3 进度悬置;持续 N 轮计数仍增长 = N 轮
     未合成(合成后计数停止增长,轮差分归零)——轮级时长由消费端按
     键差分判读,本函数只答「当前帧哪些名滞留」。设计出处:
-    §4 滞留显影欠账(G-B1 第四级)。
+    §4 滞留显影待修项(G-B1 第四级)。
     """
     names = {ident[0] for _x, ident in _slots_iter(bench, deployed)
              if ident is not None and ident[1] == 1}
@@ -502,7 +501,7 @@ def count_merge_material_blocked(counters: dict, name: str,
                                  ) -> None:
     """拒因分键 ``merge_material_guard_blocked`` 的**事件口径**计数单一源。
 
-    口径(C1,三审整改定谳):拦截**事件**计数,非评估次数——同一决策
+    口径(C1,三审整改定案):拦截**事件**计数,非评估次数——同一决策
     帧内同一素材名只计 1(帧内多通道资格评估、投影读(P56 liquid_
     refund)/腾席环重试对同名重复触达均去重),跨帧滞留素材每次新触达
     仍计。去重载体 = ``dedup_names``(调用方按帧创建并传入;None =
@@ -571,7 +570,7 @@ def _apply_full_bench_merge_buy(bench: list[BenchSlot | None],
                                 card: ShopCard,
                                 shop: list[ShopCard] | None) -> int | None:
     """满栏合成买分支应用(买牌上报工作副本的单一源;原 tracked 同步口
-    随第二账退役删除)。
+    随第二账停用删除)。
 
     调用语境 = ``bench_place`` 失败(bench 无空槽)后的满栏买入;前置 =
     该买完成一次合成(``merge_buy_completes``,不满足 = 满栏拒买,
@@ -585,7 +584,7 @@ def _apply_full_bench_merge_buy(bench: list[BenchSlot | None],
 
     建模依据(2026-09-09 05:52 运行局双响事故):满栏时游戏对完成合成
     的买入**接受并合成**(金照扣、bench 素材被消费腾槽、场上载体升星)
-    ——本分支即该游戏行为的主域建模;两账分叉面已随单账化结构性消灭。
+    ——本分支即该游戏行为的主域建模;两账分叉面在单账制下结构性不可能。
     """
     _name = card.name
     _star = card.star or 1

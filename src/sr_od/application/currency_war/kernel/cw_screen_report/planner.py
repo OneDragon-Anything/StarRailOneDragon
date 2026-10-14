@@ -3,7 +3,7 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = overlay 门判定 + 左右两卡 OCR 桶 join(入口帧一次读)。
 report 摄入点 = operations/cw_screen/cw_screen_yinlang.py::
-``CwScreenYinLang.observe``(观察 node);辖域边界:本屏无 chosen 写端,
+``CwScreenYinLang.observe``(观察 node);适用范围边界:本屏无 chosen 写端,
 零动作事实面。
 """
 from __future__ import annotations

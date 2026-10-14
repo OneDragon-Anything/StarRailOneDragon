@@ -8,14 +8,14 @@
 
 **对账义务(冻结)**:
 1. ``assert_equips_consistency``:动作执行前,动作对象的账面 equips 与**画面可读面**
-   (deployed 侧 below-avatar icon 可读;bench 侧机制不可读 → 无对拍面,直接信账)
-   交叉校验,不一致 raise ``EquipsInconsistencyError``(调用方按哨兵协议留证,
+   (deployed 侧 below-avatar icon 可读;bench 侧机制不可读 → 无交叉核对面,直接信账)
+   交叉校验,不一致 raise ``EquipsInconsistencyError``(调用方按哨兵协议留存证据,
    禁静默用账——卖错装的件 = 替换方案一次敲定的直接错误输入);
 2. ``equips_ledger_multiset`` / ``assert_ledger_conserved``:动作前后的装备守恒
    对账(assigned = bench+deployed 各 char 的 equips;pool = ``state.equips``;
    装备只随人走/卖出回收,动作前后多重集必须相等)。原挂点 = 旧引擎
-   ``cw_state.simulate`` 动作分支,已随自驱动引擎退役拆除(考古归
-   git);函数保留为对账契约载体(现役 src 零调用方,测试/回放可用),
+   ``cw_state.simulate`` 动作分支,已停用;函数保留为对账契约载体
+   (现役 src 零调用方,测试/回放可用),
    mismatch 记 action_log 不静默。
 
 **演进引擎 v1 不消费 bench 装备**(契约包六矛盾 leader 裁决):替换决策按
@@ -51,9 +51,9 @@ EQUIPS_CONSISTENCY_ERRORS: tuple[type[BaseException], ...] = (
 
 
 def wear_synthesis_equivalent(ledger: list[str], visible: list[str]) -> bool:
-    """**穿着触发自动合成**的账面↔画面等价判定(取证实锤)。
+    """**穿着触发自动合成**的账面↔画面等价判定(取证已实测确认)。
 
-    游戏机制(实机现场实锤):角色**穿着的两件基础件若恰为某进阶配方组件**
+    游戏机制(实机现场已实测确认):角色**穿着的两件基础件若恰为某进阶配方组件**
     (交叉两件不同/自配同件×2)→ 画面自动合成显示该进阶——
     账面 [量产型装甲×2] ↔ 画面 [很硬的甲](SELF_RECIPES);
     账面 [光能电池,生命之花] ↔ 画面 [绝对热量](CROSS/GUANGNENG)。
@@ -99,7 +99,7 @@ def assert_equips_consistency(char: object, visible: list[str] | None,
 
     ``char`` = 容器单位(行域/bench unit 槽的 ``Unit``,duck 读 equips/char_id)。
 
-    - ``visible=None``:该侧画面机制不可读(bench 侧盲区)→ 无对拍面,
+    - ``visible=None``:该侧画面机制不可读(bench 侧盲区)→ 无交叉核对面,
       单一源 = tracking 账面,直接通过(C6 裁定的本意);
     - ``visible`` 非 None:deployed 侧 below-avatar icon 真读 → 与账面
       ``char.equips`` 多重集比对,不一致 raise(多重集 = 同名装备可重复持有);

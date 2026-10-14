@@ -3,8 +3,8 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 分支候选卡 + 「剩余次数」入口稳定帧读数(同一稳定帧一次读)。
 report 摄入点 = operations/cw_screen/cw_screen_encounter.py::
-``CwScreenEncounter.observe``(观察 node);辖域边界:动作事实
-``chosen_encounter`` 不收编,留守重入裁决面;``encounter_refresh_left``
+``CwScreenEncounter.observe``(观察 node);适用范围边界:动作事实
+``chosen_encounter`` 不并入,留守落地复查面;``encounter_refresh_left``
 观察写端在本 report(读缺跳写,剩余语义观察真值,机械先例 =
 invest_env 的 ``env_refresh_left`` 摄入)。
 """

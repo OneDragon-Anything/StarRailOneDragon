@@ -14,7 +14,7 @@
   boss 前插补给,修饰结果落 GameState 场字段 ``node_seq_by_plane``,
   运行时消费面读场字段,本模块不逐点重推);
 - 序列本身不随机:旧 ``sample_node_sequence`` 的 0.92/0.96 变异掷点
-  按 U19 删除(42 局零反例强证据优先,变异位存在性候实机数据);
+  按 U19 删除(42 局零反例强证据优先,变异位存在性待实机数据);
 - P3 无完整观测 → 补采前 P3 **不运行**:进场即 game_over 并披露
   ``p3_unobserved``(U19;禁设回退先验,禁插值)。
 
@@ -57,7 +57,7 @@ PLANE_NODE_TABLES: dict[int, tuple[str, ...]] = {
 #: 「首领节点前插入补给阶段」环境白名单(id 107 原文直读,
 #: PlazaPortal('107'));规则单一 = 每个 'boss' 位前插一个 'supply'
 #: (P1/P2 各一;P3 补采后自动适用)。替换型改节点环境(战争边疆,
-#: dag T-18)是映射非插入的另一形状,不入本表(T-8 设计裁决点 1);
+#: dag )是映射非插入的另一形状,不入本表( 设计裁决点 1);
 #: 键 = 归一名(cw_investments.normalize_invest_name 口径)。
 ENV_NODE_SUPPLY_BEFORE_BOSS: frozenset[str] = frozenset({'人身意外险'})
 
@@ -70,7 +70,7 @@ class P3UnobservedError(RuntimeError):
 def resolve_plane_node_seqs(env_name: str) -> dict[int, tuple[str, ...]]:
     """环境名 → 逐位面节点序列(**修饰规则唯一计算点**,只在环境注册写
     场字段时执行一次——运行时消费面读 GameState 场字段
-    ``node_seq_by_plane``,不逐点重推;T-8 设计 §2.1 用户裁定:修饰结果
+    ``node_seq_by_plane``,不逐点重推; 设计 §2.1 用户裁定:修饰结果
     落逻辑态,插入的补给节点是备战画面可观察的真实节点,场字段为观察
     对账正本)。
 
@@ -145,7 +145,7 @@ def sequence_next(pos: NodePos,
 
 def node_round_cap(plane: int,
                    seqs: dict[int, tuple[str, ...]] | None = None) -> int:
-    """位面 round 读数上限(观察值域守卫单一源;T-8 设计 §2.5 用户裁定:
+    """位面 round 读数上限(观察值域守卫单一源; 设计 §2.5 用户裁定:
     正常按位面固定上限,随环境调整——cap 与序列同源 = 有效序列长度,
     序列修则 cap 随动,零第二真相源、零独立常量表)。三态:
 
@@ -188,7 +188,7 @@ validate_sequences()
 
 # 环境白名单结构卫生(模块自检;键归属校验 ⊆ INVESTMENT_ENVS 住
 # cw_investments._validate_env_node_seq——本模块零依赖,反向校验不落
-# 此,T-8 设计 §2.2)。
+# 此, 设计 §2.2)。
 if not ENV_NODE_SUPPLY_BEFORE_BOSS \
         or any(not name for name in ENV_NODE_SUPPLY_BEFORE_BOSS):
     raise ValueError('ENV_NODE_SUPPLY_BEFORE_BOSS 结构卫生失败'

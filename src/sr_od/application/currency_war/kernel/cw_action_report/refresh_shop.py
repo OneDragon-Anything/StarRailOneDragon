@@ -3,7 +3,7 @@
 刷新动作上报三腿(2026-09-21 商店刷新迭代 design §2-6/§2-9):
 
 - **计数腿**:付费/全量两计数经 ``gs.effects.record_refresh`` 单口触发
-  (2026-09-18 迁入裁决;免费余额半随 Field 化迁出,账本只留 paid/total
+  (2026-09-18 裁定;免费余额在容器字段,账本只留 paid/total
   累计)。生产 = 刷新 op 自上报,sim 与生产同一段 op 代码同口自上报,落地门
   零重复触发。
 - **免费腿扣减**:免费刷新剩余次数住容器字段 ``gs.free_refresh_left``
@@ -14,10 +14,10 @@
   ``deal_shop`` 同源,纯采样不写容器)采 5 槽 payload,经
   ``write_logic_rand`` 随机态专用通道写商店载荷——实机上采样是猜测,
   sim 里采样即世界真值(同一上报函数两副面孔);observe 覆盖差异落
-  ``logic_rand_outcome`` 台账、不进失配安灯(通道语义自带)。level 缺读
+  ``logic_rand_outcome`` 台账、不进失配告警(通道语义自带)。level 缺读
   = 该腿跳写(概率表按级索引,宁缺勿造)。干旱/供给族消费 observation
   only 是消费侧口径,本函数不管。
-- **环境条件发放腿**(T-7 二手市场):尾部触发检查
+- **环境条件发放腿**( 二手市场):尾部触发检查
   (``check_env_refresh_grants``;登记表 =
   ``cw_investments.ENV_REFRESH_GRANTS``;发放 = 金/装备/done 三笔
   同窗)——世界发放域,不属计数/采样语义;sim 与生产同段 op 代码
@@ -26,7 +26,7 @@
 金账 −实付仅 ``executed.refresh_paid`` 喂入时写(现役零生产喂入方:生产
 op 不喂,sim 与生产同一段 op 代码同不喂;显式喂入为保留的申报差异参数通道)。
 终结跳写申报:金仍不写;刷后牌面 = ``write_logic_rand`` 随机态
-(2026-09-21 用户裁定,观察赢;真值 = 下一入口观察)。
+(2026-09-21 用户裁定,以实际观察为准;真值 = 下一入口观察)。
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
 ``cw_action_report.__init__`` docstring)。容器、写入口与观察
@@ -67,7 +67,7 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
       回退 Field 值判定(``gs.free_refresh_left.value > 0``;入口观察锚定
       的剩余次数;None = 未观察 → 保守按 paid,不扣 Field)。
     - 免费腿扣减 = ``write_logic(gs.free_refresh_left, max(0, left−1))``
-      (produced_by/evidence 留证;下限 0,禁负值漂移)。
+      (produced_by/evidence 留存证据;下限 0,禁负值漂移)。
     - 随机态腿 = kernel 采样器采 payload → ``write_logic_rand(gs.shop, …)``
       (evidence='refresh_random_sample';观察覆盖差异 = logic_rand_outcome
       台账,非失配)。

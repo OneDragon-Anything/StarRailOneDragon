@@ -2,8 +2,8 @@
 
 **手维护调研数据**(数据候选来自战力表 P1/P2 榜+transition_combos
 调研的 fixed/core 三档;本文件把调研结论结构化)。
-本文件仅存数据表;score_bridge/pick_bridge 等选桥函数簇已随旧
-line_strategy 退役,决策路径由 cw_intention/line_defs 的
+本文件仅存数据表;score_bridge/pick_bridge 等选桥函数簇已停用,
+决策路径由 cw_intention/line_defs 的
 form_tiers 机制承载。
 
 设计要点(redesign §4.2):

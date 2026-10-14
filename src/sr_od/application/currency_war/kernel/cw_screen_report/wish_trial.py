@@ -4,8 +4,8 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 观察面 = overlay 门判定 + 各卡 objective 文本 OCR 桶 join + 各卡槽位
 坐标观察期一次解析(入口帧一次读)。report 摄入点 =
 operations/cw_screen/cw_screen_wish_trial.py::
-``CwScreenWishTrial.observe``(观察 node);辖域边界:动作事实
-``chosen_wish`` 不收编,留守重入裁决点。
+``CwScreenWishTrial.observe``(观察 node);适用范围边界:动作事实
+``chosen_wish`` 不并入,留守落地复查点。
 """
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ def report_screen_wish_trial_obs(gs: GameState, obs: CwScreenWishTrialObs, *,
     写点锚 = cw_screen_wish_trial.py::``CwScreenWishTrial.observe``(观察
     node 摄入;段内直写,无空门——OCR 空桶照写,决策侧无兜底:决策无
     有效输出 = 守卫 fail 零盲发(申报见 screens/wish_trial.md §8),防线
-    逐位平移);``chosen_wish`` 留守重入裁决点(动作事实边界)。
+    逐位平移);``chosen_wish`` 留守落地复查点(动作事实边界)。
     """
     if sig is None:
         sig = ChannelSig(family='logic_action',

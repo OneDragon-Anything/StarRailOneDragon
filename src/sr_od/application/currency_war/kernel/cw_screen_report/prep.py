@@ -4,10 +4,10 @@
 (kernel.cw_prep_actions,事件 overlay 面住整包内 ``prep.event_overlay``,
 bail 控制信号不另立顶层字段防双源漂移)——其容器写端在观察漏斗
 (read_game_state / observe_full 装配链)内部,本函数不重复承接。
-可选域 = 本屏 op 层散落写点的收编载体,写点转录来源 =
+可选域 = 本屏 op 层散落写点的并入载体,写点转录来源 =
 operations/cw_screen/cw_screen_prep.py::``_write_prep_node_chain``
 (备战帧现行链,gs.observe 双写 + 基线幂等);sig/actor/evidence 逐位
-沿用原写点原值。(接管补采写域已退役迁出:真值写门单一源 =
+沿用原写点原值。(接管补采写域不在本口:真值写门单一源 =
 cw_screen_report/plane_intel,编排 = CwEntryPlaneIntel。)
 """
 from __future__ import annotations

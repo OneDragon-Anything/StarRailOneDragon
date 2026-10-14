@@ -21,9 +21,9 @@
 **D_ENC_VARIANT 装填拨盘(本模块唯一标定槽;非选档判据)**:遭遇结算行
 ``difficulty_node`` 装填双态分支(``cw_screen_battle_wait``
 ``_cw_selection_write`` 直依此槽——裁定 9 持久化面自身的依赖):None =
-未定谳(普战行 observation 直装、遭遇行恒 None,保守前置形态);'i' =
+未定案(普战行 observation 直装、遭遇行恒 None,保守前置形态);'i' =
 装遭遇自身备战帧旗牌;'ii' = 装前一普战写入值(carry 自证态;简报值无
-容器入口,relay 白名单不含 enemy_difficulty,毒化四通道封闭)。定谳批/
+容器入口,relay 白名单不含 enemy_difficulty,毒化四通道封闭)。定案批/
 测试经 :func:`apply_calibration` 注入(只填 None 槽,幂等)。
 """
 from __future__ import annotations
@@ -43,17 +43,17 @@ if TYPE_CHECKING:
 # ===== 装填拨盘槽(唯一标定槽;选档判据面已迁策略层,本槽仅剩装填语义)=====
 
 #: D_enc 读点归属:'i'(遭遇自身备战帧)/'ii'(前一普战写入,carry 自证
-#: 形态)/None = 未定谳(装填保守前置:普战行 observation 直装、遭遇行
+#: 形态)/None = 未定案(装填保守前置:普战行 observation 直装、遭遇行
 #: 恒 None)。拨动的是 D_enc 的**记账口径**;选档判据已不读它。
 D_ENC_VARIANT: str | None = None
 
-# ===== 注入面(装填拨盘定谳批/测试的注入位;只填 None 槽,幂等)=====
+# ===== 注入面(装填拨盘定案批/测试的注入位;只填 None 槽,幂等)=====
 
 _CALIBRATABLE = ('D_ENC_VARIANT',)
 
 
 def apply_calibration(**kw: object) -> None:
-    """标定值注入(只填 None 槽,幂等;生产注入单点 = 装填拨盘定谳批)。
+    """标定值注入(只填 None 槽,幂等;生产注入单点 = 装填拨盘定案批)。
 
     非 None 现值不覆盖(重放/重跑安全);未知键名抛错(防拼写错静默丢
     注入)。测试注入也走本口(与策略层
@@ -162,7 +162,7 @@ class EncounterLog:
 
     其五/其六(Δ 无源档)的唯一可及通道:该档存在 killed=True 的
     历史遭遇行 → 可及(经验正证据;过线操作定义 = killed=True 无条件
-    有效)。生命周期 = 局(跨局持久化挂账另行立项)。
+    有效)。生命周期 = 局(跨局持久化待办另行立项)。
     """
 
     def __init__(self) -> None:
@@ -203,9 +203,9 @@ def record_settlement_row(gs: GameState, outcome: RoundOutcome, *,
                           encounter_tier: int | None,
                           residual: bool = False,
                           suppressed: bool = False) -> str:
-    """结算行入环口(构造唯一点下游、W239 守卫两臂汇合后调用;单一写端)。
+    """结算行入环口(构造唯一点下游、 守卫两臂汇合后调用;单一写端)。
 
-    - suppressed=True(W239 守卫抑制形态:killed 非 False 的 1f 遥测行)
+    - suppressed=True( 守卫抑制形态:killed 非 False 的 1f 遥测行)
       → 不入环。守卫抑制是防毒设计(保留现状),被抑制形态的缺口由
       E-3 离线对账的对齐率量测覆盖(留痕标记行随 hook 落盘,缺省关)。
     - residual=True(relaunch 残留结算屏行)→ 不入环(跨局污染排除;
@@ -230,7 +230,7 @@ def record_settlement_row(gs: GameState, outcome: RoundOutcome, *,
 
 
 # ===== 遭遇奖励兑现回调(结算确认链挂点;迭代 2026-09-21-event-refresh-
-# unify-supply-pick §2.4,attack3 X4/X7 + R1 复攻定谳后形态,T-7 r2)=====
+# unify-supply-pick §2.4,attack3 X4/X7 + R1 复攻定案后形态, r2)=====
 
 def claim_encounter_reward(gs: GameState) -> str:
     """遭遇奖励兑现(纯容器读零读屏;``CwOpSettleConfirm`` 确认点击后、
@@ -238,36 +238,36 @@ def claim_encounter_reward(gs: GameState) -> str:
     覆写 node 镜像;``report_node_advance`` 只推进 node_pos 不写镜像,
     推进前后调对读值无差别)。
 
-    判据(design §2.4,attack3 X4/X7 + R1 定谳):
+    判据(design §2.4,attack3 X4/X7 + R1 定案):
     - 节点判遭遇 = **双证**——``gs.node`` 镜像(:func:`node_kind_of`,
       最近备战帧观察的下一节点类型,英文 token)== ``'encounter'``
       **∧** ``gs.settlement_ring`` 尾行 ``node_type == '遭遇'``(本局
       结算行入环真值;环写端 ``record_settlement_row`` 在宿主
       ``_record_round_outcome`` 环写位,先于确认 op 派发且在结算覆盖
       best-effort try 块之外。原「结算行 note」载体不可实现——note
-      仅落 journal 行非容器域,attack3 R1 定谳,落地取 ring 尾行);
+      仅落 journal 行非容器域,attack3 R1 定案,落地取 ring 尾行);
       **假阴性申报(attack3 R4)**:双证存在同源面,镜像缺失遭遇局
       ring 行落 ``'普通战斗'`` → fail-closed 漏兑现(漏记非误记,
       方向安全,归观察可靠性治理);
     - 达标 = 容器结算域 ``progress_delta > 0`` **单判**(机制依据 =
       combat.md §3「遭遇奖励 = 伤害进度达标制,非清场制」;killed 不入
-      判据:结算链 killed 为 progress 符号派生值——HP 对比兜底腿已随
-      T-8 删除,胜负判定必须在结算画面识别出来);``None`` = 删失不兑现;
+      判据:结算链 killed 为 progress 符号派生值——HP 对比兜底腿已删除,
+       胜负判定必须在结算画面识别出来);``None`` = 删失不兑现;
     - ``chosen_encounter`` 在场 = 消费票。
 
     兑现 = 写 ``encounter_reward_claimed``(所选 (难度档, 奖励文本),
     单槽逐遭遇覆盖)**并随即清 ``chosen_encounter``(单次消费;清除写
     = 同族 sig ``write_logic(None)``,actor 与兑现写一致,attack3 R3
-    配对申报)**——一并收口三条误兑现面:node 镜像残留(后续非遭遇局
-    chosen 恒空)、驻留重入轮(重触发时 chosen 已空,天然幂等零闩)、
+    配对申报)**——一并收敛三条误兑现面:node 镜像残留(后续非遭遇局
+    chosen 恒空)、驻留重入轮(重触发时 chosen 已空,天然幂等零标志)、
     结算覆盖 best-effort 失败的陈旧窗(上一场兑现已清 chosen,ring 腿
     又收掉大半;残余 = 本场覆盖失败 ∧ 上一场同为遭遇 ∧ 本场 chosen
     已写的低频组合,后果 = 语义账面脏行非资金操作,如实申报不设额外
     防线)。
 
     数值不直写(防双源):金币真值 = ``settle_truth`` 结算读数、随机
-    4费角色 = bench 观察(观察赢);本记录 = 语义账面(现役消费面 =
-    审计投影唯一,策略器收益对账读端挂账——attack3 R5)。
+    4费角色 = bench 观察(以实际观察为准);本记录 = 语义账面(现役消费面 =
+    审计投影唯一,策略器收益对账读端待办——attack3 R5)。
 
     Returns: 归因串('not-encounter'/'ring-mismatch'/'not-qualified'/
     'no-chosen'/'claimed')。

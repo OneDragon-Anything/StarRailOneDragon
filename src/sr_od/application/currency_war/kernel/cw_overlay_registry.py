@@ -3,13 +3,13 @@
 每个 overlay 一条 :class:`OverlaySpec` 声明(识别锚/语义类/退场动作/派发序),
 五个消费面(P0 清场 / director bail / cw_loop 派发 / 退出恢复链 /
 UPPER_SCREENS 帧态门派生段)按字段派生消费,消灭「新增画面要手工同步多处」的
-结构性缺口(病灶;设计单一源 = 设计收口终版五条定案)。
+结构性缺口(病灶;设计单一源 = 设计收束终版五条定案)。
 
 **切换状态**:注册表 + 一致性断言就绪;
 B 面(director bail 扫描,cw_screen_prep 事件 overlay 检测)已切换为消费
 ``derive_decision()``;A 面(P0 清场)已切换为消费 ``derive_clearable()``
 (桥接点 = ``cw_screen_prep.ENTRY_OVERLAY_CLOSE``,派生映射,消费循环
-未变;2026-09-03 gate 清尾批随消费方迁址——gate 模块已退役);其余消费面
+未变;2026-09-03 gate 清尾批随消费方迁址——gate 模块已停用);其余消费面
 (cw_loop 分支 / 退出链)尚未切换。全部切换完成前,
 本表对未切换面是「声明 + 锁」,不是运行时唯一判定源。
 
@@ -113,7 +113,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         handler_id='CwScreenWishTrial',
         close_action=CLOSE_ACTION_HANDLE,
         # 派发序:必须在道具详情(19,未激活)之前——祈愿选项名含「聘用书」,
-        # 曾被道具详情分支截胡(实机死循环实锤);序提前后负条件即不需要
+        # 曾被道具详情分支截胡(实机死循环已实测确认);序提前后负条件即不需要
         dispatch_priority=11,
         recovery_exit=RECOVERY_HANDLE,
         bail_tag='wish_trial',
@@ -160,10 +160,10 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         handler_id='CwScreenMegastar',
         close_action=CLOSE_ACTION_HANDLE,
         dispatch_priority=3,
-        # ⚠️ 挂账更新(2026-09-13 退局调度器架构):旧「退出 op 盛会之星分支
+        # ⚠️ 待办更新(2026-09-13 退局调度器架构):旧「退出 op 盛会之星分支
         # 直点门图标」已删——本画面由 loop 分发 CwScreenMegastar 处理(选候选
         # +确认)。recovery_exit=esc 与实际恢复出口(点候选+确认离开)不符的
-        # 元数据修正仍按原挂账待 D 面统一切换时一并重推
+        # 元数据修正仍按原待办待 D 面统一切换时一并重推
         recovery_exit=RECOVERY_ESC,
         bail_tag='megastar',
     ),
@@ -222,7 +222,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     # 环入口清它 = 现行生产行为;语义归 system(非 decision)保两维现状:
     # bail 扫描集(= decision 条目)不加成员、清场派生集不减成员。
     # 「关闭即丢一次开箱选择」的取舍与补给同型,见补给条注释。
-    # 锚 = 族名「武装箱」(非品名):单档泛化覆盖 简易/特权(进阶 T-421 同锚
+    # 锚 = 族名「武装箱」(非品名):单档泛化覆盖 简易/特权(进阶同锚
     # 直达)弹窗族——LCS 判定分母 = 登记文本长度,text='武装箱' 对「简易武装箱」
     # 与「特权武装箱」标题均满配命中;品名锚对异品名标题只余巧合命中,禁回退。
     OverlaySpec(
@@ -256,8 +256,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     # 本条 OverlaySpec 是分类/清场表成员(单锚=变体帧同样漏,如实申报);
     # 入口链守卫 = AND(防御面);op 内 entry_ok = 双锚其一(OR,接管面
     # 比分发宽,变体帧经兜底重判后的自愈面)。原「分发 OR/守卫 AND 有意
-    # 分叉」的调和前提已随分发收编建档组合 AND 失效(历史读法
-    # 以本注为准)。
+    # 分叉」的调和前提在分发并入建档组合 AND 后失效(以本注为准)。
     OverlaySpec(
         screen_name='货币战争-星徽详情',
         anchor_area='标识-套组标题',
@@ -269,7 +268,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     # 星徽秘典弹窗:decision 化(设计定案 5)——有选卡价值(CwScreenBookcard 阵营匹配选卡),
     # 「关闭即丢决策内容」;closable=False ⇒ 不在清场派生集(环入口不再
     # 一键关,改由 CwScreenBookcard 选卡消化)。
-    # handler_id:CwScreenBookcard(原挂账 HandleStarTome 已清——秘典实现
+    # handler_id:CwScreenBookcard(原待办 HandleStarTome 已清——秘典实现
     # 经命名迁移落 CwScreenBookcard,注册表与身份分发同源)。
     OverlaySpec(
         screen_name='货币战争-星徽秘典弹窗',
@@ -307,7 +306,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         bail_tag='supply',
     ),
     # 难度确认:开局难度确认弹窗,长尾——无 cw_loop 消费分支、无专属
-    # handler(设计定案未单独裁决);声明为 system + 推进按钮载荷挂账,
+    # handler(设计定案未单独裁决);声明为 system + 推进按钮载荷待办,
     # 待出现消费需求时再定语义/接 handler
     OverlaySpec(
         screen_name='货币战争-难度确认',
@@ -323,7 +322,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     # 访问路径接管购买,关闭不丢决策内容);closable=False ⇒ 不进清场
     # 派生集(弹窗有主 = 阶段一身份行「货币战争-商店卡牌详情」分发
     # CwScreenShopCardDetailPopup,点 X 关闭交回重判,落地判定 = op 内
-    # 重入裁决与观察侧对账,非动作层验效——验证废除批;禁清场旁路双owner)。
+    # 落地复查与观察侧对账,非动作层验效——验证废除批;禁清场旁路双owner)。
     # 双锚表达本屏分发判据(购买 ∧ 角色详情,双 id_mark 同帧全中才派发);
     # close_area 按钮-关闭 = cw_lobby_close 同族模板。
     OverlaySpec(
@@ -351,8 +350,8 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         active=False,
     ),
     # 消耗品详情浮层:「拖动到」只出现在消耗品详情 modal(天然独有
-    # id_mark 候选),建档后单锚收编。
-    # ⚠️ 挂账(ESC 清零批元数据):下方 esc 双声明描述的旧消耗品 ESC 分支
+    # id_mark 候选),建档后单锚并入。
+    # ⚠️ 待办(ESC 清零批元数据):下方 esc 双声明描述的旧消耗品 ESC 分支
     # 已删除——现关层行为 = 分发 CwScreenConsumableOverlay 点同族「道具详情
     # 弹窗/按钮-关闭」×(× 同位 (1862,65))。条目未建档保持 inactive;
     # 建档批按该实作改声明并清 esc 值。
@@ -367,8 +366,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     ),
 )
 
-#: handler 收拢挂账集(历史:HandleStarTome 挂账已随命名迁移清账——
-#: 秘典实现落 CwScreenBookcard)。当前为空集;机制保留:新 handler_id
+#: handler 收拢待办集(当前为空集;机制保留:新 handler_id
 #: 先挂此集豁免 import 断言,收拢落地后移除(集合必须 ⊆ registry 引用集)。
 PENDING_HANDLER_IDS: frozenset[str] = frozenset()
 

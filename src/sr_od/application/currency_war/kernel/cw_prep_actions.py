@@ -1,7 +1,7 @@
 """货币战争 备战决策环 统一观察视图 + 采晶矿挑选 kernel(kernel 桶)。
 
 本模块原为族B 备战动作词表宿主(PrepAction 动作全集 + PREP_ACTION_TYPES +
-action_key);统一词表归一(unified-action-factory 批2b)后动作词表退役,
+action_key);统一词表归一后动作词表停用,
 单一真相源 = :mod:`kernel.cw_vocab`(基类 ``CwAction`` + 全动作类 +
 ``CW_ACTION_TYPES`` + ``action_key``)。现役居民 = 决策单一输入的统一观察
 视图 :class:`PrepObservation` 与采晶矿挑选 kernel 纯函数
@@ -26,14 +26,14 @@ from dataclasses import dataclass, field
 
 from one_dragon.base.geometry.point import Point
 
-#: 采晶矿单批硬上限(原执行器 SPHERE_MAX_CLICKS 常量迁居 kernel:挑选上界
+#: 采晶矿单批硬上限(SPHERE_MAX_CLICKS:挑选上界
 #: 归挑选函数,执行器只机械点载荷;防识别抖动死循环的防线语义不变)。
 ORE_CLICK_HARD_CAP: int = 12
 
 
 def ore_click_targets_of(gs) -> list[tuple[str, Point, int]]:
     """晶矿点击目标读口(容器 spheres 域 → select_ore_clicks 消费
-    形态;黑板帧退役 立口)。
+    形态;黑板帧停用 立口)。
 
     OreSight.points((color, x, y, r) 平铺元组)还原为
     ``[(color, Point, r)]``——与旧黑板 ``obs.spheres`` 产物形态逐位同构
@@ -55,17 +55,17 @@ def select_ore_clicks(spheres: list, cap: int,
     """晶矿挑选 kernel 单一源(R4 CwActionCollectOreParam 改形;纯函数)。
 
     输入 = ``PrepObservation.spheres``([(color, Point, r)];颜色与半径
-    仅排序消费,不进载荷);``cap`` = 本批点击预算(发射位常量,如
+    仅排序消费,不进载荷);``cap`` = 本批点击预算(动作发出点常量,如
     mandate_v1 ORE_CLICK_BATCH_MAX_K)。输出 = 有序 (x, y) 点击列——
     大晶矿优先(r 降序;稳定排序保持观察序),上界 = min(cap, 硬上限
-    ORE_CLICK_HARD_CAP)。席满让路门/占席晶矿语义归发射位(既有门),
-    本函数不辖。
+    ORE_CLICK_HARD_CAP)。席满让路门/占席晶矿语义归动作发出点(既有门),
+    本函数不覆盖。
 
     策略禁读契约(迭代 2026-10-10-ore-reward-attach):挑选仅消费色/
     半径(大优先);``ore_rewards`` 附着值禁读——实机为随机猜测,读它
     = oracle 泄漏(防线口径见模块头)。
 
-    消费面:发射位(mandate_v1 entry)构造 CwActionCollectOreParam 载荷;执行器
+    消费面:动作发出点(mandate_v1 entry)构造 CwActionCollectOreParam 载荷;执行器
     零排序零截断纯机械点(第二实现禁)。
     """
     budget = max(0, min(int(cap), ORE_CLICK_HARD_CAP))
@@ -75,23 +75,23 @@ def select_ore_clicks(spheres: list, cap: int,
 
 @dataclass
 class PrepObservation:
-    """备战决策环观察载体(阶段 3.5 瘦身版,黑板帧退役)。
+    """备战决策环观察载体(阶段 3.5 瘦身版,黑板帧停用)。
 
     **宿主降级申报**:本类已不再是策略器输入——名单/装备/占用/晶矿全部
     容器域承载,策略器唯读容器契约归位;本帧仅承载**控制信号与识别
     元信息**(观察链/op 内部消费,不进 gs、不进 session;另挂观察链内部
-    存续对拍轻字段 ``front_occupied``/``back_occupied``:``deployed_count``
-    双源对拍消费,方法内即弃,不进 gs/session/report):
+    存续交叉核对轻字段 ``front_occupied``/``back_occupied``:``deployed_count``
+    双源交叉核对消费,方法内即弃,不进 gs/session/report):
     - ``shop_open``:观察链门参数(F2 gold 可信派生/卡池票门);
     - ``substate``:observe_full 可读性标注(对账/日志判读);
     - ``event_overlay``:bail 控制信号(交回外循环分发)。
 
     状态类字段(bench_chars/deployed_chars/装备三路/spheres/boxes/tomes/
     free_bench_slots/deploy_vacancy 族/front_size/state_gold_trusted/P1P5
-    恒空字段)已随黑板退役删除——去向表见迭代详设 obs-retirement §阶段 3.5。
+    恒空字段)已停用——去向表见迭代详设 obs-retirement §阶段 3.5。
     """
     substate: dict = field(default_factory=dict)   # observe_full 可读性(对账/日志)
     shop_open: bool = False             # 锚点「按钮-收起」可见(观察链门参数)
     # 事件 overlay 检测(盛会之星/选择伙伴/祈愿试炼 —— 挡操作,检测到即
-    # 交回外循环分支 handler;实锤:盛会之星 overlay 下 deploy 全灭 → 空场 HP 82→1)
+    # 交回外循环分支 handler;已实测确认:盛会之星 overlay 下 deploy 全灭 → 空场 HP 82→1)
     event_overlay: str | None = None

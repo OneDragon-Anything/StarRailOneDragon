@@ -3,8 +3,8 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 弹窗门判定 + 四卡区羁绊解析 + 羁绊面板现读计数(弹窗帧一次
 读)。report 摄入点 = operations/cw_screen/cw_screen_expert_invite.py::
-``CwScreenExpertInvite.observe``(观察 node);辖域边界:动作事实
-``chosen_expert`` 不收编,留守重入裁决点;羁绊面板读数 helper 住
+``CwScreenExpertInvite.observe``(观察 node);适用范围边界:动作事实
+``chosen_expert`` 不并入,留守落地复查点;羁绊面板读数 helper 住
 obs/ 桶,归观察侧,kernel 禁直依。
 """
 from __future__ import annotations
@@ -35,7 +35,7 @@ class CwScreenExpertInviteObs:
     取值时机 = 弹窗帧观察期快照(``area_center`` 现取,动作执行期恒稳);
     值形状 = 1080p 平铺元组 (x, y)(遥测 JSON 序列化安全形)。任一卡区
     建档缺失 = 坐标域转换失败,整域 None 随名字域同门照报(部分列表会
-    错位 idx 坐标系,禁;:34 欠账清偿批同名同坐标一次落净)。
+    错位 idx 坐标系,禁;:34 待修项修复批同名同坐标一次落净)。
 
     [索引定义] ``cash_point`` = 「卡-现金为王」区中心(词表特形 idx=-1 的
     独立坐标,不进列表防 -1 负下标歧义);取值时机同 ``card_points``;
@@ -66,7 +66,7 @@ def report_screen_expert_invite_obs(gs: GameState,
     (观察 node;``ExpertInvitePayload`` 四字段同门一并写——card_bonds/
     board/card_points/cash_point,op-layer.md §1.1 :35 坐标随观察一并入
     容器;board 读数失败 = {} 的现金为王兜底语义由观察侧原样携带);
-    ``chosen_expert`` 留守重入裁决点(动作事实边界)。
+    ``chosen_expert`` 留守落地复查点(动作事实边界)。
     """
     if sig is None:
         sig = ChannelSig(family='logic_action',

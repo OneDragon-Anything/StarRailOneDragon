@@ -31,9 +31,9 @@ from sr_od.application.currency_war.kernel.cw_plane_table import (
 # 见 _loss_dist 边界声明;重尾一击型 boss 掉血 v1 用实测桶替换)
 CV_PRIOR: float = 0.5   # 组内变异系数先验(K0 实测 0.4-0.62 的收缩中值)
 
-# 三区边界先验(K2 涌现对拍锚:DEAD_HP=20 三门 / HP<40 分档 / 满息 50)
-ZONE_CRITICAL_HP: int = 40     # 二区下界(分档先验;对拍锚)
-ZONE_DEATH_EDGE_HP: int = 20   # 三区下界(DEAD_HP=20;对拍锚)
+# 三区边界先验(K2 涌现交叉核对锚:DEAD_HP=20 三门 / HP<40 分档 / 满利息 50)
+ZONE_CRITICAL_HP: int = 40     # 二区下界(分档先验;交叉核对锚)
+ZONE_DEATH_EDGE_HP: int = 20   # 三区下界(DEAD_HP=20;交叉核对锚)
 
 
 def _p2_lcond_mix() -> float:
@@ -197,7 +197,7 @@ def posture_guidance(posture: str) -> str:
 
 def board_tier_of(level: int, rb: float = 0.0) -> int:
     """等级(+刷牌加成)→ 板强档 0-3(HP_LOSS_MU 的键域;板强基线映射
-    b_eff 随 DP 退役映射 —— 首达层的供给方适配:计价消费端拿标量等级轴
+    b_eff 随 DP 停用映射 —— 首达层的供给方适配:计价消费端拿标量等级轴
     即可算 P(win),不必自算板强)。"""
     b = min(3.0, max(0.0, (level - 2) / 2.5) + rb)
     return min(3, max(0, int(b)))

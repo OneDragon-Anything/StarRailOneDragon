@@ -1,12 +1,12 @@
 """货币战争 统一动作词表 + 期望态推进机制面。
 
-**统一词表(unified-action-factory 批2b 归一)**:全仓动作单一坐标系、
+**统一词表(unified-action-factory 归一)**:全仓动作单一坐标系、
 单一真相源 = 本模块。动作类型总和别名 ``CwAction``(union,非基类——
 继承基类已摊平,见下方定义处说明) + 全动作类 + ``CW_ACTION_TYPES``
 运行时元组 + ``action_key`` 幂等键函数同居此处;原族B 词表
-(kernel/cw_prep_actions,物理槽位 1 基)已随归一退役,该模块现仅承载
+(kernel/cw_prep_actions,物理槽位 1 基)已停用,该模块现仅承载
 备战观察视图 PrepObservation 与采晶矿挑选 kernel 纯函数。坐标系裁定 =
-容器槽位表下标(族A 口径,0 基)——发射面从容器槽位表
+容器槽位表下标(族A 口径,0 基)——动作发出面从容器槽位表
 读口直接取下标构造动作;物理槽位号仅存观察写入边与执行坐标边两边界
 (物理槽位→槽位表下标换算归执行边纯函数)。例外 = 坐标参数化机械动作(CwActionWearEquipParam/
 工具原子类):row/slot 字段按定义 = 画面物理排槽位 1 基(执行器拖点
@@ -14,8 +14,8 @@
 
 **局面表示单一载体 = 容器 GameState**(kernel/cw_game_state,实机真值
 记录模型):sim 后端/实机操作链/策略决策同吃容器,域写入 = 观察链漏斗
-或逻辑态直写(上报函数族)。旧推演内核帧及其帧→容器合成口已随
-benchchar-retirement P5 退役——帧↔容器映射契约正本(game_state/fields.md
+或逻辑态直写(上报函数族)。旧推演内核帧及其帧→容器合成口已停用
+(benchchar-retirement P5)——帧↔容器映射契约正本(game_state/fields.md
 §9)随帧失去载体;测试种子 = 测试仓 builder 直写容器域(与观察链同写入口)。
 
 策略为纯规则路线(用户裁定 2026-09-12):规则直接产出动作,决策零模拟
@@ -34,7 +34,7 @@ benchchar-retirement P5 退役——帧↔容器映射契约正本(game_state/fi
   游戏左面板,观察侧双源仲裁;口径 = 羁绊全集,非主阵营单标签)。
 - 容器 GameState 中 board = **派生量**(禁独立手写):front_row/back_row
   行写端挂钩 ``GameState._resync_board_delta`` 增量重算;派生漂移由观察
-  覆盖采新(board_derived_adopt,安灯不响——派生量以观察为真值源)。
+  覆盖采新(board_derived_adopt,失配告警不响——派生量以观察为真值源)。
   未知身份单位(注册表外/OCR 误读)在容器派生路径**零贡献**(Unit 不存
   阵营,禁 faction 双源),其面板羁绊经观察覆盖采新入账;
   ``cw_bond_equips._recount_board`` 的 faction 兜底归其 faction 字段
@@ -43,7 +43,7 @@ benchchar-retirement P5 退役——帧↔容器映射契约正本(game_state/fi
   已上阵的优先角色 + 站位分流。两者在已知身份域一致(deployed 按羁绊全集聚合 == board)。
 - CwActionDeployMoveParam 更新 deployed(槽位落位 = 载荷 (to_row, to_slot)
   直落,坐标系;目标槽有人 = 交换交互);board 不随
-  CwActionDeployMoveParam 独立写(旧 ``_recount_board`` 写端已退役,容器侧随行写端挂钩重算)。
+  CwActionDeployMoveParam 独立写(旧 ``_recount_board`` 写端已停用,容器侧随行写端挂钩重算)。
 - CwActionBuyCardParam 后做 3 合 1 升星(同名同星 ≥3 → 合并为 star+1)。
 """
 from __future__ import annotations
@@ -51,10 +51,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-# ===== 候裁9 词汇迁移·旧路径转发(过渡 shim)=====
-# 本批按定谳记录把共享词汇迁入语义宿主;下列 import 同时是
-# 本模块自身运行时的供给面。旧路径消费仅剩并行在飞批文件,待其落库
-# 后由收尾段 sweep 改指新居并删除本转发声明;禁新增旧路径消费。
+# ===== 旧路径转发(过渡 shim)=====
+# 共享词汇已迁入语义宿主;下列 import 同时是本模块自身运行时的
+# 供给面。旧路径消费仅剩在飞文件,其落库后删除本转发声明;禁新增旧路径消费。
 from sr_od.application.currency_war.kernel.cw_bond_equips import (  # noqa: E402
     _recount_board,  # noqa: F401
 )
@@ -132,22 +131,21 @@ class ShopCard:
 #   bench_idx: int
 #   # [索引定义] 坐标系: <哪个容器的下标 / 画面物理槽位及基>
 #   #            取值时机: <生成期快照(执行期重校验,见 expect) | 生成期=执行期(恒稳) | 事务前快照 | 执行期现读>
-#   #            写入端: <发射点函数/模块>(仅 expect/锚定类防线字段必填)
+#   #            写入端: <发出点函数/模块>(仅 expect/锚定类防线字段必填)
 #
-# 坐标系(unified-action-factory 批2b 归一后单一;
-# 随容器合并与 tracked 退役更新):bench/deployed 域动作携**容器槽位表
+# 坐标系(unified-action-factory 归一后单一):bench/deployed 域动作携**容器槽位表
 # 下标**(bench = BenchView.slots 下标 / deployed = DeployedView 子表下标,
-# 恒稳——生成期索引 = 执行期索引);发射面从容器读口
+# 恒稳——生成期索引 = 执行期索引);动作发出面从容器读口
 # (bench_view_slots_of/deployed_rows_of 系)直接取下标构造动作。
 # 画面物理槽位号(1 基)仅存两边界:①观察写入边(observe/reconcile
 # 读链直产 (槽号, Unit) 对);②执行坐标边(deployed 下标→(排,排内
 # 槽号)固定双射内联算术,0-3=前排 1-4 / 4-9=后排 1-6)。坐标参数化
 # 机械动作(CwActionWearEquipParam/工具原子类,见备战域节)的 row/slot
-# 字段 = 画面物理排槽位,属动作参数定义,不在换算边辖域。
+# 字段 = 画面物理排槽位,属动作参数定义,不在换算边适用范围。
 
 # ``route_tag`` 字段契约(原 CwAction 基类唯一字段,摊平后逐动作类重声明):
-# 策略内部路由键(发射分支的构造事实,不随时间漂移、不维护状态),只回答
-# 「该次落地该不该清 S1 开店闩」的环路控制路由问题,非卖出资格面(资格
+# 策略内部路由键(发出分支的构造事实,不随时间漂移、不维护状态),只回答
+# 「该次落地该不该清 S1 开店标志」的环路控制路由问题,非卖出资格面(资格
 # 单一源 = sell_gate 装配 A)、非放行证据(禁检查器采信)。值域现役 =
 # m4_fuel_sell / interest_prep(单帧锁 test_route_tag_whitelist 锁映射表);
 # kw_only 缺省 '' ⇒ 构造调用全向后兼容;action_key_exclude metadata =
@@ -179,12 +177,12 @@ class CwActionSellBenchParam:
     提案生成时该槽位指向内容的期望名(char_id)——提案生成→应用之间
     槽位内容可能已变,应用时不符 → no-op + stale_proposal 语义
     (对齐 CwActionSellDeployedParam/CwActionSwapDeployParam 既有守卫形态)。
-    **防线写入端核查(N3② 勘误,批 4)**:发射点
-    = mandate_v1/shop.py 卖出发射位(M2 腾席两处/凑息回拉/funding 变现
+    **防线写入端核查(N3②)**:发出点
+    = mandate_v1/shop.py 卖出动作发出点(M2 腾席两处/凑利息回拉/funding 变现
     /funding 兜底,逐位带 expect 写入;原「remediation 两补偿器」表述
     无实码对应,全仓 grep 仅本 docstring 自引用,锁面引用同勘误);
-    prep 域发射位(mandate_v1/entry)构造留 expect 缺省 ''(不校验形态,
-    归一前族B 载体无本字段的等价延续)。
+    prep 域动作发出点(mandate_v1/entry)构造留 expect 缺省 ''(不校验形态,
+    族B 载体本无此字段,缺省即不校验)。
     锁面 = test_cw_sell_reason_matrix.py(reason/归因面)与
     test_cw_sell_window_launch.py(TestFundingHoldFallback 兜底位
     expect+income 正锁)。
@@ -195,15 +193,15 @@ class CwActionSellBenchParam:
     income: int | None = None   # 创建时预期回金(sell_refund 口径;None=未标)
     expect: str = ''           # 代际校验期望名(''=不校验,不符→拒绝)
     reason: str = ''           # 卖出通道记录字段(记录非指令,仿 CwActionLevelUpParam.auth_basis 形态;
-    #                            ''=未标,缺省形态)。承重值 = SELL_BENCH_REASONS
+    #                            ''=未标,缺省形态)。支撑值 = SELL_BENCH_REASONS
     #                            通道键(r9 争金归因证据层:失败/压线局的卖出
     #                            通道占比是归因下钻的直接证据;纯归因);
     #                            line_switch_collapse 兼孤儿证明标记
     #                            (豁免键集 = SELL_BENCH_ORPHAN_REASONS,
-    #                            与发射登记门分离的独立闭集;原检查器
-    #                            豁免消费面已随自驱动引擎退役)。
+    #                            与发出登记门分离的独立闭集;原检查器
+    #                            豁免消费面已停用)。
     convert_reason: str = ''   # 转化类豁免分键(结构化证明键):
-    #                            值域收窄为本批两类放行键 ⊂
+    #                            值域收窄为现役两类放行键 ⊂
     #                            SELL_BENCH_CONVERT_REASONS 闭集——
     #                            fuel_victim_protect_demoted(M4 腾席被保
     #                            垫件末位牺牲)/ funding_support_stall_
@@ -224,24 +222,22 @@ class CwActionSellBenchParam:
 # - funding_support_stall_convert: 支付变现通道卖出被保垫件(为骨架
 #   义务筹资,转化类,同上非自旋);
 # - funding_hold_liquidated: 支付变现兜底豁免卖出 ③④ 持有件(P78-5
-#   最后手段变现;本键辖「持有件变现」非 T3 垫件转化,豁免
-#   理由同为非自旋——义务筹资的资产重组,凑息缺口偏好账不授同款豁免);
+#   最后手段变现;本键覆盖「持有件变现」非 T3 垫件转化,豁免
+#   理由同为非自旋——义务筹资的资产重组,凑利息缺口偏好账不授同款豁免);
 # - line_switch_collapse: 线账闭合孤儿清算(P78-2a 账闭合事件「线账
 #   闭合」:K 支持度重排致义务成员出基座,登记账就地销账,其后通道按
 #   P78 INV 清算,1★ 往返净损 0 非自旋,r408 振荡意图不触犯)。键 =
-#   通道名(entry 换线塌缩出口)兼孤儿证明标记(方案审乙′:
-#   商店发射位仅在「本轮义务登记 ∧ 已出基座」证明在场时打标,授予
+#   通道名(entry 换线归零出口)兼孤儿证明标记(方案审乙′:
+#   商店动作发出点仅在「本轮义务登记 ∧ 已出基座」证明在场时打标,授予
 #   必须伴随登记簿线账闭合事件,防窗口段回归洗白——证明载体与边界
 #   申报)。
-# 四键只辖「卖出排除面/被保留集登记件」的帧;缺省 '' 恒不豁免
-# ——豁免面按分键收敛,禁全开(T3 同轮保留修复批设计约束;三键形态
-# = 批 3,N7 豁免面与分键同批消除误报窗口;三→四键 =
-# 方案审零阻断放行的语义演进,出处 = 2026-09-08 同轮交互
-# 方案审 + )。
-# 发射侧填充现状(两通道分键起):两类放行键(T3 末位牺牲/
+# 四键只覆盖「卖出排除面/被保留集登记件」的帧;缺省 '' 恒不豁免
+# ——豁免面按分键收敛,禁全开(各键独立消除各自误报窗口;扩键经
+# 方案审零阻断放行,出处 = 2026-09-08 同轮交互方案审)。
+# 发出侧填充现状(两通道分键起):两类放行键(T3 末位牺牲/
 # funding 两键)经 CwActionSellBenchParam.convert_reason 结构化字段填充(值域收窄,
 # 见字段注);line_switch_collapse 仍在役于 reason(孤儿证明打标制 +
-# entry 换线塌缩通道位)。检查器按键分工判定,禁单键并读双源;
+# entry 换线归零通道位)。检查器按键分工判定,禁单键并读双源;
 # 键集保留 = 检查器豁免面单一源(键语义/豁免边不变,可核查面三格:
 # 缺省 ''/plain 值/跨轮陈旧恒不豁免)。
 SELL_BENCH_CONVERT_REASONS: frozenset[str] = frozenset({
@@ -252,53 +248,49 @@ SELL_BENCH_CONVERT_REASONS: frozenset[str] = frozenset({
 })
 
 
-# 卖出发射位值域闭集(发射登记门:各 CwActionSellBenchParam 发射位的 reason 承重键
-# 必须是本集成员;值 = 通道名,与该发射位 Emitted.reason/route_tag 同键
-# 单一词汇)。新增发射位先在此登记再接线(值漂移由发射面行为锁暴露,
+# 卖出动作发出点值域闭集(发出登记门:各 CwActionSellBenchParam 动作发出点的 reason 支撑键
+# 必须是本集成员;值 = 通道名,与该动作发出点 Emitted.reason/route_tag 同键
+# 单一词汇)。新增动作发出点先在此登记再接线(值漂移由动作发出面行为锁暴露,
 # 归因消费面按本集分桶)。记录非指令:零行为消费面,资格单一源不变
 # (sell_gate 装配 A)。
-# (unified-action-factory 批2b 自 kernel/cw_prep_actions 迁居,与
-# SELL_BENCH_CONVERT_REASONS 同居;来源语义与登记门不变。)
 SELL_BENCH_REASONS: frozenset[str] = frozenset({
     'line_switch_collapse',     # 线账闭合孤儿清算(证明打标制)
-    'm4_fuel_sell',             # M4 腾席/压库溢出清位(腾席臂构造事实)
-    'interest_prep',            # T-115 凑息卖出(金位缺口触发;九段工序第 7 步节末凑息承继同键)
+    'm4_fuel_sell',             # M4 腾席/压牌库溢出清位(腾席臂构造事实)
+    'interest_prep',            # 凑利息卖出(金位缺口触发;九段工序第 7 步节末凑利息承继同键)
     'funding_support',          # 支付筹资卖出(义务买金币位保障)
     'self_rescue_sell',         # 溢出告警自救卖出(九段工序第 0 步态 3;自救扩展面)
     'ore_make_room',            # 晶矿腾位垫件卖出(九段工序第 2 步;垫件谓词过滤后取价值最小)
 })
 
 
-# 检查器孤儿豁免键集(同轮买后卖检查的孤儿清算豁免边;**与上方发射位
+# 检查器孤儿豁免键集(同轮买后卖检查的孤儿清算豁免边;**与上方动作发出点
 # 值域登记门 SELL_BENCH_REASONS 分离的独立闭集**):两集当前同值
-# 但语义不同源——发射登记门的新增值不得静默放大豁免面(豁免面若随
+# 但语义不同源——发出登记门的新增值不得静默放大豁免面(豁免面若随
 # 登记门生长即成振荡防空洞;同轮买卖振荡零容忍 = 治理
 # 立场)。当前值 = line_switch_collapse(线账闭合孤儿清算证明标记,
 # 授予须伴随登记簿线账闭合事件)。原三消费位(sim/checks/ledger 与
-# sim/checks/suspects 检查器/复盘面同键集)已随自驱动引擎退役拆除,
-# 考古归 git——闭集保留为孤儿证明标记值域登记,禁借道发射登记门。
+# sim/checks/suspects 检查器/复盘面同键集)已停用,
+#——闭集保留为孤儿证明标记值域登记,禁借道发出登记门。
 SELL_BENCH_ORPHAN_REASONS: frozenset[str] = frozenset({
     'line_switch_collapse',
 })
-# (S1 清键白名单 S1_RESET_ROUTE_TAGS 已随备战期开店闩退役删除——迭代
-# 2026-10-12-prep-shop-workflow-redesign 批 3.6/3.7;双消费位
-# 〔mandate_v1 清键路由与 cw_screen_shop 误标检出〕同批拆除。)
+# (S1 清键白名单 S1_RESET_ROUTE_TAGS 已停用删除;其双消费位
+# 〔mandate_v1 清键路由与 cw_screen_shop 误标检出〕一并拆除,勿复活。)
 
 
 @dataclass
 class CwActionLevelUpParam:
     cost: int        # 本次「购买经验」单击花金(:一次点击 = +XP_PER_BUY 经验,非整级;凑够门槛才升级)
     clicks: int = 1
-    # 本动作携带的购买击数(整批发射形态;迭代 2026-10-12-prep-shop-
-    # workflow-redesign 批 3.4——line_and_upgrade §2.2 一次买齐:授权批
-    # 击数 = 门槛表差值折击数,实付上界 = clicks×cost ≤ 授权值)。缺省 1
-    # = 单击形态(历史逐帧单击发射的兼容值;执行器按本字段连点)。
+    # 本动作携带的购买击数(整批发出形态;line_and_upgrade §2.2 一次买齐:
+    # 授权击数 = 门槛表差值折击数,实付上界 = clicks×cost ≤ 授权值)。
+    # 缺省 1 = 单击形态(逐帧单击发出的兼容值;执行器按本字段连点)。
     auth_basis: str = ''
     # 授权依据**记录**字段(非指令):
     # 放行臂名(现值域 = criteria/levelup 五臂键:'pop_slot'=人口位[33] /
-    # 'arm0'=need>level 机制臂 / 'must_spend'=溢余段-L3 / 'stay_gate'=
+    # 'arm0'=need>level 机制臂 / 'must_spend'=富余段-L3 / 'stay_gate'=
     # 停留门升级优先臂 / 'prob_account'=概率账;''=未接线路径)。
-    # 由发射位在**放行时**写入(记录非指令——执行层不读此字段,行为
+    # 由动作发出点在**放行时**写入(记录非指令——执行层不读此字段,行为
     # 零改动;sim 账本 actions 侧序列化为 auth 键)。仿
     # CwActionSellBenchParam.income「记录不是指令」形态。
     route_tag: str = field(default='', kw_only=True,
@@ -307,14 +299,14 @@ class CwActionLevelUpParam:
 
 @dataclass
 class CwActionLevelUpShopParam:
-    """商店开画面专用升级意图(W970 §4.1.3 / W971 §2.8.2:CwActionLevelUpParam 拆 CwActionLevelUpShopParam)。
+    """商店开画面专用升级意图( §4.1.3 /  §2.8.2:CwActionLevelUpParam 拆 CwActionLevelUpShopParam)。
 
-    唯一产出者 = ``decide_shop_screen``(商店屏接口);兼容期旧入口(已随退役批删除)
+    唯一产出者 = ``decide_shop_screen``(商店屏接口);兼容期旧入口(已停用)
     ``decide_prep`` 仍产出基类 ``CwActionLevelUpParam``——两入口行为由构造保证等价,
-    类型拆分只为执行器/遥测/对拍**消歧**(商店屏动作 vs 备战屏腾席链
+    类型拆分只为执行器/遥测/交叉核对**消歧**(商店屏动作 vs 备战屏腾席链
     升级)。**刻意设计成无新字段的子类**:执行器(shop 买牌循环)与
     sim/simulate 全部按 ``isinstance(a, CwActionLevelUpParam)`` 消费,子类零改动兼容;
-    对拍口径 = CwActionLevelUpShopParam ≡ CwActionLevelUpParam(同字段逐项全等,类型归一后比较)。
+    交叉核对口径 = CwActionLevelUpShopParam ≡ CwActionLevelUpParam(同字段逐项全等,类型归一后比较)。
     """
 
     # 显式重声明继承字段:kwarg 签名审计(ast 静态)不追 dataclass 继承链,
@@ -338,7 +330,7 @@ class CwActionDeployMoveParam:
     拖拽语义 = 游戏规则:目标槽空 = 放置,
     有角色 = 交换交互(被占位角色回本载荷源槽);执行层不判断占位、
     不拒、禁静默换槽,唯一失败形态 = 拖拽未生效(观察对账显影)。
-    ``faction`` = 上阵后 board 阵营计数所需,发射位从容器槽位表
+    ``faction`` = 上阵后 board 阵营计数所需,动作发出点从容器槽位表
     角色对象现取(simulate 的 CwActionDeployMoveParam 分支消费此字段)。
     """
     bench_idx: int
@@ -350,7 +342,7 @@ class CwActionDeployMoveParam:
     # [索引定义] 坐标系: 排内 1 基画面槽号(前排 1-4 / 后排 1-6,与装备族
     #             CwActionWearEquipParam.slot 同坐标系;与 to_row 合成完整
     #             落位,表下标 = to_row/to_slot 固定双射内联换算)
-    #             取值时机: 生成期快照(发射位从 kernel 指派/容器现值算出;
+    #             取值时机: 生成期快照(动作发出点从 kernel 指派/容器现值算出;
     #             执行期与容器写侧按载荷直落,不再现读)
     faction: str     # 该角色阵营(上阵后 board[faction] += 1)
     route_tag: str = field(default='', kw_only=True,
@@ -362,13 +354,13 @@ class CwActionRefreshShopParam:
     cost: int = 0    # 刷新花费(实机 OCR 补)
     # 触发源**记录**字段(非指令;先例 = CwActionLevelUpParam.
     # auth_basis / CwActionSellBenchParam.income 的「记录不是指令」形态——执行层
-    # 不读此字段,行为零改动)。值域(发射位单一源 = mandate_v1/shop
-    # R1 发射位,今日唯一刷新发射点;L2 补位=买卡、L3 末位=升级,
-    # 结构上不产刷新动作,槽位留作未来发射点扩展):
-    # - 'r1'                 = 息线门 R1(域外常规承诺账);
-    # - 'must_spend_r1_yielded' = 溢余段内 R1 切分线(核算账降排序
+    # 不读此字段,行为零改动)。值域(动作发出点单一源 = mandate_v1/shop
+    # R1 动作发出点,今日唯一刷新发出点;L2 补位=买卡、L3 末位=升级,
+    # 结构上不产刷新动作,槽位留作未来发出点扩展):
+    # - 'r1'                 = 利息线门 R1(域外常规承诺账);
+    # - 'must_spend_r1_yielded' = 富余段内 R1 切分线(核算账降排序
     #   yielded 支);
-    # - '' = 未标(缺省;原引擎 obs 'other' 桶归类已随引擎退役)。
+    # - '' = 未标(缺省;原引擎 obs 'other' 桶归类已停用)。
     reason: str = ''
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
@@ -384,7 +376,7 @@ class CwActionCloseShopParam:
     = 本画面 op 结束、交回外循环(关店点击由动作 op 执行体
     CwActionCloseShopOp 真机械执行:找「按钮-收起」miss = 幂等已关,
     命中 = 点击 + 固定等待 + leave_screen 清场上报);期望态随终结作废,
-    由下一次入口观察重建(原单步应用器 ``simulate`` 已随其退役删除)。
+    由下一次入口观察重建(原单步应用器 ``simulate`` 已停用)。
     """
     reason: str = ''   # 账本 reason(''=默认)
     route_tag: str = field(default='', kw_only=True,
@@ -401,7 +393,7 @@ class CwActionPickEventParam:
     最优,失败安全 = 现状行为)。
 
     现役身份 = 词表 CwAction union 成员 + ``cw_action_report`` 上报通道
-    函数 ``report_action_pick_event_param`` 的参数载体——策略器发射面 =
+    函数 ``report_action_pick_event_param`` 的参数载体——策略器动作发出面 =
     per-screen Pick 子类(选卡)+ ``CwActionRefreshInvestCardsParam``
     (刷新建议),不经本类。
     """
@@ -419,7 +411,7 @@ class CwActionPickEventParam:
     #             写入端: 无现役生产端(投资刷新建议载体 =
     #             ``CwActionRefreshInvestCardsParam``);字段随本体保留。
     #             逐卡刷新消费契约参考 = CwScreenInvestStrategy 槽序循环
-    #             (逐槽计数现读闸 + 已发射槽集防重入)。
+    #             (逐槽计数现读闸 + 已发出槽集防重入)。
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 
@@ -475,8 +467,7 @@ Action = (CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam |
           | CwActionSellDeployedParam | CwActionSwapDeployParam)
 
 
-# ===== 统一词表·备战域动作(unified-action-factory 批2b 自
-#       kernel/cw_prep_actions 迁居;类体逐字保留,基类引用翻 CwAction)=====
+# ===== 统一词表·备战域动作(类体逐字保留,基类引用翻 CwAction)=====
 #
 # 通用坐标系声明(装备域两类目标,全族共用):
 # - 装备源件 = owned 装备网格内 icon,按 ``item_name`` 机械现读定位
@@ -484,7 +475,7 @@ Action = (CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam |
 #   名字定位是唯一稳锚)。
 # - 角色目标槽位 ``row``/``slot``:row ∈ 'front'|'back'(画面物理排);
 #   slot = 画面物理槽位 1 基(前排 1-4 / 后排 1-选档 N;非列表下标)。
-#   取值时机 = 生成期快照(发射位从备战观察/容器槽位表现读;同一 visit
+#   取值时机 = 生成期快照(动作发出点从备战观察/容器槽位表现读;同一 visit
 #   内 tracked 账随动,槽位跨动作组恒稳——置 None 不移位坐标系);
 
 @dataclass
@@ -493,7 +484,7 @@ class CwActionCollectOreParam:
 
     ``points`` = 按点击顺序排列的晶矿心坐标 (x, y)(1080p 游戏空间)。挑选
     逻辑(大晶矿优先/上界截断)归决策侧 kernel 单一源 = :func:`cw_prep_actions
-    .select_ore_clicks`,发射位调用之;执行器纯机械逐个点,零读屏
+    .select_ore_clicks`,动作发出点调用之;执行器纯机械逐个点,零读屏
     零排序。逻辑态按载荷精确摘晶矿(坐标匹配,容器 spheres 域)。
     """
     points: tuple[tuple[int, int], ...] = ()
@@ -504,7 +495,7 @@ class CwActionCollectOreParam:
 @dataclass
 class CwActionOpenBoxParam:
     """开补给箱(点「开启」→ 弹武装箱 overlay;开箱即腾席)。slot=None → 第一箱。"""
-    slot: int | None = None   # [索引定义] slot = 备战栏画面物理槽位 1 基(area 序,坐标参数化机械动作族同系,screens README §4 二分);取值时机 = 发射期快照(决策半按观察 bench kind 槽位现算);None = 首个该类槽位
+    slot: int | None = None   # [索引定义] slot = 备战栏画面物理槽位 1 基(area 序,坐标参数化机械动作族同系,screens README §4 二分);取值时机 = 发出期快照(决策半按观察 bench kind 槽位现算);None = 首个该类槽位
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 
@@ -516,7 +507,7 @@ class CwActionOpenTomeParam:
     建档:投资策略「秘密典籍」给的红金典籍道具占备战席 1 槽(类补给箱);
     选卡决策在 CwScreenBookcard(板上阵营匹配),本动作只负责把典籍点开。slot=None → 第一典籍。
     """
-    slot: int | None = None   # [索引定义] slot = 备战栏画面物理槽位 1 基(area 序,坐标参数化机械动作族同系,screens README §4 二分);取值时机 = 发射期快照(决策半按观察 bench kind 槽位现算);None = 首个该类槽位
+    slot: int | None = None   # [索引定义] slot = 备战栏画面物理槽位 1 基(area 序,坐标参数化机械动作族同系,screens README §4 二分);取值时机 = 发出期快照(决策半按观察 bench kind 槽位现算);None = 首个该类槽位
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 
@@ -529,13 +520,13 @@ class CwActionOpenBookcardParam:
     CwActionOpenBoxParam/CwActionOpenTomeParam 同签名)。选卡决策不在
     本执行链——点完开启本动作即交回,专家邀请函弹窗由外循环按画面分发
     ``CwScreenExpertInvite`` 选卡(选卡决策单一源 = kernel
-    ``cw_events.choose_expert_index``,普查迁移批 2 自画面 op 迁入)。
-    发射位 = 策略器 entry ① prep 实体面卡片臂(容器 bench 槽位 kind
+    ``cw_events.choose_expert_index``,选卡决策收拢 kernel 单一源)。
+    动作发出点 = 策略器 entry ① prep 实体面卡片臂(容器 bench 槽位 kind
     'bookcard' 触发;原「备战环入口清场段 ``cw_screen_prep._clear_prep_cards``
     代发」已按用户裁定 2026-09-19 撤销——开卡时机归策略实现管)。
     终结动作(弹专家邀请函 = 引入新事实,交回外循环重观察)。slot=None → 第一张书册卡。
     """
-    slot: int | None = None   # [索引定义] slot = 备战栏画面物理槽位 1 基(area 序,坐标参数化机械动作族同系,screens README §4 二分);取值时机 = 发射期快照(决策半按观察 bench kind 槽位现算);None = 首个该类槽位
+    slot: int | None = None   # [索引定义] slot = 备战栏画面物理槽位 1 基(area 序,坐标参数化机械动作族同系,screens README §4 二分);取值时机 = 发出期快照(决策半按观察 bench kind 槽位现算);None = 首个该类槽位
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 
@@ -544,8 +535,7 @@ class CwActionOpenBookcardParam:
 class CwActionWearEquipParam:
     """穿装备(装备库 owned 件 → 目标角色物理槽位;R2 穿戴原子通路)。
 
-    计划构造 = kernel ``build_equip_wear_plan``(自执行器模块迁居,
-    决策侧逐帧现算);发射序即执行序(决策核逐帧取首项)。逻辑态 =
+    计划构造 = kernel ``build_equip_wear_plan``(决策侧逐帧现算);发出序即执行序(决策核逐帧取首项)。逻辑态 =
     ``obs.owned_equips`` 摘件(视觉域,与 CwActionOpenBoxParam/CwActionOpenTomeParam 同形);
     穿没穿归观察写入边对账(裁决 3 零比对出生:体内零 CV-diff 验穿)。
     ``char_name`` = 目标角色注册名('' = front-only 回退步,拖点 =
@@ -588,8 +578,8 @@ class CwActionPrivilegeCardUseParam:
       privilege_counterpart``;上报 = equips 合并单笔写 = 移除工具 ∧
       变换同笔,写端 = ``cw_action_report.tool_use``);
     - target_kind='char'(拖角色腿):**fail-closed 不支持**(用户裁定
-      2026-09-21 按不能拖角色处理候实机测试)——上报侧收到 char 腿 =
-      零写留证(tool_privilege_worn_unsupported);判据面现役只产库存腿,
+      2026-09-21 按不能拖角色处理待实机测试)——上报侧收到 char 腿 =
+      零写留存证据(tool_privilege_worn_unsupported);判据面现役只产库存腿,
       穿域桥 ``transform_worn_equip_to_privilege`` 留守。
     """
     target_kind: str    # 'equip' | 'char'(值域封闭,同 CwActionFurnaceUseParam)
@@ -626,7 +616,7 @@ class CwActionPrecisionWrenchUseParam:
 class CwActionStaffProjectorUseParam:
     """员工投影仪(R8 投影仪按型号两类之一):target = 角色槽位
     (在备战席创造该角色 1 星复制);费用门 = 3 费及以下(门表单一源 =
-    ``cw_affix_effects`` 投影仪费用门行),门由发射位判据面辖。上报 =
+    ``cw_affix_effects`` 投影仪费用门行),门由动作发出点判据面覆盖。上报 =
     复制走获得链 ``gain_character``(落位 → 回调 → 3 合 1 升星判断;
     复制触发三合一 = 口述·权威 2026-09-21)+ equips 移除工具合并腿,
     写端 = ``cw_action_report.tool_use``(费用门注册表现读前置查 =
@@ -651,11 +641,11 @@ class CwActionPerfectProjectorUseParam:
 class CwActionLuckyTokenUseParam:
     """好运令牌(R8):拖到角色 → 从其推荐进阶装备中获得一件。
 
-    ⚠️ 发射位挂账(裁决 1/R9 纪律):作用对象判据面现役 fail-closed
+    ⚠️ 动作发出点待办(裁决 1/R9 纪律):作用对象判据面现役 fail-closed
     永不进准入(``cw_equip_env.evaluate_tool_actions`` rc_missing 拒因
-    在册)——类随族立档 + 注册行,发射位禁无判据发射;判据面建模批
+    在册)——类随族立档 + 注册行,动作发出点禁无判据发出;判据面建模批
     补档(知识缺口登记 = ``flow/action-logic-state.md`` §7 好运令牌行)。
-    上报侧 = 零写留证(tool_token_not_admitted 注记,写端随 R9 判据批)。
+    上报侧 = 零写留存证据(tool_token_not_admitted 注记,写端随 R9 判据批)。
     """
     row: str            # 见上方通用坐标系声明
     slot: int           # 画面物理槽位 1 基
@@ -665,16 +655,16 @@ class CwActionLuckyTokenUseParam:
 
 @dataclass
 class CwActionOpenShopParam:
-    """开商店意图(EnsureShop 意图退役后的承接形态;唯一普通形态)。
+    """开商店意图(EnsureShop 意图停用后的承接形态;唯一普通形态)。
 
     显式开店 → 流程层编排商店访问(open_shop 幂等开店 → 商店画面 op:
-    入口观察 → decide_shop_action 逐动作循环,关店收编进 op)。
+    入口观察 → decide_shop_action 逐动作循环,关店并入进 op)。
 
-    受限会话(armed ∧ 金超息线)同走本普通开店形态:前置发射位发射
+    受限会话(armed ∧ 金超利息线)同走本普通开店形态:前置动作发出点发出
     普通开店动作,访问内消费 = 策略侧自限(flow.decide_shop_action 提案后
     经 kernel launch_arbitration_gate 谓词检;分层依据 = flow/README.md
     §1 决策控制分层铁律)——受限访问标记
-    字段随发射帧仲裁段退役删除,本类 = 唯一开店动作形态。
+    字段随动作发出帧仲裁段停用删除,本类 = 唯一开店动作形态。
     """
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
@@ -688,8 +678,7 @@ class CwActionStartBattleParam:
                            metadata={'action_key_exclude': True})
 
 
-# 动作全集白名单(统一词表运行时元组;注册完备锁的遍历单一源,批4
-# 消费 = 逐类断言注册表解析可命中。新动作加入全集时同步此处——漏登记
+# 动作全集白名单(统一词表运行时元组;注册完备锁的遍历单一源;消费 = 逐类断言注册表解析可命中。新动作加入全集时同步此处——漏登记
 # ⚠️ 教训(原 PREP_ACTION_TYPES 先例):**新增动作必须同步登记本白名单**
 # —— 选择族动作化(策略器终态契约;落地 landing §3.1 纯新增零消费,
 #       decide 接线归终态切换批)=====
@@ -697,7 +686,7 @@ class CwActionStartBattleParam:
 # 选择族公共契约(原 PickOption 基类,摊平后 12 个叶子逐类重声明 idx/reason):
 # ``idx`` = 该画面候选槽位序号,坐标系 = 对应 payload 槽 options 列表下标
 # (0 基,与写槽时 OCR 顺序一致,槽位表恒稳);取值时机 = 生成期快照。
-# 12 类全量在注册表分发(pick-op-unify 批收编,零上报例外撤销):执行 op =
+# 12 类全量在注册表分发(pick-op-unify 批并入,零上报例外撤销):执行 op =
 # ``CwActionPickXxxOp``(机械链 = 选中 → 确认/点卡即选,op 内自上报,零写);
 # 确认后容器写(chosen_*/Confirm* 到账)留守画面 op;``PickExpertInviteParam.idx``
 # = -1 语义 = 现金为王(非候选槽下标)。
@@ -871,7 +860,7 @@ class CwActionPickBoxCardParam:
 
 @dataclass
 class CwActionPickFortuneParam:
-    """命运卜者强化三选一选择(契约扩员 12→15 新增;普查迁移批 2)。"""
+    """命运卜者强化三选一选择(契约扩员 12→15 新增)。"""
     idx: int
     # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
     #             options 列表下标(0 基,与写槽时 OCR 顺序一致,槽位表恒稳);
@@ -884,7 +873,7 @@ class CwActionPickFortuneParam:
 
 @dataclass
 class CwActionPickExpertInviteParam:
-    """专家邀请函选卡选择(契约扩员 12→15 新增;普查迁移批 2)。
+    """专家邀请函选卡选择(契约扩员 12→15 新增)。
 
     [索引定义] idx 取值域扩展:0..3 = 候选卡区下标(卡-1..卡-4);
     **-1 = 现金为王**(经济兜底,非候选卡槽下标;kernel
@@ -906,7 +895,7 @@ class CwActionRefreshNodeOptionsParam:
     """遭遇节点刷新建议(策略层载体 =
     ``strategies/impl/mandate_v1/encounter_pick.py``
     ``EncounterRefreshSuggestion`` 的动作包装):策略建议点击
-    节点刷新钮。encounter 刷新链 = 同访问重决策——发射本动作前须以重读
+    节点刷新钮。encounter 刷新链 = 同访问重决策——发出本动作前须以重读
     产物覆盖写槽再决策(刷新链分屏形态申报,禁沿用旧槽内容)。"""
     reason: str = ''
     route_tag: str = field(default='', kw_only=True,
@@ -917,7 +906,7 @@ class CwActionRefreshNodeOptionsParam:
 class CwActionRefreshSupplyParam:
     """补给节点刷新建议(策略层载体 = ``strategies/impl/mandate_v1/supply.py``
     ``SupplyRefreshSuggestion`` 的动作包装):supply 刷新链 =
-    发射后交回重入型(重入访问走常规写槽→决策起点链)。"""
+    发出后交回重入型(重入访问走常规写槽→决策起点链)。"""
     reason: str = ''
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
@@ -946,11 +935,11 @@ OBS_SCOPES: frozenset[str] = frozenset({'in_place', 'outer_loop'})
 
 @dataclass
 class CwActionObsParam:
-    """重观察动作(策略发射 → 请求新鲜观察,口径由 ``scope`` 选择)。
+    """重观察动作(策略发出 → 请求新鲜观察,口径由 ``scope`` 选择)。
 
     - ``scope='in_place'``(缺省):**当前画面重新观察上报**——执行体 =
       宿主画面 op 的 heavy 观察链重跑(漏斗直写容器 = 观察边界对账,
-      「观察赢」),决策环原地续跑:访问不重启、段序号不置位、外循环
+      「以实际观察为准」),决策环原地续跑:访问不重启、段序号不置位、外循环
       零往返。帧代次标注 'full'(方向重估触发,同入口帧;贵段消费侧有
       每 game-round 恰一次键守卫限频)。重观察发现事件 overlay 在场 =
       抛 CwObsOverlayBail 交回外循环重分发(画面识别与路由归外循环,
@@ -958,15 +947,15 @@ class CwActionObsParam:
     - ``scope='outer_loop'``:**交回外循环重新观察**——决策环在
       validate/执行器之前拦截(不进执行器、不进动作注册表、不写续段
       token/动作记录),round_success(wait=1.0) 交回外循环重观察。
-      本口径收编原 ``HoldFrame`` 空发射帧通道(用户裁定 2026-09-20
-      HoldFrame 删除:两通道同为「观察请求」,口径差异收进参数;空发射
+      本口径并入原 ``HoldFrame`` 空动作发出帧通道(用户裁定 2026-09-20
+      HoldFrame 删除:两通道同为「观察请求」,口径差异收进参数;空发出
       语义 = 本帧无动作可发,交回让外循环重判/等待,自旋防护 = 交回后
       归外循环 stall 防线)。
 
     零容器动作写语义:in_place 口径的容器更新通道 = 观察漏斗本体
     (read_game_state 直写),``report_action_obs_param`` = 零写族占位
     (命名规约完备锁对象)。现役接线域 = 备战决策环(CwScreenPrep);
-    in_place 在其他决策域发射 = 宿主能力缺失 AssertionError 响亮暴露
+    in_place 在其他决策域发出 = 宿主能力缺失 AssertionError 响亮暴露
     (策略器 bug)。
     """
     scope: str = 'in_place'   # 观察口径,值域闭集 = OBS_SCOPES('in_place' 环内重观察 / 'outer_loop' 交回外循环重观察)
@@ -975,9 +964,9 @@ class CwActionObsParam:
                            metadata={'action_key_exclude': True})
 
 
-# (HoldFrame 已删除,用户裁定 2026-09-20:空发射帧通道收编进
+# (HoldFrame 已删除,用户裁定 2026-09-20:空动作发出帧通道并入进
 #  CwActionObsParam(scope='outer_loop'),两观察口径统一为一个动作类型;
-#  历史形态考古走 git 历史。)
+#  历史形态 历史。)
 
 # 动作类型总和(union 类型别名,**非基类**;继承基类已摊平,每动作一个
 # 独立 dataclass。本名仅为既有 ``CwAction`` 注解面与 ``isinstance(x,
@@ -1006,10 +995,9 @@ CW_ACTION_TYPES: tuple = (
     CwActionStaffProjectorUseParam, CwActionPerfectProjectorUseParam, CwActionLuckyTokenUseParam,
     CwActionStartBattleParam,
     CwActionOpenShopParam,
-    # 选择族动作化(终态契约;decide 接线归终态切换批,本批纯落型;
-    # CwActionPickFortuneParam/CwActionPickExpertInviteParam = 契约扩员
-    # 新增,普查迁移批 2;原 CwActionPickEquipParam 同批新增,已随
-    # 选择装备屏误判退役删除——屏不存在,见外循环退役号 0a0)
+    # 选择族动作化(终态契约;CwActionPickFortuneParam/
+    # CwActionPickExpertInviteParam = 契约扩员新增;
+    # CwActionPickEquipParam 已停用删除——选择装备屏不存在,勿复活)
     CwActionPickEncounterParam, CwActionPickSupplyParam, CwActionPickInvestStrategyParam, CwActionPickInvestEnvParam, CwActionPickMegastarParam, CwActionPickPartnerParam,
     CwActionPickPlannerParam, CwActionPickStarTomeParam, CwActionPickWishTrialParam, CwActionPickBoxCardParam,
     CwActionPickFortuneParam, CwActionPickExpertInviteParam,
@@ -1018,7 +1006,7 @@ CW_ACTION_TYPES: tuple = (
 )
 
 #: 选择族收敛单表(终态契约 §2.7):pick 子类型单表(12 个;原 13 个,
-#: CwActionPickEquipParam 随选择装备屏误判退役删除),供 handler 分派/
+#: CwActionPickEquipParam 随选择装备屏误判停用删除),供 handler 分派/
 #: 注册完备锁遍历(三刷新动作走各自既有点击链不入本表;Obs = 观察请求
 #: 语义,不属选择族)。
 PICK_ACTION_TYPES: tuple = (
@@ -1032,7 +1020,7 @@ def action_key(action: CwAction) -> str:
     """动作实例键(屏蔽计数粒度 = 动作类型 + 参数;CwActionSellBenchParam(3) 与 CwActionSellBenchParam(5) 各自计数)。
 
     带 ``action_key_exclude`` metadata 的字段不入键(现役 =
-    CwActionSellBenchParam.reason 卖出归因 + CwAction.route_tag 发射臂路线标签
+    CwActionSellBenchParam.reason 卖出归因 + CwAction.route_tag 发出臂路线标签
     [旗标状态机 §3.3]):幂等粒度 = 行为参数,归因/路由标签不改变动作实例
     身份——同槽位不同归因是同一动作,禁拆成两个幂等键。
     """
@@ -1047,7 +1035,7 @@ def action_key(action: CwAction) -> str:
             return type(action).__name__   # 无字段 dataclass(CwActionStartBattleParam 等)→ 裸名
         return f'{type(action).__name__}({params})'
     return type(action).__name__
-# (席位同步聚合口已随席位第二账退役删除:
+# (席位同步聚合口已停用:
 #  动作写主域(容器逻辑通道)即同步,第二账无可同步;执行点同步腿
 #  同批删除,合成仿真自主域工作副本构造(cw_action_report 族)。)
 # ===== 布局未知态的策略侧支撑(15 号稿批 C 落地审修订)=====

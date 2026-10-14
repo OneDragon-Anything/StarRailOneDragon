@@ -1,7 +1,7 @@
 """卡牌身份分层单一源(规则③④共用判据)。
 
 同一「买入资格 × 卡牌身份」面上此前散布多套并列前件(M2 线内 /
-dominance 零重叠 / C1 锁线核心 / ③ registry 核心 / ④ 转线件)——本模块
+dominance 零重叠 / C1 终局阵容锁定核心 / ③ registry 核心 / ④ 转线件)——本模块
 把「非线内身份」收拢为三分档单一源,新身份类需求只扩本 helper,不再加
 并列前件(「架构归并方向」节)。
 
@@ -28,9 +28,9 @@ from sr_od.application.currency_war.knowledge.cw_line_facts import (
     TRANSITION_PACK,
 )
 
-#: 身份档:registry 核心(③恒买辖域;C1 通道消费层)。
+#: 身份档:registry 核心(③恒买适用范围;C1 通道消费层)。
 TIER_REGISTRY_CORE: str = 'registry_core'
-#: 身份档:转线前瞻件(④放行辖域;Early 双轨期放行,定型后收窄)。
+#: 身份档:转线前瞻件(④放行适用范围;Early 双轨期放行,定型后收窄)。
 TIER_TRANSITION: str = 'transition_component'
 #: 身份档:真无关件(维持 non_line 拒买)。
 TIER_UNRELATED: str = 'unrelated'
@@ -55,11 +55,11 @@ def transition_release_names() -> frozenset[str]:
 
 
 def sell_hold_exclusion_names() -> frozenset[str]:
-    """凑息卖出资格集的静态持有类排除集。
+    """凑利息卖出资格集的静态持有类排除集。
 
     集合 = CORE_SINGLE_CARD_REGISTRY ∪ transition_release_names()——
-    ③④语义 = 持有,整类从凑息/筹资燃料资格排除,覆盖「已买待持有」
-    与「在售未买」两态,防跨轮卖回(1★ 全额退会让 (a) 凑息臂机械抵消
+    ③④语义 = 持有,整类从凑利息/筹资燃料资格排除,覆盖「已买待持有」
+    与「在售未买」两态,防跨轮卖回(1★ 全额退会让 (a) 凑利息臂机械抵消
     ③④买入)。drop 档与普通燃料件**不**在本集——排除集取窄设计:
     name 型零重叠语义下(statefn/predicates.zero_overlap 是纯名成员判定)
     静态全集排除会把 (a) 的全部 1★ 燃料资格掏空(方案审 v3 攻击点①
@@ -78,7 +78,7 @@ def is_engine_piece(name: str) -> bool:
     (禁第二实现)。种子身份 = 本谓词 ∧ 购买时未持有(第二合取需购买史语境,
     由 sell_gate 种子登记簿在获取时点承载)。
 
-    import 边申报:cw_line_defs 头部迁移挂账的「勿新增消费」明示对象
+    import 边申报:cw_line_defs 头部迁移待办的「勿新增消费」明示对象
     = RECIPE_FACTIONS/RECIPE_BASE/recipe_tier 三符号(权威副本在
     knowledge/cw_line_facts);ENGINE_FACTIONS 无 knowledge 侧权威
     副本,本 import 是既有判定核的消费边非复制。

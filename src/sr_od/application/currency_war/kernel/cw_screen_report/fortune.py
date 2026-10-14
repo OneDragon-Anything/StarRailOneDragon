@@ -4,8 +4,8 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 观察面 = overlay 门判定 + 三卡位 OCR 卡名 + 三卡点击坐标(入口帧一次读;
 坐标单一源 = 建档「卡-强化1/2/3」area,主源 + 兜底常量)。
 report 摄入点 = operations/cw_screen/cw_screen_fortune.py::
-``CwScreenFortune.observe``(观察 node);辖域边界:本屏无 chosen 写端
-(fortune 选择存证行已退役)。
+``CwScreenFortune.observe``(观察 node);适用范围边界:本屏无 chosen 写端
+(fortune 选择存证行已停用)。
 """
 from __future__ import annotations
 

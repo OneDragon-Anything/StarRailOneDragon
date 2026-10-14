@@ -150,7 +150,7 @@ def unit_bond_tags(bc, row: str | None = None) -> tuple[str, ...]:
 
 
 # ============================================================
-# 候裁9 词汇迁入(原 kernel/cw_state.py;第 4 归宿):板面计数派生
+# 板面计数派生
 # _recount_board(构建于本模块 unit_bond_tags 单一源之上,同域定居)。
 # ============================================================
 
@@ -160,7 +160,7 @@ def _recount_board(deployed: list) -> dict[str, int]:
     """deployed 生命周期重算板面(动作 v2,契约包 C1):卖/换/事务后
     board 必须与 deployed 名单一致——本函数是 cw_state 侧的派生单一源。
 
-    口径(W50 口径统一):**羁绊全集 + 星徽装备贡献**——
+    口径( 口径统一):**羁绊全集 + 星徽装备贡献**——
     factions+flows+independent,开拓者按排归一,装备羁绊(星徽/卡带)
     计入;与实机 ``board_from_deployed``(= 游戏左面板真值口径)同源,
     per-unit 标签函数单一源 = ``cw_bond_equips.unit_bond_tags``。

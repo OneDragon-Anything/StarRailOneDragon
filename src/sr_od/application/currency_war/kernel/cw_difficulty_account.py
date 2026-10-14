@@ -1,7 +1,7 @@
 """难度账本与价值地图 v0:记账恒等式 + 场合依赖定价。
 
 **现状**:OCR 读侧已通(``cw_observation.read_enemy_difficulty`` 旗牌两级管线,
-58 帧 fixture 对拍 41/41 有旗牌帧读对),本模块主体仍是**记账恒等式**(自持选择
+58 帧 fixture 交叉核对 41/41 有旗牌帧读对),本模块主体仍是**记账恒等式**(自持选择
 自己知道);OCR 读数经 ``reconcile`` 对账。−18% 敌血 flat 惩罚三态同值(大胜值 0/
 边际值一条命/无解值 0)——方向对场合全错;200+ 溢出 bug 使「堆难度」成为终局
 武器,系统经读通后的读数可见。
@@ -10,10 +10,10 @@
 - ``DifficultyAccount``:记账恒等式(base + Σaugment Δ + 品质通胀 + 动态项 + 节点曲线),
   OCR 读数对账接口(读到→修正,读不到→账本外推**不回退先验**);
 - ``marginal_value``:场合依赖价值 = f(gap 三态 + 阈值[地板 0/溢出 200+/P1 尖峰] +
-  版本证据态)——替换旧 flat 惩罚模型(旧模型降为对拍锚);
+  版本证据态)——替换旧 flat 惩罚模型(旧模型降为交叉核对锚);
 - 溢出 gambit 分支(证据态守卫,refuted 自动退回常态)。
 
-测试面:合成账本对拍恒等式;三态价值(大胜≈0/边际峰值/无解→0);溢出反转
+测试面:合成账本交叉核对恒等式;三态价值(大胜≈0/边际峰值/无解→0);溢出反转
 (证据态 verified 时堆难度价值跳变);P1 尖峰。
 """
 from __future__ import annotations
@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 
 # 23 号注册表联动常数(证据态标注)
 OVERFLOW_THRESHOLD = 200      # 敌方全属性 −100% 溢出 bug(V4.4 实测 211;UP 实录)
-OVERFLOW_EVIDENCE = 'bracketed'   # unverified→verified→refuted;refuted 时 gambit 退役
+OVERFLOW_EVIDENCE = 'bracketed'   # unverified→verified→refuted;refuted 时 gambit 停用
 DIFFICULTY_FLOOR = 0
 GROWTH_PER_STREAK = 1.0       # 伟大征服动态项:当前连胜数(实测锚)
 
@@ -60,7 +60,7 @@ class DifficultyAccount:
 
         孤儿态登记(迭代 2026-09-24-encounter-screen-strategy-migration
         design §2.7):本模块 ``marginal_value`` 的唯一消费链(原 kernel
-        遭遇难度档评分)已随遭遇判据迁策略层退役——``marginal_value``/
+        遭遇难度档评分)已停用——``marginal_value``/
         ``DifficultyAccount`` 现全仓零生产消费(孤儿态;物理删除归后续
         清理批,``GROWTH_PER_STREAK`` 有 sim 活消费,按符号逐个处置,
         禁整模块删)。
@@ -93,7 +93,7 @@ def marginal_value(d_now: float, d_delta: float, gap: float, *,
     # 钟形:g(|gap|),边际处峰值
     bell = max(0.0, 1.0 - abs(gap) / 30.0) ** 2
     v = -d_delta * bell       # 降难度(d_delta<0)在边际局正价值
-    # (旧 P1 尖峰 ×1.5 放大已退役 2026-09-04,「未证即退役」裁定:
+    # (旧 P1 尖峰 ×1.5 放大已停用 2026-09-04,「未证即停用」裁定:
     # 「一层最凶」定性有实证但系数 1.5 拍定,保守缺省 = 不放大。)
     # 地板:压到 0 以下无增益
     if d_delta < 0 and d_now + d_delta < DIFFICULTY_FLOOR:

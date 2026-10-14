@@ -7,7 +7,7 @@
 效果体**函数内惰性** import 链原语(运行时解析破环——两模块任一加载序
 都无初始化死锁;惰性纪律先例 = cw_effect_inventory 函数内 import)。
 
-自 ``kernel/cw_action_report/pick_invest.py`` 迁入(策略屏迁移批):表键、
+表键、
 采样池成员、效果语义逐位保留;效果体由「grant_bench_unit_cascade + 内联
 后果表查」改走链原语 ``gain_character``/``gain_equipment``(回调先、升星
 后;改件后果经 ``on_equipment_gained`` 回调自动消费)。
@@ -35,9 +35,9 @@ _PRODUCER = 'CwGainChain'
 #: 成员 = 银狼专属 10 件(data/cw_equipment_wear_rules_data.ITEM_WEAR_GATES
 #: 键集)中名字不带 Max 后缀的 5 件。**已知张力 + 用户裁定(2026-09-21:
 #: 随便随机即可,接受现有名单,不排校准)**:run_074040 实读改件 =
-#: 分身墨镜Max(属 Max 件),v0 池会猜错 → ``logic_rand_outcome`` 行收口
-#: 兜底(不响安灯);池非类别池(「骇客改件」卡文口径 ≠ 注册表「骇客」
-#: 类别),实机反例仅作口径张力留证,无后续动作。
+#: 分身墨镜Max(属 Max 件),v0 池会猜错 → ``logic_rand_outcome`` 行收束
+#: 兜底(不响失配告警);池非类别池(「骇客改件」卡文口径 ≠ 注册表「骇客」
+#: 类别),实机反例仅作口径张力留存证据,无后续动作。
 HACKER_MOD_POOL_V0: tuple[str, ...] = (
     '分身墨镜', '数据拷贝仪', '数据拷贝仪Pro', '病毒防火墙', '破解芯片',
 )
@@ -62,7 +62,7 @@ def roll_hacker_mod(rng: random.Random) -> str:
 
 
 # ===== 效果函数(策略卡获得时分派 = 容器写腿;键 = 注册表规范名)=====
-# 注册纪律:效果函数只辖「获得该卡后的容器写腿」(bench/装备/采样链),
+# 注册纪律:效果函数只覆盖「获得该卡后的容器写腿」(bench/装备/采样链),
 # 与 cw_investments.STRATEGY_EFFECTS(持卡经济效果聚合,aggregate_economy
 # 消费)职责不同不合并(对抗审⑨)。全量收录 = 推广批(gain-chain design
 # §1.4),未收录卡只走注册或零效果(查无效果安静不写)。
@@ -74,8 +74,8 @@ _HACKER_BENCH_GRANT: tuple[str, int] = ('银狼', 1)
 
 def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
                               rng: random.Random) -> list[str]:
-    """效果函数·骇客专家:银狼(策略卡参考实现;自 pick_invest.py 迁入,
-    改走链原语——策略屏迁移批,正本 = game_state/gain-chain.md §2/§3)。
+    """效果函数·骇客专家:银狼(策略卡参考实现,改走链原语,
+    正本 = game_state/gain-chain.md §2/§3)。
 
     链序(逐步各落一行):
     1. **bench 腿**(确定性):银狼 1★ 经 ``gain_character`` 入席(落位 →
@@ -89,7 +89,7 @@ def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
     值不变翻来源域集(标记循环)的实现 = **调用前后值快照比对**(对抗审
     A3 定死):效果体执行中实际被写过的域(含回调子链,值快照变化)不再
     翻来源;未写域(gold 不在域集,对抗审⑪)值不变 ``write_logic_rand``
-    翻来源留证。与现行 written 集语义等价(标记「暴露给随机事件但本次
+    翻来源留存证据。与现行 written 集语义等价(标记「暴露给随机事件但本次
     未写」的域;差一面 = 现行对银狼腿已写 bench 域的多余翻来源行被省略
     ——provenance 行级,容器值零差)。
     """
@@ -161,7 +161,7 @@ def _make_box_grant_effect(item: str) -> Callable[..., list[str]]:
 
     签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
     cw_gain_chain.on_strategy_gained);``rng`` 不消费——箱腿确定发放
-    (rand=False,gain-chain.md §5),无采样面。效果体只辖获得时点容器写腿:
+    (rand=False,gain-chain.md §5),无采样面。效果体只覆盖获得时点容器写腿:
     三卡的战斗被动腿(能量恢复/伤害减免)非获得时点效果,不在本体
     (design §1 明确不解决,归策略效果建模批)。
     """

@@ -7,7 +7,7 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 时实采不冲真值);敌人词缀幂等门(仅容器空时写,简报已供不重写)。
 写门渠道签名按设计定死:采集真值落账属 logic_action 族(同简报写点
 族),screen = 实际采集画面(本写点有明确宿主屏,非简报写点的空
-screen),actor = 写者本体;对账网已随死机制退役,不在本写门。
+screen),actor = 写者本体;对账网已停用,不在本写门。
 """
 from __future__ import annotations
 

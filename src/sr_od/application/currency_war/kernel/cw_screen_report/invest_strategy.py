@@ -4,7 +4,7 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 观察面 = 入口锚命中与稳定窗 + 一次读全(逐卡读数 (卡名, x, y) + 逐卡
 刷新剩余次数配对)。report 摄入点 = operations/cw_screen/
 cw_screen_invest_strategy.py::``CwScreenInvestStrategy.observe``(观察
-node);辖域边界:选择事实(active_strategies)经动作落地链写(动作 op
+node);适用范围边界:选择事实(active_strategies)经动作落地链写(动作 op
 立即自上报 → gain_invest_strategy,正本 = gain-chain.md);``strategy_
 refresh_left`` 观察写端在本 report(读缺键跳写)。
 """

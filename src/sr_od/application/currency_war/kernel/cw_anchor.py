@@ -5,9 +5,9 @@
 时点 × 该时点权威事实集 × 落载体登记。本模块承载 §12.3 的登记表机制
 (ANCHOR_REGISTRY 封闭集)、锚行七字段封装(AnchorEvent)与事件行载体
 接线(emit_anchor → ExogenousEvent 流,结构化载荷住 choice)。
-**载体墓碑(删除波 1 后现状)**:ExogenousEvent 流出口已退役为恒 no-op
+**载体停用声明( 后现状)**:ExogenousEvent 流出口已停用为恒 no-op
 桩(cw_telemetry_exit.record_exogenous),armed 与否都不落行;登记表各
-行 host 所指原宿主写点已同步退役——载体与宿主归宿候裁挂起(retirement.md
+行 host 所指原宿主写点已同步停用——载体与宿主归宿待裁决,登记起(retirement.md
 §2 exogenous 行),接线批落地前本模块在役面 = 登记/校验/幂等,零落行。
 
 **观测-only 边界(§12.0,用户裁定)**:本模块只做数据采集与计数登记,
@@ -23,16 +23,16 @@ emit_anchor),消费侧守卫(决策代码禁读锚行)= 测试仓 grep 锁,隔�
 行的触发时点型列(设计 §12.3 末段已定锚登记行必带该字段),不另立
 BOUNDARY_TRIGGERED_DECLARED 独立表、不改既有 EMIT 表——第二申报面即双源。
 
-**本批状态申报(惰性纯机制面)**:当前零生产
+**模块状态申报(惰性纯机制面)**:当前零生产
 调用点、不被任何生产模块 import,确定性测试直接对其编程——触发口接线
-归后续批(buy/refresh 触发口随 §6.4 执行器收编批成立,R-J 挂账在案,
-禁绕收编私接触发;boundary 触发口与注册表触达机制候 H6 终裁,禁静默
-选型),接线批落调用点时同步扩测试仓零消费守卫白名单。sim 侧零动
-(sim 桶零 import 有锁;「实机先行」= sim 域锚行落盘面候批,接线前
+未落地(buy/refresh 触发口随 §6.4 执行器并入方案成立,R-J 待办在案,
+禁绕过并入私接触发;boundary 触发口与注册表触达机制待 H6 终裁,禁静默
+选型),接线落地时同步扩测试仓零消费守卫白名单。sim 侧零动
+(sim 桶零 import 有锁;「实机先行」= sim 域锚行落盘面待接线,接线前
 sim 域只验事实来源存在性,§12.4-A)。
 
 闭集内 = §12.2 以「实机先行」标记的 8 锚;实机-only(box_opened/
-event_choice/encounter 刷新发射)与缓立/出辖行不在本批,登记随其归属批。
+event_choice/encounter 刷新发出)与缓立/范围外行不在册,登记随其归属方案。
 """
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ from sr_od.application.currency_war.kernel import cw_telemetry_exit
 # ===== 触发时点轴(§6.4 三型;v10 扩展申报 boundary)=====
 
 ANCHOR_TRIGGER_LANDED: str = 'landed'
-#: 发射型(点击发射即置位不等验效)——在册成员为实机-only 锚,本批闭集无。
+#: 发出型(点击发出即置位不等验效)——在册成员为实机-only 锚,现闭集无。
 ANCHOR_TRIGGER_EMITTED: str = 'emitted'
 ANCHOR_TRIGGER_BOUNDARY: str = 'boundary'
 
@@ -67,10 +67,10 @@ class AnchorSpec:
     字段逐条对应 §12.3 末段声明:anchor_id / 触发时点型 / 宿主 /
     载体 kind / sim 适用域 / evidence_required / 前置依赖 / 申报出处。
     ``carrier_kind=None`` 申报「载体 = 既有多写点面(非单一
-    ExogenousEvent kind)」,锚行落盘路由候 H2 schema 修订批钉死。
-    ``evidence_required`` 初判全部 False(§12.3;判定事实型锚 H3 定谳后
-    改 True 并申报判定依据),True 时发射必须带 evidence_refs(指标 5
-    留证在锚点定义内,非事后补采)。
+    ExogenousEvent kind)」,锚行落盘路由待 H2 schema 修订批钉死。
+    ``evidence_required`` 初判全部 False(§12.3;判定事实型锚 H3 定案后
+    改 True 并申报判定依据),True 时发出必须带 evidence_refs(指标 5
+    留存证据在锚点定义内,非事后补采)。
     """
 
     anchor_id: str
@@ -92,7 +92,7 @@ class AnchorEvent:
     七字段组到物理列的映射:①anchor_id;②trigger_type;③时点键 =
     ts/run_id/plane/round_num/unit_seq(unit_seq 仅商店域动作锚,坐标 =
     (plane,round) 内购买单元序,1 起);
-    ④payload(逐锚类型化槽位候 H2;effect_ref 槽位预留恒空,§12.0);
+    ④payload(逐锚类型化槽位待 H2;effect_ref 槽位预留恒空,§12.0);
     ⑤scope;⑥evidence_refs;⑦produced_by(锚宿主 op 类名,沿登记件
     produced_by 口径)。
 
@@ -234,7 +234,7 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
 #: kernel 禁上层依赖(sell_gate 住 strategies 桶),故登记面只存引用,
 #: 值由装配点经 register_payload_domain_values 显式注入(缺省关 + 启动点
 #: 显式接通,cw_telemetry_exit 同款纪律)。新增申报随 H2 schema 修订批
-#: (买因槽候裁定形后同式申报 LAUNCH_CAUSES)。
+#: (买因槽待裁决定形后同式申报 LAUNCH_CAUSES)。
 PAYLOAD_DOMAIN_REFS: dict[str, dict[str, str]] = {
     'sell_landed': {'channel': 'sell_gate.SELL_CHANNELS'},
 }
@@ -299,25 +299,25 @@ def emit_anchor(anchor_id: str, *, plane: int, round_num: int,
                 unit_seq: int | None = None,
                 evidence_refs: list[dict[str, str]] | None = None,
                 event_key: str = '', summary: str = '') -> bool:
-    """登记一次锚触发并走 §12.3 载体一上行口(载体墓碑见模块头:ExogenousEvent
-    出口已退役恒 no-op 桩,受理后行不落盘,归宿候裁挂 retirement.md §2)。
+    """登记一次锚触发并走 §12.3 载体一上行口(载体停用声明见模块头:ExogenousEvent
+    出口已停用恒 no-op 桩,受理后行不落盘,归宿待裁决,登记 retirement.md §2)。
 
     校验链(违规 = 红,炸错不静默):①封闭集(集外锚 = 红,锁①);
     ②scope 值域(§12.3);③effect_ref 恒空(结构锁,锁⑤——效果施加批
-    消费该槽须先过用户裁决并同步改造守卫,禁静默启用);④留证门
+    消费该槽须先过用户裁决并同步改造守卫,禁静默启用);④留存证据门
     (evidence_required=true 的锚 evidence_refs 必填,指标 5);⑤已武装
     的 payload 值域闭集(如 sell channel ∈ SELL_CHANNELS,§12.5-4)。
 
     幂等(锁③):键 = (anchor_id, run_id, plane, round, unit_seq,
     event_key);重试路径双触发零双行——第二发丢弃返 False。
-    ``event_key`` = 发射侧事件区分词:同一时点键域内多次同名事件必带
+    ``event_key`` = 发出侧事件区分词:同一时点键域内多次同名事件必带
     (如 buy_landed 的 槽位#序),天然单发的锚(node_enter 同
     (plane,round) 唯一)留空即可。
 
     局外(run_id 空)= no-op 返 False(不写假行,与既有外生行门控同);
-    载体为多写点面(carrier_kind=None)的锚拒绝路由(落盘面候 H2,如实
-    申报不假装)。返回 True = 已受理(受理≠落盘:载体出口退役现状下行
-    不落,墓碑见模块头)。
+    载体为多写点面(carrier_kind=None)的锚拒绝路由(落盘面待 H2,如实
+    申报不假装)。返回 True = 已受理(受理≠落盘:载体出口停用现状下行
+    不落,停用声明见模块头)。
 
     本函数是观测-only 面:不触 run 状态、不写 GameState/决策域、不施加
     效果(§12.0);best-effort 语义由调用方自担(出口槽未武装时本函数

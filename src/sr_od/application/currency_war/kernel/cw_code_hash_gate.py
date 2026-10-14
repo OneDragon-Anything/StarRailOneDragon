@@ -13,7 +13,7 @@
 豁免:已知合法不一致走默认豁免名单(锚定完整相对路径匹配,防同尾缀路径
 静默漏扫)。旧唯一在册豁免 `src/sr_od/application/currency_war/data/
 cw_delta_pool_data.py`(Δ池快照,由局终自动再生管线写入)
-已随 sim 重做删除面(Δ池生成器与消费面整删,考古归 git)
+已停用面(Δ池生成器与消费面整删)
 一并移除,名单现为空——新增豁免须逐条给理由,禁宽豁免。
 
 零行为副作用:闸只拦起局并输出结构化不一致清单,不改任何游戏逻辑;可经
@@ -33,12 +33,12 @@ from pathlib import Path
 
 from one_dragon.utils.file_utils import get_project_root
 
-# 闸辖域:currency_war 应用模块前缀(sys.modules 过滤用)
+# 闸适用范围:currency_war 应用模块前缀(sys.modules 过滤用)
 MODULE_PREFIX: str = 'sr_od.application.currency_war'
 
-# 默认豁免名单(锚定完整相对路径,仓库根相对——非后缀匹配:endswith 会让辖域内
+# 默认豁免名单(锚定完整相对路径,仓库根相对——非后缀匹配:endswith 会让适用范围内
 # 未来任何同尾缀路径静默漏扫)。旧唯一条目 Δ池快照
-# (cw_delta_pool_data.py)已随 sim 重做删除面移除(其生成器/消费面
+# (cw_delta_pool_data.py)已停用面移除(其生成器/消费面
 # 同批删除,文件不存在后豁免条目即死路径登记),名单现为空。
 DEFAULT_EXEMPTION_PATHS: tuple[str, ...] = ()
 

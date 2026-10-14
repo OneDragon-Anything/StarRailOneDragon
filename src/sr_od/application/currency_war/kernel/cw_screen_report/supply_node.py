@@ -4,7 +4,7 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 观察面 = 节点内门判定 + 逐列选项读取(每列角色+装备,列数动态)+
 「剩余次数：N」同帧读数。report 摄入点 =
 operations/cw_screen/cw_screen_supply_node.py::``CwScreenSupplyNode.observe``
-(观察 node);辖域边界:动作事实 ``chosen_supply`` 不收编;``supply_refresh_left``
+(观察 node);适用范围边界:动作事实 ``chosen_supply`` 不并入;``supply_refresh_left``
 观察写端在本 report(读缺跳写,剩余语义观察真值,机械先例 =
 invest_env 的 ``env_refresh_left`` 摄入)。
 """

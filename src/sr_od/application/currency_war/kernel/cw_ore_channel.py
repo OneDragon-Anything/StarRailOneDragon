@@ -6,7 +6,7 @@ details/ore-reward-channel.md §4-§5)。
 
 为什么单一入口(详设问题与约束末条):spheres 的写端有两处(live = 备战
 观察写端,sim = 节点面板呈现),附着奖励的身份键与 spheres 坐标耦合——
-容差配对轨迹继承只在写端逐帧对拍「写前旧坐标 × 写后新坐标」时可判,散落
+容差配对轨迹继承只在写端逐帧交叉核对「写前旧坐标 × 写后新坐标」时可判,散落
 两处即键漂移(声明金被「消失清洗 + 新现重掷」链路静默蒸发)。两端
 (live 3.4 / sim 3.3 接线)spheres 写一律经 :func:`report_spheres_observed`,
 禁第二写径。
@@ -24,7 +24,7 @@ details/ore-reward-channel.md §4-§5)。
 声明入队/过期 = **电平触发单一规则**(无边沿检测、无帧间记忆、无 op 成员;
 边沿形态已否定,取舍见详设「关键取舍」节):入队条件在每判定点现查
 pending+done 双守卫(守卫状态住 GameState,op 每备战环重建无可失忆);
-恢复局两形态(离线回放 done 随快照存续 / live 接管局 active_env 恒空)
+恢复局两形态(离线回放 done 随快照存续 / live 中断恢复对局 active_env 恒空)
 各自闭合。**次序硬约束 = 入队检查完成先于同帧 spheres 写**(接错次序则
 位面首帧新现生成时声明未入队,若该帧后无新现,声明永不附着)。
 """
@@ -161,7 +161,7 @@ def report_spheres_observed(gs: GameState, sight: OreSight, *,
         level = gs.level.value
         if level is None:
             # 本帧不生成(种子恒写 level=3,生产近乎不可达,保真防御):
-            # 该批身份仍无键,下帧自动再进生成集;点击侧另有兜底(3.2 辖)
+            # 该批身份仍无键,下帧自动再进生成集;点击侧另有兜底(3.2 覆盖)
             pass
         else:
             pending = tuple(gs.ore_declared_pending.value or ())

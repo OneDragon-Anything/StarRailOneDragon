@@ -5,14 +5,14 @@
 (提案自诊断的 CRITICAL-for-convergence)。必死局的剩余动作是**免费实验预算**被白白输掉。
 
 **v0 落地**(纯函数,离线可测;telemetry 接线/漂移闭环为 v1):
-- ``StrategyArm``:臂 = comp 家族(v1 再拆节奏维);Beta 后验;
+- ``StrategyArm``:臂 = 阵容家族(v1 再拆节奏维);Beta 后验;
 - ``plaza 先验封顶``:伪计数 ≤8(幸存者偏差数据只配当弱先验,自家 5-8 局可翻案);
 - ``ThompsonAllocator.select``:后验采样选臂(后验集中后自动退化为总选最优,层会自己关
   自己);forbid/priority 过滤(用户方向盘);explore_budget 闸;
 - ``update``:分级奖励(win=1.0;输局按位面/节点进度分级,降方差)+ **adherence 加权**
   (防「分配姬子中途转万敌赢了算姬子」的信用错配);指数遗忘 γ;
 - ``dead_run_salvage``:必死局回收(P(win)<ε 且置信 → 切后验方差最大的可达臂,零胜率
-  成本收割样本);触发审计留证(复核「没误杀有救的局」≥95%)。
+  成本收割样本);触发审计留存证据(复核「没误杀有救的局」≥95%)。
 
 P(win) 投影供给方:cw_first_passage(已有);漂移闭环(CUSUM+重抓)为 v1。
 """
@@ -28,7 +28,7 @@ SALVAGE_EPS: float = 0.05   # 必死局判据(P(win) 阈值,保守)
 
 @dataclass
 class StrategyArm:
-    """分配臂:comp 家族 + Beta 后验。"""
+    """分配臂:阵容家族 + Beta 后验。"""
     arm_id: str
     comp_family: str
     alpha: float = 1.0
@@ -116,7 +116,7 @@ class ThompsonAllocator:
     def dead_run_salvage(self, p_win: float, reachable: set[str] | None = None) -> str | None:
         """必死局回收:P(win)<ε → 选可达臂中后验方差最大者(信息价值最大)。
 
-        审计留证(离线复核「没误杀有救的局」≥95% 判据的数据)。
+        审计留存证据(离线复核「没误杀有救的局」≥95% 判据的数据)。
         """
         if p_win >= SALVAGE_EPS:
             return None
@@ -135,7 +135,7 @@ class ThompsonAllocator:
 
 
 # ============================================================
-# 候裁9 词汇迁入(原 kernel/cw_state.py;第 6 归宿):局终结算
+# 局终结算
 # MatchOutcome(docstring 点名消费语义 = 跨局分配器/runs summary)。
 # ============================================================
 
@@ -144,10 +144,10 @@ class ThompsonAllocator:
 
 @dataclass
 class MatchOutcome:
-    """一局货币战争的终局结算(框架构造,局终收口消费:跨局分配器/runs summary;/§11.4)。
+    """一局货币战争的终局结算(框架构造,局终收束消费:跨局分配器/runs summary;/§11.4)。
 
     ⚠️ 字段全默认 —— **P1 由 run loop 用 ``MatchOutcome()`` 桩构造**(生命周期
-    钩子随 收编删除后,消费面 = cw_loop 局终分支,
+    钩子随 并入删除后,消费面 = cw_loop 局终分支,
     字段已被真实数据填充);**真实 outcome 填充(结算屏 OCR 读终局 HP/位面/轮次/通关)依赖结算屏
     OCR 探查(现 run loop 是「点空白加速 → 继续挑战」,未见独立结算屏)。
     """

@@ -34,7 +34,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
                                  executed: ShopActionExecuted | None = None) -> LogicOutcome:
     """买牌上报:gold −单价×k + bench 落位 + 合成连锁 + payload −k
     ((name, star) 计数)+ 升星腿整表覆盖(买前快照三件组基点,快照在
-    本函数内第一时间取——原落地门/两驱动器三处抄写收编单点)。
+    本函数内第一时间取——原落地门/两驱动器三处抄写并入单点)。
 
     满栏且合成不可达 = 游戏拒买(applied=False + reason='bench_full',
     零写)。k 来源:executed 给定 = 回执 k(live);None =
@@ -145,7 +145,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     # 升星检测的比较基点 = 本函数主工作副本
     # (scratch_b/scratch_d 已完成 bench_place/满栏合成买/级联合成的
     # 全套应用,与买前快照 pre_bench/pre_dep 恰构成 before/after 对;
-    # 原二次仿真取 after 的腿随席位第二账退役删除——同一动作同一
+    # 原二次仿真取 after 的腿随席位第二账停用删除——同一动作同一
     # 引擎,二次仿真是第二账时代形状)。
     from types import SimpleNamespace as _NS
 
@@ -170,6 +170,6 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         gs.effects.on_buy(card, star, k)
     except Exception as e:  # noqa: BLE001  记录面失败不阻塞
         _log.warning(f'[cw-buy] 效果账本 on_buy 回调失败(不阻塞): {e}')
-    # (事实事件广播已随事实事件槽退役删除:sim
+    # (事实事件广播已停用:sim
     #  呈现/登记经容器值回调与问询时点呈现检查承载。)
     return LogicOutcome(applied=True, bought_count=k)

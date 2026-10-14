@@ -3,7 +3,7 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 画面锚命中 + 一次读全(环境卡读数 (环境名, 卡 x 中心) + 全局
 刷新剩余次数)。report 摄入点 = operations/cw_screen/cw_screen_invest_env.py::
-``CwScreenInvestEnv.observe``(观察 node);辖域边界:选择事实
+``CwScreenInvestEnv.observe``(观察 node);适用范围边界:选择事实
 (active_env)经动作落地链写(动作 op 立即自上报 → gain_invest_env,
 正本 = gain-chain.md);``env_refresh_left`` 观察写端在本 report
 (读缺跳写)。

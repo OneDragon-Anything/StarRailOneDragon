@@ -74,7 +74,7 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     - **整批拒(零写)**:spheres 未观察(现行为)/载荷无交集(现行为)/
       bench 未观察('bench_unobserved'——席满守卫与角色落点均不可判)。
       level 缺读不再整批拒(语义收窄,详设 ore-click-consume §1):
-      附着命中不需 level,原 'level_unread' 守卫随采样退役到缺项兜底
+      附着命中不需 level,原 'level_unread' 守卫随采样停用到缺项兜底
       路径(见逐点守卫);
     - **逐点守卫**:该点时备战席无空位 → 该晶矿留在 spheres、不采样
       (裁决 3:满栏点击无效;前点奖励耗席累计判);缺项需兜底掷 ∧
@@ -95,7 +95,7 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
 
     P1 容器原生(§3.2):bench 工作副本 = BenchView 槽序、deployed =
     行域下标派生表;整表写 = bench_view_of_working 直构(原
-    ``_bench_view_keep_items`` 占位件保留补丁随换形口退役自然消失——
+    ``_bench_view_keep_items`` 占位件保留补丁随换形口停用自然消失——
     工作表元素即容器 BenchSlot,占位件 kind 原样保留,零降级路径)。
     """
     _validate_sig(sig, ('logic_action',))
@@ -111,7 +111,7 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     if orig_bench is None:
         return LogicOutcome(applied=False, reason='bench_unobserved')
     # level 不再整批拒(语义收窄,详设 ore-click-consume §1):附着兑现
-    # 不需 level,原 'level_unread' 守卫随采样退役——缺项兜底路径的
+    # 不需 level,原 'level_unread' 守卫随采样停用——缺项兜底路径的
     # level 门下沉到点级(见循环内 missing_level 跳点)
     level = gs.level.value
 

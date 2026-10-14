@@ -37,7 +37,7 @@ write_logic_rand 即炸渠道族校验);live = logic_hook 族 group
 
 边界披露(显式接受,详设 §3 同名节):①同窗洗白——发放后同窗口的
 确定性 equips 写会把字段来源翻成纯 logic,下一 heavy 帧观察对 logic
-源失配走安灯(值由观察采新,续跑即愈);②恢复局——接管局 done 为
+源失配走失配告警(值由观察采新,续跑即愈);②恢复局——中断恢复对局 done 为
 空,首个 streak ≥ 阈值结算触发发放 = 最佳猜测;③OCR 假阳——假发放
 永久占据一次性(done 不回收)。
 """
@@ -174,7 +174,7 @@ def check_env_refresh_grants(gs: GameState, sig: ChannelSig) -> str | None:
     - ``sig`` = 三笔共用的渠道签名,必须 logic_action 族(obs 族进
       write_logic_rand 即炸渠道族校验)。唯一调用方传入上报函数内部的
       ``_grp_sig``(logic_action 族,上报入口已把族锁死),天然满足;
-      logic_hook 分支本案不可达,不写分支(T-5 live 结算接线形态,
+      logic_hook 分支本案不可达,不写分支( live 结算接线形态,
       本案收敛点唯一);
     - 本函数零 rng:随机态指认知通道,追加位置(尾部)与金增量均确定,
       不消耗随机数。
@@ -215,7 +215,7 @@ def check_env_refresh_grants(gs: GameState, sig: ChannelSig) -> str | None:
 
 def on_diamond_acquired(gs: GameState, equip_name: str) -> None:
     """宝钻获得回调(世界数值面联动;唯一调用点 = sim 深井发放路径,
-    3.3 接线;**supply 补给宝钻不采纳**——钻类型未建模,归 3.3 辖;
+    3.3 接线;**supply 补给宝钻不采纳**——钻类型未建模,归 3.3 覆盖;
     **live 不调**——三域 live 写端 = 观察识别器,逻辑侧禁写)。
 
     - ``equip_name != '财富宝钻'`` → 直接返回(cap 加成语义只属财富

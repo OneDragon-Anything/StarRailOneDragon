@@ -14,7 +14,7 @@
 = kernel 单一源(sim 与实机动作腿同构消费,禁第二份实现);合成改变
 板面装备贡献 → 落地写后广播 ``board_changed`` 事实事件。
 
-拒绝语义(布尔契约,统一回声;拒绝 = 零写 + 留证,禁半写):
+拒绝语义(布尔契约,统一回声;拒绝 = 零写 + 留存证据,禁半写):
 - owned 无该件 → ``wear_item_not_owned``(合法穿戴前置,漏 = 计划失效);
 - 目标角色不在册(char_name 空按 (row, slot) 现读;槽空/未命中)→
   ``wear_target_unit_missing``(front-only 回退步拖空槽 avatar = 游戏
@@ -39,7 +39,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     _validate_sig,
 )
 
-#: 角色穿戴上限(equipment_mechanics.md「角色上限 3 件」定谳)。
+#: 角色穿戴上限(equipment_mechanics.md「角色上限 3 件」定案)。
 WEAR_LIMIT: int = 3
 
 _PRODUCER = 'CwActionWearEquipParam'
@@ -134,9 +134,9 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
     """穿装备上报(穿戴原子,发出即记账):owned −1 + worn 集穿着即合成
     + 目标单位所在域整表重建单写(equips 随对象)。row/slot = 画面
     物理槽位(词表定义),目标定位 = ``_locate_unit`` 全域定位(bench/
-    前排/后排;3.2 起 tracked 第二账退役,主域单点)。
+    前排/后排;3.2 起 tracked 第二账停用,主域单点)。
 
-    拒绝分支(零写 + 留证,布尔契约见模块头):owned 无件 / 目标不在册 /
+    拒绝分支(零写 + 留存证据,布尔契约见模块头):owned 无件 / 目标不在册 /
     合成后超上限。``board_changed`` 事实事件仅 applied 出口广播
     (拒绝 = 零写 = 无世界变化)。
     """
@@ -173,8 +173,8 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
     owned.remove(param.item_name)
     gs.write_logic(gs.equips, owned, produced_by=_PRODUCER,
                    evidence=f'owned[{param.item_name}] -1(穿戴)', sig=_grp_sig)
-    # (tracked 第二账已退役:容器侧本函数
+    # (tracked 第二账已停用:容器侧本函数
     #  _write_mutated_domain 整值替换写已是单点,原「tracked deployed
     #  穿戴随动腿」无可同步;session 形参兼容保留。)
-    # (事实事件广播已随事实事件槽退役删除。)
+    # (事实事件广播已停用。)
     return LogicOutcome(applied=True)

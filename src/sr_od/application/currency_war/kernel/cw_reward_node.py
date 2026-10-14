@@ -2,7 +2,7 @@
 
 裁定权威 = 用户账本 408 行(「1-1/1-2 等奖励关不需要战力:升级抑制、
 买卡压牌库优先」)+ [16] 勘误(原②「奖励节点买经验合法」已删除)。
-四消费位(shop M3 臂前 / shop 溢余段变体 / mandate M3 触发块 /
+四消费位(shop M3 臂前 / shop 富余段变体 / mandate M3 触发块 /
 entry posture 授权链首位)与 ②(b) 帧型判据全部消费本模块的同一谓词,
 禁第二套帧型判定(D3)。
 
@@ -56,12 +56,12 @@ def reward_node_suppressed(gs: GameState | None) -> bool:
 
     None fail-open(node_type 不可辨 → False)理由见模块 docstring
     失效方向①;battle/encounter/boss 等战斗类节点恒 False(P72 预算闸
-    照旧,本规则不辖)。四消费位 + ②(b) 帧型判据共用本函数,禁第二套。
+    照旧,本规则不覆盖)。四消费位 + ②(b) 帧型判据共用本函数,禁第二套。
 
-    ②(b) 同谓词同向声明(D3/方案规则②):压库买入臂的帧型判据就是
+    ②(b) 同谓词同向声明(D3/方案规则②):压牌库买入臂的帧型判据就是
     本函数的返回值——可辨奖励帧(非扑满)= ②(b) 活跃域;None 帧与
-    规则①同向取 False(②(b) 不发射),该域「禁死囤」由 ②(a) prep
-    凑息接线承载(其触发 = gold<g*,节点无关,见 mandate 接线注释);
+    规则①同向取 False(②(b) 不发出),该域「禁死囤」由 ②(a) prep
+    凑利息接线承载(其触发 = gold<g*,节点无关,见 mandate 接线注释);
     None 帧上 M3 因规则① fail-open 照常求值(两臂并存,义务臂先判)。
     """
     if gs is None:

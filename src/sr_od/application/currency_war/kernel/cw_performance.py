@@ -41,17 +41,17 @@ class RoundOutcome:
     - 自身侧(生存信号):hp_after + hp_confidence。
     - 敌方侧(击杀信号,r6 F3):enemy_hp_after / damage_dealt / killed —— 观测确证"打得动 boss 吗"。
       None = 游戏不暴露(阶段 4 实机确认);此时击杀能力靠 comp_viability 先验兜底。
-    - comp_tag(r6 F4):打这关时的 target comp 名,obs 按 comp 归因(pivot 后旧 comp 降权而非全删)。
+    - comp_tag(r6 F4):打这关时的 target 阵容名,obs 按 阵容归因(pivot 后旧 阵容降权而非全删)。
     - intentional_fold(r6 F1):本回合"故意输攒钱"态(plan fold 写入),排除污染 trend。
     """
     round_num: int
     plane: int
     node_type: str              # "普通战斗"/"精英"/"遭遇"/"boss"
-    comp_tag: str               # 打这关时的 target comp 名
+    comp_tag: str               # 打这关时的 target 阵容名
     intentional_fold: bool = False
     # —— 自身侧 ——
     hp_after: int | None = 0    # 结算后 HP(hp_delta = 本回合 − 上回合,差分);
-    # None 仅收口终局行携带(cw_loop._write_terminal_outcome_row,不发 hp 真值)
+    # None 仅收束终局行携带(cw_loop._write_terminal_outcome_row,不发 hp 真值)
     hp_confidence: float = 1.0  # OCR 置信度(0-1);<0.7 不进 trend(防 OCR 抖动)
     # —— 敌方侧(击杀信号)——
     enemy_hp_after: int | None = None
@@ -61,10 +61,10 @@ class RoundOutcome:
     progress_delta: int | None = None   # 结算屏「挑战进度 ±N」带符号(赢 +2 / 输 -22);None=未读到
     # —— streak(连胜/连败;2026-08-11 结算「连胜×N」前缀=方向,fixture 核实)——
     streak: int | None = 0    # 带符号:+N 连胜 / -N 连败 / 0 无(结算 OCR 读;economy C 杠杆用);
-    # None 仅收口终局行携带(不发 streak 真值,镜像 hp_after 口径)
+    # None 仅收束终局行携带(不发 streak 真值,镜像 hp_after 口径)
     # —— 结算三项遥测(docs/develop/currency_war/strategy/05_observation.md §3.1(迭代工作面原稿 SETTLE_OCR_DESIGN §3;P15 脱删失/P12 幅度授权真值通道)——
     # progress_fill_ratio = 挑战进度条填充率 [0,1](幅度绝对值通道;±N 浮字是符号+
-    # 增量真值,两通道同帧并记互为对拍);damage_base/damage_unfinished_progress =
+    # 增量真值,两通道同帧并记互为交叉核对);damage_base/damage_unfinished_progress =
     # 掉血说明 tooltip 两分量(进页瞬窗内捕获,miss=None 删失显式可辨,勿造假值);
     # damage_breakdown_visible = tooltip 是否在场(False+两分量 None=不在场,
     # True+None=在场但解析失败,两态可分)。条不可见/面板不在场 → None。
@@ -79,11 +79,11 @@ class RoundOutcome:
     heal_longline: int | None = None
     # —— 遭遇选档观测扩字段(E-2):difficulty_node = 结算快照取该节点最近
     # 备战帧现场真读旗牌值(live 位为门,无现场读 → None;遭遇行取值随读点
-    # 定谳两变体,未定谳期装 None);encounter_tier = 遭遇战决策落点难度档
+    # 定案两变体,未定案期装 None);encounter_tier = 遭遇战决策落点难度档
     # (经验档层其五/六正证据的行内通道;普通战斗行恒 None)。
     difficulty_node: float | None = None
     encounter_tier: int | None = None
-    # —— 收口终局行标记:仅对局收口终局行携带('stopped'/'abandoned'),
+    # —— 收束终局行标记:仅对局收束终局行携带('stopped'/'abandoned'),
     # 普通结算行恒 ''(字段语义与读端消费边界 =
     # telemetry.schema.OutcomeRecord.match_result 注)。
     match_result: str = ""
@@ -91,7 +91,7 @@ class RoundOutcome:
 
 # 节点类型 → 预期掉血(相对值;归一化用)。先验,历史 refine。
 # 补 '奖励'/'补给'/'巨星'(结算屏真值可产出,
-# 此前落 .get 默认 1.0 轻微拉高该 comp 预期掉血)。奖励/补给非战斗
+# 此前落 .get 默认 1.0 轻微拉高该 阵容预期掉血)。奖励/补给非战斗
 # 节点=期望 0;巨星按强敌档先验 2.0(待实测 refine)。
 EXPECTED_DROP: dict[str, float] = {
     "普通战斗": 1.0, "精英": 1.5, "遭遇": 1.2, "boss": 3.0,
@@ -134,7 +134,7 @@ class PerformanceTracker:
                 continue                       # 低置信不进 trend(防 OCR 抖动)
             w = 1.0
             if comp_tag is not None and o.comp_tag != comp_tag:
-                w = 0.3                         # r6 F4:旧 comp 降权 0.3(不全删,保留信号)
+                w = 0.3                         # r6 F4:旧 阵容降权 0.3(不全删,保留信号)
             out.append((o, w))
         return out
 
@@ -182,10 +182,10 @@ class PerformanceTracker:
         return trend > HP_LOSS_FULL * 0.5   # 阈值 18→15(0.6 系数挡住实测慢性失血带)
 
     def perf_for_comp(self, comp_tag: str, window: int = 6) -> float | None:
-        """某 comp 的归一化表现(供 comp_viability 观测项;0..1,掉血少→高)。
+        """某 阵容的归一化表现(供 comp_viability 观测项;0..1,掉血少→高)。
 
         trend=None(冷启动/样本不足)→ None。trend 映射:0 掉血→1.0,HP_LOSS_FULL 掉血→0。
-        pivot 后旧 comp 经 comp_tag 降权 ×0.3(r6 F4)。
+        pivot 后旧 阵容经 comp_tag 降权 ×0.3(r6 F4)。
         """
         trend = self.recent_hp_loss_trend(comp_tag=comp_tag, window=window)
         if trend is None:
@@ -211,11 +211,11 @@ def star_achievement(comp: Comp, gs: GameState) -> float:
     return clamp((avg - 1.0) / 2.0, 0.0, 1.0)
 
 
-# ===== comp_viability(评 current 已 commit comp;先验 + 观测 blend)=====
+# ===== comp_viability(评 current 已 commit 阵容;先验 + 观测 blend)=====
 
 def comp_viability(comp: Comp, gs: GameState, ctx: ScoreContext,
                    tracker: PerformanceTracker) -> float:
-    """评 **current 已 commit** comp 的可行性(pivot/eval 用;先验 + 观测 blend,0..1)。
+    """评 **current 已 commit** 阵容的可行性(pivot/eval 用;先验 + 观测 blend,0..1)。
 
     与 cw_comps.comp_score 区别(拆双签名,r5):comp_score 评 **candidate 未 commit**(无观测);
     本函数评 **current 已打过几关**(有观测)。用已 commit 阵容的观测评未 commit candidate 是逻辑错位。
@@ -255,8 +255,8 @@ def is_run_dead(gs: GameState, tracker: PerformanceTracker,
     r6 F9:"普通关可能锁血翻盘"依赖锁血机制 —— 阶段 4 实机确认货币战争是否有锁血;
     无则删 next_node_type 门,纯 HP+trend 两门。trend None(冷启动)→ False(不误判死)。
 
-    [挂账读点·hp 政策层申报] 本函数现属挂账层(生产调用面空,测试仓经
-    桥调用),本行 hp 直读仅挂账期原样保留、行为零变化;重挂生产消费
+    [待办读点·hp 政策层申报] 本函数现属待办层(生产调用面空,测试仓经
+    桥调用),本行 hp 直读仅待办期原样保留、行为零变化;重挂生产消费
     **必经政策层读口**——门后值 = kernel/cw_hp_policy.decision_hp
     (gs, session),可信位 = hp_decision_trusted_of(gs),禁按直读形态
     旁路(消费同门)。

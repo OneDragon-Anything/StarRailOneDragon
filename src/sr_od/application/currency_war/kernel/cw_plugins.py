@@ -177,7 +177,7 @@ PLUGIN_LIBRARY: dict[str, PluginEntry] = {p.plugin_id: p for p in (*_UNIT_PLUGIN
 # 单卡插件的 majority_lines 与过半线统计表**程序同步**
 # (单一写入口——过半线刷新只改 W16_MAJORITY_LINES,上方的字面量
 # 被全集覆盖;小羁绊插件的 majority_lines 仍手注[三C 口径,无单卡
-# 统计])。锁测试对拍两侧一致。
+# 统计])。锁测试交叉核对两侧一致。
 
 PLUGIN_LIBRARY.update({
     p.plugin_id: replace(p, majority_lines=W16_MAJORITY_LINES[p.plugin_id])
@@ -204,7 +204,7 @@ PLUGIN_DISABLE_MATRIX: dict[tuple[str, str], str] = {
 def plugin_disabled(plugin_id: str, line: str) -> str | None:
     """查禁用矩阵:返回机制原因(禁用)或 None(可用)。
 
-    ``line`` = 家族键(V2_FAMILIES)或 comp 名(矩阵两级键都收,兼容家族/套消费)。
+    ``line`` = 家族键(V2_FAMILIES)或 阵容名(矩阵两级键都收,兼容家族/套消费)。
     买门拒绝时 reason 应带 matrix 键(C4 验收 3)。
     """
     return PLUGIN_DISABLE_MATRIX.get((plugin_id, line))

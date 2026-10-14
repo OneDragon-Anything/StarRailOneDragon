@@ -3,8 +3,8 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 巨星 overlay 门判定 + 候选(懒读语义,字段注写明)。
 report 摄入点 = operations/cw_screen/cw_screen_megastar.py::
-``CwScreenMegastar.observe``(观察 node);辖域边界:动作事实
-``chosen_megastar`` 不收编,留守选择点。
+``CwScreenMegastar.observe``(观察 node);适用范围边界:动作事实
+``chosen_megastar`` 不并入,留守选择点。
 """
 from __future__ import annotations
 

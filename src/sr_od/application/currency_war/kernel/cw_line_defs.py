@@ -15,7 +15,7 @@ from sr_od.application.currency_war.kernel.cw_bridge_pool import (
     BRIDGE_POOL,
 )
 
-# ⚠️ 迁移挂账(docs/develop/currency_war/archive/redesign/03_legacy_cleanup_plan.md):
+# ⚠️ 迁移待办(docs/develop/currency_war/archive/redesign/03_legacy_cleanup_plan.md):
 # 权威副本 = knowledge/cw_line_facts(RECIPE_FACTIONS/RECIPE_BASE/recipe_tier);
 # 本副本仅为 sim/旧判据未迁消费点保留,按该计划随文件删除;勿新增消费。
 # 过渡配方阵营(基础 3仙舟+2DOT + 渐进 列车/护盾;攻略[20])
@@ -28,7 +28,7 @@ ENGINE_FACTIONS: frozenset[str] = frozenset(
     bond for combo in BRIDGE_POOL for bond in combo.engine_bonds)
 
 
-# ⚠️ 迁移挂账(同上):权威副本 = knowledge/cw_line_facts.recipe_tier;
+# ⚠️ 迁移待办(同上):权威副本 = knowledge/cw_line_facts.recipe_tier;
 # 本副本仅为 sim/旧判据未迁消费点保留,按该计划随文件删除;勿新增消费。
 def recipe_tier(board: dict[str, int]) -> int:
     """板面的配方档数(board 里 ∈ RECIPE_FACTIONS 的档位和)。"""
@@ -96,7 +96,7 @@ def recipe_char_names() -> frozenset[str]:
 
 
 def recipe_kinds_1cost() -> int:
-    """1 费配方件的种类数(找件刷概率用;三处手搓的收口)。"""
+    """1 费配方件的种类数(找件刷概率用;三处手搓的收束)。"""
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     return sum(1 for n, ch in CHARACTERS.items()
                if ch.cost == 1 and (ch.factions or [''])[0]
@@ -114,7 +114,7 @@ def classify_buy(card, state) -> str:
     - ``'pair'``:凑对件(与已拥有阵营同阵营)
     - ``'off'``:线外/杂卡
 
-    锁线形态键的 'line' 判定属 _line_wants 形态逻辑,不在此
+    终局阵容锁定形态键的 'line' 判定属 _line_wants 形态逻辑,不在此
     复制(单一源防漂移:allow 键集派生只在 _line_wants)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
@@ -142,7 +142,7 @@ def core_count_for(target: str, board_names: set[str] | frozenset[str]) -> int |
     """按 target 语境的核心在场数(账本 core_count 单一口径;③ 攒数据地基)。
 
     核心定义两源(桥池 fixed+core / 仙舟三人组 _CORE_TRIO)按 target
-    路由(旧 v1 线库 core_cards 已随 line_strategy 退役删除——decision_v2 的
+    路由(旧 v1 线库 core_cards 已停用——decision_v2 的
     target 是 COMP_LIBRARY v2 套名,不消费线库):
     - 桥 id(先查 P1 池,再 P2 池)→ fixed+core 在场数;
     - 空 target → _CORE_TRIO(旧缺省口径,兼容语义);
@@ -190,7 +190,7 @@ _P1_FORMATION_ROUND_EDGES: tuple[int, int, int] = (3, 6, 8)
 
 #: 核心三人组(combo_methodology 终版:功能链不可拆;
 # 数据单一源 = 桥池 xianzhou_dot 的 fixed+core 交集)
-# ⚠️ 迁移挂账(同上):权威副本 = knowledge/cw_line_facts._CORE_TRIO;
+# ⚠️ 迁移待办(同上):权威副本 = knowledge/cw_line_facts._CORE_TRIO;
 # 本副本仅为 sim/旧判据未迁消费点保留,按该计划随文件删除;勿新增消费。
 _CORE_TRIO: frozenset[str] = frozenset({'爻光', '藿藿', '丹恒·饮月'})
 #: 核心池三人组的达标数(到齐=3)
