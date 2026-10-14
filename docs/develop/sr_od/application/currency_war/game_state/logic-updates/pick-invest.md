@@ -54,4 +54,4 @@
 ## 7. 语义验证
 
 - `test_cw_yinlang_phase32.py`(即时上报/无效载荷/去重/骇客链)、`test_cw_unified_action_4.py`(注册表分派)= 申报源 [../../screens/invest_strategy.md](../../screens/invest_strategy.md) §9;
-- `test_cw_gain_chain.py`(链写入)。
+- `test_gain_chain.py`(链写入)。

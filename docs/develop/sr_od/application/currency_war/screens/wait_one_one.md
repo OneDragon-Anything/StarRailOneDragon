@@ -44,5 +44,5 @@
 ## 9. 遥测与锁面
 
 - journal op 名 = 「等待1-1」;日志前缀 `[cw-flow-wait11]`。
-- 测试锁:两 node 行为锁 + 假时钟超时锁(标志命中 round_wait 轮询/超时留证 fail)= `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`。
+- 测试锁:两 node 行为锁 + 假时钟超时锁(标志命中 round_wait 轮询/超时留证 fail)= `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`。
 - game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #5/#29。

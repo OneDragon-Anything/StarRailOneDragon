@@ -43,4 +43,4 @@
 ## 9. 遥测与锁面
 
 - journal op 名 = 「商店刷新概率表」;frame_tag = `overlay_refresh_odds`(dispatch 包装,on_result 日志闭包)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(推进型骨架内联形态锁,refresh_odds_popup 在册);建档 = `currency_war_shop_refresh_odds.yml`,概率条读取机制见 [shop.md](shop.md) §3。
+- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,refresh_odds_popup 在册);建档 = `currency_war_shop_refresh_odds.yml`,概率条读取机制见 [shop.md](shop.md) §3。

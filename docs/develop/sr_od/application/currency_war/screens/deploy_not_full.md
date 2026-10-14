@@ -43,4 +43,4 @@
 
 ## 9. 遥测与锁面
 
-- journal op 名 = 「未达上限确认」;frame_tag = `overlay_deploy_not_full`;dispatch wait=3(与确认收尾 success_wait 同口径);日志 tag `[cw-deploywarn]`。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(`test_reentry_arbitration_flag_gate_combination` = 落地复查×门组合行为锁 act 侧两项锁点;`test_deploy_not_full_observe_gate_and_placeholder_report` = 观察门 miss 早退 / obs 装载 / 占位 report 接线恰一次与 gs 缺席跳过);建档 = `currency_war_deploy_not_full.yml`。
+- journal op 名 = 「未达上限确认」;frame_tag = `overlay_deploy_not_full`;dispatch wait=3(与确认收尾 success_wait 同口径);日志 tag `[cw-deploywarn]`。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(`test_reentry_arbitration_flag_gate_combination` = 落地复查×门组合行为锁 act 侧两项锁点;`test_deploy_not_full_observe_gate_and_placeholder_report` = 观察门 miss 早退 / obs 装载 / 占位 report 接线恰一次与 gs 缺席跳过);建档 = `currency_war_deploy_not_full.yml`。

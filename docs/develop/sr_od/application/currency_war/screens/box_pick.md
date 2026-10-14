@@ -76,5 +76,5 @@ idx = _decide_card_index(决策动作 node):
 ## 9. 遥测与锁面
 
 - journal op 名 =「武装箱选择」(阶段一身份分发);op 内日志 tag = `[cw][boxpick]`(选中卡名/交回)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(box_pick 观察 report 接线/两道闸 skip report/点卡决策/局外无早退支自然失败/标准化门锁)、test_cw_unified_action_2a.py::test_pick_box_decision_fail_closed(fail-closed 决策契约行为锁 + 画面常量)、test_cw_screen_report_ports.py(box_pick 同门双写/等长守卫)、test_cw_unified_action_4.py(动作 op 自容器取点锁)。
+- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(box_pick 观察 report 接线/两道闸 skip report/点卡决策/局外无早退支自然失败/标准化门锁)、test_cw_unified_action_2a.py::test_pick_box_decision_fail_closed(fail-closed 决策契约行为锁 + 画面常量)、test_screen_report_ports.py(box_pick 同门双写/等长守卫)、test_cw_unified_action_4.py(动作 op 自容器取点锁)。
 - game 侧知识:画面与机制 = [../../../../game/screens/currency_war_battle_prep_supply_box.md](../../../../../game/screens/currency_war_battle_prep_supply_box.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18。

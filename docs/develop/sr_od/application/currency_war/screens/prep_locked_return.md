@@ -50,7 +50,7 @@
 
 ## 9. 遥测与锁面
 
-- journal op 名 = 「备战暗色锁定」;frame_tag = `overlay_lock`(dispatch 包装,on_result 闭包记录命中画面档)。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(推进型骨架内联形态锁,prep_locked_return 在册);暗色态时序 = `docs/game/currency_war/research/screen_flow_timing.md` #18/#12/#20。
+- journal op 名 = 「备战暗色锁定」;frame_tag = `overlay_lock`(dispatch 包装,on_result 闭包记录命中画面档)。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,prep_locked_return 在册);暗色态时序 = `docs/game/currency_war/research/screen_flow_timing.md` #18/#12/#20。
 
 ## 开放设计注
 

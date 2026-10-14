@@ -42,7 +42,7 @@
 
 ## 9. 遥测与锁面
 
-- journal op 名 = 「消耗品浮层」;frame_tag = `overlay_consumable`(dispatch 包装)。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(推进型骨架内联形态锁,consumable_overlay 在册);关闭坐标借道 `currency_war_item_detail.yml`。
+- journal op 名 = 「消耗品浮层」;frame_tag = `overlay_consumable`(dispatch 包装)。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,consumable_overlay 在册);关闭坐标借道 `currency_war_item_detail.yml`。
 
 ## 开放设计注
 

@@ -117,5 +117,5 @@ while True(round_wait 单动作循环;循环内零读屏,帧不消费):
 - journal op 名 = 「商店访问」(「商店开画面」分支转交与显式开店同口);计数键 shop_visit_idle_gold / branch_shop_open_*;投放分键 plan_visit_action_cap / shop_ev_bench_wait。
 - 刷新遥测:执行账 `total_refresh`(paid/total 两计数留效果账本累计);telemetry schema 存量读兼容字段 `plan_truncated`/`refresh_attempted`/`refresh_board_changed`(`telemetry/schema.py`,现无生产写入端,读存量行兼容)。
 - 受限会话自限遥测:受阻分键 `launch_arbitrage_gate_blocked` 落策略器状态 `cw4_counters`(拒绝发生时的写点 = `decide_shop_action` 内自限);受限会话阶段标志位 `cw4_launch_spend_visited`。
-- 测试锁:商店投影逻辑锁(test_cw_shop_projection_logic)、受限购买校验门(launch_arbitration_gate)交叉核对、P56 买面锁等,锁面 = `sr-od-test/test/sr_od/application/currency_war/`。
+- 测试锁:商店投影逻辑锁(test_shop_projection_logic)、受限购买校验门(launch_arbitration_gate)交叉核对、P56 买面锁等,锁面 = `sr-od-test/test/sr_od/application/currency_war/`。
 - game 侧知识:经济机制(刷新/利息/锁商店) = [../../../../game/currency_war/research/economy.md](../../../../../game/currency_war/research/economy.md);合成机制 = [../../../../game/currency_war/research/merge_mechanics.md](../../../../../game/currency_war/research/merge_mechanics.md)。

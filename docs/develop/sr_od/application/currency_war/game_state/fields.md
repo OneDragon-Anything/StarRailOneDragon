@@ -568,11 +568,14 @@ evidence 区分。旗牌通道=**弱**(stylized 数字 OCR 常空,两级放大�
 **语义**(黑板帧停用时立域):已穿装备位置——
 键 = `'front:1'`/`'back:2'` 形态字符串(row ∈ front|back,slot = 画面物理槽位
 1-based,前排 1-4/后排 1-选档 N,与机械动作参数同域;tuple 键 JSON 序列化不安全
-故字符串化),值 = 件名列表。装备域姊妹面(§3.2.15),M7 装备计划四路输入之一
-(`cw_equip_wear_plan._build_equip_wear_plan` 容器读取入口;未观察 None = 识别域
-未就绪,fail 门保守关)。
+故字符串化),值 = 件名列表。装备域姊妹面(§3.2.15),画面已穿读数的观察记录。
 **写入方**:单一源 = CwScreenPrep 备战入口完整观察(全量识别)观察上报(与 equips 同点同环,
-每帧实读覆盖);零逻辑写入方。**消费** = M7 装备计划(occupied_all 求值)。
+每帧实读覆盖);零逻辑写入方。**消费** = 判读/对账记录面——M7 装备计划的已穿槽位
+输入**不读本域**:零读屏决策环(§观察与对账)内观察面无穿戴写端、visit 内恒为
+入口快照,与穿戴上报的 kernel 上限判据(deployed `unit.equips` 活账)双基分裂会
+无限重派自旋,故计划输入自 deployed 视图 `unit.equips` 逻辑推导
+(`cw_equip_wear_plan._build_equip_wear_plan`;键坐标系/空槽不入表形态与本域
+同构)。
 
 #### 3.2.16 消耗品库存 consumables
 

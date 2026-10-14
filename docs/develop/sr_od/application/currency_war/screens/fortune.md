@@ -70,5 +70,5 @@ texts = 观察轮 obs 载体 → decide_fortune()(零参;候选读容器 fortune
 ## 9. 遥测与锁面
 
 - journal op 名 =「命运卜者」;画面 op 日志 tag = `[cw][fortune]`(选卡行:卡文与选卡序号);选卡确认链(`cw_pick_fortune_action.py::CwActionPickFortuneOp`)日志 tag = `cw-pick-fortune`(点卡 `safe_click`;确认 = 「按钮-确认选择」`round_by_find_and_click_area` 建档查找点击,全族统一)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(节点循环族两 node 形态锁:观察上报容器/入口门 miss fail/容器零参决策 + round_wait)。
+- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_two_node_family.py`(节点循环族两 node 形态锁:观察上报容器/入口门 miss fail/容器零参决策 + round_wait)。
 - game 侧知识:无独立 game 画面档(建档与字段面 = `assets/game_data/screen_info/cw_fortune_picker.yml` + [../game_state/fields.md](../game_state/fields.md) §3.4.5)。

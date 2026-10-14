@@ -35,7 +35,7 @@
 
 ## 7. 语义验证(终结作废契约)
 
-动作转移语义单一源 = 上报函数(`report_action_close_shop_param` = `leave_screen` 结构离屏)。原聚合写入入口的调用面与原单步动作应用器 `simulate` 已随动作 op 重组与 sim 重做停用,考古归 git。投影直锁 M1(`test_cw_shop_projection_logic`)含 CloseShop 离屏分支;本动作期望态语义由「终结作废」契约承载——期望态随终结作废,由下一次入口观察重建,离屏域值失效等价于下帧观察全量覆盖。
+动作转移语义单一源 = 上报函数(`report_action_close_shop_param` = `leave_screen` 结构离屏)。原聚合写入入口的调用面与原单步动作应用器 `simulate` 已随动作 op 重组与 sim 重做停用,考古归 git。投影直锁 M1(`test_shop_projection_logic`)含 CloseShop 离屏分支;本动作期望态语义由「终结作废」契约承载——期望态随终结作废,由下一次入口观察重建,离屏域值失效等价于下帧观察全量覆盖。
 
 ## 8. 判例注记(动作发出阶段)
 

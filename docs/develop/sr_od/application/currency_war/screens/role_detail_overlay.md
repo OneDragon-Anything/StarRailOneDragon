@@ -44,4 +44,4 @@
 
 ## 9. 遥测与锁面
 
-- journal op 名 = 「详情弹窗」;frame_tag = `overlay_role_detail`(dispatch 包装)。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(推进型骨架内联形态锁,role_detail_overlay 在册);建档 = `currency_war_battle_prep_equip_detail.yml`,空白点挂 `currency_war_battle_prep.yml`。
+- journal op 名 = 「详情弹窗」;frame_tag = `overlay_role_detail`(dispatch 包装)。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,role_detail_overlay 在册);建档 = `currency_war_battle_prep_equip_detail.yml`,空白点挂 `currency_war_battle_prep.yml`。

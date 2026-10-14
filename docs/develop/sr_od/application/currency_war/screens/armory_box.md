@@ -42,7 +42,7 @@
 
 ## 9. 遥测与锁面
 
-- journal op 名 = 「武装箱」(dispatch 包装落 `[cw-op]` 行);frame_tag = `overlay_armory_box`;日志前缀 `[cw-armbox]`。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(武装箱两 node 形态锁:观察 report 占位 + round_wait 推进);建档 = `currency_war_armory_box_dialog.yml`。
+- journal op 名 = 「武装箱」(dispatch 包装落 `[cw-op]` 行);frame_tag = `overlay_armory_box`;日志前缀 `[cw-armbox]`。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(武装箱两 node 形态锁:观察 report 占位 + round_wait 推进);建档 = `currency_war_armory_box_dialog.yml`。
 
 ## 开放设计注
 

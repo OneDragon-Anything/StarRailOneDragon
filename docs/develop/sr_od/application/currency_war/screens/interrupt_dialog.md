@@ -43,4 +43,4 @@
 ## 9. 遥测与锁面
 
 - journal op 名 = 「中断挑战弹窗」;frame_tag = `overlay_interrupt_dialog`(dispatch 包装)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(推进型骨架内联形态锁,interrupt_dialog 在册);建档 = `currency_war_interrupt_dialog.yml`。
+- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,interrupt_dialog 在册);建档 = `currency_war_interrupt_dialog.yml`。

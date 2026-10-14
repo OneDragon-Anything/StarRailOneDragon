@@ -39,7 +39,7 @@
 
 ## 7. 语义验证(M1 直锁)
 
-刷新动作转移语义单一源 = 上报函数。原 `simulate` RefreshShop 分支(仅扣金、不模拟牌面)与动作侧真值读取/证据票据已随迭代停用,考古归 git。投影直锁 M1(`test_cw_shop_projection_logic`:付费刷新扣金/免费帧金域不写/免费次数 Field 扣减,均在锁内)。差异申报保留:金币分支仅 sim 喂 `executed.refresh_paid`——引擎差异参数通道,非规则分叉。
+刷新动作转移语义单一源 = 上报函数。原 `simulate` RefreshShop 分支(仅扣金、不模拟牌面)与动作侧真值读取/证据票据已随迭代停用,考古归 git。投影直锁 M1(`test_shop_projection_logic`:付费刷新扣金/免费帧金域不写/免费次数 Field 扣减,均在锁内)。差异申报保留:金币分支仅 sim 喂 `executed.refresh_paid`——引擎差异参数通道,非规则分叉。
 
 ## 8. 判例注记(动作发出阶段)
 

@@ -43,4 +43,4 @@
 ## 9. 遥测与锁面
 
 - journal op 名 = 「星徽详情」;frame_tag = `overlay_emblem_detail`(dispatch 包装)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(推进型骨架内联形态锁,emblem_detail_popup 在册);建档 = `currency_war_star_badge_detail.yml`。
+- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,emblem_detail_popup 在册);建档 = `currency_war_star_badge_detail.yml`。

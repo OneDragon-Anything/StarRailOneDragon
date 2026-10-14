@@ -42,7 +42,7 @@
 
 ## 9. 遥测与锁面
 
-- journal op 名 = 「阿哈装备选择」;frame_tag = `overlay_aha_equip`(dispatch 包装)。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(推进型骨架内联形态锁,aha_equip_pick 在册);锚挂备战建档 `currency_war_battle_prep.yml`。
+- journal op 名 = 「阿哈装备选择」;frame_tag = `overlay_aha_equip`(dispatch 包装)。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,aha_equip_pick 在册);锚挂备战建档 `currency_war_battle_prep.yml`。
 
 ## 开放设计注
 

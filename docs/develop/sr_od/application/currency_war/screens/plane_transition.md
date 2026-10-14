@@ -44,7 +44,7 @@
 ## 9. 遥测与锁面
 
 - journal op 名 = 「位面过渡」;日志前缀 `[cw-flow-plane]`。
-- 测试锁:两 node 行为锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(位面过渡观察门 miss 早退与链 report/落地复查组合)(代码注另引 `test_cw_flow_ops.py`(现状:sr-od-test 无此文件,锁面重建归测试仓批;申报见下),现状不在测试仓 = 开放设计注)。
+- 测试锁:两 node 行为锁 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(位面过渡观察门 miss 早退与链 report/落地复查组合)(代码注另引 `test_cw_flow_ops.py`(现状:sr-od-test 无此文件,锁面重建归测试仓批;申报见下),现状不在测试仓 = 开放设计注)。
 - game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #2/#29;画面档 = `assets/game_data/screen_info/currency_war_plane_transition.yml`。
 
 ## 开放设计注

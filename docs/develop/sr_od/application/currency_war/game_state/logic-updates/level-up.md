@@ -43,7 +43,7 @@
 
 ## 7. 语义验证(M1 直锁)
 
-买经验动作转移语义单一源 = 上报函数 `report_action_level_up_param` 单点(推进算子共用 `xp_apply_clicks`;xp/level 跨档直写,域集扩面申报见 `SHOP_PROJECTION_DOMAINS` 登记面注)。原 `kernel/cw_vocab.py::simulate` LevelUp 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。语义验证 = 投影直锁 M1(`test_cw_shop_projection_logic`:击数×单击价扣金/xp 跨档结转/level 升档直写/满级零金零经验零写,均在锁内)。`LevelUpShop ≡ LevelUp`(同字段双类型,动作类型同一语义)。
+买经验动作转移语义单一源 = 上报函数 `report_action_level_up_param` 单点(推进算子共用 `xp_apply_clicks`;xp/level 跨档直写,域集扩面申报见 `SHOP_PROJECTION_DOMAINS` 登记面注)。原 `kernel/cw_vocab.py::simulate` LevelUp 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。语义验证 = 投影直锁 M1(`test_shop_projection_logic`:击数×单击价扣金/xp 跨档结转/level 升档直写/满级零金零经验零写,均在锁内)。`LevelUpShop ≡ LevelUp`(同字段双类型,动作类型同一语义)。
 
 ## 8. 判例注记(动作发出阶段)
 

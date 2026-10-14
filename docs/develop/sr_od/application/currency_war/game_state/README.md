@@ -102,7 +102,7 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 
 **容器字段投影完备性审计**:每个字段都在 `kernel/cw_projection_audit.py` 登记了
 「游戏改动会不会导致观察对不上」的分类(`PROJECTION_AUDIT`;「无写入方无规则」
-缺口恒空,齐全性由测试仓 test_cw_board_derived_and_reorder.py 保证);字段级语义权威版本
+缺口恒空,齐全性由测试仓 test_board_derived_and_reorder.py 保证);字段级语义权威版本
 仍 = [fields.md](fields.md)。
 
 ### 3.3 域清单

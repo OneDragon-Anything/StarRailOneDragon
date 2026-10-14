@@ -78,7 +78,7 @@ decide(options, gs)
 
 ## 3. sim 盲区申报(结构性口径)
 
-sim 局结算环无写端(sim 侧结算链不调 `record_settlement_row`)→ κ_S 窗口恒空 → sim 遭遇决策恒「窗口不足 → 闸拒刷 → 最低档」,与迁移前 sim 行为逐位一致——**本批行为差异 sim 不可见,不可作 A/B 判据**。可见前置 = sim 结算链接入 `record_settlement_row`(单点,交接 sim 基建批)。接环后可见形态 = 占位奖励文本全落末档(平手裁决维度恒并列),行为差异只在主序与刷新阀。验收 = 单帧锁(`sr-od-test/test/sr_od/application/currency_war/test_cw_encounter_pick.py`)+ 实机判读验收点(事前写定)。
+sim 局结算环无写端(sim 侧结算链不调 `record_settlement_row`)→ κ_S 窗口恒空 → sim 遭遇决策恒「窗口不足 → 闸拒刷 → 最低档」,与迁移前 sim 行为逐位一致——**本批行为差异 sim 不可见,不可作 A/B 判据**。可见前置 = sim 结算链接入 `record_settlement_row`(单点,交接 sim 基建批)。接环后可见形态 = 占位奖励文本全落末档(平手裁决维度恒并列),行为差异只在主序与刷新阀。验收 = 单帧锁(`sr-od-test/test/sr_od/application/currency_war/test_encounter_pick.py`)+ 实机判读验收点(事前写定)。
 
 ## 4. 数学登记待办
 

@@ -42,7 +42,7 @@
 
 ## 9. 遥测与锁面
 
-- journal op 名 = 「道具详情弹窗」;frame_tag = `overlay_item_detail`(dispatch 包装,on_result 日志闭包)。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(推进型骨架内联形态锁,item_detail_popup 在册);建档 = `currency_war_item_detail.yml`。
+- journal op 名 = 「道具详情弹窗」;frame_tag = `overlay_item_detail`(dispatch 包装,on_result 日志闭包)。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,item_detail_popup 在册);建档 = `currency_war_item_detail.yml`。
 
 ## 开放设计注
 

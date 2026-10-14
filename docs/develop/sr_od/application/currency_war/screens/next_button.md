@@ -42,4 +42,4 @@
 
 ## 9. 遥测与锁面
 
-journal op 名 = 「前进按钮」;测试锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(推进型骨架内联形态锁,next_button 在册)。
+journal op 名 = 「前进按钮」;测试锁 = `sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,next_button 在册)。

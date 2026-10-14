@@ -43,4 +43,4 @@
 
 ## 9. 遥测与锁面
 
-journal op 名 = 「位面详情」;测试锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py`(推进型骨架内联形态锁,plane_detail 在册);画面档 = `assets/game_data/screen_info/currency_war_plane_detail.yml`。
+journal op 名 = 「位面详情」;测试锁 = `sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,plane_detail 在册);画面档 = `assets/game_data/screen_info/currency_war_plane_detail.yml`。
