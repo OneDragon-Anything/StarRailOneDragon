@@ -1,20 +1,20 @@
-"""货币战争 专家邀请函弹窗画面 op(选卡;2026-08-30 停机钩子实机建档后落码)。
+"""货币战争 专家邀请函弹窗画面 op(选卡;2026-08-30 停机钩子实机建档后实现)。
 
 「书册卡」= 备战席占槽道具(青蓝卡+白色书册 icon+「开启」,模板
 ``assets/template/currency_war/supply/书册卡_未知.png``,find_bookcards 识别):
 其开卡动作 = 备战词表 ``CwActionOpenBookcardParam``(``kernel/cw_vocab.py``);
-用户裁定 2026-09-19 开卡时机归策略实现管后,发射位 = 策略器 entry ①
-prep 实体面卡片臂(原备战环入口清场段代发撤销)——本 op 只辖
+用户裁定 2026-09-19 开卡时机归策略实现管后,动作发出点 = 策略器 entry ①
+prep 实体面卡片分支(原备战环入口清场段代发撤销)——本 op 只覆盖
 **弹窗已开后的选卡**:点选一个 → 该角色加入商店(由正常商店逻辑接管)/
 或 +4 金 → 弹窗关回备战。
 
 处理链(开卡半 = 备战词表 ``CwActionOpenBookcardParam`` 链承接;弹窗由外
 循环阶段一身份分发进本 op,分发判定单一源 = ``flow/outer_loop.md`` §2.2):
-  弹窗在场门 → 选卡(读板面阵营 → 默认策略选卡)→ 机械交回(重入裁决收案)。
+  弹窗在场门 → 选卡(读板面阵营 → 默认策略选卡)→ 机械部分完成即结束本次访问(落地复查收案)。
   交互事实来源 = 2026-08-30 实机人工处理实录(点槽开弹窗;点停云卡 → 弹窗关、
   回备战、停云入商店)。
 
-默认策略判据(普查迁移批 2 收编 kernel:单一源 =
+默认策略判据(普查迁移 并入 kernel:单一源 =
 ``kernel/cw_events.choose_expert_index``,三级语义原样=在场浓度版):
 读当前羁绊面板(``read_board``,弹窗帧左侧面板透出可读)→ ①选与**主力
 阵营**(在场计数最大)同线的卡;②无主力同线 → 选与任一在场阵营同线的卡
@@ -23,7 +23,7 @@ prep 实体面卡片臂(原备战环入口清场段代发撤销)——本 op 只
 消费唯一入口 = 策略器零参 ``decide_expert_invite()``,
 写槽(弹窗载体 = 卡羁绊解析 + 板面计数)→ 零参决策,handler 零判据实现。
 行为分叉申报:E9 在案规格(13_pick_family.md §2,目标线成员优先 → 池
-浓度)与实码(在场计数版)分叉,已挂账独立行为变更(迁移批 2 报告),
+浓度)与实码(在场计数版)分叉,已登记待办:独立行为变更(迁移报告),
 迁移保持实码行为。
 
 形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两
@@ -40,9 +40,9 @@ card_bonds/board/card_points/cash_point 四字段同门一并上报,op-layer.md
 断言;策略异常自然传播;无 match 局外不设早退支,用户裁决 2026-09-22
 全族删门)→ 点选 → round_wait 循环(不烧节点
 重试预算,无防御上限)。chosen_expert 与
-ConfirmExpertCash 到账登记 = 重入裁决点留守(动作事实边界,不进 report;
+ConfirmExpertCash 到账登记 = 落地复查点留在原位(动作事实边界,不进 report;
 ConfirmExpertCash 逻辑推进 = gold +4 直推);本屏 sim 腿 = 不适用(sim 无
-对应画面段,事件浮层族即时落定),等价判据主承重 = 实机在册行为锁
+对应画面段,事件浮层族即时落定),等价判据主支撑 = 实机已登记行为锁
 (test_game_state chosen_record_face chosen_expert 锁 +
 test_screen_two_node_family 形态锁;接线锁补档 = 开放设计注,
 见 screens/expert_invite.md §9)。
@@ -120,8 +120,8 @@ class CwScreenExpertInvite(CwOperation):
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-书册卡处理')
-        # 选卡点击已发待重入裁决的 (idx, card_bonds)(验证废除形态):
-        # 重入裁决由决策动作 node 顶部承载(弹窗不在 = 选卡落地)→ 此刻才写
+        # 选卡点击已发待落地复查的 (idx, card_bonds)(零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态):
+        # 落地复查由决策动作 node 顶部承载(弹窗不在 = 选卡落地)→ 此刻才写
         # chosen_expert + 到账登记;弹窗仍在 = 点击未落地 → 重走。
         self._pick_pending: tuple[int, list[str | None]] | None = None
         # 观察结果(观察 node 产物,决策动作 node 消费;card_bonds/board =
@@ -157,7 +157,7 @@ class CwScreenExpertInvite(CwOperation):
         # 坐标单一真相源 = 观察上报):四卡区中心 + 现金为王点,观察期
         # area_center 一次解算,值形状 = 1080p 平铺元组。任一卡区建档缺失
         # = 坐标域转换失败,随名字域同门照报(整域 None——部分列表会错位
-        # idx 坐标系,禁;:34 欠账清偿批同名同坐标一次落净,不半截收敛)。
+        # idx 坐标系,禁;:34 待修问题已修复批同名同坐标一次落净,不半截收敛)。
         from sr_od.application.currency_war.kernel.cw_obs_core import area_center
         card_pts: list[tuple[int, int]] | None = []
         for _a in CARD_AREAS:
@@ -183,9 +183,9 @@ class CwScreenExpertInvite(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=6)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 零参决策 → 点选 → round_wait。
+        """落地复查(顶部)→ 零参决策 → 点选 → round_wait。
 
-        重入裁决(观察驱动,验证废除形态):上轮选卡已发 → 弹窗不在 = 选卡
+        落地复查(观察驱动,零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态):上轮选卡已发 → 弹窗不在 = 选卡
         落地 → 写 chosen_expert + 到账登记 + success 交回;弹窗仍在 = 未落地
         → 重走。"""
         if self._pick_pending is not None:
@@ -216,7 +216,7 @@ class CwScreenExpertInvite(CwOperation):
         # 在此失败即预期,禁回填此类单跑防御分支。
         pick = _match.strategy.decide_expert_invite()
         # 守卫①(返回契约):词表外/None = 决策无有效输出,具名 fail
-        # 零盲发(op-layer.md §1.1 出口③);消息含原值 repr = 留证。
+        # 零盲发(op-layer.md §1.1 出口③);消息含原值 repr = 保留证据。
         if not isinstance(pick, CwActionPickExpertInviteParam):
             return self.round_fail(
                 f'[cw-bookcard] decide_expert_invite 决策无有效输出'
@@ -243,7 +243,7 @@ class CwScreenExpertInvite(CwOperation):
         # 容器 ``expert_invite.card_points[idx]`` ∨ ``cash_point``(idx=-1)
         # 取,op-layer.md §1.1 :35,本 op 零坐标现算)。派发 = 直发策略产
         # 实例(上报 param 即真实选择,含 -1 现金为王语义)。
-        # 机械交回(验证废除):弹窗关没关由下一轮重入裁决(本方法顶部
+        # 机械部分完成即结束本次访问(零验证:用户裁定——动作层不做效果验证,判效归下一帧观察):弹窗关没关由下一轮落地复查(本方法顶部
         # _pick_pending 分支),chosen_expert/ConfirmExpertCash 到账随裁决
         # 出口。round_wait 推进循环(不烧节点重试预算,无防御上限)。
         self._pick_pending = (idx, card_bonds)
@@ -259,7 +259,7 @@ class CwScreenExpertInvite(CwOperation):
 
     def _record_chosen_expert(self, idx: int, card_bonds: list[str | None]) -> None:
         """选卡落地记录面:写 ``chosen_expert``(单次逻辑写入,申报豁免;
-        调用点 = 重入裁决出口,选卡落地后值才可信)。
+        调用点 = 落地复查出口,选卡落地后值才可信)。
 
         真选守卫照 chosen_tome 式(CwScreenBookcard):仅卡分支写,值 = 该卡
         羁绊原文名(kernel choose_expert_index 仅在羁绊读出时返非负下标);

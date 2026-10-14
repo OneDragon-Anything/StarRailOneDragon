@@ -1,9 +1,9 @@
-"""开补给箱动作 op(CwActionOpenBoxOp)——动作 op 重组批③ 换壳(原
+"""开补给箱动作 op(CwActionOpenBoxOp)——动作 op 重组 换壳(原
 ``OpenBoxOp``,ActionOp ABC → 框架 SrOperation;机械执行后 **op 内直调
 自己的上报函数** ``report_action_open_box_param``(零写族),零分派,
 op-layer.md §1.2 动作 op 契约)。
 
-终结动作(R7 批2a 终结化):点完「开启」本动作即交回外循环,武装箱选择
+终结动作(R7 终结化):点完「开启」本动作即交回外循环,武装箱选择
 画面由外循环按画面分发独立画面 op 选卡。terminal_wait = 开箱动画等待,
 与 runner 包络 ``_OVERLAY_ANIM_WAIT_S`` 等价(等价测试锁 =
 test_action_registry 终结集锁)。
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 class CwActionOpenBoxOp(CwOperation):
     """开箱:找箱槽 → 点「开启」→ 固定动画等待(纯机械执行)。
 
-    选卡动作不在本执行链(R7 批 2a 定形):点完开启本动作即终结
+    选卡动作不在本执行链(R7 定形):点完开启本动作即终结
     ——武装箱选择画面由外循环按画面分发独立画面 op(:mod:`cw_screen_box_pick`)
     选卡(选卡决策单一源 = 策略 ``decide_box_card`` 契约 / 局外 kernel
     ``pick_equipment`` 机器)。

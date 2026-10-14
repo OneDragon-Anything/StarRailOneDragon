@@ -25,11 +25,11 @@
 (恒写两卡,空桶照写)→ obs 挂实例属性进决策 node。决策动作 node =
 零参决策 → ``classify_planner_leg``
 腿型 → 组装 env → 选卡确认链派发即 ``round_success`` 终结交回外循环
-(``flow/action_ops.md`` §1  与 §4.5 PickPlanner 行:动作 op 确认
-点击后立即上报完整效果腿,零落地复查、零落地相补写面——确认未生效 =
-代码 bug,overlay 残留由外循环按当前画面重识别重派)。本屏无 chosen_* 写端(选择存证行已已停用
-停用);本屏 sim 腿 = 不适用(sim 无对应画面段,事件
-浮层族即时落定),等价判据主要支撑 = 实机在册行为锁
+(``flow/action_ops.md`` §1 与 §4.5 PickPlanner 行:动作 op 确认
+点击后立即上报完整效果腿,零落地复查、零落地补写面(旧落地相机制已废除)——确认未生效 =
+代码 bug,overlay 残留由外循环按当前画面重识别重派)。本屏无 chosen_* 写端(选择存证行已停用);
+本屏 sim 腿 = 不适用(sim 无对应画面段,事件
+浮层族即时落定),等价判据主要支撑 = 实机已登记行为锁
 (test_screen_two_node_family 两 node 形态锁;接线/基建锁补档 =
 开放设计注,见 screens/planner.md §9)。
 """
@@ -203,7 +203,7 @@ class CwScreenYinLang(CwOperation):
         # 点卡选中 → 确认链经注册表工厂 ``action_op_for`` 派发
         # ``CwActionPickPlannerOp``(替身缝 = 工厂派发调用点,测试经
         # monkeypatch ``action_op_for`` 承接);
-        # 决策半(策略选卡/腿型判定)留守上方,派发实例 = 策略 pick 本体,
+        # 决策半(策略选卡/腿型判定)见上方,派发实例 = 策略 pick 本体,
         # 机械参数 target 经 env 传递。派发即 round_success 终结交回外循环
         # (效果腿已在动作 op 内即时上报;确认未生效 = 代码 bug,外循环
         # 按当前画面重识别重派)。

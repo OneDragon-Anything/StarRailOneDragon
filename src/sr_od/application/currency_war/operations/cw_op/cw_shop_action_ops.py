@@ -91,7 +91,7 @@ class ShopExecEnv:
     level_btn: Point
     refresh_btn: Point
     ledger: ShopVisitLedger
-    # 当前期望态( 波 4 容器化,设计件 §2.4-2:执行侧读点改容器单例
+    # 当前期望态(波 4 容器化,设计件 §2.4-2:执行侧读点改容器单例
     # game_state_of(match.session);满栏 k 计等消费经席位/payload 读口)
     state: GameState
     executor: ShopActionExecutor | None = None
@@ -149,7 +149,7 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
     """
     # 容器读口在函数顶导入:函数体内任何位置的 import 语句都会
     # 把名字绑定为全函数局部变量——曾放 CwActionBuyCardParam 分支内,CwActionSellBenchParam 分支
-    # 未执行该 import 即引用,UnboundLocalError( 实机 :
+    # 未执行该 import 即引用,UnboundLocalError(实机案例:
     # r2 席满卖人决策被守卫自身炸掉,触发买空店重进崩溃循环)。
     # P4 容器形:席位域 = BenchView.slots(BenchSlot),身份经 bench_slot_unit
     # 解包读口取(动作 bench_idx = 容器下标,统一词表坐标系)。

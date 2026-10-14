@@ -1,4 +1,4 @@
-"""cw4 骨架义务执行器(M1-M7)——换核批 1 落地;执行序规格=02_mandate_layer §3。
+"""cw4 骨架义务执行器(M1-M7)——换核后落地;执行序规格=02_mandate_layer §3。
 
 单一 executor(每备战期骨架 pass),执行序(02_mandate_layer §3):
 crisis_refresh_invariant(结构位)→ M5(开局板)→ dominance_buy
@@ -8,7 +8,7 @@ crisis_refresh_invariant(结构位)→ M5(开局板)→ dominance_buy
 
 四硬约束检查点(02_mandate_layer §4 唯一合法拦截集,封闭于①-④):①可负担(金域
 g≥c,整批合计)/②席位(board/bench 槽位、等级 cap、同名同星≤1)/
-③S 预留(整买目标预留金不被非 S 组成动作吃掉;辖 EV 买入面+M6+
+③S 预留(整买目标预留金不被非 S 组成动作吃掉;覆盖 EV 买入面+M6+
 dominance_buy)/④不可逆护栏(卖出线内/骨架/插件件不在骨架动作集)。
 HP 不进任何检查点([39])。
 
@@ -82,7 +82,7 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state imp
 # 卖出排除仲裁单一源:装配 A 与动作发出登记 API 本体在
 # sell_gate;本模块保留兼容再出口(sell_hold_exclusions 凑息身份段——
 # 测试/外部引用零断链;T3 垫保簿 stall_buys_* 三函数 shim,签名零断链)。
-# 消费位已批 3 全量迁移 sell_exclusions
+# 消费位已全量迁移 sell_exclusions
 # (窗口段 API)。冗余别名 = 刻意再出口(PEP 484 re-export 形态)。
 from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import (
     consume_on_sell,
@@ -103,7 +103,7 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest 
     saturation_line,
 )
 
-#: 装备/工具原子类集(M7 发出序回排适用范围;批 2a 原子通路,R8 按消耗品各立类)
+#: 装备/工具原子类集(M7 发出序回排适用范围;原子通路,R8 按消耗品各立类)
 _EQUIP_ATOM_TYPES: tuple[type, ...] = (
     CwActionWearEquipParam, CwActionFurnaceUseParam, CwActionPrivilegeCardUseParam, CwActionWrenchUseParam, CwActionPrecisionWrenchUseParam,
     CwActionStaffProjectorUseParam, CwActionPerfectProjectorUseParam, CwActionLuckyTokenUseParam,
@@ -133,7 +133,7 @@ if TYPE_CHECKING:
 # pending 重新显影),fresh 载体 phase 键式跨轮自动失效,无持久状态。
 M1P_SEAM_VERIFIED: bool = True
 
-# ===== M2 停摆续段缓存:非变异动作白名单·备战域(必花臂重试风暴防线;
+# ===== M2 停摆续段缓存:非变异动作白名单·备战域(必花分支重试风暴防线;
 # 商店域同构缓存随商店期腾席卖射停用删除——席满缺员形态在商店域
 # 表达为关店交回,无重复帧面,本集独存备战域)=====
 # 跳过条件 = 可判定谓词「帧间动作全在本集 ∧ 同段」,非任何计数阈值。
@@ -249,7 +249,7 @@ def check_seats(bench_free: int, deploy_vacancy: int, needs_bench: bool,
 def check_s_reserve(gold: int, cost: int, s_reserve: int,
                     ) -> tuple[bool, str]:
     """③S 预留:待执行整买目标的预留金不被非 S 组成动作吃掉
-    (辖 EV 买入面序 3-5+M6+dominance_buy;M2 序 1/2 义务不受限,[41])。"""
+    (覆盖 EV 买入面序 3-5+M6+dominance_buy;M2 序 1/2 义务不受限,[41])。"""
     if gold - cost < s_reserve:
         return False, 's_reserve'
     return True, ''
@@ -333,7 +333,7 @@ def _bench_container_idx(state: GameState, victim: BenchSlot) -> int | None:
 
 def _bench_container_idx_by_compact(state: GameState, pos: int) -> int | None:
     """动作发出面容器下标解析·bench 域(紧缩位键 → 容器下标;unified-action-
-    factory 批2b 换算收尾,位键 = 紧缩占席序下标
+    factory 换算收尾,位键 = 紧缩占席序下标
     〔物理槽序〕,容器下标 = 第 pos+1 个占用槽的下标——对位失配
     (越界/视图漂移)= 陈旧/carry 帧禁猜位,返回 None)。
 
@@ -366,8 +366,8 @@ def _deployed_container_idx(state: GameState, victim: Unit) -> int | None:
     """动作发出面容器下标解析·deployed 域(条目对位:生产链 = 同帧同对象
     身份相等,测试/合成链等值重建兜底;前排命中 = 下标 0-3,后排 = 4+
     〔定长 10 动作坐标系,后排 7-9 扩展格超出动作坐标系不可寻址——
-    tracked 表硬上限同族边界,3.2 续辖〕;失配 None = fail-closed 跳过)。
-    场上同名唯一性不变量下,值相等对位与旧 (身份, 槽号) 键等价。"""
+    tracked 表硬上限同族边界,3.2 继续适用〕;失配 None = fail-closed 跳过)。
+    场上同名唯一性不变量下,值相等对位与旧 (身份,槽号) 键等价。"""
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         DEPLOYED_BACK_CAPACITY,
         DEPLOYED_FRONT_CAPACITY,
@@ -521,7 +521,7 @@ def fuel_sell_candidates(bench: list[BenchSlot],
 
 def stall_buys_register(session, name: str, round_num: int) -> None:
     """买入登记兼容 shim(写端单一源 = sell_gate.register_launch,
-    本节只保 T3 时代签名:垫保臂(T5/出口③)动作发出点调用零改动)。"""
+    本节只保 T3 时代签名:垫保分支(T5/出口③)动作发出点调用零改动)。"""
     register_launch(session, name, cause='stall_protect',
                     round_num=round_num)
 
@@ -548,12 +548,12 @@ def stall_buys_prune_deployed(session, deployed_names) -> int:
 
 # ===== 轮内卖出登记(泄金阶梯档 2 候选集新鲜度排除)=====
 # 场景 = 同轮「卖X→买回X→再卖X」净零自旋(模拟批#5 s108 实证):凑息
-# 卖出抬高金位过 g* 后,同轮压牌库臂把刚卖的件买回,金位与席面净零循环
+# 卖出抬高金位过 g* 后,同轮压牌库分支把刚卖的件买回,金位与席面净零循环
 # 烧动作。载体与 kernel GameState.round_fresh_buys 同构键式
 # {'phase': (plane, round_num), 'names': set[str]},位面/轮次推进自动
 # 失效;方向 = 排除向(过度排除上界 ≤1 轮,轮界自动过期,有界可判读)。
 # 写端 = 各卖出动作发出点(prep 凑息/M4/wanted 腿2 + entry 晶矿路径 M4;
-# 商店域 _note_sell 收尾随商店期卖射停用删除——本载体现辖
+# 商店域 _note_sell 收尾随商店期卖射停用删除——本载体现覆盖
 # 「备战同轮卖 → 商店买回」的换手排除面);读端 = shop 档 2(M6)候选集。
 # entry 域
 # funding 兜底/line_switch 卖出本批不登记:换线/筹资语境的买回另属
@@ -600,8 +600,8 @@ def round_sold_names(session, state: GameState) -> frozenset[str]:
 def sold_this_round(session, state: GameState, name: str) -> bool:
     """本轮已卖名判定(L2 卖后禁买统一判定 helper)。
     薄封装 ``round_sold_names`` 单一源(档 2 载体零新载体
-    零新阈值);全买入分支候选过滤位统一经本 helper 消费,禁臂层手搓
-    第二读法(防「第七臂绕过新鲜度」复发形态)。"""
+    零新阈值);全买入分支候选过滤位统一经本 helper 消费,禁分支层手搓
+    第二读法(防「第七分支绕过新鲜度」复发形态)。"""
     return bool(name) and name in round_sold_names(session, state)
 
 
@@ -612,7 +612,7 @@ def dominance_buy_eligible(gold: int, bench_free: int,
     1★ 燃料/可退件 ∧ 档内 ∧ 金>g*。
     金位阈值 g*=10×cap_resolved 参数化(R70-1;字面 50 实现即红)。
 
-    stop_flag(线成型旗)已摘除(泄金阶梯档 0,对抗审 F6
+    stop_flag(线成型旗)已摘除(泄金阶梯档 0,对抗审查
     落点):富余段转化期帧(线未齐)被本旗关死
     是「刷新成唯一出口」病灶的三合取之一(三处消费位=M6 shop 位/
     M6 prep 位/本函数, shop+prep 两域同步摘)。支配性优先序本体不动
@@ -620,8 +620,8 @@ def dominance_buy_eligible(gold: int, bench_free: int,
     口述 [41](死金禁囤消费侧口径/资产形态二次精确化)+
     P76 甲(退货表二值可逆:1★ 往返净损 0、锁时点期权,math_proofs.md
     P76 行)+ P78-1(同 visit 卖出定义性抵消买入),先于一切带参数
-    值比较(01_math_framework.md §3.8),线未齐帧同辖。P24 = 残余补
-    部署支配定理(p24-residual-fill-dominance.md),辖零支出部署行为,
+    值比较(01_math_framework.md §3.8),线未齐帧同样适用。P24 = 残余补
+    部署支配定理(p24-residual-fill-dominance.md),覆盖零支出部署行为,
     无买入/持有期权命题——前版本体注 P24 系锚错位误注,已正。
 
     适用范围注(双引注;P88 实现纪律——缺本注则上文支配性论述
@@ -631,15 +631,15 @@ def dominance_buy_eligible(gold: int, bench_free: int,
     回滚——
     ① (§2.5):V_slot>0 带(bench_free ≤ 1)席位外部性
     否决,落点 = 本函数本体单点收紧(bench_free > 0 → > 1)。账目形态
-    = 补账非推翻:P41② 支配论证前提集 = {金轴, 持有期权},不含席位
+    = 补账非推翻:P41② 支配论证前提集 = {金轴,持有期权},不含席位
     占用后果;仅剩最后空槽的帧,非定向买入对该槽的占用对更高优先级
     方向动作(P24 补部署/M2 线成员)构成席位阻断外部性,该带成本已由
     P41③ 定价(V_slot = 被阻断动作 EV 上界,既有已证量)——带内买入
     失去 P41② 自动性、须过正账比较而未证 ⟹ fail-closed 否决;
-    bench_free ≥ 2 域支配论证原样有效(零干涉)。非定向买臂闭集:
-    dominance_buy 辖;EV 买(EV 账已含 V_slot 定价,再否决 = 重复计价)/
-    M6 富余转压牌库(既有 bench_free>0 前置+P49 线性律辖垫库席位成本)/
-    ②(b) 死金压牌库(同左)不辖——三臂不经本函数,既有前置各自管辖;
+    bench_free ≥ 2 域支配论证原样有效(零干涉)。非定向买分支闭集:
+    dominance_buy 覆盖;EV 买(EV 账已含 V_slot 定价,再否决 = 重复计价)/
+    M6 富余转压牌库(既有 bench_free>0 前置+P49 线性律覆盖垫库席位成本)/
+    ②(b) 死金压牌库(同左)不覆盖——三分支不经本函数,既有前置各自管辖;
     m2_merge_completion = 义务通道且 P41③ 阻断集不含合成完备购
     (免席门),零误伤。
     ② P88 调和引理(docs/develop/sr_od/application/currency_war/proofs/p88.md):终局阵容锁定
@@ -651,7 +651,7 @@ def dominance_buy_eligible(gold: int, bench_free: int,
     域谓词单一源 = kernel ``_swap_transition_domain_of``);豁免 ⇔
     reason ∈ LAUNCH_CAUSE_BY_ARM ∖ PRESS_NARROWED_ARMS(闭集单一源 =
     sell_gate,m2 族/C1/M6 零触碰)。本函数本体(金位+席物理维资格门,
-    后者已按命题 4 收紧为 bench_free > 1)不辖 D 域判定——两域修正
+    后者已按命题 4 收紧为 bench_free > 1)不覆盖 D 域判定——两域修正
     叠加合取,互不替代。
     [13] 停手线纪律语义
     由候选集判据承载(零重叠 1★ 全额退),不随本旗消失(迁移完备性申报)。
@@ -684,7 +684,7 @@ def dead_stock_pair_buy_reject_reason(name: str, star: int,
       C 在 {0,1} 上单调(0→1 许,1→2 禁),该名 G-S1 拒卖集构造性
       恒空,死库存不可达;
     - C=2:买入即同名同星满 3 自动合成 2★(全场 C 3→1 净释放席位,
-      merge_mechanics §2;G-S1 辖星 = 1 同款口径),是消对修复动作,
+      merge_mechanics §2;G-S1 覆盖星 = 1 同款口径),是消对修复动作,
       放行——禁误伤;
     - name∈K(线内/义务基座成员):任意 C 放行——线内同名对 = 合法
       合成素材,第三张由 m2_merge_completion 通道管辖(免席门),本
@@ -693,12 +693,12 @@ def dead_stock_pair_buy_reject_reason(name: str, star: int,
 
     为什么(实证):死库存对 = 席位死锁的直接成因之一——G-S1 保护
     对无合成意图的非线内名属过度保护,卖侧放行(改 G-S1 语义)与
-    买侧断新生(本谓词)两案中取后者:保守向、零触碰在册守卫语义、
+    买侧断新生(本谓词)两案中取后者:保守向、零触碰已登记守卫语义、
     与 G-S1 退出通道(方向③)正交不互斥。s77091 型案例:
     R1 死金压牌库买入阿格莱雅×2、R5 dominance 连买绯英成对,两对锁席
     九轮,缺口件(仙舟#3)无兑付通道致 form_ok 九连 False。
 
-    边界:辖 1★ 买入(2★ 直出不成对恒放行);辖「非定向」臂(候选
+    边界:覆盖 1★ 买入(2★ 直出不成对恒放行);覆盖「非定向」分支(候选
     资格维,消费位 = dominance_buy / ②(b) 死金压牌库燃料类 prio 的
     候选过滤),义务通道(M2/m2_merge_completion/prio0 缺口/prio1
     持有档)零消费;``bench`` 含 ``None`` 槽形态与 ``same_star_count``
@@ -721,12 +721,12 @@ def dead_stock_pair_buy_reject_reason(name: str, star: int,
 #: 行为锁 = test_front_window_predicates.py,新买入分支先入映射表归
 #: 因果类才可发出[A4 硬闸],越出闭集的收窄键 = 锁红面)。
 #: 豁免 ⇔ reason ∈ 闭集 ∖ S_spec,由「仅两 S_spec 动作发出点挂适用范围前置、
-#: 他臂零消费」结构性承载(防复制枚举漂移:豁免名单不在此列举,
+#: 他分支零消费」结构性承载(防复制枚举漂移:豁免名单不在此列举,
 #: 对账 = 闭集锁按符号差集断言)。
 PRESS_NARROWED_ARMS: frozenset[str] = frozenset({
     'dominance_buy',
-    # hub_option_buy 随 P86 乙臂并入移除(批 3.6:动作发出点并入序 1,
-    # m2 买因族走义务豁免,不受 D 域收窄辖)。
+    # hub_option_buy 随 P86 乙分支并入移除(动作发出点并入序 1,
+    # m2 买因族走义务豁免,不受 D 域收窄覆盖)。
 })
 
 
@@ -747,7 +747,7 @@ def swap_transition_narrow_frame(state: GameState,
     (占用数口径 = 容器占用判定单点,禁裸 len)。
 
     用途 = P88 收窄:仅两 S_spec 动作发出点(press_narrowed_* 分键)消费
-    本旗作适用范围前置;豁免臂零消费。fail 方向 = 域外/缺读帧恒 False
+    本旗作适用范围前置;豁免分支零消费。fail 方向 = 域外/缺读帧恒 False
     (不收窄 = 旧行为,保守可逆);未锁帧短路返回——语义同谓词
     (D⊆locked,p88_check 断言 1)且免 fp/板满推导成本。
 
@@ -784,7 +784,7 @@ def core_single_card_buy_eligible(locked_buy: bool) -> bool:
     (帧门前件收窄防「席满帧循环外拦死 → 腾席支永不触达」的假修;
     哨兵键与出口键闭集见恒买腾席方案 v2 §5.6,.debug/temp 在案)。
 
-    与 dominance_buy_eligible 同构分工:本门只辖终局阵容锁定态前件,逐卡判据
+    与 dominance_buy_eligible 同构分工:本门只覆盖终局阵容锁定态前件,逐卡判据
     (CORE_SINGLE_CARD_REGISTRY 名单 / refund_full_star_ok 1★ 全额退 /
     t5_p1_false 不跌破利息档 / check_seats 席位)在商店线动作发出点循环内现算。
     终局阵容锁定态判据 = 锁定采购集
@@ -793,9 +793,9 @@ def core_single_card_buy_eligible(locked_buy: bool) -> bool:
     同点同置/同点清,单判惯例同 cw_intention.locked_line_recipe_floor_
     conflict 注)。
 
-    适用范围分界(设计 §2 N2 路线 b):既有 dominance_buy 辖「停手态 ∧
-    富余带 ∧ 线外燃料件」;本通道辖「终局阵容锁定态 ∧ 不跌破利息档带 ∧ registry
-    名单核心卡」。(备战期开店标志已停用——批 3.6/3.7 会话标记承接,
+    适用范围分界(设计 §2 N2 路线 b):既有 dominance_buy 覆盖「停手态 ∧
+    富余带 ∧ 线外燃料件」;本通道覆盖「终局阵容锁定态 ∧ 不跌破利息档带 ∧ registry
+    名单核心卡」。(备战期开店标志已停用——会话标记承接,
     本通道在商店决策访问位下游,无标志读/写。)
     """
     return locked_buy
@@ -886,7 +886,7 @@ def _redeploy_emission_allowed(session: StrategySession,
                         ctx, getattr(b, 'char_id', '') or '')]
     if not _waiting:
         return False   # ①替补席无线内成员
-    # 判读源与计划同源(落地审 F2):装配 ctx 携带本计划实际消费的
+    # 判读源与计划同源(审查):装配 ctx 携带本计划实际消费的
     # target 阵容(双轨口径随装配);手装 ctx/缺读退 state_of 二份
     # (缺读帧成员轴保守 defer,方向不变)。
     _comp = (getattr(ctx, 'target_comp', None)
@@ -917,14 +917,14 @@ def run_mandate(frame: MandateFrame,
     调用方,本通道无 sim 路径。
 
     计数键(state_of(session).cw4_counters;键登记单一源=下述各键写点注释,
-    原 design_telemetry 键节已删档,考古走 git 历史):
+    原 design_telemetry 键节已删档):
     m2_retry_exhausted / dominance_bench_wait / m6_bench_full /
     m6_overflow_strand / bench_full_buy_abandon(R196 症4 落地:M2 bench
     满放弃买入帧的「bench 满拒买」事件计数,与 m2_retry_exhausted 的
     环终止计数分键——前者量事件帧,后者量重试环耗竭;两键按
     事件粒度:续段缓存命中帧不增,量级骤降 ≠ 风暴消失,判读协议随批
     声明;观测对 m2_stall_cache_hit / m2_stall_cache_rederive 与重复帧
-    键 m2_stall_repeat_frame 同批新增,语义与商店域一致)/
+    键 m2_stall_repeat_frame 同期新增,语义与商店域一致)/
     deadlock_only_transition_victim(方向④纯计数,零行为;design
     §2.2.3 触发谓词:m2_retry_exhausted 事件帧 ∧ 释放集并入候选后燃料
     资格面仍空 ∧ bench 存在 ④ 件)+ dead_pair_exit_sold_m4_fuel /
@@ -934,7 +934,7 @@ def run_mandate(frame: MandateFrame,
     备战期开店标志已随迭代 2026-10-12-prep-shop-workflow-redesign 批
     3.6/3.7 停用删除(防活锁职责 = 商店会话标记 shop_handled 承接;
     历史 counter 键 shop_latch_skip_* / equip_latch_skip_m7 随标志停用
-    停产,判读归 git 历史)。
+    停产)。
     """
     counters = getattr(state_of(session), 'cw4_counters', None)
     if not isinstance(counters, dict):
@@ -969,7 +969,7 @@ def run_mandate(frame: MandateFrame,
 
 
     def _emit_open_shop(tag: str) -> None:
-        """开店意图动作发出点(备战期开店标志已随批 3.6/3.7 停用删除——会话
+        """开店意图动作发出点(备战期开店标志已删除(随 停用)——会话
         标记〔shop_handled〕承接防活锁,本位恒发出)。"""
         out.append(Emitted(CwActionOpenShopParam(), True, tag))
 
@@ -983,7 +983,7 @@ def run_mandate(frame: MandateFrame,
     _t3_protect = stall_protect_active(session, frame.round_num,
                                        counters=counters)
 
-    # ---- 溢出告警门(用户定案;强收窄先于一切臂)----
+    # ---- 溢出告警门(用户定案;强收窄先于一切分支)----
     # 告警在场 = 存在未安置溢出角色,此刻出战点击被游戏忽略(launch_dead
     # 停机钩子三连实证,prep.md 告警节)→ 本帧决策输出强收窄为单动作
     # CwActionSellBenchParam(腾位后溢出卡自动入自由槽,下入口帧告警消失恢复常规决策):
@@ -997,7 +997,7 @@ def run_mandate(frame: MandateFrame,
         _ov_excl = sell_exclusions(session, k, channel='m4_fuel',
                                    cap_hold=locked_buy_cap_hold(state),
                                    current_round=frame.round_num)
-        # 释放集同参同源(N3;与腾席臂/溢出门同一装配单点)。
+        # 释放集同参同源(N3;与腾席分支/溢出门同一装配单点)。
         _ov_release = dead_pair_exit_release(
             session, k, frame.bench, frame.deployed, frame.round_num,
             cap_hold=locked_buy_cap_hold(state), counters=counters)
@@ -1007,7 +1007,7 @@ def run_mandate(frame: MandateFrame,
                                          merge_guard_release=_ov_release,
                                          counters=counters)
         if _ov_cands:
-            # 轮内卖出登记(档 2 新鲜度排除写端,与 M4/凑息臂同口径)。
+            # 轮内卖出登记(档 2 新鲜度排除写端,与 M4/凑息分支同口径)。
             _ov_c0 = _slot_cid(_ov_cands[0])
             record_round_sold(session, state, _ov_c0)
             if _ov_c0 in _ov_release:
@@ -1026,7 +1026,7 @@ def run_mandate(frame: MandateFrame,
     # crisis_refresh_invariant(P36-a 结构位;刷新域=商店线,prep 帧无对象,
     # 结构位在 executor——此处为序位声明,判据本体 refresh.crisis_refresh_invariant)
     # M5 开局板(§2.9 无数学面:开局帧(round_num≤1)板空且有 bench 件;
-    # K 直通线开局配方归 TRANSITION_SYSTEMS 第五类,批 2a 载体 = CwActionDeployMoveParam
+    # K 直通线开局配方归 TRANSITION_SYSTEMS 第五类,载体 = CwActionDeployMoveParam
     # 原子序[kernel select_deployments 逐帧现算,R2 原子通路])
     deploy_intent_emitted = False
     if (frame.round_num <= 1 and not frame.deployed and frame.bench
@@ -1044,14 +1044,14 @@ def run_mandate(frame: MandateFrame,
     # 接线位 = 备战环首个 _emit_open_shop 发出之前:CwActionOpenShopParam 是帧稳定
     # 契约截断点(M7 回排申报在案,truncate_frame_stable 其后必截),
     # 卖出须先于本轮开店到账,与 M4「prep 卖出恒先于本轮买入」域序
-    # 一致;(a) 先于全部买面动作求值(Z1 臂序:义务臂之外的先手)。
+    # 一致;(a) 先于全部买面动作求值(Z1 分支序:义务分支之外的先手)。
     # 载体 = Emitted(CwActionSellBenchParam, True):发出载体 reason 归因面已随
     # 2026-09-08 用户归因遥测删除指令拆除(缺省 '' 未标;契约条目 =
     # flow/action_exec.md §1)。
     # exclude = sell_exclusions(session, k, channel='interest',
-    # current_round=frame.round_num):装配 A 全量形态(批 3 落地,单一
+    # current_round=frame.round_num):装配 A 全量形态(已落地,单一
     # 入口 sell_gate)——义务基座(终局阵容锁定宽窄解析单点,与 shop
-    # 消费位同源——落地审低-1 修复)∪ Z1 静态持有两集(③④件禁被凑息
+    # 消费位同源——审查修复)∪ Z1 静态持有两集(③④件禁被凑息
     # 卖回)∪ 窗口段(press/垫保登记,活跃 = 登记轮==当前轮;②(b) 动态
     # 登记的 F1 终局阵容锁定清空语义废除(P78-3 证其错误),修法 = 轮界过期)。
     # defer = T3 同轮保留(垫保在凑息是绝对跳过 = 通道对价语义,与窗口
@@ -1059,7 +1059,7 @@ def run_mandate(frame: MandateFrame,
     _cap_resolved = _cap_of(session)
     # 合成素材拦截去重集(帧级,C1 事件口径):本帧所有守卫触达位
     #(②(a) 凑息资格评估 / M4 腾席环)共享,与 shop 侧 _mm_dedup 同款
-    #——凑息臂先触达首计后,腾席环对同一素材不再重复计数。
+    #——凑息分支先触达首计后,腾席环对同一素材不再重复计数。
     _mm_dedup: set[str] = set()
     _dp_release: frozenset[str] = frozenset()
     if frame.gold < saturation_line(_cap_resolved):
@@ -1067,7 +1067,7 @@ def run_mandate(frame: MandateFrame,
                 ('sell', 'sell_for_interest'),
                 contracts.ContractCtx(gold=frame.gold), counters):
             # 释放集同参同源(N3:cap_hold 与本位装配同一现读;凑息通道
-            # 消费释放成员 = P78-5′ 对价豁免条款照常辖,无新增豁免需求,
+            # 消费释放成员 = P78-5′ 对价豁免条款照常覆盖,无新增豁免需求,
             # design §2.1.7-4)。
             _dp_release = dead_pair_exit_release(
                 session, k, frame.bench, frame.deployed, frame.round_num,
@@ -1099,8 +1099,8 @@ def run_mandate(frame: MandateFrame,
                 if _vidx is None:
                     continue
                 # Emitted.reason = route_tag 透传载体填充(
-                # 桥伴带到执行侧动作):interest_prep = 凑息臂构造事实,
-                # 只作 S1 清键路由消费(白名单外,仅经路径 (ii) S2 在册∧
+                # 桥伴带到执行侧动作):interest_prep = 凑息分支构造事实,
+                # 只作 S1 清键路由消费(白名单外,仅经路径 (ii) S2 已登记∧
                 # 腾席翻正清键,义务优先)——非归因遥测(治理立场
                 # 对表:tag=内部路由键,非放行证据;卖出资格单一源 =
                 # sell_exclusions 零触碰)。
@@ -1145,8 +1145,8 @@ def run_mandate(frame: MandateFrame,
     missing = [m for m in k
                if m not in set(frame.bench_names) | set(frame.deployed_names)]
     # T3 同轮保留集卖侧读端已上移至 ②(a) 凑息接线前(单点计算声明见彼处)。
-    # (开店标志跳过分支已随备战期开店标志停用删除——批 3.6/3.7,会话标记
-    # 承接防活锁;run_mandate 现为测试面在册函数。)
+    # (开店标志跳过分支已停用删除(随 备战期开店标志)——会话标记
+    # 承接防活锁;run_mandate 现为测试面已登记函数。)
     if missing and not frame.stop_flag:
         ok, _why = check_seats(frame.bench_free, frame.deploy_vacancy,
                                needs_bench=True, needs_board=False,
@@ -1172,11 +1172,11 @@ def run_mandate(frame: MandateFrame,
             else:
                 # _mm_dedup 帧级去重集已上移至 ②(a) 接线前创建(两守卫
                 # 触达位共享,声明见彼处)。
-                # 排除集 = 统一装配 A 全量形态(单一入口 sell_gate;
-                # ):义务基座(本位此前漏注入——备战 F1 主案,
+                # 排除集 = 统一装配 A 全量形态(单一入口 sell_gate),
+                # 成分:义务基座(本位此前漏注入——备战 F1 主案,
                 # prep_loop 攻击报告 F1 的「两域同函数分叉」在此闭死,
                 # 与 shop 消费位同源单点)∪ 静态持有两集(P78-4:③④
-                # 持有件本非燃料类,禁卖 = 类资格本义)∪ 窗口段(批 3:
+                # 持有件本非燃料类,禁卖 = 类资格本义)∪ 窗口段(
                 # press 登记活跃帧腾席同禁,P78 INV 通道无关)。T3 同轮
                 # 保护仍走 defer_names(转化类末位牺牲,通道对价语义不动)。
                 _m4_excl = sell_exclusions(session, k, channel='m4_fuel',
@@ -1210,7 +1210,7 @@ def run_mandate(frame: MandateFrame,
                         break
                     # T3 末位牺牲序命中 + 卖出销账(唯一燃料帧放行转化;
                     # 销账行为面保留)。Emitted.reason = route_tag 透传
-                    # 载体填充:m4_fuel_sell = 腾席臂构造
+                    # 载体填充:m4_fuel_sell = 腾席分支构造
                     # 事实,白名单内——落地经路径 (i) 清 S1 开店标志;
                     # 非归因遥测(治理立场对表,资格面零触碰)。
                     # CwActionSellBenchParam.reason = 卖出通道记录字段(登记门键,
@@ -1260,20 +1260,20 @@ def run_mandate(frame: MandateFrame,
             # 金不足侧:funding_support 变现通道在 EV pass(criteria/sell)
 
     # M1 同帧部署(买入完成后立即评估成对上阵;P24 零支出补部署严格支配;
-    # 批 2a 载体 = CwActionDeployMoveParam 原子序)
+    # 载体 = CwActionDeployMoveParam 原子序)
     if (not deploy_intent_emitted and frame.deploy_vacancy > 0
             and _deployable(frame, session, state)):
         _emit_deploy_moves(out, frame, session, state, 'm1_deploy')
 
-    # (升级整批 M3 段(三臂 arm1/arm0/pop + 富余段 + 血闸 + 预算闸)与
-    # M1′ 升级后补部署段已随升级判据重轴批停用——迭代
-    # 2026-10-12-prep-shop-workflow-redesign 批 3.4:判据内核 =
-    # criteria/levelup.upgrade_trigger 五臂(arm0/概率账/人口位/富余段-L3/
+    # (升级整批 M3 段(三分支 arm1/arm0/pop + 富余段 + 血闸 + 预算闸)与
+    # M1′ 升级后补部署段已随升级判据重轴停用——迭代
+    # 2026-10-12-prep-shop-workflow-redesign:判据内核 =
+    # criteria/levelup.upgrade_trigger 五分支(arm0/概率账/人口位/富余段-L3/
     # 停留门),动作发出点收拢为 entry.py 备战第 3 步(会话内升级检查归
-    # shop_session 重排批)。升级后补部署无独立对应分支:九段全扫单
+    # shop_session 重排)。升级后补部署无独立对应分支:九段全扫单
     # 动作循环下第 3 步命中即返回,升级帧结构性到不了部署步——行为
     # 经下帧 M1 空槽补位收敛(deploy_vacancy 更新后 M1 命中,零卖出
-    # 成本接管)。替代语义考古走 git 历史。)
+    # 成本接管)。)
 
     # M1″(板满换阵补部署意图;发出序 = M6 前)。语义出处 =
     # (board-full swap redeploy;判据单一源 =
@@ -1281,7 +1281,7 @@ def run_mandate(frame: MandateFrame,
     # 口径 ∧ 义务集/轮内新鲜度排除后存在合格 victim ∧ 卖出后假想状态
     # 复用 select_deployments 判 up 非空——底线留置件不作上序候选,
     # 零新启发式)。发出载体 = RunDeploy(条件续类,entry.
-    # classify_frame_stability,不触发截断、不受 M7 发出序回排辖);
+    # classify_frame_stability,不触发截断、不受 M7 发出序回排覆盖);
     # 卖谁 = 动作发出点按同一判定集现算逐件产 CwActionSellDeployedParam +
     # CwActionDeployMoveParam 原子(发出=判定+存在性;机械执行侧
     # CwActionSellDeployedOp 零仲裁零现读,swap_sell_exclusion_reason
@@ -1289,20 +1289,20 @@ def run_mandate(frame: MandateFrame,
     # 同帧 CwActionLevelUpParam 抑制(m1p_defer_levelup):升级开新 vacancy,
     # 下帧 M1 空槽补位以零卖出成本接管——卖出不可逆 > 等一帧。
     # (九段全扫动作发出面下 defer 输入结构性恒空——第 3 步命中即返回,
-    # 升级帧到不了部署步;本 defer 分支 = run_mandate 测试面在册路径。)
+    # 升级帧到不了部署步;本 defer 分支 = run_mandate 测试面已登记路径。)
     # 动作发出点门(state_of(session).cw4_m1p_seam_verified):装配两侧(发出⇔执行)
     # 输入对齐核对通过前置 False = 发出关闭、m1p_input_seam_pending 显影
-    # (:接线核对通过前不许发出,对齐证据 = 开闸前置义务;
+    # (接线核对通过前不许发出,对齐证据 = 开闸前置义务;
     # 唯一写点 = 核对完成后的接线批,缺省关 = fail-closed,与发出契约
     # 留 bench 合法稳态同向)。
     # 部署执行放行判定(P79-3 实现):终局阵容锁定转型域
     # (arm='transition')动作发出前过「替补席线内成员存在 ∧ 存在上场能
-    # 推进羁绊进度的替补成员」门,redeploy_cost_gate_defer 显影;成型/基座臂
-    # 不辖(§2.3 不动)。
+    # 推进羁绊进度的替补成员」门,redeploy_cost_gate_defer 显影;成型/基座分支
+    # 不覆盖(§2.3 不动)。
     # m1p 执行侧分键载体帧级复位(无条件,pending 只活一个决策帧):
     # 本帧动作发出点有 m1p 换血时在发出处置为 plan.arm;原消费点 = 部署机
-    # 卖出臂(读后即清)已随部署机停用——现役零读端,归因分键悬空
-    # (在册申报 = projection_contract.md §4.3)。非 m1p 帧恒 None。
+    # 卖出分支(读后即清)已随部署机停用——现役零读端,归因分键悬空
+    # (已登记申报 = projection_contract.md §4.3)。非 m1p 帧恒 None。
     # 无条件复位防「m1p 帧后接 M1 帧(下方
     # 块被跳过)且执行未及消费」的跨帧残留误归因。计划载荷
     # (cw4_m1p_plan_pending)同帧级同宿复组。
@@ -1317,7 +1317,7 @@ def run_mandate(frame: MandateFrame,
 
     # M6 富余转压牌库(存在性=金>g*;档匹配 fail-closed ⇒ 不买
     # +富余滞留遥测;席位失败=单帧单评,R21-4)。stop_flag 已摘
-    #(泄金阶梯档 2,摘旗扩域,对抗审 F6 落点
+    #(泄金阶梯档 2,摘旗扩域,对抗审查 落点
     # 三处消费位之一):富余段转化期帧(线未齐)压牌库买合法,[13]
     # 停手线纪律由候选集判据本体承载(stockpile_buy P49 档匹配
     # fail-closed + P56 s_reserve 下界 + 线内副本排除,全保留);
@@ -1340,7 +1340,7 @@ def run_mandate(frame: MandateFrame,
 
     # M7 装备转移(常态:关键装备穿上场单位;D-B 释放判据 = kernel
     # cw_equip_env.resolve_wear_release 五行表;计划产出位 =
-    # kernel/cw_equip_wear_plan(批 2a 自执行器模块迁居);载体 =
+    # kernel/cw_equip_wear_plan(自执行器模块迁居);载体 =
     # CwActionWearEquipParam 原子序[R2 原子通路,RunEquip 组合壳停用])。
     # 装备动作放行判定 = 变换可能性两件套:
     # ①可穿存在性(m7_wearable_exists):owned 快照里有注册表已登记且非
@@ -1375,11 +1375,11 @@ def run_mandate(frame: MandateFrame,
 
     # M7.5 工具消费动作发出点已物理移出本执行器(审 A1 主案):
     # 动作发出点 = entry.emit ②证明 pass 与③升档器求值位之间(判据单一源
-    # = kernel/cw_equip_env.evaluate_tool_actions + G1 准入;批 2a 起
+    # = kernel/cw_equip_env.evaluate_tool_actions + G1 准入;自原子化起
     # 按裁决 1 逐件产工具原子类,RunTools 组合壳停用)。
 
     # M7 发出序回排(实机局 g_20260904_010335 1-6/1-7 漏发定案的原子化
-    # 形态):装备/工具原子(批 2a 起 = 截断类,aftermath 含穿着即合成/
+    # 形态):装备/工具原子(自原子化起 = 截断类,aftermath 含穿着即合成/
     # 网格 reflow,不可静态预测)若落在同帧其他截断点/终点(如 CwActionOpenShopParam)
     # 之后 ⇒ 截断器其后必截,穿戴被静默丢弃。修法 = 动作发出组织面回排:
     # 装备/工具原子插到**其他**截断点/终点之前,执行序(先穿后开店)与
@@ -1403,7 +1403,7 @@ def run_mandate(frame: MandateFrame,
 
 
 # (mark_equip_pass_executed / mark_tools_pass_executed 备战期标志写点已随
-#  组合壳 RunEquip/RunTools 删除停用(unified-action-factory 批2b):
+#  组合壳 RunEquip/RunTools 删除停用(unified-action-factory):
 #  M7/M7.5 逐帧现算形态下逐件逻辑态使判据面天然收敛,同 phase 一次标志与
 #  逐件序互斥;载体字段 cw4_m7_equipped_phase/cw4_tools_phase 同批删除,
 #  0 穿活锁防线归 visit 动作数上限 + 环级无进展守卫。)
@@ -1424,7 +1424,7 @@ def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
 
     ``select_up`` = 选人判定注入(缺省 None = ``deploy_plan.
     select_deployments_reasoned`` 单一源;kernel 依赖倒置契约——选人
-    语义归策略层)。entry 第 5 步传窗口适用范围包装(替补受上阵窗口适用范围辖,
+    语义归策略层)。entry 第 5 步传窗口适用范围包装(替补受上阵窗口适用范围覆盖,
     契约 D 部署换血行)——注入层过滤 up 集,窗口未到件移入 held(不进
     select_deployments 拒因闭集,窗口适用范围 = 帧级 defer 非资格拒)。
 
@@ -1482,7 +1482,7 @@ def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
         # F1 弃权分键(plan 级弃权键,不并入逐件拒因闭集)
         _count('m1p_no_direction')
     elif _m1p.abstain == 'no_bench_target':
-        # F1 合取②弃权分键(有向态 bench 无目标视图件:base/formed 臂
+        # F1 合取②弃权分键(有向态 bench 无目标视图件:base/formed 分支
         # 「非目标件填空上序」是执行面必然空转的形态;弃权+出战才是
         # 支配正确)。
         _count('m1p_no_bench_target')
@@ -1517,7 +1517,7 @@ def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
             if _victims:
                 out.extend(_victims)
                 _count('m1p_fired')
-                # 双臂分键(plan.arm = 胜出者资格族标注;禁新排序键)
+                # 双分支分键(plan.arm = 胜出者资格族标注;禁新排序键)
                 if _m1p.arm == 'transition':
                     _count('swap_arm_transition_trigger')
                 elif _m1p.arm == 'formed':
@@ -1763,7 +1763,7 @@ def _emit_deploy_moves(out: list, frame: MandateFrame,
 
 def _deployable(frame: MandateFrame, session: StrategySession,
                 state: GameState) -> bool:
-    """部署提案合法门(:合法性=提议侧约束)。
+    """部署提案合法门(合法性=提议侧约束)。
 
     谓词单一源 = mandate_v1 ``deploy_plan.has_deployable_reasoned``
     (发出×执行单一源):与部署计划构造(select_deployments_reasoned)
@@ -1772,14 +1772,14 @@ def _deployable(frame: MandateFrame, session: StrategySession,
 
     事件语义(本守卫触发形态;组合壳 RunDeploy 时代旧事,删类后防线
     语义由本谓词续承):2026-09-06 实机首局(单动作架构,
-    )00:08:25 备战环无进展守卫以「连续 3 环同签名动作批
+)00:08:25 备战环无进展守卫以「连续 3 环同签名动作批
     ['RunDeploy'] ∧ 零推进」停机保留证据——决策核每轮提案部署,
     执行方计划空报 no-op 成功,逻辑态未建模(保守回退)交回
     外循环,重进再提案,3 环零推进。守卫行为正确,根因 = 本动作发出点
     漏接抑制谓词。禁第二实现:判空一律走 deploy_plan 单一源;本函数
     只做输入装配(经 deploy_plan._deploy_plan_inputs 同源)。
 
-    :配方底线门锁定线语境豁免在此同帧武装(豁免是帧属性,
+   :配方底线门锁定线语境豁免在此同帧武装(豁免是帧属性,
     放行判定与执行侧计划构造经同一 出战就绪 布尔同值);返回值不变(bool),
     逐次调用经 _record_deploy_emit_held 落发出侧分键(帧级去重)。
     """

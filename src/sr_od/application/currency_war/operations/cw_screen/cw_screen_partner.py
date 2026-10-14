@@ -1,4 +1,4 @@
-# 机制更正( 实机事故,详见 docs/game/screens/currency_war_choose_partner.md):
+# 机制更正(实机事故,详见 docs/game/screens/currency_war_choose_partner.md):
 # 旧「选中态 gate」= 全屏 OCR 找「已选择」(LCS 阈值按关键词归一,3 字词与
 # 本屏常驻的指令长句/「请选择强化角色」共享子序列「选择」即达 0.5)→ 本屏
 # 恒误命中,op 恒跳过点选、对置灰确认钮原样重试 → P1-r1 十八连 fail 卡死
@@ -21,7 +21,7 @@ node。决策动作 node = 落地复查顶部(确认已发 → 标识不在 = ov
 → success 交回)→ 确认被拒守卫(未选中提示在场 × 脉冲上限 = 显式 fail)
 + 决策出口守卫(输入:候选空 fail / 返回契约 / 值域,op-layer.md §1.1
 出口③ / §1.3;无 match 局外不设早退支,用户裁决 全族删门)→
-首轮决策一次定同一点位(chosen_partner = 选择点单次逻辑写入留守,动作事实
+首轮决策一次定同一点位(chosen_partner = 选择点单次逻辑写入留在原位,动作事实
 边界不进 report)→ 「点选候选 → 确认」脉冲链经工厂 → round_wait 循环。
 本屏 sim 腿 = 不适用(sim 无对应画面段,事件浮层族即时落定),等价判据
 主要支撑 = 实机行为锁(test_screen_ops 选选流序/确认
@@ -57,7 +57,7 @@ class CwScreenPartner(CwOperation):
     LABEL_CX_LO: ClassVar[int] = 450
     LABEL_CX_HI: ClassVar[int] = 1550
     # 确认被拒脉冲上限:未选中提示持续在场时,「点选→确认」脉冲达到该次数即
-    # 显式 round_fail 交外环重判(禁原样无限重试; 实机卡死形态的
+    # 显式 round_fail 交外环重判(禁原样无限重试;实机卡死形态的
     # 针对性防线。取值 < 节点预算 10,先于预算耗尽给出精确失败原因)。
     CONFIRM_REJECT_MAX: ClassVar[int] = 4
     # screen_info area 名(currency_war_partner.yml;坐标单一真相源)。
@@ -67,7 +67,7 @@ class CwScreenPartner(CwOperation):
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-列车同行')
-        # 确认已发待落地复查标志(验证废除形态):落地复查见决策动作 node
+        # 确认已发待落地复查标志(零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态):落地复查见决策动作 node
         # 顶部(两步链的最终确认也置位,标识不在 = overlay 关 = 链完结;
         # 置位在 pick op 体内 = 确认发送时点)。
         self._confirm_pending: bool = False
@@ -159,7 +159,7 @@ class CwScreenPartner(CwOperation):
         y = 建档「候选-卡区」带中心(坐标单一真相源)。区域缺失 = None,
         调用方显式失败(禁裸坐标兜底)。
 
-        两帧实测( 事故帧 1-1 与 1-9 档 fixture)卡带 y≈165-440,
+        两帧实测(事故帧 1-1 与 1-9 档 fixture)卡带 y≈165-440,
         带中心 y≈302 落立绘区内;旧 offset「label cy-60」实点 y≈315,恰在
         立绘底边(~307)下方卡体死区 —— 点击几何不可靠的根源之一,故 y
         改由建档带锚定,布局漂移可经 analyze_screen 对账暴露。
@@ -204,13 +204,13 @@ class CwScreenPartner(CwOperation):
     def act(self) -> OperationRoundResult:
         """落地复查(顶部)→ 确认被拒守卫 + 首轮决策一次 → 脉冲 → round_wait。
 
-        落地复查(观察驱动,验证废除形态):确认已发 → 标识不在 = overlay
+        落地复查(观察驱动,零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态):确认已发 → 标识不在 = overlay
         已关(两步链完结)→ success 交回;标识在 = 确认未落地 → 重走脉冲。
 
         每轮脉冲(机制出处 = 模块头更正注):
         1. 未选中提示在场(置灰已实测确认)∧ 脉冲已达上限 → 显式 fail(确认被拒
            形态有界重试,禁原样无限重试);
-        2. 首轮决策一次(零参 decide,写槽已由 report 落容器;chosen 留守
+        2. 首轮决策一次(零参 decide,写槽已由 report 落容器;chosen 留在原位
            选择点)定同一点位;守卫①②③(候选空 = 具名 fail;返回
            None·词表外 = 具名 fail 含原值;越界 = AssertionError)先于决策
            与写端,零点击;无 match 局外不设早退支(用户裁决
@@ -236,8 +236,8 @@ class CwScreenPartner(CwOperation):
             cands = self._cands
             options = self._obs.options if self._obs is not None else []
             match = self.ctx.cw_match
-            # 守卫①(决策输入,零点击零派发):候选空 = 在册显式失败(留守
-            # round_fail;原常量 idx0 盲选派发停用)。
+            # 守卫①(决策输入,零点击零派发):候选空 = 已登记显式失败(round_fail
+            # 收尾;原常量 idx0 盲选派发停用)。
             if not options:
                 return self.round_fail('伙伴屏无候选(OCR 未命中候选标签),禁兜底盲点')
             # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
@@ -263,7 +263,7 @@ class CwScreenPartner(CwOperation):
             # 伙伴选择落容器 chosen_partner(gs 单一源,session 域无此写端;守卫
             # ①③已保证 options 非空且 idx 在界;点选前写 = 选择点,单次逻辑写入
             # 豁免面,与巨星 chosen_megastar 派发前写同款;fields.md §3.4 导语
-            # 判定点在册)。
+            # 判定点已登记)。
             if getattr(match, 'gs', None) is not None:
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     ChannelSig,
@@ -280,7 +280,7 @@ class CwScreenPartner(CwOperation):
             self._pick_point = point
         # 「点选候选 → 确认」脉冲链经注册表工厂派发(``cw_pick_partner_action.py::
         # CwActionPickPartnerOp``,机械链 + 自上报在动作 op 内)。
-        # 决策半(确认被拒守卫/点位解析/chosen 写端)留守上方;选中态标记
+        # 决策半(确认被拒守卫/点位解析/chosen 写端)见上方;选中态标记
         # 与脉冲计数宿主仍是本 op,经 env.op 消费。派发实例携真实选中
         # 下标(上报 param 即真实选择;脉冲轮复用缓存 idx)。
         # round_wait 推进循环(不烧节点重试预算;确认未落地轮重走脉冲,

@@ -58,7 +58,7 @@ def _advance_gold(session, delta: int, *,
     ``game_state_of(session).gold`` 经 logic_action 通道 write_logic
     (可为负;现值 None 视 0 基线——金账由商店波顶/结算屏可信读覆盖
     修正,以实际观察为准)。渠道面 = family='logic_action' + actor
-    'PrepActionExecutor'(在册;登记类属 = 动作 op 逻辑效果推进宿主,
+    'PrepActionExecutor'(已登记;登记类属 = 动作 op 逻辑效果推进宿主,
     produced_by 携调用面标识留存证据)。
     """
     try:
@@ -239,7 +239,7 @@ def bench_slots_healthy(slot_nos: list[int]) -> bool:
 def trailblazer_row_identity(char_id: str, to_row: str,
                              ) -> tuple[str, str | None] | None:
     """开拓者按排形态归一的身份核(单一源):换排 = 命途切换(char_id
-    切目标排形态,faction 跟随首阵营)。返回 ``(新 char_id, 首阵营或
+    切目标排形态,faction 跟随首阵营)。返回 ``(新 char_id,首阵营或
     None)``;非开拓者/空名 → None(调用方保持原身份)。
 
     消费面 = :func:`trailblazer_row_unit`(Unit 容器原生唯一载体),

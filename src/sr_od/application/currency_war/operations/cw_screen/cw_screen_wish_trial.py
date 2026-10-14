@@ -12,7 +12,7 @@
 外循环重判)+ objective 一次读(OCR 桶 join,入口帧一次读,与现役决策体读
 同帧等价)→ ``report_screen_wish_trial_obs`` 落容器 ``wish_trial_opts`` /
 ``wish_trial_opts_xy``(无空门,空桶照写,同门双写,op-layer.md §1.1 :35)
-→ obs 挂实例属性进决策 node。决策动作 node = 重入裁决顶部(确认已发 →
+→ obs 挂实例属性进决策 node。决策动作 node = 落地复查顶部(确认已发 →
 标识不在 = overlay 已关 → 此刻才写 chosen_wish + success 交回;在 = 确认未
 落地 → 清标志重走)→ 决策出口守卫:无 match 局外不设早退支(用户裁决
 2026-09-22 全族删门);返回 None/词表外 = 具名 round_fail 零盲发;idx 越界 = 守卫断言
@@ -20,9 +20,9 @@ AssertionError;策略异常自然传播——守卫均在派发前、零点击 �
 零参读 → 选卡+确认链经 ``CwActionPickWishTrialOp`` 派发(pick-op-unify 批
 机械链迁入动作 op,env 仅携 op;点击坐标 = 动作 op 自容器
 ``wish_trial_opts_xy`` 按 idx 取,op-layer.md §1.1 :35)→ round_wait 循环
-(不烧节点重试预算,无防御上限)。chosen_wish = 重入裁决点单次逻辑写入
-留守(动作事实边界,不进 report);本屏 sim 腿 = 不适用(sim 无对应画面
-段,事件浮层族即时落定),等价判据主承重 = 实机在册行为锁
+(不烧节点重试预算,无防御上限)。chosen_wish = 落地复查点单次逻辑写入
+留在原位(动作事实边界,不进 report);本屏 sim 腿 = 不适用(sim 无对应画面
+段,事件浮层族即时落定),等价判据主支撑 = 实机已登记行为锁
 (test_game_state chosen_record_face chosen_wish 锁)。
 """
 from typing import ClassVar
@@ -45,7 +45,7 @@ from sr_od.context.sr_context import SrContext
 class CwScreenWishTrial(CwOperation):
     """祈愿试炼 overlay:OCR objective → decide_wish_trial 策略选卡 → 确认。"""
 
-    # 卡位不建 screen_info area(op-layer.md §1.1 :35 辖域判据:选项点击
+    # 卡位不建 screen_info area(op-layer.md §1.1 :35 适用范围判据:选项点击
     # 坐标属观察上报的选项集构成数据,入坐标域;确认钮等静态控件锚维持
     # screen_info area 现取,确认按钮已 area 化)。以下卡位 = 观察侧解点
     # 锚(x = 桶锚、y = 卡身,观察期一次解析随 obs 上报
@@ -58,8 +58,8 @@ class CwScreenWishTrial(CwOperation):
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-祈愿试炼')
-        # 确认已发待重入裁决的选卡 (objs, pick_idx) 快照(验证废除形态,
-        # 照星徽款/遭遇款 pending+重入裁决;用户裁定 2026-09-14 验关残留修):
+        # 确认已发待落地复查的选卡 (objs, pick_idx) 快照(零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态,
+        # 照星徽款/遭遇款 pending+落地复查;用户裁定 2026-09-14 验关残留修):
         # 确认点击发出后置位,下一轮重入由入口观察裁决——标识不在 = overlay
         # 已关(选卡落地)→ 此刻才写 chosen_wish;标识在 = 确认未落地 → 清
         # 标志重走(重读重选)。None = 无待裁决选卡。
@@ -112,9 +112,9 @@ class CwScreenWishTrial(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=8)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 零参决策 → 点卡 + 确认 → round_wait。
+        """落地复查(顶部)→ 零参决策 → 点卡 + 确认 → round_wait。
 
-        重入裁决(观察驱动,验证废除形态,照星徽款 pending+重入裁决;
+        落地复查(观察驱动,零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态,照星徽款 pending+落地复查;
         用户裁定 2026-09-14 验关残留修):上轮确认已发 → 标识不在 = overlay
         已关(选卡落地)→ 此刻才写 chosen_wish + success 交回;标识在 =
         确认未落地 → 清标志重走(重读重选)。
@@ -160,9 +160,9 @@ class CwScreenWishTrial(CwOperation):
         # 容器 ``wish_trial_opts_xy`` 按 idx 取,op-layer.md §1.1 :35,env
         # 仅携 op 零坐标)。派发实例 = 策略产 CwActionPickWishTrialParam
         # (直发零重建,上报 param = 策略产值原值)。
-        # 机械交回(验证废除,用户裁定 2026-09-14 删确认后同轮「标识消失」
-        # 判——同轮验关 = 退役的落地回执消费形态):确认是否落地由下一轮
-        # 重入裁决(本方法顶部 pending 分支)承载,chosen_wish 写端随之在
+        # 机械部分完成即结束本次访问(零验证(用户裁定:动作层不做效果验证,判效归下一帧观察),用户裁定 2026-09-14 删确认后同轮「标识消失」
+        # 判——同轮验关 = 停用的落地回执消费形态):确认是否落地由下一轮
+        # 落地复查(本方法顶部 pending 分支)承载,chosen_wish 写端随之在
         # 裁决点;未落地轮重走重选。round_wait 推进循环(不烧节点重试预算,
         # 无防御上限)。
         self._confirm_pending = (list(objs), pick.idx)
@@ -178,7 +178,7 @@ class CwScreenWishTrial(CwOperation):
 
     def _record_chosen(self, objs: list[str] | None, pick_idx: int) -> None:
         """选卡落地记录面:写 ``chosen_wish``(单次逻辑写入,申报豁免;
-        调用点 = 重入裁决出口,选卡落地后值才可信)。
+        调用点 = 落地复查出口,选卡落地后值才可信)。
 
         值 = 选中卡 objective 原文名(OCR 分桶 join 语义)。守卫口径 = 事实
         落地选择记录:objective 未读到/选中槽文本空不写(None 保持「无记录」,

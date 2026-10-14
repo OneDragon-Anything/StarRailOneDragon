@@ -6,7 +6,7 @@
 - 本模块(decision 桶,纯函数):``decide_prep_frame`` = 三遍编排 + 帧
   稳定截断(决策输入 = obs(黑板)+ session 容器直读;依赖矩阵:
   decision 只可依 data/kernel);
-- 注册桥壳 ``strategies/mandate_v1_strategy.py``(app 桶):零逻辑复制的
+- 注册桥壳 ``strategies/mandate_v1_strategy.py``(app 层):零逻辑复制的
   纯注册壳(``__module__`` 守卫要求壳类定义于本模块;生产路径职责分界 =
   画面 op 只做观察 + 调一个决策入口,**不加生产接线步**,R191 裁决)。
 
@@ -56,14 +56,14 @@ if TYPE_CHECKING:
         StrategySession,
     )
 
-# config 属 app 桶,decision 桶禁 import(cw_strategy.py 字符串注解先例);
+# config 属 app 层,decision 桶禁 import(cw_strategy.py 字符串注解先例);
 # 实例由调用方(注册桥壳)按参注入。
 CurrencyWarConfig = 'CurrencyWarConfig'
 
 
 def _launch_front_check(gs: GameState) -> CwAction | None:
     """前置动作发出点:出战就绪帧短路三遍编排,产出动作发出意图(动作发出
-    决策的策略层宿主;旧达标臂决策迁驻,design §2.3)。
+    决策的策略层宿主;旧达标分支决策迁驻,design §2.3)。
 
     - 判定核 = kernel ``readiness_launch_decision``(线成员谓词注入
       单一源 = statefn.predicates.line_members,禁内联第二实现);
@@ -145,7 +145,7 @@ def launch_restricted_session_active(gs: GameState) -> bool:
     并存非复制(g* 单一源同链)。买断制语境(cap_resolved = 0)不在设计
     范围内,恒 False(同 in_launch_spend_zone 口径)。每帧现算零粘滞:不读不写
     任何段旗/缓存——「每个出战就绪段至多一次」的段旗(cw4_launch_spend_visited)
-    留守语义不受本标记辖,其写端单一源仍 = _launch_front_check
+    留在原位语义不受本标记覆盖,其写端单一源仍 = _launch_front_check
     (mandate_state 字段注)。
 
     消费点 = flow.decide_shop_action 受限会话自限(唯一提案产出后经
@@ -226,7 +226,7 @@ class MandateV1Strategy(CwFlowStrategy):
         session_scope.refresh_line_if_needed(self.gs)
         # 方向重估先于决策(触发 = 帧代次标注)
         self._consume_prep_direction_frame()
-        # —— 前置动作发出点(达标臂的动作发出决策驻策略层)。出战就绪帧短路
+        # —— 前置动作发出点(达标分支的动作发出决策驻策略层)。出战就绪帧短路
         # 三遍编排;非出战就绪帧 None = 原编排零变化。
         _launch_action = _launch_front_check(self.gs)
         if _launch_action is not None:
@@ -310,7 +310,7 @@ class MandateV1Strategy(CwFlowStrategy):
                           group_id=f'act:MandateV1Strategy@{gs.write_seq + 1}')
         # 本访问已买件(carried 融合:R2-N1 刚买件首卖偏好;驱动器在循环
         # 内登记,与生产执行侧同一载体)。状态宿主 = self.state(终态契约
-        # §2.5 impl 桶;与旧 state_of(session) 同一对象,§2.6 过渡桥)。
+        # §2.5 impl 层;与旧 state_of(session) 同一对象,§2.6 过渡桥)。
         self.state.cw4_visit_bought_names = []
         # 段序号置位(驱动器商店 visit 入口;生产对应位 =
         # 商店画面 op 观察 node,一并推进):visit = 腾席拒绝结论的输入不
@@ -382,7 +382,7 @@ def decide_prep_frame(session: StrategySession, config: object,
     # kind 谓词——禁用 bench_entries_of(紧缩序)枚举下标代替:备战席
     # 前部有洞时紧缩枚举下标 ≠ 槽位表下标,复检错杀合法引用(占用槽
     # 被判空),发出被截空后世界不变 → 备战环「本帧无动作」活锁(sim
-    # 多种子实证:非验收 seed 首局 P1r1 凑息臂卖后部槽被错杀至看门狗;
+    # 多种子实证:非验收 seed 首局 P1r1 凑息分支卖后部槽被错杀至看门狗;
     # 实机同链路同受害)。语义与 P4 翻形前一致({全槽表枚举 | 槽非空})。
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_view_slots_of,

@@ -33,7 +33,7 @@ env_economy.XP_GOLD_RATE 承载),非多标尺层次压制形态
 CwActionRefreshInvestCardsParam)留 flow;:func:`decide_pick`
 = 同一评分基线的纯选卡口,永不建议刷(flow 同帧去重 memo 命中后的落选卡
 入口;为 sim 复用预留)。本文件是投资策略选卡评序的单一源(flow 直调;
-kernel ``decide_event`` 不复存在,模块停用史考古走 git 历史)。
+kernel ``decide_event`` 不复存在,模块停用史)。
 """
 from __future__ import annotations
 
@@ -90,7 +90,7 @@ class InvestStrategyDecision:
     idx = options 容器下标(0 基;候选序 = 调用方传入序,取值时机 =
     本帧决策期快照);reason = 归因串(总分与五组件分解,仅观测);
     total = 组件总分(统一标尺,分 = 金等价);components = 五组件分解
-    (现金, 方向, 赠卡, 立场, 转向轴),与总分同帧快照,仅观测。
+    (现金,方向,赠卡,立场,转向轴),与总分同帧快照,仅观测。
     """
     idx: int
     reason: str
@@ -139,7 +139,7 @@ _STANCE_ZERO = 0.0
 def _validate_stance_registry() -> None:
     """立场表孤儿校验:表键必须在注册表(版本改名后漏跟 → import 即炸)。
 
-    v1 空表该断言恒真,首行登记起生效(29 号稿 §2.4 表与构建校验)。"""
+    空表该断言恒真,首行登记起生效(29 号稿 §2.4 表与构建校验)。"""
     for _name in STANCE_SCORE:
         if _name not in INVESTMENT_STRATEGIES:
             raise ValueError(f"立场分表孤儿键(注册表无此卡):{_name!r}")
@@ -169,14 +169,14 @@ def _econ_effect_flag(eff: EconomyEffect | None) -> int:
 
 def _touched_line_comps(canonical: str,
                         evicted: frozenset[str]) -> frozenset[str]:
-    """卡的触线集 阵容 空间像(构造侧求值;29 号稿 §2.2)。
+    """卡的触线集阵容 空间像(构造侧求值;29 号稿 §2.2)。
 
-    - 阵营绑定腿:绑定阵营 f 的阵营线成员 阵容 = {c ∈ COMP_LIBRARY :
-      f ∈ c.factions}——**线排除像 = 该线全体成员 阵容 ∈ evicted ⇔ 线
+    - 阵营绑定腿:绑定阵营 f 的阵营线成员阵容 = {c ∈ COMP_LIBRARY :
+      f ∈ c.factions}——**线排除像 = 该线全体成员阵容 ∈ evicted ⇔ 线
       排除**(整体死亡判据);线活则全体成员入集,含已被 evicted 的成员
       (线级整体排除语义,方向分虚高向,有意选择并申报——29 号稿
       §2.2 线级口径行为差异申报);
-    - 角色绑定腿(窄口径):core_chars 含绑定角色的 阵容,逐 阵容 自身
+    - 角色绑定腿(窄口径):core_chars 含绑定角色的阵容,逐阵容 自身
       ∈ evicted 才排除;
     - 两腿并集即触线集。STRATEGY_BINDINGS 未建模卡 → 空集(方向分 0)。
     """
@@ -185,7 +185,7 @@ def _touched_line_comps(canonical: str,
         return frozenset()
     bound_facs, bound_chars = bindings
     out: set[str] = set()
-    # —— 阵营线逐线判生死(线排除像 = 全体成员 ∈ evicted;非逐 阵容)——
+    # —— 阵营线逐线判生死(线排除像 = 全体成员 ∈ evicted;非逐阵容)——
     for f in bound_facs:
         line_members = frozenset(c.name for c in COMP_LIBRARY
                                  if f in c.factions)
@@ -203,8 +203,8 @@ def _touched_line_comps(canonical: str,
 
 def _locked_line_comps(locked_comp: str,
                        evicted: frozenset[str]) -> frozenset[str]:
-    """终局阵容锁定阵营线的成员 阵容 并集(阵营族展开的 阵容 空间像;29 号稿
-    §2.2)。终局阵容锁定 阵容 不在 COMP_LIBRARY → 空集(无对齐语义);
+    """终局阵容锁定阵营线的成员阵容 并集(阵营族展开的阵容 空间像;29 号稿
+    §2.2)。终局阵容锁定阵容 不在 COMP_LIBRARY → 空集(无对齐语义);
     线生死判据与触线集同款——终局阵容锁定全线死 → 空集(方向分 0,「evicted
     收窄后线退场」)。"""
     lc = get_comp(locked_comp)
@@ -224,7 +224,7 @@ def _locked_alignment_n(bindings: tuple[frozenset[str], frozenset[str]] | None,
                         locked_comp: str) -> int:
     """刷新 N 计数 = 绑定元素(阵营∪角色)命中终局阵容锁定单线的元素数。
 
-    **绑定元素空间直读,不经触线 阵容 集**(与方向分 阵容 空间分开命名,
+    **绑定元素空间直读,不经触线阵容 集**(与方向分阵容 空间分开命名,
     29 号稿 §4-2 N 口径换基):终局阵容锁定帧旧口径本就只对终局阵容锁定计数,语义
     保真。locked_comp 不在 COMP_LIBRARY → 0(无终局阵容锁定单线可命中)。
     """
@@ -243,14 +243,14 @@ def _components(canonical: str | None, opt: str, gs: GameState,
                 evicted: frozenset[str],
                 strategy_priority: list[str]) -> tuple[
         float, float, float, float, float, float]:
-    """单候选五组件 (现金, 方向, 赠卡, 立场, 转向轴) + 总分;未解析名
+    """单候选五组件 (现金,方向,赠卡,立场,转向轴) + 总分;未解析名
     (垃圾名)→ 全 0。
 
     - 现金分走 canonical(resolved ∧ > 0 才计,fail-closed 恒 0);
     - 方向分:触线集构造侧求值(线排除像已应用)→ line_value_best;
       终局阵容锁定集 = 终局阵容锁定阵营线成员并集(空串/降格帧 → 未锁口径);
     - 赠卡分:STRATEGY_GRANTS + grant_gift_value(无条目自然 0);
-    - 立场分:v1 空表恒 0(表外卡默认 0);
+    - 立场分:空表恒 0(表外卡默认 0);
     - 转向轴:strategy_priority 子串命中(OCR 容错,与白名单一致)加
       STEERING_PRIORITY_BONUS(软偏好)。
     """
@@ -373,7 +373,7 @@ def _argmax_tiebreak(cands: list[_Cand]) -> _Cand:
 
 def _pick_domain(cands: list[_Cand],
                  on_dot: bool) -> tuple[list[_Cand], str]:
-    """结构分区,返回 (竞争域, 归因标签)。落地序 = 禁选 → 自拆适用范围护栏
+    """结构分区,返回 (竞争域,归因标签)。落地序 = 禁选 → 自拆适用范围护栏
     → 血本位三态 → 定义型(29 号稿 §3)。
 
     1. 禁选排除:被禁候选出局;禁选致候选域全空 → 全体候选(含被禁)
@@ -515,7 +515,7 @@ def _refresh_slots(cands: list[_Cand], on_dot: bool,
     if _top_frame:
         return ()
     # 帧级门④:终局阵容锁定帧 max_N≠1(E-豁免:被禁卡不计入 max_N;max_N=0 或
-    # ≥2 → 继续)。未锁定帧无 N 语义,本门只辖终局阵容锁定帧(保守缺省:终局阵容锁定帧
+    # ≥2 → 继续)。未锁定帧无 N 语义,本门只覆盖终局阵容锁定帧(保守缺省:终局阵容锁定帧
     # 单元素命中 → 整帧不刷;门的依据重建归 P81 换基重演必答③)
     if locked_frame:
         max_n = max((c.align_n for c in cands if not c.forbidden), default=0)
@@ -524,7 +524,7 @@ def _refresh_slots(cands: list[_Cand], on_dot: bool,
     # 槽级动作集:非槽级顶级可刷;被禁槽恒入(被禁∧顶级形态:永不被选,
     # 保护无对象 → 不保护)。槽级顶级 = 帧级顶级 ∨ 对齐保护(终局阵容锁定帧 =
     # 非血 ∧ N≥2;未锁定帧 = 非血 ∧ 触 S/A 档线——血卡保护语义由血本位
-    # 三态序辖,注册表演化出「血卡+绑定」时按在册 J7 申报裁:保护无对象
+    # 三态序覆盖,注册表演化出「血卡+绑定」时按已登记 J7 申报裁:保护无对象
     # → 不保护)
     action = [c.idx for c in cands
               if c.forbidden or not (c.defining or c.engine

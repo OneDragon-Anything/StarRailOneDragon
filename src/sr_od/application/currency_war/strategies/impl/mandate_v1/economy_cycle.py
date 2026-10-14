@@ -4,12 +4,12 @@ r"""经济循环总模型:储备制(R*/义务/通道容量)。
 (对抗审计修复项内建)。核心语义:金账从「地板制」(只
 规定花后下限)改为「储备制」——任何时刻金 g 与储备上限 R* 的差
 ``(g − R*)+`` 是负有转化义务的死钱,每轮必须经三条转化通道(升级/
-刷新/买牌)之一转成战力,义务 = max(既有臂义务, min(富余, C_t))。
+刷新/买牌)之一转成战力,义务 = max(既有分支义务, min(富余, C_t))。
 
 - **R\* = 利息线 + 窗口(≤3 轮)排程升级费**:利息线(50)以内持有弱占优
   (0.1/轮 无风险收益 vs 战力链 ≤0.012,同一笔账反向使用);
   排程升级是价格/时点已知的确定性转化,为其持金不是死钱。窗口 h =
-  min(3, 到本位面末节点轮数)——h>3 的升级应即时执行而非长期储蓄。
+  min(3,到本位面末节点轮数)——h>3 的升级应即时执行而非长期储蓄。
   排程判据 = ``schedule_upgrade`` 确定性费用查表核(R4 规则集);
   升级费逐帧现读
   (state.level_up_cost OCR 优先,缺省 XP_CLICK_COST_FLAT;
@@ -24,15 +24,15 @@ r"""经济循环总模型:储备制(R*/义务/通道容量)。
   3合1 合成件(买入即 2★ 完成);**A-2 修复(声明+约束)**:每买
   一件占一个 bench 槽,槽位是下一轮跨档件的物理前置——容量按 bench
   空槽逐件扣减计入该机会成本(合成件净腾槽不占)。
-- **义务帧兑现**:release 臂(posture_release)消费 overflow/obligation
+- **义务帧兑现**:release 分支(posture_release)消费 overflow/obligation
   作为预算下界;g≥0 硬钳制在 authorize_release_refresh(执行层透支
   修复)。
-- **息基守卫收窄**:利息线以内的常态帧(g≤R*)行为零漂移(义务只在
+- **利息计算基数守卫收窄**:利息线以内的常态帧(g≤R*)行为零漂移(义务只在
   富余段激活;I-1 锚)。
 
 分包期 0b(§3.3-①a/①b):两接缝(schedule_upgrade/refresh_ev_budget)
 与其依赖族(reserve_cap/upgrade_plan_fee/_registry_of/is_emergency/
-_vd_core_of/REFRESH_ROLL_CAP/储备窗口常数)下沉 kernel 桶 cw_economy(物理居包根,期 1 归位)
+_vd_core_of/REFRESH_ROLL_CAP/储备窗口常数)下沉 kernel 层 cw_economy(物理居包根,期 1 归位)
 (原 kernel→decision 断环边:cw_economy.get_node_goal 标量投影体内懒
 import 决策包)。本模块只余容量/义务核算层;接缝符号在函数内懒 import
 自 cw_economy——monkeypatch 桩点重钉至 cw_economy 符号后,属性动态
@@ -176,8 +176,8 @@ def channel_capacity(gs: GameState, session: StrategySession,
                      registry: DecisionV2Registry) -> int:
     """C_t = 升级计划费 + 非期权可买账 + 刷价×刷新预算。
 
-    升级计划费分量消费 ``schedule_upgrade``(人口位单臂——概率级②臂
-    已停用;line_and_upgrade §2.3 升级②臂行:概率改善排程语义由策略层
+    升级计划费分量消费 ``schedule_upgrade``(人口位单分支——概率级②分支
+    已停用;line_and_upgrade §2.3 升级②分支行:概率改善排程语义由策略层
     概率主账承接,锁定后 ∧ plane2_started 双条件消费,其攒批由升级
     预授权链承载不经 C_t)。刷新分量取 ``refresh_ev_budget``
     预算式(查表核单一址;合法 0 帧契约见该函数
@@ -201,7 +201,7 @@ def overflow(gs: GameState, session: StrategySession) -> int:
 
     R* 单一源 = kernel cw_economy.reserve_cap(模块级 import:纯查表
     函数,无桩点契约;保利利息线分量已归一 session resolved 链,registry
-    旋钮不再辖本缝——)。"""
+    旋钮不再约束本缝——)。"""
     return max(0, gold_of(gs) - reserve_cap(gs, session))
 
 
@@ -225,7 +225,7 @@ def tier_truncated_spend(gold: int, want: int, essential: bool) -> int:
 
     - essential=True → 不截断,原样返回 want。两枝由消费点显式分类:
       ①正账件(跨档/合成件,买账已过 scoring 单一裁决面)——一张牌
-      不可拆,截断即弃购,弃购代价归 P1 再遇窗口口径,不在本函数辖内;
+      不可拆,截断即弃购,弃购代价归 P1 再遇窗口口径,不在本函数覆盖内;
       ②M-A 定向刷新车道(arbiter 定向授权分支,directed_refresh_budget,
       P1 末窗/boss 窗)——末窗没有下轮重摇,截断后残差不足一刷 = 定向
       搜索永久丢失,截断代价是无穷大而非「推迟一轮」,弱占优前提对该

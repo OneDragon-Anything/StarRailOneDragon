@@ -1,4 +1,4 @@
-"""全动作单一注册表(动作 op 重组批③):词表类 → 动作 op 类一张表,
+"""全动作单一注册表(动作 op 重组):词表类 → 动作 op 类一张表,
 ``action_op_class_for`` = 类级查询(终结判定/executor/落地门消费面),
 ``action_op_class_for_type`` = 词表**类**级查询(注册完备锁消费口),
 ``action_op_for`` = 构造helper(ctx + param + env 组装新壳 op)。
@@ -11,18 +11,18 @@
 函数(映射单一源 = ``kernel/cw_action_report`` 同名上报函数,
 op-layer.md §1.2)。
 
-**收编状态**:商店域五行首批在册;备战域批3 收编在册;事件线 pick 族
-批4 收编在册。注册完备锁(测试 = sr-od-test test_action_registry)
+**并入状态**:商店域五行首批已登记;备战域已并入登记;事件线 pick 族
+已并入登记。注册完备锁(测试 = sr-od-test test_action_registry)
 以本表为机械约束对象:遍历统一词表 ``cw_vocab.CW_ACTION_TYPES`` +
 事件线 pick 族 ``cw_events.PICK_ACTION_TYPES``,逐类断言本表解析可命中。
-(原 CompTransaction 行已随 unified-action-factory 批2b R3 删除——整档
-替换宏动作全链退役。)
+(原 CompTransaction 行已随 unified-action-factory R3 删除——整档
+替换宏动作全链停用。)
 
-**同名动作双域行更替申报(批3)**:词表归一后 ``CwActionSellBenchParam``/
+**同名动作双域行更替申报**:词表归一后 ``CwActionSellBenchParam``/
 ``CwActionLevelUpParam`` 两类为商店/备战共用词表,单一表一键一行——两行
-指向备战域 op(``CwActionSellBenchOp``/``CwActionLevelUpOp``)。依据:发射
+指向备战域 op(``CwActionSellBenchOp``/``CwActionLevelUpOp``)。依据:发出
 面策略收缩至备战期后(flow/screens-actions-capability §5 判例),两类的
-生产发射只在备战域,备战 op 即唯一活执行路径;原商店域 op 类随批③文件
+生产发出只在备战域,备战 op 即唯一活执行路径;原商店域 op 类随文件
 删除(cw_sell_bench_action.py / cw_level_up_action.py,生产不可达),本
 注记 = 其注销登记。
 
@@ -189,11 +189,11 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     # 转场族
     CwActionStartBattleParam: CwActionStartBattleOp,   # 终结(交回外循环战斗分支)
     CwActionOpenShopParam: CwActionOpenShopOp,         # terminal 承载行(执行抛,正常路径不可达)
-    # 观察族(策略发射 CwActionObs = 环内重观察上报,不交回外循环;
+    # 观察族(策略发出 CwActionObs = 环内重观察上报,不交回外循环;
     # 现役接线域 = 备战决策环,重观察执行半 = 宿主 CwScreenPrep
-    # .reobserve_in_visit;其他域发射 = 宿主能力缺失 AssertionError 响亮暴露)
+    # .reobserve_in_visit;其他域发出 = 宿主能力缺失 AssertionError 响亮暴露)
     CwActionObsParam: CwActionObsOp,
-    # 事件线 pick 族(批4;overlay act 段经工厂,机械体 = 各 overlay 画面
+    # 事件线 pick 族(overlay act 段经工厂,机械体 = 各 overlay 画面
     # op act 确认链迁移体。终态契约:策略器产出 = 词表 Pick 子类型,kernel
     # Pick 族 = 纯函数内部返回值,不再进注册表)。
     CwActionPickEncounterParam: CwActionPickEncounterOp,
@@ -203,11 +203,11 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     CwActionPickPlannerParam: CwActionPickPlannerOp,
     CwActionPickInvestEnvParam: CwActionPickInvestOp,   # 投资两屏拆类后两行同指一 op(机械链同构;上报按 param 类型分派,投资两屏迁移批)
     CwActionPickInvestStrategyParam: CwActionPickInvestOp,
-    CwActionPickFortuneParam: CwActionPickFortuneOp,   # pick-op-unify 批收编(T-3)
-    CwActionPickWishTrialParam: CwActionPickWishTrialOp,   # pick-op-unify 批收编(T-3)
-    CwActionPickStarTomeParam: CwActionPickStarTomeOp,   # pick-op-unify 批收编(T-4,点卡即选)
-    CwActionPickBoxCardParam: CwActionPickBoxCardOp,   # pick-op-unify 批收编(T-4,点卡即选)
-    CwActionPickExpertInviteParam: CwActionPickExpertInviteOp,   # pick-op-unify 批收编(T-4,点卡即选)
+    CwActionPickFortuneParam: CwActionPickFortuneOp,   # pick-op-unify 并入
+    CwActionPickWishTrialParam: CwActionPickWishTrialOp,   # pick-op-unify 并入
+    CwActionPickStarTomeParam: CwActionPickStarTomeOp,   # pick-op-unify 并入(点卡即选)
+    CwActionPickBoxCardParam: CwActionPickBoxCardOp,   # pick-op-unify 并入(点卡即选)
+    CwActionPickExpertInviteParam: CwActionPickExpertInviteOp,   # pick-op-unify 并入(点卡即选)
 }
 
 
@@ -247,7 +247,7 @@ def action_op_class_for(action: Action) -> type[SrOperation]:
 
 def action_op_for(action: Action, ctx: SrContext, env: object) -> SrOperation:
     """动作词表 → 动作 op 实例(构造 helper:注册表类级解析 +
-    (ctx, param, env) 组装,批③ 新壳构造签名)。
+    (ctx, param, env) 组装,新壳构造签名)。
 
     消费面 = overlay act 段(经工厂分派保持「意图类型 → 点击链」单一
     映射);执行器/商店落地门按 op 形态正本(action_ops.md §1)直接走

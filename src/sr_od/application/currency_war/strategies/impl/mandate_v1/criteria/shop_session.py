@@ -275,8 +275,8 @@ def note_refresh_counters(gs: GameState, cost: int) -> None:
 
     达阈帧失效(阈值帧兜底):计数含本笔后恰达阈值 ⇒ 置 None。计数读
     ``gs.effects`` 现值 +1(动作发出点先于上报,上报后计数已含本笔——两
-    时点读数等价,本处取前瞻值免下帧重判);总刷(含免费)辖二手市场
-    20 次,付费刷辖长线利好 30 次(两域官方文本对照 = ENV_REFRESH_
+    时点读数等价,本处取前瞻值免下帧重判);总刷(含免费)覆盖二手市场
+    20 次,付费刷覆盖长线利好 30 次(两域官方文本对照 = ENV_REFRESH_
     GRANTS 注)。刷新本身终结访问,重进锚定天然承接失效后的再锚定。"""
     eff = gs.effects
     if int(eff.refresh_total) + 1 == SECONDHAND_MARKET_TOTAL:
@@ -336,7 +336,7 @@ def shop_unblock_recheck(gs: GameState) -> RecheckOutcome:
     - 金不足类:金位 = 账面供给(备战帧直读不可观察);账面失效时申报
       读数开门(不直接判不解拦——锚定后下帧复核);
     - 方向锁定不走本清单(锁定写入直接清标记,line_and_upgrade §1.4);
-      记录拦因闭集 = {席满, 金不足}(ShopOpportunity.blocked_by 值域)。
+      记录拦因闭集 = {席满,金不足}(ShopOpportunity.blocked_by 值域)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_free_slots,

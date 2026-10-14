@@ -13,13 +13,13 @@
 (统一写语义:读到非空恒覆写 / 读空跳过写——读缺=跳过写项目口径;
 简报三读数一局内恒定,重读自愈首次误读,跨局残留由每局容器冷建/丢弃
 挡死;match/gs 缺席跳过)→ obs 挂实例属性进决策 node。**词缀效果
-点采与效果账本登记留守观察侧**(依赖 OCR 逐词缀点采,摸帧逻辑不进
+点采与效果账本登记留在观察侧**(依赖 OCR 逐词缀点采,摸帧逻辑不进
 kernel):每次进简报屏都重读重采,点采对注册表比对自身幂等(一致即
 跳过,无重复收集)。决策动作 node = 落地复查顶部(「下一步」已发 →
 标识不在 = 已离开简报 → success 交回(wait=BRIEFING_SETTLE_S);标识在 =
 点击未落地 → 重点)→ 点「下一步」+ 置位 → round_wait 循环推进(不烧
 节点重试预算;不收敛 = 策略实现 bug 响亮暴露,无防御上限)。本屏 sim
-腿 = 不适用(sim 无对应画面段),等价判据主要支撑 = 实机在册行为锁 +
+腿 = 不适用(sim 无对应画面段),等价判据主要支撑 = 实机已登记行为锁 +
 写入流交叉核对(锁面 = sr-od-test test_obs_arch_phase_screens.py)。
 """
 import contextlib
@@ -118,7 +118,7 @@ class CwScreenBriefing(CwOperation):
                 if _updates:
                     write_affix_effects(_updates)
             # 词缀运行时登记挂点(效果账本 source='affix';登记体自身按
-            # 在册条目幂等兜底)。命中结构化注册(cw_affix_effects
+            # 已登记条目幂等兜底)。命中结构化注册(cw_affix_effects
             # .AFFIX_EFFECT_SPECS)才入账本;best-effort 失败不阻塞点
             # 「下一步」(登记面纪律 = effect-domain.md §7.3)。
             if _match is not None:
@@ -170,7 +170,7 @@ class CwScreenBriefing(CwOperation):
     def act(self) -> OperationRoundResult:
         """落地复查(顶部)→ 点「下一步」+ 置位 → round_wait。
 
-        落地复查(观察驱动,验证废除形态):上轮「下一步」已发 → 标识不在
+        落地复查(观察驱动,零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态):上轮「下一步」已发 → 标识不在
         = 已离开简报 → success 交回;标识在 = 点击未落地 → 重点。循环推进
         = round_wait(不烧节点重试预算;不收敛 = 策略实现 bug 响亮暴露,
         无防御上限)。"""
@@ -189,7 +189,7 @@ class CwScreenBriefing(CwOperation):
         )
         if not _click.is_success:
             return self.round_retry('未找到「下一步」按钮')
-        # 机械交回(验证废除:不读屏判「是否已转移」——已离开与否由下一轮
+        # 机械部分完成即结束本次访问(零验证(用户裁定:动作层不做效果验证,判效归下一帧观察):不读屏判「是否已转移」——已离开与否由下一轮
         # 重入的标识观察裁决,裁决 success 的交回等待 = BRIEFING_SETTLE_S,
         # 锚后动画完结口径不变)。
         self._click_pending = True
@@ -200,7 +200,7 @@ class CwScreenBriefing(CwOperation):
 
         对比目标 = 注册表文件最新(``load_affix_effects_from_file``);没该词缀(新名)
         或效果不一致 → 存 tooltip 截图(``affix_shots/<词缀>.png``)+ 收集;一致 → 跳过。
-        tooltip 机制( 实机):点词缀弹效果 tooltip(词缀条上方,切换不关旧)。
+        tooltip 机制(实机):点词缀弹效果 tooltip(词缀条上方,切换不关旧)。
         """
         _registered = load_affix_effects_from_file()       # 注册表文件最新(对比目标)
         updates: dict[str, str] = {}

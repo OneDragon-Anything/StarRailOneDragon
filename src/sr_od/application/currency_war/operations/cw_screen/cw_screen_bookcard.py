@@ -1,7 +1,7 @@
 """货币战争 星徽秘典四选一画面 op。
 
 OCR 卡名 → decide_star_tome 选卡(点卡即选,弹窗自关);入口 id_mark 校验 +
-出口由重入裁决判落地(弹窗不在 = 选卡落地)+ 完成承诺固定时长
+出口由落地复查判落地(弹窗不在 = 选卡落地)+ 完成承诺固定时长
 ``CW_OVERLAY_SETTLE_S``。
 
 形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两
@@ -15,16 +15,16 @@ op-layer.md §1.1 观察标准化门)+
 = 观察失败 round_fail 双域零写)→ ``report_screen_bookcard_obs`` 落容器
 ``star_tome_opts`` / ``star_tome_opts_xy``(空候选不写,闸在 report 内,
 双域一体,同门同写,op-layer.md §1.1 :35)→ obs 挂实例属性进决策 node。
-决策动作 node = 重入裁决顶部(选卡点击已发 → 弹窗不在 = 选卡落地 → 此刻
+决策动作 node = 落地复查顶部(选卡点击已发 → 弹窗不在 = 选卡落地 → 此刻
 才写 chosen_tome + 到账登记 + success 交回;在 = 点击未落地 → 清标志重走
 重选)→ 决策出口守卫(无 match 局外不设早退支,用户裁决 2026-09-22
 全族删门;候选空/返回 None/词表外 = 具名 fail 零盲发[出口③];idx 越界
 = 守卫断言[§1.3])→ 决策从容器零参读 → 点卡
 (坐标 = 动作 op 自容器 ``star_tome_opts_xy`` 按 idx 取,op-layer.md §1.1
 :35)→ round_wait 循环(不烧节点重试预算,无防御上限)。chosen_tome 与
-ConfirmTome 到账登记 = 重入裁决点留守(动作事实边界,不进 report;
+ConfirmTome 到账登记 = 落地复查点留在原位(动作事实边界,不进 report;
 ConfirmTome 逻辑推进 = owned 本体直推);本屏 sim 腿 = 不适用(sim 无对应
-画面段,事件浮层族即时落定),等价判据主承重 = 实机在册行为锁
+画面段,事件浮层族即时落定),等价判据主支撑 = 实机已登记行为锁
 (test_game_state chosen_record_face chosen_tome 锁 +
 test_screen_two_node_family 形态锁;典籍通道真 op 锁补档 =
 开放设计注,见 screens/bookcard.md §9)。
@@ -90,7 +90,7 @@ class CwScreenBookcard(CwOperation):
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-星徽秘典')
-        # 选卡点击已发待重入裁决的星徽名(验证废除形态):重入裁决由决策
+        # 选卡点击已发待落地复查的星徽名(零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态):落地复查由决策
         # 动作 node 顶部承载(弹窗不在 = 选卡落地)→ 此刻才写 chosen_tome
         # + 到账登记;弹窗仍在 = 点击未落地 → 重走重选(不留幻影登记)。
         self._pick_pending: str | None = None
@@ -125,7 +125,7 @@ class CwScreenBookcard(CwOperation):
         (调用方 round_fail 整函数早退,零写零上报交回重读,禁带病上报)。
 
         星徽四选一为选项互斥屏:多候选命中同一注册名 = 识别质量不足以
-        区分,同判转换失败(op-layer.md §1.1 在册互斥判);容器
+        区分,同判转换失败(op-layer.md §1.1 已登记互斥判);容器
         ``star_tome_opts`` 值域自此 = FACTIONS 标准注册名(标准化后决策
         消费标准名,动作上报只携 idx)。"""
         resolved: list[tuple[str, int]] = []
@@ -173,7 +173,7 @@ class CwScreenBookcard(CwOperation):
         → ``report_screen_bookcard_obs`` 同门双写容器 ``star_tome_opts`` /
         ``star_tome_opts_xy``(空候选不写,闸在 report 内,双域一体);
         match/gs 缺席的局外兜底路径跳过 report(候选空 = 具名 fail 零
-        盲发;report 局外豁免面与决策出口互不辖;无 match 局外不设早退
+        盲发;report 局外豁免面与决策出口互不覆盖;无 match 局外不设早退
         支,用户裁决 2026-09-22 全族删门)。"""
         screen = self.last_screenshot
         if not self.round_by_find_area(
@@ -204,19 +204,19 @@ class CwScreenBookcard(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=5)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 决策出口守卫 → 零参决策 → 派发 → round_wait。
+        """落地复查(顶部)→ 决策出口守卫 → 零参决策 → 派发 → round_wait。
 
-        重入裁决(观察驱动,验证废除形态):上轮选卡已发 → 弹窗不在 =
+        落地复查(观察驱动,零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态):上轮选卡已发 → 弹窗不在 =
         选卡落地 → 补写 chosen_tome + 到账登记 + success 交回;弹窗仍在 =
         点击未落地 → 重走(重读重选)。
 
-        决策出口守卫(次序:候选空臂 → 返回契约 → 值域;各守卫均在任何
+        决策出口守卫(次序:候选空分支 → 返回契约 → 值域;各守卫均在任何
         点击之前——派发即点卡、弹窗自关,选择不可逆,必须派发前拦):
         无 match 局外不设早退支(op-layer.md §1.1;用户裁决 2026-09-22
         全族删门),单跑缺上下文沿正常链路失败即预期——原「盲点卡 1」
-        退役申报;候选空 = 具名 fail 零盲发(出口③);返回 None/词表外
+        停用申报;候选空 = 具名 fail 零盲发(出口③);返回 None/词表外
         = 具名 fail 零盲发(出口③,消息含原值);idx 越界 = 守卫断言
-        AssertionError(op-layer.md §1.3,禁钳位——原「静默钳 0」退役
+        AssertionError(op-layer.md §1.3,禁钳位——原「静默钳 0」停用
         申报)。"""
         if self._pick_pending is not None:
             _p = self._pick_pending
@@ -228,7 +228,7 @@ class CwScreenBookcard(CwOperation):
                 return self.round_success('星徽秘典选卡完成(重入观察裁决)',
                                           wait=CW_OVERLAY_SETTLE_S)
         cards = self._cards
-        # 决策出口守卫(次序 = 候选空臂 → 返回契约 → 值域;均在任何点击
+        # 决策出口守卫(次序 = 候选空分支 → 返回契约 → 值域;均在任何点击
         # 之前):候选空 = 具名 fail 零盲发(op-layer.md §1.1 出口③)/
         # 返回 None/词表外 = 具名 fail 零盲发(出口③)/idx 越界 = 守卫
         # 断言(op-layer.md §1.3)。
@@ -250,7 +250,7 @@ class CwScreenBookcard(CwOperation):
         pick_name = cards[pick.idx][0]
         log.info('[cw-flow-bookcard] 候选=%s → 选 %s → idx=%d',
                  [c[0] for c in cards], pick_name, pick.idx)
-        # 机械交回(验证废除):弹窗关没关由下一轮重入裁决(本方法顶部
+        # 机械部分完成即结束本次访问(零验证:用户裁定——动作层不做效果验证,判效归下一帧观察):弹窗关没关由下一轮落地复查(本方法顶部
         # _pick_pending 分支),chosen_tome/ConfirmTome 到账随裁决出口。
         # round_wait 推进循环(不烧节点重试预算,无防御上限)。
         self._pick_pending = pick_name
@@ -269,7 +269,7 @@ class CwScreenBookcard(CwOperation):
         return self.round_wait('选卡点击已发,重入观察裁决')
 
     def _settle_picked_tome(self, pick_name: str) -> None:
-        """重入裁决出口的登记面(弹窗已关 = 选卡落地):到账登记(ConfirmTome:
+        """落地复查出口的登记面(弹窗已关 = 选卡落地):到账登记(ConfirmTome:
         owned += 星徽)+ chosen_tome 写端。装备名与注册表对齐
         「X星徽」(标准化阵营名回拼;已是全名则原样)。"""
         if not pick_name:
@@ -283,7 +283,7 @@ class CwScreenBookcard(CwOperation):
                                  produced_by='CwScreenBookcard')
         # GameState 写端(chosen_tome = 卡名,选卡落地后写;单次逻辑写入,
         # 申报豁免;CwScreenMegastar chosen_megastar 同式)。候选读取链在役
-        # +建档在册,tome 非「暂无画面建档」屏——写端自此接通。
+        # +建档已登记,tome 非「暂无画面建档」屏——写端自此接通。
         if _sess is not None:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,

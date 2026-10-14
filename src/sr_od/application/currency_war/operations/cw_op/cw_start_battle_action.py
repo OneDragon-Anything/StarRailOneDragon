@@ -1,12 +1,12 @@
-"""出战动作 op(CwActionStartBattleOp)——出战域重设计(T-286):出战
+"""出战动作 op(CwActionStartBattleOp)——出战域重设计:出战
 op 只管「点击出战和弹窗」,零策略语义、零转移验证——流程卡死监控归外部
 哨兵(runtime-ops 哨兵栈现役),op 内不建。
 
-动作 op 重组批③ 换壳(原 ``StartBattleOp``,ActionOp ABC → 框架
+动作 op 重组 换壳(原 ``StartBattleOp``,ActionOp ABC → 框架
 SrOperation;机械执行后 **op 内直调自己的上报函数**
 ``report_action_start_battle_param``,跳过子态事实随上报携带——免战牌
 递减语义 = 上报时,op-layer.md §1.2 动作 op 契约)。执行序(单一语义;备战环 /
-达标臂发射核 ``launch_prepared_battle`` / 恢复局锁定直出战三路径经同一
+达标分支动作发出核 ``launch_prepared_battle`` / 恢复局锁定直出战三路径经同一
 注册表分派到达本 op,禁各写一套点击段):
   1. 找按钮「按钮-出战」(备战 + 开商店两屏查;叠加帧现状逻辑)——
      免战子态 fallback 查「按钮-跳过」(同语义点它);
@@ -19,11 +19,11 @@ SrOperation;机械执行后 **op 内直调自己的上报函数**
   5. 完成 = 自上报(跳过子态事实)→ 交回(备战画面 op 正常终结,
      terminal/terminal_wait 语义不变)。
 
-**round 结果契约**(原基类在册例外收编):``execute()`` 的成功态 =
+**round 结果契约**(原基类已登记例外并入):``execute()`` 的成功态 =
 **点击序列已执行**(找不到按钮 / area 缺失 = round_fail 未发出),消费面
-= runner 包络 ``last_launch_ok`` 旁路(round 结果映射,在册例外 =
+= runner 包络 ``last_launch_ok`` 旁路(round 结果映射,已登记例外 =
 action_ops.md §2.3)。
-旧发射家族(6×0.5s 转移轮询 / 备战标识消失验证 / POST_LAUNCH_BLOCKERS
+旧发出家族(6×0.5s 转移轮询 / 备战标识消失验证 / POST_LAUNCH_BLOCKERS
 拦截弹窗守卫 / 重发长按下 / 失焦守卫 / launch_dead 连败停机)随出战域
 重设计整删:op 不判效,交回后画面状态由外循环下一帧重判。
 """
@@ -84,7 +84,7 @@ class CwActionStartBattleOp(CwOperation):
     def run(self) -> OperationRoundResult:
         """出战点击序列(成功态契约 = 点击序列已执行,见模块头)。
 
-        免战子态(2026-08-17 M72 实锤建档):「免战牌」策略激活时出战按钮变
+        免战子态(2026-08-17 M72 已实测确认建档):「免战牌」策略激活时出战按钮变
         「跳过(N/N)」(直跳战斗,免战 2 次)——查不到「出战」时查子态
         「按钮-跳过」,同语义点它(推进节点)。跳过子态事实随自上报携带
         (免战次数递减语义 = 上报时,非「验证落地后」——op 已零验证)。
@@ -125,7 +125,7 @@ class CwActionStartBattleOp(CwOperation):
             return self.round_fail(
                 f'area 缺失:{btn_area}({SCREEN_NAME}),禁兜底坐标')
         skip_substate = btn_area == '按钮-跳过'
-        env.skip_substate = skip_substate   # 回执 extra 留证消费(runner 包络)
+        env.skip_substate = skip_substate   # 回执 extra 保留证据消费(runner 包络)
         if cw_sim_ports.mechanical_io_allowed():
             ex._ctx.controller.mouse_move(btn)
             ex._ctx.controller.click(btn)
@@ -155,7 +155,7 @@ class CwActionStartBattleOp(CwOperation):
         return self.round_success(detail, data=world_decl)
 
     def _settle_post_click_popup(self, ex) -> str:
-        """出战点击后的弹窗收口(步 4,单帧截图判定):两类真弹窗点确认,
+        """出战点击后的弹窗收尾(步 4,单帧截图判定):两类真弹窗点确认,
         都没有 = 完成。返回机械摘要(detail;「area 缺失」前缀 = 弹窗
         确认点击未执行,调用方按序列未完成上报)。
 

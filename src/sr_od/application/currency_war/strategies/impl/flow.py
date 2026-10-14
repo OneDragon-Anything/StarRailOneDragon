@@ -1,16 +1,16 @@
 """货币战争 主流程驱动核(CwFlowStrategy;自 decision_v2/strategy.py 迁入,
 策略统一迁移批——底稿 MAP ⓪ A1「迁移白名单」)。
 
-辖域 = mandate_v1 未覆写的域实现:
+适用范围 = mandate_v1 未覆写的域实现:
 
-- 生命周期收编后的唯一冷建口 create_session(策略器状态工厂接线 + live
+- 生命周期并入后的唯一冷建口 create_session(策略器状态工厂接线 + live
   初值 v3_phase='FORM' 一并在此落位)与策略器状态工厂 create_state;
 - 方向节拍内化(:meth:`_refresh_direction`;:方向重估从流程侧
   ops 直调收进策略器,触发信号 = 黑板帧刷新代次标注,键守卫贵段每
   game-round 恰一次 + 便宜派生视图段);
 - pick 族(decide_invest/supply/encounter/megastar/partner/planner/
   star_tome/wish_trial/box_card + 契约扩员两口 fortune/expert_invite,
-  普查迁移批 2;原 equip_pick 口随选择装备屏误判退役删除);
+  普查迁移);
 - 商店序列兼容驱动器 decide_shop_screen 缺省实现(降格出 ABC;
   回放/序列锁消费,mandate 记账在其覆写)与商店单动作
   接口 decide_shop_action(委托 mandate_v1/shop)。
@@ -90,7 +90,7 @@ from sr_od.application.currency_war.strategies.impl.pick_bias import (
 if TYPE_CHECKING:
     pass
 
-# config 属 app 桶,impl 桶禁 import(cw_strategy.py 字符串注解先例);
+# config 属 app 层,impl 层禁 import(cw_strategy.py 字符串注解先例);
 # 实例由调用方按参注入。
 CurrencyWarConfig = 'CurrencyWarConfig'
 
@@ -100,7 +100,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
     泛型绑定(设计正本 §1/§8.5/§8.6-6,迁移批次三):本核即 mandate_v1
     流程核,``_TState`` 在此绑定为本实现的私有状态类型 StrategyState
     (基类 ``create_state`` 返回类型随之收窄)——框架基类仍只以泛型参数
-    携带,零感知字段;kernel/one_dragon 零 import 本类型(布局锁辖)。
+    携带,零感知字段;kernel/one_dragon 零 import 本类型(布局锁定约束)。
 
     行为锚见各方法 docstring 与 sim 契约锁。
     """
@@ -111,7 +111,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
 
     def __init__(self, gs, config, registry: DecisionV2Registry | None = None):
         """终态契约 §2.1 构造注入(gs/config 归基类);registry 可注入
-        (A/B:两套注册表各跑一臂);缺省=标定版。"""
+        (A/B:两套注册表各跑一分支);缺省=标定版。"""
         super().__init__(gs, config)
         self.registry = registry or DEFAULT_REGISTRY
 
@@ -122,18 +122,18 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
 
         每局冷建 StrategyState(本核即 mandate_v1 流程核;sim 初始相位注入
         经 ensure_strategy_state 构造入口,不经本钩子)。live 初值
-        v3_phase='FORM'(:原 on_match_start 的唯一非零缺省随
-        生命周期收编迁入冷建口)。
+        v3_phase='FORM'(原 on_match_start 的唯一非零缺省随
+        生命周期并入迁入冷建口)。
         """
         st = StrategyState()
         st.v3_phase = 'FORM'
         return st
 
-    # ===== 镜像族观察写者(mandate_v1 单臂)=====
+    # ===== 镜像族观察写者(mandate_v1 单分支)=====
 
     def write_shop_mirrors(self, state: GameState,
                            _ms: StrategyState) -> None:
-        """逐帧写 ``v3_b_t`` 板面目标线承重计数(纯遥测观测面)。
+        """逐帧写 ``v3_b_t`` 板面目标线支撑计数(纯遥测观测面)。
 
         口径 = B_t(件级单一源 ``cw_deploy_logic.
         board_target_line_weight``:deployed 中全羁绊 ∩
@@ -145,13 +145,13 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         对伤害差/终局 hp 仅弱正)。
 
         边界:本方法写 ``v3_b_t`` 与 ``v3_form_ok`` 两个观测键——旧
-        ``v3_form_score`` 随本口径替换退役(历史账本只读,不再有写者)。
-        ``v3_form_ok`` 写端已从退役 v2 相位机接回板面现读(死镜像处置批
+        ``v3_form_score`` 随本口径替换停用(历史账本只读,不再有写者)。
+        ``v3_form_ok`` 写端已从停用 v2 相位机接回板面现读(死镜像处置批
         form_ok 死镜像处置:旧写端在 mandate_v1 下无写者恒 False,与
-        发射判据核 armed 现读对账必然全量不一致——判读单一源 =
-        第三十四局前后判读定谳);判据单一源 =
-        ``cw_launch_admission.readiness_form_ok``(与发射 armed 同式,
-        零第二实现)。``v3_phase`` 维持无写端退役缺省 ''(相位机已亡,
+        发出判据核 出战就绪 现读对账必然全量不一致——判读单一源 =
+        第三十四局前后判读已定案);判据单一源 =
+        ``cw_launch_admission.readiness_form_ok``(与发出 出战就绪 同式,
+        零第二实现)。``v3_phase`` 维持无写端停用缺省 ''(相位机已亡,
         无现读语义可接)。``v3_mirror_key`` 轮键戳照常盖章(键语义 =
         「本轮已写」,重复写守卫据此不重复触发)。纯遥测恢复:
         两字段不进任何判据(「form_score 降级纯遥测观测,不进
@@ -160,7 +160,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         form_progress 现读恒 False——该帧族的 form_ok 读数是「观察帧
         board 口径」,与部署放行判定「轮入口全量 state 口径」存在帧差,判读
         时以 sim 账本(全量 state)为准。
-        (终态契约 §2.5 impl 桶:状态宿主 = 显式 ``_ms`` 形参。)
+        (终态契约 §2.5 impl 层:状态宿主 = 显式 ``_ms`` 形参。)
         """
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
             board_target_line_weight,
@@ -179,7 +179,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         dep_names = [(getattr(d, 'char_id', '') or '') for d in deployed]
         _ms.v3_b_t = board_target_line_weight(dep_names)
         # form_ok 镜像现读写端(死镜像处置,见 docstring;判据单一源 =
-        # readiness_form_ok,与发射 armed 同式)
+        # readiness_form_ok,与发出 出战就绪 同式)
         from sr_od.application.currency_war.kernel.cw_game_state import (
             plane_of as _plane_of,
         )
@@ -190,7 +190,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             state, getattr(_ms, 'target_comp', None))
         _ms.v3_mirror_key = (_plane_of(state), _round_num_of(state))
 
-    # ===== 方向节拍内化(原战略层 update_target 收编为策略器私有
+    # ===== 方向节拍内化(原战略层 update_target 并入为策略器私有
     #       刷新,触发信号 = 黑板帧刷新代次标注,非契约成员)=====
 
     def _ensure_intention(self, _ms) -> IntentionState:
@@ -205,9 +205,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                            _ms: StrategyState) -> None:
         """方向节拍贵段(每 game-round 恰一次;键守卫)。
 
-        批 3.7 意向层机器退役后,贵段 = **P1 过渡配方链驱动**
-        (``update_p1_recipe``——配方对派生/冻结闩,line_and_upgrade
-        §1.6 保留项);位面辖域以窗口谓词承载(``plane2_started_of``
+        意向层机器停用后,贵段 = **P1 过渡配方链驱动**
+        (``update_p1_recipe``——配方对派生/冻结标志,line_and_upgrade
+        §1.6 保留项);位面适用范围以窗口谓词承载(``plane2_started_of``
         布尔标志,宪法第 2 条合规——P1 配方物化触发的整改形态,非
         ``_plane_v == 1`` 位面字面量;P2 起停驱并清配方锁
         ``clear_p1_recipe``)。终局线选择不经本段——候选-锁定制在
@@ -232,15 +232,15 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                                  _ms: StrategyState) -> None:
         """派生视图刷新(便宜段;view 类帧入口只走本段)。
 
-        批 3.7 键面归一后的写位分布:
+        键面归一后的写位分布:
 
         - ``target_comp``(锁定线槽)**本段零写**——终态单写者 =
           ``session_scope.write_line_lock``(硬规则/时点兜底命中帧,
           P1 锁定局「互不覆写」的落地);
         - P1 未锁帧 = 过渡配方物化链写 ``opening_recipe_comp``
-          (配方对伪 comp;窗口谓词辖——P2 起停写;空窗帧按
+          (配方对伪阵容;窗口谓词覆盖——P2 起停写;空窗帧按
           ``p1_early_pair`` 无门槛方向物化,「空窗期同样有方向」的
-          在册语义保持);
+          已登记语义保持);
         - ``v3_core_names`` = 现行方向(锁定线优先,未锁 = 配方)核心名。
         """
         ist = self._ensure_intention(_ms)
@@ -315,7 +315,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         **选卡族失效触发集中挂点**(shop_session §4.2 读数协议②;批
         3.6):本读口 = 全部 pick 决策入口(三选一/二选一选卡族)共用
         的候选槽读口,prep/shop 决策不经此口——任何选卡帧在此失效金位
-        账面(选中即失效实读,不枚举单项效果;刷新建议帧同辖 = 保守侧,
+        账面(选中即失效实读,不枚举单项效果;刷新建议帧同样适用 = 保守侧,
         多失效一拍的代价 = 下次实读锚定)。
         """
         from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
@@ -358,13 +358,13 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         不为过渡阵容服务」):两轴对齐源均 = 意向状态 D*① 三参
         (locked_comp/demoted_endgame/evicted 同源 ist)传入策略层;旧
         ``target_comp`` 对 invest kind 不消费(P1 期它是过渡配方对物化的
-        伪 comp,辖域错位;encounter 等 pick 族消费面不变,supply 已随
+        伪阵容,适用范围错位;encounter 等 pick 族消费面不变,supply 已随
         补给画面策略迁移同源改挂 ist——解析后传 comp 对象)。
         选卡结果喂 CommitSignals——**建议帧跳过喂入、选卡帧保留**(喂入
         面申报见 :meth:`_feed_invest_strategy_signals`;env 侧喂入已随环境
         轴迁移删除)。
         三闸点击链留 handler——闸全败帧 handler 同访问再调本入口取选卡:
-        同帧去重 memo(scratch 键 = (kind, 候选元组))保证「建议帧首调发
+        同帧去重 memo(scratch 键 = (kind,候选元组))保证「建议帧首调发
         建议、紧随重调落选卡后键清」——重入访问(新候选/同候选)恢复首调
         语义。memo 命中的落选卡改调策略层 ``decide_pick`` 纯选卡口(decide
         是纯函数,重调仍返建议;缺此口则建议帧三闸全败时 op round_fail,
@@ -384,7 +384,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         """投资策略轴决策(策略层单一源 = ``invest_strategy.decide``;判据
         正本 = strategy-docs 投资策略画面篇):纯值出口在此包装动作词表,
         op handler 与观察写槽零改动。同帧去重 memo 语义与 env 侧同构
-        (键 = (kind, 候选元组)):建议帧首调发逐卡刷新建议(slots = 策略层
+        (键 = (kind,候选元组)):建议帧首调发逐卡刷新建议(slots = 策略层
         动作集,与选卡互斥——旧 kernel 单口非互斥返回的语义分界),紧随
         重调落选卡走 :func:`invest_strategy.decide_pick` 同一评分基线,
         零选卡漂移。"""
@@ -415,7 +415,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         return pick_param_cls(idx=out.idx, reason=out.reason)
 
     def _feed_invest_strategy_signals(self, options: list) -> None:
-        """所选帧对各线的 affinity → comp 分贡献(策略 2.0 权重;纯遥测,
+        """所选帧对各线的 affinity → 阵容分贡献(策略 2.0 权重;纯遥测,
         决策面零消费——投资源不参与证明自身的反自馈检查现状即合规)。
         喂入面申报(29 号稿 §4 遥测条款):建议帧跳过喂入——
         常规建议帧被帧级门拦定义型 → affinity 键喂入恒空,跳过即零漂移;
@@ -446,7 +446,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         """投资环境轴决策(策略层单一源 = ``invest_env.decide``;判据正本
         = strategy-docs/28_invest_env_screen.md):纯值出口在此包装动作词表,
         op handler 与观察写槽零改动。
-        同帧去重 memo 语义不变(键同策略轴结构 = (kind, 候选元组)):
+        同帧去重 memo 语义不变(键同策略轴结构 = (kind,候选元组)):
         建议帧首调发建议——环境屏 = 整组重掷(单全局钮,handler 只消费
         slots 真值哨兵,输出契约 = slots 全帧槽位);紧随重调落选卡——decide 是纯函数,再调仍返建议,落选卡走
         :func:`invest_env.decide_pick` 同一评分基线,零选卡漂移。"""
@@ -666,7 +666,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                             locked)
             else:
                 key_equips = list(comp.key_equips or ())
-        # 终态契约 §B:spare 库存打分源 = gs.equips(镜像退役)。
+        # 终态契约 §B:spare 库存打分源 = gs.equips(镜像停用)。
         spare = list(self.gs.equips.value or [])
         # 在身装备(game state 唯一消费口:策略禁读执行侧
         # 簿记)—— deployed 单成员带
@@ -689,8 +689,8 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             owned_spare=spare,
             owned_total=spare + worn))
 
-    # ===== 契约扩员新入口(普查迁移批 2;F-overlay-01/02 判据
-    # ===== 收编 kernel,本壳零打分实现,委托同构 decide_box_card 先例)=====
+    # ===== 契约扩员新入口(普查迁移;判据
+    # ===== 并入 kernel,本壳零打分实现,委托同构 decide_box_card 先例)=====
 
     def decide_fortune(self) -> CwActionPickFortuneParam:
         """命运卜者强化三选一(终态零参口;候选 = ``gs.fortune_opts``
@@ -710,7 +710,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         浓度版),idx = -1 表现金为王。
 
         行为分叉申报:kernel 判据与 13_pick_family.md E9 在案规格(目标线
-        成员优先 → 池浓度)分叉,已挂账独立行为变更(迁移批 2 报告),本
+        成员优先 → 池浓度)分叉,已登记待办:独立行为变更(迁移报告),本
         入口保持实码行为、不擅自切规格。"""
         payload = self._require_slot_options(self.gs.expert_invite,
                                              'expert_invite')
@@ -733,7 +733,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         入口内务 = 帧代次消费(:meth:`_consume_shop_direction_frame`;
         方向刷新在决策读视图之前完成,内化锚)。
         受限会话自限(分层依据 = flow/README.md §1 决策控制分层铁律):
-        决策本体产出唯一提案后,受限会话活跃帧(armed ∧ 金超息线
+        决策本体产出唯一提案后,受限会话活跃帧(出战就绪 ∧ 金超利息线
         派生标记,每帧现算 = bridge.launch_restricted_session_active)经
         kernel ``launch_arbitration_gate`` 谓词检(与 flow 闸同源同参,零
         判定数学复制)——拒 = 决策改发 ``CwActionCloseShopParam``(消费
@@ -744,7 +744,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
             shop,
         )
-        # 决策入口容器契约(W6 波 4,设计件《商店黑板容器化方案》§2.2-1):
+        # 决策入口容器契约(设计件《商店黑板容器化方案》§2.2-1):
         # 输入 = 容器单例,无二次快照;在屏前置 = ``gs.shop.value is not
         # None`` 才可决策——离屏帧进决策 = 观察层失约同型抛错(黑板契约
         # None 检查的容器等价物,「禁静默按空牌面决策」语义不变)。开店态
@@ -760,7 +760,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # 主账未按屏幕真值锚定(接管/重置/账失效事件后,备战环 heavy 观察
         # 尚未置位)时商店决策的关键输入(席面)不可信——返回恒可用终结
         # CwActionCloseShopParam 交商店画面 op 执行收店,外循环全分支重判自然落回备战节点,heavy
-        # 观察完成锚定后再进店;店内不做任何原地重建(读屏重建出口已退役)。
+        # 观察完成锚定后再进店;店内不做任何原地重建(读屏重建出口已停用)。
         # 判定单一源 = kernel cw_game_state.tracked_unobserved;跳过事件
         # 留痕与连续跳过熔断在执行侧商店画面 op 的 CwActionCloseShopParam 出口。
         from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -774,7 +774,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         self._consume_shop_direction_frame()
         # v3_b_t 逐帧镜像写者(纯遥测,零行为面;口径与边界见
         # write_shop_mirrors docstring。旧 v3_form_score 已随口径
-        # 替换退役,历史账本只读)。写位 = 决策核入口 = 生产单
+        # 替换停用,历史账本只读)。写位 = 决策核入口 = 生产单
         # 动作循环与序列驱动器(decide_shop_screen)共同必经点。
         self.write_shop_mirrors(gs, self.state)
         # 决策本体宿主 = gs(state_of(gs) → 同源接线策略器状态;
@@ -782,7 +782,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # game_state_of 解析到一次性空容器,禁)。
         action = shop.decide_shop_action(gs, gs, self.config,
                                          registry=self.registry)
-        # 发射帧受限消费·策略侧自限(详设 §2.10;flow 闸退役前的先行落地
+        # 动作发出帧受限消费·策略侧自限(详设 §2.10;flow 闸停用前的先行落地
         # ——受限会话内自限先拦,闸永不触拒,行为与现役逐位一致)。标记
         # 派生与谓词皆 kernel 单一源直调;金读 = 容器读口 gold_of,与 flow
         # 闸闭包同帧同值(决策与检之间零动作,期望态无推进)。
@@ -801,7 +801,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # 拒 = 消费终止:本动作不执行,决策改发 CloseShop 收访问(评估序
         # 不变、不跳过高位改试低位 = 金出口族红线 5 逐位平移,非改试次优)。
         # 受阻遥测分键 = kernel 常量(现役 flow 闸闭包同键写入 cw4_counters,
-        # run-1 两写点按动作互斥不自增;run-2 闸退役后本写点为唯一写点,
+        # run-1 两写点按动作互斥不自增;run-2 闸停用后本写点为唯一写点,
         # 分键宿主随拒拍落 strategy_state,详设 §2.10)。
         _ct = getattr(self.state, 'cw4_counters', None)
         if isinstance(_ct, dict):
@@ -841,9 +841,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
         )
-        # 驱动器同路(W6 波 4,设计件 §2.2-3):决策读容器单例 + 期望态
-        # 推进 = 逐动作直调上报函数(动作 op 重组批④:快照三件组已内聚
-        # 买牌上报,双抄写段退役);逐域期望态由投影直锁钉住
+        # 驱动器同路(设计件 §2.2-3):决策读容器单例 + 期望态
+        # 推进 = 逐动作直调上报函数(动作 op 重组:快照三件组已内聚
+        # 买牌上报,双抄写段停用);逐域期望态由投影直锁钉住
         # (test_shop_projection_logic,锁 M1)。帧缺失 = 容器离屏 =
         # 观察层失约同型抛错(在屏前置)。
         gs = self.gs
