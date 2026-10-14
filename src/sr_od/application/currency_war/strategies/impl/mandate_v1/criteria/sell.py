@@ -1,15 +1,14 @@
 """criteria/sell——EV 卖面(§2.2;fuel_sell/protected_sell 在 mandate/谓词层)。
 
-两个发射/通道位:sell_for_interest(凑息档 EV 面,臂①旁路)、
+两个动作发出/通道位:sell_for_interest(凑利息档 EV 面,臂①旁路)、
 funding_support_sell(支付能力变现子域,R13-5 支付支撑通道,两臂同开、
-mandate=false+funding_support=true)。换线塌缩出口(line_switch_sell)
-已随候选-锁定制退役删除(迭代 2026-10-12-prep-shop-workflow-redesign
-批 3.7:锁定为一次性决策,无换目标后的清场需求——line_and_upgrade
-§1.6 退役面清单;V_MS 槽随函数退役撤槽)。
+mandate=false+funding_support=true)。换线清仓出口(line_switch_sell)
+已删除(候选-锁定制:锁定为一次性决策,无换目标后的清场需求——
+line_and_upgrade §1.6;V_MS 槽随函数删除撤槽)。
 
 fail 方向(§2.2.1 唯一权威规格):不可逆卖面缺输入(λ 表损坏/域外/
-第四态无载/sell_refund 损坏)⇒ 不评不卖。凑息卖自 T1 语义重写批
-(设计 13_buy_face_design §2.2)起 = 回拉发射位(金位触发+目标量止盈,
+第四态无载/sell_refund 损坏)⇒ 不评不卖。凑息卖(T1 语义重写)
+= 回拉动作发出点(金位触发+目标量止盈,
 函数 docstring 单一源),无 fail-closed 输入面。
 """
 from __future__ import annotations
@@ -40,9 +39,9 @@ if TYPE_CHECKING:
 
 
 def _slot_of(b: object, idx: int | None = None) -> int:
-    """占席条目 → 卖出候选位键(紧缩序下标;Unit.slot
-    信息位退役,候选键 = 条目在紧缩占席序(物理槽序)中的 0 基下标,
-    发射侧经容器槽位表枚举对位还原;``idx`` 显式传位,P4 容器形解包
+    """占席条目 → 卖出候选位键(紧缩序下标;Unit.slot 仅作信息位,
+    候选键 = 条目在紧缩占席序(物理槽序)中的 0 基下标,
+    发出侧经容器槽位表枚举对位还原;``idx`` 显式传位,P4 容器形解包
     单一读点,本模块三通道共用)。"""
     return int(idx if idx is not None else 0)
 
@@ -80,17 +79,17 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
                       merge_guard_release: frozenset[str] | set[str] = frozenset(),
                       dedup_names: set[str] | None = None,
                       ) -> tuple[list[int], str]:
-    """凑息卖·回拉发射位(T1 语义重写;设计 13_buy_face_design §2.2)。
+    """凑息卖·回拉动作发出点(T1 语义重写;设计 13_buy_face_design §2.2)。
 
     语义重写三项(R2-N4,取代旧「T_SEARCH_A 注入态资格全集无差别全发」):
-    ① **金位触发(缺口驱动)**:买/花后逻辑态金 ``gold`` < 息线
-       g* = saturation_line(cap_resolved) 才发射,缺口 = g* − gold;
-       非缺口帧零发射(返回 'not_needed',与 funding_support 触发形态同构);
+    ① **金位触发(缺口驱动)**:买/花后逻辑态金 ``gold`` < 利息线
+       g* = saturation_line(cap_resolved) 才发出,缺口 = g* − gold;
+       非缺口帧零发出(返回 'not_needed',与 funding_support 触发形态同构);
     ② **目标量止盈**:remaining 递减贪心(funding_support ``remaining``
        模板同构移植,零待证依赖;任意确定序贪心都能卖够,序只影响效率
        ——p49 ⑤ 每金序/[11] 最小化为效率升级项,非本位前件),
        Σrefund ≥ 缺口即止,不多卖一张;
-    ③ **槽位布尔门退役**:T_SEARCH_A 裸布尔检查退出本消费位(窗口数值
+    ③ **槽位布尔门停用**:T_SEARCH_A 裸布尔检查退出本消费位(窗口数值
        链归 P57 裁决,与本重写分账)。
 
     资格谓词不变(占位件物理门 ∧ 1★ ∧ 零重叠 ∧ 无后台效果,与
@@ -99,18 +98,17 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
     同门——占席物品不可卖且无金币现值,空名 1★ 禁穿透资格循环;
     语境经 ``predicates.bench_effect_context`` 共享装配现读——症3 三通道
     统一)。序:``prefer_names``
-    (刚买件名集合,R2-N1 发射约束:首卖刚买件使连带卖出损失=0;帧级逻辑态
+    (刚买件名集合,R2-N1 发出约束:首卖刚买件使连带卖出损失=0;帧级逻辑态
     架构下刚买件尚未入 bench,按名匹配同资格在册件)优先,其余按
     (star, slot) 升序(funding_support 同款序)。
 
     分键遥测(R3-R5 四字段,设计 §3.2;counters=None 时不记):
-    ``t1_interest_emit_frames``(发射帧数)/``t1_interest_gap_total``(缺口
+    ``t1_interest_emit_frames``(动作发出帧数)/``t1_interest_gap_total``(缺口
     累计)与 ``t1_interest_sellback_total``(实际卖回累计,两者之比=覆盖
     缺口率)/``t1_pullback_gold_ge_gstar``(回拉后逻辑态金 ≥ g* 帧数=金位
     轨迹)。
 
-    凑息禁令(血线硬地板解锁包件②)已随血线地板删除链退役(迭代
-    2026-10-12-prep-shop-workflow-redesign 批 3.4;line_and_upgrade §2.3
+    凑息禁令(血线硬地板解锁包件②)已删除(line_and_upgrade §2.3
     血线地板解锁行——唯一消费方 = 已废止的血线解锁;正典依据
     user_playstyle [39]「HP 不作决策依据」,濒死响应 = 修经济/阵容
     本身,凑息卖回不受血线辖)。
@@ -132,13 +130,13 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
     G-S1 不冲突:被保件同时是素材时双守卫各拒各的(保护只影响排序/跳过,
     不影响资格闭集)。
 
-    ``merge_guard_release``(T-253;缺省空集 = 零漂移端):死库存素材对
+    ``merge_guard_release``(缺省空集 = 零漂移端):死库存素材对
     释放集,G-S1 判据处的条件旁路(命中 ⇒ 跳过拒入、不计数;单一源 =
     sell_gate.dead_pair_exit_release,消费位禁自算)。凑息通道消费释放
     成员 = 卖掉意图已死的近零值资产,正是燃料类语义(P78-5′ 对价豁免
     条款照常辖,无新增豁免需求)。
     """
-    # 空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
+    # 空板止损守卫(单一源 = sell_gate.empty_board_sell_blocked):
     # 板空帧卖储备换金 = 期权损失换零净金(1★ 全额退),弱劣拒帧。
     # deployed 读 = 容器行域单一源(守卫与资格循环两处共用同一次
     # 解析,禁双形态各读半份)。
@@ -227,7 +225,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
     gs)。
 
     触发 = 骨架义务动作金不足(gold < need_gold,硬约束①不满足侧的
-    筹资面);变现对象 = 凑息档序同资格(占位件物理门 ∧ 1★ ∧ 无后台
+    筹资面);变现对象 = 凑利息档序同资格(占位件物理门 ∧ 1★ ∧ 无后台
     效果 ∧ 零重叠,占位件判据单一源 = ``predicates.item_slot_
     unsellable`` 跨通道共享谓词,与 M4 燃料/凑息同门——空名 1★ 禁
     穿透资格循环;语境经 ``predicates.bench_effect_context`` 共享装配
@@ -249,14 +247,14 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
     名只计 1,去重载体 = ``dedup_names``,单一源 =
     ``cw_state.count_merge_material_blocked``)。
 
-    ``merge_guard_release``(T-253;缺省空集 = 零漂移端):死库存素材对
+    ``merge_guard_release``(缺省空集 = 零漂移端):死库存素材对
     释放集,G-S1 判据处的条件旁路(命中 ⇒ 跳过拒入、不计数;单一源 =
     sell_gate.dead_pair_exit_release,消费位禁自算)。支付变现消费释放
     成员的对价豁免条款(P78-5/5′ 两腿)照常辖,无新增豁免需求。
     """
     if gold >= need_gold:
         return [], 'not_needed'
-    # 空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
+    # 空板止损守卫(单一源 = sell_gate.empty_board_sell_blocked):
     # 板空帧筹资卖出同弱劣拒帧(收益侧=义务在 bench 域,守卫不评收益
     # 只钉卖出腿;恢复正路 = 部署与买面,不在卖出通道)。
     # deployed 读 = 容器行域单一源。

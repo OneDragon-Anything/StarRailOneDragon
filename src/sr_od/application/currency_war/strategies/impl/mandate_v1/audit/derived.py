@@ -1,8 +1,8 @@
 """【推】推导量计算器注册表(01_math_framework §6 第 2 形态;原 design_economy
-§E4.0 第 2 条已删档,考古走 git 历史)。
+§E4.0 第 2 条已删除,沿革见 git 历史)。
 
 登记全部【推】项的入口函数与依赖注册表清单——审计时按此表核对
-「数值随注册表重算,无自由参数」(NMF §3.2)。**子形态【推·语料拟合】**
+「数值随注册表重算,无自由参数」(01_math_framework §3.2)。**子形态【推·语料拟合】**
 (R29-6):系数系对实机语料回归、残差中位 0 的拟合量(随语料分布漂移),
 非「可从注册表重算的推导量」——审计不得按机制推导量放行,须按
 「系数随 P51_V3_REBUILD §2 重算物版本重算 + 漂移哨兵(对账持续偏差)
@@ -61,25 +61,25 @@ ENTRIES: tuple[DerivedEntry, ...] = (
         'delta_interest_flow', 'statefn.horizon.delta_interest_flow',
         ('statefn.interest.INTEREST_CAP_SUP',
          'audit.proof_consts.LAMBDA3_WINDOW'),
-        # Δ息流̂ 生产式(R9-3 上界形态;cap_sup 口径 R63-1)
+        # Δ利息流̂ 生产式(R9-3 上界形态;cap_sup 口径 R63-1)
     ),
     DerivedEntry(
         'r_global', 'statefn.horizon.r_global',
         ('cw_game_state.node_seq_by_plane',),
         # R_全局(L-R3-2:长度唯一真值源=场字段 node_seq_by_plane,None
-        # 回退默认表;T-8 裁决点 9 策略侧自算,禁新建长度常量 §6.1)
+        # 回退默认表;策略侧自算,禁新建长度常量 §6.1)
     ),
     DerivedEntry(
         'difficulty_interim', 'statefn.lambda_death.difficulty_band',
         ('cw_investments.INVESTMENT_STRATEGIES',),
         # 【登记对齐,IMPL_ADV_R200 OBS-4】interim 兜底公式(难度=108基础
         # +品质加成[银0/金3/棱彩6,远见豁免]+遭遇等级[缺位置0]+特殊[伟大
-        # 征服+当前连胜],P51_V3_REBUILD §2)**未落码**——现行实现
+        # 征服+当前连胜],P51_V3_REBUILD §2)**未实现**——现行实现
         # difficulty_band 仅承载「真值优先」半边(局内旗牌读取真值→分带;
         # 缺读 None 直返 None 落域外,不产 interim 假真值,与函数 docstring
-        # 一致)。落码归属=λ 表重建批(公式需品质/遭遇/特殊三分量的
+        # 一致)。实现归属=λ 表重建批(公式需品质/遭遇/特殊三分量的
         # 可观测载体,现观察面未载);subtag 维持「语料拟合」——系数
-        # 归宿不变(§2 重算物),落码后按同 subtag 单独核。
+        # 归宿不变(§2 重算物),实现后按同 subtag 单独核。
         subtag='语料拟合',
     ),
 )

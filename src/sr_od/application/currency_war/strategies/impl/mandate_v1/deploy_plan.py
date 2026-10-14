@@ -6,8 +6,8 @@
 
 - 选人(:func:`select_deployments`,自 kernel 原样迁入):围栏/成对/点火序/
   核心桶/必需件首桶/cap/同名去重/配方底线门/板空保底全套语义,禁第二套;
-- 排路由(:func:`deploy_row_pref`,三级):comp 站位覆盖(``Comp.char_
-  positions`` 字段契约「comp 特定站位要求,覆盖命途默认」)> 注册表
+- 排路由(:func:`deploy_row_pref`,三级):阵容站位覆盖(``Comp.char_
+  positions`` 字段契约「阵容特定站位要求,覆盖命途默认」)> 注册表
   ``get_char(char_id).position_pref()`` 派生 > back 兜底——旧链路备战
   候选恒按后排、注册表偏好被丢弃的行为变化申报项
   在此落地;
@@ -15,8 +15,8 @@
   角色)时队列后方真 front 候选先提,无 front 候选才强转当前件;
 - 槽位选择(:func:`deploy_slot_plans`):策略遍历容器行列现值自定,后排
   上限 = ``back_layout`` 现值(:func:`back_capacity_of` 单一源)——消除
-  「发射空槽可指扩展槽而执行面按基线 6 槽」的静默分歧(P2 遗留);
-- 出战链计划单一源(:func:`deploy_plan_moves`):mandate 发射位
+  「动作发出侧空槽可指扩展槽而执行面按基线 6 槽」的静默分歧(P2 遗留);
+- 出战链计划单一源(:func:`deploy_plan_moves`):mandate 动作发出点
   (mandate._emit_deploy_moves)与 cw_loop 出战链
   (:func:`battle_chain_deploy_params`,恢复局同步步/达标臂共用)共用,
   禁各写一套计划装配。
@@ -77,12 +77,12 @@ def _bench_slot_is_item(b) -> bool:
 
 
 def _slot_no_of(b, idx: int | None = None) -> int:
-    """占席条目 → 紧缩位键(条目在紧缩占席序中的 0 基下标;Unit.slot 信息位退役,紧缩序 = 物理槽序;``idx`` 显式传位)。"""
+    """占席条目 → 紧缩位键(条目在紧缩占席序中的 0 基下标;Unit.slot 仅作信息位,紧缩序 = 物理槽序;``idx`` 显式传位)。"""
     return int(idx if idx is not None else 0)
 
 #: 部署计划容器槽位表不健康显影分键(计划级 fail-closed 时 +1)。键名保留
 #: 现役 ``deploy_chain_slot_table_unhealthy``(跨局遥测对照可比性优先;
-#: 发射点已统一为本函数 = 原出战链局部键的同语义继承,mandate 发射位与
+#: 发出点已统一为本函数 = 原出战链局部键的同语义继承,mandate 动作发出点与
 #: 出战链共用;键名沿用 deploy_chain_ 前缀为历史命名,语义 = 本计划单一源
 #: 的计划级显影,benchchar-retirement P8 申报确认)。
 DEPLOY_PLAN_SLOT_TABLE_UNHEALTHY_KEY: str = 'deploy_chain_slot_table_unhealthy'
@@ -91,7 +91,7 @@ DEPLOY_PLAN_SLOT_TABLE_UNHEALTHY_KEY: str = 'deploy_chain_slot_table_unhealthy'
 def _deploy_plan_inputs(frame: MandateFrame, session: StrategySession,
                         state: GameState) -> dict:
     """select_deployments 同参装配(计划侧装配单一源,自 mandate 迁居;
-    原子发射位(R2)与放行判定谓词共用同一份输入,禁双源)。键集 =
+    原子动作发出点(R2)与放行判定谓词共用同一份输入,禁双源)。键集 =
     ``select_deployments_reasoned`` 形参(围栏/去重/cap/配方底线语义全在
     选人函数内)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -110,13 +110,13 @@ def _deploy_plan_inputs(frame: MandateFrame, session: StrategySession,
         'deployed_cids': _cids,
         'deployed_fac': deployed_bond_counts(_cids),
         'board': dict(state.board.value or {}),
-        # cap 单一源 = max_units_of 容器派生链(黑板帧退役;无限回退分支已退役——max_units_of 恒 ≥1 有值)。
+        # cap 单一源 = max_units_of 容器派生链(黑板帧停用;无限回退分支已停用——max_units_of 恒 ≥1 有值)。
         'cap': max_units_of(state),
         'target_factions': _tgt,
         'target_cores': set(getattr(_comp, 'core_chars', None) or ()),
         'fw_carry': _fw_carry,
         'locked_factions': (locked_faction_scope(_ist) or frozenset()),
-        # 判据必需件首桶(单一源 = 目标 comp required_deployed;发射⇔执行
+        # 判据必需件首桶(单一源 = 目标 阵容 required_deployed;发出⇔执行
         # 同吃本装配,序语义见 select_deployments 注)。
         'required_names': frozenset(
             getattr(_comp, 'required_deployed', ()) or ()),
@@ -159,7 +159,7 @@ def select_deployments(
     'recipe_floor'/'item_slot')逐项写入;带 reason 消费走
     :func:`select_deployments_reasoned`。
 
-    ``required_names``(判据必需件首桶):目标 comp 的 required_deployed
+    ``required_names``(判据必需件首桶):目标 阵容 的 required_deployed
     成员名集,进选人序首桶,先于核心桶/cap 竞争(推导出处 =
     ``Comp.required_deployed`` 字段契约 + user_playstyle [31]② 必需件
     特化)。缺省空集 = 序逐位同旧。**分轨边界显式申报**:预检位
@@ -271,7 +271,7 @@ def select_deployments(
     core_tgt = [i for i in tgt_idx
                 if _slot_cid(bench[i]) in _core_set]
     other_tgt = [i for i in tgt_idx if i not in core_tgt]
-    # 判据必需件首桶(required_names = 目标 comp 的 required_deployed 成员):
+    # 判据必需件首桶(required_names = 目标 阵容 的 required_deployed 成员):
     # 判据以「该件在板」为必要条件——缺它该体系永远无法成型,普通成员
     # 可替换而必需件不可;cap 竞争时空位让给普通成员 = 弱占优劣化。
     # 空集 = 逐位同旧序。
@@ -346,7 +346,7 @@ def select_deployments_reasoned(
     返回 ``(up, held, reasons)``——reasons = held 下标 → 拒因
     ('scatter_fence'/'rest_capacity'/'cap'/'name_dup'/'recipe_floor'/
     'item_slot')。
-    消费面 = 出口③围栏预检(shop can_deploy_single)、发射侧闭环分键
+    消费面 = 出口③围栏预检(shop can_deploy_single)、发出侧闭环分键
     (mandate._record_deploy_emit_held)、出战链计划
     (:func:`deploy_plan_moves`)与 select_swap_plan 卖后上序(注入
     ``select_up``);预检/分键禁第二套围栏语义。
@@ -379,14 +379,14 @@ def has_deployable(
     recipe_floor_lock_exempt: bool = False,
     required_names: frozenset[str] | set[str] = frozenset(),
 ) -> bool:
-    """「是否存在可部署件」的单一源谓词(发射×执行契约;自 kernel 迁入)。
+    """「是否存在可部署件」的单一源谓词(发出×执行契约;自 kernel 迁入)。
 
-    = ``has_deployable_reasoned(...)[0]``(委托,判空语义不变)——发射方
+    = ``has_deployable_reasoned(...)[0]``(委托,判空语义不变)——发出方
     (决策核准备战段)与达标臂质量闸(kernel cw_launch_admission 经注入
     消费,依赖倒置契约同 line_members)共用同一份围栏/去重/cap/配方
     底线语义判「还有没有部署可做」。背景(run 20260904_28xx 局11
-    停机形态):发射方判「bench 有货该部署」、执行方按配方底线规则把该件
-    留 bench → 空计划被包装成成功 → 零推进环停机。修后发射方在计划为空时
+    停机形态):发出方判「bench 有货该部署」、执行方按配方底线规则把该件
+    留 bench → 空计划被包装成成功 → 零推进环停机。修后发出方在计划为空时
     不提案(bench=1 是合法稳态)。
 
     语义口径与 ``select_deployments`` 完全一致(含 SIFT 未识别 char_id=''
@@ -417,13 +417,13 @@ def has_deployable_reasoned(
     recipe_floor_lock_exempt: bool = False,
     required_names: frozenset[str] | set[str] = frozenset(),
 ) -> tuple[bool, dict[int, str]]:
-    """「是否存在可部署件」的带拒因形态(发射侧遥测载体)。
+    """「是否存在可部署件」的带拒因形态(发出侧遥测载体)。
 
     = ``select_deployments_reasoned`` 的薄包装:返回 ``(bool(up),
     reasons)``——判空语义与 ``has_deployable`` 完全一致,reasons =
     held 下标 → 拒因闭集(scatter_fence/rest_capacity/cap/name_dup/
     recipe_floor/item_slot)。消费面 = mandate._deployable(部署放行判定:
-    ``deploy_emit_held_<reason>`` 发射侧分键的唯一拒因源)与本模块
+    ``deploy_emit_held_<reason>`` 发出侧分键的唯一拒因源)与本模块
     ``has_deployable``(委托)。禁第二套围栏语义(单一源同函数路径)。
     """
     up, _held, reasons = select_deployments_reasoned(
@@ -458,7 +458,7 @@ def can_deploy_single(
     其余量传当前真实快照),输出 = (可落板, 拒因);拒因口径 =
     ``select_deployments_reasoned``(scatter_fence/rest_capacity/cap/
     name_dup/recipe_floor)。出口③围栏放行预检**只消费本 API**,
-    禁发射面自算第二套围栏语义。查询不可得(快照缺失/语义冲突)由
+    禁动作发出面自算第二套围栏语义。查询不可得(快照缺失/语义冲突)由
     调用方按 ``precheck_unavailable`` 分键处理(与围栏拒 'fenced' 禁
     混键)。``recipe_floor_lock_exempt``/``required_names`` 透传。
     """
@@ -483,14 +483,14 @@ def can_deploy_single(
 def deploy_row_pref(char_id: str, comp: object | None) -> str:
     """落位排路由(策略三级;design §2.2「每人的排全部由策略实现决定」)。
 
-    ① comp 站位覆盖:``Comp.char_positions``(字段契约「comp 特定站位
+    ① 阵容 站位覆盖:``Comp.char_positions``(字段契约「阵容 特定站位
        要求(角色→front/back),覆盖命途 position_pref 默认」;在册实例
        = 爻光必后台/万敌独前排/知更鸟前台,攻略实证);
     ② 注册表派生:``get_char(char_id).position_pref()``(design §2.1
        「position_pref 不入形状,消费点经注册表按 char_id 派生;禁全局
        get_role_position」——旧链路备战候选恒按后排、注册表偏好恒被
        丢弃的行为变化申报项在此生效);
-    ③ back 兜底:comp 未覆盖 ∧ 注册表未登记(未识别名)→ 后排。
+    ③ back 兜底:阵容 未覆盖 ∧ 注册表未登记(未识别名)→ 后排。
 
     返回 'front' | 'back'。
     """
@@ -510,17 +510,17 @@ def deploy_slot_plans(bench: list[BenchSlot], up_idx: list[int],
     """落位策略(排路由 + 前排保证 + 槽位选择;P3 落位决策权归策略本体)。
 
     - 排 = :func:`deploy_row_pref` 三级路由;
-    - **前排保证**(kernel 规则随迁,2026-08-16 M47 修正口径):pref=back
+    - **前排保证**(kernel 规则随迁,2026-08-16 修正口径):pref=back
       ∧ 前排全空(出战硬要求前排有角色)时队列后方真 front 候选提到
       当前位,无 front 候选才强转当前 back 件;
     - 槽位 = 策略遍历容器视图现值自定:deployed 视图子表下标(排内 1 基
       派生)取占用集,首选排取最低空槽、首选排满 fallback
       另一排,两排全满截断(调用侧 cap 门先行,防御停);
     - 后排上限 = ``back_layout`` 现值(back_capacity_of 单一源,值域 6-9)
-      ——发射空槽集合按实值派生,扩展局(宝钻 7/8/9)才可能指到扩展槽,
+      ——发出空槽集合按实值派生,扩展局(宝钻 7/8/9)才可能指到扩展槽,
       基线 6 槽局不再出现越界槽号(P2 遗留分歧消除)。
 
-    返回 ``[(bench 下标, row, 排内 1 基槽号)]``(发射序 = 执行序;
+    返回 ``[(bench 下标, row, 排内 1 基槽号)]``(发出序 = 执行序;
     落位意图完整入载荷 (bench_idx, to_row, to_slot),执行/写侧按载荷
     直落,framework 零落位决定)。
     """
@@ -572,12 +572,12 @@ def deploy_slot_plans(bench: list[BenchSlot], up_idx: list[int],
 
 def deploy_plan_moves(frame: MandateFrame, session: StrategySession,
                       state: GameState) -> list[tuple[int, str, int, str]]:
-    """部署计划单一源(选人 + 落位 + 容器对位;mandate 发射位与出战链
+    """部署计划单一源(选人 + 落位 + 容器对位;mandate 动作发出点与出战链
     共用,禁各写一套计划装配)。
 
     管线 = ``_deploy_plan_inputs`` 同参装配 → :func:`select_deployments_
     reasoned` 选人 → :func:`deploy_slot_plans` 落位 → bench 容器槽位表
-    对位(slot 信息位 ↔ 容器下标,换算收口)。对位防线(T-266):容器
+    对位(slot 信息位 ↔ 容器下标,换算归一)。对位防线:容器
     槽位表存在重复/越界槽号时 ``{slot: 下标}`` 字典对位语义未定义
     (静默保留后值 = 拖错人出场的通道),判据单一源 =
     ``bench_slots_healthy``;不健康 → 整份计划 fail-closed 不出 +
@@ -600,13 +600,13 @@ def deploy_plan_moves(frame: MandateFrame, session: StrategySession,
     up, _held, _reasons = select_deployments_reasoned(**_inputs)
     if not up:
         return []
-    # comp 读口 = kernel None-safe 访问函数(禁 mandate_state.state_of:
+    # 阵容读口 = kernel None-safe 访问函数(禁 mandate_state.state_of:
     # 其对异型状态惰性冷建并写回 session——出战链只读计划,禁带状态
     # 重建副作用;test 桩态亦不被替换)。
     _comp = getattr(strategy_state_of(session), 'target_comp', None)
     plans = deploy_slot_plans(frame.bench, up, _comp, state)
-    # 紧缩占席序 → 容器槽位表下标对位(Unit.slot
-    # 信息位退役,frame.bench 与容器视图同帧同对象——紧缩序 = 物理槽序,
+    # 紧缩占席序 → 容器槽位表下标对位(Unit.slot 仅作信息位;
+    # frame.bench 与容器视图同帧同对象——紧缩序 = 物理槽序,
     # 第 k 个占用槽 ↔ frame.bench[k];视图漂移(占用数不等)= 陈旧帧
     # fail-closed 整体弃算,防错位拖拽出场。)
     view = state.bench.value
@@ -631,7 +631,7 @@ def deploy_plan_moves(frame: MandateFrame, session: StrategySession,
         _bi = _cidx_of.get(bi)
         if _bi is None:
             continue   # 对位失配(陈旧帧)= fail-closed 跳过该 move
-        # 发射载荷 faction = 主阵营注册表派生单一源(char_first_faction,
+        # 发出载荷 faction = 主阵营注册表派生单一源(char_first_faction,
         # §2.1 faction 类1:部署装配;未注册名 = '?')
         out.append((int(_bi), row, int(slot),
                     char_first_faction(_slot_cid(frame.bench[bi]))))

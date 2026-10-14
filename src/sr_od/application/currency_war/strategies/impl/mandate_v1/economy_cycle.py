@@ -1,34 +1,34 @@
 r"""经济循环总模型:储备制(R*/义务/通道容量)。
 
 设计=唯一规格:`.debug/temp/currency_war/w471_economy_cycle/DESIGN.md`
-(W481 对抗审计修复项 A-1/A-2 内建)。核心语义:金账从「地板制」(只
+(对抗审计修复项内建)。核心语义:金账从「地板制」(只
 规定花后下限)改为「储备制」——任何时刻金 g 与储备上限 R* 的差
 ``(g − R*)+`` 是负有转化义务的死钱,每轮必须经三条转化通道(升级/
-刷新/买牌)之一转成战力,义务 = max(既有臂义务, min(溢余, C_t))。
+刷新/买牌)之一转成战力,义务 = max(既有臂义务, min(富余, C_t))。
 
-- **R\* = 息线 + 窗口(≤3 轮)排程升级费**:息线(50)以内持有弱占优
+- **R\* = 利息线 + 窗口(≤3 轮)排程升级费**:利息线(50)以内持有弱占优
   (0.1/轮 无风险收益 vs 战力链 ≤0.012,同一笔账反向使用);
   排程升级是价格/时点已知的确定性转化,为其持金不是死钱。窗口 h =
   min(3, 到本位面末节点轮数)——h>3 的升级应即时执行而非长期储蓄。
-  排程判据 = ``schedule_upgrade`` 确定性费用查表核(批 3 预算收权,
-  W615 §1.3 R4 规则集;原 DP 姿态 level_up 供给退役);升级费逐帧现读
-  (state.level_up_cost OCR 优先,缺省 XP_CLICK_COST_FLAT;W481 A-4:
+  排程判据 = ``schedule_upgrade`` 确定性费用查表核(R4 规则集);
+  升级费逐帧现读
+  (state.level_up_cost OCR 优先,缺省 XP_CLICK_COST_FLAT;
   不用粗估表)。
 - **C_t 通道容量**(结构上限,由既有层逐帧算出):升级计划费 +
   可买非期权件账(bench 余量约束)+ 刷价×刷新预算(refresh_ev_budget
   预算式,值域 [0,6])。
   **A-1 修复**:formation_gold_account 对未跨档件给
-  ``d_rem × engine_jump_gold`` 的正账是「按兑现价卖期权」(W469 已
-  实测死法),这类期权件**不计入容量**——容量只计当帧跨档件
+  ``d_rem × engine_jump_gold`` 的正账是「按兑现价卖期权」(已实测
+  死法),这类期权件**不计入容量**——容量只计当帧跨档件
   (买入后四体系达成数 +1,``_crosses_engine_tier`` 结构性判定)与
   3合1 合成件(买入即 2★ 完成);**A-2 修复(声明+约束)**:每买
   一件占一个 bench 槽,槽位是下一轮跨档件的物理前置——容量按 bench
   空槽逐件扣减计入该机会成本(合成件净腾槽不占)。
 - **义务帧兑现**:release 臂(posture_release)消费 overflow/obligation
-  作为预算下界;g≥0 硬钳制在 authorize_release_refresh(W477 披露的
-  执行层透支修复)。
-- **息基守卫收窄**:息线以内的常态帧(g≤R*)行为零漂移(义务只在
-  溢余段激活;I-1 锚)。
+  作为预算下界;g≥0 硬钳制在 authorize_release_refresh(执行层透支
+  修复)。
+- **息基守卫收窄**:利息线以内的常态帧(g≤R*)行为零漂移(义务只在
+  富余段激活;I-1 锚)。
 
 分包期 0b(§3.3-①a/①b):两接缝(schedule_upgrade/refresh_ev_budget)
 与其依赖族(reserve_cap/upgrade_plan_fee/_registry_of/is_emergency/
@@ -119,9 +119,9 @@ def _scan_shop_buy_accounts(gs: GameState,
     )
     _entries = bench_entries_of(gs)
     _payload_cards = shop_payload_content_cards(gs.shop.value)
-    # 席空数单一源 = bench_free_slots(T-17 裁定:跟随 BenchView.capacity,
+    # 席空数单一源 = bench_free_slots(裁定:跟随 BenchView.capacity,
     # 节省工位改写帧按实席数扩账;bench 未观察 = None → registry 基线
-    # 缺省,与退役槽表「未观察 = 全空」口径同向)。
+    # 缺省,与旧槽表「未观察 = 全空」口径同向)。
     _free_raw = bench_free_slots(gs)
     bench_free = (registry.bench_capacity if _free_raw is None
                   else max(0, int(_free_raw)))
@@ -161,11 +161,11 @@ def _countable_buy_costs(gs: GameState, session: StrategySession | None,
 def bench_fill_account(gs: GameState, registry: DecisionV2Registry) -> int:
     """O1 备战空位填补通道的容量分量(`w611_econ_cycle/` 设计 §1.2/§1.3)。
 
-    溢余帧备战有空位时,店内其余件(非跨档非合成)按费用升序取「剩余
+    富余帧备战有空位时,店内其余件(非跨档非合成)按费用升序取「剩余
     空槽」件的费用和计入 C_t——义务在「无目标帧」的容量不再结构性为
-    0(局20/局23 支出冻结的根:comp 空→正 EV 帧空→C_t=0→义务恒 0)。
-    数学依据=设计 §1.3:溢余段买 1★ 退全款+利息不减(息帽截断),
-    已实现成本 0、收益≥0(压库+bench 期权),弱占优、参数无关。
+    0(局20/局23 支出冻结的根:阵容空→正 EV 帧空→C_t=0→义务恒 0)。
+    数学依据=设计 §1.3:富余段买 1★ 退全款+利息不减(利息帽截断),
+    已实现成本 0、收益≥0(压牌库+bench 期权),弱占优、参数无关。
     买入放行面([31] 限域质量序)在 candidates/scoring,随 `w607_affix_consumption/` 二波
     后接线;本分量先接通 flip/义务预算的容量判定与存息准入门。
     """
@@ -177,11 +177,10 @@ def channel_capacity(gs: GameState, session: StrategySession,
     """C_t = 升级计划费 + 非期权可买账 + 刷价×刷新预算。
 
     升级计划费分量消费 ``schedule_upgrade``(人口位单臂——概率级②臂
-    已随升级判据重轴退役,迭代 2026-10-12-prep-shop-workflow-redesign
-    批 3.4;line_and_upgrade §2.3 升级②臂行:概率改善排程语义由策略层
+    已停用;line_and_upgrade §2.3 升级②臂行:概率改善排程语义由策略层
     概率主账承接,锁定后 ∧ plane2_started 双条件消费,其攒批由升级
     预授权链承载不经 C_t)。刷新分量取 ``refresh_ev_budget``
-    预算式(查表核单一址,预算收权批;合法 0 帧契约见该函数
+    预算式(查表核单一址;合法 0 帧契约见该函数
     docstring)。接缝符号懒 import 自 kernel 侧 cw_economy(局部别名
     绑定):monkeypatch 桩点重钉至 cw_economy 符号后经属性访问动态
     解析,拦截语义不变。
@@ -198,10 +197,10 @@ def channel_capacity(gs: GameState, session: StrategySession,
 
 
 def overflow(gs: GameState, session: StrategySession) -> int:
-    """溢余段 (g − R*)+(义务压力的原料;≤0 = 无义务帧)。
+    """富余段 (g − R*)+(义务压力的原料;≤0 = 无义务帧)。
 
     R* 单一源 = kernel cw_economy.reserve_cap(模块级 import:纯查表
-    函数,无桩点契约;守息线分量已归一 session resolved 链,registry
+    函数,无桩点契约;保利利息线分量已归一 session resolved 链,registry
     旋钮不再辖本缝——)。"""
     return max(0, gold_of(gs) - reserve_cap(gs, session))
 
@@ -216,12 +215,12 @@ def obligation(gs: GameState, session: StrategySession,
 
 
 def tier_truncated_spend(gold: int, want: int, essential: bool) -> int:
-    """溢余消费的息档边界截断(纯金额;`w645_proposal_v2/` 提案 E-v2)。
+    """富余消费的利息档边界截断(纯金额;`w645_proposal_v2/` 提案 E-v2)。
 
     利息 = gold//10 cap 5,按节点结算,当轮息损 = interest(轮初金) −
     interest(轮末金),首末金量的纯函数、路径无关 → 花后不跨 10 的倍数
-    档则息损 0(P13/[11] 同档零息损)。本函数按「息档结构直接输出
-    ``gold % 10``」截断非必要溢余支出金额,零标定参数(数学先行硬门的
+    档则息损 0(P13/[11] 同档零息损)。本函数按「利息档结构直接输出
+    ``gold % 10``」截断非必要富余支出金额,零标定参数(数学先行硬门的
     合格形态)。
 
     - essential=True → 不截断,原样返回 want。两枝由消费点显式分类:
@@ -232,7 +231,7 @@ def tier_truncated_spend(gold: int, want: int, essential: bool) -> int:
       搜索永久丢失,截断代价是无穷大而非「推迟一轮」,弱占优前提对该
       车道为假。函数自身不判车道(车道判定单一址留在 arbiter 分支结构)。
     - essential=False(常态刷新逐笔、release 预算内的负分搜索等非必要
-      溢余支出)→ 截断为 min(want, gold % 10):花后不跨息档,息损 0;
+      富余支出)→ 截断为 min(want, gold % 10):花后不跨利息档,息损 0;
       不花的余量结转下轮(义务逐帧重算,R* 与 C_t 下帧重出,结转零成本、
       不产生第二义务)。
 
@@ -248,7 +247,7 @@ def tier_truncated_spend(gold: int, want: int, essential: bool) -> int:
 
 def disclose_budget(state: Any, session: StrategySession,
                     registry: DecisionV2Registry | None = None) -> None:
-    """预算现算 + 遥测披露面写点(合并体;T-88 决策环数据流断链修复,
+    """预算现算 + 遥测披露面写点(合并体;决策环数据流断链修复,
     算值直写披露字段)。
 
     装配纪律(派生值不落 session)的立法目的 = 根治**决策输入**读跨帧
@@ -271,9 +270,9 @@ def disclose_budget(state: Any, session: StrategySession,
     - 键戳 (plane, round) 变更 ⇒ spent/reason 轮界清零后盖新戳:与
       schema「sess_release_spent 每轮入口清零」「sess_release_reason
       当轮义务来源」两契约对齐(F5 裁决二选一之①:reason 并入键戳
-      清零块,杜绝跨轮陈读);不复用 v3_release_round(W332b 旧轮语义);
+      清零块,杜绝跨轮陈读);不复用 v3_release_round(旧轮语义);
       同键重入不清 spent;
-    - ``registry``:P6 注入单源(W636 A)——各接缝消费同一 registry
+    - ``registry``:P6 注入单源——各接缝消费同一 registry
       实例,None → DEFAULT_REGISTRY(禁混用 state_of(session).
       v3_registry 死通道)。
     """
@@ -306,12 +305,12 @@ def disclose_budget(state: Any, session: StrategySession,
 def disclose_budget_at_shop_frame(state: Any, session: StrategySession,
                                   registry: DecisionV2Registry | None = None,
                                   ) -> None:
-    """店开观察帧披露覆写(T-88 双写语义第二写点)。
+    """店开观察帧披露覆写(双写语义第二写点)。
 
     备战决策入口披露帧处于关店态,F2 门(cw_screen_prep:gold 仅店开态
     可信,关店读空)使披露态 gold 不可得(缺省 0)⇒ overflow/obligation
     在 prep 帧恒 0——「金未采」已知语义,非真 0(实机首局
-    g_20260907_025608 锚⑤定谳)。本写点在商店入口观察帧(店开,gold
+    g_20260907_025608 锚⑤定案)。本写点在商店入口观察帧(店开,gold
     过 F2 门为真值)走同一现算链重算并覆写三预算字段:
     overflow/budget 变帧现值;键戳同轮 ⇒ 不清 spent(轮界清零由键戳
     承载,本写点只比较不盖戳)。豁免面与「禁决策消费」禁令同

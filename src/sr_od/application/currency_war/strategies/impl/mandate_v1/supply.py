@@ -102,7 +102,7 @@ def decide(options: list[SupplyOption], gs: GameState,
     包装动作词表)。
 
     - options = 屏上候选(``gs.supply`` payload 槽序,左→右 = 画面列序);
-    - locked_comp = flow 经 ``get_comp`` 解析后的 comp 对象(None = 未锁,
+    - locked_comp = flow 经 ``get_comp`` 解析后的 阵容 对象(None = 未锁,
       含套名解析失败回落);demoted_endgame = 降格帧直通(True → 角色级
       与 key_equips 参照一律按未锁口径;防御位——现役降格路径已清
       locked_comp,cw_intention 降格分支);
@@ -138,7 +138,7 @@ def decide(options: list[SupplyOption], gs: GameState,
 
 def _endgame_chars(locked_comp: Comp | None,
                    demoted_endgame: bool) -> frozenset[str] | None:
-    """第 2 级终局名单(None = 角色级空转:未锁线/降格帧)。
+    """第 2 级终局名单(None = 角色级空转:未锁定/降格帧)。
 
     名单 = core_chars ∪ shared_chars;不含 transition_chars(用户裁定
     「不按过渡阵容选」)。"""

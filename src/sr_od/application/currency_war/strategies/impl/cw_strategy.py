@@ -76,17 +76,17 @@ class CwStrategy(ABC, Generic[_TState]):
       单例只读引用、``self.config`` 按参注入、``self.state`` 策略器私有状态
       实例(缺省 None,子类覆写 :meth:`_create_state` 定制)、``self.rng``
       (``config.strategy_seed`` None → 0 固定种子,禁静默翻转为熵种子)。
-      构造即唯一冷建口;``create_session``/``create_state`` 工厂退役。
+      构造即唯一冷建口;``create_session``/``create_state`` 工厂停用。
     - **实例不跨局**:局容器弃置 = 实例连带回收(引导漏斗每局 instantiate);
       异常路径残留容器弃置守卫(:func:`discard_stale_match_container`)保留。
     - **零参入口 14**:备战/商店/invest 双相/pick 族八屏 + 契约扩员两屏
-      (命运卜者强化/专家邀请函;普查迁移批 2,动因 =
-      F-overlay-01/02;原选择装备口随该屏误判退役删除)——决策输入一律
+      (命运卜者强化/专家邀请函;三 overlay 选卡判据扩员,原选择装备口
+      已随该屏误判修正删除)——决策输入一律
       ``self.gs`` 自取,会话残余依赖
-      由 §3.2/§3.3 重复账退役清偿。
+      由 §3.2/§3.3 重复账治理清偿。
     - **输出统一**:单一 ``CwAction``(选择族 per-screen 子类型 + 三刷新动作
       + 重观察 CwActionObsParam(scope='in_place' 环内 / 'outer_loop' 交回,
-      后者承载原 HoldFrame 空发射语义),无 None)。
+      后者承载原 HoldFrame 空动作发出语义),无 None)。
 
     兼容裁定:注册面封闭集 {mandate_v1},第三方存量策略在新契约下不兼容 =
     显式破坏申报(flow/README §2.4)。
@@ -145,8 +145,8 @@ class CwStrategy(ABC, Generic[_TState]):
 
     @abstractmethod
     def decide_prep_screen(self) -> CwAction:
-        """备战画面黑板决策(单动作,None 退役;空发射 = CwActionObsParam
-        scope='outer_loop' 交回外循环重观察——原 HoldFrame 收编,用户裁定
+        """备战画面黑板决策(单动作,None 停用;空动作发出 = CwActionObsParam
+        scope='outer_loop' 交回外循环重观察——原 HoldFrame 并入,用户裁定
         2026-09-20;环内重观察 = scope='in_place',宿主观察链重跑后原地
         续决策,不交回外循环)。"""
 
@@ -206,9 +206,9 @@ class CwStrategy(ABC, Generic[_TState]):
         """武装箱/节点弹窗装备卡 4 选 1(候选读 ``gs.box_card_names`` 槽;
         返回动作子类型)。"""
 
-    # —— 契约扩员 12→15(动因 = F-overlay-01/02/03:
-    #    三 overlay 选卡判据收编 kernel + handler 改写槽→零参 decide;
-    #    事件面登记 = strategy-docs/13_pick_family.md §2 E16-E18)——
+    # —— 契约扩员 12→15(三 overlay 选卡判据并入 kernel + handler
+    #    改写槽→零参 decide;事件面登记 =
+    #    strategy-docs/13_pick_family.md §2 E16-E18)——
 
     @abstractmethod
     def decide_fortune(self) -> CwActionPickFortuneParam:
@@ -295,8 +295,7 @@ def discard_stale_match_container(ctx: SrContext, reason: str) -> bool:
     return True
 
 
-# gated_hp(结算 HP 新鲜度门薄委托)已随终态契约 §A 防御锚退役删除
-# (2026-09-17):现役消费点 = kernel/cw_hp_policy.decision_hp(gs 直读);
-# prep 环入口/终饰写侧预施门已随前置迭代写点退役清零(该文件残留注释
-# 为历史锚,随 T-2 docstring 桶清偿)。
+# gated_hp(结算 HP 新鲜度门薄委托)已删除;现役消费点 =
+# kernel/cw_hp_policy.decision_hp(gs 直读);
+# prep 环入口/终饰写侧预施门已删除(该文件残留注释为历史锚)。
 

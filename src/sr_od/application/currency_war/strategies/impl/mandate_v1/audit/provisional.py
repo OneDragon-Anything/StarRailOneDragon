@@ -1,12 +1,12 @@
 """【拟】未标定项 fail-closed 开关注册表(01_math_framework §6 第 3 形态;
-原 design_economy §E4.0 第 3 条已删档,考古走 git 历史)。
+原 design_economy §E4.0 第 3 条已删除,沿革见 git 历史)。
 
-静态登记 【拟】清单(批时快照)+ 后补槽位。**计数口径单一声明**:
-本表槽位 = 逐槽实存集,随消费面退役撤槽(BLOODLINE_HP_THRESHOLD/
-F7_CONTINGENCY_ARMED/P_LAMBDA_QUANTILE 随批 3.4 血线地板/λ 顾问
-删除链;V_MS/P_REC/THETA/D_MIN/DELTA_HYST/DELTA_PRIOR/CONV_GOLD_
-PER_ROUND/N_CRISIS/V_GAP 随批 3.7 换线机器与换线窗口侧消费面退役;
-V_C_MINUS_V_F/E2_CONCENTRATION_BAND〔P76 两槽〕随证据门退役撤槽
+静态登记 【拟】清单 + 后补槽位。**计数口径单一声明**:
+本表槽位 = 逐槽实存集:消费面停用即撤槽(已撤条目 = BLOODLINE_HP_THRESHOLD/
+F7_CONTINGENCY_ARMED/P_LAMBDA_QUANTILE〔血线地板/λ 顾问删除〕、
+V_MS/P_REC/THETA/D_MIN/DELTA_HYST/DELTA_PRIOR/CONV_GOLD_
+PER_ROUND/N_CRISIS/V_GAP〔换线机器与换线窗口侧〕、
+V_C_MINUS_V_F/E2_CONCENTRATION_BAND〔P76 两槽〕
 ——候选-锁定制无定型门标定项,槽位不迁移,line_and_upgrade §1.6)、
 随消费面登记后补(MERGE_PROGRESS_X2/LEVELUP_MISSING_SET_AGG)。
 每项一个 ``Optional`` 槽位,
@@ -30,7 +30,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class CalibValue:
     """标定注入值(带 CI;端点选择随消费位走——组-端取端纪律,原 design_economy
-    §E4.1 组-端对照表已删档,考古走 git 历史,注入不预取端)。``injected_form=True`` = 注入形态(非生产开闸口径)。"""
+    §E4.1 组-端对照表已删除,沿革见 git 历史,注入不预取端)。``injected_form=True`` = 注入形态(非生产开闸口径)。"""
 
     value: float
     ci_lo: float | None = None
@@ -44,13 +44,12 @@ class _Slot:
     sealed: bool = False  # 类型级封印(V̄ 拟合族,R10-2)
 
 
-#: 槽位登记表(键=符号名;随消费面退役撤槽/登记后补,现状清单见模块
+#: 槽位登记表(键=符号名;随消费面停用撤槽/登记后补,现状清单见模块
 #: docstring 单一声明)
 _SLOTS: dict[str, _Slot] = {
-    # —— 【拟】清单批时快照的存活槽(V_MS/V_GAP/THETA/D_MIN/DELTA_HYST/
-    #    DELTA_PRIOR/CONV_GOLD_PER_ROUND/P_REC/N_CRISIS 已随换线机器/
-    #    换线窗口侧消费面退役撤槽——迭代 2026-10-12-prep-shop-workflow-
-    #    redesign 批 3.7;line_and_upgrade §1.6 退役面清单;#11 零槽位
+    # —— 【拟】清单快照的存活槽(下列已随换线机器/换线窗口侧消费面
+    #    撤槽:V_MS/V_GAP/THETA/D_MIN/DELTA_HYST/DELTA_PRIOR/CONV_GOLD_
+    #    PER_ROUND/P_REC/N_CRISIS;line_and_upgrade §1.6;零槽位
     #    由 statefn/lambda_death.py λ 表承载)——
     'U_X': _Slot('#1 u_x/H_x 使用概率/需要时距;分槽/带序逐格(R17-4)'),
     'W_POP': _Slot('#3 w 人口位战力当量(臂一只用 w>0,不需精确值)'),
@@ -65,8 +64,7 @@ _SLOTS: dict[str, _Slot] = {
     # —— 类型级封印族(R10-2:V̄ 拟合族永不作闸门)——
     'V_BAR': _Slot('#13 V̄ 刷新价值门量;比较项不授权,禁作闸门', sealed=True),
     'P3_LENGTH_STAT': _Slot('P3 长度统计量(R41-3【拟·语料统计】;通关语料出现前不可填)'),
-    # —— 升级判据重轴批登记(迭代 2026-10-12-prep-shop-workflow-redesign
-    #    批 3.4;line_and_upgrade §2.1/§4 两处同口径声明)——
+    # —— 升级判据登记(line_and_upgrade §2.1/§4 两处同口径声明)——
     # 缺件集聚合口径:None = 单核代表(在产保守形态);求和/瓶颈口径为
     # 切换候选【拟·owner = 编排者、期限 = 一个对局周期】——未决前一律
     # 单核代表,禁混用。消费端 = criteria/levelup.prob_account_ok。
@@ -74,8 +72,7 @@ _SLOTS: dict[str, _Slot] = {
         '升级概率账缺件集聚合口径(None=single_core 单核代表;sum/bottleneck'
         ' 为切换候选,line_and_upgrade §2.1/§4 统一登记集成员)'),
     # —— 卖出价值函数(契约 D 统一口径;design 契约 D/line_and_upgrade §4,
-    #    迭代 2026-10-12-prep-shop-workflow-redesign;【拟·owner = 编排者、
-    #    期限 = 一个对局周期】登记集成员)——
+    #    【拟·owner = 编排者、期限 = 一个对局周期】登记集成员)——
     'MERGE_PROGRESS_X2': _Slot('合成进度 ×2 结构近似系数(line_and_upgrade §4:'
                                '差一张 = 两张的再遇期权沉淀;None = fail-closed '
                                '×1 线性运行——不放大持有期权 = 保守侧,'
@@ -104,13 +101,13 @@ def is_none(name: str) -> bool:
     return get(name) is None
 
 
-# ===== 槽位值域守卫(T-214;标定批)=====
+# ===== 槽位值域守卫 =====
 # 位置论证:inject 系唯一开闸通道(provisional.py 头注),值域防线放
 # 消费位防不住其他槽位、放调用方防不住绕行——结构防线只能在通道本体
 # 做写入前校验(不合法拒绝)。未登记槽位 = 既有语义不变(无值域知识
 # 不装假守卫);守卫只辖 ``value``,CI 端点系消费位扫描用信息不入守卫。
 # (P76 两槽守卫 _guard_delta_positive/_guard_e2_probability_band 已随
-# 证据门退役批 3.7 与槽位同批撤除。)
+# 证据门撤除。)
 
 def _guard_merge_progress_coef(value: CalibValue) -> str | None:
     """合成进度系数合法域 = [1, 2]:下界 1 = fail-closed 线性形态(<1 会
@@ -120,7 +117,7 @@ def _guard_merge_progress_coef(value: CalibValue) -> str | None:
         '合成进度 ×2 系数合法域 [1,2](结构近似声明域)'
 
 
-#: 守卫登记表(键 = 槽位名;随各槽标定批登记,其余槽位随其标定批补)
+#: 守卫登记表(键 = 槽位名;随各槽标定逐个登记)
 _VALUE_GUARDS: dict[str, Callable[[CalibValue], str | None]] = {
     'MERGE_PROGRESS_X2': _guard_merge_progress_coef,
 }
@@ -145,7 +142,7 @@ def inject(name: str, value: CalibValue) -> None:
 
 
 def reset(name: str | None = None) -> None:
-    """复位(测试隔离/标定批重注入前的清场)。"""
+    """复位(测试隔离/重注入前的清场)。"""
     if name is None:
         for k in _VALUES:
             _VALUES[k] = None

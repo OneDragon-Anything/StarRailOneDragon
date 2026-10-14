@@ -5,18 +5,18 @@
 + 刷新阀,判据语义单一源 = 迭代设计
 docs/develop/sr_od/application/currency_war/changes/
 2026-09-24-encounter-screen-strategy-migration/design.md §2.2-§2.5。
-可及性比值腿(g^(D_win−D_enc) ≥ f_min)已退役(P64:旗牌→敌难度静态映射
+可及性比值腿(g^(D_win−D_enc) ≥ f_min)已停用(P64:旗牌→敌难度静态映射
 不可标定)——能力态直接判,t ≤ 4 档零标定可及;其五/六(Δ 无源档)走
 经验档层交集。
 
 本文件 = 遭遇判据线载体(宪法五:换一套策略实现会要不同的值/序,故判据
-值/序随本体驻策略层):立场常量区(【拍】登记)、fill 双定谳槽、
+值/序随本体驻策略层):立场常量区(【拍】登记)、fill 双定案槽、
 reward_tier 档序、三态表均在本文件。生产接线 = flow.decide_encounter
 直调本文件 :func:`decide`(kernel 侧判据面已同批迁出删除;迁移批
 2026-09-24-encounter-screen-strategy-migration 原子切换)。
 
 窗口口径 = 结算观测环最近 2 个普通战斗行(普战口径;奖励/遭遇/boss 行
-不入窗,design §2.2 候选 A 定谳)。刷新闸内嵌:读
+不入窗,design §2.2 候选 A 定案)。刷新闸内嵌:读
 ``gs.encounter_refresh_left`` 剩余语义(None = 未观察 → 不可刷,
 fail-closed),不设 refresh_used 参。
 
@@ -57,17 +57,17 @@ EDGE_CAP: int | None = 2
 #: 本登记(commit = 过目凭据)。
 REWARD_ORDER_APPROVED: bool | None = True
 
-# ===== fill 双定谳槽 + 策略层注入面(随三态表连体迁;design §2.3)=====
+# ===== fill 双定案槽 + 策略层注入面(随三态表连体迁;design §2.3)=====
 
-#: 进度条填充方向定谳:'forward'(红=已推进)/'inverted'(红=未完成,判据量
-#: 改 1−fill)/None = 未定谳 → fill 分支不激活(照旧 fail-closed)。
+#: 进度条填充方向定案:'forward'(红=已推进)/'inverted'(红=未完成,判据量
+#: 改 1−fill)/None = 未定案 → fill 分支不激活(照旧 fail-closed)。
 PROGRESS_BAR_DIRECTION: str | None = None
-#: 进度条语义定谳:'node'(节点内归一,1/2 阈值论证前提)/'plane'(位面
-#: 累计,败局 fill 分级证据不采信)/None = 未定谳 → fill 分支不激活。
+#: 进度条语义定案:'node'(节点内归一,1/2 阈值论证前提)/'plane'(位面
+#: 累计,败局 fill 分级证据不采信)/None = 未定案 → fill 分支不激活。
 BAR_SEMANTICS: str | None = None
 
-#: 删失归态的 fill 阈值(节点内归一语义 (a) 的对称中点;条语义/方向未定谳
-#: 前该分支不激活——fill 删失分支独立成立)。双槽定谳注入后成活闸门数字,
+#: 删失归态的 fill 阈值(节点内归一语义 (a) 的对称中点;条语义/方向未定案
+#: 前该分支不激活——fill 删失分支独立成立)。双槽定案注入后成活闸门数字,
 #: 注入批须按【拟】纪律登记(design §2.7 登记义务)。
 _FILL_EDGE_THRESHOLD = 0.5
 
@@ -77,7 +77,7 @@ _CALIBRATABLE = ('PROGRESS_BAR_DIRECTION', 'BAR_SEMANTICS')
 
 
 def apply_calibration(**kw: object) -> None:
-    """fill 双槽定谳值注入(只填 None 槽,幂等;生产注入单点 = E-3 标定批)。
+    """fill 双槽定案值注入(只填 None 槽,幂等;生产注入单点 = E-3 标定批)。
 
     非 None 现值不覆盖(重放/重跑安全);未知键名抛错(防拼写错静默丢
     注入,也防误注入 kernel 侧 D_ENC_VARIANT 键——两注入口互不可见)。
@@ -106,7 +106,7 @@ def _kappa_state(w1: bool | None, w2: bool | None,
     """窗口两场 → 能力态('足量'/'边缘'/'不足';design §2.2 三态表)。
 
     w1/w2 = 窗口两场 killed(None = 删失);fill 分支 = 恰一胜时败局侧的
-    进度填充率降档(进度条双定谳前不激活——照旧 fail-closed,fill 只走
+    进度填充率降档(进度条双定案前不激活——照旧 fail-closed,fill 只走
     删失分支)。删失优先于 fill 分支(整场按删失计)。
     """
     if w1 is None and w2 is None:
@@ -120,7 +120,7 @@ def _kappa_state(w1: bool | None, w2: bool | None,
         other = w2 if w1 is True else w1
         if other is None:
             return '边缘'
-        # other is False(败局):fill 分支仅在 (a)+forward 定谳后激活
+        # other is False(败局):fill 分支仅在 (a)+forward 定案后激活
         fill_defeat = fill_old if other is w1 else fill_new
         if (BAR_SEMANTICS == 'node' and PROGRESS_BAR_DIRECTION == 'forward'
                 and fill_defeat is not None
@@ -254,7 +254,7 @@ def decide(options: list[EncounterOption], gs: GameState,
         if t > cap:
             continue
         if t <= 4:
-            # t ≤ 4:能力态直接判(比值腿退役,零标定可及)
+            # t ≤ 4:能力态直接判(比值腿停用,零标定可及)
             reachable.append(opt)
         elif log.tier_cleared(t):
             # 其五/六(Δ 无源档):经验正证据 = 本局该档存在 killed=True

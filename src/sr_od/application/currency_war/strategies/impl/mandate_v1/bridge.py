@@ -10,8 +10,7 @@
   纯注册壳(``__module__`` 守卫要求壳类定义于本模块;生产路径职责分界 =
   画面 op 只做观察 + 调一个决策入口,**不加生产接线步**,R191 裁决)。
 
-商店线口径(步4b,STEP34_REPORT 裁量 #1 的接线兑现;迁移批
-后形态):
+商店线口径:
 ``decide_shop_screen`` = 序列兼容驱动器(循环调 ``shop.decide_shop_action``
 单动作核,输入 = 容器单例
 ``game_state_of(session)``;生产执行侧入口 =
@@ -24,7 +23,7 @@
 一并消解,mandate 不再持有/覆写任何战略层直调面;换线权威 =
 意向状态机(方向判据在 decide_prep_screen 三遍内承载,换线出口
 申报面见 mandate_v1/proof.py;原 ab_core_swap 模块 docstring 影子面
-载体已随自驱动引擎退役)。
+载体已删除)。
 """
 from __future__ import annotations
 
@@ -63,26 +62,26 @@ CurrencyWarConfig = 'CurrencyWarConfig'
 
 
 def _launch_front_check(gs: GameState) -> CwAction | None:
-    """前置发射位:armed 帧短路三遍编排,产出发射意图(发射决策的
-    策略层宿主;旧达标臂发射决策迁驻,design §2.3)。
+    """前置动作发出点:出战就绪帧短路三遍编排,产出动作发出意图(动作发出
+    决策的策略层宿主;旧达标臂决策迁驻,design §2.3)。
 
     - 判定核 = kernel ``readiness_launch_decision``(线成员谓词注入
       单一源 = statefn.predicates.line_members,禁内联第二实现);
-    - 质量推迟帧(armed ∧ defer_by_quality)不发射,分键
+    - 质量推迟帧(出战就绪 ∧ defer_by_quality)不发出,分键
       ``launch_quality_defer_frames``;评估异常帧分键
-      ``launch_quality_eval_error`` 后照常发射(fail-open 防死锁,
+      ``launch_quality_eval_error`` 后照常发出(fail-open 防死锁,
       分界)——键单一源 = kernel cw_launch_admission 常量;
-    - armed ∧ 帧级金判定 ``in_launch_spend_zone`` 命中(禁内联金息线
+    - 出战就绪 ∧ 帧级金判定 ``in_launch_spend_zone`` 命中(禁内联金利息线
       比较)→ 受限商店访问意图 ``CwActionOpenShopParam()``(**普通开店
       形态**;进出店 = 普通 OpenShop/0n 路径,访问内消费由策略侧自限
       接管,详设 §2.10);
-      **每武装段至多一次**(段旗 cw4_launch_spend_visited,失武装复位;
-      复位后再武装仍命中允许新段再访);段内已访问 → 落无条件发射
+      **每个出战就绪段至多一次**(段旗 cw4_launch_spend_visited,脱离出战
+      就绪复位;复位后再次出战就绪仍命中允许新段再访);段内已访问 → 落无条件发出
       (旧形态「访问后照发」跨帧等价,金不回落无死循环);
-      **不经 S1 开店闩与 CwActionOpenShopParam 节流**(前置发射位短路
+      **不经 S1 开店标志与 CwActionOpenShopParam 节流**(前置动作发出点短路
       三遍编排,空转防护 = 段旗);
-    - armed ∧ 未命中 → CwActionStartBattleParam 终点意图(词表现成);
-    - 非 armed → 段旗复位,返回 None = 原三遍编排接管(非 armed 帧零变化)。
+    - 出战就绪 ∧ 未命中 → CwActionStartBattleParam 终点意图(词表现成);
+    - 非出战就绪 → 段旗复位,返回 None = 原三遍编排接管(非出战就绪帧零变化)。
 
     终态契约 §2.1:gs/config 构造注入——入参即容器;策略器状态读口 =
     ``state_of(gs)``(gs.strategy_state 同源接线,漏斗/构造点单一写入)。
@@ -111,7 +110,7 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
         gs, getattr(_st, 'target_comp', None), line_members=line_members,
         deploy_plan_available_fn=has_deployable)
     if not _decision.get('armed'):
-        _st.cw4_launch_spend_visited = False   # 武装段结束,段旗复位
+        _st.cw4_launch_spend_visited = False   # 出战就绪段结束,段旗复位
         return None
     _ct = _st.cw4_counters
     _quality = _decision.get('quality')
@@ -123,29 +122,29 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
         if isinstance(_ct, dict):
             _ct[LAUNCH_QUALITY_DEFER_FRAMES_KEY] = \
                 _ct.get(LAUNCH_QUALITY_DEFER_FRAMES_KEY, 0) + 1
-        return None   # 质量推迟帧:本帧不发射(防死锁语义 kernel 单一源)
+        return None   # 质量推迟帧:本帧不发出(防死锁语义 kernel 单一源)
     if in_launch_spend_zone(gold_of(gs), gs):
         if not _st.cw4_launch_spend_visited:
             _st.cw4_launch_spend_visited = True
             return CwActionOpenShopParam()   # 普通开店形态(详设 §2.10)
-        # 段内已访问:落无条件发射
+        # 段内已访问:落无条件发出
     return CwActionStartBattleParam()
 
 
 def launch_restricted_session_active(gs: GameState) -> bool:
-    """受限会话派生标记(armed ∧ 金达息线;发射帧受限消费的策略侧自限门,
+    """受限会话派生标记(出战就绪 ∧ 金达利息线;动作发出帧受限消费的策略侧自限门,
     分层依据 = flow/README.md §1 决策控制分层铁律)。
 
-    判定与 :func:`_launch_front_check` 前置发射位同源:armed 判定核 =
+    判定与 :func:`_launch_front_check` 前置动作发出点同源:出战就绪判定核 =
     kernel ``readiness_launch_decision``(线成员/部署计划谓词注入同参,
     单一源纪律同款),金判定 = kernel ``saturation_line`` 派生链直读
     (禁字面量式)——**恰落线帧视为受限(gold >= g*)**:kernel 预算闸
     在 gold == g* 帧拒一切正成本动作(花后必跌破 g*),派生标记对齐该
-    带内拒域,闸退役后同边界不失守;入段判定
-    (``in_launch_spend_zone`` 严格 >)随前置发射位现状不动,两判定
-    并存非复制(g* 单一源同链)。买断制语境(cap_resolved = 0)出辖
-    恒 False(同 in_launch_spend_zone 口径)。每帧现算零粘滞:不读不写
-    任何段旗/缓存——「每武装段至多一次」的段旗(cw4_launch_spend_visited)
+    带内拒域,闸停用后同边界不失守;入段判定
+    (``in_launch_spend_zone`` 严格 >)随前置动作发出点现状不动,两判定
+    并存非复制(g* 单一源同链)。买断制语境(cap_resolved = 0)不在设计
+    范围内,恒 False(同 in_launch_spend_zone 口径)。每帧现算零粘滞:不读不写
+    任何段旗/缓存——「每个出战就绪段至多一次」的段旗(cw4_launch_spend_visited)
     留守语义不受本标记辖,其写端单一源仍 = _launch_front_check
     (mandate_state 字段注)。
 
@@ -174,12 +173,12 @@ def launch_restricted_session_active(gs: GameState) -> bool:
         return False
     cap = cap_resolved_of_session(gs)
     if cap <= 0:
-        return False   # 买断制出辖(同 in_launch_spend_zone 口径)
+        return False   # 买断制不在设计范围内(同 in_launch_spend_zone 口径)
     return gold_of(gs) >= saturation_line(cap)
 
 
 class MandateV1Strategy(CwFlowStrategy):
-    """新核(mandate_v1):三遍化决策序(证明→骨架→EV)+ 单动作循环发射。
+    """新核(mandate_v1):三遍化决策序(证明→骨架→EV)+ 单动作循环发出。
 
     继承 ``CwFlowStrategy``(主流程驱动核,impl/flow.py)复用生命周期
     冷建口、方向节拍内化刷新与 pick 族缺省实现(基线
@@ -201,22 +200,22 @@ class MandateV1Strategy(CwFlowStrategy):
                  registry: DecisionV2Registry | None = None) -> None:
         """核构造(终态契约 §2.1:gs/config 透传基类构造注入)。
 
-        (原 ``calibration.apply()`` P76 两槽注入位已随证据门退役批 3.7
-        删除——V_C_MINUS_V_F/E2_CONCENTRATION_BAND 槽位不迁移,
-        line_and_upgrade §1.6;audit/calibration.py 同批移除。)"""
+        (原 ``calibration.apply()`` P76 两槽注入位已删除——
+        V_C_MINUS_V_F/E2_CONCENTRATION_BAND 槽位不迁移,
+        line_and_upgrade §1.6;audit/calibration.py 一并移除。)"""
         super().__init__(gs, config, registry)
 
     def decide_prep_screen(self) -> CwAction:
-        """备战画面决策(终态零参口 §2.1;单动作;空发射 = CwActionObsParam
-        scope='outer_loop' 交回外循环重观察——原 HoldFrame 通道收编,
+        """备战画面决策(终态零参口 §2.1;单动作;空动作发出 = CwActionObsParam
+        scope='outer_loop' 交回外循环重观察——原 HoldFrame 通道并入,
         用户裁定 2026-09-20)。
 
-        输入 = **容器 game state 直读**(黑板帧退役:黑板 gs.prep_obs 读点与缺失抛错防线随黑板
-        退役删除——「观察先于决策」前提由画面 op 编排保证,op 入口
-        heavy 先于决策调用)。输出 = 决策核发射序列的**首个动作**;
-        空序列(含截断截空)→ 空发射 obs(scope='outer_loop')= 本帧无
-        动作交回外循环重观察(None 退役,终态契约 §2.2)。帧稳定截断为
-        决策核内发射组织,非流程侧契约。入口内务 = 备战帧代次消费
+        输入 = **容器 game state 直读**(黑板帧已删除:黑板 gs.prep_obs 读点与缺失抛错防线
+        随之删除——「观察先于决策」前提由画面 op 编排保证,op 入口
+        heavy 先于决策调用)。输出 = 决策核发出序列的**首个动作**;
+        空序列(含截断截空)→ 空动作发出 obs(scope='outer_loop')= 本帧无
+        动作交回外循环重观察(None 路径已停用,终态契约 §2.2)。帧稳定截断为
+        决策核内动作发出组织,非流程侧契约。入口内务 = 备战帧代次消费
         (方向刷新先于三遍编排)。管线宿主 = self.gs(state_of(gs) 经同源
         接线解析策略器状态;game_state_of(gs) 本体直通)。
         """
@@ -227,14 +226,14 @@ class MandateV1Strategy(CwFlowStrategy):
         session_scope.refresh_line_if_needed(self.gs)
         # 方向重估先于决策(触发 = 帧代次标注)
         self._consume_prep_direction_frame()
-        # —— 前置发射位(达标臂的发射决策驻策略层)。armed 帧短路
-        # 三遍编排;非 armed 帧 None = 原编排零变化。
+        # —— 前置动作发出点(达标臂的动作发出决策驻策略层)。出战就绪帧短路
+        # 三遍编排;非出战就绪帧 None = 原编排零变化。
         _launch_action = _launch_front_check(self.gs)
         if _launch_action is not None:
             return _launch_action
         # 预算遥测披露(唯一写点 = economy_cycle.disclose_budget;落点 =
-        # 原装配缝调用位——前置发射位判定之后,非 armed 帧才到达,armed
-        # 短路帧维持不披露,零行为变化)。披露面禁决策消费(语义锚 =
+        # 原装配缝调用位——前置动作发出点判定之后,非出战就绪帧才到达,
+        # 出战就绪短路帧维持不披露,零行为变化)。披露面禁决策消费(语义锚 =
         # mandate_state.py 披露字段注释与守卫锁 test_cw_budget_disclosure)。
         from sr_od.application.currency_war.strategies.impl.mandate_v1.economy_cycle import (
             disclose_budget,
@@ -296,9 +295,8 @@ class MandateV1Strategy(CwFlowStrategy):
             ChannelSig,
             ShopActionExecuted,
         )
-        # 驱动器同路(W6 波 4,设计件 §2.2-3):决策读容器单例 + 期望态
-        # 推进 = 逐动作直调上报函数(动作 op 重组批④:快照三件组内聚,
-        # 双抄写段退役)。在屏前置 = gs.shop.value is not None,离屏 =
+        # 驱动器同路:决策读容器单例 + 期望态
+        # 推进 = 逐动作直调上报函数(快照三件组内聚,无双抄写段)。在屏前置 = gs.shop.value is not None,离屏 =
         # 观察层失约抛错(黑板契约容器化等价物)。
         gs = self.gs
         if gs.shop.value is None:
@@ -313,9 +311,9 @@ class MandateV1Strategy(CwFlowStrategy):
         # 内登记,与生产执行侧同一载体)。状态宿主 = self.state(终态契约
         # §2.5 impl 桶;与旧 state_of(session) 同一对象,§2.6 过渡桥)。
         self.state.cw4_visit_bought_names = []
-        # T-82 段序号置位(驱动器商店 visit 入口;生产对应位 =
+        # 段序号置位(驱动器商店 visit 入口;生产对应位 =
         # 商店画面 op 观察 node,一并推进):visit = 腾席拒绝结论的输入不
-        # 变性段,入口 +1 使上一 visit/上一域残留 token/闩按序号不等失效。
+        # 变性段,入口 +1 使上一 visit/上一域残留 token/标志按序号不等失效。
         self.state.cw4_segment_serial += 1
         out: list = []
         for _ in range(512):   # 防御上界:决策循环不收敛 = 策略器 bug 响亮暴露
@@ -325,15 +323,14 @@ class MandateV1Strategy(CwFlowStrategy):
             if isinstance(a, (cw_state.CwActionBuyCardParam,)):
                 self.state.cw4_visit_bought_names.append(a.card.name or '')
             out.append(a)
-            # T-82 续段 token 写入(驱动器位):驱动器采纳并
+            # 续段 token 写入(驱动器位):驱动器采纳并
             # append = 动作确认执行(终结 op 由消费侧执行后重观察,其执行
             # 不触停摆结论输入);策略器入口读后即清,下一帧据其判定 M2
             # 停摆续段缓存命中。
             self.state.cw4_frame_action_record = (
                 type(a).__name__, self.state.cw4_segment_serial)
             if isinstance(a, cw_state.CwActionRefreshShopParam):
-                return out      # 终结 op:序列到止(重观察语境;原
-                # CompTransaction 邻接终结已随批2b R3 删除)
+                return out      # 终结 op:序列到止(重观察语境)
             # 期望态推进 = 逐动作直调上报函数(上报函数族分支,
             # 单动作核逐帧恰一动作 = 击数恒 1)。
             if isinstance(a, cw_state.CwActionBuyCardParam):
@@ -369,10 +366,10 @@ def decide_prep_frame(session: StrategySession, config: object,
     容器 kind 口现读派生。
     """
     emitted = entry.emit(session, config, registry=registry)
-    # route_tag 伴带透传(方案 v2.1 §3.3 通道载体主案,收编):
-    # 发射臂身份自 Emitted.reason 写入动作自带字段,消旧「actions 列表
-    # 推导丢弃发射臂身份」的丢点。tag 定位 = 策略内部路由键(发射分支
-    # 构造事实,非放行证据,T-153 治理立场对表);消费位唯一 = 备战域
+    # route_tag 伴带透传(方案 v2.1 §3.3 通道载体主案,并入):
+    # 动作发出分支身份自 Emitted.reason 写入动作自带字段,消旧「actions 列表
+    # 推导丢弃动作发出分支身份」的丢点。tag 定位 = 策略内部路由键(动作发出分支
+    # 构造事实,非放行证据;治理立场:路由键不作放行依据);消费位唯一 = 备战域
     # 执行侧落地门(mandate.mark_s1_route_check)的 S1 清键三路径枚举。
     # 字段不入 action_key(kw_only + metadata 排除),幂等粒度零漂移。
     for _e in emitted:
@@ -383,7 +380,7 @@ def decide_prep_frame(session: StrategySession, config: object,
     # 不移位)。取法 = bench_view_slots_of 全槽表逐位 + slot_occupies
     # kind 谓词——禁用 bench_entries_of(紧缩序)枚举下标代替:备战席
     # 前部有洞时紧缩枚举下标 ≠ 槽位表下标,复检错杀合法引用(占用槽
-    # 被判空),发射被截空后世界不变 → 备战环「本帧无动作」活锁(sim
+    # 被判空),发出被截空后世界不变 → 备战环「本帧无动作」活锁(sim
     # 多种子实证:非验收 seed 首局 P1r1 凑息臂卖后部槽被错杀至看门狗;
     # 实机同链路同受害)。语义与 P4 翻形前一致({全槽表枚举 | 槽非空})。
     from sr_od.application.currency_war.kernel.cw_game_state import (

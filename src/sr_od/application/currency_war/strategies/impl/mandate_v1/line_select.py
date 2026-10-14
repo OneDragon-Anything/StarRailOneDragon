@@ -169,7 +169,7 @@ def evaluate_lock(candidates: tuple[str, ...],
                   held_invest: frozenset[str], *,
                   plane2_started: bool,
                   p2_strategy_pick_done: bool) -> str | None:
-    """锁定判定(§1.4 双触发,先到先锁;返回应锁线名,None = 不锁)。
+    """锁定判定(§1.4 双触发,先到先锁;返回应终局阵容锁定名,None = 不锁)。
 
     - **硬规则**:命中线按线分数全序取首(同帧多命中裁决 = 线分数
       最高 + 热度 tie-break + 注册序终局——与候选排序同一全序,

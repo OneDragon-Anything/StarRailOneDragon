@@ -1,20 +1,19 @@
 """cw4 判据契约层(assume-guarantee 纪律;2026-09-03 用户批准的组合性改进①)。
 
 单一源=本模块 ``CONTRACTS``(循同包 ``BYPASS_TABLE`` 先例:注册表 +
-静态完备性对拍测试)。缺陷背景:零刷新/arm1 两案均为「语境前提未被
+静态完备性交叉核对测试)。缺陷背景:零刷新/arm1 两案均为「语境前提未被
 核验」类缺陷——r1 EV 输入字面量 ``None`` 绕过前提
 (ZERO_REFRESH_DIAG §4.1 实现缺口)、arm1 拿固定槽表常数当阈值域错位
 (ZERO_REFRESH_DIAG §4.2)。契约化 = 把每个判据的**语境前提**写成谓词级
 契约,接线处(entry.py / shop.py 判据消费位)经 ``ensure_contract``
-核验:前提不成立 ⇒ 该判据本帧**弃权**(不发射/不求值)+
+核验:前提不成立 ⇒ 该判据本帧**弃权**(不发出/不求值)+
 ``criteria_contract_violation:<判据名>`` 计数——禁静默执行;fail-closed
 不抛异常不断局(谓词异常同判弃权)。契约层只加前提核验,**禁改判据
 数学**(判据本体函数零触碰)。
 
 辖外声明:换线判据族(should_switch/回锁窗/干旱计数/证据门影子评估)
-已随候选-锁定制整体退役删除(迭代 2026-10-12-prep-shop-workflow-
-redesign 批 3.7;line_and_upgrade §1.6 退役面清单——原「影子面接线
-归过线后批」的过线已由本批兑现为删除),无行为接线遗留。
+已随候选-锁定制整体删除(见 proof.py 停用申报;line_and_upgrade §1.6),
+无行为接线遗留。
 """
 from __future__ import annotations
 
@@ -39,7 +38,7 @@ class ContractCtx:
     - reserve:S 预留值(消费位现读,如 b_target 组装结果)。
     - deploy_cap:等级驱动可上阵 cap(max_units_of 派生链口径;
       None=消费位退固定槽表常数,即 arm1 域错位形态)。
-    - ev_slot:EV 输入槽位现读的**原始对象**(FIX_REVIEW_20260903
+    - ev_slot:EV 输入槽位现读的**原始对象**(防线硬化
       防线硬化:由消费位硬编码声明位 ``ev_input_wired=True`` 改造)——
       合法形态 = ``audit/provisional.get('V_GAP')`` 的返回物(None =
       None 期 fail-closed / CalibValue = 槽位现读);裸 float/字面量 =
@@ -55,14 +54,14 @@ class ContractCtx:
     - k_fallback_band:分带 token(cw_intention.k_empty_window_fallback
       第二返回值直传,零第二派生;P86 证明批 §4.6-1)。空窗期待按带
       非对称:p1 带(p1_gap/p1_lock_band)回退集注册表派生构造性非空;
-      p2plus 带落码后空集合法(丙臂守息帧)。None = 带未知,按 p1 带
+      p2plus 带实现后空集合法(丙臂保利息帧)。None = 带未知,按 p1 带
       保守期待处置(空 = 违例)。
     - k_fallback_source:p2plus 带合法空的来源证据(P86 证明批 §4.6-2;
       合法值 = cw_intention.K_FALLBACK_SOURCE_THREE_ARM——判据臂评估
       产出)。无来源标记的空集 = 复发形态,违例(检测力不松动)。
     - locked_buy_members:锁定帧买侧采购集实解析
       (cw_intention.locked_buy_membership 返回物)。合法形态 = None
-      (未锁帧/锁定解析空,消费位按未锁处置)或非空 frozenset(锁线态);
+      (未锁帧/锁定解析空,消费位按未锁处置)或非空 frozenset(终局阵容锁定态);
       其他对象 = 「字面量冒充解析结果」复发形态,违例。消费位 =
       C1 核心卡通道契约。
     """
@@ -83,18 +82,18 @@ class ContractCtx:
 def _s_reserve_line_formed(ctx: ContractCtx) -> bool:
     """先例①前提:S 预留只在对目标线成型的语境下预留(禁恒预留)。
 
-    规格辖域裁决(ZERO_REFRESH_DIAG §3 第 3 条,原文):硬约束③ S 预留
+    规格适用范围裁决(ZERO_REFRESH_DIAG §3 第 3 条,原文):硬约束③ S 预留
     拦截对象列=「EV 买入面(序 3-5 追加支出,stockpile 等)+ M6 +
     dominance_buy(R32-3)」——前提=目标线 K 已成型(k_members 非空):
     无目标线语境下的恒量预留即「语境前提未被核验」缺陷形态
-    (R196 ``_s_reserve`` 恒 54 同型,diag §3 挂账项)。
+    (R196 ``_s_reserve`` 恒 54 同型,diag §3 待办项)。
 
-    **P86 带维度扩展(无目标期三臂判据落码批;证明批 §4.3 裁决②)**:
+    **P86 带维度扩展(无目标期三臂判据实现批;证明批 §4.3 裁决②)**:
     k_members 空且系三臂判据评估产出的合法空(k_target=None ∧ 回退供给
     在场 ∧ 实解析空集 ∧ p2plus 带证据 source 齐备)时前提放行——该帧不
     存在「为目标线预留」语境,S 预留原始禁令对象(无目标语境恒量预留,
-    R196 同型)不成立;溢余带必花通道(dominance/EV)按裁决②
-    「溢余段维持」不以本前提误伤,其自身带判据/候选门照旧辖。证据要件
+    R196 同型)不成立;富余带必花通道(dominance/EV)按裁决②
+    「富余段维持」不以本前提误伤,其自身带判据/候选门照旧辖。证据要件
     与 k_projection 契约同构(F-9 防御纵深:band='p2plus' ∧ source=
     three_arm 双核,无来源空不放行,两谓词判定一致);供给缺帧
     (k_fallback_available False)维持旧违例语义(无评估证据的空 =
@@ -115,7 +114,7 @@ def _gold_minus_reserve_ctx(ctx: ContractCtx) -> bool:
 
     规格:金−预留 ≥ 刷价才批(refresh.r2_budget);前提=消费位给的是
     决策帧现读金与预留值(均非 None)——缺任一即语境未核验,弃权。
-    辖域澄清(diag §3 第 3 条):付费刷新 r2 预算门**不在** S 预留
+    适用范围澄清(diag §3 第 3 条):付费刷新 r2 预算门**不在** S 预留
     拦截对象列,预留此处是预算语境输入而非硬约束③预留。
     """
     return ctx.gold is not None and ctx.reserve is not None
@@ -139,7 +138,7 @@ def _ev_input_from_slot(ctx: ContractCtx) -> bool:
 
     ZERO_REFRESH_DIAG §4.1 实现缺口:r1 输入为硬编码字面量 ``None``,
     开闸路径不可达;修复批接线后消费位现读 ``V_GAP`` 槽位。
-    **可核验派生形态(FIX_REVIEW_20260903 防线硬化)**:前提不再采信
+    **可核验派生形态(防线硬化)**:前提不再采信
     消费位硬编码声明,而是核验 ``ctx.ev_slot`` 的运行时类型——合法 =
     ``None``(None 期 fail-closed,判据语义)或 ``CalibValue``
     (``audit/provisional.get`` 的返回物);裸 float/字面量 = 复发
@@ -154,25 +153,25 @@ def _k_projection_domain_full(ctx: ContractCtx) -> bool:
 
     SEEDS_EMPTY_LEDGER_DIAG §3/§4(2026-09-03 第三病灶裁定):
     ``state_of(session).target_comp`` 的值域含 None(P1 空窗=开局常态),消费端
-    把 None 当「已锁线世界」直接投影(``line_members(None)→()``)=
+    把 None 当「已终局阵容锁定世界」直接投影(``line_members(None)→()``)=
     「单一值域的一端当全域」域错位(arm1 cap 口径/零刷新 r1 输入同型
     第三例)——空窗死锁环:K 空→零买入→板面零变化→永不锁。
-    **可核验派生形态(FIX_REVIEW_20260903 防线硬化+R3 扩域)**:值域
-    全集声明覆盖三带(P1 空窗带/P1 锁线过渡带/P2+ 带),前提不再采信
+    **可核验派生形态(防线硬化+R3 扩域)**:值域
+    全集声明覆盖三带(P1 空窗带/P1 终局阵容锁定过渡带/P2+ 带),前提不再采信
     消费位硬编码声明,而是核验实解析结果——``k_target`` 非 None
-    (锁线世界)= 无回退义务,恒过;``k_target`` None 且供给缺帧
+    (终局阵容锁定世界)= 无回退义务,恒过;``k_target`` None 且供给缺帧
     (``k_fallback_available`` False)= 保守侧不回退,合法 fail 方向
     (与 committed_authority 缺供给同款);供给在场而
     ``k_fallback_resolved`` 为空 = 「回退字面量空元组但保留声明」
     复发形态,违例弃权。回退单一源=cw_intention.hoard_target_set /
     p1_early_pair_members(禁复制四体系全集逻辑)。
 
-    **带维度非对称期待(P86 落码批,证明批 §4.6)**:p1 带
+    **带维度非对称期待(P86 实现批,证明批 §4.6)**:p1 带
     (p1_gap/p1_lock_band)回退集注册表派生构造性非空,空 = 复发违例
-    (检测力保留);p2plus 带落码后空集合法(两臂皆空 → 丙臂守息帧),
+    (检测力保留);p2plus 带实现后空集合法(两臂皆空 → 丙臂保利息帧),
     但合法空必须携带来源证据——``k_fallback_source`` ==
     cw_intention.K_FALLBACK_SOURCE_THREE_ARM(判据臂评估产出)才放行,
-    无来源空 = 复发形态守卫不松动。分期接线:退役常量在位期 p2plus
+    无来源空 = 复发形态守卫不松动。分期接线:停用常量在位期 p2plus
     解析恒非空,本分支无行为面。"""
     if ctx.k_target is not None:
         return True
@@ -190,10 +189,10 @@ def _k_projection_domain_full(ctx: ContractCtx) -> bool:
 
 
 def _core_channel_locked_ctx(ctx: ContractCtx) -> bool:
-    """C1 核心卡通道前提:锁线态语境,可核验派生形态。
+    """C1 核心卡通道前提:终局阵容锁定态语境,可核验派生形态。
 
     前提 = ctx.locked_buy_members 系 cw_intention.locked_buy_membership
-    实解析物且非空(锁线态);None = 未锁帧,通道不评估(设计判据式
+    实解析物且非空(终局阵容锁定态);None = 未锁帧,通道不评估(设计判据式
     前件,合法 fail 方向非违例)。空 frozenset / 非 frozenset 对象 =
     「字面量冒充解析结果」复发形态,违例弃权。
     """
@@ -203,18 +202,18 @@ def _core_channel_locked_ctx(ctx: ContractCtx) -> bool:
 
 @dataclass(frozen=True)
 class Contract:
-    """单判据契约:前提谓词(None=无条件)+ 辖域声明 + 规格锚。
+    """单判据契约:前提谓词(None=无条件)+ 适用范围声明 + 规格锚。
 
     前提谓词签名统一 ``ContractCtx -> bool``;None=前提恒真(仍需
-    显式登记辖域声明,防「未审计」与「无条件」混淆)。
+    显式登记适用范围声明,防「未审计」与「无条件」混淆)。
     """
 
     precondition: Callable[[ContractCtx], bool] | None
-    scope: str     # 辖域声明一句(该判据语境前提的适用面)
-    anchor: str    # 规格锚(现行文档节/引理号/符号名;历史 IMPL_DESIGN 节号已重锚,映射考古走 git 历史)
+    scope: str     # 适用范围声明一句(该判据语境前提的适用面)
+    anchor: str    # 规格锚(现行文档节/引理号/符号名;历史 IMPL_DESIGN 节号已重锚,映射见 git 历史)
 
 
-#: (模块, 函数) → Contract。键集与 criteria 全公开函数对拍(静态
+#: (模块, 函数) → Contract。键集与 criteria 全公开函数交叉核对(静态
 #: 完备性测试,漏登记=测试红);非 criteria 键(三先例+K 空窗回退
 #: 消费位)单列。
 CONTRACTS: dict[tuple[str, str], Contract] = {
@@ -233,9 +232,8 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     ('sell', 'funding_support_sell'): Contract(
         None, '支付支撑通道(两臂同开;触发=金不足自带 gold<need 门)',
         '02_mandate_layer §2/§7+BYPASS_TABLE 行(R13-5/R14-4 支付支撑通道)'),
-    # —— criteria/levelup(line_and_upgrade §2;迭代
-    #    2026-10-12-prep-shop-workflow-redesign 批 3.4 重轴:arm2 守息门/
-    #    saturation_floor/levelup_budget_gate 量闸已随拦截层删除链退役,
+    # —— criteria/levelup(line_and_upgrade §2;arm2 保利息门/
+    #    saturation_floor/levelup_budget_gate 量闸已随拦截层删除,
     #    处置依据 = line_and_upgrade §2.3 处置表)——
     ('levelup', 'upgrade_trigger'): Contract(
         _arm1_cap_level_driven,
@@ -319,16 +317,16 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         _s_reserve_line_formed,
         'M6 压库买入(S 预留消费位):辖 M6,前提=目标线成型',
         'ZERO_REFRESH_DIAG §3 第 3 条+02_mandate_layer §4 ③'),
-    # —— criteria/equipment(D-P3 挂账载体,勿删)——
-    # 修复池项 OPEN 挂账不变(定谳手段 = 实机 boss 掉血分布对拍,
-    # 从未执行),复活须先「对拍定谳→三形态标注→落码」全流程。
+    # —— criteria/equipment(D-P3 待办登记载体,勿删)——
+    # 修复池项 OPEN 维持待办登记(定案手段 = 实机 boss 掉血分布交叉核对,
+    # 从未执行),复活须先「交叉核对定案→三形态标注→实现」全流程。
     ('equipment', 'endgame_context'): Contract(
         None, 'D-P3 修复池项 OPEN 挂账不变(定谳手段 = 实机 boss 掉血'
         '分布对拍,从未执行),复活须先「对拍定谳→三形态标注→落码」'
         '全流程', 'D-P3 修复池(原文考古走 git 历史)'),
-    # —— 第七面「换线」残留件(迭代 2026-10-12 批 3.7:换线判据族
-    #    (should_switch/signal_arm/证据门影子评估)随候选-锁定制退役
-    #    删除——见模块 docstring 辖外声明与 proof.py 退役申报)——
+    # —— 第七面「换线」残留件(换线判据族
+    #    (should_switch/signal_arm/证据门影子评估)已随候选-锁定制
+    #    删除——见模块 docstring 辖外声明与 proof.py 停用申报)——
     ('proof', 'stop_buy'): Contract(
         None, '停买谓词(分类,非发射;输入=K/持有名单)',
         'BYPASS_TABLE 对应行(谓词)+02_mandate_layer §3'),
@@ -378,9 +376,9 @@ def ensure_contract(fn_key: tuple[str, str], ctx: ContractCtx,
                     counters: dict | None = None) -> bool:
     """判据契约核验(接线消费位入口;纪律单一源=本模块 CONTRACTS)。
 
-    返回 True=前提成立,判据照常求值/发射;False=前提不成立,该判据
+    返回 True=前提成立,判据照常求值/发出;False=前提不成立,该判据
     本帧**弃权** + ``criteria_contract_violation:<模块>.<函数>`` 计数
-    (键写点=本函数计数器,分键=判据名;登记节原文已删档,考古走 git 历史)。
+    (键写点=本函数计数器,分键=判据名;登记节原文已删除,细节见 git 历史)。
 
     fail-closed 不抛异常不断局:键未登记(注册完备性缺口)与谓词异常
     均按违例处置(弃权+计数),由消费位跳过该判据本帧求值。

@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 
 
 def establish_new_match(ctx: SrContext, config) -> bool:
-    """进对局时建立 match 容器(W971 §2.1「match 生命周期前置」;返回 True=本次新建)。
+    """进对局时建立 match 容器(「match 生命周期前置」纪律;返回 True=本次新建)。
 
     为什么前移:原建立点 = CwLoop.handle_init(run 首帧)——
     简报观察(CwScreenBriefing,P3)要**直写 session**,而简报屏先于 run loop 出现;
@@ -72,8 +72,8 @@ def establish_new_match(ctx: SrContext, config) -> bool:
         CurrencyWarMatch,
     )
     # 终态契约 §2.1:每局冷建 = session(旁表键位/兼容位)+ 容器单例 +
-    # 策略器构造注入 cls(gs, config)。布局未知态计数复位随 create_session
-    # 退役迁至漏斗(新局起点顺带复位,落地审 C4)。
+    # 策略器构造注入 cls(gs, config)。布局未知态计数复位 = 漏斗职责
+    # (新局起点顺带复位)。
     _session = StrategySession()
     if config.strategy_seed is not None:
         _session.rng = random.Random(config.strategy_seed)
@@ -102,11 +102,11 @@ def establish_new_match(ctx: SrContext, config) -> bool:
         config.strategy_id, _gs, config)
     # 状态同源接线(终态契约 §2.6 过渡桥):session 键位状态 = 策略器
     # 实例状态同一对象——旧读法 state_of(session) 与新读法 self.state
-    # 等价,实现/夹具可渐进迁移(T-6 session 退役时旧读法随之消亡)。
+    # 等价,实现/夹具可渐进迁移(session 兼容位删除时旧读法随之消亡)。
     _session.strategy_state = _strategy.state
     # (gs 宿主接线 = CwStrategy.state setter 内建,构造即挂 gs.strategy_state。)
     # Match 终形(§2.1):{gs, strategy, performance} + session 兼容位
-    #(T-6 session 类退役时随删)。
+    #(session 兼容类移除时随删)。
     ctx.cw_match = CurrencyWarMatch(_strategy, _session, _gs,
                                     performance=getattr(_session, 'performance', None))
     # GameState 初始化即遥测装配(用户裁定 2026-09-15:遥测数据的保存
@@ -120,7 +120,7 @@ def establish_new_match(ctx: SrContext, config) -> bool:
     # game_state_of 缺省 None=不装配口径不受影响。
     # 职级就地吸收(难度确认屏先于本调用读存 ctx;取走清空仍归 run loop
     # 信箱段——简报词缀/boss 读数在本调用之后才产生,由 run loop 统一吸收)。
-    # 终态契约 §B:直写 gs.selected_difficulty(session 份退役)。
+    # 终态契约 §B:直写 gs.selected_difficulty(session 份已删除)。
     if getattr(ctx, 'cw_selected_difficulty', None):
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
@@ -362,7 +362,7 @@ class StrategyManager:
         """按 id 实例化策略(终态契约 §2.1:透传构造参 ``cls(gs, config)``)。
         未注册 id → 显式报错(禁静默回退)。
 
-        旧「回退 DefaultCwStrategy」分支已随 default 本体退役删除:静默回退会
+        旧「回退 DefaultCwStrategy」分支已删除:静默回退会
         把配置拼错降级成「跑另一个栈」,值域错必须前置暴露(合法值域 =
         ``mandate_v1``(唯一活策略核),config
         构造期同校验)。

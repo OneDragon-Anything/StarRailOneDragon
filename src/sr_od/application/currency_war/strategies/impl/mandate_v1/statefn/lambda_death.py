@@ -12,8 +12,8 @@ P51_V3_REBUILD v3.3+本模块为单一源):
 - **现行消费面 = 键构造与查表基础设施**(difficulty_band 派生审计登记/
   hp_band 血带结构锚 predicates 观测件消费):λ 表本体保留为 P51 标定
   工件;原决策消费族(λ 顾问/exposure 比较/差分复合项/升档器排序键/
-  floor_eff 守息门)已随血线地板/λ 顾问/升档器删除链与拦截层删除链
-  退役(迭代 2026-10-12-prep-shop-workflow-redesign 批 3.4,review-34
+  floor_eff 保利息门)已随血线地板/λ 顾问/升档器删除链与拦截层删除链
+  停用(迭代 2026-10-12-prep-shop-workflow-redesign 批 3.4,review-34
   R2 供给侧孤儿清理;archaeology 走 git 历史)——新增决策消费须先过
   λ 表使用纪律审查(区间敞口比较 + 保守端 + 单调约束;禁边际引用、
   禁闸门,R30-4)。

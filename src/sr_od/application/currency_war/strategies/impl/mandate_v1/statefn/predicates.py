@@ -1,10 +1,10 @@
 """板满/等待件谓词(arm1_existence 触发信号)+ 目标线 K/零重叠 +
 「挂后台效果」资格谓词(前置半步 0 载体)。
 
-NMF §2 三行的唯一实现:P39 臂一三元(板满 ∧ 阵营相关等待件不限星级 ∧
-上场边际贡献>0——板面谓词保证 w>0,NMF §3.3 #3:臂一只用 w>0 不需精确值)
+01_math_framework §2 三行的唯一实现:P39 臂一三元(板满 ∧ 阵营相关等待件不限星级 ∧
+上场边际贡献>0——板面谓词保证 w>0,01_math_framework §3.3 #3:臂一只用 w>0 不需精确值)
 =R2-2 移入的 arm1_existence 触发信号(M3 消费,板面可观测量,非 EV 项);
-目标线 K(comp 的 core/shared/flex 名单,cw_comps.COMP_LIBRARY 运行时可判定)。
+目标线 K(阵容 的 core/shared/flex 名单,cw_comps.COMP_LIBRARY 运行时可判定)。
 """
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 def bench_effect_context(state: GameState, unit: Unit,
                          k_members: tuple[str, ...] = (),
                          ) -> BenchEffectContext:
-    """三消费位(fuel_sell 豁免/凑息档序资格/支付支撑变现)共享的语境
+    """三消费位(fuel_sell 豁免/凑利息档序资格/支付支撑变现)共享的语境
     装配函数(IMPL_ADV_R200 症3:语境从容器现读,禁各通道自拼)。
 
     可观测来源(逐项):
@@ -97,13 +97,13 @@ def arm1_existence(deployed_count: int, bench_names: list[str],
     兜底固定槽表常数 10——**该分支在生产消费位(run_mandate/商店线)
     经 ensure_contract 前提 ``_arm1_cap_level_driven``(deploy_cap=None
     ⇒ 违例弃权)已不可达**(契约层弃权优先于函数内兜底,IMPL_ADV_R200
-    OBS-3 收口);保留仅作函数局部完备性(直调/测试面),非生产语义。
+    OBS-3 收尾);保留仅作函数局部完备性(直调/测试面),非生产语义。
     cap>10 时按 10 封顶(本函数局部表示域钳制 = 十槽槽表面,
     扩板另案;max_units 本体封顶已随 back_max 动态真值,本处不随)。
     ②③见下,不变。
     ②阵营相关等待件:bench 存在与当前板面(deployed∪bench 域成员性,
     P39 裁定宽域:不限星级)共享阵营/流派羁绊的单位;③上场边际贡献>0:
-    由①②结构承载(w>0 板面谓词,NMF §3.3 #3——臂一只需 w>0,无需 w
+    由①②结构承载(w>0 板面谓词,01_math_framework §3.3 #3——臂一只需 w>0,无需 w
     精确值,【拟】#3 的 w 标定面不触发)。
     """
     cap = (DEPLOYED_CAPACITY if deploy_cap is None
@@ -128,13 +128,13 @@ def arm1_existence(deployed_count: int, bench_names: list[str],
 
 
 def line_members(comp: Comp | None) -> tuple[str, ...]:
-    """目标线 K = comp 的 core/shared/flex 名单(COMP_LIBRARY 运行时可判定;
-    线内/线外分类的锚,NMF §2「目标线 K」行)。comp 缺 → 空元组(零重叠全开,
-    fail 方向=可逆面默认做,NMF §5.3)。"""
+    """目标线 K = 阵容 的 core/shared/flex 名单(COMP_LIBRARY 运行时可判定;
+    线内/线外分类的锚,01_math_framework §2「目标线 K」行)。阵容 缺 → 空元组(零重叠全开,
+    fail 方向=可逆面默认做,01_math_framework §5.3)。"""
     if comp is None:
         return ()
     # 线内成员 = core ∪ shared(cw_comps L435:transition_chars 不计——打工后
-    # 卖的,不构成路线;core/shared 是终局成员)。「flex 名单」按 NMF §2 表述
+    # 卖的,不构成路线;core/shared 是终局成员)。「flex 名单」按 01_math_framework §2 表述
     # 对应本注册表的 shared+替班语义,不另建第三名单。
     members: list[str] = list(getattr(comp, 'core_chars', []) or [])
     members += list(getattr(comp, 'shared_chars', []) or [])
@@ -142,7 +142,7 @@ def line_members(comp: Comp | None) -> tuple[str, ...]:
 
 
 def zero_overlap(name: str, k: tuple[str, ...]) -> bool:
-    """与目标线 K 零重叠(P41 分类表第一行资格条件「与锁线零重叠」;
+    """与目标线 K 零重叠(P41 分类表第一行资格条件「与终局阵容锁定零重叠」;
     M4 燃料件卖出的前提之一)。"""
     return name not in k
 
@@ -162,7 +162,7 @@ def item_slot_unsellable(unit: BenchSlot) -> bool:
     sell_for_interest``(凑息)/ ``criteria/sell.funding_support_sell``
     (支付变现)三通道资格循环首门,判读先于其余资格门;生产观察层
     SIFT 不产占位件条目,sim 假环境经观察面直喂 bench——本门 = 各卖出
-    通道发射前唯一的占位件资格防线。新卖出通道必须经本谓词,禁第三处
+    通道发出前唯一的占位件资格防线。新卖出通道必须经本谓词,禁第三处
     kind 判定内联复制(静态锁 = sr-od-test
     test_cw_sell_item_slot_predicate.py)。与部署侧 ``cw_deploy_logic``
     'item_slot' 恒 held 同谓词同向(该面防误上,本面防误卖)。
@@ -182,16 +182,16 @@ def arm0_need(deployed: list[Unit], bench: list[BenchSlot],
     ``bench`` = 占席条目域(容器 BenchSlot,身份经解包读口;
     benchchar-retirement P4 容器形)。
 
-    排除口径 = **纯 name**(口径对齐收口,P1消费臂批落地审:与真实部署去重语义对齐——
+    排除口径 = **纯 name**(口径对齐收尾,P1消费分支批落地审:与真实部署去重语义对齐——
     check_seats 对象列同名禁上阵 + cw_deploy_logic 按 cid 去重的实际
     规则即「同名不可再上阵」;Y3 的 (名,星) 字面让位于部署真实语义,
     不为凑字面制造虚 need:①同名异星 bench 件按 name 排除后不再虚计
     (旧口径计 it = 为不可执行部署买等级);②bench 同名 ×2(臂① j=2
     形态)去重计 1(双计消除,need 恒高估修正)。**同名异星可否同场的
-    机制事实未定谳**(14号稿 §8⑫ 挂账保留,2026-09-06 核验批 = 证据
+    机制事实未定案**(14号稿 §8⑫ 登记的待定项,核验结论 = 证据
     不足:机制原文只辖同名同星,档案 deployed 面系台账跟踪值不作机制
     证据)——纯 name 口径是**执行层语义对齐**(与部署去重一致,防为
-    不可执行部署买等级),不是机制定谳;若后续实机证得异星可双上阵,
+    不可执行部署买等级),不是机制定案;若后续实机证得异星可双上阵,
     本谓词 need 将低估,回写口径时一并修。)
     成员集分叉声明(编排者存-2 裁决 = 有意设计):本谓词只量 k_members
     (可部署现量),臂①囤腿的 buy_members 超集成员不入 need——囤腿件
@@ -213,7 +213,7 @@ def arm0_level_lag(level: int, readable: bool, deployed: list[Unit], bench: list
                    deploy_cap: int | None) -> tuple[bool, str]:
     """arm0 触发谓词 v2(14号稿 §4.2):等级落后于上阵人数需求。
 
-    返回 (是否触发, 拒因分键——不触发时显式理由,W6 零静默):
+    返回 (是否触发, 拒因分键——不触发时显式理由,零静默):
     - level 消费只认 authoritative 位(``level_readable``,C4 采纳:与
       15 号稿 §4.3 共用单一源可信位定义)——不可信帧 fail 向不触发
       (E3 型毒化帧 fail 向,分键 'level_unreadable');
@@ -238,8 +238,8 @@ def p1_blood_floor(state: GameState) -> bool:
 
     **现行消费面 = 纯观测**(entry.py 形态⑥金滞留观测的带判定/
     flow.py 锁生成可行性观察件共谓词)——决策面消费(血线硬地板
-    解锁包三件:经验停付让位/凑息禁令/破息批解锁)已随血线地板
-    删除链退役(迭代 2026-10-12-prep-shop-workflow-redesign 批 3.4;
+    解锁包三件:经验停付让位/凑息禁令/跌破利息档批解锁)已随血线地板
+    删除链停用(迭代 2026-10-12-prep-shop-workflow-redesign 批 3.4;
     line_and_upgrade §2.3 血线地板解锁行;正典依据 user_playstyle
     [39]「HP 不作决策依据」——濒死响应 = 修经济/阵容本身)。本谓词
     保留为观测分键的带判定读口。
@@ -272,7 +272,7 @@ def p2_blood_floor(state: GameState) -> bool:
     **现行消费面 = 纯观测**(flow.py 锁生成可行性观察件的 boss 濒死
     死区分键 / entry.py 形态⑥金滞留观测的带判定)——决策面消费
     (解锁包三件:M3 停付让位/凑息禁令/濒死解锁)已随血线地板删除
-    链退役(迭代 2026-10-12-prep-shop-workflow-redesign 批 3.4;
+    链停用(迭代 2026-10-12-prep-shop-workflow-redesign 批 3.4;
     line_and_upgrade §2.3 血线地板解锁行),本谓词保留为观测分键的
     带判定读口,不再有解锁包合成口(原 ``p2_blood_floor_unlock``
     随决策消费面消亡)。
@@ -304,9 +304,9 @@ class BenchEffectContext:
     """「挂后台效果」资格谓词的语境输入(R32-中⑤ 前置半步 0)。
 
     - ``rust_affix_present``:库藏生锈词缀是否在场(词缀识别名 =
-      ``cw_comps.RUST_AFFIX_NAME`` 单一源,NMF §3.4 #4);
+      ``cw_comps.RUST_AFFIX_NAME`` 单一源,01_math_framework §3.4 #4);
     - ``equipped``:被评估单位当前是否已穿装备(谓词读装备态的分支入参——
-      穿装备改变词缀计数资格,与 NMF §3.4 #4 无用件聚拢穿到工具人有交互);
+      穿装备改变词缀计数资格,与 01_math_framework §3.4 #4 无用件聚拢穿到工具人有交互);
     - ``herta_star_supply``:黑塔·银河学者星级供强语境(板面/线内存在
       大黑塔·银河学者成员,或黑塔纪元 augment 局)——例外①的显式枚举载体。
     """
@@ -333,7 +333,7 @@ def bench_effect_qualified(name: str, ctx: BenchEffectContext) -> bool:
       (排除出卖面桶不动子集);已穿装备 ⇒ 照常入桶不动子集。
 
     三消费位(判据层步 4 落地时消费,本批只建载体):fuel_sell 豁免 /
-    凑息档序资格 / 危局阀桶不动子集。
+    凑利息档序资格 / 危局阀桶不动子集。
     """
     ch = CHARACTERS.get(name)
     if ch is None or not getattr(ch, 'bench_effect', ''):
@@ -347,26 +347,26 @@ def bench_effect_qualified(name: str, ctx: BenchEffectContext) -> bool:
 
 def t5_p1_false(gold: int, spend: int, rounds: int, net_income: int,
                 cap_resolved: int) -> bool:
-    """T5 未锁线止血买的结构判据承重谓词(/§4;p46 P1 谓词
+    """T5 未锁定止血买的结构判据承重谓词(/§4;p46 P1 谓词
     原式,判据 = loss_exact 现算,不按任何帧集清单)。
 
     ``L(g,c,R_全局,Ī,cap) == 0`` ⟺ P1 假 ⟺ 该帧出 p46 否决域(D =
     P1∧P2∧P3 恒假)——无需 E_rev、无需 V_deploy、无需 P2 分析,止血买
     的正当性由「占用集合基数严格扩 + 全额可退可逆 + 息账零损」三结构量
     的支配论证独立承载(仅作「有比没有强」接受
-    形态的在册先例,辖域限定同节)。判据全为注册表派生量,零 hp/胜率/
-    掉血先验/板面评分消费——不在 00_framework §3 硬闸门辖域,无开关。
+    形态的在册先例,适用范围限定同节)。判据全为注册表派生量,零 hp/胜率/
+    掉血先验/板面评分消费——不在 00_framework §3 硬闸门适用范围,无开关。
 
     ``net_income`` 形参 = 逐节点净收入 Ī 的现算值(调用方经
     cw_economy.net_income 供给;非 i_bar 常量,命名随 cw_economy
     docstring 术语口径)。边界:cap=0(买断制)局 L≡0 ⇒ 全帧 P1 假
     ⇒ T5 全开,方向安全;P1 真帧(现算 L>0)结构层
-    不发射,落行为层挂起(V_deploy 候用户逐项授权,宪法硬闸,禁自裁)。
+    不发出,落行为层挂起(V_deploy 候用户逐项授权,宪法硬闸,禁自裁)。
     """
     return loss_exact(gold, spend, rounds, net_income, cap_resolved) == 0
 
 
-# ===== T-263 前窗/零成型谓词族(P90 面①;设计正本 =
+# ===== 前窗/零成型谓词族(P90 面①;设计正本 =
 # .debug/temp/currency_war/attacks/t175_exit_margin/设计方案.md §4.1,
 # 命题 = math_proofs P90-P94 行)=====
 
@@ -422,7 +422,7 @@ def front_window_frame(state: GameState) -> bool:
 
 
 def zero_form_frame(deployed: list) -> bool:
-    """零成型帧谓词(P90 收窄辖域 e=0;P94 谓词原文 = per-体系
+    """零成型帧谓词(P90 收窄适用范围 e=0;P94 谓词原文 = per-体系
     ``board_factions[s] < FACTIONS[s].tiers[0]``,希儿系复合判据单列)。
 
     四体系 = 三羁绊系(阈值对 = knowledge/cw_engine_facts.

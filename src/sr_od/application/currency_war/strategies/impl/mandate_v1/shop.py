@@ -10,7 +10,7 @@
 
 **店内动作边界**(用户裁定 2026-10-12 + 能力面):店内可做 = 买牌/
 卖备战席/刷新/购买经验;店内不做 = 卖场上角色、点消耗品、拖角色上阵
-(部署统一店外)。卖备战席与买经验在店内发射(执行链 = 3.5 端口接线
+(部署统一店外)。卖备战席与买经验在店内发出(执行链 = 3.5 端口接线
 批交付);2026-09-14 收缩裁定废止(判例 screens-actions-capability §5
 的「卖备战/买经验收缩至备战期」随本批直删,用户裁定 2026-10-13)。
 
@@ -31,10 +31,10 @@ core_c1_make_room_sell/core_locked_c1_make_room_sell /
 shop_refresh_*(三段式判据拒因族)/ levelup_*(会话内升级执行位族);
 承继键族(m2/m2_stockpile/m2b/transition/dead_gold_press/press_buy_
 deployable/m6/fuel_filler_stall/ev/core/dominance/p90-p94/p91)随各臂
-收编保留,键语义与写点注释见各臂段。P86 三臂旧键族(shop_no_target_*/
-hub_option_*)随收编退役(对照表 = 迭代目录 P86 收编对照,考古走 git)。
+并入保留,键语义与写点注释见各臂段。P86 三臂旧键族(shop_no_target_*/
+hub_option_*)随并入停用(对照表 = 迭代目录 P86 并入对照,考古走 git)。
 
-M2 停摆续段缓存:商店域 cw4_m2_stall_latch 族已随 T-271 退役;席满
+M2 停摆续段缓存:商店域 cw4_m2_stall_latch 族已停用;席满
 表达 = 店内置换账(shop_session §3),不再有「无候选输入不变续段」的
 重复帧面。
 """
@@ -183,9 +183,9 @@ if TYPE_CHECKING:
 # CwActionRefreshShopParam 即终结,CwActionCloseShopParam 恒可用;名-槽一致性复检 = 执行侧
 # proposal-vs-expected 守卫断言(cw_shop_action_ops;和解注)。
 
-# ===== M2 停摆续段缓存退役(T-271)=====
+# ===== M2 停摆续段缓存停用 =====
 # 商店域 M2_STALL_NONVARIANT_SHOP_ACTIONS 白名单、cw4_m2_stall_latch
-# 续段缓存与其续段 token 消费随商店期腾席卖射一并退役:席满缺员形态
+# 续段缓存与其续段 token 消费随商店期腾席卖射一并停用:席满缺员形态
 # 现表达 = 关店交回(终结动作),不再有「无候选输入不变续段」的重复
 # 帧面。备战域同构缓存(mandate.run_mandate M4)不受影响,续段 token
 # (cw4_frame_action_record)由备战域继续消费。
@@ -206,7 +206,7 @@ def _shop_sell_refund(bc) -> int | None:
     return sell_refund(u.star, ch.cost)
 
 
-# (R1 路径总账装配侧 _r1_ledger_terms 已随三段式刷新判据落码退役——
+# (R1 路径总账装配侧 _r1_ledger_terms 已随三段式刷新判据实现停用——
 #  shop_session §2.4 判据替换申报:期望比较的连续判据 → 目标状态的
 #  结构判据,消费面改由 criteria/refresh.refresh_warranted 查表承载;
 #  P40/P47/P54 命题本体保留在册。考古走 git 历史。)
@@ -234,7 +234,7 @@ def _merge_pair_names(bench: list[BenchSlot],
     ——机制上「同名 1★ 凑满 3 即合成」(merge_mechanics.md §2 主例:
     备战 1★×2 + 场上 2★×1 → 买第三张 1★ 触发合成),机器只实现「恰
     2 张全 1★」单跳形态;「1★×2 与 ≥2★ 同名并存」的买三张通道机器
-    未实现(两真实合成通道残余,经 T-313 发现、T-315 追认的设计边界;裁定档已删,git da3a7370ce
+    未实现(两真实合成通道残余,设计边界;裁定档已删,git da3a7370ce
     可溯)。未来 M2b 若补该形态,
     本谓词须同步收扩——否则 P92 门将从「对齐机器」翻成「误杀真
     通道」。
@@ -242,8 +242,8 @@ def _merge_pair_names(bench: list[BenchSlot],
     归一化/计数键逐字符同 ``decide_shop_action`` 内 ``_cnt``(同名同
     星副本计数):星级 ``(c.star or 1)``(None 视同 1★)、键
     ``(c.char_id or '')``、计数宇宙 bench∪deployed。资格维不在本
-    谓词辖域(调用方各自过滤:M2b 循环天然辖于 buy_members,P92 装配
-    显式 ∩ buy_members——资格维对齐 M2b 实现,T-295 对抗审问题 6
+    谓词适用范围(调用方各自过滤:M2b 循环天然辖于 buy_members,P92 装配
+    显式 ∩ buy_members——资格维对齐 M2b 实现,对抗审问题 6
     转正,reviews/T-295-方案对抗审.md)。
     """
     copies: dict[str, list[int]] = {}
@@ -266,16 +266,16 @@ def p92_seat_recoverable(session: StrategySession,
                          defer_names: frozenset[str] | set[str],
                          counters: dict | None = None,
                          dedup_names: set[str] | None = None) -> bool:
-    """P92「席可落」腾席可达判定(IC-1 单源;T-20 收窄落码)。
+    """P92「席可落」腾席可达判定(IC-1 单源;收窄实现)。
 
     真值 = ``mandate.fuel_sell_candidates`` 资格面非空,排除集与店帧
     实际腾席臂(M2 缺员腾席位/m2_stockpile 腾席位/恒买腾席支)同一
     装配 A 形态(``sell_gate.sell_exclusions(channel='m4_fuel')``,单一
     入口禁第二排除集),T3 同轮保留走 defer 末位(转化类放行,与腾席
-    臂同参)——「存在可变现 1★ 燃料件」即席可落,判定尺与腾席发射位
+    臂同参)——「存在可变现 1★ 燃料件」即席可落,判定尺与腾席动作发出点
     同源,禁平行第二实现。
 
-    收窄沿革(旧代理为何退役):旧装配传 P56 投影 ``liquid_refund>0``
+    收窄沿革(旧代理为何停用):旧装配传 P56 投影 ``liquid_refund>0``
     (金额投影代理)。其申报的偏宽面(占位件被当可变现候选)已随该
     投影读的单一源化(fuel_sell_candidates 占位件滤门)闭合;残余失真
     是**口径错配**双向漂:①排除集——投影视图并 T3 活跃集
@@ -293,7 +293,7 @@ def p92_seat_recoverable(session: StrategySession,
     excl = sell_gate.sell_exclusions(session, k_members, channel='m4_fuel',
                                      cap_hold=cap_hold,
                                      current_round=current_round)
-    # 释放集与腾席发射位同参同源(判定尺同源约束覆盖释放旁路面:
+    # 释放集与腾席动作发出点同参同源(判定尺同源约束覆盖释放旁路面:
     # 漏算则 P92 在释放可达帧误判席不可落 → 误拦刷新)。
     release = sell_gate.dead_pair_exit_release(
         session, k_members, bench,
@@ -313,9 +313,9 @@ def _frame_search_windows(session: StrategySession, gs: GameState,
                                                             frozenset[int]]:
     """帧级搜索窗口(T1;设计 13_buy_face_design §2.3/§3.2)。
 
-    窗口判据重锚(V̄ 链退役随批):旧 V̄ 门式
+    窗口判据重锚(V̄ 链停用随批):旧 V̄ 门式
     (``vbar.window_vbar`` 帧级现算 + P57 双读法参数化)随 V̄ 比较项
-    一并退役,窗口改为塌缩带锚——费档在窗内 ⟺ 该级命中率 ≥ ω×峰值级
+    一并停用,窗口改为塌缩带锚——费档在窗内 ⟺ 该级命中率 ≥ ω×峰值级
     命中率(``statefn/odds.tier/card_search_window``,ω 锚与
     refresh_ev_budget 归零腿同源),全游戏定义量(REFRESH_PROB
     表 + 峰值查表 + 注册表 ω 字段)。空集语义 = 真无窗口帧(该级全部
@@ -348,28 +348,28 @@ def shop_unbought_reasons(gs: GameState,
 
     - 线内缺口件(K 想买而未买):``missing_unaffordable``(金不足)/
       ``missing_bench_full``(席满且无可腾燃料件)/ ``missing_no_path``
-      (金席俱足仍未发射 = 异常态:发射被截断丢弃等,须查);
+      (金席俱足仍未发出 = 异常态:发出被截断丢弃等,须查);
     - 线内已持有:``owned``;
     - transition_chars(打工后卖、刻意不入线——单一源 = cw_comps 注册表
       + ``predicates.line_members`` 只取 core∪shared):``transition_char``;
-    - ④转线放行集(kernel.cw_card_identity 身份分层单一源,T-115 D7 键序
+    - ④转线放行集(kernel.cw_card_identity 身份分层单一源,D7 键序
       先于 trans 分支——交集卡可辨):``transition_component``;
     - 乙臂枢纽资格集(P86;入参 = kernel.no_target_arms().hub_names 直传,
       判据单一源在 kernel,本函数只挂标签):``hub_option``——空窗帧枢纽
-      件从 non_line 改显式拒因(正本 §4.4 行 3 键序消费面重排;未发射
+      件从 non_line 改显式拒因(正本 §4.4 行 3 键序消费面重排;未发出
       = 金/席/息/素材门逐帧判,精确门序以 hub_option_* 计数键为准);
     - 其余:``non_line``。
 
-    口径 = 帧首静态快照 + 逐动作累积投影:金按已发射 CwActionBuyCardParam 总价扣减、
+    口径 = 帧首静态快照 + 逐动作累积投影:金按已发出 CwActionBuyCardParam 总价扣减、
     CwActionSellBenchParam/CwActionSellDeployedParam/CwActionDeployMoveParam 的席与回金同步投影(修复:旧版只投影
     金不投影席——M2 波内先买的成员占掉末席后,同波后续线内件被席闸跳过,
     会被误标成 missing_no_path 而非 missing_bench_full,复盘归因失真)。
     拒因串是判读线索,非审计账(精确门序以 shop_ev_*/m2_* 各计数键为准)。
-    comp 为 None(K 空窗回退带)时 transition 分类不可得,统一 ``non_line``。
+    阵容 为 None(K 空窗回退带)时 transition 分类不可得,统一 ``non_line``。
 
-    语境声明:本函数的拒因语义(「金席俱足仍未发射
+    语境声明:本函数的拒因语义(「金席俱足仍未发出
     =异常态」)以 cw4 M2 义务通道为参照系——M2 对线内缺件是义务买入,
-    唯一合法拦截集=金/席硬闸+发射截断。
+    唯一合法拦截集=金/席硬闸+发出截断。
     """
     # 容器单位域现读(P4 容器形):bench = 占席条目(BenchSlot),身份经
     # 解包口取;deployed = 行域单位紧缩序(本函数内多处同吃同一推导)。
@@ -405,10 +405,10 @@ def shop_unbought_reasons(gs: GameState,
             if name in owned:
                 # 线内已持有帧按持有形态细分拒因(与同帧实际动作一致):
                 # - 合并完成段(cnt=2 ∧ 无 2★):§3.6 满栏例外后买入直发
-                #   (免 bench_free 门),'merge_bench_full' 键退役;金不足
+                #   (免 bench_free 门),'merge_bench_full' 键停用;金不足
                 #   仍记 merge_unaffordable,金席俱足未发 = merge_ready
                 #   (判读关注面);
-                # - 臂①囤腿段(cnt1=1 ∧ 无 2★,§3.2):中性 'owned' 退役
+                # - 臂①囤腿段(cnt1=1 ∧ 无 2★,§3.2):中性 'owned' 停用
                 #   ——同帧实际动作 = m2_stockpile 义务买入,拒因按其门序
                 #   细分(stockpile_bench_full/stockpile_unaffordable/
                 #   stockpile_ready),§7.3 owned 命中占比观测面随之真实;
@@ -451,26 +451,26 @@ def shop_unbought_reasons(gs: GameState,
             # P86 乙臂拒因键(枢纽资格件在售未买帧与真 non_line 可辨)。
             # 键序 = 先于 ④/trans 分支(P86 正本 §4.4 行 3「键序消费面重排」:
             # p2plus 无目标帧上 ④ 放行臂经 committed 门构造性关闭,枢纽臂
-            # 才是在售交集卡(如 花火)的活发射通道,拒因按活通道归属;P1
+            # 才是在售交集卡(如 花火)的活发出通道,拒因按活通道归属;P1
             # 帧本键不产(hub_names 空集直传),④ 旧键序零变化)。判据单一
             # 源 = kernel.hub_option_names,本函数只挂标签。
             out[name] = 'hub_option'
         elif line_identity_tier(name) == TIER_TRANSITION:
-            # T-115 规则④ 拒因键(D7 键序):④放行集判据先于
-            # trans 分支——交集卡(④放行件 ∧ 某 comp transition_chars)
+            # 规则④ 拒因键(D7 键序):④放行集判据先于
+            # trans 分支——交集卡(④放行件 ∧ 某 阵容 transition_chars)
             # 在旧序(k_members→trans→else)下恒落 transition_char,新键
             # 不可达。定序理由 = 判读价值:④件被拒才是要盯的信号(席/金/
             # 星级硬闸漏放),打工件刻意不买是常态;行为无影响(买入由
             # 放行臂驱动),纯遥测口径。判据单一源 = line_identity_tier
-            #(与规则④买入臂同源)。
+            #(与规则④买入分支同源)。
             out[name] = 'transition_component'
         elif name in trans:
             out[name] = 'transition_char'
         else:
             # C1 拒因拆键(设计《直通核心卡信号层入口》§4 意向状态机行):
             # registry 核心卡在售未买帧与真 non_line 可辨——sim 检查器归
-            # 机会错失类,落码批带方向声明(严格向:核心件在售帧被拒判红)。
-            # T-115 规则③后语义收窄:未锁线帧在售核心卡正常帧
+            # 机会错失类,实现批带方向声明(严格向:核心件在售帧被拒判红)。
+            # 规则③后语义收窄:未锁定帧在售核心卡正常帧
             # 已由恒买放行臂买入,本键残留 = 席/金硬闸拒的 fallback 标签。
             out[name] = ('core_candidate_rejected'
                          if name in CORE_SINGLE_CARD_REGISTRY else 'non_line')
@@ -481,7 +481,7 @@ def count_material_stale(counters: dict, session: StrategySession,
                          bench: list[BenchSlot],
                          deployed: list[Unit],
                          round_num: int) -> None:
-    """滞留素材显影分键(滞留显影欠账 G-B1 第四级;官方键,
+    """滞留素材显影分键(滞留显影待修问题 G-B1 第四级;官方键,
     取代 sim71 守卫验收批的「重复对在场行数」代理口径)。
 
     分键两把:
@@ -492,7 +492,7 @@ def count_material_stale(counters: dict, session: StrategySession,
       的名×帧计数 = 「N 轮未合成」的轮级显影——合成后键停止增长
       (轮差分归零),滞留时长由判读端按键差分读,本函数不做时长判定。
 
-    辖域 = 商店决策帧(由 ``decide_shop_action`` 逐帧调用;备战帧不计,
+    适用范围 = 商店决策帧(由 ``decide_shop_action`` 逐帧调用;备战帧不计,
     与家族同域)。跨轮记忆载体 = ``session.cw4_stale_seen_rounds``
     (名 → 上一见帧轮次;名离场即清,防拆对后再组被误计跨轮)。
     纯观测:只写 counters/session 记忆,零行为面。
@@ -516,8 +516,8 @@ def count_material_stale(counters: dict, session: StrategySession,
         _seen[_sn] = round_num
 
 
-# ===== 线账闭合孤儿证明载体(T-141 乙′)=====
-# T-165 上移申报(原「回迁候 sell_gate 开放批」兑现):簿键/读口/孤儿
+# ===== 线账闭合孤儿证明载体 =====
+# 单一源上移申报:簿键/读口/孤儿
 # 证明集单一源 = sell_gate(_OBLIGATION_BOOK_KEY / obligation_book_of /
 # line_switch_orphans_of)——L1 换线孤儿 carve-out 需要同源证明(第二
 # 键 = 双源漂移面);本侧保留薄委托零断链(调用位/测试引用不变)。
@@ -528,7 +528,7 @@ def _obligation_book(session: StrategySession) -> dict:
     return sell_gate.obligation_book_of(session)
 
 
-# (线账闭合孤儿证明集帧首读位随商店域卖射退役删除,T-271:该集唯一
+# (线账闭合孤儿证明集帧首读位随商店域卖射停用删除:该集唯一
 #  消费 = CwActionSellBenchParam.reason 孤儿证明标记,读口单一源 =
 #  sell_gate.line_switch_orphans_of,备战域卖出位按需直读。)
 
@@ -581,7 +581,7 @@ def _s_reserve_remeet_frames(level: int, bench, deployed,
     (自然帧,ceil)——「留保息 vs 收现货」权衡自此有量值载体。
 
     纯遥测累计,禁决策判据消费;让路裁决(下界是否/如何为现货让路)
-    归 P56 设计批(P77 辖域申报:本命题不裁决)。held 折算 = 全局面
+    归 P56 设计批(P77 适用范围申报:本命题不裁决)。held 折算 = 全局面
     同名基础副本数(1★×1/2★×3/3★×9);窗式单一源 =
     ``reencounter_window_frames``(P77 §1.4「再遇窗 1/q(自然帧)」)。
     """
@@ -609,34 +609,34 @@ def _s_reserve_remeet_frames(level: int, bench, deployed,
 def check_settlement_line(gold: int, cost: int, g_star: int) -> tuple[bool, str]:
     """结算线地板:买后裸金不出息律饱和线(gold − cost ≥ g*,g* 由
     调用方传 ``saturation_line(cap_resolved)`` 派生,禁字面 50——R70-1
-    息帽参数化链,买断制 g*=0 时被 check_affordable 蕴含即 no-op)。
+    利息帽参数化链,买断制 g*=0 时被 check_affordable 蕴含即 no-op)。
 
     为什么需要(五件结构事实的合取,§背景):①资格门单边——
     dominance 臂原只查买前 gold > g* 与 check_affordable,是全部
     discretionary 买臂中唯一无买后线检查的臂;②单动作串行链——一次
     店访每帧买一张、金为期望态现值,串行消费下末笔可穿线;③P78-1 同
-    visit 禁卖回(定义性抵消买入);④T3 同轮垫保——买入即入发射登记
+    visit 禁卖回(定义性抵消买入);④T3 同轮垫保——买入即入动作发出登记
     簿(press 类 τ=同轮),卖回恢复通道当轮结构性不可达;⑤息结算在
-    轮末、按裸金(bench 资产不计息,P47)——穿线笔使当轮息档恰降
+    轮末、按裸金(bench 资产不计息,P47)——穿线笔使当轮利息档恰降
     1 档且当轮不可恢复。
 
     口径分界(禁三处买臂判据漂移):
     - 与 P56 s_reserve(可变现口径)**不同源不同面禁统一**(账本预裁):
       s_reserve 管 EV 臂完成度价值买入的财富账,本线管纪律面当轮结算
-      息档,本谓词不消费 s_reserve 谓词;
+      利息档,本谓词不消费 s_reserve 谓词;
     - 档 1 press_buy_deployable 的金位地板为同形判据,
       自本批起消费本谓词(同谓词同值,行为不变);
-    - ②(b) 当轮档地板是**另一形状**(当轮息档保持 cost ≤ gold −
+    - ②(b) 当轮档地板是**另一形状**(当轮利息档保持 cost ≤ gold −
       10×⌊gold/10⌋,带内语义),不合流、勿合并。
 
     拦截语义 = 资格修正非票据废除(P88 同族):买后金 ≥ g* 的购买全程
-    处于溢余带——该带内支出息损 L≡0(P70 全网格复算已证),地板保留的
+    处于富余带——该带内支出息损 L≡0(P70 全网格复算已证),地板保留的
     全部行为都在已证零损域内;穿线笔(出域段)无在证授权,fail-closed。
     被截笔价值面(压缩/垫件)不进判据(P49 判据一:跨档压缩恒 0 为
-    结构事实;价值账归显式模型轨,§挂账)。
+    结构事实;价值账归显式模型轨,已登记为待办)。
 
     正本规格指认的家 = mandate.check_s_reserve 旁;因 mandate.py 存在
-    并行在飞改动暂居本模块(T-193 文件面阶段化),归位迁移随 mandate
+    并行在飞改动暂居本模块(文件面阶段化),归位迁移随 mandate
     面修正批整体平移(本函数零模块态依赖,平移零行为面)。
     """
     if gold - cost < g_star:
@@ -651,7 +651,7 @@ def check_settlement_line(gold: int, cost: int, g_star: int) -> tuple[bool, str]
 #: 「真贯穿层」= Early→Final 全程留用层——E→F 0.66-0.95 与「早期核心」
 #: 一致,出处 = docs/game/currency_war/research/stage_transitions.md Q1 表
 #: 第一档)。策略层立场常量(「恒囤」为策略裁定,名单随攻略数据修订走
-#: research 重跑;3.7 候选内核落码后随选线函数统一消费)。
+#: research 重跑;3.7 候选内核实现后随选线函数统一消费)。
 CROSS_LINE_KEEP_NAMES: frozenset[str] = frozenset({
     '千冶·刃', '三月七', '花火', '星期日',
 })
@@ -710,7 +710,7 @@ def _session_upgrade_check(gs: GameState, session: StrategySession,
 
     次序翻转申报(shop_session §2.2):现行 M2(义务买入)先于升级 →
     本设计升级前置——升级金优先于买牌金,等级决定概率档,先定概率档
-    再花钱找牌;触发源并集五臂中人口位/arm0/溢余段-L3 缺省相照常触发
+    再花钱找牌;触发源并集五臂中人口位/arm0/富余段-L3 缺省相照常触发
     (会话内买入可中途武装人口位 → 会话中段升级 → 升级即收工)。
 
     两帧态(每轮买入评估边界执行;置换/筹资序列中间不插入——序列
@@ -721,14 +721,14 @@ def _session_upgrade_check(gs: GameState, session: StrategySession,
       P78-5 兜底豁免,两腿判定复用 entry._fallback_legs_ok)→ 候选
       穷尽 → 零动作透传(键保留至节点末,幂等重评);缺口闭合 →
       执行帧发购买经验整批(clicks 直达机械层,实付上界 = 授权值不再
-      重闸)+ 置升级即收工闩。
+      重闸)+ 置升级即收工标志。
     - **授权帧**(键不在):奖励帧抑制 → 等级帽 → 五臂判据 → P21
       (域内让位)→ 血本位支付检查(血本位局无变现步,授权帧即执行
-      帧)→ 攒批资金与发射前花后金下界(复用 entry._levelup_floor_ok
+      帧)→ 攒批资金与发出前花后金下界(复用 entry._levelup_floor_ok
       同源)→ 裸金足 = 同帧执行帧;活期补 = 置键 + 首卖本帧发出。
 
     执行链 = ``CwActionLevelUpShopParam``(商店域词表类,clicks 整批
-    通道 3.5 已接线);升级动作执行后直接收工关店(闩承载,标记照写、
+    通道 3.5 已接线);升级动作执行后直接收工关店(标志承载,标记照写、
     清单照写——商业间谍/晋升名额的升级联动商店效果两段未建模,终止
     买入规避 guard_proposal_vs_expected 误炸;「升级后同节点找牌」
     收益放弃 = 已知限界,实机观察点)。
@@ -766,7 +766,7 @@ def _session_upgrade_check(gs: GameState, session: StrategySession,
         counters[key] = counters.get(key, 0) + 1
 
     def _emit_batch(cost: int, clicks: int, auth_basis: str) -> Action:
-        """整批发射位:清键 + 置收工闩 + 失效/伴生钩子(读数协议)。"""
+        """整批动作发出点:清键 + 置收工标志 + 失效/伴生钩子(读数协议)。"""
         st.levelup_preauth = None
         st.shop_upgrade_close_pending = True
         st.shop_session_processing = True
@@ -858,7 +858,7 @@ def _session_upgrade_check(gs: GameState, session: StrategySession,
     if not trig:
         return None
     _count(f'levelup_trigger_{arm_key}')
-    # 溢余段域内判定与备战期闩(20 号稿 L3 域内让位;键式相位)。
+    # 富余段域内判定与备战期标志(20 号稿 L3 域内让位;键式相位)。
     from sr_od.application.currency_war.kernel.cw_economy import (
         in_must_spend_zone,
     )
@@ -943,7 +943,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
        解拦复核店内段(牌面外记录销项)/受限访问帧标记(契约 A 豁免);
     3. 会话标记门:本节点已处理 → 立即关店(幂等);受限访问帧不受
        标记辖;
-    4. 升级即收工闩(整批发射后的下一帧收工——升级联动商店效果未建
+    4. 升级即收工标志(整批发出后的下一帧收工——升级联动商店效果未建
        模,终止买入规避误炸;标记照写、清单照写);
     5. 前置升级检查(:func:`_session_upgrade_check`;每轮买入评估前,
        次序翻转申报见其 docstring);
@@ -990,7 +990,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # ---- 3.5 店内合成结果帧检测(读数协议②合成族;不分源含买入致合成)----
     shop_sess.detect_merge_result_frame(gs)
 
-    # ---- 4 升级即收工闩 ----
+    # ---- 4 升级即收工标志 ----
     if _st.shop_upgrade_close_pending:
         _st.shop_upgrade_close_pending = False
         return _session_close(gs, _st, counters)
@@ -1024,7 +1024,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     _lvl_readable = bool(level_of(gs) is not None)
 
     # —— 序 1 名单解析(三态;契约 E)——
-    # k = 现行方向 comp(锁定线优先,未锁 = 过渡配方开局面;§1.6 消费面
+    # k = 现行方向 阵容(锁定线优先,未锁 = 过渡配方开局面;§1.6 消费面
     # 分派的组合读形态——批 3.7 键面归一:target_comp = 锁定线槽单写者,
     # 未锁帧配方面走 opening_recipe_comp,读口单一源 = direction_comp_of)。
     k = session_scope.direction_comp_of(session)
@@ -1034,9 +1034,9 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     if k is None and _ist is not None and _p2_started:
         # K 空窗回退(语义保留、判定源切换 = 未锁定旗标来自线选择机制
         # 〔锁定线槽空〕;line_and_upgrade §1.6 行):回退单一源 =
-        # cw_intention,与备战域同源消费,禁复制。位面辖域守卫(P86 甲臂
-        # 收编:命题辖域 = 位面 2——宪法第 2 条豁免登记的辖域字面量,
-        # 被退役调用位的 plane 条件在序 1 源①候选集构建处显式保留,
+        # cw_intention,与备战域同源消费,禁复制。位面适用范围守卫(P86 甲臂
+        # 并入:命题适用范围 = 位面 2——宪法第 2 条豁免登记的适用范围字面量,
+        # 被停用调用位的 plane 条件在序 1 源①候选集构建处显式保留,
         # 非静默丢失;3.7 正本更新批消字面量化)。
         k_fallback, k_band = cw_intention.k_empty_window_fallback(
             gs, _ist, session=session, registry=_reg)
@@ -1060,7 +1060,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         obligation_members = buy_members
     else:
         # 未锁定 = 候选态:候选线成员并集 ∪ 贯穿件恒囤(空窗帧回退集
-        # 承接为候选 stand-in)。④转线件经序 1 的 ④臂收编(见下)。
+        # 承接为候选 stand-in)。④转线件经序 1 的 ④臂并入(见下)。
         _cand_names: set[str] = set(k_members) | set(CROSS_LINE_KEEP_NAMES)
         for _cn in _st.line_candidates:
             _comp_c = get_comp(_cn) if _cn else None
@@ -1094,7 +1094,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 counters.get('transition_hold_locked_frame', 0) + _trans_n
 
     # stop_buy 契约核验面(消费位历史:泄金阶梯档 0 三处消费位已摘,
-    # 末位消费 = 旧筹资形态 MandateFrame,随会话内筹资重写退役——
+    # 末位消费 = 旧筹资形态 MandateFrame,随会话内筹资重写停用——
     # [13] 停手线纪律由序 6 纯冗余停买与各序判据本体承载;核验面保留
     # = 契约纪律不断线,前提违例弃权计数照落)。
     if contracts.ensure_contract(
@@ -1146,7 +1146,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     skeleton_only = (ev_arm == 'skeleton_only')
     _zone_hit = in_must_spend_zone(gold, session)
 
-    # —— 会话内动作发射公共位 ——
+    # —— 会话内动作发出公共位 ——
     def _mark_processing() -> None:
         _st.shop_session_processing = True
 
@@ -1164,7 +1164,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
 
     def _emit_buy(card: ShopCard, reason: str, *,
                   launch_cause: str | None = None) -> CwActionBuyCardParam:
-        """买入发射位(fresh 排除登记 + 发射登记 + 读数协议伴生入金)。
+        """买入动作发出点(fresh 排除登记 + 动作发出登记 + 读数协议伴生入金)。
 
         登记族语义(LAUNCH_CAUSE_BY_ARM 映射/合成销检出/种子获取/持久
         获取账)承继现行,禁第二实现;批 3.6 增补 = 伴生入金钩子
@@ -1275,14 +1275,14 @@ def decide_shop_action(gs: GameState, session: StrategySession,
 
     def _funding_sell(card: ShopCard, order_class: str) -> Action | None:
         """筹资伴生卖出(shop_session §2.3:前置 = 买入判据已过 ∧ 金
-        不足——不破息为未过判据的牌筹资)。
+        不足——不跌破利息档为未过判据的牌筹资)。
 
         卖 1★ 全额退件凑缺口(session_funding 场景,评估器价值让位
-        序),凑够即买(下一帧买入臂自然接手)、不多卖;主路径尽 →
+        序),凑够即买(下一帧买入分支自然接手)、不多卖;主路径尽 →
         P78-5 四条件兜底豁免(funding 通道对价,单一源 = sell_gate.
         funding_hold_fallback;两腿必要条件:序 1/序 2 = 骨架义务血统
         腿①,其余 = 对象级无损腿②);候选穷尽仍不足 → 该牌进机会清单
-        (拦因 = 金不足;义务类金不足入清单合法,其解拦购买允许破息
+        (拦因 = 金不足;义务类金不足入清单合法,其解拦购买允许跌破利息档
         ——user_playstyle [6],§4.2 解拦复核规则)。缺口判定用账面金
         (读数协议④:多卖循环第二笔起禁逐笔开店重读)。"""
         need = card_cost(card)
@@ -1469,8 +1469,8 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         _on_target_buy()
         return _emit_buy(card, 'm2_merge_completion')
 
-    # ④转线前瞻放行臂(收编申报:P86/承继清单——④臂 = 序 1 候选成员
-    # 集构成,未锁定期照买照囤在产;判据本体与时间辖域现行不动)。门序
+    # ④转线前瞻放行臂(并入申报:P86/承继清单——④臂 = 序 1 候选成员
+    # 集构成,未锁定期照买照囤在产;判据本体与时间适用范围现行不动)。门序
     # = 星级→金〔筹资〕→席〔置换账〕。
     if not cw_intention.committed_from(session, gs):
         for card in _buy_view('transition_component_buy'):
@@ -1542,12 +1542,12 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         # 重评;shop_session §2.2 序 2)。
         _count('scene_plugin_budget_exhausted')
 
-    # ===== 序 4:压库件(②(b) 死金 → 档 1 可上场 → M6 溢余 → 垫件补位支)=====
+    # ===== 序 4:压牌库件(②(b) 死金 → 档 1 可上场 → M6 富余 → 垫件补位支)=====
     # (序 4 前置于 EV 面系承继现行物理位次——②(b)「M3 后 M6/EV 前」
     # 明文位次继承,line_and_upgrade §2.2;EV 面 = 序 3/5 联合载体,
     # 生产 fail-closed 零行为差,位次申报见收工对照表。)
 
-    # —— ②(b) 死金压库(现行判据本体不动;消费位随会话循环接线)——
+    # —— ②(b) 死金压牌库(现行判据本体不动;消费位随会话循环接线)——
     if gold < g_star and reward_node_suppressed(gs):
         _dead_gold = gold - 10 * (gold // 10)
         _dg_gap = {m for m in buy_members if m not in owned}
@@ -1594,7 +1594,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 return _emit_buy(card, 'dead_gold_press_buy',
                                  launch_cause=_dg_cause)
 
-    # —— 档 1:可上场非定向买(现行判据本体不动;溢余段消费位)——
+    # —— 档 1:可上场非定向买(现行判据本体不动;富余段消费位)——
     if getattr(_ist, 'locked_comp', None) and _zone_hit:
         _pd_vac = (_cap_now - len(deployed)) if _cap_now else None
         if _pd_vac is None:
@@ -1662,9 +1662,9 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 _count('press_buy_deployable_hit')
                 return _emit_buy(card, 'press_buy_deployable')
 
-    # —— M6 溢余转压库(现行判据本体不动;整买预留约束经 s_reserve
+    # —— M6 富余转压牌库(现行判据本体不动;整买预留约束经 s_reserve
     # 与 R2 侧预留承载)——
-    _m6_exhausted = gold <= g_star   # 无溢余 ⇒ 压库候选结构性耗尽(空转)
+    _m6_exhausted = gold <= g_star   # 无富余 ⇒ 压牌库候选结构性耗尽(空转)
     _m6_arms = gold > g_star
     if _m6_arms:
         ok2, _ = mandate.check_seats(
@@ -1672,7 +1672,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             name='', deployed_names=deployed_names)
         if not ok2:
             # 席满 → 置换账(shop_session §2.2 序 4 行;候选过滤 = M6
-            # 视图去线内件——压库判据的席位维由置换价值比较承载,
+            # 视图去线内件——压牌库判据的席位维由置换价值比较承载,
             # 判据本体不动)。
             for card in _buy_view('m6'):
                 _m6_name = card.name or ''
@@ -1737,8 +1737,8 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             if not _m6_hit:
                 _m6_exhausted = True
 
-    # —— 垫件补位支(收编 = 17 号稿出口③/20 号稿 L2/T5;触发域改写:
-    # 停滞支出授权激活 ∨ 溢余帧,∧ 压库候选耗尽——「压库候选耗尽即买
+    # —— 垫件补位支(并入 = 17 号稿出口③/20 号稿 L2/T5;触发域改写:
+    # 停滞支出授权激活 ∨ 富余帧,∧ 压牌库候选耗尽——「压牌库候选耗尽即买
     # 第二触发域」;未锁定期 Φ_stall 零开火 → 停滞授权支休眠〔休眠
     # 申报 + 随锁定打开〕;T5 的 cost-1 收窄形态随统一垫件过滤器替代)——
     _ff_stall_auth = False
@@ -2100,7 +2100,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     else:
         # 金前提:R2 预算门照旧(reserve = g* + ρ〔合格集最低费卡价〕)
         # + 整级预留保护(预授权键在场 ∧ 缺口未闭合时 reserve 含整级
-        # 差额——刷新不烧升级资金,防「压库换卡↔升级凑不齐」活锁)。
+        # 差额——刷新不烧升级资金,防「压牌库换卡↔升级凑不齐」活锁)。
         _reserve = g_star + _r2_card_reserve(k_members, bench, deployed, gs)
         _pre_r = _st.levelup_preauth
         if _pre_r is not None \
@@ -2117,8 +2117,8 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 # 满帧买入路径 = seat_recoverable 腿)〕;P92 命题本体
                 # 挂起,本门 = 结构判据不依赖命题,待证钩子
                 # all_channel_exists。批 3.6 复核补腿:序 2 预算腿/
-                # 序 4 溢余与奖励帧死金腿/C1 邻位腿已入集——装配面:
-                # 预算 = 会话累计额度现读;序 4 = 溢余帧 ∨ 奖励帧低金;
+                # 序 4 富余与奖励帧死金腿/C1 邻位腿已入集——装配面:
+                # 预算 = 会话累计额度现读;序 4 = 富余帧 ∨ 奖励帧低金;
                 # C1 地板 = 注册表核心最低费现算)。
                 _p92_ready = contracts.ensure_contract(
                     ('refresh', 'all_channel_buy_exists'),

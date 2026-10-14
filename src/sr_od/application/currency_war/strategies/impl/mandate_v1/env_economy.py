@@ -16,7 +16,7 @@ screen.md §2 现金分行;迁移批的删除面对照考古走 git 历史。
   改为拍值注册(:data:`_GOLD_AFTER_REFRESHES_FIXED`;拍值锚定 =
   docs/develop/sr_od/application/currency_war/proofs/p97-refresh-budget.md
   §7 消费契约,下称 P97 §7;历史频率参数 refresh_total_ge20_p/
-  refresh_paid_ge30_p 随拍值注册退役,P97 §7);
+  refresh_paid_ge30_p 随拍值注册停用,P97 §7);
 - 其余 A/B/C 通道公式、fail-closed 门、估算注册表、C 类治理校验原样保留。
 
 职责:经济通道折成**金等价期望** ``(expected_gold, resolved)``——
@@ -33,7 +33,7 @@ P(位面可达)(全局无条件到达率;条件化 P(可达|已至当前) 更准
 **通道分型**(沿原 kernel 模块):
 - A 类精确:游戏定义值直算(增发货币/蓝海/成功经验/策略大师);
 - B 类拍值:公式结构游戏定义(长线利好/二手市场),估值按拍值注册
-  (P97 §7 消费契约;原「概率/期望参数进估算注册表」形态随拍值退役);
+  (P97 §7 消费契约;原「概率/期望参数进估算注册表」形态随拍值停用);
 - C 类估算:效果无数值(「掉落更多战利品」),每奖励节点期望增益进估算
   注册表(经济过热/经济严重过热;当前零有效估计 → fail-closed)。
 
@@ -57,7 +57,7 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import GameState
 
 # XP↔金兑换率(用户裁定 2026-09-08 暂定 1:1;28 号稿 §1 统一标尺锚——
-# 「1 分 := 1 金等价」的 XP 侧承载。定谳推翻改这一处,按「未证即退役」
+# 「1 分 := 1 金等价」的 XP 侧承载。定案推翻改这一处,按「未证即停用」
 # 处置该折算)
 XP_GOLD_RATE: float = 1.0
 
@@ -68,7 +68,7 @@ _PLANE_ARRIVAL_KEY = 'plane_arrival_p{}'
 _REWARD_BONUS_KEY = 'reward_node_bonus_{}'
 
 # (刷新分布两参数键 refresh_{scope}_ge{阈值}_p / refresh_{scope}_after{阈值}_e
-#  随 gold_after_refreshes 拍值注册退役,不再约定——P97 §7 消费契约;
+#  随 gold_after_refreshes 拍值注册停用,不再约定——P97 §7 消费契约;
 #  tools 重采脚本的对应重采面归 3.2 随 kernel 删除面一并处理。)
 
 # C 类环境 → 增益参数变体映射(单一源;新 C 类环境先落映射再落参,漏映射
@@ -88,7 +88,7 @@ _REWARD_SLOTS: tuple[tuple[int, int], ...] = ((1, 1), (1, 2), (1, 8), (2, 6))
 # 【推】结构:k1 = 开局取卡(entry 流程固定,局首)、k2 = P1 中段首取卡
 # (screen_flow_timing #11:1-3 节点完成后)、k3 = P2 前段(63 局
 # decisions.jsonl 观测拼版主位 (2,2);旧 sim 注入日程
-# SIM_STRATEGY_PICK_SCHEDULE 同源观察——该日程已随 sim 重做删除面退役,
+# SIM_STRATEGY_PICK_SCHEDULE 同源观察——该日程已随 sim 重做删除面停用,
 # 取卡时点 = 投资策略 offer 固定轮次日程,正本 = sim-design.md §2.2)。
 # 基线取卡基数 = 本表长度【推·效果原文序数】(效果原文:
 # 头彩点名「第一个投资策略」/尾彩点名「第三个投资策略」→ 固定取卡集
@@ -140,7 +140,7 @@ class EconomyEstimate:
 #:   ×1)但遥测无扑满战利品独立字段,奖励轮收支差分混入备战净支出,增益不可
 #:   分离 → 经济过热/经济严重过热 fail-closed(补采建议见口径文档)。
 #: (refresh_total_ge20_p / refresh_paid_ge30_p 随 gold_after_refreshes 拍值
-#:  注册退役,不再登记——P97 §7 消费契约。)
+#:  注册停用,不再登记——P97 §7 消费契约。)
 ENV_ECONOMY_ESTIMATES: dict[str, EconomyEstimate] = {
     # —— 位面到达率(原 invest-env 迭代需估参数①;完成局命中 110/114 与 10/114)——
     'plane_arrival_p2': EconomyEstimate(
@@ -166,7 +166,7 @@ ENV_ECONOMY_PENDING_MODELING: dict[str, str] = {
     '人才下沉': '商店 2 星概率提升;需先查证 2★ 商店价结构,未查证不入',
 }
 
-# 假设/机制实采挂账(原 invest-env 迭代假设登记行的验证项在册;实采定谳前按
+# 假设/机制实采的待验证登记(原 invest-env 迭代假设登记行的验证项在册;实采定案前按
 # 在册假设建模,证伪即按各条处置改)。
 ENV_ECONOMY_PENDING_VERIFICATION: dict[str, str] = {
     # 增发货币通道按「晶矿自动开启」建模;晶矿开启是玩家动作面(战技点契约
@@ -378,7 +378,7 @@ _validate_estimates_governance()
 # ===== 品质改写型层 E(ΔV 公式;自 kernel/cw_env_economy.py 原样迁入)=====
 # ΔV(R) = Σ_{k ∈ picks(R)} [ μ_E(q_R; H_k) − Σ_q π_offer,k(q) · μ_E(q; H_k) ]
 # 层 E = 改写后取卡金流期望相对无改写 offer 的抬升(受限直接金流/XP 通道;
-# 明确排除刷新族/息档覆写/合成卖价/血本位等行为依赖通道,排除集清单 =
+# 明确排除刷新族/利息档覆写/合成卖价/血本位等行为依赖通道,排除集清单 =
 # 详设 §2.2.2 econ_gold_v1 定义)。**转正判定的当前态 = fail-closed**:受限
 # 通道实测 μ_E 不随品质单调(银 3.31 > 金 2.42),直入现金分会产出病态序;
 # 转正准入门 = ①全通道重算(排除集补参)+ ②序一致性检验,两条件缺一不入

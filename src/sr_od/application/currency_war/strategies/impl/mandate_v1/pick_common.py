@@ -10,7 +10,7 @@
 承载面:
 - 转向轴:``STEERING_PRIORITY_BONUS``(user-priority 软偏好 +30,立场
   系数——「用户点名是偏好不是支配」;forbid 罚值不在此——策略屏 forbid
-  改集合排除,分值化禁选退役,罚值禁搬进共用件);
+  改集合排除,分值化禁选停用,罚值禁搬进共用件);
 - 自拆台:``BOARD_DOT_COUNT_THRESHOLD``(板面 持续伤害+减益 ≥ 2)+ 克制
   判定 :func:`counters_dot`(表源统一 = ``merged_mechanic_tables()``
   基表直通单一入口,消 env 直读基表/kernel 走入口函数的双路径)。

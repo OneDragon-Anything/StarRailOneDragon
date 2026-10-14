@@ -1,4 +1,4 @@
-"""criteria/stockpile——压库 EV 消费位(01_math_framework §3.5;档匹配谓词/V_comp 表在
+"""criteria/stockpile——压牌库 EV 消费位(01_math_framework §3.5;档匹配谓词/V_comp 表在
 statefn/vopt,R4-F4——判据函数只消费,防臂①旁路误拆 M6 买入口)。"""
 from __future__ import annotations
 
@@ -12,13 +12,13 @@ def stockpile_buy(gold: int, s_reserve: int, bench_free: int,
                   card_cost: int, card_star: int,
                   t_search: frozenset[int],
                   ) -> tuple[bool, str]:
-    """EV 追加压库买入(P49;01_math_framework §3.5 三段辖域统一形态)。
+    """EV 追加压牌库买入(P49;01_math_framework §3.5 三段适用范围统一形态)。
 
-    发射限定(R11-2/R12-3):档匹配 ∧ refund_full_star_ok(1★ 全额
+    发出限定(R11-2/R12-3):档匹配 ∧ refund_full_star_ok(1★ 全额
     可退);席位:free≥2 直过,free=1 过 V_slot 净门
     (V_slot🔴 ⇒ 保守端 0 代入,R12-5)。金约束:cost+S 预留(检查点③)。
-    T_SEARCH_A 布尔门已退役出本消费位(T1 短路径,设计 13_buy_face_design
-    §2.3):``t_search`` 窗口由消费位帧级现算传入(塌缩带锚),空集=真无窗口帧(非门控),判 'not_in_tier' 不买(溢余滞留遥测归
+    T_SEARCH_A 布尔门已停用出本消费位(T1 短路径):
+    ``t_search`` 窗口由消费位帧级现算传入(整合带锚),空集=真无窗口帧(非门控),判 'not_in_tier' 不买(富余滞留遥测归
     mandate M6 侧)。
     """
     if not tier_match(card_cost, t_search):
@@ -27,11 +27,11 @@ def stockpile_buy(gold: int, s_reserve: int, bench_free: int,
         return False, 'star2p_no_backing'
     if bench_free < 1:
         return False, 'bench_full'
-    # V_slot 净门(压库规格「free=1 → 过 V_slot 净门」,01_math_framework
+    # V_slot 净门(压牌库规格「free=1 → 过 V_slot 净门」,01_math_framework
     # §3.5;V_slot 本体=statefn/vopt.v_slot)。规格未落位登记:净门数值输入
     # =被阻断动作净 EV,系 u/V_ms 标定派生量(U_X 不可标定、显式
     # None+豁免在案,CALIB_REPORT_V2 §2.2)⇒ 全式落位前本门无载,
-    # 缺省行为=放行(V_slot 按下界 0 代入)。依据:发射已限定 1★
+    # 缺省行为=放行(V_slot 按下界 0 代入)。依据:发出已限定 1★
     # 全额可退(``refund_full_star_ok``),末席占用近可逆(卖回净成本
     # ≈0,p41-hoard-sell-ev 燃料类支配性论证)⇒ 被阻断成本下界 0。
     # 方向申报:该缺省**非保守端**(放行偏,IMPL_ADV_R200 症5④ 勘误

@@ -1,4 +1,4 @@
-"""P38 ⑤层金位递推(预算 → 付费刷新数;标定批 T-278/)。
+"""P38 ⑤层金位递推(预算 → 付费刷新数)。
 
 正本 = math_proofs P38 §推导⑤层「金位递推(显式定义——逐轮金位模拟
 唯一口径)」:
@@ -11,7 +11,7 @@
 (round_base_income/streak_gold/interest/saturation_line/xp_click_cost),
 禁在本模块第二份实现。落地形态逐项(P38 声明的简化口径,方向逐条
 注明):
-- 字面 50 → resolved 息帽链(saturation_line/cap_resolved_of_session,
+- 字面 50 → resolved 利息帽链(saturation_line/cap_resolved_of_session,
   同源泛化;P38 默认守 50 = 缺省 cap 5 的特例);
 - base(r) = ``round_base_income``(P1 规划投影,函数自带跨位面近似
   申报——决策数学侧的 sanctioned 形态);
@@ -67,7 +67,7 @@ class BudgetPlan:
     """P38 ⑤层预算递推输出。
 
     字段坐标系(写入端 = :func:`p38_budget_recursion`;取值时机 =
-    锁线评估帧现算):
+    终局阵容锁定评估帧现算):
     - ``refreshes``:视野内可负担付费刷新数 R(不动点终值;保守端);
     - ``budget``:可支刷新预算 B(期末结清口径;负值 = 缺口件买不起域);
     - ``exhausted``:B < 0(P38「买到即计数前提破产」分支;消费端

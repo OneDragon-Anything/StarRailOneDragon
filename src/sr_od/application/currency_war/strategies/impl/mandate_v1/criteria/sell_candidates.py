@@ -1,15 +1,15 @@
-"""统一卖出候选评估器(契约 D 单一入口;迭代 2026-10-12-prep-shop-workflow-redesign 批 3.2)。
+"""统一卖出候选评估器(契约 D 单一入口)。
 
 一个评估函数服务全部八类卖出场景(溢出自救/晶矿腾位/店内置换/会话内筹资/
 升级变现/节末凑息/部署换血/C1 恒买腾位),输入 =(场景, 容器状态),输出 =
 按让位序排序的卖出候选或空。场景参数全集(候选池/资格面/消费方式)的
 唯一法定义处 = 迭代总纲 design.md 契约 D;价值评估函数统一口径 =
 line_and_upgrade §4(金当量三项 + 羁绊排序规则项)——本模块是它们的
-落码载体,禁各场景自算第二份。
+实现载体,禁各场景自算第二份。
 
-**本批边界(纪律)**:只建评估器本体 + 谓词 + 测试,不接生产调用链——
-各发射位接线归 3.3(备战工序)/3.5(商店执行链)/3.6(商店会话)各批;
-现行 ``sell_gate``/``criteria/sell`` 三通道零破坏(退役随消费批)。
+**边界**:本模块 = 评估器本体 + 谓词 + 测试;各动作发出点接线分属
+备战工序/商店执行链/商店会话各消费位,``sell_gate``/``criteria/sell``
+三通道现行保留。
 
 结构:
 
@@ -25,9 +25,9 @@ line_and_upgrade §4(金当量三项 + 羁绊排序规则项)——本模块是�
   谓词(:func:`is_effective_bond_contributor`)——羁绊判定消费现有羁绊
   注册表(FACTIONS tiers)与按排聚合单一源(board_by_row);
 - 垫件谓词(:func:`is_ore_pad_unit`)——晶矿场景过滤(prep_pipeline §1
-  第 2 步现文口径;P96 释放集「挂账不激活」申报域 = 垫件层——池级 FACE_REGULAR
+  第 2 步现文口径;P96 释放集「登记待办、暂不激活」申报域 = 垫件层——池级 FACE_REGULAR
   仍含 dead_pair_exit_release 旁路为惰性面:垫件谓词恒拒 released 名〔同名对素材〕、
-  3.3 消费面走垫件过滤,行为零激活;P96 推进遥测/清账时一并收口);
+  消费面走垫件过滤,行为零激活;P96 推进遥测/清账时一并收尾);
 - 评估器(:func:`evaluate_sell_candidates`)。
 """
 from __future__ import annotations
@@ -94,7 +94,7 @@ if TYPE_CHECKING:
 # ============================================================ 场景注册表(契约 D)
 
 
-#: 候选池族取值(契约 D 唯一定义处的落码形态;四族):
+#: 候选池族取值(契约 D 唯一定义处的实现形态;四族):
 #: - ``bench_only`` = 仅备战席(腾槽族〔自救/晶矿〕+ 店内四场景;
 #:   机理 = 解除溢出/买入晶矿/店内卖出均只腾备战槽,卖场上件无此效果,
 #:   店内另有 2026-10-12 用户裁定「店内禁卖场上」);
@@ -110,7 +110,7 @@ POOL_FIELD_AND_BENCH: str = 'field_union_bench'
 #: - ``self_rescue_full`` = 自救扩展面(真全量持有——P78 资格仲裁族全通道
 #:   豁免:核心/④件/种子/同 visit 买入在自救场景豁免、线内件按价值序
 #:   末位可卖;「零停机出口」优先于硬资格,契约 D 自救行);
-#: - ``regular`` = 常规面(现行 sell_gate 排除集收编:装配 A(身份段 ∪
+#: - ``regular`` = 常规面(现行 sell_gate 排除集并入:装配 A(身份段 ∪
 #:   窗口段 ∪ L1 同轮硬面 ∪ 种子豁免)+ 合成素材拒入守卫(含死库存对
 #:   释放子谓词旁路)+ 挂后台效果资格);
 #: - ``deploy_swap_current`` = 换血现行判据(swap_sell_exclusion_reason
@@ -123,7 +123,7 @@ FACE_DEPLOY_SWAP: str = 'deploy_swap_current'
 
 @dataclass(frozen=True)
 class SellSceneSpec:
-    """一个卖出场景的参数行(契约 D 场景表的落码形态)。
+    """一个卖出场景的参数行(契约 D 场景表的实现形态)。
 
     ``consumption`` = 消费方式标记(调用方按场景取的动作语义;评估器只出
     排序候选,不执行消费):``sell_first`` 取首候选直接卖 / ``pad_filter_min``
@@ -137,7 +137,7 @@ class SellSceneSpec:
     备战第 3 步)消费循环在主路径尽时拼装,与现行消费位同构(触发前提
     由消费位判,函数本体只承载兜底池定义)。
     ``legacy_channel`` = P78 通道重映射(现行五通道资格面按契约 D 重映射:
-    凑息→节末凑息 / 筹资→会话内筹资 / m4_fuel→晶矿 / line_switch→退役
+    凑息→节末凑息 / 筹资→会话内筹资 / m4_fuel→晶矿 / line_switch→停用
     不接(部署换血走现行 swap 判据,不走其装配)/ projection→保留不动
     (投影视图读位照旧,不进评估器场景);None = 不装配 A(自救豁免 /
     换血自带判据)。非 projection 通道的装配 A 输出逐位相同,通道选择
@@ -203,9 +203,9 @@ REJECT_NO_CANDIDATES: str = 'no_candidates'
 # ============================================================ 价值函数(line_and_upgrade §4)
 
 #: 每轮息损边际率(金/轮)——再遇窗口折算金当量的乘子。口径出处 =
-#: line_and_upgrade §4:每息档边际率 1 金【注·息档粒度定义值】;真值
+#: line_and_upgrade §4:每利息档边际率 1 金【注·利息档粒度定义值】;真值
 #: 上限 = cap 金/轮(默认局 5/息律局 10,随 cap 查表)**不消费**(消费
-#: 口径 = 边际率)。息档粒度是利息系统的定义值而非拟合值,零调参。
+#: 口径 = 边际率)。利息档粒度是利息系统的定义值而非拟合值,零调参。
 INTEREST_MARGIN_PER_ROUND: float = 1.0
 
 #: 合成进度 ×2 结构近似系数的 provisional 槽名(line_and_upgrade §4:
@@ -338,7 +338,7 @@ def is_effective_bond_contributor(gs: GameState, unit: Unit, row: str) -> bool:
 
     口径申报:契约 D/line_and_upgrade 差分节定义「场上无关角色 = 非锁定
     线成员 ∧ 非有效羁绊贡献件」,「有效羁绊贡献」无现成谓词(全仓检索
-    无此判定),按设计给的兜底口径「上场且激活羁绊的成员」落码——比
+    无此判定),按设计给的兜底口径「上场且激活羁绊的成员」实现——比
     「卖后掉档」严格判定宽(计数超阈值的成员也算贡献件),保守向 =
     保护面更大(更多场上件被排除出卖点候选池);排序规则项(掉档置后)
     与本谓词分立,见 :func:`evaluate_sell_candidates` 的 bond_drop 维。
@@ -395,7 +395,7 @@ def is_ore_pad_unit(gs: GameState, char_id: str, star: int) -> bool:
 
     - 1★;
     - 非线内(:func:`sell_line_membership`;未锁定期含候选 top3 成员——
-      囤货集排除防候选囤件被垫件卖出,与「囤终局件为锁线准备」承诺
+      囤货集排除防候选囤件被垫件卖出,与「囤终局件为终局阵容锁定准备」承诺
       一致);
     - 非合成素材(``merge_material_reject_reason`` 单一源——同名同星
       另有副本即素材对);
@@ -408,7 +408,7 @@ def is_ore_pad_unit(gs: GameState, char_id: str, star: int) -> bool:
       跨线羁绊结构件有保留价值;登记簿级种子已由常规面装配 A 排除,
       身份层取超集 = 更保守的垫件收窄,无漏放)。
 
-    P96 释放集【挂账不激活】不并入(证明前提不随场景迁移,标定前晶矿
+    P96 释放集【登记待办、暂不激活】不并入(证明前提不随场景迁移,标定前晶矿
     垫件不含释放集)。
     """
     if int(star or 1) != 1 or not char_id:
@@ -436,7 +436,7 @@ class SellCandidate:
 
     [索引定义] ``idx`` 坐标系随 ``zone`` 分域:``zone='bench'`` = 备战席
     紧缩占席序(``bench_entries_of`` 列表 0 基下标,与现行三通道候选位键
-    ``criteria/sell._slot_of`` 同构,发射侧经容器槽位表枚举对位还原);
+    ``criteria/sell._slot_of`` 同构,发出侧经容器槽位表枚举对位还原);
     ``zone='deployed'`` = 上场紧缩行序(``deployed_rows_of`` 两行拼接
     〔前排在前〕的 0 基下标)。取值时机 = 评估帧现读(候选构造时快照)。
 
@@ -477,9 +477,9 @@ def _regular_face_ok(unit: Unit, *, excl: frozenset[str],
                      release: frozenset[str],
                      bench: list[BenchSlot],
                      deployed: list[Unit]) -> bool:
-    """常规面资格过滤(单候选;两段收编——装配 A 排除集 + 合成素材
+    """常规面资格过滤(单候选;两段并入——装配 A 排除集 + 合成素材
     拒入守卫〔含死库存对释放子谓词旁路〕)。挂后台效果资格 = 现行
-    三通道资格谓词的收编(bench_effect_qualified/bench_effect_context
+    三通道资格谓词的并入(bench_effect_qualified/bench_effect_context
     单一源消费),在 :func:`_bench_effect_blocked` 单独分派——仅备战席
     候选查,场上支不查(谓词语义 = 备战席后台效果生效)。
     """
@@ -516,7 +516,7 @@ def evaluate_sell_candidates(
     3. 组内金当量三项升序(:func:`sell_gold_equivalent`);
     4. 确定性并列破除((zone, idx) 字典序——物理位序,禁随机/集合序)。
 
-    全场景共用空板守卫(现行为等价收编,prep_pipeline §1 第 0 步
+    全场景共用空板守卫(现行为等价并入,prep_pipeline §1 第 0 步
     as-built 申报:deployed = 0 帧全部卖出场景哑火,本设计不收窄)。
 
     ``swap_ctx`` = deploy_swap 场景的换血判定语境(``SwapPlanContext``,
@@ -544,7 +544,7 @@ def evaluate_sell_candidates(
     excl: frozenset[str] = frozenset()
     release: frozenset[str] = frozenset()
     if spec.face == FACE_REGULAR:
-        # 装配 A(现行 sell_gate 排除集收编;k_members = 线内身份集——
+        # 装配 A(现行 sell_gate 排除集并入;k_members = 线内身份集——
         # 未锁定期候选成员判定替代 k_members 线内判定职责,line §1.2)+
         # 死库存对释放集(素材守卫旁路,单一源 = dead_pair_exit_release,
         # 判据本体禁自算)。

@@ -1,25 +1,25 @@
-"""卖出通道排除仲裁·统一装配 A(T-126;P78 卖出资格仲裁不变量)。
+"""卖出通道排除仲裁·统一装配 A(P78 卖出资格仲裁不变量)。
 
-架构根:4 个卖出通道函数 × 9 个发射位 + 1 个投影读位的
+架构根:4 个卖出通道函数 × 9 个动作发出点 + 1 个投影读位的
 排除装配此前在 7 个调用点各自手搓,共 5 种互不一致形态——同一架构根
-在 W1/W3/W4/备战 F1(双攻击报告)与 entry 两处 funding 空装配(方案
+在备战 F1(双攻击报告)与 entry 两处 funding 空装配(方案
 v3 §2.9 新格 A)、P56 投影脱节(新格 B)反复发病。本模块把「不许卖谁」
 收拢为单一入口 ``sell_exclusions``;通道保留「何时卖/卖多少/卖序」
 (触发、止盈、排序、特有禁令),判据本体纯函数零改(B3 纪律,方案
 v3 §3.2)。
 
 落点声明(方案 v3 §3.1):不放 kernel、不放 criteria——A 消费策略器
-会话态(StrategyState.v3_intention / 统一发射登记簿),kernel 输入纯度
+会话态(StrategyState.v3_intention / 统一动作发出登记簿),kernel 输入纯度
 禁反向依赖;criteria 判据本体 = 纯函数,排除集由消费位传入。
 
 A 三段(方案 v3 §2.2;与 「资格判定 = 物理硬闸 ∧ 身份分层 ∧
-辖域闸三段式」同构):
-1. 身份段(批 2 落地):义务基座(锁线态 = locked_buy_membership
+适用范围闸三段式」同构):
+1. 身份段(批 2 落地):义务基座(终局阵容锁定态 = locked_buy_membership
    锁定采购集宽集 / 未锁态 = k_members,解析单点)∪ 静态持有两集
    (kernel.cw_card_identity.sell_hold_exclusion_names = registry 核心
    ∪ ④放行集)。辖义务类 + 持有类买因(τ=∞ 至账闭合事件,P78-2a;
    ③④ 持有件禁入一切通道燃料资格 = P41 燃料类「边际贡献≈0」资格
-   本义,P78-4,非 P60 新辖域)。
+   本义,P78-4,非 P60 新适用范围)。
 2. 窗口段(本批落地):press 与 stall_protect 两类买入共簿登记
    {名 → (买因, 登记轮)},活跃判据 = 登记轮 == 当前轮(与 T3 同界,
    P78-2b)。**排除面 = press 类**:垫保类的通道处置属通道对价段
@@ -27,8 +27,8 @@ A 三段(方案 v3 §2.2;与 「资格判定 = 物理硬闸 ∧ 身份分层 ∧
    在 M4/funding 是降序放行 = 转化类,P78-5′ 四关系表「放行(在册
    语义保持)」),经 ``stall_protect_active`` 视图喂 defer 参数;
    硬排除会杀死转化类放行 = 在册语义破面。press 类无对价豁免(P78-1
-   无条件下),全通道硬禁。旧 ②(b) 动态集的 F1 锁线清空语义废除
-   (P78-3:锁线定型不是任何买因类的账闭合事件,修法 = 轮界过期;
+   无条件下),全通道硬禁。旧 ②(b) 动态集的 F1 终局阵容锁定清空语义废除
+   (P78-3:终局阵容锁定定型不是任何买因类的账闭合事件,修法 = 轮界过期;
    过度禁卖上界 ≤1 轮有界可判读)。current_round=None ⇒ 窗口段失效
    = INV 显式例外,方向 = 放行向(V2-09;三读端同源 state.round_num,
    轮号恒可得,None 为死分支防御位)。
@@ -48,10 +48,10 @@ A 三段(方案 v3 §2.2;与 「资格判定 = 物理硬闸 ∧ 身份分层 ∧
    line_switch 闭合线界投影(消费现参,行为等价)、projection 视图 =
    interest 全资格面(身份 ∪ 窗口 ∪ T3 活跃集,P78-6 读端同源,M7)。
 
-发射登记统一(/§3):``LaunchCause`` 闭集
-{obligation, hold, press, stall_protect},14 买入臂逐一映射
+动作发出登记统一(/§3):``LaunchCause`` 闭集
+{obligation, hold, press, stall_protect},14 买入分支逐一映射
 (``LAUNCH_CAUSE_BY_ARM``,定稿载体;臂计数对现值校正见行内申报,
-12/13 为历史口径);T3 垫保簿与 ②(b) 压库簿
+12/13 为历史口径);T3 垫保簿与 ②(b) 压牌库簿
 完全合一为单载体双视图(载体属性沿用 T3 簿名——执行侧 cw_op_deploy
 鸭子读契约在先,禁改名破契约)。生命周期四出口:卖出销 / 部署销 /
 合成销(V2-05 新增)/ 轮界销;账闭合按五键分键承载(close_on_sell/
@@ -99,7 +99,7 @@ if TYPE_CHECKING:
 #: 清单 P78 行):interest = 节末凑息;funding = 会话内筹资/升级变现
 #: (funding 同款通道对价,含 P78-5 兜底豁免);m4_fuel = 备战域晶矿腾位/
 #: 告警自救;m4_fuel 语义现由评估器 'ore_make_room'/'self_rescue' 场景
-#: 承载;line_switch 换线塌缩通道已随候选-锁定制批 3.7 退役撤档
+#: 承载;line_switch 换线塌缩通道已随候选-锁定制批 3.7 停用撤档
 #: (迭代 2026-10-12-prep-shop-workflow-redesign;line_and_upgrade §1.6);
 #: projection = 投影视图读端(P78-6 读端同源);shop_swap = 店内置换账
 #: 通道(迭代批 3.6 登记,不占既有闭集序号——谱系行非行为面:非
@@ -109,20 +109,20 @@ SELL_CHANNELS: frozenset[str] = frozenset({
     'shop_swap',
 })
 
-#: 买因闭集(12 买入臂 → 因果类映射的值域)。闭集外值
-#: 拒收——新买入臂只有归入某因果类才合法(登记闭集强制,方案 v3 §5.3)。
+#: 买因闭集(12 买入分支 → 因果类映射的值域)。闭集外值
+#: 拒收——新买入分支只有归入某因果类才合法(登记闭集强制,方案 v3 §5.3)。
 LAUNCH_CAUSES: frozenset[str] = frozenset({
     'obligation', 'hold', 'press', 'stall_protect',
 })
 
-#: 窗口段辖域买因(P78 §2.2 第 2 段):压库与垫保两类,τ=同轮
+#: 窗口段适用范围买因(P78 §2.2 第 2 段):压牌库与垫保两类,τ=同轮
 #(登记轮==当前轮);obligation/hold 类 τ=∞,由身份段辖,登记仅作
 #: 账本观测面(五键闭合分键),不入窗口段排除。
 WINDOW_LAUNCH_CAUSES: frozenset[str] = frozenset({'press', 'stall_protect'})
 
-#: 14 买入臂 → 因果类全映射(定稿载体;方案 v3 §3.1 表;
+#: 14 买入分支 → 因果类全映射(定稿载体;方案 v3 §3.1 表;
 #: 臂计数对现值校正见行内申报,12/13 为历史口径)。
-#: 批 3 落写点的臂 = 窗口段两类(shop 发射位 _emit_buy 统一登记)+ ②(b)
+#: 批 3 落写点的臂 = 窗口段两类(shop 动作发出点 _emit_buy 统一登记)+ ②(b)
 #: 按 prio 三分显式传因;obligation/hold 类的 M2 族/C1/④ 产物由身份段
 #: 辖(写点不辖行为),写点随矩阵批按需落——本表先钉全映射防第 5 臂复发。
 LAUNCH_CAUSE_BY_ARM: dict[str, str] = {
@@ -132,7 +132,7 @@ LAUNCH_CAUSE_BY_ARM: dict[str, str] = {
     'm2_merge_completion': 'obligation',
     'dominance_buy': 'press',
     'm6_stockpile': 'press',
-    # 泄金阶梯档 1(可上场非定向买;溢余金 discretionary 面,同 M6/dominance
+    # 泄金阶梯档 1(可上场非定向买;富余金 discretionary 面,同 M6/dominance
     # 因果类。档 1)。
     'press_buy_deployable': 'press',
     'ev_buy': 'press',
@@ -143,10 +143,10 @@ LAUNCH_CAUSE_BY_ARM: dict[str, str] = {
     'core_single_card_buy': 'hold',
     'core_single_card_buy:unlocked': 'hold',
     'transition_component_buy': 'hold',
-    # P86 乙臂枢纽期权行已随三臂收编移除(迭代 2026-10-12-prep-shop-
-    # workflow-redesign 批 3.6:发射位并入序 1 候选集,买因 = m2_*;
-    # 持有段保护 = hub_acquired_names_of 并集,不走发射登记)。
-    # ②(b) 按 prio 三分(obligation/hold/press),发射位显式传因覆写本行。
+    # P86 乙臂枢纽期权行已随三臂并入移除(迭代 2026-10-12-prep-shop-
+    # workflow-redesign 批 3.6:动作发出点并入序 1 候选集,买因 = m2_*;
+    # 持有段保护 = hub_acquired_names_of 并集,不走动作发出登记)。
+    # ②(b) 按 prio 三分(obligation/hold/press),动作发出点显式传因覆写本行。
     'dead_gold_press_buy': 'press',
     'fuel_filler_stall': 'stall_protect',
     't3_unlocked_hemostat': 'stall_protect',
@@ -154,15 +154,15 @@ LAUNCH_CAUSE_BY_ARM: dict[str, str] = {
 
 
 def launch_cause_of(reason: str) -> str | None:
-    """买入臂名(CwActionBuyCardParam.reason)→ 因果类(LAUNCH_CAUSE_BY_ARM 查因;
-    未映射臂 = None)。A4 硬闸:发射位
+    """买入分支名(CwActionBuyCardParam.reason)→ 因果类(LAUNCH_CAUSE_BY_ARM 查因;
+    未映射臂 = None)。A4 硬闸:动作发出点
     ``_emit_buy`` 对 None 改抛错——静默跳过登记分支 = 新臂绕过登记与
     一切以字典为臂全集的穷举断言,抛错后该字典才是臂全集的硬地基;
-    新臂必须先入映射表再可发射。"""
+    新臂必须先入映射表再可发出。"""
     return LAUNCH_CAUSE_BY_ARM.get(reason)
 
 
-#: 统一发射登记簿载体属性(StrategyState 字段名)。沿用 T3 垫保簿旧名:
+#: 统一动作发出登记簿载体属性(StrategyState 字段名)。沿用 T3 垫保簿旧名:
 #: 执行侧 cw_op_deploy.prune_fuel_filler_deployed /
 #: record_fuel_filler_held_postbuy 按鸭子属性读本名(属性契约级接线,
 #: 禁 import 策略模块),改名 = 静默断供给(读 None → 部署销恒 0);
@@ -206,25 +206,25 @@ def _entry_norm(value: object) -> tuple[str, int | None]:
     return 'stall_protect', None
 
 
-# ===== 发射登记 API(写端 + 四出口生命周期;/§3)=====
+# ===== 动作发出登记 API(写端 + 四出口生命周期;/§3)=====
 
 
 def register_launch(session: StrategySession,
                     name: str, *, cause: str, round_num: int,
                     star: int | None = None, cost: int | None = None,
                     ) -> bool:
-    """买入发射登记(写端单一源;P78 §2.2 窗口段载体)。
+    """买入动作发出登记(写端单一源;P78 §2.2 窗口段载体)。
 
     簿形态 = {名: (买因, 登记轮)},同名重登记覆盖(最新买因胜——
     排除面按名判定,单名多笔并发登记以最近授权为准,同轮界同过期)。
 
     ``cause`` 闭集外值抛错(登记闭集强制)。
 
-    hold 类附类资格断言(W5 登记侧;N1/V2-06):名 ∈ 静态持有集 ∧
+    hold 类附类资格断言(登记侧;N1/V2-06):名 ∈ 静态持有集 ∧
     该层买入硬闸通过(transition 层 = refund_full_star_ok 1★ 全额退,
     vopt 单一源;registry_core 层 = 恒买无星闸,裁定410/)。
-    违例 = launch_cause_mismatch 计数红 + 拒绝该笔登记,**不拦发射**
-    ——买面门槛(W5 本体)归臂自身判据批,防范围 smuggle(方案 v3
+    违例 = launch_cause_mismatch 计数红 + 拒绝该笔登记,**不拦发出**
+    ——买面门槛(本体)归臂自身判据批,防范围 smuggle(方案 v3
     §4.3 划界)。红证存在性:2★ 转线直出卡名 ∈ TRANSITION_PACK ⊆
     静态持有集(名字腿必过),红由硬闸腿产生。
 
@@ -268,10 +268,10 @@ def _hold_qualification_ok(name: str, star: int | None, cost: int | None,
     星/费缺读 = fail-closed 拒登记(资格判据禁缺读放行)。
 
     **乙臂持有腿(P86 攻击 r1 发现1 面①)**:名 ∈ 乙臂获取名集
-    (``hub_acquired_names_of``,发射位先登记后 emit 故当笔在场)与
+    (``hub_acquired_names_of``,动作发出点先登记后 emit 故当笔在场)与
     静态持有集并集构成资格域——否则覆盖数 ≥2 注册表派生枢纽中
     TRANSITION_PACK 之外成员(瓦尔特/刻律德菈等实证)hold 登记恒拒,
-    launch_cause_mismatch 病灶信号键被乙臂常态发射逐笔污染。"""
+    launch_cause_mismatch 病灶信号键被乙臂常态发出逐笔污染。"""
     name_ok = (name in sell_hold_exclusion_names()
                or name in hub_acquired_names_of(session))
     tier = line_identity_tier(name)
@@ -442,7 +442,7 @@ def _close_switched_obligations(session: StrategySession,
 # (scratch,轮戳)与登记账分离,跨销账存活 = 孤儿证明的载体(与
 # shop 帧首 ``_sw_orphans`` 证明集同一依据)。
 #
-#: 义务类买入镜像簿 scratch 键(shop 发射位 _emit_buy 写,义务类登记
+#: 义务类买入镜像簿 scratch 键(shop 动作发出点 _emit_buy 写,义务类登记
 #: 落账同步落)。键常量原宿主 = shop.py(_SHOP_OBLIGATION_BOOK_KEY),
 #: 上移本模块:L1 carve-out 与 shop 帧首孤儿证明读点必须同源
 #: 同键(第二键 = 双源漂移面)。
@@ -473,7 +473,7 @@ def line_switch_orphans_of(session: StrategySession, base: set[str],
 
 
 def _autonomous_round(session: StrategySession) -> int | None:
-    """读端自治轮号(W6 波 4 黑板容器化:原 last_state 优先/
+    """读端自治轮号(黑板容器化:原 last_state 优先/
     shop_state_frame 兜底的双槽解析改容器 node 读口——与登记相位写端
     同源,设计件《商店黑板容器化方案》§2.4-2)。NodeKey 未定 = None
     (调用方按 fail-closed 方向处置:硬面不 carve)。"""
@@ -487,7 +487,7 @@ def _autonomous_round(session: StrategySession) -> int | None:
     return int(round_num_of(game_state_of(session)))
 
 
-# ===== 种子年龄豁免登记簿(T-126 批 5;P78-7)=====
+# ===== 种子年龄豁免登记簿(P78-7)=====
 
 
 #: 种子获取名集的 StrategyState 载体属性名({名: (位面, 获取轮)})。
@@ -502,13 +502,13 @@ SEED_WINDOW_ROUNDS: int = 2
 
 def seed_acquisition_eligible(name: str, star: int | None,
                               bench: object, deployed: object) -> bool:
-    """种子获取资格谓词单一源(P78-7 种子定义;shop 发射位与测试同消费,
+    """种子获取资格谓词单一源(P78-7 种子定义;shop 动作发出点与测试同消费,
     禁调用侧手搓第二份)。
 
     = 1★(1★ 全额退是「往返净金 0」的前提,P76 甲;2★/3★ 往返非净 0
-    且无 1★ 燃料通道可达,出辖,P78-7 星辖域边界)∧ 引擎件
+    且无 1★ 燃料通道可达,不在设计范围内,P78-7 星适用范围边界)∧ 引擎件
     (``is_engine_piece`` 注册表现算)∧ 购买时未持有(bench∪deployed
-    无同名——发射时点等价读法,与 D5/selfcalc ``held_names_upto``
+    无同名——发出时点等价读法,与 D5/selfcalc ``held_names_upto``
     的上一轮末口径同语义,±1 行漂移窗口径声明见 selfcalc docstring)。
     """
     if star is None or int(star) != 1:
@@ -523,7 +523,7 @@ def seed_acquisition_eligible(name: str, star: int | None,
 
 
 def _seed_registry_of(session: StrategySession) -> dict:
-    """种子簿读口(dict 载体缺省就地建;与发射登记簿同载体纪律)。"""
+    """种子簿读口(dict 载体缺省就地建;与动作发出登记簿同载体纪律)。"""
     st = state_of(session)
     reg = getattr(st, SEED_ACQUISITIONS_ATTR, None)
     if not isinstance(reg, dict):
@@ -534,10 +534,10 @@ def _seed_registry_of(session: StrategySession) -> dict:
 
 def register_seed_acquisition(session: StrategySession, name: str, *,
                               plane: int | None, round_num: int) -> bool:
-    """种子获取登记(写端单一源;shop._emit_buy 发射位消费,P78-7)。
+    """种子获取登记(写端单一源;shop._emit_buy 动作发出点消费,P78-7)。
 
     簿形态 = {名: (位面, 获取轮)},同名重登记覆盖(最新获取胜,与
-    发射登记簿同语义)。空名/位面缺读拒登记(fail-closed:位面本地
+    动作发出登记簿同语义)。空名/位面缺读拒登记(fail-closed:位面本地
     轮号跨位面重启,缺位面使窗界算术跨位面双向失真——过保护或假
     过期;与 hold 类缺读拒登记同纪律)。登记即计数键 ``seed_acquired``
     显影(「种子过渡窗无显影」申报自此闭合;窗口终结
@@ -557,7 +557,7 @@ def _seed_frame_axes(session: StrategySession) -> tuple[
         int | None, int | None, frozenset[str]]:
     """种子读端轴 (位面, 轮号, bench 名集)。
 
-    轴源 = session 容器(W6 波 4 黑板容器化改道,设计件 §2.4-2):
+    轴源 = session 容器(黑板容器化改道,设计件 §2.4-2):
     - **plane/round 轴 = gs.node**(NodeKey;权威写端 = 派生规则四腿,
       段入口粒度对轮/位面恒安全);
     - **bench 轴 = gs.bench**(prep 帧观察值 + visit 内逻辑态直写)。原
@@ -636,8 +636,8 @@ def seed_exclusions(session: StrategySession,
 
 #: 持久获取账的 StrategyState 载体属性名({名: (位面, 最新获取轮)})。
 #: duck-typed 属性契约(与 SEED_ACQUISITIONS_ATTR 同纪律):改名 = 静默
-#: 断供给。与统一发射登记簿(易失账,四出口销账)生命周期解耦——本账
-#: 是素材对退出判据 (c) 的唯一轮读源,判据按发射登记簿读会恒 no-op
+#: 断供给。与统一动作发出登记簿(易失账,四出口销账)生命周期解耦——本账
+#: 是素材对退出判据 (c) 的唯一轮读源,判据按动作发出登记簿读会恒 no-op
 #: (press 对 R2 首个窗口即被轮界销,病灶对永不满足年龄条件)。
 ACQUISITION_LEDGER_ATTR: str = 'cw4_acquisition_ledger'
 
@@ -657,7 +657,7 @@ DEAD_PAIR_EXIT_MIN_AGE: int = SEED_WINDOW_ROUNDS + 1
 #:   真窗内 age<N)/_identity(已释放遭身份段剔除——③④/枢纽对体量
 #:   观察位,喂方向④后续门)/_chain(3★ 链 1★ 腿保留);
 #: - ``dead_pair_exit_sold_<channel>``:释放成员经各通道实际卖出笔数
-#:   (按通道分键,写点 = 各通道 CwActionSellBenchParam 发射位)。
+#:   (按通道分键,写点 = 各通道 CwActionSellBenchParam 动作发出点)。
 DEAD_PAIR_EXIT_RELEASED_KEY: str = 'dead_pair_exit_released'
 DEAD_PAIR_EXIT_KEPT_PREFIX: str = 'dead_pair_exit_guard_kept'
 DEAD_PAIR_EXIT_SOLD_PREFIX: str = 'dead_pair_exit_sold'
@@ -676,7 +676,7 @@ def _acq_ledger_of(session: StrategySession) -> dict:
 def register_acquisition(session: StrategySession, name: str, *,
                          plane: int | None, round_num: int,
                          star: int | None = None) -> bool:
-    """获取账登记(写端单一源 = shop._emit_buy 发射位,与种子登记同位)。
+    """获取账登记(写端单一源 = shop._emit_buy 动作发出点,与种子登记同位)。
 
     簿形态 = {名: (位面, 最新获取轮)},同名重获取覆盖为最新轮——对时
     钟起点语义:素材对自「较晚成员获取」那刻才成立,覆盖写即天然取
@@ -687,8 +687,8 @@ def register_acquisition(session: StrategySession, name: str, *,
     账内条目恒同位面(跨位面条目由读端位面闭合清除)。
 
     闭合 = 读端惰性清扫(``dead_pair_exit_release`` 内):位面闭合 +
-    全场域活性闭合,与发射登记簿四出口(轮界/换线/部署/合成销)解耦
-    ——合成销语义注:合成补齐买入在发射位提前 return 不落本账,该名
+    全场域活性闭合,与动作发出登记簿四出口(轮界/换线/部署/合成销)解耦
+    ——合成销语义注:合成补齐买入在动作发出点提前 return 不落本账,该名
     旧账由活性闭合(2★ 化后 1★ 对离场)就地销。
     """
     if not name or plane is None:
@@ -706,7 +706,7 @@ def dead_pair_exit_release(session: StrategySession,
                            cap_hold: int | None = None,
                            counters: dict | None = None,
                            ) -> frozenset[str]:
-    """死库存素材对释放集单点函数(T-253;判据 (a)(b)(c) 三合取,
+    """死库存素材对释放集单点函数(判据 (a)(b)(c) 三合取,
     proofs P96)。四卖出通道消费位统一经本函数计算后传
     ``merge_guard_release`` 形参——判据本体单点,通道禁自算第二份。
 
@@ -714,7 +714,7 @@ def dead_pair_exit_release(session: StrategySession,
     (a) 素材对在位:``same_star_count(name, 1, bench, deployed) ≥ 2``
         (计数单一源 = kernel;宇宙 = ``merge_material_stale_names`` 同源);
     (b) name ∉ base——base = ``_resolve_base`` 输出(义务重买集真值:
-        锁线态 = 截断集 B′,未锁态 = k_members);``cap_hold`` 必须 与同位
+        终局阵容锁定态 = 截断集 B′,未锁态 = k_members);``cap_hold`` 必须 与同位
         ``sell_exclusions`` 的 cap_hold 同一帧现读传入(与装配 A 身份段
         第 1 构件同参同源,N3 钉死;None = 保宽 fail-closed 端,kept_k
         虚增方向保守可判读);
@@ -773,7 +773,7 @@ def dead_pair_exit_release(session: StrategySession,
         st.cw4_dead_pair_exit_frame = seen
     counted: set[str] = seen['names']
 
-    # 持久获取账惰性闭合(位面 + 全场域活性;与发射登记簿四出口解耦)
+    # 持久获取账惰性闭合(位面 + 全场域活性;与动作发出登记簿四出口解耦)
     reg = getattr(st, ACQUISITION_LEDGER_ATTR, None)
     if isinstance(reg, dict) and reg:
         held = bench_names | deployed_names
@@ -837,12 +837,12 @@ def _resolve_base(session: StrategySession,
                   cap_hold: int | None = None,
                   ) -> tuple[frozenset[str] | None, set[str]]:
     """义务基座解析单点(身份段第 1 构件;低-1 修复平移;
-    T-307/R1 起基座 = 容量可行截断集 B')。
+    基座 = 容量可行截断集 B')。
 
-    锁线态 = ``locked_buy_membership(ist, cap_hold=传参)`` 截断义务集
+    终局阵容锁定态 = ``locked_buy_membership(ist, cap_hold=传参)`` 截断义务集
     B'(**必改位**:零参宽集形态已被取代——宽−窄成员 M2 不再义务重买,
     其保护必要性消失;不改 = M4/凑息/funding 全通道对被截成员持续禁卖
-    且 P60/单帧锁观测面照常零异常 = 静默半修,T-295 方案阻断③定谳),
+    且 P60/单帧锁观测面照常零异常 = 静默半修,对抗审阻断③定案),
     未锁态 = ``k_members``。``cap_hold`` = 调用方从决策帧现读
     (``cw_intention.locked_buy_cap_hold(state)``;板面容量是帧事实,
     session 无公共权威链,禁加镜像读——显式传参是唯一合法通道),
@@ -850,7 +850,7 @@ def _resolve_base(session: StrategySession,
     返回 (锁定解析结果, 基座集):解析结果供本模块内两处单点消费
     (换线闭合读点的基座对账 + funding 兜底减法②,P78-5 池定义
     「义务基座产物」同源),禁调用侧自选基座——基座 = M2 会重买的
-    集合(R1 后 = B'),Z1 锁线域残留病理防复发语义不变(与 shop.py
+    集合(R1 后 = B'),Z1 终局阵容锁定域残留病理防复发语义不变(与 shop.py
     ``obligation_members`` 装配同一语义源 = cw_intention.locked_buy_
     membership 截断口径)。
     """
@@ -908,7 +908,7 @@ def sell_exclusions(session: StrategySession,
     (V2-09)。**L1 同轮硬面不消费本形参**(读端自治 fail-closed,
     对 V2-09 的显式翻转);垫保 carve-out 在轮号不可得帧不剔除
     (fail-closed 方向 = 硬面保持全集)。
-    ``cap_hold``:义务基座截断容量(T-307/R1)= 调用方从
+    ``cap_hold``:义务基座截断容量 = 调用方从
     决策帧现读 ``cw_intention.locked_buy_cap_hold(state)``;None = 保宽
     (fail-closed 零漂移端,无帧态调用位缺省)。
     """
@@ -951,7 +951,7 @@ def sell_exclusions(session: StrategySession,
     # 按账闭合事件分界(P78-2a 族,对抗审发现 2 修订):
     # ①换线孤儿 carve 保留 = 线账闭合清算语境:本轮义务买入出基座,
     #   其账已闭合(P78-2a),塌缩清算卖是已闭账位的清仓非活跃账抵消,
-    #   必须照常发射并带 line_switch_collapse 证明标记(
+    #   必须照常发出并带 line_switch_collapse 证明标记(
     #   打标制;无此 carve 曾把 seed18 塌缩标记卖堵死,reason_matrix
     #   TestLineSwitchOrphanSeed18 实证);
     # ②垫保 carve 不适用于种子面(初版曾 carve,对抗审发现 2 打回):
@@ -1044,20 +1044,20 @@ def sell_hold_exclusions(session: StrategySession,
     测试/外部引用零断链,语义 = 身份段(无轮号 ⇒ 窗口段失效,V2-09
     放行向例外)。
 
-    旧 F1 锁线清空语义已废除(P78-3:锁线定型不是任何买因类的账闭合
-    事件;W3 漏口修法 = 轮界过期,随窗口段在 sell_exclusions 承载)——
+    旧 F1 终局阵容锁定清空语义已废除(P78-3:终局阵容锁定定型不是任何买因类的账闭合
+    事件;漏口修法 = 轮界过期,随窗口段在 sell_exclusions 承载)——
     本出口不再消费动态登记、也不再清空旧载体。
     """
     return sell_exclusions(session, k_members, channel='interest')
 
 
-# ===== 空板止损守卫(T-32;后态单条件判定,零自由参数)=====
+# ===== 空板止损守卫(后态单条件判定,零自由参数)=====
 
 
 #: 空板止损守卫拒因分键(单一源;判据函数拒帧计数与测试同消费,禁裸写)。
 #: 设计出处 = supply_arbitration_design/DESIGN.md §6.4(v2
 #: 应修-3 单条件后态判定版)+ 总图对账重审(reviews/出口族对账重审.md
-#: T-32 节)「现在可落:空板止损单件」行。
+#: 「现在可落:空板止损单件」行)。
 EMPTY_BOARD_SELL_GUARD_KEY: str = 'empty_board_sell_guard'
 
 
@@ -1077,10 +1077,10 @@ def empty_board_sell_blocked(deployed: object, *,
     **数学地基(支配性结构判据,零自由参数)**:空板帧任意 bench 卖出
     相对不卖弱劣——1★ 全额退净金 0(P76 甲)+ 部署/合成期权损失 ≥0;
     2★+ 卖出净损金(P76 甲手续费)+ 期权损失。守卫非消费授权、零 hp、
-    零发射位;拒因分键落 ``counters[EMPTY_BOARD_SELL_GUARD_KEY]``,
+    零动作发出点;拒因分键落 ``counters[EMPTY_BOARD_SELL_GUARD_KEY]``,
     禁静默。复合事务(M4 腾席/funding 筹资)卖出腿在空板帧同被辖 =
     资格面收窄 → 消费位走各自既有「无候选」诚实停摆路径(m2_retry_
-    exhausted / bench_full / 空发射,先例 = W4/P78-4 燃料资格收窄);
+    exhausted / bench_full / 空动作发出,先例 = P78-4 燃料资格收窄);
     恢复正路 = 部署(P24 零支出)与买面,守卫零辖。若观测证明腾席抑制
     代价超界,回 ADR 对表加显式豁免(闭集增项),禁消费位手搓绕行。
 

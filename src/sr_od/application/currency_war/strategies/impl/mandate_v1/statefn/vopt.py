@@ -82,7 +82,7 @@ def v_slot(bench_free: int, blocked_net_evs: list[float]) -> float:
 def v_comp_marginal(cost: int, level: int, taken: int = 0,
                     scen: tuple[int, int] | None = None,
                     refresh_cost: int = 2) -> float:
-    """第 taken+1 张同费杂牌的边际压缩价值 Δ金(P49 ①②;R2-11 对拍锚)。
+    """第 taken+1 张同费杂牌的边际压缩价值 Δ金(P49 ①②;R2-11 交叉核对锚)。
 
     = (E[refreshes](taken) − E[refreshes](taken+1)) × c_eff(条件值:窗口
     全程付费刷);E 走 expected_refreshes 精确超几何 DP(命题 1 硬要求)。
@@ -102,7 +102,7 @@ def v_comp_table(levels: tuple[int, ...] = (4, 5, 6, 7, 8, 9, 10),
                  refresh_cost: int = 2) -> dict[int, dict[int, float]]:
     """V_comp 边际压缩价值二维表(费用档×等级;P49 (2) 文档表=誊录,
     本生成器=单一源)。resolved 池突变(v_c/a_c 变)下整体重生成
-    (NMF §3.4 #1 池构成族接线)。"""
+    (01_math_framework §3.4 #1 池构成族接线)。"""
     table: dict[int, dict[int, float]] = {}
     for cost in (1, 2, 3, 4, 5):
         row: dict[int, float] = {}
@@ -116,28 +116,28 @@ def v_comp_table(levels: tuple[int, ...] = (4, 5, 6, 7, 8, 9, 10),
 
 def tier_match(card_cost: int, t_search: frozenset[int]) -> bool:
     """M6 档匹配谓词(P49 ③ [34] 数学化:目标档匹配=必要条件,跨档购零
-    压缩系模型结构事实)。M6 侧与 stockpile_buy 侧全辖域同源消费(R4-F4)。"""
+    压缩系模型结构事实)。M6 侧与 stockpile_buy 侧全适用范围同源消费(R4-F4)。"""
     return card_cost in t_search
 
 
 def gap_depth(k_need: int, j_owned: int) -> int:
-    """缺口深度 = k_need − j_owned(压库档序/凑息档序的排序分量)。"""
+    """缺口深度 = k_need − j_owned(压牌库档序/凑利息档序的排序分量)。"""
     return max(0, k_need - j_owned)
 
 
 def refund_full_star_ok(star: int, cost: int) -> bool:
     """星级纪律共享谓词(R12-3):= 1★ ∧ sell_refund 全额可退(注册表直读)。
-    档匹配发射谓词 = 档匹配 ∧ 本谓词(M6 侧与 stockpile_buy 侧同源消费,
-    禁发射位内联星级判断)。"""
+    档匹配发出谓词 = 档匹配 ∧ 本谓词(M6 侧与 stockpile_buy 侧同源消费,
+    禁动作发出点内联星级判断)。"""
     return star == 1 and sell_refund(star, cost) == cost
 
 
 def p_complete(missing: list[tuple[int, float]], refreshes: int) -> float:
-    """P̂(集齐|H,B) = Π Binomial 尾(P38 闭式带;NMF §2「ΔP̂」行)。
+    """P̂(集齐|H,B) = Π Binomial 尾(P38 闭式带;01_math_framework §2「ΔP̂」行)。
 
     missing = [(该卡还差张数 m_i, 单格命中概率 q_i)];B(refreshes)=付费
     刷次数。阈值边际 ≥8-10pp 时闭式可用,深缺口走精确 DP(判据层消费时
-    按带声明选路;+8pp 乐观偏差已带内声明,NMF §3.2)。"""
+    按带声明选路;+8pp 乐观偏差已带内声明,01_math_framework §3.2)。"""
     prod = 1.0
     for m, q in missing:
         if q <= 0:
@@ -194,9 +194,9 @@ def _streak_v_table(rounds: int, p: float, loss: int) -> list[list[float]]:
 
 def delta_v_streak(s: int, rounds: int, delta_p: float, p: float,
                    loss: int = LOSS_GOLD_BY_NODE['battle']) -> float:
-    """ΔV_streak = 引擎口径 DP 两次求值相减(NMF §2「ΔV_streak」行,P43 ①;
+    """ΔV_streak = 引擎口径 DP 两次求值相减(01_math_framework §2「ΔV_streak」行,P43 ①;
     d_eng(s+1)−d_eng(s) 的胜转移增量 × Δp 换算;换算 Δp 带 CI 系消费方
-    职责,NMF §3.3 #10)。"""
+    职责,01_math_framework §3.3 #10)。"""
     v_win = _streak_v_table(rounds, min(1.0, p + delta_p), loss)
     v_base = _streak_v_table(rounds, p, loss)
     return v_win[min(s + 1, _SMAX)][0] - v_base[min(s + 1, _SMAX)][0]

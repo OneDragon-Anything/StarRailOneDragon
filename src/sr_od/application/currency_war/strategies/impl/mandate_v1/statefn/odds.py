@@ -1,6 +1,6 @@
 """q / P_shop / E[refreshes] / p̄:商店概率层(cw_shop_odds 单一源消费)。
 
-NMF §2 三行的包装消费:概率表本体在 ``cw_shop_odds``(【注】注册表),
+01_math_framework §2 三行的包装消费:概率表本体在 ``cw_shop_odds``(【注】注册表),
 本模块不重算 E[refreshes(超几何 DP)——直接 import 消费;新增实现仅
 q(槽级命中)与 p̄(多项×超几何精确式,P16 修复批口径)。
 P41 A2 防错注:第 4 参 c = **同费非目标已拿走数(taken_c),禁传 cost**——
@@ -26,7 +26,7 @@ from sr_od.application.currency_war.kernel.cw_plane_table import (
 
 
 def slot_q(level: int, cost: int, j: int, taken_c: int) -> float:
-    """槽级命中概率 q = p(L,c) × (a−j)/(v·a − j − taken_c)(NMF §2「q」行;
+    """槽级命中概率 q = p(L,c) × (a−j)/(v·a − j − taken_c)(01_math_framework §2「q」行;
     P38 ③层口径)。j=特定卡持有数(池衰减),taken_c=同费非目标已拿走数
     (禁传 cost,P41 A2)。分母与注册表权威 ``cw_shop_odds._refresh_dist``
     同式(total = va−j−c,「拥有的 j 张已离开牌库」)——分子分母同扣 j,
@@ -43,16 +43,16 @@ def slot_q(level: int, cost: int, j: int, taken_c: int) -> float:
 
 
 def p_shop(level: int, cost: int, j: int = 0, taken_c: int = 0) -> float:
-    """单店至少一张目标卡概率 = 1−(1−q)^SHOP_SLOTS(NMF §2「P_shop」行)。
+    """单店至少一张目标卡概率 = 1−(1−q)^SHOP_SLOTS(01_math_framework §2「P_shop」行)。
 
     槽间独立声明(IMPL_ADV_R200 症2 泛化步,不静默换模型):本式假设
     SHOP_SLOTS 个槽位命中独立;注册表权威形态(``_refresh_dist``)是
     「槽位数~B(5,p) + 同店内无放回超几何」——无放回使命中负相关 ⇒
-    P(全空)_无放回 ≤ (1−q)^5 ⇒ 独立式**低估** P_shop。适用依据:NMF
+    P(全空)_无放回 ≤ (1−q)^5 ⇒ 独立式**低估** P_shop。适用依据:01_math_framework
     §2「P_shop」行声明形态即独立式(闭式带的近似门,q 单槽量级 ≤~0.05
     时二阶差量 ~C(5,2)·q² 相对偏差 ≤1e-3 量级);消费位影响:a7_lower_
     bound=c/P_shop 高估(保守端)、v_opt 的 c/P_shop 分量高估(fail-open
-    端)——与 p_miss 消费面同申报,接线日对拍复核(精确式可经注册表
+    端)——与 p_miss 消费面同申报,接线日交叉核对复核(精确式可经注册表
     ``1 − _refresh_dist(p, v, a, taken_c, 1, j)[0]`` 直算,不另建模型)。
     """
     q = slot_q(level, cost, j, taken_c)
@@ -65,7 +65,7 @@ def _collapse_window_threshold(omega: float | None) -> float:
 
     ω 处置申报【拟】:ω 是策略阈值参数,非游戏定义量——现值为
     refresh_ev_budget 归零腿的复用值(未独立标定),登记待证形态、不扩
-    辖域(判据输入全游戏定义量纪律不破:表值/峰值查表皆游戏定义量,
+    适用范围(判据输入全游戏定义量纪律不破:表值/峰值查表皆游戏定义量,
     ω 仅作窗口比值阈值);fail-closed 语义 = ω 越大窗口越窄。
     """
     if omega is None:
@@ -77,7 +77,7 @@ def _collapse_window_threshold(omega: float | None) -> float:
 
 
 def tier_search_window(level: int, omega: float | None = None) -> frozenset[int]:
-    """档级搜索窗口(档级消费位:压库/凑息/M6;P49 档匹配)。
+    """档级搜索窗口(档级消费位:压牌库/凑息/M6;P49 档匹配)。
 
     判据(塌缩带重锚,承 塌缩带归零线):费档 c 在搜索窗内
     ⟺ refresh_prob(level,c) ≥ ω×refresh_prob(峰值级(c),c)——等级现读
@@ -105,7 +105,7 @@ def card_search_window(level: int, omega: float | None = None) -> frozenset[int]
     判据同 ``tier_search_window`` 的塌缩带锚,概率口径换
     单店命中 ``p_shop``(满池 j=0/taken_c=0,经本模块同一实现——单一源):
     费档 c 在窗内 ⟺ p_shop(level,c) ≥ ω×p_shop(峰值级(c),c)。
-    空集语义与作废对拍锚声明同 ``tier_search_window``。
+    空集语义与作废交叉核对锚声明同 ``tier_search_window``。
     """
     thr = _collapse_window_threshold(omega)
     out: set[int] = set()
@@ -140,7 +140,7 @@ def _tier_stats(tag: str) -> dict[int, tuple[int, int]]:
 
 
 def p_bar_exact(tag: str, level: int) -> float:
-    """p̄(换线命中率)精确式 = 多项×超几何(P16 修复批口径,R2-11 对拍锚)。
+    """p̄(换线命中率)精确式 = 多项×超几何(P16 修复批口径,R2-11 交叉核对锚)。
 
     ``P(全空) = Σ_{m_c} [5!/Πm_c!·Πp_c^{m_c}] · Π_c C(T_c−A_c, m_c)/C(T_c, m_c)``
 

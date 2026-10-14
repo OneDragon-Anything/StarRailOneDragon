@@ -24,14 +24,14 @@ def r0_stop(no_qualifying_set: bool, budget_exhausted: bool) -> bool:
 
     合格集空(店面无目标域卡)∨ 预算递推耗尽 ⇒ 停刷。结构位,臂①
     保留(旁路 r1/r2 后无循环可停,递推输入=店面快照+金,仍良定义——
-    R10-3 辖域交叠声明)。
+    R10-3 适用范围交叠声明)。
     """
     return no_qualifying_set or budget_exhausted
 
 
 def refresh_warranted(state: GameState,
                       session: StrategySession) -> tuple[bool, str]:
-    """三段式刷新判据主式(shop_session §2.4;迭代批 3.6 落码)。
+    """三段式刷新判据主式(shop_session §2.4)。
 
     **值得刷新 ⟺ 存在「当前星级 < 必要星级」的角色 ∧(等级 ∈ 最优
     概率带 ∨ 等级 > 带上界〔被推过——当前即剩余可达最优〕)**;分派注:
@@ -49,9 +49,9 @@ def refresh_warranted(state: GameState,
       表承载)。
 
     判据形态 = 查表零计算(用户裁定 2026-10-12「期望价值难算不直观,
-    星级目标直接驱动」);原 R1 期望启动门(路径总账比较式)判据面退役
-    (P40/P47/P54 命题本体保留在册,消费面改由本查表承载)。金前提
-    (息线账 R2 预算门 + 整级预留保护)与 P92 拦刷门 = 调用方装配,
+    星级目标直接驱动」);原 R1 期望启动门(路径总账比较式)已由本查表
+    判据取代(P40/P47/P54 命题本体保留在册)。金前提
+    (利息线账 R2 预算门 + 整级预留保护)与 P92 拦刷门 = 调用方装配,
     不在本函数。返回 (是否值得刷, 拒因键——判读归因)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
@@ -120,7 +120,7 @@ def _candidate_members(comp_name: str, state: GameState) -> tuple[str, ...]:
     注册表外线名(过渡内核期的配方对/动态物化产物,get_comp 不可解析)
     → 回退 ``predicates.line_members(target_comp)`` 现行为等价读——
     过渡期滞后债同 :func:`session_scope._recompute_line_state` 申报,
-    3.7 候选内核落码后注册表外名消亡。"""
+    候选-锁定制内核在产后注册表外名消亡。"""
     from sr_od.application.currency_war.kernel.cw_comps import get_comp
     comp = get_comp(comp_name) if comp_name else None
     if comp is not None:
@@ -138,11 +138,11 @@ def _candidate_members(comp_name: str, state: GameState) -> tuple[str, ...]:
 
 
 def r1_start(ev_positive: bool | None) -> tuple[bool, str]:
-    """付费刷新发射位(r1)。EV 正性判据输入 None(未标定)
+    """付费刷新动作发出点(r1)。EV 正性判据输入 None(未标定)
     ⇒ 不刷(fail-closed)。
 
     R1 启动门现行判据 = ``refresh_warranted`` 三段式查表(shop_session
-    §2.4;迭代批 3.6——原路径总账比较式判据面退役,考古走 git 历史),
+    §2.4;原路径总账比较式判据面已由查表判据取代),
     本函数零调用面。保留 = 四函数位完备集
     (r0_stop/r1_start/r2_budget/crisis_refresh_invariant,R10-3
     缺行封死),禁按旧 EV 正性语义复活接线。
@@ -158,7 +158,7 @@ def r2_budget(gold: int, reserve: int, refresh_cost: int) -> bool:
 
 
 def crisis_refresh_invariant(gold: int, hp_critical: bool) -> bool:
-    """P36-a 危机不变式(executor 结构位承载,本函数=纯数供对拍)。
+    """P36-a 危机不变式(executor 结构位承载,本函数=纯数供交叉核对)。
 
     危局帧刷新维持结构约束(危机成因不可达优先于危机特设出口,
     [39] 裁定——hp 只进读数位)。返回 True = 不变式成立(允许刷新)。"""
@@ -169,7 +169,7 @@ def hard_node_reinforce_gate(node_type: str | None, gold: int,
                              floor_gold: int) -> tuple[bool, str]:
     """D-D 硬节点备战补强门(P26 备战门+P40 刷新门按节点类型接线)。
 
-    下一节点 ∈ HARD_NODE_TYPES ∧ 金 ≥ 守息下界 ⇒ 放行补强意图
+    下一节点 ∈ HARD_NODE_TYPES ∧ 金 ≥ 保利息下界 ⇒ 放行补强意图
     (定向 D 缺档件/治疗件);非硬节点 ⇒ 关。Δp_prep 挂标定
     (标定前形态 = 结构门,数值加权随标定批)。
     """
@@ -209,7 +209,7 @@ def qualified_member_costs(buy_members: tuple[str, ...],
     """合格集成员费带 = 未 2★ 成型 ∧ 该级可刷出(refresh_prob>0)成员的
     注册表 cost 列表(P91 活跃搜索方向费带单一源;P40 合格集资格过滤与
     ``r2_card_reserve`` 同款语义,本函数为该过滤的公共承载位——R2 预留
-    卡价 min 消费与 P91 压库同轴带偏好同源,禁第二份过滤实现)。
+    卡价 min 消费与 P91 压牌库同轴带偏好同源,禁第二份过滤实现)。
 
     过滤序 = 成型先序(2★ 出域先于可追性判定,test_cw_refresh_ledger
     锁 A 锁定的判定顺序);注册表缺项/无 cost 成员跳过。返回升序列表,
@@ -250,7 +250,7 @@ def r2_card_reserve(k_members: tuple[str, ...],
     可追过滤等级:缺省=当前级;R2 消费位在 R1 选定 L* 之后,调用方
     (shop.py R1 段)按 L* 重估传入——R1 已选等级的出牌面辖 R2 预留
     卡价(用当前级过滤会在 L*≠当前级帧错档)。P71-b 预算闸消费取
-    缺省当前级:闸在升级授权前评估,预留口径与 P54 floor「满息档 +
+    缺省当前级:闸在升级授权前评估,预留口径与 P54 floor「满利息档 +
     至少一张命中卡可买」同帧同等级(花后金下界 = levelup.
     guarantee_floor_gate 同链)。
 
@@ -263,7 +263,7 @@ def r2_card_reserve(k_members: tuple[str, ...],
     该帧 R1 必先以 no_chaseable_member 关闭,R2 不可达,兜底值不进
     任何可达比较。
 
-    实现注:T-263 批起成员过滤消费 ``qualified_member_costs`` 公共承载位
+    实现注:成员过滤消费 ``qualified_member_costs`` 公共承载位
     (P91 同轴带同源;本函数语义/签名/返回值零变化——纯内部重构,
     test_cw_interest_floor 私有名直引面不受影响)。
     """
@@ -298,7 +298,7 @@ def all_channel_buy_exists(gold: int, g_star: int, cap_resolved: int,
     语义:「任何店产都不会触发买入」的全通道语义(p40 :25/:63)——
     四买入通道(dominance 1★ 净 0 / 义务 M2 / EV 买面 / 合成完备购)
     的帧级可达性并集。全部为假 ⇒ 付费刷新净差 = −(c_eff+L) < 0 严格
-    (P92 命题),消费位(R1 发射前)据此拦阻。与在册 R0-1 的分工:
+    (P92 命题),消费位(R1 发出前)据此拦阻。与在册 R0-1 的分工:
     R0-1(E=∅,成员合格性维)在 r1_commitment_account 先行;本判定尺
     补其在册语义的席满维(p40 :63「bench 满到没过渡牌可买」)与可购性
     维(金不足且不可腾),两维在现行实现缺位。
@@ -313,9 +313,9 @@ def all_channel_buy_exists(gold: int, g_star: int, cap_resolved: int,
       ∧ 金 ≥ 注册表 cost ∧ 席可落」;席可落 = bench_free>0 ∨
       ``seat_recoverable``(腾席可达判定,调用方传店帧腾席臂同参
       ``mandate.fuel_sell_candidates`` 资格面非空——存在可变现 1★
-      燃料件,M4 腾席/M2 通道的席位前置可满足;判定与腾席发射位同一
+      燃料件,M4 腾席/M2 通道的席位前置可满足;判定与腾席动作发出点同一
       单源,装配单一入口 = ``shop.p92_seat_recoverable``,禁金额投影
-      代理。旧「P56 投影 liquid_refund>0 代理」已退役:其排除集口径
+      代理。旧「P56 投影 liquid_refund>0 代理」已停用:其排除集口径
       (projection 并 T3 活跃集 ≠ 腾席臂 defer 放行)与布尔化
       (Σ退金>0 ≠ 资格非空)两向漂移随收窄一次消除,判定本体零改);
     - EV 买面:``ev_face_open``(调用方传 not provisional.is_none
@@ -327,9 +327,9 @@ def all_channel_buy_exists(gold: int, g_star: int, cap_resolved: int,
     - 序 2 场况插件(批 3.6 通道集重建):``plugin_budget_open``
       (会话累计额度 > 0——上阵空位在册即有可买形态,板面差一人档
       的插件件刷新可出;席位面并入 seat_ok);
-    - 序 4 压库臂(②(b) 死金/档 1/M6/垫件):``order4_zone_open``
-      (溢余帧〔金 > g*〕或奖励帧死金形态的帧级可达——M6/档 1/垫件
-      的溢余触发域与 ②(b) 的奖励帧低金域并集,调用方装配);
+    - 序 4 压牌库臂(②(b) 死金/档 1/M6/垫件):``order4_zone_open``
+      (富余帧〔金 > g*〕或奖励帧死金形态的帧级可达——M6/档 1/垫件
+      的富余触发域与 ②(b) 的奖励帧低金域并集,调用方装配);
     - C1 恒买邻位:``c1_floor_cost``(注册表核心最低费,非 None 即
       通道池非空)∧ 席 ∧ 金 ≥ 最低费——核心在售即买,池非空故只查
       帧级资格(与 dominance 通道同款口径)。
@@ -370,7 +370,7 @@ def all_channel_buy_exists(gold: int, g_star: int, cap_resolved: int,
     # = seat_ok;席满帧的置换路径由 seat_recoverable 腿承载)
     if plugin_budget_open and seat_ok:
         return True
-    # ⑥ 序 4 压库臂(②(b) 死金/档 1/M6/垫件的帧级可达;席位维 =
+    # ⑥ 序 4 压牌库臂(②(b) 死金/档 1/M6/垫件的帧级可达;席位维 =
     # 至少一席可落——席满帧置换拒后无买入即无通道)
     if order4_zone_open and (bench_free >= 1 or seat_recoverable):
         return True
