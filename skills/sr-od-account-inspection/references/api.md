@@ -36,7 +36,26 @@
 | `.../game_record/app/hkrpg/api/note` | GET | 同上 | 实时便签：开拓力/委托/每日实训进度/历战余响剩余 |
 | `.../game_record/app/genshin/api/index` | GET | `role_id={原神UID}&server=cn_gf01` | 原神同构数据（对照实验用） |
 
-星铁角色养成明细（光锥/遗器/行迹逐角色）接口未验证（前置受阻，见下）；成功时结构预期与社区文档一致。
+星铁角色养成明细的**正确端点是 `avatar/info`**（2026-10-14 经 genshin.py 源码确认，非 `index`）：
+
+| 接口 | 方法 | 参数 | 返回 |
+|---|---|---|---|
+| `.../game_record/app/hkrpg/api/avatar/info` | GET | `need_wiki=true&role_id={游戏UID}&server=prod_gf_cn` | **全角色完整练度**：等级/星魂/行迹/光锥/遗器（含副词条）/属性面板/忆灵。用自己的 cookie 查自己 = 全量；查他人 uid 只返回简化数据（无行迹/遗器词条） |
+| `https://api-takumi-record.mihoyo.com/game_record/app/card/wapi/changeDataSwitch` | POST | `{"switch_id":N,"is_public":true,"game_id":6}` | 数据开关。N：1=战绩公开、2=角色详情公开、3=实时便签；星铁 game_id=6。**DS 签 body** |
+| `https://public-data-api.mihoyo.com/device-fp/api/getFp` | POST | 设备信息 JSON（device_id/seed_id/ext_fields 等） | `x-rpc-device_fp` 设备指纹。本地简版 body 会返回空 fp；米游社官方网页（www.miyoushe.com）自己调用 getFp 时带完整浏览器指纹 ext_fields，从其网络面板直接抄真实 fp 最省事 |
+
+实测数据开关三件套已全部经 API 打开成功（retcode 0），开关不是阻塞项。
+
+## 风控（极验）——当前的真正阻塞
+
+**genshin.py 权威定义**（`constants.py`）：`GEETEST_RETCODES = {10035, 5003, 10041, 1034}` —— **10035 和 10041 都是极验验证码触发码**，不是「功能未开通」（此前归因有误，特此修正）。
+
+实测链路（2026-10-14）：
+1. 不带 `x-rpc-device_fp` → `10041`
+2. 带官方网页真实 device_fp → `10041` 变 `10035`（过了第一层设备风控）
+3. 开全部数据开关、换 Referer → 仍 `10035`（极验验证未过）
+
+剩余的 `10035` 极验环节，社区处理方式：用户在米游社 App 内打开一次角色详情（App 内置极验 SDK 自动通过，验证状态与设备绑定）后短期内同设备不再触发；或接入极验打码。**规避：走游戏内画面读取路线。**
 
 ## 错误码分诊
 
@@ -44,13 +63,12 @@
 |---|---|---|
 | `-10001` invalid request | 头缺失/DS 格式错 | 核对头表与 DS2 算法（注意 DS1 是另一变体：r 为 6 位字母数字、q/b 不参与，勿混用） |
 | `10001` Please login | cookie 未到达 | 查 cookie 域（前置第 2 步） |
-| `10035`（星铁 index/note 特有，账号从未开通过战绩数据时） | 星铁战绩数据功能未开通 | 游戏内打开一次「漫游签证 → 战绩展示」tab 激活后实测变为 `10041`；已排除：签名、版本、Origin、设备指纹、隐私开关（判据：原神同调用返回 1034 而非 10035，链路本身正确） |
-| `10041`（星铁 index/note 特有，激活后仍返回） | 语义未知，当前未解 | 与签名/头/隐私开关无关（同上对照实验）；待查米游社 App 侧是否有额外开通动作。规避：走游戏内画面读取 |
+| `10035` / `10041` | **极验验证码触发**（同 1034 一族） | 带 device_fp 可过第一层（10041→10035）；彻底解除需 App 侧过一次验证。规避走路线二 |
 | `1034` | 风控验证码 | 换时间重试；频繁出现则降频（请求间隔拉大） |
 | `1009` | 目标 UID 未公开数据 | 查错对象（他人 UID） |
 
 ## 排障序
 
 1. 先用卡片接口确认凭据链路（它最宽松）。
-2. 用原神 index 做对照：原神通而星铁不通 = 星铁功能未开通（10035 分支）；原神也 -10001 = 签名/头问题；都 1034 = 风控，降频。
-3. 签名自查顺序：DS 格式 → salt → cookie 域 → UA 模拟。
+2. 明细接口先带 device_fp（官方网页 getFp 抄现成的），再确认数据开关已开（changeDataSwitch 幂等，直接全开）。
+3. 仍 10035/10041 = 极验环节，转路线二；签名自查顺序：DS 格式 → GET/POST 的 q/b 选择 → cookie 域。
