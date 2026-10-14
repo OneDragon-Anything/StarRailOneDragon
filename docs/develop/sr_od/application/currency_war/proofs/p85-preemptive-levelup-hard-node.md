@@ -41,7 +41,7 @@ PRE(t) 为真时,升级批**优先于攒利息**发出动作:攒利息不再是�
 | G 前半 | s = clicks_to_next_level × xp_click_cost(**金成本,≠XP 缺口**;XP 缺口 → s 换算 = ⌈缺口/XP_PER_BUY⌉×click_cost) | kernel XP 表/费率(P48 整批纪律同一口径) | 【注】 |
 | G 后半 | 花后保底 = `_guarantee_floor_holds` **判据本体复用**(θ_G = 注册表 `boss_floor`=10=利息档宽;**范围外三支[终局域/生存域/买断制]随本体继承,非裸常数重述**;推导链 = 非末位面持金未来效用严格正 ⟹ 花后金须落在利息档结构上,g ≥ 10 是「下一向位面首期利息存在」的机制判等式,P83) | kernel/cw_registry.boss_floor + criteria/levelup._guarantee_floor_holds | 【注】 |
 | R 前半 | 板满:d = c(cap 口径 = 当前可上阵数,非固定槽表 10) | predicates.arm1_existence ①(零刷新诊断批先例:cap 口径纠错在案) | 【注】 |
-| R 中段 | 等待件命中:备战席 存在与板面共享阵营/流派的单位,**不限星级**(arm1② 现行语义;其「缺部署资格/同名排除」盲区不在本命题适用范围,待裁决 §6 行 5) | 01_math_framework §2 玩家裁定三条(2026-09-01:「star≥2 ∧ 目标线名单」双收窄判废;窄域实证代价 = 101/158 停滞轮分支一(arm1)饿死,P39 单篇 §臂一) | 【注·裁定】 |
+| R 中段 | 等待件命中:备战席 存在与板面共享阵营/流派的单位,**不限星级**(arm1② 现行语义;其「缺部署资格/同名排除」盲区不在本命题适用范围,待裁决 §6 行 5) | 01_math_framework §2 玩家裁定三条(2026-09-01:「star≥2 ∧ 目标线名单」双收窄判废;窄域实证代价 = 101/158 停滞轮分支一(arm1)饿死,P39 单篇 §分支一) | 【注·裁定】 |
 | R 后半 | **候补件级过围栏**:arm1② 命中的候补件**至少一件**在 `has_deployable_reasoned(cap+1 语境)` 下无 held 拒因(**按候补件下标查 reasons**,拒因闭集 = scatter_fence/rest_capacity/cap/name_dup/recipe_floor/item_slot)——**不是** `has_deployable` 布尔 ∃-全板语义(那会把「任一填充件可上」误判为 R 真,锚局 F-2 实证形态) | kernel/cw_deploy_logic.has_deployable_reasoned(动作发出×执行单一源;动作发出方/执行方共用同一围栏语义,P72 支A② 真源同函数) | 【注】 |
 
 R = `arm1_existence(t)` 提供命中集,`has_deployable_reasoned(cap+1)` 按**候补下标**逐件裁决——单一源不变,语义钉死在「该候补件能上」而非「板上还有货可上」。
