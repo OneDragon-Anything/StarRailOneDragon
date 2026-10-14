@@ -164,6 +164,8 @@ from sr_od.application.currency_war.sim.cw_sim_enemy import (
     BOSS_DEDUP_PENDING,
     DIFFICULTY_BASE_PENDING_U25,
     HOLY_GRAIL_PENDING,
+    DifficultyRecord,
+    difficulty_of,
     resolve_plane_bosses,
 )
 from sr_od.application.currency_war.sim.cw_sim_opening import apply_opening
@@ -812,6 +814,11 @@ class SimBackend:
     # —— 局结果面(消费方 = 运行器断言) ——
     hp_trail: list[int] = field(default_factory=list)
     disclosures: dict[str, object] = field(default_factory=dict)
+    #: 难度账快照(每场战斗结算时点一条;2026-10-14 用户裁定:sim 对
+    #: 选择后的难度做记录更新)。落账点/输入口径/零结算耦合边界见
+    #: :class:`DifficultyRecord` 与 :meth:`_resolve_battle`;胜负建模
+    #: 明文另批,本面只记录。
+    difficulty_records: list[DifficultyRecord] = field(default_factory=list)
     done: bool = field(init=False, default=False)
     #: 已完成结算的节点键(重入幂等守卫;战斗结算每节点恰一次)。
     _settled_key: tuple[int, int] | None = field(init=False, default=None)
@@ -1665,6 +1672,32 @@ class SimBackend:
 
     # ---------------------------------------------------------- 结算腿
 
+    def _record_difficulty(self, node: NodeKey, kind: str) -> None:
+        """难度账快照落账(2026-10-14 用户裁定:sim 对选择后的难度做
+        记录更新)。
+
+        时点 = 每场战斗结算入口、连胜转移前——记录「这一仗按什么难度
+        打」:品质分量/策略静态 Δ 取已选策略现值,特殊加成取胜负前连胜
+        (带符号账取绝对值,派生口径 = 收入侧无符号计数),遭遇档取
+        ``gs.chosen_encounter``(载荷 ``(难度档, 奖励文本)``,发出即写,
+        兑现清除在结算确认之后,战斗时点在场;仅 encounter 节点读,
+        防跨节点残留误计)。
+        base 恒 None(U25 基础曲线未采)、圣杯恒未激活(占位面)。
+        纯簿记:零随机流消费、零结算行为影响——难度不入胜负面,胜负
+        建模另批(裁定明文)。幂等 = 调用点在 ``_settled_key`` 守卫后,
+        每节点恰一条。
+        """
+        chosen = (self.gs.chosen_encounter.value
+                  if kind == 'encounter' else None)
+        self.difficulty_records.append(DifficultyRecord(
+            plane=node.plane, round_num=node.round_num, node_kind=kind,
+            breakdown=difficulty_of(
+                list(self.gs.active_strategies.value or []),
+                node_kind=kind,
+                streak=abs(int(self.gs.streak.value or 0)),
+                encounter_tier=(int(chosen[0])
+                                if chosen is not None else None))))
+
     def _resolve_battle(self) -> None:
         """coarse 战斗结算(随机输出面;start_battle/pick_encounter/
         BOSS 简报点空白三源共用;重入幂等守卫 = 已结算节点键)。"""
@@ -1676,6 +1709,7 @@ class SimBackend:
             return
         self._settled_key = key
         kind = node.kind
+        self._record_difficulty(node, kind)
         rng = stream_rng(self.seed, f'M13/{node.plane}/{node.round_num}')
         outcome = settle_battle(rng, plane=node.plane,
                                 round_num=node.round_num)

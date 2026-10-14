@@ -78,6 +78,29 @@ class DifficultyBreakdown:
     total: int | None
 
 
+@dataclass(frozen=True)
+class DifficultyRecord:
+    """难度账快照(每场战斗结算时点一条;2026-10-14 用户裁定:sim 对
+    选择后的难度做记录更新)。
+
+    - 时点语义 = 「这一仗按什么难度打」:品质分量/策略静态 Δ 取已选
+      策略结算前现值,特殊加成取胜负前连胜(连胜转移在结算后),
+      遭遇档取该节点所选档;base 恒 None(U25 基础曲线未采,禁插值)、
+      圣杯恒未激活(fate 占位面)。
+    - 纯簿记零结算耦合:难度不接入胜负面(胜负建模另批),零随机流
+      消费。落账方 = sim 后端 ``_resolve_battle``,消费方 = 验收测试与
+      后续难度分析。
+    - 坐标系:``plane``/``round_num`` = 节点序位(与 ``gs.node`` 同源);
+      ``node_kind`` = 结算节点类型(battle/encounter/boss/reward 等
+      结算路径覆盖的战斗类节点;非战斗节点无难度语义不落账)。
+    """
+
+    plane: int
+    round_num: int
+    node_kind: str
+    breakdown: DifficultyBreakdown
+
+
 def _strategy_delta_of(strategy_names: list[str], node_kind: str,
                        ) -> tuple[int, int]:
     """策略静态 Δ 合计(节点型限定在此应用)。
