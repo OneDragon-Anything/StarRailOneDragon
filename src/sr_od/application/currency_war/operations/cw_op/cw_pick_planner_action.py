@@ -34,14 +34,14 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwActionPickPlannerOp(CwOperation):
-    """银狼策划 pick 确认链(统一动作工厂批4 迁入)。
+    """银狼策划 pick 确认链(统一动作工厂 迁入)。
 
     点卡选中(避开卡内「详情」按钮区的选中点几何归决策半 ``_card_point``
     单一源)→ 确认(建档「按钮-骇入确认」查找点击,全族统一;详情面板
     防御已拆,面板若真弹出归下一帧外循环自愈——用户裁定
-    2026-09-14)。**即时上报**(action_ops.md §1 增补 2):确认点击后立即
+   )。**即时上报**(action_ops.md §1 ):确认点击后立即
     一口写完整效果腿(equip 入栏+后果链 / upgrade 变换+档行 / unknown
-    留证 / unrouted 兜底零写),无发射/落地两相、无证据闩——确认未生效
+    留存证据 / unrouted 兜底零写),无发出/落地两相、无证据标志——确认未生效
     = 代码 bug,overlay 残留由外循环按当前画面重识别重派。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
@@ -69,20 +69,20 @@ class CwActionPickPlannerOp(CwOperation):
             op.ctx.controller.click(target, press_time=op.CLICK_PRESS_TIME)
         # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
         time.sleep(1.2)   # 等选中动画
-        # 点卡 = 机械单发(用户裁定 2026-09-14:详情面板检测拆;用户定性
+        # 点卡 = 机械单发(用户裁定:详情面板检测拆;用户定性
         # = 详情弹出 = 点错所致,该面归选中点几何治理,面板检测是症状侧
         # 补丁)。面板若真弹出,后果归下一帧:本屏分发即门,外循环按当前画面
         # 重分派(详情 overlay 族分支/本 op 重走链)自愈。
         # 4. 点确认 = 建档「按钮-骇入确认」查找点击(round_by_find_and_click_area
-        # 全族统一,用户裁定 2026-09-22;不带 until = 动作 op 禁验证——防线
+        # 全族统一,用户裁定;不带 until = 动作 op 禁验证——防线
         # 语义由外循环重识别+预算耗尽 bail 承接,验关半拆除——用户裁定
-        # 2026-09-10;area 缺失 = 显式失败交框架轮次,兜底常量 CONFIRM 随批
-        # 退役)。
+        #;area 缺失 = 显式失败交框架轮次,兜底常量 CONFIRM 随批
+        # 停用)。
         env.round_result = op.round_by_find_and_click_area(
             op.screenshot(), CwScreenYinLang.CARD_AREA_SCREEN, '按钮-骇入确认',
             success_wait=1.0)
         # 立即自上报完整结果(确认点击后一口写
-        # 腿型分派效果——增补 2:点完即按成功上报,零判效零证据闩;
+        # 腿型分派效果——点完即按成功上报,零判效零证据标志;
         # leg_type/norm_item 经 env kwargs 形态保持)。上报后一行声明
         # 喂入(动作后果声明化喂入契约 = design.md §2.2 契约 3;实机
         # 端口未装 = no-op,sim 装配后驱动后端 pick_planner 出队+交回);

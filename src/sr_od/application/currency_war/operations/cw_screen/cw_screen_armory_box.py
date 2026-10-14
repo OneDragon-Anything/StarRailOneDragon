@@ -1,6 +1,6 @@
-"""货币战争 道具获得弹窗 op(武装箱族说明弹窗;2026-08-15 M19 首见停机建档,M20 实锤机制)。
+"""货币战争 道具获得弹窗 op(武装箱族说明弹窗;  首见停机建档, 已实测确认机制)。
 
-机制(M20 17:37-18:05 实证,3 候选点击坐标全无反应 + × 关闭露底层屏):
+机制( 17:37-18:05 实证,3 候选点击坐标全无反应 + × 关闭露底层屏):
 - 弹窗 = **获得道具时的说明弹窗**(首证品名「简易武装箱」+ 说明「点击后开启…从四件简易装备中选择
   一件获得。该道具使用后消失」;特权武装箱等异品名弹窗同布局,说明文案差异
   不入识别,画面身份由标题承担),叠在 3 选 1 屏(投资策略/环境)或备战上;
@@ -8,18 +8,18 @@
 - 正确动作 = **点 × 关闭**弹窗(道具进背包,备战界面箱槽走 prep_actions 的
   CwActionOpenBoxParam 开箱链路;四选一选卡职责在独立画面 op
   ``cw_screen_box_pick.py::CwScreenBoxPick``,本 op 只关弹窗);
-- 不关会挡死底层屏(M20 卡 19min/286 次 retry 实证)。
+- 不关会挡死底层屏( 卡 19min/286 次 retry 实证)。
 
-形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两段
+形态(迭代-screen-op-flat-report):观察 node + 决策动作 node 两段
 直继承 SrOperation(轻屏统一形态)。观察 node = 标识门(id_mark「标识-武装箱」
 族名锚,单档泛化覆盖简易/特权弹窗族;miss 未发 = round_fail 交编排壳按步
 分流)+ obs{on_screen} → 调
 占位 ``report_screen_armory_box_obs``(统一形态;本屏现役零容器写点,接口
 为占位,match/gs 缺席跳过)→ obs 挂实例属性进决策 node。决策动作 node =
-重入裁决顶部(点 × 已发 → 锚不在 = 弹窗已关(道具进背包)→ success 交回;
+落地复查顶部(点 × 已发 → 锚不在 = 弹窗已关(道具进背包)→ success 交回;
 锚在 = 点击未落地 → 重点)→ 点 × 关闭 → ``round_wait`` 循环推进(不烧节点
 重试预算;不收敛 = 动作 bug 响亮暴露,无防御上限)。本屏 sim 腿 = 不适用(sim 无对应画面段),
-等价判据主承重 = 实机在册行为锁。
+等价判据主要支撑 = 实机在册行为锁。
 """
 import time
 from typing import ClassVar
@@ -44,7 +44,7 @@ class CwScreenArmoryBox(CwOperation):
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-武装箱弹窗')
-        # 点 × 已发待重入裁决标志(验证废除形态):锚不在 + 已发 = 弹窗已关
+        # 点 × 已发待落地复查标志(验证废除形态):锚不在 + 已发 = 弹窗已关
         #(道具进背包)→ success 交回;锚在 = 点击未落地 → 重点。
         self._click_pending: bool = False
         # 观察结果(观察 node 产物,决策动作 node 消费)。
@@ -73,9 +73,9 @@ class CwScreenArmoryBox(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=8)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 点 × 关闭 → round_wait。
+        """落地复查(顶部)→ 点 × 关闭 → round_wait。
 
-        重入裁决(观察驱动,验证废除形态):上轮点 × 已发 → 锚不在 = 弹窗
+        落地复查(观察驱动,验证废除形态):上轮点 × 已发 → 锚不在 = 弹窗
         已关(底层屏交还 loop)→ success;锚在 = 点击未落地 → 清标志重点。
         循环推进 = round_wait(不烧节点重试预算;不收敛 = 动作 bug 响亮
         暴露,无防御上限)。"""
@@ -91,7 +91,7 @@ class CwScreenArmoryBox(CwOperation):
     def _close_dialog(self) -> OperationRoundResult:
         """点 × 关闭体:读「按钮-关闭」center(缺失 → fail 缺坐标;道具进背包,
         开箱走备战箱槽 CwActionOpenBoxParam 链路)→ mouse_move+click+1s → 置位
-        (落地判定归下一轮重入裁决)。"""
+        (落地判定归下一轮落地复查)。"""
         _pt = area_center(self.ctx, '按钮-关闭', CwScreenArmoryBox.DIALOG_SCREEN)
         if _pt is None:
             return self.round_fail('武装箱弹窗缺「按钮-关闭」坐标')

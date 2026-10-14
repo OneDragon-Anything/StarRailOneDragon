@@ -9,13 +9,13 @@
 miss 未发 = round_fail 交回外循环重判,「下一帧重判」是外循环职责)+
 obs{on_screen} 挂实例属性(空决策形态无 report:本屏零容器写点,obs 类
 住 kernel/cw_screen_report/next_button.py,import 构造即可)。决策动作
-node = 重入裁决顶部(点击已发 → OCR miss = 已离开本画面 → success 交回
+node = 落地复查顶部(点击已发 → OCR miss = 已离开本画面 → success 交回
 ——出口 = 入口观察的合法重判,非动作层判效;在 = 再推进)→
 ``round_by_ocr_and_click`` 再定位点击(入口与点击两次 OCR 扫描,申报:
 该帧型每局出现次数少,成本可接受;success_wait=2 同原分支内联值)→
 round_wait 循环(不烧节点重试预算,不收敛 = 动作 bug 响亮暴露,无防御
 上限;「推进动作未落地」= round_fail 如实交回)。本类入口信号 = 自有
-OCR 判定(覆写形态),重入裁决有观察信号可用,无「免锚发出即 success」
+OCR 判定(覆写形态),落地复查有观察信号可用,无「免锚发出即 success」
 出口。
 """
 from cv2.typing import MatLike
@@ -61,9 +61,9 @@ class CwScreenNextButton(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=2)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
+        """落地复查(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
         if self._advanced_once and not self.entry_ok(self.last_screenshot):
-            # 重入裁决(验证废除形态):重入 miss = 已离开本画面 → success
+            # 落地复查(验证废除形态):重入 miss = 已离开本画面 → success
             # 交回;旗标清(实例级,单 op 生命周期语义)。
             self._advanced_once = False
             return self.round_success(

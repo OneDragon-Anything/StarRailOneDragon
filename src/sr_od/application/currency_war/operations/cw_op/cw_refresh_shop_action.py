@@ -1,13 +1,13 @@
-"""刷新商店动作 op(CwActionRefreshShopOp)——动作 op 重组批③ 换壳
+"""刷新商店动作 op(CwActionRefreshShopOp)——动作 op 重组换壳
 (ActionOp ABC → 框架 SrOperation;op-layer.md §1.2 动作 op 契约)。一 op 一文件。
 
 **终结跳写申报**:金仍不写(刷新费腿;环境刷新触发器的发放金 = 环境
 通道,见 kernel/cw_env_grants);刷后牌面 = ``write_logic_rand`` 随机态
-(2026-09-21 用户裁定,观察赢;真值 = 下一入口观察)。**刷新计数由本
+( 用户裁定,以实际观察为准;真值 = 下一入口观察)。**刷新计数由本
 op 自上报统一触发**(``report_action_refresh_shop_param``:付费/全量
 计数经 ``gs.effects.record_refresh`` 单口;免费腿 = 容器字段
 ``gs.free_refresh_left`` Field 值判定与扣减,未观察保守按付费——次数
-是记账面非决策闸,判定职能收口观察边界,本 op 零读屏)。sim 与生产
+是记账面非决策闸,判定职能收尾观察边界,本 op 零读屏)。sim 与生产
 同一段 op 代码同口自上报同一上报函数(驱动器不执行刷新——终结动作
 截停序列后由消费侧 op 执行,刷新事实唯一生产点 = 本 op 的自上报)。
 """
@@ -37,11 +37,11 @@ class CwActionRefreshShopOp(CwOperation):
     """刷新 = 终结 op(唯一引入新事实的动作,期望态必须在新事实处重建
     ——终结后交回外循环,下一段入口重观察)。
 
-    体内零读屏零比对零验证(action_ops §1 增补 3:动作 op 无论执行前后
+    体内零读屏零比对零验证(action_ops §1 动作 op 无论执行前后
     不做观察识别,点击链之外零截图零识别):免费刷新判定 = 容器 Field
     值(上报函数承载,见模块头);「刷新是否生效」的判效权归下一入口
     观察对账。计数自上报 = 效果账本统一触发(见模块头);金不写,
-    payload 随机态由上报函数 write_logic_rand 采样(观察覆盖,观察赢)。
+    payload 随机态由上报函数 write_logic_rand 采样(观察覆盖,以实际观察为准)。
     """
 
     #: 终结动作(执行即本画面访问结束,交回外循环)。

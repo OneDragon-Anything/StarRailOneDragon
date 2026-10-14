@@ -33,12 +33,12 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwActionPickExpertInviteOp(CwOperation):
-    """专家邀请函选卡链(pick-op-unify 批收编;点卡即选,无确认钮)。
+    """专家邀请函选卡链(pick-op-unify 批并入;点卡即选,无确认钮)。
 
     点选(点击点 = 容器 ``expert_invite.card_points[idx]`` ∨ ``cash_point``
     (idx=-1;观察上报写入,op-layer.md §1.1 :35),动作 op 按下标自取,
     缺席/越界 = 守卫断言)→ 弹窗关闭动画固定等待。``chosen_expert``/
-    ConfirmExpertCash 到账登记留守画面 op 重入裁决出口(动作事实边界),
+    ConfirmExpertCash 到账登记留守画面 op 落地复查出口(动作事实边界),
     本 op 容器写零。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。

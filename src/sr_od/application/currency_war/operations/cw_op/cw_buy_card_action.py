@@ -1,11 +1,11 @@
-"""买牌动作 op(CwActionBuyCardOp)——动作 op 重组批③ 换壳
+"""买牌动作 op(CwActionBuyCardOp)——动作 op 重组换壳
 (ActionOp ABC → 框架 SrOperation,构造 = (ctx, param, env);机械执行后
 **op 内直调自己的上报函数** `report_action_buy_card_param`,零分派,
 op-layer.md §1.2 动作 op 契约)。一 op 一文件。
 
 机械执行零判效(用户裁定「动作 op = 机械执行」,落地判定归观察侧
 reconcile 对账):点击后零像素验证零读屏,发出即记账。点击静默不生效属
-执行环境噪声,由下一入口 heavy 实读对账显影(shop+gold 失配 → 安灯停 →
+执行环境噪声,由下一入口 heavy 实读对账显影(shop+gold 失配 → 失配告警停 →
 按真 bug 修),重试 = 决策循环按新观察自然重派。
 """
 from __future__ import annotations
@@ -149,9 +149,9 @@ class CwActionBuyCardOp(CwOperation):
                                 member=action.card.name,
                                 system=_sys, drought=_d)
         # (tracking 随动同步腿已随tracked 第二账
-        #  退役删除:容器逻辑态由下方 report_action_buy_card_param 单点
+        #  停用删除:容器逻辑态由下方 report_action_buy_card_param 单点
         #  落账——满栏合成买在报文侧同走 _apply_full_bench_merge_buy,
-        #  原执行侧 mutate 镜像是第二账时代形状,2026-09-09 双响事故的
+        #  原执行侧 mutate 镜像是第二账时代形状 双响事故的
         #  防御语义由「单账即同步」结构性承载。)
         _payload_cards = (shop_payload_content_cards(state.shop.value)
                           if state.shop.value is not None else [])

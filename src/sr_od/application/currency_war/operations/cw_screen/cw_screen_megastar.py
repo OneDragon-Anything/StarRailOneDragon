@@ -1,7 +1,7 @@
 """盛会之星画面 op(事件 overlay 族一画面一文件 = ``cw_screen_*.py``,
 本文件 = 巨星;入口门由主循环身份分发承担,处理本体 = 画面 op 真身)。
 
-形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两段
+形态(迭代-screen-op-flat-report):观察 node + 决策动作 node 两段
 直继承 SrOperation。观察 node = 节点完成门(``_in_node``,miss = round_success
 交回外循环,选中标记复位副作用在门内)+ 候选观察(懒读保真:仅「本访问将
 选择」即未选中时读候选;确认访问不重读,迁移不增加读屏)→
@@ -13,21 +13,21 @@ round_wait 循环推进(不烧节点重试预算;不收敛 = 策略 bug 响亮�
 上限)。``chosen_megastar`` = 选择点单次逻辑写入留守决策面(动作事实边界,
 不进 report);选中旗标宿主 = 策略器 StrategyState(经 kernel strategy_state_of
 None-safe 通道,执行层不冷建)。本屏 sim 腿 = 不适用(sim 无对应画面段,
-事件浮层族即时落定),等价判据主承重 = 实机在册行为锁。
+事件浮层族即时落定),等价判据主要支撑 = 实机在册行为锁。
 
 出口语义(选中半访问):候选空 = 具名 round_fail 零盲发,返回词表外/
 None = 具名 round_fail,idx 越界 = 守卫断言 AssertionError——守卫均在
 派发前、零点击;无 match/gs 局外不设早退支(单跑缺上下文沿正常链路
-失败即预期;用户裁决 2026-09-22 全族删门);名字转换失败 = 观察层
+失败即预期;用户裁决 全族删门);名字转换失败 = 观察层
 round_fail(转换门 = ``obs/cw_megastar_obs.py`` 的
 ``standardize_megastar_options``)。
 
-**玩法机制(米游社 wiki content/6239 + 实机日志/截图核实,2026-08-07)**:
+**玩法机制(米游社 wiki content/6239 + 实机日志/截图核实)**:
 盛会之星 = 阵营羁绊;「巨星」= 选 1 名盛会之星角色当巨星,给全队独特 buff。
 触发 = 羁绊激活时弹出(非固定节点),一局可多次 → 选中标记不能跨节点保持。
 dispatch 是画面身份反应式(阶段一身份分发命中「盛会之星」就接)→ 不管何时弹都接得住。
-本节点 = 「选巨星候选 → 确认」,确认 = 纯机械单发(用户裁定 2026-09-14):
-确认未落地归下一帧重入裁决,节点循环单确认自愈;「请选择强化角色」
+本节点 = 「选巨星候选 → 确认」,确认 = 纯机械单发(用户裁定):
+确认未落地归下一帧落地复查,节点循环单确认自愈;「请选择强化角色」
 文本 = 确认钮旁伴随文案,禁据它判步。候选点击坐标 = 观察上报随选项
 一并落容器 ``megastar_opts[idx].xy``(选择坐标观察上报,规范 =
 op-layer.md §1.1;动作 op 按下标自容器取点,本 op 零坐标现算;候选
@@ -114,7 +114,7 @@ class CwScreenMegastar(CwOperation):
         「本访问将选择」(未选中)才读候选;确认访问不重读(迁移不增加
         读屏)→ ``report_screen_megastar_obs`` 写 ``megastar_opts``
         (空候选不写,闸在 report 内);无 match/gs 局外不设早退支——
-        单跑缺上下文沿正常链路失败即预期(用户裁决 2026-09-22 全族删
+        单跑缺上下文沿正常链路失败即预期(用户裁决 全族删
         门);名字标准化转换门住本 node 选中半读链(规范 = 同节
         「观察标准化门」)。"""
         screen = self.last_screenshot
@@ -137,7 +137,7 @@ class CwScreenMegastar(CwOperation):
         _match = self.ctx.cw_match
         _gs = getattr(_match, 'gs', None) if _match is not None else None
         # 无 match/gs 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        # §1.1;用户裁决 全族删门):单跑缺上下文沿正常链路
         # 在此失败即预期,禁回填此类单跑防御分支。
         clicked = self._clicked_of(_match)
         options = [] if clicked else read_megastar_options(self.ctx, screen)
@@ -166,14 +166,14 @@ class CwScreenMegastar(CwOperation):
         门复检自愈。出口语义(选中半访问):候选空 = 具名 round_fail 零
         盲发,返回词表外/None = 具名 round_fail,idx 越界 = 守卫断言
         AssertionError——守卫均在派发前、零点击;无 match/gs 局外不设
-        早退支(用户裁决 2026-09-22 全族删门);名字转换失败 = 观察层
+        早退支(用户裁决 全族删门);名字转换失败 = 观察层
         round_fail(标准化转换门住观察 node)。"""
         screen = self.last_screenshot
         if not self._in_node(screen):
             return self.round_success('巨星节点完成(已离开本节点画面)',
                                       wait=CW_OVERLAY_SETTLE_S)
         # 无 match/gs 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        # §1.1;用户裁决 全族删门):单跑缺上下文沿正常链路
         # 在此失败即预期,禁回填此类单跑防御分支。
         _fail = self._do_action()
         if _fail is not None:
@@ -196,7 +196,7 @@ class CwScreenMegastar(CwOperation):
                 return self.round_fail(
                     '[cw-megastar] 决策无有效输出零盲发(候选空 options=0)')
             # 零参决策(写槽已由 report 落容器 megastar_opts;决策调用形态不变)。
-            # 守卫② 返回契约:词表外/None = 具名 fail 含原值留证(注解的运行期执行)。
+            # 守卫② 返回契约:词表外/None = 具名 fail 含原值留存证据(注解的运行期执行)。
             pick = _match.strategy.decide_megastar()
             if not isinstance(pick, CwActionPickMegastarParam):
                 return self.round_fail(
@@ -234,7 +234,7 @@ class CwScreenMegastar(CwOperation):
         # 选择坐标观察上报收敛;确认钮 = 动作 op 执行体 round_by_find_and_click_area
         # 查找点击,全族统一)。
         # 派发:上报 param 携真实选中下标(取点/取名键单一源);env 零机械
-        # 下标零坐标传参(env.idx 已退役停喂);确认轮复用缓存 idx。
+        # 下标零坐标传参(env.idx 已停用停喂);确认轮复用缓存 idx。
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )

@@ -7,7 +7,7 @@ boss 节点前弹「强敌来袭」简报横幅:识别阵营徽记模板锚「�
 商店开」完成承诺实证错误:boss 简报点掉后直接开 boss 战,商店永不开,
 等锚必超时,第七局/第八局接管实录)。
 
-接线教训(实机走查实锤):主循环判定序无此分支时,boss 简报帧(横幅遮挡
+接线教训(实机走查已实测确认):主循环判定序无此分支时,boss 简报帧(横幅遮挡
 观察,SIFT 双空读)误落备战分支反复空转 598s(SENTINEL-STALL)——分支
 必须**先于备战双锚**。
 
@@ -15,7 +15,7 @@ boss 节点前弹「强敌来袭」简报横幅:识别阵营徽记模板锚「�
 轻屏统一形态):观察 node = 横幅门(徽记模板锚 miss → 「强敌」片段判别
 兜底;不在 = 已推进 → 早退 success 交回外循环重判,obs 不装载)+ 门内
 obs{on_screen} → ``report_screen_boss_briefing_obs``(boss 类型直定写端,
-目标 = 现 hist——迭代 2026-09-20-node-advance-action-report 切换批自旧
+目标 = 现 hist——迭代-node-advance-action-report 切换批自旧
 BOSS 简报腿迁移,design §2.5 表;直定前置同源守卫见 kernel 屏文件,
 match/gs 缺席跳过)→ obs 挂实例属性进
 决策 node。决策动作 node = 点空白一次推进 → success 交回(本屏一次点击
@@ -24,7 +24,7 @@ match/gs 缺席跳过)→ obs 挂实例属性进
 ``is_boss_briefing_texts`` 判别面——三处消费同源(op 内锚兜底/
 ``CwScreenBattleWait._hit_completion_anchor`` 完成白名单/loop 阶段一位
 面过渡身份臂排他)不变。本屏 sim 腿 = 不适用(sim 无对应画面段),等价
-判据主承重 = 实机在册行为锁(锁面 = sr-od-test test_cw_obs_arch_phase_
+判据主要支撑 = 实机在册行为锁(锁面 = sr-od-test test_cw_obs_arch_phase_
 screens.py + test_cw_anchor_exclusion.py)。
 """
 import time
@@ -55,7 +55,7 @@ from sr_od.context.sr_context import SrContext
 
 #: 「强敌」判别片段(误读鲁棒;勿改回全词「强敌来袭」——来袭二字可误读)。
 #: 双形态:简体「强敌」 + 繁首「強敌」——同一横幅标题的 OCR 输出随渲染波动
-#: (实证:一局读「强敌米」,另一局读「強敌来袭」繁首,analyze 实锤)。
+#: (实证:一局读「强敌米」,另一局读「強敌来袭」繁首,analyze 已实测确认)。
 BOSS_BRIEFING_TOKENS: tuple[str, ...] = ('强敌', '強敌')
 
 
@@ -130,7 +130,7 @@ class CwScreenBossBriefing(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=8)
     def act(self) -> OperationRoundResult:
-        """点空白推进体:读「区域-空白点击」center(缺失 → fail 留证缺建档)
+        """点空白推进体:读「区域-空白点击」center(缺失 → fail 留存证据缺建档)
         → 点空白 → success 交回(横幅退场由外循环重派后的下一次入口门判定)。"""
         blank = area_center(self.ctx, CwScreenBossBriefing.BLANK_AREA,
                             CwScreenBossBriefing.SCREEN_NAME)

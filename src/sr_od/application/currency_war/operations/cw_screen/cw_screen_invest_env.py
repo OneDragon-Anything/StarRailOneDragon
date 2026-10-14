@@ -9,17 +9,17 @@
 ``report_screen_invest_env_obs`` 落容器(候选 ``invest_env_opts`` 值域 =
 标准注册名 + ``env_refresh_left`` 观察写端)→ obs 挂实例属性。决策动作
 node = 零参决策(候选自容器槽;空候选/无有效输出 = round_fail 显式失
-败,零盲发 = op-layer.md §1.1 + action_ops.md §1 增补 2)→ 环境帧刷新
+败,零盲发 = op-layer.md §1.1 + action_ops.md §1 )→ 环境帧刷新
 判据可发整组重掷(终结交回)∨ 点**最优**卡底 + 确认链经
 ``CwActionPickInvestOp`` 派发(上报纯 idx,名字自容器标准名单一源)→
 **round_success 终结交回**(选完即交回 = op-layer.md §1.1;确认未生效
 = 代码 bug,overlay 残留由外循环按当前画面重识别重派,修法 = 点击链
-可靠性——action_ops.md §1 增补 2 即时上报契约)。
+可靠性——action_ops.md §1  即时上报契约)。
 
 环境刷新 = 终结动作(刷新 = 唯一引入新事实的动作,须交回外循环重观察;
 结构语义 = screens/op-layer.md §1.4):决策返回 ``refresh_slots`` 非空 ∧
 剩余次数授权(obs 携带 + 容器 ``env_refresh_left``)→ 点刷新圆钮一次
-(文本锚定偏移)→ 动画窗固定等待 → 零效果缺陷留证对账 → 本访问即终结
+(文本锚定偏移)→ 动画窗固定等待 → 零效果缺陷留存证据对账 → 本访问即终结
 交回。
 
 选择事实(active_env)经动作落地链写:动作 op 确认后立即自上报 →
@@ -27,9 +27,9 @@ node = 零参决策(候选自容器槽;空候选/无有效输出 = round_fail �
 效果枚举,正本 = game_state/gain-chain.md);画面 op 零选择写点。计数 =
 屏上剩余次数观察真值(屏上数字即真值,正本 = game_state/fields.md
 §3.4.3),写端 = 观察 report 摄入。无 match 局外不设早退支(画面 op
-不支持局外单独调用——op-layer.md §1.1;用户裁决 2026-09-22 全族删门)。
+不支持局外单独调用——op-layer.md §1.1;用户裁决 全族删门)。
 本屏 sim 腿 = 不适用(sim 端口
-适配器未建),等价判据主承重 = 实机在册行为锁。
+适配器未建),等价判据主要支撑 = 实机在册行为锁。
 """
 import time
 from typing import ClassVar
@@ -67,7 +67,7 @@ from sr_od.context.sr_context import SrContext
 
 class CwScreenInvestEnv(CwOperation):
     """投资环境 3 选 1:零参决策(候选自容器槽,策略器 ``decide_invest_env``;
-    判据 = 策略层 ``invest_env``(28 号稿))→ 刷新终结臂 ∨ 选卡确认链派发。"""
+    判据 = 策略层 ``invest_env``(strategy-docs/28_invest_env_screen.md))→ 刷新终结臂 ∨ 选卡确认链派发。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资环境'   # screen_info 画面(currency_war_invest_env.yml)
     # 卡选中点击 Y:screen_info「区域-卡牌描述行」center.y;常量=screen_info 缺失兜底。
@@ -85,9 +85,9 @@ class CwScreenInvestEnv(CwOperation):
     # ---- 环境刷新执行链常量(执行层时序/几何常量,非策略数值)----
     # 刷新圆钮 = 「剩余次数」文本中心 + 固定偏移(文本锚定,先例
     # ——单帧证据不足判文本漂移形态,固定 area 不可行;遭遇屏/策略屏同款)。
-    # 偏移实测收口(归档帧 sr-od-test/screens/货币战争-投资环境/default.webp
+    # 偏移实测收尾(归档帧 sr-od-test/screens/货币战争-投资环境/default.webp
     # 亮像素簇质心:钮心 x≈671、计数文本中心 x≈772,y 同带 ≈983)→ dx ≈ −101。
-    # 偏移错 → 刷新未命中(计数不扣、牌不变):零效果只落缺陷台账留证;
+    # 偏移错 → 刷新未命中(计数不扣、牌不变):零效果只落缺陷台账留存证据;
     # 重进后计数未扣、预算仍在 → 再次刷新,每圈耗 1 次外环重进,能力退化
     # 非事故,复测即修。
     _REFRESH_BTN_DX: ClassVar[int] = -101
@@ -110,9 +110,9 @@ class CwScreenInvestEnv(CwOperation):
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-投资环境')
-        # 刷新零效果留证证据(刷新臂只读不比,读数原样携带——
+        # 刷新零效果留存证据证据(刷新分支只读不比,读数原样携带——
         # 元组 = (刷前计数, 刷前名集, 刷后计数, 刷后名集);
-        # 消费点 = 刷新臂终结交回出口 ``_reconcile_refresh_no_effect``
+        # 消费点 = 刷新分支终结交回出口 ``_reconcile_refresh_no_effect``
         # 对账,消费即清;None = 无待评证据)。
         self._refresh_evidence: tuple[int, list[str],
                                       list, list[tuple[str, int]]] | None = None
@@ -180,7 +180,7 @@ class CwScreenInvestEnv(CwOperation):
         return getattr(_match, 'gs', None) if _match is not None else None
 
     def _reconcile_refresh_no_effect(self) -> None:
-        """刷新零效果留证对账(消费点 = 刷新臂终结交回出口):携带证据
+        """刷新零效果留存证据对账(消费点 = 刷新分支终结交回出口):携带证据
         (刷前计数/名集 + 刷后帧机械重读)在此评「计数未扣 ∧ 名集未变」→
         落缺陷台账(零决策零改道);任一侧读缺 = 过渡帧不可判,不猜。
         消费即清(每次刷新恰评一次)。缺陷的实际触发形态 = 刷新未生效而
@@ -208,7 +208,7 @@ class CwScreenInvestEnv(CwOperation):
                      '比对宿主 = 刷新臂终结交回出口对账,消费即清',
                 gap_large=False,
                 severity=cw_defects.SEVERITY_L2_RECORD)
-        except Exception:   # noqa: BLE001  留证不阻塞交回
+        except Exception:   # noqa: BLE001  留存证据不阻塞交回
             pass
 
     @operation_node(name='观察', is_start_node=True)
@@ -267,7 +267,7 @@ class CwScreenInvestEnv(CwOperation):
 
         选卡链派发后本访问即终结交回外循环(选完即交回 = op-layer.md
         §1.1;确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重
-        识别重派,修法 = 点击链可靠性,action_ops.md §1 增补 2)。"""
+        识别重派,修法 = 点击链可靠性,action_ops.md §1 )。"""
         obs = self._obs
         return self._decide_and_act(obs)
 
@@ -277,9 +277,9 @@ class CwScreenInvestEnv(CwOperation):
         容器 env_refresh_left)→ 点最优卡底 → 确认链派发(动作 op 内
         即时上报)→ round_success 终结交回。空候选/决策无有效输出 =
         round_fail 显式失败(零盲发 = op-layer.md §1.1 + action_ops.md
-        §1 增补 2「没有选到就是代码 bug」);无 match 局外不设早退支
+        §1 「没有选到就是代码 bug」);无 match 局外不设早退支
         (画面 op 不支持局外单独调用——op-layer.md §1.1;用户裁决
-        2026-09-22 全族删门)。"""
+        全族删门)。"""
 
         opts = obs.options
         names = [n for n, _ in opts]
@@ -292,7 +292,7 @@ class CwScreenInvestEnv(CwOperation):
                 log.warning(f'[cw-env] 投资环境名不在注册表(数据缺口): {_n!r} → 该项 env_fit 走中性 fallback')
         match = self.ctx.cw_match
         # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        # §1.1;用户裁决 全族删门):单跑缺上下文沿正常链路
         # 在此失败即预期,禁回填此类单跑防御分支。
         # 零参决策(写槽已由观察轮 report 落容器 invest_env_opts;候选 =
         # 标准注册名)。输出 = 单一 CwAction:CwActionRefreshInvestCardsParam
@@ -319,7 +319,7 @@ class CwScreenInvestEnv(CwOperation):
                            tag='cw-env')
                 # 动画窗固定等待(整组重掷动画覆盖;机械执行时序,非判效)。
                 time.sleep(CwScreenInvestEnv.REFRESH_ANIM_WAIT_S)
-                # 刷后帧机械重读(零比对零判效——读数原样携带进留证证据,
+                # 刷后帧机械重读(零比对零判效——读数原样携带进留存证据证据,
                 # 「计数未扣 ∧ 名集未变」的零效果判定经对账评点落缺陷台账;
                 # 判效权归对账)。
                 _after = self.screenshot()
@@ -330,7 +330,7 @@ class CwScreenInvestEnv(CwOperation):
                 log.info(f'[cw-env] 环境刷新终结交回:计数 {_budget}→'
                          f'{_counts2[0][0] if _counts2 else "读缺"},'
                          f'重进后重观察重分类')
-                # 零效果留证对账(消费即清)→ 终结交回:选卡/确认均不在
+                # 零效果留存证据对账(消费即清)→ 终结交回:选卡/确认均不在
                 # 本访问;外循环重进 = 入口重建。
                 self._reconcile_refresh_no_effect()
                 return self.round_success('投资环境刷新终结交回(重进重观察重分类)',
@@ -378,7 +378,7 @@ class CwScreenInvestEnv(CwOperation):
             OverlayPickExecEnv,
         )
         # 确认钮不进 env(确认查找 = 动作 op 执行体 round_by_find_and_click_area
-        # 全族统一,用户裁定 2026-09-22;env.confirm 变体随批退役)。
+        # 全族统一,用户裁定;env.confirm 变体已停用)。
         _env = OverlayPickExecEnv(op=self, idx=pick_idx, target=target)
         action_op_for(CwActionPickInvestEnvParam(idx=pick_idx, reason=reason),
                       self.ctx, _env).execute()

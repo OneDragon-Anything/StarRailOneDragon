@@ -1,4 +1,4 @@
-"""工具消耗动作 op(CwActionToolUseOp)——动作 op 重组批③ 换壳(原
+"""工具消耗动作 op(CwActionToolUseOp)——动作 op 重组换壳(原
 ``ToolUseOp``,ActionOp ABC → 框架 SrOperation,op-layer.md §1.2 动作
 op 契约)。
 机械执行后 **op 内直调自己的上报函数**(七工具参数共用机械半,上报 =
@@ -7,10 +7,10 @@ tool-gain-report
 迭代起上报 = 机械执行直接上报写容器,容器写正本 =
 ``kernel/cw_action_report/tool_use``)。非终结。
 
-一个 op 类辖工具原子七类(R8 按消耗品各立词表类,机械半同构:owned
+一个 op 类覆盖工具原子七类(R8 按消耗品各立词表类,机械半同构:owned
 网格内 icon → 目标拖曳;工具名解析表 ``_TOOL_NAME_BY_CLASS`` 随体迁)。
 注册表七行(每词表类一行)同指本 op,消费语义逐类一致。零消耗确认
-对拍(裁决 3:消耗对拍由观察承接)。"""
+交叉核对(裁决 3:消耗交叉核对由观察承接)。"""
 from __future__ import annotations
 
 import time
@@ -94,7 +94,7 @@ class CwActionToolUseOp(CwOperation):
         """工具消耗单步(七类共用机械半:owned 网格内 icon → 目标拖曳)。
 
         源件 = 工具 icon(按注册名定位);目标 = equip 模式 owned 网格
-        icon / char 模式角色槽位中心。零消耗确认对拍(裁决 3)——拖后固定
+        icon / char 模式角色槽位中心。零消耗确认交叉核对(裁决 3)——拖后固定
         等待,消费真值 = 下一帧装备区读数;机械链发出后直调上报 =
         机械执行直接上报写容器(tool_use 确定面 write_logic / 随机面
         write_logic_rand 采样链,上报无条件不判成败)。

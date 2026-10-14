@@ -50,8 +50,8 @@ class HarvestInvestCodex(CwOperation):
                         self.seen.add(json.loads(line)['name'])
 
     def _ocr_texts(self, img, region):
-        """全图 OCR + rect 过滤(2026-08-24 crop-first 审计转换;fixture 投资策略/default.png
-        对拍与裁剪读逐字等价)。同帧多次调用(_first_row_text 3 次 + _detail)复用同一帧级缓存,
+        """全图 OCR + rect 过滤( crop-first 审计转换;fixture 投资策略/default.png
+        交叉核对与裁剪读逐字等价)。同帧多次调用(_first_row_text 3 次 + _detail)复用同一帧级缓存,
         不再各裁各识。坐标为绝对值(全图 OCR 原生绝对坐标,无需 +region 偏移)。"""
         x0, y0, x1, y1 = region
         res = self.ctx.ocr_service.get_ocr_result_list(
@@ -81,17 +81,17 @@ class HarvestInvestCodex(CwOperation):
                      if abs(y - ys[0]) < 60 and 2 <= len(t) <= 12), '')
 
     def _scroll_to_top(self) -> None:
-        """回顶:退到数据银行菜单再重进图鉴(重进 = 列表天然回顶;比拖拽回顶可靠,用户 2026-08-15)。
+        """回顶:退到数据银行菜单再重进图鉴(重进 = 列表天然回顶;比拖拽回顶可靠,用户)。
 
         ESC 关图鉴 overlay → 菜单点「投资策略图鉴/投资环境图鉴」入口重进。kind 映射入口文本。
         兜底:重进失败(找不到入口)退回拖拽回顶。
         """
         ctrl = self.ctx.controller
         entry = '投资策略图鉴' if self.kind == 'strategies' else '投资环境图鉴'
-        # ⚠️ 待实机核(ESC 正形化挂账):本处 ESC 关图鉴 overlay 的点击替代 =
+        # ⚠️ 待实机核(ESC 正形化,已登记待办):本处 ESC 关图鉴 overlay 的点击替代 =
         # 数据银行图鉴族右上「返回箭头」(货币战争-装备图鉴 doc 记录 VLM 见
-        # ~1840-1905,40-105,未 click 实锤;投资策略/环境图鉴屏未建档)。
-        # 实机不可测(验证局在跑)不硬编坐标——待现场 click 实锤后建档 area
+        # ~1840-1905,40-105,未 click 已实测确认;投资策略/环境图鉴屏未建档)。
+        # 实机不可测(验证局在跑)不硬编坐标——待现场 click 实测确认后建档 area
         # 改点并删本 ESC。拖拽回顶兜底(_scroll_to_top_drag)不受影响。
         ctrl.btn_tap('esc')
         time.sleep(1.5)

@@ -1,7 +1,7 @@
 """商店单动作动作 op 集(/10;flow 实施批)。
 
 动作基类单方法(execute;原 execute+project 两方法契约
-的 project 半已删——T-163 纯规则路线裁定(用户 2026-09-12):策略与实机
+的 project 半已删—— 纯规则路线裁定(用户):策略与实机
 操作链零 simulate 前瞻消费,期望态推进改走容器逻辑态直写
 (上报函数族单点,kernel/cw_action_report;
 kernel 规则单一源,与序列驱动器同形;写语义由投影直锁钉
@@ -15,18 +15,18 @@ kernel 规则单一源,与序列驱动器同形;写语义由投影直锁钉
 **一击一张**(kernel 规则面同判:常态单击单张,满栏例外按 merge_buy_k
 一击多张),规则模型误差由入口
 对账兜底(下一画面入口观察 = 事实重建,决策 8)。实机冻结解除后补档
-验证:验证未过则该买面升格为终结 op(原 fallback 载体 CompTransactionOp 已随 unified-action-factory 批2b R3 删除,终结语义收敛于 CwActionRefreshShopParam/CwActionCloseShopParam)。
+验证:验证未过则该买面升格为终结 op(原 fallback 载体 CompTransactionOp 已随 unified-action-factory  R3 删除,终结语义收敛于 CwActionRefreshShopParam/CwActionCloseShopParam)。
 
 守卫断言(决策 9):执行侧检查 = 防 bug 路栏非控制流分支,非法返回 =
 策略器 bug 响亮暴露——``guard_proposal_vs_expected``(提案动作的对象在
 期望态中存在且未被消费,防策略器算术 bug)。原 ``guard_expected_vs_
-tracked``(期望态 vs tracked 双账对拍)已随 T-268 退役(用户裁定·对账
+tracked``(期望态 vs tracked 双账交叉核对)已停用(用户裁定·对账
 归属原则:对账 = 观察 vs 逻辑的双态比对,唯一合法时点 = 画面 op 上报
 观察数据进入 game state 的观察边界,由 kernel cw_reconcile 执行;规则
 文本 = screens/op-layer.md §1.3)——逻辑态建模 bug 的检出归观察边界
-reconcile 纠漂显影(观察赢),op 层不再做双态比对。
+reconcile 纠漂显影(以实际观察为准),op 层不再做双态比对。
 
-执行侧零观测(action_ops §1 增补 3:动作 op 无论执行前后不做观察识别
+执行侧零观测(action_ops §1 动作 op 无论执行前后不做观察识别
 ——机械执行 + 上报动作事实;画面事实的真值与对账归观察侧 reconcile,
 证据职能 = 下一入口观察)。
 """
@@ -81,7 +81,7 @@ class ShopExecEnv:
     ``executor`` = 备战域共用词表动作 op(``CwActionSellBenchOp``/
     ``CwActionLevelUpOp`` 等,体内经 ``env.executor`` 消费 ``_ctx``/``_op``)
     在商店域的执行器端口适配(商店执行链端口接线;None = 端口未注入,
-    该族动作发射即 AttributeError 响亮暴露)。
+    该族动作发出即 AttributeError 响亮暴露)。
     """
 
     op: SrOperation
@@ -91,7 +91,7 @@ class ShopExecEnv:
     level_btn: Point
     refresh_btn: Point
     ledger: ShopVisitLedger
-    # 当前期望态(W6 波 4 容器化,设计件 §2.4-2:执行侧读点改容器单例
+    # 当前期望态( 波 4 容器化,设计件 §2.4-2:执行侧读点改容器单例
     # game_state_of(match.session);满栏 k 计等消费经席位/payload 读口)
     state: GameState
     executor: ShopActionExecutor | None = None
@@ -141,7 +141,7 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
 
     提案动作引用的对象在期望态中确实存在且未被消费——防策略器算术 bug
     (单动作循环下期望态每动作后即更新,此属天然成立;断言炸出 = 策略器
-    bug,禁静默跳过)。辖面:CwActionSellBenchParam 的槽位占用与 expect 名一致性;
+    bug,禁静默跳过)。覆盖面:CwActionSellBenchParam 的槽位占用与 expect 名一致性;
     CwActionBuyCardParam 的所购牌名在期望态店中(已买走/陈旧快照牌再提案 = 跨代际
     提案,炸出;未识别牌 name 空 = 无名可对,跳过名断言交未识别面处理;
     满栏 merge 买的「一击多张」豁免属 expected-vs-主域双源豁免,
@@ -149,7 +149,7 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
     """
     # 容器读口在函数顶导入:函数体内任何位置的 import 语句都会
     # 把名字绑定为全函数局部变量——曾放 CwActionBuyCardParam 分支内,CwActionSellBenchParam 分支
-    # 未执行该 import 即引用,UnboundLocalError(2026-09-13 实机 T-181:
+    # 未执行该 import 即引用,UnboundLocalError( 实机 :
     # r2 席满卖人决策被守卫自身炸掉,触发买空店重进崩溃循环)。
     # P4 容器形:席位域 = BenchView.slots(BenchSlot),身份经 bench_slot_unit
     # 解包读口取(动作 bench_idx = 容器下标,统一词表坐标系)。
@@ -193,8 +193,8 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
                 '(策略器 bug:跨代际提案)')
 
 
-# 商店单动作 op 族住动作文件:动作 op = CwActionXxxOp(SrOperation,批③
-# 换壳;原 ActionOp ABC 随动作 op 重组退役)。六动作 = 各自
+# 商店单动作 op 族住动作文件:动作 op = CwActionXxxOp(SrOperation,
+# 换壳;原 ActionOp ABC 随动作 op 重组停用)。六动作 = 各自
 # cw_<action>_action.py;词表→op 工厂 = cw_action_registry.py(单一注册
 # 表)。本文件 = 账本+守卫+执行支撑(ShopExecEnv/ShopVisitLedger 单一源;
-# ShopExecEnv 为 op 构造的域执行环境结构化包,批③起构造时传入)。
+# ShopExecEnv 为 op 构造的域执行环境结构化包,起构造时传入)。

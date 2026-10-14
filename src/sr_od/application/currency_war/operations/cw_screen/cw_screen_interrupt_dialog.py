@@ -1,17 +1,17 @@
 """货币战争 中断挑战 dialog op(空决策形态,A9)。
 
-ESC 误按/误点左上角弹出的「是否中断挑战」真模态(历史 3 次实锤;
-2026-08-17 建档替原停机钩子)的处理迁移:点右上 X 关回备战,单尝试合同
+ESC 误按/误点左上角弹出的「是否中断挑战」真模态(历史 3 次已实测确认;
+ 建档替原停机钩子)的处理迁移:点右上 X 关回备战,单尝试合同
 (验证废除批拆 op 内新帧重试:C10——X 不在(旧帧)的重试由外循环重派
 承载,重派即新帧)。**刻意不用 ESC**(bug#2,原分支注释随迁,
 禁在 op 内「顺手统一」成 ESC):面板已关时 ESC 落备战弹「中断挑战」;
-X 是弹窗内坐标永远安全。背景:2026-08-17 M53 停机建档。
+X 是弹窗内坐标永远安全。背景: M53 停机建档。
 
 **语义红线(原分支注释随迁)**:点遮罩无效;bot 策略 = 点右上 X 关闭继续
 对局——不点「暂时离开」免中断对局,**绝不点「放弃并结算」**(不可逆放弃
 进度)。弹窗内「小队生命值」为 HP 真值快照,顺带对账备用,暂不消费。
 exogenous popup 行随 op 迁移(测量链:误触弹窗是外生事件
-高频源,bug#2 ESC 三次实锤)。
+高频源,bug#2 ESC 三次已实测确认)。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;
 推进型空决策骨架逐屏内联,无共享基类——模式一致即重复):观察 node =
@@ -19,7 +19,7 @@ exogenous popup 行随 op 迁移(测量链:误触弹窗是外生事件
 round_fail 交回外循环重判,「下一帧重判」是外循环职责)+ obs{on_screen}
 挂实例属性(空决策形态无 report:本屏零容器写点,obs 类住
 kernel/cw_screen_report/interrupt_dialog.py,import 构造即可)。决策动作
-node = 重入裁决顶部(点 X 已发 → 锚 miss = 已离开本画面 → success 交回
+node = 落地复查顶部(点 X 已发 → 锚 miss = 已离开本画面 → success 交回
 ——出口 = 入口观察的合法重判,非动作层判效;锚在 = 再推进)→ 点
 「按钮-关闭」单次推进(单尝试合同,见模块头)→ round_wait 循环(不烧
 节点重试预算,不收敛 = 动作 bug 响亮暴露,无防御上限;「推进动作未
@@ -73,9 +73,9 @@ class CwScreenInterruptDialog(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=2)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
+        """落地复查(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
         if self._advanced_once and not self.entry_ok(self.last_screenshot):
-            # 重入裁决(验证废除形态):重入锚 miss = 已离开本画面 → success
+            # 落地复查(验证废除形态):重入锚 miss = 已离开本画面 → success
             # 交回;旗标清(实例级,单 op 生命周期语义)。
             self._advanced_once = False
             return self.round_success(

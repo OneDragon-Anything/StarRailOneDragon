@@ -38,13 +38,13 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwActionPickFortuneOp(CwOperation):
-    """命运卜者强化三选一确认链(pick-op-unify 批收编)。
+    """命运卜者强化三选一确认链(pick-op-unify 批并入)。
 
     点卡选中(safe_click 防吞点击;点卡坐标 = 按下标自容器
     ``fortune_opts_xy`` 读〔坐标随报条款,缺/越界 = 守卫断言;选中几何
     避「详情」按钮带归观察侧建档〕)→ 选中动画固定等待 → 确认
     (建档「按钮-确认选择」查找点击,全族统一;不带 until = 动作 op
-    禁验证)。本屏零 chosen 写端(选择存证已退役),容器写零。"""
+    禁验证)。本屏零 chosen 写端(选择存证已停用),容器写零。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False
@@ -76,7 +76,7 @@ class CwActionPickFortuneOp(CwOperation):
         safe_click(op, pt, tag='cw-pick-fortune')
         time.sleep(1.2)
         # 确认 = 建档「按钮-确认选择」查找点击(round_by_find_and_click_area
-        # 全族统一,用户裁定 2026-09-22;area 缺失 = 显式失败交框架轮次)。
+        # 全族统一,用户裁定;area 缺失 = 显式失败交框架轮次)。
         env.round_result = op.round_by_find_and_click_area(
             op.screenshot(), CwScreenFortune.SCREEN_NAME, '按钮-确认选择',
             success_wait=1.0)

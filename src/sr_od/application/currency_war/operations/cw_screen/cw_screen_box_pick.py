@@ -6,18 +6,18 @@
 ``screens/README.md`` §3)。链路:备战环 ``CwActionOpenBoxParam`` 点开启
 (**终结化**——开箱即交回)→ 外循环按本画面分发本 op → OCR 卡名 →
 选卡决策(局内策略 ``decide_box_card`` 契约面;无 match 局外不设早退
-支,用户裁决 2026-09-22 全族删门)→ 点卡 → 固定动画等待 → **选卡即终结交回**
+支,用户裁决 全族删门)→ 点卡 → 固定动画等待 → **选卡即终结交回**
 (选卡落地由下一帧观察覆盖)。
 
 决策分层纪律:打分只住机器——策略契约 ``decide_box_card``
 (``strategies/impl/cw_strategy.py`` abstract 零参 + ``strategies/impl/flow.py``
 实现)与 kernel 机器 ``pick_equipment``(``kernel/cw_equip_value.py``)
-是仅有的两处决策面,本 op 禁第二打分实现;``decide_box_card`` 异常留证
+是仅有的两处决策面,本 op 禁第二打分实现;``decide_box_card`` 异常留存证据
 (完整栈)后显式上抛、返回越界索引同 fail-closed 上抛——两者都禁无声
 回落内联打分(策略 bug 禁遮蔽;正本 = ``flow/README.md`` §1 决策控制
 分层铁律 + ``screens/op-layer.md`` §1.1 出口三语义)。无 match 局外
 不设早退支(op-layer.md §1.1「画面 op 不支持局外单独调用」;用户裁决
-2026-09-22 全族删门),本 op 不设任何兜底决策路径;
+ 全族删门),本 op 不设任何兜底决策路径;
 ``pick_equipment`` 打分单一源留守策略器 ``decide_box_card`` 消费(策略
 器自限域)。
 
@@ -47,7 +47,7 @@ miss 未发 = round_fail 交回外循环按画面重分发)+ OCR 卡名行读数
 动画等待 + 自上报住动作 op,机械链契约 = ``flow/action_exec.md`` §2;
 点击坐标 = 容器 ``box_card_names_xy[idx]`` 动作 op 自取)→ 选卡即终结
 交回(单选族例外,判据 = ``screens/README.md`` §3;选卡落地由下一帧
-观察覆盖,无重入裁决旗标)。
+观察覆盖,无落地复查旗标)。
 """
 from typing import ClassVar
 
@@ -106,7 +106,7 @@ class CwScreenBoxPick(CwOperation):
     """武装箱 4 选 1 选卡画面 op(选卡即终结;单选族例外,判据 = screens/README.md §3)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-备战-武装箱选择'
-    #: 卡身点击 y(点卡名下方一点避「查看详情」按钮;2026-08-14 实测)
+    #: 卡身点击 y(点卡名下方一点避「查看详情」按钮; 实测)
     CARD_Y: ClassVar[int] = 290
 
     def __init__(self, ctx: SrContext):
@@ -193,10 +193,10 @@ class CwScreenBoxPick(CwOperation):
         (机械链契约 = flow/action_exec.md §2;点击坐标 = 容器
         ``box_card_names_xy[idx]`` 动作 op 自取,选卡落地归下一帧观察
         覆盖);本 op 只决策(局内;fail-closed 契约)与交回;无 match
-        局外不设早退支(op-layer.md §1.1;用户裁决 2026-09-22 全族删门)。
+        局外不设早退支(op-layer.md §1.1;用户裁决 全族删门)。
         派发实例携真实选中下标(上报 param 即真实选择)。"""
         # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        # §1.1;用户裁决 全族删门):单跑缺上下文沿正常链路
         # 在此失败即预期,禁回填此类单跑防御分支。
         idx = self._decide_card_index([n for n, _ in self._cards])
         chosen = self._cards[idx][0]
@@ -241,7 +241,7 @@ class CwScreenBoxPick(CwOperation):
         交回重读)。
 
         四卡可能同名(同装备多张)= 重复名合法观察面:逐候选独立归一,
-        不适用「多候选命中同一注册名 = 转换失败」互斥判(该判辖选项
+        不适用「多候选命中同一注册名 = 转换失败」互斥判(该判覆盖选项
         互斥屏);容器 ``box_card_names`` 值域自此 = 标准注册名。"""
         resolved: list[tuple[str, int]] = []
         for name, x in cards:
@@ -259,12 +259,12 @@ class CwScreenBoxPick(CwOperation):
     def _decide_card_index(self, names: list[str]) -> int:
         """选卡决策(局内专用;容器写归观察 node 的
         ``report_screen_box_pick_obs`` 调用,本方法只决策):策略契约
-        ``decide_box_card``(fail-closed:异常留证上抛/越界上抛,禁
+        ``decide_box_card``(fail-closed:异常留存证据上抛/越界上抛,禁
         无声回落)。无 match 局外不设早退支(op-layer.md §1.1;用户
-        裁决 2026-09-22 全族删门),本方法无兜底臂。"""
+        裁决 全族删门),本方法无兜底臂。"""
         try:
             idx = self.ctx.cw_match.strategy.decide_box_card().idx
-        except Exception:   # noqa: BLE001  留证后显式上抛,禁无声回落
+        except Exception:   # noqa: BLE001  留存证据后显式上抛,禁无声回落
             import traceback
 
             log.error('[cw!][boxpick] decide_box_card 异常(留证后上抛):\n%s',

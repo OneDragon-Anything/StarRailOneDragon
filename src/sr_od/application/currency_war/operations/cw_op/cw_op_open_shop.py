@@ -19,7 +19,7 @@ def _note_receipt(op: SrOperation, applied: bool, reason: str) -> None:
 
     三出口全簿记:点击已发 = applied=true;幂等已开(无动作可发)/入口
     观察失败(动作没发出)= applied=false + reason——失败可见性(exec_events
-    收编)。发出即簿记非验证(不读屏核验);journal 常开(语义申报 =
+    并入)。发出即簿记非验证(不读屏核验);journal 常开(语义申报 =
     `kernel/cw_state_journal.py` 模块头)回执写入无条件,无局跳过在 kernel 口。
     """
     try:
@@ -56,7 +56,7 @@ def open_shop(op: SrOperation) -> OperationRoundResult:
     点击落空不判负,重入轮由本观察裁决出口。未开 → 点
     「按钮-商店」→ park_cursor → 固定等待 ``SHOP_OPEN_ANIM_S``(用户口述
     定值:干净的备战里打开商店等 1 秒就够,操作完成自等动画)→
-    **机械交回**(验证废除,用户裁定 2026-09-10:动作 op 只管机械执行
+    **机械交回**(验证废除,用户裁定:动作 op 只管机械执行
     禁止验证;发出即职责完成,调用方不问成败)——不验「收起出现」,
     店开没开由下一轮重入幂等观察 / 下一帧观察侧对账(0n 三锚/备战帧读
     互斥)自然闭环。找不到商店/收起按钮 = 入口观察失败(动作没发出)→
@@ -95,7 +95,7 @@ class CwOpOpenShop(CwOperation):
       幂等出口早退(:func:`_open_shop_already_open`,回执 + success,与
       直调首臂逐位同);miss → 进决策动作 node(纯读判定,不点击)。
     - 决策动作 node = 现役推进体逐位(点击 + park + 动画等待 + 回执)+
-      重入裁决(顶部幂等门:重入帧商店锚在 = 上轮点击已落地 → 幂等出口;
+      落地复查(顶部幂等门:重入帧商店锚在 = 上轮点击已落地 → 幂等出口;
       miss = 未落地 → 重发点击),循环推进 = round_wait(不烧节点重试
       预算;不收敛 = 动作实现 bug 响亮暴露,无防御上限)。
 
@@ -121,8 +121,8 @@ class CwOpOpenShop(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作')
     def act(self) -> OperationRoundResult:
-        """重入裁决(幂等门)→ 点击推进体逐位 → round_wait 循环推进。"""
-        # 重入裁决(现役幂等入口观察语义逐位):重入帧商店锚在 = 上轮
+        """落地复查(幂等门)→ 点击推进体逐位 → round_wait 循环推进。"""
+        # 落地复查(现役幂等入口观察语义逐位):重入帧商店锚在 = 上轮
         # 点击已落地(店已开)→ 幂等出口;miss = 未落地 → 重发点击。
         if self.round_by_find_area(self.last_screenshot, SHOP_SCREEN_NAME,
                                    '按钮-收起').is_success:
@@ -136,6 +136,6 @@ class CwOpOpenShop(CwOperation):
         self.park_cursor()
         time.sleep(SHOP_OPEN_ANIM_S)
         _note_receipt(self, True, '')
-        # 机械交回(验证废除):店开没开由下一轮重入裁决/下一帧观察侧
+        # 机械交回(验证废除):店开没开由下一轮落地复查/下一帧观察侧
         # 对账自然闭环;循环推进 = round_wait(不烧节点重试预算)。
         return self.round_wait(wait=1)

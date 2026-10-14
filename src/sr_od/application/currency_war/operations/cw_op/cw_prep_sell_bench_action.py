@@ -1,11 +1,11 @@
-"""卖备战席角色动作 op(CwActionSellBenchOp)——动作 op 重组批③ 换壳
+"""卖备战席角色动作 op(CwActionSellBenchOp)——动作 op 重组换壳
 (原 ``PrepSellBenchOp``,ActionOp ABC → 框架 SrOperation;机械执行后
 **op 内直调自己的上报函数** ``report_action_sell_bench_param``,零分派,
 op-layer.md §1.2 动作 op 契约)。非终结。
 
 命名申报:词表类 ``CwActionSellBenchParam`` 的注册行唯一指向本 op
 (商店/备战双域共用:备战域经 PrepExecEnv、商店域经 ShopExecEnv
-执行器端口——商店执行链端口接线批;原商店域独立 op 类已随批③删除,
+执行器端口——商店执行链端口接线批;原商店域独立 op 类已停用,
 单 op 双 env 即全执行路径)。
 """
 from __future__ import annotations
@@ -82,7 +82,7 @@ class CwActionSellBenchOp(CwOperation):
         _led = getattr(env, 'ledger', None)
         if _led is not None:
             _led.total_sell += 1
-        # 用户口述口径(screen_flow_timing.md #21,2026-09-02):卖出金币
+        # 用户口述口径(screen_flow_timing.md #21):卖出金币
         # 动画很快,等 1s 足够——批尾观察前补这段,防读到金币动画帧。
         time.sleep(1.0)
         # —— 自上报(机械发出后;op-layer.md §1.2)——

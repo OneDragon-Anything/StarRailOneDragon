@@ -69,7 +69,7 @@ _TRAIN_SUPPLY_GUARD = EntryPopupGuardSpec(
 )
 
 # 星琼(稀有货币)详情弹窗(建档 assets/game_data/screen_info/currency_war_stellar_jade_detail.yml;
-# 2026-09-07 实机卡死事故):模态压暗+模糊背景下入口链全部背景锚失明。
+# 实机卡死事故):模态压暗+模糊背景下入口链全部背景锚失明。
 # 双锚 AND:「星琼」@0.5 管召回(2 字 @0.5 = 含任一字符即命中,全家族最弱配置,
 # 不可单锚触发)+「稀有货币」@0.75 管精度(4 字容 1 字形变);锚避开动态值
 # (「当前持有」数字变动不入锚)。关闭 = 弹窗右上角 X;禁键令,点空白关闭未
@@ -91,7 +91,7 @@ _JADE_DETAIL_GUARD = EntryPopupGuardSpec(
 # 语料反向验证不击穿)。星徽详情已知触发场景全在对局内,入口链无已知触发
 # 路径,本守卫本质是防御面;对局内分发(阶段一身份)同组合,与本入口同向;
 # OR 接管面 = op 内 entry_ok(双锚其一)。
-# 原与「对局内 OR」的有意分叉声明已随分发收编建档组合 AND 失效
+# 原与「对局内 OR」的有意分叉声明已随分发并入建档组合 AND 失效
 # (历史读法以本注为准)。
 _STAR_BADGE_GUARD = EntryPopupGuardSpec(
     screen_name='货币战争-星徽详情',
@@ -234,7 +234,7 @@ class CwEntryStart(CwOperation):
         self._stale_discarded = discard_stale_match_container(self.ctx, reason)
 
     def _establish_match_once(self) -> None:
-        """新局确凿信号处建立本局 match 容器(W971 §2.1 match 生命周期前置)。
+        """新局确凿信号处建立本局 match 容器( §2.1 match 生命周期前置)。
 
         与 ``_discard_stale_once`` 同址衔接(先弃置残留,再建立本局):
         session 建立时机从 run 首帧 handle_init 前移到进对局——简报观察
@@ -284,7 +284,7 @@ class CwEntryStart(CwOperation):
         if popup is not None:
             return popup
 
-        # 残留大厅态(2026-08-27 实机事故:上局结束「回大厅」后大厅 UI 层残留,
+        # 残留大厅态( 实机事故:上局结束「回大厅」后大厅 UI 层残留,
         # app 层 _enter_lobby 见大厅锚即跳过 enter op → 死按钮态直达本 op)。
         # 该态「开始」按钮不响应任何点击(死按钮仍 OCR 可见,故判据用大厅锚
         # 「标识-创业指南」而非开始按钮文字),右上角「按钮-关闭」才是真退出:
@@ -352,7 +352,7 @@ class CwEntryStart(CwOperation):
         # (行为保持契约 = 同输入同动作):「按钮-返回最高职级」在场 = 未在
         # 最高职级 → 先点它切到玩家最高职级(本号 = A8 财富造物主,即目标最高难度),
         # 再「开始对局」;本 op 只做观察(按钮在场 + 职级读数)→ 按意图机械点击。
-        # (2026-08-03 入口画面建档发现:此前 op 直接点"开始对局" → 一直打 A5 而非目标的最高难度。)
+        # ( 入口画面建档发现:此前 op 直接点"开始对局" → 一直打 A5 而非目标的最高难度。)
         # 难度确认:用 screen_info area 检测+点击(round_by_find_and_click_area),替代全屏 round_by_ocr。
         # crop_first=False:全屏 OCR 后按 area.rect 过滤(小 area crop 易漏字,全屏 OCR 稳)。
         # 读本局职级(难度确认屏「标识-当前难度职级」→ ctx.cw_selected_difficulty 中转;切最高后 = A8)
@@ -404,7 +404,7 @@ class CwEntryStart(CwOperation):
                 crop_first=False).is_success:
             self._discard_stale_once('到达模式选择屏=新局开始')
             self._establish_match_once()
-        # 简报屏 → CwScreenBriefing(W971 P3b:观察直写 session,HandleBriefing 已退役;
+        # 简报屏 → CwScreenBriefing( P3b:观察直写 session,HandleBriefing 已停用;
         # 一屏一 op 调度不变)。
         if self.round_by_find_area(
                 screen, CwEntryStart.BRIEFING_SCREEN, '标识-本场对局首领',
@@ -433,9 +433,9 @@ class CwEntryStart(CwOperation):
             _log.info('[cw-entry] 到达投资环境 → CwScreenInvestEnv(3 选 1 + 确认)')
             CwScreenInvestEnv(self.ctx).execute()
             return self.round_wait(wait=2)
-        # 2b) 投资策略 3 选 1 → CwScreenInvestStrategy(M41 实机修复 2026-08-16:开局流程
+        # 2b) 投资策略 3 选 1 → CwScreenInvestStrategy(M41 实机修复:开局流程
         #     「简报→投资环境→投资策略→备战」,本屏在推进窗口出现但无分支 → 干等超时 196s
-        #     [日志实锤:OCR 反复读到「请选择投资策略」+三卡名,advance 无命中]。handler
+        #     [日志已实测确认:OCR 反复读到「请选择投资策略」+三卡名,advance 无命中]。handler
         #     内含打分(STRATEGY_BINDINGS)+确认;此前只在 prep 主循环内被调度。
         if self.round_by_find_area(screen, '货币战争-投资策略', '标识-请选择投资策略').is_success:
             _log.info('[cw-entry] 到达投资策略屏 → CwScreenInvestStrategy(3 选 1 + 确认)')
@@ -452,7 +452,7 @@ class CwEntryStart(CwOperation):
         if self.round_by_ocr(screen, '点击空白处继续').is_success:
             self.ctx.controller.click(CwEntryStart.BLANK_CLICK.center)
             return self.round_wait(wait=1)
-        # 3b) 积分奖励页(2026-08-17 M58 停机建档:局末积分达标自动弹的活动奖励;bot 推进
+        # 3b) 积分奖励页( M58 停机建档:局末积分达标自动弹的活动奖励;bot 推进
         #     到备战不认识此屏 → 干等超时 196s)。处理:一键领取(有达标奖励)→ 等结算动画 →
         #     点 X 关回大厅,下轮 entry 重新推进(领完弹窗自关或留 X)。
         if self.round_by_find_area(screen, '货币战争-积分奖励', '标识-积分奖励',

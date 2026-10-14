@@ -57,7 +57,7 @@ class CwEntryEnter(CwOperation):
         result = self.round_by_ocr_and_click(screen, '前往参与', retry_wait=1, success_wait=2)
         if result.is_success:
             return result
-        # 按钮不在 ≠ 失败(2026-08-17 实测事故:传送已落地/恢复场景下本节点判死
+        # 按钮不在 ≠ 失败( 实测事故:传送已落地/恢复场景下本节点判死
         # 「找不到 前往参与」,而画面已在朝露公馆入口只差按 F)。交 wait_lobby 分流 ——
         # 它已有全部下游分支:仍在指南页则重点击 / 入口按 F / 弹窗消化 / 大厅即成功,
         # 真到不了大厅由它的节点预算兜底退出。
@@ -85,8 +85,8 @@ class CwEntryEnter(CwOperation):
 
         # 仍在指南页(「前往参与」还在 = 上个节点的 transport click 没落地,仍在加载)→ 重点击。
         # 否则停在指南页(「货币战争」分类 + 「前往参与」按钮都在)→ 下方 F 分支(NOT 前往参与)被跳过
-        # → 无分支命中 → 死循环重试(2026-08-04 全流程跑 37x 重试失败根因)。
-        # ⚠️ lcs_percent=0.7 防误配(2026-08-19 实测事故):朝露公馆大世界左侧任务追踪文本
+        # → 无分支命中 → 死循环重试( 全流程跑 37x 重试失败根因)。
+        # ⚠️ lcs_percent=0.7 防误配( 实测事故):朝露公馆大世界左侧任务追踪文本
         # 「请前往匹诺康尼-飞翔时针号」与「前往参与」LCS=前往(2/4=0.5)恰过默认阈值 → 存在性检查
         # 假阳性 → 永远走本分支重点击 → F 分支被饿死,对局 8s 内失败。真按钮 OCR 4/4(一字形变 3/4=0.75),
         # 0.7 同时容忍形变与拒绝该假阳性;round_by_ocr_and_click 有 difflib 预筛不受此扰。
@@ -98,7 +98,7 @@ class CwEntryEnter(CwOperation):
             self.ctx.controller.click(CwEntryEnter.BLANK_CLICK.center)
             return self.round_retry(wait=1)
 
-        # 版本公告轮播(「贪饕」侵蚀,2026-08-26 版本,W301):游戏级公告弹窗可盖在
+        # 版本公告轮播(「贪饕」侵蚀版本):游戏级公告弹窗可盖在
         # 入口流程任意画面上(待机自动弹出)。项目新规禁键输入——旧实现对公告类
         # 弹窗(赛季扩充说明)按 ESC 关闭,已废;改与 BackToNormalWorldPlus 同款
         # 点击链:标题 id_mark(两页共享)正面识别公告屏 → 第 2 页(「关闭」钮可见)

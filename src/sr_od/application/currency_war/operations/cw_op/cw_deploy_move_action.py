@@ -1,4 +1,4 @@
-"""部署动作 op(CwActionDeployMoveOp)——动作 op 重组批③ 换壳(原
+"""部署动作 op(CwActionDeployMoveOp)——动作 op 重组换壳(原
 ``DeployMoveOp``,ActionOp ABC → 框架 SrOperation;机械执行后 **op 内
 直调自己的上报函数** ``report_action_deploy_move_param``,零分派,
 op-layer.md §1.2 动作 op 契约)。bench → 上阵单步拖拽(腾席链专用)。非终结。
@@ -58,7 +58,7 @@ class CwActionDeployMoveOp(CwOperation):
         陈旧载荷未发出(round_fail,观察重派)。faction 字段不入执行。
 
         发出即记账(用户裁定「动作 op = 机械执行」):容器逻辑态由
-        上报函数单点落账(tracked 第二账已退役,
+        上报函数单点落账(tracked 第二账已停用,
         动作写主域即同步);拖后零落地判定,静默不生效由下一入口 heavy
         实读对账显影。
         """
@@ -75,7 +75,7 @@ class CwActionDeployMoveOp(CwOperation):
         src = ex._bench_pts[action.bench_idx]
         dst = pts[slot_no - 1]
         ex._drag(src, dst)
-        # 用户口述口径(screen_flow_timing.md #10,2026-09-02):拖动触发
+        # 用户口述口径(screen_flow_timing.md #10):拖动触发
         # 羁绊阶段变更时角色头顶徽章动画 ~2s——拖完立即返回会让批尾
         # heavy 观察打在徽章动画帧上(SIFT/对账读脏,「对账纠漂」日志
         # 噪声源之一)。按「都等 2s」简单方案落(批尾/中间的区分不做)。

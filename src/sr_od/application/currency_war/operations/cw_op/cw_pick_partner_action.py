@@ -32,7 +32,7 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwActionPickPartnerOp(CwOperation):
-    """选择伙伴 pick 确认链(统一动作工厂批4 迁入)。
+    """选择伙伴 pick 确认链(统一动作工厂 迁入)。
 
     「点选候选 → 确认」脉冲链整体迁入(未选中实证下重点选,单选语义
     无反选面;确认被拒的防线判定留守画面 op 决策半)。选中态标记
@@ -70,7 +70,7 @@ class CwActionPickPartnerOp(CwOperation):
             log.info('[cw-partner] 点选候选 %s(未选中提示在场=%s)',
                      op._pick_point, unselected)
         # 确认 = 建档「按钮-确认选择」查找点击(round_by_find_and_click_area
-        # 全族统一,用户裁定 2026-09-22;OCR 找钮退役——screen_info 在册
+        # 全族统一,用户裁定;OCR 找钮停用——screen_info 在册
         # 即查,读缺 = round_retry 交框架轮次,禁兜底静默点击)。读缺分支
         # 未发确认点击,不上报(retry 旁路语义,见模块头)。
         confirm_result = op.round_by_find_and_click_area(
@@ -81,8 +81,8 @@ class CwActionPickPartnerOp(CwOperation):
             env.round_result = confirm_result
             return self.round_success('确认点未找到(重试经旁路回传)')
         op._confirm_pulses += 1
-        # 确认 = 单屏单选的一次确认(用户澄清+建档证据更正 2026-09-14):
-        # 本屏无第二画面、无「选强化目标」步——点选→确认 → 重入裁决即完。
+        # 确认 = 单屏单选的一次确认(用户澄清+建档证据更正):
+        # 本屏无第二画面、无「选强化目标」步——点选→确认 → 落地复查即完。
         # retry 轮重复确认零副作用(置灰态被游戏拒绝,无确认穿透风险)。
         op._confirm_pending = True
         # 自上报(确认点击发出后;零写,契约面统一。读缺旁路分支未发

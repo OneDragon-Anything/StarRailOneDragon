@@ -1,10 +1,10 @@
-"""环内重观察动作 op(CwActionObsOp):策略发射 :class:`CwActionObsParam`
+"""环内重观察动作 op(CwActionObsOp):策略发出 :class:`CwActionObsParam`
 → 宿主画面 op 观察链重跑 + 漏斗直写容器(= 重新观察上报),决策环原地
 续跑(不交回外循环)。
 
-与观察 node 的分界:观察 node = 访问入口全段(清场/开商店收起/接管补采/
+与观察 node 的分界:观察 node = 访问入口全段(清场/开商店收起/中断恢复补采/
 纯观察审计族);本 op = 访问内最小重观察(仅 heavy 漏斗直写),入口专属
-段不在辖域。帧代次 'full' 标注归决策循环写点(与逐动作 'none' 标注同点
+段不在适用范围。帧代次 'full' 标注归决策循环写点(与逐动作 'none' 标注同点
 分派,帧代次写点单处)。
 
 事件 overlay 在场 = 抛 :class:`CwObsOverlayBail` 交回外循环重分发
@@ -12,7 +12,7 @@
 ``cw_screen_prep.act``,控制流异常先例 = StopBrakeShortCircuit)。
 
 ⚠️ 读屏点规范的在册例外:op-layer §1.1「显式读屏只在观察 node」自本 op
-起增设动作通道例外——决策环内仅策略显式发射 CwActionObs 才触发读屏,
+起增设动作通道例外——决策环内仅策略显式发出 CwActionObs 才触发读屏,
 其余路径仍零读屏(循环内零读屏不变量改述见 flow/action_exec.md §3)。
 非终结。
 """
@@ -51,7 +51,7 @@ class CwObsOverlayBail(RuntimeError):
 
 class CwActionObsOp(CwOperation):
     """环内重观察:宿主 heavy 观察链重跑(漏斗直写容器 = 上报),
-    零点击零拖拽;落地/对账语义 = 观察边界本体(观察赢)。非终结。"""
+    零点击零拖拽;落地/对账语义 = 观察边界本体(以实际观察为准)。非终结。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False
@@ -71,7 +71,7 @@ class CwActionObsOp(CwOperation):
 
         宿主能力解析:``env.op`` 必须提供 ``reobserve_in_visit``(现役唯一
         宿主 = 备战画面 op CwScreenPrep);缺席 = 决策域未接线重观察通道
-        (策略器在无能力域发射 CwActionObs = 策略器 bug)响亮暴露。
+        (策略器在无能力域发出 CwActionObs = 策略器 bug)响亮暴露。
         """
         host = self.env.op
         reobserve = getattr(host, 'reobserve_in_visit', None)

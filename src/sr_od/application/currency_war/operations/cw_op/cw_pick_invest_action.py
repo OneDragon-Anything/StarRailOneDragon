@@ -53,7 +53,7 @@ class CwActionPickInvestOp(CwOperation):
     裁决词 = '投资环境'/'投资策略' 组装面),op 类体内零决策(瞄准定位
     查找非决策,屏名按宿主 ``env.op`` 屏类解析)。
 
-    **即时上报**(action_ops.md §1 用户裁定增补 2):机械链发出后
+    **即时上报**(action_ops.md §1 用户裁定):机械链发出后
     立即按 param 类型自上报完整结果并写入 game state(策略 →
     ``gain_invest_strategy`` 整链;环境 → ``gain_invest_env`` 整链);
     无分步、无落地证据等待——确认未生效 = 代码 bug,归点击链可靠性
@@ -81,7 +81,7 @@ class CwActionPickInvestOp(CwOperation):
         safe_click(op, env.target, tag='cw-pick-invest')
         time.sleep(0.7)
         # 确认 = 建档「按钮-确认」查找点击(round_by_find_and_click_area
-        # 全族统一,用户裁定 2026-09-22;确认钮经 env 传入的变体退役——
+        # 全族统一,用户裁定;确认钮经 env 传入的变体停用——
         # 确认钮不属机械参数,屏名按宿主 env.op 屏类解析,两屏 area 同名)。
         env.round_result = op.round_by_find_and_click_area(
             op.screenshot(), type(op).SCREEN_NAME, '按钮-确认',

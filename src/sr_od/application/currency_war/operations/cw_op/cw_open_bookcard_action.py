@@ -4,7 +4,7 @@
 动作 op 契约);机械半 = ``find_bookcards`` 识别 → 点槽中心 → 固定动画
 等待(纯机械,识别单一源 = ``obs/cw_identity_obs.py::find_bookcards``)。
 
-终结动作(开卡时机归策略器,发射位 = entry ① prep 实体面卡片臂,
+终结动作(开卡时机归策略器,动作发出点 = entry ① prep 实体面卡片分支,
 screens/README §5.5):点完开启即引入新事实(专家邀请函弹窗在场)→
 本动作终结交回外循环,弹窗由外循环按画面分发 ``CwScreenExpertInvite``
 选卡(分发判定单一源 = flow/outer_loop.md §2 阶段一身份分发)。"""
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
 class CwActionOpenBookcardOp(CwOperation):
     """开书册卡:``find_bookcards`` 识别 → 点槽中心 → 固定动画等待
-    (纯机械执行)。终结动作(发射位 = 策略器 entry ① prep 实体面卡片
+    (纯机械执行)。终结动作(动作发出点 = 策略器 entry ① prep 实体面卡片
     臂,screens/README §5.5;弹专家邀请函 = 新事实 → 终结交回,与
     OpenBox 终结化同构,规范锚 = op-layer.md §1.4)。"""
 

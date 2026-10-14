@@ -4,9 +4,9 @@
 
 1. ``DragCwChar.drag_char``(静态原语,**生产共用**):中心拖一个角色 ``src → dst`` —— ``mouse_move`` 源
    (settle:框架截图前把光标移角落,紧接 drag 落空,先 settle 到源)→ ``drag_to(hold_time=0`` **按下即移**
-   即拾取,2026-08-13 实测)→ ``mouse_move`` 羁绊面板区释放光标(防 drag 锁残留致后续 drag 落空)。
+   即拾取 实测)→ ``mouse_move`` 羁绊面板区释放光标(防 drag 锁残留致后续 drag 落空)。
    **机械执行零判效**(阶段三判效拆除,总纲阶段三族2):原「验源槽像素 diff + retry 3 次」
-   随拆除退役——发出即职责完成,落地事实归下一帧入口观察 reconcile 对账;deploy(``CwActionDeployMoveOp``)/
+   随拆除停用——发出即职责完成,落地事实归下一帧入口观察 reconcile 对账;deploy(``CwActionDeployMoveOp``)/
    穿戴工具原子(prep_actions 机械原语经统一拖拽原语)/ sell(``drag_bench_to_sell``)/ 本 op 都走它
    —— **全仓角色拖拽机制单一源**(不再各处散落 drag_to + avatar 偏移)。
 
@@ -15,12 +15,12 @@
    (+1 团队规模)/ 诅咒·宝石剑泽尔里奇(−1)变化**(基准 6,可能 5-10),screen_info「后排-1..6」是基准,
    >6 时调用方传 ``back_centers``(运行时检测到的实际后排槽中心,含 7+ 槽)覆盖。
 
-**拖拽机制(2026-08-13 实测,推翻旧 avatar 假设)**:整张卡可拖 —— 从**卡中心**拖、``hold_time=0``(按下即移)
+**拖拽机制( 实测,推翻旧 avatar 假设)**:整张卡可拖 —— 从**卡中心**拖、``hold_time=0``(按下即移)
 即拾取上阵(实测:中心 drag 飞霄 bench→bench → 上阵 ✓)。旧结论「必须拖 avatar 左上小圆 + hold 1秒长按」
 **全错**:左上小圆是**星标**非头像;详情面板是 **click(松开)** 触发非 mouseDown;drag = 按下+移动。旧 avatar
 偏移 + 长按反易被判长按 / click 开详情 → ~50% 失败。
 
-**已验方向(2026-08-13 实机)**:bench → bench ✓(飞霄,中心拖 + hold0)。**限制:deployed → bench 直接拖
+**已验方向( 实机)**:bench → bench ✓(飞霄,中心拖 + hold0)。**限制:deployed → bench 直接拖
 不生效** —— CW 机制「舞台 → 备战」需 **swap**(拖 bench 角色到舞台角色 → 舞台角色回 bench),非舞台角色直接
 拖到空 bench 槽。要「把 deployed 角色弄上 bench」用 bench → deployed swap(from=bench → to=deployed)。
 """
@@ -114,10 +114,10 @@ class DragCwChar(CwOperation):
         """**统一角色拖拽原语**(生产共用:deploy / sell / 本 op)。
 
         中心拖 ``src → dst`` + ``hold_time=0``,机械执行零判效(阶段三
-        判效拆除:原「验源槽像素 diff + retry 3 次」退役,发出即职责完成;
+        判效拆除:原「验源槽像素 diff + retry 3 次」停用,发出即职责完成;
         落地事实归下一帧入口观察 reconcile 对账)。
 
-        机制(2026-08-13 实测,推翻旧 avatar 假设):整张卡可拖,中心拖 + 按下即移(hold_time=0)即拾取。
+        机制( 实测,推翻旧 avatar 假设):整张卡可拖,中心拖 + 按下即移(hold_time=0)即拾取。
         流程:``mouse_move`` 源(settle,防截图移光标后紧接 drag 落空)→ ``drag_to(hold_time=0)``
         → ``mouse_move`` 羁绊面板区释放光标(防 drag 锁残留致后续 drag 落空)。
 
@@ -129,7 +129,7 @@ class DragCwChar(CwOperation):
         time.sleep(0.2)
         op.ctx.controller.drag_to(start=src, end=dst, duration=1.0, hold_time=0.0)
         time.sleep(0.5)
-        # 光标 parking(审计 P0,2026-08-16):旧停 (100,500) 在羁绊面板 [38,128,258,772] 内,
+        # 光标 parking(审计 P0):旧停 (100,500) 在羁绊面板 [38,128,258,772] 内,
         # 污染每次 Director heavy observe 的 board OCR;park_cursor = UID 黑块中立区。
         op.park_cursor(after_wait=0.3)
 

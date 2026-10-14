@@ -31,14 +31,14 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwActionPickWishTrialOp(CwOperation):
-    """祈愿试炼确认链(pick-op-unify 批收编)。
+    """祈愿试炼确认链(pick-op-unify 批并入)。
 
     点试炼卡身选中(防吞点击,选中点 = 动作 op 自容器
     ``wish_trial_opts_xy`` 按 ``param.idx`` 取——op-layer.md §1.1 :35,
     坐标单一真相源 = 观察上报;观察上报与名字域同门一并入容器,等长
     同进退)→ 选中动画固定等待 → 确认(「按钮-确认选择」area 位置点击,
     success_wait=1.5,现役形态逐位迁移;本屏独有检测在前,不与伙伴/
-    巨星的「确认选择」撞)。``chosen_wish`` = 重入裁决出口写,留守画面 op。"""
+    巨星的「确认选择」撞)。``chosen_wish`` = 落地复查出口写,留守画面 op。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False

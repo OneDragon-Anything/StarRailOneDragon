@@ -12,7 +12,7 @@ trigger='settle_confirm')`` → 返回。
 在场)才落账(观察态门为唯一门,kernel ``report_node_advance``
 结构性承载;P2 末终局确认走 kernel 终局事件式出口 applied=True
 reason='match_end',零写入零推进)。转移证据机制(探锚/等待/bail/补报)
-已退役。无证据等待 ⇒「上报先于下一节点任何画面渲染」恒成立。死点击
+已停用。无证据等待 ⇒「上报先于下一节点任何画面渲染」恒成立。死点击
 自愈链:幻影上报(logic 态)→ 重试点击再上报被观察态门挡(零推进)→
 某次点击落地 → 备战帧读数 = hist → 等值 reanchor 翻锚定 → 下一节点
 解锁(最坏损失 = 幻影那次多 tick 一档发放,用户已知悉接受)。
@@ -149,5 +149,5 @@ class CwOpSettleConfirm(CwOperation):
                      outcome.applied if outcome is not None else False)
             return self.round_wait(wait=1.0, data=world_decl)
         # 按钮不在场:流转已发生(或过渡帧)→ 交回宿主;宿主 ③段白名单
-        # 出口收口,miss 则下轮重判/重分派。
+        # 出口收尾,miss 则下轮重判/重分派。
         return self.round_success('结算确认点击已发,交回宿主出口判定')

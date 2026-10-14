@@ -1,13 +1,13 @@
-"""买经验动作 op(CwActionLevelUpOp)——动作 op 重组批③ 换壳(原
+"""买经验动作 op(CwActionLevelUpOp)——动作 op 重组换壳(原
 ``PrepLevelUpOp``,ActionOp ABC → 框架 SrOperation;机械执行后 **op 内
 直调自己的上报函数** ``report_action_level_up_param``,零分派,op-layer.md
 §1.2 动作 op 契约)。
 
-**整批连点形态**(迭代 2026-10-12-prep-shop-workflow-redesign 批 3.4;
+**整批连点形态**(迭代-prep-shop-workflow-redesign 批 3.4;
 line_and_upgrade §2.2「一次买齐」):动作参数携带授权批击数
 (``CwActionLevelUpParam.clicks``),本 op 单次执行内连点该击数——
 决策帧零介入 = 授权后不再逐帧重闸,「买一半」缺陷(逐帧单击 × 静态
-阈值逐帧重闸,血支付中血量跌回阈值之下即停止发射)的机制级修复。
+阈值逐帧重闸,血支付中血量跌回阈值之下即停止发出)的机制级修复。
 缺省 clicks=1 兼容历史单击调用面。非终结。
 """
 from __future__ import annotations
@@ -75,7 +75,7 @@ class CwActionLevelUpOp(CwOperation):
         单击 × 静态阈值逐帧重闸」的部分级复发);击数缺省 1 = 历史单击
         调用面兼容。经验/等级/金真值 = 上报函数单点直写(击数 =
         ``executed.levelup_clicks`` 喂实际连点数;金腿 = ``action.cost``
-        ×clicks 直写,cost = 发射面 xp_click_cost 现算装载)+ 下一帧
+        ×clicks 直写,cost = 动作发出面 xp_click_cost 现算装载)+ 下一帧
         观察对账族双通道。单击价本处现算仅作 detail 显影。
         """
         action: CwActionLevelUpParam = self.param
@@ -91,7 +91,7 @@ class CwActionLevelUpOp(CwOperation):
             # 商店域 env 已带观察 node 锚定的 level_btn;无锚定(备战域
             # env / 商店域锚定缺席)→ 自读 area。按钮 area 缺失 = 建档
             # 漂移,显式失败交回重读(禁兜底坐标静默点击;用户裁定
-            # 2026-09-22,action_ops.md §4.2 LevelUp 行)。round_fail 经
+            #,action_ops.md §4.2 LevelUp 行)。round_fail 经
             # 执行缝 = emitted=False 未发出事实,下帧重派重读。
             btn = area_center(
                 ex._ctx, '备战标识-购买经验',
@@ -117,10 +117,10 @@ class CwActionLevelUpOp(CwOperation):
         _led = getattr(env, 'ledger', None)
         if _led is not None:
             _led.total_xp_buy += clicks
-        # 光标 parking(审计 P0,2026-08-16 = M38 level 毒化注入点):按钮距等级显示区 18px,
+        # 光标 parking(审计 P0 = M38 level 毒化注入点):按钮距等级显示区 18px,
         # 点击后光标压住 Lv.N 区 → 下帧 OCR 读错(4 毒化 3 位面的链头)。park 后再继续。
         ex._op.park_cursor(before_wait=0.3, after_wait=0.15)
-        # W612 挂点A(升级事件;发出即登记,观测 best-effort,零决策语义)。
+        #  挂点A(升级事件;发出即登记,观测 best-effort,零决策语义)。
         try:
             if session is not None:
                 from sr_od.application.currency_war.kernel.cw_game_state import (

@@ -3,7 +3,7 @@
 职责:在「货币战争-位面详情」屏恒全采三位面情报:
 - **三位面 boss**:每识别 node 点该位面卡 → ``read_plane_detail_nodes``
   动态定位 boss 节点(最右,位置先验)→ 详情条类型名标签验「首领」→
-  大图标 SIFT 对拍 boss_avatar 模板库(锁态小图 SIFT 特征塌缩认不出,
+  大图标 SIFT 交叉核对 boss_avatar 模板库(锁态小图 SIFT 特征坍缩认不出,
   大图标增熵破局)。**boss 节点两种渲染态**:头像态(节点=红框头像,
   大图标 SIFT 命中)与纹章风头像渲染变体(节点=金色纹章图案,图案即
   boss 的纹章风头像——模板库缺该风格致 SIFT 未命中,属**识别能力缺口**
@@ -68,7 +68,7 @@ _BOSS_CLICK_WAIT_S: float = 1.5
 
 
 class CwScreenPlaneIntel(CwOperation):
-    """位面详情纯识别(6 node 管线;接管局补采识别本体,编排归
+    """位面详情纯识别(6 node 管线;中断恢复的对局补采识别本体,编排归
     CwEntryPlaneIntel)。"""
 
     SCREEN_NAME: ClassVar[str] = _PD_SCREEN
@@ -86,7 +86,7 @@ class CwScreenPlaneIntel(CwOperation):
         # 敌人难度参考值采集面(键 = 位面号 1 基;识别 node 同帧顺带读,
         # node6 逐位面落账)。
         self._difficulty_refs: dict[int, int] = {}
-        # 上报节点产物(统一形态观察类,挂实例属性供测试与留证)。
+        # 上报节点产物(统一形态观察类,挂实例属性供测试与留存证据)。
         self._obs: CwScreenPlaneIntelObs | None = None
 
     # ---- 内部工具 -------------------------------------------------------
@@ -159,10 +159,10 @@ class CwScreenPlaneIntel(CwOperation):
         return Point(s.cx + ox, s.cy + oy)
 
     def _read_boss_big_icon(self, plane_no: int) -> str | None:
-        """详情条 boss 大图标 → SIFT 对拍 boss_avatar 库 → boss 名 | None。
+        """详情条 boss 大图标 → SIFT 交叉核对 boss_avatar 库 → boss 名 | None。
 
         大图标 area「区域-boss大图标」(~107px,特征 70+ vs 节点小图 ~17);
-        未命中 → None(记日志留证;SIFT 断层判据防次名撞分)。
+        未命中 → None(记日志留存证据;SIFT 断层判据防次名撞分)。
         """
         import cv2 as _cv2
 
@@ -336,8 +336,8 @@ class CwScreenPlaneIntel(CwOperation):
                 for _p, _dv in sorted(self._difficulty_refs.items()):
                     _ledger.difficulty_ref[_p] = _dv
                     _log.info('[cw-plane-intel] 位面%d 敌人难度参考=%d', _p, _dv)
-        # 词缀效果账本登记(上报后登记;接管局这是词缀登记唯一活源——
-        # 简报侧登记挂点在接管局不运行)。命中结构化注册才入账本,登记
+        # 词缀效果账本登记(上报后登记;中断恢复的对局这是词缀登记唯一活源——
+        # 简报侧登记挂点在中断恢复的对局不运行)。命中结构化注册才入账本,登记
         # 体按在册条目幂等(补采重跑不双登记;登记面纪律 =
         # effect-domain.md §7.6 词缀源节)。
         if self._affixes:

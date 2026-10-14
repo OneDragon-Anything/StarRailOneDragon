@@ -5,7 +5,7 @@ modal(0f')的处理迁移:点 modal 右上 × 关,无验效。× 复用同族建
 「货币战争-道具详情弹窗/按钮-关闭」(消耗品 modal 与聘用书 modal 同为
 道具详情弹窗家族,× 同位;**待实机核**:消耗品帧上该坐标未实机复点)。
 替代 ESC 的理由:× 是弹窗内坐标永远安全,ESC 在 modal 已自关时落备战
-会误弹「中断挑战」(bug#2)。背景(原分支注释):2026-08-06 实跑
+会误弹「中断挑战」(bug#2)。背景(原分支注释): 实跑
 plane2 supply 后弹「员工投影仪」modal,flat retry ~19min 失败——非策略死,
 UI 弹窗卡死。签名「消耗品」(类型 label) AND 「拖动到」(拖动使用说明,
 只出现在消耗品详情 modal,备战底部消耗品栏无)→ 双条件精确,不误匹配备战;
@@ -17,13 +17,13 @@ UI 弹窗卡死。签名「消耗品」(类型 label) AND 「拖动到」(拖动
 签名;miss 未发 = round_fail 交回外循环重判,「下一帧重判」是外循环
 职责)+ obs{on_screen} 挂实例属性(空决策形态无 report:本屏零容器
 写点,obs 类住 kernel/cw_screen_report/consumable_overlay.py,import
-构造即可)。决策动作 node = 重入裁决顶部(点 × 已发 → 双签名 miss =
+构造即可)。决策动作 node = 落地复查顶部(点 × 已发 → 双签名 miss =
 已离开本画面 → success 交回——出口 = 入口观察的合法重判,非动作层
 判效;在 = 再推进)→ area 读「按钮-关闭」+ mouse_move+click 单次推进
 (同 CwScreenItemDetailPopup,同族 modal 的防吞点击保留)→
 round_wait 循环(不烧节点重试预算,不收敛 = 动作 bug 响亮暴露,无防御
 上限;「推进动作未落地」= round_fail 如实交回)。本类入口信号 = 自有
-双 OCR 判定(覆写形态),重入裁决有观察信号可用,无「免锚发出即
+双 OCR 判定(覆写形态),落地复查有观察信号可用,无「免锚发出即
 success」出口。
 """
 from cv2.typing import MatLike
@@ -75,9 +75,9 @@ class CwScreenConsumableOverlay(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=2)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
+        """落地复查(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
         if self._advanced_once and not self.entry_ok(self.last_screenshot):
-            # 重入裁决(验证废除形态):重入 miss = 已离开本画面 → success
+            # 落地复查(验证废除形态):重入 miss = 已离开本画面 → success
             # 交回;旗标清(实例级,单 op 生命周期语义)。
             self._advanced_once = False
             return self.round_success(

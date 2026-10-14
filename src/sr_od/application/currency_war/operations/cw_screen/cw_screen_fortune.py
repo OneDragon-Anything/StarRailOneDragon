@@ -1,4 +1,4 @@
-# live-verified 2026-08-21(局32 P2r2 卡死 30min 后建;交互实锤:点卡下半部
+# live-verified(局32 P2r2 卡死 30min 后建;交互已实测确认:点卡下半部
 # y≈480 选中,确认 (1491,600) 消费成功——同策划事件坐标族)。
 
 """货币战争 命运卜者「强化效果三选一」overlay 处理 op(r115)。
@@ -14,21 +14,21 @@ x≈510/900/1290 / 确认 (1441-1543,584-615)。
 单一源),消费唯一入口 = 策略器零参 ``decide_fortune()``,
 写槽 → 零参决策,handler 零打分实现。
 
-形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两
+形态(迭代-screen-op-flat-report):观察 node + 决策动作 node 两
 段直继承 SrOperation。本屏无 op 内入口门(入口判定归主循环阶段一身份分发,
 分发即门)→ 观察 node = 三卡位 OCR 一次读 + 三卡点击坐标(入口帧一次读,
 与现役决策体读同帧等价;坐标 = area 主源 + 兜底)→
 ``report_screen_fortune_obs`` 双写容器 ``fortune_opts``/``fortune_opts_xy``
-(无空门,空表照写)→ obs 挂实例属性进决策 node。决策动作 node = 重入裁决
+(无空门,空表照写)→ obs 挂实例属性进决策 node。决策动作 node = 落地复查
 顶部(入口词「命运卜者」不在 = overlay 已关 → success 交回)→ 决策从容器
-零参读;无 match 局外不设早退支(用户裁决 2026-09-22 全族删门)→ 两守卫
+零参读;无 match 局外不设早退支(用户裁决 全族删门)→ 两守卫
 (返回词表外/None = 具名 round_fail 零盲发;idx 越界 = 守卫断言
 AssertionError;策略异常自然传播)→ 选卡+确认链经
 ``CwActionPickFortuneOp`` 派发(pick-op-unify 批机械链迁入动作 op)→
 round_wait 循环(不烧节点重试预算,无防御上限;确认未落地轮重走)。
 本屏无 chosen_* 写端(fields.md §4「事件选择」在册:写端未接线 = 先补档;
 选择后果走下一帧观察覆盖);本屏 sim 腿
-= 不适用(sim 无对应画面段,事件浮层族即时落定),等价判据主承重 = 实机
+= 不适用(sim 无对应画面段,事件浮层族即时落定),等价判据主要支撑 = 实机
 在册行为锁。
 """
 from typing import ClassVar
@@ -53,10 +53,10 @@ class CwScreenFortune(CwOperation):
     """命运卜者强化三选一:OCR 卡文字 → 文本策略选卡 → 确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-命运卜者强化'   # screen_info 画面(cw_fortune_picker.yml)
-    # ⚠️ 待实机核(载体迁移非新证):卡位/文字带 = 2026-08-21 live 实锤
+    # ⚠️ 待实机核(载体迁移非新证):卡位/文字带 = live 已实测确认
     # 字面量(文件头实拍布局);坐标已 area 化 = cw_fortune_picker.yml
     # 「卡-强化1/2/3」(中心 = 本组字面量平移,同真值),本组常量 = 观察
-    # 侧 None 回退兜底;三区实机点击落点挂账实机批。
+    # 侧 None 回退兜底;三区实机点击落点登记的待办实机批。
     # 消费点 = 观察 node 坐标上报(area 主源 + 兜底,坐标随报条款)与
     # 守卫②槽数界;执行侧不自算坐标。
     # 三卡卡身(选中点击点=卡下半部,避详情按钮 y~430-462;同策划事件教训)
@@ -67,7 +67,7 @@ class CwScreenFortune(CwOperation):
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-命运卜者强化')
-        # 确认已发待重入裁决标志(验证废除形态):本屏分发即门(无 op 内入口
+        # 确认已发待落地复查标志(验证废除形态):本屏分发即门(无 op 内入口
         # 守卫),重入出口裁决区分「首发 miss」与「重入 miss(= overlay 已关
         # → success 交回)」,见决策动作 node 顶部。
         self._confirm_pending: bool = False
@@ -97,16 +97,16 @@ class CwScreenFortune(CwOperation):
         """三卡位 OCR 一次读 + 三卡点击坐标 → report 双写容器
         ``fortune_opts``/``fortune_opts_xy``(无空门,空表照写;match/gs
         缺席的局外路径跳过 report——report 跳写 = 容器写闸,与决策无关;
-        无 match 局外不设早退支,用户裁决 2026-09-22 全族删门)。"""
+        无 match 局外不设早退支,用户裁决 全族删门)。"""
         screen = self.last_screenshot
         options = self._read_cards(screen)
         option_points: list[tuple[int, int]] = []
         for i in range(len(self.CARD_XS)):
             pt = area_center(self.ctx, f'卡-强化{i + 1}', self.SCREEN_NAME)
             if pt is None:
-                # 兜底常量与建档同真值(2026-08-21 live 实锤字面量平移),
+                # 兜底常量与建档同真值( live 已实测确认字面量平移),
                 # 防建档误删致观察断裂,非第二坐标源(§3.4.5a「禁二次取点
-                # 回退」辖动作/上报层读端,观察写门内唯一出口不受涉)。
+                # 回退」覆盖动作/上报层读端,观察写门内唯一出口不受涉)。
                 log.warning('[cw][fortune] 建档「卡-强化%d」读缺,坐标回退兜底常量',
                             i + 1)
                 option_points.append((self.CARD_XS[i], self.CARD_Y))
@@ -126,15 +126,15 @@ class CwScreenFortune(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=5)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 零参决策 → 选卡+确认机械交回 → round_wait。
+        """落地复查(顶部)→ 零参决策 → 选卡+确认机械交回 → round_wait。
 
-        重入裁决(观察驱动;形态正本 = screens/op-layer.md §1.1「重入裁决
+        落地复查(观察驱动;形态正本 = screens/op-layer.md §1.1「落地复查
         留在决策动作 node 顶部」):本屏分发即门(无 op 内入口守卫),
         round_wait 重入不经外循环分发 → 顶部出口门补位:入口词不在 =
         overlay 已关(上轮确认已落地)→ success 交回外循环;在 = 重走
         选卡+确认。
 
-        决策出口守卫:无 match 局外不设早退支(用户裁决 2026-09-22 全族
+        决策出口守卫:无 match 局外不设早退支(用户裁决 全族
         删门);决策返回词表外/None = 具名 round_fail 零盲发;idx 越界 =
         守卫断言 AssertionError;策略
         异常自然传播(离屏失约 ValueError 不再被吞)——守卫均在派发前、
@@ -149,11 +149,11 @@ class CwScreenFortune(CwOperation):
         texts = self._obs.options if self._obs is not None else []
         _match = getattr(self.ctx, 'cw_match', None)
         # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        # §1.1;用户裁决 全族删门):单跑缺上下文沿正常链路
         # 在此失败即预期,禁回填此类单跑防御分支。
         pick = _match.strategy.decide_fortune()
         # 守卫①(返回契约):词表外/None = 决策无有效输出,具名 fail 零盲发
-        # (op-layer.md §1.1 出口③);消息含原值 repr = 留证。
+        # (op-layer.md §1.1 出口③);消息含原值 repr = 留存证据。
         if not isinstance(pick, CwActionPickFortuneParam):
             return self.round_fail(
                 f'[cw][fortune] decide_fortune 决策无有效输出(词表外/None): {pick!r}')

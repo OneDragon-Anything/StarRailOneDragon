@@ -1,4 +1,4 @@
-"""select-and-confirm overlay 通用收尾助手(bug#1 缓解 + 机械确认发射)。
+"""select-and-confirm overlay 通用收尾助手(bug#1 缓解 + 机械确认发出)。
 
 货币战争事件节点(巨星/补给/遭遇/投资环境/投资策略/未达上限)都是同一交互结构:
 点选项选中 → 点确认推进。旧 handler 曾普遍「点了就 ``round_success``」不观察 →
@@ -7,7 +7,7 @@ bug#1(``before_screenshot`` 移光标 → click 落空)/隐藏多步 overlay →
 write-operation skill「反模式:点了≠成了」)。
 
 本模块给这类 handler 统一收尾:确认点击带 bug#1 ``mouse_move`` 缓解 + 固定等待,
-机械交回 ``round_retry``(观察驱动)。**不做落地判定**(用户裁定 2026-09-10:
+机械交回 ``round_retry``(观察驱动)。**不做落地判定**(用户裁定:
 动作 op 只管机械执行,禁止做任何验证;M1③ 发出即职责完成,调用方不问成败):
 overlay 关没关由调用方节点下一轮重入的入口观察裁决——重入时入口词不在 = 已离开
 本画面 → success 交回(重入观察出口,先例 = ``cw_entry_start`` 守卫
@@ -16,7 +16,7 @@ overlay 关没关由调用方节点下一轮重入的入口观察裁决——重
 bail = 有界终止单)。success/retry = 轮次流转语义,非动作成败回执。
 
 分型注(现役消费面):``emit_overlay_confirm`` 现役唯一消费方 = 未达上限
-(``cw_screen_deploy_not_full``,重入裁决出口语义承载者——上段「下一轮重入
+(``cw_screen_deploy_not_full``,落地复查出口语义承载者——上段「下一轮重入
 的入口观察裁决」仅此形态在用);已迁移屏(即时上报 + 派发即终结:遭遇/
 补给/策划/投资两屏)确认钮 = 动作 op 体内 ``round_by_find_and_click_area``
 查找点击,产物经 ``OverlayPickExecEnv.round_result`` 旁路回传且宿主不消费,
@@ -55,7 +55,7 @@ def register_confirm_arrival(session: 'StrategySession | None', op: str, item: s
       其入栏/后果腿由 ``report_action_pick_supply_param`` 即时单相一口写);
     - ConfirmStrategy:本函数零写——投资策略选择事实经动作落地获得链写
       (动作 op 即时上报 → gain_invest_strategy,正本 = game_state/
-      gain-chain.md;原 handler 确认写点已随投资两屏迁移批删除);
+      gain-chain.md;原 handler 确认写点已停用);
     - ConfirmMegastar/ConfirmPartner:本函数零写——chosen_* 写端 = 各
       handler 的 ``GameState.write_logic``(选择落地即写,cw_screen_megastar
       /cw_screen_partner)。
@@ -110,7 +110,7 @@ def emit_overlay_confirm(
 ) -> OperationRoundResult:
     """点确认按钮(``mouse_move`` 防吞点击)+ 固定等待,机械交回 ``round_retry``。
 
-    验证废除形态(用户裁定 2026-09-10,替换原 ``confirm_and_verify`` 的
+    验证废除形态(用户裁定,替换原 ``confirm_and_verify`` 的
     「点后重截验入口词消失」判效半):
 
     - 确认点击带 ``mouse_move``(防吞点击,partner reset 根因同类)。
@@ -119,8 +119,8 @@ def emit_overlay_confirm(
     - 确认后固定等待 ``confirm_wait``(确认关闭动画,固定时长口径)→ 无条件
       ``round_retry``(观察驱动):**不读屏判「是否生效」**——落地判定归下一轮
       重入的入口观察(调用方节点顶部裁决)与观察侧 reconcile 对账,不在动作层。
-    - ``entry_keyword`` 仅作日志与调用方重入裁决的对照词(与 entry 检测同词);
-      ``success_wait`` 保留为调用方重入裁决 success 出口的交回等待值。
+    - ``entry_keyword`` 仅作日志与调用方落地复查的对照词(与 entry 检测同词);
+      ``success_wait`` 保留为调用方落地复查 success 出口的交回等待值。
     - 始终不落地 = 每圈耗 1 次节点预算,预算耗尽 FAIL bail(有界终止单,
       防 26 分钟超时事故形态)。
     """

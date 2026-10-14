@@ -5,7 +5,7 @@
 机械语义:点卡选中(建档「遭遇卡-其一/其二」area 取点,缺失 = 显式
 round_fail 交回重读,禁兜底坐标)→ 确认
 机械交回;机械链发出后直调自上报单口
-``report_action_pick_encounter_param``(发射即写)。
+``report_action_pick_encounter_param``(发出即写)。
 """
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwActionPickEncounterOp(CwOperation):
-    """遭遇节点 pick 确认链(机械语义单一源,统一动作工厂批4 迁入)。
+    """遭遇节点 pick 确认链(机械语义单一源,统一动作工厂 迁入)。
 
     点卡选中(建档「遭遇卡-其一/其二」area 取点,缺失 = 显式 round_fail
     交回重读,禁兜底坐标)→ 确认机械交回
@@ -69,7 +69,7 @@ class CwActionPickEncounterOp(CwOperation):
         card = area_center(op.ctx, card_area, CwScreenEncounter.SCREEN_NAME)
         if card is None:
             # 卡位 area 缺失 = 建档漂移,显式失败交回重读(禁兜底坐标
-            # 静默点击;用户裁定 2026-09-22,action_ops.md §4.5 PickEncounter 行)。
+            # 静默点击;用户裁定,action_ops.md §4.5 PickEncounter 行)。
             env.round_result = self.round_fail(
                 f'遭遇卡 area 缺失:{card_area}'
                 f'({CwScreenEncounter.SCREEN_NAME}),禁兜底坐标交回重读')
@@ -77,12 +77,12 @@ class CwActionPickEncounterOp(CwOperation):
         safe_click(op, card, tag='cw-encounter')
         time.sleep(0.8)
         # 确认 = 建档「按钮-选择」查找点击(round_by_find_and_click_area 全族
-        # 统一,用户裁定 2026-09-22;不带 until = 动作 op 禁验证;area 缺失
+        # 统一,用户裁定;不带 until = 动作 op 禁验证;area 缺失
         # = 显式失败交框架轮次)。
         env.round_result = op.round_by_find_and_click_area(
             op.screenshot(), CwScreenEncounter.SCREEN_NAME, '按钮-选择',
             success_wait=1.0)
-        # 发射即写(遭遇扩围批,用户裁定 2026-09-21):机械链发出后立即
+        # 发出即写(遭遇扩围批,用户裁定):机械链发出后立即
         # 写 chosen_encounter(值组装自容器 encounter payload 槽;暂态
         # 假值窗由外循环重派覆盖自愈,兑现回调消费防线 = 兑现后清)。
         # 上报后一行声明喂入(动作后果声明化喂入契约 = design.md §2.2

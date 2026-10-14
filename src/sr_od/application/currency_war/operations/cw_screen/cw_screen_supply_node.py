@@ -1,5 +1,5 @@
 
-"""货币战争 补给节点画面 op(旧补给节点执行器退役批内联)。
+"""货币战争 补给节点画面 op(旧补给节点执行器已停用,逻辑内联于此)。
 
 补给阶段 = 动态 N 选 1 装备 + 确认(通常 4 选 1;「全都要」类效果减 2 列、「人身意外险」类
 加补给阶段可增列,augment 改写下实测 3-5 不等——历史「3 选 1」「实测 5」均为特例表述,
@@ -14,12 +14,12 @@ CARD_BODY 兜底。钻(红/蓝/财富宝钻)视觉判定(SIFT 主通道 + 文本
 
 **刷新 = 终结动作**:decide_supply 建议刷新 ∧ 对照闸放行 → 点钮一次
 (点击后本动作即返回,op 交回外循环重进 = 入口重建,新装备面由重进后的
-入口观察现读承载)。**对照闸 = 剩余语义观察真值**(用户裁定 2026-09-21,
+入口观察现读承载)。**对照闸 = 剩余语义观察真值**(用户裁定,
 全域规范 = ``op-layer.md`` §1.4):闸读源 = 容器 ``supply_refresh_left``
 (观察 node 同帧「剩余次数：N」读数经 report 摄入,读缺跳写);判据侧
 次数闸已内嵌 decide(仅剩余 ≥1 才可能返刷新建议),本面 = 对照兜底——
 锚读缺(无点击点)时重调一次(纯函数同输出仍建议刷)→ 零点击终结交回。
-原实例旗标/已用计数写点随剩余闸退役(考古走 git)。
+原实例旗标/已用计数写点随剩余闸停用。
 
 T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点击点由 read_supply_options 按列返回。
 
@@ -34,13 +34,13 @@ T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点�
 实例属性进决策 node。决策动作 node = 零参决策(候选自容器槽)→ 刷新终结
 交回 / 选卡派发即 ``round_success`` 终结(派发即终结正本 =
 `screens/op-layer.md` §1.1、`flow/action_ops.md` §4.5:动作 op 确认
-点击后立即上报完整结果,零重入裁决、零落地相补写面——确认未生效 =
+点击后立即上报完整结果,零落地复查、零落地相补写面——确认未生效 =
 代码 bug,overlay 残留由外循环按当前画面重识别重派)。``chosen_supply``
-= 确认即写特殊口径(选定中转暂存宿主已退役,直写是载体消亡后的唯一
+= 确认即写特殊口径(选定中转暂存宿主已停用,直写是载体消亡后的唯一
 形态)留守决策体真选分支,派发前写(``op-layer.md`` §2.2 动作事实边界
 硬规则);本屏 sim 腿 = 观察腿在产(生成器产物经同名 report 落容器)、
 决策腿未接(sim 局 act 恒走 CARD_BODY 兜底),等价判据
-主承重 = 实机在册行为锁。
+主要支撑 = 实机在册行为锁。
 """
 import re
 import time
@@ -88,7 +88,7 @@ class CwScreenSupplyNode(CwOperation):
     CARD_BODY: ClassVar[Point] = Point(900, 550)  # 补给卡 body 不开对话(沿用 HandleSupply)
     # 刷新圆钮 = 「剩余次数：N」文本左侧固定偏移(遭遇屏 _REFRESH_BTN_DX 同族先例,
     # 文本锚定;运行时锚 = 建档「文本-剩余次数」rect 约束 OCR,单一真相源 =
-    # screen_info)。偏移实测收口(归档帧 sr-od-test/screens/货币战争-补给/
+    # screen_info)。偏移实测收尾(归档帧 sr-od-test/screens/货币战争-补给/
     # {default,双排装备,col3_selected}.webp CV 双法:HoughCircles 钮心
     # (1314.5-1315.5,983.5) r≈22-24 亮/灰态稳定;文本框中心 (1414,982.5)/建档
     # rect 中心 (1415.5,983))→ dx ≈ -99.5 取 -100,dy=0。偏移错 → 刷新未命中,
@@ -155,8 +155,8 @@ class CwScreenSupplyNode(CwOperation):
         正则命中 + 值域内(plane∈1-3/round ≤ node_round_cap(场字段现值),
         与 read_phase_round 值域守卫同源——OCR 抓错源当 miss)→ **节点序位
         元组 (plane, rnd) 直返**(键表示下读数即键,零坐标换算,迭代
-        2026-10-12-abolish-node-ordinal design §2.5;越域位面形态由 kernel
-        锚定位面在表守卫丢弃留证)。
+       -abolish-node-ordinal design §2.5;越域位面形态由 kernel
+        锚定位面在表守卫丢弃留存证据)。
         读不得/值域外 → None(调用方 = 跳过,禁猜)。纯读。
         """
         if screen is None:
@@ -328,7 +328,7 @@ class CwScreenSupplyNode(CwOperation):
                 # 开出内容载荷(归一件名 = 注册表级分层归一
                 # ``normalize_registry_equip_name`` 现算:精确快道 →
                 # containment longest-first → 相似救援唯一命中;多/零命中
-                # = '' 禁猜,报告侧逐件翻来源留证)。
+                # = '' 禁猜,报告侧逐件翻来源留存证据)。
                 picked_char = _opt.char
                 picked_norm_item = normalize_registry_equip_name(_opt.equip)
                 picked_extra_norm = tuple(
@@ -337,7 +337,7 @@ class CwScreenSupplyNode(CwOperation):
                 # GameState 选定记录(chosen_supply)——**确认即写**(口径分叉
                 # 显式申报:supply 直写,chosen_tome 维持「出口验真后写」家族
                 # 口径不变——差异理由 = supply 的中转暂存宿主已随执行层状态
-                # 类目退役,直写是暂存载体消亡后的唯一形态;chosen_tome 无
+                # 类目停用,直写是暂存载体消亡后的唯一形态;chosen_tome 无
                 # 暂存载体。确认未落地窗内容器短暂持未落地值:容器
                 # chosen_supply 无决策读者,低危可接受;兜底点卡/刷新轮不写
                 # = 真选守卫(与本分支互斥)。)值 = (角色, 装备名列表)
@@ -366,7 +366,7 @@ class CwScreenSupplyNode(CwOperation):
             self.ctx.controller.mouse_move(refresh_target)
             self.ctx.controller.click(refresh_target)
             # 用户口述口径(docs/game/currency_war/research/screen_flow_timing.md
-            # #19,2026-09-02):补给屏刷新后 2s 画面稳定——原 0.6s 依赖「下一轮
+            # #19):补给屏刷新后 2s 画面稳定——原 0.6s 依赖「下一轮
             # wait 1.5s」合计 2.1s,余量仅 0.1s,重掷动画尾帧可能被读(选项读缺
             # → 决策建立在残缺选项上)。等满 2s 再交回。
             time.sleep(2.0)

@@ -35,12 +35,12 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwActionPickStarTomeOp(CwOperation):
-    """星徽秘典四选一选卡链(pick-op-unify 批收编;点卡即选,弹窗自关)。
+    """星徽秘典四选一选卡链(pick-op-unify 批并入;点卡即选,弹窗自关)。
 
     点卡(safe_click 防吞点击;点击点 = 容器 ``star_tome_opts_xy[idx]``——
     观察期解出上报,op-layer.md §1.1 :35 坐标单一真相源 = 观察上报,
     动作 op 自取,缺席/越界 = 守卫断言)→ 选中动画固定等待。
-    ``chosen_tome``/ConfirmTome 到账登记留守画面 op 重入裁决出口(动作
+    ``chosen_tome``/ConfirmTome 到账登记留守画面 op 落地复查出口(动作
     事实边界),本 op 容器写零。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。

@@ -3,7 +3,7 @@
 
 观察 node = 入口锚复探窗(有界自愈:复探窗内自愈、超窗
 round_retry 消耗观察 node 预算)→ **一次读全**(3 张卡名 + 逐卡刷新
-剩余次数,零稳定帧等待——用户裁定 2026-09-21「不要 1s 稳定帧」;
+剩余次数,零稳定帧等待——用户裁定「不要 1s 稳定帧」;
 读缺自愈 = 复探窗/外循环重派)
 → ``report_screen_invest_strategy_obs`` 落容器(候选 ``invest_strategy_
 opts`` + 逐卡剩余 ``strategy_refresh_left`` 观察写端)→ obs 挂实例
@@ -14,9 +14,9 @@ round_fail 显式失败交外循环重派,fallback 盲发路径废除——裁�
 派发实例携归一名,词表 = CwActionPickInvestStrategyParam 屏别独立类)
 → **round_success 终结交回**(选完即交回外循环,用户裁定;确认未生效
 = 代码 bug,归点击链可靠性治理,不设防重复/等待——action_ops.md §1
-增补 2 即时上报契约)。
+ 即时上报契约)。
 
-逐卡刷新 = 终结动作(用户裁定 2026-09-14,照投资环境屏同款形态):
+逐卡刷新 = 终结动作(用户裁定,照投资环境屏同款形态):
 策略层刷新判据(``invest_strategy.decide`` 帧级门 + 槽级动作集,推导见
 math_proofs P81)→ 返回刷新建议非空 ∧ 逐槽余量闸(obs 携带
 + 容器 ``strategy_refresh_left`` 双闸,剩余 ≤0 = 尽)→ 文本锚定点刷新
@@ -33,7 +33,7 @@ strategy 整链:无效载荷拒绝/持卡面按名字去重/效果账本登记�
 gained 效果分派,正本 = game_state/gain-chain.md),画面 op 零选择写点。
 本屏 sim 腿 = 可见(sim 后端呈现本屏,读屏点经 ``sim_or_live_observation``
 改道生成器产物),判据/策略层改动属 sim 可 A/B 面(A/B 批跑通道现缺,
-候补挂账),行为承重 = 实机在册行为锁。
+候补登记的待办),行为支撑 = 实机在册行为锁。
 """
 import time
 from typing import ClassVar
@@ -83,7 +83,7 @@ def _guard_classify(name: str, config) -> tuple[bool, bool, bool, bool]:
     - blood/forbidden = F2 唯一 L1 守卫输入(L1 = 非血∧非禁);
     - ``top`` = 顶级判定(S1 定义型 ∨ S2 经济引擎档)。返回值随链语义演进:
       现役消费 = 闸 3 的 L1 计算(exact/blood/forbidden);top 输出现在无
-      消费方(原「新卡达顶级停链」随 2026-09-14 终结交回裁定退役),保留
+      消费方(原「新卡达顶级停链」随 终结交回裁定停用),保留
       返回形状供闸内联解包,语义 = 帧内单名顶级事实。
     帧级 D*-dependent 判据(对齐档 N/max_N)只在 kernel:handler 禁直调 kernel
     判据算刷新建议(G1——直调会丢 D*① 三参换基),本 helper 只服务执行期守卫
@@ -121,7 +121,7 @@ class CwScreenInvestStrategy(CwOperation):
     ENTRY_REPROBE_WAIT_S: ClassVar[float] = 0.8
     # 逐卡刷新圆钮 = 「刷新次数N」文本中心 + 固定偏移(文本锚定;
     # 单帧证据不足判文本漂移形态,固定 area 不可行——遭遇屏 _REFRESH_BTN_DX
-    # 先例)。偏移实测收口(V7,归档帧 sr-od-test/screens/货币战争-投资策略/
+    # 先例)。偏移实测收尾(V7,归档帧 sr-od-test/screens/货币战争-投资策略/
     # default.webp CV 环亮像素质心):钮心 x≈{388,887,1386}、计数文本中心
     # x≈{477,975,1474}(y 同带 ≈855)→ dx ≈ −88。偏移错 → 刷新未命中,
     # 重读=原卡名集,重决策结果天然等价(能力退化非事故,复测即修)。
@@ -182,7 +182,7 @@ class CwScreenInvestStrategy(CwOperation):
 
     def _observe_frame(self) -> CwScreenInvestStrategyObs:
         """入口锚复探窗 + 一次读全(观察轮读链)。零稳定帧等待(用户裁定
-        2026-09-21);一次读全 = 卡名 OCR + 逐卡刷新剩余计数,同一帧读取,
+       );一次读全 = 卡名 OCR + 逐卡刷新剩余计数,同一帧读取,
         计数按 x 就近配对到槽(标准化转换住观察侧)。读缺 = 对应槽 None,
         由复探窗/外循环重派自愈;超窗 = entry_ok False(调用方 round_retry
         有界自愈)。"""
@@ -204,7 +204,7 @@ class CwScreenInvestStrategy(CwOperation):
     def observe(self) -> OperationRoundResult:
         """入口锚复探窗(有界自愈)+ 一次读全 → report 落容器。
 
-        超窗走 round_retry 而非 round_fail(二次治本,2026-09-06
+        超窗走 round_retry 而非 round_fail(二次治本
         04:16:38 实证复探窗 3.2s 仍不够覆盖个别过渡段):retry 消耗
         观察节点 node_max_retry_times 预算有界自愈,且不产生 ERROR 行——
         round_fail 会炸出整 op 并触发哨兵报警退出(20-22 局实证
@@ -232,8 +232,8 @@ class CwScreenInvestStrategy(CwOperation):
         """零参决策 → 逐卡刷新终结交回 / 点卡+确认后立即终结 → round_success。
 
         选卡链派发后本访问即终结交回外循环(选完即交回,用户裁定
-        2026-09-21;确认未生效 = 代码 bug,overlay 残留由外循环按当前
-        画面重识别重派,修法 = 点击链可靠性,action_ops.md §1 增补 2)。"""
+       ;确认未生效 = 代码 bug,overlay 残留由外循环按当前
+        画面重识别重派,修法 = 点击链可靠性,action_ops.md §1 )。"""
         obs = self._obs
         return self._decide_and_act(obs)
 
@@ -243,20 +243,20 @@ class CwScreenInvestStrategy(CwOperation):
         op 内即时上报)→ round_success 终结交回。空候选/决策无有效输出 =
         round_fail 显式失败(零盲发,裁定「没有选到就是代码 bug」);
         无 match 局外不设早退支(画面 op 不支持局外单独调用——
-        op-layer.md §1.1;用户裁决 2026-09-22 全族删门)。"""
+        op-layer.md §1.1;用户裁决 全族删门)。"""
 
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         opts = obs.options
         names = [n for n, _x, _y in opts]
         if not names:
             # 空候选 = OCR 读缺 = bug 面:显式失败交外循环重观察重派
-            #(原 fallback(no-ocr) 盲点屏中路径废除——用户裁定 2026-09-21
+            #(原 fallback(no-ocr) 盲点屏中路径废除——用户裁定
             #「没有选到就是代码 bug,不做无畏补丁」;复探窗已
             # 自愈过渡帧,此态 = 真读缺)。
             return self.round_fail('投资策略候选 OCR 读缺(零盲发,显式失败)')
         match = self.ctx.cw_match
         # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
-        # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
+        # §1.1;用户裁决 全族删门):单跑缺上下文沿正常链路
         # 在此失败即预期,禁回填此类单跑防御分支。
         # 零参决策(写槽已由观察轮 report 落容器 invest_strategy_opts)。
         # 输出 = 单一 CwAction:CwActionRefreshInvestCardsParam(逐卡刷新
@@ -266,7 +266,7 @@ class CwScreenInvestStrategy(CwOperation):
         if isinstance(act, CwActionRefreshInvestCardsParam):
             refresh_slots = act.slots
 
-        # ===== 逐卡刷新 = 终结动作(用户裁定 2026-09-14:点钮后本访问即
+        # ===== 逐卡刷新 = 终结动作(用户裁定:点钮后本访问即
         # 终结交回,外循环重进后重观察重决策;闸门语义:
         # 逐卡预算;闸输入 = obs 携带 + 容器剩余口径,决策环零识别)=====
         if refresh_slots:

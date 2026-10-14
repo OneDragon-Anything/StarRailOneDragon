@@ -1,4 +1,4 @@
-# live-verified 2026-08-20:坐标来自实机对局当场实测
+# live-verified:坐标来自实机对局当场实测
 # (左卡中心 (755,400) 命中选中)。机制见
 # docs/game/gameplay/currency_war.md「银狼我来当策划事件」节(用户口述)。
 
@@ -6,7 +6,7 @@
 
 银狼首次升 2 星(及 5 费升 2 星)触发的二选一 overlay:
 - 首次:选项含「升费」(卡面「提升费用至 4 费」;升费腿 = 变为下一个
-  费用档的 1 星银狼LV.999 [口述·权威 2026-09-18];机制单一源 =
+  费用档的 1 星银狼LV.999 [口述·权威];机制单一源 =
   docs/game/currency_war/research/equipment_mechanics.md §7)
   vs 其他(破解芯片/专属装备)
   → **默认选升费**(成长滚动投资前提;用户口述:选了升费新费档银狼刷进商店,
@@ -14,7 +14,7 @@
 - 5 费升 2 星:两选项都是装备(无法升费),任选其一。
 
 识别:OCR 左/右卡区域,找「提升费用」字样 → 那张是升费卡;无 → 任选(左)。
-点卡 = 机械单发(用户裁定 2026-09-14:详情面板检测拆,用户定性 = 详情
+点卡 = 机械单发(用户裁定:详情面板检测拆,用户定性 = 详情
 弹出 = 点错所致)——选卡后可能自动弹「属性详情」面板(点错区所致),
 不判不关,后果归下一帧重入(外循环按当前画面重分派自愈)。
 
@@ -25,11 +25,11 @@
 (恒写两卡,空桶照写)→ obs 挂实例属性进决策 node。决策动作 node =
 零参决策 → ``classify_planner_leg``
 腿型 → 组装 env → 选卡确认链派发即 ``round_success`` 终结交回外循环
-(``flow/action_ops.md`` §1 增补 2 与 §4.5 PickPlanner 行:动作 op 确认
-点击后立即上报完整效果腿,零重入裁决、零落地相补写面——确认未生效 =
-代码 bug,overlay 残留由外循环按当前画面重识别重派)。本屏无 chosen_* 写端(选择存证行已随删除波 1
-退役);本屏 sim 腿 = 不适用(sim 无对应画面段,事件
-浮层族即时落定),等价判据主承重 = 实机在册行为锁
+(``flow/action_ops.md`` §1  与 §4.5 PickPlanner 行:动作 op 确认
+点击后立即上报完整效果腿,零落地复查、零落地相补写面——确认未生效 =
+代码 bug,overlay 残留由外循环按当前画面重识别重派)。本屏无 chosen_* 写端(选择存证行已已停用
+停用);本屏 sim 腿 = 不适用(sim 无对应画面段,事件
+浮层族即时落定),等价判据主要支撑 = 实机在册行为锁
 (test_cw_screen_two_node_family 两 node 形态锁;接线/基建锁补档 =
 开放设计注,见 screens/planner.md §9)。
 """
@@ -54,16 +54,16 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenYinLang(CwOperation):
-    """银狼 2 星奖励画面(用户 2026-08-31 定名;弹窗标题「我来当策划」,银狼升
+    """银狼 2 星奖励画面(用户 定名;弹窗标题「我来当策划」,银狼升
     2★ 时触发——非随机事件):OCR 两卡 → 策略选卡 → 确认 → 关详情面板。
     两选项=扑满病毒(敌人变扑满)vs 升费卡(升费腿 = 变为下一个费用档的
     1 星银狼LV.999,单位身份保持银狼LV.999、费用档升一级、星级为 1 星
-    [口述·权威 2026-09-18]);选卡委托 kernel 纯函数 decide_planner 打分
+    [口述·权威]);选卡委托 kernel 纯函数 decide_planner 打分
     (升费卡基础分最高,
     target 银狼线加成/银狼不在场降权;弱化/装备类按通用原则评分)——
     handler 不写死优先级,「何时升费非最优」由策略模块表达(用户定调必接策略)。"""
 
-    # 卡身选中点击点(⚠️ 23:33 交互实锤:卡上半部点击=弹「属性详情」((755,400)/
+    # 卡身选中点击点(⚠️ 23:33 交互已实测确认:卡上半部点击=弹「属性详情」((755,400)/
     # (1225,310) 均触发详情非选中)——**点卡下半部生效选中**(右卡选中+确认亮)。
     # 布局漂移实证:卡上移后固定点 (1225,480) 落卡外 → 未选中 → 确认无效
     # 死循环;防线 = 由 area rect 推导:71% 高度(旧实证点击高度比例)+
@@ -71,7 +71,7 @@ class CwScreenYinLang(CwOperation):
     CARD_AREA_SCREEN: ClassVar[str] = '货币战争-银狼升星'
     CARD_AREAS: ClassVar[tuple[str, str]] = ('骇入选项-左卡', '骇入选项-右卡')
     # 点卡/确认按住时长(值沿 prep_actions 同族参数实证;漏定义 = live
-    # AttributeError——类属性与引用点同批落码的纪律)
+    # AttributeError——类属性与引用点同批实现的纪律)
     CLICK_PRESS_TIME: ClassVar[float] = 0.15
     # 选中点击高度比例:旧实证 (755/1225,480) 对旧 rect y 280-560 = 卡内 71%
     # (⚠️ 迁移样本 n=1,单次交互实证;半区经验值非充分统计)。
@@ -95,7 +95,7 @@ class CwScreenYinLang(CwOperation):
         ——绝对 y 常数对多布局不成立,见类属性注释)。两比例皆 rect 相对,
         布局再漂移时只更 yml rect,本方法零改。area 缺失 = 返回 None
         (建档漂移,调用方显式 round_fail 交回重读,禁兜底坐标——
-        用户裁定 2026-09-22)。确认钮动画/多步 overlay 零覆盖声明:本方法
+        用户裁定)。确认钮动画/多步 overlay 零覆盖声明:本方法
         只产选中点,确认链与上报归动作 op,本 op 派发即终结交回外循环。
         """
         area = self.ctx.screen_loader.get_area(
@@ -130,7 +130,7 @@ class CwScreenYinLang(CwOperation):
         # 中心点落入建档两卡 rect(坐标单一真相源 = yml;判定语义 =
         # 中心点,先例 _anchor_hit_full_ocr 同式)。卡位 area 缺失 =
         # 显式 round_fail 交回重读(禁兜底 rect 静默降级——用户裁定
-        # 2026-09-22;捕获集 = 卡全域 rect,卡内文本全属该卡语义,
+        #;捕获集 = 卡全域 rect,卡内文本全属该卡语义,
         # classify 关键词匹配面不变)。
         _rects: list[Rect] = []
         for _area_name in self.CARD_AREAS:
@@ -173,21 +173,21 @@ class CwScreenYinLang(CwOperation):
         """零参决策 → 腿型判定 → 组装 env → 派发即 ``round_success`` 终结。
 
         动作 op ``CwActionPickPlannerOp`` 确认点击后立即上报完整效果腿
-        (单相即时上报,正本 = ``flow/action_ops.md`` §1 增补 2 与
+        (单相即时上报,正本 = ``flow/action_ops.md`` §1  与
         §4.5 PickPlanner 行)——本 op 派发即终结交回外循环重观察,零重入
-        裁决轮、零证据闩(确认未生效 = 代码 bug,overlay 残留由外循环按
+        裁决轮、零证据标志(确认未生效 = 代码 bug,overlay 残留由外循环按
         当前画面重识别重派)。"""
         options = self._obs.options if self._obs is not None else []
         # 策略层决策(唯一入口 = 策略对象,handler 禁 kernel 直调——决策
         # 控制分层铁律,flow/README.md §1;写槽已由 report 落容器 → 零参
-        # 决策)。无 match 局外兜底决策支已删(用户裁决 2026-09-22 全族
+        # 决策)。无 match 局外兜底决策支已删(用户裁决 全族
         # 删门,op-layer.md §1.1「画面 op 不支持局外单独调用」):单跑缺
         # 上下文沿正常链路失败即预期,禁回填此类兜底分支。
         pick = self.ctx.cw_match.strategy.decide_planner()
         target = self._card_point(pick.idx)
         if target is None:
             # 点卡定位点不可派生 = 卡位建档漂移,显式失败交回重读
-            #(零派发零点击,禁兜底坐标;用户裁定 2026-09-22)。
+            #(零派发零点击,禁兜底坐标;用户裁定)。
             return self.round_fail(
                 f'卡位 area 缺失:{CwScreenYinLang.CARD_AREAS[pick.idx]}'
                 f'({CwScreenYinLang.CARD_AREA_SCREEN}),禁兜底坐标交回重读')

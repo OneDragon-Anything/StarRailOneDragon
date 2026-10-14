@@ -3,7 +3,7 @@
 「XX星徽套组」详情面板(采晶矿/装备操作误点开星徽图标)的处理迁移:
 点右上 X 关回备战,无验效。**刻意不用 ESC**(bug#2,原分支注释随迁,
 禁在 op 内「顺手统一」成 ESC):面板已关时 ESC 落备战弹「中断挑战」;
-X 是弹窗内坐标永远安全。背景:2026-08-17 M53 停机建档。
+X 是弹窗内坐标永远安全。背景: M53 停机建档。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;
 推进型空决策骨架逐屏内联,无共享基类——模式一致即重复):观察 node =
@@ -11,12 +11,12 @@ X 是弹窗内坐标永远安全。背景:2026-08-17 M53 停机建档。
 OR,分发面 = 建档双 id_mark 组合 AND,本门比分发宽;miss 未发 = round_fail 交回外循环重判,「下一帧
 重判」是外循环职责)+ obs{on_screen} 挂实例属性(空决策形态无 report:
 本屏零容器写点,obs 类住 kernel/cw_screen_report/emblem_detail_popup.py,
-import 构造即可)。决策动作 node = 重入裁决顶部(点 X 已发 → 双锚 miss
+import 构造即可)。决策动作 node = 落地复查顶部(点 X 已发 → 双锚 miss
 = 已离开本画面 → success 交回——出口 = 入口观察的合法重判,非动作层
 判效;在 = 再推进)→ 点「按钮-关闭」单次推进(success_wait=1 同原分支
 内联值)→ round_wait 循环(不烧节点重试预算,不收敛 = 动作 bug 响亮
 暴露,无防御上限;「推进动作未落地」= round_fail 如实交回)。本类入口
-信号 = 自有双锚判定(覆写形态),重入裁决有观察信号可用,无「免锚发出
+信号 = 自有双锚判定(覆写形态),落地复查有观察信号可用,无「免锚发出
 即 success」出口。
 """
 from cv2.typing import MatLike
@@ -72,9 +72,9 @@ class CwScreenEmblemDetailPopup(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=2)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
+        """落地复查(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
         if self._advanced_once and not self.entry_ok(self.last_screenshot):
-            # 重入裁决(验证废除形态):重入锚 miss = 已离开本画面 → success
+            # 落地复查(验证废除形态):重入锚 miss = 已离开本画面 → success
             # 交回;旗标清(实例级,单 op 生命周期语义)。
             self._advanced_once = False
             return self.round_success(

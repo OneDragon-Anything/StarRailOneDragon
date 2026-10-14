@@ -5,7 +5,7 @@
 现行为(原分支注释「先关 overlay 推进」),按 key_equips 择优属策略面
 后续批(契约改版另立,为它设 decide 接口 = 给无选择面
 画面造空选择,违契约收缩方向)。背景:bot 不选 → overlay 持续
-卡备战(2026-08-07 实跑 plane1 1-3 卡此 overlay 666s)。
+卡备战( 实跑 plane1 1-3 卡此 overlay 666s)。
 
 首件点击坐标已 area 化(``货币战争-备战``/``按钮-简易装备首件``,矩形
 中心 = 原 Point(626,250)「幸运星位」);原分支无 mouse_move,保持。
@@ -16,7 +16,7 @@
 round_fail 交回外循环重判,「下一帧重判」是外循环职责)+ obs{on_screen}
 挂实例属性(空决策形态无 report:本屏零容器写点,obs 类住
 kernel/cw_screen_report/aha_equip_pick.py,import 构造即可)。决策动作
-node = 重入裁决顶部(点首件已发 → 锚 miss = 已离开本画面 → success 交回
+node = 落地复查顶部(点首件已发 → 锚 miss = 已离开本画面 → success 交回
 ——出口 = 入口观察的合法重判,非动作层判效;锚在 = 再推进)→ area 读
 「按钮-简易装备首件」+ click 单次推进 → round_wait 循环(不烧节点重试
 预算,不收敛 = 动作 bug 响亮暴露,无防御上限;「推进动作未落地」=
@@ -73,9 +73,9 @@ class CwScreenAhaEquipPick(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=2)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
+        """落地复查(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
         if self._advanced_once and not self.entry_ok(self.last_screenshot):
-            # 重入裁决(验证废除形态):重入锚 miss = 已离开本画面 → success
+            # 落地复查(验证废除形态):重入锚 miss = 已离开本画面 → success
             # 交回;旗标清(实例级,单 op 生命周期语义)。
             self._advanced_once = False
             return self.round_success(

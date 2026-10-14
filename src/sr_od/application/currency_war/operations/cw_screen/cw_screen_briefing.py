@@ -15,12 +15,12 @@
 挡死;match/gs 缺席跳过)→ obs 挂实例属性进决策 node。**词缀效果
 点采与效果账本登记留守观察侧**(依赖 OCR 逐词缀点采,摸帧逻辑不进
 kernel):每次进简报屏都重读重采,点采对注册表比对自身幂等(一致即
-跳过,无重复收集)。决策动作 node = 重入裁决顶部(「下一步」已发 →
+跳过,无重复收集)。决策动作 node = 落地复查顶部(「下一步」已发 →
 标识不在 = 已离开简报 → success 交回(wait=BRIEFING_SETTLE_S);标识在 =
 点击未落地 → 重点)→ 点「下一步」+ 置位 → round_wait 循环推进(不烧
 节点重试预算;不收敛 = 策略实现 bug 响亮暴露,无防御上限)。本屏 sim
-腿 = 不适用(sim 无对应画面段),等价判据主承重 = 实机在册行为锁 +
-写入流对拍(锁面 = sr-od-test test_cw_obs_arch_phase_screens.py)。
+腿 = 不适用(sim 无对应画面段),等价判据主要支撑 = 实机在册行为锁 +
+写入流交叉核对(锁面 = sr-od-test test_cw_obs_arch_phase_screens.py)。
 """
 import contextlib
 import time
@@ -56,7 +56,7 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenBriefing(CwOperation):
-    """简报:识别简报 → 读词缀/boss/难度(report 落容器)+ 词缀效果采集 → 点下一步(重入裁决交回)。"""
+    """简报:识别简报 → 读词缀/boss/难度(report 落容器)+ 词缀效果采集 → 点下一步(落地复查交回)。"""
 
     #: screen_info 画面(currency_war_briefing.yml):id_mark 标识-本场对局首领
     #: + 按钮-下一步 + 区域-词缀行 + 区域-首领行。
@@ -65,7 +65,7 @@ class CwScreenBriefing(CwOperation):
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-简报(开局序列)')
-        # 「下一步」已发待重入裁决标志:重入裁决住决策动作 node 顶部——
+        # 「下一步」已发待落地复查标志:落地复查住决策动作 node 顶部——
         # 标识不在 = 已离开简报(过渡完成)→ success 交回;标识在 =
         # 点击未落地 → 重点。
         self._click_pending: bool = False
@@ -168,9 +168,9 @@ class CwScreenBriefing(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=10)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 点「下一步」+ 置位 → round_wait。
+        """落地复查(顶部)→ 点「下一步」+ 置位 → round_wait。
 
-        重入裁决(观察驱动,验证废除形态):上轮「下一步」已发 → 标识不在
+        落地复查(观察驱动,验证废除形态):上轮「下一步」已发 → 标识不在
         = 已离开简报 → success 交回;标识在 = 点击未落地 → 重点。循环推进
         = round_wait(不烧节点重试预算;不收敛 = 策略实现 bug 响亮暴露,
         无防御上限)。"""
@@ -200,7 +200,7 @@ class CwScreenBriefing(CwOperation):
 
         对比目标 = 注册表文件最新(``load_affix_effects_from_file``);没该词缀(新名)
         或效果不一致 → 存 tooltip 截图(``affix_shots/<词缀>.png``)+ 收集;一致 → 跳过。
-        tooltip 机制(2026-08-05 实机):点词缀弹效果 tooltip(词缀条上方,切换不关旧)。
+        tooltip 机制( 实机):点词缀弹效果 tooltip(词缀条上方,切换不关旧)。
         """
         _registered = load_affix_effects_from_file()       # 注册表文件最新(对比目标)
         updates: dict[str, str] = {}

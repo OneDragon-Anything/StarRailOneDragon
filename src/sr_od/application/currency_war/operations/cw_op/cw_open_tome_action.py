@@ -1,4 +1,4 @@
-"""开秘密典籍动作 op(CwActionOpenTomeOp)——动作 op 重组批③ 换壳(原
+"""开秘密典籍动作 op(CwActionOpenTomeOp)——动作 op 重组换壳(原
 ``OpenTomeOp``,ActionOp ABC → 框架 SrOperation;机械执行后 **op 内直调
 自己的上报函数** ``report_action_open_tome_param``,零分派,op-layer.md
 §1.2 动作 op 契约)。非终结:单击开典籍后星徽四选一 overlay 弹出,选卡交外循环
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 class CwActionOpenTomeOp(CwOperation):
     """开秘密典籍:单击典籍槽(开启)→ 固定动画等待。非终结。
 
-    单击化(用户确认 2026-09-25 游戏实际 = 单击
+    单击化(用户确认 游戏实际 = 单击
     即弹;原双击序列的第二击落在已弹出的弹窗上有误触风险):
     实机核凭据 = 待实机局 journal(代码批先落地,实机验证随迭代收尾,
     )。"""
@@ -48,7 +48,7 @@ class CwActionOpenTomeOp(CwOperation):
 
     @operation_node(name='open_tome', is_start_node=True)
     def run(self) -> OperationRoundResult:
-        """单击典籍槽即开启(单击化 = 用户确认 2026-09-25 游戏实际,
+        """单击典籍槽即开启(单击化 = 用户确认 游戏实际,
         双击序列的第二击落在已弹弹窗上有误触风险;实机核凭据 = 待实机
         局 journal);弹窗后外循环分发 CwScreenBookcard
         接管选卡(本动作不选 —— 选卡是策略决策,板上阵营匹配在 CwScreenBookcard)。

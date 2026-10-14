@@ -4,7 +4,7 @@
 无验效。**入口观察用 OCR 回退**(建档 currency_war_item_detail.yml
 在册但无 id_mark——仅「按钮-关闭」定位区,无画面身份锚):
 「聘用书」∧ 非祈愿屏,与外循环分发判定同源同参——祈愿试炼选项名含
-「聘用书」(4 费聘用书)的截胡死循环修复(实机实锤单次 15min+)靠这道排他,
+「聘用书」(4 费聘用书)的截胡死循环修复(实机已实测确认单次 15min+)靠这道排他,
 排他双写于外循环分支判定与本 op 入口(两处同参,建档含 id_mark 后 op 侧
 可切 area 锚,切换属实施批内部对齐)。
 
@@ -14,12 +14,12 @@
 miss 未发 = round_fail 交回外循环重判,「下一帧重判」是外循环职责)+
 obs{on_screen} 挂实例属性(空决策形态无 report:本屏零容器写点,obs 类
 住 kernel/cw_screen_report/item_detail_popup.py,import 构造即可)。
-决策动作 node = 重入裁决顶部(点 × 已发 → 门 miss = 已离开本画面 →
+决策动作 node = 落地复查顶部(点 × 已发 → 门 miss = 已离开本画面 →
 success 交回——出口 = 入口观察的合法重判,非动作层判效;在 = 再推进)
 → area 读「按钮-关闭」+ mouse_move+click 单次推进(防吞点击保留)→
 round_wait 循环(不烧节点重试预算,不收敛 = 动作 bug 响亮暴露,无防御
 上限;「推进动作未落地」= round_fail 如实交回)。本类入口信号 = 自有
-OCR 排他判定(覆写形态),重入裁决有观察信号可用,无「免锚发出即
+OCR 排他判定(覆写形态),落地复查有观察信号可用,无「免锚发出即
 success」出口。
 """
 from cv2.typing import MatLike
@@ -74,9 +74,9 @@ class CwScreenItemDetailPopup(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=2)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
+        """落地复查(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
         if self._advanced_once and not self.entry_ok(self.last_screenshot):
-            # 重入裁决(验证废除形态):重入 miss = 已离开本画面 → success
+            # 落地复查(验证废除形态):重入 miss = 已离开本画面 → success
             # 交回;旗标清(实例级,单 op 生命周期语义)。
             self._advanced_once = False
             return self.round_success(

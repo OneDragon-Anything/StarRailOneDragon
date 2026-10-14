@@ -36,14 +36,14 @@ if TYPE_CHECKING:
 
 
 class CwActionPickSupplyOp(CwOperation):
-    """补给节点 pick 确认链(统一动作工厂批4 迁入)。
+    """补给节点 pick 确认链(统一动作工厂 迁入)。
 
     刷新圆钮机械点击留守画面 op(刷新链 = 刷新建议动作
     ``CwActionRefreshSupplyParam`` 的执行半)——pick execute 语义 =
-    点卡选中 → 确认,不含刷新臂。
-    **即时上报**(契约单一源 = `flow/action_ops.md` §1 增补 2 与
+    点卡选中 → 确认,不含刷新分支。
+    **即时上报**(契约单一源 = `flow/action_ops.md` §1  与
     §4.5 PickSupply 行):确认点击后立即一口写全部效果逻辑态(owned 规范名
-    + 单位腿 + 装备后果腿),无到账登记、无落地证据闩——确认未生效 =
+    + 单位腿 + 装备后果腿),无到账登记、无落地证据标志——确认未生效 =
     代码 bug,overlay 残留由外循环按当前画面重识别重派。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
@@ -70,13 +70,13 @@ class CwActionPickSupplyOp(CwOperation):
         # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
         time.sleep(0.6)
         # 确认(supply 按钮-确认 area;T#103 area 化)。点击即上报推进
-        # (去证据门,用户裁定 2026-09-21:动作 op 不做任何确认——点了
+        # (去证据门,用户裁定:动作 op 不做任何确认——点了
         # 就是上报,观察态门为唯一门;原「下一节点备战锚单探作上报时点门」
-        # 随转移证据机制整体退役)。
+        # 随转移证据机制整体停用)。
         confirm_result = op.round_by_find_and_click_area(
             op.screenshot(), '货币战争-补给', '按钮-确认', success_wait=1.5)
         # 立即自上报完整结果(单相:owned += norm_item 规范名
-        # + 单位腿 + 装备后果腿;norm_item 未解析 = 翻来源留证)。
+        # + 单位腿 + 装备后果腿;norm_item 未解析 = 翻来源留存证据)。
         # 一次执行两支上报、每支出口各自紧跟一行喂入(A2 多支并喂契约 =
         # 详设 world-decl.md §4);round data 携带最后一份(node_advance,
         # 终结转移),先前声明仅经端口喂入不随 data 重复。

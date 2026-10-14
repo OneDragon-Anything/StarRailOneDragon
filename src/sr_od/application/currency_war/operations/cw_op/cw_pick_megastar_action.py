@@ -4,7 +4,7 @@
 
 机械语义:``env.need_select`` 驱动的选中半(点候选——点击坐标 = 容器
 ``megastar_opts[idx].xy``,观察上报,按下标取;选择坐标观察上报规范 =
-op-layer.md §1.1 + action_ops.md §1 增补 5)→ 确认钮单发;机械链发出后
+op-layer.md §1.1 + action_ops.md §1 )→ 确认钮单发;机械链发出后
 直调自上报单口 ``report_action_pick_megastar_param``。
 """
 from __future__ import annotations
@@ -33,7 +33,7 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwActionPickMegastarOp(CwOperation):
-    """盛会之星 pick 确认链(统一动作工厂批4 迁入)。
+    """盛会之星 pick 确认链(统一动作工厂 迁入)。
 
     候选选中半迁入本类(pick-op-unify 批,``env.need_select`` 驱动,见
     ``run``);``chosen_megastar`` 写端留守画面 op(单次逻辑写入豁免面,
@@ -67,10 +67,10 @@ class CwActionPickMegastarOp(CwOperation):
         if env.need_select:
             # 选中半取点守卫(防 bug 路栏,非控制流):容器缺席/下标越界/
             # 元素缺坐标 = 观察上报链或策略器 bug,AssertionError 响亮
-            # 暴露——禁静默跳过选中(旧 target None 消极臂退役)、禁坐标
-            # 现算回退(action_ops.md §1 增补 5;op-layer.md §1.3)。
+            # 暴露——禁静默跳过选中(旧 target None 消极分支停用)、禁坐标
+            # 现算回退(action_ops.md §1 ;op-layer.md §1.3)。
             # 取点键 = param.idx(动作语义单一源,与上报函数同源;env.idx
-            # 已退役停喂——钳位删除后与 param.idx 恒等,镜像无存在意义)。
+            # 已停用停喂——钳位删除后与 param.idx 恒等,镜像无存在意义)。
             _gs = game_state_from_ctx(self.ctx)
             _opts = (_gs.megastar_opts.value if _gs is not None else None) or []
             assert _opts, (
@@ -89,20 +89,20 @@ class CwActionPickMegastarOp(CwOperation):
             # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
             time.sleep(0.6)
         # 确认 = 建档「按钮-确认选择」查找点击(round_by_find_and_click_area
-        # 全族统一,用户裁定 2026-09-22;不带 until = 动作 op 禁验证;area
+        # 全族统一,用户裁定;不带 until = 动作 op 禁验证;area
         # 缺失 = 显式失败交框架轮次)。
-        # overlay 关否由下一帧重入裁决。
+        # overlay 关否由下一帧落地复查。
         env.round_result = op.round_by_find_and_click_area(
             op.screenshot(), '货币战争-盛会之星', '按钮-确认选择',
             success_wait=0.9)
-        # 确认 = 纯机械单发(用户裁定 2026-09-14):「请选择强化角色」
+        # 确认 = 纯机械单发(用户裁定):「请选择强化角色」
         # 文本 = 确认钮旁伴随文案,禁据它判步。
         # 确认未落地 overlay 残留 =
-        # 下一帧重入裁决自愈:节点循环读「仍在巨星 overlay?」(标识锚仍
+        # 下一帧落地复查自愈:节点循环读「仍在巨星 overlay?」(标识锚仍
         # 命中)→ 重走本方法 → 候选已选 → 机械单发确认再推进
         # (宿主 round_wait 循环推进,不烧节点重试预算)。
         # chosen_megastar 写端留守画面 op(动作事实边界,派发前写 =
-        # 选择点),无挂账登记环节。
+        # 选择点),无登记的待办登记环节。
         # 自上报(机械链发出后;零写,契约面统一)。上报后一行声明喂入
         # (动作后果声明化喂入契约 = design.md §2.2 契约 3;实机端口未装
         # = no-op,sim 装配后驱动后端 pick_megastar 出队+交回);round

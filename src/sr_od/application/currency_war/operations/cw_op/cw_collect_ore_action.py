@@ -1,4 +1,4 @@
-"""点晶矿动作 op(CwActionCollectOreOp)——动作 op 重组批③ 换壳
+"""点晶矿动作 op(CwActionCollectOreOp)——动作 op 重组换壳
 (原 ``CollectOreOp``,ActionOp ABC → 框架 SrOperation;机械执行后
 **op 内直调自己的上报函数** ``report_action_collect_ore_param``,零分派,
 op-layer.md §1.2 动作 op 契约)。载荷 = kernel ``select_ore_clicks``
@@ -48,8 +48,8 @@ class CwActionCollectOreOp(CwOperation):
         """逐坐标采晶矿(R4 机械执行半;载荷 = kernel ``select_ore_clicks``
         产出的有序点击列)。
 
-        大晶矿优先/上界挑选归决策侧 kernel 单一源(发射位构造载荷),本方法
-        纯机械逐个点(2026-09-02 用户指导 screen_flow_timing.md #16:晶矿
+        大晶矿优先/上界挑选归决策侧 kernel 单一源(动作发出点构造载荷),本方法
+        纯机械逐个点( 用户指导 screen_flow_timing.md #16:晶矿
         飞行动画最长 ~2s → 点完等满动画;去向 = 备战/商店/装备栏)。零读屏
         零排序零截断;席满时部分晶矿可能没点开——由后续 heavy 观察自然回补。
         掉箱感知随之删除(掉箱归下一帧观察 → CwActionOpenBoxParam 臂)。

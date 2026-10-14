@@ -12,7 +12,7 @@ CW operations 树全部操作类的唯一父类(实机路径行为零变化):继
 - ``round_by_find_and_click_area()`` —— sim 委托端口 ``click_answer``
   (后端按点击处理画面状态机转移,机械镜 = 档案点位直成功 + until =
   ``visible`` 问询,见 ``cw_sim_ports.mirror_click_answer``);until 轮询腿
-  (点击已发出再问转移证据)在本层直接以 ``visible`` 问询收口,不重进后端
+  (点击已发出再问转移证据)在本层直接以 ``visible`` 问询收尾,不重进后端
   (重复进 = 重复触发转移);实机 → ``super()`` 原样。
 - ``round_by_find_area()`` —— sim 以端口 ``visible`` 应答;实机 →
   ``super()``。
@@ -101,7 +101,7 @@ class CwOperation(SrOperation):
     ) -> OperationRoundResult:
         """sim → 端口 click_answer(状态机转移 + 机械镜应答);实机 → super()。
 
-        until 轮询腿在本层收口:点击已发出(``node_clicked``)且带 until 时,
+        until 轮询腿在本层收尾:点击已发出(``node_clicked``)且带 until 时,
         直接以端口 ``visible`` 问询出结果,**不再进后端 click_answer**——
         后端按点击处理状态机转移,轮询重入会重复触发转移(「sim 点击腿
         已成功不重发」,flow-seam 详设 §2)。

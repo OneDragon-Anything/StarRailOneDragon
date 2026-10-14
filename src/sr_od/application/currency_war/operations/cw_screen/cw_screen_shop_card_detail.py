@@ -7,12 +7,12 @@
 
 处理 = 点 X 关闭(弹窗内坐标,星徽详情先例「永远安全」;不点购买——买不买的
 决策归商店域,关闭动作不得代替购买决策)→ 机械交回(验证废除批,用户
-裁定 2026-09-10:动作 op 禁验证;原「验 X 消失」判效半拆除,落地由
+裁定:动作 op 禁验证;原「验 X 消失」判效半拆除,落地由
 重入观察裁决承载——X 点击零效果时锚仍在 → 重入再做一次,事故 26 分钟
-放大器的防线语义由重入裁决保持)→ 交回外循环全分支重判(店开 → 0n
+放大器的防线语义由落地复查保持)→ 交回外循环全分支重判(店开 → 0n
 商店访问接管购买;备战 → 备战环)。**X 复用大厅同族模板** cw_lobby_close
 (同款关闭控件,失败帧实测 conf 0.98;备战右上数据统计按钮与 X 区重叠但
-模板实测零误配,见建档对拍)。
+模板实测零误配,见建档交叉核对)。
 
 序位:先于开商店子分支与备战双锚——弹窗暗色衬底会遮蔽底层全部
 锚(实证:开商店三锚与备战双锚在该衬底下 OCR 全灭),不先分流
@@ -25,12 +25,12 @@
 miss 未发 = round_fail 交回外循环重判,「下一帧重判」是外循环职责)+
 obs{on_screen} 挂实例属性(空决策形态无 report:本屏零容器写点,obs 类
 住 kernel/cw_screen_report/shop_card_detail.py,import 构造即可)。决策
-动作 node = 重入裁决顶部(点 X 已发 → 双锚 miss = 已离开本画面 →
+动作 node = 落地复查顶部(点 X 已发 → 双锚 miss = 已离开本画面 →
 success 交回——出口 = 入口观察的合法重判,非动作层判效;在 = 再推进)
 → 点「按钮-关闭」单次推进(success_wait=1.5 同 0a4 位面详情口径)→
 round_wait 循环(不烧节点重试预算,不收敛 = 动作 bug 响亮暴露,无防御
 上限;「推进动作未落地」= round_fail 如实交回)。本类入口信号 = 自有
-双锚判定(覆写形态),重入裁决有观察信号可用,无「免锚发出即 success」
+双锚判定(覆写形态),落地复查有观察信号可用,无「免锚发出即 success」
 出口。
 """
 from cv2.typing import MatLike
@@ -46,7 +46,7 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenShopCardDetailPopup(CwOperation):
-    """商店卡牌详情弹窗:双 id_mark 锚入口,点 X → 重入裁决交回(验证废除)。"""
+    """商店卡牌详情弹窗:双 id_mark 锚入口,点 X → 落地复查交回(验证废除)。"""
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-商店卡牌详情')
@@ -84,9 +84,9 @@ class CwScreenShopCardDetailPopup(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=2)
     def act(self) -> OperationRoundResult:
-        """重入裁决(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
+        """落地复查(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
         if self._advanced_once and not self.entry_ok(self.last_screenshot):
-            # 重入裁决(验证废除形态):重入锚 miss = 已离开本画面 → success
+            # 落地复查(验证废除形态):重入锚 miss = 已离开本画面 → success
             # 交回;旗标清(实例级,单 op 生命周期语义)。
             self._advanced_once = False
             return self.round_success(
