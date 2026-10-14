@@ -50,12 +50,18 @@
 
 **genshin.py 权威定义**（`constants.py`）：`GEETEST_RETCODES = {10035, 5003, 10041, 1034}` —— **10035 和 10041 都是极验验证码触发码**，不是「功能未开通」（此前归因有误，特此修正）。
 
-实测链路（2026-10-14）：
+实测链路（2026-10-14，含人工验证对照实验）：
 1. 不带 `x-rpc-device_fp` → `10041`
 2. 带官方网页真实 device_fp → `10041` 变 `10035`（过了第一层设备风控）
-3. 开全部数据开关、换 Referer → 仍 `10035`（极验验证未过）
+3. 开全部数据开关、换 Referer → 仍 `10035`
+4. **人工极验对照实验**：按 genshin.py 规格自建验证页（gt.0.5.0.js + api_server=api.geetest.com + no-referrer + 专用 DS `q=is_high=false` + create 头带 x-rpc-page/tool-version）成功弹出点选题，真人鼠标完成验证拿到 validate/seccode，随后带 `x-rpc-challenge/validate/seccode` 头重试 index/note/avatar-info → **仍 10035**
+5. 同凭证对照：卡片接口 getGameRecordCard 稳定 retcode 0，明细接口族（index/note/avatar-info）统一 10035
 
-剩余的 `10035` 极验环节，社区处理方式：用户在米游社 App 内打开一次角色详情（App 内置极验 SDK 自动通过，验证状态与设备绑定）后短期内同设备不再触发；或接入极验打码。**规避：走游戏内画面读取路线。**
+结论：10035 对明细接口族是**网关级拒绝**（IP/环境信誉评分），人工极验+票据不解除；开源项目的极验处理流程（genshin.py auth/server.py 全套）可完整复现但同样无效。排查方向只剩环境：更换出口 IP（如手机热点）后低频重试，或长期等 IP 信誉恢复。**规避：走游戏内画面读取路线。**
+
+关键规格备忘（下次重试直接用）：
+- create_mmt 头：`x-rpc-app_version: 2.60.1`、`x-rpc-client_type: 5`、`x-rpc-challenge_game: 6`、`x-rpc-page: v1.4.1-rpg_#/rpg`、`x-rpc-tool-version: v1.4.1-rpg`；DS 的 `q=` 恒为 `is_high=false`
+- 验证页：`https://static.geetest.com/static/js/gt.0.5.0.js`（版本敏感）+ `<meta name="referrer" content="no-referrer"/>` + initGeetest 必传 `api_server: "api.geetest.com"`（漏传连国际服务器必失败）
 
 ## 错误码分诊
 
