@@ -728,7 +728,8 @@ def dead_stock_pair_buy_reject_reason(name: str, star: int,
 #: 对账 = 闭集锁按符号差集断言)。
 PRESS_NARROWED_ARMS: frozenset[str] = frozenset({
     'dominance_buy',
-    'hub_option_buy',
+    # hub_option_buy 随 P86 乙臂收编移除(批 3.6:发射位并入序 1,
+    # m2 买因族走义务豁免,不受 D 域收窄辖)。
 })
 
 

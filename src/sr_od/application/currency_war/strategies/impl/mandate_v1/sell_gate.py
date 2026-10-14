@@ -93,10 +93,19 @@ if TYPE_CHECKING:
         StrategySession,
     )
 
-#: 卖出通道闭集(方案 v3 §3.1)。新通道必须先在此登记再接线——枚举外
-#: 值拒收(单一入口防线,防「新通道绕 A 手搓排除」的第五通道复发形态)。
+#: 卖出通道闭集(方案 v3 §3.1 + 迭代 2026-10-12 P78 五通道重映射)。
+#: 新通道必须先在此登记再接线——枚举外值拒收(单一入口防线,防「新通道
+#: 绕 A 手搓排除」的第五通道复发形态)。通道族谱(shop_session §5 承继
+#: 清单 P78 行):interest = 节末凑息;funding = 会话内筹资/升级变现
+#: (funding 同款通道对价,含 P78-5 兜底豁免);m4_fuel = 备战域晶矿腾位/
+#: 告警自救;m4_fuel 语义现由评估器 'ore_make_room'/'self_rescue' 场景
+#: 承载;line_switch = 换线塌缩(3.7 退役面,本批保留登记);projection
+#: = 投影视图读端(P78-6 读端同源);shop_swap = 店内置换账新增通道
+#: (迭代批 3.6 登记,不占既有闭集序号——谱系行非行为面:非 projection
+#: 通道的装配 A 输出逐位相同)。
 SELL_CHANNELS: frozenset[str] = frozenset({
     'interest', 'funding', 'm4_fuel', 'line_switch', 'projection',
+    'shop_swap',
 })
 
 #: 买因闭集(12 买入臂 → 因果类映射的值域)。闭集外值
@@ -126,11 +135,16 @@ LAUNCH_CAUSE_BY_ARM: dict[str, str] = {
     # 因果类。档 1)。
     'press_buy_deployable': 'press',
     'ev_buy': 'press',
+    # 序 2 场况插件买(迭代 2026-10-12-prep-shop-workflow-redesign 批
+    # 3.6;板面羁绊差一人进下一档——获取后即上场的场景性增持,非义务
+    # 非持有,归 press 类)。
+    'scene_plugin_buy': 'press',
     'core_single_card_buy': 'hold',
     'core_single_card_buy:unlocked': 'hold',
     'transition_component_buy': 'hold',
-    # P86 乙臂枢纽期权(获取持有,与 C1/④ 同因类;T-177 落码批)。
-    'hub_option_buy': 'hold',
+    # P86 乙臂枢纽期权行已随三臂收编移除(迭代 2026-10-12-prep-shop-
+    # workflow-redesign 批 3.6:发射位并入序 1 候选集,买因 = m2_*;
+    # 持有段保护 = hub_acquired_names_of 并集,不走发射登记)。
     # ②(b) 按 prio 三分(obligation/hold/press),发射位显式传因覆写本行。
     'dead_gold_press_buy': 'press',
     'fuel_filler_stall': 'stall_protect',

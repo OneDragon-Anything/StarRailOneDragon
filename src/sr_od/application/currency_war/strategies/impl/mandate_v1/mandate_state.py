@@ -425,6 +425,47 @@ class StrategyState:
     # 下帧重算)。写入端单一源 = session_scope.refresh_line_if_needed。
     line_eval_signature: tuple | None = None
 
+    # ===== 商店会话读数协议与会话循环键(迭代批 3.6;读写单一源 =
+    #       criteria/shop_session 协议函数族与会话循环发射位——新键在
+    #       session_scope._NODE_SCOPE_RESET_TABLE 显式登记的以表为准)=====
+    # [索引定义] gold_ledger = 金位读数账面(shop_session §4.2 读数协议):
+    # 真金最优估计;None = 失效待再锚定(节点边界重置/事件级失效触发置
+    # None;会话入口实读再锚定覆写)。取值时机 = 会话入口锚定帧 + 记账
+    # 钩子增量维护。备战域金位唯一供给(第 3 步攒批/第 7 步凑息/第 4 步
+    # 解拦复核金位腿消费)。
+    gold_ledger: int | None = None
+    # 金位账面的 visit 锚定判重键:上次锚定时的商店访问段序号(对比
+    # cw4_segment_serial——生产 op 观察 node 与 sim 驱动器两路均在访问
+    # 入口 +1,单一锚定信号);-1 = 本局尚未锚定。非节点作用域键(节点
+    # 边界不清——账面本身已清,判重键保留避免边界帧重复锚定日志)。
+    gold_ledger_visit_serial: int = -1
+    # 序 2 场况插件的会话累计额度(shop_session §2.2 序 2:会话开始帧
+    # 快照 deploy_cap − deployed,买入递减,会话内不读现场——店内
+    # deployed 恒定,现读每帧同值永不递减)。每 visit 入口重取快照
+    # (店内 deployed 不变 ⇒ 与会话开始帧等值)。
+    shop_plugin_budget: int = 0
+    # 返利族 5 费购买计数(伴生入金:每购买 3 个 5 费角色 +3;局级单调)。
+    shop_five_cost_buys: int = 0
+    # 读数会话意图标记(shop_session §1 路径③):备战侧读数开店发射位
+    # 置 True;收工消费——True ∧ 本会话零处理动作 ⇒ 不置标记(非处理性
+    # 会话,同节点后续真实会话不受污染)。任意关店出口清位。
+    shop_read_intent: bool = False
+    # 本 visit 受限访问标记(P70 发射帧仲裁授权的溢出段消费;契约 A 豁免
+    # 条款):visit 入口按 launch_restricted_session_active 现算快照——
+    # 受限 visit 的关店不置标记、不受会话标记辖。
+    shop_visit_restricted: bool = False
+    # 会话内处理动作旗标(升级即收工与收工写标记的判定输入):本会话
+    # 内任一处理动作(买/卖/刷/经验)发射即 True;读数会话零处理 +
+    # 意图标记 ⇒ 收工不置标记。
+    shop_session_processing: bool = False
+    # 升级即收工闩(shop_session §2.2:升级动作执行后直接收工关店——
+    # 商业间谍/晋升名额的升级联动商店效果未建模,终止买入规避误炸):
+    # 整批发射帧置位,下一决策帧收工关店(标记照写、清单照写)后清位。
+    shop_upgrade_close_pending: bool = False
+    # 持有 3★ 名集快照(合成族失效的帧差检测基线;criteria/shop_session
+    # .detect_merge_result_frame 单一写端)。
+    held_3star_snapshot: dict = field(default_factory=dict)
+
     # ===== scratch(原 session.memory 消解宿主;§6.3 纪律平移)=====
     # 策略实现层私有 scratch——临时变量不再逐个升字段。纪律:
     # ①键名加模块前缀防冲突;②生命周期 = 局级(状态对象每局新建自然

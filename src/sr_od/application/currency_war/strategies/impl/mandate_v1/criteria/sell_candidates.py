@@ -164,7 +164,7 @@ SCENE_SPECS: dict[str, SellSceneSpec] = {
         'pad_filter_min', 'm4_fuel'),
     'shop_swap': SellSceneSpec(
         'shop_swap', POOL_BENCH_ONLY, FACE_REGULAR, False,
-        'swap_account', 'funding'),
+        'swap_account', 'shop_swap'),
     'session_funding': SellSceneSpec(
         'session_funding', POOL_BENCH_ONLY, FACE_REGULAR, True,
         'sell_until_gap_closed', 'funding'),

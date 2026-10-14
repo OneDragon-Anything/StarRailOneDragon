@@ -414,7 +414,18 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
 
     def _require_slot_options(self, slot: object, slot_name: str) -> list:
         """payload 槽候选读口(黑板契约:进决策时 None = 观察层失约抛错,
-        禁静默按空候选决策;details §2.1)。"""
+        禁静默按空候选决策;details §2.1)。
+
+        **选卡族失效触发集中挂点**(shop_session §4.2 读数协议②;批
+        3.6):本读口 = 全部 pick 决策入口(三选一/二选一选卡族)共用
+        的候选槽读口,prep/shop 决策不经此口——任何选卡帧在此失效金位
+        账面(选中即失效实读,不枚举单项效果;刷新建议帧同辖 = 保守侧,
+        多失效一拍的代价 = 下次实读锚定)。
+        """
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+            shop_session as _shop_sess,
+        )
+        _shop_sess.note_pick_frame(self.gs)
         value = getattr(slot, 'value', None)
         if value is None:
             raise ValueError(

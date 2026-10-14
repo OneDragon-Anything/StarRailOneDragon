@@ -56,7 +56,7 @@ if TYPE_CHECKING:
 # 登记扩展方式:其他模块的节点作用域键在此显式登记(键名 + 初始值),
 # 禁各自散写重置逻辑——重置动作集中执行才可被逐键测试对账。
 #
-# 清单五项(prep_pipeline §3;前四项 = 重置动作,第五项 = 负登记):
+# 清单(prep_pipeline §3;前若干项 = 重置动作,尾项 = 负登记):
 # ① shop_handled → 清值(新节点牌面全换,旧标记语义死亡;机制依据 =
 #    economy §2.1「节点切换自动刷新全店」);
 # ② shop_opportunities → 清空(牌面变了,旧机会作废);
@@ -64,7 +64,14 @@ if TYPE_CHECKING:
 #    作废,防旧授权跨节点兑现;登记来源 = line_and_upgrade §2.2);
 # ④ line_eval_signature → 置失效(强制下帧重算——节点变动伴随结算
 #    收入与自然经验,资产面可能变化);
-# ⑤ 方向状态本身(line_locked_comp / line_candidates /
+# ⑤ 金位读数账面 gold_ledger → 置失效(读数失效条件「节点切换」经本
+#    清单落地,契约 C;「经验就是财富」类节点结算入金由本项天然吸收
+#    ——失效先行;登记来源 = shop_session §4.2 读数协议);
+# ⑥ 商店会话会话域旗标(shop_read_intent/shop_visit_restricted/
+#    shop_session_processing/shop_upgrade_close_pending/shop_plugin_
+#    budget)→ 复位(会话不跨节点;边界帧残留旗标防泄入下一节点会话,
+#    卫生性复位);
+# ⑦ 方向状态本身(line_locked_comp / line_candidates /
 #    opening_recipe_comp)不重置——锁定为一次性决策跨节点持续保留
 #    (契约 C;候选快照随签名重算自然更新、配方物化链每备战期自写,
 #    均非节点作用域键)。plane2_started 同不重置(单调历史事实)。
@@ -73,6 +80,12 @@ _NODE_SCOPE_RESET_TABLE: tuple[tuple[str, object], ...] = (
     ('shop_opportunities', ()),
     ('levelup_preauth', None),
     ('line_eval_signature', None),
+    ('gold_ledger', None),
+    ('shop_read_intent', False),
+    ('shop_visit_restricted', False),
+    ('shop_session_processing', False),
+    ('shop_upgrade_close_pending', False),
+    ('shop_plugin_budget', 0),
 )
 
 

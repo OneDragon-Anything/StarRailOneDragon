@@ -442,6 +442,15 @@ def emit(session: StrategySession,
     gs = game_state_of(session)
     _round_num = round_num_of(gs)
 
+    # 读数协议入口序(shop_session §4.2;批 3.6 挂点):账面同步(吸收
+    # 备战域卖出/买经验的上报链 delta)+ 合成族失效检测(全扫级——
+    # 任何 3★ 合成结果帧不分源,持有 3★ 集合帧差检测)。
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+        shop_session as shop_sess,
+    )
+    shop_sess.sync_gold_ledger(gs)
+    shop_sess.detect_merge_result_frame(gs)
+
     # 骨架帧装配(部署面共用输入;stop_flag 构造性 False——停手线 = 买面
     # 判据,消费位在商店域(shop.py 自装配),备战域 M2 已移店内)。
     _k = getattr(st, 'target_comp', None)
@@ -674,6 +683,9 @@ def _step2_ore(session: StrategySession, gs: GameState) -> list[Emitted]:
       散件卖完后自动停在「无垫件可卖」——无次数上限。ore_defer 试错
       计数键族已随纯判断替代退役。
     """
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+        shop_session as shop_sess,
+    )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
         Emitted,
     )
@@ -682,6 +694,9 @@ def _step2_ore(session: StrategySession, gs: GameState) -> list[Emitted]:
     if not targets:
         return []
     if _ore_bench_free(gs) > 0:
+        # 晶矿族失效触发(读数协议②;挂点 = 第 2 步发射位——随机金
+        # 不可精确记账,失效交下次实读锚定收敛)。
+        shop_sess.note_ore_click(gs)
         return [Emitted(CwActionCollectOreParam(
             points=select_ore_clicks(targets, ORE_CLICK_BATCH_MAX_K)),
             True, 'prep_spheres')]
@@ -843,11 +858,20 @@ def _step3_level_up(session: StrategySession, gs: GameState,
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
         levelup,
     )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+        shop_session as shop_sess,
+    )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
         Emitted,
     )
     st = state_of(session)
     counters = st.cw4_counters
+
+    # 金位读数门(shop_session §1 路径③:备战域金位唯一供给 = 账面;
+    # 失效帧无法评估攒批/触发面 → 读数开店锚定,标记不动;账面宿主 =
+    # 容器态(state_of(gs),与会话标记/清单同宿主)。
+    if state_of(gs).gold_ledger is None:
+        return _open_shop_for_gold_read(session, gs)
 
     # ===== 键驱动帧 =====
     pre = st.levelup_preauth
@@ -868,6 +892,9 @@ def _step3_level_up(session: StrategySession, gs: GameState,
             st.levelup_preauth = None
             counters['levelup_batch_emitted'] = \
                 counters.get('levelup_batch_emitted', 0) + 1
+            # 升级发射失效/伴生钩子(读数协议②:升 9 级成长基金独立
+            # 失效;节节高升任意升级 +1 伴生入金)。
+            shop_sess.note_levelup_emission(gs, level_of(gs) + 1)
             return [Emitted(CwActionLevelUpParam(
                 cost=int(cost), clicks=max(1, clicks),
                 auth_basis='preauth'), True, 'step3_levelup_batch')]
@@ -1019,6 +1046,7 @@ def _step3_level_up(session: StrategySession, gs: GameState,
     if blood_xp_mode(session) is not None:
         # 血本位局:无变现步,授权帧即执行帧(血余额为静态阈值,无逐帧
         # 重闸复发面;闸已在上行过 = 发射条件成立)。
+        shop_sess.note_levelup_emission(gs, level_of(gs) + 1)
         return [Emitted(CwActionLevelUpParam(
             cost=int(cost), clicks=clicks, auth_basis=arm_key),
             True, f'step3_levelup_batch:{arm_key}')]
@@ -1040,6 +1068,7 @@ def _step3_level_up(session: StrategySession, gs: GameState,
                 contracts.ContractCtx(gold=gold_of(gs)), counters) \
                 and levelup.spend_unified(clicks, gold_of(gs), cost):
             # 裸金足:同帧执行帧(P48 整买纪律放行,一次买齐)。
+            shop_sess.note_levelup_emission(gs, level_of(gs) + 1)
             return [Emitted(CwActionLevelUpParam(
                 cost=int(cost), clicks=clicks, auth_basis=arm_key),
                 True, f'step3_levelup_batch:{arm_key}')]
@@ -1094,28 +1123,58 @@ def _step3_liquidation_pending(session: StrategySession,
 # ============================================================ 第 4 步:商店会话入口
 
 
-def _step4_shop_unblock_recheck(session: StrategySession,
-                                gs: GameState) -> bool:
-    """解拦复核判定接线位(判定函数本体归 3.6 建造;本批占位 = 恒不解拦
-    ——未消费机会清单的写入端(商店会话正常收工位)同为 3.6 交付,中间
-    态清单恒空,占位与空清单语义一致)。
+def _open_shop_for_gold_read(session: StrategySession,
+                             gs: GameState) -> list[Emitted]:
+    """金位读数开商店(prep_pipeline §1 第 4 步前置/第 3/7 步读数门;
+    shop_session §1 路径③)。
 
-    3.6 接线语义(shop_session §4.2):清单记录拦因(席满/金不足)被
-    金位变化/席位空出解除 → 返回 True(调用方清「本节点已处理」标记,
-    本步开店);复核唯一触发点 = 本步入口,不在部署/卖出后挂触发钩子。
+    账面失效帧的金位供给形态:开店 → 入口观察锚定账面 → 会话决策
+    (命中处理需求转正常会话;零处理 → 读数意图收工不置标记)。意图
+    标记 = ``shop_read_intent``(收工位消费)。"""
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
+        Emitted,
+    )
+    st = state_of(gs)
+    st.shop_read_intent = True
+    st.cw4_counters['shop_gold_read_open'] = \
+        st.cw4_counters.get('shop_gold_read_open', 0) + 1
+    return [Emitted(CwActionOpenShopParam(), True, 'shop_gold_read')]
+
+
+def _step4_shop_unblock_recheck(session: StrategySession,
+                                gs: GameState):
+    """解拦复核判定接线位(判定函数本体 = criteria/shop_session.
+    shop_unblock_recheck,shop_session §4.2;宪法第 6 条:备战第 4 步与
+    商店入口两画面消费同一函数)。
+
+    - ``unblock`` = 任一记录拦因解除(席位空出/金位达解除线)→ 调用方
+      清「本节点已处理」标记,本步开店(记录的目标牌在店内段验证);
+    - ``need_gold_read`` = 金不足类记录在场 ∧ 账面失效 → 读数形态开店
+      (路径③;**标记不动**——标记门内锚定后即关,锚定后的下帧复核
+      自然继续);
+    - 方向锁定不走清单解拦(锁定写入直接清标记,line_and_upgrade
+      §1.4)。复核唯一触发点 = 本步入口,不在部署/卖出后挂触发钩子。
     """
-    return False
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+        shop_session as shop_sess,
+    )
+    return shop_sess.shop_unblock_recheck(gs)
 
 
 def _step4_shop_session_pending(session: StrategySession,
                                 gs: GameState) -> bool:
     """第 4 步商店会话触发判定(prep_pipeline §1 第 4 步;契约 A)。
 
-    入口序:解拦复核(3.6 接线位)→ 清标记 → 标记 ≠ 当前节点号判定
-    (标记格式 = 节点号二元组,shop_session §4.1;节点边界重置清值 =
-    双保险)。满足 → True(调用方输出 CwActionOpenShopParam)。
+    入口序:解拦复核(3.6 接线;读数腿开店不清标记——锚定后标记门
+    即关,下帧复核继续)→ 解拦腿清标记 → 标记 ≠ 当前节点号判定
+    (shop_session §4.1;节点边界重置清值 = 双保险)。满足 → True
+    (调用方输出 CwActionOpenShopParam)。
     """
-    if _step4_shop_unblock_recheck(session, gs):
+    outcome = _step4_shop_unblock_recheck(session, gs)
+    if outcome.need_gold_read:
+        state_of(gs).shop_read_intent = True
+        return True
+    if outcome.unblock:
         session_scope.clear_shop_handled(gs)
     return not session_scope.shop_handled_for_current_node(gs)
 
@@ -1304,9 +1363,14 @@ def _step7_node_end_interest(session: StrategySession,
     升级变现序列在途抑制(line_and_upgrade §2.2 帧交错规则①):键在
     ∧ 变现候选尚存时本步零发射(同池候选竞争,变现优先);变现穷尽
     后竞争消失、本步恢复。
+
+    金位读数门(shop_session §1 路径③):账面失效帧无法判「金位 ≥
+    息线」→ 读数开店锚定(标记不动),下帧重评。
     """
     if _step3_liquidation_pending(session, gs):
         return []
+    if state_of(gs).gold_ledger is None:
+        return _open_shop_for_gold_read(session, gs)
     if gold_of(gs) >= saturation_line(cap_resolved_of_session(session)):
         return []
     _cands, _why = evaluate_sell_candidates(gs, 'node_end_interest')
