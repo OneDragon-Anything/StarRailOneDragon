@@ -107,7 +107,7 @@ def _ratio_good(tdesc, sdesc, knn: float = 0.75) -> list:
 
 
 def _ransac_homography(skp, tkp, good: list) -> tuple[int, MatLike | None, list[int]]:
-    """good 匹配的 RANSAC:返 (内点数, homography, 内点在 good 中的下标表)。
+    """good 匹配的 RANSAC:返 (内点数, homography,内点在 good 中的下标表)。
 
     内点数语义与旧 ``_ransac_inliers`` 一致(mask None → good 数,下标=全量)。
     下标表供 ``identify_hypotheses`` 做核内内点计数。
@@ -320,7 +320,7 @@ def _resolve_best(scores: list[tuple[str, int]], slot_img: MatLike,
     return (best_id if return_key else _base), best
 
 
-#: 同型异色对(冷色成员, 暖色成员)——歧义时按 slot 色相偏向哪边仲裁(r75 狸猫兄弟)
+#: 同型异色对(冷色成员,暖色成员)——歧义时按 slot 色相偏向哪边仲裁(r75 狸猫兄弟)
 _RED_HUE_PAIRS: dict[frozenset[str], str] = {
     frozenset({'狸小虎', '狸小龙'}): '狸小虎',   # 值 = 冷色(蓝)成员名
 }

@@ -4,7 +4,7 @@
 
 机械语义:``env.need_select`` 驱动的选中半(点候选——点击坐标 = 容器
 ``megastar_opts[idx].xy``,观察上报,按下标取;选择坐标观察上报规范 =
-op-layer.md §1.1 + action_ops.md §1 )→ 确认钮单发;机械链发出后
+op-layer.md §1.1 + action_ops.md §1)→ 确认钮单发;机械链发出后
 直调自上报单口 ``report_action_pick_megastar_param``。
 """
 from __future__ import annotations
@@ -68,7 +68,7 @@ class CwActionPickMegastarOp(CwOperation):
             # 选中半取点守卫(防 bug 路栏,非控制流):容器缺席/下标越界/
             # 元素缺坐标 = 观察上报链或策略器 bug,AssertionError 响亮
             # 暴露——禁静默跳过选中(旧 target None 消极分支停用)、禁坐标
-            # 现算回退(action_ops.md §1 ;op-layer.md §1.3)。
+            # 现算回退(action_ops.md §1;op-layer.md §1.3)。
             # 取点键 = param.idx(动作语义单一源,与上报函数同源;env.idx
             # 已停用停喂——钳位删除后与 param.idx 恒等,镜像无存在意义)。
             _gs = game_state_from_ctx(self.ctx)

@@ -11,7 +11,7 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 
-# 迁移审计 w222(git 历史) 遥测缺口②同源:裸模块 logger 无 handler(框架日志走 'OneDragon',
+# 迁移审计遥测缺口②同源:裸模块 logger 无 handler(框架日志走 'OneDragon',
 # propagate=False),本文件日志从未落地 → 改挂框架 logger。
 from one_dragon.utils.log_utils import log as _log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
@@ -284,7 +284,7 @@ class CwEntryStart(CwOperation):
         if popup is not None:
             return popup
 
-        # 残留大厅态( 实机事故:上局结束「回大厅」后大厅 UI 层残留,
+        # 残留大厅态(实机事故:上局结束「回大厅」后大厅 UI 层残留,
         # app 层 _enter_lobby 见大厅锚即跳过 enter op → 死按钮态直达本 op)。
         # 该态「开始」按钮不响应任何点击(死按钮仍 OCR 可见,故判据用大厅锚
         # 「标识-创业指南」而非开始按钮文字),右上角「按钮-关闭」才是真退出:
@@ -333,7 +333,7 @@ class CwEntryStart(CwOperation):
         if self._advance_steps > CwEntryStart.MAX_ADVANCE_STEPS:
             return self.round_fail(status='推进到备战阶段超时')
 
-        # 0) 详情弹窗(点卡触发的"可合成列表")→ 点面板外空白关(与外循环角色详情弹窗臂同款,
+        # 0) 详情弹窗(点卡触发的"可合成列表")→ 点面板外空白关(与外循环角色详情弹窗分支同款,
         #    CwScreenRoleDetailOverlay 同弹窗同修;旧按 ESC:浮窗已自关时 ESC 落
         #    备战会误弹「中断挑战」bug#2,空白点在弹窗未开时是无害空点)。
         #    ⚠️ 待实机核:该 overlay 帧上「区域-空白关闭」坐标未实机复点
@@ -352,12 +352,12 @@ class CwEntryStart(CwOperation):
         # (行为保持契约 = 同输入同动作):「按钮-返回最高职级」在场 = 未在
         # 最高职级 → 先点它切到玩家最高职级(本号 = A8 财富造物主,即目标最高难度),
         # 再「开始对局」;本 op 只做观察(按钮在场 + 职级读数)→ 按意图机械点击。
-        # ( 入口画面建档发现:此前 op 直接点"开始对局" → 一直打 A5 而非目标的最高难度。)
+        # (入口画面建档发现:此前 op 直接点"开始对局" → 一直打 A5 而非目标的最高难度。)
         # 难度确认:用 screen_info area 检测+点击(round_by_find_and_click_area),替代全屏 round_by_ocr。
         # crop_first=False:全屏 OCR 后按 area.rect 过滤(小 area crop 易漏字,全屏 OCR 稳)。
         # 读本局职级(难度确认屏「标识-当前难度职级」→ ctx.cw_selected_difficulty 中转;切最高后 = A8)
         # → loop __init__ copy session → 策略层填 state → effective_hp_threshold D-32(3.5.1 接线)。
-        # :难度确认屏 = 新局确凿信号(不受 cw_selected_difficulty 门限),
+        # 难度确认屏 = 新局确凿信号(不受 cw_selected_difficulty 门限),
         # 见屏即弃置上一局残留 match 容器。
         if self.round_by_find_area(
                 screen, CwEntryStart.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
@@ -411,7 +411,7 @@ class CwEntryStart(CwOperation):
                 crop_first=False).is_success:
             self._discard_stale_once('到达简报屏=新局开始')
             self._establish_match_once()
-            # :简报锚 = 新局路径上第一个遥测生产分支,简报/开局选卡行
+            # 简报锚 = 新局路径上第一个遥测生产分支,简报/开局选卡行
             # 落盘前先铸造本局 run(行生而归本局;治冷启动首局零行 + 行盖上局
             # 戳)。难度已在前序难度确认回合读存。幂等;loop 侧同容器认领。
             state.ensure_run_started(self.ctx.cw_match,
@@ -439,7 +439,7 @@ class CwEntryStart(CwOperation):
         #     内含打分(STRATEGY_BINDINGS)+确认;此前只在 prep 主循环内被调度。
         if self.round_by_find_area(screen, '货币战争-投资策略', '标识-请选择投资策略').is_success:
             _log.info('[cw-entry] 到达投资策略屏 → CwScreenInvestStrategy(3 选 1 + 确认)')
-            # :策略 kind 与 env 同一写端漏斗同一时序缺陷,环境屏被
+            # 策略 kind 与 env 同一写端漏斗同一时序缺陷,环境屏被
             # 跳过而策略屏直达时的兜底铸造(幂等)。
             state.ensure_run_started(self.ctx.cw_match,
                                      self.ctx.cw_selected_difficulty or '')

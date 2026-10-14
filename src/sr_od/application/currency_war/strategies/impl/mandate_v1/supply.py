@@ -102,7 +102,7 @@ def decide(options: list[SupplyOption], gs: GameState,
     包装动作词表)。
 
     - options = 屏上候选(``gs.supply`` payload 槽序,左→右 = 画面列序);
-    - locked_comp = flow 经 ``get_comp`` 解析后的 阵容 对象(None = 未锁,
+    - locked_comp = flow 经 ``get_comp`` 解析后的阵容对象(None = 未锁,
       含套名解析失败回落);demoted_endgame = 降格帧直通(True → 角色级
       与 key_equips 参照一律按未锁口径;防御位——现役降格路径已清
       locked_comp,cw_intention 降格分支);

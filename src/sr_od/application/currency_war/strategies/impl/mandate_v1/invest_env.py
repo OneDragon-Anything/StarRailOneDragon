@@ -5,7 +5,7 @@
 分,**1 分 := 1 金等价**(归一化约定,非语义拍值;XP 折算沿
 env_economy.XP_GOLD_RATE 承载),取代旧 kernel 的多标尺层次压制(裸分/
 送卡档/阵营 floor/经济域带各标尺不可比,全靠层次常数定先后——迁移动机,
-考古走 git 历史)。
+)。
 
 总分公式(28 号稿 §1)::
 
@@ -35,7 +35,7 @@ argmax 取最高,平分取先。禁选(env_forbid 命中)与自拆台(:func:`_co
 同一评分基线的纯选卡口(flow 同帧去重 memo 命中后的落选卡入口;为 sim
 复用预留)。本文件是投资环境选卡评序的单一源(flow 直调;
 kernel 侧 env 评估机器(裸分/送卡档/阵营 floor/经济域带/环境帧刷新判据)
-不复存在,考古走 git 历史)。
+不复存在)。
 """
 from __future__ import annotations
 
@@ -126,7 +126,7 @@ class StanceRow:
 #: 成分条目必须在表,缺失 import 即炸。
 STANCE_SCORE: dict[str, StanceRow] = {
     # —— 时代族 6 条(用户裁定 2026-09-23:品质重排只是换随机方式,
-    # 整体期望不变;宪法三辖危险信号反应时机、非计分义务,记 0 不违宪)——
+    # 整体期望不变;宪法三覆盖危险信号反应时机、非计分义务,记 0 不违宪)——
     '彩虹时代': StanceRow(0.0, '品质重排只是换随机方式,整体期望不变(用户裁定 2026-09-23)'),
     '黄金时代': StanceRow(0.0, '品质重排只是换随机方式,整体期望不变(用户裁定 2026-09-23)'),
     '白银时代': StanceRow(0.0, '品质重排只是换随机方式,整体期望不变;「难度不加」安全向小增益一并归零(用户裁定 2026-09-23)'),
@@ -217,7 +217,7 @@ _validate_coefficient_tables()
 def _components(name: str, gs: GameState, locked_comp: str,
                 demoted_endgame: bool,
                 evicted: frozenset[str]) -> tuple[float, float, float, float]:
-    """单环境四组件 (现金, 方向, 赠卡, 立场);未注册名 → 全 0(OCR 形变)。
+    """单环境四组件 (现金,方向,赠卡,立场);未注册名 → 全 0(OCR 形变)。
 
     - 现金分:resolved ∧ > 0 才计,fail-closed 恒 0(28 号稿 §1/§2);
     - 方向分适用面 = 概念股/邀请(28 号稿 §2 方向分行);契约/特邀专家只计赠卡;
@@ -279,7 +279,7 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
                                                  list[bool]]:
     """帧评分一次(选卡/刷新两入口共享,禁二次评分;板面 DoT/减益计数
     循环外单帧单读,沿旧机器纪律):
-    返回 (总分含转向轴, 转向加分, 四组件, 排除标记)。"""
+    返回 (总分含转向轴,转向加分,四组件,排除标记)。"""
     board = gs.board.value or {}
     on_dot = sum(board.get(_f, 0) for _f in ('持续伤害', '减益')) \
         >= BOARD_DOT_COUNT_THRESHOLD

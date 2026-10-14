@@ -20,7 +20,7 @@
   STREAK_GOLD_TABLE 现算,非拍死);当前档持有恒常 = 简化申报;
 - 利息按支出前金位计 = 乐观上界(P38 已声明,量级 ≤ 单轮支出×10%
   封顶 cap);
-- 购买成本按期望到达摊销 spend_r/T;升级金 v1 辖**下一级**(等级日程
+- 购买成本按期望到达摊销 spend_r/T;升级金 v1 覆盖**下一级**(等级日程
   L(r) 系 P38 A4 调用方输入,生产无日程源 → 单步声明;升级金低估 =
   乐观向,较接线批静态口径〔零升级费〕严格收窄),买牌送 XP 每张
   +4 抵扣(P38「XP_PER_BUY 同源」);
@@ -90,7 +90,7 @@ def next_level_xp_cost(gs: GameState, missing_copies: int) -> int:
     ``cw_economy.clicks_to_next_level`` 同表同兜底)减买牌送 XP
     (XP_PER_BUY × 缺口张数,P38 买牌同源抵扣);单击单价 =
     ``xp_click_cost``(显示价优先/兜底折扣族单一源)。满级 = 0。
-    多级日程(P38 A4)生产无逐级源,本函数只辖下一级 = 声明简化。
+    多级日程(P38 A4)生产无逐级源,本函数只覆盖下一级 = 声明简化。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
         level_of,

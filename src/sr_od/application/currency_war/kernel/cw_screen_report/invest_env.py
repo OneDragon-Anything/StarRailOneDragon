@@ -1,7 +1,7 @@
 """投资环境屏观察契约与上报(kernel 纯数据;正本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
-观察面 = 画面锚命中 + 一次读全(环境卡读数 (环境名, 卡 x 中心) + 全局
+观察面 = 画面锚命中 + 一次读全(环境卡读数 (环境名,卡 x 中心) + 全局
 刷新剩余次数)。report 摄入点 = operations/cw_screen/cw_screen_invest_env.py::
 ``CwScreenInvestEnv.observe``(观察 node);适用范围边界:选择事实
 (active_env)经动作落地链写(动作 op 立即自上报 → gain_invest_env,
@@ -26,12 +26,12 @@ class CwScreenInvestEnvObs:
 
     - ``hit``:画面锚命中(标识-投资环境;False = 非本屏,观察侧早退,
       report 不调)。
-    - ``options``:(环境名, 卡 x 中心) 元组列表;[索引定义] 列表序 =
+    - ``options``:(环境名,卡 x 中心) 元组列表;[索引定义] 列表序 =
       画面物理卡位序(左→右,与原 OCR x 近邻分流序一致,恒稳);取值
       时机 = 入口帧一次读全 OCR 快照。report 提取名序列写
       ``invest_env_opts``。
     - ``refresh``:全局刷新剩余次数读数(屏上「剩余次数：N」,整组重掷
-      单钮单计数);元素 = (剩余次数, 计数文本 center-x, center-y) 或
+      单钮单计数);元素 = (剩余次数,计数文本 center-x, center-y) 或
       None(读缺);取值时机 = 同一帧一次读全。report 摄入写
       ``env_refresh_left``(None = 跳写)。决策环零识别,直接消费本载荷。
     """

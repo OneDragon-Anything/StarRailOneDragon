@@ -90,7 +90,7 @@ class JournalReadStats:
 
 def read_journal_stats(
         replay_dir: Path | str) -> tuple[list[dict[str, Any]], JournalReadStats]:
-    """读新账 → (行 dict 列表, 宽容读取计数)。宽容读入口单一源。
+    """读新账 → (行 dict 列表,宽容读取计数)。宽容读入口单一源。
 
     为什么不走 query.read_jsonl:那边 json.loads 失败直接抛(旧流是本框架
     自己写的行,坏行 = 事故);新账按设计就是「截断尾合法存在」的流
@@ -99,7 +99,7 @@ def read_journal_stats(
     计数口径按「行内出现 U+FFFD」近似(合法数据天然不含 U+FFFD,误计
     风险可忽略)。装配消费方(match_archive ``_load_slice``)与判读读面
     (func:`read_journal`)共用本实现——同流两读法曾各持一契约,装配端
-    严格读在截断尾上崩(R3.1 落地审 F1/F3),收拢后契约单源。
+    严格读在截断尾上崩(R3.1 审查/F3),收拢后契约单源。
     """
     p = journal_path(replay_dir)
     if not p.exists():

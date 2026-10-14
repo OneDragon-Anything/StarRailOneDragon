@@ -33,7 +33,7 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwActionPickExpertInviteOp(CwOperation):
-    """专家邀请函选卡链(pick-op-unify 批并入;点卡即选,无确认钮)。
+    """专家邀请函选卡链(统一 pick-op 分发并入;点卡即选,无确认钮)。
 
     点选(点击点 = 容器 ``expert_invite.card_points[idx]`` ∨ ``cash_point``
     (idx=-1;观察上报写入,op-layer.md §1.1 :35),动作 op 按下标自取,

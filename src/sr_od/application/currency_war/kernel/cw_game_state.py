@@ -227,7 +227,7 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                # 契约扩员 12→15)
     'inventory': 1,         # equips/consumables/免战牌(§3.2.15/§3.2.16/§3.2.19〔勘误:免战牌正本=effect_inventory.remaining_uses,§8.6-3——本域不含其字段〕)
     'spheres': 1,           # 晶矿(§3.2.8,不占席)
-    'ore_rewards': 1,       # 矿附着奖励域(迭代 2026-10-10-ore-reward-attach;
+    'ore_rewards': 1,       # 矿附着奖励域(
                             # 随机态,键 = 矿身份最新观察坐标 'x,y')。独立键
                             # 不并入 spheres bump——spheres 本体未变,bump 会
                             # 对旧档谎报域内容变更
@@ -928,7 +928,7 @@ class MatchFinal:
     - ``final_type`` = :data:`MATCH_FINAL_TYPES` 封闭集;abnormal = 异常终局
       (哨兵叫停/进程死亡等无正常收束路径的形态,**段内补写**落行——哨兵
       收束兜底路径按段尾账面补写,``backfilled`` = True + 行注记
-      ``recovered`` 显影,判读按注记区分真伪,§3.6.1 runs 行 G8 谓词;
+      ``recovered`` 暴露,判读按注记区分真伪,§3.6.1 runs 行 G8 谓词;
       启动扫描的**历史段**补写不经本载荷的运行时写口,走专用装配通道,
       遥测正本 §3.2.2 规则 6②);
     - ``at_version`` = 本行自身版本 id(:meth:`write_match_final` 装配时点
@@ -1011,7 +1011,7 @@ def _rows_unit_key(u: Any) -> tuple[str, int, tuple[str, ...]]:
     """行写端单位多重集键(board 派生重算与纯重排吸收共用;键 =
     (char_id, star,装备集排序元组)。槽位号/行内顺序**不在键内**——
     游戏侧行内重排只改 slot 信息位,键相等 = 同单位多重集;装备集入键 =
-    穿戴变化(星徽/卡带贡献面)不算纯重排,交回真失配分流。"""
+    穿戴变化(星徽/卡带贡献面)不算纯重排,返回主循环真失配分流。"""
     return (str(getattr(u, 'char_id', '') or ''),
             int(getattr(u, 'star', 1) or 1),
             tuple(sorted(str(e) for e in (getattr(u, 'equips', None) or []))))
@@ -1368,7 +1368,7 @@ def note_action_receipt(gs: GameState, *, op: str, applied: bool,
         log.debug(f'[cw-gs] action receipt skip: {e}')
 
 
-# ============================================================ 账本→字段桥(§5.1/§3.2.5/§3.3.5-6,迁移批次三 B1)
+# ============================================================ 账本→字段桥(§5.1/§3.2.5/§3.3.5-6)
 
 def _bridge_sig(gs: GameState) -> ChannelSig:
     """效果桥写入的渠道③签名(单一构造点;§3.2.1 ③组 id =
@@ -1611,7 +1611,7 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
       reconcile_hp 简化为「真值直传/开局先验/None 诚实未知」
       ——不存在沿用锚遮蔽结算真值的先后序问题。唯一能与本覆盖失配的 =
       逻辑态推算写端(宝物加血,write_logic(gs.hp)),该失配按两态制
-      §2.3 = 推算 bug 显影,非「保旧」。窗内消费(battle_wait killed
+      §2.3 = 推算 bug 暴露,非「保旧」。窗内消费(battle_wait killed
       hp 对比兜底)先行于本写端,读到的是上一结算真值,即正确序。
     """
     _sig = ChannelSig(family='obs', actor='CwScreenBattleWait', mode='read')
@@ -1806,7 +1806,7 @@ def write_match_final(gs: GameState, *, final_type: str,
       读口豁免类,载体 = 内存字段现读):本段已有终局行 → no-op 返 False;
     - **异常终局 = 补写形态**(G8):``backfilled=True`` 时版本 id 照常分配
       (写入口正常路径),行载荷 final_type='abnormal' + backfilled 位 +
-      行注记缺省 'recovered' 显影(判读可辨真伪)。**适用范围 = 段内补写**
+      行注记缺省 'recovered' 暴露(判读可辨真伪)。**适用范围 = 段内补写**
       (哨兵收束兜底/在线路径异常形态,行挂当前段);启动扫描的**历史段**
       补写禁走本口——本口 run_id 取供给槽现读,历史段行必被挂到现读段键
       (错归属),须走专用装配通道(读流→构造→按显式 run_id 落行,遥测
@@ -1831,7 +1831,7 @@ def write_match_final(gs: GameState, *, final_type: str,
     if duration_s is None:
         duration_s = max(time.monotonic() - gs.created_monotonic, 0.0)
     if not note and backfilled:
-        note = 'recovered'   # G8 补写行显影(判读按注记分型,防混计)
+        note = 'recovered'   # G8 补写行暴露(判读按注记分型,防混计)
     payload = MatchFinal(
         final_type=final_type,
         at_version=gs.write_seq + 1,   # 本行自身版本 id(与行头 v 恒等)
@@ -2235,7 +2235,7 @@ class GameState:
     # True = kernel reconcile_tracking 的 bench 侧对账成功点
     #(唯一锚定写端;bench 读失败/双空读守卫均不写 = 保持
     # 未观察)。消费面:策略商店门(flow.decide_shop_action,未观察 →
-    # CwActionCloseShopParam 交回外循环走备战重锚定;判定单一源 = 本模块
+    # CwActionCloseShopParam 返回主循环走备战重锚定;判定单一源 = 本模块
     # tracked_unobserved)。锚定语义重定义(tracked
     # 第二账停用)——锚 = 主域(bench/deployed 席位视图)已按屏幕真值
     # 对账;观察边界对账唯一发生点不变、两态制不变(prep.md §3/§6)。
@@ -2379,7 +2379,7 @@ class GameState:
     # 域名 spheres = 晶矿域既定名(本义即晶矿球,非旧名残留;2026-09-20
     # ore 改名收束裁定不覆盖容器域名,fields.md §3.2.8 声明)。
     spheres: Field[OreSight] = field(default_factory=Field)      # 开局种子底座=空读面(晶矿补给在 1-1 进入时点送达,观察覆盖)
-    # —— 晶矿附着奖励与声明通道(迭代 2026-10-10-ore-reward-attach;详设
+    # —— 晶矿附着奖励与声明通道(详设
     #    details/ore-reward-channel.md §1。附着值不进 OreSight.points——
     #    spheres 本体是画面真值留观察通道,附着值是随机态猜测,混进同域
     #    会让消费门(logic_rand_fields)对它失灵,故独立成域)——
@@ -2883,7 +2883,7 @@ class GameState:
         属游戏侧行为)。命中 → ``deploy_slot_reorder`` 台账行(无告警无
         停机,豁免 ≠ 消失同纪律)后覆盖照常 = 采新(游戏侧排序为画面
         事实),与对账纠漂(tracked 主账采新)两面同向;形状不符(缺员/
-        多员/星级差/装备差/换排)返回 False 交回三分流照真失配停,真投影
+        多员/星级差/装备差/换排)返回 False 返回主循环三分流照真失配停,真投影
         bug 不被吞。返回 True = 已吸收(调用方跳过失配分流)。"""
         if field_name != 'deployed':
             return False
@@ -2926,7 +2926,7 @@ class GameState:
         「上阵单位集合」这一真不变量由 deployed 自身的失配/
         纯重排吸收面独立把守,board 对动作推算 bug 无独立检出力 → 命中
         即落 ``board_derived_adopt`` 台账行(无告警无停机,豁免 ≠ 消失
-        同纪律)后覆盖照常采新:派生量以观察为真值源,坏读数显影于台账
+        同纪律)后覆盖照常采新:派生量以观察为真值源,坏读数暴露于台账
         与观察侧 obs_conflict 留存证据链、由下一帧观察自愈(与 obs→obs 直采
         语义同向)。适用范围 = evidence 前缀 ``proj_board_resync``(派生挂钩
         唯一合法写端,单一源 = :meth:`_resync_board_delta`):独立手写
@@ -2970,7 +2970,7 @@ class GameState:
         重算会把基座真值抹掉,增量只施加本次动作的差,基座贡献保留。
         派生漂移由下一备战帧观察覆盖收敛,注释与接线一致:失配经
         :meth:`_absorb_board_derived` 采新留存证据(``board_derived_adopt``,
-        失配告警不响)——派生量以观察为真值源,观察侧坏读数显影于台账与
+        失配告警不响)——派生量以观察为真值源,观察侧坏读数暴露于台账与
         obs_conflict 留存证据链、由下一帧观察自愈。"""
         board = self.board.value
         if board is None:
@@ -3414,7 +3414,7 @@ def _tick_effect_boundary_impl(gs: GameState) -> None:
     project_effect_capacity(gs)
 
 
-# ============================================================ 节点推进动作上报(迭代 2026-09-20-node-advance-action-report;design §2.2/§2.3)
+# ============================================================ 节点推进动作上报(design §2.2/§2.3)
 
 #: 动作推进 trigger 封闭集(design §2.3;集外显式炸错)。
 NODE_ADVANCE_TRIGGERS: frozenset[str] = frozenset({'settle_confirm', 'supply_confirm'})
@@ -3448,9 +3448,9 @@ def _node_advance_next_screen(gs: GameState) -> str:
     """node_advance 声明的 ``next_screen`` 推导(详设 world-decl.md §2
     推导规则;构造时点 = 推进落账**后**,``node_pos`` 已是新节点序位)。
 
-    规则序:输入即键(键表示唯一,迭代 2026-10-12-abolish-node-ordinal
-    design §2.2,``total`` 求和与反解两段已停用)→ 序位位面无序列表
-    = 局终('';对齐旧 eff 超总长优雅局终,P3 未建模交回照常,外循环走
+    规则序:输入即键(键表示唯一,``total`` 求和与反解两段已停用)→
+    序位位面无序列表
+    = 局终('';对齐旧 eff 超总长优雅局终,P3 未建模也照常返回主循环,外循环走
     结束链)→ 位面内轮次超序列长 = 局终(modeled 位面内损坏坐标防御)
     → 位面切换优先 → 节点类型映射。推导权威源 = kernel 节点日程真值表
     (:mod:`cw_node_schedule`)+ :func:`effective_node_pos`;**禁读容器

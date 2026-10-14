@@ -9,7 +9,7 @@
 ``report_screen_invest_env_obs`` 落容器(候选 ``invest_env_opts`` 值域 =
 标准注册名 + ``env_refresh_left`` 观察写端)→ obs 挂实例属性。决策动作
 node = 零参决策(候选自容器槽;空候选/无有效输出 = round_fail 显式失
-败,零盲发 = op-layer.md §1.1 + action_ops.md §1 )→ 环境帧刷新
+败,零盲发 = op-layer.md §1.1 + action_ops.md §1)→ 环境帧刷新
 判据可发整组重掷(结束本次访问)∨ 点**最优**卡底 + 确认链经
 ``CwActionPickInvestOp`` 派发(上报纯 idx,名字自容器标准名单一源)→
 **round_success 结束本次访问**(选完即结束本次访问 = op-layer.md §1.1;确认未生效
@@ -67,7 +67,7 @@ from sr_od.context.sr_context import SrContext
 
 class CwScreenInvestEnv(CwOperation):
     """投资环境 3 选 1:零参决策(候选自容器槽,策略器 ``decide_invest_env``;
-    判据 = 策略层 ``invest_env``(strategy-docs/28_invest_env_screen.md))→ 刷新终结臂 ∨ 选卡确认链派发。"""
+    判据 = 策略层 ``invest_env``(strategy-docs/28_invest_env_screen.md))→ 刷新终结分支 ∨ 选卡确认链派发。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资环境'   # screen_info 画面(currency_war_invest_env.yml)
     # 卡选中点击 Y:screen_info「区域-卡牌描述行」center.y;常量=screen_info 缺失兜底。
@@ -111,7 +111,7 @@ class CwScreenInvestEnv(CwOperation):
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-投资环境')
         # 刷新零效果留存证据证据(刷新分支只读不比,读数原样携带——
-        # 元组 = (刷前计数, 刷前名集, 刷后计数, 刷后名集);
+        # 元组 = (刷前计数,刷前名集,刷后计数,刷后名集);
         # 消费点 = 刷新分支结束本次访问出口 ``_reconcile_refresh_no_effect``
         # 对账,消费即清;None = 无待评证据)。
         self._refresh_evidence: tuple[int, list[str],
@@ -267,7 +267,7 @@ class CwScreenInvestEnv(CwOperation):
 
         选卡链派发后本访问即终结返回主循环(选完即结束本次访问 = op-layer.md
         §1.1;确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重
-        识别重派,修法 = 点击链可靠性,action_ops.md §1 )。"""
+        识别重派,修法 = 点击链可靠性,action_ops.md §1)。"""
         obs = self._obs
         return self._decide_and_act(obs)
 

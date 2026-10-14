@@ -1454,7 +1454,7 @@ def arm_a_live_direction(gs: GameState, ist: IntentionState,
     选择序(资产厚度降序 → 再遇窗口,与强锁分支同式,证明批 §4.4 第二层
     机器原生序)。机器判死(G ≤ ε)方向按公理 1 fail-closed 不授权囤货,
     零新数字;G=0 是判死的极端实例不是定义。已知缺口(缓锁豁免角漏授,
-    保守向、机器锁后 M2 自纠)= 证明批 §3.1-4 申报,显影分键归消费位。
+    保守向、机器锁后 M2 自纠)= 证明批 §3.1-4 申报,暴露分键归消费位。
 
     **promote_candidates 禁入本调用链**(G8 观测载体,码内明文禁入任何
     行为消费点,cw_intention.py 消费位注;正本 §2.2 F11)。"""
@@ -1480,7 +1480,7 @@ def arm_a_corner_names(gs: GameState, ist: IntentionState,
                        session: StrategySession | None = None,
                        registry: DecisionV2Registry | None = None,
                        visible: set[str] | None = None) -> tuple[str, ...]:
-    """甲分支漏授角方向集(证明批 §3.1-4/§6 增量 7 的判读显影输入):
+    """甲分支漏授角方向集(证明批 §3.1-4/§6 增量 7 的判读暴露输入):
 
     plane==2 无目标帧上,方向 d 过 evicted/weak/_core_reachable 三门但
     G(d) ≤ ε 判死,且意向核心在店/在手——该角机器缓锁门(core 可见短路
@@ -1513,7 +1513,7 @@ class NoTargetArms:
     - ``char_targets``:判据分支囤货成员集(甲分支判活 = 方向采购集;甲分支空
       = 空集——丙分支保利息带合法空,契约经 k_fallback_source 证据放行);
     - ``hub_names``:乙分支资格核过枢纽名(注册表声明序;出域帧恒空);
-    - ``corner_names``:甲分支漏授角方向名(判读显影,行为零消费)。
+    - ``corner_names``:甲分支漏授角方向名(判读暴露,行为零消费)。
     """
 
     direction: str

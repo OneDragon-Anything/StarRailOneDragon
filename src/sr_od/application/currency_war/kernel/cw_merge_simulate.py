@@ -12,7 +12,7 @@
    Unit.equips 原样继承,不做类别分流(分流是佩戴决策域)。
 
 与 ``cw_state._merge_bench`` 的关系:_merge_bench 是 tracked 侧既有不动点
-合并(语义同源),本引擎在其规则上增加**合成链记录**(每级 (星级, 落点,
+合并(语义同源),本引擎在其规则上增加**合成链记录**(每级 (星级,落点,
 继承装备))+ 满栏自动多买张数,供期望态对账逐级核对(对账五分类之
 「合成落点/星级不符」的期望值来源)。两实现的规则若漂移,以 merge_
 mechanics 为准修齐(单一语义源,双载体是 tracked 原地推进 vs 期望态
@@ -152,7 +152,7 @@ def merge_simulate(bench: list[BenchSlot | None],
                    deployed: list[Unit | None] | None,
                    name: str, star: int, k: int = 1,
                    in_shop_count: int | None = None) -> MergeSimResult:
-    """买牌 (name, star, 请求张数 k) 的合成终态推演(纯函数;不改入参;
+    """买牌 (name, star,请求张数 k) 的合成终态推演(纯函数;不改入参;
     P1 起容器原生形状 §2.3)。
 
     - 常态:逐张落入备战空槽(§1 最左空位)→ 不动点合并;
@@ -205,7 +205,7 @@ def merge_simulate(bench: list[BenchSlot | None],
                 overflow.append(slot)   # 满栏暂溢出(合成腾槽后再归位)
     # 不动点合并(逐级记录链;分组键 = 同名同星,全域 bench∪deployed∪溢出
     # ——满栏多买的第 3 张在溢出表里,必须进合成池,否则合成永不触发)。
-    # frozen 载体(BenchSlot/Unit)→ 以定位符 (域, 下标) 推进:素材摘除 =
+    # frozen 载体(BenchSlot/Unit)→ 以定位符 (域,下标) 推进:素材摘除 =
     # 置 None/删溢出项,载体升星 = replace 新构造写回原定位。
     while True:
         merged = False

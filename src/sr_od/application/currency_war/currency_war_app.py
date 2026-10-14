@@ -107,7 +107,7 @@ class CurrencyWarApp(SrApplication):
         # 上行出口(落账/run_id 归属键)经 kernel/cw_telemetry_exit 钩子位
         # 转发,缺省关;生产在此接通。
         defects.install_exit_hooks()
-        # obs 读口注入(幂等):decision/kernel 桶禁直依 obs,新局弃置
+        # obs 读口注入(幂等):decision/kernel 层禁直依 obs,新局弃置
         # 残留容器时的 obs last-known-good 缓存清理与对账合成特效帧态门
         # (kernel/cw_reconcile)经 decision_assembly 装配点接通
         # (缺省关=跳过缓存清理/门放行;session 全量重建承担状态隔离)。

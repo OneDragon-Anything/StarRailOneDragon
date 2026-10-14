@@ -39,7 +39,7 @@ class CwActionPickPlannerOp(CwOperation):
     点卡选中(避开卡内「详情」按钮区的选中点几何归决策半 ``_card_point``
     单一源)→ 确认(建档「按钮-骇入确认」查找点击,全族统一;详情面板
     防御已拆,面板若真弹出归下一帧外循环自愈——用户裁定
-   )。**即时上报**(action_ops.md §1 ):确认点击后立即
+)。**即时上报**(action_ops.md §1):确认点击后立即
     一口写完整效果腿(equip 入栏+后果链 / upgrade 变换+档行 / unknown
     留存证据 / unrouted 兜底零写),无发出/落地两相、无证据标志——确认未生效
     = 代码 bug,overlay 残留由外循环按当前画面重识别重派。"""

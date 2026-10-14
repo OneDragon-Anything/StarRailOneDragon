@@ -132,7 +132,7 @@ GOLDEN_PATH_SCREEN_NAMES: tuple[str, ...] = (
 
 
 def _node_pos_or_default(backend: SimBackend) -> tuple[int, int, str]:
-    """节点 (位面, 轮, 类型) 读口(容器 gs.node 单一源;未进窗 = (1,1,'')。"""
+    """节点 (位面,轮,类型) 读口(容器 gs.node 单一源;未进窗 = (1,1,'')。"""
     node = backend.gs.node.value
     if node is None:
         return 1, 1, ''
@@ -299,7 +299,7 @@ def gen_planner(backend: SimBackend) -> CwScreenPlannerObs:
 
 # ============================================================ 注册表
 
-#: 档名 → (生成器, 同名上报函数)。(生成器只产数据,落容器 =
+#: 档名 → (生成器,同名上报函数)。(生成器只产数据,落容器 =
 #: 上报函数单一源;两者成对注册 = 写通道铁律的注册表形态。)
 _REGISTRY: dict[str, tuple[Callable[[SimBackend], object],
                            Callable[[object, object], None]]] = {

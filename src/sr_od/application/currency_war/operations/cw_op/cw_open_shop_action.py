@@ -25,15 +25,15 @@ if TYPE_CHECKING:
 class CwActionOpenShopOp(CwOperation):
     """开店(注册行 = terminal 承载行;执行抛 AssertionError)。
 
-    终结动作:开店切商店画面(非帧稳定)→ 本备战访问终结,交回外循环
+    终结动作:开店切商店画面(非帧稳定)→ 本备战访问终结,返回主循环
     重识别;终结等待 = ``terminal_wait``(与原决策循环 ``wait=1.0`` 逐字
     等价,等价测试锁 = test_action_registry 终结集锁)。
     """
 
-    #: 终结动作(开店切商店画面,交回外循环重识别)。
+    #: 终结动作(开店切商店画面,返回主循环重新识别)。
     terminal = True
 
-    #: 终结交回等待秒数(与原决策循环 wait=1.0 逐字等价)。
+    #: 终结返回等待秒数(与原决策循环 wait=1.0 逐字等价)。
     terminal_wait = 1.0
 
     def __init__(self, ctx: SrContext, param: CwActionOpenShopParam,

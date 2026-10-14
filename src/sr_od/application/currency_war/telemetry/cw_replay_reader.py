@@ -18,7 +18,7 @@ serialize_state 产物,hp_trusted 位已停用——两代形状并存,
 - ``load_decisions`` / ``load_outcomes``:规范 loader,返回类型化对象
   列表;坏行(JSON 解析失败/非 dict)跳过不抛。
 - ``posture_tag``:dp_posture 的标准读法(判读脚本一律走它,禁再裸
-  isinstance)。归一规则按实测证据(decisions.jsonl 7367 帧,):
+  isinstance)。归一规则按实测证据(decisions.jsonl 7367 帧):
   - dict 形态(3425 帧,历史 r620 自动附路径)键形状唯一 =
     ``{'spend_mode': str, 'target_level': int}`` → tag 取 ``spend_mode``;
   - str 形态:tag 是短串(实测 ≤7 字符,如 '存息'/'升级+D6'/'+D2'/

@@ -1,4 +1,4 @@
-"""货币战争 备战购买意图载体(kernel 桶)。
+"""货币战争 备战购买意图载体(kernel 层)。
 
 现役唯一存活导出 = ``BuyPurchase``:商店买入点(cw_buy_card_action)逐击
 记录的购买意图,随单元账本(cw_shop_action_ops BuyLedger)供给

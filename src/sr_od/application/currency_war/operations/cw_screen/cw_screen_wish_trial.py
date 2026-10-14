@@ -7,13 +7,13 @@
 交互(2026-08-08 实测):ESC **不关**;点试炼卡身 → 选中(金色边框 + 确认选择亮)→ 点
 「确认选择」→ overlay 关回备战。候选卡数/内容随节点变(实测 2 张)。
 
-形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两段
-直继承 SrOperation。观察 node = 入口门(标识-祈愿试炼,miss = round_fail 交回
-外循环重判)+ objective 一次读(OCR 桶 join,入口帧一次读,与现役决策体读
+形态:观察 node + 决策动作 node 两段
+直继承 SrOperation。观察 node = 入口门(标识-祈愿试炼,miss = round_fail 返回主循环
+重新判定)+ objective 一次读(OCR 桶 join,入口帧一次读,与现役决策体读
 同帧等价)→ ``report_screen_wish_trial_obs`` 落容器 ``wish_trial_opts`` /
 ``wish_trial_opts_xy``(无空门,空桶照写,同门双写,op-layer.md §1.1 :35)
 → obs 挂实例属性进决策 node。决策动作 node = 落地复查顶部(确认已发 →
-标识不在 = overlay 已关 → 此刻才写 chosen_wish + success 交回;在 = 确认未
+标识不在 = overlay 已关 → 此刻才写 chosen_wish + success 返回主循环;在 = 确认未
 落地 → 清标志重走)→ 决策出口守卫:无 match 局外不设早退支(用户裁决
 2026-09-22 全族删门);返回 None/词表外 = 具名 round_fail 零盲发;idx 越界 = 守卫断言
 AssertionError;策略异常自然传播——守卫均在派发前、零点击 → 决策从容器
@@ -85,7 +85,7 @@ class CwScreenWishTrial(CwOperation):
     def observe(self) -> OperationRoundResult:
         """入口门 + objective 一次读 → report 落容器。
 
-        门 miss = round_fail 早退(与现役首闸同 status,交回外循环重判)。
+        门 miss = round_fail 早退(与现役首闸同 status,返回主循环重新判定)。
         门后 objective OCR 桶一次读 + 槽位坐标观察期一次解析(x = 桶锚
         ``CARD_XS``、y = 卡身 ``CARD_Y``)→ ``report_screen_wish_trial_obs``
         同门双写容器 ``wish_trial_opts`` / ``wish_trial_opts_xy``
@@ -116,7 +116,7 @@ class CwScreenWishTrial(CwOperation):
 
         落地复查(观察驱动,零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态,照星徽款 pending+落地复查;
         用户裁定 2026-09-14 验关残留修):上轮确认已发 → 标识不在 = overlay
-        已关(选卡落地)→ 此刻才写 chosen_wish + success 交回;标识在 =
+        已关(选卡落地)→ 此刻才写 chosen_wish + success 返回主循环;标识在 =
         确认未落地 → 清标志重走(重读重选)。
 
         决策出口守卫(op-layer.md §1.1/§1.3):无 match 局外不设早退支

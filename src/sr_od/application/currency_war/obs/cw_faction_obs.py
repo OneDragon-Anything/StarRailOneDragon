@@ -74,7 +74,7 @@ _DIGIT_RE = re.compile(r'^\d{1,2}$')
 class FactionPanelReading:
     """左侧羁绊面板一次读取的结果(显示侧)。
 
-    ``entries``:可读条目 [(羁绊名, 当前单位数)],按显示序(名→注册表规范名)。
+    ``entries``:可读条目 [(羁绊名,当前单位数)],按显示序(名→注册表规范名)。
     ``unreadable``:名可对上注册表但徽章数字失读的条目名(不评口径,只计数)。
     ``unmatched``:OCR 出的名称文本对不上注册表的条目(截断残名/艺术字形变),
     存 OCR 原文(不评口径,只计数)。
@@ -137,7 +137,7 @@ def _match_faction(raw: str) -> str | None:
 
 def _extract_anchors(name_tokens: list[tuple[str, int, int, int, int]]
                      ) -> list[tuple[int, int, str | None, str]]:
-    """名称带 token → 条目锚点 [(cy, y2, 规范名|None, 原文)],按显示序。
+    """名称带 token → 条目锚点 [(cy, y2,规范名|None,原文)],按显示序。
 
     锚点 = 含中文且无斜杠的 token(名 x≈105 起;徽章数字/灰梯无中文,
     灰梯含 ``/``,均被滤除——不依赖 x 硬切)。

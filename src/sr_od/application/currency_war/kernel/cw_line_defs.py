@@ -215,7 +215,7 @@ def p1_formation_target(round_num: int,
                         board: dict[str, int],
                         board_names: set[str] | frozenset[str] | None = None,
                         ) -> tuple[str, int, int]:
-    """P1 成型进度检查 → (阶段键, 目标值, 当前值)。
+    """P1 成型进度检查 → (阶段键,目标值,当前值)。
 
     ⚠ board_names=None/空集 = tracked 身份 miss(review A 守卫):
     无法判核心在场 → **不折扣**(按纯档位算)——空集打折会把

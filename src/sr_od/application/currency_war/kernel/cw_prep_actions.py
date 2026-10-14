@@ -1,4 +1,4 @@
-"""货币战争 备战决策环 统一观察视图 + 采晶矿挑选 kernel(kernel 桶)。
+"""货币战争 备战决策环 统一观察视图 + 采晶矿挑选 kernel(kernel 层)。
 
 本模块原为族B 备战动作词表宿主(PrepAction 动作全集 + PREP_ACTION_TYPES +
 action_key);统一词表归一后动作词表停用,
@@ -57,7 +57,7 @@ def select_ore_clicks(spheres: list, cap: int,
     输入 = ``PrepObservation.spheres``([(color, Point, r)];颜色与半径
     仅排序消费,不进载荷);``cap`` = 本批点击预算(动作发出点常量,如
     mandate_v1 ORE_CLICK_BATCH_MAX_K)。输出 = 有序 (x, y) 点击列——
-    大晶矿优先(r 降序;稳定排序保持观察序),上界 = min(cap, 硬上限
+    大晶矿优先(r 降序;稳定排序保持观察序),上界 = min(cap,硬上限
     ORE_CLICK_HARD_CAP)。席满让路门/占席晶矿语义归动作发出点(既有门),
     本函数不覆盖。
 

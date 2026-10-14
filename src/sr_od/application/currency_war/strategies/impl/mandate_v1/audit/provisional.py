@@ -105,7 +105,7 @@ def is_none(name: str) -> bool:
 # 位置论证:inject 系唯一开闸通道(provisional.py 头注),值域防线放
 # 消费位防不住其他槽位、放调用方防不住绕行——结构防线只能在通道本体
 # 做写入前校验(不合法拒绝)。未登记槽位 = 既有语义不变(无值域知识
-# 不装假守卫);守卫只辖 ``value``,CI 端点系消费位扫描用信息不入守卫。
+# 不装假守卫);守卫只覆盖 ``value``,CI 端点系消费位扫描用信息不入守卫。
 # (P76 两槽守卫 _guard_delta_positive/_guard_e2_probability_band 已随
 # 证据门撤除。)
 

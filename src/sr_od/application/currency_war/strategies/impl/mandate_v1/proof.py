@@ -1,12 +1,12 @@
 """cw4 证明层残留件——停手线谓词(``stop_buy``)。
 
-停用申报(迭代 2026-10-12-prep-shop-workflow-redesign;
+停用申报(
 line_and_upgrade §1.6 停用面清单):本模块原承载的换线机器
 (``should_switch``/θ 滞回/D_min 驻留/回锁窗 ``update_line_state``/
 ``register_eviction``/``resolve_switch_params``)、证据门影子评估族
 (``evaluate_evidence_gate``/``evidence_gate``/``LockSandwichFrame``/
 ``assemble_lock_frame``/``line_missing_decomposition``)、直通信号分支
-(``signal_arm``)已停用删除(随 候选-锁定制)——防摇摆职责由锁定制结构
+(``signal_arm``)已停用删除(随候选-锁定制)——防摇摆职责由锁定制结构
 承接(硬规则锁定 + 锁后不换线,无摇摆形态产生;候选分数为显式版,
 无影子面)。消费面去向:
 

@@ -3,7 +3,7 @@
 
 **终结跳写申报**:金仍不写(刷新费腿;环境刷新触发器的发放金 = 环境
 通道,见 kernel/cw_env_grants);刷后牌面 = ``write_logic_rand`` 随机态
-( 用户裁定,以实际观察为准;真值 = 下一入口观察)。**刷新计数由本
+(用户裁定,以实际观察为准;真值 = 下一入口观察)。**刷新计数由本
 op 自上报统一触发**(``report_action_refresh_shop_param``:付费/全量
 计数经 ``gs.effects.record_refresh`` 单口;免费腿 = 容器字段
 ``gs.free_refresh_left`` Field 值判定与扣减,未观察保守按付费——次数
@@ -66,7 +66,7 @@ class CwActionRefreshShopOp(CwOperation):
         log.info(f'[cw-shop] Refresh click @({env.refresh_btn.x},'
                  f'{env.refresh_btn.y})')
         time.sleep(REFRESH_CLICK_SETTLE_WAIT_S)
-        # 当次刷价进花销账(:实付恒基价;容器刷价在场用现值,
+        # 当次刷价进花销账(实付恒基价;容器刷价在场用现值,
         # 未观察/0 = 回基价)。读数必须走 .value 读口——Field 直接进算术
         # = TypeError(实机 04:37 刷新首击即崩实证,店 env 容器化后此读
         # 点漏迁移)。

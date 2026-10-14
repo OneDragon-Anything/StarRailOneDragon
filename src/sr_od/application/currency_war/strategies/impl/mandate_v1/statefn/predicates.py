@@ -1,8 +1,8 @@
 """板满/等待件谓词(arm1_existence 触发信号)+ 目标线 K/零重叠 +
 「挂后台效果」资格谓词(前置半步 0 载体)。
 
-01_math_framework §2 三行的唯一实现:P39 臂一三元(板满 ∧ 阵营相关等待件不限星级 ∧
-上场边际贡献>0——板面谓词保证 w>0,01_math_framework §3.3 #3:臂一只用 w>0 不需精确值)
+01_math_framework §2 三行的唯一实现:P39 分支一三元(板满 ∧ 阵营相关等待件不限星级 ∧
+上场边际贡献>0——板面谓词保证 w>0,01_math_framework §3.3 #3:分支一只用 w>0 不需精确值)
 =R2-2 移入的 arm1_existence 触发信号(M3 消费,板面可观测量,非 EV 项);
 目标线 K(阵容 的 core/shared/flex 名单,cw_comps.COMP_LIBRARY 运行时可判定)。
 """
@@ -83,7 +83,7 @@ def _herta_supply_present(state: GameState,
 def arm1_existence(deployed_count: int, bench_names: list[str],
                    deployed_names: list[str],
                    deploy_cap: int | None = None) -> bool:
-    """P39 臂一三元触发信号(R2-2 移入 statefn;M3 消费)。
+    """P39 分支一三元触发信号(R2-2 移入 statefn;M3 消费)。
 
     ①板满:``deployed_count == deploy_cap``——**cap 口径 = 当前可上阵数**
     (deploy_cap 真值链 / MandateFrame.deploy_cap:level+宝钻、封顶
@@ -103,7 +103,7 @@ def arm1_existence(deployed_count: int, bench_names: list[str],
     ②③见下,不变。
     ②阵营相关等待件:bench 存在与当前板面(deployed∪bench 域成员性,
     P39 裁定宽域:不限星级)共享阵营/流派羁绊的单位;③上场边际贡献>0:
-    由①②结构承载(w>0 板面谓词,01_math_framework §3.3 #3——臂一只需 w>0,无需 w
+    由①②结构承载(w>0 板面谓词,01_math_framework §3.3 #3——分支一只需 w>0,无需 w
     精确值,【拟】#3 的 w 标定面不触发)。
     """
     cap = (DEPLOYED_CAPACITY if deploy_cap is None
@@ -182,19 +182,19 @@ def arm0_need(deployed: list[Unit], bench: list[BenchSlot],
     ``bench`` = 占席条目域(容器 BenchSlot,身份经解包读口;
     benchchar-retirement P4 容器形)。
 
-    排除口径 = **纯 name**(口径对齐收尾,P1消费分支批落地审:与真实部署去重语义对齐——
+    排除口径 = **纯 name**(与真实部署去重语义对齐——
     check_seats 对象列同名禁上阵 + cw_deploy_logic 按 cid 去重的实际
     规则即「同名不可再上阵」;Y3 的 (名,星) 字面让位于部署真实语义,
     不为凑字面制造虚 need:①同名异星 bench 件按 name 排除后不再虚计
-    (旧口径计 it = 为不可执行部署买等级);②bench 同名 ×2(臂① j=2
+    (旧口径计 it = 为不可执行部署买等级);②bench 同名 ×2(分支① j=2
     形态)去重计 1(双计消除,need 恒高估修正)。**同名异星可否同场的
     机制事实未定案**(14号稿 §8⑫ 登记的待定项,核验结论 = 证据
-    不足:机制原文只辖同名同星,档案 deployed 面系台账跟踪值不作机制
+    不足:机制原文只覆盖同名同星,档案 deployed 面系台账跟踪值不作机制
     证据)——纯 name 口径是**执行层语义对齐**(与部署去重一致,防为
     不可执行部署买等级),不是机制定案;若后续实机证得异星可双上阵,
     本谓词 need 将低估,回写口径时一并修。)
     成员集分叉声明(编排者存-2 裁决 = 有意设计):本谓词只量 k_members
-    (可部署现量),臂①囤腿的 buy_members 超集成员不入 need——囤腿件
+    (可部署现量),分支①囤腿的 buy_members 超集成员不入 need——囤腿件
     走合成→上板,部署/升级授权面与囤腿面两口径禁混。
     """
     dep_names = {getattr(d, 'char_id', '') or '' for d in (deployed or [])}
@@ -213,7 +213,7 @@ def arm0_level_lag(level: int, readable: bool, deployed: list[Unit], bench: list
                    deploy_cap: int | None) -> tuple[bool, str]:
     """arm0 触发谓词 v2(14号稿 §4.2):等级落后于上阵人数需求。
 
-    返回 (是否触发, 拒因分键——不触发时显式理由,零静默):
+    返回 (是否触发,拒因分键——不触发时显式理由,零静默):
     - level 消费只认 authoritative 位(``level_readable``,C4 采纳:与
       15 号稿 §4.3 共用单一源可信位定义)——不可信帧 fail 向不触发
       (E3 型毒化帧 fail 向,分键 'level_unreadable');
@@ -239,8 +239,7 @@ def p1_blood_floor(state: GameState) -> bool:
     **现行消费面 = 纯观测**(entry.py 形态⑥金滞留观测的带判定/
     flow.py 锁生成可行性观察件共谓词)——决策面消费(血线硬地板
     解锁包三件:经验停付让位/凑息禁令/跌破利息档批解锁)已随血线地板
-    删除链停用(迭代 2026-10-12-prep-shop-workflow-redesign 批 3.4;
-    line_and_upgrade §2.3 血线地板解锁行;正典依据 user_playstyle
+    删除链停用(line_and_upgrade §2.3 血线地板解锁行;正典依据 user_playstyle
     [39]「HP 不作决策依据」——濒死响应 = 修经济/阵容本身)。本谓词
     保留为观测分键的带判定读口。
 
@@ -271,8 +270,7 @@ def p2_blood_floor(state: GameState) -> bool:
 
     **现行消费面 = 纯观测**(flow.py 锁生成可行性观察件的 boss 濒死
     死区分键 / entry.py 形态⑥金滞留观测的带判定)——决策面消费
-    (解锁包三件:M3 停付让位/凑息禁令/濒死解锁)已随血线地板删除
-    链停用(迭代 2026-10-12-prep-shop-workflow-redesign 批 3.4;
+    (解锁包三件:M3 停付让位/凑息禁令/濒死解锁)已删除(随血线地板删除链;
     line_and_upgrade §2.3 血线地板解锁行),本谓词保留为观测分键的
     带判定读口,不再有解锁包合成口(原 ``p2_blood_floor_unlock``
     随决策消费面消亡)。
@@ -347,14 +345,14 @@ def bench_effect_qualified(name: str, ctx: BenchEffectContext) -> bool:
 
 def t5_p1_false(gold: int, spend: int, rounds: int, net_income: int,
                 cap_resolved: int) -> bool:
-    """T5 未锁定止血买的结构判据承重谓词(/§4;p46 P1 谓词
+    """T5 未锁定止血买的结构判据支撑谓词(/§4;p46 P1 谓词
     原式,判据 = loss_exact 现算,不按任何帧集清单)。
 
     ``L(g,c,R_全局,Ī,cap) == 0`` ⟺ P1 假 ⟺ 该帧出 p46 否决域(D =
     P1∧P2∧P3 恒假)——无需 E_rev、无需 V_deploy、无需 P2 分析,止血买
     的正当性由「占用集合基数严格扩 + 全额可退可逆 + 息账零损」三结构量
     的支配论证独立承载(仅作「有比没有强」接受
-    形态的在册先例,适用范围限定同节)。判据全为注册表派生量,零 hp/胜率/
+    形态的已登记先例,适用范围限定同节)。判据全为注册表派生量,零 hp/胜率/
     掉血先验/板面评分消费——不在 00_framework §3 硬闸门适用范围,无开关。
 
     ``net_income`` 形参 = 逐节点净收入 Ī 的现算值(调用方经
@@ -399,9 +397,9 @@ def front_window_frame(state: GameState) -> bool:
     (中英并集,出处见常量注)。
 
     fail-closed 边界:表缺/锚不符 ⇒ False(前窗行为不发生 = 现行为),
-    调用方分键 ``p90_front_table_missing`` 显影;表全为零战斗词(脏表,
-    每位面必有战斗的结构下退化域)⇒ 静默 False **不落分键**(落地审
-    H4 修:显影主张收窄至表缺/锚不符两支)。
+    调用方分键 ``p90_front_table_missing`` 暴露;表全为零战斗词(脏表,
+    每位面必有战斗的结构下退化域)⇒ 静默 False **不落分键**(审查
+    H4 修:暴露主张收窄至表缺/锚不符两支)。
     """
     plane = plane_of(state)
     round_num = round_num_of(state)

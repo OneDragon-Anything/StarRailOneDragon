@@ -1,10 +1,8 @@
 """货币战争 mandate_v1 策略器状态对象(StrategyState;session.md as-designed
-§3.1 裁决 1 的落地载体 + 设计正本 §8.5/§8.6-6 改名归位,迁移批次三)。
+§3.1 裁决 1 与设计正本 §8.5/§8.6-6 的落地载体)。
 
-**命名归位**(§8.6-6):本类即设计所称 StrategyState(原草板 StrategyMemory
-的目标名)——类名已从历史名 MandateState 改名归位,类型本体、字段
-集、生命周期零变化(历史名兼容别名已随迁移尾批清理,设计 §8.7 尾批
-行;消费面一律 import StrategyState)。**归属判据**(设计 §1):换一个
+**命名归位**(§8.6-6):本类即设计所称 StrategyState,消费面一律
+import StrategyState(历史名 MandateState 已无兼容别名)。**归属判据**(设计 §1):换一个
 策略实现就不存在的字段归这里;归策略实现层私有,框架策略器基类仅以泛型
 参数携带(``CwStrategy``/``CwFlowStrategy`` 链的 ``_TState``),kernel/
 one_dragon 零 import 本类。
@@ -12,15 +10,15 @@ one_dragon 零 import 本类。
 设计 §8.5 结构草图的五个语义槽在本类的落位(as-built 映射;草图 = 槽位
 清单,本类 = 默认策略实现的全量 realization):
 
-- **K 方向**(配方方向)→ ``target_comp``(锁定线槽,批 3.7 键面
+- **K 方向**(配方方向)→ ``target_comp``(锁定线槽,键面
   归一后 = 候选-锁定制终态单写者键)/``locked_line``/``bridge_id``/
   ``transition_framework``/``pending_deploys`` 意向面族;
-- **义务账本** → ``cw4_fuel_filler_stall_buys``(统一发射登记簿,五出口
+- **义务账本** → ``cw4_fuel_filler_stall_buys``(统一发出登记簿,五出口
   生命周期)/``v3_release``(泄息指令)族;
 - **CommitSignals** → ``commit_signals``(定型信号累积器〔评估数据表,
   §1.6 边界外保留项〕,投资选卡帧惰性建);
-- **S1 开店闩/S2 wanted 残差** → 已随迭代 2026-10-12 批 3.6/3.7 退役
-  (会话标记/会话循环承接;字段与机器同批清理);
+- **S1 开店标志/S2 wanted 残差** → 已删除
+  (会话标记/会话循环承接);
 - **刷新推论** → ``v3_dir_refresh_used``/``v2_round_refreshes`` 等刷新
   计数与推论面;
 - **S3 升级检查不立变量**——升级检查 = 期望态
@@ -61,26 +59,26 @@ class LevelUpPreAuth:
 
     授权帧(升级判据通过)写入,执行帧按授权值发整批经验、不再逐帧
     重闸——「实付上界 = 授权值」即防「买一半」复发的跨帧携带机制。
-    写入端 = 升级判据授权帧(迭代批 3.4 落码);失效出口 = 节点边界
-    重置清键 / 锁定写入连带动作清键 / 执行帧发射完成清键(3.4)。
+    写入端 = 升级判据授权帧(已实现);失效出口 = 节点边界
+    重置清键 / 锁定写入连带动作清键 / 执行帧发出完成清键。
 
-    ``source_arm`` = 授权帧的触发臂键(criteria/levelup 五臂键;review-34
-    F1 补——P78-5′ 两腿必要条件的判定输入:兜底豁免构成 = 义务账
+    ``source_arm`` = 授权帧的触发分支键(criteria/levelup 五分支键;
+    P78-5′ 两腿必要条件的判定输入:兜底豁免构成 = 义务账
     〔人口位/arm0 骨架义务血统〕∨ 对象无损〔被放行对象持有账≈0〕,
-    design 契约 D 升级变现行;缺省 '' = 无臂身份,消费面按保守侧
+    design 契约 D 升级变现行;缺省 '' = 无分支身份,消费面按保守侧
     〔非义务血统〕走对象级验证)。
     """
 
     gold_cost: int    # 授权批金成本上界(整级经验批的总金成本)
     blood_cost: int   # 授权血成本上界(血本位局的整级血成本;金本位局 = 0)
-    source_arm: str = ''   # 触发臂键(五臂;P78-5′ 两腿判定输入)
+    source_arm: str = ''   # 触发分支键(五分支;P78-5′ 两腿判定输入)
 
 
 @dataclass(frozen=True)
 class ShopOpportunity:
     """未消费机会清单记录(shop_session §4.2:判据通过但被资源拦下的牌)。
 
-    写入端 = 商店会话正常收工位(迭代批 3.6 接线);消费端 = 备战第 4
+    写入端 = 商店会话正常收工位(已接线);消费端 = 备战第 4
     步入口的解拦复核(判定函数 3.6 建造)。字段集 = 解拦判定所需最小面
     (金位解除线 = 注册表价 `price` 比对、`order_class` = 解拦后重评的
     归属序)。
@@ -106,7 +104,7 @@ class StrategyState:
     天然初值,清零段整体消失)。
     """
 
-    # ===== 方向键面(批 3.7 键面归一:锁定线槽 = target_comp 终态单写者
+    # ===== 方向键面(键面归一:锁定线槽 = target_comp 终态单写者
     #       = session_scope.write_line_lock;配方物化链写端 =
     #       opening_recipe_comp;写读单一源 = session_scope 方向函数族)=====
     target_comp: Comp | None = None
@@ -125,7 +123,7 @@ class StrategyState:
     transition_framework: str = ''
 
     # ===== 定型面(定型信号推导;局)=====
-    # CommitSignals(定型信号累积器,评估数据表——§1.6 机器本体退役的
+    # CommitSignals(定型信号累积器,评估数据表——§1.6 机器本体停用的
     # 边界外保留项;投资选卡帧惰性建并喂入,纯遥测决策面零消费)。
     commit_signals: object = None
 
@@ -136,7 +134,7 @@ class StrategyState:
     bridge_id: str | None = None                       # 当前桥线 id(None=无)
 
     # ===== 意向(v3 决策框架载体;局/轮)=====
-    v3_intention: object = None      # cw_intention.IntentionState(锁线/撤销状态机)
+    v3_intention: object = None      # cw_intention.IntentionState(终局阵容锁定/撤销状态机)
     v3_core_names: set = field(default_factory=set)   # 意向核心名集
     v3_mode: str = 'economy'         # 本轮模式('economy'|'war';纪律族每轮写)
     v3_last_intention_event: str = ''    # 意向事件去重(判读日志锚)
@@ -154,19 +152,19 @@ class StrategyState:
     v3_posture_unfulfilled: dict | None = None
 
     # ===== 策略行为观测分键(单一容器;策略 state=决策行 strategy-state
-    # 载体,retirement.md §3 键收编定谳:全部键=策略行为键零效果域键,
+    # 载体,retirement.md §3 键归属已定案:全部键=策略行为键零效果域键,
     # 键全集登记底稿 = 逐键审计 256 字面+16 闭族+9 开放族)=====
     # 局终级全键聚合 = 局终域行载荷 MatchFinal.cw4_counters(cw_loop 两
-    # 收口点现读快照);sim 轮差分账本/A/B 披露照旧读本容器,不经流。
+    # 收尾点现读快照);sim 轮差分账本/A/B 披露照旧读本容器,不经流。
     cw4_counters: dict = field(default_factory=dict)
 
     # ===== 相位与镜像(每轮重算;write_shop_mirrors 写)=====
     # 相位观测缺省 = ''(absence 语义;live 初值 'FORM' 由 create_session
-    # 唯一冷建口写入——生命周期收编;
+    # 唯一冷建口写入——生命周期并入;
     # sim 直构 session 不经冷建口 → 恒 '',两条路径的旧读数各自保真)。
     v3_phase: str = ''
-    v3_form_ok: bool = False         # 镜像现读写端(write_shop_mirrors/sim 发射帧)
-    v3_b_t: int = 0                  # 板面目标线承重计数(每轮重算)
+    v3_form_ok: bool = False         # 镜像现读写端(write_shop_mirrors/sim 动作发出帧)
+    v3_b_t: int = 0                  # 板面目标线支撑计数(每轮重算)
     v3_dp_posture: object = None     # DP 姿态轮缓存
     v3_mirror_key: tuple | None = None   # 镜像族轮键戳(单源=write_shop_mirrors)
     v3_formed_stop: bool = False     # 成型停手(行为面消费)
@@ -184,12 +182,12 @@ class StrategyState:
     v2_round_press_exempt: int = 0
     v2_round_press_copy: int = 0
 
-    # ===== 泄息指令与承接门(W332b/w227/;轮)=====
+    # ===== 泄息指令与承接门(轮界清零)=====
     v3_release: object = None
     v3_release_round: int | None = None
     # 义务实花披露(遥测键 sess_release_spent 透传源):写端=商店执行
     # 回执位(cw_screen_shop.accrue_release_spent,首版只计刷新实花,
-    # 「宁窄勿虚」口径申报归 ),轮界清零承载=v3_disclosure_key
+    # 「宁窄勿虚」口径申报,轮界清零承载=v3_disclosure_key
     # 键戳(economy_cycle.disclose_budget 写端);读端=recorder sess_*
     # 透传 + cw_decision_trace 披露族。披露面字段,禁决策判据消费
     v3_release_spent: int = 0
@@ -208,23 +206,23 @@ class StrategyState:
     # + cw_decision_trace 披露族。披露面字段,禁决策判据消费
     v3_reserve_cap: int = 0
 
-    # ===== 账外补充(实施批按 §6.1 收编的策略侧动态属性;产生者/消费
+    # ===== 账外补充(实施时按 §6.1 并入的策略侧动态属性;产生者/消费
     # 面注释见原写入/读出点)=====
-    # 储备溢余披露(遥测键 sess_reserve_overflow 透传源;写端=economy_
+    # 储备富余披露(遥测键 sess_reserve_overflow 透传源;写端=economy_
     # cycle.disclose_budget,读端=recorder sess_* 透传 + cw_decision_
     # trace 披露族。披露面字段,禁决策判据消费)。
     v3_reserve_overflow: int = 0
     # 义务预算披露(遥测键 sess_release_budget 透传源;写端/读端同上)。
     v3_release_budget: int = 0
-    # 义务来源披露(遥测键 sess_release_reason 透传源;写端=shop 溢余段
+    # 义务来源披露(遥测键 sess_release_reason 透传源;写端=shop 富余段
     # 段「must_spend」帧内 last-wins + 披露键戳轮界清零,读端同上)。
     v3_release_reason: str = ''
-    # 披露面轮键戳(T-88 轮界清零承载):坐标系=(plane, round) 二元组
+    # 披露面轮键戳(轮界清零承载):坐标系=(plane, round) 二元组
     #(位面号/位面内轮次,均 1 基);取值时机=披露帧现读
     #(容器读口 plane_of/round_num_of);写入端=economy_cycle.
     # disclose_budget 单一写点(商店执行回执位只比较不写)。键戳 ≠
     # 当前 (plane, round) ⇒ v3_release_spent/v3_release_reason 清零并
-    # 盖新戳。不复用 v3_release_round(W332b 泄息指令旧轮语义)。
+    # 盖新戳。不复用 v3_release_round(泄息指令旧轮语义)。
     v3_disclosure_key: tuple[int, int] | None = None
     # ↺ 扑满节点识别标记:写者
     # = mandate_v1 奖励帧判定位(shop/mandate 两栈同值幂等写,值源 =
@@ -235,10 +233,10 @@ class StrategyState:
     cw4_shop_rejects: dict = field(default_factory=dict)
     # M1″ seam 门唯一写点(mandate.py;值源 = M1P_SEAM_VERIFIED)。
     cw4_m1p_seam_verified: bool = False
-    # 息帽覆写单一源 = session.active_strategies 经 aggregate_economy
+    # 利息上限覆写单一源 = session.active_strategies 经 aggregate_economy
     # 聚合(cw_economy.cap_resolved_of_session 消费)。
 
-    # ===== M2 停摆续段缓存(T-82 必花臂重试风暴;段标识/结论闩/帧动作
+    # ===== M2 停摆续段缓存(必花分支重试风暴;段标识/结论标志/帧动作
     # token 三载体;为什么需要 = 商店/备战帧循环对「输入不变 ⇒ 拒绝不变」
     # 的腾席拒绝无记忆重推导,把一次停摆事件逐帧放大成 N 个事件帧——
     # 缓存命中帧跳过扫描且事件键不增,恢复 P60 诚实停摆的事件粒度语义)=====
@@ -247,16 +245,16 @@ class StrategyState:
     # 入口=回放/序列锁]、备战期
     # 开始[生产 prep 访问循环入口]);比较:只作相等比较、不作阈值,
     # 递增值不承载任何决策量。段 = 停摆结论的输入不变性区间;跨段残留
-    # token/闩按序号不等自动失效(域切换=必过段入口,跨域伪命中被同一
+    # token/标志按序号不等自动失效(域切换=必过段入口,跨域伪命中被同一
     # 比较拦截)。
     cw4_segment_serial: int = 0
-    # M4 腾席拒绝结论闩:None=无结论。写入端=两决策位(shop/mandate 的
-    # M2 停摆块)在「全量重推导得出腾席无候选」时写 (True, 当前段序号);
-    # 有候选但不可逆护栏拒=非本结论,不写。命中判定要求闩序号 == 当前
+    # M4 腾席拒绝结论标志:None=无结论。写入端=两决策位(shop/mandate 的
+    # M2 停摆块)在「全量重推导得出腾席无候选」时写 (True,当前段序号);
+    # 有候选但不可逆护栏拒=非本结论,不写。命中判定要求标志序号 == 当前
     # 段序号(与 token 序号两道独立,任一不等即失效重推导)。
     cw4_m2_stall_latch: tuple[bool, int] | None = None
     # 帧动作记录 token(载体单一源):None=无记录。写入端=动作执行/逻辑态直写
-    # 层确认已执行后写 (动作型名 type().__name__, 当前段序号),物理写入
+    # 层确认已执行后写 (动作型名 type().__name__,当前段序号),物理写入
     # 位三处:①生产商店循环(商店画面 op 决策动作 node 执行位);
     # ②序列驱动器(bridge.decide_shop_screen 逻辑态直写位);③生产 prep
     # 循环主环(cw_screen_prep 决策循环 CwActionOpenShopParam/执行器分支合流执行位)。
@@ -269,19 +267,19 @@ class StrategyState:
     cw4_frame_action_record: tuple[str, int] | None = None
 
 
-    # ===== 账外补充·第二波(实施批收尾扫描按 §6.1 收编的策略侧动态
+    # ===== 账外补充·第二波(实施收尾扫描时按 §6.1 并入的策略侧动态
     # 属性;写入端均在 mandate_v1,消费面含执行侧经访问函数只读)=====
-    # M1″ pending 臂(mandate 写,deploy 消费后清 None)。
+    # M1″ pending 分支(mandate 写,deploy 消费后清 None)。
     cw4_m1p_arm_pending: object = None
-    # M1″ 计划载荷 pending(mandate 写;T-279 R1/
-    # ):{'sell': [victim 名], 'up': [上序名单],
+    # M1″ 计划载荷 pending(mandate 写):
+    # {'sell': [victim 名], 'up': [上序名单],
     # 'trans_domain': 计划时点转型域事实, 'occ': 计划时点板占用数}。
-    # 消费半随部署机退役(原部署段核对读端已删),现役零读端显影
-    # (在册申报 = projection_contract.md §4.3);载荷仅作核对与快路径
-    # 准入的历史形态申报,**不改卖出仲裁权**(卖谁 = 发射位按同一判定集
-    # 现算,在册分工维持,分工裁决)。
+    # 消费半停用(随部署机)(原部署段核对读端已删),现役零读端暴露
+    # (已登记申报 = projection_contract.md §4.3);载荷仅作核对与快路径
+    # 准入的历史形态申报,**不改卖出仲裁权**(卖谁 = 动作发出点按同一判定集
+    # 现算,已登记分工维持,分工裁决)。
     cw4_m1p_plan_pending: object = None
-    # 溢余段相位闩(同值重入防抖)。
+    # 富余段相位标志(同值重入防抖)。
     cw4_must_spend_phase: object = None
     # pop 槽否向理由留决策迹(D-lv7)。
     cw4_pop_slot_why: str = ''
@@ -291,13 +289,13 @@ class StrategyState:
     cw4_stale_seen_rounds: dict = field(default_factory=dict)
     # 本次商店访问已买名单(bridge 清账/op 落账跨层共享)。
     cw4_visit_bought_names: list = field(default_factory=list)
-    # 统一发射登记簿(T-126 批 3;/§3,P78 窗口段载体):
-    # 名 → (买因, 登记轮),买因闭集 = sell_gate.LAUNCH_CAUSES。前身 =
-    # T3 垫保簿(N3 闭环登记契约,名→轮 dict)——T3 簿与 ②(b) 压库簿
+    # 统一发出登记簿(§3,P78 窗口段载体):
+    # 名 → (买因,登记轮),买因闭集 = sell_gate.LAUNCH_CAUSES。前身 =
+    # T3 垫保簿(N3 闭环登记契约,名→轮 dict)——T3 簿与 ②(b) 压牌库簿
     # 完全合一(编者裁);属性名沿用旧簿:执行侧 cw_op_deploy 按鸭子
-    # 属性读本名(部署销/held 显影,属性契约级接线禁 import 策略模块),
-    # 改名 = 供给静默断裂,语义升级由本注释与本批 ADR 承载。
-    # 写端单一源 = sell_gate.register_launch(shop 发射位 _emit_buy +
+    # 属性读本名(部署销/held 暴露,属性契约级接线禁 import 策略模块),
+    # 改名 = 供给静默断裂,语义升级由本注释承载。
+    # 写端单一源 = sell_gate.register_launch(shop 动作发出点 _emit_buy +
     # mandate.stall_buys_register 兼容 shim);读端单一源 =
     # sell_gate.active_window(窗口段,press/垫保两类,活跃 = 登记轮
     # ==当前轮)/ sell_gate.stall_protect_active(T3 单类视图)。
@@ -308,13 +306,12 @@ class StrategyState:
     #(close_on_sell/deploy/merge/round/switch)落 cw4_counters。
     cw4_fuel_filler_stall_buys: dict = field(default_factory=dict)
 
-    # ===== T-159 备战旗标状态机残留收口(迭代 2026-10-12 批 3.6/3.7:
-    #       S1 开店闩随会话标记承接删除、S2 wanted 残差随会话重排删除,
-    #       旗标族字段已随 3.7 死码清理退役——本节仅存存活字段)=====
-    # 武装段受限访问旗(发射帧仲裁;前置发射位载体):True = 本武装段已产
-    # 出受限访问意图(段 = armed 连续期,失武装帧复位——复位后若再武装且
-    # 仍命中,允许新段再访,合法形态例 = 访问内升级抬息帽)。取值时机 =
-    # 前置发射位逐帧现读现写。写端单一源 = bridge._launch_front_check。
+    # ===== 备战旗标状态机(S1 开店标志/S2 wanted 残差已删除,由会话标记/
+    #       会话循环承接;旗标族字段已删除——本节仅存存活字段)=====
+    # 武装段受限访问旗(动作发出帧仲裁;前置动作发出点载体):True = 本武装段已产
+    # 出受限访问意图(段 = 出战就绪连续期,失武装帧复位——复位后若再武装且
+    # 仍命中,允许新段再访,合法形态例 = 访问内升级抬利息上限)。取值时机 =
+    # 前置动作发出点逐帧现读现写。写端单一源 = bridge._launch_front_check。
     cw4_launch_spend_visited: bool = False
 
     # ===== 巨星节点候选点击防重入(执行层经 kernel 通道读写的策略器字段)=====
@@ -337,7 +334,7 @@ class StrategyState:
     #       禁各自散写重置逻辑)=====
     # [索引定义] shop_handled = 「本节点已处理」商店会话标记
     # (shop_session §4.1):值 = 最后正常收工处理的节点号二元组
-    # (位面, 轮)(均 1 基);取值时机 = 正常收工帧现读生效节点序位
+    # (位面,轮)(均 1 基);取值时机 = 正常收工帧现读生效节点序位
     # (写入端单一源 = session_scope.mark_shop_handled);None = 本节点
     # 未处理(局首天然缺省 = 未处理)。跨节点失效 = 节点边界重置清值
     # + 值比对双保险(session_scope.shop_handled_for_current_node)。
@@ -347,11 +344,11 @@ class StrategyState:
     # 节点边界重置清空;读写单一源 = session_scope 存储函数族。
     shop_opportunities: tuple[ShopOpportunity, ...] = ()
     # 升级预授权键(line_and_upgrade §2.2):None = 无授权;写入端 =
-    # 升级判据授权帧(3.4 落码);节点边界重置清零 + 锁定写入连带动作
+    # 升级判据授权帧;节点边界重置清零 + 锁定写入连带动作
     # 清键(节点切换 = 金/血/收入日程全变,旧授权作废,防跨节点兑现)。
     levelup_preauth: LevelUpPreAuth | None = None
     # [索引定义] node_boundary_last_pos = 节点边界处理函数的判重键:
-    # 上次执行边界重置的生效节点序位 (位面, 轮)(均 1 基);取值时机
+    # 上次执行边界重置的生效节点序位 (位面,轮)(均 1 基);取值时机
     # = 边界函数执行时现读覆盖(写入端单一源 = session_scope.
     # handle_node_boundary);None = 本局尚未执行过边界处理。
     node_boundary_last_pos: tuple[int, int] | None = None
@@ -362,10 +359,10 @@ class StrategyState:
     # 元组字面量比较(宪法第 2 条合规的窗口谓词形态)。
     plane2_started: bool = False
 
-    # ===== 方向状态键(契约 B;line_and_upgrade §3 载体落位;批 3.7
+    # ===== 方向状态键(契约 B;line_and_upgrade §3 载体落位;
     #       键面归一:锁定线槽 = target_comp〔意向面段,终态单写者 =
     #       session_scope.write_line_lock〕+ 候选快照 + opening_recipe_comp
-    #       三键;line_locked_comp 过渡键已收键退役)=====
+    #       三键;line_locked_comp 过渡键已删除)=====
     # 候选 top3 快照(线名元组,分数降序——line_select 字典序:环境分级
     # → 持有证据级 → 攻略热度,注册序终局):每帧派生快照非持久状态,
     # 随方向证据签名重算自然更新;锁定写入时**清空**并停算(连带动作
@@ -375,7 +372,7 @@ class StrategyState:
     # 配方,M5/P1),与锁定线槽互不覆写;键面归一后 = 配方对物化链
     # 唯一写端(flow 层 P1 物化写此键,session_scope 不搬运)。每备战
     # 期自写,非节点作用域键(节点边界不重置);P2 起物化链停写(窗口
-    # 谓词辖),残留值不消费(direction_comp_of 的未锁回落仅在未锁定态
+    # 谓词覆盖),残留值不消费(direction_comp_of 的未锁回落仅在未锁定态
     # 被读,锁定态恒走锁定线)。
     opening_recipe_comp: Comp | None = None
     # 方向证据签名(上次评估签名;line_and_upgrade §3 步骤 2 幂等
@@ -397,8 +394,8 @@ class StrategyState:
     # 传入)。
     p2_strategy_pick_done: bool = False
 
-    # ===== 商店会话读数协议与会话循环键(迭代批 3.6;读写单一源 =
-    #       criteria/shop_session 协议函数族与会话循环发射位——新键在
+    # ===== 商店会话读数协议与会话循环键(读写单一源 =
+    #       criteria/shop_session 协议函数族与会话循环动作发出点——新键在
     #       session_scope._NODE_SCOPE_RESET_TABLE 显式登记的以表为准)=====
     # [索引定义] gold_ledger = 金位读数账面(shop_session §4.2 读数协议):
     # 真金最优估计;None = 失效待再锚定(节点边界重置/事件级失效触发置
@@ -418,21 +415,21 @@ class StrategyState:
     shop_plugin_budget: int = 0
     # 返利族 5 费购买计数(伴生入金:每购买 3 个 5 费角色 +3;局级单调)。
     shop_five_cost_buys: int = 0
-    # 读数会话意图标记(shop_session §1 路径③):备战侧读数开店发射位
+    # 读数会话意图标记(shop_session §1 路径③):备战侧读数开店动作发出点
     # 置 True;收工消费——True ∧ 本会话零处理动作 ⇒ 不置标记(非处理性
     # 会话,同节点后续真实会话不受污染)。任意关店出口清位。
     shop_read_intent: bool = False
-    # 本 visit 受限访问标记(P70 发射帧仲裁授权的溢出段消费;契约 A 豁免
+    # 本 visit 受限访问标记(P70 动作发出帧仲裁授权的溢出段消费;契约 A 豁免
     # 条款):visit 入口按 launch_restricted_session_active 现算快照——
-    # 受限 visit 的关店不置标记、不受会话标记辖。
+    # 受限 visit 的关店不置标记、不受会话标记覆盖。
     shop_visit_restricted: bool = False
     # 会话内处理动作旗标(升级即收工与收工写标记的判定输入):本会话
-    # 内任一处理动作(买/卖/刷/经验)发射即 True;读数会话零处理 +
+    # 内任一处理动作(买/卖/刷/经验)发出即 True;读数会话零处理 +
     # 意图标记 ⇒ 收工不置标记。
     shop_session_processing: bool = False
-    # 升级即收工闩(shop_session §2.2:升级动作执行后直接收工关店——
+    # 升级即收工标志(shop_session §2.2:升级动作执行后直接收工关店——
     # 商业间谍/晋升名额的升级联动商店效果未建模,终止买入规避误炸):
-    # 整批发射帧置位,下一决策帧收工关店(标记照写、清单照写)后清位。
+    # 整批动作发出帧置位,下一决策帧收工关店(标记照写、清单照写)后清位。
     shop_upgrade_close_pending: bool = False
     # 持有 3★ 名集快照(合成族失效的帧差检测基线;criteria/shop_session
     # .detect_merge_result_frame 单一写端)。

@@ -28,14 +28,14 @@ prep 实体面卡片分支(原备战环入口清场段代发撤销)——本 op 
 
 形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两
 段直继承 SrOperation。观察 node = 弹窗在场门(标识-专家邀请函,miss =
-round_fail 交回外循环重识别)+ 弹窗载体一次读(四卡区羁绊解析 + 四卡区
+round_fail 返回主循环重新识别)+ 弹窗载体一次读(四卡区羁绊解析 + 四卡区
 中心与现金为王点解算 + 羁绊面板现读计数,入口帧一次读,与现役决策体读
 同帧等价)→
 ``report_screen_expert_invite_obs`` 落容器 ``expert_invite``(payload 打包:
 card_bonds/board/card_points/cash_point 四字段同门一并上报,op-layer.md
 §1.1 选择坐标观察上报)→ obs 挂实例属性进决策 node。决策动作 node = 重入
 裁决顶部(选卡点击已发 → 弹窗不在 = 选卡落地 → 此刻才写 chosen_expert +
-现金为王到账登记 + success 交回;在 = 点击未落地 → 清标志重走)→ 决策从
+现金为王到账登记 + success 返回主循环;在 = 点击未落地 → 清标志重走)→ 决策从
 容器零参读(两守卫:返回词表外/None = 具名 fail 零盲发;idx 域外 = 守卫
 断言;策略异常自然传播;无 match 局外不设早退支,用户裁决 2026-09-22
 全族删门)→ 点选 → round_wait 循环(不烧节点
@@ -133,7 +133,7 @@ class CwScreenExpertInvite(CwOperation):
         """弹窗在场门 + 弹窗载体一次读 → report 落容器。
 
         门 miss = round_fail 早退(与现役首闸同 status:弹窗不在(已被处理 /
-        门外帧弹窗已消失)→ 交回外循环重识别,外循环按下一帧画面重分发自愈;
+        门外帧弹窗已消失)→ 返回主循环重新识别,外循环按下一帧画面重分发自愈;
         开卡缺位由备战词表 CwActionOpenBookcardParam 链承接,与本 op 无关)。
         门后载体一次读(板面读数失败 = {} 的现金为王兜底语义原样携带;四卡
         区中心与现金为王点观察期解算,坐标随 payload 同门一并上报,
@@ -186,7 +186,7 @@ class CwScreenExpertInvite(CwOperation):
         """落地复查(顶部)→ 零参决策 → 点选 → round_wait。
 
         落地复查(观察驱动,零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态):上轮选卡已发 → 弹窗不在 = 选卡
-        落地 → 写 chosen_expert + 到账登记 + success 交回;弹窗仍在 = 未落地
+        落地 → 写 chosen_expert + 到账登记 + success 返回主循环;弹窗仍在 = 未落地
         → 重走。"""
         if self._pick_pending is not None:
             _idx, _bonds = self._pick_pending

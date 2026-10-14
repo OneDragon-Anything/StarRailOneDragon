@@ -176,7 +176,7 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
             colors=tuple(dict.fromkeys(q[0] for q in remaining)),
             points=tuple(remaining)),
             f'{ev_prefix}proj_collect_ore_drop#ore{k}')
-        # 步1b 开成即移除附着键(随 spheres 摘除同点随机态写;缺项路径
+        # 步1b 开成即移除附着键(随spheres 摘除同点随机态写;缺项路径
         # 无键可摘零写。新 dict 构造 = 冻结帧替换语义,不污染旧引用)
         if attached is not None:
             detached = dict(gs.ore_rewards.value or {})

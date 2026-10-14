@@ -379,7 +379,7 @@ def classify_planner_leg(text: str) -> tuple[str, str]:
 
 
 # ===== 命运卜者强化三选一(decide_fortune 判据;F-overlay-01
-# ===== 判据体 = cw_screen_fortune handler 内联文本规则的逐位转写,)
+# ===== 判据体 = cw_screen_fortune handler 内联文本规则的逐位转写)
 # ===== 单一源住 kernel,handler 留 OCR 分桶/写槽/点卡/确认链)=====
 
 #: 战力关键词权重表(逐位平移自 handler v1)。累加制:同文多词各计各的——

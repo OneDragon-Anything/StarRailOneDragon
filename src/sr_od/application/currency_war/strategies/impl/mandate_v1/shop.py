@@ -186,7 +186,7 @@ if TYPE_CHECKING:
 # ===== M2 停摆续段缓存停用 =====
 # 商店域 M2_STALL_NONVARIANT_SHOP_ACTIONS 白名单、cw4_m2_stall_latch
 # 续段缓存与其续段 token 消费随商店期腾席卖射一并停用:席满缺员形态
-# 现表达 = 关店交回(终结动作),不再有「无候选输入不变续段」的重复
+# 现表达 = 关店返回主循环(终结动作),不再有「无候选输入不变续段」的重复
 # 帧面。备战域同构缓存(mandate.run_mandate M4)不受影响,续段 token
 # (cw4_frame_action_record)由备战域继续消费。
 
@@ -481,15 +481,15 @@ def count_material_stale(counters: dict, session: StrategySession,
                          bench: list[BenchSlot],
                          deployed: list[Unit],
                          round_num: int) -> None:
-    """滞留素材显影分键(滞留显影待修问题 G-B1 第四级;官方键,
-    取代 sim71 守卫验收批的「重复对在场行数」代理口径)。
+    """滞留素材暴露分键(滞留暴露的待修问题 G-B1 第四级;官方键,
+    旧「重复对在场行数」代理口径已停用)。
 
     分键两把:
     - ``merge_material_stale``:素材对(同名同 1★ ≥2,判定单一源 =
       ``cw_state.merge_material_stale_names``)在场的决策帧计数,
       粒度 = 名×帧(与 cw4_counters 家族逐帧口径一致);
     - ``merge_material_stale_ge2``:跨轮仍滞留(上一见帧轮次 < 本轮)
-      的名×帧计数 = 「N 轮未合成」的轮级显影——合成后键停止增长
+      的名×帧计数 = 「N 轮未合成」的轮级暴露——合成后键停止增长
       (轮差分归零),滞留时长由判读端按键差分读,本函数不做时长判定。
 
     适用范围 = 商店决策帧(由 ``decide_shop_action`` 逐帧调用;备战帧不计,
@@ -625,7 +625,7 @@ def check_settlement_line(gold: int, cost: int, g_star: int) -> tuple[bool, str]
       s_reserve 管 EV 分支完成度价值买入的财富账,本线管纪律面当轮结算
       利息档,本谓词不消费 s_reserve 谓词;
     - 档 1 press_buy_deployable 的金位地板为同形判据,
-      自本批起消费本谓词(同谓词同值,行为不变);
+      自本起消费本谓词(同谓词同值,行为不变);
     - ②(b) 当轮档地板是**另一形状**(当轮利息档保持 cost ≤ gold −
       10×⌊gold/10⌋,带内语义),不合流、勿合并。
 
@@ -1081,7 +1081,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     len(buy_members), _cap_hold_now,
                     _cap_hold_now - BENCH_CAPACITY)
 
-    # 滞留素材显影(单一源 = count_material_stale)。
+    # 滞留素材暴露(单一源 = count_material_stale)。
     count_material_stale(counters, session, bench, deployed,
                          int(round_num_of(gs) or 1))
     # 方向④ 纯计数键(现行语义保留;零行为)。

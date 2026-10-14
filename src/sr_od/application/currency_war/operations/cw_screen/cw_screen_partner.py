@@ -18,7 +18,7 @@
 入口帧一次读,与现役决策体读同帧等价)→ ``report_screen_partner_obs`` 落
 容器 ``partner_opts``(空候选不写,闸在 report 内)→ obs 挂实例属性进决策
 node。决策动作 node = 落地复查顶部(确认已发 → 标识不在 = overlay 已关
-→ success 交回)→ 确认被拒守卫(未选中提示在场 × 脉冲上限 = 显式 fail)
+→ success 返回主循环)→ 确认被拒守卫(未选中提示在场 × 脉冲上限 = 显式 fail)
 + 决策出口守卫(输入:候选空 fail / 返回契约 / 值域,op-layer.md §1.1
 出口③ / §1.3;无 match 局外不设早退支,用户裁决 全族删门)→
 首轮决策一次定同一点位(chosen_partner = 选择点单次逻辑写入留在原位,动作事实
@@ -175,7 +175,7 @@ class CwScreenPartner(CwOperation):
     def observe(self) -> OperationRoundResult:
         """入口门 + 候选观察一次读 → report 落容器。
 
-        门 miss = round_fail 早退(与现役首闸同 status,交回外循环重判)。
+        门 miss = round_fail 早退(与现役首闸同 status,返回主循环重新判定)。
         门后候选一次读(OCR + SIFT 真身识别,失败回落 label 名)→
         ``report_screen_partner_obs``(空候选不写,闸在 report 内);
         match/gs 缺席的局外兜底路径跳过 report(report 跳写 = 容器写闸,
@@ -205,7 +205,7 @@ class CwScreenPartner(CwOperation):
         """落地复查(顶部)→ 确认被拒守卫 + 首轮决策一次 → 脉冲 → round_wait。
 
         落地复查(观察驱动,零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态):确认已发 → 标识不在 = overlay
-        已关(两步链完结)→ success 交回;标识在 = 确认未落地 → 重走脉冲。
+        已关(两步链完结)→ success 返回主循环;标识在 = 确认未落地 → 重走脉冲。
 
         每轮脉冲(机制出处 = 模块头更正注):
         1. 未选中提示在场(置灰已实测确认)∧ 脉冲已达上限 → 显式 fail(确认被拒

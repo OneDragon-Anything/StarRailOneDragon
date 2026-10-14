@@ -1,4 +1,4 @@
-"""遥测 schema:序列化纯函数与账本行 dataclass(自 cw_telemetry 拆出,)。"""
+"""遥测 schema:序列化纯函数与账本行 dataclass(自 cw_telemetry 拆出)。"""
 
 from __future__ import annotations
 
@@ -405,8 +405,8 @@ class DecisionTrace:
     v2_mode: str = ""                             # economy/war(滞回当前模式)
     v2_locked_line: str = ""                      # 锁定线 id(""=未锁)
     v2_bridge: str = ""                           # 当前桥线 id(""=无)
-    # (sess_v2_state v2 相位机元组(r359 回放忠实化采集)已随 v2 机制
-    #  停用删除——生产写端 v2_state 恒 None、全域零读端;旧语料行
+    # (sess_v2_state v2 相位机元组已随 v2 机制停用删除——生产写端
+    #  v2_state 恒 None、全域零读端;旧语料行
     #  该键按缺键读 None,schema 兼容。)
     # —— 迁移审计/相位影子观测(经济循环总模型步①;零消费):
     # phase(v2 相位机停用,无写端恒缺省)/form_ok(sim71 批死镜像处置后
@@ -425,7 +425,7 @@ class DecisionTrace:
     # 成型停手态(层2 写;检查器豁免/判读锚点)——补挂
     # DecisionTrace 字段:shop/cw_screen_prep 均已在 extra 传
     # 'formed_stop',但 recorder 映射缺失导致该键被静默丢弃
-    # (迁移审计影子批接线时发现的既有缺口,随批补上;旧记录缺省 False)
+    # (recorder 映射缺口已补;旧记录缺省 False)
     formed_stop: bool = False
     # —— 迁移审计/授权依据 trace(经济循环总模型步②「切授权」):
     # dp_posture=当轮 DP 日程表姿态 tag(存息/升级/D 预算;""=查询
@@ -635,7 +635,7 @@ class OutcomeRecord:
     # —— 迁移审计boss 身份采集(迁移审计数据缺口补齐)——
     # 位面序 boss 全量快照(3 元素保位;None=简报源未读得——实采源恒全识别,
     # 识别失败响亮暴露不留 None,**保位勿滤**:滤掉会让后续位面名字左移错位,
-    # 迁移审计/)。
+    # 迁移审计)。
     # boss Δ 双峰归因的数据源(迁移审计结论④:schema 无 boss 身份→不可分层)。
     # 记录时点快照,行间可能因实采进度而异;旧记录无此字段(读取端 .get 容忍)。
     boss_names: list[str | None] | None = None
@@ -679,14 +679,14 @@ class RunSummary:
     plane_reached: int = 0          # 到达的最高位面
     rounds_survived: int = 0
     final_hp: int = 0
-    comps_committed: list[str] = field(default_factory=list)   # commit 过的 阵容名序列(含 pivot)
+    comps_committed: list[str] = field(default_factory=list)   # commit 过的阵容名序列(含 pivot)
     pivot_count: int = 0
     gold_trajectory: list[int] = field(default_factory=list)   # 每回合 gold(经济复盘)
     notes: str = ""
     # —— live 观测扩容(strategy/05_observation)——
     death_window: str = ""          # 39 号免费窗口登记:""=竞争局 / "must_die" / "free"(局终判定)
     strategies_held: list[str] = field(default_factory=list)   # 终局持卡(台账回放)
-    # —— (批⑧ F2):行来源标记。''=正常终局/stop 路径写;'recovered'=
+    # —— (F2):行来源标记。''=正常终局/stop 路径写;'recovered'=
     # 兜底回填(从 outcomes/decisions 重算,盖 FAIL/崩溃/重启杀局路径)。
     source: str = ""
     # —— 策略版本戳(match archive 二期②):本段 run 实际跑的代码版本,
@@ -699,7 +699,7 @@ class RunSummary:
 
 @dataclass
 class ExecEvent:
-    """执行事件(exec_events.jsonl;27 号能力画像数据源,)。
+    """执行事件(exec_events.jsonl;27 号能力画像数据源)。
 
     cw_screen_prep 的 _fail_counts/_blocked/bail 原因本来局终即弃——落盘后跨局聚合
     出「动作族×画面×失败率」画像(能力层:实现缺陷 vs 固有难度分型)。
@@ -717,7 +717,7 @@ class ExecEvent:
 
 @dataclass
 class ExogenousEvent:
-    """外生事件(exogenous.jsonl;22 号预案触发频率 + 31 号 journal 外生族,)。
+    """外生事件(exogenous.jsonl;22 号预案触发频率 + 31 号 journal 外生族)。
 
     节点类型转换/弹窗/简报/高利害条件触发——预案层的 trigger 频率统计与
     journal 常开的语料基础。
@@ -829,7 +829,7 @@ def bucket_card_texts(anchors: list[tuple[int, int]], items: list[tuple[str, int
                       y_min: int, y_max: int) -> dict[int, list[str]]:
     """投资卡 OCR 文本按卡分桶(纯函数可测)。
 
-    anchors: [(card_idx, 锚点x)](卡名行 center-x);items: [(文本, cx, cy)] 全图 OCR 条目。
+    anchors: [(card_idx,锚点x)](卡名行 center-x);items: [(文本, cx, cy)] 全图 OCR 条目。
     每条 item 归 **x 最近**的锚点卡;y 不在 [y_min, y_max] 描述带 → 不归。
     桶内按 y 升序(自然阅读序)。返回 {card_idx: [文本...]}。
     """

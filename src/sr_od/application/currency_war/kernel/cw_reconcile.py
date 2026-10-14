@@ -58,8 +58,8 @@ def is_merge_effect_window(screen: MatLike | None) -> bool:
 # episode ×3 全部「连续 2 帧」形态),「回退即采新」让单帧抖动直进
 # 主账 → 3★ 合成判断与 buy_expect 对账被污染(3★ 合成线整局
 # 未落地实证)。修法两层正交:
-# 1. **槽位锚定**:星级差逐槽判定,锚 = (域, 物理槽号) + 规范名同名——
-#    bench 锚 = 槽位表下标+1;deployed 锚 = (排, 排内槽号),排与槽号
+# 1. **槽位锚定**:星级差逐槽判定,锚 = (域,物理槽号) + 规范名同名——
+#    bench 锚 = 槽位表下标+1;deployed 锚 = (排,排内槽号),排与槽号
 #    由视图子表下标派生(比较基线 = 主域席位视图)。
 #    锚上身份变换(空槽落新单元/换人)= 单元更替事实,星级随身份直采。
 # 2. **两帧一致才采新**:锚上星读 ≠ 主域现值 = 候选(保旧写账 + 抖动
@@ -106,7 +106,7 @@ def _star_gate_pending(session) -> dict:
 def _bench_read_entries(view: BenchView | None) -> list[tuple]:
     """观察视图 → 门/签名用的读条目 ``[(anchor, char_id, star, unit|None)]``。
 
-    [索引定义] anchor = ('bench', 物理槽号 1 基)(星级门锚 = 物理槽,
+    [索引定义] anchor = ('bench',物理槽号 1 基)(星级门锚 = 物理槽,
     权威槽位 = 表下标、信息位为派生,下标+1 即槽号);占用槽按视图序
     (下标升序)排列;占位件槽(kind ≠ unit/empty)char_id=''
     (门内走「无身份 → 清候选」分支)。"""
@@ -127,7 +127,7 @@ def _bench_read_entries(view: BenchView | None) -> list[tuple]:
 def _deployed_read_entries(view) -> list[tuple]:
     """观察视图 → 门/签名用的读条目(形态同 :func:`_bench_read_entries`)。
 
-    [索引定义] anchor = (排 'front'|'back', 排内 1 基槽号)——槽号 =
+    [索引定义] anchor = (排 'front'|'back',排内 1 基槽号)——槽号 =
     DeployedView 子表下标 + 1(位置 = 子表下标派生,
     Unit 无槽位信息位);条目序 = 前排子表序 + 后排子表序(与观察读链
     front+back 拼接读序一致,漂移签名按序比较不受载体影响)。"""
@@ -177,20 +177,20 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
     改写 star —— 保旧写账改经 **replace 副本** 承载(返回门后副本),语义
     与旧「就地改写读对象 star」等价:单帧抖动不进 drift 判定与写回,同帧
     容器席位视图观察写端(director 消费门后副本)同得保旧值。候选态
-    按局身份旁表存(键 = (域, 槽号, 规范名))。锚上身份未锚定
+    按局身份旁表存(键 = (域,槽号,规范名))。锚上身份未锚定
     (空槽/换人/占位件)与读失败侧(None)不覆盖,候选随锚作废防陈旧假确认;
     读侧已取得但锚未出现(部分缺读)= 证据中断,该锚候选清除重计
     (整帧双空读的候选清除在对账守卫分支,本函数不可达)。
 
     Returns:
-        (门后 bench 视图, 门后 deployed 视图)。
+        (门后 bench 视图,门后 deployed 视图)。
     """
     gs = game_state_of(session)
     pending = _star_gate_pending(session)
     frozen = is_merge_effect_window(screen)
     out: dict[str, object] = {}
     # 比较基线 = 主域席位视图现读(tracked 第二账
-    # 停用,基线从 tracked 表改主域派生视图,锚 = (子表, 下标);对账时点
+    # 停用,基线从 tracked 表改主域派生视图,锚 = (子表,下标);对账时点
     # 在 director 观察写之前,主域现值即上一帧账面,与旧 tracked 基线
     # 同源同时点)。
     for domain, reads, account in (
@@ -473,7 +473,7 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
         screen/source: 留存证据兼容形参
 
     Returns:
-        (决策用 hp, 是否真读):真值帧=(新读, True);读不到=(先验或
+        (决策用 hp,是否真读):真值帧=(新读, True);读不到=(先验或
         None, False)——诚实未知(不再 100 兜底)。
     """
     if new_hp is None:

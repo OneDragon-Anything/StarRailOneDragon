@@ -242,7 +242,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         # 不进清场派生集(非 closable,零行为前提);现役关屏 = 分发画面 op
         # CwScreenRefreshOddsPopup 点建档 area「货币战争-商店刷新概率表/
         # 按钮-关闭概率表」(× 按钮,VLM 实测定位;坐标单一真相源 =
-        # screen_info,cw_loop 分发臂零本条载荷消费)
+        # screen_info,cw_loop 分发分支零本条载荷消费)
         close_action=CLOSE_ACTION_POINT,
         # 退出恢复链预留载荷(恢复链消费面未切注册表 = 模块头「声明 + 锁」;
         # RECOVERY_CLOSE = 复用 close_action 载荷离屏):现零运行时消费,
@@ -318,7 +318,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     ),
     # 商店卡牌详情弹窗(实机事故建档,2026-09-08):奖励节点采晶矿误触
     # 开的角色 offer 购买页(商店刷新概率表/星徽详情之后同族第三例)。语义
-    # display(买不买归商店域——本屏分发臂只点 X 关闭返回主循环重新判定,店开时商店
+    # display(买不买归商店域——本屏分发分支只点 X 关闭返回主循环重新判定,店开时商店
     # 访问路径接管购买,关闭不丢决策内容);closable=False ⇒ 不进清场
     # 派生集(弹窗有主 = 阶段一身份行「货币战争-商店卡牌详情」分发
     # CwScreenShopCardDetailPopup,点 X 关闭返回主循环重新判定,落地判定 = op 内

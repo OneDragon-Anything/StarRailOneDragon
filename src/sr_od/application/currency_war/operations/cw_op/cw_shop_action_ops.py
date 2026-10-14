@@ -24,7 +24,7 @@ tracked``(期望态 vs tracked 双账交叉核对)已停用(用户裁定·对账
 归属原则:对账 = 观察 vs 逻辑的双态比对,唯一合法时点 = 画面 op 上报
 观察数据进入 game state 的观察边界,由 kernel cw_reconcile 执行;规则
 文本 = screens/op-layer.md §1.3)——逻辑态建模 bug 的检出归观察边界
-reconcile 纠漂显影(以实际观察为准),op 层不再做双态比对。
+reconcile 纠漂暴露(以实际观察为准),op 层不再做双态比对。
 
 执行侧零观测(action_ops §1 动作 op 无论执行前后不做观察识别
 ——机械执行 + 上报动作事实;画面事实的真值与对账归观察侧 reconcile,

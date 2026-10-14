@@ -1,6 +1,6 @@
 """货币战争战斗校准纯表(分包期 0b 单元6 自 cw_sim.py 两段式下沉,§3.3-②/§4.3)。
 
-data 桶:只有表和常量,零包内依赖(§3.2 依赖矩阵);消费方 =
+data 层:只有表和常量,零包内依赖(§3.2 依赖矩阵);消费方 =
 kernel/cw_battle_calib(校准函数族)、cw_sim(Δ池采样/结算)、
 decision_v2.handoff(深度分桶)、测试锁。行段历史与语料 provenance
 随原注释保留在条目上;数值变更须走标定批 + ADR,禁散改。
@@ -24,7 +24,7 @@ LOSS_PER_ROUND: float = 4.0
 # 遭遇结算强度 = boss 档 × 1.15(用户口述:遭遇三四可比 boss 难;
 # 遭遇一/二较温和 → 取均值系数,模拟无法读档位时的近似)
 ENCOUNTER_MULT: float = 1.15
-#: (方向建立轮上限, boss 基础损, 抖动幅度)
+#: (方向建立轮上限, boss 基础损,抖动幅度)
 BOSS_BY_DIR_ROUND: tuple[tuple[int, float, float], ...] = (
     (2, 14.0, 8.0),
     (4, 22.0, 8.0),

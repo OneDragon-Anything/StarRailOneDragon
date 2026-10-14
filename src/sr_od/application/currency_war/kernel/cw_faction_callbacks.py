@@ -10,7 +10,7 @@
 - ``on_units_changed(gs, added_units, removed_units, source)``:按名
   diff 的成员增/减(事件通知层);
 - ``on_equips_changed(gs, changed_pairs, source)``:同名存活单位
-  (旧, 新) 对中 equips 有差者(事件通知层);
+  (旧,新) 对中 equips 有差者(事件通知层);
 - ``on_qualification_changed(gs, old_sets, new_sets, source)``:盯的
   三阵营资格名集旧/新(派生存值)→ 判 S1a 跨档 / S1b 巨星重选 / S2 伙伴;
 - ``on_star_changed(gs, old_star, new_star, source)``:场上银狼星级
@@ -95,7 +95,7 @@ def _qualification_sets(view) -> dict[str, set[str]]:
 def _planner_star(view) -> int | None:
     """场上银狼 LV.999 星级(派生存值;不在场 = None)。
 
-    场上同名唯一( 裁决 1 入口守卫已登记)⇒ 至多一值;防御性取首见。
+    场上同名唯一(裁决 1 入口守卫已登记)⇒ 至多一值;防御性取首见。
     """
     for _row, u in _iter_field_units(view):
         if str(u.char_id) == _PLANNER_CHAR:
@@ -107,7 +107,7 @@ def _diff_by_name(old_view, new_view
                   ) -> tuple[list, list, list]:
     """一次 deployed 写按名分解三类事件(
     语义」节):成员增(名新现)/ 成员减(名消失)/ 存活对(同名且
-    (星, equips, 排面) 有差的 (旧单位, 新单位) 对——名含排面时
+    (星, equips,排面) 有差的 (旧单位,新单位) 对——名含排面时
     开拓者换形态按名消失+名新增进前两类,资格集总对比仍正确)。"""
     old_by_name: dict[str, tuple[str, Unit]] = {
         str(u.char_id): (row, u) for row, u in _iter_field_units(old_view)}

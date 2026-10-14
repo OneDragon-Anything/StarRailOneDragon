@@ -16,7 +16,7 @@ sim 重做删除面收束():节点序列
 
 下沉理由:decision_v2(scoring/candidates/handoff/phase)与 cw_evolution/
 cw_line_switch 以函数消费本族,留 sim 桶成 decision→sim / kernel→sim
-违规边。本模块(kernel 桶)零 sim 依赖:纯值来自 data/cw_battle_tables,
+违规边。本模块(kernel 层)零 sim 依赖:纯值来自 data/cw_battle_tables,
 计数底座在 cw_state/cw_deploy_logic/cw_line_defs(kernel);
 SimResult 等类型仅鸭子读取。
 
@@ -370,7 +370,7 @@ def _battles_before_engines(res, target: int = 2) -> int | None:
 
     背景:0304 附带观察「v1 到达 rung2 的战斗轮次 30 vs v2 10」的
     口径未在代码定义(一次性诊断数字),0305 复测(20 局配对,seed
-    500-519)两臂几乎相等(53 vs 50)——该数字不可再引用。本函数
+    500-519)两分支几乎相等(53 vs 50)——该数字不可再引用。本函数
     把口径钉死:**hp_events 中 round < _first_engines_round(target)
     的战斗类节点(battle/encounter/boss)计数**;未达 target 返 None
     (与 _first_engines_round 同 None 语义,均值只对达成局算)。

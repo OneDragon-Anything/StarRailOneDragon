@@ -17,7 +17,7 @@
   ``logic_rand_outcome`` 台账、不进失配告警(通道语义自带)。level 缺读
   = 该腿跳写(概率表按级索引,宁缺勿造)。干旱/供给族消费 observation
   only 是消费侧口径,本函数不管。
-- **环境条件发放腿**( 二手市场):尾部触发检查
+- **环境条件发放腿**(二手市场):尾部触发检查
   (``check_env_refresh_grants``;登记表 =
   ``cw_investments.ENV_REFRESH_GRANTS``;发放 = 金/装备/done 三笔
   同窗)——世界发放域,不属计数/采样语义;sim 与生产同段 op 代码

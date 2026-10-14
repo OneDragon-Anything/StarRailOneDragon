@@ -1,8 +1,8 @@
 """线可行性原语:E_rounds 估计与线距(候选-锁定制下的保留面,12 号篇 §1.4)。
 
-换线判据(θ 滞回 + D_min 驻留切换裁决 ``should_switch_e`` 与辖域门
+换线判据(θ 滞回 + D_min 驻留切换裁决 ``should_switch_e`` 与适用范围门
 ``switch_allowed``)不存于本模块——锁定为一次性决策、锁后不换线,无换线
-判据对象(考古走 git 历史);registry 四参数
+判据对象;registry 四参数
 line_switch_enabled/theta/debias_delta/min_dwell 为零消费死字段,
 清理归后续批。本模块保留项(在产消费面):
 
@@ -92,11 +92,11 @@ def p_bar_faction(tag: str, level: int) -> float:
 
 
 def tier_progress(comp: Comp, gs: GameState) -> dict[str, tuple[int, int, int]]:
-    """逐档进度 {档: (需求, 已持, 货架)}——线距离口径的分解单一源。
+    """逐档进度 {档: (需求,已持,货架)}——线距离口径的分解单一源。
 
     消费端:``line_distance``(标量和)与 strategies 侧线缺口分解
     (evidence_gate 输入,proof.py)共用本式,禁第二实现漂移。
-    口径(原 line_distance 逐字,超档不计):held_t = min(需求, 板面档
+    口径(原 line_distance 逐字,超档不计):held_t = min(需求,板面档
     计数);shelf_t = 本回合 shop 中该档阵营可见件数,仅当板面档计数
     仍低于需求时计(买走即 held,不计入刷出期望)。
     """
@@ -141,7 +141,7 @@ def e_rounds(comp: Comp, gs: GameState,
     distance=0 → 0.0(已完成);p̄=0(该等级刷不出)→ inf(静态不可达;
     「实测断供」归 drought bail 旁路,DESIGN §附4)。
 
-    可负担窗的守息线 = session resolved 链单一源
+    可负担窗的保利息线 = session resolved 链单一源
     (``saturation_line(cap_resolved_of_session(session))``
     随批接线:旧 ``reg.interest_floor()`` 不随持卡语境动——买断制局
     刷新可负担窗被 50 金地板压死,囤金经本车道部分存活);
@@ -176,9 +176,9 @@ def e_rounds(comp: Comp, gs: GameState,
     else:
         floor = reg.interest_floor()
     affordable = max(0, (gold_of(gs) - floor) // cost)
-    # 席空数单一源 = bench_free_slots(T-17 裁定:跟随 BenchView.capacity,
+    # 席空数单一源 = bench_free_slots(裁定:跟随 BenchView.capacity,
     # 节省工位改写帧按实席数截断买刷;bench 未观察 = None → 全席可用
-    # 缺省,与退役槽表「未观察 = 全空」口径同向)。
+    # 缺省,与停用槽表「未观察 = 全空」口径同向)。
     _free_raw = bench_free_slots(gs)
     bench_free = (BENCH_CAPACITY if _free_raw is None
                   else max(0, int(_free_raw)))
@@ -188,7 +188,7 @@ def e_rounds(comp: Comp, gs: GameState,
 
 
 #: P2 位面节点模板(economy.md §10.2;表缺/位面锚不符时的投影回退):
-#: [战斗, 战斗, 遭遇, 奖励, 遭遇, 奖励, 战斗, boss]——实测表第 7 节点为「?」
+#: [战斗,战斗,遭遇,奖励,遭遇,奖励,战斗, boss]——实测表第 7 节点为「?」
 #: 占位,按保守规则转战斗+normal 档(未知多算一的一场损失=存活估计更
 #: 短=门更紧,保守方向显式声明,多局开局帧复核后改)。
 _P2_NODE_TEMPLATE: list[str] = ['battle', 'battle', 'encounter', 'reward',
@@ -212,11 +212,11 @@ def node_loss_kind(node_type: str) -> str:
     return 'normal'
 
 
-# (C4 换线存活轮数门机械已随旧方案清退批删除——开关族
+# (C4 换线存活轮数门机械已删除(随旧方案清退)——开关族
 #  line_switch_survival_gate_enabled / rounds_two_state_enabled 出局,
 #  清查报告 OLD_MIX_AUDIT §1.3;连同删除 rounds_alive / gate_need /
 #  gate_counterfactual / survival_gate / register_gate_block 与
-#  cw_intention._switch_gate_open 接线、v3_line_gate_* 决策位/闩、
+#  cw_intention._switch_gate_open 接线、v3_line_gate_* 决策位/标志、
 #  line_gate_blocked/line_gate_cf_blocked 遥测键。损血档归一
 #  node_loss_kind 与 p2_cond_loss_table 保留——阈值层
 #  cw_first_passage._loss_dist 仍消费;两态 p_win 表 p_win_p2_by_rung
@@ -226,7 +226,7 @@ def node_loss_kind(node_type: str) -> str:
 def best_alt_line(gs: GameState, session: StrategySession, config,
                   score_ctx, registry: DecisionV2Registry | None = None
                   ) -> tuple[object, float]:
-    """候选集中 E_rounds 最小且有限的备选线((comp, e) ;无候选 → (None, inf))。
+    """候选集中 E_rounds 最小且有限的备选线((comp, e);无候选 → (None, inf))。
 
     候选集=select_comp_scored top-N(与选线同一来源,防另造排序);排除
     drought_excluded 死线(drought 名单语义保留)与供给为 0 的线(选线

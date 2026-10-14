@@ -109,7 +109,7 @@ class _BattlePrepState:
     """
 
     gold: int                       # 当前金币(read_gold,读不到→0,安全保守)
-    phase: tuple[int, int] | None   # (位面, 轮次);读不到→None(不伪造)
+    phase: tuple[int, int] | None   # (位面,轮次);读不到→None(不伪造)
     hp: int | None                   # 小队剩余血量(read_hp_opt,读不到→None;r317 同源 director)
     streak: int | None              # 连胜/连败 magnitude(read_streak,读不到→None)
     deploy_count: int | None        # 已部署角色数(read_deployed_count,读不到→None)
@@ -129,7 +129,7 @@ class BattlePrepRecognizer(ScreenRecognizer):
 
     screen_name: str = SCREEN_NAME   # '货币战争-备战'
 
-    # extras 字段说明(随 analyze 响应平级返回 extras_doc;键集与 _BattlePrepState 一致)
+    # extras 字段说明(随analyze 响应平级返回 extras_doc;键集与 _BattlePrepState 一致)
     extras_doc: dict[str, str] = {
         'gold': '当前金币(int;读不到→0,安全保守默认)',
         'phase': '(位面, 轮次) 二元组,如 [1,3] = 位面1 第3轮;读不到→None(不伪造)',
@@ -226,7 +226,7 @@ class BattlePrepRecognizer(ScreenRecognizer):
         level = level0
         #cap>level(宝钻/钻石叠加)不再只是经济信息——它直接编码
         # 后排扩展量(口述公式 6+(cap−level)),布局选档已在函数头消费。
-        # r317(批次2):read_hp 裸调用迁 read_hp_opt
+        # r317:read_hp 裸调用迁 read_hp_opt
         # (miss→None;与 director 同源——消掉「MCP 报 100 而
         # director gated=26」双真相)。extras 序列化 None→
         # 合法 null(backend json.dumps 预校验);extras_doc

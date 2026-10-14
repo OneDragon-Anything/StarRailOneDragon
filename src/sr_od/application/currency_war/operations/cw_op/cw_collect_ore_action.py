@@ -49,10 +49,10 @@ class CwActionCollectOreOp(CwOperation):
         产出的有序点击列)。
 
         大晶矿优先/上界挑选归决策侧 kernel 单一源(动作发出点构造载荷),本方法
-        纯机械逐个点( 用户指导 screen_flow_timing.md #16:晶矿
+        纯机械逐个点(用户指导 screen_flow_timing.md #16:晶矿
         飞行动画最长 ~2s → 点完等满动画;去向 = 备战/商店/装备栏)。零读屏
         零排序零截断;席满时部分晶矿可能没点开——由后续 heavy 观察自然回补。
-        掉箱感知随之删除(掉箱归下一帧观察 → CwActionOpenBoxParam 臂)。
+        掉箱感知随之删除(掉箱归下一帧观察 → CwActionOpenBoxParam 分支)。
         """
         action: CwActionCollectOreParam = self.param
         env = self.env

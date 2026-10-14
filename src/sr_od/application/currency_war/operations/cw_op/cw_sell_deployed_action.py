@@ -44,7 +44,7 @@ class CwActionSellDeployedOp(CwOperation):
         """卖上阵角色:drag 排槽中心 → 出售区。
 
         emitted 语义 = 机械发出(拖拽原语零判效,落地事实归观察侧
-        reconcile 对账)。执行坐标边:deployed_idx → (row, 物理槽号)
+        reconcile 对账)。执行坐标边:deployed_idx → (row,物理槽号)
         固定双射内联换算(0-3=前排 1-4 / 4-9=后排 1-6;随 tracked 账停用,换算五函数删除,动作坐标系算术就地承载;
         后排 7-9 扩展格超出动作坐标系不可寻址,3.1 在案)。
         """

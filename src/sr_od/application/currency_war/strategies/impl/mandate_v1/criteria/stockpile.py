@@ -1,5 +1,5 @@
 """criteria/stockpile——压牌库 EV 消费位(01_math_framework §3.5;档匹配谓词/V_comp 表在
-statefn/vopt,R4-F4——判据函数只消费,防臂①旁路误拆 M6 买入口)。"""
+statefn/vopt,R4-F4——判据函数只消费,防分支①旁路误拆 M6 买入口)。"""
 from __future__ import annotations
 
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vopt import (

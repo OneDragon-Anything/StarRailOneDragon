@@ -330,7 +330,7 @@ def bypass_obs_conflict_to_defect(rec: dict) -> None:
 
 
 
-# ===== 布局档分键(15 号稿批 C;互不混流)=====
+# ===== 布局档分键(15 号稿;互不混流)=====
 # 字符串单一源 = kernel.cw_telemetry_exit(obs 布局面经出口上行,双侧同引)。
 
 

@@ -4,7 +4,7 @@
 蓝图 §4.2-R5:拍值打分钩子(box_card/star_tome/wish_trial,原 default_
 strategy 内联魔数)降为「名字→标定权重」数据平表;本表 = 唯一标定源,
 钩子消费面读表取值(数值原样迁移,行为零漂移;战场族条目推迟处理,已登记为待办)。
-decision_v2.scoring 已随统一迁移批 ② 删除,本模块为唯一单一源。
+decision_v2.scoring 已删除(随统一迁移),本模块为唯一单一源。
 """
 from __future__ import annotations
 

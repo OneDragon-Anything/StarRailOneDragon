@@ -85,7 +85,7 @@ class CwOpOpenShop(CwOperation):
     """货币战争-备战 → 备战-开商店 原子 op(推进型两 node 形态)。
 
     生产路径由编排壳直调 :func:`open_shop`(宿主 op 复用);本类为独立
-    可跑壳(流程层接管后成为编排单元的机械开店臂)。
+    可跑壳(流程层接管后成为编排单元的机械开店分支)。
 
     两 node 形态(推进型空决策,幂等原子动作零策略消费;无 report——
     空决策形态无对账面/无容器域,kernel/cw_screen_report/open_shop.py
@@ -93,7 +93,7 @@ class CwOpOpenShop(CwOperation):
 
     - 观察 node = 画面门:「按钮-收起」可见(商店锚)→ 目标已达成 →
       幂等出口早退(:func:`_open_shop_already_open`,回执 + success,与
-      直调首臂逐位同);miss → 进决策动作 node(纯读判定,不点击)。
+      直调首分支逐位同);miss → 进决策动作 node(纯读判定,不点击)。
     - 决策动作 node = 现役推进体逐位(点击 + park + 动画等待 + 回执)+
       落地复查(顶部幂等门:重入帧商店锚在 = 上轮点击已落地 → 幂等出口;
       miss = 未落地 → 重发点击),循环推进 = round_wait(不烧节点重试

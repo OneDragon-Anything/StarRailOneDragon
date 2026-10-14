@@ -44,7 +44,7 @@ _DECL_PICK_MEGASTAR: WorldDecl = WorldDecl(
     next_screen=SCREEN_PREP_FRAME, trigger='pick_megastar')
 #: 纯转移选卡族共用(pick_partner/fortune/wish_trial/star_tome/
 #: expert_invite:选卡落地 = 零写占位,真值归观察 → trigger = '' 纯画面
-#: 转移,backend 仅按 next_screen 幂等交回,详设 §3 '' 行)。
+#: 转移,backend 仅按 next_screen 幂等返回,详设 §3 '' 行)。
 _DECL_PREP_PURE: WorldDecl = WorldDecl(next_screen=SCREEN_PREP_FRAME,
                                        trigger='')
 
@@ -124,7 +124,7 @@ def report_action_pick_event_param(gs: GameState, param: Any, sig: ChannelSig) -
 
 def report_action_pick_megastar_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """盛会之星选择上报:容器零写。applied 出口构造后果声明(pick_megastar;
-    交回备战,详设 world-decl.md §2 表 #10)。"""
+    返回备战,详设 world-decl.md §2 表 #10)。"""
     #(精确消费):选卡动作消费同 kind 登记
     # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'megastar')
@@ -135,7 +135,7 @@ def report_action_pick_megastar_param(gs: GameState, param: Any, sig: ChannelSig
 
 def report_action_pick_partner_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """列车同行伙伴选择上报:容器零写。applied 出口构造后果声明
-    (纯转移交回备战,详设 world-decl.md §2 表 #13)。"""
+    (纯转移返回备战,详设 world-decl.md §2 表 #13)。"""
     #(精确消费):选卡动作消费同 kind 登记
     # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'partner')
@@ -146,7 +146,7 @@ def report_action_pick_partner_param(gs: GameState, param: Any, sig: ChannelSig)
 
 def report_action_pick_star_tome_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """星徽秘典选择上报:容器零写。applied 出口构造后果声明(纯转移
-    交回备战,详设 world-decl.md §2 表 #16)。"""
+    返回备战,详设 world-decl.md §2 表 #16)。"""
     #(精确消费):选卡动作消费同 kind 登记
     # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'star_tome')
@@ -157,7 +157,7 @@ def report_action_pick_star_tome_param(gs: GameState, param: Any, sig: ChannelSi
 
 def report_action_pick_wish_trial_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """祈愿试炼选择上报:容器零写。applied 出口构造后果声明(纯转移
-    交回备战,详设 world-decl.md §2 表 #15)。"""
+    返回备战,详设 world-decl.md §2 表 #15)。"""
     #(精确消费):选卡动作消费同 kind 登记
     # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'wish_trial')
@@ -168,7 +168,7 @@ def report_action_pick_wish_trial_param(gs: GameState, param: Any, sig: ChannelS
 
 def report_action_pick_box_card_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """武装箱选择上报:容器零写。applied 出口构造后果声明(pick_box_card;
-    选卡即终结交回备战,详设 world-decl.md §2 表 #9;装备入栏归 backend)。"""
+    选卡即终结返回主循环备战,详设 world-decl.md §2 表 #9;装备入栏归 backend)。"""
     #(精确消费):选卡动作消费同 kind 登记
     # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'box_card')
@@ -179,7 +179,7 @@ def report_action_pick_box_card_param(gs: GameState, param: Any, sig: ChannelSig
 
 def report_action_pick_fortune_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """命运卜者强化三选一上报:容器零写。applied 出口构造后果声明
-    (纯转移交回备战,详设 world-decl.md §2 表 #14)。"""
+    (纯转移返回备战,详设 world-decl.md §2 表 #14)。"""
     #(精确消费):选卡动作消费同 kind 登记
     # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'fortune')
@@ -190,7 +190,7 @@ def report_action_pick_fortune_param(gs: GameState, param: Any, sig: ChannelSig)
 
 def report_action_pick_expert_invite_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """专家邀请函选卡上报:容器零写(现金为王回金 = dict 确认族通道)。
-    applied 出口构造后果声明(纯转移交回备战,详设 world-decl.md §2
+    applied 出口构造后果声明(纯转移返回备战,详设 world-decl.md §2
     表 #17)。"""
     #(精确消费):选卡动作消费同 kind 登记
     # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。

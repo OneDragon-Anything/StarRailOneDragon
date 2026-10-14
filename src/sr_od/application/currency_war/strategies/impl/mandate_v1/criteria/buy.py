@@ -39,10 +39,10 @@ def ev_buy_candidates(gold: int, s_reserve: int, shop_cards: list | None,
     """EV 买候选生成(动作发出面前半)。
 
     fail 方向(R3-4 显式判据 fail-closed 常开):
-    - ``shop_cards`` 无(商店线辖外/pick 帧域)⇒ 空候选 + 'shop_domain';
+    - ``shop_cards`` 无(商店线覆盖外/pick 帧域)⇒ 空候选 + 'shop_domain';
     - u/U_X 未标定(None)⇒ 序 3-5 消费无载 ⇒ 空候选 + 'u_unavailable'
       (对称 fail-closed:买面缺输入 = 不放行,§2.1 E_rev 镜像);
-    - 金 < cost + S 预留(检查点③辖 EV 买面;P56 批起 s_reserve =
+    - 金 < cost + S 预留(检查点③覆盖 EV 买面;P56 起 s_reserve =
       可变现利息线下界 g* − Σ活期退金投影,语义单一源 = shop.py 预算投影段)
       ⇒ 过滤 + 'ev_buy_s_reserve_reject' 分键计数(R3-R5 分键遥测)。
     候选第三类(R8-6 收窄):活跃窗口档内 ∧ 1★(refund_full)——

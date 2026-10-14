@@ -176,7 +176,7 @@ class HarvestInvestCodex(CwOperation):
         return cand
 
     def _detail(self, img):
-        """右侧详情:(名, 效果, 出现位面)。名 = 面板顶部标题(y 最小非 UI 文本)。"""
+        """右侧详情:(名,效果,出现位面)。名 = 面板顶部标题(y 最小非 UI 文本)。"""
         texts = self._ocr_texts(img, NAME_REGION)
         if not texts:
             return None

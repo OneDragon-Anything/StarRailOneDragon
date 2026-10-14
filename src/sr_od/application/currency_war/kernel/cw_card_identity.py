@@ -59,7 +59,7 @@ def sell_hold_exclusion_names() -> frozenset[str]:
 
     集合 = CORE_SINGLE_CARD_REGISTRY ∪ transition_release_names()——
     ③④语义 = 持有,整类从凑利息/筹资燃料资格排除,覆盖「已买待持有」
-    与「在售未买」两态,防跨轮卖回(1★ 全额退会让 (a) 凑利息臂机械抵消
+    与「在售未买」两态,防跨轮卖回(1★ 全额退会让 (a) 凑利息分支机械抵消
     ③④买入)。drop 档与普通燃料件**不**在本集——排除集取窄设计:
     name 型零重叠语义下(statefn/predicates.zero_overlap 是纯名成员判定)
     静态全集排除会把 (a) 的全部 1★ 燃料资格掏空(方案审 v3 攻击点①

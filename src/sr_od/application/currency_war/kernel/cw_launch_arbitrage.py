@@ -1,6 +1,6 @@
 """动作发出帧受限消费仲裁·判定核(金出口族出口 B;金出口族 DESIGN v1.1 §3.2,
 
-**治什么**:达标臂 armed(线成型)动作发出帧短路备战动作链后,
+**治什么**:达标分支 出战就绪(线成型)动作发出帧短路备战动作链后,
 金出口在动作发出帧整族不可达——sim/实机双证成型后金逐轮净积累(终局金中位
 96-196,boss 轮零动作)。本模块承载受限消费政策的**判定语义单一源**
 (flow 层仲裁段已停用,消费位 = 策略决策入口自限,分层依据 =
@@ -121,7 +121,7 @@ def launch_arbitration_gate(action, gold: int,
     R1/R2 的 g* 同源同帧语义;cap 在动作发出帧内不变(利息帽覆写只随投资卡
     变,投资卡选择不在动作发出帧发生),现读仅为单一源纪律不为缓存规避。
 
-    返回 (放行, 拒因);拒因恒 :data:`GATE_BLOCKED_REASON`(调用侧计数
+    返回 (放行,拒因);拒因恒 :data:`GATE_BLOCKED_REASON`(调用侧计数
     :data:`KEY_GATE_BLOCKS`)。零成本动作(sell/部署族)恒放行。
     """
     from sr_od.application.currency_war.kernel.cw_economy import (

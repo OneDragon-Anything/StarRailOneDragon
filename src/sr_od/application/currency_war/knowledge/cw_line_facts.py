@@ -28,7 +28,7 @@ def recipe_tier(board: dict[str, int]) -> int:
     return sum(v for k, v in board.items() if k in RECIPE_FACTIONS)
 
 
-# —— 核心三人组(原 kernel/cw_line_defs._CORE_TRIO;r358)——
+# —— 核心三人组 ——
 #: r358:核心三人组(combo_methodology 终版:功能链不可拆;
 #: 数据单一源 = 桥池 xianzhou_dot 的 fixed+core 交集)
 _CORE_TRIO: frozenset[str] = frozenset({'爻光', '藿藿', '丹恒·饮月'})
@@ -37,7 +37,7 @@ _CORE_TRIO: frozenset[str] = frozenset({'爻光', '藿藿', '丹恒·饮月'})
 # P1 过渡双框架(r38 修正:plaza 549 篇阵营激活口径,主流 = 仙舟系 32% + 列车系 29%,
 # 其余各 ≤5%;用户口径「DOT 和仙舟两种」——饮月/卡芙卡等仙舟阵营 flows 带 DOT,
 # 「3仙舟+2DOT」在数据上呈现为仙舟大羁绊)。两包各自内部自洽,选其一集中买。
-# 值:角色 → (框架, 档:carry=贯穿最终 / drop=P1末弃 / partial)
+# 值:角色 → (框架,档:carry=贯穿最终 / drop=P1末弃 / partial)
 # ⚠️ r100 数据复核修正(用户抓的统计错误):入包双条件 = **Early 出现率 ≥8%** AND
 # 过渡功能(保留率分档只在满足前者后才有意义)。旧口径按保留率分档混入了
 # 「终局阵容成员」——瓦尔特(5费,Early 0.2%:等级锁刷不出,保留率暴涨是反向

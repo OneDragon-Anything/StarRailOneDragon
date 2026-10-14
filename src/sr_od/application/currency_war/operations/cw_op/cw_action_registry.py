@@ -187,9 +187,9 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     CwActionPerfectProjectorUseParam: CwActionToolUseOp,
     CwActionLuckyTokenUseParam: CwActionToolUseOp,
     # 转场族
-    CwActionStartBattleParam: CwActionStartBattleOp,   # 终结(交回外循环战斗分支)
+    CwActionStartBattleParam: CwActionStartBattleOp,   # 终结(返回主循环战斗分支)
     CwActionOpenShopParam: CwActionOpenShopOp,         # terminal 承载行(执行抛,正常路径不可达)
-    # 观察族(策略发出 CwActionObs = 环内重观察上报,不交回外循环;
+    # 观察族(策略发出 CwActionObs = 环内重观察上报,不返回主循环;
     # 现役接线域 = 备战决策环,重观察执行半 = 宿主 CwScreenPrep
     # .reobserve_in_visit;其他域发出 = 宿主能力缺失 AssertionError 响亮暴露)
     CwActionObsParam: CwActionObsOp,

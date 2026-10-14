@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 class CwActionOpenBookcardOp(CwOperation):
     """开书册卡:``find_bookcards`` 识别 → 点槽中心 → 固定动画等待
     (纯机械执行)。终结动作(动作发出点 = 策略器 entry ① prep 实体面卡片
-    臂,screens/README §5.5;弹专家邀请函 = 新事实 → 结束本次访问,与
+    分支,screens/README §5.5;弹专家邀请函 = 新事实 → 结束本次访问,与
     OpenBox 终结化同构,规范锚 = op-layer.md §1.4)。"""
 
     #: 终结动作(专家邀请函弹窗在场 = 新事实,返回主循环重新分发选卡)。

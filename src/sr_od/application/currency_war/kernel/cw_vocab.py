@@ -330,7 +330,7 @@ class CwActionDeployMoveParam:
     容器写侧按载荷直落(子表下标 = to_slot−1),禁执行边现读首空位。
     拖拽语义 = 游戏规则:目标槽空 = 放置,
     有角色 = 交换交互(被占位角色回本载荷源槽);执行层不判断占位、
-    不拒、禁静默换槽,唯一失败形态 = 拖拽未生效(观察对账显影)。
+    不拒、禁静默换槽,唯一失败形态 = 拖拽未生效(观察对账暴露)。
     ``faction`` = 上阵后 board 阵营计数所需,动作发出点从容器槽位表
     角色对象现取(simulate 的 CwActionDeployMoveParam 分支消费此字段)。
     """
@@ -374,7 +374,7 @@ class CwActionCloseShopParam:
     单动作架构下「无动作可做」的表达 = 策略器主动选关店终结
     op,取代旧「空序列 = 决策完成」契约;全函数契约(决策 5)要求动作空间
     至少含一个恒可用终结(决策 6)——本类即商店画面的该终结。执行侧语义
-    = 本画面 op 结束、交回外循环(关店点击由动作 op 执行体
+    = 本画面 op 结束、返回主循环(关店点击由动作 op 执行体
     CwActionCloseShopOp 真机械执行:找「按钮-收起」miss = 幂等已关,
     命中 = 点击 + 固定等待 + leave_screen 清场上报);期望态随终结作废,
     由下一次入口观察重建(原单步应用器 ``simulate`` 已停用)。
@@ -519,13 +519,13 @@ class CwActionOpenBookcardParam:
 
     书册卡 = 备战席占槽道具(与补给箱/秘密典籍并列第三件;与
     CwActionOpenBoxParam/CwActionOpenTomeParam 同签名)。选卡决策不在
-    本执行链——点完开启本动作即交回,专家邀请函弹窗由外循环按画面分发
+    本执行链——点完开启本动作即返回主循环,专家邀请函弹窗由外循环按画面分发
     ``CwScreenExpertInvite`` 选卡(选卡决策单一源 = kernel
     ``cw_events.choose_expert_index``,选卡决策收拢 kernel 单一源)。
     动作发出点 = 策略器 entry ① prep 实体面卡片分支(容器 bench 槽位 kind
     'bookcard' 触发;原「备战环入口清场段 ``cw_screen_prep._clear_prep_cards``
     代发」已按用户裁定 2026-09-19 撤销——开卡时机归策略实现管)。
-    终结动作(弹专家邀请函 = 引入新事实,交回外循环重观察)。slot=None → 第一张书册卡。
+    终结动作(弹专家邀请函 = 引入新事实,返回主循环重新观察)。slot=None → 第一张书册卡。
     """
     slot: int | None = None   # [索引定义] slot = 备战栏画面物理槽位 1 基(area 序,坐标参数化机械动作族同系,screens README §4 二分);取值时机 = 发出期快照(决策半按观察 bench kind 槽位现算);None = 首个该类槽位
     route_tag: str = field(default='', kw_only=True,
@@ -673,8 +673,8 @@ class CwActionOpenShopParam:
 
 @dataclass
 class CwActionStartBattleParam:
-    """出战(环出口;含未达上限确认)。零转移验证机械单发:点击序列发出即交回
-    (未发出 = 找不到按钮返 False),转移与否由交回后下一帧观察裁决。CwActionStartBattleParam 豁免屏蔽。"""
+    """出战(环出口;含未达上限确认)。零转移验证机械单发:点击序列发出即返回主循环
+    (未发出 = 找不到按钮返 False),转移与否由返回后下一帧观察裁决。CwActionStartBattleParam 豁免屏蔽。"""
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
 
@@ -907,7 +907,7 @@ class CwActionRefreshNodeOptionsParam:
 class CwActionRefreshSupplyParam:
     """补给节点刷新建议(策略层载体 = ``strategies/impl/mandate_v1/supply.py``
     ``SupplyRefreshSuggestion`` 的动作包装):supply 刷新链 =
-    发出后交回重入型(重入访问走常规写槽→决策起点链)。"""
+    发出后返回主循环重入型(重入访问走常规写槽→决策起点链)。"""
     reason: str = ''
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
@@ -930,7 +930,7 @@ class CwActionRefreshInvestCardsParam:
 
 
 #: CwActionObsParam.scope 值域闭集(观察口径单一源;消费端 = 备战决策环
-#: 分支判等,in_place 走执行器、outer_loop 拦截交回;F3 静态校验同取本源)。
+#: 分支判等,in_place 走执行器、outer_loop 拦截并返回主循环;F3 静态校验同取本源)。
 OBS_SCOPES: frozenset[str] = frozenset({'in_place', 'outer_loop'})
 
 
@@ -943,14 +943,14 @@ class CwActionObsParam:
       「以实际观察为准」),决策环原地续跑:访问不重启、段序号不置位、外循环
       零往返。帧代次标注 'full'(方向重估触发,同入口帧;贵段消费侧有
       每 game-round 恰一次键守卫限频)。重观察发现事件 overlay 在场 =
-      抛 CwObsOverlayBail 交回外循环重分发(画面识别与路由归外循环,
+      抛 CwObsOverlayBail 返回主循环重新分发(画面识别与路由归外循环,
       环内不消化;捕获点 = ``cw_screen_prep.act``)。
-    - ``scope='outer_loop'``:**交回外循环重新观察**——决策环在
+    - ``scope='outer_loop'``:**返回主循环重新观察**——决策环在
       validate/执行器之前拦截(不进执行器、不进动作注册表、不写续段
-      token/动作记录),round_success(wait=1.0) 交回外循环重观察。
+      token/动作记录),round_success(wait=1.0) 返回主循环重新观察。
       本口径并入原 ``HoldFrame`` 空动作发出帧通道(用户裁定 2026-09-20
       HoldFrame 删除:两通道同为「观察请求」,口径差异收进参数;空发出
-      语义 = 本帧无动作可发,交回让外循环重判/等待,自旋防护 = 交回后
+      语义 = 本帧无动作可发,返回主循环让外循环重判/等待,自旋防护 = 返回后
       归外循环 stall 防线)。
 
     零容器动作写语义:in_place 口径的容器更新通道 = 观察漏斗本体
@@ -959,7 +959,7 @@ class CwActionObsParam:
     in_place 在其他决策域发出 = 宿主能力缺失 AssertionError 响亮暴露
     (策略器 bug)。
     """
-    scope: str = 'in_place'   # 观察口径,值域闭集 = OBS_SCOPES('in_place' 环内重观察 / 'outer_loop' 交回外循环重观察)
+    scope: str = 'in_place'   # 观察口径,值域闭集 = OBS_SCOPES('in_place' 环内重观察 / 'outer_loop' 返回主循环重新观察)
     reason: str = ''   # 归因记录字段(非指令;''=未标)
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})

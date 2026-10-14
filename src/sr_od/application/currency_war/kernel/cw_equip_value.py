@@ -34,8 +34,8 @@ from collections.abc import Sequence
 from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
 
 # 通用装备价值(V4.4 meta 先验;**值在代码单一源,不进 strategy doc**;实玩校准)。
-# 设计原则:带钻 > 鞋(找鞋战争;速度 阵容命脉)> 电池 > 花/通用。具体值随版本。
-# :键必须 ⊆ EQUIPMENT_ROSTER(注册表单一源)——
+# 设计原则:带钻 > 鞋(找鞋战争;速度阵容命脉)> 电池 > 花/通用。具体值随版本。
+# 键必须 ⊆ EQUIPMENT_ROSTER(注册表单一源)——
 # 死名不入表(表残留经游戏语料核裁删除:超级电池=超充站 buff 词非装备/
 # 能量饮料=全语料零出现/翁瓦克=局外遗器名被 误收);翁瓦克 4 分
 # 按功能对位转投蓄能帆(行动值回能,同为充能系)。
@@ -104,7 +104,7 @@ def equip_material_generality(name: str) -> int:
 def key_recipe_pairs(key_equips) -> dict[str, tuple[tuple[str, str], ...]]:
     """key_equip 成品名(可含重复)→ 其全部合成材料对(注册表 recipes 平移)。
 
-    缺名/无配方 → 空对。recipes 结构 = 配方元组的元组,每条 = (材料a, 材料b)
+    缺名/无配方 → 空对。recipes 结构 = 配方元组的元组,每条 = (材料a,材料b)
     (flow.py decide_box_card 内 recipes 字段名修正注释);自对配方形如
     (X, X)。
     """

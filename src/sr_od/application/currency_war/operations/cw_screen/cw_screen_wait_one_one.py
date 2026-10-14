@@ -14,8 +14,8 @@
 (``_first_seen_ts`` 起 ≥ ``ONE_ONE_MAX_WAIT_S``)→ 存图保留证据 + round_fail
 交循环(现役出口);未出现且未超时 → round_wait
 (``ONE_ONE_POLL_INTERVAL_S``)自环节点轮询等下一帧(wait 语义不吃重试
-预算,轮询由固定超时兜底)。决策动作 node = 零动作交回节点(纯等待型无
-推进动作,备战就绪即 success 交回主循环——现役「act 段零动作如实申报」
+预算,轮询由固定超时兜底)。决策动作 node = 零动作返回节点(纯等待型无
+推进动作,备战就绪即 success 返回主循环——现役「act 段零动作如实申报」
 的两段形态承接)。本屏 sim 腿 = 不适用(sim 无对应画面段),等价判据
 主支撑 = 实机已登记行为锁(test_obs_arch_phase_screens.py)。
 """
@@ -89,6 +89,6 @@ class CwScreenWaitOneOne(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作')
     def act(self) -> OperationRoundResult:
-        """零动作交回节点:纯等待型无推进动作,备战就绪即 success 交回
-        主循环(现役 act 段零动作的两段形态承接)。"""
+        """零动作返回节点:纯等待型无推进动作,备战就绪即 success 返回主循环
+        (现役 act 段零动作的两段形态承接)。"""
         return self.round_success('1-1 备战就绪')

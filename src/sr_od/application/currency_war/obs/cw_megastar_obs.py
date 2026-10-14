@@ -16,7 +16,7 @@ node 选中半读链)。失败语义:reader 任一候选观察失败(SIFT 与 OC
 失败信号不走 None 直返——调用方 fail 消息构造迭代候选列表保留证据)。
 
 候选点击坐标随本读链一并观察上报(规范 = op-layer.md §1.1「选择坐标
-观察上报」):xy = (该卡标签中心 x, 已登记卡身线 y),每卡自带,动作 op
+观察上报」):xy = (该卡标签中心 x,已登记卡身线 y),每卡自带,动作 op
 按 ``idx`` 自容器 ``megastar_opts[idx].xy`` 取点,零坐标现算。旧
 「候选-左/右」两槽左右映射模型(idx 枚举序 → 固定槽位常量)已停用
 ——单候选/部分读时名字与点击位错位(两槽模型把 idx0 恒映射左槽,
@@ -120,7 +120,7 @@ def read_megastar_options(
     检测模型(正本 = screens/megastar.md §3,逐条落):
     ① **弹窗标签带限定 OCR 定卡**:标签带 area「候选标签带」rect 限定
        OCR → 正则「盛会之星一X先生/女士」逐命中 → N = 命中数,每 hit
-       得(标签中心 x, 原始名 X)。全屏扫已停用(全屏扫会把屏上其它
+       得(标签中心 x,原始名 X)。全屏扫已停用(全屏扫会把屏上其它
        「盛会之星」字样卷入,且旧实现的坐标按枚举序硬映射左右槽)。
     ② **逐卡立绘 SIFT 交叉验证**:每 hit 按卡身相对几何裁立绘区 → SIFT
        立绘库识别 → 裁决:SIFT 命中且与 OCR 名(经双源域标准化转换)
@@ -128,7 +128,7 @@ def read_megastar_options(
        ``READ_FAILED`` 哨兵(整函数观察失败信号,见 return);SIFT 未命中
        → OCR 转换名支撑(库缺新角色不硬依赖);OCR 名转换失败 → 原值
        保留过门(标准化门既有判法判域外失败)。
-    ③ **xy = (该卡标签中心 x, 卡身线)**:y = ``CANDIDATE_BODY_Y`` 已登记
+    ③ **xy = (该卡标签中心 x,卡身线)**:y = ``CANDIDATE_BODY_Y`` 已登记
        实测卡身线,x 随卡标签中心,每卡自带坐标,无枚举映射。
     ④ **输出序**:按标签中心 x 左→右 = idx 0..N-1(与词表/策略下标同系)。
 
@@ -151,7 +151,7 @@ def read_megastar_options(
     ocr_map = ctx.ocr_service.get_ocr_result_map(
         image=screen, rect=band, color_range=None, crop_first=False,
     )
-    hits: list[tuple[float, str]] = []   # (标签中心 x, 原始名 X)
+    hits: list[tuple[float, str]] = []   # (标签中心 x,原始名 X)
     for text, mrl in ocr_map.items():
         if mrl.max is None:
             continue
@@ -223,7 +223,7 @@ class _MegastarGate:
     MEGASTAR_LCS_THRESHOLD: ClassVar[float] = 0.75
     # 歧义边距(判据 = 过阈值的最高分与次高分之差):低于 = 域内歧义不可
     # 分辨 → 转换失败。共享词素族阈值挡不住跨名借分(近分必有误读,禁猜
-    # ——投资环境对抗审实证),边距拒判为必需防线。
+    # ——投资环境对抗审查实证),边距拒判为必需防线。
     MEGASTAR_LCS_AMBIGUITY_MARGIN: ClassVar[float] = 0.15
 
     @classmethod

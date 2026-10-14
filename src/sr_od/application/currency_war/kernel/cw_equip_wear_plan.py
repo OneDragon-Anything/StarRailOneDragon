@@ -1,4 +1,4 @@
-"""货币战争 装备穿戴计划构造(kernel 桶;组合壳溶解的原子通路件)。
+"""货币战争 装备穿戴计划构造(kernel 层;组合壳溶解的原子通路件)。
 
 本模块 = 穿装备计划构造的 kernel 宿主(计划构造随动作发出点
 上移 kernel,决策侧逐帧现算):计划单一源随动作发出点上移,
@@ -193,7 +193,7 @@ def _build_equip_wear_plan(session: Any,
     # 快照同形潜伏)。换源后分配容量与 kernel 上限同基,自旋结构性消灭。
     # 实机入口观察仍写 occupied_equips 观察面(记录/reconcile 面不变),
     # 逻辑账由入口对账纠偏语义照旧。键坐标系与观察面同构
-    # ((row, 物理槽位 1-based));空装槽位不入表(与采集层
+    # ((row,物理槽位 1-based));空装槽位不入表(与采集层
     # read_row_equipped「空槽不在 dict」同形,front-only 空槽检测语义
     # 不变);防御拷贝(计划求值全程本地态,禁反向污染容器)。
     occupied_all: dict = {}
@@ -242,7 +242,7 @@ def _build_equip_wear_plan(session: Any,
                   if (_hold_node is not None
                       and _hold_node.plane == 1) else None)
     # :hold 收窄+生锈豁免,开关走策略 registry
-    # (DecisionV2Strategy 注入臂可达;default 栈无 registry 属性 → 缺省表
+    # (DecisionV2Strategy 注入分支可达;default 栈无 registry 属性 → 缺省表
     # =全关,零漂移)。
     from sr_od.application.currency_war.kernel.cw_exec_state import ledger_node_type
     from sr_od.application.currency_war.kernel.cw_registry import (

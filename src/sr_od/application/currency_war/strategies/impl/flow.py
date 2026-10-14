@@ -97,7 +97,7 @@ CurrencyWarConfig = 'CurrencyWarConfig'
 class CwFlowStrategy(CwStrategy[StrategyState]):
     """主流程驱动核(生命周期 + 战略层意向 + pick 族 + 备战主流程栈)。
 
-    泛型绑定(设计正本 §1/§8.5/§8.6-6,迁移批次三):本核即 mandate_v1
+    泛型绑定(设计正本 §1/§8.5/§8.6-6):本核即 mandate_v1
     流程核,``_TState`` 在此绑定为本实现的私有状态类型 StrategyState
     (基类 ``create_state`` 返回类型随之收窄)——框架基类仍只以泛型参数
     携带,零感知字段;kernel/one_dragon 零 import 本类型(布局锁定约束)。
@@ -148,9 +148,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         ``v3_form_score`` 随本口径替换停用(历史账本只读,不再有写者)。
         ``v3_form_ok`` 写端已从停用 v2 相位机接回板面现读(死镜像处置批
         form_ok 死镜像处置:旧写端在 mandate_v1 下无写者恒 False,与
-        发出判据核 出战就绪 现读对账必然全量不一致——判读单一源 =
+        发出判据核 出战就绪现读对账必然全量不一致——判读单一源 =
         第三十四局前后判读已定案);判据单一源 =
-        ``cw_launch_admission.readiness_form_ok``(与发出 出战就绪 同式,
+        ``cw_launch_admission.readiness_form_ok``(与发出 出战就绪同式,
         零第二实现)。``v3_phase`` 维持无写端停用缺省 ''(相位机已亡,
         无现读语义可接)。``v3_mirror_key`` 轮键戳照常盖章(键语义 =
         「本轮已写」,重复写守卫据此不重复触发)。纯遥测恢复:
@@ -179,7 +179,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         dep_names = [(getattr(d, 'char_id', '') or '') for d in deployed]
         _ms.v3_b_t = board_target_line_weight(dep_names)
         # form_ok 镜像现读写端(死镜像处置,见 docstring;判据单一源 =
-        # readiness_form_ok,与发出 出战就绪 同式)
+        # readiness_form_ok,与发出 出战就绪同式)
         from sr_od.application.currency_war.kernel.cw_game_state import (
             plane_of as _plane_of,
         )

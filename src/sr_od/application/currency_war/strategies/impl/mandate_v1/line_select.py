@@ -1,5 +1,5 @@
 """终局线选择内核(候选-锁定制;line_and_upgrade §1;迭代
-2026-10-12-prep-shop-workflow-redesign 批 3.7)。
+2026-10-12-prep-shop-workflow-redesign)。
 
 判据唯一源 = line_and_upgrade §1(候选-锁定制,用户裁定 2026-10-12 选线
 专题定稿:硬规则查表判据 + 零标定参数)。本模块承载三件:

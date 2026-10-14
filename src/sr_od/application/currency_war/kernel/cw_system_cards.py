@@ -13,7 +13,7 @@
 1. C2 伪码签名 ``card_active(card, board_by_row: BoardByRow)`` —— ``_faction_count``
    身份口径改读
    ``cw_board_by_row.board_by_row_of(gs)`` 全板合计视图(全仓按排聚合单一源;
-   C6 契约,P4 起容器行域直读);判据语义零变化(仍取 max(board OCR, 身份计数));
+   C6 契约,P4 起容器行域直读);判据语义零变化(仍取 max(board OCR,身份计数));
 2. C2 伪码返回 ``EngineState`` —— 本模块按规格返回 ``bool``(缺件审计走
    ``engine_missing``;EngineState 包装留给 decision_v2 接线面);
 3. C2 伪码 ``pick_card_combination(cards_state, intent, affixes)`` —— 本模块

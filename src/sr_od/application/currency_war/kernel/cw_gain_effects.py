@@ -29,7 +29,7 @@ _PRODUCER = 'CwGainChain'
 # ===== rng 注入,实机缺省未播种 = 采样是猜测,sim 传流键 = 采样即世界真值)
 
 #: 骇客改件 v0 池(卡文「获得1个随机4费骇客改件」的建模口径,用户拍定
-#: = 4 费装备排除 Max 件)。**池数据缺口申报(对抗审⑧)**:
+#: = 4 费装备排除 Max 件)。**池数据缺口申报(对抗审查⑧)**:
 #: Equipment dataclass 无 cost 字段(实证),「4 费」口径无数据源 → 池 =
 #: 硬编码名单常量,显式申报的第二真相源(名单即口径本体,披露键已登记)。
 #: 成员 = 银狼专属 10 件(data/cw_equipment_wear_rules_data.ITEM_WEAR_GATES
@@ -48,7 +48,7 @@ HACKER_MOD_ASSUMPTION_KEYS: tuple[str, ...] = (
     'hacker_mod_pool_v0_cost4_no_max',
 )
 
-#: 骇客改件链翻来源域集(对抗审⑪:按「可能受影响域」裁,禁照抄 collect_ore
+#: 骇客改件链翻来源域集(对抗审查⑪:按「可能受影响域」裁,禁照抄 collect_ore
 #: 全域——gold 不受改件影响不翻,防噪声行;行域合卷
 #: 为 deployed 单字段)。
 _HACKER_MARK_DOMAINS: tuple[str, ...] = ('equips', 'bench', 'deployed')
@@ -64,7 +64,7 @@ def roll_hacker_mod(rng: random.Random) -> str:
 # ===== 效果函数(策略卡获得时分派 = 容器写腿;键 = 注册表规范名)=====
 # 注册纪律:效果函数只覆盖「获得该卡后的容器写腿」(bench/装备/采样链),
 # 与 cw_investments.STRATEGY_EFFECTS(持卡经济效果聚合,aggregate_economy
-# 消费)职责不同不合并(对抗审⑨)。全量收录 = 推广批(gain-chain design
+# 消费)职责不同不合并(对抗审查⑨)。全量收录 = 推广批(gain-chain design
 # §1.4),未收录卡只走注册或零效果(查无效果安静不写)。
 
 #: 骇客专家:银狼 bench 腿的送出单位(卡文「获得专家顾问【银狼】」;
@@ -86,9 +86,9 @@ def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
        入栏(采样效果对子链翻转 rand,gain-chain §5)→ 后果送单位由
        ``on_equipment_gained`` 回调自动消费(内联查表删除)。
 
-    值不变翻来源域集(标记循环)的实现 = **调用前后值快照比对**(对抗审
+    值不变翻来源域集(标记循环)的实现 = **调用前后值快照比对**(对抗审查
     A3 定死):效果体执行中实际被写过的域(含回调子链,值快照变化)不再
-    翻来源;未写域(gold 不在域集,对抗审⑪)值不变 ``write_logic_rand``
+    翻来源;未写域(gold 不在域集,对抗审查⑪)值不变 ``write_logic_rand``
     翻来源留存证据。与现行 written 集语义等价(标记「暴露给随机事件但本次
     未写」的域;差一面 = 现行对银狼腿已写 bench 域的多余翻来源行被省略
     ——provenance 行级,容器值零差)。

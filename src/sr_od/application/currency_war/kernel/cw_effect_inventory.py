@@ -187,7 +187,7 @@ class ActiveEffect:
                                # portal=环境源(登记端 register_portal_from_env,
                                # 结构化条目=ENV_PORTAL_EFFECTS)
     acquired_key: tuple[int, int] | None
-    # 登记时点;(位面, 轮) 节点序位元组(cw_node_schedule.NodePos 同形;
+    # 登记时点;(位面,轮) 节点序位元组(cw_node_schedule.NodePos 同形;
     # 本模块零 import 包内模块纪律,类型就地写 tuple)。登记期快照
     # (登记端 = _portal_acquired_key / register_affixes_from_names)
     remaining_nodes: int | None  # N_NODES 类余期;**自然数计数非索引**;None=不限;
@@ -199,14 +199,14 @@ class ActiveEffect:
 class ActiveEffectInventory:
     """在场效果清单(宿主 = GameState.effects)。纯数据 + 读端/追踪端;零 import 包内模块(可离线单测)。
 
-    写端(挂点)生产接线(迁移批次三,设计 §5.1/§8.7 批次三;单一实例 =
+    写端(挂点)生产接线(设计 §5.1/§次三;单一实例 =
     GameState.effects,session 无独立字段——历史兼容读口 property 已撤,
     写读直经 game_state_of(session).effects,载体归一防双账本):选卡登记 = CwScreenInvestStrategy 确认落地(免战牌同点
     自动登记);节点 tick = cw_loop 备战分支(进节点边界);计数 bump =
     动作上报链(购买 = cw_action_report/buy_card 的 on_buy 回调,刷新 =
     cw_action_report/refresh_shop 经 record_refresh 单口);跳过递减 = kernel
     出战 op 自上报(report_action_start_battle_param)
-    runner 包络上报,上报时递减——出战域重设计 );升级标记 =
+    runner 包络上报,上报时递减——出战域重设计);升级标记 =
     prep_actions._level_up
     (既有);结算挂点 = CwScreenBattleWait 结算观察写端(_record_round_outcome
     非 telemetry_only 分支,apply_settlement_cover 同分支同时序;现役注册表
@@ -223,7 +223,7 @@ class ActiveEffectInventory:
         # tick 幂等性的载体,随清单实例走(session 级生命周期,新局天然
         # 清零)。
         self._last_tick_key: tuple[int, int] | None = None
-        # 装备效果进度侧栏(拷贝仪参与计数载体首用):键 = (装备名, 装备者
+        # 装备效果进度侧栏(拷贝仪参与计数载体首用):键 = (装备名,装备者
         # char_id),值 = 单调计数器。装备源效果无 EffectSpec 实例(
         # 申报面纪律:装备写端 = 桥/贡献算术直读 GameState),其进展量
         # 无实例可挂,落本册侧栏——session 级生命周期与实例清单同源,
@@ -347,7 +347,7 @@ class ActiveEffectInventory:
           B1):per-node 形态(§3.3.5)每节点恰累加一次,靠本位判——同节点
           重复调用 advanced=False,调用方跳过累加(与余期递减同一去重键)。
         - ``node_key`` 给定时做**同节点去重**:挂点每备战环采样,同节点
-          多次调用只推进一次(键 = (位面, 轮) 节点序位元组,
+          多次调用只推进一次(键 = (位面,轮) 节点序位元组,
           cw_node_schedule.NodePos 同形——生产写端传 GameState 生效序位
           读口现值,与 ActiveEffect.acquired_key 同键);None = 无条件推进
           (测试/sim 直调)。
@@ -474,7 +474,7 @@ class ActiveEffectInventory:
             self.refresh_paid += 1
 
     def equip_progress_of(self, equip_name: str, wearer: str) -> int:
-        """装备效果进度读口(侧栏键 = (装备名, 装备者 char_id))。无记录 = 0
+        """装备效果进度读口(侧栏键 = (装备名,装备者 char_id))。无记录 = 0
         (计数器从 0 起,§3 规则 1)。"""
         return self.equip_progress.get((equip_name, wearer), 0)
 
@@ -482,7 +482,7 @@ class ActiveEffectInventory:
                             n: int = 1) -> int:
         """装备效果进度推进(单调计数器,§3 模型:事件发生就 +1、永不递减
         永不重置)。返回推进后的累计值;n 非正数 = 调用错显式炸错(单调
-        计数器无递减语义)。同 (装备名, 装备者) 键天然隔离,不串账;
+        计数器无递减语义)。同 (装备名,装备者) 键天然隔离,不串账;
         同名装备多件同主合并计数(实例区分无观察锚,合并 = 少发不多发,
         保守向——见 :func:`settle_copy_machine_participation` 申报)。"""
         if n <= 0:
@@ -575,7 +575,7 @@ def _validate_env_portal_effects(specs: dict[str, EffectSpec]) -> None:
     ② id 双匹配:spec.id 必须等于 plaza id(改名且 id 仍在的漂移也炸);
     ③ payload↔category 一致性:本表条目一律 ECONOMY ↔ EnvEconomyEffect;
     ④ 覆盖方向:表键 ⊆ ENV_ECONOMY——结构化条目只对经济环境建,表外经济
-    环境(数据批 B/C 类补表后未跟上 spec)走占位登记不炸(登记端对 3.3
+    环境(结构化补表未跟上 spec)走占位登记不炸(登记端对 3.3
     演化鲁棒:占位保守可见,零行为差),反方向(非经济环境建 spec)拒绝;
     传递得 表 ∩ ENV_GIFTS = ∅(ENV_ECONOMY ∩ ENV_GIFTS = ∅ 构建期已断言)。
     """
@@ -659,7 +659,7 @@ def register_portal_from_env(session: object, env_name: str) -> EffectSpec | Non
     - **幂等**:portal 源已登记同名(spec.name = 归一名)跳过——环境确认链
       重入/retry 不得双登记(实例按 spec_key 唯一,effect-domain.md §9.1
       与词缀源同款纪律);
-    - acquired_key = 登记时点节点序位快照((位面, 轮) 元组;GameState
+    - acquired_key = 登记时点节点序位快照((位面,轮) 元组;GameState
       节点单例;节点未观察(引导窗)= None 缺位,last_state 帧回退已停用删除);
     - 返回本次登记的 spec(幂等跳过/未知名返回 None,调用侧日志留存证据)。
 
@@ -689,7 +689,7 @@ def register_portal_from_env(session: object, env_name: str) -> EffectSpec | Non
 
 
 def _portal_acquired_key(gs: object, session: object) -> tuple[int, int] | None:
-    """登记时点节点序位快照((位面, 轮) 元组;register_affixes_from_names
+    """登记时点节点序位快照((位面,轮) 元组;register_affixes_from_names
     同式):GameState 节点单例直接取 (plane, round_num)——键表示下零坐标
     换算(编号正解已停用),与推进入账(advance_node 键)同键
     契约(cw_effect_inventory「登记当节点不推进」守卫由同键保证)。节点
@@ -707,7 +707,7 @@ def _portal_acquired_key(gs: object, session: object) -> tuple[int, int] | None:
 # 与 cw_game_state 的 apply_effect_burst_grant 等三桥同族,但宿主不在
 # cw_game_state——其模块头 import 本模块,桥落本侧可免模块级成环;
 # ChannelSig/BenchView 运行期函数内惰性取。挂点 = 选卡时点(设计 §3.2.3
-# 「效果写端(选卡时点、非 op)」),生产接线(投资两屏迁移批起)= 获得链
+# 「效果写端(选卡时点、非 op)」),生产接线(投资两屏迁移起)= 获得链
 # kernel/cw_gain_chain.py::gain_invest_strategy 登记腿(register_strategy/
 # apply_effect_burst_grant 同点);原 CwScreenInvestStrategy 画面 op 写点
 # 已停用。)
@@ -1041,13 +1041,13 @@ def spawn_equip_bench_unit(gs: GameState, char_id: str, star: int,
                            frame: str = '') -> bool:
     """桥·装备族单位入席腿(共享):把复制/发放单位落进备战席第一个空槽,
     write_logic 直写(确定性→逻辑写,归属判据确定性分支)。服务面 =
-    数据拷贝仪族计数臂(成熟回执,无门)——员工/完美投影仪消费已停用
+    数据拷贝仪族计数分支(成熟回执,无门)——员工/完美投影仪消费已停用
     (tool-gain-report 迭代:投影仪复制改走获得链
     ``cw_gain_chain.gain_character`` 统一时序,登记面映射 =
-    cw_affix_effects.EQUIP_WRITE_SIDES report: 形;本桥留在只覆盖计数臂)。
+    cw_affix_effects.EQUIP_WRITE_SIDES report: 形;本桥留在只覆盖计数分支)。
     (分身墨镜系获得发放腿已改覆盖
     apply_equip_acquire_consequence——获得后果全渠道统一,本桥不再服务
-    该两行;数据拷贝仪Max 行保持本桥覆盖计数臂,其获得后果由后果函数按
+    该两行;数据拷贝仪Max 行保持本桥覆盖计数分支,其获得后果由后果函数按
     数据行统一覆盖,不经登记表双登记。)
 
     - ``cost``/``cost_gate``:拖动目标费用与其门(>0 时 cost 超门拒落 =
@@ -1149,7 +1149,7 @@ def transform_equip_to_privilege(gs: GameState, source_name: str, *,
 #   金读数之间无其他金变更源,窗口独占,直接 +1 直写(与极·阿瓦隆获得 hp
 #   桥同形)。到账战利品的金面仍走观察覆盖(§4 CwActionCollectOreParam),本载体不
 #   吸收——随机/观察收口面不进组合写。
-# )
+#)
 
 
 @dataclass(frozen=True)
@@ -1329,7 +1329,7 @@ def transform_worn_equip_to_privilege(gs: GameState, target: Unit,
 # 「成熟回执时点窗口独占」,1★ 自身复制)。**现值观察面**:参与事实由
 # 当前观察态现读(战斗结算时点的前台+后台已登记单位 = 参战者;备战席未
 # 上场不参战),不建独立参战事实字段。生产挂点 = 战斗结算覆盖带(接线
-# 归覆盖批;接线前零调用零行为差)。随机臂(「任意方式获得装备者时 30%
+# 归覆盖批;接线前零调用零行为差)。随机分支(「任意方式获得装备者时 30%
 # 概率获得复制」)与伤害增幅腿 = 零建模/观察收口,不在本载体——申报面 =
 # cw_affix_effects EQUIP_REWRITE_DECLARATIONS 对应行。)
 
@@ -1363,7 +1363,7 @@ def settle_copy_machine_participation(gs: GameState, *,
     - 参战者口径 = 前台 + 后台(上场单位站两排、两排皆参战,§3.2.7);
       备战席单位未上场不计;行字段从未观察(None)= 该排无参战读数,
       跳过不猜;
-    - 进度键 = (装备名, 装备者 char_id):跨排移动计数随键延续(单调,
+    - 进度键 = (装备名,装备者 char_id):跨排移动计数随键延续(单调,
       §3 永不重置);同名装备多件同主合并计数(实例区分无观察锚,合并
       = 成熟放慢的少发向,不多发——多发会造 phantom 单位刷缺陷台账);
     - 成熟落位失败(席满/席未观察)不回退计数——该次成熟已消费,落位
@@ -1403,11 +1403,11 @@ def settle_copy_machine_participation(gs: GameState, *,
 # 同链应用;随机通道(骇客改件采样链)在链内应用、随链 write_logic_rand。
 # 登记面 = cw_affix_effects.EQUIP_WRITE_SIDES(分身墨镜系两行
 # bridge:apply_equip_acquire_consequence;数据拷贝仪Max 行保持
-# spawn_equip_bench_unit 覆盖计数臂腿,其获得后果由本函数按数据行统一覆盖,
+# spawn_equip_bench_unit 覆盖计数分支腿,其获得后果由本函数按数据行统一覆盖,
 # 不经登记表双登记)。星级按卡文定案[口述·权威 2026-09-18]:
 # 分身墨镜→1星银狼 / 分身墨镜Max→2星银狼 / 数据拷贝仪Max→1星银狼LV.999。)
 
-#: 获得后果表(件名 → (送出单位名, 星级);表外件 = 无获得后果声明,
+#: 获得后果表(件名 → (送出单位名,星级);表外件 = 无获得后果声明,
 #: 后果函数零写零行为——好运令牌等非专属渠道同锚零差)。
 #: 协作注(tool-gain-report):冶金炉变异面不走获得链,但采样命中本表
 #: 键集 → 上报侧落 ``furnace_mutate_consequence_candidate`` 留存证据行,

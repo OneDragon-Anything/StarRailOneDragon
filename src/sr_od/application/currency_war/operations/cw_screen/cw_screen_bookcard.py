@@ -6,17 +6,17 @@ OCR 卡名 → decide_star_tome 选卡(点卡即选,弹窗自关);入口 id_mark
 
 形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两
 段直继承 SrOperation。观察 node = 入口门(标识-星徽秘典,miss = round_fail
-交回外循环重判)+ 卡阵营名一次读(全屏 OCR「X星徽」去后缀,x 升序;入口帧
+返回主循环重新判定)+ 卡阵营名一次读(全屏 OCR「X星徽」去后缀,x 升序;入口帧
 一次读,与现役决策体读同帧等价)→ 观察标准化门(阵营名经 FACTIONS 注册表
 两段转换:精确命中 → LCS 相似 + 次高分差拒判;任一候选转换失败/歧义/
-多候选命中同一注册名 = 观察失败 round_fail 零写零上报交回重读,
+多候选命中同一注册名 = 观察失败 round_fail 零写零上报返回主循环重读,
 op-layer.md §1.1 观察标准化门)+
 候选点解算(点 = OCR x 中心 + x 近邻「星徽卡-N」建档中心 y;任一建档缺失
 = 观察失败 round_fail 双域零写)→ ``report_screen_bookcard_obs`` 落容器
 ``star_tome_opts`` / ``star_tome_opts_xy``(空候选不写,闸在 report 内,
 双域一体,同门同写,op-layer.md §1.1 :35)→ obs 挂实例属性进决策 node。
 决策动作 node = 落地复查顶部(选卡点击已发 → 弹窗不在 = 选卡落地 → 此刻
-才写 chosen_tome + 到账登记 + success 交回;在 = 点击未落地 → 清标志重走
+才写 chosen_tome + 到账登记 + success 返回主循环;在 = 点击未落地 → 清标志重走
 重选)→ 决策出口守卫(无 match 局外不设早退支,用户裁决 2026-09-22
 全族删门;候选空/返回 None/词表外 = 具名 fail 零盲发[出口③];idx 越界
 = 守卫断言[§1.3])→ 决策从容器零参读 → 点卡
@@ -122,7 +122,7 @@ class CwScreenBookcard(CwOperation):
         ``_FACTION_LCS_THRESHOLD`` ∧ 最高分与次高分差 ≥
         ``_FACTION_LCS_AMBIGUITY_MARGIN``——分差过近 = 注册表内歧义不可
         分辨,禁直接取最高分);两段皆不中 ∨ 歧义 = 转换失败,返回 None
-        (调用方 round_fail 整函数早退,零写零上报交回重读,禁带病上报)。
+        (调用方 round_fail 整函数早退,零写零上报返回主循环重读,禁带病上报)。
 
         星徽四选一为选项互斥屏:多候选命中同一注册名 = 识别质量不足以
         区分,同判转换失败(op-layer.md §1.1 已登记互斥判);容器
@@ -149,8 +149,8 @@ class CwScreenBookcard(CwOperation):
         点 = (OCR x 中心,x 近邻「星徽卡-N」建档中心 y)——x 近邻锚防 area
         序与画面序错位(锚半自决策半迁观察侧);任一「星徽卡-N」area 缺失
         (``area_center`` 返 None)= 观察失败,返回 None(调用方 round_fail
-        早退、``star_tome_opts`` / ``star_tome_opts_xy`` 双域零写交回外
-        循环,与转换失败同格,名字与坐标同进退)。值形状 = 1080p 平铺
+        早退、``star_tome_opts`` / ``star_tome_opts_xy`` 双域零写、返回主循环
+        (与转换失败同格,名字与坐标同进退)。值形状 = 1080p 平铺
         元组,与候选名同序等长。"""
         centers: list[Point] = []
         for area in self.CARD_AREAS:
@@ -166,9 +166,9 @@ class CwScreenBookcard(CwOperation):
     def observe(self) -> OperationRoundResult:
         """入口门 + 卡阵营名一次读(标准化门 + 解点)→ report 落容器。
 
-        门 miss = round_fail 早退(与现役首闸同 status,交回外循环重判)。
+        门 miss = round_fail 早退(与现役首闸同 status,返回主循环重新判定)。
         门后卡名 OCR 一次读 → 观察标准化门(任一候选转换失败/多候选同名
-        = 观察失败 round_fail 早退、零写零上报交回重读)→ 候选点解算
+        = 观察失败 round_fail 早退、零写零上报返回主循环重读)→ 候选点解算
         (任一「星徽卡-N」建档缺失 = 观察失败 round_fail 早退、双域零写)
         → ``report_screen_bookcard_obs`` 同门双写容器 ``star_tome_opts`` /
         ``star_tome_opts_xy``(空候选不写,闸在 report 内,双域一体);
@@ -207,7 +207,7 @@ class CwScreenBookcard(CwOperation):
         """落地复查(顶部)→ 决策出口守卫 → 零参决策 → 派发 → round_wait。
 
         落地复查(观察驱动,零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态):上轮选卡已发 → 弹窗不在 =
-        选卡落地 → 补写 chosen_tome + 到账登记 + success 交回;弹窗仍在 =
+        选卡落地 → 补写 chosen_tome + 到账登记 + success 返回主循环;弹窗仍在 =
         点击未落地 → 重走(重读重选)。
 
         决策出口守卫(次序:候选空分支 → 返回契约 → 值域;各守卫均在任何

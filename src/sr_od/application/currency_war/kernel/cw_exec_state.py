@@ -223,7 +223,7 @@ def bench_slots_healthy(slot_nos: list[int]) -> bool:
 
     背景:SIFT 读/对账 churn 产生的槽号属无守卫数据,
     违者不得固化为槽位表。消费方 = 对账写回门(kernel/cw_reconcile)、
-    tracked 写点显影(prep_actions)。"""
+    tracked 写点暴露(prep_actions)。"""
     return (all(isinstance(s, int) and 1 <= s <= BENCH_CAPACITY
                 for s in slot_nos)
             and len(set(slot_nos)) == len(slot_nos))

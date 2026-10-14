@@ -14,7 +14,7 @@ fields.md §4.2 的「箱」与 final_wandi_burn 的「稀有物」为 v0 有意
 采样语义(design §2.1):实机上采样是猜测(标随机态,观察校准);sim 里
 采样即世界真值——同一采样函数两副面孔。
 
-矿批附着生成(迭代 2026-10-10-ore-reward-attach;详设
+矿批附着生成(详设
 details/ore-reward-channel.md §3)::func:`generate_ore_rewards` = 矿进入
 世界时的附着奖励单一生成入口(声明金先占席、归属 rng 掷、其余逐矿采样),
 live/sim 共用,禁第二实现。
@@ -105,7 +105,7 @@ def generate_ore_rewards(
         rng: random.Random) -> dict[str, OreReward]:
     """矿批附着奖励生成(纯函数;rng 注入,live/sim 共用单一入口,禁第二实现)。
 
-    矿进入世界时点的内容分配(迭代 2026-10-10-ore-reward-attach;详设
+    矿进入世界时点的内容分配(详设
     details/ore-reward-channel.md §3):待兑现声明金**逐个先占一席**
     (``rng.choice`` 剩余坐标不放回——归属不可观察,用户裁定 2026-10-10,
     占哪个矿必须掷随机),其余坐标逐个 :func:`roll_ore_reward` 采样

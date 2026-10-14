@@ -77,7 +77,7 @@ def _pair_tolerance(old_coords: list[tuple[int, int]],
         SPHERE_PERSIST_POS_TOL,
     )
     tol = SPHERE_PERSIST_POS_TOL
-    cands: list[tuple[int, int, int]] = []   # (平方距离, 旧下标, 新下标)
+    cands: list[tuple[int, int, int]] = []   # (平方距离,旧下标,新下标)
     for i, (ox, oy) in enumerate(old_coords):
         for j, (nx, ny) in enumerate(new_coords):
             if abs(ox - nx) <= tol and abs(oy - ny) <= tol:

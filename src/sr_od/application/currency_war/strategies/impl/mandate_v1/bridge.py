@@ -207,14 +207,14 @@ class MandateV1Strategy(CwFlowStrategy):
 
     def decide_prep_screen(self) -> CwAction:
         """备战画面决策(终态零参口 §2.1;单动作;空动作发出 = CwActionObsParam
-        scope='outer_loop' 交回外循环重观察——原 HoldFrame 通道并入,
+        scope='outer_loop' 返回主循环重新观察——原 HoldFrame 通道并入,
         用户裁定 2026-09-20)。
 
         输入 = **容器 game state 直读**(黑板帧已删除:黑板 gs.prep_obs 读点与缺失抛错防线
         随之删除——「观察先于决策」前提由画面 op 编排保证,op 入口
         heavy 先于决策调用)。输出 = 决策核发出序列的**首个动作**;
         空序列(含截断截空)→ 空动作发出 obs(scope='outer_loop')= 本帧无
-        动作交回外循环重观察(None 路径已停用,终态契约 §2.2)。帧稳定截断为
+        动作返回主循环重新观察(None 路径已停用,终态契约 §2.2)。帧稳定截断为
         决策核内动作发出组织,非流程侧契约。入口内务 = 备战帧代次消费
         (方向刷新先于三遍编排)。管线宿主 = self.gs(state_of(gs) 经同源
         接线解析策略器状态;game_state_of(gs) 本体直通)。

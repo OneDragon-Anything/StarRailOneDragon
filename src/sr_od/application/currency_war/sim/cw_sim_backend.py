@@ -12,7 +12,7 @@ supply/encounter/box/晶矿面板)→ 容器各 opts 槽(经 ``cw_screen_report`
 同名上报函数送达,与实机观察同一条写通道,本后端不私持副本);
 ``streak_unsigned`` → 容器带符号连胜派生读 ``max(signed, 0)``。
 
-**画面状态机**:状态 = (screen_info 档名, 子态载荷)。转移源两类:
+**画面状态机**:状态 = (screen_info 档名,子态载荷)。转移源两类:
 1. **动作后果声明**(声明化迭代主通道):动作 op 经
    ``cw_sim_ports.declare_world`` 喂入 :meth:`advance`,按
    ``decl.trigger`` 分派(键集单一源 = :data:`ADVANCE_TRIGGER_KINDS`,
@@ -38,7 +38,7 @@ supply/encounter/box/晶矿面板)→ 容器各 opts 槽(经 ``cw_screen_report`
 **overlay 触发层**(终态):判据 = kernel 值回调
 (cw_faction_callbacks,deployed 逻辑写尾)→ 容器登记
 (gs.screen_changes.pending)→ 呈现(问询时点懒呈现 + advance 纯转移
-尾 + 节点窗起点,压住底层画面,选完交回)。一期目录:巨星/planner
+尾 + 节点窗起点,压住底层画面,选完返回)。一期目录:巨星/planner
 (容器值回调判据)、开箱/专家/星徽(open_* 上报直登)、占卜屋/伙伴/
 祈愿/阿哈(判据/选卡上报)。无 sim 观察腿族(partner/fortune/
 wish_trial/star_tome/aha)呈现即卡 observe → 消费 + 逐 kind 披露,
@@ -305,7 +305,7 @@ def streak_signed_after(streak_signed: int, *, node_type: str,
 
 
 #: 节点基础经验表(依据 docs/game/currency_war/research/xp-rules.md;
-#: BOSS +12 = U17 定稿口径,构成/改道候实机数据,披露键在册)。
+#: BOSS +12 = U17 定稿口径,构成/改道候实机数据,披露键已登记)。
 NODE_XP_BY_TYPE: dict[str, int] = {
     'battle': 2,
     'reward': 2,
@@ -344,7 +344,7 @@ def xp_apply_amount(level: int, xp_cur: int, amount: int) -> tuple[int, int]:
 def apply_node_xp(gs: GameState, *, node_type: str) -> int:
     """节点结算基础经验入账(补给 +0 = 表内显式档)。
 
-    写容器 xp = (当前级已攒, 升下一级所需);集外节点型 = 0 经验不入账
+    写容器 xp = (当前级已攒,升下一级所需);集外节点型 = 0 经验不入账
     (词表漂移在调用方暴露)。返回本节点实际入账经验量。
     """
     amount = NODE_XP_BY_TYPE.get(node_type, 0)
@@ -369,7 +369,7 @@ def apply_node_xp(gs: GameState, *, node_type: str) -> int:
 #: 轮岗建模假设档披露键(1/5 均匀系假设,实机待核;随局披露面消费)。
 ROTATION_ASSUMPTION_DISCLOSURE: str = 'rotation_tier_assumed_uniform'
 
-#: 轮岗环境在册名(每备战阶段重掷翻倍档;kernel roll_rotation_per_stage)。
+#: 轮岗环境已登记名(每备战阶段重掷翻倍档;kernel roll_rotation_per_stage)。
 ROTATION_ENV_NAME: str = '轮岗'
 
 
@@ -506,8 +506,8 @@ def rewrite_quality_for_pick(active_env: str | None,
 
     全改写型判据 = ``rewrite_picks == (1, 2, 3)``(时代族结构特征,建表
     校验保证该形状无 pending 歧义——部分改写型必填 pending_notes 的逆
-    否)。部分改写型(头彩/尾彩)offer 覆盖面歧义未定谳,不接入返回
-    None(2026-10-14 用户裁定:实采定谳后由各自建模批接入,复用本判据
+    否)。部分改写型(头彩/尾彩)offer 覆盖面歧义未定案,不接入返回
+    None(2026-10-14 用户裁定:实采定案后由各自建模批接入,复用本判据
     放宽一行)。pick_ordinal 坐标系 = 本局策略三选一呈现全局序 1 基,
     与 ``ENV_POOL_REWRITE.rewrite_picks`` 同坐标系。环境名直查不做归一
     (与现役注册表消费同款形状;环境名来自注册表注册,无 OCR 变异源)。
@@ -624,7 +624,7 @@ def supply_options(rng: random.Random,
     同 seed 采样值随采样式变更漂移(分布假设变更,非回归破坏)。
     带钻槽 = 总槽位 equip 级均匀掷,落选项 → 该选项 ``has_diamond=True``
     (选项级布尔契约不变;钻具体在哪件属呈现面,SUPPLY_DIAMOND_SLOT_
-    PENDING U24 披露在册)。
+    PENDING U24 披露已登记)。
     """
     pool = sorted(SYNTHESIS_BASES)
     per_col = ENV_SUPPLY_EQUIP_COUNT.get(
@@ -642,7 +642,7 @@ def supply_options(rng: random.Random,
 
 
 # ============================================================ 披露键群
-# (恒在册声明面,随局结果 unmodeled 输出;装备三键键义
+# (恒已登记声明面,随局结果 unmodeled 输出;装备三键键义
 #  ——动作腿停用后不变:发放空表/特权投影仪/炉拖角色模式仍未建模。)
 
 #: 环境结构化经济通道披露键(M02:两位面金通道已结构化,其余候效果批)。
@@ -673,7 +673,7 @@ FURNACE_CHAR_MODE_PENDING: str = 'furnace_char_mode_pending_m10'
 #: 注册表键集,张数/分布占位候实机补档)。
 DISCLOSURE_AFFIX_SAMPLE: str = 'reset_affixes_sample_placeholder'
 
-#: 全程披露常量表(恒在册,与采样值无关的声明面)。
+#: 全程披露常量表(恒已登记,与采样值无关的声明面)。
 _BASE_DISCLOSURES: dict[str, object] = {
     SIM_BATTLE_FACE: 'random_win_p0.5_hp_loss_uniform_[23,70]',
     QUALITY_DISTRIBUTION_DISCLOSURE: 'uniform_1/3_each_placeholder',
@@ -703,7 +703,7 @@ MAX_STEPS: int = 5000
 #: 开局词缀采样张数(占位:实机简报词缀张数分布候实机补档)。
 AFFIX_SAMPLE_COUNT: int = 3
 
-#: 模态屏族(选卡/弹窗呈现态; dismiss 事件交回底层屏)。
+#: 模态屏族(选卡/弹窗呈现态; dismiss 事件返回底层屏)。
 _MODAL_SCREENS: frozenset[str] = frozenset({
     SCREEN_INVEST_ENV, SCREEN_INVEST_STRATEGY, SCREEN_BOX, SCREEN_EXPERT,
     SCREEN_MEGASTAR, SCREEN_PLANNER, SCREEN_SHOP,
@@ -780,12 +780,12 @@ class SimBackend:
     # —— 画面状态机(私有;状态 = 档名 + 子态) ——
     _screen: str = field(init=False, default='')
     _sub: str = field(init=False, default='')
-    #: 模态交回目标(呈现模态时的底层屏;None = 无挂起交回)。
+    #: 模态返回目标(呈现模态时的底层屏;None = 无挂起返回)。
     _return_screen: str | None = field(init=False, default=None)
     _return_sub: str = field(init=False, default='')
     #: 节点窗口让路恢复位('' = 无挂起):overlay/offer 呈现压住节点屏
     #: 时的续跑点。'offer' = 让路结束复走 offer 检查;'node' = offer 屏
-    #: 交回后直出节点屏。让路不吞 offer 槽(权威序 = 旧引擎实测收尾
+    #: 返回后直出节点屏。让路不吞 offer 槽(权威序 = 旧引擎实测收尾
     #: 检查序 overlay → offer → 下一节点,overlay 选定复走 offer 检查;
     #: U07 固定日程生效于本节点备战窗口前)。
     _window_resume: str = field(init=False, default='')
@@ -833,7 +833,7 @@ class SimBackend:
     _piggy_income_snap: (tuple[int, int, tuple[float, int, int | None]]
                          | None) = field(init=False, default=None)
     #: 对账延后声明队列(豁免场景内 next_screen 等值断言延后至稳态,
-    #: :meth:`_reconcile_next_screen`;元素 = (延后时点已进窗节点序位, 声明),
+    #: :meth:`_reconcile_next_screen`;元素 = (延后时点已进窗节点序位,声明),
     #: 每次 advance 入口消费)。
     _pending_reconcile: list[tuple[NodePos | None, WorldDecl]] = field(
         init=False, default_factory=list)
@@ -876,7 +876,7 @@ class SimBackend:
 
     def _sample_affixes(self, seed: int) -> tuple[str, ...]:
         """开局词缀采样(流键 ``reset/affixes``;池 = affix_effects_data
-        注册表键集均匀无放回;张数/分布占位,披露键恒在册)。"""
+        注册表键集均匀无放回;张数/分布占位,披露键恒已登记)。"""
         rng = stream_rng(seed, 'reset/affixes')
         pool = sorted(AFFIX_EFFECTS)
         return tuple(rng.sample(pool, min(AFFIX_SAMPLE_COUNT, len(pool))))
@@ -889,7 +889,7 @@ class SimBackend:
         问询时点呈现检查(事实事件槽停用后的
         sim 懒呈现位):答身份前先查容器登记 pending——动作上报内已
         register 的条目在此压上模态(等价实机「动作落地即弹」,时点 =
-        宿主交回后的首次身份问询)。呈现门/消费披露族语义同
+        宿主返回后的首次身份问询)。呈现门/消费披露族语义同
         :meth:`_present_pending_overlay`(fortune 门判当前底层)。
         """
         self._maybe_finish_wait()
@@ -1017,7 +1017,7 @@ class SimBackend:
         self._box_pick_pending = idx
 
     def _open_shop(self) -> None:
-        """开店点击源(备战 → 开商店态;close_shop 声明交回)。
+        """开店点击源(备战 → 开商店态;close_shop 声明后返回)。
 
         呈现写回(2026-10-17 用户裁定,对偶实机「每次进店读屏」):
         离屏态(关店已清 ``gs.shop``)以节点级牌面记录
@@ -1064,7 +1064,7 @@ class SimBackend:
         ``trigger=''`` = 纯画面转移,
         零专属过程——专家邀请函档 = ``_present_modal`` 呈现(open_bookcard
         腾席写端在其上报,本层只呈现),其余 = ``_dismiss_modal`` 幂等
-        交回(节点窗让路恢复位语义保留)。入口先消费
+        返回(节点窗让路恢复位语义保留)。入口先消费
         :attr:`_pending_reconcile`(豁免场景延后的对账在稳态补验)。
         """
         if self.done:
@@ -1103,7 +1103,7 @@ class SimBackend:
         elif decl.trigger == 'pick_invest_strategy':
             self._on_invest_picked(opening=False)
         elif decl.trigger == '':
-            # 纯转移(详设 §3 '' 行):统一幂等交回
+            # 纯转移(详设 §3 '' 行):统一幂等返回
             #(底层稳态由 _reconcile_next_screen 对账)。专家邀请函档
             # 特判呈现已停用(声明改底层屏)——专家画面的出现事实由
             # 登记(kind = expert_invite,open_bookcard 上报内 register)
@@ -1205,7 +1205,7 @@ class SimBackend:
         """局终声明消费腿(trigger=node_advance ∧ next_screen=''):
         kernel 终局事件式声明的世界消费——XP 入账(被离开节点类型,与
         现行局终前入账同序)+ P3 未观测披露(键值 enter_p3_game_over_u19
-        为在册遥测身份,历史越界序编号字样豁免改键)+ 终局。此后
+        为已登记遥测身份,历史越界序编号字样豁免改键)+ 终局。此后
         :meth:`_reconcile_next_screen` 走 done=True ∧ decl='' 合格分支,
         漂移面零新增。"""
         prev = self.gs.node.value
@@ -1217,7 +1217,7 @@ class SimBackend:
 
     def _on_supply_picked(self) -> None:
         """补给选定落地:带钻选项给宝钻(世界事实写容器 diamond_count;
-        钻信息 = 容器 chosen_supply 现值 2 元组 (角色, 装备名列表) 按
+        钻信息 = 容器 chosen_supply 现值 2 元组 (角色,装备名列表) 按
         :data:`DIAMOND_EQUIP_NAMES` 名单派生(列表任一件名命中即钻;
         写端 = 补给画面 op 确认即写)。派生失败边 = 钻名 OCR 误读 →
         列表名不匹配 → 宝钻腿漏发;装备观察(整表)与钻数观察下一帧
@@ -1234,7 +1234,7 @@ class SimBackend:
 
     def _on_invest_picked(self, *, opening: bool) -> None:
         """投资选卡落地(效果 = kernel 获得链,经 report_action_pick_*
-        已写容器;本层交回 + 去重集累计,排除集读容器 opts 现值)。"""
+        已写容器;本层返回 + 去重集累计,排除集读容器 opts 现值)。"""
         opts = (self.gs.invest_env_opts.value if opening
                 else self.gs.invest_strategy_opts.value) or []
         (self.excluded_env if opening else self.excluded_invest).update(opts)
@@ -1277,7 +1277,7 @@ class SimBackend:
         self._dismiss_modal()
 
     def _on_overlay_picked(self, kind: str) -> None:
-        """overlay 选定落地(模态交回 + 呈现检查):效果腿归各自上报/
+        """overlay 选定落地(模态返回 + 呈现检查):效果腿归各自上报/
         效果批,本层零效果。原私有队列出队腿
         停用——呈现数据源 = ``gs.screen_changes.pending``,消费 = 选卡
         上报内 ``consume_screen_change``(两世界同一行代码,register-
@@ -1291,7 +1291,7 @@ class SimBackend:
     # ---------------------------------------------------------- 状态机
 
     def _present_modal(self, screen_name: str) -> None:
-        """模态呈现(压住底层画面;交回目标 = 当前屏,选完交回)。"""
+        """模态呈现(压住底层画面;返回目标 = 当前屏,选完返回)。"""
         if self._screen == screen_name:
             return
         self._return_screen = self._screen
@@ -1299,7 +1299,7 @@ class SimBackend:
         self._screen = screen_name
 
     def _dismiss_modal(self) -> None:
-        """模态交回(幂等:无挂起交回 = 原地不动;节点窗让路恢复位优先)。"""
+        """模态返回(幂等:无挂起返回 = 原地不动;节点窗让路恢复位优先)。"""
         resume = self._window_resume
         if resume:
             self._window_resume = ''
@@ -1320,8 +1320,8 @@ class SimBackend:
         self._sub = ret_sub
 
     def _after_modal_pick(self, *, opening: bool) -> None:
-        """选卡族模态交回(投资双支共用):开局环境态(节点未进窗)→
-        wait_one_one;其余 = 模态交回(节点窗让路恢复位优先)。"""
+        """选卡族模态返回(投资双支共用):开局环境态(节点未进窗)→
+        wait_one_one;其余 = 模态返回(节点窗让路恢复位优先)。"""
         if opening and self.gs.node.value is None:
             self._return_screen = None
             self._enter_wait_one_one()
@@ -1353,14 +1353,14 @@ class SimBackend:
           partner 候选可自资格集算,候观察腿接线再呈现)→ 消费 +
           **逐 kind 披露**(披露键含 kind,多 kind 同帧各自留痕)。
 
-        模态叠模态守卫(原语义):当前已在模态屏 = 推迟(交回后再查)。
+        模态叠模态守卫(原语义):当前已在模态屏 = 推迟(返回后再查)。
         """
         pending = list(self.gs.screen_changes.pending)
         _fortune_base = self._screen if fortune_base is None else fortune_base
         for entry in pending:
             kind = entry.kind
             if self._screen in _MODAL_SCREENS:
-                return   # 模态中:全部推迟(选完交回后再查)
+                return   # 模态中:全部推迟(选完返回后再查)
             if kind == 'fortune' and _fortune_base != SCREEN_PREP:
                 continue   # 呈现门:底层非备战,条目存活等待()
             if kind in ('aha', 'partner', 'fortune', 'wish_trial',
@@ -1413,7 +1413,7 @@ class SimBackend:
             in_node=True, options=cands))
 
     def _node_pos(self) -> tuple[int, int]:
-        """当前节点 (位面, 轮)(gs.node 现值;未进窗 = (1, 1) 防御面)。"""
+        """当前节点 (位面,轮)(gs.node 现值;未进窗 = (1, 1) 防御面)。"""
         node = self.gs.node.value
         if node is None:
             return 1, 1
@@ -1712,9 +1712,9 @@ class SimBackend:
         非单调,难度修改器/简单模式/伟大征服/品质通胀都动它)。
 
         值 = 局级输入档(``RunConfig.enemy_difficulty``,简报开局基线)
-        + 已定谳修正项(品质通胀/策略静态 Δ/伟大征服连胜项,M19
+        + 已定案修正项(品质通胀/策略静态 Δ/伟大征服连胜项,M19
         ``difficulty_of`` 派生);U25 基础节点曲线未采,节点间基线移动
-        不在 sim 面(披露键 ``DIFFICULTY_BASE_PENDING_U25`` 在册)。
+        不在 sim 面(披露键 ``DIFFICULTY_BASE_PENDING_U25`` 已登记)。
         遭遇档恒不入(旗牌住备战帧,遭遇档是遭遇节点内选项维度)。
         写点 = 节点窗开(状态变动后的下一次旗牌可见)+ 投资选卡落地
         (「选择后」即时);obs 渠道直写(与 live 旗牌 OCR 同一容器域,

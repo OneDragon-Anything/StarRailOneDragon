@@ -142,7 +142,7 @@ class CwScreenInvestStrategy(CwOperation):
         ocr_map = self.ctx.ocr_service.get_ocr_result_map(
             image=screen, rect=None, color_range=None, crop_first=False,
         )
-        self._ocr_map = ocr_map   # :采集复用(同一帧 OCR,不重跑)
+        self._ocr_map = ocr_map   # 采集复用(同一帧 OCR,不重跑)
         opts: list[tuple[str, int, int]] = []
         for text, mrl in ocr_map.items():
             if mrl.max is None:
@@ -232,8 +232,8 @@ class CwScreenInvestStrategy(CwOperation):
         """零参决策 → 逐卡刷新结束本次访问 / 点卡+确认后立即终结 → round_success。
 
         选卡链派发后本访问即终结返回主循环(选完即结束本次访问,用户裁定
-       ;确认未生效 = 代码 bug,overlay 残留由外循环按当前
-        画面重识别重派,修法 = 点击链可靠性,action_ops.md §1 )。"""
+    ;确认未生效 = 代码 bug,overlay 残留由外循环按当前
+        画面重识别重派,修法 = 点击链可靠性,action_ops.md §1)。"""
         obs = self._obs
         return self._decide_and_act(obs)
 

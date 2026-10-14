@@ -111,7 +111,7 @@ def normalize_boss_name(name: str) -> str:
 
 
 def boss_tags(bosses: list[str]) -> tuple[str, str]:
-    """本局 boss 列表(可含俗称)→ (规范名列表 joined, 机制 tag 集 joined)。"""
+    """本局 boss 列表(可含俗称)→ (规范名列表 joined,机制 tag 集 joined)。"""
     canon = [normalize_boss_name(b) for b in bosses]
     tags: set[str] = set()
     for b in canon:

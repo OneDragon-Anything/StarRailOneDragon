@@ -1,7 +1,7 @@
 """字段投影完备性审计注册面(观察对账族架构收束)。
 
 **问题域**:统一观察对账失配告警(2026-09-16-unified-obs-reconcile)把「游戏侧
-状态变更未投影进逻辑态」逐帧显影为停局——逐例打补丁不可收敛(2026-09-18
+状态变更未投影进逻辑态」逐帧暴露为停局——逐例打补丁不可收敛(2026-09-18
 五连停局实证,``.debug/temp/incidents/20260918-reconcile/``),本注册面把
 **全部 GameState 容器字段**对「游戏侧变更是否会造成 observe 失配」做
 一次性三分类申报,并锁「无写端无规则」集合清零:
@@ -232,7 +232,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_OBSERVATION_ONLY,
         basis='晶矿视觉域(§3.2.8,点击目标非席位居民),零逻辑写端'
               '(点击摘除 = write_logic_rand 随机态写,非 write_logic)'),
-    # —— 晶矿附着奖励与声明通道(迭代 2026-10-10-ore-reward-attach;
+    # —— 晶矿附着奖励与声明通道(
     #    通道分工 = 附着值走随机态独立域,不进 spheres 观察面)——
     'ore_rewards': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,

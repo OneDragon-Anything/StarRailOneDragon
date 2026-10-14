@@ -1,6 +1,6 @@
-"""observe_full:一次全面识别的组装层(批次1)。
+"""observe_full:一次全面识别的组装层。
 
-设计定案(方案 v4,五轮对抗 review 收敛):
+设计定案:
 - 签名 ``observe_full(ctx, frame, *, tier, source)``——tier=
   heavy/light;source='director'/'deploy_bench'(reconcile
   审计归因保留);
@@ -72,7 +72,7 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
 
     返回字段(对齐 _observe heavy 段产出,消费方=director 回填):
     - bench_view/deployed_rows:备战席容器视图(BenchView,空读/未加载模板
-      → None)+ 上场位 (前排命中对, 后排命中对)(P6 观察链直产,元素 =
+      → None)+ 上场位 (前排命中对,后排命中对)(P6 观察链直产,元素 =
       ``(排内 1 基槽号, Unit)``;读侧仍分排读屏,
       容器写端合一落 DeployedView;调用方按 None/空读走 carried);
     - read_receipt::class:`GameStateReadReceipt`(read_game_state 轻量
@@ -86,7 +86,7 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
       kernel/cw_prep_actions.PrepObservation 装备域字段块)。
 
     本函数纯组装:session 写/缓存回填由 director 做(单写者
-    原则,批次3 收敛);reconcile 经 director 的既有回调链
+    原则收敛);reconcile 经 director 的既有回调链
     (source 已传入,star 防抖/obs_conflict 由 director 在回填
     时调用——避免组装层持 session 双写)。
     (r331:import 提模块级——测试 monkeypatch 按模块属性打桩。)

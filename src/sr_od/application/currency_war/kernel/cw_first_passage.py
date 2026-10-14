@@ -53,7 +53,7 @@ def _p2_lcond_mix() -> float:
 
 
 def _loss_dist(board_tier: int, plane: int = 1) -> list[tuple[float, float]]:
-    """单节点掉血分布(板强档 × 位面 → [(掉血量, 概率)] 三点离散:μ-σ/μ/μ+σ 截非负)。
+    """单节点掉血分布(板强档 × 位面 → [(掉血量,概率)] 三点离散:μ-σ/μ/μ+σ 截非负)。
 
     μ 标定源合一:P1 = HP_LOSS_MU 现档
     (P1 零漂移,不走 P2 标定);P2+ = 两态同构 μ(tier)=(1−p(rung(tier)))

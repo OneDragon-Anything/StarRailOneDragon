@@ -102,7 +102,7 @@ log = log_utils.log
 #: 出战/bail/停机等异常出口收尾,terminal 滞后一个动作=执行前末观察,
 #: 判读须降权)。旧档案缺此键 → load_archive 版本检查自动重装配补齐
 #:(P2-4 返修:版本迁移读端不再静默缺列)。
-#: v5(M2 遥测增强批 ③):+endgame.final_snapshot(局级终局快照列:
+#: v5(M2 遥测增强):+endgame.final_snapshot(局级终局快照列:
 #: 终局阵容/金/等级取全局最晚决策迹帧的 state,装配端派生、零新运行时
 #: 写入;旧档案经 load_archive 版本检查自动重装配补齐)。加法字段。
 #: v6(活局续段数据治理批):+顶层 resume_reconciliation(恢复态对账列:
@@ -260,7 +260,7 @@ def _settlement_gap(dec_rows: list[dict[str, Any]],
       (source='terminal_closure' 收尾行)**不入**该判定——它不是战斗
       结算行,恰是「本段零场战斗走到结算屏」的证据行(的
       零结算语义):计它入「有结算记录」会让零结算停机段的终局行
-      静默关闭本自标识(落地审建议采纳),判读者按协议读到的是
+      静默关闭本自标识(审查建议采纳),判读者按协议读到的是
       「有 outcome 行的普通段」,零结算事实从此不可见。
     """
     has_decisions = any(r.get('run_id') == run_id for r in dec_rows)
@@ -371,7 +371,7 @@ def assign_games(replay_dir: Path | str) -> list[dict[str, Any]]:
     decisions = read_jsonl(Path(replay_dir) / 'decisions.jsonl')
     runs = read_jsonl(Path(replay_dir) / 'runs.jsonl')
     # 新账段(唯一活账;宽容消费单一源 read_journal_stats,同流两读法
-    # 两契约曾致装配端崩——R3.1 落地审 F1;只采实机形态段,见常量注)
+    # 两契约曾致装配端崩——R3.1 审查;只采实机形态段,见常量注)
     jrows, _jstats = read_journal_stats(replay_dir)
     j_seg_order = [rid for rid in _journal_run_order(jrows)
                    if _JOURNAL_RUN_ID_RE.match(rid)]
@@ -472,7 +472,7 @@ def _load_slice(replay_dir: Path, segments: set[str]) -> dict[str, list[dict[str
 
     统一 state 新账键(``state/journal.jsonl``)走宽容读单一源
     (``journal_query.read_journal_stats``,与判读 CLI 同一契约——同流
-    两读法两契约曾致装配端在截断尾上崩,R3.1 落地审 F1):半行/坏行 =
+    两读法两契约曾致装配端在截断尾上崩,R3.1 审查):半行/坏行 =
     逐行跳过 + 计数 log 申报(设计 §3.3 撕裂行消费契约;申报语义先例 =
     cw_loop ``_run_has_outcome_at``),非零计数才告警(常态零噪音)。
     其余键(现契约已无;未来新增切片文件,如策略侧决策行)走严格
@@ -580,7 +580,7 @@ def _last_decision_frame(dec_rows: list[dict[str, Any]],
     - ts 并列取流内后见者(同秒多帧 = 执行步进密集,后见者更晚)。
       「流内序 = 文件序」依赖 decisions.jsonl **单调追加**这一未成文不变量
       (审计 P3-7 在此显式声明):append-only jsonl 下二者等价;若未来
-      出现段间回写/乱序合并,本函数需改为显式按 (ts, 文件序) 双键排序。
+      出现段间回写/乱序合并,本函数需改为显式按 (ts,文件序) 双键排序。
     """
     rows: list[dict[str, Any]] = []
     for d in dec_rows:
@@ -885,7 +885,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
     - 两链分工:rounds 链 = 轮级血面变化(单槽取末结算行,净额,无可信
       门——「本轮账面变化」的本职);步进链 = hp 变化走行,可信结算行
       (可信门,判据见 _settlement_hp_usable;v9 起合成行一律退出)∪
-      hp_pay 事件行( 写点产物)按 **ts 全局交织**各成一步:结算步出
+      hp_pay 事件行(写点产物)按 **ts 全局交织**各成一步:结算步出
       掉血条目,事件步只推进游标不出条目(保 「一条目=掉血结算
       行」口径纯度,新增加法来源 hp_source='endgame_final' 除外)。
     - 段界重锚(v9):跨段停机时游标不再携带前段值——走行遇换段(以及
@@ -1428,7 +1428,7 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
                     'rounds_survived': (last_summary or {}).get('rounds_survived'),
                     'final_hp': (last_summary or {}).get('final_hp'),
                     'difficulty': (last_summary or {}).get('difficulty'),
-                    # 局级终局快照(M2 增强批 ③;None=零决策迹局):
+                    # 局级终局快照(M2 增强;None=零决策迹局):
                     # 终局阵容/金/等级,取值口径见 _final_snapshot。
                     'final_snapshot': _final_snapshot(
                         derived_rows.get('decisions.jsonl') or []),
@@ -1460,7 +1460,7 @@ def _build_opening(slice_rows: dict[str, list[dict[str, Any]]],
 
 
 def _final_snapshot(dec_rows: list[dict[str, Any]]) -> dict[str, Any] | None:
-    """局级终局快照(M2 增强批 ③:endgame.final_snapshot 单一源;纯读派生)。
+    """局级终局快照(M2 增强:endgame.final_snapshot 单一源;纯读派生)。
 
     - 取值 = 本局全部决策迹行中 **ts 最晚**的一帧的 state(终局阵容/金/
       等级快照列)。与逐轮 terminal 同口径家族:决策帧列是「决策时」,

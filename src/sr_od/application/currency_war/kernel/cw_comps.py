@@ -298,7 +298,7 @@ class ScoreContext:
     round_num: int = 1
     gold: int = 0
 # 来源:docs/game/currency_war/data/competitors.md(V4.4 ~50 敌人词缀全集,米游社玩家攻略统计 🟡;词缀效果原文=affix_effects_data)+ cw_factions.FACTIONS desc(燃血角斗场原文)。
-# 机制名跨版本稳;具体词缀属哪个机制随版本变(随 competitors.md 实机 OCR 更新)。
+# 机制名跨版本稳;具体词缀属哪个机制随版本变(随competitors.md 实机 OCR 更新)。
 # 只建模"对某类阵容方向相反"的词缀(策略相关);纯数值怪强化(首领强化等)无阵容交互,不入表。
 
 MECHANIC_COUNTERS: dict[str, list[str]] = {
@@ -358,7 +358,7 @@ AFFIX_MECHANIC_MAP: dict[str, str] = {
     "忍无可忍": "多段惩罚",   # 敌受 7 次攻击提前 100% → 克高频低单次(反甲白厄)
     "沉重脚步": "行动延后",   # 受击行动延后 8% → 克速度依赖
     # 其余词缀(首领强化/复仇心切/倒计时类/灼热轰炸等)为纯数值/无阵容交互(灼热轰炸:前排受击+DoT
-    # 均匀影响,无 comp flip),不入表;实机 OCR 按需补
+    # 均匀影响,无阵容翻转),不入表;实机 OCR 按需补
 }
 
 def merged_mechanic_tables(registry: DecisionV2Registry | None = None,

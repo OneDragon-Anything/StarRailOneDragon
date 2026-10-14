@@ -44,7 +44,7 @@ def read_encounter_options(ctx: SrContext, screen: MatLike) -> list[EncounterOpt
     遭遇**选项 UI 不显词缀**(词缀战后才显;design 08 的 affix 分支对此屏 N/A)→ ``affixes=[]``。
     按 title center-x 左→右排序 → ``idx``。决策消费 = 策略层
     ``mandate_v1/encounter_pick.decide``(能力态直通形:κ_S 三态 + 经验
-    档层 + 奖励 tiebreak;不消费 阵容成型度——判据语义正本 =
+    档层 + 奖励 tiebreak;不消费阵容成型度——判据语义正本 =
     strategy-docs/31 号稿)。读不到 title(OCR 漏/非遭遇屏)→ 返 []
     (画面 op act 空候选零点击 round_success
     终结返回主循环重新识别画面,禁盲选派发——选卡确认不可逆消耗本节点;screens/encounter.md §4/§8)。
@@ -130,7 +130,7 @@ _INVEST_REFRESH_COUNT_RE = re.compile(r'刷新次数\s*(\d+)')
 #   (x≥1054)文本区。
 _INVEST_STRATEGY_COUNT_RECT = Rect(300, 830, 1560, 880)
 _INVEST_ENV_COUNT_RECT = Rect(300, 955, 1000, 1010)
-# kind → (画面名, area 名, 兜底 rect);未知 kind 沿 env 支(与原三元选择同语义)。
+# kind → (画面名, area 名,兜底 rect);未知 kind 沿 env 支(与原三元选择同语义)。
 _COUNT_RECT_SPECS: dict[str, tuple[str, str, Rect]] = {
     'strategy': ('货币战争-投资策略', '区域-刷新次数行',
                  _INVEST_STRATEGY_COUNT_RECT),
@@ -272,11 +272,11 @@ def _group_supply_columns(
     char-only 优雅降级;离线单测入口,OCR 读链只喂坐标与文本)。
 
     [输入坐标系] ``chars`` = (角色名文本中心 x, roster 校验后角色名);
-    ``equips`` = (装备名文本中心 x, 中心 y, OCR 原文名);``sift_hits`` =
+    ``equips`` = (装备名文本中心 x,中心 y, OCR 原文名);``sift_hits`` =
     SIFT 钻命中点 (x, y) 列表(实机主通道产物,可选);坐标 = 1080p 游戏
     空间像素。
     [输出] 列序(左→右 = 画面物理列序,与 ``SupplyOption.idx`` 及观察
-    上报契约「列表序 = 画面物理列序」精确一致)的 (SupplyOption, 点击 x)
+    上报契约「列表序 = 画面物理列序」精确一致)的 (SupplyOption,点击 x)
     列表;点击 x = 有装备列簇首件(y 序)文本中心 x(单排布局与旧逐装备
     点击点逐值一致)/ char-only 列角色锚 x(卡身点击 y 恒
     ``_SUPPLY_CARD_CLICK_Y``,由调用方补 Point)。
@@ -324,7 +324,7 @@ def _group_supply_columns(
     # 列;排序 x 键 = 锚点列取锚 x、孤儿簇取簇首件 x(列距 >> 簇心-锚点
     # 最差距离,两键混排不翻转相邻列序)。
     anchor_to_cluster = {ai: ci for ci, ai in cluster_to_anchor.items()}
-    # 元素 = (排序 x, 角色名, 簇成员(y 序)|[], 簇下标|None)
+    # 元素 = (排序 x,角色名,簇成员(y 序)|[],簇下标|None)
     columns: list[tuple[int, str, list[tuple[int, int, str]], int | None]] = []
     for ai, (ax, aname) in enumerate(anchors):
         ci = anchor_to_cluster.get(ai)

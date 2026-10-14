@@ -30,7 +30,7 @@ class CwScreenInvestStrategyObs:
       卡位序(左→右,刷新建议 slots 与此序同坐标系);取值时机 = 入口
       帧一次读全 OCR 快照。report 提取名序列写 ``invest_strategy_opts``。
     - ``refresh_slots``:逐卡刷新剩余次数配对,[索引定义] 列表序与
-      ``options`` 同下标(0 基画面卡位序);元素 = (剩余次数, 计数文本
+      ``options`` 同下标(0 基画面卡位序);元素 = (剩余次数,计数文本
       center-x, center-y) 或 None(该槽读缺);取值时机 = 同一稳定帧
       一次读全后 ``pair_refresh_counts_to_slots`` 配对(标准化转换住
       观察侧)。report 逐槽摄入 ``strategy_refresh_left``(键 = 规范

@@ -157,7 +157,7 @@ def back_layout_unknown_streak() -> int:
     return _unknown_streak
 
 
-# 复位入口注册到 kernel 槽(落地审 C4:策略 create_session 新局起点经
+# 复位入口注册到 kernel 槽(审查C4:策略 create_session 新局起点经
 # kernel.cw_vocab.reset_layout_unknown_state 槽式转发复位;import 期注册
 # 保证「先 create_session 后首读」顺序下槽已就位;obs→kernel 合法向)。
 try:
@@ -216,7 +216,7 @@ def _cv_slot_std(screen, cx: int) -> float | None:
     return _cv_band_std(screen, cx - _CV_HALF, cx + _CV_HALF)
 
 
-#: 探针三态(布局档对账批:CV 端点探针占用态门,15 号稿后续批;落地审 C1
+#: 探针三态(布局档对账批:CV 端点探针占用态门,15 号稿后续批;审查C1
 #: 修订:半窗判据与整窗判据分离 + 擦线保守带恢复)。每探针测「整窗 std +
 #: 左/右半窗 std」,判定:
 #: - none:整窗 < ``_CV_SLOT_STD_MIN``(6.0)——纯背景(6 格帧整窗实测
@@ -696,7 +696,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
     if formula_n is None:
         # 公式弃权 ∧ CV 单源可用:采 CV 实测(布局类「实测>推导」,§2.2;
         # 占用态门三态探针已给结构判据,不存在「采信启发式」问题)。
-        # 防护对齐(落地审 C2):未建档读数与双通道路径同过 三读门
+        # 防护对齐(审查C2):未建档读数与双通道路径同过 三读门
         #(防单源幻影高档当帧生效);未确认 → CV 弃权进未知态;分键保留证据。
         if cv_n not in _LAYOUT_PREFIX:
             cv_readings = _cv_confirm_readings(ctx, screen, cv_n, formula_n)
@@ -721,8 +721,8 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
         # 对账不一致:CV 实测优先(画面事实>推导)+ 保留证据两值
         note_channel_conflict(screen, formula_n, cv_n, cap, level,
                               'select_back_layout')
-        # 分键(15 号稿批 C):记录函数单一源 = kernel.cw_telemetry_exit
-        #(落地审 C3:telemetry.defects 副本已删,reader_source 对齐)
+        # 分键(15 号稿):记录函数单一源 = kernel.cw_telemetry_exit
+        #(审查C3:telemetry.defects 副本已删,reader_source 对齐)
         try:
             from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
                 record_back_layout_divergence,

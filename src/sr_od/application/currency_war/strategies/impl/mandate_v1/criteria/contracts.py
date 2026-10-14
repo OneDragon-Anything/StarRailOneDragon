@@ -11,8 +11,8 @@
 不抛异常不断局(谓词异常同判弃权)。契约层只加前提核验,**禁改判据
 数学**(判据本体函数零触碰)。
 
-辖外声明:换线判据族(should_switch/回锁窗/干旱计数/证据门影子评估)
-已随候选-锁定制整体删除(见 proof.py 停用申报;line_and_upgrade §1.6),
+覆盖外声明:换线判据族(should_switch/回锁窗/干旱计数/证据门影子评估)
+已删除(随候选-锁定制整体)(见 proof.py 停用申报;line_and_upgrade §1.6),
 无行为接线遗留。
 """
 from __future__ import annotations
@@ -54,10 +54,10 @@ class ContractCtx:
     - k_fallback_band:分带 token(cw_intention.k_empty_window_fallback
       第二返回值直传,零第二派生;P86 证明批 §4.6-1)。空窗期待按带
       非对称:p1 带(p1_gap/p1_lock_band)回退集注册表派生构造性非空;
-      p2plus 带实现后空集合法(丙臂保利息帧)。None = 带未知,按 p1 带
+      p2plus 带实现后空集合法(丙分支保利息帧)。None = 带未知,按 p1 带
       保守期待处置(空 = 违例)。
     - k_fallback_source:p2plus 带合法空的来源证据(P86 证明批 §4.6-2;
-      合法值 = cw_intention.K_FALLBACK_SOURCE_THREE_ARM——判据臂评估
+      合法值 = cw_intention.K_FALLBACK_SOURCE_THREE_ARM——判据分支评估
       产出)。无来源标记的空集 = 复发形态,违例(检测力不松动)。
     - locked_buy_members:锁定帧买侧采购集实解析
       (cw_intention.locked_buy_membership 返回物)。合法形态 = None
@@ -88,12 +88,12 @@ def _s_reserve_line_formed(ctx: ContractCtx) -> bool:
     无目标线语境下的恒量预留即「语境前提未被核验」缺陷形态
     (R196 ``_s_reserve`` 恒 54 同型,diag §3 待办项)。
 
-    **P86 带维度扩展(无目标期三臂判据实现批;证明批 §4.3 裁决②)**:
-    k_members 空且系三臂判据评估产出的合法空(k_target=None ∧ 回退供给
+    **P86 带维度扩展(无目标期三分支判据实现批;证明批 §4.3 裁决②)**:
+    k_members 空且系三分支判据评估产出的合法空(k_target=None ∧ 回退供给
     在场 ∧ 实解析空集 ∧ p2plus 带证据 source 齐备)时前提放行——该帧不
     存在「为目标线预留」语境,S 预留原始禁令对象(无目标语境恒量预留,
     R196 同型)不成立;富余带必花通道(dominance/EV)按裁决②
-    「富余段维持」不以本前提误伤,其自身带判据/候选门照旧辖。证据要件
+    「富余段维持」不以本前提误伤,其自身带判据/候选门照旧覆盖。证据要件
     与 k_projection 契约同构(F-9 防御纵深:band='p2plus' ∧ source=
     three_arm 双核,无来源空不放行,两谓词判定一致);供给缺帧
     (k_fallback_available False)维持旧违例语义(无评估证据的空 =
@@ -168,9 +168,9 @@ def _k_projection_domain_full(ctx: ContractCtx) -> bool:
 
     **带维度非对称期待(P86 实现批,证明批 §4.6)**:p1 带
     (p1_gap/p1_lock_band)回退集注册表派生构造性非空,空 = 复发违例
-    (检测力保留);p2plus 带实现后空集合法(两臂皆空 → 丙臂保利息帧),
+    (检测力保留);p2plus 带实现后空集合法(两分支皆空 → 丙分支保利息帧),
     但合法空必须携带来源证据——``k_fallback_source`` ==
-    cw_intention.K_FALLBACK_SOURCE_THREE_ARM(判据臂评估产出)才放行,
+    cw_intention.K_FALLBACK_SOURCE_THREE_ARM(判据分支评估产出)才放行,
     无来源空 = 复发形态守卫不松动。分期接线:停用常量在位期 p2plus
     解析恒非空,本分支无行为面。"""
     if ctx.k_target is not None:
@@ -213,7 +213,7 @@ class Contract:
     anchor: str    # 规格锚(现行文档节/引理号/符号名;历史 IMPL_DESIGN 节号已重锚,映射见 git 历史)
 
 
-#: (模块, 函数) → Contract。键集与 criteria 全公开函数交叉核对(静态
+#: (模块,函数) → Contract。键集与 criteria 全公开函数交叉核对(静态
 #: 完备性测试,漏登记=测试红);非 criteria 键(三先例+K 空窗回退
 #: 消费位)单列。
 CONTRACTS: dict[tuple[str, str], Contract] = {
@@ -233,7 +233,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         None, '支付支撑通道(两臂同开;触发=金不足自带 gold<need 门)',
         '02_mandate_layer §2/§7+BYPASS_TABLE 行(R13-5/R14-4 支付支撑通道)'),
     # —— criteria/levelup(line_and_upgrade §2;arm2 保利息门/
-    #    saturation_floor/levelup_budget_gate 量闸已随拦截层删除,
+    #    saturation_floor/levelup_budget_gate 量闸已删除(随拦截层),
     #    处置依据 = line_and_upgrade §2.3 处置表)——
     ('levelup', 'upgrade_trigger'): Contract(
         _arm1_cap_level_driven,
@@ -326,7 +326,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '全流程', 'D-P3 修复池(原文考古走 git 历史)'),
     # —— 第七面「换线」残留件(换线判据族
     #    (should_switch/signal_arm/证据门影子评估)已随候选-锁定制
-    #    删除——见模块 docstring 辖外声明与 proof.py 停用申报)——
+    #    删除——见模块 docstring 覆盖外声明与 proof.py 停用申报)——
     ('proof', 'stop_buy'): Contract(
         None, '停买谓词(分类,非发射;输入=K/持有名单)',
         'BYPASS_TABLE 对应行(谓词)+02_mandate_layer §3'),

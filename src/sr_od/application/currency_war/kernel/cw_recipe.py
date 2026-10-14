@@ -6,7 +6,7 @@
 架构:双 slot 解耦——
 - ``strategy_state_of(session).transition_framework``(已有):过渡框架(仙舟/量子/列车,pick_framework 滞后选择)
 - ``strategy_state_of(session).target_comp``:终局线(P1 内冻结;CommitSignals 定型/进 P2 解锁)
-- 决策中心(plan/deploy/骨架门)在双轨期拿到的 ``target_comp`` = **本模块的配方伪 comp**
+- 决策中心(plan/deploy/骨架门)在双轨期拿到的 ``target_comp`` = **本模块的配方伪阵容**
   (RecipeComp:以框架羁绊为 form_tiers,TRANSITION_PACK carry/partial 为 core)——
   消费方零改动,评分自动转向配方完成度(缺什么买什么)。
 
@@ -23,7 +23,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.knowledge.cw_line_facts import TRANSITION_PACK
 
-# 配方伪 阵容注册表(框架 → Comp;core = 该框架 carry+partial 件;form_tiers = 配方目标档)。
+# 配方伪阵容注册表(框架 → Comp;core = 该框架 carry+partial 件;form_tiers = 配方目标档)。
 # ⚠️ core 含 partial(爻光/缇宝/符玄)不含 drop(卡芙卡/椒丘 = 应急战力件,买了就上但不追;
 # 瓦尔特/腾荒不在 TRANSITION_PACK,勿引用)。
 # form_tiers:仙舟 = 3仙舟(攻略口径 3仙舟+2DOT 的主羁绊档;DOT 由 flows 自然带);
@@ -42,8 +42,8 @@ _RECIPES: dict[str, Comp] = {
                     if fw == '仙舟' and tier in ('carry', 'partial')],
         form_tiers={'仙舟': 3},
         strength='A', form_difficulty='easy',
-        # 过渡期站位(爻光必后台,站位规则住在终局 阵容,
-        # 配方伪 阵容需自带;漏了 → _pick_deploy_row 落 position_pref 兜底)
+        # 过渡期站位(爻光必后台,站位规则住在终局阵容,
+        # 配方伪阵容需自带;漏了 → _pick_deploy_row 落 position_pref 兜底)
         char_positions={'爻光': 'back'},
     ),
     '列车': Comp(
@@ -66,7 +66,7 @@ _RECIPES: dict[str, Comp] = {
 
 
 def recipe_comp(framework: str) -> Comp | None:
-    """框架 → 配方伪 阵容(未定框架返 None,消费方退现行为)。"""
+    """框架 → 配方伪阵容(未定框架返 None,消费方退现行为)。"""
     return _RECIPES.get(framework)
 
 
@@ -91,9 +91,9 @@ def decision_target(session, gs: GameState) -> Comp | None:
     用法:决策路径处把 ``strategy_state_of(session).target_comp`` 的直接读换成本函数
     (仅决策路径;遥测/结算 tag 仍读原 target_comp 记终局线名)。
 
-    双轨期(配方驱动):框架已定 → 配方伪 阵容(仙舟/列车/量子三选一,
-    pick_framework 按持有计数+portal 偏置选);无框架 → 终局 阵容(散件口径)。
-    非双轨(定型/P2+):终局 comp。
+    双轨期(配方驱动):框架已定 → 配方伪阵容(仙舟/列车/量子三选一,
+    pick_framework 按持有计数+portal 偏置选);无框架 → 终局阵容(散件口径)。
+    非双轨(定型/P2+):终局阵容。
 
     量子配方=希儿线的过渡形态;终局衔接走统一公式——CommitSignals 定型时,
     量子板面→希儿量子 final 转变成本≈0(板面即雏形),env/augment 的量子向加分

@@ -60,7 +60,7 @@ def _trait_tags(unit: Unit, row: str) -> tuple[str, ...]:
 class BoardByRow:
     """按排羁绊聚合结果(C6 契约形状):front/back 各自 标签→计数 + 全板合计视图。
 
-    - ``front``/``back``:dict[标签, 计数](仅含计数 >0 的标签);
+    - ``front``/``back``:dict[标签,计数](仅含计数 >0 的标签);
     - ``total()``:全板合计视图(两排之和;契约明示消费方可只看合计,
       如希儿判据「量子≥2 OR 贝≥2 不分排」);
     - ``count(tag, row=None)``:单标签计数(row=None = 全板)。

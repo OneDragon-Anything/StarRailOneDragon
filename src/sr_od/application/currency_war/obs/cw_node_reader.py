@@ -63,7 +63,7 @@ class NodeSlot:
 
 
 def _hu_moments(gray: np.ndarray) -> HuLike:
-    """灰度图 → Otsu 二值 → Hu 矩(7,)。Hu 抓形状轮廓(TM 灰度对小图标不可靠)。"""
+    """灰度图 → Otsu 二值 → Hu 矩(7)。Hu 抓形状轮廓(TM 灰度对小图标不可靠)。"""
     _, th = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     return cv2.HuMoments(cv2.moments(th)).flatten()
 
@@ -138,7 +138,7 @@ def cv2_utils_read_rgb_gray(path: str) -> np.ndarray | None:
 
 def match_boss_sift(patch_gray: np.ndarray,
                     boss_templates: dict[str, tuple]) -> tuple[str, int] | None:
-    """boss 候选小图(灰度)× SIFT 模板库 → (boss 名, 好匹配数) | None(未命中)。
+    """boss 候选小图(灰度)× SIFT 模板库 → (boss 名,好匹配数) | None(未命中)。
 
     Lowe 0.75 比率筛好匹配;命中判据 ``BOSS_SIFT_MIN_GOOD``/``BOSS_SIFT_RATIO``
     (断层分离,防次名撞分)。节点小图(~60px)特征少,单方向(模板→节点)匹配。
@@ -279,7 +279,7 @@ CUR_HU_DIST_HIT: float = 4.0
 
 def current_slot_hu_type(row_rgb: np.ndarray, slot: NodeSlot,
                          templates: dict[str, list[HuLike]]) -> tuple[str | None, float]:
-    """三票校验·票C:当前槽**高亮态图标** Hu 矩对 4 模板 → (类型, 最近距离)。
+    """三票校验·票C:当前槽**高亮态图标** Hu 矩对 4 模板 → (类型,最近距离)。
 
     旧 classify 只对 upcoming 槽跑 Hu(当前槽高亮态 Hu 恒不匹配的结论是
     **TM 时代**的;Hu 对高亮二值轮廓有效,1-1 fixture current 槽已实测确认可分)

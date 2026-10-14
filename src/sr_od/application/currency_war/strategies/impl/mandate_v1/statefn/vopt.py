@@ -2,7 +2,7 @@
 gap_depth 谓词与 refund_full_star_ok 星级纪律共享谓词,R4-F4)。
 
 档匹配谓词与 V_comp 表生成在本模块单一源——M6(mandate 侧)与
-stockpile_buy(criteria 侧)同源消费,防臂①旁路误拆 M6 买入口(R4-F4)。
+stockpile_buy(criteria 侧)同源消费,防分支①旁路误拆 M6 买入口(R4-F4)。
 V_opt 消费处金可行性截断(R28 低3):逐格取值时现检可支金,金不足以执行
 该格通道下界(当前刷)的格退 A7 下界(P41 索引原文)——缺截断 ⇒ V_opt
 系统性高估 ⇒ E_rev 豁免偏松。
@@ -135,7 +135,7 @@ def refund_full_star_ok(star: int, cost: int) -> bool:
 def p_complete(missing: list[tuple[int, float]], refreshes: int) -> float:
     """P̂(集齐|H,B) = Π Binomial 尾(P38 闭式带;01_math_framework §2「ΔP̂」行)。
 
-    missing = [(该卡还差张数 m_i, 单格命中概率 q_i)];B(refreshes)=付费
+    missing = [(该卡还差张数 m_i,单格命中概率 q_i)];B(refreshes)=付费
     刷次数。阈值边际 ≥8-10pp 时闭式可用,深缺口走精确 DP(判据层消费时
     按带声明选路;+8pp 乐观偏差已带内声明,01_math_framework §3.2)。"""
     prod = 1.0

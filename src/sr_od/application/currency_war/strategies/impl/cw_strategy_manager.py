@@ -89,7 +89,7 @@ def establish_new_match(ctx: SrContext, config) -> bool:
     # game_state_of 局容器建立点,GameState 构造器零装配逻辑)。容器建立即
     # 惰性新建局容器单例并注入 run 归属读取函数(kernel 禁依 telemetry,
     # 依赖倒置 = 建立点参数;幂等已装配零成本直过)——「未初始化容器首写前
-    # 装配已发生」,辖本函数两个生产调用方(CwEntryStart 进对局前移点 /
+    # 装配已发生」,覆盖本函数两个生产调用方(CwEntryStart 进对局前移点 /
     # CwLoop handle_init 兜底);注入收拢本生产专用漏斗 = CwLoop 调用面在
     # 迭代在飞冻结期不可改注入,且 sim/测试不经本函数(直建 session),
     # game_state_of 缺省 None=不装配口径不受影响。
@@ -114,7 +114,7 @@ def establish_new_match(ctx: SrContext, config) -> bool:
     # game_state_of 局容器建立点,GameState 构造器零装配逻辑)。容器建立即
     # 惰性新建局容器单例并注入 run 归属读取函数(kernel 禁依 telemetry,
     # 依赖倒置 = 建立点参数;幂等已装配零成本直过)——「未初始化容器首写前
-    # 装配已发生」,辖本函数两个生产调用方(CwEntryStart 进对局前移点 /
+    # 装配已发生」,覆盖本函数两个生产调用方(CwEntryStart 进对局前移点 /
     # CwLoop handle_init 兜底);注入收拢本生产专用漏斗 = CwLoop 调用面在
     # 迭代在飞冻结期不可改注入,且 sim/测试不经本函数(直建 session),
     # game_state_of 缺省 None=不装配口径不受影响。

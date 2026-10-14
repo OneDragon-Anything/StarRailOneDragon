@@ -5,8 +5,8 @@
 时点 × 该时点权威事实集 × 落载体登记。本模块承载 §12.3 的登记表机制
 (ANCHOR_REGISTRY 封闭集)、锚行七字段封装(AnchorEvent)与事件行载体
 接线(emit_anchor → ExogenousEvent 流,结构化载荷住 choice)。
-**载体停用声明( 后现状)**:ExogenousEvent 流出口已停用为恒 no-op
-桩(cw_telemetry_exit.record_exogenous),armed 与否都不落行;登记表各
+**载体停用声明(后现状)**:ExogenousEvent 流出口已停用为恒 no-op
+桩(cw_telemetry_exit.record_exogenous),出战就绪与否都不落行;登记表各
 行 host 所指原宿主写点已同步停用——载体与宿主归宿待裁决,登记起(retirement.md
 §2 exogenous 行),接线批落地前本模块在役面 = 登记/校验/幂等,零落行。
 
@@ -231,7 +231,7 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
 
 #: 逐锚 payload 字段 → 值域闭集的「符号名锚」(定义点唯一,不抄值):
 #: 键 = anchor_id,内层 = payload 字段名 → '模块.符号' 引用串。
-#: kernel 禁上层依赖(sell_gate 住 strategies 桶),故登记面只存引用,
+#: kernel 禁上层依赖(sell_gate 住 strategies 层),故登记面只存引用,
 #: 值由装配点经 register_payload_domain_values 显式注入(缺省关 + 启动点
 #: 显式接通,cw_telemetry_exit 同款纪律)。新增申报随 H2 schema 修订批
 #: (买因槽待裁决定形后同式申报 LAUNCH_CAUSES)。

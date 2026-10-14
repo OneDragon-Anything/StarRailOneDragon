@@ -200,7 +200,7 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
         # 证据归宿 = 账本行型 2(obs_event;占版本内嵌当时 state)。供给槽
         # 缺省关(未装配/无会话)= 行不落——与账本自身「无 sink 拒写」语义
         # 一致;旁路缺陷台账行不受此门照常供给。渠道签名(§3.2.1 ①类属):
-        # actor = 本仲裁汇点,行内身份可对账(签名必填纪律 )。
+        # actor = 本仲裁汇点,行内身份可对账(签名必填纪律)。
         _gs = cw_telemetry_exit.obs_event_board()
         if _gs is not None:
             with contextlib.suppress(Exception):

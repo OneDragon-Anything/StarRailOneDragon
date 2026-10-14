@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 
 # ===== 立场常量区(【拍】登记表:两闸门值集中一处,值单一源在代码)=====
 # 形态依据 = design §2.2/§2.3:偏好型闸门量按「闸门位立场值」登记(登记即
-# 立场、零拟合零观测,不经【拟】纪律);非注入面(apply_calibration 不辖),
+# 立场、零拟合零观测,不经【拟】纪律);非注入面(apply_calibration 不覆盖),
 # 重拍 = 直接编辑本区(None → 过目值),commit 即过目凭据。两值已过目
 # 批准(2026-09-24,同一裁决门;用户备注:暂定值,实机遥测累积后重拍,
 # 重拍触发器 = 遭遇帧判读积累)。
@@ -105,7 +105,7 @@ def _kappa_state(w1: bool | None, w2: bool | None,
                  fill_old: float | None, fill_new: float | None) -> str:
     """窗口两场 → 能力态('足量'/'边缘'/'不足';design §2.2 三态表)。
 
-    w1/w2 = 窗口两场 killed(None = 删失);fill 分支 = 恰一胜时败局侧的
+    / = 窗口两场 killed(None = 删失);fill 分支 = 恰一胜时败局侧的
     进度填充率降档(进度条双定案前不激活——照旧 fail-closed,fill 只走
     删失分支)。删失优先于 fill 分支(整场按删失计)。
     """

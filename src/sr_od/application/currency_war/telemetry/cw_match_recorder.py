@@ -94,7 +94,7 @@ def extract_frame(ctx, img, templates) -> dict:
             # hp 失读时沿用 last_hp_real,全无真值帧 hp=None
             # (已 None 化,无 100 兜底);hp_readable=False 即「读不到」分字段标记;
             # gold 同款带保真位。
-            # (迁移批 3.2:输入 = read_game_state 轻量回执,逐字段语义与旧
+            # (迁移:输入 = read_game_state 轻量回执,逐字段语义与旧
             # 帧逐位同;bench_full 改容器派生读口——旧帧 bench 恒空表,该
             # 值此前结构性恒 False,现取真值,判读按新语义。)
             from sr_od.application.currency_war.kernel.cw_game_state import (

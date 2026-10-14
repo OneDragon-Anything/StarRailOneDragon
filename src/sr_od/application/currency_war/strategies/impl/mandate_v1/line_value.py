@@ -18,16 +18,16 @@
    信号,不存在「已放弃方向经信号复活」的通道(降格 = 终局终局阵容锁定已放弃)。
 
 **三形态判定的共用内层入口** = :func:`line_value_best`(cand/locked 均为
-成员 阵容 名集合;「线」在调用侧以成员 阵容 集表示——阵营空间装不下
-env 终局阵容锁定支的 阵容 级过滤,统一 阵容 空间,29 号稿 §2.2):env 屏
+成员阵容 名集合;「线」在调用侧以成员阵容 集表示——阵营空间装不下
+env 终局阵容锁定支的阵容 级过滤,统一阵容 空间,29 号稿 §2.2):env 屏
 经 :func:`line_value` 单阵营驱动入口精确包装消费;投资策略屏 = 绑定
-集合驱动,构造侧求值候选触线各阵营线的成员 阵容 并集后直调内层入口。
+集合驱动,构造侧求值候选触线各阵营线的成员阵容 并集后直调内层入口。
 
 适用面(env 屏):概念股 15 条与邀请 20 条(阵营来源 =
 ``cw_investments.ENV_FACTION``);概念股额外加赠卡分(随机口径,见
 gift_value.py),邀请只计方向分。未锁定时按版本先验取 max,不做信号加权
 (申报:信号精细化已登记为待办,先验口径对开局帧正确、对局内未锁定帧偏宽松
-——申报表考古走 git 历史)。
+——申报表)。
 
 复用契约(29 号稿 §2.2):策略屏**不消费**本文件
 :func:`line_value` 单阵营入口——绑定集合驱动的触线集在策略屏构造侧
@@ -58,13 +58,13 @@ def line_value_best(cand_comps: frozenset[str] | set[str],
                     demoted_endgame: bool) -> float:
     """三形态判定的共用内层入口(env/策略两屏单一源)。
 
-    - ``cand_comps`` = 候选线成员 阵容 名集合(**基础集**——evicted 过滤
+    - ``cand_comps`` = 候选线成员阵容 名集合(**基础集**——evicted 过滤
       属候选集构造侧,调用方先滤,本签名不收 evicted 参,契约即此);
-    - ``locked_comps`` = 终局阵容锁定侧成员 阵容 名集合:**空串与空集均视作未锁**
+    - ``locked_comps`` = 终局阵容锁定侧成员阵容 名集合:**空串与空集均视作未锁**
       (env 未锁定帧 locked_comp = 空串,委托须传 ∅ 而非 {""});非降格 ∧
       非空 → locked ∩ cand 取 max(空交集 → 0);未锁或降格 → cand 全体
       取 max(cand 空 → 0);
-    - 档分 = 集合内 阵容 档分 max(:data:`LINE_STRENGTH_SCORE` 直索引,
+    - 档分 = 集合内阵容 档分 max(:data:`LINE_STRENGTH_SCORE` 直索引,
       非已登记档名 KeyError = fail-loud)。
 
     **依赖边界 = 仅消费 COMP_LIBRARY 档分映射**(与现役同源 import,本
@@ -89,10 +89,10 @@ def line_value(faction: str, locked_comp: str, demoted_endgame: bool,
     单阵营驱动入口 = :func:`line_value_best` 的精确包装,env 行为零变化)。
 
     - faction 空(时代/经济/规则等阵容无关环境)→ 0(无方向语义);
-    - evicted = 「等同信号未发生」的 阵容 名集合(与意向层 D* 同源同义,
+    - evicted = 「等同信号未发生」的阵容 名集合(与意向层 D* 同源同义,
       flow decide_invest_env 直通传入),基础集随排除收窄(过滤在本构造
-      侧完成后以 阵容 集传内层入口);
-    - locked_comp = 意向状态终局阵容锁定 阵容 名(空串 = 未锁定);降格帧忽略
+      侧完成后以阵容 集传内层入口);
+    - locked_comp = 意向状态终局阵容锁定阵容 名(空串 = 未锁定);降格帧忽略
       终局阵容锁定(见模块 docstring 口径 3)——两态均传 ``locked_comps = ∅``
       (空串/空集视作未锁契约)。
     """

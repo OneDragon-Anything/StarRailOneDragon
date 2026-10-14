@@ -1,17 +1,17 @@
 """跨局分配层 v0:RunAllocator Thompson 采样 + 必死局回收。
 
 **诊断**:所有已落组件都是**局内优化器**,没人回答「数据本身从哪来、分配对不对」
-——bot 集中玩当前最强 comp → telemetry 窄分布 → 学习组件外推失真 → 更不敢选 = 死锁
+——bot 集中玩当前最强阵容 → telemetry 窄分布 → 学习组件外推失真 → 更不敢选 = 死锁
 (提案自诊断的 CRITICAL-for-convergence)。必死局的剩余动作是**免费实验预算**被白白输掉。
 
 **v0 落地**(纯函数,离线可测;telemetry 接线/漂移闭环为 v1):
-- ``StrategyArm``:臂 = 阵容家族(v1 再拆节奏维);Beta 后验;
+- ``StrategyArm``:分支 = 阵容家族(v1 再拆节奏维);Beta 后验;
 - ``plaza 先验封顶``:伪计数 ≤8(幸存者偏差数据只配当弱先验,自家 5-8 局可翻案);
-- ``ThompsonAllocator.select``:后验采样选臂(后验集中后自动退化为总选最优,层会自己关
+- ``ThompsonAllocator.select``:后验采样选分支(后验集中后自动退化为总选最优,层会自己关
   自己);forbid/priority 过滤(用户方向盘);explore_budget 闸;
 - ``update``:分级奖励(win=1.0;输局按位面/节点进度分级,降方差)+ **adherence 加权**
   (防「分配姬子中途转万敌赢了算姬子」的信用错配);指数遗忘 γ;
-- ``dead_run_salvage``:必死局回收(P(win)<ε 且置信 → 切后验方差最大的可达臂,零胜率
+- ``dead_run_salvage``:必死局回收(P(win)<ε 且置信 → 切后验方差最大的可达分支,零胜率
   成本收割样本);触发审计留存证据(复核「没误杀有救的局」≥95%)。
 
 P(win) 投影供给方:cw_first_passage(已有);漂移闭环(CUSUM+重抓)为 v1。
@@ -28,7 +28,7 @@ SALVAGE_EPS: float = 0.05   # 必死局判据(P(win) 阈值,保守)
 
 @dataclass
 class StrategyArm:
-    """分配臂:阵容家族 + Beta 后验。"""
+    """分配分支:阵容家族 + Beta 后验。"""
     arm_id: str
     comp_family: str
     alpha: float = 1.0
@@ -62,7 +62,7 @@ class ThompsonAllocator:
     @classmethod
     def from_plaza(cls, family_share: dict[str, float],
                    explore_budget: float = 0.15, seed: int = 0) -> ThompsonAllocator:
-        """plaza 份额 → 封顶先验臂表(份额归一为胜率先验;伪计数封顶)。"""
+        """plaza 份额 → 封顶先验分支表(份额归一为胜率先验;伪计数封顶)。"""
         arms: dict[str, StrategyArm] = {}
         for fam, share in family_share.items():
             mean = min(0.9, 0.3 + share)          # 份额 → 均值映射(弱先验)
@@ -73,7 +73,7 @@ class ThompsonAllocator:
 
     def select(self, forbidden: set[str] | None = None,
                forced: str | None = None) -> str | None:
-        """选臂:forced(成就/handoff 豁免)> Thompson 采样。空表 → None。"""
+        """选分支:forced(成就/handoff 豁免)> Thompson 采样。空表 → None。"""
         if forced and forced in self.arms:
             return forced
         cands = {k: a for k, a in self.arms.items() if k not in (forbidden or set())}
@@ -114,7 +114,7 @@ class ThompsonAllocator:
         return min(0.49, (plane_reached / 3.0) * 0.45 + (rounds / 27.0) * 0.05)
 
     def dead_run_salvage(self, p_win: float, reachable: set[str] | None = None) -> str | None:
-        """必死局回收:P(win)<ε → 选可达臂中后验方差最大者(信息价值最大)。
+        """必死局回收:P(win)<ε → 选可达分支中后验方差最大者(信息价值最大)。
 
         审计留存证据(离线复核「没误杀有救的局」≥95% 判据的数据)。
         """

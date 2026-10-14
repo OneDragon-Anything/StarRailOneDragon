@@ -60,7 +60,7 @@ _ALL_BASES: frozenset[str] = frozenset(
 # 7 件标准基础件(图鉴简易 tab 口径,不含光能电池;类别「简易」全集 − 光能电池)。
 SYNTHESIS_BASES: frozenset[str] = frozenset(_ALL_BASES - {_GUANGNENG_BASE})
 
-# 交叉配方:进阶名 → (基础件_a, 基础件_b),不含光能电池系的 21 个(C(7,2))。
+# 交叉配方:进阶名 → (基础件_a,基础件_b),不含光能电池系的 21 个(C(7,2))。
 CROSS_RECIPES: dict[str, tuple[str, str]] = {
     _k: _v for _k, _v in _ALL_CROSS_RECIPES.items() if _GUANGNENG_BASE not in _v}
 
@@ -163,7 +163,7 @@ def component_demand(key_equips: list[str]) -> dict[str, int]:
     每件 K 展开为配方组件:交叉件 = 两件不同基础(火力风暴潮 = 轮滑鞋+
     折叠小刀);自配件 = 同基础 ×2(反重力皮靴 = 轮滑鞋×2)。K 中无配方件
     (白昼/特权类,无常规获取通道)跳过——不产生可规划需求(P14 Q4)。
-    例:K=[反重力皮靴×2, 火力风暴潮] → {轮滑鞋: 5, 折叠小刀: 1}
+    例:K=[反重力皮靴×2,火力风暴潮] → {轮滑鞋: 5,折叠小刀: 1}
     (皮靴=轮滑鞋×2,两双=4;风暴潮再加 1 轮滑鞋+1 小刀)——交叉核对 P14 例 1。
     """
     demand: dict[str, int] = {}
@@ -286,7 +286,7 @@ def recycle_qualified(key_equips: list[str] | None) -> frozenset[str]:
     ——b 若能合成出想要的进阶,回收(销毁它换 1/36 抽卡机会)严格劣于
     留着合成;只有「连合成原料都当不上」的件才允许进回收流水线
     (2合1 → 3 件同刷,equipment_mechanics「回收流水线」节)。
-    例:K=[反重力皮靴×2, 火力风暴潮](阿雅)→ 合格 = 以太钻头/光能电池/
+    例:K=[反重力皮靴×2,火力风暴潮](阿雅)→ 合格 = 以太钻头/光能电池/
     和平手枪/幸运星/生命之花/量产型装甲(轮滑鞋除外——需求 ×5)。
     ``key_equips=None``(无目标)→ 空集:有用性无从判定,一律不当死库存
     (保守侧,行为同旧)。

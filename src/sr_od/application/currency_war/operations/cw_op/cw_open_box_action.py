@@ -3,7 +3,7 @@
 自己的上报函数** ``report_action_open_box_param``(零写族),零分派,
 op-layer.md §1.2 动作 op 契约)。
 
-终结动作(R7 终结化):点完「开启」本动作即交回外循环,武装箱选择
+终结动作(R7 终结化):点完「开启」本动作即返回主循环,武装箱选择
 画面由外循环按画面分发独立画面 op 选卡。terminal_wait = 开箱动画等待,
 与 runner 包络 ``_OVERLAY_ANIM_WAIT_S`` 等价(等价测试锁 =
 test_action_registry 终结集锁)。
@@ -44,10 +44,10 @@ class CwActionOpenBoxOp(CwOperation):
     (等待归产生动画的操作);弹窗就位与否交下一帧观察。
     """
 
-    #: 终结动作(开箱即引入新事实,交回外循环分发选卡)。
+    #: 终结动作(开箱即引入新事实,返回主循环分发选卡)。
     terminal = True
 
-    #: 交回等待 = 开箱动画等待值(与 prep_actions._OVERLAY_ANIM_WAIT_S
+    #: 返回等待 = 开箱动画等待值(与 prep_actions._OVERLAY_ANIM_WAIT_S
     #: 逐字等价,漂移由等价锁暴露)。
     terminal_wait = 1.8
 
@@ -64,7 +64,7 @@ class CwActionOpenBoxOp(CwOperation):
 
     @operation_node(name='open_box', is_start_node=True)
     def run(self) -> OperationRoundResult:
-        """机械执行;终结动作(交回等待归消费点按 ``terminal_wait`` 读)。"""
+        """机械执行;终结动作(返回等待归消费点按 ``terminal_wait`` 读)。"""
         action: CwActionOpenBoxParam = self.param
         env = self.env
         ex = env.executor

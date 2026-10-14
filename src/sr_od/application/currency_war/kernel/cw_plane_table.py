@@ -10,7 +10,7 @@
 **现役口径(9 制几何层停用)**:节点身份 = ``(位面, 轮)`` 序位键,
 逐位面节点类型序列唯一真值 = ``cw_node_schedule`` 真值表 + GameState
 场字段 ``node_seq_by_plane``(修饰局 10/8、默认局 9/7;None 未注册态
-回退默认表)。数量语义的视界量不在此层( 裁决点 9:框架不向策略
+回退默认表)。数量语义的视界量不在此层(裁决点 9:框架不向策略
 供视界量,序列模块只留键原语;策略侧经 mandate_v1/statefn/horizon
 门面场字段自算,kernel 判据点就地求和)——9 制几何层 11 符号
 (schedule_of/node_t_of/r_remaining 族/plane_offsets/plane_end_slots/

@@ -30,7 +30,7 @@ from typing import Any
 SEVERITY_L1_ALERT: str = 'L1_alert'
 SEVERITY_L2_RECORD: str = 'L2_record'
 
-# ===== 仲裁分键常量(布局档;15 号稿批 C。obs 布局面经本出口上行,
+# ===== 仲裁分键常量(布局档;15 号稿。obs 布局面经本出口上行,
 # 缺陷台账/出口双侧同引此处=字符串单一源;互不混流锁钉值)=====
 
 #: 布局双通道分歧(公式 vs CV 占用态门,三信号梯裁决)。
@@ -91,7 +91,7 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
 def record_exogenous(round_num: int, kind: str, detail: str = '',
                      state: Any = None,
                      choice: dict[str, Any] | None = None) -> None:
-    """旧 exogenous 流出口(已停用 no-op 桩;)。
+    """旧 exogenous 流出口(已停用 no-op 桩)。
 
     保留原因:锚登记机制(kernel/cw_anchor.py,已入库惰性未接线,本文件
     此前是其唯一 kernel 侧上行出口)的调用方仍 import 本符号,其归宿待裁决
@@ -134,7 +134,7 @@ def journal_refs(*extra: dict[str, str] | None) -> list[dict[str, str]]:
     """缺陷台账 refs 的 journal ``(run_id,v)`` 锚构造(保留流 refs 迁移单一源)。
 
     依据 = retirement.md §2 defect_ledger 行「裁保留时 refs 改指 journal
-    ``(run_id,v)`` 键」(待裁决 4 定案保留专用流后的消费面迁移,):旧流
+    ``(run_id,v)`` 键」(待裁决 4 定案保留专用流后的消费面迁移):旧流
     (decisions/outcomes/obs_conflicts)写面已停用,refs 指旧流行
     = 下钻扑空;journal 行行自足(每行内嵌当时完整 state 快照),
     ``(run_id, v)`` 唯一定位一行。锚取缺陷记录时刻现版 ``current_version()``

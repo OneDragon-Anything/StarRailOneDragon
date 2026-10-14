@@ -28,7 +28,7 @@ def report_action_swap_deploy_param(gs: GameState, param: Any, sig: ChannelSig) 
     """bench ↔ deployed 换位上报:原槽对调(置空/置位不移位坐标系)+
     上场者继承下场者排(排归属 = 子表承载含开拓者
     形态归一,归一核单一源 = ``cw_exec_state.trailblazer_row_identity``)+
-    同名唯一性守卫( 裁决 1,与 simulate 同源)。
+    同名唯一性守卫(裁决 1,与 simulate 同源)。
 
     P1 容器原生:bench 写回 = 工作槽表直构(占位件 kind 原样保留,
     原换形口降级路径停用);deployed = 单字段视图整值替换(3.1 合一写)。"""

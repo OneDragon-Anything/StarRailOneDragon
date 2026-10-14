@@ -7,7 +7,7 @@
 
 形态(两 node 直继承 SrOperation):观察 node = 环装配前置(执行器构建
 /缓存复位)+ 环入口清场 + 开商店收起 + heavy 观察 → CwScreenPrepObs
-(可选域经 report_screen_prep_obs 落容器)+ 事件 overlay 交回早退 +
+(可选域经 report_screen_prep_obs 落容器)+ 事件 overlay 早退返回主循环 +
 接管补采委派 + 纯观察审计族;决策动作 node = 单动作决策循环(无防御
 上限,用户裁定:不收敛 = 策略实现 bug)。书册卡的开卡时机归策略实现管
 (用户裁定 2026-09-19):观察链产 kind='bookcard' 槽位,策略器 entry ①
@@ -158,7 +158,7 @@ class CwScreenPrep(CwOperation):
     观察 → CwScreenPrepObs 可选域 report 落容器 + 事件 overlay 早退 +
     接管补采委派 + 纯观察审计族)→ 决策动作 node(单动作决策循环整体:
     决策(容器 game state 直读,F3 形状校验)→ 执行(机械执行无成败
-    回执;终结 op 发出即交回外循环)→ 逻辑态直写(动作 op 自上报))。
+    回执;终结 op 发出即返回主循环)→ 逻辑态直写(动作 op 自上报))。
     决策循环无防御上限(用户裁定:不收敛 = 策略实现 bug)。
     """
 
@@ -392,7 +392,7 @@ class CwScreenPrep(CwOperation):
                          for (row, slot), names
                          in _of.get('occupied_equips').items()},
                         sig=_prep_sig)
-                # 声明入队/过期电平检查(迭代 2026-10-10-ore-reward-attach,
+                # 声明入队/过期电平检查(
                 # 详设 ore-reward-channel §5 live 接线规约):判定点固定在
                 # observe_full 回执后、spheres 写前——node 域 plane 的写点
                 # 在回执内的 read_game_state 漏斗,回执前无「旧 plane 现值」
@@ -541,7 +541,7 @@ class CwScreenPrep(CwOperation):
         适用范围 = 最小重观察:入口专属段(环入口清场/开商店收起/接管补采/
         纯观察审计族)不在本通道,仍归观察 node;帧代次标注归决策循环
         写点(本方法零帧代次写);event_overlay 由调用方裁决(动作 op 抛
-        CwObsOverlayBail 交回外循环重分发)。唯一调用方 = CwActionObsOp。
+        CwObsOverlayBail 返回主循环重新分发)。唯一调用方 = CwActionObsOp。
         """
         return self._observe(heavy=True)
 
@@ -656,7 +656,7 @@ class CwScreenPrep(CwOperation):
     # ===== 备战单轮 op(拆内环;两 node 形态)=====
     # 外循环(cw_loop)是唯一循环:备战画面在 → 外循环每轮调本 op 一轮。
     # 观察 node = 数据观察 + 对账;决策动作 node = 单动作决策循环
-    # (决策→执行→逻辑态直写,循环内零读屏;终结 op 交回外循环)。
+    # (决策→执行→逻辑态直写,循环内零读屏;终结 op 返回主循环)。
     # 期望态由逻辑态直写承载逐动作推进;稳定性由外循环每轮重识别保证
     # (特效帧/overlay 弹出在轮间自然可见);无进展保留证据归外循环 stall
     # 防线(cw_loop 备战分支)。
@@ -669,10 +669,10 @@ class CwScreenPrep(CwOperation):
         过渡相位表「可一键关闭」子集)→ 开商店收起探针 → heavy 观察 →
         CwScreenPrepObs 装配(可选域经 :func:`report_screen_prep_obs` 在
         原写点位落容器:链域在 heavy 观察链内、接管域在补采簇内,字段在
-        场才写)→ 帧代次标注 → 事件 overlay 交回早退 → 接管补采 →
+        场才写)→ 帧代次标注 → 事件 overlay 早退返回主循环 → 接管补采 →
         审计族消费。书册卡不再入口代清:识别 kind 进容器,开卡时机由
         策略器 entry ① 卡片分支裁决(用户裁定 2026-09-19,发出的
-        CwActionOpenBookcardParam 为终结动作,交回语义与原入口代发一致)。"""
+        CwActionOpenBookcardParam 为终结动作,返回语义与原入口代发一致)。"""
         match = self._match()
         if match is None or match.strategy is None:
             return self.round_fail(status='无 cw_match(对局未初始化)')
@@ -693,7 +693,7 @@ class CwScreenPrep(CwOperation):
         # 决策入口(含经 overlay 防线反弹的 pick 子路径)。
         game_state_of(session).frame_class_prep = 'full'
         if obs.event_overlay is not None:
-            # overlay 在场 → 交回外循环重识别分发(无计数;对应外循环 overlay 分发/op 接管)
+            # overlay 在场 → 返回主循环重新识别分发(无计数;对应外循环 overlay 分发/op 接管)
             log.info(f'[cw][director] 事件 overlay({obs.event_overlay})→ 交回外循环分发')
             return self.round_success(f'事件overlay({obs.event_overlay})交回外循环分发', wait=0.8)
         # 中断恢复的对局补采委派(挂点随观察段平移;编排单一源 =
@@ -732,8 +732,8 @@ class CwScreenPrep(CwOperation):
         CwActionObs 环内重观察:策略显式发出才触发宿主观察链重跑,
         帧代次标 full 后原地续决策)。已知画面出口
         (CwActionOpenShopParam/CwActionStartBattleParam/CwActionOpenBoxParam)= 终结 op,执行即本访问结束
-        交回外循环(下次入口重观察);CwActionObs 执行见事件 overlay =
-        CwObsOverlayBail 交回外循环重分发(路由归外循环)。
+        返回主循环(下次入口重观察);CwActionObs 执行见事件 overlay =
+        CwObsOverlayBail 返回主循环重新分发(路由归外循环)。
         验证段+恢复原语分支停用(用户裁定 2026-09-10):
         动作机械执行(无成败回执),无进展治理归外循环 stall
         防线,落地判定归观察侧 reconcile。决策循环无防御上限
@@ -763,7 +763,7 @@ class CwScreenPrep(CwOperation):
                 return self.round_fail(status='策略输出非 CwAction(F3)')
             if isinstance(result, CwActionObsParam) \
                     and result.scope == 'outer_loop':
-                # 交回外循环重新观察(空动作发出帧显式信号;原 HoldFrame 并入
+                # 返回主循环重新观察(空动作发出帧显式信号;原 HoldFrame 并入
                 # 进 obs scope 口径,用户裁定 2026-09-20):拦截型——不进
                 # validate/执行器/动作注册表/续段 token/动作记录,round
                 # 返回形态与等待时长与原 HoldFrame 分支逐字一致。系统级
@@ -771,7 +771,7 @@ class CwScreenPrep(CwOperation):
                 # 发出计数器」,stall 防线哨兵只对无进展保留证据。
                 return self.round_success('本帧无动作(Obs:outer_loop),交回外循环重观察', wait=1.0)
             action = result
-            # F3 校验:参数非法交回保留证据;执行前输入契约检查,非动作后判效
+            # F3 校验:参数非法返回主循环保留证据;执行前输入契约检查,非动作后判效
             err = self._executor.validate(action)
             key = action_key(action)
             if err is not None:
@@ -783,14 +783,14 @@ class CwScreenPrep(CwOperation):
                 self._act_execute_default(action)
             except StopBrakeShortCircuit as e:
                 # 刹车短路:停机标志已设,动作未发出 →
-                # 交回外循环,下轮 loop 顶见 STOP 退出(原回执 False 通道
+                # 返回主循环,下轮 loop 顶见 STOP 退出(原回执 False 通道
                 # 已停用改停机短路异常)。
                 log.info(f'[cw][director] 停机刹车({e}),动作未发出 → 交回外循环')
                 return self.round_success(f'停机刹车({e}),动作未发出,交回外循环', wait=1.0)
             except CwObsOverlayBail as e:
                 # 环内重观察发现事件 overlay(CwActionObs 执行回执):
-                # 画面识别与路由归外循环,环内不消化 → 交回重分发
-                # (观察 node 同语义早退;无计数;帧代次不写——交回后
+                # 画面识别与路由归外循环,环内不消化 → 返回主循环重新分发
+                # (观察 node 同语义早退;无计数;帧代次不写——返回主循环后
                 # 下次入口观察重标)。
                 log.info(f'[cw][director] {e} → 交回外循环重分发')
                 return self.round_success(f'{e},交回外循环重分发', wait=0.8)
@@ -804,7 +804,7 @@ class CwScreenPrep(CwOperation):
             if _st_tok is not None:
                 _st_tok.cw4_frame_action_record = (
                     type(action).__name__, _st_tok.cw4_segment_serial)
-            # —— 结束判定 → 交回外循环(动画等待已由执行器/编排内建)
+            # —— 结束判定 → 返回主循环(动画等待已由执行器/编排内建)
             #      终结集与等待时长改读注册表 op 类
             #      terminal/terminal_wait 类属性(消费点经注册表读类属性,
             #      禁消费点私表)。
@@ -820,9 +820,9 @@ class CwScreenPrep(CwOperation):
             # game-round 恰一次,环内多次重观察不放大方向刷新成本)。
             game_state_of(session).frame_class_prep = (
                 'full' if isinstance(action, CwActionObsParam) else 'none')
-            # —— 宿主动作后交回(overlay 生命周期契约
+            # —— 宿主动作后返回主循环(overlay 生命周期契约
             #    「实机消费」表):pending 非空 = 触发动作已落地、弹窗将现
-            #    → 确定性提前交回外循环(两段式接住),取代等重观察发现。
+            #    → 确定性提前返回主循环(两段式接住),取代等重观察发现。
             #    终结动作上方已各自出口,不经此处。
             _pending_n = len(game_state_of(session).screen_changes.pending)
             if _pending_n:
@@ -837,30 +837,30 @@ class CwScreenPrep(CwOperation):
 
     def _terminal_exit(self, action: CwAction, key: str,
                        op_cls: type[SrOperation]) -> OperationRoundResult:
-        """终结动作交回:终结判定与等待时长改读
+        """终结动作返回主循环:终结判定与等待时长改读
         注册表 op 类 ``terminal``/
         ``terminal_wait`` 类属性(消费点经注册表读类属性,禁消费点私表)。
-        交回 detail 文案逐动作保持原样(零行为)。
+        返回 detail 文案逐动作保持原样(零行为)。
 
         调用契约 = 仅 ``op_cls.terminal`` 为真时进入;非终结动作到达 =
         终结集与消费面失配,响亮暴露。
         """
         if op_cls is CwActionStartBattleOp:
-            # 出战提前终结(发出即终结——点击序列完成即交回外循环
+            # 出战提前终结(发出即终结——点击序列完成即返回主循环
             # 战斗分支;点击序列事实经执行器 last_launch_ok 旁路供 cw_loop
             # 动作发出核)。
             return self.round_success('出战(交回外循环战斗分支)',
                                       wait=op_cls.terminal_wait)
         if op_cls is CwActionOpenShopOp:
             # 显式开店路径在本执行体内完成完整商店访问(开→访问→收店)
-            # 后已回备战帧;仅访问失败路径店开态交回外循环重识别
+            # 后已回备战帧;仅访问失败路径店开态返回主循环重新识别
             # (详设 §2.10:受限仲裁路径已停用,开店 = 唯一普通形态)。
             return self.round_success(f'{key} ✓,交回外循环重识别',
                                       wait=op_cls.terminal_wait)
         if op_cls is CwActionOpenBoxOp:
             # CwActionOpenBoxParam 终结化:开箱即引入新事实(武装箱选择画面
-            # 出现,与刷新终结结构语义同构)→ 本访问交回,外循环按
-            # 武装箱选择画面分发新画面 op 选卡。交回等待 =
+            # 出现,与刷新终结结构语义同构)→ 本访问返回主循环,外循环按
+            # 武装箱选择画面分发新画面 op 选卡。返回等待 =
             # CwActionOpenBoxOp.terminal_wait(与 ``_open_box`` 动画等待
             # ``_OVERLAY_ANIM_WAIT_S`` 等价,等价测试锁 =
             # test_action_registry 终结集锁)。
@@ -868,7 +868,7 @@ class CwScreenPrep(CwOperation):
                                       wait=op_cls.terminal_wait)
         if op_cls is CwActionOpenBookcardOp:
             # 开卡终结(用户裁定 2026-09-19 动作发出点迁策略器 entry ① 卡片分支,
-            # 原画面 op 入口清场代交回通道撤销):弹专家邀请函 = 新事实 →
+            # 原画面 op 入口清场代返回通道撤销):弹专家邀请函 = 新事实 →
             # 本访问交回,外循环按画面分发 CwScreenExpertInvite 选卡(分发判定单一源 = flow/outer_loop.md §2.2)。
             return self.round_success(f'{key} ✓(交回:专家邀请函弹窗分发)',
                                       wait=op_cls.terminal_wait)
@@ -911,7 +911,7 @@ class CwScreenPrep(CwOperation):
         失效标记——重复委派由编排的真值跳过门兜住,委派失败交外循环
         失败链,无自带计数/放弃分支)。「节点条可读」守卫 = 半开帧
         (过场/overlay)不委派、等下轮免费重判、不烧失败链。
-        委派结果透传:成功 = round_success 交回外循环重识别;失败 =
+        委派结果透传:成功 = round_success 返回主循环重新识别;失败 =
         round_fail 走外循环既有失败链(重试/熔断),不自旋。
         """
         _gs = gs_of_ctx(getattr(self, 'ctx', None), session)
@@ -1074,7 +1074,7 @@ class CwScreenPrep(CwOperation):
 
         语义 = 「从店已开状态进入」(单动作循环的入口形态):
         入口观察现读当前牌面重建期望态 → 策略器逐动作决策(买/卖/升/刷)
-        → CwActionCloseShopParam 终结收店交回(收店点击由商店画面 op
+        → CwActionCloseShopParam 终结收店返回主循环(收店点击由商店画面 op
         执行体承担)。**不调 open_shop**——店已开由外循环
         0n 三 id_mark 锚判定确认,直接跳过开店动作(比依赖 open_shop
         幂等性更进一步:已开连点都不发);「收不收」由策略器基于期望态
@@ -1090,7 +1090,7 @@ class CwScreenPrep(CwOperation):
         决策循环零读屏纪律)。出参交接契约(详设 §2.2):失败判定 =
         轮结果 ``is_success``(False = 未识别卡停机/未观察熔断的
         round_fail);执行账 = ``op.ledger.total_*``。节点行观察已归备战
-        观察域(详设 §2.8,本备战环 heavy 观察消费),访问交回零额外动作。
+        观察域(详设 §2.8,本备战环 heavy 观察消费),访问返回主循环,零额外动作。
         失败路径不开收(店留着交上层重新识别,同 _open_shop_phase)。
         """
         # [临时钩子挂点] 特殊投资策略商店采集停机(采够删:整段 = 上方

@@ -12,7 +12,7 @@ carried 语义(fields.md §2.1)承载;旧结算新鲜度门
 禁反向依赖策略实现层(策略层 ``strategies/impl/cw_strategy.gated_hp``
 已停用,消费点改经本模块 :func:`decision_hp`)。
 
-**消费同门申报纪律**(承接 ):新增 hp 决策消费点要么经
+**消费同门申报纪律**(承接):新增 hp 决策消费点要么经
 :func:`decision_hp` / 上游门后值传递,要么登记豁免。豁免清单 = 记录面
 (journal 快照/遥测 recorder/局终写口)+ 写侧对账面(``cw_reconcile``)+
 帧→视图一次性装配面(过渡桥语义,现役存续面见登记集哨兵)+

@@ -16,7 +16,7 @@
 历史档案与 sim 产物以该名为键,双载体同名 = 读面歧义)。写口在**决策帧
 收束**时点被调用(策略求值完成、动作计划产出、执行未开始):求值过程
 自身产生的计数写点落入本行窗口(该决策自身行为的归因);跨窗的执行侧
-写点(部署 held、仲裁、耗尽臂等)归入其发生后的下一行窗口。发出频率 =
+写点(部署 held、仲裁、耗尽分支等)归入其发生后的下一行窗口。发出频率 =
 调用频率,一收束一行,无内部节流(量级论证 §5.3:~40-80 行/局)。
 
 **窗口与锚**(§5.1):写口持有锚(上一行收束时点的容器内容快照,按局段
@@ -125,7 +125,7 @@ DISCLOSURE_FAMILY_CLOSED_LIST: tuple[str, ...] = (
     'sess_drought',
     'sess_commit_scores',
     'sess_active_env',
-    # 对抗审 F-2③ 点名补齐 8 个
+    # 对抗审查-2③ 点名补齐 8 个
     'sess_blood_budget_rejects',
     'sess_blood_budget_refresh_rejects',
     'sess_terminal_release',

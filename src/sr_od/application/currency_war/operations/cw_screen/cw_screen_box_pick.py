@@ -84,7 +84,7 @@ _EQUIP_ROSTER_LIST: list[str] = sorted(EQUIPMENT_ROSTER)
 
 #: OCR 卡名行读数闸上限(坐标系 = 装备注册表最长名长度,派生式禁手抄
 #: 常数——新更长注册名自动跟上;下限 2 滤 OCR 单字噪声):读数闸先于
-#: 归一化,手抄 8 字上限曾把 9 字特权名(如「战场进化手册·特权」,
+#: 归一化,手抄 8 字上限会把 9 字特权名(如「战场进化手册·特权」,
 #: cw_equipment_data.py 特权组)确定性静默丢弃 = 四选一缩三选一,策略在
 #: 残缺候选集上照常选卡(非响亮暴露)。
 _CARD_NAME_LEN_MAX: int = max(len(n) for n in _EQUIP_ROSTER_LIST)
@@ -106,14 +106,14 @@ class CwScreenBoxPick(CwOperation):
     """武装箱 4 选 1 选卡画面 op(选卡即终结;单选族例外,判据 = screens/README.md §3)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-备战-武装箱选择'
-    #: 卡身点击 y(点卡名下方一点避「查看详情」按钮; 实测)
+    #: 卡身点击 y(点卡名下方一点避「查看详情」按钮;实测)
     CARD_Y: ClassVar[int] = 290
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name=CwScreenBoxPick.SCREEN_NAME)
         # 观察结果(观察 node 产物,决策动作 node 消费)。
         self._obs: CwScreenBoxPickObs | None = None
-        # 标准化读数 [(标准注册名, 卡 x 中心), ...](x 升序;卡名与坐标
+        # 标准化读数 [(标准注册名,卡 x 中心), ...](x 升序;卡名与坐标
         # 一并上报入容器 ``box_card_names`` / ``box_card_names_xy``
         # (op-layer.md §1.1 :35 坐标单一真相源 = 观察上报),本 op 零
         # 坐标现算,读数 x 仅供观察侧解点)。
@@ -192,7 +192,7 @@ class CwScreenBoxPick(CwOperation):
         点卡选中即确认 + 动画等待 + 自上报住 ``CwActionPickBoxCardOp``
         (机械链契约 = flow/action_exec.md §2;点击坐标 = 容器
         ``box_card_names_xy[idx]`` 动作 op 自取,选卡落地归下一帧观察
-        覆盖);本 op 只决策(局内;fail-closed 契约)与交回;无 match
+        覆盖);本 op 只决策(局内;fail-closed 契约)与返回主循环;无 match
         局外不设早退支(op-layer.md §1.1;用户裁决 全族删门)。
         派发实例携真实选中下标(上报 param 即真实选择)。"""
         # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
@@ -216,7 +216,7 @@ class CwScreenBoxPick(CwOperation):
             wait=_OVERLAY_ANIM_WAIT_S)
 
     def _read_card_names(self, screen: MatLike) -> list[tuple[str, int]]:
-        """OCR 卡名行 → [(卡名, 卡 x 中心)] 按 x 升序(读数闸:下限 2 字
+        """OCR 卡名行 → [(卡名,卡 x 中心)] 按 x 升序(读数闸:下限 2 字
         滤 OCR 单字噪声,上限 = 注册表最长名 ``_CARD_NAME_LEN_MAX`` 派生,
         9 字特权名可达;识别域 = screen_info 区域-卡名行单一源)。"""
         rect = _area_rect(self.ctx, '区域-卡名行', CwScreenBoxPick.SCREEN_NAME)
@@ -261,7 +261,7 @@ class CwScreenBoxPick(CwOperation):
         ``report_screen_box_pick_obs`` 调用,本方法只决策):策略契约
         ``decide_box_card``(fail-closed:异常留存证据上抛/越界上抛,禁
         无声回落)。无 match 局外不设早退支(op-layer.md §1.1;用户
-        裁决 全族删门),本方法无兜底臂。"""
+        裁决 全族删门),本方法无兜底分支。"""
         try:
             idx = self.ctx.cw_match.strategy.decide_box_card().idx
         except Exception:   # noqa: BLE001  留存证据后显式上抛,禁无声回落

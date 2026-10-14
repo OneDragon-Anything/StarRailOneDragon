@@ -9,7 +9,7 @@ P1=10/P2=8、默认局 9/7;None = 未注册态,开局 P1 前段/裸 session,读�
 
 **裁决点 9 契约(框架不供视界量)**:位面轮次族(r_remaining/r_global/
 r_remaining_in_plane)已自 kernel/cw_plane_table 停用,本层为策略侧自算
-单一消费面(kernel 禁 import strategies 桶边界不动;kernel 判据点就地
+单一消费面(kernel 禁 import strategies 层边界不动;kernel 判据点就地
 求和,禁回引本层)。视界封顶 modeled planes(场字段键集 = P1+P2;P3 =
 建模域外 = 运行终局,bot 进 P3 即走结束链)——**位面 ∉ 序列表键集
 (含 P3)契约:返回 0**(局终后无剩余轮;禁 KeyError/异常形态)。
@@ -78,7 +78,7 @@ def r_trunc() -> int:
     """R_截 = λ₃ 视界(3 轮窗累积危险率的截断口径,P51 §R/§5-11)。
 
     值取 proof_consts.LAMBDA3_WINDOW(【证】常数白名单,R17-5)——本层禁
-    新建长度常量纪律辖「位面长度」维;R_截系证明声明常数,归宿在白名单模块。
+    新建长度常量纪律覆盖「位面长度」维;R_截系证明声明常数,归宿在白名单模块。
     """
     return proof_consts.LAMBDA3_WINDOW
 

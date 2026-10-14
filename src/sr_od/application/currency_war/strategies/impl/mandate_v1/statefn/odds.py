@@ -84,7 +84,7 @@ def tier_search_window(level: int, omega: float | None = None) -> frozenset[int]
     REFRESH_PROB,峰值级 = cw_plane_table.peak_refresh_level 查表 argmax,
     ω 见 ``_collapse_window_threshold``。全游戏定义量(概率表 + 峰值查表
     + 注册表 ω 字段),零胜率/零标定带数值。
-    空集语义 = 该级全部费档塌缩(真无窗口帧,非门控)。
+    空集语义 = 该级全部费档归零(真无窗口帧,非门控)。
     """
     thr = _collapse_window_threshold(omega)
     out: set[int] = set()
@@ -126,7 +126,7 @@ def _char_has_tag(ch: object, tag: str) -> bool:
 
 
 def _tier_stats(tag: str) -> dict[int, tuple[int, int]]:
-    """{cost: (目标张数 A, 池总张数 T)}——阵营/流派标签圈目标集(P16 口径)。"""
+    """{cost: (目标张数 A,池总张数 T)}——阵营/流派标签圈目标集(P16 口径)。"""
     out: dict[int, tuple[int, int]] = {}
     for cost in sorted({ch.cost for ch in CHARACTERS.values()
                         if _char_has_tag(ch, tag)}):

@@ -31,7 +31,7 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwActionPickBoxCardOp(CwOperation):
-    """武装箱四选一选卡链(pick-op-unify 批并入;点卡选中即确认,单步)。
+    """武装箱四选一选卡链(统一 pick-op 分发并入;点卡选中即确认,单步)。
 
     点卡(mouse_move+click;点击点 = 容器 ``box_card_names_xy[idx]``——
     观察期按避让几何(卡名带下方 y,避「查看详情」按钮)解出上报,

@@ -130,12 +130,12 @@ if TYPE_CHECKING:
 # last_state+SIFT 分轨,14 字段:9 对齐 / 4 分轨有据)+ fresh 生产写点
 # 接线(shop.py 买入动作发出点 _emit_buy)两项开闸前置义务已兑付。回滚路径
 # = 本常量写回 False——门关回即恢复现役 fail-closed(m1p_input_seam_
-# pending 重新显影),fresh 载体 phase 键式跨轮自动失效,无持久状态。
+# pending 重新暴露),fresh 载体 phase 键式跨轮自动失效,无持久状态。
 M1P_SEAM_VERIFIED: bool = True
 
 # ===== M2 停摆续段缓存:非变异动作白名单·备战域(必花分支重试风暴防线;
 # 商店域同构缓存随商店期腾席卖射停用删除——席满缺员形态在商店域
-# 表达为关店交回,无重复帧面,本集独存备战域)=====
+# 表达为关店返回主循环,无重复帧面,本集独存备战域)=====
 # 跳过条件 = 可判定谓词「帧间动作全在本集 ∧ 同段」,非任何计数阈值。
 # 白名单外动作一律视为变异 ⇒ 缓存失效 ⇒ 全量重推导(保守端 = 现行为)。
 # ⚠️ 守卫:加入新动作型前须验证其执行语义不动 bench/deployed/k/敌缀/
@@ -969,7 +969,7 @@ def run_mandate(frame: MandateFrame,
 
 
     def _emit_open_shop(tag: str) -> None:
-        """开店意图动作发出点(备战期开店标志已删除(随 停用)——会话
+        """开店意图动作发出点(备战期开店标志已删除(随停用)——会话
         标记〔shop_handled〕承接防活锁,本位恒发出)。"""
         out.append(Emitted(CwActionOpenShopParam(), True, tag))
 
@@ -991,7 +991,7 @@ def run_mandate(frame: MandateFrame,
     # 腿 2 先例:统一装配 A channel='m4_fuel' + fuel_sell_candidates 全守卫
     # ——占位件恒拒/合成素材拒入/T3 降序;零新增通道,reason 沿用
     # m4_fuel_sell,构造事实分键 overflow_clear_sell/overflow_no_fuel)。
-    # 候选空集 = fail-closed 空批(禁乱卖被守卫件),交回外循环,环级无
+    # 候选空集 = fail-closed 空批(禁乱卖被守卫件),返回主循环,环级无
     # 进展守卫兜底。
     if frame.overflow_warning:
         _ov_excl = sell_exclusions(session, k, channel='m4_fuel',
@@ -1085,7 +1085,7 @@ def run_mandate(frame: MandateFrame,
                 counters=counters,
                 dedup_names=_mm_dedup)
         else:
-            # 契约核验失败 = fail-closed 弃权零发出,分键显影(同 shop
+            # 契约核验失败 = fail-closed 弃权零发出,分键暴露(同 shop
             # 消费位形态;禁新契约键,复用同键 ('sell','sell_for_interest'))
             _t1_slots, _t1_key = [], 'contract_abstain'
             _count('t1_interest_prep_contract_abstain')
@@ -1145,7 +1145,7 @@ def run_mandate(frame: MandateFrame,
     missing = [m for m in k
                if m not in set(frame.bench_names) | set(frame.deployed_names)]
     # T3 同轮保留集卖侧读端已上移至 ②(a) 凑息接线前(单点计算声明见彼处)。
-    # (开店标志跳过分支已停用删除(随 备战期开店标志)——会话标记
+    # (开店标志跳过分支已停用删除(随备战期开店标志)——会话标记
     # 承接防活锁;run_mandate 现为测试面已登记函数。)
     if missing and not frame.stop_flag:
         ok, _why = check_seats(frame.bench_free, frame.deploy_vacancy,
@@ -1291,13 +1291,13 @@ def run_mandate(frame: MandateFrame,
     # (九段全扫动作发出面下 defer 输入结构性恒空——第 3 步命中即返回,
     # 升级帧到不了部署步;本 defer 分支 = run_mandate 测试面已登记路径。)
     # 动作发出点门(state_of(session).cw4_m1p_seam_verified):装配两侧(发出⇔执行)
-    # 输入对齐核对通过前置 False = 发出关闭、m1p_input_seam_pending 显影
+    # 输入对齐核对通过前置 False = 发出关闭、m1p_input_seam_pending 暴露
     # (接线核对通过前不许发出,对齐证据 = 开闸前置义务;
     # 唯一写点 = 核对完成后的接线批,缺省关 = fail-closed,与发出契约
     # 留 bench 合法稳态同向)。
     # 部署执行放行判定(P79-3 实现):终局阵容锁定转型域
     # (arm='transition')动作发出前过「替补席线内成员存在 ∧ 存在上场能
-    # 推进羁绊进度的替补成员」门,redeploy_cost_gate_defer 显影;成型/基座分支
+    # 推进羁绊进度的替补成员」门,redeploy_cost_gate_defer 暴露;成型/基座分支
     # 不覆盖(§2.3 不动)。
     # m1p 执行侧分键载体帧级复位(无条件,pending 只活一个决策帧):
     # 本帧动作发出点有 m1p 换血时在发出处置为 plan.arm;原消费点 = 部署机
@@ -1522,7 +1522,7 @@ def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
                     _count('swap_arm_transition_trigger')
                 elif _m1p.arm == 'formed':
                     _count('swap_arm_formed_trigger')
-                # 被换下场成员逐件归因分键(只随发出显影)
+                # 被换下场成员逐件归因分键(只随发出暴露)
                 if _m1p.arm == 'transition' and _m1p.sell_names:
                     _count(f"redeploy_transition_victim_"
                            f"{_m1p.sell_names[0]}")
@@ -1624,8 +1624,8 @@ def cheapest_member_cost(frame: MandateFrame) -> int:
 # 轮差分零新增管道自动携带)。
 # - deploy_emit_held_<reason>:每决策帧一次(帧级去重;reason ∈ kernel
 #   拒因闭集);
-# - deploy_emit_floor_ctx_open:豁免语境 出战就绪 的决策帧数(分母);
-# - deploy_emit_floor_exempt_open:豁免开火帧数(出战就绪 帧无豁免对照
+# - deploy_emit_floor_ctx_open:豁免语境 出战就绪的决策帧数(分母);
+# - deploy_emit_floor_exempt_open:豁免开火帧数(出战就绪帧无豁免对照
 #   补跑,'recipe_floor' 拒因消失 = 本帧开过火;G1 生效门读数)。
 DEPLOY_EMIT_HELD_PREFIX: str = 'deploy_emit_held_'
 DEPLOY_EMIT_FLOOR_CTX_OPEN: str = 'deploy_emit_floor_ctx_open'
@@ -1684,12 +1684,12 @@ def _record_deploy_emit_held(session: StrategySession,
     """发出侧部署拒因分键写点(全段 try/except best-effort,
     不阻塞决策——同执行侧遥测形态)。
 
-    :param reasons: 出战就绪 调用的 held 拒因(kernel 拒因闭集,下标键)。
+    :param reasons: 出战就绪调用的 held 拒因(kernel 拒因闭集,下标键)。
     :param rf_ctx: 本帧豁免武装布尔(单源 = locked_line_recipe_floor_
         conflict;与部署调用同值)。
     :param deploy_inputs: 部署判定的基础输入 kwargs(bench/deployed_cids/
         deployed_fac/board/cap/target_factions/target_cores/fw_carry/
-        locked_factions;出战就绪 帧无豁免对照补跑复用,禁二次装配)。
+        locked_factions;出战就绪帧无豁免对照补跑复用,禁二次装配)。
     """
     try:
         from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -1720,7 +1720,7 @@ def _record_deploy_emit_held(session: StrategySession,
             _bump(DEPLOY_EMIT_HELD_PREFIX + _r)
         if rf_ctx:
             _bump(DEPLOY_EMIT_FLOOR_CTX_OPEN)
-            # 豁免开火检测:出战就绪 帧补跑一次无豁免对照(锁定线帧才
+            # 豁免开火检测:出战就绪帧补跑一次无豁免对照(锁定线帧才
             # 触发,成本有界);对照 'recipe_floor' 拒因消失 = 豁免本帧
             # 开过火(G1 生效门读数:新机制触发 0 次 = 输入死,先查
             # 接线再谈效果)。
@@ -1774,13 +1774,13 @@ def _deployable(frame: MandateFrame, session: StrategySession,
     语义由本谓词续承):2026-09-06 实机首局(单动作架构,
 )00:08:25 备战环无进展守卫以「连续 3 环同签名动作批
     ['RunDeploy'] ∧ 零推进」停机保留证据——决策核每轮提案部署,
-    执行方计划空报 no-op 成功,逻辑态未建模(保守回退)交回
-    外循环,重进再提案,3 环零推进。守卫行为正确,根因 = 本动作发出点
+    执行方计划空报 no-op 成功,逻辑态未建模(保守回退)返回主循环,
+    重进再提案,3 环零推进。守卫行为正确,根因 = 本动作发出点
     漏接抑制谓词。禁第二实现:判空一律走 deploy_plan 单一源;本函数
     只做输入装配(经 deploy_plan._deploy_plan_inputs 同源)。
 
-   :配方底线门锁定线语境豁免在此同帧武装(豁免是帧属性,
-    放行判定与执行侧计划构造经同一 出战就绪 布尔同值);返回值不变(bool),
+:配方底线门锁定线语境豁免在此同帧武装(豁免是帧属性,
+    放行判定与执行侧计划构造经同一 出战就绪布尔同值);返回值不变(bool),
     逐次调用经 _record_deploy_emit_held 落发出侧分键(帧级去重)。
     """
     from sr_od.application.currency_war.kernel.cw_intention import (

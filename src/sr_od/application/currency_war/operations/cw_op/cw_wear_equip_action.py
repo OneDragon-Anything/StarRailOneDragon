@@ -1,4 +1,4 @@
-"""穿装备动作 op(CwActionWearEquipOp)——动作 op 重组批③ 换壳(原
+"""穿装备动作 op(CwActionWearEquipOp)——动作 op 重组 换壳(原
 ``WearEquipOp``,ActionOp ABC → 框架 SrOperation;机械执行后 **op 内
 直调自己的上报函数** ``report_action_wear_equip_param``,零分派,
 op-layer.md §1.2 动作 op 契约)。组合壳溶解后的原子通路机械半。
@@ -6,7 +6,7 @@ op-layer.md §1.2 动作 op 契约)。组合壳溶解后的原子通路机械半
 
 机械执行零判效(用户裁定「动作 op = 机械执行」,落地判定归观察侧
 reconcile 对账):发出即记账,拖后不做像素验证。拖拽静默不生效属执行
-环境噪声,由下一入口 heavy 实读对账显影,重试 = 决策循环按新观察自然
+环境噪声,由下一入口 heavy 实读对账暴露,重试 = 决策循环按新观察自然
 重派。装备域容器腿 = 上报函数单点(owned −1 + tracked 目标 +1)。
 """
 from __future__ import annotations
@@ -54,7 +54,7 @@ class CwActionWearEquipOp(CwOperation):
 
         流程 = 固定等待 `PREP_DRAG_SETTLE_WAIT_S`(非判效)→ owned 网格
         按名定位源件 → 单次拖拽。机械执行零判效:发出即记账,拖后零读屏
-        零落地判定;拖拽静默不生效由下一入口观察对账显影,重派重算 =
+        零落地判定;拖拽静默不生效由下一入口观察对账暴露,重派重算 =
         决策循环按新观察自然承接。
 
         [索引定义] 拖拽坐标 = owned 网格定位点(格心 = read_equips 逐格

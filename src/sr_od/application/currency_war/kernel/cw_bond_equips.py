@@ -41,7 +41,7 @@ _RX_TAPE_COUNT = re.compile(r'「(.+?)」羁绊计数\+1')
 
 
 def _parse_badge(eq) -> tuple[str, ...]:
-    """星徽的羁绊贡献 → (羁绊名,) 或 ()。
+    """星徽的羁绊贡献 → (羁绊名) 或 ()。
 
     **语义(用户口述裁定,最高权威)**:星徽 = 给装备者**额外增加一个羁绊**
     ——只把没有该羁绊的单位变成成员;装备者已是该羁绊成员时**不重复计数**
@@ -54,7 +54,7 @@ def _parse_badge(eq) -> tuple[str, ...]:
 
 
 def _parse_tape(eq) -> tuple[str, ...]:
-    """骇客卡带的羁绊贡献 → (羁绊名,) 或 ()。
+    """骇客卡带的羁绊贡献 → (羁绊名) 或 ()。
 
     两系卡带都是**无条件计数 +1**(可双计,区别于星徽):
     - 欢愉卡带系「加入…若已是成员,则计数+1」——净效果无条件 +1
@@ -160,7 +160,7 @@ def _recount_board(deployed: list) -> dict[str, int]:
     """deployed 生命周期重算板面(动作 v2,契约包 C1):卖/换/事务后
     board 必须与 deployed 名单一致——本函数是 cw_state 侧的派生单一源。
 
-    口径( 口径统一):**羁绊全集 + 星徽装备贡献**——
+    口径(口径统一):**羁绊全集 + 星徽装备贡献**——
     factions+flows+independent,开拓者按排归一,装备羁绊(星徽/卡带)
     计入;与实机 ``board_from_deployed``(= 游戏左面板真值口径)同源,
     per-unit 标签函数单一源 = ``cw_bond_equips.unit_bond_tags``。

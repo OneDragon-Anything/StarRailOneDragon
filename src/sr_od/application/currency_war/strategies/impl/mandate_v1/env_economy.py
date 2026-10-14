@@ -6,7 +6,7 @@
 (通道结构 = 游戏效果原文的结构化,【注】);``ENV_ECONOMY_PENDING_
 MODELING`` 亦驻本模块(下方「待建模」已登记段)——「留 kernel 不迁」系
 早期过时表述,以代码体为准。语义正本 = strategy-docs/28_invest_env_
-screen.md §2 现金分行;迁移批的删除面对照考古走 git 历史。
+screen.md §2 现金分行;迁移批的删除面对照
 
 迁入改造(迁移迭代 3.1):
 - 删 ``ECON_VALUE_NORM`` 域带归一:现金分直接按金等价计,不再进 111-119
@@ -79,16 +79,16 @@ _REWARD_BONUS_VARIANTS: dict[str, str] = {
     '经济严重过热': 'super',
 }
 
-# 奖励节点槽位结构先验(【拟】对局档案众数结构,数据批 2026-09-12;样本量与
-# 槽位变异性申报 = invest-env 迭代 data-batch-estimates 详设,git 历史可溯)。
-# (位面, 轮次) 1 基;P3 结构零样本不计 = 视界保守低估(模板已登记后补)。
+# 奖励节点槽位结构先验(【拟】对局档案众数结构,数据截至 2026-09-12;样本量与
+# 槽位变异性申报 = invest-env data-batch-estimates 详设)。
+# (位面,轮次) 1 基;P3 结构零样本不计 = 视界保守低估(模板已登记后补)。
 _REWARD_SLOTS: tuple[tuple[int, int], ...] = ((1, 1), (1, 2), (1, 8), (2, 6))
 
 # 取卡序→位面结构映射(k 1 基;策略大师通道 P(第 k 张策略可取) 的位面归属)。
 # 【推】结构:k1 = 开局取卡(entry 流程固定,局首)、k2 = P1 中段首取卡
 # (screen_flow_timing #11:1-3 节点完成后)、k3 = P2 前段(63 局
 # decisions.jsonl 观测拼版主位 (2,2);旧 sim 注入日程
-# SIM_STRATEGY_PICK_SCHEDULE 同源观察——该日程已随 sim 重做删除面停用,
+# SIM_STRATEGY_PICK_SCHEDULE 同源观察——该日程已删除(随sim 重做)面停用,
 # 取卡时点 = 投资策略 offer 固定轮次日程,正本 = sim-design.md §2.2)。
 # 基线取卡基数 = 本表长度【推·效果原文序数】(效果原文:
 # 头彩点名「第一个投资策略」/尾彩点名「第三个投资策略」→ 固定取卡集
@@ -140,7 +140,7 @@ class EconomyEstimate:
 #:   ×1)但遥测无扑满战利品独立字段,奖励轮收支差分混入备战净支出,增益不可
 #:   分离 → 经济过热/经济严重过热 fail-closed(补采建议见口径文档)。
 #: (refresh_total_ge20_p / refresh_paid_ge30_p 随 gold_after_refreshes 拍值
-#:  注册停用,不再登记——P97 §7 消费契约。)
+#: 注册停用,不再登记——P97 §7 消费契约。)
 ENV_ECONOMY_ESTIMATES: dict[str, EconomyEstimate] = {
     # —— 位面到达率(原 invest-env 迭代需估参数①;完成局命中 110/114 与 10/114)——
     'plane_arrival_p2': EconomyEstimate(
@@ -180,7 +180,7 @@ ENV_ECONOMY_PENDING_VERIFICATION: dict[str, str] = {
 
 
 def _current_plane_round(gs: GameState) -> tuple[int, int]:
-    """当前(位面, 轮次)。
+    """当前(位面,轮次)。
 
     开局环境帧的 gs = 裸 GameState 桩(cw_screen_invest_env 直构),node
     未写 → 按局首 (1, 1) 语义评估:env 3 选 1 消费帧中 node 缺读只发生在
@@ -273,7 +273,7 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     任一端点 ≤ 0(金期望方向翻转/含 0)→ resolved=False。
     结构性注记:A 类精确通道带参数无关分量(如增发货币位面 1 权恒 1)时,
     CI 含 0 的参数**不会**触发翻转——方向仍被确定分量钉住,这正是参数级门
-    的语义(不确定度只辖参数依赖部分)。
+    的语义(不确定度只覆盖参数依赖部分)。
     """
     if name in ENV_POOL_REWRITE:
         return _pool_rewrite_value(name, gs)
@@ -401,7 +401,7 @@ _validate_estimates_governance()
 #: 实采取代。
 _STRAT_PICK_HORIZONS: dict[int, int] = {1: 23, 2: 15}
 
-#: μ_E per (品质, 视界):品质子池受限通道金流均值(【拟】,EconomyEstimate
+#: μ_E per (品质,视界):品质子池受限通道金流均值(【拟】,EconomyEstimate
 #: 四元组;键第二维 = H_k,公式 μ_E(q; H) 视界入参化的直接承载)。品质键 =
 #: 注册表品质名('棱彩'/'金'/'银')。
 #: **不落参数申报(转正数据批判定:准入门未过)**:全通道重算与序一致性

@@ -2,7 +2,7 @@
 
 (fill-to-3 量变体与变宝为废牺牲合成的序变体已停用删除
 (开关 equip_env_fill3_enabled / junk_first_sacrifice_enabled 默认关):
-开臂判据待办未跑
+开分支判据待办未跑
 即整体出局,``apply_equip_env_variants`` 退化为基分配直通(与全关
 零漂移行为一致),kernel/cw_junk_first.py 模块同批删。机制真值
 (软弱无力/额外打击/变宝为废词缀原文)保留在
@@ -35,8 +35,8 @@ data/affix_effects_data。)
   其余 fail-closed 带拒因分键)+ G1 动作发出点准入(防第四个标志;
   ARCH_REFLECTION_3STALLS)。
 
-工具执行批增量——执行通道建成开臂:
-- ``TOOL_EXEC_CHANNEL_READY`` False→True(开臂判据 = UI 建档前置以既有
+工具执行批增量——执行通道建成开分支:
+- ``TOOL_EXEC_CHANNEL_READY`` False→True(开分支判据 = UI 建档前置以既有
   owned 网格建档满足,常量节注释);
 - 动作发出点 = mandate_v1 工具消费(逐备战帧评估打 ``[cw!][tools]`` 拒因
   分键,admitted 非空逐件发原子动作,执行位标志 = mark_tools_pass_
@@ -219,7 +219,7 @@ def is_free_item(name: str, comp) -> bool:
     """自由件谓词(21 号稿 §6 术语;静态注册表纯函数,sim 可达)。
 
     自由件 = 非 key_equips 候选 ∧ 非 RESERVED_COMPONENT ∧ category≠工具
-    ∧ 非唯一件。comp=None(target 真空)→ key 集为空,其余三条件照判
+    ∧ 非唯一件。阵容=None(target 真空)→ key 集为空,其余三条件照判
     (与 18 号稿 key 白名单「target 真空→白名单空」同向)。工具件在调用方
     穿戴候选过滤已排除,此处重复排除 = 判据面防御(不进表语义,§3.2)。
     """
@@ -301,7 +301,7 @@ def classify_item_hold(decision: WearReleaseDecision, item_name: str,
 
 def opening_hold_active(round_num: int | None, node_type: str | None,
                         battle_gate: bool, battle_nodes: frozenset[str]) -> bool:
-    """row1:opening hold(r388/× 收窄;)。
+    """row1:opening hold(r388/× 收窄)。
 
     - r388:开局轮(P1 r≤2)hold 无条件生效——key_equips 白名单来自
       target,target 真空(重启后首局)时白名单为空;旧判
@@ -322,7 +322,7 @@ def opening_hold_active(round_num: int | None, node_type: str | None,
 
 
 def committed_hold_active(comp, form: float, committed: bool) -> bool:
-    """row2:已定型扣留(r70 过渡持有语义;)。
+    """row2:已定型扣留(r70 过渡持有语义)。
     激活 = target 在(阵容非 None,form 的载体)∧ 0<form<COMMIT_FRAC
     ∧ committed(权威 = ``cw_intention.committed_from``:位面 2 起恒定型
     ∨ 意向已锁 ∨ P1 配对线非空;缺供给 = False 保守侧 = 双轨)。
@@ -407,7 +407,7 @@ def resolve_affix_priority_order(comp, view,
     基分配序(零重排)。纯函数;决策层产物,执行层禁内嵌评分(
     裁定 3 分层)。
     ``view`` = 上阵视图 :class:`DeployedView`(位置 =
-    子表下标派生,occupied 键 (row, 行内槽号))。
+    子表下标派生,occupied 键 (row,行内槽号))。
 
     判据(§3.2,零新自由参数——N 与罚值全部来自结构化载体):
     1. 已登记词缀集 = 载体条目 ∧ wear_predicate 非空 ∧ penalty_side=='output';
@@ -480,7 +480,7 @@ def resolve_affix_priority_order(comp, view,
 #: G1 动作发出点准入(21 号稿 §2.4-2/§3.2;流程:197 常驻锁,ARCH_REFLECTION_
 #: 3STALLS 防第四个标志):工具动作是**新的执行动作类**,不骑 M7
 #: 穿戴通道。
-#: 执行通道前置(开臂判据,两件均随工具执行批交付):
+#: 执行通道前置(开分支判据,两件均随工具执行批交付):
 #: ①UI 建档(工具 icon 拖曳交互)——工具 icon 在 owned 多列网格内,与穿戴类
 #:   同一建档(「区域-道具装备」D-40;col2 冶金炉 click 已实测确认),拖曳目标 =
 #:   同网格另一 icon(炉→死库存件 icon / 特权卡→key 对应进阶成品 icon),
@@ -488,7 +488,7 @@ def resolve_affix_priority_order(comp, view,
 #: ②工具拖曳 op 实现 = 工具原子动作 op(CwActionToolUseOp,判据→G1 准入
 #:   →逐件原子发出;消耗确认交叉核对随组合壳停用,上报 = 机械执行直接上报写
 #:   容器,容器写正本 = cw_action_report/tool_use)。
-#: 开臂后拒因分键仍分键可见:判据拒原样透传,准入拒仅在通道回关时出现
+#: 开分支后拒因分键仍分键可见:判据拒原样透传,准入拒仅在通道回关时出现
 #: (对照锁 sr-od-test test_cw_tools_exec_channel.py)。
 TOOL_EXEC_CHANNEL_READY: bool = True
 

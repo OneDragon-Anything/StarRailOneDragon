@@ -3,7 +3,7 @@
 直调自己的上报函数** ``report_action_level_up_param``,零分派,op-layer.md
 §1.2 动作 op 契约)。
 
-**整批连点形态**(迭代-prep-shop-workflow-redesign 批 3.4;
+**整批连点形态**(迭代-prep-shop-workflow-redesign;
 line_and_upgrade §2.2「一次买齐」):动作参数携带授权批击数
 (``CwActionLevelUpParam.clicks``),本 op 单次执行内连点该击数——
 决策帧零介入 = 授权后不再逐帧重闸,「买一半」缺陷(逐帧单击 × 静态

@@ -66,7 +66,7 @@ _PRODUCER: str = 'env_conditional_grant'
 FIRST_STREAK_KEY: str = 'first_streak'
 
 #: done 域条件键:刷新次数阈值触发器(每环境至多一个刷新触发器,
-#: (env, 本键) 天然唯一)。
+#: (env,本键) 天然唯一)。
 REFRESH_THRESHOLD_KEY: str = 'refresh_threshold'
 
 #: 回调三写证据串(判读可辨;刻意不带 ``sim:engine`` 前缀——该前缀是
@@ -166,8 +166,8 @@ def check_env_refresh_grants(gs: GameState, sig: ChannelSig) -> str | None:
        - 装备(仅装备腿非 None):``gs.write_logic_rand(gs.equips,
          现值尾部追加装备名)``——装备库存顺序是游戏侧决定,模型无
          顺序观察锚 → 随机态通道(宝钻同族先例);
-       - done:``gs.write_logic(gs.env_grants_done, 现值 +
-         ((env, REFRESH_THRESHOLD_KEY),))``;
+       - done:``gs.write_logic(gs.env_grants_done,现值 +
+         ((env, REFRESH_THRESHOLD_KEY)))``;
        返回被发装备名(装备腿 None 的金-only 发放也返回 None——返回值
        仅日志面消费,员工投影仪无宝钻式世界数值回调,无行为分支)。
 
@@ -229,7 +229,7 @@ def on_diamond_acquired(gs: GameState, equip_name: str) -> None:
       1. ``diamond_count`` 现值 + 1(宝钻族均计数);
       2. ``deploy_cap`` = level + equips 现值中财富宝钻计数(拥有即算、
          可叠加,D-53 实测口径;发放同窗已把新宝钻写入现值);
-      3. ``back_layout`` = min(9, 现值 + 1)(值域 6-9;现值 None → 以
+      3. ``back_layout`` = min(9,现值 + 1)(值域 6-9;现值 None → 以
          机制基线 6 起算 = 后排格数读口缺省,种子后不可达防御)。
     """
     if equip_name != _RICH_DIAMOND:

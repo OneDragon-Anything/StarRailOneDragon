@@ -41,7 +41,7 @@ class RoundOutcome:
     - 自身侧(生存信号):hp_after + hp_confidence。
     - 敌方侧(击杀信号,r6 F3):enemy_hp_after / damage_dealt / killed —— 观测确证"打得动 boss 吗"。
       None = 游戏不暴露(阶段 4 实机确认);此时击杀能力靠 comp_viability 先验兜底。
-    - comp_tag(r6 F4):打这关时的 target 阵容名,obs 按 阵容归因(pivot 后旧 阵容降权而非全删)。
+    - comp_tag(r6 F4):打这关时的 target 阵容名,obs 按阵容归因(pivot 后旧阵容降权而非全删)。
     - intentional_fold(r6 F1):本回合"故意输攒钱"态(plan fold 写入),排除污染 trend。
     """
     round_num: int
@@ -71,7 +71,7 @@ class RoundOutcome:
     # heal_longline = tooltip 第三行「长线作战」(战斗回血,恒 ≥0;实机实证
     # 常量 +2/场,口述+80→82→84 连胜轨迹)——链差(净变化)含它、
     # 两掉血分量不含,是「tooltip 幅度 = 链差 + 2」系统偏移的机制项
-    # ;此前解析器已读但 schema 缺字段被静默丢弃。
+    #;此前解析器已读但 schema 缺字段被静默丢弃。
     progress_fill_ratio: float | None = None
     damage_base: int | None = None
     damage_unfinished_progress: int | None = None
@@ -91,7 +91,7 @@ class RoundOutcome:
 
 # 节点类型 → 预期掉血(相对值;归一化用)。先验,历史 refine。
 # 补 '奖励'/'补给'/'巨星'(结算屏真值可产出,
-# 此前落 .get 默认 1.0 轻微拉高该 阵容预期掉血)。奖励/补给非战斗
+# 此前落 .get 默认 1.0 轻微拉高该阵容预期掉血)。奖励/补给非战斗
 # 节点=期望 0;巨星按强敌档先验 2.0(待实测 refine)。
 EXPECTED_DROP: dict[str, float] = {
     "普通战斗": 1.0, "精英": 1.5, "遭遇": 1.2, "boss": 3.0,
@@ -134,7 +134,7 @@ class PerformanceTracker:
                 continue                       # 低置信不进 trend(防 OCR 抖动)
             w = 1.0
             if comp_tag is not None and o.comp_tag != comp_tag:
-                w = 0.3                         # r6 F4:旧 阵容降权 0.3(不全删,保留信号)
+                w = 0.3                         # r6 F4:旧阵容降权 0.3(不全删,保留信号)
             out.append((o, w))
         return out
 
@@ -182,10 +182,10 @@ class PerformanceTracker:
         return trend > HP_LOSS_FULL * 0.5   # 阈值 18→15(0.6 系数挡住实测慢性失血带)
 
     def perf_for_comp(self, comp_tag: str, window: int = 6) -> float | None:
-        """某 阵容的归一化表现(供 comp_viability 观测项;0..1,掉血少→高)。
+        """某阵容的归一化表现(供 comp_viability 观测项;0..1,掉血少→高)。
 
         trend=None(冷启动/样本不足)→ None。trend 映射:0 掉血→1.0,HP_LOSS_FULL 掉血→0。
-        pivot 后旧 阵容经 comp_tag 降权 ×0.3(r6 F4)。
+        pivot 后旧阵容经 comp_tag 降权 ×0.3(r6 F4)。
         """
         trend = self.recent_hp_loss_trend(comp_tag=comp_tag, window=window)
         if trend is None:

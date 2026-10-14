@@ -69,7 +69,7 @@ class CurrencyWarConfig(YamlConfig):
         # —— 开发/实验字段(不进未来 GUI,仅供 yml 调试)——
         # strategy_seed:策略内部 rng 种子(None=真随机、固定 int=A/B 复现调试)。
         # ⚠️ 只种子化策略内部蒙特卡洛刷新找牌随机;游戏侧行局演化(发牌/boss/掉血)服务端决定,种子化不到。
-        # strategy_id 合法值域(统一迁移批 ②:decision_v2 栈删除,值域收缩={'mandate_v1'};
+        # strategy_id 合法值域(统一迁移:decision_v2 栈删除,值域收缩={'mandate_v1'};
         # 构造期前置校验,禁「运行拼错才炸」——存量 yml 写 'default' 会在配置
         # 加载时报错并给出迁移提示)
         strategy_id: str = self.get('strategy_id', 'mandate_v1')
@@ -79,10 +79,10 @@ class CurrencyWarConfig(YamlConfig):
                 "decision_v2 栈已随统一迁移批 ② 删除,合法值=mandate_v1(存量 yml 请改)"
                 "(新核 cw4);请把实例配置里的 strategy_id 改为合法值")
         self.strategy_id: str = strategy_id
-        # ev_arm 臂位(R1-1;三臂 A/B 实验设计的 mandate_v1 臂内实验因子,
-        # 实验设计原文已删档,考古走 git 历史——
-        # skeleton_only=臂① EV 发射面旁路 / full=臂② 全开)。开发/实验
-        # 字段(不进 GUI,仅 yml 调试);legacy 臂(decision_v2)不写该字段。
+        # ev_arm 分支位(R1-1;三分支 A/B 实验设计的 mandate_v1 分支内实验因子,
+        # 实验设计原文已删档——
+        # skeleton_only=分支① EV 动作发出面旁路 / full=分支② 全开)。开发/实验
+        # 字段(不进 GUI,仅 yml 调试);legacy 分支(decision_v2)不写该字段。
         ev_arm: str = self.get('ev_arm', 'full')
         if ev_arm not in ('skeleton_only', 'full'):
             raise ValueError(
@@ -94,7 +94,7 @@ class CurrencyWarConfig(YamlConfig):
         # app._run_loop 透传给 CwLoop。
         _mr = self.get('max_rounds', None)
         self.max_rounds: int | None = int(_mr) if _mr not in (None, '', 0) else None
-        # (简报 vs 实采对账开关键已随对账网停用删除——对账自比较无双源
+        # (简报 vs 实采对账开关键已停用删除(随对账网)——对账自比较无双源
         #  可比对,按零实效机制停用;yml 残留旧开关键无害,get() 不再读。)
         # 起局前置码哈希结构闸(混合码事故防线):工作树≠HEAD 拒绝
         # 起局。默认开 = 安全闸宁拦勿放;闸本体见 kernel/cw_code_hash_gate
@@ -125,7 +125,7 @@ class CurrencyWarConfig(YamlConfig):
             # code_hash_gate 也要持久化(同 max_rounds 先例):缺了则 GUI 保存
             # 静默抹掉 yml 手写的关闭值,闸被悄悄重新打开——配置丢失即行为漂移。
             'code_hash_gate': self.code_hash_gate,
-            # (统一 state 影子开关键已随删除波 1 销案,save 不再写;yml 残留值无害。)
+            # (统一 state 影子开关键已删除,save 不再写;yml 残留值无害。)
             # r347:gate_* flags 已删(无条件化),save 不再写。
         }
         YamlConfig.save(self)

@@ -1,4 +1,4 @@
-"""telemetry 模块级可变单例态簇(自 cw_telemetry 前置收敛,)。
+"""telemetry 模块级可变单例态簇(自 cw_telemetry 前置收敛)。
 
 本模块是全部模块级可变单例(run_id/recorder/失配告警 handler/缺陷复现位)的
 唯一拥有者:其他段(schema/recorder/defects/query/cli)一律以

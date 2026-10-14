@@ -6,7 +6,7 @@
 - 结算观测环 :class:`SettlementRing` 与遭遇经验表 :class:`EncounterLog`
   (GameState 平级结构,生命周期 = 局);
 - 结算行入环单一写端 :func:`record_settlement_row`(守卫抑制与残留排除
-  两臂汇合后唯一入口;生产写端 = ``cw_screen_battle_wait``
+  两分支汇合后唯一入口;生产写端 = ``cw_screen_battle_wait``
   ``_cw_selection_write`` 环写位);
 - 遭遇奖励兑现回调 :func:`claim_encounter_reward`(结算确认链挂点;
   记账语义,非选档策略)。
@@ -203,9 +203,9 @@ def record_settlement_row(gs: GameState, outcome: RoundOutcome, *,
                           encounter_tier: int | None,
                           residual: bool = False,
                           suppressed: bool = False) -> str:
-    """结算行入环口(构造唯一点下游、 守卫两臂汇合后调用;单一写端)。
+    """结算行入环口(构造唯一点下游、 守卫两分支汇合后调用;单一写端)。
 
-    - suppressed=True( 守卫抑制形态:killed 非 False 的 1f 遥测行)
+    - suppressed=True(守卫抑制形态:killed 非 False 的 1f 遥测行)
       → 不入环。守卫抑制是防毒设计(保留现状),被抑制形态的缺口由
       E-3 离线对账的对齐率量测覆盖(留痕标记行随 hook 落盘,缺省关)。
     - residual=True(relaunch 残留结算屏行)→ 不入环(跨局污染排除;
@@ -255,7 +255,7 @@ def claim_encounter_reward(gs: GameState) -> str:
        胜负判定必须在结算画面识别出来);``None`` = 删失不兑现;
     - ``chosen_encounter`` 在场 = 消费票。
 
-    兑现 = 写 ``encounter_reward_claimed``(所选 (难度档, 奖励文本),
+    兑现 = 写 ``encounter_reward_claimed``(所选 (难度档,奖励文本),
     单槽逐遭遇覆盖)**并随即清 ``chosen_encounter``(单次消费;清除写
     = 同族 sig ``write_logic(None)``,actor 与兑现写一致,attack3 R3
     配对申报)**——一并收敛三条误兑现面:node 镜像残留(后续非遭遇局

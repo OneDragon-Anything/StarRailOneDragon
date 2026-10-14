@@ -1,7 +1,7 @@
 """criteria/sell——EV 卖面(§2.2;fuel_sell/protected_sell 在 mandate/谓词层)。
 
-两个动作发出/通道位:sell_for_interest(凑利息档 EV 面,臂①旁路)、
-funding_support_sell(支付能力变现子域,R13-5 支付支撑通道,两臂同开、
+两个动作发出/通道位:sell_for_interest(凑利息档 EV 面,分支①旁路)、
+funding_support_sell(支付能力变现子域,R13-5 支付支撑通道,两分支同开、
 mandate=false+funding_support=true)。换线清仓出口(line_switch_sell)
 已删除(候选-锁定制:锁定为一次性决策,无换目标后的清场需求——
 line_and_upgrade §1.6;V_MS 槽随函数删除撤槽)。
@@ -115,7 +115,7 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
     凑息禁令(血线硬地板解锁包件②)已删除(line_and_upgrade §2.3
     血线地板解锁行——唯一消费方 = 已废止的血线解锁;正典依据
     user_playstyle [39]「HP 不作决策依据」,濒死响应 = 修经济/阵容
-    本身,凑息卖回不受血线辖)。
+    本身,凑息卖回不受血线覆盖)。
 
     合成素材拒入守卫(G-S1):候选与场上(state.deployed ∪ bench,含
     自身)另有同名同星副本 ⇒ 2/3 合成进度素材,拒因键
@@ -136,7 +136,7 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
     释放集,G-S1 判据处的条件旁路(命中 ⇒ 跳过拒入、不计数;单一源 =
     sell_gate.dead_pair_exit_release,消费位禁自算)。凑息通道消费释放
     成员 = 卖掉意图已死的近零值资产,正是燃料类语义(P78-5′ 对价豁免
-    条款照常辖,无新增豁免需求)。
+    条款照常覆盖,无新增豁免需求)。
     """
     # 空板止损守卫(单一源 = sell_gate.empty_board_sell_blocked):
     # 板空帧卖储备换金 = 期权损失换零净金(1★ 全额退),弱劣拒帧。
@@ -185,7 +185,7 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
                                                       k_members)):
             continue
         qualified.append((i, b))
-    # 序:刚买件优先(R2-N1),其余 (star, 紧缩位) 升序(确定性;紧缩序
+    # 序:刚买件优先(R2-N1),其余 (star,紧缩位) 升序(确定性;紧缩序
     # = 物理槽序,与旧 (star, slot) 逐位等价)
     prefer = set(prefer_names)
     qualified.sort(key=lambda ib: (0 if _cid_of(ib[1]) in prefer else 1,
@@ -224,7 +224,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
                          counters: dict | None = None,
                          dedup_names: set[str] | None = None,
                          ) -> tuple[list[int], str]:
-    """「支付能力变现」子域(R13-5/R14-4:支付支撑通道,两臂同开)。
+    """「支付能力变现」子域(R13-5/R14-4:支付支撑通道,两分支同开)。
 
     载体 = 容器 gs 单形态(prep 链容器化段 2;prep 位/商店线消费恒直传
     gs)。
@@ -240,7 +240,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
     ``exclude_names`` = 买面义务集成员禁入(P60,与凑息卖/M4 燃料同款)。
     ``defer_names``(T3 同轮保留;支付变现 = 转化类,**仅降序放行**,
     非绝对禁卖):集合内名字排候选末位——为骨架义务筹资的卖出优先级
-    支配保护(保护若辖此通道 = 安全域内抑制发展动作的回归);非保
+    支配保护(保护若覆盖此通道 = 安全域内抑制发展动作的回归);非保
     燃料在场时先卖非保件,被保件仅兜底消费。defer 空集时排序键逐位
     等价旧 (star, slot) 序(零漂移)。
 
@@ -255,7 +255,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
     ``merge_guard_release``(缺省空集 = 零漂移端):死库存素材对
     释放集,G-S1 判据处的条件旁路(命中 ⇒ 跳过拒入、不计数;单一源 =
     sell_gate.dead_pair_exit_release,消费位禁自算)。支付变现消费释放
-    成员的对价豁免条款(P78-5/5′ 两腿)照常辖,无新增豁免需求。
+    成员的对价豁免条款(P78-5/5′ 两腿)照常覆盖,无新增豁免需求。
     """
     if gold >= need_gold:
         return [], 'not_needed'
@@ -298,7 +298,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
                                                       k_members)):
             continue
         out.append(_slot_of(b, i))
-        # 1★ 卖回净额 = sell_refund(1, 注册表 cost) 派生(R196 症6:
+        # 1★ 卖回净额 = sell_refund(1,注册表 cost) 派生(R196 症6:
         # 禁字面量 3 双源——bench_char_cost 未知名保守估 3 与旧值同构)
         remaining -= sell_refund(1, bench_char_cost(bench_slot_unit(b)))
         if remaining <= 0:

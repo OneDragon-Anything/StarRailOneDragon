@@ -216,7 +216,7 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
     返回 ``(launch_ok, detail)`` = 出战**点击序列已执行**(出战域重设计
      收缩语义:执行器 last_launch_ok 旁路;False = 找不到按钮/area
     缺失等未执行形态——旧「动作发出点内部事实」判效面随 op 重写停用,结束后
-    画面状态由外循环下一帧重判)。W209j 刹车短路(停机标志
+    画面状态由外循环下一帧重判)。 刹车短路(停机标志
     已设)→ 返回 (False, '已停止[W209j刹车]'),返回主循环由 loop 顶退出。
     """
     from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -272,7 +272,7 @@ def readiness_admission_report(state, comp) -> dict:
     (动作发出面观测批迁出:sim 桶不可依 app 层——包依赖矩阵 LEGAL_EDGES,
     纯判据入 kernel 后 sim 后端/cw_loop/测试三方共用;线成员谓词由本
     调用面注入同一单一源,禁各面自写第二实现)。判据语义、三元口径与
-    **帧对齐说明**(预估源 = 容器单例 game_state_of, 装配源迁移
+    **帧对齐说明**(预估源 = 容器单例 game_state_of,装配源迁移
     ——旧 last_state 滞后帧+过渡桥装箱停用;单例与滞后帧同为备战观察
     写端刷新,预估暴露非拦截,一轮滞后语义本就可接受)见彼处 docstring。
     ``state`` = session(容器单例取源)。
@@ -472,7 +472,7 @@ def _shop_open_anchors_hit(op, screen) -> bool:
 
 def op_fail_redispatch_tick(prev_key: str | None, prev_n: int,
                             key: str, ok: bool) -> tuple[str | None, int]:
-    """外环 op 连续 fail 计数纯函数(;计数语义 = 同值累加/异值归一,
+    """外环 op 连续 fail 计数纯函数(计数语义 = 同值累加/异值归一,
     先例:计数语义纯函数化供锁测,包装内只做状态落位)。
 
     计数键 = 分发 op 行名(journal_name,分发身份单一源);计数窗口 =
@@ -521,7 +521,7 @@ class CwLoop(CwOperation):
     「下一步」→ 未知兜底。
     """
 
-    # 未知画面常驻兜底( 框架化,用户裁定):连续 N 轮未识别画面 →
+    # 未知画面常驻兜底(框架化,用户裁定):连续 N 轮未识别画面 →
     # round_fail 交框架失败(运行 FAILED 收尾)——不再 stop_running/flag/截图,
     # 失败即诚实信号。常驻安全网——兜一切未知态,不是点名某态的临时捕获;
     # 移除条件 = 该类未知态全部建档,实际不可达(实现见 _handle_unknown_fallback;
@@ -598,7 +598,7 @@ class CwLoop(CwOperation):
           两段式,重排清单无效。
         - **候选过滤**:仅考虑 ``screen_name ∈ CW_DISPATCH_SCREENS`` 的
           pending 条目——aha 类条目的 screen_name = 备战底屏(锚挂备战档,
-          无独立分发屏),命中备战名会落入无备战臂的身份分发死循环;
+          无独立分发屏),命中备战名会落入无备战分支的身份分发死循环;
           此类条目不参与两段式,实机走反应式兜底(阶段三 aha 锚特殊
           规则)+ 兜底清收尾(overlay 生命周期契约aha 消费
           口径 = 实机兜底清空)。
@@ -692,7 +692,7 @@ class CwLoop(CwOperation):
         # B4:跨局分配器实例(进程级单例——后验跨局累积;失败安全:任何异常静默禁用)
         self._allocator = _get_or_init_allocator(self.ctx)
         # 本局遥测 run_id(现役消费 = journal 行归属)。
-        # :铸造单点已前移到入口链(简报锚/投资屏分支,先于任何开局
+        # 铸造单点已前移到入口链(简报锚/投资屏分支,先于任何开局
         # 遥测行)——此处改「认领」:新局路径同容器 open run 已在,不重铸
         # (一段一 id);中断恢复的对局/run_operation/恢复路径上 run 已收尾(_RUN_CLOSED)
         # → 按 gate 重铸,等价旧「每次 loop 执行新 run_id」语义。
@@ -802,7 +802,7 @@ class CwLoop(CwOperation):
 
 
     def _cw4_counters_snapshot(self, session: Any) -> dict[str, int] | None:
-        """策略行为观测计数局终聚合快照(R5  键并入载体,r5-migration-plan.md §2 )。
+        """策略行为观测计数局终聚合快照(R5  键并入载体,r5-migration-plan.md §2)。
 
         局终级全键聚合现归宿 = 局终域行载荷 ``MatchFinal.cw4_counters``
         (两收尾路径在 ``write_match_final`` 调用点现读传入)。取值 = 策略 state
@@ -821,8 +821,8 @@ class CwLoop(CwOperation):
 
         写点 = 恢复检测两确认点(战斗帧恢复检测/备战帧 resume_candidate
         确认)。历史同口第二写端 = 恢复局旗标 resumed_match,已随零消费
-        停用(迭代-node-advance-action-report )——恢复检测
-        本体(resume_candidate 判定/锁定臂/relaunch 残留处理)不受影响。
+        停用(迭代-node-advance-action-report)——恢复检测
+        本体(resume_candidate 判定/锁定分支/relaunch 残留处理)不受影响。
         best-effort 不阻塞分派;session 缺(局外/桩)静默跳过。
         """
         try:
@@ -914,7 +914,7 @@ class CwLoop(CwOperation):
             else:
                 ok = res is not None and getattr(res, 'success', False)
             if ok:
-                # :任一分发 ok = 屏幕证实推进 → 连续 fail 窗归零
+                # 任一分发 ok = 屏幕证实推进 → 连续 fail 窗归零
                 #(fail 间歇重置;含 hook 覆盖返回的 ok 路径)
                 (self._op_fail_streak_key,
                  self._op_fail_streak_n) = op_fail_redispatch_tick(
@@ -1021,7 +1021,7 @@ class CwLoop(CwOperation):
             _stopped = bool(getattr(self.ctx.run_context, 'is_context_stop', False))
             _gs_hp = (_gs.hp.value if _gs is not None else None)
             _final_hp = self._last_true_hp(_gs_hp if _gs_hp is not None else 0)
-            # match_final 局终收尾行( 在线接线,非正常终局形态;判定序
+            # match_final 局终收尾行(在线接线,非正常终局形态;判定序
             # 停止>败局>plane==3>abnormal 与 close_run result 同源;写口
             # 段内幂等 G12,best-effort;先于 close_run 落局时间窗)。
             try:
@@ -1081,7 +1081,7 @@ class CwLoop(CwOperation):
         复用当轮识别结果零二次识别。
 
         语义三定义(design §2.3):命中映射内屏 = 只清属屏 ≠ 它的槽;
-        映射外建档屏 / 非身份臂 / 未识别 = 清全部十槽(该语境无任何 decide
+        映射外建档屏 / 非身份分支 / 未识别 = 清全部十槽(该语境无任何 decide
         消费,清点只影响审计面);`shop` route_clearable=False 挂点跳过
         (清点源 = CwActionCloseShopParam 腿 + prep 相位 miss 分支两处显式口独占)。
         已 None 跳过(不占 write_seq 不落 journal)。早退轮(stop_at_prep)
@@ -1116,9 +1116,9 @@ class CwLoop(CwOperation):
     def _dispatch_identity_screen(self, name: str, screen) -> OperationRoundResult:
         """阶段一身份命中的画面处理器(键 = 建档屏名,判据 = 各画面 id_mark 组合)。
 
-        各臂 = 对应画面的处理逻辑(派发参数/journal 名/frame_tag/on_result
+        各分支 = 对应画面的处理逻辑(派发参数/journal 名/frame_tag/on_result
         与画面一一对应);本方法只做「屏名 → 处理」的精确匹配,
-        臂间无顺序语义(键互斥)。新增画面 = 建档(语料两向验证)+ 本方法加臂
+        分支间无顺序语义(键互斥)。新增画面 = 建档(语料两向验证)+ 本方法加分支
         + CW_DISPATCH_SCREENS 登记,三处缺一不可。
         """
         if name == '货币战争-列车同行':
@@ -1166,7 +1166,7 @@ class CwLoop(CwOperation):
 
         if name == '货币战争-投资策略':
             self._snap('invest_strategy')
-            # 横幅中间态(展开动画)帧身份天然 miss,不会进入本臂——该态
+            # 横幅中间态(展开动画)帧身份天然 miss,不会进入本分支——该态
             # 不处理,由阶段二守卫等待(screen_flow_timing.md #30)。
             return self._dispatch_screen_op(
                 CwScreenInvestStrategy(self.ctx), journal_name='投资策略',
@@ -1275,7 +1275,7 @@ class CwLoop(CwOperation):
                 # 零恢复动作(不重部署不补发出,原前台无角色恢复链已停用);结束本次访问
                 # 外循环下一帧重判真实画面(备战 = 重走备战环决策;弹窗
                 # 残留 = 本分支再入确认,天然幂等)。「前台无角色」根因
-                # 处置归部署面决策,弹窗臂不自愈。
+                # 处置归部署面决策,弹窗分支不自愈。
                 _ok_pt = self.round_by_find_and_click_area(
                     screen, '货币战争-提示-前台无角色', '按钮-确认', success_wait=1)
                 log.info('[cw-loop] 前台无角色提示 → 确认关闭(%s)→ 交回重判',
@@ -1518,7 +1518,7 @@ class CwLoop(CwOperation):
 
         # 尽力而为 read_game_state(默认实现不读);**不做 hp 覆盖** —— hp 覆盖归观察终饰/策略器内化刷新。
         if self._iter == 1 and self._is_new_match:
-            # :消费面只有 plane/round(恢复对局检测)。
+            # 消费面只有 plane/round(恢复对局检测)。
             # on_match_start 的冷建与
             # live 初值(v3_phase='FORM')由 create_session 唯一冷建口承载
             #(establish_new_match 进对局前移点/防御路径/回放三处同源)。
@@ -1526,7 +1526,7 @@ class CwLoop(CwOperation):
             _st0 = read_game_state(self.ctx, screen, phase='battle_or_transit')
             # r25 恢复对局标记(telemetry):bot 侧新 match 但游戏已在中局(首读 round>1
             # = 上局残局;第十/十一局三次数据归属混乱实证)。只标不改行为。
-            # (迁移批 3.2:回执携带本帧 phase_round 原始读数,与旧帧字段
+            # (迁移:回执携带本帧 phase_round 原始读数,与旧帧字段
             # 同源同值——经容器读口会吃 kind 继承写,不用。)
             if _st0.round_num > 1 or _st0.plane > 1:
                 # A18:数据归属标记,只标不改行为 → [cw] 非 [cw!]
@@ -1537,7 +1537,7 @@ class CwLoop(CwOperation):
             # 中断恢复的对局补采(boss+词缀)挂点 = 干净备战观察( §2.1,CwScreenPrep
             # 环入口 gate 后稳定帧执行;稳定门停用后由备战观察承担)。
 
-        # 「返回投资策略选择」分支已挪入备战分支( 用户定性:
+        # 「返回投资策略选择」分支已挪入备战分支(用户定性:
         # 该按钮出现 = 上游投资策略屏处理失败的 symptom)——确定是备战画面后再
         # 特殊处理,不在备战判定前全屏扫(原位置吞掉策略屏自身 → 点标题死循环)。
 
@@ -1603,7 +1603,7 @@ class CwLoop(CwOperation):
 
         # (原 BOSS简报/位面过渡两处误读兜底已停用 裁定:未建档实证的故障形态
         #  不作兜底理由——身份 miss 的真实帧走未知兜底停机留存证据,证据入库后
-        #  再议加固;boss 帧排他保留在阶段一位面过渡身份臂。)
+        #  再议加固;boss 帧排他保留在阶段一位面过渡身份分支。)
 
         # ===== 阶段二:备战表面默认分支(双锚 = 购买经验∧出战;57/57 语料稳定) =====
         # 备战不用身份判定:部署态/补给revisit按钮/攻略位移使扩展锚不可靠(语料
@@ -1615,7 +1615,7 @@ class CwLoop(CwOperation):
         # 1. 备战阶段 → 备战单轮 op(CwScreenPrep 单轮五段:观察→对账→决策→
         #    期望态→执行,结束本次访问本循环; P3b 返工定稿:内环已拆,外循环是
         #    唯一循环)。注:遭遇/选择伙伴 等 event overlay 已在阶段一身份分发处理。
-        # 画面判定 = **双锚**( 用户定调「全面的 id mark」):「备战标识-购买经验」
+        # 画面判定 = **双锚**(用户定调「全面的 id mark」):「备战标识-购买经验」
         # (左下,conf 0.9999)+「按钮-出战」(右,跨 shop 开/关子态恒在;单锚在 overlay
         # 半开帧可从底层透出命中,prep.md §时序)。双锚同帧命中才认备战。
         if (self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success
@@ -1629,7 +1629,7 @@ class CwLoop(CwOperation):
             # 补给/遭遇屏的「返回XX选择」)→ 先确定是备战画面(双锚)
             # 再特殊处理,顺带免掉每帧全屏 OCR。lcs_percent=0.9 保留:防与
             # 「请选择投资策略」共享「选择投资策略」(6/8=0.75=默认阈值之上)误匹配
-            # → 投资策略屏被吞(点标题不动作)→ 死循环( 实跑,卡 plane1)。
+            # → 投资策略屏被吞(点标题不动作)→ 死循环(实跑,卡 plane1)。
             # 真「返回投资策略选择」按钮 OCR 1.0 不受影响。
             if self.round_by_ocr_and_click(screen, '返回投资策略选择', success_wait=2, lcs_percent=0.9).is_success:
                 self._cw_back_btn_count += 1
@@ -1703,7 +1703,7 @@ class CwLoop(CwOperation):
             # 补给节点(nodeseq 当前节点类型=supply):出战不推进(无出战打怪,确认补给即完成节点进下回合,
             # live 确认)→ 点「返回补给阶段」进补给屏,下轮阶段一身份行「货币战争-补给」分发 CwScreenSupplyNode 选+确认。
             # ⚠️ 用 nodeseq 节点类型判,非「返回补给阶段」按钮 —— 该按钮 battle 节点也在(可 revisit),不可靠
-            # ( 实跑:1-6 battle 节点出战成功 + 也有该按钮)。nodeseq 读失败(非 clean 帧)→ 不 divert
+            # (实跑:1-6 battle 节点出战成功 + 也有该按钮)。nodeseq 读失败(非 clean 帧)→ 不 divert
             # (默认备战分支,保险不误判 battle 为 supply)。
             _cur_slot = next((s for s in (read_node_sequence(self.ctx, screen) or [])
                               if s.state == 'current'), None)
@@ -1723,7 +1723,7 @@ class CwLoop(CwOperation):
             def _on_prep_round(ok: bool, res: Any) -> None:
                 if ok:   # success 才是判据(OperationResult 无 __bool__,
                     # 裸 bool(fail) 为 True(实证过的坑))
-                    # :备战环经出战出口 → 战斗窗口开(watch 宽限计时起点)
+                    # 备战环经出战出口 → 战斗窗口开(watch 宽限计时起点)
                     self._battle_ts = time.monotonic()
                     # 环出口含出战 → 战斗窗口驻留标志置位(下轮委托 CwScreenBattleWait;
                     # 环入口分诊结束本次访问/bail 的返回由下轮重判自然分流——非出战返回帧
@@ -1789,16 +1789,16 @@ class CwLoop(CwOperation):
         # 此前钩子代码被 _allocator_update 插错位置卷进方法体(从未执行)→ loop 隐式返 None。
         return self._handle_unknown_fallback()
 
-    # ===== B4:终局喂分配器(影子期:只记后验不改选臂;分级奖励+adherence) =====
+    # ===== B4:终局喂分配器(影子期:只记后验不改选分支;分级奖励+adherence) =====
     def _allocator_update(self, outcome: MatchOutcome) -> None:
-        """终局 update:臂 = 终局 target_comp 名(adherence 近似 1;开局臂双列待 v1)。"""
+        """终局 update:分支 = 终局 target_comp 名(adherence 近似 1;开局分支双列待 v1)。"""
         if self._allocator is None or self.ctx.cw_match is None:
             return
         try:
             arm_obj = getattr(strategy_state_of(self.ctx.cw_match.session), 'target_comp', None)
             comp_name = getattr(arm_obj, 'name', '') if arm_obj is not None else ''
-            # 57-A1 修(臂命名空间):臂表键 = plaza carry 角色名,update 侧是 阵容阵容名
-            # → 恒 no-op(62 局零累积实证)。comp→carry 归一映射(comp.plaza_carry)。
+            # 57-A1 修(分支命名空间):分支表键 = plaza carry 角色名,update 侧是阵容名
+            # → 恒 no-op(62 局零累积实证)。阵容→carry 归一映射(comp.plaza_carry)。
             arm_id = ''
             if comp_name:
                 from sr_od.application.currency_war.kernel.cw_comps import get_comp

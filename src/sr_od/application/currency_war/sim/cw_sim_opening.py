@@ -41,7 +41,7 @@ from sr_od.application.currency_war.sim.cw_sim_run_config import RunConfig
 OPENING_HAND_SIZE: int = 4
 
 #: 开局手牌费用形状采样表(U28 已裁决):(1,1,1,3) 2/3、(1,1,2,2) 1/3。
-#: 元素 = (费用形状, 概率);概率质量恒和 1,替换旧 START_BENCH_COST_
+#: 元素 = (费用形状,概率);概率质量恒和 1,替换旧 START_BENCH_COST_
 #: WEIGHTS(1/2 费 65/35,永抽不到 3 费、2 费占比高估一倍)。
 OPENING_HAND_SHAPES: tuple[tuple[tuple[int, ...], float], ...] = (
     ((1, 1, 1, 3), 2.0 / 3.0),

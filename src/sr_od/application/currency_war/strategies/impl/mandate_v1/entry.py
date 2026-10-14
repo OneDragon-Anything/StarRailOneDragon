@@ -6,13 +6,13 @@
 部署——在全扫下自然表达):
 
     第 0 步 溢出告警自救 → 第 1 步 点开消耗品 → 第 2 步 晶矿
-    → 第 3 步 升级检查(11 号篇 §2:五臂判据 + 整级预授权
+    → 第 3 步 升级检查(11 号篇 §2:五分支判据 + 整级预授权
        + 变现步 + 执行帧整批发出)
     → 第 4 步 商店会话 → 第 5 步 部署调整 → 第 6 步 装备与工具
     → 第 7 步 节末凑息 → 第 8 步 出战
 
 模块分工:买面/凑息/腾位的备战域动作发出点(dominance/M2/M4/M6
-凑息臂)由店内会话(23 号篇)与卖出评估器(criteria/sell_candidates,
+凑息分支)由店内会话(23 号篇)与卖出评估器(criteria/sell_candidates,
 卖出场景注册表)承载;卖出场景统一消费 ``evaluate_sell_candidates``;
 升级判据本体 = ``criteria/levelup``(11 号篇 §2),本模块只做
 工序接线与发出组装。部署/装备/工具判据单一源 = deploy_plan /
@@ -279,7 +279,7 @@ def _entry_window_open(gs: GameState, char_id: str) -> bool:
     ``entry_signals`` 建表,缺行 fail 恒假)。
 
     查线顺序:锁定 → 仅锁定线的信号行;未锁定 → 全库任一含该角色的线
-    (候选囤件窗口未到时照囤不上,窗口适用范围同辖)。信号类闭集语义见
+    (候选囤件窗口未到时照囤不上,窗口适用范围同样适用)。信号类闭集语义见
     ``Comp.entry_signals`` 字段注:``synergy`` = 该线主羁绊
     (bond_signal,缺省 form_tiers 首键)板面计数 ≥ 阈值;``level`` =
     玩家等级 ≥ 阈值;``plane_end`` = 终局位面段已启动(窗口谓词形态 =
@@ -386,7 +386,7 @@ def _emit_deploy_moves_scoped(out: list, frame: MandateFrame,
 
 def _make_windowed_select_up(session: StrategySession, gs: GameState):
     """select_swap_plan 的 select_up 注入包装(第 5 步换血替补的上阵窗口
-    适用范围——契约 D 部署换血行:替补受窗口适用范围辖,窗口未到的终局替补
+    适用范围——契约 D 部署换血行:替补受窗口适用范围覆盖,窗口未到的终局替补
     不可上 = 窗口适用范围自然结果,换血通道由过渡替补在产)。
 
     过滤形态:窗口未到件从 up 集移入 held(不给拒因键——窗口适用范围是帧级
@@ -449,7 +449,7 @@ def emit(session: StrategySession,
 
     # 骨架帧装配(部署面共用输入;stop_flag 构造性 False——成型停买线 = 买面
     # 判据,消费位在商店域(shop.py 自装配),备战域 M2 已移店内)。
-    # k = 现行方向 阵容(锁定线优先,未锁 = 过渡配方开局面;键面归一
+    # k = 现行方向阵容(锁定线优先,未锁 = 过渡配方开局面;键面归一
     # 归一后的统一读口 direction_comp_of——12 号篇 §2 消费面分派)。
     _k = session_scope.direction_comp_of(session)
     k_members = predicates.line_members(_k)
@@ -488,7 +488,7 @@ def emit(session: StrategySession,
         _rescue = _step0_overflow_self_rescue(session, gs, frame)
         return _rescue   # 含 [] = 防御分支零动作返回主循环(不出战)
 
-    # —— 第 1 步:点开消耗品(书册卡 → 补给箱 → 星徽秘典;臂序 = 现行
+    # —— 第 1 步:点开消耗品(书册卡 → 补给箱 → 星徽秘典;分支序 = 现行
     # 实体面段在案顺序)——弹窗由外循环画面分发接住,处理后回备战重新
     # 全扫(弹窗不是工序步骤)。
     _open_act = _consumable_open_action(gs)
@@ -501,7 +501,7 @@ def emit(session: StrategySession,
         return _ore_out
 
     # —— 第 3 步:升级检查(11 号篇 §2 概率主轴 + 整级预授权 +
-    # 变现步;判据五臂 = criteria/levelup.upgrade_trigger。预授权键驱动
+    # 变现步;判据五分支 = criteria/levelup.upgrade_trigger。预授权键驱动
     # 两帧态:授权帧(判据通过 → 置键 → 变现序列每帧一卖)与执行帧
     # (缺口闭合 → 购买经验整批发出,实付上界 = 授权值不再重闸)——
     # 单动作循环下每帧全扫到本步,键与缺口面共同决定本帧动作)——
@@ -550,9 +550,9 @@ def emit(session: StrategySession,
             st.cw4_counters.get('terminal_targetless_idle', 0) + 1
 
     # —— 第 8 步:出战(以上全部步骤无动作;备战环唯一完成态)——
-    # 出战前置动作发出点机制保留在 bridge(出战就绪 帧短路本 emit,机制出处 =
+    # 出战前置动作发出点机制保留在 bridge(出战就绪帧短路本 emit,机制出处 =
     # strategy-docs/26 号篇;本迭代零改动);受限商店访问帧不受会话标记
-    # 辖(契约 A 豁免条款,前置位承载)。
+    # 覆盖(契约 A 豁免条款,前置位承载)。
     return [Emitted(CwActionStartBattleParam(), True, 'battle')]
 
 
@@ -564,7 +564,7 @@ def _consumable_open_action(gs: GameState) -> Emitted | None:
 
     触发 = bench 槽位 kind ∈ bookcard/supply_box/tome(现行容器
     BenchSlot.kind 判定);点开顺序 = 书册卡 → 补给箱 → 星徽秘典
-    (现行实体面臂序,入口清场旧全局序在案)。星徽秘典占席 = 待实机
+    (现行实体面分支序,入口清场旧全局序在案)。星徽秘典占席 = 待实机
     证实项(点开出路对其防御性纳入,22 号篇 第 1 步)。动作参数
     = 物理槽号(下标 + 1,执行器按槽号现算点击坐标)。
     """
@@ -597,7 +597,7 @@ def _step0_overflow_self_rescue(session: StrategySession, gs: GameState,
 
     空板守卫 as-built 如实申报:评估器内 empty_board_sell_blocked 为
     后态判定,deployed = 0 帧卖出哑火——deployed = 0 帧的自救主路径 =
-    态 1 上阵安置(非卖出,不受该守卫辖;22 号篇 第 0 步申报)。
+    态 1 上阵安置(非卖出,不受该守卫覆盖;22 号篇 第 0 步申报)。
     """
     # 态 1:上阵安置(免费;cap 有空位 ∧ 备战席有可上阵单位——豁免窗口
     # 适用范围,部署判据本体与现行 M1 同源)。
@@ -723,17 +723,17 @@ def _fallback_legs_ok(session: StrategySession, gs: GameState,
     """P78-5′ 兜底豁免的两腿必要条件(design 契约 D 升级变现行;
     设计写入代码比对确认):豁免构成 = **义务账 ∨ 对象无损**。
 
-    - 腿①(触发源义务血统维,验臂):``pre.source_arm`` 为骨架义务
+    - 腿①(触发源义务血统维,验分支):``pre.source_arm`` 为骨架义务
       血统——人口位(02 号稿 §3 M3 义务正文)/ arm0(02 §5 回退)
       → 豁免成立,funding_hold_fallback 全量消费(对象不验);
-    - 腿②(卖出对象级无损维,验对象非验触发臂):偏好账臂(停留门
-      升级优先臂/概率账 = 优化路径;富余段-L3 = 20 号稿义务形态但
+    - 腿②(卖出对象级无损维,验对象非验触发分支):偏好账分支(停留门
+      升级优先分支/概率账 = 优化路径;富余段-L3 = 20 号稿义务形态但
       P78-5′ 账性判别上零息损不构成「不做会输」= 偏好账——同走本
       腿)下被放行对象须持有账 ≈ 0:非核心/非④件(``holds``)∧ 非
       种子(P78-7 相邻轮回卖封口集)。funding_hold_fallback 兜底池
-      ⊆ hold 核心集(池条件 = holds ∩ A 排除),偏好臂下结构性
+      ⊆ hold 核心集(池条件 = holds ∩ A 排除),偏好分支下结构性
       恒拒——验证照落为防御性腿(兜底池未来扩容非核心资产时腿②
-      自动生效)。臂键缺省 ''(异常/无臂身份)按保守侧走腿②对象验。
+      自动生效)。分支键缺省 ''(异常/无分支身份)按保守侧走腿②对象验。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
         levelup,
@@ -789,17 +789,17 @@ def _levelup_floor_ok(gs: GameState, session: StrategySession,
     """发出前花后金下界检查(11 号篇 §2 保底金门 + 守 50 定论(user_playstyle [3])
     确认前 fail 态的单一装配口)。
 
-    - 全域(所有臂):保底金门 = ``guarantee_floor_gate`` 单一源
+    - 全域(所有分支):保底金门 = ``guarantee_floor_gate`` 单一源
       (花后金 ≥ 1 利息档 boss_floor;两支不在本门设计范围内 = 终局域末战 ALL IN/
       买断制,门内自判)——``after_gold`` = 预估花后金(裸金 + 活期
       退金 − 批成本,保守下界),clicks/cost 传 0/1 直比形态;
-    - 优化臂(概率账/停留门)追加:利息线差额保留(saturation_line,
+    - 优化分支(概率账/停留门)追加:利息线差额保留(saturation_line,
       保守侧——「花完仍守 50」利息线级预算前提的确认前 fail 态;
       买断制 cap=0 时 saturation_line(0)=0 该门自动恒过,终局域经
       ``terminal_all_in`` 单一源豁免)。
 
-    人口位/arm0/富余段为义务/机制臂,不受攒息约束([12]/[33] 明文
-    例外),只辖保底金门。
+    人口位/arm0/富余段为义务/机制分支,不受攒息约束([12]/[33] 明文
+    例外),只覆盖保底金门。
     """
     from sr_od.application.currency_war.kernel.cw_economy import (
         cap_resolved_of_session,
@@ -815,7 +815,7 @@ def _levelup_floor_ok(gs: GameState, session: StrategySession,
             and cap > 0 \
             and after_gold < saturation_line(cap) \
             and not levelup.terminal_all_in(gs, session):
-        return False       # 优化臂利息线差额保留(确认前保守侧)
+        return False       # 优化分支利息线差额保留(确认前保守侧)
     # 契约核验(前提恒真行,纪律接线;失败 = 保守拒)。
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
         contracts,
@@ -832,7 +832,7 @@ def _levelup_floor_ok(gs: GameState, session: StrategySession,
 
 def _step3_level_up(session: StrategySession, gs: GameState,
                     registry: DecisionV2Registry | None) -> list[Emitted]:
-    """第 3 步升级检查(11 号篇 §2:五臂判据 + 整级预授权
+    """第 3 步升级检查(11 号篇 §2:五分支判据 + 整级预授权
     + 变现步 + 执行帧整批发出)。
 
     两帧态(单动作循环下每帧全扫到本步):
@@ -843,7 +843,7 @@ def _step3_level_up(session: StrategySession, gs: GameState,
       穷尽 → 键保留至节点末、零动作(幂等重评,无试错计数);缺口闭合
       → 执行帧发购买经验整批(实付上界 = 授权值,**不再重闸**——防
       「买一半」复发)→ 清键。
-    - **授权帧**(键不在):奖励帧抑制 → 等级帽 → 五臂判据 → P21
+    - **授权帧**(键不在):奖励帧抑制 → 等级帽 → 五分支判据 → P21
       (域内让位照 20 号稿)→ 血本位支付检查 → 攒批资金与发出前
       花后金下界 → 置键发出(裸金足 = 同帧执行帧;不足 = 置键进入
       变现序列,首卖本帧发出)。
@@ -944,7 +944,7 @@ def _step3_level_up(session: StrategySession, gs: GameState,
                         bench_idx=idx, reason='levelup_liquidate'),
                         True, 'levelup_liquidate_sell')]
             if u is not None:
-                # 腿拒暴露(两腿必要条件不过——偏好账臂变卖有价资产):
+                # 腿拒暴露(两腿必要条件不过——偏好账分支变卖有价资产):
                 # 键保留零动作,分键区分「无兜底候选」与「候选被腿拒」。
                 counters['levelup_fallback_leg_reject'] = \
                     counters.get('levelup_fallback_leg_reject', 0) + 1
@@ -955,7 +955,7 @@ def _step3_level_up(session: StrategySession, gs: GameState,
         return []
 
     # ===== 授权帧(键不在)=====
-    # 奖励帧抑制(reward_node_suppressed 辖升级触发不辖刷新;抑制 =
+    # 奖励帧抑制(reward_node_suppressed 覆盖升级触发不覆盖刷新;抑制 =
     # 结构性无授权,后续支付检查无须求值)。
     from sr_od.application.currency_war.kernel.cw_reward_node import (
         reward_node_suppressed,
@@ -967,7 +967,7 @@ def _step3_level_up(session: StrategySession, gs: GameState,
     # 判据契约核验(criteria/contracts.py 契约表;消费位
     # 经 ensure_contract,前提违例 = 弃权零动作 + 计数,契约纪律不断线)。
     # 等级帽(注册表 level_max 单一源;备战域等级真值每帧观察新鲜,
-    # xp_ledger_stop 轮内盲区补位辖 shop 域逻辑态直写窗,此处不合取)。
+    # xp_ledger_stop 轮内盲区补位覆盖 shop 域逻辑态直写窗,此处不合取)。
     from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
@@ -982,7 +982,7 @@ def _step3_level_up(session: StrategySession, gs: GameState,
         counters['levelup_reject_level_cap'] = \
             counters.get('levelup_reject_level_cap', 0) + 1
         return []
-    # 五臂判据(11 号篇 §2 触发源并集;契约前提 = 人口位板满
+    # 五分支判据(11 号篇 §2 触发源并集;契约前提 = 人口位板满
     # 口径等级驱动 cap——消费位现读 max_units_of 传入核验)。
     from sr_od.application.currency_war.kernel.cw_game_state import (
         max_units_of,
@@ -1048,7 +1048,7 @@ def _step3_level_up(session: StrategySession, gs: GameState,
         return [Emitted(CwActionLevelUpParam(
             cost=int(cost), clicks=clicks, auth_basis=arm_key),
             True, f'step3_levelup_batch:{arm_key}')]
-    # 金本位:发出前花后金下界(保底金门全域 + 优化臂利息线差额保留;
+    # 金本位:发出前花后金下界(保底金门全域 + 优化分支利息线差额保留;
     # 预估花后金 = 裸金 + 活期退金 − 批成本,保守下界)。
     liquid = _bench_liquid_gold(gs)
     if not _levelup_floor_ok(gs, session, arm_key,
@@ -1193,8 +1193,8 @@ def _step5_deploy(session: StrategySession, gs: GameState,
     不设独立 M1′ 分支):
     - M5 开局配方(开局帧 round_num ≤ 1 ∧ 板空 ∧ bench 有件);
     - M1 空槽凑人数补位(deploy_vacancy > 0;任意合法单位上阵优于空槽,
-      P24 残余补部署——升级开新 vacancy 的补部署也经本臂);
-    - M1″ 板满换阵补部署(m1p 换血;替补受上阵窗口适用范围辖)。
+      P24 残余补部署——升级开新 vacancy 的补部署也经本分支);
+    - M1″ 板满换阵补部署(m1p 换血;替补受上阵窗口适用范围覆盖)。
 
     上阵窗口适用范围(用户裁定 2026-10-12):终局成员在其上线窗口前不上阵
     ——纯终局件谓词 + 窗口判定见 :func:`_deploy_window_blocked`;过渡∩

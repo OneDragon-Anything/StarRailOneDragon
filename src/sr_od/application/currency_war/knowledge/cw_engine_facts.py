@@ -23,7 +23,7 @@ from __future__ import annotations
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_system_cards import SYSTEM_CARDS
 
-# 与 op 侧同源(RECIPE ∪ ENGINE 桥派生集;三羁绊(阵营, 阈值)对改从
+# 与 op 侧同源(RECIPE ∪ ENGINE 桥派生集;三羁绊(阵营,阈值)对改从
 # SYSTEM_CARDS 派生(排除 seele 卡——希儿系是 deployed 单卡判定非阵营
 # 计数,deploy 排序/形态维无意义);tier 阈值经 FACTIONS 注册表,单一源)。
 TRANSITION_TRAITS: tuple[tuple[str, int], ...] = tuple(

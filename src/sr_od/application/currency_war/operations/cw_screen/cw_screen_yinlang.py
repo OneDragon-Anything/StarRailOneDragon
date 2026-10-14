@@ -24,9 +24,9 @@
 体读同帧等价)→ ``report_screen_planner_obs`` 落容器 ``planner_opts``
 (恒写两卡,空桶照写)→ obs 挂实例属性进决策 node。决策动作 node =
 零参决策 → ``classify_planner_leg``
-腿型 → 组装 env → 选卡确认链派发即 ``round_success`` 终结交回外循环
+腿型 → 组装 env → 选卡确认链派发即 ``round_success`` 终结返回主循环
 (``flow/action_ops.md`` §1 与 §4.5 PickPlanner 行:动作 op 确认
-点击后立即上报完整效果腿,零落地复查、零落地补写面(旧落地相机制已废除)——确认未生效 =
+点击后立即上报完整效果腿,零落地复查、零落地补写面——确认未生效 =
 代码 bug,overlay 残留由外循环按当前画面重识别重派)。本屏无 chosen_* 写端(选择存证行已停用);
 本屏 sim 腿 = 不适用(sim 无对应画面段,事件
 浮层族即时落定),等价判据主要支撑 = 实机已登记行为锁
@@ -94,9 +94,9 @@ class CwScreenYinLang(CwOperation):
         详情钮避让 = rect 底缘上移 DETAIL_MARGIN_RATIO(相对几何
         ——绝对 y 常数对多布局不成立,见类属性注释)。两比例皆 rect 相对,
         布局再漂移时只更 yml rect,本方法零改。area 缺失 = 返回 None
-        (建档漂移,调用方显式 round_fail 交回重读,禁兜底坐标——
+        (建档漂移,调用方显式 round_fail 返回主循环重读,禁兜底坐标——
         用户裁定)。确认钮动画/多步 overlay 零覆盖声明:本方法
-        只产选中点,确认链与上报归动作 op,本 op 派发即终结交回外循环。
+        只产选中点,确认链与上报归动作 op,本 op 派发即终结返回主循环。
         """
         area = self.ctx.screen_loader.get_area(
             CwScreenYinLang.CARD_AREA_SCREEN,
@@ -113,9 +113,9 @@ class CwScreenYinLang(CwOperation):
         """左右两卡 OCR 桶一次读 → report 落容器(恒写两卡,空桶照写;
         match/gs 缺席的局外兜底路径跳过 report)。
 
-        读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
+        读屏点改道(sim 统一金路径生成器):装了后端 → 生成器产物
         (经同名 report 落容器);否则原读链。live 读链早退形态(卡位 area
-        缺失 round_fail)原样交回。"""
+        缺失 round_fail)原样返回主循环。"""
         obs = cw_sim_ports.sim_or_live_observation(
             '货币战争-银狼升星', self._observe_live)
         if isinstance(obs, OperationRoundResult):
@@ -129,7 +129,7 @@ class CwScreenYinLang(CwOperation):
         # OCR 两卡区域文字:单次全图读(贵操作只算一次),文本归属 =
         # 中心点落入建档两卡 rect(坐标单一真相源 = yml;判定语义 =
         # 中心点,先例 _anchor_hit_full_ocr 同式)。卡位 area 缺失 =
-        # 显式 round_fail 交回重读(禁兜底 rect 静默降级——用户裁定
+        # 显式 round_fail 返回主循环重读(禁兜底 rect 静默降级——用户裁定
         #;捕获集 = 卡全域 rect,卡内文本全属该卡语义,
         # classify 关键词匹配面不变)。
         _rects: list[Rect] = []
@@ -174,7 +174,7 @@ class CwScreenYinLang(CwOperation):
 
         动作 op ``CwActionPickPlannerOp`` 确认点击后立即上报完整效果腿
         (单相即时上报,正本 = ``flow/action_ops.md`` §1  与
-        §4.5 PickPlanner 行)——本 op 派发即终结交回外循环重观察,零重入
+        §4.5 PickPlanner 行)——本 op 派发即终结返回主循环重新观察,零重入
         裁决轮、零证据标志(确认未生效 = 代码 bug,overlay 残留由外循环按
         当前画面重识别重派)。"""
         options = self._obs.options if self._obs is not None else []
@@ -186,7 +186,7 @@ class CwScreenYinLang(CwOperation):
         pick = self.ctx.cw_match.strategy.decide_planner()
         target = self._card_point(pick.idx)
         if target is None:
-            # 点卡定位点不可派生 = 卡位建档漂移,显式失败交回重读
+            # 点卡定位点不可派生 = 卡位建档漂移,显式失败返回主循环重读
             #(零派发零点击,禁兜底坐标;用户裁定)。
             return self.round_fail(
                 f'卡位 area 缺失:{CwScreenYinLang.CARD_AREAS[pick.idx]}'
@@ -204,7 +204,7 @@ class CwScreenYinLang(CwOperation):
         # ``CwActionPickPlannerOp``(替身缝 = 工厂派发调用点,测试经
         # monkeypatch ``action_op_for`` 承接);
         # 决策半(策略选卡/腿型判定)见上方,派发实例 = 策略 pick 本体,
-        # 机械参数 target 经 env 传递。派发即 round_success 终结交回外循环
+        # 机械参数 target 经 env 传递。派发即 round_success 终结返回主循环
         # (效果腿已在动作 op 内即时上报;确认未生效 = 代码 bug,外循环
         # 按当前画面重识别重派)。
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (

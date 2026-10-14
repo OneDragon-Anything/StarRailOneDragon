@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 # 经 kernel 政策层 cw_hp_policy 单一读口:决策 hp 消费 =
 # decision_hp 门后值,可信位 = hp_decision_trusted 委托
 # hp_decision_trusted_of——kernel 决策分支禁旁路直读 gs.hp/state.hp,
-# 消费同门纪律承接 )。
+# 消费同门纪律承接)。
 
 from sr_od.application.currency_war.kernel.cw_hp_policy import (  # noqa: E402
     decision_hp,
@@ -107,7 +107,7 @@ def all_in_xp_domain_hit(gs: GameState, session: StrategySession | None,
     对账「既有授权适用范围收窄非新增 hp 点」);判据级适用范围收窄,非血线
     地板解锁包件(hp 闸批另落,总图实施序第 5 步)。支A 谓词不进
     kernel(消费侧升级判据(原 _realize_chain_ready 已停用;本谓词
-    现役消费位 = kernel schedule_upgrade 人口位臂),
+    现役消费位 = kernel schedule_upgrade 人口位分支),
     P39 指示项锚对契约),本谓词只答血侧半支。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -171,11 +171,11 @@ def blood_budget_levelup_blocked(gs: GameState,
       是损失最小的花光时机,[18];停手让位)。
     消费点:cw4 M3 升级门(criteria/levelup.level_spend_blocked)/
     arbiter 约束 'blood_budget_stop'(候选通道)/remediation 稳态多击组
-    与 deploy_cap 补偿臂①(授权通道旁路——两臂的升级收益同在 ≥1 战
+    与 deploy_cap 补偿分支①(授权通道旁路——两分支的升级收益同在 ≥1 战
     之后才兑现,同覆盖;拒付计数=strategy_state_of(session).v3_blood_budget_rejects,披露
     模式对齐 sim 执行层 level_cap_rejects)。
 
-    消费层可信位门(血线谓词唯一收束点,):
+    消费层可信位门(血线谓词唯一收束点):
     ``hp_decision_trusted`` 不过的帧(容器 source=prior/logic 支:开局
     先验帧/推算帧)fail-closed 按血线内处理(拒付升级)——线内升级
     EV=−C−I 严格负(本函数数学),证据缺失时禁令保持有效与误放的非对称
@@ -226,7 +226,7 @@ def p2_crisis_stop_hp(registry: DecisionV2Registry) -> int:
       与 β 无关(设计件 12 §3.1 步骤 1)——本线不消费 β,不挂 β 门。
     边界声明:该线是**血预算带分界**(带内行为=转化优先/搜索停付),
     不是存活保证——与 p1_exit_blood_target 的「期望预算线非存活保证」
-    同款口径( 审计)。
+    同款口径(审计)。
     """
     import math
     return math.ceil(2 * registry.vd_p2_loss)
@@ -237,7 +237,7 @@ def p2_crisis_band(gs: GameState, session: StrategySession | None,
     """P2 危机带谓词(plane≥2 ∧ 门后 hp 真值 ∧ hp ≤ 危机带线)。
 
     两个行为面的共域判据(消费点各取所需,谓词单一源):
-    - ``blood_budget_refresh_blocked`` P2 臂:带内搜索型刷新停付;
+    - ``blood_budget_refresh_blocked`` P2 分支:带内搜索型刷新停付;
     - arbiter 危机买入闸门(``_crisis_buy_gate_open``):带内目标件
       买候选越过非正分门/利息律门(P48 λ>0 段转化优先);
     - cw4 M3 危机让位(criteria/levelup.level_spend_blocked 危机支)。

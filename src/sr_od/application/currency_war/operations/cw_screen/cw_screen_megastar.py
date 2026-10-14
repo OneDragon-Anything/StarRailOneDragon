@@ -201,7 +201,7 @@ class CwScreenMegastar(CwOperation):
             if not isinstance(pick, CwActionPickMegastarParam):
                 return self.round_fail(
                     f'decide_megastar 决策无有效输出(词表外/None): {pick!r}')
-            # 守卫③ 值域:越界 = 断言恒炸禁钳位(op-layer.md §1.3;断言臂经框架异常路径计节点预算)。
+            # 守卫③ 值域:越界 = 断言恒炸禁钳位(op-layer.md §1.3;断言分支经框架异常路径计节点预算)。
             if not (0 <= pick.idx < len(options)):
                 raise AssertionError(
                     f'[cw-megastar] pick idx 越界(策略器 bug,禁钳位): '

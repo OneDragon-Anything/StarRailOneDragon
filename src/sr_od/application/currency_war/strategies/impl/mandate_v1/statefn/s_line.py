@@ -7,7 +7,7 @@ S = B + 息饱和线分量(10×cap_resolved 条件式组装,canonical 表行 10�
 现值 / 买断制 0,R129 适用范围仲裁)。
 n̄(resolved 自然 XP 流)= 买牌 +4/张 ∪ 投资每节点/每刷 XP 流逐项求和
 (P48 A3;估计器🔴,01_math_framework §3.3 #5)。ρ(整买价值率)= (ΔV_band+ΔV_pop)/R,
-仅双臂门真时 >0(摊派口径🔴 #4,均匀摊保守首版)。
+仅双分支门真时 >0(摊派口径🔴 #4,均匀摊保守首版)。
 """
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ def s_line(b: int, cap_resolved: int, window_reserve_costs: list[int],
 
 
 def rho(delta_v_band: float, delta_v_pop: float, rounds: int) -> float | None:
-    """ρ(整买价值率)= (ΔV_band+ΔV_pop)/R——**仅双臂门真时 >0**;摊派口径
+    """ρ(整买价值率)= (ΔV_band+ΔV_pop)/R——**仅双分支门真时 >0**;摊派口径
     【拟】🔴(01_math_framework §3.3 #4,均匀摊保守首版,阈值表随交叉核对 2 重标)。本函数
     只做结构除式;ΔV 项的标定状态由调用方经 provisional 槽位判定,False 期
     整面 fail-closed(返回 None=不产追加动作,不向骨架渗漏否决,01_math_framework §5.3)。"""

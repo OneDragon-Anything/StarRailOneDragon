@@ -19,7 +19,7 @@ class PlazaPost:
     post_id: str                        # 官方帖 id(溯源锚,生成器去重保证唯一)
     use: int                            # 被使用计数(0=官方未展示计数)
     carries: tuple[str, ...]            # Final 阶段 carry 名(通常 1 个)
-    # (角色名, 星级, 费用档 rarity, pos(front/back), is_carry);星级为帖主编辑器选择
+    # (角色名,星级,费用档 rarity, pos(front/back), is_carry);星级为帖主编辑器选择
     units: tuple[tuple[str, int, int, str, bool], ...]
     equips: tuple[tuple[str, tuple[str, ...]], ...]   # 角色名 → Final 装备名(仅 Final 阶段)
     traits: tuple[str, ...]             # Final 激活羁绊(激活层>=2 口径,同聚合)

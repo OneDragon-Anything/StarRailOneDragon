@@ -5,22 +5,22 @@
 数学口径=01_math_framework §3.1-§3.5(本包实现消费 statefn 单一源,
 禁自算状态量)。
 
-**臂①旁路集函数级枚举表**(本模块 ``BYPASS_TABLE``=单一源;
+**分支①旁路集函数级枚举表**(本模块 ``BYPASS_TABLE``=单一源;
 R5-4 类别分列 + R7-1 第四类「动作发出面」;表内类别字面量沿用
 '动作发出点'/'发射面' 写法)
 = 旁路枚举交叉核对测试的单一源。类别语义 =
 动作发出点('动作发出点')/ 门 / 谓词 / 状态函数 / 动作发出面('发射面',复合)/ 支付支撑通道;
-``arm1`` 列 = 臂①形态(不旁路 / 旁路 / 旁路=门关闭 / 不旁路(两臂同开))。
+``arm1`` 列 = 分支①形态(不旁路 / 旁路 / 旁路=门关闭 / 不旁路(两分支同开))。
 
 修复池落点(R189-5 表):D-D(refresh+buy)、
-D-F1(选卡 eval,pick 接口辖外——本包登记接口占位)、D-FM1(全局
+D-F1(选卡 eval,pick 接口覆盖外——本包登记接口占位)、D-FM1(全局
 candidates+economy sink)、D-P3(待办登记载体 = 表尾 endgame_context 行)、
 D-BUYNOTE(buy 内嵌 P48 整买纪律)。
 """
 from __future__ import annotations
 
-# (模块, 函数) → (类别, 臂①形态, 依据标签)
-# 类别与臂①形态的合法配对以本表逐行为单一源;谓词/状态函数恒「不旁路」。
+# (模块,函数) → (类别,分支①形态,依据标签)
+# 类别与分支①形态的合法配对以本表逐行为单一源;谓词/状态函数恒「不旁路」。
 BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
     # —— criteria/buy(01_math_framework §3.1;支配族 dominance_buy 已移 mandate 邻位,本域无)——
     ('buy', 'ev_buy_candidates'): (
@@ -35,7 +35,7 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
         '支付支撑通道', '不旁路(两臂同开)',
         'R13-5/R14-4(mandate=false+funding_support=true,臂间对称)'),
     # —— criteria/levelup(line_and_upgrade §2;arm1_existence 在 statefn/predicates;
-    #    arm2 保利息门/saturation_floor/levelup_budget_gate 量闸已随拦截层删除,
+    #    arm2 保利息门/saturation_floor/levelup_budget_gate 量闸已删除(随拦截层),
     #    处置依据 = line_and_upgrade §2.3 处置表)——
     ('levelup', 'upgrade_trigger'): (
         '判据/闭式', '不旁路',

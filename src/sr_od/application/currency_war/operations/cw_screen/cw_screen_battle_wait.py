@@ -23,7 +23,7 @@
 自动战斗检测:①段(等结算画面)轮询消费
 「自动战斗未开启」信号(画面右下角「我方行动中」待操作帧,连续 ~5s
 双锚)→ 点「按钮-自动战斗开关」自愈;判据与判效边界随分支实现注释,
-语义申报 = screens/battle_wait.md §4(等待结算画面行·自动战斗自愈臂)
+语义申报 = screens/battle_wait.md §4(等待结算画面行·自动战斗自愈分支)
 与 §8(连续命中计时)。
 
 驻留状态机豁免(用户裁定):本屏 = **驻留状态机**
@@ -237,7 +237,7 @@ class CwScreenBattleWait(CwOperation):
     #: = 面板 visible 或超时才放行推进。超时兜底覆盖胜轮(面板整块不出现,
     #: 帧实证)。
     SETTLE_PANEL_WAIT_S: ClassVar[float] = 4.0
-    #: 败局标志次级证据裁决的节点序位下限:(位面, 轮) 元组字典序比较,
+    #: 败局标志次级证据裁决的节点序位下限:(位面,轮) 元组字典序比较,
     #: 序位过中位(默认局 18 节点的中位 P2 r5)之后 + 面板负分量
     #: 双证据才置位标志。
     SETTLE_DEFEAT_LATCH_MIN_POS: ClassVar[tuple[int, int]] = (2, 5)
@@ -355,7 +355,7 @@ class CwScreenBattleWait(CwOperation):
         if self.ctx.cw_match is None:
             return
         if not telemetry_only:
-            self._st.saw_settlement = True   # :见结算屏 → 窗口关
+            self._st.saw_settlement = True   # 见结算屏 → 窗口关
         _st = self._st
         # 残留判定与 telemetry_only 解耦(两路同源):判定值来自结算处理入口
         # 恰一次调用(首见副作用,环写位禁二次调用),1f/3b/胜局三路的残留行
@@ -374,7 +374,7 @@ class CwScreenBattleWait(CwOperation):
             _ocr_texts = [r.data for r in self.ctx.ocr_service.get_ocr_result_list(
                 image=screen, rect=None, color_range=None, crop_first=False)]
             # plane 归属:结算屏头部「X-Y」屏面真值 + 单调门覆盖 last-known。
-            # (:读数两位数 + 值域随场字段,修饰局 (1,10) 结算行可读。)
+            # (读数两位数 + 值域随场字段,修饰局 (1,10) 结算行可读。)
             _scr = parse_settlement_round(_ocr_texts, round_caps=_round_caps)
             if _scr is not None:
                 if _residual:
@@ -382,7 +382,7 @@ class CwScreenBattleWait(CwOperation):
                                 '(原兜底 P%s-r%s)', _scr[0], _scr[1], _plane, _round)
                     _plane, _round = _scr
                 else:
-                    # 结算单调门:(位面, 轮) 元组直接比较——9 制序
+                    # 结算单调门:(位面,轮) 元组直接比较——9 制序
                     # 双侧比较停用(修饰局 (1,10)↔(2,1) 平局合并随内联公式
                     # 一并消除;字典序即时间序,(2,1)>(1,10) 恒严格,
                     # (1,10)<(2,1) 恒拒陈旧重放)。None 放行防御分支保留
@@ -390,7 +390,7 @@ class CwScreenBattleWait(CwOperation):
                     # `_t_old is None` 同语义)。与结算读数两位数放行绑定
                     # 不可拆:读数不修则 (1,10) 恒 None 本改进不可达;
                     # 本门不修则陈旧 (1,10) 结算屏在 (2,1) 后被 9 制平局
-                    # 放行( 设计 §2.5)。
+                    # 放行(设计 §2.5)。
                     _t_old = (_plane, _round) if (_plane and _round) else None
                     if _t_old is None or _scr >= _t_old:
                         if (_scr[0], _scr[1]) != (_plane, _round):
@@ -450,7 +450,7 @@ class CwScreenBattleWait(CwOperation):
                 log.info('[cw-bwait] loss_page 行不落:killed=%s 非显式败局',
                          _obs.killed)
                 # 守卫抑制形态:不入环(防毒设计保留);对账 hook 在
-                # 环写位同点上游括守卫两臂,抑制行以留痕标记进落盘序列。
+                # 环写位同点上游括守卫两分支,抑制行以留痕标记进落盘序列。
                 self._cw_selection_capture(_session, _obs, _plane, _round,
                                            _node, suppressed=True)
                 return
@@ -463,7 +463,7 @@ class CwScreenBattleWait(CwOperation):
                 _st.settle_page1_progress = None
             # boss 胜局 win 真值:killed 判定两路 = progress 符号(本处)
             # + killed 文本双置信度(读链 read_round_outcome 内)——均须在
-            # 结算画面识别出来(用户裁定, 裁决点 7 前半);「拿血量
+            # 结算画面识别出来(用户裁定,裁决点 7 前半);「拿血量
             # 推断胜负」非识别,HP 对比兜底门已删,且其轮次邻接时基在
             # 修饰局 (1,10)↔(2,1) 整合(旧全局编号按固定 9 轮每面折算,
             # 两节点折算同值,邻接判恒假)。两主路径同失 = killed=None

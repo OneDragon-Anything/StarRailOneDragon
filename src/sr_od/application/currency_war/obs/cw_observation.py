@@ -140,7 +140,7 @@ GOLD_SETTLE_MAX_POLLS: int = 3
 GOLD_SETTLE_INTERVAL_S: float = 0.5
 
 #: 难度旗牌徽记带上沿(裁片内 y,1080p 像素):「文本-难度」旗牌上半是徽记图案、
-#: 下半是数字。像素亲测(58 帧 fixture 裁片,):徽记占 y 0..45、
+#: 下半是数字。像素亲测(58 帧 fixture 裁片):徽记占 y 0..45、
 #: 数字带 y>=55,取 48 留双向安全距。``_ocr_difficulty_binarized`` 据此抹带。
 _DIFFICULTY_EMBLEM_BAND_Y: int = 48
 
@@ -996,7 +996,7 @@ def reset_phase_round_cache() -> None:
 
 
 #: 顶栏「X-Y」解析正则(两位数形态单一源;修饰局「1-10」整读,单字符类
-#: 旧正则会把「1-10」截成 (1,1) 倒退形态误读——误读比拒读更毒,)。
+#: 旧正则会把「1-10」截成 (1,1) 倒退形态误读——误读比拒读更毒)。
 _PHASE_ROUND_XY_RE = re.compile(r'(\d{1,2})\s*-\s*(\d{1,2})')
 
 #: 「第X位面」无轮次形态正则(产出 (p,p),round ≡ 位面 ≤ 3,与两位数
@@ -1183,12 +1183,12 @@ def _resolve_paddle_digits(text_digits: str, glyph_digit_n: int, slash_idx: int 
     实测,见 ``_read_deploy_paddle``):
     - **直接对齐**:文本数字数 == 字形数 → 按「斜杠前=x、后=y」切(direct=True);
     - **去首对齐**:文本多 1 个数字 = 左侧图标被 rec 读成 '1' 并进数字
-      (迁移审计/a8 实证 '10/3'=0/3)或空心字形(0/6/8)被 rec 加幻影前缀 '1'
+      (迁移审计a8 实证 '10/3'=0/3)或空心字形(0/6/8)被 rec 加幻影前缀 '1'
       (抹图标后仍现 '16/7'=6/7 实证,非图标独有)→ 去首个再切;
     - **去斜杠位对齐**:文本无 '/' 且多 1 个数字 = 斜杠被读成数字
       ('717'=7/7 实证)→ 去掉斜杠位置上的那个数字再切。
     全部候选过 ``_validate_paddle_xy`` 约束验证;裁决:有 direct 候选取 direct
-    (唯一),否则候选唯一才采,多候选歧义 → (None, None, 候选清单) 交调用方保留证据。
+    (唯一),否则候选唯一才采,多候选歧义 → (None, None,候选清单) 交调用方保留证据。
     """
     x_n: int | None = None if slash_idx is None else slash_idx
     y_n: int | None = None if x_n is None else glyph_digit_n - x_n
@@ -1438,7 +1438,7 @@ def read_deploy_cap_debounced(ctx: SrContext, screen: MatLike,
 
 def arbitrate_deployed_count(paddle_n: int | None,
                              cv_n: int | None) -> tuple[int | None, bool]:
-    """deployed 计数双源仲裁(纯函数)→ (采信值, 是否结构性分歧)。
+    """deployed 计数双源仲裁(纯函数)→ (采信值,是否结构性分歧)。
 
     两源:``paddle_n`` = 舞台上方「X/Y」指示的 X(``read_deployed_count``,
     游戏自带计数器,构造上即真值);``cv_n`` = CV 槽位占用实测
@@ -1557,13 +1557,13 @@ def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9,
        证据帧 86ce9fd1:持续伤害/护盾 徽标失读真值 2,旧链恒 1)。
     ①-④ 全 miss 且无 expected → count=1 兜底(动画期只显档位链,至少 1 人在场)。
 
-    r319(批次2):第二返回值 honest=**至少一行 OCR 真解析**(①-④)——
+    r319:第二返回值 honest=**至少一行 OCR 真解析**(①-④)——
     全靠兜底 = 帧不可信(board_readable 消费);dict 契约不变(键仍在,值是兜底)。
     """
     results = _ocr(ctx, screen, _area_rect(ctx, A_BOARD))
     results.sort(key=lambda r: r.center.y)
     pairs: dict[str, tuple[int, int]] = {}
-    fallback_rows: list[tuple[str, float, int | None]] = []   # (阵营, 名称行 y, expected 兜底值|None)
+    fallback_rows: list[tuple[str, float, int | None]] = []   # (阵营,名称行 y, expected 兜底值|None)
     honest = False
     for i, r in enumerate(results):
         faction = next((f for f in FACTIONS if f in (r.data or '')), None)
@@ -1947,7 +1947,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
     无阵营(白厄类)。立绘库经 ``ensure_portrait_templates`` 按需加载。
     """
     templates = ensure_portrait_templates(ctx)
-    # 商店开态前置门(M37/M38 误停机根因,):收起锚不命中 =
+    # 商店开态前置门(M37/M38 误停机根因):收起锚不命中 =
     # 店未开,返 None(「不在商店」≠「没牌」≠「未识别」;r7 review P0-A
     # 修过恒真比较,枚举等值比较保留)。
     _si = ctx.screen_loader.get_screen(SHOP_SCREEN_NAME)
@@ -2107,7 +2107,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
         record_defect,
     )
     _time.sleep(0.8)
-    # controller.screenshot 返回 (时间戳, 帧|None) 元组(非帧本体),须解包;
+    # controller.screenshot 返回 (时间戳,帧|None) 元组(非帧本体),须解包;
     # 帧缺席(截取失败)= 无法重观察,保首读不猜。
     _ts2, _frame2 = ctx.controller.screenshot()
     slots2 = _read_once(_frame2) if _frame2 is not None else slots
@@ -2644,7 +2644,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                                     screen=screen_name, mode='carried')
 
             # 节点(phase_round 全阶段必读;node_type 仅 spec 门内为帧读值)。
-            # P1-1(落地审):kind 未读帧(battle_or_transit spec 无 node_type /
+            # P1-1(审查):kind 未读帧(battle_or_transit spec 无 node_type /
             # 备战帧三源仲裁全空)禁合成 'prep' 占位假值(§2.2 失读口径;与本口
             # 「禁拿兜底默认值当观察」同义)——kind 从 gs.node 现值继承合成新键
             # (plane/round 真读更新),evidence 标继承;无现值且未读 → 不写
@@ -2814,8 +2814,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             # prev_branch 语义记分支 token);phase None(全量路径,调用方 =
             # 备战 heavy 环入口)按干净备战帧记。写入无条件(journal 常开,
             # 影子闸折叠;行落盘另以 sink/run_id 在场为准)。
-            # 适用范围(切换批 2026-09-20-node-advance-action-report design §2.4
-            # 攻击 B1):漏斗已退出推进域(node_ord/hist 写入与效果推进尾段
+            # 适用范围:漏斗已退出推进域(node_ord/hist 写入与效果推进尾段
             # 随四推断腿停用)——本调用只写上下文对/顶栏原文;gs.node 观察镜像
             # 写端保留在本漏斗(上方 node 段,决策层坐标供给端)。
             _ctx_name = _phase_screen_context(phase, plane, round_num)

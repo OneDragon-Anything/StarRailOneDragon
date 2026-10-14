@@ -12,7 +12,7 @@ SIFT 匹配器对模板库(生产用 ``currency_war/portrait_plaza`` 官方立�
 **产形(P6 观察链直产)**:读链直接产容器形状,无中间形 ——
 备战席 = ``read_bench_view`` → :class:`BenchView`(占槽物品 kind 识别期按模板细分
 supply_box/tome/bookcard,不经「事后拼 kind 映射」);上场位 = ``read_deployed_rows``
-→ (前排, 后排) Unit 行(排归属由读链行参承载)。
+→ (前排,后排) Unit 行(排归属由读链行参承载)。
 
 槽位坐标 = screen_info 固定 area(``前排-1..4`` / ``后排-1..6`` / ``备战栏-1..9``),经
 ``cw_obs_core._area_rect`` 读 —— 改坐标改 yml 即可。空槽位 SIFT 内点低 → 自然落 None
@@ -575,7 +575,7 @@ def _level_trusted(ctx: SrContext) -> bool | None:
 def read_deployed_rows(ctx: SrContext, screen: MatLike, templates: AvatarTemplates,
                        level: int | None = None,
                        ) -> tuple[list[tuple[int, Unit]], list[tuple[int, Unit]]]:
-    """舞台已上阵角色(前排 4 + 后排 N)→ (前排命中对, 后排命中对)
+    """舞台已上阵角色(前排 4 + 后排 N)→ (前排命中对,后排命中对)
     (P6 直产;命中对 = ``(排内 1 基槽号, Unit)``——
     Unit 无槽位信息位,位置随读链槽位对承载,容器写端经
     ``cw_game_state.deployed_view_of_hits`` 合一落视图)。
@@ -845,7 +845,7 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
     不认识的备战席槽 → 停机保画面留现场建档。
 
     为什么读链双路径都必须挂:身份读链有旧路径(func:`read_bench_view`)
-    与漏斗路径(func:`read_bench_view_tiered`,P4R4 heavy 批起的生产主路径)
+    与漏斗路径(func:`read_bench_view_tiered`,P4R4 heavy 起的生产主路径)
     两条,钩子段原本只内联在旧路径——漏斗路径「占用未识别」的槽被静默
     丢弃,跟踪席数少 1 → 席满被当有空位,策略照幻影空位发买牌、游戏全拒
     且金不动(实机局:黄泉槽整槽丢读后 2 张连发全拒
@@ -888,7 +888,7 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
         # 书册卡开启语义已确认(实机:点槽 → 「专家邀请函」五选一),
         # 原确认停机钩子停用,自动处理链见 operations/cw_screen/cw_screen_expert_invite.py
         # (开卡动作发出点 = 策略器 entry ① 卡片分支 + 外循环阶段一身份行「货币战争-备战-专家邀请函」弹窗分发接线)。
-        # 排除集单一源(部署伪槽修复批 ①):原内联段(find_* 族 ∪ 泛 TM 低阈
+        # 排除集单一源(部署伪槽修复):原内联段(find_* 族 ∪ 泛 TM 低阈
         # 扫描)整体迁入 bench_item_slots,本钩子消费模糊档(精确 ∪ 泛扫描,
         # 行为与原内联段等价);停机钩子其余段(面板守卫/帧态门/锚
         # 排除/防抖)是停机判定语义,不进该函数、留在钩子内。
@@ -1337,7 +1337,7 @@ def read_tomes(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]]:
 # 人工确认后直接续跑,复现频次足以采样时再按「复现新形态再扩签名」纪律
 # 给 is_merge_effect_frame 补 bench 带签名(现签名只覆盖前排带,勿单帧草标)。
 
-# ===== 占槽物品排除集·单一源(部署伪槽修复批 ①)=====
+# ===== 占槽物品排除集·单一源(部署伪槽修复)=====
 # 双源缺口(方案 .debug/temp/currency_war/deploy_pseudo_slot/方案.md §0):
 # 已知物品(find_* 族)的排除集此前只内联在 read_bench_view 前身的 summon 停机
 # 钩子里,部署扫描(cw_op_deploy bench_occ 纯像素占用)完全没消费 → 物件槽

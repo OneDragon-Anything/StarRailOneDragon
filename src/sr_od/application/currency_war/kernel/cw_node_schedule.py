@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from typing import TypeAlias
 
-#: 节点序位(位面, 轮次),二元素整数元组,1 基。节点身份唯一表示:
+#: 节点序位(位面,轮次),二元素整数元组,1 基。节点身份唯一表示:
 #: 字典序 = 有效节点序列按位面拼接展平的全序(位面主序下前缀和单调恒等)。
 NodePos: TypeAlias = tuple[int, int]
 
@@ -57,7 +57,7 @@ PLANE_NODE_TABLES: dict[int, tuple[str, ...]] = {
 #: 「首领节点前插入补给阶段」环境白名单(id 107 原文直读,
 #: PlazaPortal('107'));规则单一 = 每个 'boss' 位前插一个 'supply'
 #: (P1/P2 各一;P3 补采后自动适用)。替换型改节点环境(战争边疆,
-#: dag )是映射非插入的另一形状,不入本表( 设计裁决点 1);
+#: dag)是映射非插入的另一形状,不入本表(设计裁决点 1);
 #: 键 = 归一名(cw_investments.normalize_invest_name 口径)。
 ENV_NODE_SUPPLY_BEFORE_BOSS: frozenset[str] = frozenset({'人身意外险'})
 
@@ -70,7 +70,7 @@ class P3UnobservedError(RuntimeError):
 def resolve_plane_node_seqs(env_name: str) -> dict[int, tuple[str, ...]]:
     """环境名 → 逐位面节点序列(**修饰规则唯一计算点**,只在环境注册写
     场字段时执行一次——运行时消费面读 GameState 场字段
-    ``node_seq_by_plane``,不逐点重推; 设计 §2.1 用户裁定:修饰结果
+    ``node_seq_by_plane``,不逐点重推;设计 §2.1 用户裁定:修饰结果
     落逻辑态,插入的补给节点是备战画面可观察的真实节点,场字段为观察
     对账正本)。
 
@@ -145,7 +145,7 @@ def sequence_next(pos: NodePos,
 
 def node_round_cap(plane: int,
                    seqs: dict[int, tuple[str, ...]] | None = None) -> int:
-    """位面 round 读数上限(观察值域守卫单一源; 设计 §2.5 用户裁定:
+    """位面 round 读数上限(观察值域守卫单一源;设计 §2.5 用户裁定:
     正常按位面固定上限,随环境调整——cap 与序列同源 = 有效序列长度,
     序列修则 cap 随动,零第二真相源、零独立常量表)。三态:
 
@@ -188,7 +188,7 @@ validate_sequences()
 
 # 环境白名单结构卫生(模块自检;键归属校验 ⊆ INVESTMENT_ENVS 住
 # cw_investments._validate_env_node_seq——本模块零依赖,反向校验不落
-# 此, 设计 §2.2)。
+# 此,设计 §2.2)。
 if not ENV_NODE_SUPPLY_BEFORE_BOSS \
         or any(not name for name in ENV_NODE_SUPPLY_BEFORE_BOSS):
     raise ValueError('ENV_NODE_SUPPLY_BEFORE_BOSS 结构卫生失败'
