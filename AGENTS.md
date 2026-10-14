@@ -172,7 +172,7 @@ uv run ruff check --fix src/你修改的文件.py
 
 ### 10.2.测试文件组织
 
-- **文件镜像**：一个 src 的 py 文件对应一个测试文件，测试路径与 src 同源（`src/foo/bar.py` → `test/foo/test_bar.py`）；单文件 >800 行或 >40 条测试按被测方法拆目录（`test/foo/bar/test_<方法名>.py`）；批次号 / review 号禁入文件名（细则 = sr-od-test/README.md「测试文件组织（src 镜像规范）」节）。
+- **文件镜像**：一个 src 的 py 文件对应一个测试文件，测试路径与 src 同源（`src/foo/bar.py` → `sr-od-test/test/foo/test_bar.py`）；单文件 >800 行或 >40 条测试按被测方法拆目录（`sr-od-test/test/foo/bar/test_<方法名>.py`）；批次号 / review 号禁入文件名（细则 = sr-od-test/README.md「测试文件组织（src 镜像规范）」节）。
 
 ### 10.3.测试基础设施
 
