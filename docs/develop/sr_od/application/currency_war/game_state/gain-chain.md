@@ -33,7 +33,10 @@
 
 ### 2.1 获得投资环境 gain_invest_env
 
-`gain_invest_env(gs, session, env_name, *, rand, sig, producer=GAIN_CHAIN_PRODUCER)`:
+`gain_invest_env(gs, session, env_name, *, rand, sig, rng=None,
+producer=GAIN_CHAIN_PRODUCER)`(`rng` = 环境随机支采样注入,透传
+`on_env_gained`,缺省回退在该函数体内;与 `gain_invest_strategy` 的
+`rng` 形参同构):
 
 0. **无效载荷拒绝(前置)**:归一后名为空/`'?'` = 零写 + 缺陷保留证据
    (`kind = pick_invest_invalid_payload`)——无效输入拒绝,非防重复保护;
@@ -189,14 +192,29 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
 (`_validate_env_ore_grants` 第③条:同键长度相等且逐位同值,任一侧单独改金额
 import 即炸)防漂移。
 
-- **on_env_gained(gs, session, env_name, *, rand, sig)**:查 `cw_investments.py::
-  ENV_GIFTS`(投资环境 → 具名发放数据表,即时与定时两通道)。命中后**先按
+- **on_env_gained(gs, session, env_name, *, rand, sig, rng=None)**:查 `cw_investments.py::
+  ENV_GIFTS`(投资环境 → 具名发放数据表,即时/随机/定时三通道)。命中后**先按
   advisor 分道,两道互斥**:
   - `advisor=False`(契约类,直接送卡):`chars_immediate` 逐个 `gain_character
     (char, 1★)`(星级未标 = 1★ 先验;确定发放 → rand 原样透传);
   - `advisor=True`(特邀专家,顾问入商店):**不入席**——容器无商店池字段,身份
     只进遥测申报一行(`kind = DEFECT_ADVISOR_DECL`);`chars_immediate` 在 advisor
     行仅作顾问身份输入。
+  - **随机支**(`chars_random_immediate`,具名支之后):元素 = `RandomCharSpec
+    (cost, star, type_tag)` 随机赠卡规格(家族载体,首例 = 人才引进「开局拥有
+    1个随机4费角色」,id 109);发放 = 规格过滤池(`random_char_pool`,注册表
+    派生单一源:费用档内 × char_type 含标签)内均匀掷骰选名 → `gain_character`
+    落席,星级 = spec.star(人才引进 1 = 先验非结构值)。**效果体含采样 →
+    子链 rand=True**(§5)——未锚定期(开局窗)本就走 write_logic_rand,
+    rand=True 声明采样语义并保锚定后不进失配网(实机猜错 = 首观察静默覆盖,
+    `logic_rand_outcome` 收口,不响安灯)。效果串 `env_gift_random:<名>@<星>star`
+    (与具名支 `env_gift:` 前缀分离,采样发放可独立过滤审计)。`rng` 缺省回退
+    自掷 `random.Random()`(直构/测试形态);正式接线 = 上报函数
+    `report_action_pick_invest_env_param` **条件解析**(仅选中环境登记了随机支
+    才经 `action_sampling_rng('pick_invest_env', rng)` 解析)——sim 装配 =
+    流键 rng 即世界真值,且默认环境局(无随机支)rng 消耗序列逐位不变。
+    采样/先验假设申报 = `cw_investments.ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS`
+    三键(池内均匀 v0 / 星级 1 先验 / 类型标签过滤口径)。
   - **道具通道**(`items_immediate` + `items_scheduled`,与 advisor 道无关、
     可叠加):道具 = 占席待开箱,非角色非装备。**即时支**(`items_immediate`):
     落位写入(角色落位同构:备战空槽放 `BenchSlot(kind='supply_box')`,双端
@@ -270,6 +288,11 @@ import 即炸)防漂移。
 - 链入口按自身性质定初值(投资环境/投资策略确认 = 确定性入口,False);
 - 递归调用点按**该效果自身性质**传参:效果体含采样 → 对其发起的子链传 `rand=True`;
   不含采样 → 原样透传;
+- 采样效果体在用实例:策略通道 = 骇客改件(`on_strategy_gained` 效果体,rng 经
+  `gain_invest_strategy` 形参注入);环境通道 = 随机赠卡支(`on_env_gained` 的
+  `chars_random_immediate`,rng 经 `gain_invest_env` 形参注入,上报函数条件解析
+  ——仅登记了随机支的环境才推 sim 动作采样序号,默认环境局 rng 消耗序列
+  逐位不变)。
 - 语义:任一写入位置的 rand 值 = 「本次写是否处于随机语义」,不承诺全链一致——采样效果
   只翻转它自己的子链。写通道 = 通道选择入口 `anchor_aware_write`(fields.md §2.6):
   未确认(锚定标志位 `prep_anchored` 未置)一律 `write_logic_rand`——开局预填初值/链落账是
