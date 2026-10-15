@@ -12,7 +12,7 @@
 
 **范围**:新增 `StrategyState.transition_locked_systems` 状态槽与写点(策略层决策入口前置段,与 `refresh_line_if_needed` 同点,幂等只增;清空点 = 进位面 2 配方对退场同点);新增 `protection_membership` 保护集函数,宿主 = **新模块 `strategies/impl/mandate_v1/protection.py`**(需消费策略层符号:line_members_view/贯穿件;贯穿件常量 `CROSS_LINE_KEEP_NAMES` 自 shop.py 迁入本模块,shop 回导);`knowledge/cw_line_facts._bond_members` 公开化为 `bond_members`(零行为,成员枚举单一源,消除跨层同式复写授权);点亮判定复用现役支持度链(`_p1_system_support`/`_seele_system_support`,**持有域**),**复用面不含 `seele_system_formed`**(板面域,成型停手语义,与持有域选定相反;其现役消费不动),希儿系成员判定单一源 = `is_seele_system_member`。边界:不动任何买/卖消费点(归 3.2/3.3),不动 `committed_authority` 本体。
 **设计依据**:design.md §2.1
-**文件面**:`src/sr_od/application/currency_war/strategies/impl/mandate_v1/mandate_state.py`(状态槽)、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/bridge.py`(写点)、`src/sr_od/application/currency_war/strategies/impl/flow.py`(清空点)、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/protection.py`(新建)、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/shop.py`(仅常量迁出)、`src/sr_od/application/currency_war/knowledge/cw_line_facts.py`(bond_members 公开化)、测试仓单帧测试
+**文件面**:`src/sr_od/application/currency_war/strategies/impl/mandate_v1/mandate_state.py`(状态槽)、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/bridge.py`(写点)、`src/sr_od/application/currency_war/strategies/impl/flow.py`(清空点)、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/protection.py`(新建)、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/shop.py`(仅常量迁出)、`src/sr_od/application/currency_war/knowledge/cw_line_facts.py`(bond_members 公开化)、`src/sr_od/application/currency_war/telemetry/schema.py`(bond_members 消费点随迁,3.1 交付申报)、测试仓单帧测试
 **依赖**:无
 **优先级建议**:0
 **完成判据**:
