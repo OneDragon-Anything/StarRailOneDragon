@@ -29,6 +29,7 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     REFRESH_PROB,
     SHOP_SLOTS,
 )
+from sr_od.application.currency_war.kernel.cw_economy import effective_refresh_prob
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     ShopCard,
@@ -71,3 +72,12 @@ def sample_shop_deal(gs: GameState, rng: random.Random, *, level: int,
                        refresh_probs={int(k): float(v)
                                       for k, v in (probs or dist).items()
                                       if v > 0})
+
+
+def state_deal_probs(gs: GameState, level: int) -> dict[int, float]:
+    """GameState 感知的发牌概率表(逐档经 cw_economy.effective_refresh_prob
+    单一源;观测概率条在场 = 真值直用——轮岗翻倍档含在内,缺读/缺键/≤0
+    逐档退基线)。零新语义:优先级链单一源不复制。"""
+    probs = {cost: effective_refresh_prob(gs, level, cost)
+             for cost in range(1, 6)}
+    return {cost: p for cost, p in probs.items() if p > 0}

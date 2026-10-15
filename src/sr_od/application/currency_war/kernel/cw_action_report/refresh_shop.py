@@ -13,9 +13,10 @@
 - **随机态腿**:计数后经 kernel 发牌采样器(:mod:`cw_shop_deal`,与 sim
   ``deal_shop`` 同源,纯采样不写容器)采 5 槽 payload,经
   ``write_logic_rand`` 随机态专用通道写商店载荷——实机上采样是猜测,
-  sim 里采样即世界真值(同一上报函数两副面孔);observe 覆盖差异落
-  ``logic_rand_outcome`` 台账、不进失配告警(通道语义自带)。level 缺读
-  = 该腿跳写(概率表按级索引,宁缺勿造)。干旱/供给族消费 observation
+  sim 里采样即世界真值(同一上报函数两副面孔);采样表 =
+  ``state_deal_probs``(轮岗感知;观测概率条真值直用,缺读逐档退基线);
+  observe 覆盖差异落 ``logic_rand_outcome`` 台账、不进失配告警(通道语义
+  自带)。level 缺读 = 该腿跳写(概率表按级索引,宁缺勿造)。干旱/供给族消费 observation
   only 是消费侧口径,本函数不管。
 - **环境条件发放腿**(二手市场):尾部触发检查
   (``check_env_refresh_grants``;登记表 =
@@ -48,7 +49,10 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     ShopActionExecuted,
     _validate_sig,
 )
-from sr_od.application.currency_war.kernel.cw_shop_deal import sample_shop_deal
+from sr_od.application.currency_war.kernel.cw_shop_deal import (
+    sample_shop_deal,
+    state_deal_probs,
+)
 
 _PRODUCER = 'CwActionRefreshShopParam'
 
@@ -105,7 +109,8 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
             action_sampling_rng,
         )
         roll_rng = action_sampling_rng('refresh_shop', rng)
-        payload = sample_shop_deal(gs, roll_rng, level=int(_level))
+        payload = sample_shop_deal(gs, roll_rng, level=int(_level),
+                                   probs=state_deal_probs(gs, int(_level)))
         gs.write_logic_rand(gs.shop, payload, produced_by=_PRODUCER,
                             evidence='refresh_random_sample', sig=_grp_sig)
 

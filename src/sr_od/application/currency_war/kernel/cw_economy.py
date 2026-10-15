@@ -965,7 +965,9 @@ def get_node_goal(plane: int, round_num: int, *,
 def effective_refresh_prob(gs: GameState, level: int, cost: int) -> float:
     """轮岗感知的有效刷新概率单一源。
 
-    消费点 = mandate_v1 出口③ A 支对账(shop.py),禁第二套对账语义——
+    消费点 = mandate_v1 出口③ A 支对账(shop.py)+ 刷新上报随机态腿的
+    采样表构建(``cw_shop_deal.state_deal_probs``;同一优先级链零复制),
+    禁第二套对账语义——
     「bar=0 ∧ 表值>0」形态两消费点
     曾相反(出口③判确证零/economy 判表值非零),已按本优先级统一。
     优先级:
