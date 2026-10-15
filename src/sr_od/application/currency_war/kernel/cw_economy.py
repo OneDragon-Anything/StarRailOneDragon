@@ -215,10 +215,10 @@ def effective_hp_threshold(gs: GameState) -> int:
     if plane <= 1:
         return base
     # 剩余战斗日程就地自算(裁决点 9:框架不供视界量,场字段求和,
-    # 修掉 27 制闭式与 [1,9] 夹取——安全阈封顶 modeled planes,不计入
-    # 不可达第三位面的虚构余量,行为申报 details/horizon-cleanup.md §8.4;
+    # 修掉 27 制闭式与 [1,9] 夹取——安全阈封顶 modeled planes,序列表
+    # 键集 P1+P2+P3 全真值在表,行为申报 details/horizon-cleanup.md §8.4;
     # 与 cw_intention._p1_pair_overwindow 同式互锚,禁单侧改式)。
-    # 位面 ∉ 序列表键集(含 P3)= 建模域外 → 0(局终后无未来掉血节点)。
+    # 位面 ∉ 序列表键集(≥4)= 表外防御 → 0(无未来掉血节点)。
     _tb = gs.node_seq_by_plane.value or PLANE_NODE_TABLES
     nodes_left = (sum(len(t) for k, t in _tb.items() if k >= plane)
                   - round_num_of(gs) + 1) if plane in _tb else 0

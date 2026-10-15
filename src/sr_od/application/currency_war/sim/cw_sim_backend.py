@@ -202,7 +202,7 @@ SCREEN_PLANNER: str = '货币战争-银狼升星'
 #: + CwOpSettleConfirm 点击推进(档名 = 流程消费锚;错位则
 #: 推进链不可达)。
 SCREEN_SETTLE: str = '货币战争-结算'
-#: 局终呈现屏(done 后终态;死亡/第一期适用范围尽头两源共用)。呈现即可达
+#: 局终呈现屏(done 后终态;胜利/死亡两源共用)。呈现即可达
 #: 流程终局链(CwScreenBattleWait ③B terminal_lobby → 主循环 3c 收尾)。
 #: 非金路径档名(无生成器):呈现 ≠ 观察,observe 该档名按未注册响错。
 SCREEN_LOBBY: str = '货币战争-大厅'
@@ -661,8 +661,15 @@ DISCLOSURE_PLANNER_EFFECT: str = 'planner_pick_effect_pending_u26'
 #: 整店锁披露键(裁定②:动作词表无锁通道,首版恒解锁 + 披露,字段先行)。
 DISCLOSURE_SHOP_LOCK: str = 'shop_lock_sim_engine_state'
 
-#: P3 未观测披露键(U19:P3 进场即局终)。
+#: P3 未观测披露键(**已退役,不再发射**):U19 时代「P3 进场即局终」的
+#: 历史遥测身份,常量保留仅供历史语料判读;位面 3 真值入码后超位面 3 =
+#: 胜利终局,见 :data:`DISCLOSURE_RUN_COMPLETE`。
 DISCLOSURE_P3_UNOBSERVED: str = 'p3_unobserved'
+
+#: 胜利终局披露键(推进超出序列表末位面 = 位面 3 末 boss 结算存活后
+#: 走完全部节点;用户裁定 2026-10-15「过了位面3就是胜利」。hp 归零
+#: 败局走结算死亡腿不经此键 = 胜负判别单一源在披露集)。
+DISCLOSURE_RUN_COMPLETE: str = 'run_complete'
 
 #: lv10 满级零累计披露键(裁定③:cap 分母未定,满级经验不再累计)。
 DISCLOSURE_LV10_XP: str = 'level_cap_xp_denominator_none'
@@ -1205,17 +1212,18 @@ class SimBackend:
         self._enter_node_window(eff)
 
     def _on_node_advance_terminal(self) -> None:
-        """局终声明消费腿(trigger=node_advance ∧ next_screen=''):
-        kernel 终局事件式声明的世界消费——XP 入账(被离开节点类型,与
-        现行局终前入账同序)+ P3 未观测披露(键值 enter_p3_game_over_u19
-        为已登记遥测身份,历史越界序编号字样豁免改键)+ 终局。此后
-        :meth:`_reconcile_next_screen` 走 done=True ∧ decl='' 合格分支,
-        漂移面零新增。"""
+        """胜利终局声明消费腿(trigger=node_advance ∧ next_screen=''):
+        kernel 终局事件式声明(推进超出序列表末位面,现役 = 位面 3 末
+        boss 结算存活)的世界消费——XP 入账(被离开节点类型,与现行
+        局终前入账同序)+ 胜局披露 + 终局。hp 归零败局走结算死亡腿
+        (:meth:`_resolve_battle` → :meth:`_game_over`,不经本分支)——
+        披露集含 :data:`DISCLOSURE_RUN_COMPLETE` 与否 = 胜负判别单一源。
+        此后 :meth:`_reconcile_next_screen` 走 done=True ∧ decl='' 合格
+        分支,漂移面零新增。"""
         prev = self.gs.node.value
         if prev is not None:
             apply_node_xp(self.gs, node_type=prev.kind)
-        self.disclosures[DISCLOSURE_P3_UNOBSERVED] = \
-            'enter_p3_game_over_u19'
+        self.disclosures[DISCLOSURE_RUN_COMPLETE] = 'survived_p3_boss'
         self._game_over()
 
     def _on_supply_picked(self) -> None:
@@ -1884,10 +1892,11 @@ class SimBackend:
     # ---------------------------------------------------------- 局结果面
 
     def _game_over(self) -> None:
-        """局终(死亡/第一期适用范围尽头;重入安全)。终态呈现 = 大厅屏:
-        流程经 CwScreenBattleWait 终局锚(③B terminal_lobby)→ 主循环
-        3c 收尾,与实机「终局结算 → 返回货币战争 → 大厅」的消费链同形
-        (sim 结算瞬时,直达终点)。"""
+        """局终(胜利:超位面 3 末节点存活,经 :meth:`_on_node_advance_terminal`
+        披露 run_complete / 死亡:hp 归零且保底已用,经结算死亡腿;
+        重入安全)。终态呈现 = 大厅屏:流程经 CwScreenBattleWait 终局锚
+        (③B terminal_lobby)→ 主循环 3c 收尾,与实机「终局结算 → 返回
+        货币战争 → 大厅」的消费链同形(sim 结算瞬时,直达终点)。"""
         self.done = True
         self._screen = SCREEN_LOBBY
         self._sub = ''

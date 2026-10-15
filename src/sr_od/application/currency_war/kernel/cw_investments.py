@@ -2142,23 +2142,23 @@ def _validate_env_refresh_grants() -> None:
 _validate_env_refresh_grants()
 
 
-# ===== 节点序列修饰环境白名单归属校验(import 即炸)=====
-# 注册表数据住序列模块(kernel/cw_node_schedule.ENV_NODE_SUPPLY_BEFORE_BOSS,
+# ===== 节点改写注册表归属校验(import 即炸)=====
+# 注册表数据住序列模块(kernel/cw_node_schedule.ENV_NODE_REWRITE_RULES,
 # 与序列真值同域、sim 同源直读);归属校验住 INVESTMENT_ENVS 的家——
-# 版本更新改名/移除环境后白名单键静默失联在构建期炸出,不进运行时
+# 版本更新改名/移除环境后注册表键静默失联在构建期炸出,不进运行时
 # (防静默失联先例 =  登记表校验;依赖方向:cw_investments 顶层 import
 # cw_node_schedule,后者零依赖,单向无环)。
 def _validate_env_node_seq() -> None:
-    """ENV_NODE_SUPPLY_BEFORE_BOSS 归属校验(沿 _validate_env_streak_grants
+    """ENV_NODE_REWRITE_RULES 归属校验(沿 _validate_env_streak_grants
     先例):键 ⊆ INVESTMENT_ENVS(归一名口径;防版本改名静默失联)。"""
     from sr_od.application.currency_war.kernel.cw_node_schedule import (
-        ENV_NODE_SUPPLY_BEFORE_BOSS,
+        ENV_NODE_REWRITE_RULES,
     )
-    orphans = [n for n in ENV_NODE_SUPPLY_BEFORE_BOSS
+    orphans = [n for n in ENV_NODE_REWRITE_RULES
                if n not in INVESTMENT_ENVS]
     if orphans:
         raise ValueError(
-            f"ENV_NODE_SUPPLY_BEFORE_BOSS 孤儿键(base 无此环境?版本改名?):"
+            f"ENV_NODE_REWRITE_RULES 孤儿键(base 无此环境?版本改名?):"
             f"{sorted(orphans)}")
 
 
@@ -2173,7 +2173,7 @@ _validate_env_node_seq()
 # (obs 层角色锚点+几何归并按实读描述画面真值,不读局状态)。表形状
 # 预留「每列件数」泛化:读链天然携带 1..n 件,char-only 列 = 0 件;
 # 未来 3 件/列环境 sim 侧落本表即两面同启。无估值三表互斥闸——本表是
-# 世界/呈现修饰非估值结构(ENV_NODE_SUPPLY_BEFORE_BOSS 白名单同判,
+# 世界/呈现修饰非估值结构(ENV_NODE_REWRITE_RULES 注册表同判,
 # 无互斥先例)。
 ENV_SUPPLY_EQUIP_COUNT: dict[str, int] = {
     # 补给阶段中，角色会携带两件装备(id 108 原文直读,

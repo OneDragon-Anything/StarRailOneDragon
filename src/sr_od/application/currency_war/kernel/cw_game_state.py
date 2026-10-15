@@ -2424,9 +2424,10 @@ class GameState:
         default_factory=Field)
 
     # [索引定义] node_seq_by_plane = 逐位面节点序列场字段(逻辑态;
-    # 「人身意外险」效果建模;语义 = 本注释与 research/invest_effects.md):
+    # 节点改写环境建模(统一注册表 = cw_node_schedule.ENV_NODE_REWRITE_
+    # RULES;语义 = 本注释与 research/invest_effects.md)):
     # 键 = 位面 1 基(与 NodeKey.plane 同
-    # 坐标系,恒只含键 {1,2},P3 不运行不入表),值 = 节点类型序
+    # 坐标系,恒只含键 {1,2,3}),值 = 节点类型序
     # (元素 ∈ cw_node_schedule.NODE_KINDS,与 PLANE_NODE_TABLES 同词表)。
     # 取值时机 = 环境注册刻一次性落全量(修饰表或默认表,无半态),局内
     # 恒存;**None = 未注册态**(P1 前段),消费方回退默认表(P1 内两制
@@ -3450,7 +3451,8 @@ def _node_advance_next_screen(gs: GameState) -> str:
 
     规则序:输入即键(键表示唯一,``total`` 求和与反解两段已停用)→
     序位位面无序列表
-    = 局终('';对齐旧 eff 超总长优雅局终,P3 未建模也照常返回主循环,外循环走
+    = 局终('';对齐旧 eff 超总长优雅局终,现役表键 P1+P2+P3 全在,
+    此臂 = 表外位面防御/OCR 位面误读形态,照常返回主循环,外循环走
     结束链)→ 位面内轮次超序列长 = 局终(modeled 位面内损坏坐标防御)
     → 位面切换优先 → 节点类型映射。推导权威源 = kernel 节点日程真值表
     (:mod:`cw_node_schedule`)+ :func:`effective_node_pos`;**禁读容器
@@ -3462,7 +3464,7 @@ def _node_advance_next_screen(gs: GameState) -> str:
         return ''   # 不可达(构造点保证 eff 在场;防御性诚实缺省)
     # 序列权威源 = 场字段现值(None = 未注册回退默认表,原行为):位面在表
     # 判定/长度守卫/kind 取值三处同源;禁直查 node_sequence_of 抛错——
-    # 先判位面在表性再取长(P3 无序列表 = 优雅局终非停机)。
+    # 先判位面在表性再取长(表外位面 = 优雅局终非停机)。
     seqs = gs.node_seq_by_plane.value
     tables = seqs if seqs is not None else PLANE_NODE_TABLES
     seq = tables.get(pos[0])
@@ -3470,6 +3472,31 @@ def _node_advance_next_screen(gs: GameState) -> str:
         return ''
     if pos[1] > len(seq):
         return ''
+    if pos[0] > 1 and pos[1] == 1:
+        return _NODE_PLANE_TRANSITION_SCREEN
+    return _NODE_KIND_NEXT_SCREENS[seq[pos[1] - 1]]
+
+
+def node_screen_now(gs: GameState) -> str:
+    """当前生效节点的呈现屏档名(「返回节点屏」类动作声明的
+    ``next_screen`` 权威源;推导规则 = :func:`_node_advance_next_screen`
+    的位面切换/类型映射两步,输入 = 生效序位现值而非推进落账——
+    节点窗内压住的节点屏可能是遭遇/补给/boss 档,历史硬编码备战仅对
+    battle/reward 槽成立,改节点序列环境(战争边疆 P3 遭遇槽)使其
+    失真,推导单一源收口)。
+
+    恒非空串:生效序位缺位/表外位面/槽越界(降级形态,正常对局不可达)
+    回退备战档(历史口径)——声明面禁空串(空串 = 局终语义,误用会被
+    对账判局终漂移)。
+    """
+    pos = effective_node_pos(gs)
+    if pos is None:
+        return SCREEN_PREP_FRAME
+    seqs = gs.node_seq_by_plane.value
+    tables = seqs if seqs is not None else PLANE_NODE_TABLES
+    seq = tables.get(pos[0])
+    if seq is None or pos[1] > len(seq):
+        return SCREEN_PREP_FRAME
     if pos[0] > 1 and pos[1] == 1:
         return _NODE_PLANE_TRANSITION_SCREEN
     return _NODE_KIND_NEXT_SCREENS[seq[pos[1] - 1]]

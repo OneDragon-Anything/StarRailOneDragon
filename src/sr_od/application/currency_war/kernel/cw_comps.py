@@ -2172,9 +2172,10 @@ def _schedule_elapsed_remaining(gs: GameState) -> tuple[int, int]:
 
     elapsed = Σ_{p<plane} len + round(含当前节点,与旧 ``(plane-1)*9+round``
     全局轮号同口径);remaining = Σ_{p>=plane} len − round + 1(含当前
-    节点,封顶 modeled planes);位面 ∉ 序列表键集(含 P3)= 建模域外 →
-    remaining 0(与策略门面 horizon 契约同款);None(未注册态)回退
-    默认表。两值同帧同源一次算出,禁调用方单侧改式。
+    节点,封顶 modeled planes,序列表键集 P1+P2+P3 全真值在表);位面
+    ∉ 序列表键集(≥4)= 表外防御 → remaining 0(与策略门面 horizon
+    契约同款);None(未注册态)回退默认表。两值同帧同源一次算出,
+    禁调用方单侧改式。
     """
     seqs = gs.node_seq_by_plane.value
     tables = seqs if seqs is not None else PLANE_NODE_TABLES

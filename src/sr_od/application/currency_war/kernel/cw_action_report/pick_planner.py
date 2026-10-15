@@ -21,8 +21,9 @@
 效果腿的写语义单点 = 本函数(确认后无第二写边)。
 
 **后果声明**(动作后果声明化详设 world-decl.md §2 表 #11):applied 出口
-构造 ``WorldDecl``(trigger = ``pick_planner``;``next_screen`` = 备战屏
-——巨星/planner 弹在备战上,选完结束本次访问),转移事件广播随本动作单轨切换
+构造 ``WorldDecl``(trigger = ``pick_planner``;``next_screen`` = 当前
+节点屏,推导 = :func:`node_screen_now`——巨星/planner 弹在节点窗底层屏上,
+选完结束本次访问),转移事件广播随本动作单轨切换
 摘除;applied=False 出口(升费前置硬校验拒)= 声明 None。
 
 动作上报函数族拆分件(每动作一文件;族规约 = 包 ``cw_action_report.
@@ -47,12 +48,12 @@ from sr_od.application.currency_war.kernel.cw_events import (
 )
 from sr_od.application.currency_war.kernel.cw_gain_chain import gain_character
 from sr_od.application.currency_war.kernel.cw_game_state import (
-    SCREEN_PREP_FRAME,
     ChannelSig,
     GameState,
     LogicOutcome,
     _emit_defect,
     _validate_sig,
+    node_screen_now,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_GIFTS,
@@ -63,16 +64,19 @@ from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 _PLANNER_PRODUCER: str = 'CwActionPickPlannerParam'
 _LV999_ID: str = '银狼LV.999'   # 变换窗/级联/档行身份名(cw_chars 规范名)
 
-#: 银狼策划声明(详设 §2 表 #11;封闭集单一源 = sim 后端 advance 分派表
-#: 键集,值零新词沿用现役动作名)。
-_DECL: WorldDecl = WorldDecl(next_screen=SCREEN_PREP_FRAME,
-                             trigger='pick_planner')
+def _decl(gs: GameState) -> WorldDecl:
+    """银狼策划声明构造(详设 §2 表 #11;next_screen = 当前节点屏,
+    推导单一源 = ``node_screen_now``;trigger 封闭集单一源 = sim 后端
+    advance 分派表键集,值零新词沿用现役动作名)。"""
+    return WorldDecl(next_screen=node_screen_now(gs),
+                     trigger='pick_planner')
 
 
-def _with_decl(outcome: LogicOutcome) -> LogicOutcome:
+def _with_decl(gs: GameState, outcome: LogicOutcome) -> LogicOutcome:
     """applied 出口附声明(构造义务 = 总纲 design.md §2.2 契约 2;
     applied=False 出口保持 None——对齐「applied=False 零声明」语义)。"""
-    return replace(outcome, world_decl=_DECL) if outcome.applied else outcome
+    return replace(outcome, world_decl=_decl(gs)) if outcome.applied \
+        else outcome
 
 
 def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
@@ -85,7 +89,7 @@ def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
     腿型分派;随后腿型分派逐步应用,逐字段各落一行遥测(单次动作报告
     多次写遥测 = 预期行为):equip 入栏+后果链 / upgrade 变换窗三态+档行
     / unknown 零记账+留存证据 / 未路由腿型终态兜底零写。applied 出口构造
-    后果声明(:data:`_DECL`;拒出口 None)。
+    后果声明(:func:`_decl`;拒出口 None)。
 
     - ``leg_type``/``norm_item`` = 决策半腿型载荷(classify_planner_leg
       产物,经 OverlayPickExecEnv 随派发透传);
@@ -104,17 +108,17 @@ def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
     # 哪条腿无关;授予失败不阻塞腿型分派(调用点级 best-effort)。
     _grant_joy_conditional(gs, sig, rng)
     if leg_type == PLANNER_LEG_EQUIP:
-        return _with_decl(_apply_equip_leg(gs, norm_item, sig))
+        return _with_decl(gs, _apply_equip_leg(gs, norm_item, sig))
     if leg_type == PLANNER_LEG_UPGRADE:
-        return _with_decl(_apply_upgrade_transform(gs, sig))
+        return _with_decl(gs, _apply_upgrade_transform(gs, sig))
     if leg_type == PLANNER_LEG_UNKNOWN:
         _emit_defect(field_name='planner_opts', expected='planner_leg',
                      actual='unrecognized_text', evidence='planner_landing',
                      sig=sig, kind='planner_leg_unknown')
         return LogicOutcome(applied=True, reason='unknown_leg_evidenced',
-                            world_decl=_DECL)
+                            world_decl=_decl(gs))
     return LogicOutcome(applied=True, reason='unrouted_leg_zero_write',
-                        world_decl=_DECL)
+                        world_decl=_decl(gs))
 
 
 def _grant_joy_conditional(gs: GameState, sig: ChannelSig,

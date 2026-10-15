@@ -10,9 +10,9 @@ P1=10/P2=8、默认局 9/7;None = 未注册态,开局 P1 前段/裸 session,读�
 **裁决点 9 契约(框架不供视界量)**:位面轮次族(r_remaining/r_global/
 r_remaining_in_plane)已自 kernel/cw_plane_table 停用,本层为策略侧自算
 单一消费面(kernel 禁 import strategies 层边界不动;kernel 判据点就地
-求和,禁回引本层)。视界封顶 modeled planes(场字段键集 = P1+P2;P3 =
-建模域外 = 运行终局,bot 进 P3 即走结束链)——**位面 ∉ 序列表键集
-(含 P3)契约:返回 0**(局终后无剩余轮;禁 KeyError/异常形态)。
+求和,禁回引本层)。视界封顶 modeled planes(场字段键集 = 默认表键集
+P1+P2+P3,全序列真值在表)——**位面 ∉ 序列表键集(≥4)契约:返回 0**
+(表外位面无剩余轮;禁 KeyError/异常形态)。
 
 Φ(未来纯金流)口径:P51 终态 E[局终金−g](R5-1 定案);**全量 Φ/W_floor/
 W_flow 数值模块私有、类型上不对外暴露**(R5-7/R6-4 收尾)——Φ 只在增量
@@ -55,9 +55,9 @@ def r_global(session: object, plane: int, node_in_plane: int) -> int:
     ``remaining = Σ_{p>plane} len(seq[p]) + (len(seq[plane]) − round + 1)``
     (含当前节点,到局终;与停用前 kernel 实现半部逐值同式)。长度全部
     来自 ``gs.node_seq_by_plane`` 场字段(None 回退默认表),禁任何路径
-    引用位面长度字面量替代。视界封顶 modeled planes:序列表键集只有
-    P1+P2,P3 虚拟 9 轮先验已随 9 制几何层停用移除(不可达轮不计)。
-    **位面 ∉ 序列表键集(含 P3)契约**:返回 0 = 局终后无剩余轮
+    引用位面长度字面量替代。视界封顶 modeled planes:序列表键集 =
+    P1+P2+P3(全序列真值在表)。
+    **位面 ∉ 序列表键集(≥4)契约**:返回 0 = 表外位面无剩余轮
     (纯防御面,现役调用点先于 kernel 局终短路),禁 KeyError/异常形态。
     """
     seqs = _probe_seqs(session)

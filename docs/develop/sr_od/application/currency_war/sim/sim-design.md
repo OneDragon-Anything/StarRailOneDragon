@@ -107,11 +107,11 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
   supply → 补给屏；encounter → 遭遇屏；boss → BOSS 简报）
 ```
 
-窗口前段（收入/环境金/发牌）对同一节点只执行一次（幂等守卫键 = 节点序位 `(位面, 轮)` 元组，`SimBackend._window_begun_pos`）——位面过渡点空白等点击源可能重放收尾。窗口入口 `_enter_node_window(pos: NodePos)` 按序位键取类型（`node_sequence_of(pos[0], 场字段现值)[pos[1]-1]`）与 id_mark 确认；节点经验在节点推进时入账（被离开节点的类型）；连胜转移在战斗结算后。位面过渡 = 全继承无重置（容器直接续跑位面 2 序列，`kernel/cw_node_schedule.py::node_sequence_of` 地面真值表覆盖位面 1+位面 2；位面 3 末节点推进即局终——后继原语无后继，披露键 `DISCLOSURE_P3_UNOBSERVED`）。
+窗口前段（收入/环境金/发牌）对同一节点只执行一次（幂等守卫键 = 节点序位 `(位面, 轮)` 元组，`SimBackend._window_begun_pos`）——位面过渡点空白等点击源可能重放收尾。窗口入口 `_enter_node_window(pos: NodePos)` 按序位键取类型（`node_sequence_of(pos[0], 场字段现值)[pos[1]-1]`）与 id_mark 确认；节点经验在节点推进时入账（被离开节点的类型）；连胜转移在战斗结算后。位面过渡 = 全继承无重置（容器直接续跑下一位面序列，`kernel/cw_node_schedule.py::node_sequence_of` 地面真值表覆盖位面 1+2+3，位面 3 = 2026-10-15 用户裁定入码；位面 3 末节点之后再推进 = 胜利终局——后继原语无后继，披露键 `DISCLOSURE_RUN_COMPLETE`）。
 
-**局终声明消费分支**：kernel 终局出口为事件式（`report_node_advance` 遇 `sequence_next` 无后继 → 零写入零效果 tick，返回 `applied=True, reason='match_end'` + `WorldDecl(next_screen='')`）；`advance()` 对 `trigger='node_advance' ∧ next_screen=''` 走局终分支 = XP 入账（被离开节点的类型）+ `DISCLOSURE_P3_UNOBSERVED` 披露（键值 `enter_p3_game_over_u19` 保留）+ game over 收尾，对账随后走 `done ∧ decl=''` 合格分支。kernel 声明权威、sim 对账分工不变；同 run 多条 `match_end` = 同一终局事件重复发出，`advance()` done 早退吸收。
+**局终声明消费分支**：kernel 终局出口为事件式（`report_node_advance` 遇 `sequence_next` 无后继 → 零写入零效果 tick，返回 `applied=True, reason='match_end'` + `WorldDecl(next_screen='')`）；`advance()` 对 `trigger='node_advance' ∧ next_screen=''` 走局终分支 = XP 入账（被离开节点的类型）+ `DISCLOSURE_RUN_COMPLETE` 胜局披露（键值 `survived_p3_boss`；hp 归零败局走结算死亡腿不经此分支 = 胜负判别单一源在披露集）+ game over 收尾，对账随后走 `done ∧ decl=''` 合格分支。kernel 声明权威、sim 对账分工不变；同 run 多条 `match_end` = 同一终局事件重复发出，`advance()` done 早退吸收。历史口径注：位面 3 入码前本分支披露 `DISCLOSURE_P3_UNOBSERVED`（键值 `enter_p3_game_over_u19`，p3_unobserved），该键已随位面 3 真值入码退役不再发射，常量保留作历史遥测语料判读身份。
 
-**节点序列权威与场字段分发**：序列真值的单一源 = `cw_node_schedule`（默认地面真值表 + 环境修饰层）。改节点序列的投资环境（「人身意外险」boss 前插补给）经 `resolve_plane_node_seqs` 在环境注册时一次性解出，由获得链尾段写进 GameState 场字段 `node_seq_by_plane`（逻辑态；字段契约与回退语义见 [fields.md](../game_state/fields.md) §3.2.1）。运行时 sim 与 kernel 同源读该字段：局终判定/进窗/窗口收尾/offer 门/节点屏呈现各消费点传场字段现值（None = 未注册回退默认表）；节点身份一律 `(位面, 轮)` 序位键直用，kind 查询经 `node_sequence_of` 直查（异常契约统一 `P3UnobservedError`）。**停用注**：sim 侧编号反解薄委托 `_ordinal_to_node`/`_node_ordinal` 已随全局节点编号表示停用删除（删壳即消解，无独立第二实现）。任一侧漏读字段 = 修饰局位面 1 轮 9 推进时 `next_screen` 声明与呈现屏确定性漂移（`DECL_SCREEN_DRIFT` 保留证据）。
+**节点序列权威与场字段分发**：序列真值的单一源 = `cw_node_schedule`（默认地面真值表 + 环境修饰层）。改节点序列的投资环境（统一注册表 `ENV_NODE_REWRITE_RULES`：插入型「人身意外险」boss 前插补给 / 替换型「战争边疆」位面 3 战斗→遭遇）经 `resolve_plane_node_seqs` 在环境注册时一次性解出，由获得链尾段写进 GameState 场字段 `node_seq_by_plane`（逻辑态；字段契约与回退语义见 [fields.md](../game_state/fields.md) §3.2.1）。运行时 sim 与 kernel 同源读该字段：局终判定/进窗/窗口收尾/offer 门/节点屏呈现各消费点传场字段现值（None = 未注册回退默认表）；节点身份一律 `(位面, 轮)` 序位键直用，kind 查询经 `node_sequence_of` 直查（缺键 = 损坏半态/越界位面，异常契约统一 `PlaneSeqMissingError`）。**停用注**：sim 侧编号反解薄委托 `_ordinal_to_node`/`_node_ordinal` 已随全局节点编号表示停用删除（删壳即消解，无独立第二实现）。任一侧漏读字段 = 修饰局位面 1 轮 9 推进时 `next_screen` 声明与呈现屏确定性漂移（`DECL_SCREEN_DRIFT` 保留证据）。
 
 ### 3.4 初始序列（reset）
 
@@ -239,7 +239,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 |---|---|---|
 | 战斗结算 | 随机输出面：胜负 = 均匀伯努利（`cw_sim_battle.SIM_WIN_PROB`），败局扣血 = 区间均匀采样（`SIM_HP_LOSS_MIN`/`SIM_HP_LOSS_MAX`，以实测单次败局总扣血样本域为基准）；**普通奖励关恒胜白拿**（奖励关不需要战力 = kernel `cw_reward_node.py` 裁定权威行,后端结算腿改写 won/hp_delta,输出面 `SIM_REWARD_FREE_WIN_FACE`,M13 随机流先采后改写保持消耗恒定）；扑满关不掉血豁免（掷点保留 = 奖励有无 + 连胜账胜+1/败清零） | 战力相关判读禁出；奖励关恒胜面=结构规则非随机档（扣血采样值只对真战斗类节点有效）；机制化重建需求件 = sim-power-model.md |
 | 扣血分量 | 基础伤害/进度伤害置 None 占位，随局披露不可分 | 分项判读禁出，候实机结算帧采集 |
-| 位面 3 | 节点序列无完整观测：位面 2 末再推进即局终（披露键 `DISCLOSURE_P3_UNOBSERVED`） | 禁设回退先验，待实机补采 |
+| 位面 3 | 默认序列已入真值表（2026-10-15 用户裁定，单局节点条全列 + 前缀结算实证；3-4 格结算标注冲突按裁决取节点条读法），推进超位面 3 = 胜利终局（披露键 `DISCLOSURE_RUN_COMPLETE`） | 序列证据等级低于位面 1/2，后续实机位面 3 局逐格复核（plane_schedule_observed.md「位面 3 观测现状」） |
 | offer 触发 | 罕见离群触发点（观测 ~1-2%，触发源未归因）不建模（披露键 `OFFER_OUTLIER_DISCLOSURE`） | 作披露面 |
 | 词缀采样 | 张数/分布占位（注册表键集均匀无放回，披露键 `DISCLOSURE_AFFIX_SAMPLE`） | 词缀构成敏感结论禁出 |
 | overlay 余族 | partner/expert/fate/aha/hack 评估器缺位不入队（`OVERLAY_PARAM_PENDING`） | 这些 overlay 的决策域 sim 不可测 |

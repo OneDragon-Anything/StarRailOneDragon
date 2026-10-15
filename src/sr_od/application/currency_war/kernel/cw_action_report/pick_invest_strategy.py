@@ -9,8 +9,9 @@ game_state/gain-chain.md)。本包 → 容器单向依赖。
 
 **后果声明**(动作后果声明化详设 world-decl.md §2 表 #8):applied 出口
 构造 ``WorldDecl``(trigger = ``pick_invest_strategy``;``next_screen`` =
-备战屏,权威 = sim ``_on_invest_picked`` 结束本次访问;offer 日程耦合注同
-pick_invest_env),转移事件广播随本动作单轨切换摘除。
+当前节点屏,推导 = :func:`node_screen_now`——选卡结束 = 返回被 offer
+压住的节点窗底层屏,遭遇/补给/boss 槽各归其档,备战档 = battle/reward
+槽的映射结果),转移事件广播随本动作单轨切换摘除。
 """
 from __future__ import annotations
 
@@ -21,7 +22,6 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     gain_invest_strategy,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
-    SCREEN_PREP_FRAME,
     ChannelSig,
     GameState,
     LogicOutcome,
@@ -57,7 +57,7 @@ def report_action_pick_invest_strategy_param(
     - ``rng`` = 采样注入(sim 可播种;缺省链内生成);
     - 出参 applied=True = 受理;reason = ``gain_chain_applied``(获得链
       结果可辨形态,投资双支对齐);出口构造后果声明
-      (:data:`_DECL_TRIGGER`,结束本次访问备战)。
+      (:data:`_DECL_TRIGGER`,返回当前节点屏,推导 = ``node_screen_now``)。
     """
     _validate_sig(sig, ('logic_action',))
     canon = _canon_invest_name(str(getattr(param, 'norm_name', '') or ''))
@@ -77,7 +77,10 @@ def report_action_pick_invest_strategy_param(
         register_screen_change(
             gs, 'aha', KIND_SCREEN_NAMES['aha'],
             source='s5_pick@pick_invest_strategy')
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        node_screen_now,
+    )
     return LogicOutcome(
         applied=True, reason='gain_chain_applied',
-        world_decl=WorldDecl(next_screen=SCREEN_PREP_FRAME,
+        world_decl=WorldDecl(next_screen=node_screen_now(gs),
                              trigger=_DECL_TRIGGER))

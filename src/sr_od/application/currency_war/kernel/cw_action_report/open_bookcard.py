@@ -7,8 +7,8 @@
 
 **后果声明**(动作后果声明化详设 world-decl.md §2 表 #6):applied 出口
 构造 ``WorldDecl``(trigger = ''——腾位写端 = 本上报「开卡即腾位」,
-backend 活仅呈现专家邀请函弹窗;``next_screen`` = 专家邀请函档,画面档
-全表唯一可推),转移事件广播随本动作单轨切换摘除。
+backend 活仅呈现专家邀请函弹窗;``next_screen`` = 当前节点屏,推导 =
+``node_screen_now``),转移事件广播随本动作单轨切换摘除。
 """
 
 from __future__ import annotations
@@ -16,7 +16,6 @@ from __future__ import annotations
 from typing import Any
 
 from sr_od.application.currency_war.kernel.cw_game_state import (
-    SCREEN_PREP_FRAME,
     BenchSlot,
     BenchView,
     ChannelSig,
@@ -24,22 +23,26 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     LogicOutcome,
     _validate_sig,
+    node_screen_now,
 )
 from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
 #: 开书册卡声明(纯转移;封闭集单一源 = sim 后端 advance 分派表键集)。
 #(声明改底层屏):专家邀请函画面的出现事实改由
 # 登记(kind = expert_invite,上报内 register)承载,声明 next_screen
-# 语义回归备战底屏(流转移 = 开卡即腾位后回备战,弹窗出现走登记分发)。
-_DECL: WorldDecl = WorldDecl(next_screen=SCREEN_PREP_FRAME,
-                             trigger='')
+# 语义回归底层屏(流转移 = 开卡即腾位后回当前节点屏,推导单一源 =
+# ``node_screen_now``;弹窗出现走登记分发)。
+
+
+def _decl(gs: GameState) -> WorldDecl:
+    return WorldDecl(next_screen=node_screen_now(gs), trigger='')
 
 
 def report_action_open_bookcard_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """开书册卡上报:bench 槽位 kind → empty(开卡即腾位)。槽 kind 门 =
     ``'bookcard'``(kind 细分批:书册卡槽不再统一降级 supply_box,容器
     bench kind 细分 = 'bookcard' 单一口径);槽不存在/类型不符 =
-    applied=False 零写零声明。applied 出口构造后果声明(:data:`_DECL`,
+    applied=False 零写零声明。applied 出口构造后果声明(:func:`_decl`,
     纯转移)。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
@@ -57,7 +60,7 @@ def report_action_open_bookcard_param(gs: GameState, param: Any, sig: ChannelSig
         # 不可达(bench 恒有开局种子 9 空槽视图,cw_game_state 种子底座),
         # 仅测试直构/极端离线形态可达;该形态开卡本身未落地,登记即假阳。
         return LogicOutcome(applied=True, reason='bench_unobserved',
-                            world_decl=_DECL)
+                            world_decl=_decl(gs))
     slots = list(view.slots)
     _idx = (int(param.slot) - 1 if param.slot is not None
             else next((i for i, s in enumerate(slots)
@@ -77,5 +80,5 @@ def report_action_open_bookcard_param(gs: GameState, param: Any, sig: ChannelSig
     register_screen_change(
         gs, 'expert_invite', KIND_SCREEN_NAMES['expert_invite'],
         source='s6_click@open_bookcard')
-    return LogicOutcome(applied=True, world_decl=_DECL)
+    return LogicOutcome(applied=True, world_decl=_decl(gs))
 

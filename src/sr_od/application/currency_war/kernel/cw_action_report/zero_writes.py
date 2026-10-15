@@ -17,36 +17,35 @@ from __future__ import annotations
 from typing import Any
 
 from sr_od.application.currency_war.kernel.cw_game_state import (
-    SCREEN_PREP_FRAME,
     ChannelSig,
     GameState,
     LogicOutcome,
     _validate_sig,
+    node_screen_now,
 )
 from sr_od.application.currency_war.kernel.cw_overlay_register import (
     consume_screen_change,
 )
 from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
-# —— 转移动作声明常量(动作后果声明化详设 world-decl.md §2 表 #5/#9/
-#    #10/#13-#17;画面档名字面值权威 = assets/game_data/screen_info 档名,
-#    备战档复用容器常量;trigger 封闭集单一源 = sim 后端 advance 分派表
-#    键集,值零新词沿用现役动作名)——
+# —— 转移动作声明构造(动作后果声明化详设 world-decl.md §2 表 #5/#9/
+#    #10/#13-#17;画面档名字面值权威 = assets/game_data/screen_info 档名;
+#    trigger 封闭集单一源 = sim 后端 advance 分派表键集,值零新词沿用
+#    现役动作名)——
+# 「返回节点屏」声明族按当前生效节点推导(单一源 = node_screen_now):
+# 节点窗压住的底层屏随节点 kind 分档(遭遇/补给/boss 各归其档),硬编码
+# 备战仅对 battle/reward 槽成立(改节点序列环境使 offer/overlay 落到
+# 非备战槽,历史常量声明即漂移)。降级形态(生效序位缺位)回退备战档。
 
 #(声明改底层屏):open_box 声明 next_screen 回归
-# 备战底屏——武装箱选择画面的出现事实改由登记(kind = box_card,上报内
+# 底层屏——武装箱选择画面的出现事实改由登记(kind = box_card,上报内
 # register)承载;trigger='open_box' 保留(backend 开箱采样过程仍挂触发分派)。
-_DECL_OPEN_BOX: WorldDecl = WorldDecl(
-    next_screen=SCREEN_PREP_FRAME, trigger='open_box')
-_DECL_PICK_BOX_CARD: WorldDecl = WorldDecl(
-    next_screen=SCREEN_PREP_FRAME, trigger='pick_box_card')
-_DECL_PICK_MEGASTAR: WorldDecl = WorldDecl(
-    next_screen=SCREEN_PREP_FRAME, trigger='pick_megastar')
-#: 纯转移选卡族共用(pick_partner/fortune/wish_trial/star_tome/
-#: expert_invite:选卡落地 = 零写占位,真值归观察 → trigger = '' 纯画面
-#: 转移,backend 仅按 next_screen 幂等返回,详设 §3 '' 行)。
-_DECL_PREP_PURE: WorldDecl = WorldDecl(next_screen=SCREEN_PREP_FRAME,
-                                       trigger='')
+
+
+def _decl_bottom(gs: GameState, trigger: str) -> WorldDecl:
+    """底层屏声明构造(trigger 沿用动作名;next_screen = 当前节点屏,
+    推导单一源 = ``node_screen_now``)。"""
+    return WorldDecl(next_screen=node_screen_now(gs), trigger=trigger)
 
 # —— 零写动作族(视觉域/转场/选择族:容器零写,消费真值归观察——
 #    action-logic-state.md 正本申报;函数在场 = 命名规约完备测试对象,
@@ -82,7 +81,7 @@ def report_action_open_box_param(gs: GameState, param: Any, sig: ChannelSig) -> 
         gs, 'box_card', KIND_SCREEN_NAMES['box_card'],
         source='s6_click@open_box')
     return _report_zero_write(gs, param, sig, 'zero_write(open_box)',
-                              decl=_DECL_OPEN_BOX)
+                              decl=_decl_bottom(gs, 'open_box'))
 
 
 # 工具族七上报(report_action_furnace_use_param / report_action_privilege_card_
@@ -124,79 +123,79 @@ def report_action_pick_event_param(gs: GameState, param: Any, sig: ChannelSig) -
 
 def report_action_pick_megastar_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """盛会之星选择上报:容器零写。applied 出口构造后果声明(pick_megastar;
-    返回备战,详设 world-decl.md §2 表 #10)。"""
+    返回当前节点屏,详设 world-decl.md §2 表 #10)。"""
     #(精确消费):选卡动作消费同 kind 登记
     # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'megastar')
     return _report_zero_write(gs, param, sig, 'zero_write(pick_megastar)',
-                              decl=_DECL_PICK_MEGASTAR)
+                              decl=_decl_bottom(gs, 'pick_megastar'))
 
 
 
 def report_action_pick_partner_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """列车同行伙伴选择上报:容器零写。applied 出口构造后果声明
-    (纯转移返回备战,详设 world-decl.md §2 表 #13)。"""
+    (纯转移返回当前节点屏,详设 world-decl.md §2 表 #13)。"""
     #(精确消费):选卡动作消费同 kind 登记
     # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'partner')
     return _report_zero_write(gs, param, sig, 'zero_write(pick_partner)',
-                              decl=_DECL_PREP_PURE)
+                              decl=_decl_bottom(gs, ''))
 
 
 
 def report_action_pick_star_tome_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """星徽秘典选择上报:容器零写。applied 出口构造后果声明(纯转移
-    返回备战,详设 world-decl.md §2 表 #16)。"""
+    返回当前节点屏,详设 world-decl.md §2 表 #16)。"""
     #(精确消费):选卡动作消费同 kind 登记
     # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'star_tome')
     return _report_zero_write(gs, param, sig, 'zero_write(pick_star_tome)',
-                              decl=_DECL_PREP_PURE)
+                              decl=_decl_bottom(gs, ''))
 
 
 
 def report_action_pick_wish_trial_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """祈愿试炼选择上报:容器零写。applied 出口构造后果声明(纯转移
-    返回备战,详设 world-decl.md §2 表 #15)。"""
+    返回当前节点屏,详设 world-decl.md §2 表 #15)。"""
     #(精确消费):选卡动作消费同 kind 登记
     # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'wish_trial')
     return _report_zero_write(gs, param, sig, 'zero_write(pick_wish_trial)',
-                              decl=_DECL_PREP_PURE)
+                              decl=_decl_bottom(gs, ''))
 
 
 
 def report_action_pick_box_card_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """武装箱选择上报:容器零写。applied 出口构造后果声明(pick_box_card;
-    选卡即终结返回主循环备战,详设 world-decl.md §2 表 #9;装备入栏归 backend)。"""
+    选卡即终结返回当前节点屏,详设 world-decl.md §2 表 #9;装备入栏归 backend)。"""
     #(精确消费):选卡动作消费同 kind 登记
     # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'box_card')
     return _report_zero_write(gs, param, sig, 'zero_write(pick_box_card)',
-                              decl=_DECL_PICK_BOX_CARD)
+                              decl=_decl_bottom(gs, 'pick_box_card'))
 
 
 
 def report_action_pick_fortune_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """命运卜者强化三选一上报:容器零写。applied 出口构造后果声明
-    (纯转移返回备战,详设 world-decl.md §2 表 #14)。"""
+    (纯转移返回当前节点屏,详设 world-decl.md §2 表 #14)。"""
     #(精确消费):选卡动作消费同 kind 登记
     # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'fortune')
     return _report_zero_write(gs, param, sig, 'zero_write(pick_fortune)',
-                              decl=_DECL_PREP_PURE)
+                              decl=_decl_bottom(gs, ''))
 
 
 
 def report_action_pick_expert_invite_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """专家邀请函选卡上报:容器零写(现金为王回金 = dict 确认族通道)。
-    applied 出口构造后果声明(纯转移返回备战,详设 world-decl.md §2
-    表 #17)。"""
+    applied 出口构造后果声明(纯转移返回当前节点屏,详设 world-decl.md
+    §2 表 #17)。"""
     #(精确消费):选卡动作消费同 kind 登记
     # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'expert_invite')
     return _report_zero_write(gs, param, sig, 'zero_write(pick_expert_invite)',
-                              decl=_DECL_PREP_PURE)
+                              decl=_decl_bottom(gs, ''))
 
 
 

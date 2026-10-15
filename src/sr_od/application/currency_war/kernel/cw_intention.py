@@ -298,8 +298,8 @@ def total_remaining_nodes(gs: GameState) -> int:
 
     场字段求和(裁决点 9 就地自算;旧恒按 9/位面 27 制闭式已随视界族
     停用修正——29 号稿 :26 登记的禁消费缺陷同步闭账):剩余 =
-    Σ_{p>=plane} len − round + 1(含当前节点);位面 ∉ 序列表键集(含
-    P3)= 建模域外 → 0(与策略门面 horizon 契约同款);None(未注册)
+    Σ_{p>=plane} len − round + 1(含当前节点);位面 ∉ 序列表键集(≥4)
+    = 表外防御 → 0(与策略门面 horizon 契约同款);None(未注册)
     回退默认表。唯一消费 = ``_core_reachable`` 遭遇窗门。"""
     seqs = gs.node_seq_by_plane.value
     tables = seqs if seqs is not None else PLANE_NODE_TABLES
@@ -781,7 +781,7 @@ def _p1_pair_overwindow(pair: tuple[str, ...],
       测量单一源;消费对象 = ``pair_target_comp`` 现行物化产物,与本门
       E(inc)/E(alt) 同物化器同源,超窗判定不失真);
     - R_rem = 场字段求和就地自算(裁决点 9:框架不供视界量;封顶
-      modeled planes,位面 ∉ 序列表键集(含 P3)= 建模域外 → 0,与
+      modeled planes,位面 ∉ 序列表键集(≥4)= 表外防御 → 0,与
       策略门面 horizon 契约同款;与策略层概率账(criteria/levelup.
       prob_account_ok 的 R_剩余就地自算段——原 cw_economy.
       _upgrade_ul_threshold_ok 已随升级判据重轴停用)
@@ -802,7 +802,7 @@ def _p1_pair_overwindow(pair: tuple[str, ...],
     # R_rem 就地自算(裁决点 9:框架不供视界量,场字段求和,封顶
     # modeled planes;与策略层概率账(criteria/levelup.prob_account_ok
     # 的 R_剩余就地自算段——原 _upgrade_ul_threshold_ok 同式互锚承接)互锚,
-    # 禁单侧改式)。位面 ∉ 序列表键集(含 P3)= 建模域外 → 0。
+    # 禁单侧改式)。位面 ∉ 序列表键集(≥4)= 表外防御 → 0。
     _tb = gs.node_seq_by_plane.value or PLANE_NODE_TABLES
     r_rem = (sum(len(t) for k, t in _tb.items() if k >= plane_of(gs))
              - round_num_of(gs) + 1) if plane_of(gs) in _tb else 0
