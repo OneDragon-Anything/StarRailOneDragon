@@ -23,9 +23,14 @@ match/gs 缺席跳过)→ obs 挂实例属性进
 **判别单一源红线**:迁移只改宿主类,禁改 ``BOSS_BRIEFING_TOKENS``/
 ``is_boss_briefing_texts`` 判别面——三处消费同源(op 内锚兜底/
 ``CwScreenBattleWait._hit_completion_anchor`` 完成白名单/loop 阶段一位
-面过渡身份分支排他)不变。本屏 sim 腿 = 不适用(sim 无对应画面段),等价
-判据主要支撑 = 实机已登记行为测试(测试面 = sr-od-test test_cw_obs_arch_phase_
-screens.py + test_cw_anchor_exclusion.py)。
+面过渡身份分支排他)不变。本屏 sim 腿 = 读屏点改道生成器
+(``gen_boss_briefing`` 经同名 report 落容器,boss 类型直定同口;非 live
+读链,``_observe_live`` 仅 live 执行);首领节点条件发放
+(劳务派遣合同腿2)的触发接线在两端各自「进入事实」生产点——live =
+本 op ``_observe_live`` 观察后 best-effort 调 ``check_env_boss_grants``,
+sim = ``cw_sim_backend`` 节点窗收口 boss 分支,两支天然互斥零双发,本屏
+观察链只承载 live 半边。等价判据主要支撑 = 实机已登记行为测试(测试面 =
+sr-od-test test_cw_obs_arch_phase_screens.py + test_cw_anchor_exclusion.py)。
 """
 import time
 from typing import ClassVar
@@ -34,6 +39,12 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_env_grants import (
+    check_env_boss_grants,
+)
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
+)
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_screen_report.boss_briefing import (
     CwScreenBossBriefingObs,
@@ -125,6 +136,22 @@ class CwScreenBossBriefing(CwOperation):
         _gs = getattr(_match, 'gs', None) if _match is not None else None
         if _gs is not None:
             report_screen_boss_briefing_obs(_gs, obs)
+            # 首领节点条件发放触发(劳务派遣合同腿2,live 半边;条件单一源
+            # = kernel check_env_boss_grants)。「进入首领节点」真值生产点
+            # = 本屏观察(hist = settle_confirm 推进后的 boss 坐标,与上方
+            # boss 类型直定目标同源;sim 半边在 cw_sim_backend 进窗收口,
+            # 两端天然互斥零双发)。best-effort:观测面不阻塞对局
+            #(battle_wait 结算屏接线同纪律);返回值 = 角色名仅日志面消费,
+            # 刻意忽略。rng=None = 回退自掷(live 采样猜测口径,观察校准)。
+            try:
+                check_env_boss_grants(
+                    _gs, node_pos=_gs.node_hist_pos, rng=None,
+                    sig=ChannelSig(family='logic_hook',
+                                   actor='CwScreenBossBriefing',
+                                   group_id='boss-briefing:env-grant'))
+            except Exception as e:  # noqa: BLE001  观测面不阻塞对局
+                log.warning('[cw-flow-boss] 首领节点环境发放触发失败'
+                            '(不阻塞): %s', e)
         return obs
 
     @node_from(from_name='观察')

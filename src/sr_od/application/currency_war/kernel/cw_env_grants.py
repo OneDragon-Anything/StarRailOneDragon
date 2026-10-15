@@ -1,4 +1,4 @@
-"""环境条件发放:连胜/刷新次数触发检查 kernel 函数 + 宝钻获得回调(live/sim 同一单一源)。
+"""环境条件发放:连胜/刷新次数/首领节点触发检查 kernel 函数 + 宝钻获得回调(live/sim 同一单一源)。
 
 迭代 2026-10-10-env-conditional-grants(kernel 面,详设 =
 docs/develop/sr_od/application/currency_war/changes/
@@ -8,7 +8,10 @@ docs/develop/sr_od/application/currency_war/changes/
 为什么 kernel 单一函数(live 与 sim 都调它):结算 streak 真值链两端
 同构(live = 结算覆盖写端 apply_settlement_cover 落账,sim = 结算腿
 observe 落账),条件判定散落两处各写一份 = 漂移(同 ``roll_ore_reward``
-live/sim 共用的单一正确性来源理由,非「通用复用」)。
+live/sim 共用的单一正确性来源理由,非「通用复用」)。首领节点触发
+(check_env_boss_grants)两端不同构(「进入首领节点」真值生产点分居
+live 简报屏观察 / sim 节点窗收口,两段代码不同口)——仍归单一函数,
+条件判定/done 语义不漂移,接线形态归两端调用点。
 
 通道分工(硬约束,依据 = ``cw_game_state.write_logic_rand`` docstring:
 
@@ -32,8 +35,12 @@ write_logic_rand 即炸渠道族校验);live = logic_hook 族 group
 内部自构 obs 族(observe 渠道校验只收 obs 族,复用调用方 logic 族
 入参首笔即炸),入参不传 sig。
 
-**无 rng**:随机态指认知通道(落位未知、观察校准),追加位置(库存
-尾部)确定,不消耗随机数。
+**无 rng**(逐函数标注)::func:`check_env_streak_grants` /
+:func:`check_env_refresh_grants` 零 rng——随机态指认知通道(落位未知、
+观察校准),追加位置(库存尾部)确定,不消耗随机数;
+:func:`check_env_boss_grants` 含采样(rng 形参:角色名 ``rng.choice``
+采样,缺省回退自掷 = 采样是猜测口径,live 观察校准;sim 传流键 =
+世界真值)。
 
 边界披露(显式接受,详设 §3 同名节):①同窗洗白——发放后同窗口的
 确定性 equips 写会把字段来源翻成纯 logic,下一 heavy 帧观察对 logic
@@ -43,8 +50,15 @@ write_logic_rand 即炸渠道族校验);live = logic_hook 族 group
 """
 from __future__ import annotations
 
+import random
+
+from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.data.cw_chars import chars_by_faction
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     CounterKey,
+)
+from sr_od.application.currency_war.kernel.cw_gain_chain import (
+    gain_character,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     DEPLOYED_BACK_CAPACITY_MAX,
@@ -54,6 +68,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     level_of,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
+    ENV_BOSS_GRANTS,
     ENV_REFRESH_GRANTS,
     ENV_STREAK_GRANTS,
 )
@@ -68,6 +83,18 @@ FIRST_STREAK_KEY: str = 'first_streak'
 #: done 域条件键:刷新次数阈值触发器(每环境至多一个刷新触发器,
 #: (env,本键) 天然唯一)。
 REFRESH_THRESHOLD_KEY: str = 'refresh_threshold'
+
+#: done 域条件键:随机星徽授予腿(键值携带发放装备名,格式
+#: 'star_grant#<装备名>'——腿2 绑定解析的唯一源;# 后载荷是条件键的
+#: 本卡新立扩展形态(fields.md §3.5.5 在册仅纯具名值,随本卡登记)),
+#: 写端 = cw_gain_chain.on_env_gained 随机装备绑定腿(两模块分工见
+#: cw_game_state.env_grants_done 字段注释)。
+STAR_GRANT_KEY_PREFIX: str = 'star_grant#'
+
+#: done 域条件键:首领节点周期发放(每节点一键,格式
+#: 'boss#<位面>-<轮>';周期性 = 不同节点不同键,一次性通道的
+#: (env, 键) 形状不变)。
+BOSS_NODE_KEY_PREFIX: str = 'boss#'
 
 #: 回调三写证据串(判读可辨;刻意不带 ``sim:engine`` 前缀——该前缀是
 #: 失配抑制登记面,语义 = sim 后端世界腿外部事件写,回调写不属该族)。
@@ -211,6 +238,88 @@ def check_env_refresh_grants(gs: GameState, sig: ChannelSig) -> str | None:
                    done + ((env, REFRESH_THRESHOLD_KEY),),
                    produced_by=_PRODUCER, evidence=evidence, sig=sig)
     return equip_name
+
+
+def check_env_boss_grants(gs: GameState, *, node_pos: tuple[int, int] | None,
+                          rng: random.Random | None,
+                          sig: ChannelSig) -> str | None:
+    """首领节点条件发放触发检查(单一源;「进入首领节点」的双端真值
+    生产点分居两端 → 两点接线:live = ``CwScreenBossBriefing.
+    _observe_live`` 观察上报后 best-effort 调用(hist = settle_confirm
+    推进后的 boss 坐标),sim = ``cw_sim_backend._begin_node_window``
+    的 boss 分支(窗口幂等守卫内)——两支天然互斥,done 短路兜第二层)。
+
+    条件矩阵(顺序即短路序,逐序返回 None = 未发放):
+
+    1. 当前环境(active_env)None/空链 → None;
+    2. 环境不在登记表(ENV_BOSS_GRANTS)→ None;
+    3. ``node_pos`` None → None(live hist 未建,坐标不可知禁猜);
+    4. 坐标即入参:``node_pos`` = (位面, 轮) NodePos 二元组,拆包零转换
+       (节点序列按环境派生,本触发器收坐标入参,对序列修饰天然免疫);
+    5. ``(env, 'boss#<位面>-<轮>') ∈ done 现值 → None``(本节点已发;
+       同节点重复观察幂等短路;done None 视为空防御,沿 streak 通道
+       ``value or ()`` 先例);
+    6. done 现值无本环境 ``star_grant#`` 前缀键 → None(**绑定缺失,宁缺
+       勿造**——无快照接管局腿1 不重放则绑定永久缺失,后续 boss 一律
+       零写,显式接受);
+    7. ``gs.bench.value`` None → None 不标 done(生产不可达,直构/测试
+       形态防御;本 boss 窗一次性无自动重试 = 该节点漏发);
+    8. 达标 → 发放:绑定星徽名 = 前缀键解出 → 羁绊名 = 星徽名去「星徽」
+       后缀 → 池 = ``chars_by_faction(羁绊名)``(默认参数含 flows,与
+       FactionInfo.members 同源)→ ``rng.choice`` 采样 →
+       ``gain_character(gs, 名, 1, rand=True, sig, evidence, producer)``
+       (星级 1 = 先验,晶矿 CHAR_DROP_STAR 同句式)→ done 追加 boss 键
+       (write_logic,同 evidence 同 sig)——两段写同 evidence 同 sig 同
+       produced_by(与 streak/refresh 通道同窗原子纪律),返回角色名
+       (仅日志面消费)。池空 = 注册表漂移(构建期校验保证非空),运行期
+       再空 → None 短路留 log,不标 done。
+
+    - ``sig`` = 两写共用的渠道签名,必须 logic_action / logic_hook 族
+      (obs 族即炸渠道族校验——禁 obs_sig;形态归两端接线:live =
+      logic_hook 族 group 'boss-briefing:env-grant',sim =
+      logic_sig('sim:env'),与环境金/定时道具发放同组同窗);
+    - 本函数含采样(本模块唯一消费 rng 的触发函数):``rng`` 缺省回退
+      自掷(采样是猜测口径,live 观察校准;sim 传流键 = 世界真值)。
+    """
+    env = gs.active_env.value
+    if not env:
+        return None
+    if env not in ENV_BOSS_GRANTS:
+        return None
+    if node_pos is None:
+        return None
+    plane, round_num = int(node_pos[0]), int(node_pos[1])
+    done = tuple(gs.env_grants_done.value or ())
+    boss_key = f'{BOSS_NODE_KEY_PREFIX}{plane}-{round_num}'
+    if (env, boss_key) in done:
+        return None
+    bind_keys = [k for e, k in done
+                 if e == env and k.startswith(STAR_GRANT_KEY_PREFIX)]
+    if not bind_keys:
+        # 绑定缺失(腿1 未发放,典型 = 无快照接管局):宁缺勿造零写
+        return None
+    if gs.bench.value is None:
+        # 席面从未观察:发放角色写出不完整席 = 丢人,宁缺勿造不标 done
+        # (生产不可达,开局种子底座;本 boss 窗一次性,无自动重试)
+        return None
+    star_name = bind_keys[0][len(STAR_GRANT_KEY_PREFIX):]
+    faction = (star_name[:-len('星徽')] if star_name.endswith('星徽')
+               else '')
+    pool = [c.name for c in chars_by_faction(faction)]
+    if not pool:
+        # 构建期已闸(_validate_env_gifts '星徽' 池闸 + 派生链非空),
+        # 运行期再空 = 注册表漂移;零写留 log 防御分支(不标 done)
+        log.warning(f'[cw-env-grants] 首领节点羁绊池空(注册表漂移?):'
+                    f'{env} star={star_name!r} faction={faction!r}')
+        return None
+    roll_rng = rng if rng is not None else random.Random()
+    name = roll_rng.choice(pool)
+    evidence = f'env_grant#{env}#boss{plane}-{round_num}'
+    gain_character(gs, name, 1, rand=True, sig=sig, evidence=evidence,
+                   producer=_PRODUCER)
+    gs.write_logic(gs.env_grants_done, done + ((env, boss_key),),
+                   produced_by=_PRODUCER, evidence=evidence, sig=sig)
+    return name
 
 
 def on_diamond_acquired(gs: GameState, equip_name: str) -> None:

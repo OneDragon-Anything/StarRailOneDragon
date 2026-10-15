@@ -392,6 +392,14 @@ class GiftGrant:
       是世界发放域形状,不进档位机器(恒判 off)。发放 = 采样支:规格过滤
       池内均匀掷骰选名 → gain_character(rand=True,gain-chain.md §5
       效果体含采样)。立形首例 = 人才引进(星级先验 1)
+    - equips_random_immediate: 取环境当场发放的随机装备,元素 = 装备类别名
+      (EQUIPMENTS category 词),数量 = 元素重复次数。发放 = 采样支:类别池
+      (equips_by_category,注册表派生单源)内均匀掷骰选名 →
+      gain_equipment(rand=True)(骇客改件先例)。首例 = 劳务派遣合同
+      (「获得随机星徽」直读,池 = category '星徽')。与 items_immediate
+      (占席道具,进 bench)通道不同:装备进 equips 库存,不占席、不进
+      BENCH_ITEM_NAMES;世界发放域形状,不进档位机器(恒判 off,与
+      chars_random_immediate 同判)
     """
     chars_immediate: tuple[str, ...] = ()
     chars_conditional: tuple[tuple[str, str], ...] = ()
@@ -400,6 +408,7 @@ class GiftGrant:
     advisor: bool = False
     sell_value_note: str = ''
     chars_random_immediate: tuple[RandomCharSpec, ...] = ()
+    equips_random_immediate: tuple[str, ...] = ()
 
 
 #: ``items_scheduled`` 节点键格式('位-轮';位面 1 基 1-3,位面内轮 1 基
@@ -1498,6 +1507,13 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # type_tag 空,池 = 4 费全档;时点「开局」= 环境注册时点,与火药味
     # 「开局时获得」同口径(items_immediate 选卡即发)
     '人才引进': GiftGrant(chars_random_immediate=(RandomCharSpec(cost=4, star=1),)),
+    # 随机装备支首例(id 118 效果原文「获得随机星徽」直读,
+    # PlazaPortal('118');数量词缺省 = 1 件先验,披露键
+    # ENV_STAR_GRANT_ASSUMPTION_KEYS 承载)。绑定腿:发放名以 done 条件键
+    # 'star_grant#<名>' 落 env_grants_done(腿2「每次进入首领节点获得对应
+    # 羁绊的随机角色」的绑定解析唯一源,触发函数 =
+    # kernel/cw_env_grants.check_env_boss_grants,白名单 = ENV_BOSS_GRANTS)
+    '劳务派遣合同': GiftGrant(equips_random_immediate=('星徽',)),
     # 召唤单位支首例(id 115 效果原文「获得一个穿戴三个随机星徽的佩佩。」直读,
     # PlazaPortal('115');佩佩 ∈ CHARACTER_ROSTER(cw_chars 召唤族,0 费后台
     # 系统单位,恒最右/不可拖/不可卖)。登记定性(用户裁定 2026-10-15):
@@ -1518,8 +1534,9 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # - 掉落腿(「有时候…落在你的物品栏」):概率/时点/件数/池四维 desc 全
     #   无载(放弃纪律)+ 无登记字段可容(扩字段 = 提前抽象且无合法填充值);
     #   live 掉落真值归 equips 观察,sim 世界缺掉落物 = 申报缺口(特权阶级
-    #   不对称申报同型);随机星徽整族(买彩票系/劳务派遣合同)在册现状零
-    #   建模,本卡不独走。
+    #   不对称申报同型);随机星徽整族建模现状:劳务派遣合同已按「获得」
+    #   直读登记随机装备支(见上),买彩票系仍零建模,本卡佩戴/掉落两腿
+    #   仍按上文口径归观察。
     # 星级 = 用户裁定佩佩无星级(2026-10-15):链必填实参落 1 为占位非先验。
     '粗星佩佩': GiftGrant(chars_immediate=('佩佩',)),
 }
@@ -1532,6 +1549,11 @@ def random_char_pool(spec: RandomCharSpec) -> list[str]:
     ``on_env_gained`` 随机支)再查一道防御。"""
     return [c.name for c in chars_by_cost(spec.cost)
             if not spec.type_tag or spec.type_tag in c.char_type.split('、')]
+
+
+def equips_by_category(category: str) -> tuple[str, ...]:
+    """装备注册表按类别派生池(零硬编码第二源;构建/运行期同源消费)。"""
+    return tuple(n for n, e in EQUIPMENTS.items() if e.category == category)
 
 
 #: 随机赠卡类型标签闭集(从 CHARACTERS.char_type 按 '、' 切分派生,空标签
@@ -1570,6 +1592,30 @@ ENV_GIFT_UNMODELED_ASSUMPTION_KEYS: tuple[str, ...] = (
     'env_gift_badge_drop_unmodeled',
 )
 
+#: 随机星徽授予家族(劳务派遣合同,腿1 星徽 + 腿2 首领节点角色)的
+#: 采样/先验假设申报键(六键;键随家族携带不随单卡增减,消费面 = 实测
+#: 校准与披露清单):
+#: - env_star_grant_uniform: 星徽等概率 v0(分布未实测,晶矿/全员晋升
+#:   均匀 v0 先例,校准源 = equips 观察 vs 掷骰名 logic_rand_outcome 行
+#:   逐局积累);
+#: - env_star_grant_count1: 腿1 数量 1 件先验(desc 无数量词,自然语言
+#:   单数省写;先验错 = sim 世界多/少装备,bench 无感、资产对照偏差);
+#: - env_star_grant_bind_single: 「对应羁绊」= 腿1 采样单枚固定绑定
+#:   (desc 句式回指解读;若实机为已持全部星徽各触发,模型少发);
+#: - env_boss_grant_char_uniform: 羁绊成员池等概率 + flows 含入
+#:   (chars_by_faction 默认参数,与 FactionInfo.members 同源);
+#: - env_boss_grant_char_star1: 腿2 星级 1★ 先验(晶矿 CHAR_DROP_STAR
+#:   同句式,先验错走 bench 观察星级覆盖);
+#: - env_boss_grant_count1: 腿2 每 boss 节点 1 个先验(desc 无数量词)。
+ENV_STAR_GRANT_ASSUMPTION_KEYS: tuple[str, ...] = (
+    'env_star_grant_uniform',
+    'env_star_grant_count1',
+    'env_star_grant_bind_single',
+    'env_boss_grant_char_uniform',
+    'env_boss_grant_char_star1',
+    'env_boss_grant_count1',
+)
+
 # (送卡「档→分」映射与 advisor 折减 = 策略层 gift_value
 # (GIFT_TIER_SCORE/ADVISOR_DISCOUNT,消费位 = invest_env/invest_strategy),
 # 本文件不留分值常数——宪法五,衍生打分归策略层;floor 定序形态随
@@ -1582,8 +1628,8 @@ def _validate_env_gifts() -> None:
     ① 孤儿键:键必须在 INVESTMENT_ENVS(沿 ENV_ECONOMY 先例,防版本更新改名/
     移除后静默失联);② 角色名漂移:发放角色(即时∪条件)必须在 CHARACTER_ROSTER
     (版本漂移不静默,与孤儿键同批校验);③ 空发放集条目拒绝(即时角色/条件角色/
-    即时道具/定时道具/随机角色全空 = 数据残缺,档位机器恒判 off,会把登记笔误
-    放大成失格门误杀);④ ``set(ENV_GIFTS) ∩ set(ENV_ECONOMY) = ∅``——单一环境
+    即时道具/定时道具/随机角色/随机装备全空 = 数据残缺,档位机器恒判 off,会把
+    登记笔误放大成失格门误杀);④ ``set(ENV_GIFTS) ∩ set(ENV_ECONOMY) = ∅``——单一环境
     只落一个估值结构,防双通道叠加(∩ ENV_POOL_REWRITE 半边由 3.6 品质改写建表时
     收全);⑤ 定时通道两防呆(迭代 2026-09-24-scheduled-env-gifts):节点键格式
     '位-轮'(坏键 = on_env_gained 入队解析必炸的脏数据,import 拒收)、定时道具名禁
@@ -1591,11 +1637,15 @@ def _validate_env_gifts() -> None:
     造假身份);⑥ 随机赠卡规格(RandomCharSpec)值域三查:cost 1-5/star 1-3
     (bool 显式拒——bool 是 int 子类,True 会被纯 int 判当 1 混过)、type_tag ∈
     注册表 char_type 标签闭集(错字致池空静默)、规格过滤池非空(注册表漂移防呆,
-    先例 = _uniform_char_of_cost 的 ValueError)。
+    先例 = _uniform_char_of_cost 的 ValueError);⑦ 随机装备支两查(类别名闭集:
+    元素 ∈ EQUIPMENTS category 词集,越界 = 采样池必空构建期拒;类别过滤池非空,
+    注册表漂移防呆)+ '星徽' 类别池独立非空闸(首例登记类别,防类别改名致
+    首例登记池静默变空)。
     """
     orphans = [n for n in ENV_GIFTS if n not in INVESTMENT_ENVS]
     if orphans:
         raise ValueError(f"ENV_GIFTS 孤儿键(base 无此环境?):{sorted(orphans)}")
+    _equip_cats = frozenset(e.category for e in EQUIPMENTS.values())
     for _name, _grant in ENV_GIFTS.items():
         _drift = [c for c in (*_grant.chars_immediate,
                               *(c for c, _note in _grant.chars_conditional))
@@ -1631,12 +1681,27 @@ def _validate_env_gifts() -> None:
                     f"ENV_GIFTS 随机赠卡池空({_name!r}):"
                     f"cost={_spec.cost} type_tag={_spec.type_tag!r} "
                     f"过滤后无角色(注册表漂移?)")
+        for _cat in _grant.equips_random_immediate:
+            if _cat not in _equip_cats:
+                raise ValueError(
+                    f"ENV_GIFTS 随机装备类别名({_name!r}):{_cat!r} "
+                    f"不在 EQUIPMENTS category 词集(越界 = 采样池必空):"
+                    f"{sorted(_equip_cats)}")
+            if not equips_by_category(_cat):
+                raise ValueError(
+                    f"ENV_GIFTS 随机装备池空({_name!r}):"
+                    f"category={_cat!r} 过滤后无装备(注册表漂移?)")
         if not _grant.chars_immediate and not _grant.chars_conditional \
                 and not _grant.items_immediate and not _grant.items_scheduled \
-                and not _grant.chars_random_immediate:
+                and not _grant.chars_random_immediate \
+                and not _grant.equips_random_immediate:
             raise ValueError(
                 f"ENV_GIFTS 空发放集:{_name!r} 即时角色/条件角色/即时道具/"
-                f"定时道具/随机角色全空,数据残缺")
+                f"定时道具/随机角色/随机装备全空,数据残缺")
+    if not equips_by_category('星徽'):
+        raise ValueError(
+            "ENV_GIFTS 随机装备类别池空:'星徽' 类别过滤后无装备"
+            "(首例登记类别,类别改名致池静默变空 = 注册表漂移)")
     _overlap = set(ENV_GIFTS) & set(ENV_ECONOMY)
     if _overlap:
         raise ValueError(
@@ -1851,11 +1916,13 @@ def _validate_strategy_grants() -> None:
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后静默
     失联);② 角色名漂移:发放角色(即时∪条件)必须在 CHARACTER_ROSTER;
-    ③ 空发放集拒绝(即时角色/条件角色/即时道具/定时道具/随机角色五通道
+    ③ 空发放集拒绝(即时角色/条件角色/即时道具/定时道具/随机角色/随机装备
     全空 = 登记笔误,档位机器恒判 off;items 两通道沿 _validate_env_gifts
     同款并入——箱腿条目 chars 两通道空而 items_immediate 非空,合法;
     chars_random_immediate 同款并入——GiftGrant 两表共享,策略侧随机
-    登记后继[二/三/四费援军族]首登记不因旧判定误炸);④ **反扫候选
+    登记后继[二/三/四费援军族]首登记不因旧判定误炸;equips_random_immediate
+    同款并入——两表共享同一理由,策略侧随机装备登记后继首登记不误炸);
+    ④ **反扫候选
     闭集防线**:机械反扫(「获得…roster 名」全表命中)候选集
     ⊆ STRATEGY_GRANTS ∪ 排除/假阳性白名单——新增「获得」直读发放卡漏登记
     即炸;白名单键孤儿同样炸(防记因指向已删卡后防线空转)。
@@ -1872,10 +1939,11 @@ def _validate_strategy_grants() -> None:
                 f"STRATEGY_GRANTS 角色名漂移({_name!r} 注册表无此人,版本改名?):{_drift}")
         if not _grant.chars_immediate and not _grant.chars_conditional \
                 and not _grant.items_immediate and not _grant.items_scheduled \
-                and not _grant.chars_random_immediate:
+                and not _grant.chars_random_immediate \
+                and not _grant.equips_random_immediate:
             raise ValueError(
                 f"STRATEGY_GRANTS 空发放集:{_name!r} 即时角色/条件角色/"
-                f"即时道具/定时道具/随机角色全空,数据残缺")
+                f"即时道具/定时道具/随机角色/随机装备全空,数据残缺")
     _wl_orphans = [n for n in _STRATEGY_GRANTS_SCAN_EXCLUSIONS
                    if n not in INVESTMENT_STRATEGIES]
     if _wl_orphans:
@@ -2140,6 +2208,35 @@ def _validate_env_refresh_grants() -> None:
 
 
 _validate_env_refresh_grants()
+
+
+# ===== 首领节点周期发放白名单(劳务派遣合同腿2;白名单制)=====
+# **世界发放域**(条件达成的世界发放第三表,ENV_STREAK_GRANTS/ENV_REFRESH_
+# GRANTS 同族):键 = 环境规范名,值 = 集合语义(现役无登记值,形态沿
+# ENV_NODE_SUPPLY_BEFORE_BOSS 先例,cw_node_schedule)。表外环境一律无
+# 条目,禁从效果原文自动猜装(ENV_ECONOMY/ENV_GIFTS 同款纪律)。
+# 发放规则 = 腿1 绑定(done 条件键 'star_grant#<名>',登记于本卡在
+# ENV_GIFTS 的即时腿)+ 固定每首领节点 1 个 1★ 角色;触发函数 =
+# kernel/cw_env_grants.check_env_boss_grants(周期性,done 键带节点坐标)。
+# **与估值三表的同键并存 = 本卡新立形态**(本卡腿1 归 ENV_GIFTS、腿2 归
+# 本表,各表各腿、键语义无冲突):「世界发放表↔ENV_ECONOMY 可并存」的
+# 现役豁免声明原辖 ENV_ORE/ENV_STREAK/ENV_REFRESH 与估值面的关系,不直接
+# 覆盖估值三表∩世界发放表,故此处显式声明而非引先例。
+ENV_BOSS_GRANTS: frozenset[str] = frozenset({'劳务派遣合同'})
+
+
+def _validate_env_boss_grants() -> None:
+    """ENV_BOSS_GRANTS 构建校验(import 即炸;沿 _validate_env_streak_grants
+    先例):键 ⊆ INVESTMENT_ENVS(孤儿键,防版本更新改名/移除后静默失联)。
+    与 ENV_GIFTS 同键 = 合法形态(两表同键各表各腿,见上区块注释显式
+    声明),无反例校验。"""
+    orphans = [n for n in ENV_BOSS_GRANTS if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(
+            f"ENV_BOSS_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
+
+
+_validate_env_boss_grants()
 
 
 # ===== 节点改写注册表归属校验(import 即炸)=====

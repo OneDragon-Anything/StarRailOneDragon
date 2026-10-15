@@ -71,6 +71,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     round_start_income,
 )
 from sr_od.application.currency_war.kernel.cw_env_grants import (
+    check_env_boss_grants,
     check_env_streak_grants,
     on_diamond_acquired,
 )
@@ -1535,6 +1536,17 @@ class SimBackend:
         # 环境金同窗。
         discharge_due_item_grants(self.gs, plane=plane, round_num=r,
                                   rand=False, sig=logic_sig('sim:env'))
+        # 首领节点条件发放(劳务派遣合同腿2;条件单一源 = kernel
+        # check_env_boss_grants):进窗事实点在窗口幂等守卫内(重放不双发),
+        # done boss 键短路兜第二层。流键 M21 沿 M05/M18/M20 编号续,
+        # 采样即世界真值;sig 与环境金/定时道具发放同组同窗。kind =
+        # node_sequence_of(plane, seqs)[r-1](上窗已算),坐标 (plane, r) =
+        # 窗口幂等守卫键现值,直传入参零转换。
+        if kind == 'boss':
+            check_env_boss_grants(self.gs, node_pos=(plane, r),
+                                  rng=stream_rng(self.seed,
+                                                 f'M21/env-boss/p{plane}/r{r}'),
+                                  sig=logic_sig('sim:env'))
         # 商店全刷(M05:节点切换自动全刷;整店锁跳过——裁定②)
         if not bool(self.gs.shop_locked.value):
             rotation_on = (str(self.gs.active_env.value or '')

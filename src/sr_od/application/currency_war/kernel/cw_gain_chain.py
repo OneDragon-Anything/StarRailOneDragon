@@ -69,6 +69,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_REROLL_NAMES,
     INVESTMENT_ENVS,
     STRATEGY_EFFECTS,
+    equips_by_category,
     normalize_invest_name,
     random_char_pool,
 )
@@ -750,6 +751,12 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       ``pending_item_grants``(一次 write 回写整表,登记不落席),效果串
       ``item_scheduled:<名>@<节点键>``(数量 = 元素重复次数,发放事实
       登记与即时通道同阶),到点发放 = :func:`discharge_due_item_grants`;
+    - **随机装备支**(``equips_random_immediate``,落地序 = 即时道具支之后、
+      定时支之前):类别池(equips_by_category 注册表派生)内均匀掷骰选名 →
+      ``gain_equipment(rand=True)`` 入栏(equips 库存,不占席);效果串
+      ``env_star_grant:<名>``,绑定腿 = 发放名落 done 条件键
+      ``star_grant#<名>``(placed 守卫下写,腿2 触发依赖,
+      check_env_boss_grants 消费);首例 = 劳务派遣合同(腿1);
     - 查无效果(表外环境)= 安静不写(用户裁定),真值归观察覆盖。
       (欢愉契约条件腿不在本枚举:其正式模型 = 银狼策划选择上报动作落地时点的
       条件腿 rider,住 ``cw_action_report.pick_planner``,触发事件 =
@@ -819,6 +826,47 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
         _place_bench_item(gs, item, rand=rand,
                           evidence=f'on_env_gained:{_name}', sig=sig)
         effects.append(f'item_gift:{item}')
+    if grant.equips_random_immediate:
+        # 随机装备支(世界发放域,首例劳务派遣合同腿1「获得随机星徽」):
+        # 类别池(equips_by_category,注册表派生单源)内均匀掷骰选名 →
+        # gain_equipment 入栏;效果体含采样 → 子链 rand=True(gain-chain.md
+        # §5);rng 缺省回退自掷(采样是猜测口径,观察校准;正式接线 =
+        # 上报函数条件解析传入,sim 装配 = 流键 rng 即世界真值,
+        # chars_random_immediate 支同款)。落地序 = items_immediate 支之后、
+        # 定时支之前。
+        eq_rng = rng if rng is not None else random.Random()
+        for cat in grant.equips_random_immediate:
+            pool = equips_by_category(cat)
+            if not pool:
+                # 构建期已闸(_validate_env_gifts 类别闭集/池非空),运行期
+                # 空 = 注册表漂移;零写留 log 防御分支(不改容器,不炸链;
+                # 与 chars_random 支空池防御及腿2 池空防御对称)
+                log.warning(f'[cw-gain] 随机装备类别池空(注册表漂移?):'
+                            f'{_name} category={cat!r}')
+                continue
+            name = eq_rng.choice(pool)
+            outcome = gain_equipment(gs, name, rand=True, sig=sig,
+                                     evidence=f'on_env_gained:{_name}',
+                                     producer=GAIN_CHAIN_PRODUCER)
+            # 绑定腿:发放名落 done 条件键 'star_grant#<名>'(同窗相邻写,
+            # 腿2 触发依赖);equips 未观察时 gain_equipment 零写跳档
+            #(placed=False)→ 绑定同样不落,宁缺勿造与腿2 缓发口径对齐
+            #(禁「绑定在而装备未发」残缺态)。STAR_GRANT_KEY_PREFIX 函数级
+            # 取常量:cw_env_grants 触发函数消费本模块 gain_character,
+            # 模块级互导成环(先例 = pick_invest_env.action_sampling_rng
+            # 同款函数级避环)
+            from sr_od.application.currency_war.kernel.cw_env_grants import (
+                STAR_GRANT_KEY_PREFIX,
+            )
+            if outcome.placed:
+                done = tuple(gs.env_grants_done.value or ())
+                gs.write_logic(gs.env_grants_done,
+                               done + ((_name,
+                                        f'{STAR_GRANT_KEY_PREFIX}{name}'),),
+                               produced_by=GAIN_CHAIN_PRODUCER,
+                               evidence=f'on_env_gained:{_name}#bind',
+                               sig=sig)
+            effects.append(f'env_star_grant:{name}')
     if grant.items_scheduled:
         # 定时支:登记不落席,入队待到点(一次 write 回写整表;entry 形见
         # cw_game_state.pending_item_grants 注)。节点键格式 import 期已闸
