@@ -145,6 +145,12 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan impor
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
 )
+
+# 贯穿件恒囤名单单一源已迁 protection(design §2.1 单一源搬家),此处
+# 回导维持本模块既有消费点与外部 ``shop.CROSS_LINE_KEEP_NAMES`` 读面。
+from sr_od.application.currency_war.strategies.impl.mandate_v1.protection import (
+    CROSS_LINE_KEEP_NAMES,
+)
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
     horizon,
     predicates,
@@ -646,15 +652,6 @@ def check_settlement_line(gold: int, cost: int, g_star: int) -> tuple[bool, str]
 
 # ============================================================ 会话循环重写(迭代)
 
-
-#: 全线路通用贯穿件恒囤名单(shop_session §2.2 序 1 未锁定期囤积纪律;
-#: 「真贯穿层」= Early→Final 全程留用层——E→F 0.66-0.95 与「早期核心」
-#: 一致,出处 = docs/game/currency_war/research/stage_transitions.md Q1 表
-#: 第一档)。策略层立场常量(「恒囤」为策略裁定,名单随攻略数据修订走
-#: research 重跑;3.7 候选内核实现后随选线函数统一消费)。
-CROSS_LINE_KEEP_NAMES: frozenset[str] = frozenset({
-    '千冶·刃', '三月七', '花火', '星期日',
-})
 
 #: 机会清单的序类值域(shop_session §4.2:解拦后重评归属;六序 + C1/
 #: dominance 邻位通道)。

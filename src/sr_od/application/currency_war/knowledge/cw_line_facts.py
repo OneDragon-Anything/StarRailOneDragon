@@ -93,9 +93,13 @@ FRAMEWORKS: tuple[str, ...] = ('仙舟', '列车', '量子')
 SEELE_SYSTEM: str = '希儿系'
 
 
-def _bond_members(bond: str) -> set[str]:
+def bond_members(bond: str) -> set[str]:
     """单羁绊成员名集(阵营∪流派全成员口径,与 cw_intention._pair_members
-    同式;希儿系=希儿∪两放大器阵营成员)。遥测 ρ 实测的在店判据单一源。"""
+    同式;希儿系=希儿∪两放大器阵营成员)。遥测 ρ 实测的在店判据单一源。
+
+    公开化(统一保护集迭代 changes/2026-10-15-unified-protection-set
+    design.md §2.1):跨层成员枚举消费本公开口,禁各消费层同式复写第
+    N 份;零行为改名。"""
     if bond == SEELE_SYSTEM:
         bonds: set[str] = {'量子同频', '贝洛伯格'}
         out: set[str] = {'希儿'}

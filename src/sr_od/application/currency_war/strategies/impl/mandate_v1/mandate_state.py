@@ -394,6 +394,25 @@ class StrategyState:
     # 传入)。
     p2_strategy_pick_done: bool = False
 
+    # ===== 过渡锁定状态槽(统一保护集迭代 changes/2026-10-15-unified-
+    #       protection-set design.md §2.1 新增;买/卖消费点归后续批接线,
+    #       本槽现役零行为消费面)=====
+    # [索引定义] transition_locked_systems = 过渡域已点亮体系的键集
+    # (frozenset[str]):键坐标系 = 四体系键闭集——cw_engine_facts.
+    # TRANSITION_TRAITS 三羁绊键(仙舟/列车同行/持续伤害)∪
+    # cw_line_facts.SEELE_SYSTEM('希儿系');取值时机 = 策略层决策
+    # 入口前置段逐帧现算(写入端单一源 =
+    # protection.refresh_transition_locked_systems,bridge.py 两决策
+    # 入口在 refresh_line_if_needed 同点调用)。语义 = **幂等只增不减**
+    # (design §2.7 取舍:达成过的体系不因掉档失去锁定,防「掉档 →
+    # 保护收缩 → 连锁卖」恶性循环,与终局侧「锁后不换」同构);清空点
+    # 唯一 = 进位面 2(flow._refresh_direction 配方退场同点)。注意
+    # 本槽 ≠ 买面锁定态消费(买面锁 = 终局锁定态
+    # line_members_view.locked);点亮判定域 = 持有域(bench ∪
+    # deployed),与板面域 seele_system_formed 在「bench 满持未上阵」
+    # 帧异判为本设计选定行为。
+    transition_locked_systems: frozenset[str] = frozenset()
+
     # ===== 商店会话读数协议与会话循环键(读写单一源 =
     #       criteria/shop_session 协议函数族与会话循环动作发出点——新键在
     #       session_scope._NODE_SCOPE_RESET_TABLE 显式登记的以表为准)=====

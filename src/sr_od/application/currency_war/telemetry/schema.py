@@ -21,7 +21,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 from sr_od.application.currency_war.knowledge.cw_engine_facts import TRANSITION_TRAITS
 from sr_od.application.currency_war.knowledge.cw_line_facts import (
     SEELE_SYSTEM,
-    _bond_members,
+    bond_members,
 )
 from sr_od.application.currency_war.knowledge.cw_serialize import _to_jsonable
 
@@ -58,7 +58,7 @@ def rho_shop_obs(shop: list, pair: str = '') -> dict[str, Any]:
       占比(P31① 辅通道)。本函数只记**单帧分子计数**;W 窗占比由读端
       按帧聚合,窗口假设不进采集点。消费=理论口径(E_rounds 超几何)
       的交叉核对与牌池结构变化检出,决策消费主通道不经此。
-    - 成员判定 = ``knowledge.cw_line_facts._bond_members``(阵营∪流派全成员;
+    - 成员判定 = ``knowledge.cw_line_facts.bond_members``(阵营∪流派全成员;
       多标签件在各命中体系各计 1,Σ systems 可超 n_shop——与
       OutcomeRecord.board_before 人次口径同判据)。
     - ``pair`` = 当前方向标签(p1_pair 优先次 transition_pair;''=空窗),
@@ -70,7 +70,7 @@ def rho_shop_obs(shop: list, pair: str = '') -> dict[str, Any]:
              for c in (shop or [])]
     systems: dict[str, int] = {}
     for key in RHO_SYSTEM_KEYS:
-        members = _bond_members(key)
+        members = bond_members(key)
         systems[key] = sum(1 for n in names if n in members)
     return {'systems': systems, 'pair': str(pair or ''),
             'n_shop': len(names)}

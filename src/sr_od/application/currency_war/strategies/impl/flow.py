@@ -226,6 +226,10 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 # review-37 P1——P2 未锁窗禁消费过期 P1 配方;幂等,
                 # 空对/已清帧 no-op)。
                 clear_p1_recipe(ist, _ms)
+                # 过渡锁定槽同点清空(清空点 = 进位面 2,统一保护集
+                # design §2.1):位面 2 起过渡域关闭,槽只服务过渡域
+                # 语义,与配方锁退场同帧出清无跨域残留;幂等(空槽 no-op)。
+                _ms.transition_locked_systems = frozenset()
         self._refresh_direction_views(state, _ms)
 
     def _refresh_direction_views(self, state: GameState,
